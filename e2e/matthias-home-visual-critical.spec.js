@@ -43,25 +43,36 @@ async function openHomeAt(page, hour, { dismissSpeech = true, profileSeed = {} }
 }
 
 async function captureSpeechBubbleContract(corner) {
-  const bubble = corner.getByRole('region', { name: 'Mensaje de Matthias' });
-  await expect(bubble).toBeVisible();
-  return bubble.evaluate((bubbleNode) => {
-    const residentNode = bubbleNode.closest('.matthias-resident');
-    const characterNode = residentNode?.querySelector('.matthias-resident__character');
-    const avatarNode = residentNode?.querySelector('[data-matthias-three-avatar="true"]');
-    const bubbleRect = bubbleNode.getBoundingClientRect();
-    const characterRect = characterNode?.getBoundingClientRect();
-    const textNode = bubbleNode.querySelector('p');
-    return {
-      gap: characterRect ? characterRect.left - bubbleRect.right : Number.POSITIVE_INFINITY,
-      bubbleFontSize: textNode ? Number.parseFloat(getComputedStyle(textNode).fontSize) : 0,
-      profile: avatarNode?.getAttribute('data-three-profile') || '',
-      presenceState: avatarNode?.getAttribute('data-home-presence-state') || '',
-      faceExpression: avatarNode?.getAttribute('data-three-face-expression') || '',
-      mouthOpen: Number(avatarNode?.getAttribute('data-three-mouth-open')) || 0,
-      faceArticulation: Number(avatarNode?.getAttribute('data-three-face-articulation')) || 0,
-    };
-  });
+  let snapshot = null;
+  await expect.poll(async () => {
+    snapshot = await corner.evaluate((residentNode) => {
+      const bubbleNode = residentNode.querySelector('[aria-label="Mensaje de Matthias"]');
+      const characterNode = residentNode.querySelector('.matthias-resident__character');
+      const avatarNode = residentNode.querySelector('[data-matthias-three-avatar="true"]');
+      const textNode = bubbleNode?.querySelector('p');
+      if (!bubbleNode?.isConnected || !textNode?.isConnected) return null;
+
+      const fontSize = Number.parseFloat(getComputedStyle(textNode).fontSize);
+      if (!Number.isFinite(fontSize)) return null;
+      const bubbleRect = bubbleNode.getBoundingClientRect();
+      const characterRect = characterNode?.getBoundingClientRect();
+      return {
+        gap: characterRect ? characterRect.left - bubbleRect.right : Number.POSITIVE_INFINITY,
+        bubbleFontSize: fontSize,
+        profile: avatarNode?.getAttribute('data-three-profile') || '',
+        presenceState: avatarNode?.getAttribute('data-home-presence-state') || '',
+        faceExpression: avatarNode?.getAttribute('data-three-face-expression') || '',
+        mouthOpen: Number(avatarNode?.getAttribute('data-three-mouth-open')) || 0,
+        faceArticulation: Number(avatarNode?.getAttribute('data-three-face-articulation')) || 0,
+      };
+    }).catch(() => null);
+    return Boolean(snapshot);
+  }, {
+    timeout: 2_500,
+    intervals: [50, 100, 200],
+    message: 'el contrato del bocadillo debe capturarse mientras el nodo sigue conectado',
+  }).toBe(true);
+  return snapshot;
 }
 
 async function expectThreeScene(corner, profile, label, { minReach = 0 } = {}) {
@@ -196,6 +207,7 @@ test('Home · 390px conserva microgestos, mérito diegético, texto legible y ce
   await expect(primaryCard).toBeVisible();
   await expect(corner).toHaveAttribute('data-placement', 'inline');
   const avatar = corner.locator('[data-matthias-three-avatar="true"]');
+  const portraitFrame = corner.locator('[data-portrait-frame="true"]');
   await expect(avatar).toHaveAttribute('data-three-model', 'matthias-home-premium-3d-v1');
   await expect(avatar).toHaveAttribute('data-three-fidelity', 'approved-original-premium-v1');
   await expect(avatar).toHaveAttribute('data-three-render-mode', 'canonical-premium-pawn-3d');
@@ -207,6 +219,18 @@ test('Home · 390px conserva microgestos, mérito diegético, texto legible y ce
     { timeout: 4_000 },
   ).toBeGreaterThan(.01);
   expect(Number(await avatar.getAttribute('data-three-face-warp')) || 0).toBeLessThanOrEqual(.019);
+
+  const mobilePortrait = await portraitFrame.evaluate((frameNode) => {
+    const canvas = frameNode.querySelector('canvas');
+    const frameRect = frameNode.getBoundingClientRect();
+    const transform = canvas ? getComputedStyle(canvas).transform : 'none';
+    const match = transform.match(/^matrix\(([-\d.]+)/);
+    return {
+      width: frameRect.width,
+      height: frameRect.height,
+      canvasScale: match ? Number(match[1]) : 1,
+    };
+  });
 
   const contract = await page.evaluate(() => {
     const description = document.querySelector('.home-mode-description');
@@ -224,6 +248,9 @@ test('Home · 390px conserva microgestos, mérito diegético, texto legible y ce
   });
 
   expect(contract.overflow, 'Home no puede generar scroll horizontal en Android').toBeLessThanOrEqual(1);
+  expect(mobilePortrait.width, 'Matthias no puede volver a tamaño sello en Android').toBeGreaterThanOrEqual(118);
+  expect(mobilePortrait.height, 'el retrato móvil debe dar espacio real a cara y torso').toBeGreaterThanOrEqual(130);
+  expect(mobilePortrait.canvasScale, 'el framing móvil debe priorizar cara y torso sobre la base del peón').toBeGreaterThanOrEqual(1.30);
   expect(speechContract.bubbleFontSize, 'Matthias debe seguir siendo legible a 390px').toBeGreaterThanOrEqual(12.8);
   expect(contract.descriptionFontSize, 'las descripciones de modos no pueden volver a microtexto').toBeGreaterThanOrEqual(12.5);
   expect(contract.crownLeft, 'el mérito diegético no puede salirse por la izquierda').toBeGreaterThanOrEqual(0);
