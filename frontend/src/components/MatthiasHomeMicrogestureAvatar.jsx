@@ -7,7 +7,6 @@ import {
 import {
   matthiasHomeMotionPhase,
   matthiasHomeMotionProfile,
-  matthiasHomeRigidPoseSample,
 } from './MatthiasHomePresenceAvatar.jsx';
 import {
   createMatthiasHomePresenceMachine,
@@ -19,8 +18,19 @@ import {
   nextMatthiasHomeAmbientState,
   transitionMatthiasHomePresence,
 } from './matthiasHomePresenceStateMachine.js';
+import {
+  applyMatthiasPawnPose,
+  createMatthiasPawn3D,
+  disposeMatthiasPawn3D,
+  MATTHIAS_PAWN_EMBLEM,
+  MATTHIAS_PAWN_FACE_RIG_VERSION,
+  MATTHIAS_PAWN_MODEL_VERSION,
+  matthiasPawnPoseSample,
+} from './MatthiasPawn3D.js';
 import './MatthiasThreeAvatar.css';
 
+// Kept as compatibility exports for old tests/importers. The live Home renderer
+// no longer deforms a texture: facial motion is articulated on real 3D parts.
 export const MATTHIAS_HOME_FACE_WARP_LIMIT = .019;
 export const MATTHIAS_HOME_MICROGESTURE_VERSION = 'home-face-v2';
 
@@ -56,7 +66,6 @@ export function matthiasHomeFacialCue({
   if (presenceState === MATTHIAS_HOME_STATES.NOD) {
     return { expression: 'stern', gesture: 'idle' };
   }
-
   if (profile === 'sip') return { expression: 'coffee', gesture: 'idle' };
   if (profile === 'read' || profile === 'dossier') return { expression: 'focus', gesture: 'survey' };
   if (profile === 'write') return { expression: 'focus', gesture: 'idle' };
@@ -89,24 +98,17 @@ export function matthiasHomeFacialMotionSample({
 
 function renderPolicy({ coarsePointer = false, width = 0, height = 0 } = {}) {
   const compact = coarsePointer && Math.min(Number(width) || 0, Number(height) || 0) <= 96;
-  if (compact) return { tier: 'compact', widthSegments: 14, heightSegments: 16, maxFps: 30, pixelRatioCap: 1 };
-  if (coarsePointer) return { tier: 'coarse', widthSegments: 18, heightSegments: 22, maxFps: 45, pixelRatioCap: 1.15 };
-  return { tier: 'full', widthSegments: 24, heightSegments: 28, maxFps: 60, pixelRatioCap: 1.5 };
+  if (compact) return { tier: 'compact', maxFps: 30, pixelRatioCap: 1 };
+  if (coarsePointer) return { tier: 'coarse', maxFps: 45, pixelRatioCap: 1.15 };
+  return { tier: 'full', maxFps: 60, pixelRatioCap: 1.5 };
 }
 
-function resizeRenderer(renderer, camera, canvas, imageAspect, mesh) {
+function resizeRenderer(renderer, camera, canvas) {
   const width = Math.max(1, canvas.clientWidth || 1);
   const height = Math.max(1, canvas.clientHeight || 1);
-  const canvasAspect = width / height;
   renderer.setSize(width, height, false);
-  camera.left = -canvasAspect;
-  camera.right = canvasAspect;
-  camera.top = 1;
-  camera.bottom = -1;
+  camera.aspect = width / height;
   camera.updateProjectionMatrix();
-  const baseScale = Math.max(1, canvasAspect / Math.max(.1, imageAspect));
-  mesh.userData.baseScale = baseScale;
-  mesh.scale.setScalar(baseScale);
 }
 
 export default function MatthiasHomeMicrogestureAvatar({
@@ -175,18 +177,16 @@ export default function MatthiasHomeMicrogestureAvatar({
   useEffect(() => {
     const canvas = canvasRef.current;
     const root = rootRef.current;
-    if (!canvas || !root || !avatar) return undefined;
+    if (!canvas || !root) return undefined;
 
     let renderer;
+    let rig;
     let raf = 0;
     let disposed = false;
     let resizeObserver = null;
     let resizeFallback = null;
     let visibilityListener = null;
     let intersectionObserver = null;
-    let geometry = null;
-    let material = null;
-    let texture = null;
     let renderFrame = null;
     let inViewport = true;
     let documentVisible = typeof document === 'undefined' || document.visibilityState !== 'hidden';
@@ -200,6 +200,10 @@ export default function MatthiasHomeMicrogestureAvatar({
     root.dataset.threeEnergy = '0';
     root.dataset.threeReach = '0';
     root.dataset.threeFaceWarp = '0.0000';
+    root.dataset.threeFaceArticulation = '0.000';
+    root.dataset.threeHeadYaw = '0.000';
+    root.dataset.threeBlink = '0.000';
+    root.dataset.threeMouthOpen = '0.000';
     root.dataset.threeVisibility = documentVisible ? 'visible' : 'hidden';
 
     const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -209,7 +213,6 @@ export default function MatthiasHomeMicrogestureAvatar({
       height: canvas.clientHeight,
     });
     root.dataset.threeRenderTier = policy.tier;
-    root.dataset.threeSegments = `${policy.widthSegments}x${policy.heightSegments}`;
     root.dataset.threeMaxFps = String(policy.maxFps);
 
     const cancelFrame = () => {
@@ -228,9 +231,11 @@ export default function MatthiasHomeMicrogestureAvatar({
         canvas,
         alpha: true,
         antialias: !coarsePointer,
-        powerPreference: coarsePointer ? 'low-power' : 'default',
+        powerPreference: coarsePointer ? 'low-power' : 'high-performance',
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.08;
       renderer.setClearColor(0x000000, 0);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, policy.pixelRatioCap));
     } catch {
@@ -240,174 +245,135 @@ export default function MatthiasHomeMicrogestureAvatar({
     }
 
     const scene3d = new THREE.Scene();
-    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 10);
-    camera.position.z = 3;
+    const camera = new THREE.PerspectiveCamera(30, 1, .1, 20);
+    camera.position.set(0, .02, 5.15);
+    camera.lookAt(0, -.08, 0);
 
-    texture = new THREE.TextureLoader().load(
-      avatar,
-      (loaded) => {
-        if (disposed) return;
-        loaded.colorSpace = THREE.SRGBColorSpace;
-        loaded.minFilter = THREE.LinearFilter;
-        loaded.magFilter = THREE.LinearFilter;
-        loaded.needsUpdate = true;
-        const imageAspect = Math.max(
-          .1,
-          (loaded.image?.naturalWidth || loaded.image?.width || 1)
-          / (loaded.image?.naturalHeight || loaded.image?.height || 1),
-        );
+    const hemi = new THREE.HemisphereLight(0xffe9c7, 0x151820, 2.1);
+    scene3d.add(hemi);
+    const key = new THREE.DirectionalLight(0xffd9a0, 3.1);
+    key.position.set(-2.2, 3.3, 4.4);
+    scene3d.add(key);
+    const rim = new THREE.DirectionalLight(0xbac9ff, 1.55);
+    rim.position.set(3.4, 1.8, 2.2);
+    scene3d.add(rim);
 
-        // The body stays a rigid card. Segmentation exists only so the bounded
-        // face-v1 rig can move eyes, brows, cheeks and jaw inside its own mask.
-        geometry = new THREE.PlaneGeometry(
-          2 * imageAspect,
-          2,
-          policy.widthSegments,
-          policy.heightSegments,
-        );
-        const positions = geometry.attributes.position;
-        const basePositions = new Float32Array(positions.array);
-        material = new THREE.MeshBasicMaterial({
-          map: loaded,
-          transparent: true,
-          depthWrite: false,
-          toneMapped: false,
+    rig = createMatthiasPawn3D({ compact: policy.tier === 'compact' });
+    rig.root.scale.setScalar(.92);
+    rig.root.position.y = -.03;
+    scene3d.add(rig.root);
+
+    const doResize = () => resizeRenderer(renderer, camera, canvas);
+    doResize();
+    if (typeof ResizeObserver === 'function') {
+      resizeObserver = new ResizeObserver(doResize);
+      resizeObserver.observe(canvas);
+    } else {
+      resizeFallback = doResize;
+      window.addEventListener('resize', resizeFallback);
+    }
+
+    let frames = 0;
+    let peakEnergy = 0;
+    let peakReach = 0;
+    let peakArticulation = 0;
+    let peakFaceSignal = 0;
+    let peakHeadYaw = 0;
+    let peakBlink = 0;
+    let peakMouthOpen = 0;
+    const startedAt = performance.now();
+    const minFrameInterval = 1000 / policy.maxFps;
+
+    renderFrame = (stamp) => {
+      raf = 0;
+      if (disposed) return;
+      if (frames > 0 && stamp - lastRenderedAt < minFrameInterval) {
+        requestFrame();
+        return;
+      }
+      lastRenderedAt = stamp;
+
+      const time = Math.max(0, stamp - startedAt) / 1000 + phase;
+      const stateElapsed = Math.max(0, stamp - modeStartedAtRef.current) / 1000;
+      const pose = reducedMotion
+        ? matthiasPawnPoseSample({
+          profile: 'idle',
+          presenceState: MATTHIAS_HOME_STATES.IDLE,
+          time: 0,
+          stateElapsed: 0,
+          stateDurationMs: 0,
+          motionIntensity: 0,
+        })
+        : matthiasPawnPoseSample({
+          profile,
+          presenceState: modeRef.current,
+          time,
+          stateElapsed,
+          stateDurationMs: matthiasHomeStateDuration(modeRef.current),
+          speaking,
+          motionIntensity: intensity,
         });
-        const mesh = new THREE.Mesh(geometry, material);
-        scene3d.add(mesh);
+      applyMatthiasPawnPose(rig, pose);
+      renderer.render(scene3d, camera);
 
-        const doResize = () => resizeRenderer(renderer, camera, canvas, imageAspect, mesh);
-        doResize();
-        if (typeof ResizeObserver === 'function') {
-          resizeObserver = new ResizeObserver(doResize);
-          resizeObserver.observe(canvas);
-        } else {
-          resizeFallback = doResize;
-          window.addEventListener('resize', resizeFallback);
-        }
+      frames += 1;
+      peakEnergy = Math.max(peakEnergy, pose.energy || 0);
+      peakReach = Math.max(peakReach, pose.reach || 0);
+      peakArticulation = Math.max(peakArticulation, pose.articulation || 0);
+      const faceSignal = Math.min(.0185, (pose.articulation || 0) * .05 + (pose.blink || 0) * .002 + (pose.mouthOpen || 0) * .003);
+      peakFaceSignal = Math.max(peakFaceSignal, faceSignal);
+      peakHeadYaw = Math.max(peakHeadYaw, Math.abs(pose.headYaw || 0));
+      peakBlink = Math.max(peakBlink, pose.blink || 0);
+      peakMouthOpen = Math.max(peakMouthOpen, pose.mouthOpen || 0);
 
-        let frames = 0;
-        let peakEnergy = 0;
-        let peakReach = 0;
-        let peakFaceWarp = 0;
-        const startedAt = performance.now();
-        const minFrameInterval = 1000 / policy.maxFps;
+      if (frames === 1) {
+        setReady(true);
+        root.dataset.threeReady = 'true';
+      }
+      if (frames % 6 === 0 || frames === 1) {
+        const currentCue = matthiasHomeFacialCue({
+          profile,
+          presenceState: modeRef.current,
+          speaking,
+        });
+        root.dataset.threeFrame = String(frames);
+        root.dataset.threeEnergy = peakEnergy.toFixed(3);
+        root.dataset.threeReach = peakReach.toFixed(3);
+        root.dataset.threeFaceWarp = peakFaceSignal.toFixed(4);
+        root.dataset.threeFaceArticulation = peakArticulation.toFixed(3);
+        root.dataset.threeHeadYaw = peakHeadYaw.toFixed(3);
+        root.dataset.threeBlink = peakBlink.toFixed(3);
+        root.dataset.threeMouthOpen = peakMouthOpen.toFixed(3);
+        root.dataset.threeFaceExpression = currentCue.expression;
+        root.dataset.threeFaceGesture = currentCue.gesture;
+      }
+      requestFrame();
+    };
 
-        renderFrame = (stamp) => {
-          raf = 0;
-          if (disposed) return;
-          if (frames > 0 && stamp - lastRenderedAt < minFrameInterval) {
-            requestFrame();
-            return;
-          }
-          lastRenderedAt = stamp;
+    visibilityListener = () => {
+      documentVisible = document.visibilityState !== 'hidden';
+      root.dataset.threeVisibility = documentVisible ? 'visible' : 'hidden';
+      if (!documentVisible) cancelFrame();
+      else requestFrame();
+    };
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', visibilityListener);
 
-          const time = Math.max(0, stamp - startedAt) / 1000 + phase;
-          const stateElapsed = Math.max(0, stamp - modeStartedAtRef.current) / 1000;
-          const pose = reducedMotion
-            ? { x: 0, y: 0, rx: 0, ry: 0, rz: 0, scale: 1, energy: 0, reach: 0 }
-            : matthiasHomeRigidPoseSample({
-              profile,
-              presenceState: modeRef.current,
-              time,
-              stateElapsed,
-              speaking,
-              motionIntensity: intensity,
-            });
+    if (typeof IntersectionObserver === 'function') {
+      intersectionObserver = new IntersectionObserver((entries) => {
+        const entry = entries[0];
+        inViewport = Boolean(entry?.isIntersecting ?? true);
+        root.dataset.threeViewport = inViewport ? 'visible' : 'paused';
+        if (!inViewport) cancelFrame();
+        else requestFrame();
+      }, { rootMargin: '80px' });
+      intersectionObserver.observe(root);
+    } else {
+      root.dataset.threeViewport = 'visible';
+    }
 
-          const currentCue = matthiasHomeFacialCue({
-            profile,
-            presenceState: modeRef.current,
-            speaking,
-          });
-          let frameFaceWarp = 0;
-          let faceEnergy = 0;
-          for (let index = 0; index < positions.count; index += 1) {
-            const offset = index * 3;
-            const x = basePositions[offset];
-            const y = basePositions[offset + 1];
-            const z = basePositions[offset + 2];
-            const faceMotion = reducedMotion
-              ? { dx: 0, dy: 0, dz: 0, energy: 0 }
-              : matthiasFacialMotionSample({
-                expression: currentCue.expression,
-                gesture: currentCue.gesture,
-                x,
-                y,
-                imageAspect,
-                time,
-                speaking,
-                intensity,
-              });
-            positions.array[offset] = x + faceMotion.dx;
-            positions.array[offset + 1] = y + faceMotion.dy;
-            positions.array[offset + 2] = z + faceMotion.dz;
-            frameFaceWarp = Math.max(
-              frameFaceWarp,
-              Math.abs(faceMotion.dx),
-              Math.abs(faceMotion.dy),
-              Math.abs(faceMotion.dz),
-            );
-            faceEnergy = Math.max(faceEnergy, faceMotion.energy || 0);
-          }
-          positions.needsUpdate = true;
-
-          mesh.position.set(pose.x, pose.y, 0);
-          mesh.rotation.set(pose.rx, pose.ry, pose.rz);
-          mesh.scale.setScalar((mesh.userData.baseScale || 1) * pose.scale);
-          renderer.render(scene3d, camera);
-
-          frames += 1;
-          peakEnergy = Math.max(peakEnergy, pose.energy || 0, faceEnergy);
-          peakReach = Math.max(peakReach, pose.reach || 0);
-          peakFaceWarp = Math.max(peakFaceWarp, frameFaceWarp);
-          if (frames === 1) {
-            setReady(true);
-            root.dataset.threeReady = 'true';
-          }
-          if (frames % 6 === 0 || frames === 1) {
-            root.dataset.threeFrame = String(frames);
-            root.dataset.threeEnergy = peakEnergy.toFixed(3);
-            root.dataset.threeReach = peakReach.toFixed(3);
-            root.dataset.threeFaceWarp = peakFaceWarp.toFixed(4);
-            root.dataset.threeFaceExpression = currentCue.expression;
-            root.dataset.threeFaceGesture = currentCue.gesture;
-          }
-          requestFrame();
-        };
-
-        visibilityListener = () => {
-          documentVisible = document.visibilityState !== 'hidden';
-          root.dataset.threeVisibility = documentVisible ? 'visible' : 'hidden';
-          if (!documentVisible) cancelFrame();
-          else requestFrame();
-        };
-        if (typeof document !== 'undefined') document.addEventListener('visibilitychange', visibilityListener);
-
-        if (typeof IntersectionObserver === 'function') {
-          intersectionObserver = new IntersectionObserver((entries) => {
-            const entry = entries[0];
-            inViewport = Boolean(entry?.isIntersecting ?? true);
-            root.dataset.threeViewport = inViewport ? 'visible' : 'paused';
-            if (!inViewport) cancelFrame();
-            else requestFrame();
-          }, { rootMargin: '80px' });
-          intersectionObserver.observe(root);
-        } else {
-          root.dataset.threeViewport = 'visible';
-        }
-
-        // One frame is always painted for a clean canonical-art hand-off.
-        raf = window.requestAnimationFrame(renderFrame);
-      },
-      undefined,
-      () => {
-        if (!disposed) {
-          setFailed(true);
-          root.dataset.threeFailed = 'true';
-        }
-      },
-    );
+    // Always paint one frame, even for reduced-motion, before handing over from
+    // the canonical fallback art to the live 3D Matthias.
+    raf = window.requestAnimationFrame(renderFrame);
 
     return () => {
       disposed = true;
@@ -418,12 +384,10 @@ export default function MatthiasHomeMicrogestureAvatar({
       if (visibilityListener && typeof document !== 'undefined') {
         document.removeEventListener('visibilitychange', visibilityListener);
       }
-      geometry?.dispose?.();
-      material?.dispose?.();
-      texture?.dispose?.();
+      disposeMatthiasPawn3D(rig);
       renderer?.dispose?.();
     };
-  }, [avatar, intensity, phase, profile, reducedMotion, speaking]);
+  }, [intensity, phase, profile, reducedMotion, speaking]);
 
   return (
     <span
@@ -440,12 +404,20 @@ export default function MatthiasHomeMicrogestureAvatar({
       data-three-motion={reducedMotion ? 'reduced' : 'active'}
       data-three-motion-intensity={intensity.toFixed(2)}
       data-three-motion-phase={phase.toFixed(3)}
+      data-three-model={MATTHIAS_PAWN_MODEL_VERSION}
+      data-three-emblem={MATTHIAS_PAWN_EMBLEM}
       data-three-deformation="rigid-body+bounded-face"
+      data-three-render-mode="articulated-pawn-model"
       data-three-face-rig={MATTHIAS_FACIAL_RIG_VERSION}
+      data-three-articulated-face-rig={MATTHIAS_PAWN_FACE_RIG_VERSION}
       data-three-face-expression={facialCue.expression}
       data-three-face-gesture={facialCue.gesture}
       data-three-face-warp="0.0000"
       data-three-face-warp-limit={MATTHIAS_HOME_FACE_WARP_LIMIT.toFixed(3)}
+      data-three-face-articulation="0.000"
+      data-three-head-yaw="0.000"
+      data-three-blink="0.000"
+      data-three-mouth-open="0.000"
       data-three-ready={ready ? 'true' : 'false'}
       data-three-failed={failed ? 'true' : 'false'}
       data-three-frame="0"
@@ -455,14 +427,16 @@ export default function MatthiasHomeMicrogestureAvatar({
       data-three-viewport="visible"
     >
       <canvas ref={canvasRef} className="matthias-three-avatar__canvas" aria-hidden="true" />
-      <img
-        className="matthias-three-avatar__fallback"
-        src={avatar}
-        alt=""
-        draggable="false"
-        aria-hidden="true"
-        data-matthias-canonical-art="true"
-      />
+      {avatar ? (
+        <img
+          className="matthias-three-avatar__fallback"
+          src={avatar}
+          alt=""
+          draggable="false"
+          aria-hidden="true"
+          data-matthias-canonical-art="true"
+        />
+      ) : null}
     </span>
   );
 }
