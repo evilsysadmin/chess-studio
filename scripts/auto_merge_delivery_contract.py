@@ -17,7 +17,7 @@ if "gh pr merge" not in auto_merge:
     errors.append("auto-merge.yml debe ejecutar explícitamente el merge de la PR")
 if "--match-head-commit" not in auto_merge:
     errors.append("auto-merge.yml debe impedir merges de un head distinto al observado")
-if "gh workflow run cicd.yml --ref main" in auto_merge:
+if "gh workflow run cicd.yml" in auto_merge:
     errors.append("auto-merge.yml no debe ser propietario del dispatch a main; evita doble despacho")
 
 for needle, label in (
@@ -30,7 +30,7 @@ for needle, label in (
     ("commits/$SOURCE_SHA/pulls", "fallback para resolver la PR desde el SHA"),
     ("valid = base == 'main' and head == expected", "validación exacta de base/head aprobados"),
     ("head_sha=$target_sha", "deduplicación por SHA de main"),
-    ("gh workflow run cicd.yml --ref main", "dispatch explícito del Quality de main"),
+    ('gh workflow run cicd.yml --repo "$GITHUB_REPOSITORY" --ref main', "dispatch explícito con repo fijado"),
     ("runs-on: ubuntu-24.04", "runner fijado del handoff"),
 ):
     if needle not in handoff:
