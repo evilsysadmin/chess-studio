@@ -62,10 +62,10 @@ export function matthiasThreeRenderProfile({ coarsePointer = false, width = 0, h
   if (coarsePointer) {
     return {
       tier: 'coarse',
-      widthSegments: 20,
-      heightSegments: 24,
+      widthSegments: 28,
+      heightSegments: 32,
       maxFps: 45,
-      pixelRatioCap: 1.15,
+      pixelRatioCap: 2,
     };
   }
   return {
@@ -363,6 +363,7 @@ export default function MatthiasThreeAvatar({
     root.dataset.threeRenderTier = renderProfile.tier;
     root.dataset.threeSegments = `${renderProfile.widthSegments}x${renderProfile.heightSegments}`;
     root.dataset.threeMaxFps = String(renderProfile.maxFps);
+    root.dataset.threePixelRatioCap = String(renderProfile.pixelRatioCap);
 
     const cancelFrame = () => {
       if (!raf) return;
@@ -377,11 +378,12 @@ export default function MatthiasThreeAvatar({
     };
 
     try {
+      const compactRenderer = renderProfile.tier === 'compact';
       renderer = new THREE.WebGLRenderer({
         canvas,
         alpha: true,
-        antialias: !coarsePointer,
-        powerPreference: coarsePointer ? 'low-power' : 'default',
+        antialias: !compactRenderer,
+        powerPreference: compactRenderer ? 'low-power' : 'default',
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.setClearColor(0x000000, 0);
