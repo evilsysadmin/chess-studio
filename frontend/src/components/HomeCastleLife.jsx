@@ -1,4 +1,5 @@
 import './HomeCastleLife.css';
+import './HomeGreatHall.css';
 import { ACHIEVEMENTS, loadAchievementLedger, loadUnlocked } from '../achievements.js';
 
 const MAX_OBJECTS = 3;
