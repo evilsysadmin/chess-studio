@@ -1,85 +1,167 @@
-/* Home Great Hall · final cascade ownership
+/* Home Great Hall v3 · explicit architectural layer
  *
- * The legacy global visual layer in styles/27-night-club-tactical.css still
- * targets Home directly and used to overwrite the hall background after the
- * component-scoped Great Hall stylesheet had loaded. This bridge is imported
- * from main.jsx after styles.css so the castle remains the final visual owner
- * without !important or changes to the historical CSS manifest.
+ * v2 proved that subtle background gradients are not enough: they can be
+ * technically present and still read as a dark dashboard. v3 makes the room
+ * unambiguous. Architecture owns z=0; all real Home content is lifted to z=2.
  */
 
 body .menu.home-friendly {
-  border: 1px solid rgba(180,145,81,.22);
-  border-top-color: rgba(205,171,105,.28);
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  padding-inline: clamp(1.35rem, 4.4vw, 5.5rem);
+  padding-top: clamp(1.45rem, 2.2vw, 2.15rem);
+  border: 1px solid rgba(185,148,82,.28);
+  border-top-color: rgba(218,180,108,.34);
   border-radius: 12px;
   background:
-    radial-gradient(ellipse 25% 46% at 18% -2%, rgba(117,148,179,.23), transparent 67%),
-    radial-gradient(ellipse 23% 44% at 79% -2%, rgba(104,136,168,.19), transparent 68%),
-    radial-gradient(ellipse 31% 30% at 94% 31%, rgba(182,106,53,.21), transparent 71%),
-    radial-gradient(ellipse 24% 25% at 5% 42%, rgba(122,72,38,.11), transparent 72%),
-    linear-gradient(90deg, rgba(4,6,8,.72) 0%, rgba(8,10,13,.26) 11%, transparent 22% 79%, rgba(7,9,12,.28) 89%, rgba(4,6,8,.76) 100%),
-    repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 63px, rgba(255,255,255,.052) 64px, rgba(0,0,0,.12) 65px 66px),
-    repeating-linear-gradient(90deg, transparent 0 127px, rgba(255,255,255,.028) 128px, rgba(0,0,0,.06) 129px 130px),
-    linear-gradient(180deg, #1b2025 0%, #14191e 45%, #0b0e12 100%);
+    radial-gradient(ellipse 27% 34% at 50% 8%, rgba(116,70,43,.20), transparent 72%),
+    radial-gradient(ellipse 28% 42% at 13% 14%, rgba(86,113,139,.16), transparent 74%),
+    radial-gradient(ellipse 28% 42% at 87% 14%, rgba(86,113,139,.14), transparent 74%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.012) 0 69px, rgba(255,255,255,.045) 70px, rgba(0,0,0,.15) 71px 72px),
+    repeating-linear-gradient(90deg, transparent 0 142px, rgba(255,255,255,.022) 143px, rgba(0,0,0,.08) 144px 146px),
+    linear-gradient(180deg, #20252a 0%, #171b20 42%, #0c0f13 100%);
   box-shadow:
-    inset 0 1px rgba(255,255,255,.045),
-    inset 34px 0 54px rgba(0,0,0,.35),
-    inset -34px 0 54px rgba(0,0,0,.40),
-    inset 0 -5rem 9rem rgba(0,0,0,.34),
-    0 34px 80px rgba(0,0,0,.34);
+    inset 0 1px rgba(255,255,255,.055),
+    inset 74px 0 90px rgba(0,0,0,.42),
+    inset -74px 0 90px rgba(0,0,0,.44),
+    inset 0 -8rem 12rem rgba(0,0,0,.42),
+    0 34px 80px rgba(0,0,0,.38);
 }
 
+/* Anything functional sits above the scenery. */
+body .menu.home-friendly > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Back wall: two tall windows with stone frames, mullions, heavy burgundy
+ * curtains and a central masonry bay. Deliberately bold on desktop. */
 body .menu.home-friendly::before {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  inset: 0 0 34%;
+  pointer-events: none;
   opacity: 1;
   background:
-    linear-gradient(90deg, transparent 4%, rgba(180,145,81,.55) 4.2% 29.7%, transparent 30%),
-    linear-gradient(90deg, transparent 68%, rgba(180,145,81,.48) 68.2% 94%, transparent 94.2%),
-    linear-gradient(100deg, transparent 0 3.5%, rgba(29,9,13,.90) 4% 7%, rgba(83,28,37,.82) 8.5% 11.5%, rgba(36,11,16,.88) 13%, transparent 16%),
-    linear-gradient(80deg, transparent 0 82%, rgba(37,12,17,.86) 84%, rgba(84,28,37,.78) 87.5% 90.5%, rgba(28,9,13,.92) 93% 96%, transparent 96.5%),
+    /* curtain pelmets */
     linear-gradient(90deg,
-      transparent 0 10.8%, rgba(4,7,10,.92) 11% 11.7%, transparent 11.9% 18%,
-      rgba(4,7,10,.88) 18.2% 18.75%, transparent 18.95% 25.2%, rgba(4,7,10,.92) 25.4% 26.1%, transparent 26.3%),
+      transparent 0 2.3%, rgba(87,28,38,.96) 2.8% 10.3%, transparent 10.7% 89.3%,
+      rgba(87,28,38,.96) 89.7% 97.2%, transparent 97.7%),
+    /* heavy curtain folds */
+    linear-gradient(100deg,
+      transparent 0 1.8%, rgba(25,8,12,.98) 2.2% 4.2%, rgba(104,33,45,.93) 5.2% 7.2%,
+      rgba(40,11,17,.98) 8.3% 10.7%, rgba(90,27,39,.86) 11.7% 13.4%, transparent 14.3%),
+    linear-gradient(80deg,
+      transparent 0 85.7%, rgba(90,27,39,.86) 86.6% 88.3%, rgba(40,11,17,.98) 89.3% 91.7%,
+      rgba(104,33,45,.93) 92.8% 94.8%, rgba(25,8,12,.98) 95.8% 97.8%, transparent 98.2%),
+    /* brass rods */
+    linear-gradient(90deg, transparent 2.5% 14.2%, rgba(205,164,88,.72) 14.35% 14.65%, transparent 14.8% 85.2%, rgba(205,164,88,.68) 85.35% 85.65%, transparent 85.8%),
+    /* left window mullions */
     linear-gradient(90deg,
-      transparent 0 70.5%, rgba(4,7,10,.92) 70.7% 71.4%, transparent 71.6% 77.4%,
-      rgba(4,7,10,.88) 77.6% 78.15%, transparent 78.35% 84.4%, rgba(4,7,10,.92) 84.6% 85.3%, transparent 85.5%),
-    radial-gradient(ellipse 12% 41% at 18.5% 2%, rgba(132,164,194,.28) 0%, rgba(75,99,121,.19) 52%, rgba(19,25,31,.20) 69%, transparent 70%),
-    radial-gradient(ellipse 11.5% 40% at 78% 2%, rgba(121,151,181,.25) 0%, rgba(69,91,112,.17) 53%, rgba(18,24,30,.20) 69%, transparent 70%),
+      transparent 0 6.5%, rgba(5,8,11,.98) 6.8% 7.45%, transparent 7.7% 11.1%,
+      rgba(5,8,11,.96) 11.35% 11.95%, transparent 12.2% 15.7%, rgba(5,8,11,.98) 16% 16.65%, transparent 16.9%),
+    /* right window mullions */
     linear-gradient(90deg,
-      rgba(6,8,10,.80) 0 2.5%, rgba(74,78,80,.22) 2.8% 3.5%, rgba(17,20,23,.74) 4% 7.5%, transparent 8% 91.5%,
-      rgba(17,20,23,.78) 92% 95.5%, rgba(74,78,80,.20) 96% 96.7%, rgba(6,8,10,.82) 97.2% 100%),
-    repeating-linear-gradient(0deg, transparent 0 58px, rgba(255,255,255,.038) 59px, rgba(0,0,0,.10) 60px 61px),
-    repeating-linear-gradient(90deg, transparent 0 119px, rgba(255,255,255,.026) 120px, rgba(0,0,0,.055) 121px 122px),
-    linear-gradient(180deg, rgba(255,255,255,.028), rgba(0,0,0,.12));
+      transparent 0 83.1%, rgba(5,8,11,.98) 83.35% 84%, transparent 84.3% 87.8%,
+      rgba(5,8,11,.96) 88.05% 88.65%, transparent 88.9% 92.3%, rgba(5,8,11,.98) 92.55% 93.2%, transparent 93.5%),
+    /* cold glass */
+    radial-gradient(ellipse 9.5% 49% at 11.7% 5%, rgba(155,192,220,.46) 0%, rgba(83,121,151,.30) 43%, rgba(33,50,64,.31) 70%, transparent 71%),
+    radial-gradient(ellipse 9.5% 49% at 88.3% 5%, rgba(150,187,216,.42) 0%, rgba(79,117,147,.27) 43%, rgba(31,47,62,.30) 70%, transparent 71%),
+    /* stone window frames and side piers */
+    linear-gradient(90deg,
+      rgba(9,11,13,.96) 0 1.8%, rgba(82,84,82,.45) 2.2% 2.9%, rgba(26,29,31,.96) 3.3% 5.2%,
+      transparent 5.5% 17.8%, rgba(29,32,34,.96) 18.1% 20.1%, rgba(88,89,86,.42) 20.5% 21.1%, transparent 21.5% 78.5%,
+      rgba(88,89,86,.42) 78.9% 79.5%, rgba(29,32,34,.96) 79.9% 81.9%, transparent 82.2% 94.5%,
+      rgba(26,29,31,.96) 94.8% 96.7%, rgba(82,84,82,.45) 97.1% 97.8%, rgba(9,11,13,.96) 98.2% 100%),
+    /* central raised bay / shallow arch mass */
+    radial-gradient(ellipse 28% 29% at 50% 0%, rgba(104,75,55,.23), transparent 71%),
+    linear-gradient(90deg, transparent 0 24%, rgba(27,24,23,.30) 25% 30%, transparent 31% 69%, rgba(27,24,23,.30) 70% 75%, transparent 76%),
+    repeating-linear-gradient(0deg, transparent 0 60px, rgba(255,255,255,.045) 61px, rgba(0,0,0,.13) 62px 63px),
+    linear-gradient(180deg, rgba(255,255,255,.035), rgba(0,0,0,.12));
+  box-shadow: inset 0 -42px 58px rgba(0,0,0,.24);
+}
+
+/* Stone floor + burgundy runner. It sits at z=0, visibly behind the command
+ * table instead of being hidden below the element background. */
+body .menu.home-friendly::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  left: -5%;
+  right: -5%;
+  bottom: -1px;
+  height: 46%;
+  pointer-events: none;
+  clip-path: polygon(4% 0, 96% 0, 100% 100%, 0 100%);
+  background:
+    linear-gradient(90deg,
+      transparent 0 34.5%, rgba(202,157,82,.34) 35.1% 35.5%,
+      rgba(66,18,28,.57) 36% 64%,
+      rgba(202,157,82,.34) 64.5% 64.9%, transparent 65.5%),
+    linear-gradient(90deg, transparent 41%, rgba(126,40,54,.23) 45%, rgba(151,48,61,.34) 50%, rgba(126,40,54,.23) 55%, transparent 59%),
+    repeating-linear-gradient(92deg, transparent 0 115px, rgba(255,255,255,.05) 116px, rgba(0,0,0,.13) 117px 119px),
+    repeating-linear-gradient(0deg, transparent 0 66px, rgba(255,255,255,.04) 67px, rgba(0,0,0,.14) 68px 70px),
+    linear-gradient(180deg, rgba(59,58,54,.42), rgba(12,14,16,.88));
+  box-shadow:
+    inset 0 2px rgba(205,164,88,.17),
+    inset 0 42px 62px rgba(0,0,0,.22);
+}
+
+/* Context cards become furniture sitting inside the room, not the room itself. */
+body .home-friendly .home-today-card,
+body .home-friendly .home-next-action {
+  backdrop-filter: blur(5px);
 }
 
 body .home-friendly .home-today-card {
-  border: 1px solid rgba(180,145,81,.22);
-  border-top-color: rgba(210,176,111,.30);
+  border: 1px solid rgba(185,148,82,.29);
+  border-top-color: rgba(218,179,107,.37);
   border-radius: var(--castle-panel-radius);
   background:
-    linear-gradient(90deg, rgba(77,47,29,.32), rgba(18,21,24,.90) 31%, rgba(12,15,18,.84)),
-    rgba(12,15,19,.82);
+    linear-gradient(90deg, rgba(67,43,28,.40), rgba(16,19,22,.92) 34%, rgba(10,13,16,.87)),
+    rgba(12,15,19,.88);
   box-shadow:
-    inset 0 1px rgba(255,255,255,.04),
-    inset 4px 0 rgba(180,145,81,.08),
-    0 12px 30px rgba(0,0,0,.24);
+    inset 0 1px rgba(255,255,255,.05),
+    inset 4px 0 rgba(196,151,77,.11),
+    0 15px 34px rgba(0,0,0,.31);
+}
+
+@media (max-width: 980px) {
+  body .menu.home-friendly {
+    padding-inline: clamp(1rem, 3vw, 2rem);
+  }
+
+  body .menu.home-friendly::before {
+    opacity: .78;
+  }
 }
 
 @media (max-width: 760px) {
   body .menu.home-friendly {
+    padding-inline: .75rem;
     border-radius: 9px;
     background:
-      radial-gradient(ellipse 42% 24% at 88% 13%, rgba(182,106,53,.14), transparent 72%),
-      radial-gradient(ellipse 34% 28% at 18% 1%, rgba(113,140,166,.12), transparent 70%),
-      linear-gradient(180deg, #181d22, #0b0e12);
+      radial-gradient(ellipse 44% 24% at 88% 13%, rgba(182,106,53,.15), transparent 72%),
+      radial-gradient(ellipse 38% 28% at 16% 1%, rgba(113,140,166,.15), transparent 70%),
+      linear-gradient(180deg, #1a1f24, #0b0e12);
   }
 
+  /* On phones the room remains legible without putting architecture behind
+   * every control. Keep curtains + cold light, drop the busy floor geometry. */
   body .menu.home-friendly::before {
-    opacity: .66;
+    inset: 0 0 55%;
+    opacity: .58;
+  }
+
+  body .menu.home-friendly::after {
+    height: 32%;
+    opacity: .42;
   }
 }
 
 @media (max-width: 430px) {
-  body .menu.home-friendly::before {
-    opacity: .42;
-  }
+  body .menu.home-friendly::before { opacity: .42; }
+  body .menu.home-friendly::after { opacity: .28; }
 }
