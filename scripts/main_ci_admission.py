@@ -17,8 +17,8 @@ import subprocess
 import sys
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote
-from urllib.request import Request, urlopen
+from urllib.parse import quote, urlparse
+from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 from zipfile import BadZipFile, ZipFile
 
 API_VERSION = "2022-11-28"
@@ -38,6 +38,13 @@ REQUIRED_CHECKS: dict[str, set[str]] = {
 
 class AdmissionError(RuntimeError):
     pass
+
+
+class NoRedirect(HTTPRedirectHandler):
+    """Expose GitHub's artifact redirect so its auth is not forwarded off-host."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
+        return None
 
 
 @dataclass(frozen=True)
@@ -182,7 +189,21 @@ def github_request(path: str, token: str) -> Request:
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {token}",
             "X-GitHub-Api-Version": API_VERSION,
-            "User-Agent": "chess-studio-main-ci-admission/2",
+            "User-Agent": "chess-studio-main-ci-admission/3",
+        },
+    )
+
+
+def artifact_redirect_request(location: str) -> Request:
+    """Build the signed artifact request without leaking GitHub credentials."""
+    parsed = urlparse(location)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise AdmissionError("GitHub devolvió una redirección de artefacto no HTTPS o inválida")
+    return Request(
+        location,
+        headers={
+            "Accept": "application/zip",
+            "User-Agent": "chess-studio-main-ci-admission/3",
         },
     )
 
@@ -199,14 +220,31 @@ def api_get(path: str, token: str) -> Any:
 
 
 def api_get_bytes(path: str, token: str) -> bytes:
+    opener = build_opener(NoRedirect())
     try:
-        with urlopen(github_request(path, token), timeout=20) as response:
-            return response.read()
+        response = opener.open(github_request(path, token), timeout=20)
     except HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:500]
-        raise AdmissionError(f"GitHub API {path} devolvió HTTP {exc.code}: {detail}") from exc
+        if exc.code not in {301, 302, 303, 307, 308}:
+            detail = exc.read().decode("utf-8", errors="replace")[:500]
+            raise AdmissionError(f"GitHub API {path} devolvió HTTP {exc.code}: {detail}") from exc
+        location = exc.headers.get("Location")
+        if not location:
+            raise AdmissionError(f"GitHub API {path} redirigió el artefacto sin Location") from exc
+        try:
+            with urlopen(artifact_redirect_request(location), timeout=20) as redirected:
+                return redirected.read()
+        except HTTPError as redirected_exc:
+            detail = redirected_exc.read().decode("utf-8", errors="replace")[:500]
+            raise AdmissionError(
+                f"descarga firmada del artefacto devolvió HTTP {redirected_exc.code}: {detail}"
+            ) from redirected_exc
+        except (URLError, TimeoutError) as redirected_exc:
+            raise AdmissionError(f"descarga firmada del artefacto no disponible: {redirected_exc}") from redirected_exc
     except (URLError, TimeoutError) as exc:
         raise AdmissionError(f"GitHub API no disponible para {path}: {exc}") from exc
+    else:
+        with response:
+            return response.read()
 
 
 def fetch_run_provenance(api_base: str, run_id: int, token: str) -> dict[str, Any] | None:
@@ -411,6 +449,12 @@ def self_test() -> None:
     )
     assert scoped.quality_run_id == 1566
 
+    github = github_request("/repos/example/example", "test-token")
+    assert github.get_header("Authorization") == "Bearer test-token"
+    redirected = artifact_redirect_request("https://example.invalid/artifact.zip?sig=signed")
+    assert redirected.get_header("Authorization") is None
+    assert redirected.get_header("X-Github-Api-Version") is None
+
     try:
         evaluate_admission(
             main_sha="b" * 40,
@@ -461,7 +505,7 @@ def self_test() -> None:
 
     print(
         "main-ci-admission self-test OK · full/scoped green accepted; "
-        "historical PR base tolerated; direct/stale/wrong-base/failed rejected"
+        "artifact redirect auth stripped; direct/stale/wrong-base/failed rejected"
     )
 
 
