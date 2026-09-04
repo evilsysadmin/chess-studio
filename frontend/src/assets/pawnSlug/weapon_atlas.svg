@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="128" viewBox="0 0 1024 128">
+<defs>
+  <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8a949e"/><stop offset=".45" stop-color="#505963"/><stop offset="1" stop-color="#252a30"/></linearGradient>
+  <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7a5130"/><stop offset="1" stop-color="#342217"/></linearGradient>
+  <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e7c575"/><stop offset="1" stop-color="#7a5225"/></linearGradient>
+  <filter id="s" x="-20%" y="-40%" width="150%" height="180%"><feDropShadow dx="0" dy="5" stdDeviation="4" flood-color="#000" flood-opacity=".55"/></filter>
+</defs>
+<g filter="url(#s)" stroke="#090b0d" stroke-linejoin="round">
+  <g transform="translate(14 10)">
+    <path d="M32 51 L152 45 L161 62 L38 70Z" fill="url(#steel)" stroke-width="7"/>
+    <rect x="151" y="44" width="54" height="13" rx="4" fill="#2b3036" stroke-width="6"/>
+    <path d="M62 66 L74 102 L94 96 L88 62Z" fill="url(#wood)" stroke-width="6"/>
+    <circle cx="124" cy="57" r="8" fill="url(#brass)" stroke-width="4"/>
+  </g>
+  <g transform="translate(260 8)">
+    <path d="M22 53 L168 47 L176 63 L27 72Z" fill="url(#steel)" stroke-width="7"/>
+    <rect x="167" y="46" width="66" height="12" rx="4" fill="#252a30" stroke-width="6"/>
+    <path d="M67 68 L78 105 L99 99 L95 64Z" fill="url(#wood)" stroke-width="6"/>
+    <path d="M112 66 L119 105 L143 101 L139 62Z" fill="url(#brass)" stroke-width="6"/>
+    <path d="M46 55 L13 74 L21 88 L62 69Z" fill="#30353b" stroke-width="6"/>
+  </g>
+  <g transform="translate(514 8)">
+    <path d="M22 57 L185 48 L194 63 L31 74Z" fill="url(#steel)" stroke-width="7"/>
+    <rect x="183" y="47" width="55" height="12" rx="4" fill="#272c32" stroke-width="6"/>
+    <path d="M58 69 L22 91 L33 104 L77 76Z" fill="url(#wood)" stroke-width="6"/>
+    <path d="M87 67 L101 104 L121 97 L115 63Z" fill="url(#wood)" stroke-width="6"/>
+  </g>
+  <g transform="translate(766 4)">
+    <rect x="19" y="46" width="178" height="28" rx="13" fill="#4a5149" stroke-width="8"/>
+    <path d="M189 41 L235 58 L190 80Z" fill="url(#steel)" stroke-width="7"/>
+    <rect x="64" y="37" width="20" height="47" rx="5" fill="url(#brass)" stroke-width="6"/>
+    <path d="M101 75 L112 108 L130 102 L124 72Z" fill="#2a2f34" stroke-width="6"/>
+    <path d="M31 42 L11 58 L31 78Z" fill="#31373d" stroke-width="6"/>
+  </g>
+</g>
+</svg>
