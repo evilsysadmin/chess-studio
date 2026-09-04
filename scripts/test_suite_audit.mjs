@@ -225,16 +225,31 @@ if (checkCiWiring) {
   ]) {
     if (!mainCiSource.includes(required)) fail(`CI quality-only incompleto: falta ${JSON.stringify(required)}`);
   }
-  for (const qualityJob of ['frontend', 'backend', 'security', 'e2e']) {
-    const start = mainCiSource.indexOf(`\n  ${qualityJob}:\n`);
-    if (start < 0) fail(`Falta job paralelo ${qualityJob}`);
+
+  const jobBlock = (jobName) => {
+    const start = mainCiSource.indexOf(`\n  ${jobName}:\n`);
+    if (start < 0) fail(`Falta job ${jobName}`);
     const tail = mainCiSource.slice(start + 1);
     const nextJobOffset = tail.slice(tail.indexOf('\n') + 1).search(/^  [A-Za-z0-9_-]+:\n/m);
-    const block = nextJobOffset >= 0
+    return nextJobOffset >= 0
       ? tail.slice(0, tail.indexOf('\n') + 1 + nextJobOffset)
       : tail;
+  };
+
+  const shardedE2e = mainCiSource.includes('\n  e2e_lanes:\n');
+  for (const qualityJob of ['frontend', 'backend', 'security', shardedE2e ? 'e2e_lanes' : 'e2e']) {
+    const block = jobBlock(qualityJob);
     if (!block.includes('\n    needs: preflight\n')) fail(`${qualityJob} debe depender sólo del preflight y poder correr en paralelo`);
   }
+  if (shardedE2e) {
+    const lanesBlock = jobBlock('e2e_lanes');
+    const aggregateBlock = jobBlock('e2e');
+    if (!lanesBlock.includes('name: Tests · Playwright · ${{ matrix.lane }}')) fail('Las lanes Playwright deben conservar nombre explícito por lane');
+    if (!lanesBlock.includes('fail-fast: false')) fail('Las lanes Playwright deben completar diagnóstico aunque falle una lane');
+    if (!aggregateBlock.includes('needs: [preflight, e2e_lanes]')) fail('Tests · Playwright debe agregar preflight + e2e_lanes antes de acreditar el required check');
+    if (!aggregateBlock.includes('if: always()')) fail('El agregador Playwright debe ejecutarse siempre para convertir fallos/skips de lanes en un required check determinista');
+  }
+
   for (const required of [
     'name: Production · promote',
     'workflow_run:',
