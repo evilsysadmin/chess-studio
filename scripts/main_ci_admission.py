@@ -17,8 +17,8 @@ import subprocess
 import sys
 from typing import Any
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote
-from urllib.request import Request, urlopen
+from urllib.parse import quote, urlsplit
+from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
 from zipfile import BadZipFile, ZipFile
 
 API_VERSION = "2022-11-28"
@@ -27,6 +27,7 @@ QUALITY_PATH = ".github/workflows/cicd.yml"
 PROVENANCE_ARTIFACT = "quality-provenance"
 PROVENANCE_FILE = "quality-provenance.json"
 PROVENANCE_SCHEMA = 1
+REDIRECT_CODES = {301, 302, 303, 307, 308}
 REQUIRED_CHECKS: dict[str, set[str]] = {
     "Preflight · contracts": {"success"},
     "Tests · Frontend": {"success", "skipped"},
@@ -46,6 +47,13 @@ class Admission:
     pr_head_sha: str
     quality_run_id: int
     tested_merge_sha: str
+
+
+class _NoRedirect(HTTPRedirectHandler):
+    """Expose GitHub's artifact redirect instead of forwarding auth cross-host."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
 
 
 def parse_time(value: str) -> datetime:
@@ -131,18 +139,21 @@ def evaluate_admission(
         ):
             created_at = parse_time(str(run.get("created_at") or ""))
             updated_at = parse_time(str(run.get("updated_at") or ""))
-            # The receipt was generated from `git rev-parse HEAD^1/HEAD^2` after
-            # checkout of the event's immutable github.sha. It is authoritative;
-            # PR/run API base metadata may lag while main advances.
+            # The immutable receipt is authoritative. PR/run API base metadata
+            # may lag while GitHub regenerates refs/pull/*/merge.
             if created_at >= first_parent_time and updated_at <= merged_at:
                 eligible_runs.append(run)
 
     if not eligible_runs:
         raise AdmissionError(
-            f"PR #{pr_number} no tiene un {QUALITY_WORKFLOW!r} verde cuyo recibo pruebe la base exacta {parent[:12]}"
+            f"PR #{pr_number} no tiene un {QUALITY_WORKFLOW!r} verde cuyo "
+            f"recibo pruebe la base exacta {parent[:12]}"
         )
 
-    eligible_runs.sort(key=lambda run: parse_time(str(run.get("updated_at") or "")), reverse=True)
+    eligible_runs.sort(
+        key=lambda run: parse_time(str(run.get("updated_at") or "")),
+        reverse=True,
+    )
     run = eligible_runs[0]
     run_id = int(run.get("id") or 0)
     provenance = provenances[run_id]
@@ -163,7 +174,9 @@ def evaluate_admission(
     for name, allowed in REQUIRED_CHECKS.items():
         conclusion = conclusions.get(name)
         if conclusion not in allowed:
-            bad.append(f"{name}={conclusion or 'missing'} (esperado {sorted(allowed)})")
+            bad.append(
+                f"{name}={conclusion or 'missing'} (esperado {sorted(allowed)})"
+            )
     if bad:
         raise AdmissionError("checks requeridos no acreditados: " + "; ".join(bad))
 
@@ -182,8 +195,21 @@ def github_request(path: str, token: str) -> Request:
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {token}",
             "X-GitHub-Api-Version": API_VERSION,
-            "User-Agent": "chess-studio-main-ci-admission/2",
+            "User-Agent": "chess-studio-main-ci-admission/3",
         },
+    )
+
+
+def external_download_request(location: str) -> Request:
+    """Build the signed artifact request without leaking GitHub credentials."""
+    target = urlsplit(location)
+    if target.scheme != "https" or not target.hostname:
+        raise AdmissionError("redirect de artefacto inválido o no HTTPS")
+    if target.hostname.lower() == "api.github.com":
+        raise AdmissionError("redirect de artefacto inesperadamente vuelve a api.github.com")
+    return Request(
+        location,
+        headers={"User-Agent": "chess-studio-main-ci-admission/3"},
     )
 
 
@@ -193,29 +219,63 @@ def api_get(path: str, token: str) -> Any:
             return json.load(response)
     except HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:500]
-        raise AdmissionError(f"GitHub API {path} devolvió HTTP {exc.code}: {detail}") from exc
+        raise AdmissionError(
+            f"GitHub API {path} devolvió HTTP {exc.code}: {detail}"
+        ) from exc
     except (URLError, TimeoutError) as exc:
         raise AdmissionError(f"GitHub API no disponible para {path}: {exc}") from exc
 
 
 def api_get_bytes(path: str, token: str) -> bytes:
+    """Download a GitHub artifact without forwarding Authorization to storage.
+
+    GitHub's artifact endpoint redirects to a short-lived signed object-storage
+    URL. urllib otherwise carries the original Authorization header across that
+    host boundary, which Azure rejects with InvalidAuthenticationInfo.
+    """
+    opener = build_opener(_NoRedirect())
     try:
-        with urlopen(github_request(path, token), timeout=20) as response:
+        with opener.open(github_request(path, token), timeout=20) as response:
             return response.read()
     except HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:500]
-        raise AdmissionError(f"GitHub API {path} devolvió HTTP {exc.code}: {detail}") from exc
+        if exc.code not in REDIRECT_CODES:
+            detail = exc.read().decode("utf-8", errors="replace")[:500]
+            raise AdmissionError(
+                f"GitHub API {path} devolvió HTTP {exc.code}: {detail}"
+            ) from exc
+        location = exc.headers.get("Location") or ""
     except (URLError, TimeoutError) as exc:
         raise AdmissionError(f"GitHub API no disponible para {path}: {exc}") from exc
 
+    request = external_download_request(location)
+    try:
+        with urlopen(request, timeout=20) as response:
+            return response.read()
+    except HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")[:500]
+        raise AdmissionError(
+            f"descarga firmada del artefacto devolvió HTTP {exc.code}: {detail}"
+        ) from exc
+    except (URLError, TimeoutError) as exc:
+        raise AdmissionError(
+            f"descarga firmada del artefacto no disponible: {exc}"
+        ) from exc
 
-def fetch_run_provenance(api_base: str, run_id: int, token: str) -> dict[str, Any] | None:
+
+def fetch_run_provenance(
+    api_base: str,
+    run_id: int,
+    token: str,
+) -> dict[str, Any] | None:
     payload = api_get(f"{api_base}/actions/runs/{run_id}/artifacts?per_page=100", token)
     artifacts = (payload or {}).get("artifacts") if isinstance(payload, dict) else None
     if not isinstance(artifacts, list):
-        raise AdmissionError(f"respuesta inesperada al buscar artefactos del Quality run {run_id}")
+        raise AdmissionError(
+            f"respuesta inesperada al buscar artefactos del Quality run {run_id}"
+        )
     matches = [
-        item for item in artifacts
+        item
+        for item in artifacts
         if item.get("name") == PROVENANCE_ARTIFACT and not item.get("expired")
     ]
     if len(matches) != 1:
@@ -227,18 +287,26 @@ def fetch_run_provenance(api_base: str, run_id: int, token: str) -> dict[str, An
     raw = api_get_bytes(f"{api_base}/actions/artifacts/{artifact_id}/zip", token)
     try:
         with ZipFile(BytesIO(raw)) as archive:
-            names = [name for name in archive.namelist() if name.rsplit("/", 1)[-1] == PROVENANCE_FILE]
+            names = [
+                name
+                for name in archive.namelist()
+                if name.rsplit("/", 1)[-1] == PROVENANCE_FILE
+            ]
             if len(names) != 1:
                 return None
             payload = json.loads(archive.read(names[0]).decode("utf-8"))
     except (BadZipFile, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise AdmissionError(f"artefacto de procedencia inválido en Quality run {run_id}: {exc}") from exc
+        raise AdmissionError(
+            f"artefacto de procedencia inválido en Quality run {run_id}: {exc}"
+        ) from exc
     return payload if isinstance(payload, dict) else None
 
 
 def git_output(*args: str) -> str:
     try:
-        return subprocess.check_output(["git", *args], text=True, stderr=subprocess.STDOUT).strip()
+        return subprocess.check_output(
+            ["git", *args], text=True, stderr=subprocess.STDOUT
+        ).strip()
     except (OSError, subprocess.CalledProcessError) as exc:
         raise AdmissionError(f"git {' '.join(args)} falló: {exc}") from exc
 
@@ -258,7 +326,9 @@ def run_live() -> Admission:
     if not parents:
         raise AdmissionError("main SHA no tiene padre; no se acredita un commit raíz")
     first_parent = parents[0].lower()
-    first_parent_time = parse_time(git_output("show", "-s", "--format=%cI", first_parent))
+    first_parent_time = parse_time(
+        git_output("show", "-s", "--format=%cI", first_parent)
+    )
 
     owner, repo_name = repo.split("/", 1)
     base = f"/repos/{quote(owner)}/{quote(repo_name)}"
@@ -267,22 +337,32 @@ def run_live() -> Admission:
         raise AdmissionError("respuesta inesperada al buscar PR asociado")
 
     provisional = [
-        pr for pr in pulls
+        pr
+        for pr in pulls
         if pr.get("merged_at")
         and str(pr.get("merge_commit_sha") or "").lower() == main_sha
         and (pr.get("base") or {}).get("ref") == "main"
     ]
     if len(provisional) != 1:
-        raise AdmissionError(f"main {main_sha[:12]} no procede de un único PR mergeado a main")
+        raise AdmissionError(
+            f"main {main_sha[:12]} no procede de un único PR mergeado a main"
+        )
     head_sha = str((provisional[0].get("head") or {}).get("sha") or "").lower()
 
     runs_payload = api_get(
-        f"{base}/actions/workflows/cicd.yml/runs?event=pull_request&head_sha={quote(head_sha)}&status=completed&per_page=20",
+        f"{base}/actions/workflows/cicd.yml/runs"
+        f"?event=pull_request&head_sha={quote(head_sha)}&status=completed&per_page=20",
         token,
     )
-    workflow_runs = (runs_payload or {}).get("workflow_runs") if isinstance(runs_payload, dict) else None
+    workflow_runs = (
+        (runs_payload or {}).get("workflow_runs")
+        if isinstance(runs_payload, dict)
+        else None
+    )
     if not isinstance(workflow_runs, list):
-        raise AdmissionError("respuesta inesperada al buscar Quality · CI gate del PR")
+        raise AdmissionError(
+            "respuesta inesperada al buscar Quality · CI gate del PR"
+        )
 
     provenances: dict[int, dict[str, Any]] = {}
     for run in workflow_runs:
@@ -295,8 +375,15 @@ def run_live() -> Admission:
         if provenance is not None:
             provenances[run_id] = provenance
 
-    checks_payload = api_get(f"{base}/commits/{head_sha}/check-runs?per_page=100", token)
-    check_runs = (checks_payload or {}).get("check_runs") if isinstance(checks_payload, dict) else None
+    checks_payload = api_get(
+        f"{base}/commits/{head_sha}/check-runs?per_page=100",
+        token,
+    )
+    check_runs = (
+        (checks_payload or {}).get("check_runs")
+        if isinstance(checks_payload, dict)
+        else None
+    )
     if not isinstance(check_runs, list):
         raise AdmissionError("respuesta inesperada al buscar checks del PR")
 
@@ -311,7 +398,12 @@ def run_live() -> Admission:
     )
 
 
-def fixture() -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]], dict[int, dict[str, Any]]]:
+def fixture() -> tuple[
+    dict[str, Any],
+    dict[str, Any],
+    list[dict[str, Any]],
+    dict[int, dict[str, Any]],
+]:
     pr = {
         "number": 421,
         "merged_at": "2026-09-04T22:24:13Z",
@@ -411,57 +503,82 @@ def self_test() -> None:
     )
     assert scoped.quality_run_id == 1566
 
-    try:
-        evaluate_admission(
-            main_sha="b" * 40,
-            first_parent="a" * 40,
-            first_parent_time=parse_time("2026-09-04T22:15:04Z"),
-            pulls=[],
-            workflow_runs=[run],
-            check_runs=checks,
-            provenances=provenances,
-        )
-    except AdmissionError:
-        pass
-    else:
-        raise AssertionError("self-test no rechazó: direct push")
-
     assert_rejected(
-        "wrong base parent", pr=pr, run=run, checks=checks,
-        provenances=provenances, first_parent="d" * 40,
+        "direct push",
+        pr={**pr, "merge_commit_sha": "d" * 40},
+        run=run,
+        checks=checks,
+        provenances=provenances,
+    )
+    assert_rejected(
+        "wrong base parent",
+        pr=pr,
+        run=run,
+        checks=checks,
+        provenances=provenances,
+        first_parent="d" * 40,
     )
     stale_provenance = {
         1566: {**provenances[1566], "base_sha": "d" * 40}
     }
     assert_rejected(
-        "stale provenance base", pr=pr, run=run, checks=checks,
+        "stale provenance base",
+        pr=pr,
+        run=run,
+        checks=checks,
         provenances=stale_provenance,
     )
     assert_rejected(
-        "missing provenance", pr=pr, run=run, checks=checks, provenances={}
+        "missing provenance",
+        pr=pr,
+        run=run,
+        checks=checks,
+        provenances={},
     )
     assert_rejected(
-        "stale PR gate", pr=pr,
-        run={**run, "created_at": "2026-09-04T22:14:59Z"}, checks=checks,
+        "stale PR gate",
+        pr=pr,
+        run={**run, "created_at": "2026-09-04T22:14:59Z"},
+        checks=checks,
         provenances=provenances,
     )
     assert_rejected(
-        "post-merge PR gate", pr=pr,
-        run={**run, "updated_at": "2026-09-04T22:24:14Z"}, checks=checks,
+        "post-merge PR gate",
+        pr=pr,
+        run={**run, "updated_at": "2026-09-04T22:24:14Z"},
+        checks=checks,
         provenances=provenances,
     )
     failed_checks = [
-        {**item, "conclusion": "failure"} if item["name"] == "Tests · Playwright" else item
+        {**item, "conclusion": "failure"}
+        if item["name"] == "Tests · Playwright"
+        else item
         for item in checks
     ]
     assert_rejected(
-        "failed required check", pr=pr, run=run, checks=failed_checks,
+        "failed required check",
+        pr=pr,
+        run=run,
+        checks=failed_checks,
         provenances=provenances,
     )
 
+    external = external_download_request(
+        "https://example.invalid/artifact.zip?sig=signed"
+    )
+    assert external.full_url.startswith("https://")
+    assert external.get_header("Authorization") is None
+    try:
+        external_download_request("http://example.invalid/not-safe")
+    except AdmissionError:
+        pass
+    else:
+        raise AssertionError("self-test no rechazó: artifact redirect no HTTPS")
+
     print(
         "main-ci-admission self-test OK · full/scoped green accepted; "
-        "historical PR base tolerated; direct/stale/wrong-base/failed rejected"
+        "historical PR base tolerated; direct/stale/wrong-base/failed rejected; "
+        "artifact redirect strips auth"
     )
 
 
@@ -475,8 +592,10 @@ def main() -> int:
         print(f"MAIN ADMISSION FAIL: {exc}", file=sys.stderr)
         return 2
     print(
-        f"Main admission OK · PR #{admission.pr_number} · head {admission.pr_head_sha[:12]} · "
-        f"Quality run {admission.quality_run_id} · tested merge {admission.tested_merge_sha[:12]}"
+        f"Main admission OK · PR #{admission.pr_number} · "
+        f"head {admission.pr_head_sha[:12]} · "
+        f"Quality run {admission.quality_run_id} · "
+        f"tested merge {admission.tested_merge_sha[:12]}"
     )
     return 0
 
