@@ -1,0 +1,31 @@
+/* Chess Studio · shared castle material vocabulary
+ *
+ * A small shared palette for spaces that belong to the same physical world.
+ * Home and War Room may compose these materials differently, but they should
+ * not invent separate stone/brass/oak/velvet languages.
+ */
+:root {
+  --castle-stone-950: #090c10;
+  --castle-stone-900: #0e1116;
+  --castle-stone-850: #13171c;
+  --castle-stone-800: #181c21;
+  --castle-stone-700: #242a30;
+  --castle-mortar: rgba(255,255,255,.045);
+  --castle-oak-900: #17100d;
+  --castle-oak-800: #241915;
+  --castle-oak-700: #33231b;
+  --castle-iron: #30363b;
+  --castle-iron-soft: #596168;
+  --castle-brass: #b49151;
+  --castle-brass-muted: #80673f;
+  --castle-brass-line: rgba(180,145,81,.28);
+  --castle-velvet: #3a171d;
+  --castle-velvet-deep: #241015;
+  --castle-parchment: #e1d5b8;
+  --castle-parchment-dim: #a99d86;
+  --castle-fire: #b66a35;
+  --castle-cold-light: #73869b;
+  --castle-shadow: rgba(0,0,0,.48);
+  --castle-surface-radius: 10px;
+  --castle-panel-radius: 8px;
+}
