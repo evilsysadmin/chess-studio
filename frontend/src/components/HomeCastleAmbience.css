@@ -1,0 +1,102 @@
+/* Home Great Hall · lived state v1
+ * La luz reacciona sólo a estado/progreso ya acreditado por HomeCastleLife.
+ * No añade paneles, contadores ni narrativa inventada. */
+.home-castle-life::before,
+.home-castle-life::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .8s ease, filter .8s ease;
+}
+
+.home-castle-life__decor,
+.home-castle-life__rare {
+  z-index: 2;
+}
+
+.home-castle-life[data-castle-ambience='quiet']::before {
+  opacity: .24;
+  background:
+    radial-gradient(ellipse at 50% 18%, rgba(167,183,196,.08), transparent 34%),
+    linear-gradient(180deg, rgba(14,19,24,.02), rgba(5,8,11,.16));
+}
+
+.home-castle-life[data-castle-ambience='active']::before {
+  opacity: .42;
+  background:
+    radial-gradient(ellipse at 56% 36%, rgba(215,170,91,.12), transparent 31%),
+    radial-gradient(ellipse at 26% 72%, rgba(104,129,145,.07), transparent 30%);
+}
+
+.home-castle-life[data-castle-ambience='campaign']::before {
+  opacity: .52;
+  background:
+    radial-gradient(ellipse at 23% 70%, rgba(166,83,43,.17), transparent 27%),
+    radial-gradient(ellipse at 69% 28%, rgba(206,156,77,.10), transparent 31%),
+    linear-gradient(116deg, transparent 34%, rgba(112,64,35,.05) 52%, transparent 70%);
+  filter: saturate(1.08);
+}
+
+.home-castle-life[data-castle-ambience='campaign']::after {
+  inset: auto 7% 5% 7%;
+  height: 34%;
+  opacity: .24;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(184,96,45,.19), transparent 67%);
+  filter: blur(12px);
+}
+
+.home-castle-life[data-castle-ambience='honour']::before {
+  opacity: .58;
+  background:
+    radial-gradient(ellipse at 50% 14%, rgba(229,190,106,.18), transparent 30%),
+    radial-gradient(ellipse at 50% 66%, rgba(184,132,59,.08), transparent 38%),
+    linear-gradient(180deg, rgba(205,165,91,.025), rgba(11,13,16,.10));
+  filter: saturate(1.10) brightness(1.02);
+}
+
+.home-castle-life[data-castle-ambience='honour']::after {
+  inset: 5% 20% auto 20%;
+  height: 28%;
+  opacity: .23;
+  background: radial-gradient(ellipse, rgba(234,198,119,.18), transparent 68%);
+  filter: blur(10px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .home-castle-life[data-castle-ambience='active']::before,
+  .home-castle-life[data-castle-ambience='campaign']::before,
+  .home-castle-life[data-castle-ambience='honour']::before {
+    animation: castle-lived-light 9s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes castle-lived-light {
+  from { filter: saturate(1) brightness(.98); }
+  to { filter: saturate(1.08) brightness(1.035); }
+}
+
+@media (max-width: 620px) {
+  .home-castle-life[data-castle-ambience='campaign']::before,
+  .home-castle-life[data-castle-ambience='honour']::before {
+    opacity: .40;
+  }
+  .home-castle-life::after { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-castle-life::before,
+  .home-castle-life::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+html[data-reduced-motion='true'] .home-castle-life::before,
+html[data-reduced-motion='true'] .home-castle-life::after {
+  animation: none !important;
+  transition: none !important;
+}

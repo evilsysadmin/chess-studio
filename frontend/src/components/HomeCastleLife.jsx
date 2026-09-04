@@ -1,9 +1,11 @@
 import './HomeCastleLife.css';
 import './HomeGreatHall.css';
+import './HomeCastleAmbience.css';
 import { ACHIEVEMENTS, loadAchievementLedger, loadUnlocked } from '../achievements.js';
 
 const MAX_OBJECTS = 3;
 const RARE_SIGHTING_THRESHOLD = 0.025;
+const HIGH_HONOUR_PRESTIGE = 80;
 // El castillo sólo muestra hechos ya acreditados. No reconstruimos proezas a
 // partir de intuiciones ni inventamos decoración por tiempo de uso.
 
@@ -60,6 +62,22 @@ function honourObjects(achievementIds, achievementLedger) {
       };
     })
     .sort((a, b) => b.prestige - a.prestige || a.id.localeCompare(b.id));
+}
+
+function castleAmbience({ honours, stateObjects, hasSavedGame }) {
+  const strongestHonour = honours[0] || null;
+  if (strongestHonour && asNumber(strongestHonour.prestige) >= HIGH_HONOUR_PRESTIGE) {
+    return { id: 'honour', evidence: strongestHonour.id };
+  }
+
+  const campaign = stateObjects.find((object) => object.id === 'combat-map');
+  if (campaign) return { id: 'campaign', evidence: campaign.id };
+
+  const active = stateObjects.find((object) => object.kind === 'progress');
+  if (active) return { id: 'active', evidence: active.id };
+  if (strongestHonour) return { id: 'active', evidence: strongestHonour.id };
+  if (hasSavedGame) return { id: 'active', evidence: 'saved-game' };
+  return { id: 'quiet', evidence: 'none' };
 }
 
 export function buildHomeCastleLifeModel({
@@ -154,6 +172,7 @@ export function buildHomeCastleLifeModel({
   }
 
   const honours = honourObjects(achievementIds, achievementLedger);
+  const ambience = castleAmbience({ honours, stateObjects: objects, hasSavedGame });
   const orderedObjects = honours.length > 0 ? [...honours, ...objects] : objects;
   const roll = Number(rareRoll);
   const rareSighting = Number.isFinite(roll) && roll >= 0 && roll < RARE_SIGHTING_THRESHOLD
@@ -166,6 +185,8 @@ export function buildHomeCastleLifeModel({
   return {
     objects: orderedObjects.slice(0, MAX_OBJECTS),
     rareSighting,
+    ambience: ambience.id,
+    ambienceEvidence: ambience.evidence,
   };
 }
 
@@ -186,6 +207,8 @@ export default function HomeCastleLife({ achievementIds = null, achievementLedge
       className={`home-castle-life${model.rareSighting ? ' has-rare-sighting' : ''}`}
       aria-label="La estancia de Chess Studio"
       data-castle-life="real-state-v1"
+      data-castle-ambience={model.ambience}
+      data-castle-ambience-evidence={model.ambienceEvidence}
       data-castle-honours={visibleObjects.filter((object) => object.kind === 'honour').length}
     >
       <div className="home-castle-life__decor" aria-label="Objetos desbloqueados del castillo">
