@@ -5,15 +5,26 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Changelog de producto: sólo cambios que el jugador ve, entiende o puede usar.
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
-{
-  release: 'v16.6dm46zfrp',
-  title: 'Más ágil cuando algo falla',
-  highlights: [
-    'Las ráfagas de peticiones comparten mejor el trabajo cuando la conexión de datos sufre un corte, evitando esperas repetidas.',
-    'El servicio hace menos trabajo interno durante el uso normal sin perder el historial necesario para diagnosticar problemas.',
-    'No cambia ninguna regla ni modo de juego: es una mejora de fluidez y resistencia ante fallos temporales.',
-  ],
-},
+  {
+    release: 'v16.6dm46zfrq',
+    title: 'El castillo empieza a recordar quién manda',
+    highlights: [
+      'Home convierte tus méritos reales en huellas visibles dentro del castillo: los logros fuertes pesan más que el simple tiempo jugado y no aparece decoración inventada.',
+      'Matthias está bastante menos embalsamado: Home y War Room ganan microgestos, miradas y reacciones más legibles, con smirk cuando captura y bastante peor humor cuando le desmontas el ejército.',
+      'La War Room 3D hace más visibles las casillas legales y mantiene al rey Matthias con su diseño de mando mientras tu rey vuelve a una silueta clásica de ajedrez.',
+      'Partida de práctica permite dificultad adaptativa un poco por debajo de tu nivel o selección manual 0–100, siempre sin tocar tu rating.',
+      'Radio Matthias suma una composición original por cada género del dial y Tánger · humo estrena una versión completamente recompuesta.',
+    ],
+  },
+  {
+    release: 'v16.6dm46zfrp',
+    title: 'Más ágil cuando algo falla',
+    highlights: [
+      'Las ráfagas de peticiones comparten mejor el trabajo cuando la conexión de datos sufre un corte, evitando esperas repetidas.',
+      'El servicio hace menos trabajo interno durante el uso normal sin perder el historial necesario para diagnosticar problemas.',
+      'No cambia ninguna regla ni modo de juego: es una mejora de fluidez y resistencia ante fallos temporales.',
+    ],
+  },
 
   {
     release: 'v16.6dm46zfro',
