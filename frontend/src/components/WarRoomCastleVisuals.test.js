@@ -73,7 +73,7 @@ describe('War Room castle visual contract', () => {
     expect(before).toBeGreaterThan(0);
   });
 
-  it('aplica el mock v28: una mesa central, armaduras de guardia y sofás teutones separados', () => {
+  it('aplica el mock v28: una mesa central, armaduras de guardia, sofás separados y galería militar', () => {
     const scene = new THREE.Scene();
     const room = buildPremiumWarRoomLayer(theme, true, false);
     scene.add(room);
@@ -137,9 +137,17 @@ describe('War Room castle visual contract', () => {
     expect(flame.material.blending).toBe(THREE.AdditiveBlending);
 
     const canvas = finalizerDriver;
-    expect(canvas.material.map.userData.resolution).toEqual([384, 240]);
-    expect(canvas.material.map.userData.warRoomLandscape).toBe('black-forest-lake-dusk-v20');
-    expect(canvas.material.map.userData.warRoomGalleryFinish).toBe('layered-canvas-v20');
+    expect(canvas.material.map).toBeInstanceOf(THREE.DataTexture);
+    expect(canvas.material.map.userData.warRoomCampaignArt).toBe('command');
+    expect(canvas.material.map.userData.source).toBe('approved-war-room-mock');
+    expect(canvas.material.map.userData.resolution).toEqual([64, 48]);
+    expect(architecture.userData.warRoomMilitaryGalleryCentralCanvases).toBe(2);
+    expect(architecture.userData.warRoomMilitaryGallerySideCanvases).toBe(2);
+    expect(architecture.userData.warRoomMilitaryGalleryTorches).toBe(2);
+    expect(room.getObjectByName('war-room-campaign-painting-left')).toBeTruthy();
+    expect(room.getObjectByName('war-room-campaign-painting-right')).toBeTruthy();
+    expect(room.getObjectByName('war-room-side-torch-left')).toBeTruthy();
+    expect(room.getObjectByName('war-room-side-torch-right')).toBeTruthy();
     expect(scene.userData.warRoomPremiumCoherence).toBe('v4-gothic');
   });
 
