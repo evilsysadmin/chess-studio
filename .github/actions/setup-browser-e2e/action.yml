@@ -3,7 +3,7 @@ description: Restore exact frontend/E2E dependencies and scope-specific Playwrig
 
 inputs:
   browser-scope:
-    description: Browser cache/install scope: chromium or all.
+    description: 'Browser cache/install scope: chromium or all.'
     required: false
     default: chromium
   build-frontend:
