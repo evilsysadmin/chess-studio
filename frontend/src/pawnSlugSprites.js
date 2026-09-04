@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import matthiasAtlasUrl from './assets/pawnSlug/matthias_atlas.svg';
 import enemyAtlasUrl from './assets/pawnSlug/enemy_atlas.svg';
 import panzerRookUrl from './assets/pawnSlug/panzer_rook.svg';
+import weaponAtlasUrl from './assets/pawnSlug/weapon_atlas.svg';
 
 function configureTexture(texture) {
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -85,6 +86,14 @@ export function animatePanzerRookSprite(sprite, time, { hurt = false } = {}) {
   sprite.material.opacity = hurt ? 0.7 : 1;
 }
 
+export function createWeaponSprite(kind = 'pistol') {
+  const frameByKind = { pistol: 0, machinegun: 1, shotgun: 2, panzerfaust: 3 };
+  const frame = frameByKind[kind] ?? 0;
+  const sprite = atlasSprite(weaponAtlasUrl, 4, frame, kind === 'panzerfaust' ? [1.55, .78] : [1.35, .68]);
+  sprite.name = `pawn-slug-weapon-${kind}`;
+  return sprite;
+}
+
 export function disposePawnSlugSprite(sprite) {
   if (!sprite) return;
   const texture = sprite.userData?.atlas?.texture || sprite.userData?.texture || sprite.material?.map;
@@ -96,4 +105,5 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
   matthias: Object.freeze({ url: matthiasAtlasUrl, frames: 4, frameWidth: 256, frameHeight: 256 }),
   enemies: Object.freeze({ url: enemyAtlasUrl, frames: 3, frameWidth: 256, frameHeight: 256 }),
   boss: Object.freeze({ url: panzerRookUrl, frames: 1, frameWidth: 512, frameHeight: 256 }),
+  weapons: Object.freeze({ url: weaponAtlasUrl, frames: 4, frameWidth: 256, frameHeight: 128 }),
 });
