@@ -37,6 +37,10 @@ function board3DSquare(root, preferFocused = false) {
   return preferFocused ? (focused || pointed) : (pointed || focused);
 }
 
+function board3DCanvas(root) {
+  return root?.querySelector?.('.board3d-main-canvas') || root;
+}
+
 export default function Board(props) {
   const inheritedRenderer = useContext(BoardRendererContext);
   const { isThreeD } = useGameBoardRenderer();
@@ -73,12 +77,21 @@ export default function Board(props) {
   if (inheritedRenderer === '3d' || !isThreeD || !RegisteredBoard3D) return <Board2D {...props} />;
 
   function handleThreeDSquareClick(square) {
-    const canvas = rootRef.current?.querySelector?.('.board3d-main-canvas') || rootRef.current;
+    const canvas = board3DCanvas(rootRef.current);
     if (occupiedSquares.has(square) && typeof props.onPieceClick === 'function') {
       props.onPieceClick(square, eventFacade(canvas));
       return;
     }
     props.onSquareClick?.(square);
+  }
+
+  function handleThreeDPieceMouseEnter(square) {
+    if (!occupiedSquares.has(square)) return;
+    props.onPieceMouseEnter?.(square, eventFacade(board3DCanvas(rootRef.current)));
+  }
+
+  function handleThreeDPieceMouseLeave(square) {
+    props.onPieceMouseLeave?.(square, eventFacade(board3DCanvas(rootRef.current)));
   }
 
   function dispatchThreeDDoubleClick(event, preferFocused = false) {
@@ -87,7 +100,7 @@ export default function Board(props) {
     if (!shell || (event?.target && !shell.contains(event.target))) return;
     const square = board3DSquare(rootRef.current, preferFocused);
     if (!square) return;
-    const canvas = rootRef.current?.querySelector?.('.board3d-main-canvas') || rootRef.current;
+    const canvas = board3DCanvas(rootRef.current);
     if (occupiedSquares.has(square) && typeof props.onPieceDoubleClick === 'function') {
       props.onPieceDoubleClick(square, eventFacade(canvas));
       return;
@@ -114,6 +127,8 @@ export default function Board(props) {
           {...props}
           hintMove={threeDHintMove}
           onSquareClick={handleThreeDSquareClick}
+          onPieceMouseEnter={handleThreeDPieceMouseEnter}
+          onPieceMouseLeave={handleThreeDPieceMouseLeave}
         />
       </Suspense>
 

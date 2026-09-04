@@ -22,12 +22,27 @@ describe('War Room 3D premium highlight visibility', () => {
     expect(selected).toMatchObject({ kind: 'selected', color: 0xc99a43, opacity: 0.82 });
   });
 
-  it('keeps semantic precedence: parity < capture < selection < check', () => {
-    const parity = { parityHighlights: { d5: 'mistake', e2: 'terrain', e8: 'veteran' } };
+  it('keeps Combat technique targets distinct from ordinary legal moves and captures', () => {
+    const technique = board3DHighlightStyle({
+      square: 'f5',
+      legalMap: new Map([['f5', { capture: false, technique: true }]]),
+    });
+    const normal = board3DHighlightStyle({
+      square: 'e4',
+      legalMap: new Map([['e4', { capture: false, technique: false }]]),
+    });
+    expect(technique).toMatchObject({ kind: 'technique', color: BOARD3D_HIGHLIGHT_COLORS.technique, opacity: 0.9 });
+    expect(technique.color).not.toBe(normal.color);
+  });
+
+  it('keeps semantic precedence: parity < capture/technique < selection < check', () => {
+    const parity = { parityHighlights: { d5: 'mistake', e2: 'terrain', e8: 'veteran', f5: 'xp' } };
     const capture = board3DHighlightStyle({ square: 'd5', hintMove: parity, legalMap: new Map([['d5', true]]) });
+    const technique = board3DHighlightStyle({ square: 'f5', hintMove: parity, legalMap: new Map([['f5', { technique: true }]]) });
     const selected = board3DHighlightStyle({ square: 'e2', hintMove: parity, selectedSquare: 'e2', legalMap: new Map([['e2', false]]) });
     const check = board3DHighlightStyle({ square: 'e8', hintMove: parity, selectedSquare: 'e8', checkSquare: 'e8', legalMap: new Map() });
     expect(capture).toMatchObject({ kind: 'capture', color: BOARD3D_HIGHLIGHT_COLORS.capture });
+    expect(technique).toMatchObject({ kind: 'technique', color: BOARD3D_HIGHLIGHT_COLORS.technique });
     expect(selected).toMatchObject({ kind: 'selected', color: BOARD3D_HIGHLIGHT_COLORS.selected });
     expect(check).toMatchObject({ kind: 'check', color: BOARD3D_HIGHLIGHT_COLORS.check });
   });

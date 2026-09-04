@@ -1,0 +1,20 @@
+/* Renderer parity cues that belong to every 3D board surface, not only War Room. */
+.board3d-main-shell[data-board3d-turn="human"] {
+  border-color: rgba(225, 188, 83, .78);
+  box-shadow:
+    0 34px 84px rgba(0,0,0,.55),
+    0 0 0 1px rgba(225,188,83,.12),
+    inset 0 0 64px rgba(0,0,0,.34);
+}
+
+.board3d-main-shell[data-board3d-turn="cpu"] {
+  border-color: rgba(97, 146, 184, .58);
+  box-shadow:
+    0 34px 84px rgba(0,0,0,.55),
+    0 0 0 1px rgba(97,146,184,.1),
+    inset 0 0 64px rgba(0,0,0,.34);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board3d-main-shell[data-board3d-turn] { transition: none; }
+}
