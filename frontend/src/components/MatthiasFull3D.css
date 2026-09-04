@@ -1,0 +1,12 @@
+/* Matthias Full 3D owns all character movement inside Three.js. The legacy
+   Home canvas transforms simulated gestures by translating/scaling the whole
+   portrait and created the notorious zoom/bobbing effect. Disable them here. */
+body:has(.home-friendly) .matthias-resident .matthias-three-avatar__canvas {
+  transform: none !important;
+}
+
+/* The full 3D scene should hand over cleanly from the canonical fallback and
+   never inherit visual filters that flatten the PBR materials. */
+.matthias-three-avatar[data-three-full-3d='true'] .matthias-three-avatar__canvas {
+  filter: none;
+}
