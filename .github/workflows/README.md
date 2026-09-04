@@ -30,6 +30,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 | Workflow | Responsabilidad |
 | --- | --- |
 | `cicd.yml` | Gate principal quality-only para PR/main. Preflight y luego frontend/backend/security/E2E en paralelo según superficie. No despliega. |
+| `main-delivery-handoff.yml` | Continuación independiente PR→main. Tras un Quality de PR verde espera el merge exacto, deduplica un Quality de main ya creado y, si `GITHUB_TOKEN` suprimió el `push`, despacha `cicd.yml` explícitamente sobre el HEAD actual de `main`. |
 | `staging-deploy.yml` | Despliega el SHA aprobado en Render staging + Pages staging y acredita backend/frontend. |
 | `staging-ai-worker.yml` | Completa/revalida staging y emite la acreditación inmutable que permite promoción. El nombre se conserva por el contrato `workflow_run` existente. |
 | `production-promote.yml` | Promueve sólo el SHA acreditado. Worker/DNS Terraform `plan/apply` permanece aquí porque sí gestiona infraestructura real y está protegido por admisión anti-stale antes de la primera mutación. Render y Pages continúan después sobre el mismo SHA. |
@@ -50,7 +51,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 
 | Workflow | Responsabilidad |
 | --- | --- |
-| `auto-merge.yml` | Espera los checks protegidos de la PR, hace squash sólo del head observado y continúa explícitamente la entrega con `workflow_dispatch` de `cicd.yml`. Esto es obligatorio porque un merge realizado con `GITHUB_TOKEN` no genera nuevos workflow runs por el `push`; `workflow_dispatch` sí está permitido por GitHub. |
+| `auto-merge.yml` | Espera los checks protegidos y hace squash sólo del head observado. No inicia delivery: así el actor que fusiona la PR queda desacoplado de la continuación a `main`. |
 | `grafana-dashboards.yml` | Publica cuatro dashboards idempotentemente con la Grafana HTTP API. **Sin Terraform, provider, state, import, plan ni apply.** |
 | `cloudflare-prometheus-exporter.yml` | Valida/despliega el exporter oficial Cloudflare cuando cambia su superficie. |
 | `synthetic-health.yml` | Canary sintético de producción cada dos horas. Vive separado para funcionar aunque no haya releases. |
@@ -59,22 +60,28 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 ## Flujo
 
 ```text
-PR / push
-   │
-   ▼
-Quality · CI gate
-   │
-   ▼
-Staging · deploy
-   │
-   ▼
-Staging · AI Worker / accreditation
-   │
-   ▼
-Production · promote
-   ├─ Cloudflare Worker + DNS (Terraform plan/apply controlado)
-   ├─ Render backend
-   └─ Cloudflare Pages
+PR
+ │
+ ▼
+Quality · CI gate (PR)
+ │
+ ├─ merge manual/externo ──► push normal ───────────────┐
+ │                                                     │
+ └─ Delivery · main handoff ── dispatch si hace falta ─┤
+                                                       ▼
+                                             Quality · CI gate (main)
+                                                       │
+                                                       ▼
+                                             Staging · deploy
+                                                       │
+                                                       ▼
+                                  Staging · AI Worker / accreditation
+                                                       │
+                                                       ▼
+                                           Production · promote
+                                           ├─ Cloudflare Worker + DNS
+                                           ├─ Render backend
+                                           └─ Cloudflare Pages
 ```
 
 ## Fósiles retirados en esta auditoría

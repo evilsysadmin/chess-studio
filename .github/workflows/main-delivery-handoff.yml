@@ -1,0 +1,144 @@
+name: Delivery · main handoff
+
+on:
+  workflow_run:
+    workflows:
+      - Quality · CI gate
+    types:
+      - completed
+
+permissions:
+  actions: write
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: main-delivery-handoff-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  continue-main:
+    name: Continue merged PR into main Quality
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+      EVENT_PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+    steps:
+      - name: Wait for merge and guarantee main Quality
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::Quality PR head SHA inválido: $SOURCE_SHA"
+            exit 1
+          }
+
+          resolve_pr_number() {
+            if [[ "${EVENT_PR_NUMBER:-}" =~ ^[0-9]+$ ]]; then
+              printf '%s\n' "$EVENT_PR_NUMBER"
+              return 0
+            fi
+
+            gh api \
+              -H 'Accept: application/vnd.github+json' \
+              "repos/$GITHUB_REPOSITORY/commits/$SOURCE_SHA/pulls?per_page=100" \
+              --jq ".[] | select(.base.ref == \"main\" and .head.sha == \"$SOURCE_SHA\") | .number" \
+              | tail -n 1
+          }
+
+          pr_number=''
+          merge_sha=''
+          for attempt in {1..60}; do
+            if [[ -z "$pr_number" ]]; then
+              pr_number="$(resolve_pr_number || true)"
+            fi
+
+            if [[ "$pr_number" =~ ^[0-9]+$ ]]; then
+              pr_json="$RUNNER_TEMP/pr-$pr_number.json"
+              gh api "repos/$GITHUB_REPOSITORY/pulls/$pr_number" > "$pr_json"
+
+              readarray -t pr_meta < <(python3 - "$pr_json" "$SOURCE_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          expected = sys.argv[2].lower()
+          base = str((payload.get('base') or {}).get('ref') or '')
+          head = str((payload.get('head') or {}).get('sha') or '').lower()
+          merged_at = str(payload.get('merged_at') or '')
+          merge_sha = str(payload.get('merge_commit_sha') or '').lower()
+          valid = base == 'main' and head == expected
+          print('true' if valid else 'false')
+          print(merged_at)
+          print(merge_sha)
+          PY
+              )
+
+              if [[ "${pr_meta[0]:-false}" != 'true' ]]; then
+                echo "::error::PR #$pr_number ya no corresponde al head Quality $SOURCE_SHA contra main"
+                exit 1
+              fi
+
+              if [[ -n "${pr_meta[1]:-}" && "${pr_meta[2]:-}" =~ ^[0-9a-f]{40}$ ]]; then
+                merge_sha="${pr_meta[2]}"
+                break
+              fi
+            fi
+
+            echo "Quality PR $SOURCE_SHA aún no aparece mergeada en main (intento $attempt/60)."
+            sleep 5
+          done
+
+          if [[ ! "$merge_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::notice title=Delivery handoff no-op::Quality quedó verde para $SOURCE_SHA, pero la PR no se fusionó durante la ventana de handoff. No despacho main."
+            exit 0
+          fi
+
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::No pude resolver el HEAD actual de main"
+            exit 1
+          }
+
+          target_sha="$merge_sha"
+          if [[ "$current_main" != "$merge_sha" ]]; then
+            target_sha="$current_main"
+            echo "::notice title=Delivery handoff coalesced::La PR #$pr_number produjo $merge_sha, pero main ya avanzó a $current_main. Garantizo Quality sólo para el HEAD actual."
+          fi
+
+          # A merge externo/manual sí suele generar el push -> Quality normal.
+          # Damos unos segundos a GitHub para materializar ese run antes de usar
+          # workflow_dispatch. Los merges hechos con GITHUB_TOKEN no generan ese
+          # push workflow, por lo que terminarán en el dispatch explícito.
+          for attempt in {1..6}; do
+            existing="$(gh api \
+              "repos/$GITHUB_REPOSITORY/actions/workflows/cicd.yml/runs?head_sha=$target_sha&per_page=100" \
+              --jq '[.workflow_runs[] | select(.head_branch == "main" and (.event == "push" or .event == "workflow_dispatch"))] | length')"
+
+            if [[ "${existing:-0}" -gt 0 ]]; then
+              echo "Quality · CI gate ya existe para main $target_sha; handoff deduplicado."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          latest_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+          if [[ "$latest_main" != "$target_sha" ]]; then
+            target_sha="$latest_main"
+            echo "main avanzó otra vez; coalesco el dispatch al HEAD actual $target_sha."
+
+            existing="$(gh api \
+              "repos/$GITHUB_REPOSITORY/actions/workflows/cicd.yml/runs?head_sha=$target_sha&per_page=100" \
+              --jq '[.workflow_runs[] | select(.head_branch == "main" and (.event == "push" or .event == "workflow_dispatch"))] | length')"
+            if [[ "${existing:-0}" -gt 0 ]]; then
+              echo "Quality · CI gate ya existe para el nuevo main $target_sha; handoff deduplicado."
+              exit 0
+            fi
+          fi
+
+          echo "No existe Quality para main $target_sha. Despacho cicd.yml explícitamente."
+          gh workflow run cicd.yml --ref main
