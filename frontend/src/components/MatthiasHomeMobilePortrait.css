@@ -1,65 +1,68 @@
 /* Home · Matthias mobile portrait
  * Mobile is not desktop shrunk down. The 3D resident keeps his real rig and
- * activity props, but the presentation crops to head + upper torso so facial
- * state remains readable at phone distance. Desktop framing is untouched. */
+ * activity props, but the presentation crops to a bust so facial state reads
+ * instantly at phone distance. Desktop framing is untouched. */
 @media (max-width: 760px) {
   body:has(.home-friendly) .matthias-resident.is-inline {
-    margin: .35rem 0 1rem;
+    margin: .25rem 0 .95rem;
   }
 
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__stage {
-    gap: .58rem;
+    gap: .48rem;
   }
 
+  /* The character should feel present in the hall, not trapped inside a card. */
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character {
-    flex-basis: 132px;
-    width: 132px;
-    padding: .22rem .24rem .3rem;
-    gap: .05rem;
+    flex-basis: 166px;
+    width: 166px;
+    padding: .08rem .14rem .24rem;
+    gap: .02rem;
     border-radius: 18px;
     background:
-      radial-gradient(circle at 50% 38%, rgba(198,164,93,.08), transparent 56%),
-      linear-gradient(180deg, rgba(11,15,20,.16), rgba(8,11,15,.62));
-    filter: drop-shadow(0 14px 22px rgba(0,0,0,.30));
+      radial-gradient(ellipse at 50% 46%, rgba(198,164,93,.095), transparent 62%);
+    filter: drop-shadow(0 16px 24px rgba(0,0,0,.28));
   }
 
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__portrait-shell {
-    width: 124px;
-    height: 138px;
+    width: 158px;
+    height: 152px;
     place-items: stretch;
-    border-radius: 16px 16px 11px 11px;
+    border: 1px solid color-mix(in srgb, var(--brass) 22%, transparent);
+    border-radius: 22px 22px 16px 16px;
     background:
-      radial-gradient(circle at 50% 55%, rgba(198,164,93,.13), transparent 48%),
-      rgba(7,10,14,.54);
+      radial-gradient(ellipse at 50% 48%, rgba(198,164,93,.115), transparent 58%);
     box-shadow:
-      inset 0 1px rgba(255,255,255,.045),
-      0 8px 20px rgba(0,0,0,.18);
+      inset 0 1px rgba(255,255,255,.025),
+      0 11px 28px rgba(0,0,0,.12);
   }
 
-  /* Magnify the already-rendered Three.js scene as one rigid surface. This is
-   * framing only: facial/body articulation continues to happen inside WebGL. */
+  /* Deliberate bust framing. We preserve the exact Three.js rig and enlarge
+   * the rendered surface instead of inventing a second mobile model. The wider
+   * frame keeps the officer cap readable while the tighter vertical field crops
+   * the pawn base and gives the face far more visual weight. */
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__canvas {
-    transform: scale(1.36);
-    transform-origin: 50% 10%;
+    transform: translateY(3px) scale(1.86);
+    transform-origin: 50% 8%;
   }
 
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__fallback {
-    object-position: 50% 28%;
+    object-position: 50% 20%;
   }
 
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character strong {
-    margin-top: .16rem;
-    font-size: .68rem;
-    letter-spacing: .13em;
+    margin-top: .1rem;
+    font-size: .64rem;
+    letter-spacing: .15em;
   }
 
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character small,
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character em {
     width: 100%;
-    max-width: 124px;
+    max-width: 158px;
     overflow: hidden;
-    font-size: .55rem;
-    line-height: 1.25;
+    font-size: .53rem;
+    line-height: 1.2;
+    opacity: .78;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -67,27 +70,27 @@
 
 @media (max-width: 430px) {
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character {
-    flex-basis: 128px;
-    width: 128px;
+    flex-basis: 160px;
+    width: 160px;
   }
 
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__portrait-shell {
-    width: 120px;
-    height: 134px;
+    width: 154px;
+    height: 150px;
   }
 
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character small,
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character em {
-    max-width: 120px;
+    max-width: 154px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) and (max-width: 760px) {
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__canvas {
-    transform: scale(1.36) !important;
+    transform: translateY(3px) scale(1.86) !important;
   }
 }
 
 html[data-reduced-motion='true'] body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__canvas {
-  transform: scale(1.36) !important;
+  transform: translateY(3px) scale(1.86) !important;
 }
