@@ -1,17 +1,14 @@
 name: Quality · CI gate
 
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# PRs sólo necesitan validar el head más reciente. En main no cancelamos porque
-# Staging · deploy consume el SHA aprobado por este workflow y rechaza commits
-# obsoletos por su cuenta.
+# Cada PR sólo necesita validar el head más reciente. La admisión de un SHA ya
+# mergeado en main vive separada en Main · admission para no repetir este gate.
 concurrency:
   group: chess-studio-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
