@@ -5,7 +5,8 @@ The expensive suites run on the pull request. Each PR Quality run publishes a
 small immutable provenance artifact describing the exact synthetic merge commit
 that its jobs tested. After merge, main admission accepts the new main SHA when
 that receipt proves either the final first-parent base exactly, or an older base
-whose intervening main changes are proven file-disjoint from the PR under test.
+whose intervening main changes are proven file-disjoint from the exact synthetic
+merge that passed CI.
 """
 from __future__ import annotations
 
@@ -16,7 +17,7 @@ import json
 import os
 import subprocess
 import sys
-from typing import Any
+from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
 from urllib.request import HTTPRedirectHandler, Request, build_opener, urlopen
@@ -204,7 +205,7 @@ def github_request(path: str, token: str) -> Request:
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {token}",
             "X-GitHub-Api-Version": API_VERSION,
-            "User-Agent": "chess-studio-main-ci-admission/4",
+            "User-Agent": "chess-studio-main-ci-admission/5",
         },
     )
 
@@ -218,7 +219,7 @@ def artifact_redirect_request(location: str) -> Request:
         location,
         headers={
             "Accept": "application/zip",
-            "User-Agent": "chess-studio-main-ci-admission/4",
+            "User-Agent": "chess-studio-main-ci-admission/5",
         },
     )
 
@@ -289,12 +290,12 @@ def fetch_run_provenance(api_base: str, run_id: int, token: str) -> dict[str, An
     return payload if isinstance(payload, dict) else None
 
 
-def compare_paths(api_base: str, base_sha: str, head_sha: str, token: str) -> set[str] | None:
-    """Return changed paths only when GitHub proves base is an ancestor of head."""
-    if len(base_sha) != 40 or len(head_sha) != 40:
+def compare_paths(api_base: str, base_sha: str, target_sha: str, token: str) -> set[str] | None:
+    """Return changed paths only when GitHub proves base is an ancestor of target."""
+    if len(base_sha) != 40 or len(target_sha) != 40:
         return None
     payload = api_get(
-        f"{api_base}/compare/{quote(base_sha)}...{quote(head_sha)}?per_page=100",
+        f"{api_base}/compare/{quote(base_sha)}...{quote(target_sha)}?per_page=100",
         token,
     )
     if not isinstance(payload, dict) or payload.get("status") not in {"ahead", "identical"}:
@@ -319,14 +320,22 @@ def disjoint_concurrency_proof(
     api_base: str,
     provenance_base: str,
     first_parent: str,
-    head_sha: str,
+    tested_merge_sha: str,
     token: str,
+    *,
+    compare_fn: Callable[[str, str, str, str], set[str] | None] = compare_paths,
 ) -> tuple[bool, int, int]:
-    """Prove a stale PR base is safe to reuse across file-disjoint main advances."""
+    """Prove an older tested base is safe across file-disjoint main advances.
+
+    The PR branch head is deliberately *not* used here: GitHub may test a
+    synthetic merge against a newer base without rebasing the branch itself.
+    The immutable receipt's tested_merge_sha is the exact tree composition that
+    passed CI, so base -> tested_merge is the authoritative PR-side path set.
+    """
     if provenance_base == first_parent:
         return False, 0, 0
-    pr_paths = compare_paths(api_base, provenance_base, head_sha, token)
-    intervening_paths = compare_paths(api_base, provenance_base, first_parent, token)
+    pr_paths = compare_fn(api_base, provenance_base, tested_merge_sha, token)
+    intervening_paths = compare_fn(api_base, provenance_base, first_parent, token)
     if pr_paths is None or intervening_paths is None or not pr_paths:
         return False, len(pr_paths or ()), len(intervening_paths or ())
     return pr_paths.isdisjoint(intervening_paths), len(pr_paths), len(intervening_paths)
@@ -398,17 +407,19 @@ def run_live() -> Admission:
             continue
         if provenance_base == first_parent:
             continue
+        tested_merge_sha = str(provenance.get("tested_merge_sha") or "").lower()
         safe, pr_path_count, intervening_path_count = disjoint_concurrency_proof(
             base,
             provenance_base,
             first_parent,
-            head_sha,
+            tested_merge_sha,
             token,
         )
         if safe:
             compatible_runs.add(run_id)
             print(
                 f"Main admission concurrency proof OK · Quality run {run_id} · "
+                f"tested merge {tested_merge_sha[:12]} · "
                 f"base {provenance_base[:12]} -> parent {first_parent[:12]} · "
                 f"{pr_path_count} rutas PR / {intervening_path_count} rutas intermedias disjuntas"
             )
@@ -557,6 +568,48 @@ def self_test() -> None:
         first_parent="a" * 40,
     )
 
+    # Regression for #440: the branch head itself may not descend from the base
+    # GitHub used for the immutable synthetic merge. The disjoint proof must use
+    # base -> tested_merge_sha, never base -> branch head.
+    compare_calls: list[tuple[str, str]] = []
+
+    def fake_compare(_api_base: str, base_sha: str, target_sha: str, _token: str) -> set[str] | None:
+        compare_calls.append((base_sha, target_sha))
+        if target_sha == "f" * 40:
+            return {"scripts/main_ci_admission.py"}
+        if target_sha == "a" * 40:
+            return {"frontend/src/chesscom.js"}
+        raise AssertionError(f"self-test consultó un target no acreditado: {target_sha[:12]}")
+
+    safe, pr_count, intervening_count = disjoint_concurrency_proof(
+        "/repos/example/example",
+        "e" * 40,
+        "a" * 40,
+        "f" * 40,
+        "test-token",
+        compare_fn=fake_compare,
+    )
+    assert safe is True
+    assert (pr_count, intervening_count) == (1, 1)
+    assert compare_calls == [("e" * 40, "f" * 40), ("e" * 40, "a" * 40)]
+
+    def overlapping_compare(_api_base: str, _base_sha: str, target_sha: str, _token: str) -> set[str] | None:
+        if target_sha == "f" * 40:
+            return {"scripts/main_ci_admission.py", "shared.txt"}
+        if target_sha == "a" * 40:
+            return {"shared.txt"}
+        return None
+
+    safe_overlap, _, _ = disjoint_concurrency_proof(
+        "/repos/example/example",
+        "e" * 40,
+        "a" * 40,
+        "f" * 40,
+        "test-token",
+        compare_fn=overlapping_compare,
+    )
+    assert safe_overlap is False
+
     github = github_request("/repos/example/example", "test-token")
     assert github.get_header("Authorization") == "Bearer test-token"
     redirected = artifact_redirect_request("https://example.invalid/artifact.zip?sig=signed")
@@ -606,7 +659,7 @@ def self_test() -> None:
 
     print(
         "main-ci-admission self-test OK · full/scoped green accepted; "
-        "disjoint concurrent main advances accepted only with proof; "
+        "disjoint concurrent main advances use the immutable tested merge; "
         "artifact redirect auth stripped; direct/stale/wrong-base/failed rejected"
     )
 
