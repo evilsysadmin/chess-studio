@@ -289,6 +289,7 @@ function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
   torch.userData.warRoomPracticalDecor = 'animated-castle-torch';
   torch.userData.warRoomTorchArt = 'approved-premium-mock-v2';
   torch.userData.warRoomTorchForm = 'gothic-wall-sconce-brazier';
+  torch.userData.warRoomTorchFire = 'hearth-bright-v3';
 
   const iron = physical(GALLERY.iron, {
     metalness: 0.64,
@@ -306,22 +307,22 @@ function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
     roughness: 0.74,
     clearcoat: 0,
     emissive: GALLERY.ember,
-    emissiveIntensity: 1.1,
+    emissiveIntensity: 1.55,
   });
   const outerMat = physical(GALLERY.flame, {
     roughness: 0.14,
     clearcoat: 0,
     emissive: 0xff5a1a,
-    emissiveIntensity: 2.65,
-    opacity: 0.92,
+    emissiveIntensity: 3.35,
+    opacity: 0.97,
     depthWrite: false,
   });
   const innerMat = physical(GALLERY.flameCore, {
     roughness: 0.12,
     clearcoat: 0,
     emissive: 0xffa11f,
-    emissiveIntensity: 3.05,
-    opacity: 0.88,
+    emissiveIntensity: 4.1,
+    opacity: 0.96,
     depthWrite: false,
   });
   outerMat.blending = THREE.AdditiveBlending;
@@ -376,10 +377,9 @@ function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
   outer.castShadow = false;
   inner.castShadow = false;
 
-  // Same warm family as the fireplace (0xff8738), at a deliberately lower
-  // intensity. The sconce paints the wall and frame edge without competing
-  // with the hearth or adding shadow-map cost.
-  const light = new THREE.PointLight(0xff8738, 1.48, 6.1, 2);
+  // Same warm family as the fireplace (0xff8738), now with enough intensity
+  // to read clearly against the dark wall without introducing shadow-map cost.
+  const light = new THREE.PointLight(0xff8738, 1.85, 6.4, 2);
   light.name = 'war-room-side-torch-light';
   light.position.set(0, 0.58, 0.67);
   light.castShadow = false;
@@ -435,6 +435,7 @@ export function installWarRoomMilitaryGallery(group, {
   group.userData.warRoomCampaignTextureCache = 'module-prototype-v1';
   group.userData.warRoomTorchArt = 'approved-premium-mock-v2';
   group.userData.warRoomTorchSpacing = 'gallery-breathing-room-v3';
+  group.userData.warRoomTorchFire = 'hearth-bright-v3';
   registerCampaignArtFinalizer(group);
   return centralReplaced + 4;
 }
