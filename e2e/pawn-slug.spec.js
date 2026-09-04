@@ -13,7 +13,7 @@ async function openPawnSlug(page) {
   await login(page);
   await dismissGuide(page);
   const moreModes = page.locator('details.home-more-modes');
-  if (!(await moreModes.getAttribute('open'))) {
+  if (!(await moreModes.evaluate((node) => node.open))) {
     await moreModes.getByText('Más modos de juego', { exact: true }).click();
   }
   const experiments = moreModes
