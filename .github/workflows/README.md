@@ -1,6 +1,6 @@
 # GitHub Actions · mapa operativo
 
-Última auditoría: 2026-09-04.
+Última auditoría: 2026-09-05.
 
 Regla: cada workflow debe representar un dominio operativo o blast radius real. Se fusiona duplicación histórica; no se fusionan promoción, rollback o acreditación sólo para bajar el contador.
 
@@ -43,9 +43,10 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 
 | Workflow | Responsabilidad |
 | --- | --- |
-| `e2e-full.yml` | Browser E2E path-aware. Matriz dinámica War Room/Matthias en PR con runner separado por escena WebGL pesada; sweep Chromium/Firefox/WebKit semanal/manual. Absorbe el antiguo `matthias-visual.yml`. |
-| `coverage.yml` | Coverage frontend/backend semanal/manual e informativo, con caches exactas Node/Python. |
-| `oci-readiness.yml` | Readiness OCI unificado y path-aware: ARM64 backend y/o Terraform OCI `fmt/init/validate`. Sustituye `oci-arm64-readiness.yml` + `oci-terraform-readiness.yml`. No hace apply. |
+| `e2e-full.yml` | Browser E2E path-aware para War Room/Matthias en PR, con runner separado por escena WebGL pesada. El sweep Chromium/Firefox/WebKit queda disponible sólo bajo `workflow_dispatch`; ya no consume runner semanalmente. |
+| `oci-readiness.yml` | Readiness OCI manual: ARM64 backend + Terraform OCI `fmt/init/validate`. OCI sigue como migración futura, no como gate automático mientras producción permanezca en Render. |
+
+Coverage sigue disponible mediante `make coverage-fe` y `make coverage-be`; no existe un workflow programado para generar artefactos que nadie consume.
 
 ## Observabilidad y operación
 
@@ -94,8 +95,11 @@ Production · promote
 - `main-delivery-handoff.yml` → retirado; el merge nativo produce el `push` normal a `main` y no necesita redispatch.
 - `matthias-visual.yml` → absorbido por `e2e-full.yml`.
 - `oci-arm64-readiness.yml` + `oci-terraform-readiness.yml` → `oci-readiness.yml`.
+- `coverage.yml` → retirado; la medición de coverage queda disponible bajo demanda desde Makefile, sin dos runners semanales informativos.
+- Cron semanal de `e2e-full.yml` → retirado; el gate PR específico sigue activo y el sweep multi-browser queda manual.
+- Trigger PR de `oci-readiness.yml` → retirado hasta que OCI pase de backlog a plataforma activa.
 - `infra/grafana/terraform/` → eliminado; dashboards pasan a publisher API state-less.
-- Instalaciones Node directas en CI/coverage/browser/staging preview/producción → acciones de cache exacta.
+- Instalaciones Node directas en CI/browser/staging preview/producción → acciones de cache exacta.
 - Cache Trivy por `github.run_id` → namespace estable por versión + epoch diario.
 
 El objetivo no es tener el mínimo número de YAML, sino **mínimo estado, mínima dependencia externa por ejecución y dominios de fallo claros**.
