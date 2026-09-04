@@ -25,8 +25,8 @@ function dot(a, b) {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
-// Same fixed-tactical projection contract as the dedicated War Room pointer
-// gate. These embedded boards use the same camera/framing code.
+// Deployment hover still needs one pointer coordinate. The gameplay assertions
+// below use Board3D's keyboard contract instead of guessing pixels.
 function projectSquare(rect, square, worldY = 0.12) {
   const aspect = Math.max(0.35, rect.width / Math.max(1, rect.height));
   const profile = aspect >= 1.42
@@ -84,19 +84,24 @@ test('Arena experimental · tema, terreno y legalidad sobreviven al renderer 3D'
   await expect(board).toHaveAttribute('data-board3d-terrain-count', '4');
   await expect(board).toHaveAttribute('data-board3d-turn', 'human');
 
-  const rect = await canvas.boundingBox();
-  expect(rect).toBeTruthy();
-
-  // c4 is a solid pillar in La Brecha. Clicking the actual 3D tile cannot
-  // select it or mutate the arena state.
-  const blocked = projectSquare(rect, 'c4');
-  await page.mouse.click(blocked.x, blocked.y);
+  // Board3D starts focused on e1 for White. Use its real keyboard contract so
+  // Arena parity is independent of camera projection and cosmetic geometry.
+  await canvas.focus();
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await expect(board).toHaveAttribute('data-board3d-focused', 'c4');
+  await page.keyboard.press('Enter');
   await expect(board).toHaveAttribute('data-board3d-selected', '');
 
-  // c2 remains a real chess piece and the terrain-aware rules expose only the
-  // destinations that survive the blocked geometry.
-  const pawn = projectSquare(rect, 'c2');
-  await page.mouse.click(pawn.x, pawn.y);
+  // c4 is blocked. Move down to the real pawn on c2; terrain-aware rules must
+  // select it and expose only the legal destination that survives La Brecha.
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expect(board).toHaveAttribute('data-board3d-focused', 'c2');
+  await page.keyboard.press('Enter');
   await expect(board).toHaveAttribute('data-board3d-selected', 'c2');
   await expect(board).toHaveAttribute('data-board3d-legal-target-count', '1');
 });
@@ -129,6 +134,9 @@ test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre e
   await expect(dossier).toBeVisible({ timeout: 4_000 });
   await expect(dossier.getByText(/Vista rápida/i)).toBeVisible();
 
-  await page.mouse.move(rect.x + 4, rect.y + 4);
+  // Leave the canvas entirely. Moving to another board corner is not a valid
+  // leave assertion because the starting deployment has pieces across both
+  // home ranks and legitimately opens another dossier.
+  await deployment.getByRole('heading', { name: 'Preparar despliegue', exact: true }).hover();
   await expect(dossier).toBeHidden({ timeout: 3_000 });
 });
