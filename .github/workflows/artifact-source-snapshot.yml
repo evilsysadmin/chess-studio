@@ -1,0 +1,31 @@
+name: Artifact · complete source snapshot
+
+on:
+  push:
+    branches:
+      - artifact/matthias-pawn3d-complete-zip
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout merged tree
+        uses: actions/checkout@v7
+      - name: Build complete source ZIP
+        run: |
+          zip -qr ChessStudio_v16.6dm46zfrq_matthias3d_COMPLETE.zip . \
+            -x '.git/*' \
+               '.github/workflows/artifact-source-snapshot.yml' \
+               'frontend/node_modules/*' \
+               '**/__pycache__/*' \
+               '*.pyc'
+      - name: Upload complete source ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChessStudio_v16.6dm46zfrq_matthias3d_COMPLETE
+          path: ChessStudio_v16.6dm46zfrq_matthias3d_COMPLETE.zip
+          if-no-files-found: error
+          retention-days: 7
