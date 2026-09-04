@@ -26,7 +26,7 @@ function dispose(root) {
 }
 
 describe('War Room premium paintings', () => {
-  it('superpone dos lienzos con acabado museo, luces prácticas y decorado teutón premium en desktop', () => {
+  it('superpone dos lienzos militares con acabado museo, luces prácticas y decorado teutón premium en desktop', () => {
     const group = new THREE.Group();
     const count = addPremiumWarRoomPaintings(group, { wallZ: -7.6, towardBoard: 1, coarsePointer: false });
 
@@ -45,6 +45,10 @@ describe('War Room premium paintings', () => {
     expect(group.userData.warRoomApprovedMockVersion).toBe('approved-mock-v28');
     expect(group.userData.warRoomApprovedMockWallStyle).toBe('plain-dark-castle-panel-v28');
     expect(group.userData.warRoomMonogramFree).toBe(true);
+    expect(group.userData.warRoomMilitaryGalleryVersion).toBe('approved-mock-v1');
+    expect(group.userData.warRoomMilitaryGalleryCentralCanvases).toBe(2);
+    expect(group.userData.warRoomMilitaryGallerySideCanvases).toBe(2);
+    expect(group.userData.warRoomMilitaryGalleryTorches).toBe(2);
     expect(group.getObjectByName('war-room-teutonic-masonry')).toBeTruthy();
 
     const leftArmor = group.getObjectByName('war-room-teutonic-armor-left');
@@ -105,22 +109,23 @@ describe('War Room premium paintings', () => {
       const gilt = painting?.getObjectByName('war-room-premium-frame-gilt-bed');
       const woodBed = painting?.getObjectByName('war-room-premium-frame-wood-bed');
       const lamp = painting?.getObjectByName(`war-room-picture-lamp-${index}`);
+      const artKey = index === 0 ? 'command' : 'victory';
       expect(painting).toBeInstanceOf(THREE.Group);
       expect(painting.userData.warRoomPaintingFinish).toBe('museum-canvas-and-gilding-v3');
       expect(painting.userData.warRoomMuseumFinish).toBe('v3');
       expect(painting.userData.warRoomGalleryFinish).toBe('varnished-canvas-v20');
       expect(painting.userData.warRoomPracticalMaterialPass).toBe('v4');
-      expect(painting.userData.warRoomGalleryLandscapeVersion).toBe('v4');
-      expect(painting.userData.warRoomLandscapeVersion).toBe('v20');
+      expect(painting.userData.warRoomCampaignGalleryVersion).toBe('approved-mock-v1');
+      expect(painting.userData.warRoomCampaignArt).toBe(artKey);
+      expect(painting.userData.warRoomLandscapeVersion).toBeUndefined();
+      expect(painting.userData.warRoomLandscapeSubject).toBeUndefined();
       expect(canvas).toBeInstanceOf(THREE.Mesh);
       expect(gilt).toBeInstanceOf(THREE.Mesh);
       expect(woodBed).toBeInstanceOf(THREE.Mesh);
       expect(canvas.material.map).toBeInstanceOf(THREE.DataTexture);
-      expect(canvas.material.map.userData.warRoomLandscape).toBe(index === 0
-        ? 'black-forest-lake-dusk-v20'
-        : 'north-sea-cliffs-v20');
-      expect(canvas.material.map.userData.resolution).toEqual([384, 240]);
-      expect(canvas.material.map.userData.warRoomGalleryFinish).toBe('layered-canvas-v20');
+      expect(canvas.material.map.userData.warRoomCampaignArt).toBe(artKey);
+      expect(canvas.material.map.userData.source).toBe('approved-war-room-mock');
+      expect(canvas.material.map.userData.resolution).toEqual([64, 48]);
       expect(canvas.material.roughness).toBeLessThan(0.7);
       expect(canvas.material.clearcoat).toBeGreaterThanOrEqual(0.14);
       expect(canvas.material.bumpMap?.userData?.warRoomPremiumSurface).toBe('canvas');
@@ -155,6 +160,7 @@ describe('War Room premium paintings', () => {
     expect(group.userData.warRoomCompositionPolishVersion).toBeUndefined();
     expect(group.userData.warRoomUserPolishVersion).toBeUndefined();
     expect(group.userData.warRoomApprovedMockVersion).toBeUndefined();
+    expect(group.userData.warRoomMilitaryGalleryVersion).toBeUndefined();
     dispose(group);
   });
 });
