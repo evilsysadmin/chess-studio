@@ -1,0 +1,50 @@
+name: Main · admission
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  actions: read
+  checks: read
+  contents: read
+  pull-requests: read
+
+# La admisión no muta infraestructura. Si main avanza mientras comprobamos una
+# generación anterior, cancelar ese run ahorra minutos y evita acreditar basura
+# obsoleta. Staging conserva además su propio stale guard antes de mutar nada.
+concurrency:
+  group: chess-studio-main-admission
+  cancel-in-progress: true
+
+jobs:
+  admit:
+    name: Main · accredited PR gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Admission logic self-test
+        run: python3 -S scripts/main_ci_admission.py --self-test
+
+      - name: Reuse green PR quality gate
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python3 -S scripts/main_ci_admission.py
+
+      # Seguimos validando en el SHA final de main los contratos baratos que no
+      # necesitan dependencias pesadas ni navegador. Así un squash/merge jamás
+      # salta directamente de "PR verde" a staging sin inspeccionar el artefacto
+      # final que realmente vamos a desplegar.
+      - name: Static preflight on final main SHA
+        run: make static-preflight
+
+      - name: Staging preview isolation contract
+        run: python3 scripts/staging_preview_contract.py

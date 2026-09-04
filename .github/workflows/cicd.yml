@@ -1,17 +1,14 @@
 name: Quality · CI gate
 
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
 
-# PRs sólo necesitan validar el head más reciente. En main no cancelamos porque
-# Staging · deploy consume el SHA aprobado por este workflow y rechaza commits
-# obsoletos por su cuenta.
+# Cada PR sólo necesita validar el head más reciente. La admisión de un SHA ya
+# mergeado en main vive separada en Main · admission para no repetir este gate.
 concurrency:
   group: chess-studio-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -29,14 +26,74 @@ jobs:
       run_pawn_slug_e2e: ${{ steps.quality_paths.outputs.run_pawn_slug_e2e }}
       run_chesscom_e2e: ${{ steps.quality_paths.outputs.run_chesscom_e2e }}
       run_trailblazer_e2e: ${{ steps.quality_paths.outputs.run_trailblazer_e2e }}
+      run_matthias_home_e2e: ${{ steps.quality_paths.outputs.run_matthias_home_e2e }}
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+
+      - name: Capture immutable PR quality provenance
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          EVENT_SHA: ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          tested_merge_sha="$(git rev-parse HEAD)"
+          [[ "$tested_merge_sha" == "$EVENT_SHA" ]] || {
+            echo "::error::Checkout mutable: HEAD=$tested_merge_sha pero github.sha=$EVENT_SHA"
+            exit 1
+          }
+
+          read -r base_sha head_sha extra <<< "$(git show -s --format='%P' HEAD)"
+          [[ -n "$base_sha" && -n "$head_sha" && -z "${extra:-}" ]] || {
+            echo '::error::El SHA probado por un PR debe ser un merge sintético de exactamente dos padres.'
+            exit 1
+          }
+          [[ "$head_sha" == "$PR_HEAD_SHA" ]] || {
+            echo "::error::El segundo padre probado $head_sha no coincide con el head del PR $PR_HEAD_SHA"
+            exit 1
+          }
+
+          mkdir -p .ci
+          python3 - "$PR_NUMBER" "$tested_merge_sha" "$base_sha" "$head_sha" "$RUN_ID" "$RUN_ATTEMPT" <<'PY'
+          import json, pathlib, sys
+          pr_number, tested, base, head, run_id, attempt = sys.argv[1:]
+          payload = {
+              'schema': 1,
+              'pr_number': int(pr_number),
+              'tested_merge_sha': tested.lower(),
+              'base_sha': base.lower(),
+              'head_sha': head.lower(),
+              'run_id': int(run_id),
+              'run_attempt': int(attempt),
+          }
+          pathlib.Path('.ci/quality-provenance.json').write_text(
+              json.dumps(payload, sort_keys=True, indent=2) + '\n', encoding='utf-8'
+          )
+          print(
+              f"Quality receipt · PR #{payload['pr_number']} · merge {tested[:12]} · "
+              f"base {base[:12]} · head {head[:12]}"
+          )
+          PY
+
+      - name: Upload immutable PR quality provenance
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: quality-provenance
+          path: .ci/quality-provenance.json
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Static preflight + CI wiring
         run: make static-preflight
@@ -62,6 +119,7 @@ jobs:
             echo 'run_pawn_slug_e2e=true' >> "$GITHUB_OUTPUT"
             echo 'run_chesscom_e2e=true' >> "$GITHUB_OUTPUT"
             echo 'run_trailblazer_e2e=true' >> "$GITHUB_OUTPUT"
+            echo 'run_matthias_home_e2e=true' >> "$GITHUB_OUTPUT"
           }
 
           if [[ "$EVENT_NAME" == 'workflow_dispatch' ]]; then
@@ -90,22 +148,25 @@ jobs:
           run_pawn_slug_e2e=false
           run_chesscom_e2e=false
           run_trailblazer_e2e=false
+          run_matthias_home_e2e=false
 
           frontend_files="$(grep -E '^frontend/' <<< "$files" || true)"
           if [[ -n "$frontend_files" ]]; then
             run_frontend=true
 
-            # Los experimentos lazy/aislados usan su smoke Playwright específico
-            # en lugar de los dos journeys E2E globales. Cualquier mezcla con core
-            # restaura automáticamente el gate completo.
+            # Las superficies lazy/visuales estrechas usan su smoke Playwright
+            # específico en vez de los journeys E2E globales. Cualquier mezcla
+            # con core restaura automáticamente el gate completo.
             pawn_slug_pattern='^frontend/src/pawnSlug[^/]*\.(js|jsx)$|^frontend/src/components/PawnSlug[^/]*\.(js|jsx|css)$|^frontend/src/assets/pawnSlug/'
             chesscom_pattern='^frontend/src/chesscom[^/]*\.(js|jsx)$|^frontend/src/components/Chesscom[^/]*\.(js|jsx|css)$|^frontend/public/chesscom/'
             trailblazer_pattern='^frontend/src/pawnTrailblazer[^/]*\.(js|jsx)$|^frontend/src/components/PawnTrailblazer[^/]*\.(js|jsx|css)$|^frontend/src/assets/pawnTrailblazer/'
-            targeted_pattern="$pawn_slug_pattern|$chesscom_pattern|$trailblazer_pattern"
+            matthias_home_pattern='^frontend/src/components/MatthiasPremiumHome3D\.js$'
+            targeted_pattern="$pawn_slug_pattern|$chesscom_pattern|$trailblazer_pattern|$matthias_home_pattern"
 
             pawn_slug_frontend="$(grep -E "$pawn_slug_pattern" <<< "$frontend_files" || true)"
             chesscom_frontend="$(grep -E "$chesscom_pattern" <<< "$frontend_files" || true)"
             trailblazer_frontend="$(grep -E "$trailblazer_pattern" <<< "$frontend_files" || true)"
+            matthias_home_frontend="$(grep -E "$matthias_home_pattern" <<< "$frontend_files" || true)"
             non_targeted_frontend="$(grep -Ev "$targeted_pattern" <<< "$frontend_files" || true)"
 
             if [[ -n "$pawn_slug_frontend" ]]; then
@@ -116,6 +177,9 @@ jobs:
             fi
             if [[ -n "$trailblazer_frontend" ]]; then
               run_trailblazer_e2e=true
+            fi
+            if [[ -n "$matthias_home_frontend" ]]; then
+              run_matthias_home_e2e=true
             fi
             if [[ -n "$non_targeted_frontend" ]]; then
               run_e2e=true
@@ -138,7 +202,10 @@ jobs:
             if grep -Eq '^e2e/pawn-trailblazer\.spec\.js$' <<< "$e2e_files"; then
               run_trailblazer_e2e=true
             fi
-            non_targeted_e2e="$(grep -Ev '^e2e/(pawn-slug|chesscom|pawn-trailblazer)\.spec\.js$' <<< "$e2e_files" || true)"
+            if grep -Eq '^e2e/matthias-home-priority\.spec\.js$' <<< "$e2e_files"; then
+              run_matthias_home_e2e=true
+            fi
+            non_targeted_e2e="$(grep -Ev '^e2e/(pawn-slug|chesscom|pawn-trailblazer|matthias-home-priority)\.spec\.js$' <<< "$e2e_files" || true)"
             if [[ -n "$non_targeted_e2e" ]]; then
               run_e2e=true
             fi
@@ -156,15 +223,18 @@ jobs:
           echo "run_pawn_slug_e2e=$run_pawn_slug_e2e" >> "$GITHUB_OUTPUT"
           echo "run_chesscom_e2e=$run_chesscom_e2e" >> "$GITHUB_OUTPUT"
           echo "run_trailblazer_e2e=$run_trailblazer_e2e" >> "$GITHUB_OUTPUT"
+          echo "run_matthias_home_e2e=$run_matthias_home_e2e" >> "$GITHUB_OUTPUT"
 
   frontend:
     name: Tests · Frontend
     needs: preflight
-    if: needs.preflight.outputs.run_frontend == 'true' || needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true'
+    if: needs.preflight.outputs.run_frontend == 'true' || needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
 
       - uses: actions/setup-node@v7
         with:
@@ -208,7 +278,7 @@ jobs:
           python3 ../scripts/npm_audit_gate.py ../.security/npm-audit.json
 
       - name: Restore targeted experiment browser runtime
-        if: needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true'
+        if: needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true'
         uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
@@ -229,8 +299,13 @@ jobs:
         working-directory: e2e
         run: ./node_modules/.bin/playwright test pawn-trailblazer.spec.js --workers=1 --retries=0
 
+      - name: Matthias Home browser smoke
+        if: needs.preflight.outputs.run_matthias_home_e2e == 'true'
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test matthias-home-priority.spec.js --workers=1 --retries=0
+
       - name: Upload targeted browser diagnostics on failure
-        if: failure() && (needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true')
+        if: failure() && (needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true')
         uses: actions/upload-artifact@v7
         with:
           name: targeted-playwright-test-results
@@ -246,6 +321,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
 
       - uses: actions/setup-python@v7
         with:
@@ -283,6 +360,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
 
       - name: Detect Docker/dependency/security changes
@@ -377,6 +455,8 @@ jobs:
           - smoke
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
 
       - name: Restore critical browser runtime
         uses: ./.github/actions/setup-browser-e2e
