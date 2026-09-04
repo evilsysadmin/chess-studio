@@ -12,12 +12,39 @@ import { isSoftwareWebGLRenderer, warRoomAmbientFramePlan, warRoomSceneProfile }
 import { resolveBoardTap } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { board3DCaptureWarmBoost, board3DHighlightPulse, board3DPieceInteractionPose } from './Board3DInteractionFx.js';
-import { BOARD_THEME_3D, FILES } from './Board3DConfig.js';
+import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
 import { adjacentSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { addMesh, buildWarRoom, fitBoardCamera, makeTextSprite } from './Board3DScene.js';
+import {
+  board3DForensicGhost,
+  board3DTechniqueTargetCount,
+  board3DTerrainSquares,
+  buildBoard3DLegalMap,
+} from './Board3DParityVisuals.js';
 import './Board3D.css';
 import './Board3DViewportTuning.css';
+import './Board3DParity.css';
+
+function clearObjectGroup(group) {
+  if (!group) return;
+  for (const child of [...group.children]) {
+    group.remove(child);
+    disposeObject(child);
+  }
+}
+
+function makeObjectTranslucent(group, opacity) {
+  group?.traverse?.((object) => {
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    materials.forEach((material) => {
+      if (!material) return;
+      material.transparent = true;
+      material.opacity = opacity;
+      material.depthWrite = false;
+    });
+  });
+}
 
 function Board3DCanvas({
   fen,
@@ -28,11 +55,16 @@ function Board3DCanvas({
   orientation = 'white',
   animate,
   hintMove,
+  mistakeMove,
   checkSquare,
   gameOver = false,
   showCoordinates = true,
   matthiasKingColor = null,
   onCustomize,
+  onPieceMouseEnter,
+  onPieceMouseLeave,
+  turnState = null,
+  themeOverride = null,
   onRendererFailure,
 }) {
   const hostRef = useRef(null);
@@ -44,6 +76,7 @@ function Board3DCanvas({
   const previousFenRef = useRef(fen);
   const lastAnimatedSeqRef = useRef(0);
   const inspectModeRef = useRef(false);
+  const hoveredPieceRef = useRef(null);
   const cameraMotionRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0, yaw: 0, pitch: 0, dragging: false, lastX: 0, lastY: 0 });
   const [skinId, setSkinId] = useState(() => loadSelectedSkin());
   const [boardTheme, setBoardTheme] = useState(() => loadBoardTheme());
@@ -51,8 +84,18 @@ function Board3DCanvas({
   const [focusedSquare, setFocusedSquare] = useState(() => orientation === 'black' ? 'e8' : 'e1');
   const [hoveredSquare, setHoveredSquare] = useState(null);
   const [inspectMode, setInspectMode] = useState(false);
+  const effectiveThemeId = resolveBoard3DThemeId(themeOverride, boardTheme);
+  const currentPieces = useMemo(() => parseFen(fen), [fen]);
+  const forensicGhost = useMemo(() => board3DForensicGhost(mistakeMove, currentPieces), [mistakeMove, currentPieces]);
+  const terrainSquares = useMemo(() => board3DTerrainSquares(hintMove), [hintMove]);
+  const techniqueTargetCount = useMemo(() => board3DTechniqueTargetCount(legalTargets), [legalTargets]);
 
-  latestPropsRef.current = { onSquareClick, onRendererFailure };
+  latestPropsRef.current = {
+    onSquareClick,
+    onRendererFailure,
+    onPieceMouseEnter,
+    onPieceMouseLeave,
+  };
 
   useEffect(() => {
     const refreshSkin = (event) => setSkinId(event?.detail || loadSelectedSkin());
@@ -68,6 +111,7 @@ function Board3DCanvas({
   useEffect(() => {
     setFocusedSquare(orientation === 'black' ? 'e8' : 'e1');
     setHoveredSquare(null);
+    hoveredPieceRef.current = null;
   }, [orientation]);
 
   useEffect(() => {
@@ -127,10 +171,12 @@ function Board3DCanvas({
     const squareMeshes = new Map();
     const highlightMeshes = new Map();
     const pieceMeshes = new Map();
+    const terrainGroup = new THREE.Group();
     const pieceGroup = new THREE.Group();
+    const forensicGroup = new THREE.Group();
     const coordinateGroup = new THREE.Group();
     const boardGroup = new THREE.Group();
-    const theme = BOARD_THEME_3D[boardTheme] || BOARD_THEME_3D.classic;
+    const theme = BOARD_THEME_3D[effectiveThemeId] || BOARD_THEME_3D.classic;
     const whiteSide = orientation !== 'black';
 
     scene.background = new THREE.Color(0x080a0f);
@@ -266,7 +312,9 @@ function Board3DCanvas({
       }
     }
 
+    boardGroup.add(terrainGroup);
     boardGroup.add(pieceGroup);
+    boardGroup.add(forensicGroup);
     boardGroup.add(coordinateGroup);
     scene.add(boardGroup);
 
@@ -314,6 +362,15 @@ function Board3DCanvas({
         if (object?.userData?.square) return object.userData.square;
       }
       return null;
+    }
+
+    function updatePieceHover(nextSquare, event) {
+      const previous = hoveredPieceRef.current;
+      if (previous === nextSquare) return;
+      if (previous) latestPropsRef.current.onPieceMouseLeave?.(previous, event);
+      hoveredPieceRef.current = nextSquare;
+      setHoveredSquare(nextSquare);
+      if (nextSquare) latestPropsRef.current.onPieceMouseEnter?.(nextSquare, event);
     }
 
     function selectSquareFromTouch(event) {
@@ -367,16 +424,16 @@ function Board3DCanvas({
       const square = squareFromPointer(event);
       const pieceHover = square && pieceMeshes.has(square) ? square : null;
       renderer.domElement.style.cursor = pieceHover ? 'pointer' : 'default';
-      setHoveredSquare((current) => current === pieceHover ? current : pieceHover);
+      updatePieceHover(pieceHover, event);
     }
 
-    function onPointerLeave() {
+    function onPointerLeave(event) {
       const motion = cameraMotionRef.current;
       motion.targetX = 0;
       motion.targetY = 0;
       motion.dragging = false;
       renderer.domElement.style.cursor = 'default';
-      setHoveredSquare(null);
+      updatePieceHover(null, event);
     }
 
     function releasePointer(event) {
@@ -479,7 +536,9 @@ function Board3DCanvas({
       scene,
       camera,
       renderer,
+      terrainGroup,
       pieceGroup,
+      forensicGroup,
       pieceMeshes,
       highlightMeshes,
       coarsePointer,
@@ -509,6 +568,7 @@ function Board3DCanvas({
       scene.traverse((object) => {
         if (object.userData?.ownedTexture) object.userData.ownedTexture.dispose();
       });
+      hoveredPieceRef.current = null;
       releaseEnvironment();
       disposeObject(scene);
       renderer.dispose();
@@ -516,7 +576,7 @@ function Board3DCanvas({
       if (renderer.domElement.parentNode === host) host.removeChild(renderer.domElement);
       sceneStateRef.current = null;
     };
-  }, [boardTheme, orientation, showCoordinates]);
+  }, [effectiveThemeId, orientation, showCoordinates]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
@@ -713,13 +773,54 @@ function Board3DCanvas({
         disposeObject(capturedGhost);
       }
     };
-  }, [fen, skinId, animate, boardTheme, orientation, showCoordinates, matthiasKingColor, checkSquare, gameOver]);
+  }, [fen, skinId, animate, effectiveThemeId, orientation, showCoordinates, matthiasKingColor, checkSquare, gameOver]);
 
-  const legalMap = useMemo(() => new Map((legalTargets || []).map((target) => {
-    const square = target?.to || target?.square || target;
-    const capture = Boolean(target?.captured || target?.san?.includes?.('x'));
-    return [square, capture];
-  })), [legalTargets]);
+  useEffect(() => {
+    const state = sceneStateRef.current;
+    if (!state) return;
+    clearObjectGroup(state.forensicGroup);
+    if (forensicGhost) {
+      const ghost = buildPiece(forensicGhost.type, forensicGhost.color, skinId, state.renderLite, {
+        matthiasKing: forensicGhost.type === 'k' && forensicGhost.color === matthiasKingColor,
+        faceTowardCamera: orientation !== 'black',
+      });
+      const { x, z } = squarePosition(forensicGhost.square);
+      ghost.position.set(x, 0.105, z);
+      ghost.scale.multiplyScalar(0.94);
+      ghost.userData.forensicGhost = true;
+      makeObjectTranslucent(ghost, 0.3);
+      state.forensicGroup.add(ghost);
+    }
+    state.render();
+  }, [forensicGhost, skinId, orientation, matthiasKingColor]);
+
+  useEffect(() => {
+    const state = sceneStateRef.current;
+    if (!state) return;
+    clearObjectGroup(state.terrainGroup);
+    for (const square of terrainSquares) {
+      const { x, z } = squarePosition(square);
+      const obstacle = new THREE.Mesh(
+        new THREE.BoxGeometry(0.62, 0.24, 0.62),
+        new THREE.MeshPhysicalMaterial({
+          color: 0x4f5558,
+          metalness: 0.1,
+          roughness: 0.86,
+          clearcoat: 0.06,
+          clearcoatRoughness: 0.7,
+        }),
+      );
+      obstacle.position.set(x, 0.19, z);
+      obstacle.rotation.y = Math.PI / 4;
+      obstacle.castShadow = true;
+      obstacle.receiveShadow = true;
+      obstacle.userData.terrainBlocked = square;
+      state.terrainGroup.add(obstacle);
+    }
+    state.render();
+  }, [terrainSquares, effectiveThemeId]);
+
+  const legalMap = useMemo(() => buildBoard3DLegalMap(legalTargets), [legalTargets]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
@@ -771,7 +872,7 @@ function Board3DCanvas({
 
     applyMatthiasCheckPose(state, checkSquare, orientation);
     state.render();
-  }, [fen, selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, hoveredSquare, boardTheme, orientation, showCoordinates]);
+  }, [fen, selectedSquare, legalMap, lastMove, hintMove, checkSquare, focusedSquare, hoveredSquare, effectiveThemeId, orientation, showCoordinates]);
 
   useEffect(() => {
     const state = sceneStateRef.current;
@@ -784,7 +885,7 @@ function Board3DCanvas({
     if (state.scene.fog?.isFogExp2) state.scene.fog.density = lights.fogDensity;
     applyMatthiasCheckPose(state, checkSquare, orientation);
     state.render();
-  }, [checkSquare, gameOver, boardTheme, orientation, showCoordinates]);
+  }, [checkSquare, gameOver, effectiveThemeId, orientation, showCoordinates]);
 
   function handleKeyDown(event) {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -807,6 +908,11 @@ function Board3DCanvas({
       data-board3d-motion="physical-v1"
       data-board3d-interaction-fx="brass-ember-v1"
       data-board3d-camera="fixed-tactical"
+      data-board3d-theme={effectiveThemeId}
+      data-board3d-turn={turnState || ''}
+      data-board3d-technique-target-count={techniqueTargetCount}
+      data-board3d-terrain-count={terrainSquares.length}
+      data-board3d-forensic-ghost={forensicGhost?.square || ''}
       data-board3d-inspect={inspectMode ? 'true' : 'false'}
       data-board3d-selected={selectedSquare || ''}
       data-board3d-focused={focusedSquare || ''}
