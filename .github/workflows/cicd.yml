@@ -474,8 +474,11 @@ jobs:
           case "$CRITICAL_E2E_LANE" in
             regression)
               ./node_modules/.bin/playwright test regression-journeys.spec.js \
-                --grep "sesión · dos contextos de navegador|deploy · una release nueva no fuerza reload|admin · presencia distingue|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos|Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar" \
+                --grep "sesión · dos contextos de navegador|deploy · una release nueva no fuerza reload|admin · presencia distingue|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos" \
                 --workers=1 --retries=0
+              ./node_modules/.bin/playwright test regression-journeys.spec.js \
+                --grep "Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar" \
+                --workers=1 --retries=0 --timeout=75000
               ./node_modules/.bin/playwright test mobile-final-interactions.spec.js --workers=1 --retries=0
               ;;
             smoke)
