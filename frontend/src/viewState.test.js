@@ -38,6 +38,12 @@ describe('navegación resistente a refresh', () => {
     expect(loadSessionView()).toBe('menu');
   });
 
+  it('una sesión vieja del prototipo 3D retirado cae al menú', () => {
+    sessionStorage.setItem(VIEW_STORAGE_KEY, 'board3d');
+    expect(loadSessionView()).toBe('menu');
+    rememberSessionViewHistory(['menu', 'board3d', 'history']);
+    expect(loadSessionViewHistory()).toEqual(['menu', 'history']);
+  });
 
   it('conserva una pila de vuelta entre refreshes', () => {
     rememberSessionViewHistory(['menu', 'tournament', 'history']);
