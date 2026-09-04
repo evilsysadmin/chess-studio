@@ -3,6 +3,9 @@ function positive(value, fallback) {
   return Number.isFinite(number) && number > 0 ? number : fallback;
 }
 
+// Fit artwork inside a world-space box without ever stretching it. Before an
+// image reports native dimensions the target box itself is the deterministic
+// fallback; once loaded, the same helper preserves the real aspect ratio.
 export function trailSpriteScale({
   imageWidth,
   imageHeight,
