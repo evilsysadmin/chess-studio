@@ -8,7 +8,20 @@ export const BOARD_THEME_3D = Object.freeze({
   royal: { light: 0xd8c990, dark: 0x493564, frame: 0x221b32, felt: 0x0d0b15, glow: 0xe0b84e },
   forensic: { light: 0xc6d2ce, dark: 0x40515a, frame: 0x1c262b, felt: 0x0a1013, glow: 0x63c0ba },
   obsidian: { light: 0xb5b0a8, dark: 0x202225, frame: 0x0c0d0f, felt: 0x050607, glow: 0xc7a34a },
+  // Combat Campaign used these ids already in the 2D board. Keep the same
+  // public ids in Three.js so changing renderer never changes the battlefield.
+  'combat-jungle': { light: 0xb9bea6, dark: 0x354738, frame: 0x1c281d, felt: 0x09110c, glow: 0x86a968 },
+  'combat-urban': { light: 0xb9bab6, dark: 0x3b4145, frame: 0x202529, felt: 0x0a0d0f, glow: 0xb4a06c },
+  'combat-desert': { light: 0xd5c39c, dark: 0x765436, frame: 0x3b291b, felt: 0x171008, glow: 0xd6a05b },
+  'combat-citadel': { light: 0xc7c9ca, dark: 0x34383d, frame: 0x171a1e, felt: 0x080a0d, glow: 0xbda76b },
 });
+
+export function resolveBoard3DThemeId(candidate, fallback = 'classic') {
+  const requested = String(candidate || '').trim();
+  if (requested && BOARD_THEME_3D[requested]) return requested;
+  const fallbackId = String(fallback || '').trim();
+  return BOARD_THEME_3D[fallbackId] ? fallbackId : 'classic';
+}
 
 export const SKIN_3D = Object.freeze({
   default: {
