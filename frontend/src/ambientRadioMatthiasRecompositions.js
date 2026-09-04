@@ -100,6 +100,36 @@ export const RADIO_MATTHIAS_MELODIC_REWRITES = Object.freeze({
       Object.freeze({lead:Object.freeze({3:64,9:59,17:71,25:62,33:76,41:68,49:73,57:61,63:67}),counter:Object.freeze({6:79,22:75,38:84,54:77})}),
     ]),
   }),
+  sixtyFourKeys: Object.freeze({
+    description:'Piano de fieltro en ciclos irregulares: una nota cambia, otra tarda demasiado en llegar y el cello responde como si estuviera contando casillas en voz baja.',
+    melodySections:Object.freeze([
+      Object.freeze({lead:Object.freeze({0:60,7:61,15:64,26:59,34:62,45:60}),counter:Object.freeze({11:48,31:50})}),
+      Object.freeze({lead:Object.freeze({3:62,10:66,21:63,29:68,39:61,47:64}),counter:Object.freeze({15:50,35:47})}),
+      Object.freeze({lead:Object.freeze({1:59,13:63,18:58,30:65,37:60,46:57}),counter:Object.freeze({9:47,33:45})}),
+    ]),
+  }),
+  queenChamberPrelude: Object.freeze({
+    description:'Preludio de cámara con saltos de clave y respuestas pizzicato desplazadas; contrapunto sobrio sin reciclar la fuga del caballo.',
+    melodySections:Object.freeze([
+      Object.freeze({lead:Object.freeze({0:64,4:71,8:67,12:72,16:65,20:69,28:62,32:67,36:74,44:71,48:76,52:69,60:64}),counter:Object.freeze({2:52,10:55,18:57,26:53,34:59,42:55,50:60,58:57})}),
+      Object.freeze({lead:Object.freeze({0:67,5:72,9:69,16:76,21:71,29:74,37:65,42:69,50:77,57:72,63:67}),counter:Object.freeze({3:55,13:60,24:57,35:62,46:59,55:64,61:60})}),
+    ]),
+  }),
+  midnightArcade: Object.freeze({
+    description:'Breakbeat de madrugada con motivo angular y stabs separados; el pulso sigue frontal, pero la melodía deja de ser el synthwave vestido con otra chaqueta.',
+    melodySections:Object.freeze([
+      Object.freeze({lead:Object.freeze({0:52,5:59,13:53,20:64,28:57,35:50,43:62,51:55,60:67}),counter:Object.freeze({3:76,19:83,31:78,47:86,59:74})}),
+      Object.freeze({lead:Object.freeze({2:55,10:67,17:58,25:64,33:52,41:71,50:60,57:69,63:55}),counter:Object.freeze({6:79,22:87,38:76,54:84})}),
+    ]),
+  }),
+  blackArchive: Object.freeze({
+    description:'Dark ambient de archivo sellado: el coro aparece en intervalos incómodamente largos y el cello contesta desde otra estantería, sin copiar la forma del Abismo.',
+    melodySections:Object.freeze([
+      Object.freeze({lead:Object.freeze({6:55,19:54,35:50}),counter:Object.freeze({12:43,29:40})}),
+      Object.freeze({lead:Object.freeze({4:57,17:51,33:56}),counter:Object.freeze({10:45,26:39})}),
+      Object.freeze({lead:Object.freeze({9:52,23:58,37:49}),counter:Object.freeze({3:41,31:38})}),
+    ]),
+  }),
 });
 
 export const RADIO_MATTHIAS_MELODIC_REWRITE_IDS = Object.freeze(Object.keys(RADIO_MATTHIAS_MELODIC_REWRITES));
