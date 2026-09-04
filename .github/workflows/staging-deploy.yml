@@ -3,7 +3,7 @@ name: Staging · deploy
 on:
   workflow_run:
     workflows:
-      - Quality · CI gate
+      - Main · admission
     types:
       - completed
     branches:
@@ -73,7 +73,7 @@ jobs:
               echo "- CI-approved SHA: \`$DEPLOY_SHA\`"
               echo "- Current main: \`$current_main\`"
               echo '- Acción: `autocancelar esta ejecución antes de Render/Pages/Worker`'
-              echo '- Siguiente generación: `la dispara el CI normal del HEAD actual cuando quede verde`'
+              echo '- Siguiente generación: `la dispara la admisión normal del HEAD actual cuando quede verde`'
               echo '- Rebase/retry artificial: `no necesario`'
             } >> "$GITHUB_STEP_SUMMARY"
 
