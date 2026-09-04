@@ -242,7 +242,9 @@ function applyActivityPose(rig, pose) {
     cup.position.set(.56 - reach * .26, -.26 + reach * .55, .78 + reach * .05);
     cup.rotation.set(.03 + reach * .16, -.08, -.10 - reach * .08);
   } else if (prop === 'ration') {
-    ration.position.set(.62 - reach * .12, -.28 + reach * .24, .80 + reach * .04);
+    // A plate is presented, not drunk from. Keep the high-contrast ration in the
+    // lower-right portrait zone and let reach lift it only slightly toward Matthias.
+    ration.position.set(.62 - reach * .12, -.56 + reach * .16, .80 + reach * .04);
     ration.rotation.set(-.08 + reach * .10, -.12, -.10);
   } else if (prop === 'book') {
     book.position.set(-.10, -.50 + reach * .10, .82);
@@ -259,12 +261,18 @@ function applyActivityPose(rig, pose) {
 
   if (support.visible) {
     const documentProp = prop === 'book' || prop === 'dossier' || prop === 'write';
-    supportStem.position.x = documentProp ? .39 : .42 - reach * .07;
-    supportStem.position.y = documentProp ? -.30 + reach * .08 : -.30 + reach * .29;
-    supportStem.rotation.z = documentProp ? -.58 : -.50 - reach * .15;
-    supportGlove.position.x = documentProp ? .43 : .54 - reach * .15;
-    supportGlove.position.y = documentProp ? -.20 + reach * .10 : -.09 + reach * .30;
-    supportGlove.position.z = .72 + reach * .03;
+    if (prop === 'ration') {
+      supportStem.position.set(.43, -.42 + reach * .12, .50);
+      supportStem.rotation.z = -.52;
+      supportGlove.position.set(.50, -.29 + reach * .14, .74);
+    } else {
+      supportStem.position.x = documentProp ? .39 : .42 - reach * .07;
+      supportStem.position.y = documentProp ? -.30 + reach * .08 : -.30 + reach * .29;
+      supportStem.rotation.z = documentProp ? -.58 : -.50 - reach * .15;
+      supportGlove.position.x = documentProp ? .43 : .54 - reach * .15;
+      supportGlove.position.y = documentProp ? -.20 + reach * .10 : -.09 + reach * .30;
+      supportGlove.position.z = .72 + reach * .03;
+    }
   }
 
   activityRig.currentProp = prop;
