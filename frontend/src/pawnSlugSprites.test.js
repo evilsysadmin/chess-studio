@@ -46,10 +46,11 @@ describe('Pawn Slug premium sprite contracts', () => {
   });
 
   it('keeps local SVG fallbacks for premium WebP actor atlases', () => {
+    const localSvg = /(?:\.svg(?:\?|$)|^data:image\/svg\+xml(?:[,;]))/;
     expect(String(PAWN_SLUG_SPRITE_META.matthias.url)).toMatch(/\.webp(?:\?|$)/);
     expect(String(PAWN_SLUG_SPRITE_META.enemies.url)).toMatch(/\.webp(?:\?|$)/);
-    expect(String(PAWN_SLUG_SPRITE_META.matthias.fallbackUrl)).toMatch(/\.svg(?:\?|$)/);
-    expect(String(PAWN_SLUG_SPRITE_META.enemies.fallbackUrl)).toMatch(/\.svg(?:\?|$)/);
+    expect(String(PAWN_SLUG_SPRITE_META.matthias.fallbackUrl)).toMatch(localSvg);
+    expect(String(PAWN_SLUG_SPRITE_META.enemies.fallbackUrl)).toMatch(localSvg);
   });
 
   it('uses local runtime assets instead of remote sprites', () => {
