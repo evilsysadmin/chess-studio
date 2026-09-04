@@ -6,6 +6,8 @@ import {
   disposeMatthiasPremiumHome3D,
   MATTHIAS_PREMIUM_HOME_FACE_RIG_VERSION,
   MATTHIAS_PREMIUM_HOME_FIDELITY_VERSION,
+  MATTHIAS_PREMIUM_HOME_FRAME_SCALE,
+  MATTHIAS_PREMIUM_HOME_FRAME_Y,
   MATTHIAS_PREMIUM_HOME_MODEL_VERSION,
   MATTHIAS_PREMIUM_HOME_REFERENCE,
   MATTHIAS_PREMIUM_HOME_RENDER_CONTRACT,
@@ -27,6 +29,8 @@ describe('MatthiasPremiumHome3D', () => {
     expect(rig.root.userData.fidelityVersion).toBe(MATTHIAS_PREMIUM_HOME_FIDELITY_VERSION);
     expect(rig.root.userData.renderContract).toBe(MATTHIAS_PREMIUM_HOME_RENDER_CONTRACT);
     expect(rig.root.userData.approvedReference).toBe(MATTHIAS_PREMIUM_HOME_REFERENCE);
+    expect(rig.root.userData.frameScale).toBe(MATTHIAS_PREMIUM_HOME_FRAME_SCALE);
+    expect(rig.root.userData.frameY).toBe(MATTHIAS_PREMIUM_HOME_FRAME_Y);
     expect(capSize.x).toBeGreaterThan(faceSize.x * 1.2);
     expect(rig.leftEye.scale.y).toBeGreaterThan(1.45);
     expect(rig.rightEye.scale.y).toBeGreaterThan(1.45);
@@ -37,7 +41,7 @@ describe('MatthiasPremiumHome3D', () => {
     disposeMatthiasPremiumHome3D(rig);
   });
 
-  it('el blink nunca convierte los ojos en rendijas y no introduce zoom ni Z drift', () => {
+  it('el blink nunca convierte los ojos en rendijas y conserva el safe frame fijo', () => {
     const rig = createMatthiasPremiumHome3D();
     applyMatthiasPremiumHomePose(rig, {
       bodyY: .01,
@@ -54,8 +58,13 @@ describe('MatthiasPremiumHome3D', () => {
 
     expect(rig.leftEye.scale.y).toBeGreaterThan(1.2);
     expect(rig.rightEye.scale.y).toBeGreaterThan(1.2);
+    expect(rig.root.position.y).toBeCloseTo(.01 + MATTHIAS_PREMIUM_HOME_FRAME_Y, 6);
     expect(rig.root.position.z).toBe(0);
-    expect(rig.root.scale.toArray()).toEqual([1, 1, 1]);
+    expect(rig.root.scale.toArray()).toEqual([
+      MATTHIAS_PREMIUM_HOME_FRAME_SCALE,
+      MATTHIAS_PREMIUM_HOME_FRAME_SCALE,
+      MATTHIAS_PREMIUM_HOME_FRAME_SCALE,
+    ]);
 
     disposeMatthiasPremiumHome3D(rig);
   });

@@ -10,6 +10,8 @@ export const MATTHIAS_PREMIUM_HOME_FACE_RIG_VERSION = 'premium-pawn-face-v1';
 export const MATTHIAS_PREMIUM_HOME_FIDELITY_VERSION = 'approved-original-premium-v1';
 export const MATTHIAS_PREMIUM_HOME_RENDER_CONTRACT = 'canonical-pawn-3d-v1';
 export const MATTHIAS_PREMIUM_HOME_REFERENCE = 'approved-original-matthias-premium-v1';
+export const MATTHIAS_PREMIUM_HOME_FRAME_SCALE = .94;
+export const MATTHIAS_PREMIUM_HOME_FRAME_Y = -.05;
 export { MATTHIAS_PAWN_EMBLEM };
 
 function node(root, name) {
@@ -110,6 +112,8 @@ export function createMatthiasPremiumHome3D({ compact = false } = {}) {
   root.userData.renderContract = MATTHIAS_PREMIUM_HOME_RENDER_CONTRACT;
   root.userData.approvedReference = MATTHIAS_PREMIUM_HOME_REFERENCE;
   root.userData.emblem = MATTHIAS_PAWN_EMBLEM;
+  root.userData.frameScale = MATTHIAS_PREMIUM_HOME_FRAME_SCALE;
+  root.userData.frameY = MATTHIAS_PREMIUM_HOME_FRAME_Y;
 
   refreshBase(rig);
   return rig;
@@ -133,9 +137,11 @@ export function applyMatthiasPremiumHomePose(rig, pose) {
     rig.speechMouth.scale.z = .43;
   }
 
-  // Home is orthographic and identity-locked: no model zoom or Z drift.
+  // Fixed Home framing: keep the wide officer cap inside the portrait safe area.
+  // The constants never animate, so FSM gestures cannot introduce zoom or Z drift.
+  rig.root.position.y = (Number(pose.bodyY) || 0) + MATTHIAS_PREMIUM_HOME_FRAME_Y;
   rig.root.position.z = 0;
-  rig.root.scale.set(1, 1, 1);
+  rig.root.scale.setScalar(MATTHIAS_PREMIUM_HOME_FRAME_SCALE);
 }
 
 export function disposeMatthiasPremiumHome3D(rig) {
