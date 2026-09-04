@@ -22,13 +22,47 @@ jobs:
       PR_URL: ${{ github.event.pull_request.html_url }}
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
+      - name: Wait for required checks to be published
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # pull_request_target can start before GitHub has attached the first
+          # protected check-run to the fresh PR head. In that race,
+          # `gh pr checks --required --watch` exits immediately with
+          # "no required checks reported" instead of waiting. Bootstrap the
+          # watcher only after at least one required check is visible.
+          required_count=0
+          for attempt in {1..120}; do
+            current_head="$(gh pr view "$PR_URL" --json headRefOid --jq '.headRefOid')"
+            [[ "$current_head" == "$PR_HEAD_SHA" ]] || {
+              echo "::error::La PR cambió de head mientras esperaba checks: $PR_HEAD_SHA -> $current_head"
+              exit 1
+            }
+
+            required_json="$(gh pr checks "$PR_URL" --required --json name 2>/dev/null || true)"
+            required_count="$(jq 'length' <<<"${required_json:-[]}" 2>/dev/null || echo 0)"
+            if [[ "$required_count" =~ ^[0-9]+$ ]] && (( required_count > 0 )); then
+              echo "GitHub ya publica $required_count required check(s) para $PR_HEAD_SHA."
+              break
+            fi
+
+            echo "Aún no hay required checks publicados para $PR_HEAD_SHA (intento $attempt/120)."
+            sleep 5
+          done
+
+          [[ "$required_count" =~ ^[0-9]+$ ]] && (( required_count > 0 )) || {
+            echo "::error::GitHub no publicó required checks para $PR_HEAD_SHA en 10 minutos"
+            exit 1
+          }
+
       - name: Wait for protected required checks
         shell: bash
         run: |
           set -euo pipefail
-          # Keep the merge in the same workflow that observes the protected
-          # checks. A synchronize event cancels this watcher and starts a fresh
-          # one for the new PR head.
+          # Once the protected checks exist, gh can safely watch them to a real
+          # terminal state. A synchronize event cancels this watcher and starts
+          # a fresh one for the new PR head.
           gh pr checks "$PR_URL" --required --watch --interval 10
 
       - name: Squash merge approved head
