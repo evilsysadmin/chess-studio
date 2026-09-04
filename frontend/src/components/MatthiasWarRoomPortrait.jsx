@@ -213,7 +213,7 @@ export default function MatthiasWarRoomPortrait({
             reducedMotion={reducedMotion}
             motionIntensity={compactViewport ? WAR_ROOM_COMPACT_MOTION_INTENSITY : 1}
             facialExpression={descriptor.expression}
-            facialGesture={descriptor.gesture}
+            facialGesture={descriptor.facialGesture || descriptor.gesture}
           />
         </span>
       </span>
