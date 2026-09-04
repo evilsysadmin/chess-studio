@@ -1,4 +1,25 @@
 import { structuredFeel as legacyStructuredFeel } from './ambientProfilesLegacy.js';
+import {
+  AMBIENT_GENRE_ORDER,
+  AMBIENT_THEMES,
+  AMBIENT_THEME_GROUPS,
+  AMBIENT_THEME_OPTIONS,
+  CURATED_HIDDEN_THEME_IDS,
+} from './ambientCatalog.js';
+import { installRadioMatthiasExpansion } from './ambientRadioMatthiasExpansion.js';
+import { radioMatthiasStructuredFeel } from './ambientRadioMatthiasProfiles.js';
+import { installRadioMatthiasRecompositions } from './ambientRadioMatthiasRecompositions.js';
+
+const RADIO_MATTHIAS_HIDDEN_THEME_IDS = new Set([...CURATED_HIDDEN_THEME_IDS, 'blackArchive']);
+
+installRadioMatthiasExpansion({
+  themes: AMBIENT_THEMES,
+  options: AMBIENT_THEME_OPTIONS,
+  groups: AMBIENT_THEME_GROUPS,
+  genreOrder: AMBIENT_GENRE_ORDER,
+  hiddenIds: RADIO_MATTHIAS_HIDDEN_THEME_IDS,
+});
+installRadioMatthiasRecompositions({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
 
 const GRANADA_THEME_IDS = new Set(['granadaPatio', 'granadaCopperRain0232']);
 
@@ -59,12 +80,50 @@ const REACTOR_GAMBIT_PROFILE = Object.freeze({
   }),
 });
 
+const TANGIER_SMOKE_PROFILE = Object.freeze({
+  family: 'tangier-clarinet-guitar-afterhours-v2',
+  preserveSectionOrder: true,
+  harmonyPath: Object.freeze([0, 0, -2, 5, 0, 3, 0]),
+  swing: 0.09,
+  warmth: 0.82,
+  releaseScale: 1.08,
+  space: 0.08,
+  delayMs: 118,
+  leadInstrument: 'clarinet',
+  counterInstrument: 'guitar2',
+  chordInstrument: 'rhodesWarm',
+  bassInstrument: 'uprightBass',
+  chordHoldSteps: 12,
+  bassHoldSteps: 3.2,
+  layers: Object.freeze({ lead: true, counter: true, chords: true, bass: true, drums: true, signature: true }),
+  mix: Object.freeze({ lead: 0.72, counter: 0.46, bass: 0.92, chord: 0.48 }),
+  percussion: Object.freeze({
+    period: 12,
+    kit: 'maghreb-hand',
+    punch: 0.98,
+    pattern: Object.freeze({ 0:'K', 4:'H', 7:'S', 10:'B' }),
+  }),
+  signature: Object.freeze({
+    instrument: 'clarinet',
+    sections: Object.freeze([0, 1, 3]),
+    everyCycles: 2,
+    repeatPeriod: 64,
+    durationSteps: 4.6,
+    volume: 0.32,
+    motif: Object.freeze({ 6: 67, 22: 70, 38: 65, 54: 62 }),
+  }),
+});
+
 // Facade deliberadamente pequeño: conserva las identidades legacy y
 // permite profundizar temas concretos sin volver a engordar el motor WebAudio.
 export function structuredFeel(theme) {
+  const radioMatthias = radioMatthiasStructuredFeel(theme);
+  if (radioMatthias) return radioMatthias;
+
   const legacy = legacyStructuredFeel(theme);
   if (!legacy) return legacy;
   if (theme?.id === 'reactorGambit') return Object.freeze({ ...legacy, ...REACTOR_GAMBIT_PROFILE });
+  if (theme?.id === 'tangierSmoke') return Object.freeze({ ...legacy, ...TANGIER_SMOKE_PROFILE });
   if (!GRANADA_THEME_IDS.has(theme?.id)) return legacy;
   return Object.freeze({
     ...legacy,
