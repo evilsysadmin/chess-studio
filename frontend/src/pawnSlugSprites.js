@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import matthiasAtlasUrl from './assets/pawnSlug/matthias_atlas_premium.webp';
+import matthiasAtlasUrl from './assets/pawnSlug/matthias_atlas_v2.webp';
 import matthiasFallbackAtlasUrl from './assets/pawnSlug/matthias_atlas.svg';
-import enemyAtlasUrl from './assets/pawnSlug/enemy_atlas_premium.webp';
+import enemyAtlasUrl from './assets/pawnSlug/enemy_atlas_v2.webp';
 import enemyFallbackAtlasUrl from './assets/pawnSlug/enemy_atlas.svg';
-import panzerRookUrl from './assets/pawnSlug/panzer_rook.svg';
+import panzerRookUrl from './assets/pawnSlug/panzer_rook_v2.webp';
 import weaponAtlasUrl from './assets/pawnSlug/weapon_atlas.svg';
 
 export function configurePawnSlugTexture(texture) {
@@ -112,7 +112,7 @@ function staticSprite(url, scale = [4, 2.2]) {
 }
 
 export function createMatthiasSlugSprite() {
-  const sprite = atlasSprite(matthiasAtlasUrl, matthiasFallbackAtlasUrl, 4, 0, [2.25, 2.25]);
+  const sprite = atlasSprite(matthiasAtlasUrl, matthiasFallbackAtlasUrl, 4, 0, [1.77, 2.56]);
   sprite.name = 'pawn-slug-matthias-sprite';
   sprite.userData.animation = { clock: 0, weapon: 'pistol' };
   sprite.userData.setWeapon = (kind) => { sprite.userData.animation.weapon = kind || 'pistol'; };
@@ -126,16 +126,16 @@ export function animateMatthiasSlugSprite(sprite, { time = 0, running = false, f
   else if (firing) setFrame(3);
   else if (running) setFrame(Math.floor(time * 9) % 2 ? 1 : 2);
   else setFrame(0);
-  sprite.scale.y = crouch ? 1.78 : 2.25;
+  sprite.scale.y = crouch ? 2.02 : 2.56;
   sprite.material.opacity = hurt ? 0.78 : 1;
 }
 
 export function createSlugEnemySprite(type = 'pawn') {
   const frame = type === 'knight' ? 1 : type === 'rook' ? 2 : 0;
   const scaleByType = {
-    pawn: [1.78, 1.78],
-    knight: [1.96, 1.96],
-    rook: [2.18, 2.18],
+    pawn: [2.05, 2.05],
+    knight: [2.22, 2.22],
+    rook: [2.65, 2.65],
   };
   const sprite = atlasSprite(enemyAtlasUrl, enemyFallbackAtlasUrl, 3, frame, scaleByType[type] || scaleByType.pawn);
   sprite.name = `pawn-slug-${type}-sprite`;
@@ -149,7 +149,7 @@ export function animateSlugEnemySprite(sprite, type, time, { moving = false, hur
 }
 
 export function createPanzerRookSprite() {
-  const sprite = staticSprite(panzerRookUrl, [5.1, 2.55]);
+  const sprite = staticSprite(panzerRookUrl, [4.45, 4.45]);
   sprite.name = 'pawn-slug-panzer-rook-sprite';
   return sprite;
 }
@@ -180,8 +180,8 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
     url: matthiasAtlasUrl,
     fallbackUrl: matthiasFallbackAtlasUrl,
     frames: 4,
-    frameWidth: 192,
-    frameHeight: 192,
+    frameWidth: 72,
+    frameHeight: 104,
     sourceFacing: 'right',
     framesByAction: Object.freeze({ idle: 0, runA: 1, runB: 2, fire: 3 }),
   }),
@@ -189,11 +189,11 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
     url: enemyAtlasUrl,
     fallbackUrl: enemyFallbackAtlasUrl,
     frames: 3,
-    frameWidth: 192,
-    frameHeight: 192,
+    frameWidth: 104,
+    frameHeight: 104,
     sourceFacing: 'right',
     frameByType: Object.freeze({ pawn: 0, knight: 1, rook: 2 }),
   }),
-  boss: Object.freeze({ url: panzerRookUrl, frames: 1, frameWidth: 512, frameHeight: 256 }),
+  boss: Object.freeze({ url: panzerRookUrl, frames: 1, frameWidth: 192, frameHeight: 192 }),
   weapons: Object.freeze({ url: weaponAtlasUrl, frames: 4, frameWidth: 256, frameHeight: 128 }),
 });
