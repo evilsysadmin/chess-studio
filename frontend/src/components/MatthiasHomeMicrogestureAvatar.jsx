@@ -144,6 +144,10 @@ export default function MatthiasHomeMicrogestureAvatar({
   const rootRef = useRef(null);
   const modeRef = useRef(MATTHIAS_HOME_STATES.IDLE);
   const modeStartedAtRef = useRef(0);
+  const profileRef = useRef('idle');
+  const phaseRef = useRef(0);
+  const intensityRef = useRef(1);
+  const speakingRef = useRef(false);
   const [machine, dispatch] = useReducer(
     transitionMatthiasHomePresence,
     undefined,
@@ -160,7 +164,15 @@ export default function MatthiasHomeMicrogestureAvatar({
   const intensity = normalizeIntensity(motionIntensity);
   const descriptor = matthiasHomeStateDescriptor(machine.mode);
   const facialCue = matthiasHomeFacialCue({ profile, presenceState: machine.mode, speaking });
+
+  // These are live animation inputs, not renderer-construction inputs. Keeping
+  // them in refs lets one WebGL scene survive speech/profile/FSM changes instead
+  // of destroying and recreating Matthias whenever he opens his mouth.
   modeRef.current = machine.mode;
+  profileRef.current = profile;
+  phaseRef.current = phase;
+  intensityRef.current = intensity;
+  speakingRef.current = speaking;
 
   useEffect(() => {
     modeStartedAtRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
@@ -336,7 +348,10 @@ export default function MatthiasHomeMicrogestureAvatar({
       }
       lastRenderedAt = stamp;
 
-      const time = Math.max(0, stamp - startedAt) / 1000 + phase;
+      const liveProfile = profileRef.current;
+      const liveSpeaking = speakingRef.current;
+      const liveIntensity = intensityRef.current;
+      const time = Math.max(0, stamp - startedAt) / 1000 + phaseRef.current;
       const stateElapsed = Math.max(0, stamp - modeStartedAtRef.current) / 1000;
       const pose = reducedMotion
         ? matthiasPawnPoseSample({
@@ -348,13 +363,13 @@ export default function MatthiasHomeMicrogestureAvatar({
           motionIntensity: 0,
         })
         : matthiasPawnPoseSample({
-          profile,
+          profile: liveProfile,
           presenceState: modeRef.current,
           time,
           stateElapsed,
           stateDurationMs: matthiasHomeStateDuration(modeRef.current),
-          speaking,
-          motionIntensity: intensity,
+          speaking: liveSpeaking,
+          motionIntensity: liveIntensity,
         });
 
       applyMatthiasFull3DPose(rig, pose);
@@ -374,9 +389,9 @@ export default function MatthiasHomeMicrogestureAvatar({
       }
       if (frames % 6 === 0 || frames === 1) {
         const currentCue = matthiasHomeFacialCue({
-          profile,
+          profile: liveProfile,
           presenceState: modeRef.current,
-          speaking,
+          speaking: liveSpeaking,
         });
         root.dataset.threeFrame = String(frames);
         root.dataset.threeEnergy = peakEnergy.toFixed(3);
@@ -429,7 +444,7 @@ export default function MatthiasHomeMicrogestureAvatar({
       disposeMatthiasFull3D(rig);
       renderer?.dispose?.();
     };
-  }, [intensity, phase, profile, reducedMotion, speaking]);
+  }, [reducedMotion]);
 
   const fallbackSrc = canonicalSrc || avatar || '';
 
