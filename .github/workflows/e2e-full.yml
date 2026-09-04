@@ -34,6 +34,7 @@ on:
       - 'e2e/three-d-war-room.spec.js'
       - 'e2e/three-d-war-room-android-touch.spec.js'
       - 'e2e/three-d-war-room-special-states.spec.js'
+      - 'e2e/three-d-special-surfaces.spec.js'
       - 'e2e/war-room-desktop-scale.spec.js'
       - 'e2e/android-game-focus.spec.js'
       - 'e2e/matthias-home-visual-critical.spec.js'
@@ -95,7 +96,7 @@ jobs:
                 visual=true
                 focus=true
                 ;;
-              frontend/src/components/Board3D.jsx|frontend/src/components/Board3D*.js|frontend/src/components/WarRoom3D*.js|frontend/src/components/GameBoardView.jsx|frontend/src/components/GameCommandDeck.jsx|frontend/src/components/GamePlayerRail.jsx|frontend/src/components/GameSideColumn.jsx|frontend/src/components/GameStatusStrips.jsx|frontend/src/components/GameWarRoomCommandColumn.jsx|frontend/src/components/useGameBoardRenderer.js|frontend/src/components/useGameMobileFocus.js|frontend/src/components/useMatthiasBoardReactions.js|frontend/src/warRoomPointerCapture.js|frontend/src/warRoomPointerCapture.test.js|frontend/src/main.jsx|e2e/three-d-war-room.spec.js|e2e/three-d-war-room-android-touch.spec.js|e2e/three-d-war-room-special-states.spec.js|e2e/helpers.js)
+              frontend/src/components/Board3D.jsx|frontend/src/components/Board3D*.js|frontend/src/components/WarRoom3D*.js|frontend/src/components/GameBoardView.jsx|frontend/src/components/GameCommandDeck.jsx|frontend/src/components/GamePlayerRail.jsx|frontend/src/components/GameSideColumn.jsx|frontend/src/components/GameStatusStrips.jsx|frontend/src/components/GameWarRoomCommandColumn.jsx|frontend/src/components/useGameBoardRenderer.js|frontend/src/components/useGameMobileFocus.js|frontend/src/components/useMatthiasBoardReactions.js|frontend/src/warRoomPointerCapture.js|frontend/src/warRoomPointerCapture.test.js|frontend/src/main.jsx|e2e/three-d-war-room.spec.js|e2e/three-d-war-room-android-touch.spec.js|e2e/three-d-war-room-special-states.spec.js|e2e/three-d-special-surfaces.spec.js|e2e/helpers.js)
                 full_logic=true
                 visual=true
                 focus=true
@@ -126,6 +127,7 @@ jobs:
               cases.extend([
                   {'id': 'android-selection', 'label': 'War Room · Android selection', 'command': './node_modules/.bin/playwright test three-d-war-room-android-touch.spec.js --workers=1 --retries=0'},
                   {'id': 'desktop-input', 'label': 'War Room · desktop input', 'command': './node_modules/.bin/playwright test three-d-war-room.spec.js --grep "War Room · desktop input mantiene cámara fija y juega e2→e4" --workers=1 --retries=0 --timeout=75000'},
+                  {'id': 'special-surfaces', 'label': '3D parity · special surfaces', 'command': './node_modules/.bin/playwright test three-d-special-surfaces.spec.js --workers=1 --retries=0 --timeout=90000'},
               ])
               for shard in range(1, 6):
                   cases.append({
@@ -165,6 +167,7 @@ jobs:
             echo '### Browser E2E scope'
             echo
             echo "- War Room rules/input parity: \`$full_logic\`"
+            echo "- Special 3D surfaces: \`$full_logic\`"
             echo "- War Room mount/scale: \`$visual\`"
             echo "- Android Focus: \`$focus\`"
             echo "- Matthias motion/paint: \`$matthias\`"
