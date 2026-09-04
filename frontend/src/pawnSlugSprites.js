@@ -1,39 +1,108 @@
 import * as THREE from 'three';
 import matthiasAtlasUrl from './assets/pawnSlug/matthias_atlas_premium.webp';
+import matthiasFallbackAtlasUrl from './assets/pawnSlug/matthias_atlas.svg';
 import enemyAtlasUrl from './assets/pawnSlug/enemy_atlas_premium.webp';
+import enemyFallbackAtlasUrl from './assets/pawnSlug/enemy_atlas.svg';
 import panzerRookUrl from './assets/pawnSlug/panzer_rook.svg';
 import weaponAtlasUrl from './assets/pawnSlug/weapon_atlas.svg';
 
-function configureTexture(texture) {
+export function configurePawnSlugTexture(texture) {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
-  texture.wrapS = THREE.RepeatWrapping;
+  // Premium actor atlases are NPOT. RepeatWrapping makes those textures
+  // incomplete on WebGL1, which leaves the game alive but the actors invisible.
+  texture.wrapS = THREE.ClampToEdgeWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
   return texture;
 }
 
-function atlasSprite(url, frames, initialFrame = 0, scale = [2.2, 2.2]) {
-  const texture = configureTexture(new THREE.TextureLoader().load(url));
+function configureAtlasWindow(texture, frames, frame) {
+  configurePawnSlugTexture(texture);
   texture.repeat.set(1 / frames, 1);
-  texture.offset.set(initialFrame / frames, 0);
-  const material = new THREE.SpriteMaterial({ map: texture, transparent: true, alphaTest: 0.05, depthWrite: true });
+  texture.offset.set(frame / frames, 0);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function atlasSprite(primaryUrl, fallbackUrl, frames, initialFrame = 0, scale = [2.2, 2.2]) {
+  const material = new THREE.SpriteMaterial({ transparent: true, alphaTest: 0.05, depthWrite: true });
+  // Do not flash an untextured white quad while the image is decoding.
+  material.visible = false;
+
   const sprite = new THREE.Sprite(material);
   sprite.scale.set(scale[0], scale[1], 1);
   sprite.center.set(0.5, 0);
-  sprite.userData.atlas = { frames, frame: initialFrame, texture };
+  sprite.userData.atlas = {
+    frames,
+    frame: initialFrame,
+    texture: null,
+    source: 'loading',
+    ready: false,
+    disposed: false,
+  };
+
+  const loader = new THREE.TextureLoader();
+
+  function applyTexture(texture, source) {
+    const atlas = sprite.userData.atlas;
+    if (atlas.disposed) {
+      texture.dispose?.();
+      return;
+    }
+
+    configureAtlasWindow(texture, frames, atlas.frame);
+    const previous = atlas.texture;
+    atlas.texture = texture;
+    atlas.source = source;
+    atlas.ready = true;
+    material.map = texture;
+    material.visible = true;
+    material.needsUpdate = true;
+    if (previous && previous !== texture) previous.dispose?.();
+  }
+
+  function loadFallback() {
+    const atlas = sprite.userData.atlas;
+    if (atlas.disposed) return;
+    if (!fallbackUrl || fallbackUrl === primaryUrl) {
+      atlas.source = 'failed';
+      return;
+    }
+
+    atlas.source = 'fallback-loading';
+    loader.load(
+      fallbackUrl,
+      (texture) => applyTexture(texture, 'fallback'),
+      undefined,
+      () => {
+        if (!atlas.disposed) atlas.source = 'failed';
+      },
+    );
+  }
+
+  loader.load(
+    primaryUrl,
+    (texture) => applyTexture(texture, 'primary'),
+    undefined,
+    loadFallback,
+  );
+
   sprite.userData.setFrame = (frame) => {
+    const atlas = sprite.userData.atlas;
     const next = ((Math.floor(frame) % frames) + frames) % frames;
-    if (sprite.userData.atlas.frame === next) return;
-    sprite.userData.atlas.frame = next;
-    texture.offset.x = next / frames;
+    if (atlas.frame === next) return;
+    atlas.frame = next;
+    if (atlas.texture) {
+      atlas.texture.offset.x = next / frames;
+      atlas.texture.needsUpdate = true;
+    }
   };
   return sprite;
 }
 
 function staticSprite(url, scale = [4, 2.2]) {
-  const texture = configureTexture(new THREE.TextureLoader().load(url));
-  texture.wrapS = THREE.ClampToEdgeWrapping;
+  const texture = configurePawnSlugTexture(new THREE.TextureLoader().load(url));
   const material = new THREE.SpriteMaterial({ map: texture, transparent: true, alphaTest: 0.04, depthWrite: true });
   const sprite = new THREE.Sprite(material);
   sprite.scale.set(scale[0], scale[1], 1);
@@ -43,7 +112,7 @@ function staticSprite(url, scale = [4, 2.2]) {
 }
 
 export function createMatthiasSlugSprite() {
-  const sprite = atlasSprite(matthiasAtlasUrl, 4, 0, [2.25, 2.25]);
+  const sprite = atlasSprite(matthiasAtlasUrl, matthiasFallbackAtlasUrl, 4, 0, [2.25, 2.25]);
   sprite.name = 'pawn-slug-matthias-sprite';
   sprite.userData.animation = { clock: 0, weapon: 'pistol' };
   sprite.userData.setWeapon = (kind) => { sprite.userData.animation.weapon = kind || 'pistol'; };
@@ -68,7 +137,7 @@ export function createSlugEnemySprite(type = 'pawn') {
     knight: [1.96, 1.96],
     rook: [2.18, 2.18],
   };
-  const sprite = atlasSprite(enemyAtlasUrl, 3, frame, scaleByType[type] || scaleByType.pawn);
+  const sprite = atlasSprite(enemyAtlasUrl, enemyFallbackAtlasUrl, 3, frame, scaleByType[type] || scaleByType.pawn);
   sprite.name = `pawn-slug-${type}-sprite`;
   sprite.userData.enemyFrame = frame;
   return sprite;
@@ -93,13 +162,14 @@ export function animatePanzerRookSprite(sprite, time, { hurt = false } = {}) {
 export function createWeaponSprite(kind = 'pistol') {
   const frameByKind = { pistol: 0, machinegun: 1, shotgun: 2, panzerfaust: 3 };
   const frame = frameByKind[kind] ?? 0;
-  const sprite = atlasSprite(weaponAtlasUrl, 4, frame, kind === 'panzerfaust' ? [1.55, .78] : [1.35, .68]);
+  const sprite = atlasSprite(weaponAtlasUrl, null, 4, frame, kind === 'panzerfaust' ? [1.55, .78] : [1.35, .68]);
   sprite.name = `pawn-slug-weapon-${kind}`;
   return sprite;
 }
 
 export function disposePawnSlugSprite(sprite) {
   if (!sprite) return;
+  if (sprite.userData?.atlas) sprite.userData.atlas.disposed = true;
   const texture = sprite.userData?.atlas?.texture || sprite.userData?.texture || sprite.material?.map;
   texture?.dispose?.();
   sprite.material?.dispose?.();
@@ -108,6 +178,7 @@ export function disposePawnSlugSprite(sprite) {
 export const PAWN_SLUG_SPRITE_META = Object.freeze({
   matthias: Object.freeze({
     url: matthiasAtlasUrl,
+    fallbackUrl: matthiasFallbackAtlasUrl,
     frames: 4,
     frameWidth: 192,
     frameHeight: 192,
@@ -116,6 +187,7 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
   }),
   enemies: Object.freeze({
     url: enemyAtlasUrl,
+    fallbackUrl: enemyFallbackAtlasUrl,
     frames: 3,
     frameWidth: 192,
     frameHeight: 192,

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { PAWN_SLUG_SPRITE_META } from './pawnSlugSprites.js';
+import * as THREE from 'three';
+import {
+  PAWN_SLUG_SPRITE_META,
+  configurePawnSlugTexture,
+} from './pawnSlugSprites.js';
 
 describe('Pawn Slug premium sprite contracts', () => {
   it('keeps approved player/enemy atlases isolated in lazy-owned assets', () => {
@@ -31,10 +35,29 @@ describe('Pawn Slug premium sprite contracts', () => {
     });
   });
 
+  it('uses WebGL1-safe clamp wrapping for NPOT actor atlases', () => {
+    const texture = {};
+    configurePawnSlugTexture(texture);
+    expect(texture.wrapS).toBe(THREE.ClampToEdgeWrapping);
+    expect(texture.wrapT).toBe(THREE.ClampToEdgeWrapping);
+    expect(texture.minFilter).toBe(THREE.LinearFilter);
+    expect(texture.magFilter).toBe(THREE.LinearFilter);
+    expect(texture.colorSpace).toBe(THREE.SRGBColorSpace);
+  });
+
+  it('keeps local SVG fallbacks for premium WebP actor atlases', () => {
+    const localSvg = /(?:\.svg(?:\?|$)|^data:image\/svg\+xml(?:[,;]))/;
+    expect(String(PAWN_SLUG_SPRITE_META.matthias.url)).toMatch(/\.webp(?:\?|$)/);
+    expect(String(PAWN_SLUG_SPRITE_META.enemies.url)).toMatch(/\.webp(?:\?|$)/);
+    expect(String(PAWN_SLUG_SPRITE_META.matthias.fallbackUrl)).toMatch(localSvg);
+    expect(String(PAWN_SLUG_SPRITE_META.enemies.fallbackUrl)).toMatch(localSvg);
+  });
+
   it('uses local runtime assets instead of remote sprites', () => {
     for (const meta of Object.values(PAWN_SLUG_SPRITE_META)) {
       expect(meta.url).toBeTruthy();
       expect(String(meta.url)).not.toMatch(/^https?:\/\//);
+      if (meta.fallbackUrl) expect(String(meta.fallbackUrl)).not.toMatch(/^https?:\/\//);
     }
   });
 });
