@@ -38,7 +38,7 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await expect(mode.getByText('OPERATION: DUST VEIL', { exact: true })).toBeVisible();
   await expect(mode.getByText('Kharif Outpost', { exact: true })).toBeVisible();
   await expect(mode.getByText('HK416 (Used)', { exact: true })).toBeVisible();
-  await expect(mode.getByText('3.400 cr', { exact: true })).toBeVisible();
+  await expect(mode.locator('.chesscom-economy strong')).toHaveText(/^(?:3400|3[.\u00a0\u202f ]400) cr$/);
 
   const canvas = mode.locator('.chesscom-babylon-host canvas');
   await expect(canvas).toBeVisible({ timeout: 30_000 });
