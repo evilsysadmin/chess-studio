@@ -1,0 +1,93 @@
+/* Home · Matthias mobile portrait
+ * Mobile is not desktop shrunk down. The 3D resident keeps his real rig and
+ * activity props, but the presentation crops to head + upper torso so facial
+ * state remains readable at phone distance. Desktop framing is untouched. */
+@media (max-width: 760px) {
+  body:has(.home-friendly) .matthias-resident.is-inline {
+    margin: .35rem 0 1rem;
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__stage {
+    gap: .58rem;
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character {
+    flex-basis: 132px;
+    width: 132px;
+    padding: .22rem .24rem .3rem;
+    gap: .05rem;
+    border-radius: 18px;
+    background:
+      radial-gradient(circle at 50% 38%, rgba(198,164,93,.08), transparent 56%),
+      linear-gradient(180deg, rgba(11,15,20,.16), rgba(8,11,15,.62));
+    filter: drop-shadow(0 14px 22px rgba(0,0,0,.30));
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__portrait-shell {
+    width: 124px;
+    height: 138px;
+    place-items: stretch;
+    border-radius: 16px 16px 11px 11px;
+    background:
+      radial-gradient(circle at 50% 55%, rgba(198,164,93,.13), transparent 48%),
+      rgba(7,10,14,.54);
+    box-shadow:
+      inset 0 1px rgba(255,255,255,.045),
+      0 8px 20px rgba(0,0,0,.18);
+  }
+
+  /* Magnify the already-rendered Three.js scene as one rigid surface. This is
+   * framing only: facial/body articulation continues to happen inside WebGL. */
+  body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__canvas {
+    transform: scale(1.36);
+    transform-origin: 50% 10%;
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__fallback {
+    object-position: 50% 28%;
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character strong {
+    margin-top: .16rem;
+    font-size: .68rem;
+    letter-spacing: .13em;
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character small,
+  body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character em {
+    width: 100%;
+    max-width: 124px;
+    overflow: hidden;
+    font-size: .55rem;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 430px) {
+  body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character {
+    flex-basis: 128px;
+    width: 128px;
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__portrait-shell {
+    width: 120px;
+    height: 134px;
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character small,
+  body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character em {
+    max-width: 120px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 760px) {
+  body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__canvas {
+    transform: scale(1.36) !important;
+  }
+}
+
+html[data-reduced-motion='true'] body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__canvas {
+  transform: scale(1.36) !important;
+}
