@@ -29,11 +29,12 @@ async function openChesscom(page) {
   await expect(page.getByRole('heading', { name: 'CHESSCOM', exact: true })).toBeVisible();
 }
 
-test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil', async ({ page }) => {
+test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil premium', async ({ page }) => {
   await openChesscom(page);
 
   const mode = page.locator('[data-chesscom-poc="true"][data-chesscom-renderer="babylon"]');
   await expect(mode).toBeVisible();
+  await expect(mode).toHaveAttribute('data-chesscom-visual', 'premium-v1');
   await expect(mode.getByText('OPERATION: DUST VEIL', { exact: true })).toBeVisible();
   await expect(mode.getByText('Kharif Outpost', { exact: true })).toBeVisible();
   await expect(mode.getByText('HK416 (Used)', { exact: true })).toBeVisible();
@@ -41,8 +42,13 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil', 
 
   const canvas = mode.locator('.chesscom-babylon-host canvas');
   await expect(canvas).toBeVisible({ timeout: 30_000 });
-  await expect(mode.getByText('BABYLON.JS 9.25.0', { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(mode.getByText(/BABYLON\.JS 9\.25\.0 · TACTICAL PREMIUM V1/)).toBeVisible({ timeout: 30_000 });
   await expect(mode.getByText('BABYLON · ERROR', { exact: true })).toHaveCount(0);
+
+  const dieterArt = mode.locator('.chesscom-portrait-art.is-dieter');
+  await expect(dieterArt).toBeVisible();
+  await expect.poll(() => dieterArt.evaluate((node) => getComputedStyle(node).backgroundImage)).toContain('/chesscom/ops-atlas.webp');
+  await expect(mode.locator('.chesscom-weapon-art')).toBeVisible();
 
   await expect(mode.getByRole('button', { name: 'Move', exact: true })).toBeVisible();
   await expect(mode.getByRole('button', { name: 'Shoot', exact: true })).toBeVisible();
