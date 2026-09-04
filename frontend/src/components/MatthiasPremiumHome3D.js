@@ -13,6 +13,7 @@ export const MATTHIAS_PREMIUM_HOME_RENDER_CONTRACT = 'canonical-pawn-3d-v1';
 export const MATTHIAS_PREMIUM_HOME_REFERENCE = 'approved-original-matthias-premium-v1';
 export const MATTHIAS_PREMIUM_HOME_CAP_VERSION = 'officer-cap-v2';
 export const MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION = 'activity-props-v1';
+export const MATTHIAS_PREMIUM_HOME_ACTIVITY_COMPOSITION_VERSION = 'portrait-readable-v2';
 export const MATTHIAS_PREMIUM_HOME_FRAME_SCALE = .94;
 export const MATTHIAS_PREMIUM_HOME_FRAME_Y = -.05;
 export { MATTHIAS_PAWN_EMBLEM };
@@ -86,11 +87,12 @@ function buildActivityRig(rig, compact) {
   rig.root.add(activityRoot);
 
   const black = activityMaterial(0x101318, { metalness: .60, roughness: .24, clearcoat: .55 });
+  const plate = activityMaterial(0x343941, { metalness: .52, roughness: .28, clearcoat: .36 });
   const gold = activityMaterial(0xd09b37, { metalness: 1, roughness: .17, clearcoat: .30 });
   const ivory = activityMaterial(0xe0c28d, { metalness: .02, roughness: .36, clearcoat: .18 });
   const paper = activityMaterial(0xc7baa2, { metalness: 0, roughness: .64, clearcoat: .02 });
   const red = activityMaterial(0x6f211d, { metalness: .22, roughness: .34, clearcoat: .30 });
-  const food = activityMaterial(0x8e5e31, { metalness: 0, roughness: .72, clearcoat: .02 });
+  const food = activityMaterial(0xa86b31, { metalness: 0, roughness: .72, clearcoat: .02 });
 
   const support = new THREE.Group();
   support.name = 'activity-support';
@@ -124,43 +126,50 @@ function buildActivityRig(rig, compact) {
 
   const ration = new THREE.Group();
   ration.name = 'activity-ration';
+  ration.scale.setScalar(1.12);
   activityRoot.add(ration);
-  activityMesh(ration, new THREE.CylinderGeometry(.22, .22, .025, compact ? 18 : 28), black, {
+  activityMesh(ration, new THREE.CylinderGeometry(.26, .26, .032, compact ? 18 : 30), plate, {
     name: 'ration-plate', rotation: [Math.PI / 2, 0, 0],
   });
-  activityMesh(ration, new THREE.BoxGeometry(.20, .09, .16), food, {
-    name: 'ration-piece', position: [.02, .065, .015], rotation: [.04, -.10, .08],
+  activityMesh(ration, new THREE.TorusGeometry(.255, .013, 7, compact ? 18 : 30), gold, {
+    name: 'ration-plate-rim', position: [0, 0, .018],
   });
-  activityMesh(ration, new THREE.BoxGeometry(.06, .025, .22), gold, {
-    name: 'ration-cutlery', position: [-.19, .045, .02], rotation: [0, .08, -.16],
+  activityMesh(ration, new THREE.BoxGeometry(.22, .09, .16), food, {
+    name: 'ration-piece', position: [.075, .065, .045], rotation: [.04, -.10, .10],
+  });
+  activityMesh(ration, new THREE.BoxGeometry(.16, .065, .14), ivory, {
+    name: 'ration-bread', position: [-.075, .072, .055], rotation: [-.02, .12, -.08],
+  });
+  activityMesh(ration, new THREE.BoxGeometry(.055, .022, .24), gold, {
+    name: 'ration-cutlery', position: [-.225, .052, .045], rotation: [0, .08, -.18],
   });
 
   const book = new THREE.Group();
   book.name = 'activity-book';
   activityRoot.add(book);
-  activityMesh(book, new THREE.BoxGeometry(.34, .29, .035), paper, {
-    name: 'book-pages-left', position: [-.17, 0, 0], rotation: [0, .12, .04],
+  activityMesh(book, new THREE.BoxGeometry(.32, .30, .035), paper, {
+    name: 'book-pages-left', position: [-.15, 0, .035], rotation: [0, .26, .055],
   });
-  activityMesh(book, new THREE.BoxGeometry(.34, .29, .035), paper, {
-    name: 'book-pages-right', position: [.17, 0, 0], rotation: [0, -.12, -.04],
+  activityMesh(book, new THREE.BoxGeometry(.32, .30, .035), paper, {
+    name: 'book-pages-right', position: [.15, 0, .035], rotation: [0, -.26, -.055],
   });
-  activityMesh(book, new THREE.BoxGeometry(.36, .31, .018), red, {
-    name: 'book-cover-left', position: [-.18, 0, -.025], rotation: [0, .12, .04],
+  activityMesh(book, new THREE.BoxGeometry(.34, .32, .018), red, {
+    name: 'book-cover-left', position: [-.17, -.006, -.012], rotation: [0, .30, .055],
   });
-  activityMesh(book, new THREE.BoxGeometry(.36, .31, .018), red, {
-    name: 'book-cover-right', position: [.18, 0, -.025], rotation: [0, -.12, -.04],
+  activityMesh(book, new THREE.BoxGeometry(.34, .32, .018), red, {
+    name: 'book-cover-right', position: [.17, -.006, -.012], rotation: [0, -.30, -.055],
   });
-  activityMesh(book, new THREE.CylinderGeometry(.018, .018, .31, 10), gold, {
-    name: 'book-spine', rotation: [0, 0, Math.PI / 2],
+  activityMesh(book, new THREE.CylinderGeometry(.014, .014, .34, 10), gold, {
+    name: 'book-spine', position: [0, 0, .05],
   });
 
   const dossier = new THREE.Group();
   dossier.name = 'activity-dossier';
   activityRoot.add(dossier);
-  activityMesh(dossier, new THREE.BoxGeometry(.58, .36, .035), red, {
+  activityMesh(dossier, new THREE.BoxGeometry(.56, .34, .035), red, {
     name: 'dossier-folder', rotation: [-.08, .02, .02],
   });
-  activityMesh(dossier, new THREE.BoxGeometry(.49, .28, .018), paper, {
+  activityMesh(dossier, new THREE.BoxGeometry(.47, .26, .018), paper, {
     name: 'dossier-paper', position: [0, .015, .028], rotation: [-.08, .02, .02],
   });
   activityMesh(dossier, new THREE.BoxGeometry(.16, .025, .025), gold, {
@@ -173,7 +182,6 @@ function buildActivityRig(rig, compact) {
   const writingPad = dossier.clone(true);
   writingPad.name = 'writing-dossier';
   write.add(writingPad);
-  dossier.remove(writingPad);
   const penPivot = new THREE.Group();
   penPivot.name = 'activity-pen-pivot';
   write.add(penPivot);
@@ -198,6 +206,7 @@ function buildActivityRig(rig, compact) {
   };
   rig.activityRig = activityRig;
   rig.root.userData.activityRigVersion = MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION;
+  rig.root.userData.activityCompositionVersion = MATTHIAS_PREMIUM_HOME_ACTIVITY_COMPOSITION_VERSION;
   rig.root.userData.activityProp = 'none';
   return activityRig;
 }
@@ -230,32 +239,32 @@ function applyActivityPose(rig, pose) {
   support.visible = prop !== 'none';
 
   if (prop === 'cup') {
-    cup.position.set(.53 - reach * .32, -.24 + reach * .57, .72 + reach * .06);
+    cup.position.set(.56 - reach * .26, -.26 + reach * .55, .78 + reach * .05);
     cup.rotation.set(.03 + reach * .16, -.08, -.10 - reach * .08);
   } else if (prop === 'ration') {
-    ration.position.set(.48 - reach * .27, -.29 + reach * .51, .72 + reach * .05);
-    ration.rotation.set(-.16 + reach * .16, -.05, -.08);
+    ration.position.set(.62 - reach * .12, -.28 + reach * .24, .80 + reach * .04);
+    ration.rotation.set(-.08 + reach * .10, -.12, -.10);
   } else if (prop === 'book') {
-    book.position.set(0, -.43 + reach * .12, .73);
-    book.rotation.set(-.44 + reach * .11, Number(pose?.headYaw || 0) * .18, 0);
+    book.position.set(-.10, -.50 + reach * .10, .82);
+    book.rotation.set(-.34 + reach * .06, Number(pose?.headYaw || 0) * .12, .035);
   } else if (prop === 'dossier') {
-    dossier.position.set(.04, -.39 + reach * .10, .74);
-    dossier.rotation.set(-.34 + reach * .08, Number(pose?.headYaw || 0) * .12, -.035);
+    dossier.position.set(.13, -.49 + reach * .08, .83);
+    dossier.rotation.set(-.28 + reach * .06, Number(pose?.headYaw || 0) * .10, -.055);
   } else if (prop === 'write') {
-    write.position.set(.03, -.40 + reach * .08, .74);
-    write.rotation.set(-.32, Number(pose?.headYaw || 0) * .10, -.025);
+    write.position.set(.12, -.50 + reach * .07, .84);
+    write.rotation.set(-.27, Number(pose?.headYaw || 0) * .09, -.045);
     penPivot.rotation.z = -.08 + Math.sin((Number(pose?.headYaw) || 0) * 18) * .08;
     penPivot.position.y = Math.abs(Number(pose?.headYaw) || 0) * .18;
   }
 
   if (support.visible) {
     const documentProp = prop === 'book' || prop === 'dossier' || prop === 'write';
-    supportStem.position.x = documentProp ? .34 : .38 - reach * .09;
-    supportStem.position.y = documentProp ? -.27 + reach * .10 : -.28 + reach * .34;
-    supportStem.rotation.z = documentProp ? -.56 : -.48 - reach * .18;
-    supportGlove.position.x = documentProp ? .38 : .49 - reach * .20;
-    supportGlove.position.y = documentProp ? -.16 + reach * .12 : -.05 + reach * .37;
-    supportGlove.position.z = .68 + reach * .03;
+    supportStem.position.x = documentProp ? .39 : .42 - reach * .07;
+    supportStem.position.y = documentProp ? -.30 + reach * .08 : -.30 + reach * .29;
+    supportStem.rotation.z = documentProp ? -.58 : -.50 - reach * .15;
+    supportGlove.position.x = documentProp ? .43 : .54 - reach * .15;
+    supportGlove.position.y = documentProp ? -.20 + reach * .10 : -.09 + reach * .30;
+    supportGlove.position.z = .72 + reach * .03;
   }
 
   activityRig.currentProp = prop;
@@ -363,6 +372,7 @@ export function createMatthiasPremiumHome3D({ compact = false } = {}) {
   root.userData.approvedReference = MATTHIAS_PREMIUM_HOME_REFERENCE;
   root.userData.capVersion = MATTHIAS_PREMIUM_HOME_CAP_VERSION;
   root.userData.activityRigVersion = MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION;
+  root.userData.activityCompositionVersion = MATTHIAS_PREMIUM_HOME_ACTIVITY_COMPOSITION_VERSION;
   root.userData.emblem = MATTHIAS_PAWN_EMBLEM;
   root.userData.frameScale = MATTHIAS_PREMIUM_HOME_FRAME_SCALE;
   root.userData.frameY = MATTHIAS_PREMIUM_HOME_FRAME_Y;
