@@ -20,9 +20,17 @@ export function createBackNavigationStack() {
     size() {
       return entries.length;
     },
-    dispatch(event, { editableTarget = false } = {}) {
+    dispatch(event, { editableTarget = false, touchLikeContextMenu = false } = {}) {
       if (event?.type === 'keydown' && event.key !== 'Escape') return false;
       if (event?.type === 'contextmenu' && editableTarget) return false;
+      if (event?.type === 'contextmenu' && touchLikeContextMenu) {
+        // Android/iOS pueden traducir una pulsación larga a `contextmenu`.
+        // Consumimos el menú nativo, pero jamás interpretamos un long-press
+        // como "volver": podría cerrar un modal o sacar al jugador de pantalla.
+        event.preventDefault?.();
+        event.stopPropagation?.();
+        return false;
+      }
 
       const entry = entries.length ? entries[entries.length - 1] : null;
       if (!entry) return false;
