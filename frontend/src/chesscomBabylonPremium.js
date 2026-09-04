@@ -39,7 +39,7 @@ const SCENERY = [
   { x:.3,z:4.4,w:3,d:2.3,h:2.15,type:'building',label:'NO FLAGS' },
   { x:7.2,z:5.2,w:2.9,d:2,h:2.25,type:'building',label:'JUST JOBS' },
   { x:2,z:2,type:'crate',high:true }, { x:3,z:2,type:'crate' }, { x:5,z:2,type:'crate',high:true },
-  { x:6,z:2,type:'crate' }, { x:7,z:2,type:'crate' }, { x:2,z:3,type:'barrel' },
+  { x:6,z:2,type:'crate' }, { x:7,z:2,type:'crate',high:true }, { x:2,z:3,type:'barrel' },
   { x:6,z:3,type:'crate',high:true }, { x:8,z:3,type:'crate' }, { x:1,z:4,type:'crate',high:true },
   { x:5,z:4,type:'crate' }, { x:7,z:4,type:'crate',high:true }, { x:2,z:5,type:'crate',high:true },
   { x:4,z:5,type:'crate' }, { x:7,z:5,type:'sandbag' }, { x:8,z:5,type:'crate',high:true },
