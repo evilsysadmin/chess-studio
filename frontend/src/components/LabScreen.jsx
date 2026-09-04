@@ -5,6 +5,7 @@ import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPositio
 import PreferredBoard from './PreferredBoard.jsx';
 import ArenaExperiment from './ArenaExperiment.jsx';
 import PawnTrailblazer from './PawnTrailblazer.jsx';
+import PawnSlug from './PawnSlug.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 
@@ -28,7 +29,7 @@ export default function LabScreen({ onExit, onStart }){
   const [difficulty,setDifficulty]=useState(50);
   const [error,setError]=useState('');
 
-  const childOwnsBack = labMode==='trailblazer';
+  const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug';
   useEscapeToClose(() => labMode==='hub' ? onExit() : setLabMode('hub'), { disabled: childOwnsBack });
 
   const fen=useMemo(()=>fenFromLabState({map,turn,castling,ep,halfmove,fullmove}),[map,turn,castling,ep,halfmove,fullmove]);
@@ -61,6 +62,7 @@ export default function LabScreen({ onExit, onStart }){
   }
 
   if (labMode==='trailblazer') return <PawnTrailblazer onExit={()=>setLabMode('hub')} />;
+  if (labMode==='pawnslug') return <PawnSlug onExit={()=>setLabMode('hub')} />;
 
   return <div className="menu tournament-panel lab-screen">
     <button className="back-link" onClick={labMode==='hub'?onExit:()=>setLabMode('hub')}>← {labMode==='hub'?'Volver al menú':'Experimentos geniales'}</button>
@@ -75,7 +77,13 @@ export default function LabScreen({ onExit, onStart }){
 
         <span className="experiments-group-label">Arcade</span>
         <div className="experiments-grid">
-          <button type="button" className="experiments-card is-featured" onClick={()=>setLabMode('trailblazer')}>
+          <button type="button" className="experiments-card is-featured" onClick={()=>setLabMode('pawnslug')}>
+            <span className="section-label">RUN & GUN · THREE.JS · NUEVO</span>
+            <strong>Pawn Slug</strong>
+            <small>Matthias contra un frente militar de peones, caballos y torres. Armas, granadas, checkpoints, combos y un Panzer‑Rook con muy malas intenciones.</small>
+            <b>Iniciar operación →</b>
+          </button>
+          <button type="button" className="experiments-card" onClick={()=>setLabMode('trailblazer')}>
             <span className="section-label">ARCADE · POC JUGABLE</span>
             <strong>Pawn Trailblazer</strong>
             <small>Matthias corre como peón por un corredor pseudo‑3D. Capturas diagonales, forcejeos frontales y powerups de torre, alfil y dama.</small>

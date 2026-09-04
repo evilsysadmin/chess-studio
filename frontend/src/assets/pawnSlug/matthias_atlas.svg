@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="256" viewBox="0 0 1024 256">
+<defs>
+  <linearGradient id="coat" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#30343a"/><stop offset="1" stop-color="#111418"/></linearGradient>
+  <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f1d083"/><stop offset=".55" stop-color="#b78335"/><stop offset="1" stop-color="#6e481d"/></linearGradient>
+  <linearGradient id="face" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff4dc"/><stop offset="1" stop-color="#cdbb9b"/></linearGradient>
+  <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#000" flood-opacity=".55"/></filter>
+  <g id="base">
+    <ellipse cx="124" cy="226" rx="57" ry="12" fill="#000" opacity=".34"/>
+    <path d="M83 193 Q83 220 107 225 L139 225 Q168 219 168 193 L157 176 L96 176Z" fill="url(#coat)" stroke="#08090b" stroke-width="7"/>
+    <path d="M92 183 Q104 146 125 142 Q148 143 160 183Z" fill="url(#coat)" stroke="#08090b" stroke-width="7"/>
+    <rect x="97" y="164" width="57" height="11" rx="4" fill="url(#brass)" stroke="#2e1f10" stroke-width="4"/>
+    <circle cx="126" cy="115" r="34" fill="url(#face)" stroke="#08090b" stroke-width="7"/>
+    <path d="M96 100 Q113 79 141 84 Q153 89 160 104 Q150 94 139 94 Q117 97 96 100Z" fill="#1b1f24" stroke="#08090b" stroke-width="6"/>
+    <path d="M96 93 L153 93 Q157 93 158 98 L158 106 L96 106Z" fill="#171a1f" stroke="#08090b" stroke-width="5"/>
+    <path d="M105 88 Q124 69 150 85 L149 98 L102 98Z" fill="#252a30" stroke="#08090b" stroke-width="5"/>
+    <path d="M119 82 L134 82 L132 94 L121 94Z" fill="url(#brass)" stroke="#3c2a14" stroke-width="3"/>
+    <ellipse cx="157" cy="104" rx="21" ry="6" fill="#090b0d" transform="rotate(6 157 104)"/>
+    <path d="M108 112 L118 108" stroke="#18191a" stroke-width="5" stroke-linecap="round"/>
+    <path d="M135 109 L146 113" stroke="#18191a" stroke-width="5" stroke-linecap="round"/>
+    <ellipse cx="115" cy="119" rx="4" ry="5" fill="#131313"/>
+    <ellipse cx="142" cy="119" rx="4" ry="5" fill="#131313"/>
+    <path d="M135 126 L144 127 L137 132Z" fill="#b29e7e"/>
+    <path d="M116 139 Q128 145 143 138" fill="none" stroke="#43372d" stroke-width="4" stroke-linecap="round"/>
+    <path d="M104 154 L97 187" stroke="#24282e" stroke-width="14" stroke-linecap="round"/>
+    <path d="M152 154 L161 185" stroke="#24282e" stroke-width="14" stroke-linecap="round"/>
+    <rect x="78" y="214" width="37" height="14" rx="6" fill="#16191d" stroke="#08090b" stroke-width="5"/>
+    <rect x="140" y="214" width="38" height="14" rx="6" fill="#16191d" stroke="#08090b" stroke-width="5"/>
+  </g>
+  <g id="gun">
+    <path d="M157 163 L210 154 L215 165 L160 175Z" fill="#525c67" stroke="#08090b" stroke-width="6"/>
+    <rect x="205" y="152" width="31" height="9" rx="3" fill="#252b31" stroke="#08090b" stroke-width="5"/>
+    <path d="M172 170 L181 189 L193 184 L188 164Z" fill="#3c2d20" stroke="#08090b" stroke-width="5"/>
+  </g>
+  <g id="flash"><path d="M232 157 L250 145 L245 158 L256 162 L245 168 L250 181 L232 169Z" fill="#ffd96a" stroke="#f47a31" stroke-width="4"/></g>
+</defs>
+<rect width="1024" height="256" fill="none"/>
+<g transform="translate(0 0)" filter="url(#shadow)"><use href="#base"/><use href="#gun"/></g>
+<g transform="translate(256 0)" filter="url(#shadow)"><use href="#base"/><g transform="rotate(-8 127 192)"><use href="#gun"/></g><path d="M82 218 Q93 207 106 214" fill="none" stroke="#08090b" stroke-width="7"/><path d="M141 222 Q156 208 176 215" fill="none" stroke="#08090b" stroke-width="7"/></g>
+<g transform="translate(512 0)" filter="url(#shadow)"><use href="#base"/><g transform="rotate(5 127 193)"><use href="#gun"/></g><path d="M82 222 Q98 208 115 216" fill="none" stroke="#08090b" stroke-width="7"/><path d="M144 215 Q157 205 176 218" fill="none" stroke="#08090b" stroke-width="7"/></g>
+<g transform="translate(768 0)" filter="url(#shadow)"><use href="#base"/><g transform="translate(0 -5)"><use href="#gun"/><use href="#flash"/></g><path d="M103 158 Q123 166 158 158" fill="none" stroke="#0b0d0f" stroke-width="4"/></g>
+</svg>
