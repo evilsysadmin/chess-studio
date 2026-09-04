@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createWarRoomCampaignTexture } from './WarRoomCampaignArt.js';
+import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 
 const GALLERY = Object.freeze({
   darkWood: 0x25150f,
@@ -50,7 +51,7 @@ function replaceCentralCanvas(frame, artKey, title) {
 
   const previous = canvas.material.map;
   if (previous?.userData?.warRoomCampaignArt === artKey) return true;
-  if (previous?.userData?.warRoomPainterly) previous.dispose?.();
+  previous?.dispose?.();
 
   // Swap only the artwork. The premium finish pass already gave this canvas
   // woven linen, bump, varnish and museum-grade material response; replacing
@@ -69,6 +70,33 @@ function replaceCentralCanvas(frame, artKey, title) {
   delete frame.userData.warRoomLandscapeSubject;
   delete frame.userData.warRoomGalleryLandscapeVersion;
   return true;
+}
+
+function applyCentralCampaignArt(root) {
+  let changed = 0;
+  changed += replaceCentralCanvas(
+    root?.getObjectByName?.('war-room-premium-painting-0'),
+    'command',
+    'Matthias al mando',
+  ) ? 1 : 0;
+  changed += replaceCentralCanvas(
+    root?.getObjectByName?.('war-room-premium-painting-1'),
+    'victory',
+    'Matthias en la victoria',
+  ) ? 1 : 0;
+  return changed;
+}
+
+function registerCampaignArtFinalizer(group) {
+  return registerWarRoomDeferredFinalizer(group, {
+    key: 'military-gallery-art-v1',
+    run: (root) => {
+      const changed = applyCentralCampaignArt(root || group);
+      const owner = (root || group)?.getObjectByName?.('war-room-castle-architecture') || group;
+      if (owner?.userData) owner.userData.warRoomMilitaryGalleryFinalized = 'approved-mock-v1';
+      return changed;
+    },
+  });
 }
 
 function addSidePainting(group, {
@@ -238,19 +266,12 @@ export function installWarRoomMilitaryGallery(group, {
   coarsePointer = false,
 } = {}) {
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard) || coarsePointer) return 0;
-  if (group.userData.warRoomMilitaryGalleryVersion === 'approved-mock-v1') return 0;
+  if (group.userData.warRoomMilitaryGalleryVersion === 'approved-mock-v1') {
+    registerCampaignArtFinalizer(group);
+    return 0;
+  }
 
-  let centralReplaced = 0;
-  centralReplaced += replaceCentralCanvas(
-    group.getObjectByName?.('war-room-premium-painting-0'),
-    'command',
-    'Matthias al mando',
-  ) ? 1 : 0;
-  centralReplaced += replaceCentralCanvas(
-    group.getObjectByName?.('war-room-premium-painting-1'),
-    'victory',
-    'Matthias en la victoria',
-  ) ? 1 : 0;
+  const centralReplaced = applyCentralCampaignArt(group);
 
   addSidePainting(group, {
     side: -1,
@@ -275,5 +296,6 @@ export function installWarRoomMilitaryGallery(group, {
   group.userData.warRoomMilitaryGalleryCentralCanvases = centralReplaced;
   group.userData.warRoomMilitaryGallerySideCanvases = 2;
   group.userData.warRoomMilitaryGalleryTorches = 2;
+  registerCampaignArtFinalizer(group);
   return centralReplaced + 4;
 }
