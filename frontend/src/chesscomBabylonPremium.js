@@ -39,7 +39,7 @@ const SCENERY = [
   { x:.3,z:4.4,w:3,d:2.3,h:2.15,type:'building',label:'NO FLAGS' },
   { x:7.2,z:5.2,w:2.9,d:2,h:2.25,type:'building',label:'JUST JOBS' },
   { x:2,z:2,type:'crate',high:true }, { x:3,z:2,type:'crate' }, { x:5,z:2,type:'crate',high:true },
-  { x:6,z:2,type:'crate' }, { x:7,z:2,type:'crate',high:true }, { x:2,z:3,type:'barrel' },
+  { x:6,z:2,type:'crate' }, { x:7,z:2,type:'crate' }, { x:2,z:3,type:'barrel' },
   { x:6,z:3,type:'crate',high:true }, { x:8,z:3,type:'crate' }, { x:1,z:4,type:'crate',high:true },
   { x:5,z:4,type:'crate' }, { x:7,z:4,type:'crate',high:true }, { x:2,z:5,type:'crate',high:true },
   { x:4,z:5,type:'crate' }, { x:7,z:5,type:'sandbag' }, { x:8,z:5,type:'crate',high:true },
@@ -49,6 +49,36 @@ const SCENERY = [
 
 function world(x, y, lift = 0) {
   return { x:ORIGIN_X + x * TILE, y:lift, z:ORIGIN_Z + y * TILE };
+}
+
+function clamp01(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  return Math.max(0, Math.min(1, number));
+}
+
+export function chesscomMovementEase(progress) {
+  const p = clamp01(progress);
+  return p < .5 ? 4 * p * p * p : 1 - ((-2 * p + 2) ** 3) / 2;
+}
+
+export function chesscomMovementDuration(distance) {
+  const safeDistance = Math.max(0, Number(distance) || 0);
+  return Math.round(Math.min(620, Math.max(280, 240 + safeDistance * 95)));
+}
+
+export function chesscomMovementLift(progress, steps = 2) {
+  const p = clamp01(progress);
+  if (p === 0 || p === 1) return 0;
+  const safeSteps = Math.max(1, Math.round(Number(steps) || 1));
+  const footfall = Math.abs(Math.sin(p * Math.PI * safeSteps)) * .065;
+  const travelArc = Math.sin(p * Math.PI) * .035;
+  return footfall + travelArc;
+}
+
+export function chesscomMoveCostLabel(cost) {
+  const normalized = Math.max(1, Math.round(Number(cost) || 1));
+  return `${normalized} AP`;
 }
 
 function color(B, hex) { return B.Color3.FromHexString(hex); }
@@ -108,7 +138,7 @@ function createRifle(B, scene, root, mats, compact = false) {
 
 function createTacticalAgent(B, scene, id, friendly, elite, mats) {
   const root = new B.TransformNode(`unit-${id}`,scene);
-  root.metadata = { phase:Math.random()*Math.PI*2,target:null,initialized:false };
+  root.metadata = { phase:Math.random()*Math.PI*2,target:null,initialized:false,motion:null };
   const uniform = friendly ? mats.friendlyBody : mats.enemyBody;
   const armour = friendly ? mats.friendlyArmour : mats.enemyArmour;
   const skin = friendly ? mats.friendlyHead : mats.enemyHead;
@@ -117,8 +147,8 @@ function createTacticalAgent(B, scene, id, friendly, elite, mats) {
   const torso = box(B,scene,`${id}-torso`,.56,.62,.34,root,uniform,0,.83,0);
   box(B,scene,`${id}-plate`,.46,.48,.08,root,armour,0,.86,-.19);
   box(B,scene,`${id}-pack`,.38,.45,.16,root,mats.pack,0,.86,.24);
-  cylinder(B,scene,`${id}-leg-l`,.52,.17,root,uniform,-.14,.25,0);
-  cylinder(B,scene,`${id}-leg-r`,.52,.17,root,uniform,.14,.25,0);
+  const legL = cylinder(B,scene,`${id}-leg-l`,.52,.17,root,uniform,-.14,.25,0);
+  const legR = cylinder(B,scene,`${id}-leg-r`,.52,.17,root,uniform,.14,.25,0);
   box(B,scene,`${id}-boot-l`,.18,.13,.30,root,mats.boot,-.14,.06,-.05);
   box(B,scene,`${id}-boot-r`,.18,.13,.30,root,mats.boot,.14,.06,-.05);
   const head = B.MeshBuilder.CreateSphere(`${id}-head`,{ diameter:.37,segments:18 },scene);
@@ -137,14 +167,14 @@ function createTacticalAgent(B, scene, id, friendly, elite, mats) {
   const rifle = createRifle(B,scene,root,mats,id === 'sven');
   rifle.weapon.position.z = -.28;
   tagUnit(root,id,friendly);
-  root.metadata.parts = { torso,head,helmet,armL,armR,weapon:rifle.weapon };
+  root.metadata.parts = { torso,head,helmet,armL,armR,legL,legR,weapon:rifle.weapon };
   root.metadata.muzzle = rifle.muzzle;
   return root;
 }
 
 function createMatthiasCard(B, scene, dataUrl, mats) {
   const root = new B.TransformNode('unit-matthias',scene);
-  root.metadata = { phase:1.2,target:null,initialized:false };
+  root.metadata = { phase:1.2,target:null,initialized:false,motion:null };
   const plane = B.MeshBuilder.CreatePlane('matthias-card',{ width:1.34,height:1.78 },scene);
   plane.parent=root; plane.position.y=.88; plane.billboardMode=B.Mesh.BILLBOARDMODE_Y;
   const mat = new B.StandardMaterial('matthias-card-mat',scene);
@@ -212,7 +242,7 @@ function addScenery(B,scene,mats,shadowGenerator,warmLights) {
 
 function createTile(B,scene,x,y,mats) {
   const p=world(x,y,.015); const tile=B.MeshBuilder.CreateBox(`tile-${x}-${y}`,{width:TILE*.94,depth:TILE*.94,height:.025},scene);
-  tile.position.set(p.x,p.y,p.z);tile.material=mats.tile;tile.isPickable=true;tile.metadata={type:'tile',x,y};return tile;
+  tile.position.set(p.x,p.y,p.z);tile.material=mats.tile;tile.isPickable=true;tile.metadata={type:'tile',x,y,moveCost:null};return tile;
 }
 
 function createMissionProps(B,scene,mats,glow) {
@@ -224,6 +254,52 @@ function createMissionProps(B,scene,mats,glow) {
   const beacon=cylinder(B,scene,'exfil-beacon',1.65,.035,null,mats.exfil,ex.x,.86,ex.z,12);glow.addIncludedOnlyMesh(beacon);
   const light=new B.PointLight('exfil-light',new B.Vector3(ex.x,.55,ex.z),scene);light.diffuse=new B.Color3(.12,.68,1);light.intensity=4.5;light.range=3;
   return { intel,intelLamp,ring,beacon,exfilLight:light };
+}
+
+function moveMaterialForCost(mats, cost) {
+  if (cost <= 1) return mats.moveNear;
+  if (cost === 2) return mats.moveMid;
+  return mats.moveFar;
+}
+
+function moveColorForCost(cost) {
+  if (cost <= 1) return '#63e7ff';
+  if (cost === 2) return '#6aa7ff';
+  return '#f1c15b';
+}
+
+function paintMoveBadge(texture, cost) {
+  const ctx = texture.getContext();
+  const size = texture.getSize();
+  ctx.clearRect(0,0,size.width,size.height);
+  ctx.fillStyle='rgba(3,12,19,.88)';
+  ctx.fillRect(8,8,size.width-16,size.height-16);
+  ctx.strokeStyle=moveColorForCost(cost);
+  ctx.lineWidth=7;
+  ctx.strokeRect(8,8,size.width-16,size.height-16);
+  ctx.fillStyle='#eefbff';
+  ctx.font='700 60px monospace';
+  ctx.textAlign='center';
+  ctx.textBaseline='middle';
+  ctx.fillText(chesscomMoveCostLabel(cost),size.width/2,size.height/2+2);
+  texture.update(false);
+}
+
+function createReachableIndicator(B,scene,mats,glow,key,cost) {
+  const root=new B.TransformNode(`move-indicator-${key}`,scene);
+  root.metadata={cost,phase:Math.random()*Math.PI*2};
+  const ring=B.MeshBuilder.CreateTorus(`move-ring-${key}`,{diameter:1.14,thickness:.065,tessellation:32},scene);
+  ring.parent=root;ring.rotation.x=Math.PI/2;ring.position.y=.085;ring.material=moveMaterialForCost(mats,cost);ring.isPickable=false;glow.addIncludedOnlyMesh(ring);
+  const disc=B.MeshBuilder.CreateDisc(`move-disc-${key}`,{radius:.34,tessellation:28},scene);
+  disc.parent=root;disc.rotation.x=Math.PI/2;disc.position.y=.052;disc.material=moveMaterialForCost(mats,cost);disc.isPickable=false;disc.visibility=.42;
+  const badge=B.MeshBuilder.CreatePlane(`move-badge-${key}`,{width:.76,height:.40},scene);
+  badge.parent=root;badge.position.y=.39;badge.billboardMode=B.Mesh.BILLBOARDMODE_ALL;badge.isPickable=false;
+  const texture=new B.DynamicTexture(`move-badge-texture-${key}`,{width:256,height:128},scene,false);
+  texture.hasAlpha=true;paintMoveBadge(texture,cost);
+  const badgeMat=new B.StandardMaterial(`move-badge-mat-${key}`,scene);
+  badgeMat.diffuseTexture=texture;badgeMat.opacityTexture=texture;badgeMat.emissiveTexture=texture;badgeMat.useAlphaFromDiffuseTexture=true;badgeMat.disableLighting=true;badgeMat.backFaceCulling=false;badgeMat.specularColor=B.Color3.Black();badge.material=badgeMat;
+  root.metadata.ring=ring;root.metadata.disc=disc;root.metadata.badge=badge;root.metadata.texture=texture;
+  return root;
 }
 
 export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}={}) {
@@ -248,6 +324,7 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
     friendlyBody:material(B,scene,'friendly-body','#2f3434'),friendlyArmour:material(B,scene,'friendly-armour','#161b1c'),friendlyHead:material(B,scene,'friendly-head','#bda985'),enemyBody:material(B,scene,'enemy-body','#302d28'),enemyArmour:material(B,scene,'enemy-armour','#171818'),enemyHead:material(B,scene,'enemy-head','#a18d71'),helmet:material(B,scene,'helmet','#252a28'),helmetBand:material(B,scene,'helmet-band','#151817'),eliteHelmet:material(B,scene,'elite-helmet','#211817'),eliteTrim:material(B,scene,'elite-trim','#6f211c'),pack:material(B,scene,'pack','#202522'),boot:material(B,scene,'boot','#101314'),glove:material(B,scene,'glove','#0c0f10'),pouch:material(B,scene,'pouch','#4a4434'),gun:material(B,scene,'gun','#101315'),
     enemyVisor:material(B,scene,'enemy-visor','#421111','#ff2929'),eliteVisor:material(B,scene,'elite-visor','#6d1515','#ff1717'),
     blue:material(B,scene,'reachable','#12394e','#0872a4',.74),cyan:material(B,scene,'selected','#155269','#13b6ef',.88),red:material(B,scene,'target','#601818','#df2626',.87),intel:material(B,scene,'intel','#88651b','#ffca38',.92),exfil:material(B,scene,'exfil','#0b607b','#12bdf4',.88),intelCase:material(B,scene,'intel-case','#403b25'),
+    moveNear:material(B,scene,'move-near','#155b6a','#19c9ee',.90),moveMid:material(B,scene,'move-mid','#214d78','#388fe6',.88),moveFar:material(B,scene,'move-far','#725927','#d8a93d',.88),
     muzzle:material(B,scene,'muzzle','#ffb642','#ffad25'),impact:material(B,scene,'impact','#ffdf9b','#ff9e35'),
   };
 
@@ -261,10 +338,11 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
   const tiles=new Map();for(let y=0;y<MAP_H;y+=1)for(let x=0;x<MAP_W;x+=1)tiles.set(`${x},${y}`,createTile(B,scene,x,y,mats));
   const glow=new B.GlowLayer('ops-glow',scene,{blurKernelSize:coarse ? 16 : 28});glow.intensity=.72;
   const props=createMissionProps(B,scene,mats,glow);
-  const unitRoots=new Map();const markers=new Map();const fx=[];let matthiasUrl='';let previous=null;let previousObjectives={intel:false,extraction:false,target:false};
+  const unitRoots=new Map();const markers=new Map();const reachableIndicators=new Map();const fx=[];let matthiasUrl='';let previous=null;let previousObjectives={intel:false,extraction:false,target:false};
 
   function markerFor(id){if(markers.has(id))return markers.get(id);const ring=B.MeshBuilder.CreateTorus(`marker-${id}`,{diameter:1.18,thickness:.05,tessellation:32},scene);ring.rotation.x=Math.PI/2;ring.material=mats.cyan;ring.isVisible=false;glow.addIncludedOnlyMesh(ring);markers.set(id,ring);return ring;}
   function ensureUnit(unit,friendly,matthiasArt){if(unitRoots.has(unit.id))return unitRoots.get(unit.id);let root;if(unit.id==='matthias'&&matthiasArt){matthiasUrl=matthiasArt;root=createMatthiasCard(B,scene,matthiasArt,mats);}else root=createTacticalAgent(B,scene,unit.id,friendly,unit.elite,mats);root.getChildMeshes().forEach((mesh)=>shadowGenerator.addShadowCaster(mesh));unitRoots.set(unit.id,root);return root;}
+  function ensureReachableIndicator(tile){const key=`${tile.x},${tile.y}`;let indicator=reachableIndicators.get(key);if(!indicator){indicator=createReachableIndicator(B,scene,mats,glow,key,tile.cost);reachableIndicators.set(key,indicator);}if(indicator.metadata.cost!==tile.cost){indicator.metadata.cost=tile.cost;indicator.metadata.ring.material=moveMaterialForCost(mats,tile.cost);indicator.metadata.disc.material=moveMaterialForCost(mats,tile.cost);paintMoveBadge(indicator.metadata.texture,tile.cost);}return indicator;}
   function pushFx(mesh,life=260){mesh.isPickable=false;fx.push({mesh,born:performance.now(),life});return mesh;}
   function shotFx(source,target,friendly=true){if(!source||!target||reduced)return;const a=world(source.x,source.y,1.0);const b=world(target.x,target.y,.95);const start=new B.Vector3(a.x,a.y,a.z);const end=new B.Vector3(b.x,b.y,b.z);const muzzle=B.MeshBuilder.CreateSphere('muzzle-flash',{diameter:.25,segments:8},scene);muzzle.position.copyFrom(start);muzzle.material=mats.muzzle;glow.addIncludedOnlyMesh(muzzle);pushFx(muzzle,115);const line=B.MeshBuilder.CreateLines('tracer',{points:[start,end]},scene);line.color=friendly ? new B.Color3(1,.72,.26) : new B.Color3(1,.22,.15);line.alpha=.92;pushFx(line,150);const hit=B.MeshBuilder.CreateSphere('impact',{diameter:.18,segments:7},scene);hit.position.copyFrom(end);hit.material=mats.impact;glow.addIncludedOnlyMesh(hit);pushFx(hit,220);}
   function pulseAt(pos,mat){const ring=B.MeshBuilder.CreateTorus('objective-pulse',{diameter:1.4,thickness:.045,tessellation:32},scene);ring.rotation.x=Math.PI/2;ring.position.set(pos.x,.075,pos.z);ring.material=mat;glow.addIncludedOnlyMesh(ring);pushFx(ring,650);}
@@ -272,10 +350,13 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
   scene.onPointerObservable.add((pointerInfo)=>{const pick=pointerInfo.pickInfo;const meta=pick?.pickedMesh?.metadata;if(!meta){if(pointerInfo.type===B.PointerEventTypes.POINTERMOVE)onHover?.(null);return;}if(pointerInfo.type===B.PointerEventTypes.POINTERMOVE)onHover?.(meta);if(pointerInfo.type!==B.PointerEventTypes.POINTERPICK)return;if(meta.type==='tile')onTile?.(meta.x,meta.y);if(meta.type==='unit')onUnit?.(meta.id,meta.friendly);});
   function closest(list,target){return list.filter((u)=>u.hp>0).sort((a,b)=>(Math.abs(a.x-target.x)+Math.abs(a.y-target.y))-(Math.abs(b.x-target.x)+Math.abs(b.y-target.y)))[0]||null;}
 
-  function update(state,{reachable=new Set(),targetable=new Set(),selectedId=null,matthiasArt=''}={}){
-    for(const [key,tile] of tiles){const [x,y]=key.split(',').map(Number);if(x===INTEL.x&&y===INTEL.y&&!state.objectives.intel)tile.material=mats.intel;else if(x===EXFIL.x&&y===EXFIL.y)tile.material=mats.exfil;else if(targetable.has(key))tile.material=mats.red;else if(reachable.has(key))tile.material=mats.blue;else tile.material=mats.tile;}
+  function update(state,{reachable=new Set(),reachableTiles=[],targetable=new Set(),selectedId=null,matthiasArt=''}={}){
+    const reachableCosts=new Map(reachableTiles.map((tile)=>[`${tile.x},${tile.y}`,tile.cost]));
+    for(const [key,tile] of tiles){const [x,y]=key.split(',').map(Number);const moveCost=reachableCosts.get(key);tile.metadata.moveCost=moveCost??null;if(x===INTEL.x&&y===INTEL.y&&!state.objectives.intel)tile.material=mats.intel;else if(x===EXFIL.x&&y===EXFIL.y)tile.material=mats.exfil;else if(targetable.has(key))tile.material=mats.red;else if(moveCost)tile.material=moveMaterialForCost(mats,moveCost);else if(reachable.has(key))tile.material=mats.blue;else tile.material=mats.tile;}
+    for(const indicator of reachableIndicators.values())indicator.setEnabled(false);
+    for(const tile of reachableTiles){const indicator=ensureReachableIndicator(tile);const p=world(tile.x,tile.y,.03);indicator.position.set(p.x,0,p.z);indicator.setEnabled(true);}
     props.intel.setEnabled(!state.objectives.intel);props.intelLamp.setEnabled(!state.objectives.intel);
-    for(const unit of [...state.friendlies,...state.enemies]){const friendly=state.friendlies.some((candidate)=>candidate.id===unit.id);const root=ensureUnit(unit,friendly,matthiasArt||matthiasUrl);const p=world(unit.x,unit.y,.03);root.metadata.target=new B.Vector3(p.x,unit.hp > 0 ? .03 : -.55,p.z);if(!root.metadata.initialized){root.position.copyFrom(root.metadata.target);root.metadata.initialized=true;}root.setEnabled(unit.hp>0);root.rotation.y=friendly ? -.58 : 2.38;const ring=markerFor(unit.id);ring.position.set(p.x,.055,p.z);ring.isVisible=unit.hp>0&&(unit.id===selectedId||(!friendly&&targetable.has(`${unit.x},${unit.y}`)));ring.material=friendly ? mats.cyan : mats.red;}
+    for(const unit of [...state.friendlies,...state.enemies]){const friendly=state.friendlies.some((candidate)=>candidate.id===unit.id);const root=ensureUnit(unit,friendly,matthiasArt||matthiasUrl);const p=world(unit.x,unit.y,.03);const nextTarget=new B.Vector3(p.x,unit.hp > 0 ? .03 : -.55,p.z);const previousTarget=root.metadata.target;const changed=!previousTarget||Math.abs(previousTarget.x-nextTarget.x)>.001||Math.abs(previousTarget.z-nextTarget.z)>.001;if(!root.metadata.initialized){root.position.copyFrom(nextTarget);root.metadata.initialized=true;root.metadata.motion=null;}else if(changed&&unit.hp>0){const start=root.position.clone();const distance=Math.hypot(nextTarget.x-start.x,nextTarget.z-start.z);root.metadata.motion={start,target:nextTarget.clone(),startedAt:performance.now(),duration:chesscomMovementDuration(distance),steps:Math.max(2,Math.round((distance/TILE)*2))};}root.metadata.target=nextTarget;root.metadata.baseYaw=friendly ? -.58 : 2.38;root.setEnabled(unit.hp>0);root.rotation.y=root.metadata.baseYaw;const ring=markerFor(unit.id);ring.position.set(p.x,.055,p.z);ring.isVisible=unit.hp>0&&(unit.id===selectedId||(!friendly&&targetable.has(`${unit.x},${unit.y}`)));ring.material=friendly ? mats.cyan : mats.red;}
     if(previous){for(const enemy of state.enemies){const old=previous.enemies.find((u)=>u.id===enemy.id);if(old&&enemy.hp<old.hp){const source=state.friendlies.find((u)=>u.id===selectedId&&u.hp>0)||closest(state.friendlies,enemy);shotFx(source,enemy,true);}}for(const ally of state.friendlies){const old=previous.friendlies.find((u)=>u.id===ally.id);if(old&&ally.hp<old.hp)shotFx(closest(state.enemies,ally),ally,false);}}
     if(state.objectives.intel&&!previousObjectives.intel)pulseAt(world(INTEL.x,INTEL.y),mats.intel);
     if(state.objectives.extraction&&!previousObjectives.extraction)pulseAt(world(EXFIL.x,EXFIL.y),mats.exfil);
@@ -285,8 +366,8 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
   const started=performance.now();
   engine.runRenderLoop(()=>{
     const now=performance.now();const t=(now-started)/1000;
-    for(const [id,root] of unitRoots){if(!root.isEnabled()||!root.metadata?.target)continue;const target=root.metadata.target;if(reduced){root.position.x=target.x;root.position.z=target.z;}else{root.position.x+=(target.x-root.position.x)*.13;root.position.z+=(target.z-root.position.z)*.13;}root.position.y=target.y+(reduced ? 0 : Math.sin(t*1.7+root.metadata.phase)*.018);const parts=root.metadata.parts;if(parts?.weapon&&!reduced)parts.weapon.rotation.z=-.08+Math.sin(t*1.55+root.metadata.phase)*.018;if(parts?.head&&!reduced)parts.head.position.x=Math.sin(t*.72+root.metadata.phase)*.012;const marker=markers.get(id);if(marker?.isVisible&&!reduced){const s=1+Math.sin(t*3.2+root.metadata.phase)*.035;marker.scaling.set(s,s,s);}}
-    if(!reduced){props.ring.rotation.z=t*.22;props.beacon.scaling.y=.92+Math.sin(t*2.4)*.08;props.exfilLight.intensity=4.2+Math.sin(t*2.7)*.8;warmLights.forEach((light,index)=>{light.intensity=(index<2 ? 12 : 5)+Math.sin(t*3.1+index*1.7)*.45;});}
+    for(const [id,root] of unitRoots){if(!root.isEnabled()||!root.metadata?.target)continue;const target=root.metadata.target;const motion=root.metadata.motion;const phase=root.metadata.phase||0;const idleBob=reduced?0:Math.sin(t*1.7+phase)*.012;let moveWave=0;if(reduced){root.position.copyFrom(target);root.metadata.motion=null;root.rotation.z=0;}else if(motion){const raw=clamp01((now-motion.startedAt)/motion.duration);const eased=chesscomMovementEase(raw);moveWave=Math.sin(raw*Math.PI*motion.steps);root.position.x=motion.start.x+(motion.target.x-motion.start.x)*eased;root.position.z=motion.start.z+(motion.target.z-motion.start.z)*eased;root.position.y=motion.target.y+chesscomMovementLift(raw,motion.steps);root.rotation.z=moveWave*.018;if(raw>=1){root.metadata.motion=null;root.position.copyFrom(motion.target);root.position.y=motion.target.y+idleBob;root.rotation.z=0;moveWave=0;}}else{root.position.x=target.x;root.position.z=target.z;root.position.y=target.y+idleBob;root.rotation.z=0;}const parts=root.metadata.parts;if(parts?.weapon&&!reduced)parts.weapon.rotation.z=-.08+(motion?moveWave*.055:Math.sin(t*1.55+phase)*.018);if(parts?.armL&&!reduced)parts.armL.rotation.x=.18+moveWave*.28;if(parts?.armR&&!reduced)parts.armR.rotation.x=-.18-moveWave*.28;if(parts?.legL&&!reduced)parts.legL.rotation.x=moveWave*.24;if(parts?.legR&&!reduced)parts.legR.rotation.x=-moveWave*.24;if(parts?.head&&!reduced)parts.head.position.x=Math.sin(t*.72+phase)*.012;const marker=markers.get(id);if(marker?.isVisible&&!reduced){const s=1+Math.sin(t*3.2+phase)*.035;marker.scaling.set(s,s,s);}}
+    if(!reduced){for(const indicator of reachableIndicators.values()){if(!indicator.isEnabled())continue;const pulse=1+Math.sin(t*3.1+indicator.metadata.phase)*.045;indicator.metadata.ring.scaling.set(pulse,pulse,pulse);indicator.metadata.badge.position.y=.39+Math.sin(t*2.2+indicator.metadata.phase)*.018;}props.ring.rotation.z=t*.22;props.beacon.scaling.y=.92+Math.sin(t*2.4)*.08;props.exfilLight.intensity=4.2+Math.sin(t*2.7)*.8;warmLights.forEach((light,index)=>{light.intensity=(index<2 ? 12 : 5)+Math.sin(t*3.1+index*1.7)*.45;});}
     for(let i=fx.length-1;i>=0;i-=1){const item=fx[i];const progress=(now-item.born)/item.life;if(progress>=1){item.mesh.dispose();fx.splice(i,1);continue;}if('alpha' in item.mesh)item.mesh.alpha=1-progress;const s=1+progress*.65;item.mesh.scaling.set(s,s,s);}
     scene.render();
   });
