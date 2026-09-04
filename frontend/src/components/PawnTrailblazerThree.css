@@ -49,6 +49,14 @@
 
 .pawn-trailblazer-overlay { z-index: 6; }
 
+/* The approved Matthias cutout is portrait artwork, not a square avatar. */
+.pawn-trailblazer-overlay img {
+  object-fit: contain;
+  object-position: center bottom;
+  padding: 5px;
+  background: radial-gradient(circle at 50% 72%, rgba(201, 162, 39, .16), rgba(5, 7, 10, .82) 70%);
+}
+
 .pawn-trailblazer-renderer-error {
   position: absolute;
   z-index: 8;
@@ -107,6 +115,53 @@
   background: linear-gradient(90deg, #7d5218, #d7a931 52%, #ffe58a);
   box-shadow: 0 0 15px rgba(255, 221, 113, .52);
   transition: width 70ms linear;
+}
+
+/* Sector mood: same Three.js battlefield, increasingly hostile art direction.
+ * Uses the already-rendered factual sector label, so no parallel runtime state
+ * or animation loop is introduced. */
+.pawn-trailblazer-stage:has(.pawn-trailblazer-stage-sector[aria-label^='Sector I:']) .pawn-trailblazer-three::before {
+  background:
+    radial-gradient(ellipse at 50% 17%, rgba(226, 194, 105, .18), transparent 31%),
+    radial-gradient(circle at 18% 58%, rgba(104, 92, 63, .1), transparent 29%),
+    linear-gradient(90deg, rgba(0, 0, 0, .55), transparent 18% 82%, rgba(0, 0, 0, .55));
+}
+
+.pawn-trailblazer-stage:has(.pawn-trailblazer-stage-sector[aria-label^='Sector II:']) .pawn-trailblazer-three::before {
+  background:
+    radial-gradient(ellipse at 50% 16%, rgba(142, 185, 222, .16), transparent 30%),
+    radial-gradient(circle at 82% 48%, rgba(72, 116, 155, .13), transparent 28%),
+    linear-gradient(90deg, rgba(2, 8, 15, .62), transparent 18% 82%, rgba(2, 8, 15, .62));
+}
+
+.pawn-trailblazer-stage:has(.pawn-trailblazer-stage-sector[aria-label^='Sector III:']) .pawn-trailblazer-three::before {
+  background:
+    radial-gradient(ellipse at 50% 17%, rgba(238, 167, 74, .17), transparent 28%),
+    radial-gradient(circle at 18% 44%, rgba(152, 48, 37, .13), transparent 27%),
+    radial-gradient(circle at 84% 42%, rgba(185, 112, 44, .1), transparent 25%),
+    linear-gradient(90deg, rgba(15, 4, 3, .64), transparent 19% 81%, rgba(15, 4, 3, .64));
+}
+
+.pawn-trailblazer-stage:has(.pawn-trailblazer-stage-sector[aria-label^='Sector IV:']) .pawn-trailblazer-three::before {
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(255, 91, 54, .21), transparent 30%),
+    radial-gradient(circle at 14% 50%, rgba(154, 24, 21, .17), transparent 28%),
+    radial-gradient(circle at 87% 54%, rgba(183, 45, 20, .14), transparent 27%),
+    linear-gradient(90deg, rgba(20, 2, 2, .72), transparent 20% 80%, rgba(20, 2, 2, .72));
+  opacity: .94;
+}
+
+.pawn-trailblazer-stage:has(.pawn-trailblazer-stage-sector[aria-label^='Sector II:']) .pawn-trailblazer-stage-sector {
+  border-color: rgba(125, 178, 218, .45);
+}
+
+.pawn-trailblazer-stage:has(.pawn-trailblazer-stage-sector[aria-label^='Sector III:']) .pawn-trailblazer-stage-sector {
+  border-color: rgba(220, 143, 55, .54);
+}
+
+.pawn-trailblazer-stage:has(.pawn-trailblazer-stage-sector[aria-label^='Sector IV:']) .pawn-trailblazer-stage-sector {
+  border-color: rgba(235, 77, 55, .62);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, .34), 0 0 24px rgba(196, 48, 32, .13);
 }
 
 @media (max-width: 520px) {

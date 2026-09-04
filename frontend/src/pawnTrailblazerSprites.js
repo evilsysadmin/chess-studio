@@ -1,13 +1,13 @@
 import matthiasRun from './assets/pawnTrailblazer/matthias_run.webp';
 import matthiasCapture from './assets/pawnTrailblazer/matthias_capture.webp';
-import enemyPawn from './pieces-regimiento/bP.png';
-import enemyDuelist from './pieces-regimiento/bP.png';
-import enemyKnight from './pieces-regimiento/bN.png';
-import enemyBishop from './pieces-regimiento/bB.png';
-import enemyRook from './pieces-regimiento/bR.png';
-import powerRook from './pieces-regimiento/wR.png';
-import powerBishop from './pieces-regimiento/wB.png';
-import powerQueen from './pieces-regimiento/wQ.png';
+import enemyPawn from './assets/pawnTrailblazer/enemy_pawn.webp';
+import enemyDuelist from './assets/pawnTrailblazer/enemy_duelist.webp';
+import enemyKnight from './assets/pawnTrailblazer/enemy_knight.webp';
+import enemyBishop from './assets/pawnTrailblazer/enemy_bishop.webp';
+import enemyRook from './assets/pawnTrailblazer/enemy_rook.webp';
+import powerRook from './assets/pawnTrailblazer/power_rook.webp';
+import powerBishop from './assets/pawnTrailblazer/power_bishop.webp';
+import powerQueen from './assets/pawnTrailblazer/power_queen.webp';
 
 export const TRAIL_SPRITES = Object.freeze({
   matthiasRun,
