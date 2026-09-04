@@ -21,6 +21,16 @@ if "gh workflow run cicd.yml" in auto_merge:
     errors.append("auto-merge.yml no debe ser propietario del dispatch a main; evita doble despacho")
 
 for needle, label in (
+    ("Wait for required checks to be published", "bootstrap antes del watcher de required checks"),
+    ('gh pr checks "$PR_URL" --required --json name', "sondeo de required checks publicados"),
+    ("required_count", "contador de required checks antes de --watch"),
+    ("headRefOid", "validación del head mientras espera checks"),
+    ('gh pr checks "$PR_URL" --required --watch', "watcher terminal de required checks"),
+):
+    if needle not in auto_merge:
+        errors.append(f"auto-merge.yml incompleto: falta {label}")
+
+for needle, label in (
     ("name: Delivery · main handoff", "nombre del handoff"),
     ("workflow_run:", "trigger workflow_run"),
     ("Quality · CI gate", "upstream Quality"),
@@ -48,4 +58,4 @@ if errors:
         print(f"ERROR: {error}", file=sys.stderr)
     raise SystemExit(1)
 
-print("Auto-merge delivery contract OK: PR Quality -> independent handoff -> main Quality -> staging.")
+print("Auto-merge delivery contract OK: published required checks -> PR Quality -> independent handoff -> main Quality -> staging.")
