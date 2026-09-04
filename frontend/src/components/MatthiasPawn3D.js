@@ -481,38 +481,44 @@ export function matthiasPawnPoseSample({
   const intensity = Math.max(.7, Math.min(1.35, Number(motionIntensity) || 1));
   const breath = Math.sin(time * 1.15);
   const pulse = statePulse(stateElapsed, stateDurationMs);
-  let headYaw = Math.sin(time * .55) * .018;
+  const attendingUser = speaking || profile === 'speak' || presenceState === MATTHIAS_HOME_STATES.ATTEND;
+  const busyWithTask = !attendingUser && ['read', 'dossier', 'write', 'think', 'sip', 'bite'].includes(profile);
+
+  // Matthias lives here. He is not a receptionist waiting square-on for the
+  // player. Outside deliberate attention/speech he keeps a mild room-facing
+  // bias, then turns further toward whatever task currently occupies him.
+  let headYaw = attendingUser ? Math.sin(time * .55) * .008 : .085 + Math.sin(time * .55) * .020;
   let headPitch = breath * .012;
   let headRoll = 0;
-  let bodyYaw = Math.sin(time * .31) * .006;
+  let bodyYaw = attendingUser ? Math.sin(time * .31) * .004 : .032 + Math.sin(time * .31) * .008;
   let bodyY = breath * .006;
-  let gazeX = 0;
+  let gazeX = attendingUser ? 0 : .006;
   let browBias = 0;
   let smirk = 0;
   let mouthOpen = 0;
   let reach = 0;
   let energy = .11 + Math.abs(breath) * .05;
 
-  if (presenceState === MATTHIAS_HOME_STATES.GLANCE_LEFT) {
-    headYaw -= .24 * pulse;
-    gazeX -= .032 * pulse;
+  if (!attendingUser && presenceState === MATTHIAS_HOME_STATES.GLANCE_LEFT) {
+    headYaw -= (busyWithTask ? .055 : .24) * pulse;
+    gazeX -= (busyWithTask ? .014 : .032) * pulse;
     energy = Math.max(energy, .42 * pulse);
-  } else if (presenceState === MATTHIAS_HOME_STATES.GLANCE_RIGHT) {
-    headYaw += .24 * pulse;
-    gazeX += .032 * pulse;
+  } else if (!attendingUser && presenceState === MATTHIAS_HOME_STATES.GLANCE_RIGHT) {
+    headYaw += (busyWithTask ? .055 : .24) * pulse;
+    gazeX += (busyWithTask ? .014 : .032) * pulse;
     energy = Math.max(energy, .42 * pulse);
-  } else if (presenceState === MATTHIAS_HOME_STATES.SURVEY) {
-    headYaw += Math.sin(stateElapsed * 4.1) * .19 * pulse;
-    gazeX += Math.sin(stateElapsed * 4.6) * .022 * pulse;
+  } else if (!attendingUser && presenceState === MATTHIAS_HOME_STATES.SURVEY) {
+    headYaw += Math.sin(stateElapsed * 4.1) * (busyWithTask ? .060 : .19) * pulse;
+    gazeX += Math.sin(stateElapsed * 4.6) * (busyWithTask ? .010 : .022) * pulse;
     energy = Math.max(energy, .5 * pulse);
-  } else if (presenceState === MATTHIAS_HOME_STATES.LEAN_IN) {
+  } else if (!attendingUser && presenceState === MATTHIAS_HOME_STATES.LEAN_IN) {
     headPitch -= .085 * pulse;
     bodyY += .018 * pulse;
     energy = Math.max(energy, .5 * pulse);
-  } else if (presenceState === MATTHIAS_HOME_STATES.NOD) {
+  } else if (!attendingUser && presenceState === MATTHIAS_HOME_STATES.NOD) {
     headPitch += Math.sin(stateElapsed * 7.8) * .11 * pulse;
     energy = Math.max(energy, .52 * pulse);
-  } else if (presenceState === MATTHIAS_HOME_STATES.SKEPTICAL) {
+  } else if (!attendingUser && presenceState === MATTHIAS_HOME_STATES.SKEPTICAL) {
     headYaw += .08 * pulse;
     headRoll -= .07 * pulse;
     browBias = .045 * pulse;
@@ -523,30 +529,43 @@ export function matthiasPawnPoseSample({
     energy = Math.max(energy, .55);
   }
 
-  if (profile === 'read' || profile === 'dossier') {
-    headYaw += Math.sin(time * 1.38) * .065;
-    gazeX += Math.sin(time * 1.8) * .014;
-    headPitch += .025;
+  if (!attendingUser && (profile === 'read' || profile === 'dossier')) {
+    headYaw += .16 + Math.sin(time * 1.38) * .028;
+    bodyYaw += .055;
+    gazeX += .016 + Math.sin(time * 1.8) * .006;
+    headPitch += .035;
     energy = Math.max(energy, .22);
-  } else if (profile === 'write') {
-    headPitch += .055;
-    headYaw += Math.sin(time * 2.1) * .03;
+  } else if (!attendingUser && profile === 'write') {
+    headPitch += .060;
+    headYaw += .19 + Math.sin(time * 2.1) * .020;
+    bodyYaw += .070;
+    gazeX += .018;
     energy = Math.max(energy, .24);
-  } else if (profile === 'think') {
-    headYaw += Math.sin(time * .72) * .055;
+  } else if (!attendingUser && profile === 'think') {
+    headYaw += .12 + Math.sin(time * .72) * .035;
+    bodyYaw += .040;
+    gazeX += .012;
     browBias += .018;
     energy = Math.max(energy, .2);
-  } else if (profile === 'sip') {
+  } else if (!attendingUser && profile === 'sip') {
     const action = smooth01(.5 + Math.sin(time * 1.35) * .5);
+    headYaw += .135;
+    bodyYaw += .045;
+    gazeX += .012;
     headPitch += .05 * action;
     reach = .54 * action;
     energy = Math.max(energy, .25 + .28 * action);
-  } else if (profile === 'bite') {
+  } else if (!attendingUser && profile === 'bite') {
     const action = smooth01(.5 + Math.sin(time * 1.22 + .8) * .5);
+    headYaw += .145;
+    bodyYaw += .050;
+    gazeX += .012;
     headPitch += .065 * action;
     reach = .62 * action;
     energy = Math.max(energy, .27 + .31 * action);
-  } else if (profile === 'sleep') {
+  } else if (!attendingUser && profile === 'sleep') {
+    headYaw += .10;
+    bodyYaw += .025;
     headPitch += .10 + Math.sin(time * .58) * .055;
     headRoll += Math.sin(time * .37) * .035;
     energy = Math.max(energy, .2);
