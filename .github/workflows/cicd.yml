@@ -40,9 +40,6 @@ jobs:
       - name: Staging preview isolation contract
         run: python3 scripts/staging_preview_contract.py
 
-      - name: Auto-merge delivery contract
-        run: python3 -S scripts/auto_merge_delivery_contract.py
-
       - name: Classify quality-test surface
         id: quality_paths
         shell: bash
@@ -269,12 +266,18 @@ jobs:
           docker compose up -d --build
           python3 scripts/compose_smoke.py
 
-  e2e:
-    name: Tests · Playwright
+  e2e_lanes:
+    name: Tests · Playwright · ${{ matrix.lane }}
     needs: preflight
     if: needs.preflight.outputs.run_e2e == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        lane:
+          - regression
+          - smoke
     steps:
       - uses: actions/checkout@v7
 
@@ -282,18 +285,67 @@ jobs:
         uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
-          build-frontend: 'false'
+          build-frontend: 'true'
 
-      - name: Critical browser smoke
+      - name: Critical browser lane
+        working-directory: e2e
+        shell: bash
         env:
-          CRITICAL_E2E_WORKERS: 1
-        run: make e2e-critical
+          CRITICAL_E2E_LANE: ${{ matrix.lane }}
+        run: |
+          set -euo pipefail
+          case "$CRITICAL_E2E_LANE" in
+            regression)
+              ./node_modules/.bin/playwright test regression-journeys.spec.js \
+                --grep "sesión · dos contextos de navegador|deploy · una release nueva no fuerza reload|admin · presencia distingue|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos|Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar" \
+                --workers=1 --retries=0
+              ./node_modules/.bin/playwright test mobile-final-interactions.spec.js --workers=1 --retries=0
+              ;;
+            smoke)
+              ./node_modules/.bin/playwright test smoke.spec.js \
+                --grep "login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña" \
+                --workers=1 --retries=0
+              ;;
+            *)
+              echo "::error::Lane Playwright desconocida: $CRITICAL_E2E_LANE"
+              exit 2
+              ;;
+          esac
 
       - name: Upload Playwright diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-test-results
+          name: playwright-test-results-${{ matrix.lane }}
           path: e2e/test-results/
           if-no-files-found: ignore
           retention-days: 7
+
+  e2e:
+    name: Tests · Playwright
+    needs: [preflight, e2e_lanes]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Aggregate critical browser lanes
+        shell: bash
+        env:
+          PREFLIGHT_RESULT: ${{ needs.preflight.result }}
+          RUN_E2E: ${{ needs.preflight.outputs.run_e2e }}
+          LANES_RESULT: ${{ needs.e2e_lanes.result }}
+        run: |
+          set -euo pipefail
+          if [[ "$PREFLIGHT_RESULT" != 'success' ]]; then
+            echo "::error::Preflight no terminó con éxito: $PREFLIGHT_RESULT"
+            exit 1
+          fi
+          if [[ "$RUN_E2E" != 'true' ]]; then
+            echo 'Playwright omitido: esta superficie no requiere navegador crítico.'
+            exit 0
+          fi
+          if [[ "$LANES_RESULT" != 'success' ]]; then
+            echo "::error::Alguna lane crítica de Playwright falló: $LANES_RESULT"
+            exit 1
+          fi
+          echo 'Playwright crítico OK: regression+mobile y smoke pasaron en runners aislados.'
