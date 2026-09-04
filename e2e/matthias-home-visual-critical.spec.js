@@ -8,6 +8,18 @@ async function dismissHomeGuide(page) {
   }
 }
 
+async function dismissMatthiasSpeech(corner) {
+  const bubble = corner.getByRole('region', { name: 'Mensaje de Matthias' });
+  const dismiss = corner.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
+  if (!(await bubble.isVisible().catch(() => false))) return;
+
+  await dismiss.click({ timeout: 2_500 }).catch(() => {});
+  if (await bubble.isVisible().catch(() => false)) {
+    await dismiss.click({ force: true, timeout: 1_500 }).catch(() => {});
+  }
+  await expect(bubble).toBeHidden({ timeout: 5_000 });
+}
+
 async function openHomeAt(page, hour, { dismissSpeech = true, profileSeed = {} } = {}) {
   await page.addInitScript((fixedHour) => {
     Math.random = () => 0;
@@ -26,14 +38,7 @@ async function openHomeAt(page, hour, { dismissSpeech = true, profileSeed = {} }
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await expect(corner).toBeVisible();
   await expect(corner).toHaveAttribute('data-three-presentation', 'home-v4');
-  if (dismissSpeech) {
-    const dismiss = corner.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
-    if (await dismiss.isVisible().catch(() => false)) {
-      await dismiss.click({ timeout: 1_500 }).catch(async () => {
-        await expect(dismiss).toHaveCount(0, { timeout: 1_500 });
-      });
-    }
-  }
+  if (dismissSpeech) await dismissMatthiasSpeech(corner);
   return corner;
 }
 
