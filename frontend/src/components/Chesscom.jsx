@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { request } from '../http.js';
+import { createChesscomAudio } from '../chesscomAudio.js';
 import {
   CHESSCOM_COVER,
   chesscomCreateState,
@@ -45,7 +46,8 @@ function SquadPortrait({ unit, selected, matthiasArt, onSelect }) {
       <span className="chesscom-portrait" aria-hidden="true">
         {unit.id === 'matthias' && matthiasArt
           ? <img src={matthiasArt} alt="" />
-          : <span className={`chesscom-face is-${unit.id}`}><i /><b /></span>}
+          : <span className={`chesscom-portrait-art is-${unit.id}`} />}
+        <span className="chesscom-portrait-noise" />
       </span>
       <span className="chesscom-squad-copy">
         <strong>{unit.name}</strong>
@@ -60,12 +62,15 @@ function SquadPortrait({ unit, selected, matthiasArt, onSelect }) {
 function WeaponPanel({ unit }) {
   return (
     <div className="chesscom-panel chesscom-weapon">
-      <div className="chesscom-weapon-title"><div><strong>{unit?.weapon || '—'}</strong><small>{unit?.id === 'matthias' ? 'Used · fixer stock' : 'Contract issue'}</small></div><span aria-hidden="true">▰</span></div>
+      <div className="chesscom-weapon-title">
+        <div><strong>{unit?.weapon || '—'}</strong><small>{unit?.id === 'matthias' ? 'Used · fixer stock · serial scrubbed' : 'Contract issue'}</small></div>
+        <span className="chesscom-weapon-art" aria-hidden="true" />
+      </div>
       <dl>
         <div><dt>DMG</dt><dd>{unit?.damage || 0}</dd></div>
         <div><dt>RNG</dt><dd>{unit?.range || 0}</dd></div>
         <div><dt>AP</dt><dd>2</dd></div>
-        <div><dt>RELIABILITY</dt><dd>{unit?.reliability || 100}%</dd></div>
+        <div><dt>RELIABILITY</dt><dd className={(unit?.reliability || 100) < 93 ? 'is-warning' : ''}>{unit?.reliability || 100}%</dd></div>
         <div><dt>AMMO</dt><dd>{unit?.ammo ?? '—'}/30</dd></div>
       </dl>
     </div>
@@ -76,8 +81,10 @@ export default function Chesscom({ onExit }) {
   useEscapeToClose(onExit);
   const hostRef = useRef(null);
   const engineRef = useRef(null);
+  const audioRef = useRef(null);
   const tileClickRef = useRef(null);
   const unitClickRef = useRef(null);
+  const previousStatusRef = useRef('active');
   const [state, setState] = useState(() => chesscomCreateState());
   const [matthiasArt, setMatthiasArt] = useState('');
   const [hovered, setHovered] = useState(null);
@@ -91,6 +98,15 @@ export default function Chesscom({ onExit }) {
     if (document.body) document.body.scrollTop = 0;
   }, []);
 
+  useEffect(() => {
+    const audio = createChesscomAudio();
+    audioRef.current = audio;
+    return () => {
+      audio.destroy();
+      if (audioRef.current === audio) audioRef.current = null;
+    };
+  }, []);
+
   const selected = state.friendlies.find((unit) => unit.id === state.selectedId) || state.friendlies[0];
   const reachable = useMemo(() => chesscomReachable(state, selected), [state, selected]);
   const reachableMap = useMemo(() => new Map(reachable.map((tile) => [chesscomKey(tile.x,tile.y),tile])), [reachable]);
@@ -101,7 +117,13 @@ export default function Chesscom({ onExit }) {
   }, [state.action,state.enemies,selected]);
   const status = chesscomMissionStatus(state);
 
+  function wakeAudio(kind = null) {
+    audioRef.current?.arm();
+    if (kind) audioRef.current?.play(kind);
+  }
+
   function selectFriendly(id) {
+    wakeAudio();
     setState((current) => ({ ...current, selectedId:id }));
   }
 
@@ -110,19 +132,27 @@ export default function Chesscom({ onExit }) {
     const key = chesscomKey(x,y);
     const enemy = state.enemies.find((unit) => unit.hp > 0 && unit.x === x && unit.y === y);
     if (state.action === 'shoot' && enemy) {
+      wakeAudio('shoot');
       setState((current) => chesscomShoot(current, selected.id, enemy.id));
       return;
     }
     if (state.action === 'interact') {
+      wakeAudio('intel');
       setState((current) => chesscomInteract(current, selected.id));
       return;
     }
-    if (state.action === 'move' && reachableMap.has(key)) setState((current) => chesscomMove(current, selected.id, x, y));
+    if (state.action === 'move' && reachableMap.has(key)) {
+      wakeAudio('move');
+      setState((current) => chesscomMove(current, selected.id, x, y));
+    }
   }
 
   function clickUnit(id,friendly) {
     if (friendly) { selectFriendly(id); return; }
-    if (state.action === 'shoot') setState((current) => chesscomShoot(current, selected.id, id));
+    if (state.action === 'shoot') {
+      wakeAudio('shoot');
+      setState((current) => chesscomShoot(current, selected.id, id));
+    }
   }
 
   tileClickRef.current = clickTile;
@@ -173,18 +203,28 @@ export default function Chesscom({ onExit }) {
 
   useEffect(() => {
     engineRef.current?.update(state, { reachable:reachableSet, targetable:targetableSet, selectedId:selected?.id, matthiasArt });
+    const livingEnemies = state.enemies.filter((unit) => unit.hp > 0).length;
+    audioRef.current?.setThreat(Math.min(1, .18 + livingEnemies * .16 + Math.max(0,state.turn-1) * .035));
   }, [state,reachableSet,targetableSet,selected?.id,matthiasArt,rendererName]);
+
+  useEffect(() => {
+    if (status === 'complete' && previousStatusRef.current !== 'complete') audioRef.current?.play('complete');
+    previousStatusRef.current = status;
+  }, [status]);
 
   function chooseAction(action) {
     if (action === 'overwatch') {
+      wakeAudio('overwatch');
       setState((current) => chesscomSetOverwatch(current, selected.id));
       return;
     }
+    wakeAudio();
     setState((current) => ({ ...current, action }));
   }
 
   function reload() {
     if (!selected || selected.ap < 1) return;
+    wakeAudio('reload');
     setState((current) => ({
       ...current,
       friendlies:current.friendlies.map((unit) => unit.id === selected.id ? { ...unit, ammo:30, ap:Math.max(0,unit.ap-1) } : unit),
@@ -192,14 +232,19 @@ export default function Chesscom({ onExit }) {
     }));
   }
 
+  function endTurn() {
+    wakeAudio('turn');
+    setState((current) => chesscomEndTurn(current));
+  }
+
   return (
-    <div className="chesscom" data-chesscom-poc="true" data-chesscom-renderer="babylon">
+    <div className="chesscom" data-chesscom-poc="true" data-chesscom-renderer="babylon" data-chesscom-visual="premium-v1">
       <header className="chesscom-topbar">
         <div className="chesscom-brand">
           <span className="chesscom-rook" aria-hidden="true">♜</span>
-          <div><h2>CHESSCOM</h2><strong>BLACK OPERATIONS</strong><small>POC v0.1 · SOME WARS ARE NOT ON THE BOARD</small></div>
+          <div><h2>CHESSCOM</h2><strong>BLACK OPERATIONS</strong><small>TACTICAL POC · NO FLAGS · NO RECORDS</small></div>
         </div>
-        <button type="button" className="chesscom-exit" onClick={onExit}>← Experimentos</button>
+        <div className="chesscom-top-actions"><span className="chesscom-classified">CLASSIFIED // DUST VEIL</span><button type="button" className="chesscom-exit" onClick={onExit}>← Experimentos</button></div>
       </header>
 
       <section className="chesscom-frame">
@@ -215,11 +260,13 @@ export default function Chesscom({ onExit }) {
           <div className="chesscom-squad" aria-label="Escuadra desplegada">
             {state.friendlies.map((unit) => <SquadPortrait key={unit.id} unit={unit} selected={unit.id === selected?.id} matthiasArt={matthiasArt} onSelect={() => selectFriendly(unit.id)} />)}
           </div>
+          <div className="chesscom-panel chesscom-contact-card"><span>LOCAL NETWORK</span><strong>POOR</strong><small>Stock irregular · extracción no garantizada</small></div>
         </aside>
 
         <main className="chesscom-stage-wrap">
           <div className="chesscom-stage-shell">
             <div ref={hostRef} className="chesscom-babylon-host" />
+            <div className="chesscom-stage-scanlines" aria-hidden="true" />
             <div className="chesscom-operation chesscom-panel">
               <h3>OPERATION: DUST VEIL</h3>
               <dl><div><dt>Location</dt><dd>Kharif Outpost</dd></div><div><dt>Local contacts</dt><dd className="is-danger">Poor</dd></div><div><dt>Expected equipment</dt><dd className="is-warning">Limited</dd></div></dl>
@@ -240,7 +287,7 @@ export default function Chesscom({ onExit }) {
           <div className="chesscom-actionbar" role="toolbar" aria-label="Acciones tácticas">
             {ACTIONS.map(([action,glyph,label]) => <button key={action} type="button" className={state.action===action?'is-active':''} onClick={() => chooseAction(action)} disabled={status!=='active'||selected?.hp<=0}><span aria-hidden="true">{glyph}</span><small>{label}</small></button>)}
             <button type="button" onClick={reload} disabled={status!=='active'||selected?.ap<1}><span aria-hidden="true">▥</span><small>Reload</small></button>
-            <button type="button" className="is-end-turn" onClick={() => setState((current) => chesscomEndTurn(current))} disabled={status!=='active'}><span aria-hidden="true">↻</span><small>End turn</small></button>
+            <button type="button" className="is-end-turn" onClick={endTurn} disabled={status!=='active'}><span aria-hidden="true">↻</span><small>End turn</small></button>
           </div>
         </main>
 
@@ -252,7 +299,7 @@ export default function Chesscom({ onExit }) {
         </aside>
       </section>
 
-      <footer className="chesscom-footer"><span>{rendererName}</span><b>CONTRACTS · MERCENARIES · EQUIPMENT · NO OFFICIAL RECORDS</b><small>ALPHA POC · zero ELO · zero guarantees</small></footer>
+      <footer className="chesscom-footer"><span>{rendererName} · PREMIUM V1</span><b>CONTRACTS · MERCENARIES · EQUIPMENT · NO OFFICIAL RECORDS</b><small>OPS AUDIO · dynamic threat score</small></footer>
     </div>
   );
 }
