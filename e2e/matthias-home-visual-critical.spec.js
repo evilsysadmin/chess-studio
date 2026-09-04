@@ -137,6 +137,16 @@ test('Home · cuando Matthias habla articula boca 3D mientras el mensaje está v
   const canvas = avatar.locator('canvas');
 
   await expect(bubble).toBeVisible();
+  const liveBubbleGeometry = await corner.evaluate((node) => {
+    const bubbleNode = node.querySelector('.matthias-resident__bubble');
+    const characterNode = node.querySelector('.matthias-resident__character');
+    const bubbleRect = bubbleNode?.getBoundingClientRect();
+    const characterRect = characterNode?.getBoundingClientRect();
+    return {
+      gap: bubbleRect && characterRect ? characterRect.left - bubbleRect.right : Number.POSITIVE_INFINITY,
+      bubbleFontSize: bubbleNode ? Number.parseFloat(getComputedStyle(bubbleNode.querySelector('p')).fontSize) : 0,
+    };
+  });
   await expect(avatar).toHaveAttribute('data-three-model', 'matthias-full3d-v1');
   await expect(avatar).toHaveAttribute('data-three-fidelity', 'canonical-front-v1');
   await expect(avatar).toHaveAttribute('data-three-render-mode', 'full-3d-rig');
@@ -155,19 +165,9 @@ test('Home · cuando Matthias habla articula boca 3D mientras el mensaje está v
     { timeout: 2_500, message: 'hablar debe articular el rig 3D real' },
   ).toBeGreaterThan(.02);
 
-  const geometry = await corner.evaluate((node) => {
-    const bubbleNode = node.querySelector('.matthias-resident__bubble');
-    const characterNode = node.querySelector('.matthias-resident__character');
-    const bubbleRect = bubbleNode?.getBoundingClientRect();
-    const characterRect = characterNode?.getBoundingClientRect();
-    return {
-      gap: bubbleRect && characterRect ? characterRect.left - bubbleRect.right : Number.POSITIVE_INFINITY,
-      bubbleFontSize: bubbleNode ? Number.parseFloat(getComputedStyle(bubbleNode.querySelector('p')).fontSize) : 0,
-    };
-  });
-  expect(geometry.gap, 'el bocadillo debe pertenecer físicamente a Matthias').toBeGreaterThanOrEqual(0);
-  expect(geometry.gap, 'la cola no puede quedar flotando lejos de Matthias').toBeLessThanOrEqual(16);
-  expect(geometry.bubbleFontSize, 'el comentario de Matthias debe leerse sin forzar la vista').toBeGreaterThanOrEqual(13);
+  expect(liveBubbleGeometry.gap, 'el bocadillo debe pertenecer físicamente a Matthias').toBeGreaterThanOrEqual(0);
+  expect(liveBubbleGeometry.gap, 'la cola no puede quedar flotando lejos de Matthias').toBeLessThanOrEqual(16);
+  expect(liveBubbleGeometry.bubbleFontSize, 'el comentario de Matthias debe leerse sin forzar la vista').toBeGreaterThanOrEqual(13);
 });
 
 test('Home · 390px conserva full 3D, mérito diegético, texto legible y cero overflow', async ({ page }) => {
@@ -190,6 +190,7 @@ test('Home · 390px conserva full 3D, mérito diegético, texto legible y cero o
   await expect(masterCrown).toBeVisible();
   await expect(masterCrown).toHaveAttribute('data-castle-kind', 'honour');
   await expect(bubble).toBeVisible();
+  const liveBubbleFontSize = await bubble.locator('p').evaluate((node) => Number.parseFloat(getComputedStyle(node).fontSize));
   await expect(primaryCard).toBeVisible();
   await expect(corner).toHaveAttribute('data-placement', 'inline');
   const avatar = corner.locator('[data-matthias-three-avatar="true"]');
@@ -206,7 +207,6 @@ test('Home · 390px conserva full 3D, mérito diegético, texto legible y cero o
   expect(Number(await avatar.getAttribute('data-three-face-warp')) || 0).toBe(0);
 
   const contract = await page.evaluate(() => {
-    const bubbleText = document.querySelector('.matthias-resident__bubble p');
     const description = document.querySelector('.home-mode-description');
     const homeNode = document.querySelector('.menu.home-friendly');
     const homeStyle = homeNode ? getComputedStyle(homeNode) : null;
@@ -214,7 +214,6 @@ test('Home · 390px conserva full 3D, mérito diegético, texto legible y cero o
     const crownRect = crown?.getBoundingClientRect();
     return {
       overflow: document.documentElement.scrollWidth - window.innerWidth,
-      bubbleFontSize: bubbleText ? Number.parseFloat(getComputedStyle(bubbleText).fontSize) : 0,
       descriptionFontSize: description ? Number.parseFloat(getComputedStyle(description).fontSize) : 0,
       homeBackground: homeStyle?.backgroundImage || '',
       crownLeft: crownRect?.left ?? -1,
@@ -223,7 +222,7 @@ test('Home · 390px conserva full 3D, mérito diegético, texto legible y cero o
   });
 
   expect(contract.overflow, 'Home no puede generar scroll horizontal en Android').toBeLessThanOrEqual(1);
-  expect(contract.bubbleFontSize, 'Matthias debe seguir siendo legible a 390px').toBeGreaterThanOrEqual(12.8);
+  expect(liveBubbleFontSize, 'Matthias debe seguir siendo legible a 390px mientras habla').toBeGreaterThanOrEqual(12.8);
   expect(contract.descriptionFontSize, 'las descripciones de modos no pueden volver a microtexto').toBeGreaterThanOrEqual(12.5);
   expect(contract.crownLeft, 'el mérito diegético no puede salirse por la izquierda').toBeGreaterThanOrEqual(0);
   expect(contract.crownRight, 'el mérito diegético debe caber en Home a 390px').toBeLessThanOrEqual(390);
