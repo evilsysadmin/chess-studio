@@ -46,7 +46,7 @@ test('Home · aprendizaje secundario queda abierto y Experimentos geniales abre 
   await experiments.click();
 
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Ajedrez 3D/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Ajedrez 3D/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Pawn Trailblazer/ })).toBeVisible();
 });
 

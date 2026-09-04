@@ -25,8 +25,6 @@ requireText('backend-python/game_api.py', 'load_stored_game_board(entry)', 'las 
 // por la resolución legal de Combat antes de cambiar el tablero.
 requireText('frontend/src/components/SpectatorScreen.jsx', 'applySuggestedOrLegalFallback', 'Espectador debe validar/fallbackear sugerencias CPU contra chess.js');
 requireText('frontend/src/components/SpectatorScreen.jsx', 'standardChessStatus', 'Espectador debe detectar terminales con el contrato común');
-requireText('frontend/src/components/Board3DExperiment.jsx', 'applySuggestedOrLegalFallback', '3D debe validar/fallbackear sugerencias CPU contra chess.js');
-requireText('frontend/src/components/Board3DExperiment.jsx', 'standardChessStatus', '3D debe detectar terminales con el contrato común');
 requireText('frontend/src/components/PuzzleScreen.jsx', 'matchesExpectedPuzzleMove', 'Puzzles debe comparar la solución sobre una jugada legal real');
 requireText('frontend/src/components/PuzzleScreen.jsx', 'localChess.moves', 'Puzzles sólo debe ofrecer movimientos legales');
 requireText('frontend/src/puzzleTacticalQuality.js', 'isObviouslyUnsoundSingleMovePuzzle', 'Puzzles personales deben rechazar claves trivialmente refutables');
@@ -50,7 +48,9 @@ for (const needle of ['pinned', 'castling', 'en_passant', 'promotion', 'threefol
 }
 
 // Matriz E2E: cada familia de modo de juego debe demostrar jaque/mate o, en
-// puzzles, un mate resoluble. No es un test decorativo de mera navegación.
+// puzzles, un mate resoluble. El renderer 3D principal comparte GameScreen y
+// tiene su propia batería War Room; el antiguo prototipo aislado ya no forma
+// parte de la superficie de producto.
 const critical = read('e2e/critical-gameplay.spec.js');
 for (const mode of ['Partida rápida', 'Torneo', 'Partida de práctica']) {
   if (!critical.includes(mode)) failures.push(`e2e/critical-gameplay.spec.js: falta ${mode}`);
@@ -66,11 +66,9 @@ if (!/jaque/i.test(extended) || !/mate/i.test(extended)) failures.push('e2e/exte
 const combat = read('e2e/combat-critical.spec.js');
 if (!/Combat Chess/.test(combat) || !/jaque/i.test(combat) || !/mate/i.test(combat)) failures.push('e2e/combat-critical.spec.js: Combat debe cubrir jaque y mate');
 
-const edgeModes = read('e2e/spectator-3d-critical.spec.js');
-for (const mode of ['Espectador', 'Tablero 3D']) {
-  if (!edgeModes.includes(mode)) failures.push(`e2e/spectator-3d-critical.spec.js: falta ${mode}`);
-}
-if (!/jaque/i.test(edgeModes) || !/mate/i.test(edgeModes)) failures.push('e2e/spectator-3d-critical.spec.js: Espectador/3D deben cubrir jaque y mate');
+const spectator = read('e2e/spectator-critical.spec.js');
+if (!spectator.includes('Espectador')) failures.push('e2e/spectator-critical.spec.js: falta Espectador');
+if (!/jaque/i.test(spectator) || !/mate/i.test(spectator)) failures.push('e2e/spectator-critical.spec.js: Espectador debe cubrir jaque y mate');
 
 if (failures.length) {
   for (const failure of failures) console.error(`ERROR chess rules gate: ${failure}`);

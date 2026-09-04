@@ -4,7 +4,6 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
 import Board from './Board.jsx';
 import ArenaExperiment from './ArenaExperiment.jsx';
-import Board3DExperiment from './Board3DExperiment.jsx';
 import PawnTrailblazer from './PawnTrailblazer.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
@@ -29,7 +28,7 @@ export default function LabScreen({ onExit, onStart }){
   const [difficulty,setDifficulty]=useState(50);
   const [error,setError]=useState('');
 
-  const childOwnsBack = labMode==='board3d' || labMode==='trailblazer';
+  const childOwnsBack = labMode==='trailblazer';
   useEscapeToClose(() => labMode==='hub' ? onExit() : setLabMode('hub'), { disabled: childOwnsBack });
 
   const fen=useMemo(()=>fenFromLabState({map,turn,castling,ep,halfmove,fullmove}),[map,turn,castling,ep,halfmove,fullmove]);
@@ -61,7 +60,6 @@ export default function LabScreen({ onExit, onStart }){
     catch(e){setError(`Posición inválida: ${e.message}`);}
   }
 
-  if (labMode==='board3d') return <Board3DExperiment onExit={()=>setLabMode('hub')} />;
   if (labMode==='trailblazer') return <PawnTrailblazer onExit={()=>setLabMode('hub')} />;
 
   return <div className="menu tournament-panel lab-screen">
@@ -75,14 +73,8 @@ export default function LabScreen({ onExit, onStart }){
           <p>Aquí viven las cosas que no deberían mezclarse con el ajedrez normal hasta demostrar que son divertidas. Algunas respetan el reglamento. Otras han venido a pegarle fuego.</p>
         </section>
 
-        <span className="experiments-group-label">Arcade y 3D</span>
+        <span className="experiments-group-label">Arcade</span>
         <div className="experiments-grid">
-          <button type="button" className="experiments-card" onClick={()=>setLabMode('board3d')}>
-            <span className="section-label">3D · THREE.JS</span>
-            <strong>Ajedrez 3D</strong>
-            <small>La partida normal sobre el tablero tridimensional experimental actual, con CPU y reglas completas.</small>
-            <b>Entrar al tablero →</b>
-          </button>
           <button type="button" className="experiments-card is-featured" onClick={()=>setLabMode('trailblazer')}>
             <span className="section-label">ARCADE · POC JUGABLE</span>
             <strong>Pawn Trailblazer</strong>

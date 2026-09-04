@@ -42,7 +42,7 @@ export function applyStagedRendererAfterSettingsUnmount({ pendingRendererRef, ap
   return pendingRenderer;
 }
 
-export default function UserSettingsPanelContent({ onClose, onBoard3D, isAdminUser = false }) {
+export default function UserSettingsPanelContent({ onClose, isAdminUser = false }) {
   const [timeControlId, setTimeControlIdState] = useState(() => getDefaultTimeControlId());
   const [language, setLanguageState] = useState(() => getUiLanguage());
   const [musicMuted, setMusicMutedState] = useState(() => isMusicMuted());
@@ -171,11 +171,6 @@ export default function UserSettingsPanelContent({ onClose, onBoard3D, isAdminUs
             <label className="settings-field"><span>Interfaz</span><select value={language} onChange={(event) => updateLanguage(event.target.value)}>{SUPPORTED_UI_LANGUAGES.map((row) => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
             <small>La pantalla de acceso ya está localizada. El resto de la interfaz irá adoptando esta preferencia progresivamente.</small>
           </section>
-
-          {isAdminUser && onBoard3D && <section>
-            <h3>Laboratorio</h3>
-            <div className="settings-inline-action"><div><strong>Prototipo 3D aislado</strong><small>Se conserva para comparar el prototipo histórico con el nuevo tablero principal.</small></div><button type="button" className="secondary-btn" onClick={onBoard3D}>Abrir lab</button></div>
-          </section>}
         </div>
       </section>
     </div>
