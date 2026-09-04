@@ -1,69 +1,20 @@
 name: OCI readiness
 
+# OCI remains a future migration target, not part of the active Render delivery
+# path. Keep the readiness check available on demand without charging normal PRs.
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - 'backend-python/Dockerfile'
-      - 'backend-python/requirements*.txt'
-      - 'scripts/oci_arm64_smoke.sh'
-      - 'infra/oci/**'
-      - '.github/workflows/oci-readiness.yml'
 
 permissions:
   contents: read
 
 concurrency:
-  group: oci-readiness-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: oci-readiness-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  scope:
-    name: Classify OCI surface
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    outputs:
-      arm64: ${{ steps.scope.outputs.arm64 }}
-      terraform: ${{ steps.scope.outputs.terraform }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: Resolve required OCI gates
-        id: scope
-        shell: bash
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: |
-          set -euo pipefail
-          if [[ "$EVENT_NAME" == 'workflow_dispatch' ]]; then
-            echo 'arm64=true' >> "$GITHUB_OUTPUT"
-            echo 'terraform=true' >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
-          printf '%s\n' "$files"
-
-          arm64=false
-          terraform=false
-          if grep -Eq '^(backend-python/Dockerfile|backend-python/requirements[^/]*\.txt|scripts/oci_arm64_smoke\.sh|\.github/workflows/oci-readiness\.yml)$' <<< "$files"; then
-            arm64=true
-          fi
-          if grep -Eq '^(infra/oci/|\.github/workflows/oci-readiness\.yml$)' <<< "$files"; then
-            terraform=true
-          fi
-
-          echo "arm64=$arm64" >> "$GITHUB_OUTPUT"
-          echo "terraform=$terraform" >> "$GITHUB_OUTPUT"
-
   backend-arm64:
     name: Backend · linux/arm64
-    needs: scope
-    if: needs.scope.outputs.arm64 == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -82,8 +33,6 @@ jobs:
 
   terraform:
     name: Terraform · fmt + validate
-    needs: scope
-    if: needs.scope.outputs.terraform == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
