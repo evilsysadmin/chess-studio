@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import Board from './Board.jsx';
+import PreferredBoard from './PreferredBoard.jsx';
 import PromotionModal from './PromotionModal.jsx';
 import { chessFromFen } from '../chessRules.js';
 import { matchesExpectedPuzzleMove } from '../puzzleMoveValidation.js';
@@ -118,7 +118,7 @@ export default function PostGameExam({ history = [], humanColor = 'w', report = 
 
       <div className="post-game-exam-workspace">
         <div className="post-game-exam-board">
-          <Board
+          <PreferredBoard
             fen={current.fen}
             onSquareClick={handleSquareClick}
             selectedSquare={selected}
