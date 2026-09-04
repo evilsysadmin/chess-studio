@@ -139,7 +139,7 @@ jobs:
   frontend:
     name: Tests · Frontend
     needs: preflight
-    if: needs.preflight.outputs.run_frontend == 'true'
+    if: needs.preflight.outputs.run_frontend == 'true' || needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
