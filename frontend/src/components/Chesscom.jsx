@@ -13,18 +13,21 @@ import {
   chesscomSetOverwatch,
   chesscomShoot,
 } from '../chesscom.js';
-import {
-  MATTHIAS_CANONICAL_ASSET_URL,
-  canonicalMatthiasDataUrl,
-} from './MatthiasCanonicalMock.js';
 import './Chesscom.css';
 
+const MATTHIAS_CANONICAL_ASSET_URL = '/matthias-home-canonical.b64?v=88bebc7e44293093';
 const ACTIONS = [
   ['move', '↗', 'Move'],
   ['shoot', '⌖', 'Shoot'],
   ['overwatch', '◉', 'Overwatch'],
   ['interact', '▣', 'Interact'],
 ];
+
+function canonicalMatthiasDataUrl(payload) {
+  const normalized = String(payload || '').trim();
+  if (!normalized.startsWith('UklG')) throw new Error('Canonical Matthias WebP payload is invalid');
+  return `data:image/webp;base64,${normalized}`;
+}
 
 function clampPercent(value, max) {
   if (!max) return 0;
@@ -162,7 +165,7 @@ export default function Chesscom({ onExit }) {
 
   useEffect(() => {
     engineRef.current?.update(state, { reachable:reachableSet, targetable:targetableSet, selectedId:selected?.id, matthiasArt });
-  }, [state,reachableSet,targetableSet,selected?.id,matthiasArt]);
+  }, [state,reachableSet,targetableSet,selected?.id,matthiasArt,rendererName]);
 
   function chooseAction(action) {
     if (action === 'overwatch') {
