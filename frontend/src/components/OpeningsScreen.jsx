@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
-import Board from './Board.jsx';
+import PreferredBoard from './PreferredBoard.jsx';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { OPENING_LESSONS } from '../openings-data.js';
 import { orderOpeningLessons } from '../openingLessonOrder.js';
@@ -24,7 +24,7 @@ function OpeningDetail({ opening, onBack }) {
       <button className="back-link" onClick={onBack}>← Volver a aperturas</button>
       <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
         <div className="board-column">
-          <Board fen={positions[moveStep]} />
+          <PreferredBoard fen={positions[moveStep]} />
           <div className="game-controls">
             <button className="secondary-btn" onClick={() => setMoveStep((s) => Math.max(0, s - 1))} disabled={moveStep === 0}>
               ← Jugada anterior

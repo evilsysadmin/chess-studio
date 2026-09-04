@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
-import Board from './Board.jsx';
+import PreferredBoard from './PreferredBoard.jsx';
 import ArenaExperiment from './ArenaExperiment.jsx';
 import PawnTrailblazer from './PawnTrailblazer.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
@@ -117,7 +117,7 @@ export default function LabScreen({ onExit, onStart }){
           <button className="secondary-btn" onClick={emptyBoard}>Vaciar</button>
         </div>
         <div className="lab-board-editor">
-          <Board fen={fen} orientation="white" onSquareClick={editSquare} />
+          <PreferredBoard fen={fen} orientation="white" onSquareClick={editSquare} />
         </div>
         <div className="lab-config lab-config-friendly">
           <label>Turno <select value={turn} onChange={e=>{setTurn(e.target.value);setEp('-');}}><option value="w">Blancas</option><option value="b">Negras</option></select></label>
