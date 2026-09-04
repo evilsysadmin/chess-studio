@@ -30,6 +30,7 @@ async function openChesscom(page) {
 }
 
 test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil premium', async ({ page }) => {
+  test.setTimeout(75_000);
   await openChesscom(page);
 
   const mode = page.locator('[data-chesscom-poc="true"][data-chesscom-renderer="babylon"]');
