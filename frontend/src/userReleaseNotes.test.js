@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { APP_RELEASE } from './release.js';
-import { USER_RELEASE_NOTES, currentUserReleaseNotes } from './userReleaseNotes.js';
+import { USER_RELEASE_NOTES, currentUserReleaseNotes } from './userReleaseNotesData.js';
 
 describe('novedades para jugadores', () => {
   it('publica la release actual y omite jerga interna', () => {

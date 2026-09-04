@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { USER_RELEASE_NOTES, currentUserReleaseNotes } from './userReleaseNotes.js';
+import { USER_RELEASE_NOTES, currentUserReleaseNotes } from './userReleaseNotesData.js';
 
 describe('dm46w · product polish contracts', () => {
   it('Novedades publica sólo cambios comprensibles y útiles para jugadores', () => {
