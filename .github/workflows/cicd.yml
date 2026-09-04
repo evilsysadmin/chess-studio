@@ -220,7 +220,8 @@ jobs:
 
       - name: Security gate skipped · no sensitive surface changed
         if: steps.changes.outputs.run_security != 'true'
-        run: echo "Trivy/Docker omitidos: este cambio no toca dependencias, imágenes, compose ni infraestructura sensible."
+        run: |
+          echo "Trivy/Docker omitidos: este cambio no toca dependencias, imágenes, compose ni infraestructura sensible."
 
       - name: Resolve Trivy cache epoch
         if: steps.changes.outputs.run_security == 'true'
