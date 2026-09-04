@@ -7,8 +7,10 @@ describe('Pawn Slug premium sprite contracts', () => {
     expect(PAWN_SLUG_SPRITE_META.enemies.frames).toBe(3);
     expect(PAWN_SLUG_SPRITE_META.boss.frames).toBe(1);
     expect(PAWN_SLUG_SPRITE_META.weapons.frames).toBe(4);
-    expect(PAWN_SLUG_SPRITE_META.matthias.frameWidth).toBe(192);
-    expect(PAWN_SLUG_SPRITE_META.enemies.frameWidth).toBe(192);
+    expect(PAWN_SLUG_SPRITE_META.matthias.frameWidth).toBe(128);
+    expect(PAWN_SLUG_SPRITE_META.matthias.frameHeight).toBe(128);
+    expect(PAWN_SLUG_SPRITE_META.enemies.frameWidth).toBe(128);
+    expect(PAWN_SLUG_SPRITE_META.enemies.frameHeight).toBe(128);
     expect(PAWN_SLUG_SPRITE_META.weapons.frameHeight).toBe(128);
   });
 
@@ -31,10 +33,18 @@ describe('Pawn Slug premium sprite contracts', () => {
     });
   });
 
+  it('keeps local SVG fallbacks for premium WebP actor atlases', () => {
+    expect(String(PAWN_SLUG_SPRITE_META.matthias.url)).toMatch(/\.webp(?:\?|$)/);
+    expect(String(PAWN_SLUG_SPRITE_META.enemies.url)).toMatch(/\.webp(?:\?|$)/);
+    expect(String(PAWN_SLUG_SPRITE_META.matthias.fallbackUrl)).toMatch(/\.svg(?:\?|$)/);
+    expect(String(PAWN_SLUG_SPRITE_META.enemies.fallbackUrl)).toMatch(/\.svg(?:\?|$)/);
+  });
+
   it('uses local runtime assets instead of remote sprites', () => {
     for (const meta of Object.values(PAWN_SLUG_SPRITE_META)) {
       expect(meta.url).toBeTruthy();
       expect(String(meta.url)).not.toMatch(/^https?:\/\//);
+      if (meta.fallbackUrl) expect(String(meta.fallbackUrl)).not.toMatch(/^https?:\/\//);
     }
   });
 });
