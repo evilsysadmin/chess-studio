@@ -153,13 +153,29 @@ function stepEnemyToward(state, enemy, target) {
   return options[0] || { x:enemy.x, y:enemy.y };
 }
 
+function resolveOverwatch(friendlies, enemy, log) {
+  let nextEnemy = { ...enemy };
+  let nextFriendlies = friendlies.map((unit) => ({ ...unit }));
+  for (const watcher of nextFriendlies) {
+    if (!watcher.overwatch || watcher.hp <= 0 || watcher.ammo <= 0 || nextEnemy.hp <= 0) continue;
+    if (chesscomDistance(watcher,nextEnemy) > watcher.range) continue;
+    const cover = CHESSCOM_COVER.get(chesscomKey(nextEnemy.x,nextEnemy.y));
+    const damage = Math.max(1, watcher.damage - (cover === 'high' ? 1 : 0));
+    nextEnemy.hp = Math.max(0,nextEnemy.hp-damage);
+    nextFriendlies = nextFriendlies.map((unit) => unit.id === watcher.id ? { ...unit, ammo:unit.ammo-1, overwatch:false } : unit);
+    log.unshift(`${watcher.name} reacciona desde overwatch sobre ${enemy.name}: ${damage} daño.`);
+  }
+  return { friendlies:nextFriendlies, enemy:nextEnemy };
+}
+
 export function chesscomEndTurn(state) {
   let friendlies = state.friendlies.map((unit) => ({ ...unit }));
   let enemies = state.enemies.map((unit) => ({ ...unit }));
+  let objectives = { ...state.objectives };
   const log = [...state.log];
 
   for (let index = 0; index < enemies.length; index += 1) {
-    const enemy = enemies[index];
+    let enemy = enemies[index];
     if (enemy.hp <= 0) continue;
     const living = friendlies.filter((unit) => unit.hp > 0).sort((a,b) => chesscomDistance(enemy,a)-chesscomDistance(enemy,b));
     const target = living[0];
@@ -172,7 +188,16 @@ export function chesscomEndTurn(state) {
       log.unshift(`${enemy.name} abre fuego sobre ${target.name}: ${damage} daño.`);
     } else {
       const next = stepEnemyToward({ ...state, friendlies, enemies }, enemy, target);
-      enemies[index] = { ...enemy, ...next };
+      enemy = { ...enemy, ...next };
+      const reaction = resolveOverwatch(friendlies,enemy,log);
+      friendlies = reaction.friendlies;
+      enemy = reaction.enemy;
+      enemies[index] = enemy;
+      if (enemy.hp === 0) {
+        log.unshift(`${enemy.name} cae durante su movimiento.`);
+        if (enemy.id === 'target') objectives.target = true;
+        continue;
+      }
       log.unshift(`${enemy.name} cambia de posición.`);
     }
   }
@@ -185,13 +210,14 @@ export function chesscomEndTurn(state) {
     action:'move',
     friendlies,
     enemies,
+    objectives,
     log: log.slice(0,5),
   };
 }
 
 export function chesscomSetOverwatch(state, unitId) {
   const unit = state.friendlies.find((candidate) => candidate.id === unitId);
-  if (!unit || unit.ap < 2 || unit.hp <= 0) return state;
+  if (!unit || unit.ap < 2 || unit.hp <= 0 || unit.ammo <= 0) return state;
   return {
     ...state,
     friendlies: state.friendlies.map((candidate) => candidate.id === unitId ? { ...candidate, ap:candidate.ap-2, overwatch:true } : candidate),
