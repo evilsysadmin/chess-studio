@@ -126,24 +126,26 @@ describe('WarRoomCompositionPolish', () => {
     dispose(room);
   });
 
-  it('da a cada cuadro un paisaje premium diferente y conserva el acabado físico del lienzo', () => {
+  it('da a cada cuadro central un lienzo militar distinto y conserva el acabado físico premium', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const left = room.getObjectByName('war-room-premium-painting-0');
     const right = room.getObjectByName('war-room-premium-painting-1');
     const leftCanvas = left.getObjectByName('war-room-premium-painting-canvas');
     const rightCanvas = right.getObjectByName('war-room-premium-painting-canvas');
 
-    expect(left.userData.warRoomLandscapeVersion).toBe('v20');
-    expect(right.userData.warRoomLandscapeVersion).toBe('v20');
-    expect(left.userData.warRoomLandscapeSubject).toBe('black-forest-lake-dusk-v20');
-    expect(right.userData.warRoomLandscapeSubject).toBe('north-sea-cliffs-v20');
-    expect(left.userData.warRoomLandscapeSubject).not.toBe(right.userData.warRoomLandscapeSubject);
-    expect(leftCanvas.material.map.name).toBe('war-room-gallery-black-forest-v20');
-    expect(rightCanvas.material.map.name).toBe('war-room-gallery-north-sea-v20');
-    expect(leftCanvas.material.map.userData.resolution).toEqual([384, 240]);
-    expect(rightCanvas.material.map.userData.resolution).toEqual([384, 240]);
-    expect(leftCanvas.material.map.userData.warRoomGalleryFinish).toBe('layered-canvas-v20');
-    expect(rightCanvas.material.map.userData.warRoomGalleryFinish).toBe('layered-canvas-v20');
+    expect(left.userData.warRoomCampaignGalleryVersion).toBe('approved-mock-v1');
+    expect(right.userData.warRoomCampaignGalleryVersion).toBe('approved-mock-v1');
+    expect(left.userData.warRoomCampaignArt).toBe('command');
+    expect(right.userData.warRoomCampaignArt).toBe('victory');
+    expect(left.userData.warRoomLandscapeSubject).toBeUndefined();
+    expect(right.userData.warRoomLandscapeSubject).toBeUndefined();
+    expect(leftCanvas.material.map.name).toBe('war-room-campaign-art-command');
+    expect(rightCanvas.material.map.name).toBe('war-room-campaign-art-victory');
+    expect(leftCanvas.material.map.name).not.toBe(rightCanvas.material.map.name);
+    expect(leftCanvas.material.map.userData.resolution).toEqual([64, 48]);
+    expect(rightCanvas.material.map.userData.resolution).toEqual([64, 48]);
+    expect(leftCanvas.material.map.userData.source).toBe('approved-war-room-mock');
+    expect(rightCanvas.material.map.userData.source).toBe('approved-war-room-mock');
     expect(leftCanvas.material.roughnessMap?.userData?.warRoomPremiumSurface).toBe('canvas');
     expect(rightCanvas.material.roughnessMap?.userData?.warRoomPremiumSurface).toBe('canvas');
 
