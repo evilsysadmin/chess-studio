@@ -24,15 +24,20 @@ function dispose(root) {
   });
 }
 
+function galleryOwner(room) {
+  return room.getObjectByName('war-room-castle-architecture');
+}
+
 describe('War Room military gallery', () => {
   const theme = { felt: 0x173943, glow: 0xc5963f };
 
   it('reemplaza los paisajes centrales por lienzos militares del mock aprobado', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
-    const leftCanvas = room.getObjectByName('war-room-premium-painting-0')
-      ?.getObjectByName('war-room-premium-painting-canvas');
-    const rightCanvas = room.getObjectByName('war-room-premium-painting-1')
-      ?.getObjectByName('war-room-premium-painting-canvas');
+    const owner = galleryOwner(room);
+    const left = room.getObjectByName('war-room-premium-painting-0');
+    const right = room.getObjectByName('war-room-premium-painting-1');
+    const leftCanvas = left?.getObjectByName('war-room-premium-painting-canvas');
+    const rightCanvas = right?.getObjectByName('war-room-premium-painting-canvas');
 
     expect(leftCanvas?.material?.map).toBeInstanceOf(THREE.DataTexture);
     expect(rightCanvas?.material?.map).toBeInstanceOf(THREE.DataTexture);
@@ -40,13 +45,18 @@ describe('War Room military gallery', () => {
     expect(rightCanvas.material.map.userData.warRoomCampaignArt).toBe('victory');
     expect(leftCanvas.material.map.userData.source).toBe('approved-war-room-mock');
     expect(rightCanvas.material.map.userData.source).toBe('approved-war-room-mock');
-    expect(room.userData.warRoomMilitaryGalleryCentralCanvases).toBe(2);
+    expect(left.userData.warRoomCampaignGalleryVersion).toBe('approved-mock-v1');
+    expect(right.userData.warRoomCampaignGalleryVersion).toBe('approved-mock-v1');
+    expect(left.userData.warRoomLandscapeSubject).toBeUndefined();
+    expect(right.userData.warRoomLandscapeSubject).toBeUndefined();
+    expect(owner.userData.warRoomMilitaryGalleryCentralCanvases).toBe(2);
 
     dispose(room);
   });
 
   it('monta un lienzo militar discreto en cada pared lateral', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
+    const owner = galleryOwner(room);
     const left = room.getObjectByName('war-room-campaign-painting-left');
     const right = room.getObjectByName('war-room-campaign-painting-right');
 
@@ -58,13 +68,14 @@ describe('War Room military gallery', () => {
     expect(right.getObjectByName('war-room-campaign-side-canvas')?.material?.map?.userData?.warRoomCampaignArt).toBe('laurel');
     expect(Math.abs(left.position.x)).toBeGreaterThan(7.5);
     expect(Math.abs(right.position.x)).toBeGreaterThan(7.5);
-    expect(room.userData.warRoomMilitaryGallerySideCanvases).toBe(2);
+    expect(owner.userData.warRoomMilitaryGallerySideCanvases).toBe(2);
 
     dispose(room);
   });
 
   it('añade dos antorchas laterales con llama y luz animadas sin sombras caras', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
+    const owner = galleryOwner(room);
 
     for (const side of ['left', 'right']) {
       const torch = room.getObjectByName(`war-room-side-torch-${side}`);
@@ -79,7 +90,7 @@ describe('War Room military gallery', () => {
       expect(light.castShadow).toBe(false);
       expect(() => flame.onBeforeRender()).not.toThrow();
     }
-    expect(room.userData.warRoomMilitaryGalleryTorches).toBe(2);
+    expect(owner.userData.warRoomMilitaryGalleryTorches).toBe(2);
 
     dispose(room);
   });
