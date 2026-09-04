@@ -99,6 +99,7 @@ describe('War Room military gallery', () => {
       expect(torch).toBeInstanceOf(THREE.Group);
       expect(torch.userData.warRoomTorchArt).toBe('approved-premium-mock-v2');
       expect(torch.userData.warRoomTorchForm).toBe('gothic-wall-sconce-brazier');
+      expect(torch.userData.warRoomTorchFire).toBe('hearth-bright-v3');
       expect(torch.getObjectByName('war-room-side-torch-backplate')).toBeInstanceOf(THREE.Mesh);
       expect(torch.getObjectByName('war-room-side-torch-wall-arm')).toBeInstanceOf(THREE.Mesh);
       expect(torch.getObjectByName('war-room-side-torch-brazier-bowl')).toBeInstanceOf(THREE.Mesh);
@@ -111,15 +112,21 @@ describe('War Room military gallery', () => {
       expect(flame.geometry).toBeInstanceOf(THREE.LatheGeometry);
       expect(flame.userData.warRoomAnimatedTorch).toBe(true);
       expect(typeof flame.onBeforeRender).toBe('function');
+      expect(flame.material.emissiveIntensity).toBeGreaterThanOrEqual(3.3);
+      expect(inner.material.emissiveIntensity).toBeGreaterThanOrEqual(4);
       expect(light).toBeInstanceOf(THREE.PointLight);
       expect(light.color.getHex()).toBe(0xff8738);
+      expect(light.intensity).toBeGreaterThanOrEqual(1.8);
       expect(light.castShadow).toBe(false);
       expect(() => flame.onBeforeRender()).not.toThrow();
 
-      expect(torch.userData.warRoomOffsetFromWall - painting.userData.warRoomOffsetFromWall).toBeGreaterThanOrEqual(2);
+      expect(torch.userData.warRoomOffsetFromWall - painting.userData.warRoomOffsetFromWall).toBeGreaterThanOrEqual(2.7);
+      expect(torch.position.y - painting.position.y).toBeGreaterThanOrEqual(1);
     }
     expect(owner.userData.warRoomMilitaryGalleryTorches).toBe(2);
     expect(owner.userData.warRoomTorchArt).toBe('approved-premium-mock-v2');
+    expect(owner.userData.warRoomTorchSpacing).toBe('gallery-breathing-room-v3');
+    expect(owner.userData.warRoomTorchFire).toBe('hearth-bright-v3');
 
     dispose(room);
   });
