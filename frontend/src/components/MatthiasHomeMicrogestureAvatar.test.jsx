@@ -103,7 +103,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     }
   });
 
-  it('publica un contrato que exige microgesto facial acotado, no cara inmóvil', () => {
+  it('publica el contrato del rig canónico articulado sin volver al cuerpo de goma', () => {
     const html = renderToStaticMarkup(
       <MatthiasHomeMicrogestureAvatar
         avatar="/assets/matthias-scenes/strategy-book.webp"
@@ -115,7 +115,10 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
 
     expect(MATTHIAS_HOME_MICROGESTURE_VERSION).toBe('home-face-v2');
     expect(html).toContain('data-home-microgesture-version="home-face-v2"');
-    expect(html).toContain('data-three-deformation="rigid-body+bounded-face"');
+    expect(html).toContain('data-three-deformation="rigid-layer-articulation"');
+    expect(html).toContain('data-three-render-mode="canonical-layer-rig"');
+    expect(html).toContain('data-three-art-version="angry-mock-v1"');
+    expect(html).toContain('data-three-articulated-face-rig="canonical-layer-rig-v1"');
     expect(html).toContain('data-three-face-rig="face-v1"');
     expect(html).toContain('data-three-face-expression="focus"');
     expect(html).toContain('data-three-face-gesture="survey"');
@@ -123,13 +126,15 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     expect(html).toContain('data-three-face-warp="0.0000"');
     expect(html).toContain('<canvas');
     expect(html).toContain('data-matthias-canonical-art="true"');
+    expect(html).toContain('src="/assets/matthias-scenes/strategy-book.webp"');
   });
 
-  it('reduced-motion conserva el arte canónico y desactiva movimiento desde el primer paint', () => {
+  it('reduced-motion conserva arte de fallback y desactiva movimiento desde el primer paint', () => {
     const html = renderToStaticMarkup(
       <MatthiasHomeMicrogestureAvatar avatar="/base.webp" scene="base" reducedMotion />,
     );
     expect(html).toContain('data-three-motion="reduced"');
     expect(html).toContain('data-matthias-canonical-art="true"');
+    expect(html).toContain('src="/base.webp"');
   });
 });
