@@ -1,0 +1,57 @@
+.preferred-board-3d {
+  width: 100%;
+  min-width: 0;
+}
+
+.board3d-parity-note {
+  margin: .38rem auto 0;
+  max-width: 720px;
+  padding: .38rem .58rem;
+  border: 1px solid rgba(201, 162, 39, .22);
+  border-radius: 8px;
+  background: rgba(10, 12, 17, .72);
+  color: rgba(229, 218, 194, .76);
+  font-size: .72rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.board3d-parity-details {
+  margin: .42rem auto 0;
+  max-width: 760px;
+  border: 1px solid rgba(201, 162, 39, .18);
+  border-radius: 8px;
+  background: rgba(9, 11, 16, .7);
+  color: rgba(232, 222, 201, .82);
+}
+
+.board3d-parity-details > summary {
+  cursor: pointer;
+  padding: .42rem .62rem;
+  font-size: .72rem;
+  letter-spacing: .04em;
+}
+
+.board3d-parity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: .28rem .5rem;
+  padding: 0 .62rem .58rem;
+  font-size: .7rem;
+}
+
+.board3d-parity-grid span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .board3d-parity-note,
+  .board3d-parity-details {
+    margin-inline: .25rem;
+  }
+
+  .board3d-parity-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

@@ -3,16 +3,35 @@ export const BOARD3D_HIGHLIGHT_SIZE = 0.86;
 
 /* The War Room stays warm (brass, wood, stone and fire), but legal destinations
  * need a deliberately cool contrast so they remain readable on both light and
- * dark board tiles. Selection/capture/check keep their own warm semantics. */
+ * dark board tiles. The extra parity tones let non-standard surfaces preserve
+ * information that used to exist only as 2D CSS classes. Active interaction
+ * still wins over ambient annotations: legal/capture < selection < check. */
 export const BOARD3D_HIGHLIGHT_COLORS = Object.freeze({
   focus: 0x76674f,
   hover: 0xb5873f,
   lastMove: 0x987127,
   hint: 0x81765c,
+  mistake: 0xb54a3a,
+  terrain: 0x5f6469,
+  deployment: 0x4f7a9b,
+  mercenary: 0x80549a,
+  veteran: 0xb58a38,
+  xp: 0x3f8d67,
+  special: 0x4b8a8d,
   legal: 0x245f9f,
   capture: 0x96462e,
   selected: 0xc99a43,
   check: 0xb33d29,
+});
+
+const PARITY_STYLE = Object.freeze({
+  mistake: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.mistake, opacity: 0.76, scale: 0.94 }),
+  terrain: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.terrain, opacity: 0.82, scale: 0.9 }),
+  deployment: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.deployment, opacity: 0.64, scale: 0.88 }),
+  mercenary: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.mercenary, opacity: 0.58, scale: 0.88 }),
+  veteran: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.veteran, opacity: 0.48, scale: 0.86 }),
+  xp: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.xp, opacity: 0.5, scale: 0.84 }),
+  special: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.special, opacity: 0.58, scale: 0.88 }),
 });
 
 export function board3DHighlightStyle({
@@ -42,6 +61,16 @@ export function board3DHighlightStyle({
     color = BOARD3D_HIGHLIGHT_COLORS.hint;
     opacity = 0.7;
   }
+
+  const parityKind = hintMove?.parityHighlights?.[square];
+  const parityStyle = PARITY_STYLE[parityKind];
+  if (parityStyle) {
+    kind = parityKind;
+    color = parityStyle.color;
+    opacity = parityStyle.opacity;
+    scale = parityStyle.scale;
+  }
+
   if (legalMap?.has?.(square)) {
     const capture = Boolean(legalMap.get(square));
     kind = capture ? 'capture' : 'legal';
