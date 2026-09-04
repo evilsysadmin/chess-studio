@@ -4,46 +4,61 @@ import { PUZZLES } from './puzzles.js';
 
 const FORCED_KINDS = new Set(['mate1', 'mate2', 'mate3', 'combination']);
 
-function forcedMateDistance(board, attacker, remainingPlies) {
-  if (board.isCheckmate()) return board.turn() !== attacker ? 0 : null;
-  if (remainingPlies <= 0 || board.isGameOver()) return null;
+function canForceMateWithin(board, attacker, remainingAttackerMoves, memo) {
+  if (board.isCheckmate()) return board.turn() !== attacker;
+  if (board.isGameOver()) return false;
+  if (board.turn() === attacker && remainingAttackerMoves <= 0) return false;
+
+  const key = `${attacker}|${remainingAttackerMoves}|${board.fen()}`;
+  if (memo.has(key)) return memo.get(key);
 
   const moves = board.moves();
-  if (!moves.length) return null;
-
+  let result;
   if (board.turn() === attacker) {
-    let best = null;
-    for (const san of moves) {
-      const next = new Chess(board.fen());
-      next.move(san);
-      const distance = forcedMateDistance(next, attacker, remainingPlies - 1);
-      if (distance == null) continue;
-      const total = distance + 1;
-      if (best == null || total < best) best = total;
-    }
-    return best;
+    result = moves.some((san) => {
+      board.move(san);
+      const wins = canForceMateWithin(board, attacker, remainingAttackerMoves - 1, memo);
+      board.undo();
+      return wins;
+    });
+  } else {
+    result = moves.length > 0 && moves.every((san) => {
+      board.move(san);
+      const wins = canForceMateWithin(board, attacker, remainingAttackerMoves, memo);
+      board.undo();
+      return wins;
+    });
   }
 
-  let longest = 0;
-  for (const san of moves) {
-    const next = new Chess(board.fen());
-    next.move(san);
-    const distance = forcedMateDistance(next, attacker, remainingPlies - 1);
-    if (distance == null) return null;
-    longest = Math.max(longest, distance + 1);
-  }
-  return longest;
+  memo.set(key, result);
+  return result;
 }
 
-function distanceAfter(board, san, attacker, remainingPlies) {
-  const next = new Chess(board.fen());
+function minimumAttackerMovesToMate(board, attacker, maxMoves, memo) {
+  if (board.isCheckmate()) return board.turn() !== attacker ? 0 : null;
+  for (let moves = 1; moves <= maxMoves; moves += 1) {
+    if (canForceMateWithin(board, attacker, moves, memo)) return moves;
+  }
+  return null;
+}
+
+function mateMoveCostAfter(board, san, attacker, attackerMovesAvailable, memo) {
+  const attackerToMove = board.turn() === attacker;
   try {
-    if (!next.move(san)) return null;
+    if (!board.move(san)) return null;
   } catch {
     return null;
   }
-  const childDistance = forcedMateDistance(next, attacker, remainingPlies - 1);
-  return childDistance == null ? null : childDistance + 1;
+
+  const childBudget = attackerMovesAvailable - (attackerToMove ? 1 : 0);
+  let childCost = null;
+  if (childBudget >= 0) childCost = minimumAttackerMovesToMate(board, attacker, childBudget, memo);
+  const terminalMate = board.isCheckmate() && board.turn() !== attacker;
+  board.undo();
+
+  if (terminalMate) return attackerToMove ? 1 : 0;
+  if (childCost == null) return null;
+  return childCost + (attackerToMove ? 1 : 0);
 }
 
 function curatedForcedLineOptimalityIssues(puzzle) {
@@ -58,41 +73,44 @@ function curatedForcedLineOptimalityIssues(puzzle) {
   }
 
   const attacker = board.turn();
-  const maxPlies = puzzle.solution.length;
   const issues = [];
+  const memo = new Map();
 
   for (let index = 0; index < puzzle.solution.length; index += 1) {
     const san = puzzle.solution[index];
-    const remainingPlies = maxPlies - index;
+    const remainingPlies = puzzle.solution.length - index;
+    const attackerMovesAvailable = board.turn() === attacker
+      ? Math.ceil(remainingPlies / 2)
+      : Math.floor(remainingPlies / 2);
     const legal = board.moves();
     if (!legal.includes(san)) {
       issues.push(`la línea almacenada contiene una jugada ilegal: ${san}`);
       break;
     }
 
-    const storedDistance = distanceAfter(board, san, attacker, remainingPlies);
+    const scored = legal.map((candidate) => ({
+      san: candidate,
+      cost: mateMoveCostAfter(board, candidate, attacker, attackerMovesAvailable, memo),
+    }));
+    const stored = scored.find((candidate) => candidate.san === san);
+
     if (board.turn() === attacker) {
-      const winningDistances = legal
-        .map((candidate) => ({ san: candidate, distance: distanceAfter(board, candidate, attacker, remainingPlies) }))
-        .filter((candidate) => candidate.distance != null)
-        .sort((left, right) => left.distance - right.distance);
-      const best = winningDistances[0];
-      if (storedDistance == null) {
+      const winning = scored
+        .filter((candidate) => candidate.cost != null)
+        .sort((left, right) => left.cost - right.cost);
+      const best = winning[0];
+      if (stored?.cost == null) {
         issues.push(`la continuación ${san} abandona el mate forzado`);
-      } else if (best && storedDistance > best.distance) {
+      } else if (best && stored.cost > best.cost) {
         issues.push(`la continuación ${san} no es la ruta de mate más directa; ${best.san} fuerza antes`);
       }
     } else {
-      const defenses = legal.map((candidate) => ({
-        san: candidate,
-        distance: distanceAfter(board, candidate, attacker, remainingPlies),
-      }));
-      const escaping = defenses.find((candidate) => candidate.distance == null);
+      const escaping = scored.find((candidate) => candidate.cost == null);
       if (escaping) {
         issues.push(`la defensa ${escaping.san} evita el mate dentro del horizonte prometido`);
       } else {
-        const bestDefense = defenses.sort((left, right) => right.distance - left.distance)[0];
-        if (bestDefense && storedDistance != null && storedDistance < bestDefense.distance) {
+        const bestDefense = [...scored].sort((left, right) => right.cost - left.cost)[0];
+        if (bestDefense && stored?.cost != null && stored.cost < bestDefense.cost) {
           issues.push(`la respuesta ${san} es cooperativa; ${bestDefense.san} resiste más`);
         }
       }
