@@ -4,18 +4,23 @@ import { request } from '../http.js';
 import { createChesscomAudio } from '../chesscomAudio.js';
 import {
   CHESSCOM_COVER,
+  chesscomCanShoot,
   chesscomCreateState,
   chesscomDistance,
   chesscomEndTurn,
+  chesscomEngageEnemy,
+  chesscomFireModeFor,
+  chesscomFireModesFor,
   chesscomInteract,
   chesscomKey,
   chesscomMissionStatus,
   chesscomMove,
   chesscomReachable,
+  chesscomSetFireMode,
   chesscomSetOverwatch,
-  chesscomShoot,
 } from '../chesscom.js';
 import './Chesscom.css';
+import './ChesscomFireControl.css';
 
 const MATTHIAS_CANONICAL_ASSET_URL = '/matthias-home-canonical.b64?v=88bebc7e44293093';
 const ACTIONS = [
@@ -59,7 +64,9 @@ function SquadPortrait({ unit, selected, matthiasArt, onSelect }) {
   );
 }
 
-function WeaponPanel({ unit }) {
+function WeaponPanel({ unit, status, onFireMode }) {
+  const fireModes = chesscomFireModesFor(unit);
+  const fireMode = chesscomFireModeFor(unit);
   return (
     <div className="chesscom-panel chesscom-weapon">
       <div className="chesscom-weapon-title">
@@ -69,10 +76,28 @@ function WeaponPanel({ unit }) {
       <dl>
         <div><dt>DMG</dt><dd>{unit?.damage || 0}</dd></div>
         <div><dt>RNG</dt><dd>{unit?.range || 0}</dd></div>
-        <div><dt>AP</dt><dd>2</dd></div>
+        <div><dt>AP</dt><dd>{fireMode.ap}</dd></div>
         <div><dt>RELIABILITY</dt><dd className={(unit?.reliability || 100) < 93 ? 'is-warning' : ''}>{unit?.reliability || 100}%</dd></div>
         <div><dt>AMMO</dt><dd>{unit?.ammo ?? '—'}/30</dd></div>
       </dl>
+      <div className="chesscom-fire-control">
+        <div className="chesscom-fire-control-head"><span>FIRE MODE</span><small>{fireMode.rounds}R · {fireMode.ap} AP</small></div>
+        <div className="chesscom-fire-modes" role="group" aria-label="Modo de disparo">
+          {fireModes.map((mode) => (
+            <button
+              key={mode.id}
+              type="button"
+              className={mode.id === fireMode.id ? 'is-active' : ''}
+              aria-pressed={mode.id === fireMode.id}
+              title={`${mode.description} · ${mode.rounds} cartucho${mode.rounds === 1 ? '' : 's'} · ${mode.ap} AP`}
+              onClick={() => onFireMode(mode.id)}
+              disabled={status !== 'active' || unit?.hp <= 0}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -117,9 +142,11 @@ export default function Chesscom({ onExit }) {
     ? reachableMap.get(chesscomKey(hovered.x, hovered.y))
     : null;
   const targetableSet = useMemo(() => {
-    if (state.action !== 'shoot' || !selected || selected.ap < 2) return new Set();
-    return new Set(state.enemies.filter((enemy) => enemy.hp > 0 && chesscomDistance(selected,enemy) <= selected.range).map((enemy) => chesscomKey(enemy.x,enemy.y)));
-  }, [state.action,state.enemies,selected]);
+    if (state.action !== 'shoot' || !selected) return new Set();
+    return new Set(state.enemies
+      .filter((enemy) => chesscomCanShoot(state, selected.id, enemy.id))
+      .map((enemy) => chesscomKey(enemy.x,enemy.y)));
+  }, [state,selected]);
   const status = chesscomMissionStatus(state);
 
   function wakeAudio(kind = null) {
@@ -129,16 +156,22 @@ export default function Chesscom({ onExit }) {
 
   function selectFriendly(id) {
     wakeAudio();
-    setState((current) => ({ ...current, selectedId:id }));
+    setState((current) => ({ ...current, selectedId:id, targetId:null }));
+  }
+
+  function engageEnemy(id) {
+    if (!selected || status !== 'active') return;
+    const willFire = state.action === 'shoot' && chesscomCanShoot(state, selected.id, id);
+    wakeAudio(willFire ? 'shoot' : null);
+    setState((current) => chesscomEngageEnemy(current, current.selectedId, id));
   }
 
   function clickTile(x,y) {
     if (!selected || status !== 'active') return;
     const key = chesscomKey(x,y);
     const enemy = state.enemies.find((unit) => unit.hp > 0 && unit.x === x && unit.y === y);
-    if (state.action === 'shoot' && enemy) {
-      wakeAudio('shoot');
-      setState((current) => chesscomShoot(current, selected.id, enemy.id));
+    if (enemy) {
+      engageEnemy(enemy.id);
       return;
     }
     if (state.action === 'interact') {
@@ -154,10 +187,7 @@ export default function Chesscom({ onExit }) {
 
   function clickUnit(id,friendly) {
     if (friendly) { selectFriendly(id); return; }
-    if (state.action === 'shoot') {
-      wakeAudio('shoot');
-      setState((current) => chesscomShoot(current, selected.id, id));
-    }
+    engageEnemy(id);
   }
 
   tileClickRef.current = clickTile;
@@ -212,6 +242,7 @@ export default function Chesscom({ onExit }) {
       reachableTiles:movementTiles,
       targetable:targetableSet,
       selectedId:selected?.id,
+      targetId:state.targetId,
       matthiasArt,
     });
     const livingEnemies = state.enemies.filter((unit) => unit.hp > 0).length;
@@ -230,7 +261,13 @@ export default function Chesscom({ onExit }) {
       return;
     }
     wakeAudio();
-    setState((current) => ({ ...current, action }));
+    setState((current) => ({ ...current, action, targetId:action === 'shoot' ? current.targetId : null }));
+  }
+
+  function chooseFireMode(modeId) {
+    if (!selected || status !== 'active') return;
+    wakeAudio();
+    setState((current) => ({ ...chesscomSetFireMode(current, current.selectedId, modeId), action:'shoot' }));
   }
 
   function reload() {
@@ -238,6 +275,7 @@ export default function Chesscom({ onExit }) {
     wakeAudio('reload');
     setState((current) => ({
       ...current,
+      targetId:null,
       friendlies:current.friendlies.map((unit) => unit.id === selected.id ? { ...unit, ammo:30, ap:Math.max(0,unit.ap-1) } : unit),
       log:[`${selected.name} recarga.`,...current.log].slice(0,5),
     }));
@@ -309,7 +347,7 @@ export default function Chesscom({ onExit }) {
         </main>
 
         <aside className="chesscom-right">
-          <WeaponPanel unit={selected} />
+          <WeaponPanel unit={selected} status={status} onFireMode={chooseFireMode} />
           <div className="chesscom-panel chesscom-economy"><span>DEPLOYMENT</span><strong>{state.deploymentCost.toLocaleString('es-ES')} cr</strong><small>Funds: {state.credits.toLocaleString('es-ES')} cr</small></div>
           <div className="chesscom-panel chesscom-log"><h3>FIELD LOG</h3>{state.log.map((line,index)=><p key={`${line}-${index}`}>{line}</p>)}</div>
           <blockquote>“Good people, bad jobs.”<small>— Matthias</small></blockquote>
