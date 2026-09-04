@@ -15,6 +15,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 - Security images usa BuildKit + cache GHA para reutilizar capas Docker y no depender del registry si lockfiles/capas siguen válidos.
 - `npm audit` y `pip-audit` son señales auxiliares. Trivy conserva la política bloqueante por severidad.
 - `scripts/test_suite_audit.mjs --ci-wiring` impide resucitar workflows retirados, `npm ci` directo, cache keys por `github.run_id` y runners flotantes en rutas críticas.
+- Las PR usan **GitHub native auto-merge**. Ningún workflow del repo espera checks para ejecutar `gh pr merge`, ni existe un handoff que redispare CI después del merge.
 
 ## Acciones reutilizables
 
@@ -30,7 +31,6 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 | Workflow | Responsabilidad |
 | --- | --- |
 | `cicd.yml` | Gate principal quality-only para PR/main. Preflight y luego frontend/backend/security/E2E en paralelo según superficie. No despliega. |
-| `main-delivery-handoff.yml` | Continuación independiente PR→main. Tras un Quality de PR verde espera el merge exacto, deduplica un Quality de main ya creado y, si `GITHUB_TOKEN` suprimió el `push`, despacha `cicd.yml` explícitamente sobre el HEAD actual de `main`. |
 | `staging-deploy.yml` | Despliega el SHA aprobado en Render staging + Pages staging y acredita backend/frontend. |
 | `staging-ai-worker.yml` | Completa/revalida staging y emite la acreditación inmutable que permite promoción. El nombre se conserva por el contrato `workflow_run` existente. |
 | `production-promote.yml` | Promueve sólo el SHA acreditado. Worker/DNS Terraform `plan/apply` permanece aquí porque sí gestiona infraestructura real y está protegido por admisión anti-stale antes de la primera mutación. Render y Pages continúan después sobre el mismo SHA. |
@@ -51,7 +51,6 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 
 | Workflow | Responsabilidad |
 | --- | --- |
-| `auto-merge.yml` | Espera los checks protegidos y hace squash sólo del head observado. No inicia delivery: así el actor que fusiona la PR queda desacoplado de la continuación a `main`. |
 | `grafana-dashboards.yml` | Publica cuatro dashboards idempotentemente con la Grafana HTTP API. **Sin Terraform, provider, state, import, plan ni apply.** |
 | `cloudflare-prometheus-exporter.yml` | Valida/despliega el exporter oficial Cloudflare cuando cambia su superficie. |
 | `synthetic-health.yml` | Canary sintético de producción cada dos horas. Vive separado para funcionar aunque no haya releases. |
@@ -65,27 +64,34 @@ PR
  ▼
 Quality · CI gate (PR)
  │
- ├─ merge manual/externo ──► push normal ───────────────┐
- │                                                     │
- └─ Delivery · main handoff ── dispatch si hace falta ─┤
-                                                       ▼
-                                             Quality · CI gate (main)
-                                                       │
-                                                       ▼
-                                             Staging · deploy
-                                                       │
-                                                       ▼
-                                  Staging · AI Worker / accreditation
-                                                       │
-                                                       ▼
-                                           Production · promote
-                                           ├─ Cloudflare Worker + DNS
-                                           ├─ Render backend
-                                           └─ Cloudflare Pages
+ ▼
+GitHub native auto-merge
+ │
+ ▼
+push main
+ │
+ ▼
+Quality · CI gate (main)
+ │
+ ▼
+Staging · deploy
+ │
+ ▼
+Staging · AI Worker / accreditation
+ │
+ ▼
+Production · promote
+ ├─ Cloudflare Worker + DNS
+ ├─ Render backend
+ └─ Cloudflare Pages
 ```
+
+`workflow_dispatch` en `cicd.yml` queda como escape hatch manual, no como parte del camino normal de entrega.
 
 ## Fósiles retirados en esta auditoría
 
+- `auto-merge.yml` → retirado; sustituido por GitHub native auto-merge.
+- `main-delivery-handoff.yml` → retirado; el merge nativo produce el `push` normal a `main` y no necesita redispatch.
 - `matthias-visual.yml` → absorbido por `e2e-full.yml`.
 - `oci-arm64-readiness.yml` + `oci-terraform-readiness.yml` → `oci-readiness.yml`.
 - `infra/grafana/terraform/` → eliminado; dashboards pasan a publisher API state-less.
