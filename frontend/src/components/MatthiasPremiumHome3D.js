@@ -11,7 +11,7 @@ export const MATTHIAS_PREMIUM_HOME_FACE_RIG_VERSION = 'premium-pawn-face-v1';
 export const MATTHIAS_PREMIUM_HOME_FIDELITY_VERSION = 'approved-original-premium-v1';
 export const MATTHIAS_PREMIUM_HOME_RENDER_CONTRACT = 'canonical-pawn-3d-v1';
 export const MATTHIAS_PREMIUM_HOME_REFERENCE = 'approved-original-matthias-premium-v1';
-export const MATTHIAS_PREMIUM_HOME_CAP_VERSION = 'officer-cap-v3-canonical';
+export const MATTHIAS_PREMIUM_HOME_CAP_VERSION = 'officer-cap-v4-peaked-canonical';
 export const MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION = 'activity-props-v1';
 export const MATTHIAS_PREMIUM_HOME_ACTIVITY_COMPOSITION_VERSION = 'portrait-readable-v2';
 export const MATTHIAS_PREMIUM_HOME_FRAME_SCALE = .94;
@@ -294,16 +294,47 @@ function refineOfficerCap(root) {
   const crown = node(root, 'cap-crown');
   const top = node(root, 'cap-top');
   const topPiping = node(root, 'cap-top-piping');
+  const visor = node(root, 'cap-curved-visor');
+  const visorTrim = node(root, 'cap-visor-gold-trim');
+  const cord = node(root, 'cap-braided-cord');
+  const badge = node(root, 'cap-pawn-emblem');
 
-  // Keep Home tied to the canonical pawn cap instead of progressively inflating
-  // the crown. A tiny lift preserves the plate-cap shoulder while leaving a real
-  // safe margin above the hat in the fixed portrait camera.
+  // The Home cap must read as a compact peaked officer cap, not a flat platter.
+  // Keep the overall footprint smaller than v3, build a little crown height,
+  // taper the top plate and expose enough visor surface to read at ~128 px.
   if (crown) {
-    crown.scale.y = 1.08;
-    crown.position.y = .972;
+    crown.scale.x = .98;
+    crown.scale.y = 1.20;
+    crown.position.y = .982;
   }
-  if (top) top.position.y = 1.087;
-  if (topPiping) topPiping.position.y = 1.063;
+  if (top) {
+    top.scale.x = .96;
+    top.position.y = 1.112;
+  }
+  if (topPiping) {
+    topPiping.scale.x = .96;
+    topPiping.position.y = 1.084;
+  }
+  if (visor) {
+    visor.position.set(0, .735, .345);
+    visor.rotation.x = Math.PI / 2 - .22;
+    visor.scale.set(.98, 1, 1.05);
+  }
+  if (visorTrim) {
+    visorTrim.position.y = -.012;
+    visorTrim.position.z = .012;
+    visorTrim.scale.x = .98;
+    visorTrim.scale.z = 1.01;
+  }
+  if (cord) {
+    cord.position.y = -.008;
+    cord.scale.x = .98;
+  }
+  if (badge) {
+    badge.position.y = .955;
+    badge.position.z = .535;
+    badge.scale.setScalar(.40);
+  }
 }
 
 export function createMatthiasPremiumHome3D({ compact = false } = {}) {
@@ -336,8 +367,8 @@ export function createMatthiasPremiumHome3D({ compact = false } = {}) {
   rig.mouthGroup.scale.set(.96, .96, .96);
   rig.speechMouth.position.set(0, .18, .558);
 
-  cap.scale.set(1.06, 1.02, 1.03);
-  cap.position.y = -.035;
+  cap.scale.set(1.00, 1.04, 1.00);
+  cap.position.y = -.055;
   refineOfficerCap(root);
   body.scale.set(1.035, 1.01, 1.035);
   rig.emblem.scale.setScalar(.98);
