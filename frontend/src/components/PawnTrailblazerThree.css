@@ -45,6 +45,7 @@
   height: 100% !important;
   min-height: 0;
   outline: none;
+  transition: filter 180ms ease;
 }
 
 .pawn-trailblazer-overlay { z-index: 6; }
@@ -117,24 +118,24 @@
   transition: width 70ms linear;
 }
 
-/* Sector mood: same Three.js battlefield, increasingly hostile art direction.
- * Uses the already-rendered factual sector label, so no parallel runtime state
- * or animation loop is introduced. */
-.pawn-trailblazer-stage:has(.pawn-trailblazer-stage-sector[aria-label^='Sector I:']) .pawn-trailblazer-three::before {
+/* Sector mood: one battlefield, four increasingly ugly places to be a pawn.
+ * The selectors consume state already emitted by the HUD; no parallel game
+ * state, timers or renderer work are introduced. */
+.pawn-trailblazer[data-trail-sector='infantry'] .pawn-trailblazer-three::before {
   background:
     radial-gradient(ellipse at 50% 17%, rgba(226, 194, 105, .18), transparent 31%),
     radial-gradient(circle at 18% 58%, rgba(104, 92, 63, .1), transparent 29%),
     linear-gradient(90deg, rgba(0, 0, 0, .55), transparent 18% 82%, rgba(0, 0, 0, .55));
 }
 
-.pawn-trailblazer-stage:has(.pawn-trailblazer-stage-sector[aria-label^='Sector II:']) .pawn-trailblazer-three::before {
+.pawn-trailblazer[data-trail-sector='cavalry'] .pawn-trailblazer-three::before {
   background:
     radial-gradient(ellipse at 50% 16%, rgba(142, 185, 222, .16), transparent 30%),
     radial-gradient(circle at 82% 48%, rgba(72, 116, 155, .13), transparent 28%),
     linear-gradient(90deg, rgba(2, 8, 15, .62), transparent 18% 82%, rgba(2, 8, 15, .62));
 }
 
-.pawn-trailblazer-stage:has(.pawn-trailblazer-stage-sector[aria-label^='Sector III:']) .pawn-trailblazer-three::before {
+.pawn-trailblazer[data-trail-sector='crossfire'] .pawn-trailblazer-three::before {
   background:
     radial-gradient(ellipse at 50% 17%, rgba(238, 167, 74, .17), transparent 28%),
     radial-gradient(circle at 18% 44%, rgba(152, 48, 37, .13), transparent 27%),
@@ -142,7 +143,7 @@
     linear-gradient(90deg, rgba(15, 4, 3, .64), transparent 19% 81%, rgba(15, 4, 3, .64));
 }
 
-.pawn-trailblazer-stage:has(.pawn-trailblazer-stage-sector[aria-label^='Sector IV:']) .pawn-trailblazer-three::before {
+.pawn-trailblazer[data-trail-sector='hell'] .pawn-trailblazer-three::before {
   background:
     radial-gradient(ellipse at 50% 20%, rgba(255, 91, 54, .21), transparent 30%),
     radial-gradient(circle at 14% 50%, rgba(154, 24, 21, .17), transparent 28%),
@@ -151,17 +152,87 @@
   opacity: .94;
 }
 
-.pawn-trailblazer-stage:has(.pawn-trailblazer-stage-sector[aria-label^='Sector II:']) .pawn-trailblazer-stage-sector {
+.pawn-trailblazer[data-trail-sector='cavalry'] .pawn-trailblazer-stage-sector {
   border-color: rgba(125, 178, 218, .45);
 }
 
-.pawn-trailblazer-stage:has(.pawn-trailblazer-stage-sector[aria-label^='Sector III:']) .pawn-trailblazer-stage-sector {
+.pawn-trailblazer[data-trail-sector='crossfire'] .pawn-trailblazer-stage-sector {
   border-color: rgba(220, 143, 55, .54);
 }
 
-.pawn-trailblazer-stage:has(.pawn-trailblazer-stage-sector[aria-label^='Sector IV:']) .pawn-trailblazer-stage-sector {
+.pawn-trailblazer[data-trail-sector='hell'] .pawn-trailblazer-stage-sector {
   border-color: rgba(235, 77, 55, .62);
   box-shadow: 0 4px 18px rgba(0, 0, 0, .34), 0 0 24px rgba(196, 48, 32, .13);
+}
+
+/* The existing speed streaks become a little more nervous as Matthias gets
+ * deeper into the run. This is art direction only; Three.js speed is untouched. */
+.pawn-trailblazer[data-trail-sector='hell'][data-trail-phase='running'] .pawn-trailblazer-three::after {
+  opacity: .48;
+  animation: pawn-trailblazer-hell-stream 1.45s linear infinite;
+}
+
+.pawn-trailblazer[data-trail-combo='hot'] .pawn-trailblazer-three::after {
+  opacity: .44;
+  filter: sepia(.18) saturate(1.25);
+}
+
+.pawn-trailblazer[data-trail-combo='fury'] .pawn-trailblazer-three::after {
+  opacity: .58;
+  filter: sepia(.28) saturate(1.55) brightness(1.08);
+}
+
+.pawn-trailblazer[data-trail-combo='fury'] .pawn-trailblazer-hud span:nth-child(4) {
+  border-color: rgba(244, 194, 74, .58);
+  box-shadow: inset 0 0 18px rgba(201, 162, 39, .08), 0 0 18px rgba(201, 162, 39, .08);
+}
+
+/* Refusing promotion is the runner's tiny boss beat, not another toast. */
+.pawn-trailblazer[data-trail-promotion='true'] .pawn-trailblazer-stage {
+  animation: pawn-trailblazer-promotion-hit 420ms ease-out 2 alternate;
+}
+
+.pawn-trailblazer[data-trail-promotion='true'] .pawn-trailblazer-three::before {
+  opacity: 1;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(255, 230, 142, .28), transparent 24%),
+    radial-gradient(circle at 50% 48%, rgba(137, 24, 17, .26), transparent 55%),
+    linear-gradient(90deg, rgba(20, 3, 2, .68), transparent 24% 76%, rgba(20, 3, 2, .68));
+}
+
+.pawn-trailblazer[data-trail-promotion='true'] .pawn-trailblazer-promotion {
+  animation: pawn-trailblazer-nein 520ms cubic-bezier(.2,.8,.2,1) both;
+}
+
+.pawn-trailblazer[data-trail-phase='duel'] .pawn-trailblazer-three::after {
+  opacity: .5;
+  filter: sepia(.22) saturate(1.32);
+}
+
+.pawn-trailblazer[data-trail-phase='gameover'] .pawn-trailblazer-three canvas {
+  filter: grayscale(.28) saturate(.72) brightness(.72);
+}
+
+@keyframes pawn-trailblazer-hell-stream {
+  from { transform: translate3d(0, -1.5%, 0) scale(1.01); }
+  to { transform: translate3d(0, 1.5%, 0) scale(1.035); }
+}
+
+@keyframes pawn-trailblazer-promotion-hit {
+  from {
+    border-color: rgba(255, 223, 132, .72);
+    box-shadow: inset 0 0 0 rgba(255, 215, 112, 0), 0 0 0 rgba(205, 55, 31, 0);
+  }
+  to {
+    border-color: rgba(236, 75, 50, .82);
+    box-shadow: inset 0 0 54px rgba(255, 211, 100, .09), 0 0 36px rgba(205, 55, 31, .22);
+  }
+}
+
+@keyframes pawn-trailblazer-nein {
+  0% { transform: translate(-50%, -50%) scale(.82); opacity: .25; }
+  62% { transform: translate(-50%, -50%) scale(1.055); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
 
 @media (max-width: 520px) {
@@ -177,4 +248,15 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pawn-trailblazer-duel-meter span { transition: none; }
+  .pawn-trailblazer[data-trail-sector='hell'] .pawn-trailblazer-three::after,
+  .pawn-trailblazer[data-trail-promotion='true'] .pawn-trailblazer-stage,
+  .pawn-trailblazer[data-trail-promotion='true'] .pawn-trailblazer-promotion {
+    animation: none;
+  }
+}
+
+html[data-reduced-motion='true'] .pawn-trailblazer[data-trail-sector='hell'] .pawn-trailblazer-three::after,
+html[data-reduced-motion='true'] .pawn-trailblazer[data-trail-promotion='true'] .pawn-trailblazer-stage,
+html[data-reduced-motion='true'] .pawn-trailblazer[data-trail-promotion='true'] .pawn-trailblazer-promotion {
+  animation: none;
 }
