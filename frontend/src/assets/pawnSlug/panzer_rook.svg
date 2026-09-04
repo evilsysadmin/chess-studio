@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="256" viewBox="0 0 512 256">
+<defs>
+  <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#616873"/><stop offset=".45" stop-color="#3a4048"/><stop offset="1" stop-color="#1c2025"/></linearGradient>
+  <linearGradient id="red" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e17050"/><stop offset="1" stop-color="#6f221c"/></linearGradient>
+  <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e1bf72"/><stop offset="1" stop-color="#745025"/></linearGradient>
+  <filter id="s" x="-20%" y="-30%" width="150%" height="170%"><feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000" flood-opacity=".6"/></filter>
+</defs>
+<g filter="url(#s)">
+  <ellipse cx="255" cy="225" rx="171" ry="17" fill="#000" opacity=".34"/>
+  <path d="M75 178 L94 210 H404 L435 176 L411 148 H99Z" fill="#252a30" stroke="#090b0d" stroke-width="10"/>
+  <path d="M103 171 H409 L390 204 H115Z" fill="#15191d" stroke="#090b0d" stroke-width="7"/>
+  <g fill="#59616a" stroke="#090b0d" stroke-width="6">
+    <circle cx="137" cy="186" r="20"/><circle cx="187" cy="186" r="20"/><circle cx="237" cy="186" r="20"/><circle cx="287" cy="186" r="20"/><circle cx="337" cy="186" r="20"/><circle cx="387" cy="186" r="20"/>
+  </g>
+  <path d="M129 146 L157 102 H352 L386 145 L369 170 H145Z" fill="url(#steel)" stroke="#090b0d" stroke-width="10"/>
+  <path d="M183 108 L198 57 H226 V37 H253 V58 H278 V36 H305 V58 H333 L347 109Z" fill="url(#steel)" stroke="#090b0d" stroke-width="10"/>
+  <rect x="205" y="83" width="105" height="18" rx="6" fill="url(#red)" stroke="#090b0d" stroke-width="7"/>
+  <path d="M310 88 L424 70 L431 87 L316 103Z" fill="#525b66" stroke="#090b0d" stroke-width="9"/>
+  <path d="M421 68 L479 59 L485 74 L430 86Z" fill="#252a30" stroke="#090b0d" stroke-width="8"/>
+  <path d="M178 128 L152 145 L170 161" fill="none" stroke="url(#brass)" stroke-width="9" stroke-linejoin="round"/>
+  <path d="M345 128 L372 145 L354 161" fill="none" stroke="url(#brass)" stroke-width="9" stroke-linejoin="round"/>
+  <circle cx="229" cy="91" r="8" fill="#ff5947"/><circle cx="285" cy="91" r="8" fill="#ff5947"/>
+  <path d="M226 117 Q258 126 293 116" fill="none" stroke="#151515" stroke-width="8" stroke-linecap="round"/>
+  <path d="M107 156 H143 M371 156 H412" stroke="url(#brass)" stroke-width="8" stroke-linecap="round"/>
+  <path d="M160 121 L149 91 L169 94 L174 69 L191 91" fill="url(#red)" stroke="#090b0d" stroke-width="7"/>
+</g>
+</svg>
