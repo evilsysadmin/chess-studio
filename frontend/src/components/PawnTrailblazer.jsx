@@ -88,9 +88,17 @@ export default function PawnTrailblazer({ onExit }) {
   const hudSector = hud.sector || trailSectorForDistance(hud.distance || 0);
   const powerSeconds = hud.power ? Math.max(1, Math.ceil((hud.powerLeft || 0) / 1000)) : 0;
   const duelMeter = Math.max(0, Math.min(100, hud.duel?.meter || 0));
+  const comboMood = hud.combo >= 6 ? 'fury' : hud.combo >= 3 ? 'hot' : 'base';
 
   return (
-    <div className="pawn-trailblazer" data-pawn-trailblazer="true">
+    <div
+      className="pawn-trailblazer"
+      data-pawn-trailblazer="true"
+      data-trail-phase={hud.phase}
+      data-trail-sector={hudSector.key}
+      data-trail-promotion={hud.promotionActive ? 'true' : 'false'}
+      data-trail-combo={comboMood}
+    >
       <div className="pawn-trailblazer-head">
         <div>
           <span className="section-label">EXPERIMENTO ARCADE · THREE.JS</span>
