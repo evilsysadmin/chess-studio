@@ -1,4 +1,4 @@
-name: Playwright full / War Room gate
+name: Browser E2E gates
 
 on:
   pull_request:
@@ -22,12 +22,27 @@ on:
       - 'frontend/src/warRoomPointerCapture.js'
       - 'frontend/src/warRoomPointerCapture.test.js'
       - 'frontend/src/main.jsx'
+      - 'frontend/src/components/Matthias*.jsx'
+      - 'frontend/src/components/Matthias*.js'
+      - 'frontend/src/components/Matthias*.css'
+      - 'frontend/src/components/matthias*.jsx'
+      - 'frontend/src/components/matthias*.js'
+      - 'frontend/src/components/matthias*.css'
+      - 'frontend/src/components/InsightsMatthiasMotion.jsx'
+      - 'frontend/src/matthias*.js'
+      - 'frontend/src/assets/matthias-*/**'
       - 'e2e/three-d-war-room.spec.js'
       - 'e2e/three-d-war-room-android-touch.spec.js'
       - 'e2e/three-d-war-room-special-states.spec.js'
       - 'e2e/war-room-desktop-scale.spec.js'
       - 'e2e/android-game-focus.spec.js'
+      - 'e2e/matthias-home-visual-critical.spec.js'
+      - 'e2e/matthias-read-book-regression.spec.js'
+      - 'e2e/matthias-war-room-android-motion.spec.js'
+      - 'e2e/insights-matthias-motion.spec.js'
       - 'e2e/helpers.js'
+      - '.github/actions/setup-browser-e2e/action.yml'
+      - '.github/actions/cache-node-modules/action.yml'
       - '.github/workflows/e2e-full.yml'
   workflow_dispatch:
   schedule:
@@ -37,25 +52,24 @@ permissions:
   contents: read
 
 concurrency:
-  group: playwright-full-${{ github.event.pull_request.number || github.ref }}
+  group: browser-e2e-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   scope:
-    name: Classify War Room PR surface
+    name: Classify browser PR surface
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
-      full_logic: ${{ steps.scope.outputs.full_logic }}
-      visual: ${{ steps.scope.outputs.visual }}
-      focus: ${{ steps.scope.outputs.focus }}
+      matrix: ${{ steps.scope.outputs.matrix }}
+      has_cases: ${{ steps.scope.outputs.has_cases }}
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: Classify changed surface
+      - name: Build minimal browser matrix
         id: scope
         shell: bash
         env:
@@ -69,6 +83,7 @@ jobs:
           full_logic=false
           visual=false
           focus=false
+          matthias=false
 
           while IFS= read -r file; do
             [[ -n "$file" ]] || continue
@@ -80,96 +95,99 @@ jobs:
                 visual=true
                 focus=true
                 ;;
-              frontend/src/components/Board3D.jsx|frontend/src/components/Board3D*.js|frontend/src/components/WarRoom3D*.js|frontend/src/components/GameBoardView.jsx|frontend/src/components/GameCommandDeck.jsx|frontend/src/components/GamePlayerRail.jsx|frontend/src/components/GameSideColumn.jsx|frontend/src/components/GameStatusStrips.jsx|frontend/src/components/GameWarRoomCommandColumn.jsx|frontend/src/components/useGameBoardRenderer.js|frontend/src/components/useGameMobileFocus.js|frontend/src/components/useMatthiasBoardReactions.js|frontend/src/warRoomPointerCapture.js|frontend/src/warRoomPointerCapture.test.js|frontend/src/main.jsx|e2e/three-d-war-room.spec.js|e2e/three-d-war-room-android-touch.spec.js|e2e/three-d-war-room-special-states.spec.js|e2e/helpers.js|.github/workflows/e2e-full.yml)
+              frontend/src/components/Board3D.jsx|frontend/src/components/Board3D*.js|frontend/src/components/WarRoom3D*.js|frontend/src/components/GameBoardView.jsx|frontend/src/components/GameCommandDeck.jsx|frontend/src/components/GamePlayerRail.jsx|frontend/src/components/GameSideColumn.jsx|frontend/src/components/GameStatusStrips.jsx|frontend/src/components/GameWarRoomCommandColumn.jsx|frontend/src/components/useGameBoardRenderer.js|frontend/src/components/useGameMobileFocus.js|frontend/src/components/useMatthiasBoardReactions.js|frontend/src/warRoomPointerCapture.js|frontend/src/warRoomPointerCapture.test.js|frontend/src/main.jsx|e2e/three-d-war-room.spec.js|e2e/three-d-war-room-android-touch.spec.js|e2e/three-d-war-room-special-states.spec.js|e2e/helpers.js)
                 full_logic=true
                 visual=true
                 focus=true
                 ;;
             esac
+
+            case "$file" in
+              frontend/src/components/Matthias*.jsx|frontend/src/components/Matthias*.js|frontend/src/components/Matthias*.css|frontend/src/components/matthias*.jsx|frontend/src/components/matthias*.js|frontend/src/components/matthias*.css|frontend/src/components/InsightsMatthiasMotion.jsx|frontend/src/matthias*.js|frontend/src/assets/matthias-*/*|e2e/matthias-home-visual-critical.spec.js|e2e/matthias-read-book-regression.spec.js|e2e/matthias-war-room-android-motion.spec.js|e2e/insights-matthias-motion.spec.js)
+                matthias=true
+                ;;
+            esac
+
+            case "$file" in
+              .github/actions/setup-browser-e2e/action.yml|.github/actions/cache-node-modules/action.yml|.github/workflows/e2e-full.yml)
+                full_logic=true
+                visual=true
+                focus=true
+                matthias=true
+                ;;
+            esac
           done <<< "$files"
 
-          if [[ "$full_logic" != true && "$visual" != true && "$focus" != true ]]; then
-            full_logic=true
-            visual=true
-            focus=true
+          matrix="$(python3 - "$full_logic" "$visual" "$focus" "$matthias" <<'PY'
+          import json, sys
+          full_logic, visual, focus, matthias = [value == 'true' for value in sys.argv[1:]]
+          cases = []
+          if full_logic:
+              cases.extend([
+                  {'id': 'android-selection', 'label': 'War Room · Android selection', 'command': './node_modules/.bin/playwright test three-d-war-room-android-touch.spec.js --workers=1 --retries=0'},
+                  {'id': 'desktop-input', 'label': 'War Room · desktop input', 'command': './node_modules/.bin/playwright test three-d-war-room.spec.js --grep "War Room · desktop input mantiene cámara fija y juega e2→e4" --workers=1 --retries=0 --timeout=75000'},
+              ])
+              for shard in range(1, 6):
+                  cases.append({
+                      'id': f'special-state-{shard}',
+                      'label': f'War Room · special-state {shard}/5',
+                      'command': f'./node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000 --shard={shard}/5',
+                  })
+          if visual:
+              cases.append({
+                  'id': 'desktop-scale',
+                  'label': 'War Room · desktop board scale',
+                  'command': './node_modules/.bin/playwright test war-room-desktop-scale.spec.js --workers=1 --retries=0 --timeout=75000',
+              })
+          if focus:
+              cases.append({
+                  'id': 'android-focus',
+                  'label': 'War Room · Android Focus',
+                  'command': './node_modules/.bin/playwright test android-game-focus.spec.js --workers=1 --retries=0 --timeout=30000',
+              })
+          if matthias:
+              cases.append({
+                  'id': 'matthias-motion',
+                  'label': 'Matthias · browser motion',
+                  'command': './node_modules/.bin/playwright test matthias-home-visual-critical.spec.js matthias-read-book-regression.spec.js matthias-war-room-android-motion.spec.js insights-matthias-motion.spec.js --workers=4 --retries=0',
+              })
+          print(json.dumps({'include': cases}, separators=(',', ':')))
+          PY
+          )"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          if [[ "$matrix" == '{"include":[]}' ]]; then
+            echo 'has_cases=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'has_cases=true' >> "$GITHUB_OUTPUT"
           fi
 
           {
-            echo "full_logic=$full_logic"
-            echo "visual=$visual"
-            echo "focus=$focus"
-          } >> "$GITHUB_OUTPUT"
-
-          {
-            echo '### War Room browser scope'
+            echo '### Browser E2E scope'
             echo
-            echo "- Rules/input parity: \`$full_logic\`"
-            echo "- 3D mount/scale: \`$visual\`"
+            echo "- War Room rules/input parity: \`$full_logic\`"
+            echo "- War Room mount/scale: \`$visual\`"
             echo "- Android Focus: \`$focus\`"
-            echo '- PR gates run on separate hosted runners; the five special-state scenarios are also sharded so each heavyweight WebGL case owns its VM.'
+            echo "- Matthias motion/paint: \`$matthias\`"
+            echo '- Cada escenario WebGL pesado conserva runner propio; el setup de dependencias/browser es común y cacheado.'
           } >> "$GITHUB_STEP_SUMMARY"
 
-  pr-logic:
-    name: War Room · ${{ matrix.label }}
-    if: github.event_name == 'pull_request' && needs.scope.outputs.full_logic == 'true'
+  pr-browser:
+    name: ${{ matrix.label }}
+    if: github.event_name == 'pull_request' && needs.scope.outputs.has_cases == 'true'
     needs: scope
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - id: android-selection
-            label: Android selection
-            command: './node_modules/.bin/playwright test three-d-war-room-android-touch.spec.js --workers=1 --retries=0'
-          - id: desktop-input
-            label: desktop input
-            command: './node_modules/.bin/playwright test three-d-war-room.spec.js --grep "War Room · desktop input mantiene cámara fija y juega e2→e4" --workers=1 --retries=0 --timeout=75000'
-          - id: special-state-1
-            label: special-state 1/5
-            command: './node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000 --shard=1/5'
-          - id: special-state-2
-            label: special-state 2/5
-            command: './node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000 --shard=2/5'
-          - id: special-state-3
-            label: special-state 3/5
-            command: './node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000 --shard=3/5'
-          - id: special-state-4
-            label: special-state 4/5
-            command: './node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000 --shard=4/5'
-          - id: special-state-5
-            label: special-state 5/5
-            command: './node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000 --shard=5/5'
+      matrix: ${{ fromJSON(needs.scope.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
+      - name: Restore browser test runtime
+        uses: ./.github/actions/setup-browser-e2e
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            frontend/package-lock.json
-            e2e/package-lock.json
-
-      - name: Cache Playwright Chromium
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
-
-      - name: Install + build frontend
-        working-directory: frontend
-        run: |
-          npm ci
-          npm run build
-
-      - name: Install Playwright runner
-        working-directory: e2e
-        run: npm ci
-
-      - name: Install Chromium
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright install chromium
+          browser-scope: chromium
+          build-frontend: 'true'
 
       - name: Run ${{ matrix.label }}
         working-directory: e2e
@@ -179,149 +197,29 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-war-room-${{ matrix.id }}
-          path: e2e/test-results/
-          if-no-files-found: ignore
-          retention-days: 7
-
-  pr-visual:
-    name: War Room · desktop board scale
-    if: github.event_name == 'pull_request' && needs.scope.outputs.visual == 'true'
-    needs: scope
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            frontend/package-lock.json
-            e2e/package-lock.json
-
-      - name: Cache Playwright Chromium
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
-
-      - name: Install + build frontend
-        working-directory: frontend
-        run: |
-          npm ci
-          npm run build
-
-      - name: Install Playwright runner
-        working-directory: e2e
-        run: npm ci
-
-      - name: Install Chromium
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright install chromium
-
-      - name: Prove War Room desktop board scale
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright test war-room-desktop-scale.spec.js --workers=1 --retries=0 --timeout=75000
-
-      - name: Upload Playwright diagnostics on failure
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-war-room-desktop-scale
-          path: e2e/test-results/
-          if-no-files-found: ignore
-          retention-days: 7
-
-  pr-focus:
-    name: War Room · Android Focus
-    if: github.event_name == 'pull_request' && needs.scope.outputs.focus == 'true'
-    needs: scope
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            frontend/package-lock.json
-            e2e/package-lock.json
-
-      - name: Cache Playwright Chromium
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
-
-      - name: Install + build frontend
-        working-directory: frontend
-        run: |
-          npm ci
-          npm run build
-
-      - name: Install Playwright runner
-        working-directory: e2e
-        run: npm ci
-
-      - name: Install Chromium
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright install chromium
-
-      - name: Prove Android game Focus
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright test android-game-focus.spec.js --workers=1 --retries=0 --timeout=30000
-
-      - name: Upload Playwright diagnostics on failure
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-war-room-android-focus
-          path: e2e/test-results/
+          name: browser-e2e-${{ matrix.id }}
+          path: |
+            e2e/test-results/
+            e2e/playwright-report/
           if-no-files-found: ignore
           retention-days: 7
 
   playwright-full:
     name: Full browser E2E (informative)
     if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
+      - name: Restore full browser test runtime
+        uses: ./.github/actions/setup-browser-e2e
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            frontend/package-lock.json
-            e2e/package-lock.json
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
-
-      - name: Install + build frontend
-        working-directory: frontend
-        run: |
-          npm ci
-          npm run build
-
-      - name: Install Playwright runner
-        working-directory: e2e
-        run: npm ci
-
-      - name: Install Chromium + Firefox + WebKit
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright install --with-deps chromium firefox webkit
+          browser-scope: all
+          build-frontend: 'true'
 
       - name: Run full Playwright suite
-        continue-on-error: true
         working-directory: e2e
         env:
           PLAYWRIGHT_ALL_BROWSERS: '1'
@@ -332,6 +230,8 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: playwright-full-results
-          path: e2e/test-results/
+          path: |
+            e2e/test-results/
+            e2e/playwright-report/
           if-no-files-found: ignore
           retention-days: 7
