@@ -1,0 +1,38 @@
+name: Artifact · PR354 Matthias Home complete source
+
+on:
+  push:
+    branches:
+      - artifact/pr354-matthias-home-complete-743b08d
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Package exact green PR head
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_SHA='743b08dd5a0a4b8798b4077f79963bf02a7d6b9a'
+          OUT='ChessStudio_PR354_MatthiasHome_COMPLETE.zip'
+          git cat-file -e "${SOURCE_SHA}^{commit}"
+          git archive --format=zip --prefix=ChessStudio_PR354_MatthiasHome_COMPLETE/ "$SOURCE_SHA" -o "$OUT"
+          unzip -t "$OUT" >/dev/null
+          sha256sum "$OUT" > "$OUT.sha256"
+      - name: Upload complete source ZIP
+        uses: actions/upload-artifact@v7
+        with:
+          name: ChessStudio_PR354_MatthiasHome_COMPLETE
+          path: |
+            ChessStudio_PR354_MatthiasHome_COMPLETE.zip
+            ChessStudio_PR354_MatthiasHome_COMPLETE.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
