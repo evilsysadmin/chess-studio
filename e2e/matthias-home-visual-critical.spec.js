@@ -28,7 +28,11 @@ async function openHomeAt(page, hour, { dismissSpeech = true, profileSeed = {} }
   await expect(corner).toHaveAttribute('data-three-presentation', 'home-v4');
   if (dismissSpeech) {
     const dismiss = corner.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
-    if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
+    if (await dismiss.isVisible().catch(() => false)) {
+      await dismiss.click({ timeout: 1_500 }).catch(async () => {
+        await expect(dismiss).toHaveCount(0, { timeout: 1_500 });
+      });
+    }
   }
   return corner;
 }
