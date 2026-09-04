@@ -24,6 +24,7 @@ import {
   disposeMatthiasPawn3D,
   MATTHIAS_PAWN_EMBLEM,
   MATTHIAS_PAWN_FACE_RIG_VERSION,
+  MATTHIAS_PAWN_FIDELITY_VERSION,
   MATTHIAS_PAWN_MODEL_VERSION,
   matthiasPawnPoseSample,
 } from './MatthiasPawn3D.js';
@@ -98,9 +99,9 @@ export function matthiasHomeFacialMotionSample({
 
 function renderPolicy({ coarsePointer = false, width = 0, height = 0 } = {}) {
   const compact = coarsePointer && Math.min(Number(width) || 0, Number(height) || 0) <= 96;
-  if (compact) return { tier: 'compact', maxFps: 30, pixelRatioCap: 1 };
-  if (coarsePointer) return { tier: 'coarse', maxFps: 45, pixelRatioCap: 1.15 };
-  return { tier: 'full', maxFps: 60, pixelRatioCap: 1.5 };
+  if (compact) return { tier: 'compact', maxFps: 30, pixelRatioCap: 1.2 };
+  if (coarsePointer) return { tier: 'coarse', maxFps: 45, pixelRatioCap: 1.45 };
+  return { tier: 'full', maxFps: 60, pixelRatioCap: 1.85 };
 }
 
 function resizeRenderer(renderer, camera, canvas) {
@@ -235,7 +236,7 @@ export default function MatthiasHomeMicrogestureAvatar({
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.08;
+      renderer.toneMappingExposure = 1.14;
       renderer.setClearColor(0x000000, 0);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, policy.pixelRatioCap));
     } catch {
@@ -245,22 +246,31 @@ export default function MatthiasHomeMicrogestureAvatar({
     }
 
     const scene3d = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(30, 1, .1, 20);
-    camera.position.set(0, .02, 5.15);
-    camera.lookAt(0, -.08, 0);
+    const camera = new THREE.PerspectiveCamera(27, 1, .1, 20);
+    camera.position.set(0, .02, 5.2);
+    camera.lookAt(0, -.02, 0);
 
-    const hemi = new THREE.HemisphereLight(0xffe9c7, 0x151820, 2.1);
-    scene3d.add(hemi);
-    const key = new THREE.DirectionalLight(0xffd9a0, 3.1);
-    key.position.set(-2.2, 3.3, 4.4);
+    // A restrained warm/cool studio rig keeps the black lacquer, ivory face and
+    // brass details readable at avatar size. The first version used flat broad
+    // lighting and turned Matthias into a plastic toy.
+    const ambient = new THREE.HemisphereLight(0xffead0, 0x0a0d13, 1.18);
+    scene3d.add(ambient);
+    const key = new THREE.DirectionalLight(0xffc66f, 4.25);
+    key.position.set(-2.6, 3.6, 4.7);
     scene3d.add(key);
-    const rim = new THREE.DirectionalLight(0xbac9ff, 1.55);
-    rim.position.set(3.4, 1.8, 2.2);
+    const fill = new THREE.DirectionalLight(0xfff1db, 1.55);
+    fill.position.set(2.0, 1.4, 4.1);
+    scene3d.add(fill);
+    const rim = new THREE.DirectionalLight(0x9db8ff, 2.05);
+    rim.position.set(3.7, 2.4, -2.6);
     scene3d.add(rim);
+    const crownLight = new THREE.PointLight(0xffb94c, .72, 7.5);
+    crownLight.position.set(0, 3.0, 2.2);
+    scene3d.add(crownLight);
 
     rig = createMatthiasPawn3D({ compact: policy.tier === 'compact' });
     rig.root.scale.setScalar(.92);
-    rig.root.position.y = -.03;
+    rig.root.position.y = -.025;
     scene3d.add(rig.root);
 
     const doResize = () => resizeRenderer(renderer, camera, canvas);
@@ -405,6 +415,7 @@ export default function MatthiasHomeMicrogestureAvatar({
       data-three-motion-intensity={intensity.toFixed(2)}
       data-three-motion-phase={phase.toFixed(3)}
       data-three-model={MATTHIAS_PAWN_MODEL_VERSION}
+      data-three-fidelity={MATTHIAS_PAWN_FIDELITY_VERSION}
       data-three-emblem={MATTHIAS_PAWN_EMBLEM}
       data-three-deformation="rigid-body+bounded-face"
       data-three-render-mode="articulated-pawn-model"
