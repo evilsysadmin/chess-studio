@@ -1,6 +1,8 @@
 import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 import { perkById } from './roguelikePerks.js';
+import { loadCombatHistory } from './combatHistory.js';
+import { adaptiveCombatDifficulty } from './combatAdaptiveDifficulty.js';
 
 // Estado persistente de un INTENTO Roguelike.
 //
@@ -142,9 +144,13 @@ export function resetRoguelikeRun() {
 
 // Curva deliberadamente más amable que la anterior. El usuario ya llega al
 // boss con nueve batallas y perks encima; no hace falta convertir el piso 10
-// en Stockfish con resaca. En infinito sí sigue escalando hasta 95.
-export function difficultyForFloor(floor) {
+// en Stockfish con resaca. En infinito sí sigue escalando hasta 95. La forma
+// reciente de Combat puede rebajar sólo la SIGUIENTE batalla; nunca sube la
+// curva y nunca cambia la fuerza de la CPU a mitad de partida.
+export function difficultyForFloor(floor, combatHistory = loadCombatHistory()) {
   const f = Math.max(1, Number(floor) || 1);
-  if (f <= ROGUELIKE_TOWER_FLOORS) return Math.min(60, 20 + f * 4); // 24..60
-  return Math.min(95, 60 + (f - ROGUELIKE_TOWER_FLOORS) * 3);
+  const base = f <= ROGUELIKE_TOWER_FLOORS
+    ? Math.min(60, 20 + f * 4) // 24..60
+    : Math.min(95, 60 + (f - ROGUELIKE_TOWER_FLOORS) * 3);
+  return adaptiveCombatDifficulty(base, combatHistory).adjusted;
 }

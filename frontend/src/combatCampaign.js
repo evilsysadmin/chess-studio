@@ -8,6 +8,8 @@ import { reportStateInvariant } from './stateMachine.js';
 import { evaluateCampaignMissionOrders } from './combatMissionOrders.js';
 import { BATTLE_CREDIT_REWARD, CAMPAIGN_INTEL_BASE_COSTS, CAMPAIGN_STARTING_CREDITS } from './combatEconomyBalance.js';
 import { doctrineIntelView, enemyDoctrineForNode } from './combatEnemyDoctrine.js';
+import { loadCombatHistory } from './combatHistory.js';
+import { adaptiveCombatDifficulty } from './combatAdaptiveDifficulty.js';
 
 
 function nextCampaignPhase(state, event) {
@@ -694,12 +696,13 @@ export function resolveCampaignEvent(state, choiceId) {
   });
 }
 
-export function campaignDifficulty(state, node = campaignNode(state)) {
+export function campaignDifficulty(state, node = campaignNode(state), combatHistory = loadCombatHistory()) {
   if (!node || !['battle', 'elite', 'boss'].includes(node.type)) return 0;
   const boss = node.type === 'boss' ? campaignBossForSeed(state?.seed) : null;
   const dossierDelta = boss && hasRelic(state, 'kingDossier') ? -4 : 0;
   const bossDelta = boss?.difficultyDelta || 0;
-  return Math.max(5, Math.min(95, node.baseDifficulty + (Number(state?.nextDifficultyDelta) || 0) + bossDelta + dossierDelta));
+  const strategicDifficulty = Math.max(5, Math.min(95, node.baseDifficulty + (Number(state?.nextDifficultyDelta) || 0) + bossDelta + dossierDelta));
+  return adaptiveCombatDifficulty(strategicDifficulty, combatHistory).adjusted;
 }
 
 
