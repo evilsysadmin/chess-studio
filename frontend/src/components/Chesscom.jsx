@@ -111,6 +111,11 @@ export default function Chesscom({ onExit }) {
   const reachable = useMemo(() => chesscomReachable(state, selected), [state, selected]);
   const reachableMap = useMemo(() => new Map(reachable.map((tile) => [chesscomKey(tile.x,tile.y),tile])), [reachable]);
   const reachableSet = useMemo(() => new Set(reachableMap.keys()), [reachableMap]);
+  const movementTiles = useMemo(() => state.action === 'move' ? reachable : [], [state.action, reachable]);
+  const movementReachableSet = useMemo(() => state.action === 'move' ? reachableSet : new Set(), [state.action, reachableSet]);
+  const hoveredMove = hovered?.type === 'tile' && state.action === 'move'
+    ? reachableMap.get(chesscomKey(hovered.x, hovered.y))
+    : null;
   const targetableSet = useMemo(() => {
     if (state.action !== 'shoot' || !selected || selected.ap < 2) return new Set();
     return new Set(state.enemies.filter((enemy) => enemy.hp > 0 && chesscomDistance(selected,enemy) <= selected.range).map((enemy) => chesscomKey(enemy.x,enemy.y)));
@@ -202,10 +207,16 @@ export default function Chesscom({ onExit }) {
   }, []);
 
   useEffect(() => {
-    engineRef.current?.update(state, { reachable:reachableSet, targetable:targetableSet, selectedId:selected?.id, matthiasArt });
+    engineRef.current?.update(state, {
+      reachable:movementReachableSet,
+      reachableTiles:movementTiles,
+      targetable:targetableSet,
+      selectedId:selected?.id,
+      matthiasArt,
+    });
     const livingEnemies = state.enemies.filter((unit) => unit.hp > 0).length;
     audioRef.current?.setThreat(Math.min(1, .18 + livingEnemies * .16 + Math.max(0,state.turn-1) * .035));
-  }, [state,reachableSet,targetableSet,selected?.id,matthiasArt,rendererName]);
+  }, [state,movementReachableSet,movementTiles,targetableSet,selected?.id,matthiasArt,rendererName]);
 
   useEffect(() => {
     if (status === 'complete' && previousStatusRef.current !== 'complete') audioRef.current?.play('complete');
@@ -272,7 +283,13 @@ export default function Chesscom({ onExit }) {
               <dl><div><dt>Location</dt><dd>Kharif Outpost</dd></div><div><dt>Local contacts</dt><dd className="is-danger">Poor</dd></div><div><dt>Expected equipment</dt><dd className="is-warning">Limited</dd></div></dl>
             </div>
             <div className="chesscom-mission-badge"><span>TURN {state.turn}</span><strong>{state.action.toUpperCase()}</strong></div>
-            {hovered?.type === 'tile' && <div className="chesscom-hover-card"><b>Terrain {hovered.x+1},{hovered.y+1}</b><span>Cover: {CHESSCOM_COVER.get(chesscomKey(hovered.x,hovered.y)) || 'Open'}</span></div>}
+            {hovered?.type === 'tile' && (
+              <div className="chesscom-hover-card">
+                <b>Terrain {hovered.x+1},{hovered.y+1}</b>
+                <span>Cover: {CHESSCOM_COVER.get(chesscomKey(hovered.x,hovered.y)) || 'Open'}</span>
+                {hoveredMove && <span>Move: {hoveredMove.cost} AP</span>}
+              </div>
+            )}
             {rendererError && <div className="chesscom-render-error" role="alert">{rendererError}</div>}
             {status !== 'active' && (
               <div className="chesscom-result-overlay">
