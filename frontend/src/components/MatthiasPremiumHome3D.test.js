@@ -45,7 +45,7 @@ function objectSize(object) {
 }
 
 describe('MatthiasPremiumHome3D', () => {
-  it('mantiene la silueta canónica: gorra ancha y alta, cabeza compacta y ojos grandes', () => {
+  it('mantiene la silueta canónica: gorra de plato contenida, cabeza compacta y ojos grandes', () => {
     const rig = createMatthiasPremiumHome3D();
     const capCrown = rig.root.getObjectByName('cap-crown');
     const capTop = rig.root.getObjectByName('cap-top');
@@ -70,7 +70,9 @@ describe('MatthiasPremiumHome3D', () => {
     expect(rig.root.userData.frameScale).toBe(MATTHIAS_PREMIUM_HOME_FRAME_SCALE);
     expect(rig.root.userData.frameY).toBe(MATTHIAS_PREMIUM_HOME_FRAME_Y);
     expect(capSize.x).toBeGreaterThan(faceSize.x * 1.2);
-    expect(capSize.y).toBeGreaterThan(faceSize.y * .25);
+    expect(capSize.x).toBeLessThan(faceSize.x * 1.38);
+    expect(capSize.y).toBeGreaterThan(faceSize.y * .16);
+    expect(capSize.y).toBeLessThan(faceSize.y * .22);
     expect(capBox.min.y).toBeLessThanOrEqual(bandBox.max.y + .03);
     expect(topBox.min.y).toBeGreaterThan(capBox.max.y - .04);
     expect(rig.leftEye.scale.y).toBeGreaterThan(1.45);
@@ -105,6 +107,8 @@ describe('MatthiasPremiumHome3D', () => {
       MATTHIAS_PREMIUM_HOME_FRAME_SCALE,
       MATTHIAS_PREMIUM_HOME_FRAME_SCALE,
     ]);
+    const framedBox = objectBox(rig.root);
+    expect(framedBox.max.y).toBeLessThan(1.24);
 
     disposeMatthiasPremiumHome3D(rig);
   });
