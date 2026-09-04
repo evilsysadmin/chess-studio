@@ -10,6 +10,7 @@ export const MATTHIAS_PREMIUM_HOME_FACE_RIG_VERSION = 'premium-pawn-face-v1';
 export const MATTHIAS_PREMIUM_HOME_FIDELITY_VERSION = 'approved-original-premium-v1';
 export const MATTHIAS_PREMIUM_HOME_RENDER_CONTRACT = 'canonical-pawn-3d-v1';
 export const MATTHIAS_PREMIUM_HOME_REFERENCE = 'approved-original-matthias-premium-v1';
+export const MATTHIAS_PREMIUM_HOME_CAP_VERSION = 'officer-cap-v2';
 export const MATTHIAS_PREMIUM_HOME_FRAME_SCALE = .94;
 export const MATTHIAS_PREMIUM_HOME_FRAME_Y = -.05;
 export { MATTHIAS_PAWN_EMBLEM };
@@ -41,6 +42,23 @@ function refreshBase(rig) {
   rig.base.leftBrowRz = rig.leftBrow.rotation.z;
   rig.base.rightBrowRz = rig.rightBrow.rotation.z;
   rig.base.mouthY = rig.mouthGroup.position.y;
+}
+
+function refineOfficerCap(root) {
+  const crown = node(root, 'cap-crown');
+  const top = node(root, 'cap-top');
+  const topPiping = node(root, 'cap-top-piping');
+
+  // The base pawn cap was intentionally compact, but on the Home portrait that
+  // made the officer crown read as if its upper half had been clipped away.
+  // Keep the lower edge anchored to the red band and grow the crown upward,
+  // matching the approved Matthias silhouette without changing face/body scale.
+  if (crown) {
+    crown.scale.y = 1.60;
+    crown.position.y = 1.016;
+  }
+  if (top) top.position.y = 1.18;
+  if (topPiping) topPiping.position.y = 1.155;
 }
 
 export function createMatthiasPremiumHome3D({ compact = false } = {}) {
@@ -75,6 +93,7 @@ export function createMatthiasPremiumHome3D({ compact = false } = {}) {
 
   cap.scale.set(1.14, 1.08, 1.08);
   cap.position.y = -.045;
+  refineOfficerCap(root);
   body.scale.set(1.035, 1.01, 1.035);
   rig.emblem.scale.setScalar(.98);
 
@@ -111,6 +130,7 @@ export function createMatthiasPremiumHome3D({ compact = false } = {}) {
   root.userData.fidelityVersion = MATTHIAS_PREMIUM_HOME_FIDELITY_VERSION;
   root.userData.renderContract = MATTHIAS_PREMIUM_HOME_RENDER_CONTRACT;
   root.userData.approvedReference = MATTHIAS_PREMIUM_HOME_REFERENCE;
+  root.userData.capVersion = MATTHIAS_PREMIUM_HOME_CAP_VERSION;
   root.userData.emblem = MATTHIAS_PAWN_EMBLEM;
   root.userData.frameScale = MATTHIAS_PREMIUM_HOME_FRAME_SCALE;
   root.userData.frameY = MATTHIAS_PREMIUM_HOME_FRAME_Y;
