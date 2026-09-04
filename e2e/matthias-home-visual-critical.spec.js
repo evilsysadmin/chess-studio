@@ -265,6 +265,7 @@ test('Home · 390px conserva microgestos, mérito diegético, texto legible y ce
   expect(mobilePortrait.width, 'Matthias no puede volver a tamaño sello en Android').toBeGreaterThanOrEqual(118);
   expect(mobilePortrait.height, 'el retrato móvil debe dar espacio real a cara y torso').toBeGreaterThanOrEqual(130);
   expect(mobilePortrait.canvasScale, 'el framing móvil debe priorizar cara y torso sobre la base del peón').toBeGreaterThanOrEqual(1.30);
+  expect(mobilePortrait.canvasScale, 'el driver móvil no puede volver a inflar el canvas y pegar la gorra al marco').toBeLessThanOrEqual(1.36);
   expect(speechContract.bubbleFontSize, 'Matthias debe seguir siendo legible a 390px').toBeGreaterThanOrEqual(12.8);
   expect(contract.descriptionFontSize, 'las descripciones de modos no pueden volver a microtexto').toBeGreaterThanOrEqual(12.5);
   expect(contract.crownLeft, 'el mérito diegético no puede salirse por la izquierda').toBeGreaterThanOrEqual(0);
