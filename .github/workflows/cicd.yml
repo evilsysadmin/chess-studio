@@ -40,6 +40,9 @@ jobs:
       - name: Staging preview isolation contract
         run: python3 scripts/staging_preview_contract.py
 
+      - name: Auto-merge delivery contract
+        run: python3 -S scripts/auto_merge_delivery_contract.py
+
       - name: Classify quality-test surface
         id: quality_paths
         shell: bash
