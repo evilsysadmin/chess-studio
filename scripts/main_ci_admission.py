@@ -3,8 +3,9 @@
 
 The expensive suites run on the pull request. Each PR Quality run publishes a
 small immutable provenance artifact describing the exact synthetic merge commit
-that its jobs tested. After merge, main admission accepts the new main SHA only
-when that receipt proves the tested base is the final commit's first parent.
+that its jobs tested. After merge, main admission accepts the new main SHA when
+that receipt proves either the final first-parent base exactly, or an older base
+whose intervening main changes are proven file-disjoint from the PR under test.
 """
 from __future__ import annotations
 
@@ -27,6 +28,7 @@ QUALITY_PATH = ".github/workflows/cicd.yml"
 PROVENANCE_ARTIFACT = "quality-provenance"
 PROVENANCE_FILE = "quality-provenance.json"
 PROVENANCE_SCHEMA = 1
+MAX_COMPARE_FILES = 300
 REQUIRED_CHECKS: dict[str, set[str]] = {
     "Preflight · contracts": {"success"},
     "Tests · Frontend": {"success", "skipped"},
@@ -53,6 +55,7 @@ class Admission:
     pr_head_sha: str
     quality_run_id: int
     tested_merge_sha: str
+    concurrency_reused: bool = False
 
 
 def parse_time(value: str) -> datetime:
@@ -64,12 +67,11 @@ def parse_time(value: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
-def provenance_matches(
+def provenance_identity_matches(
     provenance: dict[str, Any] | None,
     *,
     pr_number: int,
     head_sha: str,
-    base_sha: str,
 ) -> bool:
     if not isinstance(provenance, dict):
         return False
@@ -77,7 +79,7 @@ def provenance_matches(
         provenance.get("schema") == PROVENANCE_SCHEMA
         and int(provenance.get("pr_number") or 0) == pr_number
         and str(provenance.get("head_sha") or "").lower() == head_sha
-        and str(provenance.get("base_sha") or "").lower() == base_sha
+        and len(str(provenance.get("base_sha") or "")) == 40
         and len(str(provenance.get("tested_merge_sha") or "")) == 40
     )
 
@@ -91,9 +93,11 @@ def evaluate_admission(
     workflow_runs: list[dict[str, Any]],
     check_runs: list[dict[str, Any]],
     provenances: dict[int, dict[str, Any]],
+    compatible_runs: set[int] | None = None,
 ) -> Admission:
     sha = main_sha.lower()
     parent = first_parent.lower()
+    compatible = compatible_runs or set()
     candidates = []
     for pr in pulls:
         base = pr.get("base") or {}
@@ -117,10 +121,13 @@ def evaluate_admission(
         raise AdmissionError("el PR acreditado no expone número/head SHA completos")
     merged_at = parse_time(str(pr.get("merged_at") or ""))
 
-    eligible_runs = []
+    eligible_runs: list[tuple[dict[str, Any], bool]] = []
     for run in workflow_runs:
         run_id = int(run.get("id") or 0)
         provenance = provenances.get(run_id)
+        provenance_base = str((provenance or {}).get("base_sha") or "").lower()
+        exact_base = provenance_base == parent
+        concurrency_reused = run_id in compatible and not exact_base
         if (
             run_id
             and run.get("event") == "pull_request"
@@ -129,28 +136,35 @@ def evaluate_admission(
             and str(run.get("head_sha") or "").lower() == head_sha
             and run.get("status") == "completed"
             and run.get("conclusion") == "success"
-            and provenance_matches(
+            and provenance_identity_matches(
                 provenance,
                 pr_number=pr_number,
                 head_sha=head_sha,
-                base_sha=parent,
             )
+            and (exact_base or concurrency_reused)
         ):
             created_at = parse_time(str(run.get("created_at") or ""))
             updated_at = parse_time(str(run.get("updated_at") or ""))
-            # The receipt was generated from `git rev-parse HEAD^1/HEAD^2` after
-            # checkout of the event's immutable github.sha. It is authoritative;
-            # PR/run API base metadata may lag while main advances.
-            if created_at >= first_parent_time and updated_at <= merged_at:
-                eligible_runs.append(run)
+            # Exact-base receipts must have started after the final first parent.
+            # A concurrency-compatible receipt may predate intervening disjoint
+            # commits; its compare proof is the authority for that race instead.
+            timing_ok = updated_at <= merged_at and (
+                concurrency_reused or created_at >= first_parent_time
+            )
+            if timing_ok:
+                eligible_runs.append((run, concurrency_reused))
 
     if not eligible_runs:
         raise AdmissionError(
-            f"PR #{pr_number} no tiene un {QUALITY_WORKFLOW!r} verde cuyo recibo pruebe la base exacta {parent[:12]}"
+            f"PR #{pr_number} no tiene un {QUALITY_WORKFLOW!r} verde con base exacta "
+            f"{parent[:12]} ni una base anterior acreditada como disjunta"
         )
 
-    eligible_runs.sort(key=lambda run: parse_time(str(run.get("updated_at") or "")), reverse=True)
-    run = eligible_runs[0]
+    eligible_runs.sort(
+        key=lambda item: parse_time(str(item[0].get("updated_at") or "")),
+        reverse=True,
+    )
+    run, concurrency_reused = eligible_runs[0]
     run_id = int(run.get("id") or 0)
     provenance = provenances[run_id]
     suite_id = run.get("check_suite_id") or (run.get("check_suite") or {}).get("id")
@@ -179,6 +193,7 @@ def evaluate_admission(
         pr_head_sha=head_sha,
         quality_run_id=run_id,
         tested_merge_sha=str(provenance.get("tested_merge_sha") or "").lower(),
+        concurrency_reused=concurrency_reused,
     )
 
 
@@ -189,7 +204,7 @@ def github_request(path: str, token: str) -> Request:
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {token}",
             "X-GitHub-Api-Version": API_VERSION,
-            "User-Agent": "chess-studio-main-ci-admission/3",
+            "User-Agent": "chess-studio-main-ci-admission/4",
         },
     )
 
@@ -203,7 +218,7 @@ def artifact_redirect_request(location: str) -> Request:
         location,
         headers={
             "Accept": "application/zip",
-            "User-Agent": "chess-studio-main-ci-admission/3",
+            "User-Agent": "chess-studio-main-ci-admission/4",
         },
     )
 
@@ -274,6 +289,49 @@ def fetch_run_provenance(api_base: str, run_id: int, token: str) -> dict[str, An
     return payload if isinstance(payload, dict) else None
 
 
+def compare_paths(api_base: str, base_sha: str, head_sha: str, token: str) -> set[str] | None:
+    """Return changed paths only when GitHub proves base is an ancestor of head."""
+    if len(base_sha) != 40 or len(head_sha) != 40:
+        return None
+    payload = api_get(
+        f"{api_base}/compare/{quote(base_sha)}...{quote(head_sha)}?per_page=100",
+        token,
+    )
+    if not isinstance(payload, dict) or payload.get("status") not in {"ahead", "identical"}:
+        return None
+    files = payload.get("files")
+    if not isinstance(files, list) or len(files) >= MAX_COMPARE_FILES:
+        return None
+    paths: set[str] = set()
+    for item in files:
+        if not isinstance(item, dict):
+            return None
+        filename = str(item.get("filename") or "").strip()
+        previous = str(item.get("previous_filename") or "").strip()
+        if filename:
+            paths.add(filename)
+        if previous:
+            paths.add(previous)
+    return paths
+
+
+def disjoint_concurrency_proof(
+    api_base: str,
+    provenance_base: str,
+    first_parent: str,
+    head_sha: str,
+    token: str,
+) -> tuple[bool, int, int]:
+    """Prove a stale PR base is safe to reuse across file-disjoint main advances."""
+    if provenance_base == first_parent:
+        return False, 0, 0
+    pr_paths = compare_paths(api_base, provenance_base, head_sha, token)
+    intervening_paths = compare_paths(api_base, provenance_base, first_parent, token)
+    if pr_paths is None or intervening_paths is None or not pr_paths:
+        return False, len(pr_paths or ()), len(intervening_paths or ())
+    return pr_paths.isdisjoint(intervening_paths), len(pr_paths), len(intervening_paths)
+
+
 def git_output(*args: str) -> str:
     try:
         return subprocess.check_output(["git", *args], text=True, stderr=subprocess.STDOUT).strip()
@@ -312,6 +370,7 @@ def run_live() -> Admission:
     ]
     if len(provisional) != 1:
         raise AdmissionError(f"main {main_sha[:12]} no procede de un único PR mergeado a main")
+    pr_number = int(provisional[0].get("number") or 0)
     head_sha = str((provisional[0].get("head") or {}).get("sha") or "").lower()
 
     runs_payload = api_get(
@@ -323,6 +382,7 @@ def run_live() -> Admission:
         raise AdmissionError("respuesta inesperada al buscar Quality · CI gate del PR")
 
     provenances: dict[int, dict[str, Any]] = {}
+    compatible_runs: set[int] = set()
     for run in workflow_runs:
         if run.get("conclusion") != "success":
             continue
@@ -330,8 +390,28 @@ def run_live() -> Admission:
         if not run_id:
             continue
         provenance = fetch_run_provenance(base, run_id, token)
-        if provenance is not None:
-            provenances[run_id] = provenance
+        if provenance is None:
+            continue
+        provenances[run_id] = provenance
+        provenance_base = str(provenance.get("base_sha") or "").lower()
+        if not provenance_identity_matches(provenance, pr_number=pr_number, head_sha=head_sha):
+            continue
+        if provenance_base == first_parent:
+            continue
+        safe, pr_path_count, intervening_path_count = disjoint_concurrency_proof(
+            base,
+            provenance_base,
+            first_parent,
+            head_sha,
+            token,
+        )
+        if safe:
+            compatible_runs.add(run_id)
+            print(
+                f"Main admission concurrency proof OK · Quality run {run_id} · "
+                f"base {provenance_base[:12]} -> parent {first_parent[:12]} · "
+                f"{pr_path_count} rutas PR / {intervening_path_count} rutas intermedias disjuntas"
+            )
 
     checks_payload = api_get(f"{base}/commits/{head_sha}/check-runs?per_page=100", token)
     check_runs = (checks_payload or {}).get("check_runs") if isinstance(checks_payload, dict) else None
@@ -346,6 +426,7 @@ def run_live() -> Admission:
         workflow_runs=workflow_runs,
         check_runs=check_runs,
         provenances=provenances,
+        compatible_runs=compatible_runs,
     )
 
 
@@ -402,6 +483,7 @@ def assert_rejected(
     checks: list[dict[str, Any]],
     provenances: dict[int, dict[str, Any]],
     first_parent: str = "a" * 40,
+    compatible_runs: set[int] | None = None,
 ) -> None:
     try:
         evaluate_admission(
@@ -412,6 +494,7 @@ def assert_rejected(
             workflow_runs=[run],
             check_runs=checks,
             provenances=provenances,
+            compatible_runs=compatible_runs,
         )
     except AdmissionError:
         return
@@ -431,6 +514,7 @@ def self_test() -> None:
     )
     assert admission.pr_number == 421
     assert admission.tested_merge_sha == "f" * 40
+    assert admission.concurrency_reused is False
 
     scoped_checks = [
         {**item, "conclusion": "skipped"}
@@ -448,6 +532,30 @@ def self_test() -> None:
         provenances=provenances,
     )
     assert scoped.quality_run_id == 1566
+
+    stale_provenances = {
+        1566: {**provenances[1566], "base_sha": "e" * 40}
+    }
+    raced = evaluate_admission(
+        main_sha="b" * 40,
+        first_parent="a" * 40,
+        first_parent_time=parse_time("2026-09-04T22:22:00Z"),
+        pulls=[pr],
+        workflow_runs=[run],
+        check_runs=checks,
+        provenances=stale_provenances,
+        compatible_runs={1566},
+    )
+    assert raced.quality_run_id == 1566
+    assert raced.concurrency_reused is True
+    assert_rejected(
+        "stale provenance without disjoint proof",
+        pr=pr,
+        run=run,
+        checks=checks,
+        provenances=stale_provenances,
+        first_parent="a" * 40,
+    )
 
     github = github_request("/repos/example/example", "test-token")
     assert github.get_header("Authorization") == "Bearer test-token"
@@ -474,13 +582,6 @@ def self_test() -> None:
         "wrong base parent", pr=pr, run=run, checks=checks,
         provenances=provenances, first_parent="d" * 40,
     )
-    stale_provenance = {
-        1566: {**provenances[1566], "base_sha": "d" * 40}
-    }
-    assert_rejected(
-        "stale provenance base", pr=pr, run=run, checks=checks,
-        provenances=stale_provenance,
-    )
     assert_rejected(
         "missing provenance", pr=pr, run=run, checks=checks, provenances={}
     )
@@ -505,6 +606,7 @@ def self_test() -> None:
 
     print(
         "main-ci-admission self-test OK · full/scoped green accepted; "
+        "disjoint concurrent main advances accepted only with proof; "
         "artifact redirect auth stripped; direct/stale/wrong-base/failed rejected"
     )
 
@@ -518,9 +620,10 @@ def main() -> int:
     except AdmissionError as exc:
         print(f"MAIN ADMISSION FAIL: {exc}", file=sys.stderr)
         return 2
+    reuse = " · disjoint-main reuse" if admission.concurrency_reused else ""
     print(
         f"Main admission OK · PR #{admission.pr_number} · head {admission.pr_head_sha[:12]} · "
-        f"Quality run {admission.quality_run_id} · tested merge {admission.tested_merge_sha[:12]}"
+        f"Quality run {admission.quality_run_id} · tested merge {admission.tested_merge_sha[:12]}{reuse}"
     )
     return 0
 
