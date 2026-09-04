@@ -22,14 +22,15 @@ async function openReadingHome(page) {
   return corner;
 }
 
-test('Leyendo estrategia · el retrato canónico se anima dentro de Three.js sin ojos ni brazos raster flotantes', async ({ page }) => {
+test('Leyendo estrategia · Matthias full 3D anima cabeza y mirada sin capas raster flotantes', async ({ page }) => {
   const corner = await openReadingHome(page);
   const frame = corner.locator('[data-portrait-frame="true"]');
   const avatar = frame.locator('[data-matthias-three-avatar="true"]');
 
   await expect(avatar).toHaveAttribute('data-three-profile', 'read');
   await expect(avatar).toHaveAttribute('data-three-motion', 'active');
-  await expect(avatar).toHaveAttribute('data-three-render-mode', 'canonical-layer-rig');
+  await expect(avatar).toHaveAttribute('data-three-render-mode', 'full-3d-rig');
+  await expect(avatar).toHaveAttribute('data-three-full-3d', 'true');
   await expect(frame.locator('[data-matthias-art-part]')).toHaveCount(0);
   await expect(frame.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
   await expect.poll(() => avatar.getAttribute('data-three-ready'), { timeout: 4_000 }).toBe('true');
@@ -38,6 +39,7 @@ test('Leyendo estrategia · el retrato canónico se anima dentro de Three.js sin
   const firstFrame = Number(await avatar.getAttribute('data-three-frame')) || 0;
   await expect.poll(async () => Number(await avatar.getAttribute('data-three-frame')) || 0, { timeout: 3_000 }).toBeGreaterThan(firstFrame + 5);
   await expect.poll(async () => Number(await avatar.getAttribute('data-three-energy')) || 0, { timeout: 3_000 }).toBeGreaterThan(.08);
+  await expect.poll(async () => Number(await avatar.getAttribute('data-three-head-yaw')) || 0, { timeout: 3_000 }).toBeGreaterThan(.02);
 
   const canonical = avatar.locator('img[data-matthias-canonical-art="true"]');
   await expect(canonical).toHaveAttribute('src', /^(?:data:image\/webp;base64,|.*\.webp(?:$|\?))/);
