@@ -20,8 +20,6 @@ on:
 permissions:
   contents: read
 
-# Preview, restauración y staging oficial escriben sobre el mismo frontend.
-# Nunca deben tocar Cloudflare Pages staging a la vez.
 concurrency:
   group: chess-studio-staging-deploy
   cancel-in-progress: false
@@ -129,9 +127,18 @@ jobs:
           cache: npm
           cache-dependency-path: preview-source/frontend/package-lock.json
 
-      - name: Install target frontend dependencies
-        working-directory: preview-source
-        run: make frontend-install
+      - name: Restore exact target frontend dependencies
+        uses: ./.github/actions/cache-node-modules
+        with:
+          working-directory: preview-source/frontend
+          lockfile: preview-source/frontend/package-lock.json
+          node-version: '22'
+
+      - name: Restore cached Wrangler toolchain
+        uses: ./.github/actions/setup-wrangler
+        with:
+          version: '4.127.1'
+          node-version: '22'
 
       - name: Build target against staging API
         working-directory: preview-source/frontend
@@ -147,7 +154,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes wrangler@4 pages deploy dist \
+          wrangler pages deploy dist \
             --project-name "$PAGES_PROJECT" \
             --branch main \
             --commit-hash "${{ steps.source.outputs.deploy_sha }}" \
