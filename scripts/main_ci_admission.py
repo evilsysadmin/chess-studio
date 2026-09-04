@@ -98,6 +98,9 @@ def evaluate_admission(
         ):
             created_at = parse_time(str(run.get("created_at") or ""))
             updated_at = parse_time(str(run.get("updated_at") or ""))
+            # pull_request Actions check out GitHub's synthetic merge ref. Requiring
+            # the run to start after the exact final base commit existed prevents a
+            # stale pre-base green run from being reused after main has advanced.
             if created_at >= first_parent_time and updated_at <= merged_at:
                 eligible_runs.append(run)
 
@@ -243,10 +246,29 @@ def fixture() -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
         "check_suite_id": 99,
     }
     checks = [
-        {"name": name, "conclusion": "success" if "success" in allowed else next(iter(allowed)), "check_suite": {"id": 99}}
-        for name, allowed in REQUIRED_CHECKS.items()
+        {
+            "name": name,
+            "conclusion": "success",
+            "check_suite": {"id": 99},
+        }
+        for name in REQUIRED_CHECKS
     ]
     return pr, run, checks
+
+
+def assert_rejected(label: str, *, pr: dict[str, Any], run: dict[str, Any], checks: list[dict[str, Any]], first_parent: str = "a" * 40) -> None:
+    try:
+        evaluate_admission(
+            main_sha="b" * 40,
+            first_parent=first_parent,
+            first_parent_time=parse_time("2026-09-04T22:15:04Z"),
+            pulls=[pr],
+            workflow_runs=[run],
+            check_runs=checks,
+        )
+    except AdmissionError:
+        return
+    raise AssertionError(f"self-test no rechazó: {label}")
 
 
 def self_test() -> None:
@@ -261,31 +283,48 @@ def self_test() -> None:
     )
     assert admission.pr_number == 421
 
-    cases = []
-    cases.append(("direct push", [], [run], list(checks)))
-    cases.append(("stale PR gate", [pr], [{**run, "created_at": "2026-09-04T22:14:59Z"}], list(checks)))
+    # Path-scoped PRs legitimately skip untouched heavyweight jobs. They are
+    # admissible only when the same green Quality check suite says so.
+    scoped_checks = [
+        {**item, "conclusion": "skipped"}
+        if item["name"] in {"Tests · Backend", "Security · Trivy + Docker"}
+        else item
+        for item in checks
+    ]
+    scoped = evaluate_admission(
+        main_sha="b" * 40,
+        first_parent="a" * 40,
+        first_parent_time=parse_time("2026-09-04T22:15:04Z"),
+        pulls=[pr],
+        workflow_runs=[run],
+        check_runs=scoped_checks,
+    )
+    assert scoped.quality_run_id == 1566
+
+    try:
+        evaluate_admission(
+            main_sha="b" * 40,
+            first_parent="a" * 40,
+            first_parent_time=parse_time("2026-09-04T22:15:04Z"),
+            pulls=[],
+            workflow_runs=[run],
+            check_runs=checks,
+        )
+    except AdmissionError:
+        pass
+    else:
+        raise AssertionError("self-test no rechazó: direct push")
+
+    assert_rejected("wrong base parent", pr=pr, run=run, checks=checks, first_parent="d" * 40)
+    assert_rejected("stale PR gate", pr=pr, run={**run, "created_at": "2026-09-04T22:14:59Z"}, checks=checks)
+    assert_rejected("post-merge PR gate", pr=pr, run={**run, "updated_at": "2026-09-04T22:24:14Z"}, checks=checks)
     failed_checks = [
         {**item, "conclusion": "failure"} if item["name"] == "Tests · Playwright" else item
         for item in checks
     ]
-    cases.append(("failed required check", [pr], [run], failed_checks))
+    assert_rejected("failed required check", pr=pr, run=run, checks=failed_checks)
 
-    for label, pulls, runs, check_list in cases:
-        try:
-            evaluate_admission(
-                main_sha="b" * 40,
-                first_parent="a" * 40,
-                first_parent_time=parse_time("2026-09-04T22:15:04Z"),
-                pulls=pulls,
-                workflow_runs=runs,
-                check_runs=check_list,
-            )
-        except AdmissionError:
-            pass
-        else:
-            raise AssertionError(f"self-test no rechazó: {label}")
-
-    print("main-ci-admission self-test OK · green PR accepted; direct/stale/failed rejected")
+    print("main-ci-admission self-test OK · full/scoped green accepted; direct/stale/wrong-base/failed rejected")
 
 
 def main() -> int:
