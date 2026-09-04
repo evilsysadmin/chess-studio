@@ -52,15 +52,22 @@ function replaceCentralCanvas(frame, artKey, title) {
   if (previous?.userData?.warRoomCampaignArt === artKey) return true;
   if (previous?.userData?.warRoomPainterly) previous.dispose?.();
 
+  // Swap only the artwork. The premium finish pass already gave this canvas
+  // woven linen, bump, varnish and museum-grade material response; replacing
+  // those values here would make the new art look flatter than the old one.
   canvas.material.map = createWarRoomCampaignTexture(artKey);
   canvas.material.color.setHex(0xffffff);
-  canvas.material.roughness = 0.84;
-  canvas.material.clearcoat = 0.012;
-  canvas.material.specularIntensity = 0.12;
   canvas.material.needsUpdate = true;
   canvas.userData.warRoomCampaignArt = artKey;
   canvas.userData.warRoomCampaignTitle = title;
+
   frame.userData.warRoomGalleryRole = 'central-campaign-canvas';
+  frame.userData.warRoomCampaignGalleryVersion = 'approved-mock-v1';
+  frame.userData.warRoomCampaignArt = artKey;
+  frame.userData.warRoomCampaignTitle = title;
+  delete frame.userData.warRoomLandscapeVersion;
+  delete frame.userData.warRoomLandscapeSubject;
+  delete frame.userData.warRoomGalleryLandscapeVersion;
   return true;
 }
 
@@ -75,6 +82,7 @@ function addSidePainting(group, {
   const frame = new THREE.Group();
   frame.name = side < 0 ? 'war-room-campaign-painting-left' : 'war-room-campaign-painting-right';
   frame.userData.warRoomGalleryRole = 'side-campaign-canvas';
+  frame.userData.warRoomCampaignGalleryVersion = 'approved-mock-v1';
   frame.userData.warRoomCampaignArt = artKey;
   frame.userData.warRoomCampaignTitle = title;
 
@@ -95,9 +103,10 @@ function addSidePainting(group, {
     specularIntensity: 0.54,
   });
   const canvasMat = physical(0xffffff, {
-    roughness: 0.86,
-    clearcoat: 0.01,
-    specularIntensity: 0.1,
+    roughness: 0.72,
+    clearcoat: 0.08,
+    clearcoatRoughness: 0.68,
+    specularIntensity: 0.18,
     map: createWarRoomCampaignTexture(artKey),
   });
 
