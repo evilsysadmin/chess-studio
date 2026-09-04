@@ -10,9 +10,19 @@ export const MATTHIAS_CANONICAL_ASPECT = 0.75;
 export const MATTHIAS_CANONICAL_HEAD_CUT = 0.54375;
 export const MATTHIAS_CANONICAL_BODY_START = 0.459375;
 export const MATTHIAS_CANONICAL_RIG_VERSION = 'canonical-layer-rig-v1';
+export const MATTHIAS_CANONICAL_MOTION_CONTRACT = 'anchored-microgestures-v1';
 
 const ART_HEIGHT = 4;
 const ART_WIDTH = ART_HEIGHT * MATTHIAS_CANONICAL_ASPECT;
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, Number(value) || 0));
+}
+
+function gatedMotion(value, threshold) {
+  const parsed = Number(value) || 0;
+  return Math.abs(parsed) <= threshold ? 0 : parsed;
+}
 
 function cropTexture(baseTexture, top, bottom) {
   const texture = baseTexture.clone();
@@ -87,27 +97,50 @@ export function createMatthiasCanonicalRig(baseTexture) {
   };
   root.userData.rigVersion = MATTHIAS_CANONICAL_RIG_VERSION;
   root.userData.artVersion = MATTHIAS_CANONICAL_ART_VERSION;
+  root.userData.motionContract = MATTHIAS_CANONICAL_MOTION_CONTRACT;
   return rig;
+}
+
+export function matthiasCanonicalLayerPose(pose = {}) {
+  // The canonical bitmap is a flat 2.5D card, not a real 3D head. Rotating it
+  // around X/Y or scaling it reads as foreshortening/zoom, not as character
+  // motion. Gate the tiny perpetual pose noise and translate/roll only around
+  // the neck so meaningful FSM/activity gestures survive without the bobbing
+  // “coming at the camera” effect.
+  const headYaw = gatedMotion(pose.headYaw, .020);
+  const headPitch = gatedMotion(pose.headPitch, .016);
+  const headRoll = gatedMotion(pose.headRoll, .012);
+  const bodyYaw = gatedMotion(pose.bodyYaw, .012);
+  const bodyY = gatedMotion(pose.bodyY, .012);
+
+  return {
+    rootY: clamp(bodyY * .18, -.006, .006),
+    rootRoll: clamp(bodyYaw * .12, -.003, .003),
+    headX: clamp(headYaw * .30, -.072, .072),
+    headY: clamp(-headPitch * .30, -.042, .042),
+    headRoll: clamp((headRoll * .9) + (headYaw * .07), -.08, .08),
+  };
 }
 
 export function applyMatthiasCanonicalPose(rig, pose) {
   if (!rig || !pose) return;
 
-  // Keep amplitudes intentionally restrained: the approved art remains the
-  // identity, while Three.js supplies readable life through rigid articulation.
-  rig.root.position.y = (pose.bodyY || 0) * 2.2;
-  rig.root.rotation.y = (pose.bodyYaw || 0) * 1.45;
-  rig.root.rotation.z = Math.max(-0.018, Math.min(0.018, (pose.bodyYaw || 0) * 0.7));
+  const layerPose = matthiasCanonicalLayerPose(pose);
 
-  rig.headPivot.position.y = rig.base.headPivotY;
-  rig.headPivot.rotation.x = Math.max(-0.11, Math.min(0.11, (pose.headPitch || 0) * 0.7));
-  rig.headPivot.rotation.y = Math.max(-0.19, Math.min(0.19, (pose.headYaw || 0) * 0.72));
-  rig.headPivot.rotation.z = Math.max(-0.075, Math.min(0.075, (pose.headRoll || 0) * 0.8));
+  // Anchor the body. No perspective wobble and, crucially, no scale pulses.
+  // The approved art stays the same size while head/neck microgestures provide
+  // the life. This is intentionally 2.5D until Matthias has a true rigged mesh.
+  rig.root.position.set(0, layerPose.rootY, 0);
+  rig.root.rotation.set(0, 0, layerPose.rootRoll);
+  rig.root.scale.set(1, 1, 1);
 
-  // A tiny scale breath is safe because it moves the whole approved head layer
-  // uniformly; there is no local face warp and therefore no melting.
-  const breath = 1 + Math.min(0.007, Math.abs(pose.bodyY || 0) * 0.08);
-  rig.headPivot.scale.setScalar(breath);
+  rig.headPivot.position.set(
+    layerPose.headX,
+    rig.base.headPivotY + layerPose.headY,
+    0,
+  );
+  rig.headPivot.rotation.set(0, 0, layerPose.headRoll);
+  rig.headPivot.scale.set(1, 1, 1);
 }
 
 export function disposeMatthiasCanonicalRig(rig) {
