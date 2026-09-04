@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { request } from '../http.js';
-import {
-  MATTHIAS_FACIAL_RIG_VERSION,
-  matthiasFacialMotionSample,
-} from './matthiasFacialRig.js';
+import { matthiasFacialMotionSample } from './matthiasFacialRig.js';
 import {
   matthiasHomeMotionPhase,
   matthiasHomeMotionProfile,
@@ -20,27 +17,26 @@ import {
   transitionMatthiasHomePresence,
 } from './matthiasHomePresenceStateMachine.js';
 import {
-  applyMatthiasCanonicalPose,
   canonicalMatthiasDataUrl,
-  createMatthiasCanonicalRig,
-  disposeMatthiasCanonicalRig,
   MATTHIAS_CANONICAL_ART_VERSION,
-  MATTHIAS_CANONICAL_ASPECT,
   MATTHIAS_CANONICAL_ASSET_URL,
-  MATTHIAS_CANONICAL_RIG_VERSION,
 } from './MatthiasCanonicalMock.js';
 import {
+  applyMatthiasPremiumHomePose,
+  createMatthiasPremiumHome3D,
+  disposeMatthiasPremiumHome3D,
   MATTHIAS_PAWN_EMBLEM,
-  MATTHIAS_PAWN_FIDELITY_VERSION,
-  MATTHIAS_PAWN_MODEL_VERSION,
-  matthiasPawnPoseSample,
-} from './MatthiasPawn3D.js';
+  MATTHIAS_PREMIUM_HOME_FACE_RIG_VERSION,
+  MATTHIAS_PREMIUM_HOME_FIDELITY_VERSION,
+  MATTHIAS_PREMIUM_HOME_MODEL_VERSION,
+  MATTHIAS_PREMIUM_HOME_REFERENCE,
+  MATTHIAS_PREMIUM_HOME_RENDER_CONTRACT,
+} from './MatthiasPremiumHome3D.js';
+import { matthiasPawnPoseSample } from './MatthiasPawn3D.js';
 import './MatthiasThreeAvatar.css';
 
-// Compatibility contract for old callers/tests. The live renderer now has zero
-// local face warp: Matthias is the approved art, articulated as rigid layers.
 export const MATTHIAS_HOME_FACE_WARP_LIMIT = .019;
-export const MATTHIAS_HOME_MICROGESTURE_VERSION = 'home-face-v2';
+export const MATTHIAS_HOME_MICROGESTURE_VERSION = 'home-face-v3-premium';
 
 function normalizeIntensity(value) {
   const parsed = Number(value);
@@ -81,6 +77,8 @@ export function matthiasHomeFacialCue({
   return { expression: 'stern', gesture: 'idle' };
 }
 
+// Compatibility helper for callers/tests that still sample the bounded facial
+// field. The live Home renderer below is real geometry and never warps pixels.
 export function matthiasHomeFacialMotionSample({
   profile = 'idle',
   presenceState = MATTHIAS_HOME_STATES.IDLE,
@@ -106,9 +104,9 @@ export function matthiasHomeFacialMotionSample({
 
 function renderPolicy({ coarsePointer = false, width = 0, height = 0 } = {}) {
   const compact = coarsePointer && Math.min(Number(width) || 0, Number(height) || 0) <= 96;
-  if (compact) return { tier: 'compact', maxFps: 30, pixelRatioCap: 1.2 };
-  if (coarsePointer) return { tier: 'coarse', maxFps: 45, pixelRatioCap: 1.45 };
-  return { tier: 'full', maxFps: 60, pixelRatioCap: 1.85 };
+  if (compact) return { tier: 'compact', maxFps: 30, pixelRatioCap: 1.15 };
+  if (coarsePointer) return { tier: 'coarse', maxFps: 45, pixelRatioCap: 1.35 };
+  return { tier: 'full', maxFps: 60, pixelRatioCap: 1.7 };
 }
 
 function resizeRenderer(renderer, camera, canvas) {
@@ -116,20 +114,11 @@ function resizeRenderer(renderer, camera, canvas) {
   const height = Math.max(1, canvas.clientHeight || 1);
   renderer.setSize(width, height, false);
 
-  // Orthographic cover semantics mirror the canonical fallback image without
-  // stretching it. Wider shells crop vertically; taller shells crop laterally.
-  const viewportAspect = width / height;
-  const artHeight = 4;
-  const artWidth = artHeight * MATTHIAS_CANONICAL_ASPECT;
-  let viewWidth;
-  let viewHeight;
-  if (viewportAspect >= MATTHIAS_CANONICAL_ASPECT) {
-    viewWidth = artWidth;
-    viewHeight = artWidth / viewportAspect;
-  } else {
-    viewHeight = artHeight;
-    viewWidth = artHeight * viewportAspect;
-  }
+  // Orthographic framing is identity-critical: no wide-angle mascot distortion.
+  // The approved pawn is shown as a compact portrait, with the cap fully inside.
+  const aspect = width / height;
+  const viewHeight = 2.72;
+  const viewWidth = viewHeight * aspect;
   camera.left = -viewWidth / 2;
   camera.right = viewWidth / 2;
   camera.top = viewHeight / 2;
@@ -149,6 +138,10 @@ export default function MatthiasHomeMicrogestureAvatar({
   const rootRef = useRef(null);
   const modeRef = useRef(MATTHIAS_HOME_STATES.IDLE);
   const modeStartedAtRef = useRef(0);
+  const profileRef = useRef('idle');
+  const phaseRef = useRef(0);
+  const intensityRef = useRef(1);
+  const speakingRef = useRef(false);
   const [machine, dispatch] = useReducer(
     transitionMatthiasHomePresence,
     undefined,
@@ -165,7 +158,12 @@ export default function MatthiasHomeMicrogestureAvatar({
   const intensity = normalizeIntensity(motionIntensity);
   const descriptor = matthiasHomeStateDescriptor(machine.mode);
   const facialCue = matthiasHomeFacialCue({ profile, presenceState: machine.mode, speaking });
+
   modeRef.current = machine.mode;
+  profileRef.current = profile;
+  phaseRef.current = phase;
+  intensityRef.current = intensity;
+  speakingRef.current = speaking;
 
   useEffect(() => {
     modeStartedAtRef.current = typeof performance !== 'undefined' ? performance.now() : 0;
@@ -201,11 +199,10 @@ export default function MatthiasHomeMicrogestureAvatar({
     return () => window.clearTimeout(timer);
   }, [machine.lastAmbient, machine.mode, profile, reducedMotion, speaking]);
 
+  // The original approved bitmap remains only as startup/failure fallback.
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
     let cancelled = false;
-    const root = rootRef.current;
-
     request(MATTHIAS_CANONICAL_ASSET_URL, { cache: 'force-cache' })
       .then((response) => {
         if (!response.ok) throw new Error(`Canonical Matthias asset ${response.status}`);
@@ -213,15 +210,11 @@ export default function MatthiasHomeMicrogestureAvatar({
       })
       .then((payload) => canonicalMatthiasDataUrl(payload))
       .then((src) => {
-        if (cancelled) return;
-        setCanonicalSrc(src);
+        if (!cancelled) setCanonicalSrc(src);
       })
       .catch(() => {
-        if (cancelled) return;
-        setFailed(true);
-        if (root) root.dataset.threeFailed = 'true';
+        // 3D does not depend on this asset; caller-provided avatar still exists.
       });
-
     return () => {
       cancelled = true;
     };
@@ -230,7 +223,7 @@ export default function MatthiasHomeMicrogestureAvatar({
   useEffect(() => {
     const canvas = canvasRef.current;
     const root = rootRef.current;
-    if (!canvas || !root || !canonicalSrc) return undefined;
+    if (!canvas || !root) return undefined;
 
     let renderer;
     let rig = null;
@@ -287,6 +280,8 @@ export default function MatthiasHomeMicrogestureAvatar({
         powerPreference: coarsePointer ? 'low-power' : 'high-performance',
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.02;
       renderer.setClearColor(0x000000, 0);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, policy.pixelRatioCap));
     } catch {
@@ -297,10 +292,30 @@ export default function MatthiasHomeMicrogestureAvatar({
 
     const scene3d = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, .1, 20);
-    camera.position.set(0, 0, 5);
-    camera.lookAt(0, 0, 0);
+    camera.position.set(0, .02, 5.1);
+    camera.lookAt(0, -.03, 0);
 
-    const doResize = () => resizeRenderer(renderer, camera, canvas);
+    // Warm key + restrained cool rim mirrors the approved premium mock without
+    // changing Matthias' actual colours or requiring shadow maps.
+    scene3d.add(new THREE.HemisphereLight(0xffead2, 0x11141a, 1.75));
+    const key = new THREE.DirectionalLight(0xffd39a, 2.65);
+    key.position.set(-2.4, 3.2, 4.2);
+    scene3d.add(key);
+    const fill = new THREE.DirectionalLight(0xffb96f, .55);
+    fill.position.set(2.2, .4, 3.6);
+    scene3d.add(fill);
+    const rim = new THREE.DirectionalLight(0xc4d1ee, .82);
+    rim.position.set(3.1, 1.8, 2.6);
+    scene3d.add(rim);
+
+    rig = createMatthiasPremiumHome3D({ compact: policy.tier === 'compact' });
+    rig.root.position.y = -.02;
+    scene3d.add(rig.root);
+
+    const doResize = () => {
+      resizeRenderer(renderer, camera, canvas);
+      if (reducedMotion && rig) renderer.render(scene3d, camera);
+    };
     doResize();
     if (typeof ResizeObserver === 'function') {
       resizeObserver = new ResizeObserver(doResize);
@@ -320,37 +335,33 @@ export default function MatthiasHomeMicrogestureAvatar({
     const startedAt = performance.now();
     const minFrameInterval = 1000 / policy.maxFps;
 
-    renderFrame = (stamp) => {
-      raf = 0;
-      if (disposed || !rig) return;
-      if (frames > 0 && stamp - lastRenderedAt < minFrameInterval) {
-        requestFrame();
-        return;
-      }
-      lastRenderedAt = stamp;
-
-      const time = Math.max(0, stamp - startedAt) / 1000 + phase;
-      const stateElapsed = Math.max(0, stamp - modeStartedAtRef.current) / 1000;
-      const pose = reducedMotion
-        ? matthiasPawnPoseSample({
+    const samplePose = (stamp) => {
+      if (reducedMotion) {
+        return matthiasPawnPoseSample({
           profile: 'idle',
           presenceState: MATTHIAS_HOME_STATES.IDLE,
           time: 0,
           stateElapsed: 0,
           stateDurationMs: 0,
           motionIntensity: 0,
-        })
-        : matthiasPawnPoseSample({
-          profile,
-          presenceState: modeRef.current,
-          time,
-          stateElapsed,
-          stateDurationMs: matthiasHomeStateDuration(modeRef.current),
-          speaking,
-          motionIntensity: intensity,
         });
+      }
+      const time = Math.max(0, stamp - startedAt) / 1000 + phaseRef.current;
+      const stateElapsed = Math.max(0, stamp - modeStartedAtRef.current) / 1000;
+      return matthiasPawnPoseSample({
+        profile: profileRef.current,
+        presenceState: modeRef.current,
+        time,
+        stateElapsed,
+        stateDurationMs: matthiasHomeStateDuration(modeRef.current),
+        speaking: speakingRef.current,
+        motionIntensity: intensityRef.current,
+      });
+    };
 
-      applyMatthiasCanonicalPose(rig, pose);
+    const paint = (stamp) => {
+      const pose = samplePose(stamp);
+      applyMatthiasPremiumHomePose(rig, pose);
       renderer.render(scene3d, camera);
 
       frames += 1;
@@ -367,9 +378,9 @@ export default function MatthiasHomeMicrogestureAvatar({
       }
       if (frames % 6 === 0 || frames === 1) {
         const currentCue = matthiasHomeFacialCue({
-          profile,
+          profile: profileRef.current,
           presenceState: modeRef.current,
-          speaking,
+          speaking: speakingRef.current,
         });
         root.dataset.threeFrame = String(frames);
         root.dataset.threeEnergy = peakEnergy.toFixed(3);
@@ -382,29 +393,22 @@ export default function MatthiasHomeMicrogestureAvatar({
         root.dataset.threeFaceExpression = currentCue.expression;
         root.dataset.threeFaceGesture = currentCue.gesture;
       }
+    };
+
+    renderFrame = (stamp) => {
+      raf = 0;
+      if (disposed || !rig) return;
+      if (frames > 0 && stamp - lastRenderedAt < minFrameInterval) {
+        requestFrame();
+        return;
+      }
+      lastRenderedAt = stamp;
+      paint(stamp);
       requestFrame();
     };
 
-    const textureLoader = new THREE.TextureLoader();
-    textureLoader.load(
-      canonicalSrc,
-      (texture) => {
-        if (disposed) {
-          texture.dispose?.();
-          return;
-        }
-        rig = createMatthiasCanonicalRig(texture);
-        scene3d.add(rig.root);
-        doResize();
-        raf = window.requestAnimationFrame(renderFrame);
-      },
-      undefined,
-      () => {
-        if (disposed) return;
-        setFailed(true);
-        root.dataset.threeFailed = 'true';
-      },
-    );
+    if (reducedMotion) paint(startedAt);
+    else raf = window.requestAnimationFrame(renderFrame);
 
     visibilityListener = () => {
       documentVisible = document.visibilityState !== 'hidden';
@@ -436,10 +440,10 @@ export default function MatthiasHomeMicrogestureAvatar({
       if (visibilityListener && typeof document !== 'undefined') {
         document.removeEventListener('visibilitychange', visibilityListener);
       }
-      disposeMatthiasCanonicalRig(rig);
+      disposeMatthiasPremiumHome3D(rig);
       renderer?.dispose?.();
     };
-  }, [canonicalSrc, intensity, phase, profile, reducedMotion, speaking]);
+  }, [reducedMotion]);
 
   const fallbackSrc = canonicalSrc || avatar || '';
 
@@ -458,14 +462,17 @@ export default function MatthiasHomeMicrogestureAvatar({
       data-three-motion={reducedMotion ? 'reduced' : 'active'}
       data-three-motion-intensity={intensity.toFixed(2)}
       data-three-motion-phase={phase.toFixed(3)}
-      data-three-model={MATTHIAS_PAWN_MODEL_VERSION}
-      data-three-fidelity={MATTHIAS_PAWN_FIDELITY_VERSION}
+      data-three-model={MATTHIAS_PREMIUM_HOME_MODEL_VERSION}
+      data-three-fidelity={MATTHIAS_PREMIUM_HOME_FIDELITY_VERSION}
       data-three-emblem={MATTHIAS_PAWN_EMBLEM}
       data-three-art-version={MATTHIAS_CANONICAL_ART_VERSION}
-      data-three-deformation="rigid-layer-articulation"
-      data-three-render-mode="canonical-layer-rig"
-      data-three-face-rig={MATTHIAS_FACIAL_RIG_VERSION}
-      data-three-articulated-face-rig={MATTHIAS_CANONICAL_RIG_VERSION}
+      data-three-deformation="rigid-geometry+facial-rig"
+      data-three-render-mode="canonical-premium-pawn-3d"
+      data-three-render-contract={MATTHIAS_PREMIUM_HOME_RENDER_CONTRACT}
+      data-three-approved-reference={MATTHIAS_PREMIUM_HOME_REFERENCE}
+      data-three-full-3d="true"
+      data-three-face-rig={MATTHIAS_PREMIUM_HOME_FACE_RIG_VERSION}
+      data-three-articulated-face-rig={MATTHIAS_PREMIUM_HOME_FACE_RIG_VERSION}
       data-three-face-expression={facialCue.expression}
       data-three-face-gesture={facialCue.gesture}
       data-three-face-warp="0.0000"

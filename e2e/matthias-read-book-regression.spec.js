@@ -22,14 +22,15 @@ async function openReadingHome(page) {
   return corner;
 }
 
-test('Leyendo estrategia · el retrato canónico se anima dentro de Three.js sin ojos ni brazos raster flotantes', async ({ page }) => {
+test('Leyendo estrategia · Matthias premium usa geometría 3D y conserva el original como fallback', async ({ page }) => {
   const corner = await openReadingHome(page);
   const frame = corner.locator('[data-portrait-frame="true"]');
   const avatar = frame.locator('[data-matthias-three-avatar="true"]');
 
   await expect(avatar).toHaveAttribute('data-three-profile', 'read');
   await expect(avatar).toHaveAttribute('data-three-motion', 'active');
-  await expect(avatar).toHaveAttribute('data-three-render-mode', 'canonical-layer-rig');
+  await expect(avatar).toHaveAttribute('data-three-render-mode', 'canonical-premium-pawn-3d');
+  await expect(avatar).toHaveAttribute('data-three-full-3d', 'true');
   await expect(frame.locator('[data-matthias-art-part]')).toHaveCount(0);
   await expect(frame.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
   await expect.poll(() => avatar.getAttribute('data-three-ready'), { timeout: 4_000 }).toBe('true');

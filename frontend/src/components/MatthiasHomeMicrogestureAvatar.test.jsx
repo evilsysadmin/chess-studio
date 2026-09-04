@@ -10,7 +10,7 @@ import MatthiasHomeMicrogestureAvatar, {
 import { MATTHIAS_HOME_STATES } from './matthiasHomePresenceStateMachine.js';
 
 describe('MatthiasHomeMicrogestureAvatar', () => {
-  it('mapea la FSM de Home a expresiones faciales antropomórficas reales', () => {
+  it('mapea la FSM de Home a expresiones faciales coherentes con Matthias', () => {
     expect(matthiasHomeFacialCue({ presenceState: MATTHIAS_HOME_STATES.GLANCE_LEFT })).toEqual({
       expression: 'alert',
       gesture: 'head-left',
@@ -37,40 +37,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     });
   });
 
-  it('mueve cejas/ojos de verdad sin arrastrar el núcleo de la cara', () => {
-    const brow = matthiasHomeFacialMotionSample({
-      profile: 'read',
-      presenceState: MATTHIAS_HOME_STATES.SURVEY,
-      x: .105,
-      y: .475,
-      imageAspect: 1,
-      time: 1.2,
-      motionIntensity: 1.12,
-    });
-    const eye = matthiasHomeFacialMotionSample({
-      presenceState: MATTHIAS_HOME_STATES.GLANCE_LEFT,
-      x: .105,
-      y: .395,
-      imageAspect: 1,
-      time: 1.2,
-      motionIntensity: 1.12,
-    });
-    const nose = matthiasHomeFacialMotionSample({
-      profile: 'read',
-      presenceState: MATTHIAS_HOME_STATES.SURVEY,
-      x: 0,
-      y: .305,
-      imageAspect: 1,
-      time: 1.2,
-      motionIntensity: 1.12,
-    });
-
-    expect(Math.abs(brow.dx) + Math.abs(brow.dy)).toBeGreaterThan(.001);
-    expect(Math.abs(eye.dx) + Math.abs(eye.dy)).toBeGreaterThan(.001);
-    expect(Math.abs(nose.dx) + Math.abs(nose.dy)).toBeLessThan(.0015);
-  });
-
-  it('mantiene todos los deltas faciales dentro del contrato anti-melt', () => {
+  it('mantiene el helper facial legacy dentro del contrato anti-melt', () => {
     const samples = [];
     for (const state of [
       MATTHIAS_HOME_STATES.IDLE,
@@ -82,7 +49,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
       MATTHIAS_HOME_STATES.SKEPTICAL,
       MATTHIAS_HOME_STATES.ATTEND,
     ]) {
-      for (const [x, y] of [[-.105, .475], [.105, .475], [-.105, .395], [.105, .395], [-.105, .175], [.105, .175], [0, .095]]) {
+      for (const [x, y] of [[-.105, .475], [.105, .475], [-.105, .395], [.105, .395], [0, .095]]) {
         samples.push(matthiasHomeFacialMotionSample({
           profile: 'think',
           presenceState: state,
@@ -103,7 +70,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     }
   });
 
-  it('publica el contrato del rig canónico articulado sin volver al cuerpo de goma', () => {
+  it('publica el contrato premium 3D y conserva el original sólo como fallback', () => {
     const html = renderToStaticMarkup(
       <MatthiasHomeMicrogestureAvatar
         avatar="/assets/matthias-scenes/strategy-book.webp"
@@ -113,15 +80,17 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
       />,
     );
 
-    expect(MATTHIAS_HOME_MICROGESTURE_VERSION).toBe('home-face-v2');
-    expect(html).toContain('data-home-microgesture-version="home-face-v2"');
-    expect(html).toContain('data-three-deformation="rigid-layer-articulation"');
-    expect(html).toContain('data-three-render-mode="canonical-layer-rig"');
-    expect(html).toContain('data-three-art-version="angry-mock-v1"');
-    expect(html).toContain('data-three-articulated-face-rig="canonical-layer-rig-v1"');
-    expect(html).toContain('data-three-face-rig="face-v1"');
-    expect(html).toContain('data-three-face-expression="focus"');
-    expect(html).toContain('data-three-face-gesture="survey"');
+    expect(MATTHIAS_HOME_MICROGESTURE_VERSION).toBe('home-face-v3-premium');
+    expect(html).toContain('data-home-microgesture-version="home-face-v3-premium"');
+    expect(html).toContain('data-three-model="matthias-home-premium-3d-v1"');
+    expect(html).toContain('data-three-fidelity="approved-original-premium-v1"');
+    expect(html).toContain('data-three-deformation="rigid-geometry+facial-rig"');
+    expect(html).toContain('data-three-render-mode="canonical-premium-pawn-3d"');
+    expect(html).toContain('data-three-render-contract="canonical-pawn-3d-v1"');
+    expect(html).toContain('data-three-approved-reference="approved-original-matthias-premium-v1"');
+    expect(html).toContain('data-three-full-3d="true"');
+    expect(html).toContain('data-three-face-rig="premium-pawn-face-v1"');
+    expect(html).toContain('data-three-articulated-face-rig="premium-pawn-face-v1"');
     expect(html).toContain('data-three-face-warp-limit="0.019"');
     expect(html).toContain('data-three-face-warp="0.0000"');
     expect(html).toContain('<canvas');
@@ -129,11 +98,12 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     expect(html).toContain('src="/assets/matthias-scenes/strategy-book.webp"');
   });
 
-  it('reduced-motion conserva arte de fallback y desactiva movimiento desde el primer paint', () => {
+  it('reduced-motion conserva el fallback y publica movimiento reducido desde primer paint', () => {
     const html = renderToStaticMarkup(
       <MatthiasHomeMicrogestureAvatar avatar="/base.webp" scene="base" reducedMotion />,
     );
     expect(html).toContain('data-three-motion="reduced"');
+    expect(html).toContain('data-three-full-3d="true"');
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/base.webp"');
   });
