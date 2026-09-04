@@ -53,37 +53,51 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
-      # Una generación de staging puede terminar correctamente mientras main ya
-      # ha avanzado. En ese caso su verificación sigue siendo válida como smoke,
-      # pero ya no debe crear una acreditación que pueda disparar producción.
-      - name: Supersede stale staging accreditation
+      # Main puede avanzar mientras una generación coherente de staging termina.
+      # Eso no invalida lo ya probado: sólo rechazamos el SHA si dejó de pertenecer
+      # a la línea de main. Los checks exactos de backend/frontend/Worker de abajo
+      # siguen decidiendo si staging todavía sirve realmente esta generación.
+      - name: Supersede stale staging accreditation outside current main lineage
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          compare_status="$(gh api \
+            -H 'Accept: application/vnd.github+json' \
+            "/repos/$GITHUB_REPOSITORY/compare/$DEPLOY_SHA...$current_main" \
+            --jq '.status')"
+          case "$compare_status" in
+            identical|ahead)
+              ;;
+            *)
+              echo "::notice title=Staging accreditation superseded::El SHA acreditable $DEPLOY_SHA ya no pertenece a la línea de main ($current_main, compare=$compare_status). No emito credencial de producción."
+              {
+                echo '### Acreditación de staging superseded'
+                echo
+                echo "- Staging SHA verificado: \`$DEPLOY_SHA\`"
+                echo "- Current main: \`$current_main\`"
+                echo "- Compare status: \`$compare_status\`"
+                echo '- Acción: `autocancelar antes de emitir credencial de promoción`'
+                echo '- Producción: `no se dispara para un SHA fuera de la línea de main`'
+              } >> "$GITHUB_STEP_SUMMARY"
+
+              gh api --method POST \
+                -H 'Accept: application/vnd.github+json' \
+                "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel"
+
+              echo 'Cancelación solicitada; permanezco fail-closed hasta que GitHub detenga el runner.'
+              while :; do
+                sleep 30
+              done
+              ;;
+          esac
+
           if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
-            echo "::notice title=Staging accreditation superseded::Staging sirve $DEPLOY_SHA, pero main ya apunta a $current_main. No acredito esta generación para producción."
-            {
-              echo '### Acreditación de staging superseded'
-              echo
-              echo "- Staging SHA verificado: \`$DEPLOY_SHA\`"
-              echo "- Current main: \`$current_main\`"
-              echo '- Acción: `autocancelar esta acreditación antes de emitir credencial de promoción`'
-              echo '- Producción: `no se dispara para este SHA obsoleto`'
-            } >> "$GITHUB_STEP_SUMMARY"
-
-            gh api --method POST \
-              -H 'Accept: application/vnd.github+json' \
-              "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel"
-
-            echo 'Cancelación solicitada; permanezco fail-closed hasta que GitHub detenga el runner.'
-            while :; do
-              sleep 30
-            done
+            echo "::notice title=Staging accreditation retained::main avanzó a $current_main, pero $DEPLOY_SHA sigue siendo ancestro. La acreditación continúa y los checks live decidirán si staging todavía sirve ese SHA."
           fi
-          echo "Staging accreditation admission OK: $DEPLOY_SHA sigue siendo main HEAD."
+          echo "Staging accreditation lineage OK: $DEPLOY_SHA pertenece a main actual $current_main."
 
       - name: Verify staging backend still serves approved SHA
         shell: bash
@@ -190,6 +204,6 @@ jobs:
             else
               echo '- Credencial de promoción: `no emitida en ejecución manual`'
             fi
-            echo '- Este workflow ya no despliega: sólo acredita la generación aplicada y probada por `Staging · deploy`.'
+            echo '- Este workflow ya no exige que el SHA siga siendo HEAD: basta con que permanezca en la línea de main y que staging siga sirviéndolo coherentemente.'
             echo "- Upstream event: \`${UPSTREAM_EVENT:-manual}\`"
           } >> "$GITHUB_STEP_SUMMARY"
