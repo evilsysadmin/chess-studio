@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { duckAmbientMusic } from './sound.js';
 import { TRAIL_SPRITES } from './pawnTrailblazerSprites.js';
+import { trailSpriteScale } from './pawnTrailblazerSpriteLayout.js';
 import {
   TRAIL_COMBO_WINDOW_MS,
   TRAIL_LANES,
@@ -128,8 +129,14 @@ function createArcadeMusic(kind) {
   };
 }
 
-function spriteMaterial(texture) {
-  return new THREE.SpriteMaterial({ map: texture, transparent: true, alphaTest: 0.06, depthWrite: true });
+function spriteMaterial(texture = null) {
+  return new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    alphaTest: 0.08,
+    depthTest: true,
+    depthWrite: false,
+  });
 }
 
 function disposeObject(object) {
@@ -171,6 +178,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
   renderer.shadowMap.enabled = !coarse;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   host.replaceChildren(renderer.domElement);
+  host.dataset.trailSpriteLayout = 'aspect-safe-v1';
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x07090d);
@@ -216,13 +224,24 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
   lightMaterial.dispose();
   darkMaterial.dispose();
 
+  let destroyed = false;
   const textureLoader = new THREE.TextureLoader();
   const textures = new Map();
+  const textureReadyCallbacks = new Map();
+
+  function notifyTextureReady(url, loaded) {
+    const callbacks = textureReadyCallbacks.get(url);
+    if (!callbacks) return;
+    textureReadyCallbacks.delete(url);
+    for (const callback of callbacks) callback(loaded);
+  }
+
   function texture(url) {
     if (textures.has(url)) return textures.get(url);
     const loaded = textureLoader.load(url, () => {
       loaded.colorSpace = THREE.SRGBColorSpace;
       loaded.needsUpdate = true;
+      notifyTextureReady(url, loaded);
     });
     loaded.colorSpace = THREE.SRGBColorSpace;
     loaded.minFilter = THREE.LinearFilter;
@@ -231,8 +250,44 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
     return loaded;
   }
 
-  const matthias = new THREE.Sprite(spriteMaterial(texture(TRAIL_SPRITES.matthiasRun)));
-  matthias.scale.set(1.45, 2, 1);
+  function fitSprite(sprite, loaded, targetHeight, maxWidth) {
+    const image = loaded?.image;
+    const fitted = trailSpriteScale({
+      imageWidth: image?.naturalWidth || image?.videoWidth || image?.width,
+      imageHeight: image?.naturalHeight || image?.videoHeight || image?.height,
+      targetHeight,
+      maxWidth,
+    });
+    sprite.scale.set(fitted.width, fitted.height, 1);
+  }
+
+  function setSpriteArtwork(sprite, url, targetHeight, maxWidth) {
+    if (!sprite?.material) return;
+    const artworkToken = (sprite.userData.trailArtworkToken || 0) + 1;
+    sprite.userData.trailArtworkToken = artworkToken;
+    sprite.userData.trailTargetHeight = targetHeight;
+    sprite.userData.trailMaxWidth = maxWidth;
+    const loaded = texture(url);
+    sprite.material.map = loaded;
+    sprite.material.needsUpdate = true;
+
+    const applyFit = (readyTexture) => {
+      if (destroyed || sprite.userData.trailDetached || sprite.userData.trailArtworkToken !== artworkToken) return;
+      fitSprite(sprite, readyTexture, targetHeight, maxWidth);
+    };
+
+    const image = loaded.image;
+    if ((image?.naturalWidth || image?.videoWidth || image?.width) && (image?.naturalHeight || image?.videoHeight || image?.height)) {
+      applyFit(loaded);
+      return;
+    }
+    const callbacks = textureReadyCallbacks.get(url) || new Set();
+    callbacks.add(applyFit);
+    textureReadyCallbacks.set(url, callbacks);
+  }
+
+  const matthias = new THREE.Sprite(spriteMaterial());
+  setSpriteArtwork(matthias, TRAIL_SPRITES.matthiasRun, 2, 1.45);
   matthias.position.set(laneX(2), 1.04, PLAYER_Z);
   matthias.renderOrder = 12;
   scene.add(matthias);
@@ -244,7 +299,6 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
 
   let state = createTrailGameState();
   let targetLaneX = laneX(state.lane);
-  let destroyed = false;
   let frame = 0;
   let previous = performance.now();
   let lastHudAt = 0;
@@ -281,6 +335,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
     if (index >= 0) state.objects.splice(index, 1);
     removeAim(item);
     if (item.mesh) {
+      item.mesh.userData.trailDetached = true;
       objectsGroup.remove(item.mesh);
       disposeObject(item.mesh);
       item.mesh = null;
@@ -293,8 +348,11 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
   }
 
   function createObjectSprite(url, scale = 1) {
-    const sprite = new THREE.Sprite(spriteMaterial(texture(url)));
-    sprite.scale.set(1.25 * scale, 1.65 * scale, 1);
+    const targetHeight = 1.65 * scale;
+    const maxWidth = 1.25 * scale;
+    const sprite = new THREE.Sprite(spriteMaterial());
+    sprite.userData.trailDetached = false;
+    setSpriteArtwork(sprite, url, targetHeight, maxWidth);
     sprite.position.y = 0.9 * scale;
     return sprite;
   }
@@ -379,8 +437,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
     state.toast = 'Vorwärts.';
     state.toastUntil = now + 1100;
     targetLaneX = laneX(state.lane);
-    matthias.material.map = texture(TRAIL_SPRITES.matthiasRun);
-    matthias.material.needsUpdate = true;
+    setSpriteArtwork(matthias, TRAIL_SPRITES.matthiasRun, 2, 1.45);
     duckAmbient(true);
     stopMusic = createArcadeMusic(musicKind);
     emitHud(now, true);
@@ -420,8 +477,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
     state.slashUntil = now + 380;
     state.duel = null;
     state.phase = 'running';
-    matthias.material.map = texture(TRAIL_SPRITES.matthiasCapture);
-    matthias.material.needsUpdate = true;
+    setSpriteArtwork(matthias, TRAIL_SPRITES.matthiasCapture, 2, 1.45);
     setToast(state.combo > 1 ? `COMBO x${state.combo} · +${awarded}` : `Captura · +${awarded}`, now, 1050);
     emitHud(now, true);
   }
@@ -460,8 +516,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
         removeAim(sniper);
         state.score += 120;
         state.slashUntil = now + 360;
-        matthias.material.map = texture(TRAIL_SPRITES.matthiasCapture);
-        matthias.material.needsUpdate = true;
+        setSpriteArtwork(matthias, TRAIL_SPRITES.matthiasCapture, 2, 1.45);
         setToast('PARADA · +120. Nein.', now, 900);
         emitHud(now, true);
       } else if (sniper) {
@@ -558,8 +613,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
     if (state.combo && now >= state.comboUntil) breakCombo();
     if (state.slashUntil && now >= state.slashUntil) {
       state.slashUntil = 0;
-      matthias.material.map = texture(TRAIL_SPRITES.matthiasRun);
-      matthias.material.needsUpdate = true;
+      setSpriteArtwork(matthias, TRAIL_SPRITES.matthiasRun, 2, 1.45);
     }
 
     state.spawnIn -= state.speed * dt;
@@ -623,8 +677,12 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
           timeLeft: 2.6,
           direction: state.lane === TRAIL_LANES - 1 ? -1 : 1,
         };
-        item.mesh.material.map = texture(TRAIL_SPRITES.enemyDuelist);
-        item.mesh.material.needsUpdate = true;
+        setSpriteArtwork(
+          item.mesh,
+          TRAIL_SPRITES.enemyDuelist,
+          item.mesh.userData.trailTargetHeight || 1.65,
+          item.mesh.userData.trailMaxWidth || 1.25,
+        );
         item.z = PLAYER_Z - 0.18;
         setToast('¡FRONTAL! Machaca ESPACIO.', now, 1000);
         emitHud(now, true);
@@ -729,6 +787,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
       stopMusic();
       duckAmbient(false);
       clearObjects();
+      textureReadyCallbacks.clear();
       scene.remove(matthias);
       matthias.material.dispose();
       disposeObject(scene);
@@ -736,6 +795,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
       textures.clear();
       renderer.dispose();
       renderer.forceContextLoss?.();
+      delete host.dataset.trailSpriteLayout;
       if (host.contains(renderer.domElement)) host.removeChild(renderer.domElement);
     },
   };
