@@ -66,7 +66,7 @@ test('Arena experimental · tema, terreno y legalidad sobreviven al renderer 3D'
   await login(page);
 
   const moreModes = await openMoreGameModes(page);
-  await buttonWithHeading(moreModes, 'Laboratorio').click();
+  await buttonWithHeading(moreModes, 'Experimentos geniales').click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await page.getByRole('button', { name: /Arenas experimentales/i }).click();
 
@@ -91,7 +91,7 @@ test('Arena experimental · tema, terreno y legalidad sobreviven al renderer 3D'
 
   // c2 remains a real chess piece and the terrain-aware rules expose only the
   // destinations that survive the blocked geometry.
-  const pawn = projectSquare(rect, 'c2', 0.34);
+  const pawn = projectSquare(rect, 'c2');
   await page.mouse.click(pawn.x, pawn.y);
   await expect(board).toHaveAttribute('data-board3d-selected', 'c2');
   await expect(board).toHaveAttribute('data-board3d-legal-target-count', '1');
@@ -111,7 +111,11 @@ test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre e
 
   const rect = await canvas.boundingBox();
   expect(rect).toBeTruthy();
-  const pawn = projectSquare(rect, 'a2', 0.34);
+
+  // Hit the tile centre, not the visual top of the model. The 3D input layer
+  // deliberately resolves the square first and then checks whether that square
+  // owns a piece, making hover stable across pawn skins and veteran geometry.
+  const pawn = projectSquare(rect, 'a2');
   await page.mouse.move(pawn.x, pawn.y);
 
   // Deployment delays hover previews deliberately; this proves the raycast 3D
