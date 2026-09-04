@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Chess } from 'chess.js';
-import Board from './Board.jsx';
+import PreferredBoard from './PreferredBoard.jsx';
 import { api } from '../api.js';
 import { difficultyLabel } from '../difficulty.js';
 import { formatLongMove } from '../notation.js';
@@ -254,7 +254,7 @@ export default function SpectatorScreen({ onExit }) {
 
       <div className="game-layout">
         <div className="board-column">
-          <Board fen={fen} lastMove={lastMove} orientation="white" checkSquare={checkSquare} />
+          <PreferredBoard fen={fen} lastMove={lastMove} orientation="white" checkSquare={checkSquare} />
           {phase === 'watching' && status === 'check' && <p className="status-line" role="status" aria-label="Estado de la partida espectador">Jaque</p>}
 
           {phase === 'watching' && (
