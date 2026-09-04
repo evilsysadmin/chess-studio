@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="768" height="256" viewBox="0 0 768 256">
+<defs>
+  <linearGradient id="armor" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#4f555e"/><stop offset="1" stop-color="#1c2025"/></linearGradient>
+  <linearGradient id="red" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d16b4d"/><stop offset="1" stop-color="#6d241d"/></linearGradient>
+  <linearGradient id="ivory" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#eee0c8"/><stop offset="1" stop-color="#b8a78a"/></linearGradient>
+  <filter id="s" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#000" flood-opacity=".55"/></filter>
+  <g id="pawn">
+    <ellipse cx="123" cy="226" rx="51" ry="11" fill="#000" opacity=".3"/>
+    <path d="M85 194 Q86 222 108 226 H143 Q166 221 165 194 L153 176 H98Z" fill="url(#armor)" stroke="#090b0d" stroke-width="7"/>
+    <path d="M94 178 Q105 145 125 142 Q146 144 157 178Z" fill="url(#armor)" stroke="#090b0d" stroke-width="7"/>
+    <circle cx="126" cy="114" r="32" fill="url(#ivory)" stroke="#090b0d" stroke-width="7"/>
+    <path d="M99 100 Q114 84 144 87 L154 101Z" fill="#313740" stroke="#090b0d" stroke-width="6"/>
+    <rect x="99" y="92" width="59" height="13" rx="5" fill="url(#red)" stroke="#090b0d" stroke-width="5"/>
+    <path d="M109 111 L120 107" stroke="#17191c" stroke-width="5" stroke-linecap="round"/>
+    <path d="M136 107 L147 112" stroke="#17191c" stroke-width="5" stroke-linecap="round"/>
+    <ellipse cx="116" cy="119" rx="4" ry="5" fill="#101112"/><ellipse cx="142" cy="119" rx="4" ry="5" fill="#101112"/>
+    <path d="M117 139 Q129 135 143 140" fill="none" stroke="#5b302b" stroke-width="4" stroke-linecap="round"/>
+    <path d="M151 158 L207 153 L214 164 L158 175Z" fill="#56616d" stroke="#090b0d" stroke-width="6"/>
+    <rect x="205" y="151" width="28" height="9" rx="3" fill="#24282e" stroke="#090b0d" stroke-width="5"/>
+    <path d="M176 170 L186 188 L196 184 L190 164Z" fill="#33281f" stroke="#090b0d" stroke-width="5"/>
+  </g>
+</defs>
+<rect width="768" height="256" fill="none"/>
+<g transform="translate(0 0)" filter="url(#s)"><use href="#pawn"/></g>
+<g transform="translate(256 0)" filter="url(#s)">
+  <use href="#pawn"/>
+  <path d="M107 88 Q123 57 147 84 L141 99Z" fill="#525964" stroke="#090b0d" stroke-width="6"/>
+  <path d="M111 78 L91 58 L118 70Z" fill="url(#red)" stroke="#090b0d" stroke-width="5"/>
+  <path d="M82 218 Q99 196 118 211" fill="none" stroke="#090b0d" stroke-width="7"/>
+  <path d="M142 220 Q160 198 178 214" fill="none" stroke="#090b0d" stroke-width="7"/>
+</g>
+<g transform="translate(512 0)" filter="url(#s)">
+  <ellipse cx="126" cy="226" rx="68" ry="12" fill="#000" opacity=".32"/>
+  <path d="M70 196 Q72 224 97 228 H156 Q181 224 183 196 L169 172 H84Z" fill="url(#armor)" stroke="#090b0d" stroke-width="8"/>
+  <rect x="78" y="119" width="98" height="65" rx="12" fill="url(#armor)" stroke="#090b0d" stroke-width="8"/>
+  <path d="M79 116 L94 79 H113 V64 H131 V79 H148 V64 H165 V117Z" fill="#434a54" stroke="#090b0d" stroke-width="8"/>
+  <rect x="103" y="101" width="46" height="11" rx="4" fill="url(#red)" stroke="#090b0d" stroke-width="4"/>
+  <path d="M146 142 L213 136 L219 150 L151 156Z" fill="#4d5763" stroke="#090b0d" stroke-width="7"/>
+  <rect x="210" y="134" width="31" height="10" rx="3" fill="#24282e" stroke="#090b0d" stroke-width="5"/>
+</g>
+</svg>
