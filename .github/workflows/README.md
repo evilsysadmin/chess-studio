@@ -50,7 +50,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 
 | Workflow | Responsabilidad |
 | --- | --- |
-| `auto-merge.yml` | Activa `squash` auto-merge en toda PR no-draft al abrir, reabrir o pasar a ready. Usa `pull_request_target` sin checkout: sólo muta metadata de la PR y espera a los checks protegidos. |
+| `auto-merge.yml` | Espera los checks protegidos de la PR, hace squash sólo del head observado y continúa explícitamente la entrega con `workflow_dispatch` de `cicd.yml`. Esto es obligatorio porque un merge realizado con `GITHUB_TOKEN` no genera nuevos workflow runs por el `push`; `workflow_dispatch` sí está permitido por GitHub. |
 | `grafana-dashboards.yml` | Publica cuatro dashboards idempotentemente con la Grafana HTTP API. **Sin Terraform, provider, state, import, plan ni apply.** |
 | `cloudflare-prometheus-exporter.yml` | Valida/despliega el exporter oficial Cloudflare cuando cambia su superficie. |
 | `synthetic-health.yml` | Canary sintético de producción cada dos horas. Vive separado para funcionar aunque no haya releases. |

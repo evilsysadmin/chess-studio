@@ -2,9 +2,10 @@ name: PR · auto-merge
 
 on:
   pull_request_target:
-    types: [opened, reopened, ready_for_review]
+    types: [opened, reopened, ready_for_review, synchronize]
 
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 
@@ -16,9 +17,66 @@ jobs:
   enable:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR_URL: ${{ github.event.pull_request.html_url }}
+      PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
-      - name: Enable squash auto-merge
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        run: gh pr merge "$PR_URL" --auto --squash
+      - name: Wait for protected required checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          # We deliberately keep the merge in the same workflow that observes
+          # the protected checks. A synchronize event cancels this watcher and
+          # starts a fresh one for the new PR head.
+          gh pr checks "$PR_URL" --required --watch --interval 10
+
+      - name: Squash merge and explicitly continue delivery
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # IMPORTANT: merges performed with GITHUB_TOKEN do not emit workflow
+          # runs for the resulting push event. Therefore this workflow MUST
+          # explicitly dispatch the main quality gate after the merge. GitHub
+          # documents workflow_dispatch as one of the allowed exceptions.
+          gh pr merge "$PR_URL" --squash --match-head-commit "$PR_HEAD_SHA"
+
+          merge_sha="$(gh pr view "$PR_URL" --json mergeCommit --jq '.mergeCommit.oid // ""')"
+          [[ "$merge_sha" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::No pude resolver el merge SHA de $PR_URL"
+            exit 1
+          }
+
+          # Wait briefly until refs/heads/main exposes the merge commit. If a
+          # newer PR lands immediately afterwards, dispatching current main is
+          # still correct: staging's stale guard will only admit the latest SHA.
+          main_sha=''
+          for attempt in {1..15}; do
+            main_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq '.sha')"
+            if [[ "$main_sha" == "$merge_sha" ]]; then
+              break
+            fi
+            echo "main aún no refleja $merge_sha (ahora $main_sha, intento $attempt/15)"
+            sleep 2
+          done
+
+          [[ "$main_sha" =~ ^[0-9a-f]{40}$ ]] || {
+            echo '::error::No pude resolver el HEAD actual de main'
+            exit 1
+          }
+
+          # External/manual merges normally create the push-triggered Quality
+          # run. Avoid duplicating it if one already exists for current main.
+          sleep 5
+          existing="$(gh api \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/cicd.yml/runs?head_sha=$main_sha&per_page=20" \
+            --jq '.total_count')"
+
+          if [[ "${existing:-0}" -gt 0 ]]; then
+            echo "Quality · CI gate ya existe para main $main_sha; no duplico ejecución."
+          else
+            echo "GITHUB_TOKEN suprimió el push workflow; despacho Quality · CI gate explícitamente para main $main_sha."
+            gh workflow run cicd.yml --ref main
+          fi
