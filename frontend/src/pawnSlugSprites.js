@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import matthiasAtlasUrl from './assets/pawnSlug/matthias_atlas.svg';
-import enemyAtlasUrl from './assets/pawnSlug/enemy_atlas.svg';
+import matthiasAtlasUrl from './assets/pawnSlug/matthias_atlas_premium.webp';
+import enemyAtlasUrl from './assets/pawnSlug/enemy_atlas_premium.webp';
 import panzerRookUrl from './assets/pawnSlug/panzer_rook.svg';
 import weaponAtlasUrl from './assets/pawnSlug/weapon_atlas.svg';
 
@@ -109,16 +109,16 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
   matthias: Object.freeze({
     url: matthiasAtlasUrl,
     frames: 4,
-    frameWidth: 256,
-    frameHeight: 256,
+    frameWidth: 192,
+    frameHeight: 192,
     sourceFacing: 'right',
     framesByAction: Object.freeze({ idle: 0, runA: 1, runB: 2, fire: 3 }),
   }),
   enemies: Object.freeze({
     url: enemyAtlasUrl,
     frames: 3,
-    frameWidth: 256,
-    frameHeight: 256,
+    frameWidth: 192,
+    frameHeight: 192,
     sourceFacing: 'right',
     frameByType: Object.freeze({ pawn: 0, knight: 1, rook: 2 }),
   }),
