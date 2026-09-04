@@ -41,6 +41,34 @@ describe('pila global de volver/cerrar', () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
 
+  it('una pulsación larga táctil consume contextmenu sin ejecutar back', () => {
+    const stack = createBackNavigationStack();
+    const close = vi.fn();
+    const preventDefault = vi.fn();
+    const stopPropagation = vi.fn();
+    stack.push({ id: 'screen', callbackRef: { current: close } });
+
+    expect(stack.dispatch(
+      { type: 'contextmenu', preventDefault, stopPropagation },
+      { touchLikeContextMenu: true },
+    )).toBe(false);
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(stopPropagation).toHaveBeenCalledTimes(1);
+    expect(close).not.toHaveBeenCalled();
+  });
+
+  it('popstate reutiliza exactamente la misma prioridad modal -> pantalla', () => {
+    const stack = createBackNavigationStack();
+    const parent = vi.fn();
+    const modal = vi.fn();
+    stack.push({ id: 'screen', callbackRef: { current: parent } });
+    stack.push({ id: 'modal', callbackRef: { current: modal } });
+
+    expect(stack.dispatch({ type: 'popstate', stopPropagation: vi.fn() })).toBe(true);
+    expect(modal).toHaveBeenCalledTimes(1);
+    expect(parent).not.toHaveBeenCalled();
+  });
+
   it('retirar un handler inexistente no desordena la pila', () => {
     const stack = createBackNavigationStack();
     const first = { id: 'first', callbackRef: { current: vi.fn() } };
