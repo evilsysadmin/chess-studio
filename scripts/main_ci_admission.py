@@ -86,13 +86,12 @@ def evaluate_admission(
             pr.get("merged_at")
             and str(pr.get("merge_commit_sha") or "").lower() == sha
             and base.get("ref") == "main"
-            and str(base.get("sha") or "").lower() == parent
         ):
             candidates.append(pr)
 
     if len(candidates) != 1:
         raise AdmissionError(
-            f"main {main_sha[:12]} no acredita un único PR mergeado sobre su padre inmediato "
+            f"main {main_sha[:12]} no acredita un único PR mergeado a main "
             f"({len(candidates)} candidatos)"
         )
 
@@ -121,9 +120,11 @@ def evaluate_admission(
         ):
             created_at = parse_time(str(run.get("created_at") or ""))
             updated_at = parse_time(str(run.get("updated_at") or ""))
-            # GitHub's run metadata above proves the exact PR head + exact base.
-            # Timestamps remain a second fail-closed guard against reusing an
-            # impossible pre-base or post-merge accreditation.
+            # The PR object's base SHA is historical and can lag after main moves.
+            # The Quality run metadata is authoritative here: it proves the exact
+            # PR head + exact base that produced the immutable tested merge SHA.
+            # Timestamps remain a second fail-closed guard against impossible
+            # pre-base or post-merge accreditation.
             if created_at >= first_parent_time and updated_at <= merged_at:
                 eligible_runs.append(run)
 
@@ -217,11 +218,10 @@ def run_live() -> Admission:
         if pr.get("merged_at")
         and str(pr.get("merge_commit_sha") or "").lower() == main_sha
         and (pr.get("base") or {}).get("ref") == "main"
-        and str((pr.get("base") or {}).get("sha") or "").lower() == first_parent
     ]
     if len(provisional) != 1:
         raise AdmissionError(
-            f"main {main_sha[:12]} no procede de un único PR mergeado sobre {first_parent[:12]}"
+            f"main {main_sha[:12]} no procede de un único PR mergeado a main"
         )
     head_sha = str((provisional[0].get("head") or {}).get("sha") or "").lower()
 
@@ -320,6 +320,23 @@ def self_test() -> None:
     )
     assert admission.pr_number == 421
 
+    # PR metadata keeps the base SHA captured when the PR object was last
+    # materialized. It can lag main after later merges; the tested run base is
+    # the provenance source that matters for admission.
+    historical_pr = {
+        **pr,
+        "base": {"ref": "main", "sha": "e" * 40},
+    }
+    historical = evaluate_admission(
+        main_sha="b" * 40,
+        first_parent="a" * 40,
+        first_parent_time=parse_time("2026-09-04T22:15:04Z"),
+        pulls=[historical_pr],
+        workflow_runs=[run],
+        check_runs=checks,
+    )
+    assert historical.quality_run_id == 1566
+
     # Path-scoped PRs legitimately skip untouched heavyweight jobs. They are
     # admissible only when the same green Quality check suite says so.
     scoped_checks = [
@@ -374,7 +391,7 @@ def self_test() -> None:
 
     print(
         "main-ci-admission self-test OK · full/scoped green accepted; "
-        "direct/stale/wrong-base/failed rejected"
+        "historical PR base tolerated; direct/stale/wrong-base/failed rejected"
     )
 
 
