@@ -29,6 +29,7 @@ test('Leyendo estrategia · el retrato canónico se anima dentro de Three.js sin
 
   await expect(avatar).toHaveAttribute('data-three-profile', 'read');
   await expect(avatar).toHaveAttribute('data-three-motion', 'active');
+  await expect(avatar).toHaveAttribute('data-three-render-mode', 'canonical-layer-rig');
   await expect(frame.locator('[data-matthias-art-part]')).toHaveCount(0);
   await expect(frame.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
   await expect.poll(() => avatar.getAttribute('data-three-ready'), { timeout: 4_000 }).toBe('true');
@@ -39,6 +40,6 @@ test('Leyendo estrategia · el retrato canónico se anima dentro de Three.js sin
   await expect.poll(async () => Number(await avatar.getAttribute('data-three-energy')) || 0, { timeout: 3_000 }).toBeGreaterThan(.08);
 
   const canonical = avatar.locator('img[data-matthias-canonical-art="true"]');
-  await expect(canonical).toHaveAttribute('src', /strategy-book.*\.webp|\.webp/);
+  await expect(canonical).toHaveAttribute('src', /^(?:data:image\/webp;base64,|.*\.webp(?:$|\?))/);
   await expect.poll(() => canonical.evaluate((img) => img.complete && img.naturalWidth > 0)).toBe(true);
 });
