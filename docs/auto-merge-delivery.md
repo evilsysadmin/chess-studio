@@ -1,18 +1,20 @@
-# Auto-merge delivery invariant
+# Native auto-merge delivery invariant
 
-`PR · auto-merge` authenticates with the repository `GITHUB_TOKEN`. GitHub suppresses workflow runs caused by ordinary events emitted by that token, including the `push` produced by the merge.
+Chess Studio uses GitHub's **native auto-merge** for the PR -> `main` transition. The repository has auto-merge enabled, and the protected required checks decide when a PR is eligible to merge.
 
-The merge workflow therefore owns only one thing: wait for the protected checks and squash exactly the PR head it observed. It does **not** dispatch delivery itself.
+There is deliberately no repository workflow that waits for checks and executes `gh pr merge`, and there is no `workflow_run` handoff that redispatches CI. Those layers were removed because merges performed from an Actions `GITHUB_TOKEN` can suppress the normal follow-up `push` workflow and force extra recovery plumbing.
 
-`Delivery · main handoff` is the independent continuation owner. It is triggered by a successful PR run of `Quality · CI gate`, waits for that exact approved head to appear merged into `main`, validates the PR base/head, coalesces to the current `main` HEAD if several merges land together, and then:
+The normal release chain is intentionally boring:
 
-- reuses an already-created `push`/`workflow_dispatch` Quality run for that main SHA when one exists;
-- otherwise dispatches `cicd.yml` on `main` explicitly.
+`Quality · CI gate (PR)` -> GitHub native auto-merge -> `push main` -> `Quality · CI gate (main)` -> `Staging · deploy` -> staging accreditation -> `Production · promote`.
 
-This makes delivery independent from the actor that performed the merge: GitHub UI/manual merges keep the normal `push -> Quality` path, while merges performed with `GITHUB_TOKEN` are recovered by the handoff through the allowed `workflow_dispatch` exception.
+## Ownership
 
-The normal release chain remains:
+- `cicd.yml` validates PRs and normal pushes to `main`.
+- GitHub branch protection + native auto-merge own the merge decision.
+- `staging-deploy.yml` starts only from a successful `Quality · CI gate` run on `main` and deploys that approved SHA.
+- `workflow_dispatch` on `cicd.yml` remains only as a manual operator escape hatch; it is not part of the normal PR delivery path.
 
-`Quality · CI gate` → `Staging · deploy` → staging accreditation → `Production · promote`.
+When tooling or an operator opens a PR that should merge automatically, it enables GitHub native auto-merge on that PR. No Actions runner needs to stay alive waiting for required checks.
 
-The static contract in `scripts/auto_merge_delivery_contract.py` guards ownership, deduplication and the downstream wiring.
+The static contract in `scripts/auto_merge_delivery_contract.py` protects this topology and fails if the retired custom auto-merge or main-handoff workflows are reintroduced.
