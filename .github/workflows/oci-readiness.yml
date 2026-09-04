@@ -1,0 +1,121 @@
+name: OCI readiness
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'backend-python/Dockerfile'
+      - 'backend-python/requirements*.txt'
+      - 'scripts/oci_arm64_smoke.sh'
+      - 'infra/oci/**'
+      - '.github/workflows/oci-readiness.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oci-readiness-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  scope:
+    name: Classify OCI surface
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      arm64: ${{ steps.scope.outputs.arm64 }}
+      terraform: ${{ steps.scope.outputs.terraform }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve required OCI gates
+        id: scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == 'workflow_dispatch' ]]; then
+            echo 'arm64=true' >> "$GITHUB_OUTPUT"
+            echo 'terraform=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          printf '%s\n' "$files"
+
+          arm64=false
+          terraform=false
+          if grep -Eq '^(backend-python/Dockerfile|backend-python/requirements[^/]*\.txt|scripts/oci_arm64_smoke\.sh|\.github/workflows/oci-readiness\.yml)$' <<< "$files"; then
+            arm64=true
+          fi
+          if grep -Eq '^(infra/oci/|\.github/workflows/oci-readiness\.yml$)' <<< "$files"; then
+            terraform=true
+          fi
+
+          echo "arm64=$arm64" >> "$GITHUB_OUTPUT"
+          echo "terraform=$terraform" >> "$GITHUB_OUTPUT"
+
+  backend-arm64:
+    name: Backend · linux/arm64
+    needs: scope
+    if: needs.scope.outputs.arm64 == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and execute ARM64 backend
+        run: bash scripts/oci_arm64_smoke.sh
+
+  terraform:
+    name: Terraform · fmt + validate
+    needs: scope
+    if: needs.scope.outputs.terraform == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: infra/oci
+    env:
+      TF_IN_AUTOMATION: 'true'
+      TF_INPUT: 'false'
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.0
+          terraform_wrapper: false
+
+      - name: Terraform fmt
+        run: terraform fmt -check -diff -recursive
+
+      - name: Terraform init without backend
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        run: terraform validate -no-color
+
+      - name: Secret-surface guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -En '(MONGO_URL|JWT_SECRET|cloudflare_tunnel_token|private_key[[:space:]]*=)' ./*.tf; then
+            echo 'ERROR: production secret material must not be modeled as Terraform input/state.' >&2
+            exit 1
+          fi
+          echo 'OCI Terraform secret-surface guard OK'

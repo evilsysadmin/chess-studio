@@ -27,22 +27,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install pinned Render CLI
-        shell: bash
-        run: |
-          set -euo pipefail
-          version='2.25.0'
-          archive="$RUNNER_TEMP/render-cli.zip"
-          curl --fail --silent --show-error --location \
-            "https://github.com/render-oss/cli/releases/download/v${version}/cli_${version}_linux_amd64.zip" \
-            --output "$archive"
-          echo '3b3f1f839ef36b81f12d84ac7288f1c96f9f7519b39c53fe6f866612f704e7cd  '"$archive" | sha256sum --check --status
-          unzip -q "$archive" -d "$RUNNER_TEMP/render-cli"
-          render_bin="$(find "$RUNNER_TEMP/render-cli" -type f -name "cli_v${version}" -print -quit)"
-          [[ -n "$render_bin" ]] || { echo "::error::El ZIP verificado no contiene cli_v${version}"; exit 1; }
-          install "$render_bin" "$RUNNER_TEMP/render"
-          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
-
       - name: Validate required GitHub environment values
         shell: bash
         run: |

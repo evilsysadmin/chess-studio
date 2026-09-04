@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static contract for Grafana dashboards, Terraform provisioning and Tempo tracing."""
+"""Static contract for Grafana dashboards, API publishing and Tempo tracing."""
 from __future__ import annotations
 
 import json
@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PORTABLE_LOGS = ROOT / "ops" / "grafana" / "chess-studio-logs.json"
 INFRA = ROOT / "infra" / "grafana"
 WORKFLOW = ROOT / ".github" / "workflows" / "grafana-dashboards.yml"
+PUBLISHER = ROOT / "scripts" / "grafana_publish.py"
 EXPORTER_WORKFLOW = ROOT / ".github" / "workflows" / "cloudflare-prometheus-exporter.yml"
 ALLOY_EXAMPLE = INFRA / "alloy" / "cloudflare-exporter.alloy.example"
 
@@ -71,24 +72,46 @@ def main() -> int:
         if token not in edge_dash:
             fail(f"dashboard Edge no cubre {token}")
 
-    tf = (INFRA / "terraform" / "main.tf").read_text(encoding="utf-8")
-    for resource in (
-        'grafana_dashboard" "chess_studio_overview',
-        'grafana_dashboard" "chess_studio_logs',
-        'grafana_dashboard" "chess_studio_traces',
-        'grafana_dashboard" "chess_studio_edge',
-    ):
-        if resource not in tf:
-            fail(f"Terraform no declara {resource}")
+    if (INFRA / "terraform").exists():
+        fail("Grafana dashboards no deben volver a Terraform/state/import/apply; usa scripts/grafana_publish.py")
+
     workflow = WORKFLOW.read_text(encoding="utf-8") if WORKFLOW.exists() else ""
-    for token in ('infra/grafana/terraform/**', 'infra/grafana/dashboards/**', 'GRAFANA_URL', 'GRAFANA_AUTH', 'Validate Grafana datasources', '/api/datasources/uid/$uid', 'terraform import grafana_dashboard.chess_studio_logs', 'terraform import grafana_dashboard.chess_studio_edge', 'terraform apply -auto-approve tfplan', 'Verify published dashboards', '/api/dashboards/uid/$uid', 'chess-studio-edge'):
+    for token in (
+        'infra/grafana/dashboards/**',
+        'scripts/grafana_publish.py',
+        'GRAFANA_URL',
+        'GRAFANA_AUTH',
+        'GRAFANA_METRICS_DATASOURCE_UID',
+        'GRAFANA_LOGS_DATASOURCE_UID',
+        'GRAFANA_TRACES_DATASOURCE_UID',
+        'python3 -S scripts/grafana_publish.py --self-test',
+        'python3 -S scripts/grafana_publish.py',
+        'ubuntu-24.04',
+    ):
         if token not in workflow:
             fail(f"workflow Grafana incompleto: {token}")
-    if 'infra/grafana/**' in workflow:
-        fail('workflow Grafana no debe desplegar por cambios ajenos a Terraform/dashboards')
-    for token in ('403)', '::warning::No se puede leer el datasource Grafana', '404)', 'no existe: HTTP 404'):
-        if token not in workflow:
-            fail(f"workflow Grafana perdió el contrato least-privilege: {token}")
+    for forbidden in ('terraform ', 'hashicorp/setup-terraform', 'infra/grafana/terraform', 'ubuntu-latest'):
+        if forbidden in workflow:
+            fail(f"workflow Grafana resucita plumbing innecesario: {forbidden}")
+
+    publisher = PUBLISHER.read_text(encoding="utf-8") if PUBLISHER.exists() else ""
+    for token in (
+        '/api/folders?limit=1000',
+        '/api/folders',
+        '/api/datasources/uid/',
+        '/api/dashboards/db',
+        '/api/dashboards/uid/',
+        '"overwrite": True',
+        'HTTP 403',
+        'WARNING: datasource',
+        'urllib.request',
+        'stdlib only',
+    ):
+        if token not in publisher:
+            fail(f"publisher Grafana incompleto: {token}")
+    for forbidden in ('import requests', 'import httpx', 'subprocess', 'terraform'):
+        if forbidden in publisher:
+            fail(f"publisher Grafana debe ser stdlib/state-less: {forbidden}")
 
     exporter_workflow = EXPORTER_WORKFLOW.read_text(encoding="utf-8") if EXPORTER_WORKFLOW.exists() else ""
     for token in (
@@ -174,7 +197,7 @@ def main() -> int:
     if '"query": "{}"' in infra_logs:
         fail("Loki selector no puede volver a {}")
 
-    print(f"grafana-dashboard-check OK · {len(panels)} paneles logs · Terraform 4 dashboards · OTLP + Cloudflare edge")
+    print(f"grafana-dashboard-check OK · {len(panels)} paneles logs · API publisher 4 dashboards · OTLP + Cloudflare edge")
     return 0
 
 

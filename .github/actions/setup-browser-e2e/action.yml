@@ -1,0 +1,103 @@
+name: Setup resilient browser E2E
+description: Restore exact frontend/E2E dependencies and scope-specific Playwright browser caches, then optionally build the frontend.
+
+inputs:
+  browser-scope:
+    description: 'Browser cache/install scope: chromium or all.'
+    required: false
+    default: chromium
+  build-frontend:
+    description: Whether to build the production frontend after restoring dependencies.
+    required: false
+    default: 'true'
+  node-version:
+    description: Node major used by the runner.
+    required: false
+    default: '22'
+
+outputs:
+  browser-cache-hit:
+    description: Whether the Playwright browser cache was restored exactly.
+    value: ${{ steps.browser-cache.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+    - name: Validate browser scope
+      shell: bash
+      run: |
+        set -euo pipefail
+        case '${{ inputs.browser-scope }}' in
+          chromium|all) ;;
+          *) echo "::error::browser-scope debe ser chromium o all"; exit 2 ;;
+        esac
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+        cache-dependency-path: |
+          frontend/package-lock.json
+          e2e/package-lock.json
+
+    - name: Restore exact frontend dependencies
+      uses: ./.github/actions/cache-node-modules
+      with:
+        working-directory: frontend
+        lockfile: frontend/package-lock.json
+        node-version: ${{ inputs.node-version }}
+
+    - name: Restore exact E2E dependencies
+      uses: ./.github/actions/cache-node-modules
+      with:
+        working-directory: e2e
+        lockfile: e2e/package-lock.json
+        node-version: ${{ inputs.node-version }}
+
+    - name: Restore scope-specific Playwright browsers
+      id: browser-cache
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-${{ inputs.browser-scope }}-${{ runner.os }}-${{ runner.arch }}-v2-${{ hashFiles('e2e/package-lock.json') }}
+
+    - name: Install Chromium on browser-cache miss
+      if: inputs.browser-scope == 'chromium' && steps.browser-cache.outputs.cache-hit != 'true'
+      working-directory: e2e
+      shell: bash
+      run: ./node_modules/.bin/playwright install chromium
+
+    - name: Ensure full browser runtime
+      if: inputs.browser-scope == 'all'
+      working-directory: e2e
+      shell: bash
+      run: ./node_modules/.bin/playwright install --with-deps chromium firefox webkit
+
+    - name: Verify Playwright browser cache identity
+      working-directory: e2e
+      shell: bash
+      env:
+        BROWSER_SCOPE: ${{ inputs.browser-scope }}
+      run: |
+        set -euo pipefail
+        node <<'NODE'
+        const fs = require('node:fs');
+        const { chromium, firefox, webkit } = require('playwright');
+        const scope = process.env.BROWSER_SCOPE;
+        const browsers = scope === 'all' ? { chromium, firefox, webkit } : { chromium };
+        for (const [name, browser] of Object.entries(browsers)) {
+          const executable = browser.executablePath();
+          if (!executable || !fs.existsSync(executable)) {
+            console.error(`Playwright ${name} executable missing: ${executable || '<empty>'}`);
+            process.exit(1);
+          }
+          console.log(`Playwright ${name} ready: ${executable}`);
+        }
+        NODE
+
+    - name: Build production frontend
+      if: inputs.build-frontend == 'true'
+      working-directory: frontend
+      shell: bash
+      run: npm run build

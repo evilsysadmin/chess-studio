@@ -15,30 +15,66 @@ if [ -f "$DB" ] && find "$DB" -mmin "-$TTL_MINUTES" -print -quit 2>/dev/null | g
   skip_db_update="--skip-db-update"
   echo "==> Trivy image: reutilizando DB local fresca (<${TTL_MINUTES} min)."
 else
-  echo "==> Trivy image: DB ausente/antigua; se actualizará una vez."
+  echo "==> Trivy image: DB ausente/antigua; se intentará actualizar una vez."
 fi
 
-scan_image() {
+build_image() {
+  tag="$1"
+  context="$2"
+  scope="$3"
+
+  if [ "${GITHUB_ACTIONS:-}" = "true" ] && docker buildx version >/dev/null 2>&1; then
+    echo "==> BuildKit GHA cache: $scope"
+    docker buildx build \
+      --load \
+      --cache-from "type=gha,scope=$scope" \
+      --cache-to "type=gha,mode=max,scope=$scope" \
+      --tag "$tag" \
+      "$context"
+  else
+    docker build -t "$tag" "$context"
+  fi
+}
+
+run_image_scan() {
   image="$1"
   output="$2"
+  skip="$3"
   # shellcheck disable=SC2086
   TRIVY_CACHE_DIR="$CACHE" "$TRIVY" image \
-    $skip_db_update \
+    $skip \
     --skip-version-check \
     --scanners vuln \
     --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL \
     --format json --output "$output" \
     "$image"
+}
+
+scan_image() {
+  image="$1"
+  output="$2"
+
+  if run_image_scan "$image" "$output" "$skip_db_update"; then
+    :
+  elif [ -f "$DB" ]; then
+    echo "::warning title=Trivy image DB degradada::No se pudo refrescar la DB; se reutiliza la copia cacheada existente."
+    rm -f "$output"
+    run_image_scan "$image" "$output" "--skip-db-update"
+  else
+    echo "ERROR: Trivy image no pudo obtener DB y no existe copia cacheada." >&2
+    return 2
+  fi
+
   python3 "$ROOT/scripts/security_report.py" "$output"
-  # Después del primer scan la DB ya existe; no intentes refrescarla otra vez
-  # para la segunda imagen dentro de la misma ejecución.
+  # Tras el primer scan la DB ya existe o hemos decidido usar la copia stale.
+  # No intentes contactar de nuevo el registry para la segunda imagen.
   skip_db_update="--skip-db-update"
 }
 
 echo "==> Construyendo imagen frontend para security scan..."
-docker build -t chess-studio-frontend:security "$ROOT/frontend"
+build_image chess-studio-frontend:security "$ROOT/frontend" chess-studio-security-frontend
 echo "==> Construyendo imagen backend para security scan..."
-docker build -t chess-studio-backend:security "$ROOT/backend-python"
+build_image chess-studio-backend:security "$ROOT/backend-python" chess-studio-security-backend
 
 scan_image chess-studio-frontend:security "$SECURITY_DIR/trivy-image-frontend.json"
 scan_image chess-studio-backend:security "$SECURITY_DIR/trivy-image-backend.json"

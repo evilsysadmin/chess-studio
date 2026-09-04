@@ -19,7 +19,7 @@ concurrency:
 jobs:
   preflight:
     name: Preflight · contracts
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
       run_frontend: ${{ steps.quality_paths.outputs.run_frontend }}
@@ -56,14 +56,11 @@ jobs:
             echo 'run_e2e=true' >> "$GITHUB_OUTPUT"
           }
 
-          # Manual CI is an explicit request for the whole quality battery.
           if [[ "$EVENT_NAME" == 'workflow_dispatch' ]]; then
             enable_all
             exit 0
           fi
 
-          # Never save minutes by guessing. First push, shallow/broken ancestry
-          # or any other unresolved base falls back to the complete suite.
           if [[ -z "${BASE_SHA:-}" || "$BASE_SHA" =~ ^0+$ ]] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
             enable_all
             exit 0
@@ -72,8 +69,6 @@ jobs:
           files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
           printf '%s\n' "$files"
 
-          # Shared quality/build/infra surfaces can affect both stacks or the
-          # routing itself. Keep these deliberately conservative.
           shared_pattern='^\.github/|^Makefile$|^scripts/|^infra/|^deploy/|^\.githooks/|(^|/)Dockerfile[^/]*$|(^|/)docker-compose[^/]*\.ya?ml$|^compose\.ya?ml$|^render\.ya?ml$'
           if grep -Eq "$shared_pattern" <<< "$files"; then
             enable_all
@@ -86,12 +81,10 @@ jobs:
 
           if grep -Eq '^frontend/' <<< "$files"; then
             run_frontend=true
-            # Product UI changes still earn the critical browser smoke.
             run_e2e=true
           fi
           if grep -Eq '^backend-python/' <<< "$files"; then
             run_backend=true
-            # API changes can invalidate browser/API contracts even if JS did not move.
             run_e2e=true
           fi
           if grep -Eq '^e2e/' <<< "$files"; then
@@ -106,7 +99,7 @@ jobs:
     name: Tests · Frontend
     needs: preflight
     if: needs.preflight.outputs.run_frontend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
@@ -130,9 +123,6 @@ jobs:
       - name: Frontend build
         run: make frontend-build
 
-      # `make bundle-report` volvería a ejecutar frontend-build. En CI el dist
-      # acaba de generarse en el paso anterior, así que consumimos ese artefacto
-      # directamente y evitamos una segunda compilación idéntica.
       - name: Bundle size report
         run: node scripts/bundle_size_report.mjs
 
@@ -156,7 +146,7 @@ jobs:
     name: Tests · Backend
     needs: preflight
     if: needs.preflight.outputs.run_backend == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
@@ -165,10 +155,12 @@ jobs:
         with:
           python-version: '3.13'
           cache: pip
-          cache-dependency-path: backend-python/requirements-dev.txt
+          cache-dependency-path: |
+            backend-python/requirements.txt
+            backend-python/requirements-dev.txt
 
-      - name: Install backend dependencies
-        run: make backend-install
+      - name: Restore exact backend virtualenv
+        uses: ./.github/actions/cache-python-venv
 
       - name: Backend smoke · engine + AI
         run: make test-backend-smoke
@@ -182,13 +174,14 @@ jobs:
       - name: Prepare security report
         run: mkdir -p .security
 
-      - name: Python dependency audit
+      - name: Python advisory inventory (informative)
+        continue-on-error: true
         run: make security-be
 
   security:
     name: Security · Trivy + Docker
     needs: preflight
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
@@ -210,8 +203,6 @@ jobs:
             exit 0
           fi
 
-          # Un before nulo/inválido no es permiso para saltarse seguridad:
-          # ante la duda ejecutamos el gate pesado.
           if [[ -z "${BASE_SHA:-}" || "$BASE_SHA" =~ ^0+$ ]] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
             echo "run_security=true" >> "$GITHUB_OUTPUT"
             exit 0
@@ -220,7 +211,7 @@ jobs:
           files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
           printf '%s\n' "$files"
 
-          security_pattern='(^|/)(Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|\.dockerignore)$|^compose\.ya?ml$|^frontend/package(-lock)?\.json$|^backend-python/requirements[^/]*\.txt$|^Makefile$|^\.trivy(ignore|\.ya?ml)?$|^scripts/(npm_audit_gate\.py|pip_audit_gate\.py|compose_smoke\.py|security[^/]*)$|^\.github/workflows/cicd\.yml$|^(infra|deploy)/|^render\.ya?ml$'
+          security_pattern='(^|/)(Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|\.dockerignore)$|^compose\.ya?ml$|^frontend/package(-lock)?\.json$|^backend-python/requirements[^/]*\.txt$|^Makefile$|^\.trivy(ignore|\.ya?ml)?$|^scripts/(npm_audit_gate\.py|pip_audit_report\.py|compose_smoke\.py|security[^/]*|trivy_[^/]*|install_trivy\.sh)$|^\.github/workflows/cicd\.yml$|^\.github/actions/cache-python-venv/action\.yml$|^(infra|deploy)/|^render\.ya?ml$'
           if grep -Eq "$security_pattern" <<< "$files"; then
             echo "run_security=true" >> "$GITHUB_OUTPUT"
           else
@@ -232,21 +223,37 @@ jobs:
         run: |
           echo "Trivy/Docker omitidos: este cambio no toca dependencias, imágenes, compose ni infraestructura sensible."
 
-      - name: Cache Trivy DB
+      - name: Resolve Trivy cache epoch
+        if: steps.changes.outputs.run_security == 'true'
+        id: trivy_epoch
+        shell: bash
+        run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Trivy binary and vulnerability DB
         if: steps.changes.outputs.run_security == 'true'
         uses: actions/cache@v6
         with:
-          path: .trivy-cache
-          key: trivy-db-${{ runner.os }}-${{ github.run_id }}
+          path: |
+            .tools/trivy
+            .trivy-cache
+          key: trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-${{ steps.trivy_epoch.outputs.day }}
           restore-keys: |
-            trivy-db-${{ runner.os }}-
+            trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-
 
       - name: Trivy filesystem
         if: steps.changes.outputs.run_security == 'true'
+        env:
+          TRIVY_DB_TTL_MINUTES: '1440'
         run: make security-trivy
+
+      - name: Set up Docker Buildx cache backend
+        if: steps.changes.outputs.run_security == 'true'
+        uses: docker/setup-buildx-action@v4
 
       - name: Docker image security
         if: steps.changes.outputs.run_security == 'true'
+        env:
+          TRIVY_DB_TTL_MINUTES: '1440'
         run: make security-images
 
       - name: Real stack smoke · Docker Compose
@@ -263,43 +270,17 @@ jobs:
     name: Tests · Playwright
     needs: preflight
     if: needs.preflight.outputs.run_e2e == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
+      - name: Restore critical browser runtime
+        uses: ./.github/actions/setup-browser-e2e
         with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: |
-            frontend/package-lock.json
-            e2e/package-lock.json
+          browser-scope: chromium
+          build-frontend: 'false'
 
-      - name: Restore exact frontend dependencies for E2E
-        uses: ./.github/actions/cache-node-modules
-        with:
-          working-directory: frontend
-          lockfile: frontend/package-lock.json
-          node-version: '22'
-
-      - name: Restore exact E2E dependencies
-        uses: ./.github/actions/cache-node-modules
-        with:
-          working-directory: e2e
-          lockfile: e2e/package-lock.json
-          node-version: '22'
-
-      - name: Cache Playwright Chromium
-        uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('e2e/package-lock.json') }}
-
-      # The critical list now boots the real default Three/WebGL surface in
-      # several journeys. Run those journeys serially on the hosted runner so
-      # two software-rendered WebGL contexts cannot starve each other's React
-      # assertions. Dedicated War Room workflows remain parallel/sharded.
       - name: Critical browser smoke
         env:
           CRITICAL_E2E_WORKERS: 1

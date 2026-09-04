@@ -167,16 +167,13 @@ jobs:
           if not limiter:
               raise SystemExit('El target no declara AI_RATE_LIMITER')
 
-          # El Custom Domain lo administra Terraform. Wrangler sólo reemplaza
-          # código/bindings y debe mantener workers.dev apagado.
           if 'workers_dev' not in cfg:
               lines = text.splitlines()
               insert_at = next((i + 1 for i, line in enumerate(lines) if line.startswith('compatibility_date')), 1)
               lines.insert(insert_at, 'workers_dev = false')
               text = '\n'.join(lines) + '\n'
-          else:
-              if cfg.get('workers_dev') is not False:
-                  raise SystemExit('El target intentaría habilitar workers.dev')
+          elif cfg.get('workers_dev') is not False:
+              raise SystemExit('El target intentaría habilitar workers.dev')
           config_path.write_text(text, encoding='utf-8')
           print('Rollback Worker config OK · sin routes · workers.dev=false')
           PY
@@ -185,6 +182,12 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: 22
+
+      - name: Restore cached Wrangler toolchain
+        uses: ./.github/actions/setup-wrangler
+        with:
+          version: '4.127.1'
+          node-version: '22'
 
       - name: Deploy known-good Worker code without touching DNS
         env:
@@ -195,7 +198,7 @@ jobs:
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
-          npx --yes wrangler@4 deploy \
+          wrangler deploy \
             --config rollback-source/infra/cloudflare/wrangler.toml \
             --keep-vars
 
@@ -210,8 +213,7 @@ jobs:
               --output "$body" --write-out '%{http_code}' \
               -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
               "$PRODUCTION_AI_URL/health" || true)"
-            if [[ "$status" == 200 ]] && \
-              python3 rollback-source/scripts/cloudflare_health_contract.py "$body"; then
+            if [[ "$status" == 200 ]] && python3 rollback-source/scripts/cloudflare_health_contract.py "$body"; then
               health_ok=true
               break
             fi
@@ -291,12 +293,21 @@ jobs:
           cache: npm
           cache-dependency-path: rollback-source/frontend/package-lock.json
 
+      - name: Restore exact known-good frontend dependencies
+        uses: ./.github/actions/cache-node-modules
+        with:
+          working-directory: rollback-source/frontend
+          lockfile: rollback-source/frontend/package-lock.json
+          node-version: '22'
+
+      - name: Restore cached Wrangler toolchain
+        uses: ./.github/actions/setup-wrangler
+        with:
+          version: '4.127.1'
+          node-version: '22'
+
       - name: Prepare current Cloudflare Pages production project
         run: python3 scripts/cloudflare_production_pages.py prepare
-
-      - name: Install exact known-good frontend dependencies
-        working-directory: rollback-source/frontend
-        run: npm ci
 
       - name: Build exact rollback frontend
         working-directory: rollback-source/frontend
@@ -327,7 +338,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes wrangler@4 pages deploy dist \
+          wrangler pages deploy dist \
             --project-name chess-studio-production \
             --branch main \
             --commit-hash "$DEPLOY_SHA" \

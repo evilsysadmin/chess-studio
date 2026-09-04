@@ -16,7 +16,7 @@ concurrency:
 jobs:
   prune:
     name: Prune merged branches
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
       GH_TOKEN: ${{ github.token }}
@@ -64,9 +64,6 @@ jobs:
             echo "Eliminada: $branch"
           }
 
-          # Sólo ramas de PR ya mergeadas en este repo. Nada de listas de
-          # cadáveres versionados: si una rama histórica ya no existe, deja de
-          # formar parte de la política en vez de vivir eternamente en YAML.
           while IFS=$'\t' read -r head_repo branch; do
             [[ "$head_repo" == "$repo" ]] || continue
             delete_branch_if_safe "$branch"

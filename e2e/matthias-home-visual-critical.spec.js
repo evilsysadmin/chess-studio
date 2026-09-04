@@ -8,7 +8,7 @@ async function dismissHomeGuide(page) {
   }
 }
 
-async function openHomeAt(page, hour, { dismissSpeech = true } = {}) {
+async function openHomeAt(page, hour, { dismissSpeech = true, profileSeed = {} } = {}) {
   await page.addInitScript((fixedHour) => {
     Math.random = () => 0;
     Date.prototype.getHours = () => fixedHour;
@@ -18,6 +18,7 @@ async function openHomeAt(page, hour, { dismissSpeech = true } = {}) {
     profileSeed: {
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
+      ...profileSeed,
     },
   });
   await login(page);
@@ -135,17 +136,25 @@ test('Home · cuando Matthias habla usa mandíbula/expresión acotadas además d
   expect(geometry.bubbleFontSize, 'el comentario de Matthias debe leerse sin forzar la vista').toBeGreaterThanOrEqual(13);
 });
 
-test('Home · 390px conserva microgestos, materiales premium, texto legible y cero overflow', async ({ page }) => {
+test('Home · 390px conserva microgestos, mérito diegético, texto legible y cero overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  const corner = await openHomeAt(page, 10, { dismissSpeech: false });
+  const corner = await openHomeAt(page, 10, {
+    dismissSpeech: false,
+    profileSeed: {
+      'chess-study-achievements': JSON.stringify(['rating_master']),
+    },
+  });
   const bubble = corner.getByRole('region', { name: 'Mensaje de Matthias' });
   const home = page.locator('.menu.home-friendly');
   const primaryCard = home.locator('.home-mode-card').first();
   const castleLife = home.getByRole('region', { name: 'La estancia de Chess Studio' });
+  const masterCrown = castleLife.locator('[data-castle-object="master-crown"]');
 
   await expect(home).toBeVisible();
-  await expect(castleLife).toBeVisible();
   await expect(castleLife).toHaveAttribute('data-castle-life', 'real-state-v1');
+  await expect(castleLife).toHaveAttribute('data-castle-honours', '1');
+  await expect(masterCrown).toBeVisible();
+  await expect(masterCrown).toHaveAttribute('data-castle-kind', 'honour');
   await expect(bubble).toBeVisible();
   await expect(primaryCard).toBeVisible();
   await expect(corner).toHaveAttribute('data-placement', 'inline');
@@ -163,18 +172,22 @@ test('Home · 390px conserva microgestos, materiales premium, texto legible y ce
     const description = document.querySelector('.home-mode-description');
     const homeNode = document.querySelector('.menu.home-friendly');
     const homeStyle = homeNode ? getComputedStyle(homeNode) : null;
+    const crown = document.querySelector('[data-castle-object="master-crown"]');
+    const crownRect = crown?.getBoundingClientRect();
     return {
       overflow: document.documentElement.scrollWidth - window.innerWidth,
       bubbleFontSize: bubbleText ? Number.parseFloat(getComputedStyle(bubbleText).fontSize) : 0,
       descriptionFontSize: description ? Number.parseFloat(getComputedStyle(description).fontSize) : 0,
       homeBackground: homeStyle?.backgroundImage || '',
-      castleWidth: document.querySelector('.home-castle-life')?.getBoundingClientRect().width || 0,
+      crownLeft: crownRect?.left ?? -1,
+      crownRight: crownRect?.right ?? Number.POSITIVE_INFINITY,
     };
   });
 
   expect(contract.overflow, 'Home no puede generar scroll horizontal en Android').toBeLessThanOrEqual(1);
   expect(contract.bubbleFontSize, 'Matthias debe seguir siendo legible a 390px').toBeGreaterThanOrEqual(12.8);
   expect(contract.descriptionFontSize, 'las descripciones de modos no pueden volver a microtexto').toBeGreaterThanOrEqual(12.5);
-  expect(contract.castleWidth, 'la repisa viva debe caber en Home a 390px').toBeLessThanOrEqual(390);
+  expect(contract.crownLeft, 'el mérito diegético no puede salirse por la izquierda').toBeGreaterThanOrEqual(0);
+  expect(contract.crownRight, 'el mérito diegético debe caber en Home a 390px').toBeLessThanOrEqual(390);
   expect(contract.homeBackground).toContain('linear-gradient');
 });
