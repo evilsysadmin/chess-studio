@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """Fail-closed admission for a main SHA that reuses an already-green PR quality gate.
 
-The pull request runs the expensive quality suites. After GitHub merges it, the
-main push only needs to prove that the exact new main commit comes from a merged
-PR whose current-base Quality · CI gate finished green with the required checks.
-Staging can then consume the lightweight main workflow result without rerunning
-the same browser, frontend, backend and security work.
+The expensive suites run on the pull request. Each PR Quality run publishes a
+small immutable provenance artifact describing the exact synthetic merge commit
+that its jobs tested. After merge, main admission accepts the new main SHA only
+when that receipt proves the tested base is the final commit's first parent.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from io import BytesIO
 import json
 import os
 import subprocess
@@ -19,10 +19,14 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
+from zipfile import BadZipFile, ZipFile
 
 API_VERSION = "2022-11-28"
 QUALITY_WORKFLOW = "Quality · CI gate"
 QUALITY_PATH = ".github/workflows/cicd.yml"
+PROVENANCE_ARTIFACT = "quality-provenance"
+PROVENANCE_FILE = "quality-provenance.json"
+PROVENANCE_SCHEMA = 1
 REQUIRED_CHECKS: dict[str, set[str]] = {
     "Preflight · contracts": {"success"},
     "Tests · Frontend": {"success", "skipped"},
@@ -41,6 +45,7 @@ class Admission:
     pr_number: int
     pr_head_sha: str
     quality_run_id: int
+    tested_merge_sha: str
 
 
 def parse_time(value: str) -> datetime:
@@ -52,20 +57,22 @@ def parse_time(value: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
-def run_is_for_exact_pr_base(
-    run: dict[str, Any], *, pr_number: int, head_sha: str, base_sha: str
+def provenance_matches(
+    provenance: dict[str, Any] | None,
+    *,
+    pr_number: int,
+    head_sha: str,
+    base_sha: str,
 ) -> bool:
-    for linked_pr in run.get("pull_requests") or []:
-        linked_head = linked_pr.get("head") or {}
-        linked_base = linked_pr.get("base") or {}
-        if (
-            int(linked_pr.get("number") or 0) == pr_number
-            and str(linked_head.get("sha") or "").lower() == head_sha
-            and linked_base.get("ref") == "main"
-            and str(linked_base.get("sha") or "").lower() == base_sha
-        ):
-            return True
-    return False
+    if not isinstance(provenance, dict):
+        return False
+    return (
+        provenance.get("schema") == PROVENANCE_SCHEMA
+        and int(provenance.get("pr_number") or 0) == pr_number
+        and str(provenance.get("head_sha") or "").lower() == head_sha
+        and str(provenance.get("base_sha") or "").lower() == base_sha
+        and len(str(provenance.get("tested_merge_sha") or "")) == 40
+    )
 
 
 def evaluate_admission(
@@ -76,6 +83,7 @@ def evaluate_admission(
     pulls: list[dict[str, Any]],
     workflow_runs: list[dict[str, Any]],
     check_runs: list[dict[str, Any]],
+    provenances: dict[int, dict[str, Any]],
 ) -> Admission:
     sha = main_sha.lower()
     parent = first_parent.lower()
@@ -104,15 +112,18 @@ def evaluate_admission(
 
     eligible_runs = []
     for run in workflow_runs:
+        run_id = int(run.get("id") or 0)
+        provenance = provenances.get(run_id)
         if (
-            run.get("event") == "pull_request"
+            run_id
+            and run.get("event") == "pull_request"
             and run.get("name") == QUALITY_WORKFLOW
             and run.get("path") == QUALITY_PATH
             and str(run.get("head_sha") or "").lower() == head_sha
             and run.get("status") == "completed"
             and run.get("conclusion") == "success"
-            and run_is_for_exact_pr_base(
-                run,
+            and provenance_matches(
+                provenance,
                 pr_number=pr_number,
                 head_sha=head_sha,
                 base_sha=parent,
@@ -120,21 +131,21 @@ def evaluate_admission(
         ):
             created_at = parse_time(str(run.get("created_at") or ""))
             updated_at = parse_time(str(run.get("updated_at") or ""))
-            # The PR object's base SHA is historical and can lag after main moves.
-            # The Quality run metadata is authoritative here: it proves the exact
-            # PR head + exact base that produced the immutable tested merge SHA.
-            # Timestamps remain a second fail-closed guard against impossible
-            # pre-base or post-merge accreditation.
+            # The receipt was generated from `git rev-parse HEAD^1/HEAD^2` after
+            # checkout of the event's immutable github.sha. It is authoritative;
+            # PR/run API base metadata may lag while main advances.
             if created_at >= first_parent_time and updated_at <= merged_at:
                 eligible_runs.append(run)
 
     if not eligible_runs:
         raise AdmissionError(
-            f"PR #{pr_number} no tiene un {QUALITY_WORKFLOW!r} verde sobre la base exacta {parent[:12]}"
+            f"PR #{pr_number} no tiene un {QUALITY_WORKFLOW!r} verde cuyo recibo pruebe la base exacta {parent[:12]}"
         )
 
     eligible_runs.sort(key=lambda run: parse_time(str(run.get("updated_at") or "")), reverse=True)
     run = eligible_runs[0]
+    run_id = int(run.get("id") or 0)
+    provenance = provenances[run_id]
     suite_id = run.get("check_suite_id") or (run.get("check_suite") or {}).get("id")
     if not suite_id:
         raise AdmissionError("el run de calidad verde no expone check_suite_id")
@@ -159,28 +170,70 @@ def evaluate_admission(
     return Admission(
         pr_number=pr_number,
         pr_head_sha=head_sha,
-        quality_run_id=int(run.get("id") or 0),
+        quality_run_id=run_id,
+        tested_merge_sha=str(provenance.get("tested_merge_sha") or "").lower(),
     )
 
 
-def api_get(path: str, token: str) -> Any:
-    request = Request(
+def github_request(path: str, token: str) -> Request:
+    return Request(
         f"https://api.github.com{path}",
         headers={
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {token}",
             "X-GitHub-Api-Version": API_VERSION,
-            "User-Agent": "chess-studio-main-ci-admission/1",
+            "User-Agent": "chess-studio-main-ci-admission/2",
         },
     )
+
+
+def api_get(path: str, token: str) -> Any:
     try:
-        with urlopen(request, timeout=15) as response:
+        with urlopen(github_request(path, token), timeout=15) as response:
             return json.load(response)
     except HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:500]
         raise AdmissionError(f"GitHub API {path} devolvió HTTP {exc.code}: {detail}") from exc
     except (URLError, TimeoutError) as exc:
         raise AdmissionError(f"GitHub API no disponible para {path}: {exc}") from exc
+
+
+def api_get_bytes(path: str, token: str) -> bytes:
+    try:
+        with urlopen(github_request(path, token), timeout=20) as response:
+            return response.read()
+    except HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")[:500]
+        raise AdmissionError(f"GitHub API {path} devolvió HTTP {exc.code}: {detail}") from exc
+    except (URLError, TimeoutError) as exc:
+        raise AdmissionError(f"GitHub API no disponible para {path}: {exc}") from exc
+
+
+def fetch_run_provenance(api_base: str, run_id: int, token: str) -> dict[str, Any] | None:
+    payload = api_get(f"{api_base}/actions/runs/{run_id}/artifacts?per_page=100", token)
+    artifacts = (payload or {}).get("artifacts") if isinstance(payload, dict) else None
+    if not isinstance(artifacts, list):
+        raise AdmissionError(f"respuesta inesperada al buscar artefactos del Quality run {run_id}")
+    matches = [
+        item for item in artifacts
+        if item.get("name") == PROVENANCE_ARTIFACT and not item.get("expired")
+    ]
+    if len(matches) != 1:
+        return None
+
+    artifact_id = int(matches[0].get("id") or 0)
+    if not artifact_id:
+        return None
+    raw = api_get_bytes(f"{api_base}/actions/artifacts/{artifact_id}/zip", token)
+    try:
+        with ZipFile(BytesIO(raw)) as archive:
+            names = [name for name in archive.namelist() if name.rsplit("/", 1)[-1] == PROVENANCE_FILE]
+            if len(names) != 1:
+                return None
+            payload = json.loads(archive.read(names[0]).decode("utf-8"))
+    except (BadZipFile, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise AdmissionError(f"artefacto de procedencia inválido en Quality run {run_id}: {exc}") from exc
+    return payload if isinstance(payload, dict) else None
 
 
 def git_output(*args: str) -> str:
@@ -220,9 +273,7 @@ def run_live() -> Admission:
         and (pr.get("base") or {}).get("ref") == "main"
     ]
     if len(provisional) != 1:
-        raise AdmissionError(
-            f"main {main_sha[:12]} no procede de un único PR mergeado a main"
-        )
+        raise AdmissionError(f"main {main_sha[:12]} no procede de un único PR mergeado a main")
     head_sha = str((provisional[0].get("head") or {}).get("sha") or "").lower()
 
     runs_payload = api_get(
@@ -232,6 +283,17 @@ def run_live() -> Admission:
     workflow_runs = (runs_payload or {}).get("workflow_runs") if isinstance(runs_payload, dict) else None
     if not isinstance(workflow_runs, list):
         raise AdmissionError("respuesta inesperada al buscar Quality · CI gate del PR")
+
+    provenances: dict[int, dict[str, Any]] = {}
+    for run in workflow_runs:
+        if run.get("conclusion") != "success":
+            continue
+        run_id = int(run.get("id") or 0)
+        if not run_id:
+            continue
+        provenance = fetch_run_provenance(base, run_id, token)
+        if provenance is not None:
+            provenances[run_id] = provenance
 
     checks_payload = api_get(f"{base}/commits/{head_sha}/check-runs?per_page=100", token)
     check_runs = (checks_payload or {}).get("check_runs") if isinstance(checks_payload, dict) else None
@@ -245,16 +307,17 @@ def run_live() -> Admission:
         pulls=pulls,
         workflow_runs=workflow_runs,
         check_runs=check_runs,
+        provenances=provenances,
     )
 
 
-def fixture() -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+def fixture() -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]], dict[int, dict[str, Any]]]:
     pr = {
         "number": 421,
         "merged_at": "2026-09-04T22:24:13Z",
         "merge_commit_sha": "b" * 40,
         "head": {"sha": "c" * 40},
-        "base": {"ref": "main", "sha": "a" * 40},
+        "base": {"ref": "main", "sha": "e" * 40},
     }
     run = {
         "id": 1566,
@@ -267,23 +330,30 @@ def fixture() -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
         "created_at": "2026-09-04T22:20:13Z",
         "updated_at": "2026-09-04T22:23:36Z",
         "check_suite_id": 99,
+        # Deliberately stale API metadata: admission must ignore this base and
+        # trust the immutable artifact below.
         "pull_requests": [
             {
                 "number": 421,
                 "head": {"sha": "c" * 40},
-                "base": {"ref": "main", "sha": "a" * 40},
+                "base": {"ref": "main", "sha": "e" * 40},
             }
         ],
     }
     checks = [
-        {
-            "name": name,
-            "conclusion": "success",
-            "check_suite": {"id": 99},
-        }
+        {"name": name, "conclusion": "success", "check_suite": {"id": 99}}
         for name in REQUIRED_CHECKS
     ]
-    return pr, run, checks
+    provenances = {
+        1566: {
+            "schema": PROVENANCE_SCHEMA,
+            "pr_number": 421,
+            "tested_merge_sha": "f" * 40,
+            "base_sha": "a" * 40,
+            "head_sha": "c" * 40,
+        }
+    }
+    return pr, run, checks, provenances
 
 
 def assert_rejected(
@@ -292,6 +362,7 @@ def assert_rejected(
     pr: dict[str, Any],
     run: dict[str, Any],
     checks: list[dict[str, Any]],
+    provenances: dict[int, dict[str, Any]],
     first_parent: str = "a" * 40,
 ) -> None:
     try:
@@ -302,6 +373,7 @@ def assert_rejected(
             pulls=[pr],
             workflow_runs=[run],
             check_runs=checks,
+            provenances=provenances,
         )
     except AdmissionError:
         return
@@ -309,7 +381,7 @@ def assert_rejected(
 
 
 def self_test() -> None:
-    pr, run, checks = fixture()
+    pr, run, checks, provenances = fixture()
     admission = evaluate_admission(
         main_sha="b" * 40,
         first_parent="a" * 40,
@@ -317,28 +389,11 @@ def self_test() -> None:
         pulls=[pr],
         workflow_runs=[run],
         check_runs=checks,
+        provenances=provenances,
     )
     assert admission.pr_number == 421
+    assert admission.tested_merge_sha == "f" * 40
 
-    # PR metadata keeps the base SHA captured when the PR object was last
-    # materialized. It can lag main after later merges; the tested run base is
-    # the provenance source that matters for admission.
-    historical_pr = {
-        **pr,
-        "base": {"ref": "main", "sha": "e" * 40},
-    }
-    historical = evaluate_admission(
-        main_sha="b" * 40,
-        first_parent="a" * 40,
-        first_parent_time=parse_time("2026-09-04T22:15:04Z"),
-        pulls=[historical_pr],
-        workflow_runs=[run],
-        check_runs=checks,
-    )
-    assert historical.quality_run_id == 1566
-
-    # Path-scoped PRs legitimately skip untouched heavyweight jobs. They are
-    # admissible only when the same green Quality check suite says so.
     scoped_checks = [
         {**item, "conclusion": "skipped"}
         if item["name"] in {"Tests · Backend", "Security · Trivy + Docker"}
@@ -352,6 +407,7 @@ def self_test() -> None:
         pulls=[pr],
         workflow_runs=[run],
         check_runs=scoped_checks,
+        provenances=provenances,
     )
     assert scoped.quality_run_id == 1566
 
@@ -363,31 +419,45 @@ def self_test() -> None:
             pulls=[],
             workflow_runs=[run],
             check_runs=checks,
+            provenances=provenances,
         )
     except AdmissionError:
         pass
     else:
         raise AssertionError("self-test no rechazó: direct push")
 
-    assert_rejected("wrong base parent", pr=pr, run=run, checks=checks, first_parent="d" * 40)
-    stale_run_base = {
-        **run,
-        "pull_requests": [
-            {
-                "number": 421,
-                "head": {"sha": "c" * 40},
-                "base": {"ref": "main", "sha": "d" * 40},
-            }
-        ],
+    assert_rejected(
+        "wrong base parent", pr=pr, run=run, checks=checks,
+        provenances=provenances, first_parent="d" * 40,
+    )
+    stale_provenance = {
+        1566: {**provenances[1566], "base_sha": "d" * 40}
     }
-    assert_rejected("run bound to stale base", pr=pr, run=stale_run_base, checks=checks)
-    assert_rejected("stale PR gate", pr=pr, run={**run, "created_at": "2026-09-04T22:14:59Z"}, checks=checks)
-    assert_rejected("post-merge PR gate", pr=pr, run={**run, "updated_at": "2026-09-04T22:24:14Z"}, checks=checks)
+    assert_rejected(
+        "stale provenance base", pr=pr, run=run, checks=checks,
+        provenances=stale_provenance,
+    )
+    assert_rejected(
+        "missing provenance", pr=pr, run=run, checks=checks, provenances={}
+    )
+    assert_rejected(
+        "stale PR gate", pr=pr,
+        run={**run, "created_at": "2026-09-04T22:14:59Z"}, checks=checks,
+        provenances=provenances,
+    )
+    assert_rejected(
+        "post-merge PR gate", pr=pr,
+        run={**run, "updated_at": "2026-09-04T22:24:14Z"}, checks=checks,
+        provenances=provenances,
+    )
     failed_checks = [
         {**item, "conclusion": "failure"} if item["name"] == "Tests · Playwright" else item
         for item in checks
     ]
-    assert_rejected("failed required check", pr=pr, run=run, checks=failed_checks)
+    assert_rejected(
+        "failed required check", pr=pr, run=run, checks=failed_checks,
+        provenances=provenances,
+    )
 
     print(
         "main-ci-admission self-test OK · full/scoped green accepted; "
@@ -406,7 +476,7 @@ def main() -> int:
         return 2
     print(
         f"Main admission OK · PR #{admission.pr_number} · head {admission.pr_head_sha[:12]} · "
-        f"Quality run {admission.quality_run_id}"
+        f"Quality run {admission.quality_run_id} · tested merge {admission.tested_merge_sha[:12]}"
     )
     return 0
 
