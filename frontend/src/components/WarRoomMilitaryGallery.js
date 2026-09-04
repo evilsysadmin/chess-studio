@@ -8,10 +8,34 @@ const GALLERY = Object.freeze({
   agedGold: 0x8d672d,
   brass: 0xb8893d,
   iron: 0x1b1917,
-  ember: 0xff7a1a,
-  flame: 0xffb24d,
-  flameCore: 0xffdf88,
+  ironWarm: 0x332720,
+  ember: 0xff4a13,
+  flame: 0xff8f36,
+  flameCore: 0xffd27a,
 });
+
+// Campaign art is tiny, immutable approved mock data. Keep one decoded/upload
+// prototype per module lifetime and clone only the Texture wrapper for each
+// scene. Re-entering War Room no longer base64-decodes and rebuilds the same
+// RGBA buffers four times on every mount, while each scene still owns/disposes
+// its own Texture object safely.
+const campaignTexturePrototypes = new Map();
+
+function campaignTexture(key) {
+  let prototype = campaignTexturePrototypes.get(key);
+  if (!prototype) {
+    prototype = createWarRoomCampaignTexture(key);
+    prototype.userData.warRoomCampaignTextureCache = 'module-prototype-v1';
+    campaignTexturePrototypes.set(key, prototype);
+  }
+  const texture = prototype.clone();
+  texture.needsUpdate = true;
+  texture.userData = {
+    ...prototype.userData,
+    warRoomCampaignTextureCache: 'module-clone-v1',
+  };
+  return texture;
+}
 
 function physical(color, options = {}) {
   return new THREE.MeshPhysicalMaterial({
@@ -56,7 +80,7 @@ function replaceCentralCanvas(frame, artKey, title) {
   // Swap only the artwork. The premium finish pass already gave this canvas
   // woven linen, bump, varnish and museum-grade material response; replacing
   // those values here would make the new art look flatter than the old one.
-  canvas.material.map = createWarRoomCampaignTexture(artKey);
+  canvas.material.map = campaignTexture(artKey);
   canvas.material.color.setHex(0xffffff);
   canvas.material.needsUpdate = true;
   canvas.userData.warRoomCampaignArt = artKey;
@@ -135,7 +159,7 @@ function addSidePainting(group, {
     clearcoat: 0.08,
     clearcoatRoughness: 0.68,
     specularIntensity: 0.18,
-    map: createWarRoomCampaignTexture(artKey),
+    map: campaignTexture(artKey),
   });
 
   addBox(frame, [1.68, 2.2, 0.08], dark, [0, 0, 0], 'war-room-campaign-frame-back');
@@ -178,11 +202,11 @@ function attachTorchKinetics(outer, inner, light, phase) {
     const lick = Math.sin(now * 0.031 + phase * 0.63);
     const flutter = slow * 0.07 + fast * 0.045 + lick * 0.025;
 
-    outer.rotation.z = slow * 0.07 + fast * 0.025;
-    inner.rotation.z = -slow * 0.045 + lick * 0.018;
+    outer.rotation.z = slow * 0.065 + fast * 0.02;
+    inner.rotation.z = -slow * 0.04 + lick * 0.018;
     outer.scale.set(
-      outerBase.x * (1 - fast * 0.06),
-      outerBase.y * (1 + slow * 0.13 + lick * 0.045),
+      outerBase.x * (1 - fast * 0.055),
+      outerBase.y * (1 + slow * 0.12 + lick * 0.04),
       outerBase.z * (1 - slow * 0.035),
     );
     inner.scale.set(
@@ -194,66 +218,175 @@ function attachTorchKinetics(outer, inner, light, phase) {
   };
 }
 
+function flameGeometry(radius = 0.12, height = 0.58) {
+  const profile = [
+    [0.014, 0],
+    [0.08, 0.06],
+    [radius, 0.18],
+    [radius * 0.9, 0.32],
+    [radius * 0.62, 0.45],
+    [radius * 0.3, 0.54],
+    [0.008, height],
+  ].map(([x, y]) => new THREE.Vector2(x, y));
+  return new THREE.LatheGeometry(profile, 14);
+}
+
+function addGothicFinial(group, material, y, flip = false) {
+  const finial = addMesh(
+    group,
+    new THREE.ConeGeometry(0.115, 0.22, 4),
+    material,
+    [0, y, 0.018],
+    [0, Math.PI / 4, flip ? Math.PI : 0],
+    'war-room-side-torch-backplate-finial',
+  );
+  finial.castShadow = false;
+  return finial;
+}
+
+function addBrazierCage(torch, iron, ironHighlight, emberMat) {
+  const z = 0.47;
+
+  addMesh(torch, new THREE.CylinderGeometry(0.12, 0.095, 0.17, 12), iron, [0, 0.1, z], [0, 0, 0], 'war-room-side-torch-neck');
+  addMesh(torch, new THREE.CylinderGeometry(0.17, 0.105, 0.16, 14), ironHighlight, [0, 0.22, z], [0, 0, 0], 'war-room-side-torch-brazier-bowl');
+  addMesh(torch, new THREE.TorusGeometry(0.185, 0.025, 8, 24), ironHighlight, [0, 0.31, z], [Math.PI / 2, 0, 0], 'war-room-side-torch-brazier-rim');
+
+  const coal = addMesh(torch, new THREE.SphereGeometry(0.145, 12, 8), emberMat, [0, 0.31, z], [0, 0, 0], 'war-room-side-torch-embers');
+  coal.scale.set(1, 0.28, 0.8);
+  coal.castShadow = false;
+
+  for (let index = 0; index < 6; index += 1) {
+    const angle = (index / 6) * Math.PI * 2;
+    const x = Math.cos(angle) * 0.145;
+    const cageZ = z + Math.sin(angle) * 0.145;
+    const bar = addMesh(
+      torch,
+      new THREE.CylinderGeometry(0.014, 0.018, 0.28, 7),
+      iron,
+      [x, 0.43, cageZ],
+      [0, 0, 0],
+      'war-room-side-torch-cage-bar',
+    );
+    bar.rotation.z = -Math.cos(angle) * 0.12;
+    bar.rotation.x = Math.sin(angle) * 0.12;
+    bar.castShadow = false;
+
+    const crown = addMesh(
+      torch,
+      new THREE.ConeGeometry(0.028, 0.11, 4),
+      ironHighlight,
+      [x * 1.04, 0.615, z + Math.sin(angle) * 0.151],
+      [0, Math.PI / 4, 0],
+      'war-room-side-torch-crown-spike',
+    );
+    crown.castShadow = false;
+  }
+}
+
 function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
   const torch = new THREE.Group();
   torch.name = side < 0 ? 'war-room-side-torch-left' : 'war-room-side-torch-right';
   torch.userData.warRoomPracticalDecor = 'animated-castle-torch';
+  torch.userData.warRoomTorchArt = 'approved-premium-mock-v2';
+  torch.userData.warRoomTorchForm = 'gothic-wall-sconce-brazier';
 
-  const brass = physical(GALLERY.brass, {
-    metalness: 0.82,
-    roughness: 0.25,
-    clearcoat: 0.34,
-    specularIntensity: 0.62,
-  });
   const iron = physical(GALLERY.iron, {
-    metalness: 0.58,
-    roughness: 0.52,
-    clearcoat: 0.08,
+    metalness: 0.64,
+    roughness: 0.48,
+    clearcoat: 0.1,
+    specularIntensity: 0.48,
   });
-  const outerMat = physical(GALLERY.flame, {
-    roughness: 0.18,
+  const ironHighlight = physical(GALLERY.ironWarm, {
+    metalness: 0.7,
+    roughness: 0.39,
+    clearcoat: 0.12,
+    specularIntensity: 0.54,
+  });
+  const emberMat = physical(0x8a2a12, {
+    roughness: 0.74,
     clearcoat: 0,
     emissive: GALLERY.ember,
-    emissiveIntensity: 2.35,
+    emissiveIntensity: 1.1,
+  });
+  const outerMat = physical(GALLERY.flame, {
+    roughness: 0.14,
+    clearcoat: 0,
+    emissive: 0xff5a1a,
+    emissiveIntensity: 2.65,
+    opacity: 0.92,
+    depthWrite: false,
   });
   const innerMat = physical(GALLERY.flameCore, {
-    roughness: 0.16,
+    roughness: 0.12,
     clearcoat: 0,
-    emissive: 0xffb020,
-    emissiveIntensity: 2.7,
+    emissive: 0xffa11f,
+    emissiveIntensity: 3.05,
+    opacity: 0.88,
+    depthWrite: false,
   });
+  outerMat.blending = THREE.AdditiveBlending;
+  innerMat.blending = THREE.AdditiveBlending;
 
-  addBox(torch, [0.32, 0.48, 0.07], iron, [0, 0, 0], 'war-room-side-torch-backplate');
-  addMesh(torch, new THREE.TorusGeometry(0.15, 0.022, 8, 20, Math.PI), brass, [0, -0.04, 0.17], [Math.PI / 2, 0, 0], 'war-room-side-torch-bracket');
-  addMesh(torch, new THREE.CylinderGeometry(0.13, 0.09, 0.28, 18), brass, [0, 0.04, 0.25], [0, 0, 0], 'war-room-side-torch-cup');
+  // Approved mock: a long gothic wall plate with pointed finials, a short
+  // horizontal forged arm and an open basket brazier. The old thin shaft/cup
+  // silhouette read as a Roman pilum; this keeps the mass close to the wall.
+  addBox(torch, [0.22, 0.94, 0.075], iron, [0, -0.14, 0], 'war-room-side-torch-backplate');
+  addGothicFinial(torch, ironHighlight, 0.43, false);
+  addGothicFinial(torch, ironHighlight, -0.71, true);
+
+  for (const y of [0.19, -0.14, -0.47]) {
+    const rivet = addMesh(torch, new THREE.SphereGeometry(0.034, 8, 6), ironHighlight, [0, y, 0.055], [0, 0, 0], 'war-room-side-torch-rivet');
+    rivet.scale.z = 0.4;
+    rivet.castShadow = false;
+  }
+
+  addBox(torch, [0.105, 0.105, 0.47], iron, [0, -0.03, 0.27], 'war-room-side-torch-wall-arm');
+  addMesh(torch, new THREE.CylinderGeometry(0.09, 0.09, 0.12, 12), ironHighlight, [0, -0.03, 0.115], [Math.PI / 2, 0, 0], 'war-room-side-torch-arm-collar');
+  addBrazierCage(torch, iron, ironHighlight, emberMat);
 
   const outer = addMesh(
     torch,
-    new THREE.ConeGeometry(0.115, 0.38, 16),
+    flameGeometry(0.13, 0.62),
     outerMat,
-    [0, 0.36, 0.26],
+    [0, 0.36, 0.47],
     [0, 0, 0],
     'war-room-side-torch-flame-outer',
   );
+  outer.scale.set(1, 1.03, 0.82);
+  const sideLick = addMesh(
+    outer,
+    flameGeometry(0.07, 0.38),
+    outerMat,
+    [0.07, 0.08, 0.015],
+    [0, 0, -0.24],
+    'war-room-side-torch-flame-side',
+  );
+  sideLick.scale.set(0.82, 0.88, 0.72);
+  sideLick.castShadow = false;
+
   const inner = addMesh(
     torch,
-    new THREE.ConeGeometry(0.062, 0.24, 14),
+    flameGeometry(0.07, 0.4),
     innerMat,
-    [0.01, 0.33, 0.285],
-    [0, 0, 0],
+    [-0.012, 0.385, 0.485],
+    [0, 0, 0.055],
     'war-room-side-torch-flame-inner',
   );
+  inner.scale.set(0.9, 0.92, 0.76);
   outer.castShadow = false;
   inner.castShadow = false;
 
-  const light = new THREE.PointLight(0xffa44c, 1.35, 5.8, 2);
+  // Same warm family as the fireplace (0xff8738), at a deliberately lower
+  // intensity. The sconce paints the wall and frame edge without competing
+  // with the hearth or adding shadow-map cost.
+  const light = new THREE.PointLight(0xff8738, 1.48, 6.1, 2);
   light.name = 'war-room-side-torch-light';
-  light.position.set(0, 0.34, 0.64);
+  light.position.set(0, 0.58, 0.67);
   light.castShadow = false;
   torch.add(light);
   attachTorchKinetics(outer, inner, light, phase);
 
-  torch.position.set(side * 7.61, 4.25, wallZ + towardBoard * offset);
+  torch.position.set(side * 7.61, 4.18, wallZ + towardBoard * offset);
   torch.rotation.y = -side * Math.PI / 2;
   torch.userData.warRoomOffsetFromWall = offset;
   group.add(torch);
@@ -289,13 +422,15 @@ export function installWarRoomMilitaryGallery(group, {
     title: 'Gloria perfectamente modesta de Matthias',
     offset: 3.95,
   });
-  addSideTorch(group, { side: -1, wallZ, towardBoard, offset: 5.35, phase: 0.7 });
-  addSideTorch(group, { side: 1, wallZ, towardBoard, offset: 5.35, phase: 3.1 });
+  addSideTorch(group, { side: -1, wallZ, towardBoard, offset: 6.05, phase: 0.7 });
+  addSideTorch(group, { side: 1, wallZ, towardBoard, offset: 6.05, phase: 3.1 });
 
   group.userData.warRoomMilitaryGalleryVersion = 'approved-mock-v1';
   group.userData.warRoomMilitaryGalleryCentralCanvases = centralReplaced;
   group.userData.warRoomMilitaryGallerySideCanvases = 2;
   group.userData.warRoomMilitaryGalleryTorches = 2;
+  group.userData.warRoomCampaignTextureCache = 'module-prototype-v1';
+  group.userData.warRoomTorchArt = 'approved-premium-mock-v2';
   registerCampaignArtFinalizer(group);
   return centralReplaced + 4;
 }

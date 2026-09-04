@@ -45,11 +45,14 @@ describe('War Room military gallery', () => {
     expect(rightCanvas.material.map.userData.warRoomCampaignArt).toBe('victory');
     expect(leftCanvas.material.map.userData.source).toBe('approved-war-room-mock');
     expect(rightCanvas.material.map.userData.source).toBe('approved-war-room-mock');
+    expect(leftCanvas.material.map.userData.warRoomCampaignTextureCache).toBe('module-clone-v1');
+    expect(rightCanvas.material.map.userData.warRoomCampaignTextureCache).toBe('module-clone-v1');
     expect(left.userData.warRoomCampaignGalleryVersion).toBe('approved-mock-v1');
     expect(right.userData.warRoomCampaignGalleryVersion).toBe('approved-mock-v1');
     expect(left.userData.warRoomLandscapeSubject).toBeUndefined();
     expect(right.userData.warRoomLandscapeSubject).toBeUndefined();
     expect(owner.userData.warRoomMilitaryGalleryCentralCanvases).toBe(2);
+    expect(owner.userData.warRoomCampaignTextureCache).toBe('module-prototype-v1');
 
     // UserPolish still owns some legacy static work in the shared first-paint
     // queue. The military gallery must run after it so the old landscapes can
@@ -82,24 +85,41 @@ describe('War Room military gallery', () => {
     dispose(room);
   });
 
-  it('añade dos antorchas laterales con llama y luz animadas sin sombras caras', () => {
+  it('implementa el mock premium como aplique gótico con brasero, no como pilum', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const owner = galleryOwner(room);
 
     for (const side of ['left', 'right']) {
       const torch = room.getObjectByName(`war-room-side-torch-${side}`);
       const flame = torch?.getObjectByName('war-room-side-torch-flame-outer');
+      const inner = torch?.getObjectByName('war-room-side-torch-flame-inner');
       const light = torch?.getObjectByName('war-room-side-torch-light');
+      const painting = room.getObjectByName(`war-room-campaign-painting-${side}`);
 
       expect(torch).toBeInstanceOf(THREE.Group);
+      expect(torch.userData.warRoomTorchArt).toBe('approved-premium-mock-v2');
+      expect(torch.userData.warRoomTorchForm).toBe('gothic-wall-sconce-brazier');
+      expect(torch.getObjectByName('war-room-side-torch-backplate')).toBeInstanceOf(THREE.Mesh);
+      expect(torch.getObjectByName('war-room-side-torch-wall-arm')).toBeInstanceOf(THREE.Mesh);
+      expect(torch.getObjectByName('war-room-side-torch-brazier-bowl')).toBeInstanceOf(THREE.Mesh);
+      expect(torch.getObjectByName('war-room-side-torch-brazier-rim')).toBeInstanceOf(THREE.Mesh);
+      expect(torch.getObjectByName('war-room-side-torch-embers')).toBeInstanceOf(THREE.Mesh);
+      expect(torch.getObjectByName('war-room-side-torch-cage-bar')).toBeInstanceOf(THREE.Mesh);
+      expect(torch.getObjectByName('war-room-side-torch-crown-spike')).toBeInstanceOf(THREE.Mesh);
       expect(flame).toBeInstanceOf(THREE.Mesh);
-      expect(light).toBeInstanceOf(THREE.PointLight);
+      expect(inner).toBeInstanceOf(THREE.Mesh);
+      expect(flame.geometry).toBeInstanceOf(THREE.LatheGeometry);
       expect(flame.userData.warRoomAnimatedTorch).toBe(true);
       expect(typeof flame.onBeforeRender).toBe('function');
+      expect(light).toBeInstanceOf(THREE.PointLight);
+      expect(light.color.getHex()).toBe(0xff8738);
       expect(light.castShadow).toBe(false);
       expect(() => flame.onBeforeRender()).not.toThrow();
+
+      expect(torch.userData.warRoomOffsetFromWall - painting.userData.warRoomOffsetFromWall).toBeGreaterThanOrEqual(2);
     }
     expect(owner.userData.warRoomMilitaryGalleryTorches).toBe(2);
+    expect(owner.userData.warRoomTorchArt).toBe('approved-premium-mock-v2');
 
     dispose(room);
   });
