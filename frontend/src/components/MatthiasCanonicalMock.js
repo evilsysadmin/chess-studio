@@ -4,8 +4,8 @@ import * as THREE from 'three';
 // Three.js may articulate rigid layers, but it must not redraw or procedurally
 // reinterpret his face, cap, coat or emblem.
 export const MATTHIAS_CANONICAL_ART_VERSION = 'angry-mock-v1';
-export const MATTHIAS_CANONICAL_ASSET_URL = '/matthias-home-canonical.webp';
-export const MATTHIAS_CANONICAL_ASPECT = 0.7328125;
+export const MATTHIAS_CANONICAL_ASSET_URL = '/matthias-home-canonical.b64';
+export const MATTHIAS_CANONICAL_ASPECT = 0.75;
 export const MATTHIAS_CANONICAL_HEAD_CUT = 0.54375;
 export const MATTHIAS_CANONICAL_BODY_START = 0.459375;
 export const MATTHIAS_CANONICAL_RIG_VERSION = 'canonical-layer-rig-v1';
@@ -41,6 +41,12 @@ function makeLayer(baseTexture, top, bottom, z = 0) {
   const centerFromTop = (top + bottom) / 2;
   mesh.position.set(0, ART_HEIGHT * (0.5 - centerFromTop), z);
   return { mesh, texture, material };
+}
+
+export function canonicalMatthiasDataUrl(payload) {
+  const normalized = String(payload || '').trim();
+  if (!normalized.startsWith('UklG')) throw new Error('Canonical Matthias WebP payload is invalid');
+  return `data:image/webp;base64,${normalized}`;
 }
 
 export function createMatthiasCanonicalRig(baseTexture) {
