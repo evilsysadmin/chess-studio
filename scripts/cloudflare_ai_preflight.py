@@ -151,15 +151,21 @@ def static_check() -> list[str]:
     if "workflow_run:" in ci:
         errors.append("CI principal no debe usar workflow_run; staging lo encadena después del quality gate")
 
-    # Staging accreditation is a read-only provenance boundary. A completed
-    # staging generation that is no longer main may still be a valid smoke, but
-    # it must self-cancel before emitting a production accreditation artifact.
+    # Staging accreditation is the immutable read-only release boundary. Main is
+    # allowed to advance while a coherent generation finishes: the candidate SHA
+    # must remain in main's lineage, and staging must still serve that exact SHA on
+    # backend/frontend/Worker before the promotion artifact is emitted.
     for needle, label in (
         ("name: Staging · AI Worker", "staging AI workflow name"),
         ("actions: write", "staging AI self-cancel permission"),
         ("UPSTREAM_EVENT: ${{ github.event.workflow_run.event", "staging AI upstream provenance"),
-        ("Supersede stale staging accreditation", "staging AI stale accreditation guard"),
-        ("git ls-remote --exit-code origin refs/heads/main", "staging AI compares accredited SHA to main"),
+        ("Supersede stale staging accreditation outside current main lineage", "staging AI lineage guard"),
+        ("git ls-remote --exit-code origin refs/heads/main", "staging AI resolves current main"),
+        ("compare/$DEPLOY_SHA...$current_main", "staging AI proves candidate remains in main lineage"),
+        ("identical|ahead", "staging AI accepts exact or ancestor SHA"),
+        ("Verify staging backend still serves approved SHA", "staging AI exact backend gate"),
+        ("Verify staging frontend still serves approved SHA", "staging AI exact frontend gate"),
+        ("Verify staging AI health and build identity", "staging AI exact Worker gate"),
         ("Write immutable production accreditation", "staging AI immutable accreditation writer"),
         ("staging_deploy_run_id", "staging AI binds deploy run id"),
         ("staging_ai_run_id", "staging AI binds accreditation run id"),
@@ -169,9 +175,9 @@ def static_check() -> list[str]:
         require(staging_ai, needle, label, errors)
     require_order(
         staging_ai,
-        "Supersede stale staging accreditation",
+        "Supersede stale staging accreditation outside current main lineage",
         "Verify staging backend still serves approved SHA",
-        "staging AI stale guard ordering",
+        "staging AI lineage guard ordering",
         errors,
     )
     require_order(
@@ -182,10 +188,11 @@ def static_check() -> list[str]:
         errors,
     )
 
-    # Promotion must consume the immutable artifact emitted by the exact
-    # triggering Staging AI run. A second-hop workflow_run head_sha is merely
-    # wrapper metadata and can point at a newer main commit than the SHA that was
-    # actually accredited, so it is forbidden as active promotion provenance.
+    # Promotion consumes the immutable artifact from the exact triggering Staging
+    # AI run. It must not chase a moving main HEAD or require staging to stay frozen
+    # on N while N+1 is being tested. A newer release may supersede N only after a
+    # later automatic Staging AI run is green and exposes its own non-expired
+    # promotion accreditation artifact, and only before the first prod mutation.
     for needle, label in (
         ("name: Production · promote", "promotion workflow name"),
         ("workflow_run:", "promotion workflow_run trigger"),
@@ -199,15 +206,21 @@ def static_check() -> list[str]:
         ("github-token: ${{ secrets.GITHUB_TOKEN }}", "promotion cross-run artifact permission"),
         ("Read accredited source SHA", "promotion reads accredited SHA"),
         ("staging_ai_run_id", "promotion validates artifact run provenance"),
+        ("staging_ai_run_number", "promotion carries source run ordering"),
         ("deploy_sha: ${{ steps.accreditation.outputs.deploy_sha }}", "promotion exports accredited SHA"),
         ("Gate · staging accredited SHA", "promotion staging gate"),
-        ("Require current main before starting promotion", "promotion stale-start guard"),
-        ("git ls-remote --exit-code origin refs/heads/main", "promotion compares accredited SHA to main"),
-        ("Verify staging backend still serves approved SHA", "promotion rechecks staging backend"),
-        ("Verify staging frontend still serves approved SHA", "promotion rechecks staging frontend"),
-        ("Verify staging AI health contract", "promotion rechecks staging AI"),
+        ("Require current main before starting promotion · lineage, not HEAD", "promotion lineage gate"),
+        ("compare/$DEPLOY_SHA...$current_main", "promotion proves accredited SHA remains in main lineage"),
+        ("Verify staging backend still serves approved SHA · diagnostic only", "promotion backend staging check is diagnostic"),
+        ("Verify staging frontend still serves approved SHA · diagnostic only", "promotion frontend staging check is diagnostic"),
+        ("Verify staging AI health contract · diagnostic only", "promotion AI staging check is diagnostic"),
+        ("SOURCE_STAGING_AI_RUN_NUMBER", "promotion carries source accreditation order into mutation gate"),
+        ("actions/workflows/staging-ai-worker.yml/runs?event=workflow_run&status=success&branch=main&per_page=100", "promotion searches only newer automatic green staging runs"),
+        ("number > source_number", "promotion requires strictly newer staging run"),
+        ("and not item.get('expired')", "promotion requires non-expired newer accreditation"),
+        ("newer_accredited_run", "promotion supersede decision is accreditation-based"),
         ("Production · Cloudflare Worker", "promotion Worker stage"),
-        ("Supersede stale production promotion before first mutation", "promotion final stale admission guard"),
+        ("Supersede stale production promotion before first mutation", "promotion final accreditation queue guard"),
         ("Production · Render backend", "promotion Render stage"),
         ("needs: cloudflare", "Render waits for Worker"),
         ('python3 scripts/render_production_deploy.py --sha "$DEPLOY_SHA"', "Render exact commit deploy"),
@@ -228,7 +241,7 @@ def static_check() -> list[str]:
         promotion,
         "Supersede stale production promotion before first mutation",
         "- name: Terraform apply",
-        "promotion final stale guard ordering",
+        "promotion final accreditation queue guard ordering",
         errors,
     )
     active_wrapper_sha = re.search(
