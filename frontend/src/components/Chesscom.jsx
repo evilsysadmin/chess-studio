@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { request } from '../http.js';
 import {
   CHESSCOM_COVER,
   chesscomCreateState,
@@ -122,7 +123,7 @@ export default function Chesscom({ onExit }) {
 
   useEffect(() => {
     let alive = true;
-    fetch(MATTHIAS_CANONICAL_ASSET_URL, { cache:'force-cache' })
+    request(MATTHIAS_CANONICAL_ASSET_URL, { cache:'force-cache' })
       .then((response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.text();
