@@ -46,8 +46,6 @@ on:
       - '.github/actions/cache-node-modules/action.yml'
       - '.github/workflows/e2e-full.yml'
   workflow_dispatch:
-  schedule:
-    - cron: '17 2 * * 0'
 
 permissions:
   contents: read
