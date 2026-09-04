@@ -43,14 +43,15 @@ async function expectThreeScene(corner, profile, label, { minReach = 0 } = {}) {
   await expect(avatar).toBeVisible();
   await expect(avatar).toHaveAttribute('data-home-presence-version', 'home-presence-v1');
   await expect(avatar).toHaveAttribute('data-home-microgesture-version', 'home-face-v2');
-  await expect(avatar).toHaveAttribute('data-three-model', 'matthias-pawn-v1');
+  await expect(avatar).toHaveAttribute('data-three-model', 'matthias-pawn-v2');
+  await expect(avatar).toHaveAttribute('data-three-fidelity', 'mock-faithful-v1');
   await expect(avatar).toHaveAttribute('data-three-render-mode', 'articulated-pawn-model');
   await expect(avatar).toHaveAttribute('data-three-emblem', 'premium-pawn');
   await expect(avatar).toHaveAttribute('data-three-profile', profile);
   await expect(avatar).toHaveAttribute('data-three-motion', 'active');
   await expect(avatar).toHaveAttribute('data-three-deformation', 'rigid-body+bounded-face');
   await expect(avatar).toHaveAttribute('data-three-face-rig', 'face-v1');
-  await expect(avatar).toHaveAttribute('data-three-articulated-face-rig', 'pawn-face-rig-v1');
+  await expect(avatar).toHaveAttribute('data-three-articulated-face-rig', 'pawn-face-rig-v2');
   await expect(avatar).toHaveAttribute('data-three-face-warp-limit', '0.019');
   await expect(fallback).toHaveAttribute('src', /\.webp(?:$|\?)/);
   await expect.poll(
@@ -125,7 +126,8 @@ test('Home · cuando Matthias habla articula boca y atención mientras el mensaj
   // El comentario de Home es transitorio. Comprobamos primero su estado vivo,
   // antes de ejecutar gates genéricos que pueden durar más que el propio nudge.
   await expect(bubble).toBeVisible();
-  await expect(avatar).toHaveAttribute('data-three-model', 'matthias-pawn-v1');
+  await expect(avatar).toHaveAttribute('data-three-model', 'matthias-pawn-v2');
+  await expect(avatar).toHaveAttribute('data-three-fidelity', 'mock-faithful-v1');
   await expect(avatar).toHaveAttribute('data-three-emblem', 'premium-pawn');
   await expect(avatar).toHaveAttribute('data-three-profile', 'speak');
   await expect(avatar).toHaveAttribute('data-home-presence-state', 'attend');
@@ -179,7 +181,8 @@ test('Home · 390px conserva microgestos, mérito diegético, texto legible y ce
   await expect(primaryCard).toBeVisible();
   await expect(corner).toHaveAttribute('data-placement', 'inline');
   const avatar = corner.locator('[data-matthias-three-avatar="true"]');
-  await expect(avatar).toHaveAttribute('data-three-model', 'matthias-pawn-v1');
+  await expect(avatar).toHaveAttribute('data-three-model', 'matthias-pawn-v2');
+  await expect(avatar).toHaveAttribute('data-three-fidelity', 'mock-faithful-v1');
   await expect(avatar).toHaveAttribute('data-three-render-mode', 'articulated-pawn-model');
   await expect(avatar).toHaveAttribute('data-three-emblem', 'premium-pawn');
   await expect(avatar).toHaveAttribute('data-three-deformation', 'rigid-body+bounded-face');
