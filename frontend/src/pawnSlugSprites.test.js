@@ -11,8 +11,12 @@ describe('Pawn Slug premium sprite contracts', () => {
     expect(PAWN_SLUG_SPRITE_META.enemies.frames).toBe(3);
     expect(PAWN_SLUG_SPRITE_META.boss.frames).toBe(1);
     expect(PAWN_SLUG_SPRITE_META.weapons.frames).toBe(4);
-    expect(PAWN_SLUG_SPRITE_META.matthias.frameWidth).toBe(192);
-    expect(PAWN_SLUG_SPRITE_META.enemies.frameWidth).toBe(192);
+    expect(PAWN_SLUG_SPRITE_META.matthias.frameWidth).toBe(72);
+    expect(PAWN_SLUG_SPRITE_META.matthias.frameHeight).toBe(104);
+    expect(PAWN_SLUG_SPRITE_META.enemies.frameWidth).toBe(104);
+    expect(PAWN_SLUG_SPRITE_META.enemies.frameHeight).toBe(104);
+    expect(PAWN_SLUG_SPRITE_META.boss.frameWidth).toBe(192);
+    expect(PAWN_SLUG_SPRITE_META.boss.frameHeight).toBe(192);
     expect(PAWN_SLUG_SPRITE_META.weapons.frameHeight).toBe(128);
   });
 
