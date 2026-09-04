@@ -10,6 +10,7 @@ import './MatthiasHomeResident.css';
 import './HomeCastleCoherence.css';
 import './MatthiasHomeSessionSummary.css';
 import './MatthiasMotionOverride.css';
+import './MatthiasHomeMobilePortrait.css';
 
 const AMBIENT_SCENE_MS = 28_000;
 const COMPACT_VIEWPORT_QUERY = '(max-width: 760px)';
