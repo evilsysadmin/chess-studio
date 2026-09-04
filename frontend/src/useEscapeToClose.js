@@ -33,6 +33,16 @@ function clearScheduledBrowserBackDisarm() {
   browserBackDisarmTimer = null;
 }
 
+function removePopstateListenerIfIdle() {
+  if (
+    typeof window === 'undefined'
+    || backStack.size()
+    || browserBackArmed
+    || browserBackProgrammaticPopPending
+  ) return;
+  window.removeEventListener?.('popstate', dispatchBrowserBack);
+}
+
 function armBrowserBack() {
   clearScheduledBrowserBackDisarm();
   if (
@@ -69,7 +79,10 @@ function scheduleBrowserBackDisarmIfIdle() {
 
     const ownsCurrentEntry = window.history.state?.[BROWSER_BACK_SENTINEL] === true;
     browserBackArmed = false;
-    if (!ownsCurrentEntry) return;
+    if (!ownsCurrentEntry) {
+      removePopstateListenerIfIdle();
+      return;
+    }
 
     try {
       // Quitar el sentinel provoca un popstate asíncrono. Lo marcamos como
@@ -79,6 +92,7 @@ function scheduleBrowserBackDisarmIfIdle() {
       window.history.back();
     } catch {
       browserBackProgrammaticPopPending = false;
+      removePopstateListenerIfIdle();
     }
   }, 0);
 }
@@ -96,7 +110,10 @@ function dispatchBrowserBack(event) {
     browserBackArmed = false;
     // Si una transición interna repobló la pila mientras llegaba este
     // popstate de mantenimiento, armamos un sentinel nuevo después del commit.
-    setTimeout(() => armBrowserBack(), 0);
+    setTimeout(() => {
+      armBrowserBack();
+      removePopstateListenerIfIdle();
+    }, 0);
     return;
   }
 
@@ -107,12 +124,18 @@ function dispatchBrowserBack(event) {
     type: 'popstate',
     stopPropagation: () => event?.stopPropagation?.(),
   });
-  if (!handled) return;
+  if (!handled) {
+    removePopstateListenerIfIdle();
+    return;
+  }
 
   // React may unmount the top modal/screen after the callback. Re-arm only
   // after that commit: if a parent handler remains, the next Android/browser
   // Back closes it; if the stack became empty, the browser is free again.
-  setTimeout(() => armBrowserBack(), 0);
+  setTimeout(() => {
+    armBrowserBack();
+    removePopstateListenerIfIdle();
+  }, 0);
 }
 
 function installGlobalListeners() {
@@ -130,8 +153,7 @@ function uninstallGlobalListenersIfIdle() {
   document.removeEventListener('keydown', dispatchBack);
   document.removeEventListener('contextmenu', dispatchBack);
   // Conservamos temporalmente popstate mientras el sentinel se retira. El
-  // listener se quitará cuando ese pop interno haya llegado o cuando la pila
-  // siga realmente vacía en el siguiente tick.
+  // listener se quitará al consumir ese pop interno si la pila sigue vacía.
   listenersInstalled = false;
 }
 
