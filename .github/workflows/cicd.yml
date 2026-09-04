@@ -27,6 +27,7 @@ jobs:
       run_e2e: ${{ steps.quality_paths.outputs.run_e2e }}
       run_pawn_slug_e2e: ${{ steps.quality_paths.outputs.run_pawn_slug_e2e }}
       run_chesscom_e2e: ${{ steps.quality_paths.outputs.run_chesscom_e2e }}
+      run_trailblazer_e2e: ${{ steps.quality_paths.outputs.run_trailblazer_e2e }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -58,6 +59,7 @@ jobs:
             echo 'run_e2e=true' >> "$GITHUB_OUTPUT"
             echo 'run_pawn_slug_e2e=true' >> "$GITHUB_OUTPUT"
             echo 'run_chesscom_e2e=true' >> "$GITHUB_OUTPUT"
+            echo 'run_trailblazer_e2e=true' >> "$GITHUB_OUTPUT"
           }
 
           if [[ "$EVENT_NAME" == 'workflow_dispatch' ]]; then
@@ -84,20 +86,23 @@ jobs:
           run_e2e=false
           run_pawn_slug_e2e=false
           run_chesscom_e2e=false
+          run_trailblazer_e2e=false
 
           frontend_files="$(grep -E '^frontend/' <<< "$files" || true)"
           if [[ -n "$frontend_files" ]]; then
             run_frontend=true
 
-            # Pawn Slug y Chesscom son islas lazy/aisladas. Un diff confinado a
-            # estas superficies usa su smoke Playwright específico en vez de los
-            # dos journeys E2E globales. Una mezcla con core restaura el gate total.
+            # Los experimentos lazy/aislados usan su smoke Playwright específico
+            # en lugar de los dos journeys E2E globales. Cualquier mezcla con core
+            # restaura automáticamente el gate completo.
             pawn_slug_pattern='^frontend/src/pawnSlug[^/]*\.(js|jsx)$|^frontend/src/components/PawnSlug[^/]*\.(js|jsx|css)$|^frontend/src/assets/pawnSlug/'
             chesscom_pattern='^frontend/src/chesscom[^/]*\.(js|jsx)$|^frontend/src/components/Chesscom[^/]*\.(js|jsx|css)$|^frontend/public/chesscom/'
-            targeted_pattern="$pawn_slug_pattern|$chesscom_pattern"
+            trailblazer_pattern='^frontend/src/pawnTrailblazer[^/]*\.(js|jsx)$|^frontend/src/components/PawnTrailblazer[^/]*\.(js|jsx|css)$|^frontend/src/assets/pawnTrailblazer/'
+            targeted_pattern="$pawn_slug_pattern|$chesscom_pattern|$trailblazer_pattern"
 
             pawn_slug_frontend="$(grep -E "$pawn_slug_pattern" <<< "$frontend_files" || true)"
             chesscom_frontend="$(grep -E "$chesscom_pattern" <<< "$frontend_files" || true)"
+            trailblazer_frontend="$(grep -E "$trailblazer_pattern" <<< "$frontend_files" || true)"
             non_targeted_frontend="$(grep -Ev "$targeted_pattern" <<< "$frontend_files" || true)"
 
             if [[ -n "$pawn_slug_frontend" ]]; then
@@ -105,6 +110,9 @@ jobs:
             fi
             if [[ -n "$chesscom_frontend" ]]; then
               run_chesscom_e2e=true
+            fi
+            if [[ -n "$trailblazer_frontend" ]]; then
+              run_trailblazer_e2e=true
             fi
             if [[ -n "$non_targeted_frontend" ]]; then
               run_e2e=true
@@ -124,7 +132,10 @@ jobs:
             if grep -Eq '^e2e/chesscom\.spec\.js$' <<< "$e2e_files"; then
               run_chesscom_e2e=true
             fi
-            non_targeted_e2e="$(grep -Ev '^e2e/(pawn-slug|chesscom)\.spec\.js$' <<< "$e2e_files" || true)"
+            if grep -Eq '^e2e/pawn-trailblazer\.spec\.js$' <<< "$e2e_files"; then
+              run_trailblazer_e2e=true
+            fi
+            non_targeted_e2e="$(grep -Ev '^e2e/(pawn-slug|chesscom|pawn-trailblazer)\.spec\.js$' <<< "$e2e_files" || true)"
             if [[ -n "$non_targeted_e2e" ]]; then
               run_e2e=true
             fi
@@ -135,11 +146,12 @@ jobs:
           echo "run_e2e=$run_e2e" >> "$GITHUB_OUTPUT"
           echo "run_pawn_slug_e2e=$run_pawn_slug_e2e" >> "$GITHUB_OUTPUT"
           echo "run_chesscom_e2e=$run_chesscom_e2e" >> "$GITHUB_OUTPUT"
+          echo "run_trailblazer_e2e=$run_trailblazer_e2e" >> "$GITHUB_OUTPUT"
 
   frontend:
     name: Tests · Frontend
     needs: preflight
-    if: needs.preflight.outputs.run_frontend == 'true'
+    if: needs.preflight.outputs.run_frontend == 'true' || needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -184,7 +196,7 @@ jobs:
           python3 ../scripts/npm_audit_gate.py ../.security/npm-audit.json
 
       - name: Restore targeted experiment browser runtime
-        if: needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true'
+        if: needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true'
         uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
@@ -200,8 +212,13 @@ jobs:
         working-directory: e2e
         run: ./node_modules/.bin/playwright test chesscom.spec.js --workers=1 --retries=0
 
+      - name: Pawn Trailblazer browser smoke
+        if: needs.preflight.outputs.run_trailblazer_e2e == 'true'
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test pawn-trailblazer.spec.js --workers=1 --retries=0
+
       - name: Upload targeted browser diagnostics on failure
-        if: failure() && (needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true')
+        if: failure() && (needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true')
         uses: actions/upload-artifact@v7
         with:
           name: targeted-playwright-test-results
