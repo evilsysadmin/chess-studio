@@ -25,6 +25,7 @@ jobs:
       run_frontend: ${{ steps.quality_paths.outputs.run_frontend }}
       run_backend: ${{ steps.quality_paths.outputs.run_backend }}
       run_e2e: ${{ steps.quality_paths.outputs.run_e2e }}
+      run_pawn_slug_e2e: ${{ steps.quality_paths.outputs.run_pawn_slug_e2e }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -54,6 +55,7 @@ jobs:
             echo 'run_frontend=true' >> "$GITHUB_OUTPUT"
             echo 'run_backend=true' >> "$GITHUB_OUTPUT"
             echo 'run_e2e=true' >> "$GITHUB_OUTPUT"
+            echo 'run_pawn_slug_e2e=true' >> "$GITHUB_OUTPUT"
           }
 
           if [[ "$EVENT_NAME" == 'workflow_dispatch' ]]; then
@@ -78,22 +80,47 @@ jobs:
           run_frontend=false
           run_backend=false
           run_e2e=false
+          run_pawn_slug_e2e=false
 
-          if grep -Eq '^frontend/' <<< "$files"; then
+          frontend_files="$(grep -E '^frontend/' <<< "$files" || true)"
+          if [[ -n "$frontend_files" ]]; then
             run_frontend=true
-            run_e2e=true
+
+            # Pawn Slug es una isla lazy/aislada. Cuando el diff sólo toca su
+            # runtime, componente, CSS, tests o assets, sustituimos los dos
+            # journeys E2E globales por su smoke Playwright específico.
+            pawn_slug_pattern='^frontend/src/pawnSlug[^/]*\.(js|jsx)$|^frontend/src/components/PawnSlug[^/]*\.(js|jsx|css)$|^frontend/src/assets/pawnSlug/'
+            pawn_slug_frontend="$(grep -E "$pawn_slug_pattern" <<< "$frontend_files" || true)"
+            non_pawn_slug_frontend="$(grep -Ev "$pawn_slug_pattern" <<< "$frontend_files" || true)"
+
+            if [[ -n "$pawn_slug_frontend" ]]; then
+              run_pawn_slug_e2e=true
+            fi
+            if [[ -n "$non_pawn_slug_frontend" ]]; then
+              run_e2e=true
+            fi
           fi
+
           if grep -Eq '^backend-python/' <<< "$files"; then
             run_backend=true
             run_e2e=true
           fi
-          if grep -Eq '^e2e/' <<< "$files"; then
-            run_e2e=true
+
+          e2e_files="$(grep -E '^e2e/' <<< "$files" || true)"
+          if [[ -n "$e2e_files" ]]; then
+            if grep -Eq '^e2e/pawn-slug\.spec\.js$' <<< "$e2e_files"; then
+              run_pawn_slug_e2e=true
+            fi
+            non_pawn_slug_e2e="$(grep -Ev '^e2e/pawn-slug\.spec\.js$' <<< "$e2e_files" || true)"
+            if [[ -n "$non_pawn_slug_e2e" ]]; then
+              run_e2e=true
+            fi
           fi
 
           echo "run_frontend=$run_frontend" >> "$GITHUB_OUTPUT"
           echo "run_backend=$run_backend" >> "$GITHUB_OUTPUT"
           echo "run_e2e=$run_e2e" >> "$GITHUB_OUTPUT"
+          echo "run_pawn_slug_e2e=$run_pawn_slug_e2e" >> "$GITHUB_OUTPUT"
 
   frontend:
     name: Tests · Frontend
@@ -141,6 +168,27 @@ jobs:
             printf '%s\n' '{"error":{"code":"AUDIT_UNAVAILABLE","summary":"npm audit no produjo informe","detail":"endpoint remoto o red no disponibles"}}' > ../.security/npm-audit.json
           fi
           python3 ../scripts/npm_audit_gate.py ../.security/npm-audit.json
+
+      - name: Restore targeted Pawn Slug browser runtime
+        if: needs.preflight.outputs.run_pawn_slug_e2e == 'true'
+        uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+          build-frontend: 'false'
+
+      - name: Pawn Slug browser smoke
+        if: needs.preflight.outputs.run_pawn_slug_e2e == 'true'
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test pawn-slug.spec.js --workers=1 --retries=0
+
+      - name: Upload Pawn Slug diagnostics on failure
+        if: failure() && needs.preflight.outputs.run_pawn_slug_e2e == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: pawn-slug-playwright-test-results
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
 
   backend:
     name: Tests · Backend
@@ -341,7 +389,7 @@ jobs:
             exit 1
           fi
           if [[ "$RUN_E2E" != 'true' ]]; then
-            echo 'Playwright omitido: esta superficie no requiere navegador crítico.'
+            echo 'Playwright core omitido: esta superficie usa un gate dirigido o no requiere navegador crítico.'
             exit 0
           fi
           if [[ "$LANES_RESULT" != 'success' ]]; then
