@@ -66,7 +66,15 @@ for (const scenario of [
 requireText(regression, 'deploy · una release nueva no fuerza reload mientras la partida está activa', 'falta regresión E2E de aviso de release durante tablero activo');
 
 const ciRunsCriticalTarget = ci.includes('make e2e-critical');
-if (!ciRunsCriticalTarget) failures.push('CI crítico debe delegar los journeys de continuidad en make e2e-critical');
+const shardedE2e = ci.includes('\n  e2e_lanes:\n');
+if (!ciRunsCriticalTarget && !shardedE2e) {
+  failures.push('CI crítico debe delegar en make e2e-critical o declarar lanes críticas aisladas auditadas');
+}
+if (shardedE2e) {
+  requireText(ci, 'name: Tests · Playwright · ${{ matrix.lane }}', 'CI shardado debe nombrar explícitamente cada lane crítica');
+  requireText(ci, 'needs: [preflight, e2e_lanes]', 'Tests · Playwright debe esperar a todas las lanes antes de acreditar continuidad');
+  requireText(ci, 'fail-fast: false', 'CI shardado debe completar diagnóstico de ambas lanes aunque una falle');
+}
 for (const ciPattern of [
   'Partida rápida · una partida activa',
   'Torneo · una partida activa',
@@ -74,7 +82,8 @@ for (const ciPattern of [
   'Combat Chess · salir al menú conserva campaña',
   'deploy · una release nueva no fuerza reload',
 ]) {
-  if (!(ciRunsCriticalTarget && makefile.includes(ciPattern))) failures.push(`CI crítico no ejecuta la regresión de continuidad: ${ciPattern}`);
+  const covered = shardedE2e ? ci.includes(ciPattern) : (ciRunsCriticalTarget && makefile.includes(ciPattern));
+  if (!covered) failures.push(`CI crítico no ejecuta la regresión de continuidad: ${ciPattern}`);
 }
 
 if (failures.length) {
@@ -82,4 +91,4 @@ if (failures.length) {
   for (const failure of failures) console.error(` - ${failure}`);
   process.exit(1);
 }
-console.log('session-continuity-gate OK · normal/tournament restore policy + deploy + Combat continuity protected');
+console.log(`session-continuity-gate OK · normal/tournament restore policy + deploy + Combat continuity protected · CI ${shardedE2e ? 'sharded' : 'make e2e-critical'}`);
