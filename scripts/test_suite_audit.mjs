@@ -66,9 +66,6 @@ if (implicitClockTests.length) fail(`Tests dependientes del reloj real: ${implic
 
 const storageWithoutReset = frontendFiles.filter((name) => {
   const source = read(path.join(frontendSrc, name));
-  // Sólo los tests que TOCAN Web Storage necesitan limpieza. Contract-tests
-  // que inspeccionan texto o regex sobre la palabra "localStorage" no deben
-  // quedar marcados como usuarios reales del storage.
   if (!/(?:localStorage|sessionStorage)\.(?:getItem|setItem|removeItem|clear)\s*\(/.test(source)) return false;
   return !/(?:localStorage|sessionStorage)\.clear\(\)/.test(source);
 });
@@ -85,7 +82,7 @@ for (const relative of [...FRONTEND_SMOKE_TESTS, ...FRONTEND_CONTRACT_TESTS]) {
 }
 
 const sourceReaders = frontendFiles.filter((name) => /(?:readFileSync|fs\.readFileSync)/.test(read(path.join(frontendSrc, name))));
-const MAX_SOURCE_READER_TESTS = 3; // Presupuesto actual: puede bajar, no debe volver a crecer.
+const MAX_SOURCE_READER_TESTS = 3;
 if (sourceReaders.length > MAX_SOURCE_READER_TESTS) fail(`Demasiados contract-tests que inspeccionan source text: ${sourceReaders.length} > ${MAX_SOURCE_READER_TESTS}. Prefiere tests de comportamiento. Detectados: ${sourceReaders.join(', ')}`);
 for (const name of sourceReaders) {
   if (!contractBasenames.has(name)) fail(`${name} inspecciona source text pero no pertenece al grupo contract`);
@@ -129,22 +126,86 @@ if (checkCiWiring) {
     ? fs.readdirSync(workflowsDir).filter((name) => /\.ya?ml$/i.test(name)).sort()
     : [];
   if (!workflowFiles.length) fail('No hay workflows de GitHub Actions que auditar');
-  const workflowSource = workflowFiles.map((name) => read(path.join(workflowsDir, name))).join('\n');
+  const workflowEntries = workflowFiles.map((name) => [name, read(path.join(workflowsDir, name))]);
+  const workflowSource = workflowEntries.map(([, source]) => source).join('\n');
   const mainCiPath = path.join(workflowsDir, 'cicd.yml');
   const promotionPath = path.join(workflowsDir, 'production-promote.yml');
   const stagingAiPath = path.join(workflowsDir, 'staging-ai-worker.yml');
+  const stagingDeployPath = path.join(workflowsDir, 'staging-deploy.yml');
+  const stagingPreviewPath = path.join(workflowsDir, 'staging-preview.yml');
   const coverageWorkflowPath = path.join(workflowsDir, 'coverage.yml');
+  const browserWorkflowPath = path.join(workflowsDir, 'e2e-full.yml');
+  const setupBrowserPath = path.join(root, '.github', 'actions', 'setup-browser-e2e', 'action.yml');
   if (!fs.existsSync(mainCiPath)) fail('Falta .github/workflows/cicd.yml');
   if (!fs.existsSync(promotionPath)) fail('Falta .github/workflows/production-promote.yml');
   if (!fs.existsSync(stagingAiPath)) fail('Falta .github/workflows/staging-ai-worker.yml');
+  if (!fs.existsSync(stagingDeployPath)) fail('Falta .github/workflows/staging-deploy.yml');
+  if (!fs.existsSync(stagingPreviewPath)) fail('Falta .github/workflows/staging-preview.yml');
   if (!fs.existsSync(coverageWorkflowPath)) fail('Coverage informativo debe vivir fuera del CI de cada push');
+  if (!fs.existsSync(browserWorkflowPath)) fail('Falta el gate Browser E2E');
+  if (!fs.existsSync(setupBrowserPath)) fail('Falta la acción común setup-browser-e2e');
   const mainCiSource = read(mainCiPath);
   const promotionSource = read(promotionPath);
   const stagingAiSource = read(stagingAiPath);
+  const stagingDeploySource = read(stagingDeployPath);
+  const stagingPreviewSource = read(stagingPreviewPath);
   const coverageWorkflowSource = read(coverageWorkflowPath);
-  for (const obsolete of ['terraform-cloudflare.yml', 'static.yml']) {
-    if (fs.existsSync(path.join(workflowsDir, obsolete))) fail(`Pipeline de producción duplicado: ${obsolete}`);
+  const browserWorkflowSource = read(browserWorkflowPath);
+  const setupBrowserSource = read(setupBrowserPath);
+
+  for (const obsolete of [
+    'terraform-cloudflare.yml',
+    'static.yml',
+    'matthias-visual.yml',
+    'oci-arm64-readiness.yml',
+    'oci-terraform-readiness.yml',
+  ]) {
+    if (fs.existsSync(path.join(workflowsDir, obsolete))) fail(`Workflow obsoleto/duplicado resucitado: ${obsolete}`);
   }
+
+  const directRegistryInstalls = workflowEntries.filter(([, source]) => /(^|\n)\s*(?:run:\s*)?(?:npm\s+ci\b|make\s+frontend-install\b)/m.test(source));
+  if (directRegistryInstalls.length) {
+    fail(`Workflows con instalación Node directa en vez de cache exacta: ${directRegistryInstalls.map(([name]) => name).join(', ')}`);
+  }
+  const runIdCacheKeys = workflowEntries.filter(([, source]) => /key:[^\n]*github\.run_id/.test(source));
+  if (runIdCacheKeys.length) fail(`Cache keys efímeras por run_id: ${runIdCacheKeys.map(([name]) => name).join(', ')}`);
+
+  const criticalPinnedRunnerFiles = [
+    'cicd.yml',
+    'e2e-full.yml',
+    'coverage.yml',
+    'staging-deploy.yml',
+    'staging-ai-worker.yml',
+    'staging-preview.yml',
+    'production-promote.yml',
+  ];
+  for (const name of criticalPinnedRunnerFiles) {
+    const source = read(path.join(workflowsDir, name));
+    if (source.includes('ubuntu-latest')) fail(`${name} usa ubuntu-latest en una ruta crítica; fija ubuntu-24.04`);
+  }
+
+  for (const [label, source, required] of [
+    ['CI principal', mainCiSource, './.github/actions/cache-node-modules'],
+    ['CI principal backend', mainCiSource, './.github/actions/cache-python-venv'],
+    ['CI browser', mainCiSource, './.github/actions/setup-browser-e2e'],
+    ['Coverage frontend', coverageWorkflowSource, './.github/actions/cache-node-modules'],
+    ['Coverage backend', coverageWorkflowSource, './.github/actions/cache-python-venv'],
+    ['Browser E2E', browserWorkflowSource, './.github/actions/setup-browser-e2e'],
+    ['Staging deploy', stagingDeploySource, './.github/actions/cache-node-modules'],
+    ['Staging deploy Wrangler', stagingDeploySource, './.github/actions/setup-wrangler'],
+    ['Staging preview', stagingPreviewSource, './.github/actions/cache-node-modules'],
+    ['Staging preview Wrangler', stagingPreviewSource, './.github/actions/setup-wrangler'],
+    ['Production frontend', promotionSource, './.github/actions/cache-node-modules'],
+    ['Production Wrangler', promotionSource, './.github/actions/setup-wrangler'],
+  ]) {
+    if (!source.includes(required)) fail(`${label} debe usar ${required}`);
+  }
+
+  if (!setupBrowserSource.includes('playwright-${{ inputs.browser-scope }}-')) fail('Playwright debe separar la cache por browser-scope');
+  if (!setupBrowserSource.includes('chromium firefox webkit')) fail('setup-browser-e2e debe conservar instalación multi-browser');
+  if (!mainCiSource.includes('trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-${{ steps.trivy_epoch.outputs.day }}')) fail('Trivy CI debe usar cache diaria/versionada, no una cache por run');
+  if (!mainCiSource.includes('docker/setup-buildx-action@v4')) fail('Security images debe preparar Buildx para reutilizar capas GHA');
+
   if (mainCiSource.includes('workflow_run:')) fail('CI principal no debe usar workflow_run; sólo valida calidad');
   for (const forbidden of ['Cloudflare Worker · Terraform', 'actions/deploy-pages@', 'RENDER_API_KEY', '  terraform:\n', '  pages:\n']) {
     if (mainCiSource.includes(forbidden)) fail(`CI principal no debe desplegar producción: ${forbidden}`);
@@ -248,7 +309,8 @@ if (!playwrightConfig.includes('actionTimeout:')) fail('Playwright debe tener ac
 if (!/retries:\s*0/.test(playwrightConfig)) fail('Playwright informativo no debe reintentar: los retries alargan ruido y esconden fallos deterministas');
 if (!playwrightConfig.includes("PLAYWRIGHT_ALL_BROWSERS") || !playwrightConfig.includes("Desktop Firefox") || !playwrightConfig.includes("Desktop Safari")) fail('Playwright informativo debe conservar matriz Chromium/Firefox/WebKit');
 const fullE2EWorkflow = read(path.join(root, '.github', 'workflows', 'e2e-full.yml'));
-if (!fullE2EWorkflow.includes('chromium firefox webkit') || !fullE2EWorkflow.includes("PLAYWRIGHT_ALL_BROWSERS: '1'")) fail('Workflow E2E completo no activa la matriz multi-browser');
+const browserSetupAction = read(path.join(root, '.github', 'actions', 'setup-browser-e2e', 'action.yml'));
+if (!fullE2EWorkflow.includes("browser-scope: all") || !browserSetupAction.includes('chromium firefox webkit') || !fullE2EWorkflow.includes("PLAYWRIGHT_ALL_BROWSERS: '1'")) fail('Workflow E2E completo no activa la matriz multi-browser mediante setup-browser-e2e');
 if (e2eTests < 11) fail(`Cobertura E2E/DOM demasiado testimonial: ${e2eTests} caso(s); mínimo 11`);
 const resilienceBehaviorTests = [
   'backNavigationStack.test.js',
@@ -262,12 +324,6 @@ for (const name of resilienceBehaviorTests) {
 }
 
 const e2eSource = e2eFiles.map((name) => read(path.join(e2eDir, name))).join('\n');
-
-// Home cards now carry contextual help buttons whose aria-label deliberately
-// repeats the feature name ("Ayuda de Partida rápida", etc.). A broad regex
-// role selector therefore becomes ambiguous in Playwright strict mode. Keep
-// this as a suite-level contract so a future refactor cannot reintroduce the
-// evita reintroducir selectores ambiguos cuando la ayuda contextual comparte nombre con la tarjeta.
 for (const label of ['Así juegas', 'Partida rápida', 'Torneo', 'Combat Chess · Campaña']) {
   const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const broadRoleSelector = new RegExp(`getByRole\\(['\"]button['\"],\\s*\\{\\s*name:\\s*\\/[^\\n/]*${escaped}`, 'i');
