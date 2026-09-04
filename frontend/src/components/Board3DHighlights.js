@@ -5,7 +5,7 @@ export const BOARD3D_HIGHLIGHT_SIZE = 0.86;
  * need a deliberately cool contrast so they remain readable on both light and
  * dark board tiles. The extra parity tones let non-standard surfaces preserve
  * information that used to exist only as 2D CSS classes. Active interaction
- * still wins over ambient annotations: legal/capture < selection < check. */
+ * still wins over ambient annotations: parity < legal/technique < selection < check. */
 export const BOARD3D_HIGHLIGHT_COLORS = Object.freeze({
   focus: 0x76674f,
   hover: 0xb5873f,
@@ -18,6 +18,7 @@ export const BOARD3D_HIGHLIGHT_COLORS = Object.freeze({
   veteran: 0xb58a38,
   xp: 0x3f8d67,
   special: 0x4b8a8d,
+  technique: 0x755fc4,
   legal: 0x245f9f,
   capture: 0x96462e,
   selected: 0xc99a43,
@@ -33,6 +34,13 @@ const PARITY_STYLE = Object.freeze({
   xp: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.xp, opacity: 0.5, scale: 0.84 }),
   special: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.special, opacity: 0.58, scale: 0.88 }),
 });
+
+function legalMeta(value) {
+  if (value && typeof value === 'object') {
+    return { capture: Boolean(value.capture), technique: Boolean(value.technique) };
+  }
+  return { capture: Boolean(value), technique: false };
+}
 
 export function board3DHighlightStyle({
   square,
@@ -72,11 +80,18 @@ export function board3DHighlightStyle({
   }
 
   if (legalMap?.has?.(square)) {
-    const capture = Boolean(legalMap.get(square));
-    kind = capture ? 'capture' : 'legal';
-    color = capture ? BOARD3D_HIGHLIGHT_COLORS.capture : BOARD3D_HIGHLIGHT_COLORS.legal;
-    opacity = capture ? 0.8 : 0.84;
-    scale = capture ? 0.9 : 0.82;
+    const meta = legalMeta(legalMap.get(square));
+    if (meta.technique) {
+      kind = 'technique';
+      color = BOARD3D_HIGHLIGHT_COLORS.technique;
+      opacity = 0.9;
+      scale = 0.91;
+    } else {
+      kind = meta.capture ? 'capture' : 'legal';
+      color = meta.capture ? BOARD3D_HIGHLIGHT_COLORS.capture : BOARD3D_HIGHLIGHT_COLORS.legal;
+      opacity = meta.capture ? 0.8 : 0.84;
+      scale = meta.capture ? 0.9 : 0.82;
+    }
   }
   if (selectedSquare === square) {
     kind = 'selected';
