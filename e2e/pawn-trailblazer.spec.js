@@ -38,7 +38,7 @@ test('Pawn Trailblazer · arranca con Three.js real y entra en carrera', async (
 
   await mode.getByRole('button', { name: 'Iniciar carrera', exact: true }).click();
   await expect(mode).not.toHaveAttribute('data-trail-phase', 'ready');
-  await expect(mode.getByLabel('Controles táctiles')).toBeVisible();
+  await expect(mode.getByLabel('Controles táctiles')).toBeHidden();
 });
 
 test('Pawn Trailblazer · móvil conserva controles utilizables sin overflow horizontal', async ({ page }) => {
