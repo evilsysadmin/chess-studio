@@ -22,7 +22,6 @@ const RESTORABLE_VIEWS = Object.freeze([
   'insights',
   'dailyChallenges',
   'lab',
-  'board3d',
 ]);
 
 function allowedView(view, { isAdminUser = false } = {}) {
