@@ -8,6 +8,18 @@ async function dismissHomeGuide(page) {
   }
 }
 
+async function dismissMatthiasSpeech(corner) {
+  const bubble = corner.getByRole('region', { name: 'Mensaje de Matthias' });
+  const dismiss = corner.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
+  if (!(await bubble.isVisible().catch(() => false))) return;
+
+  await dismiss.click({ timeout: 2_500 }).catch(() => {});
+  if (await bubble.isVisible().catch(() => false)) {
+    await dismiss.click({ force: true, timeout: 1_500 }).catch(() => {});
+  }
+  await expect(bubble).toBeHidden({ timeout: 5_000 });
+}
+
 async function openHomeAt(page, hour, { dismissSpeech = true, profileSeed = {} } = {}) {
   await page.addInitScript((fixedHour) => {
     Math.random = () => 0;
@@ -26,14 +38,7 @@ async function openHomeAt(page, hour, { dismissSpeech = true, profileSeed = {} }
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await expect(corner).toBeVisible();
   await expect(corner).toHaveAttribute('data-three-presentation', 'home-v4');
-  if (dismissSpeech) {
-    const dismiss = corner.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
-    if (await dismiss.isVisible().catch(() => false)) {
-      await dismiss.click({ timeout: 1_500 }).catch(async () => {
-        await expect(dismiss).toHaveCount(0, { timeout: 1_500 });
-      });
-    }
-  }
+  if (dismissSpeech) await dismissMatthiasSpeech(corner);
   return corner;
 }
 
@@ -43,12 +48,18 @@ async function captureSpeechBubbleContract(corner) {
   return bubble.evaluate((bubbleNode) => {
     const residentNode = bubbleNode.closest('.matthias-resident');
     const characterNode = residentNode?.querySelector('.matthias-resident__character');
+    const avatarNode = residentNode?.querySelector('[data-matthias-three-avatar="true"]');
     const bubbleRect = bubbleNode.getBoundingClientRect();
     const characterRect = characterNode?.getBoundingClientRect();
     const textNode = bubbleNode.querySelector('p');
     return {
       gap: characterRect ? characterRect.left - bubbleRect.right : Number.POSITIVE_INFINITY,
       bubbleFontSize: textNode ? Number.parseFloat(getComputedStyle(textNode).fontSize) : 0,
+      profile: avatarNode?.getAttribute('data-three-profile') || '',
+      presenceState: avatarNode?.getAttribute('data-home-presence-state') || '',
+      faceExpression: avatarNode?.getAttribute('data-three-face-expression') || '',
+      mouthOpen: Number(avatarNode?.getAttribute('data-three-mouth-open')) || 0,
+      faceArticulation: Number(avatarNode?.getAttribute('data-three-face-articulation')) || 0,
     };
   });
 }
@@ -146,27 +157,21 @@ test('Home · cuando Matthias habla mantiene atención y señal facial mientras 
   const avatar = corner.locator('[data-matthias-three-avatar="true"]');
   const canvas = avatar.locator('canvas');
 
-  const geometry = await captureSpeechBubbleContract(corner);
-  expect(geometry.gap, 'el bocadillo debe pertenecer físicamente a Matthias').toBeGreaterThanOrEqual(0);
-  expect(geometry.gap, 'la cola no puede quedar flotando lejos de Matthias').toBeLessThanOrEqual(16);
-  expect(geometry.bubbleFontSize, 'el comentario de Matthias debe leerse sin forzar la vista').toBeGreaterThanOrEqual(13);
+  const speech = await captureSpeechBubbleContract(corner);
+  expect(speech.gap, 'el bocadillo debe pertenecer físicamente a Matthias').toBeGreaterThanOrEqual(0);
+  expect(speech.gap, 'la cola no puede quedar flotando lejos de Matthias').toBeLessThanOrEqual(16);
+  expect(speech.bubbleFontSize, 'el comentario de Matthias debe leerse sin forzar la vista').toBeGreaterThanOrEqual(13);
+  expect(speech.profile, 'la foto tomada con el bocadillo vivo debe conservar el perfil de habla').toBe('speak');
+  expect(speech.presenceState, 'la foto tomada con el bocadillo vivo debe mantener atención').toBe('attend');
+  expect(speech.faceExpression, 'la foto tomada con el bocadillo vivo debe mantener la expresión de alerta').toBe('alert');
+  expect(speech.mouthOpen, 'hablar debe tener señal de boca en la misma foto temporal').toBeGreaterThan(.2);
+  expect(speech.faceArticulation, 'hablar debe articular cabeza/cara en la misma foto temporal').toBeGreaterThan(.02);
 
   await expect(avatar).toHaveAttribute('data-three-model', 'matthias-home-premium-3d-v1');
   await expect(avatar).toHaveAttribute('data-three-fidelity', 'approved-original-premium-v1');
   await expect(avatar).toHaveAttribute('data-three-render-mode', 'canonical-premium-pawn-3d');
-  await expect(avatar).toHaveAttribute('data-three-profile', 'speak');
-  await expect(avatar).toHaveAttribute('data-home-presence-state', 'attend');
-  await expect(avatar).toHaveAttribute('data-three-face-expression', 'alert');
   await expect.poll(() => avatar.getAttribute('data-three-ready'), { timeout: 4_000 }).toBe('true');
   await expect(canvas).toBeVisible();
-  await expect.poll(
-    async () => Number(await avatar.getAttribute('data-three-mouth-open')) || 0,
-    { timeout: 2_500, message: 'hablar debe mantener una señal de boca activa' },
-  ).toBeGreaterThan(.2);
-  await expect.poll(
-    async () => Number(await avatar.getAttribute('data-three-face-articulation')) || 0,
-    { timeout: 2_500, message: 'hablar debe mantener articulación de cabeza/cara en el rig' },
-  ).toBeGreaterThan(.02);
 });
 
 test('Home · 390px conserva microgestos, mérito diegético, texto legible y cero overflow', async ({ page }) => {
