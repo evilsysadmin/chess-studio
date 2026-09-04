@@ -1,19 +1,38 @@
 # Grafana Cloud · dashboards as code
 
-Terraform publica cuatro dashboards bajo la carpeta **Chess Studio**:
+Chess Studio publica cuatro dashboards versionados bajo la carpeta **Chess Studio** mediante la **Grafana HTTP API**:
 
 - `chess-studio-api-overview` · salud operativa rápida.
 - `chess-studio-logs` · 404, 5xx, p95, release, `request_id` y `trace_id` accionables.
 - `chess-studio-traces` · Tempo/TraceQL para latencia y errores.
 - `chess-studio-edge` · tráfico, errores, países, seguridad y Workers vistos desde Cloudflare.
 
-El workflow `.github/workflows/grafana-dashboards.yml` adopta la carpeta y dashboards existentes antes del plan porque el runner es efímero y no hay backend remoto de Terraform.
+El publisher es `scripts/grafana_publish.py`. Es idempotente, usa sólo la biblioteca estándar de Python y hace:
+
+1. validación opcional de los datasource UID con el token disponible;
+2. adopción de la carpeta existente `Chess Studio` por título o creación con UID estable `chess-studio`;
+3. render de los placeholders de datasource/release en los JSON versionados;
+4. `POST /api/dashboards/db` con `overwrite=true`;
+5. `GET /api/dashboards/uid/<uid>` para verificar cada publicación.
+
+No hay Terraform, provider downloads, state remoto/local, imports ni `plan/apply` para dashboards. Para cuatro documentos JSON, la API de Grafana es el contrato operativo más pequeño y observable.
+
+El workflow `.github/workflows/grafana-dashboards.yml` se ejecuta únicamente cuando cambian dashboards, publisher/contrato o el propio workflow, además de `workflow_dispatch` manual.
 
 ## GitHub
 
-Secrets: `GRAFANA_URL`, `GRAFANA_AUTH`.
+Secrets:
 
-Variables opcionales: `GRAFANA_METRICS_DATASOURCE_UID`, `GRAFANA_LOGS_DATASOURCE_UID`, `GRAFANA_TRACES_DATASOURCE_UID`.
+- `GRAFANA_URL`
+- `GRAFANA_AUTH`
+
+Variables opcionales:
+
+- `GRAFANA_METRICS_DATASOURCE_UID`
+- `GRAFANA_LOGS_DATASOURCE_UID`
+- `GRAFANA_TRACES_DATASOURCE_UID`
+
+El token puede mantener privilegio mínimo. Si no tiene permiso de lectura de datasources (`403`), el publisher avisa y continúa; la publicación real de dashboards sigue siendo la prueba autoritativa. Un `404`/error real sí falla.
 
 ## Tempo / OTLP en Render
 
