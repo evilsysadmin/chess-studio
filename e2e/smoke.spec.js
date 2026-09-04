@@ -323,8 +323,10 @@ test('Combat Chess · salir al menú conserva campaña y batalla activas', async
   await page.getByRole('button', { name: 'Salir al menú', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
 
-  await buttonWithVisibleText(page, 'Combat Chess · Campaña').click();
-  await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
+  // SPA transition: the click completes before an unrelated scheduled navigation.
+  // Do not let Playwright's implicit navigation wait turn a successful re-entry into a false failure.
+  await buttonWithVisibleText(page, 'Combat Chess · Campaña').click({ noWaitAfter: true });
+  await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible({ timeout: 20000 });
   await expect(page.getByRole('button', { name: /Empezar campaña/i })).toHaveCount(0);
 });
 
