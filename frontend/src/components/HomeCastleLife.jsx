@@ -1,6 +1,7 @@
 import './HomeCastleLife.css';
 import './HomeGreatHall.css';
 import './HomeCastleAmbience.css';
+import HomeGreatHallScene from './HomeGreatHallScene.jsx';
 import { ACHIEVEMENTS, loadAchievementLedger, loadUnlocked } from '../achievements.js';
 
 const MAX_OBJECTS = 3;
@@ -211,6 +212,7 @@ export default function HomeCastleLife({ achievementIds = null, achievementLedge
       data-castle-ambience-evidence={model.ambienceEvidence}
       data-castle-honours={visibleObjects.filter((object) => object.kind === 'honour').length}
     >
+      <HomeGreatHallScene ambience={model.ambience} />
       <div className="home-castle-life__decor" aria-label="Objetos desbloqueados del castillo">
         {visibleObjects.map((object, index) => (
           <span
