@@ -188,7 +188,7 @@ jobs:
   cloudflare:
     name: Production · Cloudflare Worker
     needs: gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     outputs:
       deploy_sha: ${{ steps.provenance.outputs.deploy_sha }}
@@ -232,10 +232,16 @@ jobs:
         with:
           node-version: 22
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: Restore cached Wrangler toolchain
+        uses: ./.github/actions/setup-wrangler
         with:
-          terraform_version: "1.15.9"
+          version: '4.127.1'
+          node-version: '22'
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: "1.16.0"
 
       - name: Terraform fmt
         run: terraform fmt -check -recursive
@@ -402,7 +408,7 @@ jobs:
           CHESS_AI_SHARED_SECRET: ${{ secrets.CHESS_AI_SHARED_SECRET }}
         run: |
           test -n "$CHESS_AI_SHARED_SECRET"
-          printf '%s' "$CHESS_AI_SHARED_SECRET" | npx --yes wrangler@4 secret put CHESS_AI_SHARED_SECRET --name "$WORKER_NAME"
+          printf '%s' "$CHESS_AI_SHARED_SECRET" | wrangler secret put CHESS_AI_SHARED_SECRET --name "$WORKER_NAME"
 
       - name: Verify Custom Domain and health
         shell: bash
@@ -513,16 +519,25 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Restore exact production frontend dependencies
+        uses: ./.github/actions/cache-node-modules
+        with:
+          working-directory: frontend
+          lockfile: frontend/package-lock.json
+          node-version: '22'
+
+      - name: Restore cached Wrangler toolchain
+        uses: ./.github/actions/setup-wrangler
+        with:
+          version: '4.127.1'
+          node-version: '22'
+
       - name: Validate and prepare Cloudflare Pages project
         shell: bash
         run: |
           set -euo pipefail
           python3 -S scripts/cloudflare_production_pages.py --self-test
           python3 scripts/cloudflare_production_pages.py prepare
-
-      - name: Install dependencies
-        working-directory: frontend
-        run: npm ci
 
       - name: Build production frontend
         working-directory: frontend
@@ -553,7 +568,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx --yes wrangler@4 pages deploy dist \
+          wrangler pages deploy dist \
             --project-name chess-studio-production \
             --branch main \
             --commit-hash "$DEPLOY_SHA" \
