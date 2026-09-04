@@ -33,6 +33,22 @@ async function openHomeAt(page, hour, { dismissSpeech = true, profileSeed = {} }
   return corner;
 }
 
+async function captureSpeechBubbleContract(corner) {
+  const bubble = corner.getByRole('region', { name: 'Mensaje de Matthias' });
+  await expect(bubble).toBeVisible();
+  return bubble.evaluate((bubbleNode) => {
+    const residentNode = bubbleNode.closest('.matthias-resident');
+    const characterNode = residentNode?.querySelector('.matthias-resident__character');
+    const bubbleRect = bubbleNode.getBoundingClientRect();
+    const characterRect = characterNode?.getBoundingClientRect();
+    const textNode = bubbleNode.querySelector('p');
+    return {
+      gap: characterRect ? characterRect.left - bubbleRect.right : Number.POSITIVE_INFINITY,
+      bubbleFontSize: textNode ? Number.parseFloat(getComputedStyle(textNode).fontSize) : 0,
+    };
+  });
+}
+
 async function expectThreeScene(corner, profile, label, { minReach = 0 } = {}) {
   const frame = corner.locator('[data-portrait-frame="true"]');
   const avatar = frame.locator('[data-matthias-three-avatar="true"]');
@@ -123,11 +139,14 @@ test('Home · lectura conserva microgestos faciales visibles y acotados', async 
 
 test('Home · cuando Matthias habla mantiene atención y señal facial mientras el mensaje está vivo', async ({ page }) => {
   const corner = await openHomeAt(page, 10, { dismissSpeech: false });
-  const bubble = corner.getByRole('region', { name: 'Mensaje de Matthias' });
   const avatar = corner.locator('[data-matthias-three-avatar="true"]');
   const canvas = avatar.locator('canvas');
 
-  await expect(bubble).toBeVisible();
+  const geometry = await captureSpeechBubbleContract(corner);
+  expect(geometry.gap, 'el bocadillo debe pertenecer físicamente a Matthias').toBeGreaterThanOrEqual(0);
+  expect(geometry.gap, 'la cola no puede quedar flotando lejos de Matthias').toBeLessThanOrEqual(16);
+  expect(geometry.bubbleFontSize, 'el comentario de Matthias debe leerse sin forzar la vista').toBeGreaterThanOrEqual(13);
+
   await expect(avatar).toHaveAttribute('data-three-model', 'matthias-home-premium-3d-v1');
   await expect(avatar).toHaveAttribute('data-three-fidelity', 'approved-original-premium-v1');
   await expect(avatar).toHaveAttribute('data-three-render-mode', 'canonical-premium-pawn-3d');
@@ -144,20 +163,6 @@ test('Home · cuando Matthias habla mantiene atención y señal facial mientras 
     async () => Number(await avatar.getAttribute('data-three-face-articulation')) || 0,
     { timeout: 2_500, message: 'hablar debe mantener articulación de cabeza/cara en el rig' },
   ).toBeGreaterThan(.02);
-
-  const geometry = await corner.evaluate((node) => {
-    const bubbleNode = node.querySelector('.matthias-resident__bubble');
-    const characterNode = node.querySelector('.matthias-resident__character');
-    const bubbleRect = bubbleNode?.getBoundingClientRect();
-    const characterRect = characterNode?.getBoundingClientRect();
-    return {
-      gap: bubbleRect && characterRect ? characterRect.left - bubbleRect.right : Number.POSITIVE_INFINITY,
-      bubbleFontSize: bubbleNode ? Number.parseFloat(getComputedStyle(bubbleNode.querySelector('p')).fontSize) : 0,
-    };
-  });
-  expect(geometry.gap, 'el bocadillo debe pertenecer físicamente a Matthias').toBeGreaterThanOrEqual(0);
-  expect(geometry.gap, 'la cola no puede quedar flotando lejos de Matthias').toBeLessThanOrEqual(16);
-  expect(geometry.bubbleFontSize, 'el comentario de Matthias debe leerse sin forzar la vista').toBeGreaterThanOrEqual(13);
 });
 
 test('Home · 390px conserva microgestos, mérito diegético, texto legible y cero overflow', async ({ page }) => {
@@ -168,7 +173,6 @@ test('Home · 390px conserva microgestos, mérito diegético, texto legible y ce
       'chess-study-achievements': JSON.stringify(['rating_master']),
     },
   });
-  const bubble = corner.getByRole('region', { name: 'Mensaje de Matthias' });
   const home = page.locator('.menu.home-friendly');
   const primaryCard = home.locator('.home-mode-card').first();
   const castleLife = home.getByRole('region', { name: 'La estancia de Chess Studio' });
@@ -179,7 +183,7 @@ test('Home · 390px conserva microgestos, mérito diegético, texto legible y ce
   await expect(castleLife).toHaveAttribute('data-castle-honours', '1');
   await expect(masterCrown).toBeVisible();
   await expect(masterCrown).toHaveAttribute('data-castle-kind', 'honour');
-  await expect(bubble).toBeVisible();
+  const speechContract = await captureSpeechBubbleContract(corner);
   await expect(primaryCard).toBeVisible();
   await expect(corner).toHaveAttribute('data-placement', 'inline');
   const avatar = corner.locator('[data-matthias-three-avatar="true"]');
@@ -196,7 +200,6 @@ test('Home · 390px conserva microgestos, mérito diegético, texto legible y ce
   expect(Number(await avatar.getAttribute('data-three-face-warp')) || 0).toBeLessThanOrEqual(.019);
 
   const contract = await page.evaluate(() => {
-    const bubbleText = document.querySelector('.matthias-resident__bubble p');
     const description = document.querySelector('.home-mode-description');
     const homeNode = document.querySelector('.menu.home-friendly');
     const homeStyle = homeNode ? getComputedStyle(homeNode) : null;
@@ -204,7 +207,6 @@ test('Home · 390px conserva microgestos, mérito diegético, texto legible y ce
     const crownRect = crown?.getBoundingClientRect();
     return {
       overflow: document.documentElement.scrollWidth - window.innerWidth,
-      bubbleFontSize: bubbleText ? Number.parseFloat(getComputedStyle(bubbleText).fontSize) : 0,
       descriptionFontSize: description ? Number.parseFloat(getComputedStyle(description).fontSize) : 0,
       homeBackground: homeStyle?.backgroundImage || '',
       crownLeft: crownRect?.left ?? -1,
@@ -213,7 +215,7 @@ test('Home · 390px conserva microgestos, mérito diegético, texto legible y ce
   });
 
   expect(contract.overflow, 'Home no puede generar scroll horizontal en Android').toBeLessThanOrEqual(1);
-  expect(contract.bubbleFontSize, 'Matthias debe seguir siendo legible a 390px').toBeGreaterThanOrEqual(12.8);
+  expect(speechContract.bubbleFontSize, 'Matthias debe seguir siendo legible a 390px').toBeGreaterThanOrEqual(12.8);
   expect(contract.descriptionFontSize, 'las descripciones de modos no pueden volver a microtexto').toBeGreaterThanOrEqual(12.5);
   expect(contract.crownLeft, 'el mérito diegético no puede salirse por la izquierda').toBeGreaterThanOrEqual(0);
   expect(contract.crownRight, 'el mérito diegético debe caber en Home a 390px').toBeLessThanOrEqual(390);
