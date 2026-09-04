@@ -36,6 +36,64 @@ jobs:
         with:
           node-version: 22
 
+      - name: Capture immutable PR quality provenance
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          EVENT_SHA: ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          tested_merge_sha="$(git rev-parse HEAD)"
+          [[ "$tested_merge_sha" == "$EVENT_SHA" ]] || {
+            echo "::error::Checkout mutable: HEAD=$tested_merge_sha pero github.sha=$EVENT_SHA"
+            exit 1
+          }
+
+          read -r base_sha head_sha extra <<< "$(git show -s --format='%P' HEAD)"
+          [[ -n "$base_sha" && -n "$head_sha" && -z "${extra:-}" ]] || {
+            echo '::error::El SHA probado por un PR debe ser un merge sintético de exactamente dos padres.'
+            exit 1
+          }
+          [[ "$head_sha" == "$PR_HEAD_SHA" ]] || {
+            echo "::error::El segundo padre probado $head_sha no coincide con el head del PR $PR_HEAD_SHA"
+            exit 1
+          }
+
+          mkdir -p .ci
+          python3 - "$PR_NUMBER" "$tested_merge_sha" "$base_sha" "$head_sha" "$RUN_ID" "$RUN_ATTEMPT" <<'PY'
+          import json, pathlib, sys
+          pr_number, tested, base, head, run_id, attempt = sys.argv[1:]
+          payload = {
+              'schema': 1,
+              'pr_number': int(pr_number),
+              'tested_merge_sha': tested.lower(),
+              'base_sha': base.lower(),
+              'head_sha': head.lower(),
+              'run_id': int(run_id),
+              'run_attempt': int(attempt),
+          }
+          pathlib.Path('.ci/quality-provenance.json').write_text(
+              json.dumps(payload, sort_keys=True, indent=2) + '\n', encoding='utf-8'
+          )
+          print(
+              f"Quality receipt · PR #{payload['pr_number']} · merge {tested[:12]} · "
+              f"base {base[:12]} · head {head[:12]}"
+          )
+          PY
+
+      - name: Upload immutable PR quality provenance
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: quality-provenance
+          path: .ci/quality-provenance.json
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Static preflight + CI wiring
         run: make static-preflight
 
