@@ -1,0 +1,127 @@
+@import './CastleVisualTokens.css';
+
+/* War Room · shared castle language
+ *
+ * Home is the Great Hall; War Room is the tactical chamber. They share the
+ * same materials without sharing the same composition. This layer touches
+ * only DOM/CSS chrome around the renderer: no Three.js scene, lighting,
+ * geometry, animation loop or Matthias rig behaviour.
+ */
+
+.game-screen .board-live-row.is-3d-warroom {
+  --war-room-stone: var(--castle-stone-850);
+  --war-room-stone-deep: var(--castle-stone-950);
+  --war-room-oak: var(--castle-oak-800);
+  --war-room-brass: var(--castle-brass);
+  --war-room-line: var(--castle-brass-line);
+  --war-room-text: var(--castle-parchment);
+  --war-room-text-dim: var(--castle-parchment-dim);
+  border-color: color-mix(in srgb, var(--war-room-brass) 28%, rgba(255,255,255,.05));
+  background:
+    radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--war-room-brass) 14%, transparent), transparent 34%),
+    radial-gradient(ellipse at 8% 58%, rgba(126,72,39,.09), transparent 27%),
+    radial-gradient(ellipse at 92% 25%, color-mix(in srgb, var(--castle-cold-light) 8%, transparent), transparent 25%),
+    linear-gradient(180deg, color-mix(in srgb, var(--castle-stone-800) 92%, #1f1711), var(--war-room-stone-deep) 68%);
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.035),
+    inset 0 -1px rgba(0,0,0,.58),
+    0 34px 86px var(--castle-shadow);
+}
+
+.game-screen .board-live-row.is-3d-warroom::before {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--castle-oak-900) 82%, transparent) 0 15%, transparent 26% 74%, color-mix(in srgb, var(--castle-oak-900) 78%, transparent) 85% 100%),
+    repeating-linear-gradient(0deg, transparent 0 43px, rgba(173,157,132,.035) 44px 45px),
+    repeating-linear-gradient(90deg, transparent 0 86px, rgba(180,145,81,.025) 87px 88px);
+}
+
+.game-screen .board-live-row.is-3d-warroom::after {
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--war-room-brass) 58%, transparent), transparent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--war-room-brass) 18%, transparent);
+}
+
+.game-screen .game-3d-command-column {
+  border-color: color-mix(in srgb, var(--castle-iron-soft) 48%, var(--war-room-brass) 18%);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--castle-stone-700) 84%, var(--castle-oak-900)), color-mix(in srgb, var(--castle-stone-950) 94%, var(--castle-oak-900))),
+    repeating-linear-gradient(0deg, transparent 0 42px, rgba(192,174,143,.025) 43px 44px);
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.04),
+    inset 0 -42px 72px rgba(0,0,0,.24),
+    0 14px 32px rgba(0,0,0,.16);
+}
+
+.game-screen :where(
+  .game-3d-matthias-card,
+  .game-3d-warroom-message,
+  .game-3d-warroom-status,
+  .game-3d-warroom-controls,
+  .game-side-column-3d .game-side-music,
+  .game-side-column-3d .game-notation-disclosure,
+  .game-side-column-3d .game-chat
+) {
+  border-color: color-mix(in srgb, var(--war-room-brass) 25%, rgba(255,255,255,.055));
+  background:
+    linear-gradient(150deg, color-mix(in srgb, var(--castle-stone-700) 52%, var(--castle-oak-900)), var(--castle-stone-950) 78%);
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.035),
+    inset 0 -1px rgba(0,0,0,.34),
+    0 10px 24px rgba(0,0,0,.18);
+}
+
+.game-screen .game-3d-matthias-card {
+  border-color: color-mix(in srgb, var(--war-room-brass) 44%, rgba(255,255,255,.06));
+}
+
+.game-screen :where(.game-3d-warroom-message, .game-side-column-3d .game-chat) {
+  box-shadow:
+    inset 2px 0 0 color-mix(in srgb, var(--castle-velvet) 54%, transparent),
+    inset 0 1px rgba(255,255,255,.03),
+    0 10px 24px rgba(0,0,0,.18);
+}
+
+.game-screen .game-board-stack-3d .game-player-rail.is-human {
+  border-color: color-mix(in srgb, var(--war-room-brass) 34%, rgba(255,255,255,.055));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--castle-oak-800) 74%, var(--castle-stone-900)), color-mix(in srgb, var(--castle-stone-950) 90%, var(--castle-oak-900)));
+}
+
+.game-screen :where(.game-3d-warroom-status, .game-3d-warroom-controls, .game-side-column-3d .game-side-music) {
+  color: var(--war-room-text-dim);
+}
+
+.game-screen :where(.game-chat, .game-notation-disclosure, .game-3d-warroom-message) :where(h2, h3, strong, summary) {
+  color: var(--war-room-text);
+}
+
+.game-screen :where(.game-3d-warroom-controls, .game-side-column-3d .game-side-music) button:not(:disabled):hover,
+.game-screen :where(.game-3d-warroom-controls, .game-side-column-3d .game-side-music) button:not(:disabled):focus-visible {
+  border-color: color-mix(in srgb, var(--war-room-brass) 55%, rgba(255,255,255,.08));
+  box-shadow: inset 0 1px rgba(255,255,255,.045), 0 8px 20px rgba(0,0,0,.2);
+}
+
+/* Mobile keeps the same material identity but drops most of the decorative
+ * contrast. The board remains visually dominant and controls stay readable. */
+@media (max-width: 1080px) {
+  .game-screen .board-live-row.is-3d-warroom {
+    background:
+      radial-gradient(ellipse at 50% -8%, color-mix(in srgb, var(--war-room-brass) 11%, transparent), transparent 32%),
+      linear-gradient(180deg, var(--castle-stone-800), var(--castle-stone-950) 68%);
+  }
+
+  .game-screen .board-live-row.is-3d-warroom::before {
+    background: linear-gradient(180deg, rgba(255,255,255,.012), transparent 34%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-screen .board-live-row.is-3d-warroom,
+  .game-screen .game-3d-command-column {
+    transition: none;
+  }
+}
+
+html[data-reduced-motion='true'] .game-screen .board-live-row.is-3d-warroom,
+html[data-reduced-motion='true'] .game-screen .game-3d-command-column {
+  transition: none;
+}
