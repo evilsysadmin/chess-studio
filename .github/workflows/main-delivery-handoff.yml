@@ -141,4 +141,4 @@ jobs:
           fi
 
           echo "No existe Quality para main $target_sha. Despacho cicd.yml explícitamente."
-          gh workflow run cicd.yml --ref main
+          gh workflow run cicd.yml --repo "$GITHUB_REPOSITORY" --ref main
