@@ -4,42 +4,58 @@ import { PUZZLES } from './puzzles.js';
 
 const FORCED_KINDS = new Set(['mate1', 'mate2', 'mate3', 'combination']);
 
-function canForceMateWithin(board, attacker, remainingAttackerMoves, memo) {
-  if (board.isCheckmate()) return board.turn() !== attacker;
-  if (board.isGameOver()) return false;
-  if (board.turn() === attacker && remainingAttackerMoves <= 0) return false;
+function transpositionKey(board, attacker, attackerMovesLeft) {
+  // Halfmove/fullmove counters do not change the tactical answer inside this
+  // tiny horizon, but including them fragments equivalent transpositions.
+  const position = board.fen().split(' ').slice(0, 4).join(' ');
+  return `${attacker}|${attackerMovesLeft}|${position}`;
+}
 
-  const key = `${attacker}|${remainingAttackerMoves}|${board.fen()}`;
+// Exact mate distance in attacker moves under optimal play, bounded by the
+// puzzle's promised horizon. Attacker minimizes distance; defender maximizes
+// it and immediately refutes the proof if any legal reply escapes the bound.
+function forcedMateDistance(board, attacker, attackerMovesLeft, memo) {
+  if (board.isCheckmate()) return board.turn() !== attacker ? 0 : null;
+  if (board.isGameOver() || attackerMovesLeft <= 0) return null;
+
+  const key = transpositionKey(board, attacker, attackerMovesLeft);
   if (memo.has(key)) return memo.get(key);
 
   const moves = board.moves();
-  let result;
+  let result = null;
+
   if (board.turn() === attacker) {
-    result = moves.some((san) => {
+    let best = null;
+    for (const san of moves) {
       board.move(san);
-      const wins = canForceMateWithin(board, attacker, remainingAttackerMoves - 1, memo);
+      const child = forcedMateDistance(board, attacker, attackerMovesLeft - 1, memo);
       board.undo();
-      return wins;
-    });
+
+      if (child == null) continue;
+      const cost = child + 1;
+      if (best == null || cost < best) best = cost;
+      if (best === 1) break; // mate inmediato: no existe una ruta más corta.
+    }
+    result = best;
   } else {
-    result = moves.length > 0 && moves.every((san) => {
+    let worst = 0;
+    let escaped = false;
+    for (const san of moves) {
       board.move(san);
-      const wins = canForceMateWithin(board, attacker, remainingAttackerMoves, memo);
+      const child = forcedMateDistance(board, attacker, attackerMovesLeft, memo);
       board.undo();
-      return wins;
-    });
+
+      if (child == null) {
+        escaped = true;
+        break;
+      }
+      if (child > worst) worst = child;
+    }
+    result = escaped ? null : worst;
   }
 
   memo.set(key, result);
   return result;
-}
-
-function minimumAttackerMovesToMate(board, attacker, maxMoves, memo) {
-  if (board.isCheckmate()) return board.turn() !== attacker ? 0 : null;
-  for (let moves = 1; moves <= maxMoves; moves += 1) {
-    if (canForceMateWithin(board, attacker, moves, memo)) return moves;
-  }
-  return null;
 }
 
 function mateMoveCostAfter(board, san, attacker, attackerMovesAvailable, memo) {
@@ -51,12 +67,11 @@ function mateMoveCostAfter(board, san, attacker, attackerMovesAvailable, memo) {
   }
 
   const childBudget = attackerMovesAvailable - (attackerToMove ? 1 : 0);
-  let childCost = null;
-  if (childBudget >= 0) childCost = minimumAttackerMovesToMate(board, attacker, childBudget, memo);
-  const terminalMate = board.isCheckmate() && board.turn() !== attacker;
+  const childCost = childBudget >= 0
+    ? forcedMateDistance(board, attacker, childBudget, memo)
+    : null;
   board.undo();
 
-  if (terminalMate) return attackerToMove ? 1 : 0;
   if (childCost == null) return null;
   return childCost + (attackerToMove ? 1 : 0);
 }
