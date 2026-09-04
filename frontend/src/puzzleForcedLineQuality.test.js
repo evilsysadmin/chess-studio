@@ -11,69 +11,88 @@ function transpositionKey(board, attacker, attackerMovesLeft) {
   return `${attacker}|${attackerMovesLeft}|${position}`;
 }
 
-// Exact mate distance in attacker moves under optimal play, bounded by the
-// puzzle's promised horizon. Attacker minimizes distance; defender maximizes
-// it and immediately refutes the proof if any legal reply escapes the bound.
-function forcedMateDistance(board, attacker, attackerMovesLeft, memo) {
-  if (board.isCheckmate()) return board.turn() !== attacker ? 0 : null;
-  if (board.isGameOver() || attackerMovesLeft <= 0) return null;
+function moveOrder(move) {
+  if (move.san.endsWith('#')) return 4;
+  if (move.san.endsWith('+')) return 3;
+  if (move.captured) return 2;
+  if (move.promotion) return 1;
+  return 0;
+}
+
+function orderedMoves(board) {
+  return board.moves({ verbose: true })
+    .sort((left, right) => moveOrder(right) - moveOrder(left));
+}
+
+function playVerbose(board, move) {
+  return board.move({
+    from: move.from,
+    to: move.to,
+    promotion: move.promotion || undefined,
+  });
+}
+
+// Boolean bounded proof. This is deliberately cheaper than calculating an
+// exact distance for every legal candidate: the attacker needs one proof,
+// while the defender needs every reply to remain inside the mate horizon.
+function canForceMateWithin(board, attacker, attackerMovesLeft, memo) {
+  if (board.isCheckmate()) return board.turn() !== attacker;
+  if (board.isGameOver()) return false;
+  if (board.turn() === attacker && attackerMovesLeft <= 0) return false;
 
   const key = transpositionKey(board, attacker, attackerMovesLeft);
   if (memo.has(key)) return memo.get(key);
 
-  const moves = board.moves();
-  let result = null;
+  const moves = orderedMoves(board);
+  let result;
 
   if (board.turn() === attacker) {
-    let best = null;
-    for (const san of moves) {
-      board.move(san);
-      const child = forcedMateDistance(board, attacker, attackerMovesLeft - 1, memo);
+    result = false;
+    for (const move of moves) {
+      playVerbose(board, move);
+      const wins = canForceMateWithin(board, attacker, attackerMovesLeft - 1, memo);
       board.undo();
-
-      if (child == null) continue;
-      const cost = child + 1;
-      if (best == null || cost < best) best = cost;
-      if (best === 1) break; // mate inmediato: no existe una ruta más corta.
-    }
-    result = best;
-  } else {
-    let worst = 0;
-    let escaped = false;
-    for (const san of moves) {
-      board.move(san);
-      const child = forcedMateDistance(board, attacker, attackerMovesLeft, memo);
-      board.undo();
-
-      if (child == null) {
-        escaped = true;
+      if (wins) {
+        result = true;
         break;
       }
-      if (child > worst) worst = child;
     }
-    result = escaped ? null : worst;
+  } else {
+    result = moves.length > 0;
+    for (const move of moves) {
+      playVerbose(board, move);
+      const wins = canForceMateWithin(board, attacker, attackerMovesLeft, memo);
+      board.undo();
+      if (!wins) {
+        result = false;
+        break;
+      }
+    }
   }
 
   memo.set(key, result);
   return result;
 }
 
-function mateMoveCostAfter(board, san, attacker, attackerMovesAvailable, memo) {
+function moveForcesMateWithin(board, move, attacker, attackerMovesAvailable, memo) {
   const attackerToMove = board.turn() === attacker;
-  try {
-    if (!board.move(san)) return null;
-  } catch {
-    return null;
-  }
+  playVerbose(board, move);
 
   const childBudget = attackerMovesAvailable - (attackerToMove ? 1 : 0);
-  const childCost = childBudget >= 0
-    ? forcedMateDistance(board, attacker, childBudget, memo)
-    : null;
-  board.undo();
+  const result = board.isCheckmate()
+    ? board.turn() !== attacker
+    : childBudget >= 0 && canForceMateWithin(board, attacker, childBudget, memo);
 
-  if (childCost == null) return null;
-  return childCost + (attackerToMove ? 1 : 0);
+  board.undo();
+  return result;
+}
+
+function minimumStoredMateBudget(board, storedMove, attacker, maxBudget, memo) {
+  const minimum = board.turn() === attacker ? 1 : 0;
+  for (let budget = minimum; budget <= maxBudget; budget += 1) {
+    if (moveForcesMateWithin(board, storedMove, attacker, budget, memo)) return budget;
+  }
+  return null;
 }
 
 function curatedForcedLineOptimalityIssues(puzzle) {
@@ -97,41 +116,50 @@ function curatedForcedLineOptimalityIssues(puzzle) {
     const attackerMovesAvailable = board.turn() === attacker
       ? Math.ceil(remainingPlies / 2)
       : Math.floor(remainingPlies / 2);
-    const legal = board.moves();
-    if (!legal.includes(san)) {
+    const legal = orderedMoves(board);
+    const storedMove = legal.find((move) => move.san === san);
+
+    if (!storedMove) {
       issues.push(`la línea almacenada contiene una jugada ilegal: ${san}`);
       break;
     }
 
-    const scored = legal.map((candidate) => ({
-      san: candidate,
-      cost: mateMoveCostAfter(board, candidate, attacker, attackerMovesAvailable, memo),
-    }));
-    const stored = scored.find((candidate) => candidate.san === san);
+    const storedBudget = minimumStoredMateBudget(
+      board,
+      storedMove,
+      attacker,
+      attackerMovesAvailable,
+      memo,
+    );
 
     if (board.turn() === attacker) {
-      const winning = scored
-        .filter((candidate) => candidate.cost != null)
-        .sort((left, right) => left.cost - right.cost);
-      const best = winning[0];
-      if (stored?.cost == null) {
+      if (storedBudget == null) {
         issues.push(`la continuación ${san} abandona el mate forzado`);
-      } else if (best && stored.cost > best.cost) {
-        issues.push(`la continuación ${san} no es la ruta de mate más directa; ${best.san} fuerza antes`);
-      }
-    } else {
-      const escaping = scored.find((candidate) => candidate.cost == null);
-      if (escaping) {
-        issues.push(`la defensa ${escaping.san} evita el mate dentro del horizonte prometido`);
-      } else {
-        const bestDefense = [...scored].sort((left, right) => right.cost - left.cost)[0];
-        if (bestDefense && stored?.cost != null && stored.cost < bestDefense.cost) {
-          issues.push(`la respuesta ${san} es cooperativa; ${bestDefense.san} resiste más`);
+      } else if (storedBudget > 1) {
+        const faster = legal.find((candidate) => (
+          candidate.san !== san
+          && moveForcesMateWithin(board, candidate, attacker, storedBudget - 1, memo)
+        ));
+        if (faster) {
+          issues.push(`la continuación ${san} no es la ruta de mate más directa; ${faster.san} fuerza antes`);
         }
+      }
+    } else if (storedBudget == null) {
+      // A root move already proven to force mate cannot legitimately reach an
+      // escaping stored defense. Keep this fail-closed in case a future bank
+      // entry bypasses the older forced-mate integrity gate.
+      issues.push(`la defensa ${san} sale del mate forzado dentro del horizonte prometido`);
+    } else {
+      const tougherDefense = legal.find((candidate) => (
+        candidate.san !== san
+        && !moveForcesMateWithin(board, candidate, attacker, storedBudget, memo)
+      ));
+      if (tougherDefense) {
+        issues.push(`la respuesta ${san} es cooperativa; ${tougherDefense.san} resiste más`);
       }
     }
 
-    board.move(san);
+    playVerbose(board, storedMove);
   }
 
   return [...new Set(issues)];
