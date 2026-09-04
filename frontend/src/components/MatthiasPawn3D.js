@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { MATTHIAS_HOME_STATES } from './matthiasHomePresenceStateMachine.js';
 
-export const MATTHIAS_PAWN_MODEL_VERSION = 'matthias-pawn-v1';
-export const MATTHIAS_PAWN_FACE_RIG_VERSION = 'pawn-face-rig-v1';
+export const MATTHIAS_PAWN_MODEL_VERSION = 'matthias-pawn-v2';
+export const MATTHIAS_PAWN_FACE_RIG_VERSION = 'pawn-face-rig-v2';
+export const MATTHIAS_PAWN_FIDELITY_VERSION = 'mock-faithful-v1';
 export const MATTHIAS_PAWN_EMBLEM = 'premium-pawn';
 
 function clamp01(value) {
@@ -26,12 +27,33 @@ function blinkPulse(time) {
   return Math.sin((local / .18) * Math.PI);
 }
 
-function metalMaterial(color, { metalness = .65, roughness = .34 } = {}) {
-  return new THREE.MeshStandardMaterial({ color, metalness, roughness });
+function premiumMaterial(color, {
+  metalness = .55,
+  roughness = .26,
+  clearcoat = .45,
+  clearcoatRoughness = .18,
+} = {}) {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    metalness,
+    roughness,
+    clearcoat,
+    clearcoatRoughness,
+  });
 }
 
-function ceramicMaterial(color, { roughness = .42 } = {}) {
-  return new THREE.MeshStandardMaterial({ color, metalness: .08, roughness });
+function ceramicMaterial(color, {
+  roughness = .31,
+  clearcoat = .24,
+  clearcoatRoughness = .24,
+} = {}) {
+  return new THREE.MeshPhysicalMaterial({
+    color,
+    metalness: .02,
+    roughness,
+    clearcoat,
+    clearcoatRoughness,
+  });
 }
 
 function addMesh(parent, geometry, material, {
@@ -51,153 +73,349 @@ function addMesh(parent, geometry, material, {
   return mesh;
 }
 
-function addGoldRing(parent, radius, tube, y, gold) {
-  return addMesh(
+function addGoldRing(parent, radius, tube, y, gold, zScale = 1) {
+  const ring = addMesh(
     parent,
-    new THREE.TorusGeometry(radius, tube, 10, 48),
+    new THREE.TorusGeometry(radius, tube, 10, 56),
     gold,
     { position: [0, y, 0], rotation: [Math.PI / 2, 0, 0] },
   );
+  ring.scale.z = zScale;
+  return ring;
 }
 
-function buildPawnEmblem(gold, dark) {
+function addTube(parent, points, radius, material, name) {
+  const curve = new THREE.CatmullRomCurve3(points);
+  return addMesh(
+    parent,
+    new THREE.TubeGeometry(curve, 24, radius, 7, false),
+    material,
+    { name },
+  );
+}
+
+function buildPawnEmblem(gold, dark, { laurel = true } = {}) {
   const group = new THREE.Group();
   group.name = 'premium-pawn-emblem';
 
-  addMesh(group, new THREE.CircleGeometry(.205, 36), dark, {
-    position: [0, 0, -.016],
+  addMesh(group, new THREE.CircleGeometry(.205, 48), dark, {
+    name: 'pawn-emblem-field',
+    position: [0, 0, -.012],
   });
-  addMesh(group, new THREE.TorusGeometry(.21, .022, 8, 40), gold, {
-    position: [0, 0, 0],
+  addMesh(group, new THREE.TorusGeometry(.215, .018, 10, 48), gold, {
+    name: 'pawn-emblem-ring',
   });
 
-  addMesh(group, new THREE.SphereGeometry(.06, 18, 14), gold, {
+  if (laurel) {
+    addMesh(group, new THREE.TorusGeometry(.265, .011, 7, 30, Math.PI * .67), gold, {
+      name: 'pawn-emblem-laurel-left',
+      position: [0, -.015, .008],
+      rotation: [0, 0, Math.PI * .67],
+    });
+    addMesh(group, new THREE.TorusGeometry(.265, .011, 7, 30, Math.PI * .67), gold, {
+      name: 'pawn-emblem-laurel-right',
+      position: [0, -.015, .008],
+      rotation: [0, 0, -Math.PI * .34],
+    });
+  }
+
+  addMesh(group, new THREE.SphereGeometry(.06, 20, 15), gold, {
     name: 'pawn-emblem-head',
     position: [0, .075, .035],
   });
-  addMesh(group, new THREE.CylinderGeometry(.047, .085, .13, 18), gold, {
+  addMesh(group, new THREE.CylinderGeometry(.047, .082, .13, 20), gold, {
     name: 'pawn-emblem-body',
     position: [0, -.02, .035],
   });
-  addMesh(group, new THREE.BoxGeometry(.19, .045, .045), gold, {
+  addMesh(group, new THREE.CylinderGeometry(.095, .105, .035, 20), gold, {
+    name: 'pawn-emblem-collar',
+    position: [0, -.095, .035],
+  });
+  addMesh(group, new THREE.BoxGeometry(.19, .04, .04), gold, {
     name: 'pawn-emblem-base',
-    position: [0, -.115, .035],
+    position: [0, -.132, .035],
   });
   return group;
 }
 
-function buildMouth(material) {
+function buildFrown(material) {
   const curve = new THREE.QuadraticBezierCurve3(
-    new THREE.Vector3(-.13, 0, 0),
-    new THREE.Vector3(0, -.045, .012),
-    new THREE.Vector3(.13, 0, 0),
+    new THREE.Vector3(-.145, 0, 0),
+    new THREE.Vector3(0, .066, .012),
+    new THREE.Vector3(.145, 0, 0),
   );
-  return new THREE.Mesh(new THREE.TubeGeometry(curve, 16, .012, 6, false), material);
+  return new THREE.Mesh(new THREE.TubeGeometry(curve, 20, .012, 7, false), material);
+}
+
+function buildCapVisor(material, compact) {
+  const shape = new THREE.Shape();
+  shape.moveTo(-.50, -.08);
+  shape.bezierCurveTo(-.62, -.02, -.68, .12, -.61, .24);
+  shape.bezierCurveTo(-.40, .37, .40, .37, .61, .24);
+  shape.bezierCurveTo(.68, .12, .62, -.02, .50, -.08);
+  shape.bezierCurveTo(.31, .01, -.31, .01, -.50, -.08);
+
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: .055,
+    curveSegments: compact ? 5 : 9,
+    steps: 1,
+    bevelEnabled: true,
+    bevelSegments: compact ? 1 : 2,
+    bevelSize: .012,
+    bevelThickness: .012,
+  });
+  geometry.center();
+  return new THREE.Mesh(geometry, material);
+}
+
+function bodyProfile() {
+  return [
+    new THREE.Vector2(.79, -1.19),
+    new THREE.Vector2(.81, -1.13),
+    new THREE.Vector2(.78, -1.05),
+    new THREE.Vector2(.70, -.99),
+    new THREE.Vector2(.66, -.93),
+    new THREE.Vector2(.62, -.87),
+    new THREE.Vector2(.56, -.82),
+    new THREE.Vector2(.51, -.73),
+    new THREE.Vector2(.46, -.57),
+    new THREE.Vector2(.43, -.25),
+    new THREE.Vector2(.45, -.15),
+    new THREE.Vector2(.51, -.10),
+    new THREE.Vector2(.51, -.035),
+    new THREE.Vector2(.45, .025),
+  ];
+}
+
+function buildEye(parent, ink, shine, name, x) {
+  const eye = addMesh(parent, new THREE.SphereGeometry(.072, 20, 16), ink, {
+    name,
+    position: [x, .42, .553],
+    scale: [.70, 1.30, .38],
+  });
+  addMesh(eye, new THREE.SphereGeometry(.017, 10, 8), shine, {
+    name: `${name}-glint`,
+    position: [-.018, .025, .063],
+    scale: [1.1, 1.1, .65],
+  });
+  return eye;
 }
 
 export function createMatthiasPawn3D({ compact = false } = {}) {
   const root = new THREE.Group();
   root.name = MATTHIAS_PAWN_MODEL_VERSION;
 
-  const black = metalMaterial(0x171717, { metalness: .46, roughness: .42 });
-  const charcoal = metalMaterial(0x242424, { metalness: .34, roughness: .5 });
-  const gold = metalMaterial(0xc69a45, { metalness: .85, roughness: .24 });
-  const rust = metalMaterial(0x6e2f1e, { metalness: .35, roughness: .42 });
-  const face = ceramicMaterial(0xe5c79a, { roughness: .36 });
-  const ink = ceramicMaterial(0x090909, { roughness: .28 });
+  const segments = compact ? 28 : 56;
+  const black = premiumMaterial(0x07080a, {
+    metalness: .58,
+    roughness: .20,
+    clearcoat: .72,
+    clearcoatRoughness: .12,
+  });
+  const charcoal = premiumMaterial(0x15171b, {
+    metalness: .48,
+    roughness: .29,
+    clearcoat: .45,
+    clearcoatRoughness: .18,
+  });
+  const panelDark = premiumMaterial(0x0c0d10, {
+    metalness: .42,
+    roughness: .34,
+    clearcoat: .36,
+  });
+  const gold = premiumMaterial(0xd8a13a, {
+    metalness: 1,
+    roughness: .15,
+    clearcoat: .32,
+    clearcoatRoughness: .10,
+  });
+  const rust = premiumMaterial(0x6e2117, {
+    metalness: .27,
+    roughness: .30,
+    clearcoat: .40,
+  });
+  const face = ceramicMaterial(0xe2bf89, {
+    roughness: .29,
+    clearcoat: .22,
+  });
+  const ink = premiumMaterial(0x030405, {
+    metalness: .18,
+    roughness: .16,
+    clearcoat: .70,
+    clearcoatRoughness: .12,
+  });
+  const eyeShine = ceramicMaterial(0xfff8e9, { roughness: .18, clearcoat: .55 });
 
   const body = new THREE.Group();
   body.name = 'body';
   root.add(body);
 
-  addMesh(body, new THREE.CylinderGeometry(.74, .79, .17, compact ? 24 : 40), black, {
-    name: 'base', position: [0, -1.12, 0],
+  addMesh(body, new THREE.LatheGeometry(bodyProfile(), segments), charcoal, {
+    name: 'premium-coat-body',
   });
-  addGoldRing(body, .69, .028, -1.03, gold);
-  addMesh(body, new THREE.CylinderGeometry(.47, .67, .87, compact ? 24 : 40), charcoal, {
-    name: 'coat', position: [0, -.59, 0],
+  addMesh(body, new THREE.CylinderGeometry(.76, .79, .10, segments), black, {
+    name: 'base-plinth', position: [0, -1.18, 0],
   });
-  addGoldRing(body, .49, .022, -.17, gold);
-  addMesh(body, new THREE.CylinderGeometry(.46, .5, .13, compact ? 24 : 40), black, {
-    name: 'shoulder-ring', position: [0, -.13, 0],
+  addMesh(body, new THREE.CylinderGeometry(.70, .76, .10, segments), black, {
+    name: 'base-upper-step', position: [0, -1.06, 0],
   });
 
-  addMesh(body, new THREE.BoxGeometry(.035, .62, .035), gold, {
-    name: 'coat-piping-left', position: [-.39, -.58, .43], rotation: [0, 0, -.11],
+  addGoldRing(body, .735, .022, -1.115, gold);
+  addGoldRing(body, .655, .020, -.985, gold);
+  addGoldRing(body, .548, .017, -.835, gold);
+  addGoldRing(body, .468, .016, -.135, gold);
+  addGoldRing(body, .485, .014, -.045, gold);
+
+  const chestPanelShape = new THREE.Shape();
+  chestPanelShape.moveTo(-.34, .28);
+  chestPanelShape.lineTo(.34, .28);
+  chestPanelShape.lineTo(.43, -.34);
+  chestPanelShape.lineTo(.31, -.52);
+  chestPanelShape.lineTo(-.31, -.52);
+  chestPanelShape.lineTo(-.43, -.34);
+  chestPanelShape.closePath();
+  addMesh(body, new THREE.ShapeGeometry(chestPanelShape), panelDark, {
+    name: 'uniform-front-panel',
+    position: [0, -.47, .468],
+    scale: [1.02, 1.02, 1],
   });
-  addMesh(body, new THREE.BoxGeometry(.035, .62, .035), gold, {
-    name: 'coat-piping-right', position: [.39, -.58, .43], rotation: [0, 0, .11],
-  });
-  for (const [x, y] of [[-.31, -.42], [-.31, -.64], [.31, -.42], [.31, -.64]]) {
-    addMesh(body, new THREE.SphereGeometry(.035, 12, 10), gold, {
-      name: 'coat-button', position: [x, y, .475],
+
+  addTube(body, [
+    new THREE.Vector3(-.36, -.18, .475),
+    new THREE.Vector3(-.40, -.46, .505),
+    new THREE.Vector3(-.49, -.73, .455),
+    new THREE.Vector3(-.57, -.84, .35),
+  ], .014, gold, 'coat-piping-left');
+  addTube(body, [
+    new THREE.Vector3(.36, -.18, .475),
+    new THREE.Vector3(.40, -.46, .505),
+    new THREE.Vector3(.49, -.73, .455),
+    new THREE.Vector3(.57, -.84, .35),
+  ], .014, gold, 'coat-piping-right');
+
+  for (const [x, y, z] of [
+    [-.37, -.39, .49], [-.40, -.62, .475],
+    [.37, -.39, .49], [.40, -.62, .475],
+  ]) {
+    addMesh(body, new THREE.SphereGeometry(.032, 14, 10), gold, {
+      name: 'coat-button', position: [x, y, z],
     });
   }
 
-  const emblem = buildPawnEmblem(gold, black);
-  emblem.position.set(0, -.58, .51);
-  emblem.scale.setScalar(.92);
+  const emblem = buildPawnEmblem(gold, panelDark, { laurel: true });
+  emblem.position.set(0, -.53, .515);
+  emblem.scale.setScalar(.88);
   body.add(emblem);
 
   const headPivot = new THREE.Group();
   headPivot.name = 'head-pivot';
-  headPivot.position.set(0, .2, 0);
+  headPivot.position.set(0, .11, 0);
   root.add(headPivot);
 
-  addMesh(headPivot, new THREE.CylinderGeometry(.43, .47, .12, compact ? 24 : 36), face, {
-    name: 'neck-ring', position: [0, -.13, 0],
+  addMesh(headPivot, new THREE.CylinderGeometry(.445, .475, .105, segments), face, {
+    name: 'neck-ring', position: [0, -.105, 0],
   });
+  addGoldRing(headPivot, .455, .016, -.055, gold);
 
-  const head = addMesh(headPivot, new THREE.SphereGeometry(.56, compact ? 28 : 42, compact ? 20 : 30), face, {
-    name: 'pawn-face', position: [0, .37, 0], scale: [1.03, .88, .96],
-  });
+  const head = addMesh(
+    headPivot,
+    new THREE.SphereGeometry(.585, compact ? 34 : 58, compact ? 24 : 40),
+    face,
+    {
+      name: 'pawn-face',
+      position: [0, .405, 0],
+      scale: [1.01, .94, .97],
+    },
+  );
 
-  const leftEye = addMesh(headPivot, new THREE.SphereGeometry(.064, 16, 12), ink, {
-    name: 'eye-left', position: [-.18, .43, .52], scale: [.74, 1.28, .45],
-  });
-  const rightEye = addMesh(headPivot, new THREE.SphereGeometry(.064, 16, 12), ink, {
-    name: 'eye-right', position: [.18, .43, .52], scale: [.74, 1.28, .45],
-  });
+  const leftEye = buildEye(headPivot, ink, eyeShine, 'eye-left', -.185);
+  const rightEye = buildEye(headPivot, ink, eyeShine, 'eye-right', .185);
 
-  const leftBrow = addMesh(headPivot, new THREE.BoxGeometry(.225, .045, .045), ink, {
-    name: 'brow-left', position: [-.18, .62, .53], rotation: [0, 0, -.22],
+  const browGeometry = new THREE.CapsuleGeometry(.025, .17, compact ? 3 : 5, compact ? 8 : 12);
+  const leftBrow = addMesh(headPivot, browGeometry, ink, {
+    name: 'brow-left',
+    position: [-.185, .605, .565],
+    rotation: [0, 0, Math.PI / 2 - .34],
   });
-  const rightBrow = addMesh(headPivot, new THREE.BoxGeometry(.225, .045, .045), ink, {
-    name: 'brow-right', position: [.18, .62, .53], rotation: [0, 0, .22],
+  const rightBrow = addMesh(headPivot, browGeometry.clone(), ink, {
+    name: 'brow-right',
+    position: [.185, .605, .565],
+    rotation: [0, 0, Math.PI / 2 + .34],
   });
 
   const mouthGroup = new THREE.Group();
   mouthGroup.name = 'mouth-rig';
-  mouthGroup.position.set(0, .22, .545);
-  const mouth = buildMouth(ink);
+  mouthGroup.position.set(0, .205, .575);
+  const mouth = buildFrown(ink);
+  mouth.name = 'angry-frown';
   mouthGroup.add(mouth);
   headPivot.add(mouthGroup);
 
-  const speechMouth = addMesh(headPivot, new THREE.SphereGeometry(.06, 14, 10), ink, {
-    name: 'speech-mouth', position: [0, .205, .54], scale: [1.25, .12, .45],
+  const speechMouth = addMesh(headPivot, new THREE.SphereGeometry(.065, 16, 12), ink, {
+    name: 'speech-mouth',
+    position: [0, .19, .57],
+    scale: [1.35, .12, .43],
   });
   speechMouth.visible = false;
 
   const cap = new THREE.Group();
   cap.name = 'officer-cap';
+  cap.rotation.x = -.025;
   headPivot.add(cap);
-  addMesh(cap, new THREE.CylinderGeometry(.48, .43, .15, compact ? 24 : 40), rust, {
-    name: 'cap-band', position: [0, .8, .015], scale: [1.03, 1, .92],
+
+  addMesh(cap, new THREE.CylinderGeometry(.61, .585, .145, segments), rust, {
+    name: 'cap-red-band',
+    position: [0, .84, .005],
+    scale: [1, 1, .84],
   });
-  addMesh(cap, new THREE.CylinderGeometry(.53, .49, .10, compact ? 24 : 40), black, {
-    name: 'cap-crown', position: [0, .91, 0], scale: [1.04, 1, .91],
+  addMesh(cap, new THREE.CylinderGeometry(.69, .605, .17, segments), black, {
+    name: 'cap-crown',
+    position: [0, .965, -.015],
+    scale: [1, 1, .83],
   });
-  addMesh(cap, new THREE.BoxGeometry(.58, .055, .25), black, {
-    name: 'cap-brim', position: [0, .72, .31], rotation: [.06, 0, 0],
-  });
-  addMesh(cap, new THREE.BoxGeometry(.49, .028, .025), gold, {
-    name: 'cap-gold-band', position: [0, .765, .43],
+  addMesh(cap, new THREE.CylinderGeometry(.705, .685, .055, segments), black, {
+    name: 'cap-top',
+    position: [0, 1.075, -.02],
+    scale: [1, 1, .82],
   });
 
-  const capBadge = buildPawnEmblem(gold, rust);
+  const topPiping = addGoldRing(cap, .675, .011, 1.052, gold, .82);
+  topPiping.name = 'cap-top-piping';
+  const bandPiping = addGoldRing(cap, .595, .012, .815, gold, .84);
+  bandPiping.name = 'cap-band-piping';
+
+  const visor = buildCapVisor(black, compact);
+  visor.name = 'cap-curved-visor';
+  visor.position.set(0, .745, .315);
+  visor.rotation.x = Math.PI / 2 - .075;
+  visor.scale.set(1.03, 1, .96);
+  cap.add(visor);
+
+  const visorTrim = addTube(cap, [
+    new THREE.Vector3(-.50, .775, .47),
+    new THREE.Vector3(-.27, .745, .54),
+    new THREE.Vector3(0, .735, .565),
+    new THREE.Vector3(.27, .745, .54),
+    new THREE.Vector3(.50, .775, .47),
+  ], .011, gold, 'cap-visor-gold-trim');
+  visorTrim.scale.z = .98;
+
+  addTube(cap, [
+    new THREE.Vector3(-.49, .81, .475),
+    new THREE.Vector3(0, .77, .555),
+    new THREE.Vector3(.49, .81, .475),
+  ], .012, gold, 'cap-braided-cord');
+
+  for (const x of [-.535, .535]) {
+    addMesh(cap, new THREE.SphereGeometry(.035, 14, 10), gold, {
+      name: 'cap-side-button', position: [x, .82, .37],
+    });
+  }
+
+  const capBadge = buildPawnEmblem(gold, panelDark, { laurel: true });
   capBadge.name = 'cap-pawn-emblem';
-  capBadge.position.set(0, .86, .46);
-  capBadge.scale.setScalar(.48);
+  capBadge.position.set(0, .91, .535);
+  capBadge.scale.setScalar(.43);
   cap.add(capBadge);
 
   const rig = {
@@ -227,15 +445,27 @@ export function createMatthiasPawn3D({ compact = false } = {}) {
 
   root.userData.rig = rig;
   root.userData.modelVersion = MATTHIAS_PAWN_MODEL_VERSION;
+  root.userData.faceRigVersion = MATTHIAS_PAWN_FACE_RIG_VERSION;
+  root.userData.fidelityVersion = MATTHIAS_PAWN_FIDELITY_VERSION;
   root.userData.emblem = MATTHIAS_PAWN_EMBLEM;
   return rig;
 }
 
 export function disposeMatthiasPawn3D(rig) {
+  const disposedGeometries = new Set();
+  const disposedMaterials = new Set();
   rig?.root?.traverse?.((node) => {
-    node.geometry?.dispose?.();
-    if (Array.isArray(node.material)) node.material.forEach((material) => material?.dispose?.());
-    else node.material?.dispose?.();
+    if (node.geometry && !disposedGeometries.has(node.geometry)) {
+      disposedGeometries.add(node.geometry);
+      node.geometry.dispose?.();
+    }
+    const materials = Array.isArray(node.material) ? node.material : [node.material];
+    for (const material of materials) {
+      if (material && !disposedMaterials.has(material)) {
+        disposedMaterials.add(material);
+        material.dispose?.();
+      }
+    }
   });
 }
 
@@ -285,8 +515,8 @@ export function matthiasPawnPoseSample({
   } else if (presenceState === MATTHIAS_HOME_STATES.SKEPTICAL) {
     headYaw += .08 * pulse;
     headRoll -= .07 * pulse;
-    browBias = .055 * pulse;
-    smirk = .72 * pulse;
+    browBias = .045 * pulse;
+    smirk = .48 * pulse;
     energy = Math.max(energy, .48 * pulse);
   } else if (presenceState === MATTHIAS_HOME_STATES.ATTEND) {
     headPitch -= .035;
@@ -326,7 +556,7 @@ export function matthiasPawnPoseSample({
     const syllable = .5 + Math.sin(time * 10.8) * .5;
     mouthOpen = .28 + syllable * .72;
     headPitch += Math.sin(time * 2.6) * .025;
-    smirk = Math.max(smirk, .12);
+    smirk = Math.max(smirk, .08);
     energy = Math.max(energy, .62);
   }
 
@@ -368,21 +598,24 @@ export function applyMatthiasPawnPose(rig, pose) {
   rig.leftEye.position.x = base.leftEyeX + pose.gazeX;
   rig.rightEye.position.x = base.rightEyeX + pose.gazeX;
   const eyeScaleY = Math.max(.08, 1 - pose.blink * .92);
-  rig.leftEye.scale.y = 1.28 * eyeScaleY;
-  rig.rightEye.scale.y = 1.28 * eyeScaleY;
+  rig.leftEye.scale.y = 1.30 * eyeScaleY;
+  rig.rightEye.scale.y = 1.30 * eyeScaleY;
 
   rig.leftBrow.position.y = base.leftBrowY + pose.browBias;
   rig.rightBrow.position.y = base.rightBrowY - pose.browBias * .35;
-  rig.leftBrow.rotation.z = base.leftBrowRz - pose.smirk * .05;
-  rig.rightBrow.rotation.z = base.rightBrowRz + pose.smirk * .09;
+  rig.leftBrow.rotation.z = base.leftBrowRz - pose.smirk * .035;
+  rig.rightBrow.rotation.z = base.rightBrowRz + pose.smirk * .06;
 
-  rig.mouthGroup.position.y = base.mouthY + pose.smirk * .018;
-  rig.mouthGroup.rotation.z = -pose.smirk * .12;
-  rig.mouthGroup.scale.x = 1 + pose.smirk * .08;
+  // The canonical Home face remains angry. Skeptical/smirk states only skew the
+  // frown slightly; they never flip it into the friendly smile that made the
+  // first procedural model look like a toy mascot.
+  rig.mouthGroup.position.y = base.mouthY + pose.smirk * .012;
+  rig.mouthGroup.rotation.z = -pose.smirk * .08;
+  rig.mouthGroup.scale.x = 1 + pose.smirk * .05;
   rig.mouthGroup.visible = pose.mouthOpen < .14;
   rig.speechMouth.visible = pose.mouthOpen >= .14;
   if (rig.speechMouth.visible) {
-    rig.speechMouth.scale.y = .12 + pose.mouthOpen * .75;
-    rig.speechMouth.scale.x = 1.18 + pose.mouthOpen * .18;
+    rig.speechMouth.scale.y = .12 + pose.mouthOpen * .72;
+    rig.speechMouth.scale.x = 1.24 + pose.mouthOpen * .16;
   }
 }
