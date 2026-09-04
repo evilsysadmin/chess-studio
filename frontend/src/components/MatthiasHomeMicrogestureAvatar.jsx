@@ -25,7 +25,9 @@ import {
   applyMatthiasPremiumHomePose,
   createMatthiasPremiumHome3D,
   disposeMatthiasPremiumHome3D,
+  matthiasPremiumHomeActivityProp,
   MATTHIAS_PAWN_EMBLEM,
+  MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION,
   MATTHIAS_PREMIUM_HOME_FACE_RIG_VERSION,
   MATTHIAS_PREMIUM_HOME_FIDELITY_VERSION,
   MATTHIAS_PREMIUM_HOME_MODEL_VERSION,
@@ -115,7 +117,6 @@ function resizeRenderer(renderer, camera, canvas) {
   renderer.setSize(width, height, false);
 
   // Orthographic framing is identity-critical: no wide-angle mascot distortion.
-  // The approved pawn is shown as a compact portrait, with the cap fully inside.
   const aspect = width / height;
   const viewHeight = 2.72;
   const viewWidth = viewHeight * aspect;
@@ -139,6 +140,7 @@ export default function MatthiasHomeMicrogestureAvatar({
   const modeRef = useRef(MATTHIAS_HOME_STATES.IDLE);
   const modeStartedAtRef = useRef(0);
   const profileRef = useRef('idle');
+  const activityProfileRef = useRef('idle');
   const phaseRef = useRef(0);
   const intensityRef = useRef(1);
   const speakingRef = useRef(false);
@@ -150,9 +152,21 @@ export default function MatthiasHomeMicrogestureAvatar({
   const [canonicalSrc, setCanonicalSrc] = useState('');
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
+
+  // Speech owns face/attention, not the physical task. Keep a second semantic
+  // profile without the speech override so Matthias can talk while holding the
+  // cup/book/dossier he was already using.
+  const activityProfile = useMemo(
+    () => matthiasHomeMotionProfile({ scene, activity, speaking: false }),
+    [activity, scene],
+  );
   const profile = useMemo(
     () => matthiasHomeMotionProfile({ scene, activity, speaking }),
     [activity, scene, speaking],
+  );
+  const activityProp = useMemo(
+    () => matthiasPremiumHomeActivityProp(activityProfile),
+    [activityProfile],
   );
   const phase = useMemo(() => matthiasHomeMotionPhase({ scene, activity }), [activity, scene]);
   const intensity = normalizeIntensity(motionIntensity);
@@ -161,6 +175,7 @@ export default function MatthiasHomeMicrogestureAvatar({
 
   modeRef.current = machine.mode;
   profileRef.current = profile;
+  activityProfileRef.current = activityProfile;
   phaseRef.current = phase;
   intensityRef.current = intensity;
   speakingRef.current = speaking;
@@ -245,6 +260,8 @@ export default function MatthiasHomeMicrogestureAvatar({
     root.dataset.threeFrame = '0';
     root.dataset.threeEnergy = '0';
     root.dataset.threeReach = '0';
+    root.dataset.threeActivityProp = matthiasPremiumHomeActivityProp(activityProfileRef.current);
+    root.dataset.threeActivityReach = '0';
     root.dataset.threeFaceWarp = '0.0000';
     root.dataset.threeFaceArticulation = '0.000';
     root.dataset.threeHeadYaw = '0.000';
@@ -295,8 +312,6 @@ export default function MatthiasHomeMicrogestureAvatar({
     camera.position.set(0, .02, 5.1);
     camera.lookAt(0, -.03, 0);
 
-    // Warm key + restrained cool rim mirrors the approved premium mock without
-    // changing Matthias' actual colours or requiring shadow maps.
     scene3d.add(new THREE.HemisphereLight(0xffead2, 0x11141a, 1.75));
     const key = new THREE.DirectionalLight(0xffd39a, 2.65);
     key.position.set(-2.4, 3.2, 4.2);
@@ -336,27 +351,28 @@ export default function MatthiasHomeMicrogestureAvatar({
     const minFrameInterval = 1000 / policy.maxFps;
 
     const samplePose = (stamp) => {
-      if (reducedMotion) {
-        return matthiasPawnPoseSample({
+      const base = reducedMotion
+        ? matthiasPawnPoseSample({
           profile: 'idle',
           presenceState: MATTHIAS_HOME_STATES.IDLE,
           time: 0,
           stateElapsed: 0,
           stateDurationMs: 0,
           motionIntensity: 0,
+        })
+        : matthiasPawnPoseSample({
+          profile: profileRef.current,
+          presenceState: modeRef.current,
+          time: Math.max(0, stamp - startedAt) / 1000 + phaseRef.current,
+          stateElapsed: Math.max(0, stamp - modeStartedAtRef.current) / 1000,
+          stateDurationMs: matthiasHomeStateDuration(modeRef.current),
+          speaking: speakingRef.current,
+          motionIntensity: intensityRef.current,
         });
-      }
-      const time = Math.max(0, stamp - startedAt) / 1000 + phaseRef.current;
-      const stateElapsed = Math.max(0, stamp - modeStartedAtRef.current) / 1000;
-      return matthiasPawnPoseSample({
-        profile: profileRef.current,
-        presenceState: modeRef.current,
-        time,
-        stateElapsed,
-        stateDurationMs: matthiasHomeStateDuration(modeRef.current),
-        speaking: speakingRef.current,
-        motionIntensity: intensityRef.current,
-      });
+
+      // Semantic activity survives speech and reduced-motion. Motion can be
+      // frozen while the prop remains visible in a legible static pose.
+      return { ...base, activityProfile: activityProfileRef.current };
     };
 
     const paint = (stamp) => {
@@ -385,6 +401,8 @@ export default function MatthiasHomeMicrogestureAvatar({
         root.dataset.threeFrame = String(frames);
         root.dataset.threeEnergy = peakEnergy.toFixed(3);
         root.dataset.threeReach = peakReach.toFixed(3);
+        root.dataset.threeActivityProp = rig.root.userData.activityProp || 'none';
+        root.dataset.threeActivityReach = Number(rig.root.userData.activityReach || 0).toFixed(3);
         root.dataset.threeFaceWarp = '0.0000';
         root.dataset.threeFaceArticulation = peakArticulation.toFixed(3);
         root.dataset.threeHeadYaw = peakHeadYaw.toFixed(3);
@@ -459,6 +477,10 @@ export default function MatthiasHomeMicrogestureAvatar({
       data-three-scene={scene || 'base'}
       data-three-activity={activity || ''}
       data-three-profile={profile}
+      data-three-activity-profile={activityProfile}
+      data-three-activity-rig={MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION}
+      data-three-activity-prop={activityProp}
+      data-three-activity-reach="0"
       data-three-motion={reducedMotion ? 'reduced' : 'active'}
       data-three-motion-intensity={intensity.toFixed(2)}
       data-three-motion-phase={phase.toFixed(3)}
