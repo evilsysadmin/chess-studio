@@ -1,6 +1,7 @@
 // Capas frontend DISJUNTAS. Cada fichero Vitest debe pertenecer exactamente a
 // una capa: smoke (fail-fast), unit (lógica/comportamiento) o contract
-// (fronteras de integración probadas por comportamiento, sin leer código fuente).
+// (fronteras de integración probadas por comportamiento; los pocos STATIC CONTRACT
+// que inspeccionan artefactos quedan declarados explícitamente y limitados por audit).
 export const FRONTEND_SMOKE_TESTS = Object.freeze([
   'src/api.test.js',
   'src/auth.test.js',
@@ -14,7 +15,7 @@ export const FRONTEND_SMOKE_TESTS = Object.freeze([
 ]);
 
 export const FRONTEND_CONTRACT_TESTS = Object.freeze([
-  // Boundary contracts are behavioural: no source-text archaeology.
+  'src/components/MatthiasCanonicalAsset.test.js',
   'src/presenceLifecycle.test.js',
   'src/narrativeRemote.test.js',
   'src/releaseUpdate.test.js',
