@@ -52,6 +52,22 @@ def parse_time(value: str) -> datetime:
     return parsed.astimezone(timezone.utc)
 
 
+def run_is_for_exact_pr_base(
+    run: dict[str, Any], *, pr_number: int, head_sha: str, base_sha: str
+) -> bool:
+    for linked_pr in run.get("pull_requests") or []:
+        linked_head = linked_pr.get("head") or {}
+        linked_base = linked_pr.get("base") or {}
+        if (
+            int(linked_pr.get("number") or 0) == pr_number
+            and str(linked_head.get("sha") or "").lower() == head_sha
+            and linked_base.get("ref") == "main"
+            and str(linked_base.get("sha") or "").lower() == base_sha
+        ):
+            return True
+    return False
+
+
 def evaluate_admission(
     *,
     main_sha: str,
@@ -81,9 +97,10 @@ def evaluate_admission(
         )
 
     pr = candidates[0]
+    pr_number = int(pr.get("number") or 0)
     head_sha = str((pr.get("head") or {}).get("sha") or "").lower()
-    if len(head_sha) != 40:
-        raise AdmissionError("el PR acreditado no expone un head SHA completo")
+    if not pr_number or len(head_sha) != 40:
+        raise AdmissionError("el PR acreditado no expone número/head SHA completos")
     merged_at = parse_time(str(pr.get("merged_at") or ""))
 
     eligible_runs = []
@@ -95,18 +112,24 @@ def evaluate_admission(
             and str(run.get("head_sha") or "").lower() == head_sha
             and run.get("status") == "completed"
             and run.get("conclusion") == "success"
+            and run_is_for_exact_pr_base(
+                run,
+                pr_number=pr_number,
+                head_sha=head_sha,
+                base_sha=parent,
+            )
         ):
             created_at = parse_time(str(run.get("created_at") or ""))
             updated_at = parse_time(str(run.get("updated_at") or ""))
-            # pull_request Actions check out GitHub's synthetic merge ref. Requiring
-            # the run to start after the exact final base commit existed prevents a
-            # stale pre-base green run from being reused after main has advanced.
+            # GitHub's run metadata above proves the exact PR head + exact base.
+            # Timestamps remain a second fail-closed guard against reusing an
+            # impossible pre-base or post-merge accreditation.
             if created_at >= first_parent_time and updated_at <= merged_at:
                 eligible_runs.append(run)
 
     if not eligible_runs:
         raise AdmissionError(
-            f"PR #{pr.get('number')} no tiene un {QUALITY_WORKFLOW!r} verde sobre la base actual"
+            f"PR #{pr_number} no tiene un {QUALITY_WORKFLOW!r} verde sobre la base exacta {parent[:12]}"
         )
 
     eligible_runs.sort(key=lambda run: parse_time(str(run.get("updated_at") or "")), reverse=True)
@@ -133,7 +156,7 @@ def evaluate_admission(
         raise AdmissionError("checks requeridos no acreditados: " + "; ".join(bad))
 
     return Admission(
-        pr_number=int(pr.get("number") or 0),
+        pr_number=pr_number,
         pr_head_sha=head_sha,
         quality_run_id=int(run.get("id") or 0),
     )
@@ -244,6 +267,13 @@ def fixture() -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
         "created_at": "2026-09-04T22:20:13Z",
         "updated_at": "2026-09-04T22:23:36Z",
         "check_suite_id": 99,
+        "pull_requests": [
+            {
+                "number": 421,
+                "head": {"sha": "c" * 40},
+                "base": {"ref": "main", "sha": "a" * 40},
+            }
+        ],
     }
     checks = [
         {
@@ -256,7 +286,14 @@ def fixture() -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
     return pr, run, checks
 
 
-def assert_rejected(label: str, *, pr: dict[str, Any], run: dict[str, Any], checks: list[dict[str, Any]], first_parent: str = "a" * 40) -> None:
+def assert_rejected(
+    label: str,
+    *,
+    pr: dict[str, Any],
+    run: dict[str, Any],
+    checks: list[dict[str, Any]],
+    first_parent: str = "a" * 40,
+) -> None:
     try:
         evaluate_admission(
             main_sha="b" * 40,
@@ -316,6 +353,17 @@ def self_test() -> None:
         raise AssertionError("self-test no rechazó: direct push")
 
     assert_rejected("wrong base parent", pr=pr, run=run, checks=checks, first_parent="d" * 40)
+    stale_run_base = {
+        **run,
+        "pull_requests": [
+            {
+                "number": 421,
+                "head": {"sha": "c" * 40},
+                "base": {"ref": "main", "sha": "d" * 40},
+            }
+        ],
+    }
+    assert_rejected("run bound to stale base", pr=pr, run=stale_run_base, checks=checks)
     assert_rejected("stale PR gate", pr=pr, run={**run, "created_at": "2026-09-04T22:14:59Z"}, checks=checks)
     assert_rejected("post-merge PR gate", pr=pr, run={**run, "updated_at": "2026-09-04T22:24:14Z"}, checks=checks)
     failed_checks = [
@@ -324,7 +372,10 @@ def self_test() -> None:
     ]
     assert_rejected("failed required check", pr=pr, run=run, checks=failed_checks)
 
-    print("main-ci-admission self-test OK · full/scoped green accepted; direct/stale/wrong-base/failed rejected")
+    print(
+        "main-ci-admission self-test OK · full/scoped green accepted; "
+        "direct/stale/wrong-base/failed rejected"
+    )
 
 
 def main() -> int:
