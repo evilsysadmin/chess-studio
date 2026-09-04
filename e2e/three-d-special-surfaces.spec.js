@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
 import {
-  buttonWithHeading,
   login,
   loginAndOpenDeployment,
   mockApi,
@@ -66,7 +65,12 @@ test('Arena experimental · tema, terreno y legalidad sobreviven al renderer 3D'
   await login(page);
 
   const moreModes = await openMoreGameModes(page);
-  await buttonWithHeading(moreModes, 'Experimentos geniales').click();
+  const experiments = moreModes
+    .locator('.friendly-disclosure-body > .menu-card-shell > button')
+    .filter({ hasText: 'Experimentos geniales' });
+  await expect(experiments).toHaveCount(1);
+  await expect(experiments).toBeVisible();
+  await experiments.click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await page.getByRole('button', { name: /Arenas experimentales/i }).click();
 
@@ -113,13 +117,14 @@ test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre e
   expect(rect).toBeTruthy();
 
   // Hit the tile centre, not the visual top of the model. The 3D input layer
-  // deliberately resolves the square first and then checks whether that square
-  // owns a piece, making hover stable across pawn skins and veteran geometry.
+  // resolves the square first and then checks whether that square owns a piece,
+  // making hover stable across pawn skins and veteran geometry.
   const pawn = projectSquare(rect, 'a2');
   await page.mouse.move(pawn.x, pawn.y);
 
-  // Deployment delays hover previews deliberately; this proves the raycast 3D
-  // now emits the same piece-enter signal that the old img.piece path emitted.
+  // Deployment delays hover previews deliberately. The renderer now provides
+  // the same stable DOM anchor contract as Board2D instead of leaking a native
+  // PointerEvent whose currentTarget lifetime is browser-dependent.
   const dossier = page.getByRole('dialog', { name: /Ficha de unidad de/i });
   await expect(dossier).toBeVisible({ timeout: 4_000 });
   await expect(dossier.getByText(/Vista rápida/i)).toBeVisible();
