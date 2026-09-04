@@ -63,8 +63,12 @@ export function animateMatthiasSlugSprite(sprite, { time = 0, running = false, f
 
 export function createSlugEnemySprite(type = 'pawn') {
   const frame = type === 'knight' ? 1 : type === 'rook' ? 2 : 0;
-  const scale = type === 'rook' ? [2.05, 2.05] : [1.85, 1.85];
-  const sprite = atlasSprite(enemyAtlasUrl, 3, frame, scale);
+  const scaleByType = {
+    pawn: [1.78, 1.78],
+    knight: [1.96, 1.96],
+    rook: [2.18, 2.18],
+  };
+  const sprite = atlasSprite(enemyAtlasUrl, 3, frame, scaleByType[type] || scaleByType.pawn);
   sprite.name = `pawn-slug-${type}-sprite`;
   sprite.userData.enemyFrame = frame;
   return sprite;
@@ -102,8 +106,22 @@ export function disposePawnSlugSprite(sprite) {
 }
 
 export const PAWN_SLUG_SPRITE_META = Object.freeze({
-  matthias: Object.freeze({ url: matthiasAtlasUrl, frames: 4, frameWidth: 256, frameHeight: 256 }),
-  enemies: Object.freeze({ url: enemyAtlasUrl, frames: 3, frameWidth: 256, frameHeight: 256 }),
+  matthias: Object.freeze({
+    url: matthiasAtlasUrl,
+    frames: 4,
+    frameWidth: 256,
+    frameHeight: 256,
+    sourceFacing: 'right',
+    framesByAction: Object.freeze({ idle: 0, runA: 1, runB: 2, fire: 3 }),
+  }),
+  enemies: Object.freeze({
+    url: enemyAtlasUrl,
+    frames: 3,
+    frameWidth: 256,
+    frameHeight: 256,
+    sourceFacing: 'right',
+    frameByType: Object.freeze({ pawn: 0, knight: 1, rook: 2 }),
+  }),
   boss: Object.freeze({ url: panzerRookUrl, frames: 1, frameWidth: 512, frameHeight: 256 }),
   weapons: Object.freeze({ url: weaponAtlasUrl, frames: 4, frameWidth: 256, frameHeight: 128 }),
 });
