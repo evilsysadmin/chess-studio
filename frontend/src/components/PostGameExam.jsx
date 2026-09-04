@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Board from './Board.jsx';
 import PromotionModal from './PromotionModal.jsx';
+import { api } from '../api.js';
 import { chessFromFen } from '../chessRules.js';
 import { matchesExpectedPuzzleMove } from '../puzzleMoveValidation.js';
 import { buildPostGameExamPositions } from '../postGameExam.js';
+import { buildShortCounterfactual } from '../postGameCounterfactual.js';
 import './PostGameExam.css';
 
 export default function PostGameExam({ history = [], humanColor = 'w', report = null, meta = {} }) {
@@ -17,6 +19,12 @@ export default function PostGameExam({ history = [], humanColor = 'w', report = 
   const [attempt, setAttempt] = useState(null);
   const [score, setScore] = useState(0);
   const [pendingPromotion, setPendingPromotion] = useState(null);
+  const [counterfactual, setCounterfactual] = useState({ status: 'idle', line: [] });
+  const counterfactualAbortRef = useRef(null);
+
+  useEffect(() => () => {
+    counterfactualAbortRef.current?.abort();
+  }, []);
 
   if (!positions.length) return null;
 
@@ -75,11 +83,36 @@ export default function PostGameExam({ history = [], humanColor = 'w', report = 
     commitMove(from, to, code);
   }
 
+  async function revealCounterfactual() {
+    if (!current || counterfactual.status === 'loading' || counterfactual.status === 'done') return;
+    counterfactualAbortRef.current?.abort();
+    const controller = new AbortController();
+    counterfactualAbortRef.current = controller;
+    setCounterfactual({ status: 'loading', line: [] });
+    try {
+      const result = await buildShortCounterfactual({
+        fen: current.fen,
+        suggested: current.suggested,
+        analyzePosition: (fen, level, options) => api.analyzePosition(fen, level, options),
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
+      setCounterfactual(result?.line?.length
+        ? { status: 'done', line: result.line }
+        : { status: 'unavailable', line: [] });
+    } catch (error) {
+      if (controller.signal.aborted || error?.name === 'AbortError') return;
+      setCounterfactual({ status: 'unavailable', line: [] });
+    }
+  }
+
   function nextPosition() {
+    counterfactualAbortRef.current?.abort();
     const next = index + 1;
     setSelected(null);
     setAttempt(null);
     setPendingPromotion(null);
+    setCounterfactual({ status: 'idle', line: [] });
     setIndex(next);
   }
 
@@ -137,6 +170,24 @@ export default function PostGameExam({ history = [], humanColor = 'w', report = 
               <b>{attempt.correct ? '✓ Correcto.' : `✗ ${attempt.san} no era.`}</b>
               <span>En la partida jugaste <strong>{current.played}</strong>. La alternativa era <strong>{current.suggested}</strong>.</span>
               <small>Jugada {current.moveNumber} · pérdida estimada del error original: ~{current.loss} cp.</small>
+
+              <div className="post-game-counterfactual" data-counterfactual-status={counterfactual.status}>
+                {counterfactual.status === 'idle' && (
+                  <button type="button" className="secondary-btn" onClick={() => void revealCounterfactual()}>
+                    Ver línea corta del motor
+                  </button>
+                )}
+                {counterfactual.status === 'loading' && <small>Calculando sólo 2–3 medias jugadas desde la posición real…</small>}
+                {counterfactual.status === 'done' && (
+                  <>
+                    <b>Si jugabas {current.suggested}</b>
+                    <span>{counterfactual.line.map((move) => move.san).join(' · ')}</span>
+                    <small>Línea corta recalculada desde el FEN real. Más allá de estas jugadas no promete nada.</small>
+                  </>
+                )}
+                {counterfactual.status === 'unavailable' && <small>No se pudo extender la variante ahora mismo; la alternativa original del análisis sigue siendo válida.</small>}
+              </div>
+
               <button type="button" className="primary-btn" onClick={nextPosition}>
                 {index + 1 < positions.length ? 'Siguiente posición' : 'Ver resultado'}
               </button>
