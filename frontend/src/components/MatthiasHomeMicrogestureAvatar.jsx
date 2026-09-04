@@ -20,6 +20,7 @@ import {
 } from './matthiasHomePresenceStateMachine.js';
 import {
   applyMatthiasCanonicalPose,
+  canonicalMatthiasDataUrl,
   createMatthiasCanonicalRig,
   disposeMatthiasCanonicalRig,
   MATTHIAS_CANONICAL_ART_VERSION,
@@ -136,6 +137,7 @@ function resizeRenderer(renderer, camera, canvas) {
 }
 
 export default function MatthiasHomeMicrogestureAvatar({
+  avatar,
   scene = 'base',
   activity = '',
   speaking = false,
@@ -151,6 +153,7 @@ export default function MatthiasHomeMicrogestureAvatar({
     undefined,
     createMatthiasHomePresenceMachine,
   );
+  const [canonicalSrc, setCanonicalSrc] = useState('');
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const profile = useMemo(
@@ -198,9 +201,35 @@ export default function MatthiasHomeMicrogestureAvatar({
   }, [machine.lastAmbient, machine.mode, profile, reducedMotion, speaking]);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function') return undefined;
+    let cancelled = false;
+    const root = rootRef.current;
+
+    window.fetch(MATTHIAS_CANONICAL_ASSET_URL, { cache: 'force-cache' })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Canonical Matthias asset ${response.status}`);
+        return response.text();
+      })
+      .then((payload) => canonicalMatthiasDataUrl(payload))
+      .then((src) => {
+        if (cancelled) return;
+        setCanonicalSrc(src);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setFailed(true);
+        if (root) root.dataset.threeFailed = 'true';
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
     const root = rootRef.current;
-    if (!canvas || !root) return undefined;
+    if (!canvas || !root || !canonicalSrc) return undefined;
 
     let renderer;
     let rig = null;
@@ -357,7 +386,7 @@ export default function MatthiasHomeMicrogestureAvatar({
 
     const textureLoader = new THREE.TextureLoader();
     textureLoader.load(
-      MATTHIAS_CANONICAL_ASSET_URL,
+      canonicalSrc,
       (texture) => {
         if (disposed) {
           texture.dispose?.();
@@ -409,7 +438,9 @@ export default function MatthiasHomeMicrogestureAvatar({
       disposeMatthiasCanonicalRig(rig);
       renderer?.dispose?.();
     };
-  }, [intensity, phase, profile, reducedMotion, speaking]);
+  }, [canonicalSrc, intensity, phase, profile, reducedMotion, speaking]);
+
+  const fallbackSrc = canonicalSrc || avatar || '';
 
   return (
     <span
@@ -451,14 +482,16 @@ export default function MatthiasHomeMicrogestureAvatar({
       data-three-viewport="visible"
     >
       <canvas ref={canvasRef} className="matthias-three-avatar__canvas" aria-hidden="true" />
-      <img
-        className="matthias-three-avatar__fallback"
-        src={MATTHIAS_CANONICAL_ASSET_URL}
-        alt=""
-        draggable="false"
-        aria-hidden="true"
-        data-matthias-canonical-art="true"
-      />
+      {fallbackSrc ? (
+        <img
+          className="matthias-three-avatar__fallback"
+          src={fallbackSrc}
+          alt=""
+          draggable="false"
+          aria-hidden="true"
+          data-matthias-canonical-art="true"
+        />
+      ) : null}
     </span>
   );
 }
