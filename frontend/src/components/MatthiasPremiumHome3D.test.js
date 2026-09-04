@@ -4,6 +4,7 @@ import {
   applyMatthiasPremiumHomePose,
   createMatthiasPremiumHome3D,
   disposeMatthiasPremiumHome3D,
+  MATTHIAS_PREMIUM_HOME_CAP_VERSION,
   MATTHIAS_PREMIUM_HOME_FACE_RIG_VERSION,
   MATTHIAS_PREMIUM_HOME_FIDELITY_VERSION,
   MATTHIAS_PREMIUM_HOME_FRAME_SCALE,
@@ -14,11 +15,15 @@ import {
 } from './MatthiasPremiumHome3D.js';
 
 describe('MatthiasPremiumHome3D', () => {
-  it('mantiene la silueta canónica: gorra ancha, cabeza compacta y ojos grandes', () => {
+  it('mantiene la silueta canónica: gorra ancha y alta, cabeza compacta y ojos grandes', () => {
     const rig = createMatthiasPremiumHome3D();
     const capCrown = rig.root.getObjectByName('cap-crown');
+    const capTop = rig.root.getObjectByName('cap-top');
+    const capBand = rig.root.getObjectByName('cap-red-band');
     const faceBox = new THREE.Box3().setFromObject(rig.head);
     const capBox = new THREE.Box3().setFromObject(capCrown);
+    const topBox = new THREE.Box3().setFromObject(capTop);
+    const bandBox = new THREE.Box3().setFromObject(capBand);
     const faceSize = new THREE.Vector3();
     const capSize = new THREE.Vector3();
     faceBox.getSize(faceSize);
@@ -29,9 +34,13 @@ describe('MatthiasPremiumHome3D', () => {
     expect(rig.root.userData.fidelityVersion).toBe(MATTHIAS_PREMIUM_HOME_FIDELITY_VERSION);
     expect(rig.root.userData.renderContract).toBe(MATTHIAS_PREMIUM_HOME_RENDER_CONTRACT);
     expect(rig.root.userData.approvedReference).toBe(MATTHIAS_PREMIUM_HOME_REFERENCE);
+    expect(rig.root.userData.capVersion).toBe(MATTHIAS_PREMIUM_HOME_CAP_VERSION);
     expect(rig.root.userData.frameScale).toBe(MATTHIAS_PREMIUM_HOME_FRAME_SCALE);
     expect(rig.root.userData.frameY).toBe(MATTHIAS_PREMIUM_HOME_FRAME_Y);
     expect(capSize.x).toBeGreaterThan(faceSize.x * 1.2);
+    expect(capSize.y).toBeGreaterThan(faceSize.y * .25);
+    expect(capBox.min.y).toBeLessThanOrEqual(bandBox.max.y + .03);
+    expect(topBox.min.y).toBeGreaterThan(capBox.max.y - .04);
     expect(rig.leftEye.scale.y).toBeGreaterThan(1.45);
     expect(rig.rightEye.scale.y).toBeGreaterThan(1.45);
     expect(rig.leftEye.scale.x).toBeGreaterThan(.8);
