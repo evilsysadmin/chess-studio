@@ -19,6 +19,7 @@ env:
   EXPORTER_NAME: chess-studio-cloudflare-prometheus
   EXPORTER_HOSTNAME: metrics.shadowops.dpdns.org
   EXPORTER_UPSTREAM_SHA: c98fd6772a4ff806e40ba08cb5d4edb002ef13dc
+  BUN_VERSION: '1.2.22'
 
 jobs:
   deploy:
@@ -74,12 +75,31 @@ jobs:
         if: steps.gate.outputs.configured == 'true'
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: '1.2.22'
+          bun-version: ${{ env.BUN_VERSION }}
 
-      - name: Install pinned exporter dependencies
+      - name: Restore exact exporter dependency tree
         if: steps.gate.outputs.configured == 'true'
+        id: exporter_deps
+        uses: actions/cache@v6
+        with:
+          path: upstream-exporter/node_modules
+          key: cf-exporter-node-modules-${{ runner.os }}-${{ runner.arch }}-bun${{ env.BUN_VERSION }}-${{ env.EXPORTER_UPSTREAM_SHA }}
+
+      - name: Install pinned exporter dependencies on cache miss
+        if: steps.gate.outputs.configured == 'true' && steps.exporter_deps.outputs.cache-hit != 'true'
         working-directory: upstream-exporter
         run: bun install --frozen-lockfile
+
+      - name: Verify exact exporter toolchain
+        if: steps.gate.outputs.configured == 'true'
+        working-directory: upstream-exporter
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x node_modules/.bin/wrangler
+          test -x node_modules/.bin/vitest
+          test -x node_modules/.bin/tsc
+          echo "Exporter dependency tree ready · upstream=$EXPORTER_UPSTREAM_SHA · bun=$BUN_VERSION"
 
       - name: Build hardened Chess Studio exporter config
         if: steps.gate.outputs.configured == 'true'
@@ -140,7 +160,7 @@ jobs:
       - name: Deploy pinned exporter Worker
         if: steps.gate.outputs.configured == 'true'
         working-directory: upstream-exporter
-        run: bunx wrangler deploy --config wrangler.chess-studio.json
+        run: ./node_modules/.bin/wrangler deploy --config wrangler.chess-studio.json
 
       - name: Install least-privilege runtime and Basic Auth secrets
         if: steps.gate.outputs.configured == 'true'
@@ -149,11 +169,11 @@ jobs:
         run: |
           set -euo pipefail
           printf '%s' "$CLOUDFLARE_EXPORTER_API_TOKEN" \
-            | bunx wrangler secret put CLOUDFLARE_API_TOKEN --config wrangler.chess-studio.json
+            | ./node_modules/.bin/wrangler secret put CLOUDFLARE_API_TOKEN --config wrangler.chess-studio.json
           printf '%s' "$CLOUDFLARE_EXPORTER_BASIC_AUTH_USER" \
-            | bunx wrangler secret put BASIC_AUTH_USER --config wrangler.chess-studio.json
+            | ./node_modules/.bin/wrangler secret put BASIC_AUTH_USER --config wrangler.chess-studio.json
           printf '%s' "$CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD" \
-            | bunx wrangler secret put BASIC_AUTH_PASSWORD --config wrangler.chess-studio.json
+            | ./node_modules/.bin/wrangler secret put BASIC_AUTH_PASSWORD --config wrangler.chess-studio.json
 
       - name: Verify protected exporter health and metrics
         if: steps.gate.outputs.configured == 'true'
