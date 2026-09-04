@@ -43,12 +43,15 @@ async function expectThreeScene(corner, profile, label, { minReach = 0 } = {}) {
   await expect(avatar).toBeVisible();
   await expect(avatar).toHaveAttribute('data-home-presence-version', 'home-presence-v1');
   await expect(avatar).toHaveAttribute('data-home-microgesture-version', 'home-face-v2');
+  await expect(avatar).toHaveAttribute('data-three-model', 'matthias-pawn-v1');
+  await expect(avatar).toHaveAttribute('data-three-render-mode', 'articulated-pawn-model');
+  await expect(avatar).toHaveAttribute('data-three-emblem', 'premium-pawn');
   await expect(avatar).toHaveAttribute('data-three-profile', profile);
   await expect(avatar).toHaveAttribute('data-three-motion', 'active');
   await expect(avatar).toHaveAttribute('data-three-deformation', 'rigid-body+bounded-face');
   await expect(avatar).toHaveAttribute('data-three-face-rig', 'face-v1');
+  await expect(avatar).toHaveAttribute('data-three-articulated-face-rig', 'pawn-face-rig-v1');
   await expect(avatar).toHaveAttribute('data-three-face-warp-limit', '0.019');
-  await expect(avatar).not.toHaveAttribute('data-three-segments', '1x1');
   await expect(fallback).toHaveAttribute('src', /\.webp(?:$|\?)/);
   await expect.poll(
     () => fallback.evaluate((img) => img.complete && img.naturalWidth > 0 && img.naturalHeight > 0),
@@ -63,12 +66,16 @@ async function expectThreeScene(corner, profile, label, { minReach = 0 } = {}) {
   await expect(canvas).toBeVisible();
   await expect.poll(async () => Number(await avatar.getAttribute('data-three-frame')) || 0, { timeout: 4_000 }).toBeGreaterThan(6);
   await expect.poll(async () => Number(await avatar.getAttribute('data-three-energy')) || 0, { timeout: 4_000 }).toBeGreaterThan(.08);
+  await expect.poll(
+    async () => Number(await avatar.getAttribute('data-three-face-articulation')) || 0,
+    { timeout: 4_000, message: `${label}: el modelo 3D debe articular cabeza/cara de verdad` },
+  ).toBeGreaterThan(.003);
   const warp = Number(await avatar.getAttribute('data-three-face-warp')) || 0;
-  expect(warp, `${label}: el rig facial debe permanecer dentro del límite anti-melt`).toBeLessThanOrEqual(.019);
+  expect(warp, `${label}: la señal legacy anti-melt debe permanecer acotada`).toBeLessThanOrEqual(.019);
   if (minReach > 0) {
     await expect.poll(
       async () => Number(await avatar.getAttribute('data-three-reach')) || 0,
-      { timeout: 4_500, message: `${label}: la actividad debe completar un gesto legible sin doblar la cara` },
+      { timeout: 4_500, message: `${label}: la actividad debe completar un gesto legible` },
     ).toBeGreaterThan(minReach);
   }
 
@@ -90,7 +97,7 @@ for (const [hour, profile, label, minReach] of [
   [23, 'read', 'estudio y lectura', 0],
   [2, 'sleep', 'sueño', 0],
 ]) {
-  test(`Home · Three.js anima ${label} con cuerpo rígido y cara expresiva acotada`, async ({ page }) => {
+  test(`Home · Three.js anima ${label} con Matthias peón 3D articulado`, async ({ page }) => {
     const corner = await openHomeAt(page, hour);
     await expectThreeScene(corner, profile, label, { minReach });
   });
@@ -102,24 +109,37 @@ test('Home · lectura conserva microgestos faciales visibles y acotados', async 
   await expect(avatar).toHaveAttribute('data-three-face-expression', 'focus');
   await expect(avatar).toHaveAttribute('data-three-face-gesture', 'survey');
   await expect.poll(
-    async () => Number(await avatar.getAttribute('data-three-face-warp')) || 0,
-    { timeout: 4_000, message: 'Home debe mover de verdad ojos/cejas; energía corporal sola no basta' },
-  ).toBeGreaterThan(.0003);
+    async () => Number(await avatar.getAttribute('data-three-head-yaw')) || 0,
+    { timeout: 4_000, message: 'Home debe mover de verdad la cabeza/mirada del modelo 3D' },
+  ).toBeGreaterThan(.02);
   const warp = Number(await avatar.getAttribute('data-three-face-warp')) || 0;
   expect(warp).toBeLessThanOrEqual(.019);
 });
 
-test('Home · cuando Matthias habla usa mandíbula/expresión acotadas además de la postura de atención', async ({ page }) => {
+test('Home · cuando Matthias habla articula boca y atención mientras el mensaje está vivo', async ({ page }) => {
   const corner = await openHomeAt(page, 10, { dismissSpeech: false });
   const bubble = corner.getByRole('region', { name: 'Mensaje de Matthias' });
+  const avatar = corner.locator('[data-matthias-three-avatar="true"]');
+  const canvas = avatar.locator('canvas');
+
+  // El comentario de Home es transitorio. Comprobamos primero su estado vivo,
+  // antes de ejecutar gates genéricos que pueden durar más que el propio nudge.
   await expect(bubble).toBeVisible();
-  const avatar = await expectThreeScene(corner, 'speak', 'habla');
+  await expect(avatar).toHaveAttribute('data-three-model', 'matthias-pawn-v1');
+  await expect(avatar).toHaveAttribute('data-three-emblem', 'premium-pawn');
+  await expect(avatar).toHaveAttribute('data-three-profile', 'speak');
   await expect(avatar).toHaveAttribute('data-home-presence-state', 'attend');
   await expect(avatar).toHaveAttribute('data-three-face-expression', 'alert');
+  await expect.poll(() => avatar.getAttribute('data-three-ready'), { timeout: 4_000 }).toBe('true');
+  await expect(canvas).toBeVisible();
   await expect.poll(
-    async () => Number(await avatar.getAttribute('data-three-face-warp')) || 0,
-    { timeout: 4_000, message: 'hablar debe producir microgesto facial real, no sólo mover la postal entera' },
-  ).toBeGreaterThan(.0005);
+    async () => Number(await avatar.getAttribute('data-three-mouth-open')) || 0,
+    { timeout: 2_500, message: 'hablar debe abrir/cerrar una boca 3D independiente' },
+  ).toBeGreaterThan(.2);
+  await expect.poll(
+    async () => Number(await avatar.getAttribute('data-three-face-articulation')) || 0,
+    { timeout: 2_500, message: 'hablar debe articular la cabeza/cara real, no una postal' },
+  ).toBeGreaterThan(.02);
 
   const geometry = await corner.evaluate((node) => {
     const bubbleNode = node.querySelector('.matthias-resident__bubble');
@@ -159,12 +179,15 @@ test('Home · 390px conserva microgestos, mérito diegético, texto legible y ce
   await expect(primaryCard).toBeVisible();
   await expect(corner).toHaveAttribute('data-placement', 'inline');
   const avatar = corner.locator('[data-matthias-three-avatar="true"]');
+  await expect(avatar).toHaveAttribute('data-three-model', 'matthias-pawn-v1');
+  await expect(avatar).toHaveAttribute('data-three-render-mode', 'articulated-pawn-model');
+  await expect(avatar).toHaveAttribute('data-three-emblem', 'premium-pawn');
   await expect(avatar).toHaveAttribute('data-three-deformation', 'rigid-body+bounded-face');
   await expect(avatar).toHaveAttribute('data-three-face-rig', 'face-v1');
   await expect.poll(
-    async () => Number(await avatar.getAttribute('data-three-face-warp')) || 0,
+    async () => Number(await avatar.getAttribute('data-three-face-articulation')) || 0,
     { timeout: 4_000 },
-  ).toBeGreaterThan(.0005);
+  ).toBeGreaterThan(.01);
   expect(Number(await avatar.getAttribute('data-three-face-warp')) || 0).toBeLessThanOrEqual(.019);
 
   const contract = await page.evaluate(() => {
