@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { request } from '../http.js';
 import {
   MATTHIAS_FACIAL_RIG_VERSION,
   matthiasFacialMotionSample,
@@ -201,11 +202,11 @@ export default function MatthiasHomeMicrogestureAvatar({
   }, [machine.lastAmbient, machine.mode, profile, reducedMotion, speaking]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.fetch !== 'function') return undefined;
+    if (typeof window === 'undefined') return undefined;
     let cancelled = false;
     const root = rootRef.current;
 
-    window.fetch(MATTHIAS_CANONICAL_ASSET_URL, { cache: 'force-cache' })
+    request(MATTHIAS_CANONICAL_ASSET_URL, { cache: 'force-cache' })
       .then((response) => {
         if (!response.ok) throw new Error(`Canonical Matthias asset ${response.status}`);
         return response.text();
