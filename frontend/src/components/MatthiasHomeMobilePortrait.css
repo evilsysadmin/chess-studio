@@ -11,37 +11,36 @@
     gap: .48rem;
   }
 
-  /* The character should feel present in the hall, not trapped inside a card. */
+  /* Present enough to read, restrained enough to remain part of the hall. */
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character {
-    flex-basis: 166px;
-    width: 166px;
+    flex-basis: 150px;
+    width: 150px;
     padding: .08rem .14rem .24rem;
     gap: .02rem;
     border-radius: 18px;
     background:
-      radial-gradient(ellipse at 50% 46%, rgba(198,164,93,.095), transparent 62%);
-    filter: drop-shadow(0 16px 24px rgba(0,0,0,.28));
+      radial-gradient(ellipse at 50% 46%, rgba(198,164,93,.085), transparent 62%);
+    filter: drop-shadow(0 14px 22px rgba(0,0,0,.25));
   }
 
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__portrait-shell {
-    width: 158px;
-    height: 152px;
+    width: 144px;
+    height: 142px;
     place-items: stretch;
-    border: 1px solid color-mix(in srgb, var(--brass) 22%, transparent);
-    border-radius: 22px 22px 16px 16px;
+    border: 1px solid color-mix(in srgb, var(--brass) 20%, transparent);
+    border-radius: 21px 21px 16px 16px;
     background:
-      radial-gradient(ellipse at 50% 48%, rgba(198,164,93,.115), transparent 58%);
+      radial-gradient(ellipse at 50% 48%, rgba(198,164,93,.095), transparent 58%);
     box-shadow:
       inset 0 1px rgba(255,255,255,.025),
-      0 11px 28px rgba(0,0,0,.12);
+      0 10px 25px rgba(0,0,0,.11);
   }
 
-  /* Deliberate bust framing. We preserve the exact Three.js rig and enlarge
-   * the rendered surface instead of inventing a second mobile model. The wider
-   * frame keeps the officer cap readable while the tighter vertical field crops
-   * the pawn base and gives the face far more visual weight. */
+  /* Balanced bust framing. Keep face and officer cap readable without letting
+   * Matthias dominate the room; premium mobile render quality supplies the
+   * sharpness, so CSS no longer needs an extreme crop. */
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__canvas {
-    transform: translateY(3px) scale(1.86);
+    transform: translateY(2px) scale(1.60);
     transform-origin: 50% 8%;
   }
 
@@ -51,18 +50,18 @@
 
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character strong {
     margin-top: .1rem;
-    font-size: .64rem;
-    letter-spacing: .15em;
+    font-size: .62rem;
+    letter-spacing: .14em;
   }
 
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character small,
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character em {
     width: 100%;
-    max-width: 158px;
+    max-width: 144px;
     overflow: hidden;
-    font-size: .53rem;
+    font-size: .52rem;
     line-height: 1.2;
-    opacity: .78;
+    opacity: .76;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
@@ -70,27 +69,27 @@
 
 @media (max-width: 430px) {
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character {
-    flex-basis: 160px;
-    width: 160px;
+    flex-basis: 144px;
+    width: 144px;
   }
 
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__portrait-shell {
-    width: 154px;
-    height: 150px;
+    width: 138px;
+    height: 138px;
   }
 
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character small,
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character em {
-    max-width: 154px;
+    max-width: 138px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) and (max-width: 760px) {
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__canvas {
-    transform: translateY(3px) scale(1.86) !important;
+    transform: translateY(2px) scale(1.60) !important;
   }
 }
 
 html[data-reduced-motion='true'] body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__canvas {
-  transform: translateY(3px) scale(1.86) !important;
+  transform: translateY(2px) scale(1.60) !important;
 }
