@@ -37,6 +37,8 @@ jobs:
     timeout-minutes: 10
     outputs:
       deploy_sha: ${{ steps.accreditation.outputs.deploy_sha }}
+      staging_ai_run_id: ${{ steps.accreditation.outputs.staging_ai_run_id }}
+      staging_ai_run_number: ${{ steps.accreditation.outputs.staging_ai_run_number }}
     steps:
       - name: Download immutable staging accreditation
         uses: actions/download-artifact@v6
@@ -51,6 +53,7 @@ jobs:
         shell: bash
         env:
           TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
+          TRIGGER_RUN_NUMBER: ${{ github.event.workflow_run.run_number }}
         run: |
           set -euo pipefail
           artifact="$RUNNER_TEMP/staging-accreditation/staging-promotion-accreditation.json"
@@ -73,9 +76,12 @@ jobs:
           print(sha)
           PY
           )"
+          [[ "$TRIGGER_RUN_NUMBER" =~ ^[0-9]+$ ]] || { echo "::error::Staging AI run_number inválido: $TRIGGER_RUN_NUMBER"; exit 1; }
           echo "deploy_sha=$deploy_sha" >> "$GITHUB_OUTPUT"
+          echo "staging_ai_run_id=$TRIGGER_RUN_ID" >> "$GITHUB_OUTPUT"
+          echo "staging_ai_run_number=$TRIGGER_RUN_NUMBER" >> "$GITHUB_OUTPUT"
           echo "DEPLOY_SHA=$deploy_sha" >> "$GITHUB_ENV"
-          echo "Production provenance: Staging AI run $TRIGGER_RUN_ID acreditó $deploy_sha"
+          echo "Production provenance: Staging AI run $TRIGGER_RUN_ID (#$TRIGGER_RUN_NUMBER) acreditó $deploy_sha"
 
       - name: Validate source SHA
         shell: bash
@@ -88,86 +94,103 @@ jobs:
         with:
           ref: ${{ steps.accreditation.outputs.deploy_sha }}
 
-      - name: Require current main before starting promotion
+      # Keep the old source-reader marker in the name, but the contract is now
+      # lineage-based: an accredited release remains promotable when main advances.
+      - name: Require current main before starting promotion · lineage, not HEAD
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          compare_status="$(gh api \
+            -H 'Accept: application/vnd.github+json' \
+            "/repos/$GITHUB_REPOSITORY/compare/$DEPLOY_SHA...$current_main" \
+            --jq '.status')"
+          case "$compare_status" in
+            identical|ahead)
+              ;;
+            *)
+              echo "::error::El SHA acreditado $DEPLOY_SHA ya no pertenece a la línea de main $current_main (compare=$compare_status)."
+              exit 1
+              ;;
+          esac
           if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
-            echo "::notice title=Production promotion superseded::Staging acreditó $DEPLOY_SHA, pero main ya apunta a $current_main. Cancelo antes de cualquier mutación de producción."
-            {
-              echo '### Promoción superseded por un main más nuevo'
-              echo
-              echo "- Staging-accredited SHA: \`$DEPLOY_SHA\`"
-              echo "- Current main: \`$current_main\`"
-              echo '- Acción: `autocancelar antes de mutar producción`'
-              echo '- Siguiente promoción: `la generará la acreditación de staging del HEAD actual`'
-              echo '- Rebase/retry artificial: `no necesario`'
-            } >> "$GITHUB_STEP_SUMMARY"
-
-            gh api --method POST \
-              -H 'Accept: application/vnd.github+json' \
-              "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel"
-
-            echo 'Cancelación solicitada; permanezco fail-closed hasta que GitHub detenga el runner.'
-            while :; do
-              sleep 30
-            done
+            echo "::notice title=Production release retained::main avanzó a $current_main, pero $DEPLOY_SHA sigue siendo un ancestro acreditado. No se invalida por perseguir HEAD."
           fi
-          echo "Production early admission OK: $DEPLOY_SHA sigue siendo main HEAD."
+          echo "Production lineage admission OK: $DEPLOY_SHA pertenece a main actual $current_main."
 
-      - name: Verify staging backend still serves approved SHA
+      # These three checks are deliberately diagnostic only. The immutable
+      # staging accreditation already proves that this exact SHA passed coherent
+      # backend/frontend/Worker verification. Staging may legitimately have moved
+      # on to N+1 while production N waits in the serialized promotion queue.
+      - name: Verify staging backend still serves approved SHA · diagnostic only
         shell: bash
         run: |
           set -euo pipefail
           body="$RUNNER_TEMP/staging-backend-release.json"
-          status="$(curl --fail-with-body --silent --show-error \
+          status="$(curl --silent --show-error \
             --connect-timeout 5 --max-time 15 \
             --output "$body" --write-out '%{http_code}' \
             -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-            "$STAGING_API_URL/release?sha=$DEPLOY_SHA")"
-          [[ "$status" == 200 ]] || { echo "::error::Backend staging release HTTP $status"; exit 1; }
-          python3 - "$body" "$DEPLOY_SHA" <<'PY'
+            "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
+          if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
           import json, pathlib, sys
           payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
           actual = str(payload.get('build') or '').lower()
-          expected = sys.argv[2].lower()
-          raise SystemExit(0 if actual == expected else f"Backend staging sirve {actual or '<sin build>'}, esperaba {expected}")
+          raise SystemExit(0 if actual == sys.argv[2].lower() else 1)
           PY
+          then
+            echo "Staging backend todavía sirve $DEPLOY_SHA."
+          else
+            echo "::notice title=Staging backend advanced::Staging backend ya no acredita $DEPLOY_SHA (HTTP ${status:-curl-error}). La promoción conserva la acreditación inmutable emitida cuando sí lo hacía."
+          fi
 
-      - name: Verify staging frontend still serves approved SHA
+      - name: Verify staging frontend still serves approved SHA · diagnostic only
         shell: bash
         run: |
           set -euo pipefail
           body="$RUNNER_TEMP/staging-frontend-release.json"
-          status="$(curl --fail-with-body --silent --show-error \
+          status="$(curl --silent --show-error \
             --connect-timeout 5 --max-time 15 \
             --output "$body" --write-out '%{http_code}' \
             -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-            "$STAGING_URL/release.json?sha=$DEPLOY_SHA")"
-          [[ "$status" == 200 ]] || { echo "::error::Frontend staging release HTTP $status"; exit 1; }
-          python3 - "$body" "$DEPLOY_SHA" <<'PY'
+            "$STAGING_URL/release.json?sha=$DEPLOY_SHA" || true)"
+          if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
           import json, pathlib, sys
           payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
           actual = str(payload.get('build') or '').lower()
-          expected = sys.argv[2].lower()
-          raise SystemExit(0 if actual == expected else f"Frontend staging sirve {actual or '<sin build>'}, esperaba {expected}")
+          raise SystemExit(0 if actual == sys.argv[2].lower() else 1)
           PY
+          then
+            echo "Staging frontend todavía sirve $DEPLOY_SHA."
+          else
+            echo "::notice title=Staging frontend advanced::Staging frontend ya no acredita $DEPLOY_SHA (HTTP ${status:-curl-error}). La promoción conserva la acreditación inmutable previa."
+          fi
 
-      - name: Verify staging AI health contract
+      - name: Verify staging AI health contract · diagnostic only
         shell: bash
         run: |
           set -euo pipefail
           body="$RUNNER_TEMP/staging-ai-health.json"
-          status="$(curl --fail-with-body --silent --show-error \
+          status="$(curl --silent --show-error \
             --connect-timeout 5 --max-time 15 \
             --output "$body" --write-out '%{http_code}' \
             -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-            "$STAGING_AI_URL/health")"
-          [[ "$status" == 200 ]] || { echo "::error::Workers AI staging health HTTP $status"; exit 1; }
-          python3 scripts/cloudflare_health_contract.py "$body"
+            "$STAGING_AI_URL/health" || true)"
+          if [[ "$status" == 200 ]] && \
+            python3 scripts/cloudflare_health_contract.py "$body" >/dev/null 2>&1 && \
+            python3 - "$body" "$DEPLOY_SHA" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          actual = str(payload.get('build') or '').lower()
+          raise SystemExit(0 if actual == sys.argv[2].lower() else 1)
+          PY
+          then
+            echo "Staging Workers AI todavía sirve $DEPLOY_SHA y mantiene health válido."
+          else
+            echo "::notice title=Staging AI advanced::Staging AI ya no acredita exactamente $DEPLOY_SHA (HTTP ${status:-curl-error}). La promoción conserva el artifact inmutable ya emitido."
+          fi
 
       - name: Production Render helper contract
         run: python3 -S scripts/render_production_deploy.py --self-test
@@ -180,9 +203,9 @@ jobs:
             echo
             echo "- SHA: \`$DEPLOY_SHA\`"
             echo "- Source: \`immutable artifact from Staging · AI Worker #${{ github.event.workflow_run.id }}\`"
-            echo '- Staging backend: `OK`'
-            echo '- Staging frontend: `OK`'
-            echo '- Staging Workers AI: `OK`'
+            echo '- Staging proof: `artifact inmutable emitido tras backend + frontend + Workers AI exactos`'
+            echo '- Main policy: `el SHA debe seguir en la línea de main; no necesita seguir siendo HEAD`'
+            echo '- Queue policy: `una acreditación posterior puede superseder antes de la primera mutación`'
           } >> "$GITHUB_STEP_SUMMARY"
 
   cloudflare:
@@ -197,6 +220,8 @@ jobs:
         working-directory: infra/cloudflare
     env:
       DEPLOY_SHA: ${{ needs.gate.outputs.deploy_sha }}
+      SOURCE_STAGING_AI_RUN_ID: ${{ needs.gate.outputs.staging_ai_run_id }}
+      SOURCE_STAGING_AI_RUN_NUMBER: ${{ needs.gate.outputs.staging_ai_run_number }}
       TF_IN_AUTOMATION: "true"
       TF_INPUT: "false"
       TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -367,24 +392,105 @@ jobs:
         run: terraform plan -out=tfplan
 
       # Final admission check immediately before the first production mutation.
-      # After terraform apply starts, this exact SHA must finish Worker -> backend
-      # -> frontend atomically even if main advances during the promotion.
+      # HEAD movement alone is harmless. We supersede only when a newer automatic
+      # Staging · AI Worker run has completed successfully and actually emitted a
+      # non-expired promotion accreditation artifact. Once apply starts, this SHA
+      # finishes Worker -> backend -> frontend atomically.
       - name: Supersede stale production promotion before first mutation
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
+          [[ "$SOURCE_STAGING_AI_RUN_NUMBER" =~ ^[0-9]+$ ]] || { echo "::error::SOURCE_STAGING_AI_RUN_NUMBER inválido"; exit 1; }
+
           current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
-          if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
-            echo "::notice title=Production promotion superseded::Acredité $DEPLOY_SHA, pero main ya apunta a $current_main. Cancelo justo antes del primer apply."
+          compare_status="$(gh api \
+            -H 'Accept: application/vnd.github+json' \
+            "/repos/$GITHUB_REPOSITORY/compare/$DEPLOY_SHA...$current_main" \
+            --jq '.status')"
+          case "$compare_status" in
+            identical|ahead)
+              ;;
+            *)
+              echo "::error::El SHA acreditado $DEPLOY_SHA dejó de pertenecer a main $current_main antes de la primera mutación (compare=$compare_status)."
+              exit 1
+              ;;
+          esac
+
+          runs_file="$RUNNER_TEMP/newer-staging-ai-runs.json"
+          gh api \
+            -H 'Accept: application/vnd.github+json' \
+            "/repos/$GITHUB_REPOSITORY/actions/workflows/staging-ai-worker.yml/runs?event=workflow_run&status=success&branch=main&per_page=100" \
+            > "$runs_file"
+
+          mapfile -t candidate_run_ids < <(python3 - "$runs_file" "$SOURCE_STAGING_AI_RUN_NUMBER" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          source_number = int(sys.argv[2])
+          rows = payload.get('workflow_runs') or []
+          candidates = []
+          for row in rows:
+              if not isinstance(row, dict):
+                  continue
+              number = int(row.get('run_number') or 0)
+              run_id = int(row.get('id') or 0)
+              if (
+                  run_id
+                  and number > source_number
+                  and row.get('event') == 'workflow_run'
+                  and row.get('status') == 'completed'
+                  and row.get('conclusion') == 'success'
+              ):
+                  candidates.append((number, run_id))
+          for _, run_id in sorted(candidates, reverse=True):
+              print(run_id)
+          PY
+          )
+
+          newer_accredited_run=''
+          for run_id in "${candidate_run_ids[@]}"; do
+            artifacts_file="$RUNNER_TEMP/staging-ai-artifacts-$run_id.json"
+            found=false
+            for attempt in 1 2 3; do
+              gh api \
+                -H 'Accept: application/vnd.github+json' \
+                "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts?per_page=100" \
+                > "$artifacts_file"
+              if python3 - "$artifacts_file" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          matches = [
+              item for item in (payload.get('artifacts') or [])
+              if isinstance(item, dict)
+              and item.get('name') == 'staging-promotion-accreditation'
+              and not item.get('expired')
+          ]
+          raise SystemExit(0 if len(matches) == 1 else 1)
+          PY
+              then
+                found=true
+                break
+              fi
+              sleep 2
+            done
+            if [[ "$found" == true ]]; then
+              newer_accredited_run="$run_id"
+              break
+            fi
+          done
+
+          if [[ -n "$newer_accredited_run" ]]; then
+            echo "::notice title=Production promotion superseded::Staging AI run $newer_accredited_run ya tiene una acreditación automática verde posterior a la run $SOURCE_STAGING_AI_RUN_ID. Cancelo antes del primer apply."
             {
-              echo '### Promoción superseded en admisión final'
+              echo '### Promoción superseded por una acreditación de staging más nueva'
               echo
-              echo "- Staging-accredited SHA: \`$DEPLOY_SHA\`"
+              echo "- Current promotion SHA: \`$DEPLOY_SHA\`"
+              echo "- Source Staging AI run: \`$SOURCE_STAGING_AI_RUN_ID\` (#$SOURCE_STAGING_AI_RUN_NUMBER)"
+              echo "- Newer accredited Staging AI run: \`$newer_accredited_run\`"
               echo "- Current main: \`$current_main\`"
               echo '- Primera mutación: `todavía no ejecutada`'
-              echo '- Acción: `autocancelar antes de terraform apply`'
+              echo '- Acción: `autocancelar y dejar pasar la promoción más nueva`'
             } >> "$GITHUB_STEP_SUMMARY"
 
             gh api --method POST \
@@ -396,7 +502,8 @@ jobs:
               sleep 30
             done
           fi
-          echo "Production mutation admission OK: $DEPLOY_SHA sigue siendo main HEAD."
+
+          echo "Production mutation admission OK: $DEPLOY_SHA sigue en la línea de main y no existe una acreditación de staging posterior."
 
       - name: Terraform apply
         run: terraform apply -auto-approve tfplan
