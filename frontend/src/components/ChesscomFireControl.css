@@ -1,0 +1,9 @@
+.chesscom-fire-control{margin-top:.72rem;padding-top:.66rem;border-top:1px solid rgba(118,150,164,.22);display:grid;gap:.52rem}
+.chesscom-fire-control-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;font:700 .64rem/1.1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.12em;color:#9fb7c1}
+.chesscom-fire-control-head small{font-size:.58rem;letter-spacing:.06em;color:#d7ad58}
+.chesscom-fire-modes{display:grid;grid-template-columns:repeat(auto-fit,minmax(3.6rem,1fr));gap:.35rem}
+.chesscom-fire-modes button{min-height:2rem;padding:.38rem .42rem;border:1px solid rgba(111,143,157,.34);border-radius:.25rem;background:linear-gradient(180deg,rgba(31,41,46,.92),rgba(15,21,24,.94));color:#aebdc3;font:800 .64rem/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:border-color .14s ease,box-shadow .14s ease,color .14s ease,background .14s ease}
+.chesscom-fire-modes button:hover:not(:disabled){border-color:rgba(69,190,223,.72);color:#e7fbff}
+.chesscom-fire-modes button.is-active,.chesscom-fire-modes button[aria-pressed="true"]{border-color:#37b9df;background:linear-gradient(180deg,rgba(20,78,94,.94),rgba(10,42,53,.96));color:#ecfcff;box-shadow:0 0 0 1px rgba(55,185,223,.15),0 0 16px rgba(42,155,191,.12) inset}
+.chesscom-fire-modes button:disabled{opacity:.42;cursor:not-allowed}
+@media (max-width:760px){.chesscom-fire-modes{grid-template-columns:repeat(2,minmax(0,1fr))}.chesscom-fire-modes button{min-height:2.15rem}}

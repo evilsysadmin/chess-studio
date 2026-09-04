@@ -30,6 +30,7 @@ async function openChesscom(page) {
 }
 
 test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil premium', async ({ page }) => {
+  test.setTimeout(75_000);
   await openChesscom(page);
 
   const mode = page.locator('[data-chesscom-poc="true"][data-chesscom-renderer="babylon"]');
@@ -54,6 +55,18 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await expect(mode.getByRole('button', { name: 'Shoot', exact: true })).toBeVisible();
   await expect(mode.getByRole('button', { name: 'Overwatch', exact: true })).toBeVisible();
   await expect(mode.getByRole('button', { name: 'End turn', exact: true })).toBeVisible();
+
+  const fireModes = mode.getByRole('group', { name: 'Modo de disparo' });
+  await expect(fireModes.getByRole('button', { name: 'SA', exact: true })).toBeVisible();
+  await expect(fireModes.getByRole('button', { name: 'Ráfaga', exact: true })).toBeVisible();
+  await expect(fireModes.getByRole('button', { name: 'Auto', exact: true })).toBeVisible();
+  await fireModes.getByRole('button', { name: 'Ráfaga', exact: true }).click();
+  await expect(fireModes.getByRole('button', { name: 'Ráfaga', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(mode.locator('.chesscom-mission-badge strong')).toHaveText('SHOOT');
+
+  await mode.locator('.chesscom-squad-card').filter({ hasText: 'Sven' }).click();
+  await expect(mode.getByRole('group', { name: 'Modo de disparo' }).getByRole('button', { name: 'Ráfaga', exact: true })).toHaveCount(0);
+  await expect(mode.getByRole('group', { name: 'Modo de disparo' }).getByRole('button', { name: 'Auto', exact: true })).toBeVisible();
 });
 
 test('Chesscom · no hereda el scroll del Hangar al entrar', async ({ page }) => {

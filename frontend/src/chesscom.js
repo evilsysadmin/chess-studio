@@ -22,6 +22,19 @@ export const CHESSCOM_COVER = new Map([
 export const CHESSCOM_INTEL = { x: 6, y: 2 };
 export const CHESSCOM_EXTRACTION = { x: 1, y: 7 };
 
+export const CHESSCOM_FIRE_MODES = Object.freeze({
+  sa: Object.freeze({ id:'sa', label:'SA', description:'Semiautomático', rounds:1, ap:2, damageBonus:0 }),
+  da: Object.freeze({ id:'da', label:'DA', description:'Doble acción', rounds:2, ap:2, damageBonus:1 }),
+  burst: Object.freeze({ id:'burst', label:'Ráfaga', description:'Ráfaga controlada', rounds:3, ap:3, damageBonus:2 }),
+  auto: Object.freeze({ id:'auto', label:'Auto', description:'Fuego automático', rounds:5, ap:4, damageBonus:3 }),
+});
+
+export const CHESSCOM_WEAPON_FIRE_MODES = Object.freeze({
+  'HK416 (Used)': Object.freeze(['sa','burst','auto']),
+  G36C: Object.freeze(['sa','burst','auto']),
+  MP5SD: Object.freeze(['sa','auto']),
+});
+
 export function chesscomKey(x, y) {
   return `${x},${y}`;
 }
@@ -32,6 +45,26 @@ export function chesscomDistance(a, b) {
 
 export function chesscomInside(x, y) {
   return x >= 0 && y >= 0 && x < CHESSCOM_WIDTH && y < CHESSCOM_HEIGHT;
+}
+
+export function chesscomFireModesFor(unitOrWeapon) {
+  const weapon = typeof unitOrWeapon === 'string' ? unitOrWeapon : unitOrWeapon?.weapon;
+  const ids = CHESSCOM_WEAPON_FIRE_MODES[weapon] || ['sa'];
+  return ids.map((id) => CHESSCOM_FIRE_MODES[id]).filter(Boolean);
+}
+
+export function chesscomFireModeFor(unit) {
+  const modes = chesscomFireModesFor(unit);
+  return modes.find((mode) => mode.id === unit?.fireMode) || modes[0] || CHESSCOM_FIRE_MODES.sa;
+}
+
+export function chesscomSetFireMode(state, unitId, modeId) {
+  const unit = state.friendlies.find((candidate) => candidate.id === unitId);
+  if (!unit || unit.hp <= 0 || !chesscomFireModesFor(unit).some((mode) => mode.id === modeId)) return state;
+  return {
+    ...state,
+    friendlies: state.friendlies.map((candidate) => candidate.id === unitId ? { ...candidate, fireMode:modeId } : candidate),
+  };
 }
 
 export function chesscomOccupied(state, x, y, exceptId = null) {
@@ -72,13 +105,14 @@ export function chesscomCreateState() {
     credits: 12800,
     deploymentCost: 3400,
     selectedId: 'matthias',
+    targetId: null,
     action: 'move',
     log: ['Operación DUST VEIL iniciada. El gobierno niega conocerte con admirable eficiencia.'],
     objectives: { target: false, intel: false, extraction: false },
     friendlies: [
-      { id:'matthias', name:'Matthias', role:'Leader', x:3, y:6, hp:8, maxHp:8, ap:4, maxAp:4, weapon:'HK416 (Used)', damage:3, range:5, reliability:90, ammo:30, overwatch:false },
-      { id:'dieter', name:'Dieter', role:'Rifleman', x:4, y:6, hp:8, maxHp:8, ap:4, maxAp:4, weapon:'G36C', damage:3, range:4, reliability:96, ammo:30, overwatch:false },
-      { id:'sven', name:'Sven', role:'Scout', x:3, y:7, hp:7, maxHp:7, ap:4, maxAp:4, weapon:'MP5SD', damage:2, range:4, reliability:94, ammo:30, overwatch:false },
+      { id:'matthias', name:'Matthias', role:'Leader', x:3, y:6, hp:8, maxHp:8, ap:4, maxAp:4, weapon:'HK416 (Used)', damage:3, range:5, reliability:90, ammo:30, fireMode:'sa', overwatch:false },
+      { id:'dieter', name:'Dieter', role:'Rifleman', x:4, y:6, hp:8, maxHp:8, ap:4, maxAp:4, weapon:'G36C', damage:3, range:4, reliability:96, ammo:30, fireMode:'sa', overwatch:false },
+      { id:'sven', name:'Sven', role:'Scout', x:3, y:7, hp:7, maxHp:7, ap:4, maxAp:4, weapon:'MP5SD', damage:2, range:4, reliability:94, ammo:30, fireMode:'sa', overwatch:false },
     ],
     enemies: [
       { id:'target', name:'Cell commander', role:'Target', x:7, y:1, hp:6, maxHp:6, ap:3, maxAp:3, damage:2, range:4, elite:true },
@@ -99,20 +133,30 @@ export function chesscomMove(state, unitId, x, y) {
   const reachedExtraction = x === CHESSCOM_EXTRACTION.x && y === CHESSCOM_EXTRACTION.y;
   return {
     ...state,
+    targetId:null,
     friendlies,
     objectives: reachedExtraction ? { ...state.objectives, extraction:true } : state.objectives,
     log: [`${unit.name} se desplaza ${target.cost} AP${target.cover !== 'none' ? ` · cobertura ${target.cover}` : ''}.`, ...state.log].slice(0, 5),
   };
 }
 
+export function chesscomCanShoot(state, shooterId, enemyId) {
+  const shooter = state.friendlies.find((candidate) => candidate.id === shooterId);
+  const enemy = state.enemies.find((candidate) => candidate.id === enemyId);
+  if (!shooter || !enemy || shooter.hp <= 0 || enemy.hp <= 0) return false;
+  const mode = chesscomFireModeFor(shooter);
+  if (shooter.ap < mode.ap || shooter.ammo < mode.rounds) return false;
+  return chesscomDistance(shooter, enemy) <= shooter.range;
+}
+
 export function chesscomShoot(state, shooterId, enemyId) {
   const shooter = state.friendlies.find((candidate) => candidate.id === shooterId);
   const enemy = state.enemies.find((candidate) => candidate.id === enemyId);
-  if (!shooter || !enemy || shooter.hp <= 0 || enemy.hp <= 0 || shooter.ap < 2 || shooter.ammo <= 0) return state;
-  if (chesscomDistance(shooter, enemy) > shooter.range) return state;
+  if (!shooter || !enemy || !chesscomCanShoot(state, shooterId, enemyId)) return state;
 
+  const mode = chesscomFireModeFor(shooter);
   const cover = CHESSCOM_COVER.get(chesscomKey(enemy.x, enemy.y));
-  const damage = Math.max(1, shooter.damage - (cover === 'high' ? 1 : 0));
+  const damage = Math.max(1, shooter.damage + mode.damageBonus - (cover === 'high' ? 1 : 0));
   let targetDropped = false;
   const enemies = state.enemies.map((candidate) => {
     if (candidate.id !== enemyId) return candidate;
@@ -121,15 +165,26 @@ export function chesscomShoot(state, shooterId, enemyId) {
     return { ...candidate, hp };
   });
   const friendlies = state.friendlies.map((candidate) => candidate.id === shooterId
-    ? { ...candidate, ap: candidate.ap - 2, ammo: candidate.ammo - 1, overwatch:false }
+    ? { ...candidate, ap: candidate.ap - mode.ap, ammo: candidate.ammo - mode.rounds, overwatch:false }
     : candidate);
+  const roundsLabel = mode.rounds > 1 ? ` · ${mode.rounds} cartuchos` : '';
   return {
     ...state,
+    action:'shoot',
+    targetId:enemyId,
     enemies,
     friendlies,
     objectives: targetDropped ? { ...state.objectives, target:true } : state.objectives,
-    log: [`${shooter.name} dispara a ${enemy.name}: ${damage} daño${cover ? ` tras ${cover} cover` : ''}.`, ...state.log].slice(0, 5),
+    log: [`${shooter.name} dispara ${mode.label}${roundsLabel} a ${enemy.name}: ${damage} daño${cover ? ` tras ${cover} cover` : ''}.`, ...state.log].slice(0, 5),
   };
+}
+
+export function chesscomEngageEnemy(state, shooterId, enemyId) {
+  const shooter = state.friendlies.find((candidate) => candidate.id === shooterId);
+  const enemy = state.enemies.find((candidate) => candidate.id === enemyId);
+  if (!shooter || !enemy || shooter.hp <= 0 || enemy.hp <= 0) return state;
+  if (state.action !== 'shoot') return { ...state, action:'shoot', targetId:enemyId };
+  return chesscomShoot(state, shooterId, enemyId);
 }
 
 export function chesscomInteract(state, unitId) {
@@ -139,6 +194,7 @@ export function chesscomInteract(state, unitId) {
   if (!nearIntel || state.objectives.intel) return state;
   return {
     ...state,
+    targetId:null,
     friendlies: state.friendlies.map((candidate) => candidate.id === unitId ? { ...candidate, ap:candidate.ap - 1 } : candidate),
     objectives: { ...state.objectives, intel:true },
     log: [`${unit.name} recupera el dossier. El cliente insiste en que nunca existió.`, ...state.log].slice(0, 5),
@@ -208,6 +264,7 @@ export function chesscomEndTurn(state) {
     turn: state.turn + 1,
     phase:'player',
     action:'move',
+    targetId:null,
     friendlies,
     enemies,
     objectives,
@@ -220,6 +277,7 @@ export function chesscomSetOverwatch(state, unitId) {
   if (!unit || unit.ap < 2 || unit.hp <= 0 || unit.ammo <= 0) return state;
   return {
     ...state,
+    targetId:null,
     friendlies: state.friendlies.map((candidate) => candidate.id === unitId ? { ...candidate, ap:candidate.ap-2, overwatch:true } : candidate),
     log: [`${unit.name} queda en overwatch.`, ...state.log].slice(0,5),
   };

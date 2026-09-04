@@ -4,6 +4,7 @@ import {
   chesscomMovementDuration,
   chesscomMovementEase,
   chesscomMovementLift,
+  chesscomMuzzleWorldPosition,
 } from './chesscomBabylonPremium.js';
 
 describe('Chesscom Babylon tactical movement', () => {
@@ -36,5 +37,29 @@ describe('Chesscom Babylon tactical movement', () => {
     expect(chesscomMoveCostLabel(1)).toBe('1 AP');
     expect(chesscomMoveCostLabel(2)).toBe('2 AP');
     expect(chesscomMoveCostLabel(3)).toBe('3 AP');
+  });
+
+  it('transforms the stored weapon muzzle into world space instead of firing from the unit centre', () => {
+    let computed = 0;
+    const root = {
+      metadata:{ muzzle:{ x:1, y:2, z:3 } },
+      computeWorldMatrix(){ computed += 1; },
+      getWorldMatrix(){ return { dx:10, dy:20, dz:30 }; },
+    };
+    const B = {
+      Vector3:{
+        TransformCoordinates(vector, matrix) {
+          return { x:vector.x + matrix.dx, y:vector.y + matrix.dy, z:vector.z + matrix.dz };
+        },
+      },
+    };
+    const fallback = { clone:() => ({ fallback:true }) };
+    expect(chesscomMuzzleWorldPosition(B, root, fallback)).toEqual({ x:11, y:22, z:33 });
+    expect(computed).toBe(1);
+  });
+
+  it('falls back safely when a legacy unit has no muzzle metadata', () => {
+    const fallback = { clone:() => ({ x:4, y:5, z:6 }) };
+    expect(chesscomMuzzleWorldPosition({}, null, fallback)).toEqual({ x:4, y:5, z:6 });
   });
 });
