@@ -1,49 +1,87 @@
-# GitHub Actions · inventario operativo
+# GitHub Actions · mapa operativo
 
-Última auditoría: 2026-09-03.
+Última auditoría: 2026-09-04.
 
-Regla simple: cada workflow debe tener un dueño, un trigger justificable y un coste proporcional. Nada de arqueología de releases, runners dedicados para señales duplicadas ni mutaciones concurrentes del mismo entorno.
+Regla: cada workflow debe representar un dominio operativo o blast radius real. Se fusiona duplicación histórica; no se fusionan promoción, rollback o acreditación sólo para bajar el contador.
+
+## Contrato SRE
+
+- Rutas críticas fijan `ubuntu-24.04`; nada de `ubuntu-latest` flotante donde una imagen distinta pueda alterar una release.
+- Node usa cache de descarga de `setup-node` + `node_modules` exacto mediante `.github/actions/cache-node-modules`.
+- Python usa cache de descarga de `setup-python` + `.venv` exacto mediante `.github/actions/cache-python-venv`.
+- Browser E2E usa `.github/actions/setup-browser-e2e`: dependencias exactas y caches Playwright separadas `chromium`/`all` para que un cache Chromium-only no convierta Firefox/WebKit en descargas perpetuas.
+- Wrangler está pinneado/cacheado mediante `.github/actions/setup-wrangler` en staging, preview y producción.
+- Trivy cachea binario + DB por versión/día. Si el refresh remoto falla y existe una DB previa, escanea en modo degradado explícito con la copia stale; si no existe DB, falla cerrado.
+- Security images usa BuildKit + cache GHA para reutilizar capas Docker y no depender del registry si lockfiles/capas siguen válidos.
+- `npm audit` y `pip-audit` son señales auxiliares. Trivy conserva la política bloqueante por severidad.
+- `scripts/test_suite_audit.mjs --ci-wiring` impide resucitar workflows retirados, `npm ci` directo, cache keys por `github.run_id` y runners flotantes en rutas críticas.
+
+## Acciones reutilizables
+
+| Acción | Responsabilidad |
+| --- | --- |
+| `../actions/cache-node-modules/action.yml` | Árbol `node_modules` exacto por runner/Node/lockfile; `npm ci --prefer-offline` sólo en miss. |
+| `../actions/cache-python-venv/action.yml` | `.venv` exacto por runner/Python/requirements; valida runtime, stamp e imports. |
+| `../actions/setup-browser-e2e/action.yml` | Node + frontend/E2E deps + Playwright scope + verificación de ejecutables. |
+| `../actions/setup-wrangler/action.yml` | Wrangler exacto por versión; npm sólo en cache miss. |
 
 ## Cadena de entrega
 
 | Workflow | Responsabilidad |
 | --- | --- |
-| `cicd.yml` | Gate principal de calidad para PR/main: preflight, frontend, backend, seguridad condicionada y smoke crítico. Es path-aware y **no despliega**. |
-| `staging-preview.yml` | Operación manual y frontend-only sobre staging. En modo `preview` carga cualquier rama/tag/SHA no-main; en `restore-main` devuelve el frontend al `main` actual. Ambos compilan contra el backend canónico de staging, comparten mutex con el deploy oficial, no ejecutan Render/Workers AI, no acreditan staging y no pueden disparar producción. |
-| `staging-deploy.yml` | Despliega el SHA aprobado en Render staging + Cloudflare Pages staging y acredita backend/frontend. Su ruta automática forma parte de la cadena de promoción. |
-| `staging-ai-worker.yml` | Despliega/acredita Workers AI staging después de `Staging · deploy`; rechaza como acreditación un upstream manual. |
-| `production-promote.yml` | Promueve a producción sólo el SHA acreditado por toda la cadena automática de staging. |
-| `production-rollback.yml` | Rollback manual a un SHA previamente promocionado y conocido bueno. Comparte mutex con promoción. |
-| `staging-bootstrap.yml` | Mantenimiento manual de Render staging. Comparte mutex con `staging-deploy.yml`; nunca puede pisar un deploy normal. |
-| `render-production-guardrail.yml` | Verifica/corrige `auto-deploy=off` en Render production. Manual, semanal y por cambios de su propia superficie. |
+| `cicd.yml` | Gate principal quality-only para PR/main. Preflight y luego frontend/backend/security/E2E en paralelo según superficie. No despliega. |
+| `staging-deploy.yml` | Despliega el SHA aprobado en Render staging + Pages staging y acredita backend/frontend. |
+| `staging-ai-worker.yml` | Completa/revalida staging y emite la acreditación inmutable que permite promoción. El nombre se conserva por el contrato `workflow_run` existente. |
+| `production-promote.yml` | Promueve sólo el SHA acreditado. Worker/DNS Terraform `plan/apply` permanece aquí porque sí gestiona infraestructura real y está protegido por admisión anti-stale antes de la primera mutación. Render y Pages continúan después sobre el mismo SHA. |
+| `production-rollback.yml` | Rollback manual a un SHA conocido. Blast radius distinto: no fusionar con promote. |
+| `staging-preview.yml` | Preview/restauración manual frontend-only sobre staging; no acredita ni entra en producción. Usa deps exactas + Wrangler cacheado. |
+| `staging-bootstrap.yml` | Escape hatch manual de Render staging. No sustituye el camino normal CI → staging. |
+| `render-production-guardrail.yml` | Guardrail específico de auto-deploy/configuración Render producción. |
 
 ## Calidad especializada
 
 | Workflow | Responsabilidad |
 | --- | --- |
-| `e2e-full.yml` | Gate War Room por superficie en PR + sweep Chromium/Firefox/WebKit semanal/manual. Android selection, desktop input, escala, Focus y los cinco estados especiales corren en runners separados; cada runner mantiene `workers=1` para aislar WebGL. |
-| `matthias-visual.yml` | Movimiento/pintura de Matthias sólo cuando cambia su superficie. |
-| `coverage.yml` | Coverage frontend V8 + backend branch coverage semanal/manual. Informativo, no bloquea releases. |
-| `oci-arm64-readiness.yml` | Readiness ARM64 de backend sólo ante cambios relevantes de imagen/dependencias. |
-| `oci-terraform-readiness.yml` | `fmt/init/validate` del Terraform OCI cuando cambia esa infraestructura. |
+| `e2e-full.yml` | Browser E2E path-aware. Matriz dinámica War Room/Matthias en PR con runner separado por escena WebGL pesada; sweep Chromium/Firefox/WebKit semanal/manual. Absorbe el antiguo `matthias-visual.yml`. |
+| `coverage.yml` | Coverage frontend/backend semanal/manual e informativo, con caches exactas Node/Python. |
+| `oci-readiness.yml` | Readiness OCI unificado y path-aware: ARM64 backend y/o Terraform OCI `fmt/init/validate`. Sustituye `oci-arm64-readiness.yml` + `oci-terraform-readiness.yml`. No hace apply. |
 
 ## Observabilidad y operación
 
 | Workflow | Responsabilidad |
 | --- | --- |
-| `cloudflare-prometheus-exporter.yml` | Despliegue condicionado del exporter oficial de Cloudflare con credenciales dedicadas. |
-| `grafana-dashboards.yml` | Publicación versionada de dashboards Grafana mediante Terraform. |
-| `synthetic-health.yml` | Sonda ligera de producción cada dos horas. |
-| `branch-housekeeping.yml` | Semanal/manual. Elimina únicamente ramas de PR ya mergeadas y conserva `main` + `artifact/*`. No contiene listas de ramas históricas hardcodeadas. |
+| `grafana-dashboards.yml` | Publica cuatro dashboards idempotentemente con la Grafana HTTP API. **Sin Terraform, provider, state, import, plan ni apply.** |
+| `cloudflare-prometheus-exporter.yml` | Valida/despliega el exporter oficial Cloudflare cuando cambia su superficie. |
+| `synthetic-health.yml` | Canary sintético de producción cada dos horas. Vive separado para funcionar aunque no haya releases. |
+| `branch-housekeeping.yml` | Poda ramas mergeadas. Candidato a borrar cuando el repo active el ajuste nativo `Automatically delete head branches`; actualmente `delete_branch_on_merge=false`. |
 
-## Política de coste y seguridad
+## Flujo
 
-1. Un cambio visual no dispara QEMU, Terraform OCI ni seguridad Docker si no toca esas superficies.
-2. Los browser gates de PR corren sólo donde pueden impedir una regresión; el sweep multibrowser queda semanal/manual.
-3. War Room paraleliza **entre runners**, nunca varias escenas WebGL pesadas dentro de la misma VM.
-4. `staging-preview.yml` sólo se ejecuta manualmente desde el workflow de `main`; el orquestador queda en `main` y el código objetivo se checkouta aparte. `preview` rechaza `main` y cualquier ref que resuelva al SHA actual de `main`; `restore-main` exige exactamente ese SHA.
-5. `staging-preview.yml`, `staging-deploy.yml` y el mantenimiento de staging se serializan donde escriben sobre el entorno; producción promote/rollback comparten su propio mutex.
-6. Las operaciones `preview` y `restore-main` tocan únicamente Cloudflare Pages staging. No modifican Render ni Workers AI y no acreditan producción.
-7. La promoción exige procedencia automática `workflow_run`, SHA actual de `main` e identidad de build comprobada; `Production · promote` nunca escucha `Staging · preview`.
-8. Workflows y documentación no deben conservar nombres de releases, ramas retiradas ni excepciones históricas una vez cumplida su función.
-9. El fichero `cicd.yml` conserva su nombre por compatibilidad con contratos/scripts del repo; su responsabilidad real es calidad, no despliegue.
+```text
+PR / push
+   │
+   ▼
+Quality · CI gate
+   │
+   ▼
+Staging · deploy
+   │
+   ▼
+Staging · AI Worker / accreditation
+   │
+   ▼
+Production · promote
+   ├─ Cloudflare Worker + DNS (Terraform plan/apply controlado)
+   ├─ Render backend
+   └─ Cloudflare Pages
+```
+
+## Fósiles retirados en esta auditoría
+
+- `matthias-visual.yml` → absorbido por `e2e-full.yml`.
+- `oci-arm64-readiness.yml` + `oci-terraform-readiness.yml` → `oci-readiness.yml`.
+- `infra/grafana/terraform/` → eliminado; dashboards pasan a publisher API state-less.
+- Instalaciones Node directas en CI/coverage/browser/staging preview/producción → acciones de cache exacta.
+- Cache Trivy por `github.run_id` → namespace estable por versión + epoch diario.
+
+El objetivo no es tener el mínimo número de YAML, sino **mínimo estado, mínima dependencia externa por ejecución y dominios de fallo claros**.
