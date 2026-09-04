@@ -148,7 +148,7 @@ function createMatthiasCard(B, scene, dataUrl, mats) {
   const plane = B.MeshBuilder.CreatePlane('matthias-card',{ width:1.34,height:1.78 },scene);
   plane.parent=root; plane.position.y=.88; plane.billboardMode=B.Mesh.BILLBOARDMODE_Y;
   const mat = new B.StandardMaterial('matthias-card-mat',scene);
-  mat.diffuseTexture = new B.Texture(dataUrl,scene,true,false,B.Texture.TRILINEAR_SAMPLINGMODE,null,null,null,true);
+  mat.diffuseTexture = new B.Texture(dataUrl,scene,true,true,B.Texture.TRILINEAR_SAMPLINGMODE,null,null,null,true);
   mat.diffuseTexture.hasAlpha=true; mat.useAlphaFromDiffuseTexture=true; mat.backFaceCulling=false;
   mat.emissiveColor=new B.Color3(.25,.23,.18); mat.specularColor=B.Color3.Black(); plane.material=mat;
   const rifle = createRifle(B,scene,root,mats,false);
