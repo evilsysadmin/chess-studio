@@ -5,6 +5,7 @@ import {
   createMatthiasPremiumHome3D,
   disposeMatthiasPremiumHome3D,
   matthiasPremiumHomeActivityProp,
+  MATTHIAS_PREMIUM_HOME_ACTIVITY_COMPOSITION_VERSION,
   MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION,
   MATTHIAS_PREMIUM_HOME_CAP_VERSION,
   MATTHIAS_PREMIUM_HOME_FACE_RIG_VERSION,
@@ -33,6 +34,16 @@ function pose(overrides = {}) {
   };
 }
 
+function objectBox(object) {
+  return new THREE.Box3().setFromObject(object);
+}
+
+function objectSize(object) {
+  const size = new THREE.Vector3();
+  objectBox(object).getSize(size);
+  return size;
+}
+
 describe('MatthiasPremiumHome3D', () => {
   it('mantiene la silueta canónica: gorra ancha y alta, cabeza compacta y ojos grandes', () => {
     const rig = createMatthiasPremiumHome3D();
@@ -55,6 +66,7 @@ describe('MatthiasPremiumHome3D', () => {
     expect(rig.root.userData.approvedReference).toBe(MATTHIAS_PREMIUM_HOME_REFERENCE);
     expect(rig.root.userData.capVersion).toBe(MATTHIAS_PREMIUM_HOME_CAP_VERSION);
     expect(rig.root.userData.activityRigVersion).toBe(MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION);
+    expect(rig.root.userData.activityCompositionVersion).toBe(MATTHIAS_PREMIUM_HOME_ACTIVITY_COMPOSITION_VERSION);
     expect(rig.root.userData.frameScale).toBe(MATTHIAS_PREMIUM_HOME_FRAME_SCALE);
     expect(rig.root.userData.frameY).toBe(MATTHIAS_PREMIUM_HOME_FRAME_Y);
     expect(capSize.x).toBeGreaterThan(faceSize.x * 1.2);
@@ -148,6 +160,43 @@ describe('MatthiasPremiumHome3D', () => {
     expect(rig.activityRig.write.visible).toBe(true);
     expect(rig.activityRig.penPivot).toBeTruthy();
     expect(rig.root.userData.activityProp).toBe('write');
+
+    disposeMatthiasPremiumHome3D(rig);
+  });
+
+  it('compone ración, libro y expediente como objetos legibles sin invadir la cara', () => {
+    const rig = createMatthiasPremiumHome3D();
+
+    applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'bite', reach: .62 }));
+    const rationBox = objectBox(rig.activityRig.ration);
+    const rationSize = objectSize(rig.activityRig.ration);
+    const rationFaceBox = objectBox(rig.head);
+    expect(rationSize.x).toBeGreaterThan(.48);
+    expect(rationBox.max.x).toBeGreaterThan(.72);
+    expect(rationBox.max.y).toBeLessThan(rationFaceBox.min.y + .06);
+    expect(rig.root.getObjectByName('ration-plate-rim')).toBeTruthy();
+    expect(rig.root.getObjectByName('ration-bread')).toBeTruthy();
+
+    applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'read', headYaw: .08 }));
+    const bookBox = objectBox(rig.activityRig.book);
+    const bookSize = objectSize(rig.activityRig.book);
+    const bookFaceBox = objectBox(rig.head);
+    expect(bookSize.x).toBeGreaterThan(.50);
+    expect(bookBox.max.y).toBeLessThan(bookFaceBox.min.y);
+    expect(rig.root.getObjectByName('book-spine').rotation.z).toBeCloseTo(0, 6);
+
+    applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'dossier', headYaw: -.06 }));
+    const dossierBox = objectBox(rig.activityRig.dossier);
+    const dossierSize = objectSize(rig.activityRig.dossier);
+    const dossierFaceBox = objectBox(rig.head);
+    expect(dossierSize.x).toBeGreaterThan(.46);
+    expect(dossierBox.max.y).toBeLessThan(dossierFaceBox.min.y);
+
+    applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'write', headYaw: .05 }));
+    const writeBox = objectBox(rig.activityRig.write);
+    const writeFaceBox = objectBox(rig.head);
+    expect(writeBox.max.y).toBeLessThan(writeFaceBox.min.y);
+    expect(rig.root.getObjectByName('activity-pen')).toBeTruthy();
 
     disposeMatthiasPremiumHome3D(rig);
   });
