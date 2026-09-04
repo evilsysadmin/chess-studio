@@ -297,6 +297,7 @@ ensure-e2e-deps: ensure-frontend-deps
 e2e-critical: ensure-e2e-deps frontend-build
 	cd e2e && ./node_modules/.bin/playwright install chromium
 	cd e2e && ./node_modules/.bin/playwright test smoke.spec.js regression-journeys.spec.js --grep "$(CRITICAL_E2E_GREP)" --workers=$(CRITICAL_E2E_WORKERS) --retries=0
+	cd e2e && ./node_modules/.bin/playwright test mobile-final-interactions.spec.js --workers=1 --retries=0
 
 e2e: ensure-e2e-deps frontend-build
 	cd e2e && ./node_modules/.bin/playwright install chromium
