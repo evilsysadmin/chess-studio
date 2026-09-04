@@ -48,6 +48,11 @@ function requirePattern(file, pattern, message) {
   const text = fs.readFileSync(path.resolve(file), 'utf8');
   if (!pattern.test(text)) contractErrors.push(`${file}: ${message}`);
 }
+function requirePatternInAny(files, pattern, message) {
+  const existingFiles = files.filter((file) => fs.existsSync(path.resolve(file)));
+  const matches = existingFiles.some((file) => pattern.test(fs.readFileSync(path.resolve(file), 'utf8')));
+  if (!matches) contractErrors.push(`${existingFiles.join(' | ') || files.join(' | ')}: ${message}`);
+}
 requirePattern('frontend/src/components/GameScreen.jsx', /api\.playMove\([^\n]+\{\s*signal:\s*controller\.signal[^}]*\}/, 'playMove debe ser cancelable por sesión');
 requirePattern('frontend/src/components/GameScreen.jsx', /createGameMutationCoordinator/, 'GameScreen debe delegar ownership de mutaciones al coordinador');
 requirePattern('frontend/src/components/GameScreen.jsx', /mutationCoordinator\.begin\(/, 'GameScreen debe adquirir exclusión mutua síncrona antes de mutar');
@@ -79,7 +84,15 @@ requirePattern('frontend/src/components/FeedbackModal.jsx', /submitAbortRef\.cur
 requirePattern('frontend/src/components/AdminObservabilitySummary.jsx', /tempoProbeInFlightRef\.current/, 'el probe de trazas debe impedir doble ejecución concurrente');
 requirePattern('frontend/src/components/AdminObservabilitySummary.jsx', /signalProbeInFlightRef\.current/, 'el probe de señales debe impedir doble ejecución concurrente');
 requirePattern('frontend/src/components/ObservabilityPanel.jsx', /metricsRequestRef\.current\.controller\?\.abort/, 'Observabilidad debe cancelar refresh antiguos');
-requirePattern('frontend/src/components/AdminDashboardContent.jsx', /adminDataEpochRef/, 'Admin debe impedir que un poll antiguo pise una mutación nueva');
+requirePatternInAny(
+  [
+    'frontend/src/components/AdminDashboardContent.jsx',
+    'frontend/src/components/useAdminDashboardData.js',
+    'frontend/src/components/useAdminDashboardController.js',
+  ],
+  /adminDataEpochRef/,
+  'Admin debe impedir que un poll antiguo pise una mutación nueva',
+);
 requirePattern('frontend/src/components/PuzzleScreen.jsx', /aiGenerationInFlightRef\.current/, 'la generación de puzzles AI debe tener exclusión mutua inmediata');
 requirePattern('frontend/src/components/LoginScreen.jsx', /submitInFlightRef\.current/, 'auth debe impedir doble submit en el mismo frame');
 requirePattern('frontend/src/components/LoginScreen.jsx', /submitAbortRef\.current\?\.abort/, 'auth debe cancelar requests al cambiar/cerrar pantalla');
