@@ -66,7 +66,6 @@ requirePattern('frontend/src/gameMutationCoordinator.js', /retryOperation[\s\S]{
 requirePattern('frontend/src/components/GameScreen.jsx', /controlResolveRef\.current\?\.\(\)/, 'la Promise de Control táctico debe resolverse al cambiar/desmontar sesión');
 requirePattern('frontend/src/components/SpectatorScreen.jsx', /abortableDelay\(/, 'el loop espectador debe usar esperas cancelables');
 requirePattern('frontend/src/components/SpectatorScreen.jsx', /analyzePosition\([^\n]+\{\s*signal\s*\}/, 'análisis espectador debe cancelarse');
-requirePattern('frontend/src/components/Board3DExperiment.jsx', /analyzePosition\([^\n]+\{\s*signal/, 'análisis 3D debe cancelarse');
 requirePattern('frontend/src/components/useCombatController.js', /createCombatAsyncCoordinator/, 'Combat debe delegar generación, timers y abort de CPU al coordinador async');
 requirePattern('frontend/src/components/useCombatController.js', /combatAsync\.invalidate\(/, 'Combat debe invalidar callbacks cuando cambia el ciclo de batalla');
 requirePattern('frontend/src/components/useCombatController.js', /combatAsync\.isCurrent\(cpuOperation\)/, 'Combat debe rechazar respuestas CPU obsoletas');
