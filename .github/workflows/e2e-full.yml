@@ -168,13 +168,47 @@ jobs:
             echo "- War Room mount/scale: \`$visual\`"
             echo "- Android Focus: \`$focus\`"
             echo "- Matthias motion/paint: \`$matthias\`"
-            echo '- Cada escenario WebGL pesado conserva runner propio; el setup de dependencias/browser es común y cacheado.'
+            echo '- Cada escenario WebGL pesado conserva runner propio; todos prueban el mismo frontend compilado una sola vez.'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  pr-build:
+    name: Build browser artifact once
+    if: github.event_name == 'pull_request' && needs.scope.outputs.has_cases == 'true'
+    needs: scope
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Restore exact frontend dependencies
+        uses: ./.github/actions/cache-node-modules
+        with:
+          working-directory: frontend
+          lockfile: frontend/package-lock.json
+          node-version: '22'
+
+      - name: Build frontend once for all browser gates
+        working-directory: frontend
+        run: npm run build
+
+      - name: Upload immutable browser frontend
+        uses: actions/upload-artifact@v7
+        with:
+          name: browser-frontend-${{ github.event.pull_request.head.sha }}
+          path: frontend/dist/
+          if-no-files-found: error
+          retention-days: 1
 
   pr-browser:
     name: ${{ matrix.label }}
     if: github.event_name == 'pull_request' && needs.scope.outputs.has_cases == 'true'
-    needs: scope
+    needs: [scope, pr-build]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
@@ -187,7 +221,13 @@ jobs:
         uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
-          build-frontend: 'true'
+          build-frontend: 'false'
+
+      - name: Download shared browser frontend
+        uses: actions/download-artifact@v6
+        with:
+          name: browser-frontend-${{ github.event.pull_request.head.sha }}
+          path: frontend/dist
 
       - name: Run ${{ matrix.label }}
         working-directory: e2e
