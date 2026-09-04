@@ -1,3 +1,5 @@
+@import './WarRoomCastleCoherence.css';
+
 /*
  * Viewport and input tuning for the 3D War Room.
  * The canvas always owns touch gestures; coarse-pointer rules only control
