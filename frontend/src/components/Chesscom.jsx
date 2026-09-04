@@ -84,6 +84,13 @@ export default function Chesscom({ onExit }) {
   const [rendererName, setRendererName] = useState('CARGANDO BABYLON');
   const [rendererError, setRendererError] = useState('');
 
+  useEffect(() => {
+    const scroller = document.scrollingElement;
+    if (scroller) scroller.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
+    if (document.body) document.body.scrollTop = 0;
+  }, []);
+
   const selected = state.friendlies.find((unit) => unit.id === state.selectedId) || state.friendlies[0];
   const reachable = useMemo(() => chesscomReachable(state, selected), [state, selected]);
   const reachableMap = useMemo(() => new Map(reachable.map((tile) => [chesscomKey(tile.x,tile.y),tile])), [reachable]);

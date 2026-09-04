@@ -8,7 +8,7 @@ async function dismissGuide(page) {
   }
 }
 
-async function openChesscom(page) {
+async function openExperimentsHub(page) {
   await mockApi(page);
   await login(page);
   await dismissGuide(page);
@@ -21,6 +21,10 @@ async function openChesscom(page) {
     .filter({ hasText: 'Experimentos geniales' })
     .click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+}
+
+async function openChesscom(page) {
+  await openExperimentsHub(page);
   await page.getByRole('button', { name: /Chesscom/ }).click();
   await expect(page.getByRole('heading', { name: 'CHESSCOM', exact: true })).toBeVisible();
 }
@@ -44,6 +48,25 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil', 
   await expect(mode.getByRole('button', { name: 'Shoot', exact: true })).toBeVisible();
   await expect(mode.getByRole('button', { name: 'Overwatch', exact: true })).toBeVisible();
   await expect(mode.getByRole('button', { name: 'End turn', exact: true })).toBeVisible();
+});
+
+test('Chesscom · no hereda el scroll del Hangar al entrar', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 640 });
+  await openExperimentsHub(page);
+
+  const card = page.getByRole('button', { name: /Chesscom/ });
+  await card.scrollIntoViewIfNeeded();
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  const inheritedScroll = await page.evaluate(() => window.scrollY);
+  expect(inheritedScroll).toBeGreaterThan(0);
+
+  // DOM click deliberately preserves the old document scroll so the mode itself
+  // owns the transition instead of Playwright helpfully scrolling the card.
+  await card.evaluate((node) => node.click());
+  await expect(page.getByRole('heading', { name: 'CHESSCOM', exact: true })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  const brandTop = await page.getByRole('heading', { name: 'CHESSCOM', exact: true }).evaluate((node) => node.getBoundingClientRect().top);
+  expect(brandTop).toBeGreaterThanOrEqual(0);
 });
 
 test('Chesscom · conserva la salida limpia hacia Experimentos', async ({ page }) => {
