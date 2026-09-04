@@ -54,11 +54,11 @@ function refineOfficerCap(root) {
   // Keep the lower edge anchored to the red band and grow the crown upward,
   // matching the approved Matthias silhouette without changing face/body scale.
   if (crown) {
-    crown.scale.y = 1.55;
-    crown.position.y = 1.01175;
+    crown.scale.y = 1.60;
+    crown.position.y = 1.016;
   }
-  if (top) top.position.y = 1.171;
-  if (topPiping) topPiping.position.y = 1.146;
+  if (top) top.position.y = 1.18;
+  if (topPiping) topPiping.position.y = 1.155;
 }
 
 export function createMatthiasPremiumHome3D({ compact = false } = {}) {
