@@ -9,6 +9,8 @@ const backStack = createBackNavigationStack();
 const BROWSER_BACK_SENTINEL = '__chessStudioBackSentinel';
 let listenersInstalled = false;
 let browserBackArmed = false;
+let browserBackDisarmTimer = null;
+let browserBackProgrammaticPopPending = false;
 
 function isEditableTarget(target) {
   if (!(target instanceof Element)) return false;
@@ -25,8 +27,20 @@ function canUseBrowserHistory() {
   return typeof window !== 'undefined' && !!window.history?.pushState;
 }
 
+function clearScheduledBrowserBackDisarm() {
+  if (browserBackDisarmTimer == null) return;
+  clearTimeout(browserBackDisarmTimer);
+  browserBackDisarmTimer = null;
+}
+
 function armBrowserBack() {
-  if (browserBackArmed || !backStack.size() || !canUseBrowserHistory()) return;
+  clearScheduledBrowserBackDisarm();
+  if (
+    browserBackArmed
+    || browserBackProgrammaticPopPending
+    || !backStack.size()
+    || !canUseBrowserHistory()
+  ) return;
   try {
     const current = window.history.state && typeof window.history.state === 'object'
       ? window.history.state
@@ -43,18 +57,30 @@ function armBrowserBack() {
   }
 }
 
-function disarmBrowserBackIfIdle() {
-  if (backStack.size() || !browserBackArmed || !canUseBrowserHistory()) return;
-  const ownsCurrentEntry = window.history.state?.[BROWSER_BACK_SENTINEL] === true;
-  browserBackArmed = false;
-  if (!ownsCurrentEntry) return;
-  try {
-    // The sentinel uses the same URL, so removing it is invisible. Mark it
-    // disarmed first so its asynchronous popstate cannot fire a second back.
-    window.history.back();
-  } catch {
-    // Best effort only; never make navigation depend on History API support.
-  }
+function scheduleBrowserBackDisarmIfIdle() {
+  if (browserBackDisarmTimer != null || !browserBackArmed || !canUseBrowserHistory()) return;
+
+  browserBackDisarmTimer = setTimeout(() => {
+    browserBackDisarmTimer = null;
+    // React puede desmontar un handler y montar el siguiente dentro de una
+    // misma transición (Roguelike -> Combate, pantalla -> modal, etc.). No
+    // confundimos ese hueco efímero con abandonar realmente la superficie.
+    if (backStack.size() || !browserBackArmed || !canUseBrowserHistory()) return;
+
+    const ownsCurrentEntry = window.history.state?.[BROWSER_BACK_SENTINEL] === true;
+    browserBackArmed = false;
+    if (!ownsCurrentEntry) return;
+
+    try {
+      // Quitar el sentinel provoca un popstate asíncrono. Lo marcamos como
+      // mantenimiento interno para que, aunque entretanto se monte otro
+      // handler, jamás se interprete como Back pulsado por el usuario.
+      browserBackProgrammaticPopPending = true;
+      window.history.back();
+    } catch {
+      browserBackProgrammaticPopPending = false;
+    }
+  }, 0);
 }
 
 function dispatchBack(event) {
@@ -65,7 +91,17 @@ function dispatchBack(event) {
 }
 
 function dispatchBrowserBack(event) {
+  if (browserBackProgrammaticPopPending) {
+    browserBackProgrammaticPopPending = false;
+    browserBackArmed = false;
+    // Si una transición interna repobló la pila mientras llegaba este
+    // popstate de mantenimiento, armamos un sentinel nuevo después del commit.
+    setTimeout(() => armBrowserBack(), 0);
+    return;
+  }
+
   if (!browserBackArmed) return;
+  clearScheduledBrowserBackDisarm();
   browserBackArmed = false;
   const handled = backStack.dispatch({
     type: 'popstate',
@@ -90,11 +126,19 @@ function installGlobalListeners() {
 
 function uninstallGlobalListenersIfIdle() {
   if (!listenersInstalled || backStack.size() || typeof document === 'undefined') return;
-  disarmBrowserBackIfIdle();
+  scheduleBrowserBackDisarmIfIdle();
   document.removeEventListener('keydown', dispatchBack);
   document.removeEventListener('contextmenu', dispatchBack);
-  window?.removeEventListener?.('popstate', dispatchBrowserBack);
+  // Conservamos temporalmente popstate mientras el sentinel se retira. El
+  // listener se quitará cuando ese pop interno haya llegado o cuando la pila
+  // siga realmente vacía en el siguiente tick.
   listenersInstalled = false;
+}
+
+function ensurePopstateListener() {
+  if (typeof window === 'undefined') return;
+  window.removeEventListener?.('popstate', dispatchBrowserBack);
+  window.addEventListener?.('popstate', dispatchBrowserBack);
 }
 
 // ESC, clic derecho de ratón y Back del navegador/sistema ejecutan la misma
@@ -110,7 +154,9 @@ export function useEscapeToClose(onClose, { disabled = false } = {}) {
     if (disabled) return undefined;
     const entry = { id: idRef.current, callbackRef };
     backStack.push(entry);
+    clearScheduledBrowserBackDisarm();
     installGlobalListeners();
+    ensurePopstateListener();
     armBrowserBack();
 
     return () => {
