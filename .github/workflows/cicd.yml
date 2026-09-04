@@ -25,6 +25,7 @@ jobs:
       run_frontend: ${{ steps.quality_paths.outputs.run_frontend }}
       run_backend: ${{ steps.quality_paths.outputs.run_backend }}
       run_e2e: ${{ steps.quality_paths.outputs.run_e2e }}
+      run_security: ${{ steps.quality_paths.outputs.run_security }}
       run_pawn_slug_e2e: ${{ steps.quality_paths.outputs.run_pawn_slug_e2e }}
       run_chesscom_e2e: ${{ steps.quality_paths.outputs.run_chesscom_e2e }}
       run_trailblazer_e2e: ${{ steps.quality_paths.outputs.run_trailblazer_e2e }}
@@ -57,6 +58,7 @@ jobs:
             echo 'run_frontend=true' >> "$GITHUB_OUTPUT"
             echo 'run_backend=true' >> "$GITHUB_OUTPUT"
             echo 'run_e2e=true' >> "$GITHUB_OUTPUT"
+            echo 'run_security=true' >> "$GITHUB_OUTPUT"
             echo 'run_pawn_slug_e2e=true' >> "$GITHUB_OUTPUT"
             echo 'run_chesscom_e2e=true' >> "$GITHUB_OUTPUT"
             echo 'run_trailblazer_e2e=true' >> "$GITHUB_OUTPUT"
@@ -84,6 +86,7 @@ jobs:
           run_frontend=false
           run_backend=false
           run_e2e=false
+          run_security=false
           run_pawn_slug_e2e=false
           run_chesscom_e2e=false
           run_trailblazer_e2e=false
@@ -141,9 +144,15 @@ jobs:
             fi
           fi
 
+          security_pattern='(^|/)(Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|\.dockerignore)$|^compose\.ya?ml$|^frontend/package(-lock)?\.json$|^backend-python/requirements[^/]*\.txt$|^Makefile$|^\.trivy(ignore|\.ya?ml)?$|^scripts/(npm_audit_gate\.py|pip_audit_report\.py|compose_smoke\.py|security[^/]*|trivy_[^/]*|install_trivy\.sh)$|^\.github/workflows/cicd\.yml$|^\.github/actions/cache-python-venv/action\.yml$|^(infra|deploy)/|^render\.ya?ml$'
+          if grep -Eq "$security_pattern" <<< "$files"; then
+            run_security=true
+          fi
+
           echo "run_frontend=$run_frontend" >> "$GITHUB_OUTPUT"
           echo "run_backend=$run_backend" >> "$GITHUB_OUTPUT"
           echo "run_e2e=$run_e2e" >> "$GITHUB_OUTPUT"
+          echo "run_security=$run_security" >> "$GITHUB_OUTPUT"
           echo "run_pawn_slug_e2e=$run_pawn_slug_e2e" >> "$GITHUB_OUTPUT"
           echo "run_chesscom_e2e=$run_chesscom_e2e" >> "$GITHUB_OUTPUT"
           echo "run_trailblazer_e2e=$run_trailblazer_e2e" >> "$GITHUB_OUTPUT"
@@ -171,6 +180,7 @@ jobs:
           node-version: '22'
 
       - name: Frontend tests
+        if: needs.preflight.outputs.run_frontend == 'true'
         run: make test-frontend
 
       - name: Frontend build
@@ -180,9 +190,11 @@ jobs:
         run: node scripts/bundle_size_report.mjs
 
       - name: Prepare security report
+        if: needs.preflight.outputs.run_frontend == 'true'
         run: mkdir -p .security
 
       - name: Node dependency audit
+        if: needs.preflight.outputs.run_frontend == 'true'
         working-directory: frontend
         shell: bash
         run: |
@@ -265,6 +277,7 @@ jobs:
   security:
     name: Security · Trivy + Docker
     needs: preflight
+    if: needs.preflight.outputs.run_security == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
