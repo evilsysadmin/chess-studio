@@ -32,7 +32,7 @@ describe('MatthiasThreeAvatar', () => {
     expect(dossier).not.toBe(coffeeA);
   });
 
-  it('reduce vértices y cadence en superficies compactas sin degradar desktop', () => {
+  it('reserva el perfil barato para miniaturas y da fidelidad premium al retrato táctil grande', () => {
     const compact = matthiasThreeRenderProfile({ coarsePointer: true, width: 50, height: 50 });
     const coarse = matthiasThreeRenderProfile({ coarsePointer: true, width: 180, height: 180 });
     const desktop = matthiasThreeRenderProfile({ coarsePointer: false, width: 320, height: 420 });
@@ -44,8 +44,13 @@ describe('MatthiasThreeAvatar', () => {
       maxFps: 30,
       pixelRatioCap: 1,
     });
-    expect(coarse.widthSegments * coarse.heightSegments).toBeLessThan(desktop.widthSegments * desktop.heightSegments);
-    expect(coarse.maxFps).toBe(45);
+    expect(coarse).toEqual({
+      tier: 'coarse',
+      widthSegments: 28,
+      heightSegments: 32,
+      maxFps: 45,
+      pixelRatioCap: 2,
+    });
     expect(desktop).toEqual({
       tier: 'full',
       widthSegments: 28,
