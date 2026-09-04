@@ -50,7 +50,11 @@ test('Pawn Trailblazer · móvil conserva controles utilizables sin overflow hor
   const controls = mode.getByLabel('Controles táctiles');
   await expect(controls).toBeVisible();
   for (const name of ['Mover o capturar a la izquierda', 'Acción', 'Mover o capturar a la derecha']) {
-    await expect(mode.getByRole('button', { name, exact: true })).toBeVisible();
+    const button = mode.getByRole('button', { name, exact: true });
+    await expect(button).toBeVisible();
+    const box = await button.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box.height).toBeGreaterThanOrEqual(50);
   }
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
