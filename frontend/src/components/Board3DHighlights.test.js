@@ -22,10 +22,11 @@ describe('War Room 3D premium highlight visibility', () => {
     expect(selected).toMatchObject({ kind: 'selected', color: 0xc99a43, opacity: 0.82 });
   });
 
-  it('keeps semantic precedence: capture < selection < check', () => {
-    const capture = board3DHighlightStyle({ square: 'd5', legalMap: new Map([['d5', true]]) });
-    const selected = board3DHighlightStyle({ square: 'e2', selectedSquare: 'e2', legalMap: new Map([['e2', false]]) });
-    const check = board3DHighlightStyle({ square: 'e8', selectedSquare: 'e8', checkSquare: 'e8', legalMap: new Map() });
+  it('keeps semantic precedence: parity < capture < selection < check', () => {
+    const parity = { parityHighlights: { d5: 'mistake', e2: 'terrain', e8: 'veteran' } };
+    const capture = board3DHighlightStyle({ square: 'd5', hintMove: parity, legalMap: new Map([['d5', true]]) });
+    const selected = board3DHighlightStyle({ square: 'e2', hintMove: parity, selectedSquare: 'e2', legalMap: new Map([['e2', false]]) });
+    const check = board3DHighlightStyle({ square: 'e8', hintMove: parity, selectedSquare: 'e8', checkSquare: 'e8', legalMap: new Map() });
     expect(capture).toMatchObject({ kind: 'capture', color: BOARD3D_HIGHLIGHT_COLORS.capture });
     expect(selected).toMatchObject({ kind: 'selected', color: BOARD3D_HIGHLIGHT_COLORS.selected });
     expect(check).toMatchObject({ kind: 'check', color: BOARD3D_HIGHLIGHT_COLORS.check });
@@ -39,5 +40,25 @@ describe('War Room 3D premium highlight visibility', () => {
     expect(hint.kind).toBe('hint');
     expect(lastMove.opacity).toBeLessThan(selected.opacity);
     expect(hint.opacity).toBeLessThan(selected.opacity);
+  });
+
+  it('renders forensic mistakes and arena terrain with distinct 3D semantics', () => {
+    const mistake = board3DHighlightStyle({
+      square: 'f3',
+      hintMove: { parityHighlights: { f3: 'mistake' } },
+    });
+    const terrain = board3DHighlightStyle({
+      square: 'd4',
+      hintMove: { parityHighlights: { d4: 'terrain' } },
+    });
+    const veteran = board3DHighlightStyle({
+      square: 'e2',
+      hintMove: { parityHighlights: { e2: 'veteran' } },
+    });
+
+    expect(mistake).toMatchObject({ kind: 'mistake', color: BOARD3D_HIGHLIGHT_COLORS.mistake });
+    expect(terrain).toMatchObject({ kind: 'terrain', color: BOARD3D_HIGHLIGHT_COLORS.terrain });
+    expect(veteran).toMatchObject({ kind: 'veteran', color: BOARD3D_HIGHLIGHT_COLORS.veteran });
+    expect(mistake.color).not.toBe(terrain.color);
   });
 });
