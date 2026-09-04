@@ -5,7 +5,7 @@
 .matthias-resident {
   position: fixed;
   right: clamp(.65rem, 1.6vw, 1.35rem);
-  bottom: max(clamp(7.25rem, 14vh, 11rem), calc(env(safe-area-inset-bottom) + 5.5rem));
+  bottom: max(clamp(6.25rem, calc(14vh - 1rem), 10rem), calc(env(safe-area-inset-bottom) + 4.5rem));
   z-index: 24;
   width: min(440px, calc(100vw - 1.3rem));
   pointer-events: none;
@@ -400,7 +400,7 @@
 
 @media (min-width: 761px) and (max-height: 720px) {
   .matthias-resident {
-    bottom: max(5.5rem, calc(env(safe-area-inset-bottom) + 4.75rem));
+    bottom: max(4.5rem, calc(env(safe-area-inset-bottom) + 3.75rem));
   }
 }
 
