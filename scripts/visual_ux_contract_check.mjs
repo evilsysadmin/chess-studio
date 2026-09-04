@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,6 +39,18 @@ const cpuIdentity = read('frontend/src/cpuIdentity.js');
 const matthiasVisuals = read('frontend/src/matthiasVisuals.js');
 const feedbackE2e = read('e2e/feedback-critical.spec.js');
 const smoke = read('e2e/smoke.spec.js');
+
+const canonicalPayload = read('frontend/public/matthias-home-canonical.b64').trim();
+const canonicalBytes = Buffer.from(canonicalPayload, 'base64');
+const uint24le = (buffer, offset) => buffer[offset] | (buffer[offset + 1] << 8) | (buffer[offset + 2] << 16);
+const canonicalWidth = uint24le(canonicalBytes, 24) + 1;
+const canonicalHeight = uint24le(canonicalBytes, 27) + 1;
+const canonicalSha256 = createHash('sha256').update(canonicalBytes).digest('hex');
+const canonicalHeaderOk = canonicalPayload.startsWith('UklG')
+  && canonicalBytes.subarray(0, 4).toString('ascii') === 'RIFF'
+  && canonicalBytes.subarray(8, 12).toString('ascii') === 'WEBP'
+  && canonicalBytes.subarray(12, 16).toString('ascii') === 'VP8X';
+const MATTHIAS_CANONICAL_SHA256 = '88bebc7e44293093bd83fec0fd4a11b2f23d6cbf0d2e59fcb4ffc6ff293facec';
 
 const checks = [
   [entry.at(-1) === contractImport, 'el contrato de producto debe ser el último CSS importado'],
@@ -80,6 +93,9 @@ const checks = [
   [/CPU_IDENTITY/.test(insightsDashboard) && /ai-player-portrait-character/.test(insightsDashboard) && /Ahora/.test(insightsShell) && /\.insights-workspace-view-now \.ai-player-portrait\s*\{/.test(insightsWorkspaceCss) && /\.insights-workspace-view-errors \.insights-hub > \.ai-player-portrait/.test(insightsWorkspaceCss) && /\.insights-workspace-view-dossier \.insights-hub > \.ai-player-portrait/.test(insightsWorkspaceCss) && /ai-player-portrait-layout/.test(finalCss), 'Así te ve la CPU debe estar firmado visualmente por Matthias, guiar Ahora y no invadir Errores/Expediente'],
   [/resuelto mantiene Reabrir y Borrar feedback visibles/.test(feedbackE2e), 'falta E2E de borrado visible en feedback resuelto'],
   [/admin ve un sobre en Home cuando hay mensajes nuevos/.test(feedbackE2e), 'falta E2E del inbox admin de feedback'],
+  [canonicalHeaderOk, 'el arte canónico de Matthias debe seguir siendo un WebP VP8X válido'],
+  [canonicalWidth === 192 && canonicalHeight === 256, `el arte canónico de Matthias debe medir 192x256; recibido ${canonicalWidth}x${canonicalHeight}`],
+  [canonicalSha256 === MATTHIAS_CANONICAL_SHA256, `el arte canónico de Matthias no coincide con el mock aprobado: ${canonicalSha256}`],
 ];
 
 const failed = checks.filter(([ok]) => !ok).map(([, message]) => message);
@@ -88,4 +104,4 @@ if (failed.length) {
   for (const message of failed) console.error(` - ${message}`);
   process.exit(1);
 }
-console.log('visual-ux-contract OK · viewport + barra única de mando + mapa artístico + acciones + onboarding + Matthias rival/residente Home/veredicto + coach de replay + inbox admin protegidos');
+console.log('visual-ux-contract OK · viewport + barra única de mando + mapa artístico + acciones + onboarding + Matthias rival/residente Home/veredicto + arte canónico protegido + coach de replay + inbox admin protegidos');
