@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { login, mockApi } from './helpers.js';
 
+const MATTHIAS_LOGIN_GREETING_PENDING_KEY = 'chess-study-matthias-login-greeting-pending-v1';
+
 async function dismissHomeGuide(page) {
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   if (await guide.isVisible().catch(() => false)) {
@@ -35,6 +37,18 @@ async function openHomeAt(page, hour, { dismissSpeech = true, profileSeed = {} }
   });
   await login(page);
   await dismissHomeGuide(page);
+
+  // The real login greeting intentionally expires after seven seconds. On a
+  // saturated software-WebGL runner, login + Home bootstrap can consume that
+  // entire window before a speech assertion starts. Requeue through the same
+  // session signal used by an explicit login, then reload authenticated Home so
+  // tests that explicitly request live speech receive a fresh real window.
+  if (!dismissSpeech) {
+    await page.evaluate((key) => sessionStorage.setItem(key, '1'), MATTHIAS_LOGIN_GREETING_PENDING_KEY);
+    await page.reload();
+    await dismissHomeGuide(page);
+  }
+
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await expect(corner).toBeVisible();
   await expect(corner).toHaveAttribute('data-three-presentation', 'home-v4');
