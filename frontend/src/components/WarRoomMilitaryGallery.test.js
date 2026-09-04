@@ -31,7 +31,7 @@ function galleryOwner(room) {
 describe('War Room military gallery', () => {
   const theme = { felt: 0x173943, glow: 0xc5963f };
 
-  it('reemplaza los paisajes centrales por lienzos militares del mock aprobado', () => {
+  it('reemplaza los paisajes centrales y conserva los lienzos militares tras el primer paint', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const owner = galleryOwner(room);
     const left = room.getObjectByName('war-room-premium-painting-0');
@@ -50,6 +50,15 @@ describe('War Room military gallery', () => {
     expect(left.userData.warRoomLandscapeSubject).toBeUndefined();
     expect(right.userData.warRoomLandscapeSubject).toBeUndefined();
     expect(owner.userData.warRoomMilitaryGalleryCentralCanvases).toBe(2);
+
+    // UserPolish still owns some legacy static work in the shared first-paint
+    // queue. The military gallery must run after it so the old landscapes can
+    // never become the visible final frame.
+    expect(typeof leftCanvas.onBeforeRender).toBe('function');
+    leftCanvas.onBeforeRender();
+    expect(leftCanvas.material.map.userData.warRoomCampaignArt).toBe('command');
+    expect(rightCanvas.material.map.userData.warRoomCampaignArt).toBe('victory');
+    expect(owner.userData.warRoomMilitaryGalleryFinalized).toBe('approved-mock-v1');
 
     dispose(room);
   });
