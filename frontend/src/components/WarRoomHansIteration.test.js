@@ -26,6 +26,13 @@ function dispose(root) {
   });
 }
 
+function runHansFirstFrame(room) {
+  const finalizerDriver = room.getObjectByName('war-room-castle-floor-slab');
+  expect(finalizerDriver?.userData?.warRoomDeferredFinalizerPhase).toBe('after');
+  expect(typeof finalizerDriver?.onAfterRender).toBe('function');
+  finalizerDriver.onAfterRender();
+}
+
 afterEach(() => setWarRoomHansQuickIterationEnabled(false));
 
 describe('Hans quick-game visual iteration', () => {
@@ -83,9 +90,7 @@ describe('Hans quick-game visual iteration', () => {
     expect(room.getObjectByName('war-room-fireplace')).toBeTruthy();
     expect(room.getObjectByName('war-room-hans-butler')).toBeFalsy();
 
-    const finalizerDriver = room.getObjectByName('war-room-premium-painting-canvas');
-    expect(typeof finalizerDriver?.onBeforeRender).toBe('function');
-    finalizerDriver.onBeforeRender();
+    runHansFirstFrame(room);
 
     const hans = room.getObjectByName('war-room-hans-butler');
     const driver = room.getObjectByName('war-room-hans-fireplace-driver');
@@ -141,8 +146,6 @@ describe('Hans quick-game visual iteration', () => {
     const room = buildPremiumWarRoomLayer({ felt: 0x173943, glow: 0xc5963f }, true, true);
 
     try {
-      // Mobile intentionally skips the desktop deferred museum finalizer, so
-      // exercise the shared scene routine directly with the real coarse flag.
       expect(installWarRoomHansSceneRoutine(room, { towardBoard: 1, coarsePointer: true })).toBeGreaterThan(0);
 
       const hans = room.getObjectByName('war-room-hans-butler');
@@ -187,8 +190,7 @@ describe('Hans quick-game visual iteration', () => {
     const room = buildPremiumWarRoomLayer({ felt: 0x173943, glow: 0xc5963f }, true, false);
 
     try {
-      const finalizerDriver = room.getObjectByName('war-room-premium-painting-canvas');
-      finalizerDriver.onBeforeRender();
+      runHansFirstFrame(room);
       const hans = room.getObjectByName('war-room-hans-butler');
       const driver = room.getObjectByName('war-room-hans-fireplace-driver');
       const door = room.getObjectByName('war-room-hans-service-door');
@@ -219,8 +221,7 @@ describe('Hans quick-game visual iteration', () => {
     const room = buildPremiumWarRoomLayer({ felt: 0x173943, glow: 0xc5963f }, true, false);
 
     try {
-      const finalizerDriver = room.getObjectByName('war-room-premium-painting-canvas');
-      finalizerDriver.onBeforeRender();
+      runHansFirstFrame(room);
 
       const fireplace = room.getObjectByName('war-room-fireplace');
       const hans = room.getObjectByName('war-room-hans-butler');
