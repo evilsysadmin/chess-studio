@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
+  PAWN_SLUG_MOTION_PROFILES,
   PAWN_SLUG_SPRITE_META,
   configurePawnSlugTexture,
 } from './pawnSlugSprites.js';
@@ -37,6 +38,16 @@ describe('Pawn Slug premium sprite contracts', () => {
       knight: 1,
       rook: 2,
     });
+  });
+
+  it('gives every battlefield class a deliberately different motion signature', () => {
+    expect(PAWN_SLUG_MOTION_PROFILES.knight.moveBob).toBeGreaterThan(PAWN_SLUG_MOTION_PROFILES.pawn.moveBob);
+    expect(PAWN_SLUG_MOTION_PROFILES.pawn.moveBob).toBeGreaterThan(PAWN_SLUG_MOTION_PROFILES.rook.moveBob);
+    expect(PAWN_SLUG_MOTION_PROFILES.knight.moveLean).toBeGreaterThan(PAWN_SLUG_MOTION_PROFILES.pawn.moveLean);
+    expect(PAWN_SLUG_MOTION_PROFILES.rook.moveRate).toBeLessThan(PAWN_SLUG_MOTION_PROFILES.pawn.moveRate);
+    expect(PAWN_SLUG_MOTION_PROFILES.boss.idleBob).toBeGreaterThan(0);
+    expect(PAWN_SLUG_MOTION_PROFILES.matthias.recoilByWeapon.panzerfaust)
+      .toBeGreaterThan(PAWN_SLUG_MOTION_PROFILES.matthias.recoilByWeapon.pistol);
   });
 
   it('uses WebGL1-safe clamp wrapping for NPOT actor atlases', () => {
