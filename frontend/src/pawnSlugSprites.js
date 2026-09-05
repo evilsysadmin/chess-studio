@@ -6,6 +6,58 @@ import enemyFallbackAtlasUrl from './assets/pawnSlug/enemy_atlas.svg';
 import panzerRookUrl from './assets/pawnSlug/panzer_rook_v2.webp';
 import weaponAtlasUrl from './assets/pawnSlug/weapon_atlas.svg';
 
+export const PAWN_SLUG_MOTION_PROFILES = Object.freeze({
+  matthias: Object.freeze({
+    idleRate: 2.2,
+    idleBreath: 0.008,
+    runRate: 13.2,
+    runBob: 0.045,
+    runLean: 0.022,
+    runSquash: 0.014,
+    crouchScale: 0.79,
+    hurtKick: 0.075,
+    recoilByWeapon: Object.freeze({
+      pistol: 0.042,
+      machinegun: 0.03,
+      shotgun: 0.072,
+      panzerfaust: 0.105,
+    }),
+  }),
+  pawn: Object.freeze({
+    idleRate: 2.7,
+    idleBob: 0.008,
+    moveRate: 9.2,
+    moveBob: 0.035,
+    moveLean: 0.016,
+    moveSquash: 0.012,
+    hurtKick: 0.055,
+  }),
+  knight: Object.freeze({
+    idleRate: 3.1,
+    idleBob: 0.012,
+    moveRate: 13.5,
+    moveBob: 0.07,
+    moveLean: 0.044,
+    moveSquash: 0.026,
+    hurtKick: 0.075,
+  }),
+  rook: Object.freeze({
+    idleRate: 1.9,
+    idleBob: 0.004,
+    moveRate: 5.6,
+    moveBob: 0.014,
+    moveLean: 0.009,
+    moveSquash: 0.008,
+    hurtKick: 0.035,
+  }),
+  boss: Object.freeze({
+    idleRate: 1.25,
+    idleBob: 0.025,
+    idleBreath: 0.008,
+    hurtKick: 0.055,
+  }),
+});
+
 export function configurePawnSlugTexture(texture) {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.minFilter = THREE.LinearFilter;
@@ -41,6 +93,8 @@ function atlasSprite(primaryUrl, fallbackUrl, frames, initialFrame = 0, scale = 
     ready: false,
     disposed: false,
   };
+  sprite.userData.motionBaseScaleY = scale[1];
+  sprite.userData.motionPhase = Math.random() * Math.PI * 2;
 
   const loader = new THREE.TextureLoader();
 
@@ -108,7 +162,13 @@ function staticSprite(url, scale = [4, 2.2]) {
   sprite.scale.set(scale[0], scale[1], 1);
   sprite.center.set(0.5, 0);
   sprite.userData.texture = texture;
+  sprite.userData.motionBaseScaleY = scale[1];
   return sprite;
+}
+
+function tintSprite(sprite, hurt, hurtOpacity) {
+  sprite.material.opacity = hurt ? hurtOpacity : 1;
+  sprite.material.color?.setRGB(1, hurt ? 0.62 : 1, hurt ? 0.62 : 1);
 }
 
 export function createMatthiasSlugSprite() {
@@ -119,15 +179,41 @@ export function createMatthiasSlugSprite() {
   return sprite;
 }
 
-export function animateMatthiasSlugSprite(sprite, { time = 0, running = false, firing = false, crouch = false, hurt = false } = {}) {
+export function animateMatthiasSlugSprite(sprite, {
+  time = 0,
+  running = false,
+  firing = false,
+  crouch = false,
+  hurt = false,
+  dir = 1,
+} = {}) {
   const setFrame = sprite.userData.setFrame;
   if (!setFrame) return;
+  const profile = PAWN_SLUG_MOTION_PROFILES.matthias;
+  const baseScaleY = sprite.userData.motionBaseScaleY || 2.56;
+  const direction = dir < 0 ? -1 : 1;
+  const runWave = Math.sin(time * profile.runRate);
+  const breath = Math.sin(time * profile.idleRate) * profile.idleBreath;
+  const weapon = sprite.userData.animation?.weapon || 'pistol';
+  const recoil = firing ? (profile.recoilByWeapon[weapon] ?? profile.recoilByWeapon.pistol) : 0;
+
   if (hurt) setFrame(0);
   else if (firing) setFrame(3);
   else if (running) setFrame(Math.floor(time * 9) % 2 ? 1 : 2);
   else setFrame(0);
-  sprite.scale.y = crouch ? 2.02 : 2.56;
-  sprite.material.opacity = hurt ? 0.78 : 1;
+
+  if (running && !crouch) sprite.position.y += Math.abs(runWave) * profile.runBob;
+  if (recoil) sprite.position.x -= direction * recoil;
+  if (hurt) sprite.position.x -= direction * profile.hurtKick;
+
+  const motionSquash = running && !crouch ? Math.cos(time * profile.runRate * 2) * profile.runSquash : breath;
+  sprite.scale.y = baseScaleY * (crouch ? profile.crouchScale : 1) * (1 + motionSquash - (hurt ? 0.035 : 0));
+  sprite.material.rotation = running && !crouch
+    ? -direction * runWave * profile.runLean
+    : firing
+      ? direction * 0.018
+      : 0;
+  tintSprite(sprite, hurt, 0.8);
 }
 
 export function createSlugEnemySprite(type = 'pawn') {
@@ -140,23 +226,46 @@ export function createSlugEnemySprite(type = 'pawn') {
   const sprite = atlasSprite(enemyAtlasUrl, enemyFallbackAtlasUrl, 3, frame, scaleByType[type] || scaleByType.pawn);
   sprite.name = `pawn-slug-${type}-sprite`;
   sprite.userData.enemyFrame = frame;
+  sprite.userData.enemyType = type;
   return sprite;
 }
 
 export function animateSlugEnemySprite(sprite, type, time, { moving = false, hurt = false } = {}) {
-  sprite.position.y += moving ? Math.abs(Math.sin(time * (type === 'knight' ? 12 : 8))) * 0.008 : 0;
-  sprite.material.opacity = hurt ? 0.64 : 1;
+  const profile = PAWN_SLUG_MOTION_PROFILES[type] || PAWN_SLUG_MOTION_PROFILES.pawn;
+  const phase = sprite.userData.motionPhase || 0;
+  const direction = sprite.scale.x < 0 ? -1 : 1;
+  const moveWave = Math.sin(time * profile.moveRate + phase);
+  const idleWave = Math.sin(time * profile.idleRate + phase);
+  const baseScaleY = sprite.userData.motionBaseScaleY || Math.abs(sprite.scale.y) || 1;
+
+  sprite.position.y += moving
+    ? Math.abs(moveWave) * profile.moveBob
+    : Math.max(0, idleWave) * profile.idleBob;
+  if (hurt) sprite.position.x -= direction * profile.hurtKick;
+
+  sprite.scale.y = baseScaleY * (1 + (moving ? Math.cos(time * profile.moveRate * 2 + phase) * profile.moveSquash : 0) - (hurt ? 0.045 : 0));
+  sprite.material.rotation = moving ? -direction * moveWave * profile.moveLean : 0;
+  tintSprite(sprite, hurt, 0.68);
 }
 
 export function createPanzerRookSprite() {
   const sprite = staticSprite(panzerRookUrl, [4.45, 4.45]);
   sprite.name = 'pawn-slug-panzer-rook-sprite';
+  sprite.userData.motionPhase = 0.7;
   return sprite;
 }
 
 export function animatePanzerRookSprite(sprite, time, { hurt = false } = {}) {
-  sprite.position.y = Math.sin(time * 1.25) * 0.025;
-  sprite.material.opacity = hurt ? 0.7 : 1;
+  const profile = PAWN_SLUG_MOTION_PROFILES.boss;
+  const direction = sprite.scale.x < 0 ? -1 : 1;
+  const wave = Math.sin(time * profile.idleRate + (sprite.userData.motionPhase || 0));
+  const baseScaleY = sprite.userData.motionBaseScaleY || 4.45;
+
+  sprite.position.y = wave * profile.idleBob;
+  if (hurt) sprite.position.x -= direction * profile.hurtKick;
+  sprite.scale.y = baseScaleY * (1 + wave * profile.idleBreath - (hurt ? 0.025 : 0));
+  sprite.material.rotation = hurt ? direction * 0.012 : wave * 0.003;
+  tintSprite(sprite, hurt, 0.72);
 }
 
 export function createWeaponSprite(kind = 'pistol') {
