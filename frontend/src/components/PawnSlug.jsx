@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import './PawnSlug.css';
+import './PawnSlugArsenal.css';
 
 const INITIAL_WEAPONS = Object.freeze([
   Object.freeze({ id: 'pistol', slot: 1, shortLabel: 'PST', label: 'Dienstpistole', current: true, unlocked: true, ammo: null }),
