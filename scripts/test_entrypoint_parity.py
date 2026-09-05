@@ -36,6 +36,18 @@ def assert_lane_pattern_targets_real_test(spec_name: str, item: str) -> None:
         )
 
 
+def ci_job_block(job_name: str) -> str:
+    """Return one top-level GitHub Actions job without swallowing sibling jobs."""
+    match = re.search(
+        rf'^  {re.escape(job_name)}:\n(.*?)(?=^  [A-Za-z0-9_-]+:\n|\Z)',
+        ci,
+        re.M | re.S,
+    )
+    if not match:
+        raise SystemExit(f'No se pudo inspeccionar el job CI `{job_name}`')
+    return match.group(0)
+
+
 dockerfile = (ROOT / 'Dockerfile.test').read_text(encoding='utf-8')
 dockerignore = (ROOT / '.dockerignore').read_text(encoding='utf-8')
 if 'CMD ["make", "test-all-local"]' not in dockerfile:
@@ -85,22 +97,23 @@ if not canonical_critical:
 # El modo normal delega el gate crítico entero en Make. El modo shardado es una
 # excepción deliberada: reparte el mismo contrato entre runners aislados, pero
 # esta auditoría exige que la unión de sus --grep sea EXACTAMENTE el contrato
-# canónico del Makefile. Además cada patrón debe resolver a un único test real
-# dentro del spec que ejecuta esa lane: cero matches sería cobertura fantasma y
-# más de uno haría el coste/contrato ambiguo.
+# canónico del Makefile. Sólo inspeccionamos el job `e2e_lanes`: otros jobs
+# browser pueden usar --grep para contratos especializados sin convertirse por
+# accidente en una tercera lane del core.
 sharded_playwright = 'e2e_lanes:' in ci
 if sharded_playwright:
+    core_lanes = ci_job_block('e2e_lanes')
     for marker in ['- regression', '- smoke', 'Tests · Playwright · ${{ matrix.lane }}', 'mobile-final-interactions.spec.js']:
-        if marker not in ci:
+        if marker not in core_lanes:
             raise SystemExit(f'CI shardado incompleto: falta `{marker}`')
 
     lane_commands = re.findall(
         r'playwright test\s+([A-Za-z0-9_.-]+\.spec\.js)[\s\\]+--grep\s+"([^"]+)"',
-        ci,
+        core_lanes,
     )
     if len(lane_commands) != 2:
         raise SystemExit(
-            f'CI shardado debe declarar exactamente dos comandos spec+grep críticos; encontrados: {len(lane_commands)}'
+            f'CI shardado core debe declarar exactamente dos comandos spec+grep críticos; encontrados: {len(lane_commands)}'
         )
 
     lane_patterns = [pattern for _, pattern in lane_commands]
@@ -125,6 +138,21 @@ if sharded_playwright:
     for spec_name, pattern in lane_commands:
         for item in [item.strip() for item in pattern.split('|') if item.strip()]:
             assert_lane_pattern_targets_real_test(spec_name, item)
+
+    if 'e2e_specialized:' in ci:
+        specialized = ci_job_block('e2e_specialized')
+        aggregate = ci_job_block('e2e')
+        for marker in [
+            'Browser required · ${{ matrix.label }}',
+            "build-frontend: 'false'",
+            'actions/download-artifact@v6',
+        ]:
+            if marker not in specialized:
+                raise SystemExit(f'Gate browser especializado incompleto: falta `{marker}`')
+        if 'needs: [preflight, e2e_lanes, e2e_specialized]' not in aggregate:
+            raise SystemExit('Tests · Playwright debe agregar core + browser especializado en el mismo required check')
+        if 'SPECIALIZED_RESULT' not in aggregate:
+            raise SystemExit('Tests · Playwright no está comprobando el resultado de las lanes especializadas')
 else:
     if 'make e2e-critical' not in ci:
         raise SystemExit('CI se ha desalineado del entrypoint local: falta `make e2e-critical`')
@@ -135,7 +163,7 @@ if 'python -m pip_audit' in ci:
     raise SystemExit('CI volvió a ejecutar pip-audit fuera del venv; usa `make security-be`')
 
 mode = (
-    'lanes aisladas auditadas contra CRITICAL_E2E_GREP + títulos reales de cada spec'
+    'lanes core auditadas contra CRITICAL_E2E_GREP + gate especializado agregado'
     if sharded_playwright
     else 'Make target e2e-critical'
 )
