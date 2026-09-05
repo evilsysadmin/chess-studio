@@ -7,6 +7,7 @@ import './styles.css';
 import './components/HomeGreatHallCascade.css';
 import './components/HomeGreatHallAccessibility.css';
 import './components/HomeGreatHallLayoutFix.css';
+import './components/HomeGreatHallModalFix.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
 import { migratePersistentStorage } from './storageMigrations.js';
 import { getReducedMotionPreference, reducedMotionStatus } from './userPreferences.js';
