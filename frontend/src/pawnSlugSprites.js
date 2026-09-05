@@ -1,17 +1,13 @@
 import * as THREE from 'three';
-import matthiasAtlasUrl from './assets/pawnSlug/matthias_run_atlas_v3.svg';
-import enemyAtlasUrl from './assets/pawnSlug/enemy_run_atlas_v3.svg';
+import matthiasAtlasUrl from './assets/pawnSlug/matthias_atlas_v2.webp';
+import matthiasFallbackAtlasUrl from './assets/pawnSlug/matthias_atlas.svg';
+import enemyAtlasUrl from './assets/pawnSlug/enemy_atlas_v2.webp';
+import enemyFallbackAtlasUrl from './assets/pawnSlug/enemy_atlas.svg';
 import panzerRookUrl from './assets/pawnSlug/panzer_rook_v2.webp';
 import weaponAtlasUrl from './assets/pawnSlug/weapon_atlas.svg';
 
-const matthiasFallbackAtlasUrl = matthiasAtlasUrl;
-const enemyFallbackAtlasUrl = enemyAtlasUrl;
-const MATTHIAS_RUN_FRAMES = Object.freeze([1, 2, 3, 4]);
-const ENEMY_RUN_FRAMES = Object.freeze({
-  pawn: Object.freeze([0, 1, 2, 3]),
-  knight: Object.freeze([4, 5, 6, 7]),
-  rook: Object.freeze([8, 9, 10, 11]),
-});
+const MATTHIAS_RUN_FRAMES = Object.freeze([1, 2]);
+const ENEMY_FRAME_BY_TYPE = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
 
 export const PAWN_SLUG_MOTION_PROFILES = Object.freeze({
   matthias: Object.freeze({
@@ -69,6 +65,7 @@ export function configurePawnSlugTexture(texture) {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
+  // These actor atlases are NPOT; clamp keeps them valid on WebGL1.
   texture.wrapS = THREE.ClampToEdgeWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
   return texture;
@@ -176,7 +173,7 @@ function tintSprite(sprite, hurt, hurtOpacity) {
 }
 
 export function createMatthiasSlugSprite() {
-  const sprite = atlasSprite(matthiasAtlasUrl, matthiasFallbackAtlasUrl, 8, 0, [1.77, 2.56]);
+  const sprite = atlasSprite(matthiasAtlasUrl, matthiasFallbackAtlasUrl, 4, 0, [1.77, 2.56]);
   sprite.name = 'pawn-slug-matthias-sprite';
   sprite.userData.animation = { clock: 0, weapon: 'pistol' };
   sprite.userData.setWeapon = (kind) => { sprite.userData.animation.weapon = kind || 'pistol'; };
@@ -203,17 +200,18 @@ export function animateMatthiasSlugSprite(sprite, {
   const recoil = firing ? (profile.recoilByWeapon[weapon] ?? profile.recoilByWeapon.pistol) : 0;
 
   if (hurt) setFrame(0);
-  else if (firing) setFrame(6);
-  else if (crouch) setFrame(5);
-  else if (airborne) setFrame(7);
-  else if (running) setFrame(MATTHIAS_RUN_FRAMES[Math.floor(time * 11.5) % MATTHIAS_RUN_FRAMES.length]);
+  else if (firing) setFrame(3);
+  else if (airborne) setFrame(2);
+  else if (running) setFrame(MATTHIAS_RUN_FRAMES[Math.floor(time * 9) % MATTHIAS_RUN_FRAMES.length]);
   else setFrame(0);
 
   if (running && !crouch && !airborne) sprite.position.y += Math.abs(runWave) * profile.runBob;
   if (recoil) sprite.position.x -= direction * recoil;
   if (hurt) sprite.position.x -= direction * profile.hurtKick;
 
-  const motionSquash = running && !crouch && !airborne ? Math.cos(time * profile.runRate * 2) * profile.runSquash : breath;
+  const motionSquash = running && !crouch && !airborne
+    ? Math.cos(time * profile.runRate * 2) * profile.runSquash
+    : breath;
   sprite.scale.y = baseScaleY * (crouch ? profile.crouchScale : 1) * (1 + motionSquash - (hurt ? 0.035 : 0));
   sprite.material.rotation = running && !crouch && !airborne
     ? -direction * runWave * profile.runLean
@@ -226,14 +224,13 @@ export function animateMatthiasSlugSprite(sprite, {
 }
 
 export function createSlugEnemySprite(type = 'pawn') {
-  const sequence = ENEMY_RUN_FRAMES[type] || ENEMY_RUN_FRAMES.pawn;
-  const frame = sequence[0];
+  const frame = ENEMY_FRAME_BY_TYPE[type] ?? ENEMY_FRAME_BY_TYPE.pawn;
   const scaleByType = {
     pawn: [2.05, 2.05],
     knight: [2.22, 2.22],
     rook: [2.65, 2.65],
   };
-  const sprite = atlasSprite(enemyAtlasUrl, enemyFallbackAtlasUrl, 12, frame, scaleByType[type] || scaleByType.pawn);
+  const sprite = atlasSprite(enemyAtlasUrl, enemyFallbackAtlasUrl, 3, frame, scaleByType[type] || scaleByType.pawn);
   sprite.name = `pawn-slug-${type}-sprite`;
   sprite.userData.enemyFrame = frame;
   sprite.userData.enemyType = type;
@@ -242,16 +239,13 @@ export function createSlugEnemySprite(type = 'pawn') {
 
 export function animateSlugEnemySprite(sprite, type, time, { moving = false, hurt = false } = {}) {
   const profile = PAWN_SLUG_MOTION_PROFILES[type] || PAWN_SLUG_MOTION_PROFILES.pawn;
-  const sequence = ENEMY_RUN_FRAMES[type] || ENEMY_RUN_FRAMES.pawn;
   const phase = sprite.userData.motionPhase || 0;
   const direction = sprite.scale.x < 0 ? -1 : 1;
   const moveWave = Math.sin(time * profile.moveRate + phase);
   const idleWave = Math.sin(time * profile.idleRate + phase);
   const baseScaleY = sprite.userData.motionBaseScaleY || Math.abs(sprite.scale.y) || 1;
-  const frameRate = type === 'knight' ? 11 : type === 'rook' ? 4.5 : 8.5;
-  const frame = moving ? sequence[Math.floor((time + phase) * frameRate) % sequence.length] : sequence[0];
-  sprite.userData.setFrame?.(frame);
 
+  sprite.userData.setFrame?.(sprite.userData.enemyFrame ?? ENEMY_FRAME_BY_TYPE.pawn);
   sprite.position.y += moving
     ? Math.abs(moveWave) * profile.moveBob
     : Math.max(0, idleWave) * profile.idleBob;
@@ -302,20 +296,20 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
   matthias: Object.freeze({
     url: matthiasAtlasUrl,
     fallbackUrl: matthiasFallbackAtlasUrl,
-    frames: 8,
-    frameWidth: 256,
-    frameHeight: 256,
+    frames: 4,
+    frameWidth: 72,
+    frameHeight: 104,
     sourceFacing: 'right',
-    framesByAction: Object.freeze({ idle: 0, run: MATTHIAS_RUN_FRAMES, crouch: 5, fire: 6, airborne: 7 }),
+    framesByAction: Object.freeze({ idle: 0, run: MATTHIAS_RUN_FRAMES, crouch: 0, fire: 3, airborne: 2 }),
   }),
   enemies: Object.freeze({
     url: enemyAtlasUrl,
     fallbackUrl: enemyFallbackAtlasUrl,
-    frames: 12,
-    frameWidth: 256,
-    frameHeight: 256,
+    frames: 3,
+    frameWidth: 104,
+    frameHeight: 104,
     sourceFacing: 'right',
-    framesByType: ENEMY_RUN_FRAMES,
+    frameByType: ENEMY_FRAME_BY_TYPE,
   }),
   boss: Object.freeze({ url: panzerRookUrl, frames: 1, frameWidth: 192, frameHeight: 192 }),
   weapons: Object.freeze({ url: weaponAtlasUrl, frames: 4, frameWidth: 256, frameHeight: 128 }),
