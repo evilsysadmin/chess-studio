@@ -70,8 +70,26 @@ async function captureSpeechBubbleContract(corner) {
       if (!Number.isFinite(fontSize)) return null;
       const bubbleRect = bubbleNode.getBoundingClientRect();
       const characterRect = characterNode?.getBoundingClientRect();
+      let gap = Number.POSITIVE_INFINITY;
+      let side = 'missing';
+      if (characterRect) {
+        if (bubbleRect.right <= characterRect.left) {
+          gap = characterRect.left - bubbleRect.right;
+          side = 'left';
+        } else if (bubbleRect.left >= characterRect.right) {
+          gap = bubbleRect.left - characterRect.right;
+          side = 'right';
+        } else {
+          gap = -Math.min(
+            bubbleRect.right - characterRect.left,
+            characterRect.right - bubbleRect.left,
+          );
+          side = 'overlap';
+        }
+      }
       return {
-        gap: characterRect ? characterRect.left - bubbleRect.right : Number.POSITIVE_INFINITY,
+        gap,
+        side,
         bubbleFontSize: fontSize,
         profile: avatarNode?.getAttribute('data-three-profile') || '',
         presenceState: avatarNode?.getAttribute('data-home-presence-state') || '',
@@ -198,6 +216,7 @@ test('Home · cuando Matthias habla mantiene atención y señal facial mientras 
   const speech = await captureSpeechBubbleContract(corner);
   expect(speech.gap, 'el bocadillo debe pertenecer físicamente a Matthias').toBeGreaterThanOrEqual(0);
   expect(speech.gap, 'la cola no puede quedar flotando lejos de Matthias').toBeLessThanOrEqual(16);
+  expect(speech.side, 'el bocadillo no puede solaparse con Matthias').not.toBe('overlap');
   expect(speech.bubbleFontSize, 'el comentario de Matthias debe leerse sin forzar la vista').toBeGreaterThanOrEqual(13);
   expect(speech.profile, 'la foto tomada con el bocadillo vivo debe conservar el perfil de habla').toBe('speak');
   expect(speech.presenceState, 'la foto tomada con el bocadillo vivo debe mantener atención').toBe('attend');
