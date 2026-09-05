@@ -132,6 +132,7 @@ test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre e
   // PointerEvent whose currentTarget lifetime is browser-dependent.
   const dossier = page.getByRole('dialog', { name: /Ficha de unidad de/i });
   await expect(dossier).toBeVisible({ timeout: 4_000 });
+  await expect(dossier).toHaveClass(/\bpreview\b/);
   await expect(dossier.getByText(/Vista rápida/i)).toBeVisible();
 
   // Move to a coordinate guaranteed to be outside both the canvas and the
