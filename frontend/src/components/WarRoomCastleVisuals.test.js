@@ -8,7 +8,7 @@ const theme = {
 };
 
 describe('War Room castle visual contract', () => {
-  it('saca el atrezzo del tablero y omite las antiguas consolas desktop ya retiradas', () => {
+  it('omite el atrezzo retirado del tablero y las antiguas consolas desktop', () => {
     const scene = new THREE.Scene();
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const table = buildPremiumTableLayer(theme, false);
@@ -23,11 +23,7 @@ describe('War Room castle visual contract', () => {
     expect(room.getObjectByName('war-room-console-matthias-relic')).toBeUndefined();
     expect(room.getObjectByName('war-room-console-map-pencil')).toBeUndefined();
     expect(architecture.userData.warRoomDesktopRetiredSideConsoleMeshesOmitted).toBe(30);
-
-    const driver = room.getObjectByName('war-room-castle-floor-slab');
-    expect(driver?.userData?.warRoomCastleSceneDriver).toBe(true);
-    expect(typeof driver?.onBeforeRender).toBe('function');
-    driver.onBeforeRender();
+    expect(table.userData.warRoomRetiredTableClutterMeshesOmitted).toBe(20);
 
     for (const name of [
       'war-table-field-folio',
@@ -35,10 +31,22 @@ describe('War Room castle visual contract', () => {
       'war-table-command-chronometer',
       'matthias-command-relic',
     ]) {
-      const oldProp = table.getObjectByName(name);
-      expect(oldProp).toBeTruthy();
-      expect(oldProp.visible).toBe(false);
-      expect(oldProp.userData.relocatedToRoomDecor).toBe(true);
+      expect(table.getObjectByName(name)).toBeUndefined();
+    }
+
+    const driver = room.getObjectByName('war-room-castle-floor-slab');
+    expect(driver?.userData?.warRoomCastleSceneDriver).toBe(true);
+    expect(typeof driver?.onBeforeRender).toBe('function');
+    driver.onBeforeRender();
+
+    expect(scene.userData.warRoomTableClutterRetired).toBe(true);
+    for (const name of [
+      'war-table-field-folio',
+      'war-table-map-pencil',
+      'war-table-command-chronometer',
+      'matthias-command-relic',
+    ]) {
+      expect(table.getObjectByName(name)).toBeUndefined();
     }
   });
 
@@ -87,10 +95,12 @@ describe('War Room castle visual contract', () => {
     expect(finalizerDriver?.userData?.warRoomDeferredFinalizer).toBe('deferred-finalizer-v1');
     expect(typeof finalizerDriver?.onBeforeRender).toBe('function');
     expect(architecture?.userData?.warRoomDesktopLegacyLayoutDriverRetired).toBe(true);
+    expect(room.userData.warRoomDesktopRetiredCurtainPelmetsOmitted).toBe(2);
     finalizerDriver.onBeforeRender();
 
     expect(scene.userData.warRoomDeferredFinalizedTasks[0]).toBe('premium-room-pass-v4');
     expect(scene.userData.warRoomDeferredFinalizerResults['premium-room-pass-v4']).toBe(1);
+    expect(scene.userData.warRoomApprovedMockCurtainPelmetsRetired).toBe(0);
     const leftSofa = room.getObjectByName('war-room-sofa-left');
     const desk = room.getObjectByName('command-cabinet');
     const chair = room.getObjectByName('war-room-teutonic-command-chair');

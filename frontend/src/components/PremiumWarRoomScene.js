@@ -262,14 +262,18 @@ function addCurtain(group, x, y, z, towardBoard, side, compact = false) {
     fold.name = 'war-room-velvet-curtain-fold';
   }
 
-  addMesh(
-    group,
-    new THREE.SphereGeometry(0.72, compact ? 14 : 24, compact ? 9 : 14),
-    velvetA,
-    [x + side * 0.6, y + 1.05, z + towardBoard * 0.03],
-    [0, 0, side * 0.1],
-    [1.45, 0.34, 0.34],
-  );
+  if (compact) {
+    addMesh(
+      group,
+      new THREE.SphereGeometry(0.72, 14, 9),
+      velvetA,
+      [x + side * 0.6, y + 1.05, z + towardBoard * 0.03],
+      [0, 0, side * 0.1],
+      [1.45, 0.34, 0.34],
+    );
+  } else {
+    group.userData.warRoomDesktopRetiredCurtainPelmetsOmitted = (group.userData.warRoomDesktopRetiredCurtainPelmetsOmitted || 0) + 1;
+  }
   const tieX = x + side * (compact ? 0.48 : 0.65);
   const tieY = y - 0.05;
   addMesh(group, new THREE.TorusGeometry(0.18, 0.025, 8, 22), brass, [tieX, tieY, z + towardBoard * 0.16], [Math.PI / 2, 0, 0], [0.72, 1, 1]);
@@ -735,9 +739,7 @@ export function buildPremiumTableLayer(theme, coarsePointer = false) {
     }
   }
 
-  addWarTablePapers(group, coarsePointer);
-  addCommandChronometer(group, coarsePointer);
-  addMatthiasCommandRelic(group, theme, coarsePointer);
+  group.userData.warRoomRetiredTableClutterMeshesOmitted = coarsePointer ? 13 : 20;
   addTableEdgeWear(group, coarsePointer);
 
   return group;
