@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
+import { attachWarRoomCompositionRootDriver } from './WarRoomCompositionRootDriver.js';
 import {
   WAR_ROOM_CANONICAL_PRUNE_VERSION,
   pruneWarRoomRetiredSceneObjects,
@@ -112,6 +113,33 @@ describe('War Room canonical scene pruning', () => {
     expect(sharedGeometryDispose).not.toHaveBeenCalled();
     expect(sharedMaterialDispose).not.toHaveBeenCalled();
     expect(scene.getObjectByName('live-wall')).toBe(live);
+  });
+
+  it('runs after the shared first-paint finalizer through the composition driver', () => {
+    const scene = new THREE.Scene();
+    const room = new THREE.Group();
+    const driver = mesh();
+    driver.name = 'war-room-premium-painting-canvas';
+    const retired = mesh();
+    retired.name = 'war-room-side-console-right';
+    room.add(driver, retired);
+    scene.add(room);
+
+    expect(attachWarRoomCompositionRootDriver(room, {
+      wallZ: -7.6,
+      towardBoard: 1,
+      coarsePointer: false,
+    })).toBe(true);
+    expect(driver.userData.warRoomCanonicalPruneDriver).toBe(true);
+
+    driver.onBeforeRender();
+    expect(scene.getObjectByName('war-room-side-console-right')).toBe(retired);
+    driver.onAfterRender();
+
+    expect(scene.getObjectByName('war-room-side-console-right')).toBeUndefined();
+    expect(driver.userData.warRoomCanonicalPruneCompleted).toBe(true);
+    expect(driver.userData.warRoomCanonicalPrunedRoots).toBe(1);
+    expect(scene.userData.warRoomCanonicalPruneVersion).toBe(WAR_ROOM_CANONICAL_PRUNE_VERSION);
   });
 
   it('is one-shot and leaves an already canonical scene untouched on repeated calls', () => {
