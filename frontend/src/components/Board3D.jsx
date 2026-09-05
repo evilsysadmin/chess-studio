@@ -26,6 +26,11 @@ export default function Board3D(props) {
 
   return (
     <BoardRendererContext.Provider value="3d">
+      <span
+        hidden
+        aria-hidden="true"
+        data-war-room-hans-quick-request={ownsHansQuickIteration ? 'true' : 'false'}
+      />
       <Board3DCore {...props} />
     </BoardRendererContext.Provider>
   );
