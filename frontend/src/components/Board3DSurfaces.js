@@ -431,10 +431,16 @@ export function installPremiumEnvironment(renderer, scene, { coarsePointer = fal
   scene.userData.warRoomRenderBudget = budget;
 
   if (coarsePointer) {
-    // Mobile/lite has no microtexture generation nor PMREM. This pass is cheap
-    // and keeping it synchronous avoids needing another explicit repaint.
-    applyPremiumDecorSurfacePass(scene, { coarsePointer: true });
-    scene.userData.warRoomPremiumWork = 'lite-synchronous';
+    // Preserve the old lite timing: installPremiumEnvironment is called before
+    // the room geometry exists, so the cheap pass must wait until this effect
+    // has finished constructing the scene. It still avoids all desktop PMREM
+    // and microtexture work.
+    const runLitePass = () => {
+      if (!cancelled) applyPremiumDecorSurfacePass(scene, { coarsePointer: true });
+    };
+    if (typeof queueMicrotask === 'function') queueMicrotask(runLitePass);
+    else Promise.resolve().then(runLitePass);
+    scene.userData.warRoomPremiumWork = 'lite-microtask';
     return () => { cancelled = true; };
   }
 
