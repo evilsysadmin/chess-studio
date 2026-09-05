@@ -38,21 +38,14 @@ jobs:
       url: https://staging.chess-studio.shadowops.dpdns.org
     env:
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     outputs:
       deploy_sha: ${{ steps.admission.outputs.deploy_sha }}
-      render_service_id: ${{ steps.render_bootstrap.outputs.service_id }}
 
     steps:
-      - name: Validate staging credentials and commit
+      - name: Validate staging commit
         shell: bash
         run: |
           set -euo pipefail
-          [[ -n "${RENDER_API_KEY:-}" ]] || { echo '::error::Falta RENDER_API_KEY'; exit 1; }
-          [[ -n "${CLOUDFLARE_API_TOKEN:-}" ]] || { echo '::error::Falta CLOUDFLARE_API_TOKEN'; exit 1; }
-          [[ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ]] || { echo '::error::Falta CLOUDFLARE_ACCOUNT_ID'; exit 1; }
           [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::DEPLOY_SHA no es un commit completo: $DEPLOY_SHA"; exit 1; }
 
       - name: Checkout CI-approved commit
@@ -96,13 +89,35 @@ jobs:
           echo "deploy_sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
           echo "Staging admission OK: $DEPLOY_SHA sigue siendo main HEAD."
 
+  # Render configuration is backend-specific control-plane work. Keep it out of
+  # prepare so Pages and Workers AI can start as soon as the SHA is admitted.
+  render_reconcile:
+    name: Render · reconcile staging service
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: staging
+      url: https://staging.chess-studio.shadowops.dpdns.org
+    env:
+      DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+    outputs:
+      render_service_id: ${{ steps.render_bootstrap.outputs.service_id }}
+
+    steps:
+      - name: Checkout CI-approved commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
       - name: Reconcile Render staging configuration
         id: render_bootstrap
         run: python3 scripts/render_staging_bootstrap.py
 
   backend:
     name: Backend · exact Render generation
-    needs: prepare
+    needs: [prepare, render_reconcile]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment:
@@ -111,7 +126,7 @@ jobs:
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_SERVICE_ID: ${{ needs.prepare.outputs.render_service_id }}
+      RENDER_SERVICE_ID: ${{ needs.render_reconcile.outputs.render_service_id }}
 
     steps:
       - name: Checkout CI-approved commit
@@ -355,7 +370,6 @@ jobs:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      RENDER_SERVICE_ID: ${{ needs.prepare.outputs.render_service_id }}
 
     steps:
       - name: Checkout CI-approved commit
@@ -378,7 +392,7 @@ jobs:
         run: python3 -S scripts/deploy_staging_ai_worker.py --self-test
 
       - name: Deploy exact staging Worker and synchronize shared secret
-        run: python3 scripts/deploy_staging_ai_worker.py --service-id "$RENDER_SERVICE_ID"
+        run: python3 scripts/deploy_staging_ai_worker.py
 
       - name: Wait for staging Worker Custom Domain and health
         shell: bash
@@ -490,7 +504,7 @@ jobs:
 
   smoke:
     name: Browser smoke · ${{ matrix.label }}
-    needs: [prepare, parity]
+    needs: [prepare, render_reconcile, parity]
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     environment:
@@ -509,7 +523,7 @@ jobs:
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_SERVICE_ID: ${{ needs.prepare.outputs.render_service_id }}
+      RENDER_SERVICE_ID: ${{ needs.render_reconcile.outputs.render_service_id }}
 
     steps:
       - name: Checkout CI-approved commit
@@ -621,5 +635,5 @@ jobs:
             echo '- Live browser smoke: `War Room live + F5 authority · paralelos · OK`'
             echo '- Visual evidence: `vídeos Chromium retenidos 7 días en staging-live-playwright-*`'
             echo '- Identidades CI: `aisladas por spec, eliminadas y verificadas`'
-            echo '- Deploy lanes: `Render + Pages + Worker en paralelo`'
+            echo '- Deploy lanes: `Render reconcile/backend + Pages + Worker arrancan en paralelo tras admission`'
           } >> "$GITHUB_STEP_SUMMARY"
