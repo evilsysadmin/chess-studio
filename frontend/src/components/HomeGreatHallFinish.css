@@ -1,0 +1,262 @@
+/* Home Great Hall v6 · finishing layer
+ *
+ * One intentional final pass over the v5 composition. It owns the compact
+ * learning rail and its secondary drawer so visual copy never drifts away
+ * from the real action, and so the room reads as a hall rather than a stack
+ * of nested dashboard panels.
+ */
+
+body .home-friendly > .home-primary-group:not(.home-modes-section) {
+  width: min(86%, 1220px);
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-grid > .menu-card-shell {
+  display: flex;
+  min-width: 0;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-card {
+  min-height: 4.35rem !important;
+  height: auto;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: .72rem;
+  overflow: visible;
+  padding: .68rem clamp(.72rem, 1.5vw, 1.15rem);
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-card .home-mode-copy {
+  display: grid;
+  width: auto;
+  min-width: 0;
+  max-width: none;
+  gap: .13rem;
+  flex: 1 1 auto;
+}
+
+/* The rail is a set of real actions, not category labels painted with CSS.
+ * Surface the existing metadata as a restrained eyebrow and keep the actual
+ * heading visible. */
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-card .home-mode-kicker {
+  display: flex;
+  min-width: 0;
+  gap: .35rem;
+  color: rgba(224,190,105,.62);
+  font-size: .52rem;
+  line-height: 1.15;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-card .home-mode-kicker i {
+  display: none;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-card h3,
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-grid > :nth-child(2) h3,
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-grid > :nth-child(3) h3 {
+  position: static !important;
+  width: auto !important;
+  height: auto !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  clip: auto !important;
+  clip-path: none !important;
+  color: #e9d184;
+  font-family: inherit;
+  font-size: .9rem !important;
+  font-weight: 650;
+  line-height: 1.18;
+  letter-spacing: 0;
+  white-space: normal !important;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-grid > :nth-child(2) h3::after,
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-grid > :nth-child(3) h3::after,
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-card .home-mode-copy::after {
+  content: none !important;
+  display: none !important;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-card .home-mode-description {
+  display: none;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-card .menu-card-cta {
+  position: static;
+  flex: 0 0 auto;
+  min-width: auto;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #dfb642;
+  font-size: 0;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-card .menu-card-cta b {
+  display: inline;
+  font-size: 1rem;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-card:hover,
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-card:focus-visible {
+  background: linear-gradient(90deg, rgba(199,154,58,.085), rgba(199,154,58,.025));
+}
+
+/* Secondary tools are one disclosure inside the rail, not another framed
+ * application panel. Closed is the calm default; open gets only a separator
+ * and the cards themselves. */
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-more {
+  margin: .5rem .45rem .2rem;
+  overflow: visible;
+  border: 0;
+  border-top: 1px solid rgba(192,150,59,.18);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-more > summary {
+  min-height: 2.55rem;
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .52rem .15rem .38rem;
+  list-style: none;
+  color: rgba(229,217,188,.72);
+  font-size: .68rem;
+  font-weight: 650;
+  letter-spacing: .035em;
+  cursor: pointer;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-more > summary::before {
+  content: '+';
+  width: 1.2rem;
+  color: #d9ae42;
+  font: 700 .95rem/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-align: center;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-more[open] > summary::before {
+  content: '−';
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-more[open] > summary {
+  border-bottom: 0;
+  color: rgba(241,232,210,.88);
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-more > .friendly-disclosure-body {
+  padding: .38rem 0 .15rem;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid {
+  gap: .8rem;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid .menu-card-shell {
+  min-width: 0;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid .home-tool-card {
+  min-width: 0;
+  min-height: 156px !important;
+  align-content: start;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid .home-mode-copy {
+  width: 100%;
+  max-width: none;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid .home-mode-kicker {
+  width: 100%;
+  flex-wrap: wrap;
+  gap: .22rem .5rem;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid .home-mode-kicker b,
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid .home-mode-kicker i {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid .home-mode-copy h3 {
+  font-size: clamp(1.22rem, 1.45vw, 1.48rem);
+  line-height: 1.08;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid .home-mode-description {
+  max-width: none;
+}
+
+@media (max-width: 1120px) {
+  body .home-friendly > .home-primary-group:not(.home-modes-section) {
+    width: min(94%, 980px);
+  }
+}
+
+@media (max-width: 760px) {
+  body .home-friendly > .home-primary-group:not(.home-modes-section) {
+    width: min(96%, 680px);
+  }
+
+  body .home-friendly > .home-primary-group:not(.home-modes-section)
+    .home-learning-card {
+    min-height: 4.15rem !important;
+  }
+
+  body .home-friendly > .home-primary-group:not(.home-modes-section)
+    .home-learning-more {
+    margin-inline: .25rem;
+  }
+}
+
+@media (max-width: 520px) {
+  body .home-friendly > .home-primary-group:not(.home-modes-section)
+    .home-tools-grid .home-tool-card {
+    min-height: 0 !important;
+  }
+}
