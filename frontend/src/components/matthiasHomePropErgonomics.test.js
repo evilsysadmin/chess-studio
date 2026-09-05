@@ -62,12 +62,12 @@ describe('Matthias Home prop ergonomics', () => {
     expect(rig.activityRig.assist.visible).toBe(true);
 
     // The tactical meal now has four internal phases. Inspect the bocata at a
-    // deterministic time instead of accidentally asserting against the hidden
-    // legacy ration while the burger phase is active.
+    // deterministic time and require the portrait-readable scale rather than
+    // the old miniature-prop contract that caused the canapé effect in Home.
     expect(apply(rig, 'bite', { activityTime: 7 })).toBe('ration');
     expect(rig.root.userData.activityMealPhase).toBe('bocata');
     expect(rig.activityRig.ration.visible).toBe(true);
-    expect(rig.activityRig.ration.scale.x).toBeLessThanOrEqual(.9);
+    expect(rig.activityRig.ration.scale.x).toBeGreaterThanOrEqual(1.18);
     expect(rig.activityRig.ration.position.y).toBeLessThan(-.4);
     expect(rig.activityRig.ration.position.x).toBeGreaterThan(.15);
     expect(rig.activityRig.support.visible).toBe(true);
