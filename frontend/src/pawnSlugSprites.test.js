@@ -7,41 +7,44 @@ import {
 } from './pawnSlugSprites.js';
 
 describe('Pawn Slug premium sprite contracts', () => {
-  it('keeps expanded player/enemy atlases isolated in lazy-owned assets', () => {
-    expect(PAWN_SLUG_SPRITE_META.matthias.frames).toBe(8);
-    expect(PAWN_SLUG_SPRITE_META.enemies.frames).toBe(12);
+  it('keeps the known-good premium actor atlas geometry', () => {
+    expect(PAWN_SLUG_SPRITE_META.matthias.frames).toBe(4);
+    expect(PAWN_SLUG_SPRITE_META.enemies.frames).toBe(3);
     expect(PAWN_SLUG_SPRITE_META.boss.frames).toBe(1);
     expect(PAWN_SLUG_SPRITE_META.weapons.frames).toBe(4);
-    expect(PAWN_SLUG_SPRITE_META.matthias.frameWidth).toBe(256);
-    expect(PAWN_SLUG_SPRITE_META.matthias.frameHeight).toBe(256);
-    expect(PAWN_SLUG_SPRITE_META.enemies.frameWidth).toBe(256);
-    expect(PAWN_SLUG_SPRITE_META.enemies.frameHeight).toBe(256);
+    expect(PAWN_SLUG_SPRITE_META.matthias.frameWidth).toBe(72);
+    expect(PAWN_SLUG_SPRITE_META.matthias.frameHeight).toBe(104);
+    expect(PAWN_SLUG_SPRITE_META.enemies.frameWidth).toBe(104);
+    expect(PAWN_SLUG_SPRITE_META.enemies.frameHeight).toBe(104);
     expect(PAWN_SLUG_SPRITE_META.boss.frameWidth).toBe(192);
     expect(PAWN_SLUG_SPRITE_META.boss.frameHeight).toBe(192);
     expect(PAWN_SLUG_SPRITE_META.weapons.frameHeight).toBe(128);
   });
 
-  it('locks Matthias to a four-frame run gait plus explicit combat poses', () => {
+  it('uses the premium Matthias run/fire frames without addressing nonexistent poses', () => {
     expect(PAWN_SLUG_SPRITE_META.matthias.sourceFacing).toBe('right');
     expect(PAWN_SLUG_SPRITE_META.matthias.framesByAction).toEqual({
       idle: 0,
-      run: [1, 2, 3, 4],
-      crouch: 5,
-      fire: 6,
-      airborne: 7,
+      run: [1, 2],
+      crouch: 0,
+      fire: 3,
+      airborne: 2,
     });
+    const addressed = [
+      PAWN_SLUG_SPRITE_META.matthias.framesByAction.idle,
+      ...PAWN_SLUG_SPRITE_META.matthias.framesByAction.run,
+      PAWN_SLUG_SPRITE_META.matthias.framesByAction.crouch,
+      PAWN_SLUG_SPRITE_META.matthias.framesByAction.fire,
+      PAWN_SLUG_SPRITE_META.matthias.framesByAction.airborne,
+    ];
+    expect(Math.max(...addressed)).toBeLessThan(PAWN_SLUG_SPRITE_META.matthias.frames);
   });
 
-  it('gives pawn, knight and rook their own four-frame animation banks', () => {
+  it('keeps pawn, knight and rook on their premium silhouettes', () => {
     expect(PAWN_SLUG_SPRITE_META.enemies.sourceFacing).toBe('right');
-    expect(PAWN_SLUG_SPRITE_META.enemies.framesByType).toEqual({
-      pawn: [0, 1, 2, 3],
-      knight: [4, 5, 6, 7],
-      rook: [8, 9, 10, 11],
-    });
-    const frames = Object.values(PAWN_SLUG_SPRITE_META.enemies.framesByType).flat();
-    expect(new Set(frames).size).toBe(12);
-    expect(Math.max(...frames)).toBeLessThan(PAWN_SLUG_SPRITE_META.enemies.frames);
+    expect(PAWN_SLUG_SPRITE_META.enemies.frameByType).toEqual({ pawn: 0, knight: 1, rook: 2 });
+    expect(Math.max(...Object.values(PAWN_SLUG_SPRITE_META.enemies.frameByType)))
+      .toBeLessThan(PAWN_SLUG_SPRITE_META.enemies.frames);
   });
 
   it('gives every battlefield class a deliberately different motion signature', () => {
@@ -54,7 +57,7 @@ describe('Pawn Slug premium sprite contracts', () => {
       .toBeGreaterThan(PAWN_SLUG_MOTION_PROFILES.matthias.recoilByWeapon.pistol);
   });
 
-  it('uses WebGL1-safe clamp wrapping for wide actor atlases', () => {
+  it('uses WebGL1-safe clamp wrapping for actor atlases', () => {
     const texture = {};
     configurePawnSlugTexture(texture);
     expect(texture.wrapS).toBe(THREE.ClampToEdgeWrapping);
@@ -64,12 +67,14 @@ describe('Pawn Slug premium sprite contracts', () => {
     expect(texture.colorSpace).toBe(THREE.SRGBColorSpace);
   });
 
-  it('serves the premium actor atlases from local vector assets', () => {
+  it('requires premium raster primaries and keeps vector art only as fallback', () => {
     const localSvg = /(?:\.svg(?:\?|$)|^data:image\/svg\+xml(?:[,;]))/;
-    expect(String(PAWN_SLUG_SPRITE_META.matthias.url)).toMatch(localSvg);
-    expect(String(PAWN_SLUG_SPRITE_META.enemies.url)).toMatch(localSvg);
-    expect(String(PAWN_SLUG_SPRITE_META.matthias.fallbackUrl)).toMatch(localSvg);
-    expect(String(PAWN_SLUG_SPRITE_META.enemies.fallbackUrl)).toMatch(localSvg);
+    for (const actor of [PAWN_SLUG_SPRITE_META.matthias, PAWN_SLUG_SPRITE_META.enemies]) {
+      expect(String(actor.url)).toMatch(/\.webp(?:\?|$)/);
+      expect(String(actor.url)).not.toMatch(localSvg);
+      expect(String(actor.fallbackUrl)).toMatch(localSvg);
+      expect(actor.fallbackUrl).not.toBe(actor.url);
+    }
   });
 
   it('uses local runtime assets instead of remote sprites', () => {
