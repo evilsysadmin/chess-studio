@@ -12,8 +12,8 @@ export const MATTHIAS_PREMIUM_HOME_FIDELITY_VERSION = 'approved-original-premium
 export const MATTHIAS_PREMIUM_HOME_RENDER_CONTRACT = 'canonical-pawn-3d-v1';
 export const MATTHIAS_PREMIUM_HOME_REFERENCE = 'approved-original-matthias-premium-v1';
 export const MATTHIAS_PREMIUM_HOME_CAP_VERSION = 'officer-cap-v4-peaked-canonical';
-export const MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION = 'activity-props-v2';
-export const MATTHIAS_PREMIUM_HOME_ACTIVITY_COMPOSITION_VERSION = 'portrait-readable-v3';
+export const MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION = 'activity-props-v3-sleep';
+export const MATTHIAS_PREMIUM_HOME_ACTIVITY_COMPOSITION_VERSION = 'portrait-readable-v4';
 export const MATTHIAS_PREMIUM_HOME_FRAME_SCALE = .94;
 export const MATTHIAS_PREMIUM_HOME_FRAME_Y = -.05;
 export { MATTHIAS_PAWN_EMBLEM };
@@ -82,6 +82,32 @@ function activityMesh(parent, geometry, material, {
   return mesh;
 }
 
+function sleepBlanketGeometry(compact) {
+  const shape = new THREE.Shape();
+  shape.moveTo(-.56, .29);
+  shape.quadraticCurveTo(-.63, .18, -.57, .045);
+  shape.lineTo(-.49, -.30);
+  shape.quadraticCurveTo(-.28, -.38, 0, -.35);
+  shape.quadraticCurveTo(.28, -.38, .49, -.30);
+  shape.lineTo(.57, .045);
+  shape.quadraticCurveTo(.63, .18, .56, .29);
+  shape.quadraticCurveTo(.24, .245, 0, .205);
+  shape.quadraticCurveTo(-.24, .245, -.56, .29);
+  shape.closePath();
+
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: .085,
+    curveSegments: compact ? 4 : 8,
+    steps: 1,
+    bevelEnabled: true,
+    bevelSegments: compact ? 1 : 2,
+    bevelSize: .024,
+    bevelThickness: .018,
+  });
+  geometry.center();
+  return geometry;
+}
+
 function buildActivityRig(rig, compact) {
   const activityRoot = new THREE.Group();
   activityRoot.name = 'home-activity-rig';
@@ -96,6 +122,8 @@ function buildActivityRig(rig, compact) {
   const red = activityMaterial(0x6f211d, { metalness: .22, roughness: .34, clearcoat: .30 });
   const food = activityMaterial(0xa86b31, { metalness: 0, roughness: .72, clearcoat: .02 });
   const cloth = activityMaterial(0x4a201d, { metalness: 0, roughness: .86, clearcoat: 0 });
+  const clothFold = activityMaterial(0x6a302a, { metalness: 0, roughness: .90, clearcoat: 0 });
+  const pillowCloth = activityMaterial(0xbda47c, { metalness: 0, roughness: .88, clearcoat: 0 });
 
   // Arms are deliberately tiny and prop-driven. Matthias remains a pawn; the
   // limbs exist only long enough to make cups/books/dossiers feel physically held.
@@ -210,14 +238,40 @@ function buildActivityRig(rig, compact) {
     name: 'activity-pen', position: [.11, .08, .08], rotation: [0, 0, -.72],
   });
 
+  // Sleep must read as cloth wrapped around a dozing pawn, not a red dossier
+  // parked in front of him. The curved extruded silhouette, top sag and folds
+  // remain legible even in the small Home portrait.
   const blanket = new THREE.Group();
   blanket.name = 'activity-blanket';
   activityRoot.add(blanket);
-  activityMesh(blanket, new THREE.BoxGeometry(1.10, .50, .12), cloth, {
-    name: 'sleep-blanket-body', position: [0, 0, 0], rotation: [-.10, 0, 0], scale: [1, .96, 1],
+  activityMesh(blanket, sleepBlanketGeometry(compact), cloth, {
+    name: 'sleep-blanket-body', position: [0, 0, 0], rotation: [-.055, 0, 0],
   });
-  activityMesh(blanket, new THREE.BoxGeometry(1.12, .042, .135), gold, {
-    name: 'sleep-blanket-trim', position: [0, .235, .01], rotation: [-.10, 0, 0],
+  const blanketTrimCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-.52, .245, .065),
+    new THREE.Vector3(-.26, .218, .083),
+    new THREE.Vector3(0, .185, .09),
+    new THREE.Vector3(.26, .218, .083),
+    new THREE.Vector3(.52, .245, .065),
+  ]);
+  activityMesh(blanket, new THREE.TubeGeometry(blanketTrimCurve, compact ? 12 : 22, .013, 7, false), gold, {
+    name: 'sleep-blanket-trim',
+  });
+  for (const x of [-.28, 0, .28]) {
+    const foldCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(x, .145, .071),
+      new THREE.Vector3(x * .94, -.035, .087),
+      new THREE.Vector3(x * .86, -.245, .068),
+    ]);
+    activityMesh(blanket, new THREE.TubeGeometry(foldCurve, compact ? 8 : 14, .010, 6, false), clothFold, {
+      name: 'sleep-blanket-fold',
+    });
+  }
+  activityMesh(blanket, new THREE.CapsuleGeometry(.13, .34, compact ? 3 : 5, compact ? 10 : 16), pillowCloth, {
+    name: 'sleep-pillow',
+    position: [.29, .405, -.20],
+    rotation: [0, 0, Math.PI / 2 - .10],
+    scale: [1.22, .82, .62],
   });
 
   for (const group of [cup, ration, book, dossier, write, blanket, support, assist]) group.visible = false;
@@ -316,10 +370,8 @@ function applyActivityPose(rig, pose) {
     penPivot.rotation.z = -.08 + Math.sin((Number(pose?.headYaw) || 0) * 18) * .08;
     penPivot.position.y = Math.abs(Number(pose?.headYaw) || 0) * .18;
   } else if (prop === 'blanket') {
-    // Sleep must not hand off from a lovely 2D blanket to a naked base pawn.
-    // Keep the cloth below the face, attached to the same rigid body motion.
-    blanket.position.set(0, -.57, .64);
-    blanket.rotation.set(-.04, 0, Number(pose?.headRoll || 0) * .08);
+    blanket.position.set(0, -.47, .64);
+    blanket.rotation.set(-.035, 0, Number(pose?.headRoll || 0) * .10);
   }
 
   if (support.visible) {
@@ -508,12 +560,24 @@ export function applyMatthiasPremiumHomePose(rig, pose) {
   applyMatthiasPawnPose(rig, pose);
   applyActivityPose(rig, pose);
 
-  // A blink may soften the eyes but must never turn Matthias into a squinting
-  // stranger. The approved face keeps large vertical eyes at every frame.
+  const sleeping = String(pose.activityProfile || '').trim().toLowerCase() === 'sleep';
+
+  // Canonical Matthias keeps large eyes while awake. Sleep is deliberately the
+  // one exception: a nearly-flat eye silhouette plus a slumped head must read as
+  // genuinely asleep even in the 128 px Home portrait.
   const blink = clamp01(pose.blink);
-  const eyeScaleY = 1.52 * (1 - blink * .18);
+  const eyeScaleY = sleeping ? .14 : 1.52 * (1 - blink * .18);
   rig.leftEye.scale.set(.84, eyeScaleY, .42);
   rig.rightEye.scale.set(.84, eyeScaleY, .42);
+
+  if (sleeping) {
+    rig.root.rotation.z = -.085;
+    rig.headPivot.rotation.x += .15;
+    rig.headPivot.rotation.z -= .12;
+    rig.headPivot.position.y -= .025;
+  } else {
+    rig.root.rotation.z = 0;
+  }
 
   if (rig.speechMouth.visible) {
     const mouthOpen = clamp01(pose.mouthOpen);
@@ -524,7 +588,8 @@ export function applyMatthiasPremiumHomePose(rig, pose) {
 
   // Fixed Home framing: keep the wide officer cap inside the portrait safe area.
   // The constants never animate, so FSM gestures cannot introduce zoom or Z drift.
-  rig.root.position.y = (Number(pose.bodyY) || 0) + MATTHIAS_PREMIUM_HOME_FRAME_Y;
+  const sleepDrop = sleeping ? -.035 : 0;
+  rig.root.position.y = (Number(pose.bodyY) || 0) + MATTHIAS_PREMIUM_HOME_FRAME_Y + sleepDrop;
   rig.root.position.z = 0;
   rig.root.scale.setScalar(MATTHIAS_PREMIUM_HOME_FRAME_SCALE);
 }
