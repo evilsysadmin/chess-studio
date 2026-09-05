@@ -6,6 +6,8 @@ import { buildClientDiagnostic, copyDiagnosticText } from '../clientDiagnostics.
 import { loadCampaign } from '../combatCampaign.js';
 import { loadRun } from '../roguelikeRun.js';
 import { hasCombatSession } from '../combatSession.js';
+import { isLikelyModuleLoadError } from '../moduleLoadRecovery.js';
+import { requestReleaseReload } from '../releaseContinuity.js';
 
 function hasRecoverableGame() {
   if (loadActiveGameSession()) return true;
@@ -30,6 +32,15 @@ export default class AppRootErrorBoundary extends React.Component {
   componentDidCatch(error, info) {
     // eslint-disable-next-line no-console
     console.error('Error atrapado por AppRootErrorBoundary:', error, info);
+
+    // Los componentes globales viven por encima del ErrorBoundary interno. Si un
+    // deploy sustituye sus chunks mientras un cliente conserva el runtime previo,
+    // React.lazy puede llegar aquí como `undefined.default`. Trátalo igual que el
+    // boundary interno: una sola reconstrucción automática del runtime, usando el
+    // guard compartido para impedir bucles si la generación nueva también falla.
+    if (isLikelyModuleLoadError(error)) {
+      requestReleaseReload({ reload: this.props.onReload || undefined });
+    }
   }
 
   handleCopyDiagnostic = async () => {
