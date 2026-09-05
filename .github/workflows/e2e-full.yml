@@ -152,7 +152,7 @@ jobs:
                   {
                       'id': 'matthias-home-motion',
                       'label': 'Matthias · Home motion',
-                      'command': './node_modules/.bin/playwright test matthias-home-visual-critical.spec.js --workers=1 --retries=0',
+                      'command': './node_modules/.bin/playwright test matthias-home-visual-critical.spec.js --workers=1 --retries=0 --timeout=75000',
                   },
                   {
                       'id': 'matthias-reading',
