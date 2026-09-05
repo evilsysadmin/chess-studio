@@ -1,44 +1,103 @@
-/* Home castle readability pass.
- * The 3D scene is already intentionally nocturnal; do not darken it a second
- * time in the presentation layer. Keep warm contrast and depth, but ensure
- * architecture, furniture and room entrances remain readable at a glance.
+/* Home castle premium grade · canonical mock v2.
+ *
+ * The approved reference is a readable nocturnal great hall: stone, leather,
+ * armour, books and the foreground board must all read at a glance, while
+ * torches/chandeliers remain the warm local sources. The Three.js scene keeps
+ * its geometry and on-demand renderer; this layer handles the final display
+ * grade and lightweight light pools without flattening the room into daylight.
  */
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__scene,
 body .menu.home-friendly > .home-castle-life .home-great-hall-scene.home-castle-hub__scene {
-  filter: saturate(1.06) brightness(1.18) contrast(1.01) !important;
+  filter: saturate(1.10) brightness(1.32) contrast(.98) !important;
 }
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__scene canvas {
-  filter: saturate(1.04) brightness(1.10) contrast(1.01) !important;
+  filter: saturate(1.08) brightness(1.18) contrast(.99) !important;
 }
 
-/* Preserve cinematic edge falloff without burying the architecture in black. */
+/* Warm pools line up with the sconces/chandeliers from the approved mock.
+ * They are deliberately broad and low-opacity: this is reflected firelight,
+ * not six orange spotlights painted over the scene. */
+body .menu.home-friendly > .home-castle-life .home-castle-hub::after {
+  content: '';
+  position: absolute;
+  z-index: 7;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20.5% 45%, rgba(255, 143, 48, .18) 0 3%, rgba(255, 118, 28, .075) 10%, transparent 22%),
+    radial-gradient(circle at 40.4% 45%, rgba(255, 151, 55, .15) 0 3%, rgba(255, 119, 30, .06) 10%, transparent 22%),
+    radial-gradient(circle at 60.2% 45%, rgba(255, 151, 55, .15) 0 3%, rgba(255, 119, 30, .06) 10%, transparent 22%),
+    radial-gradient(circle at 80.0% 45%, rgba(255, 143, 48, .18) 0 3%, rgba(255, 118, 28, .075) 10%, transparent 22%),
+    radial-gradient(ellipse at 36% 19%, rgba(255, 173, 78, .085), transparent 20%),
+    radial-gradient(ellipse at 64% 19%, rgba(255, 173, 78, .085), transparent 20%),
+    radial-gradient(ellipse at 50% 82%, rgba(203, 132, 58, .07), transparent 40%);
+  mix-blend-mode: screen;
+  opacity: .92;
+}
+
+/* Preserve cinematic edge falloff, but no more black curtain over the room. */
 body .menu.home-friendly > .home-castle-life::after {
   background:
     radial-gradient(
-      ellipse at 50% 44%,
-      transparent 38%,
-      rgba(0, 0, 0, .04) 72%,
-      rgba(0, 0, 0, .20) 100%
+      ellipse at 50% 46%,
+      transparent 50%,
+      rgba(0, 0, 0, .025) 78%,
+      rgba(0, 0, 0, .10) 100%
     ),
     linear-gradient(
       180deg,
-      rgba(3, 4, 5, .07) 0%,
-      transparent 22%,
-      transparent 72%,
-      rgba(3, 4, 5, .14) 100%
+      rgba(3, 4, 5, .035) 0%,
+      transparent 18%,
+      transparent 82%,
+      rgba(3, 4, 5, .07) 100%
     );
 }
 
-/* Mobile previously applied an additional brightness(.86), which made the
- * same hall substantially darker than desktop. Keep the same readable grade. */
+/* The room labels belong to the architecture. Keep them readable without
+ * turning the portals into dashboard cards. */
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room {
+  background: linear-gradient(180deg, rgba(18, 12, 7, .10), rgba(5, 4, 3, .04));
+  text-shadow: 0 2px 10px rgba(0, 0, 0, .92), 0 0 18px rgba(209, 148, 55, .10);
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room strong {
+  color: #f4e3bd;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room small {
+  color: rgba(245, 232, 204, .82);
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room-glyph,
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room i {
+  color: #efc76c;
+}
+
 @media (max-width: 760px) {
   body .menu.home-friendly > .home-castle-life .home-castle-hub__scene {
-    filter: saturate(1.03) brightness(1.16) contrast(1.00) !important;
+    filter: saturate(1.07) brightness(1.27) contrast(.98) !important;
   }
 
   body .menu.home-friendly > .home-castle-life .home-castle-hub__scene canvas {
-    filter: saturate(1.03) brightness(1.10) contrast(1.00) !important;
+    filter: saturate(1.06) brightness(1.16) contrast(.99) !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub::after {
+    opacity: .74;
+  }
+
+  /* Mobile uses explicit room cards for touch legibility; keep their backdrop
+   * dark enough for text while the castle itself remains visible behind them. */
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room {
+    background: rgba(8, 7, 5, .64);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body .menu.home-friendly > .home-castle-life .home-castle-hub::after {
+    mix-blend-mode: normal;
+    opacity: .58;
   }
 }
