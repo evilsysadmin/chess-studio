@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { loadRoster } from './combatRoster.js';
 import { grantReserveRecruit, setDeploymentUnit } from './combatDeployment.js';
 import { setRosterDeploymentType } from './combatMetamorphosis.js';
-import { deploymentSelectionFingerprint } from './combatTacticalDeployment.js';
+import { buildTacticalDeploymentBrief, deploymentSelectionFingerprint } from './combatTacticalDeployment.js';
 
 beforeEach(() => localStorage.clear());
 
@@ -42,5 +42,34 @@ describe('Combat tactical deployment fingerprint', () => {
     const before = deploymentSelectionFingerprint(roster);
     roster = setRosterDeploymentType(roster, 'p-a', 'n');
     expect(deploymentSelectionFingerprint(roster)).not.toBe(before);
+  });
+});
+
+describe('Combat tactical deployment brief', () => {
+  it('separa barracón, fuerza desplegada y veteranos protegidos en reserva', () => {
+    let roster = loadRoster();
+    roster = grantReserveRecruit(roster, { grantId: 'brief:reserve', originType: 'p', rng: () => 0.6, now: 6000 });
+    const reserveKey = Object.keys(roster.identities).find((key) => key.startsWith('p-reserve-'));
+    roster = {
+      ...roster,
+      pieces: {
+        ...roster.pieces,
+        [reserveKey]: { ...roster.pieces[reserveKey], strengthPoints: 4 },
+        'p-a': { ...roster.pieces['p-a'], strengthPoints: 2 },
+      },
+    };
+    const brief = buildTacticalDeploymentBrief(roster, {
+      difficultyBalance: { appliedBonus: 3, threat: { tier: 'Ligera' } },
+    });
+    expect(brief).toMatchObject({
+      barracksCount: 17,
+      deployedCount: 16,
+      reserveCount: 1,
+      deployedVeteranCount: 1,
+      protectedVeteranCount: 1,
+      threatBonus: 3,
+      threatTier: 'Ligera',
+    });
+    expect(brief.protectedVeteranKeys).toContain(reserveKey);
   });
 });
