@@ -1,0 +1,124 @@
+/* Great Hall lower-navigation regression fix.
+ *
+ * The approved compact rail reused .menu-card, whose foundation contract is
+ * flex-direction: column. The v5 cascade changed it to display:flex but never
+ * changed the direction, then forced a 3.5rem height with overflow:hidden.
+ * That stacked icon + label vertically and guillotined the copy.
+ *
+ * Keep the rail compact, but let its real DOM determine height. The tools
+ * drawer also gets the full card width instead of inheriting the 66% copy
+ * width reserved for hero cards with artwork.
+ */
+
+body .home-friendly > .home-primary-group:not(.home-modes-section) {
+  width: min(86%, 1220px);
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-grid > .menu-card-shell {
+  display: flex;
+  min-width: 0;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-card {
+  min-height: 4rem !important;
+  height: auto;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: .7rem;
+  overflow: visible;
+  padding-top: .65rem;
+  padding-bottom: .65rem;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-card .home-mode-copy {
+  width: auto;
+  min-width: 0;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-card .menu-card-cta {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-more {
+  overflow: visible;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid {
+  gap: .8rem;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid .menu-card-shell {
+  min-width: 0;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid .home-tool-card {
+  min-width: 0;
+  min-height: 164px !important;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid .home-mode-copy {
+  width: 100%;
+  max-width: none;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid .home-mode-kicker {
+  width: 100%;
+  flex-wrap: wrap;
+  gap: .22rem .5rem;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid .home-mode-kicker b,
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid .home-mode-kicker i {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid .home-mode-copy h3 {
+  font-size: clamp(1.28rem, 1.55vw, 1.55rem);
+  line-height: 1.08;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-tools-grid .home-mode-description {
+  max-width: none;
+}
+
+@media (max-width: 1120px) {
+  body .home-friendly > .home-primary-group:not(.home-modes-section) {
+    width: min(94%, 980px);
+  }
+}
+
+@media (max-width: 760px) {
+  body .home-friendly > .home-primary-group:not(.home-modes-section) {
+    width: min(96%, 680px);
+  }
+
+  body .home-friendly > .home-primary-group:not(.home-modes-section)
+    .home-learning-card {
+    min-height: 3.75rem !important;
+  }
+}
+
+@media (max-width: 520px) {
+  body .home-friendly > .home-primary-group:not(.home-modes-section)
+    .home-tools-grid .home-tool-card {
+    min-height: 0 !important;
+  }
+}
