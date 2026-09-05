@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { MATTHIAS_BASE_AVATAR, matthiasMoodAvatar, matthiasTimeVisual } from './matthiasVisuals.js';
+import {
+  MATTHIAS_BASE_AVATAR,
+  matthiasAmbientVisuals,
+  matthiasMoodAvatar,
+  matthiasTimeVisual,
+} from './matthiasVisuals.js';
 
 describe('Matthias visual identity', () => {
   it('mantiene cara de pocos amigos en todos los estados no-enfadado', () => {
@@ -24,5 +29,18 @@ describe('Matthias visual identity', () => {
     }
     expect(matthiasTimeVisual(15).key).toBe('chess-inception');
     expect(matthiasTimeVisual(15).avatar).not.toBe(MATTHIAS_BASE_AVATAR);
+  });
+
+  it('bloquea Sobando durante toda la madrugada y no activa el carrusel sonámbulo', () => {
+    for (let hour = 0; hour < 6; hour += 1) {
+      const scenes = matthiasAmbientVisuals(hour);
+      expect(scenes, `hour ${hour}`).toHaveLength(1);
+      expect(scenes[0].key, `hour ${hour}`).toBe('time-late-sleep');
+      expect(scenes[0].label, `hour ${hour}`).toBe('Sobando');
+    }
+
+    const reveille = matthiasAmbientVisuals(6);
+    expect(reveille.length).toBeGreaterThan(1);
+    expect(reveille[0].key).toBe('time-morning-coffee');
   });
 });
