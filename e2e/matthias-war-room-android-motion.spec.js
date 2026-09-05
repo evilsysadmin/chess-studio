@@ -114,6 +114,18 @@ test('War Room · el bocadillo de Matthias sigue al rey si cambia de casilla', a
   test.setTimeout(75_000);
   const moveCalls = [];
 
+  // Opening banter is intentionally sparse in production (40% + anti-repeat).
+  // This regression needs the bubble to exist so it can test ownership/motion,
+  // therefore only this isolated browser context makes its two random rolls
+  // deterministic. Production probability remains untouched.
+  await page.addInitScript(() => {
+    sessionStorage.setItem('chess-study-matthias-3d-opening-banter-v1', JSON.stringify({
+      seenGameIds: [],
+      lastEligibleStartShowed: false,
+    }));
+    Math.random = () => 0.1;
+  });
+
   await mockApi(page);
   await installKingMoveReply(page, moveCalls);
   await login(page);
