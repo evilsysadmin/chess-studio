@@ -72,7 +72,15 @@ if (!ciRunsCriticalTarget && !shardedE2e) {
 }
 if (shardedE2e) {
   requireText(ci, 'name: Tests · Playwright · ${{ matrix.lane }}', 'CI shardado debe nombrar explícitamente cada lane crítica');
-  requireText(ci, 'needs: [preflight, e2e_lanes]', 'Tests · Playwright debe esperar a todas las lanes antes de acreditar continuidad');
+  const hasSpecializedGate = ci.includes('\n  e2e_specialized:\n');
+  requireText(
+    ci,
+    hasSpecializedGate ? 'needs: [preflight, e2e_lanes, e2e_specialized]' : 'needs: [preflight, e2e_lanes]',
+    'Tests · Playwright debe esperar a todas las lanes antes de acreditar continuidad',
+  );
+  if (hasSpecializedGate) {
+    requireText(ci, 'SPECIALIZED_RESULT', 'Tests · Playwright debe fallar si una lane browser especializada requerida falla');
+  }
   requireText(ci, 'fail-fast: false', 'CI shardado debe completar diagnóstico de ambas lanes aunque una falle');
 }
 for (const ciPattern of [

@@ -27,6 +27,8 @@ jobs:
       run_chesscom_e2e: ${{ steps.quality_paths.outputs.run_chesscom_e2e }}
       run_trailblazer_e2e: ${{ steps.quality_paths.outputs.run_trailblazer_e2e }}
       run_matthias_home_e2e: ${{ steps.quality_paths.outputs.run_matthias_home_e2e }}
+      browser_matrix: ${{ steps.browser_scope.outputs.matrix }}
+      browser_has_cases: ${{ steps.browser_scope.outputs.has_cases }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -129,6 +131,127 @@ jobs:
           files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
           printf '%s\n' "$files"
           printf '%s\n' "$files" | python3 -S scripts/quality_scope.py >> "$GITHUB_OUTPUT"
+
+      - name: Classify required specialized browser surface
+        id: browser_scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          full_logic=false
+          visual=false
+          focus=false
+          matthias=false
+
+          if [[ "$EVENT_NAME" == 'workflow_dispatch' ]]; then
+            full_logic=true
+            visual=true
+            focus=true
+            matthias=true
+          elif [[ -z "${BASE_SHA:-}" || "$BASE_SHA" =~ ^0+$ ]] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            echo 'Diff browser no fiable; activando matriz especializada completa.'
+            full_logic=true
+            visual=true
+            focus=true
+            matthias=true
+          else
+            files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+            while IFS= read -r file; do
+              [[ -n "$file" ]] || continue
+              case "$file" in
+                frontend/src/components/WarRoomCastleArchitecture.js|frontend/src/components/WarRoomPremiumPaintings.js|frontend/src/components/WarRoomArchitectural*.js|frontend/src/components/WarRoomPracticalLighting.js|frontend/src/components/WarRoomPremiumFinishPass.js|frontend/src/components/WarRoomTeutonicDecor.js|frontend/src/components/PremiumWarRoomScene.js|frontend/src/components/WarRoom3DAnimation.js|frontend/src/components/Board3D*.css|frontend/src/components/WarRoom3D*.css|e2e/war-room-desktop-scale.spec.js)
+                  visual=true
+                  ;;
+                frontend/src/styles/19-game-focus.css|e2e/android-game-focus.spec.js)
+                  visual=true
+                  focus=true
+                  ;;
+                frontend/src/components/Board3D.jsx|frontend/src/components/Board3D*.js|frontend/src/components/WarRoom3D*.js|frontend/src/components/GameBoardView.jsx|frontend/src/components/GameCommandDeck.jsx|frontend/src/components/GamePlayerRail.jsx|frontend/src/components/GameSideColumn.jsx|frontend/src/components/GameStatusStrips.jsx|frontend/src/components/GameWarRoomCommandColumn.jsx|frontend/src/components/useGameBoardRenderer.js|frontend/src/components/useGameMobileFocus.js|frontend/src/components/useMatthiasBoardReactions.js|frontend/src/warRoomPointerCapture.js|frontend/src/warRoomPointerCapture.test.js|frontend/src/main.jsx|e2e/three-d-war-room.spec.js|e2e/three-d-war-room-android-touch.spec.js|e2e/three-d-war-room-special-states.spec.js|e2e/three-d-special-surfaces.spec.js|e2e/helpers.js)
+                  full_logic=true
+                  visual=true
+                  focus=true
+                  ;;
+              esac
+
+              case "$file" in
+                frontend/src/components/Matthias*.jsx|frontend/src/components/Matthias*.js|frontend/src/components/Matthias*.css|frontend/src/components/matthias*.jsx|frontend/src/components/matthias*.js|frontend/src/components/matthias*.css|frontend/src/components/InsightsMatthiasMotion.jsx|frontend/src/matthias*.js|frontend/src/assets/matthias-*/*|e2e/matthias-home-visual-critical.spec.js|e2e/matthias-war-room-android-motion.spec.js|e2e/insights-matthias-motion.spec.js)
+                  matthias=true
+                  ;;
+              esac
+
+              case "$file" in
+                .github/actions/setup-browser-e2e/action.yml|.github/actions/cache-node-modules/action.yml)
+                  full_logic=true
+                  visual=true
+                  focus=true
+                  matthias=true
+                  ;;
+                .github/workflows/cicd.yml)
+                  # Probar el plumbing nuevo sin despertar las 13 escenas WebGL
+                  # sólo porque cambia el propio YAML de Quality.
+                  visual=true
+                  ;;
+              esac
+            done <<< "$files"
+          fi
+
+          matrix="$(python3 - "$full_logic" "$visual" "$focus" "$matthias" <<'PY'
+          import json, sys
+          full_logic, visual, focus, matthias = [value == 'true' for value in sys.argv[1:]]
+          cases = []
+          if full_logic:
+              cases.extend([
+                  {'id': 'android-selection', 'label': 'War Room · Android selection', 'command': './node_modules/.bin/playwright test three-d-war-room-android-touch.spec.js --workers=1 --retries=0'},
+                  {'id': 'desktop-input', 'label': 'War Room · desktop input', 'command': './node_modules/.bin/playwright test three-d-war-room.spec.js --grep "War Room · desktop input mantiene cámara fija y juega e2→e4" --workers=1 --retries=0 --timeout=75000'},
+                  {'id': 'special-surfaces', 'label': '3D parity · special surfaces', 'command': './node_modules/.bin/playwright test three-d-special-surfaces.spec.js --workers=1 --retries=0 --timeout=90000'},
+              ])
+              for shard in range(1, 6):
+                  cases.append({
+                      'id': f'special-state-{shard}',
+                      'label': f'War Room · special-state {shard}/5',
+                      'command': f'./node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000 --shard={shard}/5',
+                  })
+          if visual:
+              cases.append({
+                  'id': 'desktop-scale',
+                  'label': 'War Room · desktop board scale',
+                  'command': './node_modules/.bin/playwright test war-room-desktop-scale.spec.js --workers=1 --retries=0 --timeout=75000',
+              })
+          if focus:
+              cases.append({
+                  'id': 'android-focus',
+                  'label': 'War Room · Android Focus',
+                  'command': './node_modules/.bin/playwright test android-game-focus.spec.js --workers=1 --retries=0 --timeout=30000',
+              })
+          if matthias:
+              cases.extend([
+                  {'id': 'matthias-home-motion', 'label': 'Matthias · Home motion', 'command': './node_modules/.bin/playwright test matthias-home-visual-critical.spec.js --workers=1 --retries=0 --timeout=75000'},
+                  {'id': 'matthias-war-room', 'label': 'Matthias · War Room Android', 'command': './node_modules/.bin/playwright test matthias-war-room-android-motion.spec.js --workers=1 --retries=0'},
+                  {'id': 'matthias-insights', 'label': 'Matthias · Así juegas motion', 'command': './node_modules/.bin/playwright test insights-matthias-motion.spec.js --workers=1 --retries=0'},
+              ])
+          print(json.dumps({'include': cases}, separators=(',', ':')))
+          PY
+          )"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          if [[ "$matrix" == '{"include":[]}' ]]; then
+            echo 'has_cases=false' >> "$GITHUB_OUTPUT"
+          else
+            echo 'has_cases=true' >> "$GITHUB_OUTPUT"
+          fi
+
+          {
+            echo '### Required specialized browser scope'
+            echo
+            echo "- War Room rules/input parity: \`$full_logic\`"
+            echo "- War Room mount/scale: \`$visual\`"
+            echo "- Android Focus: \`$focus\`"
+            echo "- Matthias motion/paint: \`$matthias\`"
+            echo '- Estas lanes forman parte del check requerido Tests · Playwright.'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   frontend:
     name: Tests · Frontend
@@ -348,9 +471,45 @@ jobs:
           docker compose up -d --build
           python3 scripts/compose_smoke.py
 
+  e2e_build:
+    name: Build browser artifact once
+    needs: preflight
+    if: needs.preflight.outputs.run_e2e == 'true' || needs.preflight.outputs.browser_has_cases == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Restore exact frontend dependencies
+        uses: ./.github/actions/cache-node-modules
+        with:
+          working-directory: frontend
+          lockfile: frontend/package-lock.json
+          node-version: '22'
+
+      - name: Build frontend once for all required browser gates
+        working-directory: frontend
+        run: npm run build
+
+      - name: Upload immutable browser frontend
+        uses: actions/upload-artifact@v7
+        with:
+          name: quality-browser-frontend-${{ github.sha }}
+          path: frontend/dist/
+          if-no-files-found: error
+          retention-days: 1
+
   e2e_lanes:
     name: Tests · Playwright · ${{ matrix.lane }}
-    needs: preflight
+    needs: [preflight, e2e_build]
     if: needs.preflight.outputs.run_e2e == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -369,7 +528,13 @@ jobs:
         uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
-          build-frontend: 'true'
+          build-frontend: 'false'
+
+      - name: Download shared browser frontend
+        uses: actions/download-artifact@v6
+        with:
+          name: quality-browser-frontend-${{ github.sha }}
+          path: frontend/dist
 
       - name: Critical browser lane
         working-directory: e2e
@@ -405,31 +570,78 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  e2e_specialized:
+    name: Browser required · ${{ matrix.label }}
+    needs: [preflight, e2e_build]
+    if: needs.preflight.outputs.browser_has_cases == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.preflight.outputs.browser_matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Restore specialized browser runtime
+        uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+          build-frontend: 'false'
+
+      - name: Download shared browser frontend
+        uses: actions/download-artifact@v6
+        with:
+          name: quality-browser-frontend-${{ github.sha }}
+          path: frontend/dist
+
+      - name: Run ${{ matrix.label }}
+        working-directory: e2e
+        run: ${{ matrix.command }}
+
+      - name: Upload Playwright diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: required-browser-e2e-${{ matrix.id }}
+          path: |
+            e2e/test-results/
+            e2e/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
+
   e2e:
     name: Tests · Playwright
-    needs: [preflight, e2e_lanes]
+    needs: [preflight, e2e_lanes, e2e_specialized]
     if: always()
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Aggregate critical browser lanes
+      - name: Aggregate all required browser lanes
         shell: bash
         env:
           PREFLIGHT_RESULT: ${{ needs.preflight.result }}
           RUN_E2E: ${{ needs.preflight.outputs.run_e2e }}
-          LANES_RESULT: ${{ needs.e2e_lanes.result }}
+          CORE_LANES_RESULT: ${{ needs.e2e_lanes.result }}
+          RUN_SPECIALIZED: ${{ needs.preflight.outputs.browser_has_cases }}
+          SPECIALIZED_RESULT: ${{ needs.e2e_specialized.result }}
         run: |
           set -euo pipefail
           if [[ "$PREFLIGHT_RESULT" != 'success' ]]; then
             echo "::error::Preflight no terminó con éxito: $PREFLIGHT_RESULT"
             exit 1
           fi
-          if [[ "$RUN_E2E" != 'true' ]]; then
-            echo 'Playwright core omitido: esta superficie usa un gate dirigido o no requiere navegador crítico.'
-            exit 0
-          fi
-          if [[ "$LANES_RESULT" != 'success' ]]; then
-            echo "::error::Alguna lane crítica de Playwright falló: $LANES_RESULT"
+          if [[ "$RUN_E2E" == 'true' && "$CORE_LANES_RESULT" != 'success' ]]; then
+            echo "::error::Alguna lane crítica de Playwright falló: $CORE_LANES_RESULT"
             exit 1
           fi
-          echo 'Playwright crítico OK: regression+mobile y smoke pasaron en runners aislados.'
+          if [[ "$RUN_SPECIALIZED" == 'true' && "$SPECIALIZED_RESULT" != 'success' ]]; then
+            echo "::error::Alguna lane especializada requerida falló: $SPECIALIZED_RESULT"
+            exit 1
+          fi
+          if [[ "$RUN_E2E" != 'true' && "$RUN_SPECIALIZED" != 'true' ]]; then
+            echo 'Playwright omitido: esta superficie no requiere navegador crítico ni especializado.'
+            exit 0
+          fi
+          echo "Playwright requerido OK · core=$RUN_E2E/$CORE_LANES_RESULT · especializado=$RUN_SPECIALIZED/$SPECIALIZED_RESULT"

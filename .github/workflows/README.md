@@ -1,6 +1,6 @@
 # GitHub Actions · mapa operativo
 
-Última auditoría: 2026-09-04.
+Última auditoría: 2026-09-05.
 
 Regla: cada workflow debe representar un dominio operativo o blast radius real. Se fusiona duplicación histórica; no se fusionan promoción, rollback o acreditación sólo para bajar el contador.
 
@@ -10,11 +10,12 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 - Node usa cache de descarga de `setup-node` + `node_modules` exacto mediante `.github/actions/cache-node-modules`.
 - Python usa cache de descarga de `setup-python` + `.venv` exacto mediante `.github/actions/cache-python-venv`.
 - Browser E2E usa `.github/actions/setup-browser-e2e`: dependencias exactas y caches Playwright separadas `chromium`/`all` para que un cache Chromium-only no convierta Firefox/WebKit en descargas perpetuas.
+- Los E2E especializados War Room/Matthias viven dentro del gate requerido `Tests · Playwright`; se seleccionan por superficie y comparten un único `frontend/dist` compilado por SHA con las lanes core.
 - Wrangler está pinneado/cacheado mediante `.github/actions/setup-wrangler` en staging, preview y producción.
 - Trivy cachea binario + DB por versión/día. Si el refresh remoto falla y existe una DB previa, escanea en modo degradado explícito con la copia stale; si no existe DB, falla cerrado.
 - Security images usa BuildKit + cache GHA para reutilizar capas Docker y no depender del registry si lockfiles/capas siguen válidos.
 - `npm audit` y `pip-audit` son señales auxiliares. Trivy conserva la política bloqueante por severidad.
-- `scripts/test_suite_audit.mjs --ci-wiring` impide resucitar workflows retirados, `npm ci` directo, cache keys por `github.run_id` y runners flotantes en rutas críticas.
+- `scripts/test_suite_audit.mjs --ci-wiring` impide resucitar workflows retirados, `npm ci` directo, cache keys por `github.run_id`, builds Playwright duplicados y runners flotantes en rutas críticas.
 - Las PR usan **GitHub native auto-merge**. Ningún workflow del repo espera checks para ejecutar `gh pr merge`, ni existe un handoff que redispare CI después del merge.
 
 ## Acciones reutilizables
@@ -30,7 +31,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 
 | Workflow | Responsabilidad |
 | --- | --- |
-| `cicd.yml` | Gate principal quality-only para PR/main. Preflight y luego frontend/backend/security/E2E en paralelo según superficie. No despliega. |
+| `cicd.yml` | Gate principal quality-only para PR. Preflight y luego frontend/backend/security/E2E según superficie. Las lanes Playwright core + War Room/Matthias son bloqueantes bajo un único `Tests · Playwright` y consumen un build compartido. No despliega. |
 | `staging-deploy.yml` | Despliega el SHA aprobado en Render staging + Pages staging y acredita backend/frontend. |
 | `staging-ai-worker.yml` | Completa/revalida staging y emite la acreditación inmutable que permite promoción. El nombre se conserva por el contrato `workflow_run` existente. |
 | `production-promote.yml` | Promueve sólo el SHA acreditado. Worker/DNS Terraform `plan/apply` permanece aquí porque sí gestiona infraestructura real y está protegido por admisión anti-stale antes de la primera mutación. Render y Pages continúan después sobre el mismo SHA. |
@@ -43,7 +44,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 
 | Workflow | Responsabilidad |
 | --- | --- |
-| `e2e-full.yml` | Browser E2E path-aware. Matriz dinámica War Room/Matthias en PR con runner separado por escena WebGL pesada; sweep Chromium/Firefox/WebKit semanal/manual. Absorbe el antiguo `matthias-visual.yml`. |
+| `e2e-full.yml` | Sweep completo Chromium/Firefox/WebKit semanal/manual e informativo. Ya no duplica PR: la matriz requerida y path-aware War Room/Matthias vive en `cicd.yml`. |
 | `coverage.yml` | Coverage frontend/backend semanal/manual e informativo, con caches exactas Node/Python. |
 | `oci-readiness.yml` | Readiness OCI unificado y path-aware: ARM64 backend y/o Terraform OCI `fmt/init/validate`. Sustituye `oci-arm64-readiness.yml` + `oci-terraform-readiness.yml`. No hace apply. |
 
@@ -63,6 +64,10 @@ PR
  │
  ▼
 Quality · CI gate (PR)
+ ├─ Frontend / Backend / Security
+ └─ Tests · Playwright
+     ├─ core smoke/regression
+     └─ War Room/Matthias path-aware
  │
  ▼
 GitHub native auto-merge
@@ -71,7 +76,7 @@ GitHub native auto-merge
 push main
  │
  ▼
-Quality · CI gate (main)
+Main · admission
  │
  ▼
 Staging · deploy
@@ -92,10 +97,11 @@ Production · promote
 
 - `auto-merge.yml` → retirado; sustituido por GitHub native auto-merge.
 - `main-delivery-handoff.yml` → retirado; el merge nativo produce el `push` normal a `main` y no necesita redispatch.
-- `matthias-visual.yml` → absorbido por `e2e-full.yml`.
+- `matthias-visual.yml` → absorbido primero por `e2e-full.yml`; sus gates PR path-aware viven ahora en `cicd.yml`.
 - `oci-arm64-readiness.yml` + `oci-terraform-readiness.yml` → `oci-readiness.yml`.
 - `infra/grafana/terraform/` → eliminado; dashboards pasan a publisher API state-less.
 - Instalaciones Node directas en CI/coverage/browser/staging preview/producción → acciones de cache exacta.
 - Cache Trivy por `github.run_id` → namespace estable por versión + epoch diario.
+- Matriz Browser E2E duplicada en PR (`e2e-full.yml`) → integrada en el required check de Quality; `e2e-full.yml` queda como sweep multi-browser.
 
 El objetivo no es tener el mínimo número de YAML, sino **mínimo estado, mínima dependencia externa por ejecución y dominios de fallo claros**.
