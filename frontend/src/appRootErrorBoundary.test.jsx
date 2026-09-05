@@ -9,7 +9,10 @@ function boundaryWith(props = {}) {
 }
 
 describe('AppRootErrorBoundary · último fusible', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
 
   it('recarga bajo demanda y no borra una partida guardada', () => {
     localStorage.setItem(ACTIVE_GAME_SESSION_KEY, JSON.stringify({ version: 1, route: 'game', gameId: 'g-1' }));
@@ -22,10 +25,26 @@ describe('AppRootErrorBoundary · último fusible', () => {
     expect(localStorage.getItem(ACTIVE_GAME_SESSION_KEY)).not.toBeNull();
   });
 
-  it('el error raíz no se limpia solo y requiere una acción explícita', () => {
-    const boundary = boundaryWith();
-    expect(boundary.state.hasError).toBe(true);
+  it('reconstruye automáticamente el runtime si React.lazy llega como undefined.default', () => {
+    const onReload = vi.fn();
+    const boundary = boundaryWith({ onReload });
+    const error = new TypeError("Cannot read properties of undefined (reading 'default')");
+
+    boundary.componentDidCatch(error, {});
+    boundary.componentDidCatch(error, {});
+
+    expect(onReload).toHaveBeenCalledTimes(1);
+  });
+
+  it('un error raíz normal no se recarga solo y conserva el fusible visible', () => {
+    const onReload = vi.fn();
+    const boundary = boundaryWith({ onReload });
     const error = new Error('boom');
+
+    boundary.componentDidCatch(error, {});
+
+    expect(onReload).not.toHaveBeenCalled();
+    expect(boundary.state.hasError).toBe(true);
     expect(AppRootErrorBoundary.getDerivedStateFromError(error)).toEqual({ hasError: true, lastError: error, diagnosticCopied: false });
   });
 });

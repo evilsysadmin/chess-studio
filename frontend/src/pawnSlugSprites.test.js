@@ -5,86 +5,77 @@ import {
   PAWN_SLUG_MOTION_PROFILES,
   PAWN_SLUG_SPRITE_META,
   configurePawnSlugTexture,
+  pawnSlugMatthiasAtlasWindow,
 } from './pawnSlugSprites.js';
 
 describe('Pawn Slug premium sprite contracts', () => {
-  it('keeps the known-good premium actor atlas geometry', () => {
-    expect(PAWN_SLUG_SPRITE_META.matthias.frames).toBe(4);
-    expect(PAWN_SLUG_SPRITE_META.enemies.frames).toBe(3);
-    expect(PAWN_SLUG_SPRITE_META.boss.frames).toBe(1);
-    expect(PAWN_SLUG_SPRITE_META.weapons.frames).toBe(4);
-    expect(PAWN_SLUG_SPRITE_META.matthias.frameWidth).toBe(72);
-    expect(PAWN_SLUG_SPRITE_META.matthias.frameHeight).toBe(104);
-    expect(PAWN_SLUG_SPRITE_META.enemies.frameWidth).toBe(104);
-    expect(PAWN_SLUG_SPRITE_META.enemies.frameHeight).toBe(104);
-    expect(PAWN_SLUG_SPRITE_META.boss.frameWidth).toBe(192);
-    expect(PAWN_SLUG_SPRITE_META.boss.frameHeight).toBe(192);
-    expect(PAWN_SLUG_SPRITE_META.weapons.frameHeight).toBe(128);
+  it('uses the raster Matthias motion atlas as the primary runtime source', () => {
+    const meta = PAWN_SLUG_SPRITE_META.matthias;
+    expect(String(meta.url)).toMatch(/matthias_motion_atlas_v4\.webp(?:\?|$)/);
+    expect(String(meta.fallbackUrl)).toMatch(/matthias_atlas_v2\.webp(?:\?|$)/);
+    expect(String(meta.vectorFallbackUrl)).toMatch(/\.svg(?:\?|$)/);
+    expect(meta.url).not.toBe(meta.fallbackUrl);
   });
 
-  it('uses the premium Matthias source frames without addressing nonexistent poses', () => {
-    expect(PAWN_SLUG_SPRITE_META.matthias.sourceFacing).toBe('right');
-    expect(PAWN_SLUG_SPRITE_META.matthias.framesByAction).toEqual({
-      idle: 0,
-      run: [1, 2],
-      crouch: 0,
-      fire: 3,
-      airborne: 2,
-    });
-    expect(PAWN_SLUG_SPRITE_META.matthias.motionFrames).toEqual({
+  it('describes the real 9x5 raster grid without addressing padding cells', () => {
+    const meta = PAWN_SLUG_SPRITE_META.matthias;
+    expect(meta.frames).toBe(40);
+    expect(meta.cells).toBe(45);
+    expect(meta.columns).toBe(9);
+    expect(meta.rows).toBe(5);
+    expect(meta.frameWidth).toBe(160);
+    expect(meta.frameHeight).toBe(160);
+    expect(meta.sourceFacing).toBe('right');
+    expect(meta.motionFrames).toEqual({
+      idle: 6,
+      walk: 9,
       run: 9,
       crouch: 8,
       airborne: 8,
     });
-    const addressed = [
-      PAWN_SLUG_SPRITE_META.matthias.framesByAction.idle,
-      ...PAWN_SLUG_SPRITE_META.matthias.framesByAction.run,
-      PAWN_SLUG_SPRITE_META.matthias.framesByAction.crouch,
-      PAWN_SLUG_SPRITE_META.matthias.framesByAction.fire,
-      PAWN_SLUG_SPRITE_META.matthias.framesByAction.airborne,
-    ];
-    expect(Math.max(...addressed)).toBeLessThan(PAWN_SLUG_SPRITE_META.matthias.frames);
+    expect(meta.actions).toEqual({
+      idle: { row: 0, count: 6 },
+      walk: { row: 1, count: 9 },
+      run: { row: 2, count: 9 },
+      crouch: { row: 3, count: 8 },
+      jump: { row: 4, count: 8 },
+    });
   });
 
-  it('builds nine run phases and eight-phase crouch/jump tracks on top of premium art', () => {
+  it('uses real raster frames for every Matthias motion track', () => {
+    expect(PAWN_SLUG_MATTHIAS_POSE_TRACKS.idle).toHaveLength(6);
+    expect(PAWN_SLUG_MATTHIAS_POSE_TRACKS.walk).toHaveLength(9);
     expect(PAWN_SLUG_MATTHIAS_POSE_TRACKS.run).toHaveLength(9);
     expect(PAWN_SLUG_MATTHIAS_POSE_TRACKS.crouch).toHaveLength(8);
     expect(PAWN_SLUG_MATTHIAS_POSE_TRACKS.jump).toHaveLength(8);
 
     for (const track of Object.values(PAWN_SLUG_MATTHIAS_POSE_TRACKS)) {
-      for (const pose of track) {
-        expect(pose.frame).toBeGreaterThanOrEqual(0);
-        expect(pose.frame).toBeLessThan(PAWN_SLUG_SPRITE_META.matthias.frames);
-        expect(Math.abs(pose.x)).toBeLessThan(0.08);
-        expect(Math.abs(pose.y)).toBeLessThan(0.08);
-        expect(pose.scaleX).toBeGreaterThan(0.9);
-        expect(pose.scaleX).toBeLessThan(1.1);
-        expect(pose.scaleY).toBeGreaterThan(0.75);
-        expect(pose.scaleY).toBeLessThan(1.1);
-      }
+      expect(new Set(track).size).toBe(track.length);
+      expect(track[0]).toBe(0);
+      expect(track.at(-1)).toBe(track.length - 1);
     }
   });
 
-  it('makes the run gait visibly asymmetric instead of a two-frame bob loop', () => {
-    const signatures = PAWN_SLUG_MATTHIAS_POSE_TRACKS.run.map((pose) => (
-      [pose.frame, pose.x, pose.y, pose.scaleX, pose.scaleY, pose.rotation].join(':')
-    ));
-    expect(new Set(signatures).size).toBe(9);
-    expect(Math.max(...PAWN_SLUG_MATTHIAS_POSE_TRACKS.run.map((pose) => pose.y)))
-      .toBeGreaterThan(0.03);
-    expect(Math.min(...PAWN_SLUG_MATTHIAS_POSE_TRACKS.run.map((pose) => pose.rotation)))
-      .toBeLessThan(0);
-    expect(Math.max(...PAWN_SLUG_MATTHIAS_POSE_TRACKS.run.map((pose) => pose.rotation)))
-      .toBeGreaterThan(0);
-  });
+  it('maps each action to its own atlas row and clamps indices within the action', () => {
+    const cases = [
+      ['idle', 5, 0, 5, 5 / 9, 4 / 5],
+      ['walk', 8, 1, 8, 8 / 9, 3 / 5],
+      ['run', 8, 2, 8, 8 / 9, 2 / 5],
+      ['crouch', 7, 3, 7, 7 / 9, 1 / 5],
+      ['jump', 7, 4, 7, 7 / 9, 0],
+    ];
 
-  it('keeps crouch grounded and jump stretched without dust/ground-effect sprites', () => {
-    const crouch = PAWN_SLUG_MATTHIAS_POSE_TRACKS.crouch;
-    const jump = PAWN_SLUG_MATTHIAS_POSE_TRACKS.jump;
-    expect(crouch.at(-1).scaleY).toBeLessThan(crouch[0].scaleY);
-    expect(crouch.at(-1).y).toBeLessThanOrEqual(0);
-    expect(Math.max(...jump.map((pose) => pose.scaleY))).toBeGreaterThan(1.03);
-    expect(Math.max(...jump.map((pose) => pose.y))).toBeGreaterThan(0.04);
+    for (const [action, frame, row, column, offsetX, offsetY] of cases) {
+      const window = pawnSlugMatthiasAtlasWindow(action, frame);
+      expect(window).toMatchObject({ row, column });
+      expect(window.offsetX).toBeCloseTo(offsetX, 12);
+      expect(window.offsetY).toBeCloseTo(offsetY, 12);
+      expect(window.repeatX).toBeCloseTo(1 / 9, 12);
+      expect(window.repeatY).toBeCloseTo(1 / 5, 12);
+    }
+
+    expect(pawnSlugMatthiasAtlasWindow('run', 9).column).toBe(0);
+    expect(pawnSlugMatthiasAtlasWindow('crouch', 8).column).toBe(0);
   });
 
   it('keeps pawn, knight and rook on their premium silhouettes', () => {
@@ -114,21 +105,12 @@ describe('Pawn Slug premium sprite contracts', () => {
     expect(texture.colorSpace).toBe(THREE.SRGBColorSpace);
   });
 
-  it('requires premium raster primaries and keeps vector art only as fallback', () => {
-    const localSvg = /(?:\.svg(?:\?|$)|^data:image\/svg\+xml(?:[,;]))/;
-    for (const actor of [PAWN_SLUG_SPRITE_META.matthias, PAWN_SLUG_SPRITE_META.enemies]) {
-      expect(String(actor.url)).toMatch(/\.webp(?:\?|$)/);
-      expect(String(actor.url)).not.toMatch(localSvg);
-      expect(String(actor.fallbackUrl)).toMatch(localSvg);
-      expect(actor.fallbackUrl).not.toBe(actor.url);
-    }
-  });
-
   it('uses local runtime assets instead of remote sprites', () => {
     for (const meta of Object.values(PAWN_SLUG_SPRITE_META)) {
       expect(meta.url).toBeTruthy();
       expect(String(meta.url)).not.toMatch(/^https?:\/\//);
       if (meta.fallbackUrl) expect(String(meta.fallbackUrl)).not.toMatch(/^https?:\/\//);
+      if (meta.vectorFallbackUrl) expect(String(meta.vectorFallbackUrl)).not.toMatch(/^https?:\/\//);
     }
   });
 });
