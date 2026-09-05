@@ -2,10 +2,41 @@ import { deploymentSummary, effectiveDeploymentType, ensureDeploymentState } fro
 
 export const COMBAT_TACTICAL_DEPLOYMENT_VERSION = 1;
 
-// La confirmación de una operación debe representar una formación concreta,
-// no un booleano que pueda sobrevivir por accidente a una rehidratación o a
-// una mutación del barracón. Incluimos slot, identidad persistente y forma de
-// batalla: cambiar cualquiera de las tres cosas exige confirmar de nuevo.
+function finiteInt(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.floor(n) : 0;
+}
+
+function unitOrderRow(state, unitKey) {
+  const saved = state?.pieces?.[unitKey] || {};
+  const identity = state?.identities?.[unitKey] || {};
+  const mercenary = saved?.mercenary || null;
+  return [
+    unitKey,
+    identity.identityId || null,
+    identity.alias || null,
+    saved.alive !== false,
+    finiteInt(saved.strengthPoints),
+    finiteInt(saved.speedPoints),
+    finiteInt(saved.bankedXp),
+    saved.deploymentType || null,
+    saved.equippedTechnique || null,
+    Array.isArray(saved.unlockedTechniques) ? [...saved.unlockedTechniques].sort() : [],
+    saved.equipmentId || null,
+    mercenary ? [
+      mercenary.offerId || null,
+      mercenary.contract || null,
+      finiteInt(mercenary.battlesRemaining),
+      mercenary.specialtyId || null,
+    ] : null,
+  ];
+}
+
+// La confirmación representa una orden operativa completa, no un booleano.
+// Además de slot/identidad/forma incluimos el estado del barracón que puede
+// alterar la fuerza o la economía de salida. Así una compra, contratación,
+// renombre o mejora posterior exige reconfirmar en vez de quedar revertida por
+// el snapshot congelado al iniciar la batalla.
 export function deploymentSelectionFingerprint(rosterState) {
   const state = ensureDeploymentState(rosterState);
   const rows = Object.entries(state.deployment || {})
@@ -16,7 +47,13 @@ export function deploymentSelectionFingerprint(rosterState) {
       unitKey,
       effectiveDeploymentType(state, unitKey) || null,
     ]);
-  return JSON.stringify({ version: COMBAT_TACTICAL_DEPLOYMENT_VERSION, rows });
+  const units = Object.keys(state.pieces || {}).sort().map((unitKey) => unitOrderRow(state, unitKey));
+  return JSON.stringify({
+    version: COMBAT_TACTICAL_DEPLOYMENT_VERSION,
+    rows,
+    units,
+    credits: finiteInt(state.credits),
+  });
 }
 
 // El roster ya se persiste como JSON en el perfil; la copia de confirmación
