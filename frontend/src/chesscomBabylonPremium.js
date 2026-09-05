@@ -33,6 +33,15 @@ const ORIGIN_Z = -((MAP_H - 1) * TILE) / 2;
 const INTEL = { x:6,y:2 };
 const EXFIL = { x:1,y:7 };
 
+export const CHESSCOM_MATTHIAS_OPERATIVE_PROFILE = Object.freeze({
+  identity:'pawn-core-exosuit',
+  locomotion:'articulated-operative',
+  pawnCoreVisible:true,
+  face:'canonical-matthias',
+  cap:'canonical-peaked-cap',
+  palette:Object.freeze(['ivory','black','brass','oxblood']),
+});
+
 const SCENERY = [
   { x:.2,z:.2,w:4.6,d:2.4,h:2.45,type:'building',label:'OFFICE' },
   { x:6,z:0,w:3.8,d:2.2,h:2.85,type:'building',label:'STORAGE' },
@@ -74,6 +83,10 @@ export function chesscomMovementLift(progress, steps = 2) {
   const footfall = Math.abs(Math.sin(p * Math.PI * safeSteps)) * .065;
   const travelArc = Math.sin(p * Math.PI) * .035;
   return footfall + travelArc;
+}
+
+export function chesscomOperativeMovementLift(progress, steps = 2) {
+  return chesscomMovementLift(progress, steps) * .18;
 }
 
 export function chesscomMoveCostLabel(cost) {
@@ -180,19 +193,95 @@ function createTacticalAgent(B, scene, id, friendly, elite, mats) {
   return root;
 }
 
-function createMatthiasCard(B, scene, dataUrl, mats) {
+function createJoint(B, scene, name, parent, x, y, z) {
+  const joint = new B.TransformNode(name, scene);
+  joint.parent = parent;
+  joint.position.set(x,y,z);
+  return joint;
+}
+
+function createMatthiasOperative(B, scene, mats) {
   const root = new B.TransformNode('unit-matthias',scene);
-  root.metadata = { phase:1.2,target:null,initialized:false,motion:null };
-  const plane = B.MeshBuilder.CreatePlane('matthias-card',{ width:1.34,height:1.78 },scene);
-  plane.parent=root; plane.position.y=.88; plane.billboardMode=B.Mesh.BILLBOARDMODE_Y;
-  const mat = new B.StandardMaterial('matthias-card-mat',scene);
-  mat.diffuseTexture = new B.Texture(dataUrl,scene,true,true,B.Texture.TRILINEAR_SAMPLINGMODE,null,null,null,true);
-  mat.diffuseTexture.hasAlpha=true; mat.useAlphaFromDiffuseTexture=true; mat.backFaceCulling=false;
-  mat.emissiveColor=new B.Color3(.25,.23,.18); mat.specularColor=B.Color3.Black(); plane.material=mat;
-  const rifle = createRifle(B,scene,root,mats,false);
-  rifle.weapon.scaling.set(.78,.78,.78); rifle.weapon.position.set(.25,.72,-.24);
-  root.metadata.parts={ weapon:rifle.weapon };
-  root.metadata.muzzle=rifle.muzzle.scale(.78).add(new B.Vector3(.25,-.20,-.06));
+  root.metadata = {
+    phase:1.2,target:null,initialized:false,motion:null,
+    operative:true,profile:CHESSCOM_MATTHIAS_OPERATIVE_PROFILE,
+    recoilUntil:0,
+  };
+
+  // Matthias remains a pawn. The black/brass apparatus supplies arms, legs and field capability.
+  box(B,scene,'matthias-pelvis-frame',.58,.18,.38,root,mats.matthiasBlack,0,.78,0);
+  const pawnBody = B.MeshBuilder.CreateCylinder('matthias-pawn-core',{ height:.52,diameterTop:.34,diameterBottom:.55,tessellation:28 },scene);
+  pawnBody.parent=root; pawnBody.position.set(0,1.08,0); pawnBody.material=mats.matthiasCore; pawnBody.receiveShadows=true;
+  cylinder(B,scene,'matthias-core-base',.10,.58,root,mats.matthiasCoreShade,0,.81,0,28);
+  cylinder(B,scene,'matthias-core-collar',.09,.42,root,mats.matthiasBrass,0,1.37,0,28);
+
+  box(B,scene,'matthias-harness-top',.70,.10,.38,root,mats.matthiasBlack,0,1.38,.01);
+  box(B,scene,'matthias-chest-strap-l',.12,.48,.39,root,mats.matthiasBlack,-.20,1.13,-.01);
+  box(B,scene,'matthias-chest-strap-r',.12,.48,.39,root,mats.matthiasBlack,.20,1.13,-.01);
+  const chestRing=B.MeshBuilder.CreateTorus('matthias-chest-emblem',{diameter:.24,thickness:.026,tessellation:28},scene);chestRing.parent=root;chestRing.position.set(0,1.12,-.285);chestRing.rotation.x=Math.PI/2;chestRing.material=mats.matthiasBrass;
+  const chestPawn=B.MeshBuilder.CreateSphere('matthias-chest-pawn-head',{diameter:.055,segments:12},scene);chestPawn.parent=root;chestPawn.position.set(0,1.15,-.312);chestPawn.material=mats.matthiasBrass;
+  const chestPawnBody=B.MeshBuilder.CreateCylinder('matthias-chest-pawn-body',{height:.075,diameterTop:.03,diameterBottom:.075,tessellation:12},scene);chestPawnBody.parent=root;chestPawnBody.position.set(0,1.095,-.312);chestPawnBody.material=mats.matthiasBrass;
+  box(B,scene,'matthias-belt',.62,.10,.40,root,mats.matthiasBrass,0,.84,0);
+  box(B,scene,'matthias-belt-black',.58,.065,.41,root,mats.matthiasBlack,0,.84,-.005);
+  box(B,scene,'matthias-pouch-l',.17,.22,.16,root,mats.pouch,-.24,.74,-.18);
+  box(B,scene,'matthias-pouch-r',.17,.22,.16,root,mats.pouch,.24,.74,-.18);
+  box(B,scene,'matthias-holster',.13,.31,.12,root,mats.matthiasBlack2,.34,.62,-.07).rotation.z=-.08;
+  const coatL=box(B,scene,'matthias-coat-l',.25,.58,.08,root,mats.matthiasBlack,-.17,.55,.15);coatL.rotation.x=-.07;coatL.rotation.z=.025;
+  const coatR=box(B,scene,'matthias-coat-r',.25,.58,.08,root,mats.matthiasBlack,.17,.55,.15);coatR.rotation.x=-.07;coatR.rotation.z=-.025;
+  box(B,scene,'matthias-coat-trim-l',.035,.55,.085,root,mats.matthiasRed,-.285,.55,.145);
+  box(B,scene,'matthias-coat-trim-r',.035,.55,.085,root,mats.matthiasRed,.285,.55,.145);
+
+  const head=createJoint(B,scene,'matthias-head-rig',root,0,1.66,0);
+  const face=B.MeshBuilder.CreateSphere('matthias-face',{ diameter:.52,segments:28 },scene);face.parent=head;face.material=mats.matthiasFace;face.scaling.z=.92;face.receiveShadows=true;
+  box(B,scene,'matthias-eye-l',.055,.080,.026,head,mats.matthiasEye,-.095,.015,-.245);
+  box(B,scene,'matthias-eye-r',.055,.080,.026,head,mats.matthiasEye,.095,.015,-.245);
+  const browL=box(B,scene,'matthias-brow-l',.14,.030,.025,head,mats.matthiasEye,-.095,.115,-.248);browL.rotation.z=-.17;
+  const browR=box(B,scene,'matthias-brow-r',.14,.030,.025,head,mats.matthiasEye,.095,.115,-.248);browR.rotation.z=.17;
+  const mouthL=box(B,scene,'matthias-mouth-l',.10,.022,.022,head,mats.matthiasMouth,-.045,-.105,-.251);mouthL.rotation.z=-.12;
+  const mouthR=box(B,scene,'matthias-mouth-r',.10,.022,.022,head,mats.matthiasMouth,.045,-.105,-.251);mouthR.rotation.z=.12;
+
+  const cap=createJoint(B,scene,'matthias-cap-rig',head,0,.22,.005);
+  const capTop=cylinder(B,scene,'matthias-cap-top',.11,.50,cap,mats.matthiasBlack,0,.10,0,32);capTop.scaling.z=.82;
+  const capBand=cylinder(B,scene,'matthias-cap-band',.055,.54,cap,mats.matthiasRed,0,.045,0,32);capBand.scaling.z=.83;
+  const capTrim=cylinder(B,scene,'matthias-cap-trim',.025,.56,cap,mats.matthiasBrass,0,.010,0,32);capTrim.scaling.z=.83;
+  box(B,scene,'matthias-cap-brim',.62,.035,.18,cap,mats.matthiasBlack,0,-.015,-.13).rotation.x=.03;
+  const badge=cylinder(B,scene,'matthias-cap-badge',.025,.11,cap,mats.matthiasBrass,0,.065,-.235,20);badge.rotation.x=Math.PI/2;
+
+  for (const side of [-1,1]) {
+    box(B,scene,`matthias-shoulder-${side<0?'l':'r'}`,.24,.19,.40,root,mats.matthiasBlack2,side*.43,1.34,-.01);
+    box(B,scene,`matthias-shoulder-trim-${side<0?'l':'r'}`,.25,.045,.41,root,mats.matthiasBrass,side*.43,1.415,-.012);
+  }
+  const armL=createJoint(B,scene,'matthias-arm-l-rig',root,-.43,1.30,-.02);
+  const armR=createJoint(B,scene,'matthias-arm-r-rig',root,.43,1.30,-.02);
+  for (const [arm,side] of [[armL,-1],[armR,1]]) {
+    cylinder(B,scene,`matthias-upper-arm-${side<0?'l':'r'}`,.34,.15,arm,mats.matthiasBlack2,0,-.16,0,14);
+    box(B,scene,`matthias-elbow-${side<0?'l':'r'}`,.17,.13,.18,arm,mats.matthiasBrass,0,-.34,-.025);
+    const fore=cylinder(B,scene,`matthias-forearm-${side<0?'l':'r'}`,.31,.14,arm,mats.matthiasBlack,0,-.49,-.10,14);fore.rotation.x=.28;
+    box(B,scene,`matthias-glove-${side<0?'l':'r'}`,.17,.16,.19,arm,mats.glove,0,-.63,-.18);
+  }
+  armL.rotation.x=.42; armL.rotation.z=-.08;
+  armR.rotation.x=-.28; armR.rotation.z=.10;
+
+  const legL=createJoint(B,scene,'matthias-leg-l-rig',root,-.18,.76,0);
+  const legR=createJoint(B,scene,'matthias-leg-r-rig',root,.18,.76,0);
+  for (const [leg,side] of [[legL,-1],[legR,1]]) {
+    cylinder(B,scene,`matthias-thigh-${side<0?'l':'r'}`,.38,.18,leg,mats.matthiasBlack2,0,-.18,0,16);
+    box(B,scene,`matthias-knee-${side<0?'l':'r'}`,.22,.17,.24,leg,mats.matthiasBrass,0,-.39,-.04);
+    cylinder(B,scene,`matthias-shin-${side<0?'l':'r'}`,.35,.16,leg,mats.matthiasBlack,0,-.57,0,16);
+    box(B,scene,`matthias-boot-${side<0?'l':'r'}`,.25,.16,.40,leg,mats.boot,0,-.78,-.07);
+    box(B,scene,`matthias-boot-trim-${side<0?'l':'r'}`,.255,.035,.405,leg,mats.matthiasBrass,0,-.715,-.07);
+  }
+
+  const rifle=createRifle(B,scene,root,mats,true);
+  rifle.weapon.scaling.set(.84,.84,.84);
+  rifle.weapon.position.set(.22,1.08,-.33);
+  rifle.weapon.rotation.z=-.04;
+  const suppressor=cylinder(B,scene,'matthias-suppressor',.30,.065,rifle.weapon,mats.matthiasBlack,.91,0,0,16);suppressor.rotation.z=Math.PI/2;
+  box(B,scene,'matthias-rifle-brass',.10,.035,.145,rifle.weapon,mats.matthiasBrass,.23,.075,0);
+
+  root.metadata.parts={ torso:pawnBody,head,helmet:cap,armL,armR,legL,legR,weapon:rifle.weapon,coatL,coatR };
+  root.metadata.weaponBaseX=.22;
+  root.metadata.muzzle=new B.Vector3(1.13,1.08,-.33);
   tagUnit(root,'matthias',true);
   return root;
 }
@@ -330,11 +419,14 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
     ground:material(B,scene,'ground','#161b1e'),tile:material(B,scene,'tile','#242b2e'),road:material(B,scene,'road','#202426'),concrete:material(B,scene,'concrete','#303437'),roof:material(B,scene,'roof','#15191c'),door:material(B,scene,'door','#1d2225'),lamp:material(B,scene,'lamp','#8a5726','#ff8c32'),
     wood:material(B,scene,'wood','#5a4029'),barrel:material(B,scene,'barrel','#642d22'),sandbag:material(B,scene,'sandbag','#6f654d'),metal:material(B,scene,'metal','#252b30'),truck:material(B,scene,'truck','#28332f'),tire:material(B,scene,'tire','#0b0d0e'),
     friendlyBody:material(B,scene,'friendly-body','#2f3434'),friendlyArmour:material(B,scene,'friendly-armour','#161b1c'),friendlyHead:material(B,scene,'friendly-head','#bda985'),enemyBody:material(B,scene,'enemy-body','#302d28'),enemyArmour:material(B,scene,'enemy-armour','#171818'),enemyHead:material(B,scene,'enemy-head','#a18d71'),helmet:material(B,scene,'helmet','#252a28'),helmetBand:material(B,scene,'helmet-band','#151817'),eliteHelmet:material(B,scene,'elite-helmet','#211817'),eliteTrim:material(B,scene,'elite-trim','#6f211c'),pack:material(B,scene,'pack','#202522'),boot:material(B,scene,'boot','#101314'),glove:material(B,scene,'glove','#0c0f10'),pouch:material(B,scene,'pouch','#4a4434'),gun:material(B,scene,'gun','#101315'),
+    matthiasCore:material(B,scene,'matthias-core','#e9dcc2'),matthiasCoreShade:material(B,scene,'matthias-core-shade','#c1ad89'),matthiasFace:material(B,scene,'matthias-face','#efe0c5'),matthiasBlack:material(B,scene,'matthias-black','#101315'),matthiasBlack2:material(B,scene,'matthias-black-2','#22272c'),matthiasBrass:material(B,scene,'matthias-brass','#b98535'),matthiasRed:material(B,scene,'matthias-red','#681c1b'),matthiasEye:material(B,scene,'matthias-eye','#080909'),matthiasMouth:material(B,scene,'matthias-mouth','#3b2f28'),
     enemyVisor:material(B,scene,'enemy-visor','#421111','#ff2929'),eliteVisor:material(B,scene,'elite-visor','#6d1515','#ff1717'),
     blue:material(B,scene,'reachable','#12394e','#0872a4',.74),cyan:material(B,scene,'selected','#155269','#13b6ef',.88),red:material(B,scene,'target','#601818','#df2626',.87),intel:material(B,scene,'intel','#88651b','#ffca38',.92),exfil:material(B,scene,'exfil','#0b607b','#12bdf4',.88),intelCase:material(B,scene,'intel-case','#403b25'),
     moveNear:material(B,scene,'move-near','#155b6a','#19c9ee',.90),moveMid:material(B,scene,'move-mid','#214d78','#388fe6',.88),moveFar:material(B,scene,'move-far','#725927','#d8a93d',.88),
     muzzle:material(B,scene,'muzzle','#ffb642','#ffad25'),impact:material(B,scene,'impact','#ffdf9b','#ff9e35'),
   };
+  mats.matthiasBrass.specularColor=new B.Color3(.72,.54,.22);
+  mats.matthiasCore.specularColor=new B.Color3(.24,.21,.17);
 
   const ground=makeWorldBox(B,scene,'compound-ground',{w:MAP_W*TILE+3.4,d:MAP_H*TILE+3.2,h:.18},{x:0,y:-.18,z:0},mats.ground);ground.receiveShadows=true;
   makeWorldBox(B,scene,'road-a',{w:MAP_W*TILE+1,d:2.2,h:.025},{x:0,y:.015,z:2.55},mats.road);
@@ -349,10 +441,10 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
   const unitRoots=new Map();const markers=new Map();const reachableIndicators=new Map();const fx=[];let matthiasUrl='';let previous=null;let previousObjectives={intel:false,extraction:false,target:false};
 
   function markerFor(id){if(markers.has(id))return markers.get(id);const ring=B.MeshBuilder.CreateTorus(`marker-${id}`,{diameter:1.18,thickness:.05,tessellation:32},scene);ring.rotation.x=Math.PI/2;ring.material=mats.cyan;ring.isVisible=false;glow.addIncludedOnlyMesh(ring);markers.set(id,ring);return ring;}
-  function ensureUnit(unit,friendly,matthiasArt){if(unitRoots.has(unit.id))return unitRoots.get(unit.id);let root;if(unit.id==='matthias'&&matthiasArt){matthiasUrl=matthiasArt;root=createMatthiasCard(B,scene,matthiasArt,mats);}else root=createTacticalAgent(B,scene,unit.id,friendly,unit.elite,mats);root.getChildMeshes().forEach((mesh)=>shadowGenerator.addShadowCaster(mesh));unitRoots.set(unit.id,root);return root;}
+  function ensureUnit(unit,friendly,matthiasArt){if(unitRoots.has(unit.id))return unitRoots.get(unit.id);let root;if(unit.id==='matthias'){if(matthiasArt)matthiasUrl=matthiasArt;root=createMatthiasOperative(B,scene,mats);}else root=createTacticalAgent(B,scene,unit.id,friendly,unit.elite,mats);root.getChildMeshes().forEach((mesh)=>shadowGenerator.addShadowCaster(mesh));unitRoots.set(unit.id,root);return root;}
   function ensureReachableIndicator(tile){const key=`${tile.x},${tile.y}`;let indicator=reachableIndicators.get(key);if(!indicator){indicator=createReachableIndicator(B,scene,mats,glow,key,tile.cost);reachableIndicators.set(key,indicator);}if(indicator.metadata.cost!==tile.cost){indicator.metadata.cost=tile.cost;indicator.metadata.ring.material=moveMaterialForCost(mats,tile.cost);indicator.metadata.disc.material=moveMaterialForCost(mats,tile.cost);paintMoveBadge(indicator.metadata.texture,tile.cost);}return indicator;}
   function pushFx(mesh,life=260){mesh.isPickable=false;fx.push({mesh,born:performance.now(),life});return mesh;}
-  function shotFx(source,target,friendly=true,rounds=1){if(!source||!target||reduced)return;const a=world(source.x,source.y,1.0);const fallback=new B.Vector3(a.x,a.y,a.z);const start=chesscomMuzzleWorldPosition(B,unitRoots.get(source.id),fallback);const b=world(target.x,target.y,.95);const end=new B.Vector3(b.x,b.y,b.z);const muzzle=B.MeshBuilder.CreateSphere('muzzle-flash',{diameter:.25,segments:8},scene);muzzle.position.copyFrom(start);muzzle.material=mats.muzzle;glow.addIncludedOnlyMesh(muzzle);pushFx(muzzle,115);const count=Math.min(5,Math.max(1,Math.round(Number(rounds)||1)));for(let index=0;index<count;index+=1){const spread=(index-(count-1)/2)*.035;const tracerEnd=end.clone();tracerEnd.y+=spread;tracerEnd.z+=index%2 ? spread*.65 : -spread*.65;const line=B.MeshBuilder.CreateLines('tracer',{points:[start,tracerEnd]},scene);line.color=friendly ? new B.Color3(1,.72,.26) : new B.Color3(1,.22,.15);line.alpha=.92;pushFx(line,130+index*18);}const hit=B.MeshBuilder.CreateSphere('impact',{diameter:.18,segments:7},scene);hit.position.copyFrom(end);hit.material=mats.impact;glow.addIncludedOnlyMesh(hit);pushFx(hit,220);}
+  function shotFx(source,target,friendly=true,rounds=1){if(!source||!target||reduced)return;const sourceRoot=unitRoots.get(source.id);if(sourceRoot?.metadata)sourceRoot.metadata.recoilUntil=performance.now()+135;const a=world(source.x,source.y,1.0);const fallback=new B.Vector3(a.x,a.y,a.z);const start=chesscomMuzzleWorldPosition(B,sourceRoot,fallback);const b=world(target.x,target.y,.95);const end=new B.Vector3(b.x,b.y,b.z);const muzzle=B.MeshBuilder.CreateSphere('muzzle-flash',{diameter:.25,segments:8},scene);muzzle.position.copyFrom(start);muzzle.material=mats.muzzle;glow.addIncludedOnlyMesh(muzzle);pushFx(muzzle,115);const count=Math.min(5,Math.max(1,Math.round(Number(rounds)||1)));for(let index=0;index<count;index+=1){const spread=(index-(count-1)/2)*.035;const tracerEnd=end.clone();tracerEnd.y+=spread;tracerEnd.z+=index%2 ? spread*.65 : -spread*.65;const line=B.MeshBuilder.CreateLines('tracer',{points:[start,tracerEnd]},scene);line.color=friendly ? new B.Color3(1,.72,.26) : new B.Color3(1,.22,.15);line.alpha=.92;pushFx(line,130+index*18);}const hit=B.MeshBuilder.CreateSphere('impact',{diameter:.18,segments:7},scene);hit.position.copyFrom(end);hit.material=mats.impact;glow.addIncludedOnlyMesh(hit);pushFx(hit,220);}
   function pulseAt(pos,mat){const ring=B.MeshBuilder.CreateTorus('objective-pulse',{diameter:1.4,thickness:.045,tessellation:32},scene);ring.rotation.x=Math.PI/2;ring.position.set(pos.x,.075,pos.z);ring.material=mat;glow.addIncludedOnlyMesh(ring);pushFx(ring,650);}
 
   scene.onPointerObservable.add((pointerInfo)=>{const pick=pointerInfo.pickInfo;const meta=pick?.pickedMesh?.metadata;if(!meta){if(pointerInfo.type===B.PointerEventTypes.POINTERMOVE)onHover?.(null);return;}if(pointerInfo.type===B.PointerEventTypes.POINTERMOVE)onHover?.(meta);if(pointerInfo.type!==B.PointerEventTypes.POINTERPICK)return;if(meta.type==='tile')onTile?.(meta.x,meta.y);if(meta.type==='unit')onUnit?.(meta.id,meta.friendly);});
@@ -374,7 +466,33 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
   const started=performance.now();
   engine.runRenderLoop(()=>{
     const now=performance.now();const t=(now-started)/1000;
-    for(const [id,root] of unitRoots){if(!root.isEnabled()||!root.metadata?.target)continue;const target=root.metadata.target;const motion=root.metadata.motion;const phase=root.metadata.phase||0;const idleBob=reduced?0:Math.sin(t*1.7+phase)*.012;let moveWave=0;if(reduced){root.position.copyFrom(target);root.metadata.motion=null;root.rotation.z=0;}else if(motion){const raw=clamp01((now-motion.startedAt)/motion.duration);const eased=chesscomMovementEase(raw);moveWave=Math.sin(raw*Math.PI*motion.steps);root.position.x=motion.start.x+(motion.target.x-motion.start.x)*eased;root.position.z=motion.start.z+(motion.target.z-motion.start.z)*eased;root.position.y=motion.target.y+chesscomMovementLift(raw,motion.steps);root.rotation.z=moveWave*.018;if(raw>=1){root.metadata.motion=null;root.position.copyFrom(motion.target);root.position.y=motion.target.y+idleBob;root.rotation.z=0;moveWave=0;}}else{root.position.x=target.x;root.position.z=target.z;root.position.y=target.y+idleBob;root.rotation.z=0;}const parts=root.metadata.parts;if(parts?.weapon&&!reduced)parts.weapon.rotation.z=-.08+(motion?moveWave*.055:Math.sin(t*1.55+phase)*.018);if(parts?.armL&&!reduced)parts.armL.rotation.x=.18+moveWave*.28;if(parts?.armR&&!reduced)parts.armR.rotation.x=-.18-moveWave*.28;if(parts?.legL&&!reduced)parts.legL.rotation.x=moveWave*.24;if(parts?.legR&&!reduced)parts.legR.rotation.x=-moveWave*.24;if(parts?.head&&!reduced)parts.head.position.x=Math.sin(t*.72+phase)*.012;const marker=markers.get(id);if(marker?.isVisible&&!reduced){const s=1+Math.sin(t*3.2+phase)*.035;marker.scaling.set(s,s,s);}}
+    for(const [id,root] of unitRoots){
+      if(!root.isEnabled()||!root.metadata?.target)continue;
+      const target=root.metadata.target;const motion=root.metadata.motion;const phase=root.metadata.phase||0;const operative=Boolean(root.metadata.operative);const idleBob=reduced?0:Math.sin(t*1.7+phase)*(operative ? .006 : .012);let moveWave=0;
+      if(reduced){root.position.copyFrom(target);root.metadata.motion=null;root.rotation.z=0;}
+      else if(motion){const raw=clamp01((now-motion.startedAt)/motion.duration);const eased=chesscomMovementEase(raw);moveWave=Math.sin(raw*Math.PI*motion.steps);root.position.x=motion.start.x+(motion.target.x-motion.start.x)*eased;root.position.z=motion.start.z+(motion.target.z-motion.start.z)*eased;root.position.y=motion.target.y+(operative?chesscomOperativeMovementLift(raw,motion.steps):chesscomMovementLift(raw,motion.steps));root.rotation.z=moveWave*(operative ? .007 : .018);if(raw>=1){root.metadata.motion=null;root.position.copyFrom(motion.target);root.position.y=motion.target.y+idleBob;root.rotation.z=0;moveWave=0;}}
+      else{root.position.x=target.x;root.position.z=target.z;root.position.y=target.y+idleBob;root.rotation.z=0;}
+      const parts=root.metadata.parts;
+      if(operative&&!reduced){
+        const recoil=root.metadata.recoilUntil>now?(root.metadata.recoilUntil-now)/135:0;
+        if(parts?.weapon){parts.weapon.rotation.z=-.04+(motion?moveWave*.018:Math.sin(t*1.55+phase)*.008)-recoil*.055;parts.weapon.position.x=(root.metadata.weaponBaseX||.22)-recoil*.055;}
+        if(parts?.armL){parts.armL.rotation.x=.42+moveWave*.11-recoil*.025;parts.armL.rotation.z=-.08+moveWave*.035;}
+        if(parts?.armR){parts.armR.rotation.x=-.28-moveWave*.09-recoil*.07;parts.armR.rotation.z=.10-moveWave*.025;}
+        if(parts?.legL){parts.legL.rotation.x=moveWave*.48;parts.legL.rotation.z=-Math.abs(moveWave)*.025;}
+        if(parts?.legR){parts.legR.rotation.x=-moveWave*.48;parts.legR.rotation.z=Math.abs(moveWave)*.025;}
+        if(parts?.head){parts.head.position.x=Math.sin(t*.72+phase)*.007;parts.head.rotation.z=motion?moveWave*.012:Math.sin(t*.55+phase)*.008;}
+        if(parts?.coatL)parts.coatL.rotation.x=-.07-Math.abs(moveWave)*.10;
+        if(parts?.coatR)parts.coatR.rotation.x=-.07-Math.abs(moveWave)*.08;
+      }else{
+        if(parts?.weapon&&!reduced)parts.weapon.rotation.z=-.08+(motion?moveWave*.055:Math.sin(t*1.55+phase)*.018);
+        if(parts?.armL&&!reduced)parts.armL.rotation.x=.18+moveWave*.28;
+        if(parts?.armR&&!reduced)parts.armR.rotation.x=-.18-moveWave*.28;
+        if(parts?.legL&&!reduced)parts.legL.rotation.x=moveWave*.24;
+        if(parts?.legR&&!reduced)parts.legR.rotation.x=-moveWave*.24;
+        if(parts?.head&&!reduced)parts.head.position.x=Math.sin(t*.72+phase)*.012;
+      }
+      const marker=markers.get(id);if(marker?.isVisible&&!reduced){const s=1+Math.sin(t*3.2+phase)*.035;marker.scaling.set(s,s,s);}
+    }
     if(!reduced){for(const indicator of reachableIndicators.values()){if(!indicator.isEnabled())continue;const pulse=1+Math.sin(t*3.1+indicator.metadata.phase)*.045;indicator.metadata.ring.scaling.set(pulse,pulse,pulse);indicator.metadata.badge.position.y=.39+Math.sin(t*2.2+indicator.metadata.phase)*.018;}props.ring.rotation.z=t*.22;props.beacon.scaling.y=.92+Math.sin(t*2.4)*.08;props.exfilLight.intensity=4.2+Math.sin(t*2.7)*.8;warmLights.forEach((light,index)=>{light.intensity=(index<2 ? 12 : 5)+Math.sin(t*3.1+index*1.7)*.45;});}
     for(let i=fx.length-1;i>=0;i-=1){const item=fx[i];const progress=(now-item.born)/item.life;if(progress>=1){item.mesh.dispose();fx.splice(i,1);continue;}if('alpha' in item.mesh)item.mesh.alpha=1-progress;const s=1+progress*.65;item.mesh.scaling.set(s,s,s);}
     scene.render();
