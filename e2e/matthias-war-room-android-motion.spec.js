@@ -10,7 +10,17 @@ async function open3DFromAppearance(page) {
   const board3d = page.locator('[data-board3d-war-room="true"]');
   if (await board3d.isVisible().catch(() => false)) return;
 
-  await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
+  // Quick games default to 3D, but the lazy Three/WebGL mount may lag the rest
+  // of the game chrome for a few seconds on CI/Android. Give the real War Room
+  // a chance to appear before assuming we need the explicit renderer fallback.
+  await board3d.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => null);
+  if (await board3d.isVisible().catch(() => false)) return;
+
+  const appearanceButton = page.getByRole('button', {
+    name: /^(?:Apariencia|Cambiar apariencia y piezas del tablero)$/,
+  });
+  await expect(appearanceButton).toBeVisible({ timeout: 12_000 });
+  await appearanceButton.click();
   const dialog = page.getByRole('dialog', { name: 'Ajustes' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('radio', { name: /3D$/ }).click();
@@ -104,13 +114,13 @@ test('War Room · el bocadillo de Matthias sigue al rey si cambia de casilla', a
   test.setTimeout(75_000);
   const moveCalls = [];
 
-  await page.addInitScript(() => sessionStorage.clear());
   await mockApi(page);
   await installKingMoveReply(page, moveCalls);
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
   await open3DFromAppearance(page);
 
   const board3d = page.locator('[data-board3d-war-room="true"]');
