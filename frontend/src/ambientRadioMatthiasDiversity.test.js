@@ -3,10 +3,13 @@ import { AMBIENT_THEMES } from './ambientCatalog.js';
 import { structuredFeel } from './ambientProfiles.js';
 import { RADIO_MATTHIAS_MELODIC_REWRITES } from './ambientRadioMatthiasRecompositions.js';
 import { RADIO_PREMIUM_FORM_SPECS } from './ambientRadioPremiumForms.js';
+import { TROPICAL_HOUSE_MELODY_REWRITES } from './ambientTropicalHouseMelody.js';
 
 // This regression gate belongs to the seven-theme recomposition shipped in #345.
 // The premium-form layer may thin, shift or octave-displace that material, but it
-// must keep the published identity and the melodic DNA of the recomposition.
+// must keep the published identity and the melodic DNA of the latest intentional
+// composition layer. A later focused rewrite (currently Bishop Tropical House)
+// supersedes the #345 source without weakening the other six historical contracts.
 const ORIGINAL_REWRITE_IDS = Object.freeze([
   'velvetKnight0237',
   'bishopSunset',
@@ -65,22 +68,23 @@ describe('Radio Matthias · diversidad melódica', () => {
   it('mantiene las siete recomposiciones como ADN de sus formas premium sin cambiar ids públicos', () => {
     for (const id of ORIGINAL_REWRITE_IDS) {
       const theme = AMBIENT_THEMES[id];
-      const rewrite = RADIO_MATTHIAS_MELODIC_REWRITES[id];
+      const historicalRewrite = RADIO_MATTHIAS_MELODIC_REWRITES[id];
+      const effectiveRewrite = TROPICAL_HOUSE_MELODY_REWRITES[id] || historicalRewrite;
       const form = RADIO_PREMIUM_FORM_SPECS[id];
 
       expect(theme.id).toBe(id);
-      expect(theme.description).toBe(rewrite.description);
+      expect(theme.description).toBe(effectiveRewrite.description);
       expect(theme.premiumFormVersion).toBe(1);
       expect(theme.premiumFormScenes).toEqual(form.map((scene) => scene.name));
 
       for (const layer of ['lead', 'counter']) {
-        const sourcePitchClasses = layerPitchClasses(rewrite.melodySections, layer);
+        const sourcePitchClasses = layerPitchClasses(effectiveRewrite.melodySections, layer);
         const arrangedNotes = layerNotes(theme.sections, layer);
         expect(arrangedNotes.length, `${id}.${layer} no puede desaparecer de toda la forma premium`).toBeGreaterThan(0);
         for (const note of arrangedNotes) {
           expect(
             sourcePitchClasses.has(pitchClass(note)),
-            `${id}.${layer} inventó la clase de altura ${pitchClass(note)} fuera de su recomposición`,
+            `${id}.${layer} inventó la clase de altura ${pitchClass(note)} fuera de su composición efectiva`,
           ).toBe(true);
         }
       }
