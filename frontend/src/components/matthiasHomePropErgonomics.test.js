@@ -61,9 +61,14 @@ describe('Matthias Home prop ergonomics', () => {
     expect(rig.activityRig.support.visible).toBe(true);
     expect(rig.activityRig.assist.visible).toBe(true);
 
-    expect(apply(rig, 'bite')).toBe('ration');
-    expect(rig.activityRig.ration.scale.x).toBeLessThan(.9);
-    expect(rig.activityRig.ration.position.y).toBeLessThan(-.58);
+    // The tactical meal now has four internal phases. Inspect the bocata at a
+    // deterministic time instead of accidentally asserting against the hidden
+    // legacy ration while the burger phase is active.
+    expect(apply(rig, 'bite', { activityTime: 7 })).toBe('ration');
+    expect(rig.root.userData.activityMealPhase).toBe('bocata');
+    expect(rig.activityRig.ration.visible).toBe(true);
+    expect(rig.activityRig.ration.scale.x).toBeLessThanOrEqual(.9);
+    expect(rig.activityRig.ration.position.y).toBeLessThan(-.4);
     expect(rig.activityRig.ration.position.x).toBeGreaterThan(.15);
     expect(rig.activityRig.support.visible).toBe(true);
     expect(rig.activityRig.assist.visible).toBe(true);

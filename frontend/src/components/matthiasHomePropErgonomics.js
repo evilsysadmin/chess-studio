@@ -1,7 +1,13 @@
 import * as THREE from 'three';
+import {
+  applyMatthiasTacticalMeal,
+  clearMatthiasTacticalMeal,
+  MATTHIAS_TACTICAL_MEAL_RIG_VERSION,
+} from './matthiasTacticalMealRig.js';
 
 export const MATTHIAS_HOME_PROP_ERGONOMICS_VERSION = 'home-props-v1-handheld';
 export const MATTHIAS_CHESS_WEEKLY_RIG_VERSION = 'chess-weekly-v2-mock-fidelity';
+export const MATTHIAS_WORK_FOCUS_FACE_VERSION = 'work-focus-v1-approved-mock';
 
 const PRESS_CLOCKS = new WeakMap();
 
@@ -285,6 +291,29 @@ function restorePressEyeHeight(rig, activityRig) {
   }
 }
 
+function applyMatthiasWorkFocusFace(rig, pose, {
+  headPitch = .040,
+  yawBias = 0,
+} = {}) {
+  if (!rig?.leftEye || !rig?.rightEye) return;
+  const speaking = Boolean(pose.activitySpeaking) || Number(pose.mouthOpen) >= .14;
+  if (speaking) return;
+
+  // Shared approved working face: alert, concentrated and slightly asymmetric.
+  // Matthias reserves the hard frontal scowl for interacting with the player.
+  rig.leftEye.scale.x = .86;
+  rig.rightEye.scale.x = .86;
+  rig.leftEye.scale.y = Math.max(1.34, rig.leftEye.scale.y);
+  rig.rightEye.scale.y = Math.max(1.34, rig.rightEye.scale.y);
+  rig.leftBrow.rotation.z = Math.PI / 2 - .30;
+  rig.rightBrow.rotation.z = Math.PI / 2 + .34;
+  rig.leftBrow.position.y = rig.base.leftBrowY - .008;
+  rig.rightBrow.position.y = rig.base.rightBrowY - .002;
+  rig.headPivot.rotation.x += headPitch;
+  rig.headPivot.rotation.y += yawBias;
+  rig.root.userData.activityWorkFace = MATTHIAS_WORK_FOCUS_FACE_VERSION;
+}
+
 function applyChessWeeklyFocusFace(rig, activityRig, pose, reading, speaking) {
   if (!rig.leftEye || !rig.rightEye) return;
 
@@ -306,9 +335,6 @@ function applyChessWeeklyFocusFace(rig, activityRig, pose, reading, speaking) {
 
   if (speaking) return;
 
-  // Mock expression: concentrated, not furious. Eyes stay visibly open; the
-  // brows remain stern but relax from the canonical aggressive V and gain a
-  // touch of asymmetry. The mouth stays compact and dry.
   rig.leftEye.scale.x = .86;
   rig.rightEye.scale.x = .86;
   rig.leftEye.scale.y = Math.max(1.34, rig.leftEye.scale.y);
@@ -319,10 +345,9 @@ function applyChessWeeklyFocusFace(rig, activityRig, pose, reading, speaking) {
   rig.rightBrow.position.y = rig.base.rightBrowY - .002;
   rig.mouthGroup.rotation.z = -.018;
   rig.mouthGroup.scale.x = .90;
-
-  // Keep Matthias looking into the paper instead of performing for the camera.
   rig.headPivot.rotation.y -= .025;
   rig.headPivot.rotation.x += .055;
+  rig.root.userData.activityWorkFace = MATTHIAS_WORK_FOCUS_FACE_VERSION;
 }
 
 export function applyMatthiasHomePropErgonomics(rig, pose = {}) {
@@ -338,6 +363,10 @@ export function applyMatthiasHomePropErgonomics(rig, pose = {}) {
 
   if (press) press.visible = prop === 'press';
   if (prop !== 'press') restorePressEyeHeight(rig, activityRig);
+  if (prop !== 'ration') clearMatthiasTacticalMeal(rig);
+  if (!['book', 'dossier', 'write', 'press'].includes(prop)) {
+    rig.root.userData.activityWorkFace = 'inactive';
+  }
 
   const {
     cup,
@@ -375,29 +404,36 @@ export function applyMatthiasHomePropErgonomics(rig, pose = {}) {
     setLimb(supportStem, supportGlove, [.34, -.45, .48], -.58, [.34, -.47, .70]);
     setLimb(assistStem, assistGlove, [-.34, -.45, .47], .58, [-.22, -.47, .70]);
   } else if (prop === 'ration') {
-    setPose(ration, [.25, -.64 + reach * .06, .75], [-.46 + reach * .04, -.12, -.10], .86);
-    support.visible = true;
-    assist.visible = true;
-    setLimb(supportStem, supportGlove, [.36, -.44, .48], -.56, [.39, -.45, .70]);
-    setLimb(assistStem, assistGlove, [-.27, -.44, .47], .66, [.02, -.46, .69]);
+    const meal = applyMatthiasTacticalMeal(rig, { ...pose, reach });
+    rig.root.userData.activityMealRigVersion = MATTHIAS_TACTICAL_MEAL_RIG_VERSION;
+    if (!meal) {
+      setPose(ration, [.25, -.64 + reach * .06, .75], [-.46 + reach * .04, -.12, -.10], .86);
+      support.visible = true;
+      assist.visible = true;
+      setLimb(supportStem, supportGlove, [.36, -.44, .48], -.56, [.39, -.45, .70]);
+      setLimb(assistStem, assistGlove, [-.27, -.44, .47], .66, [.02, -.46, .69]);
+    }
   } else if (prop === 'book') {
     setPose(book, [-.14, -.57 + reach * .05, .78], [-.50, .18 + yaw * .28, .07], .86);
     support.visible = true;
     assist.visible = true;
     setLimb(supportStem, supportGlove, [.31, -.39, .48], -.66, [.16, -.40, .71]);
     setLimb(assistStem, assistGlove, [-.34, -.39, .47], .62, [-.38, -.40, .70]);
+    applyMatthiasWorkFocusFace(rig, pose, { headPitch: .050, yawBias: -.012 });
   } else if (prop === 'dossier') {
     setPose(dossier, [.27, -.60 + reach * .04, .77], [-.44, -.34 + yaw * .18, -.15], .84);
     support.visible = true;
     assist.visible = true;
     setLimb(supportStem, supportGlove, [.35, -.40, .48], -.61, [.43, -.42, .71]);
     setLimb(assistStem, assistGlove, [-.25, -.36, .47], .76, [.08, -.34, .72]);
+    applyMatthiasWorkFocusFace(rig, pose, { headPitch: .045, yawBias: .012 });
   } else if (prop === 'write') {
     setPose(write, [.20, -.64 + reach * .04, .76], [-.58, -.24 + yaw * .12, -.12], .80);
     support.visible = true;
     assist.visible = true;
     setLimb(supportStem, supportGlove, [.34, -.39, .48], -.68, [.35, -.43, .72]);
     setLimb(assistStem, assistGlove, [-.29, -.42, .47], .66, [-.02, -.45, .69]);
+    applyMatthiasWorkFocusFace(rig, pose, { headPitch: .055, yawBias: .008 });
   } else if (prop === 'chess') {
     setPose(chess, [.25, -.72 + reach * .03, .79], [-.66, -.08 + yaw * .06, -.11], .80);
     support.visible = true;
@@ -411,9 +447,6 @@ export function applyMatthiasHomePropErgonomics(rig, pose = {}) {
       reducedMotion: Boolean(pose.activityReducedMotion),
     });
 
-    // Compared with v1 this is deliberately bigger, higher and more vertical.
-    // Its centre is no longer on the pawn's belly and its top edge reaches the
-    // natural reading zone just below Matthias' mouth, matching the approved mock.
     setPose(press, [-.045, -.300 + reach * .018, .865], [-.075, .12 + yaw * .10, .018], 1.20);
     press.position.y += Math.sin(activityTime * .72) * .003;
     press.rotation.z += Math.sin(activityTime * .56) * .005;
