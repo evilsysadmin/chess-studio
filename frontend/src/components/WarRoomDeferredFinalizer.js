@@ -3,6 +3,7 @@ export const WAR_ROOM_ONE_SHOT_RETIREMENT_VERSION = 'one-shot-retirement-v1';
 
 const FINALIZER_STATES = new WeakMap();
 const NOOP_RENDER_HOOK = () => {};
+const HANS_FIREPLACE_FINALIZER_KEY = 'hans-fireplace-scene-install-v2';
 
 function sceneRoot(object) {
   let current = object;
@@ -10,7 +11,22 @@ function sceneRoot(object) {
   return current;
 }
 
-function finalizerDriver(group) {
+function finalizerDriver(group, key) {
+  // Hans must be armed by an object that is guaranteed to render in the live
+  // War Room. A painting canvas can legitimately be culled, replaced or have
+  // its one-shot hook retired by later museum passes; when that happened the
+  // whole room still looked correct but the Hans installer never ran. The
+  // castle floor slab is architectural, visible in every desktop War Room and
+  // already owns continuous scene-life work, so use it only for this critical
+  // character bridge while keeping the established driver order for all other
+  // deferred static passes.
+  if (key === HANS_FIREPLACE_FINALIZER_KEY) {
+    return group?.getObjectByName?.('war-room-castle-floor-slab')
+      || group?.getObjectByName?.('war-room-castle-wall-left')
+      || group?.getObjectByName?.('war-room-premium-painting-canvas')
+      || null;
+  }
+
   return group?.getObjectByName?.('war-room-premium-painting-canvas')
     || group?.getObjectByName?.('war-room-castle-wall-left')
     || group?.getObjectByName?.('war-room-castle-floor-slab')
@@ -73,7 +89,7 @@ export function registerWarRoomDeferredFinalizer(group, {
 } = {}) {
   if (!group || (coarsePointer && !allowCoarse) || typeof key !== 'string' || !key || typeof run !== 'function') return 0;
 
-  const driver = finalizerDriver(group);
+  const driver = finalizerDriver(group, key);
   if (!driver) return 0;
 
   const state = FINALIZER_STATES.get(driver) || attachFinalizerDriver(driver, group);
