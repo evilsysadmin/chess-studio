@@ -77,12 +77,11 @@ describe('WarRoomCompositionPolish', () => {
     dispose(room);
   });
 
-  it('coloca las armaduras v28 y la mampostería canónica ya no construye las 78 juntas retiradas', () => {
+  it('coloca las armaduras v28 y la escena canónica omite mobiliario y mampostería retirados', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
+    const architecture = room.getObjectByName('war-room-castle-architecture');
     const leftArmor = room.getObjectByName('war-room-teutonic-armor-left');
     const rightArmor = room.getObjectByName('war-room-teutonic-armor-right');
-    const leftConsole = room.getObjectByName('war-room-side-console-left');
-    const rightConsole = room.getObjectByName('war-room-side-console-right');
     const masonry = room.getObjectByName('war-room-teutonic-masonry');
     const owner = compositionOwner(room);
 
@@ -97,12 +96,13 @@ describe('WarRoomCompositionPolish', () => {
     expect(rightArmor.userData.warRoomArmorLegProfile).toBe('heavy-gothic-v28');
     expect(leftArmor.userData.facesWarTable).toBe(true);
     expect(rightArmor.userData.facesWarTable).toBe(true);
-    expect(leftConsole.visible).toBe(false);
-    expect(rightConsole.visible).toBe(false);
-    expect(leftConsole.userData.warRoomFurniturePlacement).toBe('retired-duplicate-side-table-v28');
-    expect(rightConsole.userData.warRoomFurniturePlacement).toBe('retired-duplicate-side-table-v28');
-    expect(Math.abs(leftArmor.position.x)).toBeGreaterThan(Math.abs(leftConsole.position.x));
-    expect(Math.abs(rightArmor.position.x)).toBeGreaterThan(Math.abs(rightConsole.position.x));
+    expect(room.getObjectByName('war-room-side-console-left')).toBeUndefined();
+    expect(room.getObjectByName('war-room-side-console-right')).toBeUndefined();
+    expect(room.getObjectByName('war-room-armor-guard-left')).toBeUndefined();
+    expect(room.getObjectByName('war-room-armor-guard-right')).toBeUndefined();
+    expect(architecture.userData.warRoomDesktopRetiredSideConsoleMeshesOmitted).toBe(30);
+    expect(architecture.userData.warRoomDesktopRetiredArmorMeshesOmitted).toBe(44);
+    expect(architecture.userData.warRoomDesktopRetiredLegacyMeshesOmitted).toBe(74);
     expect(Math.abs(leftArmor.rotation.y)).toBeGreaterThan(1.3);
     expect(Math.abs(rightArmor.rotation.y)).toBeGreaterThan(1.3);
     expect(masonry.userData.warRoomRetiredMortarJointsOmitted).toBe(78);
