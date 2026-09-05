@@ -143,10 +143,11 @@ export function deriveMoveKinetics({ movingType = 'p', capture = false, promotio
 }
 
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
-  // v6 art direction: keep the premium local fire/sconce response, but trim the
-  // broad desktop board grade one more subtle notch. This mainly calms the near
-  // ivory/white-side highlights while preserving the warm practical and rim lights.
-  const baseExposure = coarsePointer ? 1.015 : 1.055;
+  // v7 art direction: keep the premium local fire/sconce response, but pull the
+  // broad board wash down another small step. The key light is what pushes the
+  // near ivory/white-side highlights hardest, so trim it without touching the
+  // warm practical or rim lights that keep the black pieces readable.
+  const baseExposure = coarsePointer ? 1.005 : 1.04;
   if (gameOver) {
     return {
       key: coarsePointer ? 1.52 : 1.44,
@@ -158,7 +159,7 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
   }
   if (check) {
     return {
-      key: coarsePointer ? 2.45 : 2.28,
+      key: coarsePointer ? 2.32 : 2.16,
       rim: coarsePointer ? 16.8 : 16.4,
       warm: coarsePointer ? 4.9 : 4.55,
       exposure: baseExposure + 0.005,
@@ -166,7 +167,7 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
     };
   }
   return {
-    key: coarsePointer ? 2.11 : 1.96,
+    key: coarsePointer ? 1.99 : 1.84,
     rim: coarsePointer ? 12.6 : 12.15,
     warm: coarsePointer ? 5.0 : 4.85,
     exposure: baseExposure,
