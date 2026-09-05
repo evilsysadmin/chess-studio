@@ -2,6 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import './PawnSlug.css';
 
+const INITIAL_WEAPONS = Object.freeze([
+  Object.freeze({ id: 'pistol', slot: 1, shortLabel: 'PST', label: 'Dienstpistole', current: true, unlocked: true, ammo: null }),
+  Object.freeze({ id: 'machinegun', slot: 2, shortLabel: 'MG', label: 'MG-42 de bolsillo', current: false, unlocked: false, ammo: 0 }),
+  Object.freeze({ id: 'shotgun', slot: 3, shortLabel: 'SG', label: 'Escopeta diplomática', current: false, unlocked: false, ammo: 0 }),
+  Object.freeze({ id: 'panzerfaust', slot: 4, shortLabel: 'PZF', label: 'Panzerfaust', current: false, unlocked: false, ammo: 0 }),
+]);
+
 const INITIAL_HUD = Object.freeze({
   phase: 'ready',
   hp: 100,
@@ -9,6 +16,7 @@ const INITIAL_HUD = Object.freeze({
   weapon: 'pistol',
   weaponLabel: 'Dienstpistole',
   ammo: null,
+  weapons: INITIAL_WEAPONS,
   grenades: 4,
   score: 0,
   combo: 0,
@@ -103,6 +111,7 @@ export default function PawnSlug({ onExit }) {
   const ammoText = hud.ammo == null ? '∞' : hud.ammo;
   const missionTime = `${String(Math.floor((hud.missionTime || 0) / 60)).padStart(2, '0')}:${String((hud.missionTime || 0) % 60).padStart(2, '0')}`;
   const overlay = hud.phase === 'ready' || hud.phase === 'gameover' || hud.phase === 'victory';
+  const weapons = hud.weapons?.length ? hud.weapons : INITIAL_WEAPONS;
 
   return (
     <div className="pawn-slug" data-pawn-slug="true">
@@ -143,6 +152,31 @@ export default function PawnSlug({ onExit }) {
             <b>{missionPercent}%</b>
           </div>
 
+          {!overlay && (
+            <div className="pawn-slug-arsenal" role="group" aria-label="Seleccionar arma">
+              {weapons.map((weapon) => {
+                const disabled = !weapon.unlocked || (weapon.id !== 'pistol' && weapon.ammo === 0);
+                const count = weapon.id === 'pistol' ? '∞' : weapon.unlocked ? weapon.ammo : '—';
+                return (
+                  <button
+                    key={weapon.id}
+                    type="button"
+                    className={weapon.current ? 'is-current' : ''}
+                    aria-pressed={Boolean(weapon.current)}
+                    aria-label={`${weapon.slot}. ${weapon.label}${disabled ? ' · no disponible' : ''}`}
+                    title={`${weapon.slot} · ${weapon.label}`}
+                    disabled={disabled}
+                    onClick={() => send(`weapon:${weapon.id}`, true)}
+                  >
+                    <kbd>{weapon.slot}</kbd>
+                    <span>{weapon.shortLabel}</span>
+                    <small>{count}</small>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {bossPercent != null && hud.phase === 'playing' && (
             <div className="pawn-slug-boss" role="status" aria-label={`Panzer-Rook ${Math.round(bossPercent)}%`}>
               <span>PANZER-ROOK · KOMMANDANTENBURG</span>
@@ -162,13 +196,13 @@ export default function PawnSlug({ onExit }) {
               {hud.phase === 'ready' && (
                 <div className="pawn-slug-briefing">
                   <span><b>Objetivo</b> Rompe el frente y elimina el Panzer‑Rook.</span>
-                  <span><b>Arsenal</b> Pistola, MG, escopeta, Panzerfaust y granadas.</span>
+                  <span><b>Arsenal</b> Empiezas con pistola. Requisa MG, escopeta y Panzerfaust y cambia de arma cuando quieras.</span>
                   <span><b>Política</b> Cero ELO. Cero consecuencias. Bastantes explosiones.</span>
                 </div>
               )}
               {hud.phase !== 'ready' && <small>{hud.score.toLocaleString('es-ES')} puntos · {missionTime}</small>}
               <button type="button" className="primary-btn" onClick={() => send('action', true)}>{hud.phase === 'ready' ? 'INICIAR OPERACIÓN' : 'OTRA VEZ, CABRONES'}</button>
-              <em>Z/J dispara · X/K granada · WASD/flechas mueven · espacio salta</em>
+              <em>Z/J dispara · 1–4 arma · Q/E cambia · X/K granada · WASD/flechas mueven</em>
             </div>
           )}
 
@@ -193,6 +227,7 @@ export default function PawnSlug({ onExit }) {
           <div><kbd>W</kbd><kbd>ESPACIO</kbd><span>Saltar</span></div>
           <div><kbd>S</kbd><span>Agacharse</span></div>
           <div><kbd>Z</kbd><kbd>J</kbd><span>Disparar</span></div>
+          <div><kbd>1–4</kbd><kbd>Q/E</kbd><span>Arma</span></div>
           <div><kbd>X</kbd><kbd>K</kbd><span>Granada</span></div>
           <small>{rendererName} · Three.js se carga sólo al entrar en Pawn Slug.</small>
         </footer>
