@@ -15,6 +15,8 @@ import { armWarRoomOneShotHookRetirement, registerWarRoomDeferredFinalizer } fro
 import { installWarRoomMilitaryGallery } from './WarRoomMilitaryGallery.js';
 
 const TORCH_WALL_WASH_VERSION = 'hearth-contour-v2';
+const TORCH_FLAME_FINISH_VERSION = 'hearth-warm-v1';
+const TORCH_FLAME_PULSE_VERSION = 'hearth-flame-pulse-v1';
 const GALLERY_PAINTING_ORIENTATION_VERSION = 'upright-texture-v1';
 
 function materialList(object) {
@@ -139,53 +141,76 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
 
   for (const side of ['left', 'right']) {
     const torch = group.getObjectByName?.(`war-room-side-torch-${side}`);
-    if (!torch || torch.userData.warRoomTorchWallWash === TORCH_WALL_WASH_VERSION) continue;
+    if (!torch) continue;
+
+    const needsWallWash = torch.userData.warRoomTorchWallWash !== TORCH_WALL_WASH_VERSION;
+    const needsFlameFinish = torch.userData.warRoomTorchFlameFinish !== TORCH_FLAME_FINISH_VERSION;
+    if (!needsWallWash && !needsFlameFinish) continue;
 
     const halo = torch.getObjectByName?.('war-room-side-torch-wall-halo');
-    if (halo?.material) {
+    if (needsWallWash && halo?.material) {
       halo.material.color?.setHex?.(0xff7622);
       halo.material.opacity = 0.88;
       halo.material.toneMapped = false;
       halo.material.needsUpdate = true;
       halo.scale.set(1.55, 1.48, 1);
 
-      const innerHalo = halo.clone();
-      innerHalo.name = 'war-room-side-torch-wall-halo-inner';
-      innerHalo.material = halo.material.clone();
+      let innerHalo = torch.getObjectByName?.('war-room-side-torch-wall-halo-inner');
+      if (!innerHalo) {
+        innerHalo = halo.clone();
+        innerHalo.name = 'war-room-side-torch-wall-halo-inner';
+        innerHalo.material = halo.material.clone();
+        innerHalo.position.z += 0.004;
+        innerHalo.renderOrder = Math.max(2, Number(halo.renderOrder || 0) + 1);
+        innerHalo.castShadow = false;
+        innerHalo.receiveShadow = false;
+        torch.add(innerHalo);
+      }
       innerHalo.material.color?.setHex?.(0xffb24d);
       innerHalo.material.opacity = 0.68;
       innerHalo.material.toneMapped = false;
       innerHalo.material.needsUpdate = true;
       innerHalo.scale.set(0.78, 0.78, 1);
-      innerHalo.position.z += 0.004;
-      innerHalo.renderOrder = Math.max(2, Number(halo.renderOrder || 0) + 1);
-      innerHalo.castShadow = false;
-      innerHalo.receiveShadow = false;
-      torch.add(innerHalo);
     }
 
     const outer = torch.getObjectByName?.('war-room-side-torch-flame-outer');
     const inner = torch.getObjectByName?.('war-room-side-torch-flame-inner');
-    for (const [mesh, color, emissive] of [
-      [outer, 0xff9634, 0xff4d0b],
-      [inner, 0xffd77f, 0xffad42],
-    ]) {
-      const material = mesh?.material;
-      if (!material) continue;
-      material.color?.setHex?.(color);
-      material.emissive?.setHex?.(emissive);
-      material.toneMapped = false;
-      material.needsUpdate = true;
+    const embers = torch.getObjectByName?.('war-room-side-torch-embers');
+
+    if (needsFlameFinish) {
+      // Keep the bright geometry, but use deeper emissive hues so high
+      // intensities do not clip the green channel and wash the flame to white.
+      for (const [mesh, color, emissive, emissiveIntensity, opacity] of [
+        [outer, 0xff7a18, 0xff1600, 4.9, 0.94],
+        [inner, 0xffd15f, 0xff2400, 6.4, 0.94],
+      ]) {
+        const material = mesh?.material;
+        if (!material) continue;
+        material.color?.setHex?.(color);
+        material.emissive?.setHex?.(emissive);
+        material.emissiveIntensity = emissiveIntensity;
+        material.opacity = opacity;
+        material.toneMapped = false;
+        material.needsUpdate = true;
+      }
+
+      if (embers?.material) {
+        embers.material.color?.setHex?.(0x9d2a0a);
+        embers.material.emissive?.setHex?.(0xff1300);
+        embers.material.emissiveIntensity = 3.0;
+        embers.material.toneMapped = false;
+        embers.material.needsUpdate = true;
+      }
     }
 
     const light = torch.getObjectByName?.('war-room-side-torch-light');
     const wallGlow = torch.getObjectByName?.('war-room-side-torch-wall-glow');
-    if (light) {
+    if (needsWallWash && light) {
       light.color?.setHex?.(0xff7424);
       light.distance = Math.max(Number(light.distance || 0), 10.5);
       light.intensity *= 1.3;
     }
-    if (wallGlow) {
+    if (needsWallWash && wallGlow) {
       wallGlow.color?.setHex?.(0xffa442);
       wallGlow.distance = Math.max(Number(wallGlow.distance || 0), 7.4);
       wallGlow.intensity *= 2.1;
@@ -194,7 +219,7 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
     // Gallery flame kinetics restores the captured base intensity every frame.
     // Keep the wall wash boost after that reset so the contour does not vanish
     // as soon as the first flicker tick runs.
-    if (outer?.onBeforeRender && !outer.userData.warRoomTorchWallWashHook) {
+    if (needsWallWash && outer?.onBeforeRender && !outer.userData.warRoomTorchWallWashHook) {
       const original = outer.onBeforeRender;
       outer.onBeforeRender = (...args) => {
         original(...args);
@@ -204,7 +229,30 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
       outer.userData.warRoomTorchWallWashHook = TORCH_WALL_WASH_VERSION;
     }
 
-    torch.userData.warRoomTorchWallWash = TORCH_WALL_WASH_VERSION;
+    // Reuse the existing organic flicker to make the flame itself breathe.
+    // This adds no second animation loop and leaves the approved wall wash intact.
+    if (needsFlameFinish && outer?.onBeforeRender && !outer.userData.warRoomTorchFlamePulseHook) {
+      const original = outer.onBeforeRender;
+      const outerBaseEmissive = Number(outer.material?.emissiveIntensity || 4.9);
+      const innerBaseEmissive = Number(inner?.material?.emissiveIntensity || 6.4);
+      outer.onBeforeRender = (...args) => {
+        original(...args);
+        const baseLight = Number(light?.userData?.baseWarRoomIntensity || 0);
+        const boostedBase = baseLight > 0 ? baseLight * 1.3 : 0;
+        const flamePulse = boostedBase > 0
+          ? THREE.MathUtils.clamp(light.intensity / boostedBase, 0.92, 1.1)
+          : 1;
+        if (outer.material) outer.material.emissiveIntensity = outerBaseEmissive * flamePulse;
+        if (inner?.material) {
+          const innerPulse = THREE.MathUtils.clamp(0.985 + (flamePulse - 1) * 0.55, 0.94, 1.045);
+          inner.material.emissiveIntensity = innerBaseEmissive * innerPulse;
+        }
+      };
+      outer.userData.warRoomTorchFlamePulseHook = TORCH_FLAME_PULSE_VERSION;
+    }
+
+    if (needsWallWash) torch.userData.warRoomTorchWallWash = TORCH_WALL_WASH_VERSION;
+    if (needsFlameFinish) torch.userData.warRoomTorchFlameFinish = TORCH_FLAME_FINISH_VERSION;
     tuned += 1;
   }
 
