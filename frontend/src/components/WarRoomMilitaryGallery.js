@@ -188,12 +188,14 @@ function nowMs() {
     : Date.now();
 }
 
-function attachTorchKinetics(outer, inner, light, phase) {
+function attachTorchKinetics(outer, inner, light, wallGlow, phase) {
   const outerBase = outer.scale.clone();
   const innerBase = inner.scale.clone();
   const baseIntensity = light.intensity;
+  const wallGlowBaseIntensity = wallGlow.intensity;
   outer.userData.warRoomAnimatedTorch = true;
   light.userData.baseWarRoomIntensity = baseIntensity;
+  wallGlow.userData.baseWarRoomIntensity = wallGlowBaseIntensity;
 
   outer.onBeforeRender = () => {
     const now = nowMs();
@@ -215,6 +217,7 @@ function attachTorchKinetics(outer, inner, light, phase) {
       innerBase.z,
     );
     light.intensity = baseIntensity * (1 + flutter);
+    wallGlow.intensity = wallGlowBaseIntensity * (1 + flutter * 0.42);
   };
 }
 
@@ -290,6 +293,7 @@ function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
   torch.userData.warRoomTorchArt = 'approved-premium-mock-v2';
   torch.userData.warRoomTorchForm = 'gothic-wall-sconce-brazier';
   torch.userData.warRoomTorchFire = 'hearth-bright-v3';
+  torch.userData.warRoomTorchLighting = 'gallery-spill-v1';
 
   const iron = physical(GALLERY.iron, {
     metalness: 0.64,
@@ -307,22 +311,22 @@ function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
     roughness: 0.74,
     clearcoat: 0,
     emissive: GALLERY.ember,
-    emissiveIntensity: 1.55,
+    emissiveIntensity: 2.1,
   });
   const outerMat = physical(GALLERY.flame, {
     roughness: 0.14,
     clearcoat: 0,
     emissive: 0xff5a1a,
-    emissiveIntensity: 3.35,
-    opacity: 0.97,
+    emissiveIntensity: 4.7,
+    opacity: 0.98,
     depthWrite: false,
   });
-  const innerMat = physical(GALLERY.flameCore, {
-    roughness: 0.12,
+  const innerMat = physical(0xffe3a0, {
+    roughness: 0.1,
     clearcoat: 0,
-    emissive: 0xffa11f,
-    emissiveIntensity: 4.1,
-    opacity: 0.96,
+    emissive: 0xffc35c,
+    emissiveIntensity: 6.3,
+    opacity: 0.98,
     depthWrite: false,
   });
   outerMat.blending = THREE.AdditiveBlending;
@@ -377,14 +381,22 @@ function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
   outer.castShadow = false;
   inner.castShadow = false;
 
-  // Same warm family as the fireplace (0xff8738), now with enough intensity
-  // to read clearly against the dark wall without introducing shadow-map cost.
-  const light = new THREE.PointLight(0xff8738, 1.85, 6.4, 2);
+  // The flame needs to light the architecture, not only itself. Use one
+  // stronger practical light for nearby geometry plus a softer source tucked
+  // against the wall to reproduce the broad amber spill from the approved
+  // reference. Both stay shadowless, so the richer look costs no shadow maps.
+  const light = new THREE.PointLight(0xff8738, 6.2, 8.2, 2);
   light.name = 'war-room-side-torch-light';
-  light.position.set(0, 0.58, 0.67);
+  light.position.set(0, 0.62, 0.7);
   light.castShadow = false;
   torch.add(light);
-  attachTorchKinetics(outer, inner, light, phase);
+
+  const wallGlow = new THREE.PointLight(0xffb15a, 2.35, 4.8, 2);
+  wallGlow.name = 'war-room-side-torch-wall-glow';
+  wallGlow.position.set(0, 0.42, 0.12);
+  wallGlow.castShadow = false;
+  torch.add(wallGlow);
+  attachTorchKinetics(outer, inner, light, wallGlow, phase);
 
   // Keep the sconce visually related to the artwork, but do not let the two
   // silhouettes touch in perspective. A slight lift makes the torch read as
@@ -436,6 +448,7 @@ export function installWarRoomMilitaryGallery(group, {
   group.userData.warRoomTorchArt = 'approved-premium-mock-v2';
   group.userData.warRoomTorchSpacing = 'gallery-breathing-room-v3';
   group.userData.warRoomTorchFire = 'hearth-bright-v3';
+  group.userData.warRoomTorchLighting = 'gallery-spill-v1';
   registerCampaignArtFinalizer(group);
   return centralReplaced + 4;
 }
