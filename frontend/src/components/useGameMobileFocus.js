@@ -51,45 +51,50 @@ export function useGameFocusBubble({ gameId, focusActive, activeMessage, activeM
   const focusBubbleTimeoutRef = useRef(null);
   const focusSeenMessageRef = useRef('');
 
+  function clearBubbleTimeout() {
+    if (focusBubbleTimeoutRef.current && typeof window !== 'undefined') {
+      window.clearTimeout(focusBubbleTimeoutRef.current);
+      focusBubbleTimeoutRef.current = null;
+    }
+  }
+
   useEffect(() => {
     setFocusBubble(null);
     focusSeenMessageRef.current = '';
-    if (focusBubbleTimeoutRef.current && typeof window !== 'undefined') {
-      window.clearTimeout(focusBubbleTimeoutRef.current);
-    }
+    clearBubbleTimeout();
   }, [gameId]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
+    if (typeof window === 'undefined') return;
     if (!focusActive) {
-      if (focusBubbleTimeoutRef.current) window.clearTimeout(focusBubbleTimeoutRef.current);
+      clearBubbleTimeout();
       setFocusBubble(null);
-      return undefined;
+      return;
     }
-    if (!activeMessageKey || focusSeenMessageRef.current === activeMessageKey) return undefined;
+    if (!activeMessageKey || focusSeenMessageRef.current === activeMessageKey) return;
 
     focusSeenMessageRef.current = activeMessageKey;
     setFocusBubble(activeMessage);
-    if (focusBubbleTimeoutRef.current) window.clearTimeout(focusBubbleTimeoutRef.current);
-    focusBubbleTimeoutRef.current = window.setTimeout(() => setFocusBubble(null), FOCUS_BUBBLE_MS);
-    return () => {
-      if (focusBubbleTimeoutRef.current) window.clearTimeout(focusBubbleTimeoutRef.current);
-    };
-  }, [focusActive, activeMessageKey]);
+    clearBubbleTimeout();
+    focusBubbleTimeoutRef.current = window.setTimeout(() => {
+      focusBubbleTimeoutRef.current = null;
+      setFocusBubble(null);
+    }, FOCUS_BUBBLE_MS);
+  }, [focusActive, activeMessageKey, activeMessage]);
 
   useEffect(() => () => {
-    if (focusBubbleTimeoutRef.current && typeof window !== 'undefined') {
-      window.clearTimeout(focusBubbleTimeoutRef.current);
-    }
+    clearBubbleTimeout();
   }, []);
 
   return {
     focusBubble,
     markCurrentMessageSeen(key) {
       focusSeenMessageRef.current = key || '';
+      clearBubbleTimeout();
       setFocusBubble(null);
     },
     clearFocusBubble() {
+      clearBubbleTimeout();
       setFocusBubble(null);
     },
   };
