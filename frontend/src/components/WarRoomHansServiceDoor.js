@@ -55,6 +55,7 @@ export function ensureWarRoomHansServiceDoor(root, {
   group.name = 'war-room-hans-service-door';
   group.userData.warRoomArchitecture = 'service-door';
   group.userData.warRoomHansServiceDoor = HANS_SERVICE_DOOR_VERSION;
+  group.userData.warRoomHansDoorSwing = 'into-service-corridor-v1';
   group.userData.side = side;
 
   // A dark inset just inside the side wall sells a real opening without adding
@@ -118,7 +119,9 @@ export function ensureWarRoomHansServiceDoor(root, {
     side,
     doorZ,
     closedRotation: 0,
-    openRotation: -side * towardBoard * 0.96,
+    // Swing away from the War Room centre and into the service corridor. This
+    // keeps the leaf out of Hans' walking lane and out of the playable room.
+    openRotation: side * towardBoard * 0.96,
   };
   group.userData.refs = refs;
   setWarRoomHansServiceDoorOpen(refs, 0);
