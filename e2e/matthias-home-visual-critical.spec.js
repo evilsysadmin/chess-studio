@@ -159,10 +159,12 @@ async function expectThreeScene(corner, profile, label, { minReach = 0, activity
 }
 
 for (const [hour, profile, label, minReach, activityProp] of [
+  [6, 'sip', 'primer café', .2, 'cup'],
   [7, 'sip', 'desayuno y prensa', .25, 'breakfast'],
   [12, 'bite', 'comida táctica', .3, 'ration'],
   [16, 'write', 'operación y notas', 0, 'write'],
   [17, 'dossier', 'auditoría del expediente', 0, 'dossier'],
+  [19, 'sip', 'cervezota reglamentaria', .2, 'beer'],
   [22, 'think', 'partida privada', 0, 'chess'],
   [23, 'read', 'estudio y lectura', 0, 'book'],
   [2, 'sleep', 'sueño', 0, 'blanket'],
