@@ -14,6 +14,8 @@ import { attachWarRoomCompositionRootDriver } from './WarRoomCompositionRootDriv
 import { armWarRoomOneShotHookRetirement } from './WarRoomDeferredFinalizer.js';
 import { installWarRoomMilitaryGallery } from './WarRoomMilitaryGallery.js';
 
+const TORCH_WALL_WASH_VERSION = 'hearth-contour-v2';
+
 function materialList(object) {
   if (!object?.material) return [];
   return Array.isArray(object.material) ? object.material : [object.material];
@@ -91,6 +93,84 @@ function addMuseumSideKey(group, { side, wallZ, towardBoard }) {
   return light;
 }
 
+export function tuneWarRoomGalleryTorchWallWash(group) {
+  if (!group) return 0;
+  let tuned = 0;
+
+  for (const side of ['left', 'right']) {
+    const torch = group.getObjectByName?.(`war-room-side-torch-${side}`);
+    if (!torch || torch.userData.warRoomTorchWallWash === TORCH_WALL_WASH_VERSION) continue;
+
+    const halo = torch.getObjectByName?.('war-room-side-torch-wall-halo');
+    if (halo?.material) {
+      halo.material.color?.setHex?.(0xff7622);
+      halo.material.opacity = 0.88;
+      halo.material.toneMapped = false;
+      halo.material.needsUpdate = true;
+      halo.scale.set(1.55, 1.48, 1);
+
+      const innerHalo = halo.clone();
+      innerHalo.name = 'war-room-side-torch-wall-halo-inner';
+      innerHalo.material = halo.material.clone();
+      innerHalo.material.color?.setHex?.(0xffb24d);
+      innerHalo.material.opacity = 0.68;
+      innerHalo.material.toneMapped = false;
+      innerHalo.material.needsUpdate = true;
+      innerHalo.scale.set(0.78, 0.78, 1);
+      innerHalo.position.z += 0.004;
+      innerHalo.renderOrder = Math.max(2, Number(halo.renderOrder || 0) + 1);
+      innerHalo.castShadow = false;
+      innerHalo.receiveShadow = false;
+      torch.add(innerHalo);
+    }
+
+    const outer = torch.getObjectByName?.('war-room-side-torch-flame-outer');
+    const inner = torch.getObjectByName?.('war-room-side-torch-flame-inner');
+    for (const [mesh, color, emissive] of [
+      [outer, 0xff9634, 0xff4d0b],
+      [inner, 0xffd77f, 0xffad42],
+    ]) {
+      const material = mesh?.material;
+      if (!material) continue;
+      material.color?.setHex?.(color);
+      material.emissive?.setHex?.(emissive);
+      material.toneMapped = false;
+      material.needsUpdate = true;
+    }
+
+    const light = torch.getObjectByName?.('war-room-side-torch-light');
+    const wallGlow = torch.getObjectByName?.('war-room-side-torch-wall-glow');
+    if (light) {
+      light.color?.setHex?.(0xff7424);
+      light.distance = Math.max(Number(light.distance || 0), 10.5);
+      light.intensity *= 1.3;
+    }
+    if (wallGlow) {
+      wallGlow.color?.setHex?.(0xffa442);
+      wallGlow.distance = Math.max(Number(wallGlow.distance || 0), 7.4);
+      wallGlow.intensity *= 2.1;
+    }
+
+    // Gallery flame kinetics restores the captured base intensity every frame.
+    // Keep the wall wash boost after that reset so the contour does not vanish
+    // as soon as the first flicker tick runs.
+    if (outer?.onBeforeRender && !outer.userData.warRoomTorchWallWashHook) {
+      const original = outer.onBeforeRender;
+      outer.onBeforeRender = (...args) => {
+        original(...args);
+        if (light) light.intensity *= 1.3;
+        if (wallGlow) wallGlow.intensity *= 2.1;
+      };
+      outer.userData.warRoomTorchWallWashHook = TORCH_WALL_WASH_VERSION;
+    }
+
+    torch.userData.warRoomTorchWallWash = TORCH_WALL_WASH_VERSION;
+    tuned += 1;
+  }
+
+  return tuned;
+}
+
 export function applyWarRoomPracticalLighting(group, {
   wallZ,
   towardBoard,
@@ -115,6 +195,7 @@ export function applyWarRoomPracticalLighting(group, {
   installWarRoomCommandDeskStudy(group, { towardBoard, coarsePointer });
   installWarRoomCommandDeskLuxury(group, { towardBoard, coarsePointer });
   installWarRoomMilitaryGallery(group, { wallZ, towardBoard, coarsePointer });
+  tuneWarRoomGalleryTorchWallWash(group);
 
   // Desktop static work shares the painting canvas and gets exactly one first
   // paint before the whole static chain becomes a no-op. Coarse rendering has
