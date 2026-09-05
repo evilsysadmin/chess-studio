@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="3072" height="256" viewBox="0 0 3072 256">
+<defs>
+  <linearGradient id="armor" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#626b76"/><stop offset=".55" stop-color="#343b44"/><stop offset="1" stop-color="#171b20"/></linearGradient>
+  <linearGradient id="red" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e27a59"/><stop offset="1" stop-color="#711f1c"/></linearGradient>
+  <linearGradient id="ivory" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#f1e3c9"/><stop offset="1" stop-color="#b3a184"/></linearGradient>
+  <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7c8b99"/><stop offset="1" stop-color="#2b333c"/></linearGradient>
+  <g id="pawnBody">
+    <path d="M88 192 Q90 219 110 225 H143 Q165 220 164 192 L153 175 H98Z" fill="url(#armor)" stroke="#080a0c" stroke-width="7"/>
+    <path d="M95 176 Q106 144 126 141 Q146 143 157 176Z" fill="url(#armor)" stroke="#080a0c" stroke-width="7"/>
+    <circle cx="126" cy="113" r="32" fill="url(#ivory)" stroke="#080a0c" stroke-width="7"/>
+    <path d="M99 99 Q114 83 144 86 L155 100Z" fill="#353d46" stroke="#080a0c" stroke-width="6"/>
+    <rect x="99" y="91" width="59" height="13" rx="5" fill="url(#red)" stroke="#080a0c" stroke-width="5"/>
+    <path d="M109 110 L120 106" stroke="#15181b" stroke-width="5" stroke-linecap="round"/><path d="M136 106 L147 111" stroke="#15181b" stroke-width="5" stroke-linecap="round"/>
+    <ellipse cx="116" cy="118" rx="4" ry="5" fill="#101112"/><ellipse cx="142" cy="118" rx="4" ry="5" fill="#101112"/>
+    <path d="M117 138 Q130 134 143 139" fill="none" stroke="#5b302b" stroke-width="4" stroke-linecap="round"/>
+    <path d="M151 157 L205 151 L212 163 L158 173Z" fill="url(#steel)" stroke="#080a0c" stroke-width="6"/><rect x="204" y="149" width="27" height="9" rx="3" fill="#20262c" stroke="#080a0c" stroke-width="5"/>
+  </g>
+  <g id="knightCrest"><path d="M108 87 Q123 55 148 82 L141 98Z" fill="#5c6570" stroke="#080a0c" stroke-width="6"/><path d="M111 76 L91 56 L119 69Z" fill="url(#red)" stroke="#080a0c" stroke-width="5"/></g>
+  <g id="rookBody">
+    <ellipse cx="126" cy="227" rx="69" ry="12" fill="#000" opacity=".32"/>
+    <path d="M69 196 Q72 224 97 228 H157 Q181 224 184 196 L169 171 H84Z" fill="url(#armor)" stroke="#080a0c" stroke-width="8"/>
+    <rect x="78" y="118" width="99" height="66" rx="12" fill="url(#armor)" stroke="#080a0c" stroke-width="8"/>
+    <path d="M79 115 L94 78 H112 V63 H131 V78 H149 V63 H166 V116Z" fill="#48515c" stroke="#080a0c" stroke-width="8"/>
+    <rect x="103" y="100" width="47" height="11" rx="4" fill="url(#red)" stroke="#080a0c" stroke-width="4"/>
+    <path d="M146 141 L213 135 L219 149 L151 155Z" fill="url(#steel)" stroke="#080a0c" stroke-width="7"/><rect x="210" y="133" width="31" height="10" rx="3" fill="#20262c" stroke="#080a0c" stroke-width="5"/>
+  </g>
+  <g id="shadow"><ellipse cx="126" cy="229" rx="52" ry="11" fill="#000" opacity=".31"/></g>
+</defs>
+<rect width="3072" height="256" fill="none"/>
+<g transform="translate(0 0)"><use xlink:href="#shadow"/><path d="M105 194 L92 220" stroke="#1a1e23" stroke-width="16" stroke-linecap="round"/><path d="M148 194 L162 220" stroke="#1a1e23" stroke-width="16" stroke-linecap="round"/><use xlink:href="#pawnBody"/></g>
+<g transform="translate(256 -2)"><use xlink:href="#shadow"/><path d="M108 193 Q90 203 76 220" stroke="#1a1e23" stroke-width="16" stroke-linecap="round"/><path d="M145 193 Q159 203 178 221" stroke="#1a1e23" stroke-width="16" stroke-linecap="round"/><g transform="rotate(-2 126 170)"><use xlink:href="#pawnBody"/></g></g>
+<g transform="translate(512 -5)"><use xlink:href="#shadow"/><path d="M108 193 Q104 208 104 223" stroke="#1a1e23" stroke-width="16" stroke-linecap="round"/><path d="M145 193 Q148 208 145 223" stroke="#1a1e23" stroke-width="16" stroke-linecap="round"/><use xlink:href="#pawnBody"/></g>
+<g transform="translate(768 -2)"><use xlink:href="#shadow"/><path d="M108 193 Q125 202 178 220" stroke="#1a1e23" stroke-width="16" stroke-linecap="round"/><path d="M145 193 Q128 204 76 221" stroke="#1a1e23" stroke-width="16" stroke-linecap="round"/><g transform="rotate(2 126 170)"><use xlink:href="#pawnBody"/></g></g>
+<g transform="translate(1024 0)"><use xlink:href="#shadow"/><path d="M105 194 L90 220" stroke="#1a1e23" stroke-width="17" stroke-linecap="round"/><path d="M148 194 L165 220" stroke="#1a1e23" stroke-width="17" stroke-linecap="round"/><use xlink:href="#pawnBody"/><use xlink:href="#knightCrest"/></g>
+<g transform="translate(1280 -4)"><use xlink:href="#shadow"/><path d="M107 192 Q82 199 65 217" stroke="#1a1e23" stroke-width="17" stroke-linecap="round"/><path d="M146 192 Q162 200 188 219" stroke="#1a1e23" stroke-width="17" stroke-linecap="round"/><g transform="rotate(-4 126 170)"><use xlink:href="#pawnBody"/><use xlink:href="#knightCrest"/></g></g>
+<g transform="translate(1536 -8)"><ellipse cx="126" cy="234" rx="44" ry="8" fill="#000" opacity=".2"/><path d="M107 192 Q99 204 87 215" stroke="#1a1e23" stroke-width="17" stroke-linecap="round"/><path d="M146 192 Q155 204 171 215" stroke="#1a1e23" stroke-width="17" stroke-linecap="round"/><use xlink:href="#pawnBody"/><use xlink:href="#knightCrest"/></g>
+<g transform="translate(1792 -4)"><use xlink:href="#shadow"/><path d="M107 192 Q126 199 189 217" stroke="#1a1e23" stroke-width="17" stroke-linecap="round"/><path d="M146 192 Q123 201 65 219" stroke="#1a1e23" stroke-width="17" stroke-linecap="round"/><g transform="rotate(4 126 170)"><use xlink:href="#pawnBody"/><use xlink:href="#knightCrest"/></g></g>
+<g transform="translate(2048 0)"><use xlink:href="#rookBody"/></g>
+<g transform="translate(2304 -1)"><g transform="rotate(-.7 126 190)"><use xlink:href="#rookBody"/></g></g>
+<g transform="translate(2560 -2)"><g transform="translate(0 -1)"><use xlink:href="#rookBody"/></g></g>
+<g transform="translate(2816 -1)"><g transform="rotate(.7 126 190)"><use xlink:href="#rookBody"/></g></g>
+</svg>
