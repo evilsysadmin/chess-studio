@@ -89,13 +89,14 @@ jobs:
           echo "deploy_sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
           echo "Staging admission OK: $DEPLOY_SHA sigue siendo main HEAD."
 
-  # Render configuration is backend-specific control-plane work. Keep it out of
-  # prepare so Pages and Workers AI can start as soon as the SHA is admitted.
-  render_reconcile:
-    name: Render · reconcile staging service
+  # Render reconcile and exact deploy stay in one runner. Pages and Workers AI
+  # still start directly after admission, while backend avoids a second runner
+  # allocation + duplicate checkout before the real Render build can begin.
+  backend:
+    name: Backend · exact Render generation
     needs: prepare
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 20
     environment:
       name: staging
       url: https://staging.chess-studio.shadowops.dpdns.org
@@ -115,28 +116,11 @@ jobs:
         id: render_bootstrap
         run: python3 scripts/render_staging_bootstrap.py
 
-  backend:
-    name: Backend · exact Render generation
-    needs: [prepare, render_reconcile]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
-    environment:
-      name: staging
-      url: https://staging.chess-studio.shadowops.dpdns.org
-    env:
-      DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_SERVICE_ID: ${{ needs.render_reconcile.outputs.render_service_id }}
-
-    steps:
-      - name: Checkout CI-approved commit
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ env.DEPLOY_SHA }}
-
       - name: Deploy exact backend commit to Render staging
         id: render_deploy
         shell: bash
+        env:
+          RENDER_SERVICE_ID: ${{ steps.render_bootstrap.outputs.service_id }}
         run: |
           set -euo pipefail
           [[ -n "$RENDER_SERVICE_ID" ]] || { echo '::error::Bootstrap no devolvió service_id'; exit 1; }
@@ -163,6 +147,8 @@ jobs:
 
       - name: Wait for exact Render staging deploy
         shell: bash
+        env:
+          RENDER_SERVICE_ID: ${{ steps.render_bootstrap.outputs.service_id }}
         run: |
           set -euo pipefail
           deploy_id='${{ steps.render_deploy.outputs.deploy_id }}'
@@ -504,7 +490,7 @@ jobs:
 
   smoke:
     name: Browser smoke · ${{ matrix.label }}
-    needs: [prepare, render_reconcile, parity]
+    needs: [prepare, backend, parity]
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     environment:
@@ -523,7 +509,7 @@ jobs:
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_SERVICE_ID: ${{ needs.render_reconcile.outputs.render_service_id }}
+      RENDER_SERVICE_ID: ${{ needs.backend.outputs.render_service_id }}
 
     steps:
       - name: Checkout CI-approved commit
@@ -635,5 +621,5 @@ jobs:
             echo '- Live browser smoke: `War Room live + F5 authority · paralelos · OK`'
             echo '- Visual evidence: `vídeos Chromium retenidos 7 días en staging-live-playwright-*`'
             echo '- Identidades CI: `aisladas por spec, eliminadas y verificadas`'
-            echo '- Deploy lanes: `Render reconcile/backend + Pages + Worker arrancan en paralelo tras admission`'
+            echo '- Deploy lanes: `Backend (reconcile + deploy) + Pages + Worker arrancan en paralelo tras admission`'
           } >> "$GITHUB_STEP_SUMMARY"
