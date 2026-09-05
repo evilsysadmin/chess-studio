@@ -463,7 +463,7 @@ export default function Menu({
           </button>
         </div>
 
-        <details className="friendly-disclosure home-learning-more" open>
+        <details className="friendly-disclosure home-learning-more" open={showHomeGuide && onboarding.next === 'puzzle' ? true : undefined}>
           <summary>Más aprendizaje y herramientas</summary>
           <div className="friendly-disclosure-body menu-grid compact-mode-grid home-tools-grid">
             <TutorialModeCard tutorialId="puzzles" className={`menu-card accent-hint home-mode-card home-tool-card${onboardingTargetClass('puzzle')}`} onClick={onPuzzle}>
