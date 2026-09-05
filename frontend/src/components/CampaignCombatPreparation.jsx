@@ -6,6 +6,7 @@ import CampaignOperationSteps from './CampaignOperationSteps.jsx';
 import CampaignArmyGlance from './CampaignArmyGlance.jsx';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import { deploymentSummary } from '../combatDeployment.js';
+import { buildTacticalDeploymentBrief } from '../combatTacticalDeployment.js';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
 
 export default function CampaignCombatPreparation({
@@ -22,7 +23,6 @@ export default function CampaignCombatPreparation({
   autoLevelUpEnabled,
   setAutoLevelUpEnabled,
   roster,
-  rosterCount,
   deadCount,
   handleStartBattleClick,
   handleQuickStartBattle,
@@ -51,9 +51,9 @@ export default function CampaignCombatPreparation({
   onOpenMarketFromDeployment,
 }) {
   const deploy = deploymentSummary(roster);
+  const tactical = buildTacticalDeploymentBrief(roster, { difficultyBalance });
   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-deployment']?.seen);
   const missing = Math.max(0, deploy.totalSlots - deploy.assignedCount);
-  const veteranCount = Object.values(roster?.pieces || {}).filter((piece) => piece?.alive !== false && ((piece?.strengthPoints || 0) + (piece?.speedPoints || 0)) > 0).length;
   const intelLabel = encounterIntel?.level === 0
     ? 'Sin estimar'
     : encounterIntel?.level === 1
@@ -84,7 +84,8 @@ export default function CampaignCombatPreparation({
         </header>
 
         <div className="campaign-preparation-quick-status" aria-label="Resumen de preparación">
-          <span>Formación <b>{deploy.assignedCount}/{deploy.totalSlots}</b></span>
+          <span>Formación <b>{tactical.deployedCount}/{tactical.battleSlots}</b></span>
+          {tactical.reserveCount > 0 && <span>Reserva <b>{tactical.reserveCount}</b></span>}
           {deadCount > 0 && <span className="danger-text">Bajas <b>{deadCount}</b></span>}
           <span>Amenaza <b>{intelLabel}</b></span>
           <button type="button" className="campaign-market-link" onClick={onOpenMarket}>Mercado · {roster.credits || 0} cr →</button>
@@ -146,7 +147,10 @@ export default function CampaignCombatPreparation({
               <span>Auto-subida al terminar</span>
             </label>
             <span>Dificultad: <b>{encounterIntel && encounterIntel.level < 2 ? intelLabel : (difficultyLabel || difficulty)}</b></span>
-            <span>Efectivos: <b>{rosterCount}</b> · Reserva: <b>{deploy.reserveCount}</b> · Veteranos: <b>{veteranCount}</b> · Créditos: <b>{roster.credits || 0}</b></span>
+            {tactical.threatBonus > 0 && !(encounterIntel && encounterIntel.level < 2) && (
+              <span>Ajuste de fuerza desplegada: <b>+{tactical.threatBonus}</b> · {tactical.threatTier || 'amenaza activa'}</span>
+            )}
+            <span>Barracón: <b>{tactical.barracksCount}</b> · Desplegados: <b>{tactical.deployedCount}</b> · Reserva: <b>{tactical.reserveCount}</b>{tactical.protectedVeteranCount > 0 ? <> · Veteranos protegidos: <b>{tactical.protectedVeteranCount}</b></> : null} · Créditos: <b>{roster.credits || 0}</b></span>
             <button type="button" className="secondary-btn combat-reset-link" onClick={handleResetRoster}>Reiniciar progreso persistente</button>
           </div>
           <CampaignArmyGlance roster={roster} />
