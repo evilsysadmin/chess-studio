@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { isDeploymentReadyForBattle } from './combatDeployment.js';
-import { deploymentSelectionFingerprint } from './combatTacticalDeployment.js';
+import { deploymentSelectionFingerprint, freezeTacticalRosterSnapshot } from './combatTacticalDeployment.js';
 
 export function deploymentStartDecision({ deadCount, requireConfirmation, confirmed, ready, confirmationMatches = true }) {
   if (deadCount > 0) return 'open';
@@ -19,11 +19,13 @@ export function useCombatDeploymentGate({
 }) {
   const [showDeployment, setShowDeployment] = useState(false);
   const initiallyConfirmed = !requireDeploymentConfirmation || Boolean(restoredSession);
+  const initialConfirmedRoster = initiallyConfirmed && requireDeploymentConfirmation
+    ? freezeTacticalRosterSnapshot(restoredSession?.battleStartRoster || roster)
+    : null;
   const [deploymentConfirmed, setDeploymentConfirmedState] = useState(initiallyConfirmed);
+  const [confirmedRosterSnapshot, setConfirmedRosterSnapshot] = useState(initialConfirmedRoster);
   const [confirmedDeploymentFingerprint, setConfirmedDeploymentFingerprint] = useState(() => (
-    initiallyConfirmed && requireDeploymentConfirmation
-      ? deploymentSelectionFingerprint(roster)
-      : null
+    initialConfirmedRoster ? deploymentSelectionFingerprint(initialConfirmedRoster) : null
   ));
   const currentDeploymentFingerprint = deploymentSelectionFingerprint(roster);
   const confirmationMatches = !requireDeploymentConfirmation
@@ -31,17 +33,25 @@ export function useCombatDeploymentGate({
     || confirmedDeploymentFingerprint === currentDeploymentFingerprint;
 
   // Todos los consumidores externos usan este setter, así que invalidar una
-  // confirmación también borra su huella. Si alguien vuelve a confirmar de
-  // forma explícita, la confirmación queda ligada a la formación ACTUAL.
+  // confirmación también borra su huella y snapshot. Una confirmación explícita
+  // congela el roster actual antes de que cualquier otro estado React cambie.
   function setDeploymentConfirmed(value) {
     const next = typeof value === 'function' ? Boolean(value(deploymentConfirmed)) : Boolean(value);
     setDeploymentConfirmedState(next);
-    setConfirmedDeploymentFingerprint(next && requireDeploymentConfirmation ? currentDeploymentFingerprint : null);
+    if (!next || !requireDeploymentConfirmation) {
+      setConfirmedDeploymentFingerprint(null);
+      setConfirmedRosterSnapshot(null);
+      return;
+    }
+    const frozen = freezeTacticalRosterSnapshot(roster);
+    setConfirmedRosterSnapshot(frozen);
+    setConfirmedDeploymentFingerprint(deploymentSelectionFingerprint(frozen));
   }
 
   function invalidateDeploymentConfirmation() {
     setDeploymentConfirmedState(false);
     setConfirmedDeploymentFingerprint(null);
+    setConfirmedRosterSnapshot(null);
   }
 
   function handleStartBattleClick(onStart) {
@@ -60,14 +70,21 @@ export function useCombatDeploymentGate({
       setShowDeployment(true);
       return false;
     }
-    onStart?.();
+    if (requireDeploymentConfirmation) {
+      const frozen = confirmedRosterSnapshot || freezeTacticalRosterSnapshot(roster);
+      onStart?.({ rosterOverride: frozen, deploymentValidated: true });
+    } else {
+      onStart?.();
+    }
     return true;
   }
 
   function handleConfirmDeployment() {
     if (!isDeploymentReadyForBattle(roster)) return false;
+    const frozen = freezeTacticalRosterSnapshot(roster);
     setDeploymentConfirmedState(true);
-    setConfirmedDeploymentFingerprint(currentDeploymentFingerprint);
+    setConfirmedRosterSnapshot(frozen);
+    setConfirmedDeploymentFingerprint(deploymentSelectionFingerprint(frozen));
     setShowDeployment(false);
     return true;
   }
