@@ -3,6 +3,7 @@ import { setProfileStorageItem } from './profileKeys.js';
 import { markMatthiasHomeSessionSeen, matthiasHomeSessionSeen } from './matthiasSession.js';
 import { matthiasTimeScene } from './matthiasTime.js';
 import { buildMatthiasDeskArtifacts } from './matthiasDossier.js';
+import { buildMatthiasEpisodicHomeVisit, isMatthiasEpisodicVisitKind } from './matthiasEpisodeHome.js';
 import { matthiasSessionLabel } from './matthiasSessionContext.js';
 
 export const MATTHIAS_HOME_LAST_SHOWN_KEY = 'chess-study-matthias-home-last-shown-v1';
@@ -165,6 +166,9 @@ export function buildMatthiasHomeVisit({ rivalry = {}, memory = null, hasSavedGa
       actionLabel: 'Abrir expediente',
     };
   }
+  const episodicVisit = buildMatthiasEpisodicHomeVisit(memory);
+  if (episodicVisit) return episodicVisit;
+
   const memoryVisit = goal ? {
     kind: 'goal',
     text: `Mi obsesión actual: ${goal.label}. Sí, sigo acordándome. Qué desgracia para ti.`,
@@ -259,6 +263,9 @@ export function buildMatthiasHomeCardModel({ visit = null, memory = null, sessio
     goal: 'MATTHIAS · OBSESIÓN ACTUAL',
     incident: 'MATTHIAS · DEL EXPEDIENTE',
     rivalry: 'MATTHIAS · RIVAL RESIDENTE',
+    'episodic-incident': 'MATTHIAS · DEL EXPEDIENTE',
+    'episodic-rivalry': 'MATTHIAS · RIVAL RESIDENTE',
+    'episodic-opening': 'MATTHIAS · APERTURA NÉMESIS',
     'memory-shame': 'MATTHIAS · HALL OF SHAME',
     'memory-fame': 'MATTHIAS · HALL OF FAME',
     'opening-memory': 'MATTHIAS · APERTURA NÉMESIS',
@@ -289,7 +296,9 @@ export function shouldShowMatthiasHome({ hasOpenOverlay = false, hasPriorityActi
   // A medida que conoce al jugador deja de interrumpir por banalidades. Los
   // objetivos/hitos reales conservan algo más de margen porque sí aportan
   // continuidad; la charla genérica se vuelve deliberadamente más escasa.
-  const meaningful = visitKind !== 'generic';
+  // Un callback episódico cambia el contenido de una visita, no compra permiso
+  // para aparecer más a menudo: usa exactamente el umbral genérico del perfil.
+  const meaningful = visitKind !== 'generic' && !isMatthiasEpisodicVisitKind(visitKind);
   const genericThreshold = {
     newcomer: 0.40,
     acquainted: 0.32,
