@@ -1,5 +1,6 @@
 @import './HomeCastleFloor.css';
 @import './HomeGreatHallCastleArchitecture.css';
+@import './HomePremiumFacade.css';
 
 /* Home Great Hall modal containment hotfix.
  *
@@ -13,4 +14,14 @@ body .menu.home-friendly > .modal-backdrop {
   position: fixed;
   inset: 0;
   z-index: 140;
+}
+
+/* The premium desktop masthead is its own stacking context. Keep that context
+ * above ordinary Hall content so the account popover remains clickable even
+ * when the quick-start guide begins directly underneath it. Modals still win
+ * through the explicit z-index above. */
+@media (min-width: 901px) {
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) {
+    z-index: 12;
+  }
 }

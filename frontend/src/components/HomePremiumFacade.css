@@ -1,0 +1,415 @@
+/* Home premium facade · approved cinematic mock
+ *
+ * This layer does not change product logic. It visually binds the global
+ * masthead, status chips, music/service dock, resident Matthias and the Great
+ * Hall into one architectural composition on desktop. Mobile keeps the calmer
+ * existing contract.
+ */
+
+@media (min-width: 901px) {
+  body:has(.home-friendly) {
+    background:
+      radial-gradient(circle at 50% 0%, rgba(33,48,66,.26), transparent 34rem),
+      linear-gradient(180deg, #0d1219 0, #111720 28rem, #151a23 100%);
+  }
+
+  body:has(.home-friendly) .app-shell {
+    isolation: isolate;
+    overflow: visible;
+    padding-top: 0;
+  }
+
+  /* One continuous architectural canopy behind the product header. */
+  body:has(.home-friendly) .app-shell::before {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: clamp(330px, 28vw, 470px);
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 71% 18%, rgba(232,222,188,.13) 0 1.7rem, rgba(70,87,103,.08) 1.8rem 7rem, transparent 12rem),
+      radial-gradient(ellipse 35% 92% at 50% 4%, rgba(11,18,27,.18) 0 44%, rgba(2,5,9,.76) 45% 50%, transparent 51%),
+      linear-gradient(90deg,
+        transparent 0 7%, rgba(75,13,32,.74) 7.1% 16.3%, rgba(18,8,13,.88) 16.5% 18.3%, transparent 18.5% 81.5%,
+        rgba(18,8,13,.88) 81.7% 83.5%, rgba(75,13,32,.74) 83.7% 92.9%, transparent 93%),
+      linear-gradient(90deg,
+        #14181b 0 3.7%, #2a2d2c 3.8% 5.2%, #101315 5.3% 7.0%, transparent 7.1% 22.4%,
+        rgba(38,40,39,.96) 22.5% 25.3%, rgba(12,15,16,.96) 25.4% 27.0%, transparent 27.1% 73.0%,
+        rgba(12,15,16,.96) 73.1% 74.7%, rgba(38,40,39,.96) 74.8% 77.6%, transparent 77.7% 92.9%,
+        #101315 93% 94.7%, #2a2d2c 94.8% 96.2%, #14181b 96.3% 100%),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 68px),
+      linear-gradient(180deg, #0d141d 0%, #101721 48%, #0a0e14 100%);
+    box-shadow:
+      inset 0 -7rem 9rem rgba(0,0,0,.58),
+      inset 0 1px rgba(255,255,255,.025);
+    border-bottom: 1px solid rgba(194,150,57,.42);
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact),
+  body:has(.home-friendly) .menu.home-friendly {
+    position: relative;
+    z-index: 2;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) {
+    width: calc(100vw - max(2.5rem, calc(var(--shell-gutter) * 2)));
+    max-width: 1840px;
+    min-height: clamp(315px, 25vw, 405px);
+    margin: 0 auto;
+    padding: clamp(4.7rem, 7vw, 6.3rem) clamp(9rem, 14vw, 15.5rem) clamp(3.1rem, 4vw, 4.1rem);
+    justify-content: center;
+    gap: clamp(.95rem, 1.5vw, 1.3rem);
+    border-bottom: 1px solid rgba(198,161,74,.48);
+  }
+
+  /* Central royal bay. The rounded top is intentionally restrained: castle,
+   * not cathedral. */
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact)::before {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    inset: clamp(1.15rem, 2vw, 1.7rem) 23% 0;
+    border: 1px solid rgba(151,133,93,.28);
+    border-bottom: 0;
+    border-radius: 46% 46% 0 0 / 42% 42% 0 0;
+    background:
+      radial-gradient(circle at 50% 10%, rgba(58,82,105,.13), transparent 26rem),
+      linear-gradient(180deg, rgba(4,8,13,.18), rgba(3,7,11,.54));
+    box-shadow:
+      inset 0 0 0 8px rgba(0,0,0,.08),
+      0 0 58px rgba(0,0,0,.28);
+    pointer-events: none;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact)::after {
+    content: '⚜';
+    position: absolute;
+    z-index: 4;
+    left: 50%;
+    bottom: -25px;
+    width: 50px;
+    height: 50px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(198,161,74,.58);
+    border-radius: 50%;
+    background: linear-gradient(180deg, #161c24, #0c1118);
+    color: #d2aa45;
+    font-size: 1.05rem;
+    transform: translateX(-50%);
+    box-shadow: 0 10px 24px rgba(0,0,0,.34), inset 0 1px rgba(255,255,255,.045);
+    pointer-events: none;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) > * {
+    position: relative;
+    z-index: 3;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-top-row {
+    min-height: 0;
+    align-items: center;
+    justify-content: center;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-text {
+    display: grid;
+    justify-items: center;
+    gap: .42rem;
+    max-width: 920px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-text::before {
+    content: '♛';
+    display: block;
+    margin-bottom: .04rem;
+    color: #cfa33b;
+    font-size: clamp(1rem, 1.25vw, 1.3rem);
+    line-height: 1;
+    text-shadow: 0 0 18px rgba(207,163,59,.18);
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-kicker {
+    color: #d7ad48;
+    font-size: clamp(.67rem, .72vw, .8rem);
+    letter-spacing: .34em;
+    text-shadow: 0 1px 12px rgba(0,0,0,.7);
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) h1 {
+    margin: 0;
+    color: #f1e5c7;
+    font-size: clamp(3.5rem, 5.5vw, 5.75rem);
+    font-weight: 560;
+    line-height: .96;
+    letter-spacing: -.045em;
+    text-shadow: 0 3px 18px rgba(0,0,0,.56);
+  }
+
+  /* Progress reads as three restrained brass plaques, not dashboard chips. */
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .player-status-bar,
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .player-status-bar-compact {
+    justify-content: center;
+    gap: clamp(.48rem, .8vw, .72rem);
+    margin-top: .2rem;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .status-chip,
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .status-chip.status-chip-compact {
+    width: auto;
+    min-width: 0;
+    min-height: 40px;
+    padding: .48rem .82rem;
+    align-items: center;
+    gap: .45rem;
+    border: 1px solid rgba(198,161,74,.47);
+    border-radius: 999px;
+    background: rgba(7,11,16,.58);
+    box-shadow: inset 0 1px rgba(255,255,255,.035), 0 8px 24px rgba(0,0,0,.16);
+    backdrop-filter: blur(7px);
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .status-chip-body {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: .38rem;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .status-chip-label {
+    color: rgba(225,215,192,.68);
+    font-size: .57rem;
+    letter-spacing: .08em;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .status-chip-value,
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .status-chip-compact b {
+    color: #e0b24c;
+    font-size: .72rem;
+  }
+
+  /* Upper-right utility cluster from the approved mock. */
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-actions {
+    position: absolute;
+    z-index: 8;
+    top: clamp(1rem, 1.5vw, 1.45rem);
+    right: clamp(1rem, 1.6vw, 1.55rem);
+    display: flex;
+    align-items: flex-start;
+    gap: .65rem;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-account-stack {
+    display: grid;
+    justify-items: end;
+    gap: .48rem;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-feedback-trigger,
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-account-trigger,
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-release-trigger {
+    min-height: 42px;
+    border: 1px solid rgba(151,133,93,.35);
+    border-radius: 12px;
+    background: rgba(8,12,18,.64);
+    color: #e7dcc3;
+    box-shadow: inset 0 1px rgba(255,255,255,.035), 0 10px 24px rgba(0,0,0,.18);
+    backdrop-filter: blur(8px);
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-feedback-trigger {
+    padding: .55rem .9rem;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-account-trigger {
+    padding: .42rem .72rem .42rem .46rem;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-release-trigger {
+    min-height: 34px;
+    padding: .4rem .7rem;
+    border-color: rgba(198,161,74,.45);
+    color: #d7aa43;
+    font-size: .64rem;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-account-avatar {
+    border-color: rgba(207,163,59,.62);
+    background: rgba(207,163,59,.11);
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-feedback-trigger:hover,
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-account-trigger:hover,
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-release-trigger:hover,
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-feedback-trigger:focus-visible,
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-account-trigger:focus-visible,
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-release-trigger:focus-visible {
+    border-color: rgba(217,177,78,.72);
+    background: rgba(19,21,23,.78);
+  }
+
+  /* Dock and service status become the left-side command strip. */
+  body:has(.home-friendly) .global-music-dock {
+    position: fixed;
+    z-index: 86;
+    top: max(.9rem, env(safe-area-inset-top));
+    left: max(1rem, env(safe-area-inset-left));
+    width: min(365px, calc(100vw - 2rem));
+    margin: 0;
+  }
+
+  body:has(.home-friendly) .global-music-dock:has(.music-deck-collapsed) {
+    width: min(365px, calc(100vw - 2rem));
+  }
+
+  body:has(.home-friendly) .global-music-dock .music-deck,
+  body:has(.home-friendly) .global-music-dock .live-service-status {
+    border-color: rgba(151,133,93,.4);
+    background: rgba(8,12,18,.72);
+    box-shadow: 0 12px 28px rgba(0,0,0,.24), inset 0 1px rgba(255,255,255,.03);
+    backdrop-filter: blur(9px);
+  }
+
+  body:has(.home-friendly) .global-music-dock .music-deck {
+    border-radius: 12px;
+  }
+
+  body:has(.home-friendly) .global-music-dock .live-service-status,
+  body:has(.home-friendly) .global-music-dock:has(.music-deck-collapsed) .live-service-status {
+    width: max-content;
+    max-width: 100%;
+    margin-top: .48rem;
+    padding: .42rem .66rem;
+    border-radius: 999px;
+  }
+
+  /* Matthias sits in a real left niche under the dock. */
+  body:has(.home-friendly) .matthias-resident.is-viewport {
+    top: max(9rem, calc(env(safe-area-inset-top) + 8.6rem));
+    left: max(1.2rem, env(safe-area-inset-left));
+    right: auto;
+    bottom: auto;
+    z-index: 74;
+    width: min(480px, calc(100vw - 2.4rem));
+  }
+
+  body:has(.home-friendly):has(.global-music-dock .music-deck-expanded) .matthias-resident.is-viewport {
+    top: clamp(15rem, 30vh, 19rem);
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-viewport.is-quiet {
+    width: 158px;
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-viewport .matthias-resident__character {
+    flex-basis: 158px;
+    width: 158px;
+    padding: .5rem .48rem .56rem;
+    gap: .12rem;
+    border: 1px solid rgba(198,161,74,.48);
+    border-radius: 13px;
+    background:
+      radial-gradient(circle at 50% 70%, rgba(198,161,74,.08), transparent 45%),
+      rgba(7,11,16,.79);
+    box-shadow: 0 18px 36px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.035);
+    backdrop-filter: blur(8px);
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-viewport .matthias-resident__portrait-shell {
+    width: 144px;
+    height: 164px;
+    border-color: rgba(198,161,74,.50);
+    border-radius: 10px;
+    background: rgba(4,7,11,.72);
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-viewport .matthias-resident__character strong {
+    margin-top: .2rem;
+    color: #efe1bf;
+    font-size: .68rem;
+    letter-spacing: .14em;
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-viewport .matthias-resident__character small,
+  body:has(.home-friendly) .matthias-resident.is-viewport .matthias-resident__character em {
+    max-width: 140px;
+    color: rgba(225,215,192,.64);
+    font-size: .59rem;
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-viewport .matthias-resident__bubble {
+    max-width: 300px;
+    margin-bottom: 30px;
+    border-color: rgba(198,161,74,.48);
+    background: rgba(9,13,19,.94);
+    box-shadow: 0 18px 38px rgba(0,0,0,.34);
+  }
+
+  /* The Hall attaches directly to the architectural header instead of reading
+   * as a second website card below it. */
+  body:has(.home-friendly) .menu.home-friendly {
+    margin-top: 0;
+    border-top: 0;
+    border-radius: 0;
+    background:
+      linear-gradient(180deg, rgba(11,15,20,.14), rgba(11,14,18,.72) 68%, rgba(11,14,18,.92));
+    box-shadow: 0 36px 90px rgba(0,0,0,.20);
+  }
+
+  body:has(.home-friendly) .menu.home-friendly::after {
+    content: '';
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    left: 2.5%;
+    right: 2.5%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(198,161,74,.5) 18%, rgba(198,161,74,.62) 50%, rgba(198,161,74,.5) 82%, transparent);
+    pointer-events: none;
+  }
+}
+
+/* Mid-size desktop keeps the cinematic hierarchy but protects the centre from
+ * the fixed left and right command clusters. */
+@media (min-width: 901px) and (max-width: 1220px) {
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) {
+    min-height: 300px;
+    padding-inline: 10.5rem;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) h1 {
+    font-size: clamp(3rem, 5.6vw, 4.25rem);
+  }
+
+  body:has(.home-friendly) .global-music-dock,
+  body:has(.home-friendly) .global-music-dock:has(.music-deck-collapsed) {
+    width: min(290px, calc(100vw - 2rem));
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-viewport.is-quiet {
+    width: 132px;
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-viewport .matthias-resident__character {
+    flex-basis: 132px;
+    width: 132px;
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-viewport .matthias-resident__portrait-shell {
+    width: 120px;
+    height: 138px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact),
+  body:has(.home-friendly) .global-music-dock,
+  body:has(.home-friendly) .matthias-resident.is-viewport {
+    transition: none;
+  }
+}
