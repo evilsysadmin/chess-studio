@@ -42,6 +42,8 @@ describe('PremiumWarRoomScene', () => {
     expect(desktop.name).toBe('premium-war-room-layer');
     expect(desktop.userData.premiumWarRoom).toBe(true);
     expect(desktop.userData.premiumPass).toBe('cinematic-v3-teutonic');
+    expect(desktop.userData.warRoomDesktopRetiredCurtainPelmetsOmitted).toBe(2);
+    expect(mobile.userData.warRoomDesktopRetiredCurtainPelmetsOmitted).toBeUndefined();
     expect(desktop.getObjectByName('coffered-paneling')).toBeTruthy();
     expect(crest).toBeTruthy();
     expect(crest.userData.singlePawnDisplay).toBe(true);
@@ -78,16 +80,35 @@ describe('PremiumWarRoomScene', () => {
     dispose(room);
   });
 
-  it('añade a la mesa cuero, doble rail, latón e inlay verde de mando', () => {
-    const table = buildPremiumTableLayer(theme, false);
-    const stats = sceneStats(table);
+  it('mantiene la mesa premium sin construir el atrezzo retirado en desktop ni mobile', () => {
+    const desktop = buildPremiumTableLayer(theme, false);
+    const mobile = buildPremiumTableLayer(theme, true);
+    const desktopStats = sceneStats(desktop);
+    const mobileStats = sceneStats(mobile);
+    const retiredNames = [
+      'war-table-field-folio',
+      'war-table-map-pencil',
+      'war-table-command-chronometer',
+      'matthias-command-relic',
+    ];
 
-    expect(table.name).toBe('premium-table-layer');
-    expect(table.userData.premiumPass).toBe('cinematic-v3-teutonic');
-    expect(table.getObjectByName('emerald-table-inlay')).toBeTruthy();
-    expect(stats.meshes).toBeGreaterThanOrEqual(25);
-    expect(stats.lights).toBe(0);
+    expect(desktop.name).toBe('premium-table-layer');
+    expect(desktop.userData.premiumPass).toBe('cinematic-v3-teutonic');
+    expect(desktop.userData.warRoomRetiredTableClutterMeshesOmitted).toBe(20);
+    expect(mobile.userData.warRoomRetiredTableClutterMeshesOmitted).toBe(13);
+    expect(desktop.getObjectByName('emerald-table-inlay')).toBeTruthy();
+    expect(mobile.getObjectByName('emerald-table-inlay')).toBeTruthy();
+    for (const name of retiredNames) {
+      expect(desktop.getObjectByName(name)).toBeUndefined();
+      expect(mobile.getObjectByName(name)).toBeUndefined();
+    }
+    expect(desktopStats.meshes).toBeGreaterThanOrEqual(25);
+    expect(mobileStats.meshes).toBeGreaterThanOrEqual(20);
+    expect(desktopStats.meshes).toBeGreaterThan(mobileStats.meshes);
+    expect(desktopStats.lights).toBe(0);
+    expect(mobileStats.lights).toBe(0);
 
-    dispose(table);
+    dispose(desktop);
+    dispose(mobile);
   });
 });
