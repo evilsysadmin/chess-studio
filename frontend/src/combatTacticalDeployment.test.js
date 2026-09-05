@@ -63,12 +63,25 @@ describe('Combat tactical deployment fingerprint', () => {
   });
 
   it('la copia confirmada no cambia aunque el barracón vivo se modifique después', () => {
-    const roster = loadRoster();
+    let roster = loadRoster();
+    roster = {
+      ...roster,
+      pieces: {
+        ...roster.pieces,
+        'p-a': {
+          ...(roster.pieces['p-a'] || {}),
+          alive: true,
+          strengthPoints: 3,
+          speedPoints: 0,
+          bankedXp: 0,
+        },
+      },
+    };
     const frozen = freezeTacticalRosterSnapshot(roster);
     const frozenFingerprint = deploymentSelectionFingerprint(frozen);
     roster.pieces['p-a'].strengthPoints = 99;
     roster.deployment['p-a'] = 'p-b';
-    expect(frozen.pieces['p-a'].strengthPoints).not.toBe(99);
+    expect(frozen.pieces['p-a'].strengthPoints).toBe(3);
     expect(deploymentSelectionFingerprint(frozen)).toBe(frozenFingerprint);
   });
 
