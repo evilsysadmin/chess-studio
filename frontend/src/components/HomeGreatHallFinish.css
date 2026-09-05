@@ -312,6 +312,98 @@ body .home-friendly > .home-primary-group:not(.home-modes-section)
   }
 }
 
+/* Great Hall v8 · presence over postage-stamp UI.
+ * The generic product shell deliberately caps ordinary menus at 1380px. The
+ * Great Hall is scenery and therefore needs a wider desktop contract: room
+ * first, controls second. Keep this exception local to Home. */
+@media (min-width: 1180px) {
+  body:has(.home-friendly) .menu.home-friendly {
+    width: calc(100vw - max(2.5rem, calc(var(--shell-gutter) * 2)));
+    max-width: 1840px;
+    padding-inline: clamp(1.15rem, 2.1vw, 2.5rem);
+    border-inline: 0;
+    border-radius: 0;
+    box-shadow: 0 34px 90px rgba(0,0,0,.22);
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) {
+    max-width: min(1760px, calc(100vw - max(2.5rem, calc(var(--shell-gutter) * 2))));
+    margin-bottom: clamp(.35rem, .7vw, .65rem);
+  }
+
+  body .home-friendly .home-today-card,
+  body .home-friendly .home-next-action {
+    width: 100%;
+    min-width: 0;
+    max-width: none;
+  }
+
+  body .home-friendly .home-modes-section {
+    width: min(96%, 1700px);
+    margin-top: clamp(.55rem, 1.25vh, .9rem);
+    padding-inline: clamp(.15rem, .8vw, .7rem);
+  }
+
+  body .home-friendly .home-modes-section .home-group-heading,
+  body .home-friendly .home-modes-section .home-primary-grid {
+    max-width: 1620px;
+  }
+
+  body .home-friendly .home-modes-section .home-group-heading {
+    margin-bottom: .72rem;
+  }
+
+  body .home-friendly .home-modes-section .home-mode-card {
+    min-height: clamp(16rem, 16vw, 18.4rem);
+    padding: clamp(1.45rem, 1.45vw, 1.75rem) clamp(1.45rem, 1.55vw, 1.85rem) 1.35rem;
+  }
+
+  body .home-friendly .home-modes-section .home-mode-copy h3 {
+    font-size: clamp(1.72rem, 1.75vw, 2.15rem);
+  }
+
+  body .home-friendly .home-modes-section .home-mode-description {
+    font-size: clamp(.86rem, .82vw, .98rem);
+  }
+
+  body .home-friendly > .home-primary-group:not(.home-modes-section) {
+    width: min(90%, 1500px);
+    margin-top: clamp(1.8rem, 2.4vh, 2.35rem);
+  }
+
+  body .home-friendly > .home-primary-group:not(.home-modes-section)
+    .home-learning-card {
+    min-height: 4.8rem !important;
+    padding-inline: clamp(.9rem, 1.25vw, 1.35rem);
+  }
+
+  body .home-friendly > .home-primary-group:not(.home-modes-section)
+    .home-learning-card h3,
+  body .home-friendly > .home-primary-group:not(.home-modes-section)
+    .home-learning-grid > :nth-child(2) h3,
+  body .home-friendly > .home-primary-group:not(.home-modes-section)
+    .home-learning-grid > :nth-child(3) h3 {
+    font-size: 1rem !important;
+  }
+
+  body .home-friendly .home-footer {
+    max-width: 1620px;
+    width: min(94%, 1620px);
+    margin-inline: auto;
+  }
+}
+
+@media (min-width: 1680px) {
+  body .home-friendly .home-modes-section .home-group-heading h2::after {
+    font-size: clamp(2.55rem, 2.4vw, 3.35rem);
+  }
+
+  body .home-friendly .home-modes-section .home-heading-actions p {
+    max-width: 48rem;
+    font-size: .98rem;
+  }
+}
+
 @media (max-width: 1120px) {
   body .home-friendly > .home-primary-group:not(.home-modes-section) {
     width: min(94%, 980px);
