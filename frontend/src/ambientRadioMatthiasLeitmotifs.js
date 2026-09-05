@@ -59,7 +59,7 @@ export const RADIO_MATTHIAS_LEITMOTIFS = Object.freeze({
   }),
   sixtyFourKeys: signature({
     instrumentRole: 'counter', sections: [0, 3], everyCycles: 3, durationSteps: 4.8, volume: 0.16,
-    notes: [[8, 48], [24, 55], [40, 52], [56, 59]],
+    notes: [[6, 48], [18, 55], [30, 52], [42, 59]],
   }),
   sevilleLastLamp0248: signature({
     instrumentRole: 'counter', sections: [0, 2, 4], everyCycles: 3, durationSteps: 4.4, volume: 0.2,
@@ -71,7 +71,7 @@ export const RADIO_MATTHIAS_LEITMOTIFS = Object.freeze({
   }),
   winterBoard: signature({
     instrumentRole: 'lead', sections: [0, 3], everyCycles: 3, durationSteps: 5.4, volume: 0.16,
-    notes: [[6, 67], [20, 74], [36, 69], [52, 64]],
+    notes: [[4, 67], [16, 74], [28, 69], [42, 64]],
   }),
 });
 
