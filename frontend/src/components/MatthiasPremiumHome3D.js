@@ -547,8 +547,12 @@ function applyActivityPose(rig, pose) {
     penPivot.position.x = scribble * .42;
     penPivot.position.y = Math.abs(scribble) * .15;
   } else if (prop === 'chess') {
-    chess.position.set(.05, -.55 + reach * .06, .83);
-    chess.rotation.set(-.29, Number(pose?.headYaw || 0) * .08, .025);
+    // Keep the board out of Matthias' torso. It lives as a low foreground table,
+    // shifted to one side and pitched toward camera so the squares read as a
+    // chess surface rather than a checkerboard bib.
+    const yaw = Number(pose?.headYaw) || 0;
+    chess.position.set(.28, -.70 + reach * .04, .86);
+    chess.rotation.set(-.62, -.04 + yaw * .04, -.10);
   } else if (prop === 'blanket') {
     blanket.position.set(0, -.47, .64);
     blanket.rotation.set(-.035, 0, Number(pose?.headRoll || 0) * .10);
@@ -565,9 +569,10 @@ function applyActivityPose(rig, pose) {
       supportStem.rotation.z = -.52;
       supportGlove.position.set(.50, -.29 + reach * .14, .74);
     } else if (prop === 'chess') {
-      supportStem.position.set(.39, -.35 + reach * .06, .49);
-      supportStem.rotation.z = -.61;
-      supportGlove.position.set(.38, -.24 + reach * .08, .76);
+      // One hand enters the analysis surface from above; it does not hold the board.
+      supportStem.position.set(.45, -.39 + reach * .05, .50);
+      supportStem.rotation.z = -.67;
+      supportGlove.position.set(.43, -.31 + reach * .06, .78);
     } else {
       supportStem.position.x = documentProp ? .39 : .42 - reach * .07;
       supportStem.position.y = documentProp ? -.30 + reach * .08 : -.30 + reach * .29;
