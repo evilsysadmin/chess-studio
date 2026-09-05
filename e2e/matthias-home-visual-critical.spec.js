@@ -89,7 +89,7 @@ async function captureSpeechBubbleContract(corner) {
   return snapshot;
 }
 
-async function expectThreeScene(corner, profile, label, { minReach = 0 } = {}) {
+async function expectThreeScene(corner, profile, label, { minReach = 0, activityProp = null } = {}) {
   const frame = corner.locator('[data-portrait-frame="true"]');
   const avatar = frame.locator('[data-matthias-three-avatar="true"]');
   const canvas = avatar.locator('canvas');
@@ -125,6 +125,15 @@ async function expectThreeScene(corner, profile, label, { minReach = 0 } = {}) {
   await expect.poll(() => avatar.getAttribute('data-three-ready'), { timeout: 4_000 }).toBe('true');
   await expect(avatar).toHaveAttribute('data-three-failed', 'false');
   await expect(canvas).toBeVisible();
+  if (activityProp) {
+    await expect.poll(
+      () => avatar.getAttribute('data-three-activity-prop'),
+      {
+        timeout: 4_000,
+        message: `${label}: el 3D debe conservar la utilería de la escena tras retirar el fallback`,
+      },
+    ).toBe(activityProp);
+  }
   await expect.poll(async () => Number(await avatar.getAttribute('data-three-frame')) || 0, { timeout: 4_000 }).toBeGreaterThan(6);
   await expect.poll(async () => Number(await avatar.getAttribute('data-three-energy')) || 0, { timeout: 4_000 }).toBeGreaterThan(.08);
   await expect.poll(
@@ -149,18 +158,18 @@ async function expectThreeScene(corner, profile, label, { minReach = 0 } = {}) {
   return avatar;
 }
 
-for (const [hour, profile, label, minReach] of [
-  [7, 'sip', 'café de campaña', .25],
-  [12, 'bite', 'comida táctica', .3],
-  [16, 'write', 'operación y notas', 0],
-  [17, 'dossier', 'auditoría del expediente', 0],
-  [22, 'think', 'partida privada', 0],
-  [23, 'read', 'estudio y lectura', 0],
-  [2, 'sleep', 'sueño', 0],
+for (const [hour, profile, label, minReach, activityProp] of [
+  [7, 'sip', 'desayuno y prensa', .25, 'breakfast'],
+  [12, 'bite', 'comida táctica', .3, 'ration'],
+  [16, 'write', 'operación y notas', 0, 'write'],
+  [17, 'dossier', 'auditoría del expediente', 0, 'dossier'],
+  [22, 'think', 'partida privada', 0, 'none'],
+  [23, 'read', 'estudio y lectura', 0, 'book'],
+  [2, 'sleep', 'sueño', 0, 'blanket'],
 ]) {
   test(`Home · Three.js anima ${label} con Matthias premium canónico`, async ({ page }) => {
     const corner = await openHomeAt(page, hour);
-    await expectThreeScene(corner, profile, label, { minReach });
+    await expectThreeScene(corner, profile, label, { minReach, activityProp });
   });
 }
 
