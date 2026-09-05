@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
+import {
+  installWarRoomHansSceneRoutine,
+  isWarRoomHansQuickIterationEnabled,
+} from './WarRoomHansIteration.js';
 
 function physical(color, options = {}) {
   return new THREE.MeshPhysicalMaterial({
@@ -475,14 +479,53 @@ function applyPremiumRoomPass(root, { wallZ, towardBoard, coarsePointer }) {
   return 1;
 }
 
+function exposeForcedHansRuntime(root) {
+  const hans = root?.getObjectByName?.('war-room-hans-butler');
+  const runtime = hans?.visible === true ? 'visible' : (hans ? 'hidden' : 'missing');
+  if (root?.userData) root.userData.warRoomHansRuntime = runtime;
+
+  try {
+    if (typeof document !== 'undefined' && typeof document.querySelectorAll === 'function') {
+      document.querySelectorAll('[data-war-room-hans-quick-request="true"]').forEach((marker) => {
+        marker.setAttribute('data-war-room-hans-runtime', runtime);
+      });
+    }
+  } catch {
+    // Runtime diagnostics are best-effort and must never affect the scene.
+  }
+  return runtime;
+}
+
 export function registerPremiumRoomFinalization(group, { wallZ, towardBoard, coarsePointer = false } = {}) {
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
-  return registerWarRoomDeferredFinalizer(group, {
+
+  const premiumRegistration = registerWarRoomDeferredFinalizer(group, {
     key: 'premium-room-pass-v4',
     coarsePointer,
     allowCoarse: true,
     run: (root) => applyPremiumRoomPass(root, { wallZ, towardBoard, coarsePointer }),
   });
+
+  // Partida rápida owns an explicit Hans lease before Board3D builds the scene.
+  // Lite/coarse War Rooms return before the desktop practical-lighting pass, so
+  // that old registration path never existed there. Register the same deferred
+  // scene task from this always-reached finalization point only while the lease
+  // is active; ordinary mobile rooms keep their lightweight no-cameo behavior.
+  if (isWarRoomHansQuickIterationEnabled()) {
+    registerWarRoomDeferredFinalizer(group, {
+      key: 'hans-fireplace-scene-install-v2',
+      coarsePointer,
+      allowCoarse: true,
+      run: (root) => {
+        const sceneRoot = root || group;
+        const installed = installWarRoomHansSceneRoutine(sceneRoot, { towardBoard, coarsePointer });
+        exposeForcedHansRuntime(sceneRoot);
+        return installed;
+      },
+    });
+  }
+
+  return premiumRegistration;
 }
 
 export function installTeutonicWarRoomDecor(group, { wallZ, towardBoard, coarsePointer = false } = {}) {
