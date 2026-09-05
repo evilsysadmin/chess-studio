@@ -39,6 +39,13 @@ test('Pawn Slug · arranca como misión Three.js aislada del ajedrez competitivo
   await expect(page.getByRole('button', { name: 'INICIAR OPERACIÓN', exact: true })).toHaveCount(0);
   await expect(page.getByText('Dienstpistole', { exact: true })).toBeVisible();
   await expect(page.getByText('OPERACIÓN BAUERNSCHLAG', { exact: true })).toBeVisible();
+
+  // La salida forma parte del mismo smoke: no hace falta arrancar Three.js y
+  // autenticar otra página sólo para volver al hub.
+  await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Pawn Slug/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Pawn Trailblazer/ })).toBeVisible();
 });
 
 test('Pawn Slug · móvil expone controles táctiles grandes sin overflow horizontal', async ({ page }) => {
@@ -58,12 +65,4 @@ test('Pawn Slug · móvil expone controles táctiles grandes sin overflow horizo
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
-});
-
-test('Pawn Slug · conserva el camino de vuelta al hangar', async ({ page }) => {
-  await openPawnSlug(page);
-  await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Pawn Slug/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Pawn Trailblazer/ })).toBeVisible();
 });
