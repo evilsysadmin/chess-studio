@@ -35,10 +35,11 @@ function GalleryWall({ title, subtitle, entries, tone, onReviewGame }) {
   );
 }
 
-export default function CastleHallsModal({ gallery, onClose, onReviewGame = requestHistoryGameOpen }) {
+export default function CastleHallsModal({ gallery, onClose, onReviewGame = null }) {
   useEscapeToClose(onClose);
   const fame = Array.isArray(gallery?.fame) ? gallery.fame : [];
   const shame = Array.isArray(gallery?.shame) ? gallery.shame : [];
+  const reviewGame = onReviewGame || requestHistoryGameOpen;
 
   return (
     <div className="castle-halls-backdrop" role="presentation" onClick={onClose}>
@@ -56,7 +57,7 @@ export default function CastleHallsModal({ gallery, onClose, onReviewGame = requ
             subtitle="Victorias difíciles, precisión excepcional y posiciones rescatadas del crematorio."
             entries={fame}
             tone="fame"
-            onReviewGame={onReviewGame}
+            onReviewGame={reviewGame}
           />
           <div className="castle-halls-divider" aria-hidden="true"><span>♟</span></div>
           <GalleryWall
@@ -64,7 +65,7 @@ export default function CastleHallsModal({ gallery, onClose, onReviewGame = requ
             subtitle="Blunders monumentales y victorias que fueron lanzadas desde una almena."
             entries={shame}
             tone="shame"
-            onReviewGame={onReviewGame}
+            onReviewGame={reviewGame}
           />
         </div>
       </div>
