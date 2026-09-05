@@ -64,6 +64,18 @@ export function matthiasTimeVisual(hour = new Date().getHours()) {
 export function matthiasAmbientVisuals(hour = new Date().getHours()) {
   const h = Number.isFinite(Number(hour)) ? Number(hour) : 12;
   const timed = matthiasTimeVisual(h);
+  const first = {
+    key: `time-${timed.key}`,
+    avatar: timed.avatar,
+    label: timed.label || timed.fallbackStatus || 'En observación',
+  };
+
+  // Overnight is not an ambient carousel. From midnight until reveille Matthias
+  // is canonically asleep and stays asleep; Home must not wake him every 28 s to
+  // read strategy, audit dossiers or drink coffee like a sleepwalker. At 06:00
+  // the hourly scene advances naturally to Primer café.
+  if (h >= 0 && h < 6) return [first];
+
   let extras;
   if (h >= 5 && h < 11) extras = [AMBIENT_SCENES.coffee, AMBIENT_SCENES.reading, AMBIENT_SCENES.dossier];
   else if (h >= 11 && h < 15) extras = [AMBIENT_SCENES.lunch, AMBIENT_SCENES.dossier, AMBIENT_SCENES.reading];
@@ -71,7 +83,6 @@ export function matthiasAmbientVisuals(hour = new Date().getHours()) {
   else if (h >= 20 || h < 1) extras = [AMBIENT_SCENES.night, AMBIENT_SCENES.reading, AMBIENT_SCENES.dossier];
   else extras = [AMBIENT_SCENES.sleep, AMBIENT_SCENES.reading, AMBIENT_SCENES.base];
 
-  const first = { key: `time-${timed.key}`, avatar: timed.avatar, label: timed.label || timed.fallbackStatus || 'En observación' };
   const seen = new Set();
   return [first, ...extras].filter((scene) => {
     if (!scene?.avatar || seen.has(scene.avatar)) return false;
