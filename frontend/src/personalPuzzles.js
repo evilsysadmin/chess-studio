@@ -1,4 +1,4 @@
-import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
 import { Chess } from 'chess.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { detectNoteworthyMove } from './cpuCommentary.js';
@@ -7,6 +7,7 @@ import { provesCurrentPersonalPuzzleQuality } from './personalPuzzleQuality.js';
 import { spacedReviewResultPatch } from './spacedReview.js';
 
 const KEY = 'chess-study-personal-puzzles';
+const FOCUS_KEY = 'chess-study-personal-puzzle-focus';
 const MAX_PUZZLES = 40;
 
 export function loadPersonalPuzzles() {
@@ -278,6 +279,25 @@ export function rankAdaptivePersonalPuzzles(puzzles = [], { excludeId = null, re
     .map(({ puzzle }) => puzzle);
 }
 
+export function focusPersonalPuzzle(id) {
+  const clean = typeof id === 'string' ? id.trim() : '';
+  if (!clean) {
+    removeStorageItem(STORAGE_SESSION, FOCUS_KEY);
+    return false;
+  }
+  setStorageItem(STORAGE_SESSION, FOCUS_KEY, clean);
+  return true;
+}
+
+function consumeFocusedPersonalPuzzle(excludeId, filter) {
+  const focusedId = getStorageItem(STORAGE_SESSION, FOCUS_KEY);
+  if (!focusedId) return null;
+  removeStorageItem(STORAGE_SESSION, FOCUS_KEY);
+  if (focusedId === excludeId) return null;
+  const focused = loadPersonalPuzzles().find((puzzle) => puzzle.id === focusedId) || null;
+  return focused && matchesPersonalPuzzleFilter(focused, filter) ? focused : null;
+}
+
 export function adaptivePersonalPuzzle(excludeId, filter = null, { includeMastered = false, fallbackToMastered = false, now = Date.now() } = {}) {
   const all = loadPersonalPuzzles();
   let eligible = all.filter((puzzle) => matchesPersonalPuzzleFilter(puzzle, filter) && (includeMastered || !isPersonalPuzzleMastered(puzzle)));
@@ -289,9 +309,12 @@ export function adaptivePersonalPuzzle(excludeId, filter = null, { includeMaster
 }
 
 // Fachada compatible con llamadas existentes. La cola dejó de ser aleatoria:
-// ahora elige el ejercicio con mayor valor de entrenamiento demostrado.
+// ahora elige el ejercicio con mayor valor de entrenamiento demostrado. Una
+// autopsia puede fijar UNA deuda concreta en sessionStorage; se consume una
+// sola vez al abrir PuzzleScreen y no contamina el ranking adaptativo normal.
 export function randomPersonalPuzzle(excludeId, filter = null, options = {}) {
-  return adaptivePersonalPuzzle(excludeId, filter, options);
+  const focused = consumeFocusedPersonalPuzzle(excludeId, filter);
+  return focused || adaptivePersonalPuzzle(excludeId, filter, options);
 }
 
 export function saveGeneratedPersonalPuzzles(puzzles = []) {
