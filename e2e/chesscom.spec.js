@@ -67,6 +67,14 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await mode.locator('.chesscom-squad-card').filter({ hasText: 'Sven' }).click();
   await expect(mode.getByRole('group', { name: 'Modo de disparo' }).getByRole('button', { name: 'Ráfaga', exact: true })).toHaveCount(0);
   await expect(mode.getByRole('group', { name: 'Modo de disparo' }).getByRole('button', { name: 'Auto', exact: true })).toBeVisible();
+
+  // Reutilizamos el Babylon ya arrancado para comprobar también la salida. El
+  // contrato es el mismo que el antiguo tercer test, sin otro login + boot 3D.
+  await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Chesscom/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Pawn Slug/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Pawn Trailblazer/ })).toBeVisible();
 });
 
 test('Chesscom · no hereda el scroll del Hangar al entrar', async ({ page }) => {
@@ -86,13 +94,4 @@ test('Chesscom · no hereda el scroll del Hangar al entrar', async ({ page }) =>
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   const brandTop = await page.getByRole('heading', { name: 'CHESSCOM', exact: true }).evaluate((node) => node.getBoundingClientRect().top);
   expect(brandTop).toBeGreaterThanOrEqual(0);
-});
-
-test('Chesscom · conserva la salida limpia hacia Experimentos', async ({ page }) => {
-  await openChesscom(page);
-  await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Chesscom/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Pawn Slug/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Pawn Trailblazer/ })).toBeVisible();
 });
