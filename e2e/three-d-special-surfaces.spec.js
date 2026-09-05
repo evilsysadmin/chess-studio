@@ -134,9 +134,10 @@ test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre e
   await expect(dossier).toBeVisible({ timeout: 4_000 });
   await expect(dossier.getByText(/Vista rápida/i)).toBeVisible();
 
-  // Leave the canvas entirely. Moving to another board corner is not a valid
-  // leave assertion because the starting deployment has pieces across both
-  // home ranks and legitimately opens another dossier.
-  await deployment.getByRole('heading', { name: 'Preparar despliegue', exact: true }).hover();
+  // Move to a coordinate guaranteed to be outside both the canvas and the
+  // dossier. Hovering another DOM element can cross the fixed popover and make
+  // the test accidentally exercise its keep-open affordance instead of the
+  // canvas leave contract we actually care about.
+  await page.mouse.move(1, 1);
   await expect(dossier).toBeHidden({ timeout: 3_000 });
 });
