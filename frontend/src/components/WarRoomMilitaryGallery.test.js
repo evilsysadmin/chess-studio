@@ -105,6 +105,7 @@ describe('War Room military gallery', () => {
       expect(torch.userData.warRoomTorchFire).toBe('hearth-bright-v3');
       expect(torch.userData.warRoomTorchLighting).toBe('gallery-spill-v2');
       expect(torch.userData.warRoomTorchWallWash).toBe('hearth-contour-v2');
+      expect(torch.userData.warRoomTorchFlameFinish).toBe('hearth-warm-v2');
       expect(torch.getObjectByName('war-room-side-torch-backplate')).toBeInstanceOf(THREE.Mesh);
       expect(torch.getObjectByName('war-room-side-torch-wall-arm')).toBeInstanceOf(THREE.Mesh);
       expect(torch.getObjectByName('war-room-side-torch-brazier-bowl')).toBeInstanceOf(THREE.Mesh);
@@ -117,8 +118,8 @@ describe('War Room military gallery', () => {
       expect(flame.geometry).toBeInstanceOf(THREE.LatheGeometry);
       expect(flame.userData.warRoomAnimatedTorch).toBe(true);
       expect(typeof flame.onBeforeRender).toBe('function');
-      expect(flame.material.emissiveIntensity).toBeGreaterThanOrEqual(4.6);
-      expect(inner.material.emissiveIntensity).toBeGreaterThanOrEqual(6.2);
+      expect(flame.material.emissiveIntensity).toBeCloseTo(1.15, 2);
+      expect(inner.material.emissiveIntensity).toBeCloseTo(1.45, 2);
       expect(flame.material.toneMapped).toBe(false);
       expect(inner.material.toneMapped).toBe(false);
       expect(light).toBeInstanceOf(THREE.PointLight);

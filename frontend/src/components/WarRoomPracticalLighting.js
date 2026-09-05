@@ -16,8 +16,8 @@ import { installWarRoomMilitaryGallery } from './WarRoomMilitaryGallery.js';
 import { installWarRoomHansFireplaceRoutine } from './WarRoomHansFireplace.js';
 
 const TORCH_WALL_WASH_VERSION = 'hearth-contour-v2';
-const TORCH_FLAME_FINISH_VERSION = 'hearth-warm-v1';
-const TORCH_FLAME_PULSE_VERSION = 'hearth-flame-pulse-v1';
+const TORCH_FLAME_FINISH_VERSION = 'hearth-warm-v2';
+const TORCH_FLAME_PULSE_VERSION = 'hearth-flame-pulse-v2';
 const GALLERY_PAINTING_ORIENTATION_VERSION = 'upright-texture-v1';
 
 function materialList(object) {
@@ -179,11 +179,12 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
     const embers = torch.getObjectByName?.('war-room-side-torch-embers');
 
     if (needsFlameFinish) {
-      // Keep the bright geometry, but use deeper emissive hues so high
-      // intensities do not clip the green channel and wash the flame to white.
+      // At game scale the old high untone-mapped emissive values collapsed the
+      // orange/gold distinction into one pale yellow silhouette. Keep the real
+      // PointLights for illumination and let the meshes carry saturated fire color.
       for (const [mesh, color, emissive, emissiveIntensity, opacity] of [
-        [outer, 0xff7a18, 0xff1600, 4.9, 0.94],
-        [inner, 0xffd15f, 0xff2400, 6.4, 0.94],
+        [outer, 0xff5a08, 0xff1600, 1.15, 0.96],
+        [inner, 0xffb83d, 0xff4a08, 1.45, 0.94],
       ]) {
         const material = mesh?.material;
         if (!material) continue;
@@ -196,9 +197,9 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
       }
 
       if (embers?.material) {
-        embers.material.color?.setHex?.(0x9d2a0a);
-        embers.material.emissive?.setHex?.(0xff1300);
-        embers.material.emissiveIntensity = 3.0;
+        embers.material.color?.setHex?.(0x8f1c06);
+        embers.material.emissive?.setHex?.(0xff2100);
+        embers.material.emissiveIntensity = 1.9;
         embers.material.toneMapped = false;
         embers.material.needsUpdate = true;
       }
@@ -230,14 +231,24 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
       outer.userData.warRoomTorchWallWashHook = TORCH_WALL_WASH_VERSION;
     }
 
-    // Reuse the existing organic flicker to make the flame itself breathe.
-    // This adds no second animation loop and leaves the approved wall wash intact.
+    // Reuse the existing organic flicker and reshape the silhouette after the
+    // kinetic driver resets scale. The orange envelope remains visibly wider
+    // than the smaller gold core on every frame, not just on initial mount.
     if (needsFlameFinish && outer?.onBeforeRender && !outer.userData.warRoomTorchFlamePulseHook) {
       const original = outer.onBeforeRender;
-      const outerBaseEmissive = Number(outer.material?.emissiveIntensity || 4.9);
-      const innerBaseEmissive = Number(inner?.material?.emissiveIntensity || 6.4);
+      const outerBaseEmissive = Number(outer.material?.emissiveIntensity || 1.15);
+      const innerBaseEmissive = Number(inner?.material?.emissiveIntensity || 1.45);
       outer.onBeforeRender = (...args) => {
         original(...args);
+        outer.scale.x *= 1.14;
+        outer.scale.y *= 1.06;
+        outer.scale.z *= 1.06;
+        if (inner) {
+          inner.scale.x *= 0.68;
+          inner.scale.y *= 0.82;
+          inner.scale.z *= 0.72;
+        }
+
         const baseLight = Number(light?.userData?.baseWarRoomIntensity || 0);
         const boostedBase = baseLight > 0 ? baseLight * 1.3 : 0;
         const flamePulse = boostedBase > 0
