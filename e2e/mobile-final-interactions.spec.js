@@ -167,6 +167,8 @@ test('Móvil · Partida de práctica abre su modal fijo dentro del viewport', as
   }
 
   const learning = page.locator('details.home-learning-more');
+  await expect(learning).not.toHaveAttribute('open', '');
+  await learning.getByText('Más aprendizaje y herramientas', { exact: true }).click();
   await expect(learning).toHaveAttribute('open', '');
   const practice = learning.locator('button.home-tool-card').filter({ hasText: 'Partida de práctica' });
   await expect(practice).toHaveCount(1);
