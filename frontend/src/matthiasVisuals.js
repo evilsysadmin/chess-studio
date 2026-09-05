@@ -1,6 +1,7 @@
 import baseAvatar from './assets/matthias-scenes/base.webp';
 import morningCoffee from './assets/matthias-scenes/morning-coffee.webp';
 import lunchBocata from './assets/matthias-scenes/lunch-bocata.webp';
+import campaignDinner from './assets/matthias-scenes/campaign-dinner.webp';
 import afternoonOps from './assets/matthias-scenes/afternoon-ops.webp';
 import nightCoffee from './assets/matthias-scenes/night-coffee.webp';
 import lateSleep from './assets/matthias-scenes/late-sleep.webp';
@@ -15,6 +16,7 @@ import { matthiasTimeScene } from './matthiasTime.js';
 const TIME_ASSETS = Object.freeze({
   'morning-coffee': morningCoffee,
   'lunch-bocata': lunchBocata,
+  'campaign-dinner': campaignDinner,
   'afternoon-ops': afternoonOps,
   'night-coffee': nightCoffee,
   'late-sleep': lateSleep,
