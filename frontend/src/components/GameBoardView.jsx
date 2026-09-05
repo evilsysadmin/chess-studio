@@ -11,6 +11,7 @@ import useGameBoardRenderer from './useGameBoardRenderer.js';
 import { useGameFocusBubble, useGameMobileFocus } from './useGameMobileFocus.js';
 import useMatthias3DBubbleAnchor from './useMatthias3DBubbleAnchor.js';
 import useMatthiasBoardReactions from './useMatthiasBoardReactions.js';
+import { shouldForceHansQuickIteration } from './WarRoomHansIteration.js';
 import { formatLongMove } from '../notation.js';
 import './Matthias3DBubbleAnchor.css';
 
@@ -86,6 +87,11 @@ export default function GameBoardView({
     clearFocusBubble();
   }
 
+  const hansFireplaceIteration = shouldForceHansQuickIteration({
+    hintMode: controls.hintMode,
+    memoryContext: context.memoryContext,
+  });
+
   const boardProps = {
     fen: board.visibleBoardFen,
     onSquareClick: board.onSquareClick,
@@ -101,6 +107,7 @@ export default function GameBoardView({
     showCoordinates: !zenMode && board.showBoardCoordinates,
     matthiasKingColor: topColor,
     onCustomize: board.onCustomize,
+    hansFireplaceIteration,
   };
 
   return (
