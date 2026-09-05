@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { loadRoster } from './combatRoster.js';
+import { loadRoster, saveRoster } from './combatRoster.js';
 import { grantReserveRecruit, setDeploymentUnit } from './combatDeployment.js';
 import { setRosterDeploymentType } from './combatMetamorphosis.js';
 import { buildTacticalDeploymentBrief, deploymentSelectionFingerprint, freezeTacticalRosterSnapshot } from './combatTacticalDeployment.js';
@@ -52,6 +52,20 @@ describe('Combat tactical deployment fingerprint', () => {
     roster.deployment['p-a'] = 'p-b';
     expect(frozen.pieces['p-a'].strengthPoints).not.toBe(99);
     expect(deploymentSelectionFingerprint(frozen)).toBe(frozenFingerprint);
+  });
+
+  it('F5 conserva exactamente la formación personalizada y sus reservas', () => {
+    let roster = loadRoster();
+    roster = grantReserveRecruit(roster, { grantId: 'reload:reserve', originType: 'p', rng: () => 0.72, now: 7200 });
+    const reserveKey = Object.keys(roster.identities).find((key) => key.startsWith('p-reserve-'));
+    roster = setDeploymentUnit(roster, 'p-a', reserveKey);
+    const expectedFingerprint = deploymentSelectionFingerprint(roster);
+    saveRoster(roster);
+
+    const restored = loadRoster();
+    expect(deploymentSelectionFingerprint(restored)).toBe(expectedFingerprint);
+    expect(Object.values(restored.deployment)).toContain(reserveKey);
+    expect(Object.values(restored.deployment)).not.toContain('p-a');
   });
 });
 
