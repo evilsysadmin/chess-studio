@@ -9,6 +9,7 @@ import './components/HomeGreatHallFinish.css';
 import './components/HomeGreatHallModalFix.css';
 import './components/HomeCanonical.css';
 import './components/HomeCastleHub.css';
+import './components/HomeCastleHubSpeech.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
 import { migratePersistentStorage } from './storageMigrations.js';
 import { getReducedMotionPreference, reducedMotionStatus } from './userPreferences.js';
