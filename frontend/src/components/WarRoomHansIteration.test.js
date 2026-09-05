@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
 import {
@@ -73,10 +73,73 @@ describe('Hans quick-game visual iteration', () => {
     expect(driver).toBeTruthy();
     expect(driver.userData.warRoomHansSelected).toBe(true);
     expect(driver.userData.warRoomHansStartDelaySeconds).toBe(0);
-    expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v1');
-    expect(fireplace.userData.warRoomHansQuickIteration).toBe('always-quick-v1');
+    expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v2');
+    expect(fireplace.userData.warRoomHansQuickIteration).toBe('always-quick-v2');
+    expect(fireplace.userData.warRoomHansHearthRestored).toBe(false);
     expect(typeof driver.onBeforeRender).toBe('function');
 
     dispose(room);
+  });
+
+  it('repone por completo fuego y luz, deja el tronco y devuelve el atizador', () => {
+    const now = vi.spyOn(globalThis.performance, 'now').mockReturnValue(1000);
+    setWarRoomHansQuickIterationEnabled(true);
+    const room = buildPremiumWarRoomLayer({ felt: 0x173943, glow: 0xc5963f }, true, false);
+
+    try {
+      const finalizerDriver = room.getObjectByName('war-room-premium-painting-canvas');
+      finalizerDriver.onBeforeRender();
+
+      const fireplace = room.getObjectByName('war-room-fireplace');
+      const hans = room.getObjectByName('war-room-hans-butler');
+      const driver = room.getObjectByName('war-room-hans-fireplace-driver');
+      const fireCore = room.getObjectByName('war-room-fire-core');
+      const fireLight = room.getObjectByName('war-room-fire-light');
+      const bounce = room.getObjectByName('war-room-fire-bounce-light');
+      const basketTopLog = room.getObjectByName('war-room-hearth-basket-top-log');
+      const addedLog = room.getObjectByName('war-room-hans-hearth-added-log');
+      const poker = room.getObjectByName('war-room-hearth-poker');
+
+      expect(fireplace).toBeTruthy();
+      expect(driver).toBeTruthy();
+      expect(fireCore).toBeTruthy();
+      expect(fireLight).toBeTruthy();
+      expect(basketTopLog).toBeTruthy();
+      expect(addedLog).toBeTruthy();
+      expect(poker).toBeTruthy();
+
+      const baseScale = fireCore.scale.clone();
+      const baseIntensity = Number(fireLight.userData.baseWarRoomIntensity || fireLight.intensity);
+      const baseDistance = fireLight.distance;
+      const baseBounce = bounce?.intensity ?? null;
+
+      now.mockReturnValue(3500);
+      driver.onBeforeRender();
+      expect(driver.userData.warRoomHansPhase).toBe('fire-dimming');
+      expect(fireCore.scale.y).toBeLessThan(baseScale.y);
+      expect(fireLight.intensity).toBeLessThan(baseIntensity);
+      expect(fireLight.distance).toBeLessThan(baseDistance);
+      if (bounce) expect(bounce.intensity).toBeLessThan(baseBounce);
+
+      now.mockReturnValue(36000);
+      driver.onBeforeRender();
+      expect(driver.userData.warRoomHansPhase).toBe('complete');
+      expect(driver.userData.warRoomHansCompleted).toBe(true);
+      expect(driver.userData.warRoomHansHearthRestored).toBe(true);
+      expect(fireplace.userData.warRoomHansHearthRestored).toBe(true);
+      expect(hans.visible).toBe(false);
+      expect(fireCore.scale.x).toBeCloseTo(baseScale.x, 6);
+      expect(fireCore.scale.y).toBeCloseTo(baseScale.y, 6);
+      expect(fireCore.scale.z).toBeCloseTo(baseScale.z, 6);
+      expect(fireLight.intensity).toBeCloseTo(baseIntensity, 6);
+      expect(fireLight.distance).toBeCloseTo(baseDistance, 6);
+      if (bounce) expect(bounce.intensity).toBeCloseTo(baseBounce, 6);
+      expect(basketTopLog.visible).toBe(false);
+      expect(addedLog.visible).toBe(true);
+      expect(poker.visible).toBe(true);
+    } finally {
+      now.mockRestore();
+      dispose(room);
+    }
   });
 });
