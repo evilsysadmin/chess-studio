@@ -1,0 +1,185 @@
+.cinematic-autopsy-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  display: grid;
+  place-items: center;
+  padding: clamp(0.75rem, 2vw, 1.5rem);
+  background: rgba(5, 7, 10, 0.9);
+  backdrop-filter: blur(8px);
+}
+
+.cinematic-autopsy-shell {
+  width: min(1120px, 100%);
+  max-height: min(92vh, 900px);
+  overflow: auto;
+  border: 1px solid rgba(224, 193, 128, 0.32);
+  border-radius: 20px;
+  padding: clamp(1rem, 2vw, 1.6rem);
+  background: linear-gradient(160deg, rgba(26, 24, 22, 0.99), rgba(10, 12, 16, 0.99));
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.62);
+}
+
+.cinematic-autopsy-header,
+.cinematic-autopsy-stage,
+.cinematic-autopsy-nav-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.cinematic-autopsy-header {
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.cinematic-autopsy-header h3,
+.cinematic-autopsy-header p {
+  margin: 0.25rem 0 0;
+}
+
+.cinematic-autopsy-stage {
+  align-items: stretch;
+}
+
+.cinematic-autopsy-board {
+  position: relative;
+  flex: 1 1 62%;
+  min-width: 0;
+  transform: scale(1);
+  transition: transform 260ms ease, filter 260ms ease;
+}
+
+.cinematic-autopsy-shell[data-cinematic-phase="impact"] .cinematic-autopsy-board {
+  transform: scale(1.012);
+  filter: contrast(1.04);
+}
+
+.cinematic-autopsy-phase {
+  position: absolute;
+  left: 0.7rem;
+  bottom: 0.7rem;
+  z-index: 5;
+  padding: 0.32rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(8, 10, 14, 0.82);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.cinematic-autopsy-dossier {
+  flex: 0 1 330px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.cinematic-autopsy-dossier p {
+  margin: 0;
+}
+
+.cinematic-autopsy-dossier p small,
+.cinematic-autopsy-dossier p strong {
+  display: block;
+}
+
+.cinematic-autopsy-severity {
+  align-self: flex-start;
+  padding: 0.28rem 0.52rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.cinematic-autopsy-actions {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: auto;
+}
+
+.cinematic-autopsy-chapters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.cinematic-autopsy-chapters button {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cinematic-autopsy-chapters button.active {
+  border-color: rgba(224, 193, 128, 0.6);
+  background: rgba(224, 193, 128, 0.1);
+}
+
+.cinematic-autopsy-chapters b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cinematic-autopsy-nav-actions {
+  justify-content: space-between;
+  margin-top: 0.8rem;
+}
+
+.cinematic-autopsy-shell[data-reduced-motion="true"] .cinematic-autopsy-board {
+  transition: none;
+  transform: none;
+}
+
+@media (max-width: 760px) {
+  .cinematic-autopsy-backdrop {
+    padding: 0;
+    place-items: stretch;
+  }
+
+  .cinematic-autopsy-shell {
+    width: 100%;
+    max-height: 100dvh;
+    min-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .cinematic-autopsy-stage {
+    flex-direction: column;
+  }
+
+  .cinematic-autopsy-dossier {
+    flex-basis: auto;
+  }
+
+  .cinematic-autopsy-chapters {
+    grid-template-columns: 1fr;
+  }
+
+  .cinematic-autopsy-chapters button {
+    min-height: 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cinematic-autopsy-board,
+  .cinematic-autopsy-shell * {
+    scroll-behavior: auto !important;
+  }
+}
