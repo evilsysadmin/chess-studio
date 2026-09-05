@@ -408,13 +408,31 @@ jobs:
       - name: Shared Workers AI live contract
         run: python3 scripts/cloudflare_ai_preflight.py --worker-url "$STAGING_AI_URL"
 
-  parity:
-    name: Generation parity · N/N/N
+  # Browser runners already have to exist. Make each one prove N/N/N before it
+  # restores Chromium so staging keeps the same fail-closed parity gate without
+  # paying for a separate parity runner and its queue/allocation boundary.
+  smoke:
+    name: Browser smoke · ${{ matrix.label }}
     needs: [prepare, backend, frontend, worker]
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 8
+    environment:
+      name: staging
+      url: https://staging.chess-studio.shadowops.dpdns.org
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - key: live
+            label: War Room live
+            spec: staging-live.spec.js
+          - key: restore
+            label: authoritative F5 restore
+            spec: staging-war-room-restore.spec.js
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
+      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      RENDER_SERVICE_ID: ${{ needs.backend.outputs.render_service_id }}
 
     steps:
       - name: Checkout CI-approved commit
@@ -487,35 +505,6 @@ jobs:
             sleep 5
           done
           [[ "$parity_ok" == true ]] || { echo '::error::Generation parity no convergió a N/N/N tras 5 minutos'; exit 1; }
-
-  smoke:
-    name: Browser smoke · ${{ matrix.label }}
-    needs: [prepare, backend, parity]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 8
-    environment:
-      name: staging
-      url: https://staging.chess-studio.shadowops.dpdns.org
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - key: live
-            label: War Room live
-            spec: staging-live.spec.js
-          - key: restore
-            label: authoritative F5 restore
-            spec: staging-war-room-restore.spec.js
-    env:
-      DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_SERVICE_ID: ${{ needs.backend.outputs.render_service_id }}
-
-    steps:
-      - name: Checkout CI-approved commit
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ env.DEPLOY_SHA }}
 
       - name: Load ephemeral staging invite code
         shell: bash
@@ -594,7 +583,7 @@ jobs:
 
   summary:
     name: Staging generation complete
-    needs: [prepare, backend, frontend, worker, parity, smoke]
+    needs: [prepare, backend, frontend, worker, smoke]
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     env:
@@ -617,7 +606,7 @@ jobs:
             echo '- Frontend SHA: `mismo generation SHA · verificado`'
             echo '- Worker SHA: `mismo generation SHA · verificado por /health`'
             echo '- Mongo staging: `ready`'
-            echo '- Generation parity gate: `N/N/N · OK`'
+            echo '- Generation parity gate: `N/N/N · verificado dentro de cada smoke antes de Chromium`'
             echo '- Live browser smoke: `War Room live + F5 authority · paralelos · OK`'
             echo '- Visual evidence: `vídeos Chromium retenidos 7 días en staging-live-playwright-*`'
             echo '- Identidades CI: `aisladas por spec, eliminadas y verificadas`'
