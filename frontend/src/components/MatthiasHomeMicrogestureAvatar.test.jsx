@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import MatthiasHomeMicrogestureAvatar, {
   MATTHIAS_HOME_FACE_WARP_LIMIT,
   MATTHIAS_HOME_MICROGESTURE_VERSION,
+  matthiasHomeActivityProfile,
   matthiasHomeFacialCue,
   matthiasHomeFacialMotionSample,
 } from './MatthiasHomeMicrogestureAvatar.jsx';
@@ -35,6 +36,21 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
       expression: 'alert',
       gesture: 'idle',
     });
+  });
+
+  it('separa movimiento de actividad: desayuno conserva gesto de sorbo pero usa composición de desayuno', () => {
+    expect(matthiasHomeActivityProfile({
+      scene: 'time-breakfast-news',
+      activity: 'Desayuno y prensa',
+    })).toBe('breakfast');
+    expect(matthiasHomeActivityProfile({
+      scene: 'time-late-sleep',
+      activity: 'Siesta táctica',
+    })).toBe('sleep');
+    expect(matthiasHomeActivityProfile({
+      scene: 'time-strategy-book',
+      activity: 'Estudio matinal',
+    })).toBe('read');
   });
 
   it('mantiene el helper facial legacy dentro del contrato anti-melt', () => {
@@ -91,7 +107,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     expect(html).toContain('data-three-full-3d="true"');
     expect(html).toContain('data-three-face-rig="premium-pawn-face-v1"');
     expect(html).toContain('data-three-articulated-face-rig="premium-pawn-face-v1"');
-    expect(html).toContain('data-three-activity-rig="activity-props-v1"');
+    expect(html).toContain('data-three-activity-rig="activity-props-v2"');
     expect(html).toContain('data-three-activity-profile="read"');
     expect(html).toContain('data-three-activity-prop="book"');
     expect(html).toContain('data-three-face-warp-limit="0.019"');
@@ -99,6 +115,32 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     expect(html).toContain('<canvas');
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/assets/matthias-scenes/strategy-book.webp"');
+  });
+
+  it('desayuno y sueño publican el mismo contrato semántico que debe conservar el 3D tras el fallback', () => {
+    const breakfast = renderToStaticMarkup(
+      <MatthiasHomeMicrogestureAvatar
+        avatar="/assets/matthias-scenes/morning-coffee.webp"
+        scene="time-breakfast-news"
+        activity="Desayuno y prensa"
+      />,
+    );
+    expect(breakfast).toContain('data-three-profile="sip"');
+    expect(breakfast).toContain('data-three-activity-profile="breakfast"');
+    expect(breakfast).toContain('data-three-activity-prop="breakfast"');
+    expect(breakfast).toContain('src="/assets/matthias-scenes/morning-coffee.webp"');
+
+    const sleep = renderToStaticMarkup(
+      <MatthiasHomeMicrogestureAvatar
+        avatar="/assets/matthias-scenes/late-sleep.webp"
+        scene="time-late-sleep"
+        activity="Siesta táctica"
+      />,
+    );
+    expect(sleep).toContain('data-three-profile="sleep"');
+    expect(sleep).toContain('data-three-activity-profile="sleep"');
+    expect(sleep).toContain('data-three-activity-prop="blanket"');
+    expect(sleep).toContain('src="/assets/matthias-scenes/late-sleep.webp"');
   });
 
   it('hablar domina la cara pero conserva la actividad física que Matthias ya hacía', () => {
@@ -123,7 +165,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     );
     expect(html).toContain('data-three-motion="reduced"');
     expect(html).toContain('data-three-full-3d="true"');
-    expect(html).toContain('data-three-activity-rig="activity-props-v1"');
+    expect(html).toContain('data-three-activity-rig="activity-props-v2"');
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/base.webp"');
   });

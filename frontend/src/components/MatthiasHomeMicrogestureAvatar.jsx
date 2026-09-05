@@ -46,6 +46,19 @@ function normalizeIntensity(value) {
   return Math.max(.72, Math.min(1.24, parsed));
 }
 
+function semanticCue(value = '') {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+export function matthiasHomeActivityProfile({ scene = '', activity = '' } = {}) {
+  const key = `${semanticCue(scene)}|${semanticCue(activity)}`;
+  if (/breakfast|desayuno/.test(key)) return 'breakfast';
+  return matthiasHomeMotionProfile({ scene, activity, speaking: false });
+}
+
 export function matthiasHomeFacialCue({
   profile = 'idle',
   presenceState = MATTHIAS_HOME_STATES.IDLE,
@@ -155,9 +168,10 @@ export default function MatthiasHomeMicrogestureAvatar({
 
   // Speech owns face/attention, not the physical task. Keep a second semantic
   // profile without the speech override so Matthias can talk while holding the
-  // cup/book/dossier he was already using.
+  // cup/book/dossier he was already using. Breakfast deliberately keeps sip-like
+  // motion while exposing a richer cup+plate composition to the 3D activity rig.
   const activityProfile = useMemo(
-    () => matthiasHomeMotionProfile({ scene, activity, speaking: false }),
+    () => matthiasHomeActivityProfile({ scene, activity }),
     [activity, scene],
   );
   const profile = useMemo(
@@ -463,7 +477,9 @@ export default function MatthiasHomeMicrogestureAvatar({
     };
   }, [reducedMotion]);
 
-  const fallbackSrc = canonicalSrc || avatar || '';
+  // Prefer the scene-specific art as fallback so loading/failure never changes
+  // the semantic activity (sleep, breakfast, reading...) before/after WebGL.
+  const fallbackSrc = avatar || canonicalSrc || '';
 
   return (
     <span

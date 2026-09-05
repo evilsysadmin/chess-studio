@@ -16,7 +16,7 @@ const HOURS = [
   [10, 'Revisión de expedientes', 'read-dossier'],
   [11, 'Chess Weekly', 'read-book'],
   [12, 'Comida táctica', 'bite'],
-  [13, 'Sobremesa administrativa', 'read-dossier'],
+  [13, 'Siesta táctica', 'doze'],
   [14, 'Manual de campaña', 'read-book'],
   [15, 'Partida privada', 'board-move'],
   [16, 'En plena operación', 'write-notes'],

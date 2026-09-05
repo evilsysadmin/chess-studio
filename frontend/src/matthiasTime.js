@@ -26,7 +26,7 @@ const HOURLY_SCENES = Object.freeze([
   scene('dossier', 'Revisión de expedientes', 'Guten Morgen', 'Guten Morgen. Estoy con los expedientes. El tuyo tiene demasiados post-it.'),
   scene('chess-weekly', 'Chess Weekly', 'Guten Morgen', 'Guten Morgen. Prensa ajedrecística. Estrategia, estructura y gente que mira antes de mover.'),
   scene('lunch-bocata', 'Comida táctica', 'Guten Tag', 'Guten Tag. Hora de comer. Un bocata y seguimos; una hora, no una legislatura.'),
-  scene('dossier', 'Sobremesa administrativa', 'Guten Tag', 'Guten Tag. Comida terminada. Vuelvo al expediente, que tus blunders no se archivan solos.'),
+  scene('late-sleep', 'Siesta táctica', 'Guten Tag', 'Guten Tag. Trece horas. Diez minutos de siesta táctica. Si rompes algo mientras duermo, deja un informe.'),
   scene('strategy-book', 'Manual de campaña', 'Guten Tag', 'Guten Tag. Estoy estudiando. Es una costumbre útil; algún día podrías probarla.'),
   scene('chess-inception', 'Partida privada', 'Guten Tag', 'Guten Tag. Estoy en mitad de otra partida. Sí, también me juzgo a mí mismo.'),
   scene('afternoon-ops', 'En plena operación', 'Guten Tag', 'Guten Tag. En plena operación. Mantén la presión y procura no financiar al rival.'),
