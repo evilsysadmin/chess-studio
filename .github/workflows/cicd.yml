@@ -96,7 +96,11 @@ jobs:
           retention-days: 7
 
       - name: Static preflight + CI wiring
-        run: make static-preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          make static-preflight
+          python3 -S scripts/quality_scope.py --self-test
 
       - name: Staging preview isolation contract
         run: python3 scripts/staging_preview_contract.py
@@ -111,119 +115,20 @@ jobs:
         run: |
           set -euo pipefail
 
-          enable_all() {
-            echo 'run_frontend=true' >> "$GITHUB_OUTPUT"
-            echo 'run_backend=true' >> "$GITHUB_OUTPUT"
-            echo 'run_e2e=true' >> "$GITHUB_OUTPUT"
-            echo 'run_security=true' >> "$GITHUB_OUTPUT"
-            echo 'run_pawn_slug_e2e=true' >> "$GITHUB_OUTPUT"
-            echo 'run_chesscom_e2e=true' >> "$GITHUB_OUTPUT"
-            echo 'run_trailblazer_e2e=true' >> "$GITHUB_OUTPUT"
-            echo 'run_matthias_home_e2e=true' >> "$GITHUB_OUTPUT"
-          }
-
           if [[ "$EVENT_NAME" == 'workflow_dispatch' ]]; then
-            enable_all
+            python3 -S scripts/quality_scope.py --all >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           if [[ -z "${BASE_SHA:-}" || "$BASE_SHA" =~ ^0+$ ]] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
-            enable_all
+            echo 'Diff base no fiable; activando Quality completo.'
+            python3 -S scripts/quality_scope.py --all >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
           printf '%s\n' "$files"
-
-          shared_pattern='^\.github/|^Makefile$|^scripts/|^infra/|^deploy/|^\.githooks/|(^|/)Dockerfile[^/]*$|(^|/)docker-compose[^/]*\.ya?ml$|^compose\.ya?ml$|^render\.ya?ml$'
-          if grep -Eq "$shared_pattern" <<< "$files"; then
-            enable_all
-            exit 0
-          fi
-
-          run_frontend=false
-          run_backend=false
-          run_e2e=false
-          run_security=false
-          run_pawn_slug_e2e=false
-          run_chesscom_e2e=false
-          run_trailblazer_e2e=false
-          run_matthias_home_e2e=false
-
-          frontend_files="$(grep -E '^frontend/' <<< "$files" || true)"
-          if [[ -n "$frontend_files" ]]; then
-            run_frontend=true
-
-            # Las superficies lazy/visuales estrechas usan su smoke Playwright
-            # específico en vez de los journeys E2E globales. Cualquier mezcla
-            # con core restaura automáticamente el gate completo.
-            pawn_slug_pattern='^frontend/src/pawnSlug[^/]*\.(js|jsx)$|^frontend/src/components/PawnSlug[^/]*\.(js|jsx|css)$|^frontend/src/assets/pawnSlug/'
-            chesscom_pattern='^frontend/src/chesscom[^/]*\.(js|jsx)$|^frontend/src/components/Chesscom[^/]*\.(js|jsx|css)$|^frontend/public/chesscom/'
-            trailblazer_pattern='^frontend/src/pawnTrailblazer[^/]*\.(js|jsx)$|^frontend/src/components/PawnTrailblazer[^/]*\.(js|jsx|css)$|^frontend/src/assets/pawnTrailblazer/'
-            matthias_home_pattern='^frontend/src/components/MatthiasPremiumHome3D\.js$'
-            targeted_pattern="$pawn_slug_pattern|$chesscom_pattern|$trailblazer_pattern|$matthias_home_pattern"
-
-            pawn_slug_frontend="$(grep -E "$pawn_slug_pattern" <<< "$frontend_files" || true)"
-            chesscom_frontend="$(grep -E "$chesscom_pattern" <<< "$frontend_files" || true)"
-            trailblazer_frontend="$(grep -E "$trailblazer_pattern" <<< "$frontend_files" || true)"
-            matthias_home_frontend="$(grep -E "$matthias_home_pattern" <<< "$frontend_files" || true)"
-            non_targeted_frontend="$(grep -Ev "$targeted_pattern" <<< "$frontend_files" || true)"
-
-            if [[ -n "$pawn_slug_frontend" ]]; then
-              run_pawn_slug_e2e=true
-            fi
-            if [[ -n "$chesscom_frontend" ]]; then
-              run_chesscom_e2e=true
-            fi
-            if [[ -n "$trailblazer_frontend" ]]; then
-              run_trailblazer_e2e=true
-            fi
-            if [[ -n "$matthias_home_frontend" ]]; then
-              run_matthias_home_e2e=true
-            fi
-            if [[ -n "$non_targeted_frontend" ]]; then
-              run_e2e=true
-            fi
-          fi
-
-          if grep -Eq '^backend-python/' <<< "$files"; then
-            run_backend=true
-            run_e2e=true
-          fi
-
-          e2e_files="$(grep -E '^e2e/' <<< "$files" || true)"
-          if [[ -n "$e2e_files" ]]; then
-            if grep -Eq '^e2e/pawn-slug\.spec\.js$' <<< "$e2e_files"; then
-              run_pawn_slug_e2e=true
-            fi
-            if grep -Eq '^e2e/chesscom\.spec\.js$' <<< "$e2e_files"; then
-              run_chesscom_e2e=true
-            fi
-            if grep -Eq '^e2e/pawn-trailblazer\.spec\.js$' <<< "$e2e_files"; then
-              run_trailblazer_e2e=true
-            fi
-            if grep -Eq '^e2e/matthias-home-priority\.spec\.js$' <<< "$e2e_files"; then
-              run_matthias_home_e2e=true
-            fi
-            non_targeted_e2e="$(grep -Ev '^e2e/(pawn-slug|chesscom|pawn-trailblazer|matthias-home-priority)\.spec\.js$' <<< "$e2e_files" || true)"
-            if [[ -n "$non_targeted_e2e" ]]; then
-              run_e2e=true
-            fi
-          fi
-
-          security_pattern='(^|/)(Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|\.dockerignore)$|^compose\.ya?ml$|^frontend/package(-lock)?\.json$|^backend-python/requirements[^/]*\.txt$|^Makefile$|^\.trivy(ignore|\.ya?ml)?$|^scripts/(npm_audit_gate\.py|pip_audit_report\.py|compose_smoke\.py|security[^/]*|trivy_[^/]*|install_trivy\.sh)$|^\.github/workflows/cicd\.yml$|^\.github/actions/cache-python-venv/action\.yml$|^(infra|deploy)/|^render\.ya?ml$'
-          if grep -Eq "$security_pattern" <<< "$files"; then
-            run_security=true
-          fi
-
-          echo "run_frontend=$run_frontend" >> "$GITHUB_OUTPUT"
-          echo "run_backend=$run_backend" >> "$GITHUB_OUTPUT"
-          echo "run_e2e=$run_e2e" >> "$GITHUB_OUTPUT"
-          echo "run_security=$run_security" >> "$GITHUB_OUTPUT"
-          echo "run_pawn_slug_e2e=$run_pawn_slug_e2e" >> "$GITHUB_OUTPUT"
-          echo "run_chesscom_e2e=$run_chesscom_e2e" >> "$GITHUB_OUTPUT"
-          echo "run_trailblazer_e2e=$run_trailblazer_e2e" >> "$GITHUB_OUTPUT"
-          echo "run_matthias_home_e2e=$run_matthias_home_e2e" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$files" | python3 -S scripts/quality_scope.py >> "$GITHUB_OUTPUT"
 
   frontend:
     name: Tests · Frontend
@@ -260,11 +165,11 @@ jobs:
         run: node scripts/bundle_size_report.mjs
 
       - name: Prepare security report
-        if: needs.preflight.outputs.run_frontend == 'true'
+        if: needs.preflight.outputs.run_security == 'true'
         run: mkdir -p .security
 
       - name: Node dependency audit
-        if: needs.preflight.outputs.run_frontend == 'true'
+        if: needs.preflight.outputs.run_security == 'true'
         working-directory: frontend
         shell: bash
         run: |
@@ -345,9 +250,11 @@ jobs:
         run: make backend-check
 
       - name: Prepare security report
+        if: needs.preflight.outputs.run_security == 'true'
         run: mkdir -p .security
 
       - name: Python advisory inventory (informative)
+        if: needs.preflight.outputs.run_security == 'true'
         continue-on-error: true
         run: make security-be
 
