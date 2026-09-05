@@ -15,7 +15,7 @@ import { armWarRoomOneShotHookRetirement, registerWarRoomDeferredFinalizer } fro
 import { installWarRoomMilitaryGallery } from './WarRoomMilitaryGallery.js';
 import { installWarRoomHansSceneRoutine } from './WarRoomHansIteration.js';
 
-const TORCH_WALL_WASH_VERSION = 'hearth-contour-v2';
+const TORCH_WALL_WASH_VERSION = 'hearth-contour-v3';
 const TORCH_FLAME_FINISH_VERSION = 'hearth-warm-v2';
 const TORCH_FLAME_PULSE_VERSION = 'hearth-flame-pulse-v2';
 const GALLERY_PAINTING_ORIENTATION_VERSION = 'upright-texture-v1';
@@ -159,10 +159,10 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
     const halo = torch.getObjectByName?.('war-room-side-torch-wall-halo');
     if (needsWallWash && halo?.material) {
       halo.material.color?.setHex?.(0xff7622);
-      halo.material.opacity = 0.88;
+      halo.material.opacity = 0.94;
       halo.material.toneMapped = false;
       halo.material.needsUpdate = true;
-      halo.scale.set(1.55, 1.48, 1);
+      halo.scale.set(1.78, 1.68, 1);
 
       let innerHalo = torch.getObjectByName?.('war-room-side-torch-wall-halo-inner');
       if (!innerHalo) {
@@ -176,10 +176,10 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
         torch.add(innerHalo);
       }
       innerHalo.material.color?.setHex?.(0xffb24d);
-      innerHalo.material.opacity = 0.68;
+      innerHalo.material.opacity = 0.74;
       innerHalo.material.toneMapped = false;
       innerHalo.material.needsUpdate = true;
-      innerHalo.scale.set(0.78, 0.78, 1);
+      innerHalo.scale.set(0.84, 0.84, 1);
     }
 
     const outer = torch.getObjectByName?.('war-room-side-torch-flame-outer');
@@ -216,14 +216,16 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
     const light = torch.getObjectByName?.('war-room-side-torch-light');
     const wallGlow = torch.getObjectByName?.('war-room-side-torch-wall-glow');
     if (needsWallWash && light) {
+      // Keep the same practical light, but let it reach the nearby sentry armor
+      // strongly enough to produce a restrained warm rim on helmet/pauldrons.
       light.color?.setHex?.(0xff7424);
-      light.distance = Math.max(Number(light.distance || 0), 10.5);
-      light.intensity *= 1.3;
+      light.distance = Math.max(Number(light.distance || 0), 12);
+      light.intensity *= 1.5;
     }
     if (needsWallWash && wallGlow) {
       wallGlow.color?.setHex?.(0xffa442);
-      wallGlow.distance = Math.max(Number(wallGlow.distance || 0), 7.4);
-      wallGlow.intensity *= 2.1;
+      wallGlow.distance = Math.max(Number(wallGlow.distance || 0), 8.6);
+      wallGlow.intensity *= 2.5;
     }
 
     // Gallery flame kinetics restores the captured base intensity every frame.
@@ -233,8 +235,8 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
       const original = outer.onBeforeRender;
       outer.onBeforeRender = (...args) => {
         original(...args);
-        if (light) light.intensity *= 1.3;
-        if (wallGlow) wallGlow.intensity *= 2.1;
+        if (light) light.intensity *= 1.5;
+        if (wallGlow) wallGlow.intensity *= 2.5;
       };
       outer.userData.warRoomTorchWallWashHook = TORCH_WALL_WASH_VERSION;
     }
@@ -258,7 +260,7 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
         }
 
         const baseLight = Number(light?.userData?.baseWarRoomIntensity || 0);
-        const boostedBase = baseLight > 0 ? baseLight * 1.3 : 0;
+        const boostedBase = baseLight > 0 ? baseLight * 1.5 : 0;
         const flamePulse = boostedBase > 0
           ? THREE.MathUtils.clamp(light.intensity / boostedBase, 0.92, 1.1)
           : 1;
