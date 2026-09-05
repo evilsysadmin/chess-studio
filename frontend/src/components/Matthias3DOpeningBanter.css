@@ -55,14 +55,12 @@
   }
 }
 
-/* En una apertura normal el rey rival está en la fila lejana y ligeramente
-   por encima del centro visual de la cámara táctica. El bocadillo vive dentro
-   del propio shell 3D (portal), no en la columna derecha, y su cola apunta al
-   rey Matthias. Así la lectura es "habla la pieza", no "habla el tablero". */
+/* La apertura y los comentarios posteriores comparten el mismo ancla proyectada
+   del rey Matthias. left/top llegan inline desde useMatthias3DBubbleAnchor y
+   cambian con FEN, orientación y resize: la cola pertenece a la pieza, nunca a
+   una coordenada fija del tablero. */
 .matthias-3d-opening-banter {
   position: absolute;
-  top: 36%;
-  left: 50%;
   width: min(23rem, 44%);
   margin: 0;
   padding: .84rem 1rem .88rem;
@@ -73,6 +71,7 @@
   color: #211a14;
   transform: translate(-50%, -100%);
   transform-origin: 50% 100%;
+  transition: left .18s cubic-bezier(.2, .8, .2, 1), top .18s cubic-bezier(.2, .8, .2, 1);
   animation: matthias-3d-banter-in .22s cubic-bezier(.2, .8, .2, 1), matthias-3d-banter-out .38s ease 4.28s forwards;
 }
 
@@ -129,8 +128,6 @@
   }
 
   .matthias-3d-opening-banter {
-    top: 38%;
-    left: 50%;
     width: min(18rem, 76%);
     padding: .67rem .78rem .72rem;
     border-radius: .9rem .9rem .28rem .9rem;
@@ -144,5 +141,6 @@
 @media (prefers-reduced-motion: reduce) {
   .matthias-3d-opening-banter {
     animation: none;
+    transition: none;
   }
 }
