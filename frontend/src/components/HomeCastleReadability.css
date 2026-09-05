@@ -1,0 +1,44 @@
+/* Home castle readability pass.
+ * The 3D scene is already intentionally nocturnal; do not darken it a second
+ * time in the presentation layer. Keep warm contrast and depth, but ensure
+ * architecture, furniture and room entrances remain readable at a glance.
+ */
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__scene,
+body .menu.home-friendly > .home-castle-life .home-great-hall-scene.home-castle-hub__scene {
+  filter: saturate(1.06) brightness(1.18) contrast(1.01) !important;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__scene canvas {
+  filter: saturate(1.04) brightness(1.10) contrast(1.01) !important;
+}
+
+/* Preserve cinematic edge falloff without burying the architecture in black. */
+body .menu.home-friendly > .home-castle-life::after {
+  background:
+    radial-gradient(
+      ellipse at 50% 44%,
+      transparent 38%,
+      rgba(0, 0, 0, .04) 72%,
+      rgba(0, 0, 0, .20) 100%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(3, 4, 5, .07) 0%,
+      transparent 22%,
+      transparent 72%,
+      rgba(3, 4, 5, .14) 100%
+    );
+}
+
+/* Mobile previously applied an additional brightness(.86), which made the
+ * same hall substantially darker than desktop. Keep the same readable grade. */
+@media (max-width: 760px) {
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__scene {
+    filter: saturate(1.03) brightness(1.16) contrast(1.00) !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__scene canvas {
+    filter: saturate(1.03) brightness(1.10) contrast(1.00) !important;
+  }
+}
