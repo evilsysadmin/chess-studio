@@ -109,11 +109,17 @@ jobs:
             esac
 
             case "$file" in
-              .github/actions/setup-browser-e2e/action.yml|.github/actions/cache-node-modules/action.yml|.github/workflows/e2e-full.yml)
+              .github/actions/setup-browser-e2e/action.yml|.github/actions/cache-node-modules/action.yml)
                 full_logic=true
                 visual=true
                 focus=true
                 matthias=true
+                ;;
+              .github/workflows/e2e-full.yml)
+                # El propio workflow necesita probar el plumbing real (scope,
+                # build, artifact, browser setup y ejecución), no despertar los
+                # 13 escenarios WebGL que no han cambiado.
+                visual=true
                 ;;
             esac
           done <<< "$files"
