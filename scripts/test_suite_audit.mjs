@@ -142,7 +142,7 @@ if (checkCiWiring) {
   if (!fs.existsSync(stagingDeployPath)) fail('Falta .github/workflows/staging-deploy.yml');
   if (!fs.existsSync(stagingPreviewPath)) fail('Falta .github/workflows/staging-preview.yml');
   if (!fs.existsSync(coverageWorkflowPath)) fail('Coverage informativo debe vivir fuera del CI de cada push');
-  if (!fs.existsSync(browserWorkflowPath)) fail('Falta el gate Browser E2E');
+  if (!fs.existsSync(browserWorkflowPath)) fail('Falta el sweep Browser E2E');
   if (!fs.existsSync(setupBrowserPath)) fail('Falta la acción común setup-browser-e2e');
   const mainCiSource = read(mainCiPath);
   const promotionSource = read(promotionPath);
@@ -219,9 +219,12 @@ if (checkCiWiring) {
     'name: Tests · Backend',
     '  security:\n',
     'name: Security · Trivy + Docker',
+    '  e2e_build:\n',
+    'name: Build browser artifact once',
+    '  e2e_specialized:\n',
     '  e2e:\n',
     'name: Tests · Playwright',
-    'needs: preflight',
+    'browser_has_cases:',
   ]) {
     if (!mainCiSource.includes(required)) fail(`CI quality-only incompleto: falta ${JSON.stringify(required)}`);
   }
@@ -236,19 +239,30 @@ if (checkCiWiring) {
       : tail;
   };
 
-  const shardedE2e = mainCiSource.includes('\n  e2e_lanes:\n');
-  for (const qualityJob of ['frontend', 'backend', 'security', shardedE2e ? 'e2e_lanes' : 'e2e']) {
+  for (const qualityJob of ['frontend', 'backend', 'security', 'e2e_build']) {
     const block = jobBlock(qualityJob);
-    if (!block.includes('\n    needs: preflight\n')) fail(`${qualityJob} debe depender sólo del preflight y poder correr en paralelo`);
+    if (!block.includes('\n    needs: preflight\n')) fail(`${qualityJob} debe depender del preflight y poder correr en paralelo`);
   }
-  if (shardedE2e) {
-    const lanesBlock = jobBlock('e2e_lanes');
-    const aggregateBlock = jobBlock('e2e');
-    if (!lanesBlock.includes('name: Tests · Playwright · ${{ matrix.lane }}')) fail('Las lanes Playwright deben conservar nombre explícito por lane');
-    if (!lanesBlock.includes('fail-fast: false')) fail('Las lanes Playwright deben completar diagnóstico aunque falle una lane');
-    if (!aggregateBlock.includes('needs: [preflight, e2e_lanes]')) fail('Tests · Playwright debe agregar preflight + e2e_lanes antes de acreditar el required check');
-    if (!aggregateBlock.includes('if: always()')) fail('El agregador Playwright debe ejecutarse siempre para convertir fallos/skips de lanes en un required check determinista');
+
+  const buildBlock = jobBlock('e2e_build');
+  const lanesBlock = jobBlock('e2e_lanes');
+  const specializedBlock = jobBlock('e2e_specialized');
+  const aggregateBlock = jobBlock('e2e');
+  if (!buildBlock.includes('Build frontend once for all required browser gates')) fail('Playwright debe compilar el frontend una sola vez por Quality run');
+  if (!buildBlock.includes('quality-browser-frontend-${{ github.sha }}')) fail('El artefacto browser debe quedar ligado al SHA probado');
+  for (const [label, block] of [['core', lanesBlock], ['specialized', specializedBlock]]) {
+    if (!block.includes('needs: [preflight, e2e_build]')) fail(`Las lanes ${label} deben esperar el único build compartido`);
+    if (!block.includes("build-frontend: 'false'")) fail(`Las lanes ${label} no deben recompilar el frontend`);
+    if (!block.includes('actions/download-artifact@v6')) fail(`Las lanes ${label} deben consumir el dist compartido`);
   }
+  if (!lanesBlock.includes('name: Tests · Playwright · ${{ matrix.lane }}')) fail('Las lanes Playwright deben conservar nombre explícito por lane');
+  if (!lanesBlock.includes('fail-fast: false') || !specializedBlock.includes('fail-fast: false')) fail('Las matrices Playwright deben completar diagnóstico aunque falle una lane');
+  if (!aggregateBlock.includes('needs: [preflight, e2e_lanes, e2e_specialized]')) fail('Tests · Playwright debe agregar core + especializado antes de acreditar el required check');
+  if (!aggregateBlock.includes('if: always()')) fail('El agregador Playwright debe ejecutarse siempre para convertir fallos/skips en un required check determinista');
+  if (!aggregateBlock.includes('SPECIALIZED_RESULT')) fail('El required check Playwright debe bloquear si falla una lane especializada');
+
+  if (browserWorkflowSource.includes('pull_request:')) fail('e2e-full.yml no debe duplicar las PR: la matriz especializada requerida vive en cicd.yml');
+  if (!browserWorkflowSource.includes('workflow_dispatch:') || !browserWorkflowSource.includes('schedule:')) fail('El sweep multi-browser debe quedar disponible manualmente y por calendario');
 
   for (const required of [
     'name: Production · promote',
