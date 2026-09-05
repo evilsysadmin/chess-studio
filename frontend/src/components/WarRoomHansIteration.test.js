@@ -39,36 +39,43 @@ describe('Hans quick-game visual iteration', () => {
     expect(shouldForceHansQuickIteration({ hintMode: 'off', memoryContext: { nemesis: true } })).toBe(false);
   });
 
-  it('saca a Hans por su puerta desde el segundo cero mientras apaga la chimenea', () => {
+  it('saca a Hans por la puerta desde el segundo cero y lo hace recorrer el lateral con parsimonia', () => {
     const start = hansQuickIterationFrame(0);
-    const middle = hansQuickIterationFrame(2.5);
-    const almostAtBasket = hansQuickIterationFrame(4.95);
-    const takeLog = hansQuickIterationFrame(5.1);
+    const middle = hansQuickIterationFrame(3.5);
+    const almostAtBasket = hansQuickIterationFrame(6.95);
+    const takeLog = hansQuickIterationFrame(7.1);
 
     expect(start.phase).toBe('fire-dimming');
     expect(start.fireScale).toBe(1);
     expect(start.hansVisible).toBe(true);
     expect(start.hansX).toBeCloseTo(2.65, 2);
+    expect(start.route).toBe('entry');
+    expect(start.routeProgress).toBe(0);
     expect(start.doorOpen).toBe(1);
 
     expect(middle.fireScale).toBeLessThan(1);
     expect(middle.fireScale).toBeGreaterThan(0.26);
     expect(middle.hansVisible).toBe(true);
     expect(middle.hansX).toBeLessThan(start.hansX);
-    expect(middle.doorOpen).toBeLessThanOrEqual(1);
+    expect(middle.hansX).toBeGreaterThan(-1.62);
+    expect(middle.routeProgress).toBeGreaterThan(0.45);
+    expect(middle.routeProgress).toBeLessThan(0.55);
+    expect(middle.doorOpen).toBeLessThan(0.5);
 
-    expect(almostAtBasket.fireScale).toBeLessThan(0.28);
+    expect(almostAtBasket.fireScale).toBeCloseTo(0.26, 2);
     expect(almostAtBasket.hansVisible).toBe(true);
-    expect(almostAtBasket.hansX).toBeCloseTo(1.95, 1);
+    expect(almostAtBasket.hansX).toBeCloseTo(-1.62, 1);
+    expect(almostAtBasket.routeProgress).toBeGreaterThan(0.99);
     expect(almostAtBasket.doorOpen).toBeLessThan(0.02);
 
     expect(takeLog.phase).toBe('take-log');
     expect(takeLog.hansVisible).toBe(true);
+    expect(takeLog.hansX).toBeCloseTo(-1.62, 2);
     expect(takeLog.fireScale).toBeCloseTo(0.26, 2);
     expect(takeLog.doorOpen).toBe(0);
   });
 
-  it('instala Hans ya visible y la puerta abierta antes del primer frame útil', () => {
+  it('deja la puerta pasada la armadura y el equipo de chimenea al lado contrario', () => {
     setWarRoomHansQuickIterationEnabled(true);
     expect(isWarRoomHansQuickIterationEnabled()).toBe(true);
 
@@ -86,24 +93,44 @@ describe('Hans quick-game visual iteration', () => {
     const door = room.getObjectByName('war-room-hans-service-door');
     const doorPivot = room.getObjectByName('war-room-hans-service-door-pivot');
     const handle = room.getObjectByName('war-room-hans-service-door-handle');
+    const armor = room.getObjectByName('war-room-teutonic-armor-left')
+      || room.getObjectByName('war-room-armor-guard-left');
+    const basket = room.getObjectByName('war-room-hearth-log-basket');
+    const tools = room.getObjectByName('war-room-hearth-tool-stand');
+    const kit = room.getObjectByName('war-room-hans-hearth-kit');
 
     expect(hans).toBeTruthy();
     expect(driver).toBeTruthy();
     expect(door).toBeTruthy();
     expect(doorPivot).toBeTruthy();
     expect(handle).toBeTruthy();
+    expect(armor).toBeTruthy();
+    expect(basket).toBeTruthy();
+    expect(tools).toBeTruthy();
+    expect(kit).toBeTruthy();
     expect(driver.userData.warRoomHansSelected).toBe(true);
     expect(driver.userData.warRoomHansStartDelaySeconds).toBe(0);
-    expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v4-door');
+    expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v5-service-corridor');
     expect(driver.userData.warRoomHansVisibleAtStart).toBe(true);
     expect(driver.userData.warRoomHansUsesServiceDoor).toBe(true);
-    expect(fireplace.userData.warRoomHansQuickIteration).toBe('always-quick-v4-door');
+    expect(driver.userData.warRoomHansServiceCorridor).toBe('past-armor-to-hearth-v1');
+    expect(fireplace.userData.warRoomHansQuickIteration).toBe('always-quick-v5-service-corridor');
     expect(fireplace.userData.warRoomHansHearthRestored).toBe(false);
     expect(door.userData.warRoomHansServiceDoor).toBe('hans-service-door-v1');
+    expect(door.userData.warRoomHansDoorPlacement).toBe('past-armor-service-corridor-v1');
+    expect(door.userData.warRoomHansDoorArmorName).toContain('armor');
+    expect(door.userData.warRoomHansDoorWorldZ).toBeGreaterThan(armor.position.z + 1.4);
     expect(door.userData.warRoomHansDoorOpen).toBe(1);
     expect(Math.abs(doorPivot.rotation.y)).toBeGreaterThan(0.8);
+    expect(basket.userData.warRoomHansHearthSide).toBe('opposite-service-door');
+    expect(basket.userData.warRoomHansBasketFinish).toBe('graphite-grey-v1');
+    expect(tools.userData.warRoomHansHearthSide).toBe('opposite-service-door');
+    expect(kit.userData.warRoomHansServiceDoorClearance).toBe('opposite-side-v1');
+    expect(Math.sign(basket.position.x)).toBe(-Math.sign(fireplace.position.x));
+    expect(Math.sign(tools.position.x)).toBe(-Math.sign(fireplace.position.x));
     expect(hans.visible).toBe(true);
     expect(Math.abs(hans.position.x)).toBeCloseTo(2.65, 2);
+    expect(Math.abs(hans.position.z)).toBeGreaterThan(4);
     expect(typeof driver.onBeforeRender).toBe('function');
 
     dispose(room);
@@ -121,15 +148,19 @@ describe('Hans quick-game visual iteration', () => {
       const hans = room.getObjectByName('war-room-hans-butler');
       const driver = room.getObjectByName('war-room-hans-fireplace-driver');
       const door = room.getObjectByName('war-room-hans-service-door');
+      const basket = room.getObjectByName('war-room-hearth-log-basket');
 
       expect(hans).toBeTruthy();
       expect(driver).toBeTruthy();
       expect(door).toBeTruthy();
+      expect(basket).toBeTruthy();
       expect(driver.userData.warRoomHansSelected).toBe(true);
-      expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v4-door');
+      expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v5-service-corridor');
       expect(driver.userData.warRoomHansVisibleAtStart).toBe(true);
       expect(hans.visible).toBe(true);
       expect(door.userData.warRoomHansDoorOpen).toBe(1);
+      expect(door.userData.warRoomHansDoorPlacement).toBe('past-armor-service-corridor-v1');
+      expect(basket.userData.warRoomHansBasketFinish).toBe('graphite-grey-v1');
     } finally {
       dispose(room);
     }
@@ -142,6 +173,7 @@ describe('Hans quick-game visual iteration', () => {
     try {
       expect(installWarRoomHansSceneRoutine(room, { towardBoard: 1, coarsePointer: true })).toBeGreaterThan(0);
       expect(room.getObjectByName('war-room-hans-service-door')).toBeTruthy();
+      expect(room.getObjectByName('war-room-hearth-log-basket').userData.warRoomHansBasketFinish).toBe('graphite-grey-v1');
       expect(room.getObjectByName('war-room-hans-butler')).toBeFalsy();
       expect(room.getObjectByName('war-room-hans-fireplace-driver')).toBeFalsy();
     } finally {
@@ -163,13 +195,14 @@ describe('Hans quick-game visual iteration', () => {
 
       expect(door.userData.warRoomHansDoorOpen).toBe(1);
 
-      now.mockReturnValue(6100);
+      now.mockReturnValue(8200);
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('take-log');
       expect(door.userData.warRoomHansDoorOpen).toBe(0);
       expect(hans.visible).toBe(true);
+      expect(hans.position.x).toBeGreaterThan(0);
 
-      now.mockReturnValue(27000);
+      now.mockReturnValue(30800);
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('leave');
       expect(door.userData.warRoomHansDoorOpen).toBeGreaterThan(0.9);
@@ -199,6 +232,7 @@ describe('Hans quick-game visual iteration', () => {
       const addedLog = room.getObjectByName('war-room-hans-hearth-added-log');
       const poker = room.getObjectByName('war-room-hearth-poker');
       const door = room.getObjectByName('war-room-hans-service-door');
+      const basket = room.getObjectByName('war-room-hearth-log-basket');
 
       expect(fireplace).toBeTruthy();
       expect(driver).toBeTruthy();
@@ -208,6 +242,8 @@ describe('Hans quick-game visual iteration', () => {
       expect(addedLog).toBeTruthy();
       expect(poker).toBeTruthy();
       expect(door).toBeTruthy();
+      expect(basket).toBeTruthy();
+      expect(basket.userData.warRoomHansBasketFinish).toBe('graphite-grey-v1');
       expect(hans.visible).toBe(true);
 
       const baseScale = fireCore.scale.clone();
