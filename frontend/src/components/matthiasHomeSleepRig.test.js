@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   applyMatthiasPremiumHomePose,
@@ -35,12 +34,8 @@ function apply(rig, overrides = {}) {
   applyMatthiasHomePropErgonomics(rig, next);
 }
 
-function box(object) {
-  return new THREE.Box3().setFromObject(object);
-}
-
 describe('Matthias premium Home sleep rig', () => {
-  it('sustituye el pupitre por una siesta reclinada con manta envolvente y almohada visible', () => {
+  it('mantiene visible al peón canónico y usa sólo una manta baja y oscura', () => {
     const rig = createMatthiasPremiumHome3D();
     apply(rig, { activityTime: 0 });
 
@@ -48,78 +43,86 @@ describe('Matthias premium Home sleep rig', () => {
     expect(rig.activityRig.premiumSleep.visible).toBe(true);
     expect(rig.root.userData.activitySleepRigVersion).toBe(MATTHIAS_HOME_SLEEP_RIG_VERSION);
     expect(rig.root.userData.activitySleepComposition).toBe(MATTHIAS_HOME_SLEEP_COMPOSITION);
-    expect(rig.root.userData.activitySleepState).toBe('reclined');
+    expect(rig.root.userData.activitySleepState).toBe('canonical-angry-side-nap');
 
-    const wrap = rig.root.getObjectByName('sleep-wrap-body');
-    const volume = rig.root.getObjectByName('sleep-wrap-volume');
-    const sideTuck = rig.root.getObjectByName('sleep-wrap-side-tuck');
+    const blanket = rig.root.getObjectByName('sleep-blanket-lower');
     const pillow = rig.root.getObjectByName('sleep-pillow-premium');
-    expect(wrap).toBeTruthy();
-    expect(volume).toBeTruthy();
-    expect(sideTuck).toBeTruthy();
+    expect(blanket).toBeTruthy();
     expect(pillow).toBeTruthy();
-    expect(rig.root.getObjectByName('sleep-wrap-trim')).toBeTruthy();
-    expect(rig.root.getObjectsByProperty('name', 'sleep-wrap-fold')).toHaveLength(3);
+    expect(rig.root.getObjectByName('sleep-blanket-underfold')).toBeTruthy();
+    expect(rig.root.getObjectByName('sleep-blanket-seam')).toBeTruthy();
+    expect(rig.activityRig.premiumSleep.getObjectsByProperty('name', 'sleep-blanket-fold')).toHaveLength(2);
 
-    const wrapBox = box(wrap);
-    const wrapSize = new THREE.Vector3();
-    wrapBox.getSize(wrapSize);
-    const faceBox = box(rig.head);
-    const faceCenter = new THREE.Vector3();
-    faceBox.getCenter(faceCenter);
-    expect(wrapSize.x).toBeGreaterThan(.95);
-    expect(wrapSize.y).toBeGreaterThan(.55);
-    // Extrusion bevel + rotated parent can move the world-space AABB by tiny
-    // fractions. Keep a 2 mm tolerance while still forcing the wrap below the
-    // face centre instead of allowing the old desk/lectern silhouette back.
-    expect(wrapBox.max.y).toBeLessThan(faceCenter.y + .032);
-    expect(pillow.position.x).toBeGreaterThan(.40);
-    expect(pillow.position.y).toBeGreaterThan(.45);
+    // Regression: the old burgundy cocoon must never return and the canonical
+    // pawn body remains the actual visible character underneath the low blanket.
+    expect(rig.root.getObjectByName('sleep-wrap-body')).toBeUndefined();
+    expect(rig.root.getObjectByName('sleep-wrap-volume')).toBeUndefined();
+    expect(rig.root.getObjectByName('sleep-wrap-side-tuck')).toBeUndefined();
+    expect(blanket.position.y).toBeLessThan(-.25);
+    expect(blanket.scale.y).toBeLessThan(.90);
+    expect(rig.body.visible).not.toBe(false);
+    expect(rig.root.getObjectByName('premium-coat-body').visible).not.toBe(false);
 
     disposeMatthiasPremiumHome3D(rig);
   });
 
-  it('reclina cuerpo y cabeza hacia la almohada, relaja cejas y oculta brazos', () => {
+  it('duerme de lado con ojos cerrados pero conserva el ceño cabreado canónico', () => {
     const rig = createMatthiasPremiumHome3D();
     apply(rig, { activityTime: 0 });
 
-    expect(rig.root.rotation.z).toBeLessThan(-.20);
+    expect(rig.root.rotation.z).toBeLessThan(-.45);
     expect(rig.root.rotation.y).toBeLessThan(-.04);
     expect(rig.headPivot.rotation.x).toBeGreaterThan(.20);
-    expect(rig.headPivot.rotation.z).toBeLessThan(-.22);
-    expect(rig.headPivot.position.x).toBeGreaterThan(.07);
-    expect(rig.leftEye.scale.y).toBeLessThan(.12);
-    expect(rig.rightEye.scale.y).toBeLessThan(.12);
-    expect(Math.abs(rig.leftBrow.rotation.z - Math.PI / 2)).toBeLessThan(.14);
-    expect(Math.abs(rig.rightBrow.rotation.z - Math.PI / 2)).toBeLessThan(.14);
-    expect(rig.mouthGroup.scale.y).toBeLessThan(.65);
+    expect(rig.headPivot.rotation.z).toBeLessThan(-.28);
+    expect(rig.headPivot.position.x).toBeGreaterThan(.09);
+    expect(rig.leftEye.scale.y).toBeLessThan(.10);
+    expect(rig.rightEye.scale.y).toBeLessThan(.10);
+
+    // The brows stay in the canonical angry V instead of flattening into a
+    // peaceful nap expression.
+    expect(Math.abs(rig.leftBrow.rotation.z - Math.PI / 2)).toBeGreaterThan(.35);
+    expect(Math.abs(rig.rightBrow.rotation.z - Math.PI / 2)).toBeGreaterThan(.35);
+    expect(rig.mouthGroup.scale.y).toBeGreaterThan(.80);
+    expect(rig.mouthGroup.visible).toBe(true);
+    expect(rig.speechMouth.visible).toBe(false);
     expect(rig.activityRig.support.visible).toBe(false);
     expect(rig.activityRig.assist.visible).toBe(false);
 
     disposeMatthiasPremiumHome3D(rig);
   });
 
-  it('respira apenas unos milímetros y reduced-motion congela el movimiento', () => {
+  it('respira despacio y sólo tirita de frío de forma breve y ocasional', () => {
     const rig = createMatthiasPremiumHome3D();
     apply(rig, { activityTime: 0 });
-    const restingY = rig.activityRig.premiumSleep.position.y;
+    expect(rig.root.userData.activitySleepBreath).toBeCloseTo(0, 6);
+    expect(rig.root.userData.activitySleepShiver).toBeCloseTo(0, 6);
 
-    apply(rig, { activityTime: .9 });
-    const inhaleY = rig.activityRig.premiumSleep.position.y;
-    expect(inhaleY - restingY).toBeGreaterThan(.005);
-    expect(inhaleY - restingY).toBeLessThan(.012);
+    apply(rig, { activityTime: 1.05 });
+    expect(rig.root.userData.activitySleepBreath).toBeGreaterThan(.005);
+    expect(rig.root.userData.activitySleepBreath).toBeLessThan(.007);
+    expect(rig.root.userData.activitySleepShiver).toBeCloseTo(0, 6);
 
-    apply(rig, { activityTime: .9, activityReducedMotion: true });
-    expect(rig.activityRig.premiumSleep.position.y).toBeCloseTo(-.30, 6);
+    // Midpoint of the deterministic cold-shiver window.
+    apply(rig, { activityTime: 9.76 });
+    expect(rig.root.userData.activitySleepShiver).toBeGreaterThan(.80);
+    expect(rig.root.userData.activitySleepCold).toBe('occasional');
+
+    apply(rig, { activityTime: 9.76, activityReducedMotion: true });
     expect(rig.root.userData.activitySleepBreath).toBe(0);
+    expect(rig.root.userData.activitySleepShiver).toBe(0);
 
     disposeMatthiasPremiumHome3D(rig);
   });
 
-  it('al despertar retira la escena premium y recupera la cara despierta', () => {
+  it('la pose de sueño es absoluta y al despertar no deja cara ni cabeza desplazadas', () => {
     const rig = createMatthiasPremiumHome3D();
     apply(rig, { activityTime: 0 });
-    expect(rig.activityRig.premiumSleep.visible).toBe(true);
+    const firstSleepX = rig.headPivot.position.x;
+
+    // Applying multiple frames must not accumulate the previous += x bug.
+    apply(rig, { activityTime: .5 });
+    apply(rig, { activityTime: 1.0 });
+    expect(rig.headPivot.position.x).toBeCloseTo(firstSleepX, 6);
 
     const awake = pose({ activityProfile: 'idle', activityTime: 2 });
     applyMatthiasPremiumHomePose(rig, awake);
@@ -131,6 +134,8 @@ describe('Matthias premium Home sleep rig', () => {
     expect(rig.leftEye.scale.y).toBeGreaterThan(1.3);
     expect(rig.rightEye.scale.y).toBeGreaterThan(1.3);
     expect(rig.root.rotation.z).toBe(0);
+    expect(rig.headPivot.position.x).toBeCloseTo(0, 6);
+    expect(rig.mouthGroup.scale.y).toBeCloseTo(.96, 6);
 
     disposeMatthiasPremiumHome3D(rig);
   });
