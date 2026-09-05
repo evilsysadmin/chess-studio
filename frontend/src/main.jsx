@@ -6,7 +6,6 @@ import './components/Board3DRegistration.js';
 import './styles.css';
 import './components/HomeGreatHallCascade.css';
 import './components/HomeGreatHallFinish.css';
-import './components/HomeCastleFloor.css';
 import './components/HomeGreatHallModalFix.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
 import { migratePersistentStorage } from './storageMigrations.js';
