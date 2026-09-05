@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export const MATTHIAS_HOME_PROP_ERGONOMICS_VERSION = 'home-props-v1-handheld';
-export const MATTHIAS_CHESS_WEEKLY_RIG_VERSION = 'chess-weekly-v1-articulated';
+export const MATTHIAS_CHESS_WEEKLY_RIG_VERSION = 'chess-weekly-v2-mock-fidelity';
 
 const PRESS_CLOCKS = new WeakMap();
 
@@ -104,10 +104,12 @@ function buildChessWeeklyPress(rig) {
     side: THREE.DoubleSide,
   });
 
+  // Mock-approved silhouette: a real two-page newspaper opened in a visible V.
+  // At 128 px the spread must dominate the hands without becoming a chest badge.
   const leftPage = new THREE.Group();
   leftPage.name = 'chess-weekly-left-page';
   leftPage.position.x = -.185;
-  leftPage.rotation.y = .105;
+  leftPage.rotation.y = .24;
   leftPage.rotation.z = .018;
   press.add(leftPage);
   mesh(leftPage, new THREE.BoxGeometry(.37, .47, .018), paper, {
@@ -127,7 +129,7 @@ function buildChessWeeklyPress(rig) {
   const rightPage = new THREE.Group();
   rightPage.name = 'chess-weekly-right-page';
   rightPage.position.x = .185;
-  rightPage.rotation.y = -.105;
+  rightPage.rotation.y = -.24;
   rightPage.rotation.z = -.018;
   press.add(rightPage);
   mesh(rightPage, new THREE.BoxGeometry(.37, .47, .018), paper, {
@@ -167,7 +169,7 @@ function buildChessWeeklyPress(rig) {
     mesh(press, new THREE.BoxGeometry(.35, .008, .010), paperEdge, {
       name: 'chess-weekly-page-edge',
       position: [.185, -.237 - offset * .35, -.010 - offset],
-      rotation: [0, -.10, -.015],
+      rotation: [0, -.24, -.015],
     });
   }
 
@@ -189,6 +191,8 @@ function buildChessWeeklyPress(rig) {
   activityRig.pressPageTurnPivot = pageTurnPivot;
   activityRig.pressPageTurnLeaf = pageTurnLeaf;
   activityRig.pressRigVersion = MATTHIAS_CHESS_WEEKLY_RIG_VERSION;
+  activityRig.pressLeftEyeBaseY = Number(rig.leftEye?.position?.y ?? .405);
+  activityRig.pressRightEyeBaseY = Number(rig.rightEye?.position?.y ?? .405);
   return press;
 }
 
@@ -272,6 +276,55 @@ export function matthiasHomeErgonomicActivityProp(profile = '', baseProp = 'none
   return normalizedProfile(profile) === 'press' ? 'press' : baseProp;
 }
 
+function restorePressEyeHeight(rig, activityRig) {
+  if (rig.leftEye && Number.isFinite(activityRig.pressLeftEyeBaseY)) {
+    rig.leftEye.position.y = activityRig.pressLeftEyeBaseY;
+  }
+  if (rig.rightEye && Number.isFinite(activityRig.pressRightEyeBaseY)) {
+    rig.rightEye.position.y = activityRig.pressRightEyeBaseY;
+  }
+}
+
+function applyChessWeeklyFocusFace(rig, activityRig, pose, reading, speaking) {
+  if (!rig.leftEye || !rig.rightEye) return;
+
+  const gazeX = Number(pose.gazeX) || 0;
+  const leftBaseY = Number.isFinite(activityRig.pressLeftEyeBaseY)
+    ? activityRig.pressLeftEyeBaseY
+    : rig.leftEye.position.y;
+  const rightBaseY = Number.isFinite(activityRig.pressRightEyeBaseY)
+    ? activityRig.pressRightEyeBaseY
+    : rig.rightEye.position.y;
+
+  // Absolute coordinates are deliberate. The old `+= eyeY` accumulated every
+  // rendered frame until both eyes slid out of the face and Matthias appeared
+  // to be sleeping while reading.
+  rig.leftEye.position.x = rig.base.leftEyeX + gazeX + (speaking ? 0 : reading.eyeX);
+  rig.rightEye.position.x = rig.base.rightEyeX + gazeX + (speaking ? 0 : reading.eyeX);
+  rig.leftEye.position.y = leftBaseY + (speaking ? 0 : reading.eyeY);
+  rig.rightEye.position.y = rightBaseY + (speaking ? 0 : reading.eyeY);
+
+  if (speaking) return;
+
+  // Mock expression: concentrated, not furious. Eyes stay visibly open; the
+  // brows remain stern but relax from the canonical aggressive V and gain a
+  // touch of asymmetry. The mouth stays compact and dry.
+  rig.leftEye.scale.x = .86;
+  rig.rightEye.scale.x = .86;
+  rig.leftEye.scale.y = Math.max(1.34, rig.leftEye.scale.y);
+  rig.rightEye.scale.y = Math.max(1.34, rig.rightEye.scale.y);
+  rig.leftBrow.rotation.z = Math.PI / 2 - .30;
+  rig.rightBrow.rotation.z = Math.PI / 2 + .34;
+  rig.leftBrow.position.y = rig.base.leftBrowY - .008;
+  rig.rightBrow.position.y = rig.base.rightBrowY - .002;
+  rig.mouthGroup.rotation.z = -.018;
+  rig.mouthGroup.scale.x = .90;
+
+  // Keep Matthias looking into the paper instead of performing for the camera.
+  rig.headPivot.rotation.y -= .025;
+  rig.headPivot.rotation.x += .055;
+}
+
 export function applyMatthiasHomePropErgonomics(rig, pose = {}) {
   const activityRig = rig?.activityRig;
   if (!activityRig) return 'none';
@@ -284,6 +337,7 @@ export function applyMatthiasHomePropErgonomics(rig, pose = {}) {
   const press = prop === 'press' ? ensurePress(rig) : activityRig.press;
 
   if (press) press.visible = prop === 'press';
+  if (prop !== 'press') restorePressEyeHeight(rig, activityRig);
 
   const {
     cup,
@@ -357,13 +411,16 @@ export function applyMatthiasHomePropErgonomics(rig, pose = {}) {
       reducedMotion: Boolean(pose.activityReducedMotion),
     });
 
-    setPose(press, [-.035, -.405 + reach * .025, .835], [-.18, .16 + yaw * .16, .028], .94);
-    press.position.y += Math.sin(activityTime * .72) * .004;
-    press.rotation.z += Math.sin(activityTime * .56) * .007;
+    // Compared with v1 this is deliberately bigger, higher and more vertical.
+    // Its centre is no longer on the pawn's belly and its top edge reaches the
+    // natural reading zone just below Matthias' mouth, matching the approved mock.
+    setPose(press, [-.045, -.300 + reach * .018, .865], [-.075, .12 + yaw * .10, .018], 1.20);
+    press.position.y += Math.sin(activityTime * .72) * .003;
+    press.rotation.z += Math.sin(activityTime * .56) * .005;
     support.visible = true;
     assist.visible = true;
-    setLimb(supportStem, supportGlove, [.33, -.35, .48], -.67, [.35, -.405, .735]);
-    setLimb(assistStem, assistGlove, [-.33, -.35, .47], .67, [-.36, -.405, .725]);
+    setLimb(supportStem, supportGlove, [.36, -.31, .48], -.72, [.465, -.335, .755]);
+    setLimb(assistStem, assistGlove, [-.36, -.31, .47], .72, [-.475, -.335, .745]);
 
     const pagePivot = activityRig.pressPageTurnPivot;
     if (pagePivot) {
@@ -371,25 +428,13 @@ export function applyMatthiasHomePropErgonomics(rig, pose = {}) {
       pagePivot.rotation.set(reading.pageCurl * .055, reading.pageAngle, -reading.pageCurl * .035);
     }
 
-    if (!speaking) {
-      if (rig.leftEye) {
-        rig.leftEye.position.x += reading.eyeX;
-        rig.leftEye.position.y += reading.eyeY;
-      }
-      if (rig.rightEye) {
-        rig.rightEye.position.x += reading.eyeX;
-        rig.rightEye.position.y += reading.eyeY;
-      }
-      if (rig.headPivot) {
-        rig.headPivot.rotation.y -= .065;
-        rig.headPivot.rotation.x += .030;
-      }
-    }
+    applyChessWeeklyFocusFace(rig, activityRig, pose, reading, speaking);
 
     rig.root.userData.activityReadingLine = reading.readingLine;
     rig.root.userData.activityReadingScan = reading.readingScan;
     rig.root.userData.activityPageTurn = reading.pageTurn;
     rig.root.userData.activityPressRigVersion = MATTHIAS_CHESS_WEEKLY_RIG_VERSION;
+    rig.root.userData.activityPressComposition = 'mock-reading-v2';
   } else if (prop === 'blanket') {
     support.visible = false;
     assist.visible = false;
@@ -401,6 +446,7 @@ export function applyMatthiasHomePropErgonomics(rig, pose = {}) {
     rig.root.userData.activityReadingLine = -1;
     rig.root.userData.activityReadingScan = 0;
     rig.root.userData.activityPageTurn = 0;
+    rig.root.userData.activityPressComposition = 'inactive';
   }
 
   activityRig.currentProp = prop;

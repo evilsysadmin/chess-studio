@@ -108,7 +108,7 @@ describe('Matthias Home prop ergonomics', () => {
     disposeMatthiasPremiumHome3D(rig);
   });
 
-  it('da a Chess Weekly un periódico grande, plegado y sostenido como en el mock aprobado', () => {
+  it('da a Chess Weekly la composición grande y abierta del mock aprobado', () => {
     const rig = createMatthiasPremiumHome3D();
     expect(matthiasHomeErgonomicActivityProp('press', 'none')).toBe('press');
 
@@ -117,23 +117,33 @@ describe('Matthias Home prop ergonomics', () => {
     expect(rig.activityRig.press.visible).toBe(true);
     expect(rig.activityRig.book.visible).toBe(false);
     expect(rig.activityRig.press.userData.rigVersion).toBe(MATTHIAS_CHESS_WEEKLY_RIG_VERSION);
-    expect(rig.activityRig.press.scale.x).toBeCloseTo(.94, 5);
+    expect(MATTHIAS_CHESS_WEEKLY_RIG_VERSION).toBe('chess-weekly-v2-mock-fidelity');
+    expect(rig.activityRig.press.scale.x).toBeCloseTo(1.20, 5);
     expect(rig.activityRig.press.position.x).toBeLessThan(0);
-    expect(rig.activityRig.press.position.y).toBeGreaterThan(-.5);
-    expect(rig.activityRig.press.rotation.x).toBeGreaterThan(-.25);
-    expect(rig.activityRig.press.rotation.y).toBeGreaterThan(.10);
+    expect(rig.activityRig.press.position.y).toBeGreaterThan(-.34);
+    expect(rig.activityRig.press.rotation.x).toBeGreaterThan(-.12);
+    expect(Math.abs(rig.root.getObjectByName('chess-weekly-left-page').rotation.y)).toBeGreaterThan(.18);
+    expect(Math.abs(rig.root.getObjectByName('chess-weekly-right-page').rotation.y)).toBeGreaterThan(.18);
     expect(rig.activityRig.support.visible).toBe(true);
     expect(rig.activityRig.assist.visible).toBe(true);
-    expect(rig.activityRig.supportGlove.position.x).toBeGreaterThan(.30);
-    expect(rig.activityRig.assistGlove.position.x).toBeLessThan(-.30);
+    expect(rig.activityRig.supportGlove.position.x).toBeGreaterThan(.44);
+    expect(rig.activityRig.assistGlove.position.x).toBeLessThan(-.44);
     expect(rig.root.getObjectByName('chess-weekly-paper-left')).toBeTruthy();
     expect(rig.root.getObjectByName('chess-weekly-paper-right')).toBeTruthy();
     expect(rig.root.getObjectByName('chess-weekly-central-fold')).toBeTruthy();
     expect(rig.root.getObjectsByProperty('name', 'chess-weekly-diagram-dark-square')).toHaveLength(8);
     expect(rig.root.userData.activityProp).toBe('press');
+    expect(rig.root.userData.activityPressComposition).toBe('mock-reading-v2');
+
+    // The approved reference reads as focused, not furiously scowling or asleep.
+    expect(rig.leftEye.scale.y).toBeGreaterThanOrEqual(1.34);
+    expect(rig.rightEye.scale.y).toBeGreaterThanOrEqual(1.34);
+    expect(Math.abs(rig.leftBrow.rotation.z - Math.PI / 2)).toBeLessThan(.36);
+    expect(Math.abs(rig.rightBrow.rotation.z - Math.PI / 2)).toBeLessThan(.38);
 
     apply(rig, 'idle');
     expect(rig.activityRig.press.visible).toBe(false);
+    expect(rig.root.userData.activityPressComposition).toBe('inactive');
     disposeMatthiasPremiumHome3D(rig);
   });
 
@@ -158,7 +168,32 @@ describe('Matthias Home prop ergonomics', () => {
     expect(speaking.eyeY).toBe(0);
   });
 
-  it('articula la hoja real y devuelve la mirada a Matthias cuando no está hablando', () => {
+  it('no hunde los ojos frame a frame mientras lee Chess Weekly', () => {
+    const rig = createMatthiasPremiumHome3D();
+    const baseLeftY = rig.leftEye.position.y;
+    const baseRightY = rig.rightEye.position.y;
+
+    for (let frame = 0; frame < 240; frame += 1) {
+      const next = pose('press', {
+        headYaw: -.08,
+        activityTime: frame / 60,
+      });
+      applyMatthiasPremiumHomePose(rig, next);
+      applyMatthiasHomePropErgonomics(rig, next);
+    }
+
+    expect(rig.leftEye.position.y).toBeGreaterThan(baseLeftY - .03);
+    expect(rig.rightEye.position.y).toBeGreaterThan(baseRightY - .03);
+    expect(rig.leftEye.scale.y).toBeGreaterThanOrEqual(1.34);
+    expect(rig.rightEye.scale.y).toBeGreaterThanOrEqual(1.34);
+
+    apply(rig, 'idle');
+    expect(rig.leftEye.position.y).toBeCloseTo(baseLeftY, 6);
+    expect(rig.rightEye.position.y).toBeCloseTo(baseRightY, 6);
+    disposeMatthiasPremiumHome3D(rig);
+  });
+
+  it('articula la hoja real y devuelve la mirada al usuario cuando Matthias habla', () => {
     const rig = createMatthiasPremiumHome3D();
     const next = pose('press', { headYaw: -.08, activityTime: 4.2 });
     applyMatthiasPremiumHomePose(rig, next);
@@ -170,7 +205,7 @@ describe('Matthias Home prop ergonomics', () => {
     expect(rig.activityRig.pressPageTurnPivot.rotation.y).toBeLessThan(-.8);
     expect(rig.root.userData.activityPageTurn).toBeGreaterThan(.25);
     expect(rig.leftEye.position.x).not.toBeCloseTo(eyeBefore.x, 4);
-    expect(rig.headPivot.rotation.y).toBeLessThan(headBefore.y);
+    expect(rig.headPivot.rotation.x).toBeGreaterThan(headBefore.x);
 
     const talking = pose('press', { headYaw: 0, activityTime: 4.2, mouthOpen: .8 });
     applyMatthiasPremiumHomePose(rig, talking);
