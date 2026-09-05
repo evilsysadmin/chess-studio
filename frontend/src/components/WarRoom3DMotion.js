@@ -143,14 +143,13 @@ export function deriveMoveKinetics({ movingType = 'p', capture = false, promotio
 }
 
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
-  // v4 art direction: preserve deep castle blacks, but stop crushing the new
-  // brushed steel, gilding and canvas micro-surface work under broad coloured fills.
-  // Local sources (fire/sconces/banker lamp) do more of the storytelling now;
-  // the global key/rim stay restrained and exposure carries the fine material detail.
-  const baseExposure = coarsePointer ? 1.025 : 1.085;
+  // v5 exposure trim: preserve the local fire/sconce character while shaving
+  // only the broad board key. High-albedo ivory loses the brightest shoulder
+  // highlights first, while ebony keeps the rim/warm separation it needs.
+  const baseExposure = coarsePointer ? 1.015 : 1.07;
   if (gameOver) {
     return {
-      key: coarsePointer ? 1.58 : 1.5,
+      key: coarsePointer ? 1.53 : 1.45,
       rim: coarsePointer ? 7.1 : 6.8,
       warm: coarsePointer ? 3.0 : 2.75,
       exposure: baseExposure - 0.075,
@@ -159,7 +158,7 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
   }
   if (check) {
     return {
-      key: coarsePointer ? 2.55 : 2.48,
+      key: coarsePointer ? 2.45 : 2.38,
       rim: coarsePointer ? 16.8 : 16.4,
       warm: coarsePointer ? 4.9 : 4.55,
       exposure: baseExposure + 0.005,
@@ -167,7 +166,7 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
     };
   }
   return {
-    key: coarsePointer ? 2.2 : 2.12,
+    key: coarsePointer ? 2.12 : 2.04,
     rim: coarsePointer ? 12.6 : 12.15,
     warm: coarsePointer ? 5.0 : 4.85,
     exposure: baseExposure,
