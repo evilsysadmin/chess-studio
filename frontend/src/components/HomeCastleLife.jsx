@@ -211,7 +211,8 @@ export default function HomeCastleLife({ achievementIds = null, achievementLedge
     <section
       className={`home-castle-life${model.rareSighting ? ' has-rare-sighting' : ''}`}
       aria-label="La estancia de Chess Studio"
-      data-castle-life="evidence-ledger-v1"
+      data-castle-life="real-state-v1"
+      data-castle-ledger="evidence-v1"
       data-castle-ambience={model.ambience}
       data-castle-ambience-evidence={model.ambienceEvidence}
       data-castle-honours={honourObjects.length}
@@ -219,7 +220,7 @@ export default function HomeCastleLife({ achievementIds = null, achievementLedge
       data-castle-unlocks-recorded={model.unlockSummary.recorded}
       data-castle-unlocks-legacy={model.unlockSummary.legacy}
     >
-      <HomeGreatHallScene ambience={model.ambience} honours={honourObjects} />
+      <HomeGreatHallScene ambience={model.ambience} />
       <div className="home-castle-life__decor" aria-label="Objetos desbloqueados del castillo">
         {visibleObjects.map((object, index) => (
           <span
