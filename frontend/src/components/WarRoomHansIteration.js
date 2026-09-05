@@ -4,13 +4,29 @@ import {
   installWarRoomHansFireplaceRoutine,
 } from './WarRoomHansFireplace.js';
 
-const QUICK_ITERATION_VERSION = 'always-quick-v1';
+const QUICK_ITERATION_VERSION = 'always-quick-v2';
 let quickIterationEnabled = false;
 
 function nowMs() {
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now()
     : Date.now();
+}
+
+function resolveLightBaseIntensity(light, fallback = 1) {
+  const declared = Number(light?.userData?.baseWarRoomIntensity);
+  if (Number.isFinite(declared) && declared > 0) return declared;
+  const current = Number(light?.intensity);
+  if (Number.isFinite(current) && current > 0) return current;
+  return fallback;
+}
+
+function resolveBounceBaseIntensity(bounce) {
+  const cached = Number(bounce?.userData?.hansBaseIntensity);
+  if (Number.isFinite(cached) && cached > 0) return cached;
+  const base = resolveLightBaseIntensity(bounce, 1.15);
+  if (bounce?.userData) bounce.userData.hansBaseIntensity = base;
+  return base;
 }
 
 export function shouldForceHansQuickIteration({ hintMode = 'off', memoryContext = {} } = {}) {
@@ -43,7 +59,8 @@ export function hansQuickIterationFrame(elapsedSeconds) {
 
 function applyQuickIterationFrame(refs, frame, towardBoard) {
   const {
-    fireplace, hans, fireCore, fireLight, fireCoreBaseScale, fireLightBaseDistance,
+    fireplace, hans, fireCore, fireLight, fireCoreBaseScale,
+    fireLightBaseIntensity, fireLightBaseDistance,
     basketTopLog, addedLog, standPoker, side,
   } = refs;
 
@@ -76,25 +93,24 @@ function applyQuickIterationFrame(refs, frame, towardBoard) {
       fireCoreBaseScale.y * frame.fireScale,
       fireCoreBaseScale.z * widthScale,
     );
-    const baseIntensity = Number(fireLight.userData?.baseWarRoomIntensity || fireLight.intensity || 1);
     const lightScale = 0.22 + frame.fireScale * 0.78;
-    fireLight.intensity = baseIntensity * lightScale;
+    fireLight.intensity = fireLightBaseIntensity * lightScale;
     fireLight.distance = fireLightBaseDistance * (0.6 + frame.fireScale * 0.4);
 
     const bounce = fireplace.getObjectByName?.('war-room-fire-bounce-light');
     if (bounce) {
-      if (bounce.userData.hansBaseIntensity == null) {
-        bounce.userData.hansBaseIntensity = frame.fireScale > 0.95 ? bounce.intensity : 1.15;
-      }
-      bounce.intensity = Number(bounce.userData.hansBaseIntensity || 1.15) * (0.18 + frame.fireScale * 0.82);
+      const bounceBaseIntensity = resolveBounceBaseIntensity(bounce);
+      bounce.intensity = bounceBaseIntensity * (0.18 + frame.fireScale * 0.82);
     }
   }
 
   if (frame.complete) {
     fireCore.scale.copy(fireCoreBaseScale);
+    fireLight.intensity = fireLightBaseIntensity;
     fireLight.distance = fireLightBaseDistance;
     const bounce = fireplace.getObjectByName?.('war-room-fire-bounce-light');
-    if (bounce?.userData?.hansBaseIntensity != null) bounce.intensity = bounce.userData.hansBaseIntensity;
+    if (bounce) bounce.intensity = resolveBounceBaseIntensity(bounce);
+    fireplace.userData.warRoomHansHearthRestored = true;
   }
 }
 
@@ -113,6 +129,7 @@ function armQuickIteration(root, towardBoard) {
     fireCore,
     fireLight,
     fireCoreBaseScale: fireCore.scale.clone(),
+    fireLightBaseIntensity: resolveLightBaseIntensity(fireLight, 1),
     fireLightBaseDistance: Number(fireLight.distance || 8.8),
     basketTopLog: fireplace.getObjectByName?.('war-room-hearth-basket-top-log'),
     addedLog: fireplace.getObjectByName?.('war-room-hans-hearth-added-log'),
@@ -122,10 +139,12 @@ function armQuickIteration(root, towardBoard) {
 
   fireplace.userData.warRoomHansEventSelected = true;
   fireplace.userData.warRoomHansQuickIteration = QUICK_ITERATION_VERSION;
+  fireplace.userData.warRoomHansHearthRestored = false;
   driver.userData.warRoomHansSelected = true;
   driver.userData.warRoomHansQuickIteration = QUICK_ITERATION_VERSION;
   driver.userData.warRoomHansStartDelaySeconds = 0;
   driver.userData.warRoomHansPhase = 'fire-dimming';
+  driver.userData.warRoomHansHearthRestored = false;
 
   driver.onBeforeRender = () => {
     const frame = hansQuickIterationFrame((nowMs() - startedAt) / 1000);
@@ -134,6 +153,7 @@ function armQuickIteration(root, towardBoard) {
     if (frame.complete) {
       hans.visible = false;
       driver.userData.warRoomHansCompleted = true;
+      driver.userData.warRoomHansHearthRestored = true;
       driver.onBeforeRender = () => {};
     }
   };
