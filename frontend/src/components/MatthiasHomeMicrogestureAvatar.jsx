@@ -39,6 +39,11 @@ import {
   matthiasHomeErgonomicActivityProp,
   MATTHIAS_HOME_PROP_ERGONOMICS_VERSION,
 } from './matthiasHomePropErgonomics.js';
+import {
+  applyMatthiasHomePrivateGameRig,
+  clearMatthiasHomePrivateGameRig,
+  MATTHIAS_PRIVATE_GAME_RIG_VERSION,
+} from './matthiasHomePrivateGameRig.js';
 import { matthiasPawnPoseSample } from './MatthiasPawn3D.js';
 import './MatthiasThreeAvatar.css';
 
@@ -406,6 +411,14 @@ export default function MatthiasHomeMicrogestureAvatar({
       const pose = samplePose(stamp);
       applyMatthiasPremiumHomePose(rig, pose);
       applyMatthiasHomePropErgonomics(rig, pose);
+      if (rig.root.userData.activityProp === 'chess') {
+        applyMatthiasHomePrivateGameRig(rig, {
+          ...pose,
+          activityReducedMotion: reducedMotion,
+        });
+      } else {
+        clearMatthiasHomePrivateGameRig(rig);
+      }
       renderer.render(scene3d, camera);
 
       frames += 1;
@@ -510,6 +523,7 @@ export default function MatthiasHomeMicrogestureAvatar({
       data-three-activity-profile={activityProfile}
       data-three-activity-rig={MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION}
       data-three-activity-ergonomics={MATTHIAS_HOME_PROP_ERGONOMICS_VERSION}
+      data-three-private-game-rig={MATTHIAS_PRIVATE_GAME_RIG_VERSION}
       data-three-activity-prop={activityProp}
       data-three-activity-reach="0"
       data-three-motion={reducedMotion ? 'reduced' : 'active'}
