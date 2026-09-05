@@ -1,0 +1,334 @@
+/* Chess Studio Home · canonical castle hub
+ * Approved visual contract: the Home is a navigable 3D great hall, not a dashboard.
+ */
+
+body .menu.home-friendly > .home-castle-life {
+  position: relative !important;
+  width: 100% !important;
+  height: min(76vh, 840px) !important;
+  min-height: 650px !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  pointer-events: auto !important;
+  isolation: isolate;
+  border-radius: 17px 17px 0 0 !important;
+  background: #070707 !important;
+}
+
+body .menu.home-friendly > .home-castle-life::before {
+  content: 'CHESS STUDIO';
+  position: absolute;
+  z-index: 16;
+  top: clamp(1rem, 2vw, 1.55rem);
+  left: clamp(1rem, 3vw, 2.4rem);
+  color: rgba(244, 229, 195, .64);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(.70rem, 1vw, .94rem);
+  font-weight: 700;
+  letter-spacing: .34em;
+  text-shadow: 0 2px 15px rgba(0, 0, 0, .85);
+  pointer-events: none;
+}
+
+body .menu.home-friendly > .home-castle-life::after {
+  content: '';
+  position: absolute;
+  z-index: 8;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 44%, transparent 30%, rgba(0, 0, 0, .12) 68%, rgba(0, 0, 0, .50) 100%),
+    linear-gradient(180deg, rgba(3, 4, 5, .28) 0%, transparent 20%, transparent 68%, rgba(3, 4, 5, .42) 100%);
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  overflow: hidden;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__scene,
+body .menu.home-friendly > .home-castle-life .home-great-hall-scene.home-castle-hub__scene {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  opacity: 1 !important;
+  filter: saturate(1.04) brightness(.90) contrast(1.06) !important;
+  mask-image: none !important;
+  pointer-events: none !important;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__scene canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  filter: saturate(1.05) contrast(1.06) brightness(.98) !important;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__rooms {
+  position: absolute;
+  z-index: 14;
+  top: 31%;
+  left: 16.2%;
+  right: 5.8%;
+  height: 34%;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(.3rem, .85vw, .8rem);
+  pointer-events: none;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room {
+  align-self: stretch;
+  min-width: 0;
+  padding: clamp(.65rem, 1.1vw, 1rem) clamp(.35rem, .75vw, .7rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: .18rem;
+  border: 1px solid transparent;
+  border-radius: 999px 999px 16px 16px;
+  background: linear-gradient(180deg, rgba(7, 7, 7, .20), rgba(6, 5, 4, .10));
+  color: #f0dfb9;
+  text-align: center;
+  text-shadow: 0 2px 8px #000, 0 1px 2px #000;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room:hover,
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room:focus-visible {
+  border-color: rgba(224, 180, 87, .48);
+  background: linear-gradient(180deg, rgba(28, 18, 8, .52), rgba(10, 7, 4, .24));
+  box-shadow: inset 0 0 32px rgba(201, 135, 46, .12), 0 0 0 1px rgba(255, 220, 142, .06);
+  transform: translateY(-2px);
+  outline: none;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room-glyph {
+  margin-top: clamp(.05rem, .6vw, .55rem);
+  color: #e0b95e;
+  font-size: clamp(1.1rem, 2.1vw, 2rem);
+  line-height: 1;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room strong {
+  max-width: 100%;
+  color: #efd9a5;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(.76rem, 1.22vw, 1.22rem);
+  line-height: 1.04;
+  letter-spacing: .02em;
+  text-wrap: balance;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room small {
+  max-width: 10.5rem;
+  color: rgba(239, 226, 195, .72);
+  font-size: clamp(.58rem, .78vw, .82rem);
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room i {
+  margin-top: .18rem;
+  color: rgba(223, 177, 77, .82);
+  font-size: .9rem;
+  font-style: normal;
+  opacity: .85;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room--play {
+  margin-top: 2.5%;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room--tournament {
+  margin-top: -1.5%;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room--train {
+  margin-top: 3.3%;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room--combat {
+  margin-top: 4.5%;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room--daily {
+  margin-top: 5.8%;
+}
+
+/* Existing factual progression objects remain available, but become a restrained
+ * trophy rail instead of floating dashboard cards over the room. */
+body .menu.home-friendly > .home-castle-life .home-castle-life__decor {
+  position: absolute !important;
+  z-index: 18 !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: .65rem !important;
+  left: 1rem !important;
+  max-width: 38%;
+  display: flex !important;
+  gap: .35rem !important;
+  align-items: flex-end !important;
+  transform: scale(.72) !important;
+  transform-origin: bottom left !important;
+  opacity: .72 !important;
+  pointer-events: auto !important;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-life__rare {
+  z-index: 18 !important;
+}
+
+/* Matthias is still a resident, but the castle scene gets the visual priority. */
+@media (min-width: 761px) {
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport {
+    top: clamp(13.4rem, 19vw, 18rem) !important;
+    left: clamp(1.25rem, 4vw, 4rem) !important;
+    right: auto !important;
+    width: clamp(150px, 12vw, 205px) !important;
+    z-index: 26 !important;
+  }
+}
+
+/* The old canonical command card now lives below the castle instead of covering it. */
+body .menu.home-friendly > .home-continue-group,
+body .menu.home-friendly > .home-next-action {
+  margin-top: clamp(1.2rem, 2vw, 1.8rem) !important;
+}
+
+@media (max-width: 1080px) and (min-width: 761px) {
+  body .menu.home-friendly > .home-castle-life {
+    height: 650px !important;
+    min-height: 650px !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__rooms {
+    top: 33%;
+    left: 10%;
+    right: 3%;
+    gap: .18rem;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room strong {
+    font-size: .82rem;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room small {
+    font-size: .62rem;
+  }
+}
+
+@media (max-width: 760px) {
+  body .menu.home-friendly > .home-castle-life {
+    height: 500px !important;
+    min-height: 500px !important;
+    border-radius: 0 !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life::before {
+    top: .75rem;
+    left: .75rem;
+    font-size: .58rem;
+    letter-spacing: .24em;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__scene {
+    filter: saturate(.96) brightness(.86) contrast(1.04) !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__rooms {
+    top: auto;
+    left: .55rem;
+    right: .55rem;
+    bottom: .75rem;
+    height: auto;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(8.25rem, 42vw);
+    grid-template-columns: none;
+    gap: .45rem;
+    overflow-x: auto;
+    padding: .1rem .1rem .35rem;
+    scroll-snap-type: x proximity;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    pointer-events: auto;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__rooms::-webkit-scrollbar {
+    display: none;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--play,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--tournament,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--train,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--combat,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--daily {
+    min-height: 7.5rem;
+    margin-top: 0;
+    padding: .7rem .55rem;
+    justify-content: center;
+    border-color: rgba(219, 172, 77, .24);
+    border-radius: 14px;
+    background: rgba(8, 7, 5, .72);
+    backdrop-filter: blur(8px);
+    scroll-snap-align: start;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room-glyph {
+    margin-top: 0;
+    font-size: 1.25rem;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room strong {
+    font-size: .82rem;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room small {
+    font-size: .65rem;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-life__decor {
+    bottom: 8.6rem !important;
+    left: .5rem !important;
+    max-width: 55%;
+    transform: scale(.58) !important;
+  }
+
+  body .menu.home-friendly > .matthias-resident.is-inline {
+    width: 122px !important;
+    margin: -13.5rem .45rem 6.7rem 0 !important;
+    z-index: 22 !important;
+  }
+}
+
+@media (max-width: 430px) {
+  body .menu.home-friendly > .home-castle-life {
+    height: 470px !important;
+    min-height: 470px !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__rooms {
+    grid-auto-columns: minmax(8rem, 46vw);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room {
+    transition: none;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:hover,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:focus-visible {
+    transform: none;
+  }
+}
