@@ -34,10 +34,19 @@ jobs:
       - name: Admission logic self-test
         run: python3 -S scripts/main_ci_admission.py --self-test
 
-      - name: Reuse green PR quality gate
+      - name: Admission wait policy self-test
+        run: python3 -S scripts/main_ci_admission_wait.py --self-test
+
+      # Un admin/auto-merge puede adelantar el merge mientras el Quality exacto
+      # de ese head sigue vivo. No desplegamos todavía: esperamos su resultado.
+      # Si main avanza, cancel-in-progress convierte esta generación obsoleta en
+      # cancelled/superseded; si Quality termina rojo, admission sigue fallando.
+      - name: Wait for / reuse green PR quality gate
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python3 -S scripts/main_ci_admission.py
+          MAIN_ADMISSION_WAIT_ATTEMPTS: 25
+          MAIN_ADMISSION_WAIT_SECONDS: 12
+        run: python3 -S scripts/main_ci_admission_wait.py
 
       # Seguimos validando en el SHA final de main los contratos baratos que no
       # necesitan dependencias pesadas ni navegador. Así un squash/merge jamás
