@@ -67,6 +67,8 @@ describe('MatthiasPremiumHome3D', () => {
     expect(rig.root.userData.capVersion).toBe(MATTHIAS_PREMIUM_HOME_CAP_VERSION);
     expect(rig.root.userData.activityRigVersion).toBe(MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION);
     expect(rig.root.userData.activityCompositionVersion).toBe(MATTHIAS_PREMIUM_HOME_ACTIVITY_COMPOSITION_VERSION);
+    expect(MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION).toBe('activity-props-v4-premium-routines');
+    expect(MATTHIAS_PREMIUM_HOME_ACTIVITY_COMPOSITION_VERSION).toBe('portrait-readable-v5-premium-routines');
     expect(rig.root.userData.frameScale).toBe(MATTHIAS_PREMIUM_HOME_FRAME_SCALE);
     expect(rig.root.userData.frameY).toBe(MATTHIAS_PREMIUM_HOME_FRAME_Y);
     expect(capSize.x).toBeGreaterThan(faceSize.x * 1.2);
@@ -124,20 +126,25 @@ describe('MatthiasPremiumHome3D', () => {
     disposeMatthiasPremiumHome3D(rig);
   });
 
-  it('mapea actividad semántica a utilería 3D sin enseñar props en idle', () => {
+  it('mapea todas las rutinas semánticas a utilería propia sin enseñar props en idle', () => {
     expect(matthiasPremiumHomeActivityProp('sip')).toBe('cup');
+    expect(matthiasPremiumHomeActivityProp('beer')).toBe('beer');
     expect(matthiasPremiumHomeActivityProp('breakfast')).toBe('breakfast');
     expect(matthiasPremiumHomeActivityProp('bite')).toBe('ration');
     expect(matthiasPremiumHomeActivityProp('read')).toBe('book');
     expect(matthiasPremiumHomeActivityProp('dossier')).toBe('dossier');
     expect(matthiasPremiumHomeActivityProp('write')).toBe('write');
+    expect(matthiasPremiumHomeActivityProp('think')).toBe('chess');
     expect(matthiasPremiumHomeActivityProp('sleep')).toBe('blanket');
 
     const rig = createMatthiasPremiumHome3D();
     applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'idle' }));
     expect(rig.activityRig.root.visible).toBe(true);
     expect(rig.activityRig.cup.visible).toBe(false);
+    expect(rig.activityRig.beer.visible).toBe(false);
+    expect(rig.activityRig.breakfast.visible).toBe(false);
     expect(rig.activityRig.book.visible).toBe(false);
+    expect(rig.activityRig.chess.visible).toBe(false);
     expect(rig.activityRig.blanket.visible).toBe(false);
     expect(rig.activityRig.support.visible).toBe(false);
     expect(rig.activityRig.assist.visible).toBe(false);
@@ -146,50 +153,53 @@ describe('MatthiasPremiumHome3D', () => {
     disposeMatthiasPremiumHome3D(rig);
   });
 
-  it('reach eleva la taza hacia Matthias y cambia de prop sin dejar residuos visibles', () => {
+  it('café y cerveza son bebidas físicamente distintas y el reach las acerca a Matthias', () => {
     const rig = createMatthiasPremiumHome3D();
     applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'sip', reach: .08 }));
     const cupLowY = rig.activityRig.cup.position.y;
     expect(rig.activityRig.cup.visible).toBe(true);
+    expect(rig.activityRig.beer.visible).toBe(false);
     expect(rig.activityRig.support.visible).toBe(true);
     expect(rig.activityRig.assist.visible).toBe(false);
+    expect(rig.root.getObjectByName('campaign-cup-saucer')).toBeTruthy();
+    expect(rig.root.getObjectByName('campaign-cup-coffee')).toBeTruthy();
+    expect(rig.root.getObjectsByProperty('name', 'campaign-cup-steam')).toHaveLength(2);
     expect(rig.root.userData.activityProp).toBe('cup');
 
     applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'sip', reach: .54 }));
     expect(rig.activityRig.cup.position.y).toBeGreaterThan(cupLowY + .2);
     expect(rig.root.userData.activityReach).toBeCloseTo(.54, 4);
 
-    applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'read', headYaw: .08 }));
+    applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'beer', reach: .42 }));
     expect(rig.activityRig.cup.visible).toBe(false);
-    expect(rig.activityRig.book.visible).toBe(true);
-    expect(rig.activityRig.assist.visible).toBe(true);
-    expect(rig.root.userData.activityProp).toBe('book');
-
-    applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'write', headYaw: -.04 }));
-    expect(rig.activityRig.book.visible).toBe(false);
-    expect(rig.activityRig.write.visible).toBe(true);
-    expect(rig.activityRig.penPivot).toBeTruthy();
-    expect(rig.activityRig.assist.visible).toBe(true);
-    expect(rig.root.userData.activityProp).toBe('write');
+    expect(rig.activityRig.beer.visible).toBe(true);
+    expect(rig.root.getObjectByName('campaign-beer-body')).toBeTruthy();
+    expect(rig.root.getObjectByName('campaign-beer-handle')).toBeTruthy();
+    expect(rig.root.getObjectsByProperty('name', 'campaign-beer-foam')).toHaveLength(3);
+    expect(rig.root.userData.activityProp).toBe('beer');
 
     disposeMatthiasPremiumHome3D(rig);
   });
 
-  it('desayuno combina taza y plato y sueño se lee como siesta con manta, almohada y ojos cerrados', () => {
+  it('desayuno tiene prensa y croissant y sueño conserva manta, almohada y ojos cerrados', () => {
     const rig = createMatthiasPremiumHome3D();
 
     applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'breakfast', reach: .32 }));
     expect(rig.activityRig.cup.visible).toBe(true);
-    expect(rig.activityRig.ration.visible).toBe(true);
+    expect(rig.activityRig.breakfast.visible).toBe(true);
+    expect(rig.activityRig.ration.visible).toBe(false);
     expect(rig.activityRig.support.visible).toBe(true);
     expect(rig.activityRig.assist.visible).toBe(true);
     expect(rig.activityRig.cup.position.x).toBeLessThan(0);
-    expect(rig.activityRig.ration.position.x).toBeGreaterThan(0);
+    expect(rig.activityRig.breakfast.position.x).toBeGreaterThan(0);
+    expect(rig.root.getObjectByName('breakfast-croissant')).toBeTruthy();
+    expect(rig.root.getObjectByName('breakfast-newspaper')).toBeTruthy();
+    expect(rig.root.getObjectsByProperty('name', 'breakfast-newspaper-line')).toHaveLength(4);
     expect(rig.root.userData.activityProp).toBe('breakfast');
 
     applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'sleep', headRoll: .05 }));
     expect(rig.activityRig.cup.visible).toBe(false);
-    expect(rig.activityRig.ration.visible).toBe(false);
+    expect(rig.activityRig.breakfast.visible).toBe(false);
     expect(rig.activityRig.blanket.visible).toBe(true);
     expect(rig.activityRig.support.visible).toBe(false);
     expect(rig.activityRig.assist.visible).toBe(false);
@@ -219,7 +229,7 @@ describe('MatthiasPremiumHome3D', () => {
     disposeMatthiasPremiumHome3D(rig);
   });
 
-  it('compone ración, libro y expediente como objetos legibles sin invadir la cara', () => {
+  it('bocata, libro, expediente y escritura tienen detalles premium legibles sin invadir la cara', () => {
     const rig = createMatthiasPremiumHome3D();
 
     applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'bite', reach: .62 }));
@@ -230,6 +240,8 @@ describe('MatthiasPremiumHome3D', () => {
     expect(rationBox.max.x).toBeGreaterThan(.72);
     expect(rationBox.max.y).toBeLessThan(rationFaceBox.min.y + .06);
     expect(rig.root.getObjectByName('ration-plate-rim')).toBeTruthy();
+    expect(rig.root.getObjectByName('ration-bread-bottom')).toBeTruthy();
+    expect(rig.root.getObjectByName('ration-filling')).toBeTruthy();
     expect(rig.root.getObjectByName('ration-bread')).toBeTruthy();
     expect(rig.activityRig.assist.visible).toBe(true);
 
@@ -240,6 +252,8 @@ describe('MatthiasPremiumHome3D', () => {
     expect(bookSize.x).toBeGreaterThan(.50);
     expect(bookBox.max.y).toBeLessThan(bookFaceBox.min.y);
     expect(rig.root.getObjectByName('book-spine').rotation.z).toBeCloseTo(0, 6);
+    expect(rig.root.getObjectByName('book-page-crease')).toBeTruthy();
+    expect(rig.root.getObjectByName('book-bookmark')).toBeTruthy();
 
     applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'dossier', headYaw: -.06 }));
     const dossierBox = objectBox(rig.activityRig.dossier);
@@ -247,12 +261,38 @@ describe('MatthiasPremiumHome3D', () => {
     const dossierFaceBox = objectBox(rig.head);
     expect(dossierSize.x).toBeGreaterThan(.46);
     expect(dossierBox.max.y).toBeLessThan(dossierFaceBox.min.y);
+    expect(rig.root.getObjectByName('dossier-tab')).toBeTruthy();
+    expect(rig.root.getObjectByName('dossier-clip')).toBeTruthy();
+    expect(rig.root.getObjectsByProperty('name', 'dossier-report-line').length).toBeGreaterThanOrEqual(3);
 
     applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'write', headYaw: .05 }));
     const writeBox = objectBox(rig.activityRig.write);
     const writeFaceBox = objectBox(rig.head);
     expect(writeBox.max.y).toBeLessThan(writeFaceBox.min.y);
     expect(rig.root.getObjectByName('activity-pen')).toBeTruthy();
+    expect(rig.root.getObjectByName('writing-signature-line')).toBeTruthy();
+
+    disposeMatthiasPremiumHome3D(rig);
+  });
+
+  it('ajedrez dentro del ajedrez usa un tablero 8x8 real con piezas y mano de análisis', () => {
+    const rig = createMatthiasPremiumHome3D();
+    applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'think', headYaw: .16 }));
+
+    expect(rig.activityRig.chess.visible).toBe(true);
+    expect(rig.activityRig.support.visible).toBe(true);
+    expect(rig.activityRig.assist.visible).toBe(false);
+    expect(rig.root.userData.activityProp).toBe('chess');
+    expect(rig.root.getObjectByName('analysis-board-frame')).toBeTruthy();
+    expect(rig.root.getObjectByName('analysis-board-light-field')).toBeTruthy();
+    expect(rig.root.getObjectsByProperty('name', 'analysis-board-dark-square')).toHaveLength(32);
+    expect(rig.root.getObjectByName('analysis-white-king')).toBeTruthy();
+    expect(rig.root.getObjectByName('analysis-black-king')).toBeTruthy();
+    expect(rig.root.getObjectsByProperty('name', 'analysis-piece-head')).toHaveLength(6);
+
+    const chessBox = objectBox(rig.activityRig.chess);
+    const faceBox = objectBox(rig.head);
+    expect(chessBox.max.y).toBeLessThan(faceBox.min.y + .08);
 
     disposeMatthiasPremiumHome3D(rig);
   });
