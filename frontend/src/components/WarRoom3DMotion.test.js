@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   adaptiveRenderScale,
   applyWarRoomHemisphereGrade,
+  applyWarRoomMaterialGrade,
   deriveMoveKinetics,
   inferCapturedPiece,
   nextRuntimeRenderScale,
@@ -10,6 +11,7 @@ import {
   shouldRefreshShadowMap,
   smoothstep,
   warRoomHemisphereIntensity,
+  warRoomMaterialIblProfile,
 } from './WarRoom3DMotion.js';
 
 describe('WarRoom3DMotion', () => {
@@ -60,6 +62,51 @@ describe('WarRoom3DMotion', () => {
 
     applyWarRoomHemisphereGrade(scene, { coarsePointer: true });
     expect(hemisphere.intensity).toBe(1.35);
+  });
+
+  it('cuts environment fill on ivory and light tiles without touching ebony or dark tiles', () => {
+    const ivory = { envMapIntensity: 0.64, userData: { surfaceRole: 'ivory' } };
+    const lightTile = { envMapIntensity: 0.5, userData: { surfaceRole: 'board-light' } };
+    const ebony = { envMapIntensity: 0.96, userData: { surfaceRole: 'ebony' } };
+    const darkTile = { envMapIntensity: 0.5, userData: { surfaceRole: 'board-dark' } };
+    const objects = [ivory, lightTile, ebony, darkTile].map((material) => ({ isMesh: true, material }));
+    const scene = {
+      userData: {},
+      traverse(callback) {
+        for (const object of objects) callback(object);
+      },
+    };
+
+    expect(warRoomMaterialIblProfile()).toEqual({ ivoryEnvMax: 0.36, lightTileEnvMax: 0.34 });
+    const result = applyWarRoomMaterialGrade(scene);
+
+    expect(result).toMatchObject({ adjusted: 2, ivory: 1, lightTile: 1 });
+    expect(ivory.envMapIntensity).toBe(0.36);
+    expect(lightTile.envMapIntensity).toBe(0.34);
+    expect(ebony.envMapIntensity).toBe(0.96);
+    expect(darkTile.envMapIntensity).toBe(0.5);
+    expect(ivory.userData.warRoomIblGrade).toBe('low-fill-v1');
+    expect(lightTile.userData.warRoomIblGrade).toBe('low-fill-v1');
+    expect(scene.userData).toMatchObject({
+      warRoomMaterialIblProfile: 'low-fill-v1',
+      warRoomIvoryEnvMax: 0.36,
+      warRoomLightTileEnvMax: 0.34,
+      warRoomMaterialIblAdjusted: 2,
+    });
+  });
+
+  it('keeps coarse-pointer material IBL unchanged for readability', () => {
+    const ivory = { envMapIntensity: 0.64, userData: { surfaceRole: 'ivory' } };
+    const scene = {
+      userData: {},
+      traverse(callback) {
+        callback({ isMesh: true, material: ivory });
+      },
+    };
+
+    expect(warRoomMaterialIblProfile({ coarsePointer: true })).toBeNull();
+    expect(applyWarRoomMaterialGrade(scene, { coarsePointer: true })).toMatchObject({ adjusted: 0, profile: null });
+    expect(ivory.envMapIntensity).toBe(0.64);
   });
 
   it('does not retune unrelated hemisphere lights', () => {
