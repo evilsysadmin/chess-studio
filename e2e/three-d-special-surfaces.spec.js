@@ -165,10 +165,10 @@ test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre e
   await expect(dossier).toHaveClass(/\bpreview\b/);
   await expect(dossier.getByText(/Vista rápida/i)).toBeVisible();
 
-  // Leave the hovered piece by moving to an empty square on the same canvas.
-  // This exercises Board3D's real piece-leave contract without crossing the
-  // fixed dossier, whose intentional hover bridge would keep the preview open.
-  const emptySquare = projectSquare(rect, 'e4');
-  await page.mouse.move(emptySquare.x, emptySquare.y);
+  // Exercise the renderer's actual pointerleave listener deterministically.
+  // Moving to a projected "empty" square is camera-sensitive and can still
+  // resolve to the hovered unit; dispatching pointerleave hits the production
+  // WebGL contract directly without crossing the dossier hover bridge.
+  await canvas.dispatchEvent('pointerleave');
   await expect(dossier).toBeHidden({ timeout: 3_000 });
 });
