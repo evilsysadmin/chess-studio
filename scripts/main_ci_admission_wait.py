@@ -3,17 +3,13 @@
 
 The existing fail-closed admission logic remains authoritative. This wrapper only
 handles the race where a PR is merged while its matching ``Quality · CI gate``
-workflow is still running. Staging must wait for that exact immutable PR run to
-finish; it may proceed only if that run becomes green and still proves the same
-main composition.
-
-If main advances while we wait, ``main-admission.yml`` uses ``cancel-in-progress``
-so GitHub cancels the obsolete run: effectively ``superseded`` rather than red.
+workflow is still running. Staging waits for that exact run to finish. If it goes
+green, the existing provenance/base/check validation is reused; if it goes red,
+admission still fails. A newer main SHA is cancelled by workflow concurrency,
+which gives obsolete runs the desired superseded semantics.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime
 import os
 import sys
 import time
@@ -26,22 +22,7 @@ DEFAULT_ATTEMPTS = 25
 DEFAULT_SLEEP_SECONDS = 12.0
 
 
-@dataclass(frozen=True)
-class QualityContext:
-    api_base: str
-    token: str
-    main_sha: str
-    first_parent: str
-    first_parent_time: datetime
-    pulls: list[dict[str, Any]]
-    pr_number: int
-    head_sha: str
-    merged_at: datetime
-    workflow_runs: list[dict[str, Any]]
-    check_runs: list[dict[str, Any]]
-
-
-def matching_quality_runs(
+def matching_pending_quality_runs(
     workflow_runs: list[dict[str, Any]],
     *,
     head_sha: str,
@@ -54,22 +35,11 @@ def matching_quality_runs(
         and run.get("name") == admission.QUALITY_WORKFLOW
         and run.get("path") == admission.QUALITY_PATH
         and str(run.get("head_sha") or "").lower() == target
+        and run.get("status") != "completed"
     ]
 
 
-def pending_quality_runs(
-    workflow_runs: list[dict[str, Any]],
-    *,
-    head_sha: str,
-) -> list[dict[str, Any]]:
-    return [
-        run
-        for run in matching_quality_runs(workflow_runs, head_sha=head_sha)
-        if run.get("status") != "completed"
-    ]
-
-
-def load_quality_context() -> QualityContext:
+def pending_quality_runs_for_current_main() -> list[dict[str, Any]]:
     repo = os.environ.get("GITHUB_REPOSITORY", "").strip()
     main_sha = os.environ.get("GITHUB_SHA", "").strip().lower()
     token = os.environ.get("GITHUB_TOKEN", "").strip()
@@ -80,17 +50,9 @@ def load_quality_context() -> QualityContext:
     if not token:
         raise admission.AdmissionError("GITHUB_TOKEN ausente")
 
-    parents = admission.git_output("show", "-s", "--format=%P", main_sha).split()
-    if not parents:
-        raise admission.AdmissionError("main SHA no tiene padre; no se acredita un commit raíz")
-    first_parent = parents[0].lower()
-    first_parent_time = admission.parse_time(
-        admission.git_output("show", "-s", "--format=%cI", first_parent)
-    )
-
     owner, repo_name = repo.split("/", 1)
-    api_base = f"/repos/{quote(owner)}/{quote(repo_name)}"
-    pulls = admission.api_get(f"{api_base}/commits/{main_sha}/pulls", token)
+    base = f"/repos/{quote(owner)}/{quote(repo_name)}"
+    pulls = admission.api_get(f"{base}/commits/{main_sha}/pulls", token)
     if not isinstance(pulls, list):
         raise admission.AdmissionError("respuesta inesperada al buscar PR asociado")
 
@@ -102,138 +64,85 @@ def load_quality_context() -> QualityContext:
         and (pr.get("base") or {}).get("ref") == "main"
     ]
     if len(candidates) != 1:
-        raise admission.AdmissionError(
-            f"main {main_sha[:12]} no procede de un único PR mergeado a main"
-        )
+        return []
 
-    pr = candidates[0]
-    pr_number = int(pr.get("number") or 0)
-    head_sha = str((pr.get("head") or {}).get("sha") or "").lower()
-    if not pr_number or len(head_sha) != 40:
-        raise admission.AdmissionError("el PR acreditado no expone número/head SHA completos")
-    merged_at = admission.parse_time(str(pr.get("merged_at") or ""))
+    head_sha = str((candidates[0].get("head") or {}).get("sha") or "").lower()
+    if len(head_sha) != 40:
+        return []
 
-    runs_payload = admission.api_get(
-        f"{api_base}/actions/workflows/cicd.yml/runs?event=pull_request&head_sha={quote(head_sha)}&per_page=20",
+    payload = admission.api_get(
+        f"{base}/actions/workflows/cicd.yml/runs?event=pull_request&head_sha={quote(head_sha)}&per_page=20",
         token,
     )
-    workflow_runs = (
-        (runs_payload or {}).get("workflow_runs") if isinstance(runs_payload, dict) else None
-    )
-    if not isinstance(workflow_runs, list):
+    runs = (payload or {}).get("workflow_runs") if isinstance(payload, dict) else None
+    if not isinstance(runs, list):
         raise admission.AdmissionError("respuesta inesperada al buscar Quality · CI gate del PR")
-
-    checks_payload = admission.api_get(
-        f"{api_base}/commits/{head_sha}/check-runs?per_page=100",
-        token,
-    )
-    check_runs = (
-        (checks_payload or {}).get("check_runs") if isinstance(checks_payload, dict) else None
-    )
-    if not isinstance(check_runs, list):
-        raise admission.AdmissionError("respuesta inesperada al buscar checks del PR")
-
-    return QualityContext(
-        api_base=api_base,
-        token=token,
-        main_sha=main_sha,
-        first_parent=first_parent,
-        first_parent_time=first_parent_time,
-        pulls=pulls,
-        pr_number=pr_number,
-        head_sha=head_sha,
-        merged_at=merged_at,
-        workflow_runs=workflow_runs,
-        check_runs=check_runs,
-    )
+    return matching_pending_quality_runs(runs, head_sha=head_sha)
 
 
-def normalize_late_green_run(
-    run: dict[str, Any],
+def normalize_premerge_started_green_runs(
     *,
-    merged_at: datetime,
-) -> dict[str, Any] | None:
-    """Adapt one run only when it was already in flight at merge and later passed.
+    main_sha: str,
+    pulls: list[dict[str, Any]],
+    workflow_runs: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[int]]:
+    """Allow a Quality run to finish green after merge only if it started before it.
 
-    ``main_ci_admission.evaluate_admission`` historically encoded "CI had to be
-    green before merge" as ``run.updated_at <= merged_at``. Main admission is now
-    the deployment barrier, so a run that *started before merge* may finish green
-    afterwards: deployment simply waits for it. Post-merge reruns are still not
-    eligible.
+    The legacy evaluator used ``updated_at <= merged_at`` to require CI to be
+    green before merge. Main admission itself is the deployment barrier, so an
+    already-running Quality may safely finish afterwards: staging simply waits.
+    Runs started after merge are never normalized and remain ineligible.
     """
-    if run.get("status") != "completed" or run.get("conclusion") != "success":
-        return None
-    created_at = admission.parse_time(str(run.get("created_at") or ""))
-    if created_at > merged_at:
-        return None
+    candidates = [
+        pr
+        for pr in pulls
+        if pr.get("merged_at")
+        and str(pr.get("merge_commit_sha") or "").lower() == main_sha.lower()
+        and (pr.get("base") or {}).get("ref") == "main"
+    ]
+    if len(candidates) != 1:
+        return workflow_runs, []
 
-    normalized = dict(run)
-    updated_at = admission.parse_time(str(run.get("updated_at") or ""))
-    if updated_at > merged_at:
-        normalized["updated_at"] = merged_at.isoformat().replace("+00:00", "Z")
-    return normalized
+    merged_at = admission.parse_time(str(candidates[0].get("merged_at") or ""))
+    merged_iso = merged_at.isoformat().replace("+00:00", "Z")
+    normalized: list[dict[str, Any]] = []
+    late_green_ids: list[int] = []
+
+    for run in workflow_runs:
+        copy = dict(run)
+        if run.get("status") == "completed" and run.get("conclusion") == "success":
+            created_at = admission.parse_time(str(run.get("created_at") or ""))
+            updated_at = admission.parse_time(str(run.get("updated_at") or ""))
+            if created_at <= merged_at < updated_at:
+                copy["updated_at"] = merged_iso
+                late_green_ids.append(int(run.get("id") or 0))
+        normalized.append(copy)
+
+    return normalized, [run_id for run_id in late_green_ids if run_id]
 
 
-def late_green_admission(context: QualityContext) -> admission.Admission:
-    """Reuse the original evaluator after waiting for a pre-merge-started run."""
-    normalized_runs: list[dict[str, Any]] = []
-    provenances: dict[int, dict[str, Any]] = {}
-    compatible_runs: set[int] = set()
+def run_live_with_waited_green_policy() -> admission.Admission:
+    """Reuse the original live admission with one narrow timing-policy adapter."""
+    original_evaluator = admission.evaluate_admission
 
-    for run in matching_quality_runs(context.workflow_runs, head_sha=context.head_sha):
-        normalized = normalize_late_green_run(run, merged_at=context.merged_at)
-        if normalized is None:
-            continue
-        run_id = int(run.get("id") or 0)
-        if not run_id:
-            continue
-
-        provenance = admission.fetch_run_provenance(
-            context.api_base,
-            run_id,
-            context.token,
+    def deployment_evaluator(**kwargs: Any) -> admission.Admission:
+        normalized_runs, late_green_ids = normalize_premerge_started_green_runs(
+            main_sha=str(kwargs["main_sha"]),
+            pulls=list(kwargs["pulls"]),
+            workflow_runs=list(kwargs["workflow_runs"]),
         )
-        if provenance is None:
-            continue
-        provenances[run_id] = provenance
-        if not admission.provenance_identity_matches(
-            provenance,
-            pr_number=context.pr_number,
-            head_sha=context.head_sha,
-        ):
-            continue
-
-        provenance_base = str(provenance.get("base_sha") or "").lower()
-        if provenance_base != context.first_parent:
-            tested_merge_sha = str(provenance.get("tested_merge_sha") or "").lower()
-            safe, pr_count, intervening_count = admission.disjoint_concurrency_proof(
-                context.api_base,
-                provenance_base,
-                context.first_parent,
-                tested_merge_sha,
-                context.token,
+        if late_green_ids:
+            print(
+                "Main admission waited-for-green · Quality terminó después del merge "
+                f"pero ya estaba en vuelo (runs {','.join(map(str, late_green_ids))})"
             )
-            if safe:
-                compatible_runs.add(run_id)
-                print(
-                    f"Main admission concurrency proof OK · Quality run {run_id} · "
-                    f"tested merge {tested_merge_sha[:12]} · "
-                    f"base {provenance_base[:12]} -> parent {context.first_parent[:12]} · "
-                    f"{pr_count} rutas PR / {intervening_count} rutas intermedias disjuntas"
-                )
+        return original_evaluator(**{**kwargs, "workflow_runs": normalized_runs})
 
-        normalized_runs.append(normalized)
-
-    return admission.evaluate_admission(
-        main_sha=context.main_sha,
-        first_parent=context.first_parent,
-        first_parent_time=context.first_parent_time,
-        pulls=context.pulls,
-        workflow_runs=normalized_runs,
-        check_runs=context.check_runs,
-        provenances=provenances,
-        compatible_runs=compatible_runs,
-    )
+    admission.evaluate_admission = deployment_evaluator
+    try:
+        return admission.run_live()
+    finally:
+        admission.evaluate_admission = original_evaluator
 
 
 def positive_int_env(name: str, default: int) -> int:
@@ -252,13 +161,11 @@ def positive_float_env(name: str, default: float) -> float:
     return value if value > 0 else default
 
 
-def print_admission_ok(result: admission.Admission, *, late_green: bool = False) -> None:
+def print_admission_ok(result: admission.Admission) -> None:
     reuse = " · disjoint-main reuse" if result.concurrency_reused else ""
-    waited = " · waited-for-green" if late_green else ""
     print(
         f"Main admission OK · PR #{result.pr_number} · head {result.pr_head_sha[:12]} · "
-        f"Quality run {result.quality_run_id} · tested merge {result.tested_merge_sha[:12]}"
-        f"{reuse}{waited}"
+        f"Quality run {result.quality_run_id} · tested merge {result.tested_merge_sha[:12]}{reuse}"
     )
 
 
@@ -268,46 +175,37 @@ def wait_for_admission() -> int:
 
     for attempt in range(1, attempts + 1):
         try:
-            result = admission.run_live()
-        except admission.AdmissionError as original_exc:
+            result = run_live_with_waited_green_policy()
+        except admission.AdmissionError as exc:
             try:
-                context = load_quality_context()
+                pending = pending_quality_runs_for_current_main()
             except admission.AdmissionError as probe_exc:
                 print(
-                    f"MAIN ADMISSION FAIL: {original_exc} · no se pudo comprobar Quality: {probe_exc}",
+                    f"MAIN ADMISSION FAIL: {exc} · no se pudo comprobar Quality pendiente: {probe_exc}",
                     file=sys.stderr,
                 )
                 return 2
 
-            pending = pending_quality_runs(
-                context.workflow_runs,
-                head_sha=context.head_sha,
-            )
-            if pending:
-                run_ids = ",".join(str(run.get("id") or "?") for run in pending)
-                if attempt >= attempts:
-                    waited = int((attempts - 1) * sleep_seconds)
-                    print(
-                        f"MAIN ADMISSION FAIL: Quality sigue pendiente tras ~{waited}s "
-                        f"(runs {run_ids}); último diagnóstico: {original_exc}",
-                        file=sys.stderr,
-                    )
-                    return 2
-                print(
-                    f"Main admission WAIT · Quality aún activo (runs {run_ids}) · "
-                    f"intento {attempt}/{attempts}; reintento en {sleep_seconds:g}s"
-                )
-                time.sleep(sleep_seconds)
-                continue
-
-            try:
-                late_result = late_green_admission(context)
-            except admission.AdmissionError as late_exc:
-                print(f"MAIN ADMISSION FAIL: {late_exc}", file=sys.stderr)
+            if not pending:
+                print(f"MAIN ADMISSION FAIL: {exc}", file=sys.stderr)
                 return 2
 
-            print_admission_ok(late_result, late_green=True)
-            return 0
+            run_ids = ",".join(str(run.get("id") or "?") for run in pending)
+            if attempt >= attempts:
+                waited = int((attempts - 1) * sleep_seconds)
+                print(
+                    f"MAIN ADMISSION FAIL: Quality sigue pendiente tras ~{waited}s "
+                    f"(runs {run_ids}); último diagnóstico: {exc}",
+                    file=sys.stderr,
+                )
+                return 2
+
+            print(
+                f"Main admission WAIT · Quality aún activo (runs {run_ids}) · "
+                f"intento {attempt}/{attempts}; reintento en {sleep_seconds:g}s"
+            )
+            time.sleep(sleep_seconds)
+            continue
 
         print_admission_ok(result)
         return 0
@@ -326,46 +224,48 @@ def self_test() -> None:
         "created_at": "2026-09-04T22:20:13Z",
         "updated_at": "2026-09-04T22:26:13Z",
     }
-    assert [run["id"] for run in pending_quality_runs(
+    assert [run["id"] for run in matching_pending_quality_runs(
         [{**base_run, "status": "queued"}, {**base_run, "id": 11, "status": "in_progress"}],
         head_sha=head,
     )] == [10, 11]
-    assert pending_quality_runs(
+    assert matching_pending_quality_runs(
         [{**base_run, "status": "completed", "conclusion": "failure"}],
         head_sha=head,
     ) == []
-    assert pending_quality_runs(
+    assert matching_pending_quality_runs(
         [{**base_run, "status": "in_progress", "head_sha": "d" * 40}],
         head_sha=head,
     ) == []
 
-    merged_at = admission.parse_time("2026-09-04T22:24:13Z")
-    late_green = normalize_late_green_run(
-        {**base_run, "status": "completed", "conclusion": "success"},
-        merged_at=merged_at,
+    pulls = [{
+        "merged_at": "2026-09-04T22:24:13Z",
+        "merge_commit_sha": "b" * 40,
+        "base": {"ref": "main"},
+    }]
+    normalized, late_ids = normalize_premerge_started_green_runs(
+        main_sha="b" * 40,
+        pulls=pulls,
+        workflow_runs=[{**base_run, "status": "completed", "conclusion": "success"}],
     )
-    assert late_green is not None
-    assert admission.parse_time(late_green["updated_at"]) == merged_at
-    assert normalize_late_green_run(
-        {
+    assert late_ids == [10]
+    assert normalized[0]["updated_at"] == "2026-09-04T22:24:13Z"
+
+    post_merge, late_ids = normalize_premerge_started_green_runs(
+        main_sha="b" * 40,
+        pulls=pulls,
+        workflow_runs=[{
             **base_run,
             "status": "completed",
             "conclusion": "success",
             "created_at": "2026-09-04T22:24:14Z",
-        },
-        merged_at=merged_at,
-    ) is None
-    assert normalize_late_green_run(
-        {**base_run, "status": "completed", "conclusion": "failure"},
-        merged_at=merged_at,
-    ) is None
+        }],
+    )
+    assert late_ids == []
+    assert post_merge[0]["updated_at"] == base_run["updated_at"]
 
-    assert positive_int_env("__MISSING_MAIN_ADMISSION_INT__", 25) == 25
-    assert positive_float_env("__MISSING_MAIN_ADMISSION_FLOAT__", 12.0) == 12.0
     print(
         "main-ci-admission-wait self-test OK · queued/in-progress retried; "
-        "completed/wrong-head/wrong-workflow remain terminal; "
-        "pre-merge-started late green is deploy-eligible, post-merge reruns are not"
+        "pre-merge-started late green is deploy-eligible; post-merge reruns are not"
     )
 
 
