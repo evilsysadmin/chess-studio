@@ -30,6 +30,7 @@ export default function Board3D(props) {
         hidden
         aria-hidden="true"
         data-war-room-hans-quick-request={ownsHansQuickIteration ? 'true' : 'false'}
+        data-war-room-hans-runtime={ownsHansQuickIteration ? 'pending' : 'idle'}
       />
       <Board3DCore {...props} />
     </BoardRendererContext.Provider>
