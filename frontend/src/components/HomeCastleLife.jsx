@@ -1,34 +1,25 @@
+import { useEffect, useMemo, useState } from 'react';
 import './HomeCastleLife.css';
 import './HomeGreatHall.css';
 import './HomeCastleAmbience.css';
 import HomeGreatHallScene from './HomeGreatHallScene.jsx';
 import { ACHIEVEMENTS, loadAchievementLedger, loadUnlocked } from '../achievements.js';
+import {
+  castleHonourObjects,
+  castleLedgerFingerprint,
+  castleUnlockSummary,
+  emptyCastleUnlockLedger,
+  loadCastleUnlockLedger,
+  persistCastleUnlockLedger,
+  reconcileCastleUnlocks,
+} from '../castleProgression.js';
 
 const MAX_OBJECTS = 3;
 const RARE_SIGHTING_THRESHOLD = 0.025;
 const HIGH_HONOUR_PRESTIGE = 80;
-// El castillo sólo muestra hechos ya acreditados. No reconstruimos proezas a
-// partir de intuiciones ni inventamos decoración por tiempo de uso.
-
-const ACHIEVEMENT_BY_ID = new Map(ACHIEVEMENTS.map((achievement) => [achievement.id, achievement]));
-
-const HONOUR_RELICS = Object.freeze([
-  { achievementId: 'rating_master', family: 'rating', id: 'master-crown', label: 'Corona del Maestro', glyph: '♚', tone: 'brass', prestige: 100 },
-  { achievementId: 'rivalry_hard_75', family: 'rivalry', id: 'giantslayer-helm', label: 'Yelmo del Tumbagigantes', glyph: '♞', tone: 'steel', prestige: 94 },
-  { achievementId: 'tournament_level_10', family: 'tournament', id: 'imperial-cup', label: 'Copa imperial', glyph: '♛', tone: 'brass', prestige: 90 },
-  { achievementId: 'combat_flawless', family: 'combat-flawless', id: 'flawless-standard', label: 'Estandarte intacto', glyph: '⚑', tone: 'ember', prestige: 88 },
-  { achievementId: 'feat_pawn_queen', family: 'tactic-pawn-queen', id: 'golden-pawn', label: 'Peón de oro', glyph: '♟', tone: 'brass', prestige: 86 },
-  { achievementId: 'rating_advanced', family: 'rating', id: 'officer-blade', label: 'Espada de oficial', glyph: '⚔︎', tone: 'steel', prestige: 84 },
-  { achievementId: 'combat_gold_piece', family: 'combat-veteran', id: 'veteran-reliquary', label: 'Relicario del veterano', glyph: '♜', tone: 'ember', prestige: 80 },
-  { achievementId: 'feat_skewer', family: 'tactic-skewer', id: 'royal-halberd', label: 'Alabarda real', glyph: '†', tone: 'steel', prestige: 78 },
-  { achievementId: 'rivalry_streak_3', family: 'rivalry', id: 'three-in-row-plaque', label: 'Placa de tres al hilo', glyph: 'III', tone: 'steel', prestige: 74 },
-  { achievementId: 'feat_mate', family: 'tactic-mate', id: 'fallen-king', label: 'Rey derribado', glyph: '♚', tone: 'brass', prestige: 72 },
-  { achievementId: 'feat_promotion', family: 'tactic-promotion', id: 'promotion-crown', label: 'Corona de ascenso', glyph: '♕', tone: 'brass', prestige: 68 },
-  { achievementId: 'tournament_level_5', family: 'tournament', id: 'officer-cup', label: 'Copa de oficial', glyph: '♛', tone: 'brass', prestige: 64 },
-  { achievementId: 'daily_clean_full_3', family: 'daily-discipline', id: 'clean-seal', label: 'Sello impecable', glyph: '✦', tone: 'parchment', prestige: 60 },
-  { achievementId: 'puzzles_50', family: 'puzzles', id: 'tactics-volume', label: 'Tratado de táctica', glyph: '▤', tone: 'parchment', prestige: 58 },
-  { achievementId: 'rating_intermediate', family: 'rating', id: 'academy-blade', label: 'Hoja de academia', glyph: '⚔︎', tone: 'steel', prestige: 56 },
-]);
+const ACHIEVEMENT_DESCRIPTIONS = Object.freeze(Object.fromEntries(
+  ACHIEVEMENTS.map((achievement) => [achievement.id, achievement.description]),
+));
 
 function asNumber(value) {
   const n = Number(value);
@@ -40,29 +31,13 @@ function achievementIdSet(value) {
   return new Set(Array.isArray(value) ? value : []);
 }
 
-function honourObjects(achievementIds, achievementLedger) {
-  const unlocked = achievementIdSet(achievementIds);
-  const strongestByFamily = new Map();
-
-  for (const relic of HONOUR_RELICS) {
-    if (!unlocked.has(relic.achievementId)) continue;
-    const family = relic.family || relic.id;
-    const current = strongestByFamily.get(family);
-    if (!current || relic.prestige > current.prestige) strongestByFamily.set(family, relic);
-  }
-
-  return [...strongestByFamily.values()]
-    .map((relic) => {
-      const achievement = ACHIEVEMENT_BY_ID.get(relic.achievementId);
-      const record = achievementLedger?.records?.[relic.achievementId] || null;
-      return {
-        ...relic,
-        detail: achievement?.description || 'Mérito acreditado en tu historial.',
-        kind: 'honour',
-        evidence: record?.legacy ? 'legacy' : record ? 'recorded' : 'unlock',
-      };
-    })
-    .sort((a, b) => b.prestige - a.prestige || a.id.localeCompare(b.id));
+function achievementStateFingerprint(ids, ledger) {
+  const unlocked = [...achievementIdSet(ids)].sort();
+  const rows = unlocked.map((id) => {
+    const record = ledger?.records?.[id] || null;
+    return [id, record?.legacy === true, record?.recordedAt || null, record?.source || null];
+  });
+  return JSON.stringify(rows);
 }
 
 function castleAmbience({ honours, stateObjects, hasSavedGame }) {
@@ -90,6 +65,7 @@ export function buildHomeCastleLifeModel({
   rivalry = {},
   achievementIds = [],
   achievementLedger = null,
+  castleLedger = null,
   rareRoll = 1,
 } = {}) {
   const objects = [];
@@ -172,7 +148,13 @@ export function buildHomeCastleLifeModel({
     });
   }
 
-  const honours = honourObjects(achievementIds, achievementLedger);
+  // Compatibility path for tests and old callers: if a persisted castle
+  // ledger has not been supplied yet, derive the exact same factual unlocks
+  // from the achievement ledger without writing during model construction.
+  const resolvedCastleLedger = castleLedger || reconcileCastleUnlocks(
+    emptyCastleUnlockLedger(), achievementIds, achievementLedger,
+  );
+  const honours = castleHonourObjects(resolvedCastleLedger, ACHIEVEMENT_DESCRIPTIONS);
   const ambience = castleAmbience({ honours, stateObjects: objects, hasSavedGame });
   const orderedObjects = honours.length > 0 ? [...honours, ...objects] : objects;
   const roll = Number(rareRoll);
@@ -188,29 +170,55 @@ export function buildHomeCastleLifeModel({
     rareSighting,
     ambience: ambience.id,
     ambienceEvidence: ambience.evidence,
+    unlockSummary: castleUnlockSummary(resolvedCastleLedger),
   };
 }
 
 export default function HomeCastleLife({ achievementIds = null, achievementLedger = null, ...props }) {
   const resolvedAchievementIds = achievementIds ?? [...loadUnlocked()];
   const resolvedAchievementLedger = achievementLedger ?? loadAchievementLedger();
+  const [persistedCastleLedger, setPersistedCastleLedger] = useState(() => loadCastleUnlockLedger());
+  const achievementFingerprint = achievementStateFingerprint(resolvedAchievementIds, resolvedAchievementLedger);
+  const persistedFingerprint = castleLedgerFingerprint(persistedCastleLedger);
+  const reconciledCastleLedger = useMemo(
+    () => reconcileCastleUnlocks(persistedCastleLedger, resolvedAchievementIds, resolvedAchievementLedger),
+    // The compact fingerprints intentionally avoid object-identity churn from
+    // callers that reconstruct Set/ledger wrappers on every Home render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [achievementFingerprint, persistedFingerprint],
+  );
+  const reconciledFingerprint = castleLedgerFingerprint(reconciledCastleLedger);
+
+  useEffect(() => {
+    if (reconciledFingerprint === persistedFingerprint) return;
+    if (persistCastleUnlockLedger(reconciledCastleLedger)) {
+      setPersistedCastleLedger(reconciledCastleLedger);
+    }
+  }, [reconciledCastleLedger, reconciledFingerprint, persistedFingerprint]);
+
   const model = buildHomeCastleLifeModel({
     ...props,
     achievementIds: resolvedAchievementIds,
     achievementLedger: resolvedAchievementLedger,
+    castleLedger: reconciledCastleLedger,
   });
   // Estado transitorio (partida pausada) y vacío no son "trofeos". Ya tienen
   // UI funcional propia; repetirlos aquí convertiría el castillo en dashboard.
   const visibleObjects = model.objects.filter((object) => object.kind === 'progress' || object.kind === 'honour');
+  const honourObjects = visibleObjects.filter((object) => object.kind === 'honour');
 
   return (
     <section
       className={`home-castle-life${model.rareSighting ? ' has-rare-sighting' : ''}`}
       aria-label="La estancia de Chess Studio"
       data-castle-life="real-state-v1"
+      data-castle-ledger="evidence-v1"
       data-castle-ambience={model.ambience}
       data-castle-ambience-evidence={model.ambienceEvidence}
-      data-castle-honours={visibleObjects.filter((object) => object.kind === 'honour').length}
+      data-castle-honours={honourObjects.length}
+      data-castle-unlocks={model.unlockSummary.total}
+      data-castle-unlocks-recorded={model.unlockSummary.recorded}
+      data-castle-unlocks-legacy={model.unlockSummary.legacy}
     >
       <HomeGreatHallScene ambience={model.ambience} />
       <div className="home-castle-life__decor" aria-label="Objetos desbloqueados del castillo">
@@ -220,7 +228,9 @@ export default function HomeCastleLife({ achievementIds = null, achievementLedge
             data-castle-object={object.id}
             data-castle-kind={object.kind}
             data-castle-prestige={object.prestige}
+            data-castle-rarity={object.rarity || 'state'}
             data-castle-evidence={object.evidence || 'state'}
+            data-castle-earned-at={object.earnedAt || ''}
             key={object.id}
             role="img"
             tabIndex={0}
