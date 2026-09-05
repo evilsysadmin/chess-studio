@@ -1,4 +1,4 @@
-import { createContext, Suspense, useContext, useMemo, useRef } from 'react';
+import { createContext, Suspense, useContext, useEffect, useMemo, useRef } from 'react';
 import Board2D from './Board2D.jsx';
 import useGameBoardRenderer from './useGameBoardRenderer.js';
 import { parseFen } from './Board3DBoardMath.js';
@@ -95,6 +95,24 @@ export default function Board(props) {
   }), [pieces, props.pieceLevels, props.pieceRankLevels, props.pieceXp, props.pieceVeteranMarks, props.pieceLabels]);
 
   const RegisteredBoard3D = getRegisteredBoard3D();
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || inheritedRenderer === '3d' || !isThreeD || !RegisteredBoard3D) return undefined;
+
+    const onDocumentPointerMove = (event) => {
+      if (!threeDHoveredSquareRef.current) return;
+      const root = rootRef.current;
+      if (root && event.target && root.contains(event.target)) return;
+      handleThreeDPieceMouseLeave(threeDHoveredSquareRef.current);
+    };
+
+    // WebGL canvas leave events can be swallowed by portal/overlay transitions.
+    // Capture at document level while a 3D Board is active so a transient piece
+    // preview cannot survive after the pointer has physically left the board.
+    document.addEventListener('pointermove', onDocumentPointerMove, true);
+    return () => document.removeEventListener('pointermove', onDocumentPointerMove, true);
+  }, [inheritedRenderer, isThreeD, RegisteredBoard3D, props.onPieceMouseLeave]);
+
   if (inheritedRenderer === '3d' || !isThreeD || !RegisteredBoard3D) return <Board2D {...props} />;
 
   function handleThreeDSquareClick(square) {
