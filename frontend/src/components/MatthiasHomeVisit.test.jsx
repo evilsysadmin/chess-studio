@@ -26,6 +26,7 @@ import {
   recordMatthiasSessionResult,
 } from '../matthiasSessionContext.js';
 import MatthiasHomeVisit, {
+  HOME_HOUR_REFRESH_MS,
   HOME_THREE_MOTION_INTENSITY,
   matthiasCompactViewport,
   matthiasMotionReduced,
@@ -55,6 +56,7 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(html).toContain('data-placement="viewport"');
     expect(html).toContain('data-motion-state="active"');
     expect(html).toContain('data-motion-source="none"');
+    expect(html).toContain('data-home-hour=');
     expect(html).toContain('data-three-presentation="home-v4"');
     expect(html).toContain('data-ambient-scene="reading"');
     expect(html).toContain('data-matthias-three-avatar="true"');
@@ -89,6 +91,10 @@ describe('MatthiasHomeVisit · residente de Home', () => {
     expect(html).not.toContain('Mensaje de Matthias');
     expect(html).not.toContain(MODEL.text);
     expect(html).not.toContain('data-session-summary="true"');
+  });
+
+  it('reconsulta la hora local con cadencia corta para no congelar la rutina de Home', () => {
+    expect(HOME_HOUR_REFRESH_MS).toBe(60_000);
   });
 
   it('muestra un debrief plegable después de varias actividades reales de esta sesión', () => {
