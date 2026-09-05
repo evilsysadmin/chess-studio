@@ -13,7 +13,7 @@ import { installWarRoomCommandDeskLuxury } from './WarRoomCommandDeskLuxury.js';
 import { attachWarRoomCompositionRootDriver } from './WarRoomCompositionRootDriver.js';
 import { armWarRoomOneShotHookRetirement, registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 import { installWarRoomMilitaryGallery } from './WarRoomMilitaryGallery.js';
-import { installWarRoomHansFireplaceRoutine } from './WarRoomHansFireplace.js';
+import { installWarRoomHansSceneRoutine } from './WarRoomHansIteration.js';
 
 const TORCH_WALL_WASH_VERSION = 'hearth-contour-v2';
 const TORCH_FLAME_FINISH_VERSION = 'hearth-warm-v2';
@@ -133,6 +133,14 @@ function registerGalleryPaintingOrientationFinalizer(group, coarsePointer) {
     key: 'gallery-painting-orientation-upright-v1',
     coarsePointer,
     run: (root) => correctWarRoomGalleryPaintingOrientation(root || group),
+  });
+}
+
+function registerHansFireplaceFinalizer(group, towardBoard, coarsePointer) {
+  return registerWarRoomDeferredFinalizer(group, {
+    key: 'hans-fireplace-scene-install-v2',
+    coarsePointer,
+    run: (root) => installWarRoomHansSceneRoutine(root || group, { towardBoard, coarsePointer }),
   });
 }
 
@@ -295,7 +303,7 @@ export function applyWarRoomPracticalLighting(group, {
   installWarRoomCommandDeskStudy(group, { towardBoard, coarsePointer });
   installWarRoomCommandDeskLuxury(group, { towardBoard, coarsePointer });
   installWarRoomMilitaryGallery(group, { wallZ, towardBoard, coarsePointer });
-  installWarRoomHansFireplaceRoutine(group, { towardBoard, coarsePointer });
+  registerHansFireplaceFinalizer(group, towardBoard, coarsePointer);
   correctWarRoomGalleryPaintingOrientation(group);
   registerGalleryPaintingOrientationFinalizer(group, coarsePointer);
   tuneWarRoomGalleryTorchWallWash(group);
