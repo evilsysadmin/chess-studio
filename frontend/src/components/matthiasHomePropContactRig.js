@@ -72,6 +72,48 @@ function ensureCuff(owner, key) {
   return group;
 }
 
+function ensurePrivateGameSupport(rig) {
+  const activityRig = rig?.activityRig;
+  const scene = activityRig?.privateGame || rig?.root?.getObjectByName('activity-private-game-mock');
+  if (!activityRig || !scene) return null;
+  if (activityRig.privateGameSupport) {
+    activityRig.privateGameSupport.visible = true;
+    return activityRig.privateGameSupport;
+  }
+
+  const support = new THREE.Group();
+  support.name = 'private-game-table-support';
+  support.position.set(0, -.835, .615);
+  scene.add(support);
+
+  const wood = new THREE.MeshStandardMaterial({ color: 0x24140d, roughness: .54, metalness: .10 });
+  const edge = new THREE.MeshStandardMaterial({ color: 0x7b451d, roughness: .34, metalness: .22 });
+  const gold = new THREE.MeshStandardMaterial({ color: CUFF_GOLD, roughness: .24, metalness: .82 });
+
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.22, .105, .30), wood);
+  top.name = 'private-game-table-top';
+  support.add(top);
+
+  const lip = new THREE.Mesh(new THREE.BoxGeometry(1.18, .026, .315), edge);
+  lip.name = 'private-game-table-edge';
+  lip.position.y = .057;
+  support.add(lip);
+
+  for (const x of [-.47, .47]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(.11, .34, .13), wood);
+    leg.name = 'private-game-table-leg';
+    leg.position.set(x, -.205, -.035);
+    support.add(leg);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(.18, .035, .17), gold);
+    foot.name = 'private-game-table-foot';
+    foot.position.set(x, -.382, -.035);
+    support.add(foot);
+  }
+
+  activityRig.privateGameSupport = support;
+  return support;
+}
+
 function resolveSocket(owner, root, spec) {
   if (!owner || !root || !spec) return null;
   const node = root.getObjectByName(spec.node);
@@ -138,10 +180,26 @@ export function applyMatthiasHomePropContactRig(rig) {
   if (!activityRig || !root) return null;
 
   const prop = String(root.userData?.activityProp || 'none');
+
+  // Partida privada has its own dedicated pointing hand. The board itself must
+  // still obey the same physical rule as every other prop: it rests on furniture.
+  if (prop === 'chess') {
+    clearContactCuffs(activityRig);
+    const support = ensurePrivateGameSupport(rig);
+    if (!support) {
+      clearMatthiasHomePropContactRig(rig);
+      return null;
+    }
+    root.userData.activityPropContact = MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION;
+    root.userData.activityPropContactProp = 'chess';
+    root.userData.activityPropContactHands = 'board-rest/pointing-hand';
+    return { prop: 'chess', boardSupport: support, supportSolved: false, assistSolved: false };
+  }
+
   const spec = CONTACT_SPECS[prop];
 
-  // Dedicated rigs own these contacts: Combat meal choreography, sleeping cloth
-  // and Partida privada's pointing hand. Do not fight them with generic limbs.
+  // Dedicated rigs own these contacts: tactical meal choreography and sleeping
+  // cloth. Do not fight them with generic limbs.
   if (!spec) {
     clearMatthiasHomePropContactRig(rig);
     return null;
