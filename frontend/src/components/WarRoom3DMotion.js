@@ -143,10 +143,9 @@ export function deriveMoveKinetics({ movingType = 'p', capture = false, promotio
 }
 
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
-  // v7 art direction: keep the premium local fire/sconce response, but pull the
-  // broad board wash down another small step. The key light is what pushes the
-  // near ivory/white-side highlights hardest, so trim it without touching the
-  // warm practical or rim lights that keep the black pieces readable.
+  // v8 art direction: keep the room grade and practical lights stable, but pull
+  // the desktop board key down one more notch. This targets the ivory/white-side
+  // wash without dimming torches, rim separation or the wider War Room ambience.
   const baseExposure = coarsePointer ? 1.005 : 1.04;
   if (gameOver) {
     return {
@@ -159,7 +158,7 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
   }
   if (check) {
     return {
-      key: coarsePointer ? 2.32 : 2.16,
+      key: coarsePointer ? 2.32 : 2.04,
       rim: coarsePointer ? 16.8 : 16.4,
       warm: coarsePointer ? 4.9 : 4.55,
       exposure: baseExposure + 0.005,
@@ -167,7 +166,7 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
     };
   }
   return {
-    key: coarsePointer ? 1.99 : 1.84,
+    key: coarsePointer ? 1.99 : 1.72,
     rim: coarsePointer ? 12.6 : 12.15,
     warm: coarsePointer ? 5.0 : 4.85,
     exposure: baseExposure,
