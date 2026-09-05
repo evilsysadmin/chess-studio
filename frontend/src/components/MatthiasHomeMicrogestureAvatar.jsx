@@ -56,6 +56,7 @@ function semanticCue(value = '') {
 export function matthiasHomeActivityProfile({ scene = '', activity = '' } = {}) {
   const key = `${semanticCue(scene)}|${semanticCue(activity)}`;
   if (/breakfast|desayuno/.test(key)) return 'breakfast';
+  if (/beer-break|cervez/.test(key)) return 'beer';
   return matthiasHomeMotionProfile({ scene, activity, speaking: false });
 }
 
@@ -168,8 +169,8 @@ export default function MatthiasHomeMicrogestureAvatar({
 
   // Speech owns face/attention, not the physical task. Keep a second semantic
   // profile without the speech override so Matthias can talk while holding the
-  // cup/book/dossier he was already using. Breakfast deliberately keeps sip-like
-  // motion while exposing a richer cup+plate composition to the 3D activity rig.
+  // cup/book/dossier he was already using. Breakfast and beer keep sip-like
+  // motion while exposing their own compositions to the 3D activity rig.
   const activityProfile = useMemo(
     () => matthiasHomeActivityProfile({ scene, activity }),
     [activity, scene],
