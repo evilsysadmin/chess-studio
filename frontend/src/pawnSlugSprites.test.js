@@ -57,36 +57,23 @@ describe('Pawn Slug premium sprite contracts', () => {
   });
 
   it('maps each action to its own atlas row and clamps indices within the action', () => {
-    expect(pawnSlugMatthiasAtlasWindow('idle', 5)).toMatchObject({
-      row: 0,
-      column: 5,
-      offsetX: 5 / 9,
-      offsetY: 4 / 5,
-    });
-    expect(pawnSlugMatthiasAtlasWindow('walk', 8)).toMatchObject({
-      row: 1,
-      column: 8,
-      offsetX: 8 / 9,
-      offsetY: 3 / 5,
-    });
-    expect(pawnSlugMatthiasAtlasWindow('run', 8)).toMatchObject({
-      row: 2,
-      column: 8,
-      offsetX: 8 / 9,
-      offsetY: 2 / 5,
-    });
-    expect(pawnSlugMatthiasAtlasWindow('crouch', 7)).toMatchObject({
-      row: 3,
-      column: 7,
-      offsetX: 7 / 9,
-      offsetY: 1 / 5,
-    });
-    expect(pawnSlugMatthiasAtlasWindow('jump', 7)).toMatchObject({
-      row: 4,
-      column: 7,
-      offsetX: 7 / 9,
-      offsetY: 0,
-    });
+    const cases = [
+      ['idle', 5, 0, 5, 5 / 9, 4 / 5],
+      ['walk', 8, 1, 8, 8 / 9, 3 / 5],
+      ['run', 8, 2, 8, 8 / 9, 2 / 5],
+      ['crouch', 7, 3, 7, 7 / 9, 1 / 5],
+      ['jump', 7, 4, 7, 7 / 9, 0],
+    ];
+
+    for (const [action, frame, row, column, offsetX, offsetY] of cases) {
+      const window = pawnSlugMatthiasAtlasWindow(action, frame);
+      expect(window).toMatchObject({ row, column });
+      expect(window.offsetX).toBeCloseTo(offsetX, 12);
+      expect(window.offsetY).toBeCloseTo(offsetY, 12);
+      expect(window.repeatX).toBeCloseTo(1 / 9, 12);
+      expect(window.repeatY).toBeCloseTo(1 / 5, 12);
+    }
+
     expect(pawnSlugMatthiasAtlasWindow('run', 9).column).toBe(0);
     expect(pawnSlugMatthiasAtlasWindow('crouch', 8).column).toBe(0);
   });
