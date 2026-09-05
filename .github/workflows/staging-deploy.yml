@@ -552,6 +552,7 @@ jobs:
         uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
+          restore-frontend-deps: 'false'
           build-frontend: 'false'
 
       - name: Live browser smoke against deployed staging
