@@ -19,13 +19,16 @@ export function useCombatDeploymentGate({
 }) {
   const [showDeployment, setShowDeployment] = useState(false);
   const initiallyConfirmed = !requireDeploymentConfirmation || Boolean(restoredSession);
-  const initialConfirmedRoster = initiallyConfirmed && requireDeploymentConfirmation
-    ? freezeTacticalRosterSnapshot(restoredSession?.battleStartRoster || roster)
-    : null;
   const [deploymentConfirmed, setDeploymentConfirmedState] = useState(initiallyConfirmed);
-  const [confirmedRosterSnapshot, setConfirmedRosterSnapshot] = useState(initialConfirmedRoster);
+  const [confirmedRosterSnapshot, setConfirmedRosterSnapshot] = useState(() => (
+    initiallyConfirmed && requireDeploymentConfirmation
+      ? freezeTacticalRosterSnapshot(restoredSession?.battleStartRoster || roster)
+      : null
+  ));
   const [confirmedDeploymentFingerprint, setConfirmedDeploymentFingerprint] = useState(() => (
-    initialConfirmedRoster ? deploymentSelectionFingerprint(initialConfirmedRoster) : null
+    initiallyConfirmed && requireDeploymentConfirmation
+      ? deploymentSelectionFingerprint(restoredSession?.battleStartRoster || roster)
+      : null
   ));
   const currentDeploymentFingerprint = deploymentSelectionFingerprint(roster);
   const confirmationMatches = !requireDeploymentConfirmation
