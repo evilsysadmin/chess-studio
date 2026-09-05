@@ -13,11 +13,14 @@ const QUICK_ENTRY_SECONDS = 7;
 const QUICK_DOOR_X = 2.65;
 const HEARTH_BASKET_X = -1.62;
 const HEARTH_TOOLS_X = -2.28;
-const HEARTH_WORK_Z = 1.16;
+const HEARTH_BASKET_Z = 0.28;
+const HEARTH_TOOLS_Z = 0.24;
+const HEARTH_WORK_Z = 0.72;
 const DOOR_PAST_ARMOR_OFFSET = 1.55;
 const GRAPHITE_BASKET = 0x6f7479;
 const GRAPHITE_BASKET_DARK = 0x41464b;
 let quickIterationEnabled = false;
+let quickIterationOwners = 0;
 
 function nowMs() {
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -66,8 +69,21 @@ export function shouldForceHansQuickIteration({ hintMode = 'off', memoryContext 
 }
 
 export function setWarRoomHansQuickIterationEnabled(enabled) {
+  quickIterationOwners = 0;
   quickIterationEnabled = enabled === true;
   return quickIterationEnabled;
+}
+
+export function acquireWarRoomHansQuickIteration() {
+  quickIterationOwners += 1;
+  quickIterationEnabled = true;
+  return quickIterationOwners;
+}
+
+export function releaseWarRoomHansQuickIteration() {
+  quickIterationOwners = Math.max(0, quickIterationOwners - 1);
+  quickIterationEnabled = quickIterationOwners > 0;
+  return quickIterationOwners;
 }
 
 export function isWarRoomHansQuickIterationEnabled() {
@@ -135,18 +151,25 @@ function relocateHearthKit(fireplace, towardBoard) {
   let moved = 0;
   if (basket) {
     basket.position.x = -side * 1.62;
+    basket.position.z = towardBoard * HEARTH_BASKET_Z;
     basket.rotation.y = -side * towardBoard * 0.05;
     basket.userData.warRoomHansHearthSide = 'opposite-service-door';
+    basket.userData.warRoomHansHearthDepth = 'rear-wall-v1';
     recolorGraphiteBasket(basket);
     moved += 1;
   }
   if (tools) {
     tools.position.x = -side * 2.28;
+    tools.position.z = towardBoard * HEARTH_TOOLS_Z;
     tools.userData.warRoomHansHearthSide = 'opposite-service-door';
+    tools.userData.warRoomHansHearthDepth = 'rear-wall-v1';
     moved += 1;
   }
   const kit = fireplace.getObjectByName?.('war-room-hans-hearth-kit');
-  if (kit) kit.userData.warRoomHansServiceDoorClearance = 'opposite-side-v1';
+  if (kit) {
+    kit.userData.warRoomHansServiceDoorClearance = 'opposite-side-v1';
+    kit.userData.warRoomHansHearthDepth = 'rear-wall-v1';
+  }
   return moved;
 }
 
