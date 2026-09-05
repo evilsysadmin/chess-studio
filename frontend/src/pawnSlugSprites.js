@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import matthiasAtlasUrl from './assets/pawnSlug/matthias_run_atlas_v3.webp';
-import matthiasFallbackAtlasUrl from './assets/pawnSlug/matthias_run_atlas_v3.svg';
-import enemyAtlasUrl from './assets/pawnSlug/enemy_run_atlas_v3.webp';
-import enemyFallbackAtlasUrl from './assets/pawnSlug/enemy_run_atlas_v3.svg';
+import matthiasAtlasUrl from './assets/pawnSlug/matthias_run_atlas_v3.svg';
+import enemyAtlasUrl from './assets/pawnSlug/enemy_run_atlas_v3.svg';
 import panzerRookUrl from './assets/pawnSlug/panzer_rook_v2.webp';
 import weaponAtlasUrl from './assets/pawnSlug/weapon_atlas.svg';
 
+const matthiasFallbackAtlasUrl = matthiasAtlasUrl;
+const enemyFallbackAtlasUrl = enemyAtlasUrl;
 const MATTHIAS_RUN_FRAMES = Object.freeze([1, 2, 3, 4]);
 const ENEMY_RUN_FRAMES = Object.freeze({
   pawn: Object.freeze([0, 1, 2, 3]),
@@ -306,13 +306,7 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
     frameWidth: 256,
     frameHeight: 256,
     sourceFacing: 'right',
-    framesByAction: Object.freeze({
-      idle: 0,
-      run: MATTHIAS_RUN_FRAMES,
-      crouch: 5,
-      fire: 6,
-      airborne: 7,
-    }),
+    framesByAction: Object.freeze({ idle: 0, run: MATTHIAS_RUN_FRAMES, crouch: 5, fire: 6, airborne: 7 }),
   }),
   enemies: Object.freeze({
     url: enemyAtlasUrl,
