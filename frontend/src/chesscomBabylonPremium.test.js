@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHESSCOM_MATTHIAS_OPERATIVE_PROFILE,
   chesscomMoveCostLabel,
   chesscomMovementDuration,
   chesscomMovementEase,
   chesscomMovementLift,
   chesscomMuzzleWorldPosition,
+  chesscomOperativeMovementLift,
 } from './chesscomBabylonPremium.js';
 
 describe('Chesscom Babylon tactical movement', () => {
@@ -31,6 +33,26 @@ describe('Chesscom Babylon tactical movement', () => {
     expect(chesscomMovementLift(1, 2)).toBe(0);
     expect(chesscomMovementLift(.25, 2)).toBeGreaterThan(.05);
     expect(chesscomMovementLift(.75, 2)).toBeGreaterThan(.05);
+  });
+
+  it('moves operative Matthias with articulated legs instead of pawn hopping', () => {
+    const genericLift = chesscomMovementLift(.25, 2);
+    const operativeLift = chesscomOperativeMovementLift(.25, 2);
+    expect(operativeLift).toBeGreaterThan(0);
+    expect(operativeLift).toBeLessThan(genericLift * .25);
+    expect(chesscomOperativeMovementLift(0, 2)).toBe(0);
+    expect(chesscomOperativeMovementLift(1, 2)).toBe(0);
+  });
+
+  it('locks the approved Matthias Chesscom identity to a visible pawn-core exosuit', () => {
+    expect(CHESSCOM_MATTHIAS_OPERATIVE_PROFILE).toMatchObject({
+      identity: 'pawn-core-exosuit',
+      locomotion: 'articulated-operative',
+      pawnCoreVisible: true,
+      face: 'canonical-matthias',
+      cap: 'canonical-peaked-cap',
+    });
+    expect(CHESSCOM_MATTHIAS_OPERATIVE_PROFILE.palette).toEqual(['ivory', 'black', 'brass', 'oxblood']);
   });
 
   it('formats movement costs as explicit AP labels', () => {
