@@ -83,7 +83,7 @@ describe('WarRoom3DMotion', () => {
     expect(shouldRefreshShadowMap({ now: 119, lastShadowAt: 0 })).toBe(false);
     expect(shouldRefreshShadowMap({ now: 120, lastShadowAt: 0 })).toBe(true);
     expect(shouldRefreshShadowMap({ now: 179, lastShadowAt: 0, coarsePointer: true })).toBe(false);
-    expect(shouldRefreshShadowMap({ now: 180, lastShadowAt: 0, coarsePointer: true }).scale).toBeUndefined();
+    expect(shouldRefreshShadowMap({ now: 180, lastShadowAt: 0, coarsePointer: true })).toBe(true);
   });
 
   it('degrades runtime DPR only after sustained contiguous slow frames', () => {
