@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 const WAR_ROOM_RENDER_DISCIPLINE = Symbol.for('chess-studio.war-room-render-discipline');
 const shadowRefreshState = new WeakMap();
+const warRoomHemisphereState = new WeakMap();
 
 export function shadowRefreshInterval({ coarsePointer = false } = {}) {
   return coarsePointer ? 180 : 120;
@@ -13,6 +14,31 @@ export function shouldRefreshShadowMap({ now = 0, lastShadowAt = Number.NEGATIVE
   if (!Number.isFinite(previous)) return true;
   if (!Number.isFinite(current)) return false;
   return current - previous >= shadowRefreshInterval({ coarsePointer });
+}
+
+export function warRoomHemisphereIntensity({ coarsePointer = false } = {}) {
+  // Desktop was still visually dominated by Board3DCore's fixed hemisphere fill at
+  // 1.35 even after reducing the directional key. Keep touch/coarse devices at the
+  // existing brighter readability contract, but trim the desktop fill enough that
+  // ivory pieces and light tiles finally respond to the darker grade.
+  return coarsePointer ? 1.35 : 1.08;
+}
+
+export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {}) {
+  if (!scene) return null;
+  let hemisphere = warRoomHemisphereState.get(scene) || null;
+  if (!hemisphere || !hemisphere.parent) {
+    hemisphere = scene.children?.find((object) => (
+      object?.isHemisphereLight
+      && object.color?.getHex?.() === 0xffefd0
+      && object.groundColor?.getHex?.() === 0x10192b
+    )) || null;
+    if (hemisphere) warRoomHemisphereState.set(scene, hemisphere);
+  }
+  if (!hemisphere) return null;
+  hemisphere.intensity = warRoomHemisphereIntensity({ coarsePointer });
+  scene.userData.warRoomHemisphereIntensity = hemisphere.intensity;
+  return hemisphere;
 }
 
 export function nextRuntimeRenderScale({
@@ -58,6 +84,10 @@ function installWarRoomRenderDiscipline() {
     if (!budget || !this.shadowMap) return originalRender.call(this, scene, camera);
 
     const coarsePointer = Number(budget.shadowMapSize) <= 512;
+    const hemisphere = applyWarRoomHemisphereGrade(scene, { coarsePointer });
+    if (hemisphere && this.domElement?.dataset) {
+      this.domElement.dataset.warRoomLightHemisphere = Number(hemisphere.intensity).toFixed(2);
+    }
     const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : Date.now();
@@ -144,8 +174,9 @@ export function deriveMoveKinetics({ movingType = 'p', capture = false, promotio
 
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
   // Fine tuning after live visual review: keep room practicals and global exposure
-  // untouched, and lower only the desktop directional key one modest notch. This
-  // darkens the ivory pieces/tiles without flattening torches, sconces or wall depth.
+  // untouched, and lower only the desktop directional key one modest notch. The
+  // render boundary separately normalizes the fixed hemisphere fill that was masking
+  // this key reduction on ivory pieces and light tiles.
   const baseExposure = coarsePointer ? 1.005 : 1.04;
   if (gameOver) {
     return {

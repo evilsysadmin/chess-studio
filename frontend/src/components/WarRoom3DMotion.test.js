@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   adaptiveRenderScale,
+  applyWarRoomHemisphereGrade,
   deriveMoveKinetics,
   inferCapturedPiece,
   nextRuntimeRenderScale,
@@ -8,6 +9,7 @@ import {
   shadowRefreshInterval,
   shouldRefreshShadowMap,
   smoothstep,
+  warRoomHemisphereIntensity,
 } from './WarRoom3DMotion.js';
 
 describe('WarRoom3DMotion', () => {
@@ -38,6 +40,39 @@ describe('WarRoom3DMotion', () => {
     expect(deriveMoveKinetics({ movingType: 'p' }).duration).toBeLessThanOrEqual(190);
     expect(deriveMoveKinetics({ movingType: 'q', capture: true }).duration).toBeLessThanOrEqual(240);
     expect(deriveMoveKinetics({ movingType: 'q', capture: true, coarsePointer: true }).duration).toBeLessThanOrEqual(200);
+  });
+
+  it('normalizes the fixed War Room hemisphere fill before rendered desktop frames', () => {
+    const hemisphere = {
+      isHemisphereLight: true,
+      intensity: 1.35,
+      color: { getHex: () => 0xffefd0 },
+      groundColor: { getHex: () => 0x10192b },
+      parent: {},
+    };
+    const scene = { children: [hemisphere], userData: {} };
+
+    expect(warRoomHemisphereIntensity()).toBe(1.08);
+    expect(warRoomHemisphereIntensity({ coarsePointer: true })).toBe(1.35);
+    expect(applyWarRoomHemisphereGrade(scene)).toBe(hemisphere);
+    expect(hemisphere.intensity).toBe(1.08);
+    expect(scene.userData.warRoomHemisphereIntensity).toBe(1.08);
+
+    applyWarRoomHemisphereGrade(scene, { coarsePointer: true });
+    expect(hemisphere.intensity).toBe(1.35);
+  });
+
+  it('does not retune unrelated hemisphere lights', () => {
+    const other = {
+      isHemisphereLight: true,
+      intensity: 2,
+      color: { getHex: () => 0xffffff },
+      groundColor: { getHex: () => 0x000000 },
+      parent: {},
+    };
+    const scene = { children: [other], userData: {} };
+    expect(applyWarRoomHemisphereGrade(scene)).toBeNull();
+    expect(other.intensity).toBe(2);
   });
 
   it('locks the desktop board key while leaving room exposure and practical ambience intact', () => {
