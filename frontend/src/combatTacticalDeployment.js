@@ -19,6 +19,15 @@ export function deploymentSelectionFingerprint(rosterState) {
   return JSON.stringify({ version: COMBAT_TACTICAL_DEPLOYMENT_VERSION, rows });
 }
 
+// El roster ya se persiste como JSON en el perfil; la copia de confirmación
+// usa el mismo contrato serializable. Esto rompe referencias compartidas de
+// React y garantiza que una mutación posterior del barracón no reescriba la
+// fuerza que el jugador acaba de confirmar.
+export function freezeTacticalRosterSnapshot(rosterState) {
+  const state = ensureDeploymentState(rosterState);
+  return JSON.parse(JSON.stringify(state));
+}
+
 function investedVeteran(rosterState, unitKey) {
   const saved = rosterState?.pieces?.[unitKey];
   return saved?.alive !== false && (
