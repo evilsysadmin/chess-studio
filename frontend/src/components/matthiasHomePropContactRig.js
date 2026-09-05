@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export const MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION = 'home-prop-contact-v1-sockets';
+export const MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION = 'home-prop-contact-v2-sleep-clearance';
 
 const HAND_SKIN = 0xe1c58c;
 const CUFF_BLACK = 0x090b0e;
@@ -166,6 +166,53 @@ function clearContactCuffs(activityRig) {
   if (assistCuff) assistCuff.visible = false;
 }
 
+function applySleepHeadSupport(rig) {
+  const activityRig = rig?.activityRig;
+  if (!activityRig || rig?.root?.userData?.activitySleepState === 'inactive') return null;
+
+  clearContactCuffs(activityRig);
+  const {
+    support,
+    supportStem,
+    supportGlove,
+    assist,
+    assistStem,
+    assistGlove,
+  } = activityRig;
+
+  // The v3 sleep rig originally parked both glove spheres at eye height and in
+  // front of the face. At portrait size that rendered as mysterious dots on
+  // Matthias' cheeks. Keep the hands as head support, but place them lower and
+  // slightly behind the facial plane so the cream face remains completely clear.
+  support.visible = true;
+  assist.visible = true;
+  supportStem.position.set(.21, .12, .43);
+  supportStem.rotation.set(1.02, 0, -.38);
+  supportStem.scale.set(1, 1, 1);
+  supportGlove.position.set(.22, .255, .505);
+  supportGlove.rotation.set(0, 0, -.12);
+  supportGlove.scale.set(1.00, .72, .86);
+
+  assistStem.position.set(-.20, .13, .42);
+  assistStem.rotation.set(1.00, 0, .40);
+  assistStem.scale.set(1, 1, 1);
+  assistGlove.position.set(-.13, .285, .495);
+  assistGlove.rotation.set(0, 0, .10);
+  assistGlove.scale.set(.98, .70, .84);
+
+  rig.root.userData.activityPropContact = MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION;
+  rig.root.userData.activityPropContactProp = 'blanket';
+  rig.root.userData.activityPropContactHands = 'sleep-head-support';
+  rig.root.userData.activitySleepFaceClearance = 'hands-below-and-behind-face';
+
+  return {
+    prop: 'blanket',
+    sleepSupport: true,
+    supportSolved: true,
+    assistSolved: true,
+  };
+}
+
 export function clearMatthiasHomePropContactRig(rig) {
   const activityRig = rig?.activityRig;
   if (!activityRig) return;
@@ -173,6 +220,7 @@ export function clearMatthiasHomePropContactRig(rig) {
   if (rig?.root?.userData) {
     rig.root.userData.activityPropContact = 'inactive';
     rig.root.userData.activityPropContactProp = 'none';
+    rig.root.userData.activitySleepFaceClearance = 'inactive';
   }
 }
 
@@ -195,13 +243,18 @@ export function applyMatthiasHomePropContactRig(rig) {
     root.userData.activityPropContact = MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION;
     root.userData.activityPropContactProp = 'chess';
     root.userData.activityPropContactHands = 'board-rest/pointing-hand';
+    root.userData.activitySleepFaceClearance = 'inactive';
     return { prop: 'chess', boardSupport: support, supportSolved: false, assistSolved: false };
   }
 
+  // Sleep keeps both hands, but the contact layer owns their final clearance so
+  // no previous prop/contact pose can leave a glove sitting on Matthias' face.
+  if (prop === 'blanket') return applySleepHeadSupport(rig);
+
   const spec = CONTACT_SPECS[prop];
 
-  // Dedicated rigs own these contacts: tactical meal choreography and sleeping
-  // cloth. Do not fight them with generic limbs.
+  // Dedicated rigs own these contacts: tactical meal choreography. Do not fight
+  // them with generic limb sockets.
   if (!spec) {
     clearMatthiasHomePropContactRig(rig);
     return null;
@@ -241,6 +294,7 @@ export function applyMatthiasHomePropContactRig(rig) {
   root.userData.activityPropContact = MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION;
   root.userData.activityPropContactProp = prop;
   root.userData.activityPropContactHands = `${supportSolved ? 1 : 0}/${assistSolved ? 1 : 0}`;
+  root.userData.activitySleepFaceClearance = 'inactive';
 
   return {
     prop,
