@@ -1,8 +1,10 @@
 export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v1';
 export const WAR_ROOM_ONE_SHOT_RETIREMENT_VERSION = 'one-shot-retirement-v1';
 
-const FINALIZER_STATES = new WeakMap();
+const BEFORE_FINALIZER_STATES = new WeakMap();
+const AFTER_FINALIZER_STATES = new WeakMap();
 const NOOP_RENDER_HOOK = () => {};
+const HANS_FIREPLACE_FINALIZER_KEY = 'hans-fireplace-scene-install-v2';
 
 function sceneRoot(object) {
   let current = object;
@@ -10,7 +12,20 @@ function sceneRoot(object) {
   return current;
 }
 
-function finalizerDriver(group) {
+function finalizerDriver(group, key) {
+  // Hans must be armed by an object that is guaranteed to render in the live
+  // War Room. A painting canvas can legitimately be culled, replaced or have
+  // its one-shot hook retired by later museum passes. The castle floor slab is
+  // architectural and visible in every desktop War Room, so use it only for
+  // this critical character bridge while keeping the established driver order
+  // for every other deferred static pass.
+  if (key === HANS_FIREPLACE_FINALIZER_KEY) {
+    return group?.getObjectByName?.('war-room-castle-floor-slab')
+      || group?.getObjectByName?.('war-room-castle-wall-left')
+      || group?.getObjectByName?.('war-room-premium-painting-canvas')
+      || null;
+  }
+
   return group?.getObjectByName?.('war-room-premium-painting-canvas')
     || group?.getObjectByName?.('war-room-castle-wall-left')
     || group?.getObjectByName?.('war-room-castle-floor-slab')
@@ -23,21 +38,26 @@ function markOwner(owner, state) {
   owner.userData.warRoomDeferredFinalizerTaskCount = state.tasks.size;
 }
 
-function attachFinalizerDriver(driver, owner) {
-  const previous = driver.onBeforeRender;
+function attachFinalizerDriver(driver, owner, phase = 'before') {
+  const after = phase === 'after';
+  const stateMap = after ? AFTER_FINALIZER_STATES : BEFORE_FINALIZER_STATES;
+  const hookName = after ? 'onAfterRender' : 'onBeforeRender';
+  const previous = driver[hookName];
   const state = {
     owner,
     tasks: new Map(),
     completed: false,
     runCount: 0,
+    phase,
   };
-  FINALIZER_STATES.set(driver, state);
+  stateMap.set(driver, state);
 
   driver.userData.warRoomDeferredFinalizer = WAR_ROOM_DEFERRED_FINALIZER_VERSION;
-  driver.onBeforeRender = (...args) => {
+  driver.userData.warRoomDeferredFinalizerPhase = phase;
+  driver[hookName] = (...args) => {
     previous?.(...args);
 
-    const current = FINALIZER_STATES.get(driver);
+    const current = stateMap.get(driver);
     if (!current || current.completed) return;
 
     const root = sceneRoot(driver) || current.owner;
@@ -73,10 +93,16 @@ export function registerWarRoomDeferredFinalizer(group, {
 } = {}) {
   if (!group || (coarsePointer && !allowCoarse) || typeof key !== 'string' || !key || typeof run !== 'function') return 0;
 
-  const driver = finalizerDriver(group);
+  const driver = finalizerDriver(group, key);
   if (!driver) return 0;
 
-  const state = FINALIZER_STATES.get(driver) || attachFinalizerDriver(driver, group);
+  // The castle architecture owns floor.onBeforeRender and replaces it later in
+  // construction. Hans therefore uses the otherwise-unowned onAfterRender hook
+  // of that architectural slab. It still runs on the first rendered frame, but
+  // cannot be silently disconnected by the castle scene driver.
+  const phase = key === HANS_FIREPLACE_FINALIZER_KEY ? 'after' : 'before';
+  const stateMap = phase === 'after' ? AFTER_FINALIZER_STATES : BEFORE_FINALIZER_STATES;
+  const state = stateMap.get(driver) || attachFinalizerDriver(driver, group, phase);
   if (state.completed || state.tasks.has(key)) return 0;
 
   state.tasks.set(key, run);
