@@ -1,28 +1,26 @@
-/* Home Great Hall v4 · real Three.js room
+/* Home Great Hall v5 · approved mock composition
  *
- * The room is now geometry, camera and light. CSS stops pretending to be
- * architecture and becomes what it should be: layout/readability over the
- * scene plus a resilient fallback when WebGL is unavailable.
+ * The Three.js room is the product surface. DOM controls sit on top like
+ * operational plaques on the table instead of rebuilding a dashboard wall.
+ * This layer intentionally wins the global CSS cascade.
  */
 
 body .menu.home-friendly {
   position: relative;
   isolation: isolate;
   overflow: clip;
-  padding-inline: clamp(1rem, 2.8vw, 3.5rem);
-  padding-top: clamp(1.15rem, 1.8vw, 1.7rem);
-  border: 1px solid rgba(185,148,82,.24);
-  border-top-color: rgba(218,180,108,.30);
-  border-radius: 12px;
+  min-height: 930px;
+  padding: clamp(.9rem, 1.7vw, 1.35rem) clamp(.8rem, 2.2vw, 2.25rem) 2.5rem;
+  border: 1px solid rgba(197,157,78,.25);
+  border-top-color: rgba(231,194,112,.32);
+  border-radius: 10px;
   background:
-    radial-gradient(ellipse 48% 24% at 50% 4%, rgba(105,67,43,.13), transparent 72%),
-    linear-gradient(180deg, rgba(13,17,20,.34) 0%, rgba(9,12,15,.48) 58%, rgba(8,10,13,.91) 100%);
+    linear-gradient(180deg, rgba(5,9,13,.20) 0%, rgba(6,9,12,.16) 56%, rgba(6,8,10,.70) 100%);
   box-shadow:
     inset 0 1px rgba(255,255,255,.045),
-    0 34px 80px rgba(0,0,0,.34);
+    0 32px 80px rgba(0,0,0,.30);
 }
 
-/* The old CSS castle is retired. The actual room lives in the canvas. */
 body .menu.home-friendly::before,
 body .menu.home-friendly::after {
   display: none;
@@ -36,158 +34,628 @@ body .menu.home-friendly > *:not(.home-great-hall-scene) {
 body .menu.home-friendly > .home-great-hall-scene {
   position: absolute;
   z-index: 0;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: min(980px, 106vh);
-  min-height: 690px;
+  inset: 0 0 auto;
+  height: min(1010px, 110vh);
+  min-height: 760px;
   overflow: hidden;
   pointer-events: none;
   border-radius: inherit;
   opacity: 1;
-  mask-image: linear-gradient(180deg, #000 0%, #000 76%, rgba(0,0,0,.72) 88%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 88%, rgba(0,0,0,.78) 95%, transparent 100%);
 }
 
 .home-great-hall-scene canvas {
+  display: block;
   width: 100%;
   height: 100%;
-  display: block;
   pointer-events: none;
-  filter: saturate(.92) contrast(1.05) brightness(.93);
+  filter: saturate(1.05) contrast(1.07) brightness(.98);
 }
 
 .home-great-hall-scene[data-home-scene-fallback] {
   display: none;
 }
 
-/* Daily and recommendation become papers/sideboards floating in the room,
- * not opaque walls that hide the actual architecture. */
-body .home-friendly .home-today-card,
-body .home-friendly .home-next-action {
-  backdrop-filter: blur(7px);
-  -webkit-backdrop-filter: blur(7px);
-}
-
+/* ── Top operational strip ─────────────────────────────────────────────── */
 body .home-friendly .home-today-card {
-  border: 1px solid rgba(185,148,82,.27);
-  border-top-color: rgba(218,179,107,.35);
-  border-radius: var(--castle-panel-radius);
+  box-sizing: border-box;
+  width: min(94%, 1260px);
+  height: 112px;
+  min-height: 112px;
+  margin: .2rem auto 0;
+  padding: 1rem clamp(20rem, 31vw, 27rem) 1rem clamp(1rem, 2.2vw, 1.8rem);
+  display: grid;
+  grid-template-columns: auto minmax(230px, .95fr) minmax(250px, 1fr);
+  align-items: center;
+  gap: clamp(.7rem, 1.7vw, 1.35rem);
+  overflow: hidden;
+  border: 1px solid rgba(210,169,80,.64);
+  border-radius: 9px;
   background:
-    linear-gradient(90deg, rgba(55,35,24,.44), rgba(10,13,16,.77) 35%, rgba(9,12,15,.72)),
-    rgba(10,13,16,.60);
+    linear-gradient(90deg, rgba(11,17,22,.93), rgba(7,12,16,.90) 62%, rgba(8,12,15,.72));
   box-shadow:
-    inset 0 1px rgba(255,255,255,.045),
-    inset 4px 0 rgba(196,151,77,.10),
-    0 15px 34px rgba(0,0,0,.24);
+    inset 0 1px rgba(255,240,200,.06),
+    0 16px 36px rgba(0,0,0,.28);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-body .home-friendly .home-next-action {
-  border-color: rgba(185,148,82,.30);
-  background: linear-gradient(135deg, rgba(17,18,18,.70), rgba(12,15,17,.58));
-  box-shadow: 0 12px 28px rgba(0,0,0,.20);
+body .home-friendly .home-today-emblem {
+  width: 2.2rem;
+  color: #e3b83f;
+  font-size: 0;
+  text-align: center;
+}
+body .home-friendly .home-today-emblem::before {
+  content: '♨';
+  font-size: 1.55rem;
+  line-height: 1;
 }
 
-/* The 3D command table is now the furniture. The section is only an invisible
- * semantic/layout wrapper, avoiding the old giant brown SaaS panel. */
-body .home-friendly .home-modes-section {
-  margin-top: clamp(1.65rem, 3vw, 2.6rem);
-  padding: clamp(1rem, 1.8vw, 1.4rem);
+body .home-friendly .home-today-copy {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  column-gap: .65rem;
+  row-gap: .24rem;
+}
+body .home-friendly .home-today-copy .section-label {
+  color: #d7ac3d;
+  letter-spacing: .17em;
+  white-space: nowrap;
+}
+body .home-friendly .home-today-copy strong {
+  color: #f1ead8;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+body .home-friendly .home-today-copy small {
+  grid-column: 1 / -1;
+  max-width: 30rem;
+  color: rgba(238,233,220,.78);
+  line-height: 1.35;
+}
+
+body .home-friendly .home-today-missions {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: .2rem .55rem;
+  padding: 0 clamp(.45rem, 1vw, .85rem);
+  border-inline: 1px solid rgba(197,157,78,.24);
+}
+body .home-friendly .home-today-missions button {
+  min-width: 0;
+  padding: .12rem 0;
   border: 0;
-  border-radius: 10px;
-  background: linear-gradient(180deg, rgba(17,12,10,.20), rgba(9,11,13,.12));
+  background: transparent;
   box-shadow: none;
-  backdrop-filter: blur(1.5px);
-  -webkit-backdrop-filter: blur(1.5px);
+  color: #d6cdbb;
+  font-size: .76rem;
+  letter-spacing: .04em;
+}
+body .home-friendly .home-today-missions button + button::before {
+  content: '·';
+  margin-right: .55rem;
+  color: #d5aa39;
+}
+body .home-friendly .home-today-missions button i { display: none; }
+body .home-friendly .home-today-missions button.done b { color: #e6bb4a; }
+
+body .home-friendly .home-today-streaks {
+  position: absolute;
+  left: 50%;
+  bottom: .74rem;
+  transform: translateX(-8%);
+  color: rgba(226,221,209,.62);
+  font-size: .66rem;
+}
+body .home-friendly .home-today-actions { display: none; }
+
+/* Recommendation occupies the right third of the same visual strip. */
+body .home-friendly .home-next-action {
+  box-sizing: border-box;
+  width: min(31%, 395px);
+  min-width: 315px;
+  height: 92px;
+  margin: -102px 5.2% 10px auto;
+  padding: .8rem 1rem .8rem 1.3rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .85rem;
+  border: 0;
+  border-left: 1px solid rgba(197,157,78,.24);
+  border-radius: 0;
+  background: linear-gradient(90deg, rgba(7,11,14,.16), rgba(11,14,17,.58));
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+body .home-friendly .home-next-action > div {
+  min-width: 0;
+  display: grid;
+  gap: .16rem;
+}
+body .home-friendly .home-next-action .section-label {
+  color: #d8ae42;
+  letter-spacing: .17em;
+}
+body .home-friendly .home-next-action strong {
+  color: #f1e6cb;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.1rem;
+  font-style: italic;
+  line-height: 1.05;
+}
+body .home-friendly .home-next-action small { display: none; }
+body .home-friendly .home-next-action .secondary-btn {
+  min-height: 2.55rem;
+  padding: .65rem 1.05rem;
+  border: 1px solid rgba(226,183,66,.74);
+  border-radius: 7px;
+  background: linear-gradient(180deg, rgba(183,142,43,.92), rgba(116,84,18,.94));
+  box-shadow: inset 0 1px rgba(255,244,188,.18), 0 6px 16px rgba(0,0,0,.24);
+  color: #fff3d0;
+  white-space: nowrap;
 }
 
+/* ── Main command table / hero ─────────────────────────────────────────── */
+body .home-friendly .home-modes-section {
+  box-sizing: border-box;
+  width: min(96%, 1370px);
+  margin: clamp(2.2rem, 4.5vh, 3.5rem) auto 0;
+  padding: 0 clamp(.25rem, 1.4vw, 1rem) .8rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
 body .home-friendly .home-modes-section::before,
-body .home-friendly .home-modes-section::after {
+body .home-friendly .home-modes-section::after { display: none; }
+
+body .home-friendly .home-modes-section .home-group-heading {
+  max-width: 1280px;
+  margin: 0 auto clamp(.8rem, 1.5vh, 1.15rem);
+  padding: 0 .75rem .72rem;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 2rem;
+  border: 0;
+  background: transparent;
+}
+body .home-friendly .home-modes-section .home-group-heading > div:first-child::before {
+  content: 'CHESS STUDIO · SALA PRINCIPAL';
+  display: block;
+  margin-bottom: .42rem;
+  color: #d0a53b;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .23em;
+}
+body .home-friendly .home-modes-section .home-group-heading .section-label {
+  color: #d7ae43;
+  font-size: .72rem;
+  letter-spacing: .20em;
+}
+body .home-friendly .home-modes-section .home-group-heading h2 {
+  margin: .22rem 0 0;
+  color: #f3ead4;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 0;
+  line-height: .98;
+  text-shadow: 0 3px 16px rgba(0,0,0,.32);
+}
+body .home-friendly .home-modes-section .home-group-heading h2::after {
+  content: 'Tu próxima partida';
+  display: block;
+  font-size: clamp(2.45rem, 4.15vw, 4.1rem);
+  letter-spacing: -.035em;
+}
+body .home-friendly .home-modes-section .home-heading-actions {
+  align-items: flex-end;
+  padding-bottom: .15rem;
+}
+body .home-friendly .home-modes-section .home-heading-actions p {
+  margin: 0;
+  color: rgba(242,236,219,.84);
+  font-size: clamp(.88rem, 1.1vw, 1rem);
+  white-space: nowrap;
+}
+body .home-friendly .home-context-guide {
+  margin-top: .45rem;
+  opacity: .78;
+}
+
+body .home-friendly .home-modes-section .home-primary-grid {
+  position: relative;
+  z-index: 2;
+  max-width: 1320px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(.65rem, 1vw, .9rem);
+}
+
+body .home-friendly .home-modes-section .menu-card-shell { min-width: 0; }
+body .home-friendly .home-modes-section .home-mode-card {
+  box-sizing: border-box;
+  min-height: clamp(14.2rem, 18vw, 16.2rem);
+  height: 100%;
+  overflow: hidden;
+  padding: 1.45rem 1.55rem 1.25rem;
+  border: 1px solid rgba(220,177,72,.62);
+  border-radius: 8px;
+  background-color: rgba(7,12,16,.88);
+  box-shadow:
+    inset 0 1px rgba(255,244,198,.055),
+    inset 0 -30px 58px rgba(0,0,0,.22),
+    0 18px 34px rgba(0,0,0,.30);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+body .home-friendly .home-modes-section .home-mode-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(238,197,87,.82);
+  box-shadow: inset 0 1px rgba(255,244,198,.07), 0 22px 42px rgba(0,0,0,.38);
+}
+body .home-friendly .home-modes-section .home-mode-card::before {
   display: none;
 }
-
-body .home-friendly .home-group-heading {
-  padding: .72rem .45rem .68rem;
-  border-bottom-color: rgba(204,164,88,.25);
-  background: linear-gradient(90deg, rgba(22,14,10,.26), transparent 64%);
+body .home-friendly .home-modes-section .home-mode-card::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(5,10,14,.98) 0%, rgba(5,10,14,.90) 35%, rgba(5,10,14,.55) 62%, rgba(5,10,14,.12) 100%);
 }
 
-body .home-friendly .home-mode-card {
-  border-color: rgba(210,174,104,.18);
-  background-color: rgba(11,14,17,.76);
-  box-shadow:
-    inset 0 1px rgba(255,255,255,.035),
-    0 16px 35px rgba(0,0,0,.23);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+body .home-friendly .home-mode-art {
+  position: absolute;
+  z-index: 0;
+  inset: 0 0 0 auto;
+  width: 64%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: .88;
+  filter: saturate(.92) contrast(1.05) brightness(.88);
+  mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.28) 12%, #000 48%, #000 100%);
 }
-
-body .home-friendly .home-mode-featured {
-  border-color: rgba(205,166,83,.42);
-  background-color: rgba(17,16,14,.75);
-}
-
-body .home-friendly .home-mode-campaign {
-  border-color: rgba(172,73,65,.34);
-  background-color: rgba(17,14,14,.75);
-}
-
-body .home-friendly .home-mode-quick {
-  border-color: rgba(76,141,175,.27);
-  background-color: rgba(12,16,19,.75);
-}
-
-/* Castle progression objects remain actual diegetic foreground decorations. */
-body .menu.home-friendly > .home-castle-life {
+body .home-friendly .home-mode-copy,
+body .home-friendly .home-mode-progress,
+body .home-friendly .home-mode-card > .menu-card-cta,
+body .home-friendly .home-mode-icon {
+  position: relative;
   z-index: 3;
 }
+body .home-friendly .home-mode-icon { display: none; }
+body .home-friendly .home-mode-copy {
+  display: block;
+  max-width: 66%;
+  text-align: left;
+}
+body .home-friendly .home-mode-kicker {
+  display: flex;
+  gap: .5rem;
+  color: #d8ae45;
+  font-size: .67rem;
+  letter-spacing: .17em;
+  text-transform: uppercase;
+}
+body .home-friendly .home-mode-kicker b,
+body .home-friendly .home-mode-kicker i {
+  color: inherit;
+  font-style: normal;
+  font-weight: 700;
+}
+body .home-friendly .home-mode-copy h3 {
+  margin: .68rem 0 .44rem;
+  color: #f5ead2;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.55rem, 2vw, 2.05rem);
+  line-height: 1.02;
+  letter-spacing: -.025em;
+  text-shadow: 0 3px 12px rgba(0,0,0,.52);
+}
+body .home-friendly .home-mode-description {
+  display: block;
+  max-width: 21rem;
+  color: rgba(243,236,220,.86);
+  font-size: clamp(.82rem, .96vw, .94rem);
+  line-height: 1.42;
+}
 
-@media (max-width: 980px) {
-  body .menu.home-friendly {
-    padding-inline: clamp(.85rem, 2.5vw, 1.6rem);
-  }
+body .home-friendly .home-mode-progress {
+  position: absolute;
+  left: 1.55rem;
+  bottom: 4.25rem;
+  display: block;
+  color: rgba(233,225,205,.70);
+  font-size: .68rem;
+}
+body .home-friendly .home-mode-progress > span { display: none; }
+body .home-friendly .home-mode-progress small { color: inherit; }
 
-  body .menu.home-friendly > .home-great-hall-scene {
-    height: min(900px, 103vh);
-    min-height: 650px;
+body .home-friendly .home-modes-section .home-mode-card > .menu-card-cta {
+  position: absolute;
+  left: 1.55rem;
+  bottom: 1.2rem;
+  min-width: 8.5rem;
+  width: max-content;
+  max-width: calc(100% - 3rem);
+  padding: .67rem 1.15rem;
+  border: 1px solid rgba(231,188,63,.82);
+  border-radius: 7px;
+  background: linear-gradient(180deg, rgba(181,139,40,.96), rgba(112,80,15,.96));
+  box-shadow: inset 0 1px rgba(255,244,185,.18), 0 7px 16px rgba(0,0,0,.25);
+  color: #fff0c9;
+  font-size: 0;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+body .home-friendly .home-modes-section .home-mode-featured > .menu-card-cta::after {
+  content: 'Entrar →';
+  font-size: .87rem;
+}
+body .home-friendly .home-modes-section .home-mode-campaign > .menu-card-cta::after {
+  content: 'Abrir briefing →';
+  font-size: .87rem;
+}
+body .home-friendly .home-modes-section .home-mode-quick > .menu-card-cta {
+  bottom: 1.2rem;
+}
+body .home-friendly .home-modes-section .home-mode-quick > .menu-card-cta::before {
+  content: 'CPU adaptable · nivel sugerido';
+  position: absolute;
+  left: 0;
+  bottom: 3.15rem;
+  width: 18rem;
+  color: rgba(233,225,205,.66);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .64rem;
+  font-weight: 500;
+  letter-spacing: .04em;
+  text-align: left;
+  text-transform: none;
+}
+body .home-friendly .home-modes-section .home-mode-quick > .menu-card-cta::after {
+  content: 'Jugar →';
+  font-size: .87rem;
+}
+body .home-friendly .home-modes-section .home-mode-card > .menu-card-cta b { display: none; }
+
+/* Combat is the subtle centrepiece from the mock, not a giant special tile. */
+body .home-friendly .home-mode-campaign {
+  border-color: rgba(226,180,63,.74);
+  box-shadow: inset 0 1px rgba(255,244,198,.07), 0 20px 42px rgba(0,0,0,.34), 0 0 28px rgba(191,136,34,.07);
+}
+body .home-friendly .home-mode-quick { border-color: rgba(109,167,194,.46); }
+
+body .home-friendly .home-more-modes {
+  max-width: 1280px;
+  margin: .7rem auto 0;
+  background: rgba(8,11,14,.56);
+}
+
+/* ── Bottom three-way navigation from the approved mock ────────────────── */
+body .home-friendly > .home-primary-group:not(.home-modes-section) {
+  width: min(76%, 1040px);
+  margin: .55rem auto 0;
+  padding: .16rem;
+  border: 1px solid rgba(192,150,59,.26);
+  border-radius: 9px;
+  background: rgba(6,11,15,.93);
+  box-shadow: 0 14px 30px rgba(0,0,0,.28);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+body .home-friendly > .home-primary-group:not(.home-modes-section) > .home-group-heading {
+  display: none;
+}
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-grid {
+  max-width: none;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+}
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-grid > * {
+  min-width: 0;
+  border-right: 1px solid rgba(192,150,59,.22);
+}
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-grid > *:last-child {
+  border-right: 0;
+}
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card {
+  min-height: 3.5rem !important;
+  height: 3.5rem;
+  padding: .55rem clamp(.7rem, 1.5vw, 1.2rem);
+  display: flex;
+  align-items: center;
+  gap: .7rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card::before,
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card::after { display: none; }
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card:hover {
+  background: rgba(199,154,58,.08);
+}
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .home-mode-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 1.65rem;
+  color: #e3b83f;
+}
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .home-mode-copy {
+  max-width: none;
+  min-width: 0;
+  flex: 1;
+}
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .home-mode-kicker,
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .home-mode-description {
+  display: none;
+}
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card h3 {
+  margin: 0;
+  color: #e7c86e;
+  font-family: inherit;
+  font-size: .9rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-grid > :nth-child(2) h3,
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-grid > :nth-child(3) h3 {
+  font-size: 0;
+}
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-grid > :nth-child(2) h3::after {
+  content: 'Aprender y practicar';
+  font-size: .9rem;
+}
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-grid > :nth-child(3) h3::after {
+  content: 'Más del castillo';
+  font-size: .9rem;
+}
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .menu-card-cta {
+  position: static;
+  min-width: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #dfb642;
+  font-size: 0;
+}
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .menu-card-cta b {
+  display: inline;
+  font-size: 1rem;
+}
+body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-more {
+  margin: 1.1rem .3rem .25rem;
+  border-top: 1px solid rgba(192,150,59,.16);
+}
+
+/* Castle progression objects stay real foreground props. */
+body .menu.home-friendly > .home-castle-life { z-index: 3; }
+
+@media (max-width: 1120px) {
+  body .home-friendly .home-today-card {
+    width: 96%;
+    padding-right: 19rem;
+    grid-template-columns: auto minmax(210px, 1fr) minmax(220px, .9fr);
   }
+  body .home-friendly .home-next-action {
+    min-width: 275px;
+    width: 29%;
+    margin-right: 3.5%;
+  }
+  body .home-friendly .home-modes-section .home-mode-copy { max-width: 72%; }
+  body .home-friendly > .home-primary-group:not(.home-modes-section) { width: 88%; }
+}
+
+@media (max-width: 900px) {
+  body .menu.home-friendly { min-height: 0; }
+  body .home-friendly .home-today-card {
+    height: auto;
+    min-height: 118px;
+    padding: .95rem 1rem;
+    grid-template-columns: auto 1fr;
+  }
+  body .home-friendly .home-today-missions {
+    grid-column: 1 / -1;
+    border-inline: 0;
+    border-top: 1px solid rgba(197,157,78,.20);
+    padding-top: .55rem;
+  }
+  body .home-friendly .home-today-streaks { display: none; }
+  body .home-friendly .home-next-action {
+    width: min(96%, 760px);
+    min-width: 0;
+    height: auto;
+    margin: .55rem auto 0;
+    border: 1px solid rgba(210,169,80,.38);
+    border-radius: 8px;
+    background: rgba(7,12,16,.78);
+  }
+  body .home-friendly .home-modes-section {
+    width: 100%;
+    margin-top: 2rem;
+  }
+  body .home-friendly .home-modes-section .home-group-heading {
+    align-items: flex-start;
+  }
+  body .home-friendly .home-modes-section .home-heading-actions p { white-space: normal; }
+  body .home-friendly .home-modes-section .home-primary-grid {
+    grid-template-columns: 1fr;
+    max-width: 680px;
+  }
+  body .home-friendly .home-modes-section .home-mode-card {
+    min-height: 13.8rem;
+  }
+  body .home-friendly > .home-primary-group:not(.home-modes-section) { width: min(96%, 680px); }
 }
 
 @media (max-width: 760px) {
   body .menu.home-friendly {
-    padding-inline: .72rem;
-    border-radius: 9px;
-    background:
-      linear-gradient(180deg, rgba(12,16,19,.36), rgba(8,11,14,.72) 62%, #090b0e 100%);
+    padding-inline: .65rem;
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(6,10,13,.28), rgba(7,10,13,.76) 72%, #080a0c 100%);
   }
-
   body .menu.home-friendly > .home-great-hall-scene {
-    height: 680px;
+    height: 720px;
     min-height: 0;
-    opacity: .84;
-    mask-image: linear-gradient(180deg, #000 0%, #000 72%, rgba(0,0,0,.62) 87%, transparent 100%);
+    opacity: .88;
+    mask-image: linear-gradient(180deg, #000 0%, #000 76%, rgba(0,0,0,.64) 90%, transparent 100%);
   }
-
-  .home-great-hall-scene canvas {
-    filter: saturate(.86) contrast(1.03) brightness(.86);
+  .home-great-hall-scene canvas { filter: saturate(.96) contrast(1.05) brightness(.90); }
+  body .home-friendly .home-modes-section .home-group-heading {
+    display: block;
+    padding-inline: .2rem;
   }
-
-  body .home-friendly .home-today-card,
-  body .home-friendly .home-next-action,
-  body .home-friendly .home-mode-card {
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+  body .home-friendly .home-modes-section .home-group-heading h2::after {
+    font-size: clamp(2rem, 10vw, 3rem);
+  }
+  body .home-friendly .home-modes-section .home-heading-actions { margin-top: .55rem; }
+  body .home-friendly .home-mode-art { width: 68%; opacity: .72; }
+  body .home-friendly .home-mode-copy { max-width: 78%; }
+  body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-grid {
+    grid-template-columns: 1fr;
+  }
+  body .home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-grid > * {
+    border-right: 0;
+    border-bottom: 1px solid rgba(192,150,59,.18);
   }
 }
 
 @media (max-width: 430px) {
-  body .menu.home-friendly > .home-great-hall-scene {
-    height: 610px;
-    opacity: .72;
+  body .menu.home-friendly > .home-great-hall-scene { height: 650px; opacity: .78; }
+  body .home-friendly .home-today-copy {
+    grid-template-columns: 1fr;
   }
+  body .home-friendly .home-today-copy small { grid-column: 1; }
+  body .home-friendly .home-next-action {
+    grid-template-columns: 1fr;
+  }
+  body .home-friendly .home-next-action .secondary-btn { width: 100%; }
+  body .home-friendly .home-mode-copy { max-width: 86%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-great-hall-scene canvas {
-    filter: saturate(.88) contrast(1.03) brightness(.90);
-  }
+  body .home-friendly .home-modes-section .home-mode-card { transition: none; }
+  .home-great-hall-scene canvas { filter: saturate(.98) contrast(1.04) brightness(.94); }
 }

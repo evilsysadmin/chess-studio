@@ -5,6 +5,7 @@ import AppRootErrorBoundary from './components/AppRootErrorBoundary.jsx';
 import './components/Board3DRegistration.js';
 import './styles.css';
 import './components/HomeGreatHallCascade.css';
+import './components/HomeGreatHallAccessibility.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
 import { migratePersistentStorage } from './storageMigrations.js';
 import { getReducedMotionPreference, reducedMotionStatus } from './userPreferences.js';
