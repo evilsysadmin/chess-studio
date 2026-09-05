@@ -8,16 +8,34 @@ import {
   setWarRoomHansServiceDoorOpen,
 } from './WarRoomHansServiceDoor.js';
 
-const QUICK_ITERATION_VERSION = 'always-quick-v4-door';
-const QUICK_ENTRY_SECONDS = 5;
-const QUICK_VISIBLE_START_X = 2.65;
-const QUICK_BASKET_X = 1.95;
+const QUICK_ITERATION_VERSION = 'always-quick-v5-service-corridor';
+const QUICK_ENTRY_SECONDS = 7;
+const QUICK_DOOR_X = 2.65;
+const HEARTH_BASKET_X = -1.62;
+const HEARTH_TOOLS_X = -2.28;
+const HEARTH_WORK_Z = 1.16;
+const DOOR_PAST_ARMOR_OFFSET = 1.55;
+const GRAPHITE_BASKET = 0x6f7479;
+const GRAPHITE_BASKET_DARK = 0x41464b;
 let quickIterationEnabled = false;
 
 function nowMs() {
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now()
     : Date.now();
+}
+
+function clamp01(value) {
+  return Math.max(0, Math.min(1, Number(value) || 0));
+}
+
+function smoothstep01(value) {
+  const t = clamp01(value);
+  return t * t * (3 - 2 * t);
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
 }
 
 function resolveLightBaseIntensity(light, fallback = 1) {
@@ -56,57 +74,178 @@ export function isWarRoomHansQuickIterationEnabled() {
   return quickIterationEnabled;
 }
 
-function smoothstep01(value) {
-  const t = Math.max(0, Math.min(1, Number(value) || 0));
-  return t * t * (3 - 2 * t);
+function findVisibleArmor(root, side) {
+  const names = side < 0
+    ? ['war-room-teutonic-armor-left', 'war-room-armor-guard-left']
+    : ['war-room-teutonic-armor-right', 'war-room-armor-guard-right'];
+  let fallback = null;
+  for (const name of names) {
+    const armor = root?.getObjectByName?.(name);
+    if (!armor) continue;
+    fallback ||= armor;
+    if (armor.visible !== false) return armor;
+  }
+  return fallback;
 }
 
-// Visual-iteration mode intentionally makes Hans impossible to miss: he is
-// already visible at his service-door threshold on the first useful scene
-// frame and walks toward the basket while the fireplace performs its five-
-// second dim. The door closes behind him, then reopens for his exit.
+function placeServiceDoorPastArmor(root, fireplace, doorRefs, towardBoard) {
+  if (!root || !fireplace || !doorRefs?.group) return null;
+  const side = doorRefs.side || Math.sign(fireplace.position.x || -1) || -1;
+  const armor = findVisibleArmor(root, side);
+  const armorZ = Number(armor?.position?.z);
+  const fallbackZ = Number(fireplace.position.z) + towardBoard * 7.55;
+  const targetZ = Number.isFinite(armorZ)
+    ? armorZ + towardBoard * DOOR_PAST_ARMOR_OFFSET
+    : fallbackZ;
+  const oldDoorZ = Number(doorRefs.doorZ || targetZ);
+  doorRefs.group.position.z += targetZ - oldDoorZ;
+  doorRefs.doorZ = targetZ;
+  doorRefs.group.userData.warRoomHansDoorPlacement = 'past-armor-service-corridor-v1';
+  doorRefs.group.userData.warRoomHansDoorWorldZ = targetZ;
+  doorRefs.group.userData.warRoomHansDoorArmorName = armor?.name || 'fallback';
+  doorRefs.group.userData.warRoomHansDoorPastArmorOffset = DOOR_PAST_ARMOR_OFFSET;
+  return targetZ;
+}
+
+function recolorGraphiteBasket(basket) {
+  if (!basket || basket.userData?.warRoomHansBasketFinish === 'graphite-grey-v1') return;
+  let index = 0;
+  basket.traverse?.((object) => {
+    if (!object?.isMesh) return;
+    const geometryType = object.geometry?.type;
+    if (geometryType !== 'BoxGeometry' && geometryType !== 'TorusGeometry') return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) {
+      if (!material?.color?.setHex) continue;
+      material.color.setHex(index % 3 === 0 ? GRAPHITE_BASKET_DARK : GRAPHITE_BASKET);
+      material.roughness = Math.max(Number(material.roughness || 0), 0.72);
+      material.metalness = Math.max(Number(material.metalness || 0), 0.08);
+      material.needsUpdate = true;
+      index += 1;
+    }
+  });
+  basket.userData.warRoomHansBasketFinish = 'graphite-grey-v1';
+}
+
+function relocateHearthKit(fireplace, towardBoard) {
+  if (!fireplace) return 0;
+  const side = Math.sign(fireplace.position.x || -1) || -1;
+  const basket = fireplace.getObjectByName?.('war-room-hearth-log-basket');
+  const tools = fireplace.getObjectByName?.('war-room-hearth-tool-stand');
+  let moved = 0;
+  if (basket) {
+    basket.position.x = -side * 1.62;
+    basket.rotation.y = -side * towardBoard * 0.05;
+    basket.userData.warRoomHansHearthSide = 'opposite-service-door';
+    recolorGraphiteBasket(basket);
+    moved += 1;
+  }
+  if (tools) {
+    tools.position.x = -side * 2.28;
+    tools.userData.warRoomHansHearthSide = 'opposite-service-door';
+    moved += 1;
+  }
+  const kit = fireplace.getObjectByName?.('war-room-hans-hearth-kit');
+  if (kit) kit.userData.warRoomHansServiceDoorClearance = 'opposite-side-v1';
+  return moved;
+}
+
+function remapWorkingFrame(frame, timelineT) {
+  if (!frame?.hansVisible) return frame;
+  const mapped = { ...frame, hansZ: HEARTH_WORK_Z };
+  if (frame.phase === 'take-log') {
+    mapped.hansX = HEARTH_BASKET_X;
+  } else if (frame.phase === 'carry-log') {
+    const p = clamp01((1.95 - frame.hansX) / (1.95 - 0.9));
+    mapped.hansX = lerp(HEARTH_BASKET_X, 0.9, p);
+  } else if (frame.phase === 'place-log') {
+    mapped.hansX = 0.9;
+  } else if (frame.phase === 'take-poker') {
+    const p = clamp01((frame.hansX - 0.9) / (1.18 - 0.9));
+    mapped.hansX = lerp(0.9, HEARTH_TOOLS_X, p);
+  } else if (frame.phase === 'stoke-fire') {
+    const local = Math.max(0, timelineT - 19);
+    mapped.hansX = lerp(HEARTH_TOOLS_X, 0.92, smoothstep01(local / 1.2));
+  } else if (frame.phase === 'return-poker') {
+    const p = clamp01((frame.hansX - 0.92) / (1.18 - 0.92));
+    mapped.hansX = lerp(0.92, HEARTH_TOOLS_X, p);
+  } else if (frame.phase === 'satisfied') {
+    mapped.hansX = HEARTH_TOOLS_X;
+  } else if (frame.phase === 'leave') {
+    const p = clamp01((frame.hansX - 1.18) / (4.15 - 1.18));
+    mapped.hansX = lerp(HEARTH_TOOLS_X, QUICK_DOOR_X, p);
+    mapped.route = 'leave';
+    mapped.routeProgress = p;
+    mapped.doorOpen = smoothstep01((p - 0.52) / 0.28);
+    mapped.hansVisible = frame.hansVisible && p < 0.985;
+  }
+  return mapped;
+}
+
+// Visual-iteration mode makes Hans impossible to miss. The service door now
+// lives beyond the visible armor, so the first seven seconds are a deliberate
+// corridor walk along the side of the board while the hearth dims. Only after
+// that does he cross to the basket on the opposite side of the fireplace.
 export function hansQuickIterationFrame(elapsedSeconds) {
   const elapsed = Math.max(0, Number(elapsedSeconds) || 0);
   if (elapsed < QUICK_ENTRY_SECONDS) {
-    const dimFrame = hansFireplaceFrame(elapsed + HANS_FIREPLACE_START_DELAY_S);
-    const walkFrame = hansFireplaceFrame(
-      elapsed + HANS_FIREPLACE_START_DELAY_S + QUICK_ENTRY_SECONDS,
+    const dimFrame = hansFireplaceFrame(
+      Math.min(elapsed, 5) + HANS_FIREPLACE_START_DELAY_S,
     );
     const eased = smoothstep01(elapsed / QUICK_ENTRY_SECONDS);
-    const closeDoor = smoothstep01(Math.max(0, (elapsed - 2.4) / 2.6));
+    const closeDoor = smoothstep01(Math.max(0, (elapsed - 1.8) / 2.4));
     return {
-      ...walkFrame,
+      ...dimFrame,
       phase: 'fire-dimming',
+      active: true,
       fireScale: dimFrame.fireScale,
       hansVisible: true,
-      hansX: QUICK_VISIBLE_START_X + (QUICK_BASKET_X - QUICK_VISIBLE_START_X) * eased,
-      stride: Math.sin(elapsed * 5.8) * 0.3,
+      hansX: lerp(QUICK_DOOR_X, HEARTH_BASKET_X, eased),
+      hansZ: HEARTH_WORK_Z,
+      stride: Math.sin(elapsed * 4.4) * 0.24,
+      route: 'entry',
+      routeProgress: eased,
       doorOpen: 1 - closeDoor,
     };
   }
 
+  const postEntryOffset = 10 - QUICK_ENTRY_SECONDS;
+  const timelineT = elapsed + postEntryOffset;
   const frame = hansFireplaceFrame(
-    elapsed + HANS_FIREPLACE_START_DELAY_S + QUICK_ENTRY_SECONDS,
+    elapsed + HANS_FIREPLACE_START_DELAY_S + postEntryOffset,
   );
   if (frame.complete) return { ...frame, doorOpen: 0 };
-  if (frame.phase === 'leave') {
-    const doorOpen = smoothstep01((frame.hansX - 1.85) / (QUICK_VISIBLE_START_X - 1.85));
-    return {
-      ...frame,
-      doorOpen,
-      // Once his centre crosses the inner threshold, let the dark doorway sell
-      // the rest of the exit instead of rendering Hans through solid masonry.
-      hansVisible: frame.hansVisible && frame.hansX < QUICK_VISIBLE_START_X + 0.02,
-    };
+  return { ...remapWorkingFrame(frame, timelineT), doorOpen: frame.phase === 'leave' ? remapWorkingFrame(frame, timelineT).doorOpen : 0 };
+}
+
+function routeDepth(frame, doorDepth) {
+  if (frame.route === 'entry') {
+    return lerp(doorDepth, HEARTH_WORK_Z, clamp01(frame.routeProgress));
   }
-  return { ...frame, doorOpen: 0 };
+  if (frame.route === 'leave') {
+    return lerp(HEARTH_WORK_Z, doorDepth, clamp01(frame.routeProgress));
+  }
+  return Number.isFinite(frame.hansZ) ? frame.hansZ : HEARTH_WORK_Z;
+}
+
+function applyHansTransform(hans, frame, side, towardBoard, doorDepth) {
+  hans.position.x = side * frame.hansX;
+  hans.position.y = -0.34;
+  hans.position.z = towardBoard * routeDepth(frame, doorDepth);
+  if (frame.route === 'entry') {
+    hans.rotation.y = Math.PI;
+  } else if (frame.route === 'leave') {
+    hans.rotation.y = 0;
+  } else {
+    hans.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
+  }
 }
 
 function applyQuickIterationFrame(refs, frame, towardBoard) {
   const {
     fireplace, hans, fireCore, fireLight, fireCoreBaseScale,
     fireLightBaseIntensity, fireLightBaseDistance,
-    basketTopLog, addedLog, standPoker, side, doorRefs,
+    basketTopLog, addedLog, standPoker, side, doorRefs, doorDepth,
   } = refs;
 
   if (basketTopLog) basketTopLog.visible = !frame.removeBasketLog;
@@ -115,10 +254,7 @@ function applyQuickIterationFrame(refs, frame, towardBoard) {
 
   hans.visible = frame.hansVisible;
   if (frame.hansVisible) {
-    hans.position.x = side * frame.hansX;
-    hans.position.y = -0.34;
-    hans.position.z = towardBoard * 1.16;
-    hans.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
+    applyHansTransform(hans, frame, side, towardBoard, doorDepth);
     const body = hans.userData.refs;
     body.leftLeg.rotation.x = frame.stride;
     body.rightLeg.rotation.x = -frame.stride;
@@ -170,6 +306,7 @@ function armQuickIteration(root, towardBoard, doorRefs) {
   if (!fireplace || !hans || !driver || !fireCore || !fireLight) return 0;
 
   const startedAt = nowMs();
+  const doorDepth = Math.abs(Number(doorRefs?.doorZ) - Number(fireplace.position.z));
   const refs = {
     fireplace,
     hans,
@@ -183,6 +320,7 @@ function armQuickIteration(root, towardBoard, doorRefs) {
     standPoker: fireplace.getObjectByName?.('war-room-hearth-poker'),
     side: Math.sign(fireplace.position.x || -1) || -1,
     doorRefs,
+    doorDepth,
   };
 
   fireplace.userData.warRoomHansEventSelected = true;
@@ -194,6 +332,7 @@ function armQuickIteration(root, towardBoard, doorRefs) {
   driver.userData.warRoomHansPhase = 'fire-dimming';
   driver.userData.warRoomHansHearthRestored = false;
   driver.userData.warRoomHansUsesServiceDoor = true;
+  driver.userData.warRoomHansServiceCorridor = 'past-armor-to-hearth-v1';
 
   const initialFrame = hansQuickIterationFrame(0);
   applyQuickIterationFrame(refs, initialFrame, towardBoard);
@@ -214,18 +353,74 @@ function armQuickIteration(root, towardBoard, doorRefs) {
   return 1;
 }
 
-function armProductionDoor(driver, hans, doorRefs) {
+function remapProductionHans(hans, phase, side, towardBoard, doorDepth, phaseElapsed) {
+  if (!hans?.visible) return { doorOpen: 0, hide: false };
+  const rawX = Math.abs(Number(hans.position.x || 0));
+  let x = rawX;
+  let depth = HEARTH_WORK_Z;
+  let doorOpen = 0;
+  let hide = false;
+
+  if (phase === 'walk-to-basket') {
+    const p = clamp01((3.9 - rawX) / (3.9 - 1.95));
+    x = lerp(QUICK_DOOR_X, HEARTH_BASKET_X, p);
+    depth = lerp(doorDepth, HEARTH_WORK_Z, p);
+    doorOpen = 1 - smoothstep01(p / 0.45);
+    hans.rotation.y = Math.PI;
+  } else if (phase === 'take-log') {
+    x = HEARTH_BASKET_X;
+  } else if (phase === 'carry-log') {
+    const p = clamp01((1.95 - rawX) / (1.95 - 0.9));
+    x = lerp(HEARTH_BASKET_X, 0.9, p);
+  } else if (phase === 'place-log') {
+    x = 0.9;
+  } else if (phase === 'take-poker') {
+    const p = clamp01((rawX - 0.9) / (1.18 - 0.9));
+    x = lerp(0.9, HEARTH_TOOLS_X, p);
+  } else if (phase === 'stoke-fire') {
+    x = lerp(HEARTH_TOOLS_X, 0.92, smoothstep01(phaseElapsed / 1.2));
+  } else if (phase === 'return-poker') {
+    const p = clamp01((rawX - 0.92) / (1.18 - 0.92));
+    x = lerp(0.92, HEARTH_TOOLS_X, p);
+  } else if (phase === 'satisfied') {
+    x = HEARTH_TOOLS_X;
+  } else if (phase === 'leave') {
+    const p = clamp01((rawX - 1.18) / (4.15 - 1.18));
+    x = lerp(HEARTH_TOOLS_X, QUICK_DOOR_X, p);
+    depth = lerp(HEARTH_WORK_Z, doorDepth, p);
+    doorOpen = smoothstep01((p - 0.52) / 0.28);
+    hide = p >= 0.985;
+    hans.rotation.y = 0;
+  }
+
+  hans.position.x = side * x;
+  hans.position.z = towardBoard * depth;
+  if (phase !== 'walk-to-basket' && phase !== 'leave') {
+    hans.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
+  }
+  return { doorOpen, hide };
+}
+
+function armProductionDoor(driver, hans, doorRefs, fireplace, towardBoard) {
   if (!driver?.userData?.warRoomHansSelected || typeof driver.onBeforeRender !== 'function') return;
   const original = driver.onBeforeRender;
+  const side = doorRefs?.side || Math.sign(fireplace?.position?.x || -1) || -1;
+  const doorDepth = Math.abs(Number(doorRefs?.doorZ) - Number(fireplace?.position?.z));
+  let lastPhase = null;
+  let phaseStartedAt = nowMs();
   driver.userData.warRoomHansUsesServiceDoor = true;
+  driver.userData.warRoomHansServiceCorridor = 'past-armor-to-hearth-v1';
   driver.onBeforeRender = () => {
     original();
     const phase = driver.userData.warRoomHansPhase;
-    const opening = phase === 'walk-to-basket' || phase === 'leave';
-    setWarRoomHansServiceDoorOpen(doorRefs, opening ? 1 : 0);
-    if (phase === 'leave' && hans?.visible && Math.abs(hans.position.x) >= QUICK_VISIBLE_START_X) {
-      hans.visible = false;
+    if (phase !== lastPhase) {
+      lastPhase = phase;
+      phaseStartedAt = nowMs();
     }
+    const phaseElapsed = Math.max(0, (nowMs() - phaseStartedAt) / 1000);
+    const routed = remapProductionHans(hans, phase, side, towardBoard, doorDepth, phaseElapsed);
+    setWarRoomHansServiceDoorOpen(doorRefs, routed.doorOpen);
+    if (routed.hide && hans?.visible) hans.visible = false;
     if (driver.userData.warRoomHansCompleted || phase === 'complete') {
       setWarRoomHansServiceDoorOpen(doorRefs, 0);
     }
@@ -241,16 +436,17 @@ export function installWarRoomHansSceneRoutine(root, {
   const forceQuickIteration = quickIterationEnabled;
   // During this explicit visual-iteration window we deliberately build the
   // desktop Hans rig even on touch/coarse-pointer devices so the user can see
-  // and judge the choreography. The ordinary mobile path remains simplified
-  // because it still passes its real coarsePointer value when not forced.
+  // and judge the choreography. The ordinary mobile path remains simplified.
   const routineCoarsePointer = forceQuickIteration ? false : coarsePointer;
   const options = { towardBoard, coarsePointer: routineCoarsePointer, forceEvent: forceQuickIteration };
   if (Number.isFinite(randomValue)) options.randomValue = randomValue;
 
   const installed = installWarRoomHansFireplaceRoutine(root, options);
   const fireplace = root.getObjectByName?.('war-room-fireplace');
+  relocateHearthKit(fireplace, towardBoard);
   const doorRefs = ensureWarRoomHansServiceDoor(root, { fireplace, towardBoard, coarsePointer });
   if (!doorRefs) return installed;
+  placeServiceDoorPastArmor(root, fireplace, doorRefs, towardBoard);
 
   if (forceQuickIteration) {
     armQuickIteration(root, towardBoard, doorRefs);
@@ -259,6 +455,6 @@ export function installWarRoomHansSceneRoutine(root, {
 
   const driver = root.getObjectByName?.('war-room-hans-fireplace-driver');
   const hans = root.getObjectByName?.('war-room-hans-butler');
-  armProductionDoor(driver, hans, doorRefs);
+  armProductionDoor(driver, hans, doorRefs, fireplace, towardBoard);
   return installed;
 }
