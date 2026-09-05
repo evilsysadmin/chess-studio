@@ -232,6 +232,86 @@ body .home-friendly > .home-primary-group:not(.home-modes-section)
   max-width: none;
 }
 
+/* Great Hall v7 · command composition.
+ * Keep the room as scenery, but make the actual decision point read as one
+ * coherent command header instead of three unrelated islands over the hall. */
+@media (min-width: 901px) {
+  body .home-friendly .home-modes-section {
+    margin-top: clamp(1rem, 2.4vh, 1.6rem);
+  }
+
+  body .home-friendly .home-modes-section .home-group-heading {
+    max-width: 1320px;
+    margin: 0 auto clamp(.72rem, 1.2vh, .95rem);
+    padding: 0 .15rem .58rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    justify-content: stretch;
+    gap: .42rem;
+  }
+
+  body .home-friendly .home-modes-section .home-group-heading > div:first-child {
+    min-width: 0;
+    width: 100%;
+  }
+
+  body .home-friendly .home-modes-section .home-group-heading > div:first-child::before {
+    margin-bottom: .28rem;
+    font-size: .62rem;
+    letter-spacing: .21em;
+  }
+
+  body .home-friendly .home-modes-section .home-group-heading .section-label {
+    font-size: .66rem;
+  }
+
+  body .home-friendly .home-modes-section .home-group-heading h2 {
+    margin-top: .12rem;
+    line-height: 1;
+  }
+
+  body .home-friendly .home-modes-section .home-group-heading h2::after {
+    max-width: none;
+    font-size: clamp(2.15rem, 3vw, 3.1rem);
+    line-height: 1;
+    letter-spacing: -.03em;
+    white-space: normal;
+  }
+
+  body .home-friendly .home-modes-section .home-heading-actions {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  body .home-friendly .home-modes-section .home-heading-actions p {
+    max-width: 38rem;
+    margin: 0;
+    font-size: clamp(.84rem, .94vw, .94rem);
+    line-height: 1.35;
+    white-space: normal;
+  }
+
+  body .home-friendly .home-modes-section .home-context-guide {
+    justify-self: end;
+    margin: 0;
+    white-space: nowrap;
+  }
+
+  body .home-friendly .home-modes-section .home-primary-grid {
+    max-width: 1320px;
+  }
+
+  body .home-friendly > .home-primary-group:not(.home-modes-section) {
+    margin-top: 1.35rem;
+  }
+}
+
 @media (max-width: 1120px) {
   body .home-friendly > .home-primary-group:not(.home-modes-section) {
     width: min(94%, 980px);
