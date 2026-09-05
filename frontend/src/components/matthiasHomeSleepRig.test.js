@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   applyMatthiasPremiumHomePose,
@@ -7,6 +8,7 @@ import {
 import { applyMatthiasHomePropErgonomics } from './matthiasHomePropErgonomics.js';
 import {
   MATTHIAS_HOME_SLEEP_COMPOSITION,
+  MATTHIAS_HOME_SLEEP_REFERENCE,
   MATTHIAS_HOME_SLEEP_RIG_VERSION,
 } from './matthiasHomeSleepRig.js';
 
@@ -35,7 +37,7 @@ function apply(rig, overrides = {}) {
 }
 
 describe('Matthias premium Home sleep rig', () => {
-  it('mantiene visible al peón canónico y usa sólo una manta baja y oscura', () => {
+  it('mantiene visible al peón canónico y usa una manta baja, almohada y referencia de mock aprobada', () => {
     const rig = createMatthiasPremiumHome3D();
     apply(rig, { activityTime: 0 });
 
@@ -43,7 +45,10 @@ describe('Matthias premium Home sleep rig', () => {
     expect(rig.activityRig.premiumSleep.visible).toBe(true);
     expect(rig.root.userData.activitySleepRigVersion).toBe(MATTHIAS_HOME_SLEEP_RIG_VERSION);
     expect(rig.root.userData.activitySleepComposition).toBe(MATTHIAS_HOME_SLEEP_COMPOSITION);
-    expect(rig.root.userData.activitySleepState).toBe('canonical-angry-side-nap');
+    expect(rig.root.userData.activitySleepReference).toBe(MATTHIAS_HOME_SLEEP_REFERENCE);
+    expect(rig.root.userData.activitySleepState).toBe('canonical-angry-horizontal-rest');
+    expect(rig.root.userData.activitySleepAxis).toBe('horizontal');
+    expect(rig.root.userData.activitySleepHeadSupport).toBe('hands+pillow');
 
     const blanket = rig.root.getObjectByName('sleep-blanket-lower');
     const pillow = rig.root.getObjectByName('sleep-pillow-premium');
@@ -60,23 +65,35 @@ describe('Matthias premium Home sleep rig', () => {
     expect(rig.root.getObjectByName('sleep-wrap-side-tuck')).toBeUndefined();
     expect(blanket.position.y).toBeLessThan(-.25);
     expect(blanket.scale.y).toBeLessThan(.90);
+    expect(pillow.position.y).toBeGreaterThan(.35);
     expect(rig.body.visible).not.toBe(false);
     expect(rig.root.getObjectByName('premium-coat-body').visible).not.toBe(false);
 
     disposeMatthiasPremiumHome3D(rig);
   });
 
-  it('duerme de lado con ojos cerrados pero conserva el ceño cabreado canónico', () => {
+  it('duerme horizontal de verdad, con la cabeza a la izquierda y apoyada en las manos', () => {
     const rig = createMatthiasPremiumHome3D();
     apply(rig, { activityTime: 0 });
 
-    expect(rig.root.rotation.z).toBeLessThan(-.45);
-    expect(rig.root.rotation.y).toBeLessThan(-.04);
-    expect(rig.headPivot.rotation.x).toBeGreaterThan(.20);
-    expect(rig.headPivot.rotation.z).toBeLessThan(-.28);
-    expect(rig.headPivot.position.x).toBeGreaterThan(.09);
-    expect(rig.leftEye.scale.y).toBeLessThan(.10);
-    expect(rig.rightEye.scale.y).toBeLessThan(.10);
+    expect(rig.root.rotation.z).toBeCloseTo(Math.PI / 2, 2);
+    expect(rig.root.rotation.y).toBeLessThan(-.02);
+    expect(rig.leftEye.scale.y).toBeLessThan(.08);
+    expect(rig.rightEye.scale.y).toBeLessThan(.08);
+    expect(rig.activityRig.support.visible).toBe(true);
+    expect(rig.activityRig.assist.visible).toBe(true);
+    expect(rig.activityRig.supportGlove.position.y).toBeGreaterThan(.38);
+    expect(rig.activityRig.assistGlove.position.y).toBeGreaterThan(.40);
+
+    // Measure the actual world-space axis instead of merely accepting any large
+    // tilt. The mock contract is head-left/base-right and overwhelmingly horizontal.
+    rig.root.updateMatrixWorld(true);
+    const head = new THREE.Vector3();
+    const base = new THREE.Vector3();
+    rig.headPivot.getWorldPosition(head);
+    rig.root.getObjectByName('base-plinth').getWorldPosition(base);
+    expect(head.x).toBeLessThan(base.x);
+    expect(Math.abs(head.x - base.x)).toBeGreaterThan(Math.abs(head.y - base.y) * 3);
 
     // The brows stay in the canonical angry V instead of flattening into a
     // peaceful nap expression.
@@ -85,8 +102,6 @@ describe('Matthias premium Home sleep rig', () => {
     expect(rig.mouthGroup.scale.y).toBeGreaterThan(.80);
     expect(rig.mouthGroup.visible).toBe(true);
     expect(rig.speechMouth.visible).toBe(false);
-    expect(rig.activityRig.support.visible).toBe(false);
-    expect(rig.activityRig.assist.visible).toBe(false);
 
     disposeMatthiasPremiumHome3D(rig);
   });
@@ -114,23 +129,29 @@ describe('Matthias premium Home sleep rig', () => {
     disposeMatthiasPremiumHome3D(rig);
   });
 
-  it('la pose de sueño es absoluta y al despertar no deja cara ni cabeza desplazadas', () => {
+  it('la pose de sueño es absoluta y al despertar no deja cara, brazos ni eje desplazados', () => {
     const rig = createMatthiasPremiumHome3D();
     apply(rig, { activityTime: 0 });
     const firstSleepX = rig.headPivot.position.x;
+    const firstSleepRotation = rig.root.rotation.z;
 
-    // Applying multiple frames must not accumulate the previous += x bug.
+    // Applying multiple frames must not accumulate the previous += x/rotation bugs.
     apply(rig, { activityTime: .5 });
     apply(rig, { activityTime: 1.0 });
     expect(rig.headPivot.position.x).toBeCloseTo(firstSleepX, 6);
+    expect(rig.root.rotation.z).toBeCloseTo(firstSleepRotation, 2);
 
     const awake = pose({ activityProfile: 'idle', activityTime: 2 });
     applyMatthiasPremiumHomePose(rig, awake);
     applyMatthiasHomePropErgonomics(rig, awake);
 
     expect(rig.activityRig.premiumSleep.visible).toBe(false);
+    expect(rig.activityRig.support.visible).toBe(false);
+    expect(rig.activityRig.assist.visible).toBe(false);
     expect(rig.root.userData.activitySleepState).toBe('inactive');
     expect(rig.root.userData.activitySleepComposition).toBe('inactive');
+    expect(rig.root.userData.activitySleepReference).toBe('inactive');
+    expect(rig.root.userData.activitySleepAxis).toBe('inactive');
     expect(rig.leftEye.scale.y).toBeGreaterThan(1.3);
     expect(rig.rightEye.scale.y).toBeGreaterThan(1.3);
     expect(rig.root.rotation.z).toBe(0);

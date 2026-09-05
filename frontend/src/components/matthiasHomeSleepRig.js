@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 
-export const MATTHIAS_HOME_SLEEP_RIG_VERSION = 'home-sleep-v2-canonical-grumpy-cold';
-export const MATTHIAS_HOME_SLEEP_COMPOSITION = 'canonical-side-nap-low-blanket-v2';
+export const MATTHIAS_HOME_SLEEP_RIG_VERSION = 'home-sleep-v3-horizontal-mock';
+export const MATTHIAS_HOME_SLEEP_COMPOSITION = 'approved-horizontal-side-rest-v3';
+export const MATTHIAS_HOME_SLEEP_REFERENCE = 'approved-home-sleep-horizontal-mock-v1';
 
 const SLEEP_CLOCKS = new WeakMap();
 
@@ -47,8 +48,8 @@ function compactSegments(rig, compactValue, fullValue) {
 
 function blanketGeometry(compact = false) {
   const shape = new THREE.Shape();
-  // A deliberately modest blanket: it covers the lower pawn body and nothing
-  // else. Matthias' black coat, cream face and officer cap remain the silhouette.
+  // Keep the cloth subordinate to Matthias. In the canonical horizontal pose it
+  // covers the lower/right half of the pawn and never replaces his silhouette.
   shape.moveTo(-.50, .13);
   shape.quadraticCurveTo(-.57, .07, -.53, -.04);
   shape.lineTo(-.46, -.24);
@@ -92,8 +93,8 @@ function sleepElapsedSeconds(rig, pose, active) {
 }
 
 function coldShiver(elapsed) {
-  // One brief involuntary shiver every ~13 seconds. It is intentionally tiny:
-  // Matthias is cold, not attached to a washing machine on spin cycle.
+  // One brief involuntary shiver every ~13 seconds. Matthias is cold, not tied
+  // to a washing machine on spin cycle.
   const period = 13.2;
   const start = 9.4;
   const duration = .72;
@@ -135,8 +136,8 @@ function buildSleepRig(rig) {
   root.userData.rigVersion = MATTHIAS_HOME_SLEEP_RIG_VERSION;
   activityRig.root.add(root);
 
-  // A low dark volume suggests cloth over the lower body without recolouring or
-  // replacing Matthias. This is the key difference from v1's red cocoon.
+  // Low dark blanket over the lower body. Because the whole pawn lies on a true
+  // horizontal axis, negative local Y becomes the right-hand/body end on screen.
   mesh(root, new THREE.SphereGeometry(
     .44,
     compactSegments(rig, 18, 30),
@@ -145,13 +146,13 @@ function buildSleepRig(rig) {
     name: 'sleep-blanket-underfold',
     position: [-.02, -.35, -.055],
     scale: [1.08, .34, .30],
-    rotation: [0, -.04, -.12],
+    rotation: [0, -.04, -.08],
   });
 
   const blanket = mesh(root, blanketGeometry(compact), cloth, {
     name: 'sleep-blanket-lower',
     position: [0, -.31, .025],
-    rotation: [-.07, -.045, -.12],
+    rotation: [-.07, -.045, -.08],
     scale: [.93, .82, 1],
   });
 
@@ -164,7 +165,7 @@ function buildSleepRig(rig) {
   ]);
   mesh(root, new THREE.TubeGeometry(seamCurve, compactSegments(rig, 10, 20), .008, 6, false), seam, {
     name: 'sleep-blanket-seam',
-    rotation: [-.055, -.03, -.10],
+    rotation: [-.055, -.03, -.07],
   });
 
   for (const [index, x] of [[0, -.19], [1, .10]]) {
@@ -175,16 +176,16 @@ function buildSleepRig(rig) {
     ]);
     mesh(root, new THREE.TubeGeometry(foldCurve, compactSegments(rig, 7, 14), .008, 6, false), seam, {
       name: 'sleep-blanket-fold',
-      rotation: [-.05, -.02, -.09],
+      rotation: [-.05, -.02, -.06],
     });
   }
 
-  // Small dark pillow, intentionally subordinate to Matthias rather than a giant
-  // cream prop competing with his face.
+  // The approved mock reads because the head has an obvious support. Keep the
+  // pillow dark and directly behind the cream head, with the hands in front.
   const pillowGroup = new THREE.Group();
   pillowGroup.name = 'sleep-pillow-premium';
-  pillowGroup.position.set(.43, .37, -.18);
-  pillowGroup.rotation.set(-.04, -.09, -.20);
+  pillowGroup.position.set(.01, .43, -.16);
+  pillowGroup.rotation.set(-.035, -.06, -.04);
   root.add(pillowGroup);
   mesh(pillowGroup, new THREE.SphereGeometry(
     .22,
@@ -192,12 +193,12 @@ function buildSleepRig(rig) {
     compactSegments(rig, 11, 18),
   ), pillow, {
     name: 'sleep-pillow-cushion',
-    scale: [1.25, .62, .46],
+    scale: [1.30, .66, .48],
   });
   mesh(pillowGroup, new THREE.TorusGeometry(.195, .013, 7, compactSegments(rig, 14, 24)), pillowEdge, {
     name: 'sleep-pillow-edge',
     rotation: [Math.PI / 2, 0, 0],
-    scale: [1.15, .68, 1],
+    scale: [1.18, .72, 1],
   });
 
   activityRig.premiumSleep = root;
@@ -211,6 +212,8 @@ export function clearMatthiasHomeSleepRig(rig) {
   const activityRig = rig?.activityRig;
   if (!activityRig) return;
   if (activityRig.premiumSleep) activityRig.premiumSleep.visible = false;
+  if (activityRig.support) activityRig.support.visible = false;
+  if (activityRig.assist) activityRig.assist.visible = false;
   sleepElapsedSeconds(rig, {}, false);
 
   const canonical = activityRig.sleepCanonicalPose;
@@ -225,6 +228,9 @@ export function clearMatthiasHomeSleepRig(rig) {
   if (rig?.root?.userData) {
     rig.root.userData.activitySleepState = 'inactive';
     rig.root.userData.activitySleepComposition = 'inactive';
+    rig.root.userData.activitySleepReference = 'inactive';
+    rig.root.userData.activitySleepAxis = 'inactive';
+    rig.root.userData.activitySleepHeadSupport = 'inactive';
     rig.root.userData.activitySleepBreath = 0;
     rig.root.userData.activitySleepShiver = 0;
   }
@@ -250,30 +256,47 @@ export function applyMatthiasHomeSleepRig(rig, pose = {}) {
   const settle = reducedMotion ? 0 : Math.sin((elapsed / 14.0) * Math.PI * 2) * .004;
   const shiver = reducedMotion ? 0 : coldShiver(elapsed);
 
-  // Retire the old blanket prop. The new blanket is low, dark and only covers the
-  // lower body, so the canonical black pawn remains visible at a glance.
+  // Retire the legacy blanket prop. The dedicated sleep composition is centred
+  // on Matthias instead of being offset for the old diagonal pose.
   if (activityRig.blanket) activityRig.blanket.visible = false;
-  activityRig.support.visible = false;
-  activityRig.assist.visible = false;
   sleepRig.visible = true;
-  sleepRig.position.set(.015, -.40 + breath * .30, .43);
-  sleepRig.rotation.set(-.055, -.035, -.045 + settle * .35);
-  sleepRig.scale.set(1.02, 1.02 + breath * .35, 1.02);
+  sleepRig.position.set(0, breath * .20, .40);
+  sleepRig.rotation.set(-.045, -.025, settle * .12);
+  sleepRig.scale.set(1.02, 1.02 + breath * .30, 1.02);
 
-  // Side nap: strong enough to read as lying down, but still the exact canonical
-  // pawn geometry. Assign absolute offsets where state could otherwise accumulate.
-  rig.root.rotation.z = -.50 + settle * .30 + shiver * .006;
-  rig.root.rotation.y += -.075;
-  rig.root.position.y -= .050 - breath * .30;
-  rig.headPivot.rotation.x += .115;
-  rig.headPivot.rotation.y += -.040;
-  rig.headPivot.rotation.z -= .215 + settle * .22 + shiver * .004;
-  rig.headPivot.position.x = canonical.headX + .105;
-  rig.headPivot.position.y -= .052 - breath * .24;
+  // Approved canonical sleep pose: head left, base right, genuinely horizontal.
+  // The tiny settle/shiver deltas can never return the pawn to a diagonal stance.
+  rig.root.rotation.z = Math.PI / 2 + settle * .18 + shiver * .004;
+  rig.root.rotation.y += -.045;
+  rig.root.position.y -= .045 - breath * .22;
+  rig.headPivot.rotation.x += .070;
+  rig.headPivot.rotation.y += -.025;
+  rig.headPivot.rotation.z -= .035 + settle * .16 + shiver * .003;
+  rig.headPivot.position.x = canonical.headX + .025;
+  rig.headPivot.position.y -= .035 - breath * .18;
+
+  // Fold both arms under/around the head. They are part of the silhouette now,
+  // not hidden props: the approved mock clearly reads hands supporting the nap.
+  const {
+    support,
+    supportStem,
+    supportGlove,
+    assist,
+    assistStem,
+    assistGlove,
+  } = activityRig;
+  support.visible = true;
+  assist.visible = true;
+  supportStem.position.set(.20, .18, .47);
+  supportStem.rotation.set(1.04, 0, -.34);
+  supportGlove.position.set(.15, .405, .70);
+  assistStem.position.set(-.20, .17, .46);
+  assistStem.rotation.set(1.02, 0, .38);
+  assistGlove.position.set(-.10, .425, .69);
 
   // Matthias sleeps angry. Eyes shut; canonical V-shaped brows and frown remain.
-  rig.leftEye.scale.y = .085;
-  rig.rightEye.scale.y = .085;
+  rig.leftEye.scale.y = .070;
+  rig.rightEye.scale.y = .070;
   rig.leftBrow.rotation.z = rig.base.leftBrowRz - .045;
   rig.rightBrow.rotation.z = rig.base.rightBrowRz + .045;
   rig.leftBrow.position.y = rig.base.leftBrowY - .012;
@@ -290,7 +313,10 @@ export function applyMatthiasHomeSleepRig(rig, pose = {}) {
 
   rig.root.userData.activitySleepRigVersion = MATTHIAS_HOME_SLEEP_RIG_VERSION;
   rig.root.userData.activitySleepComposition = MATTHIAS_HOME_SLEEP_COMPOSITION;
-  rig.root.userData.activitySleepState = 'canonical-angry-side-nap';
+  rig.root.userData.activitySleepReference = MATTHIAS_HOME_SLEEP_REFERENCE;
+  rig.root.userData.activitySleepState = 'canonical-angry-horizontal-rest';
+  rig.root.userData.activitySleepAxis = 'horizontal';
+  rig.root.userData.activitySleepHeadSupport = 'hands+pillow';
   rig.root.userData.activitySleepBreath = breath;
   rig.root.userData.activitySleepShiver = Math.abs(shiver);
   rig.root.userData.activitySleepCold = 'occasional';
