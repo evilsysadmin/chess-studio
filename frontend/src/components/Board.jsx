@@ -1,4 +1,4 @@
-import { createContext, Suspense, useContext, useMemo, useRef } from 'react';
+import { createContext, Suspense, useContext, useEffect, useMemo, useRef } from 'react';
 import Board2D from './Board2D.jsx';
 import useGameBoardRenderer from './useGameBoardRenderer.js';
 import { parseFen } from './Board3DBoardMath.js';
@@ -18,6 +18,26 @@ function eventFacade(currentTarget) {
     target: currentTarget,
     preventDefault() {},
     stopPropagation() {},
+  };
+}
+
+function pointerAnchorTarget(fallbackTarget, sourceEvent) {
+  const x = Number(sourceEvent?.clientX);
+  const y = Number(sourceEvent?.clientY);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return fallbackTarget;
+  return {
+    getBoundingClientRect() {
+      return {
+        x,
+        y,
+        left: x,
+        top: y,
+        right: x + 1,
+        bottom: y + 1,
+        width: 1,
+        height: 1,
+      };
+    },
   };
 }
 
@@ -45,6 +65,7 @@ export default function Board(props) {
   const inheritedRenderer = useContext(BoardRendererContext);
   const { isThreeD } = useGameBoardRenderer();
   const rootRef = useRef(null);
+  const threeDHoveredSquareRef = useRef('');
   const pieces = useMemo(() => safePieces(props.fen), [props.fen]);
   const occupiedSquares = useMemo(() => new Set(pieces.map((piece) => piece.square)), [pieces]);
   const threeDHintMove = useMemo(() => buildBoard3DParityHintMove({
@@ -74,6 +95,31 @@ export default function Board(props) {
   }), [pieces, props.pieceLevels, props.pieceRankLevels, props.pieceXp, props.pieceVeteranMarks, props.pieceLabels]);
 
   const RegisteredBoard3D = getRegisteredBoard3D();
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || inheritedRenderer === '3d' || !isThreeD || !RegisteredBoard3D) return undefined;
+
+    const onDocumentPointerMove = (event) => {
+      if (!threeDHoveredSquareRef.current) return;
+      const root = rootRef.current;
+      if (!root) return;
+      const rect = root.getBoundingClientRect();
+      const x = Number(event.clientX);
+      const y = Number(event.clientY);
+      const insideBoard = Number.isFinite(x) && Number.isFinite(y)
+        && x >= rect.left && x <= rect.right
+        && y >= rect.top && y <= rect.bottom;
+      if (insideBoard) return;
+      handleThreeDPieceMouseLeave(threeDHoveredSquareRef.current);
+    };
+
+    // WebGL may report a surprising DOM event.target while the pointer is still
+    // physically over its canvas. Geometry is the stable contract: keep hover
+    // while the pointer coordinates are inside the 3D board, close it outside.
+    document.addEventListener('pointermove', onDocumentPointerMove, true);
+    return () => document.removeEventListener('pointermove', onDocumentPointerMove, true);
+  }, [inheritedRenderer, isThreeD, RegisteredBoard3D, props.onPieceMouseLeave]);
+
   if (inheritedRenderer === '3d' || !isThreeD || !RegisteredBoard3D) return <Board2D {...props} />;
 
   function handleThreeDSquareClick(square) {
@@ -85,13 +131,26 @@ export default function Board(props) {
     props.onSquareClick?.(square);
   }
 
-  function handleThreeDPieceMouseEnter(square) {
+  function handleThreeDPieceMouseEnter(square, sourceEvent) {
     if (!occupiedSquares.has(square)) return;
-    props.onPieceMouseEnter?.(square, eventFacade(board3DCanvas(rootRef.current)));
+    threeDHoveredSquareRef.current = square;
+    const canvas = board3DCanvas(rootRef.current);
+    const anchor = pointerAnchorTarget(canvas, sourceEvent);
+    props.onPieceMouseEnter?.(square, eventFacade(anchor));
   }
 
   function handleThreeDPieceMouseLeave(square) {
-    props.onPieceMouseLeave?.(square, eventFacade(board3DCanvas(rootRef.current)));
+    const leavingSquare = threeDHoveredSquareRef.current || square || '';
+    threeDHoveredSquareRef.current = '';
+    if (!leavingSquare) return;
+    props.onPieceMouseLeave?.(leavingSquare, eventFacade(board3DCanvas(rootRef.current)));
+  }
+
+  function handleThreeDBoardPointerLeave() {
+    // Board3DCore normally emits piece leave from the WebGL canvas. Keep a
+    // wrapper-level backstop as well: browser/WebGL pointer transitions can be
+    // swallowed when portals or overlays appear while the pointer is still.
+    handleThreeDPieceMouseLeave(threeDHoveredSquareRef.current);
   }
 
   function dispatchThreeDDoubleClick(event, preferFocused = false) {
@@ -119,6 +178,7 @@ export default function Board(props) {
       ref={rootRef}
       className="preferred-board-3d"
       data-board3d-theme-override={props.themeOverride || ''}
+      onPointerLeave={handleThreeDBoardPointerLeave}
       onDoubleClickCapture={(event) => dispatchThreeDDoubleClick(event, false)}
       onKeyDownCapture={handleThreeDKeyDown}
     >
