@@ -67,17 +67,27 @@ async function seedRestoreProfile(request, token) {
 }
 
 async function loginBrowser(page, username, password) {
-  await page.goto(STAGING_URL, { waitUntil: 'domcontentloaded' });
+  // El restore smoke corre justo después del rollout. Forzamos una navegación
+  // distinta por intento para no permitir que una caché HTTP/SW antigua pueda
+  // acreditar el login con un shell previo mientras Pages ya sirve la release
+  // nueva. El producto también publica headers no-cache para el shell.
+  const loginUrl = new URL(STAGING_URL);
+  loginUrl.searchParams.set('staging-restore-smoke', `${Date.now()}`);
+  await page.goto(loginUrl.toString(), { waitUntil: 'domcontentloaded' });
   await expect(page.getByRole('heading', { name: 'Iniciar sesión', exact: true })).toBeVisible();
   await page.getByLabel('Usuario').fill(username);
   await page.getByLabel('Contraseña').fill(password);
 
-  const browserLogin = page.waitForResponse((response) => (
-    response.request().method() === 'POST'
-    && response.url().startsWith(`${STAGING_API_URL}/auth/login`)
-  ));
-  await page.getByRole('button', { name: 'Entrar', exact: true }).click();
-  expect((await browserLogin).status()).toBe(200);
+  const submit = page.getByRole('button', { name: 'Entrar', exact: true });
+  await expect(submit).toBeEnabled();
+  const [browserLogin] = await Promise.all([
+    page.waitForResponse((response) => (
+      response.request().method() === 'POST'
+      && response.url().startsWith(`${STAGING_API_URL}/auth/login`)
+    ), { timeout: 30_000 }),
+    submit.click(),
+  ]);
+  expect(browserLogin.status()).toBe(200);
   await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible({ timeout: 25_000 });
 }
 
