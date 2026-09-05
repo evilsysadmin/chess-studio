@@ -167,7 +167,7 @@ async function seedStableSmokeProfile(request, token) {
   expect(response.status(), `seed de perfil staging: ${await response.text()}`).toBe(200);
 }
 
-test('staging live · login real → War Room → F5 recupera → chunk 3D fallido recupera → jugada real', async ({ page, request }) => {
+test('staging live · login real → War Room → chunk 3D fallido recupera → jugada real', async ({ page, request }) => {
   const username = requiredEnv('STAGING_E2E_USERNAME');
   const password = requiredEnv('STAGING_E2E_PASSWORD');
   const inviteCode = requiredEnv('STAGING_INVITE_CODE');
@@ -250,25 +250,9 @@ test('staging live · login real → War Room → F5 recupera → chunk 3D falli
     await expect(warRoomStatus.getByText('SITUACIÓN', { exact: true })).toBeVisible();
     await expect(warRoomStatus.locator('strong')).not.toHaveText('');
 
-    // Incidente zfrp: una partida 3D ya activa debe sobrevivir un runtime nuevo.
-    // Exigimos un GET real de Mongo/API y después la misma War Room, no sólo que
-    // el snapshot local conserve una ruta visual.
-    const restoreAfterReload = page.waitForResponse((response) => {
-      const url = new URL(response.url());
-      return response.request().method() === 'GET'
-        && Boolean(gameId)
-        && url.origin + url.pathname === `${STAGING_API_URL}/games/${gameId}`;
-    }, { timeout: 60_000 });
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    expect((await restoreAfterReload).status()).toBe(200);
-    await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
-    await expect(warRoomStatus).toBeVisible();
-    await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
-
-    // Para sabotear de verdad el primer import de Board3D necesitamos un runtime
-    // donde ese módulo todavía no exista. Bajamos a 2D, persistimos la preferencia
-    // y recargamos: la sesión sigue siendo la misma, pero el nuevo runtime no pide
-    // Board3D hasta que volvamos a elegir 3D explícitamente.
+    // La autoridad F5 ya se acredita en paralelo en staging-war-room-restore.
+    // Aquí sólo hacemos el reload 2D que necesita el sabotaje para garantizar
+    // que Board3D aún no existe en el runtime fresco antes del primer lazy import.
     await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
     let appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
     await expect(appearanceDialog).toBeVisible();
@@ -299,19 +283,16 @@ test('staging live · login real → War Room → F5 recupera → chunk 3D falli
     expect(failedBoard3DChunkOnce, '2D no debe cargar Board3D durante el reload fresco').toBe(false);
 
     // Guardarraíl directo para #286: provocamos el primer import lazy de Board3D
-    // y lo fallamos una sola vez. Según el runtime/browser, el fallo puede llegar
-    // al ErrorBoundary o provocar una recarga limpia antes de que el boundary se
-    // pinte. El contrato importante es que la misma partida se rehidrata desde API
-    // y vuelve a una War Room utilizable, no que una pantalla de error sea visible.
+    // y lo fallamos una sola vez. Puede recuperarse mediante reload automático o
+    // mostrando el ErrorBoundary; reaccionamos a la primera señal útil en vez de
+    // esperar ciegamente ocho segundos antes de mirar el boundary.
     const restoreAfterChunkFailure = page.waitForResponse((response) => {
       const url = new URL(response.url());
       return response.request().method() === 'GET'
         && Boolean(gameId)
         && url.origin + url.pathname === `${STAGING_API_URL}/games/${gameId}`;
     }, { timeout: 60_000 });
-    const automaticReload = page.waitForEvent('load', { timeout: 8_000 })
-      .then(() => true)
-      .catch(() => false);
+    const errorBoundaryHeading = page.getByRole('heading', { name: 'La pantalla ha tropezado', exact: true });
 
     await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
     appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
@@ -320,15 +301,22 @@ test('staging live · login real → War Room → F5 recupera → chunk 3D falli
     await appearanceDialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
 
     await expect.poll(() => failedBoard3DChunkOnce, { timeout: 10_000 }).toBe(true);
-    const runtimeReloadedItself = await automaticReload;
-    if (!runtimeReloadedItself) {
-      await expect(page.getByRole('heading', { name: 'La pantalla ha tropezado', exact: true })).toBeVisible({ timeout: 10_000 });
+    const recovery = await Promise.race([
+      restoreAfterChunkFailure.then((response) => ({ kind: 'restored', response })),
+      errorBoundaryHeading.waitFor({ state: 'visible', timeout: 10_000 })
+        .then(() => ({ kind: 'boundary', response: null })),
+    ]);
+
+    let restoredAfterChunkFailure = recovery.response;
+    if (recovery.kind === 'boundary') {
       const recoverRuntime = page.getByRole('button', { name: 'Recargar y recuperar', exact: true });
       await expect(recoverRuntime).toBeVisible();
       await recoverRuntime.click();
+      restoredAfterChunkFailure = await restoreAfterChunkFailure;
     }
 
-    expect((await restoreAfterChunkFailure).status()).toBe(200);
+    expect(restoredAfterChunkFailure).toBeTruthy();
+    expect(restoredAfterChunkFailure.status()).toBe(200);
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
     await expect(warRoomStatus).toBeVisible();
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
