@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { isDeploymentReadyForBattle } from './combatDeployment.js';
+import { deploymentSelectionFingerprint } from './combatTacticalDeployment.js';
 
-export function deploymentStartDecision({ deadCount, requireConfirmation, confirmed, ready }) {
+export function deploymentStartDecision({ deadCount, requireConfirmation, confirmed, ready, confirmationMatches = true }) {
   if (deadCount > 0) return 'open';
   if (requireConfirmation && !confirmed) return 'confirm';
+  if (requireConfirmation && confirmed && !confirmationMatches) return 'invalid';
   if (requireConfirmation && !ready) return 'invalid';
   return 'start';
 }
@@ -16,7 +18,31 @@ export function useCombatDeploymentGate({
   onError,
 }) {
   const [showDeployment, setShowDeployment] = useState(false);
-  const [deploymentConfirmed, setDeploymentConfirmed] = useState(() => !requireDeploymentConfirmation || Boolean(restoredSession));
+  const initiallyConfirmed = !requireDeploymentConfirmation || Boolean(restoredSession);
+  const [deploymentConfirmed, setDeploymentConfirmedState] = useState(initiallyConfirmed);
+  const [confirmedDeploymentFingerprint, setConfirmedDeploymentFingerprint] = useState(() => (
+    initiallyConfirmed && requireDeploymentConfirmation
+      ? deploymentSelectionFingerprint(roster)
+      : null
+  ));
+  const currentDeploymentFingerprint = deploymentSelectionFingerprint(roster);
+  const confirmationMatches = !requireDeploymentConfirmation
+    || !deploymentConfirmed
+    || confirmedDeploymentFingerprint === currentDeploymentFingerprint;
+
+  // Todos los consumidores externos usan este setter, así que invalidar una
+  // confirmación también borra su huella. Si alguien vuelve a confirmar de
+  // forma explícita, la confirmación queda ligada a la formación ACTUAL.
+  function setDeploymentConfirmed(value) {
+    const next = typeof value === 'function' ? Boolean(value(deploymentConfirmed)) : Boolean(value);
+    setDeploymentConfirmedState(next);
+    setConfirmedDeploymentFingerprint(next && requireDeploymentConfirmation ? currentDeploymentFingerprint : null);
+  }
+
+  function invalidateDeploymentConfirmation() {
+    setDeploymentConfirmedState(false);
+    setConfirmedDeploymentFingerprint(null);
+  }
 
   function handleStartBattleClick(onStart) {
     const action = deploymentStartDecision({
@@ -24,13 +50,11 @@ export function useCombatDeploymentGate({
       requireConfirmation: requireDeploymentConfirmation,
       confirmed: deploymentConfirmed,
       ready: isDeploymentReadyForBattle(roster),
+      confirmationMatches,
     });
     if (action !== 'start') {
       if (action === 'invalid') {
-        // Una confirmación antigua deja de ser válida en cuanto cambia la
-        // formación. Igual que hacía el controlador monolítico original,
-        // obligamos a confirmar de nuevo después de corregir el despliegue.
-        setDeploymentConfirmed(false);
+        invalidateDeploymentConfirmation();
         onError?.('El despliegue cambió o tiene bajas pendientes. Revísalo y confirma de nuevo.');
       }
       setShowDeployment(true);
@@ -42,7 +66,8 @@ export function useCombatDeploymentGate({
 
   function handleConfirmDeployment() {
     if (!isDeploymentReadyForBattle(roster)) return false;
-    setDeploymentConfirmed(true);
+    setDeploymentConfirmedState(true);
+    setConfirmedDeploymentFingerprint(currentDeploymentFingerprint);
     setShowDeployment(false);
     return true;
   }
@@ -54,8 +79,8 @@ export function useCombatDeploymentGate({
       onError?.('Confirma el despliegue antes de iniciar la operación.');
       return false;
     }
-    if (!isDeploymentReadyForBattle(roster)) {
-      setDeploymentConfirmed(false);
+    if (!confirmationMatches || !isDeploymentReadyForBattle(roster)) {
+      invalidateDeploymentConfirmation();
       setShowDeployment(true);
       onError?.('El despliegue cambió o tiene bajas pendientes. Revísalo y confirma de nuevo.');
       return false;
