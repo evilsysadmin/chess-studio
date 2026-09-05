@@ -178,16 +178,17 @@ function Board3DCanvas({
     const boardGroup = new THREE.Group();
     const theme = BOARD_THEME_3D[effectiveThemeId] || BOARD_THEME_3D.classic;
     const whiteSide = orientation !== 'black';
+    const initialLights = reactiveLightProfile({ coarsePointer });
 
     scene.background = new THREE.Color(0x080a0f);
-    scene.fog = new THREE.FogExp2(0x080a0f, 0.018);
+    scene.fog = new THREE.FogExp2(0x080a0f, initialLights.fogDensity);
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, sceneProfile.pixelRatioCap));
     renderer.shadowMap.enabled = sceneProfile.shadowsEnabled;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = renderLite ? 1.02 : 1.05;
+    renderer.toneMappingExposure = initialLights.exposure;
     renderer.domElement.className = 'board3d-main-canvas';
     renderer.domElement.setAttribute('aria-label', 'Tablero de ajedrez 3D en Sala de guerra. Cámara táctica fija desde tu lado. Usa flechas y Enter para jugar con teclado.');
     renderer.domElement.setAttribute('role', 'application');
@@ -198,7 +199,7 @@ function Board3DCanvas({
     const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer: renderLite });
 
     scene.add(new THREE.HemisphereLight(0xffefd0, 0x10192b, 1.35));
-    const key = new THREE.DirectionalLight(0xffe1aa, 2.35);
+    const key = new THREE.DirectionalLight(0xffe1aa, initialLights.key);
     key.position.set(-5.4, 10, whiteSide ? 6.6 : -6.6);
     key.castShadow = sceneProfile.shadowsEnabled;
     key.shadow.mapSize.set(sceneProfile.shadowMapSize, sceneProfile.shadowMapSize);
@@ -212,10 +213,10 @@ function Board3DCanvas({
     key.shadow.normalBias = 0.018;
     key.shadow.radius = renderLite ? 1.1 : 2.35;
     scene.add(key);
-    const rim = new THREE.PointLight(theme.glow, 14.5, 19, 2);
+    const rim = new THREE.PointLight(theme.glow, initialLights.rim, 19, 2);
     rim.position.set(4.8, 3.6, whiteSide ? -4.8 : 4.8);
     scene.add(rim);
-    const warm = new THREE.PointLight(0xffa449, 5.8, 16, 2);
+    const warm = new THREE.PointLight(0xffa449, initialLights.warm, 16, 2);
     warm.position.set(-4.6, 4.4, whiteSide ? -5.8 : 5.8);
     scene.add(warm);
 
@@ -334,6 +335,9 @@ function Board3DCanvas({
     }
 
     function render() {
+      renderer.domElement.dataset.warRoomLightGrade = 'reactive-v9';
+      renderer.domElement.dataset.warRoomLightKey = Number(key.intensity).toFixed(2);
+      renderer.domElement.dataset.warRoomLightExposure = Number(renderer.toneMappingExposure).toFixed(3);
       renderer.render(scene, camera);
     }
 
