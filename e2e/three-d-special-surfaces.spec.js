@@ -127,11 +127,12 @@ test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre e
   const pawn = projectSquare(rect, 'a2');
   await page.mouse.move(pawn.x, pawn.y);
 
-  // Deployment delays hover previews deliberately. The renderer now provides
-  // the same stable DOM anchor contract as Board2D instead of leaking a native
-  // PointerEvent whose currentTarget lifetime is browser-dependent.
+  // Deployment delays hover previews deliberately. Hosted software-WebGL can
+  // leave the main thread busy for several seconds even though the preview is
+  // already queued; failure screenshots prove the dossier eventually appears.
+  // Keep this strict enough to catch a broken hover without racing the runner.
   const dossier = page.getByRole('dialog', { name: /Ficha de unidad de/i });
-  await expect(dossier).toBeVisible({ timeout: 4_000 });
+  await expect(dossier).toBeVisible({ timeout: 8_000 });
   await expect(dossier).toHaveClass(/\bpreview\b/);
   await expect(dossier.getByText(/Vista rápida/i)).toBeVisible();
 
