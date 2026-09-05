@@ -208,27 +208,29 @@ function createMatthiasOperative(B, scene, mats) {
     recoilUntil:0,
   };
 
-  // Mechanical pelvis and visible pawn core: Matthias is still a pawn, the suit supplies anatomy.
+  // Matthias remains a pawn. The black/brass apparatus supplies arms, legs and field capability.
   box(B,scene,'matthias-pelvis-frame',.58,.18,.38,root,mats.matthiasBlack,0,.78,0);
   const pawnBody = B.MeshBuilder.CreateCylinder('matthias-pawn-core',{ height:.52,diameterTop:.34,diameterBottom:.55,tessellation:28 },scene);
   pawnBody.parent=root; pawnBody.position.set(0,1.08,0); pawnBody.material=mats.matthiasCore; pawnBody.receiveShadows=true;
   cylinder(B,scene,'matthias-core-base',.10,.58,root,mats.matthiasCoreShade,0,.81,0,28);
   cylinder(B,scene,'matthias-core-collar',.09,.42,root,mats.matthiasBrass,0,1.37,0,28);
 
-  // Harness, armour and coat. Keep the ivory pawn mass visible through the middle.
   box(B,scene,'matthias-harness-top',.70,.10,.38,root,mats.matthiasBlack,0,1.38,.01);
-  box(B,scene,'matthias-chest-strap',.12,.48,.39,root,mats.matthiasBlack,-.20,1.13,-.01);
+  box(B,scene,'matthias-chest-strap-l',.12,.48,.39,root,mats.matthiasBlack,-.20,1.13,-.01);
   box(B,scene,'matthias-chest-strap-r',.12,.48,.39,root,mats.matthiasBlack,.20,1.13,-.01);
+  const chestRing=B.MeshBuilder.CreateTorus('matthias-chest-emblem',{diameter:.24,thickness:.026,tessellation:28},scene);chestRing.parent=root;chestRing.position.set(0,1.12,-.285);chestRing.rotation.x=Math.PI/2;chestRing.material=mats.matthiasBrass;
+  const chestPawn=B.MeshBuilder.CreateSphere('matthias-chest-pawn-head',{diameter:.055,segments:12},scene);chestPawn.parent=root;chestPawn.position.set(0,1.15,-.312);chestPawn.material=mats.matthiasBrass;
+  const chestPawnBody=B.MeshBuilder.CreateCylinder('matthias-chest-pawn-body',{height:.075,diameterTop:.03,diameterBottom:.075,tessellation:12},scene);chestPawnBody.parent=root;chestPawnBody.position.set(0,1.095,-.312);chestPawnBody.material=mats.matthiasBrass;
   box(B,scene,'matthias-belt',.62,.10,.40,root,mats.matthiasBrass,0,.84,0);
   box(B,scene,'matthias-belt-black',.58,.065,.41,root,mats.matthiasBlack,0,.84,-.005);
   box(B,scene,'matthias-pouch-l',.17,.22,.16,root,mats.pouch,-.24,.74,-.18);
   box(B,scene,'matthias-pouch-r',.17,.22,.16,root,mats.pouch,.24,.74,-.18);
+  box(B,scene,'matthias-holster',.13,.31,.12,root,mats.matthiasBlack2,.34,.62,-.07).rotation.z=-.08;
   const coatL=box(B,scene,'matthias-coat-l',.25,.58,.08,root,mats.matthiasBlack,-.17,.55,.15);coatL.rotation.x=-.07;coatL.rotation.z=.025;
   const coatR=box(B,scene,'matthias-coat-r',.25,.58,.08,root,mats.matthiasBlack,.17,.55,.15);coatR.rotation.x=-.07;coatR.rotation.z=-.025;
   box(B,scene,'matthias-coat-trim-l',.035,.55,.085,root,mats.matthiasRed,-.285,.55,.145);
   box(B,scene,'matthias-coat-trim-r',.035,.55,.085,root,mats.matthiasRed,.285,.55,.145);
 
-  // Head and face remain unmistakably Matthias.
   const head=createJoint(B,scene,'matthias-head-rig',root,0,1.66,0);
   const face=B.MeshBuilder.CreateSphere('matthias-face',{ diameter:.52,segments:28 },scene);face.parent=head;face.material=mats.matthiasFace;face.scaling.z=.92;face.receiveShadows=true;
   box(B,scene,'matthias-eye-l',.055,.080,.026,head,mats.matthiasEye,-.095,.015,-.245);
@@ -245,7 +247,6 @@ function createMatthiasOperative(B, scene, mats) {
   box(B,scene,'matthias-cap-brim',.62,.035,.18,cap,mats.matthiasBlack,0,-.015,-.13).rotation.x=.03;
   const badge=cylinder(B,scene,'matthias-cap-badge',.025,.11,cap,mats.matthiasBrass,0,.065,-.235,20);badge.rotation.x=Math.PI/2;
 
-  // Exosuit shoulders and articulated arms.
   for (const side of [-1,1]) {
     box(B,scene,`matthias-shoulder-${side<0?'l':'r'}`,.24,.19,.40,root,mats.matthiasBlack2,side*.43,1.34,-.01);
     box(B,scene,`matthias-shoulder-trim-${side<0?'l':'r'}`,.25,.045,.41,root,mats.matthiasBrass,side*.43,1.415,-.012);
@@ -261,7 +262,6 @@ function createMatthiasOperative(B, scene, mats) {
   armL.rotation.x=.42; armL.rotation.z=-.08;
   armR.rotation.x=-.28; armR.rotation.z=.10;
 
-  // Pelvis-driven legs: the suit walks; the pawn core no longer hops across the map.
   const legL=createJoint(B,scene,'matthias-leg-l-rig',root,-.18,.76,0);
   const legR=createJoint(B,scene,'matthias-leg-r-rig',root,.18,.76,0);
   for (const [leg,side] of [[legL,-1],[legR,1]]) {
@@ -468,13 +468,13 @@ export async function createChesscomBabylon(host,{onTile,onUnit,onHover,onReady}
     const now=performance.now();const t=(now-started)/1000;
     for(const [id,root] of unitRoots){
       if(!root.isEnabled()||!root.metadata?.target)continue;
-      const target=root.metadata.target;const motion=root.metadata.motion;const phase=root.metadata.phase||0;const operative=Boolean(root.metadata.operative);const idleBob=reduced?0:Math.sin(t*1.7+phase)*(operative?.006:.012);let moveWave=0;
+      const target=root.metadata.target;const motion=root.metadata.motion;const phase=root.metadata.phase||0;const operative=Boolean(root.metadata.operative);const idleBob=reduced?0:Math.sin(t*1.7+phase)*(operative ? .006 : .012);let moveWave=0;
       if(reduced){root.position.copyFrom(target);root.metadata.motion=null;root.rotation.z=0;}
-      else if(motion){const raw=clamp01((now-motion.startedAt)/motion.duration);const eased=chesscomMovementEase(raw);moveWave=Math.sin(raw*Math.PI*motion.steps);root.position.x=motion.start.x+(motion.target.x-motion.start.x)*eased;root.position.z=motion.start.z+(motion.target.z-motion.start.z)*eased;root.position.y=motion.target.y+(operative?chesscomOperativeMovementLift(raw,motion.steps):chesscomMovementLift(raw,motion.steps));root.rotation.z=moveWave*(operative?.007:.018);if(raw>=1){root.metadata.motion=null;root.position.copyFrom(motion.target);root.position.y=motion.target.y+idleBob;root.rotation.z=0;moveWave=0;}}
+      else if(motion){const raw=clamp01((now-motion.startedAt)/motion.duration);const eased=chesscomMovementEase(raw);moveWave=Math.sin(raw*Math.PI*motion.steps);root.position.x=motion.start.x+(motion.target.x-motion.start.x)*eased;root.position.z=motion.start.z+(motion.target.z-motion.start.z)*eased;root.position.y=motion.target.y+(operative?chesscomOperativeMovementLift(raw,motion.steps):chesscomMovementLift(raw,motion.steps));root.rotation.z=moveWave*(operative ? .007 : .018);if(raw>=1){root.metadata.motion=null;root.position.copyFrom(motion.target);root.position.y=motion.target.y+idleBob;root.rotation.z=0;moveWave=0;}}
       else{root.position.x=target.x;root.position.z=target.z;root.position.y=target.y+idleBob;root.rotation.z=0;}
       const parts=root.metadata.parts;
       if(operative&&!reduced){
-        const recoil=root.metadata.recoilUntil>now?1-(root.metadata.recoilUntil-now)/135:0;
+        const recoil=root.metadata.recoilUntil>now?(root.metadata.recoilUntil-now)/135:0;
         if(parts?.weapon){parts.weapon.rotation.z=-.04+(motion?moveWave*.018:Math.sin(t*1.55+phase)*.008)-recoil*.055;parts.weapon.position.x=(root.metadata.weaponBaseX||.22)-recoil*.055;}
         if(parts?.armL){parts.armL.rotation.x=.42+moveWave*.11-recoil*.025;parts.armL.rotation.z=-.08+moveWave*.035;}
         if(parts?.armR){parts.armR.rotation.x=-.28-moveWave*.09-recoil*.07;parts.armR.rotation.z=.10-moveWave*.025;}
