@@ -63,6 +63,34 @@ def test_later_real_delta_is_persisted_in_same_memory_document_and_retrievable()
     asyncio.run(scenario())
 
 
+def test_persisted_document_survives_f5_equivalent_runtime_reads_without_duplicate_episode():
+    async def scenario():
+        await episode_store.observe("f5", {
+            "noteworthy_incidents": [{"key": "human:MISSED_MATE", "count": 1}],
+        })
+        await episode_store.observe("f5", {
+            "noteworthy_incidents": [{"key": "human:MISSED_MATE", "count": 2}],
+        })
+        before = await episode_store.summary("f5")
+        assert before["episodeCount"] == 1
+
+        # F5 does not run a reset endpoint or create a new identity. A fresh
+        # read against the same persisted document must see the same biography.
+        after_reload = await episode_store.context("f5")
+        assert after_reload["episode_count"] == 1
+        assert after_reload["callback_candidates"][0]["episode"]["fingerprint"] == "incident:human:MISSED_MATE:2"
+
+        # Re-observing the same aggregate after reload advances no evidence and
+        # must not mint a duplicate memory.
+        repeated = await episode_store.observe("f5", {
+            "noteworthy_incidents": [{"key": "human:MISSED_MATE", "count": 2}],
+        })
+        assert repeated["created"] == []
+        assert repeated["episodeCount"] == 1
+
+    asyncio.run(scenario())
+
+
 def test_existing_reset_contract_removes_episodic_memory_too():
     async def scenario():
         await episode_store.observe("reset-me", {
