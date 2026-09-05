@@ -51,7 +51,7 @@ describe('Matthias premium Home sleep rig', () => {
     expect(pillow).toBeTruthy();
     expect(rig.root.getObjectByName('sleep-blanket-underfold')).toBeTruthy();
     expect(rig.root.getObjectByName('sleep-blanket-seam')).toBeTruthy();
-    expect(rig.root.getObjectsByProperty('name', 'sleep-blanket-fold')).toHaveLength(2);
+    expect(rig.activityRig.premiumSleep.getObjectsByProperty('name', 'sleep-blanket-fold')).toHaveLength(2);
 
     // Regression: the old burgundy cocoon must never return and the canonical
     // pawn body remains the actual visible character underneath the low blanket.
