@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PAWN_SLUG_WEAPON_ORDER,
+  PAWN_SLUG_WEAPONS,
   PAWN_SLUG_WORLD,
   pawnSlugAmmoForPickup,
   pawnSlugBossUnlocked,
@@ -10,6 +12,7 @@ import {
   pawnSlugScoreForKill,
   pawnSlugSpawnWindow,
   pawnSlugWeaponLabel,
+  pawnSlugWeaponShortLabel,
 } from './pawnSlug.js';
 
 describe('Pawn Slug contracts', () => {
@@ -18,6 +21,17 @@ describe('Pawn Slug contracts', () => {
     expect(pawnSlugClamp(3, 0, 1)).toBe(1);
     expect(pawnSlugProgress(-100)).toBe(0);
     expect(pawnSlugProgress(PAWN_SLUG_WORLD.extractionX * 2)).toBe(1);
+  });
+
+  it('starts with a semi-auto pistol and keeps MG as the automatic weapon', () => {
+    expect(PAWN_SLUG_WEAPON_ORDER).toEqual(['pistol', 'machinegun', 'shotgun', 'panzerfaust']);
+    expect(PAWN_SLUG_WEAPONS.pistol.slot).toBe(1);
+    expect(PAWN_SLUG_WEAPONS.pistol.trigger).toBe('semi');
+    expect(PAWN_SLUG_WEAPONS.machinegun.trigger).toBe('auto');
+    expect(PAWN_SLUG_WEAPONS.shotgun.trigger).toBe('semi');
+    expect(PAWN_SLUG_WEAPONS.panzerfaust.trigger).toBe('semi');
+    expect(PAWN_SLUG_WEAPONS.pistol.ammo).toBe(Infinity);
+    expect(pawnSlugWeaponShortLabel('panzerfaust')).toBe('PZF');
   });
 
   it('exposes distinct weapons and finite pickup ammunition', () => {
