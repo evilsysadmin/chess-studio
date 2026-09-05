@@ -10,6 +10,7 @@ import { installRadioMatthiasExpansion } from './ambientRadioMatthiasExpansion.j
 import { radioMatthiasStructuredFeel } from './ambientRadioMatthiasProfiles.js';
 import { installRadioMatthiasRecompositions } from './ambientRadioMatthiasRecompositions.js';
 import { installRadioPremiumForms } from './ambientRadioPremiumForms.js';
+import { withRadioMatthiasLeitmotif } from './ambientRadioMatthiasLeitmotifs.js';
 
 const RADIO_MATTHIAS_HIDDEN_THEME_IDS = new Set([...CURATED_HIDDEN_THEME_IDS, 'blackArchive']);
 
@@ -120,7 +121,7 @@ const TANGIER_SMOKE_PROFILE = Object.freeze({
 // permite profundizar temas concretos sin volver a engordar el motor WebAudio.
 export function structuredFeel(theme) {
   const radioMatthias = radioMatthiasStructuredFeel(theme);
-  if (radioMatthias) return radioMatthias;
+  if (radioMatthias) return withRadioMatthiasLeitmotif(theme, radioMatthias);
 
   const legacy = legacyStructuredFeel(theme);
   if (!legacy) return legacy;
