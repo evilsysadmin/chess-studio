@@ -147,20 +147,18 @@ test('War Room · el bocadillo de Matthias sigue al rey si cambia de casilla', a
   expect(before.left).not.toBe('');
   expect(before.top).not.toBe('');
 
+  // The banter is intentionally short-lived (4.7 s). Exercise the actual move
+  // immediately: this contract is specifically "if Matthias moves while he is
+  // speaking, the speech bubble follows the king", not a keyboard timing test.
   await canvas.focus();
-  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e1');
   await canvas.press('ArrowUp');
-  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e2');
   await canvas.press('Enter');
-  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
   await canvas.press('ArrowUp');
   await canvas.press('ArrowUp');
-  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e4');
   await canvas.press('Enter');
 
-  await expect.poll(() => moveCalls.length).toBe(1);
-  await expect(bubble).toBeVisible();
-  await expect(bubble).toHaveAttribute('data-matthias-square', 'e7');
+  await expect.poll(() => moveCalls.length, { timeout: 3_000 }).toBe(1);
+  await expect(bubble).toHaveAttribute('data-matthias-square', 'e7', { timeout: 3_000 });
   const after = await bubble.evaluate((element) => ({ left: element.style.left, top: element.style.top }));
   expect(after.top).not.toBe(before.top);
 });
