@@ -160,8 +160,10 @@ function solveArm({ owner, stem, glove, cuff, shoulder, target }) {
 }
 
 function clearContactCuffs(activityRig) {
-  activityRig?.support?.getObjectByName('activity-support-contact-cuff')?.visible = false;
-  activityRig?.assist?.getObjectByName('activity-assist-contact-cuff')?.visible = false;
+  const supportCuff = activityRig?.support?.getObjectByName('activity-support-contact-cuff');
+  const assistCuff = activityRig?.assist?.getObjectByName('activity-assist-contact-cuff');
+  if (supportCuff) supportCuff.visible = false;
+  if (assistCuff) assistCuff.visible = false;
 }
 
 export function clearMatthiasHomePropContactRig(rig) {
