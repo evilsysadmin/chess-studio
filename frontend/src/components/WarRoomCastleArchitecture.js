@@ -22,6 +22,8 @@ const TABLE_PROP_NAMES = Object.freeze([
   'matthias-command-relic',
 ]);
 
+const WARM_FIRE_STATES = new WeakMap();
+
 function material(color, options = {}) {
   return new THREE.MeshPhysicalMaterial({
     color,
@@ -403,8 +405,8 @@ function retireWarTableClutter(root) {
   root.userData.warRoomTableClutterRetired = true;
 }
 
-function ensureWarmBounceLight(root, fireplace, coarsePointer) {
-  let bounce = root.getObjectByName?.('war-room-fire-bounce-light');
+function ensureWarmBounceLight(fireplace, coarsePointer) {
+  let bounce = fireplace.getObjectByName?.('war-room-fire-bounce-light');
   if (bounce) return bounce;
   bounce = new THREE.PointLight(0xffa85c, coarsePointer ? 0.55 : 1.15, coarsePointer ? 4.6 : 6.2, 2);
   bounce.name = 'war-room-fire-bounce-light';
@@ -414,11 +416,11 @@ function ensureWarmBounceLight(root, fireplace, coarsePointer) {
   return bounce;
 }
 
-function animateWarmFire(root, coarsePointer) {
+function createWarmFireState(root, coarsePointer) {
   const fireCore = root?.getObjectByName?.('war-room-fire-core');
   const light = root?.getObjectByName?.('war-room-fire-light');
   const fireplace = root?.getObjectByName?.('war-room-fireplace');
-  if (!fireCore || !light || !fireplace) return;
+  if (!fireCore || !light || !fireplace) return null;
 
   const legacyAnchor = fireCore.children.find((child) => child?.userData?.warRoomFireAnimationAnchor);
   if (legacyAnchor?.onBeforeRender && !legacyAnchor.userData.castleDriverOwnsFire) {
@@ -427,21 +429,36 @@ function animateWarmFire(root, coarsePointer) {
   }
 
   const flames = fireCore.children.filter((child) => child?.isMesh);
-  if (!flames.length) return;
+  if (!flames.length) return null;
+  const bases = flames.map((flame) => ({
+    x: flame.position.x,
+    y: flame.position.y,
+    z: flame.position.z,
+    rotationZ: flame.rotation.z,
+    scaleX: flame.scale.x,
+    scaleY: flame.scale.y,
+    scaleZ: flame.scale.z,
+    emissiveIntensity: flame.material?.emissiveIntensity ?? 1.5,
+  }));
+  const embers = fireplace.children.filter((child) => child?.name === 'war-room-fire-ember' || child?.material?.emissive?.getHex?.() === 0xff4a13);
+  const emberBases = embers.map((ember) => ember.material?.emissiveIntensity || 0.8);
+  const bounce = ensureWarmBounceLight(fireplace, coarsePointer);
+  const state = { fireCore, light, flames, bases, embers, emberBases, bounce };
+  WARM_FIRE_STATES.set(root, state);
+  fireCore.userData.warRoomWarmFireAnimated = true;
+  fireCore.userData.warRoomWarmFireState = 'cached-v1';
+  root.userData.warRoomWarmFireLookupMode = 'cached-v1';
+  return state;
+}
 
-  if (!fireCore.userData.castleFireBases) {
-    fireCore.userData.castleFireBases = flames.map((flame) => ({
-      x: flame.position.x,
-      y: flame.position.y,
-      z: flame.position.z,
-      rotationZ: flame.rotation.z,
-      scaleX: flame.scale.x,
-      scaleY: flame.scale.y,
-      scaleZ: flame.scale.z,
-      emissiveIntensity: flame.material?.emissiveIntensity ?? 1.5,
-    }));
-    fireCore.userData.warRoomWarmFireAnimated = true;
-  }
+function warmFireState(root, coarsePointer) {
+  return WARM_FIRE_STATES.get(root) || createWarmFireState(root, coarsePointer);
+}
+
+function animateWarmFire(root, coarsePointer) {
+  const state = warmFireState(root, coarsePointer);
+  if (!state) return;
+  const { light, flames, bases, embers, emberBases, bounce } = state;
 
   const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now()
@@ -457,12 +474,11 @@ function animateWarmFire(root, coarsePointer) {
   light.intensity = baseIntensity * (1 + flutter * lowPower);
   light.color.setHSL(0.068 + irregular * 0.006, 0.94, 0.56 + slow * 0.025);
 
-  const bounce = ensureWarmBounceLight(root, fireplace, coarsePointer);
   bounce.intensity = (coarsePointer ? 0.55 : 1.15) * (1 + (slow * 0.09 + medium * 0.05) * lowPower);
   bounce.color.setHSL(0.078 + medium * 0.004, 0.88, 0.62);
 
   flames.forEach((flame, index) => {
-    const base = fireCore.userData.castleFireBases[index];
+    const base = bases[index];
     if (!base) return;
     const phase = index * 1.31;
     const wave = Math.sin(now * (0.0083 + index * 0.00065) + phase);
@@ -480,12 +496,10 @@ function animateWarmFire(root, coarsePointer) {
     if (flame.material) flame.material.emissiveIntensity = base.emissiveIntensity * (1 + (medium * 0.12 + lick * 0.08) * lowPower);
   });
 
-  const embers = fireplace.children.filter((child) => child?.name === 'war-room-fire-ember' || child?.material?.emissive?.getHex?.() === 0xff4a13);
   for (let index = 0; index < embers.length; index += 1) {
     const ember = embers[index];
     if (!ember.material) continue;
-    if (ember.userData.castleBaseEmissive == null) ember.userData.castleBaseEmissive = ember.material.emissiveIntensity || 0.8;
-    ember.material.emissiveIntensity = ember.userData.castleBaseEmissive * (1 + 0.2 * Math.sin(now * 0.0064 + index * 1.83));
+    ember.material.emissiveIntensity = emberBases[index] * (1 + 0.2 * Math.sin(now * 0.0064 + index * 1.83));
   }
 }
 
@@ -518,8 +532,9 @@ function attachSceneDriver(layer, coarsePointer) {
   const driver = layer.getObjectByName('war-room-castle-floor-slab');
   if (!driver) return;
   driver.userData.warRoomCastleSceneDriver = true;
+  let root = null;
   driver.onBeforeRender = () => {
-    const root = sceneRoot(driver);
+    root ||= sceneRoot(driver);
     retireWarTableClutter(root);
     animateWarmFire(root, coarsePointer);
   };
