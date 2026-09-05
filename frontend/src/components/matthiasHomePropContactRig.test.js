@@ -5,6 +5,7 @@ import {
   disposeMatthiasPremiumHome3D,
 } from './MatthiasPremiumHome3D.js';
 import { applyMatthiasHomePropErgonomics } from './matthiasHomePropErgonomics.js';
+import { applyMatthiasHomePrivateGameRig } from './matthiasHomePrivateGameRig.js';
 import {
   applyMatthiasHomePropContactRig,
   clearMatthiasHomePropContactRig,
@@ -92,11 +93,21 @@ describe('Matthias Home prop contact rig', () => {
     disposeMatthiasPremiumHome3D(rig);
   });
 
-  it('no invade rigs dedicados como Partida privada, comida o sueño', () => {
+  it('apoya Partida privada en una mesa y no invade comida o sueño', () => {
     const rig = createMatthiasPremiumHome3D();
+    const next = pose('think', { activityTime: 4.2 });
+    applyMatthiasPremiumHomePose(rig, next);
+    applyMatthiasHomePropErgonomics(rig, next);
+    applyMatthiasHomePrivateGameRig(rig, next);
 
-    expect(apply(rig, 'think')).toBeNull();
-    expect(rig.root.userData.activityPropContact).toBe('inactive');
+    const contact = applyMatthiasHomePropContactRig(rig);
+    expect(contact?.prop).toBe('chess');
+    expect(contact?.boardSupport).toBeTruthy();
+    expect(rig.root.getObjectByName('private-game-table-top')).toBeTruthy();
+    expect(rig.root.getObjectsByProperty('name', 'private-game-table-leg')).toHaveLength(2);
+    expect(rig.activityRig.support.visible).toBe(false);
+    expect(rig.activityRig.assist.visible).toBe(false);
+    expect(rig.root.userData.activityPropContactHands).toBe('board-rest/pointing-hand');
 
     expect(apply(rig, 'sleep')).toBeNull();
     expect(rig.root.userData.activityPropContact).toBe('inactive');
