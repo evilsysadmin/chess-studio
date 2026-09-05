@@ -1,3 +1,4 @@
+import { useLayoutEffect } from 'react';
 import { BoardRendererContext } from './Board.jsx';
 import Board3DCore from './Board3DCore.jsx';
 import { setWarRoomHansQuickIterationEnabled } from './WarRoomHansIteration.js';
@@ -7,11 +8,18 @@ import { setWarRoomHansQuickIterationEnabled } from './WarRoomHansIteration.js';
 // If WebGL dies, Board3DCore falls back through Board; the context tells that
 // nested Board to render the concrete 2D implementation instead of recursing.
 export default function Board3D(props) {
-  // Temporary visual-iteration switch. It is set synchronously before
-  // Board3DCore mounts the Three.js scene, so the deferred first-paint War Room
-  // finalizer sees the correct policy for this game. Non-quick surfaces always
-  // reset it to false.
-  setWarRoomHansQuickIterationEnabled(props.hansFireplaceIteration === true);
+  const ownsHansQuickIteration = props.hansFireplaceIteration === true;
+
+  // Hans' forced visual iteration is scene ownership, not a render-time global
+  // preference. A quick-game War Room acquires the flag before Board3DCore's
+  // passive scene-construction effect and keeps it for the lifetime of that
+  // mounted renderer. Other 3D renders deliberately do nothing instead of
+  // resetting a flag owned by an active quick-game scene.
+  useLayoutEffect(() => {
+    if (!ownsHansQuickIteration) return undefined;
+    setWarRoomHansQuickIterationEnabled(true);
+    return () => setWarRoomHansQuickIterationEnabled(false);
+  }, [ownsHansQuickIteration]);
 
   return (
     <BoardRendererContext.Provider value="3d">
