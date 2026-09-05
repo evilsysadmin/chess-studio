@@ -13,6 +13,7 @@ import { installWarRoomCommandDeskLuxury } from './WarRoomCommandDeskLuxury.js';
 import { attachWarRoomCompositionRootDriver } from './WarRoomCompositionRootDriver.js';
 import { armWarRoomOneShotHookRetirement, registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 import { installWarRoomMilitaryGallery } from './WarRoomMilitaryGallery.js';
+import { installWarRoomHansFireplaceRoutine } from './WarRoomHansFireplace.js';
 
 const TORCH_WALL_WASH_VERSION = 'hearth-contour-v2';
 const TORCH_FLAME_FINISH_VERSION = 'hearth-warm-v1';
@@ -283,6 +284,7 @@ export function applyWarRoomPracticalLighting(group, {
   installWarRoomCommandDeskStudy(group, { towardBoard, coarsePointer });
   installWarRoomCommandDeskLuxury(group, { towardBoard, coarsePointer });
   installWarRoomMilitaryGallery(group, { wallZ, towardBoard, coarsePointer });
+  installWarRoomHansFireplaceRoutine(group, { towardBoard, coarsePointer });
   correctWarRoomGalleryPaintingOrientation(group);
   registerGalleryPaintingOrientationFinalizer(group, coarsePointer);
   tuneWarRoomGalleryTorchWallWash(group);
