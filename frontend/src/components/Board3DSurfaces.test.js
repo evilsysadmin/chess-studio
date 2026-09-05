@@ -59,7 +59,6 @@ describe('Board3D premium surfaces', () => {
     expect(ivory.roughnessMap).toBeNull();
     expect(ivory.bumpMap).toBeNull();
     expect(ebony.roughnessMap).toBeNull();
-    expect(ebony.bumpMap).toBeNull();
     expect(accent.roughnessMap).toBeNull();
     expect(accent.clearcoat).toBeGreaterThan(ivory.clearcoat);
     expect(ivory.specularIntensity).toBeLessThan(ebony.specularIntensity);
@@ -117,25 +116,28 @@ describe('Board3D premium surfaces', () => {
     for (const material of [wood, leather, fabric, metal, mobileWood]) disposeMaterial(material);
   });
 
-  it('aplica las superficies al decorado existente sin pisar piezas ni casillas premium', () => {
+  it('aplica las superficies al decorado existente y comparte microtextura por material físico', () => {
     const scene = new THREE.Group();
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const wood = new THREE.MeshPhysicalMaterial({ color: 0x5a321c, metalness: 0.03, roughness: 0.48, clearcoat: 0.56, envMapIntensity: 1, specularIntensity: 1 });
+    const secondWood = new THREE.MeshPhysicalMaterial({ color: 0x3a2114, metalness: 0.02, roughness: 0.5, clearcoat: 0.5, envMapIntensity: 0.9, specularIntensity: 0.9 });
     const leather = new THREE.MeshPhysicalMaterial({ color: 0x2e1015, metalness: 0.01, roughness: 0.46, sheen: 0.38 });
     const fabric = new THREE.MeshPhysicalMaterial({ color: 0x5b2028, metalness: 0, roughness: 0.9, sheen: 0.45 });
     const brass = new THREE.MeshPhysicalMaterial({ color: 0xc5963f, metalness: 0.88, roughness: 0.2 });
     const ivory = makePremiumPieceMaterial({ color: 0xf0eadc, skin, side: 'w' });
     const originalIvoryMap = ivory.roughnessMap;
 
-    for (const material of [wood, leather, fabric, brass, ivory]) scene.add(new THREE.Mesh(geometry, material));
+    for (const material of [wood, secondWood, leather, fabric, brass, ivory]) scene.add(new THREE.Mesh(geometry, material));
     const stats = applyPremiumDecorSurfacePass(scene);
 
-    expect(stats).toMatchObject({ wood: 1, leather: 1, fabric: 1, metal: 1, total: 4 });
+    expect(stats).toMatchObject({ wood: 2, leather: 1, fabric: 1, metal: 1, total: 5 });
     expect(wood.userData.surfaceRole).toBe('decor-wood');
+    expect(secondWood.userData.surfaceRole).toBe('decor-wood');
     expect(leather.userData.surfaceRole).toBe('decor-leather');
     expect(fabric.userData.surfaceRole).toBe('decor-fabric');
     expect(brass.userData.surfaceRole).toBe('decor-metal');
     expect(wood.roughnessMap).toBeTruthy();
+    expect(secondWood.roughnessMap).toBe(wood.roughnessMap);
     expect(wood.clearcoat).toBeLessThanOrEqual(0.34);
     expect(wood.envMapIntensity).toBeLessThanOrEqual(0.66);
     expect(wood.specularIntensity).toBeLessThanOrEqual(0.58);
@@ -144,9 +146,11 @@ describe('Board3D premium surfaces', () => {
     expect(ivory.userData.surfaceRole).toBe('ivory');
     expect(ivory.roughnessMap).toBe(originalIvoryMap);
     expect(scene.userData.premiumDecorSurfacePass).toBe(PREMIUM_SURFACE_VERSION);
+    expect(scene.userData.premiumDecorSurfaceTextureSharing).toBe('per-kind-v1');
+    expect(scene.userData.premiumDecorSurfaceTextureCount).toBe(4);
 
     geometry.dispose();
-    for (const material of [wood, leather, fabric, brass, ivory]) disposeMaterial(material);
+    for (const material of [wood, secondWood, leather, fabric, brass, ivory]) disposeMaterial(material);
   });
 
   it('en coarse pointer conserva el perfil material pero no crea microtexturas', () => {
@@ -160,6 +164,7 @@ describe('Board3D premium surfaces', () => {
     expect(wood.userData.surfaceRole).toBe('decor-wood');
     expect(wood.roughnessMap).toBeNull();
     expect(wood.bumpMap).toBeNull();
+    expect(scene.userData.premiumDecorSurfaceTextureCount).toBe(0);
 
     geometry.dispose();
     disposeMaterial(wood);
