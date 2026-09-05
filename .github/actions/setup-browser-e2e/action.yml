@@ -1,11 +1,15 @@
 name: Setup resilient browser E2E
-description: Restore exact frontend/E2E dependencies and scope-specific Playwright browser caches, then optionally build the frontend.
+description: Restore exact E2E/browser dependencies, optionally restore frontend dependencies, then optionally build the frontend.
 
 inputs:
   browser-scope:
     description: 'Browser cache/install scope: chromium or all.'
     required: false
     default: chromium
+  restore-frontend-deps:
+    description: Whether to restore frontend/node_modules in addition to the E2E runtime.
+    required: false
+    default: 'true'
   build-frontend:
     description: Whether to build the production frontend after restoring dependencies.
     required: false
@@ -23,7 +27,7 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Validate browser scope
+    - name: Validate browser runtime inputs
       shell: bash
       run: |
         set -euo pipefail
@@ -31,8 +35,21 @@ runs:
           chromium|all) ;;
           *) echo "::error::browser-scope debe ser chromium o all"; exit 2 ;;
         esac
+        case '${{ inputs.restore-frontend-deps }}' in
+          true|false) ;;
+          *) echo "::error::restore-frontend-deps debe ser true o false"; exit 2 ;;
+        esac
+        case '${{ inputs.build-frontend }}' in
+          true|false) ;;
+          *) echo "::error::build-frontend debe ser true o false"; exit 2 ;;
+        esac
+        if [[ '${{ inputs.build-frontend }}' == 'true' && '${{ inputs.restore-frontend-deps }}' != 'true' ]]; then
+          echo '::error::build-frontend=true requiere restore-frontend-deps=true'
+          exit 2
+        fi
 
-    - name: Setup Node.js
+    - name: Setup Node.js · frontend + E2E
+      if: inputs.restore-frontend-deps == 'true'
       uses: actions/setup-node@v7
       with:
         node-version: ${{ inputs.node-version }}
@@ -41,7 +58,16 @@ runs:
           frontend/package-lock.json
           e2e/package-lock.json
 
+    - name: Setup Node.js · E2E only
+      if: inputs.restore-frontend-deps != 'true'
+      uses: actions/setup-node@v7
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+        cache-dependency-path: e2e/package-lock.json
+
     - name: Restore exact frontend dependencies
+      if: inputs.restore-frontend-deps == 'true'
       uses: ./.github/actions/cache-node-modules
       with:
         working-directory: frontend
