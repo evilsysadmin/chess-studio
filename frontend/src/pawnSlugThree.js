@@ -4,15 +4,16 @@ import {
   PAWN_SLUG_ENEMIES,
   PAWN_SLUG_PICKUPS,
   PAWN_SLUG_SPAWNS,
+  PAWN_SLUG_WEAPON_ORDER,
   PAWN_SLUG_WEAPONS,
   PAWN_SLUG_WORLD,
   pawnSlugMatthiasLine,
   pawnSlugPickupCopy,
   pawnSlugScoreForKill,
   pawnSlugWeaponLabel,
+  pawnSlugWeaponShortLabel,
 } from './pawnSlug.js';
 import {
-  animateMatthiasSlug,
   animateSlugEnemy,
   createBulletModel,
   createExplosionParticle,
@@ -24,6 +25,7 @@ import {
   createSlugEnvironment,
   disposePawnSlugObject,
 } from './pawnSlugArt.js';
+import { animateMatthiasSlugSprite } from './pawnSlugSprites.js';
 
 const WORLD_SCALE = 1 / 40;
 const VIEW_W = 24;
@@ -51,6 +53,16 @@ function boxFor(entity, w = entity.w, h = entity.h) {
 
 function overlaps(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function createInitialArsenal() {
+  return Object.fromEntries(PAWN_SLUG_WEAPON_ORDER.map((id) => [
+    id,
+    {
+      unlocked: id === 'pistol',
+      ammo: id === 'pistol' ? Infinity : 0,
+    },
+  ]));
 }
 
 function initialState() {
@@ -90,6 +102,7 @@ function initialState() {
       grenades: 4,
       weapon: 'pistol',
       ammo: Infinity,
+      arsenal: createInitialArsenal(),
       fireCooldown: 0,
       invuln: 0,
       flash: 0,
@@ -167,6 +180,22 @@ function createSfx() {
   };
 }
 
+function arsenalHud(player) {
+  return PAWN_SLUG_WEAPON_ORDER.map((id) => {
+    const weapon = PAWN_SLUG_WEAPONS[id];
+    const slot = player.arsenal[id];
+    return {
+      id,
+      slot: weapon.slot,
+      shortLabel: pawnSlugWeaponShortLabel(id),
+      label: weapon.label,
+      current: player.weapon === id,
+      unlocked: Boolean(slot?.unlocked),
+      ammo: id === 'pistol' ? null : Math.max(0, Math.ceil(slot?.ammo || 0)),
+    };
+  });
+}
+
 function hud(state) {
   const boss = state.enemies.find((enemy) => enemy.type === 'boss' && !enemy.dead);
   const player = state.player;
@@ -177,13 +206,14 @@ function hud(state) {
     weapon: player.weapon,
     weaponLabel: pawnSlugWeaponLabel(player.weapon),
     ammo: Number.isFinite(player.ammo) ? Math.max(0, Math.ceil(player.ammo)) : null,
+    weapons: arsenalHud(player),
     grenades: player.grenades,
     score: Math.floor(state.score),
     combo: state.combo,
     progress: clamp(player.x / wx(PAWN_SLUG_WORLD.extractionX), 0, 1),
     bossHp: boss ? Math.max(0, Math.ceil(boss.hp)) : null,
     bossMaxHp: boss?.maxHp || null,
-    toast: state.time <= state.toastUntil || state.phase === 'ready' || state.phase === 'gameover' || state.phase === 'victory' ? state.toast : '',
+    toast: state.time <= state.toastUntil || ['ready', 'gameover', 'victory'].includes(state.phase) ? state.toast : '',
     missionTime: Math.floor(state.missionTime),
   };
 }
@@ -237,7 +267,15 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   let previous = performance.now();
   let lastHudAt = 0;
   let ambientDucked = false;
-  const input = { left: false, right: false, jump: false, fire: false, grenade: false, crouch: false };
+  const input = {
+    left: false,
+    right: false,
+    jump: false,
+    fire: false,
+    firePressed: false,
+    grenade: false,
+    crouch: false,
+  };
   const sfx = createSfx();
 
   function setAmbientDuck(enabled) {
@@ -260,8 +298,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   }
 
   function clearGroup(group) {
-    const children = [...group.children];
-    for (const child of children) {
+    for (const child of [...group.children]) {
       group.remove(child);
       disposePawnSlugObject(child);
     }
@@ -273,13 +310,60 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     clearGroup(fxLayer);
   }
 
+  function resetInput() {
+    for (const key of Object.keys(input)) input[key] = false;
+  }
+
   function placePlayer() {
     playerModel.position.set(state.player.x, state.player.y, 0.2);
     playerModel.visible = state.phase !== 'gameover';
   }
 
+  function weaponAvailable(player, id) {
+    const slot = player.arsenal[id];
+    return Boolean(slot?.unlocked && (id === 'pistol' || slot.ammo > 0));
+  }
+
+  function syncCurrentWeaponAmmo(player) {
+    const slot = player.arsenal[player.weapon];
+    if (slot) slot.ammo = player.ammo;
+  }
+
+  function selectWeapon(id, { announce = true } = {}) {
+    const player = state.player;
+    if (!PAWN_SLUG_WEAPONS[id] || !weaponAvailable(player, id)) return false;
+    if (player.weapon !== id) syncCurrentWeaponAmmo(player);
+    player.weapon = id;
+    player.ammo = player.arsenal[id].ammo;
+    playerModel.userData.setWeapon?.(id);
+    if (announce) setToast(`ARMA // ${pawnSlugWeaponLabel(id)}`, 1.15);
+    emitHud(true);
+    return true;
+  }
+
+  function cycleWeapon(direction) {
+    const player = state.player;
+    const available = PAWN_SLUG_WEAPON_ORDER.filter((id) => weaponAvailable(player, id));
+    if (available.length < 2) return false;
+    const current = Math.max(0, available.indexOf(player.weapon));
+    const next = available[(current + direction + available.length) % available.length];
+    return selectWeapon(next);
+  }
+
+  function grantWeapon(id) {
+    const weapon = PAWN_SLUG_WEAPONS[id];
+    const slot = state.player.arsenal[id];
+    if (!weapon || !slot) return false;
+    slot.unlocked = true;
+    if (Number.isFinite(weapon.ammo)) slot.ammo += weapon.ammo;
+    else slot.ammo = Infinity;
+    selectWeapon(id, { announce: false });
+    return true;
+  }
+
   function startMission() {
     resetDynamic();
+    resetInput();
     state = initialState();
     state.phase = 'playing';
     state.toast = pawnSlugMatthiasLine('start');
@@ -289,6 +373,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     playerModel.userData.setWeapon?.('pistol');
     placePlayer();
     camera.position.x = VIEW_W / 2;
+    state.cameraX = VIEW_W / 2;
     setAmbientDuck(true);
     emitHud(true);
   }
@@ -302,12 +387,13 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   function createEnemy(spawn) {
     const stats = PAWN_SLUG_ENEMIES[spawn.type];
     const model = createSlugEnemyModel(spawn.type);
-    model.position.set(wx(spawn.x), 0, 0);
+    const x = wx(spawn.x);
+    model.position.set(x, 0, 0);
     dynamic.add(model);
     const enemy = {
       id: spawn.id,
       type: spawn.type,
-      x: wx(spawn.x),
+      x,
       y: 0,
       w: stats.width * WORLD_SCALE * 0.92,
       h: Math.max(1.25, stats.height * WORLD_SCALE),
@@ -393,17 +479,20 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
 
   function firePlayerWeapon() {
     const player = state.player;
-    if (player.fireCooldown > 0 || state.phase !== 'playing') return;
-    const weapon = PAWN_SLUG_WEAPONS[player.weapon] || PAWN_SLUG_WEAPONS.pistol;
+    if (player.fireCooldown > 0 || state.phase !== 'playing') return false;
+    const weaponId = player.weapon;
+    const weapon = PAWN_SLUG_WEAPONS[weaponId] || PAWN_SLUG_WEAPONS.pistol;
     if (Number.isFinite(player.ammo) && player.ammo <= 0) {
-      player.weapon = 'pistol';
-      player.ammo = Infinity;
-      playerModel.userData.setWeapon?.('pistol');
+      selectWeapon('pistol', { announce: false });
       setToast('Munición agotada. Vuelta al hierro reglamentario.', 1.7);
-      return;
+      return false;
     }
+
     player.fireCooldown = weapon.cadence / 1000;
-    if (Number.isFinite(player.ammo)) player.ammo -= 1;
+    if (Number.isFinite(player.ammo)) {
+      player.ammo -= 1;
+      player.arsenal[weaponId].ammo = player.ammo;
+    }
     const dir = player.dir;
     const muzzleX = player.x + dir * 1.05;
     const muzzleY = player.y + (player.crouch ? 0.72 : 1.12);
@@ -420,7 +509,14 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       });
     }
     addFlash(muzzleX, muzzleY, dir);
-    sfx.play(player.weapon);
+    sfx.play(weaponId);
+
+    if (Number.isFinite(player.ammo) && player.ammo <= 0) {
+      selectWeapon('pistol', { announce: false });
+      setToast(`${weapon.label}: seco. Pistola.`, 1.35);
+    }
+    emitHud(true);
+    return true;
   }
 
   function throwGrenade() {
@@ -532,11 +628,24 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     player.vy = 0;
     player.hp = 100;
     player.invuln = 1.8;
-    player.weapon = 'pistol';
-    player.ammo = Infinity;
-    playerModel.userData.setWeapon?.('pistol');
+    selectWeapon('pistol', { announce: false });
     camera.position.x = Math.max(VIEW_W / 2, player.x + VIEW_W * 0.14);
-    setToast(`Vida menos. Reagrupando en ${Math.round(player.x / WORLD_SCALE)} m.`, 2.2);
+    setToast(`Vida menos. Reagrupando en ${Math.round(player.x / WORLD_SCALE)} m. Pistola fuera.`, 2.2);
+  }
+
+  function animatePlayer() {
+    const player = state.player;
+    const base = Math.abs(playerModel.userData.baseScale || playerModel.scale.x || 1);
+    playerModel.scale.x = base * (player.dir < 0 ? -1 : 1);
+    animateMatthiasSlugSprite(playerModel, {
+      time: state.time,
+      running: Math.abs(player.vx) > 0.7 && player.onGround,
+      crouch: player.crouch,
+      airborne: !player.onGround,
+      firing: player.fireCooldown > 0,
+      dir: player.dir,
+      hurt: player.flash > 0,
+    });
   }
 
   function updatePlayer(dt) {
@@ -573,7 +682,11 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     if (bossAlive && player.x > bossArenaLeft) player.x = clamp(player.x, bossArenaLeft, bossArenaRight);
     else player.x = clamp(player.x, CHECKPOINTS[0], wx(PAWN_SLUG_WORLD.extractionX));
 
-    if (input.fire) firePlayerWeapon();
+    const weapon = PAWN_SLUG_WEAPONS[player.weapon] || PAWN_SLUG_WEAPONS.pistol;
+    const wantsFire = weapon.trigger === 'auto' ? input.fire : input.firePressed;
+    if (wantsFire) firePlayerWeapon();
+    input.firePressed = false;
+
     if (input.grenade) {
       throwGrenade();
       input.grenade = false;
@@ -582,14 +695,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     state.checkpoint = nearestCheckpoint(player.x);
     playerModel.position.set(player.x, player.y, 0.2);
     playerModel.visible = !(player.invuln > 0 && Math.floor(state.time * 18) % 2 === 0);
-    animateMatthiasSlug(playerModel, {
-      time: state.time,
-      running: Math.abs(player.vx) > 0.7 && player.onGround,
-      crouch: player.crouch,
-      firing: player.fireCooldown > 0,
-      dir: player.dir,
-      hurt: player.flash > 0,
-    });
+    animatePlayer();
   }
 
   function updateEnemies(dt) {
@@ -684,8 +790,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
         for (const enemy of state.enemies) {
           if (enemy.dead) continue;
           const bulletBox = { x: bullet.x - bullet.w / 2, y: bullet.y - bullet.h / 2, w: bullet.w, h: bullet.h };
-          const enemyBox = boxFor(enemy);
-          if (!overlaps(bulletBox, enemyBox)) continue;
+          if (!overlaps(bulletBox, boxFor(enemy))) continue;
           if (bullet.explosive) explode(bullet.x, bullet.y, 1.9, bullet.damage);
           else damageEnemy(enemy, bullet.damage);
           remove = true;
@@ -732,17 +837,14 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       state.takenPickups.add(pickup.id);
       if (pickup.type === 'grenade') state.player.grenades += 3;
       else if (pickup.type === 'medkit') state.player.hp = Math.min(100, state.player.hp + 45);
-      else {
-        state.player.weapon = pickup.type;
-        state.player.ammo = PAWN_SLUG_WEAPONS[pickup.type]?.ammo ?? Infinity;
-        playerModel.userData.setWeapon?.(pickup.type);
-      }
+      else grantWeapon(pickup.type);
       state.score += 150;
       setToast(pawnSlugPickupCopy(pickup.type), 2.1);
       sfx.play('pickup');
       dynamic.remove(pickup.model);
       disposePawnSlugObject(pickup.model);
       state.pickups.splice(state.pickups.indexOf(pickup), 1);
+      emitHud(true);
     }
   }
 
@@ -853,12 +955,34 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     if (key === 'arrowdown' || key === 's') return 'crouch';
     if (key === 'z' || key === 'j' || key === 'enter') return 'fire';
     if (key === 'x' || key === 'k') return 'grenade';
+    if (key === 'q') return 'weapon-prev';
+    if (key === 'e') return 'weapon-next';
+    const slot = Number.parseInt(key, 10);
+    if (slot >= 1 && slot <= PAWN_SLUG_WEAPON_ORDER.length) return `weapon:${PAWN_SLUG_WEAPON_ORDER[slot - 1]}`;
     return null;
   }
 
   function setInput(action, pressed = true) {
     if (action === 'action') {
-      if (pressed && (state.phase === 'ready' || state.phase === 'gameover' || state.phase === 'victory')) startMission();
+      if (pressed && ['ready', 'gameover', 'victory'].includes(state.phase)) startMission();
+      return;
+    }
+    if (action === 'weapon-prev') {
+      if (pressed) cycleWeapon(-1);
+      return;
+    }
+    if (action === 'weapon-next') {
+      if (pressed) cycleWeapon(1);
+      return;
+    }
+    if (action.startsWith('weapon:')) {
+      if (pressed) selectWeapon(action.slice('weapon:'.length));
+      return;
+    }
+    if (action === 'fire') {
+      const next = Boolean(pressed);
+      if (next && !input.fire) input.firePressed = true;
+      input.fire = next;
       return;
     }
     if (!(action in input)) return;
@@ -869,7 +993,8 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     const action = keyAction(event);
     if (!action) return;
     if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', ' '].includes(event.key.toLowerCase())) event.preventDefault();
-    if (state.phase === 'ready' || state.phase === 'gameover' || state.phase === 'victory') {
+    if (event.repeat && action.startsWith('weapon')) return;
+    if (['ready', 'gameover', 'victory'].includes(state.phase)) {
       if (action === 'fire' || action === 'jump') startMission();
       return;
     }

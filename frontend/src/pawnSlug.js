@@ -5,11 +5,13 @@ export const PAWN_SLUG_WORLD = Object.freeze({
   extractionX: 5050,
 });
 
+export const PAWN_SLUG_WEAPON_ORDER = Object.freeze(['pistol', 'machinegun', 'shotgun', 'panzerfaust']);
+
 export const PAWN_SLUG_WEAPONS = Object.freeze({
-  pistol: Object.freeze({ id: 'pistol', label: 'Dienstpistole', ammo: Infinity, cadence: 210, damage: 22, speed: 760, pellets: 1, spread: 0 }),
-  machinegun: Object.freeze({ id: 'machinegun', label: 'MG-42 de bolsillo', ammo: 180, cadence: 82, damage: 13, speed: 860, pellets: 1, spread: 0.025 }),
-  shotgun: Object.freeze({ id: 'shotgun', label: 'Escopeta diplomática', ammo: 42, cadence: 430, damage: 13, speed: 690, pellets: 6, spread: 0.19 }),
-  panzerfaust: Object.freeze({ id: 'panzerfaust', label: 'Panzerfaust', ammo: 9, cadence: 720, damage: 92, speed: 520, pellets: 1, spread: 0, explosive: true }),
+  pistol: Object.freeze({ id: 'pistol', slot: 1, shortLabel: 'PST', label: 'Dienstpistole', trigger: 'semi', ammo: Infinity, cadence: 210, damage: 22, speed: 760, pellets: 1, spread: 0 }),
+  machinegun: Object.freeze({ id: 'machinegun', slot: 2, shortLabel: 'MG', label: 'MG-42 de bolsillo', trigger: 'auto', ammo: 180, cadence: 82, damage: 13, speed: 860, pellets: 1, spread: 0.025 }),
+  shotgun: Object.freeze({ id: 'shotgun', slot: 3, shortLabel: 'SG', label: 'Escopeta diplomática', trigger: 'semi', ammo: 42, cadence: 430, damage: 13, speed: 690, pellets: 6, spread: 0.19 }),
+  panzerfaust: Object.freeze({ id: 'panzerfaust', slot: 4, shortLabel: 'PZF', label: 'Panzerfaust', trigger: 'semi', ammo: 9, cadence: 720, damage: 92, speed: 520, pellets: 1, spread: 0, explosive: true }),
 });
 
 export const PAWN_SLUG_PICKUPS = Object.freeze([
@@ -42,6 +44,10 @@ export function pawnSlugClamp(value, min, max) {
 
 export function pawnSlugWeaponLabel(id) {
   return PAWN_SLUG_WEAPONS[id]?.label || PAWN_SLUG_WEAPONS.pistol.label;
+}
+
+export function pawnSlugWeaponShortLabel(id) {
+  return PAWN_SLUG_WEAPONS[id]?.shortLabel || PAWN_SLUG_WEAPONS.pistol.shortLabel;
 }
 
 export function pawnSlugAmmoForPickup(type) {

@@ -1,0 +1,125 @@
+.pawn-slug-arsenal {
+  position: absolute;
+  z-index: 7;
+  top: 4.55rem;
+  left: 50%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(4.4rem, 5.2rem));
+  gap: .38rem;
+  transform: translateX(-50%);
+  padding: .36rem;
+  border: 1px solid rgba(211, 171, 92, .28);
+  border-radius: .75rem;
+  background: linear-gradient(180deg, rgba(19, 22, 27, .89), rgba(8, 10, 13, .78));
+  box-shadow: 0 .6rem 1.6rem rgba(0, 0, 0, .28), inset 0 1px rgba(255, 255, 255, .04);
+  backdrop-filter: blur(8px);
+}
+
+.pawn-slug-arsenal button {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: .28rem;
+  min-height: 2.55rem;
+  padding: .32rem .4rem;
+  border: 1px solid rgba(176, 184, 194, .2);
+  border-radius: .52rem;
+  background: linear-gradient(180deg, rgba(51, 57, 65, .92), rgba(25, 29, 34, .96));
+  color: #e8e2d5;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+
+.pawn-slug-arsenal button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(225, 190, 113, .62);
+}
+
+.pawn-slug-arsenal button:focus-visible {
+  outline: 2px solid rgba(247, 211, 124, .9);
+  outline-offset: 2px;
+}
+
+.pawn-slug-arsenal button.is-current {
+  border-color: rgba(241, 196, 91, .9);
+  background: linear-gradient(180deg, rgba(83, 67, 36, .98), rgba(39, 34, 24, .98));
+  box-shadow: 0 0 0 1px rgba(241, 196, 91, .22), 0 0 1rem rgba(214, 166, 63, .18);
+}
+
+.pawn-slug-arsenal button:disabled {
+  opacity: .34;
+  cursor: not-allowed;
+  filter: saturate(.35);
+}
+
+.pawn-slug-arsenal kbd {
+  min-width: 1.15rem;
+  padding: .08rem .16rem;
+  border: 1px solid rgba(222, 225, 229, .2);
+  border-radius: .28rem;
+  background: rgba(0, 0, 0, .32);
+  color: #d7b767;
+  font-size: .58rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.pawn-slug-arsenal span {
+  overflow: hidden;
+  font-size: .69rem;
+  font-weight: 900;
+  letter-spacing: .055em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pawn-slug-arsenal small {
+  min-width: 1.4rem;
+  color: #fff0bf;
+  font-size: .63rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  text-align: right;
+}
+
+@media (max-width: 700px) {
+  .pawn-slug-arsenal {
+    top: 4.35rem;
+    width: calc(100% - 1rem);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .24rem;
+    padding: .26rem;
+    border-radius: .62rem;
+  }
+
+  .pawn-slug-arsenal button {
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    gap: .05rem .22rem;
+    min-width: 0;
+    min-height: 2.9rem;
+    padding: .27rem .3rem;
+  }
+
+  .pawn-slug-arsenal kbd {
+    grid-row: 1 / span 2;
+  }
+
+  .pawn-slug-arsenal span {
+    font-size: .61rem;
+  }
+
+  .pawn-slug-arsenal small {
+    min-width: 0;
+    font-size: .58rem;
+    text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pawn-slug-arsenal button {
+    transition: none;
+  }
+}
