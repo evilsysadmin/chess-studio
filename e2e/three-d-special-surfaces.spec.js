@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import {
   login,
-  loginAndOpenDeployment,
   mockApi,
+  openCampaignBriefing,
   openMoreGameModes,
 } from './helpers.js';
 
@@ -58,6 +58,32 @@ function projectSquare(rect, square, worldY = 0.12) {
   };
 }
 
+async function openHeavy3DSurface(button, readySurface) {
+  // Hosted software-WebGL can make the React commit behind these transitions
+  // expensive enough that Playwright's user-action click waits on the mount and
+  // hits the action timeout. We already assert that the real button is visible
+  // and enabled; dispatch its DOM click and synchronize on the resulting 3D UI.
+  await expect(button).toBeVisible();
+  await expect(button).toBeEnabled();
+  await button.evaluate((element) => element.click());
+  await expect(readySurface).toBeVisible({ timeout: READY });
+}
+
+async function openDeploymentForSpecialSurface(page) {
+  const deployment = page.getByRole('region', { name: 'Preparar despliegue de Combat Chess' });
+  if (await deployment.isVisible().catch(() => false)) return deployment;
+
+  const enterPreparation = page.getByRole('button', { name: /PREPARAR EJÉRCITO/i });
+  if (await enterPreparation.isVisible().catch(() => false)) {
+    await openHeavy3DSurface(enterPreparation, page.getByLabel('Resumen de preparación').or(deployment));
+    if (await deployment.isVisible().catch(() => false)) return deployment;
+  }
+
+  const reviewDeployment = page.getByRole('button', { name: /PREPARAR DESPLIEGUE|REVISAR Y CONFIRMAR|Personalizar despliegue/i });
+  await openHeavy3DSurface(reviewDeployment, deployment);
+  return deployment;
+}
+
 test('Arena experimental · tema, terreno y legalidad sobreviven al renderer 3D', async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 1440, height: 960 });
@@ -72,10 +98,10 @@ test('Arena experimental · tema, terreno y legalidad sobreviven al renderer 3D'
   await expect(experiments).toBeVisible();
   await experiments.click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /Arenas experimentales/i }).click();
 
   const arena = page.getByRole('region', { name: 'Arena experimental con terreno bloqueado' });
-  await expect(arena).toBeVisible();
+  await openHeavy3DSurface(page.getByRole('button', { name: /Arenas experimentales/i }), arena);
+
   const board = arena.locator('[data-board3d-war-room="true"]');
   const canvas = arena.locator('.board3d-main-canvas');
   await expect(board).toBeVisible({ timeout: READY });
@@ -109,7 +135,10 @@ test('Arena experimental · tema, terreno y legalidad sobreviven al renderer 3D'
 test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre el canvas 3D', async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 1440, height: 960 });
-  const deployment = await loginAndOpenDeployment(page);
+  await mockApi(page);
+  await login(page);
+  await openCampaignBriefing(page);
+  const deployment = await openDeploymentForSpecialSurface(page);
 
   const board = deployment.locator('[data-board3d-war-room="true"]');
   const canvas = deployment.locator('.board3d-main-canvas');
