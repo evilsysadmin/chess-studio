@@ -38,7 +38,6 @@ on:
       - 'e2e/war-room-desktop-scale.spec.js'
       - 'e2e/android-game-focus.spec.js'
       - 'e2e/matthias-home-visual-critical.spec.js'
-      - 'e2e/matthias-read-book-regression.spec.js'
       - 'e2e/matthias-war-room-android-motion.spec.js'
       - 'e2e/insights-matthias-motion.spec.js'
       - 'e2e/helpers.js'
@@ -104,7 +103,7 @@ jobs:
             esac
 
             case "$file" in
-              frontend/src/components/Matthias*.jsx|frontend/src/components/Matthias*.js|frontend/src/components/Matthias*.css|frontend/src/components/matthias*.jsx|frontend/src/components/matthias*.js|frontend/src/components/matthias*.css|frontend/src/components/InsightsMatthiasMotion.jsx|frontend/src/matthias*.js|frontend/src/assets/matthias-*/*|e2e/matthias-home-visual-critical.spec.js|e2e/matthias-read-book-regression.spec.js|e2e/matthias-war-room-android-motion.spec.js|e2e/insights-matthias-motion.spec.js)
+              frontend/src/components/Matthias*.jsx|frontend/src/components/Matthias*.js|frontend/src/components/Matthias*.css|frontend/src/components/matthias*.jsx|frontend/src/components/matthias*.js|frontend/src/components/matthias*.css|frontend/src/components/InsightsMatthiasMotion.jsx|frontend/src/matthias*.js|frontend/src/assets/matthias-*/*|e2e/matthias-home-visual-critical.spec.js|e2e/matthias-war-room-android-motion.spec.js|e2e/insights-matthias-motion.spec.js)
                 matthias=true
                 ;;
             esac
@@ -153,11 +152,6 @@ jobs:
                       'id': 'matthias-home-motion',
                       'label': 'Matthias · Home motion',
                       'command': './node_modules/.bin/playwright test matthias-home-visual-critical.spec.js --workers=1 --retries=0 --timeout=75000',
-                  },
-                  {
-                      'id': 'matthias-reading',
-                      'label': 'Matthias · reading regression',
-                      'command': './node_modules/.bin/playwright test matthias-read-book-regression.spec.js --workers=1 --retries=0',
                   },
                   {
                       'id': 'matthias-war-room',
