@@ -8,6 +8,16 @@ export function sortUnifiedHistory(historyList, combatHistoryList) {
   return [...historyList, ...combatHistoryList].sort((a, b) => new Date(b.date) - new Date(a.date));
 }
 
+export function findHistoryRecordByGameId(records = [], gameId = null) {
+  if (gameId == null) return null;
+  const target = String(gameId);
+  return (Array.isArray(records) ? records : []).find((record) => (
+    [record?.sourceGameId, record?.gameId, record?.id]
+      .filter((value) => value != null)
+      .some((value) => String(value) === target)
+  )) || null;
+}
+
 export function useReplayLibrary({ navigateTo }) {
   const [historyList, setHistoryList] = useState(() => loadGameHistory());
   const [combatHistoryList, setCombatHistoryList] = useState(() => loadCombatHistory());
@@ -35,6 +45,7 @@ export function useReplayLibrary({ navigateTo }) {
   }
 
   function openHistoryRecord(record) {
+    if (!record) return false;
     setReplayMovieMode(false);
     setReplayCrimeMode(false);
     setReplayInitialStep(undefined);
@@ -46,6 +57,16 @@ export function useReplayLibrary({ navigateTo }) {
       setReplayRecord(record);
       navigateTo('replay');
     }
+    return true;
+  }
+
+  function openHistoryRecordByGameId(gameId) {
+    const record = findHistoryRecordByGameId(allHistory, gameId);
+    if (!record) {
+      navigateTo('history');
+      return false;
+    }
+    return openHistoryRecord(record);
   }
 
   function clearAllHistory() {
@@ -67,6 +88,6 @@ export function useReplayLibrary({ navigateTo }) {
     replayRecord, setReplayRecord, combatReplayRecord, setCombatReplayRecord,
     replayInitialStep, setReplayInitialStep, pinnedReport, setPinnedReport,
     replayCrimeMode, setReplayCrimeMode, replayMovieMode, setReplayMovieMode,
-    allHistory, insights, jumpToMove, openHistoryRecord, clearAllHistory, openMovie,
+    allHistory, insights, jumpToMove, openHistoryRecord, openHistoryRecordByGameId, clearAllHistory, openMovie,
   };
 }
