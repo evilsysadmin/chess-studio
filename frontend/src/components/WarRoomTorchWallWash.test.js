@@ -29,7 +29,7 @@ function dispose(root) {
 }
 
 describe('War Room torch wall wash', () => {
-  it('ilumina la pared y mantiene una llama viva, cálida y saturada durante el flicker', () => {
+  it('ilumina la pared y mantiene una envolvente naranja legible alrededor de un núcleo dorado menor', () => {
     const room = new THREE.Group();
     installWarRoomMilitaryGallery(room, { wallZ: -7.6, towardBoard: 1, coarsePointer: false });
 
@@ -46,7 +46,7 @@ describe('War Room torch wall wash', () => {
       const wallGlow = torch.getObjectByName('war-room-side-torch-wall-glow');
 
       expect(torch.userData.warRoomTorchWallWash).toBe('hearth-contour-v2');
-      expect(torch.userData.warRoomTorchFlameFinish).toBe('hearth-warm-v1');
+      expect(torch.userData.warRoomTorchFlameFinish).toBe('hearth-warm-v2');
       expect(halo).toBeInstanceOf(THREE.Mesh);
       expect(halo.material.opacity).toBeGreaterThanOrEqual(0.88);
       expect(halo.scale.x).toBeGreaterThanOrEqual(1.55);
@@ -56,18 +56,19 @@ describe('War Room torch wall wash', () => {
       expect(innerHalo.material.opacity).toBeGreaterThanOrEqual(0.68);
       expect(innerHalo.material.toneMapped).toBe(false);
 
-      expect(flame.material.color.getHex()).toBe(0xff7a18);
+      expect(flame.material.color.getHex()).toBe(0xff5a08);
       expect(flame.material.emissive.getHex()).toBe(0xff1600);
-      expect(flame.material.emissiveIntensity).toBeGreaterThanOrEqual(4.9);
+      expect(flame.material.emissiveIntensity).toBeCloseTo(1.15, 2);
       expect(flame.material.toneMapped).toBe(false);
-      expect(innerFlame.material.color.getHex()).toBe(0xffd15f);
-      expect(innerFlame.material.emissive.getHex()).toBe(0xff2400);
-      expect(innerFlame.material.emissiveIntensity).toBeGreaterThanOrEqual(6.4);
+      expect(innerFlame.material.color.getHex()).toBe(0xffb83d);
+      expect(innerFlame.material.emissive.getHex()).toBe(0xff4a08);
+      expect(innerFlame.material.emissiveIntensity).toBeCloseTo(1.45, 2);
       expect(innerFlame.material.toneMapped).toBe(false);
-      expect(embers.material.emissive.getHex()).toBe(0xff1300);
-      expect(embers.material.emissiveIntensity).toBeGreaterThanOrEqual(3);
+      expect(embers.material.color.getHex()).toBe(0x8f1c06);
+      expect(embers.material.emissive.getHex()).toBe(0xff2100);
+      expect(embers.material.emissiveIntensity).toBeCloseTo(1.9, 2);
       expect(embers.material.toneMapped).toBe(false);
-      expect(flame.userData.warRoomTorchFlamePulseHook).toBe('hearth-flame-pulse-v1');
+      expect(flame.userData.warRoomTorchFlamePulseHook).toBe('hearth-flame-pulse-v2');
 
       expect(light.color.getHex()).toBe(0xff7424);
       expect(light.distance).toBeGreaterThanOrEqual(10.5);
@@ -77,10 +78,11 @@ describe('War Room torch wall wash', () => {
       flame.onBeforeRender();
       expect(light.intensity).toBeGreaterThan(7.8);
       expect(wallGlow.intensity).toBeGreaterThan(5.7);
-      expect(flame.material.emissiveIntensity).toBeGreaterThanOrEqual(4.5);
-      expect(flame.material.emissiveIntensity).toBeLessThanOrEqual(5.4);
-      expect(innerFlame.material.emissiveIntensity).toBeGreaterThanOrEqual(6);
-      expect(innerFlame.material.emissiveIntensity).toBeLessThanOrEqual(6.7);
+      expect(flame.scale.x).toBeGreaterThan(innerFlame.scale.x * 1.5);
+      expect(flame.material.emissiveIntensity).toBeGreaterThanOrEqual(1.05);
+      expect(flame.material.emissiveIntensity).toBeLessThanOrEqual(1.28);
+      expect(innerFlame.material.emissiveIntensity).toBeGreaterThanOrEqual(1.35);
+      expect(innerFlame.material.emissiveIntensity).toBeLessThanOrEqual(1.55);
     }
 
     expect(tuneWarRoomGalleryTorchWallWash(room)).toBe(0);
