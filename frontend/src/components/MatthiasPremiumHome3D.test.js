@@ -175,7 +175,7 @@ describe('MatthiasPremiumHome3D', () => {
     disposeMatthiasPremiumHome3D(rig);
   });
 
-  it('desayuno combina taza y plato con dos apoyos discretos y sueño conserva la manta 3D', () => {
+  it('desayuno combina taza y plato y sueño se lee como siesta con manta, almohada y ojos cerrados', () => {
     const rig = createMatthiasPremiumHome3D();
 
     applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'breakfast', reach: .32 }));
@@ -193,13 +193,28 @@ describe('MatthiasPremiumHome3D', () => {
     expect(rig.activityRig.blanket.visible).toBe(true);
     expect(rig.activityRig.support.visible).toBe(false);
     expect(rig.activityRig.assist.visible).toBe(false);
-    expect(rig.root.getObjectByName('sleep-blanket-body')).toBeTruthy();
+    const blanketBody = rig.root.getObjectByName('sleep-blanket-body');
+    expect(blanketBody).toBeTruthy();
+    expect(blanketBody.geometry.type).toBe('ExtrudeGeometry');
     expect(rig.root.getObjectByName('sleep-blanket-trim')).toBeTruthy();
+    expect(rig.root.getObjectByName('sleep-pillow')).toBeTruthy();
+    expect(rig.root.getObjectsByProperty('name', 'sleep-blanket-fold')).toHaveLength(3);
     expect(rig.root.userData.activityProp).toBe('blanket');
+    expect(rig.leftEye.scale.y).toBeLessThan(.2);
+    expect(rig.rightEye.scale.y).toBeLessThan(.2);
+    expect(Math.abs(rig.root.rotation.z)).toBeGreaterThan(.05);
+    expect(rig.headPivot.rotation.x).toBeGreaterThan(.1);
 
-    const blanketBox = objectBox(rig.activityRig.blanket);
+    const blanketBodyBox = objectBox(blanketBody);
     const faceBox = objectBox(rig.head);
-    expect(blanketBox.max.y).toBeLessThan(faceBox.min.y + .08);
+    const faceCenter = new THREE.Vector3();
+    faceBox.getCenter(faceCenter);
+    expect(blanketBodyBox.max.y).toBeLessThan(faceCenter.y);
+
+    applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'idle' }));
+    expect(rig.activityRig.blanket.visible).toBe(false);
+    expect(rig.leftEye.scale.y).toBeGreaterThan(1.45);
+    expect(rig.root.rotation.z).toBe(0);
 
     disposeMatthiasPremiumHome3D(rig);
   });
