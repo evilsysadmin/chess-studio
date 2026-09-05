@@ -55,9 +55,9 @@ describe('Matthias premium Home sleep rig', () => {
 
     // Regression: the old burgundy cocoon must never return and the canonical
     // pawn body remains the actual visible character underneath the low blanket.
-    expect(rig.root.getObjectByName('sleep-wrap-body')).toBeNull();
-    expect(rig.root.getObjectByName('sleep-wrap-volume')).toBeNull();
-    expect(rig.root.getObjectByName('sleep-wrap-side-tuck')).toBeNull();
+    expect(rig.root.getObjectByName('sleep-wrap-body')).toBeUndefined();
+    expect(rig.root.getObjectByName('sleep-wrap-volume')).toBeUndefined();
+    expect(rig.root.getObjectByName('sleep-wrap-side-tuck')).toBeUndefined();
     expect(blanket.position.y).toBeLessThan(-.25);
     expect(blanket.scale.y).toBeLessThan(.90);
     expect(rig.body.visible).not.toBe(false);
