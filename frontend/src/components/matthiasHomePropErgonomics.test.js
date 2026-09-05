@@ -116,10 +116,15 @@ describe('Matthias Home prop ergonomics', () => {
     expect(rig.activityRig.support.visible).toBe(true);
     expect(rig.activityRig.assist.visible).toBe(false);
 
+    // Canonical Sobando uses the two prop arms as visible head support. The old
+    // generic blanket stays retired while the dedicated premium sleep rig owns the pose.
     expect(apply(rig, 'sleep')).toBe('blanket');
-    expect(rig.activityRig.support.visible).toBe(false);
-    expect(rig.activityRig.assist.visible).toBe(false);
-    expect(rig.activityRig.blanket.scale.x).toBe(1);
+    expect(rig.activityRig.support.visible).toBe(true);
+    expect(rig.activityRig.assist.visible).toBe(true);
+    expect(rig.activityRig.blanket.visible).toBe(false);
+    expect(rig.activityRig.premiumSleep.visible).toBe(true);
+    expect(rig.root.userData.activitySleepAxis).toBe('horizontal');
+    expect(rig.root.userData.activitySleepHeadSupport).toBe('hands+pillow');
 
     expect(rig.root.userData.activityErgonomicsVersion).toBe(MATTHIAS_HOME_PROP_ERGONOMICS_VERSION);
     disposeMatthiasPremiumHome3D(rig);
