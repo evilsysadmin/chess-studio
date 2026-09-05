@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
 import {
   hansQuickIterationFrame,
+  installWarRoomHansSceneRoutine,
   isWarRoomHansQuickIterationEnabled,
   setWarRoomHansQuickIterationEnabled,
   shouldForceHansQuickIteration,
@@ -106,6 +107,46 @@ describe('Hans quick-game visual iteration', () => {
     expect(typeof driver.onBeforeRender).toBe('function');
 
     dispose(room);
+  });
+
+  it('fuerza la misma entrada visible en dispositivos táctiles durante la iteración', () => {
+    setWarRoomHansQuickIterationEnabled(true);
+    const room = buildPremiumWarRoomLayer({ felt: 0x173943, glow: 0xc5963f }, true, true);
+
+    try {
+      // Mobile intentionally skips the desktop deferred museum finalizer, so
+      // exercise the shared scene routine directly with the real coarse flag.
+      expect(installWarRoomHansSceneRoutine(room, { towardBoard: 1, coarsePointer: true })).toBeGreaterThan(0);
+
+      const hans = room.getObjectByName('war-room-hans-butler');
+      const driver = room.getObjectByName('war-room-hans-fireplace-driver');
+      const door = room.getObjectByName('war-room-hans-service-door');
+
+      expect(hans).toBeTruthy();
+      expect(driver).toBeTruthy();
+      expect(door).toBeTruthy();
+      expect(driver.userData.warRoomHansSelected).toBe(true);
+      expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v4-door');
+      expect(driver.userData.warRoomHansVisibleAtStart).toBe(true);
+      expect(hans.visible).toBe(true);
+      expect(door.userData.warRoomHansDoorOpen).toBe(1);
+    } finally {
+      dispose(room);
+    }
+  });
+
+  it('mantiene simplificada la War Room táctil cuando no está activo el modo de prueba', () => {
+    setWarRoomHansQuickIterationEnabled(false);
+    const room = buildPremiumWarRoomLayer({ felt: 0x173943, glow: 0xc5963f }, true, true);
+
+    try {
+      expect(installWarRoomHansSceneRoutine(room, { towardBoard: 1, coarsePointer: true })).toBeGreaterThan(0);
+      expect(room.getObjectByName('war-room-hans-service-door')).toBeTruthy();
+      expect(room.getObjectByName('war-room-hans-butler')).toBeFalsy();
+      expect(room.getObjectByName('war-room-hans-fireplace-driver')).toBeFalsy();
+    } finally {
+      dispose(room);
+    }
   });
 
   it('cierra la puerta dentro, la reabre para salir y oculta a Hans al cruzar el umbral', () => {

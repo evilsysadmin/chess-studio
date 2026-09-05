@@ -238,8 +238,13 @@ export function installWarRoomHansSceneRoutine(root, {
   randomValue,
 } = {}) {
   if (!root || !Number.isFinite(towardBoard)) return 0;
-  const forceQuickIteration = quickIterationEnabled && !coarsePointer;
-  const options = { towardBoard, coarsePointer, forceEvent: forceQuickIteration };
+  const forceQuickIteration = quickIterationEnabled;
+  // During this explicit visual-iteration window we deliberately build the
+  // desktop Hans rig even on touch/coarse-pointer devices so the user can see
+  // and judge the choreography. The ordinary mobile path remains simplified
+  // because it still passes its real coarsePointer value when not forced.
+  const routineCoarsePointer = forceQuickIteration ? false : coarsePointer;
+  const options = { towardBoard, coarsePointer: routineCoarsePointer, forceEvent: forceQuickIteration };
   if (Number.isFinite(randomValue)) options.randomValue = randomValue;
 
   const installed = installWarRoomHansFireplaceRoutine(root, options);
