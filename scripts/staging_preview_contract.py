@@ -79,8 +79,8 @@ def main() -> int:
     # Canonical staging owns all mutations for one generation. A CI-approved SHA
     # that has already been superseded by a newer main HEAD is not an outage: the
     # stale run must cancel itself before the first mutation. Once admitted,
-    # backend, Pages and Worker may advance in parallel, then converge behind the
-    # same N/N/N parity gate.
+    # backend, Pages and Worker advance in parallel. Existing browser runners then
+    # prove the same N/N/N runtime contract before Chromium starts.
     for needle, label in (
         ("Backend + frontend + AI staging generation", "canonical generation job"),
         ("Supersede stale staging commit", "single stale guard before mutation"),
@@ -102,33 +102,35 @@ def main() -> int:
         require(staging_deploy, needle, label, errors)
 
     # Topology contract: prepare is admission only. Backend, Pages and Worker are
-    # sibling lanes after admission. Render reconcile must live inside backend,
-    # before the exact deploy, so no second runner allocation or duplicate
-    # checkout delays the real Render build. Browser smoke consumes backend's
-    # service-id output directly.
+    # sibling lanes after admission. Render reconcile stays inside backend before
+    # the exact deploy. There is no standalone parity job: the smoke matrix waits
+    # for all three deploy lanes and proves N/N/N before restoring browser runtime.
     job_markers = {
         "prepare": "\n  prepare:\n",
         "backend": "\n  backend:\n",
         "frontend": "\n  frontend:\n",
         "worker": "\n  worker:\n",
-        "parity": "\n  parity:\n",
         "smoke": "\n  smoke:\n",
+        "summary": "\n  summary:\n",
     }
     job_positions = {name: staging_deploy.find(marker) for name, marker in job_markers.items()}
     if any(position < 0 for position in job_positions.values()):
         missing = sorted(name for name, position in job_positions.items() if position < 0)
         errors.append(f"staging generation: faltan jobs para auditar topología paralela: {missing}")
     else:
-        ordered = ["prepare", "backend", "frontend", "worker", "parity", "smoke"]
+        ordered = ["prepare", "backend", "frontend", "worker", "smoke", "summary"]
         blocks = {}
         for index, name in enumerate(ordered[:-1]):
             blocks[name] = staging_deploy[job_positions[name]:job_positions[ordered[index + 1]]]
-        blocks["smoke"] = staging_deploy[job_positions["smoke"]:]
+        blocks["summary"] = staging_deploy[job_positions["summary"]:]
 
         if "render_staging_bootstrap.py" in blocks["prepare"]:
             errors.append("staging generation: prepare volvió a ejecutar Render reconcile y serializa Pages/Worker")
         if "\n  render_reconcile:\n" in staging_deploy:
             errors.append("staging generation: Render reconcile volvió a un job separado y añade otro runner antes del deploy")
+        if "\n  parity:\n" in staging_deploy:
+            errors.append("staging generation: parity volvió a un job separado y añade otra cola de runner antes del smoke")
+
         require(blocks["backend"], "needs: prepare", "backend arranca tras admission", errors)
         require(blocks["backend"], "render_staging_bootstrap.py", "backend conserva bootstrap idempotente", errors)
         require(blocks["backend"], "render_service_id: ${{ steps.render_bootstrap.outputs.service_id }}", "backend exporta service id para smoke", errors)
@@ -136,6 +138,7 @@ def main() -> int:
         deploy_step = blocks["backend"].find("Deploy exact backend commit to Render staging")
         if min(reconcile_step, deploy_step) >= 0 and not reconcile_step < deploy_step:
             errors.append("staging generation: Render reconcile debe ocurrir antes del exact deploy dentro del mismo backend job")
+
         require(blocks["frontend"], "needs: prepare", "Pages arranca tras admission", errors)
         require(blocks["worker"], "needs: prepare", "Worker arranca tras admission", errors)
         if "render_reconcile" in blocks["frontend"]:
@@ -144,8 +147,33 @@ def main() -> int:
             errors.append("staging generation: Worker volvió a depender de Render reconcile")
         if "--service-id" in blocks["worker"]:
             errors.append("staging generation: Worker volvió a depender del service_id producido por Render reconcile")
-        require(blocks["smoke"], "needs: [prepare, backend, parity]", "smoke espera backend + parity", errors)
-        require(blocks["smoke"], "RENDER_SERVICE_ID: ${{ needs.backend.outputs.render_service_id }}", "smoke consume service id del backend", errors)
+
+        require(
+            blocks["smoke"],
+            "needs: [prepare, backend, frontend, worker]",
+            "smoke espera las tres ramas de deploy",
+            errors,
+        )
+        require(
+            blocks["smoke"],
+            "RENDER_SERVICE_ID: ${{ needs.backend.outputs.render_service_id }}",
+            "smoke consume service id del backend",
+            errors,
+        )
+        require(
+            blocks["summary"],
+            "needs: [prepare, backend, frontend, worker, smoke]",
+            "summary espera deploy lanes + browser smoke",
+            errors,
+        )
+
+        parity_in_smoke = blocks["smoke"].find("Verify staging generation parity before browser smoke")
+        browser_restore = blocks["smoke"].find("Restore staging browser runtime")
+        browser_test = blocks["smoke"].find("Live browser smoke against deployed staging")
+        if min(parity_in_smoke, browser_restore, browser_test) >= 0 and not (
+            parity_in_smoke < browser_restore < browser_test
+        ):
+            errors.append("staging generation: N/N/N debe cerrarse antes de restaurar Chromium y ejecutar el smoke")
 
     stale_step = staging_deploy.find("Supersede stale staging commit")
     render_step = staging_deploy.find("Reconcile Render staging configuration")
@@ -153,12 +181,15 @@ def main() -> int:
     backend_step = staging_deploy.find("Deploy exact backend commit to Render staging")
     worker_step = staging_deploy.find("Deploy exact staging Worker and synchronize shared secret")
     parity_step = staging_deploy.find("Verify staging generation parity before browser smoke")
+    browser_restore_step = staging_deploy.find("Restore staging browser runtime")
     smoke_step = staging_deploy.find("Live browser smoke against deployed staging")
     mutations = [render_step, frontend_step, backend_step, worker_step]
     if stale_step >= 0 and all(step >= 0 for step in mutations) and not all(stale_step < step for step in mutations):
         errors.append("staging generation: stale supersede guard no está antes de todas las mutaciones")
-    if min(worker_step, parity_step, smoke_step) >= 0 and not (worker_step < parity_step < smoke_step):
-        errors.append("staging generation: Worker/parity/smoke no están en orden fail-closed")
+    if min(parity_step, browser_restore_step, smoke_step) >= 0 and not (
+        parity_step < browser_restore_step < smoke_step
+    ):
+        errors.append("staging generation: parity/browser-restore/smoke no están en orden fail-closed")
 
     if "::error::CI aprobó" in staging_deploy:
         errors.append("staging generation: un SHA superseded vuelve a clasificarse como error")
@@ -216,7 +247,7 @@ def main() -> int:
             print(f" - {error}", file=sys.stderr)
         return 1
 
-    print("staging-preview-contract OK · preview isolated; admission first; backend/Pages/Worker parallel; canonical staging owns N/N/N")
+    print("staging-preview-contract OK · preview isolated; admission first; deploy lanes parallel; smoke-integrated N/N/N")
     return 0
 
 
