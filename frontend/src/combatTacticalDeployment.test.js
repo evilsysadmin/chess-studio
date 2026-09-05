@@ -44,6 +44,24 @@ describe('Combat tactical deployment fingerprint', () => {
     expect(deploymentSelectionFingerprint(roster)).not.toBe(before);
   });
 
+  it('también invalida la orden si cambia economía, equipo o identidad del barracón', () => {
+    const roster = loadRoster();
+    const before = deploymentSelectionFingerprint(roster);
+    const changed = {
+      ...roster,
+      credits: Number(roster.credits || 0) + 12,
+      identities: {
+        ...roster.identities,
+        'p-a': { ...roster.identities['p-a'], alias: 'Otro alias' },
+      },
+      pieces: {
+        ...roster.pieces,
+        'p-a': { ...roster.pieces['p-a'], equipmentId: 'field-kit' },
+      },
+    };
+    expect(deploymentSelectionFingerprint(changed)).not.toBe(before);
+  });
+
   it('la copia confirmada no cambia aunque el barracón vivo se modifique después', () => {
     const roster = loadRoster();
     const frozen = freezeTacticalRosterSnapshot(roster);
