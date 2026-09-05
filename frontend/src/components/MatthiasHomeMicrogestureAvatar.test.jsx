@@ -107,7 +107,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     expect(html).toContain('data-three-full-3d="true"');
     expect(html).toContain('data-three-face-rig="premium-pawn-face-v1"');
     expect(html).toContain('data-three-articulated-face-rig="premium-pawn-face-v1"');
-    expect(html).toContain('data-three-activity-rig="activity-props-v2"');
+    expect(html).toContain('data-three-activity-rig="activity-props-v3-sleep"');
     expect(html).toContain('data-three-activity-profile="read"');
     expect(html).toContain('data-three-activity-prop="book"');
     expect(html).toContain('data-three-face-warp-limit="0.019"');
@@ -165,7 +165,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     );
     expect(html).toContain('data-three-motion="reduced"');
     expect(html).toContain('data-three-full-3d="true"');
-    expect(html).toContain('data-three-activity-rig="activity-props-v2"');
+    expect(html).toContain('data-three-activity-rig="activity-props-v3-sleep"');
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/base.webp"');
   });
