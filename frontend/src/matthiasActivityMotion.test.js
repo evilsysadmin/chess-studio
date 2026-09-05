@@ -3,7 +3,7 @@ import { matthiasAmbientVisuals, matthiasTimeVisual } from './matthiasVisuals.js
 import { matthiasGestureName, matthiasGestureParts } from './components/MatthiasLayeredArt.jsx';
 
 const HOURS = [
-  [0, 'Lectura de medianoche', 'read-book'],
+  [0, 'Sobando', 'doze'],
   [1, 'Sobando', 'doze'],
   [2, 'Sobando', 'doze'],
   [3, 'Sobando', 'doze'],

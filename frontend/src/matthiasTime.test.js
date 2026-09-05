@@ -4,7 +4,7 @@ import { matthiasTimeScene, normalizeMatthiasHour } from './matthiasTime.js';
 describe('Matthias · jornada horaria', () => {
   it('rota actividades hora a hora y reserva comida para desayuno, comida y cena', () => {
     const keys = Array.from({ length: 24 }, (_, hour) => matthiasTimeScene(hour).key);
-    expect(keys.slice(1, 6)).toEqual(Array(5).fill('late-sleep'));
+    expect(keys.slice(0, 6)).toEqual(Array(6).fill('late-sleep'));
     expect(keys.filter((key) => key === 'lunch-bocata')).toHaveLength(2);
     expect(keys[7]).toBe('breakfast-news');
     expect(keys[12]).toBe('lunch-bocata');
@@ -25,6 +25,12 @@ describe('Matthias · jornada horaria', () => {
     expect(workingHours).toContain('strategy-book');
     expect(workingHours).toContain('chess-inception');
     expect(workingHours).toContain('afternoon-ops');
+  });
+
+  it('a medianoche ya está sobando', () => {
+    const scene = matthiasTimeScene(0);
+    expect(scene.key).toBe('late-sleep');
+    expect(scene.label).toBe('Sobando');
   });
 
   it('normaliza horas fuera de rango sin romper la escena', () => {

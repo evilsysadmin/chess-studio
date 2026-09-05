@@ -14,6 +14,7 @@ import './MatthiasHomeMobilePortrait.css';
 
 const AMBIENT_SCENE_MS = 28_000;
 const COMPACT_VIEWPORT_QUERY = '(max-width: 760px)';
+export const HOME_HOUR_REFRESH_MS = 60_000;
 export const HOME_THREE_MOTION_INTENSITY = 1.12;
 
 export function matthiasMotionReduced({ appReduced, mediaReduced } = {}) {
@@ -30,7 +31,7 @@ export function matthiasCompactViewport({ mediaMatches, innerWidth } = {}) {
 }
 
 export default function MatthiasHomeVisit({ model, speaking = false, onAction, onDismiss, onOpenInsights }) {
-  const hour = useMemo(() => new Date().getHours(), []);
+  const [hour, setHour] = useState(() => new Date().getHours());
   const ambientVisuals = useMemo(() => matthiasAmbientVisuals(hour), [hour]);
   const [ambientBeat, setAmbientBeat] = useState(0);
   const [motionStatus, setMotionStatus] = useState(() => reducedMotionStatus());
@@ -43,6 +44,24 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
 
   useEffect(() => {
     setPortalReady(true);
+  }, []);
+
+  // Home puede permanecer montada durante horas. Volvemos a consultar el reloj
+  // local para que Matthias cambie de rutina sin exigir un reload. Al regresar
+  // a una pestaña suspendida se actualiza inmediatamente, no hasta el siguiente tick.
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const refreshHour = () => setHour(new Date().getHours());
+    const timer = window.setInterval(refreshHour, HOME_HOUR_REFRESH_MS);
+    const refreshWhenVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState !== 'hidden') refreshHour();
+    };
+
+    document?.addEventListener?.('visibilitychange', refreshWhenVisible);
+    return () => {
+      window.clearInterval(timer);
+      document?.removeEventListener?.('visibilitychange', refreshWhenVisible);
+    };
   }, []);
 
   useEffect(() => {
@@ -125,6 +144,7 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
       data-placement={compactViewport ? 'inline' : 'viewport'}
       data-motion-state={motionStatus.effective ? 'reduced' : 'active'}
       data-motion-source={motionStatus.source}
+      data-home-hour={hour}
       data-three-presentation="home-v4"
     >
       <div className="matthias-resident__stage">
