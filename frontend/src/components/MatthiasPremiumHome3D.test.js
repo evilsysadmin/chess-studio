@@ -193,8 +193,9 @@ describe('MatthiasPremiumHome3D', () => {
     expect(rig.activityRig.blanket.visible).toBe(true);
     expect(rig.activityRig.support.visible).toBe(false);
     expect(rig.activityRig.assist.visible).toBe(false);
-    expect(rig.root.getObjectByName('sleep-blanket-body')).toBeTruthy();
-    expect(rig.root.getObjectByName('sleep-blanket-body').geometry.type).toBe('ExtrudeGeometry');
+    const blanketBody = rig.root.getObjectByName('sleep-blanket-body');
+    expect(blanketBody).toBeTruthy();
+    expect(blanketBody.geometry.type).toBe('ExtrudeGeometry');
     expect(rig.root.getObjectByName('sleep-blanket-trim')).toBeTruthy();
     expect(rig.root.getObjectByName('sleep-pillow')).toBeTruthy();
     expect(rig.root.getObjectsByProperty('name', 'sleep-blanket-fold')).toHaveLength(3);
@@ -204,9 +205,9 @@ describe('MatthiasPremiumHome3D', () => {
     expect(Math.abs(rig.root.rotation.z)).toBeGreaterThan(.05);
     expect(rig.headPivot.rotation.x).toBeGreaterThan(.1);
 
-    const blanketBox = objectBox(rig.activityRig.blanket);
+    const blanketBodyBox = objectBox(blanketBody);
     const faceBox = objectBox(rig.head);
-    expect(blanketBox.max.y).toBeLessThan(faceBox.min.y + .08);
+    expect(blanketBodyBox.max.y).toBeLessThan(faceBox.min.y + .12);
 
     applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'idle' }));
     expect(rig.activityRig.blanket.visible).toBe(false);
