@@ -17,56 +17,127 @@ function addBox(THREE, parent, size, position, mat, rotation = null) {
   return mesh;
 }
 
+function addCylinder(THREE, parent, radiusTop, radiusBottom, height, position, mat, segments = 12) {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radiusTop, radiusBottom, height, segments), mat);
+  mesh.position.set(...position);
+  parent.add(mesh);
+  return mesh;
+}
+
 function addWindow(THREE, parent, x, stone, glass, brass, velvet, mobile) {
   const frame = new THREE.Group();
   frame.position.x = x;
   parent.add(frame);
 
-  addBox(THREE, frame, [2.45, 4.55, 0.18], [0, 2.25, -3.82], stone);
-  addBox(THREE, frame, [2.02, 4.04, 0.08], [0, 2.27, -3.70], glass);
-  addBox(THREE, frame, [0.10, 4.05, 0.10], [0, 2.27, -3.60], brass);
-  addBox(THREE, frame, [2.02, 0.09, 0.10], [0, 2.24, -3.60], brass);
-  addBox(THREE, frame, [2.02, 0.08, 0.10], [0, 3.52, -3.60], brass);
+  addBox(THREE, frame, [2.46, 4.45, 0.16], [0, 2.10, -4.18], glass);
+  addBox(THREE, frame, [0.22, 4.78, 0.28], [-1.28, 2.14, -4.02], stone);
+  addBox(THREE, frame, [0.22, 4.78, 0.28], [1.28, 2.14, -4.02], stone);
+  addBox(THREE, frame, [2.78, 0.24, 0.28], [0, -0.19, -4.02], stone);
 
-  const curtainOffset = 1.40;
+  const arch = new THREE.Mesh(new THREE.TorusGeometry(1.28, 0.13, 8, 28, Math.PI), stone);
+  arch.position.set(0, 4.34, -4.02);
+  arch.rotation.z = Math.PI;
+  frame.add(arch);
+
+  addBox(THREE, frame, [0.10, 4.43, 0.12], [0, 2.11, -3.94], brass);
+  addBox(THREE, frame, [2.40, 0.08, 0.12], [0, 1.72, -3.94], brass);
+  addBox(THREE, frame, [2.40, 0.08, 0.12], [0, 3.08, -3.94], brass);
+
+  const curtainOffset = 1.50;
   const foldCount = mobile ? 2 : 4;
   for (const side of [-1, 1]) {
     for (let i = 0; i < foldCount; i += 1) {
-      const radius = mobile ? 0.13 : 0.16;
+      const radius = mobile ? 0.12 : 0.15;
       const fold = new THREE.Mesh(
-        new THREE.CylinderGeometry(radius, radius * 1.07, 4.65, 8, 1, false),
+        new THREE.CylinderGeometry(radius, radius * 1.08, 5.25, 8, 1, false),
         velvet,
       );
+      const outward = i * 0.15;
       fold.position.set(
-        side * (curtainOffset + i * 0.17 * side),
-        2.18,
-        -3.45 + (i % 2) * 0.06,
+        side * (curtainOffset + outward),
+        1.95,
+        -3.80 + (i % 2) * 0.07,
       );
       frame.add(fold);
     }
   }
-  addBox(THREE, frame, [3.55, 0.28, 0.24], [0, 4.58, -3.42], velvet);
-  addBox(THREE, frame, [3.72, 0.07, 0.07], [0, 4.79, -3.33], brass);
+  addBox(THREE, frame, [3.72, 0.28, 0.24], [0, 4.79, -3.77], velvet);
+  addBox(THREE, frame, [3.90, 0.07, 0.07], [0, 5.01, -3.68], brass);
 }
 
-function addTorch(THREE, parent, x, warmMaterial) {
+function addBanner(THREE, parent, x, y, velvet, brass, scale = 1) {
   const group = new THREE.Group();
-  group.position.set(x, 2.2, -3.42);
+  group.position.set(x, y, -3.78);
+  group.scale.setScalar(scale);
+  parent.add(group);
+
+  addBox(THREE, group, [1.16, 2.55, 0.06], [0, 0, 0], velvet);
+  addBox(THREE, group, [1.32, 0.07, 0.10], [0, 1.34, 0.07], brass);
+  addCylinder(THREE, group, 0.10, 0.10, 0.42, [0, 0.28, 0.08], brass, 12);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 9), brass);
+  head.position.set(0, 0.60, 0.08);
+  group.add(head);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.29, 0.035, 7, 22), brass);
+  ring.position.set(0, 0.32, 0.08);
+  group.add(ring);
+}
+
+function addChair(THREE, parent, x, z, oak, brass, scale = 1) {
+  const group = new THREE.Group();
+  group.position.set(x, -0.13, z);
+  group.scale.setScalar(scale);
+  parent.add(group);
+
+  addBox(THREE, group, [1.20, 0.16, 1.08], [0, 0.52, 0], oak);
+  addBox(THREE, group, [1.34, 2.18, 0.18], [0, 1.55, 0.43], oak);
+  addBox(THREE, group, [1.48, 0.16, 0.24], [0, 2.70, 0.43], brass);
+  for (const legX of [-.48, .48]) {
+    addBox(THREE, group, [.14, 1.0, .14], [legX, .02, -.36], oak);
+    addBox(THREE, group, [.14, 1.0, .14], [legX, .02, .36], oak);
+  }
+  const crest = new THREE.Mesh(new THREE.SphereGeometry(.14, 10, 8), brass);
+  crest.position.set(0, 2.88, .43);
+  group.add(crest);
+}
+
+function addCandle(THREE, parent, x, z, brass, warm) {
+  const group = new THREE.Group();
+  group.position.set(x, .82, z);
+  parent.add(group);
+  addCylinder(THREE, group, .08, .11, .34, [0, .16, 0], brass, 10);
+  addCylinder(THREE, group, .055, .055, .25, [0, .44, 0], material(THREE, { color: 0xd7c7a1, roughness: .82 }), 10);
+  const ember = new THREE.Mesh(new THREE.SphereGeometry(.055, 8, 6), warm);
+  ember.scale.set(.78, 1.45, .78);
+  ember.position.set(0, .61, 0);
+  group.add(ember);
+}
+
+function addTorch(THREE, parent, x, y, warmMaterial, side = 1) {
+  const group = new THREE.Group();
+  group.position.set(x, y, -3.54);
   parent.add(group);
 
   const bracket = new THREE.Mesh(
-    new THREE.BoxGeometry(0.09, 0.62, 0.09),
+    new THREE.BoxGeometry(0.09, 0.64, 0.09),
     new THREE.MeshStandardMaterial({ color: 0x7b5b2d, metalness: 0.72, roughness: 0.32 }),
   );
-  bracket.rotation.z = x < 0 ? -0.28 : 0.28;
+  bracket.rotation.z = side * 0.25;
   group.add(bracket);
 
+  const bowl = new THREE.Mesh(
+    new THREE.CylinderGeometry(.18, .10, .16, 10),
+    new THREE.MeshStandardMaterial({ color: 0x6f5229, metalness: .72, roughness: .34 }),
+  );
+  bowl.position.y = .38;
+  group.add(bowl);
+
   const ember = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), warmMaterial);
-  ember.position.y = 0.36;
+  ember.scale.set(.82, 1.45, .82);
+  ember.position.y = 0.58;
   group.add(ember);
 
-  const light = new THREE.PointLight(0xff9f45, 1.45, 5.4, 2);
-  light.position.set(0, 0.44, 0.20);
+  const light = new THREE.PointLight(0xffa047, 1.55, 5.8, 2);
+  light.position.set(0, 0.62, 0.26);
   group.add(light);
   return light;
 }
@@ -74,23 +145,22 @@ function addTorch(THREE, parent, x, warmMaterial) {
 function createDust(THREE, count) {
   const positions = new Float32Array(count * 3);
   for (let i = 0; i < count; i += 1) {
-    positions[i * 3] = (Math.random() - 0.5) * 12;
-    positions[i * 3 + 1] = Math.random() * 5.8 - 0.6;
-    positions[i * 3 + 2] = Math.random() * 7 - 2.4;
+    positions[i * 3] = (Math.random() - 0.5) * 14;
+    positions[i * 3 + 1] = Math.random() * 6.2 - 0.6;
+    positions[i * 3 + 2] = Math.random() * 7.8 - 2.6;
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  const points = new THREE.Points(
+  return new THREE.Points(
     geometry,
     new THREE.PointsMaterial({
-      color: 0xc9b07e,
+      color: 0xd3bb8b,
       size: 0.022,
       transparent: true,
-      opacity: 0.22,
+      opacity: 0.24,
       depthWrite: false,
     }),
   );
-  return points;
 }
 
 function buildScene(THREE, { host, ambience }) {
@@ -116,107 +186,119 @@ function buildScene(THREE, { host, ambience }) {
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.92;
+  renderer.toneMappingExposure = coarse ? .98 : 1.07;
   renderer.shadowMap.enabled = false;
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? MOBILE_DPR_CAP : DESKTOP_DPR_CAP));
   host.appendChild(canvas);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x090d11, coarse ? 0.052 : 0.046);
+  scene.fog = new THREE.FogExp2(0x071018, coarse ? 0.046 : 0.034);
 
-  const camera = new THREE.PerspectiveCamera(coarse ? 42 : 36, 1, 0.1, 50);
-  camera.position.set(0, coarse ? 4.15 : 4.45, coarse ? 12.5 : 11.6);
-  camera.lookAt(0, 1.85, -0.55);
+  const camera = new THREE.PerspectiveCamera(coarse ? 43 : 34, 1, 0.1, 55);
+  camera.position.set(0, coarse ? 4.25 : 3.86, coarse ? 12.7 : 10.7);
+  camera.lookAt(0, 1.62, -0.35);
 
-  const stone = material(THREE, { color: 0x262b2d, roughness: 0.94, metalness: 0.03 });
-  const stoneEdge = material(THREE, { color: 0x393c3a, roughness: 0.88, metalness: 0.05 });
-  const oak = material(THREE, { color: 0x2b1910, roughness: 0.73, metalness: 0.04 });
-  const oakEdge = material(THREE, { color: 0x4b2e1d, roughness: 0.63, metalness: 0.08 });
-  const brass = material(THREE, { color: 0x9a7435, roughness: 0.34, metalness: 0.82 });
-  const velvet = material(THREE, { color: 0x4d121e, roughness: 0.96, metalness: 0 });
-  const runner = material(THREE, { color: 0x481520, roughness: 0.92, metalness: 0 });
+  const stone = material(THREE, { color: 0x242a2d, roughness: 0.93, metalness: 0.03 });
+  const stoneEdge = material(THREE, { color: 0x444743, roughness: 0.86, metalness: 0.05 });
+  const oak = material(THREE, { color: 0x25150d, roughness: 0.71, metalness: 0.04 });
+  const oakEdge = material(THREE, { color: 0x56331d, roughness: 0.60, metalness: 0.09 });
+  const brass = material(THREE, { color: 0xb98a35, roughness: 0.30, metalness: 0.84 });
+  const velvet = material(THREE, { color: 0x59111f, roughness: 0.96, metalness: 0 });
+  const runner = material(THREE, { color: 0x4b1320, roughness: 0.91, metalness: 0 });
   const glass = material(THREE, {
-    color: 0x5e829d,
-    emissive: 0x365d78,
-    emissiveIntensity: coarse ? 0.52 : 0.68,
-    roughness: 0.36,
-    metalness: 0.02,
+    color: 0x6f9bc0,
+    emissive: 0x315f82,
+    emissiveIntensity: coarse ? 0.72 : 1.08,
+    roughness: 0.34,
+    metalness: 0.01,
     transparent: true,
-    opacity: 0.62,
+    opacity: 0.76,
   });
   const warm = material(THREE, {
-    color: 0xffb061,
-    emissive: 0xff7d2d,
-    emissiveIntensity: 2.1,
-    roughness: 0.42,
+    color: 0xffb366,
+    emissive: 0xff7b25,
+    emissiveIntensity: 2.55,
+    roughness: 0.38,
   });
 
   const room = new THREE.Group();
   scene.add(room);
 
-  addBox(THREE, room, [16.2, 8.3, 0.42], [0, 2.55, -4.10], stone);
-  addBox(THREE, room, [0.45, 8.2, 11.2], [-7.85, 2.25, 0.8], stone);
-  addBox(THREE, room, [0.45, 8.2, 11.2], [7.85, 2.25, 0.8], stone);
-  addBox(THREE, room, [16.2, 0.32, 11.2], [0, -1.14, 0.8], stoneEdge);
+  addBox(THREE, room, [17.4, 8.8, 0.48], [0, 2.62, -4.46], stone);
+  addBox(THREE, room, [0.55, 8.8, 12.2], [-8.35, 2.45, 0.85], stone);
+  addBox(THREE, room, [0.55, 8.8, 12.2], [8.35, 2.45, 0.85], stone);
+  addBox(THREE, room, [17.5, 0.34, 12.6], [0, -1.18, 0.95], stoneEdge);
 
-  for (const z of [-2.2, -0.2, 1.8, 3.8]) {
-    addBox(THREE, room, [15.5, 0.025, 0.055], [0, -0.96, z], stone, [-Math.PI / 2, 0, 0]);
+  for (const z of [-3.0, -1.0, 1.0, 3.0, 5.0]) {
+    addBox(THREE, room, [16.9, 0.025, 0.05], [0, -0.995, z], stone, [-Math.PI / 2, 0, 0]);
   }
-  for (const x of [-6, -3, 0, 3, 6]) {
-    addBox(THREE, room, [0.035, 0.03, 10.4], [x, -0.95, 0.8], stone, [-Math.PI / 2, 0, 0]);
-  }
-
-  addBox(THREE, room, [4.65, 0.035, 9.3], [0, -0.93, 1.45], runner);
-  addBox(THREE, room, [0.075, 0.045, 9.4], [-2.38, -0.90, 1.45], brass);
-  addBox(THREE, room, [0.075, 0.045, 9.4], [2.38, -0.90, 1.45], brass);
-
-  addWindow(THREE, room, -4.45, stoneEdge, glass, brass, velvet, coarse);
-  addWindow(THREE, room, 4.45, stoneEdge, glass, brass, velvet, coarse);
-
-  for (const x of [-6.75, -2.65, 2.65, 6.75]) {
-    addBox(THREE, room, [0.52, 6.15, 0.58], [x, 2.05, -3.58], stoneEdge);
-    addBox(THREE, room, [0.74, 0.23, 0.78], [x, -0.91, -3.56], stoneEdge);
-    addBox(THREE, room, [0.70, 0.20, 0.74], [x, 5.06, -3.56], stoneEdge);
+  for (const x of [-6.4, -3.2, 0, 3.2, 6.4]) {
+    addBox(THREE, room, [0.035, 0.03, 11.8], [x, -0.99, .8], stone, [-Math.PI / 2, 0, 0]);
   }
 
-  addBox(THREE, room, [4.45, 3.05, 0.20], [0, 2.65, -3.70], oak);
-  addBox(THREE, room, [4.12, 2.72, 0.11], [0, 2.65, -3.57], stone);
-  const crest = new THREE.Mesh(new THREE.TorusGeometry(0.69, 0.065, 8, 34), brass);
-  crest.position.set(0, 2.88, -3.42);
-  room.add(crest);
-  const pawnHead = new THREE.Mesh(new THREE.SphereGeometry(0.22, 14, 10), brass);
-  pawnHead.position.set(0, 3.08, -3.40);
-  room.add(pawnHead);
-  const pawnBody = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.34, 0.64, 14), brass);
-  pawnBody.position.set(0, 2.55, -3.40);
-  room.add(pawnBody);
+  addBox(THREE, room, [5.35, 0.035, 10.8], [0, -0.955, 1.2], runner);
+  addBox(THREE, room, [0.075, 0.045, 10.9], [-2.72, -0.92, 1.2], brass);
+  addBox(THREE, room, [0.075, 0.045, 10.9], [2.72, -0.92, 1.2], brass);
+
+  addWindow(THREE, room, -4.95, stoneEdge, glass, brass, velvet, coarse);
+  addWindow(THREE, room, 0, stoneEdge, glass, brass, velvet, coarse);
+  addWindow(THREE, room, 4.95, stoneEdge, glass, brass, velvet, coarse);
+
+  for (const x of [-7.2, -2.48, 2.48, 7.2]) {
+    addBox(THREE, room, [0.54, 6.55, 0.62], [x, 2.1, -3.85], stoneEdge);
+    addBox(THREE, room, [0.80, 0.24, 0.82], [x, -0.91, -3.82], stoneEdge);
+    addBox(THREE, room, [0.76, 0.20, 0.78], [x, 5.24, -3.82], stoneEdge);
+  }
+
+  addBanner(THREE, room, -2.50, 3.0, velvet, brass, .82);
+  addBanner(THREE, room, 2.50, 3.0, velvet, brass, .82);
+  addBanner(THREE, room, -7.46, 2.8, velvet, brass, .72);
+  addBanner(THREE, room, 7.46, 2.8, velvet, brass, .72);
+
+  addChair(THREE, room, 0, -2.48, oakEdge, brass, 1.08);
+  addChair(THREE, room, -4.0, -2.68, oakEdge, brass, .82);
+  addChair(THREE, room, 4.0, -2.68, oakEdge, brass, .82);
 
   const table = new THREE.Group();
-  table.position.set(0, -0.15, 1.55);
+  table.position.set(0, -0.20, 2.06);
   room.add(table);
-  addBox(THREE, table, [8.35, 0.34, 3.45], [0, 0.58, 0], oakEdge);
-  addBox(THREE, table, [7.92, 0.11, 3.06], [0, 0.79, 0], oak);
-  addBox(THREE, table, [7.72, 0.028, 2.85], [0, 0.86, 0], runner);
-  addBox(THREE, table, [8.10, 0.08, 0.12], [0, 0.88, 1.52], brass);
-  for (const x of [-3.55, 3.55]) {
-    for (const z of [-1.20, 1.20]) addBox(THREE, table, [0.38, 2.05, 0.38], [x, -0.56, z], oak);
+  addBox(THREE, table, [11.45, 0.38, 3.75], [0, 0.54, 0], oakEdge);
+  addBox(THREE, table, [11.08, 0.11, 3.36], [0, 0.78, 0], oak);
+  addBox(THREE, table, [10.74, 0.026, 3.06], [0, 0.86, 0], runner);
+  addBox(THREE, table, [11.15, 0.09, 0.14], [0, 0.89, 1.67], brass);
+  for (const x of [-4.95, 4.95]) {
+    for (const z of [-1.33, 1.33]) addBox(THREE, table, [0.42, 2.10, 0.42], [x, -0.58, z], oak);
   }
-  addBox(THREE, table, [7.45, 0.88, 0.24], [0, 0.02, 1.48], oak);
+  addBox(THREE, table, [10.55, 0.94, 0.28], [0, -0.03, 1.61], oakEdge);
 
-  const torchA = addTorch(THREE, room, -6.05, warm);
-  const torchB = addTorch(THREE, room, 6.05, warm);
+  for (const [x, z] of [[-4.5, -1.1], [-2.9, 1.0], [2.9, 1.0], [4.5, -1.1]]) {
+    addCandle(THREE, table, x, z, brass, warm);
+  }
+  addBox(THREE, table, [1.75, .06, 1.05], [-3.65, .90, .55], material(THREE, { color: 0xbca879, roughness: .92 }));
+  addBox(THREE, table, [1.28, .07, .82], [3.65, .91, .48], material(THREE, { color: 0x8e6b48, roughness: .88 }));
+  addCylinder(THREE, table, .14, .14, 1.18, [-1.45, .92, 1.05], oakEdge, 14).rotation.z = Math.PI / 2;
 
-  scene.add(new THREE.HemisphereLight(0x8194a2, 0x1b120d, coarse ? 1.1 : 1.28));
-  const key = new THREE.DirectionalLight(0xc3d8e7, coarse ? 1.2 : 1.48);
-  key.position.set(-5.5, 8.2, 6.5);
+  const torchLights = [
+    addTorch(THREE, room, -6.75, 1.72, warm, -1),
+    addTorch(THREE, room, -2.85, 1.58, warm, -1),
+    addTorch(THREE, room, 2.85, 1.58, warm, 1),
+    addTorch(THREE, room, 6.75, 1.72, warm, 1),
+  ];
+
+  scene.add(new THREE.HemisphereLight(0x7898b0, 0x1d1009, coarse ? 1.18 : 1.38));
+  const key = new THREE.DirectionalLight(0xbfdcf0, coarse ? 1.35 : 1.72);
+  key.position.set(-5.8, 8.5, 6.0);
   scene.add(key);
-  const fill = new THREE.PointLight(0xb67446, ambience === 'honour' ? 2.2 : 1.55, 10.5, 2);
-  fill.position.set(0, 4.6, 1.8);
+  const rim = new THREE.DirectionalLight(0x688fb2, coarse ? .62 : .82);
+  rim.position.set(6.5, 6.2, -1.5);
+  scene.add(rim);
+  const fill = new THREE.PointLight(0xc57d3f, ambience === 'honour' ? 2.75 : 2.15, 12.5, 2);
+  fill.position.set(0, 4.5, 2.4);
   scene.add(fill);
 
   let dust = null;
   if (!coarse) {
-    dust = createDust(THREE, 52);
+    dust = createDust(THREE, 58);
     scene.add(dust);
   }
 
@@ -243,12 +325,15 @@ function buildScene(THREE, { host, ambience }) {
       lastFrame = now;
       const t = now * 0.001;
       if (!reducedMotion) {
-        torchA.intensity = 1.36 + Math.sin(t * 5.2) * 0.10 + Math.sin(t * 8.7) * 0.05;
-        torchB.intensity = 1.38 + Math.sin(t * 4.8 + 1.3) * 0.11 + Math.sin(t * 9.2) * 0.04;
-        fill.intensity = (ambience === 'honour' ? 2.2 : 1.55) + Math.sin(t * 0.9) * 0.05;
+        torchLights.forEach((light, index) => {
+          light.intensity = 1.50
+            + Math.sin(t * (4.6 + index * .34) + index * 1.07) * .11
+            + Math.sin(t * (8.2 + index * .28) + index * .41) * .045;
+        });
+        fill.intensity = (ambience === 'honour' ? 2.75 : 2.15) + Math.sin(t * .83) * .06;
         if (dust) {
-          dust.rotation.y = Math.sin(t * 0.08) * 0.035;
-          dust.position.y = Math.sin(t * 0.17) * 0.04;
+          dust.rotation.y = Math.sin(t * .08) * .035;
+          dust.position.y = Math.sin(t * .17) * .045;
         }
       }
       renderer.render(scene, camera);
@@ -330,7 +415,7 @@ function ScenePortal({ ambience }) {
     <div
       ref={hostRef}
       className="home-great-hall-scene"
-      data-home-scene="three-v1"
+      data-home-scene="three-v2-approved-mock"
       data-home-scene-ambience={ambience || 'quiet'}
       aria-hidden="true"
     />
