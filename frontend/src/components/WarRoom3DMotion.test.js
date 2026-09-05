@@ -40,19 +40,22 @@ describe('WarRoom3DMotion', () => {
     expect(deriveMoveKinetics({ movingType: 'q', capture: true, coarsePointer: true }).duration).toBeLessThanOrEqual(200);
   });
 
-  it('uses local practical lights for the normal grade, stronger rim for check and a dim terminal tableau', () => {
+  it('locks the desktop v9 board key while leaving room exposure and practical ambience intact', () => {
     const normal = reactiveLightProfile();
     const check = reactiveLightProfile({ check: true });
     const terminal = reactiveLightProfile({ gameOver: true });
 
-    expect(normal.exposure).toBe(1.04);
-    expect(normal.key).toBeLessThanOrEqual(1.72);
-    expect(normal.warm).toBeLessThan(5.5);
-    expect(normal.rim).toBeLessThan(13);
+    expect(normal).toMatchObject({
+      key: 1.52,
+      rim: 12.15,
+      warm: 4.85,
+      exposure: 1.04,
+      fogDensity: 0.0172,
+    });
+    expect(check.key).toBe(1.84);
     expect(check.rim).toBeGreaterThan(normal.rim);
-    expect(check.key).toBeLessThanOrEqual(2.04);
     expect(check.warm).toBeLessThanOrEqual(normal.warm);
-    expect(terminal.key).toBeLessThanOrEqual(1.44);
+    expect(terminal.key).toBe(1.34);
     expect(terminal.exposure).toBeLessThan(normal.exposure);
     expect(terminal.rim).toBeLessThan(normal.rim);
     expect(terminal.fogDensity).toBeGreaterThan(normal.fogDensity);

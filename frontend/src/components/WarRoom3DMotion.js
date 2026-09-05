@@ -143,13 +143,14 @@ export function deriveMoveKinetics({ movingType = 'p', capture = false, promotio
 }
 
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
-  // v8 art direction: keep the room grade and practical lights stable, but pull
-  // the desktop board key down one more notch. This targets the ivory/white-side
-  // wash without dimming torches, rim separation or the wider War Room ambience.
+  // v9 art direction: the previous 1.72 key reduction was being visually masked by
+  // the room's independent practical lights (torches, sconces, desk lamps and museum
+  // keys). Keep those practicals and the global exposure intact, but move the actual
+  // desktop board key far enough down that the ivory side changes perceptibly.
   const baseExposure = coarsePointer ? 1.005 : 1.04;
   if (gameOver) {
     return {
-      key: coarsePointer ? 1.52 : 1.44,
+      key: coarsePointer ? 1.52 : 1.34,
       rim: coarsePointer ? 7.1 : 6.8,
       warm: coarsePointer ? 3.0 : 2.75,
       exposure: baseExposure - 0.075,
@@ -158,7 +159,7 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
   }
   if (check) {
     return {
-      key: coarsePointer ? 2.32 : 2.04,
+      key: coarsePointer ? 2.32 : 1.84,
       rim: coarsePointer ? 16.8 : 16.4,
       warm: coarsePointer ? 4.9 : 4.55,
       exposure: baseExposure + 0.005,
@@ -166,7 +167,7 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
     };
   }
   return {
-    key: coarsePointer ? 1.99 : 1.72,
+    key: coarsePointer ? 1.99 : 1.52,
     rim: coarsePointer ? 12.6 : 12.15,
     warm: coarsePointer ? 5.0 : 4.85,
     exposure: baseExposure,
