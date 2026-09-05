@@ -38,11 +38,19 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     });
   });
 
-  it('separa movimiento de actividad: desayuno conserva gesto de sorbo pero usa composición de desayuno', () => {
+  it('separa movimiento de actividad para desayuno, cerveza, ajedrez y sueño', () => {
     expect(matthiasHomeActivityProfile({
       scene: 'time-breakfast-news',
       activity: 'Desayuno y prensa',
     })).toBe('breakfast');
+    expect(matthiasHomeActivityProfile({
+      scene: 'time-beer-break',
+      activity: 'Cervezota reglamentaria',
+    })).toBe('beer');
+    expect(matthiasHomeActivityProfile({
+      scene: 'time-chess-inception',
+      activity: 'Ajedrez dentro del ajedrez',
+    })).toBe('think');
     expect(matthiasHomeActivityProfile({
       scene: 'time-late-sleep',
       activity: 'Siesta táctica',
@@ -107,7 +115,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     expect(html).toContain('data-three-full-3d="true"');
     expect(html).toContain('data-three-face-rig="premium-pawn-face-v1"');
     expect(html).toContain('data-three-articulated-face-rig="premium-pawn-face-v1"');
-    expect(html).toContain('data-three-activity-rig="activity-props-v3-sleep"');
+    expect(html).toContain('data-three-activity-rig="activity-props-v4-premium-routines"');
     expect(html).toContain('data-three-activity-profile="read"');
     expect(html).toContain('data-three-activity-prop="book"');
     expect(html).toContain('data-three-face-warp-limit="0.019"');
@@ -117,7 +125,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     expect(html).toContain('src="/assets/matthias-scenes/strategy-book.webp"');
   });
 
-  it('desayuno y sueño publican el mismo contrato semántico que debe conservar el 3D tras el fallback', () => {
+  it('desayuno, cerveza, ajedrez y sueño publican props propios manteniendo su movimiento base', () => {
     const breakfast = renderToStaticMarkup(
       <MatthiasHomeMicrogestureAvatar
         avatar="/assets/matthias-scenes/morning-coffee.webp"
@@ -128,7 +136,28 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     expect(breakfast).toContain('data-three-profile="sip"');
     expect(breakfast).toContain('data-three-activity-profile="breakfast"');
     expect(breakfast).toContain('data-three-activity-prop="breakfast"');
-    expect(breakfast).toContain('src="/assets/matthias-scenes/morning-coffee.webp"');
+
+    const beer = renderToStaticMarkup(
+      <MatthiasHomeMicrogestureAvatar
+        avatar="/assets/matthias-scenes/night-coffee.webp"
+        scene="time-beer-break"
+        activity="Cervezota reglamentaria"
+      />,
+    );
+    expect(beer).toContain('data-three-profile="sip"');
+    expect(beer).toContain('data-three-activity-profile="beer"');
+    expect(beer).toContain('data-three-activity-prop="beer"');
+
+    const chess = renderToStaticMarkup(
+      <MatthiasHomeMicrogestureAvatar
+        avatar="/assets/matthias-scenes/afternoon-ops.webp"
+        scene="time-chess-inception"
+        activity="Partida privada"
+      />,
+    );
+    expect(chess).toContain('data-three-profile="think"');
+    expect(chess).toContain('data-three-activity-profile="think"');
+    expect(chess).toContain('data-three-activity-prop="chess"');
 
     const sleep = renderToStaticMarkup(
       <MatthiasHomeMicrogestureAvatar
@@ -140,7 +169,6 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     expect(sleep).toContain('data-three-profile="sleep"');
     expect(sleep).toContain('data-three-activity-profile="sleep"');
     expect(sleep).toContain('data-three-activity-prop="blanket"');
-    expect(sleep).toContain('src="/assets/matthias-scenes/late-sleep.webp"');
   });
 
   it('hablar domina la cara pero conserva la actividad física que Matthias ya hacía', () => {
@@ -165,7 +193,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     );
     expect(html).toContain('data-three-motion="reduced"');
     expect(html).toContain('data-three-full-3d="true"');
-    expect(html).toContain('data-three-activity-rig="activity-props-v3-sleep"');
+    expect(html).toContain('data-three-activity-rig="activity-props-v4-premium-routines"');
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/base.webp"');
   });
