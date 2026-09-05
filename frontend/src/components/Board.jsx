@@ -102,13 +102,20 @@ export default function Board(props) {
     const onDocumentPointerMove = (event) => {
       if (!threeDHoveredSquareRef.current) return;
       const root = rootRef.current;
-      if (root && event.target && root.contains(event.target)) return;
+      if (!root) return;
+      const rect = root.getBoundingClientRect();
+      const x = Number(event.clientX);
+      const y = Number(event.clientY);
+      const insideBoard = Number.isFinite(x) && Number.isFinite(y)
+        && x >= rect.left && x <= rect.right
+        && y >= rect.top && y <= rect.bottom;
+      if (insideBoard) return;
       handleThreeDPieceMouseLeave(threeDHoveredSquareRef.current);
     };
 
-    // WebGL canvas leave events can be swallowed by portal/overlay transitions.
-    // Capture at document level while a 3D Board is active so a transient piece
-    // preview cannot survive after the pointer has physically left the board.
+    // WebGL may report a surprising DOM event.target while the pointer is still
+    // physically over its canvas. Geometry is the stable contract: keep hover
+    // while the pointer coordinates are inside the 3D board, close it outside.
     document.addEventListener('pointermove', onDocumentPointerMove, true);
     return () => document.removeEventListener('pointermove', onDocumentPointerMove, true);
   }, [inheritedRenderer, isThreeD, RegisteredBoard3D, props.onPieceMouseLeave]);
