@@ -25,6 +25,14 @@ function dot(a, b) {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
+function pointInside(rect, point) {
+  if (!rect) return false;
+  return point.x >= rect.x
+    && point.x <= rect.x + rect.width
+    && point.y >= rect.y
+    && point.y <= rect.y + rect.height;
+}
+
 // Deployment hover still needs one pointer coordinate. The gameplay assertions
 // below use Board3D's keyboard contract instead of guessing pixels.
 function projectSquare(rect, square, worldY = 0.12) {
@@ -141,8 +149,10 @@ test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre e
   const deployment = await openDeploymentForSpecialSurface(page);
 
   const board = deployment.locator('[data-board3d-war-room="true"]');
+  const boardSurface = deployment.locator('.preferred-board-3d');
   const canvas = deployment.locator('.board3d-main-canvas');
   await expect(board).toBeVisible({ timeout: READY });
+  await expect(boardSurface).toBeVisible({ timeout: READY });
   await expect(canvas).toBeVisible({ timeout: READY });
   await expect(board).toHaveAttribute('data-board3d-legal-target-count', /[1-9][0-9]*/);
   await expect(deployment.locator('.board3d-parity-details')).toHaveCount(1);
@@ -165,10 +175,21 @@ test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre e
   await expect(dossier).toHaveClass(/\bpreview\b/);
   await expect(dossier.getByText(/Vista rápida/i)).toBeVisible();
 
-  // Exercise the renderer's actual pointerleave listener deterministically.
-  // Moving to a projected "empty" square is camera-sensitive and can still
-  // resolve to the hovered unit; dispatching pointerleave hits the production
-  // WebGL contract directly without crossing the dossier hover bridge.
-  await canvas.dispatchEvent('pointerleave');
+  // Leave both the WebGL board and its portal dossier with a real pointer move.
+  // Board.jsx deliberately closes 3D hover by document-level geometry because
+  // WebGL/portal event targets are unreliable; exercising that public contract
+  // is deterministic and avoids guessing another projected chess square.
+  const surfaceRect = await boardSurface.boundingBox();
+  const dossierRect = await dossier.boundingBox();
+  const viewport = page.viewportSize();
+  const corners = [
+    { x: 2, y: 2 },
+    { x: viewport.width - 2, y: 2 },
+    { x: 2, y: viewport.height - 2 },
+    { x: viewport.width - 2, y: viewport.height - 2 },
+  ];
+  const exitPoint = corners.find((point) => !pointInside(surfaceRect, point) && !pointInside(dossierRect, point));
+  expect(exitPoint).toBeTruthy();
+  await page.mouse.move(exitPoint.x, exitPoint.y);
   await expect(dossier).toBeHidden({ timeout: 3_000 });
 });
