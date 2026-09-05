@@ -40,6 +40,10 @@ import {
   MATTHIAS_HOME_PROP_ERGONOMICS_VERSION,
 } from './matthiasHomePropErgonomics.js';
 import {
+  applyMatthiasHomePropContactRig,
+  MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION,
+} from './matthiasHomePropContactRig.js';
+import {
   applyMatthiasHomePrivateGameRig,
   clearMatthiasHomePrivateGameRig,
   MATTHIAS_PRIVATE_GAME_RIG_VERSION,
@@ -419,6 +423,7 @@ export default function MatthiasHomeMicrogestureAvatar({
       } else {
         clearMatthiasHomePrivateGameRig(rig);
       }
+      applyMatthiasHomePropContactRig(rig);
       renderer.render(scene3d, camera);
 
       frames += 1;
@@ -523,6 +528,7 @@ export default function MatthiasHomeMicrogestureAvatar({
       data-three-activity-profile={activityProfile}
       data-three-activity-rig={MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION}
       data-three-activity-ergonomics={MATTHIAS_HOME_PROP_ERGONOMICS_VERSION}
+      data-three-prop-contact-rig={MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION}
       data-three-private-game-rig={MATTHIAS_PRIVATE_GAME_RIG_VERSION}
       data-three-activity-prop={activityProp}
       data-three-activity-reach="0"
