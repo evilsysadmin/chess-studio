@@ -1,9 +1,23 @@
 import * as THREE from 'three';
 
-export const MATTHIAS_TACTICAL_MEAL_RIG_VERSION = 'tactical-meal-v1-four-course';
+export const MATTHIAS_TACTICAL_MEAL_RIG_VERSION = 'tactical-meal-v2-portrait-scale-arms';
 
 const MEAL_CLOCKS = new WeakMap();
 const MEAL_CYCLE_SECONDS = 24;
+
+const BASE_LIMB_SCALE = {
+  supportStem: [1, 1, 1],
+  supportGlove: [1.05, .76, .90],
+  assistStem: [1, 1, 1],
+  assistGlove: [1.03, .74, .88],
+};
+
+const MEAL_LIMB_SCALE = {
+  supportStem: [1.42, 1.18, 1.42],
+  supportGlove: [1.24, .92, 1.06],
+  assistStem: [1.42, 1.18, 1.42],
+  assistGlove: [1.22, .90, 1.04],
+};
 
 function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
@@ -54,6 +68,27 @@ function setLimb(stem, glove, stemPosition, stemRotationZ, glovePosition) {
   glove.position.set(...glovePosition);
 }
 
+function setScale(node, scale) {
+  if (!node || !Array.isArray(scale)) return;
+  node.scale.set(...scale);
+}
+
+function applyMealLimbScale(activityRig) {
+  if (!activityRig) return;
+  setScale(activityRig.supportStem, MEAL_LIMB_SCALE.supportStem);
+  setScale(activityRig.supportGlove, MEAL_LIMB_SCALE.supportGlove);
+  setScale(activityRig.assistStem, MEAL_LIMB_SCALE.assistStem);
+  setScale(activityRig.assistGlove, MEAL_LIMB_SCALE.assistGlove);
+}
+
+function restoreBaseLimbScale(activityRig) {
+  if (!activityRig) return;
+  setScale(activityRig.supportStem, BASE_LIMB_SCALE.supportStem);
+  setScale(activityRig.supportGlove, BASE_LIMB_SCALE.supportGlove);
+  setScale(activityRig.assistStem, BASE_LIMB_SCALE.assistStem);
+  setScale(activityRig.assistGlove, BASE_LIMB_SCALE.assistGlove);
+}
+
 function elapsedSeconds(rig, pose, active) {
   const explicit = Number(pose?.activityTime);
   if (Number.isFinite(explicit)) return Math.max(0, explicit);
@@ -99,6 +134,8 @@ function buildMealRig(rig) {
     return activityRig.tacticalMeal;
   }
 
+  if (activityRig.tacticalMeal) activityRig.root.remove(activityRig.tacticalMeal);
+
   const root = new THREE.Group();
   root.name = 'tactical-meal-rig';
   root.userData.rigVersion = MATTHIAS_TACTICAL_MEAL_RIG_VERSION;
@@ -122,7 +159,8 @@ function buildMealRig(rig) {
     opacity: .42,
   });
 
-  // Burger: deliberately chunky layers so it still reads as food at 128 px.
+  // Burger: intentionally oversized for the small Home portrait. It should read
+  // as Matthias eating a proper burger, not levitating a canapé toward his mouth.
   const burger = new THREE.Group();
   burger.name = 'tactical-meal-burger';
   root.add(burger);
@@ -216,9 +254,10 @@ export function applyMatthiasTacticalMeal(rig, pose = {}) {
     reducedMotion: Boolean(pose.activityReducedMotion),
   });
   setMealVisibility(activityRig, state.phase);
+  applyMealLimbScale(activityRig);
 
   const reach = clamp01(rig.root?.userData?.activityReach ?? pose.reach);
-  const biteLift = Math.sin(state.phaseProgress * Math.PI) * .13;
+  const biteLift = Math.sin(state.phaseProgress * Math.PI) * .17;
   const {
     ration,
     tacticalBurger: burger,
@@ -233,37 +272,38 @@ export function applyMatthiasTacticalMeal(rig, pose = {}) {
   } = activityRig;
 
   if (state.phase === 'burger') {
-    setPose(burger, [.12, -.46 + biteLift + reach * .10, .88], [-.10, -.14, -.035], .92);
+    setPose(burger, [.10, -.43 + biteLift + reach * .10, .91], [-.10, -.14, -.035], 1.30);
     support.visible = true;
     assist.visible = true;
-    setLimb(supportStem, supportGlove, [.36, -.34, .48], -.68, [.31, burger.position.y - .02, .80]);
-    setLimb(assistStem, assistGlove, [-.33, -.34, .47], .68, [-.11, burger.position.y - .02, .79]);
+    setLimb(supportStem, supportGlove, [.43, -.35, .62], -.70, [.38, burger.position.y - .02, .88]);
+    setLimb(assistStem, assistGlove, [-.42, -.35, .61], .70, [-.18, burger.position.y - .02, .87]);
     rig.headPivot.rotation.x += .025 + biteLift * .10;
   } else if (state.phase === 'bocata') {
-    setPose(ration, [.22, -.56 + biteLift * .72 + reach * .07, .80], [-.34, -.12, -.08], .90);
+    setPose(ration, [.18, -.52 + biteLift * .72 + reach * .07, .86], [-.31, -.12, -.08], 1.20);
     support.visible = true;
     assist.visible = true;
-    setLimb(supportStem, supportGlove, [.36, -.40, .48], -.60, [.39, ration.position.y + .05, .73]);
-    setLimb(assistStem, assistGlove, [-.28, -.40, .47], .67, [.03, ration.position.y + .05, .72]);
+    setLimb(supportStem, supportGlove, [.43, -.40, .62], -.64, [.44, ration.position.y + .06, .84]);
+    setLimb(assistStem, assistGlove, [-.42, -.40, .61], .68, [-.08, ration.position.y + .06, .83]);
   } else if (state.phase === 'field-ration') {
-    setPose(fieldRation, [.18, -.62 + reach * .04, .79], [-.48, -.18, -.08], .90);
+    setPose(fieldRation, [.15, -.57 + reach * .04, .86], [-.43, -.18, -.08], 1.17);
     support.visible = true;
     assist.visible = true;
-    setLimb(supportStem, supportGlove, [.35, -.42, .48], -.62, [.39, -.47, .72]);
-    setLimb(assistStem, assistGlove, [-.30, -.37, .47], .72, [-.05, -.35 + biteLift * .45, .76]);
+    setLimb(supportStem, supportGlove, [.43, -.42, .62], -.64, [.43, -.42, .83]);
+    setLimb(assistStem, assistGlove, [-.42, -.38, .61], .73, [-.08, -.31 + biteLift * .45, .84]);
     rig.headPivot.rotation.x += .035;
   } else {
-    const sipLift = Math.sin(state.phaseProgress * Math.PI) * .23;
-    setPose(canteen, [.43 - sipLift * .45, -.37 + sipLift + reach * .08, .83], [.18 + sipLift * .85, -.18, -.22], .88);
+    const sipLift = Math.sin(state.phaseProgress * Math.PI) * .25;
+    setPose(canteen, [.40 - sipLift * .42, -.35 + sipLift + reach * .08, .89], [.18 + sipLift * .85, -.18, -.22], 1.18);
     support.visible = true;
     assist.visible = false;
-    setLimb(supportStem, supportGlove, [.38, -.34, .48], -.68, [canteen.position.x + .05, canteen.position.y - .02, .74]);
+    setLimb(supportStem, supportGlove, [.43, -.34, .62], -.70, [canteen.position.x + .07, canteen.position.y - .02, .84]);
     rig.headPivot.rotation.x += sipLift * .22;
   }
 
   rig.root.userData.activityMealPhase = state.phase;
   rig.root.userData.activityMealPhaseProgress = state.phaseProgress;
   rig.root.userData.activityMealRigVersion = MATTHIAS_TACTICAL_MEAL_RIG_VERSION;
+  rig.root.userData.activityMealArmStyle = 'visible-holding-arms-v2';
   return state;
 }
 
@@ -274,6 +314,8 @@ export function clearMatthiasTacticalMeal(rig) {
   if (activityRig.tacticalBurger) activityRig.tacticalBurger.visible = false;
   if (activityRig.tacticalFieldRation) activityRig.tacticalFieldRation.visible = false;
   if (activityRig.tacticalCanteen) activityRig.tacticalCanteen.visible = false;
+  restoreBaseLimbScale(activityRig);
   rig.root.userData.activityMealPhase = 'inactive';
   rig.root.userData.activityMealPhaseProgress = 0;
+  rig.root.userData.activityMealArmStyle = 'inactive';
 }

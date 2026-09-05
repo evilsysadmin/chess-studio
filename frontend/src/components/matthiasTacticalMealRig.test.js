@@ -45,17 +45,26 @@ describe('Matthias tactical meal rig', () => {
     expect(state.phaseProgress).toBeGreaterThan(0);
   });
 
-  it('crea utilería premium y la sujeta físicamente según la fase', () => {
+  it('usa comida grande de retrato y brazos visibles, no telequinesis', () => {
     const rig = createMatthiasPremiumHome3D();
 
     let pose = bitePose(.8);
     applyMatthiasPremiumHomePose(rig, pose);
     let state = applyMatthiasTacticalMeal(rig, pose);
     expect(state.phase).toBe('burger');
+    expect(MATTHIAS_TACTICAL_MEAL_RIG_VERSION).toBe('tactical-meal-v2-portrait-scale-arms');
     expect(rig.activityRig.tacticalBurger.visible).toBe(true);
     expect(rig.activityRig.ration.visible).toBe(false);
+    expect(rig.activityRig.tacticalBurger.scale.x).toBeGreaterThanOrEqual(1.28);
     expect(rig.activityRig.support.visible).toBe(true);
     expect(rig.activityRig.assist.visible).toBe(true);
+    expect(rig.activityRig.supportStem.scale.x).toBeGreaterThan(1.35);
+    expect(rig.activityRig.assistStem.scale.x).toBeGreaterThan(1.35);
+    expect(rig.activityRig.supportStem.position.z).toBeGreaterThan(.58);
+    expect(rig.activityRig.assistStem.position.z).toBeGreaterThan(.58);
+    expect(rig.activityRig.supportGlove.position.z).toBeGreaterThan(.82);
+    expect(rig.activityRig.assistGlove.position.z).toBeGreaterThan(.82);
+    expect(rig.root.userData.activityMealArmStyle).toBe('visible-holding-arms-v2');
     expect(rig.root.getObjectByName('tactical-burger-patty')).toBeTruthy();
     expect(rig.root.getObjectByName('tactical-burger-cheese')).toBeTruthy();
 
@@ -64,13 +73,17 @@ describe('Matthias tactical meal rig', () => {
     state = applyMatthiasTacticalMeal(rig, pose);
     expect(state.phase).toBe('bocata');
     expect(rig.activityRig.ration.visible).toBe(true);
+    expect(rig.activityRig.ration.scale.x).toBeGreaterThanOrEqual(1.18);
     expect(rig.activityRig.tacticalBurger.visible).toBe(false);
+    expect(rig.activityRig.support.visible).toBe(true);
+    expect(rig.activityRig.assist.visible).toBe(true);
 
     pose = bitePose(13);
     applyMatthiasPremiumHomePose(rig, pose);
     state = applyMatthiasTacticalMeal(rig, pose);
     expect(state.phase).toBe('field-ration');
     expect(rig.activityRig.tacticalFieldRation.visible).toBe(true);
+    expect(rig.activityRig.tacticalFieldRation.scale.x).toBeGreaterThanOrEqual(1.15);
     expect(rig.root.getObjectByName('tactical-ration-mess-tin')).toBeTruthy();
     expect(rig.root.getObjectByName('tactical-ration-pouch')).toBeTruthy();
     expect(rig.root.getObjectByName('tactical-ration-spoon')).toBeTruthy();
@@ -80,7 +93,10 @@ describe('Matthias tactical meal rig', () => {
     state = applyMatthiasTacticalMeal(rig, pose);
     expect(state.phase).toBe('canteen');
     expect(rig.activityRig.tacticalCanteen.visible).toBe(true);
+    expect(rig.activityRig.tacticalCanteen.scale.x).toBeGreaterThanOrEqual(1.16);
+    expect(rig.activityRig.support.visible).toBe(true);
     expect(rig.activityRig.assist.visible).toBe(false);
+    expect(rig.activityRig.supportStem.position.z).toBeGreaterThan(.58);
     expect(rig.root.getObjectByName('tactical-canteen-body')).toBeTruthy();
     expect(rig.root.getObjectByName('tactical-canteen-strap')).toBeTruthy();
     expect(rig.root.userData.activityMealRigVersion).toBe(MATTHIAS_TACTICAL_MEAL_RIG_VERSION);
@@ -89,7 +105,10 @@ describe('Matthias tactical meal rig', () => {
     expect(rig.activityRig.tacticalBurger.visible).toBe(false);
     expect(rig.activityRig.tacticalFieldRation.visible).toBe(false);
     expect(rig.activityRig.tacticalCanteen.visible).toBe(false);
+    expect(rig.activityRig.supportStem.scale.x).toBe(1);
+    expect(rig.activityRig.assistStem.scale.x).toBe(1);
     expect(rig.root.userData.activityMealPhase).toBe('inactive');
+    expect(rig.root.userData.activityMealArmStyle).toBe('inactive');
 
     disposeMatthiasPremiumHome3D(rig);
   });
