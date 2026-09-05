@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { resolveBoard3DCameraFov } from './Board3DConfig.js';
 import { getCameraFramingProfile } from './Board3DSurfaces.js';
 import { warRoomDecorProfile } from './WarRoom3DMobileVisuals.js';
 import { getWarRoomMobileFramingProfile } from './WarRoomMobileFraming.js';
@@ -143,6 +144,7 @@ export function fitBoardCamera(camera, width, height, whiteSide) {
     : width;
   const mobileProfile = getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth });
   const profile = mobileProfile || getCameraFramingProfile(aspect);
+  camera.fov = resolveBoard3DCameraFov(aspect, { mobile: Boolean(mobileProfile) });
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
   const limitingFov = Math.min(verticalFov, horizontalFov);
@@ -159,5 +161,6 @@ export function fitBoardCamera(camera, width, height, whiteSide) {
   camera.userData.basePosition = camera.position.clone();
   camera.userData.baseTarget = target.clone();
   camera.userData.framingProfile = mobileProfile?.version || 'standard';
+  camera.userData.cameraFov = camera.fov;
   camera.updateProjectionMatrix();
 }
