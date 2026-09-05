@@ -45,6 +45,7 @@ Episodes never displace: active saved game, real return/reunion, active challeng
 - Exact rivalry result reconstruction rejects ambiguous aggregate jumps.
 - Daily audience and narrative context receive only bounded eligible callbacks.
 - Home uses deterministic evidence-backed copy and preserves the existing cadence/cooldown.
-- F5 preserves persistent memory through the backend; logout/login changes no identity or storage semantics.
+- F5-equivalent re-reads preserve the same persisted episode and re-observing the same aggregate creates no duplicate.
+- Logout/login changes no identity or storage semantics.
 - `Empezar de cero` deletes episodic progress through the existing Matthias reset document deletion while leaving daily quota semantics unchanged.
 - Existing single Matthias identity/personality is preserved.
