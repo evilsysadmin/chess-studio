@@ -1,59 +1,52 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { activateHomeCastleRoom } from './HomeCastleHubScene.jsx';
 
+function rootWith(entries = {}) {
+  return {
+    querySelector: vi.fn((selector) => entries[selector] || null),
+  };
+}
+
 describe('HomeCastleHubScene room navigation', () => {
-  beforeEach(() => {
-    document.body.innerHTML = '';
-  });
-
   it('prioriza continuar partida sobre partida rápida en la sala Jugar', () => {
-    const continueButton = document.createElement('button');
-    continueButton.className = 'home-continue-card';
-    const quickButton = document.createElement('button');
-    quickButton.className = 'home-mode-quick';
-    const onContinue = vi.fn();
-    const onQuick = vi.fn();
-    continueButton.addEventListener('click', onContinue);
-    quickButton.addEventListener('click', onQuick);
-    document.body.append(continueButton, quickButton);
+    const continueButton = { click: vi.fn() };
+    const quickButton = { click: vi.fn() };
+    const root = rootWith({
+      '.home-continue-card': continueButton,
+      '.home-mode-quick': quickButton,
+    });
 
-    expect(activateHomeCastleRoom('play')).toBe(true);
-    expect(onContinue).toHaveBeenCalledTimes(1);
-    expect(onQuick).not.toHaveBeenCalled();
+    expect(activateHomeCastleRoom('play', root)).toBe(true);
+    expect(continueButton.click).toHaveBeenCalledTimes(1);
+    expect(quickButton.click).not.toHaveBeenCalled();
+    expect(root.querySelector).toHaveBeenCalledWith('.home-continue-card');
   });
 
   it('usa las puertas existentes de torneo, Combat y desafío diario', () => {
-    const tournament = document.createElement('button');
-    tournament.className = 'home-mode-featured';
-    const combat = document.createElement('button');
-    combat.className = 'home-mode-campaign';
-    const daily = document.createElement('div');
-    daily.className = 'home-today-actions';
-    const dailyButton = document.createElement('button');
-    daily.appendChild(dailyButton);
-    const tournamentClick = vi.fn();
-    const combatClick = vi.fn();
-    const dailyClick = vi.fn();
-    tournament.addEventListener('click', tournamentClick);
-    combat.addEventListener('click', combatClick);
-    dailyButton.addEventListener('click', dailyClick);
-    document.body.append(tournament, combat, daily);
+    const tournament = { click: vi.fn() };
+    const combat = { click: vi.fn() };
+    const daily = { click: vi.fn() };
+    const root = rootWith({
+      '.home-mode-featured': tournament,
+      '.home-mode-campaign': combat,
+      '.home-today-actions button': daily,
+    });
 
-    expect(activateHomeCastleRoom('tournament')).toBe(true);
-    expect(activateHomeCastleRoom('combat')).toBe(true);
-    expect(activateHomeCastleRoom('daily')).toBe(true);
-    expect(tournamentClick).toHaveBeenCalledTimes(1);
-    expect(combatClick).toHaveBeenCalledTimes(1);
-    expect(dailyClick).toHaveBeenCalledTimes(1);
+    expect(activateHomeCastleRoom('tournament', root)).toBe(true);
+    expect(activateHomeCastleRoom('combat', root)).toBe(true);
+    expect(activateHomeCastleRoom('daily', root)).toBe(true);
+    expect(tournament.click).toHaveBeenCalledTimes(1);
+    expect(combat.click).toHaveBeenCalledTimes(1);
+    expect(daily.click).toHaveBeenCalledTimes(1);
   });
 
   it('lleva Entrenar a la zona real de aprendizaje sin inventar otra ruta', () => {
-    const learning = document.createElement('section');
-    learning.className = 'home-primary-group';
-    learning.scrollIntoView = vi.fn();
-    document.body.appendChild(learning);
+    const learning = { scrollIntoView: vi.fn() };
+    const root = rootWith({
+      '.home-primary-group:not(.home-modes-section)': learning,
+    });
 
-    expect(activateHomeCastleRoom('train')).toBe(true);
+    expect(activateHomeCastleRoom('train', root)).toBe(true);
     expect(learning.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
   });
 });
