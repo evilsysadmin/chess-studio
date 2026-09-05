@@ -13,9 +13,20 @@ describe('nextBestAction', () => {
     expect(nextBestAction({ outcome: 'draw' }).detail.toLowerCase()).not.toContain('revancha');
   });
 
-  it('adapta Home al último resultado terminado sin usar datos privados', () => {
-    expect(homeNextBestAction([{ state: 'started' }, { state: 'finished', outcome: 'loss' }]).id).toBe('practice');
-    expect(homeNextBestAction([{ state: 'finished', outcome: 'win' }]).id).toBe('tournament');
-    expect(homeNextBestAction([])).toBeNull();
+  it('hace que Home continúe el último modo principal terminado', () => {
+    expect(homeNextBestAction([
+      { state: 'started', mode: 'casual' },
+      { state: 'finished', mode: 'tournament', outcome: 'loss' },
+    ])).toMatchObject({ id: 'tournament', label: 'Continuar Torneo' });
+
+    expect(homeNextBestAction([
+      { state: 'finished', mode: 'practice', outcome: 'win' },
+      { state: 'finished', mode: 'casual', outcome: 'loss' },
+    ])).toMatchObject({ id: 'practice', label: 'Continuar práctica' });
+  });
+
+  it('ignora modos sin retorno directo y cae a partida rápida cuando no hay núcleo previo', () => {
+    expect(homeNextBestAction([{ state: 'finished', mode: 'boss', outcome: 'win' }])).toMatchObject({ id: 'quick', label: 'Jugar ahora' });
+    expect(homeNextBestAction([])).toMatchObject({ id: 'quick', label: 'Jugar ahora' });
   });
 });
