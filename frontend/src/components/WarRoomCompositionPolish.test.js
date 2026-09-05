@@ -117,11 +117,11 @@ describe('WarRoomCompositionPolish', () => {
       if (['war-room-hammerbeam-brace', 'war-room-armor-alcove-pointed-arch'].includes(object.name)) diagonalBraces.push(object);
     });
     expect(diagonalBraces.every((brace) => brace.visible === false)).toBe(true);
-    expect(room.getObjectByName('war-room-hammerbeam-side-tie').visible).toBe(false);
-    expect(room.getObjectByName('war-room-armor-alcove-left').visible).toBe(false);
-    expect(room.getObjectByName('war-room-armor-alcove-right').visible).toBe(false);
-    expect(room.getObjectByName('war-room-gallery-picture-rail').visible).toBe(false);
-    expect(room.getObjectByName('war-room-gallery-picture-rail-brass-line').visible).toBe(false);
+    expect(room.getObjectByName('war-room-hammerbeam-side-tie')).toBeUndefined();
+    expect(room.getObjectByName('war-room-armor-alcove-left')).toBeUndefined();
+    expect(room.getObjectByName('war-room-armor-alcove-right')).toBeUndefined();
+    expect(room.getObjectByName('war-room-gallery-picture-rail')).toBeUndefined();
+    expect(room.getObjectByName('war-room-gallery-picture-rail-brass-line')).toBeUndefined();
 
     dispose(room);
   });
