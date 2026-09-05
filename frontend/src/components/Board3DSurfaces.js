@@ -3,6 +3,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import './Board3DSurfaces.css';
 
 export const PREMIUM_SURFACE_VERSION = 'premium-v8';
+export const WAR_ROOM_POST_PAINT_PREMIUM_VERSION = 'post-paint-premium-v1';
 
 const SURFACE_ROLES_TO_PRESERVE = new Set([
   'ivory',
@@ -17,6 +18,12 @@ const KNOWN_WOOD_COLORS = new Set([
   0x2a160d, 0x130b07, 0x34251f, 0x302016, 0x100b08,
 ]);
 const KNOWN_BURGUNDY_COLORS = new Set([0x5b2028, 0x2e1015, 0x5d2926]);
+const DECOR_MICRO_SEEDS = Object.freeze({
+  wood: 0x51a3,
+  leather: 0x7c11,
+  fabric: 0x9d2b,
+  metal: 0xc0de,
+});
 
 export function getCameraFramingProfile(aspect) {
   const safeAspect = Math.max(0.35, Number(aspect) || 1);
@@ -259,8 +266,7 @@ function classifyDecorSurface(material) {
   return null;
 }
 
-function tuneExistingDecorMaterial(material, kind, coarsePointer, seed) {
-  const micro = coarsePointer ? null : createMicroSurfaceMap({ seed, kind, coarsePointer });
+function tuneExistingDecorMaterial(material, kind, micro) {
   if (kind === 'wood') {
     material.color.multiplyScalar(0.78);
     material.metalness = Math.min(material.metalness ?? 0.03, 0.035);
@@ -315,9 +321,9 @@ function tuneShadowBudget(object, budget) {
 
 export function applyPremiumDecorSurfacePass(root, { coarsePointer = false } = {}) {
   const seen = new Set();
+  const sharedMicro = new Map();
   const stats = { wood: 0, leather: 0, fabric: 0, metal: 0, total: 0 };
   const budget = warRoomRenderBudget({ coarsePointer });
-  let index = 0;
 
   root?.traverse?.((object) => {
     tuneShadowBudget(object, budget);
@@ -327,18 +333,26 @@ export function applyPremiumDecorSurfacePass(root, { coarsePointer = false } = {
       seen.add(material);
       const kind = classifyDecorSurface(material);
       if (!kind) continue;
-      const hex = material.color?.getHex?.() ?? 0;
-      const seed = (hex ^ Math.imul(index + 1, 2654435761)) >>> 0;
-      tuneExistingDecorMaterial(material, kind, coarsePointer, seed);
+
+      const needsMicro = !coarsePointer && !material.roughnessMap && !material.bumpMap;
+      if (needsMicro && !sharedMicro.has(kind)) {
+        sharedMicro.set(kind, createMicroSurfaceMap({
+          seed: DECOR_MICRO_SEEDS[kind] ?? 1,
+          kind,
+          coarsePointer: false,
+        }));
+      }
+      tuneExistingDecorMaterial(material, kind, needsMicro ? sharedMicro.get(kind) : null);
       stats[kind] += 1;
       stats.total += 1;
-      index += 1;
     }
   });
 
   if (root?.userData) {
     root.userData.premiumDecorSurfacePass = PREMIUM_SURFACE_VERSION;
     root.userData.premiumDecorSurfaceStats = stats;
+    root.userData.premiumDecorSurfaceTextureSharing = 'per-kind-v1';
+    root.userData.premiumDecorSurfaceTextureCount = sharedMicro.size;
     root.userData.warRoomRenderBudget = budget;
   }
   return stats;
@@ -352,9 +366,60 @@ function disposeEnvironmentScene(scene) {
   });
 }
 
+function scheduleAfterFirstPaint(tasks) {
+  const queue = tasks.filter((task) => typeof task === 'function');
+  let cancelled = false;
+  let rafId = 0;
+  let timerId = 0;
+  let idleId = 0;
+
+  const scheduleTurn = (callback) => {
+    if (cancelled) return;
+    if (typeof window !== 'undefined' && typeof window.requestIdleCallback === 'function') {
+      idleId = window.requestIdleCallback(callback, { timeout: 180 });
+      return;
+    }
+    timerId = setTimeout(callback, 0);
+  };
+
+  const runNext = () => {
+    if (cancelled || queue.length === 0) return;
+    const task = queue.shift();
+    task();
+    if (queue.length > 0) scheduleTurn(runNext);
+  };
+
+  const afterPaint = () => {
+    if (cancelled) return;
+    // rAF callbacks run before paint. Hopping to a timer/idle callback here is
+    // deliberate: the browser gets to present the already-rendered War Room
+    // before we compile PMREM or generate decorative micro-surface textures.
+    scheduleTurn(runNext);
+  };
+
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    rafId = window.requestAnimationFrame(afterPaint);
+  } else {
+    timerId = setTimeout(afterPaint, 0);
+  }
+
+  return () => {
+    cancelled = true;
+    if (rafId && typeof window !== 'undefined' && typeof window.cancelAnimationFrame === 'function') {
+      window.cancelAnimationFrame(rafId);
+    }
+    if (timerId) clearTimeout(timerId);
+    if (idleId && typeof window !== 'undefined' && typeof window.cancelIdleCallback === 'function') {
+      window.cancelIdleCallback(idleId);
+    }
+  };
+}
+
 export function installPremiumEnvironment(renderer, scene, { coarsePointer = false } = {}) {
   if (!renderer || !scene) return () => {};
   let cancelled = false;
+  let target = null;
+  let room = null;
   const budget = warRoomRenderBudget({
     coarsePointer,
     devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 1,
@@ -365,28 +430,50 @@ export function installPremiumEnvironment(renderer, scene, { coarsePointer = fal
   renderer.setPixelRatio?.(budget.pixelRatio);
   scene.userData.warRoomRenderBudget = budget;
 
-  const runDecorPass = () => {
-    if (!cancelled) applyPremiumDecorSurfacePass(scene, { coarsePointer });
-  };
-  if (typeof queueMicrotask === 'function') queueMicrotask(runDecorPass);
-  else Promise.resolve().then(runDecorPass);
-
   if (coarsePointer) {
+    // Mobile/lite has no microtexture generation nor PMREM. This pass is cheap
+    // and keeping it synchronous avoids needing another explicit repaint.
+    applyPremiumDecorSurfacePass(scene, { coarsePointer: true });
+    scene.userData.warRoomPremiumWork = 'lite-synchronous';
     return () => { cancelled = true; };
   }
 
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const room = new RoomEnvironment();
-  const target = pmrem.fromScene(room, 0.035);
-  scene.environment = target.texture;
-  scene.environmentIntensity = 0.46;
-  scene.userData.premiumIbl = true;
-  pmrem.dispose();
+  scene.userData.warRoomPremiumWork = WAR_ROOM_POST_PAINT_PREMIUM_VERSION;
+  scene.userData.warRoomPremiumWorkPending = 2;
+
+  const finishTask = (name) => {
+    if (cancelled) return;
+    scene.userData.warRoomPremiumWorkPending = Math.max(0, (scene.userData.warRoomPremiumWorkPending || 1) - 1);
+    scene.userData.warRoomPremiumLastTask = name;
+    if (scene.userData.warRoomPremiumWorkPending === 0) scene.userData.warRoomPremiumReady = true;
+  };
+
+  const cancelPostPaint = scheduleAfterFirstPaint([
+    () => {
+      if (cancelled) return;
+      applyPremiumDecorSurfacePass(scene, { coarsePointer: false });
+      finishTask('decor-surfaces');
+    },
+    () => {
+      if (cancelled) return;
+      const pmrem = new THREE.PMREMGenerator(renderer);
+      room = new RoomEnvironment();
+      target = pmrem.fromScene(room, 0.035);
+      if (!cancelled) {
+        scene.environment = target.texture;
+        scene.environmentIntensity = 0.46;
+        scene.userData.premiumIbl = true;
+      }
+      pmrem.dispose();
+      finishTask('pmrem-ibl');
+    },
+  ]);
 
   return () => {
     cancelled = true;
-    if (scene.environment === target.texture) scene.environment = null;
-    target.dispose();
+    cancelPostPaint();
+    if (target && scene.environment === target.texture) scene.environment = null;
+    target?.dispose?.();
     disposeEnvironmentScene(room);
   };
 }
