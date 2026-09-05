@@ -1,5 +1,6 @@
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import './CastleHallsModal.css';
+import './HomeCastleHallsDoor.css';
 
 function GalleryWall({ title, subtitle, entries, tone, onReviewGame }) {
   return (
