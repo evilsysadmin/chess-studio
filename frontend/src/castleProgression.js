@@ -152,7 +152,7 @@ export function castleHonourObjects(ledger, achievementDescriptions = {}) {
     if (!unlock) continue;
     const catalog = CATALOG_BY_OBJECT.get(unlock.objectId);
     const current = strongestByFamily.get(catalog.family);
-    if (!current || catalog.prestige > current.prestige) {
+    if (!current || catalog.prestige > current.catalog.prestige) {
       strongestByFamily.set(catalog.family, { catalog, unlock });
     }
   }
