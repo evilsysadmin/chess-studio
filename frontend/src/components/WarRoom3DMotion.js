@@ -143,14 +143,13 @@ export function deriveMoveKinetics({ movingType = 'p', capture = false, promotio
 }
 
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
-  // v9 art direction: the previous 1.72 key reduction was being visually masked by
-  // the room's independent practical lights (torches, sconces, desk lamps and museum
-  // keys). Keep those practicals and the global exposure intact, but move the actual
-  // desktop board key far enough down that the ivory side changes perceptibly.
+  // Fine tuning after live visual review: keep room practicals and global exposure
+  // untouched, and lower only the desktop directional key one modest notch. This
+  // darkens the ivory pieces/tiles without flattening torches, sconces or wall depth.
   const baseExposure = coarsePointer ? 1.005 : 1.04;
   if (gameOver) {
     return {
-      key: coarsePointer ? 1.52 : 1.34,
+      key: coarsePointer ? 1.52 : 1.26,
       rim: coarsePointer ? 7.1 : 6.8,
       warm: coarsePointer ? 3.0 : 2.75,
       exposure: baseExposure - 0.075,
@@ -159,7 +158,7 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
   }
   if (check) {
     return {
-      key: coarsePointer ? 2.32 : 1.84,
+      key: coarsePointer ? 2.32 : 1.74,
       rim: coarsePointer ? 16.8 : 16.4,
       warm: coarsePointer ? 4.9 : 4.55,
       exposure: baseExposure + 0.005,
@@ -167,7 +166,7 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
     };
   }
   return {
-    key: coarsePointer ? 1.99 : 1.52,
+    key: coarsePointer ? 1.99 : 1.42,
     rim: coarsePointer ? 12.6 : 12.15,
     warm: coarsePointer ? 5.0 : 4.85,
     exposure: baseExposure,
