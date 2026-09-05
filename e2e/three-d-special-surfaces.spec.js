@@ -175,12 +175,20 @@ test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre e
   await expect(dossier).toHaveClass(/\bpreview\b/);
   await expect(dossier.getByText(/Vista rápida/i)).toBeVisible();
 
-  // Leave both the WebGL board and its portal dossier with a real pointer move.
-  // Board.jsx deliberately closes 3D hover by document-level geometry because
-  // WebGL/portal event targets are unreliable; exercising that public contract
-  // is deterministic and avoids guessing another projected chess square.
+  // The dossier is intentionally a hover bridge: moving from the WebGL piece
+  // into the fixed portal keeps the preview alive so the user can inspect it.
+  // Exercise that real interaction first, then leave both surfaces. A one-step
+  // pointer teleport from WebGL straight to a distant corner can skip the
+  // portal's mouseenter/mouseleave pair and is not representative user input.
   const surfaceRect = await boardSurface.boundingBox();
   const dossierRect = await dossier.boundingBox();
+  expect(dossierRect).toBeTruthy();
+  await page.mouse.move(
+    dossierRect.x + dossierRect.width / 2,
+    dossierRect.y + Math.min(24, dossierRect.height / 2),
+  );
+  await expect(dossier).toBeVisible();
+
   const viewport = page.viewportSize();
   const corners = [
     { x: 2, y: 2 },
