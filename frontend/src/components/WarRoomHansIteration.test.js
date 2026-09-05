@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
 import {
   hansQuickIterationFrame,
+  installWarRoomHansSceneRoutine,
   isWarRoomHansQuickIterationEnabled,
   setWarRoomHansQuickIterationEnabled,
   shouldForceHansQuickIteration,
@@ -113,9 +114,9 @@ describe('Hans quick-game visual iteration', () => {
     const room = buildPremiumWarRoomLayer({ felt: 0x173943, glow: 0xc5963f }, true, true);
 
     try {
-      const finalizerDriver = room.getObjectByName('war-room-premium-painting-canvas');
-      expect(typeof finalizerDriver?.onBeforeRender).toBe('function');
-      finalizerDriver.onBeforeRender();
+      // Mobile intentionally skips the desktop deferred museum finalizer, so
+      // exercise the shared scene routine directly with the real coarse flag.
+      expect(installWarRoomHansSceneRoutine(room, { towardBoard: 1, coarsePointer: true })).toBeGreaterThan(0);
 
       const hans = room.getObjectByName('war-room-hans-butler');
       const driver = room.getObjectByName('war-room-hans-fireplace-driver');
@@ -139,10 +140,7 @@ describe('Hans quick-game visual iteration', () => {
     const room = buildPremiumWarRoomLayer({ felt: 0x173943, glow: 0xc5963f }, true, true);
 
     try {
-      const finalizerDriver = room.getObjectByName('war-room-premium-painting-canvas');
-      expect(typeof finalizerDriver?.onBeforeRender).toBe('function');
-      finalizerDriver.onBeforeRender();
-
+      expect(installWarRoomHansSceneRoutine(room, { towardBoard: 1, coarsePointer: true })).toBeGreaterThan(0);
       expect(room.getObjectByName('war-room-hans-service-door')).toBeTruthy();
       expect(room.getObjectByName('war-room-hans-butler')).toBeFalsy();
       expect(room.getObjectByName('war-room-hans-fireplace-driver')).toBeFalsy();
