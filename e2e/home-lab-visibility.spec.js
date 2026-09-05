@@ -39,6 +39,47 @@ test('Home · aprendizaje secundario se revela bajo demanda y Experimentos genia
   await page.setViewportSize({ width: 1552, height: 900 });
   await openHome(page);
 
+  const commandContract = await page.locator('.home-modes-section').evaluate((section) => {
+    const heading = section.querySelector('.home-group-heading');
+    const title = heading?.querySelector('h2');
+    const actions = heading?.querySelector('.home-heading-actions');
+    const description = actions?.querySelector('p');
+    const guide = actions?.querySelector('.home-context-guide');
+    const grid = section.querySelector('.home-primary-grid');
+    const headingRect = heading?.getBoundingClientRect();
+    const titleRect = title?.getBoundingClientRect();
+    const gridRect = grid?.getBoundingClientRect();
+    const descriptionRect = description?.getBoundingClientRect();
+    const guideRect = guide?.getBoundingClientRect();
+    const pseudoStyle = title ? getComputedStyle(title, '::after') : null;
+    const lineHeight = pseudoStyle ? Number.parseFloat(pseudoStyle.lineHeight) : 0;
+    const fontSize = pseudoStyle ? Number.parseFloat(pseudoStyle.fontSize) : 0;
+    const titleLines = titleRect && lineHeight > 0 ? titleRect.height / lineHeight : 0;
+
+    return {
+      headingHeight: headingRect?.height || 0,
+      titleLines,
+      titleFontSize: fontSize,
+      cardsGap: headingRect && gridRect ? gridRect.top - headingRect.bottom : 999,
+      leftEdgeDelta: headingRect && gridRect ? Math.abs(headingRect.left - gridRect.left) : 999,
+      rightEdgeDelta: headingRect && gridRect ? Math.abs(headingRect.right - gridRect.right) : 999,
+      actionMidlineDelta: descriptionRect && guideRect
+        ? Math.abs((descriptionRect.top + descriptionRect.height / 2) - (guideRect.top + guideRect.height / 2))
+        : 999,
+    };
+  });
+
+  expect(commandContract.headingHeight).toBeGreaterThan(0);
+  expect(commandContract.headingHeight).toBeLessThanOrEqual(150);
+  expect(commandContract.titleLines).toBeGreaterThan(0);
+  expect(commandContract.titleLines).toBeLessThanOrEqual(2.1);
+  expect(commandContract.titleFontSize).toBeLessThanOrEqual(50);
+  expect(commandContract.cardsGap).toBeGreaterThanOrEqual(-1);
+  expect(commandContract.cardsGap).toBeLessThanOrEqual(32);
+  expect(commandContract.leftEdgeDelta).toBeLessThanOrEqual(8);
+  expect(commandContract.rightEdgeDelta).toBeLessThanOrEqual(8);
+  expect(commandContract.actionMidlineDelta).toBeLessThanOrEqual(12);
+
   const learning = page.locator('details.home-learning-more');
   await expect(learning).not.toHaveAttribute('open', '');
   await expect(learning.getByRole('heading', { name: 'Puzzles', exact: true })).toBeHidden();
