@@ -1,0 +1,593 @@
+/* Home Command Dais · Steam-facing composition experiment
+ *
+ * Product goal: stop presenting Home as a catalogue of equally weighted cards.
+ * The Great Hall remains the world; the foreground becomes one decisive play
+ * surface. Tournament + Combat form the campaign wing, while Quick Match owns
+ * the large command table. Daily context stays useful but quiet.
+ *
+ * Desktop-only on purpose. Existing tablet/mobile composition remains intact
+ * until the asymmetric desktop proposal has earned its keep in staging.
+ */
+
+@media (min-width: 1100px) {
+  body:has(.home-friendly) {
+    background:
+      radial-gradient(circle at 76% 18%, rgba(189, 144, 53, .08), transparent 31rem),
+      radial-gradient(circle at 37% -6%, rgba(53, 78, 98, .20), transparent 39rem),
+      linear-gradient(180deg, #090e14 0%, #0d141c 54%, #080d12 100%);
+  }
+
+  body:has(.home-friendly) .app-shell {
+    --home-rail: 198px;
+    padding-left: calc(var(--home-rail) + 1rem);
+  }
+
+  body:has(.home-friendly) .app-shell::after {
+    color: rgba(214, 174, 77, .48);
+    letter-spacing: .27em;
+  }
+
+  /* Masthead: title, not billboard. Give the room back to the playable surface. */
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) {
+    min-height: 148px;
+    margin-bottom: .62rem;
+    padding-top: .78rem;
+    padding-bottom: .72rem;
+    border-bottom-color: rgba(199, 159, 68, .14);
+    background:
+      linear-gradient(90deg, rgba(7, 11, 15, .03), rgba(10, 15, 20, .38) 20%, rgba(10, 15, 20, .48) 50%, rgba(10, 15, 20, .28) 82%, rgba(7, 11, 15, .03)),
+      radial-gradient(circle at 50% -38%, rgba(83, 103, 116, .12), transparent 22rem);
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) h1 {
+    font-size: clamp(2.8rem, 3.55vw, 4rem);
+    letter-spacing: -.05em;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .masthead-text::before {
+    content: 'GRAN SALÓN · TU PARTIDA, TU CAMPAÑA, TU CASTILLO';
+    color: rgba(225, 216, 194, .54);
+    font-size: .52rem;
+  }
+
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .status-chip,
+  body:has(.home-friendly) .masthead:not(.masthead-game-compact) .status-chip.status-chip-compact {
+    min-height: 34px;
+    padding: .36rem .66rem;
+    background: rgba(6, 10, 14, .48);
+  }
+
+  /* Resident rail: slightly slimmer so the hall reads as product, not sidebar. */
+  body:has(.home-friendly) .global-music-dock,
+  body:has(.home-friendly) .global-music-dock:has(.music-deck-collapsed) {
+    width: 174px;
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-viewport,
+  body:has(.home-friendly) .matthias-resident.is-viewport.is-quiet {
+    left: .72rem;
+    width: 170px;
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-viewport .matthias-resident__character {
+    width: 158px;
+    min-width: 158px;
+    background: linear-gradient(180deg, rgba(8, 12, 17, .80), rgba(7, 10, 14, .91));
+    border-color: rgba(201, 163, 67, .40);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, .28), inset 0 1px rgba(255,255,255,.026);
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-viewport .matthias-resident__portrait-shell {
+    width: 142px;
+    height: 148px;
+  }
+
+  body:has(.home-friendly) .menu.home-friendly {
+    gap: .68rem;
+    padding-top: .45rem;
+    padding-right: .8rem;
+    padding-bottom: 1.7rem;
+    padding-left: calc(var(--home-rail) + 1rem);
+  }
+
+  /* A recovered game outranks every discovery surface. */
+  body:has(.home-friendly) .home-continue-group {
+    margin: 0;
+  }
+
+  body:has(.home-friendly) .home-continue-card {
+    min-height: 70px;
+    padding: .72rem 1rem;
+    border-color: rgba(226, 181, 64, .66);
+    background:
+      radial-gradient(circle at 78% 50%, rgba(215, 166, 49, .14), transparent 23rem),
+      linear-gradient(90deg, rgba(17, 24, 30, .96), rgba(9, 14, 19, .94));
+    box-shadow: 0 12px 28px rgba(0,0,0,.22), inset 0 1px rgba(255, 241, 188, .05);
+  }
+
+  body:has(.home-friendly) .home-continue-copy strong {
+    font-size: 1.2rem;
+  }
+
+  body:has(.home-friendly) .home-continue-copy small {
+    color: rgba(232, 224, 203, .62);
+  }
+
+  /* Daily + recommendation become a briefing ribbon, not two dashboard cards. */
+  body:has(.home-friendly) .menu.home-friendly > .home-today-card,
+  body:has(.home-friendly) .menu.home-friendly > .home-next-action {
+    height: 102px;
+    min-height: 102px;
+    border-color: rgba(196, 156, 66, .30);
+    border-radius: 8px;
+    background:
+      linear-gradient(135deg, rgba(10, 16, 21, .84), rgba(7, 11, 15, .76));
+    box-shadow: inset 0 1px rgba(255,255,255,.022), 0 9px 22px rgba(0,0,0,.16);
+    backdrop-filter: blur(6px);
+  }
+
+  body:has(.home-friendly) .menu.home-friendly > .home-today-card {
+    padding: .72rem .9rem;
+    grid-template-columns: auto minmax(170px, .78fr) minmax(225px, 1fr) auto;
+    gap: .68rem;
+  }
+
+  body:has(.home-friendly) .home-today-emblem {
+    width: 34px;
+    height: 34px;
+    background: rgba(202, 161, 60, .055);
+  }
+
+  body:has(.home-friendly) .home-today-emblem::before {
+    font-size: 1.1rem;
+  }
+
+  body:has(.home-friendly) .home-today-copy .section-label,
+  body:has(.home-friendly) .home-next-action .section-label {
+    color: rgba(215, 174, 72, .76);
+    font-size: .52rem;
+    letter-spacing: .20em;
+  }
+
+  body:has(.home-friendly) .home-today-copy strong {
+    font-size: .91rem;
+  }
+
+  body:has(.home-friendly) .home-today-copy small,
+  body:has(.home-friendly) .home-next-action small {
+    color: rgba(230, 222, 202, .54);
+    font-size: .64rem;
+  }
+
+  body:has(.home-friendly) .home-today-missions {
+    gap: .18rem .42rem;
+  }
+
+  body:has(.home-friendly) .home-today-missions button {
+    padding: .26rem .42rem;
+    border: 1px solid rgba(190, 151, 63, .17);
+    border-radius: 999px;
+    background: rgba(255,255,255,.015);
+    font-size: .61rem;
+  }
+
+  body:has(.home-friendly) .home-today-missions button + button::before {
+    content: none;
+    margin: 0;
+  }
+
+  body:has(.home-friendly) .home-today-streaks {
+    font-size: .59rem;
+    color: rgba(225, 217, 198, .46);
+  }
+
+  body:has(.home-friendly) .home-today-actions button,
+  body:has(.home-friendly) .home-next-action .secondary-btn {
+    min-height: 34px;
+    padding: .48rem .7rem;
+    border-color: rgba(216, 174, 69, .50);
+    background: linear-gradient(180deg, rgba(157, 118, 31, .86), rgba(91, 64, 12, .91));
+    font-size: .68rem;
+  }
+
+  body:has(.home-friendly) .menu.home-friendly > .home-next-action {
+    padding: .72rem .82rem .72rem 1rem;
+  }
+
+  body:has(.home-friendly) .home-next-action strong {
+    color: #eadab7;
+    font-size: 1.02rem;
+  }
+
+  /* ── Command dais ─────────────────────────────────────────────────────
+   * DOM remains Tournament → Combat → Quick Match.
+   * Visual reading remains left stack → right command table, so keyboard and
+   * spatial order do not contradict each other.
+   */
+  body:has(.home-friendly) .home-modes-section {
+    margin-top: .18rem;
+    padding-top: .08rem;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-group-heading {
+    margin-bottom: .54rem;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-group-heading h2::after {
+    content: 'Elige mesa';
+    color: #f0e3c3;
+    font-size: clamp(1.72rem, 1.95vw, 2.18rem);
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-group-heading .section-label::after {
+    content: ' · SALÓN PRINCIPAL';
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-heading-actions > p {
+    color: rgba(229, 220, 199, .42);
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, .78fr) minmax(520px, 1.55fr);
+    grid-template-rows: repeat(2, minmax(132px, auto));
+    gap: .72rem .82rem;
+    align-items: stretch;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(2) {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  body:has(.home-friendly) .home-modes-section .menu-card-shell {
+    height: 100%;
+  }
+
+  /* Campaign wing: useful, tactile, deliberately subordinate. */
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(-n+2) .home-mode-card {
+    min-height: 132px;
+    height: 100%;
+    padding: .9rem 1rem .78rem;
+    border-color: rgba(199, 158, 69, .38);
+    background: rgba(7, 12, 16, .84);
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(-n+2) .home-mode-card::after {
+    background: linear-gradient(90deg, rgba(4, 9, 13, .985) 0%, rgba(4, 9, 13, .91) 50%, rgba(4, 9, 13, .36) 78%, rgba(4, 9, 13, .08) 100%);
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(-n+2) .home-mode-art {
+    width: 48%;
+    opacity: .68;
+    filter: saturate(.78) contrast(1.06) brightness(.73);
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(-n+2) .home-mode-icon {
+    display: none;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(-n+2) .home-mode-copy {
+    max-width: 66%;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(-n+2) .home-mode-kicker {
+    font-size: .49rem;
+    letter-spacing: .15em;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(-n+2) .home-mode-copy h3 {
+    margin: .24rem 0 .28rem;
+    font-size: 1.24rem;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(-n+2) .home-mode-description {
+    display: -webkit-box;
+    max-width: 15rem;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    color: rgba(235, 227, 207, .62);
+    font-size: .64rem;
+    line-height: 1.35;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(-n+2) .home-mode-progress {
+    left: auto;
+    right: 2.9rem;
+    bottom: .7rem;
+    font-size: .52rem;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(-n+2) .menu-card-cta {
+    right: .72rem;
+    bottom: .62rem;
+    width: 34px;
+    min-width: 34px;
+    max-width: 34px;
+    height: 34px;
+    border-color: rgba(222, 180, 72, .56);
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(-n+2) .menu-card-cta::after {
+    font-size: 1.48rem;
+  }
+
+  /* Quick Match is the table in the middle of the room. */
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) .home-mode-card {
+    min-height: 276px;
+    height: 100%;
+    padding: 1.5rem 1.55rem 1.35rem;
+    overflow: hidden;
+    border-color: rgba(222, 180, 77, .68);
+    background:
+      radial-gradient(circle at 75% 30%, rgba(72, 113, 136, .13), transparent 22rem),
+      linear-gradient(120deg, rgba(8, 14, 19, .97), rgba(6, 11, 15, .90));
+    box-shadow:
+      0 24px 54px rgba(0,0,0,.31),
+      0 0 0 1px rgba(231, 191, 92, .04),
+      inset 0 1px rgba(255, 245, 205, .06);
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) .home-mode-card::after {
+    background:
+      linear-gradient(90deg, rgba(4, 9, 13, .99) 0%, rgba(4, 9, 13, .93) 30%, rgba(4, 9, 13, .56) 53%, rgba(4, 9, 13, .12) 78%, rgba(4, 9, 13, .03) 100%),
+      linear-gradient(180deg, transparent 45%, rgba(4, 8, 11, .34));
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) .home-mode-art {
+    width: 72%;
+    opacity: .96;
+    object-position: 63% center;
+    filter: saturate(.88) contrast(1.07) brightness(.88);
+    mask-image: linear-gradient(90deg, transparent 0%, rgba(0,0,0,.18) 8%, #000 37%, #000 100%);
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) .home-mode-icon {
+    display: grid;
+    width: 2.4rem;
+    height: 2.4rem;
+    margin-bottom: .65rem;
+    color: #e1b54a;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) .home-mode-icon svg {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) .home-mode-copy {
+    max-width: 49%;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) .home-mode-kicker {
+    gap: .7rem;
+    color: rgba(226, 183, 74, .84);
+    font-size: .58rem;
+    letter-spacing: .18em;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) .home-mode-copy h3 {
+    margin: .44rem 0 .58rem;
+    color: #f4e8cb;
+    font-size: clamp(2.15rem, 2.7vw, 3.05rem);
+    letter-spacing: -.04em;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) .home-mode-description {
+    max-width: 23rem;
+    color: rgba(238, 230, 210, .80);
+    font-size: .82rem;
+    line-height: 1.48;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) .menu-card-cta {
+    left: 1.55rem;
+    right: auto;
+    bottom: 1.38rem;
+    width: auto;
+    min-width: 144px;
+    max-width: none;
+    height: 42px;
+    padding: 0 1.05rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    border: 1px solid rgba(230, 185, 69, .82);
+    border-radius: 7px;
+    background: linear-gradient(180deg, rgba(180, 137, 38, .96), rgba(111, 79, 14, .98));
+    box-shadow: inset 0 1px rgba(255, 244, 190, .17), 0 9px 20px rgba(0,0,0,.28);
+    color: #fff1cb;
+    font-size: .78rem;
+    font-weight: 700;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) .menu-card-cta::after {
+    content: 'Jugar ahora →';
+    color: inherit;
+    font: 700 .78rem/1 var(--font-body);
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) .menu-card-cta::before {
+    content: none;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) .home-mode-progress {
+    display: none;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) .home-mode-card:hover,
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) .home-mode-card:focus-visible {
+    transform: translateY(-2px);
+    border-color: rgba(238, 197, 92, .86);
+    box-shadow:
+      0 28px 58px rgba(0,0,0,.35),
+      0 0 28px rgba(192, 142, 43, .08),
+      inset 0 1px rgba(255, 245, 205, .075);
+  }
+
+  /* Secondary discovery collapses visually into a quiet hatch. */
+  body:has(.home-friendly) .home-more-modes {
+    margin-top: .42rem;
+    border-color: rgba(187, 149, 64, .16);
+    background: rgba(5, 9, 13, .31);
+  }
+
+  body:has(.home-friendly) .home-more-modes > summary {
+    min-height: 38px;
+    padding: .58rem .78rem;
+    color: rgba(224, 211, 180, .68);
+    font-size: .68rem;
+  }
+
+  /* Learning becomes a shelf, not another competing dashboard. */
+  body:has(.home-friendly) .home-primary-group:not(.home-modes-section) {
+    margin-top: .02rem;
+    padding-top: .12rem;
+  }
+
+  body:has(.home-friendly) .home-primary-group:not(.home-modes-section) > .home-group-heading {
+    margin-bottom: .38rem;
+  }
+
+  body:has(.home-friendly) .home-primary-group:not(.home-modes-section) > .home-group-heading h2::after {
+    content: 'Después de jugar';
+    color: rgba(239, 226, 195, .90);
+    font-size: 1.26rem;
+  }
+
+  body:has(.home-friendly) .home-primary-group:not(.home-modes-section) > .home-group-heading .section-label::after {
+    content: ' · ANALIZA, ENTRENA, APRENDE';
+  }
+
+  body:has(.home-friendly) .home-learning-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .52rem !important;
+  }
+
+  body:has(.home-friendly) .home-learning-card {
+    min-height: 82px !important;
+    height: 82px;
+    padding: .72rem .82rem !important;
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .65rem;
+    border: 1px solid rgba(191, 151, 63, .22) !important;
+    border-radius: 7px !important;
+    background: rgba(7, 11, 15, .54) !important;
+    box-shadow: none !important;
+  }
+
+  body:has(.home-friendly) .home-learning-card::before,
+  body:has(.home-friendly) .home-learning-card::after {
+    display: none !important;
+  }
+
+  body:has(.home-friendly) .home-learning-card:hover,
+  body:has(.home-friendly) .home-learning-card:focus-visible {
+    border-color: rgba(218, 177, 76, .46) !important;
+    background: rgba(12, 17, 22, .68) !important;
+    transform: translateY(-1px);
+  }
+
+  body:has(.home-friendly) .home-learning-card .home-mode-icon {
+    display: grid !important;
+    width: 1.6rem !important;
+    height: 1.6rem !important;
+    margin: 0 !important;
+    color: rgba(222, 180, 75, .78) !important;
+  }
+
+  body:has(.home-friendly) .home-learning-card .home-mode-icon svg {
+    width: 1.35rem !important;
+    height: 1.35rem !important;
+  }
+
+  body:has(.home-friendly) .home-learning-card .home-mode-copy {
+    max-width: none !important;
+    min-width: 0;
+  }
+
+  body:has(.home-friendly) .home-learning-card .home-mode-kicker,
+  body:has(.home-friendly) .home-learning-card .home-mode-description {
+    display: none !important;
+  }
+
+  body:has(.home-friendly) .home-learning-card .home-mode-copy h3 {
+    margin: 0 !important;
+    color: #dfc375 !important;
+    font-family: var(--font-body) !important;
+    font-size: .79rem !important;
+    font-weight: 650 !important;
+    letter-spacing: 0 !important;
+    white-space: normal !important;
+  }
+
+  body:has(.home-friendly) .home-learning-card .menu-card-cta {
+    position: static !important;
+    width: auto !important;
+    min-width: 0 !important;
+    height: auto !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: rgba(222, 179, 73, .72) !important;
+    font-size: 0 !important;
+  }
+
+  body:has(.home-friendly) .home-learning-card .menu-card-cta b {
+    display: inline !important;
+    font-size: 1rem !important;
+  }
+
+  /* Make the environmental layer legible again without overpowering controls. */
+  body:has(.home-friendly) .home-castle-life {
+    opacity: .50;
+    filter: saturate(.76) brightness(.82);
+  }
+
+  body:has(.home-friendly) .home-great-hall-scene,
+  body:has(.home-friendly) .home-castle-life .home-great-hall-scene {
+    opacity: .50;
+    filter: saturate(.80) brightness(.78) contrast(1.04);
+  }
+
+  body:has(.home-friendly) .home-castle-life__decor,
+  body:has(.home-friendly) .home-castle-life__rare {
+    opacity: .36;
+  }
+}
+
+/* Wide desktop: let the command table breathe without making the left wing huge. */
+@media (min-width: 1440px) {
+  body:has(.home-friendly) .home-modes-section .home-primary-grid {
+    grid-template-columns: minmax(300px, .72fr) minmax(650px, 1.68fr);
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-primary-grid > :nth-child(3) .home-mode-copy {
+    max-width: 45%;
+  }
+}
+
+/* Respect reduced motion at the facade level too. */
+@media (prefers-reduced-motion: reduce) {
+  body:has(.home-friendly) .home-modes-section .home-mode-card,
+  body:has(.home-friendly) .home-learning-card {
+    transition: none !important;
+    transform: none !important;
+  }
+}
