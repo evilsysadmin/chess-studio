@@ -35,29 +35,18 @@ async function openPawnTrailblazer(page) {
   await expect(page.getByRole('heading', { name: 'Pawn Trailblazer', exact: true })).toBeVisible();
 }
 
-test('Home · aprendizaje secundario queda abierto y Experimentos geniales abre el hangar', async ({ page }) => {
+test('Home · aprendizaje secundario se revela bajo demanda y Experimentos geniales abre el hangar', async ({ page }) => {
   await page.setViewportSize({ width: 1552, height: 900 });
   await openHome(page);
 
   const learning = page.locator('details.home-learning-more');
-  await expect(learning).toHaveAttribute('open', '');
-  await expect(learning.getByRole('heading', { name: 'Puzzles', exact: true })).toBeVisible();
+  await expect(learning).not.toHaveAttribute('open', '');
+  await expect(learning.getByRole('heading', { name: 'Puzzles', exact: true })).toBeHidden();
 
   const lowerNavContract = await page.locator('.home-primary-group:not(.home-modes-section)').evaluate((group) => {
     const rail = group.querySelector('.home-learning-grid');
     const details = group.querySelector('.home-learning-more');
     const cards = [...group.querySelectorAll('.home-learning-grid .home-learning-card')];
-    const toolCards = [...group.querySelectorAll('.home-tools-grid .home-tool-card')];
-    const practiceHeading = toolCards
-      .map((card) => card.querySelector('h3'))
-      .find((heading) => heading?.textContent?.trim() === 'Partida de práctica');
-
-    const practiceStyle = practiceHeading ? getComputedStyle(practiceHeading) : null;
-    const practiceLineHeight = practiceStyle ? Number.parseFloat(practiceStyle.lineHeight) : 0;
-    const practiceLines = practiceHeading && practiceLineHeight > 0
-      ? practiceHeading.getBoundingClientRect().height / practiceLineHeight
-      : 0;
-
     const railRect = rail?.getBoundingClientRect();
     const detailsRect = details?.getBoundingClientRect();
 
@@ -66,7 +55,38 @@ test('Home · aprendizaje secundario queda abierto y Experimentos geniales abre 
       flexDirections: cards.map((card) => getComputedStyle(card).flexDirection),
       clippedPixels: cards.map((card) => Math.max(0, card.scrollHeight - card.clientHeight)),
       overflows: cards.map((card) => getComputedStyle(card).overflowY),
+      headings: cards.map((card) => card.querySelector('h3')?.textContent?.trim() || ''),
+      headingHeights: cards.map((card) => card.querySelector('h3')?.getBoundingClientRect().height || 0),
+      kickerDisplays: cards.map((card) => getComputedStyle(card.querySelector('.home-mode-kicker')).display),
       detailsAfterRail: Boolean(railRect && detailsRect && detailsRect.top >= railRect.bottom - 1),
+    };
+  });
+
+  expect(lowerNavContract.cardCount).toBe(3);
+  expect(lowerNavContract.flexDirections).toEqual(['row', 'row', 'row']);
+  expect(Math.max(...lowerNavContract.clippedPixels)).toBeLessThanOrEqual(1);
+  expect(lowerNavContract.overflows.every((value) => value !== 'hidden')).toBe(true);
+  expect(lowerNavContract.headings).toEqual(['Así juegas', 'Entrena tus mayores errores', 'Escuela de Matthias']);
+  expect(Math.min(...lowerNavContract.headingHeights)).toBeGreaterThan(0);
+  expect(lowerNavContract.kickerDisplays.every((value) => value !== 'none')).toBe(true);
+  expect(lowerNavContract.detailsAfterRail).toBe(true);
+
+  await learning.getByText('Más aprendizaje y herramientas', { exact: true }).click();
+  await expect(learning).toHaveAttribute('open', '');
+  await expect(learning.getByRole('heading', { name: 'Puzzles', exact: true })).toBeVisible();
+
+  const toolContract = await learning.evaluate((details) => {
+    const toolCards = [...details.querySelectorAll('.home-tools-grid .home-tool-card')];
+    const practiceHeading = toolCards
+      .map((card) => card.querySelector('h3'))
+      .find((heading) => heading?.textContent?.trim() === 'Partida de práctica');
+    const practiceStyle = practiceHeading ? getComputedStyle(practiceHeading) : null;
+    const practiceLineHeight = practiceStyle ? Number.parseFloat(practiceStyle.lineHeight) : 0;
+    const practiceLines = practiceHeading && practiceLineHeight > 0
+      ? practiceHeading.getBoundingClientRect().height / practiceLineHeight
+      : 0;
+
+    return {
       toolCopyRatios: toolCards.map((card) => {
         const copy = card.querySelector('.home-mode-copy');
         if (!copy) return 0;
@@ -77,14 +97,9 @@ test('Home · aprendizaje secundario queda abierto y Experimentos geniales abre 
     };
   });
 
-  expect(lowerNavContract.cardCount).toBe(3);
-  expect(lowerNavContract.flexDirections).toEqual(['row', 'row', 'row']);
-  expect(Math.max(...lowerNavContract.clippedPixels)).toBeLessThanOrEqual(1);
-  expect(lowerNavContract.overflows.every((value) => value !== 'hidden')).toBe(true);
-  expect(lowerNavContract.detailsAfterRail).toBe(true);
-  expect(Math.min(...lowerNavContract.toolCopyRatios)).toBeGreaterThan(0.78);
-  expect(lowerNavContract.practiceLines).toBeGreaterThan(0);
-  expect(lowerNavContract.practiceLines).toBeLessThanOrEqual(2.1);
+  expect(Math.min(...toolContract.toolCopyRatios)).toBeGreaterThan(0.78);
+  expect(toolContract.practiceLines).toBeGreaterThan(0);
+  expect(toolContract.practiceLines).toBeLessThanOrEqual(2.1);
 
   const experiments = await openExperimentsFromMoreModes(page);
   await experiments.click();
