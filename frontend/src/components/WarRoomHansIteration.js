@@ -4,7 +4,10 @@ import {
   installWarRoomHansFireplaceRoutine,
 } from './WarRoomHansFireplace.js';
 
-const QUICK_ITERATION_VERSION = 'always-quick-v2';
+const QUICK_ITERATION_VERSION = 'always-quick-v3';
+const QUICK_ENTRY_SECONDS = 5;
+const QUICK_VISIBLE_START_X = 2.65;
+const QUICK_BASKET_X = 1.95;
 let quickIterationEnabled = false;
 
 function nowMs() {
@@ -49,12 +52,35 @@ export function isWarRoomHansQuickIterationEnabled() {
   return quickIterationEnabled;
 }
 
-// The production Hans choreography already has a 12s calm lead-in. During
-// visual iteration we deliberately skip only that lead-in, so the existing
-// five-second progressive fade starts immediately and the rest of the routine
-// stays byte-for-byte equivalent in timing/poses.
+function smoothstep01(value) {
+  const t = Math.max(0, Math.min(1, Number(value) || 0));
+  return t * t * (3 - 2 * t);
+}
+
+// Visual-iteration mode intentionally makes Hans impossible to miss: he is
+// already visible on the first useful scene frame and walks toward the basket
+// while the fireplace performs its five-second dim. Once the fire is low, the
+// existing production choreography resumes at the take-log phase.
 export function hansQuickIterationFrame(elapsedSeconds) {
-  return hansFireplaceFrame((Number(elapsedSeconds) || 0) + HANS_FIREPLACE_START_DELAY_S);
+  const elapsed = Math.max(0, Number(elapsedSeconds) || 0);
+  if (elapsed < QUICK_ENTRY_SECONDS) {
+    const dimFrame = hansFireplaceFrame(elapsed + HANS_FIREPLACE_START_DELAY_S);
+    const walkFrame = hansFireplaceFrame(
+      elapsed + HANS_FIREPLACE_START_DELAY_S + QUICK_ENTRY_SECONDS,
+    );
+    const eased = smoothstep01(elapsed / QUICK_ENTRY_SECONDS);
+    return {
+      ...walkFrame,
+      phase: 'fire-dimming',
+      fireScale: dimFrame.fireScale,
+      hansVisible: true,
+      hansX: QUICK_VISIBLE_START_X + (QUICK_BASKET_X - QUICK_VISIBLE_START_X) * eased,
+      stride: Math.sin(elapsed * 5.8) * 0.3,
+    };
+  }
+  return hansFireplaceFrame(
+    elapsed + HANS_FIREPLACE_START_DELAY_S + QUICK_ENTRY_SECONDS,
+  );
 }
 
 function applyQuickIterationFrame(refs, frame, towardBoard) {
@@ -145,6 +171,13 @@ function armQuickIteration(root, towardBoard) {
   driver.userData.warRoomHansStartDelaySeconds = 0;
   driver.userData.warRoomHansPhase = 'fire-dimming';
   driver.userData.warRoomHansHearthRestored = false;
+
+  // Prime the very first rendered scene with Hans already in-frame. Waiting for
+  // the late driver to run once made the visual-iteration contract needlessly
+  // easy to miss on fast mounts/repaints.
+  const initialFrame = hansQuickIterationFrame(0);
+  applyQuickIterationFrame(refs, initialFrame, towardBoard);
+  driver.userData.warRoomHansVisibleAtStart = hans.visible === true;
 
   driver.onBeforeRender = () => {
     const frame = hansQuickIterationFrame((nowMs() - startedAt) / 1000);
