@@ -44,9 +44,51 @@ export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {
 export function warRoomMaterialIblProfile({ coarsePointer = false } = {}) {
   if (coarsePointer) return null;
   return {
-    ivoryEnvMax: 0.36,
-    lightTileEnvMax: 0.34,
+    ivoryEnvMax: 0.18,
+    lightTileEnvMax: 0.24,
+    ivoryRoughnessMin: 0.74,
+    ivoryClearcoatMax: 0.12,
+    ivoryClearcoatRoughnessMin: 0.58,
+    ivorySpecularMax: 0.18,
+    ivorySheenMax: 0.015,
+    ivorySheenRoughnessMin: 0.72,
+    ivoryAlbedoScale: 0.88,
+    lightTileRoughnessMin: 0.8,
+    lightTileClearcoatMax: 0.1,
+    lightTileClearcoatRoughnessMin: 0.56,
+    lightTileSpecularMax: 0.26,
+    lightTileAlbedoScale: 0.92,
   };
+}
+
+function applyStableAlbedoScale(material, scale, grade) {
+  if (!material?.color?.getHex || typeof material.color.copy !== 'function') return false;
+  material.userData ||= {};
+
+  const currentHex = material.color.getHex();
+  const previous = material.userData.warRoomAlbedoGradeState;
+  const sourceHex = previous?.grade === grade && previous.gradedHex === currentHex
+    ? previous.sourceHex
+    : currentHex;
+  const gradedColor = new THREE.Color(sourceHex).multiplyScalar(scale);
+  const gradedHex = gradedColor.getHex();
+
+  material.userData.warRoomAlbedoGradeState = { grade, sourceHex, gradedHex };
+  if (gradedHex === currentHex) return false;
+  material.color.copy(gradedColor);
+  return true;
+}
+
+function capMaterial(material, key, maximum) {
+  if (typeof material?.[key] !== 'number' || material[key] <= maximum) return false;
+  material[key] = maximum;
+  return true;
+}
+
+function floorMaterial(material, key, minimum) {
+  if (typeof material?.[key] !== 'number' || material[key] >= minimum) return false;
+  material[key] = minimum;
+  return true;
 }
 
 export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {}) {
@@ -68,26 +110,39 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
       seen.add(material);
 
       const role = material.userData?.surfaceRole;
-      const limit = role === 'ivory'
-        ? profile.ivoryEnvMax
-        : role === 'board-light'
-          ? profile.lightTileEnvMax
-          : null;
-      if (limit == null || typeof material.envMapIntensity !== 'number') continue;
+      if (role !== 'ivory' && role !== 'board-light') continue;
+      material.userData ||= {};
 
-      if (role === 'ivory') ivory += 1;
-      else lightTile += 1;
-
-      if (material.envMapIntensity > limit) {
-        material.envMapIntensity = limit;
-        material.needsUpdate = true;
-        adjusted += 1;
+      let changed = false;
+      if (role === 'ivory') {
+        ivory += 1;
+        changed = capMaterial(material, 'envMapIntensity', profile.ivoryEnvMax) || changed;
+        changed = floorMaterial(material, 'roughness', profile.ivoryRoughnessMin) || changed;
+        changed = capMaterial(material, 'clearcoat', profile.ivoryClearcoatMax) || changed;
+        changed = floorMaterial(material, 'clearcoatRoughness', profile.ivoryClearcoatRoughnessMin) || changed;
+        changed = capMaterial(material, 'specularIntensity', profile.ivorySpecularMax) || changed;
+        changed = capMaterial(material, 'sheen', profile.ivorySheenMax) || changed;
+        changed = floorMaterial(material, 'sheenRoughness', profile.ivorySheenRoughnessMin) || changed;
+        changed = applyStableAlbedoScale(material, profile.ivoryAlbedoScale, 'aged-ivory-v2') || changed;
+        material.userData.warRoomSurfaceGrade = 'aged-ivory-v2';
+      } else {
+        lightTile += 1;
+        changed = capMaterial(material, 'envMapIntensity', profile.lightTileEnvMax) || changed;
+        changed = floorMaterial(material, 'roughness', profile.lightTileRoughnessMin) || changed;
+        changed = capMaterial(material, 'clearcoat', profile.lightTileClearcoatMax) || changed;
+        changed = floorMaterial(material, 'clearcoatRoughness', profile.lightTileClearcoatRoughnessMin) || changed;
+        changed = capMaterial(material, 'specularIntensity', profile.lightTileSpecularMax) || changed;
+        changed = applyStableAlbedoScale(material, profile.lightTileAlbedoScale, 'muted-light-tile-v2') || changed;
+        material.userData.warRoomSurfaceGrade = 'muted-light-tile-v2';
       }
-      material.userData.warRoomIblGrade = 'low-fill-v1';
+
+      material.userData.warRoomIblGrade = 'low-fill-v2';
+      if (changed) adjusted += 1;
     }
   });
 
-  scene.userData.warRoomMaterialIblProfile = 'low-fill-v1';
+  scene.userData.warRoomMaterialIblProfile = 'low-fill-v2';
+  scene.userData.warRoomSurfaceGrade = 'aged-matte-v2';
   scene.userData.warRoomIvoryEnvMax = profile.ivoryEnvMax;
   scene.userData.warRoomLightTileEnvMax = profile.lightTileEnvMax;
   scene.userData.warRoomMaterialIblAdjusted = adjusted;
@@ -158,6 +213,7 @@ function installWarRoomRenderDiscipline() {
       if (materialGrade.profile && this.domElement?.dataset) {
         this.domElement.dataset.warRoomIblIvory = Number(materialGrade.profile.ivoryEnvMax).toFixed(2);
         this.domElement.dataset.warRoomIblLightTile = Number(materialGrade.profile.lightTileEnvMax).toFixed(2);
+        this.domElement.dataset.warRoomSurfaceGrade = 'aged-matte-v2';
       }
     }
 
