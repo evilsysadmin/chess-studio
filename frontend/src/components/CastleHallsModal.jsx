@@ -1,3 +1,4 @@
+import { requestHistoryGameOpen } from '../historyNavigation.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import './CastleHallsModal.css';
 import './HomeCastleHallsDoor.css';
@@ -24,7 +25,7 @@ function GalleryWall({ title, subtitle, entries, tone, onReviewGame }) {
               <p>{entry.detail}</p>
               {entry.date && <small>{new Date(entry.date).toLocaleDateString()}</small>}
             </div>
-            {onReviewGame && entry.sourceGameId && (
+            {entry.sourceGameId && (
               <button type="button" onClick={() => onReviewGame(entry.sourceGameId)} aria-label={`Revisar partida: ${entry.label}`}>Revisar partida →</button>
             )}
           </article>
@@ -34,7 +35,7 @@ function GalleryWall({ title, subtitle, entries, tone, onReviewGame }) {
   );
 }
 
-export default function CastleHallsModal({ gallery, onClose, onReviewGame }) {
+export default function CastleHallsModal({ gallery, onClose, onReviewGame = requestHistoryGameOpen }) {
   useEscapeToClose(onClose);
   const fame = Array.isArray(gallery?.fame) ? gallery.fame : [];
   const shame = Array.isArray(gallery?.shame) ? gallery.shame : [];
