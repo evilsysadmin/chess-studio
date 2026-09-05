@@ -113,6 +113,7 @@ async function expectThreeScene(corner, profile, label, { minReach = 0, activity
   await expect(avatar).toHaveAttribute('data-three-face-rig', 'premium-pawn-face-v1');
   await expect(avatar).toHaveAttribute('data-three-articulated-face-rig', 'premium-pawn-face-v1');
   await expect(avatar).toHaveAttribute('data-three-face-warp-limit', '0.019');
+  await expect(avatar).toHaveAttribute('data-three-activity-ergonomics', 'home-props-v1-handheld');
   await expect(fallback).toHaveAttribute('src', /^(?:data:image\/webp;base64,|.*\.webp(?:$|\?))/);
   await expect.poll(
     () => fallback.evaluate((img) => img.complete && img.naturalWidth > 0 && img.naturalHeight > 0),
@@ -161,6 +162,7 @@ async function expectThreeScene(corner, profile, label, { minReach = 0, activity
 for (const [hour, profile, label, minReach, activityProp] of [
   [6, 'sip', 'primer café', .2, 'cup'],
   [7, 'sip', 'desayuno y prensa', .25, 'breakfast'],
+  [11, 'read', 'Chess Weekly', 0, 'press'],
   [12, 'bite', 'comida táctica', .3, 'ration'],
   [16, 'write', 'operación y notas', 0, 'write'],
   [17, 'dossier', 'auditoría del expediente', 0, 'dossier'],

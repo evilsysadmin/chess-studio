@@ -34,6 +34,11 @@ import {
   MATTHIAS_PREMIUM_HOME_REFERENCE,
   MATTHIAS_PREMIUM_HOME_RENDER_CONTRACT,
 } from './MatthiasPremiumHome3D.js';
+import {
+  applyMatthiasHomePropErgonomics,
+  matthiasHomeErgonomicActivityProp,
+  MATTHIAS_HOME_PROP_ERGONOMICS_VERSION,
+} from './matthiasHomePropErgonomics.js';
 import { matthiasPawnPoseSample } from './MatthiasPawn3D.js';
 import './MatthiasThreeAvatar.css';
 
@@ -57,6 +62,7 @@ export function matthiasHomeActivityProfile({ scene = '', activity = '' } = {}) 
   const key = `${semanticCue(scene)}|${semanticCue(activity)}`;
   if (/breakfast|desayuno/.test(key)) return 'breakfast';
   if (/beer-break|cervez/.test(key)) return 'beer';
+  if (/chess[- ]weekly|prensa semanal/.test(key)) return 'press';
   return matthiasHomeMotionProfile({ scene, activity, speaking: false });
 }
 
@@ -87,7 +93,7 @@ export function matthiasHomeFacialCue({
     return { expression: 'stern', gesture: 'idle' };
   }
   if (profile === 'sip') return { expression: 'coffee', gesture: 'idle' };
-  if (profile === 'read' || profile === 'dossier') return { expression: 'focus', gesture: 'survey' };
+  if (profile === 'read' || profile === 'press' || profile === 'dossier') return { expression: 'focus', gesture: 'survey' };
   if (profile === 'write') return { expression: 'focus', gesture: 'idle' };
   if (profile === 'think') return { expression: 'focus', gesture: 'glance' };
   return { expression: 'stern', gesture: 'idle' };
@@ -169,8 +175,8 @@ export default function MatthiasHomeMicrogestureAvatar({
 
   // Speech owns face/attention, not the physical task. Keep a second semantic
   // profile without the speech override so Matthias can talk while holding the
-  // cup/book/dossier he was already using. Breakfast and beer keep sip-like
-  // motion while exposing their own compositions to the 3D activity rig.
+  // cup/book/dossier he was already using. Breakfast, beer and press expose
+  // their own physical compositions to the 3D activity rig.
   const activityProfile = useMemo(
     () => matthiasHomeActivityProfile({ scene, activity }),
     [activity, scene],
@@ -180,7 +186,10 @@ export default function MatthiasHomeMicrogestureAvatar({
     [activity, scene, speaking],
   );
   const activityProp = useMemo(
-    () => matthiasPremiumHomeActivityProp(activityProfile),
+    () => matthiasHomeErgonomicActivityProp(
+      activityProfile,
+      matthiasPremiumHomeActivityProp(activityProfile),
+    ),
     [activityProfile],
   );
   const phase = useMemo(() => matthiasHomeMotionPhase({ scene, activity }), [activity, scene]);
@@ -275,7 +284,10 @@ export default function MatthiasHomeMicrogestureAvatar({
     root.dataset.threeFrame = '0';
     root.dataset.threeEnergy = '0';
     root.dataset.threeReach = '0';
-    root.dataset.threeActivityProp = matthiasPremiumHomeActivityProp(activityProfileRef.current);
+    root.dataset.threeActivityProp = matthiasHomeErgonomicActivityProp(
+      activityProfileRef.current,
+      matthiasPremiumHomeActivityProp(activityProfileRef.current),
+    );
     root.dataset.threeActivityReach = '0';
     root.dataset.threeFaceWarp = '0.0000';
     root.dataset.threeFaceArticulation = '0.000';
@@ -393,6 +405,7 @@ export default function MatthiasHomeMicrogestureAvatar({
     const paint = (stamp) => {
       const pose = samplePose(stamp);
       applyMatthiasPremiumHomePose(rig, pose);
+      applyMatthiasHomePropErgonomics(rig, pose);
       renderer.render(scene3d, camera);
 
       frames += 1;
@@ -496,6 +509,7 @@ export default function MatthiasHomeMicrogestureAvatar({
       data-three-profile={profile}
       data-three-activity-profile={activityProfile}
       data-three-activity-rig={MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION}
+      data-three-activity-ergonomics={MATTHIAS_HOME_PROP_ERGONOMICS_VERSION}
       data-three-activity-prop={activityProp}
       data-three-activity-reach="0"
       data-three-motion={reducedMotion ? 'reduced' : 'active'}

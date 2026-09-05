@@ -32,13 +32,17 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
       expression: 'coffee',
       gesture: 'idle',
     });
+    expect(matthiasHomeFacialCue({ profile: 'press' })).toEqual({
+      expression: 'focus',
+      gesture: 'survey',
+    });
     expect(matthiasHomeFacialCue({ speaking: true })).toEqual({
       expression: 'alert',
       gesture: 'idle',
     });
   });
 
-  it('separa movimiento de actividad para desayuno, cerveza, ajedrez y sueño', () => {
+  it('separa movimiento de actividad para desayuno, cerveza, prensa, ajedrez y sueño', () => {
     expect(matthiasHomeActivityProfile({
       scene: 'time-breakfast-news',
       activity: 'Desayuno y prensa',
@@ -47,6 +51,10 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
       scene: 'time-beer-break',
       activity: 'Cervezota reglamentaria',
     })).toBe('beer');
+    expect(matthiasHomeActivityProfile({
+      scene: 'time-chess-weekly',
+      activity: 'Chess Weekly',
+    })).toBe('press');
     expect(matthiasHomeActivityProfile({
       scene: 'time-chess-inception',
       activity: 'Ajedrez dentro del ajedrez',
@@ -116,6 +124,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     expect(html).toContain('data-three-face-rig="premium-pawn-face-v1"');
     expect(html).toContain('data-three-articulated-face-rig="premium-pawn-face-v1"');
     expect(html).toContain('data-three-activity-rig="activity-props-v4-premium-routines"');
+    expect(html).toContain('data-three-activity-ergonomics="home-props-v1-handheld"');
     expect(html).toContain('data-three-activity-profile="read"');
     expect(html).toContain('data-three-activity-prop="book"');
     expect(html).toContain('data-three-face-warp-limit="0.019"');
@@ -125,7 +134,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     expect(html).toContain('src="/assets/matthias-scenes/strategy-book.webp"');
   });
 
-  it('desayuno, cerveza, ajedrez y sueño publican props propios manteniendo su movimiento base', () => {
+  it('desayuno, cerveza, prensa, ajedrez y sueño publican props propios manteniendo su movimiento base', () => {
     const breakfast = renderToStaticMarkup(
       <MatthiasHomeMicrogestureAvatar
         avatar="/assets/matthias-scenes/morning-coffee.webp"
@@ -147,6 +156,17 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     expect(beer).toContain('data-three-profile="sip"');
     expect(beer).toContain('data-three-activity-profile="beer"');
     expect(beer).toContain('data-three-activity-prop="beer"');
+
+    const press = renderToStaticMarkup(
+      <MatthiasHomeMicrogestureAvatar
+        avatar="/assets/matthias-scenes/strategy-book.webp"
+        scene="time-chess-weekly"
+        activity="Chess Weekly"
+      />,
+    );
+    expect(press).toContain('data-three-profile="read"');
+    expect(press).toContain('data-three-activity-profile="press"');
+    expect(press).toContain('data-three-activity-prop="press"');
 
     const chess = renderToStaticMarkup(
       <MatthiasHomeMicrogestureAvatar
@@ -194,6 +214,7 @@ describe('MatthiasHomeMicrogestureAvatar', () => {
     expect(html).toContain('data-three-motion="reduced"');
     expect(html).toContain('data-three-full-3d="true"');
     expect(html).toContain('data-three-activity-rig="activity-props-v4-premium-routines"');
+    expect(html).toContain('data-three-activity-ergonomics="home-props-v1-handheld"');
     expect(html).toContain('data-matthias-canonical-art="true"');
     expect(html).toContain('src="/base.webp"');
   });
