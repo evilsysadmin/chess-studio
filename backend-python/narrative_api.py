@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from narrative_cloudflare import RICH_ANALYSIS_EVENT_TYPES, generate_narrative, get_ai_metrics
+import matthias_episode_store as matthias_episode_store
 import matthias_memory_store as matthias_memory_store
 
 narrative_logger = logging.getLogger("uvicorn.error")
@@ -196,8 +197,13 @@ def build_narrative_router(
             try:
                 if body.eventType == "player_portrait":
                     await matthias_memory_store.observe_facts(identity_name, body.facts)
+                    await matthias_episode_store.observe(identity_name, body.facts)
                 memory_context = await matthias_memory_store.context(identity_name, body.facts)
-                effective_facts = {**body.facts, "matthias_memory": memory_context}
+                episodic_context = await matthias_episode_store.context(identity_name)
+                effective_facts = {
+                    **body.facts,
+                    "matthias_memory": {**memory_context, "episodic": episodic_context},
+                }
             except Exception as exc:
                 narrative_logger.warning("matthias_memory_context_failed event_type=%s error=%s", body.eventType, type(exc).__name__)
         result = await generate_narrative(
