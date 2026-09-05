@@ -165,10 +165,10 @@ test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre e
   await expect(dossier).toHaveClass(/\bpreview\b/);
   await expect(dossier.getByText(/Vista rápida/i)).toBeVisible();
 
-  // Move to a coordinate guaranteed to be outside both the canvas and the
-  // dossier. Hovering another DOM element can cross the fixed popover and make
-  // the test accidentally exercise its keep-open affordance instead of the
-  // canvas leave contract we actually care about.
-  await page.mouse.move(1, 1);
+  // Leave the hovered piece by moving to an empty square on the same canvas.
+  // This exercises Board3D's real piece-leave contract without crossing the
+  // fixed dossier, whose intentional hover bridge would keep the preview open.
+  const emptySquare = projectSquare(rect, 'e4');
+  await page.mouse.move(emptySquare.x, emptySquare.y);
   await expect(dossier).toBeHidden({ timeout: 3_000 });
 });
