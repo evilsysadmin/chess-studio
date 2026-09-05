@@ -48,7 +48,7 @@ describe('Matthias Home prop contact rig', () => {
     const rig = createMatthiasPremiumHome3D();
     const contact = apply(rig, 'sip', { reach: .46 });
 
-    expect(MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION).toBe('home-prop-contact-v1-sockets');
+    expect(MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION).toBe('home-prop-contact-v2-sleep-clearance');
     expect(contact?.prop).toBe('cup');
     expect(contact?.supportSolved).toBe(true);
     expect(contact?.assistSolved).toBe(false);
@@ -93,6 +93,36 @@ describe('Matthias Home prop contact rig', () => {
     disposeMatthiasPremiumHome3D(rig);
   });
 
+  it('mantiene las manos del sueño debajo y detrás de la cara, sin puntos sobre los ojos', () => {
+    const rig = createMatthiasPremiumHome3D();
+    const contact = apply(rig, 'sleep');
+
+    expect(contact?.prop).toBe('blanket');
+    expect(contact?.sleepSupport).toBe(true);
+    expect(contact?.supportSolved).toBe(true);
+    expect(contact?.assistSolved).toBe(true);
+    expect(rig.activityRig.support.visible).toBe(true);
+    expect(rig.activityRig.assist.visible).toBe(true);
+    expect(rig.activityRig.supportGlove.position.y).toBeLessThan(.34);
+    expect(rig.activityRig.assistGlove.position.y).toBeLessThan(.34);
+    expect(rig.activityRig.supportGlove.position.z).toBeLessThan(.53);
+    expect(rig.activityRig.assistGlove.position.z).toBeLessThan(.53);
+    expect(rig.root.userData.activitySleepFaceClearance).toBe('hands-below-and-behind-face');
+    expect(rig.root.userData.activityPropContactHands).toBe('sleep-head-support');
+
+    // Waking into a document must hand control back to the normal contact
+    // solver immediately; no sleep coordinates are allowed to leak forward.
+    const reading = apply(rig, 'read', { headYaw: .08 });
+    expect(reading?.prop).toBe('book');
+    expect(rig.root.userData.activitySleepFaceClearance).toBe('inactive');
+    expect(rig.root.rotation.z).toBe(0);
+    expect(rig.activityRig.premiumSleep.visible).toBe(false);
+    expect(rig.activityRig.supportGlove.position.z).toBeGreaterThan(.65);
+    expect(rig.activityRig.assistGlove.position.z).toBeGreaterThan(.65);
+
+    disposeMatthiasPremiumHome3D(rig);
+  });
+
   it('apoya Partida privada en una mesa y no invade comida o sueño', () => {
     const rig = createMatthiasPremiumHome3D();
     const next = pose('think', { activityTime: 4.2 });
@@ -109,12 +139,15 @@ describe('Matthias Home prop contact rig', () => {
     expect(rig.activityRig.assist.visible).toBe(false);
     expect(rig.root.userData.activityPropContactHands).toBe('board-rest/pointing-hand');
 
-    expect(apply(rig, 'sleep')).toBeNull();
-    expect(rig.root.userData.activityPropContact).toBe('inactive');
+    const sleepContact = apply(rig, 'sleep');
+    expect(sleepContact?.prop).toBe('blanket');
+    expect(sleepContact?.sleepSupport).toBe(true);
+    expect(rig.root.userData.activityPropContact).toBe(MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION);
 
     clearMatthiasHomePropContactRig(rig);
     expect(rig.activityRig.support.getObjectByName('activity-support-contact-cuff')?.visible ?? false).toBe(false);
     expect(rig.activityRig.assist.getObjectByName('activity-assist-contact-cuff')?.visible ?? false).toBe(false);
+    expect(rig.root.userData.activitySleepFaceClearance).toBe('inactive');
 
     disposeMatthiasPremiumHome3D(rig);
   });
