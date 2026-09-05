@@ -12,18 +12,20 @@ export const MATTHIAS_PREMIUM_HOME_FIDELITY_VERSION = 'approved-original-premium
 export const MATTHIAS_PREMIUM_HOME_RENDER_CONTRACT = 'canonical-pawn-3d-v1';
 export const MATTHIAS_PREMIUM_HOME_REFERENCE = 'approved-original-matthias-premium-v1';
 export const MATTHIAS_PREMIUM_HOME_CAP_VERSION = 'officer-cap-v4-peaked-canonical';
-export const MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION = 'activity-props-v1';
-export const MATTHIAS_PREMIUM_HOME_ACTIVITY_COMPOSITION_VERSION = 'portrait-readable-v2';
+export const MATTHIAS_PREMIUM_HOME_ACTIVITY_RIG_VERSION = 'activity-props-v2';
+export const MATTHIAS_PREMIUM_HOME_ACTIVITY_COMPOSITION_VERSION = 'portrait-readable-v3';
 export const MATTHIAS_PREMIUM_HOME_FRAME_SCALE = .94;
 export const MATTHIAS_PREMIUM_HOME_FRAME_Y = -.05;
 export { MATTHIAS_PAWN_EMBLEM };
 
 const ACTIVITY_PROPS = Object.freeze({
   sip: 'cup',
+  breakfast: 'breakfast',
   bite: 'ration',
   read: 'book',
   dossier: 'dossier',
   write: 'write',
+  sleep: 'blanket',
 });
 
 function node(root, name) {
@@ -93,7 +95,10 @@ function buildActivityRig(rig, compact) {
   const paper = activityMaterial(0xc7baa2, { metalness: 0, roughness: .64, clearcoat: .02 });
   const red = activityMaterial(0x6f211d, { metalness: .22, roughness: .34, clearcoat: .30 });
   const food = activityMaterial(0xa86b31, { metalness: 0, roughness: .72, clearcoat: .02 });
+  const cloth = activityMaterial(0x4a201d, { metalness: 0, roughness: .86, clearcoat: 0 });
 
+  // Arms are deliberately tiny and prop-driven. Matthias remains a pawn; the
+  // limbs exist only long enough to make cups/books/dossiers feel physically held.
   const support = new THREE.Group();
   support.name = 'activity-support';
   activityRoot.add(support);
@@ -108,6 +113,22 @@ function buildActivityRig(rig, compact) {
     new THREE.SphereGeometry(.09, compact ? 12 : 18, compact ? 9 : 14),
     black,
     { name: 'activity-support-glove', position: [.49, -.05, .68], scale: [1.05, .76, .9] },
+  );
+
+  const assist = new THREE.Group();
+  assist.name = 'activity-assist';
+  activityRoot.add(assist);
+  const assistStem = activityMesh(
+    assist,
+    new THREE.CapsuleGeometry(.052, .34, compact ? 3 : 5, compact ? 8 : 12),
+    black,
+    { name: 'activity-assist-stem', position: [-.38, -.30, .47], rotation: [1.08, 0, .48] },
+  );
+  const assistGlove = activityMesh(
+    assist,
+    new THREE.SphereGeometry(.085, compact ? 12 : 18, compact ? 9 : 14),
+    black,
+    { name: 'activity-assist-glove', position: [-.47, -.09, .67], scale: [1.03, .74, .88] },
   );
 
   const cup = new THREE.Group();
@@ -189,18 +210,32 @@ function buildActivityRig(rig, compact) {
     name: 'activity-pen', position: [.11, .08, .08], rotation: [0, 0, -.72],
   });
 
-  for (const group of [cup, ration, book, dossier, write, support]) group.visible = false;
+  const blanket = new THREE.Group();
+  blanket.name = 'activity-blanket';
+  activityRoot.add(blanket);
+  activityMesh(blanket, new THREE.BoxGeometry(1.10, .50, .12), cloth, {
+    name: 'sleep-blanket-body', position: [0, 0, 0], rotation: [-.10, 0, 0], scale: [1, .96, 1],
+  });
+  activityMesh(blanket, new THREE.BoxGeometry(1.12, .042, .135), gold, {
+    name: 'sleep-blanket-trim', position: [0, .235, .01], rotation: [-.10, 0, 0],
+  });
+
+  for (const group of [cup, ration, book, dossier, write, blanket, support, assist]) group.visible = false;
 
   const activityRig = {
     root: activityRoot,
     support,
     supportStem,
     supportGlove,
+    assist,
+    assistStem,
+    assistGlove,
     cup,
     ration,
     book,
     dossier,
     write,
+    blanket,
     penPivot,
     currentProp: 'none',
   };
@@ -229,16 +264,39 @@ function applyActivityPose(rig, pose) {
   const profile = String(pose?.activityProfile || '').trim().toLowerCase();
   const prop = matthiasPremiumHomeActivityProp(profile);
   const reach = effectiveActivityReach(profile, pose);
-  const { cup, ration, book, dossier, write, support, supportStem, supportGlove, penPivot } = activityRig;
+  const {
+    cup,
+    ration,
+    book,
+    dossier,
+    write,
+    blanket,
+    support,
+    supportStem,
+    supportGlove,
+    assist,
+    assistStem,
+    assistGlove,
+    penPivot,
+  } = activityRig;
+  const breakfast = prop === 'breakfast';
+  const twoHands = breakfast || prop === 'ration' || prop === 'book' || prop === 'dossier' || prop === 'write';
 
-  cup.visible = prop === 'cup';
-  ration.visible = prop === 'ration';
+  cup.visible = prop === 'cup' || breakfast;
+  ration.visible = prop === 'ration' || breakfast;
   book.visible = prop === 'book';
   dossier.visible = prop === 'dossier';
   write.visible = prop === 'write';
-  support.visible = prop !== 'none';
+  blanket.visible = prop === 'blanket';
+  support.visible = prop !== 'none' && prop !== 'blanket';
+  assist.visible = twoHands;
 
-  if (prop === 'cup') {
+  if (breakfast) {
+    cup.position.set(-.38, -.45 + reach * .18, .79 + reach * .02);
+    cup.rotation.set(.02 + reach * .08, .08, .08);
+    ration.position.set(.38, -.60 + reach * .08, .78);
+    ration.rotation.set(-.10, -.10, -.04);
+  } else if (prop === 'cup') {
     cup.position.set(.56 - reach * .26, -.26 + reach * .55, .78 + reach * .05);
     cup.rotation.set(.03 + reach * .16, -.08, -.10 - reach * .08);
   } else if (prop === 'ration') {
@@ -257,11 +315,20 @@ function applyActivityPose(rig, pose) {
     write.rotation.set(-.27, Number(pose?.headYaw || 0) * .09, -.045);
     penPivot.rotation.z = -.08 + Math.sin((Number(pose?.headYaw) || 0) * 18) * .08;
     penPivot.position.y = Math.abs(Number(pose?.headYaw) || 0) * .18;
+  } else if (prop === 'blanket') {
+    // Sleep must not hand off from a lovely 2D blanket to a naked base pawn.
+    // Keep the cloth below the face, attached to the same rigid body motion.
+    blanket.position.set(0, -.57, .64);
+    blanket.rotation.set(-.04, 0, Number(pose?.headRoll || 0) * .08);
   }
 
   if (support.visible) {
     const documentProp = prop === 'book' || prop === 'dossier' || prop === 'write';
-    if (prop === 'ration') {
+    if (breakfast) {
+      supportStem.position.set(.40, -.46 + reach * .06, .48);
+      supportStem.rotation.z = -.54;
+      supportGlove.position.set(.46, -.34 + reach * .08, .72);
+    } else if (prop === 'ration') {
       supportStem.position.set(.43, -.42 + reach * .12, .50);
       supportStem.rotation.z = -.52;
       supportGlove.position.set(.50, -.29 + reach * .14, .74);
@@ -272,6 +339,23 @@ function applyActivityPose(rig, pose) {
       supportGlove.position.x = documentProp ? .43 : .54 - reach * .15;
       supportGlove.position.y = documentProp ? -.20 + reach * .10 : -.09 + reach * .30;
       supportGlove.position.z = .72 + reach * .03;
+    }
+  }
+
+  if (assist.visible) {
+    const documentProp = prop === 'book' || prop === 'dossier' || prop === 'write';
+    if (breakfast) {
+      assistStem.position.set(-.36, -.36 + reach * .10, .47);
+      assistStem.rotation.z = .52;
+      assistGlove.position.set(-.40, -.24 + reach * .12, .70);
+    } else if (prop === 'ration') {
+      assistStem.position.set(-.34, -.43 + reach * .10, .48);
+      assistStem.rotation.z = .50;
+      assistGlove.position.set(-.38, -.31 + reach * .12, .71);
+    } else if (documentProp) {
+      assistStem.position.set(-.37, -.31 + reach * .07, .47);
+      assistStem.rotation.z = .58;
+      assistGlove.position.set(-.42, -.21 + reach * .09, .71);
     }
   }
 
