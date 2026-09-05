@@ -38,23 +38,32 @@ describe('Hans quick-game visual iteration', () => {
     expect(shouldForceHansQuickIteration({ hintMode: 'off', memoryContext: { nemesis: true } })).toBe(false);
   });
 
-  it('empieza a apagar la chimenea inmediatamente y tarda cinco segundos', () => {
+  it('saca a Hans desde el segundo cero mientras apaga la chimenea', () => {
     const start = hansQuickIterationFrame(0);
     const middle = hansQuickIterationFrame(2.5);
-    const almostOut = hansQuickIterationFrame(4.95);
-    const hansArrives = hansQuickIterationFrame(5.1);
+    const almostAtBasket = hansQuickIterationFrame(4.95);
+    const takeLog = hansQuickIterationFrame(5.1);
 
     expect(start.phase).toBe('fire-dimming');
     expect(start.fireScale).toBe(1);
+    expect(start.hansVisible).toBe(true);
+    expect(start.hansX).toBeCloseTo(2.65, 2);
+
     expect(middle.fireScale).toBeLessThan(1);
     expect(middle.fireScale).toBeGreaterThan(0.26);
-    expect(almostOut.fireScale).toBeLessThan(0.28);
-    expect(hansArrives.phase).toBe('walk-to-basket');
-    expect(hansArrives.hansVisible).toBe(true);
-    expect(hansArrives.fireScale).toBeCloseTo(0.26, 2);
+    expect(middle.hansVisible).toBe(true);
+    expect(middle.hansX).toBeLessThan(start.hansX);
+
+    expect(almostAtBasket.fireScale).toBeLessThan(0.28);
+    expect(almostAtBasket.hansVisible).toBe(true);
+    expect(almostAtBasket.hansX).toBeCloseTo(1.95, 1);
+
+    expect(takeLog.phase).toBe('take-log');
+    expect(takeLog.hansVisible).toBe(true);
+    expect(takeLog.fireScale).toBeCloseTo(0.26, 2);
   });
 
-  it('instala Hans desde el finalizador cuando la chimenea ya existe en la sala real', () => {
+  it('instala Hans ya visible antes del primer frame útil de la sala real', () => {
     setWarRoomHansQuickIterationEnabled(true);
     expect(isWarRoomHansQuickIterationEnabled()).toBe(true);
 
@@ -73,9 +82,12 @@ describe('Hans quick-game visual iteration', () => {
     expect(driver).toBeTruthy();
     expect(driver.userData.warRoomHansSelected).toBe(true);
     expect(driver.userData.warRoomHansStartDelaySeconds).toBe(0);
-    expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v2');
-    expect(fireplace.userData.warRoomHansQuickIteration).toBe('always-quick-v2');
+    expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v3');
+    expect(driver.userData.warRoomHansVisibleAtStart).toBe(true);
+    expect(fireplace.userData.warRoomHansQuickIteration).toBe('always-quick-v3');
     expect(fireplace.userData.warRoomHansHearthRestored).toBe(false);
+    expect(hans.visible).toBe(true);
+    expect(Math.abs(hans.position.x)).toBeCloseTo(2.65, 2);
     expect(typeof driver.onBeforeRender).toBe('function');
 
     dispose(room);
@@ -107,6 +119,7 @@ describe('Hans quick-game visual iteration', () => {
       expect(basketTopLog).toBeTruthy();
       expect(addedLog).toBeTruthy();
       expect(poker).toBeTruthy();
+      expect(hans.visible).toBe(true);
 
       const baseScale = fireCore.scale.clone();
       const baseIntensity = Number(fireLight.userData.baseWarRoomIntensity || fireLight.intensity);
@@ -116,6 +129,7 @@ describe('Hans quick-game visual iteration', () => {
       now.mockReturnValue(3500);
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('fire-dimming');
+      expect(hans.visible).toBe(true);
       expect(fireCore.scale.y).toBeLessThan(baseScale.y);
       expect(fireLight.intensity).toBeLessThan(baseIntensity);
       expect(fireLight.distance).toBeLessThan(baseDistance);
