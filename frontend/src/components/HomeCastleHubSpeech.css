@@ -1,0 +1,7 @@
+/* Castle hub speech geometry: keep the live bubble physically attached to
+ * Matthias after moving the resident from the old right rail to the left wall. */
+@media (min-width: 761px) {
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport .matthias-resident__bubble {
+    left: calc(clamp(1.25rem, 4vw, 4rem) + clamp(150px, 12vw, 205px) + 1rem) !important;
+  }
+}
