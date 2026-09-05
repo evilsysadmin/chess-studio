@@ -41,12 +41,13 @@ describe('War Room Hans live render bridge', () => {
 
     expect(floor).toBeTruthy();
     expect(floor.userData.warRoomDeferredFinalizer).toBe('deferred-finalizer-v1');
-    expect(typeof floor.onBeforeRender).toBe('function');
+    expect(floor.userData.warRoomDeferredFinalizerPhase).toBe('after');
+    expect(typeof floor.onAfterRender).toBe('function');
     // Other static passes keep using the established painting driver; only
     // Hans moves to the architectural floor bridge.
     expect(painting?.userData?.warRoomDeferredFinalizerTaskCount || 0).toBeGreaterThan(0);
 
-    floor.onBeforeRender();
+    floor.onAfterRender();
 
     const fireplace = scene.getObjectByName('war-room-fireplace');
     const hans = scene.getObjectByName('war-room-hans-butler');
