@@ -183,7 +183,8 @@ body .menu.home-friendly > .home-castle-life .home-castle-life__rare {
   z-index: 18 !important;
 }
 
-/* Matthias is still a resident, but the castle scene gets the visual priority. */
+/* Matthias is a resident of the left side of the hall. His speech must derive
+ * from the same anchor; the previous canonical rail computed it from the right. */
 @media (min-width: 761px) {
   body:has(.menu.home-friendly) .matthias-resident.is-viewport {
     top: clamp(13.4rem, 19vw, 18rem) !important;
@@ -191,6 +192,22 @@ body .menu.home-friendly > .home-castle-life .home-castle-life__rare {
     right: auto !important;
     width: clamp(150px, 12vw, 205px) !important;
     z-index: 26 !important;
+  }
+
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport .matthias-resident__bubble {
+    position: fixed !important;
+    top: clamp(13.4rem, 19vw, 18rem) !important;
+    left: calc(clamp(1.25rem, 4vw, 4rem) + clamp(150px, 12vw, 205px) + .5rem) !important;
+    right: auto !important;
+    width: min(320px, calc(100vw - 24rem)) !important;
+    max-width: 320px !important;
+    margin: 0 !important;
+  }
+
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport .matthias-resident__bubble::after {
+    left: -7px !important;
+    right: auto !important;
+    transform: rotate(45deg) !important;
   }
 }
 
@@ -215,6 +232,10 @@ body .menu.home-friendly > .home-next-action {
 
   body .menu.home-friendly > .home-castle-life .home-castle-hub__room strong { font-size: .82rem; }
   body .menu.home-friendly > .home-castle-life .home-castle-hub__room small { font-size: .62rem; }
+
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport .matthias-resident__bubble {
+    width: min(280px, calc(100vw - 20rem)) !important;
+  }
 }
 
 @media (max-width: 760px) {
