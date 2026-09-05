@@ -70,6 +70,7 @@ function addTeutonicMasonry(group, { wallZ, towardBoard }) {
   const masonry = new THREE.Group();
   masonry.name = 'war-room-teutonic-masonry';
   masonry.userData.warRoomWallFinish = 'smoked-rhenish-ashlar-v2';
+  masonry.userData.warRoomRetiredMortarJointsOmitted = 78;
   const stone = physical(0x373633, { roughness: 0.94, clearcoat: 0.012, specularIntensity: 0.11 });
   const stoneLift = physical(0x4a4843, { roughness: 0.9, clearcoat: 0.018, specularIntensity: 0.14 });
   const grout = physical(0x1c1b19, { roughness: 0.99, clearcoat: 0, specularIntensity: 0.03 });
@@ -91,21 +92,6 @@ function addTeutonicMasonry(group, { wallZ, towardBoard }) {
     for (const y of [0.72, 1.42, 2.12, 2.82, 3.52, 4.22, 4.92]) {
       const line = addBox(masonry, [0.085, 0.026, depth - 0.18], grout, [side * 7.685, y, centerZ], 'war-room-teutonic-mortar-course');
       line.castShadow = false;
-    }
-
-    for (let row = 0; row < 7; row += 1) {
-      const y = 0.37 + row * 0.7;
-      const stagger = row % 2 ? 1.12 : 0;
-      for (let offset = 1.1 + stagger; offset < depth - 0.55; offset += 2.25) {
-        const joint = addBox(
-          masonry,
-          [0.086, 0.61, 0.027],
-          grout,
-          [side * 7.68, y, wallZ + towardBoard * offset],
-          'war-room-teutonic-mortar-joint',
-        );
-        joint.castShadow = false;
-      }
     }
   }
 

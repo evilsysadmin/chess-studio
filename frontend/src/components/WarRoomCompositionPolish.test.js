@@ -44,7 +44,7 @@ function runRootDriver(room) {
 describe('WarRoomCompositionPolish', () => {
   const theme = { felt: 0x173943, glow: 0xc5963f };
 
-  it('no recoloca armaduras: el transform pertenece al contrato de layout v28', () => {
+  it('no recoloca armaduras y todavía retira juntas legacy inyectadas por compatibilidad', () => {
     const room = new THREE.Group();
     const leftArmor = new THREE.Group();
     leftArmor.name = 'war-room-teutonic-armor-left';
@@ -71,21 +71,19 @@ describe('WarRoomCompositionPolish', () => {
     expect(rightArmor.position.toArray()).toEqual(before.rightPosition);
     expect(rightArmor.rotation.y).toBe(before.rightRotationY);
     expect(mortar.visible).toBe(false);
+    expect(room.userData.warRoomRetiredMortarJoints).toBe(1);
     expect(room.userData.warRoomCompositionLayoutWritesRetired).toBe(true);
     expect(room.userData.warRoomCompositionArmorCount).toBe(0);
     dispose(room);
   });
 
-  it('coloca las armaduras v28 contra pared mirando al tablero y retira juntas y mesas laterales', () => {
+  it('coloca las armaduras v28 y la mampostería canónica ya no construye las 78 juntas retiradas', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const leftArmor = room.getObjectByName('war-room-teutonic-armor-left');
     const rightArmor = room.getObjectByName('war-room-teutonic-armor-right');
     const leftConsole = room.getObjectByName('war-room-side-console-left');
     const rightConsole = room.getObjectByName('war-room-side-console-right');
-    const mortarJoints = [];
-    room.traverse((object) => {
-      if (object.name === 'war-room-teutonic-mortar-joint') mortarJoints.push(object);
-    });
+    const masonry = room.getObjectByName('war-room-teutonic-masonry');
     const owner = compositionOwner(room);
 
     expect(owner).toBeTruthy();
@@ -107,9 +105,9 @@ describe('WarRoomCompositionPolish', () => {
     expect(Math.abs(rightArmor.position.x)).toBeGreaterThan(Math.abs(rightConsole.position.x));
     expect(Math.abs(leftArmor.rotation.y)).toBeGreaterThan(1.3);
     expect(Math.abs(rightArmor.rotation.y)).toBeGreaterThan(1.3);
-    expect(mortarJoints.length).toBeGreaterThan(10);
-    expect(mortarJoints.every((joint) => joint.visible === false)).toBe(true);
-    expect(owner.userData.warRoomRetiredMortarJoints).toBe(mortarJoints.length);
+    expect(masonry.userData.warRoomRetiredMortarJointsOmitted).toBe(78);
+    expect(room.getObjectByName('war-room-teutonic-mortar-joint')).toBeUndefined();
+    expect(owner.userData.warRoomRetiredMortarJoints).toBe(0);
     expect(owner.userData.warRoomCompositionLayoutWritesRetired).toBe(true);
 
     const diagonalBraces = [];
