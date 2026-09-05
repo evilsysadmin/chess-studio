@@ -73,7 +73,7 @@ export default function GameBoardView({
     fen: board.visibleBoardFen,
     matthiasKingColor: topColor,
     orientation: boardOrientation,
-    enabled: Boolean(isThreeD && !zenMode && !focusActive && activeBoardBubble),
+    enabled: Boolean(isThreeD && !zenMode && !focusActive),
   });
 
   function enterFocus() {
@@ -168,7 +168,9 @@ export default function GameBoardView({
               gameId={game.id}
               isThreeD={isThreeD}
               historyLength={game.history.length}
-              enabled={!zenMode}
+              enabled={!zenMode && !focusActive}
+              anchorStyle={matthias3DBubbleStyle}
+              trackedSquare={matthias3DTrackedSquare}
             />
 
             {!isThreeD && !zenMode && !focusActive && activeBoardBubble && (
