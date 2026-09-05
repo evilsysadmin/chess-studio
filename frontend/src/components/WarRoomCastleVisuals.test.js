@@ -126,8 +126,8 @@ describe('War Room castle visual contract', () => {
     expect(Math.abs(leftArmor.rotation.y)).toBeGreaterThan(1.3);
     expect(room.getObjectByName('war-room-sofa-carved-top-rail')).toBeTruthy();
     expect(room.getObjectByName('war-room-command-chair-crown-rail')).toBeTruthy();
-    expect(room.getObjectByName('war-room-armor-alcove-left').visible).toBe(false);
-    expect(room.getObjectByName('war-room-hammerbeam-side-tie').visible).toBe(false);
+    expect(room.getObjectByName('war-room-armor-alcove-left')).toBeUndefined();
+    expect(room.getObjectByName('war-room-hammerbeam-side-tie')).toBeUndefined();
 
     const fireCore = room.getObjectByName('war-room-fire-core');
     const flame = fireCore.children.find((child) => child?.isMesh);
