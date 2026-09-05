@@ -45,13 +45,13 @@ describe('WarRoom3DMotion', () => {
     const check = reactiveLightProfile({ check: true });
     const terminal = reactiveLightProfile({ gameOver: true });
 
-    expect(normal.exposure).toBeGreaterThan(1.05);
-    expect(normal.exposure).toBeLessThanOrEqual(1.07);
-    expect(normal.key).toBeLessThanOrEqual(2.04);
+    expect(normal.exposure).toBeGreaterThan(1.04);
+    expect(normal.exposure).toBeLessThanOrEqual(1.055);
+    expect(normal.key).toBeLessThanOrEqual(1.96);
     expect(normal.warm).toBeLessThan(5.5);
     expect(normal.rim).toBeLessThan(13);
     expect(check.rim).toBeGreaterThan(normal.rim);
-    expect(check.key).toBeLessThanOrEqual(2.38);
+    expect(check.key).toBeLessThanOrEqual(2.28);
     expect(check.warm).toBeLessThanOrEqual(normal.warm);
     expect(terminal.key).toBeLessThanOrEqual(1.44);
     expect(terminal.exposure).toBeLessThan(normal.exposure);

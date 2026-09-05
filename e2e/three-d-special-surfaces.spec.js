@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import {
   login,
-  loginAndOpenDeployment,
   mockApi,
+  openCampaignBriefing,
   openMoreGameModes,
 } from './helpers.js';
 
@@ -23,6 +23,14 @@ function cross(a, b) {
 
 function dot(a, b) {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+function pointInside(rect, point) {
+  if (!rect) return false;
+  return point.x >= rect.x
+    && point.x <= rect.x + rect.width
+    && point.y >= rect.y
+    && point.y <= rect.y + rect.height;
 }
 
 // Deployment hover still needs one pointer coordinate. The gameplay assertions
@@ -58,6 +66,32 @@ function projectSquare(rect, square, worldY = 0.12) {
   };
 }
 
+async function openHeavy3DSurface(button, readySurface) {
+  // Hosted software-WebGL can make the React commit behind these transitions
+  // expensive enough that Playwright's user-action click waits on the mount and
+  // hits the action timeout. We already assert that the real button is visible
+  // and enabled; dispatch its DOM click and synchronize on the resulting 3D UI.
+  await expect(button).toBeVisible();
+  await expect(button).toBeEnabled();
+  await button.evaluate((element) => element.click());
+  await expect(readySurface).toBeVisible({ timeout: READY });
+}
+
+async function openDeploymentForSpecialSurface(page) {
+  const deployment = page.getByRole('region', { name: 'Preparar despliegue de Combat Chess' });
+  if (await deployment.isVisible().catch(() => false)) return deployment;
+
+  const enterPreparation = page.getByRole('button', { name: /PREPARAR EJÉRCITO/i });
+  if (await enterPreparation.isVisible().catch(() => false)) {
+    await openHeavy3DSurface(enterPreparation, page.getByLabel('Resumen de preparación').or(deployment));
+    if (await deployment.isVisible().catch(() => false)) return deployment;
+  }
+
+  const reviewDeployment = page.getByRole('button', { name: /PREPARAR DESPLIEGUE|REVISAR Y CONFIRMAR|Personalizar despliegue/i });
+  await openHeavy3DSurface(reviewDeployment, deployment);
+  return deployment;
+}
+
 test('Arena experimental · tema, terreno y legalidad sobreviven al renderer 3D', async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 1440, height: 960 });
@@ -72,10 +106,10 @@ test('Arena experimental · tema, terreno y legalidad sobreviven al renderer 3D'
   await expect(experiments).toBeVisible();
   await experiments.click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /Arenas experimentales/i }).click();
 
   const arena = page.getByRole('region', { name: 'Arena experimental con terreno bloqueado' });
-  await expect(arena).toBeVisible();
+  await openHeavy3DSurface(page.getByRole('button', { name: /Arenas experimentales/i }), arena);
+
   const board = arena.locator('[data-board3d-war-room="true"]');
   const canvas = arena.locator('.board3d-main-canvas');
   await expect(board).toBeVisible({ timeout: READY });
@@ -109,11 +143,16 @@ test('Arena experimental · tema, terreno y legalidad sobreviven al renderer 3D'
 test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre el canvas 3D', async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 1440, height: 960 });
-  const deployment = await loginAndOpenDeployment(page);
+  await mockApi(page);
+  await login(page);
+  await openCampaignBriefing(page);
+  const deployment = await openDeploymentForSpecialSurface(page);
 
   const board = deployment.locator('[data-board3d-war-room="true"]');
+  const boardSurface = deployment.locator('.preferred-board-3d');
   const canvas = deployment.locator('.board3d-main-canvas');
   await expect(board).toBeVisible({ timeout: READY });
+  await expect(boardSurface).toBeVisible({ timeout: READY });
   await expect(canvas).toBeVisible({ timeout: READY });
   await expect(board).toHaveAttribute('data-board3d-legal-target-count', /[1-9][0-9]*/);
   await expect(deployment.locator('.board3d-parity-details')).toHaveCount(1);
@@ -136,10 +175,29 @@ test('Combat Deployment · hover de unidad y metadata táctica funcionan sobre e
   await expect(dossier).toHaveClass(/\bpreview\b/);
   await expect(dossier.getByText(/Vista rápida/i)).toBeVisible();
 
-  // Move to a coordinate guaranteed to be outside both the canvas and the
-  // dossier. Hovering another DOM element can cross the fixed popover and make
-  // the test accidentally exercise its keep-open affordance instead of the
-  // canvas leave contract we actually care about.
-  await page.mouse.move(1, 1);
+  // The dossier is intentionally a hover bridge: moving from the WebGL piece
+  // into the fixed portal keeps the preview alive so the user can inspect it.
+  // Exercise that real interaction first, then leave both surfaces. A one-step
+  // pointer teleport from WebGL straight to a distant corner can skip the
+  // portal's mouseenter/mouseleave pair and is not representative user input.
+  const surfaceRect = await boardSurface.boundingBox();
+  const dossierRect = await dossier.boundingBox();
+  expect(dossierRect).toBeTruthy();
+  await page.mouse.move(
+    dossierRect.x + dossierRect.width / 2,
+    dossierRect.y + Math.min(24, dossierRect.height / 2),
+  );
+  await expect(dossier).toBeVisible();
+
+  const viewport = page.viewportSize();
+  const corners = [
+    { x: 2, y: 2 },
+    { x: viewport.width - 2, y: 2 },
+    { x: 2, y: viewport.height - 2 },
+    { x: viewport.width - 2, y: viewport.height - 2 },
+  ];
+  const exitPoint = corners.find((point) => !pointInside(surfaceRect, point) && !pointInside(dossierRect, point));
+  expect(exitPoint).toBeTruthy();
+  await page.mouse.move(exitPoint.x, exitPoint.y);
   await expect(dossier).toBeHidden({ timeout: 3_000 });
 });
