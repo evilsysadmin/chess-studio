@@ -11,10 +11,11 @@ import { installWarRoomApprovedMockContract } from './WarRoomApprovedMockContrac
 import { installWarRoomCommandDeskStudy } from './WarRoomCommandDeskStudy.js';
 import { installWarRoomCommandDeskLuxury } from './WarRoomCommandDeskLuxury.js';
 import { attachWarRoomCompositionRootDriver } from './WarRoomCompositionRootDriver.js';
-import { armWarRoomOneShotHookRetirement } from './WarRoomDeferredFinalizer.js';
+import { armWarRoomOneShotHookRetirement, registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 import { installWarRoomMilitaryGallery } from './WarRoomMilitaryGallery.js';
 
 const TORCH_WALL_WASH_VERSION = 'hearth-contour-v2';
+const GALLERY_PAINTING_ORIENTATION_VERSION = 'upright-texture-v1';
 
 function materialList(object) {
   if (!object?.material) return [];
@@ -91,6 +92,45 @@ function addMuseumSideKey(group, { side, wallZ, towardBoard }) {
   group.add(target);
   group.add(light);
   return light;
+}
+
+export function correctWarRoomGalleryPaintingOrientation(group) {
+  if (!group) return 0;
+  let corrected = 0;
+
+  const frames = [
+    group.getObjectByName?.('war-room-premium-painting-0'),
+    group.getObjectByName?.('war-room-premium-painting-1'),
+    group.getObjectByName?.('war-room-campaign-painting-left'),
+    group.getObjectByName?.('war-room-campaign-painting-right'),
+  ];
+
+  for (const frame of frames) {
+    if (!frame) continue;
+    const canvas = frame.getObjectByName?.('war-room-premium-painting-canvas')
+      || frame.getObjectByName?.('war-room-campaign-side-canvas');
+    const texture = canvas?.material?.map;
+    if (!texture?.userData?.warRoomCampaignArt) continue;
+    if (texture.flipY === true && texture.userData.warRoomPaintingOrientation === GALLERY_PAINTING_ORIENTATION_VERSION) continue;
+
+    // Embedded campaign art is decoded row 0 = visual top. DataTexture uses the
+    // opposite vertical texture convention, so flip it once at upload time.
+    texture.flipY = true;
+    texture.needsUpdate = true;
+    texture.userData.warRoomPaintingOrientation = GALLERY_PAINTING_ORIENTATION_VERSION;
+    frame.userData.warRoomPaintingOrientation = GALLERY_PAINTING_ORIENTATION_VERSION;
+    corrected += 1;
+  }
+
+  return corrected;
+}
+
+function registerGalleryPaintingOrientationFinalizer(group, coarsePointer) {
+  return registerWarRoomDeferredFinalizer(group, {
+    key: 'gallery-painting-orientation-upright-v1',
+    coarsePointer,
+    run: (root) => correctWarRoomGalleryPaintingOrientation(root || group),
+  });
 }
 
 export function tuneWarRoomGalleryTorchWallWash(group) {
@@ -195,6 +235,8 @@ export function applyWarRoomPracticalLighting(group, {
   installWarRoomCommandDeskStudy(group, { towardBoard, coarsePointer });
   installWarRoomCommandDeskLuxury(group, { towardBoard, coarsePointer });
   installWarRoomMilitaryGallery(group, { wallZ, towardBoard, coarsePointer });
+  correctWarRoomGalleryPaintingOrientation(group);
+  registerGalleryPaintingOrientationFinalizer(group, coarsePointer);
   tuneWarRoomGalleryTorchWallWash(group);
 
   // Desktop static work shares the painting canvas and gets exactly one first
