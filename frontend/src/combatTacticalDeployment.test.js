@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { loadRoster } from './combatRoster.js';
 import { grantReserveRecruit, setDeploymentUnit } from './combatDeployment.js';
 import { setRosterDeploymentType } from './combatMetamorphosis.js';
-import { buildTacticalDeploymentBrief, deploymentSelectionFingerprint } from './combatTacticalDeployment.js';
+import { buildTacticalDeploymentBrief, deploymentSelectionFingerprint, freezeTacticalRosterSnapshot } from './combatTacticalDeployment.js';
 
 beforeEach(() => localStorage.clear());
 
@@ -42,6 +42,16 @@ describe('Combat tactical deployment fingerprint', () => {
     const before = deploymentSelectionFingerprint(roster);
     roster = setRosterDeploymentType(roster, 'p-a', 'n');
     expect(deploymentSelectionFingerprint(roster)).not.toBe(before);
+  });
+
+  it('la copia confirmada no cambia aunque el barracón vivo se modifique después', () => {
+    const roster = loadRoster();
+    const frozen = freezeTacticalRosterSnapshot(roster);
+    const frozenFingerprint = deploymentSelectionFingerprint(frozen);
+    roster.pieces['p-a'].strengthPoints = 99;
+    roster.deployment['p-a'] = 'p-b';
+    expect(frozen.pieces['p-a'].strengthPoints).not.toBe(99);
+    expect(deploymentSelectionFingerprint(frozen)).toBe(frozenFingerprint);
   });
 });
 
