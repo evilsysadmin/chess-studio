@@ -13,7 +13,7 @@ function scene(key, label, greeting, loginText) {
 // tres horas con el mismo bocata. La hora local del navegador decide la escena
 // y no altera ninguna métrica ni regla del juego.
 const HOURLY_SCENES = Object.freeze([
-  scene('chess-weekly', 'Lectura de medianoche', 'Guten Abend', 'Guten Abend. Medianoche. Última lectura del día. Si vas a hacer una barbaridad, que al menos sea instructiva.'), // 00
+  scene('late-sleep', 'Sobando', 'Guten… was?', 'Medianoche. Yo ya estaba durmiendo. Si has venido a liarla, procura al menos que sea una buena partida.'), // 00
   scene('late-sleep', 'Sobando', 'Guten… was?', '¿Qué haces jugando a estas horas? Has despertado al alto mando. Ya que estamos, mueve bien.'),
   scene('late-sleep', 'Sobando', 'Guten… was?', 'Las dos de la mañana. Yo estaba durmiendo y tú aparentemente estabas buscando problemas.'),
   scene('late-sleep', 'Sobando', 'Guten… was?', 'Las tres. No pienso preguntar por qué. Sólo intenta que la partida justifique el crimen horario.'),
