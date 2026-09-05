@@ -45,9 +45,32 @@ body .home-friendly > .home-primary-group:not(.home-modes-section)
   margin-left: auto;
 }
 
+/* Integrate the open tools drawer into the same rail instead of rendering a
+ * second framed panel inside it. */
 body .home-friendly > .home-primary-group:not(.home-modes-section)
   .home-learning-more {
+  margin: .75rem .45rem .25rem;
   overflow: visible;
+  border: 0;
+  border-top: 1px solid rgba(192,150,59,.18);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-more > summary {
+  padding: .68rem .15rem .48rem;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-more[open] > summary {
+  border-bottom: 0;
+}
+
+body .home-friendly > .home-primary-group:not(.home-modes-section)
+  .home-learning-more > .friendly-disclosure-body {
+  padding: .42rem 0 .15rem;
 }
 
 body .home-friendly > .home-primary-group:not(.home-modes-section)
