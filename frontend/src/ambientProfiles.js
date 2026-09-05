@@ -9,6 +9,7 @@ import {
 import { installRadioMatthiasExpansion } from './ambientRadioMatthiasExpansion.js';
 import { radioMatthiasStructuredFeel } from './ambientRadioMatthiasProfiles.js';
 import { installRadioMatthiasRecompositions } from './ambientRadioMatthiasRecompositions.js';
+import { installTropicalHouseMelodies } from './ambientTropicalHouseMelody.js';
 import { installRadioPremiumForms } from './ambientRadioPremiumForms.js';
 import { withRadioMatthiasLeitmotif } from './ambientRadioMatthiasLeitmotifs.js';
 
@@ -22,6 +23,7 @@ installRadioMatthiasExpansion({
   hiddenIds: RADIO_MATTHIAS_HIDDEN_THEME_IDS,
 });
 installRadioMatthiasRecompositions({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
+installTropicalHouseMelodies({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
 installRadioPremiumForms({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
 
 const GRANADA_THEME_IDS = new Set(['granadaPatio', 'granadaCopperRain0232']);
