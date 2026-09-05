@@ -207,7 +207,9 @@ describe('MatthiasPremiumHome3D', () => {
 
     const blanketBodyBox = objectBox(blanketBody);
     const faceBox = objectBox(rig.head);
-    expect(blanketBodyBox.max.y).toBeLessThan(faceBox.min.y + .12);
+    const faceCenter = new THREE.Vector3();
+    faceBox.getCenter(faceCenter);
+    expect(blanketBodyBox.max.y).toBeLessThan(faceCenter.y);
 
     applyMatthiasPremiumHomePose(rig, pose({ activityProfile: 'idle' }));
     expect(rig.activityRig.blanket.visible).toBe(false);
