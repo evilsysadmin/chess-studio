@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-const DESKTOP_DPR_CAP = 1.35;
+const DESKTOP_DPR_CAP = 1.1;
 const MOBILE_DPR_CAP = 1;
-const FRAME_INTERVAL_MS = 48;
 
 function material(THREE, options) {
   return new THREE.MeshStandardMaterial(options);
@@ -135,11 +134,6 @@ function addTorch(THREE, parent, x, y, warmMaterial, side = 1) {
   ember.scale.set(.82, 1.45, .82);
   ember.position.y = 0.58;
   group.add(ember);
-
-  const light = new THREE.PointLight(0xffa047, 1.55, 5.8, 2);
-  light.position.set(0, 0.62, 0.26);
-  group.add(light);
-  return light;
 }
 
 function createDust(THREE, count) {
@@ -165,7 +159,6 @@ function createDust(THREE, count) {
 
 function buildScene(THREE, { host, ambience }) {
   const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
-  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   const canvas = document.createElement('canvas');
   canvas.setAttribute('aria-hidden', 'true');
   canvas.tabIndex = -1;
@@ -278,12 +271,10 @@ function buildScene(THREE, { host, ambience }) {
   addBox(THREE, table, [1.28, .07, .82], [3.65, .91, .48], material(THREE, { color: 0x8e6b48, roughness: .88 }));
   addCylinder(THREE, table, .14, .14, 1.18, [-1.45, .92, 1.05], oakEdge, 14).rotation.z = Math.PI / 2;
 
-  const torchLights = [
-    addTorch(THREE, room, -6.75, 1.72, warm, -1),
-    addTorch(THREE, room, -2.85, 1.58, warm, -1),
-    addTorch(THREE, room, 2.85, 1.58, warm, 1),
-    addTorch(THREE, room, 6.75, 1.72, warm, 1),
-  ];
+  addTorch(THREE, room, -6.75, 1.72, warm, -1);
+  addTorch(THREE, room, -2.85, 1.58, warm, -1);
+  addTorch(THREE, room, 2.85, 1.58, warm, 1);
+  addTorch(THREE, room, 6.75, 1.72, warm, 1);
 
   scene.add(new THREE.HemisphereLight(0x7898b0, 0x1d1009, coarse ? 1.18 : 1.38));
   const key = new THREE.DirectionalLight(0xbfdcf0, coarse ? 1.35 : 1.72);
@@ -292,91 +283,53 @@ function buildScene(THREE, { host, ambience }) {
   const rim = new THREE.DirectionalLight(0x688fb2, coarse ? .62 : .82);
   rim.position.set(6.5, 6.2, -1.5);
   scene.add(rim);
-  const fill = new THREE.PointLight(0xc57d3f, ambience === 'honour' ? 2.75 : 2.15, 12.5, 2);
+  const fill = new THREE.DirectionalLight(0xc57d3f, ambience === 'honour' ? 1.05 : .82);
   fill.position.set(0, 4.5, 2.4);
   scene.add(fill);
 
-  let dust = null;
-  if (!coarse) {
-    dust = createDust(THREE, 58);
-    scene.add(dust);
-  }
+  if (!coarse) scene.add(createDust(THREE, 58));
 
-  let visible = true;
-  let pageVisible = !document.hidden;
-  let raf = 0;
-  let lastFrame = 0;
+  let renderRaf = 0;
+  let lastWidth = 0;
+  let lastHeight = 0;
 
-  const resize = () => {
+  const renderScene = () => {
+    renderRaf = 0;
     const width = Math.max(1, host.clientWidth);
     const height = Math.max(1, host.clientHeight);
-    renderer.setSize(width, height, false);
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
+    if (width !== lastWidth || height !== lastHeight) {
+      lastWidth = width;
+      lastHeight = height;
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    }
     renderer.render(scene, camera);
   };
 
-  const renderFrame = (now = performance.now()) => {
-    if (!visible || !pageVisible) {
-      raf = 0;
-      return;
-    }
-    if (now - lastFrame >= FRAME_INTERVAL_MS) {
-      lastFrame = now;
-      const t = now * 0.001;
-      if (!reducedMotion) {
-        torchLights.forEach((light, index) => {
-          light.intensity = 1.50
-            + Math.sin(t * (4.6 + index * .34) + index * 1.07) * .11
-            + Math.sin(t * (8.2 + index * .28) + index * .41) * .045;
-        });
-        fill.intensity = (ambience === 'honour' ? 2.75 : 2.15) + Math.sin(t * .83) * .06;
-        if (dust) {
-          dust.rotation.y = Math.sin(t * .08) * .035;
-          dust.position.y = Math.sin(t * .17) * .045;
-        }
-      }
-      renderer.render(scene, camera);
-    }
-    raf = window.requestAnimationFrame(renderFrame);
+  const scheduleRender = () => {
+    if (renderRaf || document.hidden) return;
+    renderRaf = window.requestAnimationFrame(renderScene);
   };
 
-  const start = () => {
-    if (raf || reducedMotion || !visible || !pageVisible) return;
-    raf = window.requestAnimationFrame(renderFrame);
-  };
-
-  const stop = () => {
-    if (raf) window.cancelAnimationFrame(raf);
-    raf = 0;
-  };
-
-  const resizeObserver = new ResizeObserver(resize);
+  const resizeObserver = new ResizeObserver(scheduleRender);
   resizeObserver.observe(host);
   const intersectionObserver = new IntersectionObserver(([entry]) => {
-    visible = Boolean(entry?.isIntersecting);
-    if (visible) {
-      resize();
-      start();
-    } else stop();
+    if (entry?.isIntersecting) scheduleRender();
   }, { rootMargin: '140px' });
   intersectionObserver.observe(host);
 
   const onVisibility = () => {
-    pageVisible = !document.hidden;
-    if (pageVisible) {
-      resize();
-      start();
-    } else stop();
+    if (!document.hidden) scheduleRender();
   };
   document.addEventListener('visibilitychange', onVisibility);
 
-  resize();
-  if (!reducedMotion) start();
+  renderScene();
   host.dataset.homeSceneReady = 'true';
+  host.dataset.homeSceneRenderMode = 'on-demand';
 
   return () => {
-    stop();
+    if (renderRaf) window.cancelAnimationFrame(renderRaf);
     resizeObserver.disconnect();
     intersectionObserver.disconnect();
     document.removeEventListener('visibilitychange', onVisibility);
