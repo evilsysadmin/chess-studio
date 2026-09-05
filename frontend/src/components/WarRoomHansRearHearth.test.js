@@ -68,6 +68,9 @@ describe('Hans rear-hearth layout and service door', () => {
       expect(Math.abs(tools.position.z)).toBeLessThanOrEqual(0.25);
       expect(basket.userData.warRoomHansBasketFinish).toBe('graphite-grey-v1');
 
+      // The forced t=0 choreography deliberately opens the door immediately,
+      // so establish a real closed baseline before comparing the swing.
+      setWarRoomHansServiceDoorOpen(refs, 0);
       room.updateMatrixWorld(true);
       const closed = handle.getWorldPosition(new THREE.Vector3());
       setWarRoomHansServiceDoorOpen(refs, 1);
