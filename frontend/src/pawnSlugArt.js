@@ -43,9 +43,9 @@ export function createMatthiasSlugModel() {
 }
 
 export function animateMatthiasSlug(model, { time = 0, running = false, crouch = false, firing = false, dir = 1, hurt = false } = {}) {
-  animateMatthiasSlugSprite(model, { time, running, crouch, firing, hurt });
   const base = Math.abs(model.userData.baseScale || model.scale.x || 1);
   model.scale.x = base * (dir < 0 ? -1 : 1);
+  animateMatthiasSlugSprite(model, { time, running, crouch, firing, hurt, dir });
 }
 
 export function createSlugEnemyModel(type = 'pawn') {
