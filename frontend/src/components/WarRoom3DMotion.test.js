@@ -40,22 +40,22 @@ describe('WarRoom3DMotion', () => {
     expect(deriveMoveKinetics({ movingType: 'q', capture: true, coarsePointer: true }).duration).toBeLessThanOrEqual(200);
   });
 
-  it('locks the desktop v9 board key while leaving room exposure and practical ambience intact', () => {
+  it('locks the desktop board key while leaving room exposure and practical ambience intact', () => {
     const normal = reactiveLightProfile();
     const check = reactiveLightProfile({ check: true });
     const terminal = reactiveLightProfile({ gameOver: true });
 
     expect(normal).toMatchObject({
-      key: 1.52,
+      key: 1.42,
       rim: 12.15,
       warm: 4.85,
       exposure: 1.04,
       fogDensity: 0.0172,
     });
-    expect(check.key).toBe(1.84);
+    expect(check.key).toBe(1.74);
     expect(check.rim).toBeGreaterThan(normal.rim);
     expect(check.warm).toBeLessThanOrEqual(normal.warm);
-    expect(terminal.key).toBe(1.34);
+    expect(terminal.key).toBe(1.26);
     expect(terminal.exposure).toBeLessThan(normal.exposure);
     expect(terminal.rim).toBeLessThan(normal.rim);
     expect(terminal.fogDensity).toBeGreaterThan(normal.fogDensity);
