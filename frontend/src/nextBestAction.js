@@ -11,10 +11,43 @@ export function nextBestAction({ outcome, moveCount = 0, hasReport = false } = {
   return { id: 'advance', eyebrow: 'Siguiente paso', title: 'Entrena una decisión', detail: 'Avanza con un objetivo nuevo en lugar de repetir la misma partida.', label: 'Ver siguiente objetivo' };
 }
 
+const HOME_CORE_MODE_ACTIONS = Object.freeze({
+  tournament: Object.freeze({
+    id: 'tournament',
+    eyebrow: 'Continúa donde estabas',
+    title: 'Vuelve a Torneo',
+    detail: 'Retoma el circuito de rivales sin buscar otra puerta del castillo.',
+    label: 'Continuar Torneo',
+  }),
+  practice: Object.freeze({
+    id: 'practice',
+    eyebrow: 'Continúa donde estabas',
+    title: 'Vuelve a práctica',
+    detail: 'Sigue entrenando sin presión con el mismo acceso directo.',
+    label: 'Continuar práctica',
+  }),
+  casual: Object.freeze({
+    id: 'quick',
+    eyebrow: 'Continúa donde estabas',
+    title: 'Otra partida rápida',
+    detail: 'Vuelve al tablero con una CPU ajustada a tu nivel.',
+    label: 'Jugar otra partida',
+  }),
+});
+
+const HOME_QUICK_FALLBACK = Object.freeze({
+  id: 'quick',
+  eyebrow: 'Tu siguiente partida',
+  title: 'Partida rápida',
+  detail: 'Entra al tablero sin elegir entre veinte mandangas antes de mover un peón.',
+  label: 'Jugar ahora',
+});
+
 export function homeNextBestAction(activity = []) {
-  const latest = activity.find((row) => row?.state === 'finished');
-  if (!latest) return null;
-  if (latest.outcome === 'loss') return { id: 'practice', eyebrow: 'Recomendado para ti', title: 'Practica sin presión', detail: 'Tu última partida terminó en derrota. Usa pistas gratis para probar otra idea.', label: 'Abrir práctica' };
-  if (latest.outcome === 'win') return { id: 'tournament', eyebrow: 'Recomendado para ti', title: 'Pon a prueba la racha', detail: 'Vienes de ganar. Torneo te propone el siguiente rival adecuado.', label: 'Ir a Torneo' };
-  return { id: 'quick', eyebrow: 'Recomendado para ti', title: 'Convierte la próxima ventaja', detail: 'Una partida rápida adaptada mantiene la continuidad con un objetivo nuevo.', label: 'Jugar siguiente' };
+  const latestCoreGame = activity.find((row) => (
+    row?.state === 'finished'
+    && HOME_CORE_MODE_ACTIONS[String(row?.mode || 'casual')]
+  ));
+  if (!latestCoreGame) return HOME_QUICK_FALLBACK;
+  return HOME_CORE_MODE_ACTIONS[String(latestCoreGame.mode || 'casual')] || HOME_QUICK_FALLBACK;
 }
