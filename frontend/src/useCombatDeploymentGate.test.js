@@ -11,4 +11,14 @@ describe('Combat deployment gate', () => {
     expect(deploymentStartDecision({ deadCount: 0, requireConfirmation: true, confirmed: true, ready: false })).toBe('invalid');
     expect(deploymentStartDecision({ deadCount: 0, requireConfirmation: true, confirmed: true, ready: true })).toBe('start');
   });
+
+  it('una formación distinta exige reconfirmar aunque siga cubriendo los 16 puestos', () => {
+    expect(deploymentStartDecision({
+      deadCount: 0,
+      requireConfirmation: true,
+      confirmed: true,
+      ready: true,
+      confirmationMatches: false,
+    })).toBe('invalid');
+  });
 });
