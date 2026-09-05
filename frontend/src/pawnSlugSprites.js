@@ -6,18 +6,52 @@ import enemyFallbackAtlasUrl from './assets/pawnSlug/enemy_atlas.svg';
 import panzerRookUrl from './assets/pawnSlug/panzer_rook_v2.webp';
 import weaponAtlasUrl from './assets/pawnSlug/weapon_atlas.svg';
 
-const MATTHIAS_RUN_FRAMES = Object.freeze([1, 2]);
 const ENEMY_FRAME_BY_TYPE = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
+const freezeTrack = (poses) => Object.freeze(poses.map((pose) => Object.freeze(pose)));
+const clamp01 = (value) => Math.max(0, Math.min(1, Number(value) || 0));
+
+export const PAWN_SLUG_MATTHIAS_POSE_TRACKS = Object.freeze({
+  run: freezeTrack([
+    { frame: 1, x: -0.018, y: 0.000, scaleX: 1.015, scaleY: 0.990, rotation: -0.020 },
+    { frame: 1, x: -0.006, y: 0.020, scaleX: 1.000, scaleY: 1.008, rotation: -0.012 },
+    { frame: 2, x: 0.008, y: 0.036, scaleX: 0.990, scaleY: 1.018, rotation: 0.000 },
+    { frame: 2, x: 0.022, y: 0.022, scaleX: 1.004, scaleY: 1.006, rotation: 0.012 },
+    { frame: 1, x: 0.030, y: 0.002, scaleX: 1.018, scaleY: 0.988, rotation: 0.020 },
+    { frame: 1, x: 0.015, y: 0.018, scaleX: 1.002, scaleY: 1.006, rotation: 0.012 },
+    { frame: 2, x: 0.000, y: 0.038, scaleX: 0.988, scaleY: 1.020, rotation: 0.000 },
+    { frame: 2, x: -0.014, y: 0.020, scaleX: 1.002, scaleY: 1.006, rotation: -0.012 },
+    { frame: 1, x: -0.026, y: 0.002, scaleX: 1.018, scaleY: 0.988, rotation: -0.020 },
+  ]),
+  jump: freezeTrack([
+    { frame: 1, x: -0.010, y: 0.000, scaleX: 1.028, scaleY: 0.970, rotation: -0.018 },
+    { frame: 2, x: 0.000, y: 0.022, scaleX: 0.985, scaleY: 1.035, rotation: -0.012 },
+    { frame: 2, x: 0.008, y: 0.040, scaleX: 0.975, scaleY: 1.050, rotation: -0.006 },
+    { frame: 2, x: 0.014, y: 0.050, scaleX: 0.982, scaleY: 1.040, rotation: 0.000 },
+    { frame: 2, x: 0.014, y: 0.046, scaleX: 0.990, scaleY: 1.028, rotation: 0.006 },
+    { frame: 2, x: 0.008, y: 0.032, scaleX: 1.000, scaleY: 1.012, rotation: 0.012 },
+    { frame: 1, x: 0.000, y: 0.014, scaleX: 1.015, scaleY: 0.992, rotation: 0.016 },
+    { frame: 0, x: -0.006, y: 0.000, scaleX: 1.030, scaleY: 0.970, rotation: 0.010 },
+  ]),
+  crouch: freezeTrack([
+    { frame: 0, x: 0.000, y: 0.000, scaleX: 1.000, scaleY: 1.000, rotation: 0.000 },
+    { frame: 0, x: 0.006, y: -0.006, scaleX: 1.008, scaleY: 0.962, rotation: 0.003 },
+    { frame: 1, x: 0.010, y: -0.012, scaleX: 1.016, scaleY: 0.920, rotation: 0.006 },
+    { frame: 1, x: 0.014, y: -0.018, scaleX: 1.024, scaleY: 0.875, rotation: 0.008 },
+    { frame: 1, x: 0.016, y: -0.022, scaleX: 1.030, scaleY: 0.835, rotation: 0.010 },
+    { frame: 0, x: 0.016, y: -0.025, scaleX: 1.034, scaleY: 0.808, rotation: 0.010 },
+    { frame: 0, x: 0.014, y: -0.026, scaleX: 1.036, scaleY: 0.792, rotation: 0.009 },
+    { frame: 0, x: 0.012, y: -0.026, scaleX: 1.038, scaleY: 0.785, rotation: 0.008 },
+  ]),
+});
 
 export const PAWN_SLUG_MOTION_PROFILES = Object.freeze({
   matthias: Object.freeze({
     idleRate: 2.2,
     idleBreath: 0.007,
-    runRate: 12.4,
-    runBob: 0.026,
-    runLean: 0.013,
-    runSquash: 0.008,
-    crouchScale: 0.79,
+    runRate: 13.0,
+    crouchInSeconds: 0.15,
+    crouchOutSeconds: 0.12,
+    jumpSeconds: 0.78,
     hurtKick: 0.075,
     recoilByWeapon: Object.freeze({
       pistol: 0.042,
@@ -94,6 +128,7 @@ function atlasSprite(primaryUrl, fallbackUrl, frames, initialFrame = 0, scale = 
     ready: false,
     disposed: false,
   };
+  sprite.userData.motionBaseScaleX = scale[0];
   sprite.userData.motionBaseScaleY = scale[1];
   sprite.userData.motionPhase = Math.random() * Math.PI * 2;
 
@@ -172,10 +207,48 @@ function tintSprite(sprite, hurt, hurtOpacity) {
   sprite.material.color?.setRGB(1, hurt ? 0.62 : 1, hurt ? 0.62 : 1);
 }
 
+function poseAt(track, index) {
+  return track[Math.max(0, Math.min(track.length - 1, index))];
+}
+
+function updateMatthiasMotionState(animation, { time, running, airborne, crouch, profile }) {
+  const lastTime = Number.isFinite(animation.lastTime) ? animation.lastTime : time;
+  const dt = Math.max(0, Math.min(0.06, time - lastTime));
+  animation.lastTime = time;
+
+  if (running && !animation.running) animation.runStartedAt = time;
+  animation.running = running;
+  if (airborne && !animation.airborne) animation.airStartedAt = time;
+  animation.airborne = airborne;
+
+  const crouchRate = crouch ? 1 / profile.crouchInSeconds : -1 / profile.crouchOutSeconds;
+  animation.crouchBlend = clamp01((animation.crouchBlend || 0) + dt * crouchRate);
+
+  const runElapsed = Math.max(0, time - (animation.runStartedAt ?? time));
+  const runIndex = Math.floor(runElapsed * profile.runRate) % PAWN_SLUG_MATTHIAS_POSE_TRACKS.run.length;
+  const jumpElapsed = Math.max(0, time - (animation.airStartedAt ?? time));
+  const jumpProgress = clamp01(jumpElapsed / profile.jumpSeconds);
+  const jumpIndex = Math.min(
+    PAWN_SLUG_MATTHIAS_POSE_TRACKS.jump.length - 1,
+    Math.floor(jumpProgress * PAWN_SLUG_MATTHIAS_POSE_TRACKS.jump.length),
+  );
+  const crouchIndex = Math.round(animation.crouchBlend * (PAWN_SLUG_MATTHIAS_POSE_TRACKS.crouch.length - 1));
+
+  return { runIndex, jumpIndex, crouchIndex, crouchBlend: animation.crouchBlend };
+}
+
 export function createMatthiasSlugSprite() {
   const sprite = atlasSprite(matthiasAtlasUrl, matthiasFallbackAtlasUrl, 4, 0, [1.77, 2.56]);
   sprite.name = 'pawn-slug-matthias-sprite';
-  sprite.userData.animation = { clock: 0, weapon: 'pistol' };
+  sprite.userData.animation = {
+    weapon: 'pistol',
+    lastTime: null,
+    runStartedAt: 0,
+    airStartedAt: 0,
+    running: false,
+    airborne: false,
+    crouchBlend: 0,
+  };
   sprite.userData.setWeapon = (kind) => { sprite.userData.animation.weapon = kind || 'pistol'; };
   return sprite;
 }
@@ -192,34 +265,39 @@ export function animateMatthiasSlugSprite(sprite, {
   const setFrame = sprite.userData.setFrame;
   if (!setFrame) return;
   const profile = PAWN_SLUG_MOTION_PROFILES.matthias;
+  const animation = sprite.userData.animation || (sprite.userData.animation = { weapon: 'pistol', crouchBlend: 0 });
+  const baseScaleX = sprite.userData.motionBaseScaleX || 1.77;
   const baseScaleY = sprite.userData.motionBaseScaleY || 2.56;
   const direction = dir < 0 ? -1 : 1;
-  const runWave = Math.sin(time * profile.runRate);
   const breath = Math.sin(time * profile.idleRate) * profile.idleBreath;
-  const weapon = sprite.userData.animation?.weapon || 'pistol';
+  const weapon = animation.weapon || 'pistol';
   const recoil = firing ? (profile.recoilByWeapon[weapon] ?? profile.recoilByWeapon.pistol) : 0;
+  const motion = updateMatthiasMotionState(animation, { time, running, airborne, crouch, profile });
+
+  let pose = null;
+  if (airborne) pose = poseAt(PAWN_SLUG_MATTHIAS_POSE_TRACKS.jump, motion.jumpIndex);
+  else if (motion.crouchBlend > 0.001) pose = poseAt(PAWN_SLUG_MATTHIAS_POSE_TRACKS.crouch, motion.crouchIndex);
+  else if (running) pose = poseAt(PAWN_SLUG_MATTHIAS_POSE_TRACKS.run, motion.runIndex);
 
   if (hurt) setFrame(0);
   else if (firing) setFrame(3);
-  else if (airborne) setFrame(2);
-  else if (running) setFrame(MATTHIAS_RUN_FRAMES[Math.floor(time * 9) % MATTHIAS_RUN_FRAMES.length]);
+  else if (pose) setFrame(pose.frame);
   else setFrame(0);
 
-  if (running && !crouch && !airborne) sprite.position.y += Math.abs(runWave) * profile.runBob;
+  const scaleX = pose?.scaleX ?? 1;
+  const scaleY = pose?.scaleY ?? (1 + breath);
+  const poseRotation = pose?.rotation ?? 0;
+  const poseX = pose?.x ?? 0;
+  const poseY = pose?.y ?? 0;
+
+  sprite.position.x += direction * poseX;
+  sprite.position.y += poseY;
   if (recoil) sprite.position.x -= direction * recoil;
   if (hurt) sprite.position.x -= direction * profile.hurtKick;
 
-  const motionSquash = running && !crouch && !airborne
-    ? Math.cos(time * profile.runRate * 2) * profile.runSquash
-    : breath;
-  sprite.scale.y = baseScaleY * (crouch ? profile.crouchScale : 1) * (1 + motionSquash - (hurt ? 0.035 : 0));
-  sprite.material.rotation = running && !crouch && !airborne
-    ? -direction * runWave * profile.runLean
-    : firing
-      ? direction * 0.018
-      : airborne
-        ? -direction * 0.012
-        : 0;
+  sprite.scale.x = baseScaleX * direction * scaleX;
+  sprite.scale.y = baseScaleY * scaleY * (1 - (hurt ? 0.035 : 0));
+  sprite.material.rotation = direction * poseRotation + (firing ? direction * 0.018 : 0);
   tintSprite(sprite, hurt, 0.8);
 }
 
@@ -300,7 +378,8 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
     frameWidth: 72,
     frameHeight: 104,
     sourceFacing: 'right',
-    framesByAction: Object.freeze({ idle: 0, run: MATTHIAS_RUN_FRAMES, crouch: 0, fire: 3, airborne: 2 }),
+    framesByAction: Object.freeze({ idle: 0, run: [1, 2], crouch: 0, fire: 3, airborne: 2 }),
+    motionFrames: Object.freeze({ run: 9, crouch: 8, airborne: 8 }),
   }),
   enemies: Object.freeze({
     url: enemyAtlasUrl,
