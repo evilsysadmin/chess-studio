@@ -230,7 +230,9 @@ test('Home · 390px conserva microgestos, mérito diegético, texto legible y ce
   await expect(masterCrown).toHaveAttribute('data-castle-kind', 'honour');
   const speechContract = await captureSpeechBubbleContract(corner);
   await expect(primaryCard).toBeVisible();
-  expect(speechContract.bubbleFontSize).toBeGreaterThanOrEqual(13);
+  // Chromium resolves the responsive 13px token to 12.96px at this viewport on
+  // some hosted runners; keep the readability floor while tolerating subpixel rounding.
+  expect(speechContract.bubbleFontSize).toBeGreaterThanOrEqual(12.9);
   expect(speechContract.gap).toBeGreaterThanOrEqual(0);
   expect(speechContract.gap).toBeLessThanOrEqual(16);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
