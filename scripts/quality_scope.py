@@ -135,8 +135,10 @@ def classify(paths: Iterable[str]) -> Scope:
             continue
 
         if path.startswith("backend-python/"):
+            # Core Playwright journeys intercept the API with mockApi/page.route,
+            # so they cannot validate a changed Python backend. Backend smoke +
+            # integration/API tests are the authoritative gate for this surface.
             scope.run_backend = True
-            scope.run_e2e = True
             continue
 
         if path.startswith("e2e/"):
@@ -183,12 +185,10 @@ def self_test() -> None:
     _expect(
         ["backend-python/game_api.py"],
         run_backend=True,
-        run_e2e=True,
     )
     _expect(
         ["backend-python/requirements.txt"],
         run_backend=True,
-        run_e2e=True,
         run_security=True,
     )
     _expect(["e2e/pawn-slug.spec.js"], run_pawn_slug_e2e=True)
@@ -222,7 +222,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · producto dirigido; harness full; tooling/infra no despiertan browsers ajenos")
+    print("quality-scope self-test OK · producto dirigido; backend sin browser mockeado; harness full; tooling/infra no despiertan browsers ajenos")
 
 
 def main() -> int:
