@@ -54,9 +54,8 @@ describe('War Room military gallery', () => {
     expect(owner.userData.warRoomMilitaryGalleryCentralCanvases).toBe(2);
     expect(owner.userData.warRoomCampaignTextureCache).toBe('module-prototype-v1');
 
-    // UserPolish still owns some legacy static work in the shared first-paint
-    // queue. The military gallery must run after it so the old landscapes can
-    // never become the visible final frame.
+    // Legacy UserPolish may still run in the shared first-paint queue. Once
+    // campaign art owns a canvas it must remain authoritative afterwards.
     expect(typeof leftCanvas.onBeforeRender).toBe('function');
     leftCanvas.onBeforeRender();
     expect(leftCanvas.material.map.userData.warRoomCampaignArt).toBe('command');
@@ -85,7 +84,7 @@ describe('War Room military gallery', () => {
     dispose(room);
   });
 
-  it('implementa el mock premium como aplique gótico con brasero y halo mural legible', () => {
+  it('implementa el mock premium como aplique gótico con brasero y halo mural cálido legible', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const owner = galleryOwner(room);
 
@@ -96,6 +95,7 @@ describe('War Room military gallery', () => {
       const light = torch?.getObjectByName('war-room-side-torch-light');
       const wallGlow = torch?.getObjectByName('war-room-side-torch-wall-glow');
       const halo = torch?.getObjectByName('war-room-side-torch-wall-halo');
+      const innerHalo = torch?.getObjectByName('war-room-side-torch-wall-halo-inner');
       const painting = room.getObjectByName(`war-room-campaign-painting-${side}`);
 
       expect(torch).toBeInstanceOf(THREE.Group);
@@ -103,6 +103,7 @@ describe('War Room military gallery', () => {
       expect(torch.userData.warRoomTorchForm).toBe('gothic-wall-sconce-brazier');
       expect(torch.userData.warRoomTorchFire).toBe('hearth-bright-v3');
       expect(torch.userData.warRoomTorchLighting).toBe('gallery-spill-v2');
+      expect(torch.userData.warRoomTorchWarmth).toBe('hearth-wash-v1');
       expect(torch.getObjectByName('war-room-side-torch-backplate')).toBeInstanceOf(THREE.Mesh);
       expect(torch.getObjectByName('war-room-side-torch-wall-arm')).toBeInstanceOf(THREE.Mesh);
       expect(torch.getObjectByName('war-room-side-torch-brazier-bowl')).toBeInstanceOf(THREE.Mesh);
@@ -117,24 +118,29 @@ describe('War Room military gallery', () => {
       expect(typeof flame.onBeforeRender).toBe('function');
       expect(flame.material.emissiveIntensity).toBeGreaterThanOrEqual(4.6);
       expect(inner.material.emissiveIntensity).toBeGreaterThanOrEqual(6.2);
+      expect(flame.material.toneMapped).toBe(false);
+      expect(inner.material.toneMapped).toBe(false);
       expect(light).toBeInstanceOf(THREE.PointLight);
-      expect(light.color.getHex()).toBe(0xff8738);
-      expect(light.intensity).toBeGreaterThanOrEqual(7.2);
-      expect(light.distance).toBeGreaterThanOrEqual(9);
+      expect(light.color.getHex()).toBe(0xff7628);
+      expect(light.intensity).toBeGreaterThanOrEqual(8.8);
+      expect(light.distance).toBeGreaterThanOrEqual(10.2);
       expect(light.castShadow).toBe(false);
       expect(wallGlow).toBeInstanceOf(THREE.PointLight);
-      expect(wallGlow.color.getHex()).toBe(0xffb15a);
-      expect(wallGlow.intensity).toBeGreaterThanOrEqual(3);
-      expect(wallGlow.distance).toBeGreaterThanOrEqual(5.7);
+      expect(wallGlow.color.getHex()).toBe(0xffa13f);
+      expect(wallGlow.intensity).toBeGreaterThanOrEqual(5.4);
+      expect(wallGlow.distance).toBeGreaterThanOrEqual(7);
       expect(wallGlow.castShadow).toBe(false);
       expect(halo).toBeInstanceOf(THREE.Mesh);
+      expect(innerHalo).toBeInstanceOf(THREE.Mesh);
       expect(halo.geometry).toBeInstanceOf(THREE.PlaneGeometry);
       expect(halo.material).toBeInstanceOf(THREE.MeshBasicMaterial);
       expect(halo.material.map).toBeInstanceOf(THREE.DataTexture);
       expect(halo.material.map.userData.warRoomTorchHalo).toBe('radial-amber-v1');
       expect(halo.material.blending).toBe(THREE.AdditiveBlending);
       expect(halo.material.toneMapped).toBe(false);
-      expect(halo.material.opacity).toBeGreaterThanOrEqual(0.4);
+      expect(halo.material.opacity).toBeGreaterThanOrEqual(0.8);
+      expect(halo.scale.x).toBeGreaterThan(1.3);
+      expect(innerHalo.material.toneMapped).toBe(false);
       expect(halo.castShadow).toBe(false);
       expect(() => flame.onBeforeRender()).not.toThrow();
 

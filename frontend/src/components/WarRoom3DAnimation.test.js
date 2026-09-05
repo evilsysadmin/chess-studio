@@ -56,12 +56,12 @@ describe('War Room ambient render cadence', () => {
     expect(isSoftwareWebGLRenderer('AMD Radeon RX 7800 XT (RADV NAVI32)')).toBe(false);
   });
 
-  it('reduce sólo el coste visual en software WebGL sin convertir desktop en input móvil', () => {
+  it('usa desde el primer frame el presupuesto final de desktop y conserva los perfiles lite', () => {
     expect(warRoomSceneProfile()).toEqual({
       tier: 'full',
       lite: false,
-      pixelRatioCap: 1.75,
-      shadowMapSize: 2048,
+      pixelRatioCap: 1.35,
+      shadowMapSize: 1024,
       shadowsEnabled: true,
     });
     expect(warRoomSceneProfile({ coarsePointer: true })).toEqual({

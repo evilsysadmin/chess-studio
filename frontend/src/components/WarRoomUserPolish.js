@@ -163,6 +163,15 @@ function improveGallery(group) {
     const frame = group.getObjectByName?.(`war-room-premium-painting-${index}`);
     const canvas = frame?.getObjectByName?.('war-room-premium-painting-canvas');
     if (!canvas?.material || frame.userData.warRoomLandscapeVersion === 'v20') continue;
+
+    // v20 is the legacy landscape polish. Once the newer military gallery has
+    // claimed a canvas, this pass may still finish fireplace/monogram work but
+    // must never repaint the approved campaign art underneath it.
+    const campaignOwned = frame.userData.warRoomCampaignGalleryVersion === 'approved-mock-v1'
+      || Boolean(frame.userData.warRoomCampaignArt)
+      || Boolean(canvas.material.map?.userData?.warRoomCampaignArt);
+    if (campaignOwned) continue;
+
     const previous = canvas.material.map;
     canvas.material.map = landscapeTexture(kind);
     canvas.material.color?.setHex?.(0xffffff);

@@ -7,8 +7,12 @@ export function warRoomSceneProfile({ coarsePointer = false, softwareRenderer = 
   return Object.freeze({
     tier: lite ? 'lite' : 'full',
     lite,
-    pixelRatioCap: softwareRenderer ? 1 : (coarsePointer ? 1.25 : 1.75),
-    shadowMapSize: lite ? 512 : 2048,
+    // Keep the first WebGL frame on the same budget that the premium surface
+    // pass applies afterwards. Previously desktop started at 1.75 DPR + a 2048
+    // shadow map and only dropped to 1.35/1024 after first paint, so the most
+    // expensive frame was precisely the frame the player was waiting for.
+    pixelRatioCap: softwareRenderer ? 1 : (coarsePointer ? 1.25 : 1.35),
+    shadowMapSize: lite ? 512 : 1024,
     shadowsEnabled: !softwareRenderer,
   });
 }
