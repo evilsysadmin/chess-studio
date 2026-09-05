@@ -322,19 +322,8 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
     await page.unroute(board3dChunkPattern);
 
-    // Finalmente volvemos a 2D sólo para usar el helper accesible/determinista
-    // de casillas y acreditar que la misma partida todavía acepta una jugada real.
-    await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
-    appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
-    await expect(appearanceDialog).toBeVisible();
-    await expect(appearanceDialog.getByRole('radiogroup', { name: 'Representación del tablero' })).toBeVisible();
-    await expect(appearanceDialog.getByRole('radio', { name: /3D$/ })).toHaveAttribute('aria-checked', 'true');
-    await appearanceDialog.getByRole('radio', { name: /2D$/ }).click();
-    await appearanceDialog.getByRole('button', { name: 'Cerrar', exact: true }).click();
-
-    await expect(page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true })).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator('.square[aria-label^="Casilla e2,"]')).toBeVisible();
-
+    // La jugada final debe acreditarse sobre la War Room 3D ya recuperada.
+    // clickBoardMove es renderer-agnostic y usa directamente el canvas 3D.
     const moveResponsePromise = page.waitForResponse((response) => {
       const url = new URL(response.url());
       return response.request().method() === 'POST'
