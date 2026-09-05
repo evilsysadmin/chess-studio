@@ -3,7 +3,9 @@ import './HomeCastleLife.css';
 import './HomeGreatHall.css';
 import './HomeCastleAmbience.css';
 import HomeGreatHallScene from './HomeGreatHallScene.jsx';
+import CastleHallsModal from './CastleHallsModal.jsx';
 import { ACHIEVEMENTS, loadAchievementLedger, loadUnlocked } from '../achievements.js';
+import { buildCastleHallGallery, castleHallSummary } from '../castleHall.js';
 import {
   castleHonourObjects,
   castleLedgerFingerprint,
@@ -174,10 +176,13 @@ export function buildHomeCastleLifeModel({
   };
 }
 
-export default function HomeCastleLife({ achievementIds = null, achievementLedger = null, ...props }) {
+export default function HomeCastleLife({ achievementIds = null, achievementLedger = null, hallGallery = null, onReviewCastleGame = null, ...props }) {
   const resolvedAchievementIds = achievementIds ?? [...loadUnlocked()];
   const resolvedAchievementLedger = achievementLedger ?? loadAchievementLedger();
   const [persistedCastleLedger, setPersistedCastleLedger] = useState(() => loadCastleUnlockLedger());
+  const [showCastleHalls, setShowCastleHalls] = useState(false);
+  const resolvedHallGallery = useMemo(() => hallGallery || buildCastleHallGallery(), [hallGallery]);
+  const hallSummary = castleHallSummary(resolvedHallGallery);
   const achievementFingerprint = achievementStateFingerprint(resolvedAchievementIds, resolvedAchievementLedger);
   const persistedFingerprint = castleLedgerFingerprint(persistedCastleLedger);
   const reconciledCastleLedger = useMemo(
@@ -206,8 +211,9 @@ export default function HomeCastleLife({ achievementIds = null, achievementLedge
   // UI funcional propia; repetirlos aquí convertiría el castillo en dashboard.
   const visibleObjects = model.objects.filter((object) => object.kind === 'progress' || object.kind === 'honour');
   const honourObjects = visibleObjects.filter((object) => object.kind === 'honour');
+  const hasHallEvidence = hallSummary.fame > 0 || hallSummary.shame > 0;
 
-  return (
+  return <>
     <section
       className={`home-castle-life${model.rareSighting ? ' has-rare-sighting' : ''}`}
       aria-label="La estancia de Chess Studio"
@@ -219,6 +225,8 @@ export default function HomeCastleLife({ achievementIds = null, achievementLedge
       data-castle-unlocks={model.unlockSummary.total}
       data-castle-unlocks-recorded={model.unlockSummary.recorded}
       data-castle-unlocks-legacy={model.unlockSummary.legacy}
+      data-castle-fame={hallSummary.fame}
+      data-castle-shame={hallSummary.shame}
     >
       <HomeGreatHallScene ambience={model.ambience} />
       <div className="home-castle-life__decor" aria-label="Objetos desbloqueados del castillo">
@@ -245,11 +253,34 @@ export default function HomeCastleLife({ achievementIds = null, achievementLedge
           </span>
         ))}
       </div>
+
+      {hasHallEvidence && (
+        <button
+          type="button"
+          className="home-castle-halls-door"
+          onClick={() => setShowCastleHalls(true)}
+          data-castle-halls="evidence-v1"
+          aria-label={`Abrir galerías del castillo. ${hallSummary.fame} de gloria y ${hallSummary.shame} de vergüenza.`}
+        >
+          <span aria-hidden="true">♜</span>
+          <i aria-hidden="true" />
+          <small aria-hidden="true">ARCHIVO</small>
+        </button>
+      )}
+
       {model.rareSighting && (
         <span className="home-castle-life__rare" data-rare-sighting={model.rareSighting.id} aria-hidden="true">
           <span>♜</span>
         </span>
       )}
     </section>
-  );
+
+    {showCastleHalls && (
+      <CastleHallsModal
+        gallery={resolvedHallGallery}
+        onClose={() => setShowCastleHalls(false)}
+        onReviewGame={onReviewCastleGame ? (gameId) => { setShowCastleHalls(false); onReviewCastleGame(gameId); } : null}
+      />
+    )}
+  </>;
 }
