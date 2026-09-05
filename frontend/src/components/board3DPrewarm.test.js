@@ -4,6 +4,7 @@ import {
   removeStorageItem,
   setStorageItem,
 } from '../safeStorage.js';
+import { EXPLICIT_2D_BOARD_RENDERER_VALUE } from '../userPreferences.js';
 import {
   BOARD_RENDERER_STORAGE_KEY,
   shouldPrewarmBoard3D,
@@ -23,8 +24,13 @@ describe('Board3D idle prewarm policy', () => {
     expect(shouldPrewarmBoard3D()).toBe(true);
   });
 
-  it('does not prewarm Board3D after the user explicitly chooses 2D', () => {
+  it('prewarms 3D for the legacy plain 2D value that migrates to the 3D default', () => {
     setStorageItem(STORAGE_LOCAL, BOARD_RENDERER_STORAGE_KEY, '2d');
+    expect(shouldPrewarmBoard3D()).toBe(true);
+  });
+
+  it('does not prewarm Board3D after the user explicitly chooses 2D', () => {
+    setStorageItem(STORAGE_LOCAL, BOARD_RENDERER_STORAGE_KEY, EXPLICIT_2D_BOARD_RENDERER_VALUE);
     expect(shouldPrewarmBoard3D()).toBe(false);
   });
 });
