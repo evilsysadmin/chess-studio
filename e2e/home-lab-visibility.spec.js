@@ -40,12 +40,15 @@ test('Home · aprendizaje secundario se revela bajo demanda y Experimentos genia
   await openHome(page);
 
   const commandContract = await page.locator('.home-modes-section').evaluate((section) => {
+    const menu = section.closest('.menu.home-friendly');
     const heading = section.querySelector('.home-group-heading');
     const title = heading?.querySelector('h2');
     const actions = heading?.querySelector('.home-heading-actions');
     const description = actions?.querySelector('p');
     const guide = actions?.querySelector('.home-context-guide');
     const grid = section.querySelector('.home-primary-grid');
+    const primaryCards = [...section.querySelectorAll('.home-primary-grid .home-mode-card')];
+    const menuRect = menu?.getBoundingClientRect();
     const headingRect = heading?.getBoundingClientRect();
     const titleRect = title?.getBoundingClientRect();
     const gridRect = grid?.getBoundingClientRect();
@@ -57,6 +60,13 @@ test('Home · aprendizaje secundario se revela bajo demanda y Experimentos genia
     const titleLines = titleRect && lineHeight > 0 ? titleRect.height / lineHeight : 0;
 
     return {
+      menuViewportRatio: menuRect ? menuRect.width / window.innerWidth : 0,
+      gridMenuRatio: menuRect && gridRect ? gridRect.width / menuRect.width : 0,
+      minimumPrimaryCardHeight: primaryCards.length
+        ? Math.min(...primaryCards.map((card) => card.getBoundingClientRect().height))
+        : 0,
+      menuBorderLeftWidth: menu ? Number.parseFloat(getComputedStyle(menu).borderLeftWidth) : 999,
+      menuBorderRightWidth: menu ? Number.parseFloat(getComputedStyle(menu).borderRightWidth) : 999,
       headingHeight: headingRect?.height || 0,
       titleLines,
       titleFontSize: fontSize,
@@ -69,6 +79,11 @@ test('Home · aprendizaje secundario se revela bajo demanda y Experimentos genia
     };
   });
 
+  expect(commandContract.menuViewportRatio).toBeGreaterThan(0.94);
+  expect(commandContract.gridMenuRatio).toBeGreaterThan(0.88);
+  expect(commandContract.minimumPrimaryCardHeight).toBeGreaterThanOrEqual(250);
+  expect(commandContract.menuBorderLeftWidth).toBe(0);
+  expect(commandContract.menuBorderRightWidth).toBe(0);
   expect(commandContract.headingHeight).toBeGreaterThan(0);
   expect(commandContract.headingHeight).toBeLessThanOrEqual(150);
   expect(commandContract.titleLines).toBeGreaterThan(0);
