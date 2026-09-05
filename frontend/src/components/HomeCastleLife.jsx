@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import './HomeCastleLife.css';
 import './HomeGreatHall.css';
 import './HomeCastleAmbience.css';
-import HomeGreatHallScene from './HomeGreatHallScene.jsx';
+import HomeCastleHubScene from './HomeCastleHubScene.jsx';
 import { ACHIEVEMENTS, loadAchievementLedger, loadUnlocked } from '../achievements.js';
 import {
   castleHonourObjects,
@@ -148,9 +148,6 @@ export function buildHomeCastleLifeModel({
     });
   }
 
-  // Compatibility path for tests and old callers: if a persisted castle
-  // ledger has not been supplied yet, derive the exact same factual unlocks
-  // from the achievement ledger without writing during model construction.
   const resolvedCastleLedger = castleLedger || reconcileCastleUnlocks(
     emptyCastleUnlockLedger(), achievementIds, achievementLedger,
   );
@@ -220,7 +217,7 @@ export default function HomeCastleLife({ achievementIds = null, achievementLedge
       data-castle-unlocks-recorded={model.unlockSummary.recorded}
       data-castle-unlocks-legacy={model.unlockSummary.legacy}
     >
-      <HomeGreatHallScene ambience={model.ambience} />
+      <HomeCastleHubScene ambience={model.ambience} hasSavedGame={Boolean(props.hasSavedGame)} />
       <div className="home-castle-life__decor" aria-label="Objetos desbloqueados del castillo">
         {visibleObjects.map((object, index) => (
           <span
