@@ -33,7 +33,7 @@ const HOURLY_SCENES = Object.freeze([
   scene('dossier', 'Auditoría táctica', 'Guten Tag', 'Guten Tag. Hora de revisar expedientes. Tus blunders no se archivan solos.'),
   scene('chess-weekly', 'Lectura de tarde', 'Guten Tag', 'Guten Tag. Chess Weekly. Nada de picar entre horas: café, lectura y disciplina.'),
   scene('beer-break', 'Cervezota reglamentaria', 'Guten Abend', 'Guten Abend. He declarado una pausa con cerveza. No interpretes eso como permiso para jugar borracho.'),
-  scene('lunch-bocata', 'Cena de campaña', 'Guten Abend', 'Guten Abend. Cena rápida y vuelta al tablero. Hasta yo respeto unos horarios razonables.'),
+  scene('campaign-dinner', 'Cena de campaña', 'Guten Abend', 'Guten Abend. Cena rápida y vuelta al tablero. Hasta yo respeto unos horarios razonables.'),
   scene('night-coffee', 'Turno nocturno', 'Guten Abend', 'Guten Abend. Cena terminada. Café, guardia nocturna y menos excusas.'),
   scene('chess-inception', 'Partida nocturna', 'Guten Abend', 'Guten Abend. Estoy jugando una partida. Inception ajedrecístico, pero con menos presupuesto.'),
   scene('strategy-book', 'Último estudio', 'Guten Abend', 'Guten Abend. Últimas páginas del día. Después de esto, a dormir como una persona razonable.'),
