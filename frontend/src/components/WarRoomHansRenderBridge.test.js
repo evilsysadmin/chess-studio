@@ -48,10 +48,10 @@ describe('War Room Hans live render bridge', () => {
 
     floor.onBeforeRender();
 
-    const fireplace = room.getObjectByName('war-room-fireplace');
-    const hans = room.getObjectByName('war-room-hans-butler');
-    const driver = room.getObjectByName('war-room-hans-fireplace-driver');
-    const door = room.getObjectByName('war-room-hans-service-door');
+    const fireplace = scene.getObjectByName('war-room-fireplace');
+    const hans = scene.getObjectByName('war-room-hans-butler');
+    const driver = scene.getObjectByName('war-room-hans-fireplace-driver');
+    const door = scene.getObjectByName('war-room-hans-service-door');
 
     expect(fireplace?.userData?.warRoomHansEventSelected).toBe(true);
     expect(hans).toBeTruthy();
