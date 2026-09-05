@@ -1,0 +1,58 @@
+/* Home premium dashboard · geometry contract
+ * Keeps the approved dashboard visually offset from the Matthias rail while
+ * preserving the existing wide-Home measurement contract and text safety.
+ */
+
+@media (min-width: 1100px) {
+  body:has(.home-friendly) .menu.home-friendly {
+    width: calc(100vw - 2rem);
+    margin-left: calc(-1 * (var(--home-rail) + .15rem));
+    padding-left: calc(var(--home-rail) + 1.15rem);
+    padding-right: 1rem;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-group-heading,
+  body:has(.home-friendly) .home-modes-section .home-primary-grid {
+    box-sizing: border-box;
+    width: calc(100% + var(--home-rail));
+    margin-left: calc(-1 * var(--home-rail));
+    padding-left: var(--home-rail);
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-group-heading {
+    padding-bottom: 0;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-heading-actions {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+  }
+
+  body:has(.home-friendly) .home-modes-section .home-heading-actions > p {
+    display: block;
+    max-width: 27rem;
+    margin: 0;
+    color: rgba(229,220,199,.48);
+    font-size: .62rem;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  body:has(.home-friendly) .home-learning-card {
+    overflow: visible !important;
+  }
+
+  body:has(.home-friendly) .home-learning-card .home-mode-kicker {
+    display: flex !important;
+    gap: .3rem;
+    color: rgba(208,169,70,.58);
+    font-size: .49rem !important;
+    letter-spacing: .10em;
+    text-transform: uppercase;
+  }
+
+  body:has(.home-friendly) .home-learning-card .home-mode-kicker i {
+    display: none;
+  }
+}
