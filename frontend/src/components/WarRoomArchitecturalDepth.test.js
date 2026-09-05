@@ -37,7 +37,7 @@ function dispose(root) {
 }
 
 describe('War Room architectural depth', () => {
-  it('grounds the desktop room with a bounded monogram-free castle/gallery pass', () => {
+  it('builds only the canonical carpet and skirting instead of retired gallery clutter', () => {
     const group = new THREE.Group();
     const added = installWarRoomArchitecturalDepth(group, {
       wallZ: -7.6,
@@ -45,11 +45,13 @@ describe('War Room architectural depth', () => {
       coarsePointer: false,
     });
 
-    expect(added).toBe(24);
-    expect(group.userData.warRoomArchitecturalDepth).toBe('v6-monogram-free-gallery');
-    expect(group.userData.warRoomArchitecturalDepthMeshBudget).toBe(24);
+    expect(added).toBe(8);
+    expect(group.userData.warRoomArchitecturalDepth).toBe('v7-canonical-gallery');
+    expect(group.userData.warRoomArchitecturalDepthMeshBudget).toBe(8);
+    expect(group.userData.warRoomRetiredArchitectureOmitted).toBe(true);
+    expect(group.userData.warRoomRetiredArchitectureMeshCount).toBe(16);
     expect(group.userData.warRoomMonogramFree).toBe(true);
-    expect(meshCount(group)).toBe(24);
+    expect(meshCount(group)).toBe(8);
 
     const carpet = group.getObjectByName('war-room-command-carpet');
     expect(carpet).toBeInstanceOf(THREE.Group);
@@ -57,31 +59,19 @@ describe('War Room architectural depth', () => {
     expect(carpet.getObjectByName('war-room-command-carpet-bed')).toBeTruthy();
     expect(namedCount(carpet, 'war-room-command-carpet-brass-key')).toBe(4);
 
-    for (const side of ['left', 'right']) {
-      const alcove = group.getObjectByName(`war-room-armor-alcove-${side}`);
-      expect(alcove).toBeInstanceOf(THREE.Group);
-      expect(alcove.userData.warRoomArmorBackdrop).toBe(true);
-      expect(alcove.userData.warRoomMonogramFree).toBe(true);
-      expect(alcove.getObjectByName('war-room-armor-alcove-recess')).toBeTruthy();
-      expect(namedCount(alcove, 'war-room-armor-alcove-jamb')).toBe(2);
-      expect(namedCount(alcove, 'war-room-armor-alcove-pointed-arch')).toBe(0);
-      expect(namedCount(alcove, 'war-room-armor-alcove-lintel')).toBe(1);
-      expect(namedCount(alcove, 'war-room-armor-alcove-keystone')).toBe(1);
-      expect(alcove.getObjectByName('war-room-armor-alcove-plinth')).toBeTruthy();
-    }
-
     expect(namedCount(group, 'war-room-continuous-stone-skirting')).toBe(2);
-    expect(namedCount(group, 'war-room-gallery-picture-rail')).toBe(2);
-    expect(namedCount(group, 'war-room-gallery-picture-rail-brass-line')).toBe(2);
+    expect(namedCount(group, 'war-room-armor-alcove-left')).toBe(0);
+    expect(namedCount(group, 'war-room-armor-alcove-right')).toBe(0);
+    expect(namedCount(group, 'war-room-gallery-picture-rail')).toBe(0);
+    expect(namedCount(group, 'war-room-gallery-picture-rail-brass-line')).toBe(0);
     expect(namedCount(group, 'war-room-museum-side-key-left')).toBe(0);
 
-    // Idempotent: repeated render/setup paths cannot keep growing the room.
     expect(installWarRoomArchitecturalDepth(group, {
       wallZ: -7.6,
       towardBoard: 1,
       coarsePointer: false,
     })).toBe(0);
-    expect(meshCount(group)).toBe(24);
+    expect(meshCount(group)).toBe(8);
 
     dispose(group);
   });
@@ -97,7 +87,7 @@ describe('War Room architectural depth', () => {
     expect(group.userData.warRoomArchitecturalDepth).toBeUndefined();
   });
 
-  it('is installed by the existing desktop museum/gallery pass', () => {
+  it('is installed by the desktop museum/gallery pass without resurrecting retired pieces', () => {
     const group = new THREE.Group();
     const count = addPremiumWarRoomPaintings(group, {
       wallZ: -7.6,
@@ -108,9 +98,10 @@ describe('War Room architectural depth', () => {
     expect(count).toBe(2);
     expect(group.getObjectByName('war-room-architectural-depth')).toBeTruthy();
     expect(group.getObjectByName('war-room-command-carpet')).toBeTruthy();
-    expect(group.getObjectByName('war-room-armor-alcove-left')).toBeTruthy();
-    expect(group.getObjectByName('war-room-armor-alcove-right')).toBeTruthy();
-    expect(group.userData.warRoomArchitecturalDepthMeshBudget).toBe(24);
+    expect(group.getObjectByName('war-room-armor-alcove-left')).toBeUndefined();
+    expect(group.getObjectByName('war-room-armor-alcove-right')).toBeUndefined();
+    expect(group.getObjectByName('war-room-gallery-picture-rail')).toBeUndefined();
+    expect(group.userData.warRoomArchitecturalDepthMeshBudget).toBe(8);
     expect(group.userData.warRoomPracticalLightCount).toBe(2);
 
     dispose(group);
