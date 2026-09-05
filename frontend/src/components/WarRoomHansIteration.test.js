@@ -108,6 +108,49 @@ describe('Hans quick-game visual iteration', () => {
     dispose(room);
   });
 
+  it('fuerza la misma entrada visible en dispositivos táctiles durante la iteración', () => {
+    setWarRoomHansQuickIterationEnabled(true);
+    const room = buildPremiumWarRoomLayer({ felt: 0x173943, glow: 0xc5963f }, true, true);
+
+    try {
+      const finalizerDriver = room.getObjectByName('war-room-premium-painting-canvas');
+      expect(typeof finalizerDriver?.onBeforeRender).toBe('function');
+      finalizerDriver.onBeforeRender();
+
+      const hans = room.getObjectByName('war-room-hans-butler');
+      const driver = room.getObjectByName('war-room-hans-fireplace-driver');
+      const door = room.getObjectByName('war-room-hans-service-door');
+
+      expect(hans).toBeTruthy();
+      expect(driver).toBeTruthy();
+      expect(door).toBeTruthy();
+      expect(driver.userData.warRoomHansSelected).toBe(true);
+      expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v4-door');
+      expect(driver.userData.warRoomHansVisibleAtStart).toBe(true);
+      expect(hans.visible).toBe(true);
+      expect(door.userData.warRoomHansDoorOpen).toBe(1);
+    } finally {
+      dispose(room);
+    }
+  });
+
+  it('mantiene simplificada la War Room táctil cuando no está activo el modo de prueba', () => {
+    setWarRoomHansQuickIterationEnabled(false);
+    const room = buildPremiumWarRoomLayer({ felt: 0x173943, glow: 0xc5963f }, true, true);
+
+    try {
+      const finalizerDriver = room.getObjectByName('war-room-premium-painting-canvas');
+      expect(typeof finalizerDriver?.onBeforeRender).toBe('function');
+      finalizerDriver.onBeforeRender();
+
+      expect(room.getObjectByName('war-room-hans-service-door')).toBeTruthy();
+      expect(room.getObjectByName('war-room-hans-butler')).toBeFalsy();
+      expect(room.getObjectByName('war-room-hans-fireplace-driver')).toBeFalsy();
+    } finally {
+      dispose(room);
+    }
+  });
+
   it('cierra la puerta dentro, la reabre para salir y oculta a Hans al cruzar el umbral', () => {
     const now = vi.spyOn(globalThis.performance, 'now').mockReturnValue(1000);
     setWarRoomHansQuickIterationEnabled(true);
