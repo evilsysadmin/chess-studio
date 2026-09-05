@@ -85,7 +85,7 @@ describe('War Room military gallery', () => {
     dispose(room);
   });
 
-  it('implementa el mock premium como aplique gótico con brasero y halo mural legible', () => {
+  it('implementa el mock premium como aplique gótico con brasero y contorno de pared iluminado', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const owner = galleryOwner(room);
 
@@ -96,6 +96,7 @@ describe('War Room military gallery', () => {
       const light = torch?.getObjectByName('war-room-side-torch-light');
       const wallGlow = torch?.getObjectByName('war-room-side-torch-wall-glow');
       const halo = torch?.getObjectByName('war-room-side-torch-wall-halo');
+      const innerHalo = torch?.getObjectByName('war-room-side-torch-wall-halo-inner');
       const painting = room.getObjectByName(`war-room-campaign-painting-${side}`);
 
       expect(torch).toBeInstanceOf(THREE.Group);
@@ -103,6 +104,7 @@ describe('War Room military gallery', () => {
       expect(torch.userData.warRoomTorchForm).toBe('gothic-wall-sconce-brazier');
       expect(torch.userData.warRoomTorchFire).toBe('hearth-bright-v3');
       expect(torch.userData.warRoomTorchLighting).toBe('gallery-spill-v2');
+      expect(torch.userData.warRoomTorchWallWash).toBe('hearth-contour-v2');
       expect(torch.getObjectByName('war-room-side-torch-backplate')).toBeInstanceOf(THREE.Mesh);
       expect(torch.getObjectByName('war-room-side-torch-wall-arm')).toBeInstanceOf(THREE.Mesh);
       expect(torch.getObjectByName('war-room-side-torch-brazier-bowl')).toBeInstanceOf(THREE.Mesh);
@@ -117,15 +119,17 @@ describe('War Room military gallery', () => {
       expect(typeof flame.onBeforeRender).toBe('function');
       expect(flame.material.emissiveIntensity).toBeGreaterThanOrEqual(4.6);
       expect(inner.material.emissiveIntensity).toBeGreaterThanOrEqual(6.2);
+      expect(flame.material.toneMapped).toBe(false);
+      expect(inner.material.toneMapped).toBe(false);
       expect(light).toBeInstanceOf(THREE.PointLight);
-      expect(light.color.getHex()).toBe(0xff8738);
-      expect(light.intensity).toBeGreaterThanOrEqual(7.2);
-      expect(light.distance).toBeGreaterThanOrEqual(9);
+      expect(light.color.getHex()).toBe(0xff7424);
+      expect(light.intensity).toBeGreaterThanOrEqual(9.5);
+      expect(light.distance).toBeGreaterThanOrEqual(10.5);
       expect(light.castShadow).toBe(false);
       expect(wallGlow).toBeInstanceOf(THREE.PointLight);
-      expect(wallGlow.color.getHex()).toBe(0xffb15a);
-      expect(wallGlow.intensity).toBeGreaterThanOrEqual(3);
-      expect(wallGlow.distance).toBeGreaterThanOrEqual(5.7);
+      expect(wallGlow.color.getHex()).toBe(0xffa442);
+      expect(wallGlow.intensity).toBeGreaterThanOrEqual(6.5);
+      expect(wallGlow.distance).toBeGreaterThanOrEqual(7.4);
       expect(wallGlow.castShadow).toBe(false);
       expect(halo).toBeInstanceOf(THREE.Mesh);
       expect(halo.geometry).toBeInstanceOf(THREE.PlaneGeometry);
@@ -134,9 +138,17 @@ describe('War Room military gallery', () => {
       expect(halo.material.map.userData.warRoomTorchHalo).toBe('radial-amber-v1');
       expect(halo.material.blending).toBe(THREE.AdditiveBlending);
       expect(halo.material.toneMapped).toBe(false);
-      expect(halo.material.opacity).toBeGreaterThanOrEqual(0.4);
+      expect(halo.material.opacity).toBeGreaterThanOrEqual(0.88);
+      expect(halo.scale.x).toBeGreaterThanOrEqual(1.55);
+      expect(halo.scale.y).toBeGreaterThanOrEqual(1.48);
       expect(halo.castShadow).toBe(false);
+      expect(innerHalo).toBeInstanceOf(THREE.Mesh);
+      expect(innerHalo.material).toBeInstanceOf(THREE.MeshBasicMaterial);
+      expect(innerHalo.material.opacity).toBeGreaterThanOrEqual(0.68);
+      expect(innerHalo.material.toneMapped).toBe(false);
       expect(() => flame.onBeforeRender()).not.toThrow();
+      expect(light.intensity).toBeGreaterThan(7.8);
+      expect(wallGlow.intensity).toBeGreaterThan(5.7);
 
       expect(torch.userData.warRoomOffsetFromWall - painting.userData.warRoomOffsetFromWall).toBeGreaterThanOrEqual(3.4);
       expect(torch.position.y - painting.position.y).toBeGreaterThanOrEqual(1.1);
