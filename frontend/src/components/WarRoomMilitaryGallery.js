@@ -20,6 +20,7 @@ const GALLERY = Object.freeze({
 // RGBA buffers four times on every mount, while each scene still owns/disposes
 // its own Texture object safely.
 const campaignTexturePrototypes = new Map();
+let torchHaloTexturePrototype = null;
 
 function campaignTexture(key) {
   let prototype = campaignTexturePrototypes.get(key);
@@ -34,6 +35,42 @@ function campaignTexture(key) {
     ...prototype.userData,
     warRoomCampaignTextureCache: 'module-clone-v1',
   };
+  return texture;
+}
+
+function torchHaloTexture() {
+  if (!torchHaloTexturePrototype) {
+    const size = 32;
+    const data = new Uint8Array(size * size * 4);
+    const center = (size - 1) / 2;
+    for (let y = 0; y < size; y += 1) {
+      for (let x = 0; x < size; x += 1) {
+        const dx = (x - center) / center;
+        const dy = (y - center) / center;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        const falloff = THREE.MathUtils.clamp(1 - distance, 0, 1);
+        const alpha = Math.round(255 * falloff * falloff);
+        const index = (y * size + x) * 4;
+        data[index] = 255;
+        data[index + 1] = 255;
+        data[index + 2] = 255;
+        data[index + 3] = alpha;
+      }
+    }
+    torchHaloTexturePrototype = new THREE.DataTexture(
+      data,
+      size,
+      size,
+      THREE.RGBAFormat,
+      THREE.UnsignedByteType,
+    );
+    torchHaloTexturePrototype.colorSpace = THREE.NoColorSpace;
+    torchHaloTexturePrototype.needsUpdate = true;
+    torchHaloTexturePrototype.userData.warRoomTorchHalo = 'radial-amber-v1';
+  }
+  const texture = torchHaloTexturePrototype.clone();
+  texture.needsUpdate = true;
+  texture.userData = { ...torchHaloTexturePrototype.userData };
   return texture;
 }
 
@@ -293,7 +330,7 @@ function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
   torch.userData.warRoomTorchArt = 'approved-premium-mock-v2';
   torch.userData.warRoomTorchForm = 'gothic-wall-sconce-brazier';
   torch.userData.warRoomTorchFire = 'hearth-bright-v3';
-  torch.userData.warRoomTorchLighting = 'gallery-spill-v1';
+  torch.userData.warRoomTorchLighting = 'gallery-spill-v2';
 
   const iron = physical(GALLERY.iron, {
     metalness: 0.64,
@@ -349,6 +386,31 @@ function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
   addMesh(torch, new THREE.CylinderGeometry(0.09, 0.09, 0.12, 12), ironHighlight, [0, -0.03, 0.115], [Math.PI / 2, 0, 0], 'war-room-side-torch-arm-collar');
   addBrazierCage(torch, iron, ironHighlight, emberMat);
 
+  const haloMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff8d3d,
+    map: torchHaloTexture(),
+    transparent: true,
+    opacity: 0.44,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    toneMapped: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+  });
+  const halo = addMesh(
+    torch,
+    new THREE.PlaneGeometry(2.45, 2.75),
+    haloMaterial,
+    [0, 0.28, 0.012],
+    [0, 0, 0],
+    'war-room-side-torch-wall-halo',
+  );
+  halo.castShadow = false;
+  halo.receiveShadow = false;
+  halo.renderOrder = 1;
+
   const outer = addMesh(
     torch,
     flameGeometry(0.13, 0.62),
@@ -381,27 +443,26 @@ function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
   outer.castShadow = false;
   inner.castShadow = false;
 
-  // The flame needs to light the architecture, not only itself. Use one
-  // stronger practical light for nearby geometry plus a softer source tucked
-  // against the wall to reproduce the broad amber spill from the approved
-  // reference. Both stay shadowless, so the richer look costs no shadow maps.
-  const light = new THREE.PointLight(0xff8738, 6.2, 8.2, 2);
+  // The real lights still drive PBR response on metal, frames and furniture.
+  // The additive halo above provides the broad wall wash that ACES + very dark
+  // castle materials otherwise compress too much at normal gameplay distance.
+  const light = new THREE.PointLight(0xff8738, 7.4, 9.2, 2);
   light.name = 'war-room-side-torch-light';
   light.position.set(0, 0.62, 0.7);
   light.castShadow = false;
   torch.add(light);
 
-  const wallGlow = new THREE.PointLight(0xffb15a, 2.35, 4.8, 2);
+  const wallGlow = new THREE.PointLight(0xffb15a, 3.1, 5.8, 2);
   wallGlow.name = 'war-room-side-torch-wall-glow';
   wallGlow.position.set(0, 0.42, 0.12);
   wallGlow.castShadow = false;
   torch.add(wallGlow);
   attachTorchKinetics(outer, inner, light, wallGlow, phase);
 
-  // Keep the sconce visually related to the artwork, but do not let the two
-  // silhouettes touch in perspective. A slight lift makes the torch read as
-  // architectural lighting rather than a prop bolted onto the picture frame.
-  torch.position.set(side * 7.61, 4.32, wallZ + towardBoard * offset);
+  // Move the practical further toward the room entrance and slightly upward.
+  // At gameplay framing this creates a clean strip of wall between painting and
+  // sconce instead of reading like the torch belongs to the picture frame.
+  torch.position.set(side * 7.61, 4.42, wallZ + towardBoard * offset);
   torch.rotation.y = -side * Math.PI / 2;
   torch.userData.warRoomOffsetFromWall = offset;
   group.add(torch);
@@ -437,8 +498,8 @@ export function installWarRoomMilitaryGallery(group, {
     title: 'Gloria perfectamente modesta de Matthias',
     offset: 3.95,
   });
-  addSideTorch(group, { side: -1, wallZ, towardBoard, offset: 6.75, phase: 0.7 });
-  addSideTorch(group, { side: 1, wallZ, towardBoard, offset: 6.75, phase: 3.1 });
+  addSideTorch(group, { side: -1, wallZ, towardBoard, offset: 7.45, phase: 0.7 });
+  addSideTorch(group, { side: 1, wallZ, towardBoard, offset: 7.45, phase: 3.1 });
 
   group.userData.warRoomMilitaryGalleryVersion = 'approved-mock-v1';
   group.userData.warRoomMilitaryGalleryCentralCanvases = centralReplaced;
@@ -446,9 +507,9 @@ export function installWarRoomMilitaryGallery(group, {
   group.userData.warRoomMilitaryGalleryTorches = 2;
   group.userData.warRoomCampaignTextureCache = 'module-prototype-v1';
   group.userData.warRoomTorchArt = 'approved-premium-mock-v2';
-  group.userData.warRoomTorchSpacing = 'gallery-breathing-room-v3';
+  group.userData.warRoomTorchSpacing = 'gallery-breathing-room-v4';
   group.userData.warRoomTorchFire = 'hearth-bright-v3';
-  group.userData.warRoomTorchLighting = 'gallery-spill-v1';
+  group.userData.warRoomTorchLighting = 'gallery-spill-v2';
   registerCampaignArtFinalizer(group);
   return centralReplaced + 4;
 }
