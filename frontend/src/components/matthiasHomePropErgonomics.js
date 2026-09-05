@@ -4,6 +4,11 @@ import {
   clearMatthiasTacticalMeal,
   MATTHIAS_TACTICAL_MEAL_RIG_VERSION,
 } from './matthiasTacticalMealRig.js';
+import {
+  applyMatthiasHomeSleepRig,
+  clearMatthiasHomeSleepRig,
+  MATTHIAS_HOME_SLEEP_RIG_VERSION,
+} from './matthiasHomeSleepRig.js';
 
 export const MATTHIAS_HOME_PROP_ERGONOMICS_VERSION = 'home-props-v1-handheld';
 export const MATTHIAS_CHESS_WEEKLY_RIG_VERSION = 'chess-weekly-v2-mock-fidelity';
@@ -79,57 +84,22 @@ function buildChessWeeklyPress(rig) {
   press.userData.rigVersion = MATTHIAS_CHESS_WEEKLY_RIG_VERSION;
   activityRig.root.add(press);
 
-  const paper = new THREE.MeshStandardMaterial({
-    color: 0xe8dfca,
-    roughness: .82,
-    metalness: 0,
-    side: THREE.DoubleSide,
-  });
-  const paperEdge = new THREE.MeshStandardMaterial({
-    color: 0xc9bea8,
-    roughness: .9,
-    metalness: 0,
-    side: THREE.DoubleSide,
-  });
-  const ink = new THREE.MeshStandardMaterial({
-    color: 0x3d3b37,
-    roughness: .9,
-    metalness: 0,
-    side: THREE.DoubleSide,
-  });
-  const mutedRed = new THREE.MeshStandardMaterial({
-    color: 0x6f2b25,
-    roughness: .72,
-    metalness: .03,
-    side: THREE.DoubleSide,
-  });
-  const chessDark = new THREE.MeshStandardMaterial({
-    color: 0x55514a,
-    roughness: .82,
-    metalness: 0,
-    side: THREE.DoubleSide,
-  });
+  const paper = new THREE.MeshStandardMaterial({ color: 0xe8dfca, roughness: .82, metalness: 0, side: THREE.DoubleSide });
+  const paperEdge = new THREE.MeshStandardMaterial({ color: 0xc9bea8, roughness: .9, metalness: 0, side: THREE.DoubleSide });
+  const ink = new THREE.MeshStandardMaterial({ color: 0x3d3b37, roughness: .9, metalness: 0, side: THREE.DoubleSide });
+  const mutedRed = new THREE.MeshStandardMaterial({ color: 0x6f2b25, roughness: .72, metalness: .03, side: THREE.DoubleSide });
+  const chessDark = new THREE.MeshStandardMaterial({ color: 0x55514a, roughness: .82, metalness: 0, side: THREE.DoubleSide });
 
-  // Mock-approved silhouette: a real two-page newspaper opened in a visible V.
-  // At 128 px the spread must dominate the hands without becoming a chest badge.
   const leftPage = new THREE.Group();
   leftPage.name = 'chess-weekly-left-page';
   leftPage.position.x = -.185;
   leftPage.rotation.y = .24;
   leftPage.rotation.z = .018;
   press.add(leftPage);
-  mesh(leftPage, new THREE.BoxGeometry(.37, .47, .018), paper, {
-    name: 'chess-weekly-paper-left',
-  });
-  mesh(leftPage, new THREE.BoxGeometry(.27, .030, .010), mutedRed, {
-    name: 'chess-weekly-masthead-left',
-    position: [0, .185, .016],
-  });
+  mesh(leftPage, new THREE.BoxGeometry(.37, .47, .018), paper, { name: 'chess-weekly-paper-left' });
+  mesh(leftPage, new THREE.BoxGeometry(.27, .030, .010), mutedRed, { name: 'chess-weekly-masthead-left', position: [0, .185, .016] });
   addArticleLines(leftPage, ink, { x: -.055, y: .120, width: .22, count: 4, gap: .034 });
-  mesh(leftPage, new THREE.BoxGeometry(.12, .105, .010), chessDark, {
-    name: 'chess-weekly-photo-left',
-    position: [.085, -.045, .017],
-  });
+  mesh(leftPage, new THREE.BoxGeometry(.12, .105, .010), chessDark, { name: 'chess-weekly-photo-left', position: [.085, -.045, .017] });
   addArticleLines(leftPage, ink, { x: -.055, y: -.095, width: .22, count: 4, gap: .032 });
 
   const rightPage = new THREE.Group();
@@ -138,22 +108,15 @@ function buildChessWeeklyPress(rig) {
   rightPage.rotation.y = -.24;
   rightPage.rotation.z = -.018;
   press.add(rightPage);
-  mesh(rightPage, new THREE.BoxGeometry(.37, .47, .018), paper, {
-    name: 'chess-weekly-paper-right',
-  });
-  mesh(rightPage, new THREE.BoxGeometry(.29, .028, .010), mutedRed, {
-    name: 'chess-weekly-masthead-right',
-    position: [0, .185, .016],
-  });
+  mesh(rightPage, new THREE.BoxGeometry(.37, .47, .018), paper, { name: 'chess-weekly-paper-right' });
+  mesh(rightPage, new THREE.BoxGeometry(.29, .028, .010), mutedRed, { name: 'chess-weekly-masthead-right', position: [0, .185, .016] });
   addArticleLines(rightPage, ink, { x: 0, y: .132, width: .26, count: 3, gap: .034 });
 
   const board = new THREE.Group();
   board.name = 'chess-weekly-diagram';
   board.position.set(.045, -.035, .021);
   rightPage.add(board);
-  mesh(board, new THREE.BoxGeometry(.205, .135, .010), paperEdge, {
-    name: 'chess-weekly-diagram-field',
-  });
+  mesh(board, new THREE.BoxGeometry(.205, .135, .010), paperEdge, { name: 'chess-weekly-diagram-field' });
   const squareW = .051;
   const squareH = .034;
   for (let row = 0; row < 4; row += 1) {
@@ -167,10 +130,7 @@ function buildChessWeeklyPress(rig) {
   }
   addArticleLines(rightPage, ink, { x: -.035, y: -.135, width: .24, count: 3, gap: .031 });
 
-  mesh(press, new THREE.BoxGeometry(.010, .44, .030), paperEdge, {
-    name: 'chess-weekly-central-fold',
-    position: [0, 0, -.004],
-  });
+  mesh(press, new THREE.BoxGeometry(.010, .44, .030), paperEdge, { name: 'chess-weekly-central-fold', position: [0, 0, -.004] });
   for (const offset of [0, .010, .020]) {
     mesh(press, new THREE.BoxGeometry(.35, .008, .010), paperEdge, {
       name: 'chess-weekly-page-edge',
@@ -205,9 +165,7 @@ function buildChessWeeklyPress(rig) {
 function ensurePress(rig) {
   const activityRig = rig?.activityRig;
   if (!activityRig) return null;
-  if (activityRig.press?.userData?.rigVersion === MATTHIAS_CHESS_WEEKLY_RIG_VERSION) {
-    return activityRig.press;
-  }
+  if (activityRig.press?.userData?.rigVersion === MATTHIAS_CHESS_WEEKLY_RIG_VERSION) return activityRig.press;
   if (activityRig.press) activityRig.root.remove(activityRig.press);
   return buildChessWeeklyPress(rig);
 }
@@ -224,9 +182,7 @@ function activityElapsedSeconds(rig, pose, active) {
     PRESS_CLOCKS.delete(rig);
     return 0;
   }
-  const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now() / 1000
-    : Date.now() / 1000;
+  const now = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() / 1000 : Date.now() / 1000;
   const startedAt = PRESS_CLOCKS.get(rig);
   if (!Number.isFinite(startedAt)) {
     PRESS_CLOCKS.set(rig, now);
@@ -235,47 +191,23 @@ function activityElapsedSeconds(rig, pose, active) {
   return Math.max(0, now - startedAt);
 }
 
-export function matthiasChessWeeklyReadingState(activityTime = 0, {
-  speaking = false,
-  reducedMotion = false,
-} = {}) {
+export function matthiasChessWeeklyReadingState(activityTime = 0, { speaking = false, reducedMotion = false } = {}) {
   const time = Math.max(0, Number(activityTime) || 0);
   if (speaking || reducedMotion) {
-    return {
-      readingLine: 0,
-      readingScan: .5,
-      eyeX: 0,
-      eyeY: 0,
-      pageTurn: 0,
-      pageAngle: 0,
-      pageCurl: 0,
-      pageVisible: false,
-    };
+    return { readingLine: 0, readingScan: .5, eyeX: 0, eyeY: 0, pageTurn: 0, pageAngle: 0, pageCurl: 0, pageVisible: false };
   }
-
   const lineDuration = 1.85;
   const readingLine = Math.floor(time / lineDuration) % 4;
   const readingScan = (time % lineDuration) / lineDuration;
   const eyeX = -.020 + readingScan * .040;
   const eyeY = -readingLine * .0075;
-
   const pageCycle = (time + 8.4) % 12;
   const pageDuration = 1.50;
   const pageVisible = pageCycle < pageDuration;
   const pageTurn = pageVisible ? smoothstep01(pageCycle / pageDuration) : 0;
   const pageAngle = pageVisible ? -Math.PI * .92 * pageTurn : 0;
   const pageCurl = pageVisible ? Math.sin(pageTurn * Math.PI) : 0;
-
-  return {
-    readingLine,
-    readingScan,
-    eyeX,
-    eyeY,
-    pageTurn,
-    pageAngle,
-    pageCurl,
-    pageVisible,
-  };
+  return { readingLine, readingScan, eyeX, eyeY, pageTurn, pageAngle, pageCurl, pageVisible };
 }
 
 export function matthiasHomeErgonomicActivityProp(profile = '', baseProp = 'none') {
@@ -283,24 +215,14 @@ export function matthiasHomeErgonomicActivityProp(profile = '', baseProp = 'none
 }
 
 function restorePressEyeHeight(rig, activityRig) {
-  if (rig.leftEye && Number.isFinite(activityRig.pressLeftEyeBaseY)) {
-    rig.leftEye.position.y = activityRig.pressLeftEyeBaseY;
-  }
-  if (rig.rightEye && Number.isFinite(activityRig.pressRightEyeBaseY)) {
-    rig.rightEye.position.y = activityRig.pressRightEyeBaseY;
-  }
+  if (rig.leftEye && Number.isFinite(activityRig.pressLeftEyeBaseY)) rig.leftEye.position.y = activityRig.pressLeftEyeBaseY;
+  if (rig.rightEye && Number.isFinite(activityRig.pressRightEyeBaseY)) rig.rightEye.position.y = activityRig.pressRightEyeBaseY;
 }
 
-function applyMatthiasWorkFocusFace(rig, pose, {
-  headPitch = .040,
-  yawBias = 0,
-} = {}) {
+function applyMatthiasWorkFocusFace(rig, pose, { headPitch = .040, yawBias = 0 } = {}) {
   if (!rig?.leftEye || !rig?.rightEye) return;
   const speaking = Boolean(pose.activitySpeaking) || Number(pose.mouthOpen) >= .14;
   if (speaking) return;
-
-  // Shared approved working face: alert, concentrated and slightly asymmetric.
-  // Matthias reserves the hard frontal scowl for interacting with the player.
   rig.leftEye.scale.x = .86;
   rig.rightEye.scale.x = .86;
   rig.leftEye.scale.y = Math.max(1.34, rig.leftEye.scale.y);
@@ -316,25 +238,14 @@ function applyMatthiasWorkFocusFace(rig, pose, {
 
 function applyChessWeeklyFocusFace(rig, activityRig, pose, reading, speaking) {
   if (!rig.leftEye || !rig.rightEye) return;
-
   const gazeX = Number(pose.gazeX) || 0;
-  const leftBaseY = Number.isFinite(activityRig.pressLeftEyeBaseY)
-    ? activityRig.pressLeftEyeBaseY
-    : rig.leftEye.position.y;
-  const rightBaseY = Number.isFinite(activityRig.pressRightEyeBaseY)
-    ? activityRig.pressRightEyeBaseY
-    : rig.rightEye.position.y;
-
-  // Absolute coordinates are deliberate. The old `+= eyeY` accumulated every
-  // rendered frame until both eyes slid out of the face and Matthias appeared
-  // to be sleeping while reading.
+  const leftBaseY = Number.isFinite(activityRig.pressLeftEyeBaseY) ? activityRig.pressLeftEyeBaseY : rig.leftEye.position.y;
+  const rightBaseY = Number.isFinite(activityRig.pressRightEyeBaseY) ? activityRig.pressRightEyeBaseY : rig.rightEye.position.y;
   rig.leftEye.position.x = rig.base.leftEyeX + gazeX + (speaking ? 0 : reading.eyeX);
   rig.rightEye.position.x = rig.base.rightEyeX + gazeX + (speaking ? 0 : reading.eyeX);
   rig.leftEye.position.y = leftBaseY + (speaking ? 0 : reading.eyeY);
   rig.rightEye.position.y = rightBaseY + (speaking ? 0 : reading.eyeY);
-
   if (speaking) return;
-
   rig.leftEye.scale.x = .86;
   rig.rightEye.scale.x = .86;
   rig.leftEye.scale.y = Math.max(1.34, rig.leftEye.scale.y);
@@ -353,7 +264,6 @@ function applyChessWeeklyFocusFace(rig, activityRig, pose, reading, speaking) {
 export function applyMatthiasHomePropErgonomics(rig, pose = {}) {
   const activityRig = rig?.activityRig;
   if (!activityRig) return 'none';
-
   const profile = normalizedProfile(pose.activityProfile);
   const baseProp = String(rig.root?.userData?.activityProp || 'none');
   const prop = matthiasHomeErgonomicActivityProp(profile, baseProp);
@@ -364,43 +274,23 @@ export function applyMatthiasHomePropErgonomics(rig, pose = {}) {
   if (press) press.visible = prop === 'press';
   if (prop !== 'press') restorePressEyeHeight(rig, activityRig);
   if (prop !== 'ration') clearMatthiasTacticalMeal(rig);
-  if (!['book', 'dossier', 'write', 'press'].includes(prop)) {
-    rig.root.userData.activityWorkFace = 'inactive';
-  }
+  if (prop !== 'blanket') clearMatthiasHomeSleepRig(rig);
+  if (!['book', 'dossier', 'write', 'press'].includes(prop)) rig.root.userData.activityWorkFace = 'inactive';
 
-  const {
-    cup,
-    beer,
-    breakfast,
-    ration,
-    book,
-    dossier,
-    write,
-    chess,
-    blanket,
-    support,
-    supportStem,
-    supportGlove,
-    assist,
-    assistStem,
-    assistGlove,
-  } = activityRig;
+  const { cup, beer, breakfast, ration, book, dossier, write, chess, blanket, support, supportStem, supportGlove, assist, assistStem, assistGlove } = activityRig;
 
   if (prop === 'cup') {
     setPose(cup, [.50 - reach * .18, -.34 + reach * .46, .76], [.08 + reach * .08, -.14, -.16], .82);
-    support.visible = true;
-    assist.visible = false;
+    support.visible = true; assist.visible = false;
     setLimb(supportStem, supportGlove, [.39 - reach * .04, -.34 + reach * .18, .47], -.58 - reach * .10, [cup.position.x + .10, cup.position.y - .02, .72]);
   } else if (prop === 'beer') {
     setPose(beer, [.49 - reach * .16, -.37 + reach * .40, .76], [.08 + reach * .06, -.16, -.14], .86);
-    support.visible = true;
-    assist.visible = false;
+    support.visible = true; assist.visible = false;
     setLimb(supportStem, supportGlove, [.39 - reach * .03, -.36 + reach * .16, .47], -.60 - reach * .08, [beer.position.x + .11, beer.position.y - .03, .72]);
   } else if (prop === 'breakfast') {
     setPose(breakfast, [.15, -.66 + reach * .04, .75], [-.48, -.08, -.06], .76);
     setPose(cup, [-.16, -.58 + reach * .06, .77], [.08, .08, .05], .68);
-    support.visible = true;
-    assist.visible = true;
+    support.visible = true; assist.visible = true;
     setLimb(supportStem, supportGlove, [.34, -.45, .48], -.58, [.34, -.47, .70]);
     setLimb(assistStem, assistGlove, [-.34, -.45, .47], .58, [-.22, -.47, .70]);
   } else if (prop === 'ration') {
@@ -408,61 +298,48 @@ export function applyMatthiasHomePropErgonomics(rig, pose = {}) {
     rig.root.userData.activityMealRigVersion = MATTHIAS_TACTICAL_MEAL_RIG_VERSION;
     if (!meal) {
       setPose(ration, [.25, -.64 + reach * .06, .75], [-.46 + reach * .04, -.12, -.10], .86);
-      support.visible = true;
-      assist.visible = true;
+      support.visible = true; assist.visible = true;
       setLimb(supportStem, supportGlove, [.36, -.44, .48], -.56, [.39, -.45, .70]);
       setLimb(assistStem, assistGlove, [-.27, -.44, .47], .66, [.02, -.46, .69]);
     }
   } else if (prop === 'book') {
     setPose(book, [-.14, -.57 + reach * .05, .78], [-.50, .18 + yaw * .28, .07], .86);
-    support.visible = true;
-    assist.visible = true;
+    support.visible = true; assist.visible = true;
     setLimb(supportStem, supportGlove, [.31, -.39, .48], -.66, [.16, -.40, .71]);
     setLimb(assistStem, assistGlove, [-.34, -.39, .47], .62, [-.38, -.40, .70]);
     applyMatthiasWorkFocusFace(rig, pose, { headPitch: .050, yawBias: -.012 });
   } else if (prop === 'dossier') {
     setPose(dossier, [.27, -.60 + reach * .04, .77], [-.44, -.34 + yaw * .18, -.15], .84);
-    support.visible = true;
-    assist.visible = true;
+    support.visible = true; assist.visible = true;
     setLimb(supportStem, supportGlove, [.35, -.40, .48], -.61, [.43, -.42, .71]);
     setLimb(assistStem, assistGlove, [-.25, -.36, .47], .76, [.08, -.34, .72]);
     applyMatthiasWorkFocusFace(rig, pose, { headPitch: .045, yawBias: .012 });
   } else if (prop === 'write') {
     setPose(write, [.20, -.64 + reach * .04, .76], [-.58, -.24 + yaw * .12, -.12], .80);
-    support.visible = true;
-    assist.visible = true;
+    support.visible = true; assist.visible = true;
     setLimb(supportStem, supportGlove, [.34, -.39, .48], -.68, [.35, -.43, .72]);
     setLimb(assistStem, assistGlove, [-.29, -.42, .47], .66, [-.02, -.45, .69]);
     applyMatthiasWorkFocusFace(rig, pose, { headPitch: .055, yawBias: .008 });
   } else if (prop === 'chess') {
     setPose(chess, [.25, -.72 + reach * .03, .79], [-.66, -.08 + yaw * .06, -.11], .80);
-    support.visible = true;
-    assist.visible = false;
+    support.visible = true; assist.visible = false;
     setLimb(supportStem, supportGlove, [.37, -.42, .48], -.72, [.39, -.38, .72]);
   } else if (prop === 'press' && press) {
     const activityTime = activityElapsedSeconds(rig, pose, true);
     const speaking = Boolean(pose.activitySpeaking) || Number(pose.mouthOpen) >= .14;
-    const reading = matthiasChessWeeklyReadingState(activityTime, {
-      speaking,
-      reducedMotion: Boolean(pose.activityReducedMotion),
-    });
-
+    const reading = matthiasChessWeeklyReadingState(activityTime, { speaking, reducedMotion: Boolean(pose.activityReducedMotion) });
     setPose(press, [-.045, -.300 + reach * .018, .865], [-.075, .12 + yaw * .10, .018], 1.20);
     press.position.y += Math.sin(activityTime * .72) * .003;
     press.rotation.z += Math.sin(activityTime * .56) * .005;
-    support.visible = true;
-    assist.visible = true;
+    support.visible = true; assist.visible = true;
     setLimb(supportStem, supportGlove, [.36, -.31, .48], -.72, [.465, -.335, .755]);
     setLimb(assistStem, assistGlove, [-.36, -.31, .47], .72, [-.475, -.335, .745]);
-
     const pagePivot = activityRig.pressPageTurnPivot;
     if (pagePivot) {
       pagePivot.visible = reading.pageVisible;
       pagePivot.rotation.set(reading.pageCurl * .055, reading.pageAngle, -reading.pageCurl * .035);
     }
-
     applyChessWeeklyFocusFace(rig, activityRig, pose, reading, speaking);
-
     rig.root.userData.activityReadingLine = reading.readingLine;
     rig.root.userData.activityReadingScan = reading.readingScan;
     rig.root.userData.activityPageTurn = reading.pageTurn;
@@ -471,7 +348,8 @@ export function applyMatthiasHomePropErgonomics(rig, pose = {}) {
   } else if (prop === 'blanket') {
     support.visible = false;
     assist.visible = false;
-    setScalar(blanket, 1);
+    applyMatthiasHomeSleepRig(rig, { ...pose, reach });
+    rig.root.userData.activitySleepRigVersion = MATTHIAS_HOME_SLEEP_RIG_VERSION;
   }
 
   if (prop !== 'press') {
