@@ -36,7 +36,8 @@ describe('Matthias rival king 3D', () => {
 
     expect(group.name).toBe('matthias-rival-king');
     expect(group.userData.matthiasKing).toBe(true);
-    expect(group.userData.faceStyle).toBe('command-fury-scowl-v6');
+    expect(group.userData.faceStyle).toBe('command-fury-scowl-v7');
+    expect(group.userData.faceOrientationPolicy).toBe('screen-stable-mirror-v1');
     expect(group.userData.capStyle).toBe('premium-command-peaked-cap-v6');
     expect(group.userData.posture).toBe('proud-command-v2');
     expect(group.userData.motionRig).toBe('head-rig-v1');
@@ -117,11 +118,13 @@ describe('Matthias rival king 3D', () => {
     const brow = group.getObjectByName('matthias-brow-left');
     const eye = group.getObjectByName('matthias-eye-left');
     const mouth = group.getObjectByName('matthias-mouth');
+    const mouthPath = mouth.geometry.parameters.path;
 
-    expect(brow.position.y - eye.position.y).toBeGreaterThan(0.038);
-    expect(eye.position.y - mouth.position.y).toBeGreaterThan(0.085);
-    expect(brow.geometry.parameters.width).toBeLessThanOrEqual(0.105);
-    expect(mouth.geometry.parameters.height).toBeLessThanOrEqual(0.012);
+    expect(brow.position.y - eye.position.y).toBeGreaterThan(0.04);
+    expect(eye.position.y - mouthPath.v0.y).toBeGreaterThan(0.07);
+    expect(brow.geometry.parameters.width).toBeLessThanOrEqual(0.115);
+    expect(mouth.geometry.type).toBe('TubeGeometry');
+    expect(mouth.geometry.parameters.radius).toBeLessThanOrEqual(0.007);
 
     disposeGroup(group);
     main.dispose();
@@ -139,24 +142,49 @@ describe('Matthias rival king 3D', () => {
     const leftBrow = group.getObjectByName('matthias-brow-left');
     const rightBrow = group.getObjectByName('matthias-brow-right');
     const mouth = group.getObjectByName('matthias-mouth');
+    const mouthPath = mouth.geometry.parameters.path;
 
-    expect(headRig.userData.expression).toBe('command-fury-v2');
+    expect(headRig.userData.expression).toBe('command-fury-v3');
     expect(face.scale.x).toBeGreaterThan(1.04);
     expect(face.scale.y).toBeGreaterThan(0.92);
     expect(face.scale.y).toBeLessThan(0.96);
 
-    expect(leftEye.rotation.z).toBeLessThan(-0.07);
-    expect(rightEye.rotation.z).toBeGreaterThan(0.07);
-    expect(leftBrow.rotation.z).toBeLessThan(-0.40);
-    expect(rightBrow.rotation.z).toBeGreaterThan(0.40);
-    expect(leftEye.scale.y).toBeLessThan(0.42);
-    expect(rightEye.scale.y).toBeLessThan(0.42);
+    expect(leftEye.rotation.z).toBeLessThan(-0.14);
+    expect(rightEye.rotation.z).toBeGreaterThan(0.14);
+    expect(leftBrow.rotation.z).toBeLessThan(-0.50);
+    expect(rightBrow.rotation.z).toBeGreaterThan(0.50);
+    expect(leftEye.scale.y).toBeLessThan(0.30);
+    expect(rightEye.scale.y).toBeLessThan(0.30);
 
-    expect(mouth.geometry.parameters.width).toBeLessThanOrEqual(0.105);
-    expect(Math.abs(mouth.rotation.z)).toBeGreaterThan(0.04);
-    expect(Math.abs(mouth.rotation.z)).toBeLessThan(0.07);
+    expect(mouth.geometry.type).toBe('TubeGeometry');
+    expect(mouth.userData.expression).toBe('furious-downturn-v1');
+    expect(mouthPath.v1.y).toBeLessThan(mouthPath.v0.y - 0.02);
+    expect(mouthPath.v2.y).toBeCloseTo(mouthPath.v0.y);
 
     disposeGroup(group);
+    main.dispose();
+    accent.dispose();
+  });
+
+  it('mantiene el ceño furioso al mirar desde cualquiera de los dos lados del tablero', () => {
+    const main = new THREE.MeshPhysicalMaterial({ color: 0xe1c99f });
+    const accent = new THREE.MeshPhysicalMaterial({ color: 0xb88a35, metalness: 0.7 });
+    const front = buildMatthiasKing3D(main, accent, { faceTowardCamera: true });
+    const back = buildMatthiasKing3D(main, accent, { faceTowardCamera: false });
+
+    for (const name of ['matthias-eye-left', 'matthias-eye-right', 'matthias-brow-left', 'matthias-brow-right']) {
+      expect(back.getObjectByName(name).rotation.z).toBeCloseTo(front.getObjectByName(name).rotation.z);
+    }
+    expect(back.getObjectByName('matthias-brow-left').rotation.z).toBeLessThan(-0.50);
+    expect(back.getObjectByName('matthias-brow-right').rotation.z).toBeGreaterThan(0.50);
+    expect(back.getObjectByName('matthias-mouth').geometry.parameters.path.v1.y)
+      .toBeLessThan(back.getObjectByName('matthias-mouth').geometry.parameters.path.v0.y - 0.02);
+    expect(front.getObjectByName('matthias-face').position.z).toBeCloseTo(back.getObjectByName('matthias-face').position.z);
+    expect(front.getObjectByName('matthias-eye-left').position.z)
+      .toBeCloseTo(-back.getObjectByName('matthias-eye-left').position.z);
+
+    disposeGroup(front);
+    disposeGroup(back);
     main.dispose();
     accent.dispose();
   });
@@ -193,6 +221,7 @@ describe('Matthias rival king 3D', () => {
     expect(group.getObjectByName('matthias-eye-white-left')).toBeTruthy();
     expect(group.getObjectByName('matthias-eye-white-right')).toBeTruthy();
     expect(group.getObjectByName('matthias-mouth')).toBeTruthy();
+    expect(group.getObjectByName('matthias-mouth').geometry.type).toBe('TubeGeometry');
     expect(group.getObjectByName('matthias-cap-cord')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap-badge')).toBeTruthy();
     expect(group.getObjectByName('matthias-cap-badge-gem')).toBeTruthy();
