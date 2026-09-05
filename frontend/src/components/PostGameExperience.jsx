@@ -123,6 +123,7 @@ export default function PostGameExperience({
           humanColor={humanColor}
           onClose={() => setShowReport(false)}
           meta={reportMeta}
+          onTrainPersonal={onTrainPersonal ? () => { setShowReport(false); onTrainPersonal(); } : null}
           onShareIncident={(moveReport, report) => onShareIncident?.(moveReport, report, finalOutcome)}
           onOpenCrimeScene={(moveReport, report) => onOpenCrimeScene?.(moveReport, report, { outcome: finalOutcome })}
         />

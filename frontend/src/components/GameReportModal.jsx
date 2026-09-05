@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { analyzeGame } from '../gameReport.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
@@ -15,6 +15,7 @@ import { buildMatthiasPositionDossier, buildPostGameAutopsyDossier } from '../ai
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { downloadGameAutopsyHtml } from '../gameAutopsyHtml.js';
 
+const CinematicAutopsyModal = lazy(() => import('./CinematicAutopsyModal.jsx'));
 const CP_GLOSSARY = glossaryEntry('cp');
 const CCT_GLOSSARY = glossaryEntry('CCT');
 
@@ -41,7 +42,7 @@ function forensicVerdict(report) {
   return 'Dictamen: pequeñas contusiones, nada que requiera cerrar el club ni cambiar de identidad.';
 }
 
-export default function GameReportModal({ history, humanColor, onClose, onOpenCrimeScene, onShareIncident, meta = {} }) {
+export default function GameReportModal({ history, humanColor, onClose, onOpenCrimeScene, onShareIncident, onTrainPersonal, meta = {} }) {
   useEscapeToClose(onClose);
   const [status, setStatus] = useState('loading');
   const [report, setReport] = useState(null);
@@ -50,6 +51,7 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
   const [aiAutopsyStatus, setAiAutopsyStatus] = useState('idle');
   const [matthiasPosition, setMatthiasPosition] = useState(null);
   const [matthiasPositionStatus, setMatthiasPositionStatus] = useState('idle');
+  const [showCinematicAutopsy, setShowCinematicAutopsy] = useState(false);
   const archivedRef = useRef(false);
 
   useEffect(() => {
@@ -123,7 +125,7 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
   const keyMoments = report ? keyGameMoments(report) : [];
   const cleanEvidence = report ? cleanGameEvidence(report, meta) : null;
 
-  return (
+  return <>
     <div className="modal-backdrop" onClick={onClose}>
       <div className="army-card game-autopsy" role="dialog" aria-modal="true" aria-label="Resumen de la partida" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
@@ -162,7 +164,8 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
             <PostGameExam history={history} humanColor={humanColor} report={report} meta={meta} />
 
             <div className="autopsy-actions">
-              {report.worst && report.worst.loss > 15 && onOpenCrimeScene && <button className="primary-btn crime-scene-btn" onClick={() => onOpenCrimeScene(report.worst, report)}>🎥 Ver el peor momento · jugada {report.worst.moveNumber}</button>}
+              {keyMoments.length > 0 && <button className="primary-btn cinematic-autopsy-btn" onClick={() => setShowCinematicAutopsy(true)}>🎬 Autopsia cinematográfica · {keyMoments.length} {keyMoments.length === 1 ? 'momento' : 'momentos'}</button>}
+              {report.worst && report.worst.loss > 15 && onOpenCrimeScene && <button className="secondary-btn crime-scene-btn" onClick={() => onOpenCrimeScene(report.worst, report)}>🎥 Ver solo el peor momento · jugada {report.worst.moveNumber}</button>}
               {report.worst && onShareIncident && <button className="secondary-btn" onClick={() => onShareIncident(report.worst, report)}>📤 Compartir</button>}
               {report.worst && <button className="secondary-btn" disabled={matthiasPositionStatus === 'loading'} onClick={() => void askMatthiasAboutWorst()}>{matthiasPositionStatus === 'loading' ? 'Matthias está mirando…' : '♟ Preguntar a Matthias'}</button>}
             </div>
@@ -202,5 +205,19 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
         </>}
       </div>
     </div>
-  );
+
+    {showCinematicAutopsy && report && keyMoments.length > 0 && (
+      <Suspense fallback={<div className="modal-backdrop"><div className="army-card game-autopsy" role="status">Preparando sala forense…</div></div>}>
+        <CinematicAutopsyModal
+          history={history}
+          humanColor={humanColor}
+          moments={keyMoments}
+          meta={meta}
+          onClose={() => setShowCinematicAutopsy(false)}
+          onTrainPersonal={onTrainPersonal}
+          onOpenCrimeScene={onOpenCrimeScene ? (move) => onOpenCrimeScene(move, report) : null}
+        />
+      </Suspense>
+    )}
+  </>;
 }
