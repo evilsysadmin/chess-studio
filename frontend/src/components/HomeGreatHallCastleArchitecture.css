@@ -1,0 +1,101 @@
+/* Home Great Hall · castle architecture pass
+ *
+ * The Three.js room already owns furniture, windows and lighting. This layer
+ * reinforces the architectural silhouette only: thick masonry piers, deep
+ * window reveals and restrained ceiling ribs. It deliberately stays behind
+ * all functional Home content and adds no runtime work.
+ */
+
+body .menu.home-friendly > .home-great-hall-scene::before,
+body .menu.home-friendly > .home-great-hall-scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* Heavy wall mass. The wide piers are the important bit: they make the cold
+ * glazing read as openings cut through a fortress wall instead of windows
+ * pasted onto a salon backdrop. */
+body .menu.home-friendly > .home-great-hall-scene::before {
+  z-index: 1;
+  background:
+    /* darker reveal lips just inside the masonry */
+    linear-gradient(90deg,
+      rgba(4,6,7,.84) 0 5.4%, transparent 6.1% 28.6%,
+      rgba(4,6,7,.72) 29.1% 30.0%, transparent 30.8% 47.8%,
+      rgba(4,6,7,.66) 48.4% 49.0%, transparent 49.7% 66.9%,
+      rgba(4,6,7,.72) 67.6% 68.5%, transparent 69.2% 92.9%,
+      rgba(4,6,7,.84) 93.6% 100%),
+    /* principal ashlar piers */
+    linear-gradient(90deg,
+      rgba(61,62,59,.92) 0 4.3%, rgba(31,34,35,.96) 4.3% 6.4%, transparent 6.4% 27.8%,
+      rgba(53,55,53,.92) 27.8% 30.8%, rgba(28,31,32,.96) 30.8% 32.1%, transparent 32.1% 47.2%,
+      rgba(50,52,50,.90) 47.2% 52.8%, transparent 52.8% 67.9%,
+      rgba(28,31,32,.96) 67.9% 69.2%, rgba(53,55,53,.92) 69.2% 72.2%, transparent 72.2% 93.6%,
+      rgba(31,34,35,.96) 93.6% 95.7%, rgba(61,62,59,.92) 95.7% 100%),
+    /* subtle course joints on the back wall */
+    repeating-linear-gradient(0deg,
+      transparent 0 70px,
+      rgba(175,171,157,.045) 71px,
+      rgba(0,0,0,.18) 72px 74px);
+  opacity: .78;
+  mask-image: linear-gradient(180deg, #000 0%, #000 57%, rgba(0,0,0,.72) 72%, transparent 89%);
+  filter: drop-shadow(0 12px 18px rgba(0,0,0,.32));
+}
+
+/* Arched window heads plus a restrained ribbed ceiling. The arches are broad
+ * enough to remain legible behind the command UI but intentionally darker
+ * than the brass/product surfaces. */
+body .menu.home-friendly > .home-great-hall-scene::after {
+  z-index: 2;
+  background:
+    /* three deep arched reveals */
+    radial-gradient(ellipse 13.2% 24.5% at 20.3% 17.2%,
+      transparent 0 57%, rgba(13,15,16,.92) 58% 62%, rgba(87,87,80,.88) 63% 68%, rgba(31,33,32,.90) 69% 72%, transparent 73%),
+    radial-gradient(ellipse 13.4% 24.8% at 50% 16.4%,
+      transparent 0 57%, rgba(13,15,16,.92) 58% 62%, rgba(90,89,82,.90) 63% 68%, rgba(31,33,32,.92) 69% 72%, transparent 73%),
+    radial-gradient(ellipse 13.2% 24.5% at 79.7% 17.2%,
+      transparent 0 57%, rgba(13,15,16,.92) 58% 62%, rgba(87,87,80,.88) 63% 68%, rgba(31,33,32,.90) 69% 72%, transparent 73%),
+    /* ceiling ribs converging towards the centre bay */
+    linear-gradient(63deg, transparent 0 43.8%, rgba(91,88,80,.36) 44.2% 45.0%, rgba(16,18,19,.52) 45.4% 46.0%, transparent 46.4%),
+    linear-gradient(117deg, transparent 0 43.8%, rgba(91,88,80,.36) 44.2% 45.0%, rgba(16,18,19,.52) 45.4% 46.0%, transparent 46.4%),
+    linear-gradient(78deg, transparent 0 48.3%, rgba(104,98,87,.22) 48.7% 49.2%, transparent 49.7%),
+    linear-gradient(102deg, transparent 0 48.3%, rgba(104,98,87,.22) 48.7% 49.2%, transparent 49.7%),
+    /* a darker spring line makes the wall feel thick */
+    linear-gradient(180deg, transparent 0 37%, rgba(8,10,11,.46) 37.4% 39.2%, transparent 40%);
+  opacity: .86;
+  mask-image: linear-gradient(180deg, #000 0%, #000 48%, rgba(0,0,0,.76) 60%, transparent 78%);
+}
+
+/* A little extra wall depth at desktop sizes: inner shadow at the scene edges
+ * reads as the side walls continuing towards the camera. */
+@media (min-width: 901px) {
+  body .menu.home-friendly > .home-great-hall-scene {
+    box-shadow:
+      inset 6.5vw 0 8vw rgba(0,0,0,.32),
+      inset -6.5vw 0 8vw rgba(0,0,0,.32),
+      inset 0 7.5rem 10rem rgba(0,0,0,.10);
+  }
+}
+
+/* Keep the mobile scene uncluttered. The Three.js hall still carries its own
+ * geometry; only the strongest masonry cue survives on narrow screens. */
+@media (max-width: 900px) {
+  body .menu.home-friendly > .home-great-hall-scene::before {
+    opacity: .46;
+    mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,.70) 48%, transparent 74%);
+  }
+
+  body .menu.home-friendly > .home-great-hall-scene::after {
+    opacity: .38;
+    mask-image: linear-gradient(180deg, #000 0%, rgba(0,0,0,.58) 38%, transparent 63%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body .menu.home-friendly > .home-great-hall-scene::before,
+  body .menu.home-friendly > .home-great-hall-scene::after {
+    transition: none;
+  }
+}
