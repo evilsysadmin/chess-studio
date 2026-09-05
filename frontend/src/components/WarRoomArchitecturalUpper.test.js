@@ -45,7 +45,7 @@ function dispose(root) {
 }
 
 describe('War Room architectural upper framing', () => {
-  it('suggests a 19-mesh monogram-free hammerbeam roof only in the far camera-clear zone', () => {
+  it('builds only the seven canonical beams and omits retired ties/corbels', () => {
     const group = new THREE.Group();
     const wallZ = -7.6;
     const towardBoard = 1;
@@ -55,9 +55,10 @@ describe('War Room architectural upper framing', () => {
       coarsePointer: false,
     });
 
-    expect(added).toBe(19);
-    expect(group.userData.warRoomUpperArchitecture).toBe('hammerbeam-v7');
-    expect(group.userData.warRoomUpperArchitectureMeshBudget).toBe(19);
+    expect(added).toBe(7);
+    expect(group.userData.warRoomUpperArchitecture).toBe('hammerbeam-v8-canonical');
+    expect(group.userData.warRoomUpperArchitectureMeshBudget).toBe(7);
+    expect(group.userData.warRoomRetiredUpperMeshesOmitted).toBe(12);
     expect(group.userData.warRoomUpperArchitectureMaxOffsetFromWall).toBeLessThan(3.5);
     expect(group.userData.warRoomMonogramFree).toBe(true);
 
@@ -65,20 +66,15 @@ describe('War Room architectural upper framing', () => {
     expect(layer).toBeInstanceOf(THREE.Group);
     expect(layer.userData.warRoomUpperArchitectureZone).toBe('far-third-camera-clear');
     expect(layer.userData.warRoomMonogramFree).toBe(true);
+    expect(layer.userData.warRoomRetiredUpperMeshesOmitted).toBe(12);
     expect(namedCount(layer, 'war-room-hammerbeam-transverse')).toBe(3);
     expect(namedCount(layer, 'war-room-hammerbeam-brace')).toBe(0);
-    expect(namedCount(layer, 'war-room-hammerbeam-side-tie')).toBe(6);
-    expect(namedCount(layer, 'war-room-hammerbeam-corbel')).toBe(6);
+    expect(namedCount(layer, 'war-room-hammerbeam-side-tie')).toBe(0);
+    expect(namedCount(layer, 'war-room-hammerbeam-corbel')).toBe(0);
     expect(namedCount(layer, 'war-room-hammerbeam-longitudinal')).toBe(4);
 
-    const ties = [];
-    layer.traverse((object) => {
-      if (object.name === 'war-room-hammerbeam-side-tie') ties.push(object);
-    });
-    expect(ties.every((tie) => tie.rotation.z === 0)).toBe(true);
-
     const roofMeshes = meshes(layer);
-    expect(roofMeshes).toHaveLength(19);
+    expect(roofMeshes).toHaveLength(7);
     expect(lightCount(layer)).toBe(0);
     for (const mesh of roofMeshes) {
       expect(mesh.castShadow).toBe(false);
@@ -93,7 +89,7 @@ describe('War Room architectural upper framing', () => {
       towardBoard,
       coarsePointer: false,
     })).toBe(0);
-    expect(meshes(layer)).toHaveLength(19);
+    expect(meshes(layer)).toHaveLength(7);
 
     dispose(group);
   });
@@ -109,7 +105,7 @@ describe('War Room architectural upper framing', () => {
     expect(group.userData.warRoomUpperArchitecture).toBeUndefined();
   });
 
-  it('is installed through the existing premium museum pass on desktop', () => {
+  it('is installed through the premium museum pass without retired roof clutter', () => {
     const group = new THREE.Group();
     expect(addPremiumWarRoomPaintings(group, {
       wallZ: -7.6,
@@ -119,8 +115,10 @@ describe('War Room architectural upper framing', () => {
 
     const upper = group.getObjectByName('war-room-upper-architecture');
     expect(upper).toBeTruthy();
-    expect(group.userData.warRoomUpperArchitecture).toBe('hammerbeam-v7');
-    expect(group.userData.warRoomUpperArchitectureMeshBudget).toBe(19);
+    expect(group.userData.warRoomUpperArchitecture).toBe('hammerbeam-v8-canonical');
+    expect(group.userData.warRoomUpperArchitectureMeshBudget).toBe(7);
+    expect(namedCount(upper, 'war-room-hammerbeam-side-tie')).toBe(0);
+    expect(namedCount(upper, 'war-room-hammerbeam-corbel')).toBe(0);
     expect(group.userData.warRoomMonogramFree).toBe(true);
     expect(group.userData.warRoomPracticalLightCount).toBe(2);
 

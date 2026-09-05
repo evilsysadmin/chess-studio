@@ -69,9 +69,9 @@ describe('War Room premium paintings', () => {
     expect(rightArmor.userData.warRoomArmorLegProfile).toBe('heavy-gothic-v28');
     expect(leftArmor.userData.facesWarTable).toBe(true);
     expect(rightArmor.userData.facesWarTable).toBe(true);
-    expect(group.getObjectByName('war-room-armor-alcove-left').visible).toBe(false);
-    expect(group.getObjectByName('war-room-armor-alcove-right').visible).toBe(false);
-    expect(group.getObjectByName('war-room-hammerbeam-side-tie').visible).toBe(false);
+    expect(group.getObjectByName('war-room-armor-alcove-left')).toBeUndefined();
+    expect(group.getObjectByName('war-room-armor-alcove-right')).toBeUndefined();
+    expect(group.getObjectByName('war-room-hammerbeam-side-tie')).toBeUndefined();
 
     for (const armor of [leftArmor, rightArmor]) {
       expect(armor.userData.warRoomArmorPose).toBe('chest-high-zweihander-guard-v28');
