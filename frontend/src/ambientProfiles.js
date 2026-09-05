@@ -117,14 +117,65 @@ const TANGIER_SMOKE_PROFILE = Object.freeze({
   }),
 });
 
+// Tropical House tiene que sonar a house antes que a postal de resort: bombo
+// a negras, hat en contratiempo, bajo corto y acordes con ataque. El tempo ya
+// estaba en la zona correcta; el problema era que el arreglo llevaba el freno
+// de mano puesto. Este overlay conserva melodías, armonías y leitmotivs propios.
+const TROPICAL_HOUSE_GROOVE = Object.freeze({
+  0:'K', 2:'H', 4:'K', 6:'H', 8:'K', 10:'H', 12:'K', 14:'H',
+});
+
+const TROPICAL_HOUSE_DRIVE = Object.freeze({
+  palmsAtDusk: Object.freeze({
+    swing: 0.025, releaseScale: 0.82, space: 0.055, delayMs: 84,
+    chordHoldSteps: 6, bassHoldSteps: 2.0, punch: 1.18,
+    mix: Object.freeze({ lead: 0.62, counter: 0.42, bass: 1.08, chord: 0.60 }),
+  }),
+  islandKnight: Object.freeze({
+    swing: 0.04, releaseScale: 0.80, space: 0.06, delayMs: 88,
+    chordHoldSteps: 6, bassHoldSteps: 1.8, punch: 1.22,
+    mix: Object.freeze({ lead: 0.64, counter: 0.38, bass: 1.12, chord: 0.58 }),
+  }),
+  bishopSunset: Object.freeze({
+    swing: 0.03, releaseScale: 0.82, space: 0.055, delayMs: 86,
+    chordHoldSteps: 6, bassHoldSteps: 1.9, punch: 1.20,
+    mix: Object.freeze({ lead: 0.70, counter: 0.44, bass: 1.10, chord: 0.62 }),
+  }),
+});
+
+function withTropicalHouseDrive(theme, feel) {
+  const drive = TROPICAL_HOUSE_DRIVE[theme?.id];
+  if (!drive || !feel) return feel;
+
+  return Object.freeze({
+    ...feel,
+    swing: drive.swing,
+    releaseScale: drive.releaseScale,
+    space: drive.space,
+    delayMs: drive.delayMs,
+    chordHoldSteps: drive.chordHoldSteps,
+    bassHoldSteps: drive.bassHoldSteps,
+    mix: Object.freeze({ ...(feel.mix || {}), ...drive.mix }),
+    percussion: Object.freeze({
+      period: 16,
+      kit: 'tropical-house-sidechain',
+      punch: drive.punch,
+      pattern: TROPICAL_HOUSE_GROOVE,
+    }),
+  });
+}
+
 // Facade deliberadamente pequeño: conserva las identidades legacy y
 // permite profundizar temas concretos sin volver a engordar el motor WebAudio.
 export function structuredFeel(theme) {
   const radioMatthias = radioMatthiasStructuredFeel(theme);
-  if (radioMatthias) return withRadioMatthiasLeitmotif(theme, radioMatthias);
+  if (radioMatthias) {
+    return withTropicalHouseDrive(theme, withRadioMatthiasLeitmotif(theme, radioMatthias));
+  }
 
   const legacy = legacyStructuredFeel(theme);
   if (!legacy) return legacy;
+  if (TROPICAL_HOUSE_DRIVE[theme?.id]) return withTropicalHouseDrive(theme, legacy);
   if (theme?.id === 'reactorGambit') return Object.freeze({ ...legacy, ...REACTOR_GAMBIT_PROFILE });
   if (theme?.id === 'tangierSmoke') return Object.freeze({ ...legacy, ...TANGIER_SMOKE_PROFILE });
   if (!GRANADA_THEME_IDS.has(theme?.id)) return legacy;
