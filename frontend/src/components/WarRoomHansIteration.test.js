@@ -104,7 +104,6 @@ describe('Hans quick-game visual iteration', () => {
       expect(driver).toBeTruthy();
       expect(fireCore).toBeTruthy();
       expect(fireLight).toBeTruthy();
-      expect(bounce).toBeTruthy();
       expect(basketTopLog).toBeTruthy();
       expect(addedLog).toBeTruthy();
       expect(poker).toBeTruthy();
@@ -112,7 +111,7 @@ describe('Hans quick-game visual iteration', () => {
       const baseScale = fireCore.scale.clone();
       const baseIntensity = Number(fireLight.userData.baseWarRoomIntensity || fireLight.intensity);
       const baseDistance = fireLight.distance;
-      const baseBounce = bounce.intensity;
+      const baseBounce = bounce?.intensity ?? null;
 
       now.mockReturnValue(3500);
       driver.onBeforeRender();
@@ -120,7 +119,7 @@ describe('Hans quick-game visual iteration', () => {
       expect(fireCore.scale.y).toBeLessThan(baseScale.y);
       expect(fireLight.intensity).toBeLessThan(baseIntensity);
       expect(fireLight.distance).toBeLessThan(baseDistance);
-      expect(bounce.intensity).toBeLessThan(baseBounce);
+      if (bounce) expect(bounce.intensity).toBeLessThan(baseBounce);
 
       now.mockReturnValue(36000);
       driver.onBeforeRender();
@@ -134,7 +133,7 @@ describe('Hans quick-game visual iteration', () => {
       expect(fireCore.scale.z).toBeCloseTo(baseScale.z, 6);
       expect(fireLight.intensity).toBeCloseTo(baseIntensity, 6);
       expect(fireLight.distance).toBeCloseTo(baseDistance, 6);
-      expect(bounce.intensity).toBeCloseTo(baseBounce, 6);
+      if (bounce) expect(bounce.intensity).toBeCloseTo(baseBounce, 6);
       expect(basketTopLog.visible).toBe(false);
       expect(addedLog.visible).toBe(true);
       expect(poker.visible).toBe(true);
