@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { clearCombatHistory, loadCombatHistory } from './combatHistory.js';
 import { clearGameHistory, loadGameHistory } from './gameHistory.js';
 import { computeInsights } from './insights.js';
+import { HISTORY_GAME_OPEN_EVENT } from './historyNavigation.js';
 import { loadRatingHistory } from './playerRating.js';
 
 export function sortUnifiedHistory(historyList, combatHistoryList) {
@@ -68,6 +69,18 @@ export function useReplayLibrary({ navigateTo }) {
     }
     return openHistoryRecord(record);
   }
+
+  useEffect(() => {
+    function handleHistoryGameOpen(event) {
+      const gameId = event?.detail?.gameId;
+      if (gameId != null) openHistoryRecordByGameId(gameId);
+    }
+    globalThis.addEventListener?.(HISTORY_GAME_OPEN_EVENT, handleHistoryGameOpen);
+    return () => globalThis.removeEventListener?.(HISTORY_GAME_OPEN_EVENT, handleHistoryGameOpen);
+    // allHistory is the source of truth for whether the physical plaque still
+    // has a replayable source. navigateTo is supplied by App's stable router.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allHistory]);
 
   function clearAllHistory() {
     setHistoryList(clearGameHistory());
