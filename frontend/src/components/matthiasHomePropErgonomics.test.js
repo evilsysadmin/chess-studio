@@ -62,17 +62,21 @@ describe('Matthias Home prop ergonomics', () => {
     expect(rig.activityRig.support.visible).toBe(true);
     expect(rig.activityRig.assist.visible).toBe(true);
 
-    // The tactical meal now has four internal phases. Inspect the bocata at a
-    // deterministic time and require the portrait-readable scale rather than
-    // the old miniature-prop contract that caused the canapé effect in Home.
+    // Cena de campaña is now one stable approved composition. The ergonomic
+    // base prop stays `ration` for compatibility, but the old bocata mesh must
+    // remain hidden while the wide tray and both readable hands own the frame.
     expect(apply(rig, 'bite', { activityTime: 7 })).toBe('ration');
-    expect(rig.root.userData.activityMealPhase).toBe('bocata');
-    expect(rig.activityRig.ration.visible).toBe(true);
-    expect(rig.activityRig.ration.scale.x).toBeGreaterThanOrEqual(1.18);
-    expect(rig.activityRig.ration.position.y).toBeLessThan(-.4);
-    expect(rig.activityRig.ration.position.x).toBeGreaterThan(.15);
+    expect(rig.root.userData.activityMealPhase).toBe('campaign-dinner');
+    expect(rig.activityRig.ration.visible).toBe(false);
+    expect(rig.activityRig.campaignDinner.visible).toBe(true);
+    expect(rig.activityRig.campaignDinner.scale.x).toBeGreaterThanOrEqual(1);
+    expect(rig.activityRig.campaignDinner.position.y).toBeLessThan(-.45);
     expect(rig.activityRig.support.visible).toBe(true);
     expect(rig.activityRig.assist.visible).toBe(true);
+    expect(rig.activityRig.supportGlove.position.x).toBeGreaterThan(.48);
+    expect(rig.activityRig.assistGlove.position.x).toBeLessThan(-.48);
+    expect(rig.activityRig.supportGlove.position.z).toBeGreaterThan(.86);
+    expect(rig.activityRig.assistGlove.position.z).toBeGreaterThan(.86);
 
     expect(apply(rig, 'read', { headYaw: .12 })).toBe('book');
     expect(rig.activityRig.book.scale.x).toBeLessThan(.9);
