@@ -163,16 +163,22 @@ test('War Room · el bocadillo de Matthias sigue al rey si cambia de casilla', a
   test.setTimeout(75_000);
   const moveCalls = [];
 
-  // Opening banter is intentionally sparse in production (40% + anti-repeat).
-  // This regression needs the bubble to exist so it can test ownership/motion,
-  // therefore only this isolated browser context makes its two random rolls
-  // deterministic. Production probability remains untouched.
+  // Opening banter is intentionally sparse and short-lived in production
+  // (40% + anti-repeat + 4.7 s). This isolated regression keeps only that exact
+  // TTL alive longer because hosted Android/software-WebGL can spend more than
+  // 4.7 s presenting the mocked move. Production timing remains untouched.
   await page.addInitScript(() => {
     sessionStorage.setItem('chess-study-matthias-3d-opening-banter-v1', JSON.stringify({
       seenGameIds: [],
       lastEligibleStartShowed: false,
     }));
     Math.random = () => 0.1;
+    const nativeSetTimeout = window.setTimeout.bind(window);
+    window.setTimeout = (callback, delay, ...args) => nativeSetTimeout(
+      callback,
+      Number(delay) === 4700 ? 30_000 : delay,
+      ...args,
+    );
   });
 
   await mockApi(page);
@@ -196,9 +202,8 @@ test('War Room · el bocadillo de Matthias sigue al rey si cambia de casilla', a
   expect(before.left).not.toBe('');
   expect(before.top).not.toBe('');
 
-  // The banter is intentionally short-lived (4.7 s). Exercise the actual move
-  // immediately: this contract is specifically "if Matthias moves while he is
-  // speaking, the speech bubble follows the king", not a keyboard timing test.
+  // Exercise the actual move immediately. The contract under test is "if
+  // Matthias moves while he is speaking, the speech bubble follows the king".
   await canvas.focus();
   await canvas.press('ArrowUp');
   await canvas.press('Enter');
