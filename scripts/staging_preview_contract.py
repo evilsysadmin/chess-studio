@@ -79,8 +79,8 @@ def main() -> int:
     # Canonical staging owns all mutations for one generation. A CI-approved SHA
     # that has already been superseded by a newer main HEAD is not an outage: the
     # stale run must cancel itself before the first mutation. Once admitted,
-    # Render reconcile/backend, Pages and Worker may advance in parallel, then
-    # converge behind the same N/N/N parity gate.
+    # backend, Pages and Worker may advance in parallel, then converge behind the
+    # same N/N/N parity gate.
     for needle, label in (
         ("Backend + frontend + AI staging generation", "canonical generation job"),
         ("Supersede stale staging commit", "single stale guard before mutation"),
@@ -101,34 +101,41 @@ def main() -> int:
     ):
         require(staging_deploy, needle, label, errors)
 
-    # Topology contract: prepare is only admission. Render reconcile is a sibling
-    # lane after admission, not a parent of Pages/Worker. Backend alone waits for
-    # it. This prevents a slow Render control-plane call from serializing all of
-    # staging again.
+    # Topology contract: prepare is admission only. Backend, Pages and Worker are
+    # sibling lanes after admission. Render reconcile must live inside backend,
+    # before the exact deploy, so no second runner allocation or duplicate
+    # checkout delays the real Render build. Browser smoke consumes backend's
+    # service-id output directly.
     job_markers = {
         "prepare": "\n  prepare:\n",
-        "render": "\n  render_reconcile:\n",
         "backend": "\n  backend:\n",
         "frontend": "\n  frontend:\n",
         "worker": "\n  worker:\n",
         "parity": "\n  parity:\n",
+        "smoke": "\n  smoke:\n",
     }
     job_positions = {name: staging_deploy.find(marker) for name, marker in job_markers.items()}
     if any(position < 0 for position in job_positions.values()):
         missing = sorted(name for name, position in job_positions.items() if position < 0)
         errors.append(f"staging generation: faltan jobs para auditar topología paralela: {missing}")
     else:
-        ordered = ["prepare", "render", "backend", "frontend", "worker", "parity"]
+        ordered = ["prepare", "backend", "frontend", "worker", "parity", "smoke"]
         blocks = {}
         for index, name in enumerate(ordered[:-1]):
             blocks[name] = staging_deploy[job_positions[name]:job_positions[ordered[index + 1]]]
-        blocks["worker"] = staging_deploy[job_positions["worker"]:job_positions["parity"]]
+        blocks["smoke"] = staging_deploy[job_positions["smoke"]:]
 
         if "render_staging_bootstrap.py" in blocks["prepare"]:
             errors.append("staging generation: prepare volvió a ejecutar Render reconcile y serializa Pages/Worker")
-        require(blocks["render"], "needs: prepare", "Render reconcile debe arrancar tras admission", errors)
-        require(blocks["render"], "render_staging_bootstrap.py", "Render reconcile conserva bootstrap idempotente", errors)
-        require(blocks["backend"], "needs: [prepare, render_reconcile]", "backend espera al reconcile de Render", errors)
+        if "\n  render_reconcile:\n" in staging_deploy:
+            errors.append("staging generation: Render reconcile volvió a un job separado y añade otro runner antes del deploy")
+        require(blocks["backend"], "needs: prepare", "backend arranca tras admission", errors)
+        require(blocks["backend"], "render_staging_bootstrap.py", "backend conserva bootstrap idempotente", errors)
+        require(blocks["backend"], "render_service_id: ${{ steps.render_bootstrap.outputs.service_id }}", "backend exporta service id para smoke", errors)
+        reconcile_step = blocks["backend"].find("Reconcile Render staging configuration")
+        deploy_step = blocks["backend"].find("Deploy exact backend commit to Render staging")
+        if min(reconcile_step, deploy_step) >= 0 and not reconcile_step < deploy_step:
+            errors.append("staging generation: Render reconcile debe ocurrir antes del exact deploy dentro del mismo backend job")
         require(blocks["frontend"], "needs: prepare", "Pages arranca tras admission", errors)
         require(blocks["worker"], "needs: prepare", "Worker arranca tras admission", errors)
         if "render_reconcile" in blocks["frontend"]:
@@ -137,6 +144,8 @@ def main() -> int:
             errors.append("staging generation: Worker volvió a depender de Render reconcile")
         if "--service-id" in blocks["worker"]:
             errors.append("staging generation: Worker volvió a depender del service_id producido por Render reconcile")
+        require(blocks["smoke"], "needs: [prepare, backend, parity]", "smoke espera backend + parity", errors)
+        require(blocks["smoke"], "RENDER_SERVICE_ID: ${{ needs.backend.outputs.render_service_id }}", "smoke consume service id del backend", errors)
 
     stale_step = staging_deploy.find("Supersede stale staging commit")
     render_step = staging_deploy.find("Reconcile Render staging configuration")
@@ -207,7 +216,7 @@ def main() -> int:
             print(f" - {error}", file=sys.stderr)
         return 1
 
-    print("staging-preview-contract OK · preview isolated; admission first; Render/Pages/Worker parallel; canonical staging owns N/N/N")
+    print("staging-preview-contract OK · preview isolated; admission first; backend/Pages/Worker parallel; canonical staging owns N/N/N")
     return 0
 
 
