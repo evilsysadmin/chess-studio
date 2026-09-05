@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { isDeploymentReadyForBattle } from './combatDeployment.js';
 import { deploymentSelectionFingerprint, freezeTacticalRosterSnapshot } from './combatTacticalDeployment.js';
 
@@ -34,6 +34,17 @@ export function useCombatDeploymentGate({
   const confirmationMatches = !requireDeploymentConfirmation
     || !deploymentConfirmed
     || confirmedDeploymentFingerprint === currentDeploymentFingerprint;
+
+  // Si una compra, contratación, renombre, mejora o rehidratación cambia la
+  // orden después de confirmarla, la UI deja de anunciar LISTO en el mismo
+  // ciclo de actualización. No mostramos error aquí: el cambio puede ser una
+  // acción perfectamente válida del jugador; simplemente exige confirmar otra vez.
+  useEffect(() => {
+    if (!requireDeploymentConfirmation || !deploymentConfirmed || confirmationMatches) return;
+    setDeploymentConfirmedState(false);
+    setConfirmedDeploymentFingerprint(null);
+    setConfirmedRosterSnapshot(null);
+  }, [confirmationMatches, deploymentConfirmed, requireDeploymentConfirmation]);
 
   // Todos los consumidores externos usan este setter, así que invalidar una
   // confirmación también borra su huella y snapshot. Una confirmación explícita
