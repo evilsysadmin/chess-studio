@@ -3,8 +3,11 @@ import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
 
 test.use({ ...devices['Pixel 5'] });
 
-const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-const KING_MOVED_FEN = 'rnbq1bnr/ppppkppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQ - 1 2';
+// Legal position after 1.Nf3 e5. e7 is now empty, so after 2.e4 the mocked
+// Matthias reply Ke8-e7 is a real legal king move instead of an impossible
+// state that the board animation layer is entitled to reject.
+const KING_MOVE_START_FEN = 'rnbqkbnr/pppp1ppp/8/4p3/8/5N2/PPPPPPPP/RNBQKB1R w KQkq e6 0 2';
+const KING_MOVED_FEN = 'rnbq1bnr/ppppkppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQ - 1 3';
 
 async function open3DFromAppearance(page) {
   const board3d = page.locator('[data-board3d-war-room="true"]');
@@ -28,33 +31,79 @@ async function open3DFromAppearance(page) {
   await expect(board3d).toBeVisible({ timeout: 30_000 });
 }
 
-async function installKingMoveReply(page, calls) {
+async function installKingMoveScenario(page, calls) {
+  const id = 'matthias-king-motion';
+  let currentGame = null;
+
+  // Override only this regression's game. mockApi remains responsible for auth,
+  // profile, narrative and every unrelated endpoint.
+  await page.route('http://localhost:4000/api/games', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const payload = route.request().postDataJSON?.() ?? {};
+    currentGame = {
+      id,
+      fen: KING_MOVE_START_FEN,
+      turn: 'w',
+      humanColor: payload.color === 'b' ? 'b' : 'w',
+      difficulty: Math.round(Number(payload.difficulty ?? 50)),
+      status: 'playing',
+      insufficientMatingMaterial: { w: false, b: false },
+      isGameOver: false,
+      history: [],
+      lastMove: null,
+      initialFen: KING_MOVE_START_FEN,
+      ghostStyle: payload.ghostStyle || null,
+    };
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify(currentGame),
+    });
+  });
+
+  await page.route(`http://localhost:4000/api/games/${id}`, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    await route.fulfill({
+      status: currentGame ? 200 : 404,
+      contentType: 'application/json',
+      body: JSON.stringify(currentGame || { detail: 'Partida no encontrada' }),
+    });
+  });
+
   await page.route('http://localhost:4000/api/games/*/move', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
-    const url = new URL(route.request().url());
-    const id = url.pathname.match(/\/games\/([^/]+)\/move$/)?.[1] || '1';
     const payload = route.request().postDataJSON?.() ?? {};
     calls.push(`${payload.from || '?'}-${payload.to || '?'}`);
 
+    if (payload.from !== 'e2' || payload.to !== 'e4') {
+      return route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: `King-motion E2E esperaba e2-e4, recibió ${payload.from || '?'}-${payload.to || '?'}` }),
+      });
+    }
+
     const humanMove = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', captured: false, by: 'human' };
     const cpuMove = { from: 'e8', to: 'e7', san: 'Ke7', piece: 'k', captured: false, by: 'cpu' };
+    currentGame = {
+      ...(currentGame || {}),
+      id,
+      fen: KING_MOVED_FEN,
+      turn: 'w',
+      humanColor: 'w',
+      difficulty: 50,
+      status: 'playing',
+      insufficientMatingMaterial: { w: false, b: false },
+      isGameOver: false,
+      history: [humanMove, cpuMove],
+      lastMove: cpuMove,
+      initialFen: KING_MOVE_START_FEN,
+      ghostStyle: null,
+    };
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({
-        id,
-        fen: KING_MOVED_FEN,
-        turn: 'w',
-        humanColor: 'w',
-        difficulty: 50,
-        status: 'playing',
-        insufficientMatingMaterial: { w: false, b: false },
-        isGameOver: false,
-        history: [humanMove, cpuMove],
-        lastMove: cpuMove,
-        initialFen: START_FEN,
-        ghostStyle: null,
-      }),
+      body: JSON.stringify(currentGame),
     });
   });
 }
@@ -127,7 +176,7 @@ test('War Room · el bocadillo de Matthias sigue al rey si cambia de casilla', a
   });
 
   await mockApi(page);
-  await installKingMoveReply(page, moveCalls);
+  await installKingMoveScenario(page, moveCalls);
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
