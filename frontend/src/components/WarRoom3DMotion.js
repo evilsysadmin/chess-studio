@@ -41,6 +41,59 @@ export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {
   return hemisphere;
 }
 
+export function warRoomMaterialIblProfile({ coarsePointer = false } = {}) {
+  if (coarsePointer) return null;
+  return {
+    ivoryEnvMax: 0.36,
+    lightTileEnvMax: 0.34,
+  };
+}
+
+export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {}) {
+  const profile = warRoomMaterialIblProfile({ coarsePointer });
+  if (!scene || !profile || typeof scene.traverse !== 'function') {
+    return { adjusted: 0, ivory: 0, lightTile: 0, profile };
+  }
+
+  const seen = new Set();
+  let adjusted = 0;
+  let ivory = 0;
+  let lightTile = 0;
+
+  scene.traverse((object) => {
+    if (!object?.isMesh || !object.material) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) {
+      if (!material || seen.has(material)) continue;
+      seen.add(material);
+
+      const role = material.userData?.surfaceRole;
+      const limit = role === 'ivory'
+        ? profile.ivoryEnvMax
+        : role === 'board-light'
+          ? profile.lightTileEnvMax
+          : null;
+      if (limit == null || typeof material.envMapIntensity !== 'number') continue;
+
+      if (role === 'ivory') ivory += 1;
+      else lightTile += 1;
+
+      if (material.envMapIntensity > limit) {
+        material.envMapIntensity = limit;
+        material.needsUpdate = true;
+        adjusted += 1;
+      }
+      material.userData.warRoomIblGrade = 'low-fill-v1';
+    }
+  });
+
+  scene.userData.warRoomMaterialIblProfile = 'low-fill-v1';
+  scene.userData.warRoomIvoryEnvMax = profile.ivoryEnvMax;
+  scene.userData.warRoomLightTileEnvMax = profile.lightTileEnvMax;
+  scene.userData.warRoomMaterialIblAdjusted = adjusted;
+  return { adjusted, ivory, lightTile, profile };
+}
+
 export function nextRuntimeRenderScale({
   currentScale = 1,
   frameMs = 16,
@@ -94,9 +147,19 @@ function installWarRoomRenderDiscipline() {
     const state = shadowRefreshState.get(this) || {
       lastShadowAt: Number.NEGATIVE_INFINITY,
       lastRenderAt: Number.NaN,
+      lastMaterialGradeAt: Number.NEGATIVE_INFINITY,
       slowFrameCount: 0,
     };
     shadowRefreshState.set(this, state);
+
+    if (!Number.isFinite(state.lastMaterialGradeAt) || now - state.lastMaterialGradeAt >= 180) {
+      const materialGrade = applyWarRoomMaterialGrade(scene, { coarsePointer });
+      state.lastMaterialGradeAt = now;
+      if (materialGrade.profile && this.domElement?.dataset) {
+        this.domElement.dataset.warRoomIblIvory = Number(materialGrade.profile.ivoryEnvMax).toFixed(2);
+        this.domElement.dataset.warRoomIblLightTile = Number(materialGrade.profile.lightTileEnvMax).toFixed(2);
+      }
+    }
 
     const frameMs = Number.isFinite(state.lastRenderAt) ? now - state.lastRenderAt : 16;
     state.lastRenderAt = now;
