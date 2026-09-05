@@ -79,7 +79,8 @@ def main() -> int:
     # Canonical staging owns all mutations for one generation. A CI-approved SHA
     # that has already been superseded by a newer main HEAD is not an outage: the
     # stale run must cancel itself before the first mutation. Once admitted,
-    # backend, frontend and Worker finish inside the same serialized workflow.
+    # Render reconcile/backend, Pages and Worker may advance in parallel, then
+    # converge behind the same N/N/N parity gate.
     for needle, label in (
         ("Backend + frontend + AI staging generation", "canonical generation job"),
         ("Supersede stale staging commit", "single stale guard before mutation"),
@@ -88,10 +89,11 @@ def main() -> int:
         ("/actions/runs/$GITHUB_RUN_ID/cancel", "stale supersede self-cancel endpoint"),
         ("::notice title=Staging superseded", "stale supersede non-error diagnostic"),
         ("while :; do", "stale supersede fail-closed wait"),
+        ("Reconcile Render staging configuration", "backend-specific Render reconcile"),
         ("Deploy exact backend commit to Render staging", "generation backend deploy"),
         ("Deploy tested frontend to Cloudflare Pages", "generation frontend deploy"),
         ("Deploy exact staging Worker and synchronize shared secret", "generation Worker deploy"),
-        ("deploy_staging_ai_worker.py --service-id", "generation Worker exact checkout helper"),
+        ("run: python3 scripts/deploy_staging_ai_worker.py", "generation Worker self-resolving helper"),
         ("Verify staging generation parity before browser smoke", "generation parity gate"),
         ("actual = {", "generation parity runtime identities"),
         ("'worker': str(ai.get('build')", "generation Worker SHA parity"),
@@ -99,13 +101,53 @@ def main() -> int:
     ):
         require(staging_deploy, needle, label, errors)
 
+    # Topology contract: prepare is only admission. Render reconcile is a sibling
+    # lane after admission, not a parent of Pages/Worker. Backend alone waits for
+    # it. This prevents a slow Render control-plane call from serializing all of
+    # staging again.
+    job_markers = {
+        "prepare": "\n  prepare:\n",
+        "render": "\n  render_reconcile:\n",
+        "backend": "\n  backend:\n",
+        "frontend": "\n  frontend:\n",
+        "worker": "\n  worker:\n",
+        "parity": "\n  parity:\n",
+    }
+    job_positions = {name: staging_deploy.find(marker) for name, marker in job_markers.items()}
+    if any(position < 0 for position in job_positions.values()):
+        missing = sorted(name for name, position in job_positions.items() if position < 0)
+        errors.append(f"staging generation: faltan jobs para auditar topología paralela: {missing}")
+    else:
+        ordered = ["prepare", "render", "backend", "frontend", "worker", "parity"]
+        blocks = {}
+        for index, name in enumerate(ordered[:-1]):
+            blocks[name] = staging_deploy[job_positions[name]:job_positions[ordered[index + 1]]]
+        blocks["worker"] = staging_deploy[job_positions["worker"]:job_positions["parity"]]
+
+        if "render_staging_bootstrap.py" in blocks["prepare"]:
+            errors.append("staging generation: prepare volvió a ejecutar Render reconcile y serializa Pages/Worker")
+        require(blocks["render"], "needs: prepare", "Render reconcile debe arrancar tras admission", errors)
+        require(blocks["render"], "render_staging_bootstrap.py", "Render reconcile conserva bootstrap idempotente", errors)
+        require(blocks["backend"], "needs: [prepare, render_reconcile]", "backend espera al reconcile de Render", errors)
+        require(blocks["frontend"], "needs: prepare", "Pages arranca tras admission", errors)
+        require(blocks["worker"], "needs: prepare", "Worker arranca tras admission", errors)
+        if "render_reconcile" in blocks["frontend"]:
+            errors.append("staging generation: Pages volvió a depender de Render reconcile")
+        if "render_reconcile" in blocks["worker"]:
+            errors.append("staging generation: Worker volvió a depender de Render reconcile")
+        if "--service-id" in blocks["worker"]:
+            errors.append("staging generation: Worker volvió a depender del service_id producido por Render reconcile")
+
     stale_step = staging_deploy.find("Supersede stale staging commit")
+    render_step = staging_deploy.find("Reconcile Render staging configuration")
+    frontend_step = staging_deploy.find("Deploy tested frontend to Cloudflare Pages")
     backend_step = staging_deploy.find("Deploy exact backend commit to Render staging")
     worker_step = staging_deploy.find("Deploy exact staging Worker and synchronize shared secret")
     parity_step = staging_deploy.find("Verify staging generation parity before browser smoke")
     smoke_step = staging_deploy.find("Live browser smoke against deployed staging")
-    if min(stale_step, backend_step) >= 0 and not stale_step < backend_step:
-        errors.append("staging generation: stale supersede guard no está antes de la primera mutación Render")
+    mutations = [render_step, frontend_step, backend_step, worker_step]
+    if stale_step >= 0 and all(step >= 0 for step in mutations) and not all(stale_step < step for step in mutations):
+        errors.append("staging generation: stale supersede guard no está antes de todas las mutaciones")
     if min(worker_step, parity_step, smoke_step) >= 0 and not (worker_step < parity_step < smoke_step):
         errors.append("staging generation: Worker/parity/smoke no están en orden fail-closed")
 
@@ -123,14 +165,15 @@ def main() -> int:
             require(parity_block, needle, label, errors)
 
     # Staging Worker must expose the exact canonical generation at runtime and
-    # the deploy helper must wait for the Custom Domain to serve it. A generic
-    # 200 health response is insufficient because the previous Worker version
-    # can remain healthy during Cloudflare edge propagation.
+    # the deploy helper must wait for both the Render contract and the Custom
+    # Domain runtime identity. A generic 200 health response is insufficient.
     require(staging_wrangler, 'main = "worker/staging.js"', "staging Worker wrapper entrypoint", errors)
     require(staging_worker_wrapper, "BUILD_SHA", "staging Worker runtime build field", errors)
     require(staging_worker_wrapper, "./index.js", "staging Worker delegates shared runtime", errors)
     require(staging_worker_deploy, 'secret", "put", "BUILD_SHA"', "staging Worker generation binding", errors)
     require(staging_worker_deploy, "required_deploy_sha()", "staging Worker full SHA validation", errors)
+    require(staging_worker_deploy, "def wait_for_render_contract", "staging Worker parallel Render race guard", errors)
+    require(staging_worker_deploy, "service_id, secret = wait_for_render_contract(service_id)", "staging Worker waits for valid Render contract", errors)
     require(staging_worker_deploy, "def wait_for_runtime_build", "staging Worker propagation wait", errors)
     require(staging_worker_deploy, "wait_for_runtime_build(deploy_sha)", "staging Worker runtime identity gate", errors)
     require(staging_worker_deploy, "last_build == deploy_sha", "staging Worker exact runtime SHA convergence", errors)
@@ -164,7 +207,7 @@ def main() -> int:
             print(f" - {error}", file=sys.stderr)
         return 1
 
-    print("staging-preview-contract OK · preview isolated; stale main generations self-cancel before mutation; canonical staging owns N/N/N")
+    print("staging-preview-contract OK · preview isolated; admission first; Render/Pages/Worker parallel; canonical staging owns N/N/N")
     return 0
 
 

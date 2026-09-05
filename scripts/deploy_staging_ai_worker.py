@@ -81,6 +81,47 @@ def validate_service(service_id: str) -> str:
     return secret
 
 
+def wait_for_render_contract(
+    service_id: str = "",
+    *,
+    attempts: int = 150,
+    interval: float = 2.0,
+) -> tuple[str, str]:
+    """Resolve a valid staging service while Render reconcile runs in parallel.
+
+    Normal deploys return on the first attempt. On a first bootstrap or after
+    recoverable configuration drift, the backend control-plane job may still be
+    creating/reconciling the service. Retrying here removes a false dependency
+    between Workers AI and the full Render reconcile without relaxing any of the
+    service identity, environment, database or shared-secret checks.
+    """
+    last_error = ""
+    for attempt in range(1, attempts + 1):
+        try:
+            candidate_id = service_id or str(resolve_staging_service()["id"])
+            secret = validate_service(candidate_id)
+            if attempt > 1:
+                print(
+                    f"Render staging ya acredita el contrato Worker "
+                    f"(intento {attempt}/{attempts})"
+                )
+            return candidate_id, secret
+        except SystemExit as exc:
+            last_error = str(exc)
+            if attempt >= attempts:
+                break
+            print(
+                "Render staging aún no acredita el contrato Worker; "
+                f"reconcile puede seguir en curso (intento {attempt}/{attempts}): {last_error}"
+            )
+            time.sleep(interval)
+
+    raise SystemExit(
+        "Render staging no quedó listo para sincronizar Workers AI tras "
+        f"{attempts * interval:.0f}s: {last_error or 'estado desconocido'}"
+    )
+
+
 def cf_request(method: str, path: str, payload: dict | None = None) -> tuple[int, object]:
     data = None if payload is None else json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(
@@ -282,11 +323,11 @@ def main() -> None:
         return
 
     deploy_sha = required_deploy_sha()
+    # Missing credentials are permanent, not a reconcile race: fail immediately.
+    required("RENDER_API_KEY")
     service_id = str(args.service_id or "").strip()
-    if not service_id:
-        service_id = str(resolve_staging_service()["id"])
+    service_id, secret = wait_for_render_contract(service_id)
 
-    secret = validate_service(service_id)
     wrangler(["deploy"])
     wrangler(["secret", "put", "CHESS_AI_SHARED_SECRET"], stdin=secret + "\n")
     # Instalado al final para que el runtime que acreditamos siempre publique la
