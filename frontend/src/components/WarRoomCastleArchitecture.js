@@ -544,11 +544,20 @@ export function buildCastleArchitectureLayer({ wallZ, towardBoard, coarsePointer
   layer.userData.warRoomCastleStyle = 'dark-germanic-ashlar-v3';
   addTiledFloor(layer, wallZ, towardBoard, coarsePointer);
   addSideWalls(layer, wallZ, towardBoard, coarsePointer);
-  addSideConsoles(layer, wallZ, towardBoard, coarsePointer);
+  if (coarsePointer) {
+    addSideConsoles(layer, wallZ, towardBoard, coarsePointer);
+  } else {
+    layer.userData.warRoomDesktopRetiredSideConsoleMeshesOmitted = 30;
+  }
   addPremiumWarRoomPaintings(layer, { wallZ, towardBoard, coarsePointer });
   refinePremiumGallery(layer, towardBoard, coarsePointer);
-  addArmorGuard(layer, -1, wallZ, towardBoard, coarsePointer);
-  addArmorGuard(layer, 1, wallZ, towardBoard, coarsePointer);
+  if (coarsePointer) {
+    addArmorGuard(layer, -1, wallZ, towardBoard, coarsePointer);
+    addArmorGuard(layer, 1, wallZ, towardBoard, coarsePointer);
+  } else {
+    layer.userData.warRoomDesktopRetiredArmorMeshesOmitted = 44;
+    layer.userData.warRoomDesktopRetiredLegacyMeshesOmitted = 74;
+  }
   attachSceneDriver(layer, coarsePointer);
   if (coarsePointer) {
     attachCoarseFinalRefinementDriver(layer, wallZ, towardBoard);
