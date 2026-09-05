@@ -9,6 +9,7 @@ import {
   matthiasChessWeeklyReadingState,
   matthiasHomeErgonomicActivityProp,
   MATTHIAS_CHESS_WEEKLY_RIG_VERSION,
+  MATTHIAS_DOSSIER_MOCK_VERSION,
   MATTHIAS_HOME_PROP_ERGONOMICS_VERSION,
 } from './matthiasHomePropErgonomics.js';
 
@@ -81,16 +82,23 @@ describe('Matthias Home prop ergonomics', () => {
     expect(rig.activityRig.supportGlove.position.x).toBeGreaterThan(rig.activityRig.book.position.x);
     expect(rig.activityRig.assistGlove.position.x).toBeLessThan(rig.activityRig.book.position.x);
 
+    // Approved dossier mock is now the contract. The old closed red folder was
+    // the silhouette that read like a knife/slab in mobile Home, so it must stay hidden.
     expect(apply(rig, 'dossier', { headYaw: -.08 })).toBe('dossier');
-    expect(rig.activityRig.dossier.scale.x).toBeLessThan(.9);
-    expect(rig.activityRig.dossier.position.x).toBeGreaterThan(.2);
-    expect(rig.activityRig.dossier.position.y).toBeLessThan(-.55);
-    expect(Math.abs(rig.activityRig.dossier.rotation.y)).toBeGreaterThan(.25);
-    expect(Math.abs(rig.activityRig.dossier.rotation.z)).toBeGreaterThan(.1);
-    expect(rig.activityRig.supportGlove.position.x).toBeGreaterThan(rig.activityRig.dossier.position.x);
-    expect(rig.activityRig.assistGlove.position.x).toBeLessThan(rig.activityRig.dossier.position.x);
+    expect(rig.activityRig.dossier.visible).toBe(false);
+    expect(rig.activityRig.dossierMock).toBeTruthy();
+    expect(rig.activityRig.dossierMock.visible).toBe(true);
+    expect(rig.activityRig.dossierMock.userData.rigVersion).toBe(MATTHIAS_DOSSIER_MOCK_VERSION);
+    expect(rig.root.getObjectByName('dossier-mock-open-file')).toBeTruthy();
+    expect(rig.root.getObjectByName('dossier-mock-desk')).toBeTruthy();
+    expect(rig.root.getObjectsByProperty('name', 'dossier-mock-book')).toHaveLength(3);
+    expect(rig.root.getObjectByName('dossier-mock-mug')).toBeTruthy();
+    expect(rig.activityRig.support.visible).toBe(true);
+    expect(rig.activityRig.assist.visible).toBe(true);
+    expect(rig.root.userData.activityDossierComposition).toBe(MATTHIAS_DOSSIER_MOCK_VERSION);
 
     expect(apply(rig, 'write', { headYaw: .07 })).toBe('write');
+    expect(rig.activityRig.dossierMock.visible).toBe(false);
     expect(rig.activityRig.write.scale.x).toBeLessThan(.85);
     expect(rig.activityRig.write.position.y).toBeLessThan(-.6);
     expect(rig.activityRig.write.rotation.x).toBeLessThan(-.5);

@@ -12,7 +12,8 @@ import {
 
 export const MATTHIAS_HOME_PROP_ERGONOMICS_VERSION = 'home-props-v1-handheld';
 export const MATTHIAS_CHESS_WEEKLY_RIG_VERSION = 'chess-weekly-v2-mock-fidelity';
-export const MATTHIAS_WORK_FOCUS_FACE_VERSION = 'work-focus-v1-approved-mock';
+export const MATTHIAS_WORK_FOCUS_FACE_VERSION = 'work-focus-v2-awake-approved-mock';
+export const MATTHIAS_DOSSIER_MOCK_VERSION = 'dossier-desk-v1-approved-mock';
 
 const PRESS_CLOCKS = new WeakMap();
 
@@ -170,6 +171,122 @@ function ensurePress(rig) {
   return buildChessWeeklyPress(rig);
 }
 
+function buildDossierMock(rig) {
+  const activityRig = rig?.activityRig;
+  if (!activityRig) return null;
+
+  const scene = new THREE.Group();
+  scene.name = 'activity-dossier-mock';
+  scene.visible = false;
+  scene.userData.rigVersion = MATTHIAS_DOSSIER_MOCK_VERSION;
+  activityRig.root.add(scene);
+
+  const wood = new THREE.MeshStandardMaterial({ color: 0x2a1710, roughness: .62, metalness: .06 });
+  const woodEdge = new THREE.MeshStandardMaterial({ color: 0x56301e, roughness: .48, metalness: .10 });
+  const paper = new THREE.MeshStandardMaterial({ color: 0xd7c7a7, roughness: .76, metalness: 0, side: THREE.DoubleSide });
+  const paperEdge = new THREE.MeshStandardMaterial({ color: 0xa9987c, roughness: .82, metalness: 0, side: THREE.DoubleSide });
+  const ink = new THREE.MeshStandardMaterial({ color: 0x27221c, roughness: .88, metalness: 0 });
+  const black = new THREE.MeshStandardMaterial({ color: 0x090b0e, roughness: .28, metalness: .48 });
+  const mutedRed = new THREE.MeshStandardMaterial({ color: 0x6f211d, roughness: .42, metalness: .12 });
+  const gold = new THREE.MeshStandardMaterial({ color: 0xd09b37, roughness: .22, metalness: .92 });
+
+  // Copy of the approved mock: a low dark desk, three books on the left,
+  // campaign mug on the right and an open dossier held in the middle.
+  mesh(scene, new THREE.BoxGeometry(1.42, .105, .30), wood, { name: 'dossier-mock-desk', position: [0, -.735, .585] });
+  mesh(scene, new THREE.BoxGeometry(1.46, .035, .325), woodEdge, { name: 'dossier-mock-desk-edge', position: [0, -.676, .598] });
+
+  const books = new THREE.Group();
+  books.name = 'dossier-mock-books';
+  scene.add(books);
+  for (const [index, y] of [[0, -.625], [1, -.565], [2, -.505]]) {
+    mesh(books, new THREE.BoxGeometry(.34, .052, .20), index === 1 ? mutedRed : black, {
+      name: 'dossier-mock-book',
+      position: [-.48, y, .73],
+      rotation: [0, -.05 + index * .025, -.015 + index * .012],
+    });
+    mesh(books, new THREE.BoxGeometry(.30, .010, .206), gold, {
+      name: 'dossier-mock-book-gilt',
+      position: [-.48, y + .027, .732],
+      rotation: [0, -.05 + index * .025, -.015 + index * .012],
+    });
+  }
+
+  const mug = new THREE.Group();
+  mug.name = 'dossier-mock-mug';
+  mug.position.set(.52, -.555, .75);
+  scene.add(mug);
+  mesh(mug, new THREE.CylinderGeometry(.085, .078, .20, 22), black, { name: 'dossier-mock-mug-body' });
+  mesh(mug, new THREE.TorusGeometry(.083, .008, 7, 22), gold, {
+    name: 'dossier-mock-mug-rim',
+    position: [0, .10, 0],
+    rotation: [Math.PI / 2, 0, 0],
+  });
+  mesh(mug, new THREE.TorusGeometry(.060, .014, 7, 18, Math.PI * 1.58), gold, {
+    name: 'dossier-mock-mug-handle',
+    position: [.088, -.005, 0],
+    rotation: [0, Math.PI / 2, -.30],
+  });
+  mesh(mug, new THREE.CircleGeometry(.032, 16), gold, {
+    name: 'dossier-mock-mug-pawn-badge',
+    position: [0, .005, .082],
+  });
+
+  const document = new THREE.Group();
+  document.name = 'dossier-mock-open-file';
+  document.position.set(.03, -.43, .84);
+  document.rotation.x = -.20;
+  scene.add(document);
+
+  mesh(document, new THREE.BoxGeometry(.33, .37, .024), mutedRed, {
+    name: 'dossier-mock-cover-left',
+    position: [-.155, -.010, -.018],
+    rotation: [0, .18, .025],
+  });
+  mesh(document, new THREE.BoxGeometry(.33, .37, .024), mutedRed, {
+    name: 'dossier-mock-cover-right',
+    position: [.155, -.010, -.018],
+    rotation: [0, -.18, -.025],
+  });
+  const leftPage = mesh(document, new THREE.BoxGeometry(.30, .34, .018), paper, {
+    name: 'dossier-mock-page-left',
+    position: [-.145, .012, .010],
+    rotation: [0, .20, .020],
+  });
+  const rightPage = mesh(document, new THREE.BoxGeometry(.30, .34, .018), paper, {
+    name: 'dossier-mock-page-right',
+    position: [.145, .012, .010],
+    rotation: [0, -.20, -.020],
+  });
+  mesh(document, new THREE.BoxGeometry(.018, .33, .026), paperEdge, {
+    name: 'dossier-mock-fold',
+    position: [0, .012, .025],
+  });
+  mesh(rightPage, new THREE.BoxGeometry(.15, .022, .010), gold, {
+    name: 'dossier-mock-classified-bar',
+    position: [-.015, .105, .018],
+  });
+  for (const [page, x] of [[leftPage, -.02], [rightPage, .015]]) {
+    for (let row = 0; row < 4; row += 1) {
+      mesh(page, new THREE.BoxGeometry(.18 - (row % 3) * .018, .010, .008), ink, {
+        name: 'dossier-mock-report-line',
+        position: [x, .055 - row * .050, .018],
+      });
+    }
+  }
+
+  activityRig.dossierMock = scene;
+  rig.root.userData.activityDossierMockVersion = MATTHIAS_DOSSIER_MOCK_VERSION;
+  return scene;
+}
+
+function ensureDossierMock(rig) {
+  const activityRig = rig?.activityRig;
+  if (!activityRig) return null;
+  if (activityRig.dossierMock?.userData?.rigVersion === MATTHIAS_DOSSIER_MOCK_VERSION) return activityRig.dossierMock;
+  if (activityRig.dossierMock) activityRig.root.remove(activityRig.dossierMock);
+  return buildDossierMock(rig);
+}
+
 function smoothstep01(value) {
   const t = clamp01(value);
   return t * t * (3 - 2 * t);
@@ -218,15 +335,16 @@ function restorePressEyeHeight(rig, activityRig) {
   if (rig.leftEye && Number.isFinite(activityRig.pressLeftEyeBaseY)) rig.leftEye.position.y = activityRig.pressLeftEyeBaseY;
   if (rig.rightEye && Number.isFinite(activityRig.pressRightEyeBaseY)) rig.rightEye.position.y = activityRig.pressRightEyeBaseY;
 }
-
 function applyMatthiasWorkFocusFace(rig, pose, { headPitch = .040, yawBias = 0 } = {}) {
   if (!rig?.leftEye || !rig?.rightEye) return;
   const speaking = Boolean(pose.activitySpeaking) || Number(pose.mouthOpen) >= .14;
   if (speaking) return;
+  rig.leftEye.position.z = Math.max(.625, rig.leftEye.position.z);
+  rig.rightEye.position.z = Math.max(.625, rig.rightEye.position.z);
   rig.leftEye.scale.x = .86;
   rig.rightEye.scale.x = .86;
-  rig.leftEye.scale.y = Math.max(1.34, rig.leftEye.scale.y);
-  rig.rightEye.scale.y = Math.max(1.34, rig.rightEye.scale.y);
+  rig.leftEye.scale.y = Math.max(1.44, rig.leftEye.scale.y);
+  rig.rightEye.scale.y = Math.max(1.44, rig.rightEye.scale.y);
   rig.leftBrow.rotation.z = Math.PI / 2 - .30;
   rig.rightBrow.rotation.z = Math.PI / 2 + .34;
   rig.leftBrow.position.y = rig.base.leftBrowY - .008;
@@ -246,10 +364,12 @@ function applyChessWeeklyFocusFace(rig, activityRig, pose, reading, speaking) {
   rig.leftEye.position.y = leftBaseY + (speaking ? 0 : reading.eyeY);
   rig.rightEye.position.y = rightBaseY + (speaking ? 0 : reading.eyeY);
   if (speaking) return;
+  rig.leftEye.position.z = Math.max(.625, rig.leftEye.position.z);
+  rig.rightEye.position.z = Math.max(.625, rig.rightEye.position.z);
   rig.leftEye.scale.x = .86;
   rig.rightEye.scale.x = .86;
-  rig.leftEye.scale.y = Math.max(1.34, rig.leftEye.scale.y);
-  rig.rightEye.scale.y = Math.max(1.34, rig.rightEye.scale.y);
+  rig.leftEye.scale.y = Math.max(1.44, rig.leftEye.scale.y);
+  rig.rightEye.scale.y = Math.max(1.44, rig.rightEye.scale.y);
   rig.leftBrow.rotation.z = Math.PI / 2 - .30;
   rig.rightBrow.rotation.z = Math.PI / 2 + .34;
   rig.leftBrow.position.y = rig.base.leftBrowY - .008;
@@ -270,8 +390,10 @@ export function applyMatthiasHomePropErgonomics(rig, pose = {}) {
   const reach = clamp01(rig.root?.userData?.activityReach ?? pose.reach);
   const yaw = Number(pose.headYaw) || 0;
   const press = prop === 'press' ? ensurePress(rig) : activityRig.press;
+  const dossierMock = prop === 'dossier' ? ensureDossierMock(rig) : activityRig.dossierMock;
 
   if (press) press.visible = prop === 'press';
+  if (dossierMock) dossierMock.visible = prop === 'dossier';
   if (prop !== 'press') restorePressEyeHeight(rig, activityRig);
   if (prop !== 'ration') clearMatthiasTacticalMeal(rig);
   if (prop !== 'blanket') clearMatthiasHomeSleepRig(rig);
@@ -309,11 +431,15 @@ export function applyMatthiasHomePropErgonomics(rig, pose = {}) {
     setLimb(assistStem, assistGlove, [-.34, -.39, .47], .62, [-.38, -.40, .70]);
     applyMatthiasWorkFocusFace(rig, pose, { headPitch: .050, yawBias: -.012 });
   } else if (prop === 'dossier') {
-    setPose(dossier, [.27, -.60 + reach * .04, .77], [-.44, -.34 + yaw * .18, -.15], .84);
+    // Exact approved composition, not an interpretation: open expediente in both
+    // hands, books left, campaign mug right, low desk, visible awake eyes.
+    dossier.visible = false;
+    if (dossierMock) setPose(dossierMock, [0, 0, 0], [0, 0, 0], 1);
     support.visible = true; assist.visible = true;
-    setLimb(supportStem, supportGlove, [.35, -.40, .48], -.61, [.43, -.42, .71]);
-    setLimb(assistStem, assistGlove, [-.25, -.36, .47], .76, [.08, -.34, .72]);
-    applyMatthiasWorkFocusFace(rig, pose, { headPitch: .045, yawBias: .012 });
+    setLimb(supportStem, supportGlove, [.30, -.38, .48], -.48, [.27, -.39, .73]);
+    setLimb(assistStem, assistGlove, [-.30, -.38, .47], .48, [-.25, -.39, .72]);
+    applyMatthiasWorkFocusFace(rig, pose, { headPitch: .018, yawBias: 0 });
+    rig.root.userData.activityDossierComposition = MATTHIAS_DOSSIER_MOCK_VERSION;
   } else if (prop === 'write') {
     setPose(write, [.20, -.64 + reach * .04, .76], [-.58, -.24 + yaw * .12, -.12], .80);
     support.visible = true; assist.visible = true;
@@ -351,6 +477,8 @@ export function applyMatthiasHomePropErgonomics(rig, pose = {}) {
     applyMatthiasHomeSleepRig(rig, { ...pose, reach });
     rig.root.userData.activitySleepRigVersion = MATTHIAS_HOME_SLEEP_RIG_VERSION;
   }
+
+  if (prop !== 'dossier') rig.root.userData.activityDossierComposition = 'inactive';
 
   if (prop !== 'press') {
     activityElapsedSeconds(rig, pose, false);
