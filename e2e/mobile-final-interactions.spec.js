@@ -155,3 +155,49 @@ test('Móvil · long-press no hace Back y el Back del sistema cierra sólo el mo
   await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 });
+
+test('Móvil · Partida de práctica abre su modal fijo dentro del viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await login(page);
+
+  const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+  if (await guide.isVisible().catch(() => false)) {
+    await guide.getByRole('button', { name: 'Ahora no', exact: true }).click();
+  }
+
+  const learning = page.locator('details.home-learning-more');
+  await expect(learning).toHaveAttribute('open', '');
+  const practice = learning.locator('button.home-tool-card').filter({ hasText: 'Partida de práctica' });
+  await expect(practice).toHaveCount(1);
+  await expect(practice).toBeVisible();
+  await practice.click();
+
+  const dialog = page.getByRole('dialog', { name: 'Configurar partida de práctica', exact: true });
+  await expect(dialog).toBeVisible();
+
+  const backdrop = dialog.locator('..');
+  const contract = await backdrop.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return {
+      position: getComputedStyle(node).position,
+      top: rect.top,
+      left: rect.left,
+      right: rect.right,
+      bottom: rect.bottom,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+    };
+  });
+
+  expect(contract.position).toBe('fixed');
+  expect(contract.top).toBeLessThanOrEqual(1);
+  expect(contract.left).toBeLessThanOrEqual(1);
+  expect(contract.right).toBeGreaterThanOrEqual(contract.viewportWidth - 1);
+  expect(contract.bottom).toBeGreaterThanOrEqual(contract.viewportHeight - 1);
+
+  const dialogBox = await dialog.boundingBox();
+  expect(dialogBox).not.toBeNull();
+  expect(dialogBox.y).toBeGreaterThanOrEqual(0);
+  expect(dialogBox.y + dialogBox.height).toBeLessThanOrEqual(contract.viewportHeight + 1);
+});

@@ -1,0 +1,13 @@
+/* Home Great Hall modal containment hotfix.
+ *
+ * HomeGreatHallCascade deliberately raises normal Home content above the
+ * Three.js scene, but its broad direct-child rule also catches modal
+ * backdrops. A modal backdrop must remain viewport-fixed; otherwise mobile
+ * opens the dialog at the bottom of the long Home document and the tap looks
+ * like it did nothing.
+ */
+body .menu.home-friendly > .modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+}
