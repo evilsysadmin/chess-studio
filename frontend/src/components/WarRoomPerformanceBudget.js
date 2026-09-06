@@ -18,10 +18,19 @@ const STATIC_INSTANCE_NAMES = new Set([
   'war-room-premium-frame-inner-bar',
   'war-room-sofa-burgundy-arm',
   'war-room-sofa-carved-arm-rail',
+  'war-room-sofa-scroll-finial',
+  'war-room-sofa-brass-finial',
+  'war-room-sofa-carved-finial-cap',
+  'war-room-sofa-turned-leg',
+  'war-room-sofa-tuft-button-v28',
   'war-room-command-desk-pedestal',
   'war-room-command-desk-drawer',
+  'war-room-command-desk-pull',
+  'war-room-command-desk-foot',
   'war-room-command-chair-back-post',
   'war-room-command-chair-leg',
+  'war-room-command-chair-finial',
+  'war-room-command-chair-button',
   'war-room-side-torch-cage-bar',
   'war-room-side-torch-crown-spike',
   'war-room-campaign-frame-gilt',
@@ -35,6 +44,8 @@ const STATIC_INSTANCE_GEOMETRY_TYPES = new Set([
   'BoxGeometry',
   'CylinderGeometry',
   'ConeGeometry',
+  'SphereGeometry',
+  'TorusGeometry',
 ]);
 
 const NOOP_RENDER_HOOK = () => {};
