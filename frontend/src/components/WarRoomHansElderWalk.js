@@ -1,3 +1,5 @@
+import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
+
 export const WAR_ROOM_HANS_ELDER_WALK_VERSION = 'elder-butler-gait-v1';
 
 const HANS_NAME = 'war-room-hans-butler';
@@ -6,6 +8,7 @@ const GAIT_FRAME_COUNT = 8;
 const GAIT_CYCLE_DISTANCE = 0.82;
 const MAX_TRAVEL_PER_FRAME = 0.09;
 const HUNCH_RADIANS = 0.052;
+const POST_RENDER_ORDER = 20;
 
 // Eight authored gait poses replace the old visual impression of a single
 // sine-wave leg swap. Values stay deliberately restrained: Hans is an elderly
@@ -133,33 +136,36 @@ export function installWarRoomHansElderWalk(root) {
   if (driver.userData?.warRoomHansElderWalk === WAR_ROOM_HANS_ELDER_WALK_VERSION) return 0;
 
   const bases = captureBases(body);
-  const original = driver.onBeforeRender;
   let gaitDistance = 0;
   let previousX = Number(hans.position?.x || 0);
   let previousZ = Number(hans.position?.z || 0);
 
-  driver.onBeforeRender = (...args) => {
-    original(...args);
-    const x = Number(hans.position?.x || 0);
-    const z = Number(hans.position?.z || 0);
-    const travelled = Math.hypot(x - previousX, z - previousZ);
+  const registered = registerWarRoomHansPostRenderStage(driver, {
+    key: WAR_ROOM_HANS_ELDER_WALK_VERSION,
+    order: POST_RENDER_ORDER,
+    run: () => {
+      const x = Number(hans.position?.x || 0);
+      const z = Number(hans.position?.z || 0);
+      const travelled = Math.hypot(x - previousX, z - previousZ);
 
-    if (hans.visible && walkingState(hans) && travelled > 0.00004) {
-      gaitDistance += Math.min(travelled, MAX_TRAVEL_PER_FRAME);
-      const sample = gaitSample(gaitDistance);
-      // Roughly half an authored frame of lag for head inertia.
-      const headSample = gaitSample(gaitDistance - GAIT_CYCLE_DISTANCE / 16);
-      applyElderGait(body, bases, sample, headSample, inferForward(body));
-      hans.userData.warRoomHansGaitFrame = sample.index;
-      hans.userData.warRoomHansGaitFrameCount = GAIT_FRAME_COUNT;
-      hans.userData.warRoomHansGaitDistance = gaitDistance;
-      hans.userData.warRoomHansGaitStyle = 'elder-butler-weighted-v1';
-      hans.userData.warRoomHansHunchRadians = HUNCH_RADIANS;
-    }
+      if (hans.visible && walkingState(hans) && travelled > 0.00004) {
+        gaitDistance += Math.min(travelled, MAX_TRAVEL_PER_FRAME);
+        const sample = gaitSample(gaitDistance);
+        // Roughly half an authored frame of lag for head inertia.
+        const headSample = gaitSample(gaitDistance - GAIT_CYCLE_DISTANCE / 16);
+        applyElderGait(body, bases, sample, headSample, inferForward(body));
+        hans.userData.warRoomHansGaitFrame = sample.index;
+        hans.userData.warRoomHansGaitFrameCount = GAIT_FRAME_COUNT;
+        hans.userData.warRoomHansGaitDistance = gaitDistance;
+        hans.userData.warRoomHansGaitStyle = 'elder-butler-weighted-v1';
+        hans.userData.warRoomHansHunchRadians = HUNCH_RADIANS;
+      }
 
-    previousX = x;
-    previousZ = z;
-  };
+      previousX = x;
+      previousZ = z;
+    },
+  });
+  if (!registered) return 0;
 
   driver.userData.warRoomHansElderWalk = WAR_ROOM_HANS_ELDER_WALK_VERSION;
   driver.userData.warRoomHansGaitFrames = GAIT_FRAME_COUNT;
