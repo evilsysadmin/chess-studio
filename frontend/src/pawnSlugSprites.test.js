@@ -6,6 +6,7 @@ import {
   PAWN_SLUG_SPRITE_META,
   configurePawnSlugTexture,
   pawnSlugMatthiasAtlasWindow,
+  pawnSlugMatthiasVisualDirection,
 } from './pawnSlugSprites.js';
 
 describe('Pawn Slug premium sprite contracts', () => {
@@ -26,6 +27,13 @@ describe('Pawn Slug premium sprite contracts', () => {
     expect(meta.frameWidth).toBe(160);
     expect(meta.frameHeight).toBe(160);
     expect(meta.sourceFacing).toBe('right');
+    expect(meta.sourceFacingByAction).toEqual({
+      idle: 'right',
+      walk: 'right',
+      run: 'right',
+      crouch: 'left',
+      jump: 'right',
+    });
     expect(meta.motionFrames).toEqual({
       idle: 6,
       walk: 9,
@@ -76,6 +84,16 @@ describe('Pawn Slug premium sprite contracts', () => {
 
     expect(pawnSlugMatthiasAtlasWindow('run', 9).column).toBe(0);
     expect(pawnSlugMatthiasAtlasWindow('crouch', 8).column).toBe(0);
+  });
+
+  it('compensates the reversed crouch art without changing the world-facing direction', () => {
+    expect(pawnSlugMatthiasVisualDirection('idle', 1)).toBe(1);
+    expect(pawnSlugMatthiasVisualDirection('run', -1)).toBe(-1);
+    expect(pawnSlugMatthiasVisualDirection('crouch', 1)).toBe(-1);
+    expect(pawnSlugMatthiasVisualDirection('crouch', -1)).toBe(1);
+    expect(PAWN_SLUG_MOTION_PROFILES.matthias.crouchScaleY).toBeLessThan(0.85);
+    expect(PAWN_SLUG_MOTION_PROFILES.matthias.crouchScaleX).toBeGreaterThan(1);
+    expect(PAWN_SLUG_MOTION_PROFILES.matthias.crouchDrop).toBeGreaterThan(0);
   });
 
   it('keeps pawn, knight and rook on their premium silhouettes', () => {
