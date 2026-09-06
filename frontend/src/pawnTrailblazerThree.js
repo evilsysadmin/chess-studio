@@ -3,6 +3,12 @@ import { duckAmbientMusic } from './sound.js';
 import { TRAIL_SPRITES } from './pawnTrailblazerSprites.js';
 import { trailSpriteScale } from './pawnTrailblazerSpriteLayout.js';
 import {
+  createTrailBishopAimLine,
+  createTrailInstancedTrack,
+  nearestTrailObject,
+  updateTrailBishopAimLine,
+} from './pawnTrailblazerRenderHotPath.js';
+import {
   TRAIL_COMBO_WINDOW_MS,
   TRAIL_LANES,
   TRAIL_POWER_DURATION_MS,
@@ -206,23 +212,15 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
   floor.receiveShadow = true;
   scene.add(floor);
 
-  const trackGroup = new THREE.Group();
-  scene.add(trackGroup);
-  const trackTiles = [];
-  const lightMaterial = new THREE.MeshStandardMaterial({ color: 0xc6b27b, roughness: 0.8, metalness: 0.02 });
-  const darkMaterial = new THREE.MeshStandardMaterial({ color: 0x3c352b, roughness: 0.82, metalness: 0.03 });
-  const tileGeometry = new THREE.BoxGeometry(TILE_SIZE * 0.96, 0.11, TILE_SIZE * 0.96);
-  for (let row = 0; row < TRACK_ROWS; row += 1) {
-    for (let lane = 0; lane < TRAIL_LANES; lane += 1) {
-      const tile = new THREE.Mesh(tileGeometry, ((row + lane) % 2 ? darkMaterial : lightMaterial).clone());
-      tile.position.set(laneX(lane), 0.02, PLAYER_Z - row * TILE_SIZE);
-      tile.receiveShadow = true;
-      trackGroup.add(tile);
-      trackTiles.push(tile);
-    }
-  }
-  lightMaterial.dispose();
-  darkMaterial.dispose();
+  const track = createTrailInstancedTrack({
+    rows: TRACK_ROWS,
+    lanes: TRAIL_LANES,
+    tileSize: TILE_SIZE,
+    playerZ: PLAYER_Z,
+    laneX,
+  });
+  scene.add(track.group);
+  host.dataset.trailTrackHotPath = track.group.userData.trailTrackHotPath;
 
   let destroyed = false;
   const textureLoader = new THREE.TextureLoader();
@@ -343,8 +341,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
   }
 
   function clearObjects() {
-    for (const item of [...state.objects]) removeObject(item);
-    state.objects = [];
+    while (state.objects.length) removeObject(state.objects[state.objects.length - 1]);
   }
 
   function createObjectSprite(url, scale = 1) {
@@ -413,12 +410,12 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
   }
 
   function nearestObject(lane, kind = null) {
-    return state.objects
-      .filter((item) => item.lane === lane
-        && item.z < PLAYER_Z + 0.2
-        && item.z > PLAYER_Z - CAPTURE_WINDOW
-        && (!kind || item.kind === kind))
-      .sort((a, b) => b.z - a.z)[0] || null;
+    return nearestTrailObject(state.objects, {
+      lane,
+      kind,
+      minZ: PLAYER_Z - CAPTURE_WINDOW,
+      maxZ: PLAYER_Z + 0.2,
+    });
   }
 
   function emitHud(now, force = false) {
@@ -482,18 +479,14 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
     emitHud(now, true);
   }
 
-  function createBishopAim(item) {
-    removeAim(item);
-    const points = [
-      new THREE.Vector3(laneX(item.lane), 0.34, item.z),
-      new THREE.Vector3(laneX(item.aimLane), 0.18, PLAYER_Z),
-    ];
-    const geometry = new THREE.BufferGeometry().setFromPoints(points);
-    const material = new THREE.LineDashedMaterial({ color: 0xf1c75b, dashSize: 0.38, gapSize: 0.2, transparent: true, opacity: 0.78 });
-    const line = new THREE.Line(geometry, material);
-    line.computeLineDistances();
-    aimsGroup.add(line);
-    item.aimLine = line;
+  function syncBishopAim(item) {
+    if (!item.aimLine) item.aimLine = createTrailBishopAimLine(aimsGroup);
+    updateTrailBishopAimLine(item.aimLine, {
+      startX: laneX(item.lane),
+      startZ: item.z,
+      targetX: laneX(item.aimLane),
+      targetZ: PLAYER_Z,
+    });
   }
 
   function control(input) {
@@ -619,7 +612,8 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
     state.spawnIn -= state.speed * dt;
     if (state.spawnIn <= 0) spawnObject();
 
-    for (const item of [...state.objects]) {
+    for (let index = state.objects.length - 1; index >= 0; index -= 1) {
+      const item = state.objects[index];
       item.z += state.speed * dt;
 
       if (item.kind === 'enemy' && item.enemyType === 'knight' && !item.jumped && item.z > -7.8) {
@@ -631,7 +625,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
         item.aimed = true;
         item.aimLane = trailBishopTargetLane(item.lane, state.lane);
         item.aimUntil = now + BISHOP_AIM_MS;
-        createBishopAim(item);
+        syncBishopAim(item);
         setToast('ALFIL · diagonal marcada. Muévete o para el disparo.', now, 900);
       } else if (item.kind === 'enemy' && item.enemyType === 'bishop' && item.aimed && !item.fired && now >= item.aimUntil) {
         item.fired = true;
@@ -654,56 +648,55 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
       } else if (item.kind === 'enemy') {
         item.mesh.position.y = 0.9 + Math.abs(Math.sin(now / 310 + item.id)) * 0.05;
       }
-      if (item.aimLine) createBishopAim(item);
+      if (item.aimLine) syncBishopAim(item);
 
       if (item.z > PLAYER_Z + 2.2) removeObject(item);
     }
 
     if (state.phase !== 'running') return;
 
-    for (const item of [...state.objects].sort((a, b) => b.z - a.z)) {
-      if (item.z < PLAYER_Z - COLLISION_WINDOW || item.z > PLAYER_Z + COLLISION_WINDOW || item.lane !== state.lane) continue;
-      if (item.kind === 'power') {
-        state.power = item.power;
-        state.powerUntil = now + TRAIL_POWER_DURATION_MS;
-        state.score += 80;
-        removeObject(item);
-        setToast(`${trailPowerLabel(item.power)} · movimiento desbloqueado`, now, 1400);
-      } else if (item.kind === 'enemy' && item.enemyType === 'pawn') {
-        state.phase = 'duel';
-        state.duel = {
-          enemyId: item.id,
-          meter: 24,
-          timeLeft: 2.6,
-          direction: state.lane === TRAIL_LANES - 1 ? -1 : 1,
-        };
-        setSpriteArtwork(
-          item.mesh,
-          TRAIL_SPRITES.enemyDuelist,
-          item.mesh.userData.trailTargetHeight || 1.65,
-          item.mesh.userData.trailMaxWidth || 1.25,
-        );
-        item.z = PLAYER_Z - 0.18;
-        setToast('¡FRONTAL! Machaca ESPACIO.', now, 1000);
-        emitHud(now, true);
-        break;
-      } else if (item.kind === 'enemy' && item.enemyType === 'knight') {
-        removeObject(item);
-        loseLife(now, 'El caballo ha saltado sobre tu línea. Previsible después de verlo.');
-        break;
-      } else if (item.kind === 'enemy' && item.enemyType === 'bishop') {
-        removeObject(item);
-        loseLife(now, 'El alfil ha cerrado la diagonal. Muy litúrgico todo.');
-        break;
-      } else if (item.kind === 'enemy' && item.enemyType === 'rook') {
-        removeObject(item);
-        loseLife(now, 'Una torre de frente. Ni siquiera tú eres tan cabezón, Matthias.');
-        break;
-      } else {
-        removeObject(item);
-        loseLife(now, 'Eso era un obstáculo, general.');
-        break;
-      }
+    const item = nearestTrailObject(state.objects, {
+      lane: state.lane,
+      minZ: PLAYER_Z - COLLISION_WINDOW,
+      maxZ: PLAYER_Z + COLLISION_WINDOW,
+    });
+    if (!item) return;
+
+    if (item.kind === 'power') {
+      state.power = item.power;
+      state.powerUntil = now + TRAIL_POWER_DURATION_MS;
+      state.score += 80;
+      removeObject(item);
+      setToast(`${trailPowerLabel(item.power)} · movimiento desbloqueado`, now, 1400);
+    } else if (item.kind === 'enemy' && item.enemyType === 'pawn') {
+      state.phase = 'duel';
+      state.duel = {
+        enemyId: item.id,
+        meter: 24,
+        timeLeft: 2.6,
+        direction: state.lane === TRAIL_LANES - 1 ? -1 : 1,
+      };
+      setSpriteArtwork(
+        item.mesh,
+        TRAIL_SPRITES.enemyDuelist,
+        item.mesh.userData.trailTargetHeight || 1.65,
+        item.mesh.userData.trailMaxWidth || 1.25,
+      );
+      item.z = PLAYER_Z - 0.18;
+      setToast('¡FRONTAL! Machaca ESPACIO.', now, 1000);
+      emitHud(now, true);
+    } else if (item.kind === 'enemy' && item.enemyType === 'knight') {
+      removeObject(item);
+      loseLife(now, 'El caballo ha saltado sobre tu línea. Previsible después de verlo.');
+    } else if (item.kind === 'enemy' && item.enemyType === 'bishop') {
+      removeObject(item);
+      loseLife(now, 'El alfil ha cerrado la diagonal. Muy litúrgico todo.');
+    } else if (item.kind === 'enemy' && item.enemyType === 'rook') {
+      removeObject(item);
+      loseLife(now, 'Una torre de frente. Ni siquiera tú eres tan cabezón, Matthias.');
+    } else {
+      removeObject(item);
+      loseLife(now, 'Eso era un obstáculo, general.');
     }
   }
 
@@ -744,12 +737,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
     else if (state.phase === 'duel') updateDuel(now, dt);
 
     const trackAdvance = state.phase === 'running' ? state.speed * dt : 0;
-    if (trackAdvance) {
-      for (const tile of trackTiles) {
-        tile.position.z += trackAdvance;
-        if (tile.position.z > PLAYER_Z + TILE_SIZE) tile.position.z -= TRACK_ROWS * TILE_SIZE;
-      }
-    }
+    track.advance(trackAdvance);
 
     const laneEase = reducedMotion ? 1 : Math.min(1, dt * 12);
     matthias.position.x += (targetLaneX - matthias.position.x) * laneEase;
@@ -796,6 +784,7 @@ export function createPawnTrailblazerGame(host, { onReady, onHud } = {}) {
       renderer.dispose();
       renderer.forceContextLoss?.();
       delete host.dataset.trailSpriteLayout;
+      delete host.dataset.trailTrackHotPath;
       if (host.contains(renderer.domElement)) host.removeChild(renderer.domElement);
     },
   };
