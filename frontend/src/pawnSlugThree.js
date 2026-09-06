@@ -51,6 +51,11 @@ import {
   pawnSlugSturmBishopTelegraph,
 } from './pawnSlugMidBoss.js';
 import { animateMatthiasSlugSprite } from './pawnSlugSprites.js';
+import {
+  PAWN_SLUG_RUNTIME_HOT_PATH,
+  pawnSlugFirstHitEnemyIndex,
+  pawnSlugRectsOverlap,
+} from './pawnSlugRuntimeHotPath.js';
 
 const WORLD_SCALE = 1 / 40;
 const VIEW_W = 24;
@@ -70,14 +75,6 @@ function wx(value) {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
-}
-
-function boxFor(entity, w = entity.w, h = entity.h) {
-  return { x: entity.x - w / 2, y: entity.y, w, h };
-}
-
-function overlaps(a, b) {
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
 function createInitialArsenal() {
@@ -275,6 +272,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   renderer.shadowMap.enabled = !coarse;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   host.replaceChildren(renderer.domElement);
+  host.dataset.pawnSlugRuntimeHotPath = PAWN_SLUG_RUNTIME_HOT_PATH;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x141921);
@@ -323,6 +321,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     crouch: false,
   };
   const sfx = createSfx();
+  const projectileAnimationOptions = { time: 0, explosive: false };
 
   function setAmbientDuck(enabled) {
     if (ambientDucked === enabled) return;
@@ -989,53 +988,80 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       if (distance < contact && player.y < enemy.y + enemy.h) hurtPlayer(enemy.type === 'boss' ? 38 : enemy.type === 'bishop' ? 28 : 18);
     }
 
-    for (const enemy of [...state.enemies]) {
-      if (!enemy.dead) continue;
+    for (let index = 0; index < state.enemies.length;) {
+      const enemy = state.enemies[index];
+      if (!enemy.dead) {
+        index += 1;
+        continue;
+      }
       dynamic.remove(enemy.model);
       disposePawnSlugObject(enemy.model);
-      state.enemies.splice(state.enemies.indexOf(enemy), 1);
+      state.enemies.splice(index, 1);
     }
   }
 
   function updateBullets(dt) {
-    const playerBox = boxFor({ x: state.player.x, y: state.player.y, w: PLAYER_W, h: state.player.crouch ? 1.05 : PLAYER_H });
-    for (const bullet of [...state.bullets]) {
+    const playerLeft = state.player.x - PLAYER_W / 2;
+    const playerTop = state.player.y;
+    const playerHeight = state.player.crouch ? 1.05 : PLAYER_H;
+
+    for (let index = 0; index < state.bullets.length;) {
+      const bullet = state.bullets[index];
       bullet.life -= dt;
       bullet.x += bullet.vx * dt;
       bullet.y += bullet.vy * dt;
       bullet.model.position.set(bullet.x, bullet.y, 0.3);
-      animatePremiumProjectile(bullet.model, { time: state.time, explosive: bullet.explosive });
+      projectileAnimationOptions.time = state.time;
+      projectileAnimationOptions.explosive = bullet.explosive;
+      animatePremiumProjectile(bullet.model, projectileAnimationOptions);
       let remove = bullet.life <= 0 || bullet.y < -1 || bullet.x < state.cameraX - VIEW_W || bullet.x > state.cameraX + VIEW_W * 1.8;
 
+      const bulletLeft = bullet.x - bullet.w / 2;
+      const bulletTop = bullet.y - bullet.h / 2;
       if (!remove && bullet.enemy) {
-        const bulletBox = { x: bullet.x - bullet.w / 2, y: bullet.y - bullet.h / 2, w: bullet.w, h: bullet.h };
-        if (overlaps(bulletBox, playerBox)) {
+        if (pawnSlugRectsOverlap(
+          bulletLeft,
+          bulletTop,
+          bullet.w,
+          bullet.h,
+          playerLeft,
+          playerTop,
+          PLAYER_W,
+          playerHeight,
+        )) {
           if (bullet.explosive) explode(bullet.x, bullet.y, 1.8, 0, true);
           else hurtPlayer(bullet.damage);
           remove = true;
         }
       } else if (!remove) {
-        for (const enemy of state.enemies) {
-          if (enemy.dead) continue;
-          const bulletBox = { x: bullet.x - bullet.w / 2, y: bullet.y - bullet.h / 2, w: bullet.w, h: bullet.h };
-          if (!overlaps(bulletBox, boxFor(enemy))) continue;
+        const enemyIndex = pawnSlugFirstHitEnemyIndex(
+          state.enemies,
+          bulletLeft,
+          bulletTop,
+          bullet.w,
+          bullet.h,
+        );
+        if (enemyIndex >= 0) {
+          const enemy = state.enemies[enemyIndex];
           if (bullet.explosive) explode(bullet.x, bullet.y, 1.9, bullet.damage);
           else damageEnemy(enemy, bullet.damage);
           remove = true;
-          break;
         }
       }
 
       if (remove) {
         projectileLayer.remove(bullet.model);
         disposePawnSlugObject(bullet.model);
-        state.bullets.splice(state.bullets.indexOf(bullet), 1);
+        state.bullets.splice(index, 1);
+        continue;
       }
+      index += 1;
     }
   }
 
   function updateGrenades(dt) {
-    for (const grenade of [...state.grenades]) {
+    for (let index = 0; index < state.grenades.length;) {
+      const grenade = state.grenades[index];
       grenade.fuse -= dt;
       grenade.vy -= GRAVITY * 0.72 * dt;
       grenade.x += grenade.vx * dt;
@@ -1047,21 +1073,37 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       }
       grenade.model.position.set(grenade.x, grenade.y, 0.4);
       grenade.model.rotation.z += dt * 8;
-      if (grenade.fuse > 0) continue;
+      if (grenade.fuse > 0) {
+        index += 1;
+        continue;
+      }
       explode(grenade.x, grenade.y + 0.2, 2.65, 125 * pawnSlugDamageMultiplier(state.player.level));
       projectileLayer.remove(grenade.model);
       disposePawnSlugObject(grenade.model);
-      state.grenades.splice(state.grenades.indexOf(grenade), 1);
+      state.grenades.splice(index, 1);
     }
   }
 
   function updatePickups(dt) {
-    const playerBox = boxFor({ x: state.player.x, y: state.player.y, w: PLAYER_W, h: PLAYER_H });
-    for (const pickup of [...state.pickups]) {
+    const playerLeft = state.player.x - PLAYER_W / 2;
+    const playerTop = state.player.y;
+    for (let index = 0; index < state.pickups.length;) {
+      const pickup = state.pickups[index];
       pickup.model.position.y = pickup.y + 0.12 + Math.sin(state.time * 3.1 + pickup.bob) * 0.08;
       pickup.model.rotation.y += dt * 0.55;
-      const pickupBox = { x: pickup.x - pickup.w / 2, y: pickup.y, w: pickup.w, h: pickup.h };
-      if (!overlaps(playerBox, pickupBox)) continue;
+      if (!pawnSlugRectsOverlap(
+        playerLeft,
+        playerTop,
+        PLAYER_W,
+        PLAYER_H,
+        pickup.x - pickup.w / 2,
+        pickup.y,
+        pickup.w,
+        pickup.h,
+      )) {
+        index += 1;
+        continue;
+      }
       state.takenPickups.add(pickup.id);
       if (pickup.type === 'grenade') state.player.grenades += 3;
       else if (pickup.type === 'medkit') state.player.hp = Math.min(state.player.maxHp, state.player.hp + 45);
@@ -1071,21 +1113,26 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       sfx.play('pickup');
       dynamic.remove(pickup.model);
       disposePawnSlugObject(pickup.model);
-      state.pickups.splice(state.pickups.indexOf(pickup), 1);
+      state.pickups.splice(index, 1);
       emitHud(true);
     }
   }
 
   function updateFx(dt) {
-    for (const flash of [...state.flashes]) {
+    for (let index = 0; index < state.flashes.length;) {
+      const flash = state.flashes[index];
       flash.life -= dt;
       animatePremiumMuzzleFlash(flash.model, flash.life / flash.maxLife);
-      if (flash.life > 0) continue;
+      if (flash.life > 0) {
+        index += 1;
+        continue;
+      }
       fxLayer.remove(flash.model);
       disposePawnSlugObject(flash.model);
-      state.flashes.splice(state.flashes.indexOf(flash), 1);
+      state.flashes.splice(index, 1);
     }
-    for (const particle of [...state.particles]) {
+    for (let index = 0; index < state.particles.length;) {
+      const particle = state.particles[index];
       particle.life -= dt;
       particle.vy -= GRAVITY * 0.42 * dt;
       particle.x += particle.vx * dt;
@@ -1094,10 +1141,13 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       particle.model.position.y = particle.y;
       const alpha = clamp(particle.life / particle.maxLife, 0, 1);
       if (particle.model.material) particle.model.material.opacity = alpha;
-      if (particle.life > 0) continue;
+      if (particle.life > 0) {
+        index += 1;
+        continue;
+      }
       fxLayer.remove(particle.model);
       disposePawnSlugObject(particle.model);
-      state.particles.splice(state.particles.indexOf(particle), 1);
+      state.particles.splice(index, 1);
     }
   }
 
@@ -1290,6 +1340,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       disposePawnSlugObject(scene);
       renderer.dispose();
       renderer.forceContextLoss?.();
+      delete host.dataset.pawnSlugRuntimeHotPath;
       if (host.contains(renderer.domElement)) host.removeChild(renderer.domElement);
     },
   };
