@@ -33,8 +33,8 @@ export const PAWN_SLUG_PICKUPS = Object.freeze([
 export const PAWN_SLUG_SPAWNS = Object.freeze([
   [620, 'pawn'], [790, 'pawn'], [1080, 'pawn'], [1210, 'knight'], [1380, 'pawn'],
   [1560, 'rook'], [1710, 'pawn'], [1940, 'knight'], [2110, 'pawn'], [2250, 'pawn'],
-  [2590, 'rook'], [2730, 'pawn'], [2890, 'knight'], [3070, 'pawn'], [3210, 'pawn'],
-  [3430, 'rook'], [3560, 'knight'], [3700, 'pawn'], [3950, 'pawn'], [4070, 'knight'],
+  [2380, 'bishop'], [2590, 'rook'], [2730, 'pawn'], [2890, 'knight'], [3070, 'pawn'], [3210, 'pawn'],
+  [3430, 'rook'], [3560, 'knight'], [3740, 'bishop'], [3950, 'pawn'], [4070, 'knight'],
   [4190, 'rook'], [4380, 'pawn'],
 ].map(([x, type], index) => Object.freeze({ id: `${type}-${index}`, x, type })));
 
@@ -42,6 +42,7 @@ export const PAWN_SLUG_ENEMIES = Object.freeze({
   pawn: Object.freeze({ hp: 34, speed: 54, score: 100, xp: 28, width: 38, height: 62 }),
   knight: Object.freeze({ hp: 62, speed: 92, score: 220, xp: 52, width: 48, height: 68 }),
   rook: Object.freeze({ hp: 112, speed: 0, score: 350, xp: 78, width: 58, height: 76 }),
+  bishop: Object.freeze({ hp: 310, speed: 42, score: 950, xp: 190, width: 78, height: 112, midBoss: true }),
   boss: Object.freeze({ hp: 780, speed: 0, score: 3500, xp: 650, width: 190, height: 150 }),
 });
 
@@ -129,6 +130,7 @@ export function pawnSlugMatthiasLine(event) {
     hurt: 'Ach. Eso era parte de mi cuerpo, animal.',
     grenade: 'Granada enviada. Sin acuse de recibo.',
     levelUp: 'Ascenso concedido. Mis condolencias al enemigo.',
+    midBoss: 'Un obispo blindado. Naturalmente. La teología ha empeorado mucho.',
     boss: 'Ah. Un castillo con orugas. Qué imaginación tan ofensiva.',
     bossDown: 'Schachmatt, mamotreto.',
     win: 'Sector limpio. El Convenio de Ginebra solicita una reunión.',
