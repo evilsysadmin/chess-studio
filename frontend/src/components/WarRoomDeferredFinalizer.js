@@ -1,3 +1,4 @@
+import { installWarRoomHansFacingGuard } from './WarRoomHansFacingGuard.js';
 import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
 
 export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v1';
@@ -68,7 +69,10 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
 
     for (const [key, task] of current.tasks) {
       results[key] = task(root);
-      if (key === HANS_FIREPLACE_FINALIZER_KEY) installWarRoomHansMotionPolish(root);
+      if (key === HANS_FIREPLACE_FINALIZER_KEY) {
+        installWarRoomHansMotionPolish(root);
+        installWarRoomHansFacingGuard(root);
+      }
       completedKeys.push(key);
     }
 
