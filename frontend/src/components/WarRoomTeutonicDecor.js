@@ -518,7 +518,21 @@ export function registerPremiumRoomFinalization(group, { wallZ, towardBoard, coa
       allowCoarse: true,
       run: (root) => {
         const sceneRoot = root || group;
-        const installed = installWarRoomHansSceneRoutine(sceneRoot, { towardBoard, coarsePointer });
+        // Scene quality and input modality are deliberately separate. Balanced
+        // Android builds the full desktop geometry, so the construction-time
+        // `coarsePointer` flag may be false even on a real touch device. Resolve
+        // the live pointer modality here so Hans can use the mobile-visible
+        // entrance choreography without amputating the premium room.
+        let runtimeCoarsePointer = coarsePointer;
+        try {
+          runtimeCoarsePointer = Boolean(globalThis?.matchMedia?.('(pointer: coarse)')?.matches);
+        } catch {
+          // Best-effort only; SSR/tests keep the construction-time fallback.
+        }
+        const installed = installWarRoomHansSceneRoutine(sceneRoot, {
+          towardBoard,
+          coarsePointer: runtimeCoarsePointer,
+        });
         exposeForcedHansRuntime(sceneRoot);
         return installed;
       },

@@ -166,6 +166,8 @@ function Board3DCanvas({
     const renderLite = sceneProfile.lite;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+    const hansWorldProbe = new THREE.Vector3();
+    const hansScreenProbe = new THREE.Vector3();
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     const squareMeshes = new Map();
@@ -334,11 +336,50 @@ function Board3DCanvas({
       });
     }
 
+    function exposeHansScreenDiagnostics() {
+      const hans = scene.getObjectByName?.('war-room-hans-butler');
+      let screenState = 'missing';
+      let projected = null;
+      if (hans) {
+        if (hans.visible !== true) {
+          screenState = 'hidden';
+        } else {
+          hans.getWorldPosition(hansWorldProbe);
+          hansScreenProbe.copy(hansWorldProbe).project(camera);
+          projected = hansScreenProbe;
+          const inFrustum = projected.z >= -1 && projected.z <= 1
+            && Math.abs(projected.x) <= 0.96
+            && Math.abs(projected.y) <= 0.96;
+          screenState = inFrustum ? 'onscreen' : 'offscreen';
+        }
+      }
+      renderer.domElement.dataset.warRoomHansScreen = screenState;
+      const visibleScreenState = screenState === 'onscreen' || screenState === 'offscreen';
+      if (!renderer.domElement.dataset.warRoomHansFirstScreen && visibleScreenState) {
+        renderer.domElement.dataset.warRoomHansFirstScreen = screenState;
+      }
+      if (projected) {
+        renderer.domElement.dataset.warRoomHansNdcX = projected.x.toFixed(3);
+        renderer.domElement.dataset.warRoomHansNdcY = projected.y.toFixed(3);
+      }
+      try {
+        document.querySelectorAll('[data-war-room-hans-quick-request="true"]').forEach((marker) => {
+          marker.setAttribute('data-war-room-hans-screen', screenState);
+          if (!marker.hasAttribute('data-war-room-hans-first-screen') && visibleScreenState) {
+            marker.setAttribute('data-war-room-hans-first-screen', screenState);
+          }
+        });
+      } catch {
+        // Diagnostics must never affect rendering.
+      }
+    }
+
     function render() {
       renderer.domElement.dataset.warRoomLightGrade = 'reactive-v9';
       renderer.domElement.dataset.warRoomLightKey = Number(key.intensity).toFixed(2);
       renderer.domElement.dataset.warRoomLightExposure = Number(renderer.toneMappingExposure).toFixed(3);
       renderer.render(scene, camera);
+      exposeHansScreenDiagnostics();
     }
 
     function resize() {

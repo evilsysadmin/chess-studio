@@ -8,8 +8,9 @@ import {
   setWarRoomHansServiceDoorOpen,
 } from './WarRoomHansServiceDoor.js';
 
-const QUICK_ITERATION_VERSION = 'always-quick-v5-service-corridor';
+const QUICK_ITERATION_VERSION = 'always-quick-v6-mobile-proscenium';
 const QUICK_ENTRY_SECONDS = 7;
+const MOBILE_QUICK_ENTRY_HEADSTART_S = 4.8;
 const QUICK_DOOR_X = 2.65;
 const HEARTH_BASKET_X = -1.62;
 const HEARTH_TOOLS_X = -2.28;
@@ -320,7 +321,7 @@ function applyQuickIterationFrame(refs, frame, towardBoard) {
   }
 }
 
-function armQuickIteration(root, towardBoard, doorRefs) {
+function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false } = {}) {
   const fireplace = root?.getObjectByName?.('war-room-fireplace');
   const hans = root?.getObjectByName?.('war-room-hans-butler');
   const driver = root?.getObjectByName?.('war-room-hans-fireplace-driver');
@@ -328,7 +329,8 @@ function armQuickIteration(root, towardBoard, doorRefs) {
   const fireLight = fireplace?.getObjectByName?.('war-room-fire-light');
   if (!fireplace || !hans || !driver || !fireCore || !fireLight) return 0;
 
-  const startedAt = nowMs();
+  const entryHeadstartSeconds = coarsePointer ? MOBILE_QUICK_ENTRY_HEADSTART_S : 0;
+  const startedAt = nowMs() - entryHeadstartSeconds * 1000;
   const doorDepth = Math.abs(Number(doorRefs?.doorZ) - Number(fireplace.position.z));
   const refs = {
     fireplace,
@@ -356,8 +358,10 @@ function armQuickIteration(root, towardBoard, doorRefs) {
   driver.userData.warRoomHansHearthRestored = false;
   driver.userData.warRoomHansUsesServiceDoor = true;
   driver.userData.warRoomHansServiceCorridor = 'past-armor-to-hearth-v1';
+  driver.userData.warRoomHansMobileEntryHeadstartSeconds = entryHeadstartSeconds;
+  driver.userData.warRoomHansEntryPresentation = coarsePointer ? 'mobile-proscenium-v1' : 'full-service-corridor-v1';
 
-  const initialFrame = hansQuickIterationFrame(0);
+  const initialFrame = hansQuickIterationFrame(entryHeadstartSeconds);
   applyQuickIterationFrame(refs, initialFrame, towardBoard);
   driver.userData.warRoomHansVisibleAtStart = hans.visible === true;
 
@@ -472,7 +476,7 @@ export function installWarRoomHansSceneRoutine(root, {
   placeServiceDoorPastArmor(root, fireplace, doorRefs, towardBoard);
 
   if (forceQuickIteration) {
-    armQuickIteration(root, towardBoard, doorRefs);
+    armQuickIteration(root, towardBoard, doorRefs, { coarsePointer });
     return installed;
   }
 
