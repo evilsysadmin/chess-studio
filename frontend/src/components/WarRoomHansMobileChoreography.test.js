@@ -153,7 +153,9 @@ describe('Hans hearth choreography on coarse-pointer/mobile War Room', () => {
       expect(driver.userData.warRoomHansPhase).toBe('leave');
       expect(hans.userData.warRoomHansRoute).toBe('leave-door');
       expect(hans.userData.warRoomHansFacingTarget).toBe('door');
-      expect(door.userData.warRoomHansDoorOpen).toBeGreaterThan(0.5);
+      // At 0.68x Hans has only just started reopening the door here; prove it is
+      // actively opening rather than requiring the old faster choreography's midpoint.
+      expect(door.userData.warRoomHansDoorOpen).toBeGreaterThan(0.25);
       expect(hans.visible).toBe(true);
 
       now.mockReturnValue(45853); // ~=30.5 s presentación => complete
