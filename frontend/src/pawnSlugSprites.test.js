@@ -5,6 +5,7 @@ import {
   PAWN_SLUG_MOTION_PROFILES,
   PAWN_SLUG_SPRITE_META,
   configurePawnSlugTexture,
+  pawnSlugEnemyAtlasWindow,
   pawnSlugEnemyVisualDirection,
   pawnSlugMatthiasAtlasWindow,
   pawnSlugMatthiasVisualDirection,
@@ -41,7 +42,7 @@ describe('Pawn Slug premium sprite contracts', () => {
     expect(meta.directionMode).toBe('atlas-uv-mirror');
     expect(meta.uvGuardTexels).toBe(1);
     expect(meta.uvTrimByAction).toEqual({
-      jump: { left: 1, right: 6, top: 1, bottom: 1 },
+      jump: { left: 1, right: 12, top: 1, bottom: 1 },
     });
     expect(meta.motionFrames).toEqual({
       idle: 10,
@@ -98,7 +99,7 @@ describe('Pawn Slug premium sprite contracts', () => {
 
     const jump = pawnSlugMatthiasAtlasWindow('jump', 8, 1);
     expect(jump).toMatchObject({ row: 4, column: 8, direction: 1, mirrored: false });
-    expect(jump.repeatX).toBeCloseTo(89 / atlasWidth, 12);
+    expect(jump.repeatX).toBeCloseTo(83 / atlasWidth, 12);
     expect(jump.repeatY).toBeCloseTo(guardedRepeatY, 12);
 
     expect(pawnSlugMatthiasAtlasWindow('run', 16).column).toBe(0);
@@ -111,9 +112,9 @@ describe('Pawn Slug premium sprite contracts', () => {
     const right = pawnSlugMatthiasAtlasWindow('jump', 4, 1);
     const left = pawnSlugMatthiasAtlasWindow('jump', 4, -1);
 
-    expect(right.trim).toEqual({ left: 1, right: 6, top: 1, bottom: 1 });
+    expect(right.trim).toEqual({ left: 1, right: 12, top: 1, bottom: 1 });
     expect(right.offsetX).toBeCloseTo(((4 * 96) + 1) / atlasWidth, 12);
-    expect(left.offsetX).toBeCloseTo(((5 * 96) - 6) / atlasWidth, 12);
+    expect(left.offsetX).toBeCloseTo(((5 * 96) - 12) / atlasWidth, 12);
     expect(Math.abs(left.repeatX)).toBeCloseTo(right.repeatX, 12);
 
     const walk = pawnSlugMatthiasAtlasWindow('walk', 4, 1);
@@ -149,14 +150,23 @@ describe('Pawn Slug premium sprite contracts', () => {
     expect(PAWN_SLUG_MOTION_PROFILES.matthias.crouchDrop).toBeGreaterThan(0);
   });
 
-  it('corrects the premium enemy atlas facing without breaking the right-facing SVG fallback', () => {
-    expect(PAWN_SLUG_SPRITE_META.enemies.sourceFacing).toBe('left');
+  it('mirrors enemy frames through UVs because THREE.Sprite scale sign is not a facing contract', () => {
+    expect(PAWN_SLUG_SPRITE_META.enemies.sourceFacing).toBe('right');
     expect(PAWN_SLUG_SPRITE_META.enemies.fallbackSourceFacing).toBe('right');
-    expect(PAWN_SLUG_SPRITE_META.enemies.directionMode).toBe('source-aware-sprite-mirror');
-    expect(pawnSlugEnemyVisualDirection(1, 'primary')).toBe(-1);
-    expect(pawnSlugEnemyVisualDirection(-1, 'primary')).toBe(1);
-    expect(pawnSlugEnemyVisualDirection(1, 'fallback')).toBe(1);
-    expect(pawnSlugEnemyVisualDirection(-1, 'fallback')).toBe(-1);
+    expect(PAWN_SLUG_SPRITE_META.enemies.runtimeFacings).toEqual(['right', 'left']);
+    expect(PAWN_SLUG_SPRITE_META.enemies.directionMode).toBe('atlas-uv-mirror');
+    expect(pawnSlugEnemyVisualDirection(1, 'primary')).toBe(1);
+    expect(pawnSlugEnemyVisualDirection(-1, 'primary')).toBe(-1);
+
+    const right = pawnSlugEnemyAtlasWindow(1, 1);
+    const left = pawnSlugEnemyAtlasWindow(1, -1);
+    expect(right).toMatchObject({ frame: 1, direction: 1, mirrored: false });
+    expect(left).toMatchObject({ frame: 1, direction: -1, mirrored: true });
+    expect(right.repeatX).toBeCloseTo(1 / 3, 12);
+    expect(left.repeatX).toBeCloseTo(-1 / 3, 12);
+    expect(right.offsetX).toBeCloseTo(1 / 3, 12);
+    expect(left.offsetX).toBeCloseTo(2 / 3, 12);
+
     expect(PAWN_SLUG_SPRITE_META.enemies.frameByType).toEqual({ pawn: 0, knight: 1, rook: 2 });
     expect(Math.max(...Object.values(PAWN_SLUG_SPRITE_META.enemies.frameByType)))
       .toBeLessThan(PAWN_SLUG_SPRITE_META.enemies.frames);
