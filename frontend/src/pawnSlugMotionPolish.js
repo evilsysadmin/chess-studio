@@ -1,10 +1,10 @@
 export const PAWN_SLUG_MOTION_POLISH = Object.freeze({
-  walkFrames: 9,
-  walkRate: 8.4,
-  walkToRunSeconds: 0.22,
+  walkFrames: 10,
+  walkRate: 9.2,
+  walkToRunSeconds: 0.24,
   runSpeedThreshold: 0.58,
-  settleSeconds: 0.11,
-  settleFrames: 4,
+  settleSeconds: 0.12,
+  settleFrames: 5,
 });
 
 function clamp01(value) {
