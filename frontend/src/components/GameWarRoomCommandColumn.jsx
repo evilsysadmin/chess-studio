@@ -1,5 +1,9 @@
 import GameChat from './GameChat.jsx';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
+import './WarRoomReferencePolish.css';
+import './WarRoomTurnPill.css';
+import './WarRoom3DMobileControls.css';
+import './WarRoomDesktopRailLayout.css';
 import './WarRoomMatthiasDiegetic.css';
 
 export default function GameWarRoomCommandColumn({
