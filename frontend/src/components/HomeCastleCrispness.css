@@ -1,43 +1,32 @@
-/* Home castle crispness pass · v1
+/* Home castle native-render clarity pass · v2
  *
- * The previous readability pass solved darkness by stacking brightness and
- * screen-blended amber overlays. On the live scene that reads as a warm veil.
- * This final override keeps the room readable with contrast and local light,
- * not a full-screen haze layer.
+ * Do not post-process the Three.js hall with CSS brightness/saturation filters.
+ * The scene owns its lighting; multiplying brightness at both host and canvas
+ * levels lifts blacks and produces the milky haze seen on staging.
+ *
+ * Likewise, keep the old readability pseudo-elements structurally harmless.
+ * Text contrast stays local to destinations instead of washing the whole hall.
  */
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__scene,
 body .menu.home-friendly > .home-castle-life .home-great-hall-scene.home-castle-hub__scene {
-  filter: saturate(1.04) brightness(1.32) contrast(1.08) !important;
+  filter: none !important;
 }
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__scene canvas {
-  filter: saturate(1.02) brightness(1.10) contrast(1.05) !important;
+  filter: none !important;
 }
 
-/* Remove the broad screen wash. Keep only very restrained local pools, using
- * normal alpha compositing so blacks remain black and stone keeps definition. */
-body .menu.home-friendly > .home-castle-life .home-castle-hub::before {
-  background:
-    radial-gradient(ellipse at 14% 72%, rgba(210, 125, 48, .10), transparent 34%),
-    radial-gradient(ellipse at 50% 84%, rgba(205, 123, 45, .08), transparent 37%),
-    radial-gradient(ellipse at 87% 71%, rgba(210, 125, 48, .08), transparent 33%) !important;
-  mix-blend-mode: normal !important;
-  opacity: .44 !important;
-}
-
+/* Retire the inherited broad architectural washes completely. The Three.js
+ * point/directional lights already provide the warm pools we want. */
+body .menu.home-friendly > .home-castle-life .home-castle-hub::before,
 body .menu.home-friendly > .home-castle-life .home-castle-hub::after {
-  background:
-    radial-gradient(circle at 20.5% 45%, rgba(255, 154, 57, .14) 0 2%, rgba(196, 92, 25, .045) 9%, transparent 18%),
-    radial-gradient(circle at 40.4% 45%, rgba(255, 160, 62, .12) 0 2%, rgba(196, 96, 28, .04) 9%, transparent 18%),
-    radial-gradient(circle at 60.2% 45%, rgba(255, 160, 62, .12) 0 2%, rgba(196, 96, 28, .04) 9%, transparent 18%),
-    radial-gradient(circle at 80% 45%, rgba(255, 154, 57, .14) 0 2%, rgba(196, 92, 25, .045) 9%, transparent 18%) !important;
+  background: none !important;
   mix-blend-mode: normal !important;
-  opacity: .52 !important;
+  opacity: 0 !important;
 }
 
-/* The screenshot showed a perceptible veil at the panel edges too. The 3D room
- * already owns depth, so do not add another full-panel vignette here. */
+/* The 3D room already owns depth, so do not add another panel vignette. */
 body .menu.home-friendly > .home-castle-life::after {
   background: none !important;
 }
@@ -129,20 +118,14 @@ body .menu.home-friendly > .home-castle-life .home-castle-hub__room i {
 }
 
 @media (max-width: 760px) {
-  body .menu.home-friendly > .home-castle-life .home-castle-hub__scene {
-    filter: saturate(1.03) brightness(1.24) contrast(1.07) !important;
-  }
-
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__scene,
   body .menu.home-friendly > .home-castle-life .home-castle-hub__scene canvas {
-    filter: saturate(1.02) brightness(1.08) contrast(1.05) !important;
+    filter: none !important;
   }
 
-  body .menu.home-friendly > .home-castle-life .home-castle-hub::before {
-    opacity: .30 !important;
-  }
-
+  body .menu.home-friendly > .home-castle-life .home-castle-hub::before,
   body .menu.home-friendly > .home-castle-life .home-castle-hub::after {
-    opacity: .34 !important;
+    opacity: 0 !important;
   }
 
   body .menu.home-friendly > .home-castle-life .home-castle-hub__room {
