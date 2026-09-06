@@ -20,6 +20,7 @@ import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } fr
 import { board3DCaptureWarmBoost, board3DHighlightPulse, board3DPieceInteractionPose } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
 import { adjacentSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
+import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { addMesh, buildWarRoom, fitBoardCamera, makeTextSprite } from './Board3DScene.js';
 import {
@@ -80,6 +81,7 @@ function Board3DCanvas({
   const animationFrameRef = useRef(0);
   const ambientFrameRef = useRef(0);
   const previousFenRef = useRef(fen);
+  const pieceBuildSignatureRef = useRef('');
   const lastAnimatedSeqRef = useRef(0);
   const inspectModeRef = useRef(false);
   const hoveredPieceRef = useRef(null);
@@ -666,14 +668,55 @@ function Board3DCanvas({
     const fromFile = FILES.indexOf(animate?.from?.[0]);
     const toFile = FILES.indexOf(animate?.to?.[0]);
     const castling = Boolean(movingBefore?.type === 'k' && fromFile >= 0 && toFile >= 0 && Math.abs(toFile - fromFile) === 2);
+    const pieceBuildSignature = [
+      skinId,
+      state.renderLite ? 'lite' : 'full',
+      orientation,
+      matthiasKingColor || 'none',
+    ].join('|');
+    const allowPieceReuse = state.pieceMeshes.size > 0 && pieceBuildSignatureRef.current === pieceBuildSignature;
+    const reconciliation = planBoard3DPieceReconciliation({
+      previousPieces,
+      nextPieces,
+      animate,
+      allowReuse: allowPieceReuse,
+    });
+    const nextPieceBySquare = new Map(nextPieces.map((piece) => [piece.square, piece]));
+    const reconciledMeshes = new Map();
+    const buildSquares = new Set(reconciliation.build);
+    let reusedMeshes = 0;
 
-    for (const child of [...state.pieceGroup.children]) {
-      state.pieceGroup.remove(child);
-      disposeObject(child);
+    for (const { from, to } of reconciliation.reuse) {
+      const mesh = state.pieceMeshes.get(from);
+      const piece = nextPieceBySquare.get(to);
+      if (!mesh || !piece) {
+        buildSquares.add(to);
+        continue;
+      }
+
+      const { x, z } = squarePosition(to);
+      const baseY = Number(mesh.userData.baseY ?? 0.1);
+      mesh.position.set(x, baseY, z);
+      mesh.rotation.z = 0;
+      if (mesh.userData.baseScale?.isVector3) mesh.scale.copy(mesh.userData.baseScale);
+      mesh.userData.square = to;
+      mesh.userData.type = piece.type;
+      mesh.userData.color = piece.color;
+      if (from !== to) mesh.traverse((object) => { object.userData.square = to; });
+      reconciledMeshes.set(to, mesh);
+      reusedMeshes += 1;
     }
-    state.pieceMeshes.clear();
 
-    for (const piece of nextPieces) {
+    for (const square of reconciliation.remove) {
+      const mesh = state.pieceMeshes.get(square);
+      if (!mesh) continue;
+      state.pieceGroup.remove(mesh);
+      disposeObject(mesh);
+    }
+
+    for (const square of buildSquares) {
+      const piece = nextPieceBySquare.get(square);
+      if (!piece || reconciledMeshes.has(square)) continue;
       const matthiasKing = isMatthiasRivalKing(piece, matthiasKingColor);
       const mesh = buildPiece(piece.type, piece.color, skinId, state.renderLite, {
         matthiasKing,
@@ -690,8 +733,16 @@ function Board3DCanvas({
       mesh.traverse((object) => { object.userData.square = piece.square; });
       addCoarsePieceHitTarget(mesh, piece.square, state.coarsePointer);
       state.pieceGroup.add(mesh);
-      state.pieceMeshes.set(piece.square, mesh);
+      reconciledMeshes.set(piece.square, mesh);
     }
+
+    state.pieceMeshes.clear();
+    for (const [square, mesh] of reconciledMeshes.entries()) state.pieceMeshes.set(square, mesh);
+    pieceBuildSignatureRef.current = pieceBuildSignature;
+    state.renderer.domElement.dataset.board3dPieceReconcile = allowPieceReuse ? 'reuse-v1' : 'full-build';
+    state.renderer.domElement.dataset.board3dPieceReused = String(reusedMeshes);
+    state.renderer.domElement.dataset.board3dPieceBuilt = String(buildSquares.size);
+    state.renderer.domElement.dataset.board3dPieceDisposed = String(reconciliation.remove.length);
 
     previousFenRef.current = fen;
     const animatedMesh = animate?.to ? state.pieceMeshes.get(animate.to) : null;
