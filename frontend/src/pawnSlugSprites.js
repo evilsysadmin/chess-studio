@@ -19,6 +19,13 @@ const MATTHIAS_ACTIONS = Object.freeze({
   crouch: Object.freeze({ row: 3, count: 8 }),
   jump: Object.freeze({ row: 4, count: 8 }),
 });
+const MATTHIAS_SOURCE_FACING = Object.freeze({
+  idle: 1,
+  walk: 1,
+  run: 1,
+  crouch: -1,
+  jump: 1,
+});
 const MATTHIAS_LEGACY_FRAMES = Object.freeze({
   idle: Object.freeze([0]),
   walk: Object.freeze([1, 2]),
@@ -41,6 +48,9 @@ export const PAWN_SLUG_MOTION_PROFILES = Object.freeze({
     runRate: 13.0,
     crouchInSeconds: 0.15,
     crouchOutSeconds: 0.12,
+    crouchScaleX: 1.045,
+    crouchScaleY: 0.76,
+    crouchDrop: 0.055,
     jumpSeconds: 0.78,
     hurtKick: 0.075,
     recoilByWeapon: Object.freeze({
@@ -107,6 +117,11 @@ export function pawnSlugMatthiasAtlasWindow(action, frameIndex = 0) {
     offsetX: safeIndex / MATTHIAS_GRID.columns,
     offsetY: 1 - ((track.row + 1) / MATTHIAS_GRID.rows),
   });
+}
+
+export function pawnSlugMatthiasVisualDirection(action, dir = 1) {
+  const worldDirection = dir < 0 ? -1 : 1;
+  return worldDirection * (MATTHIAS_SOURCE_FACING[action] || 1);
 }
 
 function configureSingleRowWindow(texture, frames, frame) {
@@ -374,9 +389,13 @@ export function animateMatthiasSlugSprite(sprite, {
   if (recoil) sprite.position.x -= direction * recoil;
   if (hurt) sprite.position.x -= direction * profile.hurtKick;
 
-  sprite.scale.x = baseScaleX * direction;
-  sprite.scale.y = baseScaleY * (1 - (hurt ? 0.035 : 0));
-  sprite.material.rotation = firing ? direction * 0.012 : 0;
+  const visualDirection = pawnSlugMatthiasVisualDirection(animation.action, direction);
+  const crouchScaleX = 1 + ((profile.crouchScaleX - 1) * motion.crouchBlend);
+  const crouchScaleY = 1 - ((1 - profile.crouchScaleY) * motion.crouchBlend);
+  sprite.position.y -= profile.crouchDrop * motion.crouchBlend;
+  sprite.scale.x = baseScaleX * visualDirection * crouchScaleX;
+  sprite.scale.y = baseScaleY * crouchScaleY * (1 - (hurt ? 0.035 : 0));
+  sprite.material.rotation = firing ? visualDirection * 0.012 : 0;
   tintSprite(sprite, hurt, 0.8);
 }
 
@@ -471,6 +490,7 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
     frameWidth: MATTHIAS_GRID.frameWidth,
     frameHeight: MATTHIAS_GRID.frameHeight,
     sourceFacing: 'right',
+    sourceFacingByAction: Object.freeze({ idle: 'right', walk: 'right', run: 'right', crouch: 'left', jump: 'right' }),
     actions: MATTHIAS_ACTIONS,
     motionFrames: Object.freeze({ idle: 6, walk: 9, run: 9, crouch: 8, airborne: 8 }),
   }),
