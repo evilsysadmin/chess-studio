@@ -56,12 +56,12 @@ describe('Hans hearth pathing regressions', () => {
 
       driver.onBeforeRender(); // clock origin
 
-      now.mockReturnValue(11000); // 10 s reales -> 6.8 s de presentación: aún entrando
+      now.mockReturnValue(11000); // 10 s reales -> 5.4 s de presentación: aún entrando
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('fire-dimming');
-      expect(driver.userData.warRoomHansPresentationTimeScale).toBeCloseTo(0.68, 6);
+      expect(driver.userData.warRoomHansPresentationTimeScale).toBeCloseTo(0.54, 6);
 
-      now.mockReturnValue(14310); // ~=9.05 s de presentación => inicio carry-log
+      now.mockReturnValue(17759); // ~=9.05 s de presentación => inicio carry-log
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('carry-log');
       expect(hans.userData.warRoomHansFacingTarget).toBe('hearth');
@@ -70,7 +70,7 @@ describe('Hans hearth pathing regressions', () => {
       expect(facingDotToPoint(hans, firePoint, towardBoard)).toBeGreaterThan(0.8);
       const turnX = hans.position.x;
 
-      now.mockReturnValue(15120); // ~=9.6 s de presentación: ya camina
+      now.mockReturnValue(18778); // ~=9.6 s de presentación: ya camina
       driver.onBeforeRender();
       expect(Math.abs(hans.position.x - turnX)).toBeGreaterThan(0.03);
       expect(facingDotToPoint(hans, firePoint, towardBoard)).toBeGreaterThan(0.8);
