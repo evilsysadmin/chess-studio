@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   board3DCaptureWarmBoost,
+  board3DCaptureWarmBoostValue,
   board3DHighlightPulse,
   board3DPieceInteractionPose,
+  writeBoard3DHighlightPulse,
 } from './Board3DInteractionFx.js';
 
 describe('War Room premium interaction FX', () => {
@@ -16,6 +18,21 @@ describe('War Room premium interaction FX', () => {
     expect(check.opacityFactor).toBeGreaterThanOrEqual(0.89);
     expect(check.scaleFactor).toBeLessThanOrEqual(1.026);
     expect(reduced).toEqual({ opacityFactor: 1, scaleFactor: 1 });
+  });
+
+  it('writes highlight pulse output into one reusable object for render hot paths', () => {
+    const scratch = { opacityFactor: 0, scaleFactor: 0 };
+    const first = writeBoard3DHighlightPulse(scratch, 'selected', 1200, false, false);
+    const firstSnapshot = { ...scratch };
+    const second = writeBoard3DHighlightPulse(scratch, 'check', 875, false, true);
+
+    expect(first).toBe(scratch);
+    expect(second).toBe(scratch);
+    expect(firstSnapshot).toEqual(board3DHighlightPulse({ kind: 'selected', nowMs: 1200 }));
+    expect(scratch).toEqual(board3DHighlightPulse({ kind: 'check', nowMs: 875, coarsePointer: true }));
+
+    writeBoard3DHighlightPulse(scratch, 'legal', 999, false, false);
+    expect(scratch).toEqual({ opacityFactor: 1, scaleFactor: 1 });
   });
 
   it('tones pulses down on coarse pointers instead of adding a mobile-only animation loop', () => {
@@ -43,5 +60,7 @@ describe('War Room premium interaction FX', () => {
     expect(desktop).toBeGreaterThan(0);
     expect(desktop).toBeLessThanOrEqual(1.55);
     expect(compact).toBeLessThan(desktop);
+    expect(board3DCaptureWarmBoostValue(0.67, false)).toBe(desktop);
+    expect(board3DCaptureWarmBoostValue(0.67, true)).toBe(compact);
   });
 });
