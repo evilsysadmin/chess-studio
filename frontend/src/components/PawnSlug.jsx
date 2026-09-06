@@ -27,6 +27,9 @@ const INITIAL_HUD = Object.freeze({
   score: 0,
   combo: 0,
   progress: 0,
+  midBossHp: null,
+  midBossMaxHp: null,
+  midBossLabel: null,
   bossHp: null,
   bossMaxHp: null,
   toast: 'Vorwärts. Si algo se mueve, probablemente ha tomado una mala decisión.',
@@ -113,6 +116,11 @@ export default function PawnSlug({ onExit }) {
   const bossPercent = hud.bossHp != null && hud.bossMaxHp
     ? Math.max(0, Math.min(100, (hud.bossHp / hud.bossMaxHp) * 100))
     : null;
+  const midBossPercent = hud.midBossHp != null && hud.midBossMaxHp
+    ? Math.max(0, Math.min(100, (hud.midBossHp / hud.midBossMaxHp) * 100))
+    : null;
+  const threatPercent = bossPercent ?? midBossPercent;
+  const threatLabel = bossPercent != null ? 'PANZER-ROOK · KOMMANDANTENBURG' : hud.midBossLabel || 'STURM-BISCHOF';
   const healthPercent = Math.max(0, Math.min(100, ((hud.hp || 0) / Math.max(1, hud.maxHp || 100)) * 100));
   const xpPercent = Math.max(0, Math.min(100, (hud.xpProgress || 0) * 100));
   const missionPercent = Math.round((hud.progress || 0) * 100);
@@ -188,10 +196,10 @@ export default function PawnSlug({ onExit }) {
             </div>
           )}
 
-          {bossPercent != null && hud.phase === 'playing' && (
-            <div className="pawn-slug-boss" role="status" aria-label={`Panzer-Rook ${Math.round(bossPercent)}%`}>
-              <span>PANZER-ROOK · KOMMANDANTENBURG</span>
-              <div><i style={{ width: `${bossPercent}%` }} /></div>
+          {threatPercent != null && hud.phase === 'playing' && (
+            <div className={`pawn-slug-boss${bossPercent == null ? ' is-midboss' : ''}`} role="status" aria-label={`${threatLabel} ${Math.round(threatPercent)}%`}>
+              <span>{threatLabel}</span>
+              <div><i style={{ width: `${threatPercent}%` }} /></div>
             </div>
           )}
 
@@ -206,7 +214,7 @@ export default function PawnSlug({ onExit }) {
               <p>{hud.toast}</p>
               {hud.phase === 'ready' && (
                 <div className="pawn-slug-briefing">
-                  <span><b>Objetivo</b> Rompe el frente y elimina el Panzer‑Rook.</span>
+                  <span><b>Objetivo</b> Rompe el frente, sobrevive a los Sturm‑Bischof y elimina el Panzer‑Rook.</span>
                   <span><b>Progresión</b> Las bajas dan XP. Cada nivel aumenta tu HP máximo y potencia el daño.</span>
                   <span><b>Arsenal</b> Empiezas con pistola. Requisa MG, escopeta y Panzerfaust y cambia de arma cuando quieras.</span>
                 </div>
