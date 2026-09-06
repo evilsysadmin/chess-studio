@@ -65,20 +65,20 @@ describe('Hans quick-game visual iteration', () => {
     expect(middle.fireScale).toBeGreaterThan(0.26);
     expect(middle.hansVisible).toBe(true);
     expect(middle.hansX).toBeLessThan(start.hansX);
-    expect(middle.hansX).toBeGreaterThan(-1.62);
+    expect(middle.hansX).toBeGreaterThan(-1.50);
     expect(middle.routeProgress).toBeGreaterThan(0.45);
     expect(middle.routeProgress).toBeLessThan(0.55);
     expect(middle.doorOpen).toBeLessThan(0.5);
 
     expect(almostAtBasket.fireScale).toBeCloseTo(0.26, 2);
     expect(almostAtBasket.hansVisible).toBe(true);
-    expect(almostAtBasket.hansX).toBeCloseTo(-1.62, 1);
+    expect(almostAtBasket.hansX).toBeCloseTo(-1.50, 1);
     expect(almostAtBasket.routeProgress).toBeGreaterThan(0.99);
     expect(almostAtBasket.doorOpen).toBeLessThan(0.02);
 
     expect(takeLog.phase).toBe('take-log');
     expect(takeLog.hansVisible).toBe(true);
-    expect(takeLog.hansX).toBeCloseTo(-1.62, 2);
+    expect(takeLog.hansX).toBeCloseTo(-1.50, 2);
     expect(takeLog.fireScale).toBeCloseTo(0.26, 2);
     expect(takeLog.doorOpen).toBe(0);
   });
@@ -198,6 +198,9 @@ describe('Hans quick-game visual iteration', () => {
     expect(kit.userData.warRoomHansServiceDoorClearance).toBe('opposite-side-v1');
     expect(Math.sign(basket.position.x)).toBe(-Math.sign(fireplace.position.x));
     expect(Math.sign(tools.position.x)).toBe(-Math.sign(fireplace.position.x));
+    expect(Math.abs(basket.position.x)).toBeCloseTo(1.50, 6);
+    expect(Math.abs(tools.position.x)).toBeCloseTo(2.52, 6);
+    expect(Math.abs(tools.position.x - basket.position.x)).toBeGreaterThan(1);
     expect(hans.visible).toBe(true);
     expect(Math.abs(hans.position.x)).toBeCloseTo(2.65, 2);
     expect(Math.abs(hans.position.z)).toBeGreaterThan(4);

@@ -14,8 +14,8 @@ const QUICK_ENTRY_SECONDS = 7;
 const HANS_PRESENTATION_TIME_SCALE = 0.54;
 const MOBILE_QUICK_ENTRY_VISIBLE_PROGRESS = 0.766;
 const QUICK_DOOR_X = 2.65;
-const HEARTH_BASKET_X = -1.62;
-const HEARTH_TOOLS_X = -2.28;
+const HEARTH_BASKET_X = -1.50;
+const HEARTH_TOOLS_X = -2.52;
 const HEARTH_BASKET_Z = 0.28;
 const HEARTH_TOOLS_Z = 0.24;
 const HEARTH_WORK_Z = 0.72;
@@ -178,7 +178,7 @@ function relocateHearthKit(fireplace, towardBoard) {
   const tools = fireplace.getObjectByName?.('war-room-hearth-tool-stand');
   let moved = 0;
   if (basket) {
-    basket.position.x = -side * 1.62;
+    basket.position.x = -side * Math.abs(HEARTH_BASKET_X);
     basket.position.z = towardBoard * HEARTH_BASKET_Z;
     basket.rotation.y = -side * towardBoard * 0.05;
     basket.userData.warRoomHansHearthSide = 'opposite-service-door';
@@ -187,7 +187,7 @@ function relocateHearthKit(fireplace, towardBoard) {
     moved += 1;
   }
   if (tools) {
-    tools.position.x = -side * 2.28;
+    tools.position.x = -side * Math.abs(HEARTH_TOOLS_X);
     tools.position.z = towardBoard * HEARTH_TOOLS_Z;
     tools.userData.warRoomHansHearthSide = 'opposite-service-door';
     tools.userData.warRoomHansHearthDepth = 'rear-wall-v1';
