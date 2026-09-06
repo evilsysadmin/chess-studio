@@ -121,7 +121,7 @@ describe('War Room user polish', () => {
     dispose(room);
   });
 
-  it('mantiene la chimenea enrasada y monta bosque y mar con acabado premium', () => {
+  it('mantiene la chimenea enrasada y pule los lienzos sin fabricar arte transitorio', () => {
     const room = makeRoom();
     applyWarRoomUserPolish(room, { wallZ: -7.6, towardBoard: 1 });
     const fire = room.getObjectByName('war-room-fireplace');
@@ -135,14 +135,24 @@ describe('War Room user polish', () => {
     const right = room.getObjectByName('war-room-premium-painting-1');
     const leftCanvas = left.getObjectByName('war-room-premium-painting-canvas');
     const rightCanvas = right.getObjectByName('war-room-premium-painting-canvas');
-    expect(left.userData.warRoomLandscapeSubject).toBe('black-forest-lake-dusk-v20');
-    expect(right.userData.warRoomLandscapeSubject).toBe('north-sea-cliffs-v20');
-    expect(leftCanvas.material.map.image.width).toBe(384);
-    expect(rightCanvas.material.map.image.height).toBe(240);
-    expect(leftCanvas.material.map.userData.warRoomGalleryFinish).toBe('layered-canvas-v20');
+    expect(leftCanvas.material.map).toBeNull();
+    expect(rightCanvas.material.map).toBeNull();
+    expect(left.userData.warRoomLandscapeVersion).toBeUndefined();
+    expect(right.userData.warRoomLandscapeSubject).toBeUndefined();
+    expect(left.userData.warRoomGalleryFinish).toBe('varnished-canvas-v20');
+    expect(right.userData.warRoomGalleryFinish).toBe('varnished-canvas-v20');
     expect(leftCanvas.material.clearcoat).toBeGreaterThanOrEqual(.14);
     expect(leftCanvas.material.roughness).toBeLessThan(.7);
+    expect(room.userData.warRoomLegacyLandscapeGeneratorRetired).toBe(true);
+    expect(room.userData.warRoomGalleryArtOwner).toBe('military-gallery');
     expect(room.userData.warRoomUserPolishVersion).toBe(WAR_ROOM_USER_POLISH_VERSION);
+
+    const canonicalCampaignTexture = new THREE.Texture();
+    leftCanvas.material.map = canonicalCampaignTexture;
+    expect(typeof leftCanvas.onBeforeRender).toBe('function');
+    leftCanvas.onBeforeRender();
+    expect(leftCanvas.material.map).toBe(canonicalCampaignTexture);
+    expect(left.userData.warRoomLandscapeVersion).toBeUndefined();
     dispose(room);
   });
 

@@ -28,6 +28,8 @@ const STATIC_UNNAMED_PARENT_NAMES = new Set([
   'war-room-castle-side-walls',
 ]);
 
+const NOOP_RENDER_HOOK = () => {};
+
 function belongsToChessPiece(object) {
   let current = object;
   while (current) {
@@ -57,9 +59,9 @@ function geometrySignature(geometry) {
   return [width, height, depth, widthSegments, heightSegments, depthSegments].join(':');
 }
 
-function isStaticBatchCandidate(object) {
+function isStaticBatchCandidate(object, chessPiece) {
   if (!object?.isMesh || object.isInstancedMesh || !object.parent || Array.isArray(object.material)) return false;
-  if (belongsToChessPiece(object)) return false;
+  if ((chessPiece ?? belongsToChessPiece(object))) return false;
   if (STATIC_INSTANCE_NAMES.has(object.name)) return true;
   return !object.name && STATIC_UNNAMED_PARENT_NAMES.has(object.parent.name);
 }
@@ -79,22 +81,20 @@ function staticBatchKey(object) {
   ].join('|');
 }
 
-export function batchWarRoomStaticDecor(root) {
+function collectStaticBatchCandidate(buckets, object, chessPiece) {
+  if (!isStaticBatchCandidate(object, chessPiece)) return;
+  const key = staticBatchKey(object);
+  if (!key) return;
+  if (!buckets.has(key)) buckets.set(key, []);
+  buckets.get(key).push(object);
+}
+
+function applyStaticBatches(root, buckets) {
   const result = {
     batches: 0,
     sourceMeshes: 0,
     drawCallsRetired: 0,
   };
-  if (!root || typeof root.traverse !== 'function') return result;
-
-  const buckets = new Map();
-  root.traverse((object) => {
-    if (!isStaticBatchCandidate(object)) return;
-    const key = staticBatchKey(object);
-    if (!key) return;
-    if (!buckets.has(key)) buckets.set(key, []);
-    buckets.get(key).push(object);
-  });
 
   for (const meshes of buckets.values()) {
     if (meshes.length < 2) continue;
@@ -139,6 +139,19 @@ export function batchWarRoomStaticDecor(root) {
   root.userData.warRoomStaticInstanceSourceMeshes = result.sourceMeshes;
   root.userData.warRoomStaticDrawCallsRetired = result.drawCallsRetired;
   return result;
+}
+
+export function batchWarRoomStaticDecor(root) {
+  const result = {
+    batches: 0,
+    sourceMeshes: 0,
+    drawCallsRetired: 0,
+  };
+  if (!root || typeof root.traverse !== 'function') return result;
+
+  const buckets = new Map();
+  root.traverse((object) => collectStaticBatchCandidate(buckets, object));
+  return applyStaticBatches(root, buckets);
 }
 
 function matchesLateLegacyPractical(light) {
@@ -204,6 +217,7 @@ function armLatePracticalLightRetirement(root) {
     const liveRoot = sceneRoot(driver) || root;
     retireWarRoomLatePracticalLights(liveRoot);
     driver.userData.warRoomLatePracticalLightRetirementCompleted = true;
+    driver.onAfterRender = previous || NOOP_RENDER_HOOK;
   };
   driver.userData.warRoomLatePracticalLightRetirement = 'first-frame-v1';
   root.userData.warRoomLatePracticalLightRetirementArmed = true;
@@ -219,11 +233,14 @@ export function applyWarRoomPerformanceBudget(root, { coarsePointer = false } = 
   };
   if (!root || coarsePointer || typeof root.traverse !== 'function') return stats;
 
-  batchWarRoomStaticDecor(root);
+  const buckets = new Map();
   const retiredLights = [];
   const retiredTargets = new Set();
 
   root.traverse((object) => {
+    const chessPiece = object?.isMesh ? belongsToChessPiece(object) : false;
+    collectStaticBatchCandidate(buckets, object, chessPiece);
+
     if (object?.isPointLight) {
       if (DESKTOP_POINT_LIGHT_KEEP_NAMES.has(object.name)) {
         stats.pointLightsKept += 1;
@@ -245,7 +262,7 @@ export function applyWarRoomPerformanceBudget(root, { coarsePointer = false } = 
       if (object.target?.parent) retiredTargets.add(object.target);
     }
 
-    if (object?.isMesh && object.castShadow && !belongsToChessPiece(object)) {
+    if (object?.isMesh && object.castShadow && !chessPiece) {
       object.castShadow = false;
       object.userData ||= {};
       object.userData.warRoomStaticShadowCasterRetired = true;
@@ -253,12 +270,14 @@ export function applyWarRoomPerformanceBudget(root, { coarsePointer = false } = 
     }
   });
 
+  applyStaticBatches(root, buckets);
   for (const light of retiredLights) light.parent?.remove(light);
   for (const target of retiredTargets) target.parent?.remove(target);
   armLatePracticalLightRetirement(root);
 
   root.userData ||= {};
   root.userData.warRoomPerformanceBudget = 'desktop-hard-cut-v4-late-practical-retirement';
+  root.userData.warRoomPerformanceTraversal = 'single-pass-v1';
   root.userData.warRoomPointLightsKept = stats.pointLightsKept;
   root.userData.warRoomPointLightsCulled = stats.pointLightsCulled;
   root.userData.warRoomSpotLightsCulled = stats.spotLightsCulled;
