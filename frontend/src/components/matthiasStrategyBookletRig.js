@@ -55,11 +55,9 @@ function addTextLines(parent, ink, {
 
 function disposeChildren(group) {
   for (const child of [...(group?.children || [])]) {
-    child.traverse?.((node) => {
-      node.geometry?.dispose?.();
-      if (Array.isArray(node.material)) node.material.forEach((entry) => entry?.dispose?.());
-      else node.material?.dispose?.();
-    });
+    // The legacy book uses materials shared with dossier/newspaper props. Only
+    // retire geometry here; shared materials remain owned by the parent rig.
+    child.traverse?.((node) => node.geometry?.dispose?.());
     group.remove(child);
   }
 }
@@ -75,7 +73,6 @@ function buildBooklet(rig) {
   const paper = material(0xe4d7bc, .84, 0);
   const paperEdge = material(0xbcae92, .90, 0);
   const cover = material(0x5f211e, .52, .04);
-  const coverEdge = material(0x8b4135, .46, .06);
   const ink = material(0x302c27, .92, 0);
   const gold = material(0xc99637, .30, .82);
   const diagramDark = material(0x4a4740, .86, 0);
