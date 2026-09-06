@@ -2,15 +2,28 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import MatthiasHomeMicrogestureAvatar, {
+  MATTHIAS_HOME_DIAGNOSTIC_INTERVAL_MS,
   MATTHIAS_HOME_FACE_WARP_LIMIT,
   MATTHIAS_HOME_MICROGESTURE_VERSION,
   matthiasHomeActivityProfile,
+  matthiasHomeDiagnosticsDue,
   matthiasHomeFacialCue,
   matthiasHomeFacialMotionSample,
+  matthiasHomeNeedsCanonicalFallback,
 } from './MatthiasHomeMicrogestureAvatar.jsx';
 import { MATTHIAS_HOME_STATES } from './matthiasHomePresenceStateMachine.js';
 
 describe('MatthiasHomeMicrogestureAvatar', () => {
+  it('desacopla diagnóstico DOM de FPS y no pide fallback canónico si ya hay avatar de escena', () => {
+    expect(MATTHIAS_HOME_DIAGNOSTIC_INTERVAL_MS).toBe(500);
+    expect(matthiasHomeDiagnosticsDue({ frames: 1, stamp: 12, lastPublishedAt: -Infinity })).toBe(true);
+    expect(matthiasHomeDiagnosticsDue({ frames: 30, stamp: 499, lastPublishedAt: 0 })).toBe(false);
+    expect(matthiasHomeDiagnosticsDue({ frames: 31, stamp: 500, lastPublishedAt: 0 })).toBe(true);
+    expect(matthiasHomeNeedsCanonicalFallback('/assets/matthias-scenes/strategy-book.webp')).toBe(false);
+    expect(matthiasHomeNeedsCanonicalFallback('')).toBe(true);
+    expect(matthiasHomeNeedsCanonicalFallback(null)).toBe(true);
+  });
+
   it('mapea la FSM de Home a expresiones faciales coherentes con Matthias', () => {
     expect(matthiasHomeFacialCue({ presenceState: MATTHIAS_HOME_STATES.GLANCE_LEFT })).toEqual({
       expression: 'alert',
