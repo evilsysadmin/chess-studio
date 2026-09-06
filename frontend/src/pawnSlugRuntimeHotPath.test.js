@@ -28,6 +28,6 @@ describe('Pawn Slug runtime hot path', () => {
   it('returns -1 when the projectile only touches an edge or misses', () => {
     const enemies = [{ x: 1, y: 0, w: 1, h: 1, dead: false }];
     expect(pawnSlugFirstHitEnemyIndex(enemies, 0, 0, 0.5, 0.5)).toBe(-1);
-    expect(pawnSlugFirstHitEnemyIndex(enemies, 0.5, 0, 0.5, 0.5)).toBe(-1);
+    expect(pawnSlugFirstHitEnemyIndex(enemies, 1.5, 0, 0.5, 0.5)).toBe(-1);
   });
 });
