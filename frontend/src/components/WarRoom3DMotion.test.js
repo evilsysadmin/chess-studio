@@ -5,9 +5,11 @@ import {
   applyWarRoomMaterialGrade,
   deriveMoveKinetics,
   inferCapturedPiece,
+  materialGradeRefreshInterval,
   nextRuntimeRenderScale,
   reactiveLightProfile,
   shadowRefreshInterval,
+  shouldRefreshMaterialGrade,
   shouldRefreshShadowMap,
   smoothstep,
   warRoomHemisphereIntensity,
@@ -234,14 +236,29 @@ describe('WarRoom3DMotion', () => {
     expect(adaptiveRenderScale({ coarsePointer: true, slowFrameCount: 4 })).toBe(0.75);
   });
 
-  it('throttles the expensive shadow pass while preserving regular scene renders', () => {
-    expect(shadowRefreshInterval()).toBe(120);
-    expect(shadowRefreshInterval({ coarsePointer: true })).toBe(180);
+  it('spends shadow-map budget slowly while idle and restores the tight cadence during motion', () => {
+    expect(shadowRefreshInterval()).toBe(360);
+    expect(shadowRefreshInterval({ coarsePointer: true })).toBe(540);
+    expect(shadowRefreshInterval({ activeMotion: true })).toBe(120);
+    expect(shadowRefreshInterval({ coarsePointer: true, activeMotion: true })).toBe(180);
+
     expect(shouldRefreshShadowMap({ now: 0 })).toBe(true);
-    expect(shouldRefreshShadowMap({ now: 119, lastShadowAt: 0 })).toBe(false);
-    expect(shouldRefreshShadowMap({ now: 120, lastShadowAt: 0 })).toBe(true);
-    expect(shouldRefreshShadowMap({ now: 179, lastShadowAt: 0, coarsePointer: true })).toBe(false);
-    expect(shouldRefreshShadowMap({ now: 180, lastShadowAt: 0, coarsePointer: true })).toBe(true);
+    expect(shouldRefreshShadowMap({ now: 359, lastShadowAt: 0 })).toBe(false);
+    expect(shouldRefreshShadowMap({ now: 360, lastShadowAt: 0 })).toBe(true);
+    expect(shouldRefreshShadowMap({ now: 119, lastShadowAt: 0, activeMotion: true })).toBe(false);
+    expect(shouldRefreshShadowMap({ now: 120, lastShadowAt: 0, activeMotion: true })).toBe(true);
+    expect(shouldRefreshShadowMap({ now: 539, lastShadowAt: 0, coarsePointer: true })).toBe(false);
+    expect(shouldRefreshShadowMap({ now: 540, lastShadowAt: 0, coarsePointer: true })).toBe(true);
+  });
+
+  it('avoids full-scene material traversals on every idle heartbeat', () => {
+    expect(materialGradeRefreshInterval()).toBe(1500);
+    expect(materialGradeRefreshInterval({ activeMotion: true })).toBe(180);
+    expect(shouldRefreshMaterialGrade({ now: 0 })).toBe(true);
+    expect(shouldRefreshMaterialGrade({ now: 1499, lastMaterialGradeAt: 0 })).toBe(false);
+    expect(shouldRefreshMaterialGrade({ now: 1500, lastMaterialGradeAt: 0 })).toBe(true);
+    expect(shouldRefreshMaterialGrade({ now: 179, lastMaterialGradeAt: 0, activeMotion: true })).toBe(false);
+    expect(shouldRefreshMaterialGrade({ now: 180, lastMaterialGradeAt: 0, activeMotion: true })).toBe(true);
   });
 
   it('degrades runtime DPR only after sustained contiguous slow frames', () => {
