@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import './HomeCastleLife.css';
 import './HomeGreatHall.css';
 import './HomeCastleAmbience.css';
@@ -195,7 +195,7 @@ export function buildHomeCastleLifeModel({
   };
 }
 
-export default function HomeCastleLife({ achievementIds = null, achievementLedger = null, ...props }) {
+function HomeCastleLife({ achievementIds = null, achievementLedger = null, ...props }) {
   const sectionRef = useRef(null);
   // Desktop presents the castle in the first visual field and keeps the current
   // immediate mount. On the mobile first-fold contract the castle sits below
@@ -338,3 +338,8 @@ export default function HomeCastleLife({ achievementIds = null, achievementLedge
     </section>
   );
 }
+
+// Menu has several local overlays and disclosure controls that do not change
+// castle inputs. Keep the expensive castle subtree asleep when those parent
+// states churn; internal castle state/events still bypass memo as usual.
+export default memo(HomeCastleLife);
