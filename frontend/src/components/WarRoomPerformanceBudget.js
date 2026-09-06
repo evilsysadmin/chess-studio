@@ -137,6 +137,8 @@ export function applyWarRoomPerformanceBudget(root, { coarsePointer = false } = 
   if (!root || coarsePointer || typeof root.traverse !== 'function') return stats;
 
   batchWarRoomStaticDecor(root);
+  const retiredLights = [];
+  const retiredTargets = new Set();
 
   root.traverse((object) => {
     if (object?.isPointLight) {
@@ -147,18 +149,21 @@ export function applyWarRoomPerformanceBudget(root, { coarsePointer = false } = 
       } else {
         object.visible = false;
         object.userData ||= {};
-        object.userData.warRoomPerformanceLight = 'emissive-only';
+        object.userData.warRoomPerformanceLight = 'emissive-only-retired';
         stats.pointLightsCulled += 1;
+        retiredLights.push(object);
       }
     } else if (object?.isSpotLight) {
-      // The premium group historically stacked two museum spot keys on top of
-      // torch/fire/global light. Their job is already covered by the bright
-      // emissive torch halos and the global key, while every extra forward light
-      // expands the PBR shader cost for the whole room.
+      // Premium decor historically constructed spot keys that the desktop
+      // budget immediately disabled. Keep the visual contribution in the
+      // emissive/halo/global-key layers and detach the dead light entirely so
+      // the renderer no longer traverses an invisible lighting object.
       object.visible = false;
       object.userData ||= {};
-      object.userData.warRoomPerformanceLight = 'global-key-covered';
+      object.userData.warRoomPerformanceLight = 'global-key-covered-retired';
       stats.spotLightsCulled += 1;
+      retiredLights.push(object);
+      if (object.target?.parent) retiredTargets.add(object.target);
     }
 
     // Static decor used to participate in every directional shadow refresh even
@@ -173,11 +178,16 @@ export function applyWarRoomPerformanceBudget(root, { coarsePointer = false } = 
     }
   });
 
+  for (const light of retiredLights) light.parent?.remove(light);
+  for (const target of retiredTargets) target.parent?.remove(target);
+
   root.userData ||= {};
-  root.userData.warRoomPerformanceBudget = 'desktop-hard-cut-v2-instancing';
+  root.userData.warRoomPerformanceBudget = 'desktop-hard-cut-v3-light-detach';
   root.userData.warRoomPointLightsKept = stats.pointLightsKept;
   root.userData.warRoomPointLightsCulled = stats.pointLightsCulled;
   root.userData.warRoomSpotLightsCulled = stats.spotLightsCulled;
+  root.userData.warRoomDetachedLights = retiredLights.length;
+  root.userData.warRoomDetachedLightTargets = retiredTargets.size;
   root.userData.warRoomStaticShadowCastersRetired = stats.staticShadowCastersRetired;
   return stats;
 }
