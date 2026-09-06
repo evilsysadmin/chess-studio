@@ -121,6 +121,13 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
 
+  // Android must keep the same narrative scene contract as desktop. This is
+  // deliberately checked on the Pixel/touch lane, not inferred from a desktop
+  // E2E: Partida rápida must create Hans in the actual Three.js scene.
+  const hansMarker = page.locator('[data-war-room-hans-quick-request="true"]');
+  await expect(hansMarker).toHaveCount(1);
+  await expect(hansMarker).toHaveAttribute('data-war-room-hans-runtime', 'visible', { timeout: 30_000 });
+
   const matthiasCard = page.locator('.game-3d-matthias-card');
   const focusButton = page.getByRole('button', { name: 'Focus', exact: true });
   const abandonButton = page.getByRole('button', { name: 'Abandonar partida', exact: true });
