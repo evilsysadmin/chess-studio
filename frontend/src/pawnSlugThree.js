@@ -8,6 +8,7 @@ import {
   PAWN_SLUG_WEAPON_ORDER,
   PAWN_SLUG_WEAPONS,
   PAWN_SLUG_WORLD,
+  pawnSlugAmmoForPickup,
   pawnSlugDamageMultiplier,
   pawnSlugLevelForXp,
   pawnSlugLevelProgress,
@@ -17,6 +18,8 @@ import {
   pawnSlugScoreForKill,
   pawnSlugWeaponLabel,
   pawnSlugWeaponShortLabel,
+  pawnSlugWeaponStatsForLevel,
+  pawnSlugWeaponUpgradeCrossed,
   pawnSlugXpForKill,
   pawnSlugXpForLevel,
 } from './pawnSlug.js';
@@ -30,6 +33,8 @@ import {
   createSlugEnvironment,
   disposePawnSlugObject,
 } from './pawnSlugArt.js';
+import { createPawnSlugPremiumLandmarks } from './pawnSlugLandmarks.js';
+import { pawnSlugMatthiasLocomotion } from './pawnSlugMotionPolish.js';
 import {
   animatePremiumMuzzleFlash,
   animatePremiumProjectile,
@@ -128,6 +133,9 @@ function initialState() {
       flash: 0,
       landing: 0,
       recoil: 0,
+      moving: false,
+      moveStartedAt: 0,
+      stoppedAt: Number.NEGATIVE_INFINITY,
     },
   };
 }
@@ -283,7 +291,8 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   rim.position.set(8, 6, -10);
   scene.add(rim);
 
-  const { far: farEnvironment } = createSlugEnvironment(scene);
+  const { root: environmentRoot, far: farEnvironment } = createSlugEnvironment(scene);
+  createPawnSlugPremiumLandmarks(environmentRoot, { coarse });
   const dynamic = new THREE.Group();
   const projectileLayer = new THREE.Group();
   const fxLayer = new THREE.Group();
@@ -369,7 +378,10 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     player.weapon = id;
     player.ammo = player.arsenal[id].ammo;
     playerModel.userData.setWeapon?.(id);
-    if (announce) setToast(`ARMA // ${pawnSlugWeaponLabel(id)}`, 1.15);
+    if (announce) {
+      const upgrade = pawnSlugWeaponStatsForLevel(id, player.level);
+      setToast(`ARMA // ${pawnSlugWeaponLabel(id)} · ${upgrade.upgradeCode}`, 1.15);
+    }
     emitHud(true);
     return true;
   }
@@ -388,7 +400,8 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     const slot = state.player.arsenal[id];
     if (!weapon || !slot) return false;
     slot.unlocked = true;
-    if (Number.isFinite(weapon.ammo)) slot.ammo += weapon.ammo;
+    const pickupAmmo = pawnSlugAmmoForPickup(id, state.player.level);
+    if (Number.isFinite(pickupAmmo)) slot.ammo += pickupAmmo;
     else slot.ammo = Infinity;
     selectWeapon(id, { announce: false });
     return true;
@@ -523,7 +536,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     const player = state.player;
     if (player.fireCooldown > 0 || state.phase !== 'playing') return false;
     const weaponId = player.weapon;
-    const weapon = PAWN_SLUG_WEAPONS[weaponId] || PAWN_SLUG_WEAPONS.pistol;
+    const weapon = pawnSlugWeaponStatsForLevel(weaponId, player.level);
     if (Number.isFinite(player.ammo) && player.ammo <= 0) {
       selectWeapon('pistol', { announce: false });
       setToast('Munición agotada. Vuelta al hierro reglamentario.', 1.7);
@@ -540,7 +553,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     const muzzleX = player.x + dir * 1.05;
     const muzzleY = player.y + (player.crouch ? 0.72 : 1.12);
     const baseSpeed = weapon.speed * WORLD_SCALE;
-    const damage = weapon.damage * pawnSlugDamageMultiplier(player.level);
+    const damage = weapon.damage;
     for (let pellet = 0; pellet < weapon.pellets; pellet += 1) {
       const spread = (Math.random() * 2 - 1) * weapon.spread;
       addBullet({
@@ -640,7 +653,16 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     state.hitStop = Math.max(state.hitStop, reducedMotion ? 0 : 0.08);
     state.shake = Math.max(state.shake, reducedMotion ? 0 : 0.1);
     sfx.play('levelUp');
-    setToast(`NIVEL ${player.level} // ${pawnSlugMatthiasLine('levelUp')}`, 2.6);
+
+    const promotions = PAWN_SLUG_WEAPON_ORDER
+      .filter((id) => player.arsenal[id]?.unlocked)
+      .map((id) => ({ id, upgrade: pawnSlugWeaponUpgradeCrossed(id, previousLevel, player.level) }))
+      .filter(({ upgrade }) => Boolean(upgrade));
+    const promotionCopy = promotions
+      .map(({ id, upgrade }) => `${pawnSlugWeaponShortLabel(id)} ${upgrade.code}`)
+      .join(' · ');
+    if (promotionCopy) setToast(`NIVEL ${player.level} // ${promotionCopy}. ${pawnSlugMatthiasLine('weaponUp')}`, 3.1);
+    else setToast(`NIVEL ${player.level} // ${pawnSlugMatthiasLine('levelUp')}`, 2.6);
   }
 
   function damageEnemy(enemy, amount) {
@@ -698,6 +720,8 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     player.vy = 0;
     player.hp = player.maxHp;
     player.invuln = 1.8;
+    player.moving = false;
+    player.stoppedAt = state.time;
     selectWeapon('pistol', { announce: false });
     camera.position.x = Math.max(VIEW_W / 2, player.x + VIEW_W * 0.14);
     setToast(`Vida menos. Reagrupando en ${Math.round(player.x / WORLD_SCALE)} m. Pistola fuera.`, 2.2);
@@ -716,6 +740,21 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       dir: player.dir,
       hurt: player.flash > 0,
     });
+
+    if (player.onGround && !player.crouch) {
+      const locomotion = pawnSlugMatthiasLocomotion({
+        time: state.time,
+        moving: player.moving,
+        speedRatio: Math.abs(player.vx) / PLAYER_SPEED,
+        moveStartedAt: player.moveStartedAt,
+        stoppedAt: player.stoppedAt,
+      });
+      if (locomotion.action === 'walk') {
+        const frameIndex = locomotion.frame ?? Math.floor(state.time * 8.4) % 9;
+        playerModel.userData.setActionFrame?.('walk', frameIndex);
+      }
+    }
+
     if (player.landing > 0 && !reducedMotion) {
       const landing = clamp(player.landing / 0.12, 0, 1);
       playerModel.scale.y *= 1 - landing * 0.055;
@@ -757,6 +796,11 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       player.onGround = true;
       if (!wasOnGround) player.landing = 0.12;
     }
+
+    const movingNow = Math.abs(player.vx) > 0.18 && player.onGround && !player.crouch;
+    if (movingNow && !player.moving) player.moveStartedAt = state.time;
+    if (!movingNow && player.moving) player.stoppedAt = state.time;
+    player.moving = movingNow;
 
     const blockingMidBoss = state.enemies.find((enemy) => enemy.type === 'bishop' && !enemy.dead && player.x <= enemy.x && enemy.x - player.x < 7.5);
     if (blockingMidBoss) player.x = Math.min(player.x, blockingMidBoss.x - 1.3);
