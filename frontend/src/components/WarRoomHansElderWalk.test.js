@@ -52,7 +52,19 @@ function makeRig() {
     hans.userData.warRoomHansMotionState = 'walk';
   };
   root.add(driver);
-  return { root, hans, driver, torso, head, leftLeg, rightLeg };
+  return {
+    root,
+    hans,
+    driver,
+    torso,
+    head,
+    leftLeg,
+    rightLeg,
+    leftArm,
+    rightArm,
+    carriedLog,
+    carriedPoker,
+  };
 }
 
 describe('Hans elder walk', () => {
@@ -76,6 +88,36 @@ describe('Hans elder walk', () => {
     expect(Math.abs(torso.rotation.x)).toBeGreaterThan(0.04);
     expect(Math.abs(head.rotation.x)).toBeGreaterThan(0.01);
     expect(Math.abs(leftLeg.rotation.x - rightLeg.rotation.x)).toBeGreaterThan(0.02);
+  });
+
+  it('owns carrying-arm poses while walking so MotionPolish does not need a second gait pass', () => {
+    const {
+      root,
+      hans,
+      driver,
+      leftArm,
+      rightArm,
+      carriedLog,
+    } = makeRig();
+    carriedLog.visible = true;
+    driver.onBeforeRender = (() => {
+      let x = 0;
+      return () => {
+        x -= 0.07;
+        hans.position.x = x;
+        hans.userData.warRoomHansMotionState = 'walk-carry-log';
+      };
+    })();
+
+    expect(installWarRoomHansElderWalk(root)).toBe(1);
+    driver.onBeforeRender();
+    driver.onBeforeRender();
+
+    expect(leftArm.rotation.x).toBeCloseTo(-0.43, 6);
+    expect(leftArm.rotation.z).toBeCloseTo(0.035, 6);
+    expect(rightArm.rotation.x).toBeCloseTo(-0.5, 6);
+    expect(rightArm.rotation.z).toBeCloseTo(-0.025, 6);
+    expect(hans.userData.warRoomHansGaitFrame).toBeGreaterThanOrEqual(0);
   });
 
   it('does not overwrite articulated non-walking action poses', () => {
