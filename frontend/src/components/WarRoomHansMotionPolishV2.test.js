@@ -31,6 +31,8 @@ function makeRig() {
   leftArm.position.y = 1.62;
   rightArm.position.y = 1.62;
   head.position.y = 2.12;
+  carriedLog.position.z = 0.22;
+  carriedPoker.position.z = 0.22;
   carriedLog.visible = false;
   carriedPoker.visible = false;
   hans.add(leftLeg, rightLeg, torso, leftArm, rightArm, head, carriedLog, carriedPoker);
@@ -107,9 +109,79 @@ describe('Hans motion polish v2', () => {
 
     expect(Math.abs(hans.userData.refs.leftLeg.rotation.x)).toBeGreaterThan(0.02);
     expect(hans.userData.refs.rightLeg.rotation.x).toBeCloseTo(-hans.userData.refs.leftLeg.rotation.x, 6);
+    expect(hans.userData.refs.leftArm.rotation.x).toBeLessThan(-0.4);
+    expect(hans.userData.refs.rightArm.rotation.x).toBeLessThan(-0.45);
     expect(hans.getObjectByName('war-room-hans-visual-root').position.y).toBe(0);
     expect(hans.userData.warRoomHansMotionState).toBe('walk-carry-log');
     expect(hans.userData.warRoomHansGrounded).toBe(true);
+  });
+
+  it('picks up a log by folding at the hips with asymmetric weight instead of sinking the whole rig', () => {
+    const { root, hans, driver } = makeRig();
+    driver.onBeforeRender = () => {
+      hans.position.set(-1.62, -0.46, 0.72);
+      driver.userData.warRoomHansPhase = 'take-log';
+      hans.userData.refs.carriedLog.visible = false;
+    };
+
+    expect(installWarRoomHansMotionPolish(root)).toBe(1);
+    driver.onBeforeRender();
+
+    const { torso, head, leftLeg, rightLeg, leftArm, rightArm } = hans.userData.refs;
+    expect(hans.position.y).toBeCloseTo(-0.34, 6);
+    expect(Math.abs(torso.rotation.x)).toBeGreaterThan(0.2);
+    expect(Math.abs(head.rotation.x)).toBeGreaterThan(0.07);
+    expect(leftLeg.rotation.x).toBeGreaterThan(0.08);
+    expect(rightLeg.rotation.x).toBeLessThan(0);
+    expect(leftLeg.rotation.z).not.toBeCloseTo(-rightLeg.rotation.z, 2);
+    expect(rightArm.rotation.x).toBeLessThan(leftArm.rotation.x - 0.25);
+    expect(hans.userData.warRoomHansMotionState).toBe('pick-log');
+    expect(hans.userData.warRoomHansActionPose).toBe('pick-log');
+  });
+
+  it('places the log with a forward reach and staggered stance instead of repeating the pickup squat', () => {
+    const { root, hans, driver } = makeRig();
+    driver.onBeforeRender = () => {
+      hans.position.set(-0.9, -0.43, 0.72);
+      driver.userData.warRoomHansPhase = 'place-log';
+      hans.userData.refs.carriedLog.visible = true;
+    };
+
+    expect(installWarRoomHansMotionPolish(root)).toBe(1);
+    driver.onBeforeRender();
+
+    const { torso, leftLeg, rightLeg, leftArm, rightArm } = hans.userData.refs;
+    expect(hans.position.y).toBeCloseTo(-0.34, 6);
+    expect(Math.abs(torso.rotation.x)).toBeGreaterThan(0.12);
+    expect(Math.abs(torso.position.z)).toBeGreaterThan(0.01);
+    expect(leftLeg.rotation.x).toBeGreaterThan(0.04);
+    expect(rightLeg.rotation.x).toBeLessThan(0);
+    expect(rightArm.rotation.x).toBeLessThan(leftArm.rotation.x - 0.1);
+    expect(hans.userData.warRoomHansMotionState).toBe('place-log');
+    expect(hans.userData.warRoomHansActionPose).toBe('place-log');
+  });
+
+  it('stokes the fire from a planted stance with arm thrust instead of full-body genuflections', () => {
+    const { root, hans, driver } = makeRig();
+    driver.onBeforeRender = () => {
+      hans.position.set(-0.92, -0.34, 0.72);
+      driver.userData.warRoomHansPhase = 'stoke-fire';
+      hans.userData.refs.carriedPoker.visible = true;
+      hans.userData.refs.carriedPoker.rotation.z = 0.18;
+    };
+
+    expect(installWarRoomHansMotionPolish(root)).toBe(1);
+    driver.onBeforeRender();
+
+    const { torso, leftLeg, rightLeg, leftArm, rightArm, carriedPoker } = hans.userData.refs;
+    expect(hans.position.y).toBeCloseTo(-0.34, 6);
+    expect(Math.abs(torso.rotation.x)).toBeGreaterThan(0.1);
+    expect(leftLeg.rotation.x).toBeGreaterThan(0);
+    expect(rightLeg.rotation.x).toBeLessThan(0);
+    expect(rightArm.rotation.x).toBeLessThan(leftArm.rotation.x - 0.35);
+    expect(Math.abs(carriedPoker.rotation.z)).toBeGreaterThan(0.05);
+    expect(hans.userData.warRoomHansMotionState).toBe('stoke-fire-action');
+    expect(hans.userData.warRoomHansActionPose).toBe('stoke-fire-action');
   });
 
   it('derives exit clearance from the actual service-door wall plane after scaling Hans', () => {
