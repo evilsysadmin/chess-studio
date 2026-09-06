@@ -133,6 +133,18 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   await expect(hansMarker).toHaveAttribute('data-war-room-hans-first-screen', 'onscreen', { timeout: 10_000 });
   await expect(canvas).toHaveAttribute('data-war-room-hans-first-screen', 'onscreen', { timeout: 10_000 });
 
+  // Choreography regression: mobile starts Hans partway through the service
+  // corridor, but he must visibly continue walking to the hearth instead of
+  // becoming a static/teleporting prop. Follow his NDC position until the
+  // basket approach and require a meaningful on-screen displacement.
+  const firstHansNdcX = Number(await canvas.getAttribute('data-war-room-hans-ndc-x'));
+  expect(Number.isFinite(firstHansNdcX)).toBe(true);
+  await page.waitForTimeout(2_500);
+  await expect(hansMarker).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 10_000 });
+  const laterHansNdcX = Number(await canvas.getAttribute('data-war-room-hans-ndc-x'));
+  expect(Number.isFinite(laterHansNdcX)).toBe(true);
+  expect(Math.abs(laterHansNdcX - firstHansNdcX)).toBeGreaterThan(0.025);
+
   const matthiasCard = page.locator('.game-3d-matthias-card');
   const focusButton = page.getByRole('button', { name: 'Focus', exact: true });
   const abandonButton = page.getByRole('button', { name: 'Abandonar partida', exact: true });
