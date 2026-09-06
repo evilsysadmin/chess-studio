@@ -1,14 +1,13 @@
 export const FILES = Object.freeze(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']);
 export const DISPLAY_RANKS = Object.freeze(['8', '7', '6', '5', '4', '3', '2', '1']);
 
-// Desktop deliberately uses a near-orthographic long lens. A chess set should
-// not look as if the near army was manufactured at a different scale: depth is
-// still visible through board angle, lighting and occlusion, while perspective
-// magnification between first and last rank stays subtle. Mobile keeps the
-// established 40° framing because its dedicated profile is tuned around it.
+// Desktop uses a longer virtual lens than the historical 40° camera. The old
+// wide-angle view exaggerated near/far piece size enough that identical white
+// and black rooks looked like different models. Mobile keeps the established
+// 40° framing because its dedicated profile is already tuned around that FOV.
 export const BOARD3D_CAMERA_FOV = Object.freeze({
-  wide: 9,
-  compact: 10,
+  wide: 29,
+  compact: 32,
   mobile: 40,
 });
 
