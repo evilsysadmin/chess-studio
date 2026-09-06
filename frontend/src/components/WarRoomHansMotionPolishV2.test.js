@@ -31,6 +31,8 @@ function makeRig() {
   leftArm.position.y = 1.62;
   rightArm.position.y = 1.62;
   head.position.y = 2.12;
+  carriedLog.position.z = 0.22;
+  carriedPoker.position.z = 0.22;
   carriedLog.visible = false;
   carriedPoker.visible = false;
   hans.add(leftLeg, rightLeg, torso, leftArm, rightArm, head, carriedLog, carriedPoker);
@@ -91,7 +93,7 @@ describe('Hans motion polish v2', () => {
     expect(driver.userData.warRoomHansMotionPolishV2).toBe(WAR_ROOM_HANS_MOTION_POLISH_V2_VERSION);
   });
 
-  it('drives the walking pose from travelled distance so lateral movement cannot read as levitation', () => {
+  it('faces the real travel vector while walking so horizontal movement cannot moonwalk', () => {
     const { root, hans, driver } = makeRig();
     let x = -0.4;
     driver.onBeforeRender = () => {
@@ -105,11 +107,110 @@ describe('Hans motion polish v2', () => {
     x = -0.52;
     driver.onBeforeRender();
 
-    expect(Math.abs(hans.userData.refs.leftLeg.rotation.x)).toBeGreaterThan(0.02);
+    const faceX = Math.sin(hans.rotation.y);
+    const faceZ = Math.cos(hans.rotation.y);
+    expect(faceX).toBeLessThan(-0.99);
+    expect(Math.abs(faceZ)).toBeLessThan(0.02);
+    expect(Math.abs(hans.userData.refs.leftLeg.rotation.x)).toBeGreaterThan(0.01);
     expect(hans.userData.refs.rightLeg.rotation.x).toBeCloseTo(-hans.userData.refs.leftLeg.rotation.x, 6);
     expect(hans.getObjectByName('war-room-hans-visual-root').position.y).toBe(0);
     expect(hans.userData.warRoomHansMotionState).toBe('walk-carry-log');
-    expect(hans.userData.warRoomHansGrounded).toBe(true);
+    expect(hans.userData.warRoomHansMovementFacing).toBe('velocity-vector');
+  });
+
+  it('uses the real armor bounding box plus Hans radius while crossing the bypass lane', () => {
+    const { root, hans, driver } = makeRig();
+    const armor = new THREE.Mesh(
+      new THREE.BoxGeometry(1.4, 2.4, 0.8),
+      new THREE.MeshBasicMaterial(),
+    );
+    armor.name = 'war-room-teutonic-armor-left';
+    armor.position.set(-6.68, 1.2, 4.5);
+    root.add(armor);
+
+    driver.onBeforeRender = () => {
+      hans.position.set(-1.42, -0.34, 4.4);
+      driver.userData.warRoomHansPhase = 'leave';
+      hans.userData.warRoomHansRoute = 'leave-bypass';
+    };
+
+    expect(installWarRoomHansMotionPolish(root)).toBe(1);
+    driver.onBeforeRender();
+
+    const safeFrameX = hans.position.x / -1;
+    const hansWorldX = -4.95 + hans.position.x;
+    const armorInnerEdge = armor.position.x + 0.7;
+    const scaledHalfWidth = 0.49 * WAR_ROOM_HANS_CANONICAL_SCALE;
+    expect(safeFrameX).toBeGreaterThan(0.45);
+    expect(safeFrameX).toBeLessThan(0.6);
+    expect(hansWorldX - scaledHalfWidth).toBeGreaterThan(armorInnerEdge + 0.15);
+    expect(hans.userData.warRoomHansArmorClearanceApplied).toBe(true);
+    expect(driver.userData.warRoomHansArmorClearance).toBe('box3-expanded-by-hans-v1');
+  });
+
+  it('picks up a log by folding at the hips with asymmetric weight instead of sinking the whole rig', () => {
+    const { root, hans, driver } = makeRig();
+    driver.onBeforeRender = () => {
+      hans.position.set(-1.62, -0.49, 0.72);
+      driver.userData.warRoomHansPhase = 'take-log';
+      hans.userData.refs.carriedLog.visible = false;
+    };
+
+    expect(installWarRoomHansMotionPolish(root)).toBe(1);
+    driver.onBeforeRender();
+
+    const { torso, head, leftLeg, rightLeg, leftArm, rightArm } = hans.userData.refs;
+    expect(hans.position.y).toBeCloseTo(-0.34, 6);
+    expect(Math.abs(torso.rotation.x)).toBeGreaterThan(0.25);
+    expect(Math.abs(head.rotation.x)).toBeGreaterThan(0.1);
+    expect(leftLeg.rotation.x).toBeGreaterThan(0.1);
+    expect(rightLeg.rotation.x).toBeLessThan(0);
+    expect(rightArm.rotation.x).toBeLessThan(leftArm.rotation.x - 0.35);
+    expect(hans.userData.warRoomHansMotionState).toBe('pick-log');
+    expect(hans.userData.warRoomHansActionPose).toBe('pick-log');
+  });
+
+  it('places the log with a forward reach and staggered stance instead of repeating the pickup squat', () => {
+    const { root, hans, driver } = makeRig();
+    driver.onBeforeRender = () => {
+      hans.position.set(-0.9, -0.45, 0.72);
+      driver.userData.warRoomHansPhase = 'place-log';
+      hans.userData.refs.carriedLog.visible = true;
+    };
+
+    expect(installWarRoomHansMotionPolish(root)).toBe(1);
+    driver.onBeforeRender();
+
+    const { torso, leftLeg, rightLeg, leftArm, rightArm } = hans.userData.refs;
+    expect(hans.position.y).toBeCloseTo(-0.34, 6);
+    expect(Math.abs(torso.rotation.x)).toBeGreaterThan(0.15);
+    expect(Math.abs(torso.position.z)).toBeGreaterThan(0.015);
+    expect(leftLeg.rotation.x).toBeGreaterThan(0.05);
+    expect(rightLeg.rotation.x).toBeLessThan(0);
+    expect(rightArm.rotation.x).toBeLessThan(leftArm.rotation.x - 0.1);
+    expect(hans.userData.warRoomHansMotionState).toBe('place-log');
+  });
+
+  it('stokes from a planted stance with arm thrust rather than a full-body genuflection', () => {
+    const { root, hans, driver } = makeRig();
+    driver.onBeforeRender = () => {
+      hans.position.set(-0.92, -0.34, 0.72);
+      driver.userData.warRoomHansPhase = 'stoke-fire';
+      hans.userData.refs.carriedPoker.visible = true;
+      hans.userData.refs.carriedPoker.rotation.z = 0.18;
+    };
+
+    expect(installWarRoomHansMotionPolish(root)).toBe(1);
+    driver.onBeforeRender();
+
+    const { torso, leftLeg, rightLeg, leftArm, rightArm, carriedPoker } = hans.userData.refs;
+    expect(hans.position.y).toBeCloseTo(-0.34, 6);
+    expect(Math.abs(torso.rotation.x)).toBeGreaterThan(0.1);
+    expect(leftLeg.rotation.x).toBeGreaterThan(0);
+    expect(rightLeg.rotation.x).toBeLessThan(0);
+    expect(rightArm.rotation.x).toBeLessThan(leftArm.rotation.x - 0.35);
+    expect(Math.abs(carriedPoker.rotation.z)).toBeGreaterThan(0.05);
+    expect(hans.userData.warRoomHansMotionState).toBe('stoke-fire-action');
   });
 
   it('derives exit clearance from the actual service-door wall plane after scaling Hans', () => {
@@ -117,7 +218,7 @@ describe('Hans motion polish v2', () => {
     driver.onBeforeRender = () => {
       hans.position.set(-2.65, -0.34, 5.2);
       driver.userData.warRoomHansPhase = 'leave';
-      hans.userData.warRoomHansRoute = 'leave-corridor';
+      hans.userData.warRoomHansRoute = 'leave-door';
     };
 
     expect(installWarRoomHansMotionPolish(root)).toBe(1);
