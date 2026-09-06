@@ -1,4 +1,5 @@
 import { installWarRoomHansCanonicalButler } from './WarRoomHansCanonicalButler.js';
+import { installWarRoomHansElderClock } from './WarRoomHansElderClock.js';
 import { installWarRoomHansElderWalk } from './WarRoomHansElderWalk.js';
 import { installWarRoomHansFacingGuard } from './WarRoomHansFacingGuard.js';
 import { installWarRoomHansHearthFacingGuard } from './WarRoomHansHearthFacingGuard.js';
@@ -81,6 +82,9 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         installWarRoomHansFacingGuard(root);
         installWarRoomHansHearthFacingGuard(root);
         installWarRoomHansElderWalk(root);
+        // Install last so the governor owns Hans' private clock around the full
+        // motion pipeline instead of moving the rendered body after the fact.
+        installWarRoomHansElderClock(root);
       }
       completedKeys.push(key);
     }
