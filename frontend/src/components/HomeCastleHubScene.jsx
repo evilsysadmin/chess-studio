@@ -306,7 +306,6 @@ function buildCastleHubScene(THREE, { host, ambience }) {
   host.appendChild(canvas);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x0a0908, coarse ? 0.033 : 0.023);
   const camera = new THREE.PerspectiveCamera(coarse ? 49 : 37, 1, 0.1, 60);
   camera.position.set(0, coarse ? 4.20 : 3.82, coarse ? 13.9 : 12.05);
   camera.lookAt(0, 1.55, -0.55);
