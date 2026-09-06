@@ -11,6 +11,7 @@ const SERVICE_DOOR_NAME = 'war-room-hans-service-door';
 const VISUAL_ROOT_NAME = 'war-room-hans-visual-root';
 const HANS_UNSCALED_HALF_WIDTH = 0.49;
 const WALL_MARGIN = 0.13;
+const ARMOR_MARGIN = 0.16;
 const STEP_LENGTH = 0.72;
 const MAX_GAIT_DISTANCE_PER_FRAME = 0.12;
 const STANDING_Y = -0.34;
@@ -102,6 +103,44 @@ function actualDoorWallFrameX(fireplace, door, scale) {
   const centerDistance = Math.abs(wallX - fireplaceX);
   const halfWidth = HANS_UNSCALED_HALF_WIDTH * scale;
   return Math.max(1.8, centerDistance - halfWidth - WALL_MARGIN);
+}
+
+function findArmor(root, side) {
+  const names = side < 0
+    ? ['war-room-teutonic-armor-left', 'war-room-armor-guard-left']
+    : ['war-room-teutonic-armor-right', 'war-room-armor-guard-right'];
+  for (const name of names) {
+    const armor = root?.getObjectByName?.(name);
+    if (armor?.visible !== false) return armor;
+  }
+  return null;
+}
+
+function actualArmorSafeFrameX(root, fireplace, side, scale) {
+  const armor = findArmor(root, side);
+  if (!armor || !fireplace) return null;
+  root.updateMatrixWorld?.(true);
+  const box = new THREE.Box3().setFromObject(armor);
+  if (box.isEmpty()) return null;
+  const fireplaceWorld = new THREE.Vector3();
+  fireplace.getWorldPosition(fireplaceWorld);
+  const halfWidth = HANS_UNSCALED_HALF_WIDTH * scale;
+  const safeWorldX = side < 0
+    ? box.max.x + halfWidth + ARMOR_MARGIN
+    : box.min.x - halfWidth - ARMOR_MARGIN;
+  const frameX = (safeWorldX - fireplaceWorld.x) / side;
+  if (!Number.isFinite(frameX)) return null;
+  return Math.max(0.18, frameX);
+}
+
+function applyArmorBypassClearance(hans, { phase, route, side, safeFrameX } = {}) {
+  if (!hans || phase !== 'leave' || (route !== 'leave-side' && route !== 'leave-bypass')) return false;
+  if (!Number.isFinite(safeFrameX)) return false;
+  const frameX = Number(hans.position.x) / side;
+  if (!Number.isFinite(frameX) || frameX <= safeFrameX) return false;
+  hans.position.x = side * safeFrameX;
+  hans.userData.warRoomHansArmorSafeFrameX = safeFrameX;
+  return true;
 }
 
 export function clampHansExitToDoorGeometry(hans, {
@@ -267,10 +306,12 @@ export function installWarRoomHansMotionPolish(root) {
   const bases = capturePoseBases(body);
   const original = driver.onBeforeRender;
   const previousPosition = new THREE.Vector3(hans.position.x, 0, hans.position.z);
+  const armorSafeFrameX = actualArmorSafeFrameX(root, fireplace, side, WAR_ROOM_HANS_CANONICAL_SCALE);
   let gaitDistance = 0;
 
   hans.scale.setScalar(WAR_ROOM_HANS_CANONICAL_SCALE);
   hans.userData.warRoomHansCanonicalScale = WAR_ROOM_HANS_CANONICAL_SCALE;
+  hans.userData.warRoomHansArmorSafeFrameX = armorSafeFrameX;
 
   driver.onBeforeRender = (...args) => {
     original(...args);
@@ -285,10 +326,14 @@ export function installWarRoomHansMotionPolish(root) {
     const rawCrouch = Math.max(0, STANDING_Y - Number(hans.position.y || STANDING_Y));
     const rawStoke = Number(body.carriedPoker?.rotation?.z || 0);
 
-    // Hans' pelvis/root is always planted on the floor. Picking/placing depth
-    // comes from the articulated pose below, never from sinking the whole rig.
     hans.position.y = STANDING_Y;
 
+    const armorClearanceApplied = applyArmorBypassClearance(hans, {
+      phase,
+      route,
+      side,
+      safeFrameX: armorSafeFrameX,
+    });
     const wallClearanceApplied = clampHansExitToDoorGeometry(hans, {
       phase,
       route,
@@ -305,8 +350,6 @@ export function installWarRoomHansMotionPolish(root) {
     const moving = MOVING_PHASES.has(phase) && travelled > 0.00004;
     if (moving) {
       gaitDistance += Math.min(travelled, MAX_GAIT_DISTANCE_PER_FRAME);
-      // While walking, face where the feet are actually taking Hans. Object
-      // targets are for stationary work poses; they must never cause moonwalk.
       hans.rotation.y = headingFromMovement(dx, dz, forward);
     }
 
@@ -345,6 +388,7 @@ export function installWarRoomHansMotionPolish(root) {
     hans.userData.warRoomHansActionPose = actionPose;
     hans.userData.warRoomHansGrounded = true;
     hans.userData.warRoomHansVisualLag = 0;
+    hans.userData.warRoomHansArmorClearanceApplied = armorClearanceApplied;
     hans.userData.warRoomHansWallClearanceApplied = wallClearanceApplied;
     hans.userData.warRoomHansMotionPolishV2 = WAR_ROOM_HANS_MOTION_POLISH_V2_VERSION;
     hans.userData.warRoomHansMovementFacing = moving ? 'velocity-vector' : 'work-target';
@@ -359,6 +403,7 @@ export function installWarRoomHansMotionPolish(root) {
   hans.userData.warRoomHansVisualRoot = VISUAL_ROOT_NAME;
   driver.userData.warRoomHansMotionCadence = 'distance-driven-slower-v3';
   driver.userData.warRoomHansMotionWallClearance = 'door-geometry-derived-v2';
+  driver.userData.warRoomHansArmorClearance = 'box3-expanded-by-hans-v1';
   driver.userData.warRoomHansActionPoses = 'pick-place-stoke-articulated-v1';
   return 1;
 }
