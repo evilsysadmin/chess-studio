@@ -1,0 +1,125 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
+import {
+  hansQuickIterationFrame,
+  installWarRoomHansSceneRoutine,
+  setWarRoomHansQuickIterationEnabled,
+} from './WarRoomHansIteration.js';
+
+function dispose(root) {
+  const geometries = new Set();
+  const materials = new Set();
+  root.traverse((object) => {
+    if (object.geometry && !geometries.has(object.geometry)) {
+      geometries.add(object.geometry);
+      object.geometry.dispose?.();
+    }
+    const list = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of list) {
+      if (!material || materials.has(material)) continue;
+      materials.add(material);
+      material.dispose?.();
+    }
+  });
+}
+
+function facingDotToPoint(hans, point, towardBoard) {
+  const dx = point.x - hans.position.x;
+  const dz = point.z - hans.position.z;
+  const distance = Math.hypot(dx, dz);
+  const forwardSign = towardBoard < 0 ? -1 : 1;
+  const faceX = Math.sin(hans.rotation.y) * forwardSign;
+  const faceZ = Math.cos(hans.rotation.y) * forwardSign;
+  return ((faceX * dx) + (faceZ * dz)) / distance;
+}
+
+afterEach(() => {
+  setWarRoomHansQuickIterationEnabled(false);
+  vi.restoreAllMocks();
+});
+
+describe('Hans hearth pathing regressions', () => {
+  it.each([1, -1])('gira hacia la chimenea antes de caminar con el tronco (towardBoard=%s)', (towardBoard) => {
+    const now = vi.spyOn(globalThis.performance, 'now').mockReturnValue(1000);
+    setWarRoomHansQuickIterationEnabled(true);
+    const room = buildPremiumWarRoomLayer(
+      { felt: 0x173943, glow: 0xc5963f },
+      towardBoard > 0,
+      true,
+    );
+
+    try {
+      expect(installWarRoomHansSceneRoutine(room, { towardBoard, coarsePointer: true })).toBeGreaterThan(0);
+      const hans = room.getObjectByName('war-room-hans-butler');
+      const driver = room.getObjectByName('war-room-hans-fireplace-driver');
+      const firePoint = { x: 0, z: towardBoard * 0.31 };
+
+      driver.onBeforeRender(); // clock origin
+
+      now.mockReturnValue(10050); // elapsed 9.05 s => start of carry-log turn-in-place
+      driver.onBeforeRender();
+      expect(driver.userData.warRoomHansPhase).toBe('carry-log');
+      expect(hans.userData.warRoomHansFacingTarget).toBe('fire');
+      expect(hans.userData.refs.carriedLog.visible).toBe(true);
+      expect(Math.abs(hans.userData.refs.leftLeg.rotation.x)).toBeLessThan(0.001);
+      expect(facingDotToPoint(hans, firePoint, towardBoard)).toBeGreaterThan(0.8);
+      const turnX = hans.position.x;
+
+      now.mockReturnValue(10600); // elapsed 9.6 s => walking only after the turn window
+      driver.onBeforeRender();
+      expect(Math.abs(hans.position.x - turnX)).toBeGreaterThan(0.03);
+      expect(facingDotToPoint(hans, firePoint, towardBoard)).toBeGreaterThan(0.8);
+    } finally {
+      dispose(room);
+    }
+  });
+
+  it('rebaja la carrera al atizador y evita el latigazo de vuelta hacia el fuego', () => {
+    const beforeTurn = hansQuickIterationFrame(14.1);
+    const afterTurn = hansQuickIterationFrame(14.25);
+    const outboundMid = hansQuickIterationFrame(15.0);
+    const atTools = hansQuickIterationFrame(15.95);
+    const returnEarly = hansQuickIterationFrame(16.4);
+
+    expect(beforeTurn.phase).toBe('take-poker');
+    expect(afterTurn.phase).toBe('take-poker');
+    expect(afterTurn.hansX).toBeCloseTo(beforeTurn.hansX, 5);
+    expect(Math.abs(afterTurn.stride)).toBeLessThan(0.001);
+    expect(outboundMid.hansX).toBeLessThan(afterTurn.hansX);
+    expect(Math.abs(outboundMid.stride)).toBeLessThanOrEqual(0.161);
+    expect(atTools.hansX).toBeLessThan(outboundMid.hansX);
+    expect(returnEarly.phase).toBe('stoke-fire');
+    expect(Math.abs(returnEarly.hansX - atTools.hansX)).toBeLessThan(0.6);
+    expect(Math.abs(returnEarly.stride)).toBeLessThanOrEqual(0.161);
+  });
+
+  it('sale primero hacia la pared y solo después recorre el corredor de servicio', () => {
+    const now = vi.spyOn(globalThis.performance, 'now').mockReturnValue(1000);
+    setWarRoomHansQuickIterationEnabled(true);
+    const room = buildPremiumWarRoomLayer({ felt: 0x173943, glow: 0xc5963f }, true, true);
+
+    try {
+      expect(installWarRoomHansSceneRoutine(room, { towardBoard: 1, coarsePointer: true })).toBeGreaterThan(0);
+      const hans = room.getObjectByName('war-room-hans-butler');
+      const driver = room.getObjectByName('war-room-hans-fireplace-driver');
+
+      driver.onBeforeRender(); // clock origin
+
+      now.mockReturnValue(26000); // elapsed 25 s => first half of leave
+      driver.onBeforeRender();
+      expect(driver.userData.warRoomHansPhase).toBe('leave');
+      expect(hans.userData.warRoomHansRoute).toBe('leave-side');
+      expect(hans.userData.warRoomHansFacingTarget).toBe('corridor');
+      expect(Math.abs(hans.position.z)).toBeCloseTo(0.72, 5);
+
+      now.mockReturnValue(28500); // elapsed 27.5 s => already on side corridor
+      driver.onBeforeRender();
+      expect(hans.userData.warRoomHansRoute).toBe('leave-corridor');
+      expect(hans.userData.warRoomHansFacingTarget).toBe('door');
+      expect(Math.abs(hans.position.x)).toBeCloseTo(2.65, 5);
+      expect(Math.abs(hans.position.z)).toBeGreaterThan(0.72);
+    } finally {
+      dispose(room);
+    }
+  });
+});
