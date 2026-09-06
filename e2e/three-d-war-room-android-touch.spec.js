@@ -166,12 +166,14 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   const appearanceButton = page.locator('.board3d-customize');
   const humanRail = page.locator('.game-board-stack-3d .game-player-rail.is-human');
   const musicRail = page.locator('.game-side-column-3d .game-side-music .music-deck-collapsed');
+  const notationDisclosure = page.locator('.game-side-column-3d .game-notation-disclosure');
   await expect(matthiasCard).toBeVisible();
   await expect(focusButton).toBeVisible();
   await expect(abandonButton).toBeVisible();
   await expect(appearanceButton).toBeVisible();
   await expect(humanRail).toBeVisible();
   await expect(musicRail).toBeVisible();
+  await expect(notationDisclosure).toBeVisible();
 
   const matthiasRect = await matthiasCard.boundingBox();
   const boardRect = await board3d.boundingBox();
@@ -179,15 +181,21 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   const appearanceRect = await appearanceButton.boundingBox();
   const humanRect = await humanRail.boundingBox();
   const musicRect = await musicRail.boundingBox();
+  const notationRect = await notationDisclosure.boundingBox();
   expect(matthiasRect).not.toBeNull();
   expect(boardRect).not.toBeNull();
   expect(focusRect).not.toBeNull();
   expect(appearanceRect).not.toBeNull();
   expect(humanRect).not.toBeNull();
   expect(musicRect).not.toBeNull();
+  expect(notationRect).not.toBeNull();
   expect(matthiasRect.height).toBeLessThanOrEqual(72);
-  expect(humanRect.height).toBeLessThanOrEqual(54);
-  expect(musicRect.height).toBeLessThanOrEqual(58);
+  expect(humanRect.height).toBeLessThanOrEqual(50);
+  expect(musicRect.height).toBeLessThanOrEqual(50);
+  expect(notationRect.height).toBeLessThanOrEqual(50);
+  // Phone utilities share a single compact shelf instead of consuming two rows.
+  expect(Math.abs(musicRect.y - notationRect.y)).toBeLessThanOrEqual(2);
+  expect(musicRect.x).toBeLessThan(notationRect.x);
   expect(focusRect.y + focusRect.height).toBeLessThanOrEqual(boardRect.y + 2);
   expect(appearanceRect.y).toBeLessThan(boardRect.y + 90);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
