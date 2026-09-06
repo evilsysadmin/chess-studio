@@ -10,6 +10,7 @@ import {
   CHESSCOM_CANONICAL_SCENE,
   chesscomCanonicalQualityProfile,
 } from './chesscomCanonicalProfile.js';
+import { installChesscomUnitCombatCanonical } from './chesscomUnitCombatCanonical.js';
 
 const HARD_WET_SURFACES = new Set(['ground','tile','road','concrete']);
 const METAL_SURFACES = new Set([
@@ -274,16 +275,26 @@ export async function createChesscomBabylon(host, options = {}) {
     webglVersion:engine.webGLVersion || 1,
   });
   const uninstall = installCanonicalScene(B,scene,profile);
+  const unitCombat = installChesscomUnitCombatCanonical(B,scene,{ tier:profile.tier });
   host.dataset.chesscomScene = CHESSCOM_CANONICAL_SCENE;
   host.dataset.chesscomSceneTier = profile.tier;
-  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS`);
+  host.dataset.chesscomUnits = 'mercenary-premium-v2';
+  host.dataset.chesscomFireStance = 'weapon-muzzle-v1';
+  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE`);
 
   return {
     ...base,
+    update(state, ui = {}) {
+      base.update(state, ui);
+      unitCombat.update(state);
+    },
     destroy() {
+      unitCombat.destroy();
       uninstall();
       delete host.dataset.chesscomScene;
       delete host.dataset.chesscomSceneTier;
+      delete host.dataset.chesscomUnits;
+      delete host.dataset.chesscomFireStance;
       base.destroy();
     },
   };
