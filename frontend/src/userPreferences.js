@@ -1,5 +1,5 @@
 import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
-import { setProfileStorageItem } from './profileKeys.js';
+import { PROFILE_CHANGED_EVENT, setProfileStorageItem } from './profileKeys.js';
 import { TIME_CONTROLS } from './clock.js';
 
 export const DEFAULT_TIME_CONTROL_KEY = 'chess-study-default-time-control';
@@ -17,6 +17,42 @@ export const BOARD_RENDERERS = [
   { id: '3d', label: '3D' },
   { id: '2d', label: '2D' },
 ];
+
+let effectiveReducedMotionCache;
+let reducedMotionMedia = null;
+let reducedMotionListenersInstalled = false;
+
+function invalidateEffectiveReducedMotionCache() {
+  effectiveReducedMotionCache = undefined;
+}
+
+function ensureReducedMotionMedia() {
+  if (reducedMotionMedia || typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    return reducedMotionMedia;
+  }
+
+  reducedMotionMedia = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const handleSystemMotionChange = () => {
+    invalidateEffectiveReducedMotionCache();
+    syncReducedMotionDataset();
+    window.dispatchEvent(new Event(USER_PREFERENCES_CHANGED_EVENT));
+  };
+  if (typeof reducedMotionMedia.addEventListener === 'function') {
+    reducedMotionMedia.addEventListener('change', handleSystemMotionChange);
+  } else if (typeof reducedMotionMedia.addListener === 'function') {
+    reducedMotionMedia.addListener(handleSystemMotionChange);
+  }
+  return reducedMotionMedia;
+}
+
+function installReducedMotionInvalidationListeners() {
+  if (reducedMotionListenersInstalled || typeof window === 'undefined') return;
+  reducedMotionListenersInstalled = true;
+  window.addEventListener(PROFILE_CHANGED_EVENT, invalidateEffectiveReducedMotionCache);
+  window.addEventListener('storage', (event) => {
+    if (event.key === null || event.key === REDUCED_MOTION_KEY) invalidateEffectiveReducedMotionCache();
+  });
+}
 
 export function getDefaultTimeControlId() {
   const value = getStorageItem(STORAGE_LOCAL, DEFAULT_TIME_CONTROL_KEY) || 'none';
@@ -50,11 +86,7 @@ export function getReducedMotionPreference() {
 }
 
 export function systemPrefersReducedMotion() {
-  return Boolean(
-    typeof window !== 'undefined'
-    && typeof window.matchMedia === 'function'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
+  return Boolean(ensureReducedMotionMedia()?.matches);
 }
 
 export function reducedMotionStatus({ systemReduced } = {}) {
@@ -75,7 +107,13 @@ export function getReducedMotion() {
 }
 
 export function getEffectiveReducedMotion(options = {}) {
-  return reducedMotionStatus(options).effective;
+  if (Object.prototype.hasOwnProperty.call(options, 'systemReduced')) {
+    return reducedMotionStatus(options).effective;
+  }
+  installReducedMotionInvalidationListeners();
+  if (effectiveReducedMotionCache !== undefined) return effectiveReducedMotionCache;
+  effectiveReducedMotionCache = reducedMotionStatus({ systemReduced: systemPrefersReducedMotion() }).effective;
+  return effectiveReducedMotionCache;
 }
 
 function syncReducedMotionDataset() {
@@ -87,6 +125,7 @@ function syncReducedMotionDataset() {
 
 export function setReducedMotion(value) {
   const normalized = !!value;
+  invalidateEffectiveReducedMotionCache();
   setProfileStorageItem(REDUCED_MOTION_KEY, normalized ? '1' : '0');
   syncReducedMotionDataset();
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(USER_PREFERENCES_CHANGED_EVENT));
