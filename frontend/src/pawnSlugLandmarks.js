@@ -1,4 +1,8 @@
 import * as THREE from 'three';
+import {
+  PAWN_SLUG_STATIC_INSTANCE_VERSION,
+  createPawnSlugStaticInstanceBatch,
+} from './pawnSlugStaticInstances.js';
 
 export const PAWN_SLUG_LANDMARK_META = Object.freeze({
   landmarks: Object.freeze([
@@ -10,6 +14,9 @@ export const PAWN_SLUG_LANDMARK_META = Object.freeze({
   coarseDetailBudget: 1,
   desktopLocalLightBudget: 2,
   coarseLocalLightBudget: 0,
+  staticBatching: PAWN_SLUG_STATIC_INSTANCE_VERSION,
+  desktopBatchedInstances: 35,
+  coarseBatchedInstances: 16,
 });
 
 function material(color, roughness = 0.8, metalness = 0.08, emissive = 0x000000, emissiveIntensity = 0) {
@@ -23,6 +30,12 @@ function mesh(geometry, mat, { x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0 } = {
   node.castShadow = true;
   node.receiveShadow = true;
   return node;
+}
+
+function addInstanceBatch(parent, options) {
+  const batch = createPawnSlugStaticInstanceBatch(options);
+  if (batch) parent.add(batch);
+  return batch;
 }
 
 function localPointLight(name, color, intensity, distance, { x = 0, y = 0, z = 0 } = {}) {
@@ -56,17 +69,33 @@ function commandPost(x, coarse) {
       lamp,
       localPointLight('pawn-slug-command-post-light', 0xffb45f, 0.95, 5.2, { x: 1.2, y: 1.02, z: 1.05 }),
     );
-    for (let i = 0; i < 5; i += 1) {
-      root.add(mesh(new THREE.SphereGeometry(0.18, 8, 6), material(0x625746, 1), { x: -1.35 + i * 0.46, y: 0.16, z: 0.93, rz: (i % 2 ? 1 : -1) * 0.06 }));
-    }
-    for (let i = 0; i < 4; i += 1) {
-      root.add(mesh(new THREE.BoxGeometry(0.18 + i * 0.03, 0.055, 0.09), material(0x55595c, 0.72, 0.34), {
+
+    addInstanceBatch(root, {
+      name: 'pawn-slug-command-post-sandbags-instanced',
+      geometry: new THREE.SphereGeometry(0.18, 8, 6),
+      material: material(0x625746, 1),
+      instances: Array.from({ length: 5 }, (_, i) => ({
+        x: -1.35 + i * 0.46,
+        y: 0.16,
+        z: 0.93,
+        rz: (i % 2 ? 1 : -1) * 0.06,
+      })),
+    });
+
+    addInstanceBatch(root, {
+      name: 'pawn-slug-command-post-debris-instanced',
+      geometry: new THREE.BoxGeometry(1, 1, 1),
+      material: material(0x55595c, 0.72, 0.34),
+      instances: Array.from({ length: 4 }, (_, i) => ({
         x: -1.45 + i * 0.85,
         y: 0.07,
         z: 1.02 + (i % 2) * 0.08,
         rz: -0.22 + i * 0.14,
-      }));
-    }
+        sx: 0.18 + i * 0.03,
+        sy: 0.055,
+        sz: 0.09,
+      })),
+    });
   }
   return root;
 }
@@ -76,12 +105,16 @@ function wreckedSearchlight(x, coarse) {
   root.name = 'pawn-slug-landmark-wrecked-searchlight';
   root.position.set(x, 0, 1.55);
 
-  const steel = material(0x454b50, 0.62, 0.48);
-  root.add(
-    mesh(new THREE.CylinderGeometry(0.055, 0.07, 1.65, 8), steel.clone(), { x: -0.38, y: 0.72, rz: 0.46 }),
-    mesh(new THREE.CylinderGeometry(0.055, 0.07, 1.55, 8), steel.clone(), { x: 0.38, y: 0.7, rz: -0.56 }),
-    mesh(new THREE.CylinderGeometry(0.055, 0.07, 1.55, 8), steel.clone(), { x: 0.12, y: 0.68, rx: 0.32, rz: 0.12 }),
-  );
+  addInstanceBatch(root, {
+    name: 'pawn-slug-searchlight-legs-instanced',
+    geometry: new THREE.CylinderGeometry(0.055, 0.07, 1, 8),
+    material: material(0x454b50, 0.62, 0.48),
+    instances: [
+      { x: -0.38, y: 0.72, rz: 0.46, sy: 1.65 },
+      { x: 0.38, y: 0.7, rz: -0.56, sy: 1.55 },
+      { x: 0.12, y: 0.68, rx: 0.32, rz: 0.12, sy: 1.55 },
+    ],
+  });
 
   const pivot = new THREE.Group();
   pivot.position.set(0.18, 1.42, 0);
@@ -110,39 +143,52 @@ function heroBarricade(x, coarse) {
   const root = new THREE.Group();
   root.name = 'pawn-slug-landmark-hero-barricade';
   root.position.set(x, 0, 1.62);
-  const bag = material(0x655946, 0.98, 0.01);
   const rows = coarse ? 2 : 3;
+  const bagInstances = [];
   for (let row = 0; row < rows; row += 1) {
     const count = 7 - row;
     for (let i = 0; i < count; i += 1) {
-      const node = mesh(new THREE.SphereGeometry(0.25, 8, 6), bag.clone(), {
+      bagInstances.push({
         x: (i - (count - 1) / 2) * 0.42 + row * 0.08,
         y: 0.13 + row * 0.2,
         z: (i % 2) * 0.035,
         rz: (i % 2 ? 1 : -1) * 0.04,
+        sx: 1.18,
+        sy: 0.56,
+        sz: 0.82,
       });
-      node.scale.set(1.18, 0.56, 0.82);
-      root.add(node);
     }
   }
+  addInstanceBatch(root, {
+    name: 'pawn-slug-hero-barricade-sandbags-instanced',
+    geometry: new THREE.SphereGeometry(0.25, 8, 6),
+    material: material(0x655946, 0.98, 0.01),
+    instances: bagInstances,
+  });
 
   const plate = mesh(new THREE.BoxGeometry(1.6, 0.54, 0.09), material(0x303438, 0.66, 0.45), { y: 0.94, z: 0.02, rz: -0.04 });
   root.add(plate);
   if (!coarse) {
-    const redPaint = new THREE.MeshBasicMaterial({ color: 0xb64934 });
-    root.add(
-      mesh(new THREE.BoxGeometry(0.08, 0.36, 0.04), redPaint, { x: -0.5, y: 0.95, z: 0.075 }),
-      mesh(new THREE.BoxGeometry(0.36, 0.08, 0.04), redPaint.clone(), { x: -0.5, y: 0.95, z: 0.077 }),
-      mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.7, 7), material(0x262a2d, 0.52, 0.55), { x: 1.22, y: 1.36, rz: -0.15 }),
-    );
+    addInstanceBatch(root, {
+      name: 'pawn-slug-hero-barricade-red-cross-instanced',
+      geometry: new THREE.BoxGeometry(0.08, 0.36, 0.04),
+      material: new THREE.MeshBasicMaterial({ color: 0xb64934 }),
+      instances: [
+        { x: -0.5, y: 0.95, z: 0.075 },
+        { x: -0.5, y: 0.95, z: 0.077, rz: Math.PI / 2 },
+      ],
+    });
+    root.add(mesh(new THREE.CylinderGeometry(0.035, 0.035, 1.7, 7), material(0x262a2d, 0.52, 0.55), { x: 1.22, y: 1.36, rz: -0.15 }));
 
     const obstacle = new THREE.Group();
     obstacle.name = 'pawn-slug-barricade-hedgehog';
     obstacle.position.set(1.85, 0.38, 0.18);
-    const beamMaterial = material(0x343a3f, 0.62, 0.5);
-    for (const angle of [-Math.PI / 3, 0, Math.PI / 3]) {
-      obstacle.add(mesh(new THREE.BoxGeometry(1.15, 0.11, 0.11), beamMaterial.clone(), { rz: angle }));
-    }
+    addInstanceBatch(obstacle, {
+      name: 'pawn-slug-barricade-hedgehog-beams-instanced',
+      geometry: new THREE.BoxGeometry(1.15, 0.11, 0.11),
+      material: material(0x343a3f, 0.62, 0.5),
+      instances: [-Math.PI / 3, 0, Math.PI / 3].map((rz) => ({ rz })),
+    });
     root.add(obstacle);
   }
   return root;
@@ -152,6 +198,7 @@ export function createPawnSlugPremiumLandmarks(parent, { coarse = false } = {}) 
   if (!parent) throw new Error('Pawn Slug landmarks require a parent group');
   const root = new THREE.Group();
   root.name = 'pawn-slug-premium-landmarks';
+  root.userData.pawnSlugStaticInstances = PAWN_SLUG_STATIC_INSTANCE_VERSION;
   root.add(
     commandPost(PAWN_SLUG_LANDMARK_META.landmarks[0].x, coarse),
     wreckedSearchlight(PAWN_SLUG_LANDMARK_META.landmarks[1].x, coarse),

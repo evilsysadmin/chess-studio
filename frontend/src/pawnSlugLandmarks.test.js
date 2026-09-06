@@ -4,6 +4,7 @@ import {
   PAWN_SLUG_LANDMARK_META,
   createPawnSlugPremiumLandmarks,
 } from './pawnSlugLandmarks.js';
+import { PAWN_SLUG_STATIC_INSTANCE_VERSION } from './pawnSlugStaticInstances.js';
 
 describe('Pawn Slug premium landmarks', () => {
   it('keeps three recognizable hero beats distributed across the battlefield', () => {
@@ -57,5 +58,26 @@ describe('Pawn Slug premium landmarks', () => {
     expect(countMeshes(coarse)).toBeLessThan(countMeshes(desktop));
     expect(coarse.children).toHaveLength(desktop.children.length);
     expect(coarse.getObjectByName('pawn-slug-barricade-hedgehog')).toBeFalsy();
+  });
+
+  it('batches repeated landmark geometry into stable instanced draw meshes', () => {
+    const desktop = createPawnSlugPremiumLandmarks(new THREE.Group(), { coarse: false });
+    const coarse = createPawnSlugPremiumLandmarks(new THREE.Group(), { coarse: true });
+    const batchedInstances = (root) => {
+      let count = 0;
+      root.traverse((node) => {
+        if (node.isInstancedMesh) {
+          expect(node.userData.pawnSlugStaticInstances).toBe(PAWN_SLUG_STATIC_INSTANCE_VERSION);
+          count += node.count;
+        }
+      });
+      return count;
+    };
+
+    expect(PAWN_SLUG_LANDMARK_META.staticBatching).toBe(PAWN_SLUG_STATIC_INSTANCE_VERSION);
+    expect(batchedInstances(desktop)).toBe(PAWN_SLUG_LANDMARK_META.desktopBatchedInstances);
+    expect(batchedInstances(coarse)).toBe(PAWN_SLUG_LANDMARK_META.coarseBatchedInstances);
+    expect(desktop.getObjectByName('pawn-slug-hero-barricade-sandbags-instanced')).toBeTruthy();
+    expect(desktop.getObjectByName('pawn-slug-barricade-hedgehog-beams-instanced')).toBeTruthy();
   });
 });
