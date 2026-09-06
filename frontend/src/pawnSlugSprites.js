@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import matthiasMotionAtlasUrl from './assets/pawnSlug/matthias_motion_atlas_v4.webp';
+import matthiasMotionAtlasV5Payload from './assets/pawnSlug/matthias_motion_atlas_v5_payload.b64?raw';
 import matthiasLegacyAtlasUrl from './assets/pawnSlug/matthias_atlas_v2.webp';
 import matthiasVectorFallbackUrl from './assets/pawnSlug/matthias_atlas.svg';
 import enemyAtlasUrl from './assets/pawnSlug/enemy_atlas_v2.webp';
@@ -7,23 +7,25 @@ import enemyFallbackAtlasUrl from './assets/pawnSlug/enemy_atlas.svg';
 import panzerRookUrl from './assets/pawnSlug/panzer_rook_v2.webp';
 import weaponAtlasUrl from './assets/pawnSlug/weapon_atlas.svg';
 
+const MATTHIAS_V5_ASSET_NAME = 'matthias_motion_atlas_v5_payload.b64';
+const matthiasMotionAtlasUrl = `data:image/webp;base64,${matthiasMotionAtlasV5Payload.trim()}`;
 const ENEMY_FRAME_BY_TYPE = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
 const clamp01 = (value) => Math.max(0, Math.min(1, Number(value) || 0));
 const freezeFrames = (count) => Object.freeze(Array.from({ length: count }, (_, index) => index));
 
-const MATTHIAS_GRID = Object.freeze({ columns: 9, rows: 5, frameWidth: 160, frameHeight: 160 });
+const MATTHIAS_GRID = Object.freeze({ columns: 16, rows: 5, frameWidth: 96, frameHeight: 96 });
 const MATTHIAS_ACTIONS = Object.freeze({
-  idle: Object.freeze({ row: 0, count: 6 }),
-  walk: Object.freeze({ row: 1, count: 9 }),
-  run: Object.freeze({ row: 2, count: 9 }),
-  crouch: Object.freeze({ row: 3, count: 8 }),
-  jump: Object.freeze({ row: 4, count: 8 }),
+  idle: Object.freeze({ row: 0, count: 10 }),
+  walk: Object.freeze({ row: 1, count: 10 }),
+  run: Object.freeze({ row: 2, count: 16 }),
+  crouch: Object.freeze({ row: 3, count: 10 }),
+  jump: Object.freeze({ row: 4, count: 9 }),
 });
 const MATTHIAS_SOURCE_FACING = Object.freeze({
   idle: 1,
   walk: 1,
   run: 1,
-  crouch: -1,
+  crouch: 1,
   jump: 1,
 });
 const MATTHIAS_LEGACY_FRAMES = Object.freeze({
@@ -35,17 +37,17 @@ const MATTHIAS_LEGACY_FRAMES = Object.freeze({
 });
 
 export const PAWN_SLUG_MATTHIAS_POSE_TRACKS = Object.freeze({
-  idle: freezeFrames(6),
-  walk: freezeFrames(9),
-  run: freezeFrames(9),
-  crouch: freezeFrames(8),
-  jump: freezeFrames(8),
+  idle: freezeFrames(10),
+  walk: freezeFrames(10),
+  run: freezeFrames(16),
+  crouch: freezeFrames(10),
+  jump: freezeFrames(9),
 });
 
 export const PAWN_SLUG_MOTION_PROFILES = Object.freeze({
   matthias: Object.freeze({
-    idleRate: 2.2,
-    runRate: 13.0,
+    idleRate: 2.6,
+    runRate: 15.5,
     crouchInSeconds: 0.15,
     crouchOutSeconds: 0.12,
     crouchScaleX: 1.045,
@@ -481,18 +483,20 @@ export function disposePawnSlugSprite(sprite) {
 export const PAWN_SLUG_SPRITE_META = Object.freeze({
   matthias: Object.freeze({
     url: matthiasMotionAtlasUrl,
+    assetName: MATTHIAS_V5_ASSET_NAME,
+    assetVersion: 'v5-approved-mock',
     fallbackUrl: matthiasLegacyAtlasUrl,
     vectorFallbackUrl: matthiasVectorFallbackUrl,
-    frames: 40,
-    cells: 45,
+    frames: 55,
+    cells: 80,
     columns: MATTHIAS_GRID.columns,
     rows: MATTHIAS_GRID.rows,
     frameWidth: MATTHIAS_GRID.frameWidth,
     frameHeight: MATTHIAS_GRID.frameHeight,
     sourceFacing: 'right',
-    sourceFacingByAction: Object.freeze({ idle: 'right', walk: 'right', run: 'right', crouch: 'left', jump: 'right' }),
+    sourceFacingByAction: Object.freeze({ idle: 'right', walk: 'right', run: 'right', crouch: 'right', jump: 'right' }),
     actions: MATTHIAS_ACTIONS,
-    motionFrames: Object.freeze({ idle: 6, walk: 9, run: 9, crouch: 8, airborne: 8 }),
+    motionFrames: Object.freeze({ idle: 10, walk: 10, run: 16, crouch: 10, airborne: 9 }),
   }),
   enemies: Object.freeze({
     url: enemyAtlasUrl,
