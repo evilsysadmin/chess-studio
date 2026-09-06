@@ -69,28 +69,42 @@ function makeRig({ axis = 'x' } = {}) {
 }
 
 describe('Hans elder walk', () => {
-  it('uses eight weighted gait phases with a visibly elderly lateral stoop', () => {
-    const { root, hans, driver, torso, head, leftLeg, rightLeg } = makeRig();
+  it('uses eight weighted gait phases with a clearly readable elderly lateral stoop', () => {
+    const { root, hans, driver, torso, head, leftLeg, rightLeg, leftArm } = makeRig();
 
     expect(installWarRoomHansElderWalk(root)).toBe(1);
     expect(driver.userData.warRoomHansElderWalk).toBe(WAR_ROOM_HANS_ELDER_WALK_VERSION);
     expect(driver.userData.warRoomHansGaitFrames).toBe(8);
 
-    for (let frame = 0; frame < 10; frame += 1) driver.onBeforeRender();
+    let maxLegSeparation = 0;
+    let maxArmSwing = 0;
+    let maxStepSeparation = 0;
+    for (let frame = 0; frame < 14; frame += 1) {
+      driver.onBeforeRender();
+      maxLegSeparation = Math.max(
+        maxLegSeparation,
+        Math.abs(leftLeg.rotation.x - rightLeg.rotation.x),
+      );
+      maxArmSwing = Math.max(maxArmSwing, Math.abs(leftArm.rotation.x));
+      maxStepSeparation = Math.max(maxStepSeparation, Math.abs(leftLeg.position.z - rightLeg.position.z));
+    }
 
     expect(hans.userData.warRoomHansGaitFrameCount).toBe(8);
     expect(hans.userData.warRoomHansGaitFrame).toBeGreaterThanOrEqual(0);
     expect(hans.userData.warRoomHansGaitFrame).toBeLessThan(8);
-    expect(hans.userData.warRoomHansGaitStyle).toBe('elder-butler-weighted-v2-horizontal-stoop');
-    expect(hans.userData.warRoomHansHorizontalWalkBlend).toBeGreaterThan(0.85);
-    expect(hans.userData.warRoomHansHunchRadians).toBeGreaterThan(0.09);
-    expect(hans.userData.warRoomHansHunchRadians).toBeLessThan(0.12);
-    expect(Math.abs(torso.rotation.x)).toBeGreaterThan(0.085);
-    expect(Math.abs(head.rotation.x)).toBeGreaterThan(0.01);
-    expect(Math.abs(leftLeg.rotation.x - rightLeg.rotation.x)).toBeGreaterThan(0.02);
+    expect(hans.userData.warRoomHansGaitStyle).toBe('elder-butler-readable-v3-stoop-arms-steps');
+    expect(hans.userData.warRoomHansHorizontalWalkBlend).toBeGreaterThan(0.98);
+    expect(hans.userData.warRoomHansHunchRadians).toBeGreaterThan(0.16);
+    expect(hans.userData.warRoomHansHunchRadians).toBeLessThan(0.18);
+    expect(Math.abs(torso.rotation.x)).toBeGreaterThan(0.15);
+    expect(torso.position.z).toBeGreaterThan(0.055);
+    expect(head.position.z).toBeGreaterThan(torso.position.z);
+    expect(maxLegSeparation).toBeGreaterThan(0.22);
+    expect(maxStepSeparation).toBeGreaterThan(0.12);
+    expect(maxArmSwing).toBeGreaterThan(0.13);
   });
 
-  it('leans more and swings the arms slightly more in horizontal travel than longitudinal travel', () => {
+  it('leans, steps and swings clearly more in horizontal travel than longitudinal travel', () => {
     const horizontal = makeRig({ axis: 'x' });
     const longitudinal = makeRig({ axis: 'z' });
 
@@ -99,19 +113,33 @@ describe('Hans elder walk', () => {
 
     let horizontalMaxArm = 0;
     let longitudinalMaxArm = 0;
+    let horizontalMaxLeg = 0;
+    let longitudinalMaxLeg = 0;
     for (let frame = 0; frame < 18; frame += 1) {
       horizontal.driver.onBeforeRender();
       longitudinal.driver.onBeforeRender();
       horizontalMaxArm = Math.max(horizontalMaxArm, Math.abs(horizontal.leftArm.rotation.x));
       longitudinalMaxArm = Math.max(longitudinalMaxArm, Math.abs(longitudinal.leftArm.rotation.x));
+      horizontalMaxLeg = Math.max(
+        horizontalMaxLeg,
+        Math.abs(horizontal.leftLeg.rotation.x - horizontal.rightLeg.rotation.x),
+      );
+      longitudinalMaxLeg = Math.max(
+        longitudinalMaxLeg,
+        Math.abs(longitudinal.leftLeg.rotation.x - longitudinal.rightLeg.rotation.x),
+      );
     }
 
-    expect(horizontal.hans.userData.warRoomHansHorizontalWalkBlend).toBeGreaterThan(0.95);
+    expect(horizontal.hans.userData.warRoomHansHorizontalWalkBlend).toBeGreaterThan(0.99);
     expect(longitudinal.hans.userData.warRoomHansHorizontalWalkBlend).toBeLessThan(0.05);
     expect(horizontal.hans.userData.warRoomHansHunchRadians)
-      .toBeGreaterThan(longitudinal.hans.userData.warRoomHansHunchRadians + 0.035);
-    expect(horizontalMaxArm).toBeGreaterThan(longitudinalMaxArm * 1.35);
-    expect(horizontalMaxArm).toBeLessThan(0.09);
+      .toBeGreaterThan(longitudinal.hans.userData.warRoomHansHunchRadians + 0.09);
+    expect(horizontalMaxArm).toBeGreaterThan(longitudinalMaxArm * 2.4);
+    expect(horizontalMaxArm).toBeGreaterThan(0.13);
+    expect(horizontalMaxArm).toBeLessThan(0.18);
+    expect(horizontalMaxLeg).toBeGreaterThan(longitudinalMaxLeg * 1.45);
+    expect(horizontal.hans.userData.warRoomHansLegSwingGain).toBeGreaterThan(1.5);
+    expect(horizontal.hans.userData.warRoomHansStepGain).toBeGreaterThan(1.45);
   });
 
   it('owns carrying-arm poses while walking so the extra braceo never touches a carried log', () => {
