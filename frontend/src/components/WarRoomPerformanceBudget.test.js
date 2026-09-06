@@ -13,7 +13,7 @@ function point(name) {
 }
 
 describe('War Room desktop performance budget', () => {
-  it('keeps only fire + side torches as real point lights inside premium decor', () => {
+  it('keeps only fire + side torches and detaches retired lights from the scene graph', () => {
     const scene = new THREE.Scene();
     const names = [
       'war-room-fire-light',
@@ -28,7 +28,10 @@ describe('War Room desktop performance budget', () => {
     lights.forEach((light) => scene.add(light));
     const museumKey = new THREE.SpotLight(0xffffff, 1);
     museumKey.name = 'war-room-museum-side-key-left';
-    scene.add(museumKey);
+    const museumTarget = new THREE.Object3D();
+    museumTarget.name = 'war-room-museum-side-target-left';
+    museumKey.target = museumTarget;
+    scene.add(museumTarget, museumKey);
 
     const stats = applyWarRoomPerformanceBudget(scene);
 
@@ -42,13 +45,18 @@ describe('War Room desktop performance budget', () => {
     for (const light of lights) {
       const keep = ['war-room-fire-light', 'war-room-side-torch-light'].includes(light.name);
       expect(light.visible).toBe(keep);
-      expect(light.userData.warRoomPerformanceLight).toBe(keep ? 'kept-real-light' : 'emissive-only');
+      expect(light.userData.warRoomPerformanceLight).toBe(keep ? 'kept-real-light' : 'emissive-only-retired');
+      expect(light.parent).toBe(keep ? scene : null);
     }
     expect(museumKey.visible).toBe(false);
-    expect(museumKey.userData.warRoomPerformanceLight).toBe('global-key-covered');
+    expect(museumKey.userData.warRoomPerformanceLight).toBe('global-key-covered-retired');
+    expect(museumKey.parent).toBeNull();
+    expect(museumTarget.parent).toBeNull();
     expect(scene.userData.warRoomPointLightsKept).toBe(3);
     expect(scene.userData.warRoomPointLightsCulled).toBe(4);
     expect(scene.userData.warRoomSpotLightsCulled).toBe(1);
+    expect(scene.userData.warRoomDetachedLights).toBe(5);
+    expect(scene.userData.warRoomDetachedLightTargets).toBe(1);
   });
 
   it('instances repeated static box families without changing their local transforms', () => {
@@ -156,7 +164,9 @@ describe('War Room desktop performance budget', () => {
       staticShadowCastersRetired: 0,
     });
     expect(light.visible).toBe(true);
+    expect(light.parent).toBe(scene);
     expect(spot.visible).toBe(true);
+    expect(spot.parent).toBe(scene);
     expect(mesh.castShadow).toBe(true);
   });
 });
