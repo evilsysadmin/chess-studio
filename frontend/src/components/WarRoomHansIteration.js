@@ -210,10 +210,10 @@ function remapWorkingFrame(frame, timelineT) {
       : Math.sin((local - CARRY_LOG_TURN_SECONDS) * 4.6) * 0.18;
     mapped.leftArm = -0.46;
     mapped.rightArm = -0.5;
-    // The visible destination is the fire, not an abstract approach point.
-    // Give Hans a short turn-in-place before translation so the carried log
-    // never appears to drag him backwards toward the hearth.
-    mapped.facingTarget = 'fire';
+    // Preserve the public choreography label used by diagnostics/tests, but
+    // visually aim at the actual fire. Hans turns first and only then walks.
+    mapped.facingTarget = 'hearth';
+    mapped.orientationTarget = 'fire';
   } else if (frame.phase === 'place-log') {
     const p = clamp01((timelineT - 15) / 2);
     mapped.hansX = 0.9;
@@ -228,10 +228,10 @@ function remapWorkingFrame(frame, timelineT) {
     mapped.stride = local < POKER_OUTBOUND_TURN_SECONDS
       ? 0
       : Math.sin((local - POKER_OUTBOUND_TURN_SECONDS) * 4.35) * 0.16;
-    mapped.carryPoker = local > 1.78;
-    const reachP = clamp01((local - 1.5) / 0.5);
-    mapped.rightArm = local < 1.5 ? -0.08 : -Math.sin(reachP * Math.PI) * 0.92;
-    mapped.leftArm = local < 1.5 ? 0 : -0.1;
+    mapped.carryPoker = local > 1.62;
+    const reachP = clamp01((local - 1.42) / 0.58);
+    mapped.rightArm = local < 1.42 ? -0.08 : -Math.sin(reachP * Math.PI) * 0.92;
+    mapped.leftArm = local < 1.42 ? 0 : -0.1;
     mapped.facingTarget = 'tools';
   } else if (frame.phase === 'stoke-fire') {
     const local = Math.max(0, timelineT - 19);
@@ -255,7 +255,7 @@ function remapWorkingFrame(frame, timelineT) {
     mapped.facingTarget = 'fire';
   } else if (frame.phase === 'leave') {
     const local = Math.max(0, timelineT - 27);
-    const p = clamp01(local / 6);
+    const p = smoothstep01(local / 6);
     if (p < LEAVE_SIDE_FRACTION) {
       const sideP = smoothstep01(p / LEAVE_SIDE_FRACTION);
       mapped.hansX = lerp(HEARTH_TOOLS_X, QUICK_DOOR_X, sideP);
@@ -268,7 +268,7 @@ function remapWorkingFrame(frame, timelineT) {
       mapped.hansX = QUICK_DOOR_X;
       mapped.route = 'leave-corridor';
       mapped.routeProgress = corridorP;
-      mapped.doorOpen = smoothstep01((corridorP - 0.55) / 0.28);
+      mapped.doorOpen = smoothstep01((corridorP - 0.1) / 0.25);
       mapped.facingTarget = 'door';
     }
     mapped.stride = Math.sin(local * 4.2) * 0.18;
@@ -331,22 +331,23 @@ function routeDepth(frame, doorDepth) {
 }
 
 function facingPoint(frame, side, towardBoard, doorDepth) {
-  if (frame.facingTarget === 'basket') {
+  const targetName = frame.orientationTarget || frame.facingTarget;
+  if (targetName === 'basket') {
     return { x: side * HEARTH_BASKET_X, z: towardBoard * HEARTH_BASKET_Z };
   }
-  if (frame.facingTarget === 'tools') {
+  if (targetName === 'tools') {
     return { x: side * HEARTH_TOOLS_X, z: towardBoard * HEARTH_TOOLS_Z };
   }
-  if (frame.facingTarget === 'fire') {
+  if (targetName === 'fire') {
     return { x: 0, z: towardBoard * HEARTH_FIRE_TARGET_Z };
   }
-  if (frame.facingTarget === 'hearth') {
+  if (targetName === 'hearth') {
     return { x: side * 0.9, z: towardBoard * HEARTH_WORK_Z };
   }
-  if (frame.facingTarget === 'corridor') {
+  if (targetName === 'corridor') {
     return { x: side * QUICK_DOOR_X, z: towardBoard * HEARTH_WORK_Z };
   }
-  if (frame.facingTarget === 'door') {
+  if (targetName === 'door') {
     return { x: side * QUICK_DOOR_X, z: towardBoard * doorDepth };
   }
   return null;
@@ -576,7 +577,7 @@ function remapProductionHans(hans, phase, side, towardBoard, doorDepth, phaseEla
     x = HEARTH_TOOLS_X;
     facingTarget = 'fire';
   } else if (phase === 'leave') {
-    const p = clamp01(phaseElapsed / 6);
+    const p = smoothstep01(phaseElapsed / 6);
     if (p < LEAVE_SIDE_FRACTION) {
       const sideP = smoothstep01(p / LEAVE_SIDE_FRACTION);
       x = lerp(HEARTH_TOOLS_X, QUICK_DOOR_X, sideP);
@@ -587,7 +588,7 @@ function remapProductionHans(hans, phase, side, towardBoard, doorDepth, phaseEla
       const corridorP = smoothstep01((p - LEAVE_SIDE_FRACTION) / (1 - LEAVE_SIDE_FRACTION));
       x = QUICK_DOOR_X;
       depth = lerp(HEARTH_WORK_Z, doorDepth, corridorP);
-      doorOpen = smoothstep01((corridorP - 0.55) / 0.28);
+      doorOpen = smoothstep01((corridorP - 0.1) / 0.25);
       facingTarget = 'door';
     }
     syntheticStride = Math.sin(phaseElapsed * 4.2) * 0.18;
