@@ -56,7 +56,9 @@ export function getCameraFramingProfile(aspect) {
 export function warRoomRenderBudget({ coarsePointer = false, devicePixelRatio = 1 } = {}) {
   const dpr = Math.max(0.5, Number(devicePixelRatio) || 1);
   return Object.freeze({
-    pixelRatio: Math.min(dpr, coarsePointer ? 1 : 1.35),
+    // 1.2 keeps the premium edges crisp at gameplay distance while cutting
+    // roughly 21% of fragment work versus the previous 1.35 desktop budget.
+    pixelRatio: Math.min(dpr, coarsePointer ? 1 : 1.2),
     shadowMapSize: coarsePointer ? 512 : 1024,
     shadowRadius: coarsePointer ? 1.1 : 1.8,
   });
@@ -424,9 +426,9 @@ export function installPremiumEnvironment(renderer, scene, { coarsePointer = fal
     coarsePointer,
     devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 1,
   });
-  // Board3D históricamente fijaba 1.75/1.25 antes de entrar aquí. Reaplicamos
-  // inmediatamente el presupuesto efectivo para que el primer render ya nazca
-  // a coste razonable, en lugar de esperar a que una animación detecte lentitud.
+  // Board3D historically started above the sustained War Room budget. Apply the
+  // effective cap before the first meaningful room render instead of waiting for
+  // animation heuristics to discover that fill-rate is hot.
   renderer.setPixelRatio?.(budget.pixelRatio);
   scene.userData.warRoomRenderBudget = budget;
 
