@@ -60,9 +60,11 @@ function addCasings(B,scene,tier,disposables){
 }
 
 function addContactFill(B,scene,tier,disposables){
-  if(tier==='balanced')return;
   const fill=new B.HemisphericLight('environment-v4-contact-fill',new B.Vector3(.15,1,.05),scene);
-  fill.diffuse=new B.Color3(.075,.095,.11);fill.groundColor=new B.Color3(.006,.008,.009);fill.intensity=tier==='ultra'?.22:.15;disposables.push(fill);
+  fill.diffuse=new B.Color3(.10,.125,.145);
+  fill.groundColor=new B.Color3(.012,.016,.019);
+  fill.intensity=tier==='ultra'?.34:tier==='high'?.27:.20;
+  disposables.push(fill);
 }
 
 export function installChesscomEnvironmentArtV4(B,scene,{tier='ultra'}={}){
