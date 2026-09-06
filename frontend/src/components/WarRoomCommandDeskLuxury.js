@@ -96,6 +96,7 @@ function addBankersLamp(group, towardBoard, brass, greenGlass) {
   const lamp = new THREE.Group();
   lamp.name = 'war-room-command-desk-strategy-lamp';
   lamp.userData.commandDeskRole = 'warm-strategy-lamp';
+  lamp.userData.warRoomRealLight = 'omitted-emissive-only-v1';
   lamp.position.set(1.17, 0, -towardBoard * 0.13);
 
   addMesh(lamp, new THREE.CylinderGeometry(0.17, 0.2, 0.045, 20), brass, [0, 1.19, 0], [0, 0, 0], 'war-room-command-desk-lamp-base');
@@ -103,13 +104,6 @@ function addBankersLamp(group, towardBoard, brass, greenGlass) {
   addBox(lamp, [0.42, 0.105, 0.19], greenGlass, [0, 1.585, towardBoard * 0.035], 'war-room-command-desk-lamp-shade');
   addBox(lamp, [0.46, 0.028, 0.215], brass, [0, 1.635, towardBoard * 0.035], 'war-room-command-desk-lamp-cap');
   addMesh(lamp, new THREE.CylinderGeometry(0.036, 0.036, 0.47, 12), brass, [0, 1.585, towardBoard * 0.035], [0, 0, Math.PI / 2], 'war-room-command-desk-lamp-crossbar');
-
-  const light = new THREE.PointLight(0xffc778, 0.72, 2.5, 2);
-  light.name = 'war-room-command-desk-strategy-lamp-light';
-  light.position.set(0, 1.49, towardBoard * 0.08);
-  light.castShadow = false;
-  light.userData.commandDeskRole = 'warm-board-pool';
-  lamp.add(light);
 
   group.add(lamp);
 }
