@@ -7,6 +7,7 @@ import GameStatusStrips from './GameStatusStrips.jsx';
 import GameWarRoomCommandColumn from './GameWarRoomCommandColumn.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import Matthias3DOpeningBanter from './Matthias3DOpeningBanter.jsx';
+import WarRoomHansFireCall from './WarRoomHansFireCall.jsx';
 import useGameBoardRenderer from './useGameBoardRenderer.js';
 import { useGameFocusBubble, useGameMobileFocus } from './useGameMobileFocus.js';
 import useMatthias3DBubbleAnchor from './useMatthias3DBubbleAnchor.js';
@@ -91,6 +92,7 @@ export default function GameBoardView({
     hintMode: controls.hintMode,
     memoryContext: context.memoryContext,
   });
+  const hansFireCallEnabled = hansFireplaceIteration && game.history.length === 0;
 
   const boardProps = {
     gameId: game.id,
@@ -176,9 +178,17 @@ export default function GameBoardView({
               gameId={game.id}
               isThreeD={isThreeD}
               historyLength={game.history.length}
-              enabled={!zenMode && !focusActive}
+              enabled={!zenMode && !focusActive && !hansFireCallEnabled}
               anchorStyle={matthias3DBubbleStyle}
               trackedSquare={matthias3DTrackedSquare}
+            />
+
+            <WarRoomHansFireCall
+              gameId={game.id}
+              isThreeD={isThreeD}
+              enabled={!zenMode && !focusActive && hansFireCallEnabled}
+              matthiasAnchorStyle={matthias3DBubbleStyle}
+              matthiasTrackedSquare={matthias3DTrackedSquare}
             />
 
             {!isThreeD && !zenMode && !focusActive && activeBoardBubble && (
