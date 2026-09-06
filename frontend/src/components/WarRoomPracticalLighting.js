@@ -14,6 +14,7 @@ import { attachWarRoomCompositionRootDriver } from './WarRoomCompositionRootDriv
 import { armWarRoomOneShotHookRetirement, registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 import { installWarRoomMilitaryGallery } from './WarRoomMilitaryGallery.js';
 import { installWarRoomHansSceneRoutine } from './WarRoomHansIteration.js';
+import { applyWarRoomPerformanceBudget } from './WarRoomPerformanceBudget.js';
 
 const TORCH_WALL_WASH_VERSION = 'hearth-contour-v3';
 const TORCH_FLAME_FINISH_VERSION = 'hearth-warm-v2';
@@ -116,8 +117,6 @@ export function correctWarRoomGalleryPaintingOrientation(group) {
     if (!texture?.userData?.warRoomCampaignArt) continue;
     if (texture.flipY === true && texture.userData.warRoomPaintingOrientation === GALLERY_PAINTING_ORIENTATION_VERSION) continue;
 
-    // Embedded campaign art is decoded row 0 = visual top. DataTexture uses the
-    // opposite vertical texture convention, so flip it once at upload time.
     texture.flipY = true;
     texture.needsUpdate = true;
     texture.userData.warRoomPaintingOrientation = GALLERY_PAINTING_ORIENTATION_VERSION;
@@ -187,9 +186,6 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
     const embers = torch.getObjectByName?.('war-room-side-torch-embers');
 
     if (needsFlameFinish) {
-      // At game scale the old high untone-mapped emissive values collapsed the
-      // orange/gold distinction into one pale yellow silhouette. Keep the real
-      // PointLights for illumination and let the meshes carry saturated fire color.
       for (const [mesh, color, emissive, emissiveIntensity, opacity] of [
         [outer, 0xff5a08, 0xff1600, 1.15, 0.96],
         [inner, 0xffb83d, 0xff4a08, 1.45, 0.94],
@@ -216,8 +212,6 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
     const light = torch.getObjectByName?.('war-room-side-torch-light');
     const wallGlow = torch.getObjectByName?.('war-room-side-torch-wall-glow');
     if (needsWallWash && light) {
-      // Keep the same practical light, but let it reach the nearby sentry armor
-      // strongly enough to produce a restrained warm rim on helmet/pauldrons.
       light.color?.setHex?.(0xff7424);
       light.distance = Math.max(Number(light.distance || 0), 12);
       light.intensity *= 1.5;
@@ -228,9 +222,6 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
       wallGlow.intensity *= 2.5;
     }
 
-    // Gallery flame kinetics restores the captured base intensity every frame.
-    // Keep the wall wash boost after that reset so the contour does not vanish
-    // as soon as the first flicker tick runs.
     if (needsWallWash && outer?.onBeforeRender && !outer.userData.warRoomTorchWallWashHook) {
       const original = outer.onBeforeRender;
       outer.onBeforeRender = (...args) => {
@@ -241,9 +232,6 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
       outer.userData.warRoomTorchWallWashHook = TORCH_WALL_WASH_VERSION;
     }
 
-    // Reuse the existing organic flicker and reshape the silhouette after the
-    // kinetic driver resets scale. The orange envelope remains visibly wider
-    // than the smaller gold core on every frame, not just on initial mount.
     if (needsFlameFinish && outer?.onBeforeRender && !outer.userData.warRoomTorchFlamePulseHook) {
       const original = outer.onBeforeRender;
       const outerBaseEmissive = Number(outer.material?.emissiveIntensity || 1.15);
@@ -288,10 +276,6 @@ export function applyWarRoomPracticalLighting(group, {
 } = {}) {
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
 
-  // Static refinement converges through the shared deferred finalizer. The
-  // only continuous work kept in render hooks is actual animation: castle/fire
-  // kinetics plus AmbientLife on the floor slab. PremiumRoom is another task in
-  // that same queue, so the side wall no longer owns a static render chain.
   installWarRoomArchitecturalDepth(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomArchitecturalUpper(group, { wallZ, towardBoard, coarsePointer });
   installWarRoomArchitecturalPatina(group, { coarsePointer });
@@ -310,9 +294,6 @@ export function applyWarRoomPracticalLighting(group, {
   registerGalleryPaintingOrientationFinalizer(group, coarsePointer);
   tuneWarRoomGalleryTorchWallWash(group);
 
-  // Desktop static work shares the painting canvas and gets exactly one first
-  // paint before the whole static chain becomes a no-op. Coarse rendering has
-  // no canvas and therefore keeps its opt-in wall finalizer intact.
   armWarRoomOneShotHookRetirement(group, {
     anchorName: 'war-room-premium-painting-canvas',
     key: 'canvas-static-first-paint-v1',
@@ -333,6 +314,11 @@ export function applyWarRoomPracticalLighting(group, {
     addMuseumSideKey(group, { side: 1, wallZ, towardBoard });
     lightCount = 2;
   }
+
+  const performanceBudget = applyWarRoomPerformanceBudget(group, { coarsePointer });
+  group.userData.warRoomPerformancePointLightsKept = performanceBudget.pointLightsKept;
+  group.userData.warRoomPerformancePointLightsCulled = performanceBudget.pointLightsCulled;
+  group.userData.warRoomPerformanceSpotLightsCulled = performanceBudget.spotLightsCulled;
 
   group.userData.warRoomPracticalLightingVersion = 'museum-v4';
   group.userData.warRoomPracticalLightCount = lightCount;

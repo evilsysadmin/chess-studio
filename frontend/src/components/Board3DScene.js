@@ -119,10 +119,8 @@ export function buildWarRoom(theme, whiteSide, coarsePointer = false) {
   for (const x of [bannerX - 3.15, bannerX + 3.15]) {
     addMesh(room, new THREE.CylinderGeometry(0.07, 0.09, 0.52, 18), candleMaterial, [x, 2.18, shelfZ]);
     addMesh(room, new THREE.SphereGeometry(0.055, 12, 8), flameMaterial, [x, 2.5, shelfZ]);
-    const candleLight = new THREE.PointLight(0xffa94d, 3.2, 5, 2);
-    candleLight.position.set(x, 2.55, shelfZ + towardBoard * 0.25);
-    room.add(candleLight);
   }
+  room.userData.warRoomCandleLighting = 'emissive-only-v1';
 
   const ambientPanel = new THREE.Mesh(
     new THREE.PlaneGeometry(17, 7),
@@ -131,6 +129,17 @@ export function buildWarRoom(theme, whiteSide, coarsePointer = false) {
   ambientPanel.position.set(0, 2.4, wallZ + far * 0.25);
   if (whiteSide) ambientPanel.rotation.y = Math.PI;
   room.add(ambientPanel);
+
+  let retiredCasters = 0;
+  room.traverse((object) => {
+    if (!object?.isMesh || !object.castShadow) return;
+    object.castShadow = false;
+    object.userData ||= {};
+    object.userData.warRoomStaticShadowCasterRetired = true;
+    retiredCasters += 1;
+  });
+  room.userData.warRoomBaseStaticShadowCastersRetired = retiredCasters;
+  room.userData.warRoomBaseShadowMode = 'receive-only-v1';
 
   return room;
 }
