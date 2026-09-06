@@ -3,6 +3,7 @@ import { duckAmbientMusic } from './sound.js';
 import {
   PAWN_SLUG_ENEMIES,
   PAWN_SLUG_PICKUPS,
+  PAWN_SLUG_PLAYER,
   PAWN_SLUG_SPAWNS,
   PAWN_SLUG_WEAPON_ORDER,
   PAWN_SLUG_WEAPONS,
@@ -35,6 +36,11 @@ import {
   createPremiumBulletModel,
   createPremiumMuzzleFlash,
 } from './pawnSlugPremiumFx.js';
+import {
+  PAWN_SLUG_STURM_BISHOP_META,
+  animateSturmBishopModel,
+  createSturmBishopModel,
+} from './pawnSlugMidBoss.js';
 import { animateMatthiasSlugSprite } from './pawnSlugSprites.js';
 
 const WORLD_SCALE = 1 / 40;
@@ -215,8 +221,9 @@ function arsenalHud(player) {
 
 function hud(state) {
   const boss = state.enemies.find((enemy) => enemy.type === 'boss' && !enemy.dead);
+  const midBoss = state.enemies.find((enemy) => enemy.type === 'bishop' && !enemy.dead);
   const player = state.player;
-  const nextLevelXp = player.level >= 12 ? null : pawnSlugXpForLevel(player.level + 1);
+  const nextLevelXp = player.level >= PAWN_SLUG_PLAYER.maxLevel ? null : pawnSlugXpForLevel(player.level + 1);
   return {
     phase: state.phase,
     hp: Math.max(0, Math.ceil(player.hp)),
@@ -234,6 +241,9 @@ function hud(state) {
     score: Math.floor(state.score),
     combo: state.combo,
     progress: clamp(player.x / wx(PAWN_SLUG_WORLD.extractionX), 0, 1),
+    midBossHp: midBoss ? Math.max(0, Math.ceil(midBoss.hp)) : null,
+    midBossMaxHp: midBoss?.maxHp || null,
+    midBossLabel: midBoss ? PAWN_SLUG_STURM_BISHOP_META.label : null,
     bossHp: boss ? Math.max(0, Math.ceil(boss.hp)) : null,
     bossMaxHp: boss?.maxHp || null,
     toast: state.time <= state.toastUntil || ['ready', 'gameover', 'victory'].includes(state.phase) ? state.toast : '',
@@ -409,9 +419,10 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
 
   function createEnemy(spawn) {
     const stats = PAWN_SLUG_ENEMIES[spawn.type];
-    const model = createSlugEnemyModel(spawn.type);
+    const midBoss = spawn.type === 'bishop';
+    const model = midBoss ? createSturmBishopModel() : createSlugEnemyModel(spawn.type);
     const x = wx(spawn.x);
-    model.position.set(x, 0, 0);
+    model.position.set(x, 0, midBoss ? 0.08 : 0);
     dynamic.add(model);
     const enemy = {
       id: spawn.id,
@@ -428,13 +439,20 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       vx: 0,
       vy: 0,
       onGround: true,
-      fireCooldown: 0.45 + Math.random() * 0.8,
+      fireCooldown: midBoss ? 0.75 : 0.45 + Math.random() * 0.8,
+      shellCooldown: midBoss ? 1.65 + Math.random() * 0.45 : null,
       leapCooldown: 0.7 + Math.random() * 1.2,
       hurt: 0,
       dead: false,
       model,
     };
     state.enemies.push(enemy);
+    if (midBoss) {
+      state.hitStop = Math.max(state.hitStop, reducedMotion ? 0 : 0.08);
+      state.shake = Math.max(state.shake, reducedMotion ? 0 : 0.18);
+      setToast(`${PAWN_SLUG_STURM_BISHOP_META.label} // ${pawnSlugMatthiasLine('midBoss')}`, 3);
+      sfx.play('boss');
+    }
     return enemy;
   }
 
@@ -567,13 +585,14 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
 
   function fireEnemy(enemy, explosive = false) {
     const dir = enemy.x >= state.player.x ? -1 : 1;
-    const y = enemy.y + (enemy.type === 'boss' ? 1.9 : enemy.type === 'rook' ? 1.15 : 0.88);
+    const y = enemy.y + (enemy.type === 'boss' ? 1.9 : enemy.type === 'bishop' ? 1.55 : enemy.type === 'rook' ? 1.15 : 0.88);
     const speed = explosive ? 5.6 : ENEMY_BULLET_SPEED;
     const targetDy = (state.player.y + 0.8) - y;
     const distance = Math.max(1, Math.abs(state.player.x - enemy.x));
     const vy = clamp(targetDy / distance * speed, -2.4, 2.4);
-    addBullet({ x: enemy.x + dir * (enemy.type === 'boss' ? 2 : 0.7), y, vx: dir * speed, vy, damage: explosive ? 30 : 13, enemy: true, explosive, life: 4, weapon: 'enemy' });
-    addFlash(enemy.x + dir * (enemy.type === 'boss' ? 2 : 0.7), y, dir, 'pistol', true);
+    const muzzleOffset = enemy.type === 'boss' ? 2 : enemy.type === 'bishop' ? 1.05 : 0.7;
+    addBullet({ x: enemy.x + dir * muzzleOffset, y, vx: dir * speed, vy, damage: explosive ? (enemy.type === 'bishop' ? 24 : 30) : (enemy.type === 'bishop' ? 15 : 13), enemy: true, explosive, life: 4, weapon: 'enemy' });
+    addFlash(enemy.x + dir * muzzleOffset, y, dir, explosive ? 'panzerfaust' : 'pistol', true);
   }
 
   function burst(x, y, strength = 1, fiery = true) {
@@ -635,9 +654,13 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     state.combo = state.time <= state.comboUntil ? Math.min(9, state.combo + 1) : 1;
     state.comboUntil = state.time + 2.2;
     grantXp(enemy.type);
-    state.hitStop = Math.max(state.hitStop, reducedMotion ? 0 : enemy.type === 'boss' ? 0.22 : 0.035);
-    burst(enemy.x, enemy.y + enemy.h * 0.5, enemy.type === 'boss' ? 2.4 : 0.9, true);
+    state.hitStop = Math.max(state.hitStop, reducedMotion ? 0 : enemy.type === 'boss' ? 0.22 : enemy.type === 'bishop' ? 0.11 : 0.035);
+    burst(enemy.x, enemy.y + enemy.h * 0.5, enemy.type === 'boss' ? 2.4 : enemy.type === 'bishop' ? 1.45 : 0.9, true);
     enemy.model.visible = false;
+    if (enemy.type === 'bishop') {
+      state.score += 500;
+      state.shake = Math.max(state.shake, reducedMotion ? 0 : 0.28);
+    }
     if (enemy.type === 'boss') {
       state.bossDefeated = true;
       state.score += 2500;
@@ -735,6 +758,9 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       if (!wasOnGround) player.landing = 0.12;
     }
 
+    const blockingMidBoss = state.enemies.find((enemy) => enemy.type === 'bishop' && !enemy.dead && player.x <= enemy.x && enemy.x - player.x < 7.5);
+    if (blockingMidBoss) player.x = Math.min(player.x, blockingMidBoss.x - 1.3);
+
     const bossAlive = state.enemies.some((enemy) => enemy.type === 'boss' && !enemy.dead);
     const bossArenaLeft = wx(PAWN_SLUG_WORLD.bossX - 570);
     const bossArenaRight = wx(PAWN_SLUG_WORLD.bossX + 500);
@@ -791,6 +817,17 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
           fireEnemy(enemy, false);
           enemy.fireCooldown = 1.35 + Math.random() * 0.5;
         }
+      } else if (enemy.type === 'bishop') {
+        enemy.vx = distance > 4.8 ? enemy.dir * enemy.speed : 0;
+        if (distance < 11 && enemy.fireCooldown <= 0) {
+          fireEnemy(enemy, false);
+          enemy.fireCooldown = 0.42 + Math.random() * 0.16;
+        }
+        enemy.shellCooldown -= dt;
+        if (distance < 12.5 && enemy.shellCooldown <= 0) {
+          fireEnemy(enemy, true);
+          enemy.shellCooldown = 2.05 + Math.random() * 0.55;
+        }
       } else if (enemy.type === 'boss') {
         enemy.vx = 0;
         if (distance < 16 && enemy.fireCooldown <= 0) {
@@ -812,12 +849,17 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
         enemy.vy = 0;
         enemy.onGround = true;
       }
-      enemy.model.position.set(enemy.x, enemy.y, enemy.type === 'boss' ? -0.15 : 0);
-      enemy.model.scale.x = Math.abs(enemy.model.scale.x || 1) * enemy.dir;
-      animateSlugEnemy(enemy.model, enemy.type, state.time, { moving: Math.abs(enemy.vx) > 0.2, hurt: enemy.hurt > 0 });
+      enemy.model.position.set(enemy.x, enemy.y, enemy.type === 'boss' ? -0.15 : enemy.type === 'bishop' ? 0.08 : 0);
+      if (enemy.type === 'bishop') {
+        enemy.model.userData.baseY = enemy.y;
+        animateSturmBishopModel(enemy.model, state.time, { moving: Math.abs(enemy.vx) > 0.2, hurt: enemy.hurt > 0, dir: enemy.dir });
+      } else {
+        enemy.model.scale.x = Math.abs(enemy.model.scale.x || 1) * enemy.dir;
+        animateSlugEnemy(enemy.model, enemy.type, state.time, { moving: Math.abs(enemy.vx) > 0.2, hurt: enemy.hurt > 0 });
+      }
 
-      const contact = enemy.type === 'boss' ? 3.5 : enemy.type === 'rook' ? 0.85 : 0.58;
-      if (distance < contact && player.y < enemy.y + enemy.h) hurtPlayer(enemy.type === 'boss' ? 38 : 18);
+      const contact = enemy.type === 'boss' ? 3.5 : enemy.type === 'bishop' ? 1.15 : enemy.type === 'rook' ? 0.85 : 0.58;
+      if (distance < contact && player.y < enemy.y + enemy.h) hurtPlayer(enemy.type === 'boss' ? 38 : enemy.type === 'bishop' ? 28 : 18);
     }
 
     for (const enemy of [...state.enemies]) {
