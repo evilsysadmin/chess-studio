@@ -3,7 +3,7 @@ export const WAR_ROOM_HANS_ELDER_CRUISE_SPEED = 0.46;
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
-const MAX_REAL_FRAME_SECONDS = 0.25;
+const STALL_CATCH_UP_SECONDS = 1;
 const MIN_CLOCK_RATE = 0.06;
 const CLOCK_RATE_RISE_PER_FRAME = 1.06;
 const SPEED_EPSILON_SQ = 1e-8;
@@ -95,18 +95,23 @@ export function installWarRoomHansElderClock(root) {
   driver.userData.warRoomHansCruiseSpeed = WAR_ROOM_HANS_ELDER_CRUISE_SPEED;
   driver.userData.warRoomHansClockPolicy = 'single-elder-cruise-v1';
   driver.userData.warRoomHansClockPatch = 'scoped-performance-now-v1';
+  driver.userData.warRoomHansClockStallPolicy = 'catch-up-without-speed-sample-v1';
 
   driver.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
     const realFrameNow = realNow();
-    const rawDeltaSeconds = Math.max(0, (realFrameNow - previousRealNow) / 1000);
-    const realDeltaSeconds = Math.min(MAX_REAL_FRAME_SECONDS, rawDeltaSeconds);
+    const realDeltaSeconds = Math.max(0, (realFrameNow - previousRealNow) / 1000);
+    const stalled = realDeltaSeconds > STALL_CATCH_UP_SECONDS;
     previousRealNow = realFrameNow;
 
     const preWalking = hansIsWalking(hans, driver);
     if (preWalking) clockRate = Math.min(clockRate, clockCeiling(hans, driver));
     else clockRate = 1;
 
-    syntheticNow += realDeltaSeconds * 1000 * clockRate;
+    // Normal rendered motion is governed. A long render gap is not a walking
+    // sample at all: catch the choreography clock up by the elapsed wall time so
+    // a suspended tab/test does not leave Hans frozen several phases behind.
+    // The jump is deliberately excluded from the speed feedback below.
+    syntheticNow += realDeltaSeconds * 1000 * (stalled ? 1 : clockRate);
 
     const savedNow = performanceObject.now;
     let patched = false;
@@ -127,7 +132,7 @@ export function installWarRoomHansElderClock(root) {
     const distanceSq = dx * dx + dz * dz;
     const postWalking = hansIsWalking(hans, driver);
 
-    if (postWalking && realDeltaSeconds > 1e-6 && distanceSq > SPEED_EPSILON_SQ) {
+    if (!stalled && postWalking && realDeltaSeconds > 1e-6 && distanceSq > SPEED_EPSILON_SQ) {
       const measuredSpeed = Math.sqrt(distanceSq) / realDeltaSeconds;
       const ceiling = clockCeiling(hans, driver);
       const desiredRate = Math.max(
