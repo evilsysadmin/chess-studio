@@ -1,7 +1,42 @@
 /* Castle hub speech geometry: keep the live bubble physically attached to
- * Matthias after moving the resident from the old right rail to the left wall. */
+ * Matthias after moving the resident from the old right rail to the left wall.
+ *
+ * Speaking must use one shared layout instead of independent viewport X values:
+ * the character and bubble are siblings, so let flex geometry own the gap. This
+ * survives later Home composition changes without another round of magic offsets.
+ */
 @media (min-width: 761px) {
-  body:has(.menu.home-friendly) .matthias-resident.is-viewport .matthias-resident__bubble {
-    left: calc(clamp(1.25rem, 4vw, 4rem) + clamp(150px, 12vw, 205px) + 1rem) !important;
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport.is-speaking {
+    width: max-content !important;
+  }
+
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport.is-speaking .matthias-resident__stage {
+    display: flex !important;
+    flex-direction: row-reverse;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: .5rem !important;
+  }
+
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport.is-speaking .matthias-resident__bubble {
+    position: relative !important;
+    inset: auto !important;
+    flex: 0 1 320px;
+    width: min(320px, calc(100vw - 25rem)) !important;
+    max-width: 320px !important;
+    margin: 0 0 1rem !important;
+  }
+
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport.is-speaking .matthias-resident__bubble::after {
+    left: -7px !important;
+    right: auto !important;
+    transform: rotate(45deg) !important;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1080px) {
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport.is-speaking .matthias-resident__bubble {
+    width: min(280px, calc(100vw - 19rem)) !important;
+    max-width: 280px !important;
   }
 }
