@@ -1,12 +1,16 @@
 import * as THREE from 'three';
 
-export const MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION = 'home-prop-contact-v2-sleep-clearance';
+export const MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION = 'home-prop-contact-v3-contextual-interaction';
 
 const HAND_SKIN = 0xe1c58c;
 const CUFF_BLACK = 0x090b0e;
 const CUFF_GOLD = 0xb37a28;
 const UP = new THREE.Vector3(0, 1, 0);
 
+// Props belong to the room, not to Matthias' silhouette. These sockets describe
+// where a hand may touch an object after that object has been staged on furniture.
+// A missing assist socket is deliberate: reading is an interaction, not a two-hand
+// product demo in front of his chest.
 const CONTACT_SPECS = Object.freeze({
   cup: {
     support: { node: 'campaign-cup-handle', point: [0, 0, 0], lift: .035 },
@@ -15,24 +19,21 @@ const CONTACT_SPECS = Object.freeze({
     support: { node: 'campaign-beer-handle', point: [0, 0, 0], lift: .035 },
   },
   breakfast: {
-    support: { node: 'activity-breakfast', point: [.205, -.025, .075], lift: .030 },
-    assist: { node: 'activity-breakfast', point: [-.205, -.025, .075], lift: .030 },
+    support: { node: 'campaign-cup-handle', point: [0, 0, 0], lift: .028 },
+    assist: { node: 'breakfast-croissant', point: [.02, .01, .02], lift: .020 },
   },
   book: {
-    support: { node: 'activity-book', point: [.255, -.120, .085], lift: .038 },
-    assist: { node: 'activity-book', point: [-.255, -.120, .085], lift: .038 },
+    support: { node: 'activity-book', point: [.18, -.015, .090], lift: .030 },
   },
   dossier: {
-    support: { node: 'dossier-mock-open-file', point: [.255, -.145, .055], lift: .040 },
-    assist: { node: 'dossier-mock-open-file', point: [-.255, -.145, .055], lift: .040 },
+    support: { node: 'dossier-mock-page-right', point: [.055, -.035, .035], lift: .028 },
   },
   write: {
     support: { node: 'activity-pen', point: [0, -.085, 0], lift: .025 },
-    assist: { node: 'writing-dossier', point: [-.245, -.125, .060], lift: .038 },
+    assist: { node: 'writing-dossier', point: [-.185, -.080, .070], lift: .020 },
   },
   press: {
-    support: { node: 'activity-press', point: [.335, -.185, .045], lift: .040 },
-    assist: { node: 'activity-press', point: [-.335, -.185, .045], lift: .040 },
+    support: { node: 'chess-weekly-right-page', point: [.115, -.115, .035], lift: .024 },
   },
 });
 
@@ -70,6 +71,149 @@ function ensureCuff(owner, key) {
   group.add(trim);
 
   return group;
+}
+
+function ensureInteractionSurface(rig) {
+  const activityRig = rig?.activityRig;
+  if (!activityRig) return null;
+  if (activityRig.objectInteractionSurface) return activityRig.objectInteractionSurface;
+
+  const surface = new THREE.Group();
+  surface.name = 'home-object-interaction-surface';
+  surface.visible = false;
+  activityRig.root.add(surface);
+
+  const wood = new THREE.MeshStandardMaterial({ color: 0x24140d, roughness: .58, metalness: .08 });
+  const edge = new THREE.MeshStandardMaterial({ color: 0x6b3d20, roughness: .38, metalness: .18 });
+  const gold = new THREE.MeshStandardMaterial({ color: CUFF_GOLD, roughness: .24, metalness: .82 });
+
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.02, .075, .32), wood);
+  top.name = 'home-object-interaction-table-top';
+  surface.add(top);
+
+  const lip = new THREE.Mesh(new THREE.BoxGeometry(1.06, .022, .34), edge);
+  lip.name = 'home-object-interaction-table-edge';
+  lip.position.y = .044;
+  surface.add(lip);
+
+  for (const x of [-.39, .39]) {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(.085, .28, .11), wood);
+    leg.name = 'home-object-interaction-table-leg';
+    leg.position.set(x, -.17, -.025);
+    surface.add(leg);
+
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(.14, .030, .15), gold);
+    foot.name = 'home-object-interaction-table-foot';
+    foot.position.set(x, -.325, -.025);
+    surface.add(foot);
+  }
+
+  activityRig.objectInteractionSurface = surface;
+  return surface;
+}
+
+function setGroupPose(group, position, rotation, scale = 1) {
+  if (!group) return;
+  group.position.set(...position);
+  group.rotation.set(...rotation);
+  group.scale.setScalar(scale);
+}
+
+function stageObjectInEnvironment(rig, prop) {
+  const activityRig = rig?.activityRig;
+  const root = rig?.root;
+  if (!activityRig || !root) return;
+
+  const surface = ensureInteractionSurface(rig);
+  if (surface) surface.visible = false;
+  root.userData.activityPropRelationship = 'environment-interaction';
+  root.userData.activityObjectStaging = 'none';
+
+  if (prop === 'cup') {
+    if (surface) {
+      surface.visible = true;
+      setGroupPose(surface, [.38, -.625, .61], [0, 0, -.015], .72);
+    }
+    setGroupPose(activityRig.cup, [.48, -.48, .77], [.01, -.05, -.04], .80);
+    root.userData.activityObjectStaging = 'side-table';
+    return;
+  }
+
+  if (prop === 'beer') {
+    if (surface) {
+      surface.visible = true;
+      setGroupPose(surface, [.38, -.625, .61], [0, 0, -.015], .72);
+    }
+    setGroupPose(activityRig.beer, [.47, -.46, .77], [.01, -.04, -.035], .80);
+    root.userData.activityObjectStaging = 'side-table';
+    return;
+  }
+
+  if (prop === 'breakfast') {
+    if (surface) {
+      surface.visible = true;
+      setGroupPose(surface, [.02, -.65, .61], [0, 0, 0], .92);
+    }
+    setGroupPose(activityRig.breakfast, [.19, -.565, .79], [-.30, -.04, -.035], .78);
+    setGroupPose(activityRig.cup, [-.35, -.49, .78], [.01, .05, .035], .72);
+    root.userData.activityObjectStaging = 'breakfast-table';
+    return;
+  }
+
+  if (prop === 'book') {
+    if (surface) {
+      surface.visible = true;
+      setGroupPose(surface, [-.06, -.675, .61], [0, 0, .015], .92);
+    }
+    setGroupPose(activityRig.book, [-.08, -.61, .80], [-.68, .10, .035], .78);
+    root.userData.activityObjectStaging = 'reading-desk';
+    return;
+  }
+
+  if (prop === 'dossier') {
+    // The dossier mock already owns a desk, books and mug. Move only the open
+    // file down onto that desk; the desk itself remains exactly where the mock
+    // placed it. Matthias may touch a page, but never carries the expediente.
+    const document = root.getObjectByName('dossier-mock-open-file');
+    if (document) {
+      document.position.set(.03, -.605, .80);
+      document.rotation.set(-.58, 0, -.015);
+    }
+    root.userData.activityObjectStaging = 'dossier-desk';
+    return;
+  }
+
+  if (prop === 'write') {
+    if (surface) {
+      surface.visible = true;
+      setGroupPose(surface, [.04, -.68, .61], [0, 0, -.015], .92);
+    }
+    setGroupPose(activityRig.write, [.10, -.625, .79], [-.64, -.18, -.08], .76);
+    root.userData.activityObjectStaging = 'writing-desk';
+    return;
+  }
+
+  if (prop === 'press') {
+    if (surface) {
+      surface.visible = true;
+      setGroupPose(surface, [.02, -.68, .61], [0, 0, 0], .94);
+    }
+    // Chess Weekly used to sit upright across Matthias' torso with a hand on
+    // each lower corner: visually, a newspaper vendor. Keep the approved paper
+    // model and page-turn animation, but lay it on the reading desk below his
+    // chest. One hand may follow the active page; the other stays free.
+    setGroupPose(activityRig.press, [.035, -.575, .84], [-.66, .055, .015], .88);
+    root.userData.activityObjectStaging = 'reading-desk';
+  }
+}
+
+function dynamicContactSpec(rig, prop) {
+  if (prop !== 'press') return CONTACT_SPECS[prop];
+  const turning = Number(rig?.root?.userData?.activityPageTurn) || 0;
+  if (turning <= .05) return CONTACT_SPECS.press;
+  return {
+    support: { node: 'chess-weekly-page-turn-leaf', point: [.14, -.12, .025], lift: .020 },
+  };
 }
 
 function ensurePrivateGameSupport(rig) {
@@ -166,11 +310,16 @@ function clearContactCuffs(activityRig) {
   if (assistCuff) assistCuff.visible = false;
 }
 
+function hideInteractionSurface(activityRig) {
+  if (activityRig?.objectInteractionSurface) activityRig.objectInteractionSurface.visible = false;
+}
+
 function applySleepHeadSupport(rig) {
   const activityRig = rig?.activityRig;
   if (!activityRig || rig?.root?.userData?.activitySleepState === 'inactive') return null;
 
   clearContactCuffs(activityRig);
+  hideInteractionSurface(activityRig);
   const {
     support,
     supportStem,
@@ -204,6 +353,8 @@ function applySleepHeadSupport(rig) {
   rig.root.userData.activityPropContactProp = 'blanket';
   rig.root.userData.activityPropContactHands = 'sleep-head-support';
   rig.root.userData.activitySleepFaceClearance = 'hands-below-and-behind-face';
+  rig.root.userData.activityPropRelationship = 'body-support';
+  rig.root.userData.activityObjectStaging = 'sleep-rig';
 
   return {
     prop: 'blanket',
@@ -217,10 +368,13 @@ export function clearMatthiasHomePropContactRig(rig) {
   const activityRig = rig?.activityRig;
   if (!activityRig) return;
   clearContactCuffs(activityRig);
+  hideInteractionSurface(activityRig);
   if (rig?.root?.userData) {
     rig.root.userData.activityPropContact = 'inactive';
     rig.root.userData.activityPropContactProp = 'none';
     rig.root.userData.activitySleepFaceClearance = 'inactive';
+    rig.root.userData.activityPropRelationship = 'inactive';
+    rig.root.userData.activityObjectStaging = 'none';
   }
 }
 
@@ -235,6 +389,7 @@ export function applyMatthiasHomePropContactRig(rig) {
   // still obey the same physical rule as every other prop: it rests on furniture.
   if (prop === 'chess') {
     clearContactCuffs(activityRig);
+    hideInteractionSurface(activityRig);
     const support = ensurePrivateGameSupport(rig);
     if (!support) {
       clearMatthiasHomePropContactRig(rig);
@@ -244,6 +399,8 @@ export function applyMatthiasHomePropContactRig(rig) {
     root.userData.activityPropContactProp = 'chess';
     root.userData.activityPropContactHands = 'board-rest/pointing-hand';
     root.userData.activitySleepFaceClearance = 'inactive';
+    root.userData.activityPropRelationship = 'environment-interaction';
+    root.userData.activityObjectStaging = 'private-game-table';
     return { prop: 'chess', boardSupport: support, supportSolved: false, assistSolved: false };
   }
 
@@ -251,7 +408,8 @@ export function applyMatthiasHomePropContactRig(rig) {
   // no previous prop/contact pose can leave a glove sitting on Matthias' face.
   if (prop === 'blanket') return applySleepHeadSupport(rig);
 
-  const spec = CONTACT_SPECS[prop];
+  stageObjectInEnvironment(rig, prop);
+  const spec = dynamicContactSpec(rig, prop);
 
   // Dedicated rigs own these contacts: tactical meal choreography. Do not fight
   // them with generic limb sockets.
@@ -293,7 +451,7 @@ export function applyMatthiasHomePropContactRig(rig) {
 
   root.userData.activityPropContact = MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION;
   root.userData.activityPropContactProp = prop;
-  root.userData.activityPropContactHands = `${supportSolved ? 1 : 0}/${assistSolved ? 1 : 0}`;
+  root.userData.activityPropContactHands = `interaction:${supportSolved ? 1 : 0}/${assistSolved ? 1 : 0}`;
   root.userData.activitySleepFaceClearance = 'inactive';
 
   return {
@@ -302,5 +460,6 @@ export function applyMatthiasHomePropContactRig(rig) {
     assistTarget: assistTarget?.clone?.() || null,
     supportSolved,
     assistSolved,
+    staging: root.userData.activityObjectStaging,
   };
 }
