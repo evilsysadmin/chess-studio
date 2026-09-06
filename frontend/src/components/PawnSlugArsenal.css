@@ -130,6 +130,20 @@
   transition: width .16s ease-out;
 }
 
+.pawn-slug-boss.is-midboss {
+  border-color: rgba(210, 165, 78, .58);
+  background: linear-gradient(180deg, rgba(54, 40, 18, .91), rgba(24, 21, 16, .92));
+  box-shadow: 0 0 24px rgba(187, 139, 53, .16);
+}
+
+.pawn-slug-boss.is-midboss span {
+  color: #ecd399;
+}
+
+.pawn-slug-boss.is-midboss i {
+  background: linear-gradient(90deg, #65502c, #b98436, #e0c36f);
+}
+
 @media (max-width: 700px) {
   .pawn-slug-arsenal {
     top: 4.35rem;
