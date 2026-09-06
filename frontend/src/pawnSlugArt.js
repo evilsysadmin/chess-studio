@@ -49,8 +49,8 @@ export const PAWN_SLUG_ENVIRONMENT_META = Object.freeze({
   parallaxLayers: 3,
   landmarkSpacing: 18,
   staticBatching: PAWN_SLUG_STATIC_INSTANCE_VERSION,
-  staticBatchedInstances: 245,
-  staticBatchDrawMeshes: 4,
+  staticBatchedInstances: 313,
+  staticBatchDrawMeshes: 16,
   props: Object.freeze([
     'fortress-wall',
     'battlements',
@@ -168,10 +168,18 @@ function addBrokenBarrier(parent, x, z = 1.78, lean = 0) {
 }
 
 function addBattlements(tower, width, height, depth = 2.3) {
-  const stone = std(0x252a31, 0.94);
+  const instances = [];
   for (let x = -width / 2 + 0.28; x <= width / 2 - 0.28; x += 0.58) {
-    tower.add(mesh(new THREE.BoxGeometry(0.32, 0.46, depth), stone.clone(), { x, y: height + 0.23 }));
+    instances.push({ x, y: height + 0.23 });
   }
+  const battlements = createPawnSlugStaticInstanceBatch({
+    name: 'pawn-slug-tower-battlements-instanced',
+    geometry: new THREE.BoxGeometry(0.32, 0.46, depth),
+    material: std(0x252a31, 0.94),
+    instances,
+  });
+  if (battlements) tower.add(battlements);
+  return battlements?.count || 0;
 }
 
 function addSearchlight(tower, { x = 0, y = 5, z = 1.35, angle = -0.28 } = {}) {
@@ -211,7 +219,8 @@ function addFortressTower(parent, x, height, variant = 0) {
 
   const crown = mesh(new THREE.BoxGeometry(2.75, 0.42, 2.55), std(0x22272e, 0.92), { y: height });
   tower.add(crown);
-  addBattlements(tower, 2.75, height + 0.2, 2.45);
+  tower.userData.pawnSlugStaticBatchedInstances = addBattlements(tower, 2.75, height + 0.2, 2.45);
+  tower.userData.pawnSlugStaticBatchDrawMeshes = tower.userData.pawnSlugStaticBatchedInstances ? 1 : 0;
 
   for (let row = 0; row < 2; row += 1) {
     for (let column = -1; column <= 1; column += 1) {
@@ -410,12 +419,15 @@ export function createSlugEnvironment(scene) {
   const shoulderB = shoulderA.clone(); shoulderB.position.z = -2.39;
   env.add(shoulderA, shoulderB);
 
-  const rutMaterial = new THREE.MeshStandardMaterial({ color: 0x211f1c, roughness: 1 });
-  for (const z of [-0.66, -0.46, 0.48, 0.68]) {
-    const rut = mesh(new THREE.PlaneGeometry(150, 0.085), rutMaterial.clone(), { x: 72, y: 0.024, z, rx: -Math.PI / 2 });
-    rut.castShadow = false;
-    env.add(rut);
-  }
+  const rutInstances = [-0.66, -0.46, 0.48, 0.68].map((z) => ({ x: 72, y: 0.024, z, rx: -Math.PI / 2 }));
+  const ruts = createPawnSlugStaticInstanceBatch({
+    name: 'pawn-slug-track-ruts-instanced',
+    geometry: new THREE.PlaneGeometry(150, 0.085),
+    material: new THREE.MeshStandardMaterial({ color: 0x211f1c, roughness: 1 }),
+    instances: rutInstances,
+    castShadow: false,
+  });
+  if (ruts) env.add(ruts);
 
   const craterRockInstances = [];
   for (let x = 8; x < 145; x += 13.5) {
@@ -478,33 +490,38 @@ export function createSlugEnvironment(scene) {
   wall.name = 'pawn-slug-fortress-wall';
   wall.position.z = -4.85;
   env.add(wall);
+  const wallSegmentInstances = [];
   const wallBattlementInstances = [];
   for (let x = 4; x < 146; x += 8.7) {
     const height = 2.65 + seededUnit(x) * 0.55;
-    const segment = mesh(new THREE.BoxGeometry(7.9, height, 1.08), std(0x292e35, 0.96), { x, y: height / 2 });
-    wall.add(segment);
+    wallSegmentInstances.push({ x, y: height / 2, sx: 7.9, sy: height, sz: 1.08 });
     for (let b = -3.45; b <= 3.45; b += 0.86) {
       if (seededUnit(x + b * 10) < 0.16) continue;
       wallBattlementInstances.push({ x: x + b, y: height + 0.2 });
     }
   }
+  const wallSegments = createPawnSlugStaticInstanceBatch({
+    name: 'pawn-slug-wall-segments-instanced',
+    geometry: new THREE.BoxGeometry(1, 1, 1),
+    material: std(0x292e35, 0.96),
+    instances: wallSegmentInstances,
+  });
   const wallBattlements = createPawnSlugStaticInstanceBatch({
     name: 'pawn-slug-wall-battlements-instanced',
     geometry: new THREE.BoxGeometry(0.42, 0.4, 1.18),
     material: std(0x22272d, 0.95),
     instances: wallBattlementInstances,
   });
+  if (wallSegments) wall.add(wallSegments);
   if (wallBattlements) wall.add(wallBattlements);
 
-  env.userData.pawnSlugStaticBatchedInstances = craterRockInstances.length
-    + rubbleDarkInstances.length
-    + rubbleLightInstances.length
-    + wallBattlementInstances.length;
-  env.userData.pawnSlugStaticBatchDrawMeshes = 4;
-
+  let towerBatchedInstances = 0;
+  let towerBatchDrawMeshes = 0;
   for (let x = 12, variant = 0; x < 145; x += PAWN_SLUG_ENVIRONMENT_META.landmarkSpacing, variant += 1) {
     const height = 5.15 + seededUnit(x) * 1.65;
-    addFortressTower(env, x, height, variant);
+    const tower = addFortressTower(env, x, height, variant);
+    towerBatchedInstances += tower.userData.pawnSlugStaticBatchedInstances || 0;
+    towerBatchDrawMeshes += tower.userData.pawnSlugStaticBatchDrawMeshes || 0;
   }
 
   const far = new THREE.Group();
@@ -516,17 +533,53 @@ export function createSlugEnvironment(scene) {
   farWall.castShadow = false;
   far.add(farWall);
 
+  const hillDarkInstances = [];
+  const hillLightInstances = [];
   for (let x = -8; x < 162; x += 11.5) {
     const height = 5.8 + seededUnit(x + 30) * 2.6;
-    const hill = mesh(
-      new THREE.ConeGeometry(4.2 + seededUnit(x) * 2.9, height, 7),
-      new THREE.MeshLambertMaterial({ color: x % 23 < 11 ? 0x1b2027 : 0x20252b }),
-      { x, y: 1.8 + height * 0.1, z: -2.2, ry: Math.PI / 6 },
-    );
-    hill.scale.z = 0.34;
-    hill.castShadow = false;
-    far.add(hill);
+    const radius = 4.2 + seededUnit(x) * 2.9;
+    const instances = x % 23 < 11 ? hillDarkInstances : hillLightInstances;
+    instances.push({
+      x,
+      y: 1.8 + height * 0.1,
+      z: -2.2,
+      ry: Math.PI / 6,
+      sx: radius,
+      sy: height,
+      sz: radius * 0.34,
+    });
   }
+  const hillDark = createPawnSlugStaticInstanceBatch({
+    name: 'pawn-slug-far-hills-dark-instanced',
+    geometry: new THREE.ConeGeometry(1, 1, 7),
+    material: new THREE.MeshLambertMaterial({ color: 0x1b2027 }),
+    instances: hillDarkInstances,
+    castShadow: false,
+  });
+  const hillLight = createPawnSlugStaticInstanceBatch({
+    name: 'pawn-slug-far-hills-light-instanced',
+    geometry: new THREE.ConeGeometry(1, 1, 7),
+    material: new THREE.MeshLambertMaterial({ color: 0x20252b }),
+    instances: hillLightInstances,
+    castShadow: false,
+  });
+  if (hillDark) far.add(hillDark);
+  if (hillLight) far.add(hillLight);
+
+  env.userData.pawnSlugStaticBatchedInstances = craterRockInstances.length
+    + rubbleDarkInstances.length
+    + rubbleLightInstances.length
+    + wallBattlementInstances.length
+    + rutInstances.length
+    + wallSegmentInstances.length
+    + towerBatchedInstances
+    + hillDarkInstances.length
+    + hillLightInstances.length;
+  env.userData.pawnSlugStaticBatchDrawMeshes = 4
+    + 1
+    + 1
+    + towerBatchDrawMeshes
+    + 2;
 
   for (const x of [22, 58, 94, 132]) addSmokePlume(far, x, 2.4, -1.1, 0.9 + seededUnit(x) * 0.45);
 
