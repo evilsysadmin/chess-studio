@@ -45,6 +45,7 @@ import {
   PAWN_SLUG_STURM_BISHOP_META,
   animateSturmBishopModel,
   createSturmBishopModel,
+  pawnSlugSturmBishopCooldownTick,
   pawnSlugSturmBishopSuppressionLane,
   pawnSlugSturmBishopSuppressionTelegraph,
   pawnSlugSturmBishopTelegraph,
@@ -888,8 +889,20 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
           enemy.fireCooldown = 1.35 + Math.random() * 0.5;
         }
       } else if (enemy.type === 'bishop') {
-        enemy.shellCooldown -= dt;
-        enemy.suppressionCooldown -= dt;
+        enemy.shellCooldown = pawnSlugSturmBishopCooldownTick(
+          enemy.shellCooldown,
+          distance,
+          PAWN_SLUG_STURM_BISHOP_META.shellRange,
+          PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds,
+          dt,
+        );
+        enemy.suppressionCooldown = pawnSlugSturmBishopCooldownTick(
+          enemy.suppressionCooldown,
+          distance,
+          PAWN_SLUG_STURM_BISHOP_META.suppressionRange,
+          PAWN_SLUG_STURM_BISHOP_META.suppressionTelegraphSeconds,
+          dt,
+        );
         enemy.suppressionShotCooldown = Math.max(0, enemy.suppressionShotCooldown - dt);
         const shellClearForSuppression = enemy.shellCooldown > PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds + 0.35;
         const suppressionCharging = enemy.suppressionShots <= 0
