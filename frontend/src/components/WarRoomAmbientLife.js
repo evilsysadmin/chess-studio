@@ -3,6 +3,7 @@ import { getEffectiveReducedMotion } from '../userPreferences.js';
 export const WAR_ROOM_AMBIENT_LIFE_VERSION = 'curtain-fire-breath-v2-cached';
 
 const WARM_EMISSIVE = 0x43130a;
+const AMBIENT_LIFE_HOT_PATH_VERSION = 'direct-args-options-reuse-v1';
 const ambientLifeStateCache = new WeakMap();
 
 function nowMs() {
@@ -130,16 +131,18 @@ export function installWarRoomAmbientLife(group, { coarsePointer = false } = {})
   buildAmbientLifeState(group);
 
   driver.userData.warRoomAmbientLifeDriver = WAR_ROOM_AMBIENT_LIFE_VERSION;
+  driver.userData.warRoomAmbientLifeHotPath = AMBIENT_LIFE_HOT_PATH_VERSION;
   const previous = driver.onBeforeRender;
-  driver.onBeforeRender = (...args) => {
-    previous?.(...args);
-    applyWarRoomAmbientLife(group, {
-      now: nowMs(),
-      reducedMotion: getEffectiveReducedMotion(),
-    });
+  const renderOptions = { now: 0, reducedMotion: false };
+  driver.onBeforeRender = (renderer, scene, camera, geometry, material, renderGroup) => {
+    previous?.(renderer, scene, camera, geometry, material, renderGroup);
+    renderOptions.now = nowMs();
+    renderOptions.reducedMotion = getEffectiveReducedMotion();
+    applyWarRoomAmbientLife(group, renderOptions);
   };
 
   group.userData.warRoomAmbientLifeDriver = WAR_ROOM_AMBIENT_LIFE_VERSION;
   group.userData.warRoomAmbientLifeAnchor = driver.name;
+  group.userData.warRoomAmbientLifeHotPath = AMBIENT_LIFE_HOT_PATH_VERSION;
   return 1;
 }

@@ -19,6 +19,7 @@ import { applyWarRoomPerformanceBudget } from './WarRoomPerformanceBudget.js';
 const TORCH_WALL_WASH_VERSION = 'hearth-contour-v3';
 const TORCH_FLAME_FINISH_VERSION = 'hearth-warm-v2';
 const TORCH_FLAME_PULSE_VERSION = 'hearth-flame-pulse-v2';
+const TORCH_RENDER_HOT_PATH_VERSION = 'direct-args-v1';
 const GALLERY_PAINTING_ORIENTATION_VERSION = 'upright-texture-v1';
 
 function materialList(object) {
@@ -207,8 +208,8 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
 
     if (needsWallWash && outer?.onBeforeRender && !outer.userData.warRoomTorchWallWashHook) {
       const original = outer.onBeforeRender;
-      outer.onBeforeRender = (...args) => {
-        original(...args);
+      outer.onBeforeRender = (renderer, scene, camera, geometry, material, renderGroup) => {
+        original(renderer, scene, camera, geometry, material, renderGroup);
         if (light) light.intensity *= 1.5;
         if (wallGlow) wallGlow.intensity *= 2.5;
       };
@@ -219,8 +220,8 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
       const original = outer.onBeforeRender;
       const outerBaseEmissive = Number(outer.material?.emissiveIntensity || 1.15);
       const innerBaseEmissive = Number(inner?.material?.emissiveIntensity || 1.45);
-      outer.onBeforeRender = (...args) => {
-        original(...args);
+      outer.onBeforeRender = (renderer, scene, camera, geometry, material, renderGroup) => {
+        original(renderer, scene, camera, geometry, material, renderGroup);
         outer.scale.x *= 1.14;
         outer.scale.y *= 1.06;
         outer.scale.z *= 1.06;
@@ -244,6 +245,7 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
       outer.userData.warRoomTorchFlamePulseHook = TORCH_FLAME_PULSE_VERSION;
     }
 
+    if (outer?.userData) outer.userData.warRoomTorchRenderHotPath = TORCH_RENDER_HOT_PATH_VERSION;
     if (needsWallWash) torch.userData.warRoomTorchWallWash = TORCH_WALL_WASH_VERSION;
     if (needsFlameFinish) torch.userData.warRoomTorchFlameFinish = TORCH_FLAME_FINISH_VERSION;
     tuned += 1;
