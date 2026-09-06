@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fetchLatestRelease, isReleaseUpdateAvailable, normalizeLatestRelease, releaseManifestUrl } from './releaseUpdate.js';
+import {
+  RELEASE_CHECK_INTERVAL_MS,
+  fetchLatestRelease,
+  isReleaseUpdateAvailable,
+  normalizeLatestRelease,
+  releaseManifestUrl,
+} from './releaseUpdate.js';
 import { buildReleaseManifest } from './releaseManifest.js';
 
 describe('release update discovery', () => {
@@ -16,6 +22,10 @@ describe('release update discovery', () => {
     expect(isReleaseUpdateAvailable('1111111abcdef', '1111111abcdef')).toBe(false);
     expect(isReleaseUpdateAvailable('v16.6dm27', 'v16.6dm26')).toBe(true);
     expect(isReleaseUpdateAvailable('v16.6dm27', 'v16.6dm27')).toBe(false);
+  });
+
+  it('mantiene un fallback visible suficientemente rápido para sesiones largas', () => {
+    expect(RELEASE_CHECK_INTERVAL_MS).toBe(60_000);
   });
 
   it('construye un manifest de deploy con release humana y SHA técnico', () => {
