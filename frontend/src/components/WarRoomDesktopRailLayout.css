@@ -1,6 +1,22 @@
 /* Desktop War Room information architecture.
    Matthias + situation + chat are one left rail; RetroPlayer + move notebook are
    one right rail. Mobile keeps the stacked layout for first-screen usability. */
+
+/* The move notebook is short-form SAN and tolerates a tighter rail much better
+   than conversational prose. Rebalance the two side rails without changing
+   their combined width, so the board keeps exactly the same horizontal budget. */
+@media (min-width: 1261px) {
+  .game-screen .board-live-row.is-3d-warroom {
+    grid-template-columns: minmax(220px, 236px) minmax(780px, 1fr) minmax(176px, 192px) !important;
+  }
+}
+
+@media (min-width: 1081px) and (max-width: 1260px) {
+  .game-screen .board-live-row.is-3d-warroom {
+    grid-template-columns: minmax(200px, 216px) minmax(610px, 1fr) minmax(176px, 192px) !important;
+  }
+}
+
 @media (min-width: 1081px) {
   .game-screen .board-live-row.is-3d-warroom {
     /* Each rail owns its own vertical stack. The commander spans both rows so
@@ -40,6 +56,7 @@
 
   .game-screen .game-3d-command-column .game-3d-warroom-status {
     margin: 0;
+    padding: .44rem .58rem;
   }
 
   .game-screen .game-3d-command-column .game-chat {
@@ -54,6 +71,14 @@
     border-color: rgba(142,121,88,.36);
     display: flex;
     flex-direction: column;
+  }
+
+  /* Conversation wins the reclaimed space: slightly calmer typography plus a
+     wider measure prevents every sentence becoming a vertical word ladder. */
+  .game-screen .game-3d-command-column .game-chat-message p,
+  .game-screen .game-3d-command-column .game-chat-empty {
+    font-size: .76rem;
+    line-height: 1.5;
   }
 
   /* The narrow command rail gets one clean line for the chat title instead of
