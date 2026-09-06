@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { isSoftwareWebGLRenderer, warRoomAmbientFramePlan, warRoomSceneProfile } from './WarRoom3DAnimation.js';
 
 describe('War Room ambient render cadence', () => {
-  it('mantiene fuego autónomo a ~12 FPS en desktop sin inspección ni input', () => {
-    expect(warRoomAmbientFramePlan({ elapsedMs: 82, inspectMode: false }).shouldRender).toBe(false);
-    const plan = warRoomAmbientFramePlan({ elapsedMs: 83, inspectMode: false });
+  it('mantiene fuego autónomo a ~10 FPS en desktop sin inspección ni input', () => {
+    expect(warRoomAmbientFramePlan({ elapsedMs: 99, inspectMode: false }).shouldRender).toBe(false);
+    const plan = warRoomAmbientFramePlan({ elapsedMs: 100, inspectMode: false });
     expect(plan.active).toBe(true);
-    expect(plan.intervalMs).toBe(83);
+    expect(plan.intervalMs).toBe(100);
     expect(plan.shouldRender).toBe(true);
     expect(plan.updateCamera).toBe(false);
   });
@@ -56,12 +56,12 @@ describe('War Room ambient render cadence', () => {
     expect(isSoftwareWebGLRenderer('AMD Radeon RX 7800 XT (RADV NAVI32)')).toBe(false);
   });
 
-  it('mantiene la geometría completa en touch y degrada coste antes que contenido', () => {
+  it('mantiene geometría completa pero nace con presupuesto GPU sensato en desktop', () => {
     expect(warRoomSceneProfile()).toEqual({
       tier: 'full',
       lite: false,
-      pixelRatioCap: 1.75,
-      shadowMapSize: 2048,
+      pixelRatioCap: 1.2,
+      shadowMapSize: 1024,
       shadowsEnabled: true,
     });
     expect(warRoomSceneProfile({ coarsePointer: true })).toEqual({
