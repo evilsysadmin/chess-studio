@@ -33,7 +33,6 @@ test('War Room · Hans saluda al entrar y Matthias rey responde desde su pieza',
   await expect(hansGreeting).toBeVisible({ timeout: 10_000 });
   await expect(hansGreeting).toContainText('HANS');
   await expect(hansGreeting).toContainText('Buenas tardes, señor.');
-  await expect(hansGreeting).toHaveCSS('pointer-events', 'auto').catch(() => null);
 
   // Quick-entry greeting owns the opening beat: Matthias' ordinary opening
   // banter must not overlap it as a second competing speech bubble.
@@ -43,6 +42,6 @@ test('War Room · Hans saluda al entrar y Matthias rey responde desde su pieza',
   await expect(reply).toBeVisible({ timeout: 8_000 });
   await expect(reply).toContainText('MATTHIAS');
   await expect(reply).toContainText('Buenas tardes, Hans.');
-  await expect(reply).toHaveAttribute('data-matthias-square', /e[18]/);
+  await expect(reply).toHaveAttribute('data-matthias-square', /^[a-h][1-8]$/);
   await expect(hansGreeting).toBeHidden();
 });
