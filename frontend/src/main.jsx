@@ -14,6 +14,7 @@ import './components/HomeCastleReadability.css';
 import './components/HomeCastleCrispness.css';
 import './components/HomeAndroidFirstFold.css';
 import './components/HomeCastleTeutonicCanonical.css';
+import './components/HomeAdaptiveDensity.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
 import { migratePersistentStorage } from './storageMigrations.js';
 import { getReducedMotionPreference, reducedMotionStatus } from './userPreferences.js';
