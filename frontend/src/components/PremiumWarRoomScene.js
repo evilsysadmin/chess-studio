@@ -75,7 +75,7 @@ function nowMs() {
 }
 
 function attachFlameKinetics(anchor, light, baseIntensity, phase = 0, coarsePointer = false) {
-  light.userData.baseWarRoomIntensity = baseIntensity;
+  if (light) light.userData.baseWarRoomIntensity = baseIntensity;
   if (coarsePointer) return;
   anchor.userData.warRoomFlame = true;
   const baseScale = anchor.scale.clone();
@@ -85,7 +85,7 @@ function attachFlameKinetics(anchor, light, baseIntensity, phase = 0, coarsePoin
     const slow = Math.sin(now * 0.0067 + phase);
     const fast = Math.sin(now * 0.021 + phase * 1.73);
     const flutter = slow * 0.075 + fast * 0.038;
-    light.intensity = baseIntensity * (1 + flutter);
+    if (light) light.intensity = baseIntensity * (1 + flutter);
     anchor.rotation.z = baseRotationZ + slow * 0.075 + fast * 0.025;
     anchor.scale.set(baseScale.x * (1 - flutter * 0.12), baseScale.y * (1 + flutter * 0.22), baseScale.z);
   };
@@ -173,6 +173,10 @@ function addVase(group, x, y, z, color, segments) {
   addMesh(group, new THREE.TorusGeometry(0.12, 0.018, 8, segments), material(COLORS.brass, { metalness: 0.82, roughness: 0.2 }), [x, y + 0.64, z], [Math.PI / 2, 0, 0]);
 }
 
+function noteDesktopRetiredPracticalOmitted(group) {
+  group.userData.warRoomDesktopLatePracticalLightsOmitted = (group.userData.warRoomDesktopLatePracticalLightsOmitted || 0) + 1;
+}
+
 function addBankerLamp(group, x, y, z, facing, segments, coarsePointer) {
   const brass = material(COLORS.brass, { metalness: 0.88, roughness: 0.18, clearcoat: 0.76, clearcoatRoughness: 0.07 });
   const green = material(0x1d513d, { roughness: 0.24, clearcoat: 0.7, emissive: 0x103326, emissiveIntensity: 0.2, sheen: 0.18 });
@@ -188,9 +192,13 @@ function addBankerLamp(group, x, y, z, facing, segments, coarsePointer) {
     [1.15, 0.48, 0.72],
   );
   shade.castShadow = !coarsePointer;
-  const glow = new THREE.PointLight(0xffc76b, warRoomDecorProfile(coarsePointer).bankerLamp, 5.6, 2);
-  glow.position.set(x + facing * 0.14, y + 0.58, z + 0.2);
-  group.add(glow);
+  if (coarsePointer) {
+    const glow = new THREE.PointLight(0xffc76b, warRoomDecorProfile(true).bankerLamp, 5.6, 2);
+    glow.position.set(x + facing * 0.14, y + 0.58, z + 0.2);
+    group.add(glow);
+  } else {
+    noteDesktopRetiredPracticalOmitted(group);
+  }
 }
 
 function addWallSconce(group, x, y, z, towardBoard, segments, coarsePointer, phase = 0) {
@@ -220,9 +228,14 @@ function addWallSconce(group, x, y, z, towardBoard, segments, coarsePointer, pha
   );
   flame.name = 'war-room-sconce-flame';
   const baseIntensity = warRoomDecorProfile(coarsePointer).wallSconce;
-  const light = new THREE.PointLight(0xffa64a, baseIntensity, 7.2, 2);
-  light.position.set(x, y - 0.38, z + towardBoard * 0.48);
-  group.add(light);
+  let light = null;
+  if (coarsePointer) {
+    light = new THREE.PointLight(0xffa64a, baseIntensity, 7.2, 2);
+    light.position.set(x, y - 0.38, z + towardBoard * 0.48);
+    group.add(light);
+  } else {
+    noteDesktopRetiredPracticalOmitted(group);
+  }
   attachFlameKinetics(flame, light, baseIntensity, phase, coarsePointer);
 }
 
