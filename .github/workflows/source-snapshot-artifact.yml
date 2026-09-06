@@ -1,0 +1,36 @@
+name: Artifact · source snapshot
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  source-snapshot:
+    name: Exact source ZIP · 73d7eea
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact merged Chesscom snapshot
+        uses: actions/checkout@v7
+        with:
+          ref: 73d7eea592cc46a2169b9104794458979d6873ed
+          fetch-depth: 1
+
+      - name: Verify exact source revision
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "73d7eea592cc46a2169b9104794458979d6873ed"
+
+      - name: Build tracked-source archive
+        shell: bash
+        run: git archive --format=zip --output=ChessStudio_73d7eea_CHESSCOM_GPU_PREMIUM_V2_COMPLETE.zip HEAD
+
+      - name: Upload exact source archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: ChessStudio-73d7eea-CHESSCOM-GPU-PREMIUM-V2-COMPLETE
+          path: ChessStudio_73d7eea_CHESSCOM_GPU_PREMIUM_V2_COMPLETE.zip
+          if-no-files-found: error
+          retention-days: 1
