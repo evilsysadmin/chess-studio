@@ -32,4 +32,18 @@
   body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-school-card {
     pointer-events: auto !important;
   }
+
+  /* HomeImmersiveCastle.css intentionally makes learning-card children fill
+   * their positioned shell. Escuela, however, is itself the positioned
+   * control (there is no shell around it), so it must not inherit the shared
+   * inset:0/100% box or it would intercept every castle door. */
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-school-card {
+    inset: auto !important;
+    left: 43.1% !important;
+    top: 25% !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 13.8% !important;
+    height: 41% !important;
+  }
 }
