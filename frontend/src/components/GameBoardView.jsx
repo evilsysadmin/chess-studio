@@ -7,6 +7,7 @@ import GameStatusStrips from './GameStatusStrips.jsx';
 import GameWarRoomCommandColumn from './GameWarRoomCommandColumn.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import Matthias3DOpeningBanter from './Matthias3DOpeningBanter.jsx';
+import WarRoomHansGreeting from './WarRoomHansGreeting.jsx';
 import useGameBoardRenderer from './useGameBoardRenderer.js';
 import { useGameFocusBubble, useGameMobileFocus } from './useGameMobileFocus.js';
 import useMatthias3DBubbleAnchor from './useMatthias3DBubbleAnchor.js';
@@ -176,9 +177,17 @@ export default function GameBoardView({
               gameId={game.id}
               isThreeD={isThreeD}
               historyLength={game.history.length}
-              enabled={!zenMode && !focusActive}
+              enabled={!zenMode && !focusActive && !hansFireplaceIteration}
               anchorStyle={matthias3DBubbleStyle}
               trackedSquare={matthias3DTrackedSquare}
+            />
+
+            <WarRoomHansGreeting
+              gameId={game.id}
+              isThreeD={isThreeD}
+              enabled={!zenMode && !focusActive && hansFireplaceIteration}
+              matthiasAnchorStyle={matthias3DBubbleStyle}
+              matthiasTrackedSquare={matthias3DTrackedSquare}
             />
 
             {!isThreeD && !zenMode && !focusActive && activeBoardBubble && (
