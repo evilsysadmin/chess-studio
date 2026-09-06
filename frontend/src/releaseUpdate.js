@@ -23,6 +23,33 @@ export function isReleaseUpdateAvailable(latestRelease, currentRelease = APP_BUI
   return Boolean(latest && current && latest !== current);
 }
 
+export function bindReleaseUpdateSignals({
+  check,
+  windowObj = typeof window !== 'undefined' ? window : null,
+  documentObj = typeof document !== 'undefined' ? document : null,
+  intervalMs = RELEASE_CHECK_INTERVAL_MS,
+} = {}) {
+  if (!windowObj || !documentObj || typeof check !== 'function') return () => {};
+
+  const checkIfVisible = () => {
+    if (documentObj.visibilityState === 'visible') return check();
+    return undefined;
+  };
+
+  const timer = windowObj.setInterval(checkIfVisible, intervalMs);
+  documentObj.addEventListener('visibilitychange', checkIfVisible);
+  // visibilitychange is not guaranteed when the browser window itself loses
+  // and regains OS focus. A deploy can therefore remain unnoticed until the
+  // five-minute poll unless focus explicitly triggers the same cheap manifest check.
+  windowObj.addEventListener('focus', checkIfVisible);
+
+  return () => {
+    windowObj.clearInterval(timer);
+    documentObj.removeEventListener('visibilitychange', checkIfVisible);
+    windowObj.removeEventListener('focus', checkIfVisible);
+  };
+}
+
 export async function fetchLatestRelease({
   fetchImpl = fetch,
   baseUrl = import.meta.env?.BASE_URL || '/',
