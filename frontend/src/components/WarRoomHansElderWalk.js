@@ -6,25 +6,25 @@ const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
 const GAIT_FRAME_COUNT = 8;
 // Keep the stride short enough to read as an elderly shuffle. More importantly,
-// the gait now advances by the *actual* travelled distance instead of capping
-// each render frame. That cap made low-FPS War Room frames translate Hans farther
-// than his legs advanced, which looked exactly like levitation.
+// the gait advances by actual travelled distance instead of render-frame count.
 const GAIT_CYCLE_DISTANCE = 0.26;
 const MIN_TRAVEL = 0.00004;
 const MIN_TRAVEL_SQ = MIN_TRAVEL * MIN_TRAVEL;
 const TELEPORT_DISTANCE = 0.48;
 const TELEPORT_DISTANCE_SQ = TELEPORT_DISTANCE * TELEPORT_DISTANCE;
-const HUNCH_RADIANS = 0.058;
-const HORIZONTAL_HUNCH_BONUS_RADIANS = 0.047;
-const BASE_ARM_SWING_GAIN = 1.12;
-const HORIZONTAL_ARM_SWING_BONUS = 0.58;
-const HORIZONTAL_BLEND_RESPONSE = 0.22;
+const HUNCH_RADIANS = 0.065;
+const HORIZONTAL_HUNCH_BONUS_RADIANS = 0.105;
+const BASE_ARM_SWING_GAIN = 1.25;
+const HORIZONTAL_ARM_SWING_BONUS = 2.35;
+const HORIZONTAL_LEG_SWING_BONUS = 0.55;
+const HORIZONTAL_STEP_BONUS = 0.5;
+const HORIZONTAL_LIFT_BONUS = 0.4;
+const HORIZONTAL_BLEND_RESPONSE = 0.38;
 const POST_RENDER_ORDER = 20;
 
-// Eight authored phases with continuous interpolation. In addition to swing and
-// lift, each leg gets a tiny longitudinal foot-plant offset: the loaded foot
-// travels backwards under the translating body while the swing foot steps ahead.
-// That gives the eye a stationary contact point instead of two legs riding a rail.
+// Eight authored phases with continuous interpolation. The raw values remain a
+// short elderly gait; horizontal travel gets a readability gain later so Hans
+// visibly walks instead of sliding like a doll while keeping the same body speed.
 const GAIT_FRAMES = Object.freeze([
   { left: 0.170, right: -0.110, bob: -0.004, sway: -0.010, roll: -0.008, yaw: 0.008, arm: -0.045, nod: 0.005, leftLift: 0.000, rightLift: 0.025, leftStep: -0.058, rightStep: 0.055, caneSwing: -0.070, caneLift: 0.000 },
   { left: 0.130, right: -0.040, bob: -0.014, sway: -0.012, roll: -0.010, yaw: 0.010, arm: -0.034, nod: 0.012, leftLift: 0.000, rightLift: 0.038, leftStep: -0.040, rightStep: 0.080, caneSwing: -0.040, caneLift: 0.006 },
@@ -158,22 +158,30 @@ function applyElderGait(body, bases, sample, headSample, forward, horizontalWeig
   const horizontalHunch = HORIZONTAL_HUNCH_BONUS_RADIANS * horizontalWeight;
   const activeHunch = HUNCH_RADIANS + horizontalHunch;
   const armSwingGain = BASE_ARM_SWING_GAIN + HORIZONTAL_ARM_SWING_BONUS * horizontalWeight;
+  const legSwingGain = 1 + HORIZONTAL_LEG_SWING_BONUS * horizontalWeight;
+  const stepGain = 1 + HORIZONTAL_STEP_BONUS * horizontalWeight;
+  const liftGain = 1 + HORIZONTAL_LIFT_BONUS * horizontalWeight;
+  const silhouetteShift = horizontalWeight * activeHunch;
 
   if (left && bases.leftLeg) {
-    left.position.y = bases.leftLeg.y + sample.leftLift;
-    left.position.z = bases.leftLeg.z + forward * sample.leftStep;
-    left.rotation.x = bases.leftLeg.rx + sample.left;
-    left.rotation.z = bases.leftLeg.rz - sample.sway * 0.65;
+    left.position.y = bases.leftLeg.y + sample.leftLift * liftGain;
+    left.position.z = bases.leftLeg.z + forward * sample.leftStep * stepGain;
+    left.rotation.x = bases.leftLeg.rx + sample.left * legSwingGain;
+    left.rotation.z = bases.leftLeg.rz - sample.sway * 0.72;
   }
   if (right && bases.rightLeg) {
-    right.position.y = bases.rightLeg.y + sample.rightLift;
-    right.position.z = bases.rightLeg.z + forward * sample.rightStep;
-    right.rotation.x = bases.rightLeg.rx + sample.right;
-    right.rotation.z = bases.rightLeg.rz - sample.sway * 0.65;
+    right.position.y = bases.rightLeg.y + sample.rightLift * liftGain;
+    right.position.z = bases.rightLeg.z + forward * sample.rightStep * stepGain;
+    right.rotation.x = bases.rightLeg.rx + sample.right * legSwingGain;
+    right.rotation.z = bases.rightLeg.rz - sample.sway * 0.72;
   }
   if (torso && bases.torso) {
     torso.position.x = bases.torso.x + sample.sway;
     torso.position.y = bases.torso.y + sample.bob;
+    // Torso/head/arms are siblings in this rig, not a skeletal chain. A small
+    // forward translation is therefore necessary for the whole silhouette to
+    // read as stooped instead of rotating only the jacket in place.
+    torso.position.z = bases.torso.z + forward * silhouetteShift * 0.42;
     torso.rotation.x = bases.torso.rx + forward * (activeHunch + Math.abs(sample.bob) * 0.35);
     torso.rotation.y = bases.torso.ry + sample.yaw;
     torso.rotation.z = bases.torso.rz + sample.roll;
@@ -181,9 +189,9 @@ function applyElderGait(body, bases, sample, headSample, forward, horizontalWeig
   if (head && bases.head) {
     head.position.x = bases.head.x + headSample.sway * 0.38;
     head.position.y = bases.head.y + sample.bob * 0.42;
-    // Compensate part of the extra torso stoop so Hans looks forward instead
-    // of staring at his shoes. The head remains elderly, not folded in half.
-    head.rotation.x = bases.head.rx + forward * (HUNCH_RADIANS * 0.36 + horizontalHunch * 0.16 + headSample.nod);
+    head.position.z = bases.head.z + forward * silhouetteShift * 0.62;
+    // Compensate the neck so Hans looks ahead rather than at his shoes.
+    head.rotation.x = bases.head.rx + forward * (HUNCH_RADIANS * 0.28 + horizontalHunch * 0.1 + headSample.nod);
     head.rotation.y = bases.head.ry - headSample.yaw * 0.7;
     head.rotation.z = bases.head.rz - headSample.roll * 0.45;
   }
@@ -193,21 +201,37 @@ function applyElderGait(body, bases, sample, headSample, forward, horizontalWeig
   const carrying = carryingLog || carryingPoker;
   if (carryingLog) {
     if (body?.leftArm && bases.leftArm) {
+      body.leftArm.position.z = bases.leftArm.z + forward * silhouetteShift * 0.48;
       body.leftArm.rotation.x = bases.leftArm.rx - 0.43;
       body.leftArm.rotation.z = bases.leftArm.rz + 0.035;
     }
     if (body?.rightArm && bases.rightArm) {
+      body.rightArm.position.z = bases.rightArm.z + forward * silhouetteShift * 0.48;
       body.rightArm.rotation.x = bases.rightArm.rx - 0.5;
       body.rightArm.rotation.z = bases.rightArm.rz - 0.025;
     }
   } else if (carryingPoker) {
-    if (body?.leftArm && bases.leftArm) body.leftArm.rotation.x = bases.leftArm.rx - 0.12;
-    if (body?.rightArm && bases.rightArm) body.rightArm.rotation.x = bases.rightArm.rx - 0.42;
+    if (body?.leftArm && bases.leftArm) {
+      body.leftArm.position.z = bases.leftArm.z + forward * silhouetteShift * 0.48;
+      body.leftArm.rotation.x = bases.leftArm.rx - 0.12;
+    }
+    if (body?.rightArm && bases.rightArm) {
+      body.rightArm.position.z = bases.rightArm.z + forward * silhouetteShift * 0.48;
+      body.rightArm.rotation.x = bases.rightArm.rx - 0.42;
+    }
   } else {
-    // A short, lazy counter-swing. The right side stays slightly quieter so the
-    // result reads as an elderly butler rather than military marching.
-    if (body?.leftArm && bases.leftArm) body.leftArm.rotation.x = bases.leftArm.rx - sample.arm * armSwingGain;
-    if (body?.rightArm && bases.rightArm) body.rightArm.rotation.x = bases.rightArm.rx + sample.arm * armSwingGain * 0.72;
+    // Deliberately visible but still short and asymmetric. The previous 4-degree
+    // peak disappeared at game-camera scale and read as no arm swing at all.
+    if (body?.leftArm && bases.leftArm) {
+      body.leftArm.position.z = bases.leftArm.z + forward * silhouetteShift * 0.48;
+      body.leftArm.rotation.x = bases.leftArm.rx - sample.arm * armSwingGain;
+      body.leftArm.rotation.z = bases.leftArm.rz + 0.018 * horizontalWeight;
+    }
+    if (body?.rightArm && bases.rightArm) {
+      body.rightArm.position.z = bases.rightArm.z + forward * silhouetteShift * 0.48;
+      body.rightArm.rotation.x = bases.rightArm.rx + sample.arm * armSwingGain * 0.72;
+      body.rightArm.rotation.z = bases.rightArm.rz - 0.014 * horizontalWeight;
+    }
   }
   applyAccessoryGait(body, bases, sample, forward, carrying);
 }
@@ -241,8 +265,6 @@ export function installWarRoomHansElderWalk(root) {
       const ordinaryTravel = travelSq <= TELEPORT_DISTANCE_SQ;
 
       if (hans.visible && walkingState(hans) && travelSq > MIN_TRAVEL_SQ && ordinaryTravel) {
-        // Full real travel is intentional. Never clamp ordinary frame travel:
-        // doing so decouples gait speed from body speed exactly when FPS drops.
         const travelled = Math.sqrt(travelSq);
         const targetHorizontal = horizontalTravelWeight(dx, dz);
         horizontalBlend = mix(horizontalBlend, targetHorizontal, HORIZONTAL_BLEND_RESPONSE);
@@ -253,14 +275,16 @@ export function installWarRoomHansElderWalk(root) {
         hans.userData.warRoomHansGaitFrame = sample.index;
         hans.userData.warRoomHansGaitFrameCount = GAIT_FRAME_COUNT;
         hans.userData.warRoomHansGaitDistance = gaitDistance;
-        hans.userData.warRoomHansGaitStyle = 'elder-butler-weighted-v2-horizontal-stoop';
+        hans.userData.warRoomHansGaitStyle = 'elder-butler-readable-v3-stoop-arms-steps';
         hans.userData.warRoomHansHunchRadians = HUNCH_RADIANS + HORIZONTAL_HUNCH_BONUS_RADIANS * horizontalBlend;
         hans.userData.warRoomHansHorizontalWalkBlend = horizontalBlend;
         hans.userData.warRoomHansArmSwingGain = BASE_ARM_SWING_GAIN + HORIZONTAL_ARM_SWING_BONUS * horizontalBlend;
-        hans.userData.warRoomHansGaitGrounding = 'real-distance-foot-plant-v3';
+        hans.userData.warRoomHansLegSwingGain = 1 + HORIZONTAL_LEG_SWING_BONUS * horizontalBlend;
+        hans.userData.warRoomHansStepGain = 1 + HORIZONTAL_STEP_BONUS * horizontalBlend;
+        hans.userData.warRoomHansGaitGrounding = 'real-distance-visible-step-v4';
         hans.userData.warRoomHansGaitTeleportSuppressed = false;
         hans.userData.warRoomHansCaneCadence = body?.cane ? 'opposite-hand-support-v1' : null;
-        hans.userData.warRoomHansGaitHotPath = 'preallocated-samples-v4-horizontal-stoop';
+        hans.userData.warRoomHansGaitHotPath = 'preallocated-samples-v5-readable-old-man';
       } else {
         horizontalBlend = mix(horizontalBlend, 0, HORIZONTAL_BLEND_RESPONSE);
         restorePart(body?.cane, bases.cane);
@@ -277,13 +301,15 @@ export function installWarRoomHansElderWalk(root) {
 
   driver.userData.warRoomHansElderWalk = WAR_ROOM_HANS_ELDER_WALK_VERSION;
   driver.userData.warRoomHansGaitFrames = GAIT_FRAME_COUNT;
-  driver.userData.warRoomHansGaitStyle = 'elder-butler-weighted-v2-horizontal-stoop';
-  driver.userData.warRoomHansGaitCadence = 'slow-weight-transfer-v2-light-arm-swing';
-  driver.userData.warRoomHansGaitGrounding = 'real-distance-foot-plant-v3';
+  driver.userData.warRoomHansGaitStyle = 'elder-butler-readable-v3-stoop-arms-steps';
+  driver.userData.warRoomHansGaitCadence = 'slow-weight-transfer-v3-visible-arm-leg-cycle';
+  driver.userData.warRoomHansGaitGrounding = 'real-distance-visible-step-v4';
   driver.userData.warRoomHansHorizontalHunchBonusRadians = HORIZONTAL_HUNCH_BONUS_RADIANS;
   driver.userData.warRoomHansHorizontalArmSwingBonus = HORIZONTAL_ARM_SWING_BONUS;
+  driver.userData.warRoomHansHorizontalLegSwingBonus = HORIZONTAL_LEG_SWING_BONUS;
+  driver.userData.warRoomHansHorizontalStepBonus = HORIZONTAL_STEP_BONUS;
   driver.userData.warRoomHansCaneCadence = body?.cane ? 'opposite-hand-support-v1' : null;
-  driver.userData.warRoomHansGaitHotPath = 'preallocated-samples-v4-horizontal-stoop';
+  driver.userData.warRoomHansGaitHotPath = 'preallocated-samples-v5-readable-old-man';
   hans.userData.warRoomHansElderWalk = WAR_ROOM_HANS_ELDER_WALK_VERSION;
   return 1;
 }
