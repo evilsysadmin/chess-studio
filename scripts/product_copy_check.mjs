@@ -9,7 +9,7 @@ const game = read('frontend/src/components/GameScreen.jsx');
 const chat = read('frontend/src/components/GameChat.jsx');
 const voice = read('frontend/src/components/VoiceToggle.jsx');
 const notation = read('frontend/src/components/NotationPanel.jsx');
-const menu = read('frontend/src/components/Menu.jsx');
+const menu = read('frontend/src/components/MenuInner.jsx');
 const adminFeatureFiles = [
   'frontend/src/components/AdminScreen.jsx',
   'frontend/src/components/AdminDashboardContent.jsx',
