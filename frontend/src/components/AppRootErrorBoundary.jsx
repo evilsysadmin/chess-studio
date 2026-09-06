@@ -3,16 +3,14 @@ import { loadActiveGameSession } from '../activeGameSession.js';
 import { STORAGE_KEY } from '../api.js';
 import { STORAGE_LOCAL, getStorageItem } from '../safeStorage.js';
 import { buildClientDiagnostic, copyDiagnosticText } from '../clientDiagnostics.js';
-import { loadCampaign } from '../combatCampaign.js';
-import { loadRun } from '../roguelikeRun.js';
-import { hasCombatSession } from '../combatSession.js';
+import { hasAnyRecoverableCombatState } from '../combatRecoveryProbe.js';
 import { isLikelyModuleLoadError } from '../moduleLoadRecovery.js';
 import { requestReleaseReload } from '../releaseContinuity.js';
 
 function hasRecoverableGame() {
   if (loadActiveGameSession()) return true;
   if (getStorageItem(STORAGE_LOCAL, STORAGE_KEY)) return true;
-  return loadCampaign().active || loadRun().inRun || hasCombatSession('free');
+  return hasAnyRecoverableCombatState();
 }
 
 // Último fusible, montado por encima de <App /> en main.jsx. El boundary
