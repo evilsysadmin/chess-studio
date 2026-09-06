@@ -1,23 +1,23 @@
-/* Home castle premium grade · canonical stations v4.
+/* Home castle premium grade · canonical stations v5.
  *
- * The Home is a readable nocturnal great hall. The architecture already owns
- * the physical props for every mode; this final layer gives those props a clear
- * lighting hierarchy so the room reads as five destinations instead of one
- * dark set with labels floating over it.
+ * The Home is still a nocturnal great hall, but it must read like an inhabited
+ * premium room rather than a surveillance camera at 03:00. This final layer
+ * deliberately mirrors the approved warm mock: broad amber fill, restrained
+ * edge falloff, bright architectural labels, and Matthias visually anchored to
+ * the left foreground furniture instead of floating at the top of the viewport.
  */
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__scene,
 body .menu.home-friendly > .home-castle-life .home-great-hall-scene.home-castle-hub__scene {
-  filter: saturate(1.10) brightness(1.36) contrast(.97) !important;
+  filter: saturate(1.12) brightness(1.56) contrast(.94) !important;
 }
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__scene canvas {
-  filter: saturate(1.08) brightness(1.20) contrast(.98) !important;
+  filter: saturate(1.10) brightness(1.31) contrast(.96) !important;
 }
 
-/* A quiet architectural fill: lift the runner/foreground and create a little
- * cool separation in the back wall. This is not another blanket brightness
- * filter; it gives the room a readable front/middle/back hierarchy. */
+/* Broad architectural fill. The runner, sofa, tables and back wall all need to
+ * remain readable before hover; this is illumination, not a white veil. */
 body .menu.home-friendly > .home-castle-life .home-castle-hub::before {
   content: '';
   position: absolute;
@@ -25,15 +25,18 @@ body .menu.home-friendly > .home-castle-life .home-castle-hub::before {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(ellipse at 50% 87%, rgba(224, 159, 73, .17) 0%, rgba(165, 94, 37, .07) 29%, transparent 58%),
-    radial-gradient(ellipse at 50% 51%, rgba(228, 183, 108, .075) 0%, transparent 44%),
-    linear-gradient(90deg, transparent 21%, rgba(230, 171, 86, .028) 37%, rgba(244, 202, 126, .045) 50%, rgba(230, 171, 86, .028) 63%, transparent 79%),
-    linear-gradient(180deg, rgba(86, 114, 135, .055) 0%, transparent 34%);
+    radial-gradient(ellipse at 13% 73%, rgba(255, 177, 84, .22) 0%, rgba(190, 105, 39, .10) 31%, transparent 57%),
+    radial-gradient(ellipse at 50% 88%, rgba(244, 171, 77, .25) 0%, rgba(174, 95, 34, .095) 32%, transparent 61%),
+    radial-gradient(ellipse at 88% 72%, rgba(255, 177, 84, .20) 0%, rgba(190, 105, 39, .08) 30%, transparent 56%),
+    radial-gradient(ellipse at 50% 49%, rgba(244, 201, 126, .14) 0%, rgba(225, 163, 78, .055) 38%, transparent 64%),
+    linear-gradient(90deg, rgba(244, 170, 77, .055), rgba(250, 198, 117, .105) 24%, rgba(255, 216, 145, .12) 50%, rgba(250, 198, 117, .105) 76%, rgba(244, 170, 77, .05)),
+    linear-gradient(180deg, rgba(105, 127, 142, .055) 0%, rgba(229, 173, 89, .045) 44%, rgba(231, 145, 62, .065) 100%);
   mix-blend-mode: screen;
+  opacity: .98;
 }
 
-/* Warm pools line up with the wall sconces and chandeliers. Keep them broad
- * and local so stone and furniture catch firelight without flattening the hall. */
+/* Warm pools line up with the sconces/chandeliers from the approved mock.
+ * They overlap slightly so the five destinations share one coherent room. */
 body .menu.home-friendly > .home-castle-life .home-castle-hub::after {
   content: '';
   position: absolute;
@@ -41,52 +44,53 @@ body .menu.home-friendly > .home-castle-life .home-castle-hub::after {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 20.5% 45%, rgba(255, 151, 55, .21) 0 3%, rgba(255, 119, 30, .09) 10%, transparent 22%),
-    radial-gradient(circle at 40.4% 45%, rgba(255, 158, 62, .18) 0 3%, rgba(255, 123, 33, .072) 10%, transparent 22%),
-    radial-gradient(circle at 60.2% 45%, rgba(255, 158, 62, .18) 0 3%, rgba(255, 123, 33, .072) 10%, transparent 22%),
-    radial-gradient(circle at 80.0% 45%, rgba(255, 151, 55, .21) 0 3%, rgba(255, 119, 30, .09) 10%, transparent 22%),
-    radial-gradient(ellipse at 36% 19%, rgba(255, 179, 84, .11), transparent 21%),
-    radial-gradient(ellipse at 64% 19%, rgba(255, 179, 84, .11), transparent 21%),
-    radial-gradient(ellipse at 50% 82%, rgba(218, 143, 62, .095), transparent 42%);
+    radial-gradient(circle at 10.5% 42%, rgba(255, 184, 86, .27) 0 3%, rgba(255, 133, 38, .11) 11%, transparent 24%),
+    radial-gradient(circle at 20.5% 45%, rgba(255, 171, 70, .30) 0 3%, rgba(255, 124, 31, .12) 11%, transparent 24%),
+    radial-gradient(circle at 40.4% 45%, rgba(255, 177, 76, .27) 0 3%, rgba(255, 128, 34, .105) 11%, transparent 24%),
+    radial-gradient(circle at 60.2% 45%, rgba(255, 177, 76, .27) 0 3%, rgba(255, 128, 34, .105) 11%, transparent 24%),
+    radial-gradient(circle at 80.0% 45%, rgba(255, 171, 70, .30) 0 3%, rgba(255, 124, 31, .12) 11%, transparent 24%),
+    radial-gradient(circle at 91% 42%, rgba(255, 184, 86, .25) 0 3%, rgba(255, 133, 38, .10) 11%, transparent 24%),
+    radial-gradient(ellipse at 36% 18%, rgba(255, 191, 99, .19), transparent 25%),
+    radial-gradient(ellipse at 64% 18%, rgba(255, 191, 99, .19), transparent 25%),
+    radial-gradient(ellipse at 50% 79%, rgba(230, 151, 62, .15), transparent 48%);
   mix-blend-mode: screen;
-  opacity: .96;
+  opacity: 1;
 }
 
-/* Cinematic edge falloff only. The architecture must stay visible at rest. */
+/* Only a faint cinematic edge falloff. Never darken the navigation labels. */
 body .menu.home-friendly > .home-castle-life::after {
   background:
     radial-gradient(
       ellipse at 50% 46%,
-      transparent 57%,
-      rgba(0, 0, 0, .018) 81%,
-      rgba(0, 0, 0, .065) 100%
+      transparent 68%,
+      rgba(0, 0, 0, .008) 86%,
+      rgba(0, 0, 0, .035) 100%
     ),
     linear-gradient(
       180deg,
-      rgba(3, 4, 5, .02) 0%,
-      transparent 19%,
-      transparent 84%,
-      rgba(3, 4, 5, .045) 100%
+      rgba(3, 4, 5, .008) 0%,
+      transparent 15%,
+      transparent 91%,
+      rgba(3, 4, 5, .022) 100%
     );
 }
 
 /* The five modes are destinations in the architecture, not dashboard cards.
- * Each portal gets a different restrained light signature that lines up with
- * the physical props already present in the Three.js scene. */
+ * Their light signature stays subtle; the text itself now carries the contrast. */
 body .menu.home-friendly > .home-castle-life .home-castle-hub__room {
-  --station-core: rgba(215, 146, 59, .18);
-  --station-mid: rgba(157, 88, 35, .075);
-  --station-edge: rgba(228, 185, 96, .20);
+  --station-core: rgba(215, 146, 59, .22);
+  --station-mid: rgba(157, 88, 35, .095);
+  --station-edge: rgba(228, 185, 96, .24);
   position: relative;
   isolation: isolate;
   overflow: hidden;
   background:
-    radial-gradient(ellipse at 50% 28%, var(--station-core) 0%, var(--station-mid) 34%, transparent 68%),
-    linear-gradient(180deg, rgba(18, 12, 7, .08), rgba(5, 4, 3, .025));
-  text-shadow: 0 2px 10px rgba(0, 0, 0, .94), 0 0 20px rgba(218, 157, 66, .16);
+    radial-gradient(ellipse at 50% 28%, var(--station-core) 0%, var(--station-mid) 36%, transparent 72%),
+    linear-gradient(180deg, rgba(18, 12, 7, .055), rgba(5, 4, 3, .012));
+  text-shadow: 0 2px 7px rgba(0, 0, 0, .98), 0 0 21px rgba(236, 177, 78, .24);
   box-shadow:
-    inset 0 0 42px rgba(0, 0, 0, .07),
-    inset 0 -22px 34px rgba(0, 0, 0, .08);
+    inset 0 0 42px rgba(0, 0, 0, .035),
+    inset 0 -22px 34px rgba(0, 0, 0, .045);
 }
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__room::before {
@@ -98,13 +102,13 @@ body .menu.home-friendly > .home-castle-life .home-castle-hub__room::before {
   top: 10%;
   bottom: 7%;
   border-radius: 48% 48% 15% 15% / 34% 34% 12% 12%;
-  border: 1px solid color-mix(in srgb, var(--station-edge) 62%, transparent);
+  border: 1px solid color-mix(in srgb, var(--station-edge) 58%, transparent);
   background:
-    radial-gradient(ellipse at 50% 30%, var(--station-core), transparent 64%);
+    radial-gradient(ellipse at 50% 30%, var(--station-core), transparent 66%);
   box-shadow:
     inset 0 0 26px var(--station-mid),
-    0 0 30px rgba(0, 0, 0, .14);
-  opacity: .58;
+    0 0 30px rgba(0, 0, 0, .09);
+  opacity: .50;
 }
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__room::after {
@@ -117,8 +121,8 @@ body .menu.home-friendly > .home-castle-life .home-castle-hub__room::after {
   height: 2px;
   border-radius: 999px;
   background: var(--station-edge);
-  box-shadow: 0 0 12px var(--station-edge);
-  opacity: .52;
+  box-shadow: 0 0 13px var(--station-edge);
+  opacity: .62;
 }
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__room > * {
@@ -127,91 +131,159 @@ body .menu.home-friendly > .home-castle-life .home-castle-hub__room > * {
 }
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__room--play {
-  --station-core: rgba(231, 156, 68, .22);
-  --station-mid: rgba(164, 91, 34, .095);
-  --station-edge: rgba(241, 190, 91, .25);
+  --station-core: rgba(239, 164, 73, .27);
+  --station-mid: rgba(174, 96, 35, .12);
+  --station-edge: rgba(250, 199, 97, .31);
 }
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__room--tournament {
-  --station-core: rgba(224, 183, 89, .20);
-  --station-mid: rgba(144, 106, 37, .085);
-  --station-edge: rgba(239, 205, 110, .25);
+  --station-core: rgba(235, 193, 95, .24);
+  --station-mid: rgba(151, 112, 39, .10);
+  --station-edge: rgba(247, 213, 118, .30);
 }
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__room--train {
-  --station-core: rgba(202, 169, 112, .17);
-  --station-mid: rgba(122, 93, 55, .072);
-  --station-edge: rgba(229, 202, 151, .22);
+  --station-core: rgba(218, 181, 119, .22);
+  --station-mid: rgba(132, 100, 58, .09);
+  --station-edge: rgba(239, 211, 158, .28);
 }
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__room--combat {
-  --station-core: rgba(183, 92, 55, .20);
-  --station-mid: rgba(115, 50, 35, .09);
-  --station-edge: rgba(217, 127, 74, .24);
+  --station-core: rgba(204, 105, 60, .24);
+  --station-mid: rgba(126, 55, 37, .11);
+  --station-edge: rgba(232, 139, 80, .29);
 }
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__room--daily {
-  --station-core: rgba(126, 151, 172, .17);
-  --station-mid: rgba(75, 93, 111, .07);
-  --station-edge: rgba(194, 205, 190, .22);
+  --station-core: rgba(148, 169, 185, .21);
+  --station-mid: rgba(83, 101, 117, .085);
+  --station-edge: rgba(211, 220, 202, .28);
 }
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__room:hover,
 body .menu.home-friendly > .home-castle-life .home-castle-hub__room:focus-visible {
   background:
-    radial-gradient(ellipse at 50% 28%, color-mix(in srgb, var(--station-core) 82%, white 18%) 0%, var(--station-mid) 42%, transparent 72%),
-    linear-gradient(180deg, rgba(31, 21, 10, .20), rgba(8, 6, 4, .07));
-  border-color: color-mix(in srgb, var(--station-edge) 78%, transparent);
+    radial-gradient(ellipse at 50% 28%, color-mix(in srgb, var(--station-core) 79%, white 21%) 0%, var(--station-mid) 44%, transparent 74%),
+    linear-gradient(180deg, rgba(31, 21, 10, .15), rgba(8, 6, 4, .035));
+  border-color: color-mix(in srgb, var(--station-edge) 82%, transparent);
   box-shadow:
     inset 0 0 44px var(--station-mid),
-    0 0 0 1px rgba(255, 226, 160, .045),
-    0 12px 30px rgba(0, 0, 0, .16);
+    0 0 0 1px rgba(255, 226, 160, .055),
+    0 12px 30px rgba(0, 0, 0, .12);
 }
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__room-glyph {
-  color: #f0c96f;
-  filter: drop-shadow(0 0 8px rgba(234, 176, 71, .22));
+  color: #ffd978;
+  font-size: clamp(1.22rem, 2.25vw, 2.12rem);
+  filter: drop-shadow(0 0 10px rgba(247, 188, 75, .38));
 }
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__room strong {
-  color: #fff0ca;
-  font-weight: 700;
-  text-shadow: 0 2px 7px rgba(0, 0, 0, .98), 0 0 18px rgba(219, 161, 72, .11);
+  color: #fff5d9;
+  font-size: clamp(.88rem, 1.38vw, 1.35rem);
+  font-weight: 800;
+  letter-spacing: .015em;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 1),
+    0 0 10px rgba(0, 0, 0, .88),
+    0 0 20px rgba(239, 180, 81, .25);
 }
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__room small {
-  color: rgba(250, 236, 208, .90);
-  text-shadow: 0 2px 7px rgba(0, 0, 0, .96);
+  color: rgba(255, 244, 219, .96);
+  font-size: clamp(.64rem, .86vw, .90rem);
+  font-weight: 540;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 1),
+    0 0 9px rgba(0, 0, 0, .88);
 }
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__room i {
-  color: #efc76c;
-  opacity: .95;
+  color: #f8d47e;
+  font-size: 1rem;
+  opacity: 1;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, .9), 0 0 12px rgba(241, 184, 77, .25);
+}
+
+/* Matthias belongs to the sofa/left foreground, matching the approved mock.
+ * The component still uses its existing desktop body portal, so these are
+ * viewport coordinates; the range is intentionally bounded for 1366–4K. */
+@media (min-width: 1081px) {
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport {
+    top: clamp(27rem, 31vw, 32rem) !important;
+    left: clamp(8.5rem, 10vw, 12.5rem) !important;
+    right: auto !important;
+    width: clamp(178px, 12.5vw, 225px) !important;
+    z-index: 26 !important;
+    filter: drop-shadow(0 18px 20px rgba(0, 0, 0, .44));
+  }
+
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport .matthias-resident__character {
+    filter:
+      brightness(1.10)
+      saturate(1.04)
+      drop-shadow(0 18px 20px rgba(0, 0, 0, .40)) !important;
+  }
+
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport .matthias-resident__character > strong {
+    color: #fff5dc !important;
+    text-shadow: 0 2px 7px rgba(0, 0, 0, .95), 0 0 14px rgba(235, 177, 77, .18);
+  }
+
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport .matthias-resident__character > small {
+    color: rgba(255, 242, 216, .84) !important;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, .92);
+  }
+
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport .matthias-resident__bubble {
+    position: fixed !important;
+    top: clamp(26.2rem, 29vw, 30.5rem) !important;
+    left: calc(clamp(8.5rem, 10vw, 12.5rem) + clamp(178px, 12.5vw, 225px) + .8rem) !important;
+    right: auto !important;
+    width: min(320px, calc(100vw - 31rem)) !important;
+    max-width: 320px !important;
+  }
+}
+
+@media (max-width: 1080px) and (min-width: 761px) {
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport {
+    top: clamp(25rem, 40vw, 28rem) !important;
+    left: clamp(5.5rem, 8vw, 7rem) !important;
+    right: auto !important;
+    width: clamp(164px, 16vw, 188px) !important;
+  }
+
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport .matthias-resident__bubble {
+    top: clamp(23.8rem, 37vw, 26rem) !important;
+    left: calc(clamp(5.5rem, 8vw, 7rem) + clamp(164px, 16vw, 188px) + .6rem) !important;
+    right: auto !important;
+    width: min(280px, calc(100vw - 19rem)) !important;
+  }
 }
 
 @media (max-width: 760px) {
   body .menu.home-friendly > .home-castle-life .home-castle-hub__scene {
-    filter: saturate(1.07) brightness(1.30) contrast(.98) !important;
+    filter: saturate(1.08) brightness(1.40) contrast(.96) !important;
   }
 
   body .menu.home-friendly > .home-castle-life .home-castle-hub__scene canvas {
-    filter: saturate(1.06) brightness(1.17) contrast(.99) !important;
+    filter: saturate(1.07) brightness(1.23) contrast(.98) !important;
   }
 
   body .menu.home-friendly > .home-castle-life .home-castle-hub::before {
-    opacity: .74;
+    opacity: .84;
   }
 
   body .menu.home-friendly > .home-castle-life .home-castle-hub::after {
-    opacity: .78;
+    opacity: .86;
   }
 
-  /* Mobile keeps explicit touch cards; preserve the station color signature
-   * while maintaining strong text contrast over the moving 3D background. */
+  /* Mobile keeps explicit touch cards; preserve the warm station signature
+   * while maintaining very strong text contrast over the moving 3D room. */
   body .menu.home-friendly > .home-castle-life .home-castle-hub__room {
     background:
-      radial-gradient(ellipse at 50% 12%, var(--station-core), transparent 58%),
-      rgba(8, 7, 5, .66);
+      radial-gradient(ellipse at 50% 12%, var(--station-core), transparent 60%),
+      rgba(8, 7, 5, .58);
   }
 
   body .menu.home-friendly > .home-castle-life .home-castle-hub__room::before {
@@ -220,7 +292,15 @@ body .menu.home-friendly > .home-castle-life .home-castle-hub__room i {
     right: 4%;
     top: 5%;
     bottom: 5%;
-    opacity: .38;
+    opacity: .34;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room strong {
+    font-size: .88rem;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room small {
+    font-size: .67rem;
   }
 }
 
@@ -228,6 +308,6 @@ body .menu.home-friendly > .home-castle-life .home-castle-hub__room i {
   body .menu.home-friendly > .home-castle-life .home-castle-hub::before,
   body .menu.home-friendly > .home-castle-life .home-castle-hub::after {
     mix-blend-mode: normal;
-    opacity: .62;
+    opacity: .70;
   }
 }
