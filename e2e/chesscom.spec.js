@@ -41,9 +41,12 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await expect(mode.getByText('HK416 (Used)', { exact: true })).toBeVisible();
   await expect(mode.locator('.chesscom-economy strong')).toHaveText(/^(?:3400|3[.\u00a0\u202f ]400) cr$/);
 
-  const canvas = mode.locator('.chesscom-babylon-host canvas');
+  const host = mode.locator('.chesscom-babylon-host');
+  const canvas = host.locator('canvas');
   await expect(canvas).toBeVisible({ timeout: 30_000 });
-  await expect(mode.getByText(/BABYLON\.JS 9\.25\.0 · GPU PREMIUM V2 · BALLISTICS/)).toBeVisible({ timeout: 30_000 });
+  await expect(host).toHaveAttribute('data-chesscom-units', 'mercenary-premium-v2');
+  await expect(host).toHaveAttribute('data-chesscom-fire-stance', 'weapon-muzzle-v1');
+  await expect(mode.getByText(/BABYLON\.JS 9\.25\.0 · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE/)).toBeVisible({ timeout: 30_000 });
   await expect(mode.getByText('BABYLON · ERROR', { exact: true })).toHaveCount(0);
 
   const dieterArt = mode.locator('.chesscom-portrait-art.is-dieter');
