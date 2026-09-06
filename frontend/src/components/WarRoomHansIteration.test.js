@@ -59,6 +59,7 @@ describe('Hans quick-game visual iteration', () => {
     expect(start.route).toBe('entry');
     expect(start.routeProgress).toBe(0);
     expect(start.doorOpen).toBe(1);
+    expect(start.facingTarget).toBe('basket');
 
     expect(middle.fireScale).toBeLessThan(1);
     expect(middle.fireScale).toBeGreaterThan(0.26);
@@ -80,6 +81,63 @@ describe('Hans quick-game visual iteration', () => {
     expect(takeLog.hansX).toBeCloseTo(-1.62, 2);
     expect(takeLog.fireScale).toBeCloseTo(0.26, 2);
     expect(takeLog.doorOpen).toBe(0);
+  });
+
+  it('ejecuta la secuencia completa sin moonwalk ni telequinesis', () => {
+    const takeLog = hansQuickIterationFrame(8.2);
+    expect(takeLog.phase).toBe('take-log');
+    expect(takeLog.facingTarget).toBe('basket');
+    expect(takeLog.crouch).toBeGreaterThan(0.1);
+    expect(takeLog.carryLog).toBe(true);
+
+    const carryLog = hansQuickIterationFrame(9.5);
+    expect(carryLog.phase).toBe('carry-log');
+    expect(carryLog.facingTarget).toBe('hearth');
+    expect(carryLog.carryLog).toBe(true);
+    expect(carryLog.leftArm).toBeLessThan(-0.4);
+    expect(carryLog.rightArm).toBeLessThan(-0.4);
+
+    const placeLog = hansQuickIterationFrame(13.6);
+    expect(placeLog.phase).toBe('place-log');
+    expect(placeLog.facingTarget).toBe('fire');
+    expect(placeLog.showAddedLog).toBe(true);
+    expect(placeLog.carryLog).toBe(false);
+
+    const walkToPoker = hansQuickIterationFrame(14.5);
+    expect(walkToPoker.phase).toBe('take-poker');
+    expect(walkToPoker.facingTarget).toBe('tools');
+    expect(walkToPoker.carryPoker).toBe(false);
+
+    const takePoker = hansQuickIterationFrame(15.7);
+    expect(takePoker.phase).toBe('take-poker');
+    expect(takePoker.facingTarget).toBe('tools');
+    expect(takePoker.carryPoker).toBe(true);
+
+    const stoke = hansQuickIterationFrame(19.5);
+    expect(stoke.phase).toBe('stoke-fire');
+    expect(stoke.facingTarget).toBe('fire');
+    expect(stoke.carryPoker).toBe(true);
+    expect(stoke.fireScale).toBeGreaterThan(0.6);
+
+    const returnPoker = hansQuickIterationFrame(21.2);
+    expect(returnPoker.phase).toBe('return-poker');
+    expect(returnPoker.facingTarget).toBe('tools');
+
+    const satisfied = hansQuickIterationFrame(23.2);
+    expect(satisfied.phase).toBe('satisfied');
+    expect(satisfied.facingTarget).toBe('fire');
+    expect(satisfied.fireScale).toBe(1);
+
+    const leaving = hansQuickIterationFrame(28);
+    expect(leaving.phase).toBe('leave');
+    expect(leaving.facingTarget).toBe('door');
+    expect(leaving.doorOpen).toBeGreaterThan(0.5);
+    expect(leaving.fireScale).toBe(1);
+
+    const complete = hansQuickIterationFrame(30.1);
+    expect(complete.complete).toBe(true);
+    expect(complete.hansVisible).toBe(false);
+    expect(complete.doorOpen).toBe(0);
   });
 
   it('deja la puerta pasada la armadura y el equipo de chimenea al lado contrario', () => {
@@ -115,11 +173,12 @@ describe('Hans quick-game visual iteration', () => {
     expect(kit).toBeTruthy();
     expect(driver.userData.warRoomHansSelected).toBe(true);
     expect(driver.userData.warRoomHansStartDelaySeconds).toBe(0);
-    expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v6-mobile-proscenium');
+    expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v7-hearth-choreography');
     expect(driver.userData.warRoomHansVisibleAtStart).toBe(true);
     expect(driver.userData.warRoomHansUsesServiceDoor).toBe(true);
     expect(driver.userData.warRoomHansServiceCorridor).toBe('past-armor-to-hearth-v1');
-    expect(fireplace.userData.warRoomHansQuickIteration).toBe('always-quick-v6-mobile-proscenium');
+    expect(driver.userData.warRoomHansChoreography).toBe('door-log-fire-poker-door-v2');
+    expect(fireplace.userData.warRoomHansQuickIteration).toBe('always-quick-v7-hearth-choreography');
     expect(fireplace.userData.warRoomHansHearthRestored).toBe(false);
     expect(door.userData.warRoomHansServiceDoor).toBe('hans-service-door-v1');
     expect(door.userData.warRoomHansDoorPlacement).toBe('past-armor-service-corridor-v1');
@@ -136,6 +195,7 @@ describe('Hans quick-game visual iteration', () => {
     expect(hans.visible).toBe(true);
     expect(Math.abs(hans.position.x)).toBeCloseTo(2.65, 2);
     expect(Math.abs(hans.position.z)).toBeGreaterThan(4);
+    expect(hans.userData.warRoomHansFacingTarget).toBe('basket');
     expect(typeof driver.onBeforeRender).toBe('function');
 
     dispose(room);
@@ -160,13 +220,15 @@ describe('Hans quick-game visual iteration', () => {
       expect(door).toBeTruthy();
       expect(basket).toBeTruthy();
       expect(driver.userData.warRoomHansSelected).toBe(true);
-      expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v6-mobile-proscenium');
+      expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v7-hearth-choreography');
       expect(driver.userData.warRoomHansVisibleAtStart).toBe(true);
       expect(driver.userData.warRoomHansMobileEntryHeadstartSeconds).toBeCloseTo(4.8, 2);
-      expect(driver.userData.warRoomHansEntryPresentation).toBe('mobile-proscenium-v1');
+      expect(driver.userData.warRoomHansEntryPresentation).toBe('mobile-proscenium-v2-choreographed');
+      expect(driver.userData.warRoomHansChoreography).toBe('door-log-fire-poker-door-v2');
       expect(hans.visible).toBe(true);
       expect(Math.abs(hans.position.x)).toBeLessThan(1);
       expect(Math.abs(hans.position.z)).toBeLessThan(3);
+      expect(hans.userData.warRoomHansFacingTarget).toBe('basket');
       expect(door.userData.warRoomHansDoorOpen).toBe(0);
       expect(door.userData.warRoomHansDoorPlacement).toBe('past-armor-service-corridor-v1');
       expect(basket.userData.warRoomHansBasketFinish).toBe('graphite-grey-v1');
@@ -209,6 +271,14 @@ describe('Hans quick-game visual iteration', () => {
       expect(door.userData.warRoomHansDoorOpen).toBe(0);
       expect(hans.visible).toBe(true);
       expect(hans.position.x).toBeGreaterThan(0);
+      expect(hans.userData.warRoomHansFacingTarget).toBe('basket');
+
+      now.mockReturnValue(29000);
+      driver.onBeforeRender();
+      expect(driver.userData.warRoomHansPhase).toBe('leave');
+      expect(door.userData.warRoomHansDoorOpen).toBeGreaterThan(0.5);
+      expect(hans.visible).toBe(true);
+      expect(hans.userData.warRoomHansFacingTarget).toBe('door');
 
       now.mockReturnValue(30800);
       driver.onBeforeRender();
@@ -221,7 +291,7 @@ describe('Hans quick-game visual iteration', () => {
     }
   });
 
-  it('repone por completo fuego y luz, deja el tronco, devuelve el atizador y cierra la puerta', () => {
+  it('recoge la leña, la deposita, reaviva el fuego, devuelve el atizador y se marcha', () => {
     const now = vi.spyOn(globalThis.performance, 'now').mockReturnValue(1000);
     setWarRoomHansQuickIterationEnabled(true);
     const room = buildPremiumWarRoomLayer({ felt: 0x173943, glow: 0xc5963f }, true, false);
@@ -240,6 +310,8 @@ describe('Hans quick-game visual iteration', () => {
       const poker = room.getObjectByName('war-room-hearth-poker');
       const door = room.getObjectByName('war-room-hans-service-door');
       const basket = room.getObjectByName('war-room-hearth-log-basket');
+      const carriedLog = room.getObjectByName('war-room-hans-carried-log');
+      const carriedPoker = room.getObjectByName('war-room-hans-carried-poker');
 
       expect(fireplace).toBeTruthy();
       expect(driver).toBeTruthy();
@@ -250,6 +322,8 @@ describe('Hans quick-game visual iteration', () => {
       expect(poker).toBeTruthy();
       expect(door).toBeTruthy();
       expect(basket).toBeTruthy();
+      expect(carriedLog).toBeTruthy();
+      expect(carriedPoker).toBeTruthy();
       expect(basket.userData.warRoomHansBasketFinish).toBe('graphite-grey-v1');
       expect(hans.visible).toBe(true);
 
@@ -266,6 +340,49 @@ describe('Hans quick-game visual iteration', () => {
       expect(fireLight.intensity).toBeLessThan(baseIntensity);
       expect(fireLight.distance).toBeLessThan(baseDistance);
       if (bounce) expect(bounce.intensity).toBeLessThan(baseBounce);
+      const dimmedFireHeight = fireCore.scale.y;
+
+      now.mockReturnValue(9200);
+      driver.onBeforeRender();
+      expect(driver.userData.warRoomHansPhase).toBe('take-log');
+      expect(basketTopLog.visible).toBe(false);
+      expect(carriedLog.visible).toBe(true);
+      expect(hans.userData.warRoomHansFacingTarget).toBe('basket');
+
+      now.mockReturnValue(14600);
+      driver.onBeforeRender();
+      expect(driver.userData.warRoomHansPhase).toBe('place-log');
+      expect(carriedLog.visible).toBe(false);
+      expect(addedLog.visible).toBe(true);
+      expect(hans.userData.warRoomHansFacingTarget).toBe('fire');
+
+      now.mockReturnValue(16700);
+      driver.onBeforeRender();
+      expect(driver.userData.warRoomHansPhase).toBe('take-poker');
+      expect(poker.visible).toBe(false);
+      expect(carriedPoker.visible).toBe(true);
+      expect(hans.userData.warRoomHansFacingTarget).toBe('tools');
+
+      now.mockReturnValue(20500);
+      driver.onBeforeRender();
+      expect(driver.userData.warRoomHansPhase).toBe('stoke-fire');
+      expect(carriedPoker.visible).toBe(true);
+      expect(hans.userData.warRoomHansFacingTarget).toBe('fire');
+      expect(fireCore.scale.y).toBeGreaterThan(dimmedFireHeight);
+
+      now.mockReturnValue(23500);
+      driver.onBeforeRender();
+      expect(driver.userData.warRoomHansPhase).toBe('satisfied');
+      expect(carriedPoker.visible).toBe(false);
+      expect(poker.visible).toBe(true);
+      expect(hans.userData.warRoomHansFacingTarget).toBe('fire');
+
+      now.mockReturnValue(29000);
+      driver.onBeforeRender();
+      expect(driver.userData.warRoomHansPhase).toBe('leave');
+      expect(door.userData.warRoomHansDoorOpen).toBeGreaterThan(0.5);
+      expect(hans.visible).toBe(true);
+      expect(hans.userData.warRoomHansFacingTarget).toBe('door');
 
       now.mockReturnValue(36000);
       driver.onBeforeRender();
