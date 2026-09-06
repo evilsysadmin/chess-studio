@@ -13,6 +13,11 @@ const INITIAL_WEAPONS = Object.freeze([
 const INITIAL_HUD = Object.freeze({
   phase: 'ready',
   hp: 100,
+  maxHp: 100,
+  level: 1,
+  xp: 0,
+  xpProgress: 0,
+  xpToNext: 120,
   lives: 3,
   weapon: 'pistol',
   weaponLabel: 'Dienstpistole',
@@ -108,6 +113,8 @@ export default function PawnSlug({ onExit }) {
   const bossPercent = hud.bossHp != null && hud.bossMaxHp
     ? Math.max(0, Math.min(100, (hud.bossHp / hud.bossMaxHp) * 100))
     : null;
+  const healthPercent = Math.max(0, Math.min(100, ((hud.hp || 0) / Math.max(1, hud.maxHp || 100)) * 100));
+  const xpPercent = Math.max(0, Math.min(100, (hud.xpProgress || 0) * 100));
   const missionPercent = Math.round((hud.progress || 0) * 100);
   const ammoText = hud.ammo == null ? '∞' : hud.ammo;
   const missionTime = `${String(Math.floor((hud.missionTime || 0) / 60)).padStart(2, '0')}:${String((hud.missionTime || 0) % 60).padStart(2, '0')}`;
@@ -120,7 +127,7 @@ export default function PawnSlug({ onExit }) {
         <div>
           <span className="section-label">ARCADE · THREE.JS · OPERACIÓN ABSOLUTAMENTE NO FIDE</span>
           <h2>Pawn Slug</h2>
-          <p>Matthias ha encontrado armas de fuego. Cruza el sector, requisa arsenal enemigo y conviértete en un problema administrativo para todo el tablero negro.</p>
+          <p>Matthias ha encontrado armas de fuego. Cruza el sector, requisa arsenal enemigo, sube de nivel y conviértete en un problema administrativo para todo el tablero negro.</p>
         </div>
         <button type="button" className="secondary-btn" onClick={onExit}>← Experimentos</button>
       </header>
@@ -128,9 +135,12 @@ export default function PawnSlug({ onExit }) {
       <section className="pawn-slug-cabinet" aria-label="Pawn Slug arcade">
         <div className="pawn-slug-hud" aria-live="polite">
           <div className="pawn-slug-health">
-            <span>MATTHIAS</span>
-            <div className="pawn-slug-health-track" aria-label={`Salud ${hud.hp}%`}><i style={{ width: `${Math.max(0, hud.hp)}%` }} /></div>
-            <b>{hud.hp}</b>
+            <span>MATTHIAS · NIVEL {hud.level}</span>
+            <div className="pawn-slug-health-track" aria-label={`Salud ${hud.hp} de ${hud.maxHp}`}><i style={{ width: `${healthPercent}%` }} /></div>
+            <b>{hud.hp}/{hud.maxHp}</b>
+            <small className="pawn-slug-xp-label">XP</small>
+            <div className="pawn-slug-xp-track" aria-label={`Experiencia ${Math.round(xpPercent)}% del nivel`}><i style={{ width: `${xpPercent}%` }} /></div>
+            <small className="pawn-slug-xp-value">{hud.xpToNext == null ? 'MAX' : `${hud.xpToNext} para ascenso`}</small>
           </div>
           <div><span>VIDAS</span><b>{'♥'.repeat(Math.max(0, hud.lives || 0)) || '—'}</b></div>
           <div><span>ARMA</span><b>{hud.weaponLabel}</b><small>{ammoText}</small></div>
@@ -197,11 +207,11 @@ export default function PawnSlug({ onExit }) {
               {hud.phase === 'ready' && (
                 <div className="pawn-slug-briefing">
                   <span><b>Objetivo</b> Rompe el frente y elimina el Panzer‑Rook.</span>
+                  <span><b>Progresión</b> Las bajas dan XP. Cada nivel aumenta tu HP máximo y potencia el daño.</span>
                   <span><b>Arsenal</b> Empiezas con pistola. Requisa MG, escopeta y Panzerfaust y cambia de arma cuando quieras.</span>
-                  <span><b>Política</b> Cero ELO. Cero consecuencias. Bastantes explosiones.</span>
                 </div>
               )}
-              {hud.phase !== 'ready' && <small>{hud.score.toLocaleString('es-ES')} puntos · {missionTime}</small>}
+              {hud.phase !== 'ready' && <small>Nivel {hud.level} · {hud.score.toLocaleString('es-ES')} puntos · {missionTime}</small>}
               <button type="button" className="primary-btn" onClick={() => send('action', true)}>{hud.phase === 'ready' ? 'INICIAR OPERACIÓN' : 'OTRA VEZ, CABRONES'}</button>
               <em>Z/J dispara · 1–4 arma · Q/E cambia · X/K granada · WASD/flechas mueven</em>
             </div>
