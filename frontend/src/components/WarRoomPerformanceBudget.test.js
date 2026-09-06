@@ -136,6 +136,57 @@ describe('War Room desktop performance budget', () => {
     expect(restoredX).toEqual(sourcePositions);
   });
 
+  it('instances allow-listed torch cylinders, crown cones and gallery gilt without flattening transforms', () => {
+    const scene = new THREE.Scene();
+    const torch = new THREE.Group();
+    torch.name = 'war-room-side-torch-left';
+    const iron = new THREE.MeshStandardMaterial({ color: 0x1b1917 });
+    const highlight = new THREE.MeshStandardMaterial({ color: 0x332720 });
+
+    for (let index = 0; index < 6; index += 1) {
+      const angle = (index / 6) * Math.PI * 2;
+      const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.018, 0.28, 7), iron);
+      bar.name = 'war-room-side-torch-cage-bar';
+      bar.position.set(Math.cos(angle) * 0.145, 0.43, 0.47 + Math.sin(angle) * 0.145);
+      bar.rotation.set(Math.sin(angle) * 0.12, 0, -Math.cos(angle) * 0.12);
+      bar.castShadow = false;
+      torch.add(bar);
+
+      const crown = new THREE.Mesh(new THREE.ConeGeometry(0.028, 0.11, 4), highlight);
+      crown.name = 'war-room-side-torch-crown-spike';
+      crown.position.set(Math.cos(angle) * 0.151, 0.615, 0.47 + Math.sin(angle) * 0.151);
+      crown.rotation.y = Math.PI / 4;
+      crown.castShadow = false;
+      torch.add(crown);
+    }
+
+    const frame = new THREE.Group();
+    frame.name = 'war-room-campaign-painting-left';
+    const gold = new THREE.MeshStandardMaterial({ color: 0x8d672d });
+    for (const [x, y, width, height] of [
+      [0, 1.02, 1.6, 0.07], [0, -1.02, 1.6, 0.07],
+      [-0.76, 0, 0.07, 2.08], [0.76, 0, 0.07, 2.08],
+    ]) {
+      const trim = new THREE.Mesh(new THREE.BoxGeometry(width, height, 0.045), gold);
+      trim.name = 'war-room-campaign-frame-gilt';
+      trim.position.set(x, y, 0.105);
+      trim.castShadow = false;
+      frame.add(trim);
+    }
+    scene.add(torch, frame);
+
+    const result = batchWarRoomStaticDecor(scene);
+
+    expect(result).toEqual({ batches: 4, sourceMeshes: 16, drawCallsRetired: 12 });
+    const barBatch = torch.children.find((child) => child.name === 'war-room-side-torch-cage-bar');
+    const crownBatch = torch.children.find((child) => child.name === 'war-room-side-torch-crown-spike');
+    expect(barBatch?.isInstancedMesh).toBe(true);
+    expect(barBatch.count).toBe(6);
+    expect(crownBatch?.isInstancedMesh).toBe(true);
+    expect(crownBatch.count).toBe(6);
+    expect(frame.children.filter((child) => child.isInstancedMesh)).toHaveLength(2);
+  });
+
   it('batches only unnamed box decor inside explicitly safe static parents', () => {
     const scene = new THREE.Scene();
     const walls = new THREE.Group();
