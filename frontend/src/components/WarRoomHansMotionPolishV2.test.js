@@ -118,6 +118,36 @@ describe('Hans motion polish v2', () => {
     expect(hans.userData.warRoomHansMovementFacing).toBe('velocity-vector');
   });
 
+  it('uses the real armor bounding box plus Hans radius while crossing the bypass lane', () => {
+    const { root, hans, driver } = makeRig();
+    const armor = new THREE.Mesh(
+      new THREE.BoxGeometry(1.4, 2.4, 0.8),
+      new THREE.MeshBasicMaterial(),
+    );
+    armor.name = 'war-room-teutonic-armor-left';
+    armor.position.set(-6.68, 1.2, 4.5);
+    root.add(armor);
+
+    driver.onBeforeRender = () => {
+      hans.position.set(-1.42, -0.34, 4.4);
+      driver.userData.warRoomHansPhase = 'leave';
+      hans.userData.warRoomHansRoute = 'leave-bypass';
+    };
+
+    expect(installWarRoomHansMotionPolish(root)).toBe(1);
+    driver.onBeforeRender();
+
+    const safeFrameX = hans.position.x / -1;
+    const hansWorldX = -4.95 + hans.position.x;
+    const armorInnerEdge = armor.position.x + 0.7;
+    const scaledHalfWidth = 0.49 * WAR_ROOM_HANS_CANONICAL_SCALE;
+    expect(safeFrameX).toBeGreaterThan(0.45);
+    expect(safeFrameX).toBeLessThan(0.6);
+    expect(hansWorldX - scaledHalfWidth).toBeGreaterThan(armorInnerEdge + 0.15);
+    expect(hans.userData.warRoomHansArmorClearanceApplied).toBe(true);
+    expect(driver.userData.warRoomHansArmorClearance).toBe('box3-expanded-by-hans-v1');
+  });
+
   it('picks up a log by folding at the hips with asymmetric weight instead of sinking the whole rig', () => {
     const { root, hans, driver } = makeRig();
     driver.onBeforeRender = () => {
