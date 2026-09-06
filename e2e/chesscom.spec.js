@@ -50,7 +50,11 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await expect(host).toHaveAttribute('data-chesscom-units', 'mercenary-premium-v2');
   await expect(host).toHaveAttribute('data-chesscom-fire-stance', 'weapon-muzzle-v1');
-  await expect(mode.getByText(/BABYLON\.JS 9\.25\.0 · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE/)).toBeVisible({ timeout: 30_000 });
+  await expect(host).toHaveAttribute('data-chesscom-operator', 'character-art-v4');
+  await expect(host).toHaveAttribute('data-chesscom-character-mesh', 'custom-lowpoly-v4');
+  await expect(host).toHaveAttribute('data-chesscom-character-materials', 'procedural-pbr-v4');
+  await expect(host).toHaveAttribute('data-chesscom-environment', 'environment-art-v4');
+  await expect(mode.getByText(/BABYLON\.JS 9\.25\.0 · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4/)).toBeVisible({ timeout: 30_000 });
   await expect(mode.getByText('BABYLON · ERROR', { exact: true })).toHaveCount(0);
 
   const dieterArt = mode.locator('.chesscom-portrait-art.is-dieter');
@@ -95,7 +99,7 @@ test('Chesscom · no hereda el scroll del Hangar al entrar', async ({ page }) =>
   expect(inheritedScroll).toBeGreaterThan(0);
 
   // DOM click deliberately preserves the old document scroll so the mode itself
-  // owns the transition instead of Playwright helpfully scrolling la card.
+  // owns the transition instead of Playwright helpfully scrolling the card.
   await card.evaluate((node) => node.click());
   await expect(page.getByRole('heading', { name: 'CHESSCOM', exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
