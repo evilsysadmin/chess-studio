@@ -31,7 +31,7 @@ export function createSturmBishopModel() {
   root.name = 'pawn-slug-sturm-bishop';
   root.userData.midBoss = 'sturm-bishop';
   root.userData.baseY = 0;
-  root.userData.baseScale = 1;
+  root.userData.baseScale = 1.18;
 
   const armor = standard(0x3d444b, 0.52, 0.52);
   const armorDark = standard(0x20262b, 0.7, 0.42);
@@ -86,7 +86,7 @@ export function createSturmBishopModel() {
   const belt = mesh(new THREE.BoxGeometry(0.98, 0.14, 0.34), leather, { y: 0.63, z: 0.06 });
   root.add(belt);
 
-  root.scale.setScalar(1.18);
+  root.scale.setScalar(root.userData.baseScale);
   return root;
 }
 
