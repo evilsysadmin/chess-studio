@@ -43,12 +43,16 @@ function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
-function headingTo(fromX, fromZ, toX, toZ, fallback = 0) {
+function headingTo(fromX, fromZ, toX, toZ, fallback = 0, localForwardZ = 1) {
   const dx = Number(toX) - Number(fromX);
   const dz = Number(toZ) - Number(fromZ);
   if (!Number.isFinite(dx) || !Number.isFinite(dz) || Math.hypot(dx, dz) < 0.0001) return fallback;
-  // Hans' face points down local +Z, therefore yaw is atan2(X, Z).
-  return Math.atan2(dx, dz);
+  // Hans is authored facing local +Z or -Z depending on which side of the
+  // board owns the rear wall. Account for that authored forward axis before
+  // aiming the group at a world-space target, otherwise the black-side room
+  // makes him moonwalk through the entire hearth routine.
+  const targetYaw = Math.atan2(dx, dz);
+  return targetYaw + (Number(localForwardZ) < 0 ? Math.PI : 0);
 }
 
 function resolveLightBaseIntensity(light, fallback = 1) {
@@ -323,7 +327,14 @@ function applyHansTransform(hans, frame, side, towardBoard, doorDepth) {
   hans.position.z = towardBoard * routeDepth(frame, doorDepth);
   const target = facingPoint(frame, side, towardBoard, doorDepth);
   if (target) {
-    hans.rotation.y = headingTo(hans.position.x, hans.position.z, target.x, target.z, hans.rotation.y);
+    hans.rotation.y = headingTo(
+      hans.position.x,
+      hans.position.z,
+      target.x,
+      target.z,
+      hans.rotation.y,
+      towardBoard,
+    );
   }
 }
 
@@ -461,7 +472,16 @@ function orientProductionHans(hans, phase, side, towardBoard, doorDepth) {
     leave: { x: side * QUICK_DOOR_X, z: towardBoard * doorDepth },
   };
   const target = targetByPhase[phase];
-  if (target) hans.rotation.y = headingTo(hans.position.x, hans.position.z, target.x, target.z, hans.rotation.y);
+  if (target) {
+    hans.rotation.y = headingTo(
+      hans.position.x,
+      hans.position.z,
+      target.x,
+      target.z,
+      hans.rotation.y,
+      towardBoard,
+    );
+  }
 }
 
 function remapProductionHans(hans, phase, side, towardBoard, doorDepth, phaseElapsed) {
