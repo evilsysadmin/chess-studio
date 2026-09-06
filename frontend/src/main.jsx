@@ -16,6 +16,7 @@ import './components/HomeAndroidFirstFold.css';
 import './components/HomeCastleTeutonicCanonical.css';
 import './components/HomeAdaptiveDensity.css';
 import './components/HomeDesktopCompositionFix.css';
+import './components/HomeImmersiveCastle.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
 import { migratePersistentStorage } from './storageMigrations.js';
 import { getReducedMotionPreference, reducedMotionStatus } from './userPreferences.js';
