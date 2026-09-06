@@ -1,6 +1,6 @@
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_ELDER_WALK_VERSION = 'elder-butler-gait-v2-horizontal-stoop';
+export const WAR_ROOM_HANS_ELDER_WALK_VERSION = 'elder-butler-gait-v1';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
