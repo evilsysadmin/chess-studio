@@ -1,4 +1,4 @@
-import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolish.js';
+import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
 
 export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v1';
 export const WAR_ROOM_ONE_SHOT_RETIREMENT_VERSION = 'one-shot-retirement-v1';
@@ -125,7 +125,6 @@ export function armWarRoomOneShotHookRetirement(group, {
 
   const marker = driver.userData.warRoomOneShotRetirement;
   if (marker?.key === key) return 0;
-
   const previous = driver.onBeforeRender;
   let completed = false;
   driver.userData.warRoomOneShotRetirement = {
