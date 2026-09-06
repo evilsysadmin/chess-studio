@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
   applyWarRoomPerformanceBudget,
+  batchWarRoomStaticDecor,
   warRoomDesktopPointLightKeepNames,
 } from './WarRoomPerformanceBudget.js';
 
@@ -48,6 +49,74 @@ describe('War Room desktop performance budget', () => {
     expect(scene.userData.warRoomPointLightsKept).toBe(3);
     expect(scene.userData.warRoomPointLightsCulled).toBe(4);
     expect(scene.userData.warRoomSpotLightsCulled).toBe(1);
+  });
+
+  it('instances repeated static box families without changing their local transforms', () => {
+    const scene = new THREE.Scene();
+    const parent = new THREE.Group();
+    parent.name = 'war-room-upper-architecture';
+    const material = new THREE.MeshStandardMaterial({ color: 0x563b24 });
+    const sourcePositions = [-2, 0, 2];
+
+    for (const x of sourcePositions) {
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.2, 0.25), material);
+      beam.name = 'war-room-hammerbeam-transverse';
+      beam.position.set(x, 4.5, -1.25);
+      beam.receiveShadow = true;
+      parent.add(beam);
+    }
+    scene.add(parent);
+
+    const result = batchWarRoomStaticDecor(scene);
+    const batch = parent.getObjectByName('war-room-hammerbeam-transverse');
+
+    expect(result).toEqual({ batches: 1, sourceMeshes: 3, drawCallsRetired: 2 });
+    expect(batch?.isInstancedMesh).toBe(true);
+    expect(batch.count).toBe(3);
+    expect(batch.material).toBe(material);
+    expect(batch.userData.warRoomStaticBatch).toBe('instanced-v1');
+    expect(batch.userData.warRoomStaticBatchCount).toBe(3);
+    expect(parent.children).toHaveLength(1);
+
+    const matrix = new THREE.Matrix4();
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    const restoredX = [];
+    for (let index = 0; index < batch.count; index += 1) {
+      batch.getMatrixAt(index, matrix);
+      matrix.decompose(position, quaternion, scale);
+      restoredX.push(position.x);
+      expect(position.y).toBeCloseTo(4.5);
+      expect(position.z).toBeCloseTo(-1.25);
+      expect(scale.x).toBeCloseTo(1);
+      expect(scale.y).toBeCloseTo(1);
+      expect(scale.z).toBeCloseTo(1);
+    }
+    expect(restoredX).toEqual(sourcePositions);
+  });
+
+  it('batches only unnamed box decor inside explicitly safe static parents', () => {
+    const scene = new THREE.Scene();
+    const walls = new THREE.Group();
+    walls.name = 'war-room-castle-side-walls';
+    const material = new THREE.MeshStandardMaterial({ color: 0x4b453d });
+
+    for (const z of [1, 3, 5, 7]) {
+      const buttress = new THREE.Mesh(new THREE.BoxGeometry(0.18, 4.86, 0.34), material);
+      buttress.position.set(7.77, 2.48, z);
+      walls.add(buttress);
+    }
+    const namedWall = new THREE.Mesh(new THREE.BoxGeometry(0.42, 5.75, 13.35), material);
+    namedWall.name = 'war-room-castle-wall-left';
+    walls.add(namedWall);
+    scene.add(walls);
+
+    const result = batchWarRoomStaticDecor(scene);
+
+    expect(result.drawCallsRetired).toBe(3);
+    expect(walls.children.filter((child) => child.isInstancedMesh)).toHaveLength(1);
+    expect(walls.getObjectByName('war-room-castle-wall-left')).toBe(namedWall);
   });
 
   it('retires static decor from the directional shadow pass but preserves chess-piece casters', () => {
