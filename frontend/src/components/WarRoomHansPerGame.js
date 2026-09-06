@@ -27,10 +27,9 @@ export function hasWarRoomHansAppearedForGame(gameId) {
   return loadSeenGameIds().includes(normalized);
 }
 
-export function claimWarRoomHansAppearanceForGame(gameId) {
+export function markWarRoomHansAppearedForGame(gameId) {
   const normalized = normalizeGameId(gameId);
-  // Legacy/test callers without a real game id keep the historical behaviour.
-  if (!normalized) return true;
+  if (!normalized) return false;
 
   const seen = loadSeenGameIds();
   if (seen.includes(normalized)) return false;
