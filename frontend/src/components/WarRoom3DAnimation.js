@@ -3,12 +3,18 @@ export function isSoftwareWebGLRenderer(rendererLabel = '') {
 }
 
 export function warRoomSceneProfile({ coarsePointer = false, softwareRenderer = false } = {}) {
-  const lite = Boolean(coarsePointer || softwareRenderer);
+  // Touch input is not a low-end GPU signal. Modern Android devices keep the
+  // full War Room scene graph and save GPU budget through DPR, shadow quality
+  // and the lower ambient cadence instead of deleting narrative architecture.
+  // Only a confirmed software renderer falls back to the structurally-lite
+  // scene used as the emergency compatibility path.
+  const lite = Boolean(softwareRenderer);
+  const tier = softwareRenderer ? 'lite' : (coarsePointer ? 'balanced' : 'full');
   return Object.freeze({
-    tier: lite ? 'lite' : 'full',
+    tier,
     lite,
     pixelRatioCap: softwareRenderer ? 1 : (coarsePointer ? 1.25 : 1.75),
-    shadowMapSize: lite ? 512 : 2048,
+    shadowMapSize: softwareRenderer ? 512 : (coarsePointer ? 1024 : 2048),
     shadowsEnabled: !softwareRenderer,
   });
 }
