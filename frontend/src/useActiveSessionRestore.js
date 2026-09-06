@@ -7,13 +7,12 @@ import { clearActiveContract, clearSpecialRun, loadActiveContract, loadSpecialRu
 import { clearActiveSeries, loadActiveSeries } from './series.js';
 import { SAVE_STATUS } from './saveStatus.js';
 import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
-import { loadCampaign } from './combatCampaign.js';
-import { loadRun } from './roguelikeRun.js';
-import { hasCombatSession } from './combatSession.js';
+import { hasRecoverableCombatState } from './combatRecoveryProbe.js';
 import { ACTIVE_SESSION_EVENT, ACTIVE_SESSION_STATE, activeSessionTransition, assertActiveSessionInvariant } from './activeSessionMachine.js';
 import { reportStateInvariant } from './stateMachine.js';
 
 export const LEARNING_STORAGE_KEY = 'chess-study-active-game-learning';
+export { hasRecoverableCombatState };
 
 export function classifyRestoreFailure(error) {
   if (error?.status === 404 || error?.status === 403) return 'stale-session';
@@ -72,16 +71,6 @@ export function selectBoundaryRecovery({
   }
   if ((currentView === 'combat' || currentView === 'roguelike') && combatRecoverable) return { type: 'combat' };
   return { type: 'none' };
-}
-
-export function hasRecoverableCombatState(currentView, {
-  campaign = loadCampaign(),
-  run = loadRun(),
-  freeSession = hasCombatSession('free'),
-} = {}) {
-  if (currentView === 'roguelike') return campaign?.active === true || run?.inRun === true;
-  if (currentView === 'combat') return freeSession === true;
-  return false;
 }
 
 export function discardActiveSessionStorage(gameId = null) {
