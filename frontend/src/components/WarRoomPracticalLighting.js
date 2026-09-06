@@ -81,23 +81,6 @@ function tunePaintingMaterials(frame) {
   return tuned;
 }
 
-function addMuseumSideKey(group, { side, wallZ, towardBoard }) {
-  const light = new THREE.SpotLight(0xffd3a2, 2.05, 7.4, 0.5, 0.84, 2);
-  light.name = side < 0 ? 'war-room-museum-side-key-left' : 'war-room-museum-side-key-right';
-  light.position.set(side * 5.75, 4.92, wallZ + towardBoard * 3.15);
-  light.castShadow = false;
-  light.userData.warRoomPracticalLight = 'painting-armor-shared-key-v4';
-
-  const target = new THREE.Object3D();
-  target.name = side < 0 ? 'war-room-museum-side-target-left' : 'war-room-museum-side-target-right';
-  target.position.set(side * 6.05, 2.58, wallZ + towardBoard * 2.7);
-  light.target = target;
-
-  group.add(target);
-  group.add(light);
-  return light;
-}
-
 export function correctWarRoomGalleryPaintingOrientation(group) {
   if (!group) return 0;
   let corrected = 0;
@@ -308,12 +291,11 @@ export function applyWarRoomPracticalLighting(group, {
   tunedMaterials += tunePaintingMaterials(group.getObjectByName('war-room-premium-painting-0'));
   tunedMaterials += tunePaintingMaterials(group.getObjectByName('war-room-premium-painting-1'));
 
-  let lightCount = 0;
-  if (!coarsePointer) {
-    addMuseumSideKey(group, { side: -1, wallZ, towardBoard });
-    addMuseumSideKey(group, { side: 1, wallZ, towardBoard });
-    lightCount = 2;
-  }
+  // The former museum side SpotLights were immediately retired by the desktop
+  // performance budget. Their apparent contribution is already represented by
+  // the global key plus torch emissive/halo layers, so do not construct them.
+  const lightCount = 0;
+  if (!coarsePointer) group.userData.warRoomMuseumSideKeysOmitted = 2;
 
   const performanceBudget = applyWarRoomPerformanceBudget(group, { coarsePointer });
   group.userData.warRoomPerformancePointLightsKept = performanceBudget.pointLightsKept;
