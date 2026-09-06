@@ -349,7 +349,8 @@ export async function login(page) {
   await page.getByLabel('Usuario').fill('e2e');
   await page.getByLabel('Contraseña').fill('clave123456');
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+  // Stable Home-ready landmark shared by immersive desktop and compact mobile.
+  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
 }
 
 

@@ -1,0 +1,35 @@
+/* Preserve semantic regions in immersive desktop mode.
+ * The regions remain real layout boxes for accessibility/E2E, while their
+ * visible children are positioned as diegetic castle controls. */
+@media (min-width: 1000px) {
+  body .menu.home-friendly > .home-modes-section,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) {
+    position: absolute !important;
+    z-index: 30 !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+    pointer-events: none !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-grid {
+    position: static !important;
+    display: contents !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section > .home-more-modes,
+  body .menu.home-friendly > .home-modes-section > .home-more-modes > summary,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-more,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-more > summary,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-grid > .menu-card-shell,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-school-card {
+    pointer-events: auto !important;
+  }
+}
