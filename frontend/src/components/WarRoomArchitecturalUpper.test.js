@@ -120,7 +120,8 @@ describe('War Room architectural upper framing', () => {
     expect(namedCount(upper, 'war-room-hammerbeam-side-tie')).toBe(0);
     expect(namedCount(upper, 'war-room-hammerbeam-corbel')).toBe(0);
     expect(group.userData.warRoomMonogramFree).toBe(true);
-    expect(group.userData.warRoomPracticalLightCount).toBe(2);
+    expect(group.userData.warRoomPracticalLightCount).toBe(0);
+    expect(group.userData.warRoomMuseumSideKeysOmitted).toBe(2);
 
     dispose(group);
   });

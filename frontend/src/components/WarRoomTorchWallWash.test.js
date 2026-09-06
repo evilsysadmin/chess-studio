@@ -37,11 +37,12 @@ function countLights(root) {
 }
 
 describe('War Room torch wall wash', () => {
-  it('ilumina más contorno y deja que la luz cálida alcance el metal cercano sin añadir luces nuevas', () => {
+  it('ilumina el contorno con halo + una sola luz real por antorcha', () => {
     const room = new THREE.Group();
     installWarRoomMilitaryGallery(room, { wallZ: -7.6, towardBoard: 1, coarsePointer: false });
     const lightCountBeforeTuning = countLights(room);
 
+    expect(lightCountBeforeTuning).toBe(2);
     expect(tuneWarRoomGalleryTorchWallWash(room)).toBe(2);
     expect(countLights(room)).toBe(lightCountBeforeTuning);
 
@@ -57,6 +58,8 @@ describe('War Room torch wall wash', () => {
 
       expect(torch.userData.warRoomTorchWallWash).toBe('hearth-contour-v3');
       expect(torch.userData.warRoomTorchFlameFinish).toBe('hearth-warm-v2');
+      expect(torch.userData.warRoomWallGlowRealLight).toBe('omitted-halo-owned-v1');
+      expect(wallGlow).toBeUndefined();
       expect(halo).toBeInstanceOf(THREE.Mesh);
       expect(halo.material.opacity).toBeGreaterThanOrEqual(0.94);
       expect(halo.scale.x).toBeGreaterThanOrEqual(1.78);
@@ -84,12 +87,9 @@ describe('War Room torch wall wash', () => {
 
       expect(light.color.getHex()).toBe(0xff7424);
       expect(light.distance).toBeGreaterThanOrEqual(12);
-      expect(wallGlow.color.getHex()).toBe(0xffa442);
-      expect(wallGlow.distance).toBeGreaterThanOrEqual(8.6);
 
       flame.onBeforeRender();
       expect(light.intensity).toBeGreaterThan(9.5);
-      expect(wallGlow.intensity).toBeGreaterThan(6.8);
       expect(flame.scale.x).toBeGreaterThan(innerFlame.scale.x * 1.5);
       expect(flame.material.emissiveIntensity).toBeGreaterThanOrEqual(1.05);
       expect(flame.material.emissiveIntensity).toBeLessThanOrEqual(1.28);

@@ -225,14 +225,12 @@ function nowMs() {
     : Date.now();
 }
 
-function attachTorchKinetics(outer, inner, light, wallGlow, phase) {
+function attachTorchKinetics(outer, inner, light, phase) {
   const outerBase = outer.scale.clone();
   const innerBase = inner.scale.clone();
   const baseIntensity = light.intensity;
-  const wallGlowBaseIntensity = wallGlow.intensity;
   outer.userData.warRoomAnimatedTorch = true;
   light.userData.baseWarRoomIntensity = baseIntensity;
-  wallGlow.userData.baseWarRoomIntensity = wallGlowBaseIntensity;
 
   outer.onBeforeRender = () => {
     const now = nowMs();
@@ -254,7 +252,6 @@ function attachTorchKinetics(outer, inner, light, wallGlow, phase) {
       innerBase.z,
     );
     light.intensity = baseIntensity * (1 + flutter);
-    wallGlow.intensity = wallGlowBaseIntensity * (1 + flutter * 0.42);
   };
 }
 
@@ -331,6 +328,7 @@ function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
   torch.userData.warRoomTorchForm = 'gothic-wall-sconce-brazier';
   torch.userData.warRoomTorchFire = 'hearth-bright-v3';
   torch.userData.warRoomTorchLighting = 'gallery-spill-v2';
+  torch.userData.warRoomWallGlowRealLight = 'omitted-halo-owned-v1';
 
   const iron = physical(GALLERY.iron, {
     metalness: 0.64,
@@ -443,21 +441,15 @@ function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
   outer.castShadow = false;
   inner.castShadow = false;
 
-  // The real lights still drive PBR response on metal, frames and furniture.
-  // The additive halo above provides the broad wall wash that ACES + very dark
-  // castle materials otherwise compress too much at normal gameplay distance.
+  // One real light drives PBR response on metal, frames and furniture. The
+  // additive halo owns the broad wall wash, avoiding a second redundant point
+  // light per torch with no visual loss after the desktop hard-cut.
   const light = new THREE.PointLight(0xff8738, 7.4, 9.2, 2);
   light.name = 'war-room-side-torch-light';
   light.position.set(0, 0.62, 0.7);
   light.castShadow = false;
   torch.add(light);
-
-  const wallGlow = new THREE.PointLight(0xffb15a, 3.1, 5.8, 2);
-  wallGlow.name = 'war-room-side-torch-wall-glow';
-  wallGlow.position.set(0, 0.42, 0.12);
-  wallGlow.castShadow = false;
-  torch.add(wallGlow);
-  attachTorchKinetics(outer, inner, light, wallGlow, phase);
+  attachTorchKinetics(outer, inner, light, phase);
 
   // Move the practical further toward the room entrance and slightly upward.
   // At gameplay framing this creates a clean strip of wall between painting and
@@ -505,6 +497,7 @@ export function installWarRoomMilitaryGallery(group, {
   group.userData.warRoomMilitaryGalleryCentralCanvases = centralReplaced;
   group.userData.warRoomMilitaryGallerySideCanvases = 2;
   group.userData.warRoomMilitaryGalleryTorches = 2;
+  group.userData.warRoomRetiredTorchWallGlowLightsOmitted = 2;
   group.userData.warRoomCampaignTextureCache = 'module-prototype-v1';
   group.userData.warRoomTorchArt = 'approved-premium-mock-v2';
   group.userData.warRoomTorchSpacing = 'gallery-breathing-room-v4';

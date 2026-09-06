@@ -102,7 +102,8 @@ describe('War Room architectural depth', () => {
     expect(group.getObjectByName('war-room-armor-alcove-right')).toBeUndefined();
     expect(group.getObjectByName('war-room-gallery-picture-rail')).toBeUndefined();
     expect(group.userData.warRoomArchitecturalDepthMeshBudget).toBe(8);
-    expect(group.userData.warRoomPracticalLightCount).toBe(2);
+    expect(group.userData.warRoomPracticalLightCount).toBe(0);
+    expect(group.userData.warRoomMuseumSideKeysOmitted).toBe(2);
 
     dispose(group);
   });

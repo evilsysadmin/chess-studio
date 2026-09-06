@@ -3,10 +3,11 @@ import * as THREE from 'three';
 import { buildPremiumTableLayer, buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
 
 function sceneStats(root) {
-  const stats = { meshes: 0, lights: 0, spotLights: 0 };
+  const stats = { meshes: 0, lights: 0, pointLights: 0, spotLights: 0 };
   root.traverse((object) => {
     if (object instanceof THREE.Mesh) stats.meshes += 1;
     if (object instanceof THREE.Light) stats.lights += 1;
+    if (object instanceof THREE.PointLight) stats.pointLights += 1;
     if (object instanceof THREE.SpotLight) stats.spotLights += 1;
   });
   return stats;
@@ -54,12 +55,46 @@ describe('PremiumWarRoomScene', () => {
     expect(desktop.getObjectByName('war-room-velvet-curtain-fold')).toBeTruthy();
     expect(desktop.getObjectByName('war-room-sconce-flame')).toBeTruthy();
     expect(desktopStats.meshes).toBeGreaterThan(125);
-    expect(desktopStats.lights).toBeGreaterThanOrEqual(6);
-    expect(desktopStats.spotLights).toBeGreaterThanOrEqual(1);
+    expect(desktopStats.lights).toBeGreaterThanOrEqual(9);
+    expect(desktopStats.spotLights).toBe(1);
     expect(desktopStats.meshes).toBeGreaterThan(mobileStats.meshes);
 
     dispose(desktop);
     dispose(mobile);
+  });
+
+  it('retira las prácticas redundantes tardías y fija el censo premium tras el primer frame', () => {
+    const desktop = buildPremiumWarRoomLayer(theme, true, false);
+    const driver = desktop.getObjectByName('war-room-castle-floor-slab');
+
+    expect(driver).toBeTruthy();
+    expect(typeof driver.onBeforeRender).toBe('function');
+    expect(typeof driver.onAfterRender).toBe('function');
+    expect(sceneStats(desktop).lights).toBe(9);
+
+    // The warm fireplace bounce is intentionally created by the castle driver
+    // on the first real render. It remains because it contributes visible warm
+    // fill; the three retired late practicals do not.
+    driver.onBeforeRender();
+    expect(desktop.getObjectByName('war-room-fire-bounce-light')).toBeInstanceOf(THREE.PointLight);
+    expect(sceneStats(desktop).lights).toBe(10);
+
+    driver.onAfterRender();
+    const finalStats = sceneStats(desktop);
+    expect(desktop.userData.warRoomLatePracticalLightsRetired).toBe(3);
+    expect(desktop.userData.warRoomLatePracticalLightBudget).toBe('rear-sconces-banker-v1');
+    expect(desktop.userData.warRoomFinalLightCensus).toEqual({
+      total: 7,
+      point: 6,
+      spot: 1,
+      directional: 0,
+      hemisphere: 0,
+    });
+    expect(finalStats.lights).toBe(7);
+    expect(finalStats.pointLights).toBe(6);
+    expect(finalStats.spotLights).toBe(1);
+
+    dispose(desktop);
   });
 
   it('usa un fuego multicapa irregular con núcleo, brasas, luz cálida y un ancla renderizable', () => {
