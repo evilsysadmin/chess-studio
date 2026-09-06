@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { pawnSlugWeaponUpgradeForLevel } from '../pawnSlug.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import './PawnSlug.css';
 import './PawnSlugArsenal.css';
@@ -125,6 +126,7 @@ export default function PawnSlug({ onExit }) {
   const xpPercent = Math.max(0, Math.min(100, (hud.xpProgress || 0) * 100));
   const missionPercent = Math.round((hud.progress || 0) * 100);
   const ammoText = hud.ammo == null ? '∞' : hud.ammo;
+  const weaponUpgrade = pawnSlugWeaponUpgradeForLevel(hud.weapon, hud.level);
   const missionTime = `${String(Math.floor((hud.missionTime || 0) / 60)).padStart(2, '0')}:${String((hud.missionTime || 0) % 60).padStart(2, '0')}`;
   const overlay = hud.phase === 'ready' || hud.phase === 'gameover' || hud.phase === 'victory';
   const weapons = hud.weapons?.length ? hud.weapons : INITIAL_WEAPONS;
@@ -151,7 +153,7 @@ export default function PawnSlug({ onExit }) {
             <small className="pawn-slug-xp-value">{hud.xpToNext == null ? 'MAX' : `${hud.xpToNext} para ascenso`}</small>
           </div>
           <div><span>VIDAS</span><b>{'♥'.repeat(Math.max(0, hud.lives || 0)) || '—'}</b></div>
-          <div><span>ARMA</span><b>{hud.weaponLabel}</b><small>{ammoText}</small></div>
+          <div><span>ARMA</span><b>{hud.weaponLabel}</b><small>{weaponUpgrade.code} · {ammoText}</small></div>
           <div><span>GRANADAS</span><b>{hud.grenades}</b></div>
           <div><span>PUNTOS</span><b>{hud.score.toLocaleString('es-ES')}</b></div>
           <div><span>TIEMPO</span><b>{missionTime}</b></div>
@@ -176,6 +178,7 @@ export default function PawnSlug({ onExit }) {
               {weapons.map((weapon) => {
                 const disabled = !weapon.unlocked || (weapon.id !== 'pistol' && weapon.ammo === 0);
                 const count = weapon.id === 'pistol' ? '∞' : weapon.unlocked ? weapon.ammo : '—';
+                const tier = pawnSlugWeaponUpgradeForLevel(weapon.id, hud.level).code;
                 return (
                   <button
                     key={weapon.id}
@@ -183,13 +186,13 @@ export default function PawnSlug({ onExit }) {
                     className={weapon.current ? 'is-current' : ''}
                     aria-pressed={Boolean(weapon.current)}
                     aria-label={`${weapon.slot}. ${weapon.label}${disabled ? ' · no disponible' : ''}`}
-                    title={`${weapon.slot} · ${weapon.label}`}
+                    title={`${weapon.slot} · ${weapon.label} · ${tier}`}
                     disabled={disabled}
                     onClick={() => send(`weapon:${weapon.id}`, true)}
                   >
                     <kbd>{weapon.slot}</kbd>
                     <span>{weapon.shortLabel}</span>
-                    <small>{count}</small>
+                    <small>{tier} · {count}</small>
                   </button>
                 );
               })}
@@ -216,7 +219,7 @@ export default function PawnSlug({ onExit }) {
                 <div className="pawn-slug-briefing">
                   <span><b>Objetivo</b> Rompe el frente, sobrevive a los Sturm‑Bischof y elimina el Panzer‑Rook.</span>
                   <span><b>Progresión</b> Las bajas dan XP. Cada nivel aumenta tu HP máximo y potencia el daño. Cero ELO: esta locura vive sólo en Pawn Slug.</span>
-                  <span><b>Arsenal</b> Empiezas con pistola. Requisa MG, escopeta y Panzerfaust y cambia de arma cuando quieras.</span>
+                  <span><b>Arsenal</b> Empiezas con pistola. Requisa MG, escopeta y Panzerfaust; cada arma desbloquea mejoras Mk propias al ascender.</span>
                 </div>
               )}
               {hud.phase !== 'ready' && <small>Nivel {hud.level} · {hud.score.toLocaleString('es-ES')} puntos · {missionTime}</small>}
