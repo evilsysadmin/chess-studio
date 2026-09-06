@@ -46,4 +46,116 @@
     width: 13.8% !important;
     height: 41% !important;
   }
+
+  /* First-visit guidance remains useful, but in immersive desktop it cannot
+   * become a billboard laid across the doors. Keep it in the unused upper
+   * frieze of the hall and compress the four-step route into quiet chips. */
+  body .menu.home-friendly > .home-start-guide {
+    position: absolute !important;
+    z-index: 42 !important;
+    top: .55rem !important;
+    left: 50% !important;
+    right: auto !important;
+    width: min(82%, 860px) !important;
+    max-height: 6.25rem !important;
+    margin: 0 !important;
+    padding: .48rem 2.45rem .52rem .65rem !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: .28rem !important;
+    overflow: hidden !important;
+    transform: translateX(-50%) !important;
+    border-color: rgba(191, 151, 77, .25) !important;
+    border-radius: 11px !important;
+    background: linear-gradient(180deg, rgba(15, 14, 12, .94), rgba(8, 8, 7, .92)) !important;
+    box-shadow: 0 10px 26px rgba(0, 0, 0, .28) !important;
+    backdrop-filter: blur(8px) !important;
+  }
+
+  body .menu.home-friendly > .home-start-guide .home-start-guide-copy {
+    padding: 0 !important;
+  }
+
+  body .menu.home-friendly > .home-start-guide .home-start-guide-matthias {
+    display: block !important;
+  }
+
+  body .menu.home-friendly > .home-start-guide .home-start-guide-avatar,
+  body .menu.home-friendly > .home-start-guide .section-label,
+  body .menu.home-friendly > .home-start-guide .home-start-guide-actions,
+  body .menu.home-friendly > .home-start-guide .home-onboarding-tip {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-start-guide .home-start-guide-copy h2 {
+    margin: 0 !important;
+    color: #f1dfb5 !important;
+    font-size: .88rem !important;
+    line-height: 1.1 !important;
+    letter-spacing: .025em !important;
+  }
+
+  body .menu.home-friendly > .home-start-guide .home-start-guide-copy p {
+    display: block !important;
+    max-width: none !important;
+    margin: .12rem 0 0 !important;
+    overflow: hidden !important;
+    color: rgba(224, 214, 193, .64) !important;
+    font-size: .62rem !important;
+    line-height: 1.15 !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+  }
+
+  body .menu.home-friendly > .home-start-guide .home-start-guide-path {
+    grid-column: 1 !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: .28rem !important;
+  }
+
+  body .menu.home-friendly > .home-start-guide .home-start-guide-path > button {
+    min-width: 0 !important;
+    min-height: 1.9rem !important;
+    padding: .2rem .34rem !important;
+    display: grid !important;
+    grid-template-columns: 18px minmax(0, 1fr) 12px !important;
+    column-gap: .25rem !important;
+    align-items: center !important;
+    border-color: rgba(191, 151, 77, .17) !important;
+    border-radius: 7px !important;
+    background: rgba(0, 0, 0, .16) !important;
+  }
+
+  body .menu.home-friendly > .home-start-guide .home-start-guide-path > button > i {
+    width: 18px !important;
+    height: 18px !important;
+    font-size: .56rem !important;
+  }
+
+  body .menu.home-friendly > .home-start-guide .home-start-guide-path b {
+    min-width: 0 !important;
+    overflow: hidden !important;
+    color: rgba(241, 223, 181, .84) !important;
+    font-size: .59rem !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+  }
+
+  body .menu.home-friendly > .home-start-guide .home-start-guide-path small {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-start-guide .home-start-guide-link-arrow {
+    font-size: .62rem !important;
+  }
+
+  body .menu.home-friendly > .home-start-guide .home-start-guide-close {
+    top: .38rem !important;
+    right: .42rem !important;
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 1rem !important;
+  }
 }
