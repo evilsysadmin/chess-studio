@@ -5,32 +5,36 @@ import {
   acquireWarRoomHansQuickIteration,
   releaseWarRoomHansQuickIteration,
 } from './WarRoomHansIteration.js';
+import { claimWarRoomHansAppearanceForGame } from './WarRoomHansPerGame.js';
 
 // Safe public entrypoint. GameBoardView also imports Board3D directly, so the
 // provider must live here rather than only in the preferred Board wrapper.
 // If WebGL dies, Board3DCore falls back through Board; the context tells that
 // nested Board to render the concrete 2D implementation instead of recursing.
 export default function Board3D(props) {
-  const ownsHansQuickIteration = props.hansFireplaceIteration === true;
+  const requestsHansQuickIteration = props.hansFireplaceIteration === true;
+  const hansGameId = props.gameId;
 
-  // A quick-game War Room owns the Hans visual-iteration lease for its whole
-  // mounted lifetime. Previously every Board3D render wrote a shared boolean;
-  // a secondary/transient 3D render without the prop could clear it before the
-  // deferred War Room finalizer ran, leaving the door present but Hans absent.
-  // Layout effect runs before Board3DCore's passive scene-construction effect.
+  // A quick-game War Room may summon Hans once for the concrete game id. The
+  // claim is persisted through safeStorage so 2D/3D toggles, scene rebuilds,
+  // F5 and active-game recovery cannot replay the same cameo. A different game
+  // id gets a fresh claim. Layout effect still runs before Board3DCore's passive
+  // scene-construction effect, so an accepted claim arms the renderer in time.
   useLayoutEffect(() => {
-    if (!ownsHansQuickIteration) return undefined;
+    if (!requestsHansQuickIteration) return undefined;
+    if (!claimWarRoomHansAppearanceForGame(hansGameId)) return undefined;
     acquireWarRoomHansQuickIteration();
     return () => releaseWarRoomHansQuickIteration();
-  }, [ownsHansQuickIteration]);
+  }, [requestsHansQuickIteration, hansGameId]);
 
   return (
     <BoardRendererContext.Provider value="3d">
       <span
         hidden
         aria-hidden="true"
-        data-war-room-hans-quick-request={ownsHansQuickIteration ? 'true' : 'false'}
-        data-war-room-hans-runtime={ownsHansQuickIteration ? 'pending' : 'idle'}
+        data-war-room-hans-quick-request={requestsHansQuickIteration ? 'true' : 'false'}
+        data-war-room-hans-game-id={hansGameId || ''}
+        data-war-room-hans-runtime={requestsHansQuickIteration ? 'pending' : 'idle'}
       />
       <Board3DCore {...props} />
     </BoardRendererContext.Provider>
