@@ -1,18 +1,25 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PAWN_SLUG_PLAYER,
   PAWN_SLUG_WEAPON_ORDER,
   PAWN_SLUG_WEAPONS,
   PAWN_SLUG_WORLD,
   pawnSlugAmmoForPickup,
   pawnSlugBossUnlocked,
   pawnSlugClamp,
+  pawnSlugDamageMultiplier,
+  pawnSlugLevelForXp,
+  pawnSlugLevelProgress,
   pawnSlugMatthiasLine,
+  pawnSlugMaxHpForLevel,
   pawnSlugPickupCopy,
   pawnSlugProgress,
   pawnSlugScoreForKill,
   pawnSlugSpawnWindow,
   pawnSlugWeaponLabel,
   pawnSlugWeaponShortLabel,
+  pawnSlugXpForKill,
+  pawnSlugXpForLevel,
 } from './pawnSlug.js';
 
 describe('Pawn Slug contracts', () => {
@@ -59,8 +66,25 @@ describe('Pawn Slug contracts', () => {
   it('rewards tougher enemies and gives Matthias factual event barks', () => {
     expect(pawnSlugScoreForKill('rook')).toBeGreaterThan(pawnSlugScoreForKill('pawn'));
     expect(pawnSlugScoreForKill('boss')).toBeGreaterThan(3000);
+    expect(pawnSlugXpForKill('rook')).toBeGreaterThan(pawnSlugXpForKill('pawn'));
+    expect(pawnSlugXpForKill('boss')).toBeGreaterThan(500);
     expect(pawnSlugMatthiasLine('boss')).toContain('castillo');
     expect(pawnSlugMatthiasLine('death')).toContain('culo');
+    expect(pawnSlugMatthiasLine('levelUp')).toContain('Ascenso');
     expect(pawnSlugPickupCopy('panzerfaust')).toContain('sutileza');
+  });
+
+  it('scales XP requirements, HP and damage without unbounded levels', () => {
+    expect(pawnSlugXpForLevel(1)).toBe(0);
+    expect(pawnSlugXpForLevel(2)).toBe(120);
+    expect(pawnSlugXpForLevel(3)).toBeGreaterThan(pawnSlugXpForLevel(2));
+    expect(pawnSlugLevelForXp(119)).toBe(1);
+    expect(pawnSlugLevelForXp(120)).toBe(2);
+    expect(pawnSlugLevelForXp(Number.MAX_SAFE_INTEGER)).toBe(PAWN_SLUG_PLAYER.maxLevel);
+    expect(pawnSlugLevelProgress(0)).toBe(0);
+    expect(pawnSlugLevelProgress(Number.MAX_SAFE_INTEGER, PAWN_SLUG_PLAYER.maxLevel)).toBe(1);
+    expect(pawnSlugMaxHpForLevel(2)).toBe(PAWN_SLUG_PLAYER.baseMaxHp + PAWN_SLUG_PLAYER.hpPerLevel);
+    expect(pawnSlugMaxHpForLevel(999)).toBe(pawnSlugMaxHpForLevel(PAWN_SLUG_PLAYER.maxLevel));
+    expect(pawnSlugDamageMultiplier(2)).toBeCloseTo(1.05);
   });
 });
