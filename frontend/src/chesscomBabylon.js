@@ -2,4 +2,4 @@ export {
   BABYLON_VERSION,
   createChesscomBabylon,
   loadChesscomBabylon,
-} from './chesscomBabylonGpu.js';
+} from './chesscomBabylonCanonical.js';
