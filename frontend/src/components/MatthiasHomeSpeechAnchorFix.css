@@ -1,0 +1,23 @@
+/* Home · Matthias speech anchoring
+ *
+ * The premium desktop rail used a viewport-fixed left coordinate for speech,
+ * so the bubble stopped belonging physically to Matthias when the rail geometry
+ * changed. Anchor it to the resident itself: character and bubble now move as
+ * one composition and keep an explicit, bounded gap.
+ */
+@media (min-width: 1100px) {
+  body:has(.home-friendly) .matthias-resident.is-viewport .matthias-resident__bubble {
+    position: absolute;
+    top: 2.2rem;
+    left: calc(100% + .5rem);
+    width: min(320px, calc(100vw - 15rem));
+    max-width: 320px;
+    margin: 0;
+  }
+
+  body:has(.home-friendly) .matthias-resident.is-viewport .matthias-resident__bubble::after {
+    left: -8px;
+    right: auto;
+    transform: rotate(225deg);
+  }
+}
