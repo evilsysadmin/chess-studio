@@ -45,6 +45,8 @@ import {
   PAWN_SLUG_STURM_BISHOP_META,
   animateSturmBishopModel,
   createSturmBishopModel,
+  pawnSlugSturmBishopSuppressionLane,
+  pawnSlugSturmBishopSuppressionTelegraph,
   pawnSlugSturmBishopTelegraph,
 } from './pawnSlugMidBoss.js';
 import { animateMatthiasSlugSprite } from './pawnSlugSprites.js';
@@ -455,6 +457,10 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       onGround: true,
       fireCooldown: midBoss ? 0.75 : 0.45 + Math.random() * 0.8,
       shellCooldown: midBoss ? 1.65 + Math.random() * 0.45 : null,
+      suppressionCooldown: midBoss ? 2.35 + Math.random() * 0.7 : null,
+      suppressionShots: 0,
+      suppressionShotIndex: 0,
+      suppressionShotCooldown: 0,
       leapCooldown: 0.7 + Math.random() * 1.2,
       hurt: 0,
       dead: false,
@@ -607,6 +613,25 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     const muzzleOffset = enemy.type === 'boss' ? 2 : enemy.type === 'bishop' ? 1.05 : 0.7;
     addBullet({ x: enemy.x + dir * muzzleOffset, y, vx: dir * speed, vy, damage: explosive ? (enemy.type === 'bishop' ? 24 : 30) : (enemy.type === 'bishop' ? 15 : 13), enemy: true, explosive, life: 4, weapon: 'enemy' });
     addFlash(enemy.x + dir * muzzleOffset, y, dir, explosive ? 'panzerfaust' : 'pistol', true);
+  }
+
+  function fireBishopSuppression(enemy, shotIndex) {
+    const lane = pawnSlugSturmBishopSuppressionLane(shotIndex);
+    const dir = enemy.x >= state.player.x ? -1 : 1;
+    const x = enemy.x + dir * 1.05;
+    const y = enemy.y + lane.height;
+    addBullet({
+      x,
+      y,
+      vx: dir * lane.speed,
+      vy: 0,
+      damage: lane.damage,
+      enemy: true,
+      explosive: false,
+      life: 3.2,
+      weapon: 'enemy',
+    });
+    addFlash(x, y, dir, 'machinegun', true);
   }
 
   function burst(x, y, strength = 1, fiery = true) {
@@ -863,15 +888,47 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
           enemy.fireCooldown = 1.35 + Math.random() * 0.5;
         }
       } else if (enemy.type === 'bishop') {
-        enemy.vx = distance > 4.8 ? enemy.dir * enemy.speed : 0;
-        if (distance < 11 && enemy.fireCooldown <= 0) {
-          fireEnemy(enemy, false);
-          enemy.fireCooldown = 0.42 + Math.random() * 0.16;
-        }
         enemy.shellCooldown -= dt;
-        if (distance < PAWN_SLUG_STURM_BISHOP_META.shellRange && enemy.shellCooldown <= 0) {
-          fireEnemy(enemy, true);
-          enemy.shellCooldown = 2.05 + Math.random() * 0.55;
+        enemy.suppressionCooldown -= dt;
+        enemy.suppressionShotCooldown = Math.max(0, enemy.suppressionShotCooldown - dt);
+        const shellClearForSuppression = enemy.shellCooldown > PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds + 0.35;
+        const suppressionCharging = enemy.suppressionShots <= 0
+          && shellClearForSuppression
+          && distance < PAWN_SLUG_STURM_BISHOP_META.suppressionRange
+          && enemy.suppressionCooldown > 0
+          && enemy.suppressionCooldown <= PAWN_SLUG_STURM_BISHOP_META.suppressionTelegraphSeconds;
+
+        if (enemy.suppressionShots > 0) {
+          enemy.vx = 0;
+          enemy.shellCooldown = Math.max(enemy.shellCooldown, PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds + 0.55);
+          if (enemy.suppressionShotCooldown <= 0) {
+            fireBishopSuppression(enemy, enemy.suppressionShotIndex);
+            enemy.suppressionShotIndex += 1;
+            enemy.suppressionShots -= 1;
+            enemy.suppressionShotCooldown = PAWN_SLUG_STURM_BISHOP_META.suppressionShotInterval;
+            if (enemy.suppressionShots <= 0) {
+              enemy.suppressionCooldown = 3.15 + Math.random() * 0.65;
+              enemy.fireCooldown = Math.max(enemy.fireCooldown, 0.32);
+            }
+          }
+        } else {
+          enemy.vx = suppressionCharging ? 0 : (distance > 4.8 ? enemy.dir * enemy.speed : 0);
+          if (!suppressionCharging && distance < 11 && enemy.fireCooldown <= 0) {
+            fireEnemy(enemy, false);
+            enemy.fireCooldown = 0.42 + Math.random() * 0.16;
+          }
+          if (shellClearForSuppression
+            && distance < PAWN_SLUG_STURM_BISHOP_META.suppressionRange
+            && enemy.suppressionCooldown <= 0) {
+            enemy.suppressionShots = PAWN_SLUG_STURM_BISHOP_META.suppressionBurstShots;
+            enemy.suppressionShotIndex = 0;
+            enemy.suppressionShotCooldown = 0;
+            enemy.vx = 0;
+            enemy.shellCooldown = Math.max(enemy.shellCooldown, PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds + 0.7);
+          } else if (distance < PAWN_SLUG_STURM_BISHOP_META.shellRange && enemy.shellCooldown <= 0) {
+            fireEnemy(enemy, true);
+            enemy.shellCooldown = 2.05 + Math.random() * 0.55;
+          }
         }
       } else if (enemy.type === 'boss') {
         enemy.vx = 0;
@@ -898,7 +955,18 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       if (enemy.type === 'bishop') {
         enemy.model.userData.baseY = enemy.y;
         const telegraph = pawnSlugSturmBishopTelegraph(enemy.shellCooldown, distance);
-        animateSturmBishopModel(enemy.model, state.time, { moving: Math.abs(enemy.vx) > 0.2, hurt: enemy.hurt > 0, dir: enemy.dir, telegraph });
+        const suppressionTelegraph = enemy.suppressionShots > 0
+          ? 1
+          : (enemy.shellCooldown > PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds + 0.35
+            ? pawnSlugSturmBishopSuppressionTelegraph(enemy.suppressionCooldown, distance)
+            : 0);
+        animateSturmBishopModel(enemy.model, state.time, {
+          moving: Math.abs(enemy.vx) > 0.2,
+          hurt: enemy.hurt > 0,
+          dir: enemy.dir,
+          telegraph,
+          suppressionTelegraph,
+        });
       } else {
         enemy.model.scale.x = Math.abs(enemy.model.scale.x || 1) * enemy.dir;
         animateSlugEnemy(enemy.model, enemy.type, state.time, { moving: Math.abs(enemy.vx) > 0.2, hurt: enemy.hurt > 0 });
