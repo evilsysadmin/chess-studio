@@ -1,0 +1,40 @@
+name: Temporary · Chesscom unit premium snapshot
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact merged generation
+        uses: actions/checkout@v7
+        with:
+          ref: 182cc488cba3f12cc9ae6e961ea1eb975280c934
+          fetch-depth: 0
+      - name: Verify exact SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "182cc488cba3f12cc9ae6e961ea1eb975280c934"
+      - name: Build complete source ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          git archive --format=zip \
+            --prefix=ChessStudio_182cc488_CHESSCOM_UNIT_PREMIUM/ \
+            --output=ChessStudio_182cc488_CHESSCOM_UNIT_PREMIUM_COMPLETE.zip \
+            182cc488cba3f12cc9ae6e961ea1eb975280c934
+      - name: Upload exact snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChessStudio_182cc488_CHESSCOM_UNIT_PREMIUM_COMPLETE
+          path: ChessStudio_182cc488_CHESSCOM_UNIT_PREMIUM_COMPLETE.zip
+          if-no-files-found: error
+          retention-days: 1
