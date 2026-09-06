@@ -185,7 +185,7 @@ export default function GameBoardView({
             <WarRoomHansGreeting
               gameId={game.id}
               isThreeD={isThreeD}
-              enabled={!zenMode && !focusActive && hansFireplaceIteration}
+              enabled={!zenMode && !focusActive}
               matthiasAnchorStyle={matthias3DBubbleStyle}
               matthiasTrackedSquare={matthias3DTrackedSquare}
             />
