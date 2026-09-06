@@ -201,8 +201,8 @@ describe('War Room castle visual contract', () => {
     expect(finalizerDriver?.userData?.warRoomLegacyArmorRetirementDriver).toBeUndefined();
     expect(typeof finalizerDriver?.onBeforeRender).toBe('function');
     finalizerDriver.onBeforeRender();
-    expect(scene.userData.warRoomLegacyArmorRetired).toBe(true);
-    expect(scene.userData.warRoomDeferredFinalizedTasks).toContain('legacy-armor-retirement-v1');
-    expect(scene.userData.warRoomDeferredFinalizerResults['legacy-armor-retirement-v1']).toBe(0);
+    expect(scene.userData.warRoomLegacyArmorRetired).toBeUndefined();
+    expect(scene.userData.warRoomDeferredFinalizedTasks).not.toContain('legacy-armor-retirement-v1');
+    expect(scene.userData.warRoomDeferredFinalizerResults?.['legacy-armor-retirement-v1']).toBeUndefined();
   });
 });
