@@ -115,11 +115,11 @@ describe('Hans quick-game visual iteration', () => {
     expect(kit).toBeTruthy();
     expect(driver.userData.warRoomHansSelected).toBe(true);
     expect(driver.userData.warRoomHansStartDelaySeconds).toBe(0);
-    expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v5-service-corridor');
+    expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v6-mobile-proscenium');
     expect(driver.userData.warRoomHansVisibleAtStart).toBe(true);
     expect(driver.userData.warRoomHansUsesServiceDoor).toBe(true);
     expect(driver.userData.warRoomHansServiceCorridor).toBe('past-armor-to-hearth-v1');
-    expect(fireplace.userData.warRoomHansQuickIteration).toBe('always-quick-v5-service-corridor');
+    expect(fireplace.userData.warRoomHansQuickIteration).toBe('always-quick-v6-mobile-proscenium');
     expect(fireplace.userData.warRoomHansHearthRestored).toBe(false);
     expect(door.userData.warRoomHansServiceDoor).toBe('hans-service-door-v1');
     expect(door.userData.warRoomHansDoorPlacement).toBe('past-armor-service-corridor-v1');
@@ -160,10 +160,14 @@ describe('Hans quick-game visual iteration', () => {
       expect(door).toBeTruthy();
       expect(basket).toBeTruthy();
       expect(driver.userData.warRoomHansSelected).toBe(true);
-      expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v5-service-corridor');
+      expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v6-mobile-proscenium');
       expect(driver.userData.warRoomHansVisibleAtStart).toBe(true);
+      expect(driver.userData.warRoomHansMobileEntryHeadstartSeconds).toBeCloseTo(4.8, 2);
+      expect(driver.userData.warRoomHansEntryPresentation).toBe('mobile-proscenium-v1');
       expect(hans.visible).toBe(true);
-      expect(door.userData.warRoomHansDoorOpen).toBe(1);
+      expect(Math.abs(hans.position.x)).toBeLessThan(1);
+      expect(Math.abs(hans.position.z)).toBeLessThan(3);
+      expect(door.userData.warRoomHansDoorOpen).toBe(0);
       expect(door.userData.warRoomHansDoorPlacement).toBe('past-armor-service-corridor-v1');
       expect(basket.userData.warRoomHansBasketFinish).toBe('graphite-grey-v1');
     } finally {

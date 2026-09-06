@@ -127,6 +127,11 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   const hansMarker = page.locator('[data-war-room-hans-quick-request="true"]');
   await expect(hansMarker).toHaveCount(1);
   await expect(hansMarker).toHaveAttribute('data-war-room-hans-runtime', 'visible', { timeout: 30_000 });
+  // Regression: `visible` is not enough. Hans used to spend the opening walk
+  // outside the portrait frustum while the test still passed. The first actual
+  // rendered frame on Pixel must put his world position inside the camera.
+  await expect(hansMarker).toHaveAttribute('data-war-room-hans-first-screen', 'onscreen', { timeout: 10_000 });
+  await expect(canvas).toHaveAttribute('data-war-room-hans-first-screen', 'onscreen', { timeout: 10_000 });
 
   const matthiasCard = page.locator('.game-3d-matthias-card');
   const focusButton = page.getByRole('button', { name: 'Focus', exact: true });
