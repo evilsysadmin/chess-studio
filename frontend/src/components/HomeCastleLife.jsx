@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './HomeCastleLife.css';
 import './HomeGreatHall.css';
 import './HomeCastleAmbience.css';
@@ -18,6 +18,8 @@ import {
 const MAX_OBJECTS = 3;
 const RARE_SIGHTING_THRESHOLD = 0.025;
 const HIGH_HONOUR_PRESTIGE = 80;
+const HOME_CASTLE_MOBILE_QUERY = '(max-width: 760px)';
+const HOME_CASTLE_PRELOAD_MARGIN = '240px 0px';
 const ACHIEVEMENT_STORAGE_KEYS = new Set([
   'chess-study-achievements',
   'chess-study-achievement-ledger-v2',
@@ -53,6 +55,13 @@ function loadAchievementSnapshot() {
     ledger,
     fingerprint: achievementStateFingerprint(ids, ledger),
   };
+}
+
+export function homeCastleSceneShouldStartMounted({
+  compactViewport = false,
+  supportsIntersectionObserver = true,
+} = {}) {
+  return !compactViewport || !supportsIntersectionObserver;
 }
 
 function castleAmbience({ honours, stateObjects, hasSavedGame }) {
@@ -187,6 +196,39 @@ export function buildHomeCastleLifeModel({
 }
 
 export default function HomeCastleLife({ achievementIds = null, achievementLedger = null, ...props }) {
+  const sectionRef = useRef(null);
+  // Desktop presents the castle in the first visual field and keeps the current
+  // immediate mount. On the mobile first-fold contract the castle sits below
+  // the primary actions, so creating a WebGL context before the user approaches
+  // it is pure speculative work. Older browsers keep the safe eager behavior.
+  const [castleSceneMounted, setCastleSceneMounted] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const compactViewport = typeof window.matchMedia === 'function'
+      ? window.matchMedia(HOME_CASTLE_MOBILE_QUERY).matches
+      : Number(window.innerWidth) <= 760;
+    return homeCastleSceneShouldStartMounted({
+      compactViewport,
+      supportsIntersectionObserver: typeof window.IntersectionObserver === 'function',
+    });
+  });
+
+  useEffect(() => {
+    if (castleSceneMounted || typeof window === 'undefined') return undefined;
+    const section = sectionRef.current;
+    if (!section || typeof window.IntersectionObserver !== 'function') {
+      setCastleSceneMounted(true);
+      return undefined;
+    }
+
+    const observer = new window.IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry?.isIntersecting)) return;
+      setCastleSceneMounted(true);
+      observer.disconnect();
+    }, { rootMargin: HOME_CASTLE_PRELOAD_MARGIN });
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, [castleSceneMounted]);
+
   // Menu rerenders for many unrelated reasons. Reading + parsing achievements in
   // the component body made every one of those renders touch profile storage.
   // Keep a coherent snapshot and refresh it only when profile/storage can
@@ -248,10 +290,12 @@ export default function HomeCastleLife({ achievementIds = null, achievementLedge
 
   return (
     <section
+      ref={sectionRef}
       className={`home-castle-life${model.rareSighting ? ' has-rare-sighting' : ''}`}
       aria-label="La estancia de Chess Studio"
       data-castle-life="real-state-v1"
       data-castle-ledger="evidence-v1"
+      data-castle-scene-state={castleSceneMounted ? 'mounted' : 'deferred'}
       data-castle-ambience={model.ambience}
       data-castle-ambience-evidence={model.ambienceEvidence}
       data-castle-honours={honourObjects.length}
@@ -259,7 +303,9 @@ export default function HomeCastleLife({ achievementIds = null, achievementLedge
       data-castle-unlocks-recorded={model.unlockSummary.recorded}
       data-castle-unlocks-legacy={model.unlockSummary.legacy}
     >
-      <HomeCastleHubScene ambience={model.ambience} hasSavedGame={Boolean(props.hasSavedGame)} />
+      {castleSceneMounted ? (
+        <HomeCastleHubScene ambience={model.ambience} hasSavedGame={Boolean(props.hasSavedGame)} />
+      ) : null}
       <div className="home-castle-life__decor" aria-label="Objetos desbloqueados del castillo">
         {visibleObjects.map((object, index) => (
           <span
