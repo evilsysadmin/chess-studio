@@ -12,6 +12,8 @@ const LEGACY_BALLISTIC_PREFIXES = Object.freeze([
   'premium-muzzle-',
 ]);
 
+export const CHESSCOM_CANONICAL_BALLISTIC_HOT_PATH = 'reused-shot-vectors-v1';
+
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
@@ -28,6 +30,13 @@ function smoothstep(value) {
 
 function lerp(a, b, t) {
   return a + (b - a) * t;
+}
+
+export function chesscomWriteLerp3(target, start, end, t) {
+  target.x = lerp(start.x, end.x, t);
+  target.y = lerp(start.y, end.y, t);
+  target.z = lerp(start.z, end.z, t);
+  return target;
 }
 
 function shortestAngleDelta(from, to) {
@@ -542,6 +551,10 @@ function queueShots(B, scene, shots, poses, materials, disposables, attack, bala
       light:null,
       start:null,
       end:null,
+      current:null,
+      tail:null,
+      trailPoints:null,
+      trailUpdateOptions:null,
       disposables,
     });
   });
@@ -557,15 +570,29 @@ function initializeShot(B, scene, shot) {
     const offset = chesscomPremiumMissOffset(`${shot.attack.source.id}:${shot.attack.target.id}`, shot.roundIndex);
     end.x += offset.x; end.z += offset.z; end.y = Math.max(.10, offset.y);
   }
-  const bullet = B.MeshBuilder.CreateSphere(`canonical-ballistic-round-${performance.now()}-${shot.roundIndex}`, { diameter:.052,segments:8 }, scene);
+  const stamp = performance.now();
+  const current = start.clone();
+  const tail = start.clone();
+  const trailPoints = [tail, current];
+  const bullet = B.MeshBuilder.CreateSphere(`canonical-ballistic-round-${stamp}-${shot.roundIndex}`, { diameter:.052,segments:8 }, scene);
   bullet.position.copyFrom(start); bullet.material = shot.attack.friendly ? shot.materials.friendly : shot.materials.hostile; bullet.isPickable = false;
-  const trail = B.MeshBuilder.CreateLines(`canonical-ballistic-tail-${performance.now()}-${shot.roundIndex}`, { points:[start,start],updatable:true }, scene);
+  const trail = B.MeshBuilder.CreateLines(`canonical-ballistic-tail-${stamp}-${shot.roundIndex}`, { points:trailPoints,updatable:true }, scene);
   trail.color = shot.attack.friendly ? new B.Color3(1,.66,.21) : new B.Color3(1,.19,.11); trail.alpha = .72; trail.isPickable = false;
-  const flash = B.MeshBuilder.CreateSphere(`canonical-muzzle-pop-${performance.now()}-${shot.roundIndex}`, { diameter:.13,segments:8 }, scene);
+  const flash = B.MeshBuilder.CreateSphere(`canonical-muzzle-pop-${stamp}-${shot.roundIndex}`, { diameter:.13,segments:8 }, scene);
   flash.position.copyFrom(start); flash.material = shot.materials.flash; flash.scaling.set(1.6,.72,.72); flash.isPickable = false;
-  const light = new B.PointLight(`canonical-muzzle-light-${performance.now()}-${shot.roundIndex}`, start.clone(), scene);
+  const light = new B.PointLight(`canonical-muzzle-light-${stamp}-${shot.roundIndex}`, start.clone(), scene);
   light.diffuse = new B.Color3(1,.47,.10); light.intensity = 2.1; light.range = 1.9;
-  shot.start = start; shot.end = end; shot.bullet = bullet; shot.trail = trail; shot.flash = flash; shot.light = light; shot.initialized = true;
+  shot.start = start;
+  shot.end = end;
+  shot.current = current;
+  shot.tail = tail;
+  shot.trailPoints = trailPoints;
+  shot.trailUpdateOptions = { points:trailPoints, instance:trail };
+  shot.bullet = bullet;
+  shot.trail = trail;
+  shot.flash = flash;
+  shot.light = light;
+  shot.initialized = true;
   shot.disposables.push(bullet, trail, flash, light);
 }
 
@@ -583,11 +610,11 @@ function animateShots(B, scene, shots, now) {
     if (!shot.initialized) initializeShot(B, scene, shot);
     const raw = clamp((now - shot.born) / shot.flightMs, 0, 1);
     const eased = easeOutCubic(raw);
-    const current = B.Vector3.Lerp(shot.start, shot.end, eased);
-    shot.bullet.position.copyFrom(current);
+    chesscomWriteLerp3(shot.current, shot.start, shot.end, eased);
+    shot.bullet.position.copyFrom(shot.current);
     const tailProgress = clamp(eased - .11, 0, 1);
-    const tail = B.Vector3.Lerp(shot.start, shot.end, tailProgress);
-    B.MeshBuilder.CreateLines(shot.trail.name, { points:[tail,current],instance:shot.trail });
+    chesscomWriteLerp3(shot.tail, shot.start, shot.end, tailProgress);
+    B.MeshBuilder.CreateLines(shot.trail.name, shot.trailUpdateOptions);
     const flashProgress = clamp((now - shot.born) / 58, 0, 1);
     shot.flash.visibility = 1 - flashProgress;
     shot.flash.scaling.set(1.6 + flashProgress * .8, .72 * (1 - flashProgress), .72 * (1 - flashProgress));
@@ -630,7 +657,7 @@ export function installChesscomUnitCombatCanonical(B, scene, { tier = 'ultra' } 
     const now = performance.now();
     // GPU V2 still owns hit/miss semantics, impact particles and audio. We only
     // suppress its torso-ish tracer and replace the visible ballistic path.
-    for (const mesh of Array.from(hiddenLegacy)) {
+    for (const mesh of hiddenLegacy) {
       if (!mesh || mesh.isDisposed?.()) { hiddenLegacy.delete(mesh); continue; }
       mesh.isVisible = false;
       mesh.visibility = 0;

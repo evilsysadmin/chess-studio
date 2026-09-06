@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHESSCOM_CANONICAL_BALLISTIC_HOT_PATH,
   chesscomAimYaw,
   chesscomCanonicalShotTimeline,
   chesscomUnitVisualProfile,
+  chesscomWriteLerp3,
 } from './chesscomUnitCombatCanonical.js';
 
 describe('Chesscom canonical unit identity', () => {
@@ -52,5 +54,21 @@ describe('Chesscom canonical fire stance', () => {
     expect(shot.aimMs).toBe(48);
     expect(shot.flightMs).toBeGreaterThan(shot.aimMs);
     expect(shot.impactMs).toBeGreaterThan(shot.bornMs);
+  });
+
+  it('writes ballistic interpolation into reusable scratch vectors', () => {
+    expect(CHESSCOM_CANONICAL_BALLISTIC_HOT_PATH).toBe('reused-shot-vectors-v1');
+    const scratch = { x:99, y:99, z:99 };
+    const result = chesscomWriteLerp3(
+      scratch,
+      { x:-2, y:1, z:4 },
+      { x:6, y:5, z:-4 },
+      0.25,
+    );
+    expect(result).toBe(scratch);
+    expect(scratch).toEqual({ x:0, y:2, z:2 });
+
+    chesscomWriteLerp3(scratch, { x:0, y:0, z:0 }, { x:10, y:-6, z:2 }, 0.5);
+    expect(scratch).toEqual({ x:5, y:-3, z:1 });
   });
 });
