@@ -421,7 +421,7 @@ jobs:
           files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
           printf '%s\n' "$files"
 
-          security_pattern='(^|/)(?:Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|\.dockerignore)$|^compose\.ya?ml$|^frontend/package(-lock)?\.json$|^backend-python/requirements[^/]*\.txt$|^Makefile$|^\.trivy(ignore|\.ya?ml)?$|^scripts/(?:npm_audit_gate\.py|pip_audit_report\.py|compose_smoke\.py|security[^/]*|trivy_[^/]*|install_trivy\.sh)$|^\.github/workflows/cicd\.yml$|^\.github/actions/cache-python-venv/action\.yml$|^(?:infra|deploy)/|^render\.ya?ml$'
+          security_pattern='(^|/)(Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|\.dockerignore)$|^compose\.ya?ml$|^frontend/package(-lock)?\.json$|^backend-python/requirements[^/]*\.txt$|^Makefile$|^\.trivy(ignore|\.ya?ml)?$|^scripts/(npm_audit_gate\.py|pip_audit_report\.py|compose_smoke\.py|security[^/]*|trivy_[^/]*|install_trivy\.sh)$|^\.github/workflows/cicd\.yml$|^\.github/actions/cache-python-venv/action\.yml$|^(infra|deploy)/|^render\.ya?ml$'
           if grep -Eq "$security_pattern" <<< "$files"; then
             echo "run_security=true" >> "$GITHUB_OUTPUT"
           else
