@@ -29,6 +29,12 @@ function belongsToChessPiece(object) {
   return false;
 }
 
+function sceneRoot(object) {
+  let current = object;
+  while (current?.parent) current = current.parent;
+  return current;
+}
+
 function geometrySignature(geometry) {
   if (!geometry || geometry.type !== 'BoxGeometry') return null;
   const {
@@ -127,6 +133,65 @@ export function batchWarRoomStaticDecor(root) {
   return result;
 }
 
+function matchesLateLegacyPractical(light) {
+  if (!light?.isPointLight || light.name) return false;
+  const distance = Number(light.distance || 0);
+  const y = Number(light.position?.y || 0);
+  const x = Math.abs(Number(light.position?.x || 0));
+
+  // PremiumWarRoomScene historically adds these after the architectural
+  // performance pass, so they escaped the desktop budget entirely. Match only
+  // the stable geometry-bound signatures of the two rear sconces and the one
+  // banker-lamp pool. Cinematic moon/palette fills intentionally do not match.
+  const rearSconce = Math.abs(distance - 7.2) < 0.05
+    && Math.abs(y - 4.17) < 0.08
+    && Math.abs(x - 3.18) < 0.08;
+  const bankerLamp = Math.abs(distance - 5.6) < 0.05
+    && Math.abs(y - 2.5) < 0.08;
+  return rearSconce || bankerLamp;
+}
+
+export function retireWarRoomLatePracticalLights(root) {
+  const premium = root?.name === 'premium-war-room-layer'
+    ? root
+    : root?.getObjectByName?.('premium-war-room-layer');
+  if (!premium) return 0;
+
+  const retired = premium.children.filter(matchesLateLegacyPractical);
+  for (const light of retired) {
+    light.visible = false;
+    light.userData ||= {};
+    light.userData.warRoomPerformanceLight = 'late-practical-emissive-owned-retired';
+    premium.remove(light);
+  }
+
+  premium.userData ||= {};
+  premium.userData.warRoomLatePracticalLightsRetired = retired.length;
+  premium.userData.warRoomLatePracticalLightBudget = 'rear-sconces-banker-v1';
+  return retired.length;
+}
+
+function armLatePracticalLightRetirement(root) {
+  if (!root || root.userData?.warRoomLatePracticalLightRetirementArmed) return 0;
+  const driver = root.getObjectByName?.('war-room-castle-floor-slab')
+    || root.getObjectByName?.('war-room-castle-wall-left');
+  if (!driver) return 0;
+
+  const previous = driver.onAfterRender;
+  let completed = false;
+  driver.onAfterRender = (...args) => {
+    previous?.(...args);
+    if (completed) return;
+    completed = true;
+    const liveRoot = sceneRoot(driver) || root;
+    retireWarRoomLatePracticalLights(liveRoot);
+    driver.userData.warRoomLatePracticalLightRetirementCompleted = true;
+  };
+  driver.userData.warRoomLatePracticalLightRetirement = 'first-frame-v1';
+  root.userData.warRoomLatePracticalLightRetirementArmed = true;
+  return 1;
+}
+
 export function applyWarRoomPerformanceBudget(root, { coarsePointer = false } = {}) {
   const stats = {
     pointLightsKept: 0,
@@ -154,10 +219,6 @@ export function applyWarRoomPerformanceBudget(root, { coarsePointer = false } = 
         retiredLights.push(object);
       }
     } else if (object?.isSpotLight) {
-      // Premium decor historically constructed spot keys that the desktop
-      // budget immediately disabled. Keep the visual contribution in the
-      // emissive/halo/global-key layers and detach the dead light entirely so
-      // the renderer no longer traverses an invisible lighting object.
       object.visible = false;
       object.userData ||= {};
       object.userData.warRoomPerformanceLight = 'global-key-covered-retired';
@@ -166,10 +227,6 @@ export function applyWarRoomPerformanceBudget(root, { coarsePointer = false } = 
       if (object.target?.parent) retiredTargets.add(object.target);
     }
 
-    // Static decor used to participate in every directional shadow refresh even
-    // though almost none of it moves. Keep real-time shadow casting for chess
-    // pieces, which are built outside this premium-decor group. The room still
-    // receives the key light and keeps all material/IBL depth.
     if (object?.isMesh && object.castShadow && !belongsToChessPiece(object)) {
       object.castShadow = false;
       object.userData ||= {};
@@ -180,9 +237,10 @@ export function applyWarRoomPerformanceBudget(root, { coarsePointer = false } = 
 
   for (const light of retiredLights) light.parent?.remove(light);
   for (const target of retiredTargets) target.parent?.remove(target);
+  armLatePracticalLightRetirement(root);
 
   root.userData ||= {};
-  root.userData.warRoomPerformanceBudget = 'desktop-hard-cut-v3-light-detach';
+  root.userData.warRoomPerformanceBudget = 'desktop-hard-cut-v4-late-practical-retirement';
   root.userData.warRoomPointLightsKept = stats.pointLightsKept;
   root.userData.warRoomPointLightsCulled = stats.pointLightsCulled;
   root.userData.warRoomSpotLightsCulled = stats.spotLightsCulled;
