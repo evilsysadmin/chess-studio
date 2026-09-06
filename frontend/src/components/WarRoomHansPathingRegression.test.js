@@ -39,7 +39,7 @@ afterEach(() => {
 });
 
 describe('Hans hearth pathing regressions', () => {
-  it.each([1, -1])('gira hacia la chimenea antes de caminar con el tronco (towardBoard=%s)', (towardBoard) => {
+  it.each([1, -1])('gira hacia la chimenea antes de caminar con el tronco y respeta el reloj lento (towardBoard=%s)', (towardBoard) => {
     const now = vi.spyOn(globalThis.performance, 'now').mockReturnValue(1000);
     setWarRoomHansQuickIterationEnabled(true);
     const room = buildPremiumWarRoomLayer(
@@ -56,7 +56,12 @@ describe('Hans hearth pathing regressions', () => {
 
       driver.onBeforeRender(); // clock origin
 
-      now.mockReturnValue(10050); // elapsed 9.05 s => start of carry-log turn-in-place
+      now.mockReturnValue(11000); // 10 s reales -> 6.8 s de presentación: aún entrando
+      driver.onBeforeRender();
+      expect(driver.userData.warRoomHansPhase).toBe('fire-dimming');
+      expect(driver.userData.warRoomHansPresentationTimeScale).toBeCloseTo(0.68, 6);
+
+      now.mockReturnValue(14310); // ~=9.05 s de presentación => inicio carry-log
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('carry-log');
       expect(hans.userData.warRoomHansFacingTarget).toBe('hearth');
@@ -65,7 +70,7 @@ describe('Hans hearth pathing regressions', () => {
       expect(facingDotToPoint(hans, firePoint, towardBoard)).toBeGreaterThan(0.8);
       const turnX = hans.position.x;
 
-      now.mockReturnValue(10600); // elapsed 9.6 s => walking only after the turn window
+      now.mockReturnValue(15120); // ~=9.6 s de presentación: ya camina
       driver.onBeforeRender();
       expect(Math.abs(hans.position.x - turnX)).toBeGreaterThan(0.03);
       expect(facingDotToPoint(hans, firePoint, towardBoard)).toBeGreaterThan(0.8);
@@ -74,7 +79,7 @@ describe('Hans hearth pathing regressions', () => {
     }
   });
 
-  it('rebaja la carrera al atizador y evita el latigazo de vuelta hacia el fuego', () => {
+  it('rebaja la cadencia al atizador y evita el latigazo de vuelta hacia el fuego', () => {
     const beforeTurn = hansQuickIterationFrame(14.1);
     const afterTurn = hansQuickIterationFrame(14.25);
     const outboundMid = hansQuickIterationFrame(15.0);
@@ -86,40 +91,32 @@ describe('Hans hearth pathing regressions', () => {
     expect(afterTurn.hansX).toBeCloseTo(beforeTurn.hansX, 5);
     expect(Math.abs(afterTurn.stride)).toBeLessThan(0.001);
     expect(outboundMid.hansX).toBeLessThan(afterTurn.hansX);
-    expect(Math.abs(outboundMid.stride)).toBeLessThanOrEqual(0.161);
+    expect(Math.abs(outboundMid.stride)).toBeLessThanOrEqual(0.121);
     expect(atTools.hansX).toBeLessThan(outboundMid.hansX);
     expect(returnEarly.phase).toBe('stoke-fire');
     expect(Math.abs(returnEarly.hansX - atTools.hansX)).toBeLessThan(0.6);
-    expect(Math.abs(returnEarly.stride)).toBeLessThanOrEqual(0.161);
+    expect(Math.abs(returnEarly.stride)).toBeLessThanOrEqual(0.121);
   });
 
-  it('sale primero hacia la pared y solo después recorre el corredor de servicio', () => {
-    const now = vi.spyOn(globalThis.performance, 'now').mockReturnValue(1000);
-    setWarRoomHansQuickIterationEnabled(true);
-    const room = buildPremiumWarRoomLayer({ felt: 0x173943, glow: 0xc5963f }, true, true);
+  it('sale por un carril interior, rebasa la armadura y solo entonces vuelve a la puerta', () => {
+    const sideStage = hansQuickIterationFrame(25.5);
+    const bypassStage = hansQuickIterationFrame(27.0);
+    const doorStage = hansQuickIterationFrame(29.0);
 
-    try {
-      expect(installWarRoomHansSceneRoutine(room, { towardBoard: 1, coarsePointer: true })).toBeGreaterThan(0);
-      const hans = room.getObjectByName('war-room-hans-butler');
-      const driver = room.getObjectByName('war-room-hans-fireplace-driver');
+    expect(sideStage.phase).toBe('leave');
+    expect(sideStage.route).toBe('leave-side');
+    expect(sideStage.facingTarget).toBe('bypass-side');
+    expect(sideStage.hansX).toBeLessThan(1.42);
 
-      driver.onBeforeRender(); // clock origin
+    expect(bypassStage.phase).toBe('leave');
+    expect(bypassStage.route).toBe('leave-bypass');
+    expect(bypassStage.facingTarget).toBe('bypass-forward');
+    expect(bypassStage.hansX).toBeCloseTo(1.42, 6);
 
-      now.mockReturnValue(26000); // elapsed 25 s => first half of leave
-      driver.onBeforeRender();
-      expect(driver.userData.warRoomHansPhase).toBe('leave');
-      expect(hans.userData.warRoomHansRoute).toBe('leave-side');
-      expect(hans.userData.warRoomHansFacingTarget).toBe('corridor');
-      expect(Math.abs(hans.position.z)).toBeCloseTo(0.72, 5);
-
-      now.mockReturnValue(28500); // elapsed 27.5 s => already on side corridor
-      driver.onBeforeRender();
-      expect(hans.userData.warRoomHansRoute).toBe('leave-corridor');
-      expect(hans.userData.warRoomHansFacingTarget).toBe('door');
-      expect(Math.abs(hans.position.x)).toBeCloseTo(2.65, 5);
-      expect(Math.abs(hans.position.z)).toBeGreaterThan(0.72);
-    } finally {
-      dispose(room);
-    }
+    expect(doorStage.phase).toBe('leave');
+    expect(doorStage.route).toBe('leave-door');
+    expect(doorStage.facingTarget).toBe('door');
+    expect(doorStage.hansX).toBeGreaterThan(1.42);
+    expect(doorStage.doorOpen).toBeGreaterThan(0);
   });
 });
