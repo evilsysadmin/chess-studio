@@ -93,6 +93,7 @@ export default function GameBoardView({
   });
 
   const boardProps = {
+    gameId: game.id,
     fen: board.visibleBoardFen,
     onSquareClick: board.onSquareClick,
     selectedSquare: board.selected,

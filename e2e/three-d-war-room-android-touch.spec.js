@@ -145,6 +145,13 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   expect(Math.abs(hansNdcX)).toBeLessThanOrEqual(0.96);
   expect(Math.abs(hansNdcY)).toBeLessThanOrEqual(0.96);
 
+  // A later mobile finalizer used to be able to leave only the hearth kit while
+  // the first frame briefly looked healthy. Give the scene a short settle window
+  // and require the actual Hans rig to remain installed and on camera.
+  await page.waitForTimeout(350);
+  await expect(hansMarker).toHaveAttribute('data-war-room-hans-runtime', 'visible');
+  await expect(hansMarker).toHaveAttribute('data-war-room-hans-screen', 'onscreen');
+
   const matthiasCard = page.locator('.game-3d-matthias-card');
   const focusButton = page.getByRole('button', { name: 'Focus', exact: true });
   const abandonButton = page.getByRole('button', { name: 'Abandonar partida', exact: true });
