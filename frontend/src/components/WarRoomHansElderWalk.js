@@ -10,7 +10,10 @@ const GAIT_FRAME_COUNT = 8;
 // each render frame. That cap made low-FPS War Room frames translate Hans farther
 // than his legs advanced, which looked exactly like levitation.
 const GAIT_CYCLE_DISTANCE = 0.26;
+const MIN_TRAVEL = 0.00004;
+const MIN_TRAVEL_SQ = MIN_TRAVEL * MIN_TRAVEL;
 const TELEPORT_DISTANCE = 0.48;
+const TELEPORT_DISTANCE_SQ = TELEPORT_DISTANCE * TELEPORT_DISTANCE;
 const HUNCH_RADIANS = 0.058;
 const POST_RENDER_ORDER = 20;
 
@@ -27,6 +30,11 @@ const GAIT_FRAMES = Object.freeze([
   { left: -0.040, right: 0.130, bob: -0.014, sway: 0.012, roll: 0.010, yaw: -0.010, arm: 0.034, nod: 0.012, leftLift: 0.038, rightLift: 0.000, leftStep: 0.080, rightStep: -0.040, caneSwing: 0.040, caneLift: 0.012 },
   { left: 0.060, right: 0.050, bob: -0.008, sway: 0.006, roll: 0.005, yaw: -0.005, arm: 0.015, nod: 0.008, leftLift: 0.030, rightLift: 0.004, leftStep: 0.052, rightStep: -0.015, caneSwing: -0.010, caneLift: 0.000 },
   { left: 0.160, right: -0.060, bob: -0.002, sway: -0.004, roll: -0.004, yaw: 0.004, arm: -0.024, nod: 0.002, leftLift: 0.000, rightLift: 0.022, leftStep: -0.032, rightStep: 0.045, caneSwing: -0.060, caneLift: 0.000 },
+]);
+
+const GAIT_SAMPLE_KEYS = Object.freeze([
+  'left', 'right', 'bob', 'sway', 'roll', 'yaw', 'arm', 'nod',
+  'leftLift', 'rightLift', 'leftStep', 'rightStep', 'caneSwing', 'caneLift',
 ]);
 
 function clamp01(value) {
@@ -81,7 +89,13 @@ function inferForward(body) {
   return 1;
 }
 
-function gaitSample(distance) {
+function createGaitSample() {
+  const sample = { index: 0 };
+  for (const key of GAIT_SAMPLE_KEYS) sample[key] = 0;
+  return sample;
+}
+
+function gaitSample(distance, result) {
   const cycle = ((Number(distance) || 0) / GAIT_CYCLE_DISTANCE) % 1;
   const frameFloat = (cycle < 0 ? cycle + 1 : cycle) * GAIT_FRAME_COUNT;
   const index = Math.floor(frameFloat) % GAIT_FRAME_COUNT;
@@ -89,13 +103,8 @@ function gaitSample(distance) {
   const t = smooth01(frameFloat - Math.floor(frameFloat));
   const a = GAIT_FRAMES[index];
   const b = GAIT_FRAMES[next];
-  const result = { index };
-  for (const key of [
-    'left', 'right', 'bob', 'sway', 'roll', 'yaw', 'arm', 'nod',
-    'leftLift', 'rightLift', 'leftStep', 'rightStep', 'caneSwing', 'caneLift',
-  ]) {
-    result[key] = mix(a[key], b[key], t);
-  }
+  result.index = index;
+  for (const key of GAIT_SAMPLE_KEYS) result[key] = mix(a[key], b[key], t);
   return result;
 }
 
@@ -192,6 +201,8 @@ export function installWarRoomHansElderWalk(root) {
   if (driver.userData?.warRoomHansElderWalk === WAR_ROOM_HANS_ELDER_WALK_VERSION) return 0;
 
   const bases = captureBases(body);
+  const sample = createGaitSample();
+  const headSample = createGaitSample();
   let gaitDistance = 0;
   let previousX = Number(hans.position?.x || 0);
   let previousZ = Number(hans.position?.z || 0);
@@ -202,16 +213,19 @@ export function installWarRoomHansElderWalk(root) {
     run: () => {
       const x = Number(hans.position?.x || 0);
       const z = Number(hans.position?.z || 0);
-      const travelled = Math.hypot(x - previousX, z - previousZ);
+      const dx = x - previousX;
+      const dz = z - previousZ;
+      const travelSq = dx * dx + dz * dz;
       const carrying = body?.carriedLog?.visible === true || body?.carriedPoker?.visible === true;
-      const ordinaryTravel = travelled <= TELEPORT_DISTANCE;
+      const ordinaryTravel = travelSq <= TELEPORT_DISTANCE_SQ;
 
-      if (hans.visible && walkingState(hans) && travelled > 0.00004 && ordinaryTravel) {
+      if (hans.visible && walkingState(hans) && travelSq > MIN_TRAVEL_SQ && ordinaryTravel) {
         // Full real travel is intentional. Never clamp ordinary frame travel:
         // doing so decouples gait speed from body speed exactly when FPS drops.
+        const travelled = Math.sqrt(travelSq);
         gaitDistance += travelled;
-        const sample = gaitSample(gaitDistance);
-        const headSample = gaitSample(gaitDistance - GAIT_CYCLE_DISTANCE / 16);
+        gaitSample(gaitDistance, sample);
+        gaitSample(gaitDistance - GAIT_CYCLE_DISTANCE / 16, headSample);
         applyElderGait(body, bases, sample, headSample, inferForward(body));
         hans.userData.warRoomHansGaitFrame = sample.index;
         hans.userData.warRoomHansGaitFrameCount = GAIT_FRAME_COUNT;
@@ -221,11 +235,12 @@ export function installWarRoomHansElderWalk(root) {
         hans.userData.warRoomHansGaitGrounding = 'real-distance-foot-plant-v3';
         hans.userData.warRoomHansGaitTeleportSuppressed = false;
         hans.userData.warRoomHansCaneCadence = body?.cane ? 'opposite-hand-support-v1' : null;
+        hans.userData.warRoomHansGaitHotPath = 'preallocated-samples-v3-grounded';
       } else {
         restorePart(body?.cane, bases.cane);
         restorePart(body?.tailcoat, bases.tailcoat);
         if (body?.cane) body.cane.visible = !carrying;
-        if (travelled > TELEPORT_DISTANCE) hans.userData.warRoomHansGaitTeleportSuppressed = true;
+        if (travelSq > TELEPORT_DISTANCE_SQ) hans.userData.warRoomHansGaitTeleportSuppressed = true;
       }
 
       previousX = x;
@@ -240,6 +255,7 @@ export function installWarRoomHansElderWalk(root) {
   driver.userData.warRoomHansGaitCadence = 'slow-weight-transfer-v1';
   driver.userData.warRoomHansGaitGrounding = 'real-distance-foot-plant-v3';
   driver.userData.warRoomHansCaneCadence = body?.cane ? 'opposite-hand-support-v1' : null;
+  driver.userData.warRoomHansGaitHotPath = 'preallocated-samples-v3-grounded';
   hans.userData.warRoomHansElderWalk = WAR_ROOM_HANS_ELDER_WALK_VERSION;
   return 1;
 }
