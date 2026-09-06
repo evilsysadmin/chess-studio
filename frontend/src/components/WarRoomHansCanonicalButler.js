@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 
-export const WAR_ROOM_HANS_CANONICAL_BUTLER_VERSION = 'hans-canonical-elder-butler-v1';
+export const WAR_ROOM_HANS_CANONICAL_BUTLER_VERSION = 'hans-canonical-elder-butler-v2';
 
 const HANS_NAME = 'war-room-hans-butler';
-const CANE_NAME = 'war-room-hans-cane';
+const LEGACY_CANE_NAME = 'war-room-hans-cane';
 const TAILCOAT_NAME = 'war-room-hans-canonical-tailcoat';
 const BASE_HUNCH_RADIANS = 0.055;
 const HEAD_DROP = 0.035;
 const HEAD_FORWARD = 0.045;
+const MIN_SHOE_FORWARD_OFFSET = 0.07;
 
 function makeMaterial(color, options = {}) {
   return new THREE.MeshPhysicalMaterial({
@@ -94,47 +95,42 @@ function installTailcoat(body, forward) {
   return tailcoat;
 }
 
-function installCane(hans, forward) {
-  const existing = hans.getObjectByName?.(CANE_NAME);
-  if (existing) return existing;
+function findShoe(leg) {
+  if (!leg?.children) return null;
+  return leg.children.find((child) => {
+    if (!child?.isMesh || child.geometry?.type !== 'BoxGeometry') return false;
+    const params = child.geometry?.parameters || {};
+    const depth = Number(params.depth || 0);
+    const width = Number(params.width || 0);
+    const height = Number(params.height || 0);
+    return depth > width * 1.25 && depth > height * 1.8;
+  }) || null;
+}
 
-  const wood = makeMaterial(0x4a2c1c, { roughness: 0.82, clearcoat: 0.12 });
-  const brass = makeMaterial(0xb58a45, { metalness: 0.78, roughness: 0.28, clearcoat: 0.34 });
-  const ferrule = makeMaterial(0x27282a, { metalness: 0.48, roughness: 0.5, clearcoat: 0.08 });
+function orientShoeForward(leg, forward, name) {
+  const shoe = findShoe(leg);
+  if (!shoe) return null;
+  const currentOffset = Math.abs(Number(shoe.position?.z || 0));
+  shoe.position.z = forward * Math.max(currentOffset, MIN_SHOE_FORWARD_OFFSET);
+  shoe.name = name;
+  shoe.userData.warRoomHansToeDirection = forward;
+  shoe.userData.warRoomHansFootContract = 'toe-forward-v1';
+  return shoe;
+}
 
-  const cane = new THREE.Group();
-  cane.name = CANE_NAME;
-  cane.position.set(0.49, 0.55, forward * 0.07);
-  cane.rotation.x = forward * 0.055;
-  cane.rotation.z = -0.03;
+function orientFeetForward(body, forward) {
+  const leftShoe = orientShoeForward(body?.leftLeg, forward, 'war-room-hans-left-shoe');
+  const rightShoe = orientShoeForward(body?.rightLeg, forward, 'war-room-hans-right-shoe');
+  if (leftShoe) body.leftShoe = leftShoe;
+  if (rightShoe) body.rightShoe = rightShoe;
+  return { leftShoe, rightShoe };
+}
 
-  addMesh(
-    cane,
-    new THREE.CylinderGeometry(0.02, 0.023, 0.95, 10),
-    wood,
-    [0, 0, 0],
-    [0, 0, 0],
-    'war-room-hans-cane-shaft',
-  );
-  addMesh(
-    cane,
-    new THREE.SphereGeometry(0.058, 12, 8),
-    brass,
-    [0, 0.49, 0],
-    [0, 0, 0],
-    'war-room-hans-cane-knob',
-  );
-  addMesh(
-    cane,
-    new THREE.CylinderGeometry(0.025, 0.018, 0.08, 8),
-    ferrule,
-    [0, -0.505, 0],
-    [0, 0, 0],
-    'war-room-hans-cane-ferrule',
-  );
-
-  hans.add(cane);
-  return cane;
+function removeLegacyCane(hans, body) {
+  const cane = hans?.getObjectByName?.(LEGACY_CANE_NAME) || body?.cane || null;
+  if (cane?.parent) cane.parent.remove(cane);
+  if (body && Object.prototype.hasOwnProperty.call(body, 'cane')) delete body.cane;
+  if (hans?.userData) hans.userData.warRoomHansCane = null;
 }
 
 function applyCanonicalPosture(body, forward) {
@@ -159,17 +155,18 @@ export function installWarRoomHansCanonicalButler(root) {
   if (hans.userData?.warRoomHansCanonicalButler === WAR_ROOM_HANS_CANONICAL_BUTLER_VERSION) return 0;
 
   const forward = inferForward(body);
+  removeLegacyCane(hans, body);
   applyCanonicalPosture(body, forward);
   const tailcoat = installTailcoat(body, forward);
-  const cane = installCane(hans, forward);
+  const { leftShoe, rightShoe } = orientFeetForward(body, forward);
 
   if (tailcoat) body.tailcoat = tailcoat;
-  if (cane) body.cane = cane;
 
   hans.userData.warRoomHansCanonicalButler = WAR_ROOM_HANS_CANONICAL_BUTLER_VERSION;
-  hans.userData.warRoomHansCanonicalLook = 'black-tailcoat-cane-elder-v1';
+  hans.userData.warRoomHansCanonicalLook = 'black-tailcoat-elder-v2';
   hans.userData.warRoomHansCanonicalPosture = 'slow-hunched-butler-v1';
   hans.userData.warRoomHansBaseHunchRadians = BASE_HUNCH_RADIANS;
-  hans.userData.warRoomHansCane = cane?.name || null;
+  hans.userData.warRoomHansFootDirection = leftShoe && rightShoe ? 'toe-forward-v1' : 'legacy-foot-geometry';
+  hans.userData.warRoomHansCane = null;
   return 1;
 }
