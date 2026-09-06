@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { installTeutonicWarRoomDecor, registerPremiumRoomFinalization } from './WarRoomTeutonicDecor.js';
 import { applyWarRoomPremiumFinishPass } from './WarRoomPremiumFinishPass.js';
 import { applyWarRoomPracticalLighting } from './WarRoomPracticalLighting.js';
-import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 import { bindWarRoomArmorArticulation } from './WarRoomArmorArticulation.js';
 
 function physical(color, options = {}) {
@@ -128,20 +127,6 @@ function enforcePaintingLayering(group, towardBoard) {
   return corrected;
 }
 
-function retireLegacyArmors(root) {
-  let retired = 0;
-  for (const name of ['war-room-armor-guard-left', 'war-room-armor-guard-right']) {
-    const legacy = root?.getObjectByName?.(name);
-    if (!legacy || legacy.userData.replacedByGothicArmor) continue;
-    legacy.visible = false;
-    legacy.userData.replacedByGothicArmor = true;
-    legacy.userData.replacement = name.endsWith('left') ? 'war-room-teutonic-armor-left' : 'war-room-teutonic-armor-right';
-    retired += 1;
-  }
-  if (root?.userData) root.userData.warRoomLegacyArmorRetired = true;
-  return retired;
-}
-
 export function addPremiumWarRoomPaintings(group, { wallZ, towardBoard, coarsePointer = false } = {}) {
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
 
@@ -159,10 +144,6 @@ export function addPremiumWarRoomPaintings(group, { wallZ, towardBoard, coarsePo
   enforcePaintingLayering(group, towardBoard);
   bindWarRoomArmorArticulation(group, towardBoard);
   applyWarRoomPracticalLighting(group, { wallZ, towardBoard, coarsePointer });
-  registerWarRoomDeferredFinalizer(group, {
-    key: 'legacy-armor-retirement-v1',
-    run: retireLegacyArmors,
-  });
   group.userData.warRoomPremiumPaintings = 2;
   group.userData.warRoomPremiumPaintingVersion = 'v2';
   group.userData.warRoomTransientPainterlyTexturesRetired = 2;
