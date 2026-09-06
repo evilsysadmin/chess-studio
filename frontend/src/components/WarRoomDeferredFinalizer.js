@@ -2,6 +2,7 @@ import { installWarRoomHansCanonicalButler } from './WarRoomHansCanonicalButler.
 import { installWarRoomHansElderClock } from './WarRoomHansElderClock.js';
 import { installWarRoomHansElderWalk } from './WarRoomHansElderWalk.js';
 import { installWarRoomHansFacingGuard } from './WarRoomHansFacingGuard.js';
+import { installWarRoomHansFireNarrative } from './WarRoomHansFireNarrative.js';
 import { installWarRoomHansHearthFacingGuard } from './WarRoomHansHearthFacingGuard.js';
 import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
 
@@ -82,9 +83,12 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         installWarRoomHansFacingGuard(root);
         installWarRoomHansHearthFacingGuard(root);
         installWarRoomHansElderWalk(root);
-        // Install last so the governor owns Hans' private clock around the full
-        // motion pipeline instead of moving the rendered body after the fact.
+        // Install the clock before the fire narrative: the governor owns Hans'
+        // private motion time, then the narrative wrapper observes the finished
+        // phase and only corrects the hearth. Hans never gets repositioned by
+        // the story layer and therefore keeps the single elderly cruise speed.
         installWarRoomHansElderClock(root);
+        installWarRoomHansFireNarrative(root);
       }
       completedKeys.push(key);
     }
