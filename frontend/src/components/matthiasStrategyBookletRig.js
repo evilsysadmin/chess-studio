@@ -79,16 +79,16 @@ function buildBooklet(rig) {
 
   const leftPage = new THREE.Group();
   leftPage.name = 'strategy-booklet-left-page';
-  leftPage.position.x = -.177;
-  leftPage.rotation.y = .39;
-  leftPage.rotation.z = .018;
+  leftPage.position.x = -.160;
+  leftPage.rotation.y = .53;
+  leftPage.rotation.z = .022;
   book.add(leftPage);
 
   const rightPage = new THREE.Group();
   rightPage.name = 'strategy-booklet-right-page';
-  rightPage.position.x = .177;
-  rightPage.rotation.y = -.39;
-  rightPage.rotation.z = -.018;
+  rightPage.position.x = .160;
+  rightPage.rotation.y = -.53;
+  rightPage.rotation.z = -.022;
   book.add(rightPage);
 
   mesh(leftPage, new THREE.BoxGeometry(.355, .445, .026), cover, {
@@ -212,7 +212,7 @@ function solveArm({ owner, stem, glove, shoulder, target }) {
   stem.scale.set(1.04, Math.max(.76, Math.min(1.55, distance / .43)), 1.04);
   glove.position.copy(target);
   glove.quaternion.copy(quaternion);
-  glove.scale.set(1.05, .78, .92);
+  glove.scale.set(.94, .72, .86);
   return true;
 }
 
@@ -300,10 +300,14 @@ export function applyMatthiasStrategyBookletRig(rig, pose = {}) {
   const reading = matthiasStrategyBookletReadingState(time, { speaking, reducedMotion });
   const yaw = Number(pose.headYaw) || 0;
 
+  // Visual readability wins over nominal prop scale here. At the Home card's
+  // real pixel size a 1.03x book still reads as a postcard. Keep the booklet
+  // close to the face, clearly open and large enough that two pages survive
+  // downsampling on desktop and Android.
   book.visible = true;
-  book.position.set(-.015, -.385, .885);
-  book.rotation.set(-.19, .035 + yaw * .08, .008 + Math.sin(time * .48) * (reducedMotion ? 0 : .004));
-  book.scale.setScalar(1.03);
+  book.position.set(-.012, -.205, 1.015);
+  book.rotation.set(-.24, .025 + yaw * .06, .006 + Math.sin(time * .48) * (reducedMotion ? 0 : .003));
+  book.scale.setScalar(1.55);
 
   if (activityRig.objectInteractionSurface) activityRig.objectInteractionSurface.visible = false;
   hideLegacyContactCuffs(activityRig);
@@ -312,8 +316,8 @@ export function applyMatthiasStrategyBookletRig(rig, pose = {}) {
 
   const rightPage = activityRig.strategyBookletRightPage;
   const leftPage = activityRig.strategyBookletLeftPage;
-  const supportTarget = localTarget(activityRig.root, rightPage, [.125, -.165, .050]);
-  const assistTarget = localTarget(activityRig.root, leftPage, [-.125, -.165, .050]);
+  const supportTarget = localTarget(activityRig.root, rightPage, [.145, -.175, .062]);
+  const assistTarget = localTarget(activityRig.root, leftPage, [-.145, -.175, .062]);
   const supportSolved = solveArm({
     owner: activityRig.root,
     stem: activityRig.supportStem,
@@ -338,15 +342,15 @@ export function applyMatthiasStrategyBookletRig(rig, pose = {}) {
   if (!speaking) {
     if (rig.leftEye) {
       rig.leftEye.position.x += reading.scanX;
-      rig.leftEye.position.y += reading.scanY - .008;
+      rig.leftEye.position.y += reading.scanY - .026;
     }
     if (rig.rightEye) {
       rig.rightEye.position.x += reading.scanX;
-      rig.rightEye.position.y += reading.scanY - .008;
+      rig.rightEye.position.y += reading.scanY - .026;
     }
     if (rig.headPivot) {
-      rig.headPivot.rotation.x += .078;
-      rig.headPivot.rotation.y += yaw * .025;
+      rig.headPivot.rotation.x += .155;
+      rig.headPivot.rotation.y += yaw * .018;
     }
   }
 
@@ -357,6 +361,7 @@ export function applyMatthiasStrategyBookletRig(rig, pose = {}) {
   rig.root.userData.activityStrategyBookletHands = supportSolved && assistSolved ? 'two-hand-corners' : 'partial';
   rig.root.userData.activityStrategyBookletPageTurn = reading.pageTurn;
   rig.root.userData.activityStrategyBookletScan = `${reading.scanX.toFixed(3)},${reading.scanY.toFixed(3)}`;
+  rig.root.userData.activityStrategyBookletVisualScale = book.scale.x;
 
   return {
     prop: 'book',
