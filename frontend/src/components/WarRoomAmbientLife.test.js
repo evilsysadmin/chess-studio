@@ -65,6 +65,27 @@ describe('War Room ambient life', () => {
     expect(room.userData.warRoomAmbientLifeMaterialCount).toBe(1);
   });
 
+  it('caches curtain and material refs instead of traversing the castle every heartbeat', () => {
+    const { room, driver } = makeRoom({ sharedMaterial: false });
+    const originalTraverse = room.traverse.bind(room);
+    let traversals = 0;
+    room.traverse = (callback) => {
+      traversals += 1;
+      return originalTraverse(callback);
+    };
+
+    expect(installWarRoomAmbientLife(room)).toBe(1);
+    expect(traversals).toBe(1);
+    expect(room.userData.warRoomAmbientLifeRefCache).toBe('warm');
+    expect(room.userData.warRoomAmbientLifeFoldCount).toBe(4);
+    expect(room.userData.warRoomAmbientLifeMaterialCount).toBe(4);
+
+    driver.onBeforeRender();
+    driver.onBeforeRender();
+    driver.onBeforeRender();
+    expect(traversals).toBe(1);
+  });
+
   it('adds only a restrained warm response to the existing velvet material', () => {
     const { room } = makeRoom();
     const fold = room.getObjectByName('war-room-velvet-curtain-fold');

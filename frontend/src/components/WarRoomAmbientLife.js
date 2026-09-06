@@ -1,27 +1,14 @@
 import { getEffectiveReducedMotion } from '../userPreferences.js';
 
-export const WAR_ROOM_AMBIENT_LIFE_VERSION = 'curtain-fire-breath-v1';
+export const WAR_ROOM_AMBIENT_LIFE_VERSION = 'curtain-fire-breath-v2-cached';
 
 const WARM_EMISSIVE = 0x43130a;
+const ambientLifeStateCache = new WeakMap();
 
 function nowMs() {
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
     ? performance.now()
     : Date.now();
-}
-
-function sceneRoot(object) {
-  let current = object;
-  while (current?.parent) current = current.parent;
-  return current;
-}
-
-function curtainFolds(root) {
-  const folds = [];
-  root?.traverse?.((object) => {
-    if (object?.name?.includes?.('war-room-velvet-curtain-fold')) folds.push(object);
-  });
-  return folds;
 }
 
 function prepareFold(fold, index) {
@@ -48,21 +35,61 @@ function prepareMaterial(material) {
   return material.userData.warRoomAmbientLifeBase;
 }
 
+function buildAmbientLifeState(root) {
+  if (!root || typeof root.traverse !== 'function') return null;
+
+  const foldEntries = [];
+  const materialEntries = [];
+  const seenMaterials = new Set();
+
+  root.traverse((object) => {
+    if (!object?.name?.includes?.('war-room-velvet-curtain-fold')) return;
+    const index = foldEntries.length;
+    const base = prepareFold(object, index);
+    foldEntries.push({
+      fold: object,
+      base,
+      phase: object.userData.warRoomAmbientLifePhase,
+    });
+
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) {
+      if (!material || seenMaterials.has(material)) continue;
+      seenMaterials.add(material);
+      const materialBase = prepareMaterial(material);
+      if (materialBase) materialEntries.push({ material, base: materialBase });
+    }
+  });
+
+  const state = { foldEntries, materialEntries };
+  // An empty cache would hide folds added later by a deferred scene build. Real War
+  // Room installs already contain the curtains, so cache only once we have useful refs.
+  if (foldEntries.length) ambientLifeStateCache.set(root, state);
+
+  root.userData ||= {};
+  root.userData.warRoomAmbientLifeVersion = WAR_ROOM_AMBIENT_LIFE_VERSION;
+  root.userData.warRoomAmbientLifeFoldCount = foldEntries.length;
+  root.userData.warRoomAmbientLifeMaterialCount = materialEntries.length;
+  root.userData.warRoomAmbientLifeRefCache = foldEntries.length ? 'warm' : 'empty';
+  return state;
+}
+
+function ambientLifeState(root) {
+  return ambientLifeStateCache.get(root) || buildAmbientLifeState(root);
+}
+
 export function applyWarRoomAmbientLife(root, {
   now = nowMs(),
   reducedMotion = getEffectiveReducedMotion(),
 } = {}) {
-  const folds = curtainFolds(root);
-  if (!folds.length) return 0;
+  const state = ambientLifeState(root);
+  if (!state?.foldEntries?.length) return 0;
 
-  const seenMaterials = new Set();
   const fireBreath = reducedMotion
     ? 0
     : Math.sin(now * 0.00115) * 0.55 + Math.sin(now * 0.00235 + 1.1) * 0.45;
 
-  folds.forEach((fold, index) => {
-    const base = prepareFold(fold, index);
-    const phase = fold.userData.warRoomAmbientLifePhase;
+  for (const { fold, base, phase } of state.foldEntries) {
     if (reducedMotion) {
       fold.rotation.z = base.rotationZ;
       fold.position.y = base.positionY;
@@ -74,29 +101,19 @@ export function applyWarRoomAmbientLife(root, {
       fold.position.y = base.positionY + drift * 0.0045;
       fold.scale.x = base.scaleX * (1 + settle * 0.0025);
     }
+  }
 
-    const materials = Array.isArray(fold.material) ? fold.material : [fold.material];
-    materials.forEach((material) => {
-      if (!material || seenMaterials.has(material)) return;
-      seenMaterials.add(material);
-      const materialBase = prepareMaterial(material);
-      if (!materialBase) return;
+  for (const { material, base } of state.materialEntries) {
+    if (material.emissive?.setHex) material.emissive.setHex(base.emissive || WARM_EMISSIVE);
+    material.emissiveIntensity = base.emissiveIntensity + 0.055 + fireBreath * 0.012;
+    if (typeof material.sheen === 'number') {
+      material.sheen = base.sheen + (reducedMotion ? 0.008 : 0.008 + fireBreath * 0.004);
+    }
+  }
 
-      if (material.emissive?.setHex) {
-        material.emissive.setHex(materialBase.emissive || WARM_EMISSIVE);
-      }
-      material.emissiveIntensity = materialBase.emissiveIntensity + 0.055 + fireBreath * 0.012;
-      if (typeof material.sheen === 'number') {
-        material.sheen = materialBase.sheen + (reducedMotion ? 0.008 : 0.008 + fireBreath * 0.004);
-      }
-    });
-  });
-
-  if (!root.userData) root.userData = {};
+  root.userData ||= {};
   root.userData.warRoomAmbientLifeVersion = WAR_ROOM_AMBIENT_LIFE_VERSION;
-  root.userData.warRoomAmbientLifeFoldCount = folds.length;
-  root.userData.warRoomAmbientLifeMaterialCount = seenMaterials.size;
-  return folds.length;
+  return state.foldEntries.length;
 }
 
 export function installWarRoomAmbientLife(group, { coarsePointer = false } = {}) {
@@ -107,11 +124,16 @@ export function installWarRoomAmbientLife(group, { coarsePointer = false } = {})
     || group.getObjectByName?.('war-room-castle-wall-left');
   if (!driver || driver.userData.warRoomAmbientLifeDriver) return 0;
 
+  // Warm the refs once while the scene is being assembled. The old path walked
+  // the complete War Room graph on every ambient heartbeat just to rediscover the
+  // same curtain folds and materials.
+  buildAmbientLifeState(group);
+
   driver.userData.warRoomAmbientLifeDriver = WAR_ROOM_AMBIENT_LIFE_VERSION;
   const previous = driver.onBeforeRender;
   driver.onBeforeRender = (...args) => {
     previous?.(...args);
-    applyWarRoomAmbientLife(sceneRoot(driver), {
+    applyWarRoomAmbientLife(group, {
       now: nowMs(),
       reducedMotion: getEffectiveReducedMotion(),
     });
