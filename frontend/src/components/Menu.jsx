@@ -313,6 +313,71 @@ export default function Menu({
 
       {error && !showQuickMatch && !showPracticeMatch && !showMirrorMode && <div className="home-error-banner" role="alert"><b>No se pudo completar la acción.</b><span>{error}</span></div>}
 
+      <section className="menu-group home-primary-group home-modes-section" aria-label="Modos principales">
+        <div className="home-group-heading">
+          <div><span className="section-label">Jugar</span><h2>Elige tu próxima partida</h2></div>
+          <div className="home-heading-actions"><p>Juega al instante, compite o continúa tu campaña.</p>{features.homeGuide !== false && !showHomeGuide && <button type="button" className="home-context-guide" onClick={reopenHomeGuide} aria-label={onboarding.complete ? 'Abrir guía rápida' : `Retomar guía, ${onboarding.completed} de ${onboarding.steps.length} pasos completados`}><span>?</span> {homeGuideResumeLabel}</button>}</div>
+        </div>
+        <div className="menu-grid menu-grid-3 home-primary-grid">
+          <TutorialModeCard tutorialId="quick-match-rules" className="menu-card accent-hint home-primary-card home-mode-card home-mode-quick" onClick={() => setShowQuickMatch(true)}>
+            <img className="home-mode-art" src={quickCardArt} alt="" aria-hidden="true" />
+            <span className="home-mode-icon" aria-hidden="true"><IconPawn className="menu-card-icon" /></span>
+            <span className="home-mode-copy">
+              <span className="home-mode-kicker"><b>Jugar ahora</b><i>CPU adaptable</i></span>
+              <h3>Partida rápida</h3>
+              <span className="home-mode-description">Una partida limpia contra una CPU ajustada a tu nivel.</span>
+            </span>
+            <span className="menu-card-cta">Nivel {difficulty} · {difficultyLabel(difficulty)} <b aria-hidden="true">→</b></span>
+          </TutorialModeCard>
+
+          <TutorialModeCard tutorialId="tournament" className={`menu-card accent-brass home-primary-card home-mode-card home-mode-featured${hasSavedGame ? '' : onboardingTargetClass('game')}`} onClick={onTournament}>
+            {hasSavedGame ? null : onboardingCue('game')}
+            <img className="home-mode-art" src={tournamentCardArt} alt="" aria-hidden="true" />
+            <span className="home-mode-icon" aria-hidden="true"><IconTrophy className="menu-card-icon" /></span>
+            <span className="home-mode-copy">
+              <span className="home-mode-kicker"><b>Recomendado</b><i>Nivel {tournamentLevel}</i></span>
+              <h3>Torneo</h3>
+              <span className="home-mode-description">Encadena rivales, sube de nivel y construye una racha.</span>
+            </span>
+            <span className="home-mode-progress" aria-label={`${tournamentProgress} de ${POINTS_PER_LEVEL} XP para el siguiente nivel`}>
+              <span><i style={{ width: `${tournamentProgressPct}%` }} /></span>
+              <small>{tournamentProgress}/{POINTS_PER_LEVEL} XP</small>
+            </span>
+            <span className="menu-card-cta">Jugar siguiente rival <b aria-hidden="true">→</b></span>
+          </TutorialModeCard>
+
+          <TutorialModeCard tutorialId="combat-campaign" className="menu-card accent-danger home-primary-card home-mode-card home-mode-campaign" onClick={onCombatRoguelike}>
+            <img className="home-mode-art" src={combatCardArt} alt="" aria-hidden="true" />
+            <span className="home-mode-icon" aria-hidden="true"><IconSword className="menu-card-icon" /></span>
+            <span className="home-mode-copy">
+              <span className="home-mode-kicker"><b>{combatProgress?.rank?.label || 'Recluta'}</b><i>{combatProgress?.credits || 0} créditos</i></span>
+              <h3>{COMBAT_CHESS_CAMPAIGN_LABEL}</h3>
+              <span className="home-mode-description">Tu ejército gana experiencia, rango y recursos entre sectores.</span>
+            </span>
+            <span className="home-mode-progress" aria-label={`Progreso hacia el siguiente rango de Combat: ${Math.round((combatProgress?.nextProgress || 0) * 100)}%`}><span><i style={{ width: `${Math.round((combatProgress?.nextProgress || 0) * 100)}%` }} /></span><small>{Math.round((combatProgress?.nextProgress || 0) * 100)}% al siguiente rango</small></span>
+            <span className="menu-card-cta">Continuar campaña <b aria-hidden="true">→</b></span>
+          </TutorialModeCard>
+        </div>
+
+        <details className="friendly-disclosure home-more-modes">
+          <summary>Más modos de juego</summary>
+          <div className="friendly-disclosure-body menu-grid menu-grid-4 compact-mode-grid">
+            <TutorialModeCard tutorialId="combat-basics" className="menu-card accent-danger" onClick={onCombat}>
+              <IconSword className="menu-card-icon" /><h3>{COMBAT_CHESS_FREE_LABEL}</h3><p>Batalla libre sin campaña.</p><span className="menu-card-cta">Preparar →</span>
+            </TutorialModeCard>
+            {features.rivalGhost !== false && <TutorialModeCard tutorialId="rival-ghost" className="menu-card accent-hint" onClick={() => setShowMirrorMode(true)}>
+              <IconEye className="menu-card-icon" /><h3>Rival Fantasma</h3><p>CPU basada en tendencias reales de tu juego.</p><span className="menu-card-cta">Jugar →</span>
+            </TutorialModeCard>}
+            {features.spectator !== false && <TutorialModeCard tutorialId="spectator" className="menu-card accent-hint" onClick={onSpectator}>
+              <IconEye className="menu-card-icon" /><h3>Espectador</h3><p>CPU contra CPU. Tú miras el incendio.</p><span className="menu-card-cta">Mirar →</span>
+            </TutorialModeCard>}
+            <TutorialModeCard tutorialId="lab" className="menu-card accent-success" onClick={onLab}>
+              <IconPuzzle className="menu-card-icon" /><h3>Experimentos geniales</h3><p>Ajedrez 3D, Pawn Trailblazer, Arenas y otras ideas bajo vigilancia.</p><span className="menu-card-cta">Entrar al hangar →</span>
+            </TutorialModeCard>
+          </div>
+        </details>
+      </section>
+
       <section className={`home-today-card ${today.dailyFull ? 'is-complete' : today.dailySolved ? 'is-active' : ''}`} aria-label="Hoy en Chess Studio">
         <div className="home-today-emblem" aria-hidden="true">♞</div>
         <div className="home-today-copy">
@@ -376,71 +441,6 @@ export default function Menu({
           onOpenInsights={onInsights}
         />
       )}
-
-      <section className="menu-group home-primary-group home-modes-section" aria-label="Modos principales">
-        <div className="home-group-heading">
-          <div><span className="section-label">Jugar</span><h2>Elige tu próxima partida</h2></div>
-          <div className="home-heading-actions"><p>Compite, continúa tu campaña o juega a tu ritmo.</p>{features.homeGuide !== false && !showHomeGuide && <button type="button" className="home-context-guide" onClick={reopenHomeGuide} aria-label={onboarding.complete ? 'Abrir guía rápida' : `Retomar guía, ${onboarding.completed} de ${onboarding.steps.length} pasos completados`}><span>?</span> {homeGuideResumeLabel}</button>}</div>
-        </div>
-        <div className="menu-grid menu-grid-3 home-primary-grid">
-          <TutorialModeCard tutorialId="tournament" className={`menu-card accent-brass home-primary-card home-mode-card home-mode-featured${hasSavedGame ? '' : onboardingTargetClass('game')}`} onClick={onTournament}>
-            {hasSavedGame ? null : onboardingCue('game')}
-            <img className="home-mode-art" src={tournamentCardArt} alt="" aria-hidden="true" />
-            <span className="home-mode-icon" aria-hidden="true"><IconTrophy className="menu-card-icon" /></span>
-            <span className="home-mode-copy">
-              <span className="home-mode-kicker"><b>Recomendado</b><i>Nivel {tournamentLevel}</i></span>
-              <h3>Torneo</h3>
-              <span className="home-mode-description">Encadena rivales, sube de nivel y construye una racha.</span>
-            </span>
-            <span className="home-mode-progress" aria-label={`${tournamentProgress} de ${POINTS_PER_LEVEL} XP para el siguiente nivel`}>
-              <span><i style={{ width: `${tournamentProgressPct}%` }} /></span>
-              <small>{tournamentProgress}/{POINTS_PER_LEVEL} XP</small>
-            </span>
-            <span className="menu-card-cta">Jugar siguiente rival <b aria-hidden="true">→</b></span>
-          </TutorialModeCard>
-
-          <TutorialModeCard tutorialId="combat-campaign" className="menu-card accent-danger home-primary-card home-mode-card home-mode-campaign" onClick={onCombatRoguelike}>
-            <img className="home-mode-art" src={combatCardArt} alt="" aria-hidden="true" />
-            <span className="home-mode-icon" aria-hidden="true"><IconSword className="menu-card-icon" /></span>
-            <span className="home-mode-copy">
-              <span className="home-mode-kicker"><b>{combatProgress?.rank?.label || 'Recluta'}</b><i>{combatProgress?.credits || 0} créditos</i></span>
-              <h3>{COMBAT_CHESS_CAMPAIGN_LABEL}</h3>
-              <span className="home-mode-description">Tu ejército gana experiencia, rango y recursos entre sectores.</span>
-            </span>
-            <span className="home-mode-progress" aria-label={`Progreso hacia el siguiente rango de Combat: ${Math.round((combatProgress?.nextProgress || 0) * 100)}%`}><span><i style={{ width: `${Math.round((combatProgress?.nextProgress || 0) * 100)}%` }} /></span><small>{Math.round((combatProgress?.nextProgress || 0) * 100)}% al siguiente rango</small></span>
-            <span className="menu-card-cta">Continuar campaña <b aria-hidden="true">→</b></span>
-          </TutorialModeCard>
-
-          <TutorialModeCard tutorialId="quick-match-rules" className="menu-card accent-hint home-primary-card home-mode-card home-mode-quick" onClick={() => setShowQuickMatch(true)}>
-            <img className="home-mode-art" src={quickCardArt} alt="" aria-hidden="true" />
-            <span className="home-mode-icon" aria-hidden="true"><IconPawn className="menu-card-icon" /></span>
-            <span className="home-mode-copy">
-              <span className="home-mode-kicker"><b>A tu ritmo</b><i>CPU adaptable</i></span>
-              <h3>Partida rápida</h3>
-              <span className="home-mode-description">Una partida limpia contra una CPU ajustada a tu nivel.</span>
-            </span>
-            <span className="menu-card-cta">Nivel {difficulty} · {difficultyLabel(difficulty)} <b aria-hidden="true">→</b></span>
-          </TutorialModeCard>
-        </div>
-
-        <details className="friendly-disclosure home-more-modes">
-          <summary>Más modos de juego</summary>
-          <div className="friendly-disclosure-body menu-grid menu-grid-4 compact-mode-grid">
-            <TutorialModeCard tutorialId="combat-basics" className="menu-card accent-danger" onClick={onCombat}>
-              <IconSword className="menu-card-icon" /><h3>{COMBAT_CHESS_FREE_LABEL}</h3><p>Batalla libre sin campaña.</p><span className="menu-card-cta">Preparar →</span>
-            </TutorialModeCard>
-            {features.rivalGhost !== false && <TutorialModeCard tutorialId="rival-ghost" className="menu-card accent-hint" onClick={() => setShowMirrorMode(true)}>
-              <IconEye className="menu-card-icon" /><h3>Rival Fantasma</h3><p>CPU basada en tendencias reales de tu juego.</p><span className="menu-card-cta">Jugar →</span>
-            </TutorialModeCard>}
-            {features.spectator !== false && <TutorialModeCard tutorialId="spectator" className="menu-card accent-hint" onClick={onSpectator}>
-              <IconEye className="menu-card-icon" /><h3>Espectador</h3><p>CPU contra CPU. Tú miras el incendio.</p><span className="menu-card-cta">Mirar →</span>
-            </TutorialModeCard>}
-            <TutorialModeCard tutorialId="lab" className="menu-card accent-success" onClick={onLab}>
-              <IconPuzzle className="menu-card-icon" /><h3>Experimentos geniales</h3><p>Ajedrez 3D, Pawn Trailblazer, Arenas y otras ideas bajo vigilancia.</p><span className="menu-card-cta">Entrar al hangar →</span>
-            </TutorialModeCard>
-          </div>
-        </details>
-      </section>
 
       <div className="menu-group home-primary-group">
         <div className="home-group-heading">
