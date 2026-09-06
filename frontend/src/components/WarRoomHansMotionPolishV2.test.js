@@ -201,6 +201,9 @@ describe('Hans motion polish v2', () => {
     };
 
     expect(installWarRoomHansMotionPolish(root)).toBe(1);
+    // First sample is the arrival step from the fixture's initial position.
+    // The next frame is planted at the hearth and must use the articulated stoke pose.
+    driver.onBeforeRender();
     driver.onBeforeRender();
 
     const { torso, leftLeg, rightLeg, leftArm, rightArm, carriedPoker } = hans.userData.refs;
