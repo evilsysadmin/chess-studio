@@ -10,6 +10,7 @@ export const PAWN_SLUG_PLAYER = Object.freeze({
   hpPerLevel: 8,
   damagePerLevel: 0.05,
   maxLevel: 12,
+  xpCurveStep: 20,
 });
 
 export const PAWN_SLUG_WEAPON_ORDER = Object.freeze(['pistol', 'machinegun', 'shotgun', 'panzerfaust']);
@@ -38,22 +39,22 @@ export const PAWN_SLUG_WEAPON_UPGRADES = Object.freeze({
   pistol: Object.freeze([
     freezeUpgrade({}),
     freezeUpgrade({ tier: 2, code: 'Mk II', level: 4, damage: 1.08, cadence: 0.94, ammo: 1.1 }),
-    freezeUpgrade({ tier: 3, code: 'Mk III', level: 8, damage: 1.16, cadence: 0.88, ammo: 1.2 }),
+    freezeUpgrade({ tier: 3, code: 'Mk III', level: 7, damage: 1.16, cadence: 0.88, ammo: 1.2 }),
   ]),
   machinegun: Object.freeze([
     freezeUpgrade({}),
-    freezeUpgrade({ tier: 2, code: 'Mk II', level: 5, damage: 1.06, cadence: 0.94, spread: 0.9, ammo: 1.12 }),
-    freezeUpgrade({ tier: 3, code: 'Mk III', level: 9, damage: 1.12, cadence: 0.88, spread: 0.82, ammo: 1.25 }),
+    freezeUpgrade({ tier: 2, code: 'Mk II', level: 4, damage: 1.06, cadence: 0.94, spread: 0.9, ammo: 1.12 }),
+    freezeUpgrade({ tier: 3, code: 'Mk III', level: 7, damage: 1.12, cadence: 0.88, spread: 0.82, ammo: 1.25 }),
   ]),
   shotgun: Object.freeze([
     freezeUpgrade({}),
-    freezeUpgrade({ tier: 2, code: 'Mk II', level: 6, damage: 1.05, cadence: 0.94, spread: 0.94, pelletsBonus: 1, ammo: 1.12 }),
-    freezeUpgrade({ tier: 3, code: 'Mk III', level: 10, damage: 1.1, cadence: 0.88, spread: 0.88, pelletsBonus: 2, ammo: 1.22 }),
+    freezeUpgrade({ tier: 2, code: 'Mk II', level: 5, damage: 1.05, cadence: 0.94, spread: 0.94, pelletsBonus: 1, ammo: 1.12 }),
+    freezeUpgrade({ tier: 3, code: 'Mk III', level: 7, damage: 1.1, cadence: 0.88, spread: 0.88, pelletsBonus: 2, ammo: 1.22 }),
   ]),
   panzerfaust: Object.freeze([
     freezeUpgrade({}),
     freezeUpgrade({ tier: 2, code: 'Mk II', level: 7, damage: 1.12, cadence: 0.92, speed: 1.05, ammo: 1.12 }),
-    freezeUpgrade({ tier: 3, code: 'Mk III', level: 11, damage: 1.22, cadence: 0.84, speed: 1.1, ammo: 1.22 }),
+    freezeUpgrade({ tier: 3, code: 'Mk III', level: 8, damage: 1.22, cadence: 0.84, speed: 1.1, ammo: 1.22 }),
   ]),
 });
 
@@ -62,7 +63,7 @@ export const PAWN_SLUG_PICKUPS = Object.freeze([
   Object.freeze({ x: 1810, type: 'grenade' }),
   Object.freeze({ x: 2470, type: 'shotgun' }),
   Object.freeze({ x: 3300, type: 'medkit' }),
-  Object.freeze({ x: 3830, type: 'panzerfaust' }),
+  Object.freeze({ x: 3500, type: 'panzerfaust' }),
   Object.freeze({ x: 4310, type: 'grenade' }),
 ]);
 
@@ -152,7 +153,7 @@ export function pawnSlugXpForKill(type) {
 export function pawnSlugXpForLevel(level) {
   const target = pawnSlugClamp(Math.floor(Number(level) || 1), 1, PAWN_SLUG_PLAYER.maxLevel);
   const completed = target - 1;
-  return completed * 120 + ((completed * (completed - 1)) / 2) * 70;
+  return completed * 120 + ((completed * (completed - 1)) / 2) * PAWN_SLUG_PLAYER.xpCurveStep;
 }
 
 export function pawnSlugLevelForXp(xp) {
