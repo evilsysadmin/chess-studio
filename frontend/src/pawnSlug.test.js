@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   PAWN_SLUG_ENEMIES,
+  PAWN_SLUG_PICKUPS,
   PAWN_SLUG_PLAYER,
   PAWN_SLUG_SPAWNS,
   PAWN_SLUG_WEAPON_ORDER,
@@ -78,6 +79,22 @@ describe('Pawn Slug contracts', () => {
     expect(pawnSlugBossUnlocked(PAWN_SLUG_WORLD.bossX - 721)).toBe(false);
     expect(pawnSlugBossUnlocked(PAWN_SLUG_WORLD.bossX - 720)).toBe(true);
     expect(pawnSlugProgress(PAWN_SLUG_WORLD.bossX)).toBeGreaterThan(0.8);
+  });
+
+  it('paces the campaign so every arsenal tier can matter before the final boss', () => {
+    const totalPreBossXp = PAWN_SLUG_SPAWNS.reduce((sum, spawn) => sum + pawnSlugXpForKill(spawn.type), 0);
+    expect(pawnSlugLevelForXp(totalPreBossXp)).toBeGreaterThanOrEqual(8);
+
+    const bishops = PAWN_SLUG_SPAWNS.filter((spawn) => spawn.type === 'bishop');
+    const panzerPickup = PAWN_SLUG_PICKUPS.find((pickup) => pickup.type === 'panzerfaust');
+    expect(panzerPickup.x).toBeLessThan(bishops[1].x);
+    expect(pawnSlugWeaponUpgradeForLevel('panzerfaust', 6).tier).toBe(1);
+    expect(pawnSlugWeaponUpgradeForLevel('panzerfaust', 7)).toMatchObject({ tier: 2, code: 'Mk II' });
+    expect(pawnSlugWeaponUpgradeForLevel('panzerfaust', 8)).toMatchObject({ tier: 3, code: 'Mk III' });
+
+    expect(pawnSlugWeaponUpgradeForLevel('pistol', 7).tier).toBe(3);
+    expect(pawnSlugWeaponUpgradeForLevel('machinegun', 7).tier).toBe(3);
+    expect(pawnSlugWeaponUpgradeForLevel('shotgun', 7).tier).toBe(3);
   });
 
   it('rewards tougher enemies and gives Matthias factual event barks', () => {
