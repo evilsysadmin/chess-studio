@@ -11,6 +11,7 @@ import './HomeCastleCoherence.css';
 import './MatthiasHomeSessionSummary.css';
 import './MatthiasMotionOverride.css';
 import './MatthiasHomeMobilePortrait.css';
+import './MatthiasHomeSpeechAnchorFix.css';
 
 const AMBIENT_SCENE_MS = 28_000;
 const COMPACT_VIEWPORT_QUERY = '(max-width: 760px)';
