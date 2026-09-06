@@ -93,7 +93,7 @@ describe('Hans motion polish v2', () => {
     expect(driver.userData.warRoomHansMotionPolishV2).toBe(WAR_ROOM_HANS_MOTION_POLISH_V2_VERSION);
   });
 
-  it('faces the real travel vector while walking so horizontal movement cannot moonwalk', () => {
+  it('faces the real travel vector while delegating all walking articulation to ElderWalk', () => {
     const { root, hans, driver } = makeRig();
     let x = -0.4;
     driver.onBeforeRender = () => {
@@ -109,13 +109,17 @@ describe('Hans motion polish v2', () => {
 
     const faceX = Math.sin(hans.rotation.y);
     const faceZ = Math.cos(hans.rotation.y);
+    const { leftLeg, rightLeg, leftArm, rightArm } = hans.userData.refs;
     expect(faceX).toBeLessThan(-0.99);
     expect(Math.abs(faceZ)).toBeLessThan(0.02);
-    expect(Math.abs(hans.userData.refs.leftLeg.rotation.x)).toBeGreaterThan(0.01);
-    expect(hans.userData.refs.rightLeg.rotation.x).toBeCloseTo(-hans.userData.refs.leftLeg.rotation.x, 6);
+    expect(leftLeg.rotation.x).toBeCloseTo(0, 6);
+    expect(rightLeg.rotation.x).toBeCloseTo(0, 6);
+    expect(leftArm.rotation.x).toBeCloseTo(0, 6);
+    expect(rightArm.rotation.x).toBeCloseTo(0, 6);
     expect(hans.getObjectByName('war-room-hans-visual-root').position.y).toBe(0);
     expect(hans.userData.warRoomHansMotionState).toBe('walk-carry-log');
     expect(hans.userData.warRoomHansMovementFacing).toBe('velocity-vector');
+    expect(driver.userData.warRoomHansMotionCadence).toBe('elder-gait-owned-v4');
   });
 
   it('uses the real armor bounding box plus Hans radius while crossing the bypass lane', () => {
