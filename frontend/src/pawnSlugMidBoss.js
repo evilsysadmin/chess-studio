@@ -7,6 +7,10 @@ export const PAWN_SLUG_STURM_BISHOP_META = Object.freeze({
   weakPoint: 'visor',
   shellTelegraphSeconds: 0.52,
   shellRange: 12.5,
+  suppressionTelegraphSeconds: 0.46,
+  suppressionRange: 9.5,
+  suppressionBurstShots: 3,
+  suppressionShotInterval: 0.14,
 });
 
 export function pawnSlugSturmBishopTelegraph(shellCooldown, distance) {
@@ -15,6 +19,24 @@ export function pawnSlugSturmBishopTelegraph(shellCooldown, distance) {
   if (!Number.isFinite(cooldown) || !Number.isFinite(range) || range > PAWN_SLUG_STURM_BISHOP_META.shellRange) return 0;
   if (cooldown <= 0) return 1;
   return Math.max(0, Math.min(1, 1 - cooldown / PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds));
+}
+
+export function pawnSlugSturmBishopSuppressionTelegraph(cooldown, distance) {
+  const remaining = Number(cooldown);
+  const range = Number(distance);
+  if (!Number.isFinite(remaining) || !Number.isFinite(range) || range > PAWN_SLUG_STURM_BISHOP_META.suppressionRange) return 0;
+  if (remaining <= 0) return 1;
+  return Math.max(0, Math.min(1, 1 - remaining / PAWN_SLUG_STURM_BISHOP_META.suppressionTelegraphSeconds));
+}
+
+export function pawnSlugSturmBishopSuppressionLane(shotIndex = 0) {
+  const lanes = Object.freeze([
+    Object.freeze({ height: 0.62, speed: 8.35, damage: 12, cue: 'jump' }),
+    Object.freeze({ height: 1.68, speed: 8.15, damage: 12, cue: 'crouch' }),
+    Object.freeze({ height: 1.08, speed: 8.45, damage: 13, cue: 'move' }),
+  ]);
+  const index = ((Math.floor(Number(shotIndex) || 0) % lanes.length) + lanes.length) % lanes.length;
+  return lanes[index];
 }
 
 function standard(color, roughness = 0.62, metalness = 0.34, emissive = 0x000000, emissiveIntensity = 0) {
@@ -86,7 +108,11 @@ export function createSturmBishopModel() {
 
     const gun = new THREE.Group();
     gun.position.set(side * 0.64, 1.26, 0.04);
-    const receiver = mesh(new THREE.BoxGeometry(0.32, 0.18, 0.2), armorDark.clone());
+    const receiver = mesh(
+      new THREE.BoxGeometry(0.32, 0.18, 0.2),
+      standard(0x20262b, 0.7, 0.42, 0xd45a22, 0),
+    );
+    receiver.userData.suppressionTelegraph = true;
     const barrel = mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.76, 8), armor.clone(), { x: side * 0.4, rz: Math.PI / 2 });
     const muzzleMaterial = standard(0xb38b43, 0.38, 0.58, 0xff6b2f, 0);
     const muzzle = mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.11, 8), muzzleMaterial, { x: side * 0.79, rz: Math.PI / 2 });
@@ -102,29 +128,43 @@ export function createSturmBishopModel() {
   return root;
 }
 
-export function animateSturmBishopModel(model, time, { moving = false, hurt = false, dir = -1, telegraph = 0 } = {}) {
+export function animateSturmBishopModel(model, time, {
+  moving = false,
+  hurt = false,
+  dir = -1,
+  telegraph = 0,
+  suppressionTelegraph = 0,
+} = {}) {
   if (!model) return;
   const direction = dir < 0 ? -1 : 1;
   const stride = Math.sin(time * 7.2);
   const breath = Math.sin(time * 2.15);
   const warning = Math.max(0, Math.min(1, Number(telegraph) || 0));
+  const suppression = Math.max(0, Math.min(1, Number(suppressionTelegraph) || 0));
   const warningPulse = warning > 0 ? 0.72 + Math.max(0, Math.sin(time * (9 + warning * 9))) * 0.55 : 0;
+  const suppressionPulse = suppression > 0 ? 0.68 + Math.max(0, Math.sin(time * (13 + suppression * 11))) * 0.62 : 0;
   const base = model.userData.baseScale || 1.18;
   model.scale.x = Math.abs(base) * direction;
   model.scale.y = base * (1 + breath * 0.012 - (hurt ? 0.045 : 0));
   model.scale.z = base;
   model.position.y = model.userData.baseY + (moving ? Math.abs(stride) * 0.035 : Math.max(0, breath) * 0.012);
-  model.rotation.z = moving ? -direction * stride * 0.018 : 0;
+  model.rotation.z = moving ? -direction * stride * 0.018 : direction * suppression * suppressionPulse * 0.012;
 
   model.traverse((node) => {
     if (!node.isMesh || !node.material?.emissive) return;
     if (node.userData?.weakPoint) {
-      node.material.emissiveIntensity = hurt ? 2.5 : 1.25 + Math.max(0, breath) * 0.45 + warning * warningPulse * 1.5;
+      node.material.emissiveIntensity = hurt
+        ? 2.5
+        : 1.25 + Math.max(0, breath) * 0.45 + warning * warningPulse * 1.5 + suppression * suppressionPulse * 0.7;
+      return;
+    }
+    if (node.userData?.suppressionTelegraph) {
+      node.material.emissiveIntensity = suppression * suppressionPulse * 2.4;
       return;
     }
     if (node.userData?.shellTelegraph) {
-      node.material.emissiveIntensity = warning * warningPulse * 3.2;
-      node.scale.setScalar(1 + warning * warningPulse * 0.16);
+      node.material.emissiveIntensity = Math.max(warning * warningPulse * 3.2, suppression * suppressionPulse * 1.65);
+      node.scale.setScalar(1 + Math.max(warning * warningPulse * 0.16, suppression * suppressionPulse * 0.08));
     }
   });
 }
