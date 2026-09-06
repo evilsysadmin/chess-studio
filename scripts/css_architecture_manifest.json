@@ -28,6 +28,37 @@
     "27-night-club-tactical.css",
     "28-product-resilience.css"
   ],
+  "globalModules": [
+    "01-foundation.css",
+    "02-game-board.css",
+    "03-combat-core.css",
+    "04-operations-career.css",
+    "05-combat-roster.css",
+    "06-combat-campaign.css",
+    "07-progressive-ux.css",
+    "08-recent-polish.css",
+    "09-professional-polish.css",
+    "10-studio-art-direction.css",
+    "11-game-table.css",
+    "13-product-expansion.css",
+    "14-home-account-hub.css",
+    "15-header-tools.css",
+    "16-account-music-polish.css",
+    "17-premium-board.css",
+    "18-account-menu.css",
+    "19-game-focus.css",
+    "21-home-command.css",
+    "22-progression-gamification.css",
+    "23-learning-combat-economy.css",
+    "24-product-hardening.css",
+    "25-visual-coherence.css",
+    "26-visual-system-overhaul.css",
+    "27-night-club-tactical.css",
+    "28-product-resilience.css"
+  ],
+  "lazyModules": [
+    "20-piece-skins.css"
+  ],
   "combinedSha256": "7240653a3bdcff990ad3b5119c22d30fd1a7ae595f0cc0671b5f9004d4cc8699",
   "combinedBytes": 555591,
   "combinedLines": 15432
