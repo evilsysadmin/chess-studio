@@ -281,7 +281,7 @@ export function installWarRoomHansElderWalk(root) {
         hans.userData.warRoomHansArmSwingGain = BASE_ARM_SWING_GAIN + HORIZONTAL_ARM_SWING_BONUS * horizontalBlend;
         hans.userData.warRoomHansLegSwingGain = 1 + HORIZONTAL_LEG_SWING_BONUS * horizontalBlend;
         hans.userData.warRoomHansStepGain = 1 + HORIZONTAL_STEP_BONUS * horizontalBlend;
-        hans.userData.warRoomHansGaitGrounding = 'real-distance-visible-step-v4';
+        hans.userData.warRoomHansGaitGrounding = 'real-distance-foot-plant-v3';
         hans.userData.warRoomHansGaitTeleportSuppressed = false;
         hans.userData.warRoomHansCaneCadence = body?.cane ? 'opposite-hand-support-v1' : null;
         hans.userData.warRoomHansGaitHotPath = 'preallocated-samples-v5-readable-old-man';
@@ -303,7 +303,7 @@ export function installWarRoomHansElderWalk(root) {
   driver.userData.warRoomHansGaitFrames = GAIT_FRAME_COUNT;
   driver.userData.warRoomHansGaitStyle = 'elder-butler-readable-v3-stoop-arms-steps';
   driver.userData.warRoomHansGaitCadence = 'slow-weight-transfer-v3-visible-arm-leg-cycle';
-  driver.userData.warRoomHansGaitGrounding = 'real-distance-visible-step-v4';
+  driver.userData.warRoomHansGaitGrounding = 'real-distance-foot-plant-v3';
   driver.userData.warRoomHansHorizontalHunchBonusRadians = HORIZONTAL_HUNCH_BONUS_RADIANS;
   driver.userData.warRoomHansHorizontalArmSwingBonus = HORIZONTAL_ARM_SWING_BONUS;
   driver.userData.warRoomHansHorizontalLegSwingBonus = HORIZONTAL_LEG_SWING_BONUS;
