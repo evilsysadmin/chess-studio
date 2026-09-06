@@ -35,7 +35,7 @@ describe('Board3D piece scale parity', () => {
     }
   });
 
-  it('hace casi ortográfica la escala aparente entre primera y última fila en desktop', () => {
+  it('usa lente desktop más larga para que primera y última fila no parezcan sets de escalas distintas', () => {
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     fitBoardCamera(camera, 1185, 730, true);
 
@@ -43,16 +43,15 @@ describe('Board3D piece scale parity', () => {
     const farHeight = projectedHeight(camera, -3.5);
     const apparentScaleRatio = nearHeight / farHeight;
 
-    expect(resolveBoard3DCameraFov(1185 / 730)).toBe(9);
-    expect(camera.fov).toBe(9);
-    expect(camera.userData.cameraDistance).toBeGreaterThan(70);
+    expect(resolveBoard3DCameraFov(1185 / 730)).toBe(29);
+    expect(camera.fov).toBe(29);
     expect(apparentScaleRatio).toBeGreaterThan(1);
-    expect(apparentScaleRatio).toBeLessThan(1.1);
+    expect(apparentScaleRatio).toBeLessThan(1.33);
   });
 
   it('conserva el FOV móvil existente y sólo comprime perspectiva en desktop', () => {
-    expect(resolveBoard3DCameraFov(1.8)).toBe(9);
-    expect(resolveBoard3DCameraFov(1.1)).toBe(10);
+    expect(resolveBoard3DCameraFov(1.8)).toBe(29);
+    expect(resolveBoard3DCameraFov(1.1)).toBe(32);
     expect(resolveBoard3DCameraFov(0.46, { mobile: true })).toBe(40);
   });
 });
