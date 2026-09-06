@@ -8,7 +8,13 @@ import { loadBoardTheme } from '../career.js';
 import { loadSelectedSkin } from '../tournamentRewards.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
 import { adaptiveRenderScale, clamp01, deriveMoveKinetics, easeOutCubic, inferCapturedPiece, reactiveLightProfile, smoothstep } from './WarRoom3DMotion.js';
-import { isSoftwareWebGLRenderer, warRoomAmbientFramePlan, warRoomSceneProfile } from './WarRoom3DAnimation.js';
+import {
+  compactWebGLRendererLabel,
+  isSoftwareWebGLRenderer,
+  warRoomAmbientFramePlan,
+  warRoomRendererAttempts,
+  warRoomSceneProfile,
+} from './WarRoom3DAnimation.js';
 import { resolveBoardTap } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { board3DCaptureWarmBoost, board3DHighlightPulse, board3DPieceInteractionPose } from './Board3DInteractionFx.js';
@@ -140,25 +146,36 @@ function Board3DCanvas({
     const host = hostRef.current;
     if (!host) return undefined;
 
-    let renderer;
-    try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
-    } catch (error) {
-      latestPropsRef.current.onRendererFailure?.(error);
+    const rendererAttempts = warRoomRendererAttempts();
+    let renderer = null;
+    let rendererAttempt = null;
+    let rendererError = null;
+    for (const attempt of rendererAttempts) {
+      try {
+        renderer = new THREE.WebGLRenderer(attempt.parameters);
+        rendererAttempt = attempt;
+        break;
+      } catch (error) {
+        rendererError = error;
+      }
+    }
+    if (!renderer || !rendererAttempt) {
+      latestPropsRef.current.onRendererFailure?.(rendererError || new Error('WebGL renderer unavailable'));
       return undefined;
     }
 
-    let softwareRenderer = false;
+    let rendererName = '';
+    let softwareRenderer = Boolean(rendererAttempt.liteFallback);
     try {
       const gl = renderer.getContext();
       const debugRendererInfo = gl.getExtension?.('WEBGL_debug_renderer_info');
-      const rendererName = debugRendererInfo
+      rendererName = debugRendererInfo
         ? gl.getParameter(debugRendererInfo.UNMASKED_RENDERER_WEBGL)
         : gl.getParameter(gl.RENDERER);
-      softwareRenderer = isSoftwareWebGLRenderer(rendererName);
+      softwareRenderer = softwareRenderer || isSoftwareWebGLRenderer(rendererName);
     } catch {
       // Renderer introspection is optional. Unknown renderers keep the normal
-      // heartbeat and can still rely on reduced-motion/coarse-pointer gates.
+      // heartbeat unless the permissive fallback path was already required.
     }
 
     const coarsePointer = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -196,6 +213,10 @@ function Board3DCanvas({
     renderer.domElement.setAttribute('role', 'application');
     renderer.domElement.tabIndex = 0;
     renderer.domElement.style.touchAction = 'none';
+    renderer.domElement.dataset.board3dRenderPath = rendererAttempt.id;
+    renderer.domElement.dataset.board3dRenderer = String(rendererName || 'unknown').slice(0, 180);
+    renderer.domElement.dataset.board3dRendererClass = compactWebGLRendererLabel(rendererName);
+    renderer.domElement.dataset.board3dSceneTier = sceneProfile.tier;
     host.appendChild(renderer.domElement);
 
     const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer: renderLite });
@@ -588,6 +609,9 @@ function Board3DCanvas({
       highlightMeshes,
       coarsePointer,
       renderLite,
+      rendererName,
+      rendererAttemptId: rendererAttempt.id,
+      sceneTier: sceneProfile.tier,
       key,
       rim,
       warm,
@@ -595,7 +619,11 @@ function Board3DCanvas({
       renderScale: Math.min(window.devicePixelRatio || 1, sceneProfile.pixelRatioCap),
       slowFrameCount: 0,
     };
-    setRendererLabel(renderer.capabilities.isWebGL2 ? '3D · WEBGL2' : '3D · WEBGL');
+    const rendererApi = renderer.capabilities.isWebGL2 ? '3D · WEBGL2' : '3D · WEBGL';
+    const rendererClass = compactWebGLRendererLabel(rendererName);
+    const noMsaa = rendererAttempt.id === 'gpu-noaa' ? ' · NO MSAA' : '';
+    const liteLabel = sceneProfile.lite ? ' · LITE' : '';
+    setRendererLabel(`${rendererApi} · ${rendererClass}${noMsaa}${liteLabel}`);
     render();
 
     return () => {

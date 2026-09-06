@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { isSoftwareWebGLRenderer, warRoomAmbientFramePlan, warRoomSceneProfile } from './WarRoom3DAnimation.js';
+import {
+  compactWebGLRendererLabel,
+  isSoftwareWebGLRenderer,
+  warRoomAmbientFramePlan,
+  warRoomRendererAttempts,
+  warRoomSceneProfile,
+} from './WarRoom3DAnimation.js';
 
 describe('War Room ambient render cadence', () => {
   it('mantiene fuego autónomo a ~10 FPS en desktop sin inspección ni input', () => {
@@ -54,6 +60,46 @@ describe('War Room ambient render cadence', () => {
     }
     expect(isSoftwareWebGLRenderer('ANGLE (NVIDIA GeForce RTX 4070)')).toBe(false);
     expect(isSoftwareWebGLRenderer('AMD Radeon RX 7800 XT (RADV NAVI32)')).toBe(false);
+  });
+
+  it('clasifica el renderer para diagnóstico humano sin filtrar cadenas enormes', () => {
+    expect(compactWebGLRendererLabel('ANGLE (NVIDIA GeForce RTX 3060 Laptop GPU)')).toBe('NVIDIA');
+    expect(compactWebGLRendererLabel('Mesa Intel(R) UHD Graphics (CML GT2)')).toBe('INTEL');
+    expect(compactWebGLRendererLabel('AMD Radeon RX 7800 XT (RADV NAVI32)')).toBe('AMD');
+    expect(compactWebGLRendererLabel('ANGLE (Apple, ANGLE Metal Renderer: Apple M4)')).toBe('APPLE');
+    expect(compactWebGLRendererLabel('llvmpipe (LLVM 19.1.7, 256 bits)')).toBe('SOFTWARE');
+    expect(compactWebGLRendererLabel('Mystery GPU 9000')).toBe('GPU');
+    expect(compactWebGLRendererLabel('')).toBe('UNKNOWN');
+  });
+
+  it('prioriza GPU con y sin MSAA antes de permitir el fallback lite', () => {
+    const attempts = warRoomRendererAttempts();
+    expect(attempts.map((attempt) => attempt.id)).toEqual(['gpu-aa', 'gpu-noaa', 'fallback-lite']);
+
+    expect(attempts[0]).toMatchObject({
+      liteFallback: false,
+      parameters: {
+        antialias: true,
+        powerPreference: 'high-performance',
+        failIfMajorPerformanceCaveat: true,
+      },
+    });
+    expect(attempts[1]).toMatchObject({
+      liteFallback: false,
+      parameters: {
+        antialias: false,
+        powerPreference: 'high-performance',
+        failIfMajorPerformanceCaveat: true,
+      },
+    });
+    expect(attempts[2]).toMatchObject({
+      liteFallback: true,
+      parameters: {
+        antialias: false,
+        powerPreference: 'default',
+        failIfMajorPerformanceCaveat: false,
+      },
+    });
   });
 
   it('mantiene geometría completa pero nace con presupuesto GPU sensato en desktop', () => {
