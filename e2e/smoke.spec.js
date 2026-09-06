@@ -28,10 +28,12 @@ test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve a
   const warRoomMatthias = page.getByRole('complementary', { name: 'Puesto táctico de Matthias' });
   if (await warRoomMatthias.isVisible().catch(() => false)) {
     await expect(warRoomMatthias.getByRole('heading', { name: 'Matthias', exact: true })).toBeVisible();
-    await expect(warRoomMatthias.locator('[data-three-face-rig="face-v1"]')).toBeVisible();
+    await expect(warRoomMatthias.locator('[data-matthias-war-room-presence="king-piece"]')).toBeVisible();
+    await expect(warRoomMatthias.locator('[data-three-face-rig="face-v1"]')).toHaveCount(0);
   } else {
-    // Explicit 2D remains a supported user preference; keep the old portrait
-    // assertion as the fallback branch instead of assuming either renderer.
+    // Explicit 2D remains a supported user preference; its player rail may
+    // still use the canonical CPU portrait because Matthias is not embodied
+    // as the 3D king in that renderer.
     const matthiasAvatar = page.locator('.game-player-rail.is-cpu .game-player-avatar.has-portrait img');
     await expect(matthiasAvatar).toBeVisible();
     expect(await matthiasAvatar.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
