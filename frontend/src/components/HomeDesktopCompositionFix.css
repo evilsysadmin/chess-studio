@@ -1,0 +1,56 @@
+/* Chess Studio Home · desktop composition correction
+ *
+ * Adaptive density must not turn a wide desktop into an ultra-letterboxed
+ * castle. Preserve the diegetic room as the hero, then recover vertical budget
+ * by overlapping the primary action slightly and keeping secondary sections compact.
+ */
+
+@media (min-width: 1000px) {
+  body .menu.home-friendly {
+    --home-castle-h: clamp(360px, 42vh, 470px);
+  }
+
+  body .menu.home-friendly > .home-continue-group,
+  body .menu.home-friendly > .home-next-action {
+    margin-top: clamp(-1.45rem, -1.8vh, -.85rem) !important;
+    z-index: 22 !important;
+  }
+}
+
+/* Short desktop windows still keep a proper Great Hall. We compact chrome and
+ * secondary content instead of crushing the 3D scene into a panoramic strip. */
+@media (min-width: 1000px) and (max-height: 820px) {
+  body .menu.home-friendly {
+    --home-castle-h: clamp(325px, 44vh, 355px);
+    --home-section-gap: .45rem;
+    --home-hero-pad-y: .52rem;
+    --home-route-h: 66px;
+    --home-learning-h: 64px;
+    --home-daily-h: 50px;
+  }
+
+  body .menu.home-friendly > .home-continue-group,
+  body .menu.home-friendly > .home-next-action {
+    margin-top: -1.15rem !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-group-heading,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-group-heading {
+    margin-bottom: .2rem !important;
+    padding-bottom: .2rem !important;
+  }
+}
+
+/* Normal 1080p-class desktops deserve a visibly larger castle without turning
+ * the lower Home back into a dashboard wall. */
+@media (min-width: 1000px) and (min-height: 821px) and (max-height: 1050px) {
+  body .menu.home-friendly {
+    --home-castle-h: clamp(390px, 43vh, 455px);
+  }
+}
+
+@media (min-width: 1000px) and (min-height: 1051px) {
+  body .menu.home-friendly {
+    --home-castle-h: clamp(450px, 42vh, 560px);
+  }
+}
