@@ -1,5 +1,7 @@
+import { installWarRoomHansCanonicalButler } from './WarRoomHansCanonicalButler.js';
 import { installWarRoomHansElderWalk } from './WarRoomHansElderWalk.js';
 import { installWarRoomHansFacingGuard } from './WarRoomHansFacingGuard.js';
+import { installWarRoomHansHearthFacingGuard } from './WarRoomHansHearthFacingGuard.js';
 import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
 
 export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v1';
@@ -71,8 +73,13 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
     for (const [key, task] of current.tasks) {
       results[key] = task(root);
       if (key === HANS_FIREPLACE_FINALIZER_KEY) {
+        // Canonical visual rig first: MotionPolish and ElderWalk deliberately
+        // capture their base poses afterwards so the tailcoat, cane and elderly
+        // stoop are the character itself rather than a late decorative overlay.
+        installWarRoomHansCanonicalButler(root);
         installWarRoomHansMotionPolish(root);
         installWarRoomHansFacingGuard(root);
+        installWarRoomHansHearthFacingGuard(root);
         installWarRoomHansElderWalk(root);
       }
       completedKeys.push(key);
