@@ -260,102 +260,165 @@ export function shouldScheduleHansFireplace(randomValue, odds = HANS_FIREPLACE_O
   return roll < (1 / denominator);
 }
 
-export function hansFireplaceFrame(elapsedSeconds) {
+function resetHansFireplaceFrame(target) {
+  const frame = target || {};
+  frame.phase = 'waiting';
+  frame.active = false;
+  frame.complete = false;
+  frame.fireScale = 1;
+  frame.hansVisible = false;
+  frame.hansX = 3.9;
+  frame.stride = 0;
+  frame.lean = 0;
+  frame.rightArm = 0;
+  frame.leftArm = 0;
+  frame.headNod = 0;
+  frame.carryLog = false;
+  frame.removeBasketLog = false;
+  frame.showAddedLog = false;
+  frame.carryPoker = false;
+  frame.stoke = 0;
+  return frame;
+}
+
+export function writeHansFireplaceFrame(target, elapsedSeconds) {
+  const frame = resetHansFireplaceFrame(target);
   const elapsed = Number(elapsedSeconds) || 0;
   const t = elapsed - HANS_FIREPLACE_START_DELAY_S;
-  const base = {
-    phase: 'waiting', active: false, complete: false, fireScale: 1,
-    hansVisible: false, hansX: 3.9, stride: 0, lean: 0,
-    rightArm: 0, leftArm: 0, headNod: 0,
-    carryLog: false, removeBasketLog: false, showAddedLog: false,
-    carryPoker: false, stoke: 0,
-  };
-  if (t < 0) return base;
+  if (t < 0) return frame;
+
   if (t >= HANS_ROUTINE_DURATION_S) {
-    return { ...base, phase: 'complete', complete: true, removeBasketLog: true, showAddedLog: true };
+    frame.phase = 'complete';
+    frame.complete = true;
+    frame.removeBasketLog = true;
+    frame.showAddedLog = true;
+    return frame;
   }
 
+  frame.active = true;
   if (t < 5) {
     const p = smoothstep01(t / 5);
-    return { ...base, phase: 'fire-dimming', active: true, fireScale: lerp(1, 0.26, p) };
+    frame.phase = 'fire-dimming';
+    frame.fireScale = lerp(1, 0.26, p);
+    return frame;
   }
   if (t < 10) {
     const local = t - 5;
     const p = smoothstep01(local / 5);
-    return {
-      ...base, phase: 'walk-to-basket', active: true, fireScale: 0.26, hansVisible: true,
-      hansX: lerp(3.9, 1.95, p), stride: Math.sin(local * 5.8) * 0.3,
-    };
+    frame.phase = 'walk-to-basket';
+    frame.fireScale = 0.26;
+    frame.hansVisible = true;
+    frame.hansX = lerp(3.9, 1.95, p);
+    frame.stride = Math.sin(local * 5.8) * 0.3;
+    return frame;
   }
   if (t < 12) {
     const p = smoothstep01((t - 10) / 2);
-    return {
-      ...base, phase: 'take-log', active: true, fireScale: 0.26, hansVisible: true, hansX: 1.95,
-      lean: Math.sin(p * Math.PI) * 0.34, rightArm: -Math.sin(p * Math.PI) * 1.0,
-      carryLog: p > 0.55, removeBasketLog: p > 0.55,
-    };
+    frame.phase = 'take-log';
+    frame.fireScale = 0.26;
+    frame.hansVisible = true;
+    frame.hansX = 1.95;
+    frame.lean = Math.sin(p * Math.PI) * 0.34;
+    frame.rightArm = -Math.sin(p * Math.PI) * 1.0;
+    frame.carryLog = p > 0.55;
+    frame.removeBasketLog = p > 0.55;
+    return frame;
   }
   if (t < 15) {
     const local = t - 12;
     const p = smoothstep01(local / 3);
-    return {
-      ...base, phase: 'carry-log', active: true, fireScale: 0.26, hansVisible: true,
-      hansX: lerp(1.95, 0.9, p), stride: Math.sin(local * 5.6) * 0.23,
-      carryLog: true, removeBasketLog: true, rightArm: -0.42,
-    };
+    frame.phase = 'carry-log';
+    frame.fireScale = 0.26;
+    frame.hansVisible = true;
+    frame.hansX = lerp(1.95, 0.9, p);
+    frame.stride = Math.sin(local * 5.6) * 0.23;
+    frame.carryLog = true;
+    frame.removeBasketLog = true;
+    frame.rightArm = -0.42;
+    return frame;
   }
   if (t < 17) {
     const p = smoothstep01((t - 15) / 2);
-    return {
-      ...base, phase: 'place-log', active: true, fireScale: 0.26, hansVisible: true, hansX: 0.9,
-      lean: Math.sin(p * Math.PI) * 0.42, rightArm: -0.7 - p * 0.45,
-      carryLog: p < 0.72, removeBasketLog: true, showAddedLog: p >= 0.72,
-    };
+    frame.phase = 'place-log';
+    frame.fireScale = 0.26;
+    frame.hansVisible = true;
+    frame.hansX = 0.9;
+    frame.lean = Math.sin(p * Math.PI) * 0.42;
+    frame.rightArm = -0.7 - p * 0.45;
+    frame.carryLog = p < 0.72;
+    frame.removeBasketLog = true;
+    frame.showAddedLog = p >= 0.72;
+    return frame;
   }
   if (t < 19) {
     const p = smoothstep01((t - 17) / 2);
-    return {
-      ...base, phase: 'take-poker', active: true, fireScale: 0.26, hansVisible: true,
-      hansX: lerp(0.9, 1.18, p), lean: Math.sin(p * Math.PI) * 0.18,
-      rightArm: -0.35 - Math.sin(p * Math.PI) * 0.65,
-      removeBasketLog: true, showAddedLog: true, carryPoker: p > 0.48,
-    };
+    frame.phase = 'take-poker';
+    frame.fireScale = 0.26;
+    frame.hansVisible = true;
+    frame.hansX = lerp(0.9, 1.18, p);
+    frame.lean = Math.sin(p * Math.PI) * 0.18;
+    frame.rightArm = -0.35 - Math.sin(p * Math.PI) * 0.65;
+    frame.removeBasketLog = true;
+    frame.showAddedLog = true;
+    frame.carryPoker = p > 0.48;
+    return frame;
   }
   if (t < 24) {
     const local = t - 19;
     const p = smoothstep01(local / 5);
     const stoke = Math.sin(local * 7.2) * 0.5;
-    return {
-      ...base, phase: 'stoke-fire', active: true, hansVisible: true, hansX: 0.92,
-      fireScale: lerp(0.26, 1.08, smoothstep01(Math.max(0, (p - 0.25) / 0.75))),
-      lean: 0.18 + Math.sin(local * 3.6) * 0.05,
-      rightArm: -0.72 + stoke, leftArm: 0.18 - stoke * 0.18,
-      removeBasketLog: true, showAddedLog: true, carryPoker: true, stoke,
-    };
+    frame.phase = 'stoke-fire';
+    frame.hansVisible = true;
+    frame.hansX = 0.92;
+    frame.fireScale = lerp(0.26, 1.08, smoothstep01(Math.max(0, (p - 0.25) / 0.75)));
+    frame.lean = 0.18 + Math.sin(local * 3.6) * 0.05;
+    frame.rightArm = -0.72 + stoke;
+    frame.leftArm = 0.18 - stoke * 0.18;
+    frame.removeBasketLog = true;
+    frame.showAddedLog = true;
+    frame.carryPoker = true;
+    frame.stoke = stoke;
+    return frame;
   }
   if (t < 25.5) {
     const p = smoothstep01((t - 24) / 1.5);
-    return {
-      ...base, phase: 'return-poker', active: true, fireScale: lerp(1.08, 1, p),
-      hansVisible: true, hansX: lerp(0.92, 1.18, p), rightArm: lerp(-0.45, -0.1, p),
-      removeBasketLog: true, showAddedLog: true, carryPoker: p < 0.74,
-    };
+    frame.phase = 'return-poker';
+    frame.fireScale = lerp(1.08, 1, p);
+    frame.hansVisible = true;
+    frame.hansX = lerp(0.92, 1.18, p);
+    frame.rightArm = lerp(-0.45, -0.1, p);
+    frame.removeBasketLog = true;
+    frame.showAddedLog = true;
+    frame.carryPoker = p < 0.74;
+    return frame;
   }
   if (t < 27) {
     const p = smoothstep01((t - 25.5) / 1.5);
-    return {
-      ...base, phase: 'satisfied', active: true, fireScale: 1, hansVisible: true, hansX: 1.18,
-      headNod: Math.sin(p * Math.PI) * 0.16, rightArm: -0.08,
-      removeBasketLog: true, showAddedLog: true,
-    };
+    frame.phase = 'satisfied';
+    frame.fireScale = 1;
+    frame.hansVisible = true;
+    frame.hansX = 1.18;
+    frame.headNod = Math.sin(p * Math.PI) * 0.16;
+    frame.rightArm = -0.08;
+    frame.removeBasketLog = true;
+    frame.showAddedLog = true;
+    return frame;
   }
+
   const local = t - 27;
   const p = smoothstep01(local / 6);
-  return {
-    ...base, phase: 'leave', active: true, fireScale: 1, hansVisible: true,
-    hansX: lerp(1.18, 4.15, p), stride: Math.sin(local * 5.8) * 0.3,
-    removeBasketLog: true, showAddedLog: true,
-  };
+  frame.phase = 'leave';
+  frame.fireScale = 1;
+  frame.hansVisible = true;
+  frame.hansX = lerp(1.18, 4.15, p);
+  frame.stride = Math.sin(local * 5.8) * 0.3;
+  frame.removeBasketLog = true;
+  frame.showAddedLog = true;
+  return frame;
+}
+
+export function hansFireplaceFrame(elapsedSeconds) {
+  return writeHansFireplaceFrame({}, elapsedSeconds);
 }
 
 function applyFrame(refs, frame, towardBoard) {
@@ -398,10 +461,11 @@ function applyFrame(refs, frame, towardBoard) {
     fireLight.distance = fireLightBaseDistance * (0.6 + frame.fireScale * 0.4);
 
     // CastleArchitecture owns the organic fire flicker and creates this bounce
-    // light lazily. Hans' transparent late-render driver deliberately modulates
-    // it afterwards, so the existing animation remains the single source of motion.
-    const bounce = fireplace.getObjectByName?.('war-room-fire-bounce-light');
+    // light lazily. Cache it after the first successful lookup so Hans does not
+    // traverse the fireplace subtree on every late render.
+    const bounce = refs.bounce || fireplace.getObjectByName?.('war-room-fire-bounce-light');
     if (bounce) {
+      refs.bounce = bounce;
       if (bounce.userData.hansBaseIntensity == null) {
         bounce.userData.hansBaseIntensity = frame.fireScale > 0.95 ? bounce.intensity : 1.15;
       }
@@ -412,7 +476,8 @@ function applyFrame(refs, frame, towardBoard) {
   if (frame.complete) {
     fireCore.scale.copy(fireCoreBaseScale);
     fireLight.distance = fireLightBaseDistance;
-    const bounce = fireplace.getObjectByName?.('war-room-fire-bounce-light');
+    const bounce = refs.bounce || fireplace.getObjectByName?.('war-room-fire-bounce-light');
+    if (bounce) refs.bounce = bounce;
     if (bounce?.userData?.hansBaseIntensity != null) bounce.intensity = bounce.userData.hansBaseIntensity;
   }
 }
@@ -477,6 +542,7 @@ export function installWarRoomHansFireplaceRoutine(group, {
   }
 
   const startedAt = nowMs();
+  const frameScratch = {};
   const refs = {
     fireplace,
     hans,
@@ -488,10 +554,12 @@ export function installWarRoomHansFireplaceRoutine(group, {
     addedLog: kitRefs.addedLog,
     standPoker: kitRefs.poker,
     side: kitRefs.side,
+    bounce: null,
   };
   driver.userData.warRoomHansStartDelaySeconds = HANS_FIREPLACE_START_DELAY_S;
+  driver.userData.warRoomHansFrameHotPath = 'scratch-writer-v1';
   driver.onBeforeRender = () => {
-    const frame = hansFireplaceFrame((nowMs() - startedAt) / 1000);
+    const frame = writeHansFireplaceFrame(frameScratch, (nowMs() - startedAt) / 1000);
     applyFrame(refs, frame, towardBoard);
     driver.userData.warRoomHansPhase = frame.phase;
     if (frame.complete) {
