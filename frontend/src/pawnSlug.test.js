@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PAWN_SLUG_ENEMIES,
   PAWN_SLUG_PLAYER,
+  PAWN_SLUG_SPAWNS,
   PAWN_SLUG_WEAPON_ORDER,
   PAWN_SLUG_WEAPONS,
   PAWN_SLUG_WORLD,
@@ -55,6 +57,16 @@ describe('Pawn Slug contracts', () => {
     expect(nearStart.some((spawn) => spawn.id === 'pawn-0')).toBe(false);
     expect(nearStart.every((spawn) => spawn.x <= 1300)).toBe(true);
     expect(nearStart.some((spawn) => spawn.type === 'knight')).toBe(true);
+  });
+
+  it('places two mid-boss encounters before the final Panzer-Rook', () => {
+    const bishops = PAWN_SLUG_SPAWNS.filter((spawn) => spawn.type === 'bishop');
+    expect(bishops).toHaveLength(2);
+    expect(bishops.every((spawn) => spawn.x < PAWN_SLUG_WORLD.bossX)).toBe(true);
+    expect(PAWN_SLUG_ENEMIES.bishop.midBoss).toBe(true);
+    expect(PAWN_SLUG_ENEMIES.bishop.hp).toBeGreaterThan(PAWN_SLUG_ENEMIES.rook.hp * 2);
+    expect(pawnSlugXpForKill('bishop')).toBeGreaterThan(pawnSlugXpForKill('rook'));
+    expect(pawnSlugMatthiasLine('midBoss')).toContain('obispo');
   });
 
   it('keeps boss progression explicit and late in the level', () => {
