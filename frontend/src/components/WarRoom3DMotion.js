@@ -17,11 +17,10 @@ export function shouldRefreshShadowMap({ now = 0, lastShadowAt = Number.NEGATIVE
 }
 
 export function warRoomHemisphereIntensity({ coarsePointer = false } = {}) {
-  // Desktop was still visually dominated by Board3DCore's fixed hemisphere fill at
-  // 1.35 even after reducing the directional key. Keep touch/coarse devices at the
-  // existing brighter readability contract, but trim the desktop fill enough that
-  // ivory pieces and light tiles finally respond to the darker grade.
-  return coarsePointer ? 1.35 : 1.08;
+  // Keep the darker desktop grade, but preserve enough global fill for the room
+  // architecture, armor and board surround to remain readable around the practicals.
+  // Touch/coarse devices keep their established brighter readability contract.
+  return coarsePointer ? 1.35 : 1.24;
 }
 
 export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {}) {
