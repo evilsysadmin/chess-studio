@@ -21,7 +21,10 @@ IMPORT_RE = re.compile(r"(?:(?:import|export)\s+(?:[^'\"]*?\s+from\s+)?|import\s
 def resolve_js(source: Path, spec: str) -> Path | None:
     if not spec.startswith("."):
         return None
-    base = source.parent / spec
+    # Vite permits resource queries such as ?raw and ?url. They change how the
+    # resolved file is loaded, not which repository path the import points at.
+    path_spec = re.split(r"[?#]", spec, maxsplit=1)[0]
+    base = source.parent / path_spec
     candidates = [base, *(Path(str(base) + ext) for ext in JS_EXTS), *(base / f"index{ext}" for ext in JS_EXTS)]
     for candidate in candidates:
         if candidate.is_file():
