@@ -5,8 +5,8 @@ import {
 } from '../safeStorage.js';
 import {
   WAR_ROOM_HANS_SEEN_GAMES_KEY,
-  claimWarRoomHansAppearanceForGame,
   hasWarRoomHansAppearedForGame,
+  markWarRoomHansAppearedForGame,
 } from './WarRoomHansPerGame.js';
 
 describe('WarRoomHansPerGame', () => {
@@ -14,21 +14,23 @@ describe('WarRoomHansPerGame', () => {
     removeStorageItem(STORAGE_LOCAL, WAR_ROOM_HANS_SEEN_GAMES_KEY);
   });
 
-  it('permite una sola aparición de Hans por game id incluso tras reconstruir el tablero', () => {
+  it('persiste una aparición confirmada una sola vez por game id', () => {
     expect(hasWarRoomHansAppearedForGame('game-4711')).toBe(false);
-    expect(claimWarRoomHansAppearanceForGame('game-4711')).toBe(true);
+    expect(markWarRoomHansAppearedForGame('game-4711')).toBe(true);
     expect(hasWarRoomHansAppearedForGame('game-4711')).toBe(true);
-    expect(claimWarRoomHansAppearanceForGame('game-4711')).toBe(false);
+    expect(markWarRoomHansAppearedForGame('game-4711')).toBe(false);
   });
 
-  it('una partida nueva recibe su propio cameo', () => {
-    expect(claimWarRoomHansAppearanceForGame('game-a')).toBe(true);
-    expect(claimWarRoomHansAppearanceForGame('game-b')).toBe(true);
-    expect(claimWarRoomHansAppearanceForGame('game-a')).toBe(false);
+  it('una partida nueva conserva su propio cameo', () => {
+    expect(markWarRoomHansAppearedForGame('game-a')).toBe(true);
+    expect(markWarRoomHansAppearedForGame('game-b')).toBe(true);
+    expect(hasWarRoomHansAppearedForGame('game-a')).toBe(true);
+    expect(hasWarRoomHansAppearedForGame('game-b')).toBe(true);
   });
 
-  it('mantiene compatibilidad con callers sin id real', () => {
-    expect(claimWarRoomHansAppearanceForGame()).toBe(true);
-    expect(claimWarRoomHansAppearanceForGame('')).toBe(true);
+  it('no consume el cameo sin un id real de partida', () => {
+    expect(markWarRoomHansAppearedForGame()).toBe(false);
+    expect(markWarRoomHansAppearedForGame('')).toBe(false);
+    expect(hasWarRoomHansAppearedForGame()).toBe(false);
   });
 });
