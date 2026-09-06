@@ -4,6 +4,7 @@ import {
   loadChesscomBabylon,
 } from './chesscomBabylonCanonical.js';
 import { installChesscomCharacterArtV4 } from './chesscomCharacterArtV4.js';
+import { installChesscomEnvironmentArtV4 } from './chesscomEnvironmentArtV4.js';
 
 function sceneFromBabylon(B) {
   return B.EngineStore?.LastCreatedScene
@@ -11,20 +12,13 @@ function sceneFromBabylon(B) {
     || null;
 }
 
-function hideOperatorV3(scene) {
-  const hidden = [];
+function hideOperatorV3(scene, visibility) {
   for (const mesh of scene.meshes || []) {
     if (!String(mesh?.name || '').startsWith('operator-v3-')) continue;
     if (mesh.name === 'operator-v3-invisible') continue;
-    const old = mesh.isVisible;
+    if (!visibility.has(mesh)) visibility.set(mesh,mesh.isVisible);
     mesh.isVisible = false;
-    hidden.push([mesh,old]);
   }
-  return () => {
-    for (const [mesh,old] of hidden) {
-      if (!mesh?.isDisposed?.()) mesh.isVisible = old;
-    }
-  };
 }
 
 export async function createChesscomBabylon(host, options = {}) {
@@ -38,27 +32,31 @@ export async function createChesscomBabylon(host, options = {}) {
   }
 
   const artV4 = installChesscomCharacterArtV4(B,scene);
-  const v3Restorers = [];
+  const environmentV4 = installChesscomEnvironmentArtV4(B,scene,{ tier:host.dataset.chesscomSceneTier || 'ultra' });
+  const v3Visibility = new Map();
   host.dataset.chesscomOperator = 'character-art-v4';
   host.dataset.chesscomCharacterMesh = 'custom-lowpoly-v4';
   host.dataset.chesscomCharacterMaterials = 'procedural-pbr-v4';
+  host.dataset.chesscomEnvironment = 'environment-art-v4';
   onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4`);
 
   return {
     ...base,
     update(state, ui = {}) {
       base.update(state,ui);
-      const restoreV3 = hideOperatorV3(scene);
-      v3Restorers.push(restoreV3);
+      hideOperatorV3(scene,v3Visibility);
       artV4.update(state);
     },
     destroy() {
       artV4.destroy();
-      for (const restore of v3Restorers.reverse()) {
-        try { restore(); } catch {}
+      environmentV4.destroy();
+      for (const [mesh,old] of v3Visibility) {
+        try { if (!mesh?.isDisposed?.()) mesh.isVisible = old; } catch {}
       }
+      v3Visibility.clear();
       delete host.dataset.chesscomCharacterMesh;
       delete host.dataset.chesscomCharacterMaterials;
+      delete host.dataset.chesscomEnvironment;
       base.destroy();
     },
   };
