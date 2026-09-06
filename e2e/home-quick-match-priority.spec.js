@@ -74,12 +74,15 @@ test('Home desktop · el salón mantiene render 3D nítido y Matthias vive junto
     const matthiasNode = document.querySelector('.matthias-resident.is-viewport');
     const hallRect = hallNode?.getBoundingClientRect();
     const matthiasRect = matthiasNode?.getBoundingClientRect();
+    const hallStyle = hallNode ? getComputedStyle(hallNode) : null;
     const titleStyle = titleNode ? getComputedStyle(titleNode) : null;
     const detailStyle = detailNode ? getComputedStyle(detailNode) : null;
     const beforeStyle = hubNode ? getComputedStyle(hubNode, '::before') : null;
     const afterStyle = hubNode ? getComputedStyle(hubNode, '::after') : null;
 
     return {
+      hallOpacity: hallStyle ? Number.parseFloat(hallStyle.opacity) : 0,
+      hallFilter: hallStyle?.filter || '',
       sceneFilter: sceneNode ? getComputedStyle(sceneNode).filter : '',
       canvasFilter: canvasNode ? getComputedStyle(canvasNode).filter : '',
       beforeOpacity: beforeStyle ? Number.parseFloat(beforeStyle.opacity) : 1,
@@ -94,6 +97,8 @@ test('Home desktop · el salón mantiene render 3D nítido y Matthias vive junto
     };
   });
 
+  expect(visualContract.hallOpacity).toBe(1);
+  expect(visualContract.hallFilter).toBe('none');
   expect(visualContract.sceneFilter).toBe('none');
   expect(visualContract.canvasFilter).toBe('none');
   expect(visualContract.beforeOpacity).toBe(0);
