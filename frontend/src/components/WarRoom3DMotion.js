@@ -3,6 +3,7 @@ import * as THREE from 'three';
 const WAR_ROOM_RENDER_DISCIPLINE = Symbol.for('chess-studio.war-room-render-discipline');
 const shadowRefreshState = new WeakMap();
 const warRoomHemisphereState = new WeakMap();
+const warRoomMaterialGradeRootState = new WeakMap();
 
 export function shadowRefreshInterval({ coarsePointer = false, activeMotion = false } = {}) {
   if (activeMotion) return coarsePointer ? 180 : 120;
@@ -23,9 +24,8 @@ export function shouldRefreshShadowMap({
 }
 
 export function materialGradeRefreshInterval({ activeMotion = false } = {}) {
-  // Material grading traverses the complete scene graph. It is worth keeping the
-  // tight cadence while pieces are actually moving, but repeating that traversal
-  // five times a second while the room merely breathes is pure idle CPU work.
+  // Material grading still follows the existing visual cadence, but after the
+  // first pass it traverses only the board root rather than the complete castle.
   return activeMotion ? 180 : 1500;
 }
 
@@ -115,9 +115,39 @@ function floorMaterial(material, key, minimum) {
   return true;
 }
 
+function materialGradeTraversalRoot(scene) {
+  const cached = warRoomMaterialGradeRootState.get(scene);
+  if (cached?.parent) return cached;
+
+  let boardRoot = null;
+  scene?.traverse?.((object) => {
+    if (boardRoot || !object?.isMesh || !object.material) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    if (materials.some((material) => material?.userData?.surfaceRole === 'board-light')) {
+      boardRoot = object.parent || null;
+    }
+  });
+
+  if (boardRoot) {
+    warRoomMaterialGradeRootState.set(scene, boardRoot);
+    scene.userData ||= {};
+    scene.userData.warRoomMaterialGradeTraversal = 'board-root-v1';
+    return boardRoot;
+  }
+
+  scene.userData ||= {};
+  scene.userData.warRoomMaterialGradeTraversal = 'scene-fallback';
+  return scene;
+}
+
 export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {}) {
   const profile = warRoomMaterialIblProfile({ coarsePointer });
   if (!scene || !profile || typeof scene.traverse !== 'function') {
+    return { adjusted: 0, ivory: 0, lightTile: 0, profile };
+  }
+
+  const traversalRoot = materialGradeTraversalRoot(scene);
+  if (!traversalRoot || typeof traversalRoot.traverse !== 'function') {
     return { adjusted: 0, ivory: 0, lightTile: 0, profile };
   }
 
@@ -126,7 +156,7 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
   let ivory = 0;
   let lightTile = 0;
 
-  scene.traverse((object) => {
+  traversalRoot.traverse((object) => {
     if (!object?.isMesh || !object.material) return;
     const materials = Array.isArray(object.material) ? object.material : [object.material];
     for (const material of materials) {
