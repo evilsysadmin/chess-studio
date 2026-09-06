@@ -1,6 +1,9 @@
 import { lazy, Suspense } from 'react';
 
-const AccountModalInner = lazy(() => import('./AccountModalInner.jsx'));
+const AccountModalInner = lazy(() => Promise.all([
+  import('./AccountModalInner.jsx'),
+  import('../styles/20-piece-skins.css'),
+]).then(([module]) => module));
 
 function AccountModalFallback({ onClose }) {
   return (

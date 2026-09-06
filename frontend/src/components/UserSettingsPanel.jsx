@@ -1,6 +1,9 @@
 import React from 'react';
 
-const UserSettingsPanelContent = React.lazy(() => import('./UserSettingsPanelContent.jsx'));
+const UserSettingsPanelContent = React.lazy(() => Promise.all([
+  import('./UserSettingsPanelContent.jsx'),
+  import('../styles/20-piece-skins.css'),
+]).then(([module]) => module));
 
 function SettingsFallback() {
   return (
