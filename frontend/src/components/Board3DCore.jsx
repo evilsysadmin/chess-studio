@@ -15,6 +15,8 @@ import {
   warRoomRendererAttempts,
   warRoomSceneProfile,
 } from './WarRoom3DAnimation.js';
+import { createWarRoomAmbientScheduler } from './WarRoomAmbientScheduler.js';
+import { applyWarRoomHansScreenDiagnostics, applyWarRoomLightDiagnostics } from './WarRoomDomDiagnostics.js';
 import { resolveBoardTap } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { board3DCaptureWarmBoost, board3DHighlightPulse, board3DPieceInteractionPose } from './Board3DInteractionFx.js';
@@ -72,6 +74,8 @@ function Board3DCanvas({
   onPieceMouseLeave,
   turnState = null,
   themeOverride = null,
+  hansDiagnosticsMarkerRef = null,
+  hansDiagnosticsRequested = false,
   onRendererFailure,
 }) {
   const hostRef = useRef(null);
@@ -79,7 +83,6 @@ function Board3DCanvas({
   const pointerStartRef = useRef(null);
   const latestPropsRef = useRef({});
   const animationFrameRef = useRef(0);
-  const ambientFrameRef = useRef(0);
   const previousFenRef = useRef(fen);
   const pieceBuildSignatureRef = useRef('');
   const lastAnimatedSeqRef = useRef(0);
@@ -103,6 +106,8 @@ function Board3DCanvas({
     onRendererFailure,
     onPieceMouseEnter,
     onPieceMouseLeave,
+    hansDiagnosticsMarkerRef,
+    hansDiagnosticsRequested,
   };
 
   useEffect(() => {
@@ -134,6 +139,7 @@ function Board3DCanvas({
       motion.pitch = 0;
       motion.dragging = false;
       const state = sceneStateRef.current;
+      state?.clearInspectCameraDirty?.();
       const basePosition = state?.camera?.userData?.basePosition;
       const baseTarget = state?.camera?.userData?.baseTarget;
       if (state && basePosition && baseTarget) {
@@ -187,6 +193,8 @@ function Board3DCanvas({
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     const hansWorldProbe = new THREE.Vector3();
     const hansScreenProbe = new THREE.Vector3();
+    const cameraOffsetProbe = new THREE.Vector3();
+    const cameraEulerProbe = new THREE.Euler(0, 0, 0, 'YXZ');
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     const squareMeshes = new Map();
@@ -219,6 +227,7 @@ function Board3DCanvas({
     renderer.domElement.dataset.board3dRenderer = String(rendererName || 'unknown').slice(0, 180);
     renderer.domElement.dataset.board3dRendererClass = compactWebGLRendererLabel(rendererName);
     renderer.domElement.dataset.board3dSceneTier = sceneProfile.tier;
+    renderer.domElement.dataset.warRoomDomDiagnostics = 'diff-only-ref-v2';
     host.appendChild(renderer.domElement);
 
     const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer: renderLite });
@@ -359,8 +368,20 @@ function Board3DCanvas({
       });
     }
 
+    let cachedHansDiagnosticsObject = null;
+    let ambientScheduler = null;
+    let inspectCameraDirty = false;
+
     function exposeHansScreenDiagnostics() {
-      const hans = scene.getObjectByName?.('war-room-hans-butler');
+      const diagnostics = latestPropsRef.current;
+      if (!diagnostics.hansDiagnosticsRequested) return;
+
+      let hans = cachedHansDiagnosticsObject;
+      if (!hans) {
+        hans = scene.getObjectByName?.('war-room-hans-butler') || null;
+        if (hans) cachedHansDiagnosticsObject = hans;
+      }
+
       let screenState = 'missing';
       let projected = null;
       if (hans) {
@@ -376,33 +397,24 @@ function Board3DCanvas({
           screenState = inFrustum ? 'onscreen' : 'offscreen';
         }
       }
-      renderer.domElement.dataset.warRoomHansScreen = screenState;
-      const visibleScreenState = screenState === 'onscreen' || screenState === 'offscreen';
-      if (!renderer.domElement.dataset.warRoomHansFirstScreen && visibleScreenState) {
-        renderer.domElement.dataset.warRoomHansFirstScreen = screenState;
-      }
-      if (projected) {
-        renderer.domElement.dataset.warRoomHansNdcX = projected.x.toFixed(3);
-        renderer.domElement.dataset.warRoomHansNdcY = projected.y.toFixed(3);
-      }
-      try {
-        document.querySelectorAll('[data-war-room-hans-quick-request="true"]').forEach((marker) => {
-          marker.setAttribute('data-war-room-hans-screen', screenState);
-          if (!marker.hasAttribute('data-war-room-hans-first-screen') && visibleScreenState) {
-            marker.setAttribute('data-war-room-hans-first-screen', screenState);
-          }
-        });
-      } catch {
-        // Diagnostics must never affect rendering.
-      }
+
+      applyWarRoomHansScreenDiagnostics({
+        canvas: renderer.domElement,
+        marker: diagnostics.hansDiagnosticsMarkerRef?.current || null,
+        screenState,
+        projected,
+      });
     }
 
     function render() {
-      renderer.domElement.dataset.warRoomLightGrade = 'reactive-v9';
-      renderer.domElement.dataset.warRoomLightKey = Number(key.intensity).toFixed(2);
-      renderer.domElement.dataset.warRoomLightExposure = Number(renderer.toneMappingExposure).toFixed(3);
+      applyWarRoomLightDiagnostics(renderer.domElement, {
+        grade: 'reactive-v9',
+        keyIntensity: key.intensity,
+        exposure: renderer.toneMappingExposure,
+      });
       renderer.render(scene, camera);
       exposeHansScreenDiagnostics();
+      ambientScheduler?.markPaint();
     }
 
     function resize() {
@@ -483,8 +495,12 @@ function Board3DCanvas({
           const dy = event.clientY - motion.lastY;
           motion.lastX = event.clientX;
           motion.lastY = event.clientY;
-          motion.yaw = THREE.MathUtils.clamp(motion.yaw - dx * 0.0023, -0.14, 0.14);
-          motion.pitch = THREE.MathUtils.clamp(motion.pitch - dy * 0.0018, -0.08, 0.075);
+          if (dx || dy) {
+            motion.yaw = THREE.MathUtils.clamp(motion.yaw - dx * 0.0023, -0.14, 0.14);
+            motion.pitch = THREE.MathUtils.clamp(motion.pitch - dy * 0.0018, -0.08, 0.075);
+            inspectCameraDirty = true;
+            ambientScheduler?.wake();
+          }
         }
         return;
       }
@@ -568,37 +584,47 @@ function Board3DCanvas({
     renderer.domElement.addEventListener('pointercancel', onPointerCancel, { passive: true });
     renderer.domElement.addEventListener('webglcontextlost', onContextLost, false);
 
-    let lastAmbientPaint = 0;
-    function ambientFrame(now) {
-      const motion = cameraMotionRef.current;
-      const plan = warRoomAmbientFramePlan({
-        documentHidden: document.hidden,
-        reducedMotion: getEffectiveReducedMotion(),
-        coarsePointer,
-        softwareRenderer,
-        inspectMode: inspectModeRef.current,
-        elapsedMs: now - lastAmbientPaint,
-      });
-      if (plan.shouldRender) {
-        if (plan.updateCamera) {
-          const basePosition = camera.userData.basePosition;
-          const baseTarget = camera.userData.baseTarget;
-          if (basePosition && baseTarget) {
-            const offset = basePosition.clone().sub(baseTarget).applyEuler(new THREE.Euler(motion.pitch, motion.yaw, 0, 'YXZ'));
-            camera.position.copy(baseTarget).add(offset);
-            camera.lookAt(baseTarget);
+    const reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
+    const wakeAmbientScheduler = () => ambientScheduler?.wake();
+
+    if (!softwareRenderer) {
+      ambientScheduler = createWarRoomAmbientScheduler({
+        requestFrame: (callback) => window.requestAnimationFrame(callback),
+        cancelFrame: (id) => window.cancelAnimationFrame(id),
+        setTimer: (callback, delay) => window.setTimeout(callback, delay),
+        clearTimer: (id) => window.clearTimeout(id),
+        now: () => performance.now(),
+        planFrame: (elapsedMs) => warRoomAmbientFramePlan({
+          documentHidden: document.hidden,
+          reducedMotion: getEffectiveReducedMotion(),
+          coarsePointer,
+          softwareRenderer,
+          inspectMode: inspectModeRef.current && inspectCameraDirty,
+          elapsedMs,
+        }),
+        onFrame: (_now, plan) => {
+          if (plan.updateCamera) {
+            const motion = cameraMotionRef.current;
+            const basePosition = camera.userData.basePosition;
+            const baseTarget = camera.userData.baseTarget;
+            if (basePosition && baseTarget) {
+              cameraEulerProbe.set(motion.pitch, motion.yaw, 0, 'YXZ');
+              cameraOffsetProbe.copy(basePosition).sub(baseTarget).applyEuler(cameraEulerProbe);
+              camera.position.copy(baseTarget).add(cameraOffsetProbe);
+              camera.lookAt(baseTarget);
+            }
+            inspectCameraDirty = false;
           }
-        }
-        // Fire and premium interaction pulses update from onBeforeRender, so
-        // one quiet heartbeat paints both without another animation loop.
-        render();
-        // Start the idle budget after WebGL finishes. Software renderers can
-        // otherwise consume the whole interval and starve pointer handling.
-        lastAmbientPaint = performance.now();
-      }
-      ambientFrameRef.current = window.requestAnimationFrame(ambientFrame);
+          // Fire and premium interaction pulses update from onBeforeRender, so
+          // one quiet heartbeat paints both without another animation loop.
+          render();
+        },
+      });
+      renderer.domElement.dataset.warRoomAmbientScheduler = 'deadline-v1';
+      document.addEventListener('visibilitychange', wakeAmbientScheduler);
+      window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, wakeAmbientScheduler);
+      reducedMotionQuery?.addEventListener?.('change', wakeAmbientScheduler);
     }
-    if (!softwareRenderer) ambientFrameRef.current = window.requestAnimationFrame(ambientFrame);
 
     sceneStateRef.current = {
       scene,
@@ -618,6 +644,8 @@ function Board3DCanvas({
       rim,
       warm,
       render,
+      ambientScheduler,
+      clearInspectCameraDirty: () => { inspectCameraDirty = false; },
       renderScale: Math.min(window.devicePixelRatio || 1, sceneProfile.pixelRatioCap),
       slowFrameCount: 0,
     };
@@ -627,12 +655,16 @@ function Board3DCanvas({
     const liteLabel = sceneProfile.lite ? ' · LITE' : '';
     setRendererLabel(`${rendererApi} · ${rendererClass}${noMsaa}${liteLabel}`);
     render();
+    ambientScheduler?.start();
 
     return () => {
       window.cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = 0;
-      window.cancelAnimationFrame(ambientFrameRef.current);
-      ambientFrameRef.current = 0;
+      ambientScheduler?.dispose();
+      ambientScheduler = null;
+      document.removeEventListener('visibilitychange', wakeAmbientScheduler);
+      window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, wakeAmbientScheduler);
+      reducedMotionQuery?.removeEventListener?.('change', wakeAmbientScheduler);
       observer?.disconnect();
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);
       renderer.domElement.removeEventListener('pointermove', onPointerMove);
