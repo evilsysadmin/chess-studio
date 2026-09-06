@@ -5,7 +5,17 @@ export const PAWN_SLUG_STURM_BISHOP_META = Object.freeze({
   silhouette: 'armored-bishop',
   weaponMounts: 2,
   weakPoint: 'visor',
+  shellTelegraphSeconds: 0.52,
+  shellRange: 12.5,
 });
+
+export function pawnSlugSturmBishopTelegraph(shellCooldown, distance) {
+  const cooldown = Number(shellCooldown);
+  const range = Number(distance);
+  if (!Number.isFinite(cooldown) || !Number.isFinite(range) || range > PAWN_SLUG_STURM_BISHOP_META.shellRange) return 0;
+  if (cooldown <= 0) return 1;
+  return Math.max(0, Math.min(1, 1 - cooldown / PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds));
+}
 
 function standard(color, roughness = 0.62, metalness = 0.34, emissive = 0x000000, emissiveIntensity = 0) {
   return new THREE.MeshStandardMaterial({
@@ -78,7 +88,9 @@ export function createSturmBishopModel() {
     gun.position.set(side * 0.64, 1.26, 0.04);
     const receiver = mesh(new THREE.BoxGeometry(0.32, 0.18, 0.2), armorDark.clone());
     const barrel = mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.76, 8), armor.clone(), { x: side * 0.4, rz: Math.PI / 2 });
-    const muzzle = mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.11, 8), brass.clone(), { x: side * 0.79, rz: Math.PI / 2 });
+    const muzzleMaterial = standard(0xb38b43, 0.38, 0.58, 0xff6b2f, 0);
+    const muzzle = mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.11, 8), muzzleMaterial, { x: side * 0.79, rz: Math.PI / 2 });
+    muzzle.userData.shellTelegraph = true;
     gun.add(receiver, barrel, muzzle);
     root.add(gun);
   }
@@ -90,11 +102,13 @@ export function createSturmBishopModel() {
   return root;
 }
 
-export function animateSturmBishopModel(model, time, { moving = false, hurt = false, dir = -1 } = {}) {
+export function animateSturmBishopModel(model, time, { moving = false, hurt = false, dir = -1, telegraph = 0 } = {}) {
   if (!model) return;
   const direction = dir < 0 ? -1 : 1;
   const stride = Math.sin(time * 7.2);
   const breath = Math.sin(time * 2.15);
+  const warning = Math.max(0, Math.min(1, Number(telegraph) || 0));
+  const warningPulse = warning > 0 ? 0.72 + Math.max(0, Math.sin(time * (9 + warning * 9))) * 0.55 : 0;
   const base = model.userData.baseScale || 1.18;
   model.scale.x = Math.abs(base) * direction;
   model.scale.y = base * (1 + breath * 0.012 - (hurt ? 0.045 : 0));
@@ -103,7 +117,14 @@ export function animateSturmBishopModel(model, time, { moving = false, hurt = fa
   model.rotation.z = moving ? -direction * stride * 0.018 : 0;
 
   model.traverse((node) => {
-    if (!node.isMesh || !node.userData?.weakPoint || !node.material?.emissive) return;
-    node.material.emissiveIntensity = hurt ? 2.5 : 1.25 + Math.max(0, breath) * 0.45;
+    if (!node.isMesh || !node.material?.emissive) return;
+    if (node.userData?.weakPoint) {
+      node.material.emissiveIntensity = hurt ? 2.5 : 1.25 + Math.max(0, breath) * 0.45 + warning * warningPulse * 1.5;
+      return;
+    }
+    if (node.userData?.shellTelegraph) {
+      node.material.emissiveIntensity = warning * warningPulse * 3.2;
+      node.scale.setScalar(1 + warning * warningPulse * 0.16);
+    }
   });
 }
