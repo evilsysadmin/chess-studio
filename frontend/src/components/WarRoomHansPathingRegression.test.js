@@ -59,7 +59,7 @@ describe('Hans hearth pathing regressions', () => {
       now.mockReturnValue(10050); // elapsed 9.05 s => start of carry-log turn-in-place
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('carry-log');
-      expect(hans.userData.warRoomHansFacingTarget).toBe('fire');
+      expect(hans.userData.warRoomHansFacingTarget).toBe('hearth');
       expect(hans.userData.refs.carriedLog.visible).toBe(true);
       expect(Math.abs(hans.userData.refs.leftLeg.rotation.x)).toBeLessThan(0.001);
       expect(facingDotToPoint(hans, firePoint, towardBoard)).toBeGreaterThan(0.8);
