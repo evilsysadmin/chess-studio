@@ -30,6 +30,19 @@ export function matthiasCompactViewport({ mediaMatches, innerWidth } = {}) {
   return Number.isFinite(width) && width <= 760;
 }
 
+export function matthiasHomeShouldRunClock({ documentVisible = true } = {}) {
+  return Boolean(documentVisible);
+}
+
+export function matthiasHomeShouldCycleAmbient({
+  documentVisible = true,
+  speaking = false,
+  reducedMotion = false,
+  sceneCount = 0,
+} = {}) {
+  return Boolean(documentVisible && !speaking && !reducedMotion && Number(sceneCount) >= 2);
+}
+
 export default function MatthiasHomeVisit({ model, speaking = false, onAction, onDismiss, onOpenInsights }) {
   const [hour, setHour] = useState(() => new Date().getHours());
   const ambientVisuals = useMemo(() => matthiasAmbientVisuals(hour), [hour]);
@@ -37,6 +50,9 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
   const [motionStatus, setMotionStatus] = useState(() => reducedMotionStatus());
   const [compactViewport, setCompactViewport] = useState(() => matthiasCompactViewport());
   const [portalReady, setPortalReady] = useState(false);
+  const [documentVisible, setDocumentVisible] = useState(() => (
+    typeof document === 'undefined' || document.visibilityState !== 'hidden'
+  ));
   const sessionSummary = useMemo(
     () => buildSessionSummary(matthiasSessionContext()),
     [model?.sessionLabel],
@@ -46,23 +62,23 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
     setPortalReady(true);
   }, []);
 
-  // Home puede permanecer montada durante horas. Volvemos a consultar el reloj
-  // local para que Matthias cambie de rutina sin exigir un reload. Al regresar
-  // a una pestaña suspendida se actualiza inmediatamente, no hasta el siguiente tick.
   useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-    const refreshHour = () => setHour(new Date().getHours());
-    const timer = window.setInterval(refreshHour, HOME_HOUR_REFRESH_MS);
-    const refreshWhenVisible = () => {
-      if (typeof document === 'undefined' || document.visibilityState !== 'hidden') refreshHour();
-    };
-
-    document?.addEventListener?.('visibilitychange', refreshWhenVisible);
-    return () => {
-      window.clearInterval(timer);
-      document?.removeEventListener?.('visibilitychange', refreshWhenVisible);
-    };
+    if (typeof document === 'undefined') return undefined;
+    const refreshVisibility = () => setDocumentVisible(document.visibilityState !== 'hidden');
+    document.addEventListener('visibilitychange', refreshVisibility);
+    return () => document.removeEventListener('visibilitychange', refreshVisibility);
   }, []);
+
+  // Home puede permanecer montada durante horas. El reloj sólo necesita vivir
+  // mientras la pestaña es visible; al volver se sincroniza inmediatamente y
+  // después retoma la cadencia normal.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !matthiasHomeShouldRunClock({ documentVisible })) return undefined;
+    const refreshHour = () => setHour(new Date().getHours());
+    refreshHour();
+    const timer = window.setInterval(refreshHour, HOME_HOUR_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [documentVisible]);
 
   useEffect(() => {
     if (typeof Image !== 'function') return undefined;
@@ -113,13 +129,18 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
   }, []);
 
   useEffect(() => {
+    if (!matthiasHomeShouldCycleAmbient({
+      documentVisible,
+      speaking,
+      reducedMotion: motionStatus.effective,
+      sceneCount: ambientVisuals.length,
+    })) return undefined;
     setAmbientBeat(0);
-    if (speaking || ambientVisuals.length < 2 || motionStatus.effective) return undefined;
     const timer = window.setInterval(() => {
       setAmbientBeat((current) => (current + 1) % ambientVisuals.length);
     }, AMBIENT_SCENE_MS);
     return () => window.clearInterval(timer);
-  }, [ambientVisuals.length, motionStatus.effective, speaking]);
+  }, [ambientVisuals.length, documentVisible, motionStatus.effective, speaking]);
 
   if (!model) return null;
 
@@ -145,6 +166,7 @@ export default function MatthiasHomeVisit({ model, speaking = false, onAction, o
       data-motion-state={motionStatus.effective ? 'reduced' : 'active'}
       data-motion-source={motionStatus.source}
       data-home-hour={hour}
+      data-home-visibility={documentVisible ? 'visible' : 'hidden'}
       data-three-presentation="home-v4"
     >
       <div className="matthias-resident__stage">
