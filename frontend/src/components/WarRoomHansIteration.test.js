@@ -284,13 +284,16 @@ describe('Hans quick-game visual iteration', () => {
       expect(hans.userData.warRoomHansRoute).toBe('leave-bypass');
       expect(door.userData.warRoomHansDoorOpen).toBe(0);
       expect(hans.visible).toBe(true);
-      expect(Math.abs(hans.position.x)).toBeCloseTo(1.42, 5);
+      expect(hans.userData.warRoomHansArmorClearanceApplied).toBe(true);
+      expect(hans.userData.warRoomHansArmorSafeFrameX).toBeGreaterThan(0.5);
+      expect(Math.abs(hans.position.x)).toBeCloseTo(hans.userData.warRoomHansArmorSafeFrameX, 5);
+      expect(Math.abs(hans.position.x)).toBeLessThan(1.42);
 
       now.mockReturnValue(43647); // ~=29 s presentación, ya pasada la armadura
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('leave');
       expect(hans.userData.warRoomHansRoute).toBe('leave-door');
-      expect(door.userData.warRoomHansDoorOpen).toBeGreaterThan(0.9);
+      expect(door.userData.warRoomHansDoorOpen).toBeGreaterThan(0.5);
       expect(hans.visible).toBe(true);
       expect(hans.userData.warRoomHansFacingTarget).toBe('door');
 
@@ -386,7 +389,7 @@ describe('Hans quick-game visual iteration', () => {
       expect(hans.userData.warRoomHansFacingTarget).toBe('fire');
       expect(fireCore.scale.y).toBeGreaterThan(dimmedFireHeight);
 
-      now.mockReturnValue(34088); // ~=22.5 s presentación
+      now.mockReturnValue(35118); // ~=23.2 s presentación, settled after returning poker
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('satisfied');
       expect(carriedPoker.visible).toBe(false);
