@@ -49,9 +49,9 @@ describe('Board3D piece scale parity', () => {
     expect(apparentScaleRatio).toBeLessThan(1.33);
   });
 
-  it('conserva el FOV móvil existente y sólo comprime perspectiva en desktop', () => {
+  it('comprime también la perspectiva móvil sin reutilizar la lente desktop', () => {
     expect(resolveBoard3DCameraFov(1.8)).toBe(29);
     expect(resolveBoard3DCameraFov(1.1)).toBe(32);
-    expect(resolveBoard3DCameraFov(0.46, { mobile: true })).toBe(40);
+    expect(resolveBoard3DCameraFov(1.16, { mobile: true })).toBe(34);
   });
 });
