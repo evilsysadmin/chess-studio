@@ -32,7 +32,7 @@ function tuneMaterial(B, mat, profile) {
   if (HARD_WET_SURFACES.has(name)) {
     mat.specularColor = new B.Color3(.34 * profile.wetness, .39 * profile.wetness, .43 * profile.wetness);
     mat.specularPower = name === 'road' ? 118 : 96;
-    if ('diffuseColor' in mat && name !== 'tile') mat.diffuseColor.scaleInPlace(.93);
+    if ('diffuseColor' in mat && name !== 'tile') mat.diffuseColor.scaleInPlace(.97);
     return;
   }
   if (METAL_SURFACES.has(name)) {
@@ -49,10 +49,11 @@ function tuneMaterial(B, mat, profile) {
 }
 
 function tuneScene(B, scene, profile) {
-  scene.clearColor = new B.Color4(.006,.011,.014,1);
+  scene.clearColor = new B.Color4(.010,.017,.022,1);
+  scene.ambientColor = new B.Color3(.045,.055,.066);
   scene.fogMode = B.Scene.FOGMODE_EXP2;
   scene.fogDensity = profile.fogDensity;
-  scene.fogColor = new B.Color3(.018,.029,.038);
+  scene.fogColor = new B.Color3(.028,.041,.052);
   const image = scene.imageProcessingConfiguration;
   if (image) {
     image.contrast = profile.contrast;
@@ -62,26 +63,27 @@ function tuneScene(B, scene, profile) {
       image.toneMappingType = B.ImageProcessingConfiguration.TONEMAPPING_ACES;
     }
     image.vignetteEnabled = true;
-    image.vignetteWeight = .93;
-    image.vignetteStretch = .12;
-    image.vignetteColor = new B.Color4(.002,.006,.009,1);
+    image.vignetteWeight = .72;
+    image.vignetteStretch = .18;
+    image.vignetteColor = new B.Color4(.004,.009,.012,1);
   }
   scene.materials.forEach((mat) => tuneMaterial(B, mat, profile));
 
   const warmA = scene.getLightByName?.('warm-a');
   if (warmA) {
-    warmA.diffuse = new B.Color3(1,.47,.16);
-    warmA.intensity = Math.min(Number(warmA.intensity) || 0, 10.4);
+    warmA.diffuse = new B.Color3(1,.49,.18);
+    warmA.intensity = Math.max(Number(warmA.intensity) || 0, 11.2);
   }
   const warmB = scene.getLightByName?.('warm-b');
   if (warmB) {
-    warmB.diffuse = new B.Color3(1,.40,.12);
-    warmB.intensity = Math.min(Number(warmB.intensity) || 0, 9.3);
+    warmB.diffuse = new B.Color3(1,.42,.14);
+    warmB.intensity = Math.max(Number(warmB.intensity) || 0, 10.0);
   }
   const coolFill = scene.getLightByName?.('cool-fill');
   if (coolFill) {
-    coolFill.diffuse = new B.Color3(.16,.34,.48);
-    coolFill.intensity = Math.min(Number(coolFill.intensity) || 0, 2.55);
+    coolFill.diffuse = new B.Color3(.20,.42,.58);
+    coolFill.intensity = Math.max(Number(coolFill.intensity) || 0, 3.25);
+    coolFill.range = Math.max(Number(coolFill.range) || 0, 10.8);
   }
 }
 
@@ -235,10 +237,10 @@ function addLightPools(B, scene, profile, disposables) {
 function addSelectionFill(B, scene, profile, disposables) {
   if (profile.tier === 'balanced') return;
   const fill = new B.PointLight('canonical-squad-fill',new B.Vector3(-1.9,2.3,4.1),scene);
-  fill.diffuse = new B.Color3(.08,.43,.58);
-  fill.specular = new B.Color3(.04,.18,.24);
-  fill.intensity = 1.25;
-  fill.range = 5.8;
+  fill.diffuse = new B.Color3(.10,.48,.64);
+  fill.specular = new B.Color3(.05,.20,.27);
+  fill.intensity = 1.65;
+  fill.range = 6.6;
   disposables.push(fill);
 }
 
@@ -283,6 +285,7 @@ export async function createChesscomBabylon(host, options = {}) {
   host.dataset.chesscomUnits = 'mercenary-premium-v2';
   host.dataset.chesscomOperator = 'operator-v3';
   host.dataset.chesscomFireStance = 'weapon-muzzle-v1';
+  host.dataset.chesscomLighting = 'readability-v2';
   onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · OPERATOR V3`);
 
   return {
@@ -301,6 +304,7 @@ export async function createChesscomBabylon(host, options = {}) {
       delete host.dataset.chesscomUnits;
       delete host.dataset.chesscomOperator;
       delete host.dataset.chesscomFireStance;
+      delete host.dataset.chesscomLighting;
       base.destroy();
     },
   };

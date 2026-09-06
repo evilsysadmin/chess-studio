@@ -13,10 +13,10 @@ export function chesscomCanonicalQualityProfile({
       puddles:4,
       cables:1,
       extraLights:1,
-      lightIntensity:2.4,
-      fogDensity:.0105,
-      contrast:1.20,
-      exposure:.94,
+      lightIntensity:2.75,
+      fogDensity:.0096,
+      contrast:1.12,
+      exposure:1.06,
       wetness:.72,
     });
   }
@@ -27,10 +27,10 @@ export function chesscomCanonicalQualityProfile({
     puddles:denseDisplay ? 6 : 9,
     cables:denseDisplay ? 2 : 3,
     extraLights:denseDisplay ? 2 : 3,
-    lightIntensity:denseDisplay ? 3.2 : 3.8,
-    fogDensity:.009,
-    contrast:1.18,
-    exposure:.98,
+    lightIntensity:denseDisplay ? 3.55 : 4.15,
+    fogDensity:.0082,
+    contrast:denseDisplay ? 1.12 : 1.10,
+    exposure:denseDisplay ? 1.08 : 1.10,
     wetness:denseDisplay ? .82 : .90,
   });
 }

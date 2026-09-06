@@ -18,11 +18,14 @@ describe('Chesscom canonical Dust Veil profile', () => {
       puddles:9,
       cables:3,
       extraLights:3,
+      lightIntensity:4.15,
+      contrast:1.10,
+      exposure:1.10,
       wetness:.90,
     });
   });
 
-  it('backs the decorative scene down on coarse or constrained hardware', () => {
+  it('backs the decorative scene down on coarse or constrained hardware without crushing visibility', () => {
     expect(chesscomCanonicalQualityProfile({
       coarse:true,
       dpr:3,
@@ -33,17 +36,28 @@ describe('Chesscom canonical Dust Veil profile', () => {
       puddles:4,
       cables:1,
       extraLights:1,
+      lightIntensity:2.75,
+      contrast:1.12,
+      exposure:1.06,
       wetness:.72,
     });
   });
 
-  it('keeps a high-DPR desktop polished without treating it as mobile', () => {
+  it('keeps a high-DPR desktop polished and readable without treating it as mobile', () => {
     expect(chesscomCanonicalQualityProfile({
       coarse:false,
       dpr:3,
       maxTextureSize:8192,
       webglVersion:2,
-    })).toMatchObject({ tier:'high', puddles:6, cables:2, extraLights:2 });
+    })).toMatchObject({
+      tier:'high',
+      puddles:6,
+      cables:2,
+      extraLights:2,
+      lightIntensity:3.55,
+      contrast:1.12,
+      exposure:1.08,
+    });
   });
 
   it('ships a bounded deterministic set of scene dressing anchors', () => {
