@@ -215,7 +215,7 @@ export default function PawnSlug({ onExit }) {
               {hud.phase === 'ready' && (
                 <div className="pawn-slug-briefing">
                   <span><b>Objetivo</b> Rompe el frente, sobrevive a los Sturm‑Bischof y elimina el Panzer‑Rook.</span>
-                  <span><b>Progresión</b> Las bajas dan XP. Cada nivel aumenta tu HP máximo y potencia el daño.</span>
+                  <span><b>Progresión</b> Las bajas dan XP. Cada nivel aumenta tu HP máximo y potencia el daño. Cero ELO: esta locura vive sólo en Pawn Slug.</span>
                   <span><b>Arsenal</b> Empiezas con pistola. Requisa MG, escopeta y Panzerfaust y cambia de arma cuando quieras.</span>
                 </div>
               )}
