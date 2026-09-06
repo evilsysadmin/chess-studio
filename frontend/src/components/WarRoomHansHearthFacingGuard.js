@@ -8,11 +8,7 @@ const DRIVER_NAME = 'war-room-hans-fireplace-driver';
 const FIRE_CORE_NAME = 'war-room-fire-core';
 const POST_RENDER_ORDER = 15;
 const MIN_DOT = 0.995;
-
-function planar(vector) {
-  vector.y = 0;
-  return vector;
-}
+const HEARTH_FACING_HOT_PATH_VERSION = 'preallocated-scratch-v2';
 
 function findFaceAnchor(head) {
   if (!head?.children?.length) return null;
@@ -34,26 +30,40 @@ function signedPlanarAngle(from, to) {
   return Math.atan2(Math.sin(delta), Math.cos(delta));
 }
 
-function renderedDirections(hans, head, faceAnchor, target) {
+function createDirectionScratch() {
+  return {
+    headWorld: new THREE.Vector3(),
+    faceWorld: new THREE.Vector3(),
+    targetWorld: new THREE.Vector3(),
+    face: new THREE.Vector3(),
+    towardTarget: new THREE.Vector3(),
+  };
+}
+
+function sampleRenderedDirections(hans, head, faceAnchor, target, scratch) {
   const parent = hans?.parent;
-  if (!parent || !head || !faceAnchor || !target) return null;
+  if (!parent || !head || !faceAnchor || !target || !scratch) return false;
 
   parent.updateMatrixWorld?.(true);
   head.updateMatrixWorld?.(true);
   faceAnchor.updateMatrixWorld?.(true);
   target.updateMatrixWorld?.(true);
 
-  const headWorld = head.getWorldPosition(new THREE.Vector3());
-  const faceWorld = faceAnchor.getWorldPosition(new THREE.Vector3());
-  const targetWorld = target.getWorldPosition(new THREE.Vector3());
-  const headLocal = parent.worldToLocal(headWorld.clone());
-  const faceLocal = parent.worldToLocal(faceWorld.clone());
-  const targetLocal = parent.worldToLocal(targetWorld.clone());
+  head.getWorldPosition(scratch.headWorld);
+  faceAnchor.getWorldPosition(scratch.faceWorld);
+  target.getWorldPosition(scratch.targetWorld);
+  parent.worldToLocal(scratch.headWorld);
+  parent.worldToLocal(scratch.faceWorld);
+  parent.worldToLocal(scratch.targetWorld);
 
-  const face = planar(faceLocal.sub(headLocal));
-  const towardTarget = planar(targetLocal.sub(headLocal));
-  if (face.lengthSq() < 1e-8 || towardTarget.lengthSq() < 1e-8) return null;
-  return { face: face.normalize(), towardTarget: towardTarget.normalize() };
+  scratch.face.copy(scratch.faceWorld).sub(scratch.headWorld);
+  scratch.towardTarget.copy(scratch.targetWorld).sub(scratch.headWorld);
+  scratch.face.y = 0;
+  scratch.towardTarget.y = 0;
+  if (scratch.face.lengthSq() < 1e-8 || scratch.towardTarget.lengthSq() < 1e-8) return false;
+  scratch.face.normalize();
+  scratch.towardTarget.normalize();
+  return true;
 }
 
 export function installWarRoomHansHearthFacingGuard(root) {
@@ -66,6 +76,7 @@ export function installWarRoomHansHearthFacingGuard(root) {
   if (!hans || !driver || !head || !faceAnchor || !fireCore || typeof driver.onBeforeRender !== 'function') return 0;
   if (driver.userData?.warRoomHansHearthFacingGuard === WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION) return 0;
 
+  const scratch = createDirectionScratch();
   let corrections = 0;
   const registered = registerWarRoomHansPostRenderStage(driver, {
     key: WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION,
@@ -77,16 +88,16 @@ export function installWarRoomHansHearthFacingGuard(root) {
         || 'idle';
       if (phase !== 'place-log') return;
 
-      const directions = renderedDirections(hans, head, faceAnchor, fireCore);
-      if (!directions) return;
-      const dotBefore = directions.face.dot(directions.towardTarget);
+      if (!sampleRenderedDirections(hans, head, faceAnchor, fireCore, scratch)) return;
+      const dotBefore = scratch.face.dot(scratch.towardTarget);
       let dotAfter = dotBefore;
 
       if (dotBefore < MIN_DOT) {
-        hans.rotation.y += signedPlanarAngle(directions.face, directions.towardTarget);
+        hans.rotation.y += signedPlanarAngle(scratch.face, scratch.towardTarget);
         hans.updateMatrixWorld?.(true);
-        const corrected = renderedDirections(hans, head, faceAnchor, fireCore);
-        dotAfter = corrected?.face.dot(corrected.towardTarget) ?? dotBefore;
+        if (sampleRenderedDirections(hans, head, faceAnchor, fireCore, scratch)) {
+          dotAfter = scratch.face.dot(scratch.towardTarget);
+        }
         corrections += 1;
       }
 
@@ -95,11 +106,14 @@ export function installWarRoomHansHearthFacingGuard(root) {
       hans.userData.warRoomHansHearthFacingDotBefore = dotBefore;
       hans.userData.warRoomHansHearthFacingDotAfter = dotAfter;
       hans.userData.warRoomHansHearthFacingCorrections = corrections;
+      hans.userData.warRoomHansHearthFacingHotPath = HEARTH_FACING_HOT_PATH_VERSION;
     },
   });
   if (!registered) return 0;
 
   driver.userData.warRoomHansHearthFacingGuard = WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION;
+  driver.userData.warRoomHansHearthFacingHotPath = HEARTH_FACING_HOT_PATH_VERSION;
   hans.userData.warRoomHansHearthFacingGuard = WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION;
+  hans.userData.warRoomHansHearthFacingHotPath = HEARTH_FACING_HOT_PATH_VERSION;
   return 1;
 }

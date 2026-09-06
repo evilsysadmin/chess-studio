@@ -49,13 +49,15 @@ function faceDotTarget(hans, head, fire) {
 }
 
 describe('Hans hearth-facing guard', () => {
-  it('turns the rendered face toward the fire during place-log', () => {
+  it('turns the rendered face toward the fire during place-log with reusable scratch vectors', () => {
     const { root, hans, driver, head, fire } = makeScene();
     expect(faceDotTarget(hans, head, fire)).toBeLessThan(0);
     expect(installWarRoomHansHearthFacingGuard(root)).toBe(1);
+    expect(driver.userData.warRoomHansHearthFacingHotPath).toBe('preallocated-scratch-v2');
     driver.onBeforeRender();
     expect(hans.userData.warRoomHansHearthFacingGuard).toBe(WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION);
     expect(hans.userData.warRoomHansHearthFacingTarget).toBe('fire-core-rendered');
+    expect(hans.userData.warRoomHansHearthFacingHotPath).toBe('preallocated-scratch-v2');
     expect(faceDotTarget(hans, head, fire)).toBeGreaterThan(0.99);
   });
 });
