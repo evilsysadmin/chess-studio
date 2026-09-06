@@ -45,7 +45,6 @@ function geometrySignature(geometry) {
 
 function isStaticBatchCandidate(object) {
   if (!object?.isMesh || object.isInstancedMesh || !object.parent || Array.isArray(object.material)) return false;
-  if (typeof object.onBeforeRender === 'function') return false;
   if (belongsToChessPiece(object)) return false;
   if (STATIC_INSTANCE_NAMES.has(object.name)) return true;
   return !object.name && STATIC_UNNAMED_PARENT_NAMES.has(object.parent.name);
