@@ -139,16 +139,25 @@ function matchesLateLegacyPractical(light) {
   const y = Number(light.position?.y || 0);
   const x = Math.abs(Number(light.position?.x || 0));
 
-  // PremiumWarRoomScene historically adds these after the architectural
-  // performance pass, so they escaped the desktop budget entirely. Match only
-  // the stable geometry-bound signatures of the two rear sconces and the one
-  // banker-lamp pool. Cinematic moon/palette fills intentionally do not match.
   const rearSconce = Math.abs(distance - 7.2) < 0.05
     && Math.abs(y - 4.17) < 0.08
     && Math.abs(x - 3.18) < 0.08;
   const bankerLamp = Math.abs(distance - 5.6) < 0.05
     && Math.abs(y - 2.5) < 0.08;
   return rearSconce || bankerLamp;
+}
+
+function lightCensus(root) {
+  const census = { total: 0, point: 0, spot: 0, directional: 0, hemisphere: 0 };
+  root?.traverse?.((object) => {
+    if (!object?.isLight) return;
+    census.total += 1;
+    if (object.isPointLight) census.point += 1;
+    else if (object.isSpotLight) census.spot += 1;
+    else if (object.isDirectionalLight) census.directional += 1;
+    else if (object.isHemisphereLight) census.hemisphere += 1;
+  });
+  return census;
 }
 
 export function retireWarRoomLatePracticalLights(root) {
@@ -168,6 +177,7 @@ export function retireWarRoomLatePracticalLights(root) {
   premium.userData ||= {};
   premium.userData.warRoomLatePracticalLightsRetired = retired.length;
   premium.userData.warRoomLatePracticalLightBudget = 'rear-sconces-banker-v1';
+  premium.userData.warRoomFinalLightCensus = lightCensus(premium);
   return retired.length;
 }
 
