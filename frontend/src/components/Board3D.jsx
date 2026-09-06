@@ -67,7 +67,11 @@ export default function Board3D(props) {
         data-war-room-hans-game-id={hansGameId || ''}
         data-war-room-hans-runtime={requestsHansQuickIteration ? 'pending' : 'idle'}
       />
-      <Board3DCore {...props} />
+      <Board3DCore
+        {...props}
+        hansDiagnosticsMarkerRef={hansMarkerRef}
+        hansDiagnosticsRequested={requestsHansQuickIteration}
+      />
     </BoardRendererContext.Provider>
   );
 }
