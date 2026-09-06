@@ -1,4 +1,4 @@
-/* Home castle native-render clarity pass · v2
+/* Home castle native-render clarity pass · v3
  *
  * Do not post-process the Three.js hall with CSS brightness/saturation filters.
  * The scene owns its lighting; multiplying brightness at both host and canvas
@@ -7,6 +7,15 @@
  * Likewise, keep the old readability pseudo-elements structurally harmless.
  * Text contrast stays local to destinations instead of washing the whole hall.
  */
+
+/* Kill the old HomePremiumFacade desktop dimmer at the actual parent. It used
+ * opacity + brightness on .home-castle-life, which darkened the 3D render,
+ * destination labels and progression props together even after the canvas
+ * filters and fog had already been removed. */
+body .menu.home-friendly > .home-castle-life {
+  opacity: 1 !important;
+  filter: none !important;
+}
 
 body .menu.home-friendly > .home-castle-life .home-castle-hub__scene,
 body .menu.home-friendly > .home-castle-life .home-great-hall-scene.home-castle-hub__scene {
