@@ -12,11 +12,9 @@ function point(name) {
 }
 
 describe('War Room desktop performance budget', () => {
-  it('keeps only the five high-value real point lights and leaves decorative lamps emissive-only', () => {
+  it('keeps only fire + side torches as real point lights inside premium decor', () => {
     const scene = new THREE.Scene();
     const names = [
-      'war-room-rim-light',
-      'war-room-warm-light',
       'war-room-fire-light',
       'war-room-side-torch-light',
       'war-room-side-torch-light',
@@ -27,24 +25,29 @@ describe('War Room desktop performance budget', () => {
     ];
     const lights = names.map(point);
     lights.forEach((light) => scene.add(light));
+    const museumKey = new THREE.SpotLight(0xffffff, 1);
+    museumKey.name = 'war-room-museum-side-key-left';
+    scene.add(museumKey);
 
     const stats = applyWarRoomPerformanceBudget(scene);
 
-    expect(stats.pointLightsKept).toBe(5);
+    expect(stats.pointLightsKept).toBe(3);
     expect(stats.pointLightsCulled).toBe(4);
+    expect(stats.spotLightsCulled).toBe(1);
     expect(warRoomDesktopPointLightKeepNames()).toEqual(new Set([
-      'war-room-rim-light',
-      'war-room-warm-light',
       'war-room-fire-light',
       'war-room-side-torch-light',
     ]));
     for (const light of lights) {
-      const keep = ['war-room-rim-light', 'war-room-warm-light', 'war-room-fire-light', 'war-room-side-torch-light'].includes(light.name);
+      const keep = ['war-room-fire-light', 'war-room-side-torch-light'].includes(light.name);
       expect(light.visible).toBe(keep);
       expect(light.userData.warRoomPerformanceLight).toBe(keep ? 'kept-real-light' : 'emissive-only');
     }
-    expect(scene.userData.warRoomPointLightsKept).toBe(5);
+    expect(museumKey.visible).toBe(false);
+    expect(museumKey.userData.warRoomPerformanceLight).toBe('global-key-covered');
+    expect(scene.userData.warRoomPointLightsKept).toBe(3);
     expect(scene.userData.warRoomPointLightsCulled).toBe(4);
+    expect(scene.userData.warRoomSpotLightsCulled).toBe(1);
   });
 
   it('retires static decor from the directional shadow pass but preserves chess-piece casters', () => {
@@ -72,16 +75,19 @@ describe('War Room desktop performance budget', () => {
   it('does not apply the desktop hard cut to coarse/mobile scenes', () => {
     const scene = new THREE.Scene();
     const light = point('war-room-command-desk-strategy-lamp-light');
+    const spot = new THREE.SpotLight(0xffffff, 1);
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
     mesh.castShadow = true;
-    scene.add(light, mesh);
+    scene.add(light, spot, mesh);
 
     expect(applyWarRoomPerformanceBudget(scene, { coarsePointer: true })).toEqual({
       pointLightsKept: 0,
       pointLightsCulled: 0,
+      spotLightsCulled: 0,
       staticShadowCastersRetired: 0,
     });
     expect(light.visible).toBe(true);
+    expect(spot.visible).toBe(true);
     expect(mesh.castShadow).toBe(true);
   });
 });
