@@ -26,7 +26,7 @@ describe('HomeCastleHubScene room navigation', () => {
     expect(root.querySelector).toHaveBeenCalledWith('.home-continue-card');
   });
 
-  it('usa las puertas existentes de torneo, Combat y desafío diario', () => {
+  it('usa las rutas reales de torneo, Combat y desafío diario', () => {
     const tournament = { click: vi.fn() };
     const combat = { click: vi.fn() };
     const daily = { click: vi.fn() };
@@ -44,14 +44,13 @@ describe('HomeCastleHubScene room navigation', () => {
     expect(daily.click).toHaveBeenCalledTimes(1);
   });
 
-  it('lleva Entrenar a la zona real de aprendizaje sin inventar otra ruta', () => {
-    const learning = { scrollIntoView: vi.fn() };
-    const root = rootWith({
-      '.home-primary-group:not(.home-modes-section)': learning,
-    });
+  it('convierte la puerta Entrenar en acceso directo a la Escuela real', () => {
+    const school = { click: vi.fn() };
+    const root = rootWith({ '.home-school-card': school });
 
     expect(activateHomeCastleRoom('train', root)).toBe(true);
-    expect(learning.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    expect(school.click).toHaveBeenCalledTimes(1);
+    expect(root.querySelector).toHaveBeenCalledWith('.home-school-card');
   });
 });
 
