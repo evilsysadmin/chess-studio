@@ -84,6 +84,7 @@ describe('War Room torch wall wash', () => {
       expect(embers.material.emissiveIntensity).toBeCloseTo(1.9, 2);
       expect(embers.material.toneMapped).toBe(false);
       expect(flame.userData.warRoomTorchFlamePulseHook).toBe('hearth-flame-pulse-v2');
+      expect(flame.userData.warRoomTorchRenderHotPath).toBe('direct-args-v1');
 
       expect(light.color.getHex()).toBe(0xff7424);
       expect(light.distance).toBeGreaterThanOrEqual(12);
@@ -98,6 +99,27 @@ describe('War Room torch wall wash', () => {
     }
 
     expect(tuneWarRoomGalleryTorchWallWash(room)).toBe(0);
+    dispose(room);
+  });
+
+  it('forwards the six native Three.js render arguments through both torch wrappers', () => {
+    const room = new THREE.Group();
+    installWarRoomMilitaryGallery(room, { wallZ: -7.6, towardBoard: 1, coarsePointer: false });
+    const flame = room.getObjectByName('war-room-side-torch-left')
+      .getObjectByName('war-room-side-torch-flame-outer');
+    const baseHook = flame.onBeforeRender;
+    const seen = [];
+    flame.onBeforeRender = (renderer, scene, camera, geometry, material, renderGroup) => {
+      seen.push([renderer, scene, camera, geometry, material, renderGroup]);
+      baseHook(renderer, scene, camera, geometry, material, renderGroup);
+    };
+
+    expect(tuneWarRoomGalleryTorchWallWash(room)).toBe(2);
+    const args = Array.from({ length: 6 }, (_, index) => ({ index }));
+    flame.onBeforeRender(...args);
+
+    expect(seen).toEqual([args]);
+    expect(flame.userData.warRoomTorchRenderHotPath).toBe('direct-args-v1');
     dispose(room);
   });
 });
