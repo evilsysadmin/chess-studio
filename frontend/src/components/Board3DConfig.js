@@ -1,14 +1,15 @@
 export const FILES = Object.freeze(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']);
 export const DISPLAY_RANKS = Object.freeze(['8', '7', '6', '5', '4', '3', '2', '1']);
 
-// Desktop uses a longer virtual lens than the historical 40° camera. The old
-// wide-angle view exaggerated near/far piece size enough that identical white
-// and black rooks looked like different models. Mobile keeps the established
-// 40° framing because its dedicated profile is already tuned around that FOV.
+// Desktop and mobile both use a longer virtual lens than the historical 40°
+// camera. On phones the old wide-angle view exaggerated near/far piece scale
+// and made the front rank dominate the room. Mobile keeps its own framing
+// profile, but now uses a restrained 34° lens so the castle reads as a scene
+// instead of a board with a decorative strip glued behind it.
 export const BOARD3D_CAMERA_FOV = Object.freeze({
   wide: 29,
   compact: 32,
-  mobile: 40,
+  mobile: 34,
 });
 
 export function resolveBoard3DCameraFov(aspect, { mobile = false } = {}) {
