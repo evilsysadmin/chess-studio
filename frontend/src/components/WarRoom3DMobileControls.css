@@ -230,6 +230,17 @@
 }
 
 @media (max-width: 520px) {
+  /* One final Android composition owner. Older mobile layers establish the
+     responsive fallback; this file decides the actual phone density. */
+  .game-screen .board-live-row.is-3d-warroom {
+    padding: .22rem;
+    gap: .34rem;
+  }
+
+  .game-screen .game-board-stack.game-board-stack-3d {
+    gap: .22rem;
+  }
+
   .game-screen .game-board-stack-3d .board3d-main-shell {
     aspect-ratio: 1.16 / 1;
   }
@@ -256,18 +267,72 @@
   }
 
   .game-screen .game-board-stack-3d .game-player-rail.is-human {
-    min-height: 48px;
-    height: 48px;
-    grid-template-columns: 36px minmax(0, 1fr) auto;
+    min-height: 46px;
+    height: 46px;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    gap: .34rem;
+    padding: .22rem .4rem !important;
   }
 
   .game-screen .game-board-stack-3d .game-player-rail.is-human .game-player-avatar {
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
+  }
+
+  /* Music + notebook are two compact utilities, not two full-width dashboard
+     cards. Closed, they share one row. Opening the notebook promotes it to the
+     full row without hiding content or changing semantics. */
+  .game-screen .game-side-column.game-side-column-3d {
+    grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr);
+    grid-template-areas:
+      'music notation'
+      'chat chat';
+    gap: .3rem;
+    align-items: start;
+  }
+
+  .game-screen .game-side-column-3d .game-side-music,
+  .game-screen .game-side-column-3d .game-notation-disclosure {
+    min-width: 0;
+    margin: 0;
   }
 
   .game-screen .game-side-column-3d .game-side-music .music-deck-collapsed {
-    min-height: 48px !important;
+    min-height: 46px !important;
+    height: 46px;
+  }
+
+  .game-screen .game-side-column-3d .game-side-music .music-deck-expand {
+    min-height: 42px;
+    padding: .24rem .42rem;
+  }
+
+  .game-screen .game-side-column-3d .game-side-music .music-deck-collapsed-play {
+    width: 34px;
+    height: 34px;
+    min-height: 34px;
+    margin-right: .12rem;
+  }
+
+  .game-screen .game-side-column-3d .game-notation-disclosure {
+    min-height: 46px;
+    overflow: hidden;
+  }
+
+  .game-screen .game-side-column-3d .game-notation-disclosure > summary {
+    display: flex;
+    align-items: center;
+    min-height: 46px;
+    height: 46px;
+    padding: .36rem .48rem;
+    box-sizing: border-box;
+    font-size: .62rem;
+    line-height: 1.1;
+  }
+
+  .game-screen .game-side-column-3d .game-notation-disclosure[open] {
+    grid-column: 1 / -1;
+    overflow: visible;
   }
 
   .game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble) {
