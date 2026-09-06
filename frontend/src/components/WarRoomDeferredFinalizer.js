@@ -1,3 +1,4 @@
+import { installWarRoomHansElderWalk } from './WarRoomHansElderWalk.js';
 import { installWarRoomHansFacingGuard } from './WarRoomHansFacingGuard.js';
 import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
 
@@ -72,6 +73,7 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
       if (key === HANS_FIREPLACE_FINALIZER_KEY) {
         installWarRoomHansMotionPolish(root);
         installWarRoomHansFacingGuard(root);
+        installWarRoomHansElderWalk(root);
       }
       completedKeys.push(key);
     }
