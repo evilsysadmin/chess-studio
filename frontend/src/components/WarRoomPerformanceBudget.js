@@ -22,10 +22,19 @@ const STATIC_INSTANCE_NAMES = new Set([
   'war-room-command-desk-drawer',
   'war-room-command-chair-back-post',
   'war-room-command-chair-leg',
+  'war-room-side-torch-cage-bar',
+  'war-room-side-torch-crown-spike',
+  'war-room-campaign-frame-gilt',
 ]);
 
 const STATIC_UNNAMED_PARENT_NAMES = new Set([
   'war-room-castle-side-walls',
+]);
+
+const STATIC_INSTANCE_GEOMETRY_TYPES = new Set([
+  'BoxGeometry',
+  'CylinderGeometry',
+  'ConeGeometry',
 ]);
 
 const NOOP_RENDER_HOOK = () => {};
@@ -46,17 +55,14 @@ function sceneRoot(object) {
 }
 
 function geometrySignature(geometry) {
-  if (!geometry || geometry.type !== 'BoxGeometry') return null;
-  const {
-    width,
-    height,
-    depth,
-    widthSegments = 1,
-    heightSegments = 1,
-    depthSegments = 1,
-  } = geometry.parameters || {};
-  if (![width, height, depth, widthSegments, heightSegments, depthSegments].every(Number.isFinite)) return null;
-  return [width, height, depth, widthSegments, heightSegments, depthSegments].join(':');
+  if (!geometry || !STATIC_INSTANCE_GEOMETRY_TYPES.has(geometry.type)) return null;
+  const parameters = geometry.parameters || {};
+  const entries = Object.entries(parameters)
+    .filter(([, value]) => typeof value === 'number' || typeof value === 'boolean')
+    .sort(([left], [right]) => left.localeCompare(right));
+  if (!entries.length) return null;
+  if (entries.some(([, value]) => typeof value === 'number' && !Number.isFinite(value))) return null;
+  return `${geometry.type}:${entries.map(([key, value]) => `${key}=${value}`).join(':')}`;
 }
 
 function isStaticBatchCandidate(object, chessPiece) {
