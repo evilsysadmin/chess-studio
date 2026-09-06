@@ -14,6 +14,7 @@ function makeRig(forwardSign = 1, phase = 'carry-log') {
   const hans = new THREE.Group();
   hans.name = 'war-room-hans-butler';
   hans.visible = true;
+  hans.position.set(0, -0.34, 0.72);
   fireplace.add(hans);
 
   const head = new THREE.Group();
