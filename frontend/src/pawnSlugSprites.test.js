@@ -36,6 +36,9 @@ describe('Pawn Slug premium sprite contracts', () => {
       crouch: 'right',
       jump: 'right',
     });
+    expect(meta.runtimeFacings).toEqual(['right', 'left']);
+    expect(meta.directionMode).toBe('atlas-uv-mirror');
+    expect(meta.uvGuardTexels).toBe(1);
     expect(meta.motionFrames).toEqual({
       idle: 10,
       walk: 10,
@@ -68,22 +71,26 @@ describe('Pawn Slug premium sprite contracts', () => {
     }
   });
 
-  it('maps each action to its own v5 atlas row and wraps indices within the action', () => {
+  it('maps each action to its own guarded v5 atlas row and wraps indices within the action', () => {
+    const atlasWidth = 16 * 96;
+    const atlasHeight = 5 * 96;
+    const guardedRepeatX = 94 / atlasWidth;
+    const guardedRepeatY = 94 / atlasHeight;
     const cases = [
-      ['idle', 9, 0, 9, 9 / 16, 4 / 5],
-      ['walk', 9, 1, 9, 9 / 16, 3 / 5],
-      ['run', 15, 2, 15, 15 / 16, 2 / 5],
-      ['crouch', 9, 3, 9, 9 / 16, 1 / 5],
-      ['jump', 8, 4, 8, 8 / 16, 0],
+      ['idle', 9, 0, 9],
+      ['walk', 9, 1, 9],
+      ['run', 15, 2, 15],
+      ['crouch', 9, 3, 9],
+      ['jump', 8, 4, 8],
     ];
 
-    for (const [action, frame, row, column, offsetX, offsetY] of cases) {
-      const window = pawnSlugMatthiasAtlasWindow(action, frame);
-      expect(window).toMatchObject({ row, column });
-      expect(window.offsetX).toBeCloseTo(offsetX, 12);
-      expect(window.offsetY).toBeCloseTo(offsetY, 12);
-      expect(window.repeatX).toBeCloseTo(1 / 16, 12);
-      expect(window.repeatY).toBeCloseTo(1 / 5, 12);
+    for (const [action, frame, row, column] of cases) {
+      const window = pawnSlugMatthiasAtlasWindow(action, frame, 1);
+      expect(window).toMatchObject({ row, column, direction: 1, mirrored: false });
+      expect(window.offsetX).toBeCloseTo(((column * 96) + 1) / atlasWidth, 12);
+      expect(window.offsetY).toBeCloseTo((atlasHeight - ((row + 1) * 96) + 1) / atlasHeight, 12);
+      expect(window.repeatX).toBeCloseTo(guardedRepeatX, 12);
+      expect(window.repeatY).toBeCloseTo(guardedRepeatY, 12);
     }
 
     expect(pawnSlugMatthiasAtlasWindow('run', 16).column).toBe(0);
@@ -91,10 +98,28 @@ describe('Pawn Slug premium sprite contracts', () => {
     expect(pawnSlugMatthiasAtlasWindow('jump', 9).column).toBe(0);
   });
 
-  it('keeps every v5 pose canonically right-facing and mirrors only for world direction', () => {
+  it('samples the same Matthias frame in both directions instead of flipping the whole sprite', () => {
+    const atlasWidth = 16 * 96;
+    const right = pawnSlugMatthiasAtlasWindow('walk', 7, 1);
+    const left = pawnSlugMatthiasAtlasWindow('walk', 7, -1);
+
+    expect(right).toMatchObject({ action: 'walk', row: 1, column: 7, direction: 1, mirrored: false });
+    expect(left).toMatchObject({ action: 'walk', row: 1, column: 7, direction: -1, mirrored: true });
+    expect(right.repeatX).toBeGreaterThan(0);
+    expect(left.repeatX).toBeLessThan(0);
+    expect(Math.abs(left.repeatX)).toBeCloseTo(right.repeatX, 12);
+    expect(right.offsetX).toBeCloseTo(((7 * 96) + 1) / atlasWidth, 12);
+    expect(left.offsetX).toBeCloseTo(((8 * 96) - 1) / atlasWidth, 12);
+    expect(left.offsetY).toBeCloseTo(right.offsetY, 12);
+    expect(left.repeatY).toBeCloseTo(right.repeatY, 12);
+  });
+
+  it('keeps every v5 source pose canonically right-facing while exposing both runtime facings', () => {
     for (const action of ['idle', 'walk', 'run', 'crouch', 'jump']) {
       expect(pawnSlugMatthiasVisualDirection(action, 1)).toBe(1);
       expect(pawnSlugMatthiasVisualDirection(action, -1)).toBe(-1);
+      expect(pawnSlugMatthiasAtlasWindow(action, 0, 1).mirrored).toBe(false);
+      expect(pawnSlugMatthiasAtlasWindow(action, 0, -1).mirrored).toBe(true);
     }
     expect(PAWN_SLUG_MOTION_PROFILES.matthias.crouchScaleY).toBeLessThan(0.85);
     expect(PAWN_SLUG_MOTION_PROFILES.matthias.crouchScaleX).toBeGreaterThan(1);
