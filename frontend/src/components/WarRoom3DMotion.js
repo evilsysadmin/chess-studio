@@ -4,6 +4,9 @@ const WAR_ROOM_RENDER_DISCIPLINE = Symbol.for('chess-studio.war-room-render-disc
 const shadowRefreshState = new WeakMap();
 const warRoomHemisphereState = new WeakMap();
 const warRoomMaterialGradeRootState = new WeakMap();
+const warRoomMaterialGradeSignatureState = new WeakMap();
+const warRoomMaterialGradeObjectIds = new WeakMap();
+let nextWarRoomMaterialGradeObjectId = 1;
 
 export function shadowRefreshInterval({ coarsePointer = false, activeMotion = false } = {}) {
   if (activeMotion) return coarsePointer ? 180 : 120;
@@ -24,8 +27,9 @@ export function shouldRefreshShadowMap({
 }
 
 export function materialGradeRefreshInterval({ activeMotion = false } = {}) {
-  // Material grading still follows the existing visual cadence, but after the
-  // first pass it traverses only the board root rather than the complete castle.
+  // Historical cadence helper retained for compatibility with existing callers
+  // and tests. The War Room render path no longer uses this timer: material
+  // grading is invalidated by dynamic board structure changes instead.
   return activeMotion ? 180 : 1500;
 }
 
@@ -140,6 +144,58 @@ function materialGradeTraversalRoot(scene) {
   return scene;
 }
 
+function materialGradeObjectIdentity(object) {
+  if (!object || (typeof object !== 'object' && typeof object !== 'function')) return 0;
+  let identity = warRoomMaterialGradeObjectIds.get(object);
+  if (!identity) {
+    identity = nextWarRoomMaterialGradeObjectId;
+    nextWarRoomMaterialGradeObjectId += 1;
+    warRoomMaterialGradeObjectIds.set(object, identity);
+  }
+  return identity;
+}
+
+export function warRoomMaterialGradeDynamicSignature(root) {
+  if (!root?.children) return '';
+  return root.children
+    .filter((child) => child?.isGroup)
+    .map((group) => {
+      const children = group.children || [];
+      const first = children[0] || null;
+      const last = children.length ? children[children.length - 1] : null;
+      return [
+        materialGradeObjectIdentity(group),
+        children.length,
+        materialGradeObjectIdentity(first),
+        materialGradeObjectIdentity(last),
+      ].join(':');
+    })
+    .join('|');
+}
+
+export function shouldRunWarRoomMaterialGrade(scene) {
+  if (!scene) return false;
+  const traversalRoot = materialGradeTraversalRoot(scene);
+  if (!traversalRoot) return false;
+
+  // If the canonical board root cannot be resolved, keep the old safe behavior.
+  // Normal War Room scenes resolve it on the first render because board tiles are
+  // already mounted before painting starts.
+  if (traversalRoot === scene && scene.userData?.warRoomMaterialGradeTraversal === 'scene-fallback') {
+    return true;
+  }
+
+  const signature = warRoomMaterialGradeDynamicSignature(traversalRoot);
+  const previous = warRoomMaterialGradeSignatureState.get(scene);
+  if (previous === signature) return false;
+
+  warRoomMaterialGradeSignatureState.set(scene, signature);
+  scene.userData ||= {};
+  scene.userData.warRoomMaterialGradeMode = 'dynamic-groups-v1';
+  scene.userData.warRoomMaterialGradeInvalidations = (scene.userData.warRoomMaterialGradeInvalidations || 0) + 1;
+  return true;
+}
+
 export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {}) {
   const profile = warRoomMaterialIblProfile({ coarsePointer });
   if (!scene || !profile || typeof scene.traverse !== 'function') {
@@ -200,6 +256,7 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
   scene.userData.warRoomIvoryEnvMax = profile.ivoryEnvMax;
   scene.userData.warRoomLightTileEnvMax = profile.lightTileEnvMax;
   scene.userData.warRoomMaterialIblAdjusted = adjusted;
+  scene.userData.warRoomMaterialGradePasses = (scene.userData.warRoomMaterialGradePasses || 0) + 1;
   return { adjusted, ivory, lightTile, profile };
 }
 
@@ -256,7 +313,6 @@ function installWarRoomRenderDiscipline() {
     const state = shadowRefreshState.get(this) || {
       lastShadowAt: Number.NEGATIVE_INFINITY,
       lastRenderAt: Number.NaN,
-      lastMaterialGradeAt: Number.NEGATIVE_INFINITY,
       slowFrameCount: 0,
     };
     shadowRefreshState.set(this, state);
@@ -265,17 +321,13 @@ function installWarRoomRenderDiscipline() {
     const activeMotion = Number.isFinite(state.lastRenderAt) && frameMs < 50;
     state.lastRenderAt = now;
 
-    if (shouldRefreshMaterialGrade({
-      now,
-      lastMaterialGradeAt: state.lastMaterialGradeAt,
-      activeMotion,
-    })) {
+    if (shouldRunWarRoomMaterialGrade(scene)) {
       const materialGrade = applyWarRoomMaterialGrade(scene, { coarsePointer });
-      state.lastMaterialGradeAt = now;
       if (materialGrade.profile && this.domElement?.dataset) {
         this.domElement.dataset.warRoomIblIvory = Number(materialGrade.profile.ivoryEnvMax).toFixed(2);
         this.domElement.dataset.warRoomIblLightTile = Number(materialGrade.profile.lightTileEnvMax).toFixed(2);
         this.domElement.dataset.warRoomSurfaceGrade = 'aged-matte-v2';
+        this.domElement.dataset.warRoomMaterialGrade = 'dynamic-groups-v1';
       }
     }
 
