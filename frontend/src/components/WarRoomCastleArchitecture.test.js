@@ -152,22 +152,36 @@ describe('War Room castle architecture', () => {
     }
   });
 
-  it('mantiene callable el hook de render del fuego al ceder la animación al driver del castillo', () => {
+  it('cachea las referencias del fuego tras el primer tick y no vuelve a buscarlas cada frame', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const driver = room.getObjectByName('war-room-castle-floor-slab');
     const flame = room.getObjectByName('war-room-fire-flame-outer');
+    const fireCore = room.getObjectByName('war-room-fire-core');
+    const originalGetObjectByName = room.getObjectByName.bind(room);
+    const fireNames = new Set(['war-room-fire-core', 'war-room-fire-light', 'war-room-fireplace']);
+    let fireLookups = 0;
+    room.getObjectByName = (name) => {
+      if (fireNames.has(name)) fireLookups += 1;
+      return originalGetObjectByName(name);
+    };
 
     expect(typeof driver.onBeforeRender).toBe('function');
     expect(typeof flame.onBeforeRender).toBe('function');
 
     driver.onBeforeRender();
+    const firstTickLookups = fireLookups;
 
+    expect(firstTickLookups).toBe(3);
     expect(flame.userData.castleDriverOwnsFire).toBe(true);
-    expect(typeof flame.onBeforeRender).toBe('function');
-    expect(() => flame.onBeforeRender()).not.toThrow();
-    expect(room.getObjectByName('war-room-fire-core').userData.warRoomWarmFireAnimated).toBe(true);
+    expect(fireCore.userData.warRoomWarmFireAnimated).toBe(true);
+    expect(fireCore.userData.warRoomWarmFireState).toBe('cached-v1');
+    expect(room.userData.warRoomWarmFireLookupMode).toBe('cached-v1');
     expect(room.getObjectByName('war-room-fire-bounce-light')).toBeInstanceOf(THREE.PointLight);
 
+    driver.onBeforeRender();
+    expect(fireLookups).toBe(firstTickLookups);
+
+    room.getObjectByName = originalGetObjectByName;
     dispose(room);
   });
 
