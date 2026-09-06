@@ -10,6 +10,22 @@ export const HOME_CASTLE_ROOM_TARGETS = Object.freeze({
   daily: ['.home-today-actions button'],
 });
 
+export function homeBoardSquareLayout(square = 0.38) {
+  const light = [];
+  const dark = [];
+  for (let rank = 0; rank < 8; rank += 1) {
+    for (let file = 0; file < 8; file += 1) {
+      const position = [(file - 3.5) * square, 0.91, (rank - 3.5) * square];
+      ((rank + file) % 2 === 0 ? light : dark).push(position);
+    }
+  }
+  return { light, dark };
+}
+
+export function homeCastleWarmKeyIntensity(ambience = 'quiet') {
+  return ambience === 'honour' ? 1.78 : 1.55;
+}
+
 function firstMatchingTarget(selectors, root = document) {
   for (const selector of selectors || []) {
     const element = root.querySelector(selector);
@@ -255,18 +271,25 @@ function addChessBoard(THREE, parent, x, y, z, scale, materials, includePieces =
     for (const pz of [-1.52, 1.52]) addBox(THREE, table, [0.30, 1.55, 0.30], [px, -0.26, pz], oak);
   }
   addBox(THREE, table, [3.25, 0.08, 3.25], [0, 0.85, 0], brass);
+
+  // Sixty-four individual square meshes were pure draw-call/build churn. Keep
+  // exactly the same geometry/materials but instance each colour in one batch.
   const square = 0.38;
-  for (let rank = 0; rank < 8; rank += 1) {
-    for (let file = 0; file < 8; file += 1) {
-      addBox(
-        THREE,
-        table,
-        [square, 0.035, square],
-        [(file - 3.5) * square, 0.91, (rank - 3.5) * square],
-        (rank + file) % 2 === 0 ? boardLight : boardDark,
-      );
-    }
+  const squareGeometry = new THREE.BoxGeometry(square, 0.035, square);
+  const squareLayout = homeBoardSquareLayout(square);
+  const scratchMatrix = new THREE.Matrix4();
+  for (const [positions, material] of [[squareLayout.light, boardLight], [squareLayout.dark, boardDark]]) {
+    const squares = new THREE.InstancedMesh(squareGeometry, material, positions.length);
+    positions.forEach((position, index) => {
+      scratchMatrix.makeTranslation(...position);
+      squares.setMatrixAt(index, scratchMatrix);
+    });
+    squares.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+    squares.instanceMatrix.needsUpdate = true;
+    squares.userData.homeBoardSquares = 'instanced-v1';
+    table.add(squares);
   }
+
   if (includePieces) {
     const back = [0.19, 0.24, 0.22, 0.30, 0.32, 0.22, 0.24, 0.19];
     for (const side of [-1, 1]) {
@@ -377,7 +400,7 @@ function buildCastleHubScene(THREE, { host, ambience }) {
     });
   } catch {
     host.dataset.homeCastleHubFallback = 'webgl-unavailable';
-    return () => {};
+    return { setAmbience() {}, dispose() {} };
   }
 
   renderer.setClearColor(0x050607, 1);
@@ -468,7 +491,7 @@ function buildCastleHubScene(THREE, { host, ambience }) {
   torchSpots.forEach((args, index) => addTorch(THREE, room, ...args, materials, !coarse || index % 2 === 0));
 
   scene.add(new THREE.HemisphereLight(0x6684a0, 0x2a160c, coarse ? 0.98 : 1.20));
-  const warmKey = new THREE.DirectionalLight(0xe0aa6b, ambience === 'honour' ? 1.78 : 1.55);
+  const warmKey = new THREE.DirectionalLight(0xe0aa6b, homeCastleWarmKeyIntensity(ambience));
   warmKey.position.set(-5.8, 8.0, 6.5);
   scene.add(warmKey);
   const moonRim = new THREE.DirectionalLight(0x79a3c4, coarse ? 0.52 : 0.68);
@@ -516,12 +539,24 @@ function buildCastleHubScene(THREE, { host, ambience }) {
     renderRaf = window.requestAnimationFrame(renderScene);
   };
 
-  const resizeObserver = new ResizeObserver(scheduleRender);
-  resizeObserver.observe(host);
-  const intersectionObserver = new IntersectionObserver(([entry]) => {
-    if (entry?.isIntersecting) scheduleRender();
-  }, { rootMargin: '160px' });
-  intersectionObserver.observe(host);
+  let resizeObserver = null;
+  let resizeFallback = null;
+  if (typeof ResizeObserver === 'function') {
+    resizeObserver = new ResizeObserver(scheduleRender);
+    resizeObserver.observe(host);
+  } else {
+    resizeFallback = scheduleRender;
+    window.addEventListener('resize', resizeFallback);
+  }
+
+  let intersectionObserver = null;
+  if (typeof IntersectionObserver === 'function') {
+    intersectionObserver = new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting) scheduleRender();
+    }, { rootMargin: '160px' });
+    intersectionObserver.observe(host);
+  }
+
   const onVisibility = () => { if (!document.hidden) scheduleRender(); };
   document.addEventListener('visibilitychange', onVisibility);
 
@@ -529,21 +564,39 @@ function buildCastleHubScene(THREE, { host, ambience }) {
   host.dataset.homeCastleHubReady = 'true';
   host.dataset.homeCastleHubRenderMode = 'on-demand';
   host.dataset.homeCastleHubArchitecture = 'integrated-teutonic-v3';
+  host.dataset.homeCastleHubBoardSquares = 'instanced-2-draws-per-board';
 
-  return () => {
+  const setAmbience = (nextAmbience) => {
+    const nextIntensity = homeCastleWarmKeyIntensity(nextAmbience);
+    if (warmKey.intensity === nextIntensity) return;
+    warmKey.intensity = nextIntensity;
+    scheduleRender();
+  };
+
+  const dispose = () => {
     if (renderRaf) window.cancelAnimationFrame(renderRaf);
-    resizeObserver.disconnect();
-    intersectionObserver.disconnect();
+    resizeObserver?.disconnect?.();
+    intersectionObserver?.disconnect?.();
+    if (resizeFallback) window.removeEventListener('resize', resizeFallback);
     document.removeEventListener('visibilitychange', onVisibility);
+
+    // Materials/geometries are intentionally shared by instancing and across
+    // many static meshes. Dispose each GPU resource once, not once per owner.
+    const geometries = new Set();
+    const materialsToDispose = new Set();
     scene.traverse((object) => {
-      object.geometry?.dispose?.();
-      if (Array.isArray(object.material)) object.material.forEach((entry) => entry?.dispose?.());
-      else object.material?.dispose?.();
+      if (object.geometry) geometries.add(object.geometry);
+      if (Array.isArray(object.material)) object.material.forEach((entry) => { if (entry) materialsToDispose.add(entry); });
+      else if (object.material) materialsToDispose.add(object.material);
     });
+    geometries.forEach((geometry) => geometry.dispose?.());
+    materialsToDispose.forEach((material) => material.dispose?.());
     renderer.dispose();
     renderer.forceContextLoss?.();
     canvas.remove();
   };
+
+  return { setAmbience, dispose };
 }
 
 const ROOM_DEFS = Object.freeze([
@@ -556,22 +609,37 @@ const ROOM_DEFS = Object.freeze([
 
 export default function HomeCastleHubScene({ ambience = 'quiet', hasSavedGame = false }) {
   const hostRef = useRef(null);
+  const controllerRef = useRef(null);
+  const ambienceRef = useRef(ambience);
+  ambienceRef.current = ambience;
 
+  // Build the expensive static hall once. Ambience changes only mutate the
+  // warm key and schedule one render; they must never rebuild the castle.
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return undefined;
     let cancelled = false;
-    let dispose = () => {};
     void import('three').then((THREE) => {
       if (cancelled || !host.isConnected) return;
-      dispose = buildCastleHubScene(THREE, { host, ambience });
+      const controller = buildCastleHubScene(THREE, { host, ambience: ambienceRef.current });
+      if (cancelled || !host.isConnected) {
+        controller.dispose();
+        return;
+      }
+      controllerRef.current = controller;
+      controller.setAmbience(ambienceRef.current);
     }).catch(() => {
       if (host.isConnected) host.dataset.homeCastleHubFallback = 'three-load-failed';
     });
     return () => {
       cancelled = true;
-      dispose();
+      controllerRef.current?.dispose?.();
+      controllerRef.current = null;
     };
+  }, []);
+
+  useEffect(() => {
+    controllerRef.current?.setAmbience?.(ambience);
   }, [ambience]);
 
   return (
