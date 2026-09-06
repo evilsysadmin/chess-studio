@@ -44,7 +44,9 @@ describe('PremiumWarRoomScene', () => {
     expect(desktop.userData.premiumWarRoom).toBe(true);
     expect(desktop.userData.premiumPass).toBe('cinematic-v3-teutonic');
     expect(desktop.userData.warRoomDesktopRetiredCurtainPelmetsOmitted).toBe(2);
+    expect(desktop.userData.warRoomDesktopLatePracticalLightsOmitted).toBe(3);
     expect(mobile.userData.warRoomDesktopRetiredCurtainPelmetsOmitted).toBeUndefined();
+    expect(mobile.userData.warRoomDesktopLatePracticalLightsOmitted).toBeUndefined();
     expect(desktop.getObjectByName('coffered-paneling')).toBeTruthy();
     expect(crest).toBeTruthy();
     expect(crest.userData.singlePawnDisplay).toBe(true);
@@ -55,7 +57,7 @@ describe('PremiumWarRoomScene', () => {
     expect(desktop.getObjectByName('war-room-velvet-curtain-fold')).toBeTruthy();
     expect(desktop.getObjectByName('war-room-sconce-flame')).toBeTruthy();
     expect(desktopStats.meshes).toBeGreaterThan(125);
-    expect(desktopStats.lights).toBeGreaterThanOrEqual(9);
+    expect(desktopStats.lights).toBe(6);
     expect(desktopStats.spotLights).toBe(1);
     expect(desktopStats.meshes).toBeGreaterThan(mobileStats.meshes);
 
@@ -63,25 +65,27 @@ describe('PremiumWarRoomScene', () => {
     dispose(mobile);
   });
 
-  it('retira las prácticas redundantes tardías y fija el censo premium tras el primer frame', () => {
+  it('omite al construir las tres prácticas desktop que antes retiraba tras el primer frame', () => {
     const desktop = buildPremiumWarRoomLayer(theme, true, false);
     const driver = desktop.getObjectByName('war-room-castle-floor-slab');
 
     expect(driver).toBeTruthy();
     expect(typeof driver.onBeforeRender).toBe('function');
     expect(typeof driver.onAfterRender).toBe('function');
-    expect(sceneStats(desktop).lights).toBe(9);
+    expect(desktop.userData.warRoomDesktopLatePracticalLightsOmitted).toBe(3);
+    expect(sceneStats(desktop).lights).toBe(6);
 
     // The warm fireplace bounce is intentionally created by the castle driver
-    // on the first real render. It remains because it contributes visible warm
-    // fill; the three retired late practicals do not.
+    // on the first real render and remains because it contributes visible fill.
     driver.onBeforeRender();
     expect(desktop.getObjectByName('war-room-fire-bounce-light')).toBeInstanceOf(THREE.PointLight);
-    expect(sceneStats(desktop).lights).toBe(10);
+    expect(sceneStats(desktop).lights).toBe(7);
 
+    // The old retirement pass remains as a safety net for future legacy lights,
+    // but in the canonical desktop scene there is now nothing left to bury.
     driver.onAfterRender();
     const finalStats = sceneStats(desktop);
-    expect(desktop.userData.warRoomLatePracticalLightsRetired).toBe(3);
+    expect(desktop.userData.warRoomLatePracticalLightsRetired).toBe(0);
     expect(desktop.userData.warRoomLatePracticalLightBudget).toBe('rear-sconces-banker-v1');
     expect(desktop.userData.warRoomFinalLightCensus).toEqual({
       total: 7,
