@@ -43,7 +43,7 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
 
   const canvas = mode.locator('.chesscom-babylon-host canvas');
   await expect(canvas).toBeVisible({ timeout: 30_000 });
-  await expect(mode.getByText(/BABYLON\.JS 9\.25\.0 · TACTICAL PREMIUM V1/)).toBeVisible({ timeout: 30_000 });
+  await expect(mode.getByText(/BABYLON\.JS 9\.25\.0 · GPU PREMIUM V2 · BALLISTICS/)).toBeVisible({ timeout: 30_000 });
   await expect(mode.getByText('BABYLON · ERROR', { exact: true })).toHaveCount(0);
 
   const dieterArt = mode.locator('.chesscom-portrait-art.is-dieter');
