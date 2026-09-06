@@ -5,6 +5,13 @@ export const PAWN_SLUG_WORLD = Object.freeze({
   extractionX: 5050,
 });
 
+export const PAWN_SLUG_PLAYER = Object.freeze({
+  baseMaxHp: 100,
+  hpPerLevel: 8,
+  damagePerLevel: 0.05,
+  maxLevel: 12,
+});
+
 export const PAWN_SLUG_WEAPON_ORDER = Object.freeze(['pistol', 'machinegun', 'shotgun', 'panzerfaust']);
 
 export const PAWN_SLUG_WEAPONS = Object.freeze({
@@ -32,10 +39,10 @@ export const PAWN_SLUG_SPAWNS = Object.freeze([
 ].map(([x, type], index) => Object.freeze({ id: `${type}-${index}`, x, type })));
 
 export const PAWN_SLUG_ENEMIES = Object.freeze({
-  pawn: Object.freeze({ hp: 34, speed: 54, score: 100, width: 38, height: 62 }),
-  knight: Object.freeze({ hp: 62, speed: 92, score: 220, width: 48, height: 68 }),
-  rook: Object.freeze({ hp: 112, speed: 0, score: 350, width: 58, height: 76 }),
-  boss: Object.freeze({ hp: 780, speed: 0, score: 3500, width: 190, height: 150 }),
+  pawn: Object.freeze({ hp: 34, speed: 54, score: 100, xp: 28, width: 38, height: 62 }),
+  knight: Object.freeze({ hp: 62, speed: 92, score: 220, xp: 52, width: 48, height: 68 }),
+  rook: Object.freeze({ hp: 112, speed: 0, score: 350, xp: 78, width: 58, height: 76 }),
+  boss: Object.freeze({ hp: 780, speed: 0, score: 3500, xp: 650, width: 190, height: 150 }),
 });
 
 export function pawnSlugClamp(value, min, max) {
@@ -57,6 +64,41 @@ export function pawnSlugAmmoForPickup(type) {
 
 export function pawnSlugScoreForKill(type) {
   return PAWN_SLUG_ENEMIES[type]?.score || 0;
+}
+
+export function pawnSlugXpForKill(type) {
+  return PAWN_SLUG_ENEMIES[type]?.xp || 0;
+}
+
+export function pawnSlugXpForLevel(level) {
+  const target = pawnSlugClamp(Math.floor(Number(level) || 1), 1, PAWN_SLUG_PLAYER.maxLevel);
+  const completed = target - 1;
+  return completed * 120 + ((completed * (completed - 1)) / 2) * 70;
+}
+
+export function pawnSlugLevelForXp(xp) {
+  const safeXp = Math.max(0, Math.floor(Number(xp) || 0));
+  let level = 1;
+  while (level < PAWN_SLUG_PLAYER.maxLevel && safeXp >= pawnSlugXpForLevel(level + 1)) level += 1;
+  return level;
+}
+
+export function pawnSlugLevelProgress(xp, level = pawnSlugLevelForXp(xp)) {
+  const safeLevel = pawnSlugClamp(Math.floor(Number(level) || 1), 1, PAWN_SLUG_PLAYER.maxLevel);
+  if (safeLevel >= PAWN_SLUG_PLAYER.maxLevel) return 1;
+  const start = pawnSlugXpForLevel(safeLevel);
+  const end = pawnSlugXpForLevel(safeLevel + 1);
+  return pawnSlugClamp((Math.max(0, Number(xp) || 0) - start) / Math.max(1, end - start), 0, 1);
+}
+
+export function pawnSlugMaxHpForLevel(level) {
+  const safeLevel = pawnSlugClamp(Math.floor(Number(level) || 1), 1, PAWN_SLUG_PLAYER.maxLevel);
+  return PAWN_SLUG_PLAYER.baseMaxHp + (safeLevel - 1) * PAWN_SLUG_PLAYER.hpPerLevel;
+}
+
+export function pawnSlugDamageMultiplier(level) {
+  const safeLevel = pawnSlugClamp(Math.floor(Number(level) || 1), 1, PAWN_SLUG_PLAYER.maxLevel);
+  return 1 + (safeLevel - 1) * PAWN_SLUG_PLAYER.damagePerLevel;
 }
 
 export function pawnSlugSpawnWindow(cameraX, spawnedIds = new Set(), lookAhead = 1120) {
@@ -86,6 +128,7 @@ export function pawnSlugMatthiasLine(event) {
     start: 'Vorwärts. Si algo se mueve, probablemente ha tomado una mala decisión.',
     hurt: 'Ach. Eso era parte de mi cuerpo, animal.',
     grenade: 'Granada enviada. Sin acuse de recibo.',
+    levelUp: 'Ascenso concedido. Mis condolencias al enemigo.',
     boss: 'Ah. Un castillo con orugas. Qué imaginación tan ofensiva.',
     bossDown: 'Schachmatt, mamotreto.',
     win: 'Sector limpio. El Convenio de Ginebra solicita una reunión.',
