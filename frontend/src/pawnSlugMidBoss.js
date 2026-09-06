@@ -13,6 +13,19 @@ export const PAWN_SLUG_STURM_BISHOP_META = Object.freeze({
   suppressionShotInterval: 0.14,
 });
 
+export function pawnSlugSturmBishopCooldownTick(cooldown, distance, range, telegraphSeconds, dt) {
+  const current = Number(cooldown);
+  const targetDistance = Number(distance);
+  const attackRange = Number(range);
+  const warningWindow = Math.max(0, Number(telegraphSeconds) || 0);
+  const elapsed = Math.max(0, Number(dt) || 0);
+  if (!Number.isFinite(current)) return warningWindow;
+  if (!Number.isFinite(targetDistance) || !Number.isFinite(attackRange) || targetDistance > attackRange) {
+    return Math.max(current, warningWindow);
+  }
+  return current - elapsed;
+}
+
 export function pawnSlugSturmBishopTelegraph(shellCooldown, distance) {
   const cooldown = Number(shellCooldown);
   const range = Number(distance);
