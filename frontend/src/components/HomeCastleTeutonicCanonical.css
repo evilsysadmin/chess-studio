@@ -1,11 +1,13 @@
-/* Home castle · Teutonic portal architecture · canonical v2
+/* Home castle · integrated Teutonic portals · canonical v3
  *
- * Visual contract approved from the 2026-09-06 Home mock:
- * - five readable destinations integrated into gothic/Teutonic portals
- * - dark carved timber, iron straps and warm stone instead of soft black holes
- * - titles live inside the architecture and share one alignment baseline
- * - no extra WebGL draw calls: this layer refines the existing Three.js hall
- *   with lightweight DOM/CSS portal faces and keeps mobile's first-fold rules.
+ * The previous v2 drew complete doors in CSS. That made them read as stickers
+ * floating in front of the room and, worse, visually covered real 3D props.
+ *
+ * v3 gives architectural authority back to Three.js:
+ * - stone, oak and iron are real scene geometry with real depth/light
+ * - DOM owns only labels, click targets and restrained interaction feedback
+ * - all five destinations keep one shared title baseline
+ * - mobile keeps the existing first-fold card treatment
  */
 
 @media (min-width: 761px) {
@@ -16,6 +18,7 @@
     height: 58.5% !important;
     gap: clamp(.25rem, .72vw, .7rem) !important;
     align-items: stretch;
+    pointer-events: none;
   }
 
   body .menu.home-friendly > .home-castle-life .home-castle-hub__room,
@@ -33,125 +36,22 @@
     padding: 0 !important;
     overflow: visible;
     border: 0 !important;
-    border-radius: 0 !important;
+    border-radius: 42% 42% 8% 8% / 28% 28% 6% 6% !important;
     background: none !important;
     box-shadow: none !important;
     transform: none;
+    pointer-events: auto;
   }
 
-  /* Outer gothic surround: warm cut stone with a pointed Teutonic crown.
-   * The centre remains deliberately restrained so the existing 3D hall still
-   * supplies depth, torch spill and perspective behind the interactive face. */
-  body .menu.home-friendly > .home-castle-life .home-castle-hub__room::before {
-    content: '';
-    position: absolute;
-    z-index: -2;
-    inset: 0 1.5% 0;
-    opacity: .92 !important;
-    clip-path: polygon(
-      50% 0,
-      68% 7%,
-      84% 18%,
-      94% 31%,
-      96% 100%,
-      4% 100%,
-      6% 31%,
-      16% 18%,
-      32% 7%
-    );
-    border: 0 !important;
-    border-radius: 0 !important;
-    background:
-      radial-gradient(circle at 50% 4.5%, rgba(246, 211, 139, .34) 0 1.8%, transparent 2.2%),
-      linear-gradient(90deg,
-        rgba(35, 27, 20, .94) 0 3.2%,
-        rgba(137, 112, 78, .97) 3.2% 8.5%,
-        rgba(79, 64, 48, .97) 8.5% 11%,
-        rgba(180, 146, 95, .95) 11% 14%,
-        rgba(76, 59, 43, .33) 14% 86%,
-        rgba(180, 146, 95, .95) 86% 89%,
-        rgba(79, 64, 48, .97) 89% 91.5%,
-        rgba(137, 112, 78, .97) 91.5% 96.8%,
-        rgba(35, 27, 20, .94) 96.8% 100%),
-      linear-gradient(180deg, #9b825f 0%, #6f5a42 28%, #49392b 100%) !important;
-    box-shadow: none !important;
-    filter:
-      drop-shadow(0 5px 4px rgba(0, 0, 0, .66))
-      drop-shadow(0 15px 16px rgba(0, 0, 0, .38));
-    pointer-events: none;
-    transition: filter .18s ease, opacity .18s ease;
-  }
-
-  /* Inner timber door. Repeating planks + forged cross bands give the portal
-   * substance without fabricating another mesh family in the render loop. */
+  /* Critical v3 contract: no full-size CSS door or stone surround. The actual
+   * portal is now in the WebGL scene and must be allowed to sit behind props. */
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room::before,
   body .menu.home-friendly > .home-castle-life .home-castle-hub__room::after {
-    content: '';
-    position: absolute;
-    z-index: -1;
-    top: 11.3%;
-    right: 10.2%;
-    bottom: 3.1%;
-    left: 10.2%;
-    height: auto !important;
-    opacity: .96 !important;
-    clip-path: polygon(
-      50% 0,
-      70% 8%,
-      87% 22%,
-      96% 35%,
-      96% 100%,
-      4% 100%,
-      4% 35%,
-      13% 22%,
-      30% 8%
-    );
-    border-radius: 0 !important;
-    background:
-      /* small central heraldic boss */
-      radial-gradient(circle at 50% 48%, rgba(222, 174, 81, .88) 0 2.2%, rgba(74, 48, 26, .96) 2.5% 4.2%, transparent 4.6%),
-      /* hinge studs */
-      radial-gradient(circle at 18% 45%, rgba(201, 153, 70, .72) 0 1.15%, transparent 1.4%),
-      radial-gradient(circle at 82% 45%, rgba(201, 153, 70, .72) 0 1.15%, transparent 1.4%),
-      radial-gradient(circle at 18% 72%, rgba(201, 153, 70, .68) 0 1.05%, transparent 1.3%),
-      radial-gradient(circle at 82% 72%, rgba(201, 153, 70, .68) 0 1.05%, transparent 1.3%),
-      /* forged horizontal straps */
-      linear-gradient(180deg,
-        transparent 0 42%,
-        rgba(18, 18, 18, .92) 42% 44.1%,
-        rgba(119, 91, 48, .75) 44.1% 44.7%,
-        transparent 44.7% 68%,
-        rgba(18, 18, 18, .9) 68% 70.1%,
-        rgba(119, 91, 48, .68) 70.1% 70.6%,
-        transparent 70.6%),
-      /* centre seam / latch */
-      linear-gradient(90deg,
-        transparent 0 48.8%,
-        rgba(15, 15, 15, .92) 48.8% 50.2%,
-        rgba(122, 88, 42, .62) 50.2% 51.1%,
-        transparent 51.1%),
-      /* dark oak planks */
-      repeating-linear-gradient(90deg,
-        #24140d 0 12%,
-        #321b10 12% 23%,
-        #442415 23% 34%,
-        #29160e 34% 45%,
-        #3a2012 45% 56%,
-        #25140c 56% 67%,
-        #402316 67% 78%,
-        #2c170e 78% 89%,
-        #3a1f13 89% 100%) !important;
-    box-shadow:
-      inset 0 0 0 1px rgba(223, 181, 102, .24),
-      inset 0 0 0 4px rgba(24, 17, 12, .58),
-      inset 0 26px 40px rgba(0, 0, 0, .28),
-      inset 0 -22px 42px rgba(0, 0, 0, .58),
-      0 8px 16px rgba(0, 0, 0, .32) !important;
-    pointer-events: none;
-    transition: filter .18s ease, box-shadow .18s ease;
+    content: none !important;
+    display: none !important;
   }
 
-  /* One shared title baseline for all five portals. No more per-door magic
-   * margins: glyph, title and subtitle sit in the same architectural bay. */
+  /* One shared title baseline for all five real 3D portals. */
   body .menu.home-friendly > .home-castle-life .home-castle-hub__room > * {
     position: absolute !important;
     z-index: 3;
@@ -184,7 +84,7 @@
     text-shadow:
       0 2px 2px rgba(0, 0, 0, 1),
       0 0 7px rgba(0, 0, 0, .98),
-      0 0 13px rgba(224, 168, 71, .2) !important;
+      0 0 13px rgba(224, 168, 71, .20) !important;
   }
 
   body .menu.home-friendly > .home-castle-life .home-castle-hub__room--combat strong,
@@ -211,35 +111,26 @@
       0 0 6px rgba(0, 0, 0, .96) !important;
   }
 
-  /* The mock reads the portal itself as the call to action; the floating arrow
-   * was visual dashboard residue and is deliberately removed on desktop. */
   body .menu.home-friendly > .home-castle-life .home-castle-hub__room i {
     display: none !important;
   }
 
-  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:hover::before,
-  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:focus-visible::before {
-    opacity: 1 !important;
-    filter:
-      brightness(1.08)
-      drop-shadow(0 5px 4px rgba(0, 0, 0, .65))
-      drop-shadow(0 15px 18px rgba(0, 0, 0, .42));
-  }
-
-  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:hover::after,
-  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:focus-visible::after {
-    filter: brightness(1.10) saturate(1.04);
-    box-shadow:
-      inset 0 0 0 1px rgba(255, 215, 132, .38),
-      inset 0 0 0 4px rgba(24, 17, 12, .58),
-      inset 0 26px 40px rgba(0, 0, 0, .24),
-      inset 0 -22px 42px rgba(0, 0, 0, .52),
-      0 0 24px rgba(204, 140, 51, .20),
-      0 10px 18px rgba(0, 0, 0, .34) !important;
+  /* Hover/focus should illuminate the real doorway, never draw another door. */
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:hover,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:focus-visible {
+    background:
+      radial-gradient(
+        ellipse at 50% 33%,
+        rgba(232, 177, 82, .10) 0%,
+        rgba(171, 101, 39, .035) 35%,
+        transparent 65%
+      ) !important;
+    box-shadow: inset 0 0 0 1px rgba(244, 207, 129, .045) !important;
+    transform: none !important;
   }
 
   body .menu.home-friendly > .home-castle-life .home-castle-hub__room:focus-visible {
-    outline: 2px solid rgba(250, 211, 126, .86) !important;
+    outline: 2px solid rgba(250, 211, 126, .78) !important;
     outline-offset: -7px;
   }
 }
@@ -267,14 +158,9 @@
   }
 }
 
-/* Mobile keeps the existing first-fold navigation cards. The cinematic doors
- * are visible in the scene, but interaction remains dense and thumb-friendly. */
+/* Mobile keeps the established first-fold navigation cards. The real 3D doors
+ * remain scenery; interaction stays dense and thumb-friendly. */
 @media (max-width: 760px) {
-  body .menu.home-friendly > .home-castle-life .home-castle-hub__room::before,
-  body .menu.home-friendly > .home-castle-life .home-castle-hub__room::after {
-    clip-path: none !important;
-  }
-
   body .menu.home-friendly > .home-castle-life .home-castle-hub__room strong,
   body .menu.home-friendly > .home-castle-life .home-castle-hub__room small {
     white-space: normal !important;
@@ -283,8 +169,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  body .menu.home-friendly > .home-castle-life .home-castle-hub__room::before,
-  body .menu.home-friendly > .home-castle-life .home-castle-hub__room::after {
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room {
     transition: none !important;
   }
 }
