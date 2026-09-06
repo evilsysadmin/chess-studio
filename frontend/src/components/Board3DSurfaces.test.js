@@ -173,7 +173,7 @@ describe('Board3D premium surfaces', () => {
   it('limita DPR y sombras desde el arranque antes de degradar por frames lentos', () => {
     const desktop = warRoomRenderBudget({ devicePixelRatio: 2.75 });
     const mobile = warRoomRenderBudget({ coarsePointer: true, devicePixelRatio: 3 });
-    expect(desktop).toMatchObject({ pixelRatio: 1.35, shadowMapSize: 1024 });
+    expect(desktop).toMatchObject({ pixelRatio: 1.2, shadowMapSize: 1024 });
     expect(mobile).toMatchObject({ pixelRatio: 1, shadowMapSize: 512 });
 
     const scene = new THREE.Group();
