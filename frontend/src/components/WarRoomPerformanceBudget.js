@@ -14,6 +14,14 @@ const STATIC_INSTANCE_NAMES = new Set([
   'war-room-hammerbeam-longitudinal',
   'war-room-command-carpet-brass-key',
   'war-room-continuous-stone-skirting',
+  'war-room-premium-frame-outer-bar',
+  'war-room-premium-frame-inner-bar',
+  'war-room-sofa-burgundy-arm',
+  'war-room-sofa-carved-arm-rail',
+  'war-room-command-desk-pedestal',
+  'war-room-command-desk-drawer',
+  'war-room-command-chair-back-post',
+  'war-room-command-chair-leg',
 ]);
 
 const STATIC_UNNAMED_PARENT_NAMES = new Set([
