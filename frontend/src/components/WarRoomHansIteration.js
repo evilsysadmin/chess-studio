@@ -8,9 +8,9 @@ import {
   setWarRoomHansServiceDoorOpen,
 } from './WarRoomHansServiceDoor.js';
 
-const QUICK_ITERATION_VERSION = 'always-quick-v7-hearth-choreography';
+const QUICK_ITERATION_VERSION = 'always-quick-v8-android-deterministic-start';
 const QUICK_ENTRY_SECONDS = 7;
-const MOBILE_QUICK_ENTRY_HEADSTART_S = 4.8;
+const MOBILE_QUICK_ENTRY_VISIBLE_PROGRESS = 0.766;
 const QUICK_DOOR_X = 2.65;
 const HEARTH_BASKET_X = -1.62;
 const HEARTH_TOOLS_X = -2.28;
@@ -248,17 +248,18 @@ function remapWorkingFrame(frame, timelineT) {
   return mapped;
 }
 
-// Visual-iteration mode makes Hans impossible to miss. The service door now
-// lives beyond the visible armor, so the first seven seconds are a deliberate
-// corridor walk along the side of the board while the hearth dims. Only after
-// that does he cross to the basket on the opposite side of the fireplace.
-export function hansQuickIterationFrame(elapsedSeconds) {
+// Desktop walks the full service corridor. Mobile starts at the same proven
+// in-frustum point that the old 4.8 s headstart produced, but the choreography
+// clock itself still starts at zero on the first real render. That keeps Hans
+// visible immediately without silently consuming almost five seconds of story.
+export function hansQuickIterationFrame(elapsedSeconds, { coarsePointer = false } = {}) {
   const elapsed = Math.max(0, Number(elapsedSeconds) || 0);
   if (elapsed < QUICK_ENTRY_SECONDS) {
     const dimFrame = hansFireplaceFrame(
       Math.min(elapsed, 5) + HANS_FIREPLACE_START_DELAY_S,
     );
-    const eased = smoothstep01(elapsed / QUICK_ENTRY_SECONDS);
+    const entryStart = coarsePointer ? MOBILE_QUICK_ENTRY_VISIBLE_PROGRESS : 0;
+    const eased = lerp(entryStart, 1, smoothstep01(elapsed / QUICK_ENTRY_SECONDS));
     const closeDoor = smoothstep01(Math.max(0, (elapsed - 1.8) / 2.4));
     return {
       ...dimFrame,
@@ -392,8 +393,7 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
   const fireLight = fireplace?.getObjectByName?.('war-room-fire-light');
   if (!fireplace || !hans || !driver || !fireCore || !fireLight) return 0;
 
-  const entryHeadstartSeconds = coarsePointer ? MOBILE_QUICK_ENTRY_HEADSTART_S : 0;
-  const startedAt = nowMs() - entryHeadstartSeconds * 1000;
+  let startedAt = null;
   const doorDepth = Math.abs(Number(doorRefs?.doorZ) - Number(fireplace.position.z));
   const refs = {
     fireplace,
@@ -421,16 +421,19 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
   driver.userData.warRoomHansHearthRestored = false;
   driver.userData.warRoomHansUsesServiceDoor = true;
   driver.userData.warRoomHansServiceCorridor = 'past-armor-to-hearth-v1';
-  driver.userData.warRoomHansMobileEntryHeadstartSeconds = entryHeadstartSeconds;
-  driver.userData.warRoomHansEntryPresentation = coarsePointer ? 'mobile-proscenium-v2-choreographed' : 'full-service-corridor-v2-choreographed';
+  driver.userData.warRoomHansMobileEntryHeadstartSeconds = 0;
+  driver.userData.warRoomHansClockStart = 'first-real-render-v1';
+  driver.userData.warRoomHansEntryPresentation = coarsePointer ? 'mobile-visible-start-v3-choreographed' : 'full-service-corridor-v2-choreographed';
   driver.userData.warRoomHansChoreography = 'door-log-fire-poker-door-v2';
 
-  const initialFrame = hansQuickIterationFrame(entryHeadstartSeconds);
+  const initialFrame = hansQuickIterationFrame(0, { coarsePointer });
   applyQuickIterationFrame(refs, initialFrame, towardBoard);
   driver.userData.warRoomHansVisibleAtStart = hans.visible === true;
 
   driver.onBeforeRender = () => {
-    const frame = hansQuickIterationFrame((nowMs() - startedAt) / 1000);
+    const frameNow = nowMs();
+    if (startedAt == null) startedAt = frameNow;
+    const frame = hansQuickIterationFrame((frameNow - startedAt) / 1000, { coarsePointer });
     applyQuickIterationFrame(refs, frame, towardBoard);
     driver.userData.warRoomHansPhase = frame.phase;
     driver.userData.warRoomHansChoreographyPhase = frame.choreography || frame.phase;
@@ -521,7 +524,7 @@ function armProductionDoor(driver, hans, doorRefs, fireplace, towardBoard) {
   if (!driver?.userData?.warRoomHansSelected || typeof driver.onBeforeRender !== 'function') return;
   const original = driver.onBeforeRender;
   const side = doorRefs?.side || Math.sign(fireplace?.position?.x || -1) || -1;
-  const doorDepth = Math.abs(Number(doorRefs?.doorZ) - Number(fireplace?.position?.z));
+  const doorDepth = Math.abs(Number(doorRefs?.doorZ) - Number(fireplace?.position.z));
   let lastPhase = null;
   let phaseStartedAt = nowMs();
   driver.userData.warRoomHansUsesServiceDoor = true;
@@ -544,6 +547,20 @@ function armProductionDoor(driver, hans, doorRefs, fireplace, towardBoard) {
   };
 }
 
+function resetPartialMobileHansInstall(root) {
+  const fireplace = root?.getObjectByName?.('war-room-fireplace');
+  if (!fireplace) return false;
+  const routineInstalled = Boolean(fireplace.userData?.warRoomHansFireplaceRoutine);
+  const hans = root.getObjectByName?.('war-room-hans-butler');
+  const driver = root.getObjectByName?.('war-room-hans-fireplace-driver');
+  if (!routineInstalled || (hans && driver)) return false;
+
+  delete fireplace.userData.warRoomHansFireplaceRoutine;
+  if (root.userData) delete root.userData.warRoomHansFireplaceRoutine;
+  fireplace.userData.warRoomHansForcedUpgrade = 'partial-mobile-to-full-v1';
+  return true;
+}
+
 export function installWarRoomHansSceneRoutine(root, {
   towardBoard,
   coarsePointer = false,
@@ -551,6 +568,13 @@ export function installWarRoomHansSceneRoutine(root, {
 } = {}) {
   if (!root || !Number.isFinite(towardBoard)) return 0;
   const forceQuickIteration = quickIterationEnabled;
+
+  // A coarse/mobile pass may have installed only the hearth kit before the
+  // forced quick-game lease became observable. The fireplace routine used to
+  // mark itself complete and permanently block a later full-rig install. A
+  // forced pass must be allowed to promote that partial install to Hans+driver.
+  if (forceQuickIteration) resetPartialMobileHansInstall(root);
+
   // During this explicit visual-iteration window we deliberately build the
   // desktop Hans rig even on touch/coarse-pointer devices so the user can see
   // and judge the choreography. The ordinary mobile path remains simplified.
