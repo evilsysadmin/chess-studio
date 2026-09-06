@@ -21,6 +21,42 @@ export const PAWN_SLUG_WEAPONS = Object.freeze({
   panzerfaust: Object.freeze({ id: 'panzerfaust', slot: 4, shortLabel: 'PZF', label: 'Panzerfaust', trigger: 'semi', ammo: 9, cadence: 720, damage: 92, speed: 520, pellets: 1, spread: 0, explosive: true }),
 });
 
+const freezeUpgrade = (upgrade) => Object.freeze({
+  tier: 1,
+  code: 'Mk I',
+  level: 1,
+  damage: 1,
+  cadence: 1,
+  speed: 1,
+  spread: 1,
+  pelletsBonus: 0,
+  ammo: 1,
+  ...upgrade,
+});
+
+export const PAWN_SLUG_WEAPON_UPGRADES = Object.freeze({
+  pistol: Object.freeze([
+    freezeUpgrade({}),
+    freezeUpgrade({ tier: 2, code: 'Mk II', level: 4, damage: 1.08, cadence: 0.94, ammo: 1.1 }),
+    freezeUpgrade({ tier: 3, code: 'Mk III', level: 8, damage: 1.16, cadence: 0.88, ammo: 1.2 }),
+  ]),
+  machinegun: Object.freeze([
+    freezeUpgrade({}),
+    freezeUpgrade({ tier: 2, code: 'Mk II', level: 5, damage: 1.06, cadence: 0.94, spread: 0.9, ammo: 1.12 }),
+    freezeUpgrade({ tier: 3, code: 'Mk III', level: 9, damage: 1.12, cadence: 0.88, spread: 0.82, ammo: 1.25 }),
+  ]),
+  shotgun: Object.freeze([
+    freezeUpgrade({}),
+    freezeUpgrade({ tier: 2, code: 'Mk II', level: 6, damage: 1.05, cadence: 0.94, spread: 0.94, pelletsBonus: 1, ammo: 1.12 }),
+    freezeUpgrade({ tier: 3, code: 'Mk III', level: 10, damage: 1.1, cadence: 0.88, spread: 0.88, pelletsBonus: 2, ammo: 1.22 }),
+  ]),
+  panzerfaust: Object.freeze([
+    freezeUpgrade({}),
+    freezeUpgrade({ tier: 2, code: 'Mk II', level: 7, damage: 1.12, cadence: 0.92, speed: 1.05, ammo: 1.12 }),
+    freezeUpgrade({ tier: 3, code: 'Mk III', level: 11, damage: 1.22, cadence: 0.84, speed: 1.1, ammo: 1.22 }),
+  ]),
+});
+
 export const PAWN_SLUG_PICKUPS = Object.freeze([
   Object.freeze({ x: 920, type: 'machinegun' }),
   Object.freeze({ x: 1810, type: 'grenade' }),
@@ -58,9 +94,51 @@ export function pawnSlugWeaponShortLabel(id) {
   return PAWN_SLUG_WEAPONS[id]?.shortLabel || PAWN_SLUG_WEAPONS.pistol.shortLabel;
 }
 
-export function pawnSlugAmmoForPickup(type) {
+export function pawnSlugWeaponUpgradeForLevel(id, level = 1) {
+  const upgrades = PAWN_SLUG_WEAPON_UPGRADES[id] || PAWN_SLUG_WEAPON_UPGRADES.pistol;
+  const safeLevel = pawnSlugClamp(Math.floor(Number(level) || 1), 1, PAWN_SLUG_PLAYER.maxLevel);
+  let result = upgrades[0];
+  for (const upgrade of upgrades) {
+    if (upgrade.level > safeLevel) break;
+    result = upgrade;
+  }
+  return result;
+}
+
+export function pawnSlugWeaponDisplayLabel(id, level = 1) {
+  const upgrade = pawnSlugWeaponUpgradeForLevel(id, level);
+  return `${pawnSlugWeaponLabel(id)} · ${upgrade.code}`;
+}
+
+export function pawnSlugWeaponUpgradeCrossed(id, previousLevel, nextLevel) {
+  const previous = pawnSlugWeaponUpgradeForLevel(id, previousLevel);
+  const next = pawnSlugWeaponUpgradeForLevel(id, nextLevel);
+  return next.tier > previous.tier ? next : null;
+}
+
+export function pawnSlugWeaponStatsForLevel(id, level = 1) {
+  const weapon = PAWN_SLUG_WEAPONS[id] || PAWN_SLUG_WEAPONS.pistol;
+  const upgrade = pawnSlugWeaponUpgradeForLevel(weapon.id, level);
+  return Object.freeze({
+    ...weapon,
+    tier: upgrade.tier,
+    upgradeCode: upgrade.code,
+    cadence: Math.max(45, Math.round(weapon.cadence * upgrade.cadence)),
+    damage: weapon.damage * pawnSlugDamageMultiplier(level) * upgrade.damage,
+    speed: weapon.speed * upgrade.speed,
+    pellets: Math.max(1, weapon.pellets + upgrade.pelletsBonus),
+    spread: weapon.spread * upgrade.spread,
+    ammoMultiplier: upgrade.ammo,
+  });
+}
+
+export function pawnSlugAmmoForPickup(type, level = 1) {
   if (type === 'grenade') return 3;
-  return PAWN_SLUG_WEAPONS[type]?.ammo ?? 0;
+  const weapon = PAWN_SLUG_WEAPONS[type];
+  if (!weapon) return 0;
+  if (!Number.isFinite(weapon.ammo)) return Infinity;
+  const upgrade = pawnSlugWeaponUpgradeForLevel(type, level);
+  return Math.max(1, Math.round(weapon.ammo * upgrade.ammo));
 }
 
 export function pawnSlugScoreForKill(type) {
@@ -130,6 +208,7 @@ export function pawnSlugMatthiasLine(event) {
     hurt: 'Ach. Eso era parte de mi cuerpo, animal.',
     grenade: 'Granada enviada. Sin acuse de recibo.',
     levelUp: 'Ascenso concedido. Mis condolencias al enemigo.',
+    weaponUp: 'Arsenal mejorado. La burocracia ha autorizado más violencia.',
     midBoss: 'Un obispo blindado. Naturalmente. La teología ha empeorado mucho.',
     boss: 'Ah. Un castillo con orugas. Qué imaginación tan ofensiva.',
     bossDown: 'Schachmatt, mamotreto.',
