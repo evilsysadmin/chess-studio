@@ -11,6 +11,7 @@ import {
   chesscomCanonicalQualityProfile,
 } from './chesscomCanonicalProfile.js';
 import { installChesscomUnitCombatCanonical } from './chesscomUnitCombatCanonical.js';
+import { installChesscomOperatorV3 } from './chesscomOperatorV3.js';
 
 const HARD_WET_SURFACES = new Set(['ground','tile','road','concrete']);
 const METAL_SURFACES = new Set([
@@ -276,24 +277,29 @@ export async function createChesscomBabylon(host, options = {}) {
   });
   const uninstall = installCanonicalScene(B,scene,profile);
   const unitCombat = installChesscomUnitCombatCanonical(B,scene,{ tier:profile.tier });
+  const operatorV3 = installChesscomOperatorV3(B,scene);
   host.dataset.chesscomScene = CHESSCOM_CANONICAL_SCENE;
   host.dataset.chesscomSceneTier = profile.tier;
   host.dataset.chesscomUnits = 'mercenary-premium-v2';
+  host.dataset.chesscomOperator = 'operator-v3';
   host.dataset.chesscomFireStance = 'weapon-muzzle-v1';
-  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE`);
+  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · OPERATOR V3`);
 
   return {
     ...base,
     update(state, ui = {}) {
       base.update(state, ui);
       unitCombat.update(state);
+      operatorV3.update(state);
     },
     destroy() {
+      operatorV3.destroy();
       unitCombat.destroy();
       uninstall();
       delete host.dataset.chesscomScene;
       delete host.dataset.chesscomSceneTier;
       delete host.dataset.chesscomUnits;
+      delete host.dataset.chesscomOperator;
       delete host.dataset.chesscomFireStance;
       base.destroy();
     },
