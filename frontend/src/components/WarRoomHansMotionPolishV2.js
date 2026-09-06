@@ -21,6 +21,16 @@ const ENTRY_DOOR_PAST_ARMOR_OFFSET = 1.55;
 const ENTRY_ARMOR_CLEARANCE_AFTER = 0.72;
 const ENTRY_DOOR_SEGMENT_END = 0.24;
 const ENTRY_BYPASS_SEGMENT_END = 0.62;
+const MOTION_HOT_PATH_VERSION = 'scalar-position-reused-options-v1';
+const POSE_BASE_KEYS = Object.freeze([
+  'leftLeg',
+  'rightLeg',
+  'torso',
+  'head',
+  'leftArm',
+  'rightArm',
+  'carriedPoker',
+]);
 
 const MOVING_PHASES = new Set([
   'fire-dimming',
@@ -80,7 +90,7 @@ function ensureCompatibilityVisualRoot(hans) {
 
 function capturePoseBases(body) {
   const bases = {};
-  for (const key of ['leftLeg', 'rightLeg', 'torso', 'head', 'leftArm', 'rightArm', 'carriedPoker']) {
+  for (const key of POSE_BASE_KEYS) {
     const part = body?.[key];
     if (!part?.position || !part?.rotation) continue;
     bases[key] = {
@@ -96,9 +106,10 @@ function capturePoseBases(body) {
 }
 
 function restorePoseBases(body, bases) {
-  for (const [key, base] of Object.entries(bases || {})) {
+  for (const key of POSE_BASE_KEYS) {
+    const base = bases?.[key];
     const part = body?.[key];
-    if (!part) continue;
+    if (!base || !part) continue;
     part.position.set(base.positionX, base.positionY, base.positionZ);
     part.rotation.set(base.rotationX, base.rotationY, base.rotationZ);
   }
@@ -351,24 +362,39 @@ export function installWarRoomHansMotionPolish(root) {
   const bases = capturePoseBases(body);
   const original = driver.onBeforeRender;
   const doorDepth = inferDoorDepth(fireplace, door, hans);
-  applyRearWallEntryPath(hans, {
+  const entryPathOptions = {
     phase: driver.userData?.warRoomHansPhase,
     route: hans.userData?.warRoomHansRoute,
     side,
     forward,
     doorDepth,
-  });
-  const previousPosition = new THREE.Vector3(hans.position.x, 0, hans.position.z);
+  };
+  applyRearWallEntryPath(hans, entryPathOptions);
+  let previousX = Number(hans.position.x || 0);
+  let previousZ = Number(hans.position.z || 0);
   const armorSafeFrameX = actualArmorSafeFrameX(root, fireplace, side, WAR_ROOM_HANS_CANONICAL_SCALE);
+  const armorClearanceOptions = { phase: null, route: null, side, safeFrameX: armorSafeFrameX };
+  const wallClearanceOptions = {
+    phase: null,
+    route: null,
+    fireplace,
+    door,
+    side,
+    scale: WAR_ROOM_HANS_CANONICAL_SCALE,
+  };
+  const actionPoseOptions = { body, bases, amount: 0, side, forward };
+  const stokePoseOptions = { body, bases, stokeSignal: 0, side, forward };
+  const idlePoseOptions = { body, bases, phase: 'idle', now: 0 };
 
   hans.scale.setScalar(WAR_ROOM_HANS_CANONICAL_SCALE);
   hans.userData.warRoomHansCanonicalScale = WAR_ROOM_HANS_CANONICAL_SCALE;
   hans.userData.warRoomHansArmorSafeFrameX = armorSafeFrameX;
 
-  driver.onBeforeRender = (...args) => {
-    original(...args);
+  driver.onBeforeRender = (renderer, scene, camera, geometry, material, renderGroup) => {
+    original(renderer, scene, camera, geometry, material, renderGroup);
     if (!hans.visible) {
-      previousPosition.set(hans.position.x, 0, hans.position.z);
+      previousX = Number(hans.position.x || 0);
+      previousZ = Number(hans.position.z || 0);
       visualRoot.position.set(0, 0, 0);
       return;
     }
@@ -380,31 +406,20 @@ export function installWarRoomHansMotionPolish(root) {
 
     hans.position.y = STANDING_Y;
 
-    const entryRouteStage = applyRearWallEntryPath(hans, {
-      phase,
-      route,
-      side,
-      forward,
-      doorDepth,
-    });
-    const armorClearanceApplied = applyArmorBypassClearance(hans, {
-      phase,
-      route,
-      side,
-      safeFrameX: armorSafeFrameX,
-    });
-    const wallClearanceApplied = clampHansExitToDoorGeometry(hans, {
-      phase,
-      route,
-      fireplace,
-      door,
-      side,
-      scale: WAR_ROOM_HANS_CANONICAL_SCALE,
-    });
+    entryPathOptions.phase = phase;
+    entryPathOptions.route = route;
+    const entryRouteStage = applyRearWallEntryPath(hans, entryPathOptions);
+    armorClearanceOptions.phase = phase;
+    armorClearanceOptions.route = route;
+    const armorClearanceApplied = applyArmorBypassClearance(hans, armorClearanceOptions);
+    wallClearanceOptions.phase = phase;
+    wallClearanceOptions.route = route;
+    const wallClearanceApplied = clampHansExitToDoorGeometry(hans, wallClearanceOptions);
 
-    const currentPosition = new THREE.Vector3(hans.position.x, 0, hans.position.z);
-    const dx = currentPosition.x - previousPosition.x;
-    const dz = currentPosition.z - previousPosition.z;
+    const currentX = Number(hans.position.x || 0);
+    const currentZ = Number(hans.position.z || 0);
+    const dx = currentX - previousX;
+    const dz = currentZ - previousZ;
     const travelled = Math.hypot(dx, dz);
     const moving = MOVING_PHASES.has(phase) && travelled > 0.00004;
     if (moving) hans.rotation.y = headingFromMovement(dx, dz, forward);
@@ -415,27 +430,21 @@ export function installWarRoomHansMotionPolish(root) {
     restorePoseBases(body, bases);
     let actionPose = null;
     if (!moving && phase === 'take-log') {
-      applyTakeLogPose({ body, bases, amount: clamp01(rawCrouch / 0.15), side, forward });
+      actionPoseOptions.amount = clamp01(rawCrouch / 0.15);
+      applyTakeLogPose(actionPoseOptions);
       actionPose = 'pick-log';
     } else if (!moving && phase === 'place-log') {
-      applyPlaceLogPose({ body, bases, amount: clamp01(rawCrouch / 0.11), side, forward });
+      actionPoseOptions.amount = clamp01(rawCrouch / 0.11);
+      applyPlaceLogPose(actionPoseOptions);
       actionPose = 'place-log';
     } else if (!moving && phase === 'stoke-fire') {
-      applyStokeFirePose({
-        body,
-        bases,
-        stokeSignal: THREE.MathUtils.clamp(rawStoke / 0.22, -1, 1),
-        side,
-        forward,
-      });
+      stokePoseOptions.stokeSignal = THREE.MathUtils.clamp(rawStoke / 0.22, -1, 1);
+      applyStokeFirePose(stokePoseOptions);
       actionPose = 'stoke-fire-action';
     } else if (!moving) {
-      applyIdlePose({
-        body,
-        bases,
-        phase,
-        now: typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now(),
-      });
+      idlePoseOptions.phase = phase;
+      idlePoseOptions.now = typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+      applyIdlePose(idlePoseOptions);
     }
 
     visualRoot.position.set(0, 0, 0);
@@ -450,14 +459,18 @@ export function installWarRoomHansMotionPolish(root) {
     hans.userData.warRoomHansMotionPolishV2 = WAR_ROOM_HANS_MOTION_POLISH_V2_VERSION;
     hans.userData.warRoomHansMovementFacing = moving ? 'velocity-vector' : 'work-target';
     hans.userData.warRoomHansEntryRouteStage = entryRouteStage || hans.userData.warRoomHansEntryRouteStage || null;
+    hans.userData.warRoomHansMotionHotPath = MOTION_HOT_PATH_VERSION;
 
-    previousPosition.copy(currentPosition);
+    previousX = currentX;
+    previousZ = currentZ;
   };
 
   driver.userData.warRoomHansMotionPolish = LEGACY_MOTION_MARKER;
   driver.userData.warRoomHansMotionPolishV2 = WAR_ROOM_HANS_MOTION_POLISH_V2_VERSION;
+  driver.userData.warRoomHansMotionHotPath = MOTION_HOT_PATH_VERSION;
   hans.userData.warRoomHansMotionPolish = LEGACY_MOTION_MARKER;
   hans.userData.warRoomHansMotionPolishV2 = WAR_ROOM_HANS_MOTION_POLISH_V2_VERSION;
+  hans.userData.warRoomHansMotionHotPath = MOTION_HOT_PATH_VERSION;
   hans.userData.warRoomHansVisualRoot = VISUAL_ROOT_NAME;
   driver.userData.warRoomHansMotionCadence = 'elder-gait-owned-v4';
   driver.userData.warRoomHansMotionWallClearance = 'door-geometry-derived-v2';
