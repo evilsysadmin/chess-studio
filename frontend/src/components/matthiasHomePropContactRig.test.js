@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   applyMatthiasPremiumHomePose,
@@ -6,6 +7,7 @@ import {
 } from './MatthiasPremiumHome3D.js';
 import { applyMatthiasHomePropErgonomics } from './matthiasHomePropErgonomics.js';
 import { applyMatthiasHomePrivateGameRig } from './matthiasHomePrivateGameRig.js';
+import { rejoinMatthiasHomeEnvironmentForDispose } from './matthiasHomeInteractionScene.js';
 import {
   applyMatthiasHomePropContactRig,
   clearMatthiasHomePropContactRig,
@@ -39,39 +41,75 @@ function apply(rig, activityProfile, overrides = {}) {
 }
 
 function worldPosition(node) {
-  node.updateMatrixWorld(true);
-  return node.getWorldPosition(node.position.clone().set(0, 0, 0));
+  const target = new THREE.Vector3();
+  node.getWorldPosition(target);
+  return target;
+}
+
+function disposeRig(rig) {
+  rejoinMatthiasHomeEnvironmentForDispose(rig);
+  disposeMatthiasPremiumHome3D(rig);
 }
 
 describe('Matthias Home prop contact rig', () => {
-  it('deja el café en una mesa lateral y Matthias interactúa con el asa', () => {
+  it('deja el café y su mesa anclados al mundo mientras la mano alcanza el asa', () => {
+    const host = new THREE.Scene();
     const rig = createMatthiasPremiumHome3D();
+    host.add(rig.root);
     const contact = apply(rig, 'sip', { reach: .46 });
 
-    expect(MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION).toBe('home-prop-contact-v3-contextual-interaction');
+    expect(MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION).toBe('home-prop-contact-v4-world-anchored');
     expect(contact?.prop).toBe('cup');
     expect(contact?.staging).toBe('side-table');
+    expect(contact?.interactionAnchor).toBe('home-object-interaction-anchor');
     expect(contact?.supportSolved).toBe(true);
     expect(contact?.assistSolved).toBe(false);
-    expect(rig.activityRig.objectInteractionSurface.visible).toBe(true);
-    expect(rig.activityRig.cup.position.y).toBeLessThan(-.4);
+
+    const environment = rig.homeInteractionEnvironment;
+    const surface = rig.activityRig.objectInteractionSurface;
+    const cup = rig.activityRig.cup;
+    const handle = environment.getObjectByName('campaign-cup-handle');
+    const hand = rig.activityRig.supportGlove;
+
+    expect(environment.parent).toBe(host);
+    expect(surface.parent).toBe(environment);
+    expect(cup.parent).toBe(environment);
+    expect(surface.visible).toBe(true);
+    expect(surface.userData.homeAttachmentPolicy).toBe('never-hand');
+    expect(cup.userData.homeAttachmentPolicy).toBe('never-hand');
+    expect(rig.root.getObjectByName('campaign-cup-handle')).toBeUndefined();
+    expect(rig.root.getObjectByName('home-object-interaction-table-top')).toBeUndefined();
+    expect(environment.getObjectByName('home-object-interaction-table-top')).toBeTruthy();
     expect(rig.activityRig.support.visible).toBe(true);
     expect(rig.activityRig.assist.visible).toBe(false);
     expect(rig.activityRig.supportGlove.material.color.getHex()).toBe(0xe1c58c);
     expect(rig.activityRig.support.getObjectByName('activity-support-contact-cuff')?.visible).toBe(true);
-
-    const handle = rig.root.getObjectByName('campaign-cup-handle');
-    const hand = rig.activityRig.supportGlove;
     expect(handle).toBeTruthy();
     expect(worldPosition(handle).distanceTo(worldPosition(hand))).toBeLessThan(.09);
-    expect(rig.root.userData.activityPropContact).toBe(MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION);
+
+    host.updateMatrixWorld(true);
+    const cupBefore = worldPosition(cup);
+    const tableBefore = worldPosition(surface);
+    rig.root.position.x += .51;
+    rig.root.position.y += .27;
+    rig.root.rotation.z = .19;
+    // Reaplicar el solver reproduce un frame real: ergonomics puede haber
+    // intentado reescribir el prop, pero el anchor debe restaurarlo.
+    const contactAgain = apply(rig, 'sip', { reach: .48 });
+    host.updateMatrixWorld(true);
+
+    expect(worldPosition(cup).distanceTo(cupBefore)).toBeLessThan(1e-6);
+    expect(worldPosition(surface).distanceTo(tableBefore)).toBeLessThan(1e-6);
+    expect(contactAgain?.supportSolved).toBe(true);
     expect(rig.root.userData.activityPropRelationship).toBe('environment-interaction');
 
-    disposeMatthiasPremiumHome3D(rig);
+    disposeRig(rig);
   });
 
-  it('apoya libro y expediente en mobiliario en vez de sujetarlos ante el pecho', () => {
+  it('apoya libro en mobiliario world-anchored y conserva el expediente dedicado', () => {
+    const host = new THREE.Scene();
     const rig = createMatthiasPremiumHome3D();
+    host.add(rig.root);
 
     let contact = apply(rig, 'read', { headYaw: .10 });
     expect(contact?.prop).toBe('book');
@@ -79,7 +117,10 @@ describe('Matthias Home prop contact rig', () => {
     expect(contact?.supportSolved).toBe(true);
     expect(contact?.assistSolved).toBe(false);
     expect(rig.activityRig.objectInteractionSurface.visible).toBe(true);
-    expect(rig.activityRig.book.position.y).toBeLessThan(-.58);
+    expect(rig.activityRig.book.parent).toBe(rig.homeInteractionEnvironment);
+    expect(rig.activityRig.book.userData.homeAttachmentPolicy).toBe('never-hand');
+    expect(rig.root.getObjectByName('activity-book')).toBeUndefined();
+    expect(rig.homeInteractionEnvironment.getObjectByName('activity-book')).toBe(rig.activityRig.book);
     expect(rig.activityRig.supportGlove.position.distanceTo(contact.supportTarget)).toBeLessThan(1e-6);
     expect(rig.activityRig.assist.visible).toBe(false);
 
@@ -96,11 +137,13 @@ describe('Matthias Home prop contact rig', () => {
     expect(rig.activityRig.assist.visible).toBe(false);
     expect(rig.root.userData.activityPropRelationship).toBe('environment-interaction');
 
-    disposeMatthiasPremiumHome3D(rig);
+    disposeRig(rig);
   });
 
-  it('pone Chess Weekly sobre el escritorio y deja una mano libre', () => {
+  it('pone Chess Weekly sobre un escritorio world-anchored y deja una mano libre', () => {
+    const host = new THREE.Scene();
     const rig = createMatthiasPremiumHome3D();
+    host.add(rig.root);
     const contact = apply(rig, 'press', { headYaw: -.10, activityTime: 2.4 });
 
     expect(contact?.prop).toBe('press');
@@ -108,11 +151,11 @@ describe('Matthias Home prop contact rig', () => {
     expect(contact?.supportSolved).toBe(true);
     expect(contact?.assistSolved).toBe(false);
     expect(rig.activityRig.press.visible).toBe(true);
-    expect(rig.activityRig.press.position.y).toBeLessThan(-.54);
-    expect(rig.activityRig.press.scale.x).toBeLessThan(1);
-    expect(rig.activityRig.press.rotation.x).toBeLessThan(-.55);
-    expect(rig.activityRig.objectInteractionSurface.visible).toBe(true);
-    expect(rig.root.getObjectByName('home-object-interaction-table-top')).toBeTruthy();
+    expect(rig.activityRig.press.parent).toBe(rig.homeInteractionEnvironment);
+    expect(rig.activityRig.press.userData.homeAttachmentPolicy).toBe('never-hand');
+    expect(rig.activityRig.objectInteractionSurface.parent).toBe(rig.homeInteractionEnvironment);
+    expect(rig.homeInteractionEnvironment.getObjectByName('home-object-interaction-table-top')).toBeTruthy();
+    expect(rig.root.getObjectByName('home-object-interaction-table-top')).toBeUndefined();
     expect(rig.activityRig.support.visible).toBe(true);
     expect(rig.activityRig.assist.visible).toBe(false);
     expect(rig.root.userData.activityPropContactHands).toBe('interaction:1/0');
@@ -123,7 +166,7 @@ describe('Matthias Home prop contact rig', () => {
     expect(rig.root.userData.activityPageTurn).toBeGreaterThan(.05);
     expect(turning?.assistSolved).toBe(false);
 
-    disposeMatthiasPremiumHome3D(rig);
+    disposeRig(rig);
   });
 
   it('mantiene las manos del sueño debajo y detrás de la cara, sin puntos sobre los ojos', () => {
@@ -143,8 +186,6 @@ describe('Matthias Home prop contact rig', () => {
     expect(rig.root.userData.activitySleepFaceClearance).toBe('hands-below-and-behind-face');
     expect(rig.root.userData.activityPropContactHands).toBe('sleep-head-support');
 
-    // Waking into a book must hand control back to the environmental interaction
-    // solver immediately; no sleep coordinates are allowed to leak forward.
     const reading = apply(rig, 'read', { headYaw: .08 });
     expect(reading?.prop).toBe('book');
     expect(rig.root.userData.activitySleepFaceClearance).toBe('inactive');
@@ -154,11 +195,13 @@ describe('Matthias Home prop contact rig', () => {
     expect(rig.activityRig.assist.visible).toBe(false);
     expect(rig.root.userData.activityObjectStaging).toBe('reading-desk');
 
-    disposeMatthiasPremiumHome3D(rig);
+    disposeRig(rig);
   });
 
   it('apoya Partida privada en una mesa y no invade comida o sueño', () => {
+    const host = new THREE.Scene();
     const rig = createMatthiasPremiumHome3D();
+    host.add(rig.root);
     const next = pose('think', { activityTime: 4.2 });
     applyMatthiasPremiumHomePose(rig, next);
     applyMatthiasHomePropErgonomics(rig, next);
@@ -167,12 +210,19 @@ describe('Matthias Home prop contact rig', () => {
     const contact = applyMatthiasHomePropContactRig(rig);
     expect(contact?.prop).toBe('chess');
     expect(contact?.boardSupport).toBeTruthy();
-    expect(rig.root.getObjectByName('private-game-table-top')).toBeTruthy();
-    expect(rig.root.getObjectsByProperty('name', 'private-game-table-leg')).toHaveLength(2);
+
+    const privateGameScene = rig.activityRig.privateGame;
+    expect(privateGameScene).toBeTruthy();
+    expect(privateGameScene.parent).toBe(rig.homeInteractionEnvironment);
+    expect(rig.root.getObjectByName('private-game-table-top')).toBeUndefined();
+    expect(rig.root.getObjectsByProperty('name', 'private-game-table-leg')).toHaveLength(0);
+    expect(privateGameScene.getObjectByName('private-game-table-top')).toBeTruthy();
+    expect(privateGameScene.getObjectsByProperty('name', 'private-game-table-leg')).toHaveLength(2);
     expect(rig.activityRig.support.visible).toBe(false);
     expect(rig.activityRig.assist.visible).toBe(false);
     expect(rig.root.userData.activityPropContactHands).toBe('board-rest/pointing-hand');
     expect(rig.root.userData.activityPropRelationship).toBe('environment-interaction');
+    expect(rig.root.userData.activityInteractionAnchor).toBe('private-game-interaction-anchor');
 
     const sleepContact = apply(rig, 'sleep');
     expect(sleepContact?.prop).toBe('blanket');
@@ -185,7 +235,8 @@ describe('Matthias Home prop contact rig', () => {
     expect(rig.activityRig.objectInteractionSurface?.visible ?? false).toBe(false);
     expect(rig.root.userData.activitySleepFaceClearance).toBe('inactive');
     expect(rig.root.userData.activityPropRelationship).toBe('inactive');
+    expect(rig.root.userData.activityInteractionAnchor).toBe('inactive');
 
-    disposeMatthiasPremiumHome3D(rig);
+    disposeRig(rig);
   });
 });
