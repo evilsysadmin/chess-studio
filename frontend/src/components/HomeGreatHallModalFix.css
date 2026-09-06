@@ -3,6 +3,21 @@
 @import './HomePremiumFacade.css';
 @import './MatthiasHomeSpeechRailFix.css';
 
+/* Home's default path is "play now". Keep Quick Match visually dominant
+ * without stealing the semantic .home-mode-featured hook from Tournament. */
+body .home-friendly .home-modes-section .home-mode-quick {
+  border-color: color-mix(in srgb, var(--brass) 64%, rgba(255,255,255,.08)) !important;
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.045),
+    0 0 0 1px color-mix(in srgb, var(--brass) 14%, transparent),
+    0 18px 44px rgba(0,0,0,.24) !important;
+}
+
+body .home-friendly .home-modes-section .home-mode-quick .home-mode-kicker b,
+body .home-friendly .home-modes-section .home-mode-quick h3 {
+  color: color-mix(in srgb, var(--brass) 82%, var(--parchment));
+}
+
 /* Home Great Hall modal containment hotfix.
  *
  * HomeGreatHallCascade deliberately raises normal Home content above the
