@@ -71,11 +71,15 @@ describe('Matthias strategy booklet rig', () => {
     const rightPaper = rig.root.getObjectByName('strategy-booklet-paper-right');
 
     expect(book.visible).toBe(true);
-    expect(book.scale.x).toBeGreaterThan(1);
-    expect(book.position.y).toBeGreaterThan(-.45);
+    // Home is rendered inside a small card. A merely >1 scale technically
+    // passed while still looking like a postcard. Lock the real visual floor.
+    expect(book.scale.x).toBeGreaterThan(1.45);
+    expect(rig.root.userData.activityStrategyBookletVisualScale).toBeGreaterThan(1.45);
+    expect(book.position.y).toBeGreaterThan(-.28);
+    expect(book.position.z).toBeGreaterThan(.98);
     expect(book.rotation.x).toBeGreaterThan(-.30);
-    expect(Math.abs(leftPage.rotation.y)).toBeGreaterThan(.35);
-    expect(Math.abs(rightPage.rotation.y)).toBeGreaterThan(.35);
+    expect(Math.abs(leftPage.rotation.y)).toBeGreaterThan(.50);
+    expect(Math.abs(rightPage.rotation.y)).toBeGreaterThan(.50);
     expect(leftPaper.geometry.parameters.height).toBeGreaterThan(.40);
     expect(rightPaper.geometry.parameters.height).toBeGreaterThan(.40);
     expect(rig.root.getObjectsByProperty('name', 'strategy-booklet-text-line').length).toBeGreaterThanOrEqual(14);
@@ -90,7 +94,7 @@ describe('Matthias strategy booklet rig', () => {
     expect(rig.activityRig.assistGlove.position.distanceTo(result.assistTarget)).toBeLessThan(1e-6);
     expect(rig.activityRig.supportGlove.position.x).toBeGreaterThan(.20);
     expect(rig.activityRig.assistGlove.position.x).toBeLessThan(-.20);
-    expect(rig.headPivot.rotation.x).toBeGreaterThan(headBeforeBooklet + .05);
+    expect(rig.headPivot.rotation.x).toBeGreaterThan(headBeforeBooklet + .12);
 
     disposeMatthiasPremiumHome3D(rig);
   });
