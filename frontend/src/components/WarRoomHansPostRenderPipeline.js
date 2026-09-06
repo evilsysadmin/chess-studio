@@ -1,4 +1,4 @@
-export const WAR_ROOM_HANS_POST_RENDER_PIPELINE_VERSION = 'hans-post-render-pipeline-v1';
+export const WAR_ROOM_HANS_POST_RENDER_PIPELINE_VERSION = 'hans-post-render-pipeline-v2-no-rest';
 
 const PIPELINE_STATES = new WeakMap();
 
@@ -14,6 +14,7 @@ function markDriver(driver, state) {
   driver.userData.warRoomHansPostRenderPipeline = WAR_ROOM_HANS_POST_RENDER_PIPELINE_VERSION;
   driver.userData.warRoomHansPostRenderStageCount = state.stages.size;
   driver.userData.warRoomHansPostRenderStages = state.ordered.map((stage) => stage.key);
+  driver.userData.warRoomHansPostRenderHotPath = 'direct-args-v2';
 }
 
 function ensurePipeline(driver) {
@@ -29,9 +30,14 @@ function ensurePipeline(driver) {
   };
   PIPELINE_STATES.set(driver, state);
 
-  driver.onBeforeRender = (...args) => {
-    state.base(...args);
-    for (const stage of state.ordered) stage.run(...args);
+  // THREE.Object3D.onBeforeRender has a stable six-argument signature. Keep
+  // those arguments explicit so this hot path does not allocate a rest array
+  // and then spread it again for the base hook and every registered stage.
+  driver.onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
+    state.base(renderer, scene, camera, geometry, material, group);
+    for (const stage of state.ordered) {
+      stage.run(renderer, scene, camera, geometry, material, group);
+    }
   };
   markDriver(driver, state);
   return state;

@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_FACING_GUARD_VERSION = 'rendered-face-travel-guard-v1';
+export const WAR_ROOM_HANS_FACING_GUARD_VERSION = 'rendered-face-travel-guard-v2-scratch';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
 const MIN_TRAVEL = 0.00004;
+const MIN_TRAVEL_SQ = MIN_TRAVEL * MIN_TRAVEL;
 const MIN_ACCEPTABLE_DOT = 0.78;
 const POST_RENDER_ORDER = 10;
 
@@ -37,19 +38,25 @@ function findFaceAnchor(head) {
   return candidate;
 }
 
-function faceVectorInParent(hans, head, faceAnchor) {
+function faceVectorInParent(hans, head, faceAnchor, scratch, refreshMatrices = true) {
   const parent = hans?.parent;
   if (!parent || !head || !faceAnchor) return null;
 
-  parent.updateMatrixWorld?.(true);
-  head.updateMatrixWorld?.(true);
-  faceAnchor.updateMatrixWorld?.(true);
+  if (refreshMatrices) {
+    // One forced parent update refreshes Hans + head + anchor together. The old
+    // guard forced all three independently and then allocated four vectors.
+    parent.updateMatrixWorld?.(true);
+    scratch.parentInverse.copy(parent.matrixWorld).invert();
+  }
 
-  const headWorld = head.getWorldPosition(new THREE.Vector3());
-  const faceWorld = faceAnchor.getWorldPosition(new THREE.Vector3());
-  const headLocal = parent.worldToLocal(headWorld.clone());
-  const faceLocal = parent.worldToLocal(faceWorld.clone());
-  const vector = planar(faceLocal.sub(headLocal));
+  scratch.headLocal
+    .setFromMatrixPosition(head.matrixWorld)
+    .applyMatrix4(scratch.parentInverse);
+  scratch.faceLocal
+    .setFromMatrixPosition(faceAnchor.matrixWorld)
+    .applyMatrix4(scratch.parentInverse);
+
+  const vector = planar(scratch.faceVector.copy(scratch.faceLocal).sub(scratch.headLocal));
   if (vector.lengthSq() < 1e-8) return null;
   return vector.normalize();
 }
@@ -70,37 +77,49 @@ export function installWarRoomHansFacingGuard(root) {
   if (!hans || !driver || !head || !faceAnchor || typeof driver.onBeforeRender !== 'function') return 0;
   if (driver.userData?.warRoomHansFacingGuard === WAR_ROOM_HANS_FACING_GUARD_VERSION) return 0;
 
-  const previousPosition = new THREE.Vector3(hans.position.x, 0, hans.position.z);
+  let previousX = Number(hans.position.x || 0);
+  let previousZ = Number(hans.position.z || 0);
+  const scratch = {
+    movement: new THREE.Vector3(),
+    headLocal: new THREE.Vector3(),
+    faceLocal: new THREE.Vector3(),
+    faceVector: new THREE.Vector3(),
+    parentInverse: new THREE.Matrix4(),
+  };
   let corrections = 0;
 
   const registered = registerWarRoomHansPostRenderStage(driver, {
     key: WAR_ROOM_HANS_FACING_GUARD_VERSION,
     order: POST_RENDER_ORDER,
     run: () => {
+      const currentX = Number(hans.position.x || 0);
+      const currentZ = Number(hans.position.z || 0);
+      const dx = currentX - previousX;
+      const dz = currentZ - previousZ;
+
       if (!hans.visible) {
-        previousPosition.set(hans.position.x, 0, hans.position.z);
+        previousX = currentX;
+        previousZ = currentZ;
         return;
       }
 
-      const currentPosition = new THREE.Vector3(hans.position.x, 0, hans.position.z);
-      const movement = currentPosition.clone().sub(previousPosition);
-      const travel = movement.length();
+      const travelSq = dx * dx + dz * dz;
       const phase = driver.userData?.warRoomHansPhase
         || hans.userData?.warRoomHansChoreographyPhase
         || 'idle';
 
       let dotBefore = null;
       let dotAfter = null;
-      if (MOVING_PHASES.has(phase) && travel > MIN_TRAVEL) {
-        movement.normalize();
-        const face = faceVectorInParent(hans, head, faceAnchor);
+      if (MOVING_PHASES.has(phase) && travelSq > MIN_TRAVEL_SQ) {
+        scratch.movement.set(dx, 0, dz).multiplyScalar(1 / Math.sqrt(travelSq));
+        const face = faceVectorInParent(hans, head, faceAnchor, scratch, true);
         if (face) {
-          dotBefore = face.dot(movement);
+          dotBefore = face.dot(scratch.movement);
           if (dotBefore < MIN_ACCEPTABLE_DOT) {
-            hans.rotation.y += signedPlanarAngle(face, movement);
+            hans.rotation.y += signedPlanarAngle(face, scratch.movement);
             hans.updateMatrixWorld?.(true);
-            const correctedFace = faceVectorInParent(hans, head, faceAnchor);
-            dotAfter = correctedFace?.dot(movement) ?? null;
+            const correctedFace = faceVectorInParent(hans, head, faceAnchor, scratch, false);
+            dotAfter = correctedFace?.dot(scratch.movement) ?? null;
             corrections += 1;
           } else {
             dotAfter = dotBefore;
@@ -113,13 +132,16 @@ export function installWarRoomHansFacingGuard(root) {
       hans.userData.warRoomHansFacingGuardCorrections = corrections;
       hans.userData.warRoomHansFacingGuardDotBefore = dotBefore;
       hans.userData.warRoomHansFacingGuardDotAfter = dotAfter;
-      previousPosition.copy(currentPosition);
+      hans.userData.warRoomHansFacingGuardHotPath = 'preallocated-scratch-v2';
+      previousX = currentX;
+      previousZ = currentZ;
     },
   });
   if (!registered) return 0;
 
   driver.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
   driver.userData.warRoomHansFacingGuardMode = 'rendered-face-vs-travel';
+  driver.userData.warRoomHansFacingGuardHotPath = 'preallocated-scratch-v2';
   hans.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
   return 1;
 }

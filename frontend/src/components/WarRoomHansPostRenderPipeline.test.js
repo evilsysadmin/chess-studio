@@ -30,9 +30,35 @@ describe('Hans post-render pipeline', () => {
     expect(getWarRoomHansPostRenderStageKeys(driver)).toEqual(['facing-guard', 'elder-gait']);
     expect(driver.userData.warRoomHansPostRenderPipeline).toBe(WAR_ROOM_HANS_POST_RENDER_PIPELINE_VERSION);
     expect(driver.userData.warRoomHansPostRenderStageCount).toBe(2);
+    expect(driver.userData.warRoomHansPostRenderHotPath).toBe('direct-args-v2');
 
     driver.onBeforeRender();
     expect(calls).toEqual(['base', 'facing', 'elder']);
+  });
+
+  it('forwards the native Three.js render arguments without changing identity', () => {
+    const seen = [];
+    const driver = {
+      userData: {},
+      onBeforeRender: (renderer, scene, camera, geometry, material, group) => {
+        seen.push(['base', renderer, scene, camera, geometry, material, group]);
+      },
+    };
+    const args = Array.from({ length: 6 }, (_, index) => ({ index }));
+
+    expect(registerWarRoomHansPostRenderStage(driver, {
+      key: 'probe',
+      order: 1,
+      run: (renderer, scene, camera, geometry, material, group) => {
+        seen.push(['probe', renderer, scene, camera, geometry, material, group]);
+      },
+    })).toBe(1);
+
+    driver.onBeforeRender(...args);
+    expect(seen).toEqual([
+      ['base', ...args],
+      ['probe', ...args],
+    ]);
   });
 
   it('rejects duplicate stage keys instead of nesting another render wrapper', () => {
