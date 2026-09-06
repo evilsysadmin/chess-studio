@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { APP_BUILD_ID, APP_RELEASE } from '../release.js';
-import { fetchLatestRelease, isReleaseUpdateAvailable, RELEASE_CHECK_INTERVAL_MS } from '../releaseUpdate.js';
+import {
+  bindReleaseUpdateSignals,
+  fetchLatestRelease,
+  isReleaseUpdateAvailable,
+} from '../releaseUpdate.js';
 import { STORAGE_SESSION, getStorageItem, setStorageItem } from '../safeStorage.js';
 
 const DISMISS_PREFIX = 'chess-study-release-notice-dismissed:';
@@ -56,18 +60,12 @@ export default function ReleaseUpdateNotice({ deferReload = false }) {
     }
 
     void check();
-    const checkIfVisible = () => {
-      if (document.visibilityState === 'visible') void check();
-    };
-    const timer = window.setInterval(checkIfVisible, RELEASE_CHECK_INTERVAL_MS);
-    const onVisibility = checkIfVisible;
-    document.addEventListener('visibilitychange', onVisibility);
+    const unbindSignals = bindReleaseUpdateSignals({ check });
     return () => {
       active = false;
       controller.abort();
       checkInFlightRef.current = null;
-      window.clearInterval(timer);
-      document.removeEventListener('visibilitychange', onVisibility);
+      unbindSignals();
     };
   }, []);
 
