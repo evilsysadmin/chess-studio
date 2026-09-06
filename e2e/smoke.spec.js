@@ -379,3 +379,258 @@ test('Home · Feedback abre y envía sin tumbar la pantalla ni deformar la cabec
   expect(Math.abs(after.width - before.width)).toBeLessThan(1);
   expect(Math.abs(after.height - before.height)).toBeLessThan(1);
 });
+
+test('Home · Feedback, Mi cuenta y Novedades comparten geometría de control', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  const feedback = page.getByRole('button', { name: 'Enviar feedback' });
+  const account = page.getByRole('button', { name: 'Abrir menú de cuenta' });
+  const news = page.getByRole('button', { name: /Abrir novedades/ });
+  const boxes = await Promise.all([feedback.boundingBox(), account.boundingBox(), news.boundingBox()]);
+  expect(boxes.every(Boolean)).toBe(true);
+  const widths = boxes.map((box) => box.width);
+  const heights = boxes.map((box) => box.height);
+  expect(Math.max(...widths) - Math.min(...widths)).toBeLessThan(1);
+  expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1);
+});
+
+
+test('desktop 1440x900 · Partida completa cabe en viewport y la botonera comparte geometría', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockApi(page);
+  await login(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+  await clickBoardMove(page, 'e2', 'e4');
+  await expect(gameTurn(page)).toBeVisible();
+  await expect(page.getByText('Opciones avanzadas', { exact: true })).toHaveCount(0);
+
+  const fit = await page.evaluate(() => {
+    const shell = document.querySelector('.app-shell-board-game');
+    const board = document.querySelector('.game-screen .game-board-stack');
+    const controls = document.querySelector('.game-screen .game-command-deck');
+    const side = document.querySelector('.game-screen .game-side-column');
+    if (!shell || !board || !controls || !side) return null;
+    const boardRect = board.getBoundingClientRect();
+    const controlsRect = controls.getBoundingClientRect();
+    const sideRect = side.getBoundingClientRect();
+    return {
+      pageFits: document.documentElement.scrollHeight <= window.innerHeight + 2,
+      boardBottom: boardRect.bottom,
+      controlsBottom: controlsRect.bottom,
+      sideBottom: sideRect.bottom,
+      viewport: window.innerHeight,
+    };
+  });
+  expect(fit).not.toBeNull();
+  expect(fit.pageFits).toBe(true);
+  expect(fit.boardBottom).toBeLessThanOrEqual(fit.viewport + 1);
+  expect(fit.controlsBottom).toBeLessThanOrEqual(fit.viewport + 1);
+  expect(fit.sideBottom).toBeLessThanOrEqual(fit.viewport + 1);
+
+  const buttons = page.locator('.game-screen .game-controls button:visible');
+  const heights = await buttons.evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height));
+  expect(heights.length).toBeGreaterThanOrEqual(2);
+  expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1);
+});
+
+test('desktop 1366x768 · Partida compacta conserva tablero, jugador y acciones dentro del viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1366, height: 768 });
+  await mockApi(page);
+  await login(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+  await clickBoardMove(page, 'e2', 'e4');
+  await expect(gameTurn(page)).toBeVisible();
+  await expect(page.getByText('Opciones avanzadas', { exact: true })).toHaveCount(0);
+
+  const bottomRail = page.locator('.game-screen .game-player-rail.is-human');
+  const controls = page.locator('.game-screen .game-command-deck');
+  await expect(bottomRail).toBeVisible();
+  await expect(controls).toBeVisible();
+  let [railBox, controlsBox] = await Promise.all([bottomRail.boundingBox(), controls.boundingBox()]);
+  expect(railBox.bottom).toBeLessThanOrEqual(769);
+  expect(controlsBox.bottom).toBeLessThanOrEqual(769);
+
+  await page.setViewportSize({ width: 1280, height: 720 });
+  [railBox, controlsBox] = await Promise.all([bottomRail.boundingBox(), controls.boundingBox()]);
+  expect(railBox.bottom).toBeLessThanOrEqual(721);
+  expect(controlsBox.bottom).toBeLessThanOrEqual(721);
+  expect(await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight + 2)).toBe(true);
+});
+
+test('desktop 1440x900 · Combat mantiene mesa y acciones coherentes dentro del viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockApi(page);
+  await login(page);
+  await openCampaignBriefing(page);
+  await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
+  await dismissTutorialIfVisible(page);
+  const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
+  await expect(quick).toBeVisible();
+  await quick.click();
+  await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
+
+  const board = page.locator('.combat-battle-screen .game-board-stack');
+  const controls = page.locator('.combat-game-controls');
+  const [boardBox, controlsBox] = await Promise.all([board.boundingBox(), controls.boundingBox()]);
+  expect(boardBox).not.toBeNull();
+  expect(controlsBox).not.toBeNull();
+  expect(boardBox.bottom).toBeLessThanOrEqual(901);
+  expect(controlsBox.bottom).toBeLessThanOrEqual(901);
+
+  const heights = await controls.locator('button:visible').evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height));
+  expect(heights.length).toBeGreaterThanOrEqual(2);
+  expect(Math.max(...heights) - Math.min(...heights)).toBeLessThan(1);
+});
+
+
+test('Onboarding Home · Matthias presenta cuatro pasos y Escuela va primero', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+
+  let guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+  await expect(guide).toBeVisible();
+  await expect(guide.getByText(/MATTHIAS · GUÍA DE CAMPO/i)).toBeVisible();
+
+  const schoolStep = guide.getByRole('button', { name: /^Entra en la Escuela de Matthias\./ });
+  const gameStep = guide.getByRole('button', { name: /^Juega una partida\./ });
+  const puzzleStep = guide.getByRole('button', { name: /^Resuelve un puzzle\./ });
+  const insightsStep = guide.getByRole('button', { name: 'Mira Así juegas. Convierte tus partidas en una siguiente acción.', exact: true });
+  await expect(schoolStep).toBeEnabled();
+  await expect(gameStep).toBeEnabled();
+  await expect(puzzleStep).toBeEnabled();
+  await expect(insightsStep).toBeEnabled();
+
+  const schoolCard = buttonWithHeading(page, 'Escuela de Matthias');
+  await expect(schoolCard).toHaveClass(/home-onboarding-target/);
+  await expect(schoolCard.getByText('PASO 1/4 · SIGUIENTE', { exact: true })).toBeVisible();
+
+  await schoolStep.click();
+  await expect(page.getByRole('heading', { name: 'Aprende jugando. Aprueba demostrando.', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+  await expect(guide).toBeVisible();
+
+  await guide.getByRole('button', { name: /^Juega una partida\./ }).click();
+  await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
+  guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+  await expect(guide).toBeVisible();
+
+  await guide.getByRole('button', { name: /^Resuelve un puzzle\./ }).click();
+  await expect(page.locator('.puzzle-screen')).toBeVisible();
+  await page.keyboard.press('Escape');
+  guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+  await expect(guide).toBeVisible();
+
+  await guide.getByRole('button', { name: 'Mira Así juegas. Convierte tus partidas en una siguiente acción.', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+});
+
+
+test('Home · un 503 al iniciar partida deja un error visible junto a la acción, no en el footer', async ({ page }) => {
+  await mockApi(page, { gameCreateFailures: 1 });
+  await login(page);
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+
+  const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await expect(dialog).toBeVisible();
+  const alert = dialog.getByRole('alert');
+  await expect(alert).toContainText('Chess Studio ha tenido un problema');
+  await expect(dialog.getByRole('button', { name: 'Empezar partida', exact: true })).toBeEnabled();
+});
+
+
+test('resiliencia · un 503 después de persistir create reusa Idempotency-Key y no duplica partida', async ({ page }) => {
+  const requests = [];
+  await mockApi(page, { gameCreateCommitThenFailures: 1, requestLog: requests });
+  await login(page);
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toBeVisible();
+
+  await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+
+  const creates = requests.filter((item) => item.method === 'POST' && item.path.endsWith('/api/games'));
+  expect(creates).toHaveLength(2);
+  expect(creates[0].idempotencyKey).toBeTruthy();
+  expect(creates[1].idempotencyKey).toBe(creates[0].idempotencyKey);
+});
+
+
+test('golden journey · onboarding → partida/reload → mate → puzzle → Combat/reload', async ({ page }) => {
+  await page.addInitScript(() => { Math.random = () => 0; });
+  await mockApi(page, { gameScenario: 'mate' });
+  await login(page);
+
+  const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+  await expect(guide).toBeVisible();
+  await expect(buttonWithHeading(page, 'Torneo')).toHaveClass(/home-onboarding-target/);
+  await guide.getByRole('button', { name: 'Ahora no', exact: true }).click();
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('dialog', { name: 'Configurar partida rápida' })
+    .getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+  await page.reload();
+  await expect(gameTurn(page)).toBeVisible();
+
+  await clickBoardMove(page, 'g6', 'g7');
+  const endgame = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Jaque mate', exact: true }) });
+  await expect(endgame).toBeVisible();
+  await expect(endgame.getByText('¡Ganaste la partida!', { exact: true })).toBeVisible();
+  await endgame.getByRole('button', { name: 'Volver al menú', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+
+  const learningMore = page.locator('details.home-learning-more');
+  if (!(await learningMore.evaluate((node) => node.open))) await learningMore.locator('summary').click();
+  await learningMore.getByRole('button').filter({ has: learningMore.getByRole('heading', { name: 'Puzzles', exact: true }) }).click();
+  await expect(page.getByText('Mate en 1', { exact: true }).first()).toBeVisible();
+  await clickBoardMove(page, 'a1', 'a8');
+  await expect(page.getByText('¡Resuelto!', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
+  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+
+  await openCampaignBriefing(page);
+  await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();
+  await dismissTutorialIfVisible(page);
+  const quick = page.getByRole('button', { name: /JUGAR CON (ESTA|FORMACIÓN RECOMENDADA)/i });
+  await expect(quick).toBeVisible();
+  await quick.click();
+  await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+});
+
+
+test('resiliencia · jugada persistida con respuesta perdida se reintenta sin doble movimiento', async ({ page }) => {
+  const requests = [];
+  await mockApi(page, { gameScenario: 'opening', moveCommitThenFailures: 1, requestLog: requests });
+  await login(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('dialog', { name: 'Configurar partida rápida' })
+    .getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+
+  await clickBoardMove(page, 'e2', 'e4');
+  await expect(page.getByRole('button', { name: /^Casilla e2, peón blanco/i })).toBeVisible();
+
+  await clickBoardMove(page, 'e2', 'e4');
+  await expect(page.getByRole('button', { name: /^Casilla e4, peón blanco/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla e5, peón negro/i })).toBeVisible();
+
+  const moves = requests.filter((item) => item.method === 'POST' && /\/api\/games\/[^/]+\/move$/.test(item.path));
+  expect(moves).toHaveLength(2);
+  expect(moves[0].idempotencyKey).toBeTruthy();
+  expect(moves[1].idempotencyKey).toBe(moves[0].idempotencyKey);
+});
