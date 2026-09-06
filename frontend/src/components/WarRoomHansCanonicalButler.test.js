@@ -88,7 +88,7 @@ describe('Hans canonical elder-butler mock', () => {
     driver.onBeforeRender();
     expect(cane.visible).toBe(true);
     expect(cane.rotation.x).not.toBeCloseTo(baseCaneRotation, 6);
-    expect(hans.userData.warRoomHansGaitGrounding).toBe('distance-locked-short-step-v2');
+    expect(hans.userData.warRoomHansGaitGrounding).toBe('real-distance-foot-plant-v3');
 
     carriedLog.visible = true;
     driver.onBeforeRender();
