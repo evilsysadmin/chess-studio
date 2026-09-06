@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
 export const WAR_ROOM_HANS_FACING_GUARD_VERSION = 'rendered-face-travel-guard-v1';
 
@@ -6,6 +7,7 @@ const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
 const MIN_TRAVEL = 0.00004;
 const MIN_ACCEPTABLE_DOT = 0.78;
+const POST_RENDER_ORDER = 10;
 
 const MOVING_PHASES = new Set([
   'fire-dimming',
@@ -68,51 +70,53 @@ export function installWarRoomHansFacingGuard(root) {
   if (!hans || !driver || !head || !faceAnchor || typeof driver.onBeforeRender !== 'function') return 0;
   if (driver.userData?.warRoomHansFacingGuard === WAR_ROOM_HANS_FACING_GUARD_VERSION) return 0;
 
-  const original = driver.onBeforeRender;
   const previousPosition = new THREE.Vector3(hans.position.x, 0, hans.position.z);
   let corrections = 0;
 
-  driver.onBeforeRender = (...args) => {
-    original(...args);
+  const registered = registerWarRoomHansPostRenderStage(driver, {
+    key: WAR_ROOM_HANS_FACING_GUARD_VERSION,
+    order: POST_RENDER_ORDER,
+    run: () => {
+      if (!hans.visible) {
+        previousPosition.set(hans.position.x, 0, hans.position.z);
+        return;
+      }
 
-    if (!hans.visible) {
-      previousPosition.set(hans.position.x, 0, hans.position.z);
-      return;
-    }
+      const currentPosition = new THREE.Vector3(hans.position.x, 0, hans.position.z);
+      const movement = currentPosition.clone().sub(previousPosition);
+      const travel = movement.length();
+      const phase = driver.userData?.warRoomHansPhase
+        || hans.userData?.warRoomHansChoreographyPhase
+        || 'idle';
 
-    const currentPosition = new THREE.Vector3(hans.position.x, 0, hans.position.z);
-    const movement = currentPosition.clone().sub(previousPosition);
-    const travel = movement.length();
-    const phase = driver.userData?.warRoomHansPhase
-      || hans.userData?.warRoomHansChoreographyPhase
-      || 'idle';
-
-    let dotBefore = null;
-    let dotAfter = null;
-    if (MOVING_PHASES.has(phase) && travel > MIN_TRAVEL) {
-      movement.normalize();
-      const face = faceVectorInParent(hans, head, faceAnchor);
-      if (face) {
-        dotBefore = face.dot(movement);
-        if (dotBefore < MIN_ACCEPTABLE_DOT) {
-          hans.rotation.y += signedPlanarAngle(face, movement);
-          hans.updateMatrixWorld?.(true);
-          const correctedFace = faceVectorInParent(hans, head, faceAnchor);
-          dotAfter = correctedFace?.dot(movement) ?? null;
-          corrections += 1;
-        } else {
-          dotAfter = dotBefore;
+      let dotBefore = null;
+      let dotAfter = null;
+      if (MOVING_PHASES.has(phase) && travel > MIN_TRAVEL) {
+        movement.normalize();
+        const face = faceVectorInParent(hans, head, faceAnchor);
+        if (face) {
+          dotBefore = face.dot(movement);
+          if (dotBefore < MIN_ACCEPTABLE_DOT) {
+            hans.rotation.y += signedPlanarAngle(face, movement);
+            hans.updateMatrixWorld?.(true);
+            const correctedFace = faceVectorInParent(hans, head, faceAnchor);
+            dotAfter = correctedFace?.dot(movement) ?? null;
+            corrections += 1;
+          } else {
+            dotAfter = dotBefore;
+          }
         }
       }
-    }
 
-    hans.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
-    hans.userData.warRoomHansFacingGuardMode = 'rendered-face-vs-travel';
-    hans.userData.warRoomHansFacingGuardCorrections = corrections;
-    hans.userData.warRoomHansFacingGuardDotBefore = dotBefore;
-    hans.userData.warRoomHansFacingGuardDotAfter = dotAfter;
-    previousPosition.copy(currentPosition);
-  };
+      hans.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
+      hans.userData.warRoomHansFacingGuardMode = 'rendered-face-vs-travel';
+      hans.userData.warRoomHansFacingGuardCorrections = corrections;
+      hans.userData.warRoomHansFacingGuardDotBefore = dotBefore;
+      hans.userData.warRoomHansFacingGuardDotAfter = dotAfter;
+      previousPosition.copy(currentPosition);
+    },
+  });
+  if (!registered) return 0;
 
   driver.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
   driver.userData.warRoomHansFacingGuardMode = 'rendered-face-vs-travel';
