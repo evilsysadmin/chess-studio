@@ -57,6 +57,21 @@ function addSphere(THREE, parent, radius, position, material, widthSegments = 10
   return mesh;
 }
 
+function addBeamBetween(THREE, parent, from, to, thickness, depth, material, z) {
+  const dx = to[0] - from[0];
+  const dy = to[1] - from[1];
+  const length = Math.hypot(dx, dy);
+  const mesh = addBox(
+    THREE,
+    parent,
+    [length, thickness, depth],
+    [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2, z],
+    material,
+  );
+  mesh.rotation.z = Math.atan2(dy, dx);
+  return mesh;
+}
+
 function addTorch(THREE, parent, x, y, z, side, materials, addLight) {
   const { iron, ember, flame } = materials;
   const group = new THREE.Group();
@@ -77,27 +92,95 @@ function addTorch(THREE, parent, x, y, z, side, materials, addLight) {
   return group;
 }
 
-function addArchPortal(THREE, parent, x, width, materials) {
-  const { stone, stoneEdge, dark } = materials;
+function addArchPortal(THREE, parent, x, width, materials, coarse = false) {
+  const { stone, stoneEdge, dark, oak, oakEdge, iron, brass } = materials;
   const group = new THREE.Group();
   group.position.set(x, 0, 0);
   parent.add(group);
 
   const half = width / 2;
-  addBox(THREE, group, [0.42, 4.65, 0.62], [-half, 1.45, -3.74], stoneEdge);
-  addBox(THREE, group, [0.42, 4.65, 0.62], [half, 1.45, -3.74], stoneEdge);
-  addBox(THREE, group, [width + 0.55, 0.28, 0.70], [0, -0.80, -3.74], stoneEdge);
+  const outerHalf = half + 0.10;
+  const innerHalf = half - 0.20;
+  const sillY = -0.76;
+  const springY = 2.80;
+  const apexY = 4.28;
+  const innerApexY = 4.02;
 
-  const arch = new THREE.Mesh(new THREE.TorusGeometry(half, 0.22, 8, 28, Math.PI), stoneEdge);
-  arch.position.set(0, 3.78, -3.74);
-  arch.rotation.z = Math.PI;
-  group.add(arch);
+  // A real recessed opening, so props in front naturally occlude the door.
+  const recessShape = new THREE.Shape();
+  recessShape.moveTo(-innerHalf - 0.08, sillY + 0.04);
+  recessShape.lineTo(innerHalf + 0.08, sillY + 0.04);
+  recessShape.lineTo(innerHalf + 0.08, springY - 0.10);
+  recessShape.lineTo(0, innerApexY + 0.04);
+  recessShape.lineTo(-innerHalf - 0.08, springY - 0.10);
+  recessShape.closePath();
+  const recessGeometry = new THREE.ExtrudeGeometry(recessShape, {
+    depth: 0.10,
+    bevelEnabled: false,
+    curveSegments: 1,
+  });
+  const recess = new THREE.Mesh(recessGeometry, dark);
+  recess.position.z = -4.06;
+  group.add(recess);
 
-  addBox(THREE, group, [width - 0.34, 3.78, 0.10], [0, 1.00, -3.98], dark);
-  const innerArch = new THREE.Mesh(new THREE.TorusGeometry(half - 0.18, 0.08, 7, 24, Math.PI), stone);
-  innerArch.position.set(0, 3.71, -3.64);
-  innerArch.rotation.z = Math.PI;
-  group.add(innerArch);
+  // Pointed oak door lives inside the stone reveal instead of on top of the UI.
+  const doorShape = new THREE.Shape();
+  doorShape.moveTo(-innerHalf, sillY + 0.10);
+  doorShape.lineTo(innerHalf, sillY + 0.10);
+  doorShape.lineTo(innerHalf, springY - 0.18);
+  doorShape.lineTo(0, innerApexY - 0.08);
+  doorShape.lineTo(-innerHalf, springY - 0.18);
+  doorShape.closePath();
+  const doorGeometry = new THREE.ExtrudeGeometry(doorShape, {
+    depth: 0.15,
+    bevelEnabled: false,
+    curveSegments: 1,
+  });
+  const door = new THREE.Mesh(doorGeometry, oak);
+  door.position.z = -3.98;
+  group.add(door);
+
+  // Massive jambs and threshold tie each opening into the existing masonry.
+  const jambHeight = springY - sillY + 0.10;
+  const jambY = sillY + jambHeight / 2;
+  addBox(THREE, group, [0.34, jambHeight, 0.72], [-outerHalf, jambY, -3.72], stoneEdge);
+  addBox(THREE, group, [0.34, jambHeight, 0.72], [outerHalf, jambY, -3.72], stoneEdge);
+  addBox(THREE, group, [width + 0.54, 0.24, 0.82], [0, sillY - 0.02, -3.70], stoneEdge);
+
+  // Gothic crown: two structural stone courses instead of the old semicircle.
+  addBeamBetween(THREE, group, [-outerHalf, springY], [0, apexY], 0.30, 0.72, stoneEdge, -3.72);
+  addBeamBetween(THREE, group, [0, apexY], [outerHalf, springY], 0.30, 0.72, stoneEdge, -3.72);
+  addBeamBetween(THREE, group, [-innerHalf - 0.04, springY - 0.12], [0, innerApexY], 0.12, 0.80, stone, -3.60);
+  addBeamBetween(THREE, group, [0, innerApexY], [innerHalf + 0.04, springY - 0.12], 0.12, 0.80, stone, -3.60);
+
+  for (const side of [-1, 1]) {
+    addBox(THREE, group, [0.58, 0.16, 0.84], [side * outerHalf, springY - 0.03, -3.62], stoneEdge);
+    addBox(THREE, group, [0.58, 0.20, 0.84], [side * outerHalf, sillY - 0.02, -3.62], stoneEdge);
+  }
+
+  // Teutonic carved apex/keystone, restrained enough to repeat five times.
+  const crown = addBox(THREE, group, [0.28, 0.28, 0.18], [0, apexY - 0.08, -3.34], stoneEdge, [0, 0, Math.PI / 4]);
+  crown.scale.y = 1.18;
+  if (!coarse) addSphere(THREE, group, 0.055, [0, apexY - 0.08, -3.22], brass, 8, 6, [1, 1, 0.36]);
+
+  // Forged hardware belongs to the 3D door and therefore receives hall light.
+  addBox(THREE, group, [0.060, 3.20, 0.075], [0, 0.96, -3.76], iron);
+  for (const y of [0.22, 1.18, 2.10]) {
+    addBox(THREE, group, [width - 0.54, 0.075, 0.075], [0, y, -3.76], iron);
+  }
+  addSphere(THREE, group, 0.10, [0, 1.18, -3.66], brass, 9, 7, [1, 1, 0.34]);
+
+  if (!coarse) {
+    const studX = innerHalf - 0.19;
+    for (const y of [0.22, 1.18, 2.10]) {
+      addSphere(THREE, group, 0.043, [-studX, y, -3.66], brass, 7, 5, [1, 1, 0.30]);
+      addSphere(THREE, group, 0.043, [studX, y, -3.66], brass, 7, 5, [1, 1, 0.30]);
+    }
+    addBox(THREE, group, [0.045, 3.08, 0.05], [-innerHalf * 0.42, 0.96, -3.75], oakEdge);
+    addBox(THREE, group, [0.045, 3.08, 0.05], [innerHalf * 0.42, 0.96, -3.75], oakEdge);
+  }
+
+  group.userData.homePortalArchitecture = 'integrated-teutonic-v3';
   return group;
 }
 
@@ -355,10 +438,11 @@ function buildCastleHubScene(THREE, { host, ambience }) {
   addBox(THREE, room, [0.055, 0.045, 11.5], [2.18, -0.87, 1.2], materials.brass);
 
   const archXs = [-5.70, -2.86, 0, 2.86, 5.70];
-  archXs.forEach((x) => addArchPortal(THREE, room, x, 2.22, materials));
+  archXs.forEach((x) => addArchPortal(THREE, room, x, 2.22, materials, coarse));
   for (const x of [-7.25, -4.28, -1.43, 1.43, 4.28, 7.25]) {
     addBox(THREE, room, [0.58, 6.25, 0.76], [x, 2.08, -3.67], materials.stoneEdge);
     addBox(THREE, room, [0.86, 0.24, 0.88], [x, -0.82, -3.62], materials.stoneEdge);
+    addBox(THREE, room, [0.96, 0.22, 0.90], [x, 4.12, -3.62], materials.stoneEdge);
   }
 
   addBalcony(THREE, room, materials);
@@ -444,6 +528,7 @@ function buildCastleHubScene(THREE, { host, ambience }) {
   renderScene();
   host.dataset.homeCastleHubReady = 'true';
   host.dataset.homeCastleHubRenderMode = 'on-demand';
+  host.dataset.homeCastleHubArchitecture = 'integrated-teutonic-v3';
 
   return () => {
     if (renderRaf) window.cancelAnimationFrame(renderRaf);
@@ -490,11 +575,11 @@ export default function HomeCastleHubScene({ ambience = 'quiet', hasSavedGame = 
   }, [ambience]);
 
   return (
-    <div className="home-castle-hub" data-home-castle-hub="canonical-v1">
+    <div className="home-castle-hub" data-home-castle-hub="canonical-v2">
       <div
         ref={hostRef}
         className="home-great-hall-scene home-castle-hub__scene"
-        data-home-scene="castle-hub-canonical-v1"
+        data-home-scene="castle-hub-canonical-v2"
         data-home-scene-ambience={ambience || 'quiet'}
         aria-hidden="true"
       />
