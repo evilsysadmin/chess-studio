@@ -15,6 +15,14 @@ const ARMOR_MARGIN = 0.16;
 const STEP_LENGTH = 0.72;
 const MAX_GAIT_DISTANCE_PER_FRAME = 0.12;
 const STANDING_Y = -0.34;
+const ENTRY_DOOR_X = 2.65;
+const ENTRY_BASKET_X = -1.62;
+const ENTRY_WORK_Z = 0.72;
+const ENTRY_ARMOR_BYPASS_X = 1.42;
+const ENTRY_DOOR_PAST_ARMOR_OFFSET = 1.55;
+const ENTRY_ARMOR_CLEARANCE_AFTER = 0.72;
+const ENTRY_DOOR_SEGMENT_END = 0.24;
+const ENTRY_BYPASS_SEGMENT_END = 0.62;
 
 const MOVING_PHASES = new Set([
   'fire-dimming',
@@ -28,6 +36,10 @@ const MOVING_PHASES = new Set([
 
 function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
 }
 
 function planarDistance(a, b) {
@@ -92,6 +104,75 @@ function restorePoseBases(body, bases) {
     part.position.set(base.positionX, base.positionY, base.positionZ);
     part.rotation.set(base.rotationX, base.rotationY, base.rotationZ);
   }
+}
+
+function inferDoorDepth(fireplace, door, hans) {
+  const fireplaceZ = Number(fireplace?.position?.z || 0);
+  const worldDoorZ = Number(door?.userData?.warRoomHansDoorWorldZ);
+  if (Number.isFinite(worldDoorZ)) return Math.max(ENTRY_WORK_Z, Math.abs(worldDoorZ - fireplaceZ));
+  const refDoorZ = Number(door?.userData?.refs?.doorZ);
+  if (Number.isFinite(refDoorZ)) return Math.max(ENTRY_WORK_Z, Math.abs(refDoorZ - fireplaceZ));
+  return Math.max(ENTRY_WORK_Z, Math.abs(Number(hans?.position?.z || ENTRY_WORK_Z)));
+}
+
+function entryBypassDepth(doorDepth) {
+  return Math.max(
+    ENTRY_WORK_Z,
+    Number(doorDepth || 0) - ENTRY_DOOR_PAST_ARMOR_OFFSET + ENTRY_ARMOR_CLEARANCE_AFTER,
+  );
+}
+
+function deriveEntryProgress(hans, side) {
+  const logicalX = Number(hans?.position?.x) / side;
+  if (!Number.isFinite(logicalX)) return 0;
+  return clamp01((ENTRY_DOOR_X - logicalX) / (ENTRY_DOOR_X - ENTRY_BASKET_X));
+}
+
+function applyRearWallEntryPath(hans, {
+  phase,
+  route,
+  side,
+  forward,
+  doorDepth,
+} = {}) {
+  if (!hans || (route !== 'entry' && phase !== 'walk-to-basket')) return null;
+
+  const progress = deriveEntryProgress(hans, side);
+  const bypassDepth = entryBypassDepth(doorDepth);
+  let logicalX = ENTRY_DOOR_X;
+  let depth = doorDepth;
+  let stage = 'entry-door';
+
+  if (progress < ENTRY_DOOR_SEGMENT_END) {
+    const local = clamp01(progress / ENTRY_DOOR_SEGMENT_END);
+    logicalX = lerp(ENTRY_DOOR_X, ENTRY_ARMOR_BYPASS_X, local);
+    depth = lerp(doorDepth, bypassDepth, local);
+    stage = 'entry-door';
+  } else if (progress < ENTRY_BYPASS_SEGMENT_END) {
+    const local = clamp01(
+      (progress - ENTRY_DOOR_SEGMENT_END)
+      / (ENTRY_BYPASS_SEGMENT_END - ENTRY_DOOR_SEGMENT_END),
+    );
+    logicalX = ENTRY_ARMOR_BYPASS_X;
+    depth = lerp(bypassDepth, ENTRY_WORK_Z, local);
+    stage = 'entry-bypass';
+  } else {
+    const local = clamp01(
+      (progress - ENTRY_BYPASS_SEGMENT_END)
+      / (1 - ENTRY_BYPASS_SEGMENT_END),
+    );
+    logicalX = lerp(ENTRY_ARMOR_BYPASS_X, ENTRY_BASKET_X, local);
+    depth = ENTRY_WORK_Z;
+    stage = 'entry-rear-wall';
+  }
+
+  const zSign = Math.sign(Number(hans.position.z)) || Math.sign(Number(forward)) || 1;
+  hans.position.x = side * logicalX;
+  hans.position.z = zSign * depth;
+  hans.userData.warRoomHansEntryPath = 'door-bypass-rear-wall-v1';
+  hans.userData.warRoomHansEntryRouteStage = stage;
+  hans.userData.warRoomHansEntryRouteProgress = progress;
+  return stage;
 }
 
 function actualDoorWallFrameX(fireplace, door, scale) {
@@ -305,6 +386,14 @@ export function installWarRoomHansMotionPolish(root) {
   const visualRoot = ensureCompatibilityVisualRoot(hans);
   const bases = capturePoseBases(body);
   const original = driver.onBeforeRender;
+  const doorDepth = inferDoorDepth(fireplace, door, hans);
+  applyRearWallEntryPath(hans, {
+    phase: driver.userData?.warRoomHansPhase,
+    route: hans.userData?.warRoomHansRoute,
+    side,
+    forward,
+    doorDepth,
+  });
   const previousPosition = new THREE.Vector3(hans.position.x, 0, hans.position.z);
   const armorSafeFrameX = actualArmorSafeFrameX(root, fireplace, side, WAR_ROOM_HANS_CANONICAL_SCALE);
   let gaitDistance = 0;
@@ -328,6 +417,13 @@ export function installWarRoomHansMotionPolish(root) {
 
     hans.position.y = STANDING_Y;
 
+    const entryRouteStage = applyRearWallEntryPath(hans, {
+      phase,
+      route,
+      side,
+      forward,
+      doorDepth,
+    });
     const armorClearanceApplied = applyArmorBypassClearance(hans, {
       phase,
       route,
@@ -392,6 +488,7 @@ export function installWarRoomHansMotionPolish(root) {
     hans.userData.warRoomHansWallClearanceApplied = wallClearanceApplied;
     hans.userData.warRoomHansMotionPolishV2 = WAR_ROOM_HANS_MOTION_POLISH_V2_VERSION;
     hans.userData.warRoomHansMovementFacing = moving ? 'velocity-vector' : 'work-target';
+    hans.userData.warRoomHansEntryRouteStage = entryRouteStage || hans.userData.warRoomHansEntryRouteStage || null;
 
     previousPosition.copy(currentPosition);
   };
@@ -405,5 +502,6 @@ export function installWarRoomHansMotionPolish(root) {
   driver.userData.warRoomHansMotionWallClearance = 'door-geometry-derived-v2';
   driver.userData.warRoomHansArmorClearance = 'box3-expanded-by-hans-v1';
   driver.userData.warRoomHansActionPoses = 'pick-place-stoke-articulated-v1';
+  driver.userData.warRoomHansEntryPath = 'door-bypass-rear-wall-v1';
   return 1;
 }
