@@ -3,6 +3,7 @@ import {
   PAWN_SLUG_STURM_BISHOP_META,
   animateSturmBishopModel,
   createSturmBishopModel,
+  pawnSlugSturmBishopCooldownTick,
   pawnSlugSturmBishopSuppressionLane,
   pawnSlugSturmBishopSuppressionTelegraph,
   pawnSlugSturmBishopTelegraph,
@@ -49,6 +50,18 @@ describe('Pawn Slug Sturm-Bishop', () => {
     expect(pawnSlugSturmBishopTelegraph(window * 0.5, 8)).toBeCloseTo(0.5);
     expect(pawnSlugSturmBishopTelegraph(0, 8)).toBe(1);
     expect(pawnSlugSturmBishopTelegraph(0.1, PAWN_SLUG_STURM_BISHOP_META.shellRange + 0.1)).toBe(0);
+  });
+
+  it('does not burn a telegraph cooldown outside attack range', () => {
+    const shellWindow = PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds;
+    const shellRange = PAWN_SLUG_STURM_BISHOP_META.shellRange;
+    expect(pawnSlugSturmBishopCooldownTick(0.1, shellRange + 2, shellRange, shellWindow, 0.2)).toBe(shellWindow);
+    expect(pawnSlugSturmBishopCooldownTick(1.2, shellRange + 2, shellRange, shellWindow, 0.2)).toBe(1.2);
+    expect(pawnSlugSturmBishopCooldownTick(shellWindow, shellRange - 1, shellRange, shellWindow, 0.2)).toBeCloseTo(shellWindow - 0.2);
+
+    const suppressionWindow = PAWN_SLUG_STURM_BISHOP_META.suppressionTelegraphSeconds;
+    const suppressionRange = PAWN_SLUG_STURM_BISHOP_META.suppressionRange;
+    expect(pawnSlugSturmBishopCooldownTick(-3, suppressionRange + 1, suppressionRange, suppressionWindow, 0.1)).toBe(suppressionWindow);
   });
 
   it('defines a short readable suppression telegraph and three deliberately different lanes', () => {
