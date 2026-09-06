@@ -48,7 +48,7 @@ describe('Hans hearth choreography on coarse-pointer/mobile War Room', () => {
       expect(driver.userData.warRoomHansVisibleAtStart).toBe(true);
       expect(driver.userData.warRoomHansMobileEntryHeadstartSeconds).toBe(0);
       expect(driver.userData.warRoomHansClockStart).toBe('first-real-render-v1');
-      expect(driver.userData.warRoomHansPresentationTimeScale).toBeCloseTo(0.68, 6);
+      expect(driver.userData.warRoomHansPresentationTimeScale).toBeCloseTo(0.54, 6);
     } finally {
       dispose(room);
     }
@@ -84,7 +84,7 @@ describe('Hans hearth choreography on coarse-pointer/mobile War Room', () => {
       expect(driver.userData.warRoomHansChoreography).toBe('door-log-fire-poker-armor-bypass-door-v3');
       expect(driver.userData.warRoomHansMobileEntryHeadstartSeconds).toBe(0);
       expect(driver.userData.warRoomHansClockStart).toBe('first-real-render-v1');
-      expect(driver.userData.warRoomHansPresentationTimeScale).toBeCloseTo(0.68, 6);
+      expect(driver.userData.warRoomHansPresentationTimeScale).toBeCloseTo(0.54, 6);
       expect(hans.userData.warRoomHansFacingTarget).toBe('basket');
 
       const startX = hans.position.x;
@@ -95,14 +95,14 @@ describe('Hans hearth choreography on coarse-pointer/mobile War Room', () => {
       expect(driver.userData.warRoomHansPhase).toBe('fire-dimming');
       expect(hans.visible).toBe(true);
 
-      now.mockReturnValue(11441); // ~=7.1 s de presentación => take-log
+      now.mockReturnValue(14148); // ~=7.1 s de presentación => take-log
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('take-log');
       expect(hans.userData.warRoomHansFacingTarget).toBe('basket');
       expect(Math.hypot(hans.position.x - startX, hans.position.z - startZ)).toBeGreaterThan(0.25);
       expect(Math.abs(hans.rotation.y - initialYaw)).toBeGreaterThan(0.05);
 
-      now.mockReturnValue(14971); // ~=9.5 s de presentación => carry-log
+      now.mockReturnValue(18593); // ~=9.5 s de presentación => carry-log
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('carry-log');
       expect(hans.userData.warRoomHansFacingTarget).toBe('hearth');
@@ -111,14 +111,14 @@ describe('Hans hearth choreography on coarse-pointer/mobile War Room', () => {
       expect(Math.abs(hans.userData.refs.leftLeg.rotation.x)).toBeGreaterThan(0.01);
       expect(Math.abs(hans.userData.refs.rightLeg.rotation.x)).toBeGreaterThan(0.01);
 
-      now.mockReturnValue(21000); // ~=13.6 s presentación => late place-log
+      now.mockReturnValue(26185); // ~=13.6 s presentación => late place-log
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('place-log');
       expect(hans.userData.warRoomHansFacingTarget).toBe('fire');
       expect(carriedLog.visible).toBe(false);
       expect(addedLog.visible).toBe(true);
 
-      now.mockReturnValue(24088); // ~=15.7 s presentación => late take-poker
+      now.mockReturnValue(30074); // ~=15.7 s presentación => late take-poker
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('take-poker');
       expect(hans.userData.warRoomHansFacingTarget).toBe('tools');
@@ -126,21 +126,21 @@ describe('Hans hearth choreography on coarse-pointer/mobile War Room', () => {
       expect(carriedPoker.visible).toBe(true);
 
       const dimmedFireHeight = fireCore.scale.y;
-      now.mockReturnValue(28206); // ~=18.5 s presentación => stoke-fire
+      now.mockReturnValue(35259); // ~=18.5 s presentación => stoke-fire
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('stoke-fire');
       expect(hans.userData.warRoomHansFacingTarget).toBe('fire');
       expect(carriedPoker.visible).toBe(true);
       expect(fireCore.scale.y).toBeGreaterThan(dimmedFireHeight);
 
-      now.mockReturnValue(34824); // ~=23 s presentación => satisfied
+      now.mockReturnValue(43593); // ~=23 s presentación => satisfied
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('satisfied');
       expect(hans.userData.warRoomHansFacingTarget).toBe('fire');
       expect(carriedPoker.visible).toBe(false);
       expect(standPoker.visible).toBe(true);
 
-      now.mockReturnValue(40706); // ~=27 s presentación => bypass delante de armadura
+      now.mockReturnValue(51000); // ~=27 s presentación => bypass delante de armadura
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('leave');
       expect(hans.userData.warRoomHansRoute).toBe('leave-bypass');
@@ -148,17 +148,17 @@ describe('Hans hearth choreography on coarse-pointer/mobile War Room', () => {
       expect(Math.abs(hans.position.x)).toBeCloseTo(1.42, 5);
       expect(door.userData.warRoomHansDoorOpen).toBe(0);
 
-      now.mockReturnValue(42912); // ~=28.5 s presentación => aproximación final a puerta
+      now.mockReturnValue(53778); // ~=28.5 s presentación => aproximación final a puerta
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('leave');
       expect(hans.userData.warRoomHansRoute).toBe('leave-door');
       expect(hans.userData.warRoomHansFacingTarget).toBe('door');
-      // At 0.68x Hans has only just started reopening the door here; prove it is
+      // At 0.54x Hans has only just started reopening the door here; prove it is
       // actively opening rather than requiring the old faster choreography's midpoint.
       expect(door.userData.warRoomHansDoorOpen).toBeGreaterThan(0.25);
       expect(hans.visible).toBe(true);
 
-      now.mockReturnValue(45853); // ~=30.5 s presentación => complete
+      now.mockReturnValue(57481); // ~=30.5 s presentación => complete
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansCompleted).toBe(true);
       expect(driver.userData.warRoomHansHearthRestored).toBe(true);
