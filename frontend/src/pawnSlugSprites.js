@@ -14,6 +14,9 @@ const clamp01 = (value) => Math.max(0, Math.min(1, Number(value) || 0));
 const freezeFrames = (count) => Object.freeze(Array.from({ length: count }, (_, index) => index));
 
 const MATTHIAS_GRID = Object.freeze({ columns: 16, rows: 5, frameWidth: 96, frameHeight: 96 });
+const MATTHIAS_ATLAS_WIDTH = MATTHIAS_GRID.columns * MATTHIAS_GRID.frameWidth;
+const MATTHIAS_ATLAS_HEIGHT = MATTHIAS_GRID.rows * MATTHIAS_GRID.frameHeight;
+const MATTHIAS_UV_GUARD_TEXELS = 1;
 const MATTHIAS_ACTIONS = Object.freeze({
   idle: Object.freeze({ row: 0, count: 10 }),
   walk: Object.freeze({ row: 1, count: 10 }),
@@ -106,18 +109,31 @@ export function configurePawnSlugTexture(texture) {
   return texture;
 }
 
-export function pawnSlugMatthiasAtlasWindow(action, frameIndex = 0) {
+export function pawnSlugMatthiasAtlasWindow(action, frameIndex = 0, dir = 1) {
   const track = MATTHIAS_ACTIONS[action] || MATTHIAS_ACTIONS.idle;
   const safeIndex = ((Math.floor(frameIndex) % track.count) + track.count) % track.count;
+  const direction = dir < 0 ? -1 : 1;
+  const guardedWidth = MATTHIAS_GRID.frameWidth - (MATTHIAS_UV_GUARD_TEXELS * 2);
+  const guardedHeight = MATTHIAS_GRID.frameHeight - (MATTHIAS_UV_GUARD_TEXELS * 2);
+  const leftEdge = (safeIndex * MATTHIAS_GRID.frameWidth) + MATTHIAS_UV_GUARD_TEXELS;
+  const rightEdge = ((safeIndex + 1) * MATTHIAS_GRID.frameWidth) - MATTHIAS_UV_GUARD_TEXELS;
+  const bottomEdge = (
+    MATTHIAS_ATLAS_HEIGHT
+    - ((track.row + 1) * MATTHIAS_GRID.frameHeight)
+    + MATTHIAS_UV_GUARD_TEXELS
+  );
+
   return Object.freeze({
     action: MATTHIAS_ACTIONS[action] ? action : 'idle',
     frameIndex: safeIndex,
     column: safeIndex,
     row: track.row,
-    repeatX: 1 / MATTHIAS_GRID.columns,
-    repeatY: 1 / MATTHIAS_GRID.rows,
-    offsetX: safeIndex / MATTHIAS_GRID.columns,
-    offsetY: 1 - ((track.row + 1) / MATTHIAS_GRID.rows),
+    direction,
+    mirrored: direction < 0,
+    repeatX: direction * (guardedWidth / MATTHIAS_ATLAS_WIDTH),
+    repeatY: guardedHeight / MATTHIAS_ATLAS_HEIGHT,
+    offsetX: (direction < 0 ? rightEdge : leftEdge) / MATTHIAS_ATLAS_WIDTH,
+    offsetY: bottomEdge / MATTHIAS_ATLAS_HEIGHT,
   });
 }
 
@@ -212,17 +228,18 @@ function applyMatthiasAtlasWindow(sprite) {
   if (!texture) return;
   const action = sprite.userData.animation?.action || 'idle';
   const frameIndex = sprite.userData.animation?.frameIndex || 0;
+  const direction = sprite.userData.animation?.direction < 0 ? -1 : 1;
 
   configurePawnSlugTexture(texture);
   if (atlas.source === 'primary') {
-    const window = pawnSlugMatthiasAtlasWindow(action, frameIndex);
+    const window = pawnSlugMatthiasAtlasWindow(action, frameIndex, direction);
     texture.repeat.set(window.repeatX, window.repeatY);
     texture.offset.set(window.offsetX, window.offsetY);
   } else {
     const legacy = MATTHIAS_LEGACY_FRAMES[action] || MATTHIAS_LEGACY_FRAMES.idle;
     const frame = legacy[((Math.floor(frameIndex) % legacy.length) + legacy.length) % legacy.length];
-    texture.repeat.set(1 / 4, 1);
-    texture.offset.set(frame / 4, 0);
+    texture.repeat.set(direction / 4, 1);
+    texture.offset.set(direction < 0 ? (frame + 1) / 4 : frame / 4, 0);
   }
   texture.needsUpdate = true;
 }
@@ -245,6 +262,7 @@ function matthiasAtlasSprite(scale = [1.77, 2.56]) {
     weapon: 'pistol',
     action: 'idle',
     frameIndex: 0,
+    direction: 1,
     lastTime: null,
     runStartedAt: 0,
     airStartedAt: 0,
@@ -302,6 +320,13 @@ function matthiasAtlasSprite(scale = [1.77, 2.56]) {
     if (animation.action === action && animation.frameIndex === safeIndex) return;
     animation.action = action;
     animation.frameIndex = safeIndex;
+    applyMatthiasAtlasWindow(sprite);
+  };
+  sprite.userData.setDirection = (dir) => {
+    const animation = sprite.userData.animation;
+    const direction = dir < 0 ? -1 : 1;
+    if (animation.direction === direction) return;
+    animation.direction = direction;
     applyMatthiasAtlasWindow(sprite);
   };
   sprite.userData.setWeapon = (kind) => {
@@ -383,6 +408,7 @@ export function animateMatthiasSlugSprite(sprite, {
   const recoil = firing ? (profile.recoilByWeapon[weapon] ?? profile.recoilByWeapon.pistol) : 0;
   const motion = updateMatthiasMotionState(animation, { time, running, airborne, crouch, profile });
 
+  sprite.userData.setDirection?.(direction);
   if (airborne) setActionFrame('jump', motion.jumpIndex);
   else if (motion.crouchBlend > 0.001) setActionFrame('crouch', motion.crouchIndex);
   else if (running) setActionFrame('run', motion.runIndex);
@@ -395,7 +421,7 @@ export function animateMatthiasSlugSprite(sprite, {
   const crouchScaleX = 1 + ((profile.crouchScaleX - 1) * motion.crouchBlend);
   const crouchScaleY = 1 - ((1 - profile.crouchScaleY) * motion.crouchBlend);
   sprite.position.y -= profile.crouchDrop * motion.crouchBlend;
-  sprite.scale.x = baseScaleX * visualDirection * crouchScaleX;
+  sprite.scale.x = baseScaleX * crouchScaleX;
   sprite.scale.y = baseScaleY * crouchScaleY * (1 - (hurt ? 0.035 : 0));
   sprite.material.rotation = firing ? visualDirection * 0.012 : 0;
   tintSprite(sprite, hurt, 0.8);
@@ -495,6 +521,9 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
     frameHeight: MATTHIAS_GRID.frameHeight,
     sourceFacing: 'right',
     sourceFacingByAction: Object.freeze({ idle: 'right', walk: 'right', run: 'right', crouch: 'right', jump: 'right' }),
+    runtimeFacings: Object.freeze(['right', 'left']),
+    directionMode: 'atlas-uv-mirror',
+    uvGuardTexels: MATTHIAS_UV_GUARD_TEXELS,
     actions: MATTHIAS_ACTIONS,
     motionFrames: Object.freeze({ idle: 10, walk: 10, run: 16, crouch: 10, airborne: 9 }),
   }),
