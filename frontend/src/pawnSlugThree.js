@@ -45,6 +45,7 @@ import {
   PAWN_SLUG_STURM_BISHOP_META,
   animateSturmBishopModel,
   createSturmBishopModel,
+  pawnSlugSturmBishopTelegraph,
 } from './pawnSlugMidBoss.js';
 import { animateMatthiasSlugSprite } from './pawnSlugSprites.js';
 
@@ -868,7 +869,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
           enemy.fireCooldown = 0.42 + Math.random() * 0.16;
         }
         enemy.shellCooldown -= dt;
-        if (distance < 12.5 && enemy.shellCooldown <= 0) {
+        if (distance < PAWN_SLUG_STURM_BISHOP_META.shellRange && enemy.shellCooldown <= 0) {
           fireEnemy(enemy, true);
           enemy.shellCooldown = 2.05 + Math.random() * 0.55;
         }
@@ -896,7 +897,8 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       enemy.model.position.set(enemy.x, enemy.y, enemy.type === 'boss' ? -0.15 : enemy.type === 'bishop' ? 0.08 : 0);
       if (enemy.type === 'bishop') {
         enemy.model.userData.baseY = enemy.y;
-        animateSturmBishopModel(enemy.model, state.time, { moving: Math.abs(enemy.vx) > 0.2, hurt: enemy.hurt > 0, dir: enemy.dir });
+        const telegraph = pawnSlugSturmBishopTelegraph(enemy.shellCooldown, distance);
+        animateSturmBishopModel(enemy.model, state.time, { moving: Math.abs(enemy.vx) > 0.2, hurt: enemy.hurt > 0, dir: enemy.dir, telegraph });
       } else {
         enemy.model.scale.x = Math.abs(enemy.model.scale.x || 1) * enemy.dir;
         animateSlugEnemy(enemy.model, enemy.type, state.time, { moving: Math.abs(enemy.vx) > 0.2, hurt: enemy.hurt > 0 });
