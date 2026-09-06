@@ -5,7 +5,7 @@ import {
 } from './WarRoomMobileFraming.js';
 
 describe('War Room mobile portrait framing', () => {
-  it('acerca el tablero sólo en coarse portrait de teléfono', () => {
+  it('acerca el tablero en coarse portrait de teléfono', () => {
     const phone = getWarRoomMobileFramingProfile({
       aspect: 1.06,
       coarsePointer: true,
@@ -20,9 +20,21 @@ describe('War Room mobile portrait framing', () => {
     expect(phone.cameraY).toBeLessThan(7.2);
   });
 
+  it('mantiene el preset de teléfono aunque el shell 3D quede ligeramente apaisado', () => {
+    const screenshotLikePhone = getWarRoomMobileFramingProfile({
+      aspect: 1.18,
+      coarsePointer: true,
+      viewportWidth: 390,
+    });
+
+    expect(screenshotLikePhone?.version).toBe(WAR_ROOM_MOBILE_FRAMING_VERSION);
+    expect(screenshotLikePhone.halfSpan).toBe(4.88);
+    expect(screenshotLikePhone.targetZ).toBe(0.48);
+  });
+
   it('no toca desktop, tablet landscape ni punteros finos', () => {
     expect(getWarRoomMobileFramingProfile({ aspect: 1.06, coarsePointer: false, viewportWidth: 390 })).toBeNull();
-    expect(getWarRoomMobileFramingProfile({ aspect: 1.45, coarsePointer: true, viewportWidth: 390 })).toBeNull();
+    expect(getWarRoomMobileFramingProfile({ aspect: 1.45, coarsePointer: true, viewportWidth: 780 })).toBeNull();
     expect(getWarRoomMobileFramingProfile({ aspect: 1.06, coarsePointer: true, viewportWidth: 1080 })).toBeNull();
   });
 
