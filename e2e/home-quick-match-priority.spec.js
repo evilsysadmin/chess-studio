@@ -46,6 +46,55 @@ test('Home desktop · Partida rápida queda visible sin scroll y lidera Jugar', 
   await expectQuickMatchAboveFold(page, { width: 1552, height: 900 });
 });
 
+test('Home desktop · el salón mantiene el grade cálido legible y Matthias vive junto al sofá', async ({ page }) => {
+  await page.setViewportSize({ width: 1552, height: 900 });
+  await openHome(page);
+
+  const hall = page.locator('.home-castle-life');
+  const scene = hall.locator('.home-castle-hub__scene');
+  const roomTitle = hall.locator('.home-castle-hub__room strong').first();
+  const roomDetail = hall.locator('.home-castle-hub__room small').first();
+  const matthias = page.locator('.matthias-resident.is-viewport');
+
+  await expect(hall).toBeVisible();
+  await expect(scene).toBeVisible();
+  await expect(roomTitle).toBeVisible();
+  await expect(roomDetail).toBeVisible();
+  await expect(matthias).toBeVisible();
+
+  const visualContract = await page.evaluate(() => {
+    const hallNode = document.querySelector('.home-castle-life');
+    const sceneNode = hallNode?.querySelector('.home-castle-hub__scene');
+    const canvasNode = hallNode?.querySelector('.home-castle-hub__scene canvas');
+    const titleNode = hallNode?.querySelector('.home-castle-hub__room strong');
+    const detailNode = hallNode?.querySelector('.home-castle-hub__room small');
+    const matthiasNode = document.querySelector('.matthias-resident.is-viewport');
+    const hallRect = hallNode?.getBoundingClientRect();
+    const matthiasRect = matthiasNode?.getBoundingClientRect();
+    const titleStyle = titleNode ? getComputedStyle(titleNode) : null;
+    const detailStyle = detailNode ? getComputedStyle(detailNode) : null;
+
+    return {
+      sceneFilter: sceneNode ? getComputedStyle(sceneNode).filter : '',
+      canvasFilter: canvasNode ? getComputedStyle(canvasNode).filter : '',
+      titleFontSize: titleStyle ? Number.parseFloat(titleStyle.fontSize) : 0,
+      detailOpacity: detailStyle ? Number.parseFloat(detailStyle.color.match(/[\d.]+(?=\))/)?.[0] || '1') : 0,
+      matthiasLowerHalf: Boolean(hallRect && matthiasRect && matthiasRect.top >= hallRect.top + hallRect.height * 0.34),
+      matthiasInsideHallHorizontally: Boolean(hallRect && matthiasRect
+        && matthiasRect.left >= hallRect.left
+        && matthiasRect.right <= hallRect.right),
+      matthiasWidth: matthiasRect?.width || 0,
+    };
+  });
+
+  expect(visualContract.sceneFilter).toContain('brightness(1.56)');
+  expect(visualContract.canvasFilter).toContain('brightness(1.31)');
+  expect(visualContract.titleFontSize).toBeGreaterThanOrEqual(14);
+  expect(visualContract.matthiasLowerHalf).toBe(true);
+  expect(visualContract.matthiasInsideHallHorizontally).toBe(true);
+  expect(visualContract.matthiasWidth).toBeGreaterThanOrEqual(175);
+});
+
 test('Home móvil · Partida rápida sigue visible sin scroll y es la primera opción', async ({ page }) => {
   await expectQuickMatchAboveFold(page, { width: 390, height: 844 });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
