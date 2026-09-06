@@ -4,16 +4,41 @@ const WAR_ROOM_RENDER_DISCIPLINE = Symbol.for('chess-studio.war-room-render-disc
 const shadowRefreshState = new WeakMap();
 const warRoomHemisphereState = new WeakMap();
 
-export function shadowRefreshInterval({ coarsePointer = false } = {}) {
-  return coarsePointer ? 180 : 120;
+export function shadowRefreshInterval({ coarsePointer = false, activeMotion = false } = {}) {
+  if (activeMotion) return coarsePointer ? 180 : 120;
+  return coarsePointer ? 540 : 360;
 }
 
-export function shouldRefreshShadowMap({ now = 0, lastShadowAt = Number.NEGATIVE_INFINITY, coarsePointer = false } = {}) {
+export function shouldRefreshShadowMap({
+  now = 0,
+  lastShadowAt = Number.NEGATIVE_INFINITY,
+  coarsePointer = false,
+  activeMotion = false,
+} = {}) {
   const current = Number(now);
   const previous = Number(lastShadowAt);
   if (!Number.isFinite(previous)) return true;
   if (!Number.isFinite(current)) return false;
-  return current - previous >= shadowRefreshInterval({ coarsePointer });
+  return current - previous >= shadowRefreshInterval({ coarsePointer, activeMotion });
+}
+
+export function materialGradeRefreshInterval({ activeMotion = false } = {}) {
+  // Material grading traverses the complete scene graph. It is worth keeping the
+  // tight cadence while pieces are actually moving, but repeating that traversal
+  // five times a second while the room merely breathes is pure idle CPU work.
+  return activeMotion ? 180 : 1500;
+}
+
+export function shouldRefreshMaterialGrade({
+  now = 0,
+  lastMaterialGradeAt = Number.NEGATIVE_INFINITY,
+  activeMotion = false,
+} = {}) {
+  const current = Number(now);
+  const previous = Number(lastMaterialGradeAt);
+  if (!Number.isFinite(previous)) return true;
+  if (!Number.isFinite(current)) return false;
+  return current - previous >= materialGradeRefreshInterval({ activeMotion });
 }
 
 export function warRoomHemisphereIntensity({ coarsePointer = false } = {}) {
@@ -206,7 +231,15 @@ function installWarRoomRenderDiscipline() {
     };
     shadowRefreshState.set(this, state);
 
-    if (!Number.isFinite(state.lastMaterialGradeAt) || now - state.lastMaterialGradeAt >= 180) {
+    const frameMs = Number.isFinite(state.lastRenderAt) ? now - state.lastRenderAt : 16;
+    const activeMotion = Number.isFinite(state.lastRenderAt) && frameMs < 50;
+    state.lastRenderAt = now;
+
+    if (shouldRefreshMaterialGrade({
+      now,
+      lastMaterialGradeAt: state.lastMaterialGradeAt,
+      activeMotion,
+    })) {
       const materialGrade = applyWarRoomMaterialGrade(scene, { coarsePointer });
       state.lastMaterialGradeAt = now;
       if (materialGrade.profile && this.domElement?.dataset) {
@@ -216,8 +249,6 @@ function installWarRoomRenderDiscipline() {
       }
     }
 
-    const frameMs = Number.isFinite(state.lastRenderAt) ? now - state.lastRenderAt : 16;
-    state.lastRenderAt = now;
     const currentScale = typeof this.getPixelRatio === 'function'
       ? this.getPixelRatio()
       : Number(budget.pixelRatio) || 1;
@@ -233,12 +264,16 @@ function installWarRoomRenderDiscipline() {
       scene.userData.warRoomRuntimeScale = runtime.scale;
     }
 
-    // The scene still renders every requested frame, but the expensive directional
-    // shadow pass no longer follows it blindly at 60 Hz. Piece contact shadows keep
-    // movement grounded between refreshes; the final move frame is always far enough
-    // past the interval to refresh the real shadow map again.
+    // The scene can keep its premium ambient heartbeat without paying the full
+    // directional-shadow pass on every idle paint. Contiguous motion restores the
+    // tighter cadence so piece movement still gets responsive real shadows.
     this.shadowMap.autoUpdate = false;
-    if (shouldRefreshShadowMap({ now, lastShadowAt: state.lastShadowAt, coarsePointer })) {
+    if (shouldRefreshShadowMap({
+      now,
+      lastShadowAt: state.lastShadowAt,
+      coarsePointer,
+      activeMotion,
+    })) {
       this.shadowMap.needsUpdate = true;
       state.lastShadowAt = now;
     }
