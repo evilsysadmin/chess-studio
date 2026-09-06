@@ -4,6 +4,7 @@ import {
   PAWN_SLUG_PLAYER,
   PAWN_SLUG_SPAWNS,
   PAWN_SLUG_WEAPON_ORDER,
+  PAWN_SLUG_WEAPON_UPGRADES,
   PAWN_SLUG_WEAPONS,
   PAWN_SLUG_WORLD,
   pawnSlugAmmoForPickup,
@@ -18,8 +19,12 @@ import {
   pawnSlugProgress,
   pawnSlugScoreForKill,
   pawnSlugSpawnWindow,
+  pawnSlugWeaponDisplayLabel,
   pawnSlugWeaponLabel,
   pawnSlugWeaponShortLabel,
+  pawnSlugWeaponStatsForLevel,
+  pawnSlugWeaponUpgradeCrossed,
+  pawnSlugWeaponUpgradeForLevel,
   pawnSlugXpForKill,
   pawnSlugXpForLevel,
 } from './pawnSlug.js';
@@ -83,6 +88,7 @@ describe('Pawn Slug contracts', () => {
     expect(pawnSlugMatthiasLine('boss')).toContain('castillo');
     expect(pawnSlugMatthiasLine('death')).toContain('culo');
     expect(pawnSlugMatthiasLine('levelUp')).toContain('Ascenso');
+    expect(pawnSlugMatthiasLine('weaponUp')).toContain('Arsenal');
     expect(pawnSlugPickupCopy('panzerfaust')).toContain('sutileza');
   });
 
@@ -98,5 +104,42 @@ describe('Pawn Slug contracts', () => {
     expect(pawnSlugMaxHpForLevel(2)).toBe(PAWN_SLUG_PLAYER.baseMaxHp + PAWN_SLUG_PLAYER.hpPerLevel);
     expect(pawnSlugMaxHpForLevel(999)).toBe(pawnSlugMaxHpForLevel(PAWN_SLUG_PLAYER.maxLevel));
     expect(pawnSlugDamageMultiplier(2)).toBeCloseTo(1.05);
+  });
+
+  it('upgrades every weapon in bounded Mk tiers instead of only inflating player damage', () => {
+    expect(Object.keys(PAWN_SLUG_WEAPON_UPGRADES)).toEqual(PAWN_SLUG_WEAPON_ORDER);
+    for (const id of PAWN_SLUG_WEAPON_ORDER) {
+      const tiers = PAWN_SLUG_WEAPON_UPGRADES[id];
+      expect(tiers.map((tier) => tier.tier)).toEqual([1, 2, 3]);
+      expect(tiers[0]).toMatchObject({ level: 1, code: 'Mk I' });
+      expect(tiers[1].level).toBeGreaterThan(1);
+      expect(tiers[2].level).toBeGreaterThan(tiers[1].level);
+      expect(pawnSlugWeaponUpgradeForLevel(id, 999).tier).toBe(3);
+    }
+
+    expect(pawnSlugWeaponDisplayLabel('pistol', 4)).toContain('Mk II');
+    expect(pawnSlugWeaponUpgradeCrossed('pistol', 3, 4)).toMatchObject({ tier: 2, code: 'Mk II' });
+    expect(pawnSlugWeaponUpgradeCrossed('pistol', 4, 5)).toBeNull();
+  });
+
+  it('makes advanced weapon tiers mechanically distinct while preserving pickup identity', () => {
+    const pistolI = pawnSlugWeaponStatsForLevel('pistol', 1);
+    const pistolII = pawnSlugWeaponStatsForLevel('pistol', 4);
+    const mgI = pawnSlugWeaponStatsForLevel('machinegun', 1);
+    const mgIII = pawnSlugWeaponStatsForLevel('machinegun', 9);
+    const shotgunI = pawnSlugWeaponStatsForLevel('shotgun', 1);
+    const shotgunIII = pawnSlugWeaponStatsForLevel('shotgun', 10);
+    const panzerI = pawnSlugWeaponStatsForLevel('panzerfaust', 1);
+    const panzerIII = pawnSlugWeaponStatsForLevel('panzerfaust', 11);
+
+    expect(pistolII.damage).toBeGreaterThan(pistolI.damage);
+    expect(pistolII.cadence).toBeLessThan(pistolI.cadence);
+    expect(mgIII.spread).toBeLessThan(mgI.spread);
+    expect(mgIII.cadence).toBeLessThan(mgI.cadence);
+    expect(shotgunIII.pellets).toBeGreaterThan(shotgunI.pellets);
+    expect(shotgunIII.spread).toBeLessThan(shotgunI.spread);
+    expect(panzerIII.damage).toBeGreaterThan(panzerI.damage);
+    expect(panzerIII.speed).toBeGreaterThan(panzerI.speed);
+    expect(pawnSlugAmmoForPickup('machinegun', 9)).toBeGreaterThan(pawnSlugAmmoForPickup('machinegun', 1));
   });
 });
