@@ -180,8 +180,9 @@ describe('Hans quick-game visual iteration', () => {
     expect(driver.userData.warRoomHansServiceCorridor).toBe('armor-bypass-to-service-door-v2');
     expect(driver.userData.warRoomHansChoreography).toBe('door-log-fire-poker-armor-bypass-door-v3');
     expect(driver.userData.warRoomHansPresentationTimeScale).toBeCloseTo(0.54, 6);
-    expect(driver.userData.warRoomHansElderWalk).toBe('elder-butler-gait-v1');
+    expect(driver.userData.warRoomHansElderWalk).toBe('elder-butler-gait-v2-layered');
     expect(driver.userData.warRoomHansGaitFrames).toBe(8);
+    expect(driver.userData.warRoomHansLocomotionOwnership).toBe('motion-polish-primary-elder-additive-v2');
     expect(fireplace.userData.warRoomHansQuickIteration).toBe('always-quick-v10-slow-obstacle-safe');
     expect(fireplace.userData.warRoomHansHearthRestored).toBe(false);
     expect(door.userData.warRoomHansServiceDoor).toBe('hans-service-door-v1');
