@@ -109,6 +109,13 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   await mockApi(page, { requestLog });
   await login(page);
 
+  // Reproduce the real Android screenshot regression: a narrow portrait phone
+  // can host a slightly landscape-shaped 3D shell. The phone camera profile must
+  // remain active even when the shell itself crosses the old 1.15 aspect gate.
+  await page.addStyleTag({
+    content: '@media (max-width: 520px) { .game-screen .game-board-stack-3d .board3d-main-shell { aspect-ratio: 1.18 / 1 !important; } }',
+  });
+
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameTurn(page)).toBeVisible();
@@ -117,9 +124,14 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
 
   const board3d = page.locator('[data-board3d-war-room="true"]');
   const canvas = page.locator('.board3d-main-canvas');
+  const shell = page.locator('.board3d-main-shell');
   await expect(board3d).toBeVisible({ timeout: 30_000 });
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
+  await expect.poll(async () => {
+    const rect = await shell.boundingBox();
+    return rect ? rect.width / Math.max(1, rect.height) : 0;
+  }).toBeGreaterThan(1.15);
 
   // Android must keep the same narrative scene contract as desktop. This is
   // deliberately checked on the Pixel/touch lane, not inferred from a desktop
@@ -181,6 +193,7 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
 
   const rect = await canvas.boundingBox();
   expect(rect).not.toBeNull();
+  expect(rect.width / Math.max(1, rect.height)).toBeGreaterThan(1.15);
   const from = projectWarRoomSquare(rect, 'e2', 0.76);
   const to = projectWarRoomSquare(rect, 'e4');
   const cdp = await page.context().newCDPSession(page);

@@ -1,4 +1,4 @@
-export const WAR_ROOM_MOBILE_FRAMING_VERSION = 'mobile-portrait-v1';
+export const WAR_ROOM_MOBILE_FRAMING_VERSION = 'mobile-portrait-v2';
 
 export function getWarRoomMobileFramingProfile({
   aspect = 1,
@@ -7,10 +7,17 @@ export function getWarRoomMobileFramingProfile({
 } = {}) {
   const safeAspect = Math.max(0.35, Number(aspect) || 1);
   const safeWidth = Math.max(0, Number(viewportWidth) || 0);
-  const mobilePortrait = Boolean(coarsePointer) && safeWidth <= 820 && safeAspect <= 1.15;
+  const phone = safeWidth <= 520;
+  // On phones the CSS viewport is the trustworthy signal. The 3D shell can be
+  // slightly landscape-shaped even while the device itself is in portrait, so
+  // rejecting it only because the canvas aspect drifts above 1.15 made Android
+  // fall back to the desktop camera profile. Larger mobile surfaces still need
+  // a portrait-like canvas before receiving the tighter framing.
+  const mobilePortrait = Boolean(coarsePointer)
+    && safeWidth <= 820
+    && (phone || safeAspect <= 1.15);
   if (!mobilePortrait) return null;
 
-  const phone = safeWidth <= 520;
   return Object.freeze({
     version: WAR_ROOM_MOBILE_FRAMING_VERSION,
     // Portrait should spend the scarce viewport on the board, not on the
