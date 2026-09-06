@@ -19,6 +19,10 @@ const HEARTH_TOOLS_Z = 0.24;
 const HEARTH_WORK_Z = 0.72;
 const HEARTH_FIRE_TARGET_Z = 0.14;
 const DOOR_PAST_ARMOR_OFFSET = 1.55;
+const CARRY_LOG_TURN_SECONDS = 0.38;
+const POKER_OUTBOUND_TURN_SECONDS = 0.28;
+const POKER_RETURN_TO_FIRE_SECONDS = 2.25;
+const LEAVE_SIDE_FRACTION = 0.5;
 const GRAPHITE_BASKET = 0x6f7479;
 const GRAPHITE_BASKET_DARK = 0x41464b;
 let quickIterationEnabled = false;
@@ -198,12 +202,18 @@ function remapWorkingFrame(frame, timelineT) {
     mapped.rightArm = -Math.sin(p * Math.PI) * 1.02;
     mapped.facingTarget = 'basket';
   } else if (frame.phase === 'carry-log') {
-    const p = clamp01((1.95 - frame.hansX) / (1.95 - 0.9));
-    mapped.hansX = lerp(HEARTH_BASKET_X, 0.9, p);
-    mapped.stride = frame.stride;
+    const local = Math.max(0, timelineT - 12);
+    const walkP = smoothstep01((local - CARRY_LOG_TURN_SECONDS) / (3 - CARRY_LOG_TURN_SECONDS));
+    mapped.hansX = lerp(HEARTH_BASKET_X, 0.9, walkP);
+    mapped.stride = local < CARRY_LOG_TURN_SECONDS
+      ? 0
+      : Math.sin((local - CARRY_LOG_TURN_SECONDS) * 4.6) * 0.18;
     mapped.leftArm = -0.46;
     mapped.rightArm = -0.5;
-    mapped.facingTarget = 'hearth';
+    // The visible destination is the fire, not an abstract approach point.
+    // Give Hans a short turn-in-place before translation so the carried log
+    // never appears to drag him backwards toward the hearth.
+    mapped.facingTarget = 'fire';
   } else if (frame.phase === 'place-log') {
     const p = clamp01((timelineT - 15) / 2);
     mapped.hansX = 0.9;
@@ -212,42 +222,57 @@ function remapWorkingFrame(frame, timelineT) {
     mapped.rightArm = -0.72 - p * 0.44;
     mapped.facingTarget = 'fire';
   } else if (frame.phase === 'take-poker') {
-    const p = clamp01((frame.hansX - 0.9) / (1.18 - 0.9));
-    const walkP = smoothstep01(Math.min(1, p / 0.74));
+    const local = Math.max(0, timelineT - 17);
+    const walkP = smoothstep01((local - POKER_OUTBOUND_TURN_SECONDS) / (2 - POKER_OUTBOUND_TURN_SECONDS));
     mapped.hansX = lerp(0.9, HEARTH_TOOLS_X, walkP);
-    mapped.stride = p < 0.74 ? Math.sin(timelineT * 5.4) * 0.22 : 0;
-    mapped.carryPoker = p > 0.84;
-    mapped.rightArm = p < 0.74 ? -0.08 : -Math.sin((p - 0.74) / 0.26 * Math.PI) * 0.92;
-    mapped.leftArm = p < 0.74 ? 0 : -0.1;
+    mapped.stride = local < POKER_OUTBOUND_TURN_SECONDS
+      ? 0
+      : Math.sin((local - POKER_OUTBOUND_TURN_SECONDS) * 4.35) * 0.16;
+    mapped.carryPoker = local > 1.78;
+    const reachP = clamp01((local - 1.5) / 0.5);
+    mapped.rightArm = local < 1.5 ? -0.08 : -Math.sin(reachP * Math.PI) * 0.92;
+    mapped.leftArm = local < 1.5 ? 0 : -0.1;
     mapped.facingTarget = 'tools';
   } else if (frame.phase === 'stoke-fire') {
     const local = Math.max(0, timelineT - 19);
-    const walkP = smoothstep01(local / 1.25);
+    const walkP = smoothstep01(local / POKER_RETURN_TO_FIRE_SECONDS);
     mapped.hansX = lerp(HEARTH_TOOLS_X, 0.92, walkP);
-    mapped.stride = local < 1.25 ? Math.sin(local * 5.6) * 0.22 : 0;
-    mapped.stoke = local < 1.25 ? 0 : frame.stoke;
-    mapped.rightArm = local < 1.25 ? -0.42 : frame.rightArm;
-    mapped.leftArm = local < 1.25 ? -0.12 : frame.leftArm;
-    mapped.facingTarget = local < 1.25 ? 'hearth' : 'fire';
+    mapped.stride = local < POKER_RETURN_TO_FIRE_SECONDS ? Math.sin(local * 4.35) * 0.16 : 0;
+    mapped.stoke = local < POKER_RETURN_TO_FIRE_SECONDS ? 0 : frame.stoke;
+    mapped.rightArm = local < POKER_RETURN_TO_FIRE_SECONDS ? -0.42 : frame.rightArm;
+    mapped.leftArm = local < POKER_RETURN_TO_FIRE_SECONDS ? -0.12 : frame.leftArm;
+    mapped.facingTarget = 'fire';
   } else if (frame.phase === 'return-poker') {
-    const p = clamp01((frame.hansX - 0.92) / (1.18 - 0.92));
-    const walkP = smoothstep01(Math.min(1, p / 0.78));
+    const local = Math.max(0, timelineT - 24);
+    const walkP = smoothstep01(local / 1.5);
     mapped.hansX = lerp(0.92, HEARTH_TOOLS_X, walkP);
-    mapped.stride = p < 0.78 ? Math.sin(timelineT * 5.3) * 0.21 : 0;
-    mapped.carryPoker = p < 0.9;
-    mapped.rightArm = p < 0.78 ? -0.38 : lerp(-0.38, -0.08, (p - 0.78) / 0.22);
+    mapped.stride = local < 1.42 ? Math.sin(local * 4.2) * 0.15 : 0;
+    mapped.carryPoker = local < 1.28;
+    mapped.rightArm = lerp(-0.38, -0.08, clamp01(local / 1.5));
     mapped.facingTarget = 'tools';
   } else if (frame.phase === 'satisfied') {
     mapped.hansX = HEARTH_TOOLS_X;
     mapped.facingTarget = 'fire';
   } else if (frame.phase === 'leave') {
-    const p = clamp01((frame.hansX - 1.18) / (4.15 - 1.18));
-    mapped.hansX = lerp(HEARTH_TOOLS_X, QUICK_DOOR_X, p);
-    mapped.route = 'leave';
-    mapped.routeProgress = p;
-    mapped.doorOpen = smoothstep01((p - 0.52) / 0.28);
+    const local = Math.max(0, timelineT - 27);
+    const p = clamp01(local / 6);
+    if (p < LEAVE_SIDE_FRACTION) {
+      const sideP = smoothstep01(p / LEAVE_SIDE_FRACTION);
+      mapped.hansX = lerp(HEARTH_TOOLS_X, QUICK_DOOR_X, sideP);
+      mapped.route = 'leave-side';
+      mapped.routeProgress = sideP;
+      mapped.doorOpen = 0;
+      mapped.facingTarget = 'corridor';
+    } else {
+      const corridorP = smoothstep01((p - LEAVE_SIDE_FRACTION) / (1 - LEAVE_SIDE_FRACTION));
+      mapped.hansX = QUICK_DOOR_X;
+      mapped.route = 'leave-corridor';
+      mapped.routeProgress = corridorP;
+      mapped.doorOpen = smoothstep01((corridorP - 0.55) / 0.28);
+      mapped.facingTarget = 'door';
+    }
+    mapped.stride = Math.sin(local * 4.2) * 0.18;
     mapped.hansVisible = frame.hansVisible && p < 0.985;
-    mapped.facingTarget = 'door';
   }
   return mapped;
 }
@@ -296,7 +321,10 @@ function routeDepth(frame, doorDepth) {
   if (frame.route === 'entry') {
     return lerp(doorDepth, HEARTH_WORK_Z, clamp01(frame.routeProgress));
   }
-  if (frame.route === 'leave') {
+  if (frame.route === 'leave-side') {
+    return HEARTH_WORK_Z;
+  }
+  if (frame.route === 'leave-corridor') {
     return lerp(HEARTH_WORK_Z, doorDepth, clamp01(frame.routeProgress));
   }
   return Number.isFinite(frame.hansZ) ? frame.hansZ : HEARTH_WORK_Z;
@@ -314,6 +342,9 @@ function facingPoint(frame, side, towardBoard, doorDepth) {
   }
   if (frame.facingTarget === 'hearth') {
     return { x: side * 0.9, z: towardBoard * HEARTH_WORK_Z };
+  }
+  if (frame.facingTarget === 'corridor') {
+    return { x: side * QUICK_DOOR_X, z: towardBoard * HEARTH_WORK_Z };
   }
   if (frame.facingTarget === 'door') {
     return { x: side * QUICK_DOOR_X, z: towardBoard * doorDepth };
@@ -364,6 +395,7 @@ function applyQuickIterationFrame(refs, frame, towardBoard) {
     body.carriedPoker.rotation.z = frame.stoke * 0.22;
     hans.userData.warRoomHansChoreographyPhase = frame.choreography || frame.phase;
     hans.userData.warRoomHansFacingTarget = frame.facingTarget || null;
+    hans.userData.warRoomHansRoute = frame.route || null;
   }
   if (standPoker) standPoker.visible = !frame.carryPoker;
 
@@ -459,19 +491,23 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
   return 1;
 }
 
-function orientProductionHans(hans, phase, side, towardBoard, doorDepth) {
-  const targetByPhase = {
+function orientProductionHans(hans, phase, side, towardBoard, doorDepth, facingTarget = null) {
+  const targetByState = {
     'walk-to-basket': { x: side * HEARTH_BASKET_X, z: towardBoard * HEARTH_BASKET_Z },
     'take-log': { x: side * HEARTH_BASKET_X, z: towardBoard * HEARTH_BASKET_Z },
-    'carry-log': { x: side * 0.9, z: towardBoard * HEARTH_WORK_Z },
+    'carry-log': { x: 0, z: towardBoard * HEARTH_FIRE_TARGET_Z },
     'place-log': { x: 0, z: towardBoard * HEARTH_FIRE_TARGET_Z },
     'take-poker': { x: side * HEARTH_TOOLS_X, z: towardBoard * HEARTH_TOOLS_Z },
     'stoke-fire': { x: 0, z: towardBoard * HEARTH_FIRE_TARGET_Z },
     'return-poker': { x: side * HEARTH_TOOLS_X, z: towardBoard * HEARTH_TOOLS_Z },
     satisfied: { x: 0, z: towardBoard * HEARTH_FIRE_TARGET_Z },
-    leave: { x: side * QUICK_DOOR_X, z: towardBoard * doorDepth },
+    basket: { x: side * HEARTH_BASKET_X, z: towardBoard * HEARTH_BASKET_Z },
+    tools: { x: side * HEARTH_TOOLS_X, z: towardBoard * HEARTH_TOOLS_Z },
+    fire: { x: 0, z: towardBoard * HEARTH_FIRE_TARGET_Z },
+    corridor: { x: side * QUICK_DOOR_X, z: towardBoard * HEARTH_WORK_Z },
+    door: { x: side * QUICK_DOOR_X, z: towardBoard * doorDepth },
   };
-  const target = targetByPhase[phase];
+  const target = targetByState[facingTarget] || targetByState[phase];
   if (target) {
     hans.rotation.y = headingTo(
       hans.position.x,
@@ -492,44 +528,75 @@ function remapProductionHans(hans, phase, side, towardBoard, doorDepth, phaseEla
   let doorOpen = 0;
   let hide = false;
   let syntheticStride = null;
+  let facingTarget = null;
 
   if (phase === 'walk-to-basket') {
     const p = clamp01((3.9 - rawX) / (3.9 - 1.95));
     x = lerp(QUICK_DOOR_X, HEARTH_BASKET_X, p);
     depth = lerp(doorDepth, HEARTH_WORK_Z, p);
     doorOpen = 1 - smoothstep01(p / 0.45);
+    facingTarget = 'basket';
   } else if (phase === 'take-log') {
     x = HEARTH_BASKET_X;
+    facingTarget = 'basket';
   } else if (phase === 'carry-log') {
-    const p = clamp01((1.95 - rawX) / (1.95 - 0.9));
-    x = lerp(HEARTH_BASKET_X, 0.9, p);
+    const walkP = smoothstep01((phaseElapsed - CARRY_LOG_TURN_SECONDS) / (3 - CARRY_LOG_TURN_SECONDS));
+    x = lerp(HEARTH_BASKET_X, 0.9, walkP);
+    syntheticStride = phaseElapsed < CARRY_LOG_TURN_SECONDS
+      ? 0
+      : Math.sin((phaseElapsed - CARRY_LOG_TURN_SECONDS) * 4.6) * 0.18;
+    facingTarget = 'fire';
   } else if (phase === 'place-log') {
     x = 0.9;
+    facingTarget = 'fire';
   } else if (phase === 'take-poker') {
-    const p = clamp01((rawX - 0.9) / (1.18 - 0.9));
-    x = lerp(0.9, HEARTH_TOOLS_X, p);
-    syntheticStride = p < 0.8 ? Math.sin(phaseElapsed * 5.4) * 0.22 : 0;
+    const walkP = smoothstep01((phaseElapsed - POKER_OUTBOUND_TURN_SECONDS) / (2 - POKER_OUTBOUND_TURN_SECONDS));
+    x = lerp(0.9, HEARTH_TOOLS_X, walkP);
+    syntheticStride = phaseElapsed < POKER_OUTBOUND_TURN_SECONDS
+      ? 0
+      : Math.sin((phaseElapsed - POKER_OUTBOUND_TURN_SECONDS) * 4.35) * 0.16;
+    facingTarget = 'tools';
   } else if (phase === 'stoke-fire') {
-    const walkP = smoothstep01(phaseElapsed / 1.2);
+    const walkP = smoothstep01(phaseElapsed / POKER_RETURN_TO_FIRE_SECONDS);
     x = lerp(HEARTH_TOOLS_X, 0.92, walkP);
-    syntheticStride = phaseElapsed < 1.2 ? Math.sin(phaseElapsed * 5.6) * 0.22 : 0;
+    syntheticStride = phaseElapsed < POKER_RETURN_TO_FIRE_SECONDS ? Math.sin(phaseElapsed * 4.35) * 0.16 : 0;
+    facingTarget = 'fire';
+    if (phaseElapsed < POKER_RETURN_TO_FIRE_SECONDS) {
+      const body = hans.userData?.refs;
+      if (body?.rightArm) body.rightArm.rotation.x = -0.42;
+      if (body?.leftArm) body.leftArm.rotation.x = -0.12;
+      if (body?.carriedPoker) body.carriedPoker.rotation.z = 0;
+    }
   } else if (phase === 'return-poker') {
-    const p = clamp01((rawX - 0.92) / (1.18 - 0.92));
-    x = lerp(0.92, HEARTH_TOOLS_X, p);
-    syntheticStride = p < 0.82 ? Math.sin(phaseElapsed * 5.3) * 0.21 : 0;
+    const walkP = smoothstep01(phaseElapsed / 1.5);
+    x = lerp(0.92, HEARTH_TOOLS_X, walkP);
+    syntheticStride = phaseElapsed < 1.42 ? Math.sin(phaseElapsed * 4.2) * 0.15 : 0;
+    facingTarget = 'tools';
   } else if (phase === 'satisfied') {
     x = HEARTH_TOOLS_X;
+    facingTarget = 'fire';
   } else if (phase === 'leave') {
-    const p = clamp01((rawX - 1.18) / (4.15 - 1.18));
-    x = lerp(HEARTH_TOOLS_X, QUICK_DOOR_X, p);
-    depth = lerp(HEARTH_WORK_Z, doorDepth, p);
-    doorOpen = smoothstep01((p - 0.52) / 0.28);
+    const p = clamp01(phaseElapsed / 6);
+    if (p < LEAVE_SIDE_FRACTION) {
+      const sideP = smoothstep01(p / LEAVE_SIDE_FRACTION);
+      x = lerp(HEARTH_TOOLS_X, QUICK_DOOR_X, sideP);
+      depth = HEARTH_WORK_Z;
+      doorOpen = 0;
+      facingTarget = 'corridor';
+    } else {
+      const corridorP = smoothstep01((p - LEAVE_SIDE_FRACTION) / (1 - LEAVE_SIDE_FRACTION));
+      x = QUICK_DOOR_X;
+      depth = lerp(HEARTH_WORK_Z, doorDepth, corridorP);
+      doorOpen = smoothstep01((corridorP - 0.55) / 0.28);
+      facingTarget = 'door';
+    }
+    syntheticStride = Math.sin(phaseElapsed * 4.2) * 0.18;
     hide = p >= 0.985;
   }
 
   hans.position.x = side * x;
   hans.position.z = towardBoard * depth;
-  orientProductionHans(hans, phase, side, towardBoard, doorDepth);
+  orientProductionHans(hans, phase, side, towardBoard, doorDepth, facingTarget);
   if (syntheticStride != null) {
     const body = hans.userData?.refs;
     if (body?.leftLeg && body?.rightLeg) {
@@ -537,6 +604,7 @@ function remapProductionHans(hans, phase, side, towardBoard, doorDepth, phaseEla
       body.rightLeg.rotation.x = -syntheticStride;
     }
   }
+  hans.userData.warRoomHansFacingTarget = facingTarget || phase;
   return { doorOpen, hide };
 }
 
