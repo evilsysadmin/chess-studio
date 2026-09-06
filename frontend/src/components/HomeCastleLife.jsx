@@ -4,6 +4,7 @@ import './HomeGreatHall.css';
 import './HomeCastleAmbience.css';
 import HomeCastleHubScene from './HomeCastleHubScene.jsx';
 import { ACHIEVEMENTS, loadAchievementLedger, loadUnlocked } from '../achievements.js';
+import { PROFILE_CHANGED_EVENT } from '../profileKeys.js';
 import {
   castleHonourObjects,
   castleLedgerFingerprint,
@@ -17,6 +18,10 @@ import {
 const MAX_OBJECTS = 3;
 const RARE_SIGHTING_THRESHOLD = 0.025;
 const HIGH_HONOUR_PRESTIGE = 80;
+const ACHIEVEMENT_STORAGE_KEYS = new Set([
+  'chess-study-achievements',
+  'chess-study-achievement-ledger-v2',
+]);
 const ACHIEVEMENT_DESCRIPTIONS = Object.freeze(Object.fromEntries(
   ACHIEVEMENTS.map((achievement) => [achievement.id, achievement.description]),
 ));
@@ -38,6 +43,16 @@ function achievementStateFingerprint(ids, ledger) {
     return [id, record?.legacy === true, record?.recordedAt || null, record?.source || null];
   });
   return JSON.stringify(rows);
+}
+
+function loadAchievementSnapshot() {
+  const ids = [...loadUnlocked()];
+  const ledger = loadAchievementLedger();
+  return {
+    ids,
+    ledger,
+    fingerprint: achievementStateFingerprint(ids, ledger),
+  };
 }
 
 function castleAmbience({ honours, stateObjects, hasSavedGame }) {
@@ -172,8 +187,35 @@ export function buildHomeCastleLifeModel({
 }
 
 export default function HomeCastleLife({ achievementIds = null, achievementLedger = null, ...props }) {
-  const resolvedAchievementIds = achievementIds ?? [...loadUnlocked()];
-  const resolvedAchievementLedger = achievementLedger ?? loadAchievementLedger();
+  // Menu rerenders for many unrelated reasons. Reading + parsing achievements in
+  // the component body made every one of those renders touch profile storage.
+  // Keep a coherent snapshot and refresh it only when profile/storage can
+  // actually have changed; explicit caller data still wins when supplied.
+  const [achievementSnapshot, setAchievementSnapshot] = useState(loadAchievementSnapshot);
+  useEffect(() => {
+    if (achievementIds !== null && achievementLedger !== null) return undefined;
+    if (typeof window === 'undefined') return undefined;
+
+    const refreshAchievements = () => {
+      const next = loadAchievementSnapshot();
+      setAchievementSnapshot((current) => (
+        current.fingerprint === next.fingerprint ? current : next
+      ));
+    };
+    const onStorage = (event) => {
+      if (event?.key === null || ACHIEVEMENT_STORAGE_KEYS.has(event?.key)) refreshAchievements();
+    };
+
+    window.addEventListener(PROFILE_CHANGED_EVENT, refreshAchievements);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(PROFILE_CHANGED_EVENT, refreshAchievements);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [achievementIds, achievementLedger]);
+
+  const resolvedAchievementIds = achievementIds ?? achievementSnapshot.ids;
+  const resolvedAchievementLedger = achievementLedger ?? achievementSnapshot.ledger;
   const [persistedCastleLedger, setPersistedCastleLedger] = useState(() => loadCastleUnlockLedger());
   const achievementFingerprint = achievementStateFingerprint(resolvedAchievementIds, resolvedAchievementLedger);
   const persistedFingerprint = castleLedgerFingerprint(persistedCastleLedger);
