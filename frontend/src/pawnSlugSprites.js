@@ -17,6 +17,9 @@ const MATTHIAS_GRID = Object.freeze({ columns: 16, rows: 5, frameWidth: 96, fram
 const MATTHIAS_ATLAS_WIDTH = MATTHIAS_GRID.columns * MATTHIAS_GRID.frameWidth;
 const MATTHIAS_ATLAS_HEIGHT = MATTHIAS_GRID.rows * MATTHIAS_GRID.frameHeight;
 const MATTHIAS_UV_GUARD_TEXELS = 1;
+const MATTHIAS_UV_TRIM_BY_ACTION = Object.freeze({
+  jump: Object.freeze({ left: 1, right: 6, top: 1, bottom: 1 }),
+});
 const MATTHIAS_ACTIONS = Object.freeze({
   idle: Object.freeze({ row: 0, count: 10 }),
   walk: Object.freeze({ row: 1, count: 10 }),
@@ -111,25 +114,33 @@ export function configurePawnSlugTexture(texture) {
 
 export function pawnSlugMatthiasAtlasWindow(action, frameIndex = 0, dir = 1) {
   const track = MATTHIAS_ACTIONS[action] || MATTHIAS_ACTIONS.idle;
+  const safeAction = MATTHIAS_ACTIONS[action] ? action : 'idle';
   const safeIndex = ((Math.floor(frameIndex) % track.count) + track.count) % track.count;
   const direction = dir < 0 ? -1 : 1;
-  const guardedWidth = MATTHIAS_GRID.frameWidth - (MATTHIAS_UV_GUARD_TEXELS * 2);
-  const guardedHeight = MATTHIAS_GRID.frameHeight - (MATTHIAS_UV_GUARD_TEXELS * 2);
-  const leftEdge = (safeIndex * MATTHIAS_GRID.frameWidth) + MATTHIAS_UV_GUARD_TEXELS;
-  const rightEdge = ((safeIndex + 1) * MATTHIAS_GRID.frameWidth) - MATTHIAS_UV_GUARD_TEXELS;
+  const trim = MATTHIAS_UV_TRIM_BY_ACTION[safeAction] || Object.freeze({
+    left: MATTHIAS_UV_GUARD_TEXELS,
+    right: MATTHIAS_UV_GUARD_TEXELS,
+    top: MATTHIAS_UV_GUARD_TEXELS,
+    bottom: MATTHIAS_UV_GUARD_TEXELS,
+  });
+  const guardedWidth = MATTHIAS_GRID.frameWidth - trim.left - trim.right;
+  const guardedHeight = MATTHIAS_GRID.frameHeight - trim.top - trim.bottom;
+  const leftEdge = (safeIndex * MATTHIAS_GRID.frameWidth) + trim.left;
+  const rightEdge = ((safeIndex + 1) * MATTHIAS_GRID.frameWidth) - trim.right;
   const bottomEdge = (
     MATTHIAS_ATLAS_HEIGHT
     - ((track.row + 1) * MATTHIAS_GRID.frameHeight)
-    + MATTHIAS_UV_GUARD_TEXELS
+    + trim.bottom
   );
 
   return Object.freeze({
-    action: MATTHIAS_ACTIONS[action] ? action : 'idle',
+    action: safeAction,
     frameIndex: safeIndex,
     column: safeIndex,
     row: track.row,
     direction,
     mirrored: direction < 0,
+    trim,
     repeatX: direction * (guardedWidth / MATTHIAS_ATLAS_WIDTH),
     repeatY: guardedHeight / MATTHIAS_ATLAS_HEIGHT,
     offsetX: (direction < 0 ? rightEdge : leftEdge) / MATTHIAS_ATLAS_WIDTH,
@@ -140,6 +151,12 @@ export function pawnSlugMatthiasAtlasWindow(action, frameIndex = 0, dir = 1) {
 export function pawnSlugMatthiasVisualDirection(action, dir = 1) {
   const worldDirection = dir < 0 ? -1 : 1;
   return worldDirection * (MATTHIAS_SOURCE_FACING[action] || 1);
+}
+
+export function pawnSlugEnemyVisualDirection(dir = 1, source = 'primary') {
+  const worldDirection = dir < 0 ? -1 : 1;
+  const sourceFacing = String(source || '').startsWith('fallback') ? 1 : -1;
+  return worldDirection * sourceFacing;
 }
 
 function configureSingleRowWindow(texture, frames, frame) {
@@ -444,16 +461,19 @@ export function createSlugEnemySprite(type = 'pawn') {
 export function animateSlugEnemySprite(sprite, type, time, { moving = false, hurt = false } = {}) {
   const profile = PAWN_SLUG_MOTION_PROFILES[type] || PAWN_SLUG_MOTION_PROFILES.pawn;
   const phase = sprite.userData.motionPhase || 0;
-  const direction = sprite.scale.x < 0 ? -1 : 1;
+  const worldDirection = sprite.scale.x < 0 ? -1 : 1;
+  const direction = pawnSlugEnemyVisualDirection(worldDirection, sprite.userData.atlas?.source);
+  const baseScaleX = sprite.userData.motionBaseScaleX || Math.abs(sprite.scale.x) || 1;
   const moveWave = Math.sin(time * profile.moveRate + phase);
   const idleWave = Math.sin(time * profile.idleRate + phase);
   const baseScaleY = sprite.userData.motionBaseScaleY || Math.abs(sprite.scale.y) || 1;
 
+  sprite.scale.x = baseScaleX * direction;
   sprite.userData.setFrame?.(sprite.userData.enemyFrame ?? ENEMY_FRAME_BY_TYPE.pawn);
   sprite.position.y += moving
     ? Math.abs(moveWave) * profile.moveBob
     : Math.max(0, idleWave) * profile.idleBob;
-  if (hurt) sprite.position.x -= direction * profile.hurtKick;
+  if (hurt) sprite.position.x -= worldDirection * profile.hurtKick;
 
   sprite.scale.y = baseScaleY * (
     1
@@ -524,6 +544,7 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
     runtimeFacings: Object.freeze(['right', 'left']),
     directionMode: 'atlas-uv-mirror',
     uvGuardTexels: MATTHIAS_UV_GUARD_TEXELS,
+    uvTrimByAction: MATTHIAS_UV_TRIM_BY_ACTION,
     actions: MATTHIAS_ACTIONS,
     motionFrames: Object.freeze({ idle: 10, walk: 10, run: 16, crouch: 10, airborne: 9 }),
   }),
@@ -533,7 +554,9 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
     frames: 3,
     frameWidth: 104,
     frameHeight: 104,
-    sourceFacing: 'right',
+    sourceFacing: 'left',
+    fallbackSourceFacing: 'right',
+    directionMode: 'source-aware-sprite-mirror',
     frameByType: ENEMY_FRAME_BY_TYPE,
   }),
   boss: Object.freeze({ url: panzerRookUrl, frames: 1, frameWidth: 192, frameHeight: 192 }),
