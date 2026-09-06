@@ -8,7 +8,7 @@ import {
   setWarRoomHansServiceDoorOpen,
 } from './WarRoomHansServiceDoor.js';
 
-const QUICK_ITERATION_VERSION = 'always-quick-v6-mobile-proscenium';
+const QUICK_ITERATION_VERSION = 'always-quick-v7-hearth-choreography';
 const QUICK_ENTRY_SECONDS = 7;
 const MOBILE_QUICK_ENTRY_HEADSTART_S = 4.8;
 const QUICK_DOOR_X = 2.65;
@@ -17,6 +17,7 @@ const HEARTH_TOOLS_X = -2.28;
 const HEARTH_BASKET_Z = 0.28;
 const HEARTH_TOOLS_Z = 0.24;
 const HEARTH_WORK_Z = 0.72;
+const HEARTH_FIRE_TARGET_Z = 0.14;
 const DOOR_PAST_ARMOR_OFFSET = 1.55;
 const GRAPHITE_BASKET = 0x6f7479;
 const GRAPHITE_BASKET_DARK = 0x41464b;
@@ -40,6 +41,14 @@ function smoothstep01(value) {
 
 function lerp(a, b, t) {
   return a + (b - a) * t;
+}
+
+function headingTo(fromX, fromZ, toX, toZ, fallback = 0) {
+  const dx = Number(toX) - Number(fromX);
+  const dz = Number(toZ) - Number(fromZ);
+  if (!Number.isFinite(dx) || !Number.isFinite(dz) || Math.hypot(dx, dz) < 0.0001) return fallback;
+  // Hans' face points down local +Z, therefore yaw is atan2(X, Z).
+  return Math.atan2(dx, dz);
 }
 
 function resolveLightBaseIntensity(light, fallback = 1) {
@@ -176,25 +185,57 @@ function relocateHearthKit(fireplace, towardBoard) {
 
 function remapWorkingFrame(frame, timelineT) {
   if (!frame?.hansVisible) return frame;
-  const mapped = { ...frame, hansZ: HEARTH_WORK_Z };
+  const mapped = { ...frame, hansZ: HEARTH_WORK_Z, choreography: frame.phase };
   if (frame.phase === 'take-log') {
+    const p = clamp01((timelineT - 10) / 2);
     mapped.hansX = HEARTH_BASKET_X;
+    mapped.crouch = Math.sin(p * Math.PI) * 0.16;
+    mapped.leftArm = -Math.sin(p * Math.PI) * 0.58;
+    mapped.rightArm = -Math.sin(p * Math.PI) * 1.02;
+    mapped.facingTarget = 'basket';
   } else if (frame.phase === 'carry-log') {
     const p = clamp01((1.95 - frame.hansX) / (1.95 - 0.9));
     mapped.hansX = lerp(HEARTH_BASKET_X, 0.9, p);
+    mapped.stride = frame.stride;
+    mapped.leftArm = -0.46;
+    mapped.rightArm = -0.5;
+    mapped.facingTarget = 'hearth';
   } else if (frame.phase === 'place-log') {
+    const p = clamp01((timelineT - 15) / 2);
     mapped.hansX = 0.9;
+    mapped.crouch = Math.sin(p * Math.PI) * 0.12;
+    mapped.leftArm = -0.66 - p * 0.26;
+    mapped.rightArm = -0.72 - p * 0.44;
+    mapped.facingTarget = 'fire';
   } else if (frame.phase === 'take-poker') {
     const p = clamp01((frame.hansX - 0.9) / (1.18 - 0.9));
-    mapped.hansX = lerp(0.9, HEARTH_TOOLS_X, p);
+    const walkP = smoothstep01(Math.min(1, p / 0.74));
+    mapped.hansX = lerp(0.9, HEARTH_TOOLS_X, walkP);
+    mapped.stride = p < 0.74 ? Math.sin(timelineT * 5.4) * 0.22 : 0;
+    mapped.carryPoker = p > 0.84;
+    mapped.rightArm = p < 0.74 ? -0.08 : -Math.sin((p - 0.74) / 0.26 * Math.PI) * 0.92;
+    mapped.leftArm = p < 0.74 ? 0 : -0.1;
+    mapped.facingTarget = 'tools';
   } else if (frame.phase === 'stoke-fire') {
     const local = Math.max(0, timelineT - 19);
-    mapped.hansX = lerp(HEARTH_TOOLS_X, 0.92, smoothstep01(local / 1.2));
+    const walkP = smoothstep01(local / 1.25);
+    mapped.hansX = lerp(HEARTH_TOOLS_X, 0.92, walkP);
+    mapped.stride = local < 1.25 ? Math.sin(local * 5.6) * 0.22 : 0;
+    mapped.stoke = local < 1.25 ? 0 : frame.stoke;
+    mapped.rightArm = local < 1.25 ? -0.42 : frame.rightArm;
+    mapped.leftArm = local < 1.25 ? -0.12 : frame.leftArm;
+    mapped.facingTarget = local < 1.25 ? 'hearth' : 'fire';
   } else if (frame.phase === 'return-poker') {
     const p = clamp01((frame.hansX - 0.92) / (1.18 - 0.92));
-    mapped.hansX = lerp(0.92, HEARTH_TOOLS_X, p);
+    const walkP = smoothstep01(Math.min(1, p / 0.78));
+    mapped.hansX = lerp(0.92, HEARTH_TOOLS_X, walkP);
+    mapped.stride = p < 0.78 ? Math.sin(timelineT * 5.3) * 0.21 : 0;
+    mapped.carryPoker = p < 0.9;
+    mapped.rightArm = p < 0.78 ? -0.38 : lerp(-0.38, -0.08, (p - 0.78) / 0.22);
+    mapped.facingTarget = 'tools';
   } else if (frame.phase === 'satisfied') {
     mapped.hansX = HEARTH_TOOLS_X;
+    mapped.facingTarget = 'fire';
   } else if (frame.phase === 'leave') {
     const p = clamp01((frame.hansX - 1.18) / (4.15 - 1.18));
     mapped.hansX = lerp(HEARTH_TOOLS_X, QUICK_DOOR_X, p);
@@ -202,6 +243,7 @@ function remapWorkingFrame(frame, timelineT) {
     mapped.routeProgress = p;
     mapped.doorOpen = smoothstep01((p - 0.52) / 0.28);
     mapped.hansVisible = frame.hansVisible && p < 0.985;
+    mapped.facingTarget = 'door';
   }
   return mapped;
 }
@@ -230,6 +272,8 @@ export function hansQuickIterationFrame(elapsedSeconds) {
       route: 'entry',
       routeProgress: eased,
       doorOpen: 1 - closeDoor,
+      facingTarget: 'basket',
+      choreography: 'enter-to-basket',
     };
   }
 
@@ -238,8 +282,9 @@ export function hansQuickIterationFrame(elapsedSeconds) {
   const frame = hansFireplaceFrame(
     elapsed + HANS_FIREPLACE_START_DELAY_S + postEntryOffset,
   );
-  if (frame.complete) return { ...frame, doorOpen: 0 };
-  return { ...remapWorkingFrame(frame, timelineT), doorOpen: frame.phase === 'leave' ? remapWorkingFrame(frame, timelineT).doorOpen : 0 };
+  if (frame.complete) return { ...frame, doorOpen: 0, choreography: 'complete' };
+  const mapped = remapWorkingFrame(frame, timelineT);
+  return { ...mapped, doorOpen: frame.phase === 'leave' ? mapped.doorOpen : 0 };
 }
 
 function routeDepth(frame, doorDepth) {
@@ -252,16 +297,32 @@ function routeDepth(frame, doorDepth) {
   return Number.isFinite(frame.hansZ) ? frame.hansZ : HEARTH_WORK_Z;
 }
 
+function facingPoint(frame, side, towardBoard, doorDepth) {
+  if (frame.facingTarget === 'basket') {
+    return { x: side * HEARTH_BASKET_X, z: towardBoard * HEARTH_BASKET_Z };
+  }
+  if (frame.facingTarget === 'tools') {
+    return { x: side * HEARTH_TOOLS_X, z: towardBoard * HEARTH_TOOLS_Z };
+  }
+  if (frame.facingTarget === 'fire') {
+    return { x: 0, z: towardBoard * HEARTH_FIRE_TARGET_Z };
+  }
+  if (frame.facingTarget === 'hearth') {
+    return { x: side * 0.9, z: towardBoard * HEARTH_WORK_Z };
+  }
+  if (frame.facingTarget === 'door') {
+    return { x: side * QUICK_DOOR_X, z: towardBoard * doorDepth };
+  }
+  return null;
+}
+
 function applyHansTransform(hans, frame, side, towardBoard, doorDepth) {
   hans.position.x = side * frame.hansX;
-  hans.position.y = -0.34;
+  hans.position.y = -0.34 - Number(frame.crouch || 0);
   hans.position.z = towardBoard * routeDepth(frame, doorDepth);
-  if (frame.route === 'entry') {
-    hans.rotation.y = Math.PI;
-  } else if (frame.route === 'leave') {
-    hans.rotation.y = 0;
-  } else {
-    hans.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
+  const target = facingPoint(frame, side, towardBoard, doorDepth);
+  if (target) {
+    hans.rotation.y = headingTo(hans.position.x, hans.position.z, target.x, target.z, hans.rotation.y);
   }
 }
 
@@ -289,6 +350,8 @@ function applyQuickIterationFrame(refs, frame, towardBoard) {
     body.carriedLog.visible = frame.carryLog;
     body.carriedPoker.visible = frame.carryPoker;
     body.carriedPoker.rotation.z = frame.stoke * 0.22;
+    hans.userData.warRoomHansChoreographyPhase = frame.choreography || frame.phase;
+    hans.userData.warRoomHansFacingTarget = frame.facingTarget || null;
   }
   if (standPoker) standPoker.visible = !frame.carryPoker;
 
@@ -359,7 +422,8 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
   driver.userData.warRoomHansUsesServiceDoor = true;
   driver.userData.warRoomHansServiceCorridor = 'past-armor-to-hearth-v1';
   driver.userData.warRoomHansMobileEntryHeadstartSeconds = entryHeadstartSeconds;
-  driver.userData.warRoomHansEntryPresentation = coarsePointer ? 'mobile-proscenium-v1' : 'full-service-corridor-v1';
+  driver.userData.warRoomHansEntryPresentation = coarsePointer ? 'mobile-proscenium-v2-choreographed' : 'full-service-corridor-v2-choreographed';
+  driver.userData.warRoomHansChoreography = 'door-log-fire-poker-door-v2';
 
   const initialFrame = hansQuickIterationFrame(entryHeadstartSeconds);
   applyQuickIterationFrame(refs, initialFrame, towardBoard);
@@ -369,6 +433,7 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
     const frame = hansQuickIterationFrame((nowMs() - startedAt) / 1000);
     applyQuickIterationFrame(refs, frame, towardBoard);
     driver.userData.warRoomHansPhase = frame.phase;
+    driver.userData.warRoomHansChoreographyPhase = frame.choreography || frame.phase;
     if (frame.complete) {
       hans.visible = false;
       driver.userData.warRoomHansCompleted = true;
@@ -380,6 +445,22 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
   return 1;
 }
 
+function orientProductionHans(hans, phase, side, towardBoard, doorDepth) {
+  const targetByPhase = {
+    'walk-to-basket': { x: side * HEARTH_BASKET_X, z: towardBoard * HEARTH_BASKET_Z },
+    'take-log': { x: side * HEARTH_BASKET_X, z: towardBoard * HEARTH_BASKET_Z },
+    'carry-log': { x: side * 0.9, z: towardBoard * HEARTH_WORK_Z },
+    'place-log': { x: 0, z: towardBoard * HEARTH_FIRE_TARGET_Z },
+    'take-poker': { x: side * HEARTH_TOOLS_X, z: towardBoard * HEARTH_TOOLS_Z },
+    'stoke-fire': { x: 0, z: towardBoard * HEARTH_FIRE_TARGET_Z },
+    'return-poker': { x: side * HEARTH_TOOLS_X, z: towardBoard * HEARTH_TOOLS_Z },
+    satisfied: { x: 0, z: towardBoard * HEARTH_FIRE_TARGET_Z },
+    leave: { x: side * QUICK_DOOR_X, z: towardBoard * doorDepth },
+  };
+  const target = targetByPhase[phase];
+  if (target) hans.rotation.y = headingTo(hans.position.x, hans.position.z, target.x, target.z, hans.rotation.y);
+}
+
 function remapProductionHans(hans, phase, side, towardBoard, doorDepth, phaseElapsed) {
   if (!hans?.visible) return { doorOpen: 0, hide: false };
   const rawX = Math.abs(Number(hans.position.x || 0));
@@ -387,13 +468,13 @@ function remapProductionHans(hans, phase, side, towardBoard, doorDepth, phaseEla
   let depth = HEARTH_WORK_Z;
   let doorOpen = 0;
   let hide = false;
+  let syntheticStride = null;
 
   if (phase === 'walk-to-basket') {
     const p = clamp01((3.9 - rawX) / (3.9 - 1.95));
     x = lerp(QUICK_DOOR_X, HEARTH_BASKET_X, p);
     depth = lerp(doorDepth, HEARTH_WORK_Z, p);
     doorOpen = 1 - smoothstep01(p / 0.45);
-    hans.rotation.y = Math.PI;
   } else if (phase === 'take-log') {
     x = HEARTH_BASKET_X;
   } else if (phase === 'carry-log') {
@@ -404,11 +485,15 @@ function remapProductionHans(hans, phase, side, towardBoard, doorDepth, phaseEla
   } else if (phase === 'take-poker') {
     const p = clamp01((rawX - 0.9) / (1.18 - 0.9));
     x = lerp(0.9, HEARTH_TOOLS_X, p);
+    syntheticStride = p < 0.8 ? Math.sin(phaseElapsed * 5.4) * 0.22 : 0;
   } else if (phase === 'stoke-fire') {
-    x = lerp(HEARTH_TOOLS_X, 0.92, smoothstep01(phaseElapsed / 1.2));
+    const walkP = smoothstep01(phaseElapsed / 1.2);
+    x = lerp(HEARTH_TOOLS_X, 0.92, walkP);
+    syntheticStride = phaseElapsed < 1.2 ? Math.sin(phaseElapsed * 5.6) * 0.22 : 0;
   } else if (phase === 'return-poker') {
     const p = clamp01((rawX - 0.92) / (1.18 - 0.92));
     x = lerp(0.92, HEARTH_TOOLS_X, p);
+    syntheticStride = p < 0.82 ? Math.sin(phaseElapsed * 5.3) * 0.21 : 0;
   } else if (phase === 'satisfied') {
     x = HEARTH_TOOLS_X;
   } else if (phase === 'leave') {
@@ -417,13 +502,17 @@ function remapProductionHans(hans, phase, side, towardBoard, doorDepth, phaseEla
     depth = lerp(HEARTH_WORK_Z, doorDepth, p);
     doorOpen = smoothstep01((p - 0.52) / 0.28);
     hide = p >= 0.985;
-    hans.rotation.y = 0;
   }
 
   hans.position.x = side * x;
   hans.position.z = towardBoard * depth;
-  if (phase !== 'walk-to-basket' && phase !== 'leave') {
-    hans.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
+  orientProductionHans(hans, phase, side, towardBoard, doorDepth);
+  if (syntheticStride != null) {
+    const body = hans.userData?.refs;
+    if (body?.leftLeg && body?.rightLeg) {
+      body.leftLeg.rotation.x = syntheticStride;
+      body.rightLeg.rotation.x = -syntheticStride;
+    }
   }
   return { doorOpen, hide };
 }
@@ -437,6 +526,7 @@ function armProductionDoor(driver, hans, doorRefs, fireplace, towardBoard) {
   let phaseStartedAt = nowMs();
   driver.userData.warRoomHansUsesServiceDoor = true;
   driver.userData.warRoomHansServiceCorridor = 'past-armor-to-hearth-v1';
+  driver.userData.warRoomHansChoreography = 'door-log-fire-poker-door-v2';
   driver.onBeforeRender = () => {
     original();
     const phase = driver.userData.warRoomHansPhase;
