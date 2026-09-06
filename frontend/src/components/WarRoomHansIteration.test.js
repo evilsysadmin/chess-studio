@@ -173,12 +173,12 @@ describe('Hans quick-game visual iteration', () => {
     expect(kit).toBeTruthy();
     expect(driver.userData.warRoomHansSelected).toBe(true);
     expect(driver.userData.warRoomHansStartDelaySeconds).toBe(0);
-    expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v7-hearth-choreography');
+    expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v8-android-deterministic-start');
     expect(driver.userData.warRoomHansVisibleAtStart).toBe(true);
     expect(driver.userData.warRoomHansUsesServiceDoor).toBe(true);
     expect(driver.userData.warRoomHansServiceCorridor).toBe('past-armor-to-hearth-v1');
     expect(driver.userData.warRoomHansChoreography).toBe('door-log-fire-poker-door-v2');
-    expect(fireplace.userData.warRoomHansQuickIteration).toBe('always-quick-v7-hearth-choreography');
+    expect(fireplace.userData.warRoomHansQuickIteration).toBe('always-quick-v8-android-deterministic-start');
     expect(fireplace.userData.warRoomHansHearthRestored).toBe(false);
     expect(door.userData.warRoomHansServiceDoor).toBe('hans-service-door-v1');
     expect(door.userData.warRoomHansDoorPlacement).toBe('past-armor-service-corridor-v1');
@@ -220,16 +220,17 @@ describe('Hans quick-game visual iteration', () => {
       expect(door).toBeTruthy();
       expect(basket).toBeTruthy();
       expect(driver.userData.warRoomHansSelected).toBe(true);
-      expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v7-hearth-choreography');
+      expect(driver.userData.warRoomHansQuickIteration).toBe('always-quick-v8-android-deterministic-start');
       expect(driver.userData.warRoomHansVisibleAtStart).toBe(true);
-      expect(driver.userData.warRoomHansMobileEntryHeadstartSeconds).toBeCloseTo(4.8, 2);
-      expect(driver.userData.warRoomHansEntryPresentation).toBe('mobile-proscenium-v2-choreographed');
+      expect(driver.userData.warRoomHansMobileEntryHeadstartSeconds).toBe(0);
+      expect(driver.userData.warRoomHansClockStart).toBe('first-real-render-v1');
+      expect(driver.userData.warRoomHansEntryPresentation).toBe('mobile-visible-start-v3-choreographed');
       expect(driver.userData.warRoomHansChoreography).toBe('door-log-fire-poker-door-v2');
       expect(hans.visible).toBe(true);
       expect(Math.abs(hans.position.x)).toBeLessThan(1);
       expect(Math.abs(hans.position.z)).toBeLessThan(3);
       expect(hans.userData.warRoomHansFacingTarget).toBe('basket');
-      expect(door.userData.warRoomHansDoorOpen).toBe(0);
+      expect(door.userData.warRoomHansDoorOpen).toBe(1);
       expect(door.userData.warRoomHansDoorPlacement).toBe('past-armor-service-corridor-v1');
       expect(basket.userData.warRoomHansBasketFinish).toBe('graphite-grey-v1');
     } finally {
@@ -264,6 +265,9 @@ describe('Hans quick-game visual iteration', () => {
       const door = room.getObjectByName('war-room-hans-service-door');
 
       expect(door.userData.warRoomHansDoorOpen).toBe(1);
+
+      // First real render anchors choreography t=0.
+      driver.onBeforeRender();
 
       now.mockReturnValue(8200);
       driver.onBeforeRender();
@@ -331,6 +335,9 @@ describe('Hans quick-game visual iteration', () => {
       const baseIntensity = Number(fireLight.userData.baseWarRoomIntensity || fireLight.intensity);
       const baseDistance = fireLight.distance;
       const baseBounce = bounce?.intensity ?? null;
+
+      // Anchor the new first-real-render clock before advancing wall time.
+      driver.onBeforeRender();
 
       now.mockReturnValue(3500);
       driver.onBeforeRender();
