@@ -343,7 +343,10 @@ export function inferCapturedPiece(previousPieces = [], nextPieces = [], animate
 
 export function deriveMoveKinetics({ movingType = 'p', capture = false, promotion = false, castling = false, coarsePointer = false } = {}) {
   const type = String(movingType || 'p').toLowerCase();
-  const duration = coarsePointer ? (capture ? 200 : 170) : (capture ? 240 : type === 'n' ? 220 : 190);
+  // With hardware WebGL running at a stable cadence, the old cinematic timings
+  // read as hesitation rather than weight. Keep captures/knights distinct, but
+  // finish normal travel in under ten 60 Hz frames so moves feel immediate.
+  const duration = coarsePointer ? (capture ? 175 : 150) : (capture ? 185 : type === 'n' ? 165 : 145);
   const lift = coarsePointer ? 0.08 : type === 'n' ? 0.28 : capture ? 0.19 : 0.13;
   return {
     duration,
