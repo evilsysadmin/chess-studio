@@ -19,7 +19,7 @@ import { createWarRoomAmbientScheduler } from './WarRoomAmbientScheduler.js';
 import { applyWarRoomHansScreenDiagnostics, applyWarRoomLightDiagnostics } from './WarRoomDomDiagnostics.js';
 import { resolveBoardTap } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
-import { board3DCaptureWarmBoost, board3DHighlightPulse, board3DPieceInteractionPose } from './Board3DInteractionFx.js';
+import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
 import { adjacentSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
@@ -202,6 +202,7 @@ function Board3DCanvas({
     const pieceMeshes = new Map();
     const terrainGroup = new THREE.Group();
     const pieceGroup = new THREE.Group();
+    const pickTargets = [pieceGroup];
     const forensicGroup = new THREE.Group();
     const coordinateGroup = new THREE.Group();
     const boardGroup = new THREE.Group();
@@ -228,6 +229,7 @@ function Board3DCanvas({
     renderer.domElement.dataset.board3dRendererClass = compactWebGLRendererLabel(rendererName);
     renderer.domElement.dataset.board3dSceneTier = sceneProfile.tier;
     renderer.domElement.dataset.warRoomDomDiagnostics = 'diff-only-ref-v2';
+    renderer.domElement.dataset.board3dInteractionHotPath = 'cached-pick-pulse-capture-v1';
     host.appendChild(renderer.domElement);
 
     const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer: renderLite });
@@ -308,6 +310,7 @@ function Board3DCanvas({
         tile.userData.square = square;
         boardGroup.add(tile);
         squareMeshes.set(square, tile);
+        pickTargets.push(tile);
 
         const marker = new THREE.Mesh(
           new THREE.PlaneGeometry(BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_SIZE),
@@ -331,16 +334,20 @@ function Board3DCanvas({
         marker.userData.highlightBaseOpacity = 0.68;
         marker.userData.highlightBaseScale = 1;
         marker.userData.highlightReducedMotion = false;
+        const pulseScratch = { opacityFactor: 1, scaleFactor: 1 };
         marker.onBeforeRender = () => {
           if (!marker.visible) return;
-          const pulse = board3DHighlightPulse({
-            kind: marker.userData.highlightKind,
-            nowMs: performance.now(),
-            reducedMotion: marker.userData.highlightReducedMotion,
+          const kind = marker.userData.highlightKind;
+          if (kind !== 'selected' && kind !== 'check') return;
+          writeBoard3DHighlightPulse(
+            pulseScratch,
+            kind,
+            performance.now(),
+            marker.userData.highlightReducedMotion,
             coarsePointer,
-          });
-          marker.material.opacity = marker.userData.highlightBaseOpacity * pulse.opacityFactor;
-          marker.scale.setScalar(marker.userData.highlightBaseScale * pulse.scaleFactor);
+          );
+          marker.material.opacity = marker.userData.highlightBaseOpacity * pulseScratch.opacityFactor;
+          marker.scale.setScalar(marker.userData.highlightBaseScale * pulseScratch.scaleFactor);
         };
         boardGroup.add(marker);
         highlightMeshes.set(square, marker);
@@ -435,7 +442,7 @@ function Board3DCanvas({
         -((event.clientY - rect.top) / rect.height) * 2 + 1,
       );
       raycaster.setFromCamera(pointer, camera);
-      const intersections = raycaster.intersectObjects([...pieceGroup.children, ...squareMeshes.values()], true);
+      const intersections = raycaster.intersectObjects(pickTargets, true);
       for (const hit of intersections) {
         let object = hit.object;
         while (object && !object.userData?.square) object = object.parent;
@@ -806,7 +813,9 @@ function Board3DCanvas({
     });
     const start = performance.now();
     const baseScale = animatedMesh.scale.clone();
+    const baseLights = reactiveLightProfile({ check: Boolean(checkSquare), gameOver, coarsePointer: state.coarsePointer });
     let capturedGhost = null;
+    let capturedGhostMaterials = null;
     let castleRook = null;
     let castleFrom = null;
     let castleTo = null;
@@ -819,6 +828,20 @@ function Board3DCanvas({
       const capturedPosition = squarePosition(capturedPiece.square);
       capturedGhost.position.set(capturedPosition.x, 0.1, capturedPosition.z);
       capturedGhost.userData.captureGhost = true;
+      capturedGhostMaterials = [];
+      capturedGhost.traverse((object) => {
+        if (Array.isArray(object.material)) {
+          for (const material of object.material) {
+            if (material) capturedGhostMaterials.push(material);
+          }
+        } else if (object.material) {
+          capturedGhostMaterials.push(object.material);
+        }
+      });
+      for (const material of capturedGhostMaterials) {
+        material.transparent = true;
+        material.depthWrite = false;
+      }
       state.pieceGroup.add(capturedGhost);
     }
 
@@ -831,18 +854,6 @@ function Board3DCanvas({
       castleFrom = squarePosition(rookFromSquare);
       castleTo = squarePosition(rookToSquare);
       if (castleRook) castleRook.position.set(castleFrom.x, 0.1, castleFrom.z);
-    }
-
-    function setOpacity(group, opacity) {
-      group?.traverse?.((object) => {
-        const materials = Array.isArray(object.material) ? object.material : [object.material];
-        materials.forEach((material) => {
-          if (!material) return;
-          material.transparent = opacity < 0.999;
-          material.opacity = opacity;
-          if (opacity < 0.999) material.depthWrite = false;
-        });
-      });
     }
 
     function frame(now) {
@@ -861,10 +872,10 @@ function Board3DCanvas({
         capturedGhost.rotation.x = impact * 0.16;
         capturedGhost.position.y = 0.1 - impact * 0.075;
         capturedGhost.scale.multiplyScalar(1 - impact * 0.0016);
-        setOpacity(capturedGhost, 1 - impact * 0.92);
+        const ghostOpacity = 1 - impact * 0.92;
+        for (const material of capturedGhostMaterials) material.opacity = ghostOpacity;
         animatedMesh.rotation.z = Math.sin(impact * Math.PI) * 0.045 * side;
-        const baseLights = reactiveLightProfile({ check: Boolean(checkSquare), gameOver, coarsePointer: state.coarsePointer });
-        state.warm.intensity = baseLights.warm + board3DCaptureWarmBoost({ progress: raw, coarsePointer: state.coarsePointer });
+        state.warm.intensity = baseLights.warm + board3DCaptureWarmBoostValue(raw, state.coarsePointer);
       }
 
       if (promotion && raw > 0.62) {
@@ -905,12 +916,12 @@ function Board3DCanvas({
           state.pieceGroup.remove(capturedGhost);
           disposeObject(capturedGhost);
           capturedGhost = null;
+          capturedGhostMaterials = null;
         }
-        const lights = reactiveLightProfile({ check: Boolean(checkSquare), gameOver, coarsePointer: state.coarsePointer });
-        state.key.intensity = lights.key;
-        state.rim.intensity = lights.rim;
-        state.warm.intensity = lights.warm;
-        state.renderer.toneMappingExposure = lights.exposure;
+        state.key.intensity = baseLights.key;
+        state.rim.intensity = baseLights.rim;
+        state.warm.intensity = baseLights.warm;
+        state.renderer.toneMappingExposure = baseLights.exposure;
         applyMatthiasCheckPose(state, checkSquare, orientation);
         state.render();
         animationFrameRef.current = 0;
