@@ -111,14 +111,14 @@ describe('Hans hearth choreography on coarse-pointer/mobile War Room', () => {
       expect(Math.abs(hans.userData.refs.leftLeg.rotation.x)).toBeGreaterThan(0.01);
       expect(Math.abs(hans.userData.refs.rightLeg.rotation.x)).toBeGreaterThan(0.01);
 
-      now.mockReturnValue(13800); // place-log
+      now.mockReturnValue(14600); // late place-log, log already released
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('place-log');
       expect(hans.userData.warRoomHansFacingTarget).toBe('fire');
       expect(carriedLog.visible).toBe(false);
       expect(addedLog.visible).toBe(true);
 
-      now.mockReturnValue(16300); // take-poker
+      now.mockReturnValue(16700); // late take-poker, tool already in hand
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('take-poker');
       expect(hans.userData.warRoomHansFacingTarget).toBe('tools');
