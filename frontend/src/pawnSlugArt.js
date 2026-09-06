@@ -7,6 +7,10 @@ import {
   createPanzerRookSprite,
   createSlugEnemySprite,
 } from './pawnSlugSprites.js';
+import {
+  PAWN_SLUG_STATIC_INSTANCE_VERSION,
+  createPawnSlugStaticInstanceBatch,
+} from './pawnSlugStaticInstances.js';
 
 const MAT = Object.freeze({
   brass: 0xc9a24a,
@@ -44,6 +48,9 @@ export const PAWN_SLUG_ENVIRONMENT_META = Object.freeze({
   theme: 'fortified-industrial-battlefield',
   parallaxLayers: 3,
   landmarkSpacing: 18,
+  staticBatching: PAWN_SLUG_STATIC_INSTANCE_VERSION,
+  staticBatchedInstances: 245,
+  staticBatchDrawMeshes: 4,
   props: Object.freeze([
     'fortress-wall',
     'battlements',
@@ -96,23 +103,19 @@ function addGroundDecal(parent, geometry, color, { x, z, y = 0.018, opacity = 1 
   return node;
 }
 
-function addCrater(parent, x, z, scale = 1) {
+function addCrater(parent, rockInstances, x, z, scale = 1) {
   addGroundDecal(parent, new THREE.CircleGeometry(0.58 * scale, 18), 0x171819, { x, z, opacity: 0.9 });
   addGroundDecal(parent, new THREE.RingGeometry(0.5 * scale, 0.82 * scale, 18), 0x50463a, { x, z, y: 0.021, opacity: 0.72 });
-  const lipMat = std(0x5b5043, 0.98);
   for (let i = 0; i < 5; i += 1) {
     const angle = (i / 5) * Math.PI * 2 + seededUnit(x * 10 + i) * 0.45;
-    const rock = mesh(
-      new THREE.DodecahedronGeometry((0.1 + seededUnit(x + i) * 0.07) * scale, 0),
-      lipMat.clone(),
-      {
-        x: x + Math.cos(angle) * 0.68 * scale,
-        y: 0.06,
-        z: z + Math.sin(angle) * 0.68 * scale,
-        ry: angle,
-      },
-    );
-    parent.add(rock);
+    const radius = (0.1 + seededUnit(x + i) * 0.07) * scale;
+    rockInstances.push({
+      x: x + Math.cos(angle) * 0.68 * scale,
+      y: 0.06,
+      z: z + Math.sin(angle) * 0.68 * scale,
+      ry: angle,
+      scale: radius,
+    });
   }
 }
 
@@ -387,6 +390,7 @@ export function createExplosionParticle(color = 0xffa43c, size = 0.1) {
 export function createSlugEnvironment(scene) {
   const env = new THREE.Group();
   env.name = 'pawn-slug-environment';
+  env.userData.pawnSlugStaticInstances = PAWN_SLUG_STATIC_INSTANCE_VERSION;
   scene.add(env);
 
   const ground = mesh(new THREE.BoxGeometry(150, 0.62, 7.6), std(0x272622, 0.99), { x: 72, y: -0.31 });
@@ -413,10 +417,24 @@ export function createSlugEnvironment(scene) {
     env.add(rut);
   }
 
+  const craterRockInstances = [];
   for (let x = 8; x < 145; x += 13.5) {
     const z = seededUnit(x) > 0.5 ? 1.18 : -1.32;
-    addCrater(env, x + seededUnit(x + 1) * 2.1, z, 0.7 + seededUnit(x + 2) * 0.55);
+    addCrater(
+      env,
+      craterRockInstances,
+      x + seededUnit(x + 1) * 2.1,
+      z,
+      0.7 + seededUnit(x + 2) * 0.55,
+    );
   }
+  const craterRocks = createPawnSlugStaticInstanceBatch({
+    name: 'pawn-slug-crater-rocks-instanced',
+    geometry: new THREE.DodecahedronGeometry(1, 0),
+    material: std(0x5b5043, 0.98),
+    instances: craterRockInstances,
+  });
+  if (craterRocks) env.add(craterRocks);
 
   for (let x = 5; x < 145; x += 10.5) {
     const variant = Math.floor(x / 10.5) % 3;
@@ -425,38 +443,64 @@ export function createSlugEnvironment(scene) {
     else addHedgehog(env, x, 1.48);
   }
 
+  const rubbleDarkInstances = [];
+  const rubbleLightInstances = [];
   for (let x = 3.2; x < 145; x += 6.8) {
-    const rubble = new THREE.Group();
     const count = 2 + (Math.floor(x) % 3);
     for (let i = 0; i < count; i += 1) {
-      const rock = mesh(
-        new THREE.DodecahedronGeometry(0.1 + seededUnit(x * 4 + i) * 0.11, 0),
-        std(i % 2 ? 0x4f483f : 0x595047, 0.98),
-        {
-          x: x + i * 0.24,
-          y: 0.07,
-          z: 1.02 + seededUnit(i * 17 + x) * 0.78,
-          ry: i * 0.7,
-        },
-      );
-      rubble.add(rock);
+      const radius = 0.1 + seededUnit(x * 4 + i) * 0.11;
+      const instances = i % 2 ? rubbleDarkInstances : rubbleLightInstances;
+      instances.push({
+        x: x + i * 0.24,
+        y: 0.07,
+        z: 1.02 + seededUnit(i * 17 + x) * 0.78,
+        ry: i * 0.7,
+        scale: radius,
+      });
     }
-    env.add(rubble);
   }
+  const rubbleDark = createPawnSlugStaticInstanceBatch({
+    name: 'pawn-slug-rubble-dark-instanced',
+    geometry: new THREE.DodecahedronGeometry(1, 0),
+    material: std(0x4f483f, 0.98),
+    instances: rubbleDarkInstances,
+  });
+  const rubbleLight = createPawnSlugStaticInstanceBatch({
+    name: 'pawn-slug-rubble-light-instanced',
+    geometry: new THREE.DodecahedronGeometry(1, 0),
+    material: std(0x595047, 0.98),
+    instances: rubbleLightInstances,
+  });
+  if (rubbleDark) env.add(rubbleDark);
+  if (rubbleLight) env.add(rubbleLight);
 
   const wall = new THREE.Group();
   wall.name = 'pawn-slug-fortress-wall';
   wall.position.z = -4.85;
   env.add(wall);
+  const wallBattlementInstances = [];
   for (let x = 4; x < 146; x += 8.7) {
     const height = 2.65 + seededUnit(x) * 0.55;
     const segment = mesh(new THREE.BoxGeometry(7.9, height, 1.08), std(0x292e35, 0.96), { x, y: height / 2 });
     wall.add(segment);
     for (let b = -3.45; b <= 3.45; b += 0.86) {
       if (seededUnit(x + b * 10) < 0.16) continue;
-      wall.add(mesh(new THREE.BoxGeometry(0.42, 0.4, 1.18), std(0x22272d, 0.95), { x: x + b, y: height + 0.2 }));
+      wallBattlementInstances.push({ x: x + b, y: height + 0.2 });
     }
   }
+  const wallBattlements = createPawnSlugStaticInstanceBatch({
+    name: 'pawn-slug-wall-battlements-instanced',
+    geometry: new THREE.BoxGeometry(0.42, 0.4, 1.18),
+    material: std(0x22272d, 0.95),
+    instances: wallBattlementInstances,
+  });
+  if (wallBattlements) wall.add(wallBattlements);
+
+  env.userData.pawnSlugStaticBatchedInstances = craterRockInstances.length
+    + rubbleDarkInstances.length
+    + rubbleLightInstances.length
+    + wallBattlementInstances.length;
+  env.userData.pawnSlugStaticBatchDrawMeshes = 4;
 
   for (let x = 12, variant = 0; x < 145; x += PAWN_SLUG_ENVIRONMENT_META.landmarkSpacing, variant += 1) {
     const height = 5.15 + seededUnit(x) * 1.65;
