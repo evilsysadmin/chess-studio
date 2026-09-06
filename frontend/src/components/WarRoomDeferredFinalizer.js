@@ -132,7 +132,6 @@ export function armWarRoomOneShotHookRetirement(group, {
     key,
   };
 
-  driver[hookName = 'onBeforeRender'];
   driver.onBeforeRender = (...args) => {
     if (completed) return;
     previous?.(...args);
