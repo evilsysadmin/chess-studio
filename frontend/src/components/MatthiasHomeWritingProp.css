@@ -1,1 +1,78 @@
-/* placeholder */
+/* Home · Matthias taking notes
+ *
+ * The afternoon-ops artwork contains tiny pale props that read like loose cards
+ * at Home portrait size. Make the activity unambiguous without replacing the
+ * canonical Matthias artwork: a proper field notebook sits in front of him and
+ * a pencil visibly scribbles across the page. The prop only exists for the
+ * semantic `write` profile.
+ */
+
+body:has(.home-friendly) .matthias-resident
+  .matthias-three-avatar[data-three-profile='write']::before {
+  content: '';
+  position: absolute;
+  z-index: 3;
+  left: 31%;
+  top: 61%;
+  width: 43%;
+  height: 23%;
+  pointer-events: none;
+  border: 1px solid rgba(72, 44, 20, .82);
+  border-radius: 2px 3px 4px 2px;
+  background:
+    linear-gradient(90deg, transparent 0 13%, rgba(139, 49, 36, .48) 13% 15%, transparent 15%),
+    repeating-linear-gradient(180deg, transparent 0 5px, rgba(75, 56, 38, .34) 5px 6px),
+    linear-gradient(145deg, #f1ddb1, #cfae75 78%, #a9824c);
+  box-shadow:
+    inset 2px 0 rgba(255, 247, 218, .40),
+    inset -2px -2px rgba(63, 39, 18, .18),
+    0 2px 0 rgba(38, 24, 14, .72),
+    0 5px 9px rgba(0, 0, 0, .38);
+  transform: perspective(90px) rotateX(8deg) rotateZ(-5deg);
+  transform-origin: 50% 70%;
+}
+
+body:has(.home-friendly) .matthias-resident
+  .matthias-three-avatar[data-three-profile='write']::after {
+  content: '';
+  position: absolute;
+  z-index: 4;
+  left: 60%;
+  top: 56%;
+  width: 4px;
+  height: 29%;
+  pointer-events: none;
+  border-radius: 3px 3px 1px 1px;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.28), transparent 38%),
+    linear-gradient(180deg, #2d2118 0 10%, #d7a33b 10% 76%, #4f2c17 76% 88%, #16110e 88%);
+  box-shadow: 0 1px 3px rgba(0,0,0,.55);
+  transform-origin: 50% 92%;
+  animation: matthias-home-scribble .72s cubic-bezier(.45,.02,.55,.98) infinite alternate;
+}
+
+@keyframes matthias-home-scribble {
+  0% {
+    transform: translate(-4px, 2px) rotate(36deg);
+  }
+  45% {
+    transform: translate(2px, 0) rotate(42deg);
+  }
+  100% {
+    transform: translate(7px, 3px) rotate(34deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:has(.home-friendly) .matthias-resident
+    .matthias-three-avatar[data-three-profile='write']::after {
+    animation: none;
+    transform: translate(2px, 1px) rotate(38deg);
+  }
+}
+
+html[data-reduced-motion='true'] body:has(.home-friendly) .matthias-resident
+  .matthias-three-avatar[data-three-profile='write']::after {
+  animation: none;
+  transform: translate(2px, 1px) rotate(38deg);
+}
