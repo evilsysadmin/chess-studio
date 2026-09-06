@@ -1,3 +1,5 @@
+import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolish.js';
+
 export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v1';
 export const WAR_ROOM_ONE_SHOT_RETIREMENT_VERSION = 'one-shot-retirement-v1';
 
@@ -66,6 +68,7 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
 
     for (const [key, task] of current.tasks) {
       results[key] = task(root);
+      if (key === HANS_FIREPLACE_FINALIZER_KEY) installWarRoomHansMotionPolish(root);
       completedKeys.push(key);
     }
 
