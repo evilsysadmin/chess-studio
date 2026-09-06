@@ -24,6 +24,10 @@ import {
 } from '../sound.js';
 import { requestPlaybackAudioSession, syncMediaSessionState } from '../mediaControls.js';
 import { getAudioContextState, resumeAudioContext } from '../audioContext.js';
+import {
+  MUSIC_PLAYER_PROGRESS_POLL_MS,
+  musicPlayerShouldPollProgress,
+} from './musicPlayerPolling.js';
 import './MusicPlayerFloating.css';
 
 function formatTime(ms) {
@@ -93,23 +97,49 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
   const dragRef = useRef(null);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    let timer = 0;
+
     const refresh = () => {
-      setState(snapshot());
+      const nextState = snapshot();
+      setState(nextState);
       setFxMutedState(isFxMuted());
       setVolume(Math.round(getAmbientVolume() * 100));
       setRadioModeState(getAmbientRadioMode());
-      const activeId = snapshot().themeId || getAmbientThemeId();
+      const activeId = nextState.themeId || getAmbientThemeId();
       setFavorite(isAmbientFavorite(activeId));
       setExcluded(isAmbientExcluded(activeId));
     };
+    const stopPolling = () => {
+      if (!timer) return;
+      window.clearInterval(timer);
+      timer = 0;
+    };
+    const startPolling = () => {
+      if (timer) return;
+      const documentVisible = typeof document === 'undefined' || document.visibilityState !== 'hidden';
+      if (!musicPlayerShouldPollProgress({ expanded, forceExpanded, documentVisible })) return;
+      timer = window.setInterval(refresh, MUSIC_PLAYER_PROGRESS_POLL_MS);
+    };
+    const onVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        stopPolling();
+        return;
+      }
+      refresh();
+      startPolling();
+    };
+
     refresh();
     window.addEventListener('chess-ambient-transport', refresh);
-    const timer = window.setInterval(refresh, 250);
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onVisibility);
+    startPolling();
     return () => {
       window.removeEventListener('chess-ambient-transport', refresh);
-      window.clearInterval(timer);
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onVisibility);
+      stopPolling();
     };
-  }, []);
+  }, [expanded, forceExpanded]);
 
   useEffect(() => () => {
     if (seekCommitTimer.current) window.clearTimeout(seekCommitTimer.current);
@@ -236,15 +266,17 @@ export default function MusicPlayer({ forceExpanded = false, initiallyCollapsed 
   function changeRadioMode(event) {
     const next = selectAmbientRadioModeTheme(event.target.value);
     setRadioModeState(next.mode);
-    setState(snapshot());
-    if (snapshot().status === 'playing') requestPlaybackAudioSession();
+    const nextState = snapshot();
+    setState(nextState);
+    if (nextState.status === 'playing') requestPlaybackAudioSession();
   }
 
   function chooseExperience(mode) {
     const next = selectAmbientRadioModeTheme(mode);
     setRadioModeState(next.mode);
-    setState(snapshot());
-    if (snapshot().status === 'playing') requestPlaybackAudioSession();
+    const nextState = snapshot();
+    setState(nextState);
+    if (nextState.status === 'playing') requestPlaybackAudioSession();
   }
 
   function changeVolume(event) {
