@@ -48,6 +48,11 @@ import {
   clearMatthiasHomePrivateGameRig,
   MATTHIAS_PRIVATE_GAME_RIG_VERSION,
 } from './matthiasHomePrivateGameRig.js';
+import {
+  applyMatthiasStrategyBookletRig,
+  clearMatthiasStrategyBookletRig,
+  MATTHIAS_STRATEGY_BOOKLET_RIG_VERSION,
+} from './matthiasStrategyBookletRig.js';
 import { matthiasPawnPoseSample } from './MatthiasPawn3D.js';
 import './MatthiasThreeAvatar.css';
 
@@ -423,7 +428,16 @@ export default function MatthiasHomeMicrogestureAvatar({
       } else {
         clearMatthiasHomePrivateGameRig(rig);
       }
-      applyMatthiasHomePropContactRig(rig);
+      if (rig.root.userData.activityProp === 'book') {
+        applyMatthiasStrategyBookletRig(rig, {
+          ...pose,
+          activityReducedMotion: reducedMotion,
+          activitySpeaking: speakingRef.current,
+        });
+      } else {
+        clearMatthiasStrategyBookletRig(rig);
+        applyMatthiasHomePropContactRig(rig);
+      }
       renderer.render(scene3d, camera);
 
       frames += 1;
@@ -530,6 +544,7 @@ export default function MatthiasHomeMicrogestureAvatar({
       data-three-activity-ergonomics={MATTHIAS_HOME_PROP_ERGONOMICS_VERSION}
       data-three-prop-contact-rig={MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION}
       data-three-private-game-rig={MATTHIAS_PRIVATE_GAME_RIG_VERSION}
+      data-three-strategy-booklet-rig={MATTHIAS_STRATEGY_BOOKLET_RIG_VERSION}
       data-three-activity-prop={activityProp}
       data-three-activity-reach="0"
       data-three-motion={reducedMotion ? 'reduced' : 'active'}
