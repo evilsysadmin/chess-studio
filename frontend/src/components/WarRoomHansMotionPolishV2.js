@@ -12,8 +12,6 @@ const VISUAL_ROOT_NAME = 'war-room-hans-visual-root';
 const HANS_UNSCALED_HALF_WIDTH = 0.49;
 const WALL_MARGIN = 0.13;
 const ARMOR_MARGIN = 0.16;
-const STEP_LENGTH = 0.72;
-const MAX_GAIT_DISTANCE_PER_FRAME = 0.12;
 const STANDING_Y = -0.34;
 const ENTRY_DOOR_X = 2.65;
 const ENTRY_BASKET_X = -1.62;
@@ -248,40 +246,6 @@ function applyIdlePose({ body, bases, phase, now }) {
   if (phase === 'satisfied' && body.head && bases.head) body.head.rotation.z = bases.head.rotationZ + 0.016;
 }
 
-function applyDistanceDrivenPose({ body, bases, gaitDistance }) {
-  const phaseAngle = (gaitDistance / STEP_LENGTH) * Math.PI * 2;
-  const wave = Math.sin(phaseAngle);
-  const carryingLog = body.carriedLog?.visible === true;
-  const carryingPoker = body.carriedPoker?.visible === true;
-  const carry = carryingLog || carryingPoker;
-  const legAmplitude = carry ? 0.105 : 0.125;
-
-  if (body.leftLeg && bases.leftLeg) body.leftLeg.rotation.x = bases.leftLeg.rotationX + wave * legAmplitude;
-  if (body.rightLeg && bases.rightLeg) body.rightLeg.rotation.x = bases.rightLeg.rotationX - wave * legAmplitude;
-  if (body.torso && bases.torso) {
-    body.torso.rotation.y = bases.torso.rotationY + wave * (carry ? 0.009 : 0.014);
-    body.torso.rotation.z = bases.torso.rotationZ - wave * 0.007;
-  }
-  if (body.head && bases.head) {
-    body.head.rotation.y = bases.head.rotationY - wave * 0.009;
-    body.head.rotation.z = bases.head.rotationZ + wave * 0.004;
-  }
-
-  if (carryingLog) {
-    if (body.leftArm && bases.leftArm) {
-      body.leftArm.rotation.x = bases.leftArm.rotationX - 0.43;
-      body.leftArm.rotation.z = bases.leftArm.rotationZ + 0.035;
-    }
-    if (body.rightArm && bases.rightArm) {
-      body.rightArm.rotation.x = bases.rightArm.rotationX - 0.5;
-      body.rightArm.rotation.z = bases.rightArm.rotationZ - 0.025;
-    }
-  } else if (carryingPoker) {
-    if (body.leftArm && bases.leftArm) body.leftArm.rotation.x = bases.leftArm.rotationX - 0.12;
-    if (body.rightArm && bases.rightArm) body.rightArm.rotation.x = bases.rightArm.rotationX - 0.42;
-  }
-}
-
 function applyTakeLogPose({ body, bases, amount, side, forward }) {
   const q = clamp01(amount);
   if (body.torso && bases.torso) {
@@ -396,7 +360,6 @@ export function installWarRoomHansMotionPolish(root) {
   });
   const previousPosition = new THREE.Vector3(hans.position.x, 0, hans.position.z);
   const armorSafeFrameX = actualArmorSafeFrameX(root, fireplace, side, WAR_ROOM_HANS_CANONICAL_SCALE);
-  let gaitDistance = 0;
 
   hans.scale.setScalar(WAR_ROOM_HANS_CANONICAL_SCALE);
   hans.userData.warRoomHansCanonicalScale = WAR_ROOM_HANS_CANONICAL_SCALE;
@@ -444,22 +407,20 @@ export function installWarRoomHansMotionPolish(root) {
     const dz = currentPosition.z - previousPosition.z;
     const travelled = Math.hypot(dx, dz);
     const moving = MOVING_PHASES.has(phase) && travelled > 0.00004;
-    if (moving) {
-      gaitDistance += Math.min(travelled, MAX_GAIT_DISTANCE_PER_FRAME);
-      hans.rotation.y = headingFromMovement(dx, dz, forward);
-    }
+    if (moving) hans.rotation.y = headingFromMovement(dx, dz, forward);
 
+    // MotionPolish owns routing, facing and stationary action poses. Walking
+    // articulation is deliberately left at the canonical base here and applied
+    // exactly once by the ordered ElderWalk post-render stage.
     restorePoseBases(body, bases);
     let actionPose = null;
-    if (moving) {
-      applyDistanceDrivenPose({ body, bases, gaitDistance });
-    } else if (phase === 'take-log') {
+    if (!moving && phase === 'take-log') {
       applyTakeLogPose({ body, bases, amount: clamp01(rawCrouch / 0.15), side, forward });
       actionPose = 'pick-log';
-    } else if (phase === 'place-log') {
+    } else if (!moving && phase === 'place-log') {
       applyPlaceLogPose({ body, bases, amount: clamp01(rawCrouch / 0.11), side, forward });
       actionPose = 'place-log';
-    } else if (phase === 'stoke-fire') {
+    } else if (!moving && phase === 'stoke-fire') {
       applyStokeFirePose({
         body,
         bases,
@@ -468,7 +429,7 @@ export function installWarRoomHansMotionPolish(root) {
         forward,
       });
       actionPose = 'stoke-fire-action';
-    } else {
+    } else if (!moving) {
       applyIdlePose({
         body,
         bases,
@@ -498,7 +459,7 @@ export function installWarRoomHansMotionPolish(root) {
   hans.userData.warRoomHansMotionPolish = LEGACY_MOTION_MARKER;
   hans.userData.warRoomHansMotionPolishV2 = WAR_ROOM_HANS_MOTION_POLISH_V2_VERSION;
   hans.userData.warRoomHansVisualRoot = VISUAL_ROOT_NAME;
-  driver.userData.warRoomHansMotionCadence = 'distance-driven-slower-v3';
+  driver.userData.warRoomHansMotionCadence = 'elder-gait-owned-v4';
   driver.userData.warRoomHansMotionWallClearance = 'door-geometry-derived-v2';
   driver.userData.warRoomHansArmorClearance = 'box3-expanded-by-hans-v1';
   driver.userData.warRoomHansActionPoses = 'pick-place-stoke-articulated-v1';

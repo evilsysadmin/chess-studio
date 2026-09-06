@@ -120,8 +120,24 @@ function applyElderGait(body, bases, sample, headSample, forward) {
     head.rotation.z = bases.head.rz - headSample.roll * 0.45;
   }
 
-  const carrying = body?.carriedLog?.visible === true || body?.carriedPoker?.visible === true;
-  if (!carrying) {
+  // ElderWalk is the sole owner of moving poses. MotionPolish restores the
+  // canonical rig before this stage, so carrying stances live here as well as
+  // the gait instead of being calculated twice and overwritten later.
+  const carryingLog = body?.carriedLog?.visible === true;
+  const carryingPoker = body?.carriedPoker?.visible === true;
+  if (carryingLog) {
+    if (body?.leftArm && bases.leftArm) {
+      body.leftArm.rotation.x = bases.leftArm.rx - 0.43;
+      body.leftArm.rotation.z = bases.leftArm.rz + 0.035;
+    }
+    if (body?.rightArm && bases.rightArm) {
+      body.rightArm.rotation.x = bases.rightArm.rx - 0.5;
+      body.rightArm.rotation.z = bases.rightArm.rz - 0.025;
+    }
+  } else if (carryingPoker) {
+    if (body?.leftArm && bases.leftArm) body.leftArm.rotation.x = bases.leftArm.rx - 0.12;
+    if (body?.rightArm && bases.rightArm) body.rightArm.rotation.x = bases.rightArm.rx - 0.42;
+  } else {
     if (body?.leftArm && bases.leftArm) body.leftArm.rotation.x = bases.leftArm.rx - sample.arm;
     if (body?.rightArm && bases.rightArm) body.rightArm.rotation.x = bases.rightArm.rx + sample.arm * 0.72;
   }
