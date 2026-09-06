@@ -19,7 +19,7 @@ async function openDesktopWarRoom(page) {
   return { warRoom, shell };
 }
 
-test('War Room · desktop dedica el salón al tablero y ordena Matthias → situación → chat', async ({ page }) => {
+test('War Room · desktop dedica el salón al tablero y prioriza un chat legible', async ({ page }) => {
   test.setTimeout(90_000);
   const { warRoom, shell } = await openDesktopWarRoom(page);
 
@@ -103,8 +103,8 @@ test('War Room · desktop dedica el salón al tablero y ordena Matthias → situ
   expect(geometry.boardWidth).toBeGreaterThan(920);
   expect(geometry.boardHeight).toBeGreaterThan(830);
   expect(geometry.boardWidth / geometry.roomWidth).toBeGreaterThan(.63);
-  expect(geometry.commanderWidth).toBeGreaterThan(180);
-  expect(geometry.chatWidth).toBeGreaterThan(180);
+  expect(geometry.commanderWidth).toBeGreaterThan(210);
+  expect(geometry.chatWidth).toBeGreaterThan(210);
   expect(geometry.chatOwnedByCommander).toBe(true);
   expect(geometry.matthiasIndex).toBe(0);
   expect(geometry.statusIndex).toBe(1);
@@ -124,8 +124,9 @@ test('War Room · desktop dedica el salón al tablero y ordena Matthias → situ
 
   expect(geometry.musicLeft).toBeGreaterThanOrEqual(geometry.boardRight + 2);
   expect(geometry.notationLeft).toBeGreaterThanOrEqual(geometry.boardRight + 2);
-  expect(geometry.musicWidth).toBeGreaterThan(190);
-  expect(geometry.notationWidth).toBeGreaterThan(190);
+  expect(geometry.musicWidth).toBeGreaterThan(170);
+  expect(geometry.notationWidth).toBeGreaterThan(170);
+  expect(geometry.chatWidth - geometry.notationWidth).toBeGreaterThan(25);
   expect(geometry.notationTop).toBeGreaterThanOrEqual(geometry.musicBottom - 4);
   expect(geometry.notationTop - geometry.musicBottom).toBeLessThan(20);
   expect(geometry.notationHeight).toBeLessThanOrEqual(621);
