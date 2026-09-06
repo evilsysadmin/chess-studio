@@ -17,6 +17,29 @@ const MAT = Object.freeze({
   smoke: 0x7f8790,
 });
 
+export const PAWN_SLUG_FX_RESOURCE_VERSION = 'shared-fx-resources-v1';
+const sharedFxResources = new Map();
+
+function markSharedFxResource(resource) {
+  if (!resource) return resource;
+  resource.userData ||= {};
+  resource.userData.pawnSlugSharedFx = PAWN_SLUG_FX_RESOURCE_VERSION;
+  return resource;
+}
+
+function sharedFxResource(key, factory) {
+  let resource = sharedFxResources.get(key);
+  if (!resource) {
+    resource = markSharedFxResource(factory());
+    sharedFxResources.set(key, resource);
+  }
+  return resource;
+}
+
+function isSharedFxResource(resource) {
+  return resource?.userData?.pawnSlugSharedFx === PAWN_SLUG_FX_RESOURCE_VERSION;
+}
+
 export const PAWN_SLUG_ENVIRONMENT_META = Object.freeze({
   theme: 'fortified-industrial-battlefield',
   parallaxLayers: 3,
@@ -290,35 +313,75 @@ export function createPickupModel(type) {
 export function createBulletModel({ enemy = false, explosive = false } = {}) {
   if (explosive) {
     const group = new THREE.Group();
-    const body = mesh(new THREE.CylinderGeometry(0.07, 0.09, 0.34, 10), std(enemy ? 0xa14739 : MAT.steel, 0.4, 0.5), { rz: -Math.PI / 2 });
-    const tip = mesh(new THREE.ConeGeometry(0.1, 0.18, 10), std(enemy ? 0xd45c45 : MAT.brass, 0.35, 0.45), { x: 0.24, rz: -Math.PI / 2 });
+    const body = mesh(
+      sharedFxResource('rocket-body-geometry', () => new THREE.CylinderGeometry(0.07, 0.09, 0.34, 10)),
+      sharedFxResource(
+        enemy ? 'rocket-enemy-body-material' : 'rocket-friendly-body-material',
+        () => std(enemy ? 0xa14739 : MAT.steel, 0.4, 0.5),
+      ),
+      { rz: -Math.PI / 2 },
+    );
+    const tip = mesh(
+      sharedFxResource('rocket-tip-geometry', () => new THREE.ConeGeometry(0.1, 0.18, 10)),
+      sharedFxResource(
+        enemy ? 'rocket-enemy-tip-material' : 'rocket-friendly-tip-material',
+        () => std(enemy ? 0xd45c45 : MAT.brass, 0.35, 0.45),
+      ),
+      { x: 0.24, rz: -Math.PI / 2 },
+    );
     group.add(body, tip);
+    group.userData.pawnSlugFxResources = PAWN_SLUG_FX_RESOURCE_VERSION;
     return group;
   }
-  return mesh(
-    new THREE.SphereGeometry(enemy ? 0.055 : 0.045, 8, 6),
-    new THREE.MeshBasicMaterial({ color: enemy ? 0xff684f : 0xffe08a }),
+  const kind = enemy ? 'enemy' : 'friendly';
+  const bullet = mesh(
+    sharedFxResource(`bullet-${kind}-geometry`, () => new THREE.SphereGeometry(enemy ? 0.055 : 0.045, 8, 6)),
+    sharedFxResource(`bullet-${kind}-material`, () => new THREE.MeshBasicMaterial({ color: enemy ? 0xff684f : 0xffe08a })),
   );
+  bullet.userData.pawnSlugFxResources = PAWN_SLUG_FX_RESOURCE_VERSION;
+  return bullet;
 }
 
 export function createGrenadeModel() {
   const root = new THREE.Group();
-  root.add(mesh(new THREE.SphereGeometry(0.12, 10, 8), std(0x4b5941, 0.7, 0.25)));
-  root.add(mesh(new THREE.BoxGeometry(0.06, 0.11, 0.08), std(MAT.brass2, 0.5, 0.35), { y: 0.13 }));
+  root.add(mesh(
+    sharedFxResource('grenade-body-geometry', () => new THREE.SphereGeometry(0.12, 10, 8)),
+    sharedFxResource('grenade-body-material', () => std(0x4b5941, 0.7, 0.25)),
+  ));
+  root.add(mesh(
+    sharedFxResource('grenade-cap-geometry', () => new THREE.BoxGeometry(0.06, 0.11, 0.08)),
+    sharedFxResource('grenade-cap-material', () => std(MAT.brass2, 0.5, 0.35)),
+    { y: 0.13 },
+  ));
+  root.userData.pawnSlugFxResources = PAWN_SLUG_FX_RESOURCE_VERSION;
   return root;
 }
 
 export function createMuzzleFlash() {
   const flash = new THREE.Group();
-  const core = mesh(new THREE.SphereGeometry(0.1, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 }));
-  const cone = mesh(new THREE.ConeGeometry(0.12, 0.38, 7), new THREE.MeshBasicMaterial({ color: MAT.muzzle, transparent: true, opacity: 0.88 }), { x: 0.22, rz: -Math.PI / 2 });
+  const core = mesh(
+    sharedFxResource('muzzle-core-geometry', () => new THREE.SphereGeometry(0.1, 8, 6)),
+    sharedFxResource('muzzle-core-material', () => new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 })),
+  );
+  const cone = mesh(
+    sharedFxResource('muzzle-cone-geometry', () => new THREE.ConeGeometry(0.12, 0.38, 7)),
+    sharedFxResource('muzzle-cone-material', () => new THREE.MeshBasicMaterial({ color: MAT.muzzle, transparent: true, opacity: 0.88 })),
+    { x: 0.22, rz: -Math.PI / 2 },
+  );
   flash.add(core, cone);
   flash.userData.life = 0.07;
+  flash.userData.pawnSlugFxResources = PAWN_SLUG_FX_RESOURCE_VERSION;
   return flash;
 }
 
 export function createExplosionParticle(color = 0xffa43c, size = 0.1) {
-  return mesh(new THREE.SphereGeometry(size, 7, 5), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95 }));
+  const particle = mesh(
+    sharedFxResource('explosion-particle-unit-geometry', () => new THREE.SphereGeometry(1, 7, 5)),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95 }),
+  );
+  particle.scale.setScalar(size);
+  particle.userData.pawnSlugFxGeometry = PAWN_SLUG_FX_RESOURCE_VERSION;
+  return particle;
 }
 
 export function createSlugEnvironment(scene) {
@@ -429,15 +492,12 @@ export function createSlugEnvironment(scene) {
 export function disposePawnSlugObject(object) {
   if (!object) return;
   object.traverse?.((child) => {
-    child.geometry?.dispose?.();
-    if (Array.isArray(child.material)) {
-      child.material.forEach((material) => {
-        material?.map?.dispose?.();
-        material?.dispose?.();
-      });
-    } else {
-      child.material?.map?.dispose?.();
-      child.material?.dispose?.();
+    if (child.geometry && !isSharedFxResource(child.geometry)) child.geometry.dispose?.();
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    for (const material of materials) {
+      if (!material || isSharedFxResource(material)) continue;
+      if (material.map && !isSharedFxResource(material.map)) material.map.dispose?.();
+      material.dispose?.();
     }
   });
 }
