@@ -2,6 +2,7 @@ import { installWarRoomHansCanonicalButler } from './WarRoomHansCanonicalButler.
 import { installWarRoomHansElderClock } from './WarRoomHansElderClock.js';
 import { installWarRoomHansElderWalk } from './WarRoomHansElderWalk.js';
 import { installWarRoomHansFacingGuard } from './WarRoomHansFacingGuard.js';
+import { installWarRoomHansFireNarrative } from './WarRoomHansFireNarrative.js';
 import { installWarRoomHansHearthFacingGuard } from './WarRoomHansHearthFacingGuard.js';
 import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
 
@@ -20,12 +21,6 @@ function sceneRoot(object) {
 }
 
 function finalizerDriver(group, key) {
-  // Hans must be armed by an object that is guaranteed to render in the live
-  // War Room. A painting canvas can legitimately be culled, replaced or have
-  // its one-shot hook retired by later museum passes. The castle floor slab is
-  // architectural and visible in every desktop War Room, so use it only for
-  // this critical character bridge while keeping the established driver order
-  // for every other deferred static pass.
   if (key === HANS_FIREPLACE_FINALIZER_KEY) {
     return group?.getObjectByName?.('war-room-castle-floor-slab')
       || group?.getObjectByName?.('war-room-castle-wall-left')
@@ -74,17 +69,16 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
     for (const [key, task] of current.tasks) {
       results[key] = task(root);
       if (key === HANS_FIREPLACE_FINALIZER_KEY) {
-        // Canonical visual rig first: MotionPolish and ElderWalk deliberately
-        // capture their base poses afterwards so the tailcoat, cane and elderly
-        // stoop are the character itself rather than a late decorative overlay.
         installWarRoomHansCanonicalButler(root);
         installWarRoomHansMotionPolish(root);
         installWarRoomHansFacingGuard(root);
         installWarRoomHansHearthFacingGuard(root);
         installWarRoomHansElderWalk(root);
-        // Install last so the governor owns Hans' private clock around the full
-        // motion pipeline instead of moving the rendered body after the fact.
         installWarRoomHansElderClock(root);
+        // Observe the fully-resolved Hans phase and hearth state last. This layer
+        // never moves Hans; it only turns the old proximity fade into a causal
+        // cold-hearth -> rekindle story.
+        installWarRoomHansFireNarrative(root);
       }
       completedKeys.push(key);
     }
@@ -116,10 +110,6 @@ export function registerWarRoomDeferredFinalizer(group, {
   const driver = finalizerDriver(group, key);
   if (!driver) return 0;
 
-  // The castle architecture owns floor.onBeforeRender and replaces it later in
-  // construction. Hans therefore uses the otherwise-unowned onAfterRender hook
-  // of that architectural slab. It still runs on the first rendered frame, but
-  // cannot be silently disconnected by the castle scene driver.
   const phase = key === HANS_FIREPLACE_FINALIZER_KEY ? 'after' : 'before';
   const stateMap = phase === 'after' ? AFTER_FINALIZER_STATES : BEFORE_FINALIZER_STATES;
   const state = stateMap.get(driver) || attachFinalizerDriver(driver, group, phase);
@@ -154,9 +144,6 @@ export function armWarRoomOneShotHookRetirement(group, {
     previous?.(...args);
     completed = true;
     driver.userData.warRoomOneShotRetirementCompleted = key;
-    // Assign through the live object, not through a saved hook reference. This
-    // deliberately retires any static wrapper that may have been attached
-    // around this one after registration but before the first frame.
     driver.onBeforeRender = NOOP_RENDER_HOOK;
   };
 
