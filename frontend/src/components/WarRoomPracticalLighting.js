@@ -16,10 +16,13 @@ import { installWarRoomMilitaryGallery } from './WarRoomMilitaryGallery.js';
 import { installWarRoomHansSceneRoutine } from './WarRoomHansIteration.js';
 import { applyWarRoomPerformanceBudget } from './WarRoomPerformanceBudget.js';
 
-const TORCH_WALL_WASH_VERSION = 'hearth-contour-v3';
+const TORCH_WALL_WASH_VERSION = 'hearth-contour-v4';
 const TORCH_FLAME_FINISH_VERSION = 'hearth-warm-v2';
 const TORCH_FLAME_PULSE_VERSION = 'hearth-flame-pulse-v2';
 const TORCH_RENDER_HOT_PATH_VERSION = 'direct-args-v1';
+const TORCH_ARMOR_SPILL_VERSION = 'warm-steel-v1';
+const TORCH_LIGHT_BOOST = 1.68;
+const TORCH_MIN_DISTANCE = 13.2;
 const GALLERY_PAINTING_ORIENTATION_VERSION = 'upright-texture-v1';
 
 function materialList(object) {
@@ -28,7 +31,7 @@ function materialList(object) {
 }
 
 function tuneArmorMaterials(armor) {
-  if (!armor || armor.userData.warRoomPracticalMaterialPass === 'v4') return 0;
+  if (!armor || armor.userData.warRoomPracticalMaterialPass === 'v5') return 0;
   const seen = new Set();
   let tuned = 0;
 
@@ -36,17 +39,19 @@ function tuneArmorMaterials(armor) {
     for (const material of materialList(object)) {
       if (!material || seen.has(material) || (material.metalness ?? 0) < 0.55) continue;
       seen.add(material);
-      material.envMapIntensity = Math.max(material.envMapIntensity ?? 1, 1.12);
-      material.specularIntensity = Math.max(material.specularIntensity ?? 0.5, 0.62);
-      if (typeof material.clearcoat === 'number') material.clearcoat = Math.max(material.clearcoat, 0.17);
-      if (typeof material.clearcoatRoughness === 'number') material.clearcoatRoughness = Math.min(material.clearcoatRoughness, 0.34);
-      material.userData.warRoomPracticalFinish = 'museum-steel-response-v4';
+      material.envMapIntensity = Math.max(material.envMapIntensity ?? 1, 1.2);
+      if (typeof material.roughness === 'number') material.roughness = Math.min(material.roughness, 0.38);
+      material.specularIntensity = Math.max(material.specularIntensity ?? 0.5, 0.68);
+      if (typeof material.clearcoat === 'number') material.clearcoat = Math.max(material.clearcoat, 0.21);
+      if (typeof material.clearcoatRoughness === 'number') material.clearcoatRoughness = Math.min(material.clearcoatRoughness, 0.3);
+      material.userData.warRoomPracticalFinish = 'museum-steel-torch-response-v5';
       material.needsUpdate = true;
       tuned += 1;
     }
   });
 
-  armor.userData.warRoomPracticalMaterialPass = 'v4';
+  armor.userData.warRoomPracticalMaterialPass = 'v5';
+  armor.userData.warRoomTorchArmorResponse = TORCH_ARMOR_SPILL_VERSION;
   return tuned;
 }
 
@@ -142,10 +147,10 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
     const halo = torch.getObjectByName?.('war-room-side-torch-wall-halo');
     if (needsWallWash && halo?.material) {
       halo.material.color?.setHex?.(0xff7622);
-      halo.material.opacity = 0.94;
+      halo.material.opacity = 0.96;
       halo.material.toneMapped = false;
       halo.material.needsUpdate = true;
-      halo.scale.set(1.78, 1.68, 1);
+      halo.scale.set(1.9, 1.78, 1);
 
       let innerHalo = torch.getObjectByName?.('war-room-side-torch-wall-halo-inner');
       if (!innerHalo) {
@@ -159,10 +164,10 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
         torch.add(innerHalo);
       }
       innerHalo.material.color?.setHex?.(0xffb24d);
-      innerHalo.material.opacity = 0.74;
+      innerHalo.material.opacity = 0.76;
       innerHalo.material.toneMapped = false;
       innerHalo.material.needsUpdate = true;
-      innerHalo.scale.set(0.84, 0.84, 1);
+      innerHalo.scale.set(0.88, 0.88, 1);
     }
 
     const outer = torch.getObjectByName?.('war-room-side-torch-flame-outer');
@@ -196,9 +201,9 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
     const light = torch.getObjectByName?.('war-room-side-torch-light');
     const wallGlow = torch.getObjectByName?.('war-room-side-torch-wall-glow');
     if (needsWallWash && light) {
-      light.color?.setHex?.(0xff7424);
-      light.distance = Math.max(Number(light.distance || 0), 12);
-      light.intensity *= 1.5;
+      light.color?.setHex?.(0xff7b28);
+      light.distance = Math.max(Number(light.distance || 0), TORCH_MIN_DISTANCE);
+      light.intensity *= TORCH_LIGHT_BOOST;
     }
     if (needsWallWash && wallGlow) {
       wallGlow.color?.setHex?.(0xffa442);
@@ -210,7 +215,7 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
       const original = outer.onBeforeRender;
       outer.onBeforeRender = (renderer, scene, camera, geometry, material, renderGroup) => {
         original(renderer, scene, camera, geometry, material, renderGroup);
-        if (light) light.intensity *= 1.5;
+        if (light) light.intensity *= TORCH_LIGHT_BOOST;
         if (wallGlow) wallGlow.intensity *= 2.5;
       };
       outer.userData.warRoomTorchWallWashHook = TORCH_WALL_WASH_VERSION;
@@ -232,7 +237,7 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
         }
 
         const baseLight = Number(light?.userData?.baseWarRoomIntensity || 0);
-        const boostedBase = baseLight > 0 ? baseLight * 1.5 : 0;
+        const boostedBase = baseLight > 0 ? baseLight * TORCH_LIGHT_BOOST : 0;
         const flamePulse = boostedBase > 0
           ? THREE.MathUtils.clamp(light.intensity / boostedBase, 0.92, 1.1)
           : 1;
@@ -246,7 +251,10 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
     }
 
     if (outer?.userData) outer.userData.warRoomTorchRenderHotPath = TORCH_RENDER_HOT_PATH_VERSION;
-    if (needsWallWash) torch.userData.warRoomTorchWallWash = TORCH_WALL_WASH_VERSION;
+    if (needsWallWash) {
+      torch.userData.warRoomTorchWallWash = TORCH_WALL_WASH_VERSION;
+      torch.userData.warRoomTorchArmorSpill = TORCH_ARMOR_SPILL_VERSION;
+    }
     if (needsFlameFinish) torch.userData.warRoomTorchFlameFinish = TORCH_FLAME_FINISH_VERSION;
     tuned += 1;
   }
@@ -285,7 +293,7 @@ export function applyWarRoomPracticalLighting(group, {
     coarsePointer,
   });
 
-  if (group.userData.warRoomPracticalLightingVersion === 'museum-v4') return 0;
+  if (group.userData.warRoomPracticalLightingVersion === 'museum-v5') return 0;
 
   let tunedMaterials = 0;
   tunedMaterials += tuneArmorMaterials(group.getObjectByName('war-room-teutonic-armor-left'));
@@ -304,7 +312,7 @@ export function applyWarRoomPracticalLighting(group, {
   group.userData.warRoomPerformancePointLightsCulled = performanceBudget.pointLightsCulled;
   group.userData.warRoomPerformanceSpotLightsCulled = performanceBudget.spotLightsCulled;
 
-  group.userData.warRoomPracticalLightingVersion = 'museum-v4';
+  group.userData.warRoomPracticalLightingVersion = 'museum-v5';
   group.userData.warRoomPracticalLightCount = lightCount;
   group.userData.warRoomPracticalMaterialsTuned = tunedMaterials;
   return lightCount;
