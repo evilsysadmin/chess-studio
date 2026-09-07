@@ -1,4 +1,4 @@
-export const WAR_ROOM_MOBILE_FRAMING_VERSION = 'mobile-portrait-v3-room-balanced';
+export const WAR_ROOM_MOBILE_FRAMING_VERSION = 'mobile-v4-orientation-aware';
 
 export function getWarRoomMobileFramingProfile({
   aspect = 1,
@@ -7,29 +7,46 @@ export function getWarRoomMobileFramingProfile({
 } = {}) {
   const safeAspect = Math.max(0.35, Number(aspect) || 1);
   const safeWidth = Math.max(0, Number(viewportWidth) || 0);
-  const phone = safeWidth <= 520;
-  // The CSS viewport is the trustworthy mobile signal. The shell itself is
-  // intentionally a little landscape-shaped so the board does not consume the
-  // entire first screen in portrait; phones must still keep the mobile camera.
-  const mobilePortrait = Boolean(coarsePointer)
+  const coarse = Boolean(coarsePointer);
+  const phonePortrait = coarse
     && safeWidth <= 820
-    && (phone || safeAspect <= 1.18);
-  if (!mobilePortrait) return null;
+    && (safeWidth <= 520 || safeAspect <= 1.18);
+  const phoneLandscape = coarse
+    && safeWidth <= 920
+    && safeAspect >= 1.35;
 
+  if (phoneLandscape) {
+    return Object.freeze({
+      version: WAR_ROOM_MOBILE_FRAMING_VERSION,
+      mode: 'landscape-board-first',
+      // Landscape should cash in the extra horizontal room instead of keeping
+      // the portrait composition. Keep the whole board/frame visible, but move
+      // the camera materially closer so individual piece silhouettes gain real
+      // screen pixels.
+      halfSpan: 4.92,
+      padding: 1.015,
+      minDistance: 14.1,
+      maxDistance: 18.6,
+      targetY: 0.58,
+      targetZ: 0.16,
+      cameraY: 6.65,
+      cameraZ: 11.75,
+    });
+  }
+
+  if (!phonePortrait) return null;
+
+  const phone = safeWidth <= 520;
   return Object.freeze({
     version: WAR_ROOM_MOBILE_FRAMING_VERSION,
-    // v2 intentionally zoomed hard into the board. That made the near pieces
-    // dominate and reduced the actual War Room to a thin decorative strip.
-    // v3 opens the composition again while the longer mobile lens compresses
-    // near/far scale. The board stays comfortably tappable but no longer owns
-    // nearly the full portrait height.
+    mode: 'portrait-room-balanced',
+    // Portrait keeps enough room context to read as the War Room rather than a
+    // floating board, but does not pretend it has landscape's horizontal space.
     halfSpan: phone ? 5.4 : 5.2,
     padding: phone ? 1.04 : 1.055,
     minDistance: phone ? 16.2 : 15.6,
     maxDistance: phone ? 22.4 : 22.0,
     targetY: phone ? 0.95 : 0.86,
-    // Aim slightly deeper into the room so the board settles lower in frame and
-    // the fireplace/Hans/desk band remains visibly part of the play space.
     targetZ: phone ? 0.65 : 0.56,
     cameraY: phone ? 7.2 : 7.28,
     cameraZ: phone ? 11.4 : 11.25,
