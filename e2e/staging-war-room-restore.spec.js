@@ -88,7 +88,7 @@ async function loginBrowser(page, username, password) {
     submit.click(),
   ]);
   expect(browserLogin.status()).toBe(200);
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible({ timeout: 25_000 });
+  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible({ timeout: 25_000 });
 }
 
 test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida desde API', async ({ page, request }) => {
@@ -137,7 +137,6 @@ test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida 
         return null;
       }
     }, ACTIVE_GAME_SESSION_KEY), { timeout: 15_000 }).toBe(created.fen);
-
     const mutatedResponse = await request.post(`${STAGING_API_URL}/games/${encodeURIComponent(gameId)}/move`, {
       headers: {
         Authorization: `Bearer ${session.token}`,
