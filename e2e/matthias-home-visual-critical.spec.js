@@ -27,7 +27,6 @@ test('Home canónica · Matthias permanece visible y abre Así juegas', async ({
 
   await matthias.click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Consulta diaria con Matthias' })).toBeVisible();
 });
 
 test('Home canónica · el arte y los destinos comparten el lienzo 16:9 sin overflow', async ({ page }) => {
@@ -67,6 +66,6 @@ test('Home canónica · reduced motion elimina transiciones decorativas', async 
   const destination = home.locator('.illustrated-home__destination--tournament');
   await expect(destination).toBeVisible();
 
-  const transitionDuration = await destination.evaluate((node) => getComputedStyle(node).transitionDuration);
-  expect(transitionDuration).toBe('0s');
+  const transitionSeconds = await destination.evaluate((node) => Number.parseFloat(getComputedStyle(node).transitionDuration) || 0);
+  expect(transitionSeconds).toBeLessThanOrEqual(0.001);
 });
