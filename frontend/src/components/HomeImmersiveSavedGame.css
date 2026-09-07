@@ -1,0 +1,87 @@
+/* Chess Studio Home · saved-game continuity for immersive desktop
+ *
+ * A recoverable game outranks the decorative purity of the Great Hall. Keep
+ * the dashboard retired, but surface the real continue action as a compact
+ * overlay inside the immersive Home so F5/login recovery stays one click away.
+ */
+
+@media (min-width: 1000px) {
+  body .menu.home-friendly > .home-continue-group {
+    position: absolute !important;
+    z-index: 52 !important;
+    top: clamp(.8rem, 1.5vw, 1.35rem) !important;
+    left: 50% !important;
+    width: auto !important;
+    max-width: min(42rem, calc(100% - 2rem)) !important;
+    min-width: 0 !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    border: 0 !important;
+    border-radius: 999px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    overflow: visible !important;
+    transform: translateX(-50%) !important;
+  }
+
+  body .menu.home-friendly > .home-continue-group::before,
+  body .menu.home-friendly > .home-continue-group::after {
+    display: none !important;
+    content: none !important;
+  }
+
+  body .menu.home-friendly > .home-continue-group .home-continue-card {
+    width: auto !important;
+    max-width: min(42rem, calc(100vw - 2rem)) !important;
+    min-width: 0 !important;
+    min-height: 3.15rem !important;
+    margin: 0 !important;
+    padding: .68rem 1rem !important;
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: .62rem !important;
+    border: 1px solid rgba(210, 170, 88, .46) !important;
+    border-radius: 999px !important;
+    background: linear-gradient(180deg, rgba(22, 19, 14, .96), rgba(9, 9, 8, .95)) !important;
+    box-shadow:
+      inset 0 1px rgba(255, 242, 207, .06),
+      0 12px 32px rgba(0, 0, 0, .38) !important;
+    color: #f0dfb8 !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+  }
+
+  body .menu.home-friendly > .home-continue-group .home-continue-card:hover,
+  body .menu.home-friendly > .home-continue-group .home-continue-card:focus-visible {
+    filter: brightness(1.08) !important;
+    transform: translateY(-1px) !important;
+    border-color: rgba(225, 188, 107, .68) !important;
+  }
+
+  body .menu.home-friendly > .home-continue-group .home-continue-icon {
+    color: #d4aa59 !important;
+  }
+
+  body .menu.home-friendly > .home-continue-group .home-continue-copy {
+    min-width: 0 !important;
+  }
+
+  body .menu.home-friendly > .home-continue-group .home-continue-copy strong {
+    color: #f0dfb8 !important;
+    font-size: clamp(.9rem, 1vw, 1.02rem) !important;
+    line-height: 1.05 !important;
+    white-space: nowrap !important;
+  }
+
+  body .menu.home-friendly > .home-continue-group .home-continue-copy .section-label,
+  body .menu.home-friendly > .home-continue-group .home-continue-copy small,
+  body .menu.home-friendly > .home-continue-group .home-continue-cta {
+    display: none !important;
+  }
+}

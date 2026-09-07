@@ -1,0 +1,29 @@
+/* Home immersive desktop · keep Matthias diegetic without stealing door clicks.
+ *
+ * The canonical resident rail predates the full-viewport Great Hall. On compact
+ * desktop heights its 126px interactive character overlaps the first JUGAR
+ * hotspot, so a perfectly valid click can land on Matthias instead of the door.
+ * Keep him in the left stone gutter and make the quiet hitbox fit that gutter.
+ */
+@media (min-width: 1000px) {
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport.is-quiet {
+    left: max(1.25rem, env(safe-area-inset-left)) !important;
+    right: auto !important;
+    width: clamp(84px, 8vw, 104px) !important;
+  }
+
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport.is-quiet .matthias-resident__stage {
+    justify-content: flex-start !important;
+  }
+
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport.is-quiet .matthias-resident__character {
+    width: clamp(84px, 8vw, 104px) !important;
+    flex-basis: clamp(84px, 8vw, 104px) !important;
+    padding-inline: .2rem !important;
+  }
+
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport.is-quiet .matthias-resident__portrait-shell {
+    width: clamp(76px, 7.35vw, 96px) !important;
+    height: clamp(88px, 8.45vw, 110px) !important;
+  }
+}

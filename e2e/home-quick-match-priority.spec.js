@@ -46,71 +46,71 @@ async function expectQuickMatchAboveFold(page, viewport) {
   expect(hierarchy.quickBeforeTournament).toBe(true);
 }
 
-test('Home desktop · Partida rápida queda visible sin scroll y lidera Jugar', async ({ page }) => {
-  await expectQuickMatchAboveFold(page, { width: 1552, height: 900 });
+test('Home desktop · la puerta JUGAR sustituye la tarjeta y abre Partida rápida', async ({ page }) => {
+  await page.setViewportSize({ width: 1552, height: 900 });
+  await openHome(page);
+
+  const oldQuick = page.locator('.home-mode-quick');
+  await expect(oldQuick).toBeHidden();
+
+  const playDoor = page.locator('.home-castle-hub__room--play');
+  await expect(playDoor).toBeVisible();
+  await playDoor.click();
+  await expect(page.getByRole('heading', { name: 'Elige dificultad y juega', exact: true })).toBeVisible();
 });
 
-test('Home desktop · el salón mantiene render 3D nítido y Matthias vive junto al sofá', async ({ page }) => {
+test('Home desktop · el salón es frontal, sobrio y revela contexto sólo al hover', async ({ page }) => {
   await page.setViewportSize({ width: 1552, height: 900 });
   await openHome(page);
 
   const hall = page.locator('.home-castle-life');
   const scene = hall.locator('.home-castle-hub__scene');
   const canvas = scene.locator('canvas');
-  const roomTitle = hall.locator('.home-castle-hub__room strong').first();
-  const roomDetail = hall.locator('.home-castle-hub__room small').first();
+  const playDoor = hall.locator('.home-castle-hub__room--play');
+  const roomTitle = playDoor.locator('strong');
+  const roomDetail = playDoor.locator('small');
   const matthias = page.locator('.matthias-resident.is-viewport');
 
   await expect(hall).toBeVisible();
   await expect(scene).toBeVisible();
   await expect(canvas).toBeVisible();
-  await expect(roomTitle).toBeVisible();
-  await expect(roomDetail).toBeVisible();
+  await expect(playDoor).toBeVisible();
   await expect(matthias).toBeVisible();
+
+  expect(Number.parseFloat(await roomTitle.evaluate((node) => getComputedStyle(node).opacity))).toBeLessThanOrEqual(0.01);
+  expect(Number.parseFloat(await roomDetail.evaluate((node) => getComputedStyle(node).opacity))).toBeLessThanOrEqual(0.01);
+
+  await playDoor.hover();
+  await expect.poll(async () => Number.parseFloat(await roomTitle.evaluate((node) => getComputedStyle(node).opacity))).toBeGreaterThan(0.9);
+  await expect.poll(async () => Number.parseFloat(await roomDetail.evaluate((node) => getComputedStyle(node).opacity))).toBeGreaterThan(0.9);
 
   const visualContract = await page.evaluate(() => {
     const hallNode = document.querySelector('.home-castle-life');
-    const hubNode = hallNode?.querySelector('.home-castle-hub');
     const sceneNode = hallNode?.querySelector('.home-castle-hub__scene');
-    const canvasNode = hallNode?.querySelector('.home-castle-hub__scene canvas');
-    const titleNode = hallNode?.querySelector('.home-castle-hub__room strong');
-    const detailNode = hallNode?.querySelector('.home-castle-hub__room small');
     const matthiasNode = document.querySelector('.matthias-resident.is-viewport');
+    const dungeon = document.querySelector('.home-more-modes > summary');
     const hallRect = hallNode?.getBoundingClientRect();
     const matthiasRect = matthiasNode?.getBoundingClientRect();
-    const hallStyle = hallNode ? getComputedStyle(hallNode) : null;
-    const titleStyle = titleNode ? getComputedStyle(titleNode) : null;
-    const detailStyle = detailNode ? getComputedStyle(detailNode) : null;
-    const beforeStyle = hubNode ? getComputedStyle(hubNode, '::before') : null;
-    const afterStyle = hubNode ? getComputedStyle(hubNode, '::after') : null;
-
     return {
-      hallOpacity: hallStyle ? Number.parseFloat(hallStyle.opacity) : 0,
-      hallFilter: hallStyle?.filter || '',
-      sceneFilter: sceneNode ? getComputedStyle(sceneNode).filter : '',
-      canvasFilter: canvasNode ? getComputedStyle(canvasNode).filter : '',
-      beforeOpacity: beforeStyle ? Number.parseFloat(beforeStyle.opacity) : 1,
-      afterOpacity: afterStyle ? Number.parseFloat(afterStyle.opacity) : 1,
-      titleFontSize: titleStyle ? Number.parseFloat(titleStyle.fontSize) : 0,
-      detailOpacity: detailStyle ? Number.parseFloat(detailStyle.color.match(/[\d.]+(?=\))/)?.[0] || '1') : 0,
-      matthiasLowerHalf: Boolean(hallRect && matthiasRect && matthiasRect.top >= hallRect.top + hallRect.height * 0.34),
+      hallHeight: hallRect?.height || 0,
+      viewportHeight: window.innerHeight,
+      camera: sceneNode?.dataset.homeCastleHubCamera || '',
+      dungeonScene: sceneNode?.dataset.homeCastleHubDungeonStair || '',
+      dungeonVisible: Boolean(dungeon && dungeon.getBoundingClientRect().width > 0 && dungeon.getBoundingClientRect().height > 0),
       matthiasInsideHallHorizontally: Boolean(hallRect && matthiasRect
         && matthiasRect.left >= hallRect.left
         && matthiasRect.right <= hallRect.right),
-      matthiasWidth: matthiasRect?.width || 0,
+      horizontalOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     };
   });
 
-  expect(visualContract.hallOpacity).toBe(1);
-  expect(visualContract.hallFilter).toBe('none');
-  expect(visualContract.sceneFilter).toBe('none');
-  expect(visualContract.canvasFilter).toBe('none');
-  expect(visualContract.beforeOpacity).toBe(0);
-  expect(visualContract.afterOpacity).toBe(0);
-  expect(visualContract.titleFontSize).toBeGreaterThanOrEqual(14);
-  expect(visualContract.matthiasLowerHalf).toBe(true);
+  expect(visualContract.hallHeight).toBeGreaterThanOrEqual(600);
+  expect(visualContract.hallHeight).toBeLessThanOrEqual(visualContract.viewportHeight);
+  expect(visualContract.camera).toBe('frontal-diorama-v1');
+  expect(visualContract.dungeonScene).toBe('spiral-stone-v1');
+  expect(visualContract.dungeonVisible).toBe(true);
   expect(visualContract.matthiasInsideHallHorizontally).toBe(true);
-  expect(visualContract.matthiasWidth).toBeGreaterThanOrEqual(175);
+  expect(visualContract.horizontalOverflow).toBeLessThanOrEqual(1);
 });
 
 test('Home móvil · Partida rápida sigue visible sin scroll y es la primera opción', async ({ page }) => {

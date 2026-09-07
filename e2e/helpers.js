@@ -349,7 +349,8 @@ export async function login(page) {
   await page.getByLabel('Usuario').fill('e2e');
   await page.getByLabel('Contraseña').fill('clave123456');
   await page.getByRole('button', { name: 'Entrar' }).click();
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+  // Stable Home-ready landmark shared by immersive desktop and compact mobile.
+  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
 }
 
 
@@ -361,8 +362,19 @@ export function gameTurn(page, text = 'Tu turno') {
   return gameStatus(page).getByText(text, { exact: true });
 }
 
+const HOME_VISIBLE_TEXT_TARGETS = Object.freeze({
+  'Partida rápida': '.home-mode-quick:visible, .home-castle-hub__room--play:visible',
+  'Combat Chess · Campaña': '.home-mode-campaign:visible, .home-castle-hub__room--combat:visible',
+});
+
+const HOME_HEADING_TARGETS = Object.freeze({
+  Torneo: '.home-mode-featured:visible, .home-castle-hub__room--tournament:visible',
+});
 
 export function buttonWithVisibleText(scope, text) {
+  const immersiveTarget = HOME_VISIBLE_TEXT_TARGETS[text];
+  if (immersiveTarget) return scope.locator(immersiveTarget).first();
+
   // Prefer the visible copy rendered inside the action button, not a broad
   // accessible-name regex. Tutorial help buttons intentionally include the
   // mode name in aria-label (e.g. "Ayuda de Partida rápida"), so regex
@@ -373,6 +385,9 @@ export function buttonWithVisibleText(scope, text) {
 
 
 export function buttonWithHeading(scope, text) {
+  const immersiveTarget = HOME_HEADING_TARGETS[text];
+  if (immersiveTarget) return scope.locator(immersiveTarget).first();
+
   // Some compact status chips repeat mode names such as "Torneo". Home
   // mode cards own an actual heading, so anchoring the button to that heading
   // keeps the locator semantic and unambiguous without depending on card copy.
@@ -499,6 +514,10 @@ export async function startTournamentGame(page) {
 }
 
 export async function startPracticeGame(page) {
+  const archive = page.locator('details.home-learning-more');
+  if (await archive.isVisible().catch(() => false) && !(await archive.evaluate((node) => node.open))) {
+    await archive.locator('summary').click();
+  }
   await buttonWithHeading(page, 'Partida de práctica').click();
   await expect(gameStatus(page)).toBeVisible();
 }

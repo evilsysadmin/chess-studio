@@ -6,6 +6,7 @@ const MOBILE_DPR_CAP = 1;
 export const HOME_CASTLE_ROOM_TARGETS = Object.freeze({
   play: ['.home-continue-card', '.home-mode-quick'],
   tournament: ['.home-mode-featured'],
+  train: ['.home-school-card'],
   combat: ['.home-mode-campaign'],
   daily: ['.home-today-actions button'],
 });
@@ -35,11 +36,6 @@ function firstMatchingTarget(selectors, root = document) {
 }
 
 export function activateHomeCastleRoom(roomId, root = document) {
-  if (roomId === 'train') {
-    const learning = root.querySelector('.home-primary-group:not(.home-modes-section)');
-    learning?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
-    return Boolean(learning);
-  }
   const target = firstMatchingTarget(HOME_CASTLE_ROOM_TARGETS[roomId], root);
   target?.click?.();
   return Boolean(target);
@@ -236,6 +232,43 @@ function addSofa(THREE, parent, materials) {
   return group;
 }
 
+function addDungeonStair(THREE, parent, materials) {
+  const { stoneEdge, dark, iron, brass } = materials;
+  const stair = new THREE.Group();
+  stair.name = 'home-castle-dungeon-stair';
+  stair.position.set(-6.92, -0.89, 3.92);
+  stair.rotation.y = -0.16;
+  parent.add(stair);
+
+  // Dark well first: it must read as a hole in the castle, not a glowing UI
+  // ornament. The old brass is used only for tiny edge catches.
+  addCylinder(THREE, stair, 1.02, 1.08, 0.13, [0, -0.02, 0], dark, 24);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(1.02, 0.11, 8, 28), stoneEdge);
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = 0.045;
+  stair.add(rim);
+
+  const stepCount = 11;
+  for (let index = 0; index < stepCount; index += 1) {
+    const angle = -0.28 - index * 0.43;
+    const radius = 0.63;
+    const step = addBox(
+      THREE,
+      stair,
+      [0.68, 0.075, 0.34],
+      [Math.cos(angle) * radius, -0.05 - index * 0.075, Math.sin(angle) * radius],
+      stoneEdge,
+      [0, -angle + Math.PI / 2, 0],
+    );
+    step.userData.homeDungeonStep = index + 1;
+  }
+
+  addCylinder(THREE, stair, 0.045, 0.055, 1.16, [0, -0.46, 0], iron, 8);
+  addSphere(THREE, stair, 0.075, [0, 0.14, 0], brass, 8, 6, [1, 1, 1]);
+  stair.userData.homeDungeonStair = 'spiral-stone-v1';
+  return stair;
+}
+
 function addLion(THREE, parent, materials) {
   const { lionStone, lionDark } = materials;
   const group = new THREE.Group();
@@ -412,9 +445,11 @@ function buildCastleHubScene(THREE, { host, ambience }) {
   host.appendChild(canvas);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(coarse ? 49 : 37, 1, 0.1, 60);
-  camera.position.set(0, coarse ? 4.20 : 3.82, coarse ? 13.9 : 12.05);
-  camera.lookAt(0, 1.55, -0.55);
+  // Desktop is deliberately almost frontal. A low FOV and long camera remove
+  // the old doll-house / tipped-floor read while preserving genuine depth.
+  const camera = new THREE.PerspectiveCamera(coarse ? 49 : 31, 1, 0.1, 60);
+  camera.position.set(0, coarse ? 4.20 : 2.78, coarse ? 13.9 : 14.45);
+  camera.lookAt(0, coarse ? 1.55 : 2.12, coarse ? -0.55 : -1.18);
 
   const materials = {
     stone: makeMaterial(THREE, { color: 0x4b4237, roughness: 0.94, metalness: 0.02 }),
@@ -474,6 +509,7 @@ function buildCastleHubScene(THREE, { host, ambience }) {
   addRoomProps(THREE, room, materials, coarse);
 
   addSofa(THREE, room, materials);
+  if (!coarse) addDungeonStair(THREE, room, materials);
   addArmour(THREE, room, -6.70, -0.05, -0.28, materials, 0.98, 0.18);
   addLion(THREE, room, materials);
   addChessBoard(THREE, room, 2.30, -0.82, 2.74, 0.90, materials, !coarse);
@@ -563,8 +599,10 @@ function buildCastleHubScene(THREE, { host, ambience }) {
   renderScene();
   host.dataset.homeCastleHubReady = 'true';
   host.dataset.homeCastleHubRenderMode = 'on-demand';
-  host.dataset.homeCastleHubArchitecture = 'integrated-teutonic-v3';
+  host.dataset.homeCastleHubArchitecture = 'integrated-teutonic-v4-immersive';
   host.dataset.homeCastleHubBoardSquares = 'instanced-2-draws-per-board';
+  host.dataset.homeCastleHubCamera = coarse ? 'mobile-existing-v1' : 'frontal-diorama-v1';
+  host.dataset.homeCastleHubDungeonStair = coarse ? 'omitted-mobile' : 'spiral-stone-v1';
 
   const setAmbience = (nextAmbience) => {
     const nextIntensity = homeCastleWarmKeyIntensity(nextAmbience);

@@ -3,9 +3,16 @@ import { login, mockApi } from './helpers.js';
 
 async function dismissGuide(page) {
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
-  if (await guide.isVisible().catch(() => false)) {
-    await guide.getByRole('button', { name: 'Ahora no', exact: true }).click();
+  if (!(await guide.isVisible().catch(() => false))) return;
+
+  const dismiss = guide.getByRole('button', { name: 'Ahora no', exact: true });
+  if (await dismiss.isVisible().catch(() => false)) {
+    await dismiss.click();
+    return;
   }
+
+  const close = guide.getByRole('button', { name: 'Cerrar guía rápida', exact: true });
+  if (await close.isVisible().catch(() => false)) await close.click();
 }
 
 async function openPawnSlug(page) {

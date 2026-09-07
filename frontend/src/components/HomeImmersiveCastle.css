@@ -1,0 +1,654 @@
+/* Chess Studio Home · immersive castle desktop
+ *
+ * Desktop contract:
+ * - the Home is the Great Hall, not a dashboard below a Great Hall;
+ * - permanent labels disappear from the scenery;
+ * - interaction uses one restrained aged-gold language;
+ * - hover/focus reveals compact contextual cards;
+ * - secondary game modes live behind a diegetic dungeon stair;
+ * - mobile keeps the existing first-fold contract.
+ */
+
+@keyframes home-immersive-hotspot-breathe {
+  0%, 100% { opacity: .07; transform: translate(-50%, -50%) scale(.92); }
+  50% { opacity: .17; transform: translate(-50%, -50%) scale(1.08); }
+}
+
+@media (min-width: 1000px) {
+  body .menu.home-friendly {
+    position: relative !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-height: calc(100dvh - 12.2rem) !important;
+    padding: 0 !important;
+    row-gap: 0 !important;
+    column-gap: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* The hall is now the Home itself. Keep the existing global top chrome, then
+   * spend the rest of the viewport on the castle. */
+  body .menu.home-friendly > .home-castle-life {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    height: calc(100dvh - 12.2rem) !important;
+    min-height: 34rem !important;
+    max-height: none !important;
+    margin: 0 !important;
+    border-radius: 18px !important;
+    overflow: hidden !important;
+    background: #070706 !important;
+  }
+
+  /* Crop a little of the old wide-angle composition while the Three camera is
+   * kept compatible with mobile. This removes most of the floor-heavy 'tilted
+   * model' read on wide desktop canvases. */
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__scene canvas {
+    transform: scale(1.17) translateY(2.1%) !important;
+    transform-origin: 50% 52% !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life::before {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life::after {
+    background:
+      radial-gradient(ellipse at 50% 48%, transparent 38%, rgba(0, 0, 0, .10) 74%, rgba(0, 0, 0, .40) 100%),
+      linear-gradient(180deg, rgba(3, 4, 5, .12) 0%, transparent 18%, transparent 78%, rgba(3, 4, 5, .28) 100%) !important;
+  }
+
+  /* Old dashboard rows stay in the DOM where their real handlers/state still
+   * exist, but they no longer consume visual space on desktop. */
+  body .menu.home-friendly > .home-continue-group,
+  body .menu.home-friendly > .home-next-action,
+  body .menu.home-friendly > .home-today-card,
+  body .menu.home-friendly > .home-footer {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) {
+    display: contents !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section > .home-group-heading,
+  body .menu.home-friendly > .home-modes-section > .home-primary-grid,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-group-heading {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-grid {
+    display: contents !important;
+  }
+
+  /* -----------------------------------------------------------------------
+   * Main doors: no floating billboards. The door is the control; only a tiny
+   * aged-gold breathing point hints that something can be touched.
+   * -------------------------------------------------------------------- */
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__rooms {
+    z-index: 28 !important;
+    top: 22% !important;
+    left: 11.6% !important;
+    right: 9.4% !important;
+    height: 48% !important;
+    gap: .35% !important;
+    pointer-events: none !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--play,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--tournament,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--train,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--combat,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--daily {
+    position: relative !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    transform: none !important;
+    pointer-events: auto !important;
+    isolation: isolate;
+  }
+
+  /* Entrenar is handled by the real Escuela button placed over the middle
+   * portal below, so the old room hitbox cannot scroll to a hidden dashboard. */
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--train {
+    pointer-events: none !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room::before {
+    content: '' !important;
+    position: absolute !important;
+    z-index: 3 !important;
+    left: 50% !important;
+    top: 58% !important;
+    width: 1.05rem !important;
+    height: 1.05rem !important;
+    border: 1px solid rgba(211, 167, 78, .42) !important;
+    border-radius: 50% !important;
+    background: radial-gradient(circle, rgba(230, 190, 105, .26), rgba(177, 127, 49, .06) 48%, transparent 72%) !important;
+    box-shadow: 0 0 14px rgba(207, 151, 56, .10) !important;
+    opacity: .10;
+    transform: translate(-50%, -50%);
+    animation: home-immersive-hotspot-breathe 5.8s ease-in-out infinite;
+    pointer-events: none !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:nth-child(2)::before { animation-delay: -1.15s; }
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:nth-child(3)::before { animation-delay: -2.30s; }
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:nth-child(4)::before { animation-delay: -3.45s; }
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:nth-child(5)::before { animation-delay: -4.60s; }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room::after {
+    content: '' !important;
+    position: absolute !important;
+    z-index: 5 !important;
+    left: 50% !important;
+    top: 67% !important;
+    width: clamp(9.5rem, 12vw, 12.2rem) !important;
+    height: 4.4rem !important;
+    border: 1px solid rgba(191, 151, 77, .30) !important;
+    border-radius: 10px !important;
+    background: linear-gradient(180deg, rgba(16, 14, 11, .96), rgba(8, 8, 7, .94)) !important;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .40), inset 0 1px rgba(255, 238, 197, .035) !important;
+    opacity: 0 !important;
+    transform: translate(-50%, .45rem) !important;
+    transition: opacity .16s ease, transform .16s ease !important;
+    pointer-events: none !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room-glyph,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room i {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room strong,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room small {
+    position: absolute !important;
+    z-index: 7 !important;
+    left: 50% !important;
+    width: clamp(8.3rem, 10.5vw, 10.8rem) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    text-align: left !important;
+    opacity: 0 !important;
+    transform: translate(-50%, .45rem) !important;
+    transition: opacity .16s ease, transform .16s ease !important;
+    pointer-events: none !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room strong {
+    top: 70% !important;
+    color: #f1dfb5 !important;
+    font-size: clamp(.76rem, .82vw, .92rem) !important;
+    line-height: 1.05 !important;
+    letter-spacing: .055em !important;
+    text-shadow: none !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room small {
+    top: calc(70% + 1.35rem) !important;
+    color: rgba(224, 214, 193, .68) !important;
+    font-size: clamp(.61rem, .66vw, .72rem) !important;
+    line-height: 1.28 !important;
+    text-shadow: none !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:hover::before,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:focus-visible::before {
+    opacity: .42 !important;
+    animation-play-state: paused;
+    box-shadow: 0 0 20px rgba(216, 166, 72, .24) !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:hover::after,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:focus-visible::after,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:hover strong,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:hover small,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:focus-visible strong,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:focus-visible small {
+    opacity: 1 !important;
+    transform: translate(-50%, 0) !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:focus-visible {
+    outline: 1px solid rgba(215, 170, 82, .34) !important;
+    outline-offset: -2px !important;
+  }
+
+  /* -----------------------------------------------------------------------
+   * Learning objects. These are the real buttons from the former lower cards,
+   * repositioned as unobtrusive hit areas over actual hall props.
+   * -------------------------------------------------------------------- */
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-grid > .menu-card-shell,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-school-card {
+    position: absolute !important;
+    z-index: 34 !important;
+    margin: 0 !important;
+  }
+
+  /* Así juegas -> left wall / armour-plaque area. */
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-grid > .menu-card-shell:nth-child(1) {
+    left: 4.4% !important;
+    top: 45% !important;
+    width: 12.5% !important;
+    height: 21% !important;
+  }
+
+  /* Personal mistakes -> foreground analysis board. */
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-grid > .menu-card-shell:nth-child(2) {
+    right: 20.2% !important;
+    top: 59% !important;
+    width: 15.5% !important;
+    height: 22% !important;
+  }
+
+  /* Escuela de Matthias owns the central training portal. */
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-school-card {
+    left: 43.1% !important;
+    top: 25% !important;
+    width: 13.8% !important;
+    height: 41% !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-grid > .menu-card-shell > .home-learning-card,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-school-card {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    transform: none !important;
+    backdrop-filter: none !important;
+    color: inherit !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card::before,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-school-card::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 50% !important;
+    top: 55% !important;
+    width: .9rem !important;
+    height: .9rem !important;
+    border: 1px solid rgba(211, 167, 78, .34) !important;
+    border-radius: 50% !important;
+    background: radial-gradient(circle, rgba(226, 184, 95, .20), transparent 68%) !important;
+    box-shadow: 0 0 13px rgba(204, 146, 52, .08) !important;
+    opacity: .085 !important;
+    transform: translate(-50%, -50%) !important;
+    animation: home-immersive-hotspot-breathe 6.8s ease-in-out infinite;
+    pointer-events: none !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-mode-icon,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-mode-kicker,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .menu-card-cta,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-onboarding-cue {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .home-mode-copy,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-school-card .home-mode-copy {
+    position: absolute !important;
+    z-index: 6 !important;
+    left: 50% !important;
+    top: 62% !important;
+    width: clamp(11.5rem, 14vw, 14.5rem) !important;
+    padding: .72rem .82rem !important;
+    border: 1px solid rgba(191, 151, 77, .30) !important;
+    border-radius: 10px !important;
+    background: linear-gradient(180deg, rgba(16, 14, 11, .96), rgba(8, 8, 7, .94)) !important;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .40) !important;
+    opacity: 0 !important;
+    transform: translate(-50%, .45rem) !important;
+    transition: opacity .16s ease, transform .16s ease !important;
+    pointer-events: none !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card:hover .home-mode-copy,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card:focus-visible .home-mode-copy,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-school-card:hover .home-mode-copy,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-school-card:focus-visible .home-mode-copy {
+    opacity: 1 !important;
+    transform: translate(-50%, 0) !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card:hover::before,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card:focus-visible::before,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-school-card:hover::before,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-school-card:focus-visible::before {
+    opacity: .38 !important;
+    animation-play-state: paused;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .home-mode-copy h3,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-school-card .home-mode-copy h3 {
+    margin: 0 0 .28rem !important;
+    color: #f1dfb5 !important;
+    font-family: Georgia, 'Times New Roman', serif !important;
+    font-size: .92rem !important;
+    line-height: 1.08 !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .home-mode-description,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-school-card .home-mode-description {
+    display: block !important;
+    color: rgba(224, 214, 193, .68) !important;
+    font-size: .68rem !important;
+    line-height: 1.3 !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-grid > .menu-card-shell > .mode-tutorial-tip {
+    display: none !important;
+  }
+
+  /* -----------------------------------------------------------------------
+   * Dungeon stair = Más modos de juego. The spiral is deliberately dark and
+   * architectural; the tooltip, not a permanent label, explains it.
+   * -------------------------------------------------------------------- */
+  body .menu.home-friendly > .home-modes-section > .home-more-modes {
+    position: absolute !important;
+    z-index: 48 !important;
+    left: 3.2% !important;
+    bottom: 3.2% !important;
+    width: 6.6rem !important;
+    height: 6.6rem !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section > .home-more-modes > summary {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 6.6rem !important;
+    height: 6.6rem !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: transparent !important;
+    font-size: 0 !important;
+    list-style: none !important;
+    cursor: pointer !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section > .home-more-modes > summary::-webkit-details-marker {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section > .home-more-modes > summary::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 50% !important;
+    top: 50% !important;
+    width: 5.1rem !important;
+    height: 5.1rem !important;
+    border: 1px solid rgba(151, 123, 77, .30) !important;
+    border-radius: 50% !important;
+    background:
+      radial-gradient(circle at 50% 50%, #050504 0 20%, transparent 21% 28%, rgba(10, 9, 7, .94) 29% 45%, transparent 46%),
+      repeating-conic-gradient(from 18deg, rgba(151, 120, 70, .23) 0 8deg, rgba(15, 13, 10, .94) 9deg 27deg) !important;
+    box-shadow: inset 0 0 0 .7rem rgba(6, 6, 5, .64), 0 18px 30px rgba(0, 0, 0, .52), 0 0 15px rgba(190, 141, 53, .05) !important;
+    opacity: .82 !important;
+    transform: translate(-50%, -50%) rotate(-12deg) !important;
+    transition: opacity .16s ease, box-shadow .16s ease !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section > .home-more-modes > summary::after {
+    content: 'MÁS MODOS DE JUEGO\A Sólo para los osados' !important;
+    position: absolute !important;
+    left: 5.4rem !important;
+    bottom: 4.1rem !important;
+    width: 12.8rem !important;
+    padding: .72rem .82rem !important;
+    border: 1px solid rgba(191, 151, 77, .30) !important;
+    border-radius: 10px !important;
+    background: linear-gradient(180deg, rgba(16, 14, 11, .97), rgba(8, 8, 7, .95)) !important;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .44) !important;
+    color: #f1dfb5 !important;
+    font-family: Georgia, 'Times New Roman', serif !important;
+    font-size: .78rem !important;
+    line-height: 1.45 !important;
+    letter-spacing: .045em !important;
+    white-space: pre !important;
+    opacity: 0 !important;
+    transform: translateY(.4rem) !important;
+    transition: opacity .16s ease, transform .16s ease !important;
+    pointer-events: none !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section > .home-more-modes > summary:hover::before,
+  body .menu.home-friendly > .home-modes-section > .home-more-modes > summary:focus-visible::before {
+    opacity: 1 !important;
+    box-shadow: inset 0 0 0 .7rem rgba(6, 6, 5, .64), 0 18px 30px rgba(0, 0, 0, .52), 0 0 20px rgba(205, 157, 69, .15) !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section > .home-more-modes > summary:hover::after,
+  body .menu.home-friendly > .home-modes-section > .home-more-modes > summary:focus-visible::after {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section > .home-more-modes[open] {
+    z-index: 70 !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section > .home-more-modes .friendly-disclosure-body {
+    position: absolute !important;
+    left: 1rem !important;
+    bottom: 6.25rem !important;
+    width: min(56rem, 78vw) !important;
+    max-height: min(31rem, 65vh) !important;
+    margin: 0 !important;
+    padding: .85rem !important;
+    overflow: auto !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: .6rem !important;
+    border: 1px solid rgba(181, 143, 72, .28) !important;
+    border-radius: 12px !important;
+    background: linear-gradient(180deg, rgba(12, 11, 9, .985), rgba(6, 6, 5, .985)) !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .64) !important;
+    backdrop-filter: blur(12px) !important;
+  }
+
+  /* One palette in the dungeon too. No accent-card carnival. */
+  body .menu.home-friendly > .home-modes-section > .home-more-modes .menu-card {
+    min-height: 8rem !important;
+    border-color: rgba(186, 148, 76, .20) !important;
+    background: rgba(15, 14, 11, .84) !important;
+    box-shadow: none !important;
+    filter: none !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section > .home-more-modes .menu-card:hover,
+  body .menu.home-friendly > .home-modes-section > .home-more-modes .menu-card:focus-visible {
+    border-color: rgba(210, 169, 85, .42) !important;
+    background: rgba(22, 18, 12, .92) !important;
+    box-shadow: 0 0 0 1px rgba(218, 177, 90, .05), inset 0 0 24px rgba(190, 139, 51, .05) !important;
+  }
+
+  /* -----------------------------------------------------------------------
+   * Study desk / archive: the existing advanced learning disclosure becomes
+   * another physical-ish object with the same hover-card grammar.
+   * -------------------------------------------------------------------- */
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-more {
+    position: absolute !important;
+    z-index: 46 !important;
+    right: 3.2% !important;
+    bottom: 3.2% !important;
+    width: 6.8rem !important;
+    height: 5.6rem !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-more > summary {
+    position: absolute !important;
+    inset: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: transparent !important;
+    font-size: 0 !important;
+    list-style: none !important;
+    cursor: pointer !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-more > summary::-webkit-details-marker {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-more > summary::before {
+    content: '▤' !important;
+    position: absolute !important;
+    right: .35rem !important;
+    bottom: .4rem !important;
+    width: 4.4rem !important;
+    height: 3.3rem !important;
+    display: grid !important;
+    place-items: center !important;
+    border: 1px solid rgba(166, 128, 66, .30) !important;
+    border-radius: 5px 11px 11px 5px !important;
+    background: linear-gradient(135deg, #2b1d10, #100d09 68%) !important;
+    box-shadow: inset .35rem 0 rgba(111, 72, 33, .28), 0 13px 24px rgba(0, 0, 0, .46) !important;
+    color: rgba(205, 166, 91, .54) !important;
+    font-size: 1.35rem !important;
+    opacity: .84 !important;
+    transform: rotate(-5deg) !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-more > summary::after {
+    content: 'ARCHIVO DE ESTUDIO\A Puzzles, práctica, aperturas e historial' !important;
+    position: absolute !important;
+    right: 4.7rem !important;
+    bottom: 3.5rem !important;
+    width: 15.5rem !important;
+    padding: .72rem .82rem !important;
+    border: 1px solid rgba(191, 151, 77, .30) !important;
+    border-radius: 10px !important;
+    background: linear-gradient(180deg, rgba(16, 14, 11, .97), rgba(8, 8, 7, .95)) !important;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .44) !important;
+    color: #f1dfb5 !important;
+    font-family: Georgia, 'Times New Roman', serif !important;
+    font-size: .76rem !important;
+    line-height: 1.45 !important;
+    white-space: pre !important;
+    opacity: 0 !important;
+    transform: translateY(.4rem) !important;
+    transition: opacity .16s ease, transform .16s ease !important;
+    pointer-events: none !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-more > summary:hover::after,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-more > summary:focus-visible::after {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-more[open] {
+    z-index: 70 !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-more .friendly-disclosure-body {
+    position: absolute !important;
+    right: 1rem !important;
+    bottom: 5.3rem !important;
+    width: min(58rem, 80vw) !important;
+    max-height: min(31rem, 65vh) !important;
+    margin: 0 !important;
+    padding: .85rem !important;
+    overflow: auto !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: .6rem !important;
+    border: 1px solid rgba(181, 143, 72, .28) !important;
+    border-radius: 12px !important;
+    background: linear-gradient(180deg, rgba(12, 11, 9, .985), rgba(6, 6, 5, .985)) !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .64) !important;
+    backdrop-filter: blur(12px) !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-more .menu-card {
+    min-height: 8rem !important;
+    border-color: rgba(186, 148, 76, .20) !important;
+    background: rgba(15, 14, 11, .84) !important;
+    box-shadow: none !important;
+    filter: none !important;
+  }
+
+  /* Trophy objects remain earned scenery; keep them clear of both lower
+   * interactive anchors. */
+  body .menu.home-friendly > .home-castle-life .home-castle-life__decor {
+    left: 14.5% !important;
+    bottom: 1.15rem !important;
+    max-width: 32% !important;
+    opacity: .66 !important;
+  }
+
+  /* An onboarding guide/error is allowed to interrupt the room, but it should
+   * behave as an overlay rather than push the immersive castle below the fold. */
+  body .menu.home-friendly > .home-start-guide,
+  body .menu.home-friendly > .home-error-banner {
+    position: absolute !important;
+    z-index: 90 !important;
+    left: 50% !important;
+    top: 1rem !important;
+    width: min(64rem, calc(100% - 2rem)) !important;
+    transform: translateX(-50%) !important;
+  }
+
+  @media (max-height: 820px) {
+    body .menu.home-friendly,
+    body .menu.home-friendly > .home-castle-life {
+      min-height: 31.5rem !important;
+      height: calc(100dvh - 9.8rem) !important;
+    }
+
+    body .menu.home-friendly > .home-castle-life .home-castle-hub__scene canvas {
+      transform: scale(1.21) translateY(2.7%) !important;
+    }
+  }
+
+  @media (min-height: 1050px) {
+    body .menu.home-friendly,
+    body .menu.home-friendly > .home-castle-life {
+      height: calc(100dvh - 11.4rem) !important;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room::before,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card::before,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-school-card::before {
+    animation: none !important;
+    opacity: .11 !important;
+  }
+}

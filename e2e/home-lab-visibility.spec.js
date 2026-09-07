@@ -8,7 +8,7 @@ async function openHome(page) {
   if (await guide.isVisible().catch(() => false)) {
     await guide.getByRole('button', { name: 'Ahora no', exact: true }).click();
   }
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
 }
 
 async function openExperimentsFromMoreModes(page) {
@@ -20,7 +20,7 @@ async function openExperimentsFromMoreModes(page) {
     .filter({ hasText: 'Experimentos geniales' });
   await expect(experiments).toHaveCount(1);
   await expect(experiments).toBeHidden();
-  await moreModes.getByText('Más modos de juego', { exact: true }).click();
+  await moreModes.locator(':scope > summary').click();
   await expect(moreModes).toHaveAttribute('open', '');
   await expect(experiments).toBeVisible();
   await expect(experiments).toContainText('Pawn Trailblazer');
@@ -35,131 +35,43 @@ async function openPawnTrailblazer(page) {
   await expect(page.getByRole('heading', { name: 'Pawn Trailblazer', exact: true })).toBeVisible();
 }
 
-test('Home · aprendizaje secundario se revela bajo demanda y Experimentos geniales abre el hangar', async ({ page }) => {
+test('Home desktop · dungeon y archivo revelan profundidad sin devolver el dashboard', async ({ page }) => {
   await page.setViewportSize({ width: 1552, height: 900 });
   await openHome(page);
 
-  const commandContract = await page.locator('.home-modes-section').evaluate((section) => {
-    const menu = section.closest('.menu.home-friendly');
-    const heading = section.querySelector('.home-group-heading');
-    const title = heading?.querySelector('h2');
-    const actions = heading?.querySelector('.home-heading-actions');
-    const description = actions?.querySelector('p');
-    const guide = actions?.querySelector('.home-context-guide');
-    const grid = section.querySelector('.home-primary-grid');
-    const primaryCards = [...section.querySelectorAll('.home-primary-grid .home-mode-card')];
-    const menuRect = menu?.getBoundingClientRect();
-    const headingRect = heading?.getBoundingClientRect();
-    const titleRect = title?.getBoundingClientRect();
-    const gridRect = grid?.getBoundingClientRect();
-    const descriptionRect = description?.getBoundingClientRect();
-    const guideRect = guide?.getBoundingClientRect();
-    const pseudoStyle = title ? getComputedStyle(title, '::after') : null;
-    const lineHeight = pseudoStyle ? Number.parseFloat(pseudoStyle.lineHeight) : 0;
-    const fontSize = pseudoStyle ? Number.parseFloat(pseudoStyle.fontSize) : 0;
-    const titleLines = titleRect && lineHeight > 0 ? titleRect.height / lineHeight : 0;
+  const hall = page.locator('.home-castle-life');
+  const dungeon = page.locator('details.home-more-modes');
+  const dungeonTrigger = dungeon.locator(':scope > summary');
+  const archive = page.locator('details.home-learning-more');
+  const archiveTrigger = archive.locator(':scope > summary');
 
+  await expect(hall).toBeVisible();
+  await expect(dungeonTrigger).toBeVisible();
+  await expect(archiveTrigger).toBeVisible();
+  await expect(page.locator('.home-modes-section > .home-primary-grid')).toBeHidden();
+  await expect(page.locator('.home-next-action')).toBeHidden();
+
+  const resting = await page.evaluate(() => {
+    const dungeonSummary = document.querySelector('details.home-more-modes > summary');
+    const archiveSummary = document.querySelector('details.home-learning-more > summary');
+    const scene = document.querySelector('.home-castle-hub__scene');
     return {
-      menuViewportRatio: menuRect ? menuRect.width / window.innerWidth : 0,
-      gridMenuRatio: menuRect && gridRect ? gridRect.width / menuRect.width : 0,
-      minimumPrimaryCardHeight: primaryCards.length
-        ? Math.min(...primaryCards.map((card) => card.getBoundingClientRect().height))
-        : 0,
-      menuBorderLeftWidth: menu ? Number.parseFloat(getComputedStyle(menu).borderLeftWidth) : 999,
-      menuBorderRightWidth: menu ? Number.parseFloat(getComputedStyle(menu).borderRightWidth) : 999,
-      headingHeight: headingRect?.height || 0,
-      titleLines,
-      titleFontSize: fontSize,
-      cardsGap: headingRect && gridRect ? gridRect.top - headingRect.bottom : 999,
-      leftEdgeDelta: headingRect && gridRect ? Math.abs(headingRect.left - gridRect.left) : 999,
-      rightEdgeDelta: headingRect && gridRect ? Math.abs(headingRect.right - gridRect.right) : 999,
-      actionMidlineDelta: descriptionRect && guideRect
-        ? Math.abs((descriptionRect.top + descriptionRect.height / 2) - (guideRect.top + guideRect.height / 2))
-        : 999,
+      dungeonTooltipOpacity: dungeonSummary ? Number.parseFloat(getComputedStyle(dungeonSummary, '::after').opacity) : 1,
+      archiveTooltipOpacity: archiveSummary ? Number.parseFloat(getComputedStyle(archiveSummary, '::after').opacity) : 1,
+      camera: scene?.dataset.homeCastleHubCamera || '',
+      dungeonScene: scene?.dataset.homeCastleHubDungeonStair || '',
     };
   });
+  expect(resting.dungeonTooltipOpacity).toBeLessThanOrEqual(0.01);
+  expect(resting.archiveTooltipOpacity).toBeLessThanOrEqual(0.01);
+  expect(resting.camera).toBe('frontal-diorama-v1');
+  expect(resting.dungeonScene).toBe('spiral-stone-v1');
 
-  expect(commandContract.menuViewportRatio).toBeGreaterThan(0.94);
-  expect(commandContract.gridMenuRatio).toBeGreaterThan(0.88);
-  expect(commandContract.minimumPrimaryCardHeight).toBeGreaterThanOrEqual(250);
-  expect(commandContract.menuBorderLeftWidth).toBe(0);
-  expect(commandContract.menuBorderRightWidth).toBe(0);
-  expect(commandContract.headingHeight).toBeGreaterThan(0);
-  expect(commandContract.headingHeight).toBeLessThanOrEqual(150);
-  expect(commandContract.titleLines).toBeGreaterThan(0);
-  expect(commandContract.titleLines).toBeLessThanOrEqual(2.1);
-  expect(commandContract.titleFontSize).toBeLessThanOrEqual(50);
-  expect(commandContract.cardsGap).toBeGreaterThanOrEqual(-1);
-  expect(commandContract.cardsGap).toBeLessThanOrEqual(32);
-  expect(commandContract.leftEdgeDelta).toBeLessThanOrEqual(8);
-  expect(commandContract.rightEdgeDelta).toBeLessThanOrEqual(8);
-  expect(commandContract.actionMidlineDelta).toBeLessThanOrEqual(12);
-
-  const learning = page.locator('details.home-learning-more');
-  await expect(learning).not.toHaveAttribute('open', '');
-  await expect(learning.getByRole('heading', { name: 'Puzzles', exact: true })).toBeHidden();
-
-  const lowerNavContract = await page.locator('.home-primary-group:not(.home-modes-section)').evaluate((group) => {
-    const rail = group.querySelector('.home-learning-grid');
-    const details = group.querySelector('.home-learning-more');
-    const cards = [...group.querySelectorAll('.home-learning-grid .home-learning-card')];
-    const railRect = rail?.getBoundingClientRect();
-    const detailsRect = details?.getBoundingClientRect();
-
-    return {
-      cardCount: cards.length,
-      flexDirections: cards.map((card) => getComputedStyle(card).flexDirection),
-      clippedPixels: cards.map((card) => Math.max(0, card.scrollHeight - card.clientHeight)),
-      overflows: cards.map((card) => getComputedStyle(card).overflowY),
-      headings: cards.map((card) => card.querySelector('h3')?.textContent?.trim() || ''),
-      headingHeights: cards.map((card) => card.querySelector('h3')?.getBoundingClientRect().height || 0),
-      kickerDisplays: cards.map((card) => getComputedStyle(card.querySelector('.home-mode-kicker')).display),
-      detailsAfterRail: Boolean(railRect && detailsRect && detailsRect.top >= railRect.bottom - 1),
-    };
-  });
-
-  expect(lowerNavContract.cardCount).toBe(3);
-  expect(lowerNavContract.flexDirections).toEqual(['row', 'row', 'row']);
-  expect(Math.max(...lowerNavContract.clippedPixels)).toBeLessThanOrEqual(1);
-  expect(lowerNavContract.overflows.every((value) => value !== 'hidden')).toBe(true);
-  expect(lowerNavContract.headings).toEqual(['Así juegas', 'Entrena tus mayores errores', 'Escuela de Matthias']);
-  expect(Math.min(...lowerNavContract.headingHeights)).toBeGreaterThan(0);
-  expect(lowerNavContract.kickerDisplays.every((value) => value !== 'none')).toBe(true);
-  expect(lowerNavContract.detailsAfterRail).toBe(true);
-
-  await learning.getByText('Más aprendizaje y herramientas', { exact: true }).click();
-  await expect(learning).toHaveAttribute('open', '');
-  await expect(learning.getByRole('heading', { name: 'Puzzles', exact: true })).toBeVisible();
-
-  const toolContract = await learning.evaluate((details) => {
-    const toolCards = [...details.querySelectorAll('.home-tools-grid .home-tool-card')];
-    const practiceHeading = toolCards
-      .map((card) => card.querySelector('h3'))
-      .find((heading) => heading?.textContent?.trim() === 'Partida de práctica');
-    const practiceStyle = practiceHeading ? getComputedStyle(practiceHeading) : null;
-    const practiceLineHeight = practiceStyle ? Number.parseFloat(practiceStyle.lineHeight) : 0;
-    const practiceLines = practiceHeading && practiceLineHeight > 0
-      ? practiceHeading.getBoundingClientRect().height / practiceLineHeight
-      : 0;
-
-    return {
-      toolCopyRatios: toolCards.map((card) => {
-        const copy = card.querySelector('.home-mode-copy');
-        if (!copy) return 0;
-        const cardWidth = card.getBoundingClientRect().width;
-        return cardWidth > 0 ? copy.getBoundingClientRect().width / cardWidth : 0;
-      }),
-      practiceLines,
-    };
-  });
-
-  expect(Math.min(...toolContract.toolCopyRatios)).toBeGreaterThan(0.78);
-  expect(toolContract.practiceLines).toBeGreaterThan(0);
-  expect(toolContract.practiceLines).toBeLessThanOrEqual(2.1);
+  await dungeonTrigger.hover();
+  await expect.poll(async () => Number.parseFloat(await dungeonTrigger.evaluate((node) => getComputedStyle(node, '::after').opacity))).toBeGreaterThan(0.9);
 
   const experiments = await openExperimentsFromMoreModes(page);
   await experiments.click();
-
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /Ajedrez 3D/ })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Pawn Trailblazer/ })).toBeVisible();
