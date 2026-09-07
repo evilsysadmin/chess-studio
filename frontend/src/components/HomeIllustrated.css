@@ -68,10 +68,12 @@
   body .app-shell-home .masthead-session-error { pointer-events: auto; position: absolute; top: 60px; left: 3vw; background: #21120c; }
 }
 @media (min-width: 1000px) and (min-aspect-ratio: 16/9) {
-  .illustrated-home__stage { width: 100vw; max-width: none; margin: 0; }
-  .illustrated-home__brand { top: calc((56.25vw - 100dvh) / 2 + 2.4dvh); }
-  .illustrated-home__matthias { top: auto; bottom: calc((56.25vw - 100dvh) / 2 + 4dvh); }
-  .illustrated-home__motto { bottom: calc((56.25vw - 100dvh) / 2 + 3.8dvh); }
+  /* Full-bleed cover: center the 16:9 scene so ultrawide clipping is symmetric. */
+  .illustrated-home__stage { position: absolute; width: 100vw; max-width: none; margin: 0; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  /* Keep UI overlays in the visible safe area while destinations remain anchored to the art. */
+  .illustrated-home__brand { transform: translateY(calc(28.125vw - 50dvh)); }
+  .illustrated-home__resident,
+  .illustrated-home__motto { transform: translateY(calc(50dvh - 28.125vw)); }
 }
 @media (min-width: 1000px) and (max-width: 1300px) {
   body .app-shell-home .masthead-release-trigger { right: 13vw; }
