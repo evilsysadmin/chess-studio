@@ -211,7 +211,7 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     await page.getByRole('button', { name: 'Entrar', exact: true }).click();
     expect((await browserLogin).status()).toBe(200);
 
-    await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible({ timeout: 25_000 });
+    await expect(page.getByRole('region', { name: 'La estancia de Chess Studio' })).toBeVisible({ timeout: 25_000 });
     await expect(page.getByRole('complementary', { name: 'Rincón de Matthias' })).toBeVisible({ timeout: 10_000 });
 
     // La Escuela sirve de canario del rollout 3D antes de crear una partida real.
@@ -220,7 +220,7 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     await expect(schoolBoard).toHaveAttribute('data-school-renderer', '3d', { timeout: 30_000 });
     await expect(schoolBoard.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 30_000 });
     await page.getByRole('button', { name: /Volver al menú/ }).click();
-    await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'La estancia de Chess Studio' })).toBeVisible();
 
     await expect(buttonWithVisibleText(page, 'Partida rápida')).toBeVisible();
     await buttonWithVisibleText(page, 'Partida rápida').click();
