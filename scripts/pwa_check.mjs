@@ -26,5 +26,6 @@ assert(!worker.includes("const CACHE = 'chess-studio-shell-v2'"), 'la caché com
 assert(html.includes('chess-studio-module-recovery-v1'), 'index no protege el arranque frente a entrypoints stale');
 assert(html.includes("'vite:preloadError'") && html.includes('navigator.serviceWorker.getRegistrations()'), 'la recuperación de chunks stale no limpia PWA antes de recargar');
 assert(html.includes("key.startsWith('chess-studio-shell-')") && html.includes('__cs_recover'), 'la recuperación no purga shell/cache-bust de navegación');
+assert(html.includes('searchParams.delete(RECOVERY_PARAM)') && html.includes('history.replaceState'), 'la recuperación deja visible el cache-buster en la URL');
 
-console.log('pwa-check OK · shell atómico por build + autorecuperación de módulos stale + API/assets/terceros fuera del cache PWA');
+console.log('pwa-check OK · shell atómico por build + autorecuperación de módulos stale + URL limpia + API/assets/terceros fuera del cache PWA');
