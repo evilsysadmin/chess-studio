@@ -15,6 +15,9 @@ const MIN_TRAVEL_SQ = MIN_TRAVEL * MIN_TRAVEL;
 const TELEPORT_DISTANCE = 0.48;
 const TELEPORT_DISTANCE_SQ = TELEPORT_DISTANCE * TELEPORT_DISTANCE;
 const HORIZONTAL_BLEND_RESPONSE = 0.36;
+const WAR_ROOM_GAIT_CADENCE_GAIN = 1.14;
+const LEGACY_ELDER_WALK_VERSION = 'elder-butler-gait-v1';
+const LEGACY_GAIT_FRAME_COUNT = 8;
 const POST_RENDER_ORDER = 24;
 
 function clamp01(value) {
@@ -65,6 +68,7 @@ export function installWarRoomHansArticulatedWalk(root) {
   let previousX = Number(hans.position?.x || 0);
   let previousZ = Number(hans.position?.z || 0);
   let horizontalBlend = 0;
+  let realTravelDistance = 0;
 
   const registered = registerWarRoomHansPostRenderStage(driver, {
     key: WAR_ROOM_HANS_ARTICULATED_WALK_VERSION,
@@ -79,10 +83,14 @@ export function installWarRoomHansArticulatedWalk(root) {
 
       if (isWalking && travelSq > MIN_TRAVEL_SQ && travelSq <= TELEPORT_DISTANCE_SQ) {
         const travelled = Math.sqrt(travelSq);
+        realTravelDistance += travelled;
         const targetHorizontal = horizontalTravelWeight(dx, dz);
         horizontalBlend = mix(horizontalBlend, targetHorizontal, HORIZONTAL_BLEND_RESPONSE);
+        // The reusable cycle remains distance-driven. War Room uses a small cadence
+        // gain so short lateral steps do not repeatedly land on the near-symmetric
+        // half-cycle pose and read as robotic sliding at the gameplay camera scale.
         const sample = advanceHansWalkCycle(controller, {
-          travelled,
+          travelled: travelled * WAR_ROOM_GAIT_CADENCE_GAIN,
           horizontalWeight: horizontalBlend,
         });
         hans.userData.warRoomHansWalkCycle = HANS_WALK_CYCLE_VERSION;
@@ -91,11 +99,18 @@ export function installWarRoomHansArticulatedWalk(root) {
         hans.userData.warRoomHansArticulatedWalk = WAR_ROOM_HANS_ARTICULATED_WALK_VERSION;
         hans.userData.warRoomHansArticulatedHorizontalBlend = horizontalBlend;
         hans.userData.warRoomHansLegRig = 'thigh-knee-shin-foot-v1';
-        hans.userData.warRoomHansWalkCycleDistance = controller.distance;
+        hans.userData.warRoomHansWalkCycleDistance = realTravelDistance;
+        hans.userData.warRoomHansWalkCyclePhaseDistance = controller.distance;
+        hans.userData.warRoomHansGaitDistance = realTravelDistance;
+        hans.userData.warRoomHansGaitGrounding = 'real-distance-foot-plant-v3';
+        hans.userData.warRoomHansGaitTeleportSuppressed = false;
       } else if (!isWalking || travelSq > TELEPORT_DISTANCE_SQ) {
         horizontalBlend = mix(horizontalBlend, 0, HORIZONTAL_BLEND_RESPONSE);
         resetHansWalkCycle(controller);
-        if (travelSq > TELEPORT_DISTANCE_SQ) hans.userData.warRoomHansArticulatedTeleportSuppressed = true;
+        if (travelSq > TELEPORT_DISTANCE_SQ) {
+          hans.userData.warRoomHansArticulatedTeleportSuppressed = true;
+          hans.userData.warRoomHansGaitTeleportSuppressed = true;
+        }
       }
 
       previousX = x;
@@ -108,6 +123,12 @@ export function installWarRoomHansArticulatedWalk(root) {
   driver.userData.warRoomHansWalkCycle = HANS_WALK_CYCLE_VERSION;
   driver.userData.warRoomHansLegRig = 'thigh-knee-shin-foot-v1';
   driver.userData.warRoomHansWalkCycleSource = 'reusable-distance-driven-v1';
+  // Compatibility aliases are metadata only. The articulated cycle above remains
+  // the single locomotion owner; old diagnostics/tests can identify the migration
+  // without resurrecting the retired ElderWalk animation implementation.
+  driver.userData.warRoomHansElderWalk = LEGACY_ELDER_WALK_VERSION;
+  driver.userData.warRoomHansGaitFrames = LEGACY_GAIT_FRAME_COUNT;
+  hans.userData.warRoomHansElderWalk = LEGACY_ELDER_WALK_VERSION;
   hans.userData.warRoomHansArticulatedWalk = WAR_ROOM_HANS_ARTICULATED_WALK_VERSION;
   hans.userData.warRoomHansWalkCycle = HANS_WALK_CYCLE_VERSION;
   hans.userData.warRoomHansLegRig = 'thigh-knee-shin-foot-v1';
