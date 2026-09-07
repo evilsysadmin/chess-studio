@@ -161,16 +161,13 @@ test('Móvil · Partida de práctica abre su modal fijo dentro del viewport', as
   await mockApi(page);
   await login(page);
 
-  const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
-  if (await guide.isVisible().catch(() => false)) {
-    await guide.getByRole('button', { name: 'Ahora no', exact: true }).click();
-  }
+  const toolsToggle = page.getByRole('button', { name: /Más modos y herramientas/ });
+  await expect(toolsToggle).toHaveAttribute('aria-expanded', 'false');
+  await toolsToggle.click();
+  await expect(toolsToggle).toHaveAttribute('aria-expanded', 'true');
 
-  const learning = page.locator('details.home-learning-more');
-  await expect(learning).not.toHaveAttribute('open', '');
-  await learning.getByText('Más aprendizaje y herramientas', { exact: true }).click();
-  await expect(learning).toHaveAttribute('open', '');
-  const practice = learning.locator('button.home-tool-card').filter({ hasText: 'Partida de práctica' });
+  const tools = page.getByRole('navigation', { name: 'Más modos y herramientas' });
+  const practice = tools.getByRole('button', { name: 'Partida de práctica', exact: true });
   await expect(practice).toHaveCount(1);
   await expect(practice).toBeVisible();
   await practice.click();
