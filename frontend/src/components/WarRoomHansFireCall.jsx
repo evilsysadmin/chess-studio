@@ -76,7 +76,7 @@ export default function WarRoomHansFireCall({
 
     const tick = (now) => {
       if (!live) return;
-      const delta = previousTime == null ? 0 : Math.min(100, Math.max(0, now - previousTime));
+      const delta = previousTime == null ? 0 : Math.max(0, now - previousTime);
       previousTime = now;
       const canvas = portalHost.querySelector('.board3d-main-canvas');
       const visible = document.visibilityState !== 'hidden' && portalHost.getBoundingClientRect().width > 0;
@@ -93,6 +93,7 @@ export default function WarRoomHansFireCall({
           elapsed += delta;
           if (elapsed >= MATTHIAS_FIRE_CALL_MS) {
             canvas.dataset.warRoomHansCallReleased = 'true';
+            canvas.dispatchEvent(new Event('warroom-hans-call-release'));
             currentPhase = 'await-hans';
             setPhase('await-hans');
           }
@@ -122,8 +123,11 @@ export default function WarRoomHansFireCall({
       }
       if (currentPhase !== '') frameId = window.requestAnimationFrame(tick);
     };
+    const resetVisibleClock = () => { previousTime = null; };
+    document.addEventListener('visibilitychange', resetVisibleClock);
     frameId = window.requestAnimationFrame(tick);
     return () => {
+      document.removeEventListener('visibilitychange', resetVisibleClock);
       live = false;
       window.cancelAnimationFrame(frameId);
     };

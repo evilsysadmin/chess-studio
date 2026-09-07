@@ -566,7 +566,7 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
     startedAt = frameNow;
     if (awaitCall && root.userData.warRoomHansCallReleased !== true) return;
     // A late render or a hidden tab must never skip the entrance choreography.
-    presentationMs += awaitCall ? Math.min(delta, 100) : delta;
+    presentationMs += awaitCall ? Math.min(delta, presentationMs < 600 ? 100 : 1000) : delta;
     const doorOpeningMs = awaitCall ? 600 : 0;
     const presentationElapsed = Math.max(0, presentationMs - doorOpeningMs) / 1000 * HANS_PRESENTATION_TIME_SCALE;
     const frame = writeHansQuickIterationFrame(frameScratch, presentationElapsed, coarsePointer);

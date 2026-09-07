@@ -113,6 +113,10 @@ function Board3DCanvas({
   };
 
   useEffect(() => {
+    sceneStateRef.current?.ambientScheduler?.wake();
+  }, [hansFireCallEnabled]);
+
+  useEffect(() => {
     const refreshSkin = (event) => setSkinId(event?.detail || loadSelectedSkin());
     const refreshPreferences = () => setBoardTheme(loadBoardTheme());
     window.addEventListener('chess-piece-skin-change', refreshSkin);
@@ -624,7 +628,9 @@ function Board3DCanvas({
           coarsePointer,
           softwareRenderer,
           narrativeActive: Boolean(cachedHansDriver?.userData.warRoomHansQuickIteration
-            && !cachedHansDriver.userData.warRoomHansCompleted),
+            && !cachedHansDriver.userData.warRoomHansCompleted
+            && (hansReadyFrames < 2 || !latestPropsRef.current.hansFireCallEnabled
+              || renderer.domElement.dataset.warRoomHansCallReleased === 'true')),
           inspectMode: inspectModeRef.current && inspectCameraDirty,
           elapsedMs,
         }),
@@ -647,6 +653,7 @@ function Board3DCanvas({
         },
       });
       renderer.domElement.dataset.warRoomAmbientScheduler = 'deadline-v1';
+      renderer.domElement.addEventListener('warroom-hans-call-release', wakeAmbientScheduler);
       document.addEventListener('visibilitychange', wakeAmbientScheduler);
       window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, wakeAmbientScheduler);
       reducedMotionQuery?.addEventListener?.('change', wakeAmbientScheduler);
@@ -688,6 +695,7 @@ function Board3DCanvas({
       animationFrameRef.current = 0;
       ambientScheduler?.dispose();
       ambientScheduler = null;
+      renderer.domElement.removeEventListener('warroom-hans-call-release', wakeAmbientScheduler);
       document.removeEventListener('visibilitychange', wakeAmbientScheduler);
       window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, wakeAmbientScheduler);
       reducedMotionQuery?.removeEventListener?.('change', wakeAmbientScheduler);

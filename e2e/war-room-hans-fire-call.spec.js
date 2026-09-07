@@ -26,6 +26,7 @@ test('War Room · Matthias llama a Hans por el fuego y Hans responde al aparecer
 
   await expect(page.getByRole('status', { name: 'Bravuconada de Matthias al iniciar la partida' })).toHaveCount(0);
 
+  await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 8_000 });
   await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 20_000 });
   const hansReply = page.getByRole('status', { name: 'Hans responde a Matthias' });
   await expect(hansReply).toBeVisible({ timeout: 12_000 });
