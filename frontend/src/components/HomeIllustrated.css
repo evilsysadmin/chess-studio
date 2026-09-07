@@ -1,5 +1,6 @@
-/* The illustration and controls share one 16:9 coordinate system. Letterbox
-   instead of cropping the art: every destination stays attached to its object. */
+/* The illustration and controls share one 16:9 coordinate system. Wide desktop
+   viewports use the complete stage as a cover surface, keeping art and hotspots
+   attached while clipping only the overflow outside the visible viewport. */
 @media (min-width: 1000px) {
   body:has(.app-shell-home) { background: #140b06; }
   body:has(.menu-illustrated) .global-music-dock { top: auto !important; bottom: 10px !important; left: 12px !important; width: 220px !important; }
@@ -7,7 +8,7 @@
 
   body .app-shell.app-shell-home { max-width: none; width: 100%; padding: 0; margin: 0; }
   body .app-shell-home .menu.menu-illustrated { display: block; padding: 0; margin: 0; width: 100%; max-width: none; }
-  .illustrated-home { position: relative; min-height: 100dvh; display: grid; align-items: center; background: #140b06; color: #ffe8ac; }
+  .illustrated-home { position: relative; height: 100dvh; min-height: 100dvh; display: grid; align-items: center; overflow: hidden; background: #140b06; color: #ffe8ac; }
   .illustrated-home__stage { position: relative; width: min(100%, 177.7778dvh); aspect-ratio: 16 / 9; margin: auto; container-type: inline-size; isolation: isolate; }
   .illustrated-home__art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; z-index: -1; pointer-events: none; user-select: none; }
   .illustrated-home__brand { position: absolute; top: 2.4%; left: 32%; width: 36%; text-align: center; text-shadow: 0 2px 8px #100906; }
@@ -65,6 +66,12 @@
   body .app-shell-home .masthead-account-popover { left: 0; right: auto; pointer-events: auto; }
   body .app-shell-home .masthead-admin-feedback-inbox { position: absolute; left: calc(2.8vw + 170px); top: 2.5dvh; pointer-events: auto; }
   body .app-shell-home .masthead-session-error { pointer-events: auto; position: absolute; top: 60px; left: 3vw; background: #21120c; }
+}
+@media (min-width: 1000px) and (min-aspect-ratio: 16/9) {
+  .illustrated-home__stage { width: 100vw; max-width: none; margin: 0; }
+  .illustrated-home__brand { top: max(2.4%, calc((100% - 100dvh) / 2 + 2.4dvh)); }
+  .illustrated-home__matthias { top: auto; bottom: max(3.8%, calc((100% - 100dvh) / 2 + 4dvh)); }
+  .illustrated-home__motto { bottom: max(3.8%, calc((100% - 100dvh) / 2 + 3.8dvh)); }
 }
 @media (min-width: 1000px) and (max-width: 1300px) {
   body .app-shell-home .masthead-release-trigger { right: 13vw; }

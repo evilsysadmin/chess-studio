@@ -61,6 +61,35 @@ test('Home canónica · el arte y los destinos comparten el lienzo 16:9 sin over
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
+test('Home canónica · ultrapanorámica llena el viewport y mantiene la UI clave dentro de zona segura', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 900 });
+  const home = await openCanonicalHome(page);
+  const stage = home.locator('.illustrated-home__stage');
+  const art = home.locator('.illustrated-home__art');
+
+  const [homeBox, stageBox, artBox] = await Promise.all([home.boundingBox(), stage.boundingBox(), art.boundingBox()]);
+  expect(homeBox).not.toBeNull();
+  expect(stageBox).not.toBeNull();
+  expect(artBox).not.toBeNull();
+  expect(Math.abs(homeBox.width - 1920)).toBeLessThanOrEqual(1);
+  expect(Math.abs(homeBox.height - 900)).toBeLessThanOrEqual(1);
+  expect(Math.abs(stageBox.width - 1920)).toBeLessThanOrEqual(1);
+  expect(stageBox.height).toBeGreaterThan(900);
+  expect(stageBox.width / stageBox.height).toBeGreaterThan(1.75);
+  expect(stageBox.width / stageBox.height).toBeLessThan(1.80);
+  expect(Math.abs(stageBox.width - artBox.width)).toBeLessThanOrEqual(1);
+  expect(Math.abs(stageBox.height - artBox.height)).toBeLessThanOrEqual(1);
+
+  for (const selector of ['.illustrated-home__brand', '.illustrated-home__matthias', '.illustrated-home__motto']) {
+    const box = await home.locator(selector).boundingBox();
+    expect(box).not.toBeNull();
+    expect(box.y).toBeGreaterThanOrEqual(-1);
+    expect(box.y + box.height).toBeLessThanOrEqual(901);
+  }
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
 test('Home canónica · reduced motion elimina transiciones decorativas', async ({ page }) => {
   const home = await openCanonicalHome(page, { reducedMotion: 'reduce' });
   const destination = home.locator('.illustrated-home__destination--tournament');
