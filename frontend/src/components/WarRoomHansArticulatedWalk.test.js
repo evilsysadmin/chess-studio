@@ -127,15 +127,15 @@ describe('War Room Hans articulated walk adapter', () => {
     expect(totalLift).toBeLessThan(0.12);
   });
 
-  it('keeps both shoes pointing along Hans local forward axis while a knee is airborne', () => {
+  it('keeps shoes forward without flattening the airborne foot into a full-length side silhouette', () => {
     const { root, hans, driver } = makeRig();
     expect(installWarRoomHansArticulatedWalk(root)).toBe(1);
     driver.onBeforeRender();
     driver.onBeforeRender();
 
-    expect(hans.userData.warRoomHansFootDirection).toBe('toe-forward-v2-parent-compensated');
-    expect(worldToeForwardDot(root, hans, hans.userData.refs, 'left')).toBeGreaterThan(0.98);
-    expect(worldToeForwardDot(root, hans, hans.userData.refs, 'right')).toBeGreaterThan(0.98);
+    expect(hans.userData.warRoomHansFootDirection).toBe('toe-forward-v3-natural-pitch');
+    expect(worldToeForwardDot(root, hans, hans.userData.refs, 'left')).toBeGreaterThan(0.82);
+    expect(worldToeForwardDot(root, hans, hans.userData.refs, 'right')).toBeGreaterThan(0.82);
 
     const leftPitch = hans.userData.refs.leftLeg.rotation.x
       + hans.userData.refs.leftKnee.rotation.x
@@ -143,8 +143,15 @@ describe('War Room Hans articulated walk adapter', () => {
     const rightPitch = hans.userData.refs.rightLeg.rotation.x
       + hans.userData.refs.rightKnee.rotation.x
       + hans.userData.refs.rightShoe.rotation.x;
-    expect(Math.abs(leftPitch)).toBeLessThan(0.12);
-    expect(Math.abs(rightPitch)).toBeLessThan(0.12);
+    expect(Math.abs(leftPitch)).toBeLessThan(0.65);
+    expect(Math.abs(rightPitch)).toBeLessThan(0.65);
+
+    const swingPitch = hans.userData.warRoomHansVisibleFootLiftLeft
+      > hans.userData.warRoomHansVisibleFootLiftRight
+      ? leftPitch
+      : rightPitch;
+    expect(Math.abs(swingPitch)).toBeGreaterThan(0.14);
+    expect(Math.abs(swingPitch)).toBeLessThan(0.55);
   });
 
   it('drops the walking knee pose as soon as Hans enters a non-walking action', () => {
