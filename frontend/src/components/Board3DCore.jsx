@@ -76,6 +76,7 @@ function Board3DCanvas({
   themeOverride = null,
   hansDiagnosticsMarkerRef = null,
   hansDiagnosticsRequested = false,
+  hansFireCallEnabled = false,
   onRendererFailure,
 }) {
   const hostRef = useRef(null);
@@ -108,7 +109,12 @@ function Board3DCanvas({
     onPieceMouseLeave,
     hansDiagnosticsMarkerRef,
     hansDiagnosticsRequested,
+    hansFireCallEnabled,
   };
+
+  useEffect(() => {
+    sceneStateRef.current?.ambientScheduler?.wake();
+  }, [hansFireCallEnabled]);
 
   useEffect(() => {
     const refreshSkin = (event) => setSkinId(event?.detail || loadSelectedSkin());
@@ -190,6 +196,7 @@ function Board3DCanvas({
     const sceneProfile = warRoomSceneProfile({ coarsePointer, softwareRenderer });
     const renderLite = sceneProfile.lite;
     const scene = new THREE.Scene();
+    scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled;
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     const hansWorldProbe = new THREE.Vector3();
     const hansScreenProbe = new THREE.Vector3();
@@ -376,6 +383,7 @@ function Board3DCanvas({
     }
 
     let cachedHansDiagnosticsObject = null;
+    let cachedHansDriver = null;
     let ambientScheduler = null;
     let inspectCameraDirty = false;
 
@@ -413,13 +421,26 @@ function Board3DCanvas({
       });
     }
 
+    let hansReadyFrames = 0;
     function render() {
+      scene.userData.warRoomHansCallReleased = !latestPropsRef.current.hansFireCallEnabled
+        || renderer.domElement.dataset.warRoomHansCallReleased === 'true';
       applyWarRoomLightDiagnostics(renderer.domElement, {
         grade: 'reactive-v9',
         keyIntensity: key.intensity,
         exposure: renderer.toneMappingExposure,
       });
       renderer.render(scene, camera);
+      if (!cachedHansDriver && latestPropsRef.current.hansDiagnosticsRequested) {
+        cachedHansDriver = scene.getObjectByName('war-room-hans-fireplace-driver');
+      }
+      const hansDriver = hansReadyFrames < 2 ? cachedHansDriver : null;
+      if (hansDriver?.userData.warRoomHansQuickIteration && pieceGroup.children.length > 0) {
+        // The deferred room installers and pieces must have passed through real
+        // renders before React may start the scene's dialogue.
+        hansReadyFrames += 1;
+        if (hansReadyFrames >= 2) renderer.domElement.dataset.warRoomHansSceneReady = 'true';
+      }
       exposeHansScreenDiagnostics();
       ambientScheduler?.markPaint();
     }
@@ -594,7 +615,7 @@ function Board3DCanvas({
     const reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
     const wakeAmbientScheduler = () => ambientScheduler?.wake();
 
-    if (!softwareRenderer) {
+    if (!softwareRenderer || hansDiagnosticsRequested) {
       ambientScheduler = createWarRoomAmbientScheduler({
         requestFrame: (callback) => window.requestAnimationFrame(callback),
         cancelFrame: (id) => window.cancelAnimationFrame(id),
@@ -606,6 +627,10 @@ function Board3DCanvas({
           reducedMotion: getEffectiveReducedMotion(),
           coarsePointer,
           softwareRenderer,
+          narrativeActive: Boolean(cachedHansDriver?.userData.warRoomHansQuickIteration
+            && !cachedHansDriver.userData.warRoomHansCompleted
+            && (hansReadyFrames < 2 || !latestPropsRef.current.hansFireCallEnabled
+              || renderer.domElement.dataset.warRoomHansCallReleased === 'true')),
           inspectMode: inspectModeRef.current && inspectCameraDirty,
           elapsedMs,
         }),
@@ -628,6 +653,7 @@ function Board3DCanvas({
         },
       });
       renderer.domElement.dataset.warRoomAmbientScheduler = 'deadline-v1';
+      renderer.domElement.addEventListener('warroom-hans-call-release', wakeAmbientScheduler);
       document.addEventListener('visibilitychange', wakeAmbientScheduler);
       window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, wakeAmbientScheduler);
       reducedMotionQuery?.addEventListener?.('change', wakeAmbientScheduler);
@@ -669,6 +695,7 @@ function Board3DCanvas({
       animationFrameRef.current = 0;
       ambientScheduler?.dispose();
       ambientScheduler = null;
+      renderer.domElement.removeEventListener('warroom-hans-call-release', wakeAmbientScheduler);
       document.removeEventListener('visibilitychange', wakeAmbientScheduler);
       window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, wakeAmbientScheduler);
       reducedMotionQuery?.removeEventListener?.('change', wakeAmbientScheduler);

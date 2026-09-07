@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 
 const MOBILE_FOCUS_QUERY = '(max-width: 820px)';
-const FOCUS_BUBBLE_MS = 4200;
+export const FOCUS_BUBBLE_MS = 4200;
+
+export function scheduleFocusBubbleClear(callback, scheduler = globalThis) {
+  return scheduler.setTimeout(callback, FOCUS_BUBBLE_MS);
+}
 
 export function useGameMobileFocus(gameId) {
   const [focusMode, setFocusMode] = useState(false);
@@ -76,10 +80,10 @@ export function useGameFocusBubble({ gameId, focusActive, activeMessage, activeM
     focusSeenMessageRef.current = activeMessageKey;
     setFocusBubble(activeMessage);
     clearBubbleTimeout();
-    focusBubbleTimeoutRef.current = window.setTimeout(() => {
+    focusBubbleTimeoutRef.current = scheduleFocusBubbleClear(() => {
       focusBubbleTimeoutRef.current = null;
       setFocusBubble(null);
-    }, FOCUS_BUBBLE_MS);
+    }, window);
   }, [focusActive, activeMessageKey, activeMessage]);
 
   useEffect(() => () => {

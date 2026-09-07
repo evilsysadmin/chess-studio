@@ -111,6 +111,7 @@ export default function GameBoardView({
     matthiasKingColor: topColor,
     onCustomize: board.onCustomize,
     hansFireplaceIteration,
+    hansFireCallEnabled: !zenMode && !focusActive && hansFireCallEnabled,
   };
 
   return (

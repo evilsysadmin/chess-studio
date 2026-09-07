@@ -42,7 +42,7 @@ describe('War Room differential DOM diagnostics', () => {
       screenState: 'onscreen',
       projected,
     });
-    expect(firstWrites).toBe(6);
+    expect(firstWrites).toBe(7);
     expect(marker.getAttribute('data-war-room-hans-screen')).toBe('onscreen');
     expect(marker.getAttribute('data-war-room-hans-first-screen')).toBe('onscreen');
     const markerWrites = marker.writes();
@@ -82,4 +82,14 @@ describe('War Room differential DOM diagnostics', () => {
     expect(canvas.dataset.warRoomHansNdcX).toBe('0.222');
     expect(canvas.dataset.warRoomHansNdcY).toBe('-0.333');
   });
+});
+
+it('updates the runtime marker when Hans enters after waiting hidden for Matthias', () => {
+  const canvas = fakeElement();
+  const marker = fakeElement();
+  applyWarRoomHansScreenDiagnostics({ canvas, marker, screenState: 'hidden' });
+  expect(marker.getAttribute('data-war-room-hans-runtime')).toBe('hidden');
+  applyWarRoomHansScreenDiagnostics({ canvas, marker, screenState: 'onscreen', projected: { x: 0, y: 0 } });
+  expect(marker.getAttribute('data-war-room-hans-runtime')).toBe('visible');
+  expect(marker.getAttribute('data-war-room-hans-first-screen')).toBe('onscreen');
 });
