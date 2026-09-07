@@ -139,20 +139,15 @@ test('War Room · el bocadillo de Matthias sigue al rey si cambia de casilla', a
   test.setTimeout(75_000);
   const moveCalls = [];
 
-  // Opening banter is intentionally sparse and short-lived in production
-  // (40% + anti-repeat + 4.7 s). This isolated regression keeps only that exact
-  // TTL alive longer because hosted Android/software-WebGL can spend more than
-  // 4.7 s presenting the mocked move. Production timing remains untouched.
+  // Standard quick games now start with the Matthias -> Hans fire call, which
+  // intentionally suppresses the older random opening banter. Keep only the
+  // Matthias phase alive longer in this regression so Android/software-WebGL
+  // has time to present the move while the real current speech bubble exists.
   await page.addInitScript(() => {
-    sessionStorage.setItem('chess-study-matthias-3d-opening-banter-v1', JSON.stringify({
-      seenGameIds: [],
-      lastEligibleStartShowed: false,
-    }));
-    Math.random = () => 0.1;
     const nativeSetTimeout = window.setTimeout.bind(window);
     window.setTimeout = (callback, delay, ...args) => nativeSetTimeout(
       callback,
-      Number(delay) === 4700 ? 30_000 : delay,
+      Number(delay) === 1450 ? 30_000 : delay,
       ...args,
     );
   });
@@ -171,7 +166,7 @@ test('War Room · el bocadillo de Matthias sigue al rey si cambia de casilla', a
   await expect(board3d).toBeVisible({ timeout: 30_000 });
   await expect(canvas).toBeVisible({ timeout: 30_000 });
 
-  const bubble = page.getByRole('status', { name: 'Bravuconada de Matthias al iniciar la partida' });
+  const bubble = page.getByRole('status', { name: 'Matthias llama a Hans por el fuego' });
   await expect(bubble).toBeVisible({ timeout: 10_000 });
   await expect(bubble).toHaveAttribute('data-matthias-square', 'e8');
   const before = await bubble.evaluate((element) => ({ left: element.style.left, top: element.style.top }));
