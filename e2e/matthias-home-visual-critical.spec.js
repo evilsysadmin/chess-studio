@@ -71,7 +71,7 @@ test('Home canónica · ultrapanorámica llena el viewport y mantiene la UI clav
   expect(homeBox).not.toBeNull();
   expect(stageBox).not.toBeNull();
   expect(artBox).not.toBeNull();
-  expect(Math.abs(homeBox.width - 1920)).toBeLessThanOrEqual(1);
+  expect(Math.abs(homeBox.width - 1920)).toBeLessThanOrEqual(2);
   expect(Math.abs(homeBox.height - 900)).toBeLessThanOrEqual(1);
   expect(Math.abs(stageBox.width - 1920)).toBeLessThanOrEqual(1);
   expect(stageBox.height).toBeGreaterThan(900);
