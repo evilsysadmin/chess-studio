@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useCallback, useRef, useState } from 'react';
 import Board from './Board.jsx';
 import GameCommandDeck from './GameCommandDeck.jsx';
 import GamePlayerRail from './GamePlayerRail.jsx';
@@ -13,6 +13,8 @@ import { useGameFocusBubble, useGameMobileFocus } from './useGameMobileFocus.js'
 import useMatthias3DBubbleAnchor from './useMatthias3DBubbleAnchor.js';
 import useMatthiasBoardReactions from './useMatthiasBoardReactions.js';
 import { shouldForceHansQuickIteration } from './WarRoomHansIteration.js';
+import { resolveHansFireOpeningLatch } from './WarRoomHansFireCallContract.js';
+import { hasWarRoomHansAppearedForGame } from './WarRoomHansPerGame.js';
 import { formatLongMove } from '../notation.js';
 import './Matthias3DBubbleAnchor.css';
 
@@ -92,7 +94,21 @@ export default function GameBoardView({
     hintMode: controls.hintMode,
     memoryContext: context.memoryContext,
   });
-  const hansFireCallEnabled = hansFireplaceIteration && game.history.length === 0;
+  const hansOpeningRef = useRef({ gameId: null, enabled: false });
+  if (hansOpeningRef.current.gameId !== game.id) {
+    hansOpeningRef.current = resolveHansFireOpeningLatch(hansOpeningRef.current, {
+      gameId: game.id,
+      eligible: hansFireplaceIteration,
+      historyLength: game.history.length,
+      alreadySeen: hasWarRoomHansAppearedForGame(game.id),
+    });
+  }
+  const hansFireCallEnabled = hansOpeningRef.current.enabled && hansFireplaceIteration;
+  const [hansFinishedGameId, setHansFinishedGameId] = useState('');
+  const hansFireSequenceComplete = hansFinishedGameId === game.id;
+  const handleHansFireCallComplete = useCallback(() => {
+    setHansFinishedGameId(game.id);
+  }, [game.id]);
 
   const boardProps = {
     gameId: game.id,
@@ -178,10 +194,11 @@ export default function GameBoardView({
             <Matthias3DOpeningBanter
               gameId={game.id}
               isThreeD={isThreeD}
-              historyLength={game.history.length}
-              enabled={!zenMode && !focusActive && !hansFireCallEnabled}
+              historyLength={hansFireCallEnabled ? 0 : game.history.length}
+              enabled={!zenMode && !focusActive && (!hansFireCallEnabled || hansFireSequenceComplete)}
               anchorStyle={matthias3DBubbleStyle}
               trackedSquare={matthias3DTrackedSquare}
+              leadIn={hansFireCallEnabled ? 'AH, SÍ!' : ''}
             />
 
             <WarRoomHansFireCall
@@ -190,6 +207,7 @@ export default function GameBoardView({
               enabled={!zenMode && !focusActive && hansFireCallEnabled}
               matthiasAnchorStyle={matthias3DBubbleStyle}
               matthiasTrackedSquare={matthias3DTrackedSquare}
+              onComplete={handleHansFireCallComplete}
             />
 
             {!isThreeD && !zenMode && !focusActive && activeBoardBubble && (

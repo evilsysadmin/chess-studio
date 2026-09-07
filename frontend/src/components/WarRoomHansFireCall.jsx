@@ -5,7 +5,10 @@ import {
   HANS_FIRE_REPLY_MS,
   MATTHIAS_FIRE_CALL_LINE,
   MATTHIAS_FIRE_CALL_MS,
+  MATTHIAS_FIRE_EPILOGUE_LINE,
+  MATTHIAS_FIRE_EPILOGUE_MS,
   projectHansFireReplyAnchor,
+  shouldStartHansFireEpilogue,
 } from './WarRoomHansFireCallContract.js';
 import './WarRoomHansFireCall.css';
 
@@ -24,6 +27,7 @@ export default function WarRoomHansFireCall({
   enabled = false,
   matthiasAnchorStyle = null,
   matthiasTrackedSquare = null,
+  onComplete = null,
 }) {
   const [portalHost, setPortalHost] = useState(null);
   const [phase, setPhase] = useState('');
@@ -73,6 +77,16 @@ export default function WarRoomHansFireCall({
     let previousTime = null;
     let elapsed = 0;
     let readyPaints = 0;
+    let hansSeenOnscreen = false;
+    let completionNotified = false;
+
+    const finishSequence = () => {
+      if (completionNotified) return;
+      completionNotified = true;
+      currentPhase = '';
+      setPhase('');
+      onComplete?.();
+    };
 
     const tick = (now) => {
       if (!live) return;
@@ -81,6 +95,8 @@ export default function WarRoomHansFireCall({
       const canvas = portalHost.querySelector('.board3d-main-canvas');
       const visible = document.visibilityState !== 'hidden' && portalHost.getBoundingClientRect().width > 0;
       if (visible && canvas?.dataset.warRoomHansSceneReady === 'true') {
+        const hansScreen = canvas.dataset.warRoomHansScreen || 'missing';
+
         if (currentPhase === 'loading') {
           // Allow the completed WebGL frame to be painted before the call.
           readyPaints += 1;
@@ -96,16 +112,23 @@ export default function WarRoomHansFireCall({
             canvas.dispatchEvent(new Event('warroom-hans-call-release'));
             currentPhase = 'await-hans';
             setPhase('await-hans');
+            elapsed = 0;
           }
         } else if (currentPhase === 'hans') {
           elapsed += delta;
           if (elapsed >= HANS_FIRE_REPLY_MS) {
-            currentPhase = '';
-            setPhase('');
+            currentPhase = 'await-exit';
+            setPhase('await-exit');
+            elapsed = 0;
           }
+        } else if (currentPhase === 'epilogue') {
+          elapsed += delta;
+          if (elapsed >= MATTHIAS_FIRE_EPILOGUE_MS) finishSequence();
         }
-        if ((currentPhase === 'await-hans' || currentPhase === 'hans')
-          && canvas.dataset.warRoomHansScreen === 'onscreen') {
+
+        if ((currentPhase === 'await-hans' || currentPhase === 'hans' || currentPhase === 'await-exit')
+          && hansScreen === 'onscreen') {
+          hansSeenOnscreen = true;
           const anchor = projectHansFireReplyAnchor({
             ndcX: canvas.dataset.warRoomHansNdcX,
             ndcY: canvas.dataset.warRoomHansNdcY,
@@ -120,6 +143,16 @@ export default function WarRoomHansFireCall({
             }
           }
         }
+
+        if (shouldStartHansFireEpilogue({
+          phase: currentPhase,
+          hansSeenOnscreen,
+          hansScreen,
+        })) {
+          currentPhase = 'epilogue';
+          elapsed = 0;
+          setPhase('epilogue');
+        }
       }
       if (currentPhase !== '') frameId = window.requestAnimationFrame(tick);
     };
@@ -131,7 +164,7 @@ export default function WarRoomHansFireCall({
       live = false;
       window.cancelAnimationFrame(frameId);
     };
-  }, [anchorReady, enabled, gameId, isThreeD, portalHost]);
+  }, [anchorReady, enabled, gameId, isThreeD, onComplete, portalHost]);
 
   const hansStyle = useMemo(() => hansAnchor ? {
     left: `${hansAnchor.left.toFixed(3)}%`,
@@ -178,6 +211,19 @@ export default function WarRoomHansFireCall({
         >
           <span>HANS</span>
           <p>{HANS_FIRE_REPLY_LINE}</p>
+        </aside>
+      )}
+      {phase === 'epilogue' && matthiasStyle && (
+        <aside
+          className="warroom-fire-call-bubble warroom-fire-call-bubble-matthias"
+          style={matthiasStyle}
+          data-matthias-square={matthiasTrackedSquare || ''}
+          role="status"
+          aria-live="polite"
+          aria-label="Matthias retoma la partida tras Hans"
+        >
+          <span>MATTHIAS</span>
+          <p>{MATTHIAS_FIRE_EPILOGUE_LINE}</p>
         </aside>
       )}
     </div>,

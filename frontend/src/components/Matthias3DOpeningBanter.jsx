@@ -12,6 +12,7 @@ export default function Matthias3DOpeningBanter({
   enabled = true,
   anchorStyle = null,
   trackedSquare = null,
+  leadIn = '',
 }) {
   const [line, setLine] = useState('');
   const [portalHost, setPortalHost] = useState(null);
@@ -46,7 +47,7 @@ export default function Matthias3DOpeningBanter({
     const picked = claimMatthias3DOpeningBanter({ gameId, isThreeD: true, historyLength: 0 });
     if (!picked) return undefined;
 
-    setLine(picked);
+    setLine(leadIn ? `${leadIn} ${picked}` : picked);
     const timer = window.setTimeout(() => setLine(''), BANTER_VISIBLE_MS);
     return () => window.clearTimeout(timer);
     // La tirada pertenece al arranque/remount de esta partida. Esperamos a que
