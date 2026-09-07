@@ -230,3 +230,49 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
   await touchEnd(cdp);
 });
+
+test('War Room · Android landscape usa el framing cenital solo en móvil', async ({ page }) => {
+  test.setTimeout(75_000);
+  await page.setViewportSize({ width: 851, height: 393 });
+  await mockApi(page);
+  await login(page);
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+  await open3DFromAppearance(page);
+
+  const shell = page.locator('.board3d-main-shell');
+  const board3d = page.locator('[data-board3d-war-room="true"]');
+  await expect(board3d).toBeVisible({ timeout: 30_000 });
+  await expect(shell).toBeVisible();
+
+  const media = await page.evaluate(() => ({
+    width: window.innerWidth,
+    height: window.innerHeight,
+    coarse: window.matchMedia('(pointer: coarse)').matches,
+    landscape: window.matchMedia('(orientation: landscape)').matches,
+  }));
+  expect(media.width).toBeGreaterThan(media.height);
+  expect(media.coarse).toBe(true);
+  expect(media.landscape).toBe(true);
+  expect(media.width).toBeLessThanOrEqual(920);
+
+  const rect = await shell.boundingBox();
+  expect(rect).not.toBeNull();
+  expect(rect.width).toBeGreaterThan(media.width * 0.66);
+  expect(rect.width / Math.max(1, rect.height)).toBeGreaterThan(1.5);
+
+  const profile = getWarRoomMobileFramingProfile({
+    aspect: rect.width / Math.max(1, rect.height),
+    coarsePointer: true,
+    viewportWidth: media.width,
+  });
+  expect(profile?.mode).toBe('landscape-board-first');
+  expect(profile?.version).toBe('mobile-v5-landscape-overhead');
+  expect(profile.cameraY / profile.cameraZ).toBeGreaterThan(0.8);
+  expect(profile.halfSpan).toBeLessThanOrEqual(4.5);
+
+  await expect(page.locator('.game-3d-warroom-message')).toBeHidden();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+});
