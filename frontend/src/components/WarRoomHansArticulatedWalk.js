@@ -6,7 +6,7 @@ import {
 } from './HansWalkCycle.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_ARTICULATED_WALK_VERSION = 'war-room-hans-articulated-walk-v3-visible-knee-flex';
+export const WAR_ROOM_HANS_ARTICULATED_WALK_VERSION = 'war-room-hans-articulated-walk-v4-balanced-knee-flex';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -16,13 +16,13 @@ const TELEPORT_DISTANCE = 0.48;
 const TELEPORT_DISTANCE_SQ = TELEPORT_DISTANCE * TELEPORT_DISTANCE;
 const HORIZONTAL_BLEND_RESPONSE = 0.36;
 const WAR_ROOM_GAIT_CADENCE_GAIN = 1.14;
-const VISIBLE_KNEE_THRESHOLD = 0.16;
-const VISIBLE_KNEE_RANGE = 0.28;
-const VISIBLE_KNEE_EXTRA_BASE = 1.05;
-const VISIBLE_KNEE_EXTRA_HORIZONTAL = 0.22;
-const VISIBLE_FOOT_LIFT_BASE = 0.075;
-const VISIBLE_FOOT_LIFT_HORIZONTAL = 0.04;
-const VISIBLE_SHOE_COUNTER_ROTATION = 0.58;
+const VISIBLE_KNEE_THRESHOLD = 0.17;
+const VISIBLE_KNEE_RANGE = 0.46;
+const VISIBLE_KNEE_EXTRA_BASE = 0.85;
+const VISIBLE_KNEE_EXTRA_HORIZONTAL = 0.2;
+const VISIBLE_FOOT_LIFT_BASE = 0.055;
+const VISIBLE_FOOT_LIFT_HORIZONTAL = 0.025;
+const VISIBLE_SHOE_COUNTER_ROTATION = 0.5;
 const LEGACY_ELDER_WALK_VERSION = 'elder-butler-gait-v1';
 const LEGACY_GAIT_FRAME_COUNT = 8;
 const POST_RENDER_ORDER = 24;
@@ -73,16 +73,16 @@ function enforceVisibleKneeFlex(body, sample, forward, horizontal) {
   const leftExtraFlex = leftAir * extraFlex;
   const rightExtraFlex = rightAir * extraFlex;
 
-  // The reusable gait already provides the anatomical pivots. At War Room camera
-  // scale a modest biomechanical bend still reads as a stiff rod. Exaggerate only
-  // the airborne leg so thigh -> knee -> shin remains legible at gameplay scale.
+  // War Room needs a little exaggeration to keep the knee readable at gameplay
+  // scale, but the airborne leg should still look like a walking human leg rather
+  // than a cartoon high-step. Keep the pickup broad and moderate.
   if (body?.leftKnee) body.leftKnee.rotation.x += forward * leftExtraFlex;
   if (body?.rightKnee) body.rightKnee.rotation.x += forward * rightExtraFlex;
   if (body?.leftLeg) body.leftLeg.position.y += leftAir * extraLift;
   if (body?.rightLeg) body.rightLeg.position.y += rightAir * extraLift;
 
-  // Counter-rotate the shoe so the calf can visibly fold underneath Hans without
-  // turning the foot into a rigid extension of the shin.
+  // A small shoe counter-rotation preserves the foot silhouette without making
+  // the calf fold under Hans like a duck walk.
   if (body?.leftShoe) body.leftShoe.rotation.x -= forward * leftExtraFlex * VISIBLE_SHOE_COUNTER_ROTATION;
   if (body?.rightShoe) body.rightShoe.rotation.x -= forward * rightExtraFlex * VISIBLE_SHOE_COUNTER_ROTATION;
 
@@ -149,8 +149,6 @@ export function installWarRoomHansArticulatedWalk(root) {
         hans.userData.warRoomHansWalkCycleDistance = realTravelDistance;
         hans.userData.warRoomHansWalkCyclePhaseDistance = controller.distance;
         hans.userData.warRoomHansGaitDistance = realTravelDistance;
-        // Keep the established diagnostic contract; visible flex is reported via
-        // the dedicated metadata above rather than renaming this compatibility key.
         hans.userData.warRoomHansGaitGrounding = 'real-distance-foot-plant-v3';
         hans.userData.warRoomHansGaitTeleportSuppressed = false;
       } else if (!isWalking || travelSq > TELEPORT_DISTANCE_SQ) {
@@ -171,7 +169,7 @@ export function installWarRoomHansArticulatedWalk(root) {
   driver.userData.warRoomHansArticulatedWalk = WAR_ROOM_HANS_ARTICULATED_WALK_VERSION;
   driver.userData.warRoomHansWalkCycle = HANS_WALK_CYCLE_VERSION;
   driver.userData.warRoomHansLegRig = 'thigh-knee-shin-foot-v1';
-  driver.userData.warRoomHansWalkCycleSource = 'reusable-distance-driven-plus-deep-flex-v3';
+  driver.userData.warRoomHansWalkCycleSource = 'reusable-distance-driven-plus-balanced-flex-v4';
   driver.userData.warRoomHansElderWalk = LEGACY_ELDER_WALK_VERSION;
   driver.userData.warRoomHansGaitFrames = LEGACY_GAIT_FRAME_COUNT;
   hans.userData.warRoomHansElderWalk = LEGACY_ELDER_WALK_VERSION;
