@@ -1,6 +1,14 @@
 import * as THREE from 'three';
+import {
+  ensureMatthiasHomeEnvironmentRoot,
+  ensureMatthiasHomeInteractionAnchor,
+  markMatthiasHomeEnvironmentNode,
+  MATTHIAS_HOME_INTERACTION_SCENE_VERSION,
+  worldAnchorMatthiasHomeNode,
+} from './matthiasHomeInteractionScene.js';
 
-export const MATTHIAS_PRIVATE_GAME_RIG_VERSION = 'private-game-v1-approved-mock';
+export const MATTHIAS_PRIVATE_GAME_RIG_VERSION = 'private-game-v3-shared-world-anchor';
+export { MATTHIAS_HOME_INTERACTION_SCENE_VERSION };
 
 const CLOCKS = new WeakMap();
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -44,6 +52,8 @@ function buildPiece(parent, { type, side, file, rank, x, y, material, accent, mo
   group.name = `private-game-${side}-${type}-${file}${rank}`;
   group.userData.pieceType = type;
   group.userData.side = side;
+  group.userData.homePropKind = moving ? 'handheld' : 'environment-child';
+  group.userData.homeAttachmentPolicy = moving ? 'explicit-only' : 'never-hand';
   group.position.set(x, y, .043);
   parent.add(group);
 
@@ -114,7 +124,15 @@ function buildPrivateGameRig(rig) {
   scene.name = 'activity-private-game-mock';
   scene.visible = false;
   scene.userData.rigVersion = MATTHIAS_PRIVATE_GAME_RIG_VERSION;
+  markMatthiasHomeEnvironmentNode(scene, { interaction: 'chess', stage: 'private-game-table' });
   activityRig.root.add(scene);
+
+  const interactionAnchor = ensureMatthiasHomeInteractionAnchor(scene, {
+    name: 'private-game-interaction-anchor',
+    interaction: 'chess',
+    position: [0, .06, -.02],
+    approachRadius: .18,
+  });
 
   const wood = new THREE.MeshStandardMaterial({ color: 0x2b160c, roughness: .48, metalness: .10 });
   const woodEdge = new THREE.MeshStandardMaterial({ color: 0x7b451d, roughness: .34, metalness: .22 });
@@ -128,10 +146,9 @@ function buildPrivateGameRig(rig) {
   const uniform = new THREE.MeshStandardMaterial({ color: 0x090b0e, roughness: .30, metalness: .34 });
   const uniformTrim = new THREE.MeshStandardMaterial({ color: 0xb37a28, roughness: .24, metalness: .82 });
 
-  // Approved mock contract: the chessboard is a foreground object, broad enough
-  // to remain unmistakably a real game in the small mobile portrait.
   const board = new THREE.Group();
   board.name = 'private-game-board';
+  markMatthiasHomeEnvironmentNode(board, { interaction: 'chess', stage: 'private-game-board' });
   board.position.set(0, -.565, .79);
   board.rotation.set(-.62, .015, 0);
   scene.add(board);
@@ -191,12 +208,16 @@ function buildPrivateGameRig(rig) {
     }));
   }
 
-  // Dedicated arm/hand from the approved mock. It replaces the generic black
-  // glove used by the old tiny-board action and visibly reaches into the game.
+  const actorScene = new THREE.Group();
+  actorScene.name = 'activity-private-game-actor';
+  actorScene.visible = false;
+  actorScene.userData.relationship = 'actor-choreography';
+  activityRig.root.add(actorScene);
+
   const handPivot = new THREE.Group();
   handPivot.name = 'private-game-moving-hand';
   handPivot.position.set(.17, -.28, .84);
-  scene.add(handPivot);
+  actorScene.add(handPivot);
   mesh(handPivot, new THREE.CapsuleGeometry(.080, .34, 5, 10), uniform, {
     name: 'private-game-uniform-sleeve',
     position: [.17, .055, -.18],
@@ -218,20 +239,29 @@ function buildPrivateGameRig(rig) {
     rotation: [1.08, 0, -.08],
   });
 
+  const environmentRoot = worldAnchorMatthiasHomeNode(rig, scene);
   activityRig.privateGame = scene;
+  activityRig.privateGameEnvironmentRoot = environmentRoot;
+  activityRig.privateGameInteractionAnchor = interactionAnchor;
+  activityRig.privateGameActor = actorScene;
   activityRig.privateGameBoard = board;
   activityRig.privateGamePieces = pieces;
   activityRig.privateGameMovingPiece = movingPiece;
   activityRig.privateGameHand = handPivot;
   rig.root.userData.activityPrivateGameRigVersion = MATTHIAS_PRIVATE_GAME_RIG_VERSION;
+  rig.root.userData.activityPrivateGameInteractionScene = MATTHIAS_HOME_INTERACTION_SCENE_VERSION;
   return scene;
 }
 
 function ensurePrivateGameRig(rig) {
   const activityRig = rig?.activityRig;
   if (!activityRig) return null;
-  if (activityRig.privateGame?.userData?.rigVersion === MATTHIAS_PRIVATE_GAME_RIG_VERSION) return activityRig.privateGame;
-  if (activityRig.privateGame) activityRig.root.remove(activityRig.privateGame);
+  if (activityRig.privateGame?.userData?.rigVersion === MATTHIAS_PRIVATE_GAME_RIG_VERSION) {
+    ensureMatthiasHomeEnvironmentRoot(rig);
+    return activityRig.privateGame;
+  }
+  activityRig.privateGame?.removeFromParent?.();
+  activityRig.privateGameActor?.removeFromParent?.();
   return buildPrivateGameRig(rig);
 }
 
@@ -279,6 +309,7 @@ export function applyMatthiasHomePrivateGameRig(rig, pose = {}) {
   if (!scene) return null;
 
   scene.visible = true;
+  if (activityRig.privateGameActor) activityRig.privateGameActor.visible = true;
   if (activityRig.chess) activityRig.chess.visible = false;
   if (activityRig.support) activityRig.support.visible = false;
   if (activityRig.assist) activityRig.assist.visible = false;
@@ -304,15 +335,20 @@ export function applyMatthiasHomePrivateGameRig(rig, pose = {}) {
 
   rig.root.userData.activityPrivateGameComposition = MATTHIAS_PRIVATE_GAME_RIG_VERSION;
   rig.root.userData.activityPrivateGameReach = motion.reach;
+  rig.root.userData.activityPrivateGameRelationship = 'world-anchored-environment';
+  rig.root.userData.activityPrivateGameAnchor = 'private-game-interaction-anchor';
   return scene;
 }
 
 export function clearMatthiasHomePrivateGameRig(rig) {
   const activityRig = rig?.activityRig;
   if (activityRig?.privateGame) activityRig.privateGame.visible = false;
+  if (activityRig?.privateGameActor) activityRig.privateGameActor.visible = false;
   CLOCKS.delete(rig);
   if (rig?.root?.userData) {
     rig.root.userData.activityPrivateGameComposition = 'inactive';
     rig.root.userData.activityPrivateGameReach = 0;
+    rig.root.userData.activityPrivateGameRelationship = 'inactive';
+    rig.root.userData.activityPrivateGameAnchor = 'inactive';
   }
 }
