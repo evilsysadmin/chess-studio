@@ -70,9 +70,10 @@ export function warRoomAmbientFramePlan({
   coarsePointer = false,
   softwareRenderer = false,
   inspectMode = false,
+  narrativeActive = false,
   elapsedMs = 0,
 } = {}) {
-  const active = !documentHidden && !reducedMotion && !softwareRenderer;
+  const active = !documentHidden && !reducedMotion && (!softwareRenderer || narrativeActive);
   // The heartbeat exists mainly to keep fire/light alive. Ten frames per second
   // is enough for those slow, irregular practicals and trims ~17% of the idle
   // GPU paints versus the historical 12 FPS desktop loop. Inspect mode still

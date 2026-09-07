@@ -379,6 +379,7 @@ function Board3DCanvas({
     }
 
     let cachedHansDiagnosticsObject = null;
+    let cachedHansDriver = null;
     let ambientScheduler = null;
     let inspectCameraDirty = false;
 
@@ -426,8 +427,10 @@ function Board3DCanvas({
         exposure: renderer.toneMappingExposure,
       });
       renderer.render(scene, camera);
-      const hansDriver = hansReadyFrames < 2 && latestPropsRef.current.hansDiagnosticsRequested
-        ? scene.getObjectByName('war-room-hans-fireplace-driver') : null;
+      if (!cachedHansDriver && latestPropsRef.current.hansDiagnosticsRequested) {
+        cachedHansDriver = scene.getObjectByName('war-room-hans-fireplace-driver');
+      }
+      const hansDriver = hansReadyFrames < 2 ? cachedHansDriver : null;
       if (hansDriver?.userData.warRoomHansQuickIteration && pieceGroup.children.length > 0) {
         // The deferred room installers and pieces must have passed through real
         // renders before React may start the scene's dialogue.
@@ -608,7 +611,7 @@ function Board3DCanvas({
     const reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)') || null;
     const wakeAmbientScheduler = () => ambientScheduler?.wake();
 
-    if (!softwareRenderer) {
+    if (!softwareRenderer || hansDiagnosticsRequested) {
       ambientScheduler = createWarRoomAmbientScheduler({
         requestFrame: (callback) => window.requestAnimationFrame(callback),
         cancelFrame: (id) => window.cancelAnimationFrame(id),
@@ -620,6 +623,8 @@ function Board3DCanvas({
           reducedMotion: getEffectiveReducedMotion(),
           coarsePointer,
           softwareRenderer,
+          narrativeActive: Boolean(cachedHansDriver?.userData.warRoomHansQuickIteration
+            && !cachedHansDriver.userData.warRoomHansCompleted),
           inspectMode: inspectModeRef.current && inspectCameraDirty,
           elapsedMs,
         }),

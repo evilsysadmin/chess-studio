@@ -133,3 +133,10 @@ describe('War Room ambient render cadence', () => {
     });
   });
 });
+
+ it('renders the finite Hans narrative on software, then returns to idle without repainting', () => {
+   expect(warRoomAmbientFramePlan({ softwareRenderer: true, narrativeActive: true, elapsedMs: 100 }).shouldRender).toBe(true);
+   expect(warRoomAmbientFramePlan({ softwareRenderer: true, narrativeActive: false, elapsedMs: 100 }).active).toBe(false);
+   expect(warRoomAmbientFramePlan({ softwareRenderer: true, narrativeActive: true, documentHidden: true, elapsedMs: 100 }).active).toBe(false);
+   expect(warRoomAmbientFramePlan({ narrativeActive: true, reducedMotion: true, elapsedMs: 100 }).active).toBe(false);
+ });
