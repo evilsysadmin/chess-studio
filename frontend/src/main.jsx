@@ -21,6 +21,7 @@ import './components/HomeImmersiveCastleOverlay.css';
 import './components/HomeImmersiveSavedGame.css';
 import './components/HomeImmersiveMatthias.css';
 import './components/HomeCanonicalMockAlignment.css';
+import './components/HomeCanonicalMockFinish.css';
 import './components/WarRoomMobileLandscape.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
 import { migratePersistentStorage } from './storageMigrations.js';
