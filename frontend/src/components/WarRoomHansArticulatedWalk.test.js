@@ -75,6 +75,13 @@ function worldKneeFlex(root, body, side) {
   return Math.PI - thigh.angleTo(shin);
 }
 
+function worldToeForwardDot(root, hans, body, side) {
+  root.updateMatrixWorld(true);
+  const shoeForward = new THREE.Vector3(0, 0, 1).transformDirection(body[`${side}Shoe`].matrixWorld);
+  const hansForward = new THREE.Vector3(0, 0, 1).transformDirection(hans.matrixWorld);
+  return shoeForward.dot(hansForward);
+}
+
 describe('War Room Hans articulated walk adapter', () => {
   it('keeps real world-space knee flex visible without turning the gait into a cartoon high-step', () => {
     const { root, hans, driver, leftLeg, rightLeg } = makeRig();
@@ -118,6 +125,26 @@ describe('War Room Hans articulated walk adapter', () => {
     const totalLift = Math.abs(leftLeg.position.y - 0.82) + Math.abs(rightLeg.position.y - 0.82);
     expect(totalLift).toBeGreaterThan(0.025);
     expect(totalLift).toBeLessThan(0.12);
+  });
+
+  it('keeps both shoes pointing along Hans local forward axis while a knee is airborne', () => {
+    const { root, hans, driver } = makeRig();
+    expect(installWarRoomHansArticulatedWalk(root)).toBe(1);
+    driver.onBeforeRender();
+    driver.onBeforeRender();
+
+    expect(hans.userData.warRoomHansFootDirection).toBe('toe-forward-v2-parent-compensated');
+    expect(worldToeForwardDot(root, hans, hans.userData.refs, 'left')).toBeGreaterThan(0.98);
+    expect(worldToeForwardDot(root, hans, hans.userData.refs, 'right')).toBeGreaterThan(0.98);
+
+    const leftPitch = hans.userData.refs.leftLeg.rotation.x
+      + hans.userData.refs.leftKnee.rotation.x
+      + hans.userData.refs.leftShoe.rotation.x;
+    const rightPitch = hans.userData.refs.rightLeg.rotation.x
+      + hans.userData.refs.rightKnee.rotation.x
+      + hans.userData.refs.rightShoe.rotation.x;
+    expect(Math.abs(leftPitch)).toBeLessThan(0.12);
+    expect(Math.abs(rightPitch)).toBeLessThan(0.12);
   });
 
   it('drops the walking knee pose as soon as Hans enters a non-walking action', () => {
