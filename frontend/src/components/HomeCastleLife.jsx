@@ -1,9 +1,11 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import './HomeCastleLife.css';
 import './HomeGreatHall.css';
 import './HomeCastleAmbience.css';
+import './HomeCastleHallsDoor.css';
 import HomeCastleHubScene from './HomeCastleHubScene.jsx';
 import { ACHIEVEMENTS, loadAchievementLedger, loadUnlocked } from '../achievements.js';
+import { buildCastleHallGallery, castleHallSummary } from '../castleHall.js';
 import { PROFILE_CHANGED_EVENT } from '../profileKeys.js';
 import {
   castleHonourObjects,
@@ -14,6 +16,8 @@ import {
   persistCastleUnlockLedger,
   reconcileCastleUnlocks,
 } from '../castleProgression.js';
+
+const CastleHallsModal = lazy(() => import('./CastleHallsModal.jsx'));
 
 const MAX_OBJECTS = 3;
 const RARE_SIGHTING_THRESHOLD = 0.025;
@@ -195,12 +199,8 @@ export function buildHomeCastleLifeModel({
   };
 }
 
-function HomeCastleLife({ achievementIds = null, achievementLedger = null, ...props }) {
+function HomeCastleLife({ achievementIds = null, achievementLedger = null, hallGallery = null, onReviewCastleGame = null, ...props }) {
   const sectionRef = useRef(null);
-  // Desktop presents the castle in the first visual field and keeps the current
-  // immediate mount. On the mobile first-fold contract the castle sits below
-  // the primary actions, so creating a WebGL context before the user approaches
-  // it is pure speculative work. Older browsers keep the safe eager behavior.
   const [castleSceneMounted, setCastleSceneMounted] = useState(() => {
     if (typeof window === 'undefined') return true;
     const compactViewport = typeof window.matchMedia === 'function'
@@ -229,10 +229,6 @@ function HomeCastleLife({ achievementIds = null, achievementLedger = null, ...pr
     return () => observer.disconnect();
   }, [castleSceneMounted]);
 
-  // Menu rerenders for many unrelated reasons. Reading + parsing achievements in
-  // the component body made every one of those renders touch profile storage.
-  // Keep a coherent snapshot and refresh it only when profile/storage can
-  // actually have changed; explicit caller data still wins when supplied.
   const [achievementSnapshot, setAchievementSnapshot] = useState(loadAchievementSnapshot);
   useEffect(() => {
     if (achievementIds !== null && achievementLedger !== null) return undefined;
@@ -259,12 +255,13 @@ function HomeCastleLife({ achievementIds = null, achievementLedger = null, ...pr
   const resolvedAchievementIds = achievementIds ?? achievementSnapshot.ids;
   const resolvedAchievementLedger = achievementLedger ?? achievementSnapshot.ledger;
   const [persistedCastleLedger, setPersistedCastleLedger] = useState(() => loadCastleUnlockLedger());
+  const [showCastleHalls, setShowCastleHalls] = useState(false);
+  const resolvedHallGallery = useMemo(() => hallGallery || buildCastleHallGallery(), [hallGallery]);
+  const hallSummary = castleHallSummary(resolvedHallGallery);
   const achievementFingerprint = achievementStateFingerprint(resolvedAchievementIds, resolvedAchievementLedger);
   const persistedFingerprint = castleLedgerFingerprint(persistedCastleLedger);
   const reconciledCastleLedger = useMemo(
     () => reconcileCastleUnlocks(persistedCastleLedger, resolvedAchievementIds, resolvedAchievementLedger),
-    // The compact fingerprints intentionally avoid object-identity churn from
-    // callers that reconstruct Set/ledger wrappers on every Home render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [achievementFingerprint, persistedFingerprint],
   );
@@ -283,12 +280,11 @@ function HomeCastleLife({ achievementIds = null, achievementLedger = null, ...pr
     achievementLedger: resolvedAchievementLedger,
     castleLedger: reconciledCastleLedger,
   });
-  // Estado transitorio (partida pausada) y vacío no son "trofeos". Ya tienen
-  // UI funcional propia; repetirlos aquí convertiría el castillo en dashboard.
   const visibleObjects = model.objects.filter((object) => object.kind === 'progress' || object.kind === 'honour');
   const honourObjects = visibleObjects.filter((object) => object.kind === 'honour');
+  const hasHallEvidence = hallSummary.fame > 0 || hallSummary.shame > 0;
 
-  return (
+  return <>
     <section
       ref={sectionRef}
       className={`home-castle-life${model.rareSighting ? ' has-rare-sighting' : ''}`}
@@ -302,6 +298,8 @@ function HomeCastleLife({ achievementIds = null, achievementLedger = null, ...pr
       data-castle-unlocks={model.unlockSummary.total}
       data-castle-unlocks-recorded={model.unlockSummary.recorded}
       data-castle-unlocks-legacy={model.unlockSummary.legacy}
+      data-castle-fame={hallSummary.fame}
+      data-castle-shame={hallSummary.shame}
     >
       {castleSceneMounted ? (
         <HomeCastleHubScene ambience={model.ambience} hasSavedGame={Boolean(props.hasSavedGame)} />
@@ -330,16 +328,38 @@ function HomeCastleLife({ achievementIds = null, achievementLedger = null, ...pr
           </span>
         ))}
       </div>
+
+      {hasHallEvidence && (
+        <button
+          type="button"
+          className="home-castle-halls-door"
+          onClick={() => setShowCastleHalls(true)}
+          data-castle-halls="evidence-v1"
+          aria-label={`Abrir galerías del castillo. ${hallSummary.fame} de gloria y ${hallSummary.shame} de vergüenza.`}
+        >
+          <span aria-hidden="true">♜</span>
+          <i aria-hidden="true" />
+          <small aria-hidden="true">ARCHIVO</small>
+        </button>
+      )}
+
       {model.rareSighting && (
         <span className="home-castle-life__rare" data-rare-sighting={model.rareSighting.id} aria-hidden="true">
           <span>♜</span>
         </span>
       )}
     </section>
-  );
+
+    {showCastleHalls && (
+      <Suspense fallback={null}>
+        <CastleHallsModal
+          gallery={resolvedHallGallery}
+          onClose={() => setShowCastleHalls(false)}
+          onReviewGame={onReviewCastleGame ? (gameId) => { setShowCastleHalls(false); onReviewCastleGame(gameId); } : null}
+        />
+      </Suspense>
+    )}
+  </>;
 }
 
-// Menu has several local overlays and disclosure controls that do not change
-// castle inputs. Keep the expensive castle subtree asleep when those parent
-// states churn; internal castle state/events still bypass memo as usual.
 export default memo(HomeCastleLife);

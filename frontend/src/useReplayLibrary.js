@@ -1,11 +1,22 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { clearCombatHistory, loadCombatHistory } from './combatHistory.js';
 import { clearGameHistory, loadGameHistory } from './gameHistory.js';
 import { computeInsights } from './insights.js';
+import { HISTORY_GAME_OPEN_EVENT } from './historyNavigation.js';
 import { loadRatingHistory } from './playerRating.js';
 
 export function sortUnifiedHistory(historyList, combatHistoryList) {
   return [...historyList, ...combatHistoryList].sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+
+export function findHistoryRecordByGameId(records = [], gameId = null) {
+  if (gameId == null) return null;
+  const target = String(gameId);
+  return (Array.isArray(records) ? records : []).find((record) => (
+    [record?.sourceGameId, record?.gameId, record?.id]
+      .filter((value) => value != null)
+      .some((value) => String(value) === target)
+  )) || null;
 }
 
 export function useReplayLibrary({ navigateTo }) {
@@ -35,6 +46,7 @@ export function useReplayLibrary({ navigateTo }) {
   }
 
   function openHistoryRecord(record) {
+    if (!record) return false;
     setReplayMovieMode(false);
     setReplayCrimeMode(false);
     setReplayInitialStep(undefined);
@@ -46,7 +58,29 @@ export function useReplayLibrary({ navigateTo }) {
       setReplayRecord(record);
       navigateTo('replay');
     }
+    return true;
   }
+
+  function openHistoryRecordByGameId(gameId) {
+    const record = findHistoryRecordByGameId(allHistory, gameId);
+    if (!record) {
+      navigateTo('history');
+      return false;
+    }
+    return openHistoryRecord(record);
+  }
+
+  useEffect(() => {
+    function handleHistoryGameOpen(event) {
+      const gameId = event?.detail?.gameId;
+      if (gameId != null) openHistoryRecordByGameId(gameId);
+    }
+    globalThis.addEventListener?.(HISTORY_GAME_OPEN_EVENT, handleHistoryGameOpen);
+    return () => globalThis.removeEventListener?.(HISTORY_GAME_OPEN_EVENT, handleHistoryGameOpen);
+    // allHistory is the source of truth for whether the physical plaque still
+    // has a replayable source. navigateTo is supplied by App's stable router.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allHistory]);
 
   function clearAllHistory() {
     setHistoryList(clearGameHistory());
@@ -67,6 +101,6 @@ export function useReplayLibrary({ navigateTo }) {
     replayRecord, setReplayRecord, combatReplayRecord, setCombatReplayRecord,
     replayInitialStep, setReplayInitialStep, pinnedReport, setPinnedReport,
     replayCrimeMode, setReplayCrimeMode, replayMovieMode, setReplayMovieMode,
-    allHistory, insights, jumpToMove, openHistoryRecord, clearAllHistory, openMovie,
+    allHistory, insights, jumpToMove, openHistoryRecord, openHistoryRecordByGameId, clearAllHistory, openMovie,
   };
 }

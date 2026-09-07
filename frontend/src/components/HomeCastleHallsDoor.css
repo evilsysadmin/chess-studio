@@ -1,0 +1,103 @@
+.home-castle-halls-door {
+  position: absolute;
+  left: 50%;
+  bottom: 1.1rem;
+  z-index: 6;
+  width: 3rem;
+  height: 4.4rem;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  cursor: pointer;
+  transform: translateX(-50%);
+  color: rgba(204,168,103,.9);
+  border: 1px solid rgba(150,112,67,.52);
+  border-radius: 1.45rem 1.45rem .22rem .22rem;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.04), transparent 20% 80%, rgba(0,0,0,.28)),
+    linear-gradient(180deg, #3f3126, #1e1916 62%, #111316);
+  box-shadow: inset 0 0 0 3px rgba(15,16,18,.55), inset 0 0 18px rgba(0,0,0,.42), 0 8px 18px rgba(0,0,0,.35);
+  opacity: .78;
+  transition: opacity .15s ease, filter .15s ease, transform .15s ease;
+}
+
+.home-castle-halls-door::before {
+  content: '';
+  position: absolute;
+  inset: .38rem .42rem .5rem;
+  border: 1px solid rgba(171,130,75,.28);
+  border-radius: 1rem 1rem .08rem .08rem;
+}
+
+.home-castle-halls-door::after {
+  content: '';
+  position: absolute;
+  right: .55rem;
+  top: 55%;
+  width: .22rem;
+  height: .22rem;
+  border-radius: 50%;
+  background: #c59b57;
+  box-shadow: 0 0 5px rgba(217,172,96,.34);
+}
+
+.home-castle-halls-door span {
+  position: relative;
+  z-index: 1;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.05rem;
+  transform: translateY(-.25rem);
+}
+
+.home-castle-halls-door i {
+  position: absolute;
+  left: 50%;
+  bottom: .52rem;
+  width: 1.4rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(192,150,85,.55), transparent);
+  transform: translateX(-50%);
+}
+
+.home-castle-halls-door small {
+  position: absolute;
+  left: 50%;
+  bottom: -.95rem;
+  color: rgba(200,174,126,.64);
+  font-size: .48rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.home-castle-halls-door:hover,
+.home-castle-halls-door:focus-visible {
+  opacity: 1;
+  filter: brightness(1.13);
+  transform: translateX(-50%) translateY(-2px) scale(1.03);
+  outline: 2px solid color-mix(in srgb, var(--brass) 58%, transparent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .home-castle-halls-door {
+    left: auto;
+    right: .45rem;
+    bottom: 1.25rem;
+    width: 2.45rem;
+    height: 3.55rem;
+    transform: none;
+  }
+  .home-castle-halls-door:hover,
+  .home-castle-halls-door:focus-visible { transform: translateY(-2px) scale(1.02); }
+}
+
+@media (max-width: 430px) {
+  .home-castle-halls-door { right: .18rem; width: 2.15rem; height: 3.15rem; opacity: .72; }
+  .home-castle-halls-door small { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-castle-halls-door { transition: none !important; }
+}
