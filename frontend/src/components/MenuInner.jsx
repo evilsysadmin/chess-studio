@@ -88,10 +88,10 @@ export default function Menu({
   const [showPracticeMatch, setShowPracticeMatch] = useState(false);
   const [showMirrorMode, setShowMirrorMode] = useState(false);
   const [footerPanel, setFooterPanel] = useState(null);
-  const [showHomeGuide, setShowHomeGuide] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
+  const [showHomeGuide, setShowHomeGuide] = useState(() => !illustratedHome && getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
   const [matthiasVisit, setMatthiasVisit] = useState(null);
   const [matthiasMemory, setMatthiasMemory] = useState(null);
-  const [matthiasGuidesInitialWelcome] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1' && !matthiasOnboarded());
+  const [matthiasGuidesInitialWelcome] = useState(() => !illustratedHome && getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1' && !matthiasOnboarded());
   const matthiasRollRef = useRef(Math.random());
   const castleLifeRollRef = useRef(Math.random());
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
@@ -142,7 +142,7 @@ export default function Menu({
     if (matthiasIntroPending) {
       const introPlacement = matthiasIntroPlacement({
         onboarded: false,
-        guideEnabled: features.homeGuide !== false,
+        guideEnabled: !illustratedHome && features.homeGuide !== false,
         guideVisible: showHomeGuide,
         blocked: matthiasIntroBlocked,
       });
@@ -168,7 +168,7 @@ export default function Menu({
     if (!show) return;
     markMatthiasHomeShown();
     setMatthiasVisit(matthiasCandidate);
-  }, [blockingHomeOverlay, features.homeGuide, hasSavedGame, matthiasCandidate, matthiasIntroBlocked, matthiasIntroPending, matthiasVisit, showHomeGuide]);
+  }, [illustratedHome, blockingHomeOverlay, features.homeGuide, hasSavedGame, matthiasCandidate, matthiasIntroBlocked, matthiasIntroPending, matthiasVisit, showHomeGuide]);
 
   useEffect(() => {
     if (matthiasOnboarded()) return;
@@ -270,6 +270,8 @@ export default function Menu({
         onPlay={() => setShowQuickMatch(true)} onContinue={onContinue}
         onTournament={onTournament} onTrain={onTutorial} onCombat={onCombatRoguelike}
         onDaily={() => onDailyChallenge()} onHistory={onHistory} onInsights={onInsights}
+        matthiasModel={matthiasCardModel} matthiasSpeaking={Boolean(matthiasVisit) && !matthiasCornerBlocked}
+        onMatthiasAction={handleMatthiasAction} onMatthiasDismiss={() => setMatthiasVisit(null)}
         tools={[
           ['Puzzles personales', onTrainPersonal], ['Puzzles clásicos', onPuzzle],
           ['Aperturas', onOpenings], ['Partida de práctica', () => setShowPracticeMatch(true)],

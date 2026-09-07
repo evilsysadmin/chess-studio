@@ -11,7 +11,7 @@ function Flame() {
   return <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 1c1 6 7 7 7 14a8 8 0 0 1-16 0c0-4 2-7 5-10 0 4 1 5 2 6 2-3 3-6 2-10Zm-1 12c-1 3-3 4-3 6a3 3 0 0 0 6 0c0-2-2-3-3-6Z" /></svg>;
 }
 
-export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onContinue, onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools }) {
+export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onContinue, onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
   const [toolsOpen, setToolsOpen] = useState(false);
   const rooms = [
     ['tournament', 'TORNEOS', 'Compite y escala', IconTrophy, onTournament],
@@ -38,9 +38,16 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             </button>
           ))}
         </nav>
-        <button className="illustrated-home__matthias" type="button" onClick={onInsights}>
+        <aside className="illustrated-home__resident" aria-label="Rincón de Matthias">
+        {matthiasSpeaking && <section className="illustrated-home__speech" aria-label="Mensaje de Matthias" aria-live="polite">
+          <strong>{matthiasModel.eyebrow}</strong><p>{matthiasModel.text}</p>
+          <button type="button" onClick={onMatthiasAction}>{matthiasModel.actionLabel}</button>
+          <button type="button" onClick={onMatthiasDismiss} aria-label="Cerrar comentario de Matthias">×</button>
+        </section>}
+        <button className="illustrated-home__matthias" type="button" onClick={onInsights} aria-label="Abrir Así juegas con Matthias">
           <strong>MATTHIAS</strong><span>Comida táctica</span><em>“El progreso se construye jugada a jugada.”</em>
         </button>
+        </aside>
         <div className="illustrated-home__community"><span>UNA<br />COMUNIDAD<br />MÁS FUERTE</span><span aria-hidden="true">♟♟</span></div>
         <footer className="illustrated-home__motto"><span aria-hidden="true">─　♛　─</span><p>DISCIPLINA · ESTRATEGIA · UN MUNDO MEJOR</p></footer>
       </div>

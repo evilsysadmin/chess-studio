@@ -34,6 +34,12 @@
   .illustrated-home__destination:hover { background: radial-gradient(ellipse, #f1ba4226, transparent 75%); filter: brightness(1.14); }
   .illustrated-home button:focus-visible { outline: 2px solid #ffe39b; outline-offset: 4px; background-color: #211306dd; }
   .illustrated-home button:disabled { cursor: wait; opacity: .55; }
+  .illustrated-home__resident { position: absolute; inset: 0; pointer-events: none; }
+  .illustrated-home__resident > * { pointer-events: auto; }
+  .illustrated-home__speech { position: absolute; z-index: 8; left: 13.3%; bottom: 18%; width: min(330px, 28%); max-height: 44%; overflow: auto; padding: 16px; border: 1px solid #a98039; border-radius: 12px; background: #17100df5; box-shadow: 0 8px 28px #0008; font-size: 14px; }
+  .illustrated-home__speech p { line-height: 1.5; color: #eee0c0; }
+  .illustrated-home__speech button { padding: 7px 10px; border: 1px solid #a98039; border-radius: 6px; background: #291b10; color: #ffe8ac; }
+  .illustrated-home__speech button:last-child { float: right; }
   .illustrated-home__matthias { position: absolute; left: 13.3%; top: 83%; width: 11%; padding: .7cqw 1.25cqw; display: grid; gap: .22cqw; border: 1px solid #a98039; border-radius: 12px; background: #17100de8; color: #fae6ad; text-align: left; cursor: pointer; }
   .illustrated-home__matthias strong { font: 700 max(12px, .8cqw)/1.2 Arial, sans-serif; }
   .illustrated-home__matthias span { font-size: max(12px, .75cqw); }

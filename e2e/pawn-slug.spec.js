@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { login, mockApi } from './helpers.js';
+import { login, mockApi, openMoreGameModes } from './helpers.js';
 
 async function dismissGuide(page) {
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
@@ -19,12 +19,9 @@ async function openPawnSlug(page) {
   await mockApi(page);
   await login(page);
   await dismissGuide(page);
-  const moreModes = page.locator('details.home-more-modes');
-  if (!(await moreModes.evaluate((node) => node.open))) {
-    await moreModes.getByText('Más modos de juego', { exact: true }).click();
-  }
+  const moreModes = await openMoreGameModes(page);
   const experiments = moreModes
-    .locator('.friendly-disclosure-body > .menu-card-shell > button')
+    .getByRole('button')
     .filter({ hasText: 'Experimentos geniales' });
   await experiments.click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();

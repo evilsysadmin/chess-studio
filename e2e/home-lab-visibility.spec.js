@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { login, mockApi } from './helpers.js';
+import { login, mockApi, openMoreGameModes } from './helpers.js';
 
 async function openHome(page) {
   await mockApi(page);
@@ -12,18 +12,10 @@ async function openHome(page) {
 }
 
 async function openExperimentsFromMoreModes(page) {
-  const moreModes = page.locator('details.home-more-modes');
-  await expect(moreModes).not.toHaveAttribute('open', '');
-
-  const experiments = moreModes
-    .locator('.friendly-disclosure-body > .menu-card-shell > button')
-    .filter({ hasText: 'Experimentos geniales' });
+  const moreModes = await openMoreGameModes(page);
+  const experiments = moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' });
   await expect(experiments).toHaveCount(1);
-  await expect(experiments).toBeHidden();
-  await moreModes.locator(':scope > summary').click();
-  await expect(moreModes).toHaveAttribute('open', '');
   await expect(experiments).toBeVisible();
-  await expect(experiments).toContainText('Pawn Trailblazer');
   return experiments;
 }
 
@@ -39,37 +31,10 @@ test('Home desktop · dungeon y archivo revelan profundidad sin devolver el dash
   await page.setViewportSize({ width: 1552, height: 900 });
   await openHome(page);
 
-  const hall = page.locator('.home-castle-life');
-  const dungeon = page.locator('details.home-more-modes');
-  const dungeonTrigger = dungeon.locator(':scope > summary');
-  const archive = page.locator('details.home-learning-more');
-  const archiveTrigger = archive.locator(':scope > summary');
-
-  await expect(hall).toBeVisible();
-  await expect(dungeonTrigger).toBeVisible();
-  await expect(archiveTrigger).toBeVisible();
-  await expect(page.locator('.home-modes-section > .home-primary-grid')).toBeHidden();
-  await expect(page.locator('.home-next-action')).toBeHidden();
-
-  const resting = await page.evaluate(() => {
-    const dungeonSummary = document.querySelector('details.home-more-modes > summary');
-    const archiveSummary = document.querySelector('details.home-learning-more > summary');
-    const scene = document.querySelector('.home-castle-hub__scene');
-    return {
-      dungeonTooltipOpacity: dungeonSummary ? Number.parseFloat(getComputedStyle(dungeonSummary, '::after').opacity) : 1,
-      archiveTooltipOpacity: archiveSummary ? Number.parseFloat(getComputedStyle(archiveSummary, '::after').opacity) : 1,
-      camera: scene?.dataset.homeCastleHubCamera || '',
-      dungeonScene: scene?.dataset.homeCastleHubDungeonStair || '',
-    };
-  });
-  expect(resting.dungeonTooltipOpacity).toBeLessThanOrEqual(0.01);
-  expect(resting.archiveTooltipOpacity).toBeLessThanOrEqual(0.01);
-  expect(resting.camera).toBe('frontal-diorama-v1');
-  expect(resting.dungeonScene).toBe('spiral-stone-v1');
-
-  await dungeonTrigger.hover();
-  await expect.poll(async () => Number.parseFloat(await dungeonTrigger.evaluate((node) => getComputedStyle(node, '::after').opacity))).toBeGreaterThan(0.9);
-
+  await expect(page.locator('.illustrated-home__art')).toBeVisible();
+  await expect(page.locator('.illustrated-home__destination--history')).toBeVisible();
+  await expect(page.locator('.home-modes-section > .home-primary-grid')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Más modos y herramientas/ })).toHaveAttribute('aria-expanded', 'false');
   const experiments = await openExperimentsFromMoreModes(page);
   await experiments.click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
