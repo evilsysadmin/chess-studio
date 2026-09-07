@@ -63,6 +63,7 @@
   body .app-shell-home .masthead-feedback-trigger { position: absolute; right: 1.8vw; top: 2.7dvh; pointer-events: auto; }
   body .app-shell-home .masthead-account-trigger, body .app-shell-home .masthead-release-trigger, body .app-shell-home .masthead-feedback-trigger { border: 1px solid #8b683866; border-radius: 999px !important; color: #eed7a5 !important; background: #160f0bdd !important; width: auto !important; min-width: 0 !important; height: 40px; min-height: 40px; padding: 8px 18px; white-space: nowrap; box-shadow: none; font-size: 14px !important; }
   body .app-shell-home .masthead-account-popover { left: 0; right: auto; pointer-events: auto; }
+  body .app-shell-home .masthead-admin-feedback-inbox { position: absolute; left: calc(2.8vw + 170px); top: 2.5dvh; pointer-events: auto; }
   body .app-shell-home .masthead-session-error { pointer-events: auto; position: absolute; top: 60px; left: 3vw; background: #21120c; }
 }
 @media (min-width: 1000px) and (max-width: 1300px) {

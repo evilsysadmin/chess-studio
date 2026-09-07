@@ -37,3 +37,13 @@ test('illustrated Home reuses account and feedback controls', async ({ page }) =
   await page.getByRole('button', { name: 'Enviar feedback', exact: true }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
 });
+
+test('illustrated Home keeps the admin inbox actionable', async ({ page }) => {
+  await page.setViewportSize({ width: 1672, height: 941 });
+  await mockApi(page, { isAdmin: true, initialFeedback: [{ id: 'home-inbox', category: 'general', message: 'Home feedback', status: 'new' }] });
+  await login(page);
+  await page.getByRole('button', { name: '1 feedback nuevo', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Centro de control' })).toBeVisible();
+  await page.getByRole('tab', { name: /Feedback/ }).click();
+  await expect(page.getByRole('region', { name: 'Feedback de usuarios' })).toBeVisible();
+});
