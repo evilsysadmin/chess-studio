@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { buildHomeCastleLifeModel } from './HomeCastleLife.jsx';
+import { buildHomeCastleLifeModel, homeCastleSceneShouldStartMounted } from './HomeCastleLife.jsx';
 
 describe('HomeCastleLife', () => {
+  it('monta el castillo de inmediato en desktop y difiere sólo móvil con IntersectionObserver', () => {
+    expect(homeCastleSceneShouldStartMounted({ compactViewport: false, supportsIntersectionObserver: true })).toBe(true);
+    expect(homeCastleSceneShouldStartMounted({ compactViewport: true, supportsIntersectionObserver: true })).toBe(false);
+    expect(homeCastleSceneShouldStartMounted({ compactViewport: true, supportsIntersectionObserver: false })).toBe(true);
+  });
+
   it('no inventa logros ni atmósfera épica cuando no existe evidencia', () => {
     const model = buildHomeCastleLifeModel({ rareRoll: 1 });
     expect(model.objects).toEqual([expect.objectContaining({ id: 'quiet-desk' })]);

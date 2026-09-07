@@ -16,6 +16,61 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap"
       rel="stylesheet"
     />
+    <script>
+      (() => {
+        const RECOVERY_KEY = 'chess-studio-module-recovery-v1';
+        const RECOVERY_WINDOW_MS = 30000;
+
+        async function recoverStaleModule() {
+          if (navigator.onLine === false) return;
+
+          try {
+            const now = Date.now();
+            const previous = Number(sessionStorage.getItem(RECOVERY_KEY) || 0);
+            if (Number.isFinite(previous) && now - previous < RECOVERY_WINDOW_MS) return;
+            sessionStorage.setItem(RECOVERY_KEY, String(now));
+          } catch {
+            // Storage can be blocked; recovery is still worth attempting once.
+          }
+
+          try {
+            if ('serviceWorker' in navigator) {
+              const registrations = await navigator.serviceWorker.getRegistrations();
+              await Promise.all(registrations.map((registration) => registration.unregister()));
+            }
+          } catch {
+            // A cache purge below is sufficient when registration cleanup fails.
+          }
+
+          try {
+            if ('caches' in window) {
+              const keys = await caches.keys();
+              await Promise.all(keys
+                .filter((key) => key.startsWith('chess-studio-shell-'))
+                .map((key) => caches.delete(key)));
+            }
+          } catch {
+            // Reload still bypasses the stale navigation cache via a cache buster.
+          }
+
+          const next = new URL(window.location.href);
+          next.searchParams.set('__cs_recover', Date.now().toString(36));
+          window.location.replace(next.toString());
+        }
+
+        window.addEventListener('error', (event) => {
+          const target = event.target;
+          if (target instanceof HTMLScriptElement && target.type === 'module') {
+            void recoverStaleModule();
+          }
+        }, true);
+
+        window.addEventListener('vite:preloadError', (event) => {
+          event.preventDefault();
+          void recoverStaleModule();
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

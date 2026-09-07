@@ -1,8 +1,18 @@
+import { installWarRoomHansCanonicalButler } from './WarRoomHansCanonicalButler.js';
+import { installWarRoomHansElderClock } from './WarRoomHansElderClock.js';
+import { installWarRoomHansElderWalk } from './WarRoomHansElderWalk.js';
+import { installWarRoomHansFacingGuard } from './WarRoomHansFacingGuard.js';
+import { installWarRoomHansFireNarrative } from './WarRoomHansFireNarrative.js';
+import { installWarRoomHansHearthFacingGuard } from './WarRoomHansHearthFacingGuard.js';
+import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
+
 export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v1';
 export const WAR_ROOM_ONE_SHOT_RETIREMENT_VERSION = 'one-shot-retirement-v1';
 
-const FINALIZER_STATES = new WeakMap();
+const BEFORE_FINALIZER_STATES = new WeakMap();
+const AFTER_FINALIZER_STATES = new WeakMap();
 const NOOP_RENDER_HOOK = () => {};
+const HANS_FIREPLACE_FINALIZER_KEY = 'hans-fireplace-scene-install-v2';
 
 function sceneRoot(object) {
   let current = object;
@@ -10,7 +20,14 @@ function sceneRoot(object) {
   return current;
 }
 
-function finalizerDriver(group) {
+function finalizerDriver(group, key) {
+  if (key === HANS_FIREPLACE_FINALIZER_KEY) {
+    return group?.getObjectByName?.('war-room-castle-floor-slab')
+      || group?.getObjectByName?.('war-room-castle-wall-left')
+      || group?.getObjectByName?.('war-room-premium-painting-canvas')
+      || null;
+  }
+
   return group?.getObjectByName?.('war-room-premium-painting-canvas')
     || group?.getObjectByName?.('war-room-castle-wall-left')
     || group?.getObjectByName?.('war-room-castle-floor-slab')
@@ -23,21 +40,26 @@ function markOwner(owner, state) {
   owner.userData.warRoomDeferredFinalizerTaskCount = state.tasks.size;
 }
 
-function attachFinalizerDriver(driver, owner) {
-  const previous = driver.onBeforeRender;
+function attachFinalizerDriver(driver, owner, phase = 'before') {
+  const after = phase === 'after';
+  const stateMap = after ? AFTER_FINALIZER_STATES : BEFORE_FINALIZER_STATES;
+  const hookName = after ? 'onAfterRender' : 'onBeforeRender';
+  const previous = driver[hookName];
   const state = {
     owner,
     tasks: new Map(),
     completed: false,
     runCount: 0,
+    phase,
   };
-  FINALIZER_STATES.set(driver, state);
+  stateMap.set(driver, state);
 
   driver.userData.warRoomDeferredFinalizer = WAR_ROOM_DEFERRED_FINALIZER_VERSION;
-  driver.onBeforeRender = (...args) => {
+  driver.userData.warRoomDeferredFinalizerPhase = phase;
+  driver[hookName] = (...args) => {
     previous?.(...args);
 
-    const current = FINALIZER_STATES.get(driver);
+    const current = stateMap.get(driver);
     if (!current || current.completed) return;
 
     const root = sceneRoot(driver) || current.owner;
@@ -46,6 +68,18 @@ function attachFinalizerDriver(driver, owner) {
 
     for (const [key, task] of current.tasks) {
       results[key] = task(root);
+      if (key === HANS_FIREPLACE_FINALIZER_KEY) {
+        installWarRoomHansCanonicalButler(root);
+        installWarRoomHansMotionPolish(root);
+        installWarRoomHansFacingGuard(root);
+        installWarRoomHansHearthFacingGuard(root);
+        installWarRoomHansElderWalk(root);
+        installWarRoomHansElderClock(root);
+        // Observe the fully-resolved Hans phase and hearth state last. This layer
+        // never moves Hans; it only turns the old proximity fade into a causal
+        // cold-hearth -> rekindle story.
+        installWarRoomHansFireNarrative(root);
+      }
       completedKeys.push(key);
     }
 
@@ -73,10 +107,12 @@ export function registerWarRoomDeferredFinalizer(group, {
 } = {}) {
   if (!group || (coarsePointer && !allowCoarse) || typeof key !== 'string' || !key || typeof run !== 'function') return 0;
 
-  const driver = finalizerDriver(group);
+  const driver = finalizerDriver(group, key);
   if (!driver) return 0;
 
-  const state = FINALIZER_STATES.get(driver) || attachFinalizerDriver(driver, group);
+  const phase = key === HANS_FIREPLACE_FINALIZER_KEY ? 'after' : 'before';
+  const stateMap = phase === 'after' ? AFTER_FINALIZER_STATES : BEFORE_FINALIZER_STATES;
+  const state = stateMap.get(driver) || attachFinalizerDriver(driver, group, phase);
   if (state.completed || state.tasks.has(key)) return 0;
 
   state.tasks.set(key, run);
@@ -96,7 +132,6 @@ export function armWarRoomOneShotHookRetirement(group, {
 
   const marker = driver.userData.warRoomOneShotRetirement;
   if (marker?.key === key) return 0;
-
   const previous = driver.onBeforeRender;
   let completed = false;
   driver.userData.warRoomOneShotRetirement = {
@@ -109,9 +144,6 @@ export function armWarRoomOneShotHookRetirement(group, {
     previous?.(...args);
     completed = true;
     driver.userData.warRoomOneShotRetirementCompleted = key;
-    // Assign through the live object, not through a saved hook reference. This
-    // deliberately retires any static wrapper that may have been attached
-    // around this one after registration but before the first frame.
     driver.onBeforeRender = NOOP_RENDER_HOOK;
   };
 

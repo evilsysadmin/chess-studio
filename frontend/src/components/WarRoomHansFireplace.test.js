@@ -6,6 +6,7 @@ import {
   hansFireplaceFrame,
   installWarRoomHansFireplaceRoutine,
   shouldScheduleHansFireplace,
+  writeHansFireplaceFrame,
 } from './WarRoomHansFireplace.js';
 
 function makeRoom(x = -4.95) {
@@ -127,6 +128,26 @@ describe('Hans fireplace caretaker', () => {
     expect(complete.fireScale).toBe(1);
     expect(complete.removeBasketLog).toBe(true);
     expect(complete.showAddedLog).toBe(true);
+  });
+
+  it('reutiliza un único frame scratch sin arrastrar estado de la fase anterior', () => {
+    const scratch = {};
+    const takeLog = writeHansFireplaceFrame(scratch, HANS_FIREPLACE_START_DELAY_S + 11.6);
+    expect(takeLog).toBe(scratch);
+    expect({ ...takeLog }).toEqual(hansFireplaceFrame(HANS_FIREPLACE_START_DELAY_S + 11.6));
+    expect(takeLog.carryLog).toBe(true);
+
+    const complete = writeHansFireplaceFrame(scratch, HANS_FIREPLACE_START_DELAY_S + 33.1);
+    expect(complete).toBe(scratch);
+    expect({ ...complete }).toEqual(hansFireplaceFrame(HANS_FIREPLACE_START_DELAY_S + 33.1));
+    expect(complete.carryLog).toBe(false);
+    expect(complete.complete).toBe(true);
+
+    const waiting = writeHansFireplaceFrame(scratch, HANS_FIREPLACE_START_DELAY_S - 0.01);
+    expect(waiting).toBe(scratch);
+    expect({ ...waiting }).toEqual(hansFireplaceFrame(HANS_FIREPLACE_START_DELAY_S - 0.01));
+    expect(waiting.complete).toBe(false);
+    expect(waiting.removeBasketLog).toBe(false);
   });
 
   it('arma el cameo forzado sin depender del azar y conserva geometría determinista', () => {

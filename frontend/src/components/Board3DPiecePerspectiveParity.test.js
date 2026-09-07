@@ -1,0 +1,80 @@
+import * as THREE from 'three';
+import { describe, expect, it, vi } from 'vitest';
+import { resolveBoard3DCameraFov } from './Board3DConfig.js';
+import { buildPiece, disposeObject } from './Board3DPieces.js';
+import { fitBoardCamera } from './Board3DScene.js';
+
+function worldSize(root) {
+  root.updateMatrixWorld(true);
+  const size = new THREE.Vector3();
+  new THREE.Box3().setFromObject(root).getSize(size);
+  return size;
+}
+
+function projectedHeight(camera, z, height = 1) {
+  camera.updateMatrixWorld(true);
+  const bottom = new THREE.Vector3(0, 0.12, z).project(camera);
+  const top = new THREE.Vector3(0, 0.12 + height, z).project(camera);
+  return Math.abs(top.y - bottom.y);
+}
+
+describe('Board3D piece scale parity', () => {
+  it('construye la misma geometría física para blancas y negras por tipo', () => {
+    for (const type of ['p', 'n', 'b', 'r', 'q']) {
+      const white = buildPiece(type, 'w', 'studio', false);
+      const black = buildPiece(type, 'b', 'studio', false);
+      const whiteSize = worldSize(white);
+      const blackSize = worldSize(black);
+
+      expect(whiteSize.x, `${type}: ancho white/black`).toBeCloseTo(blackSize.x, 6);
+      expect(whiteSize.y, `${type}: alto white/black`).toBeCloseTo(blackSize.y, 6);
+      expect(whiteSize.z, `${type}: fondo white/black`).toBeCloseTo(blackSize.z, 6);
+
+      disposeObject(white);
+      disposeObject(black);
+    }
+  });
+
+  it('usa lente desktop más larga para que primera y última fila no parezcan sets de escalas distintas', () => {
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+    fitBoardCamera(camera, 1185, 730, true);
+
+    const nearHeight = projectedHeight(camera, 3.5);
+    const farHeight = projectedHeight(camera, -3.5);
+    const apparentScaleRatio = nearHeight / farHeight;
+
+    expect(resolveBoard3DCameraFov(1185 / 730)).toBe(29);
+    expect(camera.fov).toBe(29);
+    expect(apparentScaleRatio).toBeGreaterThan(1);
+    expect(apparentScaleRatio).toBeLessThan(1.33);
+  });
+
+  it('sube la cámara solo en landscape móvil para separar visualmente las filas', () => {
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+    vi.stubGlobal('window', {
+      innerWidth: 851,
+      matchMedia: vi.fn().mockImplementation((query) => ({ matches: query === '(pointer: coarse)' })),
+    });
+
+    try {
+      fitBoardCamera(camera, 851, 393, true);
+      const target = camera.userData.baseTarget;
+      const offset = camera.position.clone().sub(target);
+      const elevation = Math.atan2(offset.y, Math.abs(offset.z));
+
+      expect(camera.fov).toBe(34);
+      expect(camera.userData.framingProfile).toBe('mobile-v5-landscape-overhead');
+      expect(camera.userData.cameraDistance).toBeLessThan(16);
+      expect(THREE.MathUtils.radToDeg(elevation)).toBeGreaterThan(39);
+      expect(Math.abs(target.z)).toBeLessThanOrEqual(0.08);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('comprime también la perspectiva móvil sin reutilizar la lente desktop', () => {
+    expect(resolveBoard3DCameraFov(1.8)).toBe(29);
+    expect(resolveBoard3DCameraFov(1.1)).toBe(32);
+    expect(resolveBoard3DCameraFov(1.16, { mobile: true })).toBe(34);
+  });
+});

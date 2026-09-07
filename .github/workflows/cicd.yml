@@ -281,10 +281,15 @@ jobs:
         if: needs.preflight.outputs.run_frontend == 'true'
         run: make test-frontend
 
-      - name: Frontend build
+      # Los smokes experimentales siguen viviendo en este runner y necesitan un
+      # dist local. El frontend genérico/core no recompila aquí: consume el único
+      # build compartido que genera e2e_build para Playwright.
+      - name: Frontend build · targeted browser smoke only
+        if: needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true'
         run: make frontend-build
 
-      - name: Bundle size report
+      - name: Bundle size report · targeted-only path
+        if: (needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true') && needs.preflight.outputs.run_e2e != 'true' && needs.preflight.outputs.browser_has_cases != 'true'
         run: node scripts/bundle_size_report.mjs
 
       - name: Prepare security report
@@ -498,6 +503,9 @@ jobs:
       - name: Build frontend once for all required browser gates
         working-directory: frontend
         run: npm run build
+
+      - name: Bundle size report from shared build
+        run: node scripts/bundle_size_report.mjs
 
       - name: Upload immutable browser frontend
         uses: actions/upload-artifact@v7

@@ -1,5 +1,6 @@
 import { devices, expect, test } from '@playwright/test';
 import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
+import { resolveBoard3DCameraFov } from '../frontend/src/components/Board3DConfig.js';
 import { getWarRoomMobileFramingProfile } from '../frontend/src/components/WarRoomMobileFraming.js';
 
 test.use({ ...devices['Pixel 5'] });
@@ -31,7 +32,7 @@ function projectWarRoomSquare(rect, square, worldY = 0.12) {
   const profile = mobileProfile || (aspect >= 1.42
     ? { halfSpan: 5.38, padding: 1.07, minDistance: 13.2, maxDistance: 22.6, targetY: 1.08, targetZ: -0.16, cameraY: 7.35, cameraZ: 10.6 }
     : { halfSpan: 5.78, padding: 1.13, minDistance: 14.5, maxDistance: 25.6, targetY: 0.92, targetZ: -0.08, cameraY: 8.2, cameraZ: 10.72 });
-  const verticalFov = 40 * Math.PI / 180;
+  const verticalFov = resolveBoard3DCameraFov(aspect, { mobile: Boolean(mobileProfile) }) * Math.PI / 180;
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
   const limitingFov = Math.min(verticalFov, horizontalFov);
   const unclampedDistance = (profile.halfSpan / Math.tan(limitingFov / 2)) * profile.padding;
@@ -117,30 +118,87 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
 
   const board3d = page.locator('[data-board3d-war-room="true"]');
   const canvas = page.locator('.board3d-main-canvas');
+  const shell = page.locator('.board3d-main-shell');
   await expect(board3d).toBeVisible({ timeout: 30_000 });
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
+  // Real CSS owns the Android composition now. Do not inject a fake shell ratio:
+  // this lane should fail if mobile drifts back toward the old near-square board.
+  await expect.poll(async () => {
+    const rect = await shell.boundingBox();
+    return rect ? rect.width / Math.max(1, rect.height) : 0;
+  }).toBeGreaterThan(1.14);
+
+  // Android must keep the same narrative scene contract as desktop. This is
+  // deliberately checked on the Pixel/touch lane, not inferred from a desktop
+  // E2E: Partida rápida must create Hans in the actual Three.js scene.
+  const hansMarker = page.locator('[data-war-room-hans-quick-request="true"]');
+  await expect(hansMarker).toHaveCount(1);
+  await expect(hansMarker).toHaveAttribute('data-war-room-hans-runtime', 'visible', { timeout: 30_000 });
+  // Regression: `visible` is not enough. Hans used to spend the opening walk
+  // outside the portrait frustum while the test still passed. The first actual
+  // rendered frame on Pixel must put his world position inside the camera.
+  await expect(hansMarker).toHaveAttribute('data-war-room-hans-first-screen', 'onscreen', { timeout: 10_000 });
+  await expect(canvas).toHaveAttribute('data-war-room-hans-first-screen', 'onscreen', { timeout: 10_000 });
+  await expect(hansMarker).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 10_000 });
+  // The CI Pixel lane normally uses SwiftShader, where the War Room intentionally
+  // disables the idle heartbeat to protect pointer latency. Progression through
+  // the timed choreography is therefore covered by the coarse-pointer Three.js
+  // driver test; here we assert that Android installs the real onscreen rig and
+  // exposes a valid projected position rather than a hidden/fallback stand-in.
+  const hansNdcX = Number(await canvas.getAttribute('data-war-room-hans-ndc-x'));
+  const hansNdcY = Number(await canvas.getAttribute('data-war-room-hans-ndc-y'));
+  expect(Number.isFinite(hansNdcX)).toBe(true);
+  expect(Number.isFinite(hansNdcY)).toBe(true);
+  expect(Math.abs(hansNdcX)).toBeLessThanOrEqual(0.96);
+  expect(Math.abs(hansNdcY)).toBeLessThanOrEqual(0.96);
+
+  // A later mobile finalizer used to be able to leave only the hearth kit while
+  // the first frame briefly looked healthy. Give the scene a short settle window
+  // and require the actual Hans rig to remain installed and on camera.
+  await page.waitForTimeout(350);
+  await expect(hansMarker).toHaveAttribute('data-war-room-hans-runtime', 'visible');
+  await expect(hansMarker).toHaveAttribute('data-war-room-hans-screen', 'onscreen');
 
   const matthiasCard = page.locator('.game-3d-matthias-card');
   const focusButton = page.getByRole('button', { name: 'Focus', exact: true });
   const abandonButton = page.getByRole('button', { name: 'Abandonar partida', exact: true });
   const appearanceButton = page.locator('.board3d-customize');
+  const humanRail = page.locator('.game-board-stack-3d .game-player-rail.is-human');
+  const musicRail = page.locator('.game-side-column-3d .game-side-music .music-deck-collapsed');
+  const notationDisclosure = page.locator('.game-side-column-3d .game-notation-disclosure');
   await expect(matthiasCard).toBeVisible();
   await expect(focusButton).toBeVisible();
   await expect(abandonButton).toBeVisible();
   await expect(appearanceButton).toBeVisible();
+  await expect(humanRail).toBeVisible();
+  await expect(musicRail).toBeVisible();
+  await expect(notationDisclosure).toBeVisible();
 
   const matthiasRect = await matthiasCard.boundingBox();
   const boardRect = await board3d.boundingBox();
   const focusRect = await focusButton.boundingBox();
   const appearanceRect = await appearanceButton.boundingBox();
+  const humanRect = await humanRail.boundingBox();
+  const musicRect = await musicRail.boundingBox();
+  const notationRect = await notationDisclosure.boundingBox();
   expect(matthiasRect).not.toBeNull();
   expect(boardRect).not.toBeNull();
   expect(focusRect).not.toBeNull();
   expect(appearanceRect).not.toBeNull();
+  expect(humanRect).not.toBeNull();
+  expect(musicRect).not.toBeNull();
+  expect(notationRect).not.toBeNull();
   expect(matthiasRect.height).toBeLessThanOrEqual(72);
+  expect(humanRect.height).toBeLessThanOrEqual(50);
+  expect(musicRect.height).toBeLessThanOrEqual(50);
+  expect(notationRect.height).toBeLessThanOrEqual(50);
+  // Phone utilities share a single compact shelf instead of consuming two rows.
+  expect(Math.abs(musicRect.y - notationRect.y)).toBeLessThanOrEqual(2);
+  expect(musicRect.x).toBeLessThan(notationRect.x);
   expect(focusRect.y + focusRect.height).toBeLessThanOrEqual(boardRect.y + 2);
   expect(appearanceRect.y).toBeLessThan(boardRect.y + 90);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
 
   expect(await canvas.evaluate((element) => getComputedStyle(element).touchAction)).toBe('none');
   expect(await canvas.evaluate((element) => {
@@ -150,6 +208,7 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
 
   const rect = await canvas.boundingBox();
   expect(rect).not.toBeNull();
+  expect(rect.width / Math.max(1, rect.height)).toBeGreaterThan(1.14);
   const from = projectWarRoomSquare(rect, 'e2', 0.76);
   const to = projectWarRoomSquare(rect, 'e4');
   const cdp = await page.context().newCDPSession(page);

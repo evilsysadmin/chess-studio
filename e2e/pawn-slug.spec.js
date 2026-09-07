@@ -45,7 +45,10 @@ test('Pawn Slug · arranca con pistola y arsenal seleccionable sin tocar el ajed
   const arsenal = await startPawnSlug(page);
   await expect(page.getByText('OPERACIÓN BAUERNSCHLAG', { exact: true })).toBeVisible();
   await expect(arsenal).toBeVisible();
-  await expect(arsenal.getByRole('button', { name: /^1\. Dienstpistole$/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.pawn-slug-hud').getByText('Mk I · ∞', { exact: true })).toBeVisible();
+  const pistol = arsenal.getByRole('button', { name: /^1\. Dienstpistole$/ });
+  await expect(pistol).toHaveAttribute('aria-pressed', 'true');
+  await expect(pistol).toHaveAttribute('title', /Dienstpistole · Mk I/);
   await expect(arsenal.getByRole('button', { name: /^2\. MG-42 de bolsillo · no disponible$/ })).toBeDisabled();
   await expect(arsenal.getByRole('button', { name: /^3\. Escopeta diplomática · no disponible$/ })).toBeDisabled();
   await expect(arsenal.getByRole('button', { name: /^4\. Panzerfaust · no disponible$/ })).toBeDisabled();

@@ -1,6 +1,23 @@
 export const FILES = Object.freeze(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']);
 export const DISPLAY_RANKS = Object.freeze(['8', '7', '6', '5', '4', '3', '2', '1']);
 
+// Desktop and mobile both use a longer virtual lens than the historical 40°
+// camera. On phones the old wide-angle view exaggerated near/far piece scale
+// and made the front rank dominate the room. Mobile keeps its own framing
+// profile, but now uses a restrained 34° lens so the castle reads as a scene
+// instead of a board with a decorative strip glued behind it.
+export const BOARD3D_CAMERA_FOV = Object.freeze({
+  wide: 29,
+  compact: 32,
+  mobile: 34,
+});
+
+export function resolveBoard3DCameraFov(aspect, { mobile = false } = {}) {
+  if (mobile) return BOARD3D_CAMERA_FOV.mobile;
+  const safeAspect = Math.max(0.35, Number(aspect) || 1);
+  return safeAspect >= 1.42 ? BOARD3D_CAMERA_FOV.wide : BOARD3D_CAMERA_FOV.compact;
+}
+
 export const BOARD_THEME_3D = Object.freeze({
   classic: { light: 0xd9cfba, dark: 0x5a4236, frame: 0x34251f, felt: 0x111722, glow: 0xc9a227 },
   midnight: { light: 0xaab2bd, dark: 0x263244, frame: 0x111824, felt: 0x080d16, glow: 0x6f9fc5 },

@@ -54,9 +54,13 @@ describe('War Room command desk luxury dressing', () => {
     const lamp = luxury.getObjectByName('war-room-command-desk-strategy-lamp');
     expect(lamp).toBeTruthy();
     expect(lamp.userData.commandDeskRole).toBe('warm-strategy-lamp');
-    const lampLight = lamp.getObjectByName('war-room-command-desk-strategy-lamp-light');
-    expect(lampLight?.isPointLight).toBe(true);
-    expect(lampLight.castShadow).toBe(false);
+    expect(lamp.userData.warRoomRealLight).toBe('omitted-emissive-only-v1');
+    expect(lamp.getObjectByName('war-room-command-desk-strategy-lamp-light')).toBeUndefined();
+    let lampLights = 0;
+    lamp.traverse((object) => {
+      if (object.isLight) lampLights += 1;
+    });
+    expect(lampLights).toBe(0);
 
     const folio = luxury.getObjectByName('war-room-command-desk-campaign-folio');
     expect(folio).toBeTruthy();
@@ -83,7 +87,7 @@ describe('War Room command desk luxury dressing', () => {
     expect(applyWarRoomCommandDeskLuxury(root, { towardBoard: 1 })).toBe(0);
   });
 
-  it('keeps premium desk geometry and its extra light out of the coarse/mobile scene', () => {
+  it('keeps premium desk geometry and its retired light out of the coarse/mobile scene', () => {
     const { root, art, chair } = makeRoom();
     expect(applyWarRoomCommandDeskLuxury(root, { towardBoard: 1, coarsePointer: true })).toBe(0);
     expect(art.getObjectByName('war-room-command-desk-luxury-v1')).toBeFalsy();

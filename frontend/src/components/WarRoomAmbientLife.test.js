@@ -65,6 +65,27 @@ describe('War Room ambient life', () => {
     expect(room.userData.warRoomAmbientLifeMaterialCount).toBe(1);
   });
 
+  it('caches curtain and material refs instead of traversing the castle every heartbeat', () => {
+    const { room, driver } = makeRoom({ sharedMaterial: false });
+    const originalTraverse = room.traverse.bind(room);
+    let traversals = 0;
+    room.traverse = (callback) => {
+      traversals += 1;
+      return originalTraverse(callback);
+    };
+
+    expect(installWarRoomAmbientLife(room)).toBe(1);
+    expect(traversals).toBe(1);
+    expect(room.userData.warRoomAmbientLifeRefCache).toBe('warm');
+    expect(room.userData.warRoomAmbientLifeFoldCount).toBe(4);
+    expect(room.userData.warRoomAmbientLifeMaterialCount).toBe(4);
+
+    driver.onBeforeRender();
+    driver.onBeforeRender();
+    driver.onBeforeRender();
+    expect(traversals).toBe(1);
+  });
+
   it('adds only a restrained warm response to the existing velvet material', () => {
     const { room } = makeRoom();
     const fold = room.getObjectByName('war-room-velvet-curtain-fold');
@@ -96,23 +117,28 @@ describe('War Room ambient life', () => {
     expect(fold.material.emissiveIntensity).toBeCloseTo(0.055, 6);
   });
 
-  it('chains the dynamic floor driver and leaves the static wall hook untouched', () => {
+  it('chains the dynamic floor driver with direct native render args and leaves the static wall hook untouched', () => {
     const { room, driver, wall } = makeRoom();
-    let previousCalls = 0;
+    const seenArgs = [];
     let wallCalls = 0;
-    driver.onBeforeRender = () => { previousCalls += 1; };
+    driver.onBeforeRender = (renderer, scene, camera, geometry, material, renderGroup) => {
+      seenArgs.push([renderer, scene, camera, geometry, material, renderGroup]);
+    };
     wall.onBeforeRender = () => { wallCalls += 1; };
     const wallHook = wall.onBeforeRender;
 
     expect(installWarRoomAmbientLife(room)).toBe(1);
     expect(installWarRoomAmbientLife(room)).toBe(0);
     expect(driver.userData.warRoomAmbientLifeDriver).toBe(WAR_ROOM_AMBIENT_LIFE_VERSION);
+    expect(driver.userData.warRoomAmbientLifeHotPath).toBe('direct-args-options-reuse-v1');
     expect(room.userData.warRoomAmbientLifeAnchor).toBe('war-room-castle-floor-slab');
+    expect(room.userData.warRoomAmbientLifeHotPath).toBe('direct-args-options-reuse-v1');
     expect(wall.onBeforeRender).toBe(wallHook);
     expect(typeof driver.onBeforeRender).toBe('function');
 
-    driver.onBeforeRender();
-    expect(previousCalls).toBe(1);
+    const args = Array.from({ length: 6 }, (_, index) => ({ index }));
+    driver.onBeforeRender(...args);
+    expect(seenArgs).toEqual([args]);
     expect(wallCalls).toBe(0);
     expect(room.userData.warRoomAmbientLifeVersion).toBe(WAR_ROOM_AMBIENT_LIFE_VERSION);
   });

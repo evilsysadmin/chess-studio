@@ -10,36 +10,40 @@ import {
 } from './chesscomBabylonPremium.js';
 
 describe('Chesscom Babylon tactical movement', () => {
-  it('uses a bounded easing curve with exact endpoints', () => {
+  it('uses a bounded easing curve with exact endpoints and soft acceleration', () => {
     expect(chesscomMovementEase(-1)).toBe(0);
     expect(chesscomMovementEase(0)).toBe(0);
     expect(chesscomMovementEase(.5)).toBe(.5);
     expect(chesscomMovementEase(1)).toBe(1);
     expect(chesscomMovementEase(2)).toBe(1);
+    expect(chesscomMovementEase(.1)).toBeLessThan(.02);
     expect(chesscomMovementEase(.25)).toBeLessThan(.25);
     expect(chesscomMovementEase(.75)).toBeGreaterThan(.75);
+    expect(chesscomMovementEase(.9)).toBeGreaterThan(.98);
   });
 
-  it('keeps tactical travel quick but gives longer moves time to read', () => {
+  it('keeps tactical travel readable instead of snapping units across the board', () => {
     const oneTile = chesscomMovementDuration(1.55);
     const threeTiles = chesscomMovementDuration(4.65);
-    expect(oneTile).toBeGreaterThanOrEqual(280);
+    expect(oneTile).toBeGreaterThanOrEqual(600);
+    expect(oneTile).toBeLessThan(800);
     expect(threeTiles).toBeGreaterThan(oneTile);
-    expect(threeTiles).toBeLessThanOrEqual(620);
+    expect(threeTiles).toBeLessThanOrEqual(1180);
   });
 
-  it('adds visible footfalls without leaving the unit floating at either endpoint', () => {
+  it('adds restrained footfalls without leaving the unit floating at either endpoint', () => {
     expect(chesscomMovementLift(0, 2)).toBe(0);
     expect(chesscomMovementLift(1, 2)).toBe(0);
-    expect(chesscomMovementLift(.25, 2)).toBeGreaterThan(.05);
-    expect(chesscomMovementLift(.75, 2)).toBeGreaterThan(.05);
+    expect(chesscomMovementLift(.25, 2)).toBeGreaterThan(.04);
+    expect(chesscomMovementLift(.75, 2)).toBeGreaterThan(.04);
+    expect(chesscomMovementLift(.25, 2)).toBeLessThan(.07);
   });
 
   it('moves operative Matthias with articulated legs instead of pawn hopping', () => {
     const genericLift = chesscomMovementLift(.25, 2);
     const operativeLift = chesscomOperativeMovementLift(.25, 2);
     expect(operativeLift).toBeGreaterThan(0);
-    expect(operativeLift).toBeLessThan(genericLift * .25);
+    expect(operativeLift).toBeLessThan(genericLift * .15);
     expect(chesscomOperativeMovementLift(0, 2)).toBe(0);
     expect(chesscomOperativeMovementLift(1, 2)).toBe(0);
   });

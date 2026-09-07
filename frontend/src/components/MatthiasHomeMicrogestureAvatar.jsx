@@ -48,11 +48,17 @@ import {
   clearMatthiasHomePrivateGameRig,
   MATTHIAS_PRIVATE_GAME_RIG_VERSION,
 } from './matthiasHomePrivateGameRig.js';
+import {
+  applyMatthiasStrategyBookletRig,
+  clearMatthiasStrategyBookletRig,
+  MATTHIAS_STRATEGY_BOOKLET_RIG_VERSION,
+} from './matthiasStrategyBookletRig.js';
 import { matthiasPawnPoseSample } from './MatthiasPawn3D.js';
 import './MatthiasThreeAvatar.css';
 
 export const MATTHIAS_HOME_FACE_WARP_LIMIT = .019;
 export const MATTHIAS_HOME_MICROGESTURE_VERSION = 'home-face-v3-premium';
+export const MATTHIAS_HOME_DIAGNOSTIC_INTERVAL_MS = 500;
 
 function normalizeIntensity(value) {
   const parsed = Number(value);
@@ -65,6 +71,18 @@ function semanticCue(value = '') {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
+}
+
+export function matthiasHomeNeedsCanonicalFallback(avatar) {
+  return !String(avatar || '').trim();
+}
+
+export function matthiasHomeDiagnosticsDue({
+  frames = 0,
+  stamp = 0,
+  lastPublishedAt = -Infinity,
+} = {}) {
+  return frames <= 1 || stamp - lastPublishedAt >= MATTHIAS_HOME_DIAGNOSTIC_INTERVAL_MS;
 }
 
 export function matthiasHomeActivityProfile({ scene = '', activity = '' } = {}) {
@@ -247,9 +265,14 @@ export default function MatthiasHomeMicrogestureAvatar({
     return () => window.clearTimeout(timer);
   }, [machine.lastAmbient, machine.mode, profile, reducedMotion, speaking]);
 
-  // The original approved bitmap remains only as startup/failure fallback.
+  // Scene art already provides the startup/failure bitmap in the normal Home
+  // path. Only fetch and decode the canonical fallback when no scene avatar was
+  // supplied at all; otherwise the network/cache read could never win `avatar || canonicalSrc`.
   useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
+    if (!matthiasHomeNeedsCanonicalFallback(avatar) || typeof window === 'undefined') {
+      setCanonicalSrc('');
+      return undefined;
+    }
     let cancelled = false;
     request(MATTHIAS_CANONICAL_ASSET_URL, { cache: 'force-cache' })
       .then((response) => {
@@ -261,12 +284,12 @@ export default function MatthiasHomeMicrogestureAvatar({
         if (!cancelled) setCanonicalSrc(src);
       })
       .catch(() => {
-        // 3D does not depend on this asset; caller-provided avatar still exists.
+        // 3D remains independent from the fallback asset.
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [avatar]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -285,6 +308,7 @@ export default function MatthiasHomeMicrogestureAvatar({
     let inViewport = true;
     let documentVisible = typeof document === 'undefined' || document.visibilityState !== 'hidden';
     let lastRenderedAt = -Infinity;
+    let lastDiagnosticsAt = -Infinity;
 
     setReady(false);
     setFailed(false);
@@ -423,7 +447,16 @@ export default function MatthiasHomeMicrogestureAvatar({
       } else {
         clearMatthiasHomePrivateGameRig(rig);
       }
-      applyMatthiasHomePropContactRig(rig);
+      if (rig.root.userData.activityProp === 'book') {
+        applyMatthiasStrategyBookletRig(rig, {
+          ...pose,
+          activityReducedMotion: reducedMotion,
+          activitySpeaking: speakingRef.current,
+        });
+      } else {
+        clearMatthiasStrategyBookletRig(rig);
+        applyMatthiasHomePropContactRig(rig);
+      }
       renderer.render(scene3d, camera);
 
       frames += 1;
@@ -438,7 +471,8 @@ export default function MatthiasHomeMicrogestureAvatar({
         setReady(true);
         root.dataset.threeReady = 'true';
       }
-      if (frames % 6 === 0 || frames === 1) {
+      if (matthiasHomeDiagnosticsDue({ frames, stamp, lastPublishedAt: lastDiagnosticsAt })) {
+        lastDiagnosticsAt = stamp;
         const currentCue = matthiasHomeFacialCue({
           profile: profileRef.current,
           presenceState: modeRef.current,
@@ -530,6 +564,7 @@ export default function MatthiasHomeMicrogestureAvatar({
       data-three-activity-ergonomics={MATTHIAS_HOME_PROP_ERGONOMICS_VERSION}
       data-three-prop-contact-rig={MATTHIAS_HOME_PROP_CONTACT_RIG_VERSION}
       data-three-private-game-rig={MATTHIAS_PRIVATE_GAME_RIG_VERSION}
+      data-three-strategy-booklet-rig={MATTHIAS_STRATEGY_BOOKLET_RIG_VERSION}
       data-three-activity-prop={activityProp}
       data-three-activity-reach="0"
       data-three-motion={reducedMotion ? 'reduced' : 'active'}

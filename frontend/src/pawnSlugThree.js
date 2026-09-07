@@ -3,35 +3,65 @@ import { duckAmbientMusic } from './sound.js';
 import {
   PAWN_SLUG_ENEMIES,
   PAWN_SLUG_PICKUPS,
+  PAWN_SLUG_PLAYER,
   PAWN_SLUG_SPAWNS,
   PAWN_SLUG_WEAPON_ORDER,
   PAWN_SLUG_WEAPONS,
   PAWN_SLUG_WORLD,
+  pawnSlugAmmoForPickup,
+  pawnSlugDamageMultiplier,
+  pawnSlugLevelForXp,
+  pawnSlugLevelProgress,
   pawnSlugMatthiasLine,
+  pawnSlugMaxHpForLevel,
   pawnSlugPickupCopy,
   pawnSlugScoreForKill,
   pawnSlugWeaponLabel,
   pawnSlugWeaponShortLabel,
+  pawnSlugWeaponStatsForLevel,
+  pawnSlugWeaponUpgradeCrossed,
+  pawnSlugXpForKill,
+  pawnSlugXpForLevel,
 } from './pawnSlug.js';
 import {
   animateSlugEnemy,
-  createBulletModel,
   createExplosionParticle,
   createGrenadeModel,
   createMatthiasSlugModel,
-  createMuzzleFlash,
   createPickupModel,
   createSlugEnemyModel,
   createSlugEnvironment,
   disposePawnSlugObject,
 } from './pawnSlugArt.js';
+import { createPawnSlugPremiumLandmarks } from './pawnSlugLandmarks.js';
+import { pawnSlugMatthiasLocomotion } from './pawnSlugMotionPolish.js';
+import {
+  animatePremiumMuzzleFlash,
+  animatePremiumProjectile,
+  createPremiumBulletModel,
+  createPremiumMuzzleFlash,
+} from './pawnSlugPremiumFx.js';
+import {
+  PAWN_SLUG_STURM_BISHOP_META,
+  animateSturmBishopModel,
+  createSturmBishopModel,
+  pawnSlugSturmBishopCooldownTick,
+  pawnSlugSturmBishopSuppressionLane,
+  pawnSlugSturmBishopSuppressionTelegraph,
+  pawnSlugSturmBishopTelegraph,
+} from './pawnSlugMidBoss.js';
 import { animateMatthiasSlugSprite } from './pawnSlugSprites.js';
+import {
+  PAWN_SLUG_RUNTIME_HOT_PATH,
+  pawnSlugFirstHitEnemyIndex,
+  pawnSlugRectsOverlap,
+} from './pawnSlugRuntimeHotPath.js';
 
 const WORLD_SCALE = 1 / 40;
 const VIEW_W = 24;
 const VIEW_H = 13.5;
 const GROUND_Y = 0;
-const PLAYER_SPEED = 6.2;
+const PLAYER_SPEED = 6.35;
 const PLAYER_JUMP = 8.4;
 const GRAVITY = 22;
 const PLAYER_W = 0.82;
@@ -47,14 +77,6 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function boxFor(entity, w = entity.w, h = entity.h) {
-  return { x: entity.x - w / 2, y: entity.y, w, h };
-}
-
-function overlaps(a, b) {
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
-}
-
 function createInitialArsenal() {
   return Object.fromEntries(PAWN_SLUG_WEAPON_ORDER.map((id) => [
     id,
@@ -66,6 +88,7 @@ function createInitialArsenal() {
 }
 
 function initialState() {
+  const maxHp = pawnSlugMaxHpForLevel(1);
   return {
     phase: 'ready',
     time: 0,
@@ -97,7 +120,10 @@ function initialState() {
       dir: 1,
       onGround: true,
       crouch: false,
-      hp: 100,
+      hp: maxHp,
+      maxHp,
+      xp: 0,
+      level: 1,
       lives: 3,
       grenades: 4,
       weapon: 'pistol',
@@ -106,6 +132,11 @@ function initialState() {
       fireCooldown: 0,
       invuln: 0,
       flash: 0,
+      landing: 0,
+      recoil: 0,
+      moving: false,
+      moveStartedAt: 0,
+      stoppedAt: Number.NEGATIVE_INFINITY,
     },
   };
 }
@@ -167,6 +198,7 @@ function createSfx() {
       else if (kind === 'grenade') { noise(0.28, 0.36); tone(58, 0.24, 'triangle', 0.3, -25); }
       else if (kind === 'hit') tone(105, 0.06, 'square', 0.13, -35);
       else if (kind === 'pickup') { tone(440, 0.08, 'square', 0.15, 220); setTimeout(() => tone(660, 0.09, 'square', 0.12, 220), 45); }
+      else if (kind === 'levelUp') { tone(392, 0.08, 'triangle', 0.16, 120); setTimeout(() => tone(523, 0.09, 'triangle', 0.14, 160), 70); setTimeout(() => tone(784, 0.12, 'triangle', 0.12, 120), 145); }
       else if (kind === 'hurt') { noise(0.08, 0.14); tone(84, 0.13, 'sawtooth', 0.18, -30); }
       else if (kind === 'boss') { tone(55, 0.32, 'sawtooth', 0.22, 22); setTimeout(() => tone(73, 0.32, 'sawtooth', 0.18, -18), 180); }
     },
@@ -198,10 +230,17 @@ function arsenalHud(player) {
 
 function hud(state) {
   const boss = state.enemies.find((enemy) => enemy.type === 'boss' && !enemy.dead);
+  const midBoss = state.enemies.find((enemy) => enemy.type === 'bishop' && !enemy.dead);
   const player = state.player;
+  const nextLevelXp = player.level >= PAWN_SLUG_PLAYER.maxLevel ? null : pawnSlugXpForLevel(player.level + 1);
   return {
     phase: state.phase,
     hp: Math.max(0, Math.ceil(player.hp)),
+    maxHp: Math.max(1, Math.ceil(player.maxHp)),
+    level: player.level,
+    xp: Math.max(0, Math.floor(player.xp)),
+    xpProgress: pawnSlugLevelProgress(player.xp, player.level),
+    xpToNext: nextLevelXp == null ? null : Math.max(0, nextLevelXp - player.xp),
     lives: player.lives,
     weapon: player.weapon,
     weaponLabel: pawnSlugWeaponLabel(player.weapon),
@@ -211,6 +250,9 @@ function hud(state) {
     score: Math.floor(state.score),
     combo: state.combo,
     progress: clamp(player.x / wx(PAWN_SLUG_WORLD.extractionX), 0, 1),
+    midBossHp: midBoss ? Math.max(0, Math.ceil(midBoss.hp)) : null,
+    midBossMaxHp: midBoss?.maxHp || null,
+    midBossLabel: midBoss ? PAWN_SLUG_STURM_BISHOP_META.label : null,
     bossHp: boss ? Math.max(0, Math.ceil(boss.hp)) : null,
     bossMaxHp: boss?.maxHp || null,
     toast: state.time <= state.toastUntil || ['ready', 'gameover', 'victory'].includes(state.phase) ? state.toast : '',
@@ -230,6 +272,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   renderer.shadowMap.enabled = !coarse;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   host.replaceChildren(renderer.domElement);
+  host.dataset.pawnSlugRuntimeHotPath = PAWN_SLUG_RUNTIME_HOT_PATH;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x141921);
@@ -250,7 +293,8 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   rim.position.set(8, 6, -10);
   scene.add(rim);
 
-  const { far: farEnvironment } = createSlugEnvironment(scene);
+  const { root: environmentRoot, far: farEnvironment } = createSlugEnvironment(scene);
+  createPawnSlugPremiumLandmarks(environmentRoot, { coarse });
   const dynamic = new THREE.Group();
   const projectileLayer = new THREE.Group();
   const fxLayer = new THREE.Group();
@@ -277,6 +321,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     crouch: false,
   };
   const sfx = createSfx();
+  const projectileAnimationOptions = { time: 0, explosive: false };
 
   function setAmbientDuck(enabled) {
     if (ambientDucked === enabled) return;
@@ -336,7 +381,10 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     player.weapon = id;
     player.ammo = player.arsenal[id].ammo;
     playerModel.userData.setWeapon?.(id);
-    if (announce) setToast(`ARMA // ${pawnSlugWeaponLabel(id)}`, 1.15);
+    if (announce) {
+      const upgrade = pawnSlugWeaponStatsForLevel(id, player.level);
+      setToast(`ARMA // ${pawnSlugWeaponLabel(id)} · ${upgrade.upgradeCode}`, 1.15);
+    }
     emitHud(true);
     return true;
   }
@@ -355,7 +403,8 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     const slot = state.player.arsenal[id];
     if (!weapon || !slot) return false;
     slot.unlocked = true;
-    if (Number.isFinite(weapon.ammo)) slot.ammo += weapon.ammo;
+    const pickupAmmo = pawnSlugAmmoForPickup(id, state.player.level);
+    if (Number.isFinite(pickupAmmo)) slot.ammo += pickupAmmo;
     else slot.ammo = Infinity;
     selectWeapon(id, { announce: false });
     return true;
@@ -386,9 +435,10 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
 
   function createEnemy(spawn) {
     const stats = PAWN_SLUG_ENEMIES[spawn.type];
-    const model = createSlugEnemyModel(spawn.type);
+    const midBoss = spawn.type === 'bishop';
+    const model = midBoss ? createSturmBishopModel() : createSlugEnemyModel(spawn.type);
     const x = wx(spawn.x);
-    model.position.set(x, 0, 0);
+    model.position.set(x, 0, midBoss ? 0.08 : 0);
     dynamic.add(model);
     const enemy = {
       id: spawn.id,
@@ -405,13 +455,24 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       vx: 0,
       vy: 0,
       onGround: true,
-      fireCooldown: 0.45 + Math.random() * 0.8,
+      fireCooldown: midBoss ? 0.75 : 0.45 + Math.random() * 0.8,
+      shellCooldown: midBoss ? 1.65 + Math.random() * 0.45 : null,
+      suppressionCooldown: midBoss ? 2.35 + Math.random() * 0.7 : null,
+      suppressionShots: 0,
+      suppressionShotIndex: 0,
+      suppressionShotCooldown: 0,
       leapCooldown: 0.7 + Math.random() * 1.2,
       hurt: 0,
       dead: false,
       model,
     };
     state.enemies.push(enemy);
+    if (midBoss) {
+      state.hitStop = Math.max(state.hitStop, reducedMotion ? 0 : 0.08);
+      state.shake = Math.max(state.shake, reducedMotion ? 0 : 0.18);
+      setToast(`${PAWN_SLUG_STURM_BISHOP_META.label} // ${pawnSlugMatthiasLine('midBoss')}`, 3);
+      sfx.play('boss');
+    }
     return enemy;
   }
 
@@ -461,27 +522,28 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     if (state.player.x >= wx(PAWN_SLUG_WORLD.bossX - 720)) createBoss();
   }
 
-  function addFlash(x, y, dir = 1) {
-    const model = createMuzzleFlash();
+  function addFlash(x, y, dir = 1, weapon = 'pistol', enemy = false) {
+    const model = createPremiumMuzzleFlash({ enemy, weapon });
     model.position.set(x, y, 0.35);
     model.scale.x *= dir;
     fxLayer.add(model);
-    state.flashes.push({ model, life: 0.07 });
+    const life = model.userData.life || 0.07;
+    state.flashes.push({ model, life, maxLife: life });
   }
 
-  function addBullet({ x, y, vx, vy = 0, damage, enemy = false, explosive = false, life = 2.8 }) {
-    const model = createBulletModel({ enemy, explosive });
+  function addBullet({ x, y, vx, vy = 0, damage, enemy = false, explosive = false, life = 2.8, weapon = 'pistol' }) {
+    const model = createPremiumBulletModel({ enemy, explosive, weapon });
     model.position.set(x, y, 0.3);
     if (vx < 0) model.scale.x = -1;
     projectileLayer.add(model);
-    state.bullets.push({ x, y, vx, vy, damage, enemy, explosive, life, w: explosive ? 0.45 : 0.15, h: explosive ? 0.22 : 0.12, model });
+    state.bullets.push({ x, y, vx, vy, damage, enemy, explosive, life, weapon, w: explosive ? 0.45 : 0.15, h: explosive ? 0.22 : 0.12, model });
   }
 
   function firePlayerWeapon() {
     const player = state.player;
     if (player.fireCooldown > 0 || state.phase !== 'playing') return false;
     const weaponId = player.weapon;
-    const weapon = PAWN_SLUG_WEAPONS[weaponId] || PAWN_SLUG_WEAPONS.pistol;
+    const weapon = pawnSlugWeaponStatsForLevel(weaponId, player.level);
     if (Number.isFinite(player.ammo) && player.ammo <= 0) {
       selectWeapon('pistol', { announce: false });
       setToast('Munición agotada. Vuelta al hierro reglamentario.', 1.7);
@@ -489,6 +551,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     }
 
     player.fireCooldown = weapon.cadence / 1000;
+    player.recoil = weaponId === 'panzerfaust' ? 0.12 : weaponId === 'shotgun' ? 0.085 : weaponId === 'machinegun' ? 0.04 : 0.055;
     if (Number.isFinite(player.ammo)) {
       player.ammo -= 1;
       player.arsenal[weaponId].ammo = player.ammo;
@@ -497,6 +560,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     const muzzleX = player.x + dir * 1.05;
     const muzzleY = player.y + (player.crouch ? 0.72 : 1.12);
     const baseSpeed = weapon.speed * WORLD_SCALE;
+    const damage = weapon.damage;
     for (let pellet = 0; pellet < weapon.pellets; pellet += 1) {
       const spread = (Math.random() * 2 - 1) * weapon.spread;
       addBullet({
@@ -504,11 +568,12 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
         y: muzzleY,
         vx: dir * baseSpeed * Math.cos(spread),
         vy: baseSpeed * Math.sin(spread),
-        damage: weapon.damage,
+        damage,
         explosive: Boolean(weapon.explosive),
+        weapon: weaponId,
       });
     }
-    addFlash(muzzleX, muzzleY, dir);
+    addFlash(muzzleX, muzzleY, dir, weaponId, false);
     sfx.play(weaponId);
 
     if (Number.isFinite(player.ammo) && player.ammo <= 0) {
@@ -540,13 +605,33 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
 
   function fireEnemy(enemy, explosive = false) {
     const dir = enemy.x >= state.player.x ? -1 : 1;
-    const y = enemy.y + (enemy.type === 'boss' ? 1.9 : enemy.type === 'rook' ? 1.15 : 0.88);
+    const y = enemy.y + (enemy.type === 'boss' ? 1.9 : enemy.type === 'bishop' ? 1.55 : enemy.type === 'rook' ? 1.15 : 0.88);
     const speed = explosive ? 5.6 : ENEMY_BULLET_SPEED;
     const targetDy = (state.player.y + 0.8) - y;
     const distance = Math.max(1, Math.abs(state.player.x - enemy.x));
     const vy = clamp(targetDy / distance * speed, -2.4, 2.4);
-    addBullet({ x: enemy.x + dir * (enemy.type === 'boss' ? 2 : 0.7), y, vx: dir * speed, vy, damage: explosive ? 30 : 13, enemy: true, explosive, life: 4 });
-    addFlash(enemy.x + dir * (enemy.type === 'boss' ? 2 : 0.7), y, dir);
+    const muzzleOffset = enemy.type === 'boss' ? 2 : enemy.type === 'bishop' ? 1.05 : 0.7;
+    addBullet({ x: enemy.x + dir * muzzleOffset, y, vx: dir * speed, vy, damage: explosive ? (enemy.type === 'bishop' ? 24 : 30) : (enemy.type === 'bishop' ? 15 : 13), enemy: true, explosive, life: 4, weapon: 'enemy' });
+    addFlash(enemy.x + dir * muzzleOffset, y, dir, explosive ? 'panzerfaust' : 'pistol', true);
+  }
+
+  function fireBishopSuppression(enemy, shotIndex) {
+    const lane = pawnSlugSturmBishopSuppressionLane(shotIndex);
+    const dir = enemy.x >= state.player.x ? -1 : 1;
+    const x = enemy.x + dir * 1.05;
+    const y = enemy.y + lane.height;
+    addBullet({
+      x,
+      y,
+      vx: dir * lane.speed,
+      vy: 0,
+      damage: lane.damage,
+      enemy: true,
+      explosive: false,
+      life: 3.2,
+      weapon: 'enemy',
+    });
+    addFlash(x, y, dir, 'machinegun', true);
   }
 
   function burst(x, y, strength = 1, fiery = true) {
@@ -578,6 +663,34 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     }
   }
 
+  function grantXp(type) {
+    const gained = pawnSlugXpForKill(type);
+    if (!gained) return;
+    const player = state.player;
+    const previousLevel = player.level;
+    player.xp += gained;
+    player.level = pawnSlugLevelForXp(player.xp);
+    if (player.level <= previousLevel) return;
+
+    const previousMaxHp = player.maxHp;
+    player.maxHp = pawnSlugMaxHpForLevel(player.level);
+    player.hp = Math.min(player.maxHp, player.hp + (player.maxHp - previousMaxHp) + 24);
+    state.score += (player.level - previousLevel) * 250;
+    state.hitStop = Math.max(state.hitStop, reducedMotion ? 0 : 0.08);
+    state.shake = Math.max(state.shake, reducedMotion ? 0 : 0.1);
+    sfx.play('levelUp');
+
+    const promotions = PAWN_SLUG_WEAPON_ORDER
+      .filter((id) => player.arsenal[id]?.unlocked)
+      .map((id) => ({ id, upgrade: pawnSlugWeaponUpgradeCrossed(id, previousLevel, player.level) }))
+      .filter(({ upgrade }) => Boolean(upgrade));
+    const promotionCopy = promotions
+      .map(({ id, upgrade }) => `${pawnSlugWeaponShortLabel(id)} ${upgrade.code}`)
+      .join(' · ');
+    if (promotionCopy) setToast(`NIVEL ${player.level} // ${promotionCopy}. ${pawnSlugMatthiasLine('weaponUp')}`, 3.1);
+    else setToast(`NIVEL ${player.level} // ${pawnSlugMatthiasLine('levelUp')}`, 2.6);
+  }
+
   function damageEnemy(enemy, amount) {
     if (enemy.dead) return;
     enemy.hp -= amount;
@@ -588,9 +701,14 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     state.score += pawnSlugScoreForKill(enemy.type) * Math.max(1, state.combo || 1);
     state.combo = state.time <= state.comboUntil ? Math.min(9, state.combo + 1) : 1;
     state.comboUntil = state.time + 2.2;
-    state.hitStop = Math.max(state.hitStop, reducedMotion ? 0 : enemy.type === 'boss' ? 0.22 : 0.035);
-    burst(enemy.x, enemy.y + enemy.h * 0.5, enemy.type === 'boss' ? 2.4 : 0.9, true);
+    grantXp(enemy.type);
+    state.hitStop = Math.max(state.hitStop, reducedMotion ? 0 : enemy.type === 'boss' ? 0.22 : enemy.type === 'bishop' ? 0.11 : 0.035);
+    burst(enemy.x, enemy.y + enemy.h * 0.5, enemy.type === 'boss' ? 2.4 : enemy.type === 'bishop' ? 1.45 : 0.9, true);
     enemy.model.visible = false;
+    if (enemy.type === 'bishop') {
+      state.score += 500;
+      state.shake = Math.max(state.shake, reducedMotion ? 0 : 0.28);
+    }
     if (enemy.type === 'boss') {
       state.bossDefeated = true;
       state.score += 2500;
@@ -626,8 +744,10 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     player.y = 0;
     player.vx = 0;
     player.vy = 0;
-    player.hp = 100;
+    player.hp = player.maxHp;
     player.invuln = 1.8;
+    player.moving = false;
+    player.stoppedAt = state.time;
     selectWeapon('pistol', { announce: false });
     camera.position.x = Math.max(VIEW_W / 2, player.x + VIEW_W * 0.14);
     setToast(`Vida menos. Reagrupando en ${Math.round(player.x / WORLD_SCALE)} m. Pistola fuera.`, 2.2);
@@ -642,10 +762,30 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       running: Math.abs(player.vx) > 0.7 && player.onGround,
       crouch: player.crouch,
       airborne: !player.onGround,
-      firing: player.fireCooldown > 0,
+      firing: player.recoil > 0,
       dir: player.dir,
       hurt: player.flash > 0,
     });
+
+    if (player.onGround && !player.crouch) {
+      const locomotion = pawnSlugMatthiasLocomotion({
+        time: state.time,
+        moving: player.moving,
+        speedRatio: Math.abs(player.vx) / PLAYER_SPEED,
+        moveStartedAt: player.moveStartedAt,
+        stoppedAt: player.stoppedAt,
+      });
+      if (locomotion.action === 'walk') {
+        const frameIndex = locomotion.frame ?? Math.floor(state.time * 8.4) % 9;
+        playerModel.userData.setActionFrame?.('walk', frameIndex);
+      }
+    }
+
+    if (player.landing > 0 && !reducedMotion) {
+      const landing = clamp(player.landing / 0.12, 0, 1);
+      playerModel.scale.y *= 1 - landing * 0.055;
+      playerModel.scale.x *= 1 + landing * 0.035;
+    }
   }
 
   function updatePlayer(dt) {
@@ -653,13 +793,18 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     player.fireCooldown = Math.max(0, player.fireCooldown - dt);
     player.invuln = Math.max(0, player.invuln - dt);
     player.flash = Math.max(0, player.flash - dt);
+    player.recoil = Math.max(0, player.recoil - dt);
+    player.landing = Math.max(0, player.landing - dt);
     player.crouch = input.crouch && player.onGround;
 
     const axis = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     if (axis) player.dir = axis;
     const speed = PLAYER_SPEED * (player.crouch ? 0.3 : 1);
-    player.vx += ((axis * speed) - player.vx) * Math.min(1, dt * (player.onGround ? 14 : 6));
-    if (!axis) player.vx *= Math.max(0, 1 - dt * (player.onGround ? 11 : 2));
+    const targetVx = axis * speed;
+    const response = axis
+      ? (player.onGround ? 11.5 : 5.4)
+      : (player.onGround ? 8.2 : 2.25);
+    player.vx += (targetVx - player.vx) * (1 - Math.exp(-response * dt));
 
     if (input.jump && player.onGround && !player.crouch) {
       player.vy = PLAYER_JUMP;
@@ -667,6 +812,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       input.jump = false;
     }
 
+    const wasOnGround = player.onGround;
     player.vy -= GRAVITY * dt;
     player.x += player.vx * dt;
     player.y += player.vy * dt;
@@ -674,7 +820,16 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       player.y = GROUND_Y;
       player.vy = 0;
       player.onGround = true;
+      if (!wasOnGround) player.landing = 0.12;
     }
+
+    const movingNow = Math.abs(player.vx) > 0.18 && player.onGround && !player.crouch;
+    if (movingNow && !player.moving) player.moveStartedAt = state.time;
+    if (!movingNow && player.moving) player.stoppedAt = state.time;
+    player.moving = movingNow;
+
+    const blockingMidBoss = state.enemies.find((enemy) => enemy.type === 'bishop' && !enemy.dead && player.x <= enemy.x && enemy.x - player.x < 7.5);
+    if (blockingMidBoss) player.x = Math.min(player.x, blockingMidBoss.x - 1.3);
 
     const bossAlive = state.enemies.some((enemy) => enemy.type === 'boss' && !enemy.dead);
     const bossArenaLeft = wx(PAWN_SLUG_WORLD.bossX - 570);
@@ -732,6 +887,61 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
           fireEnemy(enemy, false);
           enemy.fireCooldown = 1.35 + Math.random() * 0.5;
         }
+      } else if (enemy.type === 'bishop') {
+        enemy.shellCooldown = pawnSlugSturmBishopCooldownTick(
+          enemy.shellCooldown,
+          distance,
+          PAWN_SLUG_STURM_BISHOP_META.shellRange,
+          PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds,
+          dt,
+        );
+        enemy.suppressionCooldown = pawnSlugSturmBishopCooldownTick(
+          enemy.suppressionCooldown,
+          distance,
+          PAWN_SLUG_STURM_BISHOP_META.suppressionRange,
+          PAWN_SLUG_STURM_BISHOP_META.suppressionTelegraphSeconds,
+          dt,
+        );
+        enemy.suppressionShotCooldown = Math.max(0, enemy.suppressionShotCooldown - dt);
+        const shellClearForSuppression = enemy.shellCooldown > PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds + 0.35;
+        const suppressionCharging = enemy.suppressionShots <= 0
+          && shellClearForSuppression
+          && distance < PAWN_SLUG_STURM_BISHOP_META.suppressionRange
+          && enemy.suppressionCooldown > 0
+          && enemy.suppressionCooldown <= PAWN_SLUG_STURM_BISHOP_META.suppressionTelegraphSeconds;
+
+        if (enemy.suppressionShots > 0) {
+          enemy.vx = 0;
+          enemy.shellCooldown = Math.max(enemy.shellCooldown, PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds + 0.55);
+          if (enemy.suppressionShotCooldown <= 0) {
+            fireBishopSuppression(enemy, enemy.suppressionShotIndex);
+            enemy.suppressionShotIndex += 1;
+            enemy.suppressionShots -= 1;
+            enemy.suppressionShotCooldown = PAWN_SLUG_STURM_BISHOP_META.suppressionShotInterval;
+            if (enemy.suppressionShots <= 0) {
+              enemy.suppressionCooldown = 3.15 + Math.random() * 0.65;
+              enemy.fireCooldown = Math.max(enemy.fireCooldown, 0.32);
+            }
+          }
+        } else {
+          enemy.vx = suppressionCharging ? 0 : (distance > 4.8 ? enemy.dir * enemy.speed : 0);
+          if (!suppressionCharging && distance < 11 && enemy.fireCooldown <= 0) {
+            fireEnemy(enemy, false);
+            enemy.fireCooldown = 0.42 + Math.random() * 0.16;
+          }
+          if (shellClearForSuppression
+            && distance < PAWN_SLUG_STURM_BISHOP_META.suppressionRange
+            && enemy.suppressionCooldown <= 0) {
+            enemy.suppressionShots = PAWN_SLUG_STURM_BISHOP_META.suppressionBurstShots;
+            enemy.suppressionShotIndex = 0;
+            enemy.suppressionShotCooldown = 0;
+            enemy.vx = 0;
+            enemy.shellCooldown = Math.max(enemy.shellCooldown, PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds + 0.7);
+          } else if (distance < PAWN_SLUG_STURM_BISHOP_META.shellRange && enemy.shellCooldown <= 0) {
+            fireEnemy(enemy, true);
+            enemy.shellCooldown = 2.05 + Math.random() * 0.55;
+          }
+        }
       } else if (enemy.type === 'boss') {
         enemy.vx = 0;
         if (distance < 16 && enemy.fireCooldown <= 0) {
@@ -753,61 +963,105 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
         enemy.vy = 0;
         enemy.onGround = true;
       }
-      enemy.model.position.set(enemy.x, enemy.y, enemy.type === 'boss' ? -0.15 : 0);
-      enemy.model.scale.x = Math.abs(enemy.model.scale.x || 1) * enemy.dir;
-      animateSlugEnemy(enemy.model, enemy.type, state.time, { moving: Math.abs(enemy.vx) > 0.2, hurt: enemy.hurt > 0 });
+      enemy.model.position.set(enemy.x, enemy.y, enemy.type === 'boss' ? -0.15 : enemy.type === 'bishop' ? 0.08 : 0);
+      if (enemy.type === 'bishop') {
+        enemy.model.userData.baseY = enemy.y;
+        const telegraph = pawnSlugSturmBishopTelegraph(enemy.shellCooldown, distance);
+        const suppressionTelegraph = enemy.suppressionShots > 0
+          ? 1
+          : (enemy.shellCooldown > PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds + 0.35
+            ? pawnSlugSturmBishopSuppressionTelegraph(enemy.suppressionCooldown, distance)
+            : 0);
+        animateSturmBishopModel(enemy.model, state.time, {
+          moving: Math.abs(enemy.vx) > 0.2,
+          hurt: enemy.hurt > 0,
+          dir: enemy.dir,
+          telegraph,
+          suppressionTelegraph,
+        });
+      } else {
+        enemy.model.scale.x = Math.abs(enemy.model.scale.x || 1) * enemy.dir;
+        animateSlugEnemy(enemy.model, enemy.type, state.time, { moving: Math.abs(enemy.vx) > 0.2, hurt: enemy.hurt > 0 });
+      }
 
-      const contact = enemy.type === 'boss' ? 3.5 : enemy.type === 'rook' ? 0.85 : 0.58;
-      if (distance < contact && player.y < enemy.y + enemy.h) hurtPlayer(enemy.type === 'boss' ? 38 : 18);
+      const contact = enemy.type === 'boss' ? 3.5 : enemy.type === 'bishop' ? 1.15 : enemy.type === 'rook' ? 0.85 : 0.58;
+      if (distance < contact && player.y < enemy.y + enemy.h) hurtPlayer(enemy.type === 'boss' ? 38 : enemy.type === 'bishop' ? 28 : 18);
     }
 
-    for (const enemy of [...state.enemies]) {
-      if (!enemy.dead) continue;
+    for (let index = 0; index < state.enemies.length;) {
+      const enemy = state.enemies[index];
+      if (!enemy.dead) {
+        index += 1;
+        continue;
+      }
       dynamic.remove(enemy.model);
       disposePawnSlugObject(enemy.model);
-      state.enemies.splice(state.enemies.indexOf(enemy), 1);
+      state.enemies.splice(index, 1);
     }
   }
 
   function updateBullets(dt) {
-    const playerBox = boxFor({ x: state.player.x, y: state.player.y, w: PLAYER_W, h: state.player.crouch ? 1.05 : PLAYER_H });
-    for (const bullet of [...state.bullets]) {
+    const playerLeft = state.player.x - PLAYER_W / 2;
+    const playerTop = state.player.y;
+    const playerHeight = state.player.crouch ? 1.05 : PLAYER_H;
+
+    for (let index = 0; index < state.bullets.length;) {
+      const bullet = state.bullets[index];
       bullet.life -= dt;
       bullet.x += bullet.vx * dt;
       bullet.y += bullet.vy * dt;
       bullet.model.position.set(bullet.x, bullet.y, 0.3);
-      if (bullet.explosive) bullet.model.rotation.x += dt * 8;
+      projectileAnimationOptions.time = state.time;
+      projectileAnimationOptions.explosive = bullet.explosive;
+      animatePremiumProjectile(bullet.model, projectileAnimationOptions);
       let remove = bullet.life <= 0 || bullet.y < -1 || bullet.x < state.cameraX - VIEW_W || bullet.x > state.cameraX + VIEW_W * 1.8;
 
+      const bulletLeft = bullet.x - bullet.w / 2;
+      const bulletTop = bullet.y - bullet.h / 2;
       if (!remove && bullet.enemy) {
-        const bulletBox = { x: bullet.x - bullet.w / 2, y: bullet.y - bullet.h / 2, w: bullet.w, h: bullet.h };
-        if (overlaps(bulletBox, playerBox)) {
+        if (pawnSlugRectsOverlap(
+          bulletLeft,
+          bulletTop,
+          bullet.w,
+          bullet.h,
+          playerLeft,
+          playerTop,
+          PLAYER_W,
+          playerHeight,
+        )) {
           if (bullet.explosive) explode(bullet.x, bullet.y, 1.8, 0, true);
           else hurtPlayer(bullet.damage);
           remove = true;
         }
       } else if (!remove) {
-        for (const enemy of state.enemies) {
-          if (enemy.dead) continue;
-          const bulletBox = { x: bullet.x - bullet.w / 2, y: bullet.y - bullet.h / 2, w: bullet.w, h: bullet.h };
-          if (!overlaps(bulletBox, boxFor(enemy))) continue;
+        const enemyIndex = pawnSlugFirstHitEnemyIndex(
+          state.enemies,
+          bulletLeft,
+          bulletTop,
+          bullet.w,
+          bullet.h,
+        );
+        if (enemyIndex >= 0) {
+          const enemy = state.enemies[enemyIndex];
           if (bullet.explosive) explode(bullet.x, bullet.y, 1.9, bullet.damage);
           else damageEnemy(enemy, bullet.damage);
           remove = true;
-          break;
         }
       }
 
       if (remove) {
         projectileLayer.remove(bullet.model);
         disposePawnSlugObject(bullet.model);
-        state.bullets.splice(state.bullets.indexOf(bullet), 1);
+        state.bullets.splice(index, 1);
+        continue;
       }
+      index += 1;
     }
   }
 
   function updateGrenades(dt) {
-    for (const grenade of [...state.grenades]) {
+    for (let index = 0; index < state.grenades.length;) {
+      const grenade = state.grenades[index];
       grenade.fuse -= dt;
       grenade.vy -= GRAVITY * 0.72 * dt;
       grenade.x += grenade.vx * dt;
@@ -819,45 +1073,66 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       }
       grenade.model.position.set(grenade.x, grenade.y, 0.4);
       grenade.model.rotation.z += dt * 8;
-      if (grenade.fuse > 0) continue;
-      explode(grenade.x, grenade.y + 0.2, 2.65, 125);
+      if (grenade.fuse > 0) {
+        index += 1;
+        continue;
+      }
+      explode(grenade.x, grenade.y + 0.2, 2.65, 125 * pawnSlugDamageMultiplier(state.player.level));
       projectileLayer.remove(grenade.model);
       disposePawnSlugObject(grenade.model);
-      state.grenades.splice(state.grenades.indexOf(grenade), 1);
+      state.grenades.splice(index, 1);
     }
   }
 
   function updatePickups(dt) {
-    const playerBox = boxFor({ x: state.player.x, y: state.player.y, w: PLAYER_W, h: PLAYER_H });
-    for (const pickup of [...state.pickups]) {
+    const playerLeft = state.player.x - PLAYER_W / 2;
+    const playerTop = state.player.y;
+    for (let index = 0; index < state.pickups.length;) {
+      const pickup = state.pickups[index];
       pickup.model.position.y = pickup.y + 0.12 + Math.sin(state.time * 3.1 + pickup.bob) * 0.08;
       pickup.model.rotation.y += dt * 0.55;
-      const pickupBox = { x: pickup.x - pickup.w / 2, y: pickup.y, w: pickup.w, h: pickup.h };
-      if (!overlaps(playerBox, pickupBox)) continue;
+      if (!pawnSlugRectsOverlap(
+        playerLeft,
+        playerTop,
+        PLAYER_W,
+        PLAYER_H,
+        pickup.x - pickup.w / 2,
+        pickup.y,
+        pickup.w,
+        pickup.h,
+      )) {
+        index += 1;
+        continue;
+      }
       state.takenPickups.add(pickup.id);
       if (pickup.type === 'grenade') state.player.grenades += 3;
-      else if (pickup.type === 'medkit') state.player.hp = Math.min(100, state.player.hp + 45);
+      else if (pickup.type === 'medkit') state.player.hp = Math.min(state.player.maxHp, state.player.hp + 45);
       else grantWeapon(pickup.type);
       state.score += 150;
       setToast(pawnSlugPickupCopy(pickup.type), 2.1);
       sfx.play('pickup');
       dynamic.remove(pickup.model);
       disposePawnSlugObject(pickup.model);
-      state.pickups.splice(state.pickups.indexOf(pickup), 1);
+      state.pickups.splice(index, 1);
       emitHud(true);
     }
   }
 
   function updateFx(dt) {
-    for (const flash of [...state.flashes]) {
+    for (let index = 0; index < state.flashes.length;) {
+      const flash = state.flashes[index];
       flash.life -= dt;
-      flash.model.scale.multiplyScalar(1 + dt * 8);
-      if (flash.life > 0) continue;
+      animatePremiumMuzzleFlash(flash.model, flash.life / flash.maxLife);
+      if (flash.life > 0) {
+        index += 1;
+        continue;
+      }
       fxLayer.remove(flash.model);
       disposePawnSlugObject(flash.model);
-      state.flashes.splice(state.flashes.indexOf(flash), 1);
+      state.flashes.splice(index, 1);
     }
-    for (const particle of [...state.particles]) {
+    for (let index = 0; index < state.particles.length;) {
+      const particle = state.particles[index];
       particle.life -= dt;
       particle.vy -= GRAVITY * 0.42 * dt;
       particle.x += particle.vx * dt;
@@ -866,10 +1141,13 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       particle.model.position.y = particle.y;
       const alpha = clamp(particle.life / particle.maxLife, 0, 1);
       if (particle.model.material) particle.model.material.opacity = alpha;
-      if (particle.life > 0) continue;
+      if (particle.life > 0) {
+        index += 1;
+        continue;
+      }
       fxLayer.remove(particle.model);
       disposePawnSlugObject(particle.model);
-      state.particles.splice(state.particles.indexOf(particle), 1);
+      state.particles.splice(index, 1);
     }
   }
 
@@ -879,7 +1157,8 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       ? wx(PAWN_SLUG_WORLD.bossX - 70)
       : Math.max(VIEW_W / 2, state.player.x + VIEW_W * 0.18);
     const maxCamera = wx(PAWN_SLUG_WORLD.extractionX) - VIEW_W / 2 + 1;
-    state.cameraX += (clamp(desired, VIEW_W / 2, maxCamera) - state.cameraX) * Math.min(1, dt * 4.4);
+    const target = clamp(desired, VIEW_W / 2, maxCamera);
+    state.cameraX += (target - state.cameraX) * (1 - Math.exp(-3.85 * dt));
     const shakeX = state.shake > 0 && !reducedMotion ? (Math.random() * 2 - 1) * state.shake : 0;
     const shakeY = state.shake > 0 && !reducedMotion ? (Math.random() * 2 - 1) * state.shake * 0.5 : 0;
     camera.position.x = state.cameraX + shakeX;
@@ -1061,6 +1340,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       disposePawnSlugObject(scene);
       renderer.dispose();
       renderer.forceContextLoss?.();
+      delete host.dataset.pawnSlugRuntimeHotPath;
       if (host.contains(renderer.domElement)) host.removeChild(renderer.domElement);
     },
   };

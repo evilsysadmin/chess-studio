@@ -1,0 +1,175 @@
+/* Home castle · integrated Teutonic portals · canonical v3
+ *
+ * The previous v2 drew complete doors in CSS. That made them read as stickers
+ * floating in front of the room and, worse, visually covered real 3D props.
+ *
+ * v3 gives architectural authority back to Three.js:
+ * - stone, oak and iron are real scene geometry with real depth/light
+ * - DOM owns only labels, click targets and restrained interaction feedback
+ * - all five destinations keep one shared title baseline
+ * - mobile keeps the existing first-fold card treatment
+ */
+
+@media (min-width: 761px) {
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__rooms {
+    top: 18.5% !important;
+    left: 16.55% !important;
+    right: 6.15% !important;
+    height: 58.5% !important;
+    gap: clamp(.25rem, .72vw, .7rem) !important;
+    align-items: stretch;
+    pointer-events: none;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--play,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--tournament,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--train,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--combat,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--daily {
+    position: relative;
+    isolation: isolate;
+    align-self: stretch;
+    min-width: 0;
+    height: 100%;
+    margin-top: 0 !important;
+    padding: 0 !important;
+    overflow: visible;
+    border: 0 !important;
+    border-radius: 42% 42% 8% 8% / 28% 28% 6% 6% !important;
+    background: none !important;
+    box-shadow: none !important;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  /* Critical v3 contract: no full-size CSS door or stone surround. The actual
+   * portal is now in the WebGL scene and must be allowed to sit behind props. */
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room::before,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room::after {
+    content: none !important;
+    display: none !important;
+  }
+
+  /* One shared title baseline for all five real 3D portals. */
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room > * {
+    position: absolute !important;
+    z-index: 3;
+    left: 8%;
+    right: 8%;
+    width: auto;
+    margin: 0 !important;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room-glyph {
+    top: 15.3%;
+    color: #f3c862 !important;
+    font-size: clamp(1.28rem, 1.95vw, 2rem) !important;
+    line-height: 1;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .96)) !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room strong {
+    top: 24.2%;
+    color: #fff0c8 !important;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(.76rem, 1.18vw, 1.22rem) !important;
+    font-weight: 800;
+    line-height: 1.02;
+    letter-spacing: .012em;
+    white-space: nowrap;
+    text-wrap: nowrap;
+    text-shadow:
+      0 2px 2px rgba(0, 0, 0, 1),
+      0 0 7px rgba(0, 0, 0, .98),
+      0 0 13px rgba(224, 168, 71, .20) !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--combat strong,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--daily strong {
+    left: 3%;
+    right: 3%;
+    font-size: clamp(.70rem, 1.02vw, 1.08rem) !important;
+    letter-spacing: 0;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room small {
+    top: 31.6%;
+    left: 6%;
+    right: 6%;
+    max-width: none;
+    color: rgba(255, 239, 205, .95) !important;
+    font-size: clamp(.56rem, .72vw, .78rem) !important;
+    font-weight: 570;
+    line-height: 1.15;
+    white-space: nowrap;
+    text-wrap: nowrap;
+    text-shadow:
+      0 2px 2px rgba(0, 0, 0, 1),
+      0 0 6px rgba(0, 0, 0, .96) !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room i {
+    display: none !important;
+  }
+
+  /* Hover/focus should illuminate the real doorway, never draw another door. */
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:hover,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:focus-visible {
+    background:
+      radial-gradient(
+        ellipse at 50% 33%,
+        rgba(232, 177, 82, .10) 0%,
+        rgba(171, 101, 39, .035) 35%,
+        transparent 65%
+      ) !important;
+    box-shadow: inset 0 0 0 1px rgba(244, 207, 129, .045) !important;
+    transform: none !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:focus-visible {
+    outline: 2px solid rgba(250, 211, 126, .78) !important;
+    outline-offset: -7px;
+  }
+}
+
+@media (max-width: 1080px) and (min-width: 761px) {
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__rooms {
+    top: 20% !important;
+    left: 9.4% !important;
+    right: 2.4% !important;
+    height: 55.5% !important;
+    gap: .18rem !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room strong {
+    font-size: clamp(.66rem, 1.26vw, .86rem) !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--combat strong,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--daily strong {
+    font-size: clamp(.60rem, 1.12vw, .78rem) !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room small {
+    font-size: clamp(.52rem, .88vw, .64rem) !important;
+  }
+}
+
+/* Mobile keeps the established first-fold navigation cards. The real 3D doors
+ * remain scenery; interaction stays dense and thumb-friendly. */
+@media (max-width: 760px) {
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room strong,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room small {
+    white-space: normal !important;
+    text-wrap: balance !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room {
+    transition: none !important;
+  }
+}

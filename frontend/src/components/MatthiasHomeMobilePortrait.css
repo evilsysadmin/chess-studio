@@ -12,6 +12,29 @@
     gap: .34rem;
   }
 
+  /* Quiet Matthias is part of the room, not a sibling dragged over it with a
+   * large negative margin. Anchor him to the mobile castle hero so his cap,
+   * face and torso stay visible regardless of browser chrome height. */
+  body .menu.home-friendly {
+    position: relative !important;
+  }
+
+  body .menu.home-friendly > .matthias-resident.is-inline.is-quiet {
+    position: absolute !important;
+    z-index: 22 !important;
+    top: clamp(12.75rem, 55vw, 14rem) !important;
+    right: .55rem !important;
+    bottom: auto !important;
+    left: auto !important;
+    align-self: auto !important;
+    width: 138px !important;
+    margin: 0 !important;
+  }
+
+  body .menu.home-friendly > .matthias-resident.is-inline.is-quiet .matthias-resident__session-summary {
+    display: none !important;
+  }
+
   /* Matthias belongs to the hall, not inside a floating employee card. */
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character {
     flex-basis: 138px;
@@ -37,13 +60,12 @@
       0 8px 18px rgba(0,0,0,.07);
   }
 
-  /* The canonical 3D cap is already sized by MatthiasPremiumHome3D. Do not
-   * re-inflate the whole canvas here: the old 1.53–1.55 zoom effectively undid
-   * cap geometry fixes and pushed the plate cap back against the portrait edge.
-   * Keep a modest face/torso emphasis while preserving a visible cap margin. */
+  /* Mobile used to re-zoom the already-framed canonical pawn. That made the
+   * cap dominate and hid too much of the body. Keep enough emphasis to read
+   * the face while showing the complete cap and a useful slice of torso. */
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__canvas {
-    transform: translateY(3px) scale(1.32);
-    transform-origin: 50% 10%;
+    transform: translateY(5px) scale(1.22);
+    transform-origin: 50% 12%;
   }
 
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__fallback {
@@ -72,6 +94,12 @@
 }
 
 @media (max-width: 430px) {
+  body .menu.home-friendly > .matthias-resident.is-inline.is-quiet {
+    top: 13.15rem !important;
+    right: .35rem !important;
+    width: 134px !important;
+  }
+
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character {
     flex-basis: 134px;
     width: 134px;
@@ -86,8 +114,8 @@
   }
 
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__canvas {
-    transform: translateY(3px) scale(1.34);
-    transform-origin: 50% 10%;
+    transform: translateY(5px) scale(1.24);
+    transform-origin: 50% 12%;
   }
 
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-resident__character small,
@@ -98,22 +126,22 @@
 
 @media (prefers-reduced-motion: reduce) and (max-width: 760px) {
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__canvas {
-    transform: translateY(3px) scale(1.32) !important;
+    transform: translateY(5px) scale(1.22) !important;
   }
 }
 
 @media (prefers-reduced-motion: reduce) and (max-width: 430px) {
   body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__canvas {
-    transform: translateY(3px) scale(1.34) !important;
+    transform: translateY(5px) scale(1.24) !important;
   }
 }
 
 html[data-reduced-motion='true'] body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__canvas {
-  transform: translateY(3px) scale(1.32) !important;
+  transform: translateY(5px) scale(1.22) !important;
 }
 
 @media (max-width: 430px) {
   html[data-reduced-motion='true'] body:has(.home-friendly) .matthias-resident.is-inline .matthias-three-avatar__canvas {
-    transform: translateY(3px) scale(1.34) !important;
+    transform: translateY(5px) scale(1.24) !important;
   }
 }

@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
+import {
+  installWarRoomHansSceneRoutine,
+  isWarRoomHansQuickIterationEnabled,
+} from './WarRoomHansIteration.js';
 
 function physical(color, options = {}) {
   return new THREE.MeshPhysicalMaterial({
@@ -70,6 +74,7 @@ function addTeutonicMasonry(group, { wallZ, towardBoard }) {
   const masonry = new THREE.Group();
   masonry.name = 'war-room-teutonic-masonry';
   masonry.userData.warRoomWallFinish = 'smoked-rhenish-ashlar-v2';
+  masonry.userData.warRoomRetiredMortarJointsOmitted = 78;
   const stone = physical(0x373633, { roughness: 0.94, clearcoat: 0.012, specularIntensity: 0.11 });
   const stoneLift = physical(0x4a4843, { roughness: 0.9, clearcoat: 0.018, specularIntensity: 0.14 });
   const grout = physical(0x1c1b19, { roughness: 0.99, clearcoat: 0, specularIntensity: 0.03 });
@@ -91,21 +96,6 @@ function addTeutonicMasonry(group, { wallZ, towardBoard }) {
     for (const y of [0.72, 1.42, 2.12, 2.82, 3.52, 4.22, 4.92]) {
       const line = addBox(masonry, [0.085, 0.026, depth - 0.18], grout, [side * 7.685, y, centerZ], 'war-room-teutonic-mortar-course');
       line.castShadow = false;
-    }
-
-    for (let row = 0; row < 7; row += 1) {
-      const y = 0.37 + row * 0.7;
-      const stagger = row % 2 ? 1.12 : 0;
-      for (let offset = 1.1 + stagger; offset < depth - 0.55; offset += 2.25) {
-        const joint = addBox(
-          masonry,
-          [0.086, 0.61, 0.027],
-          grout,
-          [side * 7.68, y, wallZ + towardBoard * offset],
-          'war-room-teutonic-mortar-joint',
-        );
-        joint.castShadow = false;
-      }
     }
   }
 
@@ -489,14 +479,67 @@ function applyPremiumRoomPass(root, { wallZ, towardBoard, coarsePointer }) {
   return 1;
 }
 
+function exposeForcedHansRuntime(root) {
+  const hans = root?.getObjectByName?.('war-room-hans-butler');
+  const runtime = hans?.visible === true ? 'visible' : (hans ? 'hidden' : 'missing');
+  if (root?.userData) root.userData.warRoomHansRuntime = runtime;
+
+  try {
+    if (typeof document !== 'undefined' && typeof document.querySelectorAll === 'function') {
+      document.querySelectorAll('[data-war-room-hans-quick-request="true"]').forEach((marker) => {
+        marker.setAttribute('data-war-room-hans-runtime', runtime);
+      });
+    }
+  } catch {
+    // Runtime diagnostics are best-effort and must never affect the scene.
+  }
+  return runtime;
+}
+
 export function registerPremiumRoomFinalization(group, { wallZ, towardBoard, coarsePointer = false } = {}) {
   if (!group || !Number.isFinite(wallZ) || !Number.isFinite(towardBoard)) return 0;
-  return registerWarRoomDeferredFinalizer(group, {
+
+  const premiumRegistration = registerWarRoomDeferredFinalizer(group, {
     key: 'premium-room-pass-v4',
     coarsePointer,
     allowCoarse: true,
     run: (root) => applyPremiumRoomPass(root, { wallZ, towardBoard, coarsePointer }),
   });
+
+  // Partida rápida owns an explicit Hans lease before Board3D builds the scene.
+  // Lite/coarse War Rooms return before the desktop practical-lighting pass, so
+  // that old registration path never existed there. Register the same deferred
+  // scene task from this always-reached finalization point only while the lease
+  // is active; ordinary mobile rooms keep their lightweight no-cameo behavior.
+  if (isWarRoomHansQuickIterationEnabled()) {
+    registerWarRoomDeferredFinalizer(group, {
+      key: 'hans-fireplace-scene-install-v2',
+      coarsePointer,
+      allowCoarse: true,
+      run: (root) => {
+        const sceneRoot = root || group;
+        // Scene quality and input modality are deliberately separate. Balanced
+        // Android builds the full desktop geometry, so the construction-time
+        // `coarsePointer` flag may be false even on a real touch device. Resolve
+        // the live pointer modality here so Hans can use the mobile-visible
+        // entrance choreography without amputating the premium room.
+        let runtimeCoarsePointer = coarsePointer;
+        try {
+          runtimeCoarsePointer = Boolean(globalThis?.matchMedia?.('(pointer: coarse)')?.matches);
+        } catch {
+          // Best-effort only; SSR/tests keep the construction-time fallback.
+        }
+        const installed = installWarRoomHansSceneRoutine(sceneRoot, {
+          towardBoard,
+          coarsePointer: runtimeCoarsePointer,
+        });
+        exposeForcedHansRuntime(sceneRoot);
+        return installed;
+      },
+    });
+  }
+
+  return premiumRegistration;
 }
 
 export function installTeutonicWarRoomDecor(group, { wallZ, towardBoard, coarsePointer = false } = {}) {

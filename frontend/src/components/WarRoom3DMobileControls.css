@@ -20,12 +20,13 @@
 }
 
 @media (max-width: 820px) {
-  /* Portrait owns its own canvas geometry. The old .96-ish shell amplified the
-     conservative camera framing and left a large near-side black moat. */
+  /* Portrait needs to read as board + chamber, not as a full-height board with
+     a decorative strip at the far edge. The slightly wider shell also reduces
+     first-screen scroll without touching desktop geometry. */
   .game-screen .game-board-stack-3d .board3d-main-shell {
     width: 100%;
     min-height: 0;
-    aspect-ratio: 1.07 / 1;
+    aspect-ratio: 1.13 / 1;
   }
 
   /* Matthias becomes a compact identity rail instead of a full command post. */
@@ -145,6 +146,53 @@
     line-height: 1;
   }
 
+  /* The human identity remains readable but stops behaving like a second card
+     below the board. Keep one compact rail and reserve the next viewport slice
+     for music/notebook/chat. */
+  .game-screen .game-board-stack-3d .game-player-rail.is-human {
+    min-height: 50px;
+    height: 50px;
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: .42rem;
+    padding: .26rem .46rem !important;
+    box-sizing: border-box;
+  }
+
+  .game-screen .game-board-stack-3d .game-player-rail.is-human .game-player-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+
+  .game-screen .game-board-stack-3d .game-player-rail.is-human .game-player-identity strong {
+    font-size: .78rem;
+    line-height: 1.05;
+  }
+
+  .game-screen .game-board-stack-3d .game-player-rail.is-human .game-player-identity small {
+    font-size: .58rem;
+    line-height: 1.05;
+  }
+
+  /* The collapsed RetroPlayer should be a rail, not a second dashboard card. */
+  .game-screen .game-side-column-3d .game-side-music .music-deck-collapsed {
+    min-height: 50px !important;
+    grid-template-columns: minmax(0, 1fr) 40px !important;
+  }
+
+  .game-screen .game-side-column-3d .game-side-music .music-deck-expand {
+    min-height: 46px;
+    padding: .28rem .5rem;
+  }
+
+  .game-screen .game-side-column-3d .game-side-music .music-deck-collapsed-play {
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    margin: auto .18rem auto 0;
+  }
+
   /* Keep Appearance in the established upper interaction rail, but below the
      centred chamber label so the two controls no longer overlap. */
   .game-board-stack-3d .board3d-customize {
@@ -182,8 +230,19 @@
 }
 
 @media (max-width: 520px) {
+  /* One final Android composition owner. Older mobile layers establish the
+     responsive fallback; this file decides the actual phone density. */
+  .game-screen .board-live-row.is-3d-warroom {
+    padding: .22rem;
+    gap: .34rem;
+  }
+
+  .game-screen .game-board-stack.game-board-stack-3d {
+    gap: .22rem;
+  }
+
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    aspect-ratio: 1.06 / 1;
+    aspect-ratio: 1.16 / 1;
   }
 
   .game-3d-matthias-card {
@@ -205,6 +264,75 @@
     height: 32px;
     min-height: 32px !important;
     font-size: .68rem;
+  }
+
+  .game-screen .game-board-stack-3d .game-player-rail.is-human {
+    min-height: 46px;
+    height: 46px;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    gap: .34rem;
+    padding: .22rem .4rem !important;
+  }
+
+  .game-screen .game-board-stack-3d .game-player-rail.is-human .game-player-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  /* Music + notebook are two compact utilities, not two full-width dashboard
+     cards. Closed, they share one row. Opening the notebook promotes it to the
+     full row without hiding content or changing semantics. */
+  .game-screen .game-side-column.game-side-column-3d {
+    grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr);
+    grid-template-areas:
+      'music notation'
+      'chat chat';
+    gap: .3rem;
+    align-items: start;
+  }
+
+  .game-screen .game-side-column-3d .game-side-music,
+  .game-screen .game-side-column-3d .game-notation-disclosure {
+    min-width: 0;
+    margin: 0;
+  }
+
+  .game-screen .game-side-column-3d .game-side-music .music-deck-collapsed {
+    min-height: 46px !important;
+    height: 46px;
+  }
+
+  .game-screen .game-side-column-3d .game-side-music .music-deck-expand {
+    min-height: 42px;
+    padding: .24rem .42rem;
+  }
+
+  .game-screen .game-side-column-3d .game-side-music .music-deck-collapsed-play {
+    width: 34px;
+    height: 34px;
+    min-height: 34px;
+    margin-right: .12rem;
+  }
+
+  .game-screen .game-side-column-3d .game-notation-disclosure {
+    min-height: 46px;
+    overflow: hidden;
+  }
+
+  .game-screen .game-side-column-3d .game-notation-disclosure > summary {
+    display: flex;
+    align-items: center;
+    min-height: 46px;
+    height: 46px;
+    padding: .36rem .48rem;
+    box-sizing: border-box;
+    font-size: .62rem;
+    line-height: 1.1;
+  }
+
+  .game-screen .game-side-column-3d .game-notation-disclosure[open] {
+    grid-column: 1 / -1;
+    overflow: visible;
   }
 
   .game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble) {

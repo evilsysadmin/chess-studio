@@ -48,6 +48,25 @@ describe('War Room command desk chess study', () => {
       new Set(['pawn', 'knight', 'bishop', 'rook', 'queen', 'king']),
     );
 
+    const lightPiece = pieces.find((piece) => piece.userData.studySide === 'light');
+    const darkPiece = pieces.find((piece) => piece.userData.studySide === 'dark');
+    const lightMaterial = lightPiece?.children.find((child) => child.isMesh)?.material;
+    const darkMaterial = darkPiece?.children.find((child) => child.isMesh)?.material;
+    expect(lightPiece?.userData.studyLegibility).toBe('high-contrast');
+    expect(darkPiece?.userData.studyLegibility).toBe('high-contrast');
+    expect(lightPiece?.scale.x).toBeCloseTo(1.06, 6);
+    expect(darkPiece?.scale.x).toBeCloseTo(1.06, 6);
+    expect(lightMaterial?.color.getHex()).toBe(0xf7edd6);
+    expect(darkMaterial?.color.getHex()).toBe(0x161b22);
+    expect(darkMaterial?.emissive.getHex()).toBe(0x233246);
+    expect(darkMaterial?.emissiveIntensity).toBeGreaterThanOrEqual(0.15);
+
+    let studyLights = 0;
+    study.traverse((object) => {
+      if (object.isLight) studyLights += 1;
+    });
+    expect(studyLights).toBe(0);
+
     const books = study.getObjectByName('war-room-command-desk-chess-reference-books');
     expect(books).toBeTruthy();
     expect(books.userData.referenceSubjects).toEqual(['aperturas', 'tactica', 'finales', 'partidas-anotadas']);

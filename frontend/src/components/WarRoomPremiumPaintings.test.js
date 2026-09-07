@@ -26,7 +26,7 @@ function dispose(root) {
 }
 
 describe('War Room premium paintings', () => {
-  it('superpone dos lienzos militares con acabado museo, luces prácticas y decorado teutón premium en desktop', () => {
+  it('superpone dos lienzos militares con acabado museo, luz ambiental ya existente y decorado teutón premium en desktop', () => {
     const group = new THREE.Group();
     const count = addPremiumWarRoomPaintings(group, { wallZ: -7.6, towardBoard: 1, coarsePointer: false });
 
@@ -36,7 +36,8 @@ describe('War Room premium paintings', () => {
     expect(group.userData.warRoomPremiumFinishVersion).toBe('museum-gothic-v3');
     expect(group.userData.warRoomPremiumFinishedObjects).toBe(4);
     expect(group.userData.warRoomPracticalLightingVersion).toBe('museum-v4');
-    expect(group.userData.warRoomPracticalLightCount).toBe(2);
+    expect(group.userData.warRoomPracticalLightCount).toBe(0);
+    expect(group.userData.warRoomMuseumSideKeysOmitted).toBe(2);
     expect(group.userData.warRoomPracticalMaterialsTuned).toBeGreaterThan(0);
     expect(group.userData.warRoomTeutonicArmorCount).toBe(2);
     expect(group.userData.warRoomTeutonicStyle).toBe('smoked-rhenish-gothic-v2');
@@ -69,9 +70,9 @@ describe('War Room premium paintings', () => {
     expect(rightArmor.userData.warRoomArmorLegProfile).toBe('heavy-gothic-v28');
     expect(leftArmor.userData.facesWarTable).toBe(true);
     expect(rightArmor.userData.facesWarTable).toBe(true);
-    expect(group.getObjectByName('war-room-armor-alcove-left').visible).toBe(false);
-    expect(group.getObjectByName('war-room-armor-alcove-right').visible).toBe(false);
-    expect(group.getObjectByName('war-room-hammerbeam-side-tie').visible).toBe(false);
+    expect(group.getObjectByName('war-room-armor-alcove-left')).toBeUndefined();
+    expect(group.getObjectByName('war-room-armor-alcove-right')).toBeUndefined();
+    expect(group.getObjectByName('war-room-hammerbeam-side-tie')).toBeUndefined();
 
     for (const armor of [leftArmor, rightArmor]) {
       expect(armor.userData.warRoomArmorPose).toBe('chest-high-zweihander-guard-v28');
@@ -96,11 +97,8 @@ describe('War Room premium paintings', () => {
     expect(breast.material.envMapIntensity).toBeGreaterThanOrEqual(1.12);
 
     for (const side of ['left', 'right']) {
-      const light = group.getObjectByName(`war-room-museum-side-key-${side}`);
-      expect(light).toBeInstanceOf(THREE.SpotLight);
-      expect(light.castShadow).toBe(false);
-      expect(light.userData.warRoomPracticalLight).toBe('painting-armor-shared-key-v4');
-      expect(group.getObjectByName(`war-room-museum-side-target-${side}`)).toBeTruthy();
+      expect(group.getObjectByName(`war-room-museum-side-key-${side}`)).toBeUndefined();
+      expect(group.getObjectByName(`war-room-museum-side-target-${side}`)).toBeUndefined();
     }
 
     for (const index of [0, 1]) {

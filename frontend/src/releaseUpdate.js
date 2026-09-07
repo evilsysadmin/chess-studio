@@ -2,7 +2,11 @@ import { APP_BUILD_ID } from './release.js';
 import { fetchWithTimeout } from './asyncControl.js';
 import { normalizeReleaseIdentity, releaseIdentity } from './releaseManifest.js';
 
-export const RELEASE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+// Active tabs should learn about a deploy quickly even when the user keeps the
+// same Chess Studio window open throughout a rollout. Focus/visibility signals
+// make the common path immediate; this one-minute fallback closes the case
+// where the tab simply remains visible and focused during the deploy.
+export const RELEASE_CHECK_INTERVAL_MS = 60 * 1000;
 export const RELEASE_CHECK_TIMEOUT_MS = 7000;
 
 export function releaseManifestUrl(baseUrl = '/', now = Date.now()) {

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { resolveBoard3DCameraFov } from './Board3DConfig.js';
 import { getCameraFramingProfile } from './Board3DSurfaces.js';
 import { warRoomDecorProfile } from './WarRoom3DMobileVisuals.js';
 import { getWarRoomMobileFramingProfile } from './WarRoomMobileFraming.js';
@@ -118,10 +119,8 @@ export function buildWarRoom(theme, whiteSide, coarsePointer = false) {
   for (const x of [bannerX - 3.15, bannerX + 3.15]) {
     addMesh(room, new THREE.CylinderGeometry(0.07, 0.09, 0.52, 18), candleMaterial, [x, 2.18, shelfZ]);
     addMesh(room, new THREE.SphereGeometry(0.055, 12, 8), flameMaterial, [x, 2.5, shelfZ]);
-    const candleLight = new THREE.PointLight(0xffa94d, 3.2, 5, 2);
-    candleLight.position.set(x, 2.55, shelfZ + towardBoard * 0.25);
-    room.add(candleLight);
   }
+  room.userData.warRoomCandleLighting = 'emissive-only-v1';
 
   const ambientPanel = new THREE.Mesh(
     new THREE.PlaneGeometry(17, 7),
@@ -130,6 +129,17 @@ export function buildWarRoom(theme, whiteSide, coarsePointer = false) {
   ambientPanel.position.set(0, 2.4, wallZ + far * 0.25);
   if (whiteSide) ambientPanel.rotation.y = Math.PI;
   room.add(ambientPanel);
+
+  let retiredCasters = 0;
+  room.traverse((object) => {
+    if (!object?.isMesh || !object.castShadow) return;
+    object.castShadow = false;
+    object.userData ||= {};
+    object.userData.warRoomStaticShadowCasterRetired = true;
+    retiredCasters += 1;
+  });
+  room.userData.warRoomBaseStaticShadowCastersRetired = retiredCasters;
+  room.userData.warRoomBaseShadowMode = 'receive-only-v1';
 
   return room;
 }
@@ -143,21 +153,27 @@ export function fitBoardCamera(camera, width, height, whiteSide) {
     : width;
   const mobileProfile = getWarRoomMobileFramingProfile({ aspect, coarsePointer, viewportWidth });
   const profile = mobileProfile || getCameraFramingProfile(aspect);
+  camera.fov = resolveBoard3DCameraFov(aspect, { mobile: Boolean(mobileProfile) });
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
   const limitingFov = Math.min(verticalFov, horizontalFov);
-  const distance = THREE.MathUtils.clamp(
-    (profile.halfSpan / Math.tan(limitingFov / 2)) * profile.padding,
-    profile.minDistance,
-    profile.maxDistance,
-  );
+  const rawDistance = (profile.halfSpan / Math.tan(limitingFov / 2)) * profile.padding;
+  // The historical profile.maxDistance was tuned for a 40° lens. Keeping that
+  // cap with a long lens zooms/crops instead of moving the camera back, which
+  // defeats the whole perspective-parity fix. Mobile retains its calibrated
+  // cap; desktop gets enough travel for the near-orthographic lens.
+  const maxDistance = mobileProfile ? profile.maxDistance : 88;
+  const distance = THREE.MathUtils.clamp(rawDistance, profile.minDistance, maxDistance);
   const target = new THREE.Vector3(0, profile.targetY, whiteSide ? -profile.targetZ : profile.targetZ);
   const direction = new THREE.Vector3(0, profile.cameraY, whiteSide ? profile.cameraZ : -profile.cameraZ).normalize();
   camera.aspect = aspect;
+  camera.far = Math.max(camera.far, distance + 25);
   camera.position.copy(target).addScaledVector(direction, distance);
   camera.lookAt(target);
   camera.userData.basePosition = camera.position.clone();
   camera.userData.baseTarget = target.clone();
   camera.userData.framingProfile = mobileProfile?.version || 'standard';
+  camera.userData.cameraFov = camera.fov;
+  camera.userData.cameraDistance = distance;
   camera.updateProjectionMatrix();
 }

@@ -5,10 +5,11 @@ describe('Matthias · jornada horaria', () => {
   it('rota actividades hora a hora y reserva comida para desayuno, comida y cena', () => {
     const keys = Array.from({ length: 24 }, (_, hour) => matthiasTimeScene(hour).key);
     expect(keys.slice(0, 6)).toEqual(Array(6).fill('late-sleep'));
-    expect(keys.filter((key) => key === 'lunch-bocata')).toHaveLength(2);
+    expect(keys.filter((key) => key === 'lunch-bocata')).toHaveLength(1);
+    expect(keys.filter((key) => key === 'lunch-campaign-dinner')).toHaveLength(1);
     expect(keys[7]).toBe('breakfast-news');
     expect(keys[12]).toBe('lunch-bocata');
-    expect(keys[20]).toBe('lunch-bocata');
+    expect(keys[20]).toBe('lunch-campaign-dinner');
     expect(new Set(keys).size).toBeGreaterThanOrEqual(10);
     expect(keys[9]).toBe('chess-inception');
     expect(keys[19]).toBe('beer-break');
@@ -16,7 +17,7 @@ describe('Matthias · jornada horaria', () => {
 
     const solidFoodHours = keys
       .map((key, hour) => ({ key, hour }))
-      .filter(({ key }) => ['breakfast-news', 'lunch-bocata'].includes(key))
+      .filter(({ key }) => ['breakfast-news', 'lunch-bocata', 'lunch-campaign-dinner'].includes(key))
       .map(({ hour }) => hour);
     expect(solidFoodHours).toEqual([7, 12, 20]);
 

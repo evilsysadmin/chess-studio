@@ -1,6 +1,11 @@
 /* Home Great Hall · lived state v1
  * La luz reacciona sólo a estado/progreso ya acreditado por HomeCastleLife.
- * No añade paneles, contadores ni narrativa inventada. */
+ * No añade paneles, contadores ni narrativa inventada.
+ *
+ * Performance contract: ambience is stateful, not an always-on compositor job.
+ * Do not animate full-hall CSS filters here; Matthias and the real Three.js
+ * lighting already provide motion/life without keeping a screen-sized layer hot.
+ */
 .home-castle-life::before,
 .home-castle-life::after {
   content: '';
@@ -64,19 +69,6 @@
   opacity: .23;
   background: radial-gradient(ellipse, rgba(234,198,119,.18), transparent 68%);
   filter: blur(10px);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .home-castle-life[data-castle-ambience='active']::before,
-  .home-castle-life[data-castle-ambience='campaign']::before,
-  .home-castle-life[data-castle-ambience='honour']::before {
-    animation: castle-lived-light 9s ease-in-out infinite alternate;
-  }
-}
-
-@keyframes castle-lived-light {
-  from { filter: saturate(1) brightness(.98); }
-  to { filter: saturate(1.08) brightness(1.035); }
 }
 
 @media (max-width: 620px) {

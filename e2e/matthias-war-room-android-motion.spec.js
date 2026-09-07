@@ -108,13 +108,8 @@ async function installKingMoveScenario(page, calls) {
   });
 }
 
-test('War Room · Android mantiene a Matthias vivo con Three.js y fallback corporal', async ({ page }) => {
+test('War Room · Android usa al rey-peón como única presencia visual de Matthias', async ({ page }) => {
   test.setTimeout(75_000);
-  await page.addInitScript(() => {
-    // The regression is about compact rendering, not an OS accessibility
-    // preference. Force motion allowed so a CI runner cannot hide the bug.
-    localStorage.setItem('chess-study-reduced-motion', '0');
-  });
 
   await mockApi(page);
   await login(page);
@@ -124,39 +119,20 @@ test('War Room · Android mantiene a Matthias vivo con Three.js y fallback corpo
   await open3DFromAppearance(page);
 
   const board3d = page.locator('[data-board3d-war-room="true"]');
-  const wrap = page.locator('.game-3d-matthias-portrait-wrap');
-  const portrait = wrap.locator('.game-3d-matthias-portrait');
-  const three = wrap.locator('[data-matthias-three-avatar="true"]');
+  const briefing = page.locator('[data-matthias-war-room-presence="king-piece"]');
 
   await expect(board3d).toBeVisible({ timeout: 30_000 });
-  await expect(wrap).toBeVisible({ timeout: 30_000 });
-  await expect(wrap).toHaveAttribute('data-matthias-motion-version', 'v4-android');
-  await expect(wrap).toHaveAttribute('data-matthias-compact-motion', 'true');
-  await expect(three).toHaveAttribute('data-three-motion', 'active');
-  await expect(three).toHaveAttribute('data-three-motion-intensity', '1.35');
+  await expect(briefing).toBeVisible({ timeout: 30_000 });
+  await expect(briefing).toContainText('Matthias');
+  await expect(briefing).toContainText(/nivel\s+\d+/i);
 
-  // The 50–58 px command portrait must not pay desktop mesh/render cost.
-  await expect(three).toHaveAttribute('data-three-render-tier', 'compact');
-  await expect(three).toHaveAttribute('data-three-segments', '14x16');
-  await expect(three).toHaveAttribute('data-three-max-fps', '30');
-
-  // Primary path: the optional portrait Three.js context must actually paint
-  // and keep advancing alongside the main War Room renderer on a Pixel profile.
-  await expect(three).toHaveAttribute('data-three-ready', 'true', { timeout: 30_000 });
-  await expect(three).toHaveAttribute('data-three-failed', 'false');
-  const firstFrame = Number(await three.getAttribute('data-three-frame'));
-  await expect.poll(async () => Number(await three.getAttribute('data-three-frame')), { timeout: 12_000 })
-    .toBeGreaterThan(firstFrame + 5);
-
-  // Fallback path: compact Matthias must still visibly breathe as one canonical
-  // portrait even if a real Android GPU later refuses the optional WebGL context.
-  await expect.poll(async () => portrait.evaluate((node) => getComputedStyle(node).animationName))
-    .toContain('matthias-warroom-mobile-portrait-breathe');
-  const transformA = await portrait.evaluate((node) => getComputedStyle(node).transform);
-  await page.waitForTimeout(650);
-  const transformB = await portrait.evaluate((node) => getComputedStyle(node).transform);
-  expect(transformA).not.toBe('none');
-  expect(transformB).not.toBe(transformA);
+  // Matthias already exists physically in the room as the enemy king-pawn.
+  // The compact rail must not pay for or visually duplicate the retired
+  // portrait renderer, its fallback image, or a second Three.js context.
+  await expect(page.locator('.game-3d-matthias-portrait-wrap')).toHaveCount(0);
+  await expect(page.locator('.game-3d-matthias-portrait')).toHaveCount(0);
+  await expect(page.locator('[data-matthias-three-avatar="true"]')).toHaveCount(0);
+  await expect(briefing.locator('img, canvas')).toHaveCount(0);
 });
 
 test('War Room · el bocadillo de Matthias sigue al rey si cambia de casilla', async ({ page }) => {

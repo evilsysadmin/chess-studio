@@ -1,10 +1,10 @@
 import GameChat from './GameChat.jsx';
-import MatthiasWarRoomPortrait from './MatthiasWarRoomPortrait.jsx';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
-import { MATTHIAS_BASE_AVATAR, matthiasMoodAvatar } from '../matthiasVisuals.js';
-
-const WAR_ROOM_MATTHIAS_AVATAR = MATTHIAS_BASE_AVATAR;
-const WAR_ROOM_MATTHIAS_ANGRY_AVATAR = matthiasMoodAvatar('annoyed');
+import './WarRoomReferencePolish.css';
+import './WarRoomTurnPill.css';
+import './WarRoom3DMobileControls.css';
+import './WarRoomDesktopRailLayout.css';
+import './WarRoomMatthiasDiegetic.css';
 
 export default function GameWarRoomCommandColumn({
   game,
@@ -13,25 +13,16 @@ export default function GameWarRoomCommandColumn({
   board,
   side,
   compactViewport,
-  activeMatthiasMessage,
-  matthiasAnger,
-  portraitReaction,
   onToggleBoardRenderer,
 }) {
   return (
     <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
-      <div className="game-3d-matthias-card">
-        <MatthiasWarRoomPortrait
-          avatar={WAR_ROOM_MATTHIAS_AVATAR}
-          angryAvatar={WAR_ROOM_MATTHIAS_ANGRY_AVATAR}
-          speechKey={activeMatthiasMessage?.id || activeMatthiasMessage?.text || ''}
-          speechText={activeMatthiasMessage?.text || ''}
-          angerLevel={matthiasAnger.level}
-          reactionKey={portraitReaction.key}
-          reactionType={portraitReaction.type}
-        />
+      <div
+        className="game-3d-matthias-card is-diegetic-briefing"
+        data-matthias-war-room-presence="king-piece"
+      >
         <div className="game-3d-matthias-copy">
-          <span>COMANDANTE RIVAL</span>
+          <span>RIVAL EN SALA</span>
           <h2>{CPU_IDENTITY.name}</h2>
           <p>{CPU_IDENTITY.role} · nivel {game.difficulty}</p>
           {Number(rivalryRecord.games || 0) > 0 && (

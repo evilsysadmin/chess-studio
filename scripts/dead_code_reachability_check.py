@@ -23,7 +23,10 @@ FRONTEND_EXCLUDES = {"test-setup.js"}
 def resolve_js(source: Path, spec: str) -> Path | None:
     if not spec.startswith("."):
         return None
-    base = source.parent / spec
+    # Vite resource queries (?raw, ?url, etc.) modify loading semantics while
+    # still referring to the same repository file for reachability purposes.
+    path_spec = re.split(r"[?#]", spec, maxsplit=1)[0]
+    base = source.parent / path_spec
     candidates = [base, *(Path(str(base) + ext) for ext in JS_EXTS), *(base / f"index{ext}" for ext in JS_EXTS)]
     for candidate in candidates:
         if candidate.is_file():

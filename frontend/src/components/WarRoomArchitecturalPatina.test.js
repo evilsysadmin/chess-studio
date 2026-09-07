@@ -96,22 +96,21 @@ describe('War Room lived-in architectural patina', () => {
     expect(incomplete.userData.warRoomLivedInPatina).toBeUndefined();
   });
 
-  it('is installed in the real castle architecture after side consoles exist', () => {
+  it('keeps legacy patina dormant when canonical desktop omits the retired side consoles', () => {
     const layer = buildCastleArchitectureLayer({
       wallZ: -7.6,
       towardBoard: 1,
       coarsePointer: false,
     });
 
-    const left = layer.getObjectByName('war-room-side-console-left');
-    const right = layer.getObjectByName('war-room-side-console-right');
-    expect(left).toBeTruthy();
-    expect(right).toBeTruthy();
-    expect(layer.userData.warRoomLivedInPatina).toBe('v7-asymmetric-field-use');
-    expect(layer.userData.warRoomLivedInPropCount).toBe(10);
-    expect(left.getObjectByName('war-room-lived-in-dispatch-case')).toBeTruthy();
-    expect(right.getObjectByName('war-room-lived-in-mug')).toBeTruthy();
-    expect(right.getObjectByName('war-room-lived-in-map-tube')).toBeTruthy();
+    expect(layer.getObjectByName('war-room-side-console-left')).toBeUndefined();
+    expect(layer.getObjectByName('war-room-side-console-right')).toBeUndefined();
+    expect(layer.userData.warRoomDesktopRetiredSideConsoleMeshesOmitted).toBe(30);
+    expect(layer.userData.warRoomLivedInPatina).toBeUndefined();
+    expect(layer.userData.warRoomLivedInPropCount).toBeUndefined();
+    expect(layer.getObjectByName('war-room-lived-in-dispatch-case')).toBeUndefined();
+    expect(layer.getObjectByName('war-room-lived-in-mug')).toBeUndefined();
+    expect(layer.getObjectByName('war-room-lived-in-map-tube')).toBeUndefined();
 
     dispose(layer);
   });

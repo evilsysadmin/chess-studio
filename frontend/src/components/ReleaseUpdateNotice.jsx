@@ -28,8 +28,8 @@ export default function ReleaseUpdateNotice({ deferReload = false }) {
       if (checkInFlightRef.current) {
         // Coalesce bursts, but do not lose a meaningful refresh signal that
         // arrives while the previous manifest request is still in flight.
-        // Exactly one follow-up check is queued, so visibility/focus churn
-        // cannot turn into a request storm.
+        // Exactly one follow-up check is queued, so visibility/focus/online
+        // churn cannot turn into a request storm.
         rerunRequested = true;
         return checkInFlightRef.current;
       }
@@ -61,13 +61,19 @@ export default function ReleaseUpdateNotice({ deferReload = false }) {
     };
     const timer = window.setInterval(checkIfVisible, RELEASE_CHECK_INTERVAL_MS);
     const onVisibility = checkIfVisible;
+    const onFocus = checkIfVisible;
+    const onOnline = checkIfVisible;
     document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('online', onOnline);
     return () => {
       active = false;
       controller.abort();
       checkInFlightRef.current = null;
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('online', onOnline);
     };
   }, []);
 

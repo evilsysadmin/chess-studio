@@ -1,6 +1,6 @@
 # GitHub Actions · mapa operativo
 
-Última auditoría: 2026-09-05.
+Última auditoría: 2026-09-06.
 
 Regla: cada workflow debe representar un dominio operativo o blast radius real. Se fusiona duplicación histórica; no se fusionan promoción, rollback o acreditación sólo para bajar el contador.
 
@@ -17,6 +17,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 - `npm audit` y `pip-audit` son señales auxiliares. Trivy conserva la política bloqueante por severidad.
 - `scripts/test_suite_audit.mjs --ci-wiring` impide resucitar workflows retirados, `npm ci` directo, cache keys por `github.run_id`, builds Playwright duplicados y runners flotantes en rutas críticas.
 - Las PR usan **GitHub native auto-merge**. Ningún workflow del repo espera checks para ejecutar `gh pr merge`, ni existe un handoff que redispare CI después del merge.
+- Un push directo excepcional a `main` no recibe bypass: `Main · admission` lo detecta y ejecuta un gate completo sobre ese HEAD exacto antes de permitir staging.
 
 ## Acciones reutilizables
 
@@ -32,6 +33,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 | Workflow | Responsabilidad |
 | --- | --- |
 | `cicd.yml` | Gate principal quality-only para PR. Preflight y luego frontend/backend/security/E2E según superficie. Las lanes Playwright core + War Room/Matthias son bloqueantes bajo un único `Tests · Playwright` y consumen un build compartido. No despliega. |
+| `main-admission.yml` | Clasifica el HEAD de `main`. Si procede de PR, reutiliza la acreditación Quality inmutable y hace preflight barato; si es un commit directo excepcional, ejecuta tests, security, Playwright, imágenes Docker y compose smoke sobre el SHA exacto. Sólo un run verde habilita staging. |
 | `staging-deploy.yml` | Despliega el SHA aprobado en Render staging + Pages staging y acredita backend/frontend. |
 | `staging-ai-worker.yml` | Completa/revalida staging y emite la acreditación inmutable que permite promoción. El nombre se conserva por el contrato `workflow_run` existente. |
 | `production-promote.yml` | Promueve sólo el SHA acreditado. Worker/DNS Terraform `plan/apply` permanece aquí porque sí gestiona infraestructura real y está protegido por admisión anti-stale antes de la primera mutación. Render y Pages continúan después sobre el mismo SHA. |
@@ -77,6 +79,8 @@ push main
  │
  ▼
 Main · admission
+ ├─ PR-derived ──> reuse Quality receipt + static preflight
+ └─ direct HEAD ─> full exact-HEAD fallback gate
  │
  ▼
 Staging · deploy
@@ -91,7 +95,7 @@ Production · promote
  └─ Cloudflare Pages
 ```
 
-`workflow_dispatch` en `cicd.yml` queda como escape hatch manual, no como parte del camino normal de entrega.
+`workflow_dispatch` en `cicd.yml` queda como escape hatch manual, no como parte del camino normal de entrega. El fallback directo tampoco es el camino normal: existe para que un commit administrativo excepcional no deje staging esperando a que otra PR "arrastre" el HEAD.
 
 ## Fósiles retirados en esta auditoría
 

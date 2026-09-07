@@ -1,0 +1,217 @@
+/* Home · Android first-fold contract
+ *
+ * Mobile has a different job from desktop: the player must be able to play
+ * before admiring the castle. Global utilities stay reachable but float over
+ * the page instead of consuming vertical layout, transient game summaries are
+ * toasts, and the first playable room leads the Home flow.
+ */
+
+@media (max-width: 760px) {
+  /* The global player is chrome, not Home content. Keeping it in normal flow
+   * cost more than 150px on short Android browser viewports, especially for
+   * admins because service status adds a second row. */
+  body:has(.menu.home-friendly) .global-music-dock {
+    position: fixed !important;
+    z-index: 170 !important;
+    top: max(.45rem, env(safe-area-inset-top)) !important;
+    left: max(.45rem, env(safe-area-inset-left)) !important;
+    width: min(340px, calc(100vw - .9rem)) !important;
+    margin: 0 !important;
+  }
+
+  body:has(.menu.home-friendly) .global-music-dock:has(.music-deck-collapsed) {
+    width: 76px !important;
+  }
+
+  body:has(.menu.home-friendly) .global-music-dock .music-deck-collapsed {
+    width: 76px !important;
+    min-height: 40px;
+  }
+
+  /* Admin presence/backend status shares the same compact top row instead of
+   * becoming a second block. The full text still exists for larger layouts. */
+  body:has(.menu.home-friendly) .global-music-dock:has(.music-deck-collapsed) .live-service-status {
+    position: absolute !important;
+    top: 0 !important;
+    left: 84px !important;
+    width: max-content !important;
+    max-width: min(170px, calc(100vw - 9.2rem)) !important;
+    margin: 0 !important;
+    gap: .24rem !important;
+    padding: .26rem .38rem !important;
+    border-radius: 999px !important;
+    font-size: .56rem !important;
+    line-height: 1.1;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, .24) !important;
+  }
+
+  body:has(.menu.home-friendly) .global-music-dock:has(.music-deck-collapsed) .live-service-online-full,
+  body:has(.menu.home-friendly) .global-music-dock:has(.music-deck-collapsed) .live-service-backend-full {
+    display: none !important;
+  }
+
+  body:has(.menu.home-friendly) .global-music-dock:has(.music-deck-collapsed) .live-service-online-compact,
+  body:has(.menu.home-friendly) .global-music-dock:has(.music-deck-collapsed) .live-service-backend-compact {
+    display: inline !important;
+  }
+
+  body:has(.menu.home-friendly) .global-music-dock:has(.music-deck-collapsed) .live-service-online-link {
+    min-width: 1.1rem !important;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  /* Reserve one compact utility row, then get straight to product content. */
+  body:has(.menu.home-friendly) .app-shell {
+    padding-top: max(3.15rem, calc(env(safe-area-inset-top) + 2.65rem)) !important;
+  }
+
+  body:has(.menu.home-friendly) .masthead:not(.masthead-game-compact) {
+    min-height: 0 !important;
+    margin-bottom: .35rem !important;
+    padding: 0 .55rem !important;
+    gap: .28rem !important;
+  }
+
+  body:has(.menu.home-friendly) .masthead:not(.masthead-game-compact) .masthead-top-row {
+    min-height: 2.45rem !important;
+  }
+
+  body:has(.menu.home-friendly) .masthead:not(.masthead-game-compact) h1 {
+    margin: 0 !important;
+    font-size: clamp(1.72rem, 8.8vw, 2.08rem) !important;
+    line-height: .98 !important;
+  }
+
+  body:has(.menu.home-friendly) .masthead:not(.masthead-game-compact) .player-status-bar,
+  body:has(.menu.home-friendly) .masthead:not(.masthead-game-compact) .player-status-bar-compact {
+    margin-top: 0 !important;
+    gap: .28rem !important;
+  }
+
+  body:has(.menu.home-friendly) .masthead:not(.masthead-game-compact) .status-chip,
+  body:has(.menu.home-friendly) .masthead:not(.masthead-game-compact) .status-chip.status-chip-compact {
+    min-width: 0 !important;
+    min-height: 31px !important;
+    padding: .28rem .46rem !important;
+    gap: .28rem !important;
+  }
+
+  body:has(.menu.home-friendly) .masthead:not(.masthead-game-compact) .status-chip-compact b {
+    font-size: .65rem !important;
+  }
+
+  /* A cancelled/finished-session summary is useful feedback, not a layout
+   * section. On mobile it becomes a dismissible toast and cannot push Play. */
+  body:has(.menu.home-friendly) .session-result-notice {
+    position: fixed !important;
+    z-index: 180 !important;
+    left: .6rem !important;
+    right: .6rem !important;
+    bottom: max(.65rem, env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: .62rem .72rem !important;
+    gap: .55rem !important;
+    border-radius: 12px !important;
+    box-shadow: 0 14px 36px rgba(0, 0, 0, .42) !important;
+  }
+
+  body:has(.menu.home-friendly) .session-result-notice strong {
+    font-size: .74rem !important;
+  }
+
+  body:has(.menu.home-friendly) .session-result-notice span {
+    font-size: .68rem !important;
+    line-height: 1.3;
+  }
+
+  /* Mobile hierarchy: onboarding/recovery may still outrank everything, but
+   * normal play comes before the cinematic room. Desktop keeps castle-first. */
+  body .menu.home-friendly > .home-start-guide { order: 5 !important; }
+  body .menu.home-friendly > .home-continue-group { order: 6 !important; }
+  body .menu.home-friendly > .home-modes-section { order: 8 !important; }
+  body .menu.home-friendly > .home-castle-life { order: 10 !important; }
+  body .menu.home-friendly > .home-next-action { order: 20 !important; }
+
+  body .menu.home-friendly > .home-modes-section {
+    width: calc(100% - .8rem) !important;
+    margin: .35rem auto 0 !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-group-heading {
+    margin: 0 0 .45rem !important;
+    padding: 0 0 .42rem !important;
+    gap: .2rem !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-group-heading > div:first-child::before {
+    margin-bottom: .16rem !important;
+    font-size: .58rem !important;
+    letter-spacing: .24em !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-group-heading h2 {
+    margin-top: .08rem !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-group-heading h2::after {
+    font-size: 1.24rem !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-heading-actions {
+    min-height: 0 !important;
+    margin-top: 0 !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-context-guide {
+    min-height: 30px !important;
+    margin: 0 !important;
+    padding: .28rem .48rem !important;
+    font-size: .61rem !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-primary-grid {
+    padding-bottom: .35rem !important;
+    gap: .55rem !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-mode-card {
+    min-height: 8.9rem !important;
+    padding: .9rem .9rem .78rem !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-mode-copy h3 {
+    margin: .2rem 0 .3rem !important;
+    font-size: 1.18rem !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-mode-description {
+    font-size: .7rem !important;
+    line-height: 1.32 !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-mode-kicker {
+    font-size: .54rem !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life {
+    margin-top: .45rem !important;
+  }
+}
+
+@media (max-width: 390px) {
+  body:has(.menu.home-friendly) .masthead:not(.masthead-game-compact) h1 {
+    font-size: 1.66rem !important;
+  }
+
+  body:has(.menu.home-friendly) .masthead:not(.masthead-game-compact) .status-chip,
+  body:has(.menu.home-friendly) .masthead:not(.masthead-game-compact) .status-chip.status-chip-compact {
+    padding-inline: .38rem !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-mode-card {
+    min-height: 8.55rem !important;
+  }
+}

@@ -32,7 +32,7 @@ import { handicapForGap } from './handicap.js';
 const InsightsScreen = React.lazy(() => import('./components/InsightsScreen.jsx'));
 import { timeControlById } from './clock.js';
 import { clearClockSnapshot } from './clockPersistence.js';
-import { checkAchievements } from './achievements.js';
+import { scheduleAchievementCheck } from './achievementBootstrap.js';
 const AdminScreen = React.lazy(() => import('./components/AdminScreen.jsx'));
 import LiveServiceStatus from './components/LiveServiceStatus.jsx';
 import SaveStatusBadge from './components/SaveStatusBadge.jsx';
@@ -314,7 +314,7 @@ function AppInner({ isAdminUser }) {
     const combatService = summarizeCombatService(loadCombatService());
     setCombatOverview({ credits: combatRoster.credits || 0, rank: combatService.rank, nextProgress: combatService.nextProgress });
     setCombatHistoryList(loadCombatHistory());
-    checkAchievements();
+    void scheduleAchievementCheck();
   }, [view]);
 
   async function handleNewGame(difficulty, color, opts) {

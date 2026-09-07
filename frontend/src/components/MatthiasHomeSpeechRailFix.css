@@ -1,21 +1,38 @@
-/* Home desktop rail · Matthias speech bubble
+/* Home canonical hero · Matthias speech bubble
  *
- * The premium Home moved Matthias into the left rail. The old speech bubble
- * contract still assumed the bubble lived to his left, which is impossible at
- * the viewport edge and left its tail pointing away from him. On wide desktop
- * the bubble now sits immediately to the right of the rail card and its tail
- * points back toward Matthias. Medium/mobile keep the original flex layout.
+ * HomeCanonical moves Matthias out of the legacy left rail and into the castle
+ * hero on desktop. The old rail CSS left a non-auto `left` behind and also kept
+ * the speech bubble at a fixed viewport X, so the character and bubble could
+ * overlap. Explicitly retire that legacy anchor and derive the bubble position
+ * from the same right/width clamps used by the canonical Matthias hero.
  */
-@media (min-width: 1100px) {
-  body:has(.home-friendly) .matthias-resident.is-viewport .matthias-resident__bubble {
-    /* Keep a tiny deterministic safety margin inside the <=16px tail contract.
-     * Chromium fractional layout measured 16.484px at exactly 12rem. */
-    left: calc(12rem - 1px);
+@media (min-width: 761px) {
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport {
+    left: auto !important;
   }
 
-  body:has(.home-friendly) .matthias-resident.is-viewport .matthias-resident__bubble::after {
-    left: -7px;
-    right: auto;
-    transform: rotate(225deg);
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport .matthias-resident__bubble {
+    position: fixed;
+    left: auto;
+    right: calc(
+      clamp(2.2rem, 7vw, 7.5rem)
+      + clamp(172px, 16vw, 238px)
+      + .5rem
+    );
+    width: min(320px, calc(100vw - 25rem));
+    max-width: 320px;
+    margin: 0;
+  }
+
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport .matthias-resident__bubble::after {
+    left: auto;
+    right: -7px;
+    transform: rotate(45deg);
+  }
+}
+
+@media (min-width: 761px) and (max-width: 860px) {
+  body:has(.menu.home-friendly) .matthias-resident.is-viewport .matthias-resident__bubble {
+    width: min(280px, calc(100vw - 29rem));
   }
 }

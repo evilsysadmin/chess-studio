@@ -1,0 +1,479 @@
+/* Chess Studio Home · adaptive desktop density
+ *
+ * Desktop is not one viewport. A 1920×1080 panel at 125% scaling can expose
+ * roughly 1536×864 CSS px, while 4K gives us far more room. This final cascade
+ * layer keeps the same product hierarchy at every desktop height and changes
+ * only density: compact, standard or spacious.
+ *
+ * Contract:
+ * - castle remains the diegetic hero;
+ * - the primary next action stays above the fold;
+ * - secondary play routes are navigation, not a second dashboard;
+ * - Daily is a strip, learning is quieter than play;
+ * - large screens gain atmosphere and breathing room, not giant controls.
+ */
+
+@media (min-width: 1000px) {
+  body .menu.home-friendly {
+    --home-density-mode: standard;
+    --home-content-max: 1480px;
+    --home-castle-h: clamp(300px, 36vh, 390px);
+    --home-section-gap: clamp(.85rem, 1.7vh, 1.2rem);
+    --home-hero-pad-y: clamp(.85rem, 1.6vh, 1.05rem);
+    --home-hero-title: clamp(2.15rem, 2.8vw, 3rem);
+    --home-route-h: clamp(84px, 9.5vh, 98px);
+    --home-learning-h: clamp(82px, 9vh, 94px);
+    --home-daily-h: clamp(62px, 7.2vh, 74px);
+  }
+
+  /* The 3D hall scales with available vertical room, not raw monitor pixels. */
+  body .menu.home-friendly > .home-castle-life {
+    height: var(--home-castle-h) !important;
+    min-height: var(--home-castle-h) !important;
+    max-height: var(--home-castle-h) !important;
+  }
+
+  /* Keep all product UI on a readable rail. 4K buys margins, not 700px cards. */
+  body .menu.home-friendly > .home-continue-group,
+  body .menu.home-friendly > .home-next-action,
+  body .menu.home-friendly > .home-modes-section,
+  body .menu.home-friendly > .home-today-card,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) {
+    width: min(calc(100% - 2rem), var(--home-content-max)) !important;
+  }
+
+  /* Primary command: compact cinematic hero, always before secondary routes. */
+  body .menu.home-friendly > .home-continue-group,
+  body .menu.home-friendly > .home-next-action {
+    min-height: 0 !important;
+    margin: var(--home-section-gap) auto 0 !important;
+    padding: var(--home-hero-pad-y) clamp(1.15rem, 2.2vw, 2rem) !important;
+    gap: .28rem clamp(1rem, 2vw, 1.7rem) !important;
+    align-items: center !important;
+    border-radius: 15px !important;
+  }
+
+  body .menu.home-friendly > .home-continue-group::before,
+  body .menu.home-friendly > .home-next-action::before {
+    font-size: .55rem !important;
+    letter-spacing: .25em !important;
+  }
+
+  body .menu.home-friendly > .home-continue-group::after,
+  body .menu.home-friendly > .home-next-action::after {
+    margin: -.05rem 0 .08rem !important;
+    font-size: var(--home-hero-title) !important;
+    line-height: .92 !important;
+  }
+
+  body .menu.home-friendly > .home-next-action strong {
+    font-size: clamp(.94rem, 1.25vw, 1.15rem) !important;
+  }
+
+  body .menu.home-friendly > .home-next-action small {
+    max-width: 44rem !important;
+    font-size: .73rem !important;
+    line-height: 1.32 !important;
+  }
+
+  body .menu.home-friendly > .home-next-action > button,
+  body .menu.home-friendly > .home-continue-group .home-continue-card {
+    min-width: clamp(11.5rem, 17vw, 15rem) !important;
+    min-height: 3.15rem !important;
+    padding: .68rem 1.15rem !important;
+  }
+
+  /* The second play layer is explicitly a route chooser, not another hero. */
+  body .menu.home-friendly > .home-modes-section {
+    position: relative !important;
+    margin: var(--home-section-gap) auto 0 !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-group-heading {
+    min-height: 0 !important;
+    margin: 0 0 .48rem !important;
+    padding: 0 0 .42rem !important;
+    align-items: center !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-group-heading > div:first-child::before {
+    content: 'JUGAR' !important;
+    font-size: .54rem !important;
+    letter-spacing: .28em !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-group-heading h2::after {
+    content: 'Explorar otras rutas' !important;
+    font-size: clamp(1.15rem, 1.65vw, 1.45rem) !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-heading-actions p {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-context-guide {
+    min-height: 28px !important;
+    padding: .28rem .55rem !important;
+    font-size: .6rem !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-primary-grid {
+    gap: clamp(.55rem, 1vw, .8rem) !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-mode-card {
+    height: var(--home-route-h) !important;
+    min-height: var(--home-route-h) !important;
+    padding: .72rem .82rem !important;
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
+    grid-template-rows: 1fr !important;
+    align-items: center !important;
+    gap: .7rem !important;
+    border-radius: 12px !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-mode-art {
+    opacity: .34 !important;
+    filter: saturate(.82) brightness(.58) contrast(1.08) !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-mode-icon {
+    position: relative !important;
+    inset: auto !important;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: 2.15rem !important;
+    height: 2.15rem !important;
+    margin: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-mode-copy {
+    position: relative !important;
+    z-index: 2 !important;
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    align-self: center !important;
+    min-width: 0 !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-mode-kicker,
+  body .menu.home-friendly > .home-modes-section .home-mode-progress {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-mode-copy h3 {
+    margin: 0 0 .12rem !important;
+    font-size: clamp(1rem, 1.2vw, 1.18rem) !important;
+    line-height: 1.05 !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-mode-description {
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    color: rgba(235, 226, 208, .64) !important;
+    font-size: .68rem !important;
+    line-height: 1.25 !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .menu-card-cta {
+    position: relative !important;
+    inset: auto !important;
+    z-index: 3 !important;
+    grid-column: 3 !important;
+    grid-row: 1 !important;
+    align-self: center !important;
+    justify-self: end !important;
+    width: 2rem !important;
+    height: 2rem !important;
+    min-width: 2rem !important;
+    padding: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(222, 178, 78, .42) !important;
+    border-radius: 999px !important;
+    font-size: 0 !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .menu-card-cta b {
+    font-size: 1rem !important;
+    line-height: 1 !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-more-modes {
+    margin-top: .38rem !important;
+    border-top: 0 !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-more-modes > summary {
+    width: max-content;
+    margin-left: auto;
+    padding: .2rem 0 !important;
+    color: var(--home-canonical-gold-bright) !important;
+    font-size: 0 !important;
+    letter-spacing: .02em !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-more-modes > summary::before {
+    content: 'Ver todos los modos';
+    font-size: .66rem;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-more-modes > summary::after {
+    content: '  →';
+    font-size: .72rem;
+  }
+
+  /* Daily is an information/action strip. */
+  body .menu.home-friendly > .home-today-card {
+    min-height: var(--home-daily-h) !important;
+    height: var(--home-daily-h) !important;
+    margin: var(--home-section-gap) auto 0 !important;
+    padding: .5rem clamp(.8rem, 1.5vw, 1.2rem) !important;
+    grid-template-columns: auto minmax(0, 1fr) auto auto !important;
+    gap: .55rem .9rem !important;
+    border-radius: 12px !important;
+  }
+
+  body .menu.home-friendly > .home-today-card::before {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-today-card .home-today-emblem {
+    font-size: 1.35rem !important;
+  }
+
+  body .menu.home-friendly > .home-today-card .home-today-copy .section-label {
+    font-size: .5rem !important;
+  }
+
+  body .menu.home-friendly > .home-today-card .home-today-copy strong {
+    font-size: .88rem !important;
+  }
+
+  body .menu.home-friendly > .home-today-card .home-today-copy small {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-today-card .home-today-missions {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-today-card .home-today-streaks {
+    font-size: .63rem !important;
+    white-space: nowrap;
+  }
+
+  body .menu.home-friendly > .home-today-card .home-today-actions .primary-btn,
+  body .menu.home-friendly > .home-today-card .home-today-actions .secondary-btn {
+    min-height: 2.35rem !important;
+    padding: .45rem .75rem !important;
+    font-size: .65rem !important;
+  }
+
+  /* Learning speaks the same visual language, but one level quieter. */
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) {
+    margin: var(--home-section-gap) auto 0 !important;
+    padding: .52rem 0 0 !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-group-heading {
+    min-height: 0 !important;
+    margin: 0 0 .44rem !important;
+    padding: 0 !important;
+    align-items: center !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-group-heading .section-label {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-group-heading h2 {
+    margin: 0 !important;
+    font-size: 0 !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-group-heading h2::after {
+    content: 'Sigue aprendiendo';
+    font-size: clamp(1.12rem, 1.55vw, 1.38rem);
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-heading-actions > p {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-progress-link,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-context-guide {
+    min-height: 27px !important;
+    padding: .25rem .5rem !important;
+    font-size: .58rem !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-grid {
+    gap: clamp(.55rem, 1vw, .8rem) !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card {
+    height: var(--home-learning-h) !important;
+    min-height: var(--home-learning-h) !important;
+    padding: .68rem .78rem !important;
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important;
+    grid-template-rows: 1fr !important;
+    align-items: center !important;
+    gap: .68rem !important;
+    overflow: hidden !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .home-mode-icon {
+    position: relative !important;
+    inset: auto !important;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    width: 2.05rem !important;
+    height: 2.05rem !important;
+    display: grid !important;
+    place-items: center !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .home-mode-copy {
+    position: relative !important;
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    min-width: 0 !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .home-mode-kicker {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card h3 {
+    margin: 0 0 .1rem !important;
+    font-size: clamp(.92rem, 1.1vw, 1.08rem) !important;
+    line-height: 1.05 !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .home-mode-description {
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    font-size: .66rem !important;
+    line-height: 1.22 !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .menu-card-cta {
+    position: relative !important;
+    inset: auto !important;
+    grid-column: 3 !important;
+    grid-row: 1 !important;
+    align-self: center !important;
+    justify-self: end !important;
+    width: 1.9rem !important;
+    height: 1.9rem !important;
+    min-width: 1.9rem !important;
+    padding: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(222, 178, 78, .30) !important;
+    border-radius: 999px !important;
+    font-size: 0 !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .menu-card-cta b {
+    font-size: .95rem !important;
+  }
+}
+
+/* Compact desktop: laptops, 1366×768, and 1080p with aggressive OS scaling. */
+@media (min-width: 1000px) and (max-height: 820px) {
+  body .menu.home-friendly {
+    --home-density-mode: compact;
+    --home-castle-h: clamp(250px, 35vh, 285px);
+    --home-section-gap: .55rem;
+    --home-hero-pad-y: .62rem;
+    --home-hero-title: clamp(1.75rem, 2.25vw, 2.15rem);
+    --home-route-h: 70px;
+    --home-learning-h: 68px;
+    --home-daily-h: 54px;
+  }
+
+  body .menu.home-friendly > .home-next-action small {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-next-action > button,
+  body .menu.home-friendly > .home-continue-group .home-continue-card {
+    min-height: 2.65rem !important;
+    padding-block: .5rem !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-group-heading,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-group-heading {
+    margin-bottom: .28rem !important;
+    padding-bottom: .28rem !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-mode-description,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .home-mode-description {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-more-modes {
+    margin-top: .2rem !important;
+  }
+
+  body .menu.home-friendly > .home-today-card .home-today-emblem,
+  body .menu.home-friendly > .home-today-card .home-today-streaks {
+    display: none !important;
+  }
+
+  body .menu.home-friendly > .home-today-card {
+    grid-template-columns: minmax(0, 1fr) auto !important;
+  }
+
+  body .menu.home-friendly > .home-today-card .home-today-actions .primary-btn,
+  body .menu.home-friendly > .home-today-card .home-today-actions .secondary-btn {
+    min-height: 2rem !important;
+    padding: .32rem .62rem !important;
+  }
+}
+
+/* Spacious desktop: 1440p/4K gets more castle and air, not larger controls. */
+@media (min-width: 1000px) and (min-height: 1051px) {
+  body .menu.home-friendly {
+    --home-density-mode: spacious;
+    --home-content-max: 1540px;
+    --home-castle-h: clamp(400px, 38vh, 520px);
+    --home-section-gap: clamp(1.05rem, 1.65vh, 1.45rem);
+    --home-hero-pad-y: 1.05rem;
+    --home-hero-title: clamp(2.55rem, 2.55vw, 3.2rem);
+    --home-route-h: 104px;
+    --home-learning-h: 100px;
+    --home-daily-h: 78px;
+  }
+}
+
+/* Width also matters: protect legibility on narrow desktop windows. */
+@media (min-width: 1000px) and (max-width: 1240px) {
+  body .menu.home-friendly {
+    --home-content-max: 1120px;
+  }
+
+  body .menu.home-friendly > .home-modes-section .home-mode-description,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-learning-card .home-mode-description {
+    display: none !important;
+  }
+}
+
+@media (min-width: 2200px) {
+  body .menu.home-friendly {
+    --home-content-max: 1560px;
+  }
+}

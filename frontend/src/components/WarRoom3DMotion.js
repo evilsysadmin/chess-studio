@@ -2,17 +2,262 @@ import * as THREE from 'three';
 
 const WAR_ROOM_RENDER_DISCIPLINE = Symbol.for('chess-studio.war-room-render-discipline');
 const shadowRefreshState = new WeakMap();
+const warRoomHemisphereState = new WeakMap();
+const warRoomMaterialGradeRootState = new WeakMap();
+const warRoomMaterialGradeSignatureState = new WeakMap();
+const warRoomMaterialGradeObjectIds = new WeakMap();
+let nextWarRoomMaterialGradeObjectId = 1;
 
-export function shadowRefreshInterval({ coarsePointer = false } = {}) {
-  return coarsePointer ? 180 : 120;
+export function shadowRefreshInterval({ coarsePointer = false, activeMotion = false } = {}) {
+  if (activeMotion) return coarsePointer ? 180 : 120;
+  return coarsePointer ? 540 : 360;
 }
 
-export function shouldRefreshShadowMap({ now = 0, lastShadowAt = Number.NEGATIVE_INFINITY, coarsePointer = false } = {}) {
+export function shouldRefreshShadowMap({
+  now = 0,
+  lastShadowAt = Number.NEGATIVE_INFINITY,
+  coarsePointer = false,
+  activeMotion = false,
+} = {}) {
   const current = Number(now);
   const previous = Number(lastShadowAt);
   if (!Number.isFinite(previous)) return true;
   if (!Number.isFinite(current)) return false;
-  return current - previous >= shadowRefreshInterval({ coarsePointer });
+  return current - previous >= shadowRefreshInterval({ coarsePointer, activeMotion });
+}
+
+export function materialGradeRefreshInterval({ activeMotion = false } = {}) {
+  // Historical cadence helper retained for compatibility with existing callers
+  // and tests. The War Room render path no longer uses this timer: material
+  // grading is invalidated by dynamic board structure changes instead.
+  return activeMotion ? 180 : 1500;
+}
+
+export function shouldRefreshMaterialGrade({
+  now = 0,
+  lastMaterialGradeAt = Number.NEGATIVE_INFINITY,
+  activeMotion = false,
+} = {}) {
+  const current = Number(now);
+  const previous = Number(lastMaterialGradeAt);
+  if (!Number.isFinite(previous)) return true;
+  if (!Number.isFinite(current)) return false;
+  return current - previous >= materialGradeRefreshInterval({ activeMotion });
+}
+
+export function warRoomHemisphereIntensity({ coarsePointer = false } = {}) {
+  // Keep the darker desktop grade, but preserve enough global fill for the room
+  // architecture, armor and board surround to remain readable around the practicals.
+  // Touch/coarse devices keep their established brighter readability contract.
+  return coarsePointer ? 1.35 : 1.24;
+}
+
+export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {}) {
+  if (!scene) return null;
+  let hemisphere = warRoomHemisphereState.get(scene) || null;
+  if (!hemisphere || !hemisphere.parent) {
+    hemisphere = scene.children?.find((object) => (
+      object?.isHemisphereLight
+      && object.color?.getHex?.() === 0xffefd0
+      && object.groundColor?.getHex?.() === 0x10192b
+    )) || null;
+    if (hemisphere) warRoomHemisphereState.set(scene, hemisphere);
+  }
+  if (!hemisphere) return null;
+  hemisphere.intensity = warRoomHemisphereIntensity({ coarsePointer });
+  scene.userData.warRoomHemisphereIntensity = hemisphere.intensity;
+  return hemisphere;
+}
+
+export function warRoomMaterialIblProfile({ coarsePointer = false } = {}) {
+  if (coarsePointer) return null;
+  return {
+    ivoryEnvMax: 0.18,
+    lightTileEnvMax: 0.24,
+    ivoryRoughnessMin: 0.74,
+    ivoryClearcoatMax: 0.12,
+    ivoryClearcoatRoughnessMin: 0.58,
+    ivorySpecularMax: 0.18,
+    ivorySheenMax: 0.015,
+    ivorySheenRoughnessMin: 0.72,
+    ivoryAlbedoScale: 0.88,
+    lightTileRoughnessMin: 0.8,
+    lightTileClearcoatMax: 0.1,
+    lightTileClearcoatRoughnessMin: 0.56,
+    lightTileSpecularMax: 0.26,
+    lightTileAlbedoScale: 0.92,
+  };
+}
+
+function applyStableAlbedoScale(material, scale, grade) {
+  if (!material?.color?.getHex || typeof material.color.copy !== 'function') return false;
+  material.userData ||= {};
+
+  const currentHex = material.color.getHex();
+  const previous = material.userData.warRoomAlbedoGradeState;
+  const sourceHex = previous?.grade === grade && previous.gradedHex === currentHex
+    ? previous.sourceHex
+    : currentHex;
+  const gradedColor = new THREE.Color(sourceHex).multiplyScalar(scale);
+  const gradedHex = gradedColor.getHex();
+
+  material.userData.warRoomAlbedoGradeState = { grade, sourceHex, gradedHex };
+  if (gradedHex === currentHex) return false;
+  material.color.copy(gradedColor);
+  return true;
+}
+
+function capMaterial(material, key, maximum) {
+  if (typeof material?.[key] !== 'number' || material[key] <= maximum) return false;
+  material[key] = maximum;
+  return true;
+}
+
+function floorMaterial(material, key, minimum) {
+  if (typeof material?.[key] !== 'number' || material[key] >= minimum) return false;
+  material[key] = minimum;
+  return true;
+}
+
+function materialGradeTraversalRoot(scene) {
+  const cached = warRoomMaterialGradeRootState.get(scene);
+  if (cached?.parent) return cached;
+
+  let boardRoot = null;
+  scene?.traverse?.((object) => {
+    if (boardRoot || !object?.isMesh || !object.material) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    if (materials.some((material) => material?.userData?.surfaceRole === 'board-light')) {
+      boardRoot = object.parent || null;
+    }
+  });
+
+  if (boardRoot) {
+    warRoomMaterialGradeRootState.set(scene, boardRoot);
+    scene.userData ||= {};
+    scene.userData.warRoomMaterialGradeTraversal = 'board-root-v1';
+    return boardRoot;
+  }
+
+  scene.userData ||= {};
+  scene.userData.warRoomMaterialGradeTraversal = 'scene-fallback';
+  return scene;
+}
+
+function materialGradeObjectIdentity(object) {
+  if (!object || (typeof object !== 'object' && typeof object !== 'function')) return 0;
+  let identity = warRoomMaterialGradeObjectIds.get(object);
+  if (!identity) {
+    identity = nextWarRoomMaterialGradeObjectId;
+    nextWarRoomMaterialGradeObjectId += 1;
+    warRoomMaterialGradeObjectIds.set(object, identity);
+  }
+  return identity;
+}
+
+export function warRoomMaterialGradeDynamicSignature(root) {
+  if (!root?.children) return '';
+  return root.children
+    .filter((child) => child?.isGroup)
+    .map((group) => {
+      const children = group.children || [];
+      const first = children[0] || null;
+      const last = children.length ? children[children.length - 1] : null;
+      return [
+        materialGradeObjectIdentity(group),
+        children.length,
+        materialGradeObjectIdentity(first),
+        materialGradeObjectIdentity(last),
+      ].join(':');
+    })
+    .join('|');
+}
+
+export function shouldRunWarRoomMaterialGrade(scene) {
+  if (!scene) return false;
+  const traversalRoot = materialGradeTraversalRoot(scene);
+  if (!traversalRoot) return false;
+
+  // If the canonical board root cannot be resolved, keep the old safe behavior.
+  // Normal War Room scenes resolve it on the first render because board tiles are
+  // already mounted before painting starts.
+  if (traversalRoot === scene && scene.userData?.warRoomMaterialGradeTraversal === 'scene-fallback') {
+    return true;
+  }
+
+  const signature = warRoomMaterialGradeDynamicSignature(traversalRoot);
+  const previous = warRoomMaterialGradeSignatureState.get(scene);
+  if (previous === signature) return false;
+
+  warRoomMaterialGradeSignatureState.set(scene, signature);
+  scene.userData ||= {};
+  scene.userData.warRoomMaterialGradeMode = 'dynamic-groups-v1';
+  scene.userData.warRoomMaterialGradeInvalidations = (scene.userData.warRoomMaterialGradeInvalidations || 0) + 1;
+  return true;
+}
+
+export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {}) {
+  const profile = warRoomMaterialIblProfile({ coarsePointer });
+  if (!scene || !profile || typeof scene.traverse !== 'function') {
+    return { adjusted: 0, ivory: 0, lightTile: 0, profile };
+  }
+
+  const traversalRoot = materialGradeTraversalRoot(scene);
+  if (!traversalRoot || typeof traversalRoot.traverse !== 'function') {
+    return { adjusted: 0, ivory: 0, lightTile: 0, profile };
+  }
+
+  const seen = new Set();
+  let adjusted = 0;
+  let ivory = 0;
+  let lightTile = 0;
+
+  traversalRoot.traverse((object) => {
+    if (!object?.isMesh || !object.material) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) {
+      if (!material || seen.has(material)) continue;
+      seen.add(material);
+
+      const role = material.userData?.surfaceRole;
+      if (role !== 'ivory' && role !== 'board-light') continue;
+      material.userData ||= {};
+
+      let changed = false;
+      if (role === 'ivory') {
+        ivory += 1;
+        changed = capMaterial(material, 'envMapIntensity', profile.ivoryEnvMax) || changed;
+        changed = floorMaterial(material, 'roughness', profile.ivoryRoughnessMin) || changed;
+        changed = capMaterial(material, 'clearcoat', profile.ivoryClearcoatMax) || changed;
+        changed = floorMaterial(material, 'clearcoatRoughness', profile.ivoryClearcoatRoughnessMin) || changed;
+        changed = capMaterial(material, 'specularIntensity', profile.ivorySpecularMax) || changed;
+        changed = capMaterial(material, 'sheen', profile.ivorySheenMax) || changed;
+        changed = floorMaterial(material, 'sheenRoughness', profile.ivorySheenRoughnessMin) || changed;
+        changed = applyStableAlbedoScale(material, profile.ivoryAlbedoScale, 'aged-ivory-v2') || changed;
+        material.userData.warRoomSurfaceGrade = 'aged-ivory-v2';
+      } else {
+        lightTile += 1;
+        changed = capMaterial(material, 'envMapIntensity', profile.lightTileEnvMax) || changed;
+        changed = floorMaterial(material, 'roughness', profile.lightTileRoughnessMin) || changed;
+        changed = capMaterial(material, 'clearcoat', profile.lightTileClearcoatMax) || changed;
+        changed = floorMaterial(material, 'clearcoatRoughness', profile.lightTileClearcoatRoughnessMin) || changed;
+        changed = capMaterial(material, 'specularIntensity', profile.lightTileSpecularMax) || changed;
+        changed = applyStableAlbedoScale(material, profile.lightTileAlbedoScale, 'muted-light-tile-v2') || changed;
+        material.userData.warRoomSurfaceGrade = 'muted-light-tile-v2';
+      }
+
+      material.userData.warRoomIblGrade = 'low-fill-v2';
+      if (changed) adjusted += 1;
+    }
+  });
+
+  scene.userData.warRoomMaterialIblProfile = 'low-fill-v2';
+  scene.userData.warRoomSurfaceGrade = 'aged-matte-v2';
+  scene.userData.warRoomIvoryEnvMax = profile.ivoryEnvMax;
+  scene.userData.warRoomLightTileEnvMax = profile.lightTileEnvMax;
+  scene.userData.warRoomMaterialIblAdjusted = adjusted;
+  scene.userData.warRoomMaterialGradePasses = (scene.userData.warRoomMaterialGradePasses || 0) + 1;
+  return { adjusted, ivory, lightTile, profile };
 }
 
 export function nextRuntimeRenderScale({
@@ -58,6 +303,10 @@ function installWarRoomRenderDiscipline() {
     if (!budget || !this.shadowMap) return originalRender.call(this, scene, camera);
 
     const coarsePointer = Number(budget.shadowMapSize) <= 512;
+    const hemisphere = applyWarRoomHemisphereGrade(scene, { coarsePointer });
+    if (hemisphere && this.domElement?.dataset) {
+      this.domElement.dataset.warRoomLightHemisphere = Number(hemisphere.intensity).toFixed(2);
+    }
     const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : Date.now();
@@ -69,7 +318,19 @@ function installWarRoomRenderDiscipline() {
     shadowRefreshState.set(this, state);
 
     const frameMs = Number.isFinite(state.lastRenderAt) ? now - state.lastRenderAt : 16;
+    const activeMotion = Number.isFinite(state.lastRenderAt) && frameMs < 50;
     state.lastRenderAt = now;
+
+    if (shouldRunWarRoomMaterialGrade(scene)) {
+      const materialGrade = applyWarRoomMaterialGrade(scene, { coarsePointer });
+      if (materialGrade.profile && this.domElement?.dataset) {
+        this.domElement.dataset.warRoomIblIvory = Number(materialGrade.profile.ivoryEnvMax).toFixed(2);
+        this.domElement.dataset.warRoomIblLightTile = Number(materialGrade.profile.lightTileEnvMax).toFixed(2);
+        this.domElement.dataset.warRoomSurfaceGrade = 'aged-matte-v2';
+        this.domElement.dataset.warRoomMaterialGrade = 'dynamic-groups-v1';
+      }
+    }
+
     const currentScale = typeof this.getPixelRatio === 'function'
       ? this.getPixelRatio()
       : Number(budget.pixelRatio) || 1;
@@ -85,12 +346,16 @@ function installWarRoomRenderDiscipline() {
       scene.userData.warRoomRuntimeScale = runtime.scale;
     }
 
-    // The scene still renders every requested frame, but the expensive directional
-    // shadow pass no longer follows it blindly at 60 Hz. Piece contact shadows keep
-    // movement grounded between refreshes; the final move frame is always far enough
-    // past the interval to refresh the real shadow map again.
+    // The scene can keep its premium ambient heartbeat without paying the full
+    // directional-shadow pass on every idle paint. Contiguous motion restores the
+    // tighter cadence so piece movement still gets responsive real shadows.
     this.shadowMap.autoUpdate = false;
-    if (shouldRefreshShadowMap({ now, lastShadowAt: state.lastShadowAt, coarsePointer })) {
+    if (shouldRefreshShadowMap({
+      now,
+      lastShadowAt: state.lastShadowAt,
+      coarsePointer,
+      activeMotion,
+    })) {
       this.shadowMap.needsUpdate = true;
       state.lastShadowAt = now;
     }
@@ -130,7 +395,9 @@ export function inferCapturedPiece(previousPieces = [], nextPieces = [], animate
 
 export function deriveMoveKinetics({ movingType = 'p', capture = false, promotion = false, castling = false, coarsePointer = false } = {}) {
   const type = String(movingType || 'p').toLowerCase();
-  const duration = coarsePointer ? (capture ? 200 : 170) : (capture ? 240 : type === 'n' ? 220 : 190);
+  // Hardware WebGL makes the travel cadence legible frame by frame. Keep the
+  // physical hierarchy, but make quiet moves finish in roughly 7-8 frames at 60 Hz.
+  const duration = coarsePointer ? (capture ? 160 : 135) : (capture ? 165 : type === 'n' ? 145 : 125);
   const lift = coarsePointer ? 0.08 : type === 'n' ? 0.28 : capture ? 0.19 : 0.13;
   return {
     duration,
@@ -143,13 +410,14 @@ export function deriveMoveKinetics({ movingType = 'p', capture = false, promotio
 }
 
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
-  // v6 art direction: keep the premium local fire/sconce response, but trim the
-  // broad desktop board grade one more subtle notch. This mainly calms the near
-  // ivory/white-side highlights while preserving the warm practical and rim lights.
-  const baseExposure = coarsePointer ? 1.015 : 1.055;
+  // Fine tuning after live visual review: keep room practicals and global exposure
+  // untouched, and lower only the desktop directional key one modest notch. The
+  // render boundary separately normalizes the fixed hemisphere fill that was masking
+  // this key reduction on ivory pieces and light tiles.
+  const baseExposure = coarsePointer ? 1.005 : 1.04;
   if (gameOver) {
     return {
-      key: coarsePointer ? 1.52 : 1.44,
+      key: coarsePointer ? 1.52 : 1.26,
       rim: coarsePointer ? 7.1 : 6.8,
       warm: coarsePointer ? 3.0 : 2.75,
       exposure: baseExposure - 0.075,
@@ -158,7 +426,7 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
   }
   if (check) {
     return {
-      key: coarsePointer ? 2.45 : 2.28,
+      key: coarsePointer ? 2.32 : 1.74,
       rim: coarsePointer ? 16.8 : 16.4,
       warm: coarsePointer ? 4.9 : 4.55,
       exposure: baseExposure + 0.005,
@@ -166,7 +434,7 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
     };
   }
   return {
-    key: coarsePointer ? 2.11 : 1.96,
+    key: coarsePointer ? 1.99 : 1.42,
     rim: coarsePointer ? 12.6 : 12.15,
     warm: coarsePointer ? 5.0 : 4.85,
     exposure: baseExposure,

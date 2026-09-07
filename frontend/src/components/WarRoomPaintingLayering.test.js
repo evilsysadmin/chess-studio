@@ -10,6 +10,22 @@ function objectsNamed(root, name) {
   return matches;
 }
 
+function visualDepths(objects, towardBoard) {
+  const depths = [];
+  const matrix = new THREE.Matrix4();
+  for (const object of objects) {
+    if (object?.isInstancedMesh) {
+      for (let index = 0; index < object.count; index += 1) {
+        object.getMatrixAt(index, matrix);
+        depths.push(matrix.elements[14] * towardBoard);
+      }
+    } else {
+      depths.push(object.position.z * towardBoard);
+    }
+  }
+  return depths;
+}
+
 function dispose(root) {
   root.traverse((object) => {
     object.geometry?.dispose?.();
@@ -38,15 +54,17 @@ describe('War Room painting layer ordering', () => {
         const varnish = frame.getObjectByName('war-room-painting-varnish');
         const outerBars = objectsNamed(frame, 'war-room-premium-frame-outer-bar');
         const innerBars = objectsNamed(frame, 'war-room-premium-frame-inner-bar');
+        const outerDepths = visualDepths(outerBars, towardBoard);
+        const innerDepths = visualDepths(innerBars, towardBoard);
 
         expect(frame.userData.warRoomPaintingLayering).toBe('canvas-behind-frame-v1');
         expect(canvas).toBeTruthy();
         expect(varnish).toBeTruthy();
-        expect(outerBars).toHaveLength(4);
-        expect(innerBars).toHaveLength(4);
+        expect(outerDepths).toHaveLength(4);
+        expect(innerDepths).toHaveLength(4);
         expect(frontDepth(varnish)).toBeGreaterThan(frontDepth(canvas));
-        for (const bar of outerBars) expect(frontDepth(bar)).toBeGreaterThan(frontDepth(varnish));
-        for (const bar of innerBars) expect(frontDepth(bar)).toBeGreaterThan(frontDepth(outerBars[0]));
+        for (const depth of outerDepths) expect(depth).toBeGreaterThan(frontDepth(varnish));
+        for (const depth of innerDepths) expect(depth).toBeGreaterThan(Math.max(...outerDepths));
       }
 
       dispose(room);

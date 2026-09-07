@@ -4,6 +4,7 @@ import {
   BOARD_RENDERERS,
   BOARD_RENDERER_KEY,
   EXPLICIT_2D_BOARD_RENDERER_VALUE,
+  REDUCED_MOTION_KEY,
   getBoardCoordinates,
   getBoardRenderer,
   getConfiguredBoardRendererDefault,
@@ -25,6 +26,11 @@ describe('user preferences', () => {
     localStorage.clear();
     clearStorageMemoryFallback();
     vi.unstubAllEnvs();
+    // Invalida la caché entre tests sin depender de window/jsdom; luego deja
+    // storage limpio para que cada caso conserve el mismo estado inicial.
+    setReducedMotion(false);
+    localStorage.clear();
+    clearStorageMemoryFallback();
   });
 
   it('guarda un control de tiempo válido y rechaza basura', () => {
@@ -106,5 +112,21 @@ describe('user preferences', () => {
     setReducedMotion(true);
     expect(getReducedMotionPreference()).toBe('reduce');
     expect(reducedMotionStatus({ systemReduced: false })).toMatchObject({ effective: true, source: 'app', preference: 'reduce' });
+  });
+
+  it('cachea el reduced-motion efectivo hasta que una señal real invalida el hot path', () => {
+    setReducedMotion(false);
+    expect(getEffectiveReducedMotion()).toBe(false);
+
+    // Cambiar storage a pelo no debe convertir el RAF en un lector de localStorage.
+    localStorage.setItem(REDUCED_MOTION_KEY, '1');
+    expect(getEffectiveReducedMotion()).toBe(false);
+
+    // El setter normal es una señal real e invalida de forma síncrona.
+    setReducedMotion(true);
+    expect(getEffectiveReducedMotion()).toBe(true);
+
+    setReducedMotion(false);
+    expect(getEffectiveReducedMotion()).toBe(false);
   });
 });

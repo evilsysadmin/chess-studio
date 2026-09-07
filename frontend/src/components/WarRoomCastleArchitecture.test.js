@@ -64,22 +64,18 @@ describe('War Room castle architecture', () => {
     dispose(room);
   });
 
-  it('mantiene las armaduras a escala humana del decorado, no como gigantes', () => {
+  it('omite en desktop las armaduras legacy y conserva las góticas canónicas', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
-    const left = room.getObjectByName('war-room-armor-guard-left');
-    const right = room.getObjectByName('war-room-armor-guard-right');
+    const architecture = room.getObjectByName('war-room-castle-architecture');
+    const left = room.getObjectByName('war-room-teutonic-armor-left');
+    const right = room.getObjectByName('war-room-teutonic-armor-right');
 
     expect(left).toBeInstanceOf(THREE.Group);
     expect(right).toBeInstanceOf(THREE.Group);
-    expect(left.userData.warRoomScaleReference).toBe('two-piece-heights');
-    expect(right.userData.warRoomScaleReference).toBe('two-piece-heights');
-    expect(left.getObjectByName('war-room-armor-zweihander')).toBeTruthy();
-    expect(right.getObjectByName('war-room-armor-zweihander')).toBeTruthy();
-
-    const size = new THREE.Box3().setFromObject(left).getSize(new THREE.Vector3());
-    expect(size.y).toBeGreaterThan(1.8);
-    expect(size.y).toBeLessThan(2.8);
-    expect(size.x).toBeLessThan(1.5);
+    expect(room.getObjectByName('war-room-armor-guard-left')).toBeUndefined();
+    expect(room.getObjectByName('war-room-armor-guard-right')).toBeUndefined();
+    expect(architecture.userData.warRoomDesktopRetiredArmorMeshesOmitted).toBe(44);
+    expect(architecture.userData.warRoomDesktopRetiredLegacyMeshesOmitted).toBe(74);
 
     dispose(room);
   });
@@ -103,10 +99,9 @@ describe('War Room castle architecture', () => {
     for (const whiteSide of [true, false]) {
       const room = buildPremiumWarRoomLayer(theme, whiteSide, false);
       const driver = room.getObjectByName('war-room-premium-painting-canvas');
+      const architecture = room.getObjectByName('war-room-castle-architecture');
       const left = room.getObjectByName('war-room-sofa-left');
       const right = room.getObjectByName('war-room-sofa-right');
-      const leftConsole = room.getObjectByName('war-room-side-console-left');
-      const rightConsole = room.getObjectByName('war-room-side-console-right');
       const desk = room.getObjectByName('command-cabinet');
       const chair = room.getObjectByName('war-room-teutonic-command-chair');
       const leftArmor = room.getObjectByName('war-room-teutonic-armor-left');
@@ -126,10 +121,11 @@ describe('War Room castle architecture', () => {
       expect(left.getObjectByName('war-room-teutonic-sofa-art-v28')).toBeTruthy();
       expect(right.getObjectByName('war-room-teutonic-sofa-art-v28')).toBeTruthy();
 
-      expect(leftConsole.visible).toBe(false);
-      expect(rightConsole.visible).toBe(false);
-      expect(leftConsole.userData.warRoomFurniturePlacement).toBe('retired-duplicate-side-table-v28');
-      expect(rightConsole.userData.warRoomFurniturePlacement).toBe('retired-duplicate-side-table-v28');
+      expect(room.getObjectByName('war-room-side-console-left')).toBeUndefined();
+      expect(room.getObjectByName('war-room-side-console-right')).toBeUndefined();
+      expect(architecture.userData.warRoomDesktopRetiredSideConsoleMeshesOmitted).toBe(30);
+      expect(architecture.userData.warRoomDesktopRetiredArmorMeshesOmitted).toBe(44);
+      expect(architecture.userData.warRoomDesktopRetiredLegacyMeshesOmitted).toBe(74);
       expect(desk.visible).toBe(true);
       expect(desk.position.x).toBe(0);
       expect(desk.userData.warRoomOffsetFromWall).toBeCloseTo(1.45, 5);
@@ -156,22 +152,36 @@ describe('War Room castle architecture', () => {
     }
   });
 
-  it('mantiene callable el hook de render del fuego al ceder la animación al driver del castillo', () => {
+  it('cachea las referencias del fuego tras el primer tick y no vuelve a buscarlas cada frame', () => {
     const room = buildPremiumWarRoomLayer(theme, true, false);
     const driver = room.getObjectByName('war-room-castle-floor-slab');
     const flame = room.getObjectByName('war-room-fire-flame-outer');
+    const fireCore = room.getObjectByName('war-room-fire-core');
+    const originalGetObjectByName = room.getObjectByName.bind(room);
+    const fireNames = new Set(['war-room-fire-core', 'war-room-fire-light', 'war-room-fireplace']);
+    let fireLookups = 0;
+    room.getObjectByName = (name) => {
+      if (fireNames.has(name)) fireLookups += 1;
+      return originalGetObjectByName(name);
+    };
 
     expect(typeof driver.onBeforeRender).toBe('function');
     expect(typeof flame.onBeforeRender).toBe('function');
 
     driver.onBeforeRender();
+    const firstTickLookups = fireLookups;
 
+    expect(firstTickLookups).toBe(3);
     expect(flame.userData.castleDriverOwnsFire).toBe(true);
-    expect(typeof flame.onBeforeRender).toBe('function');
-    expect(() => flame.onBeforeRender()).not.toThrow();
-    expect(room.getObjectByName('war-room-fire-core').userData.warRoomWarmFireAnimated).toBe(true);
+    expect(fireCore.userData.warRoomWarmFireAnimated).toBe(true);
+    expect(fireCore.userData.warRoomWarmFireState).toBe('cached-v1');
+    expect(room.userData.warRoomWarmFireLookupMode).toBe('cached-v1');
     expect(room.getObjectByName('war-room-fire-bounce-light')).toBeInstanceOf(THREE.PointLight);
 
+    driver.onBeforeRender();
+    expect(fireLookups).toBe(firstTickLookups);
+
+    room.getObjectByName = originalGetObjectByName;
     dispose(room);
   });
 
@@ -191,6 +201,8 @@ describe('War Room castle architecture', () => {
     expect(leftWall.material.userData.warRoomWallFinish).toBe('simplified-dark-castle-stone');
     expect(leftWall.material.map).toBeFalsy();
     expect(room.getObjectByName('war-room-castle-wall-panel-left-1')).toBeFalsy();
+    expect(room.getObjectByName('war-room-side-console-left')).toBeTruthy();
+    expect(room.getObjectByName('war-room-side-console-right')).toBeTruthy();
     expect(room.getObjectByName('war-room-armor-guard-left')).toBeTruthy();
     expect(room.getObjectByName('war-room-armor-guard-right')).toBeTruthy();
     expect(room.getObjectByName('war-room-sofa-left').userData.warRoomFurniturePlacement).toBe('side-wall');

@@ -1,0 +1,150 @@
+/* Home castle native-render clarity pass · v3
+ *
+ * Do not post-process the Three.js hall with CSS brightness/saturation filters.
+ * The scene owns its lighting; multiplying brightness at both host and canvas
+ * levels lifts blacks and produces the milky haze seen on staging.
+ *
+ * Likewise, keep the old readability pseudo-elements structurally harmless.
+ * Text contrast stays local to destinations instead of washing the whole hall.
+ */
+
+/* Kill the old HomePremiumFacade desktop dimmer at the actual parent. It used
+ * opacity + brightness on .home-castle-life, which darkened the 3D render,
+ * destination labels and progression props together even after the canvas
+ * filters and fog had already been removed. */
+body .menu.home-friendly > .home-castle-life {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__scene,
+body .menu.home-friendly > .home-castle-life .home-great-hall-scene.home-castle-hub__scene {
+  filter: none !important;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__scene canvas {
+  filter: none !important;
+}
+
+/* Retire the inherited broad architectural washes completely. The Three.js
+ * point/directional lights already provide the warm pools we want. */
+body .menu.home-friendly > .home-castle-life .home-castle-hub::before,
+body .menu.home-friendly > .home-castle-life .home-castle-hub::after {
+  background: none !important;
+  mix-blend-mode: normal !important;
+  opacity: 0 !important;
+}
+
+/* The 3D room already owns depth, so do not add another panel vignette. */
+body .menu.home-friendly > .home-castle-life::after {
+  background: none !important;
+}
+
+/* Destinations should read crisply against the room, not glow through fog. */
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room {
+  --station-core: rgba(191, 125, 48, .13);
+  --station-mid: rgba(121, 69, 30, .045);
+  --station-edge: rgba(232, 190, 100, .20);
+  background:
+    radial-gradient(ellipse at 50% 28%, var(--station-core) 0%, var(--station-mid) 34%, transparent 62%),
+    rgba(5, 4, 3, .015) !important;
+  text-shadow: 0 2px 3px rgba(0, 0, 0, .98) !important;
+  box-shadow: none !important;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room::before {
+  border-color: color-mix(in srgb, var(--station-edge) 42%, transparent) !important;
+  background: radial-gradient(ellipse at 50% 30%, var(--station-core), transparent 57%) !important;
+  box-shadow: none !important;
+  opacity: .22 !important;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room::after {
+  box-shadow: 0 0 5px var(--station-edge) !important;
+  opacity: .32 !important;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room--play {
+  --station-core: rgba(214, 137, 50, .16);
+  --station-mid: rgba(138, 75, 27, .05);
+  --station-edge: rgba(245, 197, 97, .23);
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room--tournament {
+  --station-core: rgba(205, 164, 72, .14);
+  --station-mid: rgba(126, 92, 31, .045);
+  --station-edge: rgba(239, 207, 112, .22);
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room--train {
+  --station-core: rgba(190, 155, 99, .13);
+  --station-mid: rgba(112, 85, 47, .04);
+  --station-edge: rgba(231, 204, 153, .21);
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room--combat {
+  --station-core: rgba(176, 84, 47, .14);
+  --station-mid: rgba(105, 45, 30, .045);
+  --station-edge: rgba(224, 132, 76, .22);
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room--daily {
+  --station-core: rgba(121, 145, 161, .12);
+  --station-mid: rgba(65, 82, 96, .04);
+  --station-edge: rgba(204, 215, 198, .21);
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room:hover,
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room:focus-visible {
+  background:
+    radial-gradient(ellipse at 50% 28%, color-mix(in srgb, var(--station-core) 86%, white 14%) 0%, var(--station-mid) 37%, transparent 65%),
+    rgba(8, 6, 4, .08) !important;
+  box-shadow: 0 0 0 1px rgba(255, 226, 160, .045) !important;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room-glyph {
+  color: #f7ce70 !important;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .92)) !important;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room strong {
+  color: #fff3d2 !important;
+  text-shadow:
+    0 2px 2px rgba(0, 0, 0, 1),
+    0 0 5px rgba(0, 0, 0, .82) !important;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room small {
+  color: rgba(255, 244, 219, .94) !important;
+  text-shadow:
+    0 2px 2px rgba(0, 0, 0, .98),
+    0 0 4px rgba(0, 0, 0, .78) !important;
+}
+
+body .menu.home-friendly > .home-castle-life .home-castle-hub__room i {
+  color: #edc66f !important;
+  text-shadow: 0 2px 3px rgba(0, 0, 0, .92) !important;
+}
+
+@media (max-width: 760px) {
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__scene,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__scene canvas {
+    filter: none !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub::before,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub::after {
+    opacity: 0 !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room {
+    background: rgba(8, 7, 5, .62) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body .menu.home-friendly > .home-castle-life .home-castle-hub::before,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub::after {
+    mix-blend-mode: normal !important;
+  }
+}

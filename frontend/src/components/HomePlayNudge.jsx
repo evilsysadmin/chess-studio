@@ -5,7 +5,8 @@ import {
   markHomePlayNudgeShown,
 } from '../homePlayNudge.js';
 
-const ACTIVITY_EVENTS = ['pointerdown', 'pointermove', 'keydown', 'scroll', 'touchstart'];
+const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'scroll', 'touchstart'];
+const POINTER_MOVE_REARM_MS = 1000;
 
 export default function HomePlayNudge({ enabled = true, hasSavedGame = false, onPlay, onContinue }) {
   const [visible, setVisible] = useState(false);
@@ -21,6 +22,8 @@ export default function HomePlayNudge({ enabled = true, hasSavedGame = false, on
     if (!canShowHomePlayNudge()) return undefined;
 
     let timeoutId = null;
+    let pointerMoveRearmId = null;
+    let pointerMoveListening = false;
     let lastArmAt = 0;
 
     const clearTimer = () => {
@@ -40,24 +43,65 @@ export default function HomePlayNudge({ enabled = true, hasSavedGame = false, on
     };
 
     const handleActivity = () => {
-      // pointermove puede disparar decenas de veces por segundo. Un rearmado
-      // por segundo basta para medir inactividad sin churn de timers.
-      if (Date.now() - lastArmAt < 1000) return;
+      // Eventos discretos pueden llegar en ráfagas (scroll/touch/keydown).
+      // Rearmar una vez por segundo conserva la medición de inactividad sin
+      // convertir cada ráfaga en clearTimeout + setTimeout.
+      if (Date.now() - lastArmAt < POINTER_MOVE_REARM_MS) return;
       showAfterIdle();
     };
+
+    const disarmPointerMove = () => {
+      if (!pointerMoveListening) return;
+      window.removeEventListener('pointermove', handlePointerMove);
+      pointerMoveListening = false;
+    };
+
+    const armPointerMove = () => {
+      if (pointerMoveListening || document.hidden) return;
+      pointerMoveListening = true;
+      // One native callback per arm. Continuous mouse movement therefore cannot
+      // hammer JS hundreds of times per second while Home waits for inactivity.
+      window.addEventListener('pointermove', handlePointerMove, { passive: true, once: true });
+    };
+
+    function handlePointerMove() {
+      // `once` already removed the browser listener; mirror that state locally.
+      pointerMoveListening = false;
+      showAfterIdle();
+      if (pointerMoveRearmId !== null) window.clearTimeout(pointerMoveRearmId);
+      pointerMoveRearmId = window.setTimeout(() => {
+        pointerMoveRearmId = null;
+        armPointerMove();
+      }, POINTER_MOVE_REARM_MS);
+    }
+
+    const clearPointerMoveRearm = () => {
+      if (pointerMoveRearmId !== null) window.clearTimeout(pointerMoveRearmId);
+      pointerMoveRearmId = null;
+    };
+
     const handleVisibility = () => {
-      if (document.hidden) clearTimer();
-      else showAfterIdle();
+      if (document.hidden) {
+        clearTimer();
+        clearPointerMoveRearm();
+        disarmPointerMove();
+        return;
+      }
+      showAfterIdle();
+      armPointerMove();
     };
 
     showAfterIdle();
     for (const eventName of ACTIVITY_EVENTS) {
       window.addEventListener(eventName, handleActivity, { passive: true });
     }
+    armPointerMove();
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       clearTimer();
+      clearPointerMoveRearm();
+      disarmPointerMove();
       for (const eventName of ACTIVITY_EVENTS) {
         window.removeEventListener(eventName, handleActivity);
       }

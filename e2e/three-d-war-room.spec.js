@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { resolveBoard3DCameraFov } from '../frontend/src/components/Board3DConfig.js';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
@@ -26,13 +27,16 @@ function dot(a, b) {
 function projectWarRoomSquare(rect, square, worldY = 0.12) {
   const aspect = Math.max(0.35, rect.width / Math.max(1, rect.height));
   const profile = aspect >= 1.42
-    ? { halfSpan: 5.38, padding: 1.07, minDistance: 13.2, maxDistance: 22.6, targetY: 1.08, targetZ: -0.16, cameraY: 7.35, cameraZ: 10.6 }
-    : { halfSpan: 5.78, padding: 1.13, minDistance: 14.5, maxDistance: 25.6, targetY: 0.92, targetZ: -0.08, cameraY: 8.2, cameraZ: 10.72 };
-  const verticalFov = 40 * Math.PI / 180;
+    ? { halfSpan: 5.38, padding: 1.07, minDistance: 13.2, targetY: 1.08, targetZ: -0.16, cameraY: 7.35, cameraZ: 10.6 }
+    : { halfSpan: 5.78, padding: 1.13, minDistance: 14.5, targetY: 0.92, targetZ: -0.08, cameraY: 8.2, cameraZ: 10.72 };
+  // Keep the browser input projection on the same public FOV contract as the
+  // real renderer. The old helper hardcoded the historical 40° desktop lens,
+  // so a near-orthographic camera made Playwright click the wrong squares.
+  const verticalFov = resolveBoard3DCameraFov(aspect) * Math.PI / 180;
   const horizontalFov = 2 * Math.atan(Math.tan(verticalFov / 2) * aspect);
   const limitingFov = Math.min(verticalFov, horizontalFov);
   const unclampedDistance = (profile.halfSpan / Math.tan(limitingFov / 2)) * profile.padding;
-  const distance = Math.max(profile.minDistance, Math.min(profile.maxDistance, unclampedDistance));
+  const distance = Math.max(profile.minDistance, Math.min(88, unclampedDistance));
   const target = [0, profile.targetY, -profile.targetZ];
   const direction = normalized([0, profile.cameraY, profile.cameraZ]);
   const camera = target.map((value, index) => value + direction[index] * distance);

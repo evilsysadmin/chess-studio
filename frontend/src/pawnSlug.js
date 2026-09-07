@@ -5,6 +5,14 @@ export const PAWN_SLUG_WORLD = Object.freeze({
   extractionX: 5050,
 });
 
+export const PAWN_SLUG_PLAYER = Object.freeze({
+  baseMaxHp: 100,
+  hpPerLevel: 8,
+  damagePerLevel: 0.05,
+  maxLevel: 12,
+  xpCurveStep: 20,
+});
+
 export const PAWN_SLUG_WEAPON_ORDER = Object.freeze(['pistol', 'machinegun', 'shotgun', 'panzerfaust']);
 
 export const PAWN_SLUG_WEAPONS = Object.freeze({
@@ -14,28 +22,65 @@ export const PAWN_SLUG_WEAPONS = Object.freeze({
   panzerfaust: Object.freeze({ id: 'panzerfaust', slot: 4, shortLabel: 'PZF', label: 'Panzerfaust', trigger: 'semi', ammo: 9, cadence: 720, damage: 92, speed: 520, pellets: 1, spread: 0, explosive: true }),
 });
 
+const freezeUpgrade = (upgrade) => Object.freeze({
+  tier: 1,
+  code: 'Mk I',
+  level: 1,
+  damage: 1,
+  cadence: 1,
+  speed: 1,
+  spread: 1,
+  pelletsBonus: 0,
+  ammo: 1,
+  ...upgrade,
+});
+
+export const PAWN_SLUG_WEAPON_UPGRADES = Object.freeze({
+  pistol: Object.freeze([
+    freezeUpgrade({}),
+    freezeUpgrade({ tier: 2, code: 'Mk II', level: 4, damage: 1.08, cadence: 0.94, ammo: 1.1 }),
+    freezeUpgrade({ tier: 3, code: 'Mk III', level: 7, damage: 1.16, cadence: 0.88, ammo: 1.2 }),
+  ]),
+  machinegun: Object.freeze([
+    freezeUpgrade({}),
+    freezeUpgrade({ tier: 2, code: 'Mk II', level: 4, damage: 1.06, cadence: 0.94, spread: 0.9, ammo: 1.12 }),
+    freezeUpgrade({ tier: 3, code: 'Mk III', level: 7, damage: 1.12, cadence: 0.88, spread: 0.82, ammo: 1.25 }),
+  ]),
+  shotgun: Object.freeze([
+    freezeUpgrade({}),
+    freezeUpgrade({ tier: 2, code: 'Mk II', level: 5, damage: 1.05, cadence: 0.94, spread: 0.94, pelletsBonus: 1, ammo: 1.12 }),
+    freezeUpgrade({ tier: 3, code: 'Mk III', level: 7, damage: 1.1, cadence: 0.88, spread: 0.88, pelletsBonus: 2, ammo: 1.22 }),
+  ]),
+  panzerfaust: Object.freeze([
+    freezeUpgrade({}),
+    freezeUpgrade({ tier: 2, code: 'Mk II', level: 7, damage: 1.12, cadence: 0.92, speed: 1.05, ammo: 1.12 }),
+    freezeUpgrade({ tier: 3, code: 'Mk III', level: 8, damage: 1.22, cadence: 0.84, speed: 1.1, ammo: 1.22 }),
+  ]),
+});
+
 export const PAWN_SLUG_PICKUPS = Object.freeze([
   Object.freeze({ x: 920, type: 'machinegun' }),
   Object.freeze({ x: 1810, type: 'grenade' }),
   Object.freeze({ x: 2470, type: 'shotgun' }),
   Object.freeze({ x: 3300, type: 'medkit' }),
-  Object.freeze({ x: 3830, type: 'panzerfaust' }),
+  Object.freeze({ x: 3500, type: 'panzerfaust' }),
   Object.freeze({ x: 4310, type: 'grenade' }),
 ]);
 
 export const PAWN_SLUG_SPAWNS = Object.freeze([
   [620, 'pawn'], [790, 'pawn'], [1080, 'pawn'], [1210, 'knight'], [1380, 'pawn'],
   [1560, 'rook'], [1710, 'pawn'], [1940, 'knight'], [2110, 'pawn'], [2250, 'pawn'],
-  [2590, 'rook'], [2730, 'pawn'], [2890, 'knight'], [3070, 'pawn'], [3210, 'pawn'],
-  [3430, 'rook'], [3560, 'knight'], [3700, 'pawn'], [3950, 'pawn'], [4070, 'knight'],
+  [2380, 'bishop'], [2590, 'rook'], [2730, 'pawn'], [2890, 'knight'], [3070, 'pawn'], [3210, 'pawn'],
+  [3430, 'rook'], [3560, 'knight'], [3740, 'bishop'], [3950, 'pawn'], [4070, 'knight'],
   [4190, 'rook'], [4380, 'pawn'],
 ].map(([x, type], index) => Object.freeze({ id: `${type}-${index}`, x, type })));
 
 export const PAWN_SLUG_ENEMIES = Object.freeze({
-  pawn: Object.freeze({ hp: 34, speed: 54, score: 100, width: 38, height: 62 }),
-  knight: Object.freeze({ hp: 62, speed: 92, score: 220, width: 48, height: 68 }),
-  rook: Object.freeze({ hp: 112, speed: 0, score: 350, width: 58, height: 76 }),
-  boss: Object.freeze({ hp: 780, speed: 0, score: 3500, width: 190, height: 150 }),
+  pawn: Object.freeze({ hp: 34, speed: 54, score: 100, xp: 28, width: 38, height: 62 }),
+  knight: Object.freeze({ hp: 62, speed: 92, score: 220, xp: 52, width: 48, height: 68 }),
+  rook: Object.freeze({ hp: 112, speed: 0, score: 350, xp: 78, width: 58, height: 76 }),
+  bishop: Object.freeze({ hp: 310, speed: 42, score: 950, xp: 190, width: 78, height: 112, midBoss: true }),
+  boss: Object.freeze({ hp: 780, speed: 0, score: 3500, xp: 650, width: 190, height: 150 }),
 });
 
 export function pawnSlugClamp(value, min, max) {
@@ -50,13 +95,90 @@ export function pawnSlugWeaponShortLabel(id) {
   return PAWN_SLUG_WEAPONS[id]?.shortLabel || PAWN_SLUG_WEAPONS.pistol.shortLabel;
 }
 
-export function pawnSlugAmmoForPickup(type) {
+export function pawnSlugWeaponUpgradeForLevel(id, level = 1) {
+  const upgrades = PAWN_SLUG_WEAPON_UPGRADES[id] || PAWN_SLUG_WEAPON_UPGRADES.pistol;
+  const safeLevel = pawnSlugClamp(Math.floor(Number(level) || 1), 1, PAWN_SLUG_PLAYER.maxLevel);
+  let result = upgrades[0];
+  for (const upgrade of upgrades) {
+    if (upgrade.level > safeLevel) break;
+    result = upgrade;
+  }
+  return result;
+}
+
+export function pawnSlugWeaponDisplayLabel(id, level = 1) {
+  const upgrade = pawnSlugWeaponUpgradeForLevel(id, level);
+  return `${pawnSlugWeaponLabel(id)} · ${upgrade.code}`;
+}
+
+export function pawnSlugWeaponUpgradeCrossed(id, previousLevel, nextLevel) {
+  const previous = pawnSlugWeaponUpgradeForLevel(id, previousLevel);
+  const next = pawnSlugWeaponUpgradeForLevel(id, nextLevel);
+  return next.tier > previous.tier ? next : null;
+}
+
+export function pawnSlugWeaponStatsForLevel(id, level = 1) {
+  const weapon = PAWN_SLUG_WEAPONS[id] || PAWN_SLUG_WEAPONS.pistol;
+  const upgrade = pawnSlugWeaponUpgradeForLevel(weapon.id, level);
+  return Object.freeze({
+    ...weapon,
+    tier: upgrade.tier,
+    upgradeCode: upgrade.code,
+    cadence: Math.max(45, Math.round(weapon.cadence * upgrade.cadence)),
+    damage: weapon.damage * pawnSlugDamageMultiplier(level) * upgrade.damage,
+    speed: weapon.speed * upgrade.speed,
+    pellets: Math.max(1, weapon.pellets + upgrade.pelletsBonus),
+    spread: weapon.spread * upgrade.spread,
+    ammoMultiplier: upgrade.ammo,
+  });
+}
+
+export function pawnSlugAmmoForPickup(type, level = 1) {
   if (type === 'grenade') return 3;
-  return PAWN_SLUG_WEAPONS[type]?.ammo ?? 0;
+  const weapon = PAWN_SLUG_WEAPONS[type];
+  if (!weapon) return 0;
+  if (!Number.isFinite(weapon.ammo)) return Infinity;
+  const upgrade = pawnSlugWeaponUpgradeForLevel(type, level);
+  return Math.max(1, Math.round(weapon.ammo * upgrade.ammo));
 }
 
 export function pawnSlugScoreForKill(type) {
   return PAWN_SLUG_ENEMIES[type]?.score || 0;
+}
+
+export function pawnSlugXpForKill(type) {
+  return PAWN_SLUG_ENEMIES[type]?.xp || 0;
+}
+
+export function pawnSlugXpForLevel(level) {
+  const target = pawnSlugClamp(Math.floor(Number(level) || 1), 1, PAWN_SLUG_PLAYER.maxLevel);
+  const completed = target - 1;
+  return completed * 120 + ((completed * (completed - 1)) / 2) * PAWN_SLUG_PLAYER.xpCurveStep;
+}
+
+export function pawnSlugLevelForXp(xp) {
+  const safeXp = Math.max(0, Math.floor(Number(xp) || 0));
+  let level = 1;
+  while (level < PAWN_SLUG_PLAYER.maxLevel && safeXp >= pawnSlugXpForLevel(level + 1)) level += 1;
+  return level;
+}
+
+export function pawnSlugLevelProgress(xp, level = pawnSlugLevelForXp(xp)) {
+  const safeLevel = pawnSlugClamp(Math.floor(Number(level) || 1), 1, PAWN_SLUG_PLAYER.maxLevel);
+  if (safeLevel >= PAWN_SLUG_PLAYER.maxLevel) return 1;
+  const start = pawnSlugXpForLevel(safeLevel);
+  const end = pawnSlugXpForLevel(safeLevel + 1);
+  return pawnSlugClamp((Math.max(0, Number(xp) || 0) - start) / Math.max(1, end - start), 0, 1);
+}
+
+export function pawnSlugMaxHpForLevel(level) {
+  const safeLevel = pawnSlugClamp(Math.floor(Number(level) || 1), 1, PAWN_SLUG_PLAYER.maxLevel);
+  return PAWN_SLUG_PLAYER.baseMaxHp + (safeLevel - 1) * PAWN_SLUG_PLAYER.hpPerLevel;
+}
+
+export function pawnSlugDamageMultiplier(level) {
+  const safeLevel = pawnSlugClamp(Math.floor(Number(level) || 1), 1, PAWN_SLUG_PLAYER.maxLevel);
+  return 1 + (safeLevel - 1) * PAWN_SLUG_PLAYER.damagePerLevel;
 }
 
 export function pawnSlugSpawnWindow(cameraX, spawnedIds = new Set(), lookAhead = 1120) {
@@ -86,6 +208,9 @@ export function pawnSlugMatthiasLine(event) {
     start: 'Vorwärts. Si algo se mueve, probablemente ha tomado una mala decisión.',
     hurt: 'Ach. Eso era parte de mi cuerpo, animal.',
     grenade: 'Granada enviada. Sin acuse de recibo.',
+    levelUp: 'Ascenso concedido. Mis condolencias al enemigo.',
+    weaponUp: 'Arsenal mejorado. La burocracia ha autorizado más violencia.',
+    midBoss: 'Un obispo blindado. Naturalmente. La teología ha empeorado mucho.',
     boss: 'Ah. Un castillo con orugas. Qué imaginación tan ofensiva.',
     bossDown: 'Schachmatt, mamotreto.',
     win: 'Sector limpio. El Convenio de Ginebra solicita una reunión.',
