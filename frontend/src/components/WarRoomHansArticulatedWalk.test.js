@@ -62,8 +62,21 @@ function makeRig() {
   };
 }
 
+function worldKneeFlex(root, body, side) {
+  root.updateMatrixWorld(true);
+  const hip = new THREE.Vector3();
+  const knee = new THREE.Vector3();
+  const shoe = new THREE.Vector3();
+  body[`${side}Leg`].getWorldPosition(hip);
+  body[`${side}Knee`].getWorldPosition(knee);
+  body[`${side}Shoe`].getWorldPosition(shoe);
+  const thigh = hip.sub(knee).normalize();
+  const shin = shoe.sub(knee).normalize();
+  return Math.PI - thigh.angleTo(shin);
+}
+
 describe('War Room Hans articulated walk adapter', () => {
-  it('turns real travelled distance into visible knee motion without owning pathing', () => {
+  it('turns real travelled distance into unmistakable world-space knee flex without owning pathing', () => {
     const { root, hans, driver, leftLeg, rightLeg } = makeRig();
     expect(installWarRoomHansArticulatedWalk(root)).toBe(1);
     expect(driver.userData.warRoomHansArticulatedWalk).toBe(WAR_ROOM_HANS_ARTICULATED_WALK_VERSION);
@@ -79,10 +92,18 @@ describe('War Room Hans articulated walk adapter', () => {
     expect(hans.userData.warRoomHansLegRig).toBe('thigh-knee-shin-foot-v1');
     expect(hans.userData.warRoomHansWalkCycleDistance).toBeCloseTo(0.13, 6);
     expect(hans.userData.warRoomHansWalkCyclePhaseDistance).toBeGreaterThan(hans.userData.warRoomHansWalkCycleDistance);
-    expect(hans.userData.warRoomHansGaitGrounding).toBe('real-distance-foot-plant-v3');
+    expect(hans.userData.warRoomHansGaitGrounding).toBe('deep-knee-foot-clearance-v4');
+    expect(Math.max(
+      hans.userData.warRoomHansVisibleKneeFlexLeft,
+      hans.userData.warRoomHansVisibleKneeFlexRight,
+    )).toBeGreaterThan(0.15);
+    expect(Math.max(
+      worldKneeFlex(root, hans.userData.refs, 'left'),
+      worldKneeFlex(root, hans.userData.refs, 'right'),
+    )).toBeGreaterThan(0.55);
     expect(Math.abs(hans.userData.refs.leftKnee.rotation.x - hans.userData.refs.rightKnee.rotation.x)).toBeGreaterThan(0.12);
     expect(Math.abs(leftLeg.position.z) + Math.abs(rightLeg.position.z)).toBeGreaterThan(0.02);
-    expect(Math.abs(leftLeg.position.y - 0.82) + Math.abs(rightLeg.position.y - 0.82)).toBeGreaterThan(0.005);
+    expect(Math.abs(leftLeg.position.y - 0.82) + Math.abs(rightLeg.position.y - 0.82)).toBeGreaterThan(0.02);
   });
 
   it('drops the walking knee pose as soon as Hans enters a non-walking action', () => {
