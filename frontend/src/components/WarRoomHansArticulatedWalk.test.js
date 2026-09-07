@@ -43,6 +43,9 @@ function makeRig() {
     if (mode === 'walk') {
       hans.position.x -= 0.065;
       hans.userData.warRoomHansMotionState = 'walk';
+    } else if (mode === 'teleport') {
+      hans.position.x -= 0.6;
+      hans.userData.warRoomHansMotionState = 'walk';
     } else {
       hans.userData.warRoomHansMotionState = 'stoke-fire-action';
     }
@@ -53,13 +56,15 @@ function makeRig() {
     root,
     hans,
     driver,
+    leftLeg,
+    rightLeg,
     setMode(value) { mode = value; },
   };
 }
 
 describe('War Room Hans articulated walk adapter', () => {
   it('turns real travelled distance into visible knee motion without owning pathing', () => {
-    const { root, hans, driver } = makeRig();
+    const { root, hans, driver, leftLeg, rightLeg } = makeRig();
     expect(installWarRoomHansArticulatedWalk(root)).toBe(1);
     expect(driver.userData.warRoomHansArticulatedWalk).toBe(WAR_ROOM_HANS_ARTICULATED_WALK_VERSION);
     expect(driver.userData.warRoomHansWalkCycle).toBe(HANS_WALK_CYCLE_VERSION);
@@ -72,8 +77,12 @@ describe('War Room Hans articulated walk adapter', () => {
     expect(hans.userData.refs.leftKnee).toBeTruthy();
     expect(hans.userData.refs.rightKnee).toBeTruthy();
     expect(hans.userData.warRoomHansLegRig).toBe('thigh-knee-shin-foot-v1');
-    expect(hans.userData.warRoomHansWalkCycleDistance).toBeGreaterThan(0.1);
+    expect(hans.userData.warRoomHansWalkCycleDistance).toBeCloseTo(0.13, 6);
+    expect(hans.userData.warRoomHansWalkCyclePhaseDistance).toBeGreaterThan(hans.userData.warRoomHansWalkCycleDistance);
+    expect(hans.userData.warRoomHansGaitGrounding).toBe('real-distance-foot-plant-v3');
     expect(Math.abs(hans.userData.refs.leftKnee.rotation.x - hans.userData.refs.rightKnee.rotation.x)).toBeGreaterThan(0.12);
+    expect(Math.abs(leftLeg.position.z) + Math.abs(rightLeg.position.z)).toBeGreaterThan(0.02);
+    expect(Math.abs(leftLeg.position.y - 0.82) + Math.abs(rightLeg.position.y - 0.82)).toBeGreaterThan(0.005);
   });
 
   it('drops the walking knee pose as soon as Hans enters a non-walking action', () => {
@@ -88,6 +97,19 @@ describe('War Room Hans articulated walk adapter', () => {
 
     setMode('action');
     driver.onBeforeRender();
+    expect(hans.userData.refs.leftKnee.rotation.x).toBeCloseTo(0, 6);
+    expect(hans.userData.refs.rightKnee.rotation.x).toBeCloseTo(0, 6);
+  });
+
+  it('suppresses genuine teleports instead of converting them into giant gait steps', () => {
+    const { root, hans, driver, setMode } = makeRig();
+    expect(installWarRoomHansArticulatedWalk(root)).toBe(1);
+    setMode('teleport');
+    driver.onBeforeRender();
+
+    expect(hans.userData.warRoomHansWalkCycleDistance).toBeUndefined();
+    expect(hans.userData.warRoomHansArticulatedTeleportSuppressed).toBe(true);
+    expect(hans.userData.warRoomHansGaitTeleportSuppressed).toBe(true);
     expect(hans.userData.refs.leftKnee.rotation.x).toBeCloseTo(0, 6);
     expect(hans.userData.refs.rightKnee.rotation.x).toBeCloseTo(0, 6);
   });
