@@ -76,6 +76,7 @@ function Board3DCanvas({
   themeOverride = null,
   hansDiagnosticsMarkerRef = null,
   hansDiagnosticsRequested = false,
+  hansFireCallEnabled = false,
   onRendererFailure,
 }) {
   const hostRef = useRef(null);
@@ -108,6 +109,7 @@ function Board3DCanvas({
     onPieceMouseLeave,
     hansDiagnosticsMarkerRef,
     hansDiagnosticsRequested,
+    hansFireCallEnabled,
   };
 
   useEffect(() => {
@@ -190,6 +192,7 @@ function Board3DCanvas({
     const sceneProfile = warRoomSceneProfile({ coarsePointer, softwareRenderer });
     const renderLite = sceneProfile.lite;
     const scene = new THREE.Scene();
+    scene.userData.warRoomHansAwaitCall = latestPropsRef.current.hansFireCallEnabled;
     const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
     const hansWorldProbe = new THREE.Vector3();
     const hansScreenProbe = new THREE.Vector3();
@@ -413,13 +416,24 @@ function Board3DCanvas({
       });
     }
 
+    let hansReadyFrames = 0;
     function render() {
+      scene.userData.warRoomHansCallReleased = !latestPropsRef.current.hansFireCallEnabled
+        || renderer.domElement.dataset.warRoomHansCallReleased === 'true';
       applyWarRoomLightDiagnostics(renderer.domElement, {
         grade: 'reactive-v9',
         keyIntensity: key.intensity,
         exposure: renderer.toneMappingExposure,
       });
       renderer.render(scene, camera);
+      const hansDriver = hansReadyFrames < 2 && latestPropsRef.current.hansDiagnosticsRequested
+        ? scene.getObjectByName('war-room-hans-fireplace-driver') : null;
+      if (hansDriver?.userData.warRoomHansQuickIteration && pieceGroup.children.length > 0) {
+        // The deferred room installers and pieces must have passed through real
+        // renders before React may start the scene's dialogue.
+        hansReadyFrames += 1;
+        if (hansReadyFrames >= 2) renderer.domElement.dataset.warRoomHansSceneReady = 'true';
+      }
       exposeHansScreenDiagnostics();
       ambientScheduler?.markPaint();
     }

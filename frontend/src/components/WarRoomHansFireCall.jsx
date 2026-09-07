@@ -60,64 +60,72 @@ export default function WarRoomHansFireCall({
   useEffect(() => {
     setPhase('');
     setHansAnchor(null);
-    if (!portalHost || !enabled || !isThreeD || !gameId || !anchorReady || typeof MutationObserver === 'undefined') {
+    if (!portalHost || !enabled || !isThreeD || !gameId || !anchorReady) {
       return undefined;
     }
 
+    const existingCanvas = portalHost.querySelector('.board3d-main-canvas');
+    if (existingCanvas?.dataset.warRoomHansCallReleased === 'true') return undefined;
+
     let live = true;
-    let currentPhase = 'matthias';
-    let replyTimer = 0;
-    let clearTimer = 0;
-    setPhase('matthias');
+    let currentPhase = 'loading';
+    let frameId = 0;
+    let previousTime = null;
+    let elapsed = 0;
+    let readyPaints = 0;
 
-    const readHansProbe = () => {
-      if (!live || currentPhase === '') return;
-      const canvas = portalHost.querySelector('.board3d-main-canvas');
-      if (!canvas || canvas.dataset.warRoomHansScreen !== 'onscreen') return;
-
-      const anchor = projectHansFireReplyAnchor({
-        ndcX: canvas.dataset.warRoomHansNdcX,
-        ndcY: canvas.dataset.warRoomHansNdcY,
-        coarsePointer: Boolean(window.matchMedia?.('(pointer: coarse)')?.matches),
-      });
-      if (!anchor) return;
-      setHansAnchor((current) => sameAnchor(current, anchor) ? current : anchor);
-
-      if (currentPhase !== 'await-hans') return;
-      currentPhase = 'hans';
-      setPhase('hans');
-      clearTimer = window.setTimeout(() => {
-        if (!live) return;
-        currentPhase = '';
-        setPhase('');
-      }, HANS_FIRE_REPLY_MS);
-    };
-
-    const observer = new MutationObserver(readHansProbe);
-    observer.observe(portalHost, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: [
-        'data-war-room-hans-screen',
-        'data-war-room-hans-ndc-x',
-        'data-war-room-hans-ndc-y',
-      ],
-    });
-    readHansProbe();
-
-    replyTimer = window.setTimeout(() => {
+    const tick = (now) => {
       if (!live) return;
-      currentPhase = 'await-hans';
-      setPhase('await-hans');
-      readHansProbe();
-    }, MATTHIAS_FIRE_CALL_MS);
-
+      const delta = previousTime == null ? 0 : Math.min(100, Math.max(0, now - previousTime));
+      previousTime = now;
+      const canvas = portalHost.querySelector('.board3d-main-canvas');
+      const visible = document.visibilityState !== 'hidden' && portalHost.getBoundingClientRect().width > 0;
+      if (visible && canvas?.dataset.warRoomHansSceneReady === 'true') {
+        if (currentPhase === 'loading') {
+          // Allow the completed WebGL frame to be painted before the call.
+          readyPaints += 1;
+          if (readyPaints >= 2) {
+            currentPhase = 'matthias';
+            setPhase('matthias');
+            elapsed = 0;
+          }
+        } else if (currentPhase === 'matthias') {
+          elapsed += delta;
+          if (elapsed >= MATTHIAS_FIRE_CALL_MS) {
+            canvas.dataset.warRoomHansCallReleased = 'true';
+            currentPhase = 'await-hans';
+            setPhase('await-hans');
+          }
+        } else if (currentPhase === 'hans') {
+          elapsed += delta;
+          if (elapsed >= HANS_FIRE_REPLY_MS) {
+            currentPhase = '';
+            setPhase('');
+          }
+        }
+        if ((currentPhase === 'await-hans' || currentPhase === 'hans')
+          && canvas.dataset.warRoomHansScreen === 'onscreen') {
+          const anchor = projectHansFireReplyAnchor({
+            ndcX: canvas.dataset.warRoomHansNdcX,
+            ndcY: canvas.dataset.warRoomHansNdcY,
+            coarsePointer: Boolean(window.matchMedia?.('(pointer: coarse)')?.matches),
+          });
+          if (anchor) {
+            setHansAnchor((current) => sameAnchor(current, anchor) ? current : anchor);
+            if (currentPhase === 'await-hans') {
+              currentPhase = 'hans';
+              elapsed = 0;
+              setPhase('hans');
+            }
+          }
+        }
+      }
+      if (currentPhase !== '') frameId = window.requestAnimationFrame(tick);
+    };
+    frameId = window.requestAnimationFrame(tick);
     return () => {
       live = false;
-      observer.disconnect();
-      if (replyTimer) window.clearTimeout(replyTimer);
-      if (clearTimer) window.clearTimeout(clearTimer);
+      window.cancelAnimationFrame(frameId);
     };
   }, [anchorReady, enabled, gameId, isThreeD, portalHost]);
 

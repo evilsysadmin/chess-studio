@@ -1,6 +1,6 @@
 export const MATTHIAS_FIRE_CALL_LINE = 'HANS! El fuego, bitte.';
 export const HANS_FIRE_REPLY_LINE = 'Sí, señor.';
-export const MATTHIAS_FIRE_CALL_MS = 1450;
+export const MATTHIAS_FIRE_CALL_MS = 2500;
 export const HANS_FIRE_REPLY_MS = 1350;
 
 function clamp(value, min, max) {

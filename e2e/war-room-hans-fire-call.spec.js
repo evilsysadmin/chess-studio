@@ -6,15 +6,6 @@ const WAR_ROOM_READY_TIMEOUT = 45_000;
 test('War Room · Matthias llama a Hans por el fuego y Hans responde al aparecer', async ({ page }) => {
   test.setTimeout(90_000);
 
-  await page.addInitScript(() => {
-    const nativeSetTimeout = window.setTimeout.bind(window);
-    window.setTimeout = (callback, delay, ...args) => {
-      const value = Number(delay);
-      const stretched = value === 1450 || value === 1350 ? 6000 : value;
-      return nativeSetTimeout(callback, stretched, ...args);
-    };
-  });
-
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page);
   await login(page);
@@ -27,6 +18,8 @@ test('War Room · Matthias llama a Hans por el fuego y Hans responde al aparecer
 
   const matthiasCall = page.getByRole('status', { name: 'Matthias llama a Hans por el fuego' });
   await expect(matthiasCall).toBeVisible({ timeout: 10_000 });
+  await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true');
+  await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'hidden');
   await expect(matthiasCall).toContainText('MATTHIAS');
   await expect(matthiasCall).toContainText('HANS! El fuego, bitte.');
   await expect(matthiasCall).toHaveAttribute('data-matthias-square', /^[a-h][1-8]$/);

@@ -512,6 +512,8 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
   if (!fireplace || !hans || !driver || !fireCore || !fireLight) return 0;
 
   let startedAt = null;
+  let presentationMs = 0;
+  const awaitCall = root.userData?.warRoomHansAwaitCall === true;
   const frameScratch = {};
   const doorDepth = Math.abs(Number(doorRefs?.doorZ) - Number(fireplace.position.z));
   const refs = {
@@ -551,14 +553,27 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
   driver.userData.warRoomHansFacingHotPath = 'scalar-targets-v1';
 
   const initialFrame = writeHansQuickIterationFrame(frameScratch, 0, coarsePointer);
+  if (awaitCall) {
+    initialFrame.hansVisible = false;
+    initialFrame.doorOpen = 0;
+  }
   applyQuickIterationFrame(refs, initialFrame, towardBoard);
   driver.userData.warRoomHansVisibleAtStart = hans.visible === true;
 
   driver.onBeforeRender = () => {
     const frameNow = nowMs();
-    if (startedAt == null) startedAt = frameNow;
-    const presentationElapsed = ((frameNow - startedAt) / 1000) * HANS_PRESENTATION_TIME_SCALE;
+    const delta = startedAt == null ? 0 : Math.max(0, frameNow - startedAt);
+    startedAt = frameNow;
+    if (awaitCall && root.userData.warRoomHansCallReleased !== true) return;
+    // A late render or a hidden tab must never skip the entrance choreography.
+    presentationMs += awaitCall ? Math.min(delta, 100) : delta;
+    const doorOpeningMs = awaitCall ? 600 : 0;
+    const presentationElapsed = Math.max(0, presentationMs - doorOpeningMs) / 1000 * HANS_PRESENTATION_TIME_SCALE;
     const frame = writeHansQuickIterationFrame(frameScratch, presentationElapsed, coarsePointer);
+    if (presentationMs < doorOpeningMs) {
+      frame.hansVisible = false;
+      frame.doorOpen = smoothstep01(presentationMs / doorOpeningMs);
+    }
     applyQuickIterationFrame(refs, frame, towardBoard);
     driver.userData.warRoomHansPhase = frame.phase;
     driver.userData.warRoomHansChoreographyPhase = frame.choreography || frame.phase;

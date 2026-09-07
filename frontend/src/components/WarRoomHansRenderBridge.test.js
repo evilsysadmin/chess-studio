@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
 import { WAR_ROOM_HANS_FIRE_NARRATIVE_VERSION } from './WarRoomHansFireNarrative.js';
@@ -25,10 +25,11 @@ function dispose(root) {
   materials.forEach((material) => material.dispose?.());
 }
 
-function runHansBridge({ coarsePointer = false } = {}) {
+function runHansBridge({ coarsePointer = false, awaitCall = false } = {}) {
   setWarRoomHansQuickIterationEnabled(true);
 
   const scene = new THREE.Scene();
+  scene.userData.warRoomHansAwaitCall = awaitCall;
   const room = buildPremiumWarRoomLayer(theme, true, coarsePointer);
   scene.add(room);
 
@@ -45,6 +46,7 @@ function runHansBridge({ coarsePointer = false } = {}) {
 
 afterEach(() => {
   setWarRoomHansQuickIterationEnabled(false);
+  vi.restoreAllMocks();
 });
 
 describe('War Room Hans live render bridge', () => {
@@ -98,3 +100,38 @@ describe('War Room Hans live render bridge', () => {
     dispose(scene);
   });
 });
+
+for (const coarsePointer of [false, true]) {
+  it(`waits for the rendered call, then opens the door without skipping on a late frame (coarse=${coarsePointer})`, () => {
+    let now = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    const { scene } = runHansBridge({ coarsePointer, awaitCall: true });
+    const hans = scene.getObjectByName('war-room-hans-butler');
+    const driver = scene.getObjectByName('war-room-hans-fireplace-driver');
+    const door = scene.getObjectByName('war-room-hans-service-door');
+    const fire = scene.getObjectByName('war-room-fire-core');
+    try {
+      for (now of [0, 1000, 30_000]) {
+        driver.onBeforeRender();
+        expect(hans.visible).toBe(false);
+        expect(door.userData.warRoomHansDoorOpen).toBe(0);
+        expect(fire.visible).toBe(false);
+      }
+      scene.userData.warRoomHansCallReleased = true;
+      now += 30_000;
+      driver.onBeforeRender();
+      expect(hans.visible).toBe(false);
+      expect(door.userData.warRoomHansDoorOpen).toBeGreaterThan(0);
+      expect(door.userData.warRoomHansDoorOpen).toBeLessThan(1);
+      for (let i = 0; i < 8; i += 1) {
+        now += 100;
+        driver.onBeforeRender();
+      }
+      expect(hans.visible).toBe(true);
+      expect(driver.userData.warRoomHansPhase).toBe('fire-dimming');
+      expect(fire.visible).toBe(false);
+    } finally {
+      dispose(scene);
+    }
+  });
+}

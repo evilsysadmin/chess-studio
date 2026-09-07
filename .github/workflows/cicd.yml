@@ -205,6 +205,7 @@ jobs:
           cases = []
           if full_logic:
               cases.extend([
+                  {'id': 'hans-fire-call', 'label': 'War Room · Hans waits for the rendered call', 'command': './node_modules/.bin/playwright test war-room-hans-fire-call.spec.js --workers=1 --retries=0'},
                   {'id': 'android-selection', 'label': 'War Room · Android selection', 'command': './node_modules/.bin/playwright test three-d-war-room-android-touch.spec.js --workers=1 --retries=0'},
                   {'id': 'desktop-input', 'label': 'War Room · desktop input', 'command': './node_modules/.bin/playwright test three-d-war-room.spec.js --grep "War Room · desktop input mantiene cámara fija y juega e2→e4" --workers=1 --retries=0 --timeout=75000'},
                   {'id': 'special-surfaces', 'label': '3D parity · special surfaces', 'command': './node_modules/.bin/playwright test three-d-special-surfaces.spec.js --workers=1 --retries=0 --timeout=90000'},
