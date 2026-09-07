@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 
-export const WAR_ROOM_COMMAND_DESK_STUDY_VERSION = 'command-desk-study-v2';
+export const WAR_ROOM_COMMAND_DESK_STUDY_VERSION = 'command-desk-study-v3';
 
 function physical(color, options = {}) {
   return new THREE.MeshPhysicalMaterial({
@@ -11,6 +11,8 @@ function physical(color, options = {}) {
     clearcoat: options.clearcoat ?? 0.08,
     clearcoatRoughness: options.clearcoatRoughness ?? 0.38,
     specularIntensity: options.specularIntensity ?? 0.28,
+    emissive: options.emissive ?? 0x000000,
+    emissiveIntensity: options.emissiveIntensity ?? 0,
   });
 }
 
@@ -36,14 +38,30 @@ function addStudyPiece(group, {
   piece.name = 'war-room-command-desk-study-piece';
   piece.userData.studyKind = kind;
   piece.userData.studySide = dark ? 'dark' : 'light';
+  piece.userData.studyLegibility = 'high-contrast';
   piece.position.set(x, y, z);
+  piece.scale.setScalar(1.06);
 
-  const mat = physical(dark ? 0x202126 : 0xe9dcc0, {
-    roughness: dark ? 0.34 : 0.39,
-    clearcoat: 0.28,
-    clearcoatRoughness: 0.21,
-    specularIntensity: 0.5,
-  });
+  // Keep the desk study readable under the deliberately warm, low-key War Room lighting.
+  // Ivory separates from the cream squares; the cool charcoal army keeps its silhouette
+  // against the walnut squares and gets a tiny emissive lift instead of another scene light.
+  const mat = dark
+    ? physical(0x161b22, {
+      roughness: 0.46,
+      clearcoat: 0.16,
+      clearcoatRoughness: 0.34,
+      specularIntensity: 0.34,
+      emissive: 0x233246,
+      emissiveIntensity: 0.16,
+    })
+    : physical(0xf7edd6, {
+      roughness: 0.48,
+      clearcoat: 0.14,
+      clearcoatRoughness: 0.36,
+      specularIntensity: 0.32,
+      emissive: 0x3a2d18,
+      emissiveIntensity: 0.035,
+    });
   const segments = 10;
 
   addMesh(piece, new THREE.CylinderGeometry(0.025, 0.033, 0.019, segments), mat, [0, 0.0095, 0]);
