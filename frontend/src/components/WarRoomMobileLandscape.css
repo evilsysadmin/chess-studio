@@ -1,0 +1,149 @@
+/* Android/phone landscape is an explicit play-first composition.
+ * The PWA already allows any orientation; this layer simply spends the extra
+ * horizontal space on the board instead of preserving the portrait stack. */
+@media (pointer: coarse) and (orientation: landscape) and (max-width: 920px) and (max-height: 620px) {
+  .game-screen .game-layout.game-layout-3d {
+    width: 100%;
+    max-width: none;
+    margin-inline: auto;
+  }
+
+  .game-screen .board-live-row.is-3d-warroom {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(148px, 188px);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      'board commander'
+      'board chat';
+    align-items: start;
+    gap: .38rem;
+    padding: .34rem;
+  }
+
+  .game-screen .game-board-stack.game-board-stack-3d {
+    grid-area: board;
+    width: 100%;
+    min-width: 0;
+    gap: .3rem;
+  }
+
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    width: 100%;
+    min-height: 0;
+    height: min(72dvh, 430px);
+    aspect-ratio: 1.62 / 1;
+    border-radius: 10px;
+  }
+
+  .game-screen .game-board-stack-3d .game-player-rail.is-human {
+    min-height: 38px;
+    padding-block: .25rem;
+  }
+
+  .game-screen .game-3d-command-column {
+    grid-area: commander;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'controls'
+      'message';
+    gap: .3rem;
+    min-width: 0;
+  }
+
+  .game-screen .game-3d-matthias-card,
+  .game-screen .game-3d-warroom-status,
+  .game-screen .game-3d-command-column blockquote {
+    display: none;
+  }
+
+  .game-screen .game-3d-warroom-controls {
+    grid-area: controls;
+    grid-template-columns: 1fr;
+    gap: .25rem;
+    padding: .28rem;
+  }
+
+  .game-screen .game-3d-warroom-controls .secondary-btn,
+  .game-screen .game-3d-warroom-controls .secondary-btn:last-child:nth-child(3) {
+    grid-column: auto;
+    min-height: 32px;
+    padding: .28rem .34rem;
+    font-size: .58rem;
+  }
+
+  .game-screen .game-3d-warroom-message {
+    grid-area: message;
+    min-height: 0;
+    max-height: 88px;
+    overflow: hidden;
+    padding: .42rem .48rem;
+  }
+
+  .game-screen .game-3d-warroom-message > span {
+    font-size: .42rem;
+  }
+
+  .game-screen .game-3d-warroom-message p {
+    margin-top: .24rem;
+    font-size: .58rem;
+    line-height: 1.3;
+  }
+
+  .game-screen .game-side-column.game-side-column-3d {
+    grid-area: chat;
+    display: flex;
+    flex-direction: column;
+    gap: .28rem;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    max-height: min(42dvh, 230px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+  }
+
+  .game-screen .game-side-column-3d .game-side-music,
+  .game-screen .game-side-column-3d .game-notation-disclosure {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+
+  .game-screen .game-side-column-3d .game-chat {
+    flex: 0 0 auto;
+    min-height: 138px;
+    max-height: 176px;
+  }
+
+  .game-screen .board3d-fixed-camera-note {
+    top: .32rem;
+    left: .36rem;
+    font-size: .44rem;
+  }
+
+  .game-screen .board3d-customize {
+    right: .36rem;
+    bottom: .36rem;
+    min-height: 31px;
+    padding: .3rem .45rem;
+    font-size: .56rem;
+  }
+}
+
+/* Very short browser landscape (address/nav bars still visible): preserve the
+ * board before secondary rails. The right column remains scrollable. */
+@media (pointer: coarse) and (orientation: landscape) and (max-width: 920px) and (max-height: 430px) {
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    height: min(76dvh, 330px);
+    min-height: 240px;
+  }
+
+  .game-screen .game-3d-warroom-message {
+    display: none;
+  }
+
+  .game-screen .game-side-column.game-side-column-3d {
+    max-height: min(36dvh, 160px);
+  }
+}
