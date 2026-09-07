@@ -23,6 +23,20 @@ function sourceRecordForAnalysis(history, analysis) {
   }) || null;
 }
 
+function sourceBackedAnalysisArchive(history, archive) {
+  const sourceIds = new Set(
+    (history || [])
+      .map(sourceGameIdForRecord)
+      .filter((id) => id != null)
+      .map(String),
+  );
+  return Object.fromEntries(
+    Object.entries(archive || {}).filter(([, analysis]) => (
+      analysis?.gameId != null && sourceIds.has(String(analysis.gameId))
+    )),
+  );
+}
+
 function plaque({ id, hall, label, detail, glyph, prestige, record, analysis = null, moveIndex = null, evidence }) {
   const sourceGameId = sourceGameIdForRecord(record);
   if (!sourceGameId) return null;
@@ -54,7 +68,7 @@ function pushUnique(target, entry) {
 
 export function buildCastleHallGallery(history = loadGameHistory(), archive = loadAnalysisArchive()) {
   const rows = Array.isArray(history) ? history : [];
-  const hall = hallOfFameAndShame(rows, archive);
+  const hall = hallOfFameAndShame(rows, sourceBackedAnalysisArchive(rows, archive));
   const fame = [];
   const shame = [];
 
