@@ -64,7 +64,8 @@ const checks = [
     /<HomeIllustrated/.test(menu)
       && !/home-friendly/.test(menu)
       && /illustrated-home__stage/.test(homeIllustrated)
-      && /illustrated-home__destination--play/.test(homeIllustrated)
+      && /\['play',\s*hasSavedGame/.test(homeIllustrated)
+      && /illustrated-home__destination--\$\{id\}/.test(homeIllustrated)
       && /aspect-ratio:\s*16\s*\/\s*9/.test(homeIllustratedCss)
       && /object-fit:\s*fill/.test(homeIllustratedCss),
     'Home debe usar una única superficie ilustrada 16:9, sin rama legacy ni recorte del arte canónico',
