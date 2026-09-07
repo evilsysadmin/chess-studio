@@ -1,5 +1,5 @@
 import { devices, expect, test } from '@playwright/test';
-import { buttonWithVisibleText, gameTurn, login, mockApi, startPracticeGame } from './helpers.js';
+import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
 
 test.use({ ...devices['Pixel 5'] });
 
@@ -161,10 +161,20 @@ test('War Room · el bocadillo de Matthias sigue al rey si cambia de casilla', a
   await installKingMoveScenario(page, moveCalls);
   await login(page);
 
-  // Hans owns the opening slot in normal quick games by design. Exercise this
-  // Matthias-only anchor regression through the real practice route so Hans is
-  // disabled by the product contract instead of adding a test-only escape hatch.
-  await startPracticeGame(page);
+  // Hans owns the opening slot in a standard quick game by design. Sudden Death
+  // is a real quick-match mode that explicitly disables that Hans iteration,
+  // letting this Matthias-only anchor regression exercise the normal /api/games
+  // creation path without a test-only escape hatch.
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await expect(quickDialog).toBeVisible();
+  const settings = quickDialog.locator('details.quick-match-settings');
+  if (!(await settings.evaluate((node) => node.open))) await settings.locator(':scope > summary').click();
+  const specialRules = quickDialog.locator('details.friendly-subdisclosure');
+  if (!(await specialRules.evaluate((node) => node.open))) await specialRules.locator(':scope > summary').click();
+  await quickDialog.getByRole('checkbox', { name: /Sudden Death/ }).check();
+  await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
   await open3DFromAppearance(page);
 
   const board3d = page.locator('[data-board3d-war-room="true"]');
