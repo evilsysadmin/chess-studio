@@ -88,7 +88,7 @@ async function loginBrowser(page, username, password) {
     submit.click(),
   ]);
   expect(browserLogin.status()).toBe(200);
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible({ timeout: 25_000 });
+  await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible({ timeout: 25_000 });
 }
 
 test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida desde API', async ({ page, request }) => {
