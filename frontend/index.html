@@ -19,7 +19,19 @@
     <script>
       (() => {
         const RECOVERY_KEY = 'chess-studio-module-recovery-v1';
+        const RECOVERY_PARAM = '__cs_recover';
         const RECOVERY_WINDOW_MS = 30000;
+
+        function scrubRecoveryParam() {
+          const current = new URL(window.location.href);
+          if (!current.searchParams.has(RECOVERY_PARAM)) return;
+
+          current.searchParams.delete(RECOVERY_PARAM);
+          const cleanUrl = `${current.pathname}${current.search}${current.hash}`;
+          window.history.replaceState(window.history.state, '', cleanUrl);
+        }
+
+        scrubRecoveryParam();
 
         async function recoverStaleModule() {
           if (navigator.onLine === false) return;
@@ -54,7 +66,7 @@
           }
 
           const next = new URL(window.location.href);
-          next.searchParams.set('__cs_recover', Date.now().toString(36));
+          next.searchParams.set(RECOVERY_PARAM, Date.now().toString(36));
           window.location.replace(next.toString());
         }
 
