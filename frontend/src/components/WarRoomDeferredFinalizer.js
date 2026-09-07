@@ -1,3 +1,4 @@
+import { installWarRoomHansArticulatedWalk } from './WarRoomHansArticulatedWalk.js';
 import { installWarRoomHansCanonicalButler } from './WarRoomHansCanonicalButler.js';
 import { installWarRoomHansElderClock } from './WarRoomHansElderClock.js';
 import { installWarRoomHansElderWalk } from './WarRoomHansElderWalk.js';
@@ -74,6 +75,7 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         installWarRoomHansFacingGuard(root);
         installWarRoomHansHearthFacingGuard(root);
         installWarRoomHansElderWalk(root);
+        installWarRoomHansArticulatedWalk(root);
         installWarRoomHansElderClock(root);
         // Observe the fully-resolved Hans phase and hearth state last. This layer
         // never moves Hans; it only turns the old proximity fade into a causal
