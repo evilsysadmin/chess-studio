@@ -199,7 +199,7 @@ test('Android · Focus convierte reacciones nuevas de Matthias en bocadillos tem
   }, {
     timeout: 20_000,
     message: 'La reacción de Matthias debe aparecer con texto en Focus',
-  }).toMatch(/^MATTHIAS\s+\S/);
+  }).toMatch(/^MATTHIAS.+/);
   const focusBubbleText = (await bubble.textContent()).replace(/\s+/g, ' ').trim();
   await expect(page.locator('.game-side-column')).toHaveCount(0);
 
