@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export const HANS_WALK_CYCLE_VERSION = 'hans-walk-cycle-v1-articulated-knees';
+export const HANS_WALK_CYCLE_VERSION = 'hans-walk-cycle-v2-full-body-articulated';
 
 const CYCLE_DISTANCE = 0.26;
 const DEFAULT_KNEE_FLEX = 0.085;
@@ -9,6 +9,13 @@ const CONTACT_KNEE_FLEX = 0.065;
 const HORIZONTAL_KNEE_GAIN = 0.42;
 const FOOT_COUNTER_ROTATION = 0.64;
 const TOE_LIFT = 0.11;
+const HUNCH_RADIANS = 0.065;
+const HORIZONTAL_HUNCH_BONUS_RADIANS = 0.105;
+const BASE_ARM_SWING_GAIN = 1.25;
+const HORIZONTAL_ARM_SWING_BONUS = 2.35;
+const HORIZONTAL_LEG_SWING_BONUS = 0.55;
+const HORIZONTAL_STEP_BONUS = 0.5;
+const HORIZONTAL_LIFT_BONUS = 0.4;
 
 function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
@@ -132,18 +139,39 @@ export function ensureHansArticulatedLegs(body) {
   return Boolean(left && right);
 }
 
-function captureRotation(part) {
-  if (!part?.rotation) return null;
+function capturePart(part) {
+  if (!part?.position || !part?.rotation) return null;
   return {
-    x: part.rotation.x,
-    y: part.rotation.y,
-    z: part.rotation.z,
+    x: part.position.x,
+    y: part.position.y,
+    z: part.position.z,
+    rx: part.rotation.x,
+    ry: part.rotation.y,
+    rz: part.rotation.z,
   };
 }
 
-function restoreRotation(part, base) {
+function restorePart(part, base) {
   if (!part || !base) return;
-  part.rotation.set(base.x, base.y, base.z);
+  part.position.set(base.x, base.y, base.z);
+  part.rotation.set(base.rx, base.ry, base.rz);
+}
+
+function captureBases(body) {
+  return {
+    leftLeg: capturePart(body?.leftLeg),
+    rightLeg: capturePart(body?.rightLeg),
+    leftKnee: capturePart(body?.leftKnee),
+    rightKnee: capturePart(body?.rightKnee),
+    leftShoe: capturePart(body?.leftShoe),
+    rightShoe: capturePart(body?.rightShoe),
+    torso: capturePart(body?.torso),
+    head: capturePart(body?.head),
+    leftArm: capturePart(body?.leftArm),
+    rightArm: capturePart(body?.rightArm),
+    cane: capturePart(body?.cane),
+    tailcoat: capturePart(body?.tailcoat),
+  };
 }
 
 export function sampleHansWalkCycle(distance, target = {}) {
@@ -160,26 +188,48 @@ export function sampleHansWalkCycle(distance, target = {}) {
   target.rightKnee = DEFAULT_KNEE_FLEX + rightSwing * SWING_KNEE_FLEX + rightContact * CONTACT_KNEE_FLEX;
   target.leftToe = leftSwing * TOE_LIFT;
   target.rightToe = rightSwing * TOE_LIFT;
-  target.bob = -Math.abs(Math.sin(phase * 2)) * 0.006;
+  target.leg = swing * 0.17;
+  target.step = swing * 0.058;
+  target.leftLift = leftSwing * 0.034;
+  target.rightLift = rightSwing * 0.034;
+  target.bob = -Math.abs(Math.sin(phase * 2)) * 0.012;
+  target.sway = Math.cos(phase) * 0.011;
+  target.roll = Math.cos(phase) * 0.009;
+  target.yaw = swing * 0.008;
+  target.arm = swing * 0.045;
+  target.nod = Math.abs(Math.sin(phase * 2)) * 0.012;
   return target;
 }
 
 export function createHansWalkCycle(body, { forward = 1 } = {}) {
   if (!ensureHansArticulatedLegs(body)) return null;
-  const controller = {
+  return {
     version: HANS_WALK_CYCLE_VERSION,
     body,
     forward: Math.sign(Number(forward) || 1) || 1,
     distance: 0,
     sample: {},
-    bases: {
-      leftKnee: captureRotation(body.leftKnee),
-      rightKnee: captureRotation(body.rightKnee),
-      leftShoe: captureRotation(body.leftShoe),
-      rightShoe: captureRotation(body.rightShoe),
-    },
+    bases: captureBases(body),
   };
-  return controller;
+}
+
+function applyAccessoryGait(body, bases, sample, forward, carrying) {
+  if (body?.cane && bases.cane) {
+    body.cane.visible = !carrying;
+    if (!carrying) {
+      body.cane.position.set(bases.cane.x, bases.cane.y + Math.max(0, sample.bob + 0.012) * 0.5, bases.cane.z);
+      body.cane.rotation.x = bases.cane.rx - forward * sample.arm * 1.35;
+      body.cane.rotation.y = bases.cane.ry;
+      body.cane.rotation.z = bases.cane.rz - sample.sway * 1.15;
+    }
+  }
+
+  if (body?.tailcoat && bases.tailcoat) {
+    body.tailcoat.position.set(bases.tailcoat.x, bases.tailcoat.y, bases.tailcoat.z);
+    body.tailcoat.rotation.x = bases.tailcoat.rx - forward * sample.bob * 0.85;
+    body.tailcoat.rotation.y = bases.tailcoat.ry - sample.yaw * 0.55;
+    body.tailcoat.rotation.z = bases.tailcoat.rz - sample.roll * 0.28;
+  }
 }
 
 export function applyHansWalkCycle(controller, {
@@ -188,29 +238,128 @@ export function applyHansWalkCycle(controller, {
 } = {}) {
   if (!controller?.body) return null;
   const body = controller.body;
+  const bases = controller.bases;
   const sample = sampleHansWalkCycle(distance, controller.sample);
   const horizontal = clamp01(horizontalWeight);
-  const kneeGain = 1 + horizontal * HORIZONTAL_KNEE_GAIN;
   const forward = controller.forward;
-
+  const kneeGain = 1 + horizontal * HORIZONTAL_KNEE_GAIN;
+  const legSwingGain = 1 + horizontal * HORIZONTAL_LEG_SWING_BONUS;
+  const stepGain = 1 + horizontal * HORIZONTAL_STEP_BONUS;
+  const liftGain = 1 + horizontal * HORIZONTAL_LIFT_BONUS;
+  const activeHunch = HUNCH_RADIANS + HORIZONTAL_HUNCH_BONUS_RADIANS * horizontal;
+  const armSwingGain = BASE_ARM_SWING_GAIN + HORIZONTAL_ARM_SWING_BONUS * horizontal;
+  const silhouetteShift = activeHunch * horizontal;
   const leftFlex = sample.leftKnee * kneeGain;
   const rightFlex = sample.rightKnee * kneeGain;
 
-  if (body.leftKnee && controller.bases.leftKnee) {
-    body.leftKnee.rotation.x = controller.bases.leftKnee.x + forward * leftFlex;
+  if (body.leftLeg && bases.leftLeg) {
+    body.leftLeg.position.set(
+      bases.leftLeg.x,
+      bases.leftLeg.y + sample.leftLift * liftGain,
+      bases.leftLeg.z + forward * sample.step * stepGain,
+    );
+    body.leftLeg.rotation.set(
+      bases.leftLeg.rx + sample.leg * legSwingGain,
+      bases.leftLeg.ry,
+      bases.leftLeg.rz - sample.sway * 0.72,
+    );
   }
-  if (body.rightKnee && controller.bases.rightKnee) {
-    body.rightKnee.rotation.x = controller.bases.rightKnee.x + forward * rightFlex;
-  }
-  if (body.leftShoe && controller.bases.leftShoe) {
-    body.leftShoe.rotation.x = controller.bases.leftShoe.x
-      + forward * (-leftFlex * FOOT_COUNTER_ROTATION + sample.leftToe);
-  }
-  if (body.rightShoe && controller.bases.rightShoe) {
-    body.rightShoe.rotation.x = controller.bases.rightShoe.x
-      + forward * (-rightFlex * FOOT_COUNTER_ROTATION + sample.rightToe);
+  if (body.rightLeg && bases.rightLeg) {
+    body.rightLeg.position.set(
+      bases.rightLeg.x,
+      bases.rightLeg.y + sample.rightLift * liftGain,
+      bases.rightLeg.z - forward * sample.step * stepGain,
+    );
+    body.rightLeg.rotation.set(
+      bases.rightLeg.rx - sample.leg * legSwingGain,
+      bases.rightLeg.ry,
+      bases.rightLeg.rz - sample.sway * 0.72,
+    );
   }
 
+  if (body.leftKnee && bases.leftKnee) {
+    body.leftKnee.rotation.set(bases.leftKnee.rx + forward * leftFlex, bases.leftKnee.ry, bases.leftKnee.rz);
+  }
+  if (body.rightKnee && bases.rightKnee) {
+    body.rightKnee.rotation.set(bases.rightKnee.rx + forward * rightFlex, bases.rightKnee.ry, bases.rightKnee.rz);
+  }
+  if (body.leftShoe && bases.leftShoe) {
+    body.leftShoe.rotation.set(
+      bases.leftShoe.rx + forward * (-leftFlex * FOOT_COUNTER_ROTATION + sample.leftToe),
+      bases.leftShoe.ry,
+      bases.leftShoe.rz,
+    );
+  }
+  if (body.rightShoe && bases.rightShoe) {
+    body.rightShoe.rotation.set(
+      bases.rightShoe.rx + forward * (-rightFlex * FOOT_COUNTER_ROTATION + sample.rightToe),
+      bases.rightShoe.ry,
+      bases.rightShoe.rz,
+    );
+  }
+
+  if (body.torso && bases.torso) {
+    body.torso.position.set(
+      bases.torso.x + sample.sway,
+      bases.torso.y + sample.bob,
+      bases.torso.z + forward * silhouetteShift * 0.42,
+    );
+    body.torso.rotation.set(
+      bases.torso.rx + forward * (activeHunch + Math.abs(sample.bob) * 0.35),
+      bases.torso.ry + sample.yaw,
+      bases.torso.rz + sample.roll,
+    );
+  }
+  if (body.head && bases.head) {
+    body.head.position.set(
+      bases.head.x + sample.sway * 0.38,
+      bases.head.y + sample.bob * 0.42,
+      bases.head.z + forward * silhouetteShift * 0.62,
+    );
+    body.head.rotation.set(
+      bases.head.rx + forward * (HUNCH_RADIANS * 0.28 + HORIZONTAL_HUNCH_BONUS_RADIANS * horizontal * 0.1 + sample.nod),
+      bases.head.ry - sample.yaw * 0.7,
+      bases.head.rz - sample.roll * 0.45,
+    );
+  }
+
+  const carryingLog = body?.carriedLog?.visible === true;
+  const carryingPoker = body?.carriedPoker?.visible === true;
+  const carrying = carryingLog || carryingPoker;
+  if (carryingLog) {
+    if (body?.leftArm && bases.leftArm) {
+      body.leftArm.position.z = bases.leftArm.z + forward * silhouetteShift * 0.48;
+      body.leftArm.rotation.x = bases.leftArm.rx - 0.43;
+      body.leftArm.rotation.z = bases.leftArm.rz + 0.035;
+    }
+    if (body?.rightArm && bases.rightArm) {
+      body.rightArm.position.z = bases.rightArm.z + forward * silhouetteShift * 0.48;
+      body.rightArm.rotation.x = bases.rightArm.rx - 0.5;
+      body.rightArm.rotation.z = bases.rightArm.rz - 0.025;
+    }
+  } else if (carryingPoker) {
+    if (body?.leftArm && bases.leftArm) {
+      body.leftArm.position.z = bases.leftArm.z + forward * silhouetteShift * 0.48;
+      body.leftArm.rotation.x = bases.leftArm.rx - 0.12;
+    }
+    if (body?.rightArm && bases.rightArm) {
+      body.rightArm.position.z = bases.rightArm.z + forward * silhouetteShift * 0.48;
+      body.rightArm.rotation.x = bases.rightArm.rx - 0.42;
+    }
+  } else {
+    if (body?.leftArm && bases.leftArm) {
+      body.leftArm.position.z = bases.leftArm.z + forward * silhouetteShift * 0.48;
+      body.leftArm.rotation.x = bases.leftArm.rx - sample.arm * armSwingGain;
+      body.leftArm.rotation.z = bases.leftArm.rz + 0.018 * horizontal;
+    }
+    if (body?.rightArm && bases.rightArm) {
+      body.rightArm.position.z = bases.rightArm.z + forward * silhouetteShift * 0.48;
+      body.rightArm.rotation.x = bases.rightArm.rx + sample.arm * armSwingGain * 0.72;
+      body.rightArm.rotation.z = bases.rightArm.rz - 0.014 * horizontal;
+    }
+  }
+
+  applyAccessoryGait(body, bases, sample, forward, carrying);
   controller.distance = Number(distance) || 0;
   return sample;
 }
@@ -227,10 +376,20 @@ export function advanceHansWalkCycle(controller, {
   });
 }
 
-export function resetHansWalkCycle(controller) {
+export function resetHansWalkCycle(controller, { full = false } = {}) {
   if (!controller?.body) return;
-  restoreRotation(controller.body.leftKnee, controller.bases.leftKnee);
-  restoreRotation(controller.body.rightKnee, controller.bases.rightKnee);
-  restoreRotation(controller.body.leftShoe, controller.bases.leftShoe);
-  restoreRotation(controller.body.rightShoe, controller.bases.rightShoe);
+  const { body, bases } = controller;
+  restorePart(body.leftKnee, bases.leftKnee);
+  restorePart(body.rightKnee, bases.rightKnee);
+  restorePart(body.leftShoe, bases.leftShoe);
+  restorePart(body.rightShoe, bases.rightShoe);
+  if (!full) return;
+  restorePart(body.leftLeg, bases.leftLeg);
+  restorePart(body.rightLeg, bases.rightLeg);
+  restorePart(body.torso, bases.torso);
+  restorePart(body.head, bases.head);
+  restorePart(body.leftArm, bases.leftArm);
+  restorePart(body.rightArm, bases.rightArm);
+  restorePart(body.cane, bases.cane);
+  restorePart(body.tailcoat, bases.tailcoat);
 }
