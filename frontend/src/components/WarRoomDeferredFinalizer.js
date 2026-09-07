@@ -1,7 +1,6 @@
 import { installWarRoomHansArticulatedWalk } from './WarRoomHansArticulatedWalk.js';
 import { installWarRoomHansCanonicalButler } from './WarRoomHansCanonicalButler.js';
 import { installWarRoomHansElderClock } from './WarRoomHansElderClock.js';
-import { installWarRoomHansElderWalk } from './WarRoomHansElderWalk.js';
 import { installWarRoomHansFacingGuard } from './WarRoomHansFacingGuard.js';
 import { installWarRoomHansFireNarrative } from './WarRoomHansFireNarrative.js';
 import { installWarRoomHansHearthFacingGuard } from './WarRoomHansHearthFacingGuard.js';
@@ -74,7 +73,8 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         installWarRoomHansMotionPolish(root);
         installWarRoomHansFacingGuard(root);
         installWarRoomHansHearthFacingGuard(root);
-        installWarRoomHansElderWalk(root);
+        // One visual locomotion owner only. MotionPolish owns routing/facing and
+        // stationary action poses; the reusable articulated cycle owns walking.
         installWarRoomHansArticulatedWalk(root);
         installWarRoomHansElderClock(root);
         // Observe the fully-resolved Hans phase and hearth state last. This layer
