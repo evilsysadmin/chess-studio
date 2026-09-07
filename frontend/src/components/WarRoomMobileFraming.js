@@ -1,4 +1,4 @@
-export const WAR_ROOM_MOBILE_FRAMING_VERSION = 'mobile-v4-orientation-aware';
+export const WAR_ROOM_MOBILE_FRAMING_VERSION = 'mobile-v5-landscape-overhead';
 
 export function getWarRoomMobileFramingProfile({
   aspect = 1,
@@ -19,18 +19,19 @@ export function getWarRoomMobileFramingProfile({
     return Object.freeze({
       version: WAR_ROOM_MOBILE_FRAMING_VERSION,
       mode: 'landscape-board-first',
-      // Landscape should cash in the extra horizontal room instead of keeping
-      // the portrait composition. Keep the whole board/frame visible, but move
-      // the camera materially closer so individual piece silhouettes gain real
-      // screen pixels.
-      halfSpan: 4.92,
-      padding: 1.015,
-      minDistance: 14.1,
-      maxDistance: 18.6,
-      targetY: 0.58,
-      targetZ: 0.16,
-      cameraY: 6.65,
-      cameraZ: 11.75,
+      // Mobile landscape is a play surface first. The previous v4 framing used
+      // the extra width, but the camera remained low enough that the front rank
+      // still masked the silhouettes behind it. v5 moves materially upward and
+      // closer: fewer side walls/chairs, more board pixels, and better visual
+      // separation between ranks without changing desktop or portrait framing.
+      halfSpan: 4.45,
+      padding: 1.0,
+      minDistance: 13.2,
+      maxDistance: 17.2,
+      targetY: 0.38,
+      targetZ: 0.06,
+      cameraY: 8.4,
+      cameraZ: 9.8,
     });
   }
 
