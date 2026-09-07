@@ -4,8 +4,8 @@ import {
   getWarRoomMobileFramingProfile,
 } from './WarRoomMobileFraming.js';
 
-describe('War Room mobile portrait framing', () => {
-  it('abre el encuadre del teléfono para que tablero y sala compartan la primera pantalla', () => {
+describe('War Room mobile framing', () => {
+  it('mantiene el teléfono vertical con sala visible y tablero táctil', () => {
     const phone = getWarRoomMobileFramingProfile({
       aspect: 1.16,
       coarsePointer: true,
@@ -13,6 +13,7 @@ describe('War Room mobile portrait framing', () => {
     });
 
     expect(phone?.version).toBe(WAR_ROOM_MOBILE_FRAMING_VERSION);
+    expect(phone?.mode).toBe('portrait-room-balanced');
     expect(phone.halfSpan).toBeGreaterThanOrEqual(5.35);
     expect(phone.padding).toBeLessThanOrEqual(1.05);
     expect(phone.minDistance).toBeGreaterThan(16);
@@ -21,7 +22,7 @@ describe('War Room mobile portrait framing', () => {
     expect(phone.targetY).toBeGreaterThan(0.9);
   });
 
-  it('mantiene el preset de teléfono aunque el shell 3D sea ligeramente apaisado', () => {
+  it('mantiene el preset vertical aunque el shell sea ligeramente apaisado', () => {
     const screenshotLikePhone = getWarRoomMobileFramingProfile({
       aspect: 1.18,
       coarsePointer: true,
@@ -29,17 +30,31 @@ describe('War Room mobile portrait framing', () => {
     });
 
     expect(screenshotLikePhone?.version).toBe(WAR_ROOM_MOBILE_FRAMING_VERSION);
+    expect(screenshotLikePhone?.mode).toBe('portrait-room-balanced');
     expect(screenshotLikePhone.halfSpan).toBe(5.4);
     expect(screenshotLikePhone.targetZ).toBe(0.65);
   });
 
-  it('no toca desktop, tablet landscape ni punteros finos', () => {
-    expect(getWarRoomMobileFramingProfile({ aspect: 1.16, coarsePointer: false, viewportWidth: 390 })).toBeNull();
-    expect(getWarRoomMobileFramingProfile({ aspect: 1.45, coarsePointer: true, viewportWidth: 780 })).toBeNull();
+  it('convierte landscape de teléfono en una cámara board-first materialmente más cercana', () => {
+    const portrait = getWarRoomMobileFramingProfile({ aspect: 1.16, coarsePointer: true, viewportWidth: 390 });
+    const landscape = getWarRoomMobileFramingProfile({ aspect: 1.62, coarsePointer: true, viewportWidth: 800 });
+
+    expect(landscape?.version).toBe(WAR_ROOM_MOBILE_FRAMING_VERSION);
+    expect(landscape?.mode).toBe('landscape-board-first');
+    expect(landscape.halfSpan).toBeLessThan(portrait.halfSpan);
+    expect(landscape.padding).toBeLessThan(portrait.padding);
+    expect(landscape.maxDistance).toBeLessThan(portrait.maxDistance);
+    expect(landscape.targetZ).toBeLessThan(portrait.targetZ);
+    expect(landscape.targetY).toBeLessThan(portrait.targetY);
+  });
+
+  it('no confunde desktop, tablet ancho ni puntero fino con teléfono landscape', () => {
+    expect(getWarRoomMobileFramingProfile({ aspect: 1.62, coarsePointer: false, viewportWidth: 800 })).toBeNull();
+    expect(getWarRoomMobileFramingProfile({ aspect: 1.45, coarsePointer: true, viewportWidth: 1080 })).toBeNull();
     expect(getWarRoomMobileFramingProfile({ aspect: 1.06, coarsePointer: true, viewportWidth: 1080 })).toBeNull();
   });
 
-  it('da al teléfono algo más de aire que a una pantalla móvil grande', () => {
+  it('da al teléfono vertical algo más de aire que a una pantalla móvil grande', () => {
     const phone = getWarRoomMobileFramingProfile({ aspect: 1.16, coarsePointer: true, viewportWidth: 390 });
     const tabletPortrait = getWarRoomMobileFramingProfile({ aspect: 1.12, coarsePointer: true, viewportWidth: 720 });
 
