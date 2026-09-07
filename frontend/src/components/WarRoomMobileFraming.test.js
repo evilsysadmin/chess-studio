@@ -35,22 +35,25 @@ describe('War Room mobile framing', () => {
     expect(screenshotLikePhone.targetZ).toBe(0.65);
   });
 
-  it('convierte landscape de teléfono en una cámara board-first materialmente más cercana', () => {
+  it('hace el landscape de teléfono más cenital, cercano y centrado en el tablero', () => {
     const portrait = getWarRoomMobileFramingProfile({ aspect: 1.16, coarsePointer: true, viewportWidth: 390 });
-    const landscape = getWarRoomMobileFramingProfile({ aspect: 1.62, coarsePointer: true, viewportWidth: 800 });
+    const landscape = getWarRoomMobileFramingProfile({ aspect: 1.62, coarsePointer: true, viewportWidth: 851 });
 
     expect(landscape?.version).toBe(WAR_ROOM_MOBILE_FRAMING_VERSION);
     expect(landscape?.mode).toBe('landscape-board-first');
-    expect(landscape.halfSpan).toBeLessThan(portrait.halfSpan);
-    expect(landscape.padding).toBeLessThan(portrait.padding);
-    expect(landscape.maxDistance).toBeLessThan(portrait.maxDistance);
-    expect(landscape.targetZ).toBeLessThan(portrait.targetZ);
-    expect(landscape.targetY).toBeLessThan(portrait.targetY);
+    expect(landscape.halfSpan).toBeLessThanOrEqual(4.5);
+    expect(landscape.padding).toBe(1);
+    expect(landscape.maxDistance).toBeLessThan(18);
+    expect(landscape.targetZ).toBeLessThanOrEqual(0.08);
+    expect(landscape.targetY).toBeLessThanOrEqual(0.4);
+    expect(landscape.cameraY / landscape.cameraZ).toBeGreaterThan(0.8);
+    expect(landscape.cameraY / landscape.cameraZ).toBeGreaterThan(portrait.cameraY / portrait.cameraZ);
+    expect(landscape.halfSpan).toBeLessThan(portrait.halfSpan * 0.86);
   });
 
-  it('no confunde desktop, tablet ancho ni puntero fino con teléfono landscape', () => {
-    expect(getWarRoomMobileFramingProfile({ aspect: 1.62, coarsePointer: false, viewportWidth: 800 })).toBeNull();
-    expect(getWarRoomMobileFramingProfile({ aspect: 1.45, coarsePointer: true, viewportWidth: 1080 })).toBeNull();
+  it('aplica el cambio solo a móvil táctil y no toca desktop, tablet ancho ni puntero fino', () => {
+    expect(getWarRoomMobileFramingProfile({ aspect: 1.62, coarsePointer: false, viewportWidth: 851 })).toBeNull();
+    expect(getWarRoomMobileFramingProfile({ aspect: 1.62, coarsePointer: true, viewportWidth: 1080 })).toBeNull();
     expect(getWarRoomMobileFramingProfile({ aspect: 1.06, coarsePointer: true, viewportWidth: 1080 })).toBeNull();
   });
 
