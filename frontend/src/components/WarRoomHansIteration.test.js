@@ -319,6 +319,14 @@ describe('Hans quick-game visual iteration', () => {
     const room = buildPremiumWarRoomLayer({ felt: 0x173943, glow: 0xc5963f }, true, false);
 
     try {
+      const canonicalFireCore = room.getObjectByName('war-room-fire-core');
+      const canonicalFireLight = room.getObjectByName('war-room-fire-light');
+      const canonicalBounce = room.getObjectByName('war-room-fire-bounce-light');
+      const baseScale = canonicalFireCore.scale.clone();
+      const baseIntensity = Number(canonicalFireLight.userData.baseWarRoomIntensity || canonicalFireLight.intensity);
+      const baseDistance = canonicalFireLight.distance;
+      const baseBounce = canonicalBounce?.intensity ?? null;
+
       runHansFirstFrame(room);
 
       const fireplace = room.getObjectByName('war-room-fireplace');
@@ -348,11 +356,11 @@ describe('Hans quick-game visual iteration', () => {
       expect(carriedPoker).toBeTruthy();
       expect(basket.userData.warRoomHansBasketFinish).toBe('graphite-grey-v1');
       expect(hans.visible).toBe(true);
-
-      const baseScale = fireCore.scale.clone();
-      const baseIntensity = Number(fireLight.userData.baseWarRoomIntensity || fireLight.intensity);
-      const baseDistance = fireLight.distance;
-      const baseBounce = bounce?.intensity ?? null;
+      expect(fireCore.visible).toBe(false);
+      expect(fireCore.scale.y).toBe(0);
+      expect(fireLight.intensity).toBeLessThan(baseIntensity);
+      expect(fireLight.distance).toBeLessThan(baseDistance);
+      if (bounce) expect(bounce.intensity).toBeLessThan(baseBounce);
 
       driver.onBeforeRender();
 
@@ -360,11 +368,12 @@ describe('Hans quick-game visual iteration', () => {
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('fire-dimming');
       expect(hans.visible).toBe(true);
-      expect(fireCore.scale.y).toBeLessThan(baseScale.y);
+      expect(fireCore.visible).toBe(false);
+      expect(fireCore.scale.y).toBe(0);
       expect(fireLight.intensity).toBeLessThan(baseIntensity);
       expect(fireLight.distance).toBeLessThan(baseDistance);
       if (bounce) expect(bounce.intensity).toBeLessThan(baseBounce);
-      const dimmedFireHeight = fireCore.scale.y;
+      const coldFireHeight = fireCore.scale.y;
 
       now.mockReturnValue(16185); // ~=8.2 s presentación
       driver.onBeforeRender();
@@ -372,6 +381,8 @@ describe('Hans quick-game visual iteration', () => {
       expect(basketTopLog.visible).toBe(false);
       expect(carriedLog.visible).toBe(true);
       expect(hans.userData.warRoomHansFacingTarget).toBe('basket');
+      expect(fireCore.visible).toBe(false);
+      expect(fireCore.scale.y).toBe(coldFireHeight);
 
       now.mockReturnValue(26185); // ~=13.6 s presentación
       driver.onBeforeRender();
@@ -379,6 +390,7 @@ describe('Hans quick-game visual iteration', () => {
       expect(carriedLog.visible).toBe(false);
       expect(addedLog.visible).toBe(true);
       expect(hans.userData.warRoomHansFacingTarget).toBe('fire');
+      expect(fireCore.visible).toBe(false);
 
       now.mockReturnValue(30074); // ~=15.7 s presentación
       driver.onBeforeRender();
@@ -386,13 +398,15 @@ describe('Hans quick-game visual iteration', () => {
       expect(poker.visible).toBe(false);
       expect(carriedPoker.visible).toBe(true);
       expect(hans.userData.warRoomHansFacingTarget).toBe('tools');
+      expect(fireCore.visible).toBe(false);
 
       now.mockReturnValue(37111); // ~=19.5 s presentación
       driver.onBeforeRender();
       expect(driver.userData.warRoomHansPhase).toBe('stoke-fire');
       expect(carriedPoker.visible).toBe(true);
       expect(hans.userData.warRoomHansFacingTarget).toBe('fire');
-      expect(fireCore.scale.y).toBeGreaterThan(dimmedFireHeight);
+      expect(fireCore.visible).toBe(true);
+      expect(fireCore.scale.y).toBeGreaterThan(coldFireHeight);
 
       now.mockReturnValue(43963); // ~=23.2 s presentación, settled after returning poker
       driver.onBeforeRender();
@@ -417,6 +431,7 @@ describe('Hans quick-game visual iteration', () => {
       expect(fireplace.userData.warRoomHansHearthRestored).toBe(true);
       expect(hans.visible).toBe(false);
       expect(door.userData.warRoomHansDoorOpen).toBe(0);
+      expect(fireCore.visible).toBe(true);
       expect(fireCore.scale.x).toBeCloseTo(baseScale.x, 6);
       expect(fireCore.scale.y).toBeCloseTo(baseScale.y, 6);
       expect(fireCore.scale.z).toBeCloseTo(baseScale.z, 6);
