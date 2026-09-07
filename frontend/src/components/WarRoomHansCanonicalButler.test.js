@@ -4,7 +4,7 @@ import {
   installWarRoomHansCanonicalButler,
   WAR_ROOM_HANS_CANONICAL_BUTLER_VERSION,
 } from './WarRoomHansCanonicalButler.js';
-import { installWarRoomHansElderWalk } from './WarRoomHansElderWalk.js';
+import { installWarRoomHansArticulatedWalk } from './WarRoomHansArticulatedWalk.js';
 
 function makeRig() {
   const root = new THREE.Group();
@@ -22,13 +22,17 @@ function makeRig() {
 
   const leftLeg = part(0.82);
   const rightLeg = part(0.82);
-  const shoeMaterial = new THREE.MeshBasicMaterial();
-  const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.12, 0.38), shoeMaterial);
-  const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.12, 0.38), shoeMaterial);
+  const legMaterial = new THREE.MeshBasicMaterial();
+  const leftRigidLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.085, 0.72, 9), legMaterial);
+  const rightRigidLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.095, 0.085, 0.72, 9), legMaterial);
+  leftRigidLeg.position.y = -0.34;
+  rightRigidLeg.position.y = -0.34;
+  const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.12, 0.38), legMaterial);
+  const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.12, 0.38), legMaterial);
   leftShoe.position.set(0, -0.74, -0.07);
   rightShoe.position.set(0, -0.74, -0.07);
-  leftLeg.add(leftShoe);
-  rightLeg.add(rightShoe);
+  leftLeg.add(leftRigidLeg, leftShoe);
+  rightLeg.add(rightRigidLeg, rightShoe);
 
   const torso = part(1.36);
   const head = part(2.12);
@@ -93,16 +97,18 @@ describe('Hans canonical elder-butler mock', () => {
     expect(installWarRoomHansCanonicalButler(root)).toBe(0);
   });
 
-  it('keeps ElderWalk grounded without a cane while Hans can freely carry firewood', () => {
+  it('keeps the articulated walk grounded without a cane while Hans can freely carry firewood', () => {
     const { root, hans, driver, carriedLog } = makeRig();
 
     expect(installWarRoomHansCanonicalButler(root)).toBe(1);
     expect(hans.userData.refs.cane).toBeUndefined();
-    expect(installWarRoomHansElderWalk(root)).toBe(1);
+    expect(installWarRoomHansArticulatedWalk(root)).toBe(1);
 
     driver.onBeforeRender();
     driver.onBeforeRender();
     expect(hans.userData.warRoomHansGaitGrounding).toBe('real-distance-foot-plant-v3');
+    expect(hans.userData.warRoomHansLegRig).toBe('thigh-knee-shin-foot-v1');
+    expect(hans.userData.warRoomHansWalkCycleDistance).toBeGreaterThan(0.09);
 
     carriedLog.visible = true;
     driver.onBeforeRender();
