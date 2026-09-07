@@ -6,7 +6,7 @@ import {
 } from './HansWalkCycle.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_ARTICULATED_WALK_VERSION = 'war-room-hans-articulated-walk-v5-toe-forward-feet';
+export const WAR_ROOM_HANS_ARTICULATED_WALK_VERSION = 'war-room-hans-articulated-walk-v6-natural-foot-pitch';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -22,7 +22,8 @@ const VISIBLE_KNEE_EXTRA_BASE = 0.85;
 const VISIBLE_KNEE_EXTRA_HORIZONTAL = 0.2;
 const VISIBLE_FOOT_LIFT_BASE = 0.055;
 const VISIBLE_FOOT_LIFT_HORIZONTAL = 0.025;
-const SHOE_TOE_UP_SWING = 0.06;
+const SHOE_PARENT_PITCH_COMPENSATION = 0.55;
+const SHOE_TOE_UP_SWING = 0.035;
 const LEGACY_ELDER_WALK_VERSION = 'elder-butler-gait-v1';
 const LEGACY_GAIT_FRAME_COUNT = 8;
 const POST_RENDER_ORDER = 24;
@@ -65,22 +66,29 @@ function airborneAmount(kneeFlex) {
   return smooth01((Number(kneeFlex || 0) - VISIBLE_KNEE_THRESHOLD) / VISIBLE_KNEE_RANGE);
 }
 
-function keepShoeToeForward(body, bases, side, forward, airborne) {
+function keepShoeNaturalPitch(body, bases, side, forward, airborne) {
   const leg = body?.[`${side}Leg`];
   const knee = body?.[`${side}Knee`];
   const shoe = body?.[`${side}Shoe`];
   const legBase = bases?.[`${side}Leg`];
   const kneeBase = bases?.[`${side}Knee`];
   const shoeBase = bases?.[`${side}Shoe`];
-  if (!leg || !knee || !shoe || !legBase || !kneeBase || !shoeBase) return 0;
+  if (!leg || !knee || !shoe || !legBase || !kneeBase || !shoeBase) {
+    return { toeUp: 0, residualPitch: 0 };
+  }
 
-  // The shoe inherits pitch from both the upper leg and the knee. Compensate the
-  // complete parent-chain pitch so its long axis keeps pointing in Hans's local
-  // forward direction. Add only a tiny toe-up during swing for a natural pickup.
+  // Do not cancel the whole parent-chain pitch: making the shoe perfectly level
+  // exposes its entire box depth in side view and makes the swing foot look twice
+  // as long. Keep part of the leg pitch, correcting only enough to preserve a
+  // clearly forward-facing toe, plus a small toe-up during the airborne phase.
   const inheritedPitch = (leg.rotation.x - legBase.rx) + (knee.rotation.x - kneeBase.rx);
+  const compensatedPitch = inheritedPitch * SHOE_PARENT_PITCH_COMPENSATION;
   const toeUp = clamp01(airborne) * SHOE_TOE_UP_SWING;
-  shoe.rotation.x = shoeBase.rx - inheritedPitch - forward * toeUp;
-  return toeUp;
+  shoe.rotation.x = shoeBase.rx - compensatedPitch - forward * toeUp;
+  return {
+    toeUp,
+    residualPitch: inheritedPitch - compensatedPitch - forward * toeUp,
+  };
 }
 
 function enforceVisibleKneeFlex(body, bases, sample, forward, horizontal) {
@@ -99,16 +107,18 @@ function enforceVisibleKneeFlex(body, bases, sample, forward, horizontal) {
   if (body?.leftLeg) body.leftLeg.position.y += leftAir * extraLift;
   if (body?.rightLeg) body.rightLeg.position.y += rightAir * extraLift;
 
-  const leftToeUp = keepShoeToeForward(body, bases, 'left', forward, leftAir);
-  const rightToeUp = keepShoeToeForward(body, bases, 'right', forward, rightAir);
+  const leftFoot = keepShoeNaturalPitch(body, bases, 'left', forward, leftAir);
+  const rightFoot = keepShoeNaturalPitch(body, bases, 'right', forward, rightAir);
 
   return {
     leftAir,
     rightAir,
     leftExtraFlex,
     rightExtraFlex,
-    leftToeUp,
-    rightToeUp,
+    leftToeUp: leftFoot.toeUp,
+    rightToeUp: rightFoot.toeUp,
+    leftFootPitch: leftFoot.residualPitch,
+    rightFootPitch: rightFoot.residualPitch,
   };
 }
 
@@ -164,7 +174,9 @@ export function installWarRoomHansArticulatedWalk(root) {
         hans.userData.warRoomHansVisibleFootLiftRight = visibleFlex.rightAir;
         hans.userData.warRoomHansToeUpLeft = visibleFlex.leftToeUp;
         hans.userData.warRoomHansToeUpRight = visibleFlex.rightToeUp;
-        hans.userData.warRoomHansFootDirection = 'toe-forward-v2-parent-compensated';
+        hans.userData.warRoomHansFootPitchLeft = visibleFlex.leftFootPitch;
+        hans.userData.warRoomHansFootPitchRight = visibleFlex.rightFootPitch;
+        hans.userData.warRoomHansFootDirection = 'toe-forward-v3-natural-pitch';
         hans.userData.warRoomHansArticulatedWalk = WAR_ROOM_HANS_ARTICULATED_WALK_VERSION;
         hans.userData.warRoomHansArticulatedHorizontalBlend = horizontalBlend;
         hans.userData.warRoomHansLegRig = 'thigh-knee-shin-foot-v1';
@@ -191,7 +203,7 @@ export function installWarRoomHansArticulatedWalk(root) {
   driver.userData.warRoomHansArticulatedWalk = WAR_ROOM_HANS_ARTICULATED_WALK_VERSION;
   driver.userData.warRoomHansWalkCycle = HANS_WALK_CYCLE_VERSION;
   driver.userData.warRoomHansLegRig = 'thigh-knee-shin-foot-v1';
-  driver.userData.warRoomHansWalkCycleSource = 'reusable-distance-driven-balanced-flex-toe-forward-v5';
+  driver.userData.warRoomHansWalkCycleSource = 'reusable-distance-driven-balanced-flex-natural-foot-pitch-v6';
   driver.userData.warRoomHansElderWalk = LEGACY_ELDER_WALK_VERSION;
   driver.userData.warRoomHansGaitFrames = LEGACY_GAIT_FRAME_COUNT;
   hans.userData.warRoomHansElderWalk = LEGACY_ELDER_WALK_VERSION;
