@@ -92,18 +92,18 @@ describe('War Room Hans articulated walk adapter', () => {
     expect(hans.userData.warRoomHansLegRig).toBe('thigh-knee-shin-foot-v1');
     expect(hans.userData.warRoomHansWalkCycleDistance).toBeCloseTo(0.13, 6);
     expect(hans.userData.warRoomHansWalkCyclePhaseDistance).toBeGreaterThan(hans.userData.warRoomHansWalkCycleDistance);
-    expect(hans.userData.warRoomHansGaitGrounding).toBe('deep-knee-foot-clearance-v4');
+    expect(hans.userData.warRoomHansGaitGrounding).toBe('real-distance-foot-plant-v3');
     expect(Math.max(
       hans.userData.warRoomHansVisibleKneeFlexLeft,
       hans.userData.warRoomHansVisibleKneeFlexRight,
-    )).toBeGreaterThan(0.15);
+    )).toBeGreaterThan(0.45);
     expect(Math.max(
       worldKneeFlex(root, hans.userData.refs, 'left'),
       worldKneeFlex(root, hans.userData.refs, 'right'),
-    )).toBeGreaterThan(0.55);
-    expect(Math.abs(hans.userData.refs.leftKnee.rotation.x - hans.userData.refs.rightKnee.rotation.x)).toBeGreaterThan(0.12);
+    )).toBeGreaterThan(0.9);
+    expect(Math.abs(hans.userData.refs.leftKnee.rotation.x - hans.userData.refs.rightKnee.rotation.x)).toBeGreaterThan(0.45);
     expect(Math.abs(leftLeg.position.z) + Math.abs(rightLeg.position.z)).toBeGreaterThan(0.02);
-    expect(Math.abs(leftLeg.position.y - 0.82) + Math.abs(rightLeg.position.y - 0.82)).toBeGreaterThan(0.02);
+    expect(Math.abs(leftLeg.position.y - 0.82) + Math.abs(rightLeg.position.y - 0.82)).toBeGreaterThan(0.04);
   });
 
   it('drops the walking knee pose as soon as Hans enters a non-walking action', () => {

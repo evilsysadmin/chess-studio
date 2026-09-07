@@ -6,7 +6,7 @@ import {
 } from './HansWalkCycle.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_ARTICULATED_WALK_VERSION = 'war-room-hans-articulated-walk-v2-deep-knee-flex';
+export const WAR_ROOM_HANS_ARTICULATED_WALK_VERSION = 'war-room-hans-articulated-walk-v3-visible-knee-flex';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -18,10 +18,10 @@ const HORIZONTAL_BLEND_RESPONSE = 0.36;
 const WAR_ROOM_GAIT_CADENCE_GAIN = 1.14;
 const VISIBLE_KNEE_THRESHOLD = 0.17;
 const VISIBLE_KNEE_RANGE = 0.46;
-const VISIBLE_KNEE_EXTRA_BASE = 0.38;
-const VISIBLE_KNEE_EXTRA_HORIZONTAL = 0.12;
-const VISIBLE_FOOT_LIFT_BASE = 0.036;
-const VISIBLE_FOOT_LIFT_HORIZONTAL = 0.024;
+const VISIBLE_KNEE_EXTRA_BASE = 0.85;
+const VISIBLE_KNEE_EXTRA_HORIZONTAL = 0.2;
+const VISIBLE_FOOT_LIFT_BASE = 0.065;
+const VISIBLE_FOOT_LIFT_HORIZONTAL = 0.035;
 const VISIBLE_SHOE_COUNTER_ROTATION = 0.58;
 const LEGACY_ELDER_WALK_VERSION = 'elder-butler-gait-v1';
 const LEGACY_GAIT_FRAME_COUNT = 8;
@@ -74,16 +74,15 @@ function enforceVisibleKneeFlex(body, sample, forward, horizontal) {
   const rightExtraFlex = rightAir * extraFlex;
 
   // The reusable gait already provides the anatomical pivots. At War Room camera
-  // scale that bend can still read as a stiff swinging rod, especially during the
-  // lateral entrance/exit. Deepen the airborne knee *after* the base cycle and
-  // lift the whole leg a little more so thigh -> knee -> shin is unmistakable.
+  // scale a modest biomechanical bend still reads as a stiff rod. Exaggerate only
+  // the airborne leg so thigh -> knee -> shin remains legible at gameplay scale.
   if (body?.leftKnee) body.leftKnee.rotation.x += forward * leftExtraFlex;
   if (body?.rightKnee) body.rightKnee.rotation.x += forward * rightExtraFlex;
   if (body?.leftLeg) body.leftLeg.position.y += leftAir * extraLift;
   if (body?.rightLeg) body.rightLeg.position.y += rightAir * extraLift;
 
-  // Keep the shoe from following the shin like a rigid ski. Counter-rotation
-  // leaves the toe readable while the calf folds back underneath the body.
+  // Counter-rotate the shoe so the calf can visibly fold underneath Hans without
+  // turning the foot into a rigid extension of the shin.
   if (body?.leftShoe) body.leftShoe.rotation.x -= forward * leftExtraFlex * VISIBLE_SHOE_COUNTER_ROTATION;
   if (body?.rightShoe) body.rightShoe.rotation.x -= forward * rightExtraFlex * VISIBLE_SHOE_COUNTER_ROTATION;
 
@@ -127,9 +126,6 @@ export function installWarRoomHansArticulatedWalk(root) {
         realTravelDistance += travelled;
         const targetHorizontal = horizontalTravelWeight(dx, dz);
         horizontalBlend = mix(horizontalBlend, targetHorizontal, HORIZONTAL_BLEND_RESPONSE);
-        // The reusable cycle remains distance-driven. War Room uses a small cadence
-        // gain so short lateral steps do not repeatedly land on the near-symmetric
-        // half-cycle pose and read as robotic sliding at the gameplay camera scale.
         const sample = advanceHansWalkCycle(controller, {
           travelled: travelled * WAR_ROOM_GAIT_CADENCE_GAIN,
           horizontalWeight: horizontalBlend,
@@ -153,7 +149,9 @@ export function installWarRoomHansArticulatedWalk(root) {
         hans.userData.warRoomHansWalkCycleDistance = realTravelDistance;
         hans.userData.warRoomHansWalkCyclePhaseDistance = controller.distance;
         hans.userData.warRoomHansGaitDistance = realTravelDistance;
-        hans.userData.warRoomHansGaitGrounding = 'deep-knee-foot-clearance-v4';
+        // Keep the established diagnostic contract; visible flex is reported via
+        // the dedicated metadata above rather than renaming this compatibility key.
+        hans.userData.warRoomHansGaitGrounding = 'real-distance-foot-plant-v3';
         hans.userData.warRoomHansGaitTeleportSuppressed = false;
       } else if (!isWalking || travelSq > TELEPORT_DISTANCE_SQ) {
         horizontalBlend = mix(horizontalBlend, 0, HORIZONTAL_BLEND_RESPONSE);
@@ -173,10 +171,7 @@ export function installWarRoomHansArticulatedWalk(root) {
   driver.userData.warRoomHansArticulatedWalk = WAR_ROOM_HANS_ARTICULATED_WALK_VERSION;
   driver.userData.warRoomHansWalkCycle = HANS_WALK_CYCLE_VERSION;
   driver.userData.warRoomHansLegRig = 'thigh-knee-shin-foot-v1';
-  driver.userData.warRoomHansWalkCycleSource = 'reusable-distance-driven-plus-deep-flex-v2';
-  // Compatibility aliases are metadata only. The articulated cycle above remains
-  // the single locomotion owner; old diagnostics/tests can identify the migration
-  // without resurrecting the retired ElderWalk animation implementation.
+  driver.userData.warRoomHansWalkCycleSource = 'reusable-distance-driven-plus-deep-flex-v3';
   driver.userData.warRoomHansElderWalk = LEGACY_ELDER_WALK_VERSION;
   driver.userData.warRoomHansGaitFrames = LEGACY_GAIT_FRAME_COUNT;
   hans.userData.warRoomHansElderWalk = LEGACY_ELDER_WALK_VERSION;
