@@ -15,9 +15,9 @@ concurrency:
 
 jobs:
   preflight:
-    name: Preflight · contracts
+    name: Preflight · scope
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 5
     outputs:
       run_frontend: ${{ steps.quality_paths.outputs.run_frontend }}
       run_backend: ${{ steps.quality_paths.outputs.run_backend }}
@@ -34,10 +34,6 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
 
       - name: Capture immutable PR quality provenance
         if: github.event_name == 'pull_request'
@@ -96,16 +92,6 @@ jobs:
           path: .ci/quality-provenance.json
           if-no-files-found: error
           retention-days: 7
-
-      - name: Static preflight + CI wiring
-        shell: bash
-        run: |
-          set -euo pipefail
-          make static-preflight
-          python3 -S scripts/quality_scope.py --self-test
-
-      - name: Staging preview isolation contract
-        run: python3 scripts/staging_preview_contract.py
 
       - name: Classify quality-test surface
         id: quality_paths
@@ -253,6 +239,29 @@ jobs:
             echo "- Matthias motion/paint: \`$matthias\`"
             echo '- Estas lanes forman parte del check requerido Tests · Playwright.'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  contracts:
+    name: Preflight · contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Static preflight + CI wiring
+        shell: bash
+        run: |
+          set -euo pipefail
+          make static-preflight
+          python3 -S scripts/quality_scope.py --self-test
+
+      - name: Staging preview isolation contract
+        run: python3 scripts/staging_preview_contract.py
 
   frontend:
     name: Tests · Frontend
