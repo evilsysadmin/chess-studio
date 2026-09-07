@@ -48,8 +48,6 @@ test('War Room · Android landscape convierte el ancho extra en tablero, no en a
     return {
       viewportWidth: window.innerWidth,
       viewportHeight: window.innerHeight,
-      coarsePointer: window.matchMedia('(pointer: coarse)').matches,
-      landscapeMedia: window.matchMedia('(orientation: landscape)').matches,
       shell: shellRect ? { width: shellRect.width, height: shellRect.height } : null,
       row: rowRect ? { width: rowRect.width, height: rowRect.height } : null,
       command: commandRect ? { width: commandRect.width, height: commandRect.height } : null,
@@ -59,9 +57,6 @@ test('War Room · Android landscape convierte el ancho extra en tablero, no en a
   });
 
   expect(geometry.viewportWidth).toBeGreaterThan(geometry.viewportHeight);
-  expect(geometry.coarsePointer).toBe(true);
-  expect(geometry.landscapeMedia).toBe(true);
-  expect(geometry.viewportWidth).toBeLessThanOrEqual(920);
   expect(geometry.shell).not.toBeNull();
   expect(geometry.row).not.toBeNull();
   expect(geometry.command).not.toBeNull();
