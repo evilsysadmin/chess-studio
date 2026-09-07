@@ -1,0 +1,11 @@
+/* Desktop-only breathing room for the hands-on Matthias School.
+   Keep shared War Room/game board sizing untouched outside this screen. */
+@media (min-width: 1180px) {
+  .matthias-school-shell .matthias-school-layout {
+    grid-template-columns: minmax(170px, 195px) minmax(0, 1fr);
+  }
+
+  .matthias-school-shell .matthias-school-stage {
+    grid-template-columns: minmax(0, 1.45fr) minmax(320px, .72fr);
+  }
+}

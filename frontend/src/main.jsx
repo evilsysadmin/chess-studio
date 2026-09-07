@@ -23,6 +23,7 @@ import './components/HomeImmersiveMatthias.css';
 import './components/HomeCanonicalMockAlignment.css';
 import './components/HomeCanonicalMockFinish.css';
 import './components/WarRoomMobileLandscape.css';
+import './components/MatthiasSchoolBoardScale.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
 import { migratePersistentStorage } from './storageMigrations.js';
 import { getReducedMotionPreference, reducedMotionStatus } from './userPreferences.js';
