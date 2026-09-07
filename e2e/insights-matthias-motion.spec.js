@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithHeading, login, mockApi } from './helpers.js';
+import { login, mockApi } from './helpers.js';
 
 const PLAYED_GAME = {
   id: 'e2e-insights-motion-game',
@@ -28,7 +28,7 @@ async function openInsights(page, { hour = 17 } = {}) {
     },
   });
   await login(page);
-  await buttonWithHeading(page, 'Así juegas').click();
+  await page.getByRole('button', { name: 'Abrir Así juegas con Matthias' }).click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   await expect(page.getByRole('region', { name: 'Consulta diaria con Matthias' })).toBeVisible();
 }

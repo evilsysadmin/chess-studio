@@ -156,6 +156,20 @@ test('Móvil · long-press no hace Back y el Back del sistema cierra sólo el mo
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 });
 
+test('Home · la experiencia canónica no cambia con el viewport', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+
+  for (const width of [390, 430, 1280]) {
+    await page.setViewportSize({ width, height: 844 });
+    await expect(page.locator('.menu.menu-illustrated')).toBeVisible();
+    await expect(page.locator('.illustrated-home')).toBeVisible();
+    await expect(page.locator('.menu.home-friendly')).toHaveCount(0);
+    await expect(page.locator('details.home-learning-more')).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  }
+});
+
 test('Móvil · Partida de práctica abre su modal fijo dentro del viewport', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await mockApi(page);
