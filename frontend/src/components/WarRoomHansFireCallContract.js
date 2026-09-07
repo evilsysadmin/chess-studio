@@ -2,9 +2,40 @@ export const MATTHIAS_FIRE_CALL_LINE = 'HANS! El fuego, bitte.';
 export const HANS_FIRE_REPLY_LINE = 'Sí, señor.';
 export const MATTHIAS_FIRE_CALL_MS = 2500;
 export const HANS_FIRE_REPLY_MS = 1350;
+export const MATTHIAS_FIRE_EPILOGUE_LINE = 'En fin. ¿Por dónde íbamos?';
+export const MATTHIAS_FIRE_EPILOGUE_MS = 1900;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+export function resolveHansFireOpeningLatch(current, {
+  gameId,
+  eligible = false,
+  historyLength = 0,
+  alreadySeen = false,
+} = {}) {
+  const cleanGameId = String(gameId || '');
+  if (current?.gameId === cleanGameId) return current;
+  return {
+    gameId: cleanGameId,
+    enabled: Boolean(
+      cleanGameId
+      && eligible
+      && Number(historyLength) <= 1
+      && !alreadySeen
+    ),
+  };
+}
+
+export function shouldStartHansFireEpilogue({
+  phase,
+  hansSeenOnscreen = false,
+  hansScreen = 'missing',
+} = {}) {
+  return phase === 'await-exit'
+    && hansSeenOnscreen
+    && (hansScreen === 'hidden' || hansScreen === 'missing');
 }
 
 export function projectHansFireReplyAnchor({ ndcX, ndcY, coarsePointer = false } = {}) {
