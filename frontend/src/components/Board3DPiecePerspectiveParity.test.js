@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { resolveBoard3DCameraFov } from './Board3DConfig.js';
 import { buildPiece, disposeObject } from './Board3DPieces.js';
 import { fitBoardCamera } from './Board3DScene.js';
@@ -47,6 +47,29 @@ describe('Board3D piece scale parity', () => {
     expect(camera.fov).toBe(29);
     expect(apparentScaleRatio).toBeGreaterThan(1);
     expect(apparentScaleRatio).toBeLessThan(1.33);
+  });
+
+  it('sube la cámara solo en landscape móvil para separar visualmente las filas', () => {
+    const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+    vi.stubGlobal('window', {
+      innerWidth: 851,
+      matchMedia: vi.fn().mockImplementation((query) => ({ matches: query === '(pointer: coarse)' })),
+    });
+
+    try {
+      fitBoardCamera(camera, 851, 393, true);
+      const target = camera.userData.baseTarget;
+      const offset = camera.position.clone().sub(target);
+      const elevation = Math.atan2(offset.y, Math.abs(offset.z));
+
+      expect(camera.fov).toBe(34);
+      expect(camera.userData.framingProfile).toBe('mobile-v5-landscape-overhead');
+      expect(camera.userData.cameraDistance).toBeLessThan(16);
+      expect(THREE.MathUtils.radToDeg(elevation)).toBeGreaterThan(39);
+      expect(Math.abs(target.z)).toBeLessThanOrEqual(0.08);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('comprime también la perspectiva móvil sin reutilizar la lente desktop', () => {
