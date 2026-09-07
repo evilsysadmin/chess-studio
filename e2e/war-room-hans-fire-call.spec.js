@@ -27,10 +27,11 @@ test('War Room · Matthias llama a Hans por el fuego y Hans responde al aparecer
   await expect(page.getByRole('status', { name: 'Bravuconada de Matthias al iniciar la partida' })).toHaveCount(0);
 
   await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 8_000 });
-  await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 20_000 });
-  // One browser assertion captures the complete short-lived reply. Separate
-  // protocol roundtrips can outlive its 1.35 s display on software WebGL.
+  // Start waiting for the short reply immediately after release. Waiting for a
+  // separate screen-state roundtrip first can consume its whole 1.35 s lifetime
+  // on software WebGL even though Hans rendered correctly.
   const hansReply = page.locator('.warroom-fire-call-bubble-hans:visible');
-  await expect(hansReply).toHaveText(/HANS\s*Sí, señor\./, { timeout: 12_000 });
+  await expect(hansReply).toHaveText(/HANS\s*Sí, señor\./, { timeout: 20_000 });
+  await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'onscreen');
   await expect(matthiasCall).toBeHidden();
 });
