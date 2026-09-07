@@ -39,7 +39,7 @@ describe('castle Hall of Fame / Hall of Shame', () => {
     ];
     const archive = {
       'game-1': analysis('game-1', { outcome: 'win', accuracy: 84, analyzedCount: 18, worst: { index: 6, loss: 10 }, troughPerspectiveEval: -40 }),
-      'game-2': analysis('game-2', { outcome: 'loss', peakPerspectiveEval: 610, worst: { index: 12, moveNumber: 7, played: 'Qa4??', suggested: 'Qd2', loss: 760 } }),
+      'game-2': analysis('game-2', { outcome: 'loss', peakPerspectiveEval: 610, worst: { index: 12, moveNumber: 7, played: 'Qa4??', suggested: 'Qd2', loss: 760 }, pointOfNoReturn: { index: 20 } }),
       'game-3': analysis('game-3', { outcome: 'draw', troughPerspectiveEval: -520, worst: { index: 10, loss: 120 } }),
       'game-4': analysis('game-4', { outcome: 'win', accuracy: 96, analyzedCount: 18, worst: { index: 6, loss: 12 }, troughPerspectiveEval: -30 }),
       orphan: analysis('missing-game', { outcome: 'loss', peakPerspectiveEval: 900, worst: { index: 4, loss: 999 } }),
