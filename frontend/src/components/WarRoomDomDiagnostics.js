@@ -49,6 +49,7 @@ export function applyWarRoomHansScreenDiagnostics({
   }
 
   if (marker) {
+    writes += setAttributeIfChanged(marker, 'data-war-room-hans-runtime', visibleScreenState ? 'visible' : screenState);
     writes += setAttributeIfChanged(marker, 'data-war-room-hans-screen', screenState);
     if (!marker.hasAttribute?.('data-war-room-hans-first-screen') && visibleScreenState) {
       writes += setAttributeIfChanged(marker, 'data-war-room-hans-first-screen', screenState);
