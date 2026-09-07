@@ -1,21 +1,23 @@
 import * as THREE from 'three';
 
-export const HANS_WALK_CYCLE_VERSION = 'hans-walk-cycle-v2-full-body-articulated';
+export const HANS_WALK_CYCLE_VERSION = 'hans-walk-cycle-v3-natural-knee-lift';
 
 const CYCLE_DISTANCE = 0.26;
-const DEFAULT_KNEE_FLEX = 0.085;
-const SWING_KNEE_FLEX = 0.42;
-const CONTACT_KNEE_FLEX = 0.065;
-const HORIZONTAL_KNEE_GAIN = 0.42;
-const FOOT_COUNTER_ROTATION = 0.64;
-const TOE_LIFT = 0.11;
+const DEFAULT_KNEE_FLEX = 0.055;
+const SWING_KNEE_FLEX = 0.62;
+const CONTACT_KNEE_FLEX = 0.08;
+const SWING_KNEE_EXPONENT = 0.72;
+const SWING_LIFT_EXPONENT = 0.78;
+const HORIZONTAL_KNEE_GAIN = 0.5;
+const FOOT_COUNTER_ROTATION = 0.78;
+const TOE_LIFT = 0.15;
 const HUNCH_RADIANS = 0.065;
 const HORIZONTAL_HUNCH_BONUS_RADIANS = 0.105;
 const BASE_ARM_SWING_GAIN = 1.25;
 const HORIZONTAL_ARM_SWING_BONUS = 2.35;
 const HORIZONTAL_LEG_SWING_BONUS = 0.55;
 const HORIZONTAL_STEP_BONUS = 0.5;
-const HORIZONTAL_LIFT_BONUS = 0.4;
+const HORIZONTAL_LIFT_BONUS = 0.65;
 
 function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
@@ -182,16 +184,20 @@ export function sampleHansWalkCycle(distance, target = {}) {
   const rightSwing = Math.max(0, -swing);
   const leftContact = Math.max(0, -contact);
   const rightContact = Math.max(0, contact);
+  const leftKneeSwing = Math.pow(leftSwing, SWING_KNEE_EXPONENT);
+  const rightKneeSwing = Math.pow(rightSwing, SWING_KNEE_EXPONENT);
+  const leftLiftSwing = Math.pow(leftSwing, SWING_LIFT_EXPONENT);
+  const rightLiftSwing = Math.pow(rightSwing, SWING_LIFT_EXPONENT);
 
   target.phase = phase;
-  target.leftKnee = DEFAULT_KNEE_FLEX + leftSwing * SWING_KNEE_FLEX + leftContact * CONTACT_KNEE_FLEX;
-  target.rightKnee = DEFAULT_KNEE_FLEX + rightSwing * SWING_KNEE_FLEX + rightContact * CONTACT_KNEE_FLEX;
-  target.leftToe = leftSwing * TOE_LIFT;
-  target.rightToe = rightSwing * TOE_LIFT;
-  target.leg = swing * 0.17;
-  target.step = swing * 0.058;
-  target.leftLift = leftSwing * 0.034;
-  target.rightLift = rightSwing * 0.034;
+  target.leftKnee = DEFAULT_KNEE_FLEX + leftKneeSwing * SWING_KNEE_FLEX + leftContact * CONTACT_KNEE_FLEX;
+  target.rightKnee = DEFAULT_KNEE_FLEX + rightKneeSwing * SWING_KNEE_FLEX + rightContact * CONTACT_KNEE_FLEX;
+  target.leftToe = leftLiftSwing * TOE_LIFT;
+  target.rightToe = rightLiftSwing * TOE_LIFT;
+  target.leg = swing * 0.215;
+  target.step = swing * 0.022;
+  target.leftLift = leftLiftSwing * 0.052;
+  target.rightLift = rightLiftSwing * 0.052;
   target.bob = -Math.abs(Math.sin(phase * 2)) * 0.012;
   target.sway = Math.cos(phase) * 0.011;
   target.roll = Math.cos(phase) * 0.009;
