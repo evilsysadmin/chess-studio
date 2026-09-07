@@ -1,0 +1,236 @@
+/* Final desktop composition pass for the approved immersive Home mock.
+ * Pure presentation: all real navigation/state stays owned by MenuInner and
+ * HomeCastleHubScene. Mobile remains on the existing first-fold contract.
+ */
+
+@media (min-width: 1000px) {
+  body .menu.home-friendly {
+    min-height: calc(100dvh - 6.25rem) !important;
+    overflow: hidden !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life {
+    height: calc(100dvh - 6.25rem) !important;
+    min-height: 40rem !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    overflow: hidden !important;
+    background: #050403 !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub {
+    position: absolute !important;
+    inset: 0 !important;
+    overflow: hidden !important;
+  }
+
+  /* Match the approved mock's wider, less floor-heavy framing. */
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__scene canvas {
+    transform: scale(1.095) translateY(.8%) !important;
+    transform-origin: 50% 50% !important;
+  }
+
+  /* The castle itself carries the product identity: no dashboard header. */
+  body .menu.home-friendly > .home-castle-life .home-castle-hub::before,
+  body .menu.home-friendly > .home-castle-life .home-castle-hub::after {
+    position: absolute !important;
+    z-index: 24 !important;
+    left: 50% !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+    text-align: center !important;
+    pointer-events: none !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub::before {
+    content: 'CHESS STUDIO' !important;
+    top: 3.6% !important;
+    color: #f2d37e !important;
+    font-family: Georgia, 'Times New Roman', serif !important;
+    font-size: clamp(1.55rem, 2.45vw, 2.85rem) !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    letter-spacing: .055em !important;
+    text-shadow: 0 3px 10px #000, 0 0 24px rgba(190, 126, 36, .16) !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub::after {
+    content: 'Juega. Aprende. Compite. Conquista.' !important;
+    top: 8.8% !important;
+    color: rgba(226, 213, 188, .78) !important;
+    font-family: Georgia, 'Times New Roman', serif !important;
+    font-size: clamp(.66rem, .82vw, .9rem) !important;
+    font-style: italic !important;
+    letter-spacing: .035em !important;
+    text-shadow: 0 2px 7px #000 !important;
+  }
+
+  /* Four permanent architectural destinations across the rear wall. */
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__rooms {
+    top: 17.2% !important;
+    left: 17.4% !important;
+    right: 7.2% !important;
+    height: 60% !important;
+    gap: clamp(.2rem, .7vw, .75rem) !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:not(.home-castle-hub__room--play) .home-castle-hub__room-glyph {
+    top: 22.5% !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:not(.home-castle-hub__room--play) strong {
+    top: 31.5% !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:not(.home-castle-hub__room--play) small {
+    top: 38.5% !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room:not(.home-castle-hub__room--play) i {
+    top: 47% !important;
+  }
+
+  /* The table banner is the obvious primary action, as in the canonical art. */
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--play {
+    left: 32.5% !important;
+    right: 32.5% !important;
+    top: 69.5% !important;
+    height: 20.5% !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--play::after {
+    clip-path: polygon(0 0, 100% 0, 100% 89%, 96% 100%, 4% 100%, 0 89%) !important;
+    background:
+      linear-gradient(180deg, rgba(111, 19, 25, .96), rgba(62, 8, 14, .97)),
+      radial-gradient(ellipse at 50% 0, rgba(246, 199, 100, .13), transparent 63%) !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--play strong {
+    top: 38% !important;
+    font-size: clamp(1.2rem, 1.75vw, 1.9rem) !important;
+    letter-spacing: .04em !important;
+  }
+
+  /* Existing learning/archive disclosure becomes the diegetic Historia corner.
+   * It still opens the real tool/archive contents; no fake navigation target. */
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-more {
+    right: 1.6% !important;
+    bottom: 15% !important;
+    width: 8.8rem !important;
+    height: 4.6rem !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-more > summary {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-more > summary::before {
+    width: 4.25rem !important;
+    height: 3.2rem !important;
+    left: 50% !important;
+    top: 42% !important;
+    border-radius: 4px !important;
+    transform: translate(-50%, -50%) rotate(-4deg) !important;
+    background:
+      linear-gradient(135deg, rgba(112, 69, 28, .76), rgba(42, 26, 13, .92)),
+      repeating-linear-gradient(0deg, transparent 0 9px, rgba(227, 185, 96, .09) 10px 11px) !important;
+    box-shadow: 0 10px 22px rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(220, 177, 88, .25) !important;
+  }
+
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) > .home-learning-more > summary::after {
+    content: 'HISTORIA\A Tus partidas y crónicas' !important;
+    left: 50% !important;
+    bottom: -.15rem !important;
+    width: 10.2rem !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #efd49a !important;
+    font-family: Georgia, 'Times New Roman', serif !important;
+    font-size: .69rem !important;
+    line-height: 1.35 !important;
+    letter-spacing: .04em !important;
+    text-align: center !important;
+    white-space: pre !important;
+    opacity: .9 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  /* Keep secondary modes physical and low-key in the opposite corner. */
+  body .menu.home-friendly > .home-modes-section > .home-more-modes {
+    left: 1.8% !important;
+    bottom: 4.2% !important;
+  }
+
+  /* Matthias is a resident of the room, not a floating dashboard card. */
+  body .matthias-resident.is-viewport,
+  body .matthias-resident[data-placement='viewport'] {
+    left: clamp(.8rem, 2.1vw, 2.5rem) !important;
+    right: auto !important;
+    bottom: clamp(2.8rem, 7vh, 5.3rem) !important;
+    max-width: min(19rem, 23vw) !important;
+    transform-origin: 0 100% !important;
+  }
+
+  body .matthias-resident.is-viewport .matthias-resident__character-stack,
+  body .matthias-resident[data-placement='viewport'] .matthias-resident__character-stack {
+    transform: scale(.88) !important;
+    transform-origin: 0 100% !important;
+  }
+
+  /* Small canonical motto etched into the foreground instead of a footer. */
+  body .menu.home-friendly > .home-castle-life .home-castle-life__decor::after {
+    content: 'NO JUEGUES PARA GANAR.  JUEGA PARA ENTENDER.' !important;
+    position: absolute !important;
+    z-index: 18 !important;
+    left: 50% !important;
+    bottom: 1.7% !important;
+    width: min(46rem, 60vw) !important;
+    transform: translateX(-50%) !important;
+    color: rgba(214, 196, 159, .42) !important;
+    font-family: Georgia, 'Times New Roman', serif !important;
+    font-size: clamp(.52rem, .68vw, .72rem) !important;
+    letter-spacing: .16em !important;
+    text-align: center !important;
+    text-shadow: 0 1px 4px #000 !important;
+    pointer-events: none !important;
+  }
+}
+
+@media (min-width: 1000px) and (max-height: 760px) {
+  body .menu.home-friendly,
+  body .menu.home-friendly > .home-castle-life {
+    min-height: 34rem !important;
+    height: calc(100dvh - 5.4rem) !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub::before { top: 2.7% !important; }
+  body .menu.home-friendly > .home-castle-life .home-castle-hub::after { top: 8.4% !important; }
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__rooms { top: 15.7% !important; }
+}
+
+@media (min-width: 1000px) and (max-width: 1240px) {
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__rooms {
+    left: 12.8% !important;
+    right: 3.5% !important;
+  }
+
+  body .menu.home-friendly > .home-castle-life .home-castle-hub__room--play {
+    left: 30.5% !important;
+    right: 30.5% !important;
+  }
+
+  body .matthias-resident.is-viewport,
+  body .matthias-resident[data-placement='viewport'] {
+    max-width: 16.5rem !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body .matthias-resident.is-viewport .matthias-resident__character-stack,
+  body .matthias-resident[data-placement='viewport'] .matthias-resident__character-stack {
+    transform: scale(.88) !important;
+  }
+}

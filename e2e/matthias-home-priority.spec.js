@@ -16,7 +16,7 @@ test('Home · el avatar residente de Matthias abre Así juegas aunque haya parti
   });
   await page.reload();
 
-  await expect(page.getByRole('button', { name: /Continuar partida/ })).toBeVisible();
+  await expect(page.locator('.home-continue-card:visible, .illustrated-home__destination--play:visible')).toContainText(/Continuar|CONTINUAR/);
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await expect(corner).toBeVisible();
   await expect(corner.getByRole('region', { name: 'Mensaje de Matthias' })).toHaveCount(0);

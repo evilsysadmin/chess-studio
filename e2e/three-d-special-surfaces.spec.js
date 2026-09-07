@@ -100,7 +100,7 @@ test('Arena experimental · tema, terreno y legalidad sobreviven al renderer 3D'
 
   const moreModes = await openMoreGameModes(page);
   const experiments = moreModes
-    .locator('.friendly-disclosure-body > .menu-card-shell > button')
+    .getByRole('button')
     .filter({ hasText: 'Experimentos geniales' });
   await expect(experiments).toHaveCount(1);
   await expect(experiments).toBeVisible();

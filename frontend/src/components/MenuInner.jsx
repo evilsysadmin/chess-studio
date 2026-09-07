@@ -29,6 +29,7 @@ import { buildMatthiasHomeCardModel, buildMatthiasHomeVisit, buildMatthiasIntroV
 import { consumeMatthiasLoginGreeting, matthiasLoginGreetingPending } from '../matthiasSession.js';
 import MatthiasHomeVisit from './MatthiasHomeVisit.jsx';
 import HomeCastleLife from './HomeCastleLife.jsx';
+import HomeIllustrated from './HomeIllustrated.jsx';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { fetchMatthiasDailyStatus } from '../matthiasDaily.js';
 import { matthiasSessionContext } from '../matthiasSessionContext.js';
@@ -68,6 +69,14 @@ export default function Menu({
   suppressHomeNudge = false,
   features = {},
 }) {
+  const [illustratedHome, setIllustratedHome] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1000px)').matches);
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 1000px)');
+    const sync = () => setIllustratedHome(query.matches);
+    sync();
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, []);
   const [difficulty, setDifficulty] = useState(50);
   const [autoDifficulty, setAutoDifficulty] = useState(true);
   const [color, setColor] = useState('random');
@@ -79,10 +88,10 @@ export default function Menu({
   const [showPracticeMatch, setShowPracticeMatch] = useState(false);
   const [showMirrorMode, setShowMirrorMode] = useState(false);
   const [footerPanel, setFooterPanel] = useState(null);
-  const [showHomeGuide, setShowHomeGuide] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
+  const [showHomeGuide, setShowHomeGuide] = useState(() => !illustratedHome && getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1');
   const [matthiasVisit, setMatthiasVisit] = useState(null);
   const [matthiasMemory, setMatthiasMemory] = useState(null);
-  const [matthiasGuidesInitialWelcome] = useState(() => getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1' && !matthiasOnboarded());
+  const [matthiasGuidesInitialWelcome] = useState(() => !illustratedHome && getStorageItem(STORAGE_LOCAL, HOME_GUIDE_KEY) !== '1' && !matthiasOnboarded());
   const matthiasRollRef = useRef(Math.random());
   const castleLifeRollRef = useRef(Math.random());
   const tournamentLevel = levelForPoints(tournament.progressPoints || 0);
@@ -133,7 +142,7 @@ export default function Menu({
     if (matthiasIntroPending) {
       const introPlacement = matthiasIntroPlacement({
         onboarded: false,
-        guideEnabled: features.homeGuide !== false,
+        guideEnabled: !illustratedHome && features.homeGuide !== false,
         guideVisible: showHomeGuide,
         blocked: matthiasIntroBlocked,
       });
@@ -159,7 +168,7 @@ export default function Menu({
     if (!show) return;
     markMatthiasHomeShown();
     setMatthiasVisit(matthiasCandidate);
-  }, [blockingHomeOverlay, features.homeGuide, hasSavedGame, matthiasCandidate, matthiasIntroBlocked, matthiasIntroPending, matthiasVisit, showHomeGuide]);
+  }, [illustratedHome, blockingHomeOverlay, features.homeGuide, hasSavedGame, matthiasCandidate, matthiasIntroBlocked, matthiasIntroPending, matthiasVisit, showHomeGuide]);
 
   useEffect(() => {
     if (matthiasOnboarded()) return;
@@ -255,7 +264,23 @@ export default function Menu({
   }
 
   return (
-    <div className="menu home-friendly">
+    <div className={illustratedHome ? 'menu menu-illustrated' : 'menu home-friendly'}>
+      {illustratedHome ? <HomeIllustrated
+        hasSavedGame={hasSavedGame} loading={loading} error={showQuickMatch || showPracticeMatch || showMirrorMode ? null : error}
+        onPlay={() => setShowQuickMatch(true)} onContinue={onContinue}
+        onTournament={onTournament} onTrain={onTutorial} onCombat={onCombatRoguelike}
+        onDaily={() => onDailyChallenge()} onHistory={onHistory} onInsights={onInsights}
+        matthiasModel={matthiasCardModel} matthiasSpeaking={Boolean(matthiasVisit) && !matthiasCornerBlocked}
+        onMatthiasAction={handleMatthiasAction} onMatthiasDismiss={() => setMatthiasVisit(null)}
+        tools={[
+          ['Puzzles personales', onTrainPersonal], ['Puzzles clásicos', onPuzzle],
+          ['Aperturas', onOpenings], ['Partida de práctica', () => setShowPracticeMatch(true)],
+          ['Modo espejo', () => setShowMirrorMode(true)], ['Combat Chess libre', onCombat],
+          ['Espectador', onSpectator], ['Mi progreso', onProgress],
+          ['Experimentos geniales', onLab],
+        ]}
+      /> : <>
+
       {hasSavedGame && (
         <div className="menu-group home-continue-group">
           <button type="button" className={`home-continue-card${showHomeGuide && onboarding.next === 'game' ? ' home-onboarding-target is-next' : ''}`} disabled={loading} onClick={onContinue}>
@@ -561,6 +586,8 @@ export default function Menu({
         onContinue={onContinue}
         onPlay={() => setShowQuickMatch(true)}
       />
+
+      </>}
 
       {showQuickMatch && (
         <QuickMatchModal

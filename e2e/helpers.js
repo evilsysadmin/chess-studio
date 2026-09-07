@@ -363,12 +363,14 @@ export function gameTurn(page, text = 'Tu turno') {
 }
 
 const HOME_VISIBLE_TEXT_TARGETS = Object.freeze({
-  'Partida rápida': '.home-mode-quick:visible, .home-castle-hub__room--play:visible',
-  'Combat Chess · Campaña': '.home-mode-campaign:visible, .home-castle-hub__room--combat:visible',
+  'Así juegas': '.home-learning-card:visible:has-text("Así juegas"), .illustrated-home__matthias:visible',
+  'Partida rápida': '.home-mode-quick:visible, .home-castle-hub__room--play:visible, .illustrated-home__destination--play:visible',
+  'Combat Chess · Campaña': '.home-mode-campaign:visible, .home-castle-hub__room--combat:visible, .illustrated-home__destination--combat:visible',
 });
 
 const HOME_HEADING_TARGETS = Object.freeze({
-  Torneo: '.home-mode-featured:visible, .home-castle-hub__room--tournament:visible',
+  'Escuela de Matthias': '.home-school-card:visible, .illustrated-home__destination--train:visible',
+  Torneo: '.home-mode-featured:visible, .home-castle-hub__room--tournament:visible, .illustrated-home__destination--tournament:visible',
 });
 
 export function buttonWithVisibleText(scope, text) {
@@ -523,6 +525,12 @@ export async function startPracticeGame(page) {
 }
 
 export async function openMoreGameModes(page) {
+  const illustrated = page.locator('.illustrated-home__utilities');
+  if (await illustrated.isVisible()) {
+    const trigger = illustrated.getByRole('button', { name: /Más modos y herramientas/ });
+    if (await trigger.getAttribute('aria-expanded') !== 'true') await trigger.click();
+    return illustrated;
+  }
   const details = page.locator('details.home-more-modes');
   await expect(details).toBeVisible();
   if (!(await details.evaluate((node) => node.open))) await details.locator('summary').click();
@@ -531,7 +539,9 @@ export async function openMoreGameModes(page) {
 
 export async function openFreeCombat(page) {
   const details = await openMoreGameModes(page);
-  await buttonWithHeading(details, 'Combat Chess · Batalla libre').click();
+  const illustratedFree = details.getByRole('button', { name: 'Combat Chess libre', exact: true });
+  if (await illustratedFree.isVisible()) await illustratedFree.click();
+  else await buttonWithHeading(details, 'Combat Chess · Batalla libre').click();
 }
 
 export async function seedCombatBattleSnapshot(page, {

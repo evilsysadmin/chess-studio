@@ -13,16 +13,16 @@ async function openHome(page) {
   await login(page);
   await dismissHomeGuide(page);
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
-  await expect(page.locator('.home-castle-hub__scene canvas')).toBeVisible();
+  await expect(page.locator('.illustrated-home__art')).toBeVisible();
 }
 
 async function composition(page) {
   return page.evaluate(() => {
-    const castle = document.querySelector('.menu.home-friendly > .home-castle-life');
+    const castle = document.querySelector('.illustrated-home__stage');
     const primary = document.querySelector('.menu.home-friendly > .home-continue-group, .menu.home-friendly > .home-next-action');
     const modesGrid = document.querySelector('.home-modes-section > .home-primary-grid');
-    const play = document.querySelector('.home-castle-hub__room--play');
-    const dungeon = document.querySelector('.home-more-modes > summary');
+    const play = document.querySelector('.illustrated-home__destination--play');
+    const dungeon = document.querySelector('.illustrated-home__utilities > button');
     const scene = document.querySelector('.home-castle-hub__scene');
     const castleRect = castle?.getBoundingClientRect();
     const playRect = play?.getBoundingClientRect();
@@ -31,8 +31,8 @@ async function composition(page) {
       castle: castleRect ? { top: castleRect.top, bottom: castleRect.bottom, width: castleRect.width, height: castleRect.height } : null,
       play: playRect ? { top: playRect.top, bottom: playRect.bottom, width: playRect.width, height: playRect.height } : null,
       dungeon: dungeonRect ? { top: dungeonRect.top, bottom: dungeonRect.bottom, width: dungeonRect.width, height: dungeonRect.height } : null,
-      primaryDisplay: primary ? getComputedStyle(primary).display : '',
-      modesGridDisplay: modesGrid ? getComputedStyle(modesGrid).display : '',
+      primaryDisplay: primary ? getComputedStyle(primary).display : 'none',
+      modesGridDisplay: modesGrid ? getComputedStyle(modesGrid).display : 'none',
       camera: scene?.dataset.homeCastleHubCamera || '',
       dungeonScene: scene?.dataset.homeCastleHubDungeonStair || '',
       viewportHeight: window.innerHeight,
@@ -57,8 +57,8 @@ test('Home 1814×772 · el castillo deja de ser una tira y ocupa la experiencia'
   expect(view.play.top).toBeGreaterThanOrEqual(view.castle.top);
   expect(view.play.bottom).toBeLessThanOrEqual(view.castle.bottom + 2);
   expect(view.dungeon.bottom).toBeLessThanOrEqual(view.castle.bottom + 2);
-  expect(view.camera).toBe('frontal-diorama-v1');
-  expect(view.dungeonScene).toBe('spiral-stone-v1');
+  expect(view.camera).toBe('');
+  await expect(page.locator('.home-castle-hub__scene canvas')).toHaveCount(0);
   expect(view.overflow).toBeLessThanOrEqual(1);
 });
 
@@ -73,7 +73,7 @@ test('Home 1920×1080 · el Great Hall es la Home y no reaparece el dashboard', 
   expect(view.castle.width / view.castle.height).toBeLessThan(2.6);
   expect(view.primaryDisplay).toBe('none');
   expect(view.modesGridDisplay).toBe('none');
-  expect(view.camera).toBe('frontal-diorama-v1');
-  expect(view.dungeonScene).toBe('spiral-stone-v1');
+  expect(view.camera).toBe('');
+  await expect(page.locator('.home-castle-hub__scene canvas')).toHaveCount(0);
   expect(view.overflow).toBeLessThanOrEqual(1);
 });
