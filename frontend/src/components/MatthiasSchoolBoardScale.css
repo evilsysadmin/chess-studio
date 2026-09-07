@@ -1,11 +1,24 @@
-/* Desktop-only breathing room for the hands-on Matthias School.
-   Keep shared War Room/game board sizing untouched outside this screen. */
+/* Desktop scale guards for immersive surfaces.
+   Low browser zoom creates a very large CSS viewport; cap the canonical Home
+   canvas and the hands-on school board so artwork cannot outgrow the UI. */
+@media (min-width: 1000px) {
+  .illustrated-home__stage {
+    max-width: 1920px;
+  }
+}
+
 @media (min-width: 1180px) {
   .matthias-school-shell .matthias-school-layout {
     grid-template-columns: minmax(170px, 195px) minmax(0, 1fr);
   }
 
   .matthias-school-shell .matthias-school-stage {
-    grid-template-columns: minmax(0, 1.45fr) minmax(320px, .72fr);
+    grid-template-columns: minmax(0, 820px) minmax(300px, 430px);
+    justify-content: center;
+  }
+
+  .matthias-school-shell .matthias-school-board {
+    width: 100%;
+    max-width: 820px;
   }
 }
