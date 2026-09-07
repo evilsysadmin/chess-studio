@@ -783,7 +783,7 @@ function AppInner({ isAdminUser }) {
         onRecover={recoverSessionFromBoundary}
         canRecover={Boolean(game?.id || tournamentGame?.id || loadActiveGameSession()?.gameId || hasRecoverableCombatState(view))}
       >
-      <div className={`app-shell ${isBoardGameView ? 'app-shell-board-game' : ''}`} id="main-content" tabIndex={-1}>
+      <div className={`app-shell ${isBoardGameView ? 'app-shell-board-game' : ''} ${view === 'menu' ? 'app-shell-home' : ''}`} id="main-content" tabIndex={-1}>
         <div className={`masthead ${isBoardGameView ? 'masthead-game-compact' : ''}`}>
           <div className="masthead-top-row">
             <div className="masthead-text">

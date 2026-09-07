@@ -1,0 +1,68 @@
+/* The illustration and controls share one 16:9 coordinate system. Letterbox
+   instead of cropping the art: every destination stays attached to its object. */
+@media (min-width: 1000px) {
+  body:has(.app-shell-home) { background: #140b06; }
+  body:has(.menu-illustrated) .global-music-dock { top: auto !important; bottom: 10px !important; left: 12px !important; width: 220px !important; }
+  body:has(.menu-illustrated) .global-music-dock .music-deck { background: #160e09ee; border-color: #8a693e80; }
+
+  body .app-shell.app-shell-home { max-width: none; width: 100%; padding: 0; margin: 0; }
+  body .app-shell-home .menu.menu-illustrated { display: block; padding: 0; margin: 0; width: 100%; max-width: none; }
+  .illustrated-home { position: relative; min-height: 100dvh; display: grid; align-items: center; background: #140b06; color: #ffe8ac; }
+  .illustrated-home__stage { position: relative; width: min(100%, 177.7778dvh); aspect-ratio: 16 / 9; margin: auto; container-type: inline-size; isolation: isolate; }
+  .illustrated-home__art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; z-index: -1; pointer-events: none; user-select: none; }
+  .illustrated-home__brand { position: absolute; top: 2.4%; left: 32%; width: 36%; text-align: center; text-shadow: 0 2px 8px #100906; }
+  .illustrated-home__brand h1 { font-family: Georgia, 'Times New Roman', serif; font-size: 5.75cqw; font-weight: 500; line-height: 1.04; letter-spacing: -.055em; margin: .35cqw 0; color: #ffe7a5; white-space: nowrap; }
+  .illustrated-home__brand p { margin: 0; font: 500 max(12px, .76cqw)/1.5 monospace; letter-spacing: .28em; color: #cdb37d; }
+  .illustrated-home__brand p:last-child { font-size: max(14px, .92cqw); color: #e8bd57; letter-spacing: .35em; }
+  .illustrated-home__destination { position: absolute; display: flex; flex-direction: column; align-items: center; gap: .2cqw; padding: .6cqw .2cqw; border: 1px solid transparent; border-radius: 8px; background: transparent; box-shadow: none; color: #ffe9b0; text-align: center; cursor: pointer; text-shadow: 0 2px 4px #0b0602, 0 0 10px #140c04; transition: background .18s, filter .18s; }
+  .illustrated-home__destination svg { width: 2.15cqw; height: 2.15cqw; color: #f4ca67; filter: drop-shadow(0 1px 3px #190e04); }
+  .illustrated-home__destination strong { font: 700 max(16px, 1.2cqw)/1.1 Georgia, serif; white-space: nowrap; }
+  .illustrated-home__destination > span { font: 400 max(14px, .94cqw)/1.2 Arial, sans-serif; }
+  .illustrated-home__destination i { display: grid; place-items: center; width: max(24px, 1.4cqw); height: max(24px, 1.4cqw); border: 1.5px solid #ebc963; border-radius: 50%; font: normal 23px/1 Georgia, serif; color: #f4cf6c; margin-top: .5cqw; }
+  .illustrated-home__destination--tournament { left: 15.7%; top: 24.5%; width: 10%; }
+  .illustrated-home__destination--train { left: 34.7%; top: 27.2%; width: 11.2%; }
+  .illustrated-home__destination--combat { left: 52.8%; top: 27.2%; width: 12.4%; }
+  .illustrated-home__destination--daily { left: 71.7%; top: 27.2%; width: 14.2%; }
+  .illustrated-home__destination--history { left: 3.7%; top: 41%; width: 5.5%; }
+  .illustrated-home__destination--history strong { font-size: max(14px, 1cqw); }
+  .illustrated-home__destination--history > span { max-width: 7em; }
+  .illustrated-home__destination--play { left: 41.3%; top: 66.8%; width: 17.6%; min-height: 14%; }
+  .illustrated-home__destination--play svg { width: 2.5cqw; height: 2.5cqw; }
+  .illustrated-home__destination--play strong { font-size: 1.9cqw; }
+  .illustrated-home__destination--play > span { font-size: max(14px, 1.06cqw); }
+  .illustrated-home__destination--play i { position: absolute; right: 1.4cqw; top: 42%; }
+  .illustrated-home__destination:hover { background: radial-gradient(ellipse, #f1ba4226, transparent 75%); filter: brightness(1.14); }
+  .illustrated-home button:focus-visible { outline: 2px solid #ffe39b; outline-offset: 4px; background-color: #211306dd; }
+  .illustrated-home button:disabled { cursor: wait; opacity: .55; }
+  .illustrated-home__matthias { position: absolute; left: 13.3%; top: 83%; width: 11%; padding: .7cqw 1.25cqw; display: grid; gap: .22cqw; border: 1px solid #a98039; border-radius: 12px; background: #17100de8; color: #fae6ad; text-align: left; cursor: pointer; }
+  .illustrated-home__matthias strong { font: 700 max(12px, .8cqw)/1.2 Arial, sans-serif; }
+  .illustrated-home__matthias span { font-size: max(12px, .75cqw); }
+  .illustrated-home__matthias em { font-size: max(12px, .7cqw); line-height: 1.35; color: #c5b394; }
+  .illustrated-home__community { position: absolute; left: 93.2%; top: 54.8%; width: 6%; text-align: center; color: #c39a56; font: 600 max(10px, .62cqw)/1.35 Arial, sans-serif; }
+  .illustrated-home__community > span:last-child { display: block; font-size: 1.9cqw; margin-top: .7cqw; }
+  .illustrated-home__motto { position: absolute; bottom: 3.8%; left: 31%; width: 38%; text-align: center; color: #bd8e3c; }
+  .illustrated-home__motto > span { font-size: 1.25cqw; letter-spacing: 1.7cqw; }
+  .illustrated-home__motto p { font: 400 max(11px, .7cqw)/1.4 Georgia, serif; letter-spacing: .34em; margin: .4cqw 0 0; }
+  .illustrated-home__utilities { position: absolute; z-index: 5; bottom: 10px; right: 20px; }
+  .illustrated-home__utilities button { border: 1px solid #8a693e80; border-radius: 8px; background: #160e09ee; color: #dac28b; padding: 9px 13px; font-size: 14px; cursor: pointer; }
+  .illustrated-home__utilities > nav { position: absolute; bottom: 45px; right: 0; width: 270px; display: grid; gap: 5px; padding: 12px; max-height: 65dvh; overflow: auto; border: 1px solid #8a693e; border-radius: 12px; background: #160e09fa; box-shadow: 0 12px 40px #0009; }
+  .illustrated-home__error, .illustrated-home__loading { position: absolute; z-index: 6; top: 19%; left: 30%; width: 40%; padding: 12px; border: 1px solid #ba9150; border-radius: 8px; background: #21120cf5; color: #ffe5ba; text-align: center; }
+  /* Reposition the existing account, release and feedback controls, preserving
+     their popovers and handlers. They remain above the art, below modals. */
+  body .app-shell-home > .masthead { position: absolute !important; z-index: 40; inset: 0 0 auto; height: 0; min-height: 0; max-width: none; width: 100%; margin: 0; padding: 0; border: 0; background: none; box-shadow: none; pointer-events: none; }
+  body .app-shell-home .masthead-text, body .app-shell-home .masthead > .player-status-bar { display: none; }
+  body .app-shell-home .masthead-top-row, body .app-shell-home .masthead-actions, body .app-shell-home .masthead-account-stack { display: contents !important; position: static !important; transform: none !important; }
+  body .app-shell-home .masthead-account-menu { position: absolute; left: 2.8vw !important; right: auto !important; top: 2.5dvh !important; pointer-events: auto; }
+  body .app-shell-home .masthead-release-trigger { position: absolute; right: 10.7vw; top: 2.7dvh; pointer-events: auto; }
+  body .app-shell-home .masthead-feedback-trigger { position: absolute; right: 1.8vw; top: 2.7dvh; pointer-events: auto; }
+  body .app-shell-home .masthead-account-trigger, body .app-shell-home .masthead-release-trigger, body .app-shell-home .masthead-feedback-trigger { border: 1px solid #8b683866; border-radius: 999px !important; color: #eed7a5 !important; background: #160f0bdd !important; width: auto !important; min-width: 0 !important; height: 40px; min-height: 40px; padding: 8px 18px; white-space: nowrap; box-shadow: none; font-size: 14px !important; }
+  body .app-shell-home .masthead-account-popover { left: 0; right: auto; pointer-events: auto; }
+  body .app-shell-home .masthead-session-error { pointer-events: auto; position: absolute; top: 60px; left: 3vw; background: #21120c; }
+}
+@media (min-width: 1000px) and (max-width: 1300px) {
+  body .app-shell-home .masthead-release-trigger { right: 13vw; }
+  .illustrated-home__matthias { width: 14%; padding: .6cqw; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .illustrated-home__destination { transition: none; }
+}

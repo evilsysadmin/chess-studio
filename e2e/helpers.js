@@ -363,12 +363,12 @@ export function gameTurn(page, text = 'Tu turno') {
 }
 
 const HOME_VISIBLE_TEXT_TARGETS = Object.freeze({
-  'Partida rápida': '.home-mode-quick:visible, .home-castle-hub__room--play:visible',
-  'Combat Chess · Campaña': '.home-mode-campaign:visible, .home-castle-hub__room--combat:visible',
+  'Partida rápida': '.home-mode-quick:visible, .home-castle-hub__room--play:visible, .illustrated-home__destination--play:visible',
+  'Combat Chess · Campaña': '.home-mode-campaign:visible, .home-castle-hub__room--combat:visible, .illustrated-home__destination--combat:visible',
 });
 
 const HOME_HEADING_TARGETS = Object.freeze({
-  Torneo: '.home-mode-featured:visible, .home-castle-hub__room--tournament:visible',
+  Torneo: '.home-mode-featured:visible, .home-castle-hub__room--tournament:visible, .illustrated-home__destination--tournament:visible',
 });
 
 export function buttonWithVisibleText(scope, text) {
