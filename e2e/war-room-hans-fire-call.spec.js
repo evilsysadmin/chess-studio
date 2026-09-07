@@ -17,7 +17,7 @@ test('War Room · Matthias llama a Hans por el fuego y Hans responde al aparecer
   await expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
 
   const matthiasCall = page.getByRole('status', { name: 'Matthias llama a Hans por el fuego' });
-  await expect(matthiasCall).toBeVisible({ timeout: 10_000 });
+  await expect(matthiasCall).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true');
   await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'hidden');
   await expect(matthiasCall).toContainText('MATTHIAS');
