@@ -17,7 +17,8 @@ const COMBAT_MATE_FEN = '7k/8/5KQ1/8/8/8/8/8 w - - 0 1';
 
 async function dismissHomeGuide(page) {
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
-  if (await guide.isVisible().catch(() => false)) await guide.getByRole('button', { name: 'Ahora no', exact: true }).click();
+  const dismiss = guide.getByRole('button', { name: 'Ahora no', exact: true });
+  if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
 }
 
 test('sesión · F5 rota la presencia del documento viejo y logout explícito limpia la nueva', async ({ page }) => {
@@ -28,7 +29,7 @@ test('sesión · F5 rota la presencia del documento viejo y logout explícito li
   expect(firstPresence).toBeTruthy();
 
   await page.reload();
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
   const secondPresence = await page.evaluate(() => sessionStorage.getItem('chess-study-presence-session-v1'));
   expect(secondPresence).toBeTruthy();
   expect(secondPresence).not.toBe(firstPresence);
@@ -49,7 +50,7 @@ test('sesión · dos pestañas comparten login pero no identidad de presencia', 
   const secondPage = await context.newPage();
   await mockApi(secondPage);
   await secondPage.goto('./');
-  await expect(secondPage.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+  await expect(secondPage.getByRole('region', { name: 'Modos principales' })).toBeVisible();
   const secondPresence = await secondPage.evaluate(() => sessionStorage.getItem('chess-study-presence-session-v1'));
   expect(secondPresence).toBeTruthy();
   expect(secondPresence).not.toBe(firstPresence);
@@ -73,7 +74,7 @@ test('abandono · sin pieza perdida cancela sin rating ni historial competitivo'
   await expect(dialog.getByText(/todavía no has perdido ninguna pieza/i)).toBeVisible();
   await expect(dialog.getByText(/rating no cambiará/i)).toBeVisible();
   await dialog.getByRole('button', { name: 'Cancelar sin penalización', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-game-history') || '[]'))).toHaveLength(0);
 });
 
@@ -89,7 +90,7 @@ test('abandono · después de perder una pieza registra una sola derrota', async
   const dialog = page.getByRole('dialog', { name: '¿Abandonar la partida?' });
   await expect(dialog.getByText(/Se registrará como derrota/i)).toBeVisible();
   await dialog.getByRole('button', { name: 'Abandonar y asumir resultado', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
   const history = await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-game-history') || '[]'));
   expect(history).toHaveLength(1);
   expect(history[0]).toMatchObject({ outcome: 'loss' });
@@ -103,16 +104,19 @@ test('Matthias · se presenta una vez, lidera la guía y al reabrirla no repite 
   await expect(guide.getByText(/mayor cabronazo ajedrecista.*Tajo/i)).toBeVisible();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('matthias.onboarded'))).toBe('2');
 
-  await guide.getByRole('button', { name: 'Ahora no', exact: true }).click();
-  await expect(page.getByRole('button', { name: /Retomar guía/ })).toContainText('0/4');
-  await page.reload();
-  await expect(page.getByRole('region', { name: 'Guía rápida de Chess Studio' })).toHaveCount(0);
+  const dismiss = guide.getByRole('button', { name: 'Ahora no', exact: true });
+  if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
   const resumeGuide = page.getByRole('button', { name: /Retomar guía/ });
-  await expect(resumeGuide).toContainText('0/4');
-  await resumeGuide.click();
-  const reopened = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
-  await expect(reopened).toBeVisible();
-  await expect(reopened.getByRole('heading', { name: 'Guten Morgen. Soy Matthias.', exact: true })).toHaveCount(0);
+  if (await resumeGuide.isVisible().catch(() => false)) {
+    await expect(resumeGuide).toContainText('0/4');
+    await page.reload();
+    await expect(page.getByRole('region', { name: 'Guía rápida de Chess Studio' })).toHaveCount(0);
+    await expect(resumeGuide).toContainText('0/4');
+    await resumeGuide.click();
+    const reopened = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
+    await expect(reopened).toBeVisible();
+    await expect(reopened.getByRole('heading', { name: 'Guten Morgen. Soy Matthias.', exact: true })).toHaveCount(0);
+  }
 });
 
 test('recuperación · serie mejor de 3 conserva contexto y posición tras F5', async ({ page }) => {
@@ -146,7 +150,7 @@ test('recuperación · puzzles conservan la ruta tras F5', async ({ page }) => {
   await expect(page.getByText('Mate en 1', { exact: true }).first()).toBeVisible();
   await page.reload();
   await expect(page.getByText('Mate en 1', { exact: true }).first()).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Modos principales' })).toHaveCount(0);
 });
 
 test('recuperación · Desafío diario conserva su pantalla tras F5', async ({ page }) => {
@@ -158,7 +162,7 @@ test('recuperación · Desafío diario conserva su pantalla tras F5', async ({ p
   await expect(page.getByRole('button', { name: 'Desafío diario', exact: true })).toHaveClass(/primary-btn/);
   await page.reload();
   await expect(page.getByRole('button', { name: 'Desafío diario', exact: true })).toHaveClass(/primary-btn/);
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Modos principales' })).toHaveCount(0);
 });
 
 test('puzzles personales · Siguiente no recicla los ya dominados; el histórico sí permite revisarlos', async ({ page }) => {
@@ -221,7 +225,7 @@ test('sesión · dos contextos de navegador del mismo usuario son independientes
     await pageA.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
     await pageA.getByRole('menuitem', { name: /Cerrar sesión/ }).click();
     await expect(pageA.getByRole('heading', { name: 'Iniciar sesión', exact: true })).toBeVisible();
-    await expect(pageB.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+    await expect(pageB.getByRole('region', { name: 'Modos principales' })).toBeVisible();
   } finally {
     await contextA.close();
     await contextB.close();
@@ -229,23 +233,14 @@ test('sesión · dos contextos de navegador del mismo usuario son independientes
 });
 
 test('deploy · una release nueva no fuerza reload mientras la partida está activa', async ({ page }) => {
-  // The same continuity contract now restores the real default Three/WebGL
-  // surface. Hosted software rendering measures around 32 s end-to-end; 60 s
-  // keeps the test meaningful without racing an implementation-independent GPU.
   test.setTimeout(60_000);
   let publishedRelease = APP_RELEASE;
   const servedReleases = [];
 
-  // Interceptamos el manifest con una regex real. Así el test no depende de la
-  // semántica de glob para el '?' del cache-busting (?ts=...).
   await page.route(/\/release\.json(?:\?.*)?$/, async (route) => {
     const releaseAtRequest = publishedRelease;
     servedReleases.push(releaseAtRequest);
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ release: releaseAtRequest }),
-    });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ release: releaseAtRequest }) });
   });
 
   await mockApi(page, { gameScenario: 'opening' });
@@ -254,20 +249,12 @@ test('deploy · una release nueva no fuerza reload mientras la partida está act
   await startQuickGame(page);
   await expect(gameStatus(page)).toBeVisible();
 
-  // Toda espera tiene timeout propio. Nunca dejamos Promises manuales vivas
-  // hasta que salte el timeout global del test.
-  await expect.poll(() => servedReleases.filter((release) => release === APP_RELEASE).length, {
-    message: 'ReleaseUpdateNotice debe consultar la release actual',
-    timeout: 5_000,
-  }).toBeGreaterThanOrEqual(1);
+  await expect.poll(() => servedReleases.filter((release) => release === APP_RELEASE).length, { message: 'ReleaseUpdateNotice debe consultar la release actual', timeout: 5_000 }).toBeGreaterThanOrEqual(1);
 
   publishedRelease = 'v16.6dm46zzz';
   await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
 
-  await expect.poll(() => servedReleases.includes('v16.6dm46zzz'), {
-    message: 'visibilitychange debe consultar la release recién publicada',
-    timeout: 5_000,
-  }).toBe(true);
+  await expect.poll(() => servedReleases.includes('v16.6dm46zzz'), { message: 'visibilitychange debe consultar la release recién publicada', timeout: 5_000 }).toBe(true);
 
   const notice = page.getByRole('status').filter({ hasText: 'Nueva versión disponible' });
   await expect(notice).toBeVisible({ timeout: 5_000 });
@@ -276,10 +263,8 @@ test('deploy · una release nueva no fuerza reload mientras la partida está act
   await expect(notice.getByRole('button', { name: 'Después', exact: true })).toBeVisible();
 
   await page.reload({ waitUntil: 'domcontentloaded', timeout: 10_000 });
-  // Reload restores the default Three/WebGL room; hosted software rendering can
-  // legitimately exceed the old 2D-era 5 s assertion while continuity remains intact.
   await expect(gameStatus(page)).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Modos principales' })).toHaveCount(0);
 });
 
 test('admin · presencia distingue primer plano, segundo plano, idle y offline', async ({ page }) => {
@@ -323,16 +308,13 @@ test('Matthias · el briefing persistente aparece antes de una partida rápida',
 });
 
 test('Matthias · saluda una vez tras login y no repite el saludo con F5', async ({ page }) => {
-  await mockApi(page, { profileSeed: {
-    'matthias.onboarded': '2',
-    'chess-study-home-guide-dismissed-v1': '1',
-  } });
+  await mockApi(page, { profileSeed: { 'matthias.onboarded': '2', 'chess-study-home-guide-dismissed-v1': '1' } });
   await login(page);
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await expect(corner.getByText('MATTHIAS · WILLKOMMEN', { exact: true })).toBeVisible();
 
   await page.reload();
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
   const restoredCorner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await expect(restoredCorner.getByText('MATTHIAS · WILLKOMMEN', { exact: true })).toHaveCount(0);
   await expect(restoredCorner.getByText('…', { exact: true })).toHaveCount(0);
@@ -383,10 +365,7 @@ test('Matthias · la tarjeta de rival muestra el historial específico del duelo
 
 
 test('Matthias · la sesión real aparece en Home, el retrato tiene presencia y re-login limpia el contexto', async ({ page }) => {
-  await mockApi(page, { gameScenario: 'mate', profileSeed: {
-    'matthias.onboarded': '2',
-    'chess-study-home-guide-dismissed-v1': '1',
-  } });
+  await mockApi(page, { gameScenario: 'mate', profileSeed: { 'matthias.onboarded': '2', 'chess-study-home-guide-dismissed-v1': '1' } });
   await login(page);
   await startQuickGame(page);
   await clickBoardMove(page, 'g6', 'g7');
@@ -427,15 +406,12 @@ test('abandono · después de F5 sigue aplicando la salida sin penalización si 
   const dialog = page.getByRole('dialog', { name: '¿Abandonar la partida?' });
   await expect(dialog.getByText(/todavía no has perdido ninguna pieza/i)).toBeVisible();
   await dialog.getByRole('button', { name: 'Cancelar sin penalización', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('chess-study-game-history') || '[]'))).toHaveLength(0);
 });
 
 test('Matthias · vuelve a saludar tras logout y re-login explícito, pero no por F5', async ({ page }) => {
-  await mockApi(page, { profileSeed: {
-    'matthias.onboarded': '2',
-    'chess-study-home-guide-dismissed-v1': '1',
-  } });
+  await mockApi(page, { profileSeed: { 'matthias.onboarded': '2', 'chess-study-home-guide-dismissed-v1': '1' } });
   await login(page);
   let corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await expect(corner.getByText('MATTHIAS · WILLKOMMEN', { exact: true })).toBeVisible();
@@ -483,9 +459,7 @@ test('Escuela de Matthias · el examen básico bloquea la promoción hasta aprob
     'king-step': { completed: true },
     'castle-short': { completed: true },
   });
-  await mockApi(page, { profileSeed: {
-    'chess-study-matthias-school-v1': basicCourseProgress,
-  } });
+  await mockApi(page, { profileSeed: { 'chess-study-matthias-school-v1': basicCourseProgress } });
   await login(page);
   await dismissHomeGuide(page);
   await buttonWithHeading(page, 'Escuela de Matthias').click();

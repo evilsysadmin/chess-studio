@@ -3,8 +3,9 @@ import { login, mockApi } from './helpers.js';
 
 async function dismissGuide(page) {
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
-  if (await guide.isVisible().catch(() => false)) {
-    await guide.getByRole('button', { name: 'Ahora no', exact: true }).click();
+  const dismiss = guide.getByRole('button', { name: 'Ahora no', exact: true });
+  if (await dismiss.isVisible().catch(() => false)) {
+    await dismiss.click();
   }
 }
 

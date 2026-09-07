@@ -12,7 +12,7 @@ test('login → menú → Así juegas → refresh → ESC conserva navegación',
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('heading', { name: 'Torneo', exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
 });
 
 
@@ -56,7 +56,7 @@ test('Torneo · una partida activa sobrevive a reload y no vuelve al menú', asy
 
   await page.reload();
   await expect(gameTurn(page)).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Modos principales' })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'Siguiente rival', exact: true })).toHaveCount(0);
 });
 
@@ -75,7 +75,7 @@ test('Partida rápida · un 503 al restaurar conserva la ruta y permite reintent
   await page.reload();
   await expect(page.getByText('La partida sigue guardada.', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Reintentar recuperación', exact: true })).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Modos principales' })).toHaveCount(0);
   await expect(buttonWithVisibleText(page, 'Partida rápida')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Reintentar recuperación', exact: true }).click();
@@ -323,7 +323,7 @@ test('Combat Chess · salir al menú conserva campaña y batalla activas', async
   await expect(page.getByRole('complementary', { name: 'Registro de batalla y estado táctico' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Salir al menú', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
 
   // SPA transition: the click completes before an unrelated scheduled navigation.
   // Do not let Playwright's implicit navigation wait turn a successful re-entry into a false failure.
@@ -574,7 +574,8 @@ test('golden journey · onboarding → partida/reload → mate → puzzle → Co
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   await expect(guide).toBeVisible();
   await expect(buttonWithHeading(page, 'Torneo')).toHaveClass(/home-onboarding-target/);
-  await guide.getByRole('button', { name: 'Ahora no', exact: true }).click();
+  const dismiss = guide.getByRole('button', { name: 'Ahora no', exact: true });
+  if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('dialog', { name: 'Configurar partida rápida' })
@@ -588,7 +589,7 @@ test('golden journey · onboarding → partida/reload → mate → puzzle → Co
   await expect(endgame).toBeVisible();
   await expect(endgame.getByText('¡Ganaste la partida!', { exact: true })).toBeVisible();
   await endgame.getByRole('button', { name: 'Volver al menú', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
 
   const learningMore = page.locator('details.home-learning-more');
   if (!(await learningMore.evaluate((node) => node.open))) await learningMore.locator('summary').click();
@@ -597,7 +598,7 @@ test('golden journey · onboarding → partida/reload → mate → puzzle → Co
   await clickBoardMove(page, 'a1', 'a8');
   await expect(page.getByText('¡Resuelto!', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
-  await expect(page.getByRole('region', { name: 'Hoy en Chess Studio' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Modos principales' })).toBeVisible();
 
   await openCampaignBriefing(page);
   await page.getByRole('button', { name: /PREPARAR EJÉRCITO/i }).click();

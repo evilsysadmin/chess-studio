@@ -16,6 +16,8 @@ import './components/HomeAndroidFirstFold.css';
 import './components/HomeCastleTeutonicCanonical.css';
 import './components/HomeAdaptiveDensity.css';
 import './components/HomeDesktopCompositionFix.css';
+import './components/HomeImmersiveCastle.css';
+import './components/HomeImmersiveCastleOverlay.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
 import { migratePersistentStorage } from './storageMigrations.js';
 import { getReducedMotionPreference, reducedMotionStatus } from './userPreferences.js';
@@ -28,7 +30,6 @@ installChessStudioPwa();
 installWarRoomPointerCapture();
 const initialMotion = reducedMotionStatus();
 document.documentElement.dataset.reducedMotion = initialMotion.effective ? 'true' : 'false';
-document.documentElement.dataset.motionPreference = getReducedMotionPreference();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
