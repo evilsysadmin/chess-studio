@@ -1,5 +1,5 @@
 import { devices, expect, test } from '@playwright/test';
-import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, gameTurn, login, mockApi, startPracticeGame } from './helpers.js';
 
 test.use({ ...devices['Pixel 5'] });
 
@@ -161,9 +161,10 @@ test('War Room · el bocadillo de Matthias sigue al rey si cambia de casilla', a
   await installKingMoveScenario(page, moveCalls);
   await login(page);
 
-  await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await expect(gameTurn(page)).toBeVisible();
+  // Hans owns the opening slot in normal quick games by design. Exercise this
+  // Matthias-only anchor regression through the real practice route so Hans is
+  // disabled by the product contract instead of adding a test-only escape hatch.
+  await startPracticeGame(page);
   await open3DFromAppearance(page);
 
   const board3d = page.locator('[data-board3d-war-room="true"]');
