@@ -59,7 +59,7 @@
     width: min(82%, 860px) !important;
     max-height: 6.25rem !important;
     margin: 0 !important;
-    padding: .48rem 2.45rem .52rem .65rem !important;
+    padding: .48rem 7.6rem .52rem .65rem !important;
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) !important;
     gap: .28rem !important;
@@ -82,9 +82,44 @@
 
   body .menu.home-friendly > .home-start-guide .home-start-guide-avatar,
   body .menu.home-friendly > .home-start-guide .section-label,
-  body .menu.home-friendly > .home-start-guide .home-start-guide-actions,
   body .menu.home-friendly > .home-start-guide .home-onboarding-tip {
     display: none !important;
+  }
+
+  /* Keep an explicit postpone action in the compact desktop guide. It is
+   * intentionally quieter than the route chips, but remains keyboard-visible
+   * and preserves the same semantic control used on mobile. */
+  body .menu.home-friendly > .home-start-guide .home-start-guide-actions {
+    position: absolute !important;
+    top: .38rem !important;
+    right: 2.6rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 0 !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    padding: 0 !important;
+  }
+
+  body .menu.home-friendly > .home-start-guide .home-start-guide-actions .secondary-btn {
+    min-width: 0 !important;
+    min-height: 28px !important;
+    padding: .22rem .48rem !important;
+    border-color: rgba(191, 151, 77, .18) !important;
+    border-radius: 7px !important;
+    background: rgba(0, 0, 0, .16) !important;
+    color: rgba(224, 214, 193, .62) !important;
+    font-size: .61rem !important;
+    line-height: 1 !important;
+    letter-spacing: .025em !important;
+  }
+
+  body .menu.home-friendly > .home-start-guide .home-start-guide-actions .secondary-btn:hover,
+  body .menu.home-friendly > .home-start-guide .home-start-guide-actions .secondary-btn:focus-visible {
+    border-color: rgba(211, 167, 78, .38) !important;
+    color: #f1dfb5 !important;
+    background: rgba(31, 24, 14, .48) !important;
   }
 
   body .menu.home-friendly > .home-start-guide .home-start-guide-copy h2 {
