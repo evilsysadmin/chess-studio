@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, memo, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import './HomeCastleLife.css';
 import './HomeGreatHall.css';
 import './HomeCastleAmbience.css';
-import HomeGreatHallScene from './HomeGreatHallScene.jsx';
-import CastleHallsModal from './CastleHallsModal.jsx';
+import './HomeCastleHallsDoor.css';
+import HomeCastleHubScene from './HomeCastleHubScene.jsx';
 import { ACHIEVEMENTS, loadAchievementLedger, loadUnlocked } from '../achievements.js';
 import { buildCastleHallGallery, castleHallSummary } from '../castleHall.js';
+import { PROFILE_CHANGED_EVENT } from '../profileKeys.js';
 import {
   castleHonourObjects,
   castleLedgerFingerprint,
@@ -16,9 +17,17 @@ import {
   reconcileCastleUnlocks,
 } from '../castleProgression.js';
 
+const CastleHallsModal = lazy(() => import('./CastleHallsModal.jsx'));
+
 const MAX_OBJECTS = 3;
 const RARE_SIGHTING_THRESHOLD = 0.025;
 const HIGH_HONOUR_PRESTIGE = 80;
+const HOME_CASTLE_MOBILE_QUERY = '(max-width: 760px)';
+const HOME_CASTLE_PRELOAD_MARGIN = '240px 0px';
+const ACHIEVEMENT_STORAGE_KEYS = new Set([
+  'chess-study-achievements',
+  'chess-study-achievement-ledger-v2',
+]);
 const ACHIEVEMENT_DESCRIPTIONS = Object.freeze(Object.fromEntries(
   ACHIEVEMENTS.map((achievement) => [achievement.id, achievement.description]),
 ));
@@ -40,6 +49,23 @@ function achievementStateFingerprint(ids, ledger) {
     return [id, record?.legacy === true, record?.recordedAt || null, record?.source || null];
   });
   return JSON.stringify(rows);
+}
+
+function loadAchievementSnapshot() {
+  const ids = [...loadUnlocked()];
+  const ledger = loadAchievementLedger();
+  return {
+    ids,
+    ledger,
+    fingerprint: achievementStateFingerprint(ids, ledger),
+  };
+}
+
+export function homeCastleSceneShouldStartMounted({
+  compactViewport = false,
+  supportsIntersectionObserver = true,
+} = {}) {
+  return !compactViewport || !supportsIntersectionObserver;
 }
 
 function castleAmbience({ honours, stateObjects, hasSavedGame }) {
@@ -150,9 +176,6 @@ export function buildHomeCastleLifeModel({
     });
   }
 
-  // Compatibility path for tests and old callers: if a persisted castle
-  // ledger has not been supplied yet, derive the exact same factual unlocks
-  // from the achievement ledger without writing during model construction.
   const resolvedCastleLedger = castleLedger || reconcileCastleUnlocks(
     emptyCastleUnlockLedger(), achievementIds, achievementLedger,
   );
@@ -176,9 +199,61 @@ export function buildHomeCastleLifeModel({
   };
 }
 
-export default function HomeCastleLife({ achievementIds = null, achievementLedger = null, hallGallery = null, onReviewCastleGame = null, ...props }) {
-  const resolvedAchievementIds = achievementIds ?? [...loadUnlocked()];
-  const resolvedAchievementLedger = achievementLedger ?? loadAchievementLedger();
+function HomeCastleLife({ achievementIds = null, achievementLedger = null, hallGallery = null, onReviewCastleGame = null, ...props }) {
+  const sectionRef = useRef(null);
+  const [castleSceneMounted, setCastleSceneMounted] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const compactViewport = typeof window.matchMedia === 'function'
+      ? window.matchMedia(HOME_CASTLE_MOBILE_QUERY).matches
+      : Number(window.innerWidth) <= 760;
+    return homeCastleSceneShouldStartMounted({
+      compactViewport,
+      supportsIntersectionObserver: typeof window.IntersectionObserver === 'function',
+    });
+  });
+
+  useEffect(() => {
+    if (castleSceneMounted || typeof window === 'undefined') return undefined;
+    const section = sectionRef.current;
+    if (!section || typeof window.IntersectionObserver !== 'function') {
+      setCastleSceneMounted(true);
+      return undefined;
+    }
+
+    const observer = new window.IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry?.isIntersecting)) return;
+      setCastleSceneMounted(true);
+      observer.disconnect();
+    }, { rootMargin: HOME_CASTLE_PRELOAD_MARGIN });
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, [castleSceneMounted]);
+
+  const [achievementSnapshot, setAchievementSnapshot] = useState(loadAchievementSnapshot);
+  useEffect(() => {
+    if (achievementIds !== null && achievementLedger !== null) return undefined;
+    if (typeof window === 'undefined') return undefined;
+
+    const refreshAchievements = () => {
+      const next = loadAchievementSnapshot();
+      setAchievementSnapshot((current) => (
+        current.fingerprint === next.fingerprint ? current : next
+      ));
+    };
+    const onStorage = (event) => {
+      if (event?.key === null || ACHIEVEMENT_STORAGE_KEYS.has(event?.key)) refreshAchievements();
+    };
+
+    window.addEventListener(PROFILE_CHANGED_EVENT, refreshAchievements);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener(PROFILE_CHANGED_EVENT, refreshAchievements);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, [achievementIds, achievementLedger]);
+
+  const resolvedAchievementIds = achievementIds ?? achievementSnapshot.ids;
+  const resolvedAchievementLedger = achievementLedger ?? achievementSnapshot.ledger;
   const [persistedCastleLedger, setPersistedCastleLedger] = useState(() => loadCastleUnlockLedger());
   const [showCastleHalls, setShowCastleHalls] = useState(false);
   const resolvedHallGallery = useMemo(() => hallGallery || buildCastleHallGallery(), [hallGallery]);
@@ -187,8 +262,6 @@ export default function HomeCastleLife({ achievementIds = null, achievementLedge
   const persistedFingerprint = castleLedgerFingerprint(persistedCastleLedger);
   const reconciledCastleLedger = useMemo(
     () => reconcileCastleUnlocks(persistedCastleLedger, resolvedAchievementIds, resolvedAchievementLedger),
-    // The compact fingerprints intentionally avoid object-identity churn from
-    // callers that reconstruct Set/ledger wrappers on every Home render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [achievementFingerprint, persistedFingerprint],
   );
@@ -207,18 +280,18 @@ export default function HomeCastleLife({ achievementIds = null, achievementLedge
     achievementLedger: resolvedAchievementLedger,
     castleLedger: reconciledCastleLedger,
   });
-  // Estado transitorio (partida pausada) y vacío no son "trofeos". Ya tienen
-  // UI funcional propia; repetirlos aquí convertiría el castillo en dashboard.
   const visibleObjects = model.objects.filter((object) => object.kind === 'progress' || object.kind === 'honour');
   const honourObjects = visibleObjects.filter((object) => object.kind === 'honour');
   const hasHallEvidence = hallSummary.fame > 0 || hallSummary.shame > 0;
 
   return <>
     <section
+      ref={sectionRef}
       className={`home-castle-life${model.rareSighting ? ' has-rare-sighting' : ''}`}
       aria-label="La estancia de Chess Studio"
       data-castle-life="real-state-v1"
       data-castle-ledger="evidence-v1"
+      data-castle-scene-state={castleSceneMounted ? 'mounted' : 'deferred'}
       data-castle-ambience={model.ambience}
       data-castle-ambience-evidence={model.ambienceEvidence}
       data-castle-honours={honourObjects.length}
@@ -228,7 +301,9 @@ export default function HomeCastleLife({ achievementIds = null, achievementLedge
       data-castle-fame={hallSummary.fame}
       data-castle-shame={hallSummary.shame}
     >
-      <HomeGreatHallScene ambience={model.ambience} />
+      {castleSceneMounted ? (
+        <HomeCastleHubScene ambience={model.ambience} hasSavedGame={Boolean(props.hasSavedGame)} />
+      ) : null}
       <div className="home-castle-life__decor" aria-label="Objetos desbloqueados del castillo">
         {visibleObjects.map((object, index) => (
           <span
@@ -276,11 +351,15 @@ export default function HomeCastleLife({ achievementIds = null, achievementLedge
     </section>
 
     {showCastleHalls && (
-      <CastleHallsModal
-        gallery={resolvedHallGallery}
-        onClose={() => setShowCastleHalls(false)}
-        onReviewGame={onReviewCastleGame ? (gameId) => { setShowCastleHalls(false); onReviewCastleGame(gameId); } : null}
-      />
+      <Suspense fallback={null}>
+        <CastleHallsModal
+          gallery={resolvedHallGallery}
+          onClose={() => setShowCastleHalls(false)}
+          onReviewGame={onReviewCastleGame ? (gameId) => { setShowCastleHalls(false); onReviewCastleGame(gameId); } : null}
+        />
+      </Suspense>
     )}
   </>;
 }
+
+export default memo(HomeCastleLife);
