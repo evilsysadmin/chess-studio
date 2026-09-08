@@ -12,6 +12,7 @@ export const HANS_WORKING_REPLY_MS = 2000;
 export const HANS_LEAVING_GRUMBLE_MS = 1500;
 export const HANS_BOARD_PEEK_ROUTE = 'leave-side';
 export const HANS_BOARD_PEEK_LOGICAL_X = 0.55;
+export const HANS_INITIAL_REPLY_MAX_ABS_NDC_X = 0.72;
 export const MATTHIAS_FIRE_EPILOGUE_LINE = 'En fin. ¿Por dónde íbamos?';
 export const MATTHIAS_FIRE_EPILOGUE_MS = 1900;
 
@@ -48,6 +49,13 @@ export function resolveHansFireOpeningLatch(current, {
 
 export function hansBoardPeekHoldsMovement(phase) {
   return HANS_BOARD_PEEK_HOLD_PHASES.has(String(phase || ''));
+}
+
+export function hansInitialReplyPointReached({ hansScreen = 'missing', ndcX } = {}) {
+  const x = Number(ndcX);
+  return hansScreen === 'onscreen'
+    && Number.isFinite(x)
+    && Math.abs(x) <= HANS_INITIAL_REPLY_MAX_ABS_NDC_X;
 }
 
 export function hansBoardPeekPointReached({ phase, route, logicalX } = {}) {
