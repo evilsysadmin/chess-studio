@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { HANS_ESPRESSO_LINE, MATTHIAS_ESPRESSO_LINE } from './WarRoomHansServiceRoutine.js';
+import { HANS_ESPRESSO_LINE, MATTHIAS_ESPRESSO_LINE } from './WarRoomHansServiceContract.js';
 import { projectHansFireReplyAnchor } from './WarRoomHansFireCallContract.js';
 import './WarRoomHansFireCall.css';
 
