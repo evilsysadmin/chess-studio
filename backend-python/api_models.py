@@ -106,12 +106,15 @@ class AdminMatthiasPreviewRequest(BaseModel):
 class GhostStyle(BaseModel):
     # Sesgos derivados de partidas reales del usuario. El rango estrecho
     # evita que un cliente manipulado convierta el desempate de estilo en una
-    # orden arbitraria para el motor.
+    # orden arbitraria para el motor. ``balance`` es un bit interno que usa
+    # Partida rápida adaptativa para habilitar sólo allí la política score-gap;
+    # no convierte la partida en Modo espejo ni altera los rasgos de estilo.
     capture: float = Field(default=0.0, ge=-1.0, le=1.0)
     pawn: float = Field(default=0.0, ge=-1.0, le=1.0)
     queen: float = Field(default=0.0, ge=-1.0, le=1.0)
     check: float = Field(default=0.0, ge=-1.0, le=1.0)
     castle: float = Field(default=0.0, ge=-1.0, le=1.0)
+    balance: bool = False
 
 
 class NewGameRequest(BaseModel):
