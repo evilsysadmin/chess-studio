@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { addPieceSkinDetails } from './Board3DSkinDecor.js';
-import { derivePieceBodyPose, installPieceBodyMotion } from './WarRoomPieceBodyMotion.js';
+import { derivePieceBodyPose, derivePromotionMorph, installPieceBodyMotion } from './WarRoomPieceBodyMotion.js';
 import { armWarRoomMoveFinishEvent, clearWarRoomMoveFinishEvent } from './WarRoomMoveFinishEvent.js';
 
 describe('War Room piece body motion', () => {
@@ -162,6 +162,64 @@ describe('War Room piece body motion', () => {
     clearWarRoomMoveFinishEvent();
   });
 
+
+  it('morphs a promotion from a readable pawn silhouette into the chosen piece', () => {
+    const early = derivePromotionMorph({ progress: 0.3 });
+    const overlap = derivePromotionMorph({ progress: 0.90 });
+    const sealed = derivePromotionMorph({ progress: 0.97 });
+    const coarse = derivePromotionMorph({ progress: 0.97, coarsePointer: true });
+
+    expect(early.pawnOpacity).toBe(1);
+    expect(early.promotedOpacity).toBe(0);
+    expect(overlap.pawnOpacity).toBeGreaterThan(0);
+    expect(overlap.pawnOpacity).toBeLessThan(1);
+    expect(overlap.promotedOpacity).toBeGreaterThan(0);
+    expect(overlap.promotedOpacity).toBeLessThan(1);
+    expect(sealed.promotedOpacity).toBe(1);
+    expect(sealed.pawnOpacity).toBe(0);
+    expect(sealed.promotedScale).toBeGreaterThan(1);
+    expect(coarse.promotedScale - 1).toBeLessThan(sealed.promotedScale - 1);
+  });
+
+  it('uses an exact promotion event to travel as a pawn, crossfade, then restore the real piece', () => {
+    clearWarRoomMoveFinishEvent();
+    const root = new THREE.Group();
+    const visual = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ opacity: 1 }));
+    root.add(visual);
+    root.userData.square = 'g8';
+    root.userData.baseY = 0.1;
+    root.userData.baseScale = root.scale.clone();
+    root.position.set(2.5, 0.1, -2.5);
+
+    installPieceBodyMotion(root, 'q');
+    armWarRoomMoveFinishEvent({
+      seq: 88,
+      to: 'g8',
+      promotion: { from: 'g7', to: 'g8', promotedType: 'q', color: 'w' },
+    });
+
+    visual.onBeforeRender({ info: { render: { frame: 1 } } });
+    const ghost = root.getObjectByName('board3d-promotion-pawn-ghost');
+    expect(ghost).toBeTruthy();
+    expect(root.userData.board3DPromotionMorphState?.promotedType).toBe('q');
+    expect(root.userData.board3DPromotionMorphState?.promotedOpacity).toBe(0);
+    expect(root.userData.board3DBodyFinishState?.promotionMorph).toBe(true);
+    expect(visual.material.colorWrite).toBe(false);
+
+    root.position.z = -3.40;
+    visual.onBeforeRender({ info: { render: { frame: 2 } } });
+    expect(root.userData.board3DPromotionMorphState?.pawnOpacity).toBeLessThan(1);
+    expect(root.userData.board3DPromotionMorphState?.promotedOpacity).toBeGreaterThan(0);
+
+    root.position.z = -3.5;
+    visual.onBeforeRender({ info: { render: { frame: 3 } } });
+    expect(root.getObjectByName('board3d-promotion-pawn-ghost')).toBeUndefined();
+    expect(root.userData.board3DPromotionMorphState).toBeNull();
+    expect(visual.material.opacity).toBe(1);
+    expect(visual.material.transparent).toBe(false);
+    expect(visual.material.colorWrite).toBe(true);
+  });
+
   it('damps body motion on coarse pointers', () => {
     const desktop = derivePieceBodyPose({ type: 'n', progress: 0.5, dx: 1, dz: 0, airborne: 0.8 });
     const coarse = derivePieceBodyPose({ type: 'n', progress: 0.5, dx: 1, dz: 0, airborne: 0.8, coarsePointer: true });
@@ -182,6 +240,7 @@ describe('War Room piece body motion', () => {
     expect(root.userData.board3DBodyFinishProfile).toBe('piece-finish-v1');
     expect(root.userData.board3DCheckmateFinishProfile).toBe('mate-seal-v1');
     expect(root.userData.board3DCastlingFinishProfile).toBe('castle-lock-v1');
+    expect(root.userData.board3DPromotionMorphProfile).toBe('pawn-morph-v1');
     expect(root.children.some((child) => child.userData?.board3DBodyMotionBody)).toBe(true);
   });
 
@@ -199,8 +258,11 @@ describe('War Room piece body motion', () => {
     expect(root.userData.board3DBodyFinishProfile).toBe('piece-finish-v1');
     expect(root.userData.board3DCheckmateFinishProfile).toBe('mate-seal-v1');
     expect(root.userData.board3DCastlingFinishProfile).toBe('castle-lock-v1');
+    expect(root.userData.board3DPromotionMorphProfile).toBe('pawn-morph-v1');
     expect(body).toBeTruthy();
-    expect(visual.parent).toBe(body);
+    const visualBody = body.children.find((child) => child.userData?.board3DVisualBody);
+    expect(visualBody).toBeTruthy();
+    expect(visual.parent).toBe(visualBody);
     expect(shadow.parent).toBe(root);
   });
 });
