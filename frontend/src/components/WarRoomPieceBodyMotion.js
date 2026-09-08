@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import { getEffectiveReducedMotion } from '../userPreferences.js';
 import { squarePosition } from './Board3DBoardMath.js';
-import { consumeWarRoomMoveFinishEvent } from './WarRoomMoveFinishEvent.js';
+import { consumeWarRoomMoveFinishEvent, peekWarRoomMoveFinishEvent } from './WarRoomMoveFinishEvent.js';
 
 const EPSILON = 0.002;
 
@@ -49,6 +50,40 @@ export function derivePromotionMorph({ progress = 0, coarsePointer = false } = {
   };
 }
 
+export function derivePassiveCheckSettle({ elapsedMs = 0, coarsePointer = false, reducedMotion = false } = {}) {
+  const durationMs = coarsePointer ? 120 : 155;
+  if (reducedMotion) {
+    return { active: false, done: true, progress: 1, yOffset: 0, scaleY: 1, scaleXZ: 1, settle: 0 };
+  }
+  const progress = clamp01((Number(elapsedMs) || 0) / durationMs);
+  const settle = bell(0, 0.54, 0.995, progress) * (coarsePointer ? 0.62 : 1);
+  return {
+    active: progress < 1,
+    done: progress >= 1,
+    progress,
+    yOffset: -settle * 0.005,
+    scaleY: 1 - settle * 0.012,
+    scaleXZ: 1 + settle * 0.004,
+    settle,
+  };
+}
+
+function motionNowMs(renderer) {
+  const injected = Number(renderer?.userData?.board3DMotionNowMs);
+  if (Number.isFinite(injected)) return injected;
+  if (typeof performance !== 'undefined' && typeof performance.now === 'function') return performance.now();
+  return Date.now();
+}
+
+function detectReducedMotion(explicit) {
+  if (typeof explicit === 'boolean') return explicit;
+  try {
+    return Boolean(getEffectiveReducedMotion());
+  } catch {
+    return false;
+  }
+}
+
 export function derivePieceBodyPose({
   type = 'p',
   progress = 0,
@@ -58,6 +93,7 @@ export function derivePieceBodyPose({
   travelDistance = 0,
   promotionEnergy = 0,
   checkmateFinish = false,
+  checkFinish = false,
   castlingRole = '',
   coarsePointer = false,
 } = {}) {
@@ -81,6 +117,7 @@ export function derivePieceBodyPose({
   const braking = bell(0.58, 0.78, 0.96, p);
   const rebound = bell(0.80, 0.91, 0.995, p);
   const mateSeal = checkmateFinish ? bell(0.70, 0.90, 0.998, p) * amplitude : 0;
+  const checkSettle = checkFinish ? bell(0.70, 0.88, 0.997, p) * amplitude : 0;
   const castleResponse = explicitCastleRook ? 1 - smoothstep(0.02, 0.24, p) : 0;
   const castleLock = (explicitCastleKing || explicitCastleRook) ? bell(0.70, 0.90, 0.998, p) : 0;
   const castleResponseLoad = castleResponse * 0.026 * amplitude;
@@ -97,9 +134,11 @@ export function derivePieceBodyPose({
   const anticipationLean = profile.anticipationLean * anticipation;
   const brakeLean = profile.brake * braking;
   const mateLean = mateSeal * 0.016;
+  const checkLean = checkSettle * 0.006;
   const castleResponseLean = castleResponseLoad * 0.46;
-  const lean = (transitLean + anticipationLean - brakeLean) * amplitude - mateLean - castleResponseLean;
+  const lean = (transitLean + anticipationLean - brakeLean) * amplitude - mateLean - checkLean - castleResponseLean;
   const compression = (profile.compression * anticipation + profile.landing * landing) * amplitude
+    + checkSettle * 0.010
     + castleResponseLoad * 0.62
     + castleLockLoad;
   const stretch = profile.airborneStretch * air * transit * amplitude;
@@ -124,6 +163,7 @@ export function derivePieceBodyPose({
       castleLock,
       castlingRole: explicitCastleKing ? 'king' : explicitCastleRook ? 'rook' : '',
       promotion: promotion > 0,
+      check: checkSettle > 0,
       checkmate: mateSeal > 0,
     },
   };
@@ -241,7 +281,9 @@ function disposePromotionGhost(ghost) {
   for (const material of materials) material.dispose?.();
 }
 
-export function installPieceBodyMotion(group, type, { coarsePointer = false } = {}) {
+export function installPieceBodyMotion(group, type, { coarsePointer = false, reducedMotion = null } = {}) {
+  const explicitReducedMotion = typeof reducedMotion === 'boolean' ? reducedMotion : null;
+  const checkMotionReduced = () => detectReducedMotion(explicitReducedMotion);
   if (!group?.isObject3D || group.userData?.board3DBodyMotionProfile) return group;
 
   const body = new THREE.Group();
@@ -270,6 +312,8 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
     finishEvent: null,
     promotionGhost: null,
     promotionMaterialStates: null,
+    passiveCheckEvent: null,
+    passiveCheckStartedAt: 0,
   };
 
   function clearPromotionMorph() {
@@ -305,9 +349,18 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
     return true;
   }
 
+  function clearPassiveCheck() {
+    const changed = Boolean(state.passiveCheckEvent);
+    state.passiveCheckEvent = null;
+    state.passiveCheckStartedAt = 0;
+    group.userData.board3DCheckSettleState = null;
+    return changed;
+  }
+
   function resetPose() {
     const morphChanged = clearPromotionMorph();
-    if (!state.active && !morphChanged) return false;
+    const passiveChanged = clearPassiveCheck();
+    if (!state.active && !morphChanged && !passiveChanged) return false;
     body.position.copy(basePosition);
     body.quaternion.copy(baseQuaternion);
     body.scale.copy(baseScale);
@@ -335,6 +388,7 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
 
     if (state.targetSquare !== targetSquare) {
       clearPromotionMorph();
+      clearPassiveCheck();
       state.targetSquare = targetSquare;
       state.maxDistance = remaining;
       state.finishEvent = remaining > EPSILON ? consumeWarRoomMoveFinishEvent(targetSquare) : null;
@@ -350,6 +404,43 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
 
     if (remaining <= EPSILON || state.maxDistance <= EPSILON) {
       state.maxDistance = 0;
+      const pending = peekWarRoomMoveFinishEvent(targetSquare);
+      if (!state.passiveCheckEvent && pending?.check === true) {
+        const consumed = consumeWarRoomMoveFinishEvent(targetSquare);
+        if (consumed?.check === true) {
+          state.passiveCheckEvent = consumed;
+          state.passiveCheckStartedAt = motionNowMs(renderer);
+        }
+      }
+      if (state.passiveCheckEvent) {
+        const passive = derivePassiveCheckSettle({
+          elapsedMs: motionNowMs(renderer) - state.passiveCheckStartedAt,
+          coarsePointer,
+          reducedMotion: checkMotionReduced(),
+        });
+        if (!passive.done) {
+          body.position.set(basePosition.x, basePosition.y + passive.yOffset, basePosition.z);
+          body.quaternion.copy(baseQuaternion);
+          body.scale.set(
+            baseScale.x * passive.scaleXZ,
+            baseScale.y * passive.scaleY,
+            baseScale.z * passive.scaleXZ,
+          );
+          state.active = true;
+          group.userData.board3DCheckSettleState = {
+            seq: state.passiveCheckEvent.seq,
+            role: state.passiveCheckEvent.checkRole || 'stationary',
+            progress: passive.progress,
+            settle: passive.settle,
+          };
+          group.userData.board3DBodyFinishState = {
+            check: true,
+            passiveCheck: true,
+          };
+          group.updateMatrixWorld(true);
+          return;
+        }
+      }
       if (resetPose()) group.updateMatrixWorld(true);
       return;
     }
@@ -370,6 +461,7 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
       travelDistance: state.maxDistance,
       promotionEnergy: promotionEnergyFor(group),
       checkmateFinish: state.finishEvent?.checkmate === true,
+      checkFinish: state.finishEvent?.check === true && !checkMotionReduced(),
       castlingRole: state.finishEvent?.castlingRole || '',
       coarsePointer,
     });
@@ -428,6 +520,10 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
   group.userData.board3DBodyMotionType = String(type || 'p').toLowerCase();
   group.userData.board3DBodyFinishProfile = coarsePointer ? 'piece-finish-lite-v1' : 'piece-finish-v1';
   group.userData.board3DCheckmateFinishProfile = coarsePointer ? 'mate-seal-lite-v1' : 'mate-seal-v1';
+  const initialCheckReduced = checkMotionReduced();
+  group.userData.board3DCheckFinishProfile = initialCheckReduced
+    ? 'check-settle-reduced-v1'
+    : coarsePointer ? 'check-settle-lite-v1' : 'check-settle-v1';
   group.userData.board3DCastlingFinishProfile = coarsePointer ? 'castle-lock-lite-v1' : 'castle-lock-v1';
   group.userData.board3DPromotionMorphProfile = coarsePointer ? 'pawn-morph-lite-v1' : 'pawn-morph-v1';
   return group;
