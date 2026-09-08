@@ -1,0 +1,3 @@
+/* Keep the campaign base in its historical layer even though Combat loads it
+ * on demand after the global stylesheet. Later polish layers still win. */
+@import '../styles/06-combat-campaign.css' layer(l06);

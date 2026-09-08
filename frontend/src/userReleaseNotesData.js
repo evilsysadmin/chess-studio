@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfru',
+    title: 'Combat deja el mapa en el cuartel hasta que haga falta',
+    highlights: [
+      'Home y el acceso ya no descargan la composición completa de campaña de Combat Chess.',
+      'El mapa, el briefing y la mesa de batalla conservan su acabado y aparecen al entrar en Combat.',
+      'La entrada reduce otra porción de CSS bloqueante sin cambiar reglas, progreso ni controles.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfrt',
     title: 'Cada sala carga su propio uniforme',
     highlights: [

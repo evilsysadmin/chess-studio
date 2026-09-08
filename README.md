@@ -1,3 +1,15 @@
+### v16.6dm46zfru · CSS de campaña bajo demanda
+
+- El CSS inicial baja de 80,09 a 72,67 KB gzip: 48,6 KB crudos de mapa, briefing y batalla de Combat se descargan únicamente al abrir el modo.
+- La cascada global adopta capas nombradas que conservan el orden histórico aunque una hoja llegue desde un chunk lazy; el gate reconstruye los 555.591 bytes canónicos y verifica que no falte ni se reordene ninguna regla.
+- El presupuesto de build baja de 82 a 74 KiB gzip y la deuda se mide sobre módulos realmente globales, no penalizando las fronteras lazy que la reducen.
+
+### v16.6dm46zfru · La campaña se queda en el cuartel
+
+- El CSS inicial baja de 80,09 a 72,67 KB gzip: 48,6 KB crudos de mapa y campaña Combat se descargan sólo al entrar en el modo.
+- Las capas CSS nombradas conservan el orden histórico aunque una hoja llegue desde un chunk lazy; el gate verifica que las 15.432 líneas y 555.591 bytes canónicos sigan concatenados sin pérdidas ni reordenación.
+- El presupuesto de build baja de 82 a 74 KiB gzip y el presupuesto de deuda limita los módulos globales, permitiendo separar rutas sin premiar nuevas hojas universales.
+
 ### v16.6dm46zfrt · CSS por sala, no por adelantado
 
 - El CSS bloqueante de entrada baja de 104,05 a 80,09 KB gzip: la cascada visual de Home vive detrás del límite lazy de `MenuInner` y conserva su orden histórico.

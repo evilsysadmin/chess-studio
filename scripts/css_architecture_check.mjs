@@ -38,9 +38,18 @@ if (failures.length) {
 }
 
 const entrySource = fs.readFileSync(entry, 'utf8');
-const expectedImports = globalModules.map((name) => `@import './styles/${name}';`).join('\n') + '\n';
-if (entrySource !== expectedImports) {
-  console.error(`css-architecture-check FAIL · styles.css debe contener sólo los ${globalModules.length} imports globales ordenados del manifiesto.`);
+const layerFor = (name) => `l${name.slice(0, 2)}`;
+const layerOrder = [...new Set(globalModules.map(layerFor))];
+const expectedEntry = [
+  '/* Named layers preserve the historical cascade even when a route loads one',
+  ' * of these modules later. This makes CSS code-splitting safe and incremental. */',
+  `@layer ${layerOrder.join(', ')};`,
+  '',
+  ...globalModules.map((name) => `@import './styles/${name}' layer(${layerFor(name)});`),
+  '',
+].join('\n');
+if (entrySource !== expectedEntry) {
+  console.error(`css-architecture-check FAIL · styles.css debe declarar las capas y los ${globalModules.length} imports globales ordenados del manifiesto.`);
   process.exit(1);
 }
 
