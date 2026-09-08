@@ -149,17 +149,18 @@ function initialState() {
 }
 
 function createSfx() {
-  if (typeof window === 'undefined') return { play() {}, destroy() {} };
+  if (typeof window === 'undefined') return { play() {}, setVolume() {}, destroy() {} };
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
-  if (!AudioCtx) return { play() {}, destroy() {} };
+  if (!AudioCtx) return { play() {}, setVolume() {}, destroy() {} };
   let ctx = null;
   let master = null;
+  let volume = 1;
 
   function ensure() {
     if (ctx) return ctx;
     ctx = new AudioCtx();
     master = ctx.createGain();
-    master.gain.value = 0.055;
+    master.gain.value = 0.055 * volume;
     master.connect(ctx.destination);
     return ctx;
   }
@@ -208,6 +209,10 @@ function createSfx() {
       else if (kind === 'levelUp') { tone(392, 0.08, 'triangle', 0.16, 120); setTimeout(() => tone(523, 0.09, 'triangle', 0.14, 160), 70); setTimeout(() => tone(784, 0.12, 'triangle', 0.12, 120), 145); }
       else if (kind === 'hurt') { noise(0.08, 0.14); tone(84, 0.13, 'sawtooth', 0.18, -30); }
       else if (kind === 'boss') { tone(55, 0.32, 'sawtooth', 0.22, 22); setTimeout(() => tone(73, 0.32, 'sawtooth', 0.18, -18), 180); }
+    },
+    setVolume(value) {
+      volume = clamp(Number(value) || 0, 0, 1);
+      if (master) master.gain.value = 0.055 * volume;
     },
     destroy() {
       if (!ctx) return;
@@ -315,6 +320,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   let destroyed = false;
   let visible = document.visibilityState !== 'hidden';
   let inViewport = true;
+  let paused = false;
   let frame = 0;
   let previous = performance.now();
   let lastHudAt = 0;
@@ -421,6 +427,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   function startMission() {
     resetDynamic();
     resetInput();
+    paused = false;
     state = initialState();
     state.phase = 'playing';
     state.toast = pawnSlugMatthiasLine('start');
@@ -1035,45 +1042,21 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
         animateSlugEnemy(enemy.model, enemy.type, state.time, { moving: Math.abs(enemy.vx) > 0.2, hurt: enemy.hurt > 0 });
       }
 
-      if (!reducedMotion) {
+      if (!reducedMotion && (enemy.type === 'bishop' || enemy.type === 'boss')) {
         const moving = Math.abs(enemy.vx) > 0.2;
         const phase = enemy.model.userData.motionPhase ?? ((enemy.model.id || 0) * 0.73);
-        const rate = enemy.type === 'knight'
-          ? 10.5
-          : enemy.type === 'pawn'
-            ? 8.4
-            : enemy.type === 'bishop'
-              ? 5.2
-              : enemy.type === 'boss'
-                ? 2.2
-                : 3.1;
-        const bob = enemy.type === 'knight'
-          ? 0.13
-          : enemy.type === 'pawn'
-            ? 0.085
-            : enemy.type === 'bishop'
-              ? 0.065
-              : enemy.type === 'boss'
-                ? 0.045
-                : 0.035;
-        const lean = enemy.type === 'knight'
-          ? 0.055
-          : enemy.type === 'pawn'
-            ? 0.035
-            : enemy.type === 'bishop'
-              ? 0.018
-              : enemy.type === 'boss'
-                ? 0.008
-                : 0.012;
+        const rate = enemy.type === 'bishop' ? 5.2 : 2.2;
+        const bob = enemy.type === 'bishop' ? 0.065 : 0.045;
+        const lean = enemy.type === 'bishop' ? 0.018 : 0.008;
         const stride = Math.sin(state.time * rate + phase);
         enemy.model.position.y += moving ? Math.abs(stride) * bob : Math.max(0, stride) * bob * 0.35;
         const tilt = stride * lean * (moving ? 1 : 0.35) * enemy.dir;
         if (enemy.model.material) enemy.model.material.rotation += tilt;
         else enemy.model.rotation.z = tilt;
-        if (enemy.type === 'knight' && !enemy.onGround) {
-          if (enemy.model.material) enemy.model.material.rotation += enemy.dir * 0.08;
-          else enemy.model.rotation.z += enemy.dir * 0.08;
-        }
+      }
+      if (!reducedMotion && enemy.type === 'knight' && !enemy.onGround) {
+        if (enemy.model.material) enemy.model.material.rotation += enemy.dir * 0.08;
+        else enemy.model.rotation.z += enemy.dir * 0.08;
       }
 
       const contact = enemy.type === 'boss' ? 3.5 : enemy.type === 'bishop' ? 1.15 : enemy.type === 'rook' ? 0.85 : 0.58;
@@ -1275,6 +1258,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   }
 
   function update(dt) {
+    if (paused) return;
     state.time += dt;
     if (state.phase !== 'playing') return;
     if (state.hitStop > 0) {
@@ -1414,6 +1398,14 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   return {
     input(action, pressed = true) {
       setInput(action, pressed);
+    },
+    setPaused(value) {
+      paused = Boolean(value);
+      resetInput();
+      previous = performance.now();
+    },
+    setAudioMix({ sfxVolume } = {}) {
+      if (sfxVolume != null) sfx.setVolume(sfxVolume);
     },
     restart() {
       startMission();
