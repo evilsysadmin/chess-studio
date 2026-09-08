@@ -7,6 +7,7 @@ import { installWarRoomHansElderClock } from './WarRoomHansElderClock.js';
 import { installWarRoomHansFacingGuard } from './WarRoomHansFacingGuard.js';
 import { installWarRoomHansFireNarrative } from './WarRoomHansFireNarrative.js';
 import { installWarRoomHansHearthFacingGuard } from './WarRoomHansHearthFacingGuard.js';
+import { installWarRoomHansMopRoutine } from './WarRoomHansMopRoutine.js';
 import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
 import { installWarRoomMatthiasHansReaction } from './WarRoomMatthiasHansReaction.js';
 
@@ -92,6 +93,10 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         // cold-hearth -> rekindle story.
         installWarRoomHansFireNarrative(root);
         installWarRoomMatthiasHansReaction(root);
+        // Ambient chores are clients of the actor, never owners of the fireplace
+        // story. MopRoutine waits for the fire routine to finish and then leases
+        // Hans before roaming the room.
+        installWarRoomHansMopRoutine(root);
       }
       completedKeys.push(key);
     }
