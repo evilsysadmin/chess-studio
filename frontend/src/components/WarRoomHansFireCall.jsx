@@ -1,16 +1,30 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { pickHansLegalSuggestion } from './WarRoomHansBoardPeek.js';
+import { hansQuickIterationFrame } from './WarRoomHansIteration.js';
 import {
+  HANS_BOARD_PEEK_MS,
   HANS_FIRE_REPLY_LINE,
   HANS_FIRE_REPLY_MS,
+  HANS_LEAVING_GRUMBLE_LINE,
+  HANS_LEAVING_GRUMBLE_MS,
+  HANS_WORKING_REPLY_LINE,
+  HANS_WORKING_REPLY_MS,
   MATTHIAS_FIRE_CALL_LINE,
   MATTHIAS_FIRE_CALL_MS,
   MATTHIAS_FIRE_EPILOGUE_LINE,
   MATTHIAS_FIRE_EPILOGUE_MS,
+  MATTHIAS_HANS_WORKING_LINE,
+  MATTHIAS_HANS_WORKING_MS,
   projectHansFireReplyAnchor,
+  shouldStartHansBoardPeek,
   shouldStartHansFireEpilogue,
+  shouldStartHansLeavingGrumble,
 } from './WarRoomHansFireCallContract.js';
 import './WarRoomHansFireCall.css';
+
+const HANS_DOOR_OPENING_MS = 600;
+const HANS_PRESENTATION_TIME_SCALE = 0.54;
 
 function sameAnchor(current, next) {
   if (current === next) return true;
@@ -21,8 +35,15 @@ function sameAnchor(current, next) {
     && current.tailPercent === next.tailPercent;
 }
 
+function hansPresentationPhase(presentationMs) {
+  const elapsedSeconds = Math.max(0, Number(presentationMs) - HANS_DOOR_OPENING_MS)
+    / 1000 * HANS_PRESENTATION_TIME_SCALE;
+  return hansQuickIterationFrame(elapsedSeconds).phase;
+}
+
 export default function WarRoomHansFireCall({
   gameId,
+  fen = '',
   isThreeD = false,
   enabled = false,
   matthiasAnchorStyle = null,
@@ -32,11 +53,15 @@ export default function WarRoomHansFireCall({
   const [portalHost, setPortalHost] = useState(null);
   const [phase, setPhase] = useState('');
   const [hansAnchor, setHansAnchor] = useState(null);
+  const [suggestion, setSuggestion] = useState(null);
+  const fenRef = useRef(fen);
+  fenRef.current = fen;
   const anchorReady = Boolean(matthiasAnchorStyle && matthiasTrackedSquare);
 
   useEffect(() => {
     setPhase('');
     setHansAnchor(null);
+    setSuggestion(null);
   }, [gameId]);
 
   useEffect(() => {
@@ -64,6 +89,7 @@ export default function WarRoomHansFireCall({
   useEffect(() => {
     setPhase('');
     setHansAnchor(null);
+    setSuggestion(null);
     if (!portalHost || !enabled || !isThreeD || !gameId || !anchorReady) {
       return undefined;
     }
@@ -79,6 +105,11 @@ export default function WarRoomHansFireCall({
     let readyPaints = 0;
     let hansSeenOnscreen = false;
     let completionNotified = false;
+    let callReleased = false;
+    let presentationMs = 0;
+    let peekAttempted = false;
+    let boardSuggestion = null;
+    let grumblePlayed = false;
 
     const finishSequence = () => {
       if (completionNotified) return;
@@ -97,6 +128,12 @@ export default function WarRoomHansFireCall({
       if (visible && canvas?.dataset.warRoomHansSceneReady === 'true') {
         const hansScreen = canvas.dataset.warRoomHansScreen || 'missing';
 
+        if (callReleased) {
+          // Mirrors the bounded presentation clock used by WarRoomHansIteration.
+          presentationMs += Math.min(delta, presentationMs < HANS_DOOR_OPENING_MS ? 100 : 1000);
+        }
+        const hansPhase = callReleased ? hansPresentationPhase(presentationMs) : 'waiting';
+
         if (currentPhase === 'loading') {
           // Allow the completed WebGL frame to be painted before the call.
           readyPaints += 1;
@@ -110,6 +147,8 @@ export default function WarRoomHansFireCall({
           if (elapsed >= MATTHIAS_FIRE_CALL_MS) {
             canvas.dataset.warRoomHansCallReleased = 'true';
             canvas.dispatchEvent(new Event('warroom-hans-call-release'));
+            callReleased = true;
+            presentationMs = 0;
             currentPhase = 'await-hans';
             setPhase('await-hans');
             elapsed = 0;
@@ -117,6 +156,34 @@ export default function WarRoomHansFireCall({
         } else if (currentPhase === 'hans') {
           elapsed += delta;
           if (elapsed >= HANS_FIRE_REPLY_MS) {
+            currentPhase = 'await-peek';
+            setPhase('await-peek');
+            elapsed = 0;
+          }
+        } else if (currentPhase === 'peek') {
+          elapsed += delta;
+          if (elapsed >= HANS_BOARD_PEEK_MS) {
+            currentPhase = 'matthias-working';
+            setPhase('matthias-working');
+            elapsed = 0;
+          }
+        } else if (currentPhase === 'matthias-working') {
+          elapsed += delta;
+          if (elapsed >= MATTHIAS_HANS_WORKING_MS) {
+            currentPhase = 'hans-working-reply';
+            setPhase('hans-working-reply');
+            elapsed = 0;
+          }
+        } else if (currentPhase === 'hans-working-reply') {
+          elapsed += delta;
+          if (elapsed >= HANS_WORKING_REPLY_MS) {
+            currentPhase = 'await-exit';
+            setPhase('await-exit');
+            elapsed = 0;
+          }
+        } else if (currentPhase === 'grumble') {
+          elapsed += delta;
+          if (elapsed >= HANS_LEAVING_GRUMBLE_MS) {
             currentPhase = 'await-exit';
             setPhase('await-exit');
             elapsed = 0;
@@ -126,8 +193,14 @@ export default function WarRoomHansFireCall({
           if (elapsed >= MATTHIAS_FIRE_EPILOGUE_MS) finishSequence();
         }
 
-        if ((currentPhase === 'await-hans' || currentPhase === 'hans' || currentPhase === 'await-exit')
-          && hansScreen === 'onscreen') {
+        const tracksHans = currentPhase === 'await-hans'
+          || currentPhase === 'hans'
+          || currentPhase === 'await-peek'
+          || currentPhase === 'peek'
+          || currentPhase === 'hans-working-reply'
+          || currentPhase === 'await-exit'
+          || currentPhase === 'grumble';
+        if (tracksHans && hansScreen === 'onscreen') {
           hansSeenOnscreen = true;
           const anchor = projectHansFireReplyAnchor({
             ndcX: canvas.dataset.warRoomHansNdcX,
@@ -142,6 +215,35 @@ export default function WarRoomHansFireCall({
               setPhase('hans');
             }
           }
+        }
+
+        if (currentPhase === 'await-peek' && hansPhase === 'satisfied' && !peekAttempted) {
+          peekAttempted = true;
+          boardSuggestion = pickHansLegalSuggestion(fenRef.current);
+          setSuggestion(boardSuggestion);
+          if (shouldStartHansBoardPeek({
+            phase: currentPhase,
+            hansPhase,
+            suggestion: boardSuggestion,
+          })) {
+            currentPhase = 'peek';
+            elapsed = 0;
+            setPhase('peek');
+          } else {
+            currentPhase = 'await-exit';
+            setPhase('await-exit');
+          }
+        }
+
+        if (shouldStartHansLeavingGrumble({
+          phase: currentPhase,
+          hansPhase,
+          alreadyPlayed: grumblePlayed,
+        })) {
+          grumblePlayed = true;
+          currentPhase = 'grumble';
+          elapsed = 0;
+          setPhase('grumble');
         }
 
         if (shouldStartHansFireEpilogue({
@@ -211,6 +313,55 @@ export default function WarRoomHansFireCall({
         >
           <span>HANS</span>
           <p>{HANS_FIRE_REPLY_LINE}</p>
+        </aside>
+      )}
+      {phase === 'peek' && hansStyle && suggestion && (
+        <aside
+          className="warroom-fire-call-bubble warroom-fire-call-bubble-hans"
+          style={hansStyle}
+          role="status"
+          aria-live="polite"
+          aria-label="Hans cotillea el tablero y propone una jugada"
+        >
+          <span>HANS</span>
+          <p>{suggestion.line}</p>
+        </aside>
+      )}
+      {phase === 'matthias-working' && matthiasStyle && (
+        <aside
+          className="warroom-fire-call-bubble warroom-fire-call-bubble-matthias"
+          style={matthiasStyle}
+          data-matthias-square={matthiasTrackedSquare || ''}
+          role="status"
+          aria-live="polite"
+          aria-label="Matthias manda a Hans volver al trabajo"
+        >
+          <span>MATTHIAS</span>
+          <p>{MATTHIAS_HANS_WORKING_LINE}</p>
+        </aside>
+      )}
+      {phase === 'hans-working-reply' && hansStyle && (
+        <aside
+          className="warroom-fire-call-bubble warroom-fire-call-bubble-hans"
+          style={hansStyle}
+          role="status"
+          aria-live="polite"
+          aria-label="Hans obedece a Matthias"
+        >
+          <span>HANS</span>
+          <p>{HANS_WORKING_REPLY_LINE}</p>
+        </aside>
+      )}
+      {phase === 'grumble' && hansStyle && (
+        <aside
+          className="warroom-fire-call-bubble warroom-fire-call-bubble-hans"
+          style={hansStyle}
+          role="status"
+          aria-live="polite"
+          aria-label="Hans se marcha refunfuñando"
+        >
+          <span>HANS</span>
+          <p>{HANS_LEAVING_GRUMBLE_LINE}</p>
         </aside>
       )}
       {phase === 'epilogue' && matthiasStyle && (
