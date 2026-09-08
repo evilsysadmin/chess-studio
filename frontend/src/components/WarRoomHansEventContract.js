@@ -1,10 +1,17 @@
-export const WAR_ROOM_HANS_EVENT_VERSION = 'hans-event-per-game-v1';
+export const WAR_ROOM_HANS_EVENT_VERSION = 'hans-event-per-game-v2-chores';
 
 export const WAR_ROOM_HANS_EVENTS = Object.freeze([
   'fire',
   'mop',
   'water-plant',
   'espresso',
+  'dust-armor',
+  'dust-board',
+  'bring-book',
+  'mail',
+  'straighten-room',
+  'sweep-ashes',
+  'polish-brass',
 ]);
 
 function hashGameId(gameId) {
