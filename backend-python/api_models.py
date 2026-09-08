@@ -116,6 +116,12 @@ class GhostStyle(BaseModel):
     castle: float = Field(default=0.0, ge=-1.0, le=1.0)
     balance: bool = False
 
+    def model_dump(self, *args, **kwargs):
+        data = super().model_dump(*args, **kwargs)
+        if not self.balance:
+            data.pop("balance", None)
+        return data
+
 
 class NewGameRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
