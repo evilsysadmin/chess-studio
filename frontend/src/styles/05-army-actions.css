@@ -1,0 +1,12 @@
+
+.army-rename-button {
+  margin-top: .35rem;
+  padding: .28rem .55rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: .74rem;
+  cursor: pointer;
+}
+.army-rename-button:hover { color: var(--brass); border-color: var(--brass); }

@@ -6,7 +6,10 @@
 @import './styles/02-game-board.css' layer(l02);
 @import './styles/03-combat-core.css' layer(l03);
 @import './styles/04-operations-career.css' layer(l04);
-@import './styles/05-combat-roster.css' layer(l05);
+@import './styles/05-product-roster-foundation.css' layer(l05);
+@import './styles/05-shared-glossary.css' layer(l05);
+@import './styles/05-navigation-hint.css' layer(l05);
+@import './styles/05-mechanics-guidance.css' layer(l05);
 @import './styles/06-product-surfaces.css' layer(l06);
 @import './styles/07-progressive-ux.css' layer(l07);
 @import './styles/08-recent-polish.css' layer(l08);

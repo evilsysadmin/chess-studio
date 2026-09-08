@@ -1,3 +1,9 @@
+### v16.6dm46zfrv · Ejército, Escuela y despliegue bajo demanda
+
+- El CSS inicial baja de 72,67 a 66,27 kB gzip (71,0 a 64,7 KiB); desde el inicio de esta limpieza cae de 104,05 a 66,27 kB (−36,3 %).
+- 43,2 KB crudos de roster, tutorial y despliegue salen del camino crítico y se cargan con sus componentes lazy, manteniendo los 555.591 bytes y el orden canónico de la cascada.
+- El presupuesto de build baja de 74 a 68 KiB gzip; la deuda se limita por capas globales para permitir fragmentos físicos que preserven el orden histórico.
+
 ### v16.6dm46zfru · CSS de campaña bajo demanda
 
 - El CSS inicial baja de 80,09 a 72,67 KB gzip: 48,6 KB crudos de mapa, briefing y batalla de Combat se descargan únicamente al abrir el modo.

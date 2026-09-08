@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import './ArmyRoute.css';
 import {
   BASE_STATS,
   statsFor,

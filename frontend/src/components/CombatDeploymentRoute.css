@@ -1,0 +1,2 @@
+/* The deployment board is rendered only inside Combat/Campaign flows. */
+@import '../styles/05-combat-deployment.css' layer(l05);

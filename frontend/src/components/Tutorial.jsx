@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import './TutorialRoute.css';
 import { Chess } from 'chess.js';
 import SchoolBoard, { getSchoolBoardRenderer } from './SchoolBoard.jsx';
 import ChessGlossary from './ChessGlossary.jsx';

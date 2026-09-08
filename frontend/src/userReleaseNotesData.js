@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfrv',
+    title: 'El cuartel carga cuando entras en Combat',
+    highlights: [
+      'El acceso y Home dejan de descargar por adelantado los estilos del ejército, la Escuela y el tablero de despliegue.',
+      'Expedientes, tutoriales y despliegue conservan su aspecto y se cargan al abrir la pantalla correspondiente.',
+      'La entrada reduce otra porción de CSS bloqueante sin cambiar reglas, progreso ni controles.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfru',
     title: 'Combat deja el mapa en el cuartel hasta que haga falta',
     highlights: [

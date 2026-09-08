@@ -64,4 +64,4 @@ if (combined.length !== manifest.combinedBytes) {
   console.error(`css-architecture-check FAIL · bytes ${combined.length} != ${manifest.combinedBytes}`);
   process.exit(1);
 }
-console.log(`css-architecture-check OK · ${orderedModules.length} módulos canónicos · ${globalModules.length} globales · ${lazyModules.length} lazy · ${manifest.combinedLines} líneas originales · ${combined.length} bytes · orden preservado`);
+console.log(`css-architecture-check OK · ${orderedModules.length} módulos canónicos · ${globalModules.length} globales · ${lazyModules.length} lazy · ${manifest.combinedLines} líneas · ${combined.length} bytes · orden canónico verificado`);
