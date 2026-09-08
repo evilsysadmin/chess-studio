@@ -20,13 +20,24 @@
     max-width: 100%;
   }
 
+  /* Board3D's tablet rule uses 99vw up to 1260px. At 844px that is 835.6px,
+   * but the app shell still owns ~16.9px gutters on both sides, so the room
+   * extends past the right edge. In coarse landscape the usable width is the
+   * shell content box, not the raw viewport. !important is intentional here:
+   * this device-specific contract must beat the generic 99vw Board3D rule. */
   .game-screen .game-layout.game-layout-3d {
-    width: 100%;
+    width: calc(100vw - (var(--shell-gutter) * 2)) !important;
+    max-width: calc(100vw - (var(--shell-gutter) * 2)) !important;
     margin-inline: auto;
   }
 
+  .game-screen .board-column,
   .game-screen .board-live-row.is-3d-warroom {
     width: 100%;
+    max-width: 100%;
+  }
+
+  .game-screen .board-live-row.is-3d-warroom {
     grid-template-columns: minmax(0, 1fr) minmax(148px, 188px);
     grid-template-rows: auto minmax(0, 1fr);
     grid-template-areas:
