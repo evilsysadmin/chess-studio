@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
   fireCallPhase,
-  HANS_BOARD_PEEK_MS,
+  HANS_BOARD_DIALOGUE_GAP_MS,
   HANS_FIRE_REPLY_LINE,
-  HANS_WORKING_REPLY_MS,
+  HANS_BOARD_PEEK_TIMELINE_T,
   MATTHIAS_FIRE_CALL_LINE,
   MATTHIAS_FIRE_CALL_MS,
   MATTHIAS_FIRE_EPILOGUE_LINE,
-  MATTHIAS_HANS_WORKING_MS,
+  hansBoardPeekHoldsMovement,
   projectHansFireReplyAnchor,
+  projectHansInitialReplyAnchor,
   resolveHansFireOpeningLatch,
+  shouldStartHansBoardPeek,
   shouldStartHansFireEpilogue,
 } from './WarRoomHansFireCallContract.js';
 
@@ -23,10 +25,31 @@ describe('War Room Hans fire call contract', () => {
     expect(fireCallPhase(MATTHIAS_FIRE_CALL_MS + 1, true)).toBe('hans');
   });
 
-  it('mantiene el cotilleo dentro de la pausa satisfied antes de que Hans empiece a marcharse', () => {
-    const interruptionMs = HANS_BOARD_PEEK_MS + MATTHIAS_HANS_WORKING_MS + HANS_WORKING_REPLY_MS;
-    expect(interruptionMs).toBe(2350);
-    expect(interruptionMs).toBeLessThan(2700);
+  it('cotillea sólo durante la salida junto al tablero y congela la marcha mientras conversa', () => {
+    const suggestion = { line: 'Yo probaría caballo de g1 a f3.' };
+    expect(shouldStartHansBoardPeek({
+      phase: 'await-exit-peek',
+      hansPhase: 'leave',
+      timelineT: HANS_BOARD_PEEK_TIMELINE_T - 0.01,
+      suggestion,
+    })).toBe(false);
+    expect(shouldStartHansBoardPeek({
+      phase: 'await-exit-peek',
+      hansPhase: 'leave',
+      timelineT: HANS_BOARD_PEEK_TIMELINE_T,
+      suggestion,
+    })).toBe(true);
+    expect(hansBoardPeekHoldsMovement('peek')).toBe(true);
+    expect(hansBoardPeekHoldsMovement('gap-after-peek')).toBe(true);
+    expect(hansBoardPeekHoldsMovement('matthias-working')).toBe(true);
+    expect(hansBoardPeekHoldsMovement('gap-after-matthias')).toBe(true);
+    expect(hansBoardPeekHoldsMovement('hans-working-reply')).toBe(true);
+    expect(hansBoardPeekHoldsMovement('grumble')).toBe(false);
+  });
+
+  it('deja entre cinco y seis segundos de silencio entre los bocadillos del cotilleo', () => {
+    expect(HANS_BOARD_DIALOGUE_GAP_MS).toBeGreaterThanOrEqual(5000);
+    expect(HANS_BOARD_DIALOGUE_GAP_MS).toBeLessThanOrEqual(6000);
   });
 
   it('mantiene armada la entrada de Hans aunque la partida empiece a mover mientras carga la sala', () => {
@@ -80,16 +103,12 @@ describe('War Room Hans fire call contract', () => {
     })).toBe(true);
   });
 
-  it('ancla la respuesta de Hans a su posición proyectada y sesga la cola al entrar por un lateral', () => {
-    const right = projectHansFireReplyAnchor({ ndcX: 0.82, ndcY: 0.1 });
-    const left = projectHansFireReplyAnchor({ ndcX: -0.82, ndcY: 0.1 });
-    const center = projectHansFireReplyAnchor({ ndcX: 0, ndcY: 0.1 });
-
-    expect(right.left).toBeGreaterThan(80);
-    expect(right.tailPercent).toBe(82);
-    expect(left.left).toBeLessThan(20);
-    expect(left.tailPercent).toBe(18);
-    expect(center.tailPercent).toBe(50);
-    expect(projectHansFireReplyAnchor({ ndcX: 'wat', ndcY: 0 })).toBeNull();
+  it('mantiene el Sí, señor más pegado a Hans que los bocadillos de salida', () => {
+    const generic = projectHansFireReplyAnchor({ ndcX: 0.82, ndcY: 0.1 });
+    const initial = projectHansInitialReplyAnchor({ ndcX: 0.82, ndcY: 0.1 });
+    expect(generic.tailPercent).toBe(82);
+    expect(initial.tailPercent).toBe(62);
+    expect(Math.abs(initial.bubbleShiftPercent)).toBeLessThan(Math.abs(generic.bubbleShiftPercent));
+    expect(projectHansInitialReplyAnchor({ ndcX: 'wat', ndcY: 0 })).toBeNull();
   });
 });
