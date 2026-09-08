@@ -63,11 +63,11 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             aria-controls="illustrated-home-tools"
             onClick={() => setToolsOpen(!toolsOpen)}
           >
-            <span className="illustrated-home__dungeon-copy"><strong>MAZMORRAS</strong><small>Entra bajo tu cuenta y riesgo.</small></span>
+            <span className="illustrated-home__dungeon-copy"><strong>MAZMORRAS</strong><small>Entra bajo tu cuenta y riesgo!</small></span>
             <span className="illustrated-home__dungeon-chevron" aria-hidden="true">{toolsOpen ? '↑' : '↓'}</span>
           </button>
           {toolsOpen && <nav id="illustrated-home-tools" className="illustrated-home__dungeon-panel" aria-label="Más modos y herramientas">
-            <header><span>BAJO EL CASTILLO</span><strong>MAZMORRAS</strong><small>Más modos. Menos supervisión adulta.</small></header>
+            <header><span>BAJO EL CASTILLO</span><strong>MAZMORRAS</strong><small>Entra bajo tu cuenta y riesgo!</small></header>
             {tools.map(([label, action]) => <button type="button" key={label} onClick={() => { setToolsOpen(false); action(); }}>{label}</button>)}
           </nav>}
         </div>
