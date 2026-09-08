@@ -1,9 +1,17 @@
 import * as THREE from 'three';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   installWarRoomHansHearthFacingGuard,
   WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION,
 } from './WarRoomHansHearthFacingGuard.js';
+
+const originalDocument = globalThis.document;
+
+afterEach(() => {
+  if (originalDocument === undefined) delete globalThis.document;
+  else globalThis.document = originalDocument;
+  vi.restoreAllMocks();
+});
 
 function makeScene() {
   const root = new THREE.Group();
@@ -53,21 +61,24 @@ function fireWorldPosition(fire) {
 
 describe('Hans hearth-facing guard', () => {
   it('turns the rendered face toward the fire during place-log with reusable scratch vectors', () => {
+    globalThis.document = { querySelector: vi.fn(() => null) };
     const { root, hans, driver, head, fire } = makeScene();
     expect(faceDotPoint(hans, head, fireWorldPosition(fire))).toBeLessThan(0);
     expect(installWarRoomHansHearthFacingGuard(root)).toBe(1);
-    expect(driver.userData.warRoomHansHearthFacingHotPath).toBe('preallocated-scratch-v3-board-peek');
+    expect(driver.userData.warRoomHansHearthFacingHotPath).toBe('preallocated-scratch-v4-board-side');
     driver.onBeforeRender();
     expect(hans.userData.warRoomHansHearthFacingGuard).toBe(WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION);
     expect(hans.userData.warRoomHansHearthFacingTarget).toBe('fire-core-rendered');
-    expect(hans.userData.warRoomHansHearthFacingHotPath).toBe('preallocated-scratch-v3-board-peek');
     expect(faceDotPoint(hans, head, fireWorldPosition(fire))).toBeGreaterThan(0.99);
   });
 
-  it('turns Hans from the hearth toward the board center while he is satisfied', () => {
+  it('turns Hans toward the board only while the board-side conversation is holding him', () => {
+    globalThis.document = {
+      querySelector: vi.fn(() => ({ dataset: { warRoomHansNarrativePhase: 'peek' } })),
+    };
     const { root, hans, driver, head } = makeScene();
+    driver.userData.warRoomHansPhase = 'leave';
     expect(installWarRoomHansHearthFacingGuard(root)).toBe(1);
-    driver.userData.warRoomHansPhase = 'satisfied';
     driver.onBeforeRender();
 
     expect(hans.userData.warRoomHansHearthFacingTarget).toBe('board-center-rendered');
