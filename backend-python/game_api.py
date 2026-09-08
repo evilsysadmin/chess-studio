@@ -105,7 +105,11 @@ def resolve_engine_move_or_fallback(board: chess.Board, suggestion: Optional[dic
 
 def compute_engine_move_or_fallback(board: chess.Board, difficulty: float, ghost_style: Optional[dict] = None) -> tuple[chess.Move, dict] | None:
     try:
-        suggestion = get_balanced_cpu_move(board, difficulty, ghost_style)
+        balanced = isinstance(ghost_style, dict) and ghost_style.get("balance") is True
+        if balanced:
+            suggestion = get_balanced_cpu_move(board, difficulty, ghost_style)
+        else:
+            suggestion = get_cpu_move(board, difficulty, ghost_style)
     except Exception as exc:
         # No incluimos FEN ni contenido de la partida en logs operativos.
         logger.warning("cpu_move_failed_using_legal_fallback error_type=%s", type(exc).__name__)
