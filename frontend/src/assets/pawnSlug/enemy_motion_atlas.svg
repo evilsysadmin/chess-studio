@@ -1,59 +1,49 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="3072" height="256" viewBox="0 0 3072 256">
-  <defs>
-    <linearGradient id="armor" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#4f555e"/><stop offset="1" stop-color="#1c2025"/></linearGradient>
-    <linearGradient id="red" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#d16b4d"/><stop offset="1" stop-color="#6d241d"/></linearGradient>
-    <linearGradient id="ivory" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#eee0c8"/><stop offset="1" stop-color="#b8a78a"/></linearGradient>
-    <filter id="s" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#000" flood-opacity=".55"/></filter>
+  <!-- Hotfix: preserve the approved raster enemy art while keeping the 12-cell runtime contract.
+       The source atlas has three 256px cells: pawn, knight, rook. Each is repeated four times.
+       Real distinct motion frames can replace these cells later without changing JS/runtime semantics.
 
-    <g id="pawn-core">
-      <path d="M85 194 Q86 222 108 226 H143 Q166 221 165 194 L153 176 H98Z" fill="url(#armor)" stroke="#090b0d" stroke-width="7"/>
-      <path d="M94 178 Q105 145 125 142 Q146 144 157 178Z" fill="url(#armor)" stroke="#090b0d" stroke-width="7"/>
-      <circle cx="126" cy="114" r="32" fill="url(#ivory)" stroke="#090b0d" stroke-width="7"/>
-      <path d="M99 100 Q114 84 144 87 L154 101Z" fill="#313740" stroke="#090b0d" stroke-width="6"/>
-      <rect x="99" y="92" width="59" height="13" rx="5" fill="url(#red)" stroke="#090b0d" stroke-width="5"/>
-      <path d="M109 111 L120 107" stroke="#17191c" stroke-width="5" stroke-linecap="round"/>
-      <path d="M136 107 L147 112" stroke="#17191c" stroke-width="5" stroke-linecap="round"/>
-      <ellipse cx="116" cy="119" rx="4" ry="5" fill="#101112"/><ellipse cx="142" cy="119" rx="4" ry="5" fill="#101112"/>
-      <path d="M117 139 Q129 135 143 140" fill="none" stroke="#5b302b" stroke-width="4" stroke-linecap="round"/>
-    </g>
-    <g id="pawn-gun">
-      <path d="M151 158 L207 153 L214 164 L158 175Z" fill="#56616d" stroke="#090b0d" stroke-width="6"/>
-      <rect x="205" y="151" width="28" height="9" rx="3" fill="#24282e" stroke="#090b0d" stroke-width="5"/>
-      <path d="M176 170 L186 188 L196 184 L190 164Z" fill="#33281f" stroke="#090b0d" stroke-width="5"/>
-    </g>
-    <g id="knight-headgear">
-      <path d="M107 88 Q123 57 147 84 L141 99Z" fill="#525964" stroke="#090b0d" stroke-width="6"/>
-      <path d="M111 78 L91 58 L118 70Z" fill="url(#red)" stroke="#090b0d" stroke-width="5"/>
-    </g>
-    <g id="rook-core">
-      <path d="M70 196 Q72 224 97 228 H156 Q181 224 183 196 L169 172 H84Z" fill="url(#armor)" stroke="#090b0d" stroke-width="8"/>
-      <rect x="78" y="119" width="98" height="65" rx="12" fill="url(#armor)" stroke="#090b0d" stroke-width="8"/>
-      <path d="M79 116 L94 79 H113 V64 H131 V79 H148 V64 H165 V117Z" fill="#434a54" stroke="#090b0d" stroke-width="8"/>
-      <rect x="103" y="101" width="46" height="11" rx="4" fill="url(#red)" stroke="#090b0d" stroke-width="4"/>
-    </g>
-    <g id="rook-gun">
-      <path d="M146 142 L213 136 L219 150 L151 156Z" fill="#4d5763" stroke="#090b0d" stroke-width="7"/>
-      <rect x="210" y="134" width="31" height="10" rx="3" fill="#24282e" stroke="#090b0d" stroke-width="5"/>
-    </g>
-  </defs>
-
-  <rect width="3072" height="256" fill="none"/>
-
-  <!-- Pawn: four grounded gait poses. Pivot is at the feet, so no hopping. -->
-  <g transform="translate(0 0)" filter="url(#s)"><ellipse cx="126" cy="226" rx="51" ry="11" fill="#000" opacity=".3"/><g transform="translate(126 226) rotate(-2) scale(1.012 .994) translate(-126 -226)"><use href="#pawn-core"/><g transform="rotate(-1 154 164)"><use href="#pawn-gun"/></g></g></g>
-  <g transform="translate(256 0)" filter="url(#s)"><ellipse cx="126" cy="226" rx="53" ry="10" fill="#000" opacity=".3"/><g transform="translate(126 226) rotate(1.5) scale(.992 1.004) translate(-126 -226)"><use href="#pawn-core"/><g transform="rotate(1.8 154 164)"><use href="#pawn-gun"/></g></g></g>
-  <g transform="translate(512 0)" filter="url(#s)"><ellipse cx="126" cy="226" rx="51" ry="11" fill="#000" opacity=".3"/><g transform="translate(126 226) rotate(2.2) scale(1.012 .994) translate(-126 -226)"><use href="#pawn-core"/><g transform="rotate(1 154 164)"><use href="#pawn-gun"/></g></g></g>
-  <g transform="translate(768 0)" filter="url(#s)"><ellipse cx="126" cy="226" rx="53" ry="10" fill="#000" opacity=".3"/><g transform="translate(126 226) rotate(-1.2) scale(.992 1.004) translate(-126 -226)"><use href="#pawn-core"/><g transform="rotate(-1.8 154 164)"><use href="#pawn-gun"/></g></g></g>
-
-  <!-- Knight: faster, alternating grounded strides. -->
-  <g transform="translate(1024 0)" filter="url(#s)"><ellipse cx="126" cy="226" rx="53" ry="11" fill="#000" opacity=".3"/><g transform="translate(126 226) rotate(-4) scale(1.018 .99) translate(-126 -226)"><use href="#pawn-core"/><use href="#knight-headgear"/><use href="#pawn-gun"/><path d="M82 218 Q99 192 119 211" fill="none" stroke="#090b0d" stroke-width="7"/><path d="M142 220 Q160 201 179 215" fill="none" stroke="#090b0d" stroke-width="7"/></g></g>
-  <g transform="translate(1280 0)" filter="url(#s)"><ellipse cx="126" cy="226" rx="55" ry="10" fill="#000" opacity=".3"/><g transform="translate(126 226) rotate(1.5) scale(.985 1.008) translate(-126 -226)"><use href="#pawn-core"/><use href="#knight-headgear"/><g transform="rotate(2.5 154 164)"><use href="#pawn-gun"/></g><path d="M81 219 Q98 201 117 214" fill="none" stroke="#090b0d" stroke-width="7"/><path d="M141 220 Q160 191 181 212" fill="none" stroke="#090b0d" stroke-width="7"/></g></g>
-  <g transform="translate(1536 0)" filter="url(#s)"><ellipse cx="126" cy="226" rx="53" ry="11" fill="#000" opacity=".3"/><g transform="translate(126 226) rotate(4) scale(1.018 .99) translate(-126 -226)"><use href="#pawn-core"/><use href="#knight-headgear"/><use href="#pawn-gun"/><path d="M80 219 Q100 202 119 214" fill="none" stroke="#090b0d" stroke-width="7"/><path d="M141 219 Q159 191 180 212" fill="none" stroke="#090b0d" stroke-width="7"/></g></g>
-  <g transform="translate(1792 0)" filter="url(#s)"><ellipse cx="126" cy="226" rx="55" ry="10" fill="#000" opacity=".3"/><g transform="translate(126 226) rotate(-1.5) scale(.985 1.008) translate(-126 -226)"><use href="#pawn-core"/><use href="#knight-headgear"/><g transform="rotate(-2.5 154 164)"><use href="#pawn-gun"/></g><path d="M82 218 Q99 191 120 211" fill="none" stroke="#090b0d" stroke-width="7"/><path d="M143 220 Q159 201 178 215" fill="none" stroke="#090b0d" stroke-width="7"/></g></g>
-
-  <!-- Rook: heavy tread-like weight transfer, always planted. -->
-  <g transform="translate(2048 0)" filter="url(#s)"><ellipse cx="126" cy="228" rx="68" ry="12" fill="#000" opacity=".32"/><g transform="translate(126 228) rotate(-1.2) scale(1.006 .997) translate(-126 -228)"><use href="#rook-core"/><g transform="rotate(-.8 148 148)"><use href="#rook-gun"/></g></g></g>
-  <g transform="translate(2304 0)" filter="url(#s)"><ellipse cx="126" cy="228" rx="70" ry="11" fill="#000" opacity=".32"/><g transform="translate(126 228) rotate(.5) scale(.996 1.002) translate(-126 -228)"><use href="#rook-core"/><g transform="rotate(.8 148 148)"><use href="#rook-gun"/></g></g></g>
-  <g transform="translate(2560 0)" filter="url(#s)"><ellipse cx="126" cy="228" rx="68" ry="12" fill="#000" opacity=".32"/><g transform="translate(126 228) rotate(1.2) scale(1.006 .997) translate(-126 -228)"><use href="#rook-core"/><g transform="rotate(.8 148 148)"><use href="#rook-gun"/></g></g></g>
-  <g transform="translate(2816 0)" filter="url(#s)"><ellipse cx="126" cy="228" rx="70" ry="11" fill="#000" opacity=".32"/><g transform="translate(126 228) rotate(-.5) scale(.996 1.002) translate(-126 -228)"><use href="#rook-core"/><g transform="rotate(-.8 148 148)"><use href="#rook-gun"/></g></g></g>
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+       KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY KEEP_EXTERNAL_FOR_RELATIVE_RASTER_DEPENDENCY
+  -->
+  <svg x="0" y="0" width="256" height="256" viewBox="0 0 256 256" overflow="hidden"><image href="enemy_atlas_v2.webp" x="0" y="0" width="768" height="256"/></svg>
+  <svg x="256" y="0" width="256" height="256" viewBox="0 0 256 256" overflow="hidden"><image href="enemy_atlas_v2.webp" x="0" y="0" width="768" height="256"/></svg>
+  <svg x="512" y="0" width="256" height="256" viewBox="0 0 256 256" overflow="hidden"><image href="enemy_atlas_v2.webp" x="0" y="0" width="768" height="256"/></svg>
+  <svg x="768" y="0" width="256" height="256" viewBox="0 0 256 256" overflow="hidden"><image href="enemy_atlas_v2.webp" x="0" y="0" width="768" height="256"/></svg>
+  <svg x="1024" y="0" width="256" height="256" viewBox="0 0 256 256" overflow="hidden"><image href="enemy_atlas_v2.webp" x="-256" y="0" width="768" height="256"/></svg>
+  <svg x="1280" y="0" width="256" height="256" viewBox="0 0 256 256" overflow="hidden"><image href="enemy_atlas_v2.webp" x="-256" y="0" width="768" height="256"/></svg>
+  <svg x="1536" y="0" width="256" height="256" viewBox="0 0 256 256" overflow="hidden"><image href="enemy_atlas_v2.webp" x="-256" y="0" width="768" height="256"/></svg>
+  <svg x="1792" y="0" width="256" height="256" viewBox="0 0 256 256" overflow="hidden"><image href="enemy_atlas_v2.webp" x="-256" y="0" width="768" height="256"/></svg>
+  <svg x="2048" y="0" width="256" height="256" viewBox="0 0 256 256" overflow="hidden"><image href="enemy_atlas_v2.webp" x="-512" y="0" width="768" height="256"/></svg>
+  <svg x="2304" y="0" width="256" height="256" viewBox="0 0 256 256" overflow="hidden"><image href="enemy_atlas_v2.webp" x="-512" y="0" width="768" height="256"/></svg>
+  <svg x="2560" y="0" width="256" height="256" viewBox="0 0 256 256" overflow="hidden"><image href="enemy_atlas_v2.webp" x="-512" y="0" width="768" height="256"/></svg>
+  <svg x="2816" y="0" width="256" height="256" viewBox="0 0 256 256" overflow="hidden"><image href="enemy_atlas_v2.webp" x="-512" y="0" width="768" height="256"/></svg>
 </svg>
