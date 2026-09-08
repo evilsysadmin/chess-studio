@@ -1,3 +1,9 @@
+### v16.6dm46zfrs · Home no precarga la War Room
+
+- El bootstrap sigue registrando el renderer 3D de forma lazy, pero deja de importar Board3D durante el idle de Home/login.
+- La entrada evita aproximadamente 240 KB gzip de JavaScript 3D y Three.js —unos 855 KB sin comprimir— hasta que existe un montaje real de tablero 3D.
+- Una regresión de módulo exige que registrar Board3D no programe `requestIdleCallback`; War Room, reglas y controles permanecen intactos.
+
 ### v16.6dm46zfrr · Fluidez del reloj y aislamiento del motor
 
 - Las partidas con reloj mantienen el pulso de 200 ms, pero sólo las etiquetas de tiempo se suscriben a cada tic; tablero, paneles y War Room dejan de reconciliarse cinco veces por segundo.

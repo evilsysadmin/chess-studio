@@ -282,7 +282,10 @@
   /* Music + notebook are two compact utilities, not two full-width dashboard
      cards. Closed, they share one row. Opening the notebook promotes it to the
      full row without hiding content or changing semantics. */
-  .game-screen .game-side-column.game-side-column-3d {
+  /* Board3D.css arrives with the deferred renderer chunk. Anchor the final
+     phone composition to War Room so its generic one-column fallback cannot
+     win merely because the 3D stylesheet finished loading later. */
+  .game-screen .board-live-row.is-3d-warroom .game-side-column.game-side-column-3d {
     grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr);
     grid-template-areas:
       'music notation'

@@ -18,11 +18,14 @@ test('War Room · Matthias llama a Hans por el fuego y Hans responde al aparecer
 
   const matthiasCall = page.getByRole('status', { name: 'Matthias llama a Hans por el fuego' });
   await expect(matthiasCall).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
-  await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true');
-  await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'hidden');
+  // The call is intentionally brief. Assert its own contract immediately: a
+  // cold 3D mount can replace the canvas while the scene reaches its ready
+  // frame, and waiting on that new canvas must not consume the whole bubble.
   await expect(matthiasCall).toContainText('MATTHIAS');
   await expect(matthiasCall).toContainText('HANS! El fuego, bitte.');
   await expect(matthiasCall).toHaveAttribute('data-matthias-square', /^[a-h][1-8]$/);
+  await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true');
+  await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'hidden');
 
   await expect(page.getByRole('status', { name: 'Bravuconada de Matthias al iniciar la partida' })).toHaveCount(0);
 
