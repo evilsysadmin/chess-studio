@@ -50,12 +50,10 @@ export function warRoomHansSafeRoomLoop(floor, parent) {
   return SAFE_LOOP_FRACTIONS.map(([px, pz]) => {
     const world = new THREE.Vector3(
       box.min.x + size.x * px,
-      0,
+      -0.34,
       box.min.z + size.z * pz,
     );
-    const point = localPoint(parent, world);
-    point.y = Number(parent.worldToLocal(new THREE.Vector3(0, -0.34, 0)).y) || point.y;
-    return point;
+    return localPoint(parent, world);
   });
 }
 
@@ -91,7 +89,7 @@ export function moveWarRoomHansAlongRoute(hans, route, index, maxStep) {
 
   while (remainingStep > 0 && routeIndex < route.length) {
     const motion = moveWarRoomHansToward(hans, route[routeIndex], remainingStep);
-    if (!motion.valid) return { arrived: false, travelled, index: routeIndex, valid: false };
+    if (motion.blocked) return { arrived: false, travelled, index: routeIndex, valid: false };
     travelled += motion.travelled;
     remainingStep = Math.max(0, remainingStep - motion.travelled);
     if (!motion.arrived) break;
@@ -99,7 +97,6 @@ export function moveWarRoomHansAlongRoute(hans, route, index, maxStep) {
       return { arrived: true, travelled, index: routeIndex, valid: true };
     }
     routeIndex += 1;
-    if (motion.travelled === 0 && remainingStep <= 0) break;
   }
 
   return { arrived: false, travelled, index: routeIndex, valid: true };
