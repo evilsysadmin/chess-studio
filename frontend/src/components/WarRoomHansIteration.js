@@ -514,6 +514,7 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
   let startedAt = null;
   let presentationMs = 0;
   const awaitCall = root.userData?.warRoomHansAwaitCall === true;
+  const useCoarseEntry = coarsePointer && !awaitCall;
   const frameScratch = {};
   const doorDepth = Math.abs(Number(doorRefs?.doorZ) - Number(fireplace.position.z));
   const refs = {
@@ -547,12 +548,12 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
   driver.userData.warRoomHansMobileEntryHeadstartSeconds = 0;
   driver.userData.warRoomHansClockStart = 'first-real-render-v1';
   driver.userData.warRoomHansPresentationTimeScale = HANS_PRESENTATION_TIME_SCALE;
-  driver.userData.warRoomHansEntryPresentation = coarsePointer ? 'mobile-visible-start-v4-slow' : 'full-service-corridor-v3-slow';
+  driver.userData.warRoomHansEntryPresentation = useCoarseEntry ? 'mobile-visible-start-v4-slow' : 'full-service-corridor-v3-slow';
   driver.userData.warRoomHansChoreography = 'door-log-fire-poker-armor-bypass-door-v3';
   driver.userData.warRoomHansFrameHotPath = 'scratch-writer-v2';
   driver.userData.warRoomHansFacingHotPath = 'scalar-targets-v1';
 
-  const initialFrame = writeHansQuickIterationFrame(frameScratch, 0, coarsePointer);
+  const initialFrame = writeHansQuickIterationFrame(frameScratch, 0, useCoarseEntry);
   if (awaitCall) {
     initialFrame.hansVisible = false;
     initialFrame.doorOpen = 0;
@@ -569,7 +570,7 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
     presentationMs += awaitCall ? Math.min(delta, presentationMs < 600 ? 100 : 1000) : delta;
     const doorOpeningMs = awaitCall ? 600 : 0;
     const presentationElapsed = Math.max(0, presentationMs - doorOpeningMs) / 1000 * HANS_PRESENTATION_TIME_SCALE;
-    const frame = writeHansQuickIterationFrame(frameScratch, presentationElapsed, coarsePointer);
+    const frame = writeHansQuickIterationFrame(frameScratch, presentationElapsed, useCoarseEntry);
     if (presentationMs < doorOpeningMs) {
       frame.hansVisible = false;
       frame.doorOpen = smoothstep01(presentationMs / doorOpeningMs);

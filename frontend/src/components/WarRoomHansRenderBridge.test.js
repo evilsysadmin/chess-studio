@@ -111,6 +111,7 @@ for (const coarsePointer of [false, true]) {
     const door = scene.getObjectByName('war-room-hans-service-door');
     const fire = scene.getObjectByName('war-room-fire-core');
     try {
+      expect(driver.userData.warRoomHansEntryPresentation).toBe('full-service-corridor-v3-slow');
       for (now of [0, 1000, 30_000]) {
         driver.onBeforeRender();
         expect(hans.visible).toBe(false);
@@ -128,6 +129,8 @@ for (const coarsePointer of [false, true]) {
         driver.onBeforeRender();
       }
       expect(hans.visible).toBe(true);
+      expect(Math.abs(hans.position.x)).toBeGreaterThan(2.4);
+      expect(Math.abs(hans.position.z)).toBeGreaterThan(3.2);
       expect(driver.userData.warRoomHansPhase).toBe('fire-dimming');
       expect(fire.visible).toBe(false);
     } finally {
