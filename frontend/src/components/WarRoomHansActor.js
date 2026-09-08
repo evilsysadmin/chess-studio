@@ -31,7 +31,7 @@ export function getWarRoomHansActor(root) {
 
 export function getWarRoomHansCanvas(actor) {
   if (!actor) return null;
-  if (actor.canvas?.isConnected !== false) return actor.canvas;
+  if (actor.canvas && actor.canvas.isConnected !== false) return actor.canvas;
   actor.canvas = globalThis.document?.querySelector?.(CANVAS_SELECTOR) || null;
   return actor.canvas;
 }
