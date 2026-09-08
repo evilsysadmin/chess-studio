@@ -1,0 +1,200 @@
+/* Canonical mobile Home: keep primary navigation diegetic.
+ * Narrow screens still use the same Great Hall artwork; destinations stay attached
+ * to the physical objects instead of becoming a dashboard below the scene.
+ */
+@media (max-width: 999px) {
+  .illustrated-home {
+    min-height: 100dvh;
+    padding: 58px 0 0;
+  }
+
+  .illustrated-home__stage {
+    width: 100%;
+    height: 56.25vw;
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+    overflow: visible;
+  }
+
+  .illustrated-home__art {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    object-fit: fill;
+  }
+
+  .illustrated-home__stage > nav {
+    position: absolute;
+    inset: 0;
+    display: block;
+    pointer-events: none;
+  }
+
+  .illustrated-home__destination {
+    position: absolute !important;
+    z-index: 6;
+    width: auto !important;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 4px 5px;
+    border: 0;
+    border-radius: 8px;
+    background: rgba(12, 8, 5, .16);
+    box-shadow: none;
+    color: #ffe9b0;
+    text-align: center;
+    text-shadow: 0 2px 4px #090401, 0 0 8px #090401;
+    pointer-events: auto;
+  }
+
+  .illustrated-home__destination svg {
+    width: clamp(13px, 3.4vw, 22px);
+    height: clamp(13px, 3.4vw, 22px);
+    color: #f4ca67;
+    filter: drop-shadow(0 1px 2px #120802);
+  }
+
+  .illustrated-home__destination strong {
+    font: 700 clamp(8px, 2vw, 13px)/1.05 Georgia, serif;
+    white-space: nowrap;
+  }
+
+  .illustrated-home__destination > span {
+    max-width: 12em;
+    color: #e2d1aa;
+    font: 500 clamp(7px, 1.45vw, 10px)/1.05 Arial, sans-serif;
+  }
+
+  .illustrated-home__destination i { display: none; }
+
+  .illustrated-home__destination:hover,
+  .illustrated-home__destination:focus-visible {
+    background: radial-gradient(ellipse, rgba(241, 186, 66, .24), rgba(20, 11, 5, .08) 62%, transparent 78%);
+    filter: brightness(1.15);
+  }
+
+  .illustrated-home__destination--tournament { left: 14.2%; top: 25.5%; width: 14% !important; }
+  .illustrated-home__destination--train { left: 32.0%; top: 26.5%; width: 16% !important; }
+  .illustrated-home__destination--combat { left: 49.4%; top: 26.5%; width: 17% !important; }
+  .illustrated-home__destination--daily { left: 69.0%; top: 26.5%; width: 18% !important; }
+  .illustrated-home__destination--history { left: 1.2%; top: 39.5%; width: 13% !important; }
+  .illustrated-home__destination--play {
+    left: 38.4%;
+    top: 64.5%;
+    width: 24% !important;
+    min-height: 48px;
+    border: 0;
+    background: rgba(18, 10, 5, .12);
+  }
+  .illustrated-home__destination--play strong { font-size: clamp(10px, 2.6vw, 16px); }
+
+  .illustrated-home__resident {
+    position: absolute;
+    z-index: 8;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .illustrated-home__matthias {
+    position: absolute;
+    left: 1.8%;
+    right: auto;
+    bottom: 2.4%;
+    width: 20%;
+    min-width: 58px;
+    min-height: 44px;
+    display: grid;
+    place-items: center;
+    padding: 4px 5px;
+    border: 0;
+    background: rgba(13, 8, 5, .18);
+    box-shadow: none;
+    text-align: center;
+    pointer-events: auto;
+  }
+  .illustrated-home__matthias strong { font-size: clamp(8px, 1.9vw, 12px); }
+  .illustrated-home__matthias span,
+  .illustrated-home__matthias em { display: none; }
+
+  .illustrated-home__utilities {
+    position: absolute;
+    z-index: 12;
+    right: 0;
+    bottom: 0;
+    width: 31%;
+    height: 31%;
+    pointer-events: none;
+  }
+
+  .illustrated-home__utilities > .illustrated-home__dungeon-trigger {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    display: block;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: #f3d48a;
+    text-align: left;
+    pointer-events: auto;
+  }
+
+  .illustrated-home__dungeon-copy {
+    position: absolute;
+    right: 5%;
+    bottom: 5%;
+    width: 90%;
+    display: grid;
+    gap: 1px;
+    padding: 4px 5px;
+    border-radius: 6px;
+    background: rgba(12, 8, 5, .62);
+    text-shadow: 0 2px 5px #000;
+  }
+  .illustrated-home__dungeon-copy strong {
+    font: 700 clamp(8px, 2vw, 12px)/1 Georgia, serif;
+    letter-spacing: .08em;
+  }
+  .illustrated-home__dungeon-copy small {
+    font: 500 clamp(7px, 1.5vw, 9px)/1.15 Arial, sans-serif;
+  }
+  .illustrated-home__dungeon-chevron { display: none; }
+
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel {
+    position: fixed;
+    z-index: 80;
+    left: 10px;
+    right: 10px;
+    bottom: 12px;
+    width: auto;
+    max-height: 62dvh;
+    pointer-events: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .illustrated-home__destination > span { display: none; }
+  .illustrated-home__destination {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 2px 3px;
+    background: rgba(12, 8, 5, .10);
+  }
+  .illustrated-home__destination--play { min-height: 44px; }
+  .illustrated-home__dungeon-copy small { display: none; }
+  .illustrated-home__dungeon-copy { width: auto; min-width: 64px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .illustrated-home__destination { transition: none; }
+}

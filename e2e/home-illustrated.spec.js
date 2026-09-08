@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { login, mockApi } from './helpers.js';
 
-for (const viewport of [{ width: 1672, height: 941 }, { width: 1814, height: 772 }, { width: 1024, height: 768 }]) {
+for (const viewport of [{ width: 1672, height: 941 }, { width: 1814, height: 772 }, { width: 1024, height: 768 }, { width: 390, height: 844 }]) {
   test(`illustrated Home keeps controls attached to art at ${viewport.width}×${viewport.height}`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);
     await mockApi(page);
@@ -10,6 +10,8 @@ for (const viewport of [{ width: 1672, height: 941 }, { width: 1814, height: 772
     await expect(art).toBeVisible();
     await expect.poll(() => art.evaluate(img => img.complete && img.naturalWidth > 0)).toBe(true);
     await expect(page.locator('.home-castle-hub__scene canvas')).toHaveCount(0);
+    const artBox = await art.boundingBox();
+    expect(artBox).not.toBeNull();
     for (const id of ['play', 'tournament', 'train', 'combat', 'daily', 'history']) {
       const control = page.locator(`.illustrated-home__destination--${id}`);
       await expect(control).toBeVisible();
@@ -17,6 +19,19 @@ for (const viewport of [{ width: 1672, height: 941 }, { width: 1814, height: 772
         const r = el.getBoundingClientRect();
         return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
       })).toBe(true);
+      if (viewport.width < 1000) {
+        const box = await control.boundingBox();
+        expect(box).not.toBeNull();
+        expect(box.y).toBeGreaterThanOrEqual(artBox.y - 1);
+        expect(box.y + box.height).toBeLessThanOrEqual(artBox.y + artBox.height + 1);
+      }
+    }
+    if (viewport.width < 1000) {
+      const dungeon = page.locator('.illustrated-home__dungeon-trigger');
+      const dungeonBox = await dungeon.boundingBox();
+      expect(dungeonBox).not.toBeNull();
+      expect(dungeonBox.y).toBeGreaterThanOrEqual(artBox.y - 1);
+      expect(dungeonBox.y + dungeonBox.height).toBeLessThanOrEqual(artBox.y + artBox.height + 1);
     }
     const overflow = await page.evaluate(() => [...document.querySelectorAll('body *')].filter(el => el.getBoundingClientRect().right > innerWidth + 1).map(el => [el.className, Math.round(el.getBoundingClientRect().right)]));
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), JSON.stringify(overflow)).toBe(true);
