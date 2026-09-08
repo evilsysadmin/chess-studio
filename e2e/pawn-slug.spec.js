@@ -77,23 +77,26 @@ test('Pawn Slug · arranca con pistola y arsenal seleccionable sin tocar el ajed
   await expect(page.getByRole('button', { name: /Pawn Trailblazer/ })).toBeVisible();
 });
 
-test('Pawn Slug · la pistola dispara tiro a tiro aunque se mantenga pulsado el gatillo', async ({ page }) => {
+test('Pawn Slug · ESC abre Settings, pausa la misión y reanuda sin perder el runtime', async ({ page }) => {
   await openPawnSlug(page);
   await startPawnSlug(page);
 
-  const points = page.locator('.pawn-slug-hud > div').filter({ hasText: 'PUNTOS' }).locator('b');
-  await expect(points).toHaveText('0');
+  const time = page.locator('.pawn-slug-hud > div').filter({ hasText: 'TIEMPO' }).locator('b');
+  await expect(time).not.toHaveText('00:00', { timeout: 3000 });
 
-  // El primer peón tiene 34 HP y la pistola hace 22 por tiro. Si mantener ESPACIO
-  // volviese a disparar automáticamente, durante esta espera moriría y habría puntos.
-  await page.keyboard.down('Space');
-  await page.waitForTimeout(1100);
-  await page.keyboard.up('Space');
-  await expect(points).toHaveText('0');
+  await page.keyboard.press('Escape');
+  const settings = page.getByRole('dialog', { name: 'Pawn Slug Settings' });
+  await expect(settings).toBeVisible();
 
-  // Una nueva pulsación sí consume el segundo tiro y remata al primer peón.
-  await page.keyboard.press('Space');
-  await expect(points).not.toHaveText('0', { timeout: 2500 });
+  const frozenTime = await time.textContent();
+  expect(frozenTime).toBeTruthy();
+  await page.waitForTimeout(1300);
+  await expect(time).toHaveText(frozenTime);
+
+  await page.keyboard.press('Escape');
+  await expect(settings).toHaveCount(0);
+  await expect(time).not.toHaveText(frozenTime, { timeout: 3000 });
+  await expect(page.locator('[data-pawn-slug-renderer="three"] canvas')).toBeVisible();
 });
 
 test('Pawn Slug · móvil expone controles táctiles y arsenal sin overflow horizontal', async ({ page }) => {
