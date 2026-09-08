@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
+import { warRoomHansChoreDialogueSpec } from './WarRoomHansChoreContract.js';
+import { warRoomHansServiceDialogueSpec } from './WarRoomHansServiceContract.js';
 
-export const WAR_ROOM_MATTHIAS_HANS_REACTION_VERSION = 'matthias-hans-reaction-v2-dialogues';
+export const WAR_ROOM_MATTHIAS_HANS_REACTION_VERSION = 'matthias-hans-reaction-v3-ambient-chores';
 
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
 const HANS_NAME = 'war-room-hans-butler';
@@ -26,11 +28,13 @@ export function shouldMatthiasLookAtHans(dataset = {}) {
   const narrativePhase = String(dataset?.warRoomHansNarrativePhase || '');
   const mopDialogue = String(dataset?.warRoomHansMopDialogue || '');
   const serviceDialogue = String(dataset?.warRoomHansServiceDialogue || '');
+  const serviceSpec = warRoomHansServiceDialogueSpec(serviceDialogue)
+    || warRoomHansChoreDialogueSpec(serviceDialogue);
 
   return narrativePhase === 'matthias-working'
     || mopDialogue === 'matthias'
     || mopDialogue === 'sigh'
-    || serviceDialogue === 'matthias-espresso';
+    || serviceSpec?.speaker === 'MATTHIAS';
 }
 
 export function installWarRoomMatthiasHansReaction(root) {
