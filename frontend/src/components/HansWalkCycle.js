@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export const HANS_WALK_CYCLE_VERSION = 'hans-walk-cycle-v3-natural-knee-lift';
+export const HANS_WALK_CYCLE_VERSION = 'hans-walk-cycle-v4-contained-knee-recovery';
 
 const CYCLE_DISTANCE = 0.26;
 const DEFAULT_KNEE_FLEX = 0.055;
@@ -9,6 +9,7 @@ const CONTACT_KNEE_FLEX = 0.08;
 const SWING_KNEE_EXPONENT = 0.72;
 const SWING_LIFT_EXPONENT = 0.78;
 const HORIZONTAL_KNEE_GAIN = 0.5;
+const MAX_KNEE_FLEX = 0.72;
 const FOOT_COUNTER_ROTATION = 0.78;
 const TOE_LIFT = 0.15;
 const HUNCH_RADIANS = 0.065;
@@ -255,8 +256,8 @@ export function applyHansWalkCycle(controller, {
   const activeHunch = HUNCH_RADIANS + HORIZONTAL_HUNCH_BONUS_RADIANS * horizontal;
   const armSwingGain = BASE_ARM_SWING_GAIN + HORIZONTAL_ARM_SWING_BONUS * horizontal;
   const silhouetteShift = activeHunch * horizontal;
-  const leftFlex = sample.leftKnee * kneeGain;
-  const rightFlex = sample.rightKnee * kneeGain;
+  const leftFlex = Math.min(MAX_KNEE_FLEX, sample.leftKnee * kneeGain);
+  const rightFlex = Math.min(MAX_KNEE_FLEX, sample.rightKnee * kneeGain);
 
   if (body.leftLeg && bases.leftLeg) {
     body.leftLeg.position.set(
