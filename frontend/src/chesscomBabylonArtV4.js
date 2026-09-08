@@ -6,6 +6,7 @@ import {
 import { installChesscomCharacterArtV4 } from './chesscomCharacterArtV4.js';
 import { installChesscomEnvironmentArtV4 } from './chesscomEnvironmentArtV4.js';
 import { installChesscomOverlayArtV6 } from './chesscomOverlayArtV6.js';
+import { installChesscomMaterialArtV7 } from './chesscomMaterialArtV7.js';
 
 function sceneFromBabylon(B) {
   return B.EngineStore?.LastCreatedScene
@@ -36,13 +37,15 @@ export async function createChesscomBabylon(host, options = {}) {
   const artV4 = installChesscomCharacterArtV4(B,scene);
   const environmentV4 = installChesscomEnvironmentArtV4(B,scene,{ tier });
   const overlayV6 = installChesscomOverlayArtV6(B,scene,{ tier });
+  const materialV7 = installChesscomMaterialArtV7(B,scene,{ tier });
   const v3Visibility = new Map();
   host.dataset.chesscomOperator = 'character-art-v4';
   host.dataset.chesscomCharacterMesh = 'custom-lowpoly-v4';
   host.dataset.chesscomCharacterMaterials = 'procedural-pbr-v4';
   host.dataset.chesscomEnvironment = 'environment-art-v4';
   host.dataset.chesscomOverlay = 'tactical-overlay-v6';
-  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4 · OVERLAY V6`);
+  host.dataset.chesscomMaterials = 'material-art-v7';
+  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4 · OVERLAY V6 · MATERIAL V7`);
 
   return {
     ...base,
@@ -52,6 +55,7 @@ export async function createChesscomBabylon(host, options = {}) {
       artV4.update(state);
     },
     destroy() {
+      materialV7.destroy();
       overlayV6.destroy();
       artV4.destroy();
       environmentV4.destroy();
@@ -63,6 +67,7 @@ export async function createChesscomBabylon(host, options = {}) {
       delete host.dataset.chesscomCharacterMaterials;
       delete host.dataset.chesscomEnvironment;
       delete host.dataset.chesscomOverlay;
+      delete host.dataset.chesscomMaterials;
       base.destroy();
     },
   };
