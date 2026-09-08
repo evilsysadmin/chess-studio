@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_MATTHIAS_HANS_REACTION_VERSION = 'matthias-hans-reaction-v1';
+export const WAR_ROOM_MATTHIAS_HANS_REACTION_VERSION = 'matthias-hans-reaction-v2-dialogues';
 
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
 const HANS_NAME = 'war-room-hans-butler';
@@ -20,6 +20,17 @@ function headingTo(from, to, fallback) {
   const dz = to.z - from.z;
   if ((dx * dx + dz * dz) < 1e-8) return fallback;
   return Math.atan2(dx, dz);
+}
+
+export function shouldMatthiasLookAtHans(dataset = {}) {
+  const narrativePhase = String(dataset?.warRoomHansNarrativePhase || '');
+  const mopDialogue = String(dataset?.warRoomHansMopDialogue || '');
+  const serviceDialogue = String(dataset?.warRoomHansServiceDialogue || '');
+
+  return narrativePhase === 'matthias-working'
+    || mopDialogue === 'matthias'
+    || mopDialogue === 'sigh'
+    || serviceDialogue === 'matthias-espresso';
 }
 
 export function installWarRoomMatthiasHansReaction(root) {
@@ -44,8 +55,7 @@ export function installWarRoomMatthiasHansReaction(root) {
       canvas ||= globalThis.document?.querySelector?.('.game-board-stack-3d .board3d-main-canvas') || null;
       if (baseYaw == null) baseYaw = Number(matthias.rotation.y) || 0;
 
-      const narrativePhase = canvas?.dataset?.warRoomHansNarrativePhase || '';
-      if (narrativePhase !== 'matthias-working' || hans.visible === false) {
+      if (!shouldMatthiasLookAtHans(canvas?.dataset) || hans.visible === false) {
         matthias.rotation.y += shortestAngle(matthias.rotation.y, baseYaw) * RETURN_BLEND;
         matthias.userData.warRoomMatthiasHansReactionActive = false;
         return;
