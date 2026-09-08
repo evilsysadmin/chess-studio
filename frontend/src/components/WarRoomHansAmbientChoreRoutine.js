@@ -32,7 +32,7 @@ import {
   resetHansWalkCycle,
 } from './HansWalkCycle.js';
 
-export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v1';
+export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v2-desk-surface';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
@@ -139,7 +139,13 @@ function ensureDeliveredProp(root, eventName, targetObject) {
   const group = makeProp(eventName === 'bring-book' ? 'book' : 'letters');
   if (!group) return null;
   group.name = name;
-  group.position.set(eventName === 'bring-book' ? 0.55 : 0.95, 0.18, eventName === 'bring-book' ? 0.14 : -0.12);
+  const deskTopY = Number(targetObject.position?.y || 1.03);
+  const surfaceY = deskTopY + (eventName === 'bring-book' ? 0.12 : 0.095);
+  group.position.set(
+    eventName === 'bring-book' ? 0.55 : 0.95,
+    surfaceY,
+    eventName === 'bring-book' ? 0.14 : -0.12,
+  );
   group.visible = false;
   (targetObject.parent || root).add(group);
   return group;
