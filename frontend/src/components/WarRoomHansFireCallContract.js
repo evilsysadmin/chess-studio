@@ -5,10 +5,10 @@ export const HANS_WORKING_REPLY_LINE = 'Claro, señor.';
 export const HANS_LEAVING_GRUMBLE_LINE = 'Grrbl… tiramo… grblx.';
 export const MATTHIAS_FIRE_CALL_MS = 2500;
 export const HANS_FIRE_REPLY_MS = 1350;
-export const HANS_BOARD_PEEK_MS = 1200;
-export const MATTHIAS_HANS_WORKING_MS = 1200;
-export const HANS_WORKING_REPLY_MS = 800;
-export const HANS_LEAVING_GRUMBLE_MS = 1350;
+export const HANS_BOARD_PEEK_MS = 850;
+export const MATTHIAS_HANS_WORKING_MS = 900;
+export const HANS_WORKING_REPLY_MS = 600;
+export const HANS_LEAVING_GRUMBLE_MS = 1200;
 export const MATTHIAS_FIRE_EPILOGUE_LINE = 'En fin. ¿Por dónde íbamos?';
 export const MATTHIAS_FIRE_EPILOGUE_MS = 1900;
 
