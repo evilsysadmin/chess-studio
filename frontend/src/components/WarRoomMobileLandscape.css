@@ -1,15 +1,43 @@
 /* Android/phone landscape is an explicit play-first composition.
  * The PWA already allows any orientation; this layer simply spends the extra
  * horizontal space on the board instead of preserving the portrait stack. */
-@media (pointer: coarse) and (orientation: landscape) and (max-width: 920px) and (max-height: 620px) {
+@media (orientation: landscape) and (max-width: 920px) and (max-height: 620px) {
+  .game-screen,
+  .game-screen .board-column,
+  .game-screen .game-layout.game-layout-3d,
+  .game-screen .board-live-row.is-3d-warroom {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Desktop intentionally nudges the compact header actions outwards once the
+   * viewport reaches 821px. Narrow landscape can cross that breakpoint at
+   * 844px, so keep the controls inside the real viewport instead of creating
+   * a few pixels of document-level horizontal scroll after rotation. */
+  .app-shell-board-game .masthead-game-compact .masthead-actions {
+    transform: none;
+    max-width: 100%;
+  }
+
+  /* Board3D's tablet rule uses 99vw up to 1260px. At 844px that is 835.6px,
+   * but the app shell still owns ~16.9px gutters on both sides, so the room
+   * extends past the right edge. In narrow landscape the usable width is the
+   * shell content box, not the raw viewport. !important is intentional here:
+   * this layout contract must beat the generic 99vw Board3D rule. */
   .game-screen .game-layout.game-layout-3d {
-    width: 100%;
-    max-width: none;
+    width: calc(100vw - (var(--shell-gutter) * 2)) !important;
+    max-width: calc(100vw - (var(--shell-gutter) * 2)) !important;
     margin-inline: auto;
   }
 
+  .game-screen .board-column,
   .game-screen .board-live-row.is-3d-warroom {
     width: 100%;
+    max-width: 100%;
+  }
+
+  .game-screen .board-live-row.is-3d-warroom {
     grid-template-columns: minmax(0, 1fr) minmax(148px, 188px);
     grid-template-rows: auto minmax(0, 1fr);
     grid-template-areas:
@@ -24,15 +52,19 @@
     grid-area: board;
     width: 100%;
     min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
     gap: .3rem;
   }
 
   .game-screen .game-board-stack-3d .board3d-main-shell {
     width: 100%;
+    max-width: 100%;
     min-height: 0;
     height: min(72dvh, 430px);
     aspect-ratio: 1.62 / 1;
     border-radius: 10px;
+    box-sizing: border-box;
   }
 
   .game-screen .game-board-stack-3d .game-player-rail.is-human {
@@ -49,6 +81,8 @@
       'message';
     gap: .3rem;
     min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .game-screen .game-3d-matthias-card,
@@ -97,11 +131,13 @@
     gap: .28rem;
     width: 100%;
     min-width: 0;
+    max-width: 100%;
     min-height: 0;
     max-height: min(42dvh, 230px);
     overflow-y: auto;
     overflow-x: hidden;
     overscroll-behavior: contain;
+    box-sizing: border-box;
   }
 
   .game-screen .game-side-column-3d .game-side-music,
@@ -133,7 +169,7 @@
 
 /* Very short browser landscape (address/nav bars still visible): preserve the
  * board before secondary rails. The right column remains scrollable. */
-@media (pointer: coarse) and (orientation: landscape) and (max-width: 920px) and (max-height: 430px) {
+@media (orientation: landscape) and (max-width: 920px) and (max-height: 430px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
     height: min(76dvh, 330px);
     min-height: 240px;
