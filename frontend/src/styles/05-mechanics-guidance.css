@@ -1,0 +1,170 @@
+
+/* ---------- Despliegue táctico y tutoriales de reglas no estándar ---------- */
+.combat-heading-row,
+.deployment-title-row,
+.campaign-briefing-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem;
+}
+.combat-heading-row h2,
+.deployment-title-row h2,
+.campaign-briefing-heading h3 { margin-bottom: .25rem; }
+.context-help-btn {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--brass) 48%, var(--ink-3));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--brass) 8%, transparent);
+  color: var(--brass);
+  font-family: var(--font-mono);
+  font-weight: 800;
+  cursor: pointer;
+}
+.context-help-btn:hover { background: color-mix(in srgb, var(--brass) 16%, transparent); }
+
+.deployment-filters {
+  display: grid;
+  gap: .35rem;
+  margin-bottom: .55rem;
+}
+.deployment-filters input,
+.deployment-filters select {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 34px;
+  padding: .35rem .48rem;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 7px;
+  background: rgba(0,0,0,.2);
+  color: var(--parchment);
+  font: inherit;
+  font-size: .7rem;
+}
+.deployment-filters select {
+  color-scheme: dark;
+  background-color: #171613;
+  color: #f1e4c5;
+}
+.deployment-filters option {
+  background: #171613;
+  color: #f1e4c5;
+}
+.deployment-filters option:checked {
+  background: #2b5fae;
+  color: #fff;
+}
+.deployment-filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; }
+.deployment-empty-filter { padding: .7rem .2rem; text-align: center; }
+.deployment-auto-actions { display: flex; gap: .35rem; flex-wrap: wrap; }
+.deployment-auto-actions .secondary-btn { padding: .42rem .55rem; font-size: .68rem; }
+
+.campaign-briefing-card {
+  display: grid;
+  gap: .9rem;
+  margin-top: .8rem;
+  padding: clamp(.8rem, 2vw, 1.15rem);
+  border: 1px solid color-mix(in srgb, var(--brass) 34%, var(--ink-3));
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(191,152,82,.055), rgba(0,0,0,.14));
+}
+.campaign-briefing-heading p { margin: .2rem 0 0; color: var(--parchment-dim); }
+.campaign-briefing-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(190px, .7fr); gap: .7rem; }
+.campaign-intel-panel,
+.campaign-intel-buy {
+  padding: .75rem;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 9px;
+  background: rgba(0,0,0,.14);
+}
+.campaign-intel-kicker,
+.campaign-intel-buy > span { display: block; font-size: .62rem; letter-spacing: .12em; opacity: .62; }
+.campaign-intel-panel > strong,
+.campaign-intel-buy > strong { display: block; margin-top: .18rem; font-size: 1.25rem; }
+.campaign-intel-panel dl { display: grid; gap: .3rem; margin: .65rem 0; }
+.campaign-intel-panel dl > div { display: flex; justify-content: space-between; gap: .6rem; padding-bottom: .28rem; border-bottom: 1px solid rgba(255,255,255,.055); }
+.campaign-intel-panel dt { opacity: .55; font-size: .68rem; }
+.campaign-intel-panel dd { margin: 0; text-align: right; font-size: .72rem; }
+.campaign-intel-panel small { opacity: .55; line-height: 1.35; }
+.campaign-intel-buy p { font-size: .74rem; color: var(--parchment-dim); }
+.campaign-intel-buy .secondary-btn { width: 100%; }
+.campaign-briefing-actions { display: flex; justify-content: space-between; gap: .6rem; }
+
+.mechanic-tutorial-backdrop { z-index: 220; }
+.mechanic-tutorial-card {
+  position: relative;
+  width: min(620px, 94vw);
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid color-mix(in srgb, var(--brass) 42%, var(--ink-3));
+  border-radius: 13px;
+  background: var(--panel, #171512);
+  box-shadow: 0 24px 70px rgba(0,0,0,.56);
+}
+.mechanic-tutorial-card h2 { margin: .35rem 2rem .8rem 0; }
+.mechanic-tutorial-step {
+  position: relative;
+  min-height: 150px;
+  padding: .9rem;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 10px;
+  background: rgba(0,0,0,.14);
+}
+.mechanic-tutorial-step h3 { margin: .15rem 0 .45rem; }
+.mechanic-tutorial-step p { margin: 0; line-height: 1.55; color: var(--parchment-dim); }
+.mechanic-tutorial-counter { font-size: .62rem; letter-spacing: .1em; opacity: .55; }
+.mechanic-tutorial-dots { display: flex; justify-content: center; gap: .3rem; margin: .7rem 0; }
+.mechanic-tutorial-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
+.mechanic-tutorial-dots span.active { background: var(--brass); }
+.mechanic-tutorial-actions { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+.mechanic-tutorial-actions > div { display: flex; gap: .4rem; }
+
+.mechanic-library {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(220px, .7fr) minmax(0, 1.5fr);
+  gap: .8rem;
+  margin-top: .8rem;
+}
+.mechanic-library-list { display: grid; gap: .35rem; align-content: start; max-height: 70vh; overflow: auto; }
+.mechanic-library-list button {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .12rem .5rem;
+  padding: .55rem .62rem;
+  text-align: left;
+  border: 1px solid var(--ink-3);
+  border-radius: 8px;
+  background: rgba(0,0,0,.1);
+  color: inherit;
+  cursor: pointer;
+}
+.mechanic-library-list button.active { border-color: color-mix(in srgb, var(--brass) 55%, var(--ink-3)); background: color-mix(in srgb, var(--brass) 8%, transparent); }
+.mechanic-library-list span { grid-column: 1; font-size: .58rem; letter-spacing: .1em; opacity: .55; }
+.mechanic-library-list strong { grid-column: 1; }
+.mechanic-library-list small { grid-column: 2; grid-row: 1 / span 2; align-self: center; opacity: .58; }
+.mechanic-library-detail { min-width: 0; padding: .9rem; border: 1px solid var(--ink-3); border-radius: 10px; background: var(--ink-2); }
+.mechanic-library-detail .mechanic-tutorial-step { margin: .75rem 0; }
+
+@media (max-width: 780px) {
+  .deployment-filter-row,
+  .campaign-briefing-grid,
+  .mechanic-library { grid-template-columns: 1fr; }
+  .campaign-briefing-actions,
+  .mechanic-tutorial-actions { align-items: stretch; flex-direction: column; }
+  .campaign-briefing-actions > *,
+  .mechanic-tutorial-actions > *,
+  .mechanic-tutorial-actions > div > * { flex: 1; }
+  .mechanic-tutorial-actions > div { display: grid; grid-template-columns: 1fr 1fr; }
+  .mechanic-library-list { max-height: 280px; }
+}
+
+
+/* Reanimar conserva al veterano, pero la siguiente batalla desplegada es de
+   recuperación. Es una penalización de XP, no una alteración de reglas. */
+.army-unit-tile.recovering { border-color:color-mix(in srgb,var(--brass) 42%,transparent); }
+.army-unit-state.recovering { color:var(--brass); border-color:color-mix(in srgb,var(--brass) 52%,transparent); }
+.army-recovery-note { border-color:color-mix(in srgb,var(--brass) 38%,transparent); }

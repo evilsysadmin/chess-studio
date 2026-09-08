@@ -1,0 +1,11 @@
+
+
+/* Navegación secundaria: hace visible el atajo global ya soportado. */
+.navigation-back-hint {
+  margin-top: .45rem;
+  text-align: center;
+  font-size: .76rem;
+  letter-spacing: .04em;
+  color: var(--muted);
+  opacity: .78;
+}

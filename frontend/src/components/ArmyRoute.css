@@ -1,0 +1,3 @@
+/* Army and service-record surfaces are only needed by Combat/Campaign routes. */
+@import '../styles/05-combat-roster.css' layer(l05);
+@import '../styles/05-army-actions.css' layer(l05);

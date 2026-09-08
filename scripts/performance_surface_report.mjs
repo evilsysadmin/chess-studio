@@ -16,7 +16,7 @@ const JS_EXTENSIONS = new Set(['.js', '.jsx', '.mjs', '.ts', '.tsx']);
 const CSS_EXTENSIONS = new Set(['.css']);
 const LARGE_JS_BYTES = 60 * 1024;
 const LARGE_CSS_BYTES = 80 * 1024;
-const INITIAL_CSS_GZIP_BUDGET_BYTES = 74 * 1024;
+const INITIAL_CSS_GZIP_BUDGET_BYTES = 68 * 1024;
 
 function walk(dir, rows = []) {
   if (!fs.existsSync(dir)) return rows;
