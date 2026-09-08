@@ -28,6 +28,13 @@ export function squarePosition(square) {
   return { x: file - 3.5, z: 4.5 - rank };
 }
 
+export function isLightSquare(square) {
+  const file = FILES.indexOf(square?.[0]);
+  const rank = Number(square?.[1]);
+  if (file < 0 || rank < 1 || rank > 8) return false;
+  return (file + rank) % 2 === 0;
+}
+
 export function adjacentSquare(square, key, orientation) {
   const fileIndex = FILES.indexOf(square?.[0]);
   const rankIndex = DISPLAY_RANKS.indexOf(square?.[1]);
