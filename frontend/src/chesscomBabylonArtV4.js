@@ -7,6 +7,7 @@ import { installChesscomCharacterArtV4 } from './chesscomCharacterArtV4.js';
 import { installChesscomEnvironmentArtV4 } from './chesscomEnvironmentArtV4.js';
 import { installChesscomOverlayArtV6 } from './chesscomOverlayArtV6.js';
 import { installChesscomMaterialArtV7 } from './chesscomMaterialArtV7.js';
+import { installChesscomRenderQualityV9 } from './chesscomRenderQualityV9.js';
 
 function sceneFromBabylon(B) {
   return B.EngineStore?.LastCreatedScene
@@ -34,6 +35,7 @@ export async function createChesscomBabylon(host, options = {}) {
   }
 
   const tier=host.dataset.chesscomSceneTier || 'ultra';
+  const renderQualityV9 = installChesscomRenderQualityV9(B,scene,{ host,tier });
   const artV4 = installChesscomCharacterArtV4(B,scene);
   const environmentV4 = installChesscomEnvironmentArtV4(B,scene,{ tier });
   const overlayV6 = installChesscomOverlayArtV6(B,scene,{ tier });
@@ -45,7 +47,7 @@ export async function createChesscomBabylon(host, options = {}) {
   host.dataset.chesscomEnvironment = 'environment-art-v4';
   host.dataset.chesscomOverlay = 'tactical-overlay-v6';
   host.dataset.chesscomMaterials = 'material-art-v7';
-  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4 · OVERLAY V6 · MATERIAL V7`);
+  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4 · OVERLAY V6 · MATERIAL V7 · HIDPI V9`);
 
   return {
     ...base,
@@ -59,6 +61,7 @@ export async function createChesscomBabylon(host, options = {}) {
       overlayV6.destroy();
       artV4.destroy();
       environmentV4.destroy();
+      renderQualityV9.destroy();
       for (const [mesh,old] of v3Visibility) {
         try { if (!mesh?.isDisposed?.()) mesh.isVisible = old; } catch {}
       }
