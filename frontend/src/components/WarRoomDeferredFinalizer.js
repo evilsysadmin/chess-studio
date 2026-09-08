@@ -5,6 +5,7 @@ import { installWarRoomHansFacingGuard } from './WarRoomHansFacingGuard.js';
 import { installWarRoomHansFireNarrative } from './WarRoomHansFireNarrative.js';
 import { installWarRoomHansHearthFacingGuard } from './WarRoomHansHearthFacingGuard.js';
 import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
+import { installWarRoomMatthiasHansReaction } from './WarRoomMatthiasHansReaction.js';
 
 export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v1';
 export const WAR_ROOM_ONE_SHOT_RETIREMENT_VERSION = 'one-shot-retirement-v1';
@@ -81,6 +82,7 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         // never moves Hans; it only turns the old proximity fade into a causal
         // cold-hearth -> rekindle story.
         installWarRoomHansFireNarrative(root);
+        installWarRoomMatthiasHansReaction(root);
       }
       completedKeys.push(key);
     }
