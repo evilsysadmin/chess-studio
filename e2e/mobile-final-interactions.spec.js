@@ -214,3 +214,59 @@ test('Móvil · Partida de práctica abre su modal fijo dentro del viewport', as
   expect(dialogBox.y).toBeGreaterThanOrEqual(0);
   expect(dialogBox.y + dialogBox.height).toBeLessThanOrEqual(contract.viewportHeight + 1);
 });
+
+test('Móvil · doble activación durante una jugada pendiente no duplica la mutación ni adelanta el tablero', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  const requestLog = [];
+  await mockApi(page, { requestLog });
+
+  let movePosts = 0;
+  let releaseMove;
+  const moveGate = new Promise((resolve) => { releaseMove = resolve; });
+  await page.route('http://localhost:4000/api/games/*/move', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    movePosts += 1;
+    await moveGate;
+    await route.fallback();
+  });
+
+  await login(page);
+  await page.evaluate(() => {
+    localStorage.setItem('chess-study-board-renderer', '2d-explicit-v1');
+    window.dispatchEvent(new Event('chess-study-user-preferences-changed'));
+  });
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameStatus(page)).toBeVisible();
+
+  const e2 = page.locator('.square[aria-label^="Casilla e2,"]');
+  const e4 = page.locator('.square[aria-label^="Casilla e4,"]');
+  await expect(e2).toBeVisible();
+  await expect(e4).toBeVisible();
+  await expect(e2).toHaveAttribute('aria-label', /peón blanco/i);
+
+  await e2.click();
+  await e4.evaluate((element) => {
+    element.click();
+    element.click();
+  });
+
+  await expect.poll(() => movePosts, { timeout: 5_000 }).toBe(1);
+  await page.waitForTimeout(150);
+  expect(movePosts).toBe(1);
+
+  await expect(e2).toHaveAttribute('aria-label', /peón blanco/i);
+  await expect(e4).not.toHaveAttribute('aria-label', /peón blanco/i);
+
+  releaseMove();
+
+  await expect(page.getByRole('button', { name: /^Casilla e4, peón blanco/i })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole('button', { name: /^Casilla e5, peón negro/i })).toBeVisible({ timeout: 10_000 });
+  expect(movePosts).toBe(1);
+  const loggedMoves = requestLog.filter((entry) => entry.method === 'POST' && /\/api\/games\/[^/]+\/move$/.test(entry.path));
+  expect(loggedMoves).toHaveLength(1);
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+});
