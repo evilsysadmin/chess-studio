@@ -91,6 +91,7 @@ export default function PawnSlug({ onExit }) {
   const engineRef = useRef(null);
   const pendingRef = useRef([]);
   const settingsRef = useRef(null);
+  const settingsOpenRef = useRef(false);
   const [hud, setHud] = useState(INITIAL_HUD);
   const [rendererName, setRendererName] = useState('CARGANDO');
   const [rendererError, setRendererError] = useState('');
@@ -108,6 +109,7 @@ export default function PawnSlug({ onExit }) {
     };
   });
   settingsRef.current = settings;
+  settingsOpenRef.current = settingsOpen;
 
   function send(action, pressed = true) {
     const engine = engineRef.current;
@@ -137,12 +139,16 @@ export default function PawnSlug({ onExit }) {
     releaseGameplayInput();
     setRemapAction(null);
     setRemapError('');
+    settingsOpenRef.current = true;
+    engineRef.current?.setPaused?.(true);
     setSettingsOpen(true);
   }
 
   function closeSettings() {
     setRemapAction(null);
     setRemapError('');
+    settingsOpenRef.current = false;
+    engineRef.current?.setPaused?.(false);
     setSettingsOpen(false);
   }
 
@@ -165,6 +171,7 @@ export default function PawnSlug({ onExit }) {
         });
         engineRef.current = engine;
         engine.setAudioMix?.({ sfxVolume: settingsRef.current?.sfxVolume ?? 1 });
+        engine.setPaused?.(settingsOpenRef.current);
         for (const [action, pressed] of pendingRef.current.splice(0)) engine.input(action, pressed);
       })
       .catch((error) => {
