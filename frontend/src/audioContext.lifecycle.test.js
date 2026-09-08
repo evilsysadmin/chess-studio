@@ -61,15 +61,17 @@ describe('audio context lifecycle', () => {
     vi.useFakeTimers();
     FakeAudioContext.created = 0;
     FakeAudioContext.closed = 0;
-    window.AudioContext = FakeAudioContext;
-    window.webkitAudioContext = undefined;
+    globalThis.window = globalThis;
+    globalThis.AudioContext = FakeAudioContext;
+    globalThis.webkitAudioContext = undefined;
   });
 
   afterEach(() => {
     vi.clearAllTimers();
     vi.useRealTimers();
-    delete window.AudioContext;
-    delete window.webkitAudioContext;
+    delete globalThis.AudioContext;
+    delete globalThis.webkitAudioContext;
+    delete globalThis.window;
   });
 
   it('keeps the shared audio context as a singleton across repeated consumers', async () => {
