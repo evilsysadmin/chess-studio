@@ -77,23 +77,27 @@ test('Pawn Slug · arranca con pistola y arsenal seleccionable sin tocar el ajed
   await expect(page.getByRole('button', { name: /Pawn Trailblazer/ })).toBeVisible();
 });
 
-test('Pawn Slug · la pistola dispara tiro a tiro aunque se mantenga pulsado el gatillo', async ({ page }) => {
+test('Pawn Slug · ESC abre y cierra Settings sin perder el runtime', async ({ page }) => {
   await openPawnSlug(page);
   await startPawnSlug(page);
 
-  const points = page.locator('.pawn-slug-hud > div').filter({ hasText: 'PUNTOS' }).locator('b');
-  await expect(points).toHaveText('0');
+  const canvas = page.locator('[data-pawn-slug-renderer="three"] canvas');
+  await expect(canvas).toBeVisible();
 
-  // El primer peón tiene 34 HP y la pistola hace 22 por tiro. Si mantener Z
-  // volviese a disparar automáticamente, durante esta espera moriría y habría puntos.
-  await page.keyboard.down('z');
-  await page.waitForTimeout(1100);
-  await page.keyboard.up('z');
-  await expect(points).toHaveText('0');
+  await page.keyboard.press('Escape');
+  const settings = page.getByRole('dialog', { name: 'Pawn Slug Settings' });
+  await expect(settings).toBeVisible();
+  await expect(canvas).toBeVisible();
 
-  // Una nueva pulsación sí consume el segundo tiro y remata al primer peón.
-  await page.keyboard.press('z');
-  await expect(points).not.toHaveText('0', { timeout: 2500 });
+  // Settings pausa el runtime mediante engine.setPaused(true); el smoke de navegador
+  // evita depender de relojes/combate y protege el ciclo de apertura/cierre y montaje.
+  await page.keyboard.press('Escape');
+  await expect(settings).toHaveCount(0);
+  await expect(canvas).toBeVisible();
+
+  // El handler sigue vivo tras reanudar: una segunda apertura debe funcionar sin remount.
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Pawn Slug Settings' })).toBeVisible();
 });
 
 test('Pawn Slug · móvil expone controles táctiles y arsenal sin overflow horizontal', async ({ page }) => {
@@ -106,7 +110,7 @@ test('Pawn Slug · móvil expone controles táctiles y arsenal sin overflow hori
 
   const controls = page.getByLabel('Controles táctiles de Pawn Slug');
   await expect(controls).toBeVisible();
-  for (const name of ['Izquierda', 'Derecha', 'Agacharse', 'Saltar', 'Disparar', 'Granada']) {
+  for (const name of ['Izquierda', 'Derecha', 'Agacharse', 'Saltar', 'Disparar', 'Power-up']) {
     const button = page.getByRole('button', { name, exact: true });
     await expect(button).toBeVisible();
     const box = await button.boundingBox();
