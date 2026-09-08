@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 import game_store as store
 from api_models import AnalyzeMoveRequest, AnalyzeRequest, MoveRequest, NewGameRequest
+from balanced_cpu import get_balanced_cpu_move
 from chess_ai import analyze_move as ai_analyze_move
 from chess_ai import evaluate_board, get_cpu_move, move_to_dict
 from engine_runtime import run_engine_work
@@ -104,7 +105,11 @@ def resolve_engine_move_or_fallback(board: chess.Board, suggestion: Optional[dic
 
 def compute_engine_move_or_fallback(board: chess.Board, difficulty: float, ghost_style: Optional[dict] = None) -> tuple[chess.Move, dict] | None:
     try:
-        suggestion = get_cpu_move(board, difficulty, ghost_style)
+        balanced = isinstance(ghost_style, dict) and ghost_style.get("balance") is True
+        if balanced:
+            suggestion = get_balanced_cpu_move(board, difficulty, ghost_style)
+        else:
+            suggestion = get_cpu_move(board, difficulty, ghost_style)
     except Exception as exc:
         # No incluimos FEN ni contenido de la partida en logs operativos.
         logger.warning("cpu_move_failed_using_legal_fallback error_type=%s", type(exc).__name__)
