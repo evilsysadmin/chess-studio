@@ -50,10 +50,14 @@ export function hansBoardPeekHoldsMovement(phase) {
   return HANS_BOARD_PEEK_HOLD_PHASES.has(String(phase || ''));
 }
 
-export function shouldStartHansBoardPeek({ phase, route, logicalX, suggestion } = {}) {
+export function hansBoardPeekPointReached({ phase, route, logicalX } = {}) {
   return phase === 'await-exit-peek'
     && route === HANS_BOARD_PEEK_ROUTE
-    && Number(logicalX) >= HANS_BOARD_PEEK_LOGICAL_X
+    && Number(logicalX) >= HANS_BOARD_PEEK_LOGICAL_X;
+}
+
+export function shouldStartHansBoardPeek({ phase, route, logicalX, suggestion } = {}) {
+  return hansBoardPeekPointReached({ phase, route, logicalX })
     && Boolean(suggestion?.line);
 }
 
