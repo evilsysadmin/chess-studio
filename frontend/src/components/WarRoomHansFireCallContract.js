@@ -57,10 +57,11 @@ export function hansInitialReplyPointReached({
   logicalX,
 } = {}) {
   const x = Number(logicalX);
+  const routeName = String(route || '');
   return hansScreen === 'onscreen'
-    && route === 'entry'
     && Number.isFinite(x)
-    && x <= HANS_INITIAL_REPLY_ENTRY_MAX_LOGICAL_X;
+    && x <= HANS_INITIAL_REPLY_ENTRY_MAX_LOGICAL_X
+    && !routeName.startsWith('leave-');
 }
 
 export function hansBoardPeekPointReached({ phase, route, logicalX } = {}) {
