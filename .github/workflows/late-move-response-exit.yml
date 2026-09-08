@@ -1,0 +1,48 @@
+name: Late move response exit
+
+on:
+  pull_request:
+    paths:
+      - 'e2e/late-move-response-exit.spec.js'
+      - 'frontend/src/components/GameScreen.jsx'
+      - 'frontend/src/gameMutationCoordinator.js'
+      - '.github/workflows/late-move-response-exit.yml'
+      - '.github/actions/setup-browser-e2e/action.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: late-move-response-exit-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  late-response-exit:
+    name: Browser required · late move response after exit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Restore browser runtime and build frontend
+        uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+          restore-frontend-deps: 'true'
+          build-frontend: 'true'
+
+      - name: Run late response exit contract
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test late-move-response-exit.spec.js --workers=1 --retries=0 --timeout=60000
+
+      - name: Upload Playwright diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: late-move-response-exit-${{ github.sha }}
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
