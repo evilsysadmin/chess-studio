@@ -1,6 +1,7 @@
 import chess
 
 import balanced_cpu as balanced
+from api_models import GhostStyle
 
 
 BALANCED_PROFILE = {'balance': True}
@@ -17,12 +18,25 @@ def test_concession_profile_is_conservative_and_tapers_with_level():
 
 
 def test_cpu_profile_separates_balance_flag_from_ghost_style():
-    enabled, style = balanced._split_cpu_profile({'balance': True})
+    enabled, style = balanced._split_cpu_profile({'balance': True, 'capture': 0.0, 'pawn': 0.0})
     assert enabled is True
     assert style is None
     enabled, style = balanced._split_cpu_profile({'capture': 0.5})
     assert enabled is False
     assert style == {'capture': 0.5}
+
+
+def test_balance_schema_is_internal_and_legacy_ghost_payload_stays_stable():
+    assert GhostStyle(balance=True).model_dump() == {
+        'capture': 0.0,
+        'pawn': 0.0,
+        'queen': 0.0,
+        'check': 0.0,
+        'castle': 0.0,
+        'balance': True,
+    }
+    legacy = {'capture': 0.5, 'pawn': -0.25, 'queen': 0.1, 'check': 1.0, 'castle': -1.0}
+    assert GhostStyle(**legacy).model_dump() == legacy
 
 
 def test_near_best_candidates_respect_score_gap():
