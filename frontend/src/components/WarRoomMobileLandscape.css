@@ -2,9 +2,17 @@
  * The PWA already allows any orientation; this layer simply spends the extra
  * horizontal space on the board instead of preserving the portrait stack. */
 @media (pointer: coarse) and (orientation: landscape) and (max-width: 920px) and (max-height: 620px) {
+  .game-screen,
+  .game-screen .board-column,
+  .game-screen .game-layout.game-layout-3d,
+  .game-screen .board-live-row.is-3d-warroom {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
   .game-screen .game-layout.game-layout-3d {
     width: 100%;
-    max-width: none;
     margin-inline: auto;
   }
 
@@ -24,15 +32,19 @@
     grid-area: board;
     width: 100%;
     min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
     gap: .3rem;
   }
 
   .game-screen .game-board-stack-3d .board3d-main-shell {
     width: 100%;
+    max-width: 100%;
     min-height: 0;
     height: min(72dvh, 430px);
     aspect-ratio: 1.62 / 1;
     border-radius: 10px;
+    box-sizing: border-box;
   }
 
   .game-screen .game-board-stack-3d .game-player-rail.is-human {
@@ -49,6 +61,8 @@
       'message';
     gap: .3rem;
     min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .game-screen .game-3d-matthias-card,
@@ -97,11 +111,13 @@
     gap: .28rem;
     width: 100%;
     min-width: 0;
+    max-width: 100%;
     min-height: 0;
     max-height: min(42dvh, 230px);
     overflow-y: auto;
     overflow-x: hidden;
     overscroll-behavior: contain;
+    box-sizing: border-box;
   }
 
   .game-screen .game-side-column-3d .game-side-music,
