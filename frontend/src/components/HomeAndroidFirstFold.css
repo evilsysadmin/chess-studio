@@ -6,6 +6,23 @@
  * toasts, and the first playable room leads the Home flow.
  */
 
+/* Home session summaries are transient feedback, never layout. Keep them as a
+ * compact desktop toast too so cancelling/finishing a game cannot stretch the
+ * masthead or push the canonical castle art down. */
+body:has(.menu.home-friendly) .session-result-notice {
+  position: fixed !important;
+  z-index: 180 !important;
+  right: max(1rem, env(safe-area-inset-right)) !important;
+  bottom: max(1rem, env(safe-area-inset-bottom)) !important;
+  width: min(430px, calc(100vw - 2rem)) !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: .72rem .82rem !important;
+  gap: .7rem !important;
+  border-radius: 12px !important;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, .42) !important;
+}
+
 @media (max-width: 760px) {
   /* The global player is chrome, not Home content. Keeping it in normal flow
    * cost more than 150px on short Android browser viewports, especially for
