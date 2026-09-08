@@ -31,6 +31,56 @@ describe('War Room piece body motion', () => {
     expect(rookLanding.scaleY).toBeLessThan(queenLanding.scaleY);
   });
 
+  it('gives the knight a readable landing rebound while keeping the queen restrained', () => {
+    const knight = derivePieceBodyPose({ type: 'n', progress: 0.91, dx: 1, dz: 0, airborne: 0.05 });
+    const queen = derivePieceBodyPose({ type: 'q', progress: 0.91, dx: 1, dz: 0, airborne: 0.05 });
+
+    expect(knight.finish.rebound).toBeGreaterThan(0.95);
+    expect(knight.yOffset).toBeGreaterThan(queen.yOffset);
+    expect(knight.scaleY).toBeGreaterThan(queen.scaleY);
+  });
+
+  it('counter-brakes the rook near arrival while the queen stays precise', () => {
+    const rook = derivePieceBodyPose({ type: 'r', progress: 0.78, dx: 1, dz: 0 });
+    const queen = derivePieceBodyPose({ type: 'q', progress: 0.78, dx: 1, dz: 0 });
+
+    expect(rook.finish.braking).toBeGreaterThan(0.95);
+    expect(rook.roll).toBeGreaterThan(0);
+    expect(queen.roll).toBeLessThan(0);
+    expect(Math.abs(rook.roll)).toBeGreaterThan(Math.abs(queen.roll));
+  });
+
+  it('lunges a pawn only on diagonal capture travel', () => {
+    const capture = derivePieceBodyPose({ type: 'p', progress: 0.67, dx: 1, dz: 1 });
+    const quiet = derivePieceBodyPose({ type: 'p', progress: 0.67, dx: 1, dz: 0 });
+
+    expect(capture.finish.diagonalPawnCapture).toBe(true);
+    expect(capture.xOffset).toBeGreaterThan(0.03);
+    expect(capture.zOffset).toBeGreaterThan(0.03);
+    expect(quiet.finish.diagonalPawnCapture).toBe(false);
+    expect(quiet.xOffset).toBe(0);
+    expect(quiet.zOffset).toBe(0);
+  });
+
+  it('braces the king only for castling-distance travel', () => {
+    const castle = derivePieceBodyPose({ type: 'k', progress: 0.48, dx: 1, dz: 0, travelDistance: 2 });
+    const quiet = derivePieceBodyPose({ type: 'k', progress: 0.48, dx: 1, dz: 0, travelDistance: 1 });
+
+    expect(castle.finish.castleBrace).toBe(true);
+    expect(Math.abs(castle.yaw)).toBeGreaterThan(0.015);
+    expect(quiet.finish.castleBrace).toBe(false);
+    expect(quiet.yaw).toBe(0);
+  });
+
+  it('turns the existing promotion pulse into a restrained upward finish', () => {
+    const promoted = derivePieceBodyPose({ type: 'q', progress: 0.82, dx: 0, dz: 1, promotionEnergy: 1 });
+    const normal = derivePieceBodyPose({ type: 'q', progress: 0.82, dx: 0, dz: 1, promotionEnergy: 0 });
+
+    expect(promoted.finish.promotion).toBe(true);
+    expect(promoted.yOffset).toBeGreaterThan(normal.yOffset);
+    expect(promoted.scaleY).toBeGreaterThan(normal.scaleY + 0.03);
+  });
+
   it('damps body motion on coarse pointers', () => {
     const desktop = derivePieceBodyPose({ type: 'n', progress: 0.5, dx: 1, dz: 0, airborne: 0.8 });
     const coarse = derivePieceBodyPose({ type: 'n', progress: 0.5, dx: 1, dz: 0, airborne: 0.8, coarsePointer: true });
@@ -48,6 +98,7 @@ describe('War Room piece body motion', () => {
 
     expect(root.userData.skin3DIdentity).toBe('distinct-v2');
     expect(root.userData.board3DBodyMotionProfile).toBe('piece-body-v1');
+    expect(root.userData.board3DBodyFinishProfile).toBe('piece-finish-v1');
     expect(root.children.some((child) => child.userData?.board3DBodyMotionBody)).toBe(true);
   });
 
@@ -62,6 +113,7 @@ describe('War Room piece body motion', () => {
 
     const body = root.children.find((child) => child.userData?.board3DBodyMotionBody);
     expect(root.userData.board3DBodyMotionProfile).toBe('piece-body-v1');
+    expect(root.userData.board3DBodyFinishProfile).toBe('piece-finish-v1');
     expect(body).toBeTruthy();
     expect(visual.parent).toBe(body);
     expect(shadow.parent).toBe(root);
