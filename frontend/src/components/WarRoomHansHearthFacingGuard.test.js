@@ -65,7 +65,7 @@ describe('Hans hearth-facing guard', () => {
     const { root, hans, driver, head, fire } = makeScene();
     expect(faceDotPoint(hans, head, fireWorldPosition(fire))).toBeLessThan(0);
     expect(installWarRoomHansHearthFacingGuard(root)).toBe(1);
-    expect(driver.userData.warRoomHansHearthFacingHotPath).toBe('preallocated-scratch-v4-board-side');
+    expect(driver.userData.warRoomHansHearthFacingHotPath).toBe('preallocated-scratch-v5-board-world');
     driver.onBeforeRender();
     expect(hans.userData.warRoomHansHearthFacingGuard).toBe(WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION);
     expect(hans.userData.warRoomHansHearthFacingTarget).toBe('fire-core-rendered');
@@ -81,7 +81,7 @@ describe('Hans hearth-facing guard', () => {
     expect(installWarRoomHansHearthFacingGuard(root)).toBe(1);
     driver.onBeforeRender();
 
-    expect(hans.userData.warRoomHansHearthFacingTarget).toBe('board-center-rendered');
+    expect(hans.userData.warRoomHansHearthFacingTarget).toBe('board-center-world');
     expect(faceDotPoint(hans, head, new THREE.Vector3(0, 0, 0))).toBeGreaterThan(0.99);
   });
 });
