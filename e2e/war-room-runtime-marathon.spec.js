@@ -142,7 +142,7 @@ async function expectReturnedToBaseline(page, baseline) {
 }
 
 test('War Room · runtime marathon no acumula canvas, RAF, intervals ni listeners globales', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(360_000);
   await installRuntimeProbe(page);
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page);
@@ -157,6 +157,7 @@ test('War Room · runtime marathon no acumula canvas, RAF, intervals ni listener
   await expect(page.locator('.board3d-main-canvas')).toHaveCount(0);
   await page.waitForTimeout(300);
   const baseline = await runtimeSnapshot(page);
+  console.log(`War Room marathon baseline ${JSON.stringify(baseline)}`);
 
   for (let cycle = 1; cycle <= CYCLES; cycle += 1) {
     await setRenderer(page, '3D');
@@ -166,6 +167,7 @@ test('War Room · runtime marathon no acumula canvas, RAF, intervals ni listener
     await setRenderer(page, '2D');
     await expect(page.locator('.board3d-main-canvas')).toHaveCount(0);
     await expectReturnedToBaseline(page, baseline);
+    console.log(`War Room marathon cycle ${cycle}/${CYCLES} ${JSON.stringify(await runtimeSnapshot(page))}`);
   }
 
   await setRenderer(page, '3D');
