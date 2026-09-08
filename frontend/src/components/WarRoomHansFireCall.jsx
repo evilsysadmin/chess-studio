@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { pickHansLegalSuggestion } from './WarRoomHansBoardPeek.js';
 import {
+  HANS_BOARD_DIALOGUE_GAP_MS,
   HANS_BOARD_PEEK_MS,
   HANS_FIRE_REPLY_LINE,
   HANS_FIRE_REPLY_MS,
@@ -15,7 +16,9 @@ import {
   MATTHIAS_FIRE_EPILOGUE_MS,
   MATTHIAS_HANS_WORKING_LINE,
   MATTHIAS_HANS_WORKING_MS,
+  hansBoardPeekHoldsMovement,
   projectHansFireReplyAnchor,
+  projectHansInitialReplyAnchor,
   shouldStartHansBoardPeek,
   shouldStartHansFireEpilogue,
   shouldStartHansLeavingGrumble,
@@ -36,15 +39,19 @@ function sameAnchor(current, next) {
     && current.tailPercent === next.tailPercent;
 }
 
-export function hansNarrativePresentationPhase(presentationMs) {
+export function hansNarrativePresentationState(presentationMs) {
   const elapsedSeconds = Math.max(0, Number(presentationMs) - HANS_DOOR_OPENING_MS)
     / 1000 * HANS_PRESENTATION_TIME_SCALE;
-  if (elapsedSeconds < HANS_QUICK_ENTRY_SECONDS) return 'entry';
+  if (elapsedSeconds < HANS_QUICK_ENTRY_SECONDS) return { phase: 'entry', timelineT: elapsedSeconds };
   const timelineT = elapsedSeconds + HANS_POST_ENTRY_OFFSET_SECONDS;
-  if (timelineT < 25.5) return 'working';
-  if (timelineT < 27) return 'satisfied';
-  if (timelineT < 33) return 'leave';
-  return 'complete';
+  if (timelineT < 25.5) return { phase: 'working', timelineT };
+  if (timelineT < 27) return { phase: 'satisfied', timelineT };
+  if (timelineT < 33) return { phase: 'leave', timelineT };
+  return { phase: 'complete', timelineT };
+}
+
+export function hansNarrativePresentationPhase(presentationMs) {
+  return hansNarrativePresentationState(presentationMs).phase;
 }
 
 export default function WarRoomHansFireCall({
@@ -96,9 +103,7 @@ export default function WarRoomHansFireCall({
     setPhase('');
     setHansAnchor(null);
     setSuggestion(null);
-    if (!portalHost || !enabled || !isThreeD || !gameId || !anchorReady) {
-      return undefined;
-    }
+    if (!portalHost || !enabled || !isThreeD || !gameId || !anchorReady) return undefined;
 
     const existingCanvas = portalHost.querySelector('.board3d-main-canvas');
     if (existingCanvas?.dataset.warRoomHansCallReleased === 'true') return undefined;
@@ -135,13 +140,16 @@ export default function WarRoomHansFireCall({
       const canvas = portalHost.querySelector('.board3d-main-canvas');
       if (canvas) canvas.dataset.warRoomHansNarrativePhase = currentPhase || 'done';
       const visible = document.visibilityState !== 'hidden' && portalHost.getBoundingClientRect().width > 0;
+
       if (visible && canvas?.dataset.warRoomHansSceneReady === 'true') {
         const hansScreen = canvas.dataset.warRoomHansScreen || 'missing';
-
-        if (callReleased) {
+        if (callReleased && !hansBoardPeekHoldsMovement(currentPhase)) {
           presentationMs += Math.min(delta, presentationMs < HANS_DOOR_OPENING_MS ? 100 : 1000);
         }
-        const hansPhase = callReleased ? hansNarrativePresentationPhase(presentationMs) : 'waiting';
+        const presentation = callReleased
+          ? hansNarrativePresentationState(presentationMs)
+          : { phase: 'waiting', timelineT: 0 };
+        const hansPhase = presentation.phase;
 
         if (currentPhase === 'loading') {
           readyPaints += 1;
@@ -164,13 +172,20 @@ export default function WarRoomHansFireCall({
         } else if (currentPhase === 'hans') {
           elapsed += delta;
           if (elapsed >= HANS_FIRE_REPLY_MS) {
-            currentPhase = 'await-peek';
-            setPhase('await-peek');
+            currentPhase = 'await-exit-peek';
+            setPhase('await-exit-peek');
             elapsed = 0;
           }
         } else if (currentPhase === 'peek') {
           elapsed += delta;
           if (elapsed >= HANS_BOARD_PEEK_MS) {
+            currentPhase = 'gap-after-peek';
+            setPhase('gap-after-peek');
+            elapsed = 0;
+          }
+        } else if (currentPhase === 'gap-after-peek') {
+          elapsed += delta;
+          if (elapsed >= HANS_BOARD_DIALOGUE_GAP_MS) {
             currentPhase = 'matthias-working';
             setPhase('matthias-working');
             elapsed = 0;
@@ -178,6 +193,13 @@ export default function WarRoomHansFireCall({
         } else if (currentPhase === 'matthias-working') {
           elapsed += delta;
           if (elapsed >= MATTHIAS_HANS_WORKING_MS) {
+            currentPhase = 'gap-after-matthias';
+            setPhase('gap-after-matthias');
+            elapsed = 0;
+          }
+        } else if (currentPhase === 'gap-after-matthias') {
+          elapsed += delta;
+          if (elapsed >= HANS_BOARD_DIALOGUE_GAP_MS) {
             currentPhase = 'hans-working-reply';
             setPhase('hans-working-reply');
             elapsed = 0;
@@ -203,14 +225,16 @@ export default function WarRoomHansFireCall({
 
         const tracksHans = currentPhase === 'await-hans'
           || currentPhase === 'hans'
-          || currentPhase === 'await-peek'
-          || currentPhase === 'peek'
-          || currentPhase === 'hans-working-reply'
+          || currentPhase === 'await-exit-peek'
+          || hansBoardPeekHoldsMovement(currentPhase)
           || currentPhase === 'await-exit'
           || currentPhase === 'grumble';
         if (tracksHans && hansScreen === 'onscreen') {
           hansSeenOnscreen = true;
-          const anchor = projectHansFireReplyAnchor({
+          const anchorProjector = currentPhase === 'hans'
+            ? projectHansInitialReplyAnchor
+            : projectHansFireReplyAnchor;
+          const anchor = anchorProjector({
             ndcX: canvas.dataset.warRoomHansNdcX,
             ndcY: canvas.dataset.warRoomHansNdcY,
             coarsePointer: Boolean(window.matchMedia?.('(pointer: coarse)')?.matches),
@@ -225,13 +249,17 @@ export default function WarRoomHansFireCall({
           }
         }
 
-        if (currentPhase === 'await-peek' && hansPhase === 'satisfied' && !peekAttempted) {
+        if (currentPhase === 'await-exit-peek'
+          && hansPhase === 'leave'
+          && presentation.timelineT >= 29
+          && !peekAttempted) {
           peekAttempted = true;
           boardSuggestion = pickHansLegalSuggestion(fenRef.current);
           setSuggestion(boardSuggestion);
           if (shouldStartHansBoardPeek({
             phase: currentPhase,
             hansPhase,
+            timelineT: presentation.timelineT,
             suggestion: boardSuggestion,
           })) {
             currentPhase = 'peek';
@@ -266,6 +294,7 @@ export default function WarRoomHansFireCall({
       }
       if (currentPhase !== '') frameId = window.requestAnimationFrame(tick);
     };
+
     const resetVisibleClock = () => { previousTime = null; };
     document.addEventListener('visibilitychange', resetVisibleClock);
     frameId = window.requestAnimationFrame(tick);
