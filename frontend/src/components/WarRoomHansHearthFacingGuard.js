@@ -1,14 +1,15 @@
 import * as THREE from 'three';
+import { hansBoardPeekHoldsMovement } from './WarRoomHansFireCallContract.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION = 'hearth-facing-guard-v2-board-peek';
+export const WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION = 'hearth-facing-guard-v3-board-side-peek';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
 const FIRE_CORE_NAME = 'war-room-fire-core';
 const POST_RENDER_ORDER = 15;
 const MIN_DOT = 0.995;
-const HEARTH_FACING_HOT_PATH_VERSION = 'preallocated-scratch-v3-board-peek';
+const HEARTH_FACING_HOT_PATH_VERSION = 'preallocated-scratch-v4-board-side';
 
 function findFaceAnchor(head) {
   if (!head?.children?.length) return null;
@@ -43,19 +44,16 @@ function createDirectionScratch() {
 function sampleRenderedDirections(hans, head, faceAnchor, target, scratch) {
   const parent = hans?.parent;
   if (!parent || !head || !faceAnchor || !target || !scratch) return false;
-
   parent.updateMatrixWorld?.(true);
   head.updateMatrixWorld?.(true);
   faceAnchor.updateMatrixWorld?.(true);
   target.updateMatrixWorld?.(true);
-
   head.getWorldPosition(scratch.headWorld);
   faceAnchor.getWorldPosition(scratch.faceWorld);
   target.getWorldPosition(scratch.targetWorld);
   parent.worldToLocal(scratch.headWorld);
   parent.worldToLocal(scratch.faceWorld);
   parent.worldToLocal(scratch.targetWorld);
-
   scratch.face.copy(scratch.faceWorld).sub(scratch.headWorld);
   scratch.towardTarget.copy(scratch.targetWorld).sub(scratch.headWorld);
   scratch.face.y = 0;
@@ -69,17 +67,14 @@ function sampleRenderedDirections(hans, head, faceAnchor, target, scratch) {
 function sampleRenderedDirectionsToBoard(hans, head, faceAnchor, scratch) {
   const parent = hans?.parent;
   if (!parent || !head || !faceAnchor || !scratch) return false;
-
   parent.updateMatrixWorld?.(true);
   head.updateMatrixWorld?.(true);
   faceAnchor.updateMatrixWorld?.(true);
-
   head.getWorldPosition(scratch.headWorld);
   faceAnchor.getWorldPosition(scratch.faceWorld);
   parent.worldToLocal(scratch.headWorld);
   parent.worldToLocal(scratch.faceWorld);
   scratch.targetWorld.set(0, scratch.headWorld.y, 0);
-
   scratch.face.copy(scratch.faceWorld).sub(scratch.headWorld);
   scratch.towardTarget.copy(scratch.targetWorld).sub(scratch.headWorld);
   scratch.face.y = 0;
@@ -101,18 +96,21 @@ export function installWarRoomHansHearthFacingGuard(root) {
   if (driver.userData?.warRoomHansHearthFacingGuard === WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION) return 0;
 
   const scratch = createDirectionScratch();
+  let canvas = null;
   let corrections = 0;
   const registered = registerWarRoomHansPostRenderStage(driver, {
     key: WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION,
     order: POST_RENDER_ORDER,
     run: () => {
       if (!hans.visible) return;
+      canvas ||= globalThis.document?.querySelector?.('.game-board-stack-3d .board3d-main-canvas') || null;
+      const narrativePhase = canvas?.dataset?.warRoomHansNarrativePhase || '';
+      const boardPeek = hansBoardPeekHoldsMovement(narrativePhase);
       const phase = driver.userData?.warRoomHansPhase
         || hans.userData?.warRoomHansChoreographyPhase
         || 'idle';
-      if (phase !== 'place-log' && phase !== 'satisfied') return;
+      if (!boardPeek && phase !== 'place-log') return;
 
-      const boardPeek = phase === 'satisfied';
       const sampled = boardPeek
         ? sampleRenderedDirectionsToBoard(hans, head, faceAnchor, scratch)
         : sampleRenderedDirections(hans, head, faceAnchor, fireCore, scratch);
@@ -120,7 +118,6 @@ export function installWarRoomHansHearthFacingGuard(root) {
 
       const dotBefore = scratch.face.dot(scratch.towardTarget);
       let dotAfter = dotBefore;
-
       if (dotBefore < MIN_DOT) {
         hans.rotation.y += signedPlanarAngle(scratch.face, scratch.towardTarget);
         hans.updateMatrixWorld?.(true);
