@@ -102,6 +102,7 @@ export default function WarRoomHansFireCall({
 
     const existingCanvas = portalHost.querySelector('.board3d-main-canvas');
     if (existingCanvas?.dataset.warRoomHansCallReleased === 'true') return undefined;
+    if (existingCanvas) existingCanvas.dataset.warRoomHansNarrativePhase = 'loading';
 
     let live = true;
     let currentPhase = 'loading';
@@ -122,6 +123,8 @@ export default function WarRoomHansFireCall({
       completionNotified = true;
       currentPhase = '';
       setPhase('');
+      const canvas = portalHost.querySelector('.board3d-main-canvas');
+      if (canvas) canvas.dataset.warRoomHansNarrativePhase = 'done';
       onComplete?.();
     };
 
@@ -130,6 +133,7 @@ export default function WarRoomHansFireCall({
       const delta = previousTime == null ? 0 : Math.max(0, now - previousTime);
       previousTime = now;
       const canvas = portalHost.querySelector('.board3d-main-canvas');
+      if (canvas) canvas.dataset.warRoomHansNarrativePhase = currentPhase || 'done';
       const visible = document.visibilityState !== 'hidden' && portalHost.getBoundingClientRect().width > 0;
       if (visible && canvas?.dataset.warRoomHansSceneReady === 'true') {
         const hansScreen = canvas.dataset.warRoomHansScreen || 'missing';
@@ -267,6 +271,8 @@ export default function WarRoomHansFireCall({
     frameId = window.requestAnimationFrame(tick);
     return () => {
       document.removeEventListener('visibilitychange', resetVisibleClock);
+      const canvas = portalHost.querySelector('.board3d-main-canvas');
+      if (canvas) canvas.dataset.warRoomHansNarrativePhase = 'done';
       live = false;
       window.cancelAnimationFrame(frameId);
     };
