@@ -129,36 +129,32 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
     return rect ? rect.width / Math.max(1, rect.height) : 0;
   }).toBeGreaterThan(1.14);
 
-  // Android must keep the same narrative scene contract as desktop. This is
-  // deliberately checked on the Pixel/touch lane, not inferred from a desktop
-  // E2E: Partida rápida must create Hans in the actual Three.js scene.
+  // Partida rápida must create the real Hans rig on Android. Since #717 the
+  // rendered call releases him from the service corridor instead of spawning
+  // him beside the hearth, so his first visible centre is deliberately just
+  // outside the portrait camera while he walks through the door.
   const hansMarker = page.locator('[data-war-room-hans-quick-request="true"]');
   await expect(hansMarker).toHaveCount(1);
+  await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 30_000 });
   await expect(hansMarker).toHaveAttribute('data-war-room-hans-runtime', 'visible', { timeout: 30_000 });
-  // Regression: `visible` is not enough. Hans used to spend the opening walk
-  // outside the portrait frustum while the test still passed. The first actual
-  // rendered frame on Pixel must put his world position inside the camera.
-  await expect(hansMarker).toHaveAttribute('data-war-room-hans-first-screen', 'onscreen', { timeout: 10_000 });
-  await expect(canvas).toHaveAttribute('data-war-room-hans-first-screen', 'onscreen', { timeout: 10_000 });
-  await expect(hansMarker).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 10_000 });
+  await expect(hansMarker).toHaveAttribute('data-war-room-hans-first-screen', 'offscreen', { timeout: 10_000 });
+  await expect(canvas).toHaveAttribute('data-war-room-hans-first-screen', 'offscreen', { timeout: 10_000 });
   // The CI Pixel lane normally uses SwiftShader, where the War Room intentionally
   // disables the idle heartbeat to protect pointer latency. Progression through
   // the timed choreography is therefore covered by the coarse-pointer Three.js
-  // driver test; here we assert that Android installs the real onscreen rig and
-  // exposes a valid projected position rather than a hidden/fallback stand-in.
+  // driver test; here we assert that Android exposes a real projected position
+  // from the service corridor rather than a hidden/fallback stand-in.
   const hansNdcX = Number(await canvas.getAttribute('data-war-room-hans-ndc-x'));
   const hansNdcY = Number(await canvas.getAttribute('data-war-room-hans-ndc-y'));
   expect(Number.isFinite(hansNdcX)).toBe(true);
   expect(Number.isFinite(hansNdcY)).toBe(true);
-  expect(Math.abs(hansNdcX)).toBeLessThanOrEqual(0.96);
-  expect(Math.abs(hansNdcY)).toBeLessThanOrEqual(0.96);
+  expect(Math.abs(hansNdcX)).toBeGreaterThan(0.96);
 
   // A later mobile finalizer used to be able to leave only the hearth kit while
   // the first frame briefly looked healthy. Give the scene a short settle window
-  // and require the actual Hans rig to remain installed and on camera.
+  // and require the actual Hans rig to remain installed.
   await page.waitForTimeout(350);
   await expect(hansMarker).toHaveAttribute('data-war-room-hans-runtime', 'visible');
-  await expect(hansMarker).toHaveAttribute('data-war-room-hans-screen', 'onscreen');
 
   const matthiasCard = page.locator('.game-3d-matthias-card');
   const focusButton = page.getByRole('button', { name: 'Focus', exact: true });

@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfrs',
+    title: 'El castillo deja la artillería 3D en el arsenal',
+    highlights: [
+      'Home y el acceso ya no descargan ni preparan el motor 3D sólo porque el navegador tenga un rato libre.',
+      'La War Room conserva su aspecto y comportamiento: sus recursos se cargan cuando abres de verdad un tablero 3D.',
+      'La entrada necesita menos transferencia, memoria y trabajo de JavaScript sin cambiar modos, reglas ni controles.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfrr',
     title: 'El reloj deja respirar al tablero',
     highlights: [
