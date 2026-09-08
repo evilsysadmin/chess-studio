@@ -1,10 +1,13 @@
+import {
+  getWarRoomHansActor,
+  getWarRoomHansNarrativePhase,
+  setWarRoomHansRuntimeState,
+} from './WarRoomHansActor.js';
 import { hansBoardPeekHoldsMovement } from './WarRoomHansFireCallContract.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION = 'board-peek-pose-v1-hands-behind-back';
+export const WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION = 'board-peek-pose-v2-actor-hands-behind-back';
 
-const HANS_NAME = 'war-room-hans-butler';
-const DRIVER_NAME = 'war-room-hans-fireplace-driver';
 const POST_RENDER_ORDER = 21;
 
 function capturePart(part) {
@@ -20,10 +23,10 @@ function capturePart(part) {
 }
 
 export function installWarRoomHansBoardPeekPose(root) {
-  if (!root) return 0;
-  const hans = root.getObjectByName?.(HANS_NAME);
-  const driver = root.getObjectByName?.(DRIVER_NAME);
-  const body = hans?.userData?.refs;
+  const actor = getWarRoomHansActor(root);
+  const hans = actor?.hans;
+  const driver = actor?.driver;
+  const body = actor?.body;
   if (!hans || !driver || !body || typeof driver.onBeforeRender !== 'function') return 0;
   if (driver.userData?.warRoomHansBoardPeekPose === WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION) return 0;
 
@@ -31,16 +34,14 @@ export function installWarRoomHansBoardPeekPose(root) {
   const rightArmBase = capturePart(body.rightArm);
   const torsoBase = capturePart(body.torso);
   const headBase = capturePart(body.head);
-  let canvas = null;
 
   const registered = registerWarRoomHansPostRenderStage(driver, {
     key: WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION,
     order: POST_RENDER_ORDER,
     run: () => {
-      canvas ||= globalThis.document?.querySelector?.('.game-board-stack-3d .board3d-main-canvas') || null;
-      const narrativePhase = canvas?.dataset?.warRoomHansNarrativePhase || '';
+      const narrativePhase = getWarRoomHansNarrativePhase(actor);
       if (!hans.visible || !hansBoardPeekHoldsMovement(narrativePhase)) {
-        hans.userData.warRoomHansBoardPeekPoseActive = false;
+        setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekPoseActive', false);
         return;
       }
 
@@ -61,9 +62,9 @@ export function installWarRoomHansBoardPeekPose(root) {
         body.head.rotation.x = headBase.rx + 0.05;
       }
 
-      hans.userData.warRoomHansBoardPeekPoseActive = true;
-      hans.userData.warRoomHansBoardPeekPose = WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION;
-      hans.userData.warRoomHansBoardPeekHands = 'behind-back';
+      setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekPoseActive', true);
+      setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekPose', WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION);
+      setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekHands', 'behind-back');
     },
   });
   if (!registered) return 0;
