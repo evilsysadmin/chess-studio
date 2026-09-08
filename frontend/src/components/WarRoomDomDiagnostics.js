@@ -39,7 +39,11 @@ export function applyWarRoomHansScreenDiagnostics({
   const x = Number(projected?.x);
   const y = Number(projected?.y);
   const waitingForInitialReply = canvas.dataset?.warRoomHansNarrativePhase === 'await-hans';
-  const replyReady = hansInitialReplyPointReached({ hansScreen: screenState, ndcX: x });
+  const replyReady = hansInitialReplyPointReached({
+    hansScreen: screenState,
+    route: canvas.dataset?.warRoomHansRoute || '',
+    logicalX: canvas.dataset?.warRoomHansLogicalX,
+  });
   const effectiveScreenState = waitingForInitialReply && screenState === 'onscreen' && !replyReady
     ? 'edge'
     : screenState;
