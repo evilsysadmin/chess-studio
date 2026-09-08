@@ -21,7 +21,7 @@ import { resolveBoardTap } from './WarRoom3DTouch.js';
 import { BOARD3D_HIGHLIGHT_SIZE, BOARD3D_HIGHLIGHT_Y, board3DHighlightStyle } from './Board3DHighlights.js';
 import { board3DCaptureWarmBoostValue, board3DPieceInteractionPose, writeBoard3DHighlightPulse } from './Board3DInteractionFx.js';
 import { BOARD_THEME_3D, FILES, resolveBoard3DThemeId } from './Board3DConfig.js';
-import { adjacentSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
+import { adjacentSquare, isLightSquare, parseFen, squarePosition } from './Board3DBoardMath.js';
 import { planBoard3DPieceReconciliation } from './Board3DPieceReconciliation.js';
 import { addCoarsePieceHitTarget, applyMatthiasCheckPose, buildPiece, disposeObject } from './Board3DPieces.js';
 import { addMesh, buildWarRoom, fitBoardCamera, makeTextSprite } from './Board3DScene.js';
@@ -306,7 +306,7 @@ function Board3DCanvas({
       for (let fileIndex = 0; fileIndex < 8; fileIndex += 1) {
         const square = `${FILES[fileIndex]}${rank}`;
         const { x, z } = squarePosition(square);
-        const light = (rank + fileIndex) % 2 === 1;
+        const light = isLightSquare(square);
         const tile = new THREE.Mesh(
           new THREE.BoxGeometry(0.984, 0.105, 0.984),
           light ? lightTileMaterial : darkTileMaterial,
