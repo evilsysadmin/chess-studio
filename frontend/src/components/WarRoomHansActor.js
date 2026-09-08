@@ -1,9 +1,10 @@
-export const WAR_ROOM_HANS_ACTOR_VERSION = 'war-room-hans-actor-v3-routine-lease';
+export const WAR_ROOM_HANS_ACTOR_VERSION = 'war-room-hans-actor-v4-event-context';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
 const FIREPLACE_NAME = 'war-room-fireplace';
 const CANVAS_SELECTOR = '.game-board-stack-3d .board3d-main-canvas';
+const GAME_MARKER_SELECTOR = '[data-war-room-hans-game-id]';
 const ACTORS = new WeakMap();
 
 export function getWarRoomHansActor(root) {
@@ -25,6 +26,7 @@ export function getWarRoomHansActor(root) {
     fireplace,
     body,
     canvas: null,
+    gameMarker: null,
     side: Math.sign(Number(fireplace?.position?.x || -1)) || -1,
     routine: '',
   };
@@ -39,6 +41,14 @@ export function getWarRoomHansCanvas(actor) {
   if (actor.canvas && actor.canvas.isConnected !== false) return actor.canvas;
   actor.canvas = globalThis.document?.querySelector?.(CANVAS_SELECTOR) || null;
   return actor.canvas;
+}
+
+export function getWarRoomHansGameId(actor) {
+  if (!actor) return '';
+  if (!actor.gameMarker || actor.gameMarker.isConnected === false) {
+    actor.gameMarker = globalThis.document?.querySelector?.(GAME_MARKER_SELECTOR) || null;
+  }
+  return String(actor.gameMarker?.getAttribute?.('data-war-room-hans-game-id') || '');
 }
 
 export function getWarRoomHansNarrativePhase(actor) {
