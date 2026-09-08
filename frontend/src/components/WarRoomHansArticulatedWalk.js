@@ -16,8 +16,8 @@ const MIN_TRAVEL_SQ = MIN_TRAVEL * MIN_TRAVEL;
 const TELEPORT_DISTANCE = 0.48;
 const TELEPORT_DISTANCE_SQ = TELEPORT_DISTANCE * TELEPORT_DISTANCE;
 const HORIZONTAL_BLEND_RESPONSE = 0.36;
-const WAR_ROOM_GAIT_CADENCE_GAIN = 0.98;
-const LEGACY_ELDER_WALK_VERSION = 'elder-butler-gait-v2-stooped';
+const WAR_ROOM_GAIT_CADENCE_GAIN = 1.14;
+const LEGACY_ELDER_WALK_VERSION = 'elder-butler-gait-v1';
 const LEGACY_GAIT_FRAME_COUNT = 8;
 const POST_RENDER_ORDER = 24;
 
@@ -108,7 +108,7 @@ function publishGaitTelemetry(hans, controller, sample, horizontalBlend, realTra
   hans.userData.warRoomHansWalkCycleDistance = realTravelDistance;
   hans.userData.warRoomHansWalkCyclePhaseDistance = controller.distance;
   hans.userData.warRoomHansGaitDistance = realTravelDistance;
-  hans.userData.warRoomHansGaitGrounding = 'real-distance-foot-plant-v4-elder';
+  hans.userData.warRoomHansGaitGrounding = 'real-distance-foot-plant-v3';
   hans.userData.warRoomHansGaitTeleportSuppressed = false;
   hans.userData.warRoomHansElderPostureContract = WAR_ROOM_HANS_ELDER_POSTURE_VERSION;
 }
