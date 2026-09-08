@@ -230,6 +230,7 @@ export default function Menu({
                 suddenDeath,
                 threatCheck,
                 adaptiveDifficulty: autoDifficulty,
+                ghostStyle: autoDifficulty ? { balance: true } : null,
               },
             );
             if (started) setShowQuickMatch(false);
