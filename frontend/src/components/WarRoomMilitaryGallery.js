@@ -441,10 +441,10 @@ function addSideTorch(group, { side, wallZ, towardBoard, offset, phase }) {
   outer.castShadow = false;
   inner.castShadow = false;
 
-  // One real light drives PBR response on metal, frames and furniture. The
-  // additive halo owns the broad wall wash, avoiding a second redundant point
-  // light per torch with no visual loss after the desktop hard-cut.
-  const light = new THREE.PointLight(0xff8738, 7.4, 9.2, 2);
+  // Keep one real light per torch, but let its warm spill reach the adjacent
+  // campaign painting instead of dying on the wall before the frame. The
+  // slightly softer falloff brightens canvas + gilt without adding more lights.
+  const light = new THREE.PointLight(0xff8738, 9.2, 11.0, 1.8);
   light.name = 'war-room-side-torch-light';
   light.position.set(0, 0.62, 0.7);
   light.castShadow = false;
