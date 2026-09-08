@@ -9,10 +9,11 @@ export const PAWN_SLUG_LANDMARK_META = Object.freeze({
     Object.freeze({ id: 'command-post', x: 29.5, label: 'Puesto de mando bombardeado' }),
     Object.freeze({ id: 'wrecked-searchlight', x: 66.5, label: 'Reflector derribado' }),
     Object.freeze({ id: 'hero-barricade', x: 104.5, label: 'Barricada de última línea' }),
+    Object.freeze({ id: 'boss-fortress', x: 114.5, label: 'Fortaleza incendiada del Panzer-Rook' }),
   ]),
-  desktopDetailBudget: 3,
-  coarseDetailBudget: 1,
-  desktopLocalLightBudget: 2,
+  desktopDetailBudget: 4,
+  coarseDetailBudget: 2,
+  desktopLocalLightBudget: 4,
   coarseLocalLightBudget: 0,
   staticBatching: PAWN_SLUG_STATIC_INSTANCE_VERSION,
   desktopBatchedInstances: 35,
@@ -194,6 +195,97 @@ function heroBarricade(x, coarse) {
   return root;
 }
 
+function bossFortress(x, coarse) {
+  const root = new THREE.Group();
+  root.name = 'pawn-slug-landmark-boss-fortress';
+  root.position.set(x, 0, -2.35);
+
+  const stone = material(0x2a3035, 0.96, 0.03);
+  const darkStone = material(0x171b1f, 1, 0.01);
+  const iron = material(0x30373c, 0.58, 0.52);
+  const fire = material(0xff8c28, 0.4, 0.02, 0xff641f, coarse ? 1.4 : 3.4);
+  const ember = material(0xffc45f, 0.34, 0.01, 0xff9b35, coarse ? 1.1 : 4.1);
+
+  root.add(
+    mesh(new THREE.BoxGeometry(13.2, 4.6, 1.15), stone, { y: 2.3 }),
+    mesh(new THREE.BoxGeometry(2.55, 7.5, 1.55), darkStone, { x: -5.55, y: 3.72, z: 0.08 }),
+    mesh(new THREE.BoxGeometry(2.55, 7.5, 1.55), darkStone, { x: 5.55, y: 3.72, z: 0.08 }),
+    mesh(new THREE.BoxGeometry(4.15, 4.05, 0.34), material(0x080a0c, 1), { y: 1.85, z: 0.72 }),
+    mesh(new THREE.BoxGeometry(4.85, 0.72, 0.7), stone, { y: 4.35, z: 0.24 }),
+  );
+
+  const arch = mesh(new THREE.TorusGeometry(2.08, 0.43, coarse ? 7 : 10, coarse ? 18 : 28, Math.PI), stone, {
+    y: 3.72,
+    z: 0.83,
+    rz: Math.PI,
+  });
+  arch.name = 'pawn-slug-boss-fortress-arch';
+  root.add(arch);
+
+  const battlementGeometry = new THREE.BoxGeometry(0.72, 0.68, 0.92);
+  for (const tx of [-5.95, -5.15, -4.35, -3.3, -2.25, -1.2, -0.15, 0.9, 1.95, 3.0, 4.35, 5.15, 5.95]) {
+    root.add(mesh(battlementGeometry, darkStone, { x: tx, y: Math.abs(tx) > 4 ? 7.72 : 4.94, z: 0.12 }));
+  }
+
+  for (const [wx, wy, scale] of [
+    [-5.45, 5.45, 1.0],
+    [5.52, 5.12, 0.88],
+    [-3.55, 3.2, 0.74],
+    [3.28, 3.42, 0.68],
+  ]) {
+    root.add(
+      mesh(new THREE.BoxGeometry(0.62 * scale, 1.22 * scale, 0.16), material(0x130c08, 1), { x: wx, y: wy, z: 0.92 }),
+      mesh(new THREE.SphereGeometry(0.33 * scale, coarse ? 7 : 10, coarse ? 5 : 7), fire, { x: wx, y: wy, z: 1.08 }),
+      mesh(new THREE.SphereGeometry(0.17 * scale, coarse ? 6 : 8, coarse ? 4 : 6), ember, { x: wx + 0.08, y: wy + 0.12, z: 1.17 }),
+    );
+  }
+
+  const brazierPositions = coarse ? [-4.1, 4.1] : [-4.1, -2.9, 2.9, 4.1];
+  for (const bx of brazierPositions) {
+    root.add(
+      mesh(new THREE.CylinderGeometry(0.34, 0.43, 0.52, 8), iron, { x: bx, y: 0.26, z: 1.02 }),
+      mesh(new THREE.ConeGeometry(0.31, 0.88, coarse ? 7 : 10), fire, { x: bx, y: 0.95, z: 1.02 }),
+      mesh(new THREE.ConeGeometry(0.16, 0.62, coarse ? 6 : 8), ember, { x: bx + 0.05, y: 1.03, z: 1.09 }),
+    );
+  }
+
+  const rubbleCount = coarse ? 6 : 14;
+  for (let i = 0; i < rubbleCount; i += 1) {
+    const side = i % 2 ? 1 : -1;
+    root.add(mesh(
+      new THREE.BoxGeometry(0.42 + (i % 3) * 0.12, 0.18 + (i % 2) * 0.09, 0.35),
+      i % 3 === 0 ? iron : stone,
+      {
+        x: side * (2.2 + (i % 7) * 0.55),
+        y: 0.11 + (i % 3) * 0.05,
+        z: 0.7 + (i % 4) * 0.11,
+        rz: side * (0.08 + (i % 4) * 0.09),
+      },
+    ));
+  }
+
+  if (!coarse) {
+    const smokeMat = new THREE.MeshBasicMaterial({ color: 0x202428, transparent: true, opacity: 0.28, depthWrite: false });
+    for (const [sx, sy, ss] of [
+      [-5.2, 7.9, 1.15], [-4.75, 8.85, 1.45], [-4.25, 9.9, 1.7],
+      [4.95, 7.5, 1.05], [4.55, 8.45, 1.38], [4.05, 9.35, 1.55],
+    ]) {
+      const smoke = mesh(new THREE.SphereGeometry(ss, 10, 7), smokeMat, { x: sx, y: sy, z: -0.25 });
+      smoke.castShadow = false;
+      smoke.receiveShadow = false;
+      root.add(smoke);
+    }
+    root.add(
+      localPointLight('pawn-slug-boss-fortress-left-fire', 0xff7027, 1.55, 7.5, { x: -4.45, y: 3.4, z: 1.5 }),
+      localPointLight('pawn-slug-boss-fortress-right-fire', 0xff8f35, 1.45, 7.5, { x: 4.25, y: 3.55, z: 1.5 }),
+    );
+  }
+
+  root.userData.bossArena = true;
+  root.userData.bossWorldX = x;
+  return root;
+}
+
 export function createPawnSlugPremiumLandmarks(parent, { coarse = false } = {}) {
   if (!parent) throw new Error('Pawn Slug landmarks require a parent group');
   const root = new THREE.Group();
@@ -203,6 +295,7 @@ export function createPawnSlugPremiumLandmarks(parent, { coarse = false } = {}) 
     commandPost(PAWN_SLUG_LANDMARK_META.landmarks[0].x, coarse),
     wreckedSearchlight(PAWN_SLUG_LANDMARK_META.landmarks[1].x, coarse),
     heroBarricade(PAWN_SLUG_LANDMARK_META.landmarks[2].x, coarse),
+    bossFortress(PAWN_SLUG_LANDMARK_META.landmarks[3].x, coarse),
   );
   parent.add(root);
   return root;

@@ -15,11 +15,23 @@ async function dismissGuide(page) {
   if (await close.isVisible().catch(() => false)) await close.click();
 }
 
+async function dismissMatthiasSpeech(page) {
+  const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
+  if (!(await speech.isVisible().catch(() => false))) return;
+
+  const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
+  if (await close.isVisible().catch(() => false)) await close.click();
+}
+
 async function openPawnSlug(page) {
   await mockApi(page);
   await login(page);
   await dismissGuide(page);
-  const moreModes = await openMoreGameModes(page);
+  await dismissMatthiasSpeech(page);
+  await openMoreGameModes(page);
+
+  const moreModes = page.locator('#illustrated-home-tools');
+  await expect(moreModes).toBeVisible();
   const experiments = moreModes
     .getByRole('button')
     .filter({ hasText: 'Experimentos geniales' });

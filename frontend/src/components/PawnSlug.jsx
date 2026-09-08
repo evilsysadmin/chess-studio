@@ -160,6 +160,32 @@ export default function PawnSlug({ onExit }) {
         </div>
 
         <div className="pawn-slug-stage">
+          <button
+            type="button"
+            aria-label="Salir de Pawn Slug"
+            onClick={onExit}
+            style={{
+              position: 'absolute',
+              zIndex: 40,
+              top: '.55rem',
+              right: '.55rem',
+              minWidth: '4.8rem',
+              minHeight: '2.65rem',
+              padding: '.45rem .7rem',
+              border: '1px solid rgba(230,186,104,.62)',
+              borderRadius: '.6rem',
+              background: 'rgba(10,12,14,.88)',
+              color: '#f0d39a',
+              boxShadow: '0 8px 22px rgba(0,0,0,.35)',
+              fontSize: '.72rem',
+              fontWeight: 900,
+              letterSpacing: '.08em',
+              touchAction: 'manipulation',
+            }}
+          >
+            SALIR
+          </button>
+
           <div
             ref={hostRef}
             className="pawn-slug-three"

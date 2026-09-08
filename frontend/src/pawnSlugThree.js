@@ -34,6 +34,13 @@ import {
   disposePawnSlugObject,
 } from './pawnSlugArt.js';
 import { createPawnSlugPremiumLandmarks } from './pawnSlugLandmarks.js';
+import {
+  createPawnSlugPlatforms,
+  pawnSlugPlatformAtX,
+  pawnSlugPlatformCameraY,
+  pawnSlugPlatformLookAtY,
+  pawnSlugResolvePlatformLanding,
+} from './pawnSlugPlatforms.js';
 import { pawnSlugMatthiasLocomotion } from './pawnSlugMotionPolish.js';
 import {
   animatePremiumMuzzleFlash,
@@ -58,10 +65,10 @@ import {
 } from './pawnSlugRuntimeHotPath.js';
 
 const WORLD_SCALE = 1 / 40;
-const VIEW_W = 24;
-const VIEW_H = 13.5;
+const VIEW_W = 29.5;
+const VIEW_H = 16.6;
 const GROUND_Y = 0;
-const PLAYER_SPEED = 6.35;
+const PLAYER_SPEED = 5.1;
 const PLAYER_JUMP = 8.4;
 const GRAVITY = 22;
 const PLAYER_W = 0.82;
@@ -295,6 +302,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
 
   const { root: environmentRoot, far: farEnvironment } = createSlugEnvironment(scene);
   createPawnSlugPremiumLandmarks(environmentRoot, { coarse });
+  createPawnSlugPlatforms(environmentRoot, { coarse });
   const dynamic = new THREE.Group();
   const projectileLayer = new THREE.Group();
   const fxLayer = new THREE.Group();
@@ -422,6 +430,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     playerModel.userData.setWeapon?.('pistol');
     placePlayer();
     camera.position.x = VIEW_W / 2;
+    camera.position.y = 5.1;
     state.cameraX = VIEW_W / 2;
     setAmbientDuck(true);
     emitHud(true);
@@ -500,9 +509,11 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     if (state.takenPickups.has(index)) return;
     const model = createPickupModel(pickup.type);
     const x = wx(pickup.x);
-    model.position.set(x, 0.18, 0.35);
+    const support = pawnSlugPlatformAtX(x);
+    const y = (support?.y || 0) + 0.18;
+    model.position.set(x, y, 0.35);
     dynamic.add(model);
-    state.pickups.push({ id: index, type: pickup.type, x, y: 0.18, w: 0.9, h: 0.9, model, bob: Math.random() * Math.PI * 2 });
+    state.pickups.push({ id: index, type: pickup.type, x, y, w: 0.9, h: 0.9, model, bob: Math.random() * Math.PI * 2 });
   }
 
   function spawnAhead() {
@@ -750,6 +761,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     player.stoppedAt = state.time;
     selectWeapon('pistol', { announce: false });
     camera.position.x = Math.max(VIEW_W / 2, player.x + VIEW_W * 0.14);
+    camera.position.y = 5.1;
     setToast(`Vida menos. Reagrupando en ${Math.round(player.x / WORLD_SCALE)} m. Pistola fuera.`, 2.2);
   }
 
@@ -806,21 +818,44 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       : (player.onGround ? 8.2 : 2.25);
     player.vx += (targetVx - player.vx) * (1 - Math.exp(-response * dt));
 
-    if (input.jump && player.onGround && !player.crouch) {
+    const dropThrough = input.jump && player.crouch && player.onGround && player.y > GROUND_Y + 0.05;
+    if (dropThrough) {
+      player.onGround = false;
+      player.y = Math.max(GROUND_Y, player.y - 0.09);
+      player.vy = Math.min(player.vy, -1.2);
+      input.jump = false;
+    } else if (input.jump && player.onGround && !player.crouch) {
       player.vy = PLAYER_JUMP;
       player.onGround = false;
       input.jump = false;
     }
 
     const wasOnGround = player.onGround;
+    const previousY = player.y;
     player.vy -= GRAVITY * dt;
     player.x += player.vx * dt;
     player.y += player.vy * dt;
-    if (player.y <= GROUND_Y) {
+
+    const platformLanding = pawnSlugResolvePlatformLanding({
+      previousY,
+      nextY: player.y,
+      vy: player.vy,
+      left: player.x - PLAYER_W / 2,
+      right: player.x + PLAYER_W / 2,
+      dropThrough,
+    });
+    if (platformLanding) {
+      player.y = platformLanding.y;
+      player.vy = 0;
+      player.onGround = true;
+      if (!wasOnGround) player.landing = 0.12;
+    } else if (player.y <= GROUND_Y) {
       player.y = GROUND_Y;
       player.vy = 0;
       player.onGround = true;
       if (!wasOnGround) player.landing = 0.12;
+    } else {
+      player.onGround = false;
     }
 
     const movingNow = Math.abs(player.vx) > 0.18 && player.onGround && !player.crouch;
@@ -955,13 +990,29 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
         }
       }
 
+      const previousEnemyY = enemy.y;
       enemy.vy -= GRAVITY * dt;
       enemy.x += enemy.vx * dt;
       enemy.y += enemy.vy * dt;
-      if (enemy.y <= 0) {
-        enemy.y = 0;
+      const enemyLanding = enemy.type === 'boss' || enemy.type === 'bishop'
+        ? null
+        : pawnSlugResolvePlatformLanding({
+          previousY: previousEnemyY,
+          nextY: enemy.y,
+          vy: enemy.vy,
+          left: enemy.x - enemy.w / 2,
+          right: enemy.x + enemy.w / 2,
+        });
+      if (enemyLanding) {
+        enemy.y = enemyLanding.y;
         enemy.vy = 0;
         enemy.onGround = true;
+      } else if (enemy.y <= GROUND_Y) {
+        enemy.y = GROUND_Y;
+        enemy.vy = 0;
+        enemy.onGround = true;
+      } else {
+        enemy.onGround = false;
       }
       enemy.model.position.set(enemy.x, enemy.y, enemy.type === 'boss' ? -0.15 : enemy.type === 'bishop' ? 0.08 : 0);
       if (enemy.type === 'bishop') {
@@ -984,8 +1035,49 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
         animateSlugEnemy(enemy.model, enemy.type, state.time, { moving: Math.abs(enemy.vx) > 0.2, hurt: enemy.hurt > 0 });
       }
 
+      if (!reducedMotion) {
+        const moving = Math.abs(enemy.vx) > 0.2;
+        const phase = enemy.model.userData.motionPhase ?? ((enemy.model.id || 0) * 0.73);
+        const rate = enemy.type === 'knight'
+          ? 10.5
+          : enemy.type === 'pawn'
+            ? 8.4
+            : enemy.type === 'bishop'
+              ? 5.2
+              : enemy.type === 'boss'
+                ? 2.2
+                : 3.1;
+        const bob = enemy.type === 'knight'
+          ? 0.13
+          : enemy.type === 'pawn'
+            ? 0.085
+            : enemy.type === 'bishop'
+              ? 0.065
+              : enemy.type === 'boss'
+                ? 0.045
+                : 0.035;
+        const lean = enemy.type === 'knight'
+          ? 0.055
+          : enemy.type === 'pawn'
+            ? 0.035
+            : enemy.type === 'bishop'
+              ? 0.018
+              : enemy.type === 'boss'
+                ? 0.008
+                : 0.012;
+        const stride = Math.sin(state.time * rate + phase);
+        enemy.model.position.y += moving ? Math.abs(stride) * bob : Math.max(0, stride) * bob * 0.35;
+        const tilt = stride * lean * (moving ? 1 : 0.35) * enemy.dir;
+        if (enemy.model.material) enemy.model.material.rotation += tilt;
+        else enemy.model.rotation.z = tilt;
+        if (enemy.type === 'knight' && !enemy.onGround) {
+          if (enemy.model.material) enemy.model.material.rotation += enemy.dir * 0.08;
+          else enemy.model.rotation.z += enemy.dir * 0.08;
+        }
+      }
+
       const contact = enemy.type === 'boss' ? 3.5 : enemy.type === 'bishop' ? 1.15 : enemy.type === 'rook' ? 0.85 : 0.58;
-      if (distance < contact && player.y < enemy.y + enemy.h) hurtPlayer(enemy.type === 'boss' ? 38 : enemy.type === 'bishop' ? 28 : 18);
+      if (distance < contact && player.y < enemy.y + enemy.h && player.y + PLAYER_H > enemy.y) hurtPlayer(enemy.type === 'boss' ? 38 : enemy.type === 'bishop' ? 28 : 18);
     }
 
     for (let index = 0; index < state.enemies.length;) {
@@ -1161,9 +1253,12 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     state.cameraX += (target - state.cameraX) * (1 - Math.exp(-3.85 * dt));
     const shakeX = state.shake > 0 && !reducedMotion ? (Math.random() * 2 - 1) * state.shake : 0;
     const shakeY = state.shake > 0 && !reducedMotion ? (Math.random() * 2 - 1) * state.shake * 0.5 : 0;
+    const cameraTargetY = pawnSlugPlatformCameraY(state.player.y);
+    const lookAtTargetY = pawnSlugPlatformLookAtY(state.player.y);
     camera.position.x = state.cameraX + shakeX;
-    camera.position.y = 5.1 + shakeY;
-    camera.lookAt(state.cameraX + shakeX, 4.25 + shakeY * 0.5, 0);
+    camera.position.y += (cameraTargetY - camera.position.y) * (1 - Math.exp(-4.6 * dt));
+    camera.position.y += shakeY;
+    camera.lookAt(state.cameraX + shakeX, lookAtTargetY + shakeY * 0.5, 0);
     farEnvironment.position.x = state.cameraX * 0.58;
     state.shake = Math.max(0, state.shake - dt * 1.8);
   }
