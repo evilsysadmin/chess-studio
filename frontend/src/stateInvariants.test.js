@@ -12,6 +12,14 @@ function rng(seed) {
   };
 }
 
+function compactMove(move) {
+  return {
+    from: move.from,
+    to: move.to,
+    ...(move.promotion ? { promotion: move.promotion } : {}),
+  };
+}
+
 const LEGAL_POSITION_FUZZ_TIMEOUT_MS = 20_000;
 
 describe('property/fuzz de estado cliente', () => {
@@ -37,6 +45,77 @@ describe('property/fuzz de estado cliente', () => {
       }
     }
   }, LEGAL_POSITION_FUZZ_TIMEOUT_MS);
+
+  it('move/undo y round-trip FEN preservan exactamente posiciones legales aleatorias', () => {
+    for (let seed = 101; seed <= 124; seed += 1) {
+      const random = rng(seed * 31);
+      const chess = new Chess();
+      for (let ply = 0; ply < 60 && !chess.isGameOver(); ply += 1) {
+        const before = chess.fen();
+        const legal = chess.moves({ verbose: true });
+        const picked = legal[Math.floor(random() * legal.length)];
+        const played = chess.move(compactMove(picked));
+        if (!played) throw new Error(`seed=${seed} ply=${ply} move rejected unexpectedly`);
+
+        const after = chess.fen();
+        expect(new Chess(after).fen(), `seed=${seed} ply=${ply} fen=${after}`).toBe(after);
+
+        const undone = chess.undo();
+        expect(undone, `seed=${seed} ply=${ply} fen=${after}`).not.toBeNull();
+        expect(chess.fen(), `seed=${seed} ply=${ply} undo=${played.san}`).toBe(before);
+
+        chess.move(compactMove(played));
+        expect(chess.fen(), `seed=${seed} ply=${ply} replay=${played.san}`).toBe(after);
+      }
+    }
+  }, LEGAL_POSITION_FUZZ_TIMEOUT_MS);
+
+  it('reproducir una partida legal aleatoria desde sus jugadas reconstruye cada FEN', () => {
+    for (let seed = 201; seed <= 216; seed += 1) {
+      const random = rng(seed * 43);
+      const source = new Chess();
+      const moves = [];
+      const fens = [source.fen()];
+
+      for (let ply = 0; ply < 50 && !source.isGameOver(); ply += 1) {
+        const legal = source.moves({ verbose: true });
+        const picked = legal[Math.floor(random() * legal.length)];
+        const played = source.move(compactMove(picked));
+        moves.push(compactMove(played));
+        fens.push(source.fen());
+      }
+
+      const replay = new Chess();
+      expect(replay.fen()).toBe(fens[0]);
+      moves.forEach((move, index) => {
+        const played = replay.move(move);
+        if (!played) throw new Error(`seed=${seed} replayPly=${index} move=${JSON.stringify(move)}`);
+        expect(replay.fen(), `seed=${seed} replayPly=${index}`).toBe(fens[index + 1]);
+      });
+    }
+  }, LEGAL_POSITION_FUZZ_TIMEOUT_MS);
+
+  it('mantiene invariantes en enroque, en passant, promoción y triple repetición', () => {
+    const castling = new Chess();
+    ['Nf3', 'Nf6', 'g3', 'g6', 'Bg2', 'Bg7', 'O-O', 'O-O'].forEach((san) => castling.move(san));
+    expect(castling.get('g1')).toMatchObject({ type: 'k', color: 'w' });
+    expect(castling.get('f1')).toMatchObject({ type: 'r', color: 'w' });
+    expect(castling.get('g8')).toMatchObject({ type: 'k', color: 'b' });
+    expect(castling.get('f8')).toMatchObject({ type: 'r', color: 'b' });
+
+    const enPassant = new Chess();
+    ['e4', 'a6', 'e5', 'd5', 'exd6'].forEach((san) => enPassant.move(san));
+    expect(enPassant.get('d5')).toBeUndefined();
+    expect(enPassant.get('d6')).toMatchObject({ type: 'p', color: 'w' });
+
+    const promotion = new Chess('8/P7/8/8/8/8/7p/4K2k w - - 0 1');
+    promotion.move({ from: 'a7', to: 'a8', promotion: 'q' });
+    expect(promotion.get('a8')).toMatchObject({ type: 'q', color: 'w' });
+
+    const repetition = new Chess();
+    ['Nf3', 'Nf6', 'Ng1', 'Ng8', 'Nf3', 'Nf6', 'Ng1', 'Ng8'].forEach((san) => repetition.move(san));
+    expect(repetition.isThreefoldRepetition()).toBe(true);
+  });
 
   it('series aleatorias nunca sobrepasan las victorias necesarias ni duplican gameId', () => {
     for (let seed = 1; seed <= 50; seed += 1) {
