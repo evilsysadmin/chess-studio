@@ -3,6 +3,7 @@ import { STORAGE_LOCAL, getStorageItem, setStorageItem } from './safeStorage.js'
 export const PAWN_SLUG_CONTROL_ACTIONS = Object.freeze([
   'moveLeft',
   'moveRight',
+  'crouch',
   'fire',
   'jump',
   'usePowerup',
@@ -12,6 +13,7 @@ export const PAWN_SLUG_CONTROL_ACTIONS = Object.freeze([
 export const PAWN_SLUG_ENGINE_ACTION_BY_CONTROL = Object.freeze({
   moveLeft: 'left',
   moveRight: 'right',
+  crouch: 'crouch',
   fire: 'fire',
   jump: 'jump',
   usePowerup: 'grenade',
@@ -21,6 +23,7 @@ export const PAWN_SLUG_ENGINE_ACTION_BY_CONTROL = Object.freeze({
 export const PAWN_SLUG_CONTROL_LABELS = Object.freeze({
   moveLeft: 'Mover izquierda',
   moveRight: 'Mover derecha',
+  crouch: 'Agacharse',
   fire: 'Disparar',
   jump: 'Saltar',
   usePowerup: 'Usar power-up',
@@ -30,6 +33,7 @@ export const PAWN_SLUG_CONTROL_LABELS = Object.freeze({
 export const PAWN_SLUG_DEFAULT_KEYMAP = Object.freeze({
   moveLeft: 'ArrowLeft',
   moveRight: 'ArrowRight',
+  crouch: 'ArrowDown',
   fire: 'Space',
   jump: 'ShiftLeft',
   usePowerup: 'ControlLeft',
