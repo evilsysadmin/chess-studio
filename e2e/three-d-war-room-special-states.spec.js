@@ -348,7 +348,30 @@ test('War Room Android · sobrevive rotación y background/foreground repetidos 
     await expect(warRoom).toHaveCount(1);
     await expect(canvas).toHaveCount(1);
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+    const overflow = await page.evaluate(() => {
+      const viewportWidth = window.innerWidth;
+      const documentWidth = document.documentElement.scrollWidth;
+      const offenders = Array.from(document.querySelectorAll('body *'))
+        .map((element) => {
+          const rect = element.getBoundingClientRect();
+          const style = getComputedStyle(element);
+          return {
+            tag: element.tagName.toLowerCase(),
+            id: element.id || '',
+            className: typeof element.className === 'string' ? element.className : '',
+            display: style.display,
+            position: style.position,
+            left: Math.round(rect.left * 10) / 10,
+            right: Math.round(rect.right * 10) / 10,
+            width: Math.round(rect.width * 10) / 10,
+          };
+        })
+        .filter((row) => row.display !== 'none' && row.width > 0 && (row.right > viewportWidth + 1 || row.left < -1))
+        .sort((a, b) => Math.max(b.right - viewportWidth, -b.left) - Math.max(a.right - viewportWidth, -a.left))
+        .slice(0, 12);
+      return { viewportWidth, documentWidth, offenders };
+    });
+    expect(overflow.documentWidth, `cycle=${cycle} overflow=${JSON.stringify(overflow)}`).toBeLessThanOrEqual(overflow.viewportWidth + 1);
   }
 
   await page.setViewportSize({ width: 390, height: 844 });
