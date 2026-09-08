@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { pickHansLegalSuggestion } from './WarRoomHansBoardPeek.js';
-import { hansQuickIterationFrame } from './WarRoomHansIteration.js';
 import {
   HANS_BOARD_PEEK_MS,
   HANS_FIRE_REPLY_LINE,
@@ -25,6 +24,8 @@ import './WarRoomHansFireCall.css';
 
 const HANS_DOOR_OPENING_MS = 600;
 const HANS_PRESENTATION_TIME_SCALE = 0.54;
+const HANS_QUICK_ENTRY_SECONDS = 7;
+const HANS_POST_ENTRY_OFFSET_SECONDS = 3;
 
 function sameAnchor(current, next) {
   if (current === next) return true;
@@ -35,10 +36,15 @@ function sameAnchor(current, next) {
     && current.tailPercent === next.tailPercent;
 }
 
-function hansPresentationPhase(presentationMs) {
+export function hansNarrativePresentationPhase(presentationMs) {
   const elapsedSeconds = Math.max(0, Number(presentationMs) - HANS_DOOR_OPENING_MS)
     / 1000 * HANS_PRESENTATION_TIME_SCALE;
-  return hansQuickIterationFrame(elapsedSeconds).phase;
+  if (elapsedSeconds < HANS_QUICK_ENTRY_SECONDS) return 'entry';
+  const timelineT = elapsedSeconds + HANS_POST_ENTRY_OFFSET_SECONDS;
+  if (timelineT < 25.5) return 'working';
+  if (timelineT < 27) return 'satisfied';
+  if (timelineT < 33) return 'leave';
+  return 'complete';
 }
 
 export default function WarRoomHansFireCall({
@@ -129,13 +135,11 @@ export default function WarRoomHansFireCall({
         const hansScreen = canvas.dataset.warRoomHansScreen || 'missing';
 
         if (callReleased) {
-          // Mirrors the bounded presentation clock used by WarRoomHansIteration.
           presentationMs += Math.min(delta, presentationMs < HANS_DOOR_OPENING_MS ? 100 : 1000);
         }
-        const hansPhase = callReleased ? hansPresentationPhase(presentationMs) : 'waiting';
+        const hansPhase = callReleased ? hansNarrativePresentationPhase(presentationMs) : 'waiting';
 
         if (currentPhase === 'loading') {
-          // Allow the completed WebGL frame to be painted before the call.
           readyPaints += 1;
           if (readyPaints >= 2) {
             currentPhase = 'matthias';
@@ -291,90 +295,38 @@ export default function WarRoomHansFireCall({
       data-fire-call-phase={phase || 'done'}
     >
       {phase === 'matthias' && matthiasStyle && (
-        <aside
-          className="warroom-fire-call-bubble warroom-fire-call-bubble-matthias"
-          style={matthiasStyle}
-          data-matthias-square={matthiasTrackedSquare || ''}
-          role="status"
-          aria-live="polite"
-          aria-label="Matthias llama a Hans por el fuego"
-        >
-          <span>MATTHIAS</span>
-          <p>{MATTHIAS_FIRE_CALL_LINE}</p>
+        <aside className="warroom-fire-call-bubble warroom-fire-call-bubble-matthias" style={matthiasStyle} data-matthias-square={matthiasTrackedSquare || ''} role="status" aria-live="polite" aria-label="Matthias llama a Hans por el fuego">
+          <span>MATTHIAS</span><p>{MATTHIAS_FIRE_CALL_LINE}</p>
         </aside>
       )}
       {phase === 'hans' && hansStyle && (
-        <aside
-          className="warroom-fire-call-bubble warroom-fire-call-bubble-hans"
-          style={hansStyle}
-          role="status"
-          aria-live="polite"
-          aria-label="Hans responde a Matthias"
-        >
-          <span>HANS</span>
-          <p>{HANS_FIRE_REPLY_LINE}</p>
+        <aside className="warroom-fire-call-bubble warroom-fire-call-bubble-hans" style={hansStyle} role="status" aria-live="polite" aria-label="Hans responde a Matthias">
+          <span>HANS</span><p>{HANS_FIRE_REPLY_LINE}</p>
         </aside>
       )}
       {phase === 'peek' && hansStyle && suggestion && (
-        <aside
-          className="warroom-fire-call-bubble warroom-fire-call-bubble-hans"
-          style={hansStyle}
-          role="status"
-          aria-live="polite"
-          aria-label="Hans cotillea el tablero y propone una jugada"
-        >
-          <span>HANS</span>
-          <p>{suggestion.line}</p>
+        <aside className="warroom-fire-call-bubble warroom-fire-call-bubble-hans" style={hansStyle} role="status" aria-live="polite" aria-label="Hans cotillea el tablero y propone una jugada">
+          <span>HANS</span><p>{suggestion.line}</p>
         </aside>
       )}
       {phase === 'matthias-working' && matthiasStyle && (
-        <aside
-          className="warroom-fire-call-bubble warroom-fire-call-bubble-matthias"
-          style={matthiasStyle}
-          data-matthias-square={matthiasTrackedSquare || ''}
-          role="status"
-          aria-live="polite"
-          aria-label="Matthias manda a Hans volver al trabajo"
-        >
-          <span>MATTHIAS</span>
-          <p>{MATTHIAS_HANS_WORKING_LINE}</p>
+        <aside className="warroom-fire-call-bubble warroom-fire-call-bubble-matthias" style={matthiasStyle} data-matthias-square={matthiasTrackedSquare || ''} role="status" aria-live="polite" aria-label="Matthias manda a Hans volver al trabajo">
+          <span>MATTHIAS</span><p>{MATTHIAS_HANS_WORKING_LINE}</p>
         </aside>
       )}
       {phase === 'hans-working-reply' && hansStyle && (
-        <aside
-          className="warroom-fire-call-bubble warroom-fire-call-bubble-hans"
-          style={hansStyle}
-          role="status"
-          aria-live="polite"
-          aria-label="Hans obedece a Matthias"
-        >
-          <span>HANS</span>
-          <p>{HANS_WORKING_REPLY_LINE}</p>
+        <aside className="warroom-fire-call-bubble warroom-fire-call-bubble-hans" style={hansStyle} role="status" aria-live="polite" aria-label="Hans obedece a Matthias">
+          <span>HANS</span><p>{HANS_WORKING_REPLY_LINE}</p>
         </aside>
       )}
       {phase === 'grumble' && hansStyle && (
-        <aside
-          className="warroom-fire-call-bubble warroom-fire-call-bubble-hans"
-          style={hansStyle}
-          role="status"
-          aria-live="polite"
-          aria-label="Hans se marcha refunfuñando"
-        >
-          <span>HANS</span>
-          <p>{HANS_LEAVING_GRUMBLE_LINE}</p>
+        <aside className="warroom-fire-call-bubble warroom-fire-call-bubble-hans" style={hansStyle} role="status" aria-live="polite" aria-label="Hans se marcha refunfuñando">
+          <span>HANS</span><p>{HANS_LEAVING_GRUMBLE_LINE}</p>
         </aside>
       )}
       {phase === 'epilogue' && matthiasStyle && (
-        <aside
-          className="warroom-fire-call-bubble warroom-fire-call-bubble-matthias"
-          style={matthiasStyle}
-          data-matthias-square={matthiasTrackedSquare || ''}
-          role="status"
-          aria-live="polite"
-          aria-label="Matthias retoma la partida tras Hans"
-        >
-          <span>MATTHIAS</span>
-          <p>{MATTHIAS_FIRE_EPILOGUE_LINE}</p>
+        <aside className="warroom-fire-call-bubble warroom-fire-call-bubble-matthias" style={matthiasStyle} data-matthias-square={matthiasTrackedSquare || ''} role="status" aria-live="polite" aria-label="Matthias retoma la partida tras Hans">
+          <span>MATTHIAS</span><p>{MATTHIAS_FIRE_EPILOGUE_LINE}</p>
         </aside>
       )}
     </div>,
