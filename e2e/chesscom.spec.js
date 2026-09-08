@@ -64,7 +64,7 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
 
   const dieterArt = mode.locator('.chesscom-portrait-art.is-dieter');
   await expect(dieterArt).toBeVisible();
-  await expect.poll(() => dieterArt.evaluate((node) => getComputedStyle(node).backgroundImage)).toMatch(/gradient/i);
+  await expect.poll(() => dieterArt.evaluate((node) => getComputedStyle(node).backgroundImage)).toMatch(/dieter-portrait\.svg/i);
   await expect(mode.locator('.chesscom-weapon-art')).toBeVisible();
 
   await expect(mode.getByRole('button', { name: 'Move', exact: true })).toBeVisible();
@@ -104,7 +104,7 @@ test('Chesscom · no hereda el scroll del Hangar al entrar', async ({ page }) =>
   expect(inheritedScroll).toBeGreaterThan(0);
 
   // DOM click deliberately preserves the old document scroll so the mode itself
-  // owns the transition instead of Playwright helpfully scrolling the card.
+  // owns the transition instead of Playwright helpfully scrolling la tarjeta.
   await card.evaluate((node) => node.click());
   await expect(page.getByRole('heading', { name: 'CHESSCOM', exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
