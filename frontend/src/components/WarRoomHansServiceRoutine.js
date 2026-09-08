@@ -13,6 +13,10 @@ import {
 } from './WarRoomHansEventContract.js';
 import { ensureWarRoomHansPlant } from './WarRoomHansPlantDecor.js';
 import {
+  warRoomHansServiceActionMs,
+  warRoomHansServiceDialoguePhase,
+} from './WarRoomHansServiceContract.js';
+import {
   HANS_SERVICE_WALK_SPEED,
   moveWarRoomHansToward,
   setWarRoomHansServiceDoor,
@@ -25,14 +29,11 @@ import {
   resetHansWalkCycle,
 } from './HansWalkCycle.js';
 
-export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v1';
-export const HANS_ESPRESSO_LINE = 'Su espresso, señor.';
-export const MATTHIAS_ESPRESSO_LINE = 'Danke, Hans. Déjamelo por ahí.';
+export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v2-contract';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const CONSOLE_NAME = 'war-room-side-console-right';
 const SERVICE_EVENTS = new Set(['water-plant', 'espresso']);
-const ACTION_MS = Object.freeze({ 'water-plant': 6500, espresso: 9200 });
 
 function makeWateringCan() {
   const group = new THREE.Group();
@@ -111,12 +112,6 @@ function setDialogue(actor, phase) {
   if (canvas?.dataset) canvas.dataset.warRoomHansServiceDialogue = phase || '';
 }
 
-function serviceDialoguePhase(elapsedMs) {
-  if (elapsedMs < 4200) return 'hans-espresso';
-  if (elapsedMs < 8800) return 'matthias-espresso';
-  return '';
-}
-
 function finish(actor, props, controller, root, routineName) {
   resetHansWalkCycle(controller, { full: true });
   actor.hans.visible = false;
@@ -146,6 +141,7 @@ export function installWarRoomHansServiceRoutine(root) {
   let gameId = '';
   let eligibleSince = 0;
   let delayMs = 0;
+  let completedGameId = '';
   let active = false;
   let state = 'idle';
   let home = null;
@@ -172,7 +168,7 @@ export function installWarRoomHansServiceRoutine(root) {
       setDialogue(actor, '');
     }
 
-    if (!SERVICE_EVENTS.has(eventName)) return;
+    if (!SERVICE_EVENTS.has(eventName) || completedGameId === gameId) return;
     const routineName = `service-${eventName}`;
 
     if (!active) {
@@ -221,7 +217,7 @@ export function installWarRoomHansServiceRoutine(root) {
         if (actor.body.torso) actor.body.torso.rotation.x += 0.035;
         if (plant?.userData) plant.userData.warRoomHansLastWatered = gameId;
       } else {
-        setDialogue(actor, serviceDialoguePhase(actionElapsed));
+        setDialogue(actor, warRoomHansServiceDialoguePhase(eventName, actionElapsed));
         if (actor.body.leftArm) actor.body.leftArm.rotation.x -= 0.38;
         if (actor.body.rightArm) actor.body.rightArm.rotation.x -= 0.38;
         if (actionElapsed >= 2200 && deliveredEspresso) {
@@ -229,7 +225,7 @@ export function installWarRoomHansServiceRoutine(root) {
           props.tray.visible = false;
         }
       }
-      if (actionElapsed >= ACTION_MS[eventName]) {
+      if (actionElapsed >= warRoomHansServiceActionMs(eventName)) {
         setDialogue(actor, '');
         state = 'returning';
         actionElapsed = 0;
@@ -243,11 +239,10 @@ export function installWarRoomHansServiceRoutine(root) {
       actor.hans.userData.warRoomHansRoute = 'service-return';
       if (motion.travelled > 0) advanceHansWalkCycle(controller, { travelled: motion.travelled, horizontalWeight: 0.4 });
       if (motion.arrived) {
-        setWarRoomHansServiceDoor(root, 1);
         finish(actor, props, controller, root, routineName);
         active = false;
         state = 'done';
-        eligibleSince = Number.POSITIVE_INFINITY;
+        completedGameId = gameId;
       }
     }
   };
