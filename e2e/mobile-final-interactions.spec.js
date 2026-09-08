@@ -3,6 +3,7 @@ import { buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js'
 
 const PROMOTION_START_FEN = 'k7/p5P1/8/8/8/8/8/7K w - - 0 1';
 const PROMOTION_END_FEN = 'k5N1/8/p7/8/8/8/8/7K w - - 0 2';
+const OPENING_END_FEN = 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2';
 
 function initialGame(id) {
   return {
@@ -219,8 +220,7 @@ test('Móvil · doble activación durante una jugada pendiente conserva un únic
   test.setTimeout(60_000);
   await page.setViewportSize({ width: 390, height: 844 });
 
-  const requestLog = [];
-  await mockApi(page, { requestLog });
+  await mockApi(page);
 
   let movePosts = 0;
   let releaseMove;
@@ -228,8 +228,34 @@ test('Móvil · doble activación durante una jugada pendiente conserva un únic
   await page.route('http://localhost:4000/api/games/*/move', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
     movePosts += 1;
+    const payload = route.request().postDataJSON?.() ?? {};
+    if (payload.from !== 'e2' || payload.to !== 'e4') {
+      throw new Error(`Jugada móvil pendiente esperaba e2-e4, recibió ${payload.from}-${payload.to}`);
+    }
     await moveGate;
-    await route.fallback();
+
+    const pathParts = new URL(route.request().url()).pathname.split('/');
+    const id = pathParts[pathParts.length - 2];
+    const humanMove = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', by: 'human' };
+    const cpuMove = { from: 'e7', to: 'e5', san: 'e5', piece: 'p', by: 'cpu' };
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        id,
+        fen: OPENING_END_FEN,
+        turn: 'w',
+        humanColor: 'w',
+        difficulty: 50,
+        status: 'playing',
+        insufficientMatingMaterial: { w: false, b: false },
+        isGameOver: false,
+        history: [humanMove, cpuMove],
+        lastMove: cpuMove,
+        initialFen: null,
+        ghostStyle: null,
+      }),
+    });
   });
 
   await login(page);
@@ -268,7 +294,5 @@ test('Móvil · doble activación durante una jugada pendiente conserva un únic
   await expect(page.getByRole('button', { name: /^Casilla e4, peón blanco/i })).toBeVisible({ timeout: 10_000 });
   await expect(gameStatus(page)).toBeVisible({ timeout: 10_000 });
   expect(movePosts).toBe(1);
-  const loggedMoves = requestLog.filter((entry) => entry.method === 'POST' && /\/api\/games\/[^/]+\/move$/.test(entry.path));
-  expect(loggedMoves).toHaveLength(1);
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 });
