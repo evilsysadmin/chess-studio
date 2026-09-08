@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react';
+import './CombatRoute.css';
 import { useCombatController } from './useCombatController.js';
 import CombatSetupView from './CombatSetupView.jsx';
 import CombatBattleView from './CombatBattleView.jsx';

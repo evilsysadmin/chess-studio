@@ -5,6 +5,7 @@
     "03-combat-core.css",
     "04-operations-career.css",
     "05-combat-roster.css",
+    "06-product-surfaces.css",
     "06-combat-campaign.css",
     "07-progressive-ux.css",
     "08-recent-polish.css",
@@ -34,7 +35,7 @@
     "03-combat-core.css",
     "04-operations-career.css",
     "05-combat-roster.css",
-    "06-combat-campaign.css",
+    "06-product-surfaces.css",
     "07-progressive-ux.css",
     "08-recent-polish.css",
     "09-professional-polish.css",
@@ -57,6 +58,7 @@
     "28-product-resilience.css"
   ],
   "lazyModules": [
+    "06-combat-campaign.css",
     "20-piece-skins.css"
   ],
   "combinedSha256": "7240653a3bdcff990ad3b5119c22d30fd1a7ae595f0cc0671b5f9004d4cc8699",
