@@ -2,14 +2,20 @@ import * as THREE from 'three';
 import matthiasMotionAtlasV5Payload from './assets/pawnSlug/matthias_motion_atlas_v5_payload.b64?raw';
 import matthiasLegacyAtlasUrl from './assets/pawnSlug/matthias_atlas_v2.webp';
 import matthiasVectorFallbackUrl from './assets/pawnSlug/matthias_atlas.svg';
-import enemyAtlasUrl from './assets/pawnSlug/enemy_atlas_v2.webp';
-import enemyFallbackAtlasUrl from './assets/pawnSlug/enemy_atlas.svg';
+import enemyMotionAtlasUrl from './assets/pawnSlug/enemy_motion_atlas.svg';
+import enemyLegacyAtlasUrl from './assets/pawnSlug/enemy_atlas_v2.webp';
 import panzerRookUrl from './assets/pawnSlug/panzer_rook_v2.webp';
 import weaponAtlasUrl from './assets/pawnSlug/weapon_atlas.svg';
 
 const MATTHIAS_V5_ASSET_NAME = 'matthias_motion_atlas_v5_payload.b64';
 const matthiasMotionAtlasUrl = `data:image/webp;base64,${matthiasMotionAtlasV5Payload.trim()}`;
-const ENEMY_FRAME_BY_TYPE = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
+const ENEMY_FRAMES_PER_TYPE = 4;
+const ENEMY_FRAME_COUNT = 12;
+const ENEMY_TRACK_BY_TYPE = Object.freeze({
+  pawn: Object.freeze([0, 1, 2, 3]),
+  knight: Object.freeze([4, 5, 6, 7]),
+  rook: Object.freeze([8, 9, 10, 11]),
+});
 const clamp01 = (value) => Math.max(0, Math.min(1, Number(value) || 0));
 const freezeFrames = (count) => Object.freeze(Array.from({ length: count }, (_, index) => index));
 
@@ -71,28 +77,28 @@ export const PAWN_SLUG_MOTION_PROFILES = Object.freeze({
   pawn: Object.freeze({
     idleRate: 2.7,
     idleBob: 0.006,
-    moveRate: 10.2,
-    moveBob: 0.018,
-    moveLean: 0.01,
-    moveSquash: 0.006,
+    moveRate: 7.6,
+    moveBob: 0,
+    moveLean: 0.008,
+    moveSquash: 0.004,
     hurtKick: 0.055,
   }),
   knight: Object.freeze({
     idleRate: 3.1,
     idleBob: 0.009,
-    moveRate: 13.8,
-    moveBob: 0.032,
-    moveLean: 0.026,
-    moveSquash: 0.012,
+    moveRate: 10.8,
+    moveBob: 0,
+    moveLean: 0.016,
+    moveSquash: 0.006,
     hurtKick: 0.075,
   }),
   rook: Object.freeze({
     idleRate: 1.9,
     idleBob: 0.004,
-    moveRate: 5.2,
-    moveBob: 0.008,
-    moveLean: 0.005,
-    moveSquash: 0.004,
+    moveRate: 4.4,
+    moveBob: 0,
+    moveLean: 0.004,
+    moveSquash: 0.003,
     hurtKick: 0.035,
   }),
   boss: Object.freeze({
@@ -171,7 +177,16 @@ function singleRowAtlasWindow(frameIndex = 0, dir = 1, frames = 1) {
 }
 
 export function pawnSlugEnemyAtlasWindow(frameIndex = 0, dir = 1) {
-  return singleRowAtlasWindow(frameIndex, dir, 3);
+  return singleRowAtlasWindow(frameIndex, dir, ENEMY_FRAME_COUNT);
+}
+
+export function pawnSlugEnemyFrameForMotion(type = 'pawn', time = 0, { moving = false, phase = 0 } = {}) {
+  const track = ENEMY_TRACK_BY_TYPE[type] || ENEMY_TRACK_BY_TYPE.pawn;
+  if (!moving) return track[0];
+  const profile = PAWN_SLUG_MOTION_PROFILES[type] || PAWN_SLUG_MOTION_PROFILES.pawn;
+  const normalizedPhase = ((Number(phase) || 0) / (Math.PI * 2)) * track.length;
+  const index = ((Math.floor((Number(time) || 0) * profile.moveRate + normalizedPhase) % track.length) + track.length) % track.length;
+  return track[index];
 }
 
 function configureSingleRowWindow(texture, frames, frame, dir = 1) {
@@ -466,15 +481,15 @@ export function animateMatthiasSlugSprite(sprite, {
 }
 
 export function createSlugEnemySprite(type = 'pawn') {
-  const frame = ENEMY_FRAME_BY_TYPE[type] ?? ENEMY_FRAME_BY_TYPE.pawn;
+  const track = ENEMY_TRACK_BY_TYPE[type] || ENEMY_TRACK_BY_TYPE.pawn;
   const scaleByType = {
     pawn: [2.05, 2.05],
     knight: [2.22, 2.22],
     rook: [2.65, 2.65],
   };
-  const sprite = atlasSprite(enemyAtlasUrl, enemyFallbackAtlasUrl, 3, frame, scaleByType[type] || scaleByType.pawn);
+  const sprite = atlasSprite(enemyMotionAtlasUrl, null, ENEMY_FRAME_COUNT, track[0], scaleByType[type] || scaleByType.pawn);
   sprite.name = `pawn-slug-${type}-sprite`;
-  sprite.userData.enemyFrame = frame;
+  sprite.userData.enemyTrack = track;
   sprite.userData.enemyType = type;
   return sprite;
 }
@@ -489,10 +504,8 @@ export function animateSlugEnemySprite(sprite, type, time, { moving = false, hur
   const baseScaleY = sprite.userData.motionBaseScaleY || Math.abs(sprite.scale.y) || 1;
 
   sprite.userData.setDirection?.(direction);
-  sprite.userData.setFrame?.(sprite.userData.enemyFrame ?? ENEMY_FRAME_BY_TYPE.pawn);
-  sprite.position.y += moving
-    ? Math.abs(moveWave) * profile.moveBob
-    : Math.max(0, idleWave) * profile.idleBob;
+  sprite.userData.setFrame?.(pawnSlugEnemyFrameForMotion(type, time, { moving, phase }));
+  if (!moving) sprite.position.y += Math.max(0, idleWave) * profile.idleBob;
   if (hurt) sprite.position.x -= worldDirection * profile.hurtKick;
 
   sprite.scale.y = baseScaleY * (
@@ -569,16 +582,17 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
     motionFrames: Object.freeze({ idle: 10, walk: 10, run: 16, crouch: 10, airborne: 9 }),
   }),
   enemies: Object.freeze({
-    url: enemyAtlasUrl,
-    fallbackUrl: enemyFallbackAtlasUrl,
-    frames: 3,
-    frameWidth: 104,
-    frameHeight: 104,
+    url: enemyMotionAtlasUrl,
+    legacyUrl: enemyLegacyAtlasUrl,
+    frames: ENEMY_FRAME_COUNT,
+    framesPerType: ENEMY_FRAMES_PER_TYPE,
+    frameWidth: 256,
+    frameHeight: 256,
     sourceFacing: 'right',
-    fallbackSourceFacing: 'right',
     runtimeFacings: Object.freeze(['right', 'left']),
     directionMode: 'atlas-uv-mirror',
-    frameByType: ENEMY_FRAME_BY_TYPE,
+    trackByType: ENEMY_TRACK_BY_TYPE,
+    groundedMotion: true,
   }),
   boss: Object.freeze({ url: panzerRookUrl, frames: 1, frameWidth: 192, frameHeight: 192 }),
   weapons: Object.freeze({ url: weaponAtlasUrl, frames: 4, frameWidth: 256, frameHeight: 128 }),
