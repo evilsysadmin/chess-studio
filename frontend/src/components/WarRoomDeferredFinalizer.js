@@ -1,4 +1,5 @@
 import { installWarRoomHansArticulatedWalk } from './WarRoomHansArticulatedWalk.js';
+import { installWarRoomHansActorTelemetry } from './WarRoomHansActorTelemetry.js';
 import { installWarRoomHansBoardPeekClockHold } from './WarRoomHansBoardPeekClockHold.js';
 import { installWarRoomHansBoardPeekPose } from './WarRoomHansBoardPeekPose.js';
 import { installWarRoomHansCanonicalButler } from './WarRoomHansCanonicalButler.js';
@@ -78,6 +79,7 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         // composable without each one owning navigation.
         installWarRoomHansBoardPeekClockHold(root);
         installWarRoomHansMotionPolish(root);
+        installWarRoomHansActorTelemetry(root);
         installWarRoomHansFacingGuard(root);
         installWarRoomHansHearthFacingGuard(root);
         installWarRoomHansBoardPeekPose(root);
