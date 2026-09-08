@@ -11,6 +11,15 @@
     box-sizing: border-box;
   }
 
+  /* Desktop intentionally nudges the compact header actions outwards once the
+   * viewport reaches 821px. Android landscape can cross that breakpoint at
+   * 844px, so keep the controls inside the real viewport instead of creating
+   * a few pixels of document-level horizontal scroll after rotation. */
+  .app-shell-board-game .masthead-game-compact .masthead-actions {
+    transform: none;
+    max-width: 100%;
+  }
+
   .game-screen .game-layout.game-layout-3d {
     width: 100%;
     margin-inline: auto;
