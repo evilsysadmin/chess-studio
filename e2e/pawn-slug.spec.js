@@ -27,8 +27,8 @@ async function openPawnSlug(page) {
   await mockApi(page);
   await login(page);
   await dismissGuide(page);
-  await openMoreGameModes(page);
   await dismissMatthiasSpeech(page);
+  await openMoreGameModes(page);
 
   const moreModes = page.locator('#illustrated-home-tools');
   await expect(moreModes).toBeVisible();
