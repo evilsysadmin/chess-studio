@@ -143,6 +143,7 @@
     bottom: 9.4cqw;
     width: min(430px, 31cqw);
     max-height: min(61dvh, 620px);
+    pointer-events: auto;
   }
 }
 
