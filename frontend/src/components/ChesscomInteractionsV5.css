@@ -1,0 +1,112 @@
+/* Chesscom interaction v5: subtle tactile response, never arcade glow. */
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-mini-row>i b{
+  transition:width .28s cubic-bezier(.2,.8,.2,1),filter .24s ease;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-actionbar button,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-fire-modes button,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-exit{
+  will-change:transform;
+}
+
+@media (pointer:fine){
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card:hover{
+    transform:translate3d(3px,-1px,0);
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card:hover .chesscom-portrait img,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card:hover .chesscom-portrait-art{
+    transform:scale(1.075) translateY(-1px);
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card.is-selected:hover{
+    box-shadow:0 0 0 1px rgba(130,192,197,.18),0 14px 34px rgba(0,0,0,.36),0 0 28px rgba(72,140,149,.18),inset 4px 0 #82c0c5,inset 0 1px rgba(255,255,255,.065);
+  }
+
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-stage-shell{
+    transition:border-color .25s ease,box-shadow .28s ease;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-stage-shell:hover{
+    border-color:rgba(219,184,117,.70);
+    box-shadow:0 32px 76px rgba(0,0,0,.55),0 0 0 1px rgba(211,173,100,.08),0 0 30px rgba(211,173,100,.035),inset 0 0 0 1px rgba(255,255,255,.045),inset 0 0 72px rgba(0,0,0,.20);
+  }
+
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-actionbar button:hover:not(:disabled),
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-fire-modes button:hover:not(:disabled),
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-exit:hover{
+    transform:translateY(-2px);
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-actionbar button:active:not(:disabled),
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-fire-modes button:active:not(:disabled),
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-exit:active{
+    transform:translateY(0) scale(.985);
+  }
+}
+
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card:focus-visible,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-actionbar button:focus-visible,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-fire-modes button:focus-visible,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-exit:focus-visible{
+  outline:2px solid rgba(225,191,125,.92);
+  outline-offset:2px;
+  box-shadow:0 0 0 4px rgba(225,191,125,.08),0 10px 24px rgba(0,0,0,.32);
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card.is-selected:focus-visible,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-actionbar button.is-active:focus-visible,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-fire-modes button.is-active:focus-visible{
+  outline-color:rgba(148,207,211,.95);
+  box-shadow:0 0 0 4px rgba(130,192,197,.10),0 0 28px rgba(72,140,149,.15);
+}
+
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-actionbar button,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-fire-modes button{
+  overflow:hidden;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-actionbar button:after,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-fire-modes button:after{
+  content:"";
+  position:absolute;
+  left:-45%;
+  top:0;
+  width:38%;
+  height:100%;
+  pointer-events:none;
+  opacity:0;
+  transform:skewX(-18deg);
+  background:linear-gradient(90deg,transparent,rgba(255,245,220,.10),transparent);
+}
+@media (pointer:fine) and (prefers-reduced-motion:no-preference){
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-actionbar button:hover:not(:disabled):after,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-fire-modes button:hover:not(:disabled):after{
+    opacity:1;
+    animation:chesscom-v5-glint .55s ease-out both;
+  }
+}
+@keyframes chesscom-v5-glint{
+  from{left:-45%}
+  to{left:112%}
+}
+
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card.is-selected .chesscom-mini-row>i b{
+  filter:brightness(1.06);
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card.is-down{
+  filter:saturate(.62) brightness(.82);
+}
+
+@media(prefers-reduced-motion:reduce){
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-mini-row>i b,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-stage-shell,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait img,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait-art,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-actionbar button,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-fire-modes button,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-exit{
+    transition:none!important;
+    animation:none!important;
+    transform:none!important;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-actionbar button:after,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-fire-modes button:after{
+    display:none!important;
+  }
+}
