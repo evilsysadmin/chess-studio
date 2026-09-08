@@ -9,10 +9,12 @@ import GlossaryTerm from './GlossaryTerm.jsx';
 import Matthias3DOpeningBanter from './Matthias3DOpeningBanter.jsx';
 import WarRoomHansFireCall from './WarRoomHansFireCall.jsx';
 import WarRoomHansMopDialogue from './WarRoomHansMopDialogue.jsx';
+import WarRoomHansServiceDialogue from './WarRoomHansServiceDialogue.jsx';
 import useGameBoardRenderer from './useGameBoardRenderer.js';
 import { useGameFocusBubble, useGameMobileFocus } from './useGameMobileFocus.js';
 import useMatthias3DBubbleAnchor from './useMatthias3DBubbleAnchor.js';
 import useMatthiasBoardReactions from './useMatthiasBoardReactions.js';
+import { warRoomHansEventForGame } from './WarRoomHansEventContract.js';
 import { shouldForceHansQuickIteration } from './WarRoomHansIteration.js';
 import { resolveHansFireOpeningLatch } from './WarRoomHansFireCallContract.js';
 import { hasWarRoomHansAppearedForGame } from './WarRoomHansPerGame.js';
@@ -89,10 +91,14 @@ export default function GameBoardView({
     clearFocusBubble();
   }
 
-  const hansFireplaceIteration = shouldForceHansQuickIteration({
+  const hansEvent = warRoomHansEventForGame(game.id);
+  const hansFireplaceEligible = shouldForceHansQuickIteration({
     hintMode: controls.hintMode,
     memoryContext: context.memoryContext,
   });
+  // Exactly one Hans event is selected per game. Only the fire event makes the
+  // hearth start cold and arms the opening fireplace/cotilleo sequence.
+  const hansFireplaceIteration = hansFireplaceEligible && hansEvent === 'fire';
   const hansOpeningRef = useRef({ gameId: null, enabled: false });
   if (hansOpeningRef.current.gameId !== game.id) {
     hansOpeningRef.current = resolveHansFireOpeningLatch(hansOpeningRef.current, {
@@ -211,7 +217,14 @@ export default function GameBoardView({
 
             <WarRoomHansMopDialogue
               isThreeD={isThreeD}
-              enabled={!zenMode && !focusActive}
+              enabled={!zenMode && !focusActive && hansEvent === 'mop'}
+              matthiasAnchorStyle={matthias3DBubbleStyle}
+              matthiasTrackedSquare={matthias3DTrackedSquare}
+            />
+
+            <WarRoomHansServiceDialogue
+              isThreeD={isThreeD}
+              enabled={!zenMode && !focusActive && hansEvent === 'espresso'}
               matthiasAnchorStyle={matthias3DBubbleStyle}
               matthiasTrackedSquare={matthias3DTrackedSquare}
             />
