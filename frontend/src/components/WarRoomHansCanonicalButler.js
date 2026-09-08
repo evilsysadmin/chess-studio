@@ -1,13 +1,14 @@
 import * as THREE from 'three';
+import {
+  HANS_ELDER_POSTURE,
+  WAR_ROOM_HANS_ELDER_POSTURE_VERSION,
+} from './WarRoomHansElderPostureContract.js';
 
-export const WAR_ROOM_HANS_CANONICAL_BUTLER_VERSION = 'hans-canonical-elder-butler-v2';
+export const WAR_ROOM_HANS_CANONICAL_BUTLER_VERSION = 'hans-canonical-elder-butler-v3-stooped';
 
 const HANS_NAME = 'war-room-hans-butler';
 const LEGACY_CANE_NAME = 'war-room-hans-cane';
 const TAILCOAT_NAME = 'war-room-hans-canonical-tailcoat';
-const BASE_HUNCH_RADIANS = 0.055;
-const HEAD_DROP = 0.035;
-const HEAD_FORWARD = 0.045;
 const MIN_SHOE_FORWARD_OFFSET = 0.07;
 
 function makeMaterial(color, options = {}) {
@@ -135,16 +136,16 @@ function removeLegacyCane(hans, body) {
 
 function applyCanonicalPosture(body, forward) {
   if (body?.torso) {
-    body.torso.position.y -= 0.012;
-    body.torso.rotation.x += forward * BASE_HUNCH_RADIANS;
+    body.torso.position.y -= HANS_ELDER_POSTURE.torsoDrop;
+    body.torso.rotation.x += forward * HANS_ELDER_POSTURE.torsoHunchRadians;
   }
   if (body?.head) {
-    body.head.position.y -= HEAD_DROP;
-    body.head.position.z += forward * HEAD_FORWARD;
-    body.head.rotation.x += forward * 0.018;
+    body.head.position.y -= HANS_ELDER_POSTURE.headDrop;
+    body.head.position.z += forward * HANS_ELDER_POSTURE.headForward;
+    body.head.rotation.x += forward * HANS_ELDER_POSTURE.headTiltRadians;
   }
-  if (body?.leftArm) body.leftArm.rotation.z -= 0.018;
-  if (body?.rightArm) body.rightArm.rotation.z += 0.024;
+  if (body?.leftArm) body.leftArm.rotation.z += HANS_ELDER_POSTURE.leftArmRoll;
+  if (body?.rightArm) body.rightArm.rotation.z += HANS_ELDER_POSTURE.rightArmRoll;
 }
 
 export function installWarRoomHansCanonicalButler(root) {
@@ -163,9 +164,10 @@ export function installWarRoomHansCanonicalButler(root) {
   if (tailcoat) body.tailcoat = tailcoat;
 
   hans.userData.warRoomHansCanonicalButler = WAR_ROOM_HANS_CANONICAL_BUTLER_VERSION;
-  hans.userData.warRoomHansCanonicalLook = 'black-tailcoat-elder-v2';
-  hans.userData.warRoomHansCanonicalPosture = 'slow-hunched-butler-v1';
-  hans.userData.warRoomHansBaseHunchRadians = BASE_HUNCH_RADIANS;
+  hans.userData.warRoomHansCanonicalLook = 'black-tailcoat-elder-v3';
+  hans.userData.warRoomHansCanonicalPosture = 'stooped-disciplined-butler-v2';
+  hans.userData.warRoomHansElderPosture = WAR_ROOM_HANS_ELDER_POSTURE_VERSION;
+  hans.userData.warRoomHansBaseHunchRadians = HANS_ELDER_POSTURE.torsoHunchRadians;
   hans.userData.warRoomHansFootDirection = leftShoe && rightShoe ? 'toe-forward-v1' : 'legacy-foot-geometry';
   hans.userData.warRoomHansCane = null;
   return 1;

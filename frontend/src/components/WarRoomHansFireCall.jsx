@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { pickHansLegalSuggestion } from './WarRoomHansBoardPeek.js';
 import {
+  HANS_BOARD_DIALOGUE_GAP_MS,
   HANS_BOARD_PEEK_MS,
   HANS_FIRE_REPLY_LINE,
   HANS_FIRE_REPLY_MS,
@@ -15,17 +16,15 @@ import {
   MATTHIAS_FIRE_EPILOGUE_MS,
   MATTHIAS_HANS_WORKING_LINE,
   MATTHIAS_HANS_WORKING_MS,
+  hansBoardPeekHoldsMovement,
+  hansBoardPeekPointReached,
   projectHansFireReplyAnchor,
+  projectHansInitialReplyAnchor,
   shouldStartHansBoardPeek,
   shouldStartHansFireEpilogue,
   shouldStartHansLeavingGrumble,
 } from './WarRoomHansFireCallContract.js';
 import './WarRoomHansFireCall.css';
-
-const HANS_DOOR_OPENING_MS = 600;
-const HANS_PRESENTATION_TIME_SCALE = 0.54;
-const HANS_QUICK_ENTRY_SECONDS = 7;
-const HANS_POST_ENTRY_OFFSET_SECONDS = 3;
 
 function sameAnchor(current, next) {
   if (current === next) return true;
@@ -34,17 +33,6 @@ function sameAnchor(current, next) {
     && Math.abs(current.top - next.top) < 0.025
     && current.bubbleShiftPercent === next.bubbleShiftPercent
     && current.tailPercent === next.tailPercent;
-}
-
-export function hansNarrativePresentationPhase(presentationMs) {
-  const elapsedSeconds = Math.max(0, Number(presentationMs) - HANS_DOOR_OPENING_MS)
-    / 1000 * HANS_PRESENTATION_TIME_SCALE;
-  if (elapsedSeconds < HANS_QUICK_ENTRY_SECONDS) return 'entry';
-  const timelineT = elapsedSeconds + HANS_POST_ENTRY_OFFSET_SECONDS;
-  if (timelineT < 25.5) return 'working';
-  if (timelineT < 27) return 'satisfied';
-  if (timelineT < 33) return 'leave';
-  return 'complete';
 }
 
 export default function WarRoomHansFireCall({
@@ -96,12 +84,11 @@ export default function WarRoomHansFireCall({
     setPhase('');
     setHansAnchor(null);
     setSuggestion(null);
-    if (!portalHost || !enabled || !isThreeD || !gameId || !anchorReady) {
-      return undefined;
-    }
+    if (!portalHost || !enabled || !isThreeD || !gameId || !anchorReady) return undefined;
 
     const existingCanvas = portalHost.querySelector('.board3d-main-canvas');
     if (existingCanvas?.dataset.warRoomHansCallReleased === 'true') return undefined;
+    if (existingCanvas) existingCanvas.dataset.warRoomHansNarrativePhase = 'loading';
 
     let live = true;
     let currentPhase = 'loading';
@@ -111,8 +98,6 @@ export default function WarRoomHansFireCall({
     let readyPaints = 0;
     let hansSeenOnscreen = false;
     let completionNotified = false;
-    let callReleased = false;
-    let presentationMs = 0;
     let peekAttempted = false;
     let boardSuggestion = null;
     let grumblePlayed = false;
@@ -122,6 +107,8 @@ export default function WarRoomHansFireCall({
       completionNotified = true;
       currentPhase = '';
       setPhase('');
+      const canvas = portalHost.querySelector('.board3d-main-canvas');
+      if (canvas) canvas.dataset.warRoomHansNarrativePhase = 'done';
       onComplete?.();
     };
 
@@ -130,14 +117,13 @@ export default function WarRoomHansFireCall({
       const delta = previousTime == null ? 0 : Math.max(0, now - previousTime);
       previousTime = now;
       const canvas = portalHost.querySelector('.board3d-main-canvas');
+      if (canvas) canvas.dataset.warRoomHansNarrativePhase = currentPhase || 'done';
       const visible = document.visibilityState !== 'hidden' && portalHost.getBoundingClientRect().width > 0;
+
       if (visible && canvas?.dataset.warRoomHansSceneReady === 'true') {
         const hansScreen = canvas.dataset.warRoomHansScreen || 'missing';
-
-        if (callReleased) {
-          presentationMs += Math.min(delta, presentationMs < HANS_DOOR_OPENING_MS ? 100 : 1000);
-        }
-        const hansPhase = callReleased ? hansNarrativePresentationPhase(presentationMs) : 'waiting';
+        const route = canvas.dataset.warRoomHansRoute || '';
+        const logicalX = Number(canvas.dataset.warRoomHansLogicalX);
 
         if (currentPhase === 'loading') {
           readyPaints += 1;
@@ -151,8 +137,6 @@ export default function WarRoomHansFireCall({
           if (elapsed >= MATTHIAS_FIRE_CALL_MS) {
             canvas.dataset.warRoomHansCallReleased = 'true';
             canvas.dispatchEvent(new Event('warroom-hans-call-release'));
-            callReleased = true;
-            presentationMs = 0;
             currentPhase = 'await-hans';
             setPhase('await-hans');
             elapsed = 0;
@@ -160,13 +144,20 @@ export default function WarRoomHansFireCall({
         } else if (currentPhase === 'hans') {
           elapsed += delta;
           if (elapsed >= HANS_FIRE_REPLY_MS) {
-            currentPhase = 'await-peek';
-            setPhase('await-peek');
+            currentPhase = 'await-exit-peek';
+            setPhase('await-exit-peek');
             elapsed = 0;
           }
         } else if (currentPhase === 'peek') {
           elapsed += delta;
           if (elapsed >= HANS_BOARD_PEEK_MS) {
+            currentPhase = 'gap-after-peek';
+            setPhase('gap-after-peek');
+            elapsed = 0;
+          }
+        } else if (currentPhase === 'gap-after-peek') {
+          elapsed += delta;
+          if (elapsed >= HANS_BOARD_DIALOGUE_GAP_MS) {
             currentPhase = 'matthias-working';
             setPhase('matthias-working');
             elapsed = 0;
@@ -174,6 +165,13 @@ export default function WarRoomHansFireCall({
         } else if (currentPhase === 'matthias-working') {
           elapsed += delta;
           if (elapsed >= MATTHIAS_HANS_WORKING_MS) {
+            currentPhase = 'gap-after-matthias';
+            setPhase('gap-after-matthias');
+            elapsed = 0;
+          }
+        } else if (currentPhase === 'gap-after-matthias') {
+          elapsed += delta;
+          if (elapsed >= HANS_BOARD_DIALOGUE_GAP_MS) {
             currentPhase = 'hans-working-reply';
             setPhase('hans-working-reply');
             elapsed = 0;
@@ -199,14 +197,16 @@ export default function WarRoomHansFireCall({
 
         const tracksHans = currentPhase === 'await-hans'
           || currentPhase === 'hans'
-          || currentPhase === 'await-peek'
-          || currentPhase === 'peek'
-          || currentPhase === 'hans-working-reply'
+          || currentPhase === 'await-exit-peek'
+          || hansBoardPeekHoldsMovement(currentPhase)
           || currentPhase === 'await-exit'
           || currentPhase === 'grumble';
         if (tracksHans && hansScreen === 'onscreen') {
           hansSeenOnscreen = true;
-          const anchor = projectHansFireReplyAnchor({
+          const anchorProjector = currentPhase === 'hans'
+            ? projectHansInitialReplyAnchor
+            : projectHansFireReplyAnchor;
+          const anchor = anchorProjector({
             ndcX: canvas.dataset.warRoomHansNdcX,
             ndcY: canvas.dataset.warRoomHansNdcY,
             coarsePointer: Boolean(window.matchMedia?.('(pointer: coarse)')?.matches),
@@ -221,13 +221,14 @@ export default function WarRoomHansFireCall({
           }
         }
 
-        if (currentPhase === 'await-peek' && hansPhase === 'satisfied' && !peekAttempted) {
+        if (!peekAttempted && hansBoardPeekPointReached({ phase: currentPhase, route, logicalX })) {
           peekAttempted = true;
           boardSuggestion = pickHansLegalSuggestion(fenRef.current);
           setSuggestion(boardSuggestion);
           if (shouldStartHansBoardPeek({
             phase: currentPhase,
-            hansPhase,
+            route,
+            logicalX,
             suggestion: boardSuggestion,
           })) {
             currentPhase = 'peek';
@@ -241,7 +242,7 @@ export default function WarRoomHansFireCall({
 
         if (shouldStartHansLeavingGrumble({
           phase: currentPhase,
-          hansPhase,
+          route,
           alreadyPlayed: grumblePlayed,
         })) {
           grumblePlayed = true;
@@ -262,11 +263,14 @@ export default function WarRoomHansFireCall({
       }
       if (currentPhase !== '') frameId = window.requestAnimationFrame(tick);
     };
+
     const resetVisibleClock = () => { previousTime = null; };
     document.addEventListener('visibilitychange', resetVisibleClock);
     frameId = window.requestAnimationFrame(tick);
     return () => {
       document.removeEventListener('visibilitychange', resetVisibleClock);
+      const canvas = portalHost.querySelector('.board3d-main-canvas');
+      if (canvas) canvas.dataset.warRoomHansNarrativePhase = 'done';
       live = false;
       window.cancelAnimationFrame(frameId);
     };
