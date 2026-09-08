@@ -38,26 +38,39 @@ function makeScene() {
   return { root, hans, driver, head, fire };
 }
 
-function faceDotTarget(hans, head, fire) {
+function faceDotPoint(hans, head, point) {
   hans.parent.updateMatrixWorld(true);
   const headWorld = head.getWorldPosition(new THREE.Vector3());
   const faceWorld = head.children[0].getWorldPosition(new THREE.Vector3());
-  const fireWorld = fire.getWorldPosition(new THREE.Vector3());
   const face = faceWorld.sub(headWorld).setY(0).normalize();
-  const target = fireWorld.sub(head.getWorldPosition(new THREE.Vector3())).setY(0).normalize();
+  const target = point.clone().sub(head.getWorldPosition(new THREE.Vector3())).setY(0).normalize();
   return face.dot(target);
+}
+
+function fireWorldPosition(fire) {
+  return fire.getWorldPosition(new THREE.Vector3());
 }
 
 describe('Hans hearth-facing guard', () => {
   it('turns the rendered face toward the fire during place-log with reusable scratch vectors', () => {
     const { root, hans, driver, head, fire } = makeScene();
-    expect(faceDotTarget(hans, head, fire)).toBeLessThan(0);
+    expect(faceDotPoint(hans, head, fireWorldPosition(fire))).toBeLessThan(0);
     expect(installWarRoomHansHearthFacingGuard(root)).toBe(1);
-    expect(driver.userData.warRoomHansHearthFacingHotPath).toBe('preallocated-scratch-v2');
+    expect(driver.userData.warRoomHansHearthFacingHotPath).toBe('preallocated-scratch-v3-board-peek');
     driver.onBeforeRender();
     expect(hans.userData.warRoomHansHearthFacingGuard).toBe(WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION);
     expect(hans.userData.warRoomHansHearthFacingTarget).toBe('fire-core-rendered');
-    expect(hans.userData.warRoomHansHearthFacingHotPath).toBe('preallocated-scratch-v2');
-    expect(faceDotTarget(hans, head, fire)).toBeGreaterThan(0.99);
+    expect(hans.userData.warRoomHansHearthFacingHotPath).toBe('preallocated-scratch-v3-board-peek');
+    expect(faceDotPoint(hans, head, fireWorldPosition(fire))).toBeGreaterThan(0.99);
+  });
+
+  it('turns Hans from the hearth toward the board center while he is satisfied', () => {
+    const { root, hans, driver, head } = makeScene();
+    expect(installWarRoomHansHearthFacingGuard(root)).toBe(1);
+    driver.userData.warRoomHansPhase = 'satisfied';
+    driver.onBeforeRender();
+
+    expect(hans.userData.warRoomHansHearthFacingTarget).toBe('board-center-rendered');
+    expect(faceDotPoint(hans, head, new THREE.Vector3(0, 0, 0))).toBeGreaterThan(0.99);
   });
 });
