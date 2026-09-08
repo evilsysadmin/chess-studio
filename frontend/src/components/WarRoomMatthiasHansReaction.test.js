@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   installWarRoomMatthiasHansReaction,
+  shouldMatthiasLookAtHans,
   WAR_ROOM_MATTHIAS_HANS_REACTION_VERSION,
 } from './WarRoomMatthiasHansReaction.js';
 
@@ -13,7 +14,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function makeScene(phase = 'matthias-working') {
+function makeScene(dataset = { warRoomHansNarrativePhase: 'matthias-working' }) {
   const root = new THREE.Scene();
   const hans = new THREE.Group();
   hans.name = 'war-room-hans-butler';
@@ -32,14 +33,24 @@ function makeScene(phase = 'matthias-working') {
   root.add(driver);
 
   globalThis.document = {
-    querySelector: vi.fn(() => ({ dataset: { warRoomHansNarrativePhase: phase } })),
+    querySelector: vi.fn(() => ({ dataset })),
   };
 
   return { root, hans, matthias, driver };
 }
 
 describe('Matthias reacts to Hans', () => {
-  it('turns subtly toward Hans only during Matthias working interruption', () => {
+  it('covers fire interruption, mop complaint/sigh and espresso reply only', () => {
+    expect(shouldMatthiasLookAtHans({ warRoomHansNarrativePhase: 'matthias-working' })).toBe(true);
+    expect(shouldMatthiasLookAtHans({ warRoomHansMopDialogue: 'matthias' })).toBe(true);
+    expect(shouldMatthiasLookAtHans({ warRoomHansMopDialogue: 'sigh' })).toBe(true);
+    expect(shouldMatthiasLookAtHans({ warRoomHansServiceDialogue: 'matthias-espresso' })).toBe(true);
+    expect(shouldMatthiasLookAtHans({ warRoomHansMopDialogue: 'hans' })).toBe(false);
+    expect(shouldMatthiasLookAtHans({ warRoomHansServiceDialogue: 'hans-espresso' })).toBe(false);
+    expect(shouldMatthiasLookAtHans({ warRoomHansServiceDialogue: 'water-plant' })).toBe(false);
+  });
+
+  it('turns subtly toward Hans during the fireplace interruption', () => {
     const { root, matthias, driver } = makeScene();
     const baseYaw = matthias.rotation.y;
 
@@ -51,8 +62,19 @@ describe('Matthias reacts to Hans', () => {
     expect(matthias.rotation.y).not.toBe(baseYaw);
   });
 
-  it('does not turn Matthias for unrelated narrative phases', () => {
-    const { root, matthias, driver } = makeScene('peek');
+  it('also turns toward Hans while Matthias answers the espresso', () => {
+    const { root, matthias, driver } = makeScene({ warRoomHansServiceDialogue: 'matthias-espresso' });
+    const baseYaw = matthias.rotation.y;
+
+    expect(installWarRoomMatthiasHansReaction(root)).toBe(1);
+    driver.onBeforeRender();
+
+    expect(matthias.userData.warRoomMatthiasHansReactionActive).toBe(true);
+    expect(matthias.rotation.y).not.toBe(baseYaw);
+  });
+
+  it('returns to his base orientation for unrelated Hans phases', () => {
+    const { root, matthias, driver } = makeScene({ warRoomHansNarrativePhase: 'peek' });
     const baseYaw = matthias.rotation.y;
 
     expect(installWarRoomMatthiasHansReaction(root)).toBe(1);
