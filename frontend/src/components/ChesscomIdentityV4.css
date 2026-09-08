@@ -1,0 +1,279 @@
+/* Chesscom identity v4: separate cinematic identity from technical telemetry. */
+.chesscom[data-chesscom-visual="premium-v1"]{
+  --cc-display:"Arial Narrow","Roboto Condensed","Inter Tight","Segoe UI",system-ui,sans-serif;
+  --cc-body:"Inter","Segoe UI",system-ui,sans-serif;
+  --cc-data:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-brand h2,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-panel h3,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-copy>strong,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-title strong{
+  font-family:var(--cc-display);
+}
+
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-brand h2{
+  font-weight:900;
+  letter-spacing:.055em;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-brand strong{
+  font-family:var(--cc-display);
+  font-weight:800;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-brand small,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-classified{
+  font-family:var(--cc-data);
+}
+
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-panel h3{
+  font-weight:850;
+  letter-spacing:.105em;
+  text-transform:uppercase;
+}
+
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card{
+  position:relative;
+  isolation:isolate;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card:before{
+  z-index:-1;
+  background:
+    linear-gradient(90deg,rgba(211,173,100,.06),transparent 24%),
+    repeating-linear-gradient(135deg,transparent 0 13px,rgba(255,255,255,.012) 14px,transparent 15px);
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card:after{
+  right:6px;
+  top:6px;
+  width:28px;
+  height:28px;
+  border-top:1px solid rgba(211,173,100,.25);
+  border-right:1px solid rgba(211,173,100,.25);
+  transform:none;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card.is-selected:after{
+  border-color:rgba(130,192,197,.62);
+  filter:drop-shadow(0 0 5px rgba(130,192,197,.12));
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-copy>strong{
+  font-weight:850;
+  letter-spacing:.018em;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-copy>small{
+  font-family:var(--cc-body);
+  font-weight:650;
+  letter-spacing:.055em;
+  text-transform:uppercase;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-mini-row em,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-mini-row strong{
+  font-family:var(--cc-data);
+  font-variant-numeric:tabular-nums;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait{
+  outline:1px solid rgba(211,173,100,.10);
+  outline-offset:-4px;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card.is-selected .chesscom-portrait{
+  outline-color:rgba(130,192,197,.25);
+}
+
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-operation{
+  overflow:hidden;
+  padding-top:1rem;
+  background:
+    linear-gradient(90deg,rgba(211,173,100,.12),transparent 60%) top/100% 2px no-repeat,
+    radial-gradient(circle at 0 0,rgba(211,173,100,.14),transparent 47%),
+    linear-gradient(145deg,rgba(31,36,35,.94),rgba(12,17,18,.96));
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-operation:before{
+  content:"MISSION DOSSIER";
+  position:absolute;
+  top:.34rem;
+  left:.78rem;
+  color:#99835b;
+  font:700 .42rem/1 var(--cc-data);
+  letter-spacing:.18em;
+  pointer-events:none;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-operation h3{
+  font-size:.84rem;
+  line-height:1.05;
+  letter-spacing:.11em;
+  color:#f1cf8a;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-operation dl{
+  font-family:var(--cc-body);
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-operation dt{
+  font-family:var(--cc-data);
+  font-size:.88em;
+  letter-spacing:.035em;
+  text-transform:uppercase;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-operation dd{
+  font-family:var(--cc-body);
+  font-weight:650;
+  letter-spacing:.015em;
+}
+
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-mission-badge{
+  font-family:var(--cc-data);
+  letter-spacing:.075em;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-mission-badge strong{
+  font-family:var(--cc-display);
+  font-weight:900;
+  letter-spacing:.08em;
+}
+
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon{
+  position:relative;
+  overflow:hidden;
+  background:
+    repeating-linear-gradient(135deg,transparent 0 22px,rgba(255,255,255,.012) 23px,transparent 24px),
+    radial-gradient(circle at 84% 9%,rgba(211,173,100,.14),transparent 35%),
+    linear-gradient(152deg,#202b2d,#0e1416 74%);
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon:before{
+  content:"ARMORY // PRIMARY";
+  position:absolute;
+  top:.42rem;
+  right:.56rem;
+  z-index:3;
+  color:#927b50;
+  font:700 .40rem/1 var(--cc-data);
+  letter-spacing:.14em;
+  pointer-events:none;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-title{
+  position:relative;
+  isolation:isolate;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-title:before{
+  content:"";
+  position:absolute;
+  z-index:0;
+  right:-28px;
+  bottom:-20px;
+  width:230px;
+  height:118px;
+  border-radius:50%;
+  background:radial-gradient(ellipse,rgba(152,124,72,.18),rgba(65,79,79,.08) 46%,transparent 70%);
+  pointer-events:none;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-title:after{
+  content:"";
+  position:absolute;
+  left:0;
+  bottom:-1px;
+  width:48%;
+  height:1px;
+  background:linear-gradient(90deg,#c19b57,rgba(193,155,87,.12),transparent);
+  pointer-events:none;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-title>div,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-art{
+  position:relative;
+  z-index:2;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-title strong{
+  font-weight:900;
+  letter-spacing:.035em;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-title small{
+  font-family:var(--cc-body);
+  font-weight:500;
+  letter-spacing:.015em;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon dl{
+  font-variant-numeric:tabular-nums;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon dt{
+  font-family:var(--cc-data);
+  color:#869695;
+  letter-spacing:.05em;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon dd{
+  font-family:var(--cc-body);
+  font-weight:720;
+  color:#e4e1d8;
+}
+
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-fire-control-head span{
+  font-family:var(--cc-display);
+  font-weight:900;
+  letter-spacing:.10em;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-fire-control-head small{
+  font-family:var(--cc-data);
+  font-variant-numeric:tabular-nums;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-fire-modes button{
+  font-family:var(--cc-display);
+  font-weight:850;
+  letter-spacing:.07em;
+}
+
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-actionbar button{
+  font-family:var(--cc-display);
+  font-weight:780;
+  letter-spacing:.025em;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-actionbar button.is-active{
+  text-shadow:0 0 12px rgba(130,192,197,.12);
+}
+
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-economy{
+  position:relative;
+  overflow:hidden;
+  background:
+    linear-gradient(90deg,rgba(211,173,100,.12),transparent 64%) top/100% 1px no-repeat,
+    linear-gradient(145deg,#25251d,#111512);
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-economy:after{
+  content:"";
+  position:absolute;
+  right:-22px;
+  bottom:-28px;
+  width:82px;
+  height:82px;
+  border:1px solid rgba(211,173,100,.10);
+  transform:rotate(45deg);
+  pointer-events:none;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-economy>span{
+  font-family:var(--cc-display);
+  font-weight:750;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-economy>strong,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-economy>small{
+  font-family:var(--cc-data);
+  font-variant-numeric:tabular-nums;
+}
+
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-log h3{
+  font-family:var(--cc-display);
+  font-weight:850;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-log p{
+  font-family:var(--cc-data);
+}
+
+@media(max-width:900px){
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-operation:before,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon:before{
+    letter-spacing:.10em;
+  }
+}
+
+@media(max-width:620px){
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-operation:before,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon:before{
+    display:none;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-operation{
+    padding-top:.72rem;
+  }
+}
