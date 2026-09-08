@@ -23,14 +23,8 @@ async function setRendererViaAppearance(page, renderer) {
   await expect(button).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   await expect(button).toBeEnabled();
   try {
-    // Tras una animación WebGL el main thread del runner puede retrasar la
-    // comprobación de actionability aunque el botón ya esté visible/estable.
-    // Probamos primero el camino de usuario real con margen razonable.
     await button.click({ timeout: 12_000 });
   } catch {
-    // Este spec valida paridad de estado 2D↔3D, no hit-testing del control
-    // Apariencia. Si Playwright se atasca sólo en actionability, activamos el
-    // mismo botón por DOM después de acreditar visible + enabled.
     await button.evaluate((element) => element.click());
   }
 
@@ -38,9 +32,6 @@ async function setRendererViaAppearance(page, renderer) {
   await expect(dialog).toBeVisible({ timeout: 15_000 });
   await dialog.getByRole('radio', { name: new RegExp(`${renderer}$`) }).click();
 
-  // El radio sí debe cambiar el renderer real. Cerrar el modal no es el
-  // contrato bajo prueba y el remount de Three puede mantener a Playwright
-  // esperando actionability aun con el botón visible, enabled y estable.
   const close = dialog.getByRole('button', { name: 'Cerrar', exact: true });
   await expect(close).toBeVisible();
   await expect(close).toBeEnabled();
@@ -78,101 +69,34 @@ function specialStatePayload({ id, scenario, from, to, promotion = null }) {
   if (scenario === 'mate') {
     if (from !== 'g6' || to !== 'g7') throw new Error(`E2E mate esperaba g6-g7, recibió ${from}-${to}`);
     const move = { from, to, san: 'Qg7#', piece: 'q', captured: false, by: 'human' };
-    return {
-      id,
-      fen: MATE_END_FEN,
-      turn: 'b',
-      humanColor: 'w',
-      difficulty: 50,
-      status: 'checkmate',
-      insufficientMatingMaterial: { w: false, b: false },
-      isGameOver: true,
-      history: [move],
-      lastMove: move,
-      initialFen: MATE_START_FEN,
-      ghostStyle: null,
-    };
+    return { id, fen: MATE_END_FEN, turn: 'b', humanColor: 'w', difficulty: 50, status: 'checkmate', insufficientMatingMaterial: { w: false, b: false }, isGameOver: true, history: [move], lastMove: move, initialFen: MATE_START_FEN, ghostStyle: null };
   }
 
   if (scenario === 'castling') {
     if (from !== 'e1' || to !== 'g1') throw new Error(`E2E enroque esperaba e1-g1, recibió ${from}-${to}`);
     const humanMove = { from: 'e1', to: 'g1', san: 'O-O', piece: 'k', captured: false, by: 'human' };
     const cpuMove = { from: 'a7', to: 'a6', san: 'a6', piece: 'p', captured: false, by: 'cpu' };
-    return {
-      id,
-      fen: CASTLING_END_FEN,
-      turn: 'w',
-      humanColor: 'w',
-      difficulty: 50,
-      status: 'playing',
-      insufficientMatingMaterial: { w: false, b: false },
-      isGameOver: false,
-      history: [humanMove, cpuMove],
-      lastMove: cpuMove,
-      initialFen: CASTLING_START_FEN,
-      ghostStyle: null,
-    };
+    return { id, fen: CASTLING_END_FEN, turn: 'w', humanColor: 'w', difficulty: 50, status: 'playing', insufficientMatingMaterial: { w: false, b: false }, isGameOver: false, history: [humanMove, cpuMove], lastMove: cpuMove, initialFen: CASTLING_START_FEN, ghostStyle: null };
   }
 
   if (scenario === 'en-passant') {
     if (from !== 'e5' || to !== 'd6') throw new Error(`E2E en passant esperaba e5-d6, recibió ${from}-${to}`);
     const humanMove = { from: 'e5', to: 'd6', san: 'exd6', piece: 'p', captured: true, by: 'human' };
     const cpuMove = { from: 'a7', to: 'a6', san: 'a6', piece: 'p', captured: false, by: 'cpu' };
-    return {
-      id,
-      fen: EN_PASSANT_END_FEN,
-      turn: 'w',
-      humanColor: 'w',
-      difficulty: 50,
-      status: 'playing',
-      insufficientMatingMaterial: { w: false, b: false },
-      isGameOver: false,
-      history: [humanMove, cpuMove],
-      lastMove: cpuMove,
-      initialFen: EN_PASSANT_START_FEN,
-      ghostStyle: null,
-    };
+    return { id, fen: EN_PASSANT_END_FEN, turn: 'w', humanColor: 'w', difficulty: 50, status: 'playing', insufficientMatingMaterial: { w: false, b: false }, isGameOver: false, history: [humanMove, cpuMove], lastMove: cpuMove, initialFen: EN_PASSANT_START_FEN, ghostStyle: null };
   }
 
   if (scenario === 'promotion') {
-    if (from !== 'g7' || to !== 'g8' || promotion !== 'n') {
-      throw new Error(`E2E promoción esperaba g7-g8=N, recibió ${from}-${to}=${promotion || '?'}`);
-    }
+    if (from !== 'g7' || to !== 'g8' || promotion !== 'n') throw new Error(`E2E promoción esperaba g7-g8=N, recibió ${from}-${to}=${promotion || '?'}`);
     const humanMove = { from: 'g7', to: 'g8', san: 'g8=N', piece: 'p', captured: false, by: 'human' };
     const cpuMove = { from: 'a7', to: 'a6', san: 'a6', piece: 'p', captured: false, by: 'cpu' };
-    return {
-      id,
-      fen: PROMOTION_END_FEN,
-      turn: 'w',
-      humanColor: 'w',
-      difficulty: 50,
-      status: 'playing',
-      insufficientMatingMaterial: { w: false, b: false },
-      isGameOver: false,
-      history: [humanMove, cpuMove],
-      lastMove: cpuMove,
-      initialFen: PROMOTION_START_FEN,
-      ghostStyle: null,
-    };
+    return { id, fen: PROMOTION_END_FEN, turn: 'w', humanColor: 'w', difficulty: 50, status: 'playing', insufficientMatingMaterial: { w: false, b: false }, isGameOver: false, history: [humanMove, cpuMove], lastMove: cpuMove, initialFen: PROMOTION_START_FEN, ghostStyle: null };
   }
 
   if (from !== 'e2' || to !== 'h5') throw new Error(`E2E check esperaba e2-h5, recibió ${from}-${to}`);
   const humanMove = { from: 'e2', to: 'h5', san: 'Qh5', piece: 'q', captured: false, by: 'human' };
   const cpuMove = { from: 'e8', to: 'e1', san: 'Re1+', piece: 'r', captured: false, by: 'cpu' };
-  return {
-    id,
-    fen: CHECK_END_FEN,
-    turn: 'w',
-    humanColor: 'w',
-    difficulty: 50,
-    status: 'check',
-    insufficientMatingMaterial: { w: false, b: false },
-    isGameOver: false,
-    history: [humanMove, cpuMove],
-    lastMove: cpuMove,
-    initialFen: CHECK_START_FEN,
-    ghostStyle: null,
-  };
+  return { id, fen: CHECK_END_FEN, turn: 'w', humanColor: 'w', difficulty: 50, status: 'check', insufficientMatingMaterial: { w: false, b: false }, isGameOver: false, history: [humanMove, cpuMove], lastMove: cpuMove, initialFen: CHECK_START_FEN, ghostStyle: null };
 }
 
 async function installSpecialStateRoutes(page, scenario, requestLog) {
@@ -197,13 +121,7 @@ async function installSpecialStateRoutes(page, scenario, requestLog) {
     const routeId = url.pathname.match(/\/games\/([^/]+)\/move$/)?.[1];
     const payload = route.request().postDataJSON?.() ?? {};
     requestLog.push({ method: 'POST', path: url.pathname, idempotencyKey: route.request().headers()['idempotency-key'] || null });
-    currentGame = specialStatePayload({
-      id: routeId,
-      scenario,
-      from: payload.from,
-      to: payload.to,
-      promotion: payload.promotion || null,
-    });
+    currentGame = specialStatePayload({ id: routeId, scenario, from: payload.from, to: payload.to, promotion: payload.promotion || null });
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(currentGame) });
   });
 }
@@ -217,9 +135,6 @@ async function startScenario(page, scenario, requestLog) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameStatus(page)).toBeVisible();
-  // Estos journeys acreditan expresamente la paridad 2D→3D. El producto nace
-  // ahora en War Room, así que el test debe elegir el fallback 2D en vez de
-  // depender de un default histórico implícito.
   await setRendererViaAppearance(page, '2D');
 }
 
@@ -237,6 +152,14 @@ async function pressKeys(page, keys) {
 
 function movePosts(requestLog) {
   return requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path));
+}
+
+async function setVisibility(page, state) {
+  await page.evaluate((nextState) => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => nextState });
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => nextState !== 'visible' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, state);
 }
 
 test('War Room parity · respuesta CPU que da jaque se conserva al volver de 3D a 2D', async ({ page }) => {
@@ -264,10 +187,7 @@ test('War Room parity · respuesta CPU que da jaque se conserva al volver de 3D 
 
   await setRendererViaAppearance(page, '2D');
   await expect(page.getByRole('button', { name: /Casilla h1, rey blanco, rey en jaque/i })).toBeVisible({ timeout: SPECIAL_STATE_TIMEOUT });
-  await expect.poll(
-    async () => (await gameStatus(page).textContent())?.trim() || '',
-    { timeout: SPECIAL_STATE_TIMEOUT, message: 'El tablero ya refleja Re1+, pero el estado público debe converger a Jaque' },
-  ).toBe('Jaque');
+  await expect.poll(async () => (await gameStatus(page).textContent())?.trim() || '', { timeout: SPECIAL_STATE_TIMEOUT }).toBe('Jaque');
   expect(movePosts(requestLog)).toHaveLength(1);
 });
 
@@ -342,8 +262,6 @@ test('War Room parity · en passant 2D→3D retira el peón lateral con una sola
   await expect(board3d).toHaveAttribute('data-board3d-selected', 'e5');
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'e1');
 
-  // El destino d6 está vacío antes de la jugada; el peón capturado vive en d5.
-  // Este recorrido acredita que War Room no confunde "captura" con "pieza en to".
   await canvas.focus();
   await pressKeys(page, ['ArrowLeft', ...Array(5).fill('ArrowUp')]);
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'd6');
@@ -402,4 +320,39 @@ test('War Room parity · promoción 3D abre selector y conserva la pieza elegida
   await expect(page.getByRole('button', { name: /^Casilla g7, vacía/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Casilla a6, peón negro/i })).toBeVisible();
   expect(movePosts(requestLog)).toHaveLength(1);
+});
+
+test('War Room Android · sobrevive rotación y background/foreground repetidos sin duplicar canvas', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page);
+  await login(page);
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameStatus(page)).toBeVisible();
+
+  const warRoom = page.locator('[data-board3d-war-room="true"]');
+  const canvas = page.locator('.board3d-main-canvas');
+  await expect(warRoom).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(canvas).toHaveCount(1);
+
+  for (let cycle = 0; cycle < 12; cycle += 1) {
+    const landscape = cycle % 2 === 0;
+    await setVisibility(page, 'hidden');
+    await page.setViewportSize(landscape ? { width: 844, height: 390 } : { width: 390, height: 844 });
+    await setVisibility(page, 'visible');
+
+    await expect(gameStatus(page)).toBeVisible();
+    await expect(warRoom).toHaveCount(1);
+    await expect(canvas).toHaveCount(1);
+    await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(warRoom).toBeVisible();
+  await expect(canvas).toBeVisible();
+  await expect(canvas).toHaveCount(1);
 });
