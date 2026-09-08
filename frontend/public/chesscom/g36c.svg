@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 120" role="img" aria-label="G36C tactical rifle silhouette">
+  <defs>
+    <linearGradient id="body" x1="0" x2="1"><stop stop-color="#6b7468"/><stop offset=".52" stop-color="#30362f"/><stop offset="1" stop-color="#151a17"/></linearGradient>
+    <linearGradient id="rail" x1="0" x2="1"><stop stop-color="#d0b06b"/><stop offset="1" stop-color="#80643a"/></linearGradient>
+  </defs>
+  <g fill="none" stroke="#0b0e0c" stroke-width="4" stroke-linejoin="round">
+    <path fill="url(#body)" d="M37 48h62l20-15h104l15 11h55l15 9 30 2 11 7-16 8h-90l-17 10h-70l-18-9H83l-11 16H50l8-19H37z"/>
+    <path fill="#252b27" d="M121 69h29l6 16-10 24h-20l6-24z"/>
+    <path fill="#252b27" d="M190 72h31l14 34h-21z"/>
+    <path fill="#1f2521" d="m46 50-27-10-10 3 27 20z"/>
+    <path fill="#2f3731" d="M130 31h77l14 8h-101z"/>
+    <path fill="#202621" d="M246 45h43l11-8h22l-8 10z"/>
+  </g>
+  <path d="M121 38h90M247 58h77" stroke="url(#rail)" stroke-width="2" opacity=".9"/>
+  <rect x="164" y="36" width="28" height="7" rx="2" fill="#7da48d" opacity=".8"/>
+</svg>
