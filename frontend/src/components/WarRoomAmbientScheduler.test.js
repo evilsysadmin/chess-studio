@@ -127,4 +127,50 @@ describe('War Room ambient deadline scheduler', () => {
     expect(clock.frames.size).toBe(0);
     expect(clock.scheduler.getDebugState().disposed).toBe(true);
   });
+
+  it('dispose is idempotent and wake/start stay inert afterwards', () => {
+    const clock = makeClock({ intervalMs: 100 });
+    clock.scheduler.start();
+    clock.scheduler.dispose();
+    clock.scheduler.dispose();
+    clock.scheduler.wake();
+    clock.scheduler.start();
+
+    expect(clock.timers.size).toBe(0);
+    expect(clock.frames.size).toBe(0);
+    expect(clock.paints()).toBe(0);
+    expect(clock.scheduler.getDebugState().disposed).toBe(true);
+  });
+
+  it('ignores stale timer and RAF callbacks that arrive after disposal', () => {
+    const clock = makeClock({ intervalMs: 100 });
+    clock.scheduler.start();
+    const staleTimer = [...clock.timers.values()][0]?.callback;
+
+    clock.scheduler.dispose();
+    staleTimer?.();
+    expect(clock.frames.size).toBe(0);
+    expect(clock.timers.size).toBe(0);
+    expect(clock.paints()).toBe(0);
+
+    const fast = makeClock({ intervalMs: 16 });
+    fast.scheduler.start();
+    const staleFrame = [...fast.frames.values()][0];
+    fast.scheduler.dispose();
+    staleFrame?.(16);
+    expect(fast.frames.size).toBe(0);
+    expect(fast.timers.size).toBe(0);
+    expect(fast.paints()).toBe(0);
+  });
+
+  it('survives repeated mount-like start/dispose cycles without pending work', () => {
+    for (let index = 0; index < 50; index += 1) {
+      const clock = makeClock({ intervalMs: index % 2 ? 16 : 100 });
+      clock.scheduler.start();
+      clock.scheduler.dispose();
+      expect(clock.frames.size).toBe(0);
+      expect(clock.timers.size).toBe(0);
+      expect(clock.paints()).toBe(0);
+    }
+  });
 });
