@@ -9,6 +9,8 @@ import { installWarRoomHansFireNarrative } from './WarRoomHansFireNarrative.js';
 import { installWarRoomHansHearthFacingGuard } from './WarRoomHansHearthFacingGuard.js';
 import { installWarRoomHansMopRoutine } from './WarRoomHansMopRoutine.js';
 import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
+import { ensureWarRoomHansPlant } from './WarRoomHansPlantDecor.js';
+import { installWarRoomHansServiceRoutine } from './WarRoomHansServiceRoutine.js';
 import { installWarRoomMatthiasHansReaction } from './WarRoomMatthiasHansReaction.js';
 
 export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v1';
@@ -75,28 +77,23 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
       results[key] = task(root);
       if (key === HANS_FIREPLACE_FINALIZER_KEY) {
         installWarRoomHansCanonicalButler(root);
-        // Routine-specific clock gates must wrap the raw choreography before
-        // locomotion/facing layers capture it. That keeps future Hans routines
-        // composable without each one owning navigation.
         installWarRoomHansBoardPeekClockHold(root);
         installWarRoomHansMotionPolish(root);
         installWarRoomHansActorTelemetry(root);
         installWarRoomHansFacingGuard(root);
         installWarRoomHansHearthFacingGuard(root);
         installWarRoomHansBoardPeekPose(root);
-        // One visual locomotion owner only. MotionPolish owns routing/facing and
-        // stationary action poses; the reusable articulated cycle owns walking.
         installWarRoomHansArticulatedWalk(root);
         installWarRoomHansElderClock(root);
-        // Observe the fully-resolved Hans phase and hearth state last. This layer
-        // never moves Hans; it only turns the old proximity fade into a causal
-        // cold-hearth -> rekindle story.
         installWarRoomHansFireNarrative(root);
         installWarRoomMatthiasHansReaction(root);
-        // Ambient chores are clients of the actor, never owners of the fireplace
-        // story. MopRoutine waits for the fire routine to finish and then leases
-        // Hans before roaming the room.
+
+        // Permanent room dressing, independent of which single Hans event wins.
+        ensureWarRoomHansPlant(root);
+        // Ambient chores are peer clients of the actor and all obey the same
+        // per-game event selector / routine lease.
         installWarRoomHansMopRoutine(root);
+        installWarRoomHansServiceRoutine(root);
       }
       completedKeys.push(key);
     }
