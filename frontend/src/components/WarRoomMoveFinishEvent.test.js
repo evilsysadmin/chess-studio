@@ -11,6 +11,9 @@ const MATE_FEN = '7k/6Q1/5K2/8/8/8/8/8 b - - 0 1';
 const STALEMATE_FEN = '7k/5Q2/5K2/8/8/8/8/8 b - - 0 1';
 const WHITE_KINGSIDE_CASTLE_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQ1RK1 b kq - 1 1';
 const WHITE_QUEENSIDE_CASTLE_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/2KR1BNR b kq - 1 1';
+const WHITE_PROMOTION_BEFORE_FEN = 'k7/6P1/5K2/8/8/8/8/8 w - - 0 1';
+const WHITE_PROMOTION_AFTER_FEN = 'k5Q1/8/5K2/8/8/8/8/8 b - - 0 1';
+const WHITE_QUEEN_BEFORE_FEN = 'k7/6Q1/5K2/8/8/8/8/8 w - - 0 1';
 
 describe('War Room move finish events', () => {
   it('arms a finish only for an actual final checkmate position', () => {
@@ -105,4 +108,62 @@ describe('War Room move finish events', () => {
 
     expect(fake).toBeNull();
   });
+  it('derives promotion only when the previous board proves a pawn became the final piece', () => {
+    const promotion = deriveWarRoomMoveFinishEvent({
+      previousFen: WHITE_PROMOTION_BEFORE_FEN,
+      fen: WHITE_PROMOTION_AFTER_FEN,
+      animate: { seq: 31, from: 'g7', to: 'g8' },
+      chessFromFen,
+    });
+    const queenMove = deriveWarRoomMoveFinishEvent({
+      previousFen: WHITE_QUEEN_BEFORE_FEN,
+      fen: WHITE_PROMOTION_AFTER_FEN,
+      animate: { seq: 32, from: 'g7', to: 'g8' },
+      chessFromFen,
+    });
+
+    expect(promotion).toEqual({
+      seq: 31,
+      to: 'g8',
+      promotion: { from: 'g7', to: 'g8', promotedType: 'q', color: 'w' },
+    });
+    expect(queenMove).toBeNull();
+  });
+
+  it('queues an exact promotion for only the promoted destination square', () => {
+    clearWarRoomMoveFinishEvent();
+    const promotion = deriveWarRoomMoveFinishEvent({
+      previousFen: WHITE_PROMOTION_BEFORE_FEN,
+      fen: WHITE_PROMOTION_AFTER_FEN,
+      animate: { seq: 33, from: 'g7', to: 'g8' },
+      chessFromFen,
+    });
+    armWarRoomMoveFinishEvent(promotion);
+
+    expect(consumeWarRoomMoveFinishEvent('h8')).toBeNull();
+    expect(consumeWarRoomMoveFinishEvent('g8')).toEqual({
+      seq: 33,
+      to: 'g8',
+      promotion: { from: 'g7', to: 'g8', promotedType: 'q', color: 'w' },
+    });
+    expect(consumeWarRoomMoveFinishEvent('g8')).toBeNull();
+  });
+
+  it('preserves a mate seal when the mating move is also a promotion', () => {
+    clearWarRoomMoveFinishEvent();
+    armWarRoomMoveFinishEvent({
+      seq: 34,
+      to: 'g8',
+      checkmate: true,
+      promotion: { from: 'g7', to: 'g8', promotedType: 'n', color: 'w' },
+    });
+
+    expect(consumeWarRoomMoveFinishEvent('g8')).toEqual({
+      seq: 34,
+      to: 'g8',
+      checkmate: true,
+      promotion: { from: 'g7', to: 'g8', promotedType: 'n', color: 'w' },
+    });
+  });
+
 });

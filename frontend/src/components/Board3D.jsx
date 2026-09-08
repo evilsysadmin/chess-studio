@@ -24,7 +24,9 @@ export default function Board3D(props) {
   const requestsHansQuickIteration = props.hansFireplaceIteration === true;
   const hansGameId = props.gameId;
   const hansMarkerRef = useRef(null);
+  const previousFenRef = useRef(props.fen);
   const moveFinishEvent = deriveWarRoomMoveFinishEvent({
+    previousFen: previousFenRef.current,
     fen: props.fen,
     gameOver: props.gameOver,
     animate: props.animate,
@@ -36,7 +38,21 @@ export default function Board3D(props) {
     if (!moveFinishEvent) return undefined;
     armWarRoomMoveFinishEvent(moveFinishEvent);
     return () => clearWarRoomMoveFinishEvent(moveFinishEvent.seq);
-  }, [moveFinishEvent?.seq, moveFinishEvent?.to, moveFinishEvent?.checkmate]);
+  }, [
+    moveFinishEvent?.seq,
+    moveFinishEvent?.to,
+    moveFinishEvent?.checkmate,
+    moveFinishEvent?.castling?.side,
+    moveFinishEvent?.promotion?.promotedType,
+    moveFinishEvent?.promotion?.color,
+  ]);
+
+  // Keep the previous board only after this render has derived its event. That
+  // makes promotion detection exact without threading another state object
+  // through GameScreen/GameBoardView or teaching the renderer chess rules.
+  useLayoutEffect(() => {
+    previousFenRef.current = props.fen;
+  }, [props.fen]);
 
   // Eligibility and consumption are deliberately separate. A transient 3D
   // mount may arm Hans, but it must not burn the one-shot cameo until the real

@@ -30,6 +30,25 @@ function bell(start, peak, end, progress) {
   return 1 - smoothstep(peak, end, p);
 }
 
+export function derivePromotionMorph({ progress = 0, coarsePointer = false } = {}) {
+  const p = clamp01(progress);
+  const amplitude = coarsePointer ? 0.62 : 1;
+  const collapse = smoothstep(0.78, 0.96, p);
+  const emerge = smoothstep(0.82, 0.97, p);
+  const seal = bell(0.91, 0.97, 0.999, p);
+
+  return {
+    pawnOpacity: 1 - smoothstep(0.82, 0.96, p),
+    promotedOpacity: smoothstep(0.84, 0.97, p),
+    pawnScaleY: 1 - collapse * 0.20 * amplitude,
+    pawnScaleXZ: 1 + collapse * 0.07 * amplitude,
+    pawnYOffset: -collapse * 0.018 * amplitude,
+    promotedScale: 0.80 + emerge * 0.20 + seal * 0.035 * amplitude,
+    promotedYOffset: -(1 - emerge) * 0.035 * amplitude + seal * 0.012 * amplitude,
+    seal,
+  };
+}
+
 export function derivePieceBodyPose({
   type = 'p',
   progress = 0,
@@ -126,16 +145,116 @@ function promotionEnergyFor(group) {
   return clamp01((peakRatio - 1) / 0.085);
 }
 
+function collectMaterialStates(root) {
+  const seen = new Set();
+  const states = [];
+  root?.traverse?.((object) => {
+    if (!object?.isMesh || object.userData?.touchHitTarget || object.userData?.promotionMorphGhost) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) {
+      if (!material || seen.has(material)) continue;
+      seen.add(material);
+      states.push({
+        material,
+        opacity: Number.isFinite(material.opacity) ? material.opacity : 1,
+        transparent: Boolean(material.transparent),
+        depthWrite: material.depthWrite !== false,
+        colorWrite: material.colorWrite !== false,
+      });
+    }
+  });
+  return states;
+}
+
+function setMaterialOpacity(states, factor) {
+  const opacityFactor = clamp01(factor);
+  for (const state of states || []) {
+    state.material.transparent = opacityFactor < 0.999 || state.transparent;
+    state.material.depthWrite = opacityFactor >= 0.999 ? state.depthWrite : false;
+    state.material.colorWrite = opacityFactor > EPSILON ? state.colorWrite : false;
+    state.material.opacity = state.opacity * opacityFactor;
+  }
+}
+
+function restoreMaterialStates(states) {
+  for (const state of states || []) {
+    state.material.opacity = state.opacity;
+    state.material.transparent = state.transparent;
+    state.material.depthWrite = state.depthWrite;
+    state.material.colorWrite = state.colorWrite;
+  }
+}
+
+function cloneMorphMaterial(material) {
+  const clone = material?.clone?.() || new THREE.MeshStandardMaterial({ color: 0xb8a98f, roughness: 0.6 });
+  clone.transparent = true;
+  clone.depthWrite = false;
+  return clone;
+}
+
+function buildPromotionPawnGhost(materialStates) {
+  const main = cloneMorphMaterial(materialStates?.[0]?.material);
+  const accent = cloneMorphMaterial(materialStates?.[1]?.material || materialStates?.[0]?.material);
+  const ghost = new THREE.Group();
+  ghost.name = 'board3d-promotion-pawn-ghost';
+  ghost.userData.promotionMorphGhost = true;
+
+  const add = (geometry, material, y = 0, rotationX = 0) => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.y = y;
+    mesh.rotation.x = rotationX;
+    mesh.castShadow = true;
+    mesh.userData.promotionMorphGhost = true;
+    ghost.add(mesh);
+    return mesh;
+  };
+
+  add(new THREE.CylinderGeometry(0.31, 0.36, 0.20, 16), main, 0.10);
+  add(new THREE.CylinderGeometry(0.15, 0.22, 0.31, 16), main, 0.39);
+  add(new THREE.TorusGeometry(0.16, 0.024, 8, 24), accent, 0.57, Math.PI / 2);
+  add(new THREE.SphereGeometry(0.19, 18, 12), main, 0.73);
+  return ghost;
+}
+
+function setGhostOpacity(ghost, factor) {
+  const opacity = clamp01(factor);
+  const seen = new Set();
+  ghost?.traverse?.((object) => {
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of materials) {
+      if (!material || seen.has(material)) continue;
+      seen.add(material);
+      material.opacity = opacity;
+    }
+  });
+}
+
+function disposePromotionGhost(ghost) {
+  const geometries = new Set();
+  const materials = new Set();
+  ghost?.traverse?.((object) => {
+    if (object.geometry) geometries.add(object.geometry);
+    const objectMaterials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const material of objectMaterials) if (material) materials.add(material);
+  });
+  for (const geometry of geometries) geometry.dispose?.();
+  for (const material of materials) material.dispose?.();
+}
+
 export function installPieceBodyMotion(group, type, { coarsePointer = false } = {}) {
   if (!group?.isObject3D || group.userData?.board3DBodyMotionProfile) return group;
 
   const body = new THREE.Group();
   body.name = 'board3d-motion-body';
   body.userData.board3DBodyMotionBody = true;
+  const visualBody = new THREE.Group();
+  visualBody.name = 'board3d-piece-visual-body';
+  visualBody.userData.board3DVisualBody = true;
 
   const movableChildren = [...group.children].filter((child) => !isStaticRootChild(child));
-  for (const child of movableChildren) body.add(child);
+  for (const child of movableChildren) visualBody.add(child);
   if (movableChildren.length === 0) return group;
+  body.add(visualBody);
   group.add(body);
 
   const basePosition = body.position.clone();
@@ -149,10 +268,46 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
     lastFrame: -1,
     active: false,
     finishEvent: null,
+    promotionGhost: null,
+    promotionMaterialStates: null,
   };
 
+  function clearPromotionMorph() {
+    let changed = false;
+    if (state.promotionMaterialStates) {
+      restoreMaterialStates(state.promotionMaterialStates);
+      state.promotionMaterialStates = null;
+      changed = true;
+    }
+    if (state.promotionGhost) {
+      body.remove(state.promotionGhost);
+      disposePromotionGhost(state.promotionGhost);
+      state.promotionGhost = null;
+      changed = true;
+    }
+    visualBody.position.set(0, 0, 0);
+    visualBody.scale.set(1, 1, 1);
+    group.userData.board3DPromotionMorphState = null;
+    return changed;
+  }
+
+  function preparePromotionMorph() {
+    const promotion = state.finishEvent?.promotion;
+    if (!promotion || state.promotionGhost) return false;
+    if (String(promotion.promotedType || '').toLowerCase() !== String(type || '').toLowerCase()) return false;
+    if (group.userData?.color && promotion.color !== group.userData.color) return false;
+    state.promotionMaterialStates = collectMaterialStates(visualBody);
+    if (state.promotionMaterialStates.length === 0) return false;
+    state.promotionGhost = buildPromotionPawnGhost(state.promotionMaterialStates);
+    body.add(state.promotionGhost);
+    setMaterialOpacity(state.promotionMaterialStates, 0);
+    setGhostOpacity(state.promotionGhost, 1);
+    return true;
+  }
+
   function resetPose() {
-    if (!state.active) return false;
+    const morphChanged = clearPromotionMorph();
+    if (!state.active && !morphChanged) return false;
     body.position.copy(basePosition);
     body.quaternion.copy(baseQuaternion);
     body.scale.copy(baseScale);
@@ -179,13 +334,18 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
     const remaining = Math.hypot(dx, dz);
 
     if (state.targetSquare !== targetSquare) {
+      clearPromotionMorph();
       state.targetSquare = targetSquare;
       state.maxDistance = remaining;
       state.finishEvent = remaining > EPSILON ? consumeWarRoomMoveFinishEvent(targetSquare) : null;
+      preparePromotionMorph();
     } else if (remaining > state.maxDistance) {
       // Handles a reconciled/interrupted animation without retaining stale travel.
       state.maxDistance = remaining;
-      if (!state.finishEvent) state.finishEvent = consumeWarRoomMoveFinishEvent(targetSquare);
+      if (!state.finishEvent) {
+        state.finishEvent = consumeWarRoomMoveFinishEvent(targetSquare);
+        preparePromotionMorph();
+      }
     }
 
     if (remaining <= EPSILON || state.maxDistance <= EPSILON) {
@@ -197,8 +357,12 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
     const progress = clamp01(1 - remaining / state.maxDistance);
     const baseY = Number(group.userData?.baseY ?? 0.1);
     const airborne = clamp01((group.position.y - baseY) / 0.25);
+    const promotionMorph = state.finishEvent?.promotion && state.promotionGhost
+      ? derivePromotionMorph({ progress, coarsePointer })
+      : null;
+    const poseType = promotionMorph && progress < 0.88 ? 'p' : type;
     const pose = derivePieceBodyPose({
-      type,
+      type: poseType,
       progress,
       dx,
       dz,
@@ -223,8 +387,31 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
       baseScale.y * pose.scaleY,
       baseScale.z * pose.scaleXZ,
     );
+    if (promotionMorph && state.promotionGhost && state.promotionMaterialStates) {
+      setMaterialOpacity(state.promotionMaterialStates, promotionMorph.promotedOpacity);
+      setGhostOpacity(state.promotionGhost, promotionMorph.pawnOpacity);
+      visualBody.position.y = promotionMorph.promotedYOffset;
+      visualBody.scale.setScalar(promotionMorph.promotedScale);
+      state.promotionGhost.position.y = promotionMorph.pawnYOffset;
+      state.promotionGhost.scale.set(
+        promotionMorph.pawnScaleXZ,
+        promotionMorph.pawnScaleY,
+        promotionMorph.pawnScaleXZ,
+      );
+      group.userData.board3DPromotionMorphState = {
+        from: state.finishEvent.promotion.from,
+        to: state.finishEvent.promotion.to,
+        promotedType: state.finishEvent.promotion.promotedType,
+        pawnOpacity: promotionMorph.pawnOpacity,
+        promotedOpacity: promotionMorph.promotedOpacity,
+        seal: promotionMorph.seal,
+      };
+    }
     state.active = true;
-    group.userData.board3DBodyFinishState = pose.finish;
+    group.userData.board3DBodyFinishState = {
+      ...pose.finish,
+      promotionMorph: Boolean(promotionMorph),
+    };
     group.updateMatrixWorld(true);
   }
 
@@ -242,6 +429,7 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
   group.userData.board3DBodyFinishProfile = coarsePointer ? 'piece-finish-lite-v1' : 'piece-finish-v1';
   group.userData.board3DCheckmateFinishProfile = coarsePointer ? 'mate-seal-lite-v1' : 'mate-seal-v1';
   group.userData.board3DCastlingFinishProfile = coarsePointer ? 'castle-lock-lite-v1' : 'castle-lock-v1';
+  group.userData.board3DPromotionMorphProfile = coarsePointer ? 'pawn-morph-lite-v1' : 'pawn-morph-v1';
   return group;
 }
 
