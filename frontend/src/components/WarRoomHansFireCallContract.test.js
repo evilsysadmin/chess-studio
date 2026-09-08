@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   fireCallPhase,
+  HANS_BOARD_PEEK_MS,
   HANS_FIRE_REPLY_LINE,
+  HANS_WORKING_REPLY_MS,
   MATTHIAS_FIRE_CALL_LINE,
   MATTHIAS_FIRE_CALL_MS,
   MATTHIAS_FIRE_EPILOGUE_LINE,
+  MATTHIAS_HANS_WORKING_MS,
   projectHansFireReplyAnchor,
   resolveHansFireOpeningLatch,
   shouldStartHansFireEpilogue,
@@ -18,6 +21,12 @@ describe('War Room Hans fire call contract', () => {
     expect(fireCallPhase(MATTHIAS_FIRE_CALL_MS - 1, true)).toBe('matthias');
     expect(fireCallPhase(MATTHIAS_FIRE_CALL_MS + 1, false)).toBe('await-hans');
     expect(fireCallPhase(MATTHIAS_FIRE_CALL_MS + 1, true)).toBe('hans');
+  });
+
+  it('mantiene el cotilleo dentro de la pausa satisfied antes de que Hans empiece a marcharse', () => {
+    const interruptionMs = HANS_BOARD_PEEK_MS + MATTHIAS_HANS_WORKING_MS + HANS_WORKING_REPLY_MS;
+    expect(interruptionMs).toBe(2350);
+    expect(interruptionMs).toBeLessThan(2700);
   });
 
   it('mantiene armada la entrada de Hans aunque la partida empiece a mover mientras carga la sala', () => {
