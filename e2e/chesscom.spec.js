@@ -84,6 +84,18 @@ test('Chesscom · abre la planta 17 con renderer Babylon real y HUD Dust Veil pr
   await expect(mode.getByRole('group', { name: 'Modo de disparo' }).getByRole('button', { name: 'Ráfaga', exact: true })).toHaveCount(0);
   await expect(mode.getByRole('group', { name: 'Modo de disparo' }).getByRole('button', { name: 'Auto', exact: true })).toBeVisible();
 
+  // El renderer ya está caliente: aprovechamos el mismo boot para verificar la
+  // arista móvil que el artifact visual detectó (390px de viewport vs 491px de
+  // canvas CSS). El scroll interno de la actionbar es válido; el documento no.
+  await page.setViewportSize({ width:390, height:844 });
+  await expect.poll(() => page.evaluate(() => ({
+    viewport:window.innerWidth,
+    documentWidth:document.documentElement.scrollWidth,
+  }))).toEqual({ viewport:390, documentWidth:390 });
+  await expect.poll(() => canvas.evaluate((node) => Math.ceil(node.getBoundingClientRect().width))).toBeLessThanOrEqual(390);
+  await expect(mode.locator('.chesscom-operation')).toBeVisible();
+  await expect(page.getByRole('button', { name: '← Experimentos', exact: true })).toBeVisible();
+
   // Reutilizamos el Babylon ya arrancado para comprobar también la salida. El
   // contrato es el mismo que el antiguo tercer test, sin otro login + boot 3D.
   await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
