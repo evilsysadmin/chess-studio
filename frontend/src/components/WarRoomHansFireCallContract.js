@@ -10,7 +10,8 @@ export const HANS_BOARD_DIALOGUE_GAP_MS = 5500;
 export const MATTHIAS_HANS_WORKING_MS = 2600;
 export const HANS_WORKING_REPLY_MS = 2000;
 export const HANS_LEAVING_GRUMBLE_MS = 1500;
-export const HANS_BOARD_PEEK_TIMELINE_T = 29;
+export const HANS_BOARD_PEEK_ROUTE = 'leave-side';
+export const HANS_BOARD_PEEK_LOGICAL_X = 0.55;
 export const MATTHIAS_FIRE_EPILOGUE_LINE = 'En fin. ¿Por dónde íbamos?';
 export const MATTHIAS_FIRE_EPILOGUE_MS = 1900;
 
@@ -49,16 +50,16 @@ export function hansBoardPeekHoldsMovement(phase) {
   return HANS_BOARD_PEEK_HOLD_PHASES.has(String(phase || ''));
 }
 
-export function shouldStartHansBoardPeek({ phase, hansPhase, timelineT, suggestion } = {}) {
+export function shouldStartHansBoardPeek({ phase, route, logicalX, suggestion } = {}) {
   return phase === 'await-exit-peek'
-    && hansPhase === 'leave'
-    && Number(timelineT) >= HANS_BOARD_PEEK_TIMELINE_T
+    && route === HANS_BOARD_PEEK_ROUTE
+    && Number(logicalX) >= HANS_BOARD_PEEK_LOGICAL_X
     && Boolean(suggestion?.line);
 }
 
-export function shouldStartHansLeavingGrumble({ phase, hansPhase, alreadyPlayed = false } = {}) {
+export function shouldStartHansLeavingGrumble({ phase, route, alreadyPlayed = false } = {}) {
   return phase === 'await-exit'
-    && hansPhase === 'leave'
+    && String(route || '').startsWith('leave-')
     && !alreadyPlayed;
 }
 
@@ -81,12 +82,8 @@ export function projectHansFireReplyAnchor({ ndcX, ndcY, coarsePointer = false }
   const headLift = coarsePointer ? 7.8 : 6.8;
   const top = clamp(((1 - y) * 50) - headLift, 7, 92);
 
-  if (x > 0.48) {
-    return { left, top, bubbleShiftPercent: -82, tailPercent: 82 };
-  }
-  if (x < -0.48) {
-    return { left, top, bubbleShiftPercent: -18, tailPercent: 18 };
-  }
+  if (x > 0.48) return { left, top, bubbleShiftPercent: -82, tailPercent: 82 };
+  if (x < -0.48) return { left, top, bubbleShiftPercent: -18, tailPercent: 18 };
   return { left, top, bubbleShiftPercent: -50, tailPercent: 50 };
 }
 
