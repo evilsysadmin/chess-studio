@@ -1,4 +1,4 @@
-name: Pawn Slug P0 apply
+name: Pawn Slug P0 repair
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  apply-platform-runtime:
+  repair-platform-runtime:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
@@ -18,154 +18,30 @@ jobs:
           ref: feat/pawn-slug-platforms
           fetch-depth: 0
 
-      - name: Wire platform runtime
+      - name: Repair runtime typo
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-
           path = Path('frontend/src/pawnSlugThree.js')
           source = path.read_text()
-
-          def replace_once(old, new, label):
-              global source
-              count = source.count(old)
-              if count != 1:
-                  raise SystemExit(f'{label}: expected exactly one anchor, found {count}')
-              source = source.replace(old, new, 1)
-
-          replace_once(
-              "import { createPawnSlugPremiumLandmarks } from './pawnSlugLandmarks.js';",
-              """import { createPawnSlugPremiumLandmarks } from './pawnSlugLandmarks.js';
-          import {
-            createPawnSlugPlatforms,
-            pawnSlugPlatformCameraY,
-            pawnSlugPlatformLookAtY,
-            pawnSlugResolvePlatformLanding,
-          } from './pawnSlugPlatforms.js';""",
-              'platform imports',
-          )
-
-          replace_once(
-              "    cameraX: 0,\n    shake: 0,",
-              "    cameraX: 0,\n    cameraY: 5.1,\n    shake: 0,",
-              'camera state',
-          )
-
-          replace_once(
-              "  createPawnSlugPremiumLandmarks(environmentRoot, { coarse });",
-              "  createPawnSlugPremiumLandmarks(environmentRoot, { coarse });\n  createPawnSlugPlatforms(environmentRoot, { coarse });",
-              'platform visuals',
-          )
-
-          replace_once(
-              "    camera.position.x = VIEW_W / 2;\n    state.cameraX = VIEW_W / 2;",
-              "    camera.position.x = VIEW_W / 2;\n    camera.position.y = 5.1;\n    state.cameraX = VIEW_W / 2;\n    state.cameraY = 5.1;",
-              'camera reset',
-          )
-
-          replace_once(
-              """    const wasOnGround = player.onGround;
-              player.vy -= GRAVITY * dt;
-              player.x += player.vx * dt;
-              player.y += player.vy * dt;
-              if (player.y <= GROUND_Y) {
-                player.y = GROUND_Y;
-                player.vy = 0;
-                player.onGround = true;
-                if (!wasOnGround) player.landing = 0.12;
-              }""",
-              """    const wasOnGround = player.onGround;
-              const previousY = player.y;
-              player.vy -= GRAVITY * dt;
-              player.x += player.vx * dt;
-              const nextY = player.y + player.vy * dt;
-              const platformLanding = pawnSlugResolvePlatformLanding({
-                previousY,
-                nextY,
-                vy: player.vy,
-                left: player.x - PLAYER_W / 2,
-                right: player.x + PLAYER_W / 2,
-                dropThrough: Boolean(input.crouch && wasOnGround && previousY > GROUND_Y + 0.05),
-              });
-              player.onGround = false;
-              if (platformLanding) {
-                player.y = platformLanding.y;
-                player.vy = 0;
-                player.onGround = true;
-                if (!wasOnGround) player.landing = 0.12;
-              } else if (nextY <= GROUND_Y) {
-                player.y = GROUND_Y;
-                player.vy = 0;
-                player.onGround = true;
-                if (!wasOnGround) player.landing = 0.12;
-              } else {
-                player.y = nextY;
-              }""",
-              'player platform collision',
-          )
-
-          replace_once(
-              """      enemy.vy -= GRAVITY * dt;
-              enemy.x += enemy.vx * dt;
-              enemy.y += enemy.vy * dt;
-              if (enemy.y <= 0) {
-                enemy.y = 0;
-                enemy.vy = 0;
-                enemy.onGround = true;
-              }""",
-              """      const enemyPreviousY = enemy.y;
-              enemy.vy -= GRAVITY * dt;
-              enemy.x += enemy.vx * dt;
-              const enemyNextY = enemy.y + enemy.vy * dt;
-              const enemyPlatformLanding = pawnSlugResolvePlatformLanding({
-                previousY: enemyPreviousY,
-                nextY: enemyNextY,
-                vy: enemy.vy,
-                left: enemy.x - enemy.w / 2,
-                right: enemy.x + enemy.w / 2,
-              });
-              enemy.onGround = false;
-              if (enemyPlatformLanding) {
-                enemy.y = enemyPlatformLanding.y;
-                enemy.vy = 0;
-                enemy.onGround = true;
-              } else if (enemyNextY <= GROUND_Y) {
-                enemy.y = GROUND_Y;
-                enemy.vy = 0;
-                enemy.onGround = true;
-              } else {
-                enemy.y = enemyNextY;
-              }""",
-              'enemy platform collision',
-          )
-
-          replace_once(
-              """    camera.position.x = state.cameraX + shakeX;
-              camera.position.y = 5.1 + shakeY;
-              camera.lookAt(state.cameraX + shakeX, 4.25 + shakeY * 0.5, 0);""",
-              """    const desiredCameraY = pawnSlugPlatformCameraY(state.player.y);
-              const desiredLookAtY = pawnSlugPlatformLookAtY(state.player.y);
-              state.cameraY += (desiredCameraY - state.cameraY) * (1 - Math.exp(-4.2 * dt));
-              camera.position.x = state.cameraX + shakeX;
-              camera.position.y = state.cameraY + shakeY;
-              camera.lookAt(state.cameraX + shakeX, desiredLookAtY + shakeY * 0.5, 0);""",
-              'vertical camera',
-          )
-
-          path.write_text(source)
+          bad = "const lane = pawnSlugSturmBISHOP_META?.suppressionBurstShots ? pawnSlugSturmBishopSuppressionLane(shotIndex) : pawnSlugSturmBishopSuppressionLane(shotIndex);"
+          good = "const lane = pawnSlugSturmBishopSuppressionLane(shotIndex);"
+          count = source.count(bad)
+          if count != 1:
+              raise SystemExit(f'expected one typo anchor, found {count}')
+          path.write_text(source.replace(bad, good, 1))
           PY
 
       - name: Syntax check
         run: node --check frontend/src/pawnSlugThree.js
 
-      - name: Commit platform runtime and self-clean
+      - name: Commit runtime repair
         shell: bash
         run: |
-          rm .github/workflows/pawn-slug-p0-apply.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add frontend/src/pawnSlugThree.js .github/workflows/pawn-slug-p0-apply.yml
+          git add frontend/src/pawnSlugThree.js
           git diff --cached --check
-          git commit -m "feat: wire Pawn Slug vertical platforms"
+          git commit -m "fix: repair Pawn Slug platform runtime"
           git push origin HEAD:feat/pawn-slug-platforms
