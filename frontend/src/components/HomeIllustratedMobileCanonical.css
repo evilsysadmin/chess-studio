@@ -178,6 +178,7 @@
     bottom: 12px;
     width: auto;
     max-height: 62dvh;
+    pointer-events: auto;
   }
 }
 
