@@ -46,7 +46,9 @@ export const SKIN_3D = Object.freeze({
     metalness: 0.18, roughness: 0.62, emissive: 0x000000, emissiveIntensity: 0,
   },
   studio: {
-    white: 0xf0eadc, black: 0x262a30, whiteAccent: 0xc7a34a, blackAccent: 0x8f312e,
+    // Canonical War Room finish: warm carved ivory + richer gold inlay.
+    // The previous near-white base washed out on light squares under room IBL.
+    white: 0xe5cf9b, black: 0x262a30, whiteAccent: 0xc7962f, blackAccent: 0x8f312e,
     metalness: 0.26, roughness: 0.48, emissive: 0x000000, emissiveIntensity: 0,
   },
   regimiento: {
