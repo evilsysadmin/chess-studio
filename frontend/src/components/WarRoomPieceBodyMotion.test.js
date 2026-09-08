@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { addPieceSkinDetails } from './Board3DSkinDecor.js';
 import { derivePieceBodyPose, installPieceBodyMotion } from './WarRoomPieceBodyMotion.js';
+import { armWarRoomMoveFinishEvent, clearWarRoomMoveFinishEvent } from './WarRoomMoveFinishEvent.js';
 
 describe('War Room piece body motion', () => {
   it('gives each piece a distinct physical signature', () => {
@@ -81,6 +82,38 @@ describe('War Room piece body motion', () => {
     expect(promoted.scaleY).toBeGreaterThan(normal.scaleY + 0.03);
   });
 
+  it('seals only a real checkmate finish with a restrained final posture', () => {
+    const mate = derivePieceBodyPose({ type: 'q', progress: 0.90, dx: 1, dz: 0, checkmateFinish: true });
+    const quiet = derivePieceBodyPose({ type: 'q', progress: 0.90, dx: 1, dz: 0 });
+
+    expect(mate.finish.checkmate).toBe(true);
+    expect(quiet.finish.checkmate).toBe(false);
+    expect(mate.yOffset).toBeGreaterThan(quiet.yOffset);
+    expect(mate.scaleY).toBeGreaterThan(quiet.scaleY);
+    expect(mate.scaleXZ).toBeLessThan(quiet.scaleXZ);
+  });
+
+  it('consumes a mate event only when the actual moving piece reaches that target', () => {
+    clearWarRoomMoveFinishEvent();
+    const root = new THREE.Group();
+    const visual = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    root.add(visual);
+    root.userData.square = 'h8';
+    root.userData.baseY = 0.1;
+    root.userData.baseScale = root.scale.clone();
+    root.position.set(2.5, 0.1, -3.5);
+
+    installPieceBodyMotion(root, 'q');
+    armWarRoomMoveFinishEvent({ seq: 77, to: 'h8', checkmate: true });
+
+    visual.onBeforeRender({ info: { render: { frame: 1 } } });
+    root.position.x = 3.4;
+    visual.onBeforeRender({ info: { render: { frame: 2 } } });
+
+    expect(root.userData.board3DBodyFinishState?.checkmate).toBe(true);
+    clearWarRoomMoveFinishEvent();
+  });
+
   it('damps body motion on coarse pointers', () => {
     const desktop = derivePieceBodyPose({ type: 'n', progress: 0.5, dx: 1, dz: 0, airborne: 0.8 });
     const coarse = derivePieceBodyPose({ type: 'n', progress: 0.5, dx: 1, dz: 0, airborne: 0.8, coarsePointer: true });
@@ -99,6 +132,7 @@ describe('War Room piece body motion', () => {
     expect(root.userData.skin3DIdentity).toBe('distinct-v2');
     expect(root.userData.board3DBodyMotionProfile).toBe('piece-body-v1');
     expect(root.userData.board3DBodyFinishProfile).toBe('piece-finish-v1');
+    expect(root.userData.board3DCheckmateFinishProfile).toBe('mate-seal-v1');
     expect(root.children.some((child) => child.userData?.board3DBodyMotionBody)).toBe(true);
   });
 
@@ -114,6 +148,7 @@ describe('War Room piece body motion', () => {
     const body = root.children.find((child) => child.userData?.board3DBodyMotionBody);
     expect(root.userData.board3DBodyMotionProfile).toBe('piece-body-v1');
     expect(root.userData.board3DBodyFinishProfile).toBe('piece-finish-v1');
+    expect(root.userData.board3DCheckmateFinishProfile).toBe('mate-seal-v1');
     expect(body).toBeTruthy();
     expect(visual.parent).toBe(body);
     expect(shadow.parent).toBe(root);

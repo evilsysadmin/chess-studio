@@ -1,6 +1,12 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
 import { BoardRendererContext } from './Board.jsx';
 import Board3DCore from './Board3DCore.jsx';
+import { chessFromFen } from '../chessRules.js';
+import {
+  armWarRoomMoveFinishEvent,
+  clearWarRoomMoveFinishEvent,
+  deriveWarRoomMoveFinishEvent,
+} from './WarRoomMoveFinishEvent.js';
 import {
   acquireWarRoomHansQuickIteration,
   releaseWarRoomHansQuickIteration,
@@ -18,6 +24,22 @@ export default function Board3D(props) {
   const requestsHansQuickIteration = props.hansFireplaceIteration === true;
   const hansGameId = props.gameId;
   const hansMarkerRef = useRef(null);
+  const moveFinishEvent = useMemo(
+    () => deriveWarRoomMoveFinishEvent({
+      fen: props.fen,
+      gameOver: props.gameOver,
+      animate: props.animate,
+      chessFromFen,
+    }),
+    [props.fen, props.gameOver, props.animate?.seq, props.animate?.to],
+  );
+
+  useLayoutEffect(() => {
+    clearWarRoomMoveFinishEvent();
+    if (!moveFinishEvent) return undefined;
+    armWarRoomMoveFinishEvent(moveFinishEvent);
+    return () => clearWarRoomMoveFinishEvent(moveFinishEvent.seq);
+  }, [moveFinishEvent]);
 
   // Eligibility and consumption are deliberately separate. A transient 3D
   // mount may arm Hans, but it must not burn the one-shot cameo until the real
