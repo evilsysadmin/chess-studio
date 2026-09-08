@@ -17,6 +17,7 @@ import {
   MATTHIAS_HANS_WORKING_LINE,
   MATTHIAS_HANS_WORKING_MS,
   hansBoardPeekHoldsMovement,
+  hansBoardPeekPointReached,
   projectHansFireReplyAnchor,
   projectHansInitialReplyAnchor,
   shouldStartHansBoardPeek,
@@ -25,11 +26,6 @@ import {
 } from './WarRoomHansFireCallContract.js';
 import './WarRoomHansFireCall.css';
 
-const HANS_DOOR_OPENING_MS = 600;
-const HANS_PRESENTATION_TIME_SCALE = 0.54;
-const HANS_QUICK_ENTRY_SECONDS = 7;
-const HANS_POST_ENTRY_OFFSET_SECONDS = 3;
-
 function sameAnchor(current, next) {
   if (current === next) return true;
   if (!current || !next) return false;
@@ -37,21 +33,6 @@ function sameAnchor(current, next) {
     && Math.abs(current.top - next.top) < 0.025
     && current.bubbleShiftPercent === next.bubbleShiftPercent
     && current.tailPercent === next.tailPercent;
-}
-
-export function hansNarrativePresentationState(presentationMs) {
-  const elapsedSeconds = Math.max(0, Number(presentationMs) - HANS_DOOR_OPENING_MS)
-    / 1000 * HANS_PRESENTATION_TIME_SCALE;
-  if (elapsedSeconds < HANS_QUICK_ENTRY_SECONDS) return { phase: 'entry', timelineT: elapsedSeconds };
-  const timelineT = elapsedSeconds + HANS_POST_ENTRY_OFFSET_SECONDS;
-  if (timelineT < 25.5) return { phase: 'working', timelineT };
-  if (timelineT < 27) return { phase: 'satisfied', timelineT };
-  if (timelineT < 33) return { phase: 'leave', timelineT };
-  return { phase: 'complete', timelineT };
-}
-
-export function hansNarrativePresentationPhase(presentationMs) {
-  return hansNarrativePresentationState(presentationMs).phase;
 }
 
 export default function WarRoomHansFireCall({
@@ -117,8 +98,6 @@ export default function WarRoomHansFireCall({
     let readyPaints = 0;
     let hansSeenOnscreen = false;
     let completionNotified = false;
-    let callReleased = false;
-    let presentationMs = 0;
     let peekAttempted = false;
     let boardSuggestion = null;
     let grumblePlayed = false;
@@ -143,13 +122,8 @@ export default function WarRoomHansFireCall({
 
       if (visible && canvas?.dataset.warRoomHansSceneReady === 'true') {
         const hansScreen = canvas.dataset.warRoomHansScreen || 'missing';
-        if (callReleased && !hansBoardPeekHoldsMovement(currentPhase)) {
-          presentationMs += Math.min(delta, presentationMs < HANS_DOOR_OPENING_MS ? 100 : 1000);
-        }
-        const presentation = callReleased
-          ? hansNarrativePresentationState(presentationMs)
-          : { phase: 'waiting', timelineT: 0 };
-        const hansPhase = presentation.phase;
+        const route = canvas.dataset.warRoomHansRoute || '';
+        const logicalX = Number(canvas.dataset.warRoomHansLogicalX);
 
         if (currentPhase === 'loading') {
           readyPaints += 1;
@@ -163,8 +137,6 @@ export default function WarRoomHansFireCall({
           if (elapsed >= MATTHIAS_FIRE_CALL_MS) {
             canvas.dataset.warRoomHansCallReleased = 'true';
             canvas.dispatchEvent(new Event('warroom-hans-call-release'));
-            callReleased = true;
-            presentationMs = 0;
             currentPhase = 'await-hans';
             setPhase('await-hans');
             elapsed = 0;
@@ -249,17 +221,14 @@ export default function WarRoomHansFireCall({
           }
         }
 
-        if (currentPhase === 'await-exit-peek'
-          && hansPhase === 'leave'
-          && presentation.timelineT >= 29
-          && !peekAttempted) {
+        if (!peekAttempted && hansBoardPeekPointReached({ phase: currentPhase, route, logicalX })) {
           peekAttempted = true;
           boardSuggestion = pickHansLegalSuggestion(fenRef.current);
           setSuggestion(boardSuggestion);
           if (shouldStartHansBoardPeek({
             phase: currentPhase,
-            hansPhase,
-            timelineT: presentation.timelineT,
+            route,
+            logicalX,
             suggestion: boardSuggestion,
           })) {
             currentPhase = 'peek';
@@ -273,7 +242,7 @@ export default function WarRoomHansFireCall({
 
         if (shouldStartHansLeavingGrumble({
           phase: currentPhase,
-          hansPhase,
+          route,
           alreadyPlayed: grumblePlayed,
         })) {
           grumblePlayed = true;
