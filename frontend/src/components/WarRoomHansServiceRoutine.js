@@ -29,10 +29,10 @@ import {
   resetHansWalkCycle,
 } from './HansWalkCycle.js';
 
-export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v2-contract';
+export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v3-command-desk';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
-const CONSOLE_NAME = 'war-room-side-console-right';
+const COMMAND_DESK_TOP_NAME = 'war-room-command-desk-top';
 const SERVICE_EVENTS = new Set(['water-plant', 'espresso']);
 
 function makeWateringCan() {
@@ -82,28 +82,34 @@ function ensureCarriedProps(actor) {
   return { can, tray };
 }
 
+function getCommandDeskTop(root) {
+  return root?.getObjectByName?.(COMMAND_DESK_TOP_NAME) || null;
+}
+
 function ensureDeliveredEspresso(root) {
   const existing = root.getObjectByName?.('war-room-hans-delivered-espresso');
   if (existing) return existing;
-  const consoleGroup = root.getObjectByName?.(CONSOLE_NAME);
-  if (!consoleGroup) return null;
+  const deskTop = getCommandDeskTop(root);
+  const deskArt = deskTop?.parent || null;
+  if (!deskTop || !deskArt) return null;
+
   const group = new THREE.Group();
   group.name = 'war-room-hans-delivered-espresso';
   const porcelain = new THREE.MeshPhysicalMaterial({ color: 0xebe5d7, roughness: 0.32, clearcoat: 0.2 });
   const coffee = new THREE.MeshPhysicalMaterial({ color: 0x2b150c, roughness: 0.72 });
   const saucer = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.018, 18), porcelain);
-  saucer.position.y = 1.035;
+  saucer.position.y = 1.145;
   group.add(saucer);
   const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.078, 0.068, 0.12, 16), porcelain);
-  cup.position.y = 1.105;
+  cup.position.y = 1.215;
   cup.castShadow = true;
   group.add(cup);
   const liquid = new THREE.Mesh(new THREE.CylinderGeometry(0.064, 0.064, 0.007, 16), coffee);
-  liquid.position.y = 1.169;
+  liquid.position.y = 1.279;
   group.add(liquid);
-  group.position.set(0, 0, 0.42);
+  group.position.set(0.94, 0, 0.12);
   group.visible = false;
-  consoleGroup.add(group);
+  deskArt.add(group);
   return group;
 }
 
@@ -175,7 +181,11 @@ export function installWarRoomHansServiceRoutine(root) {
       if (!warRoomHansRoutineAvailable(actor, routineName) || now - eligibleSince < delayMs) return;
       if (!acquireWarRoomHansRoutine(actor, routineName)) return;
       const service = warRoomHansServiceHome(root, actor.hans.parent);
-      if (!service?.point) { releaseWarRoomHansRoutine(actor, routineName); return; }
+      const serviceTargetObject = eventName === 'water-plant' ? plant : getCommandDeskTop(root);
+      if (!service?.point || !serviceTargetObject) {
+        releaseWarRoomHansRoutine(actor, routineName);
+        return;
+      }
       home = service.point;
       actor.hans.position.copy(home);
       actor.hans.visible = true;
@@ -183,8 +193,16 @@ export function installWarRoomHansServiceRoutine(root) {
       props.can.visible = eventName === 'water-plant';
       props.tray.visible = eventName === 'espresso';
       target = eventName === 'water-plant'
-        ? warRoomHansTargetNearObject(plant, actor.hans.parent, { offsetX: -0.72, offsetZ: 0.06 })
-        : warRoomHansTargetNearObject(root.getObjectByName?.(CONSOLE_NAME), actor.hans.parent, { offsetX: -0.65, offsetZ: 0.1 });
+        ? warRoomHansTargetNearObject(serviceTargetObject, actor.hans.parent, { offsetX: -0.72, offsetZ: 0.06 })
+        : warRoomHansTargetNearObject(serviceTargetObject, actor.hans.parent, { offsetX: -1.78, offsetZ: 0.74 });
+      if (!target) {
+        actor.hans.visible = false;
+        props.can.visible = false;
+        props.tray.visible = false;
+        setWarRoomHansServiceDoor(root, 0);
+        releaseWarRoomHansRoutine(actor, routineName);
+        return;
+      }
       state = 'walking-in';
       active = true;
       actionElapsed = 0;
