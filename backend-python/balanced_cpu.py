@@ -1,10 +1,10 @@
-"""Human-facing root policy for normal CPU games.
+"""Human-facing root policy for adaptive quick matches.
 
-The chess engine remains responsible for finding the best move.  This layer may
-occasionally choose a *proven near-best* root alternative at mid difficulties so
-the opponent feels challenging without turning every game into an engine exam.
-It never injects an arbitrary legal move: alternatives must survive a bounded
-minimax pass and stay inside a small centipawn loss budget.
+The chess engine remains responsible for finding the best move. This layer may
+occasionally choose a *proven near-best* root alternative when the persisted CPU
+profile explicitly enables balancing. It never injects an arbitrary legal move:
+alternatives must survive a bounded minimax pass and stay inside a small
+centipawn loss budget.
 """
 from __future__ import annotations
 
@@ -39,13 +39,6 @@ CONSISTENCY_MARGIN_CP = 18.0
 
 
 def concession_profile(raw_level: float) -> ConcessionProfile:
-    """Return a deliberately conservative near-best budget for a difficulty.
-
-    Beginner/Aficionado already have their legacy low-level imperfection in
-    ``chess_ai``.  Implacable should simply play the best line.  The middle is
-    where a small, minimax-proven concession makes the curve feel human rather
-    than producing a new tactical blunder source.
-    """
     level = max(0, min(100, round(float(raw_level))))
     if level < 45 or level >= 95:
         return OFF
@@ -58,6 +51,17 @@ def concession_profile(raw_level: float) -> ConcessionProfile:
     if level < 90:
         return ConcessionProfile(18.0, 0.12, 2, 0.20)
     return ConcessionProfile(8.0, 0.06, 2, 0.20)
+
+
+def _split_cpu_profile(raw_profile: Optional[dict]) -> tuple[bool, Optional[dict]]:
+    """Separate the internal balance bit from the existing ghost-style traits."""
+    if not isinstance(raw_profile, dict):
+        return False, None
+    balanced = raw_profile.get("balance") is True
+    style = {key: value for key, value in raw_profile.items() if key != "balance"}
+    # An adaptive quick match sends only ``balance``. Do not make an empty dict
+    # look like a real ghost style to chess_ai.
+    return balanced, (style or None)
 
 
 def _suggested_move(board: chess.Board, suggestion: Optional[dict]) -> Optional[chess.Move]:
@@ -77,9 +81,9 @@ def _root_candidate_scores(
     depth: int,
     deadline: float,
 ) -> list[tuple[chess.Move, float]]:
-    """Score *all* root moves with the same bounded minimax pass.
+    """Score all root moves with the same bounded minimax pass.
 
-    Partial passes are discarded by raising ``TimeoutError``.  Comparing a
+    Partial passes are discarded by raising ``TimeoutError``. Comparing a
     candidate against an incomplete root set would make the safety margin lie.
     """
     moves = _order_moves(board, list(board.legal_moves))
@@ -122,8 +126,6 @@ def _near_best_candidates(
         if move == base_move:
             continue
         gap = _score_gap(base_score, score, maximizing)
-        # A shallow pass may consider a move a hair better than the deep-search
-        # choice.  That is fine, but only inside the same consistency envelope.
         if -CONSISTENCY_MARGIN_CP <= gap <= margin_cp:
             candidates.append((max(0.0, gap), move))
     candidates.sort(key=lambda item: (item[0], item[1].uci()))
@@ -133,22 +135,21 @@ def _near_best_candidates(
 def get_balanced_cpu_move(
     board: chess.Board,
     level: float = 50,
-    ghost_style: Optional[dict] = None,
+    cpu_profile: Optional[dict] = None,
 ) -> Optional[dict]:
-    """Return the normal engine move, occasionally softened by a safe score gap.
+    """Return the engine move, softening only an explicitly balanced profile.
 
-    Ghost/mirror play keeps its own style contract untouched.  Forced mates,
-    root disagreements and candidate-pass timeouts always fall back to the
-    original deeper engine choice.
+    Manual games, tournaments and actual ghost/mirror profiles remain on the
+    established engine path. Forced mates, root disagreements and candidate-pass
+    timeouts always fall back to the original deeper engine choice.
     """
+    enabled, ghost_style = _split_cpu_profile(cpu_profile)
     suggestion = get_cpu_move(board, level, ghost_style)
-    if suggestion is None:
-        return None
+    if suggestion is None or not enabled:
+        return suggestion
 
     profile = concession_profile(level)
-    if profile.chance <= 0 or ghost_style:
-        return suggestion
-    if random.random() >= profile.chance:
+    if profile.chance <= 0 or random.random() >= profile.chance:
         return suggestion
 
     base_move = _suggested_move(board, suggestion)
@@ -171,8 +172,6 @@ def get_balanced_cpu_move(
     if base_score is None:
         return suggestion
 
-    # Never trade away a discovered forced mate.  Also require the bounded pass
-    # to broadly agree with the deeper engine before it is allowed to soften.
     if abs(shallow_best) >= MATE_SCORE - 1000 or abs(base_score) >= MATE_SCORE - 1000:
         return suggestion
     if _score_gap(shallow_best, base_score, maximizing) > CONSISTENCY_MARGIN_CP:
