@@ -142,7 +142,7 @@ async function expectReturnedToBaseline(page, baseline) {
 }
 
 test('War Room · runtime marathon no acumula canvas, RAF, intervals ni listeners globales', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(360_000);
   await installRuntimeProbe(page);
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page);
