@@ -16,6 +16,7 @@ import os
 import time
 
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo.errors import PyMongoError
 
 MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
 MONGO_DB_NAME = os.environ.get("MONGO_DB_NAME", "chess_study")
@@ -92,6 +93,27 @@ def _retry_is_cooling_down(now: float | None = None) -> bool:
     return value < _retry_after_monotonic
 
 
+async def _ensure_runtime_indexes(database) -> None:
+    """Prepara índices baratos que protegen rutas calientes sin bloquear servicio.
+
+    ``count_online_users`` consulta una ventana de apenas 150 s por
+    ``users.last_activity``. El índice de rango evita recorrer toda la colección
+    a medida que crece la base. Es una optimización: si Mongo rechaza la creación
+    del índice, la conexión sigue siendo válida y la aplicación conserva la
+    semántica anterior en vez de convertir un problema de rendimiento en caída.
+    """
+    try:
+        await database["users"].create_index(
+            "last_activity",
+            name="users_last_activity",
+        )
+    except PyMongoError as exc:
+        print(
+            "MongoDB conectado, pero no se pudo preparar el índice "
+            f"users.last_activity ({type(exc).__name__})."
+        )
+
+
 async def get_db():
     global _db, _client, _warned, _retry_after_monotonic
     if _db is not None:
@@ -115,6 +137,7 @@ async def get_db():
             _db = client[MONGO_DB_NAME]
             _retry_after_monotonic = 0.0
             _warned = False
+            await _ensure_runtime_indexes(_db)
             # No imprimir MONGO_URL: en servicios gestionados suele contener
             # usuario/contraseña y terminaría expuesta en los logs de Render.
             print(f"Conectado a MongoDB (base: {MONGO_DB_NAME})")
