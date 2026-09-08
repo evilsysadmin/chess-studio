@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { installPieceBodyMotion } from './WarRoomPieceBodyMotion.js';
 
 const SKIN_DETAIL_PROFILES = Object.freeze({
   default: { colorBoost: 0.34, metalness: 0, roughness: 0.08, rings: [] },
@@ -266,6 +267,7 @@ export function addPieceSkinDetails(group, type, skinId, accentMaterial, coarseP
 
   group.userData.skin3DId = skinId;
   group.userData.skin3DIdentity = 'distinct-v2';
+  installPieceBodyMotion(group, type, { coarsePointer });
 }
 
 export { SKIN_DETAIL_PROFILES };
