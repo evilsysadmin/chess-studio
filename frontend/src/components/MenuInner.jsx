@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import './HomeRoute.css';
 import QuickMatchModal from './QuickMatchModal.jsx';
 import PracticeMatchModal from './PracticeMatchModal.jsx';
 import MirrorModeModal from './MirrorModeModal.jsx';

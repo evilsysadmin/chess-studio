@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfrt',
+    title: 'Cada sala carga su propio uniforme',
+    highlights: [
+      'El acceso deja de descargar la ambientación completa del castillo antes de saber si vas a entrar en Home.',
+      'Los ajustes de pantalla horizontal de la War Room se cargan únicamente al abrir una partida.',
+      'La entrada necesita cerca de una cuarta parte menos de CSS bloqueante sin cambiar aspecto, reglas ni controles.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfrs',
     title: 'El castillo deja la artillería 3D en el arsenal',
     highlights: [

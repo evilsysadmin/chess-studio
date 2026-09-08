@@ -31,6 +31,7 @@ import { gameStatusView } from '../gameStatusView.js';
 import { abortableDelay, isAbortError } from '../asyncControl.js';
 import { chessFromFen, safeChessMove } from '../chessRules.js';
 import { createGameMutationCoordinator } from '../gameMutationCoordinator.js';
+import './WarRoomMobileLandscape.css';
 
 
 const PIECE_NAMES_ES = { p: 'un peón', n: 'un caballo', b: 'un alfil', r: 'una torre', q: 'la dama' };
