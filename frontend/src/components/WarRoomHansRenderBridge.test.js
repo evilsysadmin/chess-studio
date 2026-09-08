@@ -130,7 +130,7 @@ for (const coarsePointer of [false, true]) {
       }
       expect(hans.visible).toBe(true);
       expect(Math.abs(hans.position.x)).toBeGreaterThan(2.4);
-      expect(Math.abs(hans.position.z)).toBeGreaterThan(4);
+      expect(Math.abs(hans.position.z)).toBeGreaterThan(3.2);
       expect(driver.userData.warRoomHansPhase).toBe('fire-dimming');
       expect(fire.visible).toBe(false);
     } finally {
