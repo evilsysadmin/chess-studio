@@ -26,7 +26,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
   return (
     <section className="illustrated-home" aria-label="Modos principales">
       <div className="illustrated-home__stage" style={{ '--home-hall-art': `url("${hall}")` }}>
-        <img className="illustrated-home__art" src={hall} alt="" fetchPriority="high" draggable="false" />
+        <img className="illustrated-home__art" src={hall} alt="" fetchPriority="high" draggable="false" style={{ zIndex: 0 }} />
         <header className="illustrated-home__brand">
           <h1>Chess Studio</h1>
           <p>JUEGA · APRENDE · COMPITE</p>
