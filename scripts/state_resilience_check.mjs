@@ -52,20 +52,57 @@ for (const [domain, owner] of Object.entries(ownership)) {
   must(!owner.authority.includes(','), `${domain} declares multiple authorities`);
 }
 
-let state = 'setup';
-const events = Object.values(combat.COMBAT_FLOW_EVENT);
-let seed = 0xC0FFEE;
-for (let i = 0; i < 10_000; i += 1) {
-  seed = (1664525 * seed + 1013904223) >>> 0;
-  const result = combat.combatFlowTransition(state, events[seed % events.length]);
-  if (result.ok) state = result.nextState;
-  must(['setup', 'battle', 'over'].includes(state), `generated Combat state escaped domain: ${state}`);
+function randomWalkMachine({ name, initialState, events, allowedStates, transitionFn, seed: initialSeed, iterations = 10_000 }) {
+  let state = initialState;
+  let seed = initialSeed >>> 0;
+  for (let i = 0; i < iterations; i += 1) {
+    seed = (1664525 * seed + 1013904223) >>> 0;
+    const event = events[seed % events.length];
+    const result = transitionFn(state, event);
+    if (result.ok) {
+      must(allowedStates.includes(result.nextState), `${name} transition escaped domain: ${state} --${event}--> ${result.nextState}`);
+      state = result.nextState;
+    }
+    must(allowedStates.includes(state), `generated ${name} state escaped domain: ${state}`);
+  }
 }
 
+randomWalkMachine({
+  name: 'active session',
+  initialState: active.ACTIVE_SESSION_STATE.IDLE,
+  events: Object.values(active.ACTIVE_SESSION_EVENT),
+  allowedStates: Object.values(active.ACTIVE_SESSION_STATE),
+  transitionFn: active.activeSessionTransition,
+  seed: 0xA571C7,
+});
+randomWalkMachine({
+  name: 'Combat',
+  initialState: 'setup',
+  events: Object.values(combat.COMBAT_FLOW_EVENT),
+  allowedStates: ['setup', 'battle', 'over'],
+  transitionFn: combat.combatFlowTransition,
+  seed: 0xC0FFEE,
+});
+randomWalkMachine({
+  name: 'campaign',
+  initialState: 'idle',
+  events: ['start', 'select_battle', 'select_event', 'select_camp', 'complete', 'prepare', 'recover', 'cancel', 'fight', 'retire', 'win', 'win_boss', 'reward', 'resolve'],
+  allowedStates: campaign.CAMPAIGN_PHASES,
+  transitionFn: campaign.campaignPhaseTransition,
+  seed: 0xCA6EA1,
+});
+randomWalkMachine({
+  name: 'puzzle',
+  initialState: puzzle.PUZZLE_STATE.LOADING,
+  events: ['ready', 'load_error', 'correct_continue', 'correct_done', 'wrong', 'reveal', 'reset', 'next', 'replied', 'mate', 'reply_error', 'retry'],
+  allowedStates: Object.values(puzzle.PUZZLE_STATE),
+  transitionFn: puzzle.puzzleTransition,
+  seed: 0x2A221E,
+});
 
 const mainPy = read('backend-python/main.py');
 const matthiasDailyApi = read('backend-python/matthias_daily_api.py');
 must(mainPy.includes('build_matthias_daily_router(auth_dependency=get_current_user, admin_dependency=require_admin, is_admin_check=is_admin)'), 'Matthias daily must receive admin policy from main');
 must(matthiasDailyApi.includes('admin_unlimited = _is_admin(username)'), 'Matthias daily admin bypass must remain explicit and server-side');
 
-console.log('state-resilience-check OK · machines + runtime invariants + ownership + idempotency + fault injection + golden journey');
+console.log('state-resilience-check OK · randomized machine walks + runtime invariants + ownership + idempotency + fault injection + golden journey');
