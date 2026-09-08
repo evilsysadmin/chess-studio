@@ -1,7 +1,14 @@
 export const MATTHIAS_FIRE_CALL_LINE = 'HANS! El fuego, bitte.';
 export const HANS_FIRE_REPLY_LINE = 'Sí, señor.';
+export const MATTHIAS_HANS_WORKING_LINE = 'Hans, bitte. Estamos trabajando.';
+export const HANS_WORKING_REPLY_LINE = 'Claro, señor.';
+export const HANS_LEAVING_GRUMBLE_LINE = 'Grrbl… tiramo… grblx.';
 export const MATTHIAS_FIRE_CALL_MS = 2500;
 export const HANS_FIRE_REPLY_MS = 1350;
+export const HANS_BOARD_PEEK_MS = 1800;
+export const MATTHIAS_HANS_WORKING_MS = 1700;
+export const HANS_WORKING_REPLY_MS = 1200;
+export const HANS_LEAVING_GRUMBLE_MS = 1350;
 export const MATTHIAS_FIRE_EPILOGUE_LINE = 'En fin. ¿Por dónde íbamos?';
 export const MATTHIAS_FIRE_EPILOGUE_MS = 1900;
 
@@ -26,6 +33,16 @@ export function resolveHansFireOpeningLatch(current, {
       && !alreadySeen
     ),
   };
+}
+
+export function shouldStartHansBoardPeek({ phase, hansPhase, suggestion } = {}) {
+  return phase === 'await-peek'
+    && hansPhase === 'satisfied'
+    && Boolean(suggestion?.line);
+}
+
+export function shouldStartHansLeavingGrumble({ phase, hansPhase } = {}) {
+  return phase === 'await-exit' && hansPhase === 'leave';
 }
 
 export function shouldStartHansFireEpilogue({
