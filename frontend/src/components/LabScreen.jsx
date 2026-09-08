@@ -1,20 +1,25 @@
-import { useMemo, useState } from 'react';
+import { lazy, Suspense, useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
 import PreferredBoard from './PreferredBoard.jsx';
-import ArenaExperiment from './ArenaExperiment.jsx';
-import PawnTrailblazer from './PawnTrailblazer.jsx';
-import PawnSlug from './PawnSlug.jsx';
-import Chesscom from './Chesscom.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
+
+const ArenaExperiment = lazy(() => import('./ArenaExperiment.jsx'));
+const PawnTrailblazer = lazy(() => import('./PawnTrailblazer.jsx'));
+const PawnSlug = lazy(() => import('./PawnSlug.jsx'));
+const Chesscom = lazy(() => import('./Chesscom.jsx'));
 
 const GLYPH={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟','':''};
 const BRUSHES=['','K','Q','R','B','N','P','k','q','r','b','n','p'];
 
 function initialState() {
   return parseLabPosition(LAB_START_FEN);
+}
+
+function LabModeFallback() {
+  return <div className="menu tournament-panel lab-screen"><p className="hint-text friendly-lead">Cargando experimento…</p></div>;
 }
 
 export default function LabScreen({ onExit, onStart }){
@@ -62,9 +67,9 @@ export default function LabScreen({ onExit, onStart }){
     catch(e){setError(`Posición inválida: ${e.message}`);}
   }
 
-  if (labMode==='trailblazer') return <PawnTrailblazer onExit={()=>setLabMode('hub')} />;
-  if (labMode==='pawnslug') return <PawnSlug onExit={()=>setLabMode('hub')} />;
-  if (labMode==='chesscom') return <Chesscom onExit={()=>setLabMode('hub')} />;
+  if (labMode==='trailblazer') return <Suspense fallback={<LabModeFallback />}><PawnTrailblazer onExit={()=>setLabMode('hub')} /></Suspense>;
+  if (labMode==='pawnslug') return <Suspense fallback={<LabModeFallback />}><PawnSlug onExit={()=>setLabMode('hub')} /></Suspense>;
+  if (labMode==='chesscom') return <Suspense fallback={<LabModeFallback />}><Chesscom onExit={()=>setLabMode('hub')} /></Suspense>;
 
   return <div className="menu tournament-panel lab-screen">
     <button className="back-link" onClick={labMode==='hub'?onExit:()=>setLabMode('hub')}>← {labMode==='hub'?'Volver al menú':'Experimentos geniales'}</button>
@@ -126,7 +131,7 @@ export default function LabScreen({ onExit, onStart }){
         </div>
       </div>
 
-      {labMode==='arena' ? <ArenaExperiment /> : <>
+      {labMode==='arena' ? <Suspense fallback={<p className="hint-text friendly-lead">Cargando Arena…</p>}><ArenaExperiment /></Suspense> : <>
         <div className="lab-toolbar">
           <div className="lab-brushes">{BRUSHES.map(p=><button key={p||'erase'} className={`lab-brush ${brush===p?'active':''}`} onClick={()=>setBrush(p)} title={p?'Colocar pieza':'Borrar'}>{p?GLYPH[p]:'⌫'}</button>)}</div>
           <button className="secondary-btn" onClick={resetInitial}>Posición inicial</button>
