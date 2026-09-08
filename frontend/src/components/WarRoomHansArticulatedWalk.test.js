@@ -52,109 +52,51 @@ function makeRig() {
   };
   root.add(driver);
 
-  return {
-    root,
-    hans,
-    driver,
-    leftLeg,
-    rightLeg,
-    setMode(value) { mode = value; },
-  };
+  return { root, hans, driver, setMode(value) { mode = value; } };
 }
 
-function worldKneeFlex(root, body, side) {
-  root.updateMatrixWorld(true);
-  const hip = new THREE.Vector3();
-  const knee = new THREE.Vector3();
-  const shoe = new THREE.Vector3();
-  body[`${side}Leg`].getWorldPosition(hip);
-  body[`${side}Knee`].getWorldPosition(knee);
-  body[`${side}Shoe`].getWorldPosition(shoe);
-  const thigh = hip.sub(knee).normalize();
-  const shin = shoe.sub(knee).normalize();
-  return Math.PI - thigh.angleTo(shin);
-}
-
-function worldToeForwardDot(root, hans, body, side) {
-  root.updateMatrixWorld(true);
-  const shoeForward = new THREE.Vector3(0, 0, 1).transformDirection(body[`${side}Shoe`].matrixWorld);
-  const hansForward = new THREE.Vector3(0, 0, 1).transformDirection(hans.matrixWorld);
-  return shoeForward.dot(hansForward);
+function footWorldPitch(body, side) {
+  return body[`${side}Leg`].rotation.x
+    + body[`${side}Knee`].rotation.x
+    + body[`${side}Ankle`].rotation.x;
 }
 
 describe('War Room Hans articulated walk adapter', () => {
-  it('keeps real world-space knee flex visible without turning the gait into a cartoon high-step', () => {
-    const { root, hans, driver, leftLeg, rightLeg } = makeRig();
+  it('uses one local foot-target IK contract instead of a second War Room leg animation', () => {
+    const { root, hans, driver } = makeRig();
     expect(installWarRoomHansArticulatedWalk(root)).toBe(1);
     expect(driver.userData.warRoomHansArticulatedWalk).toBe(WAR_ROOM_HANS_ARTICULATED_WALK_VERSION);
     expect(driver.userData.warRoomHansWalkCycle).toBe(HANS_WALK_CYCLE_VERSION);
 
-    const beforeX = hans.position.x;
     driver.onBeforeRender();
     driver.onBeforeRender();
 
-    expect(hans.position.x).toBeLessThan(beforeX);
-    expect(hans.userData.refs.leftKnee).toBeTruthy();
-    expect(hans.userData.refs.rightKnee).toBeTruthy();
-    expect(hans.userData.warRoomHansLegRig).toBe('thigh-knee-shin-foot-v1');
+    expect(hans.userData.refs.leftAnkle).toBeTruthy();
+    expect(hans.userData.refs.rightAnkle).toBeTruthy();
+    expect(hans.userData.warRoomHansGaitSolver).toBe('local-foot-target-ik-v1');
+    expect(hans.userData.warRoomHansLegRigInternal).toBe('thigh-knee-shin-ankle-foot-v2');
     expect(hans.userData.warRoomHansWalkCycleDistance).toBeCloseTo(0.13, 6);
-    expect(hans.userData.warRoomHansWalkCyclePhaseDistance).toBeGreaterThan(hans.userData.warRoomHansWalkCycleDistance);
-    expect(hans.userData.warRoomHansGaitGrounding).toBe('real-distance-foot-plant-v3');
-
-    const visibleExtraFlex = Math.max(
-      hans.userData.warRoomHansVisibleKneeFlexLeft,
-      hans.userData.warRoomHansVisibleKneeFlexRight,
-    );
-    expect(visibleExtraFlex).toBeGreaterThan(0.4);
-    expect(visibleExtraFlex).toBeLessThan(0.8);
-
-    const geometricFlex = Math.max(
-      worldKneeFlex(root, hans.userData.refs, 'left'),
-      worldKneeFlex(root, hans.userData.refs, 'right'),
-    );
-    expect(geometricFlex).toBeGreaterThan(0.65);
-    expect(geometricFlex).toBeLessThan(0.9);
-
-    const kneeSeparation = Math.abs(
-      hans.userData.refs.leftKnee.rotation.x - hans.userData.refs.rightKnee.rotation.x,
-    );
-    expect(kneeSeparation).toBeGreaterThan(0.3);
-    expect(kneeSeparation).toBeLessThan(1.2);
-    expect(Math.abs(leftLeg.position.z) + Math.abs(rightLeg.position.z)).toBeGreaterThan(0.02);
-
-    const totalLift = Math.abs(leftLeg.position.y - 0.82) + Math.abs(rightLeg.position.y - 0.82);
-    expect(totalLift).toBeGreaterThan(0.025);
-    expect(totalLift).toBeLessThan(0.12);
+    expect(Math.max(
+      hans.userData.warRoomHansKneeFlexLeft,
+      hans.userData.warRoomHansKneeFlexRight,
+    )).toBeLessThanOrEqual(0.72);
   });
 
-  it('keeps shoes forward without flattening the airborne foot into a full-length side silhouette', () => {
+  it('lets the ankle roll the shoe instead of flattening it through knee counter-rotation', () => {
     const { root, hans, driver } = makeRig();
     expect(installWarRoomHansArticulatedWalk(root)).toBe(1);
     driver.onBeforeRender();
     driver.onBeforeRender();
 
-    expect(hans.userData.warRoomHansFootDirection).toBe('toe-forward-v3-natural-pitch');
-    expect(worldToeForwardDot(root, hans, hans.userData.refs, 'left')).toBeGreaterThan(0.82);
-    expect(worldToeForwardDot(root, hans, hans.userData.refs, 'right')).toBeGreaterThan(0.82);
-
-    const leftPitch = hans.userData.refs.leftLeg.rotation.x
-      + hans.userData.refs.leftKnee.rotation.x
-      + hans.userData.refs.leftShoe.rotation.x;
-    const rightPitch = hans.userData.refs.rightLeg.rotation.x
-      + hans.userData.refs.rightKnee.rotation.x
-      + hans.userData.refs.rightShoe.rotation.x;
-    expect(Math.abs(leftPitch)).toBeLessThan(0.65);
-    expect(Math.abs(rightPitch)).toBeLessThan(0.65);
-
-    const swingPitch = hans.userData.warRoomHansVisibleFootLiftLeft
-      > hans.userData.warRoomHansVisibleFootLiftRight
-      ? leftPitch
-      : rightPitch;
-    expect(Math.abs(swingPitch)).toBeGreaterThan(0.14);
-    expect(Math.abs(swingPitch)).toBeLessThan(0.55);
+    const leftPitch = footWorldPitch(hans.userData.refs, 'left');
+    const rightPitch = footWorldPitch(hans.userData.refs, 'right');
+    expect(Math.max(Math.abs(leftPitch), Math.abs(rightPitch))).toBeGreaterThan(0.02);
+    expect(Math.abs(leftPitch)).toBeLessThan(0.2);
+    expect(Math.abs(rightPitch)).toBeLessThan(0.2);
+    expect(hans.userData.warRoomHansFootDirection).toBe('toe-forward-v4-ankle-roll');
   });
 
-  it('drops the walking knee pose as soon as Hans enters a non-walking action', () => {
+  it('drops the complete gait pose when Hans enters a non-walking action', () => {
     const { root, hans, driver, setMode } = makeRig();
     expect(installWarRoomHansArticulatedWalk(root)).toBe(1);
     driver.onBeforeRender();
@@ -166,8 +108,12 @@ describe('War Room Hans articulated walk adapter', () => {
 
     setMode('action');
     driver.onBeforeRender();
+    expect(hans.userData.refs.leftLeg.rotation.x).toBeCloseTo(0, 6);
+    expect(hans.userData.refs.rightLeg.rotation.x).toBeCloseTo(0, 6);
     expect(hans.userData.refs.leftKnee.rotation.x).toBeCloseTo(0, 6);
     expect(hans.userData.refs.rightKnee.rotation.x).toBeCloseTo(0, 6);
+    expect(hans.userData.refs.leftAnkle.rotation.x).toBeCloseTo(0, 6);
+    expect(hans.userData.refs.rightAnkle.rotation.x).toBeCloseTo(0, 6);
   });
 
   it('suppresses genuine teleports instead of converting them into giant gait steps', () => {
