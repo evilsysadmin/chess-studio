@@ -1,4 +1,6 @@
 import { installWarRoomHansArticulatedWalk } from './WarRoomHansArticulatedWalk.js';
+import { installWarRoomHansBoardPeekClockHold } from './WarRoomHansBoardPeekClockHold.js';
+import { installWarRoomHansBoardPeekPose } from './WarRoomHansBoardPeekPose.js';
 import { installWarRoomHansCanonicalButler } from './WarRoomHansCanonicalButler.js';
 import { installWarRoomHansElderClock } from './WarRoomHansElderClock.js';
 import { installWarRoomHansFacingGuard } from './WarRoomHansFacingGuard.js';
@@ -71,9 +73,14 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
       results[key] = task(root);
       if (key === HANS_FIREPLACE_FINALIZER_KEY) {
         installWarRoomHansCanonicalButler(root);
+        // Routine-specific clock gates must wrap the raw choreography before
+        // locomotion/facing layers capture it. That keeps future Hans routines
+        // composable without each one owning navigation.
+        installWarRoomHansBoardPeekClockHold(root);
         installWarRoomHansMotionPolish(root);
         installWarRoomHansFacingGuard(root);
         installWarRoomHansHearthFacingGuard(root);
+        installWarRoomHansBoardPeekPose(root);
         // One visual locomotion owner only. MotionPolish owns routing/facing and
         // stationary action poses; the reusable articulated cycle owns walking.
         installWarRoomHansArticulatedWalk(root);
