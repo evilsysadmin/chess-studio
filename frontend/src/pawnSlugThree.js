@@ -627,7 +627,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   }
 
   function fireBishopSuppression(enemy, shotIndex) {
-    const lane = pawnSlugSturmBISHOP_META?.suppressionBurstShots ? pawnSlugSturmBishopSuppressionLane(shotIndex) : pawnSlugSturmBishopSuppressionLane(shotIndex);
+    const lane = pawnSlugSturmBishopSuppressionLane(shotIndex);
     const dir = enemy.x >= state.player.x ? -1 : 1;
     const x = enemy.x + dir * 1.05;
     const y = enemy.y + lane.height;
