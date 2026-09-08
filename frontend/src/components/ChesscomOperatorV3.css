@@ -1,59 +1,71 @@
 .chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait-art.is-dieter,
 .chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait-art.is-sven{
-  background-image:none;
   overflow:hidden;
-  filter:none;
   transform:none;
   isolation:isolate;
+  background-repeat:no-repeat;
+  background-position:center;
+  background-size:cover;
+  filter:saturate(.94) contrast(1.04) brightness(1.06);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.035),inset 0 -18px 26px rgba(0,0,0,.18);
 }
 
 .chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait-art.is-dieter{
-  background:
-    radial-gradient(ellipse at 50% 31%,#bda987 0 16%,transparent 17%),
-    radial-gradient(ellipse at 50% 25%,#2a302d 0 24%,transparent 25%),
-    linear-gradient(110deg,transparent 0 42%,#8f7953 43% 47%,transparent 48%),
-    radial-gradient(ellipse at 50% 75%,#35362f 0 30%,#202624 31% 45%,transparent 46%),
-    linear-gradient(145deg,#263038,#11171a 64%,#0a0e10);
+  background-image:url('/chesscom/dieter-portrait.svg');
 }
 
 .chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait-art.is-sven{
-  background:
-    linear-gradient(90deg,transparent 0 34%,#4f8793 35% 65%,transparent 66%) 50% 29%/38% 8% no-repeat,
-    radial-gradient(ellipse at 50% 31%,#b7a482 0 16%,transparent 17%),
-    radial-gradient(ellipse at 50% 24%,#1f292c 0 23%,transparent 24%),
-    radial-gradient(ellipse at 50% 75%,#263438 0 29%,#1b2528 30% 44%,transparent 45%),
-    linear-gradient(145deg,#21333a,#101719 66%,#090d0f);
+  background-image:url('/chesscom/sven-portrait.svg');
 }
 
 .chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait-art.is-dieter::before,
 .chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait-art.is-sven::before{
   content:'';
   position:absolute;
-  left:50%;
-  top:18%;
-  width:44%;
-  height:12%;
-  transform:translateX(-50%);
-  border-radius:50% 50% 28% 28%;
-  border-bottom:2px solid rgba(229,199,141,.36);
-  box-shadow:0 8px 18px rgba(0,0,0,.48);
+  inset:0;
+  pointer-events:none;
+  background:
+    linear-gradient(118deg,rgba(255,255,255,.09),transparent 17%,transparent 62%,rgba(0,0,0,.10)),
+    radial-gradient(circle at 22% 13%,rgba(211,173,100,.10),transparent 27%);
+  mix-blend-mode:screen;
+  opacity:.42;
+}
+
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait-art.is-sven::before{
+  background:
+    linear-gradient(118deg,rgba(255,255,255,.08),transparent 17%,transparent 62%,rgba(0,0,0,.10)),
+    radial-gradient(circle at 78% 13%,rgba(120,183,189,.13),transparent 30%);
 }
 
 .chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait-art.is-dieter::after,
 .chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait-art.is-sven::after{
   content:'';
   position:absolute;
-  right:12%;
-  bottom:15%;
-  width:42%;
-  height:6%;
-  border-radius:999px;
-  background:linear-gradient(90deg,#0b0e0f,#454c4f 47%,#101314);
-  transform:rotate(-28deg);
-  box-shadow:0 0 0 1px rgba(255,255,255,.04),0 5px 12px rgba(0,0,0,.55);
+  left:8%;
+  right:8%;
+  bottom:7%;
+  height:1px;
+  pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(211,173,100,.62),transparent);
+  box-shadow:0 0 8px rgba(211,173,100,.12);
 }
 
-.chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card.is-selected .chesscom-portrait-art.is-dieter,
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait-art.is-sven::after{
+  background:linear-gradient(90deg,transparent,rgba(120,183,189,.72),transparent);
+  box-shadow:0 0 8px rgba(120,183,189,.14);
+}
+
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card.is-selected .chesscom-portrait-art.is-dieter{
+  filter:saturate(1) contrast(1.06) brightness(1.10);
+  box-shadow:inset 0 0 0 1px rgba(211,173,100,.30),inset 0 0 30px rgba(211,173,100,.08),0 0 18px rgba(211,173,100,.08);
+}
+
 .chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card.is-selected .chesscom-portrait-art.is-sven{
-  box-shadow:inset 0 0 28px rgba(31,173,221,.13);
+  filter:saturate(1) contrast(1.06) brightness(1.10);
+  box-shadow:inset 0 0 0 1px rgba(120,183,189,.36),inset 0 0 30px rgba(120,183,189,.09),0 0 18px rgba(120,183,189,.09);
+}
+
+@media(max-width:620px){
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait-art.is-dieter,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait-art.is-sven{filter:saturate(.92) contrast(1.03) brightness(1.04)}
 }
