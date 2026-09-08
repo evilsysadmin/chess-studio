@@ -2,12 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   fireCallPhase,
   HANS_BOARD_DIALOGUE_GAP_MS,
+  HANS_BOARD_PEEK_LOGICAL_X,
+  HANS_BOARD_PEEK_ROUTE,
   HANS_FIRE_REPLY_LINE,
-  HANS_BOARD_PEEK_TIMELINE_T,
   MATTHIAS_FIRE_CALL_LINE,
   MATTHIAS_FIRE_CALL_MS,
   MATTHIAS_FIRE_EPILOGUE_LINE,
   hansBoardPeekHoldsMovement,
+  hansBoardPeekPointReached,
   projectHansFireReplyAnchor,
   projectHansInitialReplyAnchor,
   resolveHansFireOpeningLatch,
@@ -25,20 +27,23 @@ describe('War Room Hans fire call contract', () => {
     expect(fireCallPhase(MATTHIAS_FIRE_CALL_MS + 1, true)).toBe('hans');
   });
 
-  it('cotillea sólo durante la salida junto al tablero y congela la marcha mientras conversa', () => {
+  it('cotillea sólo cuando el actor llega físicamente al lateral del tablero y congela la marcha mientras conversa', () => {
     const suggestion = { line: 'Yo probaría caballo de g1 a f3.' };
-    expect(shouldStartHansBoardPeek({
+    const before = {
       phase: 'await-exit-peek',
-      hansPhase: 'leave',
-      timelineT: HANS_BOARD_PEEK_TIMELINE_T - 0.01,
-      suggestion,
-    })).toBe(false);
-    expect(shouldStartHansBoardPeek({
+      route: HANS_BOARD_PEEK_ROUTE,
+      logicalX: HANS_BOARD_PEEK_LOGICAL_X - 0.01,
+    };
+    const ready = {
       phase: 'await-exit-peek',
-      hansPhase: 'leave',
-      timelineT: HANS_BOARD_PEEK_TIMELINE_T,
-      suggestion,
-    })).toBe(true);
+      route: HANS_BOARD_PEEK_ROUTE,
+      logicalX: HANS_BOARD_PEEK_LOGICAL_X,
+    };
+
+    expect(hansBoardPeekPointReached(before)).toBe(false);
+    expect(hansBoardPeekPointReached(ready)).toBe(true);
+    expect(shouldStartHansBoardPeek({ ...ready, suggestion })).toBe(true);
+    expect(shouldStartHansBoardPeek({ ...ready, suggestion: null })).toBe(false);
     expect(hansBoardPeekHoldsMovement('peek')).toBe(true);
     expect(hansBoardPeekHoldsMovement('gap-after-peek')).toBe(true);
     expect(hansBoardPeekHoldsMovement('matthias-working')).toBe(true);
