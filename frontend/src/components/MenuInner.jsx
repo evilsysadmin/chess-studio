@@ -5,7 +5,7 @@ import PracticeMatchModal from './PracticeMatchModal.jsx';
 import MirrorModeModal from './MirrorModeModal.jsx';
 import HomeIllustrated from './HomeIllustrated.jsx';
 import { getDefaultTimeControlId, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
-import { difficultyForRating } from '../playerRating.js';
+import { difficultyForQuickMatchRating } from '../quickMatchDifficulty.js';
 import { loadRivalry } from '../rivalry.js';
 import {
   buildMatthiasHomeCardModel,
@@ -222,7 +222,7 @@ export default function Menu({
           rating={rating}
           onStart={async () => {
             const started = await onNewGame(
-              autoDifficulty ? difficultyForRating(rating?.rating ?? 400) : difficulty,
+              autoDifficulty ? difficultyForQuickMatchRating(rating?.rating ?? 400) : difficulty,
               color,
               {
                 timeControlId,

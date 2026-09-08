@@ -6,7 +6,7 @@ import { SERIES_OPTIONS } from '../series.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { handicapForGap } from '../handicap.js';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
-import { difficultyForRating } from '../playerRating.js';
+import { difficultyForQuickMatchRating } from '../quickMatchDifficulty.js';
 import { fetchMatthiasBriefing } from '../matthiasDaily.js';
 import { matthiasTimeVisual } from '../matthiasVisuals.js';
 
@@ -39,7 +39,7 @@ export default function QuickMatchModal({
 }) {
   useEscapeToClose(onClose);
   const handicap = rating ? handicapForGap(rating.rating, difficulty) : null;
-  const adaptiveLevel = difficultyForRating(rating?.rating ?? 400, null, rating?.games ?? 0);
+  const adaptiveLevel = difficultyForQuickMatchRating(rating?.rating ?? 400, null, rating?.games ?? 0);
   const timeControl = TIME_CONTROLS.find((tc) => tc.id === timeControlId) || TIME_CONTROLS[0];
   const series = SERIES_OPTIONS.find((option) => Number(option.value) === Number(seriesBestOf)) || SERIES_OPTIONS[0];
   const [matthiasBriefing, setMatthiasBriefing] = useState(null);
@@ -69,7 +69,7 @@ export default function QuickMatchModal({
         )}
 
         <button type="button" className={`adaptive-difficulty-choice ${autoDifficulty ? 'active' : ''}`} aria-pressed={autoDifficulty} onClick={() => setAutoDifficulty(!autoDifficulty)}>
-          <span aria-hidden="true">◎</span><span><b>Encuentra mi nivel</b><small>Ajusta la CPU a tu rating y forma reciente · nivel {adaptiveLevel} · {difficultyLabel(adaptiveLevel)}</small></span><i>{autoDifficulty ? 'Activo' : 'Usar'}</i>
+          <span aria-hidden="true">◎</span><span><b>Encuentra mi nivel</b><small>Busca un rival exigente pero accesible según tu rating y forma reciente · nivel {adaptiveLevel} · {difficultyLabel(adaptiveLevel)}</small></span><i>{autoDifficulty ? 'Activo' : 'Usar'}</i>
         </button>
 
         <div className={`difficulty-slider-row friendly-difficulty-main ${autoDifficulty ? 'is-disabled' : ''}`}>
