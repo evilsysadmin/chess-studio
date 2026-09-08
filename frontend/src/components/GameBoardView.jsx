@@ -200,6 +200,7 @@ export default function GameBoardView({
 
             <WarRoomHansFireCall
               gameId={game.id}
+              fen={board.visibleBoardFen}
               isThreeD={isThreeD}
               enabled={!zenMode && !focusActive && hansFireCallEnabled}
               matthiasAnchorStyle={matthias3DBubbleStyle}
