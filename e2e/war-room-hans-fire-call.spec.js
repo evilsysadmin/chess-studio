@@ -1,7 +1,30 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { warRoomHansEventForGame } from '../frontend/src/components/WarRoomHansEventContract.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
+
+function firstE2EFireGameIndex() {
+  for (let index = 1; index <= 64; index += 1) {
+    if (warRoomHansEventForGame(`e2e-game-${index}`) === 'fire') return index;
+  }
+  throw new Error('Hans fire-call E2E could not find a deterministic fire game id');
+}
+
+async function seedGamesBeforeFire(page) {
+  const fireIndex = firstE2EFireGameIndex();
+  if (fireIndex <= 1) return;
+  await page.evaluate(async (count) => {
+    for (let index = 1; index < count; index += 1) {
+      await fetch('http://localhost:4000/api/games', {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: '{}',
+      });
+    }
+  }, fireIndex);
+}
 
 test('War Room · Matthias llama a Hans por el fuego y Hans responde al aparecer', async ({ page }) => {
   test.setTimeout(90_000);
@@ -9,6 +32,10 @@ test('War Room · Matthias llama a Hans por el fuego y Hans responde al aparecer
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page);
   await login(page);
+  // Hans now has one deterministic ambient event per game. Seed the mock game's
+  // counter so this dedicated lane actually exercises the fire event rather than
+  // whichever chore e2e-game-1 happens to hash to.
+  await seedGamesBeforeFire(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
 
