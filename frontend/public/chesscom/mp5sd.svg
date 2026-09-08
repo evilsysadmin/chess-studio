@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 120" role="img" aria-label="MP5SD suppressed submachine gun silhouette">
+  <defs>
+    <linearGradient id="body" x1="0" x2="1"><stop stop-color="#667579"/><stop offset=".5" stop-color="#293338"/><stop offset="1" stop-color="#111719"/></linearGradient>
+    <linearGradient id="teal" x1="0" x2="1"><stop stop-color="#8fc9ce"/><stop offset="1" stop-color="#4f7f84"/></linearGradient>
+  </defs>
+  <g fill="none" stroke="#0a0e0f" stroke-width="4" stroke-linejoin="round">
+    <path fill="url(#body)" d="M56 50h87l14-9h68l16 10h45l10 6 47 2 9 7-13 8h-93l-15 8h-71l-18-10H94L81 88H60l9-18H56z"/>
+    <path fill="#20292d" d="M146 70h29l5 14-9 25h-18l6-24z"/>
+    <path fill="#20292d" d="M195 72h27l10 31h-20z"/>
+    <path fill="#1b2326" d="M65 50 37 39 22 42l29 22z"/>
+    <path fill="#202a2e" d="M242 51h91v13h-91z"/>
+    <path fill="#2c3a3e" d="M130 39h54v8h-54z"/>
+  </g>
+  <path d="M120 45h108M247 58h82" stroke="url(#teal)" stroke-width="2" opacity=".9"/>
+  <circle cx="170" cy="58" r="4" fill="#83c2c8" opacity=".9"/>
+</svg>
