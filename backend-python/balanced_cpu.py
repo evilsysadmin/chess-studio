@@ -54,13 +54,20 @@ def concession_profile(raw_level: float) -> ConcessionProfile:
 
 
 def _split_cpu_profile(raw_profile: Optional[dict]) -> tuple[bool, Optional[dict]]:
-    """Separate the internal balance bit from the existing ghost-style traits."""
+    """Separate the internal balance bit from actual non-neutral ghost traits."""
     if not isinstance(raw_profile, dict):
         return False, None
     balanced = raw_profile.get("balance") is True
-    style = {key: value for key, value in raw_profile.items() if key != "balance"}
-    # An adaptive quick match sends only ``balance``. Do not make an empty dict
-    # look like a real ghost style to chess_ai.
+    style = {}
+    for key, value in raw_profile.items():
+        if key == "balance":
+            continue
+        try:
+            if abs(float(value)) <= 1e-12:
+                continue
+        except (TypeError, ValueError):
+            continue
+        style[key] = value
     return balanced, (style or None)
 
 
