@@ -1,4 +1,4 @@
-export const WAR_ROOM_HANS_ACTOR_VERSION = 'war-room-hans-actor-v2-route-state';
+export const WAR_ROOM_HANS_ACTOR_VERSION = 'war-room-hans-actor-v3-routine-lease';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -26,6 +26,7 @@ export function getWarRoomHansActor(root) {
     body,
     canvas: null,
     side: Math.sign(Number(fireplace?.position?.x || -1)) || -1,
+    routine: '',
   };
   ACTORS.set(root, actor);
   hans.userData.warRoomHansActor = WAR_ROOM_HANS_ACTOR_VERSION;
@@ -50,6 +51,31 @@ export function getWarRoomHansRouteState(actor) {
   const x = Number(actor.hans.position?.x || 0);
   const logicalX = Number.isFinite(x) ? x / actor.side : 0;
   return { route, logicalX };
+}
+
+export function acquireWarRoomHansRoutine(actor, routineName) {
+  const name = String(routineName || '').trim();
+  if (!actor || !name) return false;
+  if (actor.routine && actor.routine !== name) return false;
+  actor.routine = name;
+  actor.hans.userData.warRoomHansActiveRoutine = name;
+  actor.driver.userData.warRoomHansActiveRoutine = name;
+  return true;
+}
+
+export function releaseWarRoomHansRoutine(actor, routineName) {
+  const name = String(routineName || '').trim();
+  if (!actor || !name || actor.routine !== name) return false;
+  actor.routine = '';
+  actor.hans.userData.warRoomHansActiveRoutine = '';
+  actor.driver.userData.warRoomHansActiveRoutine = '';
+  return true;
+}
+
+export function warRoomHansRoutineAvailable(actor, routineName = '') {
+  if (!actor) return false;
+  const requested = String(routineName || '').trim();
+  return !actor.routine || actor.routine === requested;
 }
 
 export function setWarRoomHansRuntimeState(actor, key, value) {
