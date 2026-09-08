@@ -79,7 +79,7 @@ describe('Hans canonical elder-butler mock', () => {
     expect(rightShoe.position.z).toBeLessThan(0);
     expect(installWarRoomHansCanonicalButler(root)).toBe(1);
     expect(hans.userData.warRoomHansCanonicalButler).toBe(WAR_ROOM_HANS_CANONICAL_BUTLER_VERSION);
-    expect(hans.userData.warRoomHansCanonicalLook).toBe('black-tailcoat-elder-v2');
+    expect(hans.userData.warRoomHansCanonicalLook).toBe('black-tailcoat-elder-v3');
     expect(hans.userData.warRoomHansBaseHunchRadians).toBeGreaterThan(0.05);
     expect(torso.rotation.x).toBeGreaterThan(0.05);
     expect(head.position.y).toBeLessThan(baseHeadY);
