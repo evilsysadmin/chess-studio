@@ -6,7 +6,7 @@ import {
   warRoomHansChoreForEvent,
 } from './WarRoomHansChoreContract.js';
 import {
-  HANS_INITIAL_REPLY_MAX_ABS_NDC_X,
+  HANS_INITIAL_REPLY_ENTRY_MAX_LOGICAL_X,
   hansInitialReplyPointReached,
 } from './WarRoomHansFireCallContract.js';
 
@@ -32,9 +32,26 @@ describe('Hans ambient chore contract', () => {
 });
 
 describe('Hans initial fire reply visibility', () => {
-  it('waits until Hans is actually inside the visible room, not grazing the edge', () => {
-    expect(hansInitialReplyPointReached({ hansScreen: 'onscreen', ndcX: HANS_INITIAL_REPLY_MAX_ABS_NDC_X - 0.01 })).toBe(true);
-    expect(hansInitialReplyPointReached({ hansScreen: 'onscreen', ndcX: HANS_INITIAL_REPLY_MAX_ABS_NDC_X + 0.01 })).toBe(false);
-    expect(hansInitialReplyPointReached({ hansScreen: 'offscreen', ndcX: 0 })).toBe(false);
+  it('waits until Hans is physically inside the entry route and visible', () => {
+    expect(hansInitialReplyPointReached({
+      hansScreen: 'onscreen',
+      route: 'entry',
+      logicalX: HANS_INITIAL_REPLY_ENTRY_MAX_LOGICAL_X - 0.01,
+    })).toBe(true);
+    expect(hansInitialReplyPointReached({
+      hansScreen: 'onscreen',
+      route: 'entry',
+      logicalX: HANS_INITIAL_REPLY_ENTRY_MAX_LOGICAL_X + 0.01,
+    })).toBe(false);
+    expect(hansInitialReplyPointReached({
+      hansScreen: 'offscreen',
+      route: 'entry',
+      logicalX: HANS_INITIAL_REPLY_ENTRY_MAX_LOGICAL_X - 0.2,
+    })).toBe(false);
+    expect(hansInitialReplyPointReached({
+      hansScreen: 'onscreen',
+      route: 'leave-side',
+      logicalX: 0.5,
+    })).toBe(false);
   });
 });
