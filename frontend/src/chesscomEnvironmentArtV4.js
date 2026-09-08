@@ -2,6 +2,7 @@ export const CHESSCOM_ENVIRONMENT_ART_V4 = Object.freeze({
   identity:'environment-art-v4',
   decals:'procedural-ground-decals',
   dressing:'restrained-microprops',
+  lighting:'warm-cool-bounce-v2',
 });
 
 function decalTexture(B,scene,name,kind,disposables){
@@ -60,14 +61,44 @@ function addCasings(B,scene,tier,disposables){
 }
 
 function addContactFill(B,scene,tier,disposables){
-  const fill=new B.HemisphericLight('environment-v4-contact-fill',new B.Vector3(.15,1,.05),scene);
-  fill.diffuse=new B.Color3(.10,.125,.145);
-  fill.groundColor=new B.Color3(.012,.016,.019);
-  fill.intensity=tier==='ultra'?.34:tier==='high'?.27:.20;
+  const fill=new B.HemisphericLight('environment-v4-contact-fill',new B.Vector3(.12,1,.08),scene);
+  fill.diffuse=new B.Color3(.205,.225,.225);
+  fill.specular=new B.Color3(.07,.075,.075);
+  fill.groundColor=new B.Color3(.045,.032,.022);
+  fill.intensity=tier==='ultra'?.68:tier==='high'?.53:.36;
   disposables.push(fill);
 }
 
+function addCinematicBounce(B,scene,tier,disposables){
+  const specs=[
+    {name:'warm-left',x:-3.25,y:1.25,z:-1.85,diffuse:[1,.57,.27],specular:[.24,.13,.065],range:6.8,intensity:tier==='ultra'?1.18:tier==='high'?.92:.54},
+    {name:'warm-right',x:3.10,y:1.18,z:2.12,diffuse:[1,.49,.21],specular:[.21,.105,.05],range:6.2,intensity:tier==='ultra'?.94:tier==='high'?.72:.28},
+    {name:'center-soft',x:.35,y:2.8,z:.65,diffuse:[.48,.58,.58],specular:[.08,.10,.10],range:7.8,intensity:tier==='ultra'?.50:tier==='high'?.38:.20},
+  ];
+  for(const spec of specs){
+    if(spec.intensity<=0) continue;
+    const light=new B.PointLight(`environment-v4-bounce-${spec.name}`,new B.Vector3(spec.x,spec.y,spec.z),scene);
+    light.diffuse=new B.Color3(...spec.diffuse);
+    light.specular=new B.Color3(...spec.specular);
+    light.intensity=spec.intensity;
+    light.range=spec.range;
+    disposables.push(light);
+  }
+
+  if(tier!=='balanced'){
+    const rim=new B.DirectionalLight('environment-v4-cool-rim',new B.Vector3(-.28,-1,.34),scene);
+    rim.diffuse=new B.Color3(.16,.29,.34);
+    rim.specular=new B.Color3(.065,.12,.14);
+    rim.intensity=tier==='ultra'?.34:.25;
+    disposables.push(rim);
+  }
+}
+
 export function installChesscomEnvironmentArtV4(B,scene,{tier='ultra'}={}){
-  const disposables=[];addGroundDecals(B,scene,tier,disposables);addCasings(B,scene,tier,disposables);addContactFill(B,scene,tier,disposables);
+  const disposables=[];
+  addGroundDecals(B,scene,tier,disposables);
+  addCasings(B,scene,tier,disposables);
+  addContactFill(B,scene,tier,disposables);
+  addCinematicBounce(B,scene,tier,disposables);
   return {destroy(){for(const item of disposables.reverse()){try{item?.dispose?.();}catch{}}}};
 }
