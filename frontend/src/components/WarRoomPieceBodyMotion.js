@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { squarePosition } from './Board3DBoardMath.js';
+import { consumeWarRoomMoveFinishEvent } from './WarRoomMoveFinishEvent.js';
 
 const EPSILON = 0.002;
 
@@ -37,6 +38,7 @@ export function derivePieceBodyPose({
   airborne = 0,
   travelDistance = 0,
   promotionEnergy = 0,
+  checkmateFinish = false,
   coarsePointer = false,
 } = {}) {
   const normalizedType = String(type || 'p').toLowerCase();
@@ -54,6 +56,7 @@ export function derivePieceBodyPose({
   const landing = p > 0.68 ? Math.sin(Math.PI * landingPhase) : 0;
   const braking = bell(0.58, 0.78, 0.96, p);
   const rebound = bell(0.80, 0.91, 0.995, p);
+  const mateSeal = checkmateFinish ? bell(0.70, 0.90, 0.998, p) * amplitude : 0;
   const diagonalPawnCapture = normalizedType === 'p' && Math.abs(ux) > 0.25 && Math.abs(uz) > 0.25;
   const captureDrive = diagonalPawnCapture ? bell(0.32, 0.67, 0.92, p) * 0.060 * amplitude : 0;
   const castleBrace = normalizedType === 'k' && Number(travelDistance) > 1.5
@@ -65,7 +68,8 @@ export function derivePieceBodyPose({
   const transitLean = profile.lean * transit;
   const anticipationLean = profile.anticipationLean * anticipation;
   const brakeLean = profile.brake * braking;
-  const lean = (transitLean + anticipationLean - brakeLean) * amplitude;
+  const mateLean = mateSeal * 0.016;
+  const lean = (transitLean + anticipationLean - brakeLean) * amplitude - mateLean;
   const compression = (profile.compression * anticipation + profile.landing * landing) * amplitude;
   const stretch = profile.airborneStretch * air * transit * amplitude;
   const reboundLift = profile.rebound * rebound * amplitude;
@@ -76,15 +80,16 @@ export function derivePieceBodyPose({
     yaw: castleBrace * (ux >= 0 ? -1 : 1),
     xOffset: ux * captureDrive,
     zOffset: uz * captureDrive,
-    yOffset: -compression * 0.055 + stretch * 0.025 + reboundLift * 0.055 + promotion * 0.020,
-    scaleY: 1 - compression + stretch + reboundLift + promotion * 0.040,
-    scaleXZ: 1 + compression * 0.30 - stretch * 0.12 - reboundLift * 0.10 - promotion * 0.012,
+    yOffset: -compression * 0.055 + stretch * 0.025 + reboundLift * 0.055 + promotion * 0.020 + mateSeal * 0.008,
+    scaleY: 1 - compression + stretch + reboundLift + promotion * 0.040 + mateSeal * 0.022,
+    scaleXZ: 1 + compression * 0.30 - stretch * 0.12 - reboundLift * 0.10 - promotion * 0.012 - mateSeal * 0.008,
     finish: {
       braking,
       rebound,
       diagonalPawnCapture,
       castleBrace: castleBrace > 0,
       promotion: promotion > 0,
+      checkmate: mateSeal > 0,
     },
   };
 }
@@ -127,6 +132,7 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
     maxDistance: 0,
     lastFrame: -1,
     active: false,
+    finishEvent: null,
   };
 
   function resetPose() {
@@ -135,6 +141,7 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
     body.quaternion.copy(baseQuaternion);
     body.scale.copy(baseScale);
     state.active = false;
+    state.finishEvent = null;
     group.userData.board3DBodyFinishState = null;
     return true;
   }
@@ -158,9 +165,11 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
     if (state.targetSquare !== targetSquare) {
       state.targetSquare = targetSquare;
       state.maxDistance = remaining;
+      state.finishEvent = remaining > EPSILON ? consumeWarRoomMoveFinishEvent(targetSquare) : null;
     } else if (remaining > state.maxDistance) {
       // Handles a reconciled/interrupted animation without retaining stale travel.
       state.maxDistance = remaining;
+      if (!state.finishEvent) state.finishEvent = consumeWarRoomMoveFinishEvent(targetSquare);
     }
 
     if (remaining <= EPSILON || state.maxDistance <= EPSILON) {
@@ -180,6 +189,7 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
       airborne,
       travelDistance: state.maxDistance,
       promotionEnergy: promotionEnergyFor(group),
+      checkmateFinish: state.finishEvent?.checkmate === true,
       coarsePointer,
     });
 
@@ -213,6 +223,7 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
   group.userData.board3DBodyMotionProfile = coarsePointer ? 'piece-body-lite-v1' : 'piece-body-v1';
   group.userData.board3DBodyMotionType = String(type || 'p').toLowerCase();
   group.userData.board3DBodyFinishProfile = coarsePointer ? 'piece-finish-lite-v1' : 'piece-finish-v1';
+  group.userData.board3DCheckmateFinishProfile = coarsePointer ? 'mate-seal-lite-v1' : 'mate-seal-v1';
   return group;
 }
 
