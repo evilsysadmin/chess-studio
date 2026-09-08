@@ -77,6 +77,7 @@ export default defineConfig({
         'src/auth.js',
         'src/clock.js',
         'src/clockPersistence.js',
+        'src/clockRuntime.js',
         'src/playerRating.js',
         'src/profileBackup.js',
         'src/puzzles.js',

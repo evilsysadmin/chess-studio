@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { clearClockSnapshot, restoreClockState, saveClockSnapshot } from './clockPersistence.js';
 import { playTimePressureSound } from './sound.js';
+import { createClockRuntime } from './clockRuntime.js';
 
 export function activeClockColor({ busy, humanColor, turn }) {
   return busy ? (humanColor === 'w' ? 'b' : 'w') : turn;
@@ -14,88 +15,110 @@ export function fallenClockColor(whiteTime, blackTime) {
 
 export function useGameClock({ game, timeControl, busy, humanColor, forcedOutcome, onPressure }) {
   const hasClock = !!timeControl?.initial;
-  const initialClock = restoreClockState(game.id, timeControl, game.turn);
-  const [whiteTime, setWhiteTime] = useState(initialClock.whiteTime);
-  const [blackTime, setBlackTime] = useState(initialClock.blackTime);
-  const [flagFallen, setFlagFallen] = useState(initialClock.flagFallen);
+  const runtimeRef = useRef(null);
+  if (!runtimeRef.current) {
+    const initialClock = restoreClockState(game.id, timeControl, game.turn);
+    runtimeRef.current = createClockRuntime({
+      ...initialClock,
+      tickingColor: initialClock.flagFallen ? null : game.turn,
+    });
+  }
+  const runtime = runtimeRef.current;
+  const [flagFallen, setFlagFallenState] = useState(() => runtime.getSnapshot().flagFallen);
   const lastPersistRef = useRef(0);
   const tickRef = useRef(null);
   const pressureAlertRef = useRef(false);
+  const onPressureRef = useRef(onPressure);
+  onPressureRef.current = onPressure;
+
+  function persistSnapshot(snapshot, activeColor, now = Date.now()) {
+    if (!hasClock || snapshot.whiteTime === null || snapshot.blackTime === null) return;
+    saveClockSnapshot({
+      gameId: game.id,
+      timeControlId: timeControl.id,
+      whiteTime: snapshot.whiteTime,
+      blackTime: snapshot.blackTime,
+      activeColor,
+      now,
+    });
+  }
 
   useEffect(() => {
     const restored = restoreClockState(game.id, timeControl, game.turn);
-    setWhiteTime(restored.whiteTime);
-    setBlackTime(restored.blackTime);
-    setFlagFallen(restored.flagFallen);
+    runtime.replace({
+      ...restored,
+      tickingColor: restored.flagFallen || game.isGameOver || forcedOutcome ? null : game.turn,
+    });
+    setFlagFallenState(restored.flagFallen);
     pressureAlertRef.current = false;
-  }, [game.id, timeControl?.id]);
+    lastPersistRef.current = 0;
+  }, [game.id, timeControl?.id, runtime]);
 
   useEffect(() => {
-    if (!hasClock || game.isGameOver || flagFallen || forcedOutcome) return undefined;
+    if (!hasClock || game.isGameOver || flagFallen || forcedOutcome) {
+      runtime.setTickingColor(null);
+      return undefined;
+    }
+    runtime.setTickingColor(activeClockColor({ busy, humanColor, turn: game.turn }));
     tickRef.current = performance.now();
     const interval = setInterval(() => {
       const now = performance.now();
       const elapsed = (now - tickRef.current) / 1000;
       tickRef.current = now;
       const color = activeClockColor({ busy, humanColor, turn: game.turn });
-      if (color === 'w') setWhiteTime((t) => Math.max(0, (t ?? 0) - elapsed));
-      else setBlackTime((t) => Math.max(0, (t ?? 0) - elapsed));
-    }, 200);
-    return () => clearInterval(interval);
-  }, [hasClock, game.id, game.isGameOver, flagFallen, forcedOutcome, busy, game.turn, humanColor]);
+      let snapshot = runtime.advance(color, elapsed);
+      const fallen = fallenClockColor(snapshot.whiteTime, snapshot.blackTime);
+      if (fallen) {
+        snapshot = runtime.setFlagFallen(fallen);
+        persistSnapshot(snapshot, fallen);
+        setFlagFallenState(fallen);
+        return;
+      }
 
-  useEffect(() => {
-    if (!hasClock || whiteTime === null || blackTime === null || game.isGameOver || flagFallen || forcedOutcome) return;
-    const now = Date.now();
-    if (now - lastPersistRef.current < 900) return;
-    lastPersistRef.current = now;
-    saveClockSnapshot({
-      gameId: game.id,
-      timeControlId: timeControl.id,
-      whiteTime,
-      blackTime,
-      activeColor: activeClockColor({ busy, humanColor, turn: game.turn }),
-      now,
-    });
-  }, [whiteTime, blackTime, busy, game.turn, game.id, game.isGameOver, flagFallen, forcedOutcome, hasClock, humanColor, timeControl?.id]);
+      const mine = humanColor === 'w' ? snapshot.whiteTime : snapshot.blackTime;
+      if (!pressureAlertRef.current && mine !== null && mine <= 30) {
+        pressureAlertRef.current = true;
+        playTimePressureSound();
+        onPressureRef.current?.();
+      }
+
+      const wallNow = Date.now();
+      if (wallNow - lastPersistRef.current >= 900) {
+        lastPersistRef.current = wallNow;
+        persistSnapshot(snapshot, color, wallNow);
+      }
+    }, 200);
+    return () => {
+      clearInterval(interval);
+      persistSnapshot(runtime.getSnapshot(), activeClockColor({ busy, humanColor, turn: game.turn }));
+    };
+  }, [hasClock, game.id, game.isGameOver, flagFallen, forcedOutcome, busy, game.turn, humanColor, timeControl?.id, runtime]);
 
   useEffect(() => {
     if (game.isGameOver) clearClockSnapshot(game.id);
   }, [game.id, game.isGameOver]);
 
-  useEffect(() => {
-    if (!hasClock || flagFallen || game.isGameOver) return;
-    const fallen = fallenClockColor(whiteTime, blackTime);
-    if (!fallen) return;
-    saveClockSnapshot({
-      gameId: game.id,
-      timeControlId: timeControl.id,
-      whiteTime: fallen === 'w' ? 0 : (whiteTime ?? 0),
-      blackTime: fallen === 'b' ? 0 : (blackTime ?? 0),
-      activeColor: fallen,
-    });
-    setFlagFallen(fallen);
-  }, [whiteTime, blackTime, hasClock, flagFallen, game.isGameOver, game.id, timeControl?.id]);
-
-  useEffect(() => {
-    if (!hasClock || pressureAlertRef.current || game.isGameOver || flagFallen || forcedOutcome) return;
-    const mine = humanColor === 'w' ? whiteTime : blackTime;
-    if (mine !== null && mine <= 30) {
-      pressureAlertRef.current = true;
-      playTimePressureSound();
-      onPressure?.();
-    }
-  }, [whiteTime, blackTime, hasClock, humanColor, game.isGameOver, flagFallen, forcedOutcome, onPressure]);
-
   function addIncrement(color) {
     if (!hasClock || !timeControl?.increment) return;
-    if (color === 'w') setWhiteTime((t) => (t ?? 0) + timeControl.increment);
-    else setBlackTime((t) => (t ?? 0) + timeControl.increment);
+    const snapshot = runtime.addIncrement(color, timeControl.increment);
+    // La confirmación de una jugada llega desde una función async que puede
+    // conservar props de un render anterior. El runtime sí conoce el reloj que
+    // está corriendo ahora, así que evitamos persistir el turno activo obsoleto.
+    const activeColor = snapshot.tickingColor || activeClockColor({ busy, humanColor, turn: game.turn });
+    persistSnapshot(snapshot, activeColor);
   }
 
-  const tickingColor = flagFallen || game.isGameOver || forcedOutcome
-    ? null
-    : activeClockColor({ busy, humanColor, turn: game.turn });
+  function setFlagFallen(color) {
+    runtime.setFlagFallen(color);
+    setFlagFallenState(color);
+  }
 
-  return { hasClock, whiteTime, blackTime, flagFallen, setFlagFallen, addIncrement, tickingColor };
+  return {
+    hasClock,
+    flagFallen,
+    setFlagFallen,
+    addIncrement,
+    getTime: runtime.getTime,
+    runtime,
+  };
 }

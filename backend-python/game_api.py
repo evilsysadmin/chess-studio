@@ -17,8 +17,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 import game_store as store
 from api_models import AnalyzeMoveRequest, AnalyzeRequest, MoveRequest, NewGameRequest
 from chess_ai import analyze_move as ai_analyze_move
-from shadow_evaluation import maybe_schedule_move_shadow
 from chess_ai import evaluate_board, get_cpu_move, move_to_dict
+from engine_runtime import run_engine_work
+from shadow_evaluation import maybe_schedule_move_shadow
 from chess_core import HANDICAP_SQUARES, apply_handicap, board_from_valid_fen, board_sans, load_board, resolve_move, serialize_game
 
 from operation_idempotency import (
@@ -157,7 +158,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         # comportamiento clásico de CPU abriendo cuando el humano lleva negras.
         cpu_to_move = (board.turn == chess.WHITE and cpu_color == "w") or (board.turn == chess.BLACK and cpu_color == "b")
         if cpu_to_move:
-            resolved_opening = compute_engine_move_or_fallback(board, rounded_difficulty, ghost_style)
+            resolved_opening = await run_engine_work(compute_engine_move_or_fallback, board, rounded_difficulty, ghost_style)
             if resolved_opening:
                 opening_move, opening = resolved_opening
                 board.push(opening_move)
@@ -210,7 +211,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         if turn != entry["humanColor"]:
             raise HTTPException(400, "No es tu turno.")
 
-        suggestion = get_cpu_move(board, HINT_STRENGTH)
+        suggestion = await run_engine_work(get_cpu_move, board, HINT_STRENGTH)
         if not suggestion:
             raise HTTPException(404, "No hay jugadas disponibles.")
         return suggestion
@@ -287,7 +288,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
 
         level = body.level if is_valid_difficulty(body.level) else HINT_STRENGTH
         ghost_style = body.ghost_style.model_dump() if body.ghost_style is not None else None
-        suggestion = get_cpu_move(board, level, ghost_style)
+        suggestion = await run_engine_work(get_cpu_move, board, level, ghost_style)
         if not suggestion:
             raise HTTPException(404, "No hay jugadas disponibles.")
         return suggestion
@@ -326,7 +327,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
             raise HTTPException(400, "Esa posición ya está terminada.")
 
         level = body.level if is_valid_difficulty(body.level) else 45
-        analyzed = ai_analyze_move(board, level)
+        analyzed = await run_engine_work(ai_analyze_move, board, level)
         if not analyzed:
             raise HTTPException(404, "No hay jugadas disponibles.")
 
@@ -396,7 +397,7 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         }
 
         if not board.is_game_over(claim_draw=True):
-            resolved_cpu = compute_engine_move_or_fallback(board, entry["difficulty"], entry.get("ghostStyle"))
+            resolved_cpu = await run_engine_work(compute_engine_move_or_fallback, board, entry["difficulty"], entry.get("ghostStyle"))
             if resolved_cpu:
                 cpu_move_obj, cpu_move = resolved_cpu
                 board.push(cpu_move_obj)

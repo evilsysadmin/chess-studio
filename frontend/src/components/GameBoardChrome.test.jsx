@@ -14,6 +14,7 @@ vi.mock('../cpuIdentity.js', () => ({
 import GameCommandDeck from './GameCommandDeck.jsx';
 import GamePlayerRail from './GamePlayerRail.jsx';
 import GameStatusStrips from './GameStatusStrips.jsx';
+import { createClockRuntime } from '../clockRuntime.js';
 
 const noop = () => {};
 
@@ -37,6 +38,23 @@ describe('game board chrome extracted from GameBoardView', () => {
     expect(html).toContain('duelo 1V 1T 2D');
     expect(html).toContain('clock-chip ticking low');
     expect(html).toContain('title="TURNO CPU"');
+  });
+
+  it('reads the live time from the isolated clock runtime', () => {
+    const runtime = createClockRuntime({ whiteTime: 125, blackTime: 9, tickingColor: 'b' });
+    const html = renderToStaticMarkup(
+      <GamePlayerRail
+        game={{ turn: 'b', isGameOver: false, difficulty: 50 }}
+        humanColor="w"
+        rivalryRecord={{}}
+        clocks={{ hasClock: true, runtime, flagFallen: false, forcedOutcome: null }}
+        color="b"
+        cpu
+      />,
+    );
+
+    expect(html).toContain('clock-chip ticking low');
+    expect(html).toContain('0:09');
   });
 
   it('keeps the default command deck controls and compact Focus action', () => {

@@ -1,3 +1,9 @@
+### v16.6dm46zfrr · Fluidez del reloj y aislamiento del motor
+
+- Las partidas con reloj mantienen el pulso de 200 ms, pero sólo las etiquetas de tiempo se suscriben a cada tic; tablero, paneles y War Room dejan de reconciliarse cinco veces por segundo.
+- Las búsquedas CPU se ejecutan fuera del event loop de FastAPI y en una cola de un único trabajador, evitando bloquear peticiones concurrentes y búsquedas simultáneas que compitan por CPU.
+- Se preservan persistencia, incrementos, caída de bandera, reglas y niveles del motor; no se añaden modos ni se recalibra la jugabilidad.
+
 ### v16.6dm46zfrm · Repetición fiable en la Escuela de Matthias
 
 - Las lecciones ya dominadas vuelven a ser jugables: el progreso histórico ya no congela el tablero al repetir desde el principio.
