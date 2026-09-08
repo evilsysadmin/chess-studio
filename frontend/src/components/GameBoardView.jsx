@@ -34,8 +34,6 @@ export default function GameBoardView({
 }) {
   const topColor = humanColor === 'w' ? 'b' : 'w';
   const bottomColor = humanColor;
-  const topTime = topColor === 'w' ? clocks.whiteTime : clocks.blackTime;
-  const bottomTime = bottomColor === 'w' ? clocks.whiteTime : clocks.blackTime;
   const { isThreeD, toggleBoardRenderer } = useGameBoardRenderer();
   const {
     compactViewport,
@@ -165,7 +163,6 @@ export default function GameBoardView({
                 rivalryRecord={rivalryRecord}
                 clocks={clocks}
                 color={topColor}
-                seconds={topTime}
                 cpu
               />
             )}
@@ -238,7 +235,6 @@ export default function GameBoardView({
                 rivalryRecord={rivalryRecord}
                 clocks={clocks}
                 color={bottomColor}
-                seconds={bottomTime}
               />
             )}
 

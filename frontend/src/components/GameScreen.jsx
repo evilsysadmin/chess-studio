@@ -103,7 +103,7 @@ export default function GameScreen({
   }, []);
 
   const [forcedOutcome, setForcedOutcome] = useState(null);
-  const { hasClock, whiteTime, blackTime, flagFallen, addIncrement, tickingColor } = useGameClock({
+  const { hasClock, flagFallen, addIncrement, getTime, runtime: clockRuntime } = useGameClock({
     game,
     timeControl,
     busy,
@@ -489,7 +489,7 @@ export default function GameScreen({
     const humanComment = noteworthyComment(beforeHumanFen, { from, to, promotion: promotion || 'q' }, 'human');
     let cpuNoteworthy = null;
 
-    const humanClock = humanColor === 'w' ? whiteTime : blackTime;
+    const humanClock = getTime(humanColor);
     if (hasClock && Number(humanClock) <= 40) {
       pressureMovesRef.current += 1;
       if (isSeriousHumanIncident(humanComment)) pressureIncidentsRef.current += 1;
@@ -771,7 +771,7 @@ export default function GameScreen({
           runState,
           achievementToast,
         }}
-        clocks={{ hasClock, whiteTime, blackTime, tickingColor, flagFallen, forcedOutcome }}
+        clocks={{ hasClock, runtime: clockRuntime, flagFallen, forcedOutcome }}
         board={{
           visibleBoardFen,
           onSquareClick: handleSquareClick,

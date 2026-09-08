@@ -103,9 +103,8 @@ test('Arena experimental · tema, terreno y legalidad sobreviven al renderer 3D'
     .getByRole('button')
     .filter({ hasText: 'Experimentos geniales' });
   await expect(experiments).toHaveCount(1);
-  await expect(experiments).toBeVisible();
-  await experiments.click();
-  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+  const experimentsHeading = page.getByRole('heading', { name: 'Experimentos geniales', exact: true });
+  await openHeavy3DSurface(experiments, experimentsHeading);
 
   const arena = page.getByRole('region', { name: 'Arena experimental con terreno bloqueado' });
   await openHeavy3DSurface(page.getByRole('button', { name: /Arenas experimentales/i }), arena);

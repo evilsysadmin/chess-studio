@@ -1,6 +1,19 @@
+import { useSyncExternalStore } from 'react';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { formatClock } from '../clock.js';
 import { getUsername } from '../auth.js';
+
+function LiveClockChip({ runtime, color, title }) {
+  const snapshot = useSyncExternalStore(runtime.subscribe, runtime.getSnapshot, runtime.getServerSnapshot);
+  const seconds = color === 'w' ? snapshot.whiteTime : snapshot.blackTime;
+  const isLow = seconds !== null && seconds <= 10;
+  const isTicking = snapshot.tickingColor === color;
+  return (
+    <span className={`clock-chip ${isTicking ? 'ticking' : ''} ${isLow ? 'low' : ''}`} title={title}>
+      {formatClock(seconds ?? 0)}
+    </span>
+  );
+}
 
 export default function GamePlayerRail({
   game,
@@ -31,7 +44,9 @@ export default function GamePlayerRail({
         </small>
       </span>
       {clocks.hasClock ? (
-        <span className={`clock-chip ${isTicking ? 'ticking' : ''} ${isLow ? 'low' : ''}`} title={railTurnLabel}>{formatClock(seconds ?? 0)}</span>
+        clocks.runtime
+          ? <LiveClockChip runtime={clocks.runtime} color={color} title={railTurnLabel} />
+          : <span className={`clock-chip ${isTicking ? 'ticking' : ''} ${isLow ? 'low' : ''}`} title={railTurnLabel}>{formatClock(seconds ?? 0)}</span>
       ) : (
         <span className="game-player-turn">{railTurnLabel}</span>
       )}

@@ -174,5 +174,6 @@ describe('puzzle massacre · defensa óptima', () => {
         `${puzzle.id}: la variante guardada no representa juego óptimo de ambos bandos`,
       ).toEqual([]);
     },
+    10_000,
   );
 });

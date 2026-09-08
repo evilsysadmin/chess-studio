@@ -6,6 +6,15 @@ export const USER_RELEASE_NOTES_KEY = 'chess-study-user-release-notes-seen';
 // Infraestructura, nombres internos, hashes y recuentos de tests se quedan fuera.
 export const USER_RELEASE_NOTES = Object.freeze([
   {
+    release: 'v16.6dm46zfrr',
+    title: 'El reloj deja respirar al tablero',
+    highlights: [
+      'En partidas con tiempo, cada tic actualiza sólo los relojes: el tablero y la War Room dejan de repintarse cinco veces por segundo.',
+      'El cálculo de Matthias sale del carril de peticiones para que pensar una jugada no congele otras respuestas del servicio.',
+      'Relojes, incrementos, guardado, fuerza del rival y reglas conservan exactamente el mismo comportamiento; esta release no añade modos ni mecánicas.',
+    ],
+  },
+  {
     release: 'v16.6dm46zfrq',
     title: 'El castillo empieza a recordar quién manda',
     highlights: [
