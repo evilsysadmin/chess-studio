@@ -19,6 +19,7 @@ import {
   hansMopPatchMs,
   shouldHansMopDialogue,
 } from './WarRoomHansMopContract.js';
+import { warRoomHansSafeRoomLoop } from './WarRoomHansNavigation.js';
 import {
   HANS_SERVICE_WALK_SPEED,
   moveWarRoomHansToward,
@@ -82,20 +83,7 @@ function ensureProps(actor) {
 }
 
 function buildRoomWaypoints(floor, parent) {
-  floor.updateMatrixWorld?.(true);
-  parent.updateMatrixWorld?.(true);
-  const box = new THREE.Box3().setFromObject(floor);
-  const size = box.getSize(new THREE.Vector3());
-  const min = box.min;
-  const points = [
-    [0.16, 0.18], [0.50, 0.15], [0.84, 0.20], [0.87, 0.48],
-    [0.82, 0.80], [0.50, 0.85], [0.18, 0.78], [0.13, 0.50],
-    [0.30, 0.63], [0.70, 0.36],
-  ];
-  return points.map(([px, pz]) => {
-    const world = new THREE.Vector3(min.x + size.x * px, 0, min.z + size.z * pz);
-    return parent.worldToLocal(world);
-  });
+  return warRoomHansSafeRoomLoop(floor, parent);
 }
 
 function setDialogue(actor, value) {
@@ -177,6 +165,12 @@ export function installWarRoomHansMopRoutine(root) {
       fatigueMs = hansMopFatigueMs();
       activeElapsedMs = 0;
       waypoints = buildRoomWaypoints(floor, actor.hans.parent);
+      if (!waypoints.length) {
+        clearRoutineState(actor, props, controller, root);
+        active = false;
+        completedGameId = gameId;
+        return;
+      }
       waypointIndex = Math.floor(Math.random() * waypoints.length);
       state = 'walking';
       dialogueEnabled = shouldHansMopDialogue();
@@ -184,6 +178,7 @@ export function installWarRoomHansMopRoutine(root) {
       props.mop.visible = true;
       actor.hans.userData.warRoomHansMopState = state;
       actor.hans.userData.warRoomHansMopFatigueMs = fatigueMs;
+      actor.hans.userData.warRoomHansMopNavigation = 'safe-room-loop-v1';
       actor.driver.userData.warRoomHansPhase = 'ambient-mop';
     }
 

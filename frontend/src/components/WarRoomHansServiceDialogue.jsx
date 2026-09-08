@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { HANS_ESPRESSO_LINE, MATTHIAS_ESPRESSO_LINE } from './WarRoomHansServiceContract.js';
+import { warRoomHansChoreDialogueSpec } from './WarRoomHansChoreContract.js';
+import { warRoomHansServiceDialogueSpec } from './WarRoomHansServiceContract.js';
 import { projectHansFireReplyAnchor } from './WarRoomHansFireCallContract.js';
 import './WarRoomHansFireCall.css';
 
@@ -51,7 +52,8 @@ export default function WarRoomHansServiceDialogue({
       const canvas = portalHost.querySelector('.board3d-main-canvas');
       const nextPhase = canvas?.dataset?.warRoomHansServiceDialogue || '';
       setPhase((current) => current === nextPhase ? current : nextPhase);
-      if (nextPhase === 'hans-espresso' && canvas?.dataset?.warRoomHansScreen === 'onscreen') {
+      const spec = warRoomHansServiceDialogueSpec(nextPhase) || warRoomHansChoreDialogueSpec(nextPhase);
+      if (spec?.speaker === 'HANS' && canvas?.dataset?.warRoomHansScreen === 'onscreen') {
         const anchor = projectHansFireReplyAnchor({
           ndcX: canvas.dataset.warRoomHansNdcX,
           ndcY: canvas.dataset.warRoomHansNdcY,
@@ -82,20 +84,24 @@ export default function WarRoomHansServiceDialogue({
     '--warroom-fire-call-tail-x': '50%',
   } : null, [matthiasAnchorStyle]);
 
-  if (!isThreeD || !enabled || !portalHost || !phase) return null;
+  const spec = warRoomHansServiceDialogueSpec(phase) || warRoomHansChoreDialogueSpec(phase);
+  if (!isThreeD || !enabled || !portalHost || !phase || !spec) return null;
+  const isHans = spec.speaker === 'HANS';
+  const style = isHans ? hansStyle : matthiasStyle;
+  if (!style) return null;
 
   return createPortal(
     <div className="warroom-hans-fire-call-overlay" data-testid="warroom-hans-service-dialogue" data-service-dialogue-phase={phase}>
-      {phase === 'hans-espresso' && hansStyle && (
-        <aside className="warroom-fire-call-bubble warroom-fire-call-bubble-hans" style={hansStyle} role="status" aria-live="polite" aria-label="Hans trae un espresso">
-          <span>HANS</span><p>{HANS_ESPRESSO_LINE}</p>
-        </aside>
-      )}
-      {phase === 'matthias-espresso' && matthiasStyle && (
-        <aside className="warroom-fire-call-bubble warroom-fire-call-bubble-matthias" style={matthiasStyle} data-matthias-square={matthiasTrackedSquare || ''} role="status" aria-live="polite" aria-label="Matthias agradece el espresso">
-          <span>MATTHIAS</span><p>{MATTHIAS_ESPRESSO_LINE}</p>
-        </aside>
-      )}
+      <aside
+        className={`warroom-fire-call-bubble ${isHans ? 'warroom-fire-call-bubble-hans' : 'warroom-fire-call-bubble-matthias'}`}
+        style={style}
+        data-matthias-square={!isHans ? (matthiasTrackedSquare || '') : undefined}
+        role="status"
+        aria-live="polite"
+        aria-label={spec.aria}
+      >
+        <span>{spec.speaker}</span><p>{spec.text}</p>
+      </aside>
     </div>,
     portalHost,
   );

@@ -1,5 +1,6 @@
 import { installWarRoomHansArticulatedWalk } from './WarRoomHansArticulatedWalk.js';
 import { installWarRoomHansActorTelemetry } from './WarRoomHansActorTelemetry.js';
+import { installWarRoomHansAmbientChoreRoutine } from './WarRoomHansAmbientChoreRoutine.js';
 import { installWarRoomHansBoardPeekClockHold } from './WarRoomHansBoardPeekClockHold.js';
 import { installWarRoomHansBoardPeekPose } from './WarRoomHansBoardPeekPose.js';
 import { installWarRoomHansCanonicalButler } from './WarRoomHansCanonicalButler.js';
@@ -94,6 +95,7 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         // per-game event selector / routine lease.
         installWarRoomHansMopRoutine(root);
         installWarRoomHansServiceRoutine(root);
+        installWarRoomHansAmbientChoreRoutine(root);
       }
       completedKeys.push(key);
     }
@@ -144,7 +146,6 @@ export function armWarRoomOneShotHookRetirement(group, {
   if (!group || coarsePointer || typeof anchorName !== 'string' || !anchorName || typeof key !== 'string' || !key) return 0;
   const driver = group.getObjectByName?.(anchorName);
   if (!driver || typeof driver.onBeforeRender !== 'function') return 0;
-
   const marker = driver.userData.warRoomOneShotRetirement;
   if (marker?.key === key) return 0;
   const previous = driver.onBeforeRender;

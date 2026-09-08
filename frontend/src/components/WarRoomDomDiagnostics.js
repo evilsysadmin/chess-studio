@@ -1,3 +1,5 @@
+import { hansInitialReplyPointReached } from './WarRoomHansFireCallContract.js';
+
 function setDatasetIfChanged(element, key, value) {
   if (!element?.dataset) return 0;
   const next = String(value);
@@ -34,25 +36,36 @@ export function applyWarRoomHansScreenDiagnostics({
 } = {}) {
   if (!canvas) return 0;
   let writes = 0;
-  const visibleScreenState = screenState === 'onscreen' || screenState === 'offscreen';
-
-  writes += setDatasetIfChanged(canvas, 'warRoomHansScreen', screenState);
-  if (!canvas.dataset?.warRoomHansFirstScreen && visibleScreenState) {
-    writes += setDatasetIfChanged(canvas, 'warRoomHansFirstScreen', screenState);
-  }
-
   const x = Number(projected?.x);
   const y = Number(projected?.y);
+  const waitingForInitialReply = canvas.dataset?.warRoomHansNarrativePhase === 'await-hans';
+  const replyReady = hansInitialReplyPointReached({
+    hansScreen: screenState,
+    route: canvas.dataset?.warRoomHansRoute || '',
+    logicalX: canvas.dataset?.warRoomHansLogicalX,
+  });
+  const effectiveScreenState = waitingForInitialReply && screenState === 'onscreen' && !replyReady
+    ? 'edge'
+    : screenState;
+  const visibleScreenState = effectiveScreenState === 'onscreen'
+    || effectiveScreenState === 'offscreen'
+    || effectiveScreenState === 'edge';
+
+  writes += setDatasetIfChanged(canvas, 'warRoomHansScreen', effectiveScreenState);
+  if (!canvas.dataset?.warRoomHansFirstScreen && visibleScreenState) {
+    writes += setDatasetIfChanged(canvas, 'warRoomHansFirstScreen', effectiveScreenState);
+  }
+
   if (Number.isFinite(x) && Number.isFinite(y)) {
     writes += setDatasetIfChanged(canvas, 'warRoomHansNdcX', x.toFixed(3));
     writes += setDatasetIfChanged(canvas, 'warRoomHansNdcY', y.toFixed(3));
   }
 
   if (marker) {
-    writes += setAttributeIfChanged(marker, 'data-war-room-hans-runtime', visibleScreenState ? 'visible' : screenState);
-    writes += setAttributeIfChanged(marker, 'data-war-room-hans-screen', screenState);
+    writes += setAttributeIfChanged(marker, 'data-war-room-hans-runtime', visibleScreenState ? 'visible' : effectiveScreenState);
+    writes += setAttributeIfChanged(marker, 'data-war-room-hans-screen', effectiveScreenState);
     if (!marker.hasAttribute?.('data-war-room-hans-first-screen') && visibleScreenState) {
-      writes += setAttributeIfChanged(marker, 'data-war-room-hans-first-screen', screenState);
+      writes += setAttributeIfChanged(marker, 'data-war-room-hans-first-screen', effectiveScreenState);
     }
   }
 

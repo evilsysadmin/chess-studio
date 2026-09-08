@@ -4,9 +4,10 @@ import {
   HANS_WALK_CYCLE_VERSION,
   resetHansWalkCycle,
 } from './HansWalkCycle.js';
+import { HANS_ELDER_POSTURE, WAR_ROOM_HANS_ELDER_POSTURE_VERSION } from './WarRoomHansElderPostureContract.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_ARTICULATED_WALK_VERSION = 'war-room-hans-articulated-walk-v7-foot-target-ik';
+export const WAR_ROOM_HANS_ARTICULATED_WALK_VERSION = 'war-room-hans-articulated-walk-v8-elder-posture';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -54,6 +55,32 @@ function inferForward(body) {
   return 1;
 }
 
+function applyCanonicalElderGait(body, sample, forward) {
+  if (!body || !sample) return;
+  const phase = Number(sample.phase) || 0;
+  const side = Math.sin(phase);
+  const shoulder = Math.cos(phase) * HANS_ELDER_POSTURE.gaitTorsoSway;
+  const fatigueBob = -Math.abs(Math.sin(phase * 2)) * HANS_ELDER_POSTURE.gaitBob;
+  const asymmetry = side > 0 ? 1 : 1 - HANS_ELDER_POSTURE.gaitAsymmetry;
+
+  if (body.torso) {
+    body.torso.position.x += shoulder * 0.55;
+    body.torso.position.y += fatigueBob;
+    body.torso.rotation.x += forward * HANS_ELDER_POSTURE.gaitHunchDeltaRadians;
+    body.torso.rotation.y += side * HANS_ELDER_POSTURE.gaitTorsoYaw * asymmetry;
+    body.torso.rotation.z += shoulder * HANS_ELDER_POSTURE.gaitTorsoRoll;
+  }
+  if (body.head) {
+    body.head.position.x += shoulder * HANS_ELDER_POSTURE.gaitHeadSway;
+    body.head.position.y += fatigueBob * 0.35;
+    body.head.position.z += Math.abs(side) * 0.008;
+    body.head.rotation.x += forward * (HANS_ELDER_POSTURE.gaitHeadNodBaseRadians + Math.abs(fatigueBob) * 0.55);
+    body.head.rotation.z -= shoulder * 0.38;
+  }
+  if (body.leftArm) body.leftArm.rotation.z += HANS_ELDER_POSTURE.leftArmRoll * 0.35;
+  if (body.rightArm) body.rightArm.rotation.z += HANS_ELDER_POSTURE.rightArmRoll * 0.35;
+}
+
 function publishGaitTelemetry(hans, controller, sample, horizontalBlend, realTravelDistance) {
   const left = controller?.lastSolution?.left || null;
   const right = controller?.lastSolution?.right || null;
@@ -83,6 +110,7 @@ function publishGaitTelemetry(hans, controller, sample, horizontalBlend, realTra
   hans.userData.warRoomHansGaitDistance = realTravelDistance;
   hans.userData.warRoomHansGaitGrounding = 'real-distance-foot-plant-v3';
   hans.userData.warRoomHansGaitTeleportSuppressed = false;
+  hans.userData.warRoomHansElderPostureContract = WAR_ROOM_HANS_ELDER_POSTURE_VERSION;
 }
 
 export function installWarRoomHansArticulatedWalk(root) {
@@ -121,6 +149,7 @@ export function installWarRoomHansArticulatedWalk(root) {
           travelled: travelled * WAR_ROOM_GAIT_CADENCE_GAIN,
           horizontalWeight: horizontalBlend,
         });
+        applyCanonicalElderGait(body, sample, controller.forward);
         publishGaitTelemetry(hans, controller, sample, horizontalBlend, realTravelDistance);
       } else if (!isWalking || travelSq > TELEPORT_DISTANCE_SQ) {
         horizontalBlend = mix(horizontalBlend, 0, HORIZONTAL_BLEND_RESPONSE);
@@ -141,7 +170,7 @@ export function installWarRoomHansArticulatedWalk(root) {
   driver.userData.warRoomHansWalkCycle = HANS_WALK_CYCLE_VERSION;
   driver.userData.warRoomHansLegRig = 'thigh-knee-shin-foot-v1';
   driver.userData.warRoomHansLegRigInternal = 'thigh-knee-shin-ankle-foot-v2';
-  driver.userData.warRoomHansWalkCycleSource = 'local-foot-target-two-bone-ik-v7';
+  driver.userData.warRoomHansWalkCycleSource = 'local-foot-target-two-bone-ik-v8-elder-posture';
   driver.userData.warRoomHansElderWalk = LEGACY_ELDER_WALK_VERSION;
   driver.userData.warRoomHansGaitFrames = LEGACY_GAIT_FRAME_COUNT;
   hans.userData.warRoomHansElderWalk = LEGACY_ELDER_WALK_VERSION;
@@ -149,5 +178,6 @@ export function installWarRoomHansArticulatedWalk(root) {
   hans.userData.warRoomHansWalkCycle = HANS_WALK_CYCLE_VERSION;
   hans.userData.warRoomHansLegRig = 'thigh-knee-shin-foot-v1';
   hans.userData.warRoomHansLegRigInternal = 'thigh-knee-shin-ankle-foot-v2';
+  hans.userData.warRoomHansElderPostureContract = WAR_ROOM_HANS_ELDER_POSTURE_VERSION;
   return 1;
 }
