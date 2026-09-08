@@ -7,15 +7,17 @@ import {
 import { PAWN_SLUG_STATIC_INSTANCE_VERSION } from './pawnSlugStaticInstances.js';
 
 describe('Pawn Slug premium landmarks', () => {
-  it('keeps three recognizable hero beats distributed across the battlefield', () => {
-    expect(PAWN_SLUG_LANDMARK_META.landmarks).toHaveLength(3);
+  it('keeps recognizable hero beats distributed across the battlefield and ends in a boss fortress', () => {
+    expect(PAWN_SLUG_LANDMARK_META.landmarks).toHaveLength(4);
     expect(PAWN_SLUG_LANDMARK_META.landmarks.map((landmark) => landmark.id)).toEqual([
       'command-post',
       'wrecked-searchlight',
       'hero-barricade',
+      'boss-fortress',
     ]);
     expect(PAWN_SLUG_LANDMARK_META.landmarks[1].x - PAWN_SLUG_LANDMARK_META.landmarks[0].x).toBeGreaterThan(30);
     expect(PAWN_SLUG_LANDMARK_META.landmarks[2].x - PAWN_SLUG_LANDMARK_META.landmarks[1].x).toBeGreaterThan(30);
+    expect(PAWN_SLUG_LANDMARK_META.landmarks[3].x).toBe(114.5);
   });
 
   it('builds named landmarks without requiring a WebGL renderer', () => {
@@ -26,8 +28,17 @@ describe('Pawn Slug premium landmarks', () => {
     expect(root.getObjectByName('pawn-slug-landmark-command-post')).toBeTruthy();
     expect(root.getObjectByName('pawn-slug-landmark-wrecked-searchlight')).toBeTruthy();
     expect(root.getObjectByName('pawn-slug-landmark-hero-barricade')).toBeTruthy();
+    expect(root.getObjectByName('pawn-slug-landmark-boss-fortress')).toBeTruthy();
+    expect(root.getObjectByName('pawn-slug-boss-fortress-arch')).toBeTruthy();
     expect(root.getObjectByName('pawn-slug-barricade-hedgehog')).toBeTruthy();
-    expect(root.children).toHaveLength(3);
+    expect(root.children).toHaveLength(4);
+  });
+
+  it('marks the fortress as the real boss arena rather than a decorative wallpaper', () => {
+    const root = createPawnSlugPremiumLandmarks(new THREE.Group());
+    const fortress = root.getObjectByName('pawn-slug-landmark-boss-fortress');
+    expect(fortress.userData.bossArena).toBe(true);
+    expect(fortress.userData.bossWorldX).toBe(114.5);
   });
 
   it('uses a tiny shadow-free local-light budget on desktop only', () => {
@@ -44,6 +55,8 @@ describe('Pawn Slug premium landmarks', () => {
     expect(desktopLights.every((light) => light.castShadow === false)).toBe(true);
     expect(desktop.getObjectByName('pawn-slug-command-post-light')).toBeTruthy();
     expect(desktop.getObjectByName('pawn-slug-searchlight-glow')).toBeTruthy();
+    expect(desktop.getObjectByName('pawn-slug-boss-fortress-left-fire')).toBeTruthy();
+    expect(desktop.getObjectByName('pawn-slug-boss-fortress-right-fire')).toBeTruthy();
     expect(lights(coarse)).toHaveLength(PAWN_SLUG_LANDMARK_META.coarseLocalLightBudget);
   });
 
@@ -58,6 +71,7 @@ describe('Pawn Slug premium landmarks', () => {
     expect(countMeshes(coarse)).toBeLessThan(countMeshes(desktop));
     expect(coarse.children).toHaveLength(desktop.children.length);
     expect(coarse.getObjectByName('pawn-slug-barricade-hedgehog')).toBeFalsy();
+    expect(coarse.getObjectByName('pawn-slug-landmark-boss-fortress')).toBeTruthy();
   });
 
   it('batches repeated landmark geometry into stable instanced draw meshes', () => {
