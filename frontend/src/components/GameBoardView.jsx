@@ -8,6 +8,7 @@ import GameWarRoomCommandColumn from './GameWarRoomCommandColumn.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import Matthias3DOpeningBanter from './Matthias3DOpeningBanter.jsx';
 import WarRoomHansFireCall from './WarRoomHansFireCall.jsx';
+import WarRoomHansMopDialogue from './WarRoomHansMopDialogue.jsx';
 import useGameBoardRenderer from './useGameBoardRenderer.js';
 import { useGameFocusBubble, useGameMobileFocus } from './useGameMobileFocus.js';
 import useMatthias3DBubbleAnchor from './useMatthias3DBubbleAnchor.js';
@@ -206,6 +207,13 @@ export default function GameBoardView({
               matthiasAnchorStyle={matthias3DBubbleStyle}
               matthiasTrackedSquare={matthias3DTrackedSquare}
               onComplete={handleHansFireCallComplete}
+            />
+
+            <WarRoomHansMopDialogue
+              isThreeD={isThreeD}
+              enabled={!zenMode && !focusActive}
+              matthiasAnchorStyle={matthias3DBubbleStyle}
+              matthiasTrackedSquare={matthias3DTrackedSquare}
             />
 
             {!isThreeD && !zenMode && !focusActive && activeBoardBubble && (
