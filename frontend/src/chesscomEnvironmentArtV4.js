@@ -2,6 +2,7 @@ export const CHESSCOM_ENVIRONMENT_ART_V4 = Object.freeze({
   identity:'environment-art-v4',
   decals:'procedural-ground-decals',
   dressing:'restrained-microprops',
+  lighting:'warm-cool-bounce-v1',
 });
 
 function decalTexture(B,scene,name,kind,disposables){
@@ -61,13 +62,42 @@ function addCasings(B,scene,tier,disposables){
 
 function addContactFill(B,scene,tier,disposables){
   const fill=new B.HemisphericLight('environment-v4-contact-fill',new B.Vector3(.15,1,.05),scene);
-  fill.diffuse=new B.Color3(.10,.125,.145);
-  fill.groundColor=new B.Color3(.012,.016,.019);
-  fill.intensity=tier==='ultra'?.34:tier==='high'?.27:.20;
+  fill.diffuse=new B.Color3(.14,.165,.18);
+  fill.specular=new B.Color3(.055,.065,.07);
+  fill.groundColor=new B.Color3(.028,.021,.016);
+  fill.intensity=tier==='ultra'?.48:tier==='high'?.38:.28;
   disposables.push(fill);
 }
 
+function addCinematicBounce(B,scene,tier,disposables){
+  const specs=[
+    {name:'warm-left',x:-3.35,y:1.18,z:-1.95,diffuse:[1,.53,.24],specular:[.20,.105,.055],range:6.3,intensity:tier==='ultra'?.78:tier==='high'?.62:.38},
+    {name:'warm-right',x:3.18,y:1.08,z:2.22,diffuse:[1,.45,.19],specular:[.18,.09,.045],range:5.8,intensity:tier==='ultra'?.66:tier==='high'?.50:0},
+  ];
+  for(const spec of specs){
+    if(spec.intensity<=0) continue;
+    const light=new B.PointLight(`environment-v4-bounce-${spec.name}`,new B.Vector3(spec.x,spec.y,spec.z),scene);
+    light.diffuse=new B.Color3(...spec.diffuse);
+    light.specular=new B.Color3(...spec.specular);
+    light.intensity=spec.intensity;
+    light.range=spec.range;
+    disposables.push(light);
+  }
+
+  if(tier!=='balanced'){
+    const rim=new B.DirectionalLight('environment-v4-cool-rim',new B.Vector3(-.28,-1,.34),scene);
+    rim.diffuse=new B.Color3(.13,.25,.31);
+    rim.specular=new B.Color3(.05,.10,.12);
+    rim.intensity=tier==='ultra'?.24:.18;
+    disposables.push(rim);
+  }
+}
+
 export function installChesscomEnvironmentArtV4(B,scene,{tier='ultra'}={}){
-  const disposables=[];addGroundDecals(B,scene,tier,disposables);addCasings(B,scene,tier,disposables);addContactFill(B,scene,tier,disposables);
+  const disposables=[];
+  addGroundDecals(B,scene,tier,disposables);
+  addCasings(B,scene,tier,disposables);
+  addContactFill(B,scene,tier,disposables);
+  addCinematicBounce(B,scene,tier,disposables);
   return {destroy(){for(const item of disposables.reverse()){try{item?.dispose?.();}catch{}}}};
 }
