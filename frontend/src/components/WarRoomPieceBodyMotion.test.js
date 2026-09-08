@@ -69,7 +69,7 @@ describe('War Room piece body motion', () => {
     expect(castle.finish.castleBrace).toBe(true);
     expect(Math.abs(castle.yaw)).toBeGreaterThan(0.015);
     expect(quiet.finish.castleBrace).toBe(false);
-    expect(quiet.yaw).toBe(0);
+    expect(Math.abs(quiet.yaw)).toBe(0);
   });
 
   it('turns the existing promotion pulse into a restrained upward finish', () => {
