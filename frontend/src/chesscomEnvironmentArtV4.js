@@ -2,7 +2,7 @@ export const CHESSCOM_ENVIRONMENT_ART_V4 = Object.freeze({
   identity:'environment-art-v4',
   decals:'procedural-ground-decals',
   dressing:'restrained-microprops',
-  lighting:'warm-cool-bounce-v1',
+  lighting:'warm-cool-bounce-v2',
 });
 
 function decalTexture(B,scene,name,kind,disposables){
@@ -61,18 +61,19 @@ function addCasings(B,scene,tier,disposables){
 }
 
 function addContactFill(B,scene,tier,disposables){
-  const fill=new B.HemisphericLight('environment-v4-contact-fill',new B.Vector3(.15,1,.05),scene);
-  fill.diffuse=new B.Color3(.14,.165,.18);
-  fill.specular=new B.Color3(.055,.065,.07);
-  fill.groundColor=new B.Color3(.028,.021,.016);
-  fill.intensity=tier==='ultra'?.48:tier==='high'?.38:.28;
+  const fill=new B.HemisphericLight('environment-v4-contact-fill',new B.Vector3(.12,1,.08),scene);
+  fill.diffuse=new B.Color3(.205,.225,.225);
+  fill.specular=new B.Color3(.07,.075,.075);
+  fill.groundColor=new B.Color3(.045,.032,.022);
+  fill.intensity=tier==='ultra'?.68:tier==='high'?.53:.36;
   disposables.push(fill);
 }
 
 function addCinematicBounce(B,scene,tier,disposables){
   const specs=[
-    {name:'warm-left',x:-3.35,y:1.18,z:-1.95,diffuse:[1,.53,.24],specular:[.20,.105,.055],range:6.3,intensity:tier==='ultra'?.78:tier==='high'?.62:.38},
-    {name:'warm-right',x:3.18,y:1.08,z:2.22,diffuse:[1,.45,.19],specular:[.18,.09,.045],range:5.8,intensity:tier==='ultra'?.66:tier==='high'?.50:0},
+    {name:'warm-left',x:-3.25,y:1.25,z:-1.85,diffuse:[1,.57,.27],specular:[.24,.13,.065],range:6.8,intensity:tier==='ultra'?1.18:tier==='high'?.92:.54},
+    {name:'warm-right',x:3.10,y:1.18,z:2.12,diffuse:[1,.49,.21],specular:[.21,.105,.05],range:6.2,intensity:tier==='ultra'?.94:tier==='high'?.72:.28},
+    {name:'center-soft',x:.35,y:2.8,z:.65,diffuse:[.48,.58,.58],specular:[.08,.10,.10],range:7.8,intensity:tier==='ultra'?.50:tier==='high'?.38:.20},
   ];
   for(const spec of specs){
     if(spec.intensity<=0) continue;
@@ -86,9 +87,9 @@ function addCinematicBounce(B,scene,tier,disposables){
 
   if(tier!=='balanced'){
     const rim=new B.DirectionalLight('environment-v4-cool-rim',new B.Vector3(-.28,-1,.34),scene);
-    rim.diffuse=new B.Color3(.13,.25,.31);
-    rim.specular=new B.Color3(.05,.10,.12);
-    rim.intensity=tier==='ultra'?.24:.18;
+    rim.diffuse=new B.Color3(.16,.29,.34);
+    rim.specular=new B.Color3(.065,.12,.14);
+    rim.intensity=tier==='ultra'?.34:.25;
     disposables.push(rim);
   }
 }
