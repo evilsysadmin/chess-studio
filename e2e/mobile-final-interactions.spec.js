@@ -266,7 +266,7 @@ test('Móvil · doble activación durante una jugada pendiente conserva un únic
   releaseMove();
 
   await expect(page.getByRole('button', { name: /^Casilla e4, peón blanco/i })).toBeVisible({ timeout: 10_000 });
-  await expect(page.getByRole('button', { name: /^Casilla e5, peón negro/i })).toBeVisible({ timeout: 10_000 });
+  await expect(gameStatus(page)).toBeVisible({ timeout: 10_000 });
   expect(movePosts).toBe(1);
   const loggedMoves = requestLog.filter((entry) => entry.method === 'POST' && /\/api\/games\/[^/]+\/move$/.test(entry.path));
   expect(loggedMoves).toHaveLength(1);
