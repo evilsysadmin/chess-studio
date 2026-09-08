@@ -1,0 +1,21 @@
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-art[data-weapon]{
+  background-repeat:no-repeat!important;
+  background-position:right center!important;
+  background-size:contain!important;
+  opacity:.96;
+  filter:drop-shadow(0 10px 14px rgba(0,0,0,.55)) contrast(1.04) saturate(.9) brightness(1.06)!important;
+  transition:opacity .22s ease,filter .22s ease,transform .22s ease;
+}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-art[data-weapon="hk416"]{background-image:url('/chesscom/hk416.svg')!important;}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-art[data-weapon="g36c"]{background-image:url('/chesscom/g36c.svg')!important;}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-art[data-weapon="mp5sd"]{background-image:url('/chesscom/mp5sd.svg')!important;}
+.chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-title:hover .chesscom-weapon-art[data-weapon]{
+  transform:translateX(-2px) translateY(-1px);
+  filter:drop-shadow(0 12px 16px rgba(0,0,0,.60)) contrast(1.06) saturate(.94) brightness(1.10)!important;
+}
+@media(max-width:900px){
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-art[data-weapon]{opacity:.82;filter:drop-shadow(0 7px 10px rgba(0,0,0,.48)) brightness(1.03)!important;}
+}
+@media(prefers-reduced-motion:reduce){
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-art[data-weapon]{transition:none!important;transform:none!important;}
+}
