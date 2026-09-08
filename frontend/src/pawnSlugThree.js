@@ -58,10 +58,10 @@ import {
 } from './pawnSlugRuntimeHotPath.js';
 
 const WORLD_SCALE = 1 / 40;
-const VIEW_W = 24;
-const VIEW_H = 13.5;
+const VIEW_W = 29.5;
+const VIEW_H = 16.6;
 const GROUND_Y = 0;
-const PLAYER_SPEED = 6.35;
+const PLAYER_SPEED = 5.1;
 const PLAYER_JUMP = 8.4;
 const GRAVITY = 22;
 const PLAYER_W = 0.82;
@@ -982,6 +982,47 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       } else {
         enemy.model.scale.x = Math.abs(enemy.model.scale.x || 1) * enemy.dir;
         animateSlugEnemy(enemy.model, enemy.type, state.time, { moving: Math.abs(enemy.vx) > 0.2, hurt: enemy.hurt > 0 });
+      }
+
+      if (!reducedMotion) {
+        const moving = Math.abs(enemy.vx) > 0.2;
+        const phase = enemy.model.userData.motionPhase ?? ((enemy.model.id || 0) * 0.73);
+        const rate = enemy.type === 'knight'
+          ? 10.5
+          : enemy.type === 'pawn'
+            ? 8.4
+            : enemy.type === 'bishop'
+              ? 5.2
+              : enemy.type === 'boss'
+                ? 2.2
+                : 3.1;
+        const bob = enemy.type === 'knight'
+          ? 0.13
+          : enemy.type === 'pawn'
+            ? 0.085
+            : enemy.type === 'bishop'
+              ? 0.065
+              : enemy.type === 'boss'
+                ? 0.045
+                : 0.035;
+        const lean = enemy.type === 'knight'
+          ? 0.055
+          : enemy.type === 'pawn'
+            ? 0.035
+            : enemy.type === 'bishop'
+              ? 0.018
+              : enemy.type === 'boss'
+                ? 0.008
+                : 0.012;
+        const stride = Math.sin(state.time * rate + phase);
+        enemy.model.position.y += moving ? Math.abs(stride) * bob : Math.max(0, stride) * bob * 0.35;
+        const tilt = stride * lean * (moving ? 1 : 0.35) * enemy.dir;
+        if (enemy.model.material) enemy.model.material.rotation += tilt;
+        else enemy.model.rotation.z = tilt;
+        if (enemy.type === 'knight' && !enemy.onGround) {
+          if (enemy.model.material) enemy.model.material.rotation += enemy.dir * 0.08;
+          else enemy.model.rotation.z += enemy.dir * 0.08;
+        }
       }
 
       const contact = enemy.type === 'boss' ? 3.5 : enemy.type === 'bishop' ? 1.15 : enemy.type === 'rook' ? 0.85 : 0.58;
