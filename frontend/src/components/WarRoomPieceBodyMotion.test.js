@@ -73,6 +73,20 @@ describe('War Room piece body motion', () => {
     expect(Math.abs(quiet.yaw)).toBe(0);
   });
 
+  it('loads the rook while it waits, then lets king and rook lock the castle together', () => {
+    const rookWaiting = derivePieceBodyPose({ type: 'r', progress: 0.02, dx: 1, dz: 0, castlingRole: 'rook' });
+    const rookQuiet = derivePieceBodyPose({ type: 'r', progress: 0.02, dx: 1, dz: 0 });
+    const kingLock = derivePieceBodyPose({ type: 'k', progress: 0.90, dx: 1, dz: 0, travelDistance: 2, castlingRole: 'king' });
+    const rookLock = derivePieceBodyPose({ type: 'r', progress: 0.90, dx: 1, dz: 0, castlingRole: 'rook' });
+
+    expect(rookWaiting.finish.castlingRole).toBe('rook');
+    expect(rookWaiting.finish.castleResponse).toBeGreaterThan(0.95);
+    expect(rookWaiting.scaleY).toBeLessThan(rookQuiet.scaleY);
+    expect(kingLock.finish.castlingRole).toBe('king');
+    expect(kingLock.finish.castleLock).toBeGreaterThan(0.95);
+    expect(rookLock.finish.castleLock).toBeGreaterThan(0.95);
+  });
+
   it('turns the existing promotion pulse into a restrained upward finish', () => {
     const promoted = derivePieceBodyPose({ type: 'q', progress: 0.82, dx: 0, dz: 1, promotionEnergy: 1 });
     const normal = derivePieceBodyPose({ type: 'q', progress: 0.82, dx: 0, dz: 1, promotionEnergy: 0 });
@@ -114,6 +128,40 @@ describe('War Room piece body motion', () => {
     clearWarRoomMoveFinishEvent();
   });
 
+  it('gives both reconciled castling pieces their own coordinated role', () => {
+    clearWarRoomMoveFinishEvent();
+    const king = new THREE.Group();
+    const kingVisual = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    king.add(kingVisual);
+    king.userData.square = 'g1';
+    king.userData.baseY = 0.1;
+    king.userData.baseScale = king.scale.clone();
+    king.position.set(0.5, 0.1, 3.5);
+
+    const rook = new THREE.Group();
+    const rookVisual = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    rook.add(rookVisual);
+    rook.userData.square = 'f1';
+    rook.userData.baseY = 0.1;
+    rook.userData.baseScale = rook.scale.clone();
+    rook.position.set(3.5, 0.1, 3.5);
+
+    installPieceBodyMotion(king, 'k');
+    installPieceBodyMotion(rook, 'r');
+    armWarRoomMoveFinishEvent({
+      seq: 78,
+      to: 'g1',
+      castling: { side: 'king', kingTo: 'g1', rookTo: 'f1' },
+    });
+
+    kingVisual.onBeforeRender({ info: { render: { frame: 1 } } });
+    rookVisual.onBeforeRender({ info: { render: { frame: 1 } } });
+
+    expect(king.userData.board3DBodyFinishState?.castlingRole).toBe('king');
+    expect(rook.userData.board3DBodyFinishState?.castlingRole).toBe('rook');
+    clearWarRoomMoveFinishEvent();
+  });
+
   it('damps body motion on coarse pointers', () => {
     const desktop = derivePieceBodyPose({ type: 'n', progress: 0.5, dx: 1, dz: 0, airborne: 0.8 });
     const coarse = derivePieceBodyPose({ type: 'n', progress: 0.5, dx: 1, dz: 0, airborne: 0.8, coarsePointer: true });
@@ -133,6 +181,7 @@ describe('War Room piece body motion', () => {
     expect(root.userData.board3DBodyMotionProfile).toBe('piece-body-v1');
     expect(root.userData.board3DBodyFinishProfile).toBe('piece-finish-v1');
     expect(root.userData.board3DCheckmateFinishProfile).toBe('mate-seal-v1');
+    expect(root.userData.board3DCastlingFinishProfile).toBe('castle-lock-v1');
     expect(root.children.some((child) => child.userData?.board3DBodyMotionBody)).toBe(true);
   });
 
@@ -149,6 +198,7 @@ describe('War Room piece body motion', () => {
     expect(root.userData.board3DBodyMotionProfile).toBe('piece-body-v1');
     expect(root.userData.board3DBodyFinishProfile).toBe('piece-finish-v1');
     expect(root.userData.board3DCheckmateFinishProfile).toBe('mate-seal-v1');
+    expect(root.userData.board3DCastlingFinishProfile).toBe('castle-lock-v1');
     expect(body).toBeTruthy();
     expect(visual.parent).toBe(body);
     expect(shadow.parent).toBe(root);

@@ -39,6 +39,7 @@ export function derivePieceBodyPose({
   travelDistance = 0,
   promotionEnergy = 0,
   checkmateFinish = false,
+  castlingRole = '',
   coarsePointer = false,
 } = {}) {
   const normalizedType = String(type || 'p').toLowerCase();
@@ -49,6 +50,10 @@ export function derivePieceBodyPose({
   const distance = Math.hypot(dx, dz);
   const ux = distance > EPSILON ? dx / distance : 0;
   const uz = distance > EPSILON ? dz / distance : 0;
+  const explicitCastleKing = castlingRole === 'king' && normalizedType === 'k';
+  const explicitCastleRook = castlingRole === 'rook' && normalizedType === 'r';
+  const inferredCastleKing = normalizedType === 'k' && Number(travelDistance) > 1.5;
+  const castleKing = explicitCastleKing || inferredCastleKing;
 
   const anticipation = 1 - smoothstep(0, 0.18, p);
   const transit = Math.sin(Math.PI * p);
@@ -57,9 +62,13 @@ export function derivePieceBodyPose({
   const braking = bell(0.58, 0.78, 0.96, p);
   const rebound = bell(0.80, 0.91, 0.995, p);
   const mateSeal = checkmateFinish ? bell(0.70, 0.90, 0.998, p) * amplitude : 0;
+  const castleResponse = explicitCastleRook ? 1 - smoothstep(0.02, 0.24, p) : 0;
+  const castleLock = (explicitCastleKing || explicitCastleRook) ? bell(0.70, 0.90, 0.998, p) : 0;
+  const castleResponseLoad = castleResponse * 0.026 * amplitude;
+  const castleLockLoad = castleLock * 0.014 * amplitude;
   const diagonalPawnCapture = normalizedType === 'p' && Math.abs(ux) > 0.25 && Math.abs(uz) > 0.25;
   const captureDrive = diagonalPawnCapture ? bell(0.32, 0.67, 0.92, p) * 0.060 * amplitude : 0;
-  const castleBrace = normalizedType === 'k' && Number(travelDistance) > 1.5
+  const castleBrace = castleKing
     ? bell(0.08, 0.48, 0.90, p) * 0.020 * amplitude
     : 0;
   const promotion = clamp01(promotionEnergy) * amplitude;
@@ -69,18 +78,22 @@ export function derivePieceBodyPose({
   const anticipationLean = profile.anticipationLean * anticipation;
   const brakeLean = profile.brake * braking;
   const mateLean = mateSeal * 0.016;
-  const lean = (transitLean + anticipationLean - brakeLean) * amplitude - mateLean;
-  const compression = (profile.compression * anticipation + profile.landing * landing) * amplitude;
+  const castleResponseLean = castleResponseLoad * 0.46;
+  const lean = (transitLean + anticipationLean - brakeLean) * amplitude - mateLean - castleResponseLean;
+  const compression = (profile.compression * anticipation + profile.landing * landing) * amplitude
+    + castleResponseLoad * 0.62
+    + castleLockLoad;
   const stretch = profile.airborneStretch * air * transit * amplitude;
   const reboundLift = profile.rebound * rebound * amplitude;
+  const castleDirection = ux >= 0 ? -1 : 1;
 
   return {
     pitch: uz * lean + ux * sway,
     roll: -ux * lean + uz * sway,
-    yaw: castleBrace * (ux >= 0 ? -1 : 1),
+    yaw: castleBrace * castleDirection + castleLock * 0.005 * amplitude * castleDirection,
     xOffset: ux * captureDrive,
     zOffset: uz * captureDrive,
-    yOffset: -compression * 0.055 + stretch * 0.025 + reboundLift * 0.055 + promotion * 0.020 + mateSeal * 0.008,
+    yOffset: -compression * 0.055 + stretch * 0.025 + reboundLift * 0.055 + promotion * 0.020 + mateSeal * 0.008 - castleLockLoad * 0.030,
     scaleY: 1 - compression + stretch + reboundLift + promotion * 0.040 + mateSeal * 0.022,
     scaleXZ: 1 + compression * 0.30 - stretch * 0.12 - reboundLift * 0.10 - promotion * 0.012 - mateSeal * 0.008,
     finish: {
@@ -88,6 +101,9 @@ export function derivePieceBodyPose({
       rebound,
       diagonalPawnCapture,
       castleBrace: castleBrace > 0,
+      castleResponse,
+      castleLock,
+      castlingRole: explicitCastleKing ? 'king' : explicitCastleRook ? 'rook' : '',
       promotion: promotion > 0,
       checkmate: mateSeal > 0,
     },
@@ -190,6 +206,7 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
       travelDistance: state.maxDistance,
       promotionEnergy: promotionEnergyFor(group),
       checkmateFinish: state.finishEvent?.checkmate === true,
+      castlingRole: state.finishEvent?.castlingRole || '',
       coarsePointer,
     });
 
@@ -224,6 +241,7 @@ export function installPieceBodyMotion(group, type, { coarsePointer = false } = 
   group.userData.board3DBodyMotionType = String(type || 'p').toLowerCase();
   group.userData.board3DBodyFinishProfile = coarsePointer ? 'piece-finish-lite-v1' : 'piece-finish-v1';
   group.userData.board3DCheckmateFinishProfile = coarsePointer ? 'mate-seal-lite-v1' : 'mate-seal-v1';
+  group.userData.board3DCastlingFinishProfile = coarsePointer ? 'castle-lock-lite-v1' : 'castle-lock-v1';
   return group;
 }
 
