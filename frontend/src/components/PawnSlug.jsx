@@ -1,8 +1,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { pawnSlugWeaponUpgradeForLevel } from '../pawnSlug.js';
-import { useEscapeToClose } from '../useEscapeToClose.js';
+import {
+  PAWN_SLUG_CONTROL_ACTIONS,
+  PAWN_SLUG_CONTROL_LABELS,
+  PAWN_SLUG_DEFAULT_KEYMAP,
+  loadPawnSlugSettings,
+  pawnSlugControlActionForCode,
+  pawnSlugEngineAction,
+  pawnSlugKeyLabel,
+  remapPawnSlugKey,
+  savePawnSlugSettings,
+} from '../pawnSlugControls.js';
+import { getAmbientVolume, isFxMuted, setAmbientVolume, setFxMuted } from '../sound.js';
 import './PawnSlug.css';
 import './PawnSlugArsenal.css';
+import './PawnSlugSettings.css';
 
 const INITIAL_WEAPONS = Object.freeze([
   Object.freeze({ id: 'pistol', slot: 1, shortLabel: 'PST', label: 'Dienstpistole', current: true, unlocked: true, ammo: null }),
@@ -37,6 +49,13 @@ const INITIAL_HUD = Object.freeze({
   missionTime: 0,
 });
 
+const LEGACY_GAMEPLAY_CODES = new Set([
+  'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+  'KeyA', 'KeyD', 'KeyW', 'KeyS',
+  'Space', 'Enter', 'KeyZ', 'KeyJ', 'KeyX', 'KeyK',
+  'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight',
+]);
+
 function TouchButton({ action, label, glyph, send, className = '' }) {
   function press(event) {
     event.preventDefault();
@@ -63,14 +82,69 @@ function TouchButton({ action, label, glyph, send, className = '' }) {
   );
 }
 
+function percent(value) {
+  return Math.round(Math.max(0, Math.min(1, Number(value) || 0)) * 100);
+}
+
 export default function PawnSlug({ onExit }) {
-  useEscapeToClose(onExit);
   const hostRef = useRef(null);
   const engineRef = useRef(null);
   const pendingRef = useRef([]);
+  const settingsRef = useRef(null);
   const [hud, setHud] = useState(INITIAL_HUD);
   const [rendererName, setRendererName] = useState('CARGANDO');
   const [rendererError, setRendererError] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [remapAction, setRemapAction] = useState(null);
+  const [remapError, setRemapError] = useState('');
+  const [settings, setSettings] = useState(() => {
+    const stored = loadPawnSlugSettings();
+    const currentMusicVolume = getAmbientVolume();
+    return {
+      ...stored,
+      masterVolume: 1,
+      musicVolume: currentMusicVolume,
+      sfxVolume: isFxMuted() ? 0 : stored.sfxVolume,
+    };
+  });
+  settingsRef.current = settings;
+
+  function send(action, pressed = true) {
+    const engine = engineRef.current;
+    if (engine) engine.input(action, pressed);
+    else pendingRef.current.push([action, pressed]);
+  }
+
+  function releaseGameplayInput() {
+    for (const action of ['left', 'right', 'crouch', 'jump', 'fire', 'grenade']) send(action, false);
+  }
+
+  function applyAudio(next) {
+    setAmbientVolume(next.musicVolume);
+    setFxMuted(next.sfxVolume <= 0.001);
+    engineRef.current?.setAudioMix?.({ sfxVolume: next.sfxVolume });
+  }
+
+  function commitSettings(nextValue, { audio = false } = {}) {
+    const saved = savePawnSlugSettings(nextValue);
+    settingsRef.current = saved;
+    setSettings(saved);
+    if (audio) applyAudio(saved);
+    return saved;
+  }
+
+  function openSettings() {
+    releaseGameplayInput();
+    setRemapAction(null);
+    setRemapError('');
+    setSettingsOpen(true);
+  }
+
+  function closeSettings() {
+    setRemapAction(null);
+    setRemapError('');
+    setSettingsOpen(false);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -90,6 +164,7 @@ export default function PawnSlug({ onExit }) {
           },
         });
         engineRef.current = engine;
+        engine.setAudioMix?.({ sfxVolume: settingsRef.current?.sfxVolume ?? 1 });
         for (const [action, pressed] of pendingRef.current.splice(0)) engine.input(action, pressed);
       })
       .catch((error) => {
@@ -108,11 +183,92 @@ export default function PawnSlug({ onExit }) {
     };
   }, []);
 
-  function send(action, pressed = true) {
-    const engine = engineRef.current;
-    if (engine) engine.input(action, pressed);
-    else pendingRef.current.push([action, pressed]);
-  }
+  useEffect(() => {
+    function configuredAction(event) {
+      const keymap = settingsRef.current?.keymap || PAWN_SLUG_DEFAULT_KEYMAP;
+      return pawnSlugControlActionForCode(keymap, event.code);
+    }
+
+    function onKeyDownCapture(event) {
+      if (remapAction) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (event.code === 'Escape') {
+          setRemapAction(null);
+          setRemapError('');
+          return;
+        }
+        const result = remapPawnSlugKey(settingsRef.current?.keymap, remapAction, event.code);
+        if (!result.ok) {
+          const conflictLabel = result.conflictAction
+            ? PAWN_SLUG_CONTROL_LABELS[result.conflictAction]
+            : 'otro control';
+          setRemapError(`${pawnSlugKeyLabel(event.code)} ya está asignada a ${conflictLabel}.`);
+          return;
+        }
+        commitSettings({ ...settingsRef.current, keymap: result.keymap });
+        setRemapAction(null);
+        setRemapError('');
+        return;
+      }
+
+      if (settingsOpen) {
+        if (event.code === 'Escape') {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          closeSettings();
+        }
+        return;
+      }
+
+      const action = configuredAction(event);
+      if (action === 'pause' || event.code === 'Escape') {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        openSettings();
+        return;
+      }
+
+      if (action) {
+        const engineAction = pawnSlugEngineAction(action);
+        if (!engineAction || engineAction === 'pause') return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        send(engineAction, true);
+        return;
+      }
+
+      if (LEGACY_GAMEPLAY_CODES.has(event.code)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    }
+
+    function onKeyUpCapture(event) {
+      if (settingsOpen || remapAction) {
+        if (LEGACY_GAMEPLAY_CODES.has(event.code)) event.stopImmediatePropagation();
+        return;
+      }
+      const action = configuredAction(event);
+      if (action && action !== 'pause') {
+        const engineAction = pawnSlugEngineAction(action);
+        if (engineAction) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          send(engineAction, false);
+          return;
+        }
+      }
+      if (LEGACY_GAMEPLAY_CODES.has(event.code)) event.stopImmediatePropagation();
+    }
+
+    window.addEventListener('keydown', onKeyDownCapture, true);
+    window.addEventListener('keyup', onKeyUpCapture, true);
+    return () => {
+      window.removeEventListener('keydown', onKeyDownCapture, true);
+      window.removeEventListener('keyup', onKeyUpCapture, true);
+    };
+  }, [remapAction, settingsOpen]);
 
   const bossPercent = hud.bossHp != null && hud.bossMaxHp
     ? Math.max(0, Math.min(100, (hud.bossHp / hud.bossMaxHp) * 100))
@@ -130,6 +286,7 @@ export default function PawnSlug({ onExit }) {
   const missionTime = `${String(Math.floor((hud.missionTime || 0) / 60)).padStart(2, '0')}:${String((hud.missionTime || 0) % 60).padStart(2, '0')}`;
   const overlay = hud.phase === 'ready' || hud.phase === 'gameover' || hud.phase === 'victory';
   const weapons = hud.weapons?.length ? hud.weapons : INITIAL_WEAPONS;
+  const keymap = settings.keymap || PAWN_SLUG_DEFAULT_KEYMAP;
 
   return (
     <div className="pawn-slug" data-pawn-slug="true">
@@ -154,7 +311,7 @@ export default function PawnSlug({ onExit }) {
           </div>
           <div><span>VIDAS</span><b>{'♥'.repeat(Math.max(0, hud.lives || 0)) || '—'}</b></div>
           <div><span>ARMA</span><b>{hud.weaponLabel}</b><small>{weaponUpgrade.code} · {ammoText}</small></div>
-          <div><span>GRANADAS</span><b>{hud.grenades}</b></div>
+          <div><span>POWER-UP</span><b>{hud.grenades}</b></div>
           <div><span>PUNTOS</span><b>{hud.score.toLocaleString('es-ES')}</b></div>
           <div><span>TIEMPO</span><b>{missionTime}</b></div>
         </div>
@@ -162,28 +319,11 @@ export default function PawnSlug({ onExit }) {
         <div className="pawn-slug-stage">
           <button
             type="button"
-            aria-label="Salir de Pawn Slug"
-            onClick={onExit}
-            style={{
-              position: 'absolute',
-              zIndex: 40,
-              top: '.55rem',
-              right: '.55rem',
-              minWidth: '4.8rem',
-              minHeight: '2.65rem',
-              padding: '.45rem .7rem',
-              border: '1px solid rgba(230,186,104,.62)',
-              borderRadius: '.6rem',
-              background: 'rgba(10,12,14,.88)',
-              color: '#f0d39a',
-              boxShadow: '0 8px 22px rgba(0,0,0,.35)',
-              fontSize: '.72rem',
-              fontWeight: 900,
-              letterSpacing: '.08em',
-              touchAction: 'manipulation',
-            }}
+            className="pawn-slug-settings-trigger"
+            aria-label="Abrir ajustes de Pawn Slug"
+            onClick={openSettings}
           >
-            SALIR
+            ⚙ AJUSTES
           </button>
 
           <div
@@ -250,7 +390,7 @@ export default function PawnSlug({ onExit }) {
               )}
               {hud.phase !== 'ready' && <small>Nivel {hud.level} · {hud.score.toLocaleString('es-ES')} puntos · {missionTime}</small>}
               <button type="button" className="primary-btn" onClick={() => send('action', true)}>{hud.phase === 'ready' ? 'INICIAR OPERACIÓN' : 'OTRA VEZ, CABRONES'}</button>
-              <em>Z/J dispara · 1–4 arma · Q/E cambia · X/K granada · WASD/flechas mueven</em>
+              <em>←/→ mover · ↓ agacharse · SHIFT saltar · ESPACIO disparar · CTRL power-up · 1–4/Q/E armas · ESC settings</em>
             </div>
           )}
 
@@ -264,20 +404,116 @@ export default function PawnSlug({ onExit }) {
               <div className="pawn-slug-touch-action">
                 <TouchButton action="jump" label="Saltar" glyph="↑" send={send} />
                 <TouchButton action="fire" label="Disparar" glyph="✹" send={send} className="is-fire" />
-                <TouchButton action="grenade" label="Granada" glyph="●" send={send} className="is-grenade" />
+                <TouchButton action="grenade" label="Power-up" glyph="●" send={send} className="is-grenade" />
+              </div>
+            </div>
+          )}
+
+          {settingsOpen && (
+            <div className="pawn-slug-settings-backdrop" role="presentation">
+              <div
+                className="pawn-slug-settings-panel"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="pawn-slug-settings-title"
+              >
+                <div className="pawn-slug-settings-head">
+                  <div>
+                    <span className="section-label">PAUSA · CONFIGURACIÓN</span>
+                    <h3 id="pawn-slug-settings-title">Pawn Slug Settings</h3>
+                  </div>
+                  <button type="button" className="secondary-btn" onClick={closeSettings}>Continuar</button>
+                </div>
+
+                <div className="pawn-slug-settings-audio">
+                  <label>
+                    <span>Música <b>{percent(settings.musicVolume)}%</b></span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={settings.musicVolume}
+                      onChange={(event) => commitSettings(
+                        { ...settings, musicVolume: Number(event.target.value) },
+                        { audio: true },
+                      )}
+                    />
+                  </label>
+                  <label>
+                    <span>SFX <b>{percent(settings.sfxVolume)}%</b></span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={settings.sfxVolume}
+                      onChange={(event) => commitSettings(
+                        { ...settings, sfxVolume: Number(event.target.value) },
+                        { audio: true },
+                      )}
+                    />
+                  </label>
+                </div>
+
+                <div className="pawn-slug-settings-remap">
+                  <div className="pawn-slug-settings-section-title">
+                    <span>Teclado</span>
+                    <button
+                      type="button"
+                      onClick={() => commitSettings({ ...settings, keymap: PAWN_SLUG_DEFAULT_KEYMAP })}
+                    >
+                      Restaurar defaults
+                    </button>
+                  </div>
+                  <div className="pawn-slug-keymap-grid">
+                    {PAWN_SLUG_CONTROL_ACTIONS.map((action) => (
+                      <div key={action} className={remapAction === action ? 'is-listening' : ''}>
+                        <span>{PAWN_SLUG_CONTROL_LABELS[action]}</span>
+                        <button
+                          type="button"
+                          aria-label={`Cambiar tecla de ${PAWN_SLUG_CONTROL_LABELS[action]}`}
+                          onClick={() => {
+                            setRemapError('');
+                            setRemapAction(action);
+                          }}
+                        >
+                          <kbd>{remapAction === action ? 'PULSA…' : pawnSlugKeyLabel(keymap[action])}</kbd>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  {remapError && <p className="pawn-slug-remap-error" role="alert">{remapError}</p>}
+                  <small>Las teclas 1–4 y Q/E siguen reservadas para seleccionar/cambiar arma. ESC siempre puede abrir este menú como salida de emergencia.</small>
+                </div>
+
+                <div className="pawn-slug-settings-actions">
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={() => {
+                      engineRef.current?.restart?.();
+                      closeSettings();
+                    }}
+                  >
+                    Reiniciar misión
+                  </button>
+                  <button type="button" className="primary-btn" onClick={closeSettings}>Continuar</button>
+                  <button type="button" className="pawn-slug-exit-btn" onClick={onExit}>Salir del juego</button>
+                </div>
               </div>
             </div>
           )}
         </div>
 
         <footer className="pawn-slug-controls">
-          <div><kbd>A</kbd><kbd>D</kbd><span>Mover</span></div>
-          <div><kbd>W</kbd><kbd>ESPACIO</kbd><span>Saltar</span></div>
-          <div><kbd>S</kbd><span>Agacharse</span></div>
-          <div><kbd>Z</kbd><kbd>J</kbd><span>Disparar</span></div>
+          <div><kbd>{pawnSlugKeyLabel(keymap.moveLeft)}</kbd><kbd>{pawnSlugKeyLabel(keymap.moveRight)}</kbd><span>Mover</span></div>
+          <div><kbd>{pawnSlugKeyLabel(keymap.crouch)}</kbd><span>Agacharse</span></div>
+          <div><kbd>{pawnSlugKeyLabel(keymap.jump)}</kbd><span>Saltar</span></div>
+          <div><kbd>{pawnSlugKeyLabel(keymap.fire)}</kbd><span>Disparar</span></div>
+          <div><kbd>{pawnSlugKeyLabel(keymap.usePowerup)}</kbd><span>Power-up</span></div>
           <div><kbd>1–4</kbd><kbd>Q/E</kbd><span>Arma</span></div>
-          <div><kbd>X</kbd><kbd>K</kbd><span>Granada</span></div>
-          <small>{rendererName} · Three.js se carga sólo al entrar en Pawn Slug.</small>
+          <small>{rendererName} · ESC abre Settings.</small>
         </footer>
       </section>
     </div>
