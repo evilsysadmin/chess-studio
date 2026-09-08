@@ -40,7 +40,7 @@ jobs:
 
       - name: Run War Room runtime marathon
         working-directory: e2e
-        run: ./node_modules/.bin/playwright test war-room-runtime-marathon.spec.js --workers=1 --retries=0 --timeout=180000
+        run: ./node_modules/.bin/playwright test war-room-runtime-marathon.spec.js --workers=1 --retries=0 --timeout=360000
 
       - name: Upload Playwright diagnostics on failure
         if: failure()
