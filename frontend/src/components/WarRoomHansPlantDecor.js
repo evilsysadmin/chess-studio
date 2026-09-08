@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v1';
+export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v2-gallery-aligned';
 
 export function ensureWarRoomHansPlant(root) {
   if (!root) return null;
@@ -46,7 +46,17 @@ export function ensureWarRoomHansPlant(root) {
   }
 
   const x = box.max.x - Math.min(1.45, (box.max.x - box.min.x) * 0.09);
-  const z = box.min.z + (box.max.z - box.min.z) * 0.38;
+  const fallbackZ = box.min.z + (box.max.z - box.min.z) * 0.30;
+  const rightPainting = root.getObjectByName?.('war-room-campaign-painting-right');
+  let z = fallbackZ;
+  if (rightPainting?.getWorldPosition && root.worldToLocal) {
+    const paintingWorld = new THREE.Vector3();
+    rightPainting.getWorldPosition(paintingWorld);
+    z = root.worldToLocal(paintingWorld.clone()).z;
+    group.userData.warRoomPlantPlacement = 'under-right-gallery-painting-v1';
+  } else {
+    group.userData.warRoomPlantPlacement = 'gallery-aligned-fallback-v1';
+  }
   group.position.set(x, -0.255, z);
   root.add(group);
   return group;
