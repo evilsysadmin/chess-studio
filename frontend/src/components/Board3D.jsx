@@ -29,6 +29,7 @@ export default function Board3D(props) {
     previousFen: previousFenRef.current,
     fen: props.fen,
     gameOver: props.gameOver,
+    checkSquare: props.checkSquare,
     animate: props.animate,
     chessFromFen,
   });
