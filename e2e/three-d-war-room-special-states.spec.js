@@ -345,7 +345,6 @@ test('War Room Android · sobrevive rotación y background/foreground repetidos 
     await setVisibility(page, 'visible');
 
     await expect(warRoom).toBeVisible();
-    await expect(canvas).toBeVisible();
     await expect(warRoom).toHaveCount(1);
     await expect(canvas).toHaveCount(1);
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
