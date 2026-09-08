@@ -21,6 +21,7 @@ import {
 } from '../feedback.js';
 import { ADMIN_REFRESH_MS, shouldRefreshAdminPresence } from '../presenceCadence.js';
 import { buildAdminInsights } from '../adminDashboardInsights.js';
+import { createAsyncCommitGuard } from '../asyncLifecycle.js';
 import AdminFeedbackSection from './AdminFeedbackSection.jsx';
 import AdminMatthiasStatusSection from './AdminMatthiasStatusSection.jsx';
 import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
@@ -218,22 +219,26 @@ export default function AdminScreen({ onExit }) {
   }
 
   useEffect(() => {
-    if (!expanded || insightsByUser[expanded] || insightsLoading[expanded] || insightsErrors[expanded]) return;
+    if (!expanded || insightsByUser[expanded] || insightsLoading[expanded] || insightsErrors[expanded]) return undefined;
+    const guard = createAsyncCommitGuard();
     setInsightsLoading((prev) => ({ ...prev, [expanded]: true }));
     setInsightsErrors((prev) => ({ ...prev, [expanded]: null }));
     fetchAdminUserInsights(expanded)
-      .then((payload) => setInsightsByUser((prev) => ({ ...prev, [expanded]: buildAdminInsights(payload) })))
-      .catch((e) => setInsightsErrors((prev) => ({ ...prev, [expanded]: e.message })))
-      .finally(() => setInsightsLoading((prev) => ({ ...prev, [expanded]: false })));
+      .then((payload) => guard.commit(() => setInsightsByUser((prev) => ({ ...prev, [expanded]: buildAdminInsights(payload) }))))
+      .catch((e) => guard.commit(() => setInsightsErrors((prev) => ({ ...prev, [expanded]: e.message }))))
+      .finally(() => guard.commit(() => setInsightsLoading((prev) => ({ ...prev, [expanded]: false }))));
+    return () => guard.dispose();
   }, [expanded, insightsByUser, insightsLoading, insightsErrors]);
 
   useEffect(() => {
-    if (!expanded || matthiasMemoryByUser[expanded] || matthiasMemoryLoading[expanded]) return;
+    if (!expanded || matthiasMemoryByUser[expanded] || matthiasMemoryLoading[expanded]) return undefined;
+    const guard = createAsyncCommitGuard();
     setMatthiasMemoryLoading((prev) => ({ ...prev, [expanded]: true }));
     fetchAdminMatthiasMemory(expanded)
-      .then((payload) => setMatthiasMemoryByUser((prev) => ({ ...prev, [expanded]: payload?.memory || null })))
-      .catch(() => setMatthiasMemoryByUser((prev) => ({ ...prev, [expanded]: null })))
-      .finally(() => setMatthiasMemoryLoading((prev) => ({ ...prev, [expanded]: false })));
+      .then((payload) => guard.commit(() => setMatthiasMemoryByUser((prev) => ({ ...prev, [expanded]: payload?.memory || null }))))
+      .catch(() => guard.commit(() => setMatthiasMemoryByUser((prev) => ({ ...prev, [expanded]: null }))))
+      .finally(() => guard.commit(() => setMatthiasMemoryLoading((prev) => ({ ...prev, [expanded]: false }))));
+    return () => guard.dispose();
   }, [expanded, matthiasMemoryByUser, matthiasMemoryLoading]);
 
   async function handleResetMatthiasMemory(username) {
