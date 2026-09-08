@@ -9,6 +9,7 @@ import { installChesscomOverlayArtV6 } from './chesscomOverlayArtV6.js';
 import { installChesscomMaterialArtV7 } from './chesscomMaterialArtV7.js';
 import { installChesscomRenderQualityV9 } from './chesscomRenderQualityV9.js';
 import { installChesscomDepthToneV10 } from './chesscomDepthToneV10.js';
+import { installChesscomWeaponArtV11 } from './chesscomWeaponArtV11.js';
 
 function sceneFromBabylon(B) {
   return B.EngineStore?.LastCreatedScene
@@ -42,6 +43,7 @@ export async function createChesscomBabylon(host, options = {}) {
   const overlayV6 = installChesscomOverlayArtV6(B,scene,{ tier });
   const materialV7 = installChesscomMaterialArtV7(B,scene,{ tier });
   const depthToneV10 = installChesscomDepthToneV10(B,scene,{ tier,host });
+  const weaponArtV11 = installChesscomWeaponArtV11(host);
   const v3Visibility = new Map();
   host.dataset.chesscomOperator = 'character-art-v4';
   host.dataset.chesscomCharacterMesh = 'custom-lowpoly-v4';
@@ -49,7 +51,8 @@ export async function createChesscomBabylon(host, options = {}) {
   host.dataset.chesscomEnvironment = 'environment-art-v4';
   host.dataset.chesscomOverlay = 'tactical-overlay-v6';
   host.dataset.chesscomMaterials = 'material-art-v7';
-  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4 · OVERLAY V6 · MATERIAL V7 · HIDPI V9 · DEPTH V10`);
+  host.dataset.chesscomWeaponArt = 'weapon-art-v11';
+  onReady?.(`BABYLON.JS ${BABYLON_VERSION} · GPU PREMIUM V2 · BALLISTICS · UNIT STANCE · CHARACTER ART V4 · OVERLAY V6 · MATERIAL V7 · HIDPI V9 · DEPTH V10 · WEAPON ART V11`);
 
   return {
     ...base,
@@ -59,6 +62,7 @@ export async function createChesscomBabylon(host, options = {}) {
       artV4.update(state);
     },
     destroy() {
+      weaponArtV11.destroy();
       depthToneV10.destroy();
       materialV7.destroy();
       overlayV6.destroy();
@@ -74,6 +78,7 @@ export async function createChesscomBabylon(host, options = {}) {
       delete host.dataset.chesscomEnvironment;
       delete host.dataset.chesscomOverlay;
       delete host.dataset.chesscomMaterials;
+      delete host.dataset.chesscomWeaponArt;
       base.destroy();
     },
   };
