@@ -1,3 +1,9 @@
+### v16.6dm46zfrt · CSS por sala, no por adelantado
+
+- El CSS bloqueante de entrada baja de 104,05 a 80,09 KB gzip: la cascada visual de Home vive detrás del límite lazy de `MenuInner` y conserva su orden histórico.
+- Las reglas landscape de War Room se descargan con `GameScreen`, no durante login; no cambia ninguna regla ni interacción.
+- El informe de build incorpora un presupuesto de 82 KiB gzip para impedir que el CSS inicial vuelva a crecer en silencio.
+
 ### v16.6dm46zfrs · Home no precarga la War Room
 
 - El bootstrap sigue registrando el renderer 3D de forma lazy, pero deja de importar Board3D durante el idle de Home/login.

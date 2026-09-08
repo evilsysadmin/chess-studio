@@ -3,17 +3,20 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import { gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(SCRIPT_DIR, '..');
 const FRONTEND_SRC = path.join(ROOT, 'frontend', 'src');
+const FRONTEND_DIST = path.join(ROOT, 'frontend', 'dist');
 const OUTPUT_DIR = path.join(ROOT, '.performance');
 const OUTPUT_FILE = path.join(OUTPUT_DIR, 'runtime-surface.json');
 const JS_EXTENSIONS = new Set(['.js', '.jsx', '.mjs', '.ts', '.tsx']);
 const CSS_EXTENSIONS = new Set(['.css']);
 const LARGE_JS_BYTES = 60 * 1024;
 const LARGE_CSS_BYTES = 80 * 1024;
+const INITIAL_CSS_GZIP_BUDGET_BYTES = 82 * 1024;
 
 function walk(dir, rows = []) {
   if (!fs.existsSync(dir)) return rows;
@@ -75,6 +78,13 @@ for (const file of files) {
 
 const jsRows = sourceRows.filter((row) => JS_EXTENSIONS.has(path.extname(row.path).toLowerCase()));
 const cssRows = sourceRows.filter((row) => CSS_EXTENSIONS.has(path.extname(row.path).toLowerCase()));
+const indexHtml = fs.readFileSync(path.join(FRONTEND_DIST, 'index.html'), 'utf8');
+const initialCssAssets = [...indexHtml.matchAll(/<link\b[^>]*\brel=["']stylesheet["'][^>]*\bhref=["']([^"']+\.css)["'][^>]*>/g)]
+  .map((match) => match[1].replace(/^\//, ''));
+const initialCssGzipBytes = initialCssAssets.reduce((total, asset) => {
+  const assetPath = path.join(FRONTEND_DIST, asset.replace(/^assets\//, 'assets/'));
+  return total + gzipSync(fs.readFileSync(assetPath)).byteLength;
+}, 0);
 const report = {
   generatedAt: new Date().toISOString(),
   sourceFileCount: sourceRows.length,
@@ -94,6 +104,11 @@ const report = {
   },
   topJs: top(jsRows),
   topCss: top(cssRows),
+  buildAssets: {
+    initialCss: initialCssAssets,
+    initialCssGzipBytes,
+    initialCssGzipBudgetBytes: INITIAL_CSS_GZIP_BUDGET_BYTES,
+  },
 };
 
 fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -111,6 +126,7 @@ const summary = [
   `- ResizeObserver sites: ${resizeObserverSites}`,
   `- Large JS modules (>= ${LARGE_JS_BYTES / 1024} KiB): ${report.largeModules.js.length}`,
   `- Large CSS files (>= ${LARGE_CSS_BYTES / 1024} KiB): ${report.largeModules.css.length}`,
+  `- Initial CSS: ${kib(initialCssGzipBytes)} KiB gzip (budget ${INITIAL_CSS_GZIP_BUDGET_BYTES / 1024} KiB)`,
   '',
   '### Largest JS/TS modules',
   formatRows(report.topJs),
@@ -123,6 +139,10 @@ const summary = [
 
 console.log(summary);
 console.log(`\nJSON report: ${relative(OUTPUT_FILE)}`);
+
+if (initialCssGzipBytes > INITIAL_CSS_GZIP_BUDGET_BYTES) {
+  throw new Error(`Initial CSS is ${kib(initialCssGzipBytes)} KiB gzip; budget is ${INITIAL_CSS_GZIP_BUDGET_BYTES / 1024} KiB`);
+}
 
 if (process.env.GITHUB_STEP_SUMMARY) {
   fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);

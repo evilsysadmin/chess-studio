@@ -1,0 +1,21 @@
+/* Home-only cascade. Keep this order aligned with the historical entrypoint:
+ * later layers intentionally refine the earlier castle composition. Importing
+ * the stack from MenuInner keeps it out of login and non-Home route loads. */
+@import './HomeGreatHallCascade.css';
+@import './HomeGreatHallFinish.css';
+@import './HomeGreatHallModalFix.css';
+@import './HomeCanonical.css';
+@import './HomeCastleHub.css';
+@import './HomeCastleHubSpeech.css';
+@import './HomeCastleReadability.css';
+@import './HomeCastleCrispness.css';
+@import './HomeAndroidFirstFold.css';
+@import './HomeCastleTeutonicCanonical.css';
+@import './HomeAdaptiveDensity.css';
+@import './HomeDesktopCompositionFix.css';
+@import './HomeImmersiveCastle.css';
+@import './HomeImmersiveCastleOverlay.css';
+@import './HomeImmersiveSavedGame.css';
+@import './HomeImmersiveMatthias.css';
+@import './HomeCanonicalMockAlignment.css';
+@import './HomeCanonicalMockFinish.css';

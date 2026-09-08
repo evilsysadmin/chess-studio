@@ -1,6 +1,6 @@
 import { normalizeBuildSha } from './releaseManifest.js';
 
-export const APP_RELEASE = 'v16.6dm46zfrs';
+export const APP_RELEASE = 'v16.6dm46zfrt';
 
 // Vite replaces this free constant in browser builds. `typeof` keeps the same
 // module safely importable from Playwright/Node, where no build injection
