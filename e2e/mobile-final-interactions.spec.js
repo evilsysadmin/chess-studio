@@ -215,7 +215,7 @@ test('Móvil · Partida de práctica abre su modal fijo dentro del viewport', as
   expect(dialogBox.y + dialogBox.height).toBeLessThanOrEqual(contract.viewportHeight + 1);
 });
 
-test('Móvil · doble activación durante una jugada pendiente no duplica la mutación ni adelanta el tablero', async ({ page }) => {
+test('Móvil · doble activación durante una jugada pendiente conserva un único optimistic move', async ({ page }) => {
   test.setTimeout(60_000);
   await page.setViewportSize({ width: 390, height: 844 });
 
@@ -258,8 +258,10 @@ test('Móvil · doble activación durante una jugada pendiente no duplica la mut
   await page.waitForTimeout(150);
   expect(movePosts).toBe(1);
 
-  await expect(e2).toHaveAttribute('aria-label', /peón blanco/i);
-  await expect(e4).not.toHaveAttribute('aria-label', /peón blanco/i);
+  await expect(page.getByRole('button', { name: /^Casilla e4, peón blanco/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla e2,/i })).not.toHaveAttribute('aria-label', /peón blanco/i);
+  await expect(page.getByRole('button', { name: /^Casilla e7, peón negro/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla e5, peón negro/i })).toHaveCount(0);
 
   releaseMove();
 
