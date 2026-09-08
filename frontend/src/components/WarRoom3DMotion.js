@@ -400,7 +400,7 @@ export function deriveMoveKinetics({ movingType = 'p', capture = false, promotio
     n: { duration: 154, lift: 0.31, impactStart: 0.40, captureTilt: 0.92, captureExtra: 28 },
     b: { duration: 128, lift: 0.10, impactStart: 0.47, captureTilt: 0.70, captureExtra: 30 },
     r: { duration: 146, lift: 0.055, impactStart: 0.53, captureTilt: 0.62, captureExtra: 34 },
-    q: { duration: 112, lift: 0.075, impactStart: 0.44, captureTilt: 0.76, captureExtra: 34 },
+    q: { duration: 112, lift: 0.075, impactStart: 0.44, captureTilt: 0.76, captureExtra: 35 },
     k: { duration: 164, lift: 0.065, impactStart: 0.50, captureTilt: 0.58, captureExtra: 30 },
   };
   const coarse = {
