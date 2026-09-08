@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useRef, useState } from 'react';
+import { lazy, memo, Suspense, useCallback, useRef, useState } from 'react';
 import Board from './Board.jsx';
 import GameCommandDeck from './GameCommandDeck.jsx';
 import GamePlayerRail from './GamePlayerRail.jsx';
@@ -19,6 +19,48 @@ import { formatLongMove } from '../notation.js';
 import './Matthias3DBubbleAnchor.css';
 
 const Board3D = lazy(() => import('./Board3D.jsx'));
+
+function sameLegalTargets(a = [], b = []) {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  return a.every((target, index) => target?.to === b[index]?.to && target?.san === b[index]?.san);
+}
+
+export function sameBoardSurfaceProps(previous, next) {
+  if (previous.isThreeD !== next.isThreeD) return false;
+  const a = previous.boardProps;
+  const b = next.boardProps;
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.gameId === b.gameId
+    && a.fen === b.fen
+    && a.onSquareClick === b.onSquareClick
+    && a.selectedSquare === b.selectedSquare
+    && sameLegalTargets(a.legalTargets, b.legalTargets)
+    && a.lastMove === b.lastMove
+    && a.animate === b.animate
+    && a.hintMove === b.hintMove
+    && a.checkSquare === b.checkSquare
+    && a.gameOver === b.gameOver
+    && a.turnState === b.turnState
+    && a.orientation === b.orientation
+    && a.showCoordinates === b.showCoordinates
+    && a.matthiasKingColor === b.matthiasKingColor
+    && a.onCustomize === b.onCustomize
+    && a.hansFireplaceIteration === b.hansFireplaceIteration
+    && a.hansFireCallEnabled === b.hansFireCallEnabled;
+}
+
+const StableBoardSurface = memo(function StableBoardSurface({ isThreeD, boardProps }) {
+  if (isThreeD) {
+    return (
+      <Suspense fallback={<div className="hint-text">Preparando sala 3D…</div>}>
+        <Board3D {...boardProps} />
+      </Suspense>
+    );
+  }
+  return <Board {...boardProps} />;
+}, sameBoardSurfaceProps);
 
 export default function GameBoardView({
   game,
@@ -108,10 +150,17 @@ export default function GameBoardView({
     setHansFinishedGameId(game.id);
   }, [game.id]);
 
+  const onSquareClickRef = useRef(board.onSquareClick);
+  onSquareClickRef.current = board.onSquareClick;
+  const onCustomizeRef = useRef(board.onCustomize);
+  onCustomizeRef.current = board.onCustomize;
+  const stableOnSquareClick = useCallback((...args) => onSquareClickRef.current?.(...args), []);
+  const stableOnCustomize = useCallback((...args) => onCustomizeRef.current?.(...args), []);
+
   const boardProps = {
     gameId: game.id,
     fen: board.visibleBoardFen,
-    onSquareClick: board.onSquareClick,
+    onSquareClick: stableOnSquareClick,
     selectedSquare: board.selected,
     legalTargets: zenMode ? [] : board.legalTargets,
     lastMove: zenMode ? null : board.lastMoveSquares,
@@ -123,7 +172,7 @@ export default function GameBoardView({
     orientation: boardOrientation,
     showCoordinates: !zenMode && board.showBoardCoordinates,
     matthiasKingColor: topColor,
-    onCustomize: board.onCustomize,
+    onCustomize: stableOnCustomize,
     hansFireplaceIteration,
     hansFireCallEnabled: !zenMode && !focusActive && hansFireCallEnabled,
   };
@@ -169,9 +218,7 @@ export default function GameBoardView({
 
             {isThreeD ? (
               <div ref={matthias3DStageRef} className="game-board-3d-stage">
-                <Suspense fallback={<div className="hint-text">Preparando sala 3D…</div>}>
-                  <Board3D {...boardProps} />
-                </Suspense>
+                <StableBoardSurface isThreeD boardProps={boardProps} />
                 {!zenMode && !focusActive && activeBoardBubble && matthias3DBubbleStyle && (
                   <aside
                     key={activeBoardBubble.id}
@@ -186,7 +233,7 @@ export default function GameBoardView({
                   </aside>
                 )}
               </div>
-            ) : <Board {...boardProps} />}
+            ) : <StableBoardSurface isThreeD={false} boardProps={boardProps} />}
 
             <Matthias3DOpeningBanter
               gameId={game.id}
