@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import './HomeRoute.css';
-import QuickMatchModal from './QuickMatchModal.jsx';
-import PracticeMatchModal from './PracticeMatchModal.jsx';
-import MirrorModeModal from './MirrorModeModal.jsx';
+const QuickMatchModal = lazy(() => import('./QuickMatchModal.jsx'));
+const PracticeMatchModal = lazy(() => import('./PracticeMatchModal.jsx'));
+const MirrorModeModal = lazy(() => import('./MirrorModeModal.jsx'));
 import HomeIllustrated from './HomeIllustrated.jsx';
 import { getDefaultTimeControlId, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { difficultyForQuickMatchRating } from '../quickMatchDifficulty.js';
