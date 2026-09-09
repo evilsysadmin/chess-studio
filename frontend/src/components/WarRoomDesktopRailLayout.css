@@ -141,7 +141,7 @@
 
   /* The notebook stays glanceable by default. It grows only with its compact
      preview; the explicit full-score disclosure owns the long-form scroll. */
-  .game-screen .game-side-column-3d .game-notation-disclosure {
+  .game-screen .game-side-column-3d .game-notation-disclosure.game-notation-disclosure-compact {
     grid-area: notation;
     align-self: start;
     min-width: 0;
