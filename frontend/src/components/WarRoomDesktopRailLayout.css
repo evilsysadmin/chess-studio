@@ -1,24 +1,24 @@
 /* Desktop War Room information architecture.
-   Matthias + situation + view controls stay on the left. RetroPlayer plus one
-   tabbed secondary surface live on the right. Mobile keeps the stacked layout. */
+   The scene owns the space: the old left command rail becomes a compact overlay
+   on the board, while RetroPlayer plus the tabbed secondary surface stay right. */
 
 @media (min-width: 1261px) {
   .game-screen .board-live-row.is-3d-warroom {
-    grid-template-columns: minmax(168px, 182px) minmax(802px, 1fr) minmax(204px, 220px) !important;
+    grid-template-columns: minmax(802px, 1fr) minmax(204px, 220px) !important;
   }
 }
 
 @media (min-width: 1081px) and (max-width: 1260px) {
   .game-screen .board-live-row.is-3d-warroom {
-    grid-template-columns: minmax(160px, 172px) minmax(620px, 1fr) minmax(196px, 210px) !important;
+    grid-template-columns: minmax(620px, 1fr) minmax(196px, 210px) !important;
   }
 }
 
 @media (min-width: 1081px) {
   .game-screen .board-live-row.is-3d-warroom {
     grid-template-areas:
-      'commander board music'
-      'commander board rail' !important;
+      'board music'
+      'board rail' !important;
     grid-template-rows: auto minmax(0, 1fr);
     align-items: stretch;
   }
@@ -33,25 +33,34 @@
     overflow: visible !important;
   }
 
+  /* Board3D is lazy-loaded after GameScreen, so its historical desktop CSS is
+     appended later and would otherwise restore grid-area: commander plus the
+     old command-panel chrome. That unnamed/obsolete area creates an implicit
+     third grid column and strands hundreds of pixels on the right. Keep this
+     board-first layout authoritative across chunk load order. */
   .game-screen .game-3d-command-column {
-    grid-area: commander;
+    grid-area: board !important;
+    z-index: 24;
     align-self: start;
-    display: flex;
-    flex-direction: column;
+    justify-self: center;
+    display: block;
+    width: max-content;
+    max-width: calc(100% - 1.25rem);
+    min-width: 0;
     min-height: 0;
     height: auto;
-    gap: .5rem;
+    margin: clamp(.44rem, .68vw, .66rem) 0 0;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: none !important;
+    box-shadow: none !important;
+    grid-template-rows: none !important;
+    pointer-events: none;
   }
 
-  .game-screen .game-3d-command-column .game-3d-matthias-card,
-  .game-screen .game-3d-command-column .game-3d-warroom-status,
   .game-screen .game-3d-command-column .game-3d-warroom-controls {
-    flex: 0 0 auto;
-  }
-
-  .game-screen .game-3d-command-column .game-3d-warroom-status {
-    margin: 0;
-    padding: .44rem .58rem;
+    pointer-events: auto;
   }
 
   .game-screen .game-side-column-3d .game-side-music {

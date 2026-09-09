@@ -88,7 +88,10 @@ export default function WarRoomHansFireCall({
 
     const existingCanvas = portalHost.querySelector('.board3d-main-canvas');
     if (existingCanvas?.dataset.warRoomHansCallReleased === 'true') return undefined;
-    if (existingCanvas) existingCanvas.dataset.warRoomHansNarrativePhase = 'loading';
+    if (existingCanvas) {
+      delete existingCanvas.dataset.warRoomHansReplySeen;
+      existingCanvas.dataset.warRoomHansNarrativePhase = 'loading';
+    }
 
     let live = true;
     let currentPhase = 'loading';
@@ -214,6 +217,7 @@ export default function WarRoomHansFireCall({
           if (anchor) {
             setHansAnchor((current) => sameAnchor(current, anchor) ? current : anchor);
             if (currentPhase === 'await-hans') {
+              canvas.dataset.warRoomHansReplySeen = 'true';
               currentPhase = 'hans';
               elapsed = 0;
               setPhase('hans');

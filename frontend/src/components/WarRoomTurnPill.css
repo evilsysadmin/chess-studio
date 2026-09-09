@@ -1,8 +1,133 @@
-/*
- * War Room already exposes the live game state in the Matthias command column
- * under SITUACIÓN. The floating top pill duplicated that information and covered
- * the room decoration, so 3D keeps a single visible owner for status.
- */
-.game-layout-3d .status-line {
+/* War Room desktop HUD: identity + turn ownership in one compact in-room pill.
+ * The normal status strip and mode banner remain available to 2D, but 3D owns
+ * this single visual status surface so the room itself can stay dominant. */
+.game-layout-3d .status-line,
+.game-layout-3d .ghost-strip,
+.game-layout-3d .warroom-chamber-label {
   display: none !important;
+}
+
+.game-3d-turn-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .46rem;
+  width: max-content;
+  max-width: min(92vw, 31rem);
+  min-height: 38px;
+  padding: .38rem .68rem;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--brass) 58%, rgba(46, 38, 30, .82));
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(10, 15, 21, .94), rgba(7, 10, 15, .9));
+  box-shadow: 0 .55rem 1.5rem rgba(0, 0, 0, .34), inset 0 1px rgba(255, 255, 255, .045);
+  color: color-mix(in srgb, var(--cream) 92%, #fff 8%);
+  backdrop-filter: blur(9px);
+  pointer-events: none;
+}
+
+/* The compact pill keeps the historical Matthias-presence hook used by touch
+ * browser contracts. These overrides make that hook purely semantic: none of
+ * the retired card geometry can leak back into the new HUD. */
+.game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: center !important;
+  min-height: 38px !important;
+  overflow: visible !important;
+}
+
+.game-3d-turn-pill-avatar {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  object-fit: contain;
+  border-radius: 7px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .35));
+}
+
+.game-3d-turn-pill-identity {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .28rem;
+  min-width: 0;
+  white-space: nowrap;
+  font-size: .68rem;
+  letter-spacing: .01em;
+  color: color-mix(in srgb, var(--cream) 72%, var(--studio-muted) 28%);
+}
+
+.game-3d-turn-pill-identity strong {
+  color: var(--cream);
+  font-size: .74rem;
+  font-weight: 800;
+}
+
+.game-3d-turn-pill-divider {
+  width: 1px;
+  height: 20px;
+  flex: 0 0 1px;
+  background: color-mix(in srgb, var(--brass) 42%, transparent);
+}
+
+.game-3d-turn-pill-light {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  border-radius: 50%;
+  background: #d5a84f;
+  box-shadow: 0 0 0 3px rgba(213, 168, 79, .1), 0 0 12px rgba(213, 168, 79, .45);
+}
+
+.game-3d-turn-pill.is-green .game-3d-turn-pill-light {
+  background: #72e493;
+  box-shadow: 0 0 0 3px rgba(114, 228, 147, .11), 0 0 13px rgba(114, 228, 147, .56);
+}
+
+.game-3d-turn-pill.is-red .game-3d-turn-pill-light {
+  background: #ef6964;
+  box-shadow: 0 0 0 3px rgba(239, 105, 100, .1), 0 0 13px rgba(239, 105, 100, .48);
+}
+
+.game-3d-turn-pill-label {
+  min-width: 0;
+  white-space: nowrap;
+  font-size: .7rem;
+  font-weight: 830;
+  color: var(--cream);
+}
+
+@media (max-width: 820px) {
+  .game-3d-turn-pill {
+    width: 100%;
+    max-width: none;
+    min-height: 36px;
+    padding: .32rem .5rem;
+    gap: .36rem;
+  }
+
+  .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+    min-height: 36px !important;
+  }
+
+  .game-3d-turn-pill-avatar {
+    width: 21px;
+    height: 21px;
+    flex-basis: 21px;
+  }
+
+  .game-3d-turn-pill-identity,
+  .game-3d-turn-pill-label {
+    font-size: .63rem;
+  }
+
+  .game-3d-turn-pill-identity strong {
+    font-size: .68rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-3d-turn-pill-light {
+    box-shadow: none;
+  }
 }
