@@ -6,7 +6,7 @@ import { ACTIVE_SESSION_EVENT, ACTIVE_SESSION_STATE, activeSessionTransition } f
 import { reportStateInvariant } from './stateMachine.js';
 
 export function shouldAttemptReconnect({ inFlight, reconnectNeeded, saveState }) {
-  if (inFlight) return false;
+  if (inFlight || saveState === SAVE_STATUS.SAVING) return false;
   return reconnectNeeded || saveState === SAVE_STATUS.ERROR;
 }
 
@@ -153,9 +153,9 @@ export function useGameReconnect({
   }, []);
 
   // Un timeout o un 409 puede ocurrir sin que el navegador emita `offline`.
-  // En ese caso consultamos inmediatamente la foto autoritativa de Mongo una
-  // sola vez por transición a ERROR. No anunciamos SAVING para que un fallo de
-  // esta propia consulta no cree un bucle ERROR -> SAVING -> ERROR.
+  // También puede volver la red mientras una jugada sigue guardándose: en ese
+  // caso dejamos reconnectNeeded vivo y esperamos a que la mutación abandone
+  // SAVING para no aplicar una foto de Mongo anterior al movimiento pendiente.
   useEffect(() => {
     const target = reconnectTarget({
       route,
@@ -164,7 +164,14 @@ export function useGameReconnect({
       savedSession: loadActiveGameSession(),
     });
     const online = typeof navigator === 'undefined' ? true : navigator.onLine;
-    if (!shouldAutoReconnect({ saveState, online, target })) return;
+    if (online === false || !target?.gameId || saveState === SAVE_STATUS.SAVING) return;
+
+    const deferredReconnect = reconnectNeeded.current;
+    const errorReconnect = shouldAutoReconnect({ saveState, online, target });
+    if (!deferredReconnect && !errorReconnect) return;
+
+    // La transición de la propia jugada ya informó SAVING/SAVED. Este GET es
+    // sólo reconciliación autoritativa y no debe volver a agitar el indicador.
     void attemptReconnectRef.current?.({ announceSaving: false });
   }, [saveState, route, game?.id, tournamentGame?.id]);
 }
