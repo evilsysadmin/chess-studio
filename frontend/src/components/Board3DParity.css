@@ -45,3 +45,50 @@
     height: clamp(390px, min(calc(100dvh - 18.4rem), 44vw), 480px);
   }
 }
+
+/* War Room final surface finish.
+   Turn state already lives in the compact semaphore pill, so the scene and
+   tactical rail no longer need coloured outlines to repeat that information.
+   Keep hierarchy through depth, spacing and material changes; reserve brass
+   for selected/interactive accents and for diegetic objects inside the room. */
+.game-screen .board-live-row.is-3d-warroom {
+  border-color: rgba(205, 201, 192, .07);
+}
+
+.game-screen .board-live-row.is-3d-warroom .board3d-main-shell[data-board3d-turn] {
+  border-color: rgba(205, 201, 192, .065);
+  box-shadow:
+    0 28px 68px rgba(0,0,0,.42),
+    inset 0 0 64px rgba(0,0,0,.28);
+}
+
+.game-screen .board-live-row.is-3d-warroom .game-3d-command-column {
+  border-color: rgba(205, 201, 192, .085);
+}
+
+.game-screen .board-live-row.is-3d-warroom :where(
+  .game-3d-matthias-card,
+  .game-3d-warroom-message,
+  .game-3d-warroom-status,
+  .game-3d-warroom-controls,
+  .game-side-column-3d .game-side-music,
+  .game-side-column-3d .game-notation-disclosure,
+  .game-side-column-3d .game-chat
+) {
+  border-color: rgba(205, 201, 192, .07);
+}
+
+.game-screen .board-live-row.is-3d-warroom .game-3d-matthias-card {
+  border-color: rgba(205, 201, 192, .095);
+}
+
+.game-screen .board-live-row.is-3d-warroom .game-3d-warroom-controls .secondary-btn:not(.is-selected) {
+  border-color: rgba(205, 201, 192, .085);
+  background: rgba(255,255,255,.018);
+}
+
+.game-screen .board-live-row.is-3d-warroom .game-3d-warroom-controls .secondary-btn.is-selected,
+.game-screen .board-live-row.is-3d-warroom .game-3d-warroom-controls .secondary-btn:not(:disabled):hover,
+.game-screen .board-live-row.is-3d-warroom .game-3d-warroom-controls .secondary-btn:not(:disabled):focus-visible {
+  border-color: color-mix(in srgb, var(--war-room-brass) 48%, rgba(255,255,255,.08));
+}
