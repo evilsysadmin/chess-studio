@@ -1,3 +1,4 @@
+import { markGameMutationConfirmed } from './gameAuthorityGeneration.js';
 import { createOperationId, operationFingerprint } from './operationId.js';
 
 const DEFAULT_RETRY_WINDOW_MS = 5 * 60_000;
@@ -79,6 +80,7 @@ export function createGameMutationCoordinator({
   function confirm(operationIdToConfirm) {
     if (operationIdToConfirm && retryOperation?.operationId === operationIdToConfirm) {
       retryOperation = null;
+      markGameMutationConfirmed();
       return true;
     }
     return false;

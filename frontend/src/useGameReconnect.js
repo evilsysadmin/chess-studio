@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { loadActiveGameSession } from './activeGameSession.js';
+import { currentGameAuthorityGeneration } from './gameAuthorityGeneration.js';
 import { fetchReconnectGame, reconnectTarget } from './gameReconnect.js';
 import { SAVE_STATUS } from './saveStatus.js';
 import { ACTIVE_SESSION_EVENT, ACTIVE_SESSION_STATE, activeSessionTransition } from './activeSessionMachine.js';
@@ -23,6 +24,10 @@ export function sameReconnectTarget(expected, current) {
 
 export function reconnectStillNeeded({ generationAtStart, currentGeneration, online }) {
   return currentGeneration !== generationAtStart || online === false;
+}
+
+export function reconnectAuthorityStillCurrent({ generationAtStart, currentGeneration = currentGameAuthorityGeneration() }) {
+  return generationAtStart === currentGeneration;
 }
 
 export function useGameReconnect({
@@ -89,6 +94,7 @@ export function useGameReconnect({
       advanceReconnect(ACTIVE_SESSION_EVENT.RECONNECT, target);
       reconnectInFlight.current = true;
       const offlineGenerationAtStart = reconnectOfflineGeneration.current;
+      const authorityGenerationAtStart = currentGameAuthorityGeneration();
       const controller = new AbortController();
       reconnectAbortRef.current?.abort(new DOMException('Superseded reconnect', 'AbortError'));
       reconnectAbortRef.current = controller;
@@ -107,6 +113,20 @@ export function useGameReconnect({
         savedSession: loadActiveGameSession(),
       });
       if (!sameReconnectTarget(target, currentTarget)) {
+        reconnectInFlight.current = false;
+        return;
+      }
+
+      if (result.ok && !reconnectAuthorityStillCurrent({ generationAtStart: authorityGenerationAtStart })) {
+        // Una mutación POST/undo se confirmó mientras este GET estaba en vuelo.
+        // Su respuesta es más nueva que la foto de reconnect: descartamos el GET.
+        advanceReconnect(ACTIVE_SESSION_EVENT.RECONNECTED, target);
+        reconnectNeeded.current = reconnectStillNeeded({
+          generationAtStart: offlineGenerationAtStart,
+          currentGeneration: reconnectOfflineGeneration.current,
+          online: typeof navigator === 'undefined' ? true : navigator.onLine,
+        });
+        if (reconnectAbortRef.current === controller) reconnectAbortRef.current = null;
         reconnectInFlight.current = false;
         return;
       }

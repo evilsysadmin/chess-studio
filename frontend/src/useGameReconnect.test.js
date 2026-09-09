@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { currentGameAuthorityGeneration, markGameMutationConfirmed } from './gameAuthorityGeneration.js';
 import { SAVE_STATUS } from './saveStatus.js';
 import {
+  reconnectAuthorityStillCurrent,
   reconnectStillNeeded,
   sameReconnectTarget,
   shouldAutoReconnect,
@@ -37,5 +39,14 @@ describe('reconexión de partida · política defensiva', () => {
     expect(reconnectStillNeeded({ generationAtStart: 4, currentGeneration: 5, online: true })).toBe(true);
     expect(reconnectStillNeeded({ generationAtStart: 4, currentGeneration: 4, online: false })).toBe(true);
     expect(reconnectStillNeeded({ generationAtStart: 4, currentGeneration: 4, online: true })).toBe(false);
+  });
+
+  it('descarta un GET de reconnect si una mutación más nueva se confirma mientras está en vuelo', () => {
+    const generationAtStart = currentGameAuthorityGeneration();
+    expect(reconnectAuthorityStillCurrent({ generationAtStart })).toBe(true);
+
+    markGameMutationConfirmed();
+
+    expect(reconnectAuthorityStillCurrent({ generationAtStart })).toBe(false);
   });
 });
