@@ -243,12 +243,14 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     expect(gameId).toBeTruthy();
 
     const warRoom3d = page.locator('[data-board3d-war-room="true"]');
-    const warRoomStatus = page.locator('.game-3d-warroom-status');
+    const warRoomSignal = page.locator('[data-matthias-war-room-presence="king-piece"]');
+    const warRoomGameStatus = warRoomSignal.getByRole('status', { name: 'Estado de la partida' });
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('.game-layout-3d .status-line')).toBeHidden();
-    await expect(warRoomStatus).toBeVisible();
-    await expect(warRoomStatus.getByText('SITUACIÓN', { exact: true })).toBeVisible();
-    await expect(warRoomStatus.locator('strong')).not.toHaveText('');
+    await expect(warRoomSignal).toBeVisible();
+    await expect(warRoomSignal).toContainText('Matthias');
+    await expect(warRoomSignal).toContainText(/CPU nivel \d+/);
+    await expect(warRoomGameStatus).toHaveText(/Tu turno/i);
 
     // La autoridad F5 ya se acredita en paralelo en staging-war-room-restore.
     // Aquí sólo hacemos el reload 2D que necesita el sabotaje para garantizar
@@ -318,7 +320,8 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     expect(restoredAfterChunkFailure).toBeTruthy();
     expect(restoredAfterChunkFailure.status()).toBe(200);
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
-    await expect(warRoomStatus).toBeVisible();
+    await expect(warRoomSignal).toBeVisible();
+    await expect(warRoomGameStatus).not.toHaveText('');
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
     await page.unroute(board3dChunkPattern);
 
