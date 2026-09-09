@@ -4,6 +4,7 @@ import App from './App.jsx';
 import AppRootErrorBoundary from './components/AppRootErrorBoundary.jsx';
 import './components/Board3DRegistration.js';
 import './styles.css';
+import './components/LabScreen.css';
 import './components/MatthiasSchoolBoardScale.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
 import { migratePersistentStorage } from './storageMigrations.js';
