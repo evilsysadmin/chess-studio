@@ -8,6 +8,38 @@
 export const COMBAT_ADAPTIVE_RECENT_BATTLES = 6;
 export const COMBAT_ADAPTIVE_MAX_RELIEF = 18;
 
+// Combat necesita conservar más dientes que Partida rápida, pero comparte el
+// mismo problema técnico: el motor cambia de profundidad en 70 y 90. Esta
+// curva mantiene intacto el tramo <=60 y reserva esos cambios de marcha para
+// hitos más altos de Campaña/Torre. Siempre es monótona y nunca hace al motor
+// más fuerte que la dificultad estratégica solicitada.
+export const COMBAT_ENGINE_CURVE = Object.freeze([
+  [5, 5],
+  [60, 60],
+  [69, 68],
+  [73, 69],
+  [74, 70],
+  [84, 82],
+  [89, 87],
+  [92, 89],
+  [93, 90],
+  [95, 94],
+]);
+
+export function calibrateCombatEngineDifficulty(rawDifficulty) {
+  const raw = Math.max(5, Math.min(95, Number(rawDifficulty) || 0));
+  for (let index = 1; index < COMBAT_ENGINE_CURVE.length; index += 1) {
+    const [rightRaw, rightEngine] = COMBAT_ENGINE_CURVE[index];
+    const [leftRaw, leftEngine] = COMBAT_ENGINE_CURVE[index - 1];
+    if (raw <= rightRaw) {
+      const span = rightRaw - leftRaw || 1;
+      const t = (raw - leftRaw) / span;
+      return Math.round(leftEngine + (rightEngine - leftEngine) * t);
+    }
+  }
+  return COMBAT_ENGINE_CURVE[COMBAT_ENGINE_CURVE.length - 1][1];
+}
+
 function outcomeScore(outcome) {
   if (outcome === 'win') return 1;
   if (outcome === 'draw') return 0.5;
@@ -73,12 +105,15 @@ export function combatAdaptiveRelief(history = []) {
 export function adaptiveCombatDifficulty(baseDifficulty, history = []) {
   const base = Math.max(5, Math.min(95, Math.round(Number(baseDifficulty) || 0)));
   const requestedRelief = combatAdaptiveRelief(history);
-  const adjusted = Math.max(5, Math.min(95, base + requestedRelief));
+  const strategicAdjusted = Math.max(5, Math.min(95, base + requestedRelief));
+  const adjusted = calibrateCombatEngineDifficulty(strategicAdjusted);
   return {
     base,
     adjusted,
-    relief: adjusted - base,
+    strategicAdjusted,
+    relief: strategicAdjusted - base,
     requestedRelief,
+    engineAdjustment: adjusted - strategicAdjusted,
     recentBattles: validRecentBattles(history).length,
   };
 }
