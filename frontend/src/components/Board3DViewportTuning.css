@@ -49,6 +49,14 @@
    Desktop deliberately gives the tactical board first claim on horizontal
    space; commander/chat remain readable but stop dictating the room width.
    Width is relative to the app-shell content box, never to the raw viewport. */
+@media (max-width: 1260px) {
+  .game-screen .game-layout.game-layout-3d {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
 @media (min-width: 1261px) {
   .game-screen .game-layout.game-layout-3d {
     width: min(100%, 1920px);
