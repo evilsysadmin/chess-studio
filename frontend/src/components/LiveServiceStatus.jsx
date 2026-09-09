@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { fetchLiveStatus } from '../auth.js';
 
-const POLL_MS = 30_000;
+const ADMIN_POLL_MS = 30_000;
+const PUBLIC_POLL_MS = 90_000;
 
 export default function LiveServiceStatus({ isAdminUser = false, onAdmin = null }) {
   const [status, setStatus] = useState({ backend: 'checking', onlineUsers: null, presenceAvailable: false, latencyMs: null });
@@ -9,6 +10,7 @@ export default function LiveServiceStatus({ isAdminUser = false, onAdmin = null 
   useEffect(() => {
     let active = true;
     let timer = null;
+    const pollMs = isAdminUser ? ADMIN_POLL_MS : PUBLIC_POLL_MS;
 
     const clearTimer = () => {
       if (timer !== null) window.clearTimeout(timer);
@@ -16,7 +18,7 @@ export default function LiveServiceStatus({ isAdminUser = false, onAdmin = null 
     };
     const schedule = () => {
       clearTimer();
-      if (active && document.visibilityState === 'visible') timer = window.setTimeout(refresh, POLL_MS);
+      if (active && document.visibilityState === 'visible') timer = window.setTimeout(refresh, pollMs);
     };
     const refresh = async () => {
       if (!active || document.visibilityState === 'hidden') return;
@@ -37,7 +39,7 @@ export default function LiveServiceStatus({ isAdminUser = false, onAdmin = null 
       clearTimer();
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, []);
+  }, [isAdminUser]);
 
   const backendUp = status.backend === 'up';
   const checking = status.backend === 'checking';
