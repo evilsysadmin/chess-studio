@@ -23,14 +23,25 @@ test('War Room · desktop prioriza el tablero y muestra un solo rail secundario 
   const matthiasTab = page.getByRole('button', { name: 'Matthias', exact: true });
   const notebookTab = page.getByRole('button', { name: 'Cuaderno', exact: true });
   const capturesTab = page.getByRole('button', { name: 'Capturas', exact: true });
+  const turnPill = page.locator('.game-3d-command-column .game-3d-turn-pill');
 
   await expect(matthiasTab).toHaveAttribute('aria-pressed', 'true');
   await expect(notebookTab).toHaveAttribute('aria-pressed', 'false');
   await expect(capturesTab).toHaveAttribute('aria-pressed', 'false');
+  await expect(turnPill).toBeVisible();
+  await expect(turnPill).toContainText('Matthias');
+  await expect(turnPill).toContainText(/CPU nivel \d+/i);
+
+  // Board3D is lazy. Its CSS arrives after the command HUD and historically
+  // reset every direct War Room child to z-index: 1, putting the later board
+  // stack over the pill. Recheck after the deferred chunk has fully settled.
+  await page.waitForTimeout(1500);
+  await expect(turnPill).toBeVisible();
 
   const initialGeometry = await page.evaluate(() => {
     const roomNode = document.querySelector('.board-live-row.is-3d-warroom');
     const boardNode = document.querySelector('.board3d-main-shell');
+    const boardStackNode = document.querySelector('.game-board-stack.game-board-stack-3d');
     const commanderNode = document.querySelector('.game-3d-command-column');
     const turnPillNode = document.querySelector('.game-3d-command-column .game-3d-turn-pill');
     const controlsNode = document.querySelector('.game-3d-command-column .game-3d-warroom-controls');
@@ -41,12 +52,12 @@ test('War Room · desktop prioriza el tablero y muestra un solo rail secundario 
     const room = roomNode?.getBoundingClientRect();
     const board = boardNode?.getBoundingClientRect();
     const commander = commanderNode?.getBoundingClientRect();
-    const turnPill = turnPillNode?.getBoundingClientRect();
+    const turnPillRect = turnPillNode?.getBoundingClientRect();
     const controls = controlsNode?.getBoundingClientRect();
     const music = musicNode?.getBoundingClientRect();
     const rail = railNode?.getBoundingClientRect();
     const chat = chatNode?.getBoundingClientRect();
-    if (!room || !board || !commander || !turnPill || !controls || !music || !rail || !chat || !chatLogNode) return null;
+    if (!room || !board || !boardStackNode || !commander || !turnPillRect || !controls || !music || !rail || !chat || !chatLogNode) return null;
     return {
       roomLeft: room.left,
       roomWidth: room.width,
@@ -57,7 +68,9 @@ test('War Room · desktop prioriza el tablero y muestra un solo rail secundario 
       commanderLeft: commander.left,
       commanderRight: commander.right,
       commanderWidth: commander.width,
-      turnPillWidth: turnPill.width,
+      commanderZIndex: Number.parseInt(getComputedStyle(commanderNode).zIndex, 10) || 0,
+      boardStackZIndex: Number.parseInt(getComputedStyle(boardStackNode).zIndex, 10) || 0,
+      turnPillWidth: turnPillRect.width,
       controlsBottom: controls.bottom,
       commanderBottom: commander.bottom,
       musicLeft: music.left,
@@ -86,6 +99,7 @@ test('War Room · desktop prioriza el tablero y muestra un solo rail secundario 
   expect(initialGeometry.commanderLeft).toBeGreaterThanOrEqual(initialGeometry.boardLeft - 2);
   expect(initialGeometry.commanderRight).toBeLessThanOrEqual(initialGeometry.boardRight + 2);
   expect(initialGeometry.commanderWidth).toBeGreaterThan(240);
+  expect(initialGeometry.commanderZIndex).toBeGreaterThan(initialGeometry.boardStackZIndex);
   expect(initialGeometry.turnPillWidth).toBeGreaterThan(220);
   expect(initialGeometry.chatWidth).toBeGreaterThan(190);
   expect(initialGeometry.chatOwnedByRail).toBe(true);
