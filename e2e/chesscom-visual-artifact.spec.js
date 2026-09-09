@@ -49,6 +49,16 @@ async function collectRenderMetadata(page, host, label) {
     const cssHeight = Math.round(rect?.height || 0);
     const width = canvas?.width || 0;
     const height = canvas?.height || 0;
+    const brandRect = document.querySelector('.chesscom-brand')?.getBoundingClientRect?.();
+    const exitRect = document.querySelector('.chesscom-exit')?.getBoundingClientRect?.();
+    const headerOverlap = brandRect && exitRect
+      ? !(
+        brandRect.right <= exitRect.left + 1
+        || exitRect.right <= brandRect.left + 1
+        || brandRect.bottom <= exitRect.top + 1
+        || exitRect.bottom <= brandRect.top + 1
+      )
+      : null;
     return {
       label:captureLabel,
       viewport:{ width:window.innerWidth, height:window.innerHeight },
@@ -61,6 +71,11 @@ async function collectRenderMetadata(page, host, label) {
         cssHeight,
         effectivePixelRatioX:cssWidth > 0 ? Number((width / cssWidth).toFixed(3)) : 0,
         effectivePixelRatioY:cssHeight > 0 ? Number((height / cssHeight).toFixed(3)) : 0,
+      } : null,
+      header:brandRect && exitRect ? {
+        brandRight:Number(brandRect.right.toFixed(2)),
+        exitLeft:Number(exitRect.left.toFixed(2)),
+        overlap:headerOverlap,
       } : null,
       renderer:node.dataset.chesscomRenderer || node.closest('[data-chesscom-renderer]')?.dataset.chesscomRenderer || null,
       backend:node.dataset.chesscomBackend || null,
@@ -85,6 +100,8 @@ function expectHealthyCapture(capture) {
   expect(capture.documentScrollWidth).toBeLessThanOrEqual(capture.viewport.width + 1);
   expect(capture.canvas?.effectivePixelRatioX).toBeGreaterThanOrEqual(MIN_EFFECTIVE_PIXEL_RATIO);
   expect(capture.canvas?.effectivePixelRatioY).toBeGreaterThanOrEqual(MIN_EFFECTIVE_PIXEL_RATIO);
+  expect(capture.header).not.toBeNull();
+  expect(capture.header?.overlap).toBe(false);
 }
 
 test('Chesscom · genera referencia visual desktop + móvil con metadata de render', async ({ page }) => {
@@ -113,7 +130,7 @@ test('Chesscom · genera referencia visual desktop + móvil con metadata de rend
 
   await writeFile(
     `${ARTIFACT_DIR}/render-metadata.json`,
-    `${JSON.stringify({ schema:2, minimumEffectivePixelRatio:MIN_EFFECTIVE_PIXEL_RATIO, captures:[desktop, mobile] }, null, 2)}\n`,
+    `${JSON.stringify({ schema:3, minimumEffectivePixelRatio:MIN_EFFECTIVE_PIXEL_RATIO, captures:[desktop, mobile] }, null, 2)}\n`,
     'utf8',
   );
 
