@@ -39,7 +39,7 @@ export default function GameWarRoomCommandColumn({
         data-matthias-war-room-presence="king-piece"
         role="status"
         aria-live="polite"
-        aria-label={`Matthias, CPU nivel ${game.difficulty}. ${signal.label}`}
+        aria-label="Estado de la partida"
       >
         {CPU_IDENTITY.avatar && <img className="game-3d-turn-pill-avatar" src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />}
         <span className="game-3d-turn-pill-identity">
