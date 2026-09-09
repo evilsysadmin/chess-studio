@@ -3,7 +3,9 @@ import { fetchWithTimeout } from './asyncControl.js';
 import { withRequestId } from './requestId.js';
 
 const BASE_URL = String(import.meta.env?.VITE_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
+const DAILY_STATUS_CACHE_MS = 60_000;
 let dailyStatusInFlight = null;
+let dailyStatusCache = null;
 
 async function request(path, options = {}) {
   const token = getToken();
@@ -27,15 +29,35 @@ async function request(path, options = {}) {
   return body || {};
 }
 
+function currentIdentity() {
+  return String(getUsername() || '').trim().toLowerCase() || null;
+}
+
+function invalidateDailyStatusCache() {
+  dailyStatusCache = null;
+}
+
 export function fetchMatthiasDailyStatus() {
-  // Insights puede montar a la vez la consulta diaria y otras vistas del
-  // expediente. Comparten la misma lectura GET sólo dentro de la misma
-  // identidad; un cambio Alice → Bob jamás hereda el Promise de Alice.
-  const identity = String(getUsername() || '').trim().toLowerCase() || null;
+  // Home e Insights pueden pedir el mismo expediente al volver de otra vista.
+  // Deducimos por identidad y conservamos una foto efímera de 60 s para evitar
+  // GET repetidos; nunca cruza usuarios ni persiste entre sesiones del proceso.
+  const identity = currentIdentity();
+  const now = Date.now();
+  if (
+    dailyStatusCache?.identity === identity
+    && now - dailyStatusCache.cachedAt < DAILY_STATUS_CACHE_MS
+  ) {
+    return Promise.resolve(dailyStatusCache.value);
+  }
   if (dailyStatusInFlight?.identity === identity) return dailyStatusInFlight.promise;
-  const promise = request('/matthias/daily').finally(() => {
-    if (dailyStatusInFlight?.promise === promise) dailyStatusInFlight = null;
-  });
+  const promise = request('/matthias/daily')
+    .then((value) => {
+      dailyStatusCache = { identity, cachedAt: Date.now(), value };
+      return value;
+    })
+    .finally(() => {
+      if (dailyStatusInFlight?.promise === promise) dailyStatusInFlight = null;
+    });
   dailyStatusInFlight = { identity, promise };
   return promise;
 }
@@ -52,12 +74,14 @@ export function createMatthiasConsultationId() {
 }
 
 export function askMatthiasDaily(questionKind, facts, { id = createMatthiasConsultationId() } = {}) {
+  invalidateDailyStatusCache();
   return request('/matthias/daily', {
     method: 'POST',
     body: JSON.stringify({ questionKind, facts: facts || {}, consultationId: id }),
-  });
+  }).finally(invalidateDailyStatusCache);
 }
 
 export function resetOwnMatthiasMemory() {
-  return request('/matthias/reset-memory', { method: 'POST' });
+  invalidateDailyStatusCache();
+  return request('/matthias/reset-memory', { method: 'POST' }).finally(invalidateDailyStatusCache);
 }
