@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, clickBoardMove, login, mockApi } from './helpers.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
 const CYCLES = 12;
+const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+const CAPTURE_READY_FEN = 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2';
+const CAPTURE_END_FEN = 'rnbqkb1r/ppp1pppp/5n2/3P4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 1 3';
 
 async function installRuntimeProbe(page) {
   await page.addInitScript(() => {
@@ -141,6 +144,74 @@ async function expectReturnedToBaseline(page, baseline) {
   }).toBeLessThanOrEqual(baseline.activeRafs + 1);
 }
 
+function movePosts(requestLog) {
+  return requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path));
+}
+
+async function installInterruptedMoveRoute(page, requestLog) {
+  await page.route('http://localhost:4000/api/games/*/move', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const url = new URL(route.request().url());
+    const id = url.pathname.match(/\/games\/([^/]+)\/move$/)?.[1] || 'e2e-game-1';
+    const payload = route.request().postDataJSON?.() ?? {};
+    requestLog.push({ method: 'POST', path: url.pathname });
+
+    if (payload.from === 'e2' && payload.to === 'e4') {
+      const humanMove = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', captured: false, by: 'human' };
+      const cpuMove = { from: 'd7', to: 'd5', san: 'd5', piece: 'p', captured: false, by: 'cpu' };
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id,
+          fen: CAPTURE_READY_FEN,
+          turn: 'w',
+          humanColor: 'w',
+          difficulty: 50,
+          status: 'playing',
+          insufficientMatingMaterial: { w: false, b: false },
+          isGameOver: false,
+          history: [humanMove, cpuMove],
+          lastMove: cpuMove,
+          initialFen: START_FEN,
+          ghostStyle: null,
+        }),
+      });
+    }
+
+    if (payload.from === 'e4' && payload.to === 'd5') {
+      const firstHuman = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', captured: false, by: 'human' };
+      const firstCpu = { from: 'd7', to: 'd5', san: 'd5', piece: 'p', captured: false, by: 'cpu' };
+      const capture = { from: 'e4', to: 'd5', san: 'exd5', piece: 'p', captured: true, by: 'human' };
+      const cpuMove = { from: 'g8', to: 'f6', san: 'Nf6', piece: 'n', captured: false, by: 'cpu' };
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          id,
+          fen: CAPTURE_END_FEN,
+          turn: 'w',
+          humanColor: 'w',
+          difficulty: 50,
+          status: 'playing',
+          insufficientMatingMaterial: { w: false, b: false },
+          isGameOver: false,
+          history: [firstHuman, firstCpu, capture, cpuMove],
+          lastMove: cpuMove,
+          initialFen: START_FEN,
+          ghostStyle: null,
+        }),
+      });
+    }
+
+    return route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify({ detail: `War Room interruption E2E no simula ${payload.from || '?'}-${payload.to || '?'}` }),
+    });
+  });
+}
+
 test('War Room · runtime marathon no acumula canvas, RAF, intervals ni listeners globales', async ({ page }) => {
   test.setTimeout(360_000);
   await installRuntimeProbe(page);
@@ -172,4 +243,58 @@ test('War Room · runtime marathon no acumula canvas, RAF, intervals ni listener
 
   await setRenderer(page, '3D');
   await expect(page.locator('.board3d-main-canvas')).toHaveCount(1, { timeout: WAR_ROOM_READY_TIMEOUT });
+});
+
+test('War Room · cortar jugadas 3D con cambio de renderer reconcilia limpio y sigue jugable', async ({ page }) => {
+  test.setTimeout(180_000);
+  const requestLog = [];
+
+  await installRuntimeProbe(page);
+  await page.setViewportSize({ width: 1440, height: 960 });
+  await mockApi(page, { requestLog });
+  await installInterruptedMoveRoute(page, requestLog);
+  await login(page);
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+
+  const board3d = page.locator('[data-board3d-war-room="true"]');
+  const canvas = page.locator('.board3d-main-canvas');
+  await expect(board3d).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(canvas).toHaveCount(1, { timeout: WAR_ROOM_READY_TIMEOUT });
+
+  // La respuesta actualiza el FEN y arranca la animación 3D. Cortamos en cuanto
+  // vemos el POST, antes de esperar a que la pieza termine físicamente su viaje.
+  await clickBoardMove(page, 'e2', 'e4');
+  await expect.poll(() => movePosts(requestLog).length, { timeout: 5_000 }).toBe(1);
+  await setRenderer(page, '2D');
+  await expect(canvas).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Casilla e4, peón blanco/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla d5, peón negro/i })).toBeVisible();
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+
+  await page.waitForTimeout(250);
+  const interruptedBaseline = await runtimeSnapshot(page);
+
+  // Volver a 3D debe reconstruir desde el estado común, no continuar pose/ghost
+  // del renderer desmontado. La captura posterior acredita que el input también
+  // quedó reconciliado y no sólo que reapareció un canvas bonito.
+  await setRenderer(page, '3D');
+  await expect(board3d).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(canvas).toHaveCount(1, { timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(board3d).toHaveAttribute('data-board3d-selected', '');
+
+  await clickBoardMove(page, 'e4', 'd5');
+  await expect.poll(() => movePosts(requestLog).length, { timeout: 5_000 }).toBe(2);
+  await setRenderer(page, '2D');
+  await expect(canvas).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Casilla d5, peón blanco/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla f6, caballo negro/i })).toBeVisible();
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+  await expectReturnedToBaseline(page, interruptedBaseline);
+
+  await setRenderer(page, '3D');
+  await expect(board3d).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(canvas).toHaveCount(1, { timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 });
