@@ -46,14 +46,53 @@ export function pointsIntoLevel(points) {
   return points % POINTS_PER_LEVEL;
 }
 
-// Traduce el nivel del torneo a dificultad CPU 0–100. El motor actual es
-// bastante más serio que cuando nació la curva anterior (alpha-beta + TT +
-// quiescence y sin azar bruto en Intermedio), así que la curva se recalibra un
-// hacia abajo. El nivel ~24 pasa del antiguo ~62 a ~48: el torneo conserva
-// progresión, pero no mete al jugador aficionado en el tramo Intermedio duro
-// demasiado pronto. El techo se alcanza mucho más tarde, alrededor del 101.
+// El motor cambia de profundidad máxima en 70/90/98. Una curva numérica suave
+// puede seguir sintiéndose como una pared si cruza esos tres valores demasiado
+// pronto. Torneo conserva intacta la fuerza baja/media, pero comprime el tramo
+// alto para que cada cambio de profundidad llegue más tarde y se cruce por un
+// solo punto. Entre umbrales recuperamos fuerza dentro de la misma profundidad,
+// y 100 continúa significando el máximo real del motor.
+export const TOURNAMENT_ENGINE_CURVE = Object.freeze([
+  [0, 0],
+  [60, 60],
+  [69, 64],
+  [70, 65],
+  [80, 69],
+  [81, 70],
+  [89, 79],
+  [90, 80],
+  [91, 83],
+  [92, 86],
+  [93, 89],
+  [94, 90],
+  [95, 92],
+  [96, 94],
+  [97, 96],
+  [98, 97],
+  [99, 98],
+  [100, 100],
+]);
+
+export function calibrateTournamentDifficulty(rawDifficulty) {
+  const raw = Math.max(0, Math.min(100, Number(rawDifficulty) || 0));
+  for (let index = 1; index < TOURNAMENT_ENGINE_CURVE.length; index += 1) {
+    const [rightRaw, rightEngine] = TOURNAMENT_ENGINE_CURVE[index];
+    const [leftRaw, leftEngine] = TOURNAMENT_ENGINE_CURVE[index - 1];
+    if (raw <= rightRaw) {
+      const span = rightRaw - leftRaw || 1;
+      const t = (raw - leftRaw) / span;
+      return Math.round(leftEngine + (rightEngine - leftEngine) * t);
+    }
+  }
+  return TOURNAMENT_ENGINE_CURVE[TOURNAMENT_ENGINE_CURVE.length - 1][1];
+}
+
+// Traduce el nivel del torneo a dificultad CPU 0–100. La raíz cuadrada mantiene
+// la progresión larga del torneo; la calibración posterior adapta ese número a
+// los escalones reales del motor sin cambiar XP, puntos, rachas ni recompensas.
 export function difficultyForLevel(level) {
-  return Math.min(100, Math.round(10 * Math.sqrt(Math.max(0, level - 1))));
+  const rawDifficulty = Math.min(100, Math.round(10 * Math.sqrt(Math.max(0, level - 1))));
+  return calibrateTournamentDifficulty(rawDifficulty);
 }
 
 // Coste en puntos de pedir una pista, dado el nivel del torneo y cuántas
