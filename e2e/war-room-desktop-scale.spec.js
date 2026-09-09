@@ -32,8 +32,7 @@ test('War Room · desktop prioriza el tablero y muestra un solo rail secundario 
     const roomNode = document.querySelector('.board-live-row.is-3d-warroom');
     const boardNode = document.querySelector('.board3d-main-shell');
     const commanderNode = document.querySelector('.game-3d-command-column');
-    const matthiasCardNode = document.querySelector('.game-3d-command-column .game-3d-matthias-card');
-    const statusNode = document.querySelector('.game-3d-command-column .game-3d-warroom-status');
+    const turnPillNode = document.querySelector('.game-3d-command-column .game-3d-turn-pill');
     const controlsNode = document.querySelector('.game-3d-command-column .game-3d-warroom-controls');
     const musicNode = document.querySelector('.game-side-column-3d .game-side-music');
     const railNode = document.querySelector('.game-side-column-3d .game-warroom-rail');
@@ -42,24 +41,25 @@ test('War Room · desktop prioriza el tablero y muestra un solo rail secundario 
     const room = roomNode?.getBoundingClientRect();
     const board = boardNode?.getBoundingClientRect();
     const commander = commanderNode?.getBoundingClientRect();
-    const matthiasCard = matthiasCardNode?.getBoundingClientRect();
-    const status = statusNode?.getBoundingClientRect();
+    const turnPill = turnPillNode?.getBoundingClientRect();
     const controls = controlsNode?.getBoundingClientRect();
     const music = musicNode?.getBoundingClientRect();
     const rail = railNode?.getBoundingClientRect();
     const chat = chatNode?.getBoundingClientRect();
-    if (!room || !board || !commander || !matthiasCard || !status || !controls || !music || !rail || !chat || !chatLogNode) return null;
+    if (!room || !board || !commander || !turnPill || !controls || !music || !rail || !chat || !chatLogNode) return null;
     return {
+      roomLeft: room.left,
       roomWidth: room.width,
       boardLeft: board.left,
       boardRight: board.right,
       boardWidth: board.width,
       boardHeight: board.height,
+      commanderLeft: commander.left,
+      commanderRight: commander.right,
       commanderWidth: commander.width,
-      commanderBottom: commander.bottom,
+      turnPillWidth: turnPill.width,
       controlsBottom: controls.bottom,
-      statusTop: status.top,
-      matthiasCardBottom: matthiasCard.bottom,
+      commanderBottom: commander.bottom,
       musicLeft: music.left,
       musicBottom: music.bottom,
       musicWidth: music.width,
@@ -78,13 +78,15 @@ test('War Room · desktop prioriza el tablero y muestra un solo rail secundario 
   expect(initialGeometry).not.toBeNull();
   expect(initialGeometry.boardWidth).toBeGreaterThan(920);
   expect(initialGeometry.boardHeight).toBeGreaterThan(830);
-  expect(initialGeometry.boardWidth / initialGeometry.roomWidth).toBeGreaterThan(.63);
-  expect(initialGeometry.commanderWidth).toBeGreaterThan(170);
+  expect(initialGeometry.boardWidth / initialGeometry.roomWidth).toBeGreaterThan(.72);
+  expect(initialGeometry.boardLeft - initialGeometry.roomLeft).toBeLessThan(24);
+  expect(initialGeometry.commanderLeft).toBeGreaterThanOrEqual(initialGeometry.boardLeft - 2);
+  expect(initialGeometry.commanderRight).toBeLessThanOrEqual(initialGeometry.boardRight + 2);
+  expect(initialGeometry.commanderWidth).toBeGreaterThan(240);
+  expect(initialGeometry.turnPillWidth).toBeGreaterThan(220);
   expect(initialGeometry.chatWidth).toBeGreaterThan(190);
   expect(initialGeometry.chatOwnedByRail).toBe(true);
   expect(initialGeometry.commanderHasChat).toBe(false);
-  expect(initialGeometry.statusTop).toBeGreaterThanOrEqual(initialGeometry.matthiasCardBottom - 4);
-  expect(initialGeometry.statusTop - initialGeometry.matthiasCardBottom).toBeLessThan(20);
   expect(initialGeometry.controlsBottom).toBeLessThanOrEqual(initialGeometry.commanderBottom + 2);
   expect(initialGeometry.chatLogOverflowY).toBe('auto');
   expect(initialGeometry.musicLeft).toBeGreaterThanOrEqual(initialGeometry.boardRight + 2);
