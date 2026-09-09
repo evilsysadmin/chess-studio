@@ -142,12 +142,21 @@ export function installWarRoomHansMopRoutine(root) {
     const nextGameId = getWarRoomHansGameId(actor);
     if (!nextGameId) return;
     if (nextGameId !== gameId) {
+      if (active) clearRoutineState(actor, props, controller, root);
       gameId = nextGameId;
       eligibleSince = now;
       delayMs = warRoomHansAmbientDelayMs(gameId, { min: 18000, max: 46000, salt: 'mop' });
       active = false;
       state = 'idle';
+      fatigueMs = 0;
+      activeElapsedMs = 0;
+      patchRemainingMs = 0;
+      waypointIndex = 0;
+      waypoints = [];
+      home = null;
+      dialogueEnabled = false;
       dialogueStarted = false;
+      dialogueElapsedMs = 0;
       setDialogue(actor, '');
     }
     if (!warRoomHansEventMatches(gameId, 'mop') || completedGameId === gameId) return;
