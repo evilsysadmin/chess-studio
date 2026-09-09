@@ -121,4 +121,16 @@ describe('War Room Hans fire call contract', () => {
     expect(coarse.top).toBeLessThan(generic.top);
     expect(projectHansInitialReplyAnchor({ ndcX: 'wat', ndcY: 0 })).toBeNull();
   });
+
+  it('reserva altura para que los bocadillos de Hans no desaparezcan por arriba', () => {
+    const genericNearTop = projectHansFireReplyAnchor({ ndcX: 0.6, ndcY: 0.75 });
+    const initialNearTop = projectHansInitialReplyAnchor({ ndcX: 0.6, ndcY: 0.75 });
+    const coarseNearTop = projectHansFireReplyAnchor({ ndcX: 0.6, ndcY: 0.75, coarsePointer: true });
+    const coarseInitialNearTop = projectHansInitialReplyAnchor({ ndcX: 0.6, ndcY: 0.75, coarsePointer: true });
+
+    expect(genericNearTop.top).toBe(18);
+    expect(initialNearTop.top).toBe(16);
+    expect(coarseNearTop.top).toBe(22);
+    expect(coarseInitialNearTop.top).toBe(20);
+  });
 });
