@@ -43,14 +43,16 @@
     grid-area: board !important;
     z-index: 24 !important;
     align-self: start;
-    justify-self: center;
+    /* Keep the Matthias/turn HUD on the quiet left edge. Centering this block
+       covered the room's mirror/pawn crest, which is the scene's visual anchor. */
+    justify-self: start;
     display: block;
     width: max-content;
     max-width: calc(100% - 1.25rem);
     min-width: 0;
     min-height: 0;
     height: auto;
-    margin: clamp(.44rem, .68vw, .66rem) 0 0;
+    margin: clamp(.44rem, .68vw, .66rem) 0 0 clamp(.55rem, .8vw, .82rem);
     padding: 0 !important;
     border: 0 !important;
     border-radius: 0 !important;
