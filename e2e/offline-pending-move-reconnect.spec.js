@@ -50,17 +50,19 @@ test('offline→online durante /move pendiente no revierte el movimiento optimis
     window.dispatchEvent(new Event('online'));
   });
 
-  await expect.poll(() => reconnectGets, { timeout: 5_000 }).toBeGreaterThanOrEqual(1);
-  await page.waitForTimeout(200);
-
-  // El GET de reconnect todavía ve la foto anterior en el mock, porque /move
-  // sigue retenido. Esa snapshot vieja no puede hacer retroceder la UI.
+  // Mientras /move sigue en SAVING, el reconnect debe quedar aplazado. Consultar
+  // Mongo ahora podría devolver la foto anterior y hacer rollback del movimiento optimista.
+  await page.waitForTimeout(250);
+  expect(reconnectGets).toBe(0);
   await expect(page.getByRole('button', { name: /^Casilla e4, peón blanco/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Casilla e2,/i })).not.toHaveAttribute('aria-label', /peón blanco/i);
   expect(movePosts).toBe(1);
 
   releaseMove();
 
+  // Al terminar la mutación pendiente sí se permite reconciliar con la foto ya
+  // autoritativa. El reconnect no puede borrar e4 ni generar otro POST.
+  await expect.poll(() => reconnectGets, { timeout: 5_000 }).toBeGreaterThanOrEqual(1);
   await expect(page.getByRole('button', { name: /^Casilla e4, peón blanco/i })).toBeVisible({ timeout: 10_000 });
   await expect(gameStatus(page)).toBeVisible();
   expect(movePosts).toBe(1);
