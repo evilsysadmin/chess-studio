@@ -21,6 +21,8 @@ const TORCH_FLAME_FINISH_VERSION = 'hearth-warm-v2';
 const TORCH_FLAME_PULSE_VERSION = 'hearth-flame-pulse-v2';
 const TORCH_RENDER_HOT_PATH_VERSION = 'direct-args-v1';
 const GALLERY_PAINTING_ORIENTATION_VERSION = 'upright-texture-v1';
+const TORCH_LOCAL_SPILL_GAIN = 1.62;
+const TORCH_LOCAL_SPILL_DISTANCE = 13.2;
 
 function materialList(object) {
   if (!object?.material) return [];
@@ -37,9 +39,9 @@ function tuneArmorMaterials(armor) {
       if (!material || seen.has(material) || (material.metalness ?? 0) < 0.55) continue;
       seen.add(material);
       material.envMapIntensity = Math.max(material.envMapIntensity ?? 1, 1.12);
-      material.specularIntensity = Math.max(material.specularIntensity ?? 0.5, 0.62);
-      if (typeof material.clearcoat === 'number') material.clearcoat = Math.max(material.clearcoat, 0.17);
-      if (typeof material.clearcoatRoughness === 'number') material.clearcoatRoughness = Math.min(material.clearcoatRoughness, 0.34);
+      material.specularIntensity = Math.max(material.specularIntensity ?? 0.5, 0.7);
+      if (typeof material.clearcoat === 'number') material.clearcoat = Math.max(material.clearcoat, 0.2);
+      if (typeof material.clearcoatRoughness === 'number') material.clearcoatRoughness = Math.min(material.clearcoatRoughness, 0.3);
       material.userData.warRoomPracticalFinish = 'museum-steel-response-v4';
       material.needsUpdate = true;
       tuned += 1;
@@ -52,7 +54,9 @@ function tuneArmorMaterials(armor) {
 
 function tunePaintingMaterials(frame) {
   if (!frame || frame.userData.warRoomPracticalMaterialPass === 'v4') return 0;
-  const canvas = frame.getObjectByName('war-room-premium-painting-canvas');
+  const canvas = frame.getObjectByName('war-room-premium-painting-canvas')
+    || frame.getObjectByName('war-room-campaign-side-canvas');
+  const sideCanvas = canvas?.name === 'war-room-campaign-side-canvas';
   const seen = new Set();
   let tuned = 0;
 
@@ -62,9 +66,18 @@ function tunePaintingMaterials(frame) {
       seen.add(material);
 
       if (material === canvas?.material) {
-        material.envMapIntensity = Math.min(material.envMapIntensity ?? 1, 0.58);
-        material.specularIntensity = Math.min(material.specularIntensity ?? 0.2, 0.18);
-        material.userData.warRoomPracticalFinish = 'museum-canvas-response-v4';
+        if (sideCanvas) {
+          material.envMapIntensity = Math.min(material.envMapIntensity ?? 1, 0.68);
+          material.specularIntensity = Math.max(material.specularIntensity ?? 0.18, 0.24);
+          if (typeof material.roughness === 'number') material.roughness = Math.min(material.roughness, 0.66);
+          if (typeof material.clearcoat === 'number') material.clearcoat = Math.max(material.clearcoat, 0.1);
+          if (typeof material.clearcoatRoughness === 'number') material.clearcoatRoughness = Math.min(material.clearcoatRoughness, 0.62);
+          material.userData.warRoomPracticalFinish = 'museum-canvas-local-spill-v4';
+        } else {
+          material.envMapIntensity = Math.min(material.envMapIntensity ?? 1, 0.58);
+          material.specularIntensity = Math.min(material.specularIntensity ?? 0.2, 0.18);
+          material.userData.warRoomPracticalFinish = 'museum-canvas-response-v4';
+        }
       } else if ((material.metalness ?? 0) > 0.5) {
         material.envMapIntensity = Math.max(material.envMapIntensity ?? 1, 1.05);
         material.specularIntensity = Math.max(material.specularIntensity ?? 0.45, 0.56);
@@ -145,7 +158,7 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
       halo.material.opacity = 0.94;
       halo.material.toneMapped = false;
       halo.material.needsUpdate = true;
-      halo.scale.set(1.78, 1.68, 1);
+      halo.scale.set(1.9, 1.78, 1);
 
       let innerHalo = torch.getObjectByName?.('war-room-side-torch-wall-halo-inner');
       if (!innerHalo) {
@@ -162,7 +175,7 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
       innerHalo.material.opacity = 0.74;
       innerHalo.material.toneMapped = false;
       innerHalo.material.needsUpdate = true;
-      innerHalo.scale.set(0.84, 0.84, 1);
+      innerHalo.scale.set(0.9, 0.9, 1);
     }
 
     const outer = torch.getObjectByName?.('war-room-side-torch-flame-outer');
@@ -197,8 +210,8 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
     const wallGlow = torch.getObjectByName?.('war-room-side-torch-wall-glow');
     if (needsWallWash && light) {
       light.color?.setHex?.(0xff7424);
-      light.distance = Math.max(Number(light.distance || 0), 12);
-      light.intensity *= 1.5;
+      light.distance = Math.max(Number(light.distance || 0), TORCH_LOCAL_SPILL_DISTANCE);
+      light.intensity *= TORCH_LOCAL_SPILL_GAIN;
     }
     if (needsWallWash && wallGlow) {
       wallGlow.color?.setHex?.(0xffa442);
@@ -210,7 +223,7 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
       const original = outer.onBeforeRender;
       outer.onBeforeRender = (renderer, scene, camera, geometry, material, renderGroup) => {
         original(renderer, scene, camera, geometry, material, renderGroup);
-        if (light) light.intensity *= 1.5;
+        if (light) light.intensity *= TORCH_LOCAL_SPILL_GAIN;
         if (wallGlow) wallGlow.intensity *= 2.5;
       };
       outer.userData.warRoomTorchWallWashHook = TORCH_WALL_WASH_VERSION;
@@ -232,7 +245,7 @@ export function tuneWarRoomGalleryTorchWallWash(group) {
         }
 
         const baseLight = Number(light?.userData?.baseWarRoomIntensity || 0);
-        const boostedBase = baseLight > 0 ? baseLight * 1.5 : 0;
+        const boostedBase = baseLight > 0 ? baseLight * TORCH_LOCAL_SPILL_GAIN : 0;
         const flamePulse = boostedBase > 0
           ? THREE.MathUtils.clamp(light.intensity / boostedBase, 0.92, 1.1)
           : 1;
@@ -292,6 +305,8 @@ export function applyWarRoomPracticalLighting(group, {
   tunedMaterials += tuneArmorMaterials(group.getObjectByName('war-room-teutonic-armor-right'));
   tunedMaterials += tunePaintingMaterials(group.getObjectByName('war-room-premium-painting-0'));
   tunedMaterials += tunePaintingMaterials(group.getObjectByName('war-room-premium-painting-1'));
+  tunedMaterials += tunePaintingMaterials(group.getObjectByName('war-room-campaign-painting-left'));
+  tunedMaterials += tunePaintingMaterials(group.getObjectByName('war-room-campaign-painting-right'));
 
   // The former museum side SpotLights were immediately retired by the desktop
   // performance budget. Their apparent contribution is already represented by
