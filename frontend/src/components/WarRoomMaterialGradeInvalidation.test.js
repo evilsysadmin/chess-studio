@@ -77,8 +77,8 @@ describe('War Room material grade invalidation', () => {
     const before = replacement.material.color.getHex();
     const result = applyWarRoomMaterialGrade(scene);
     expect(result.ivory).toBeGreaterThanOrEqual(1);
-    expect(replacement.material.envMapIntensity).toBe(0.10);
-    expect(replacement.material.roughness).toBeGreaterThanOrEqual(0.88);
+    expect(replacement.material.envMapIntensity).toBe(0.07);
+    expect(replacement.material.roughness).toBeGreaterThanOrEqual(0.92);
     expect(replacement.material.color.getHex()).not.toBe(before);
   });
 

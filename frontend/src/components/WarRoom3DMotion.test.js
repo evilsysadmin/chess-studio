@@ -109,12 +109,12 @@ describe('WarRoom3DMotion', () => {
     };
 
     expect(warRoomMaterialIblProfile()).toMatchObject({
-      ivoryEnvMax: 0.10,
+      ivoryEnvMax: 0.07,
       lightTileEnvMax: 0.24,
-      ivoryRoughnessMin: 0.88,
-      ivoryClearcoatMax: 0.035,
-      ivorySpecularMax: 0.08,
-      ivoryAlbedoScale: 0.84,
+      ivoryRoughnessMin: 0.92,
+      ivoryClearcoatMax: 0.02,
+      ivorySpecularMax: 0.05,
+      ivoryAlbedoScale: 0.78,
       lightTileRoughnessMin: 0.8,
       lightTileClearcoatMax: 0.1,
       lightTileSpecularMax: 0.26,
@@ -128,14 +128,15 @@ describe('WarRoom3DMotion', () => {
     const result = applyWarRoomMaterialGrade(scene);
 
     expect(result).toMatchObject({ adjusted: 2, ivory: 1, lightTile: 1 });
-    expect(ivory.envMapIntensity).toBe(0.10);
-    expect(ivory.roughness).toBe(0.88);
-    expect(ivory.clearcoat).toBe(0.035);
-    expect(ivory.clearcoatRoughness).toBe(0.78);
-    expect(ivory.specularIntensity).toBe(0.08);
-    expect(ivory.sheen).toBe(0.006);
-    expect(ivory.sheenRoughness).toBe(0.86);
+    expect(ivory.envMapIntensity).toBe(0.07);
+    expect(ivory.roughness).toBe(0.92);
+    expect(ivory.clearcoat).toBe(0.02);
+    expect(ivory.clearcoatRoughness).toBe(0.86);
+    expect(ivory.specularIntensity).toBe(0.05);
+    expect(ivory.sheen).toBe(0.003);
+    expect(ivory.sheenRoughness).toBe(0.92);
     expect(ivory.color.getHex()).not.toBe(initialIvoryColor);
+    expect(ivory.color.getHex()).not.toBe(lightTile.color.getHex());
     expect(ivory.userData.warRoomSurfaceGrade).toBe('aged-ivory-v2');
 
     expect(lightTile.envMapIntensity).toBe(0.24);
@@ -151,7 +152,7 @@ describe('WarRoom3DMotion', () => {
     expect(scene.userData).toMatchObject({
       warRoomMaterialIblProfile: 'low-fill-v2',
       warRoomSurfaceGrade: 'aged-matte-v2',
-      warRoomIvoryEnvMax: 0.10,
+      warRoomIvoryEnvMax: 0.07,
       warRoomLightTileEnvMax: 0.24,
       warRoomMaterialIblAdjusted: 2,
     });
