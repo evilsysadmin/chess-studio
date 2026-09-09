@@ -109,12 +109,16 @@ describe('War Room Hans fire call contract', () => {
     })).toBe(true);
   });
 
-  it('mantiene el Sí, señor más pegado a Hans que los bocadillos de salida', () => {
+  it('mantiene los bocadillos de Hans por encima de su cabeza y el Sí, señor más centrado', () => {
     const generic = projectHansFireReplyAnchor({ ndcX: 0.82, ndcY: 0.1 });
     const initial = projectHansInitialReplyAnchor({ ndcX: 0.82, ndcY: 0.1 });
+    const coarse = projectHansFireReplyAnchor({ ndcX: 0.82, ndcY: 0.1, coarsePointer: true });
     expect(generic.tailPercent).toBe(82);
     expect(initial.tailPercent).toBe(62);
     expect(Math.abs(initial.bubbleShiftPercent)).toBeLessThan(Math.abs(generic.bubbleShiftPercent));
+    expect(generic.top).toBeLessThan(32);
+    expect(initial.top).toBeLessThan(33);
+    expect(coarse.top).toBeLessThan(generic.top);
     expect(projectHansInitialReplyAnchor({ ndcX: 'wat', ndcY: 0 })).toBeNull();
   });
 });
