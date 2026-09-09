@@ -240,17 +240,18 @@ export function shouldRunWarRoomMaterialGrade(scene) {
 export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {}) {
   const profile = warRoomMaterialIblProfile({ coarsePointer });
   if (!scene || !profile || typeof scene.traverse !== 'function') {
-    return { adjusted: 0, ivory: 0, lightTile: 0, profile };
+    return { adjusted: 0, ivory: 0, canonicalIvory: 0, lightTile: 0, profile };
   }
 
   const traversalRoot = materialGradeTraversalRoot(scene);
   if (!traversalRoot || typeof traversalRoot.traverse !== 'function') {
-    return { adjusted: 0, ivory: 0, lightTile: 0, profile };
+    return { adjusted: 0, ivory: 0, canonicalIvory: 0, lightTile: 0, profile };
   }
 
   const seen = new Set();
   let adjusted = 0;
   let ivory = 0;
+  let canonicalIvory = 0;
   let lightTile = 0;
 
   traversalRoot.traverse((object) => {
@@ -263,6 +264,17 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
       const role = material.userData?.surfaceRole;
       if (role !== 'ivory' && role !== 'board-light') continue;
       material.userData ||= {};
+
+      // Board3DSurfaces owns the PBR contract for current piece materials. Its
+      // version marker means the ivory has already received the canonical finish
+      // (including any skin reinforcement), so the legacy War Room post-grade must
+      // not flatten it a frame later. Unversioned ivory remains on the compatibility
+      // path below for old/custom materials.
+      if (role === 'ivory' && material.userData.surfaceVersion) {
+        ivory += 1;
+        canonicalIvory += 1;
+        continue;
+      }
 
       let changed = false;
       if (role === 'ivory') {
@@ -296,9 +308,10 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
   scene.userData.warRoomSurfaceGrade = 'aged-matte-v2';
   scene.userData.warRoomIvoryEnvMax = profile.ivoryEnvMax;
   scene.userData.warRoomLightTileEnvMax = profile.lightTileEnvMax;
+  scene.userData.warRoomCanonicalIvoryProtected = canonicalIvory;
   scene.userData.warRoomMaterialIblAdjusted = adjusted;
   scene.userData.warRoomMaterialGradePasses = (scene.userData.warRoomMaterialGradePasses || 0) + 1;
-  return { adjusted, ivory, lightTile, profile };
+  return { adjusted, ivory, canonicalIvory, lightTile, profile };
 }
 
 export function nextRuntimeRenderScale({
@@ -373,6 +386,7 @@ function installWarRoomRenderDiscipline() {
         this.domElement.dataset.warRoomIblLightTile = Number(materialGrade.profile.lightTileEnvMax).toFixed(2);
         this.domElement.dataset.warRoomSurfaceGrade = 'aged-matte-v2';
         this.domElement.dataset.warRoomMaterialGrade = 'dynamic-groups-v1';
+        this.domElement.dataset.warRoomCanonicalIvoryProtected = String(materialGrade.canonicalIvory || 0);
       }
     }
 
