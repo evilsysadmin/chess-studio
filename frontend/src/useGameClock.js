@@ -62,6 +62,11 @@ export function useGameClock({ game, timeControl, busy, humanColor, forcedOutcom
     runtime.setTickingColor(activeClockColor({ busy, humanColor, turn: game.turn }));
     tickRef.current = performance.now();
     const interval = setInterval(() => {
+      // Hidden tabs do not need five clock callbacks per second. Keep tickRef
+      // untouched so the first visible tick reconciles the full wall-clock
+      // elapsed time in one advance instead of burning CPU/battery in background.
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+
       const now = performance.now();
       const elapsed = (now - tickRef.current) / 1000;
       tickRef.current = now;
