@@ -7,12 +7,21 @@ import { addPieceSkinDetails, reinforcePieceSkinMaterial } from './Board3DSkinDe
 import { COARSE_PIECE_HIT_TARGET } from './WarRoom3DTouch.js';
 
 function makeMaterial(color, skin, accent = false, side = 'w', coarsePointer = false, skinId = 'studio') {
-  return reinforcePieceSkinMaterial(
+  const material = reinforcePieceSkinMaterial(
     makePremiumPieceMaterial({ color, skin, accent, side, coarsePointer }),
     color,
     skinId,
     { accent },
   );
+
+  // Desktop installs its PMREM environment after the first paint. Keep the
+  // canonical ivory on the same low-IBL contract before and after that delayed
+  // environment arrives, otherwise the fill reflection washes out its volume.
+  if (side === 'w' && !accent) {
+    material.envMapIntensity = Math.min(material.envMapIntensity ?? 0.28, 0.28);
+    material.userData.ivoryIblProfile = 'canonical-low-fill-v1';
+  }
+  return material;
 }
 
 function addMesh(group, geometry, material, position = [0, 0, 0], rotation = [0, 0, 0]) {
