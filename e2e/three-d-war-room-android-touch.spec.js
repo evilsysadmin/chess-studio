@@ -141,7 +141,7 @@ async function switchWarRoomTo2D(page) {
 }
 
 async function installBlackQuickGameRoute(page) {
-  const cpuOpening = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', by: 'cpu' };
+  const cpuOpening = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', captured: false, by: 'cpu' };
   const game = {
     id: 'e2e-black-game',
     fen: BLACK_AFTER_E4_FEN,
@@ -210,16 +210,10 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   await expect(board3d).toBeVisible({ timeout: 30_000 });
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
-  // Real CSS owns the Android composition now. Do not inject a fake shell ratio:
-  // this lane should fail if mobile drifts back toward the old near-square board.
   await expect.poll(async () => {
     const rect = await shell.boundingBox();
     return rect ? rect.width / Math.max(1, rect.height) : 0;
   }).toBeGreaterThan(1.14);
-
-  // Hans now has exactly one deterministic event per game. Android selection
-  // must not depend on that event being the opening fire routine; the dedicated
-  // "Hans waits for the rendered call" lane owns the service-door/fire contract.
 
   const matthiasCard = page.locator('.game-3d-matthias-card');
   const focusButton = page.getByRole('button', { name: 'Focus', exact: true });
@@ -254,7 +248,6 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   expect(humanRect.height).toBeLessThanOrEqual(50);
   expect(musicRect.height).toBeLessThanOrEqual(50);
   expect(notationRect.height).toBeLessThanOrEqual(50);
-  // Phone utilities share a single compact shelf instead of consuming two rows.
   expect(Math.abs(musicRect.y - notationRect.y)).toBeLessThanOrEqual(2);
   expect(musicRect.x).toBeLessThan(notationRect.x);
   expect(focusRect.y + focusRect.height).toBeLessThanOrEqual(boardRect.y + 2);
@@ -271,9 +264,6 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   expect(rect).not.toBeNull();
   expect(rect.width / Math.max(1, rect.height)).toBeGreaterThan(1.14);
 
-  // Product invariant: test the pixels the user actually sees, not only the
-  // FEN/parser. d4/e5 are dark; e4/d5 are light. An inverted 3D material map
-  // therefore fails this required Android lane immediately.
   const d4Luma = await canvasLuminanceAt(canvas, projectWarRoomSquare(rect, 'd4'));
   const e4Luma = await canvasLuminanceAt(canvas, projectWarRoomSquare(rect, 'e4'));
   const d5Luma = await canvasLuminanceAt(canvas, projectWarRoomSquare(rect, 'd5'));
@@ -297,8 +287,6 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
 
   await touchStart(cdp, to);
   await expect(canvas).toHaveAttribute('data-war-room-last-square', 'e4');
-  // Critical contract: moving to a legal destination must happen on the real
-  // second pointerdown, before Android delivers touchEnd.
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
   await touchEnd(cdp);
 });
