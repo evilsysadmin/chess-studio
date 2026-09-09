@@ -18,7 +18,7 @@ export async function createChesscomEngine(B, canvas, { coarse = false } = {}) {
       ? await B.WebGPUEngine.IsSupportedAsync
       : false;
     if (supported) {
-      webGpuEngine = new B.WebGPUEngine(canvas);
+      webGpuEngine = new B.WebGPUEngine(canvas, { antialias:!coarse });
       await webGpuEngine.initAsync();
       return { engine:webGpuEngine, backend:'webgpu' };
     }
