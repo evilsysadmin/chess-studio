@@ -66,8 +66,7 @@
     "25-visual-coherence.css",
     "26-visual-system-overhaul.css",
     "27-night-club-tactical.css",
-    "28-product-resilience.css",
-    "29-war-room-chrome.css"
+    "28-product-resilience.css"
   ],
   "lazyModules": [
     "05-combat-roster.css",
@@ -75,9 +74,10 @@
     "05-army-actions.css",
     "05-combat-deployment.css",
     "06-combat-campaign.css",
-    "20-piece-skins.css"
+    "20-piece-skins.css",
+    "29-war-room-chrome.css"
   ],
   "combinedSha256": "74c7773d6112dea86148025e352da06f681e1700574dfb699de1535e9ef52089",
-  "combinedBytes": 560498,
-  "combinedLines": 15592
+  "combinedBytes": 560513,
+  "combinedLines": 15594
 }
