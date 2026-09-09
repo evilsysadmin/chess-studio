@@ -26,7 +26,7 @@ async function seedGamesBeforeFire(page) {
   }, fireIndex);
 }
 
-async function waitForHansReplyRendered(page, timeoutMs = 20_000) {
+async function waitForHansReplyRendered(page, timeoutMs = 35_000) {
   await page.evaluate((timeout) => new Promise((resolve, reject) => {
     const selector = '.warroom-fire-call-bubble-hans';
     const replyPattern = /HANS\s*Sí, señor\./;
@@ -112,8 +112,8 @@ test('War Room · Matthias llama a Hans por el fuego y Hans responde al aparecer
   await expect(page.getByRole('status', { name: 'Bravuconada de Matthias al iniciar la partida' })).toHaveCount(0);
 
   // Arm the observer before release can turn into the short Hans reply. On
-  // software WebGL a long render frame can make polling miss the 1.6 s bubble
-  // even though the browser visibly paints it and the narrative advances.
+  // software WebGL a cold/contended entry can take a little over 20 s before
+  // the 1.6 s reply is painted, so observe the real DOM event with margin.
   const hansReplyRendered = waitForHansReplyRendered(page);
   await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 8_000 });
   await hansReplyRendered;
