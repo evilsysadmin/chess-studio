@@ -89,7 +89,7 @@ export function installWarRoomHansBoardCollisionGuard(root) {
       hans.userData.warRoomHansBoardCollisionGuard = WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION;
       hans.userData.warRoomHansBoardCollisionAxis = 'z';
       hans.userData.warRoomHansBoardSafeWorldZ = safeZ;
-      hans.userData.warRoomHansGroundedY = STANDING_Y;
+      hans.userData.warRoomHansBoardGroundedY = STANDING_Y;
     },
   });
   if (!registered) return 0;
