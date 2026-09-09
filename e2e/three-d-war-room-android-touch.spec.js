@@ -5,6 +5,9 @@ import { getWarRoomMobileFramingProfile } from '../frontend/src/components/WarRo
 
 test.use({ ...devices['Pixel 5'] });
 
+const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+const BLACK_AFTER_E4_FEN = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
+
 function normalized(vector) {
   const length = Math.hypot(...vector);
   return vector.map((value) => value / length);
@@ -56,6 +59,34 @@ function projectWarRoomSquare(rect, square, worldY = 0.12) {
   };
 }
 
+async function canvasLuminanceAt(canvas, point, radius = 3) {
+  return canvas.evaluate((element, { point: samplePoint, radius: sampleRadius }) => {
+    const rect = element.getBoundingClientRect();
+    const scratch = document.createElement('canvas');
+    scratch.width = element.width;
+    scratch.height = element.height;
+    const context = scratch.getContext('2d', { willReadFrequently: true });
+    context.drawImage(element, 0, 0, scratch.width, scratch.height);
+
+    const x = Math.round(((samplePoint.x - rect.left) / Math.max(1, rect.width)) * scratch.width);
+    const y = Math.round(((samplePoint.y - rect.top) / Math.max(1, rect.height)) * scratch.height);
+    const left = Math.max(0, x - sampleRadius);
+    const top = Math.max(0, y - sampleRadius);
+    const width = Math.max(1, Math.min(scratch.width - left, sampleRadius * 2 + 1));
+    const height = Math.max(1, Math.min(scratch.height - top, sampleRadius * 2 + 1));
+    const pixels = context.getImageData(left, top, width, height).data;
+
+    let total = 0;
+    let samples = 0;
+    for (let index = 0; index < pixels.length; index += 4) {
+      if (pixels[index + 3] === 0) continue;
+      total += (pixels[index] * 0.2126) + (pixels[index + 1] * 0.7152) + (pixels[index + 2] * 0.0722);
+      samples += 1;
+    }
+    return samples ? total / samples : 0;
+  }, { point, radius });
+}
+
 async function touchStart(cdp, point) {
   await cdp.send('Input.dispatchTouchEvent', {
     type: 'touchStart',
@@ -95,14 +126,71 @@ async function open3DFromAppearance(page) {
   await expect(board3d).toBeVisible({ timeout: 30_000 });
 }
 
+async function switchWarRoomTo2D(page) {
+  const appearanceButton = page.locator('.board3d-customize');
+  await expect(appearanceButton).toBeVisible({ timeout: 30_000 });
+  await appearanceButton.click();
+  const dialog = page.getByRole('dialog', { name: 'Ajustes' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('radio', { name: /2D$/ }).click();
+  const close = dialog.getByRole('button', { name: 'Cerrar', exact: true });
+  await expect(close).toBeVisible();
+  await close.evaluate((element) => element.click());
+  await expect(dialog).toBeHidden({ timeout: 10_000 });
+  await expect(page.locator('.board-grid').first()).toBeVisible({ timeout: 30_000 });
+}
+
+async function installBlackQuickGameRoute(page) {
+  const cpuOpening = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', by: 'cpu' };
+  const game = {
+    id: 'e2e-black-game',
+    fen: BLACK_AFTER_E4_FEN,
+    turn: 'b',
+    humanColor: 'b',
+    difficulty: 50,
+    status: 'playing',
+    insufficientMatingMaterial: { w: false, b: false },
+    isGameOver: false,
+    history: [cpuOpening],
+    lastMove: cpuOpening,
+    initialFen: START_FEN,
+    ghostStyle: null,
+  };
+
+  await page.route('http://localhost:4000/api/games/e2e-black-game', async (route) => {
+    if (route.request().method() === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(game) });
+    }
+    return route.fallback();
+  });
+
+  await page.route('http://localhost:4000/api/games', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const payload = route.request().postDataJSON?.() ?? {};
+    if (payload.color !== 'b') return route.fallback();
+    return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(game) });
+  });
+}
+
 test('War Room · Android selecciona una pieza en pointerdown y muestra destinos reales', async ({ page }) => {
   test.setTimeout(75_000);
   await page.addInitScript(() => {
     window.__warRoomPointerCaptures = [];
-    const original = Element.prototype.setPointerCapture;
+    const originalSetPointerCapture = Element.prototype.setPointerCapture;
     Element.prototype.setPointerCapture = function patchedSetPointerCapture(pointerId) {
       window.__warRoomPointerCaptures.push({ pointerId, className: String(this.className || '') });
-      return original?.call(this, pointerId);
+      return originalSetPointerCapture?.call(this, pointerId);
+    };
+
+    // Keep the WebGL backbuffer readable in this browser-only invariant test.
+    // Production still uses the normal renderer attributes; this affects only
+    // the E2E page before Three creates its context.
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function patchedGetContext(type, attributes) {
+      if (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl') {
+        return originalGetContext.call(this, type, { ...(attributes || {}), preserveDrawingBuffer: true });
+      }
+      return originalGetContext.call(this, type, attributes);
     };
   });
 
@@ -182,6 +270,17 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   const rect = await canvas.boundingBox();
   expect(rect).not.toBeNull();
   expect(rect.width / Math.max(1, rect.height)).toBeGreaterThan(1.14);
+
+  // Product invariant: test the pixels the user actually sees, not only the
+  // FEN/parser. d4/e5 are dark; e4/d5 are light. An inverted 3D material map
+  // therefore fails this required Android lane immediately.
+  const d4Luma = await canvasLuminanceAt(canvas, projectWarRoomSquare(rect, 'd4'));
+  const e4Luma = await canvasLuminanceAt(canvas, projectWarRoomSquare(rect, 'e4'));
+  const d5Luma = await canvasLuminanceAt(canvas, projectWarRoomSquare(rect, 'd5'));
+  const e5Luma = await canvasLuminanceAt(canvas, projectWarRoomSquare(rect, 'e5'));
+  expect(e4Luma - d4Luma).toBeGreaterThan(8);
+  expect(d5Luma - e5Luma).toBeGreaterThan(8);
+
   const from = projectWarRoomSquare(rect, 'e2', 0.76);
   const to = projectWarRoomSquare(rect, 'e4');
   const cdp = await page.context().newCDPSession(page);
@@ -202,4 +301,63 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   // second pointerdown, before Android delivers touchEnd.
   await expect.poll(() => movePosts(requestLog).length).toBe(1);
   await touchEnd(cdp);
+});
+
+test('War Room · orientación negra conserva back rank, color y navegación al alternar 3D↔2D', async ({ page }) => {
+  test.setTimeout(75_000);
+  await mockApi(page);
+  await installBlackQuickGameRoute(page);
+  await login(page);
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await expect(quickDialog).toBeVisible();
+  const settings = quickDialog.locator('details.quick-match-settings');
+  await settings.locator('summary').click();
+  const black = quickDialog.getByRole('radio', { name: 'Negras', exact: true });
+  await black.click();
+  await expect(black).toHaveAttribute('aria-checked', 'true');
+  await quickDialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+
+  await open3DFromAppearance(page);
+  let board3d = page.locator('[data-board3d-war-room="true"]');
+  let canvas = page.locator('.board3d-main-canvas');
+  await expect(board3d).toBeVisible({ timeout: 30_000 });
+  await expect(canvas).toBeVisible({ timeout: 30_000 });
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e8');
+
+  await canvas.focus();
+  await canvas.press('ArrowUp');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e7');
+  await canvas.press('ArrowDown');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e8');
+  await canvas.press('ArrowRight');
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'd8');
+
+  await switchWarRoomTo2D(page);
+  const squares = page.locator('.board-grid').first().locator('.square');
+  await expect(squares).toHaveCount(64);
+  await expect(squares.first()).toHaveAttribute('aria-label', /^Casilla h1,/);
+  await expect(squares.last()).toHaveAttribute('aria-label', /^Casilla a8,/);
+
+  const d8 = page.locator('.square[aria-label^="Casilla d8,"]').first();
+  const e8 = page.locator('.square[aria-label^="Casilla e8,"]').first();
+  const d1 = page.locator('.square[aria-label^="Casilla d1,"]').first();
+  const e1 = page.locator('.square[aria-label^="Casilla e1,"]').first();
+  await expect(d8).toHaveClass(/dark/);
+  await expect(e8).toHaveClass(/light/);
+  await expect(d1).toHaveClass(/light/);
+  await expect(e1).toHaveClass(/dark/);
+  await expect(d8).toHaveAttribute('aria-label', /dama negra/);
+  await expect(e8).toHaveAttribute('aria-label', /rey negro/);
+  await expect(d1).toHaveAttribute('aria-label', /dama blanca/);
+  await expect(e1).toHaveAttribute('aria-label', /rey blanco/);
+
+  await open3DFromAppearance(page);
+  board3d = page.locator('[data-board3d-war-room="true"]');
+  canvas = page.locator('.board3d-main-canvas');
+  await expect(board3d).toBeVisible({ timeout: 30_000 });
+  await expect(canvas).toBeVisible({ timeout: 30_000 });
+  await expect(board3d).toHaveAttribute('data-board3d-focused', 'e8');
 });
