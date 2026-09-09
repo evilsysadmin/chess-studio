@@ -1,13 +1,13 @@
 import { useEffect, useRef } from 'react';
 import { loadActiveGameSession } from './activeGameSession.js';
-import { currentGameAuthorityGeneration } from './gameAuthorityGeneration.js';
+import { currentGameAuthorityGeneration, hasActiveGameMutation } from './gameAuthorityGeneration.js';
 import { fetchReconnectGame, reconnectTarget } from './gameReconnect.js';
 import { SAVE_STATUS } from './saveStatus.js';
 import { ACTIVE_SESSION_EVENT, ACTIVE_SESSION_STATE, activeSessionTransition } from './activeSessionMachine.js';
 import { reportStateInvariant } from './stateMachine.js';
 
-export function shouldAttemptReconnect({ inFlight, reconnectNeeded, saveState }) {
-  if (inFlight || saveState === SAVE_STATUS.SAVING) return false;
+export function shouldAttemptReconnect({ inFlight, reconnectNeeded, saveState, mutationInFlight = false }) {
+  if (inFlight || mutationInFlight || saveState === SAVE_STATUS.SAVING) return false;
   return reconnectNeeded || saveState === SAVE_STATUS.ERROR;
 }
 
@@ -78,6 +78,7 @@ export function useGameReconnect({
         inFlight: reconnectInFlight.current,
         reconnectNeeded: reconnectNeeded.current,
         saveState: saveStateRef.current,
+        mutationInFlight: hasActiveGameMutation(),
       })) return;
 
       const target = reconnectTarget({
@@ -105,7 +106,6 @@ export function useGameReconnect({
         return;
       }
 
-      // Una respuesta tardía nunca debe resucitar una partida que el usuario ya abandonó.
       const currentTarget = reconnectTarget({
         route: routeRef.current,
         game: gameRef.current,
@@ -117,15 +117,12 @@ export function useGameReconnect({
         return;
       }
 
-      if (result.ok && !reconnectAuthorityStillCurrent({ generationAtStart: authorityGenerationAtStart })) {
-        // Una mutación POST/undo se confirmó mientras este GET estaba en vuelo.
-        // Su respuesta es más nueva que la foto de reconnect: descartamos el GET.
+      if (result.ok && (
+        hasActiveGameMutation()
+        || !reconnectAuthorityStillCurrent({ generationAtStart: authorityGenerationAtStart })
+      )) {
         advanceReconnect(ACTIVE_SESSION_EVENT.RECONNECTED, target);
-        reconnectNeeded.current = reconnectStillNeeded({
-          generationAtStart: offlineGenerationAtStart,
-          currentGeneration: reconnectOfflineGeneration.current,
-          online: typeof navigator === 'undefined' ? true : navigator.onLine,
-        });
+        reconnectNeeded.current = true;
         if (reconnectAbortRef.current === controller) reconnectAbortRef.current = null;
         reconnectInFlight.current = false;
         return;
@@ -141,7 +138,6 @@ export function useGameReconnect({
           currentGeneration: reconnectOfflineGeneration.current,
           online: typeof navigator === 'undefined' ? true : navigator.onLine,
         });
-        // El snapshot de sesión activa marca SAVED cuando la respuesta reconciliada queda persistida.
       } else {
         advanceReconnect(ACTIVE_SESSION_EVENT.TRANSIENT_FAILURE, target);
         callbacksRef.current.onPersistenceState?.(SAVE_STATUS.ERROR);
@@ -172,10 +168,6 @@ export function useGameReconnect({
     };
   }, []);
 
-  // Un timeout o un 409 puede ocurrir sin que el navegador emita `offline`.
-  // También puede volver la red mientras una jugada sigue guardándose: en ese
-  // caso dejamos reconnectNeeded vivo y esperamos a que la mutación abandone
-  // SAVING para no aplicar una foto de Mongo anterior al movimiento pendiente.
   useEffect(() => {
     const target = reconnectTarget({
       route,
@@ -184,14 +176,12 @@ export function useGameReconnect({
       savedSession: loadActiveGameSession(),
     });
     const online = typeof navigator === 'undefined' ? true : navigator.onLine;
-    if (online === false || !target?.gameId || saveState === SAVE_STATUS.SAVING) return;
+    if (online === false || !target?.gameId || saveState === SAVE_STATUS.SAVING || hasActiveGameMutation()) return;
 
     const deferredReconnect = reconnectNeeded.current;
     const errorReconnect = shouldAutoReconnect({ saveState, online, target });
     if (!deferredReconnect && !errorReconnect) return;
 
-    // La transición de la propia jugada ya informó SAVING/SAVED. Este GET es
-    // sólo reconciliación autoritativa y no debe volver a agitar el indicador.
     void attemptReconnectRef.current?.({ announceSaving: false });
   }, [saveState, route, game?.id, tournamentGame?.id]);
 }
