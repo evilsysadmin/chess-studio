@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 import { BoardRendererContext } from './Board.jsx';
 import Board3DCore from './Board3DCore.jsx';
+import './WarRoomViewportFit.css';
 import { chessFromFen } from '../chessRules.js';
 import {
   armWarRoomMoveFinishEvent,
@@ -104,7 +105,6 @@ export default function Board3D(props) {
         data-war-room-hans-runtime={requestsHansQuickIteration ? 'pending' : 'idle'}
       />
       <Board3DCore
-        key={hansGameId || 'war-room'}
         {...props}
         hansDiagnosticsMarkerRef={hansMarkerRef}
         hansDiagnosticsRequested={requestsHansQuickIteration}

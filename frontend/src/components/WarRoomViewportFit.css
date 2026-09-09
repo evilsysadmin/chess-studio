@@ -1,0 +1,56 @@
+/* Desktop War Room viewport fit.
+ * Keep the human rail and command deck visible without turning the board into
+ * a postage stamp. The 3D camera already reframes to the available rectangle. */
+@media (min-width: 1081px) {
+  .game-screen .game-board-stack.game-board-stack-3d {
+    gap: .28rem;
+  }
+
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    min-height: 0;
+    height: clamp(460px, calc(100dvh - 15rem), 760px) !important;
+  }
+
+  .game-screen .game-board-stack-3d > .game-player-rail.is-human {
+    min-height: 40px;
+    padding-block: .26rem;
+  }
+
+  .game-screen .game-board-stack-3d > .game-command-deck .game-controls {
+    min-height: 40px;
+    margin-top: 0;
+    padding: .22rem .3rem;
+  }
+
+  .game-screen .game-board-stack-3d > .game-command-deck .game-controls-actions {
+    gap: .3rem;
+  }
+
+  .game-screen .game-board-stack-3d > .game-command-deck .game-controls-actions > :where(.primary-btn, .secondary-btn, .danger-btn) {
+    min-height: 34px;
+    height: 34px;
+    padding: .38rem .6rem;
+  }
+}
+
+@media (min-width: 1081px) and (max-height: 840px) {
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    height: clamp(420px, calc(100dvh - 13.75rem), 620px) !important;
+  }
+
+  .game-screen .game-board-stack-3d > .game-player-rail.is-human {
+    min-height: 36px;
+    padding-block: .2rem;
+  }
+
+  .game-screen .game-board-stack-3d > .game-command-deck .game-controls {
+    min-height: 36px;
+    padding-block: .18rem;
+  }
+
+  .game-screen .game-board-stack-3d > .game-command-deck .game-controls-actions > :where(.primary-btn, .secondary-btn, .danger-btn) {
+    min-height: 32px;
+    height: 32px;
+    padding-block: .32rem;
+  }
+}
