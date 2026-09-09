@@ -1,0 +1,12 @@
+/* Android / coarse-pointer performance trims.
+ * Preserve the desktop treatment while avoiding expensive live backdrop blur
+ * on the compact War Room status pill, whose background is already opaque.
+ */
+
+@media (max-width: 820px), (pointer: coarse) {
+  .game-screen .game-layout-3d .status-line {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .24), inset 0 1px rgba(255, 255, 255, .025);
+  }
+}
