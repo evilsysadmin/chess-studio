@@ -1,0 +1,48 @@
+/* Chess Studio Home · visual audit polish
+ *
+ * Small, scoped refinements only: keyboard focus must receive the same premium
+ * treatment as pointer hover, without changing layout or navigation contracts.
+ */
+
+body .menu.home-friendly > .home-next-action > button,
+body .menu.home-friendly > .home-continue-group .home-continue-card,
+body .menu.home-friendly > .home-modes-section .home-mode-card,
+body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-primary-card {
+  transition:
+    filter 150ms ease,
+    transform 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+body .menu.home-friendly > .home-next-action > button:focus-visible,
+body .menu.home-friendly > .home-continue-group .home-continue-card:focus-visible,
+body .menu.home-friendly > .home-modes-section .home-mode-card:focus-visible,
+body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-primary-card:focus-visible {
+  outline: 2px solid var(--home-canonical-gold-bright, #f0c96e);
+  outline-offset: 3px;
+  border-color: rgba(255, 216, 122, .82) !important;
+  box-shadow:
+    0 0 0 4px rgba(213, 170, 69, .16),
+    0 14px 34px rgba(0, 0, 0, .34) !important;
+}
+
+body .menu.home-friendly > .home-next-action > button:focus-visible,
+body .menu.home-friendly > .home-continue-group .home-continue-card:focus-visible {
+  filter: brightness(1.06) saturate(1.04);
+  transform: translateY(-1px) !important;
+}
+
+body .menu.home-friendly > .home-modes-section .home-mode-card:focus-visible .home-mode-art {
+  opacity: .88 !important;
+  filter: saturate(1) brightness(.82) contrast(1.08) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body .menu.home-friendly > .home-next-action > button,
+  body .menu.home-friendly > .home-continue-group .home-continue-card,
+  body .menu.home-friendly > .home-modes-section .home-mode-card,
+  body .menu.home-friendly > .home-primary-group:not(.home-modes-section) .home-primary-card {
+    transition: none;
+  }
+}
