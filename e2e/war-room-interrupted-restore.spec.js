@@ -164,7 +164,7 @@ test('War Room · F5 durante movimiento y captura restaura una escena limpia y j
   const openingResponse = page.waitForResponse((response) => (
     response.request().method() === 'POST'
     && /\/games\/[^/]+\/move$/.test(new URL(response.url()).pathname)
-  ));
+  ), { timeout: WAR_ROOM_READY_TIMEOUT });
   await clickBoardMove(page, 'e2', 'e4');
   await expect.poll(() => movePosts(requestLog).length, { timeout: 5_000 }).toBe(1);
   await waitForCommittedMoveFrame(page, openingResponse);
@@ -174,7 +174,7 @@ test('War Room · F5 durante movimiento y captura restaura una escena limpia y j
   const captureResponse = page.waitForResponse((response) => (
     response.request().method() === 'POST'
     && /\/games\/[^/]+\/move$/.test(new URL(response.url()).pathname)
-  ));
+  ), { timeout: WAR_ROOM_READY_TIMEOUT });
   await clickBoardMove(page, 'e4', 'd5');
   await expect.poll(() => movePosts(requestLog).length, { timeout: 5_000 }).toBe(2);
   await waitForCommittedMoveFrame(page, captureResponse);
