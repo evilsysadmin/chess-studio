@@ -18,7 +18,7 @@
     max-width:100%;
     min-width:0;
     box-sizing:border-box;
-    gap:.45rem;
+    gap:.75rem;
     padding:.48rem .52rem;
   }
   .chesscom[data-chesscom-visual="premium-v1"] .chesscom-brand{
