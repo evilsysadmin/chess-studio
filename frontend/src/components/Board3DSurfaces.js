@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import './Board3DSurfaces.css';
 
-export const PREMIUM_SURFACE_VERSION = 'premium-v8';
+export const PREMIUM_SURFACE_VERSION = 'premium-v9';
 export const WAR_ROOM_POST_PAINT_PREMIUM_VERSION = 'post-paint-premium-v1';
 
 const SURFACE_ROLES_TO_PRESERVE = new Set([
@@ -145,10 +145,11 @@ export function makePremiumPieceMaterial({ color, skin, side = 'w', accent = fal
   // microtexturas para tablero y decorado, que sí son recursos estables de escena.
   const micro = null;
   const surfaceColor = new THREE.Color(color);
-  // Marfil mate y envejecido. La referencia visual pide beige real, no blanco
-  // porcelana: bajamos luminancia y hacemos que el volumen venga de sombras.
-  if (ivory) surfaceColor.lerp(new THREE.Color(0x927858), 0.62);
-  const ivoryRoughness = Math.min(0.98, Math.max(0.78, baseRoughness * 1.48));
+  // Marfil cálido y satinado: suficientemente claro para separarse de la casilla
+  // crema, pero sin volver al blanco porcelana. El volumen debe venir de una mezcla
+  // de sombra real y highlight suave, no de quemar la exposición global.
+  if (ivory) surfaceColor.lerp(new THREE.Color(0xc6a97c), 0.35);
+  const ivoryRoughness = Math.min(0.86, Math.max(0.7, baseRoughness * 1.3));
 
   const material = new THREE.MeshPhysicalMaterial({
     color: surfaceColor,
@@ -159,14 +160,14 @@ export function makePremiumPieceMaterial({ color, skin, side = 'w', accent = fal
     bumpScale: 0,
     emissive: skin.emissive,
     emissiveIntensity: accent ? skin.emissiveIntensity * 1.25 : skin.emissiveIntensity,
-    clearcoat: accent ? 0.9 : ivory ? 0.08 : 0.74,
-    clearcoatRoughness: accent ? 0.08 : ivory ? 0.66 : 0.13,
-    sheen: accent ? 0.2 : ivory ? 0.008 : 0.14,
-    sheenRoughness: ivory ? 0.82 : 0.32,
-    ior: ivory ? 1.38 : 1.58,
-    specularIntensity: accent ? 1 : ivory ? 0.12 : 0.86,
-    specularColor: ivory ? new THREE.Color(0xa58b66) : new THREE.Color(0xa5b0bb),
-    envMapIntensity: accent ? 1.2 : ivory ? 0.13 : 0.94,
+    clearcoat: accent ? 0.9 : ivory ? 0.2 : 0.74,
+    clearcoatRoughness: accent ? 0.08 : ivory ? 0.48 : 0.13,
+    sheen: accent ? 0.2 : ivory ? 0.02 : 0.14,
+    sheenRoughness: ivory ? 0.72 : 0.32,
+    ior: ivory ? 1.42 : 1.58,
+    specularIntensity: accent ? 1 : ivory ? 0.24 : 0.86,
+    specularColor: ivory ? new THREE.Color(0xe4cfa5) : new THREE.Color(0xa5b0bb),
+    envMapIntensity: accent ? 1.2 : ivory ? 0.28 : 0.94,
   });
   material.userData.surfaceVersion = PREMIUM_SURFACE_VERSION;
   material.userData.surfaceRole = accent ? 'metal-inlay' : side === 'w' ? 'ivory' : 'ebony';
@@ -175,19 +176,28 @@ export function makePremiumPieceMaterial({ color, skin, side = 'w', accent = fal
 }
 
 export function makePremiumTileMaterial({ color, light = false, coarsePointer = false, seed = 1 }) {
-  const micro = coarsePointer ? null : createMicroSurfaceMap({ seed, kind: 'wood', coarsePointer });
+  const surfaceColor = new THREE.Color(color);
+  if (light) surfaceColor.lerp(new THREE.Color(0xb98f68), 0.22);
+  // Las casillas claras deben leerse como piedra/pergamino mate, no como otra
+  // superficie de marfil ni como madera barnizada. La microtextura genérica evita
+  // la veta longitudinal que competía visualmente con las piezas blancas.
+  const micro = coarsePointer ? null : createMicroSurfaceMap({
+    seed,
+    kind: light ? 'board-light' : 'wood',
+    coarsePointer,
+  });
   const material = new THREE.MeshPhysicalMaterial({
-    color,
+    color: surfaceColor,
     metalness: 0.015,
-    roughness: micro ? (light ? 0.74 : 0.7) : (light ? 0.64 : 0.6),
+    roughness: micro ? (light ? 0.82 : 0.7) : (light ? 0.72 : 0.6),
     roughnessMap: micro,
     bumpMap: micro,
-    bumpScale: micro ? (light ? 0.004 : 0.007) : 0,
-    clearcoat: light ? 0.18 : 0.21,
-    clearcoatRoughness: light ? 0.38 : 0.34,
+    bumpScale: micro ? (light ? 0.003 : 0.007) : 0,
+    clearcoat: light ? 0.09 : 0.21,
+    clearcoatRoughness: light ? 0.52 : 0.34,
     ior: 1.46,
-    specularIntensity: light ? 0.4 : 0.46,
-    envMapIntensity: 0.5,
+    specularIntensity: light ? 0.28 : 0.46,
+    envMapIntensity: light ? 0.42 : 0.5,
   });
   material.userData.surfaceVersion = PREMIUM_SURFACE_VERSION;
   material.userData.surfaceRole = light ? 'board-light' : 'board-dark';
