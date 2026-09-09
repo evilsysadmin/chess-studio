@@ -33,8 +33,13 @@
     overflow: visible !important;
   }
 
+  /* Board3D is lazy-loaded after GameScreen, so its historical desktop CSS is
+     appended later and would otherwise restore grid-area: commander plus the
+     old command-panel chrome. That unnamed/obsolete area creates an implicit
+     third grid column and strands hundreds of pixels on the right. Keep this
+     board-first layout authoritative across chunk load order. */
   .game-screen .game-3d-command-column {
-    grid-area: board;
+    grid-area: board !important;
     z-index: 24;
     align-self: start;
     justify-self: center;
@@ -45,6 +50,12 @@
     min-height: 0;
     height: auto;
     margin: clamp(.44rem, .68vw, .66rem) 0 0;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: none !important;
+    box-shadow: none !important;
+    grid-template-rows: none !important;
     pointer-events: none;
   }
 
