@@ -151,52 +151,52 @@ describe('Pawn Slug premium sprite contracts', () => {
     expect(PAWN_SLUG_MOTION_PROFILES.matthias.crouchDrop).toBeGreaterThan(0);
   });
 
-  it('gives pawn, knight and rook four real grounded motion poses each', () => {
+  it('gives pawn, knight and rook eight real grounded motion poses each', () => {
     const meta = PAWN_SLUG_SPRITE_META.enemies;
     expect(String(meta.url)).toMatch(/enemy_motion_atlas\.svg(?:\?|$)/);
     expect(String(meta.legacyUrl)).toMatch(/enemy_atlas_v2\.webp(?:\?|$)/);
-    expect(meta.frames).toBe(12);
-    expect(meta.framesPerType).toBe(4);
+    expect(meta.frames).toBe(24);
+    expect(meta.framesPerType).toBe(8);
     expect(meta.frameWidth).toBe(256);
     expect(meta.frameHeight).toBe(256);
     expect(meta.groundedMotion).toBe(true);
     expect(meta.trackByType).toEqual({
-      pawn: [0, 1, 2, 3],
-      knight: [4, 5, 6, 7],
-      rook: [8, 9, 10, 11],
+      pawn: [0, 1, 2, 3, 4, 5, 6, 7],
+      knight: [8, 9, 10, 11, 12, 13, 14, 15],
+      rook: [16, 17, 18, 19, 20, 21, 22, 23],
     });
     for (const track of Object.values(meta.trackByType)) {
-      expect(track).toHaveLength(4);
-      expect(new Set(track).size).toBe(4);
+      expect(track).toHaveLength(8);
+      expect(new Set(track).size).toBe(8);
       expect(Math.max(...track)).toBeLessThan(meta.frames);
     }
   });
 
-  it('mirrors enemy motion frames through UVs across the 12-cell atlas', () => {
+  it('mirrors enemy motion frames through UVs across the 24-cell atlas', () => {
     expect(PAWN_SLUG_SPRITE_META.enemies.sourceFacing).toBe('right');
     expect(PAWN_SLUG_SPRITE_META.enemies.runtimeFacings).toEqual(['right', 'left']);
     expect(PAWN_SLUG_SPRITE_META.enemies.directionMode).toBe('atlas-uv-mirror');
     expect(pawnSlugEnemyVisualDirection(1)).toBe(1);
     expect(pawnSlugEnemyVisualDirection(-1)).toBe(-1);
 
-    const right = pawnSlugEnemyAtlasWindow(5, 1);
-    const left = pawnSlugEnemyAtlasWindow(5, -1);
-    expect(right).toMatchObject({ frame: 5, direction: 1, mirrored: false });
-    expect(left).toMatchObject({ frame: 5, direction: -1, mirrored: true });
-    expect(right.repeatX).toBeCloseTo(1 / 12, 12);
-    expect(left.repeatX).toBeCloseTo(-1 / 12, 12);
-    expect(right.offsetX).toBeCloseTo(5 / 12, 12);
-    expect(left.offsetX).toBeCloseTo(6 / 12, 12);
+    const right = pawnSlugEnemyAtlasWindow(10, 1);
+    const left = pawnSlugEnemyAtlasWindow(10, -1);
+    expect(right).toMatchObject({ frame: 10, direction: 1, mirrored: false });
+    expect(left).toMatchObject({ frame: 10, direction: -1, mirrored: true });
+    expect(right.repeatX).toBeCloseTo(1 / 24, 12);
+    expect(left.repeatX).toBeCloseTo(-1 / 24, 12);
+    expect(right.offsetX).toBeCloseTo(10 / 24, 12);
+    expect(left.offsetX).toBeCloseTo(11 / 24, 12);
   });
 
   it('advances enemy frames only while moving and keeps each class inside its own track', () => {
     for (const [type, expectedTrack] of Object.entries(PAWN_SLUG_SPRITE_META.enemies.trackByType)) {
       expect(pawnSlugEnemyFrameForMotion(type, 0, { moving: false, phase: 4.2 })).toBe(expectedTrack[0]);
       const sampled = new Set();
-      for (let step = 0; step < 24; step += 1) {
+      for (let step = 0; step < 48; step += 1) {
         sampled.add(pawnSlugEnemyFrameForMotion(type, step / 10, { moving: true, phase: 0.7 }));
       }
-      expect(sampled.size).toBeGreaterThan(1);
+      expect(sampled.size).toBeGreaterThanOrEqual(6);
       expect([...sampled].every((frame) => expectedTrack.includes(frame))).toBe(true);
     }
   });
