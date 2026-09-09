@@ -1,14 +1,36 @@
+import * as THREE from 'three';
 import {
   getWarRoomHansActor,
   getWarRoomHansNarrativePhase,
   setWarRoomHansRuntimeState,
 } from './WarRoomHansActor.js';
-import { hansBoardPeekHoldsMovement } from './WarRoomHansFireCallContract.js';
+import {
+  HANS_WORKING_REPLY_MS,
+  hansBoardPeekHoldsMovement,
+} from './WarRoomHansFireCallContract.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION = 'board-peek-pose-v2-actor-hands-behind-back';
+export const WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION = 'board-peek-pose-v3-board-approach';
 
 const POST_RENDER_ORDER = 21;
+const BOARD_APPROACH_DISTANCE = 0.42;
+const BOARD_APPROACH_MS = 780;
+const BOARD_RETURN_MS = 620;
+
+function nowMs() {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+}
+
+function clamp01(value) {
+  return Math.max(0, Math.min(1, Number(value) || 0));
+}
+
+function smoothstep01(value) {
+  const t = clamp01(value);
+  return t * t * (3 - 2 * t);
+}
 
 function capturePart(part) {
   if (!part?.position || !part?.rotation) return null;
@@ -22,6 +44,30 @@ function capturePart(part) {
   };
 }
 
+function restorePoseOffsets(body, bases) {
+  if (body.leftArm && bases.leftArm) {
+    body.leftArm.position.set(bases.leftArm.px, bases.leftArm.py, bases.leftArm.pz);
+    body.leftArm.rotation.y = bases.leftArm.ry;
+    body.leftArm.rotation.z = bases.leftArm.rz;
+  }
+  if (body.rightArm && bases.rightArm) {
+    body.rightArm.position.set(bases.rightArm.px, bases.rightArm.py, bases.rightArm.pz);
+    body.rightArm.rotation.y = bases.rightArm.ry;
+    body.rightArm.rotation.z = bases.rightArm.rz;
+  }
+  if (body.torso && bases.torso) body.torso.position.z = bases.torso.pz;
+  if (body.head && bases.head) body.head.position.z = bases.head.pz;
+}
+
+function approachAmount(phase, phaseElapsedMs) {
+  if (phase === 'peek') return smoothstep01(phaseElapsedMs / BOARD_APPROACH_MS);
+  if (phase === 'hans-working-reply') {
+    const returnStart = Math.max(0, HANS_WORKING_REPLY_MS - BOARD_RETURN_MS);
+    return 1 - smoothstep01((phaseElapsedMs - returnStart) / BOARD_RETURN_MS);
+  }
+  return 1;
+}
+
 export function installWarRoomHansBoardPeekPose(root) {
   const actor = getWarRoomHansActor(root);
   const hans = actor?.hans;
@@ -30,10 +76,20 @@ export function installWarRoomHansBoardPeekPose(root) {
   if (!hans || !driver || !body || typeof driver.onBeforeRender !== 'function') return 0;
   if (driver.userData?.warRoomHansBoardPeekPose === WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION) return 0;
 
-  const leftArmBase = capturePart(body.leftArm);
-  const rightArmBase = capturePart(body.rightArm);
-  const torsoBase = capturePart(body.torso);
-  const headBase = capturePart(body.head);
+  const bases = {
+    leftArm: capturePart(body.leftArm),
+    rightArm: capturePart(body.rightArm),
+    torso: capturePart(body.torso),
+    head: capturePart(body.head),
+  };
+  const startWorld = new THREE.Vector3();
+  const targetWorld = new THREE.Vector3();
+  const currentWorld = new THREE.Vector3();
+  const boardDirection = new THREE.Vector3();
+  const localPosition = new THREE.Vector3();
+  let active = false;
+  let activePhase = '';
+  let phaseStartedAt = 0;
 
   const registered = registerWarRoomHansPostRenderStage(driver, {
     key: WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION,
@@ -41,34 +97,68 @@ export function installWarRoomHansBoardPeekPose(root) {
     run: () => {
       const narrativePhase = getWarRoomHansNarrativePhase(actor);
       if (!hans.visible || !hansBoardPeekHoldsMovement(narrativePhase)) {
+        if (active) restorePoseOffsets(body, bases);
+        active = false;
+        activePhase = '';
         setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekPoseActive', false);
         return;
       }
 
-      if (body.leftArm && leftArmBase) {
-        body.leftArm.position.set(leftArmBase.px, leftArmBase.py, leftArmBase.pz - 0.035);
-        body.leftArm.rotation.set(leftArmBase.rx + 0.42, leftArmBase.ry - 0.08, leftArmBase.rz - 0.11);
+      const frameNow = nowMs();
+      if (!active) {
+        hans.parent?.updateMatrixWorld?.(true);
+        hans.getWorldPosition(startWorld);
+        targetWorld.copy(startWorld);
+        boardDirection.set(-startWorld.x, 0, -startWorld.z);
+        if (boardDirection.lengthSq() > 1e-8) {
+          boardDirection.normalize();
+          targetWorld.addScaledVector(boardDirection, BOARD_APPROACH_DISTANCE);
+        }
+        active = true;
+        activePhase = narrativePhase;
+        phaseStartedAt = frameNow;
+      } else if (activePhase !== narrativePhase) {
+        activePhase = narrativePhase;
+        phaseStartedAt = frameNow;
       }
-      if (body.rightArm && rightArmBase) {
-        body.rightArm.position.set(rightArmBase.px, rightArmBase.py, rightArmBase.pz - 0.035);
-        body.rightArm.rotation.set(rightArmBase.rx + 0.42, rightArmBase.ry + 0.08, rightArmBase.rz + 0.11);
+
+      const phaseElapsed = Math.max(0, frameNow - phaseStartedAt);
+      const approach = approachAmount(narrativePhase, phaseElapsed);
+      currentWorld.lerpVectors(startWorld, targetWorld, approach);
+      localPosition.copy(currentWorld);
+      hans.parent?.worldToLocal?.(localPosition);
+      if (Number.isFinite(localPosition.x) && Number.isFinite(localPosition.z)) {
+        hans.position.x = localPosition.x;
+        hans.position.z = localPosition.z;
       }
-      if (body.torso && torsoBase) {
-        body.torso.position.z = torsoBase.pz + 0.018;
-        body.torso.rotation.x = torsoBase.rx + 0.035;
+
+      if (body.leftArm && bases.leftArm) {
+        body.leftArm.position.set(bases.leftArm.px, bases.leftArm.py, bases.leftArm.pz - 0.035);
+        body.leftArm.rotation.set(bases.leftArm.rx + 0.42, bases.leftArm.ry - 0.08, bases.leftArm.rz - 0.11);
       }
-      if (body.head && headBase) {
-        body.head.position.z = headBase.pz + 0.025;
-        body.head.rotation.x = headBase.rx + 0.05;
+      if (body.rightArm && bases.rightArm) {
+        body.rightArm.position.set(bases.rightArm.px, bases.rightArm.py, bases.rightArm.pz - 0.035);
+        body.rightArm.rotation.set(bases.rightArm.rx + 0.42, bases.rightArm.ry + 0.08, bases.rightArm.rz + 0.11);
+      }
+      if (body.torso && bases.torso) {
+        body.torso.position.z = bases.torso.pz + 0.018;
+        body.torso.rotation.x = bases.torso.rx + 0.035;
+      }
+      if (body.head && bases.head) {
+        body.head.position.z = bases.head.pz + 0.025;
+        body.head.rotation.x = bases.head.rx + 0.05;
       }
 
       setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekPoseActive', true);
       setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekPose', WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION);
       setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekHands', 'behind-back');
+      setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekApproach', 'board-center-world-v1');
+      setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekApproachAmount', approach);
     },
   });
   if (!registered) return 0;
 
   driver.userData.warRoomHansBoardPeekPose = WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION;
+  driver.userData.warRoomHansBoardPeekApproachDistance = BOARD_APPROACH_DISTANCE;
   return 1;
 }
