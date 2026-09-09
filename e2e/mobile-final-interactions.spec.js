@@ -236,8 +236,8 @@ test('Móvil · doble activación durante una jugada pendiente conserva un únic
 
     const pathParts = new URL(route.request().url()).pathname.split('/');
     const id = pathParts[pathParts.length - 2];
-    const humanMove = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', by: 'human' };
-    const cpuMove = { from: 'e7', to: 'e5', san: 'e5', piece: 'p', by: 'cpu' };
+    const humanMove = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', captured: false, by: 'human' };
+    const cpuMove = { from: 'e7', to: 'e5', san: 'e5', piece: 'p', captured: false, by: 'cpu' };
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
