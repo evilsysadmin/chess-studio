@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION = 'board-depth-guard-v3';
+export const WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION = 'board-depth-guard-v4-pipeline-grounded';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -8,6 +9,8 @@ const FIREPLACE_NAME = 'war-room-fireplace';
 const BOARD_HALF_EXTENT = 4.52;
 const HANS_BOARD_CLEARANCE = 0.58;
 const SAFE_BOARD_HALF_EXTENT = BOARD_HALF_EXTENT + HANS_BOARD_CLEARANCE;
+const STANDING_Y = -0.34;
+const POST_RENDER_ORDER = 5;
 const TRANSIT_PHASES = new Set(['fire-dimming', 'walk-to-basket', 'leave']);
 
 function isTransitPhase(phase, route) {
@@ -37,44 +40,56 @@ export function installWarRoomHansBoardCollisionGuard(root) {
   if (!hans || !driver || !fireplace || typeof driver.onBeforeRender !== 'function') return 0;
   if (driver.userData?.warRoomHansBoardCollisionGuard === WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION) return 0;
 
-  const original = driver.onBeforeRender;
   const hansWorld = new THREE.Vector3();
   const fireplaceWorld = new THREE.Vector3();
   const safeWorldPosition = new THREE.Vector3();
 
-  driver.onBeforeRender = (...args) => {
-    original(...args);
-    if (!hans.visible) return;
+  const registered = registerWarRoomHansPostRenderStage(driver, {
+    key: WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION,
+    order: POST_RENDER_ORDER,
+    run: () => {
+      if (!hans.visible) {
+        hans.userData.warRoomHansBoardCollisionApplied = false;
+        return;
+      }
 
-    const phase = driver.userData?.warRoomHansPhase || hans.userData?.warRoomHansChoreographyPhase || '';
-    const route = hans.userData?.warRoomHansRoute || '';
-    if (!isTransitPhase(phase, route)) return;
+      const phase = driver.userData?.warRoomHansPhase || hans.userData?.warRoomHansChoreographyPhase || '';
+      const route = hans.userData?.warRoomHansRoute || '';
+      if (!isTransitPhase(phase, route)) {
+        hans.userData.warRoomHansBoardCollisionApplied = false;
+        return;
+      }
 
-    hans.getWorldPosition(hansWorld);
-    if (!insideBoardFootprint(hansWorld)) {
-      hans.userData.warRoomHansBoardCollisionApplied = false;
-      return;
-    }
+      hans.getWorldPosition(hansWorld);
+      if (!insideBoardFootprint(hansWorld)) {
+        hans.userData.warRoomHansBoardCollisionApplied = false;
+        return;
+      }
 
-    fireplace.getWorldPosition(fireplaceWorld);
-    const logicalX = Number(hans.position.x);
-    const safeZ = safeRearWorldZ(fireplaceWorld, hansWorld);
-    safeWorldPosition.set(hansWorld.x, hansWorld.y, safeZ);
-    hans.parent?.worldToLocal?.(safeWorldPosition);
+      fireplace.getWorldPosition(fireplaceWorld);
+      const logicalX = Number(hans.position.x);
+      const safeZ = safeRearWorldZ(fireplaceWorld, hansWorld);
+      safeWorldPosition.set(hansWorld.x, hansWorld.y, safeZ);
+      hans.parent?.worldToLocal?.(safeWorldPosition);
 
-    // X is the canonical choreography progress coordinate. Never alter it:
-    // FireCall/telemetry use it to decide when Hans is far enough onscreen to
-    // answer Matthias. Only push depth behind the physical board footprint.
-    hans.position.z = safeWorldPosition.z;
-    if (Number.isFinite(logicalX)) hans.position.x = logicalX;
+      // Run before facing/gait so every later stage sees the same position that
+      // is actually rendered. X remains the canonical choreography progress
+      // coordinate; only depth is clamped behind the board.
+      hans.position.z = safeWorldPosition.z;
+      hans.position.y = STANDING_Y;
+      if (Number.isFinite(logicalX)) hans.position.x = logicalX;
 
-    hans.userData.warRoomHansBoardCollisionApplied = true;
-    hans.userData.warRoomHansBoardCollisionGuard = WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION;
-    hans.userData.warRoomHansBoardCollisionAxis = 'z';
-    hans.userData.warRoomHansBoardSafeWorldZ = safeZ;
-  };
+      hans.userData.warRoomHansBoardCollisionApplied = true;
+      hans.userData.warRoomHansBoardCollisionGuard = WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION;
+      hans.userData.warRoomHansBoardCollisionAxis = 'z';
+      hans.userData.warRoomHansBoardSafeWorldZ = safeZ;
+      hans.userData.warRoomHansBoardGroundedY = STANDING_Y;
+    },
+  });
+  if (!registered) return 0;
 
   driver.userData.warRoomHansBoardCollisionGuard = WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION;
+  driver.userData.warRoomHansBoardCollisionGuardOrder = POST_RENDER_ORDER;
   hans.userData.warRoomHansBoardCollisionGuard = WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION;
   root.userData.warRoomHansBoardCollisionGuard = WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION;
   return 1;
