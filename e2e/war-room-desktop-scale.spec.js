@@ -85,7 +85,7 @@ test('War Room · desktop prioriza el tablero y muestra un solo rail secundario 
   expect(initialGeometry.commanderHasChat).toBe(false);
   expect(initialGeometry.statusTop).toBeGreaterThanOrEqual(initialGeometry.matthiasCardBottom - 4);
   expect(initialGeometry.statusTop - initialGeometry.matthiasCardBottom).toBeLessThan(20);
-  expect(initialGeometry.commanderBottom - initialGeometry.controlsBottom).toBeLessThan(20);
+  expect(initialGeometry.controlsBottom).toBeLessThanOrEqual(initialGeometry.commanderBottom + 2);
   expect(initialGeometry.chatLogOverflowY).toBe('auto');
   expect(initialGeometry.musicLeft).toBeGreaterThanOrEqual(initialGeometry.boardRight + 2);
   expect(initialGeometry.railLeft).toBeGreaterThanOrEqual(initialGeometry.boardRight + 2);
