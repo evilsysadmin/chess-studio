@@ -98,7 +98,8 @@ export function projectHansFireReplyAnchor({ ndcX, ndcY, coarsePointer = false }
 
   const left = clamp((x + 1) * 50, 3, 97);
   const headLift = coarsePointer ? 16 : 14.5;
-  const top = clamp(((1 - y) * 50) - headLift, 7, 92);
+  const safeTop = coarsePointer ? 22 : 18;
+  const top = clamp(((1 - y) * 50) - headLift, safeTop, 92);
 
   if (x > 0.48) return { left, top, bubbleShiftPercent: -82, tailPercent: 82 };
   if (x < -0.48) return { left, top, bubbleShiftPercent: -18, tailPercent: 18 };
@@ -112,7 +113,8 @@ export function projectHansInitialReplyAnchor({ ndcX, ndcY, coarsePointer = fals
 
   const left = clamp((x + 1) * 50, 6, 94);
   const headLift = coarsePointer ? 15 : 13.5;
-  const top = clamp(((1 - y) * 50) - headLift, 7, 92);
+  const safeTop = coarsePointer ? 20 : 16;
+  const top = clamp(((1 - y) * 50) - headLift, safeTop, 92);
 
   if (x > 0.48) return { left, top, bubbleShiftPercent: -62, tailPercent: 62 };
   if (x < -0.48) return { left, top, bubbleShiftPercent: -38, tailPercent: 38 };
