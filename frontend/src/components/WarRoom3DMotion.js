@@ -3,6 +3,7 @@ import * as THREE from 'three';
 const WAR_ROOM_RENDER_DISCIPLINE = Symbol.for('chess-studio.war-room-render-discipline');
 const shadowRefreshState = new WeakMap();
 const warRoomHemisphereState = new WeakMap();
+const warRoomKeyLightState = new WeakMap();
 const warRoomMaterialGradeRootState = new WeakMap();
 const warRoomMaterialGradeSignatureState = new WeakMap();
 const warRoomMaterialGradeObjectIds = new WeakMap();
@@ -67,6 +68,40 @@ export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {
   hemisphere.intensity = warRoomHemisphereIntensity({ coarsePointer });
   scene.userData.warRoomHemisphereIntensity = hemisphere.intensity;
   return hemisphere;
+}
+
+export function warRoomKeyLightPose({ whiteSide = true } = {}) {
+  return {
+    x: -6.4,
+    y: 12.2,
+    z: whiteSide ? 3.2 : -3.2,
+  };
+}
+
+export function applyWarRoomKeyLightGrade(scene) {
+  if (!scene) return null;
+  let key = warRoomKeyLightState.get(scene) || null;
+  if (!key || !key.parent) {
+    key = scene.children?.find((object) => (
+      object?.isDirectionalLight
+      && object.color?.getHex?.() === 0xffe1aa
+    )) || null;
+    if (key) warRoomKeyLightState.set(scene, key);
+  }
+  if (!key) return null;
+
+  // Keep the premium warm key, but stop firing it almost straight from the
+  // player's/white side. A higher, more lateral angle keeps ivory readable on
+  // light squares while restoring side modelling and avoiding frontal hotspots.
+  const whiteSide = (Number(key.position?.z) || 0) >= 0;
+  const pose = warRoomKeyLightPose({ whiteSide });
+  if (typeof key.position?.set === 'function') key.position.set(pose.x, pose.y, pose.z);
+  else if (key.position) Object.assign(key.position, pose);
+
+  scene.userData ||= {};
+  scene.userData.warRoomKeyLightPose = 'high-side-v1';
+  scene.userData.warRoomKeyLightPosition = pose;
+  return key;
 }
 
 export function warRoomMaterialIblProfile({ coarsePointer = false } = {}) {
@@ -312,6 +347,10 @@ function installWarRoomRenderDiscipline() {
     const hemisphere = applyWarRoomHemisphereGrade(scene, { coarsePointer });
     if (hemisphere && this.domElement?.dataset) {
       this.domElement.dataset.warRoomLightHemisphere = Number(hemisphere.intensity).toFixed(2);
+    }
+    const boardKey = applyWarRoomKeyLightGrade(scene);
+    if (boardKey && this.domElement?.dataset) {
+      this.domElement.dataset.warRoomKeyLightPose = 'high-side-v1';
     }
     const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
