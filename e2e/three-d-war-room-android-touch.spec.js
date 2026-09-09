@@ -7,6 +7,7 @@ test.use({ ...devices['Pixel 5'] });
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const BLACK_AFTER_E4_FEN = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
+const BLACK_AFTER_E4_E5_FEN = 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2';
 
 function normalized(vector) {
   const length = Math.hypot(...vector);
@@ -25,7 +26,7 @@ function dot(a, b) {
   return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
-function projectWarRoomSquare(rect, square, worldY = 0.12) {
+function projectWarRoomSquare(rect, square, worldY = 0.12, orientation = 'white') {
   const aspect = Math.max(0.35, rect.width / Math.max(1, rect.height));
   const mobileProfile = getWarRoomMobileFramingProfile({
     aspect,
@@ -40,8 +41,9 @@ function projectWarRoomSquare(rect, square, worldY = 0.12) {
   const limitingFov = Math.min(verticalFov, horizontalFov);
   const unclampedDistance = (profile.halfSpan / Math.tan(limitingFov / 2)) * profile.padding;
   const distance = Math.max(profile.minDistance, Math.min(profile.maxDistance, unclampedDistance));
-  const target = [0, profile.targetY, -profile.targetZ];
-  const direction = normalized([0, profile.cameraY, profile.cameraZ]);
+  const whiteSide = orientation !== 'black';
+  const target = [0, profile.targetY, whiteSide ? -profile.targetZ : profile.targetZ];
+  const direction = normalized([0, profile.cameraY, whiteSide ? profile.cameraZ : -profile.cameraZ]);
   const camera = target.map((value, index) => value + direction[index] * distance);
   const fileIndex = square.charCodeAt(0) - 97;
   const rank = Number(square[1]);
@@ -140,8 +142,9 @@ async function switchWarRoomTo2D(page) {
   await expect(page.locator('.board-grid').first()).toBeVisible({ timeout: 30_000 });
 }
 
-async function installBlackQuickGameRoute(page) {
+async function installBlackQuickGameRoute(page, moveLog = []) {
   const cpuOpening = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', captured: false, by: 'cpu' };
+  const humanReply = { from: 'e7', to: 'e5', san: 'e5', piece: 'p', captured: false, by: 'human' };
   const game = {
     id: 'e2e-black-game',
     fen: BLACK_AFTER_E4_FEN,
@@ -156,10 +159,28 @@ async function installBlackQuickGameRoute(page) {
     initialFen: START_FEN,
     ghostStyle: null,
   };
+  let currentGame = game;
+
+  await page.route('http://localhost:4000/api/games/e2e-black-game/move', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    const payload = route.request().postDataJSON?.() ?? {};
+    moveLog.push(payload);
+    if (payload.from !== 'e7' || payload.to !== 'e5') {
+      return route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ detail: `E2E esperaba e7-e5, recibió ${payload.from}-${payload.to}` }) });
+    }
+    currentGame = {
+      ...game,
+      fen: BLACK_AFTER_E4_E5_FEN,
+      turn: 'w',
+      history: [cpuOpening, humanReply],
+      lastMove: humanReply,
+    };
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(currentGame) });
+  });
 
   await page.route('http://localhost:4000/api/games/e2e-black-game', async (route) => {
     if (route.request().method() === 'GET') {
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(game) });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(currentGame) });
     }
     return route.fallback();
   });
@@ -168,7 +189,7 @@ async function installBlackQuickGameRoute(page) {
     if (route.request().method() !== 'POST') return route.fallback();
     const payload = route.request().postDataJSON?.() ?? {};
     if (payload.color !== 'b') return route.fallback();
-    return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(game) });
+    return route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify(currentGame) });
   });
 }
 
@@ -291,10 +312,11 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   await touchEnd(cdp);
 });
 
-test('War Room · orientación negra conserva back rank, color y navegación al alternar 3D↔2D', async ({ page }) => {
+test('War Room · orientación negra conserva back rank, color, raycast y navegación al alternar 3D↔2D', async ({ page }) => {
   test.setTimeout(75_000);
+  const moveLog = [];
   await mockApi(page);
-  await installBlackQuickGameRoute(page);
+  await installBlackQuickGameRoute(page, moveLog);
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
@@ -322,6 +344,25 @@ test('War Room · orientación negra conserva back rank, color y navegación al 
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'e8');
   await canvas.press('ArrowRight');
   await expect(board3d).toHaveAttribute('data-board3d-focused', 'd8');
+
+  const blackRect = await canvas.boundingBox();
+  expect(blackRect).not.toBeNull();
+  const blackFrom = projectWarRoomSquare(blackRect, 'e7', 0.76, 'black');
+  const blackTo = projectWarRoomSquare(blackRect, 'e5', 0.12, 'black');
+  const cdp = await page.context().newCDPSession(page);
+
+  await touchStart(cdp, blackFrom);
+  await expect(canvas).toHaveAttribute('data-war-room-last-square', 'e7');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e7');
+  await expect.poll(async () => Number(await board3d.getAttribute('data-board3d-legal-target-count'))).toBeGreaterThan(0);
+  await touchMove(cdp, blackFrom);
+  await touchEnd(cdp);
+
+  await touchStart(cdp, blackTo);
+  await expect(canvas).toHaveAttribute('data-war-room-last-square', 'e5');
+  await expect.poll(() => moveLog.length).toBe(1);
+  expect(moveLog[0]).toMatchObject({ from: 'e7', to: 'e5' });
+  await touchEnd(cdp);
 
   await switchWarRoomTo2D(page);
   const squares = page.locator('.board-grid').first().locator('.square');
