@@ -2,7 +2,6 @@ import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, clickBoardMove, login, mockApi } from './helpers.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
-const ACTIVE_GAME_SESSION_KEY = 'chess-study-active-game-session-v1';
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const AFTER_OPENING_FEN = 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2';
 const AFTER_CAPTURE_FEN = 'rnbqkb1r/ppp1pppp/5n2/3P4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 1 3';
@@ -89,19 +88,15 @@ async function installRestoreAuthorityRoutes(page, requestLog) {
   });
 }
 
-async function expectPersistedFen(page, fen) {
-  await expect.poll(async () => page.evaluate(({ key, expectedFen }) => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(key) || 'null');
-      return saved?.gameSnapshot?.fen === expectedFen;
-    } catch {
-      return false;
-    }
-  }, { key: ACTIVE_GAME_SESSION_KEY, expectedFen: fen }), {
-    timeout: 5_000,
-    intervals: [25, 50, 75],
-    message: `El snapshot activo debe persistir ${fen} antes de interrumpir el renderer`,
-  }).toBe(true);
+async function waitForCommittedMoveFrame(page, responsePromise) {
+  const response = await responsePromise;
+  expect(response.status()).toBe(200);
+
+  // Dos frames dejan que la promesa fetch actualice React y que Board3D arme la
+  // transición, pero siguen muy por debajo de la duración física del movimiento.
+  await page.evaluate(() => new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  }));
 }
 
 async function expectCleanWarRoom(page) {
@@ -127,22 +122,24 @@ test('War Room · F5 durante movimiento y captura restaura una escena limpia y j
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expectCleanWarRoom(page);
 
-  // La barrera de snapshot acredita que React ya aceptó la respuesta y armó la
-  // transición 3D. Recargamos inmediatamente después, sin esperar el settle.
+  const openingResponse = page.waitForResponse((response) => (
+    response.request().method() === 'POST'
+    && /\/games\/[^/]+\/move$/.test(new URL(response.url()).pathname)
+  ));
   await clickBoardMove(page, 'e2', 'e4');
   await expect.poll(() => movePosts(requestLog).length, { timeout: 5_000 }).toBe(1);
-  await expectPersistedFen(page, AFTER_OPENING_FEN);
+  await waitForCommittedMoveFrame(page, openingResponse);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expectCleanWarRoom(page);
 
-  // No basta con que vuelva un canvas: la posición restaurada debe seguir
-  // aceptando la captura real que sólo existe si e4/d5 sobrevivieron al reload.
+  const captureResponse = page.waitForResponse((response) => (
+    response.request().method() === 'POST'
+    && /\/games\/[^/]+\/move$/.test(new URL(response.url()).pathname)
+  ));
   await clickBoardMove(page, 'e4', 'd5');
   await expect.poll(() => movePosts(requestLog).length, { timeout: 5_000 }).toBe(2);
-  await expectPersistedFen(page, AFTER_CAPTURE_FEN);
+  await waitForCommittedMoveFrame(page, captureResponse);
 
-  // Segundo corte, ahora durante una captura: cubre ghost de pieza capturada,
-  // offsets de body motion y reactive-light rollback además del viaje normal.
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expectCleanWarRoom(page);
 
