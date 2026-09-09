@@ -8,6 +8,7 @@ import {
 import { SAVE_STATUS } from './saveStatus.js';
 import {
   reconnectAuthorityStillCurrent,
+  reconnectSnapshotIsFreshEnough,
   reconnectStillNeeded,
   sameReconnectTarget,
   shouldAutoReconnect,
@@ -58,5 +59,24 @@ describe('reconexión de partida · política defensiva', () => {
 
     expect(markGameMutationFinished(token)).toBe(true);
     expect(hasActiveGameMutation()).toBe(false);
+  });
+
+  it('rechaza snapshots de reconnect con menos historial que el estado local actual', () => {
+    expect(reconnectSnapshotIsFreshEnough({
+      localGame: { history: [{}, {}] },
+      remoteGame: { history: [{}] },
+    })).toBe(false);
+
+    expect(reconnectSnapshotIsFreshEnough({
+      localGame: { history: [{}, {}] },
+      remoteGame: { history: [{}, {}] },
+    })).toBe(true);
+
+    expect(reconnectSnapshotIsFreshEnough({
+      localGame: { history: [{}] },
+      remoteGame: { history: [{}, {}] },
+    })).toBe(true);
+
+    expect(reconnectSnapshotIsFreshEnough({ localGame: {}, remoteGame: {} })).toBe(true);
   });
 });
