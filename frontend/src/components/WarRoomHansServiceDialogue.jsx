@@ -14,9 +14,15 @@ function sameAnchor(current, next) {
     && current.tailPercent === next.tailPercent;
 }
 
+function dialogueUiSuppressed() {
+  return Boolean(
+    document.querySelector('.game-layout-focus')
+    || document.querySelector('.board-live-row.zen-mode'),
+  );
+}
+
 export default function WarRoomHansServiceDialogue({
   isThreeD = false,
-  enabled = false,
   matthiasAnchorStyle = null,
   matthiasTrackedSquare = null,
 }) {
@@ -28,7 +34,7 @@ export default function WarRoomHansServiceDialogue({
     setPortalHost(null);
     setPhase('');
     setHansAnchor(null);
-    if (!isThreeD || !enabled) return undefined;
+    if (!isThreeD) return undefined;
     const findHost = () => document.querySelector('.game-board-stack-3d .board3d-main-shell');
     const existing = findHost();
     if (existing) { setPortalHost(existing); return undefined; }
@@ -41,19 +47,20 @@ export default function WarRoomHansServiceDialogue({
     });
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [enabled, isThreeD]);
+  }, [isThreeD]);
 
   useEffect(() => {
-    if (!portalHost || !enabled || !isThreeD) return undefined;
+    if (!portalHost || !isThreeD) return undefined;
     let frameId = 0;
     let live = true;
     const tick = () => {
       if (!live) return;
       const canvas = portalHost.querySelector('.board3d-main-canvas');
-      const nextPhase = canvas?.dataset?.warRoomHansServiceDialogue || '';
+      const rawPhase = canvas?.dataset?.warRoomHansServiceDialogue || '';
+      const spec = warRoomHansServiceDialogueSpec(rawPhase) || warRoomHansChoreDialogueSpec(rawPhase);
+      const nextPhase = !dialogueUiSuppressed() && spec ? rawPhase : '';
       setPhase((current) => current === nextPhase ? current : nextPhase);
-      const spec = warRoomHansServiceDialogueSpec(nextPhase) || warRoomHansChoreDialogueSpec(nextPhase);
-      if (spec?.speaker === 'HANS' && canvas?.dataset?.warRoomHansScreen === 'onscreen') {
+      if (spec?.speaker === 'HANS' && nextPhase && canvas?.dataset?.warRoomHansScreen === 'onscreen') {
         const anchor = projectHansFireReplyAnchor({
           ndcX: canvas.dataset.warRoomHansNdcX,
           ndcY: canvas.dataset.warRoomHansNdcY,
@@ -68,7 +75,7 @@ export default function WarRoomHansServiceDialogue({
       live = false;
       window.cancelAnimationFrame(frameId);
     };
-  }, [enabled, isThreeD, portalHost]);
+  }, [isThreeD, portalHost]);
 
   const hansStyle = useMemo(() => hansAnchor ? {
     left: `${hansAnchor.left.toFixed(3)}%`,
@@ -85,7 +92,7 @@ export default function WarRoomHansServiceDialogue({
   } : null, [matthiasAnchorStyle]);
 
   const spec = warRoomHansServiceDialogueSpec(phase) || warRoomHansChoreDialogueSpec(phase);
-  if (!isThreeD || !enabled || !portalHost || !phase || !spec) return null;
+  if (!isThreeD || !portalHost || !phase || !spec) return null;
   const isHans = spec.speaker === 'HANS';
   const style = isHans ? hansStyle : matthiasStyle;
   if (!style) return null;
