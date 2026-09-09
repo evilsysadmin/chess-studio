@@ -1,30 +1,24 @@
 /* Desktop War Room information architecture.
-   Matthias + situation + chat are one left rail; RetroPlayer + move notebook are
-   one right rail. Mobile keeps the stacked layout for first-screen usability. */
+   Matthias + situation + view controls stay on the left. RetroPlayer plus one
+   tabbed secondary surface live on the right. Mobile keeps the stacked layout. */
 
-/* The move notebook is short-form SAN and tolerates a tighter rail much better
-   than conversational prose. Rebalance the two side rails without changing
-   their combined width, so the board keeps exactly the same horizontal budget. */
 @media (min-width: 1261px) {
   .game-screen .board-live-row.is-3d-warroom {
-    grid-template-columns: minmax(220px, 236px) minmax(780px, 1fr) minmax(176px, 192px) !important;
+    grid-template-columns: minmax(188px, 204px) minmax(780px, 1fr) minmax(204px, 220px) !important;
   }
 }
 
 @media (min-width: 1081px) and (max-width: 1260px) {
   .game-screen .board-live-row.is-3d-warroom {
-    grid-template-columns: minmax(200px, 216px) minmax(610px, 1fr) minmax(176px, 192px) !important;
+    grid-template-columns: minmax(176px, 190px) minmax(610px, 1fr) minmax(196px, 210px) !important;
   }
 }
 
 @media (min-width: 1081px) {
   .game-screen .board-live-row.is-3d-warroom {
-    /* Each rail owns its own vertical stack. The commander spans both rows so
-       its chat can consume the remaining height without moving the independent
-       RetroPlayer -> notebook handoff on the right. */
     grid-template-areas:
       'commander board music'
-      'commander board notation' !important;
+      'commander board rail' !important;
     grid-template-rows: auto minmax(0, 1fr);
     align-items: stretch;
   }
@@ -50,7 +44,8 @@
   }
 
   .game-screen .game-3d-command-column .game-3d-matthias-card,
-  .game-screen .game-3d-command-column .game-3d-warroom-status {
+  .game-screen .game-3d-command-column .game-3d-warroom-status,
+  .game-screen .game-3d-command-column .game-3d-warroom-controls {
     flex: 0 0 auto;
   }
 
@@ -59,78 +54,10 @@
     padding: .44rem .58rem;
   }
 
-  .game-screen .game-3d-command-column .game-chat {
-    width: 100%;
-    min-width: 0;
-    min-height: 250px;
-    height: auto;
-    max-height: none;
-    flex: 1 1 auto;
-    margin: 0;
-    overflow: hidden;
-    border-color: rgba(142,121,88,.36);
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* Conversation wins the reclaimed space: slightly calmer typography plus a
-     wider measure prevents every sentence becoming a vertical word ladder. */
-  .game-screen .game-3d-command-column .game-chat-message p,
-  .game-screen .game-3d-command-column .game-chat-empty {
-    font-size: .76rem;
-    line-height: 1.5;
-  }
-
-  /* The narrow command rail gets one clean line for the chat title instead of
-     the old MATTHIAS // EN DIRECTO + title staircase. */
-  .game-screen .game-3d-command-column .game-chat-heading {
-    flex: 0 0 auto;
-    align-items: center;
-    gap: .38rem;
-    padding: .46rem .5rem;
-  }
-
-  .game-screen .game-3d-command-column .game-chat-title-block.game-chat-matthias {
-    min-width: 0;
-    grid-template-columns: 26px minmax(0, 1fr);
-    column-gap: .38rem;
-  }
-
-  .game-screen .game-3d-command-column .game-chat-matthias-avatar {
-    width: 26px;
-    height: 26px;
-  }
-
-  .game-screen .game-3d-command-column .game-chat-kicker {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: .46rem;
-    letter-spacing: .08em;
-  }
-
-  .game-screen .game-3d-command-column .game-chat-heading h3 {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-size: .9rem;
-    line-height: 1.08;
-  }
-
-  .game-screen .game-3d-command-column .game-chat-tools {
-    flex: 0 0 auto;
-    gap: .24rem;
-  }
-
-  /* Matthias and status stay put; only the conversation history scrolls. */
-  .game-screen .game-3d-command-column .game-chat-log,
-  .game-screen .game-side-column-3d .game-chat-log {
-    flex: 1 1 auto;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior: contain;
-    scrollbar-gutter: stable;
+  /* Without the old permanently-open chat, the command rail becomes a quiet
+     identity/status strip. Controls sit at the foot instead of filling the gap. */
+  .game-screen .game-3d-command-column .game-3d-warroom-controls {
+    margin-top: auto;
   }
 
   .game-screen .game-side-column-3d .game-side-music {
@@ -139,37 +66,79 @@
     min-width: 0;
   }
 
-  /* Visual-audit pass: the notebook is reference material, not a co-primary
-     panel. Keep its preview deliberately shorter and calmer so the board and
-     player actions dominate the composition. Long-form review remains behind
-     the existing disclosure. */
-  .game-screen .game-side-column-3d .game-notation-disclosure.game-notation-disclosure-compact {
-    grid-area: notation;
+  .game-screen .game-side-column-3d .game-warroom-rail {
+    grid-area: rail;
     align-self: start;
+    min-width: 0;
+    width: 100%;
+    margin: .35rem 0 0;
+  }
+
+  .game-screen .game-side-column-3d .game-warroom-rail .game-chat {
+    width: 100%;
     min-width: 0;
     min-height: 0;
     height: auto;
-    max-height: min(42dvh, 360px);
-    margin: .35rem 0 0;
+    max-height: none;
+    margin: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .game-screen .game-side-column-3d .game-warroom-rail .game-chat-heading {
+    flex: 0 0 auto;
+    align-items: center;
+    gap: .34rem;
+    padding: .42rem .46rem;
+  }
+
+  .game-screen .game-side-column-3d .game-warroom-rail .game-chat-title-block.game-chat-matthias {
+    min-width: 0;
+    grid-template-columns: 24px minmax(0, 1fr);
+    column-gap: .34rem;
+  }
+
+  .game-screen .game-side-column-3d .game-warroom-rail .game-chat-matthias-avatar {
+    width: 24px;
+    height: 24px;
+  }
+
+  .game-screen .game-side-column-3d .game-warroom-rail .game-chat-kicker {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: .42rem;
+    letter-spacing: .06em;
+  }
+
+  .game-screen .game-side-column-3d .game-warroom-rail .game-chat-heading h3 {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: .82rem;
+    line-height: 1.08;
+  }
+
+  .game-screen .game-side-column-3d .game-warroom-rail .game-chat-tools {
+    flex: 0 0 auto;
+    gap: .2rem;
+  }
+
+  .game-screen .game-side-column-3d .game-warroom-rail .game-chat-message p,
+  .game-screen .game-side-column-3d .game-warroom-rail .game-chat-empty {
+    font-size: .7rem;
+    line-height: 1.46;
+  }
+
+  .game-screen .game-side-column-3d .game-warroom-rail .game-chat-log {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: min(34dvh, 310px);
     overflow-y: auto;
     overflow-x: hidden;
     overscroll-behavior: contain;
-    scrollbar-gutter: auto;
-    opacity: .92;
-  }
-
-  .game-screen .game-side-column-3d .game-notation-disclosure > summary {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    min-height: 34px;
-    background: color-mix(in srgb, var(--studio-panel-raised) 94%, #17130e 6%);
-  }
-
-  .game-screen .game-side-column-3d .game-notation-disclosure.game-notation-disclosure-compact:hover,
-  .game-screen .game-side-column-3d .game-notation-disclosure.game-notation-disclosure-compact:focus-within,
-  .game-screen .game-side-column-3d .game-notation-disclosure.game-notation-disclosure-compact[open] {
-    opacity: 1;
+    scrollbar-gutter: stable;
   }
 
   .game-screen .game-board-stack.game-board-stack-3d {

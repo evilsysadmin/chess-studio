@@ -1,0 +1,157 @@
+/* War Room desktop progressive disclosure: one secondary surface at a time.
+   The mini-player remains independent above this rail. */
+.game-warroom-rail {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  border: 1px solid rgba(142, 121, 88, .34);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--studio-panel-raised) 92%, #15110d 8%);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .2);
+}
+
+.game-warroom-rail-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 1px solid rgba(142, 121, 88, .24);
+  background: rgba(12, 10, 8, .24);
+}
+
+.game-warroom-rail-tabs button {
+  min-width: 0;
+  min-height: 34px;
+  padding: .32rem .18rem;
+  border: 0;
+  border-right: 1px solid rgba(142, 121, 88, .16);
+  background: transparent;
+  color: #bfb29d;
+  cursor: pointer;
+  font: 750 .54rem/1.1 var(--font-body);
+  letter-spacing: .01em;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+.game-warroom-rail-tabs button:last-child {
+  border-right: 0;
+}
+
+.game-warroom-rail-tabs button > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-warroom-rail-tabs button > small {
+  display: block;
+  margin-top: .08rem;
+  color: #8f816d;
+  font: 700 .48rem/1 var(--font-mono);
+}
+
+.game-warroom-rail-tabs button:hover,
+.game-warroom-rail-tabs button:focus-visible {
+  color: #f0ddbc;
+  background: rgba(212, 167, 44, .07);
+  outline: none;
+}
+
+.game-warroom-rail-tabs button:focus-visible {
+  box-shadow: inset 0 0 0 1px rgba(212, 167, 44, .48);
+}
+
+.game-warroom-rail-tabs button.is-active {
+  color: #f5dfb5;
+  background: rgba(212, 167, 44, .11);
+  box-shadow: inset 0 -2px 0 rgba(212, 167, 44, .78);
+}
+
+.game-warroom-rail-tabs button.is-active > small {
+  color: #d6b96f;
+}
+
+.game-warroom-rail-panel {
+  min-width: 0;
+  max-height: min(42dvh, 390px);
+  padding: .5rem .56rem .58rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.game-warroom-rail-panel.is-matthias {
+  padding: 0;
+  overflow: hidden;
+}
+
+.game-warroom-rail-panel.is-matthias .game-chat {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.game-warroom-captures {
+  display: grid;
+  gap: .48rem;
+  min-width: 0;
+  color: #eadbc2;
+}
+
+.game-warroom-captures > p {
+  margin: 0;
+  color: #b9ad98;
+  font: 650 .64rem/1.45 var(--font-body);
+}
+
+.game-warroom-capture-row {
+  display: grid;
+  grid-template-columns: 3.1rem minmax(0, 1fr);
+  align-items: center;
+  gap: .34rem;
+  min-width: 0;
+}
+
+.game-warroom-capture-row > span {
+  color: #c9b99d;
+  font: 700 .58rem/1.2 var(--font-body);
+}
+
+.game-warroom-capture-pieces {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .14rem;
+  min-width: 0;
+}
+
+.game-warroom-capture-pieces > small {
+  color: #786e60;
+}
+
+.game-warroom-capture-piece {
+  display: inline-grid;
+  place-items: center;
+  width: 1.12rem;
+  height: 1.12rem;
+  color: #f3dfbb;
+  font-size: 1rem;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, .8);
+}
+
+.game-warroom-capture-warning {
+  padding-top: .38rem;
+  border-top: 1px dashed rgba(142, 121, 88, .24);
+  color: #a89b87 !important;
+  font-size: .55rem !important;
+}
+
+@media (min-width: 1081px) {
+  .game-screen .game-side-column.game-side-column-3d > .game-side-music,
+  .game-screen .game-side-column.game-side-column-3d > .game-warroom-rail {
+    position: relative;
+    z-index: 1;
+  }
+}
