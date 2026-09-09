@@ -153,7 +153,7 @@ describe('Hans board collision guard', () => {
     expect(hans.userData.warRoomHansFacingGuardCorrections).toBe(1);
   });
 
-  it('does not disturb a transit position that is already outside the board', () => {
+  it('does not disturb a transit position that is already outside the board, except to ground Hans', () => {
     const { root, hans, driver } = makeRig({ worldX: -5.4, worldY: 0.12, worldZ: -5.8 });
 
     expect(installWarRoomHansBoardCollisionGuard(root)).toBe(1);
@@ -162,7 +162,8 @@ describe('Hans board collision guard', () => {
     const world = worldPosition(hans);
     expect(world.x).toBeCloseTo(-5.4, 6);
     expect(world.z).toBeCloseTo(-5.8, 6);
-    expect(hans.position.y).toBeCloseTo(0.12, 6);
+    expect(hans.position.y).toBeCloseTo(-0.34, 6);
     expect(hans.userData.warRoomHansBoardCollisionApplied).toBe(false);
+    expect(hans.userData.warRoomHansBoardGroundedY).toBeCloseTo(-0.34, 6);
   });
 });

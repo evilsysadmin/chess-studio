@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION = 'board-depth-guard-v4-pipeline-grounded';
+export const WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION = 'board-depth-guard-v5-always-grounded';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -52,6 +52,12 @@ export function installWarRoomHansBoardCollisionGuard(root) {
         hans.userData.warRoomHansBoardCollisionApplied = false;
         return;
       }
+
+      // Hans' root stays physically planted on the room floor in every visible
+      // routine. Crouches and elder gait are articulated poses, not root-Y
+      // translation, so ambient chores cannot reintroduce the levitation bug.
+      hans.position.y = STANDING_Y;
+      hans.userData.warRoomHansBoardGroundedY = STANDING_Y;
 
       const phase = driver.userData?.warRoomHansPhase || hans.userData?.warRoomHansChoreographyPhase || '';
       const route = hans.userData?.warRoomHansRoute || '';
