@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { currentGameAuthorityGeneration, markGameMutationConfirmed } from './gameAuthorityGeneration.js';
+import {
+  currentGameAuthorityGeneration,
+  hasActiveGameMutation,
+  markGameMutationFinished,
+  markGameMutationStarted,
+} from './gameAuthorityGeneration.js';
 import { SAVE_STATUS } from './saveStatus.js';
 import {
   reconnectAuthorityStillCurrent,
@@ -10,8 +15,9 @@ import {
 } from './useGameReconnect.js';
 
 describe('reconexión de partida · política defensiva', () => {
-  it('nunca lanza dos reconciliaciones simultáneas', () => {
+  it('nunca lanza dos reconciliaciones simultáneas ni durante una mutación activa', () => {
     expect(shouldAttemptReconnect({ inFlight: true, reconnectNeeded: true, saveState: SAVE_STATUS.ERROR })).toBe(false);
+    expect(shouldAttemptReconnect({ inFlight: false, reconnectNeeded: true, saveState: SAVE_STATUS.SAVED, mutationInFlight: true })).toBe(false);
     expect(shouldAttemptReconnect({ inFlight: false, reconnectNeeded: true, saveState: SAVE_STATUS.SAVED })).toBe(true);
   });
 
@@ -41,12 +47,16 @@ describe('reconexión de partida · política defensiva', () => {
     expect(reconnectStillNeeded({ generationAtStart: 4, currentGeneration: 4, online: true })).toBe(false);
   });
 
-  it('descarta un GET de reconnect si una mutación más nueva se confirma mientras está en vuelo', () => {
+  it('invalida un GET de reconnect desde que empieza una mutación, no sólo al confirmarla', () => {
     const generationAtStart = currentGameAuthorityGeneration();
     expect(reconnectAuthorityStillCurrent({ generationAtStart })).toBe(true);
+    expect(hasActiveGameMutation()).toBe(false);
 
-    markGameMutationConfirmed();
-
+    const token = markGameMutationStarted();
+    expect(hasActiveGameMutation()).toBe(true);
     expect(reconnectAuthorityStillCurrent({ generationAtStart })).toBe(false);
+
+    expect(markGameMutationFinished(token)).toBe(true);
+    expect(hasActiveGameMutation()).toBe(false);
   });
 });
