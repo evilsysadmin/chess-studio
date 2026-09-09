@@ -30,6 +30,13 @@ export function reconnectAuthorityStillCurrent({ generationAtStart, currentGener
   return generationAtStart === currentGeneration;
 }
 
+export function reconnectSnapshotIsFreshEnough({ localGame = null, remoteGame = null } = {}) {
+  const localHistory = Array.isArray(localGame?.history) ? localGame.history.length : null;
+  const remoteHistory = Array.isArray(remoteGame?.history) ? remoteGame.history.length : null;
+  if (localHistory == null || remoteHistory == null) return true;
+  return remoteHistory >= localHistory;
+}
+
 export function useGameReconnect({
   route,
   game,
@@ -121,6 +128,17 @@ export function useGameReconnect({
         hasActiveGameMutation()
         || !reconnectAuthorityStillCurrent({ generationAtStart: authorityGenerationAtStart })
       )) {
+        advanceReconnect(ACTIVE_SESSION_EVENT.RECONNECTED, target);
+        reconnectNeeded.current = true;
+        if (reconnectAbortRef.current === controller) reconnectAbortRef.current = null;
+        reconnectInFlight.current = false;
+        return;
+      }
+
+      const currentLocalGame = target.route === 'tournamentGame'
+        ? tournamentGameRef.current
+        : gameRef.current;
+      if (result.ok && !reconnectSnapshotIsFreshEnough({ localGame: currentLocalGame, remoteGame: result.game })) {
         advanceReconnect(ACTIVE_SESSION_EVENT.RECONNECTED, target);
         reconnectNeeded.current = true;
         if (reconnectAbortRef.current === controller) reconnectAbortRef.current = null;
