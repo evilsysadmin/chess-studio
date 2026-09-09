@@ -27,12 +27,12 @@ describe('War Room Hans fire call contract', () => {
     expect(fireCallPhase(MATTHIAS_FIRE_CALL_MS + 1, true)).toBe('hans');
   });
 
-  it('suelta la sugerencia casi al final del lateral, como remate antes de irse, y congela sólo la conversación', () => {
+  it('suelta la sugerencia al alinearse con el pasillo de la puerta y congela sólo la conversación', () => {
     const suggestion = { line: 'Yo probaría caballo de g1 a f3.' };
     const before = {
       phase: 'await-exit-peek',
-      route: HANS_BOARD_PEEK_ROUTE,
-      logicalX: HANS_BOARD_PEEK_LOGICAL_X - 0.01,
+      route: 'leave-side',
+      logicalX: HANS_BOARD_PEEK_LOGICAL_X,
     };
     const ready = {
       phase: 'await-exit-peek',
@@ -40,7 +40,8 @@ describe('War Room Hans fire call contract', () => {
       logicalX: HANS_BOARD_PEEK_LOGICAL_X,
     };
 
-    expect(HANS_BOARD_PEEK_LOGICAL_X).toBeCloseTo(1.24, 2);
+    expect(HANS_BOARD_PEEK_ROUTE).toBe('leave-bypass');
+    expect(HANS_BOARD_PEEK_LOGICAL_X).toBeCloseTo(1.35, 2);
     expect(hansBoardPeekPointReached(before)).toBe(false);
     expect(hansBoardPeekPointReached(ready)).toBe(true);
     expect(shouldStartHansBoardPeek({ ...ready, suggestion })).toBe(true);
