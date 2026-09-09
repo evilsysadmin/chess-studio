@@ -33,10 +33,20 @@ test('War Room · Android landscape convierte el ancho extra en tablero, no en a
   const shell = page.locator('.board3d-main-shell');
   const liveRow = page.locator('.board-live-row.is-3d-warroom');
   const command = page.locator('.game-3d-command-column');
+  const turnPill = page.locator('.game-3d-turn-pill');
 
   await expect(board3d).toBeVisible({ timeout: 30_000 });
   await expect(shell).toBeVisible();
   await expect(command).toBeVisible();
+  await expect(turnPill).toBeVisible();
+  await expect(turnPill).toContainText('Matthias');
+  await expect(turnPill).toContainText(/CPU nivel \d+/i);
+  await expect(turnPill.locator('.game-3d-turn-pill-light')).toBeVisible();
+
+  // Recheck after the deferred 3D CSS/chunk has had time to settle. This is the
+  // regression for the pill flashing for a moment and then disappearing.
+  await page.waitForTimeout(1200);
+  await expect(turnPill).toBeVisible();
 
   const geometry = await page.evaluate(() => {
     const shellEl = document.querySelector('.board3d-main-shell');
