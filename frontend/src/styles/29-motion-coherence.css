@@ -15,8 +15,24 @@
   animation-timing-function: cubic-bezier(.22, 1, .36, 1);
 }
 
+/* Dialogue should appear, not jump onto the board. Keep the existing lifecycle
+ * percentages so timing/visibility semantics remain untouched. */
+@keyframes matthias-board-bubble-life {
+  0% { opacity: 0; transform: translateY(2px) scale(.99); }
+  8%, 78% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-1px) scale(.995); visibility: hidden; }
+}
+
+/* Spectators are ambient flavour, so their entrance is deliberately quieter
+ * than primary game feedback. */
+@keyframes audience-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .status-line.pulse {
+  .status-line.pulse,
+  .audience-reaction {
     animation: none;
   }
 }
