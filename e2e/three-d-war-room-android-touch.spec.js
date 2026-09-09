@@ -313,7 +313,7 @@ test('War Room · orientación negra conserva back rank, color y navegación al 
   const quickDialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(quickDialog).toBeVisible();
   const settings = quickDialog.locator('details.quick-match-settings');
-  await settings.locator('summary').click();
+  await settings.locator(':scope > summary').click();
   const black = quickDialog.getByRole('radio', { name: 'Negras', exact: true });
   await black.click();
   await expect(black).toHaveAttribute('aria-checked', 'true');
