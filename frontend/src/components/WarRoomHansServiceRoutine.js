@@ -13,12 +13,15 @@ import {
 } from './WarRoomHansEventContract.js';
 import { ensureWarRoomHansPlant } from './WarRoomHansPlantDecor.js';
 import {
+  warRoomHansBuildSafeRoute,
+  moveWarRoomHansAlongRoute,
+} from './WarRoomHansNavigation.js';
+import {
   warRoomHansServiceActionMs,
   warRoomHansServiceDialoguePhase,
 } from './WarRoomHansServiceContract.js';
 import {
   HANS_SERVICE_WALK_SPEED,
-  moveWarRoomHansToward,
   setWarRoomHansServiceDoor,
   warRoomHansServiceHome,
   warRoomHansTargetNearObject,
@@ -29,7 +32,7 @@ import {
   resetHansWalkCycle,
 } from './HansWalkCycle.js';
 
-export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v3-command-desk';
+export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v4-safe-route';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const COMMAND_DESK_TOP_NAME = 'war-room-command-desk-top';
@@ -152,6 +155,9 @@ export function installWarRoomHansServiceRoutine(root) {
   let state = 'idle';
   let home = null;
   let target = null;
+  let routeIn = [];
+  let routeOut = [];
+  let routeIndex = 0;
   let actionElapsed = 0;
   let lastNow = null;
 
@@ -164,12 +170,18 @@ export function installWarRoomHansServiceRoutine(root) {
     const nextGameId = getWarRoomHansGameId(actor);
     if (!nextGameId) return;
     if (nextGameId !== gameId) {
+      if (active && eventName) finish(actor, props, controller, root, `service-${eventName}`);
       gameId = nextGameId;
       eventName = warRoomHansEventForGame(gameId);
       eligibleSince = now;
       delayMs = warRoomHansAmbientDelayMs(gameId, { min: 18000, max: 48000, salt: eventName });
       active = false;
       state = 'idle';
+      home = null;
+      target = null;
+      routeIn = [];
+      routeOut = [];
+      routeIndex = 0;
       if (deliveredEspresso) deliveredEspresso.visible = false;
       setDialogue(actor, '');
     }
@@ -187,39 +199,55 @@ export function installWarRoomHansServiceRoutine(root) {
         return;
       }
       home = service.point;
+      target = eventName === 'water-plant'
+        ? warRoomHansTargetNearObject(serviceTargetObject, actor.hans.parent, { offsetX: -0.72, offsetZ: 0.06 })
+        : warRoomHansTargetNearObject(serviceTargetObject, actor.hans.parent, { offsetX: -1.78, offsetZ: 0.74 });
+      if (!target) {
+        releaseWarRoomHansRoutine(actor, routineName);
+        return;
+      }
+      routeIn = warRoomHansBuildSafeRoute(floor, actor.hans.parent, home, target);
+      routeOut = warRoomHansBuildSafeRoute(floor, actor.hans.parent, target, home);
+      if (!routeIn.length || !routeOut.length) {
+        releaseWarRoomHansRoutine(actor, routineName);
+        return;
+      }
       actor.hans.position.copy(home);
       actor.hans.visible = true;
       setWarRoomHansServiceDoor(root, 1);
       props.can.visible = eventName === 'water-plant';
       props.tray.visible = eventName === 'espresso';
-      target = eventName === 'water-plant'
-        ? warRoomHansTargetNearObject(serviceTargetObject, actor.hans.parent, { offsetX: -0.72, offsetZ: 0.06 })
-        : warRoomHansTargetNearObject(serviceTargetObject, actor.hans.parent, { offsetX: -1.78, offsetZ: 0.74 });
-      if (!target) {
-        actor.hans.visible = false;
-        props.can.visible = false;
-        props.tray.visible = false;
-        setWarRoomHansServiceDoor(root, 0);
-        releaseWarRoomHansRoutine(actor, routineName);
-        return;
-      }
       state = 'walking-in';
       active = true;
       actionElapsed = 0;
+      routeIndex = 0;
       actor.hans.userData.warRoomHansServiceEvent = eventName;
     }
 
     if (state === 'walking-in') {
       setWarRoomHansServiceDoor(root, Math.max(0, 1 - Math.min(1, actionElapsed / 1200)));
       actionElapsed += delta;
-      const motion = moveWarRoomHansToward(actor.hans, target, HANS_SERVICE_WALK_SPEED * delta / 1000);
+      const motion = moveWarRoomHansAlongRoute(
+        actor.hans,
+        routeIn,
+        routeIndex,
+        HANS_SERVICE_WALK_SPEED * delta / 1000,
+      );
+      routeIndex = motion.index;
       actor.hans.userData.warRoomHansMotionState = 'walk-service';
       actor.hans.userData.warRoomHansRoute = `service-${eventName}`;
+      if (!motion.valid) {
+        finish(actor, props, controller, root, routineName);
+        active = false;
+        completedGameId = gameId;
+        return;
+      }
       if (motion.travelled > 0) advanceHansWalkCycle(controller, { travelled: motion.travelled, horizontalWeight: 0.4 });
       if (motion.arrived) {
         resetHansWalkCycle(controller, { full: true });
         state = 'acting';
         actionElapsed = 0;
+        routeIndex = 0;
         if (eventName === 'espresso') setDialogue(actor, 'hans-espresso');
       }
       return;
@@ -247,14 +275,27 @@ export function installWarRoomHansServiceRoutine(root) {
         setDialogue(actor, '');
         state = 'returning';
         actionElapsed = 0;
+        routeIndex = 0;
       }
       return;
     }
 
     if (state === 'returning') {
-      const motion = moveWarRoomHansToward(actor.hans, home, HANS_SERVICE_WALK_SPEED * delta / 1000);
+      const motion = moveWarRoomHansAlongRoute(
+        actor.hans,
+        routeOut,
+        routeIndex,
+        HANS_SERVICE_WALK_SPEED * delta / 1000,
+      );
+      routeIndex = motion.index;
       actor.hans.userData.warRoomHansMotionState = 'walk-service';
       actor.hans.userData.warRoomHansRoute = 'service-return';
+      if (!motion.valid) {
+        finish(actor, props, controller, root, routineName);
+        active = false;
+        completedGameId = gameId;
+        return;
+      }
       if (motion.travelled > 0) advanceHansWalkCycle(controller, { travelled: motion.travelled, horizontalWeight: 0.4 });
       if (motion.arrived) {
         finish(actor, props, controller, root, routineName);
