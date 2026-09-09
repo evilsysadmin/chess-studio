@@ -1,3 +1,4 @@
+@layer l28 {
 /* War Room chrome relocation.
    The room is the header: desktop 3D games should spend vertical space on the
    board, not on application chrome. Keep this isolated from 2D/mobile routes. */
@@ -158,4 +159,5 @@
     animation-duration: .01ms;
     animation-delay: 1.2s;
   }
+}
 }
