@@ -1,0 +1,49 @@
+name: Offline pending move reconnect
+
+on:
+  pull_request:
+    paths:
+      - 'e2e/offline-pending-move-reconnect.spec.js'
+      - 'frontend/src/useGameReconnect.js'
+      - 'frontend/src/gameReconnect.js'
+      - 'frontend/src/components/GameScreen.jsx'
+      - '.github/workflows/offline-pending-move-reconnect.yml'
+      - '.github/actions/setup-browser-e2e/action.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: offline-pending-move-reconnect-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pending-move-reconnect:
+    name: Browser required · offline pending move reconnect
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Restore browser runtime and build frontend
+        uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+          restore-frontend-deps: 'true'
+          build-frontend: 'true'
+
+      - name: Run offline pending move reconnect contract
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test offline-pending-move-reconnect.spec.js --workers=1 --retries=0 --timeout=75000
+
+      - name: Upload Playwright diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: offline-pending-move-reconnect-${{ github.sha }}
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
