@@ -104,6 +104,7 @@ export default function Board3D(props) {
         data-war-room-hans-runtime={requestsHansQuickIteration ? 'pending' : 'idle'}
       />
       <Board3DCore
+        key={hansGameId || 'war-room'}
         {...props}
         hansDiagnosticsMarkerRef={hansMarkerRef}
         hansDiagnosticsRequested={requestsHansQuickIteration}
