@@ -40,7 +40,7 @@ export default function GameWarRoomCommandColumn({
       >
         {CPU_IDENTITY.avatar && <img className="game-3d-turn-pill-avatar" src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />}
         <span className="game-3d-turn-pill-identity">
-          <strong>{CPU_IDENTITY.name}</strong>
+          <strong role="heading" aria-level="2">{CPU_IDENTITY.name}</strong>
           <span>· CPU nivel {game.difficulty}</span>
         </span>
         <span className="game-3d-turn-pill-divider" aria-hidden="true" />
