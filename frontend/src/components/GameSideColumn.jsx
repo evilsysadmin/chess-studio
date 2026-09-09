@@ -15,7 +15,7 @@ const CAPTURE_PIECES = {
   q: { label: 'Dama', white: '♕', black: '♛' },
 };
 
-function recentNotationPairs(history, limit = 2) {
+function recentNotationPairs(history, limit = 1) {
   const pairs = [];
   for (let i = 0; i < history.length; i += 2) {
     pairs.push({
