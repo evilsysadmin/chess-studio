@@ -1,4 +1,4 @@
-import { markGameMutationConfirmed } from './gameAuthorityGeneration.js';
+import { markGameMutationFinished, markGameMutationStarted } from './gameAuthorityGeneration.js';
 import { createOperationId, operationFingerprint } from './operationId.js';
 
 const DEFAULT_RETRY_WINDOW_MS = 5 * 60_000;
@@ -25,6 +25,7 @@ export function createGameMutationCoordinator({
       controller,
       session: sessionGeneration,
       operationId: null,
+      authorityToken: markGameMutationStarted(),
     };
     currentOperation = operation;
     return operation;
@@ -40,6 +41,7 @@ export function createGameMutationCoordinator({
 
   function finish(operation) {
     if (currentOperation !== operation) return false;
+    markGameMutationFinished(operation?.authorityToken);
     currentOperation = null;
     return true;
   }
@@ -47,6 +49,7 @@ export function createGameMutationCoordinator({
   function abortCurrent(reason = 'Mutation cancelled') {
     if (!currentOperation) return false;
     currentOperation.controller.abort(abortError(reason));
+    markGameMutationFinished(currentOperation.authorityToken);
     currentOperation = null;
     return true;
   }
@@ -80,7 +83,6 @@ export function createGameMutationCoordinator({
   function confirm(operationIdToConfirm) {
     if (operationIdToConfirm && retryOperation?.operationId === operationIdToConfirm) {
       retryOperation = null;
-      markGameMutationConfirmed();
       return true;
     }
     return false;
