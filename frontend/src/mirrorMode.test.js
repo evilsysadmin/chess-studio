@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { computeMirrorProfile, deriveMirrorStyle, mirrorDifficulty } from './mirrorMode.js';
+import { calibrateMirrorDifficulty, computeMirrorProfile, deriveMirrorStyle, mirrorDifficulty } from './mirrorMode.js';
 import { saveWorstMoveCache } from './worstMoveCache.js';
 import { saveGameRecord } from './gameHistory.js';
 
@@ -21,6 +21,25 @@ describe('mirrorDifficulty', () => {
   it('nunca baja de 5 ni sube de 95', () => {
     expect(mirrorDifficulty(0)).toBeLessThanOrEqual(95);
     expect(mirrorDifficulty(100000)).toBeGreaterThanOrEqual(5);
+  });
+
+  it('retrasa los cambios discretos de profundidad 70/90 sin perder el techo', () => {
+    expect(calibrateMirrorDifficulty(60)).toBe(60);
+    expect(calibrateMirrorDifficulty(73)).toBe(69);
+    expect(calibrateMirrorDifficulty(74)).toBe(70);
+    expect(calibrateMirrorDifficulty(92)).toBe(89);
+    expect(calibrateMirrorDifficulty(93)).toBe(90);
+    expect(calibrateMirrorDifficulty(95)).toBe(95);
+  });
+
+  it('la calibración es monótona y nunca fortalece el raw derivado', () => {
+    let previous = 0;
+    for (let raw = 5; raw <= 95; raw += 1) {
+      const calibrated = calibrateMirrorDifficulty(raw);
+      expect(calibrated).toBeGreaterThanOrEqual(previous);
+      expect(calibrated).toBeLessThanOrEqual(raw);
+      previous = calibrated;
+    }
   });
 });
 

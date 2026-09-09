@@ -192,8 +192,40 @@ export function computeMirrorProfile(history = loadGameHistory()) {
   };
 }
 
+// La fuerza del espejo se deriva automáticamente; el jugador no está eligiendo
+// un valor manual. Por eso suavizamos los saltos discretos 70/90 del motor para
+// que dos perfiles casi idénticos no produzcan clones de fuerza radicalmente
+// distinta. El tramo bajo queda intacto y el techo histórico 95 se conserva.
+export const MIRROR_ENGINE_CURVE = Object.freeze([
+  [5, 5],
+  [60, 60],
+  [69, 68],
+  [73, 69],
+  [74, 70],
+  [84, 82],
+  [89, 87],
+  [92, 89],
+  [93, 90],
+  [95, 95],
+]);
+
+export function calibrateMirrorDifficulty(rawDifficulty) {
+  const raw = clamp(Number(rawDifficulty) || 0, 5, 95);
+  for (let index = 1; index < MIRROR_ENGINE_CURVE.length; index += 1) {
+    const [rightRaw, rightEngine] = MIRROR_ENGINE_CURVE[index];
+    const [leftRaw, leftEngine] = MIRROR_ENGINE_CURVE[index - 1];
+    if (raw <= rightRaw) {
+      const span = rightRaw - leftRaw || 1;
+      const t = (raw - leftRaw) / span;
+      return Math.round(leftEngine + (rightEngine - leftEngine) * t);
+    }
+  }
+  return MIRROR_ENGINE_CURVE[MIRROR_ENGINE_CURVE.length - 1][1];
+}
+
 // Cuanto mayor es la pérdida promedio, más floja la CPU fantasma. Los topes
 // evitan extremos absurdos aunque el historial contenga una autopsia salvaje.
 export function mirrorDifficulty(avgLoss) {
-  return Math.max(5, Math.min(95, Math.round(100 - avgLoss / 5)));
+  const raw = clamp(Math.round(100 - avgLoss / 5), 5, 95);
+  return calibrateMirrorDifficulty(raw);
 }
