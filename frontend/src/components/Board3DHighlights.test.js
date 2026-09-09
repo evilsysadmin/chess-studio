@@ -1,10 +1,29 @@
 import { describe, expect, it } from 'vitest';
+import { FILES } from './Board3DConfig.js';
+import { squarePosition } from './Board3DBoardMath.js';
 import {
   BOARD3D_HIGHLIGHT_COLORS,
   BOARD3D_HIGHLIGHT_SIZE,
   BOARD3D_HIGHLIGHT_Y,
   board3DHighlightStyle,
 } from './Board3DHighlights.js';
+
+const ALL_SQUARES = Object.freeze(
+  Array.from({ length: 8 }, (_, rankIndex) =>
+    FILES.map((file) => `${file}${rankIndex + 1}`),
+  ).flat(),
+);
+
+function highlightedSquares(state, kind = null) {
+  return ALL_SQUARES.filter((square) => {
+    const style = board3DHighlightStyle({ square, ...state });
+    return kind ? style?.kind === kind : Boolean(style);
+  });
+}
+
+function expectOnlySquares(state, expected, kind = null) {
+  expect(highlightedSquares(state, kind).sort()).toEqual([...expected].sort());
+}
 
 describe('War Room 3D premium highlight visibility', () => {
   it('keeps the overlay safely above the settled tile surface', () => {
@@ -20,6 +39,58 @@ describe('War Room 3D premium highlight visibility', () => {
     const selected = board3DHighlightStyle({ square: 'e2', selectedSquare: 'e2', legalMap: new Map() });
     expect(legal).toMatchObject({ kind: 'legal', color: 0x245f9f, opacity: 0.84, scale: 0.82 });
     expect(selected).toMatchObject({ kind: 'selected', color: 0xc99a43, opacity: 0.82 });
+  });
+
+  it('binds selection and legal targets to exact algebraic squares with no mirrored spill', () => {
+    const whiteState = {
+      selectedSquare: 'e2',
+      legalMap: new Map([['e3', false], ['e4', false]]),
+    };
+    expectOnlySquares(whiteState, ['e2', 'e3', 'e4']);
+    expectOnlySquares(whiteState, ['e2'], 'selected');
+    expectOnlySquares(whiteState, ['e3', 'e4'], 'legal');
+
+    const blackState = {
+      selectedSquare: 'e7',
+      legalMap: new Map([['e6', false], ['e5', false]]),
+    };
+    expectOnlySquares(blackState, ['e5', 'e6', 'e7']);
+    expectOnlySquares(blackState, ['e7'], 'selected');
+    expectOnlySquares(blackState, ['e5', 'e6'], 'legal');
+
+    for (const wrongSquare of ['d2', 'd7', 'e1', 'e8', 'f2', 'f7']) {
+      expect(board3DHighlightStyle({ square: wrongSquare, ...whiteState })?.kind).not.toBe('selected');
+      expect(board3DHighlightStyle({ square: wrongSquare, ...blackState })?.kind).not.toBe('selected');
+    }
+  });
+
+  it('keeps last-move endpoints and check on their exact board squares', () => {
+    const lastMove = { from: 'b8', to: 'c6' };
+    expectOnlySquares({ lastMove }, ['b8', 'c6'], 'lastMove');
+    expectOnlySquares({ checkSquare: 'e1' }, ['e1'], 'check');
+    expectOnlySquares({ checkSquare: 'e8' }, ['e8'], 'check');
+
+    expect(board3DHighlightStyle({ square: 'b1', lastMove })).toBeNull();
+    expect(board3DHighlightStyle({ square: 'c3', lastMove })).toBeNull();
+    expect(board3DHighlightStyle({ square: 'd8', checkSquare: 'e8' })).toBeNull();
+  });
+
+  it('maps every highlighted algebraic square to one unique 3D tile center', () => {
+    const centers = new Map();
+    for (const square of ALL_SQUARES) {
+      const { x, z } = squarePosition(square);
+      const key = `${x}:${z}`;
+      expect(centers.has(key), `${square} shares a 3D center with ${centers.get(key)}`).toBe(false);
+      centers.set(key, square);
+    }
+    expect(centers.size).toBe(64);
+
+    expect(squarePosition('a1')).toEqual({ x: -3.5, z: 3.5 });
+    expect(squarePosition('h1')).toEqual({ x: 3.5, z: 3.5 });
+    expect(squarePosition('a8')).toEqual({ x: -3.5, z: -3.5 });
+    expect(squarePosition('h8')).toEqual({ x: 3.5, z: -3.5 });
+    expect(squarePosition('d8')).toEqual({ x: -0.5, z: -3.5 });
+    expect(squarePosition('e8')).toEqual({ x: 0.5, z: -3.5 });
   });
 
   it('keeps Combat technique targets distinct from ordinary legal moves and captures', () => {
