@@ -20,16 +20,20 @@ function disposeMaterial(material) {
 }
 
 describe('Board3D reference look', () => {
-  it('mantiene las blancas en marfil mate y lejos del blanco quemado', () => {
+  it('mantiene las blancas en marfil cálido satinado y lejos del blanco quemado', () => {
     const ivory = makePremiumPieceMaterial({ color: 0xf0eadc, skin, side: 'w' });
     const hsl = {};
     ivory.color.getHSL(hsl);
 
-    expect(hsl.l).toBeLessThan(0.7);
-    expect(ivory.roughness).toBeGreaterThanOrEqual(0.78);
-    expect(ivory.clearcoat).toBeLessThanOrEqual(0.1);
-    expect(ivory.specularIntensity).toBeLessThanOrEqual(0.12);
-    expect(ivory.envMapIntensity).toBeLessThanOrEqual(0.15);
+    expect(hsl.l).toBeLessThan(0.72);
+    expect(ivory.roughness).toBeGreaterThanOrEqual(0.68);
+    expect(ivory.roughness).toBeLessThanOrEqual(0.86);
+    expect(ivory.clearcoat).toBeGreaterThanOrEqual(0.16);
+    expect(ivory.clearcoat).toBeLessThanOrEqual(0.22);
+    expect(ivory.specularIntensity).toBeGreaterThanOrEqual(0.2);
+    expect(ivory.specularIntensity).toBeLessThanOrEqual(0.26);
+    expect(ivory.envMapIntensity).toBeGreaterThanOrEqual(0.24);
+    expect(ivory.envMapIntensity).toBeLessThanOrEqual(0.3);
 
     disposeMaterial(ivory);
   });
