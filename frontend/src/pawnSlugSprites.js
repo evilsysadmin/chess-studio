@@ -9,12 +9,12 @@ import weaponAtlasUrl from './assets/pawnSlug/weapon_atlas.svg';
 
 const MATTHIAS_V5_ASSET_NAME = 'matthias_motion_atlas_v5_payload.b64';
 const matthiasMotionAtlasUrl = `data:image/webp;base64,${matthiasMotionAtlasV5Payload.trim()}`;
-const ENEMY_FRAMES_PER_TYPE = 4;
-const ENEMY_FRAME_COUNT = 12;
+const ENEMY_FRAMES_PER_TYPE = 8;
+const ENEMY_FRAME_COUNT = 24;
 const ENEMY_TRACK_BY_TYPE = Object.freeze({
-  pawn: Object.freeze([0, 1, 2, 3]),
-  knight: Object.freeze([4, 5, 6, 7]),
-  rook: Object.freeze([8, 9, 10, 11]),
+  pawn: Object.freeze([0, 1, 2, 3, 4, 5, 6, 7]),
+  knight: Object.freeze([8, 9, 10, 11, 12, 13, 14, 15]),
+  rook: Object.freeze([16, 17, 18, 19, 20, 21, 22, 23]),
 });
 const clamp01 = (value) => Math.max(0, Math.min(1, Number(value) || 0));
 const freezeFrames = (count) => Object.freeze(Array.from({ length: count }, (_, index) => index));
