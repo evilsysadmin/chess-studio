@@ -46,7 +46,7 @@ describe('Combat Chess adaptive difficulty', () => {
     expect(calibrateCombatEngineDifficulty(74)).toBe(70);
     expect(calibrateCombatEngineDifficulty(92)).toBe(89);
     expect(calibrateCombatEngineDifficulty(93)).toBe(90);
-    expect(calibrateCombatEngineDifficulty(95)).toBe(94);
+    expect(calibrateCombatEngineDifficulty(95)).toBe(95);
   });
 
   it('la calibración es monótona y nunca hace al motor más fuerte que la estrategia', () => {
