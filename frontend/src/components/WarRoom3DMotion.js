@@ -100,11 +100,11 @@ function applyStableAlbedoScale(material, scale, grade, warmth = 0) {
     : currentHex;
   const gradedColor = new THREE.Color(sourceHex).multiplyScalar(scale);
   const warmthAmount = clamp01(warmth);
-  // Keep War Room whites readable, but bias them toward warm ivory instead of
-  // neutral display-white. Red stays intact; green/blue are reduced subtly so
-  // the board feels lit by the room rather than by a cold studio panel.
-  gradedColor.g *= 1 - (0.05 * warmthAmount);
-  gradedColor.b *= 1 - (0.14 * warmthAmount);
+  // Keep War Room whites readable, but make the warm room influence visible.
+  // Red stays intact while green/blue are reduced enough to remove the cold
+  // display-white cast without turning the board yellow or sepia.
+  gradedColor.g *= 1 - (0.10 * warmthAmount);
+  gradedColor.b *= 1 - (0.30 * warmthAmount);
   const gradedHex = gradedColor.getHex();
 
   material.userData.warRoomAlbedoGradeState = { grade, sourceHex, gradedHex };
@@ -239,7 +239,7 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
         changed = capMaterial(material, 'specularIntensity', profile.ivorySpecularMax) || changed;
         changed = capMaterial(material, 'sheen', profile.ivorySheenMax) || changed;
         changed = floorMaterial(material, 'sheenRoughness', profile.ivorySheenRoughnessMin) || changed;
-        changed = applyStableAlbedoScale(material, profile.ivoryAlbedoScale, 'aged-ivory-v2', 0.55) || changed;
+        changed = applyStableAlbedoScale(material, profile.ivoryAlbedoScale, 'aged-ivory-v2', 0.80) || changed;
         material.userData.warRoomSurfaceGrade = 'aged-ivory-v2';
       } else {
         lightTile += 1;
@@ -248,7 +248,7 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
         changed = capMaterial(material, 'clearcoat', profile.lightTileClearcoatMax) || changed;
         changed = floorMaterial(material, 'clearcoatRoughness', profile.lightTileClearcoatRoughnessMin) || changed;
         changed = capMaterial(material, 'specularIntensity', profile.lightTileSpecularMax) || changed;
-        changed = applyStableAlbedoScale(material, profile.lightTileAlbedoScale, 'muted-light-tile-v2', 0.42) || changed;
+        changed = applyStableAlbedoScale(material, profile.lightTileAlbedoScale, 'muted-light-tile-v2', 0.65) || changed;
         material.userData.warRoomSurfaceGrade = 'muted-light-tile-v2';
       }
 
