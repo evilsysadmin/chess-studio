@@ -1,0 +1,132 @@
+/* Chesscom composition v17: battlefield first. Desktop-only refinement layered after v3. */
+@media (min-width:1181px){
+  .chesscom[data-chesscom-visual="premium-v1"]{
+    padding:.20rem;
+  }
+
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-topbar{
+    min-height:68px;
+    padding:.34rem .68rem .40rem;
+    align-items:center;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-brand{
+    gap:.52rem;
+    align-items:center;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-rook{
+    margin-top:0;
+    font-size:2.05rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-brand h2{
+    font-size:clamp(1.85rem,2.45vw,2.55rem);
+    line-height:.88;
+    letter-spacing:.015em;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-brand strong{
+    margin-top:.18rem;
+    padding-top:.14rem;
+    border-top-width:1px;
+    font-size:.53rem;
+    letter-spacing:.28em;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-brand small{
+    margin-top:.10rem;
+    font-size:.44rem;
+    letter-spacing:.13em;
+    opacity:.72;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-top-actions{
+    gap:.40rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-classified{
+    padding:.38rem .50rem;
+    font-size:.50rem;
+    letter-spacing:.17em;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-exit{
+    min-height:34px;
+    padding:.42rem .62rem;
+    font-size:.64rem;
+  }
+
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-frame{
+    grid-template-columns:minmax(245px,270px) minmax(0,1fr) minmax(245px,270px);
+    gap:.40rem;
+    min-height:min(870px,calc(100vh - 94px));
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-left,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-right{
+    gap:.38rem;
+  }
+
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-stage-shell,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-babylon-host,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-babylon-canvas{
+    min-height:min(790px,calc(100vh - 126px));
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-operation{
+    top:.52rem;
+    right:.52rem;
+    width:min(292px,31%);
+    padding:.62rem .68rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-operation h3{
+    margin-bottom:.42rem;
+    font-size:.68rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-operation dl{
+    gap:.26rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-operation dl div{
+    font-size:.54rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-mission-badge{
+    left:.52rem;
+    bottom:.52rem;
+  }
+
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-objectives{
+    padding:.58rem .64rem .64rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-squad-card{
+    grid-template-columns:62px minmax(0,1fr);
+    min-height:84px;
+    padding:.34rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-portrait{
+    height:72px;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-contact-card{
+    padding:.56rem .62rem;
+  }
+
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon{
+    padding:.60rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-title{
+    min-height:88px;
+    padding-bottom:.42rem;
+    margin-bottom:.44rem;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-weapon-art{
+    width:188px;
+    height:82px;
+    right:-10px;
+  }
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-economy,
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-log{
+    padding:.60rem .64rem;
+  }
+}
+
+@media (min-width:1500px){
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-frame{
+    grid-template-columns:265px minmax(0,1fr) 265px;
+  }
+}
+
+@media (min-width:1750px){
+  .chesscom[data-chesscom-visual="premium-v1"] .chesscom-frame{
+    grid-template-columns:275px minmax(0,1fr) 270px;
+  }
+}
