@@ -87,7 +87,7 @@ describe('openingBanter', () => {
     expect(localOpeningBanter(rivalry(), { resumed: 'g-1', difficulty: 50, humanColor: 'w' })).toBeNull();
   });
 
-  it('keeps a factual local fallback when remote AI is unavailable', async () => {
+  it('keeps the Workers AI opening-banter contract and a factual local fallback when remote AI is unavailable', async () => {
     const request = vi.fn(async () => null);
     const text = await requestOpeningBanter({
       gameId: 'fallback-game',
@@ -98,6 +98,12 @@ describe('openingBanter', () => {
     });
 
     expect(request).toHaveBeenCalledTimes(1);
+    const [dossier, options] = request.mock.calls[0];
+    expect(dossier).toMatchObject({
+      eventType: 'game_opening_banter',
+      requestKind: 'opening_banter',
+    });
+    expect(options).toMatchObject({ token: 'token', timeoutMs: 4500 });
     expect(text).toContain('2 derrotas');
   });
 
