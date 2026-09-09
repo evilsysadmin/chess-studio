@@ -25,7 +25,7 @@
     grid-template-areas:
       'commander board music'
       'commander board notation' !important;
-    grid-template-rows: auto minmax(220px, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
     align-items: stretch;
   }
 
@@ -139,20 +139,20 @@
     min-width: 0;
   }
 
-  /* The notebook owns the second right-hand row and remains independently
-     scrollable, so a long score never stretches the War Room. */
-  .game-screen .game-side-column-3d .game-notation-disclosure {
+  /* The notebook stays glanceable by default. It grows only with its compact
+     preview; the explicit full-score disclosure owns the long-form scroll. */
+  .game-screen .game-side-column-3d .game-notation-disclosure.game-notation-disclosure-compact {
     grid-area: notation;
     align-self: start;
     min-width: 0;
-    min-height: 260px;
-    height: clamp(300px, 56dvh, 620px);
-    max-height: clamp(300px, 56dvh, 620px);
+    min-height: 0;
+    height: auto;
+    max-height: min(58dvh, 520px);
     margin: 0;
     overflow-y: auto;
     overflow-x: hidden;
     overscroll-behavior: contain;
-    scrollbar-gutter: stable;
+    scrollbar-gutter: auto;
   }
 
   .game-screen .game-side-column-3d .game-notation-disclosure > summary {
