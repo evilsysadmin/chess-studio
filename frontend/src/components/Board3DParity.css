@@ -18,3 +18,30 @@
 @media (prefers-reduced-motion: reduce) {
   .board3d-main-shell[data-board3d-turn] { transition: none; }
 }
+
+/* Final desktop fit guard for War Room. Board3DViewportTuning.css currently
+   carries a later historical height rule that can overgrow short desktop
+   viewports. This file loads after it, so keep one viewport-driven contract
+   here until the older tuning layers are consolidated. */
+@media (min-width: 1081px) {
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    min-height: 0;
+    height: clamp(460px, min(calc(100vh - 19rem), 48vw), 640px);
+    height: clamp(460px, min(calc(100dvh - 19rem), 48vw), 640px);
+    aspect-ratio: auto;
+  }
+}
+
+@media (min-width: 1081px) and (max-height: 900px) {
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    height: clamp(430px, min(calc(100vh - 19rem), 46vw), 590px);
+    height: clamp(430px, min(calc(100dvh - 19rem), 46vw), 590px);
+  }
+}
+
+@media (min-width: 1081px) and (max-height: 780px) {
+  .game-screen .game-board-stack-3d .board3d-main-shell {
+    height: clamp(390px, min(calc(100vh - 18.4rem), 44vw), 480px);
+    height: clamp(390px, min(calc(100dvh - 18.4rem), 44vw), 480px);
+  }
+}

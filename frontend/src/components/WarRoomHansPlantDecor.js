@@ -1,16 +1,58 @@
 import * as THREE from 'three';
 
-export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v2-gallery-aligned';
+export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v3-deterministic-gallery-aligned';
+
+function rootLocalBounds(root, object) {
+  object.updateMatrixWorld?.(true);
+  root.updateMatrixWorld?.(true);
+  const worldBox = new THREE.Box3().setFromObject(object);
+  if (worldBox.isEmpty()) return worldBox;
+
+  const localBox = new THREE.Box3().makeEmpty();
+  for (const x of [worldBox.min.x, worldBox.max.x]) {
+    for (const y of [worldBox.min.y, worldBox.max.y]) {
+      for (const z of [worldBox.min.z, worldBox.max.z]) {
+        localBox.expandByPoint(root.worldToLocal(new THREE.Vector3(x, y, z)));
+      }
+    }
+  }
+  return localBox;
+}
+
+function placeWarRoomHansPlant(root, group, floor) {
+  const box = rootLocalBounds(root, floor);
+  if (box.isEmpty()) return group;
+
+  const x = box.max.x - Math.min(1.45, (box.max.x - box.min.x) * 0.09);
+  const fallbackZ = box.min.z + (box.max.z - box.min.z) * 0.30;
+  const rightPainting = root.getObjectByName?.('war-room-campaign-painting-right');
+  let z = fallbackZ;
+
+  if (rightPainting?.getWorldPosition && root.worldToLocal) {
+    rightPainting.updateMatrixWorld?.(true);
+    root.updateMatrixWorld?.(true);
+    const paintingWorld = new THREE.Vector3();
+    rightPainting.getWorldPosition(paintingWorld);
+    z = root.worldToLocal(paintingWorld.clone()).z;
+    group.userData.warRoomPlantPlacement = 'under-right-gallery-painting-v2';
+  } else {
+    group.userData.warRoomPlantPlacement = 'gallery-aligned-fallback-v2';
+  }
+
+  group.position.set(x, -0.255, z);
+  return group;
+}
 
 export function ensureWarRoomHansPlant(root) {
   if (!root) return null;
   const existing = root.getObjectByName?.('war-room-hans-plant');
-  if (existing) return existing;
   const floor = root.getObjectByName?.('war-room-castle-floor-slab');
-  if (!floor) return null;
+  if (!floor) return existing || null;
 
-  floor.updateMatrixWorld?.(true);
-  const box = new THREE.Box3().setFromObject(floor);
+  if (existing) {
+    return placeWarRoomHansPlant(root, existing, floor);
+  }
+
   const group = new THREE.Group();
   group.name = 'war-room-hans-plant';
   group.userData.warRoomDecor = WAR_ROOM_HANS_PLANT_VERSION;
@@ -45,19 +87,6 @@ export function ensureWarRoomHansPlant(root) {
     }
   }
 
-  const x = box.max.x - Math.min(1.45, (box.max.x - box.min.x) * 0.09);
-  const fallbackZ = box.min.z + (box.max.z - box.min.z) * 0.30;
-  const rightPainting = root.getObjectByName?.('war-room-campaign-painting-right');
-  let z = fallbackZ;
-  if (rightPainting?.getWorldPosition && root.worldToLocal) {
-    const paintingWorld = new THREE.Vector3();
-    rightPainting.getWorldPosition(paintingWorld);
-    z = root.worldToLocal(paintingWorld.clone()).z;
-    group.userData.warRoomPlantPlacement = 'under-right-gallery-painting-v1';
-  } else {
-    group.userData.warRoomPlantPlacement = 'gallery-aligned-fallback-v1';
-  }
-  group.position.set(x, -0.255, z);
   root.add(group);
-  return group;
+  return placeWarRoomHansPlant(root, group, floor);
 }
