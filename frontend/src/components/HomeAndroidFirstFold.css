@@ -6,10 +6,11 @@
  * toasts, and the first playable room leads the Home flow.
  */
 
-/* Home session summaries are transient feedback, never layout. Keep them as a
- * compact desktop toast too so cancelling/finishing a game cannot stretch the
- * masthead or push the canonical castle art down. */
-body:has(.menu.home-friendly) .session-result-notice {
+/* HomeRoute owns this stylesheet, so session summaries can be styled directly
+ * as transient feedback without depending on :has() to discover Home in the
+ * DOM. Keep them out of layout so cancelling/finishing a game cannot stretch
+ * the masthead or push the canonical castle art down. */
+.session-result-notice {
   position: fixed !important;
   z-index: 180 !important;
   right: max(1rem, env(safe-area-inset-right)) !important;
@@ -120,7 +121,7 @@ body:has(.menu.home-friendly) .session-result-notice {
 
   /* A cancelled/finished-session summary is useful feedback, not a layout
    * section. On mobile it becomes a dismissible toast and cannot push Play. */
-  body:has(.menu.home-friendly) .session-result-notice {
+  .session-result-notice {
     position: fixed !important;
     z-index: 180 !important;
     left: .6rem !important;
@@ -135,11 +136,11 @@ body:has(.menu.home-friendly) .session-result-notice {
     box-shadow: 0 14px 36px rgba(0, 0, 0, .42) !important;
   }
 
-  body:has(.menu.home-friendly) .session-result-notice strong {
+  .session-result-notice strong {
     font-size: .74rem !important;
   }
 
-  body:has(.menu.home-friendly) .session-result-notice span {
+  .session-result-notice span {
     font-size: .68rem !important;
     line-height: 1.3;
   }
