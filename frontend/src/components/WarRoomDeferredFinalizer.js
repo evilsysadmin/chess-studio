@@ -1,6 +1,7 @@
 import { installWarRoomHansArticulatedWalk } from './WarRoomHansArticulatedWalk.js';
 import { installWarRoomHansActorTelemetry } from './WarRoomHansActorTelemetry.js';
 import { installWarRoomHansAmbientChoreRoutine } from './WarRoomHansAmbientChoreRoutine.js';
+import { installWarRoomHansBoardCollisionGuard } from './WarRoomHansBoardCollisionGuard.js';
 import { installWarRoomHansBoardPeekClockHold } from './WarRoomHansBoardPeekClockHold.js';
 import { installWarRoomHansBoardPeekPose } from './WarRoomHansBoardPeekPose.js';
 import { installWarRoomHansCanonicalButler } from './WarRoomHansCanonicalButler.js';
@@ -96,6 +97,9 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         installWarRoomHansMopRoutine(root);
         installWarRoomHansServiceRoutine(root);
         installWarRoomHansAmbientChoreRoutine(root);
+        // Final positional guard: no later Hans routine may cut through the
+        // physical board footprint, even if its own interpolation is wrong.
+        installWarRoomHansBoardCollisionGuard(root);
       }
       completedKeys.push(key);
     }
