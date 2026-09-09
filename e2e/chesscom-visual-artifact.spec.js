@@ -4,6 +4,7 @@ import { login, mockApi, openMoreGameModes } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/chesscom-visual';
 const MIN_EFFECTIVE_PIXEL_RATIO = 0.75;
+const MIN_HEADER_GAP = 10;
 
 async function dismissGuide(page) {
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
@@ -75,6 +76,7 @@ async function collectRenderMetadata(page, host, label) {
       header:brandRect && exitRect ? {
         brandRight:Number(brandRect.right.toFixed(2)),
         exitLeft:Number(exitRect.left.toFixed(2)),
+        gap:Number((exitRect.left - brandRect.right).toFixed(2)),
         overlap:headerOverlap,
       } : null,
       renderer:node.dataset.chesscomRenderer || node.closest('[data-chesscom-renderer]')?.dataset.chesscomRenderer || null,
@@ -102,6 +104,7 @@ function expectHealthyCapture(capture) {
   expect(capture.canvas?.effectivePixelRatioY).toBeGreaterThanOrEqual(MIN_EFFECTIVE_PIXEL_RATIO);
   expect(capture.header).not.toBeNull();
   expect(capture.header?.overlap).toBe(false);
+  expect(capture.header?.gap).toBeGreaterThanOrEqual(MIN_HEADER_GAP);
 }
 
 test('Chesscom · genera referencia visual desktop + móvil con metadata de render', async ({ page }) => {
@@ -130,7 +133,7 @@ test('Chesscom · genera referencia visual desktop + móvil con metadata de rend
 
   await writeFile(
     `${ARTIFACT_DIR}/render-metadata.json`,
-    `${JSON.stringify({ schema:3, minimumEffectivePixelRatio:MIN_EFFECTIVE_PIXEL_RATIO, captures:[desktop, mobile] }, null, 2)}\n`,
+    `${JSON.stringify({ schema:4, minimumEffectivePixelRatio:MIN_EFFECTIVE_PIXEL_RATIO, minimumHeaderGap:MIN_HEADER_GAP, captures:[desktop, mobile] }, null, 2)}\n`,
     'utf8',
   );
 
