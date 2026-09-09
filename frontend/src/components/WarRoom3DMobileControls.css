@@ -137,13 +137,19 @@
   .game-board-stack-3d .game-mobile-focus-toggle,
   .game-board-stack-3d .game-abandon-btn {
     width: 100%;
-    height: 34px;
-    min-height: 34px !important;
+    height: 40px;
+    min-height: 40px !important;
     margin: 0;
-    padding: .28rem .42rem !important;
+    padding: .34rem .46rem !important;
     justify-content: center;
     font-size: .72rem;
     line-height: 1;
+  }
+
+  .game-board-stack-3d .game-mobile-focus-toggle:focus-visible,
+  .game-board-stack-3d .game-abandon-btn:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--brass) 78%, #fff 22%);
+    outline-offset: 2px;
   }
 
   /* The human identity remains readable but stops behaving like a second card
@@ -261,8 +267,8 @@
 
   .game-board-stack-3d .game-mobile-focus-toggle,
   .game-board-stack-3d .game-abandon-btn {
-    height: 32px;
-    min-height: 32px !important;
+    height: 38px;
+    min-height: 38px !important;
     font-size: .68rem;
   }
 
