@@ -11,8 +11,10 @@ export const COMBAT_ADAPTIVE_MAX_RELIEF = 18;
 // Combat necesita conservar más dientes que Partida rápida, pero comparte el
 // mismo problema técnico: el motor cambia de profundidad en 70 y 90. Esta
 // curva mantiene intacto el tramo <=60 y reserva esos cambios de marcha para
-// hitos más altos de Campaña/Torre. Siempre es monótona y nunca hace al motor
-// más fuerte que la dificultad estratégica solicitada.
+// hitos más altos de Campaña/Torre. El techo 95 se conserva: sigue siendo
+// profundidad 5 y por tanto no cruza el salto a profundidad 6 de nivel 98.
+// Siempre es monótona y nunca hace al motor más fuerte que la dificultad
+// estratégica solicitada.
 export const COMBAT_ENGINE_CURVE = Object.freeze([
   [5, 5],
   [60, 60],
@@ -23,7 +25,7 @@ export const COMBAT_ENGINE_CURVE = Object.freeze([
   [89, 87],
   [92, 89],
   [93, 90],
-  [95, 94],
+  [95, 95],
 ]);
 
 export function calibrateCombatEngineDifficulty(rawDifficulty) {
