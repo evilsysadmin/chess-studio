@@ -30,7 +30,7 @@ describe('compensación de amenaza de Combate', () => {
   it('no castiga un ejército fresco', () => {
     const threat = combatArmyThreat(roster());
     expect(threat.bonus).toBe(0);
-    expect(balancedCombatDifficulty(40, roster())).toMatchObject({ base: 40, adjusted: 40, appliedBonus: 0 });
+    expect(balancedCombatDifficulty(40, roster())).toMatchObject({ base: 40, strategicAdjusted: 40, adjusted: 40, appliedBonus: 0 });
   });
 
   it('sube gradualmente por mejoras permanentes', () => {
@@ -65,7 +65,19 @@ describe('compensación de amenaza de Combate', () => {
     expect(threat.metamorphosisThreat).toBe(0);
   });
 
-  it('cuenta técnicas equipadas con tope y nunca lleva la CPU por encima de 100', () => {
+  it('suma amenaza antes de calibrar y no reabre el precipicio 70 por accidente', () => {
+    const state = roster();
+    addPiece(state, 'n-b', { strengthPoints: 18, speedPoints: 18 });
+    const threat = combatArmyThreat(state);
+    expect(threat.bonus).toBe(3);
+
+    const result = balancedCombatDifficulty(69, state);
+    expect(result.strategicAdjusted).toBe(72);
+    expect(result.appliedBonus).toBe(3);
+    expect(result.adjusted).toBe(69);
+  });
+
+  it('cuenta técnicas equipadas con tope y reserva profundidad 6 para amenaza máxima', () => {
     const state = roster();
     for (const file of 'abcdefgh') {
       addPiece(
@@ -78,7 +90,12 @@ describe('compensación de amenaza de Combate', () => {
     const threat = combatArmyThreat(state);
     expect(threat.techniqueBonus).toBe(4);
     expect(threat.bonus).toBe(20);
-    expect(balancedCombatDifficulty(95, state)).toMatchObject({ base: 95, adjusted: 100, appliedBonus: 5 });
+    expect(balancedCombatDifficulty(95, state)).toMatchObject({
+      base: 95,
+      strategicAdjusted: 100,
+      adjusted: 98,
+      appliedBonus: 5,
+    });
   });
 });
 
