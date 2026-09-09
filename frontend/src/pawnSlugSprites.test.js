@@ -6,7 +6,6 @@ import {
   PAWN_SLUG_SPRITE_META,
   configurePawnSlugTexture,
   pawnSlugEnemyAtlasWindow,
-  pawnSlugEnemyFrameForMotion,
   pawnSlugEnemyVisualDirection,
   pawnSlugMatthiasAtlasWindow,
   pawnSlugMatthiasVisualDirection,
@@ -151,64 +150,33 @@ describe('Pawn Slug premium sprite contracts', () => {
     expect(PAWN_SLUG_MOTION_PROFILES.matthias.crouchDrop).toBeGreaterThan(0);
   });
 
-  it('gives pawn, knight and rook eight real grounded motion poses each', () => {
-    const meta = PAWN_SLUG_SPRITE_META.enemies;
-    expect(String(meta.url)).toMatch(/enemy_motion_atlas\.svg(?:\?|$)/);
-    expect(String(meta.legacyUrl)).toMatch(/enemy_atlas_v2\.webp(?:\?|$)/);
-    expect(meta.frames).toBe(24);
-    expect(meta.framesPerType).toBe(8);
-    expect(meta.frameWidth).toBe(256);
-    expect(meta.frameHeight).toBe(256);
-    expect(meta.groundedMotion).toBe(true);
-    expect(meta.trackByType).toEqual({
-      pawn: [0, 1, 2, 3, 4, 5, 6, 7],
-      knight: [8, 9, 10, 11, 12, 13, 14, 15],
-      rook: [16, 17, 18, 19, 20, 21, 22, 23],
-    });
-    for (const track of Object.values(meta.trackByType)) {
-      expect(track).toHaveLength(8);
-      expect(new Set(track).size).toBe(8);
-      expect(Math.max(...track)).toBeLessThan(meta.frames);
-    }
-  });
-
-  it('mirrors enemy motion frames through UVs across the 24-cell atlas', () => {
+  it('mirrors enemy frames through UVs because THREE.Sprite scale sign is not a facing contract', () => {
     expect(PAWN_SLUG_SPRITE_META.enemies.sourceFacing).toBe('right');
+    expect(PAWN_SLUG_SPRITE_META.enemies.fallbackSourceFacing).toBe('right');
     expect(PAWN_SLUG_SPRITE_META.enemies.runtimeFacings).toEqual(['right', 'left']);
     expect(PAWN_SLUG_SPRITE_META.enemies.directionMode).toBe('atlas-uv-mirror');
-    expect(pawnSlugEnemyVisualDirection(1)).toBe(1);
-    expect(pawnSlugEnemyVisualDirection(-1)).toBe(-1);
+    expect(pawnSlugEnemyVisualDirection(1, 'primary')).toBe(1);
+    expect(pawnSlugEnemyVisualDirection(-1, 'primary')).toBe(-1);
 
-    const right = pawnSlugEnemyAtlasWindow(10, 1);
-    const left = pawnSlugEnemyAtlasWindow(10, -1);
-    expect(right).toMatchObject({ frame: 10, direction: 1, mirrored: false });
-    expect(left).toMatchObject({ frame: 10, direction: -1, mirrored: true });
-    expect(right.repeatX).toBeCloseTo(1 / 24, 12);
-    expect(left.repeatX).toBeCloseTo(-1 / 24, 12);
-    expect(right.offsetX).toBeCloseTo(10 / 24, 12);
-    expect(left.offsetX).toBeCloseTo(11 / 24, 12);
+    const right = pawnSlugEnemyAtlasWindow(1, 1);
+    const left = pawnSlugEnemyAtlasWindow(1, -1);
+    expect(right).toMatchObject({ frame: 1, direction: 1, mirrored: false });
+    expect(left).toMatchObject({ frame: 1, direction: -1, mirrored: true });
+    expect(right.repeatX).toBeCloseTo(1 / 3, 12);
+    expect(left.repeatX).toBeCloseTo(-1 / 3, 12);
+    expect(right.offsetX).toBeCloseTo(1 / 3, 12);
+    expect(left.offsetX).toBeCloseTo(2 / 3, 12);
+
+    expect(PAWN_SLUG_SPRITE_META.enemies.frameByType).toEqual({ pawn: 0, knight: 1, rook: 2 });
+    expect(Math.max(...Object.values(PAWN_SLUG_SPRITE_META.enemies.frameByType)))
+      .toBeLessThan(PAWN_SLUG_SPRITE_META.enemies.frames);
   });
 
-  it('advances enemy frames only while moving and keeps each class inside its own track', () => {
-    for (const [type, expectedTrack] of Object.entries(PAWN_SLUG_SPRITE_META.enemies.trackByType)) {
-      expect(pawnSlugEnemyFrameForMotion(type, 0, { moving: false, phase: 4.2 })).toBe(expectedTrack[0]);
-      const sampled = new Set();
-      for (let step = 0; step < 48; step += 1) {
-        sampled.add(pawnSlugEnemyFrameForMotion(type, step / 10, { moving: true, phase: 0.7 }));
-      }
-      expect(sampled.size).toBeGreaterThanOrEqual(6);
-      expect([...sampled].every((frame) => expectedTrack.includes(frame))).toBe(true);
-    }
-  });
-
-  it('keeps moving enemies grounded instead of faking locomotion with vertical hopping', () => {
-    for (const type of ['pawn', 'knight', 'rook']) {
-      expect(PAWN_SLUG_MOTION_PROFILES[type].moveBob).toBe(0);
-      expect(PAWN_SLUG_MOTION_PROFILES[type].moveSquash).toBeLessThanOrEqual(0.006);
-    }
-    expect(PAWN_SLUG_MOTION_PROFILES.knight.moveRate).toBeGreaterThan(PAWN_SLUG_MOTION_PROFILES.pawn.moveRate);
-    expect(PAWN_SLUG_MOTION_PROFILES.rook.moveRate).toBeLessThan(PAWN_SLUG_MOTION_PROFILES.pawn.moveRate);
+  it('gives every battlefield class a deliberately different motion signature', () => {
+    expect(PAWN_SLUG_MOTION_PROFILES.knight.moveBob).toBeGreaterThan(PAWN_SLUG_MOTION_PROFILES.pawn.moveBob);
+    expect(PAWN_SLUG_MOTION_PROFILES.pawn.moveBob).toBeGreaterThan(PAWN_SLUG_MOTION_PROFILES.rook.moveBob);
     expect(PAWN_SLUG_MOTION_PROFILES.knight.moveLean).toBeGreaterThan(PAWN_SLUG_MOTION_PROFILES.pawn.moveLean);
+    expect(PAWN_SLUG_MOTION_PROFILES.rook.moveRate).toBeLessThan(PAWN_SLUG_MOTION_PROFILES.pawn.moveRate);
     expect(PAWN_SLUG_MOTION_PROFILES.boss.idleBob).toBeGreaterThan(0);
     expect(PAWN_SLUG_MOTION_PROFILES.matthias.runRate).toBeGreaterThan(14);
     expect(PAWN_SLUG_MOTION_PROFILES.matthias.recoilByWeapon.panzerfaust)
@@ -231,7 +199,6 @@ describe('Pawn Slug premium sprite contracts', () => {
       expect(String(meta.url)).not.toMatch(/^https?:\/\//);
       if (meta.fallbackUrl) expect(String(meta.fallbackUrl)).not.toMatch(/^https?:\/\//);
       if (meta.vectorFallbackUrl) expect(String(meta.vectorFallbackUrl)).not.toMatch(/^https?:\/\//);
-      if (meta.legacyUrl) expect(String(meta.legacyUrl)).not.toMatch(/^https?:\/\//);
     }
   });
 });
