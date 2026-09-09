@@ -179,7 +179,7 @@ export function requestOpeningBanter({
   const fallback = localOpeningBanter(rivalry, context);
   const dossier = {
     eventType: 'game_opening_banter',
-    requestKind: 'default',
+    requestKind: 'opening_banter',
     facts: buildOpeningBanterFacts(rivalry, context),
   };
   const pending = Promise.resolve()
