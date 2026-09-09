@@ -124,9 +124,13 @@ test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida 
     expect(gameId).toBeTruthy();
 
     const warRoom3d = page.locator('[data-board3d-war-room="true"]');
-    const warRoomStatus = page.locator('.game-3d-warroom-status');
+    const warRoomSignal = page.locator('[data-matthias-war-room-presence="king-piece"]');
+    const warRoomGameStatus = warRoomSignal.getByRole('status', { name: 'Estado de la partida' });
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
-    await expect(warRoomStatus).toBeVisible();
+    await expect(warRoomSignal).toBeVisible();
+    await expect(warRoomSignal).toContainText('Matthias');
+    await expect(warRoomSignal).toContainText(/CPU nivel \d+/);
+    await expect(warRoomGameStatus).toHaveText(/Tu turno/i);
 
     // Esperamos a que el snapshot local inicial exista; después mutamos Mongo/API
     // por fuera del navegador para crear deliberadamente una divergencia real.
@@ -178,8 +182,8 @@ test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida 
     expect(restored.turn).toBe(mutated.turn);
 
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
-    await expect(warRoomStatus).toBeVisible();
-    await expect(warRoomStatus.locator('strong')).toHaveText(/Tu turno/i);
+    await expect(warRoomSignal).toBeVisible();
+    await expect(warRoomGameStatus).toHaveText(/Tu turno/i);
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 
     // 2D actúa sólo como sonda accesible del estado común: la posición visible
