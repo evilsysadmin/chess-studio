@@ -34,7 +34,8 @@
     "25-visual-coherence.css",
     "26-visual-system-overhaul.css",
     "27-night-club-tactical.css",
-    "28-product-resilience.css"
+    "28-product-resilience.css",
+    "29-war-room-chrome.css"
   ],
   "globalModules": [
     "01-foundation.css",
@@ -65,7 +66,8 @@
     "25-visual-coherence.css",
     "26-visual-system-overhaul.css",
     "27-night-club-tactical.css",
-    "28-product-resilience.css"
+    "28-product-resilience.css",
+    "29-war-room-chrome.css"
   ],
   "lazyModules": [
     "05-combat-roster.css",
@@ -76,6 +78,6 @@
     "20-piece-skins.css"
   ],
   "combinedSha256": "3619f44d155b2955c3857a15fc8a70d9a041852a973598d11bb6282e6f0b7551",
-  "combinedBytes": 555591,
-  "combinedLines": 15431
+  "combinedBytes": 560498,
+  "combinedLines": 15592
 }
