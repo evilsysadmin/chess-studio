@@ -4,13 +4,13 @@
 
 @media (min-width: 1261px) {
   .game-screen .board-live-row.is-3d-warroom {
-    grid-template-columns: minmax(188px, 204px) minmax(780px, 1fr) minmax(204px, 220px) !important;
+    grid-template-columns: minmax(168px, 182px) minmax(802px, 1fr) minmax(204px, 220px) !important;
   }
 }
 
 @media (min-width: 1081px) and (max-width: 1260px) {
   .game-screen .board-live-row.is-3d-warroom {
-    grid-template-columns: minmax(176px, 190px) minmax(610px, 1fr) minmax(196px, 210px) !important;
+    grid-template-columns: minmax(160px, 172px) minmax(620px, 1fr) minmax(196px, 210px) !important;
   }
 }
 
