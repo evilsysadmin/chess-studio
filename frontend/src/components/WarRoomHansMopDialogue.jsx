@@ -18,6 +18,7 @@ function sameAnchor(current, next) {
 }
 
 export default function WarRoomHansMopDialogue({
+  gameId = '',
   isThreeD = false,
   enabled = false,
   matthiasAnchorStyle = null,
@@ -31,7 +32,7 @@ export default function WarRoomHansMopDialogue({
     setPortalHost(null);
     setPhase('');
     setHansAnchor(null);
-    if (!isThreeD || !enabled) return undefined;
+    if (!isThreeD || !enabled || !gameId) return undefined;
 
     const findHost = () => document.querySelector('.game-board-stack-3d .board3d-main-shell');
     const existing = findHost();
@@ -48,10 +49,10 @@ export default function WarRoomHansMopDialogue({
     });
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [enabled, isThreeD]);
+  }, [enabled, gameId, isThreeD]);
 
   useEffect(() => {
-    if (!portalHost || !enabled || !isThreeD) return undefined;
+    if (!portalHost || !enabled || !gameId || !isThreeD) return undefined;
     let frameId = 0;
     let live = true;
     const tick = () => {
@@ -74,7 +75,7 @@ export default function WarRoomHansMopDialogue({
       live = false;
       window.cancelAnimationFrame(frameId);
     };
-  }, [enabled, isThreeD, portalHost]);
+  }, [enabled, gameId, isThreeD, portalHost]);
 
   const hansStyle = useMemo(() => hansAnchor ? {
     left: `${hansAnchor.left.toFixed(3)}%`,
@@ -90,7 +91,7 @@ export default function WarRoomHansMopDialogue({
     '--warroom-fire-call-tail-x': '50%',
   } : null, [matthiasAnchorStyle]);
 
-  if (!isThreeD || !enabled || !portalHost || !phase) return null;
+  if (!isThreeD || !enabled || !gameId || !portalHost || !phase) return null;
 
   return createPortal(
     <div className="warroom-hans-fire-call-overlay" data-testid="warroom-hans-mop-dialogue" data-mop-dialogue-phase={phase}>

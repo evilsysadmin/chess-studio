@@ -1,4 +1,4 @@
-import { lazy, memo, Suspense, useCallback, useRef, useState } from 'react';
+import { lazy, memo, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import Board from './Board.jsx';
 import GameCommandDeck from './GameCommandDeck.jsx';
 import GamePlayerRail from './GamePlayerRail.jsx';
@@ -18,7 +18,9 @@ import { warRoomHansEventForGame } from './WarRoomHansEventContract.js';
 import { shouldForceHansQuickIteration } from './WarRoomHansIteration.js';
 import { resolveHansFireOpeningLatch } from './WarRoomHansFireCallContract.js';
 import { hasWarRoomHansAppearedForGame } from './WarRoomHansPerGame.js';
+import { warRoomHansPresentationPolicy } from './WarRoomHansPresentationPolicy.js';
 import { formatLongMove } from '../notation.js';
+import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
 import './Matthias3DBubbleAnchor.css';
 
 const Board3D = lazy(() => import('./Board3D.jsx'));
@@ -80,6 +82,13 @@ export default function GameBoardView({
   const topColor = humanColor === 'w' ? 'b' : 'w';
   const bottomColor = humanColor;
   const { isThreeD, toggleBoardRenderer } = useGameBoardRenderer();
+  const [hansReducedMotion, setHansReducedMotion] = useState(() => getEffectiveReducedMotion());
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const refresh = () => setHansReducedMotion(getEffectiveReducedMotion());
+    window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
+  }, []);
   const {
     compactViewport,
     focusActive,
@@ -138,9 +147,14 @@ export default function GameBoardView({
     hintMode: controls.hintMode,
     memoryContext: context.memoryContext,
   });
+  const hansPresentation = warRoomHansPresentationPolicy({
+    eventName: hansEvent,
+    fireplaceEligible: hansFireplaceEligible,
+    reducedMotion: hansReducedMotion,
+  });
   // Exactly one Hans event is selected per game. Only the fire event makes the
   // hearth start cold and arms the opening fireplace/cotilleo sequence.
-  const hansFireplaceIteration = hansFireplaceEligible && hansEvent === 'fire';
+  const hansFireplaceIteration = hansPresentation.fireplaceIteration;
   const hansOpeningRef = useRef({ gameId: null, enabled: false });
   if (hansOpeningRef.current.gameId !== game.id) {
     hansOpeningRef.current = resolveHansFireOpeningLatch(hansOpeningRef.current, {
@@ -263,15 +277,17 @@ export default function GameBoardView({
             />
 
             <WarRoomHansMopDialogue
+              gameId={game.id}
               isThreeD={isThreeD}
-              enabled={!zenMode && !focusActive && hansEvent === 'mop'}
+              enabled={!zenMode && !focusActive && hansPresentation.mopDialogue}
               matthiasAnchorStyle={matthias3DBubbleStyle}
               matthiasTrackedSquare={matthias3DTrackedSquare}
             />
 
             <WarRoomHansServiceDialogue
+              gameId={game.id}
               isThreeD={isThreeD}
-              enabled={!zenMode && !focusActive && hansEvent === 'espresso'}
+              enabled={!zenMode && !focusActive && hansPresentation.serviceDialogue}
               matthiasAnchorStyle={matthias3DBubbleStyle}
               matthiasTrackedSquare={matthias3DTrackedSquare}
             />

@@ -32,7 +32,7 @@ import {
   resetHansWalkCycle,
 } from './HansWalkCycle.js';
 
-export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v2-desk-surface';
+export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v3-lifecycle-cleanup';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
@@ -233,12 +233,26 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
     const nextGameId = getWarRoomHansGameId(actor);
     if (!nextGameId) return;
     if (nextGameId !== gameId) {
+      if (active && eventName) {
+        finish(actor, prop, controller, root, `chore-${eventName}`, targetObject, targetBaseRotation);
+      }
       gameId = nextGameId;
       eventName = warRoomHansEventForGame(gameId);
       eligibleSince = now;
       delayMs = warRoomHansAmbientDelayMs(gameId, { min: 22000, max: 62000, salt: `chore:${eventName}` });
       active = false;
       state = 'idle';
+      home = null;
+      target = null;
+      targetObject = null;
+      targetBaseRotation = null;
+      prop = null;
+      deliveredProp = null;
+      routeIn = [];
+      routeOut = [];
+      routeIndex = 0;
+      actionElapsed = 0;
+      chore = null;
       setDialogue(actor, '');
       for (const name of ['bring-book', 'mail']) {
         const delivered = root.getObjectByName?.(`war-room-hans-delivered-${name}`);
