@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js';
 import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 
+const OPENING_END_FEN = 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2';
+
 async function expectNoTransient2DSelection(page) {
   const board = page.locator('.board-grid').first();
   await expect(board.locator('.square.selected')).toHaveCount(0);
@@ -63,19 +65,55 @@ test('offline→online durante /move pendiente no revierte el movimiento optimis
 
   let movePosts = 0;
   let reconnectGets = 0;
+  let authoritativeGame = null;
   let releaseMove;
   const moveGate = new Promise((resolve) => { releaseMove = resolve; });
 
+  // Este gate necesita una foto de backend válida y estable. El mock compartido
+  // conserva escenarios históricos con `captured` no booleano/ausente, que el
+  // contrato moderno de gamePayload rechaza correctamente. Aquí simulamos la
+  // autoridad real de Mongo sin relajar el validador de producción.
   await page.route('http://localhost:4000/api/games/*/move', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
+    const url = new URL(route.request().url());
+    const id = url.pathname.match(/\/games\/([^/]+)\/move$/)?.[1] || 'e2e-game-1';
+    const payload = route.request().postDataJSON?.() ?? {};
     movePosts += 1;
+    requestLog.push({ method: 'POST', path: url.pathname });
     await moveGate;
-    await route.fallback();
+
+    if (payload.from !== 'e2' || payload.to !== 'e4') {
+      return route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: `Reconnect E2E esperaba e2-e4, recibió ${payload.from || '?'}-${payload.to || '?'}` }),
+      });
+    }
+
+    const humanMove = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', captured: false, by: 'human' };
+    const cpuMove = { from: 'e7', to: 'e5', san: 'e5', piece: 'p', captured: false, by: 'cpu' };
+    authoritativeGame = {
+      id,
+      fen: OPENING_END_FEN,
+      turn: 'w',
+      humanColor: 'w',
+      difficulty: 50,
+      status: 'playing',
+      insufficientMatingMaterial: { w: false, b: false },
+      isGameOver: false,
+      history: [humanMove, cpuMove],
+      lastMove: cpuMove,
+      initialFen: null,
+      ghostStyle: null,
+    };
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authoritativeGame) });
   });
 
   await page.route('http://localhost:4000/api/games/*', async (route) => {
-    if (route.request().method() === 'GET' && !route.request().url().endsWith('/move')) reconnectGets += 1;
-    await route.fallback();
+    if (route.request().method() !== 'GET' || route.request().url().endsWith('/move')) return route.fallback();
+    reconnectGets += 1;
+    if (!authoritativeGame) return route.fallback();
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(authoritativeGame) });
   });
 
   await login(page);
