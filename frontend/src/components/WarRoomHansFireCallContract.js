@@ -97,7 +97,7 @@ export function projectHansFireReplyAnchor({ ndcX, ndcY, coarsePointer = false }
   if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
 
   const left = clamp((x + 1) * 50, 3, 97);
-  const headLift = coarsePointer ? 7.8 : 6.8;
+  const headLift = coarsePointer ? 16 : 14.5;
   const top = clamp(((1 - y) * 50) - headLift, 7, 92);
 
   if (x > 0.48) return { left, top, bubbleShiftPercent: -82, tailPercent: 82 };
@@ -111,7 +111,7 @@ export function projectHansInitialReplyAnchor({ ndcX, ndcY, coarsePointer = fals
   if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
 
   const left = clamp((x + 1) * 50, 6, 94);
-  const headLift = coarsePointer ? 6.6 : 5.8;
+  const headLift = coarsePointer ? 15 : 13.5;
   const top = clamp(((1 - y) * 50) - headLift, 7, 92);
 
   if (x > 0.48) return { left, top, bubbleShiftPercent: -62, tailPercent: 62 };
