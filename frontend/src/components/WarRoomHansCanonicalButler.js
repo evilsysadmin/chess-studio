@@ -4,12 +4,13 @@ import {
   WAR_ROOM_HANS_ELDER_POSTURE_VERSION,
 } from './WarRoomHansElderPostureContract.js';
 
-export const WAR_ROOM_HANS_CANONICAL_BUTLER_VERSION = 'hans-canonical-elder-butler-v3-stooped';
+export const WAR_ROOM_HANS_CANONICAL_BUTLER_VERSION = 'hans-canonical-elder-butler-v4-poker-rig';
 
 const HANS_NAME = 'war-room-hans-butler';
 const LEGACY_CANE_NAME = 'war-room-hans-cane';
 const TAILCOAT_NAME = 'war-room-hans-canonical-tailcoat';
 const MIN_SHOE_FORWARD_OFFSET = 0.07;
+const POKER_RIG_VERSION = 'right-hand-follow-v1';
 
 function makeMaterial(color, options = {}) {
   return new THREE.MeshPhysicalMaterial({
@@ -134,6 +135,18 @@ function removeLegacyCane(hans, body) {
   if (hans?.userData) hans.userData.warRoomHansCane = null;
 }
 
+function rigCarriedPokerToRightHand(body, forward) {
+  const rightArm = body?.rightArm;
+  const poker = body?.carriedPoker;
+  if (!rightArm || !poker) return false;
+  if (poker.parent !== rightArm) rightArm.add(poker);
+  poker.position.set(0.055, -0.62, forward * 0.08);
+  poker.rotation.set(0, 0, 0);
+  poker.userData.warRoomHansPokerRig = POKER_RIG_VERSION;
+  poker.userData.warRoomHansPokerHand = 'right';
+  return true;
+}
+
 function applyCanonicalPosture(body, forward) {
   if (body?.torso) {
     body.torso.position.y -= HANS_ELDER_POSTURE.torsoDrop;
@@ -160,6 +173,7 @@ export function installWarRoomHansCanonicalButler(root) {
   applyCanonicalPosture(body, forward);
   const tailcoat = installTailcoat(body, forward);
   const { leftShoe, rightShoe } = orientFeetForward(body, forward);
+  const pokerRigged = rigCarriedPokerToRightHand(body, forward);
 
   if (tailcoat) body.tailcoat = tailcoat;
 
@@ -169,6 +183,7 @@ export function installWarRoomHansCanonicalButler(root) {
   hans.userData.warRoomHansElderPosture = WAR_ROOM_HANS_ELDER_POSTURE_VERSION;
   hans.userData.warRoomHansBaseHunchRadians = HANS_ELDER_POSTURE.torsoHunchRadians;
   hans.userData.warRoomHansFootDirection = leftShoe && rightShoe ? 'toe-forward-v1' : 'legacy-foot-geometry';
+  hans.userData.warRoomHansPokerRig = pokerRigged ? POKER_RIG_VERSION : 'unavailable';
   hans.userData.warRoomHansCane = null;
   return 1;
 }
