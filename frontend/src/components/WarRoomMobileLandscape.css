@@ -77,6 +77,7 @@
     display: grid;
     grid-template-columns: 1fr;
     grid-template-areas:
+      'pill'
       'controls'
       'message';
     gap: .3rem;
@@ -85,10 +86,48 @@
     box-sizing: border-box;
   }
 
-  .game-screen .game-3d-matthias-card,
+  /* The old full Matthias card is intentionally retired in this compact layout,
+   * but the new identity/turn pill reuses its legacy class for compatibility.
+   * Never hide the pill when the deferred War Room CSS finishes loading. */
+  .game-screen .game-3d-matthias-card:not(.game-3d-turn-pill),
   .game-screen .game-3d-warroom-status,
   .game-screen .game-3d-command-column blockquote {
     display: none;
+  }
+
+  .game-screen .game-3d-turn-pill.game-3d-matthias-card {
+    grid-area: pill;
+    display: flex !important;
+    width: 100%;
+    max-width: 100%;
+    min-height: 34px !important;
+    padding: .28rem .42rem;
+    gap: .3rem;
+  }
+
+  .game-screen .game-3d-turn-pill-avatar {
+    width: 20px;
+    height: 20px;
+    flex-basis: 20px;
+  }
+
+  .game-screen .game-3d-turn-pill-identity,
+  .game-screen .game-3d-turn-pill-label {
+    font-size: .58rem;
+  }
+
+  .game-screen .game-3d-turn-pill-identity strong {
+    font-size: .62rem;
+  }
+
+  .game-screen .game-3d-turn-pill-divider {
+    height: 16px;
+  }
+
+  .game-screen .game-3d-turn-pill-light {
+    width: 8px;
+    height: 8px;
+    flex-basis: 8px;
   }
 
   .game-screen .game-3d-warroom-controls {
