@@ -22,7 +22,7 @@ async function focusedSquare(board) {
   return String(await board.getAttribute('data-board3d-focused') || '');
 }
 
-async function navigateWarRoomKeyboard(canvas, board, target) {
+export async function navigateWarRoomKeyboard(canvas, board, target) {
   await canvas.focus();
 
   for (let step = 0; step < 18; step += 1) {
