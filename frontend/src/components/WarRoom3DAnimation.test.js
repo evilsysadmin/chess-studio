@@ -17,11 +17,11 @@ describe('War Room ambient render cadence', () => {
     expect(plan.updateCamera).toBe(false);
   });
 
-  it('mantiene el fuego vivo a ~10 FPS en móvil sin convertirlo en un loop caro', () => {
-    expect(warRoomAmbientFramePlan({ elapsedMs: 99, coarsePointer: true }).shouldRender).toBe(false);
-    const plan = warRoomAmbientFramePlan({ elapsedMs: 100, coarsePointer: true });
+  it('reduce el heartbeat móvil idle a ~6.7 FPS sin apagar fuego ni luz', () => {
+    expect(warRoomAmbientFramePlan({ elapsedMs: 149, coarsePointer: true }).shouldRender).toBe(false);
+    const plan = warRoomAmbientFramePlan({ elapsedMs: 150, coarsePointer: true });
     expect(plan.active).toBe(true);
-    expect(plan.intervalMs).toBe(100);
+    expect(plan.intervalMs).toBe(150);
     expect(plan.shouldRender).toBe(true);
     expect(plan.updateCamera).toBe(false);
   });
@@ -96,6 +96,7 @@ describe('War Room ambient render cadence', () => {
       liteFallback: true,
       parameters: {
         antialias: false,
+        alpha: false,
         powerPreference: 'default',
         failIfMajorPerformanceCaveat: false,
       },
@@ -134,9 +135,9 @@ describe('War Room ambient render cadence', () => {
   });
 });
 
- it('renders the finite Hans narrative on software, then returns to idle without repainting', () => {
-   expect(warRoomAmbientFramePlan({ softwareRenderer: true, narrativeActive: true, elapsedMs: 100 }).shouldRender).toBe(true);
-   expect(warRoomAmbientFramePlan({ softwareRenderer: true, narrativeActive: false, elapsedMs: 100 }).active).toBe(false);
-   expect(warRoomAmbientFramePlan({ softwareRenderer: true, narrativeActive: true, documentHidden: true, elapsedMs: 100 }).active).toBe(false);
-   expect(warRoomAmbientFramePlan({ narrativeActive: true, reducedMotion: true, elapsedMs: 100 }).active).toBe(false);
- });
+it('renders the finite Hans narrative on software, then returns to idle without repainting', () => {
+  expect(warRoomAmbientFramePlan({ softwareRenderer: true, narrativeActive: true, elapsedMs: 100 }).shouldRender).toBe(true);
+  expect(warRoomAmbientFramePlan({ softwareRenderer: true, narrativeActive: false, elapsedMs: 100 }).active).toBe(false);
+  expect(warRoomAmbientFramePlan({ softwareRenderer: true, narrativeActive: true, documentHidden: true, elapsedMs: 100 }).active).toBe(false);
+  expect(warRoomAmbientFramePlan({ narrativeActive: true, reducedMotion: true, elapsedMs: 100 }).active).toBe(false);
+});

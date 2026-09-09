@@ -74,13 +74,12 @@ export function warRoomAmbientFramePlan({
   elapsedMs = 0,
 } = {}) {
   const active = !documentHidden && !reducedMotion && (!softwareRenderer || narrativeActive);
-  // The heartbeat exists mainly to keep fire/light alive. Ten frames per second
-  // is enough for those slow, irregular practicals and trims ~17% of the idle
-  // GPU paints versus the historical 12 FPS desktop loop. Inspect mode still
-  // raises cadence while the player deliberately moves the camera.
+  // The heartbeat exists mainly to keep fire/light alive. Desktop keeps 10 FPS;
+  // coarse-pointer/mobile idles at ~6.7 FPS because those slow practical lights
+  // do not benefit from 10 FPS, while inspect mode still raises cadence for input.
   const intervalMs = inspectMode
     ? (coarsePointer ? 33 : 16)
-    : 100;
+    : (coarsePointer ? 150 : 100);
   const due = active && Number(elapsedMs) >= intervalMs;
 
   return Object.freeze({
