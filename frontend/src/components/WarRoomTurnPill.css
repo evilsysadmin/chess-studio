@@ -26,6 +26,17 @@
   pointer-events: none;
 }
 
+/* The compact pill keeps the historical Matthias-presence hook used by touch
+ * browser contracts. These overrides make that hook purely semantic: none of
+ * the retired card geometry can leak back into the new HUD. */
+.game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: center !important;
+  min-height: 38px !important;
+  overflow: visible !important;
+}
+
 .game-3d-turn-pill-avatar {
   width: 24px;
   height: 24px;
@@ -93,6 +104,10 @@
     min-height: 36px;
     padding: .32rem .5rem;
     gap: .36rem;
+  }
+
+  .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+    min-height: 36px !important;
   }
 
   .game-3d-turn-pill-avatar {

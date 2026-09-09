@@ -24,14 +24,15 @@ describe('GameWarRoomCommandColumn', () => {
     );
 
     expect(html).toContain('data-matthias-war-room-presence="king-piece"');
-    expect(html).toContain('game-3d-turn-pill is-green');
+    expect(html).toContain('game-3d-turn-pill game-3d-matthias-card is-green');
+    expect(html).toContain('aria-label="Estado de la partida"');
     expect(html).toContain('Matthias');
     expect(html).toContain('CPU nivel 7');
     expect(html).toContain('Tu turno');
     expect(html).toContain('/matthias.png');
     expect(html).toContain('game-3d-warroom-controls');
     expect(html).not.toContain('RIVAL EN SALA');
-    expect(html).not.toContain('game-3d-matthias-card');
+    expect(html).not.toContain('is-diegetic-briefing');
     expect(html).not.toContain('game-3d-warroom-status');
     expect(html).not.toContain('contra ti');
   });
@@ -54,9 +55,9 @@ describe('GameWarRoomCommandColumn', () => {
       />,
     );
 
-    expect(cpuHtml).toContain('game-3d-turn-pill is-red');
+    expect(cpuHtml).toContain('game-3d-turn-pill game-3d-matthias-card is-red');
     expect(cpuHtml).toContain('Matthias juega');
-    expect(busyHtml).toContain('game-3d-turn-pill is-amber');
+    expect(busyHtml).toContain('game-3d-turn-pill game-3d-matthias-card is-amber');
     expect(busyHtml).toContain('Pensando…');
   });
 });

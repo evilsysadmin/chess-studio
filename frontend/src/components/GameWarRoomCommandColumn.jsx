@@ -35,11 +35,8 @@ export default function GameWarRoomCommandColumn({
   return (
     <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
       <div
-        className={`game-3d-turn-pill is-${signal.tone}`}
+        className={`game-3d-turn-pill game-3d-matthias-card is-${signal.tone}`}
         data-matthias-war-room-presence="king-piece"
-        role="status"
-        aria-live="polite"
-        aria-label="Estado de la partida"
       >
         {CPU_IDENTITY.avatar && <img className="game-3d-turn-pill-avatar" src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />}
         <span className="game-3d-turn-pill-identity">
@@ -48,7 +45,14 @@ export default function GameWarRoomCommandColumn({
         </span>
         <span className="game-3d-turn-pill-divider" aria-hidden="true" />
         <span className="game-3d-turn-pill-light" aria-hidden="true" />
-        <strong className="game-3d-turn-pill-label">{signal.label}</strong>
+        <strong
+          className="game-3d-turn-pill-label"
+          role="status"
+          aria-live="polite"
+          aria-label="Estado de la partida"
+        >
+          {signal.label}
+        </strong>
       </div>
 
       <div className="game-3d-warroom-controls" aria-label="Controles de vista 3D">
