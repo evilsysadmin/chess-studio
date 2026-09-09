@@ -1,4 +1,5 @@
 import { CPU_IDENTITY } from '../cpuIdentity.js';
+import '../styles/29-war-room-chrome.css';
 import './WarRoomReferencePolish.css';
 import './WarRoomTurnPill.css';
 import './WarRoom3DMobileControls.css';
