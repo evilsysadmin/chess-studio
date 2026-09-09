@@ -1,4 +1,3 @@
-import GameChat from './GameChat.jsx';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import './WarRoomReferencePolish.css';
 import './WarRoomTurnPill.css';
@@ -11,8 +10,6 @@ export default function GameWarRoomCommandColumn({
   rivalryRecord,
   status,
   board,
-  side,
-  compactViewport,
   onToggleBoardRenderer,
 }) {
   return (
@@ -40,10 +37,6 @@ export default function GameWarRoomCommandColumn({
         <span>SITUACIÓN</span>
         <strong>{status.statusText}</strong>
       </div>
-
-      {!compactViewport && (
-        <GameChat messages={side.gameChat} contextMessages={side.gameContextMessages} />
-      )}
 
       <div className="game-3d-warroom-controls" aria-label="Controles de vista 3D">
         <button type="button" className="secondary-btn is-selected" aria-pressed="true">3D</button>

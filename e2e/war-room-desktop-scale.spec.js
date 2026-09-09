@@ -9,9 +9,6 @@ async function openDesktopWarRoom(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
 
-  // This gate measures the War Room itself. With 3D as the product default the
-  // truthful readiness signal is the mounted room/shell, not the old 2D status
-  // strip racing a lazy Three/WebGL import during CI startup.
   const warRoom = page.locator('.board-live-row.is-3d-warroom');
   const shell = page.locator('.board3d-main-shell');
   await expect(warRoom).toBeVisible({ timeout: 45_000 });
@@ -19,127 +16,117 @@ async function openDesktopWarRoom(page) {
   return { warRoom, shell };
 }
 
-test('War Room · desktop dedica el salón al tablero y prioriza un chat legible', async ({ page }) => {
+test('War Room · desktop prioriza el tablero y muestra un solo rail secundario cada vez', async ({ page }) => {
   test.setTimeout(90_000);
   const { warRoom, shell } = await openDesktopWarRoom(page);
 
-  const geometry = await page.evaluate(() => {
+  const matthiasTab = page.getByRole('button', { name: 'Matthias', exact: true });
+  const notebookTab = page.getByRole('button', { name: 'Cuaderno', exact: true });
+  const capturesTab = page.getByRole('button', { name: 'Capturas', exact: true });
+
+  await expect(matthiasTab).toHaveAttribute('aria-pressed', 'true');
+  await expect(notebookTab).toHaveAttribute('aria-pressed', 'false');
+  await expect(capturesTab).toHaveAttribute('aria-pressed', 'false');
+
+  const initialGeometry = await page.evaluate(() => {
     const roomNode = document.querySelector('.board-live-row.is-3d-warroom');
     const boardNode = document.querySelector('.board3d-main-shell');
     const commanderNode = document.querySelector('.game-3d-command-column');
     const matthiasCardNode = document.querySelector('.game-3d-command-column .game-3d-matthias-card');
     const statusNode = document.querySelector('.game-3d-command-column .game-3d-warroom-status');
-    const chatNode = document.querySelector('.game-3d-command-column .game-chat');
-    const chatLogNode = document.querySelector('.game-3d-command-column .game-chat-log');
-    const chatTitleNode = document.querySelector('.game-3d-command-column .game-chat-heading h3');
+    const controlsNode = document.querySelector('.game-3d-command-column .game-3d-warroom-controls');
     const musicNode = document.querySelector('.game-side-column-3d .game-side-music');
-    const notationNode = document.querySelector('.game-side-column-3d .game-notation-disclosure');
-    const notationTitleNode = document.querySelector('.game-side-column-3d .game-notation-row .notation-panel h3');
-    const notationEmptyNode = document.querySelector('.game-side-column-3d .game-notation-row .notation-empty');
+    const railNode = document.querySelector('.game-side-column-3d .game-warroom-rail');
+    const chatNode = document.querySelector('.game-warroom-rail .game-chat');
+    const chatLogNode = document.querySelector('.game-warroom-rail .game-chat-log');
     const room = roomNode?.getBoundingClientRect();
     const board = boardNode?.getBoundingClientRect();
     const commander = commanderNode?.getBoundingClientRect();
     const matthiasCard = matthiasCardNode?.getBoundingClientRect();
     const status = statusNode?.getBoundingClientRect();
-    const chat = chatNode?.getBoundingClientRect();
+    const controls = controlsNode?.getBoundingClientRect();
     const music = musicNode?.getBoundingClientRect();
-    const notation = notationNode?.getBoundingClientRect();
-    if (!room || !board || !commander || !matthiasCard || !status || !chat || !music || !notation || !chatLogNode || !chatTitleNode || !notationNode || !notationTitleNode || !notationEmptyNode) return null;
-    const commanderChildren = [...commanderNode.children];
-    const colourChannelSum = (node) => {
-      const channels = getComputedStyle(node).color.match(/[\d.]+/g)?.slice(0, 3).map(Number) || [];
-      return channels.reduce((sum, value) => sum + value, 0);
-    };
-    const musicStyle = getComputedStyle(musicNode);
-    const notationStyle = getComputedStyle(notationNode);
+    const rail = railNode?.getBoundingClientRect();
+    const chat = chatNode?.getBoundingClientRect();
+    if (!room || !board || !commander || !matthiasCard || !status || !controls || !music || !rail || !chat || !chatLogNode) return null;
     return {
       roomWidth: room.width,
       boardLeft: board.left,
       boardRight: board.right,
       boardWidth: board.width,
       boardHeight: board.height,
-      commanderLeft: commander.left,
-      commanderBottom: commander.bottom,
       commanderWidth: commander.width,
-      matthiasCardLeft: matthiasCard.left,
-      matthiasCardBottom: matthiasCard.bottom,
+      commanderBottom: commander.bottom,
+      controlsBottom: controls.bottom,
       statusTop: status.top,
-      statusBottom: status.bottom,
-      chatLeft: chat.left,
-      chatRight: chat.right,
-      chatTop: chat.top,
-      chatBottom: chat.bottom,
-      chatHeight: chat.height,
-      chatWidth: chat.width,
-      chatOwnedByCommander: chatNode.parentElement === commanderNode,
-      matthiasIndex: commanderChildren.indexOf(matthiasCardNode),
-      statusIndex: commanderChildren.indexOf(statusNode),
-      chatIndex: commanderChildren.indexOf(chatNode),
-      quotePresent: Boolean(commanderNode.querySelector('blockquote')),
-      chatLogOverflowY: getComputedStyle(chatLogNode).overflowY,
-      chatTitleWhiteSpace: getComputedStyle(chatTitleNode).whiteSpace,
+      matthiasCardBottom: matthiasCard.bottom,
       musicLeft: music.left,
       musicBottom: music.bottom,
       musicWidth: music.width,
-      musicPosition: musicStyle.position,
-      musicZIndex: Number(musicStyle.zIndex),
-      notationLeft: notation.left,
-      notationTop: notation.top,
-      notationHeight: notation.height,
-      notationWidth: notation.width,
-      notationOverflowY: notationStyle.overflowY,
-      notationPosition: notationStyle.position,
-      notationZIndex: Number(notationStyle.zIndex),
-      notationTitleColourSum: colourChannelSum(notationTitleNode),
-      notationBodyColourSum: colourChannelSum(notationEmptyNode),
-      notationTitleFontStyle: getComputedStyle(notationTitleNode).fontStyle,
-      notationTitleFontWeight: Number(getComputedStyle(notationTitleNode).fontWeight),
+      railLeft: rail.left,
+      railTop: rail.top,
+      railWidth: rail.width,
+      chatWidth: chat.width,
+      chatOwnedByRail: chatNode.closest('.game-warroom-rail') === railNode,
+      commanderHasChat: Boolean(commanderNode.querySelector('.game-chat')),
+      chatLogOverflowY: getComputedStyle(chatLogNode).overflowY,
       documentWidth: document.documentElement.scrollWidth,
       viewportWidth: window.innerWidth,
     };
   });
 
-  expect(geometry).not.toBeNull();
-  expect(geometry.boardWidth).toBeGreaterThan(920);
-  expect(geometry.boardHeight).toBeGreaterThan(830);
-  expect(geometry.boardWidth / geometry.roomWidth).toBeGreaterThan(.63);
-  expect(geometry.commanderWidth).toBeGreaterThan(210);
-  expect(geometry.chatWidth).toBeGreaterThan(210);
-  expect(geometry.chatOwnedByCommander).toBe(true);
-  expect(geometry.matthiasIndex).toBe(0);
-  expect(geometry.statusIndex).toBe(1);
-  expect(geometry.chatIndex).toBe(2);
-  expect(geometry.quotePresent).toBe(false);
+  expect(initialGeometry).not.toBeNull();
+  expect(initialGeometry.boardWidth).toBeGreaterThan(920);
+  expect(initialGeometry.boardHeight).toBeGreaterThan(830);
+  expect(initialGeometry.boardWidth / initialGeometry.roomWidth).toBeGreaterThan(.63);
+  expect(initialGeometry.commanderWidth).toBeGreaterThan(170);
+  expect(initialGeometry.chatWidth).toBeGreaterThan(190);
+  expect(initialGeometry.chatOwnedByRail).toBe(true);
+  expect(initialGeometry.commanderHasChat).toBe(false);
+  expect(initialGeometry.statusTop).toBeGreaterThanOrEqual(initialGeometry.matthiasCardBottom - 4);
+  expect(initialGeometry.statusTop - initialGeometry.matthiasCardBottom).toBeLessThan(20);
+  expect(initialGeometry.controlsBottom).toBeLessThanOrEqual(initialGeometry.commanderBottom + 2);
+  expect(initialGeometry.chatLogOverflowY).toBe('auto');
+  expect(initialGeometry.musicLeft).toBeGreaterThanOrEqual(initialGeometry.boardRight + 2);
+  expect(initialGeometry.railLeft).toBeGreaterThanOrEqual(initialGeometry.boardRight + 2);
+  expect(initialGeometry.musicWidth).toBeGreaterThan(190);
+  expect(initialGeometry.railWidth).toBeGreaterThan(190);
+  expect(initialGeometry.railTop).toBeGreaterThanOrEqual(initialGeometry.musicBottom - 4);
+  expect(initialGeometry.railTop - initialGeometry.musicBottom).toBeLessThan(20);
+  expect(initialGeometry.documentWidth).toBeLessThanOrEqual(initialGeometry.viewportWidth + 1);
 
-  expect(Math.abs(geometry.chatLeft - geometry.matthiasCardLeft)).toBeLessThan(4);
-  expect(geometry.statusTop).toBeGreaterThanOrEqual(geometry.matthiasCardBottom - 4);
-  expect(geometry.statusTop - geometry.matthiasCardBottom).toBeLessThan(20);
-  expect(geometry.chatTop).toBeGreaterThanOrEqual(geometry.statusBottom - 4);
-  expect(geometry.chatTop - geometry.statusBottom).toBeLessThan(20);
-  expect(geometry.chatRight).toBeLessThanOrEqual(geometry.boardLeft - 2);
-  expect(geometry.chatHeight).toBeGreaterThan(250);
-  expect(geometry.commanderBottom - geometry.chatBottom).toBeLessThan(20);
-  expect(geometry.chatLogOverflowY).toBe('auto');
-  expect(geometry.chatTitleWhiteSpace).toBe('nowrap');
+  await notebookTab.click();
+  await expect(notebookTab).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.game-warroom-rail-panel.is-notebook')).toBeVisible();
+  await expect(page.locator('.game-notation-compact-preview')).toBeVisible();
+  await expect(page.locator('.game-warroom-rail .game-chat')).toHaveCount(0);
 
-  expect(geometry.musicLeft).toBeGreaterThanOrEqual(geometry.boardRight + 2);
-  expect(geometry.notationLeft).toBeGreaterThanOrEqual(geometry.boardRight + 2);
-  expect(geometry.musicWidth).toBeGreaterThan(170);
-  expect(geometry.notationWidth).toBeGreaterThan(170);
-  expect(geometry.chatWidth - geometry.notationWidth).toBeGreaterThan(25);
-  expect(geometry.notationTop).toBeGreaterThanOrEqual(geometry.musicBottom - 4);
-  expect(geometry.notationTop - geometry.musicBottom).toBeLessThan(20);
-  expect(geometry.notationHeight).toBeLessThanOrEqual(621);
-  expect(geometry.notationOverflowY).toBe('auto');
-  expect(geometry.musicPosition).toBe('relative');
-  expect(geometry.musicZIndex).toBeGreaterThanOrEqual(1);
-  expect(geometry.notationPosition).toBe('relative');
-  expect(geometry.notationZIndex).toBeGreaterThanOrEqual(1);
-  expect(geometry.notationTitleColourSum).toBeGreaterThan(560);
-  expect(geometry.notationBodyColourSum).toBeGreaterThan(560);
-  expect(geometry.notationTitleFontStyle).toBe('normal');
-  expect(geometry.notationTitleFontWeight).toBeGreaterThanOrEqual(700);
-  expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth + 1);
+  const notebookGeometry = await page.evaluate(() => {
+    const railNode = document.querySelector('.game-warroom-rail');
+    const panelNode = document.querySelector('.game-warroom-rail-panel.is-notebook');
+    const emptyNode = document.querySelector('.game-notation-compact-empty');
+    const rail = railNode?.getBoundingClientRect();
+    const panel = panelNode?.getBoundingClientRect();
+    if (!rail || !panel || !emptyNode) return null;
+    const channels = getComputedStyle(emptyNode).color.match(/[\d.]+/g)?.slice(0, 3).map(Number) || [];
+    return {
+      panelWidth: panel.width,
+      railWidth: rail.width,
+      panelHeight: panel.height,
+      bodyColourSum: channels.reduce((sum, value) => sum + value, 0),
+    };
+  });
+
+  expect(notebookGeometry).not.toBeNull();
+  expect(Math.abs(notebookGeometry.panelWidth - notebookGeometry.railWidth)).toBeLessThan(4);
+  expect(notebookGeometry.panelHeight).toBeLessThanOrEqual(391);
+  expect(notebookGeometry.bodyColourSum).toBeGreaterThan(480);
+
+  await capturesTab.click();
+  await expect(capturesTab).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.game-warroom-captures')).toBeVisible();
+  await expect(page.getByText('Sin capturas todavía.', { exact: true })).toBeVisible();
+  await expect(page.locator('.game-notation-compact-preview')).toHaveCount(0);
 
   await expect(warRoom).toBeVisible();
   await expect(shell).toBeVisible();
