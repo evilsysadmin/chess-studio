@@ -35,7 +35,7 @@ describe('Combat Chess adaptive difficulty', () => {
     ])).toBe(0);
   });
 
-  it('nunca aumenta la dificultad y nunca baja de 5', () => {
+  it('nunca aumenta la dificultad estratégica y nunca baja de 5', () => {
     expect(adaptiveCombatDifficulty(40, [battle('win'), battle('win')])).toMatchObject({ base: 40, adjusted: 40, relief: 0 });
     expect(adaptiveCombatDifficulty(12, Array.from({ length: 6 }, () => battle('loss')))).toMatchObject({ base: 12, adjusted: 5, relief: -7 });
   });
@@ -49,9 +49,16 @@ describe('Combat Chess adaptive difficulty', () => {
     expect(calibrateCombatEngineDifficulty(95)).toBe(95);
   });
 
+  it('reserva profundidad 6 para el extremo estratégico 100', () => {
+    expect(calibrateCombatEngineDifficulty(95)).toBe(95);
+    expect(calibrateCombatEngineDifficulty(98)).toBe(97);
+    expect(calibrateCombatEngineDifficulty(99)).toBe(97);
+    expect(calibrateCombatEngineDifficulty(100)).toBe(98);
+  });
+
   it('la calibración es monótona y nunca hace al motor más fuerte que la estrategia', () => {
     let previous = 0;
-    for (let raw = 5; raw <= 95; raw += 1) {
+    for (let raw = 0; raw <= 100; raw += 1) {
       const calibrated = calibrateCombatEngineDifficulty(raw);
       expect(calibrated).toBeGreaterThanOrEqual(previous);
       expect(calibrated).toBeLessThanOrEqual(raw);
@@ -59,13 +66,14 @@ describe('Combat Chess adaptive difficulty', () => {
     }
   });
 
-  it('separa el alivio por historial de la calibración del motor', () => {
+  it('deja el alivio en espacio estratégico hasta que se conozca el roster', () => {
     const result = adaptiveCombatDifficulty(80, [battle('loss')]);
     expect(result.base).toBe(80);
     expect(result.strategicAdjusted).toBe(75);
+    expect(result.adjusted).toBe(75);
     expect(result.relief).toBe(-5);
     expect(result.requestedRelief).toBe(-5);
-    expect(result.adjusted).toBeLessThanOrEqual(result.strategicAdjusted);
-    expect(result.engineAdjustment).toBe(result.adjusted - result.strategicAdjusted);
+    expect(result.engineAdjusted).toBe(calibrateCombatEngineDifficulty(75));
+    expect(result.engineAdjustment).toBe(result.engineAdjusted - result.strategicAdjusted);
   });
 });

@@ -9,13 +9,15 @@ export const COMBAT_ADAPTIVE_RECENT_BATTLES = 6;
 export const COMBAT_ADAPTIVE_MAX_RELIEF = 18;
 
 // Combat necesita conservar más dientes que Partida rápida, pero comparte el
-// mismo problema técnico: el motor cambia de profundidad en 70 y 90. Esta
-// curva mantiene intacto el tramo <=60 y reserva esos cambios de marcha para
-// hitos más altos de Campaña/Torre. El techo 95 se conserva: sigue siendo
-// profundidad 5 y por tanto no cruza el salto a profundidad 6 de nivel 98.
+// mismo problema técnico: el motor cambia de profundidad en 70, 90 y 98. Esta
+// curva mantiene intacto el tramo <=60, retrasa los dos cambios principales y
+// sólo permite profundidad 6 en el extremo estratégico absoluto. Campaña/Torre
+// siguen topando su señal base en 95; un roster veterano puede añadir amenaza
+// por encima de ese punto, pero sin caer accidentalmente en el precipicio 98.
 // Siempre es monótona y nunca hace al motor más fuerte que la dificultad
 // estratégica solicitada.
 export const COMBAT_ENGINE_CURVE = Object.freeze([
+  [0, 0],
   [5, 5],
   [60, 60],
   [69, 68],
@@ -26,10 +28,12 @@ export const COMBAT_ENGINE_CURVE = Object.freeze([
   [92, 89],
   [93, 90],
   [95, 95],
+  [99, 97],
+  [100, 98],
 ]);
 
 export function calibrateCombatEngineDifficulty(rawDifficulty) {
-  const raw = Math.max(5, Math.min(95, Number(rawDifficulty) || 0));
+  const raw = Math.max(0, Math.min(100, Number(rawDifficulty) || 0));
   for (let index = 1; index < COMBAT_ENGINE_CURVE.length; index += 1) {
     const [rightRaw, rightEngine] = COMBAT_ENGINE_CURVE[index];
     const [leftRaw, leftEngine] = COMBAT_ENGINE_CURVE[index - 1];
@@ -108,14 +112,18 @@ export function adaptiveCombatDifficulty(baseDifficulty, history = []) {
   const base = Math.max(5, Math.min(95, Math.round(Number(baseDifficulty) || 0)));
   const requestedRelief = combatAdaptiveRelief(history);
   const strategicAdjusted = Math.max(5, Math.min(95, base + requestedRelief));
-  const adjusted = calibrateCombatEngineDifficulty(strategicAdjusted);
+  const engineAdjusted = calibrateCombatEngineDifficulty(strategicAdjusted);
   return {
     base,
-    adjusted,
+    // `adjusted` permanece como la señal que consumen Campaña/Torre, pero ya
+    // no se calibra aquí: el roster aún puede añadir amenaza. La calibración
+    // definitiva ocurre en combatBalance, después de sumar esa amenaza.
+    adjusted: strategicAdjusted,
     strategicAdjusted,
+    engineAdjusted,
     relief: strategicAdjusted - base,
     requestedRelief,
-    engineAdjustment: adjusted - strategicAdjusted,
+    engineAdjustment: engineAdjusted - strategicAdjusted,
     recentBattles: validRecentBattles(history).length,
   };
 }
