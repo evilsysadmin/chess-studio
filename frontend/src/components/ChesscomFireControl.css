@@ -3,6 +3,7 @@
 @import './ChesscomIdentityV4.css';
 @import './ChesscomInteractionsV5.css';
 @import './ChesscomMobileV13.css';
+@import './ChesscomCompositionV17.css';
 .chesscom-fire-control{margin-top:.72rem;padding-top:.66rem;border-top:1px solid rgba(118,150,164,.22);display:grid;gap:.52rem}
 .chesscom-fire-control-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem;font:700 .64rem/1.1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.12em;color:#9fb7c1}
 .chesscom-fire-control-head small{font-size:.58rem;letter-spacing:.06em;color:#d7ad58}
