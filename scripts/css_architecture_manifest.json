@@ -34,8 +34,8 @@
     "25-visual-coherence.css",
     "26-visual-system-overhaul.css",
     "27-night-club-tactical.css",
-    "28-product-resilience.css",
-    "29-war-room-chrome.css"
+    "29-war-room-chrome.css",
+    "28-product-resilience.css"
   ],
   "globalModules": [
     "01-foundation.css",
