@@ -70,6 +70,8 @@ test('War Room · desktop prioriza el tablero y muestra un solo rail secundario 
       commanderWidth: commander.width,
       commanderZIndex: Number.parseInt(getComputedStyle(commanderNode).zIndex, 10) || 0,
       boardStackZIndex: Number.parseInt(getComputedStyle(boardStackNode).zIndex, 10) || 0,
+      turnPillLeft: turnPillRect.left,
+      turnPillRight: turnPillRect.right,
       turnPillWidth: turnPillRect.width,
       controlsBottom: controls.bottom,
       commanderBottom: commander.bottom,
@@ -101,6 +103,10 @@ test('War Room · desktop prioriza el tablero y muestra un solo rail secundario 
   expect(initialGeometry.commanderWidth).toBeGreaterThan(240);
   expect(initialGeometry.commanderZIndex).toBeGreaterThan(initialGeometry.boardStackZIndex);
   expect(initialGeometry.turnPillWidth).toBeGreaterThan(220);
+  // The mirror/pawn crest owns the upper centre of the room. Keep the entire
+  // turn HUD in the left half rather than merely checking that it is visible.
+  expect(initialGeometry.turnPillLeft - initialGeometry.boardLeft).toBeLessThan(32);
+  expect(initialGeometry.turnPillRight).toBeLessThan(initialGeometry.boardLeft + (initialGeometry.boardWidth * .48));
   expect(initialGeometry.chatWidth).toBeGreaterThan(190);
   expect(initialGeometry.chatOwnedByRail).toBe(true);
   expect(initialGeometry.commanderHasChat).toBe(false);
