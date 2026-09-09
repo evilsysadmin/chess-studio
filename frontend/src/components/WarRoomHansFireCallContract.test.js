@@ -27,7 +27,7 @@ describe('War Room Hans fire call contract', () => {
     expect(fireCallPhase(MATTHIAS_FIRE_CALL_MS + 1, true)).toBe('hans');
   });
 
-  it('cotillea sólo cuando el actor llega físicamente al lateral del tablero y congela la marcha mientras conversa', () => {
+  it('suelta la sugerencia aproximadamente a mitad del regreso hacia la puerta y congela sólo la conversación', () => {
     const suggestion = { line: 'Yo probaría caballo de g1 a f3.' };
     const before = {
       phase: 'await-exit-peek',
@@ -40,10 +40,12 @@ describe('War Room Hans fire call contract', () => {
       logicalX: HANS_BOARD_PEEK_LOGICAL_X,
     };
 
+    expect(HANS_BOARD_PEEK_LOGICAL_X).toBeCloseTo(0.985, 3);
     expect(hansBoardPeekPointReached(before)).toBe(false);
     expect(hansBoardPeekPointReached(ready)).toBe(true);
     expect(shouldStartHansBoardPeek({ ...ready, suggestion })).toBe(true);
     expect(shouldStartHansBoardPeek({ ...ready, suggestion: null })).toBe(false);
+    expect(hansBoardPeekHoldsMovement('await-exit-peek')).toBe(false);
     expect(hansBoardPeekHoldsMovement('peek')).toBe(true);
     expect(hansBoardPeekHoldsMovement('gap-after-peek')).toBe(true);
     expect(hansBoardPeekHoldsMovement('matthias-working')).toBe(true);
@@ -52,9 +54,8 @@ describe('War Room Hans fire call contract', () => {
     expect(hansBoardPeekHoldsMovement('grumble')).toBe(false);
   });
 
-  it('deja entre cinco y seis segundos de silencio entre los bocadillos del cotilleo', () => {
-    expect(HANS_BOARD_DIALOGUE_GAP_MS).toBeGreaterThanOrEqual(5000);
-    expect(HANS_BOARD_DIALOGUE_GAP_MS).toBeLessThanOrEqual(6000);
+  it('deja exactamente tres segundos entre intervenciones del cotilleo', () => {
+    expect(HANS_BOARD_DIALOGUE_GAP_MS).toBe(3000);
   });
 
   it('mantiene armada la entrada de Hans aunque la partida empiece a mover mientras carga la sala', () => {
