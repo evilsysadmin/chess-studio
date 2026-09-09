@@ -1,5 +1,6 @@
 import { canChooseDeploymentType } from './combatMetamorphosis.js';
 import { unitRecordForKey } from './combatUnitService.js';
+import { calibrateCombatEngineDifficulty } from './combatAdaptiveDifficulty.js';
 
 // Compensación de dificultad por potencia PERMANENTE del ejército humano.
 // Combate permite romper reglas; esta tasa de amenaza impide que un roster
@@ -70,11 +71,19 @@ export function combatArmyThreat(rosterState) {
 export function balancedCombatDifficulty(baseDifficulty, rosterState) {
   const base = Math.max(0, Math.min(100, Math.round(Number(baseDifficulty) || 0)));
   const threat = combatArmyThreat(rosterState);
-  const adjusted = Math.min(100, base + threat.bonus);
+
+  // El bonus del roster pertenece a la dificultad ESTRATÉGICA. Sólo después
+  // de sumarlo traducimos a fuerza efectiva del motor. Hacerlo al revés podía
+  // reabrir los precipicios 70/90/98 que la curva Combat intenta suavizar.
+  const strategicAdjusted = Math.min(100, base + threat.bonus);
+  const adjusted = calibrateCombatEngineDifficulty(strategicAdjusted);
+
   return {
     base,
+    strategicAdjusted,
     adjusted,
-    appliedBonus: adjusted - base,
+    appliedBonus: strategicAdjusted - base,
+    engineAdjustment: adjusted - strategicAdjusted,
     threat,
   };
 }
