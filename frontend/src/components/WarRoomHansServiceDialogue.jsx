@@ -22,7 +22,9 @@ function dialogueUiSuppressed() {
 }
 
 export default function WarRoomHansServiceDialogue({
+  gameId = '',
   isThreeD = false,
+  enabled = false,
   matthiasAnchorStyle = null,
   matthiasTrackedSquare = null,
 }) {
@@ -34,7 +36,7 @@ export default function WarRoomHansServiceDialogue({
     setPortalHost(null);
     setPhase('');
     setHansAnchor(null);
-    if (!isThreeD) return undefined;
+    if (!isThreeD || !enabled || !gameId) return undefined;
     const findHost = () => document.querySelector('.game-board-stack-3d .board3d-main-shell');
     const existing = findHost();
     if (existing) { setPortalHost(existing); return undefined; }
@@ -47,10 +49,10 @@ export default function WarRoomHansServiceDialogue({
     });
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [isThreeD]);
+  }, [enabled, gameId, isThreeD]);
 
   useEffect(() => {
-    if (!portalHost || !isThreeD) return undefined;
+    if (!portalHost || !enabled || !gameId || !isThreeD) return undefined;
     let frameId = 0;
     let live = true;
     const tick = () => {
@@ -75,7 +77,7 @@ export default function WarRoomHansServiceDialogue({
       live = false;
       window.cancelAnimationFrame(frameId);
     };
-  }, [isThreeD, portalHost]);
+  }, [enabled, gameId, isThreeD, portalHost]);
 
   const hansStyle = useMemo(() => hansAnchor ? {
     left: `${hansAnchor.left.toFixed(3)}%`,
@@ -92,7 +94,7 @@ export default function WarRoomHansServiceDialogue({
   } : null, [matthiasAnchorStyle]);
 
   const spec = warRoomHansServiceDialogueSpec(phase) || warRoomHansChoreDialogueSpec(phase);
-  if (!isThreeD || !portalHost || !phase || !spec) return null;
+  if (!isThreeD || !enabled || !gameId || !portalHost || !phase || !spec) return null;
   const isHans = spec.speaker === 'HANS';
   const style = isHans ? hansStyle : matthiasStyle;
   if (!style) return null;
