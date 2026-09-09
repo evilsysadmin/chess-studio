@@ -1,4 +1,29 @@
 import * as THREE from 'three';
+import {
+  clamp01,
+  deriveMoveKinetics,
+  easeOutCubic,
+  inferCapturedPiece,
+  smoothstep,
+} from './WarRoom3DKinetics.js';
+import {
+  adaptiveRenderScale,
+  nextRuntimeRenderScale,
+  shadowRefreshInterval,
+  shouldRefreshShadowMap,
+} from './WarRoomRenderBudget.js';
+
+export {
+  adaptiveRenderScale,
+  clamp01,
+  deriveMoveKinetics,
+  easeOutCubic,
+  inferCapturedPiece,
+  nextRuntimeRenderScale,
+  shadowRefreshInterval,
+  shouldRefreshShadowMap,
+  smoothstep,
+};
 
 const WAR_ROOM_RENDER_DISCIPLINE = Symbol.for('chess-studio.war-room-render-discipline');
 const shadowRefreshState = new WeakMap();
@@ -8,24 +33,6 @@ const warRoomMaterialGradeRootState = new WeakMap();
 const warRoomMaterialGradeSignatureState = new WeakMap();
 const warRoomMaterialGradeObjectIds = new WeakMap();
 let nextWarRoomMaterialGradeObjectId = 1;
-
-export function shadowRefreshInterval({ coarsePointer = false, activeMotion = false } = {}) {
-  if (activeMotion) return coarsePointer ? 180 : 120;
-  return coarsePointer ? 540 : 360;
-}
-
-export function shouldRefreshShadowMap({
-  now = 0,
-  lastShadowAt = Number.NEGATIVE_INFINITY,
-  coarsePointer = false,
-  activeMotion = false,
-} = {}) {
-  const current = Number(now);
-  const previous = Number(lastShadowAt);
-  if (!Number.isFinite(previous)) return true;
-  if (!Number.isFinite(current)) return false;
-  return current - previous >= shadowRefreshInterval({ coarsePointer, activeMotion });
-}
 
 export function materialGradeRefreshInterval({ activeMotion = false } = {}) {
   // Historical cadence helper retained for compatibility with existing callers
@@ -314,32 +321,6 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
   return { adjusted, ivory, canonicalIvory, lightTile, profile };
 }
 
-export function nextRuntimeRenderScale({
-  currentScale = 1,
-  frameMs = 16,
-  slowFrameCount = 0,
-  coarsePointer = false,
-} = {}) {
-  const current = Math.max(0.5, Number(currentScale) || 1);
-  const dt = Number(frameMs);
-  const minimum = coarsePointer ? 0.75 : 0.9;
-  let slow = Math.max(0, Number(slowFrameCount) || 0);
-
-  // Ignore sparse UI renders: a 150 ms gap between two clicks is not a 6 FPS GPU.
-  // Only contiguous frame cadence is useful for deciding that the renderer is hot.
-  if (!Number.isFinite(dt) || dt <= 0 || dt >= 80) slow = 0;
-  else if (dt > 24) slow += 1;
-  else slow = Math.max(0, slow - 1);
-
-  if (slow < 5 || current <= minimum + 0.01) {
-    return { scale: current, slowFrameCount: slow, downgraded: false };
-  }
-
-  const step = coarsePointer ? 0.15 : 0.2;
-  const scale = Math.max(minimum, Math.round((current - step) * 100) / 100);
-  return { scale, slowFrameCount: 0, downgraded: scale < current };
-}
-
 function installWarRoomRenderDiscipline() {
   const prototype = THREE.WebGLRenderer?.prototype;
   if (!prototype || prototype[WAR_ROOM_RENDER_DISCIPLINE]) return;
@@ -425,63 +406,6 @@ function installWarRoomRenderDiscipline() {
 
 installWarRoomRenderDiscipline();
 
-export function clamp01(value) {
-  return Math.min(1, Math.max(0, Number(value) || 0));
-}
-
-export function easeOutCubic(value) {
-  const t = clamp01(value);
-  return 1 - Math.pow(1 - t, 3);
-}
-
-export function smoothstep(edge0, edge1, value) {
-  if (edge0 === edge1) return value >= edge1 ? 1 : 0;
-  const t = clamp01((value - edge0) / (edge1 - edge0));
-  return t * t * (3 - 2 * t);
-}
-
-export function inferCapturedPiece(previousPieces = [], nextPieces = [], animate = null) {
-  if (!animate?.capture || !animate?.from || !animate?.to) return null;
-  const mover = previousPieces.find((piece) => piece.square === animate.from) || null;
-  if (!mover) return null;
-  const direct = previousPieces.find((piece) => piece.square === animate.to && piece.color !== mover.color);
-  if (direct) return direct;
-  return previousPieces.find((piece) => {
-    if (piece.square === animate.from || piece.color === mover.color) return false;
-    return !nextPieces.some((next) => next.square === piece.square && next.color === piece.color && next.type === piece.type);
-  }) || null;
-}
-
-export function deriveMoveKinetics({ movingType = 'p', capture = false, promotion = false, castling = false, coarsePointer = false } = {}) {
-  const type = String(movingType || 'p').toLowerCase();
-  const desktop = {
-    p: { duration: 118, lift: 0.11, impactStart: 0.46, captureTilt: 0.74, captureExtra: 32 },
-    n: { duration: 154, lift: 0.31, impactStart: 0.40, captureTilt: 0.92, captureExtra: 28 },
-    b: { duration: 128, lift: 0.10, impactStart: 0.47, captureTilt: 0.70, captureExtra: 30 },
-    r: { duration: 146, lift: 0.055, impactStart: 0.53, captureTilt: 0.62, captureExtra: 34 },
-    q: { duration: 112, lift: 0.075, impactStart: 0.44, captureTilt: 0.76, captureExtra: 35 },
-    k: { duration: 164, lift: 0.065, impactStart: 0.50, captureTilt: 0.58, captureExtra: 30 },
-  };
-  const coarse = {
-    p: { duration: 110, lift: 0.06, impactStart: 0.47, captureTilt: 0.68, captureExtra: 24 },
-    n: { duration: 142, lift: 0.18, impactStart: 0.42, captureTilt: 0.84, captureExtra: 24 },
-    b: { duration: 118, lift: 0.065, impactStart: 0.49, captureTilt: 0.64, captureExtra: 24 },
-    r: { duration: 132, lift: 0.045, impactStart: 0.54, captureTilt: 0.56, captureExtra: 28 },
-    q: { duration: 106, lift: 0.055, impactStart: 0.46, captureTilt: 0.70, captureExtra: 28 },
-    k: { duration: 148, lift: 0.05, impactStart: 0.51, captureTilt: 0.54, captureExtra: 26 },
-  };
-  const profileSet = coarsePointer ? coarse : desktop;
-  const profile = profileSet[type] || profileSet.p;
-  return {
-    duration: profile.duration + (capture ? profile.captureExtra : 0),
-    lift: capture ? Math.max(profile.lift, coarsePointer ? 0.075 : 0.16) : profile.lift,
-    impactStart: capture ? profile.impactStart : 1,
-    captureTilt: capture ? profile.captureTilt : 0,
-    promotionPulse: promotion ? 0.085 : 0,
-    rookDelay: castling ? 0.16 : 0,
-  };
-}
-
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
   // Fine tuning after live visual review: keep room practicals and global exposure
   // untouched, and lower only the desktop directional key one modest notch. The
@@ -513,12 +437,4 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
     exposure: baseExposure,
     fogDensity: coarsePointer ? 0.0178 : 0.0172,
   };
-}
-
-export function adaptiveRenderScale({ coarsePointer = false, slowFrameCount = 0 } = {}) {
-  // Animation is the hottest path: moving geometry, transparency and reactive
-  // lighting all converge here. Keep the static War Room crisp, but drop the
-  // animation budget one notch before frame loss becomes visible.
-  if (coarsePointer) return slowFrameCount >= 4 ? 0.75 : 1;
-  return slowFrameCount >= 4 ? 0.9 : 1.2;
 }
