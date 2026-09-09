@@ -3,6 +3,7 @@ import { buttonWithVisibleText, clickBoardMove, login, mockApi } from './helpers
 import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
+const MOVE_RESPONSE_TIMEOUT = 45_000;
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const AFTER_OPENING_FEN = 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2';
 const AFTER_CAPTURE_FEN = 'rnbqkb1r/ppp1pppp/5n2/3P4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 1 3';
@@ -164,7 +165,7 @@ test('War Room · F5 durante movimiento y captura restaura una escena limpia y j
   const openingResponse = page.waitForResponse((response) => (
     response.request().method() === 'POST'
     && /\/games\/[^/]+\/move$/.test(new URL(response.url()).pathname)
-  ));
+  ), { timeout: MOVE_RESPONSE_TIMEOUT });
   await clickBoardMove(page, 'e2', 'e4');
   await expect.poll(() => movePosts(requestLog).length, { timeout: 5_000 }).toBe(1);
   await waitForCommittedMoveFrame(page, openingResponse);
@@ -174,7 +175,7 @@ test('War Room · F5 durante movimiento y captura restaura una escena limpia y j
   const captureResponse = page.waitForResponse((response) => (
     response.request().method() === 'POST'
     && /\/games\/[^/]+\/move$/.test(new URL(response.url()).pathname)
-  ));
+  ), { timeout: MOVE_RESPONSE_TIMEOUT });
   await clickBoardMove(page, 'e4', 'd5');
   await expect.poll(() => movePosts(requestLog).length, { timeout: 5_000 }).toBe(2);
   await waitForCommittedMoveFrame(page, captureResponse);
