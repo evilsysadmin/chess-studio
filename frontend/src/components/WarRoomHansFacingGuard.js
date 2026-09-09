@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_FACING_GUARD_VERSION = 'rendered-face-travel-guard-v2-scratch';
+export const WAR_ROOM_HANS_FACING_GUARD_VERSION = 'rendered-face-travel-guard-v3-route-motion';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -43,8 +43,6 @@ function faceVectorInParent(hans, head, faceAnchor, scratch, refreshMatrices = t
   if (!parent || !head || !faceAnchor) return null;
 
   if (refreshMatrices) {
-    // One forced parent update refreshes Hans + head + anchor together. The old
-    // guard forced all three independently and then allocated four vectors.
     parent.updateMatrixWorld?.(true);
     scratch.parentInverse.copy(parent.matrixWorld).invert();
   }
@@ -66,6 +64,15 @@ function signedPlanarAngle(from, to) {
   const toAngle = Math.atan2(to.x, to.z);
   const delta = toAngle - fromAngle;
   return Math.atan2(Math.sin(delta), Math.cos(delta));
+}
+
+function hansTravelOwnsFacing(hans, phase) {
+  const motion = String(hans?.userData?.warRoomHansMotionState || '');
+  const route = String(hans?.userData?.warRoomHansRoute || '');
+  return MOVING_PHASES.has(String(phase || ''))
+    || motion.startsWith('walk')
+    || route === 'entry'
+    || route.startsWith('leave-');
 }
 
 export function installWarRoomHansFacingGuard(root) {
@@ -110,7 +117,7 @@ export function installWarRoomHansFacingGuard(root) {
 
       let dotBefore = null;
       let dotAfter = null;
-      if (MOVING_PHASES.has(phase) && travelSq > MIN_TRAVEL_SQ) {
+      if (hansTravelOwnsFacing(hans, phase) && travelSq > MIN_TRAVEL_SQ) {
         scratch.movement.set(dx, 0, dz).multiplyScalar(1 / Math.sqrt(travelSq));
         const face = faceVectorInParent(hans, head, faceAnchor, scratch, true);
         if (face) {
@@ -129,10 +136,11 @@ export function installWarRoomHansFacingGuard(root) {
 
       hans.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
       hans.userData.warRoomHansFacingGuardMode = 'rendered-face-vs-travel';
+      hans.userData.warRoomHansFacingGuardTravelContract = 'phase-motion-route-v1';
       hans.userData.warRoomHansFacingGuardCorrections = corrections;
       hans.userData.warRoomHansFacingGuardDotBefore = dotBefore;
       hans.userData.warRoomHansFacingGuardDotAfter = dotAfter;
-      hans.userData.warRoomHansFacingGuardHotPath = 'preallocated-scratch-v2';
+      hans.userData.warRoomHansFacingGuardHotPath = 'preallocated-scratch-v3';
       previousX = currentX;
       previousZ = currentZ;
     },
@@ -141,7 +149,8 @@ export function installWarRoomHansFacingGuard(root) {
 
   driver.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
   driver.userData.warRoomHansFacingGuardMode = 'rendered-face-vs-travel';
-  driver.userData.warRoomHansFacingGuardHotPath = 'preallocated-scratch-v2';
+  driver.userData.warRoomHansFacingGuardTravelContract = 'phase-motion-route-v1';
+  driver.userData.warRoomHansFacingGuardHotPath = 'preallocated-scratch-v3';
   hans.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
   return 1;
 }
