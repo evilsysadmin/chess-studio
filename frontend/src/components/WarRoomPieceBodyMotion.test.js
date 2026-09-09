@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { addPieceSkinDetails } from './Board3DSkinDecor.js';
-import { derivePieceBodyPose, derivePromotionMorph, installPieceBodyMotion } from './WarRoomPieceBodyMotion.js';
+import { derivePassiveCheckSettle, derivePieceBodyPose, derivePromotionMorph, installPieceBodyMotion, resetPieceBodyMotion } from './WarRoomPieceBodyMotion.js';
 import { armWarRoomMoveFinishEvent, clearWarRoomMoveFinishEvent } from './WarRoomMoveFinishEvent.js';
 
 describe('War Room piece body motion', () => {
@@ -163,6 +163,82 @@ describe('War Room piece body motion', () => {
   });
 
 
+  it('adds a restrained settle only to a real moving checker', () => {
+    const check = derivePieceBodyPose({ type: 'r', progress: 0.88, dx: 1, dz: 0, checkFinish: true });
+    const quiet = derivePieceBodyPose({ type: 'r', progress: 0.88, dx: 1, dz: 0 });
+
+    expect(check.finish.check).toBe(true);
+    expect(quiet.finish.check).toBe(false);
+    expect(check.scaleY).toBeLessThan(quiet.scaleY);
+    expect(check.scaleXZ).toBeGreaterThan(quiet.scaleXZ);
+  });
+
+  it('keeps the passive checker settle short, subtle and damped on coarse pointers', () => {
+    const desktop = derivePassiveCheckSettle({ elapsedMs: 84 });
+    const coarse = derivePassiveCheckSettle({ elapsedMs: 65, coarsePointer: true });
+    const reduced = derivePassiveCheckSettle({ elapsedMs: 60, reducedMotion: true });
+
+    expect(desktop.active).toBe(true);
+    expect(desktop.settle).toBeGreaterThan(0.9);
+    expect(desktop.scaleY).toBeLessThan(1);
+    expect(coarse.settle).toBeLessThan(desktop.settle);
+    expect(reduced).toMatchObject({ active: false, done: true, settle: 0, scaleY: 1, scaleXZ: 1 });
+  });
+
+  it('lets a stationary discovered checker consume and finish its own settle without moving the root', () => {
+    clearWarRoomMoveFinishEvent();
+    const root = new THREE.Group();
+    const visual = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    root.add(visual);
+    root.userData.square = 'e1';
+    root.userData.baseY = 0.1;
+    root.userData.baseScale = root.scale.clone();
+    root.position.set(0.5, 0.1, 3.5);
+
+    installPieceBodyMotion(root, 'r', { reducedMotion: false });
+    armWarRoomMoveFinishEvent({ seq: 90, to: 'f3', checkers: ['e1'] });
+    const renderer = { info: { render: { frame: 1 } }, userData: { board3DMotionNowMs: 1000 } };
+
+    visual.onBeforeRender(renderer);
+    expect(root.userData.board3DBodyFinishState).toMatchObject({ check: true, passiveCheck: true });
+    expect(root.userData.board3DCheckSettleState).toMatchObject({ seq: 90, role: 'stationary' });
+    expect(root.position.x).toBe(0.5);
+    expect(root.position.z).toBe(3.5);
+
+    renderer.info.render.frame = 2;
+    renderer.userData.board3DMotionNowMs = 1084;
+    visual.onBeforeRender(renderer);
+    const body = root.children.find((child) => child.userData?.board3DBodyMotionBody);
+    expect(body.scale.y).toBeLessThan(1);
+
+    renderer.info.render.frame = 3;
+    renderer.userData.board3DMotionNowMs = 1200;
+    visual.onBeforeRender(renderer);
+    expect(root.userData.board3DCheckSettleState).toBeNull();
+    expect(root.userData.board3DBodyFinishState).toBeNull();
+    expect(body.scale.y).toBe(1);
+  });
+
+  it('consumes a stationary check without animating it under reduced motion', () => {
+    clearWarRoomMoveFinishEvent();
+    const root = new THREE.Group();
+    const visual = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    root.add(visual);
+    root.userData.square = 'e1';
+    root.userData.baseY = 0.1;
+    root.userData.baseScale = root.scale.clone();
+    root.position.set(0.5, 0.1, 3.5);
+
+    installPieceBodyMotion(root, 'r', { reducedMotion: true });
+    armWarRoomMoveFinishEvent({ seq: 91, to: 'f3', checkers: ['e1'] });
+    visual.onBeforeRender({ info: { render: { frame: 1 } }, userData: { board3DMotionNowMs: 1000 } });
+
+    expect(root.userData.board3DCheckFinishProfile).toBe('check-settle-reduced-v1');
+    expect(root.userData.board3DCheckSettleState).toBeNull();
+    expect(root.userData.board3DBodyFinishState).toBeNull();
+  });
+
+
   it('morphs a promotion from a readable pawn silhouette into the chosen piece', () => {
     const early = derivePromotionMorph({ progress: 0.3 });
     const overlap = derivePromotionMorph({ progress: 0.90 });
@@ -220,6 +296,65 @@ describe('War Room piece body motion', () => {
     expect(visual.material.colorWrite).toBe(true);
   });
 
+  it('hard-resets an interrupted promotion before the rig is reused', () => {
+    clearWarRoomMoveFinishEvent();
+    const root = new THREE.Group();
+    const visual = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ opacity: 1 }));
+    root.add(visual);
+    root.userData.square = 'g8';
+    root.userData.baseY = 0.1;
+    root.userData.baseScale = root.scale.clone();
+    root.position.set(2.5, 0.1, -2.5);
+
+    installPieceBodyMotion(root, 'q');
+    armWarRoomMoveFinishEvent({
+      seq: 188,
+      to: 'g8',
+      promotion: { from: 'g7', to: 'g8', promotedType: 'q', color: 'w' },
+    });
+
+    visual.onBeforeRender({ info: { render: { frame: 1 } } });
+    expect(root.getObjectByName('board3d-promotion-pawn-ghost')).toBeTruthy();
+    expect(visual.material.colorWrite).toBe(false);
+
+    expect(resetPieceBodyMotion(root)).toBe(true);
+    const body = root.children.find((child) => child.userData?.board3DBodyMotionBody);
+    expect(root.getObjectByName('board3d-promotion-pawn-ghost')).toBeUndefined();
+    expect(root.userData.board3DBodyFinishState).toBeNull();
+    expect(root.userData.board3DPromotionMorphState).toBeNull();
+    expect(root.userData.board3DCheckSettleState).toBeNull();
+    expect(visual.material.opacity).toBe(1);
+    expect(visual.material.transparent).toBe(false);
+    expect(visual.material.colorWrite).toBe(true);
+    expect(body.position.toArray()).toEqual([0, 0, 0]);
+    expect(body.scale.toArray()).toEqual([1, 1, 1]);
+    expect(resetPieceBodyMotion(root)).toBe(false);
+  });
+
+  it('hard-resets a passive check settle without moving the root square', () => {
+    clearWarRoomMoveFinishEvent();
+    const root = new THREE.Group();
+    const visual = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    root.add(visual);
+    root.userData.square = 'e1';
+    root.userData.baseY = 0.1;
+    root.userData.baseScale = root.scale.clone();
+    root.position.set(0.5, 0.1, 3.5);
+
+    installPieceBodyMotion(root, 'r', { reducedMotion: false });
+    armWarRoomMoveFinishEvent({ seq: 190, to: 'f3', checkers: ['e1'] });
+    const renderer = { info: { render: { frame: 1 } }, userData: { board3DMotionNowMs: 1000 } };
+    visual.onBeforeRender(renderer);
+
+    const body = root.children.find((child) => child.userData?.board3DBodyMotionBody);
+    expect(root.userData.board3DCheckSettleState?.seq).toBe(190);
+    expect(resetPieceBodyMotion(root)).toBe(true);
+    expect(root.position.toArray()).toEqual([0.5, 0.1, 3.5]);
+    expect(body.scale.toArray()).toEqual([1, 1, 1]);
+    expect(root.userData.board3DCheckSettleState).toBeNull();
+    expect(root.userData.board3DBodyFinishState).toBeNull();
+  });
+
   it('damps body motion on coarse pointers', () => {
     const desktop = derivePieceBodyPose({ type: 'n', progress: 0.5, dx: 1, dz: 0, airborne: 0.8 });
     const coarse = derivePieceBodyPose({ type: 'n', progress: 0.5, dx: 1, dz: 0, airborne: 0.8, coarsePointer: true });
@@ -238,7 +373,9 @@ describe('War Room piece body motion', () => {
     expect(root.userData.skin3DIdentity).toBe('distinct-v2');
     expect(root.userData.board3DBodyMotionProfile).toBe('piece-body-v1');
     expect(root.userData.board3DBodyFinishProfile).toBe('piece-finish-v1');
+    expect(root.userData.board3DBodyInterruptProfile).toBe('piece-body-hard-reset-v1');
     expect(root.userData.board3DCheckmateFinishProfile).toBe('mate-seal-v1');
+    expect(root.userData.board3DCheckFinishProfile).toBe('check-settle-v1');
     expect(root.userData.board3DCastlingFinishProfile).toBe('castle-lock-v1');
     expect(root.userData.board3DPromotionMorphProfile).toBe('pawn-morph-v1');
     expect(root.children.some((child) => child.userData?.board3DBodyMotionBody)).toBe(true);
@@ -257,6 +394,7 @@ describe('War Room piece body motion', () => {
     expect(root.userData.board3DBodyMotionProfile).toBe('piece-body-v1');
     expect(root.userData.board3DBodyFinishProfile).toBe('piece-finish-v1');
     expect(root.userData.board3DCheckmateFinishProfile).toBe('mate-seal-v1');
+    expect(root.userData.board3DCheckFinishProfile).toBe('check-settle-v1');
     expect(root.userData.board3DCastlingFinishProfile).toBe('castle-lock-v1');
     expect(root.userData.board3DPromotionMorphProfile).toBe('pawn-morph-v1');
     expect(body).toBeTruthy();
