@@ -72,15 +72,15 @@ export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {
 export function warRoomMaterialIblProfile({ coarsePointer = false } = {}) {
   if (coarsePointer) return null;
   return {
-    ivoryEnvMax: 0.18,
+    ivoryEnvMax: 0.10,
     lightTileEnvMax: 0.24,
-    ivoryRoughnessMin: 0.74,
-    ivoryClearcoatMax: 0.12,
-    ivoryClearcoatRoughnessMin: 0.58,
-    ivorySpecularMax: 0.18,
-    ivorySheenMax: 0.015,
-    ivorySheenRoughnessMin: 0.72,
-    ivoryAlbedoScale: 0.88,
+    ivoryRoughnessMin: 0.88,
+    ivoryClearcoatMax: 0.035,
+    ivoryClearcoatRoughnessMin: 0.78,
+    ivorySpecularMax: 0.08,
+    ivorySheenMax: 0.006,
+    ivorySheenRoughnessMin: 0.86,
+    ivoryAlbedoScale: 0.84,
     lightTileRoughnessMin: 0.8,
     lightTileClearcoatMax: 0.1,
     lightTileClearcoatRoughnessMin: 0.56,
@@ -239,7 +239,7 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
         changed = capMaterial(material, 'specularIntensity', profile.ivorySpecularMax) || changed;
         changed = capMaterial(material, 'sheen', profile.ivorySheenMax) || changed;
         changed = floorMaterial(material, 'sheenRoughness', profile.ivorySheenRoughnessMin) || changed;
-        changed = applyStableAlbedoScale(material, profile.ivoryAlbedoScale, 'aged-ivory-v2', 0xe7c88e, 0.45) || changed;
+        changed = applyStableAlbedoScale(material, profile.ivoryAlbedoScale, 'aged-ivory-v2', 0xdcc79f, 0.58) || changed;
         material.userData.warRoomSurfaceGrade = 'aged-ivory-v2';
       } else {
         lightTile += 1;
