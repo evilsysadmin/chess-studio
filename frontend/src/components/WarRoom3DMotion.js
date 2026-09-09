@@ -89,22 +89,22 @@ export function warRoomMaterialIblProfile({ coarsePointer = false } = {}) {
   };
 }
 
-function applyStableAlbedoScale(material, scale, grade, warmth = 0) {
+function applyStableAlbedoScale(material, scale, grade, targetHex = null, blendAmount = 0) {
   if (!material?.color?.getHex || typeof material.color.copy !== 'function') return false;
   material.userData ||= {};
 
   const currentHex = material.color.getHex();
   const previous = material.userData.warRoomAlbedoGradeState;
-  const sourceHex = previous?.grade === grade && previous.gradedHex === currentHex
+  const sourceHex = previous?.gradedHex === currentHex && Number.isFinite(previous?.sourceHex)
     ? previous.sourceHex
     : currentHex;
   const gradedColor = new THREE.Color(sourceHex).multiplyScalar(scale);
-  const warmthAmount = clamp01(warmth);
-  // Keep War Room whites readable, but make the warm room influence visible.
-  // Red stays intact while green/blue are reduced enough to remove the cold
-  // display-white cast without turning the board yellow or sepia.
-  gradedColor.g *= 1 - (0.10 * warmthAmount);
-  gradedColor.b *= 1 - (0.30 * warmthAmount);
+  const blend = clamp01(blendAmount);
+  if (targetHex != null && blend > 0) {
+    // Blend toward a concrete warm-ivory target instead of relying on tiny RGB
+    // attenuation deltas that can disappear under tone mapping and practical lights.
+    gradedColor.lerp(new THREE.Color(targetHex), blend);
+  }
   const gradedHex = gradedColor.getHex();
 
   material.userData.warRoomAlbedoGradeState = { grade, sourceHex, gradedHex };
@@ -239,7 +239,7 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
         changed = capMaterial(material, 'specularIntensity', profile.ivorySpecularMax) || changed;
         changed = capMaterial(material, 'sheen', profile.ivorySheenMax) || changed;
         changed = floorMaterial(material, 'sheenRoughness', profile.ivorySheenRoughnessMin) || changed;
-        changed = applyStableAlbedoScale(material, profile.ivoryAlbedoScale, 'aged-ivory-v2', 0.80) || changed;
+        changed = applyStableAlbedoScale(material, profile.ivoryAlbedoScale, 'aged-ivory-v2', 0xe7c88e, 0.45) || changed;
         material.userData.warRoomSurfaceGrade = 'aged-ivory-v2';
       } else {
         lightTile += 1;
@@ -248,7 +248,7 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
         changed = capMaterial(material, 'clearcoat', profile.lightTileClearcoatMax) || changed;
         changed = floorMaterial(material, 'clearcoatRoughness', profile.lightTileClearcoatRoughnessMin) || changed;
         changed = capMaterial(material, 'specularIntensity', profile.lightTileSpecularMax) || changed;
-        changed = applyStableAlbedoScale(material, profile.lightTileAlbedoScale, 'muted-light-tile-v2', 0.65) || changed;
+        changed = applyStableAlbedoScale(material, profile.lightTileAlbedoScale, 'muted-light-tile-v2', 0xe8d7b8, 0.38) || changed;
         material.userData.warRoomSurfaceGrade = 'muted-light-tile-v2';
       }
 
