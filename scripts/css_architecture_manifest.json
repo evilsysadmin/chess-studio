@@ -34,6 +34,7 @@
     "25-visual-coherence.css",
     "26-visual-system-overhaul.css",
     "27-night-club-tactical.css",
+    "29-war-room-chrome.css",
     "28-product-resilience.css"
   ],
   "globalModules": [
@@ -73,9 +74,10 @@
     "05-army-actions.css",
     "05-combat-deployment.css",
     "06-combat-campaign.css",
-    "20-piece-skins.css"
+    "20-piece-skins.css",
+    "29-war-room-chrome.css"
   ],
-  "combinedSha256": "3619f44d155b2955c3857a15fc8a70d9a041852a973598d11bb6282e6f0b7551",
-  "combinedBytes": 555591,
-  "combinedLines": 15431
+  "combinedSha256": "788cbecadd029dd2663bb14b4af23f5dd6b452b55775145eea516f0c989a7d85",
+  "combinedBytes": 560513,
+  "combinedLines": 15594
 }

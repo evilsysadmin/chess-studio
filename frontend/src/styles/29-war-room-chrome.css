@@ -1,0 +1,163 @@
+@layer l28 {
+/* War Room chrome relocation.
+   The room is the header: desktop 3D games should spend vertical space on the
+   board, not on application chrome. Keep this isolated from 2D/mobile routes. */
+
+@media (min-width: 821px) {
+  .app-shell-board-game:has(.game-layout-3d) {
+    position: relative;
+  }
+
+  /* Retire the horizontal masthead without unmounting its accessible actions. */
+  .app-shell-board-game:has(.game-layout-3d) > .masthead-game-compact {
+    position: absolute;
+    z-index: 72;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) > .masthead-game-compact .masthead-top-row {
+    width: 0;
+    height: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) > .masthead-game-compact .masthead-text {
+    display: none;
+  }
+
+  /* Account-adjacent actions live over the right rail instead of owning a row. */
+  .app-shell-board-game:has(.game-layout-3d) > .masthead-game-compact .masthead-actions {
+    position: absolute;
+    z-index: 74;
+    top: .5rem;
+    right: .65rem;
+    display: flex;
+    width: auto;
+    min-width: 0;
+    align-items: center;
+    gap: .32rem;
+    margin: 0;
+    padding: 0;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) .masthead-release-trigger {
+    display: none !important;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) .masthead-feedback-trigger,
+  .app-shell-board-game:has(.game-layout-3d) .masthead-account-trigger {
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    min-height: 32px;
+    padding: 0;
+    border: 1px solid rgba(190, 164, 109, .24);
+    border-radius: 9px;
+    background: rgba(8, 12, 18, .74);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .2), inset 0 1px rgba(255, 255, 255, .025);
+    color: color-mix(in srgb, var(--parchment-dim) 88%, var(--brass));
+    backdrop-filter: blur(8px);
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) .masthead-feedback-trigger:hover,
+  .app-shell-board-game:has(.game-layout-3d) .masthead-feedback-trigger:focus-visible,
+  .app-shell-board-game:has(.game-layout-3d) .masthead-account-trigger:hover,
+  .app-shell-board-game:has(.game-layout-3d) .masthead-account-trigger:focus-visible,
+  .app-shell-board-game:has(.game-layout-3d) .masthead-account-trigger[aria-expanded='true'] {
+    border-color: rgba(201, 162, 39, .52);
+    background: rgba(14, 18, 26, .92);
+    color: var(--parchment);
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) .masthead-feedback-trigger > span:last-child,
+  .app-shell-board-game:has(.game-layout-3d) .masthead-account-trigger > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) .masthead-feedback-trigger > span:first-child {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    font-size: .74rem;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) .masthead-account-trigger::after {
+    content: '⋯';
+    display: block;
+    font: 800 1rem/1 var(--font-body);
+    letter-spacing: .06em;
+    transform: translateY(-.08rem);
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) .masthead-account-popover {
+    top: calc(100% + .42rem);
+    right: 0;
+  }
+
+  /* The save state becomes a toast: failures stay visible; a successful save
+     confirms itself briefly and then gets out of the board's way. */
+  .app-shell-board-game:has(.game-layout-3d) .masthead-actions .save-status-badge {
+    position: absolute;
+    top: 0;
+    right: 4.55rem;
+    width: max-content;
+    min-width: 0;
+    margin: 0;
+    pointer-events: none;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) .masthead-actions .save-status-badge.is-saved {
+    animation: war-room-save-confirm 1.65s ease forwards;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) .masthead-session-error {
+    position: absolute;
+    top: 2.8rem;
+    right: .65rem;
+    width: min(360px, calc(100vw - 2rem));
+    margin: 0;
+    padding: .55rem .7rem;
+    border-radius: 8px;
+    background: rgba(30, 10, 12, .94);
+    pointer-events: auto;
+  }
+
+  /* Only the right rail pays for the relocated controls; the 3D board gains
+     the full height that used to belong to the masthead. */
+  .app-shell-board-game:has(.game-layout-3d) .game-side-column-3d {
+    padding-top: 2.45rem;
+  }
+}
+
+@keyframes war-room-save-confirm {
+  0%, 56% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-4px); visibility: hidden; }
+}
+
+@media (prefers-reduced-motion: reduce) and (min-width: 821px) {
+  .app-shell-board-game:has(.game-layout-3d) .masthead-actions .save-status-badge.is-saved {
+    animation-duration: .01ms;
+    animation-delay: 1.2s;
+  }
+}
+}
