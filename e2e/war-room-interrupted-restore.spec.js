@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, clickBoardMove, login, mockApi } from './helpers.js';
+import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -104,9 +105,47 @@ async function expectCleanWarRoom(page) {
   const canvas = page.locator('.board3d-main-canvas');
   await expect(board3d).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   await expect(canvas).toHaveCount(1, { timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(board3d).toHaveAttribute('data-board3d-turn', 'human');
   await expect(board3d).toHaveAttribute('data-board3d-selected', '');
+  await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '0');
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
   return { board3d, canvas };
+}
+
+async function switchTo2D(page) {
+  await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Ajustes' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('radio', { name: /2D$/ }).click();
+  const close = dialog.getByRole('button', { name: 'Cerrar', exact: true });
+  await expect(close).toBeVisible();
+  await close.evaluate((element) => element.click());
+  await expect(dialog).toBeHidden({ timeout: 15_000 });
+  await expect(page.locator('.board-grid').first()).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+}
+
+async function switchTo3D(page) {
+  await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Ajustes' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('radio', { name: /3D$/ }).click();
+  const close = dialog.getByRole('button', { name: 'Cerrar', exact: true });
+  await expect(close).toBeVisible();
+  await close.evaluate((element) => element.click());
+  await expect(dialog).toBeHidden({ timeout: 15_000 });
+  return expectCleanWarRoom(page);
+}
+
+async function expectCaptureSnapshot2D(page) {
+  const board = page.locator('.board-grid').first();
+  await expect(board).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(page.getByRole('button', { name: /^Casilla d5, peón blanco/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Casilla f6, caballo negro/i })).toBeVisible();
+  await expect(board.locator('.square.selected')).toHaveCount(0);
+  await expect(board.locator('.square.legal-move, .square.legal-capture')).toHaveCount(0);
+  await expect(board.locator('.square.last-move')).toHaveCount(2);
+  await expect(board.locator('.square[aria-label^="Casilla g8,"]')).toHaveClass(/last-move/);
+  await expect(board.locator('.square[aria-label^="Casilla f6,"]')).toHaveClass(/last-move/);
 }
 
 test('War Room · F5 durante movimiento y captura restaura una escena limpia y jugable', async ({ page }) => {
@@ -145,17 +184,26 @@ test('War Room · F5 durante movimiento y captura restaura una escena limpia y j
 
   // 2D actúa como sonda accesible del estado común restaurado. Si quedara una
   // escena 3D visualmente limpia pero lógicamente vieja, estas casillas fallan.
-  await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Ajustes' });
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole('radio', { name: /2D$/ }).click();
-  const close = dialog.getByRole('button', { name: 'Cerrar', exact: true });
-  await expect(close).toBeVisible();
-  await close.evaluate((element) => element.click());
-  await expect(dialog).toBeHidden({ timeout: 15_000 });
-
-  await expect(page.getByRole('button', { name: /^Casilla d5, peón blanco/i })).toBeVisible();
-  await expect(page.getByRole('button', { name: /^Casilla f6, caballo negro/i })).toBeVisible();
+  await switchTo2D(page);
+  await expectCaptureSnapshot2D(page);
   await expect(page.locator('.board3d-main-canvas')).toHaveCount(0);
+
+  // Volver a 3D no puede rehidratar una foto anterior ni conservar selección o
+  // destinos fantasma. d5 sólo existe en el FEN restaurado y tiene un único
+  // avance legal (d6); la posición inicial ni siquiera contiene una pieza allí.
+  const { board3d, canvas } = await switchTo3D(page);
+  await navigateWarRoomKeyboard(canvas, board3d, 'd5');
+  await canvas.press('Enter');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'd5');
+  await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '1');
+  await canvas.press('Enter');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', '');
+  await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '0');
+
+  // Cierra el round-trip 3D→2D→3D→2D y acredita que lastMove también pertenece
+  // al snapshot común, no a residuos privados de un renderer.
+  await switchTo2D(page);
+  await expectCaptureSnapshot2D(page);
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+  expect(movePosts(requestLog)).toHaveLength(2);
 });
