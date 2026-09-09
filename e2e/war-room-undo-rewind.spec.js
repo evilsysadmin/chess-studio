@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { gameStatus, login, mockApi, startPracticeGame } from './helpers.js';
+import { gameStatus, login, mockApi } from './helpers.js';
 import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
@@ -91,6 +91,25 @@ function undoPosts(requestLog) {
   return requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/undo$/.test(entry.path));
 }
 
+async function startPracticeFromCanonicalHome(page) {
+  const toolsToggle = page.getByRole('button', { name: /Más modos y herramientas/ });
+  await expect(toolsToggle).toBeVisible();
+  if (await toolsToggle.getAttribute('aria-expanded') !== 'true') await toolsToggle.click();
+  await expect(toolsToggle).toHaveAttribute('aria-expanded', 'true');
+
+  const tools = page.getByRole('navigation', { name: 'Más modos y herramientas' });
+  const practice = tools.getByRole('button', { name: 'Partida de práctica', exact: true });
+  await expect(practice).toBeVisible();
+  await practice.click();
+
+  const dialog = page.getByRole('dialog', { name: 'Configurar partida de práctica', exact: true });
+  await expect(dialog).toBeVisible();
+  const start = dialog.getByRole('button', { name: 'Empezar práctica', exact: true });
+  await expect(start).toBeEnabled();
+  await start.click();
+  await expect(gameStatus(page)).toBeVisible();
+}
+
 async function setRendererViaAppearance(page, renderer) {
   const warRoom = page.locator('[data-board3d-war-room="true"]');
   const button = await warRoom.count()
@@ -158,7 +177,7 @@ test('War Room · deshacer en 3D rebobina FEN, lastMove y highlights y sobrevive
   await mockApi(page, { requestLog });
   await installUndoRoutes(page, requestLog);
   await login(page);
-  await startPracticeGame(page);
+  await startPracticeFromCanonicalHome(page);
   await setRendererViaAppearance(page, '3D');
 
   let { board3d, canvas } = await expectWarRoomReady(page);
