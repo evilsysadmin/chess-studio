@@ -16,9 +16,11 @@ function normalizeTask(task, defaults = {}) {
 
 function markRuntime(runtime) {
   const { actor } = runtime;
-  if (actor?.root?.userData) actor.root.userData.warRoomHansRuntime = WAR_ROOM_HANS_RUNTIME_VERSION;
-  if (actor?.hans?.userData) actor.hans.userData.warRoomHansRuntime = WAR_ROOM_HANS_RUNTIME_VERSION;
-  if (actor?.driver?.userData) actor.driver.userData.warRoomHansRuntime = WAR_ROOM_HANS_RUNTIME_VERSION;
+  // `warRoomHansRuntime` is an existing public visibility diagnostic
+  // (visible/hidden/missing). Keep the task runtime on its own namespace.
+  if (actor?.root?.userData) actor.root.userData.warRoomHansTaskRuntime = WAR_ROOM_HANS_RUNTIME_VERSION;
+  if (actor?.hans?.userData) actor.hans.userData.warRoomHansTaskRuntime = WAR_ROOM_HANS_RUNTIME_VERSION;
+  if (actor?.driver?.userData) actor.driver.userData.warRoomHansTaskRuntime = WAR_ROOM_HANS_RUNTIME_VERSION;
 }
 
 function markTask(runtime) {
