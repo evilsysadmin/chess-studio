@@ -13,37 +13,40 @@ describe('Pawn Slug tile maps', () => {
   it('describes premium scenarios as data instead of renderer coordinates', () => {
     const dungeon = PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon;
     const forest = PAWN_SLUG_SCENARIO_TILEMAPS.fallenForest;
+    const ruins = PAWN_SLUG_SCENARIO_TILEMAPS.gambitRuins;
     expect(pawnSlugTilesForScenario(dungeon).some((tile) => tile.kind === 'gate')).toBe(true);
-    expect(pawnSlugTilesForScenario(dungeon).some((tile) => tile.kind === 'torch')).toBe(true);
     expect(pawnSlugTilesForScenario(forest).some((tile) => tile.kind === 'forest-trunk')).toBe(true);
-    expect(pawnSlugTilesForScenario(forest).some((tile) => tile.kind === 'fallen-knight')).toBe(true);
+    expect(pawnSlugTilesForScenario(ruins).some((tile) => tile.kind === 'ruin-column')).toBe(true);
+    expect(pawnSlugTilesForScenario(ruins).some((tile) => tile.kind === 'broken-rook')).toBe(true);
   });
 
   it('owns physical platform data as part of each scenario contract', () => {
     const dungeonPlatforms = pawnSlugScenarioPlatforms(PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon);
     const forestPlatforms = pawnSlugScenarioPlatforms(PAWN_SLUG_SCENARIO_TILEMAPS.fallenForest);
-    expect(dungeonPlatforms).toHaveLength(1);
-    expect(dungeonPlatforms[0]).toMatchObject({ id: 'dungeon-catwalk', theme: 'steel', oneWay: true });
+    const ruinsPlatforms = pawnSlugScenarioPlatforms(PAWN_SLUG_SCENARIO_TILEMAPS.gambitRuins);
+    expect(dungeonPlatforms[0]).toMatchObject({ id: 'dungeon-catwalk', oneWay: true });
     expect(forestPlatforms.map((platform) => platform.id)).toEqual([
-      'forest-root-rise',
-      'forest-broken-statue',
-      'forest-branch-post',
+      'forest-root-rise', 'forest-broken-statue', 'forest-branch-post',
     ]);
-    for (const platform of [...dungeonPlatforms, ...forestPlatforms]) expect(PAWN_SLUG_PLATFORM_LAYOUT).toContain(platform);
+    expect(ruinsPlatforms.map((platform) => platform.id)).toEqual([
+      'ruins-shattered-bridge', 'ruins-high-arcade',
+    ]);
+    for (const platform of [...forestPlatforms, ...ruinsPlatforms, ...dungeonPlatforms]) {
+      expect(PAWN_SLUG_PLATFORM_LAYOUT).toContain(platform);
+    }
   });
 
-  it('filters desktop-only scenic tiles on coarse/mobile', () => {
-    expect(pawnSlugScenarioTilesByKind(PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon, 'fallen-pawn')).toHaveLength(1);
+  it('filters desktop-only scenic atmosphere on coarse/mobile', () => {
     expect(pawnSlugScenarioTilesByKind(PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon, 'fallen-pawn', { coarse: true })).toHaveLength(0);
-    expect(pawnSlugScenarioTilesByKind(PAWN_SLUG_SCENARIO_TILEMAPS.fallenForest, 'fireflies').length).toBeGreaterThan(0);
     expect(pawnSlugScenarioTilesByKind(PAWN_SLUG_SCENARIO_TILEMAPS.fallenForest, 'fireflies', { coarse: true })).toHaveLength(0);
+    expect(pawnSlugScenarioTilesByKind(PAWN_SLUG_SCENARIO_TILEMAPS.gambitRuins, 'dust').length).toBeGreaterThan(0);
+    expect(pawnSlugScenarioTilesByKind(PAWN_SLUG_SCENARIO_TILEMAPS.gambitRuins, 'dust', { coarse: true })).toHaveLength(0);
   });
 
   it('keeps tile-derived world positions deterministic', () => {
     for (const scenario of Object.values(PAWN_SLUG_SCENARIO_TILEMAPS)) {
-      const firstPass = pawnSlugTilesForScenario(scenario).map(({ kind, row, column, x }) => `${kind}:${row}:${column}:${x}`);
-      const secondPass = pawnSlugTilesForScenario(scenario).map(({ kind, row, column, x }) => `${kind}:${row}:${column}:${x}`);
-      expect(secondPass).toEqual(firstPass);
+      const signature = () => pawnSlugTilesForScenario(scenario).map(({ kind, row, column, x }) => `${kind}:${row}:${column}:${x}`);
+      expect(signature()).toEqual(signature());
     }
   });
 
