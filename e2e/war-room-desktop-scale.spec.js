@@ -16,7 +16,7 @@ async function openDesktopWarRoom(page) {
   return { warRoom, shell };
 }
 
-test('War Room · desktop prioriza el tablero y muestra un solo rail secundario cada vez', async ({ page }) => {
+test('War Room · desktop prioriza el tablero, deja el borde inferior limpio y concentra estado en el rail', async ({ page }) => {
   test.setTimeout(90_000);
   const { warRoom, shell } = await openDesktopWarRoom(page);
 
@@ -31,10 +31,10 @@ test('War Room · desktop prioriza el tablero y muestra un solo rail secundario 
   await expect(turnPill).toBeVisible();
   await expect(turnPill).toContainText('Matthias');
   await expect(turnPill).toContainText(/CPU nivel \d+/i);
+  await expect(page.getByRole('button', { name: 'Más acciones de partida', exact: true })).toBeVisible();
 
-  // Board3D is lazy. Its CSS arrives after the command HUD and historically
-  // reset every direct War Room child to z-index: 1, putting the later board
-  // stack over the pill. Recheck after the deferred chunk has fully settled.
+  // Board3D is lazy. Recheck once its deferred CSS has settled: the right-rail
+  // status must remain visible and the retired bottom chrome must stay retired.
   await page.waitForTimeout(1500);
   await expect(turnPill).toBeVisible();
 
@@ -45,6 +45,8 @@ test('War Room · desktop prioriza el tablero y muestra un solo rail secundario 
     const commanderNode = document.querySelector('.game-3d-command-column');
     const turnPillNode = document.querySelector('.game-3d-command-column .game-3d-turn-pill');
     const controlsNode = document.querySelector('.game-3d-command-column .game-3d-warroom-controls');
+    const humanRailNode = document.querySelector('.game-board-stack-3d > .game-player-rail.is-human');
+    const commandDeckNode = document.querySelector('.game-board-stack-3d > .game-command-deck');
     const musicNode = document.querySelector('.game-side-column-3d .game-side-music');
     const railNode = document.querySelector('.game-side-column-3d .game-warroom-rail');
     const chatNode = document.querySelector('.game-warroom-rail .game-chat');
@@ -53,13 +55,13 @@ test('War Room · desktop prioriza el tablero y muestra un solo rail secundario 
     const board = boardNode?.getBoundingClientRect();
     const commander = commanderNode?.getBoundingClientRect();
     const turnPillRect = turnPillNode?.getBoundingClientRect();
-    const controls = controlsNode?.getBoundingClientRect();
     const music = musicNode?.getBoundingClientRect();
     const rail = railNode?.getBoundingClientRect();
     const chat = chatNode?.getBoundingClientRect();
-    if (!room || !board || !boardStackNode || !commander || !turnPillRect || !controls || !music || !rail || !chat || !chatLogNode) return null;
+    if (!room || !board || !boardStackNode || !commander || !turnPillRect || !controlsNode || !humanRailNode || !commandDeckNode || !music || !rail || !chat || !chatLogNode) return null;
     return {
       roomLeft: room.left,
+      roomRight: room.right,
       roomWidth: room.width,
       boardLeft: board.left,
       boardRight: board.right,
@@ -67,15 +69,16 @@ test('War Room · desktop prioriza el tablero y muestra un solo rail secundario 
       boardHeight: board.height,
       commanderLeft: commander.left,
       commanderRight: commander.right,
+      commanderBottom: commander.bottom,
       commanderWidth: commander.width,
-      commanderZIndex: Number.parseInt(getComputedStyle(commanderNode).zIndex, 10) || 0,
-      boardStackZIndex: Number.parseInt(getComputedStyle(boardStackNode).zIndex, 10) || 0,
       turnPillLeft: turnPillRect.left,
       turnPillRight: turnPillRect.right,
       turnPillWidth: turnPillRect.width,
-      controlsBottom: controls.bottom,
-      commanderBottom: commander.bottom,
+      controlsDisplay: getComputedStyle(controlsNode).display,
+      humanRailDisplay: getComputedStyle(humanRailNode).display,
+      commandDeckDisplay: getComputedStyle(commandDeckNode).display,
       musicLeft: music.left,
+      musicTop: music.top,
       musicBottom: music.bottom,
       musicWidth: music.width,
       railLeft: rail.left,
@@ -91,29 +94,33 @@ test('War Room · desktop prioriza el tablero y muestra un solo rail secundario 
   });
 
   expect(initialGeometry).not.toBeNull();
-  // The room is height-limited at this viewport, so absolute shell width is
-  // secondary. What matters is that removing the left rail gives the board the
-  // dominant share of the available room and leaves almost no dead left gutter.
   expect(initialGeometry.boardWidth).toBeGreaterThan(820);
   expect(initialGeometry.boardHeight).toBeGreaterThan(830);
   expect(initialGeometry.boardWidth / initialGeometry.roomWidth).toBeGreaterThan(.72);
   expect(initialGeometry.boardLeft - initialGeometry.roomLeft).toBeLessThan(24);
-  expect(initialGeometry.commanderLeft).toBeGreaterThanOrEqual(initialGeometry.boardLeft - 2);
-  expect(initialGeometry.commanderRight).toBeLessThanOrEqual(initialGeometry.boardRight + 2);
-  expect(initialGeometry.commanderWidth).toBeGreaterThan(240);
-  expect(initialGeometry.commanderZIndex).toBeGreaterThan(initialGeometry.boardStackZIndex);
-  expect(initialGeometry.turnPillWidth).toBeGreaterThan(220);
-  // The mirror/pawn crest owns the upper centre of the room. Keep the entire
-  // turn HUD in the left half rather than merely checking that it is visible.
-  expect(initialGeometry.turnPillLeft - initialGeometry.boardLeft).toBeLessThan(32);
-  expect(initialGeometry.turnPillRight).toBeLessThan(initialGeometry.boardLeft + (initialGeometry.boardWidth * .48));
+
+  // The match HUD now belongs to the right rail, not to the board artwork.
+  expect(initialGeometry.commanderLeft).toBeGreaterThanOrEqual(initialGeometry.boardRight - 2);
+  expect(initialGeometry.commanderRight).toBeLessThanOrEqual(initialGeometry.roomRight + 2);
+  expect(initialGeometry.commanderWidth).toBeGreaterThan(190);
+  expect(initialGeometry.turnPillWidth).toBeGreaterThan(190);
+  expect(initialGeometry.turnPillLeft).toBeGreaterThanOrEqual(initialGeometry.commanderLeft - 2);
+  expect(initialGeometry.turnPillRight).toBeLessThanOrEqual(initialGeometry.commanderRight + 2);
+  expect(Math.abs(initialGeometry.commanderLeft - initialGeometry.musicLeft)).toBeLessThan(4);
+  expect(initialGeometry.musicTop).toBeGreaterThanOrEqual(initialGeometry.commanderBottom - 4);
+  expect(initialGeometry.musicTop - initialGeometry.commanderBottom).toBeLessThan(20);
+
+  // Nothing from the match-command UI is allowed to survive on the lower apron.
+  expect(initialGeometry.humanRailDisplay).toBe('none');
+  expect(initialGeometry.commandDeckDisplay).toBe('none');
+  expect(initialGeometry.controlsDisplay).toBe('none');
+
   expect(initialGeometry.chatWidth).toBeGreaterThan(190);
   expect(initialGeometry.chatOwnedByRail).toBe(true);
   expect(initialGeometry.commanderHasChat).toBe(false);
-  expect(initialGeometry.controlsBottom).toBeLessThanOrEqual(initialGeometry.commanderBottom + 2);
   expect(initialGeometry.chatLogOverflowY).toBe('auto');
-  expect(initialGeometry.musicLeft).toBeGreaterThanOrEqual(initialGeometry.boardRight + 2);
-  expect(initialGeometry.railLeft).toBeGreaterThanOrEqual(initialGeometry.boardRight + 2);
+  expect(initialGeometry.musicLeft).toBeGreaterThanOrEqual(initialGeometry.boardRight - 2);
+  expect(initialGeometry.railLeft).toBeGreaterThanOrEqual(initialGeometry.boardRight - 2);
   expect(initialGeometry.musicWidth).toBeGreaterThan(190);
   expect(initialGeometry.railWidth).toBeGreaterThan(190);
   expect(initialGeometry.railTop).toBeGreaterThanOrEqual(initialGeometry.musicBottom - 4);
