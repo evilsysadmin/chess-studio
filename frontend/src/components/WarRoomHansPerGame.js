@@ -4,7 +4,11 @@ import {
   writeJsonStorage,
 } from '../safeStorage.js';
 
-export const WAR_ROOM_HANS_SEEN_GAMES_KEY = 'chess-study-war-room-hans-seen-games-v1';
+// v1 `seen-games` was written as soon as Hans entered the viewport, so it can
+// contain false positives from interrupted fireplace numbers. Do not migrate
+// that poisoned state: the replacement key is written only after the narrative
+// reaches its real terminal callback.
+export const WAR_ROOM_HANS_SEEN_GAMES_KEY = 'chess-study-war-room-hans-completed-games-v1';
 const MAX_REMEMBERED_GAMES = 32;
 
 function normalizeGameId(gameId) {
