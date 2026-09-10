@@ -7,7 +7,7 @@ export const PAWN_SLUG_ENEMY_ACTIONS = Object.freeze({
   crouch: Object.freeze({ frames: 8, rate: 10, loop: true }),
   hurt: Object.freeze({ frames: 6, rate: 18, loop: false }),
   climb: Object.freeze({ frames: 12, rate: 11.5, loop: true }),
-  death: Object.freeze({ frames: 14, rate: 16, loop: false }),
+  death: Object.freeze({ frames: 14, rate: 16, loop: false, groundedTailFrames: 4 }),
 });
 
 function clamp01(value) {
@@ -56,6 +56,23 @@ export function pawnSlugEnemyDeathDuration(type = 'pawn') {
   return 0.64;
 }
 
+function deathPose(type, phase) {
+  const groundedStart = 10 / 13;
+  const grounded = phase >= groundedStart;
+  const fallPhase = clamp01(phase / groundedStart);
+  const fall = Math.sin(fallPhase * Math.PI * 0.5);
+  const settle = grounded ? clamp01((phase - groundedStart) / (1 - groundedStart)) : 0;
+  const impactBounce = grounded ? Math.sin(settle * Math.PI) * (1 - settle) : 0;
+
+  if (type === 'rook') {
+    return Object.freeze({ x: -0.06 * fall, y: grounded ? -0.36 - impactBounce * 0.03 : -0.28 * fall, rz: 1.36 * fall, sx: 1 + 0.12 * fall, sy: grounded ? 0.56 : 1 - 0.32 * fall, grounded });
+  }
+  if (type === 'knight') {
+    return Object.freeze({ x: -0.2 * fall, y: grounded ? -0.42 - impactBounce * 0.035 : 0.07 * Math.sin(fallPhase * Math.PI), rz: 1.52 * fall, sx: 1 + 0.06 * fall, sy: grounded ? 0.52 : 1 - 0.15 * fall, grounded });
+  }
+  return Object.freeze({ x: -0.13 * fall, y: grounded ? -0.4 - impactBounce * 0.025 : -0.08 * fall, rz: 1.47 * fall, sx: 1 + 0.08 * fall, sy: grounded ? 0.5 : 1 - 0.2 * fall, grounded });
+}
+
 export function pawnSlugEnemyActionPose(action = 'idle', actionFrame = 0, { vy = 0, type = 'pawn' } = {}) {
   const track = PAWN_SLUG_ENEMY_ACTIONS[action] || PAWN_SLUG_ENEMY_ACTIONS.idle;
   const localFrame = track.loop === false ? clampFrame(actionFrame, track.frames) : wrapFrame(actionFrame, track.frames);
@@ -64,9 +81,7 @@ export function pawnSlugEnemyActionPose(action = 'idle', actionFrame = 0, { vy =
   const pulse = Math.cos(phase * TAU);
   const weight = type === 'rook' ? 0.58 : type === 'knight' ? 1.12 : 1;
 
-  if (action === 'run') {
-    return Object.freeze({ x: wave * 0.028 * weight, y: Math.abs(wave) * 0.035 * weight, rz: -wave * 0.025 * weight, sx: 1 + pulse * 0.012, sy: 1 - pulse * 0.018 });
-  }
+  if (action === 'run') return Object.freeze({ x: wave * 0.028 * weight, y: Math.abs(wave) * 0.035 * weight, rz: -wave * 0.025 * weight, sx: 1 + pulse * 0.012, sy: 1 - pulse * 0.018 });
   if (action === 'jump') {
     const ascending = Number(vy) > 0;
     return Object.freeze({ x: 0, y: ascending ? 0.055 : -0.018, rz: ascending ? -0.055 : 0.045, sx: ascending ? 0.965 : 1.035, sy: ascending ? 1.055 : 0.965 });
@@ -79,19 +94,8 @@ export function pawnSlugEnemyActionPose(action = 'idle', actionFrame = 0, { vy =
     const decay = 1 - clamp01(actionFrame / Math.max(1, track.frames - 1));
     return Object.freeze({ x: -0.085 * decay, y: Math.sin(phase * Math.PI) * 0.035, rz: 0.11 * decay, sx: 1.07, sy: 0.9 });
   }
-  if (action === 'climb') {
-    return Object.freeze({ x: wave * 0.018, y: Math.abs(wave) * 0.055, rz: wave * 0.018, sx: 0.985, sy: 1.015 });
-  }
-  if (action === 'death') {
-    const fall = Math.sin(clamp01(phase) * Math.PI * 0.5);
-    if (type === 'rook') {
-      return Object.freeze({ x: -0.06 * fall, y: -0.11 * fall, rz: 0.42 * fall, sx: 1 + 0.18 * fall, sy: 1 - 0.42 * fall });
-    }
-    if (type === 'knight') {
-      return Object.freeze({ x: -0.18 * fall, y: 0.08 * Math.sin(phase * Math.PI), rz: 1.05 * fall, sx: 1 + 0.08 * fall, sy: 1 - 0.18 * fall });
-    }
-    return Object.freeze({ x: -0.12 * fall, y: -0.04 * fall, rz: 0.72 * fall, sx: 1 + 0.1 * fall, sy: 1 - 0.28 * fall });
-  }
+  if (action === 'climb') return Object.freeze({ x: wave * 0.018, y: Math.abs(wave) * 0.055, rz: wave * 0.018, sx: 0.985, sy: 1.015 });
+  if (action === 'death') return deathPose(type, phase);
   return Object.freeze({ x: 0, y: Math.max(0, wave) * 0.012, rz: pulse * 0.006, sx: 1 + pulse * 0.004, sy: 1 - pulse * 0.004 });
 }
 
@@ -101,5 +105,5 @@ export const PAWN_SLUG_ENEMY_ACTION_META = Object.freeze({
   actions: PAWN_SLUG_ENEMY_ACTIONS,
   authoredFacings: Object.freeze(['left']),
   runtimeFacings: Object.freeze(['left', 'right']),
-  deathStyleByType: Object.freeze({ pawn: 'backward-collapse', knight: 'violent-tumble', rook: 'heavy-collapse' }),
+  deathStyleByType: Object.freeze({ pawn: 'backward-collapse-grounded', knight: 'violent-tumble-grounded', rook: 'heavy-collapse-grounded' }),
 });
