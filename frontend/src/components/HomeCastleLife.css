@@ -1,0 +1,105 @@
+/* Minimal living-castle layer: time-of-day changes remain deliberately subtle,
+   and the factual memory object is an optional diegetic affordance rather than
+   another dashboard card. */
+@media (min-width: 1000px) {
+  .illustrated-home__stage[data-home-castle-ambient='dawn'] .illustrated-home__art {
+    filter: brightness(.985) saturate(.98) sepia(.035);
+  }
+
+  .illustrated-home__stage[data-home-castle-ambient='day'] .illustrated-home__art {
+    filter: brightness(1.015) saturate(1.01);
+  }
+
+  .illustrated-home__stage[data-home-castle-ambient='dusk'] .illustrated-home__art {
+    filter: brightness(.96) saturate(1.015) sepia(.055);
+  }
+
+  .illustrated-home__stage[data-home-castle-ambient='night'] .illustrated-home__art {
+    filter: brightness(.91) saturate(.94);
+  }
+
+  .illustrated-home__memory-object {
+    position: absolute;
+    z-index: 4;
+    left: 87.3%;
+    top: 61.5%;
+    width: 3.2cqw;
+    height: 3.2cqw;
+    min-width: 38px;
+    min-height: 38px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid rgba(196, 151, 72, .28);
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 32%, rgba(244, 207, 108, .18), rgba(63, 39, 18, .16) 56%, rgba(12, 8, 5, .08));
+    color: rgba(232, 190, 91, .78);
+    box-shadow: 0 2px 9px rgba(0, 0, 0, .28), inset 0 0 9px rgba(230, 177, 73, .08);
+    cursor: pointer;
+    opacity: .8;
+    transition: transform .18s ease, filter .18s ease, opacity .18s ease, box-shadow .18s ease;
+  }
+
+  .illustrated-home__memory-object svg {
+    width: 52%;
+    height: 52%;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .65));
+  }
+
+  .illustrated-home__memory-object:hover,
+  .illustrated-home__memory-object:focus-visible {
+    transform: translateY(-2px) scale(1.035);
+    filter: brightness(1.15);
+    opacity: 1;
+    box-shadow: 0 5px 16px rgba(0, 0, 0, .38), 0 0 16px rgba(226, 169, 69, .14), inset 0 0 11px rgba(230, 177, 73, .12);
+  }
+
+  .illustrated-home__memory-label {
+    position: absolute;
+    right: calc(100% + .65cqw);
+    top: 50%;
+    width: min(250px, 18cqw);
+    transform: translateY(-50%) translateX(5px);
+    padding: .55cqw .7cqw;
+    border: 1px solid rgba(166, 128, 65, .52);
+    border-radius: 8px;
+    background: rgba(20, 13, 8, .94);
+    box-shadow: 0 7px 22px rgba(0, 0, 0, .38);
+    color: #eadbb8;
+    text-align: left;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .16s ease, transform .16s ease;
+  }
+
+  .illustrated-home__memory-label strong,
+  .illustrated-home__memory-label span {
+    display: block;
+  }
+
+  .illustrated-home__memory-label strong {
+    margin-bottom: .18cqw;
+    color: #f0c96d;
+    font: 700 max(12px, .76cqw)/1.2 Georgia, serif;
+  }
+
+  .illustrated-home__memory-label span {
+    color: #d8c8a7;
+    font: 400 max(11px, .66cqw)/1.35 Arial, sans-serif;
+  }
+
+  .illustrated-home__memory-object:hover .illustrated-home__memory-label,
+  .illustrated-home__memory-object:focus-visible .illustrated-home__memory-label {
+    transform: translateY(-50%) translateX(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 999px) {
+  .illustrated-home__memory-object { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .illustrated-home__memory-object,
+  .illustrated-home__memory-label { transition: none; }
+}
