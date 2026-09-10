@@ -1,4 +1,4 @@
-import { STORAGE_LOCAL, getStorageItem, setStorageItem, removeStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, readJsonStorage, setStorageItem, removeStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { assertSeriesFlowInvariant } from './seriesFlow.js';
 
@@ -60,13 +60,7 @@ export function validateSeriesState(parsed) {
 }
 
 export function loadActiveSeries() {
-  try {
-    const raw = getStorageItem(STORAGE_LOCAL, ACTIVE_KEY);
-    if (!raw) return null;
-    return validateSeriesState(JSON.parse(raw));
-  } catch {
-    return null;
-  }
+  return validateSeriesState(readJsonStorage(STORAGE_LOCAL, ACTIVE_KEY, { fallback: null }));
 }
 
 export function saveActiveSeries(series) {
@@ -86,14 +80,8 @@ export function clearActiveSeries() {
 }
 
 export function loadSeriesHistory() {
-  try {
-    const raw = getStorageItem(STORAGE_LOCAL, HISTORY_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  const parsed = readJsonStorage(STORAGE_LOCAL, HISTORY_KEY, { fallback: [] });
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 function archiveCompletedSeries(series) {
@@ -190,8 +178,6 @@ export function seriesNextActionLabel(series) {
   if (moment.kind === 'cpu-match-point') return 'Seguir vivo en la serie';
   return 'Siguiente partida de la serie';
 }
-
-
 
 function completedSeriesRows(history) {
   return (Array.isArray(history) ? history : []).filter((series) =>
