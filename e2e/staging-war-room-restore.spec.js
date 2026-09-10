@@ -188,7 +188,10 @@ test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida 
 
     // 2D actúa sólo como sonda accesible del estado común: la posición visible
     // debe corresponder al FEN rehidratado, no al snapshot local deliberadamente viejo.
-    await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
+    const utilityMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+    await expect(utilityMenu).toBeVisible();
+    await utilityMenu.click();
+    await page.getByRole('menuitem', { name: 'Apariencia', exact: true }).click();
     const appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
     await expect(appearanceDialog).toBeVisible();
     await appearanceDialog.getByRole('radio', { name: /2D$/ }).click();
