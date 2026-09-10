@@ -10,7 +10,7 @@ export const HANS_BOARD_DIALOGUE_GAP_MS = 3000;
 export const MATTHIAS_HANS_WORKING_MS = 2600;
 export const HANS_WORKING_REPLY_MS = 2000;
 export const HANS_LEAVING_GRUMBLE_MS = 1500;
-export const HANS_BOARD_PEEK_ROUTE = 'leave-bypass';
+export const HANS_BOARD_PEEK_ROUTE = 'leave-side';
 export const HANS_BOARD_PEEK_CHOREOGRAPHY_PHASE = 'satisfied';
 export const HANS_INITIAL_REPLY_ENTRY_MAX_LOGICAL_X = 1.82;
 export const MATTHIAS_FIRE_EPILOGUE_LINE = 'En fin. ¿Por dónde íbamos?';
@@ -67,10 +67,10 @@ export function hansInitialReplyPointReached({
 export function hansBoardPeekPointReached({ phase, route, choreographyPhase = '' } = {}) {
   if (phase !== 'await-exit-peek') return false;
 
-  // The hearth number is semantically complete once Hans has returned the poker
-  // and reaches the satisfied beat. Slow/software renderers can take much longer
-  // to reach one exact corridor coordinate even though the work is already done.
-  // Keep leave-bypass as a compatibility fallback for older scene telemetry.
+  // Prefer the semantic end-of-hearth beat. If one renderer misses that short
+  // state, fall back to the very first exit leg while Hans is still beside the
+  // hearth. Never wait for leave-bypass: that waypoint lives beside the armour
+  // and made the board-peek detour look like Hans was inspecting the guard.
   return choreographyPhase === HANS_BOARD_PEEK_CHOREOGRAPHY_PHASE
     || route === HANS_BOARD_PEEK_ROUTE;
 }
