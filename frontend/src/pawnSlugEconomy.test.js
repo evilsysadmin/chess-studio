@@ -74,6 +74,6 @@ describe('Pawn Slug credits and armory', () => {
 
     const rejected = pawnSlugBuyArmoryItem(grenades.state, 'shotgun');
     expect(rejected.ok).toBe(false);
-    expect(rejected.state).toBe(grenades.state);
+    expect(rejected.state).toStrictEqual(grenades.state);
   });
 });
