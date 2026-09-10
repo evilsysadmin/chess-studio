@@ -3,10 +3,15 @@ import { describe, expect, it } from 'vitest';
 import {
   advanceWarRoomHansWalk,
   applyWarRoomHansTaskPose,
+  createWarRoomHansPoseBaseline,
+  createWarRoomHansWalkController,
   moveWarRoomHansToward,
   placeWarRoomHansHorizontal,
+  resetWarRoomHansTaskPose,
+  resetWarRoomHansWalk,
   WAR_ROOM_HANS_ANIMATOR_VERSION,
   WAR_ROOM_HANS_GAIT_OWNER,
+  WAR_ROOM_HANS_POSE_BASELINE_VERSION,
 } from './WarRoomHansAnimator.js';
 
 describe('War Room Hans animator', () => {
@@ -18,8 +23,8 @@ describe('War Room Hans animator', () => {
 
     const motion = moveWarRoomHansToward(hans, target, 0.5);
 
-    expect(WAR_ROOM_HANS_ANIMATOR_VERSION).toContain('body-owner');
     expect(WAR_ROOM_HANS_ANIMATOR_VERSION).toContain('single-gait');
+    expect(WAR_ROOM_HANS_ANIMATOR_VERSION).toContain('pose-baseline');
     expect(motion.blocked).toBe(false);
     expect(motion.travelled).toBeCloseTo(0.5, 6);
     expect(hans.position.x).toBeLessThan(4);
@@ -45,6 +50,41 @@ describe('War Room Hans animator', () => {
     expect(torso.rotation.x).toBeCloseTo(0.12, 6);
     expect(controller.warRoomHansDelegatedTravelDistance).toBeCloseTo(0.42, 6);
     expect(controller.warRoomHansGaitOwner).toBe(WAR_ROOM_HANS_GAIT_OWNER);
+  });
+
+  it('captures and restores task pose baselines without constructing a walk cycle', () => {
+    const body = {};
+    for (const key of [
+      'leftKnee', 'rightKnee', 'leftAnkle', 'rightAnkle', 'leftShoe', 'rightShoe',
+      'leftLeg', 'rightLeg', 'torso', 'head', 'leftArm', 'rightArm', 'cane', 'tailcoat',
+    ]) {
+      body[key] = new THREE.Group();
+      body[key].position.set(0.1, 0.2, 0.3);
+      body[key].rotation.set(0.01, 0.02, 0.03);
+    }
+    const actor = { body };
+    const baseline = createWarRoomHansPoseBaseline(actor);
+
+    expect(baseline?.version).toBe(WAR_ROOM_HANS_POSE_BASELINE_VERSION);
+    expect(baseline?.sample).toBeUndefined();
+    expect(baseline?.lengths).toBeUndefined();
+
+    for (const part of Object.values(body)) {
+      part.position.y = 9;
+      part.rotation.x = 7;
+    }
+    expect(resetWarRoomHansTaskPose(baseline, { full: true })).toBe(true);
+    for (const part of Object.values(body)) {
+      expect(part.position.y).toBeCloseTo(0.2, 6);
+      expect(part.rotation.x).toBeCloseTo(0.01, 6);
+    }
+
+    const legacyAlias = createWarRoomHansWalkController(actor, { forward: -1 });
+    expect(legacyAlias?.version).toBe(WAR_ROOM_HANS_POSE_BASELINE_VERSION);
+    expect(legacyAlias?.forward).toBe(-1);
+    body.leftArm.rotation.x = 2;
+    expect(resetWarRoomHansWalk(legacyAlias, { full: true })).toBe(true);
+    expect(body.leftArm.rotation.x).toBeCloseTo(0.01, 6);
   });
 
   it('owns service placement and anthropomorphic task poses without stealing Y', () => {
