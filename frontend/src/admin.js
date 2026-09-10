@@ -4,17 +4,21 @@ import { requestJson } from './http.js';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
+function adminPost(path, body) {
+  return requestJson(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
+    body: JSON.stringify(body),
+  });
+}
+
 export async function fetchAdminUsers() {
   const body = await requestJson(`${BASE_URL}/admin/users`, { headers: { ...authHeader() } });
   return body.users;
 }
 
 export function updateAdminUserRating(username, rating) {
-  return requestJson(`${BASE_URL}/admin/user-rating`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeader() },
-    body: JSON.stringify({ username, rating: Number(rating) }),
-  });
+  return adminPost('/admin/user-rating', { username, rating: Number(rating) });
 }
 
 export function fetchAdminMatthiasStatus() {
@@ -22,49 +26,25 @@ export function fetchAdminMatthiasStatus() {
 }
 
 export function fetchAdminUserInsights(username) {
-  return requestJson(`${BASE_URL}/admin/user-insights`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeader() },
-    body: JSON.stringify({ username }),
-  });
+  return adminPost('/admin/user-insights', { username });
 }
 
 export function fetchAdminMatthiasMemory(username) {
-  return requestJson(`${BASE_URL}/admin/matthias/memory`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeader() },
-    body: JSON.stringify({ username }),
-  });
+  return adminPost('/admin/matthias/memory', { username });
 }
 
 export function resetAdminMatthiasMemory(username) {
-  return requestJson(`${BASE_URL}/admin/matthias/reset-memory`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeader() },
-    body: JSON.stringify({ username }),
-  });
+  return adminPost('/admin/matthias/reset-memory', { username });
 }
 
 export function previewAdminMatthiasPersonality(preset) {
-  return requestJson(`${BASE_URL}/admin/matthias/personality-preview`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeader() },
-    body: JSON.stringify({ preset }),
-  });
+  return adminPost('/admin/matthias/personality-preview', { preset });
 }
 
 export function deleteAdminUser(username) {
-  return requestJson(`${BASE_URL}/admin/delete-user`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeader() },
-    body: JSON.stringify({ username }),
-  });
+  return adminPost('/admin/delete-user', { username });
 }
 
 export function reanalyzeAdminUser(username, facts) {
-  return requestJson(`${BASE_URL}/admin/player-portrait`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeader() },
-    body: JSON.stringify({ username, facts }),
-  });
+  return adminPost('/admin/player-portrait', { username, facts });
 }
