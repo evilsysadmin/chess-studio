@@ -1,11 +1,14 @@
 import * as THREE from 'three';
 
-export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v7-corner-window-clearance';
-export const WAR_ROOM_WINDOW_CORNER_POSE_VERSION = 'weather-window-corner-pose-v2';
+export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v8-airy-corner-window';
+export const WAR_ROOM_WINDOW_CORNER_POSE_VERSION = 'weather-window-corner-pose-v3';
 
-const WINDOW_CORNER_ANGLE = THREE.MathUtils.degToRad(26);
+const WINDOW_CORNER_ANGLE = THREE.MathUtils.degToRad(34);
 const WINDOW_CORNER_SCALE_X = 0.9;
-const WINDOW_CORNER_TARGET_X = 7.15;
+const WINDOW_CORNER_TARGET_X = 7.25;
+const WINDOW_CORNER_FORWARD_SHIFT = 0.68;
+const WINDOW_PLANT_X = 7.18;
+const WINDOW_PLANT_FORWARD_OFFSET = 0.79;
 
 function rootLocalBounds(root, object) {
   object.updateMatrixWorld?.(true);
@@ -55,11 +58,12 @@ export function applyWarRoomWeatherWindowCornerPose(root) {
   const pivotLocal = weatherWindow.worldToLocal(pivotWorld.clone());
   const desiredRootPivot = root.worldToLocal(pivotWorld.clone());
 
-  // Canonical mock: the weather opening lives on the right chamfer, outside
-  // the rear-wall gallery vignette. Keep its visual centre near the side wall
-  // and slightly narrow the old over-wide post-process so the whole arch is
-  // visible without colliding with the painting/shelf cluster.
+  // Canonical airy mock: keep the gallery vignette on the rear wall and push
+  // the weather opening deeper onto the side chamfer. The extra yaw and forward
+  // shift create a deliberate strip of empty wall between shelf/painting and
+  // window instead of solving density by shrinking the architecture further.
   desiredRootPivot.x = side * WINDOW_CORNER_TARGET_X;
+  desiredRootPivot.z += side * WINDOW_CORNER_FORWARD_SHIFT;
 
   weatherWindow.rotation.y = -side * WINDOW_CORNER_ANGLE;
   weatherWindow.scale.x = WINDOW_CORNER_SCALE_X;
@@ -73,12 +77,17 @@ export function applyWarRoomWeatherWindowCornerPose(root) {
   weatherWindow.updateMatrixWorld?.(true);
 
   weatherWindow.userData.warRoomCornerPose = WAR_ROOM_WINDOW_CORNER_POSE_VERSION;
-  weatherWindow.userData.warRoomCornerAngleDegrees = 26;
+  weatherWindow.userData.warRoomCornerAngleDegrees = 34;
   weatherWindow.userData.warRoomCornerScaleX = WINDOW_CORNER_SCALE_X;
   weatherWindow.userData.warRoomCornerTargetX = WINDOW_CORNER_TARGET_X;
-  weatherWindow.userData.warRoomCanonicalComposition = 'hearth-left-gallery-right-clear-corner-window-plant-v7';
+  weatherWindow.userData.warRoomCornerForwardShift = WINDOW_CORNER_FORWARD_SHIFT;
+  weatherWindow.userData.warRoomPlantAnchor = {
+    x: side * WINDOW_PLANT_X,
+    z: desiredRootPivot.z + side * WINDOW_PLANT_FORWARD_OFFSET,
+  };
+  weatherWindow.userData.warRoomCanonicalComposition = 'hearth-left-gallery-air-right-corner-window-plant-v8';
   if (root.userData) {
-    root.userData.warRoomCanonicalComposition = 'hearth-left-gallery-right-clear-corner-window-plant-v7';
+    root.userData.warRoomCanonicalComposition = 'hearth-left-gallery-air-right-corner-window-plant-v8';
   }
   return 1;
 }
@@ -106,7 +115,7 @@ function placeWarRoomHansPlant(root, group, floor) {
     const sideName = canonicalAnchor.x < 0 ? 'left' : 'right';
     group.userData.warRoomPlantSide = sideName;
     group.userData.warRoomPlantHearthRelation = 'opposite';
-    group.userData.warRoomPlantPlacement = `beside-${sideName}-weather-window-v7`;
+    group.userData.warRoomPlantPlacement = `beside-${sideName}-weather-window-v8`;
     group.userData.warRoomPlantLightRelation = 'window-daylight';
     group.position.set(canonicalAnchor.x, -0.255, canonicalAnchor.z);
     return group;
@@ -142,7 +151,7 @@ function placeWarRoomHansPlant(root, group, floor) {
 export function ensureWarRoomHansPlant(root) {
   if (!root) return null;
 
-  // Lock the approved clear-corner pose before deriving the plant anchor.
+  // Lock the approved airy-corner pose before deriving the plant anchor.
   applyWarRoomWeatherWindowCornerPose(root);
 
   const existing = root.getObjectByName?.('war-room-hans-plant');
