@@ -5,17 +5,17 @@ export const SAVE_STATUS = Object.freeze({
 });
 
 const COPY = Object.freeze({
-  saved: {
+  [SAVE_STATUS.SAVED]: {
     label: 'Guardado',
     title: 'La última posición confirmada está guardada.',
     tone: 'saved',
   },
-  saving: {
+  [SAVE_STATUS.SAVING]: {
     label: 'Guardando…',
     title: 'Esperando confirmación del servidor antes de dar la posición por guardada.',
     tone: 'saving',
   },
-  error: {
+  [SAVE_STATUS.ERROR]: {
     label: 'Error al guardar',
     title: 'La última escritura falló. La posición confirmada anterior sigue intacta; reintenta cuando vuelva la conexión.',
     tone: 'error',
@@ -29,5 +29,5 @@ const COPY = Object.freeze({
 
 export function resolveSaveStatus(state = SAVE_STATUS.SAVED, online = true) {
   if (!online) return COPY.offline;
-  return COPY[state] || COPY.saved;
+  return COPY[state] || COPY[SAVE_STATUS.SAVED];
 }
