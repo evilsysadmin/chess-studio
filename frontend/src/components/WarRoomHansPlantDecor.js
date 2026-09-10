@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import { applyWarRoomLocalAtmosphere } from './WarRoomLocalAtmosphere.js';
 
-export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v10-after-armor-window';
+export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v11-local-atmosphere';
 export const WAR_ROOM_WINDOW_CORNER_POSE_VERSION = 'weather-window-side-wall-pose-v2-after-armor';
 
 const WINDOW_SIDE_WALL_ANGLE = THREE.MathUtils.degToRad(90);
@@ -41,7 +42,10 @@ export function applyWarRoomWeatherWindowCornerPose(root) {
   const weatherWindow = root?.getObjectByName?.('war-room-weather-window');
   const parent = weatherWindow?.parent;
   if (!root || !weatherWindow || !parent) return 0;
-  if (weatherWindow.userData.warRoomCornerPose === WAR_ROOM_WINDOW_CORNER_POSE_VERSION) return 0;
+  if (weatherWindow.userData.warRoomCornerPose === WAR_ROOM_WINDOW_CORNER_POSE_VERSION) {
+    applyWarRoomLocalAtmosphere(root);
+    return 0;
+  }
 
   root.updateMatrixWorld?.(true);
   parent.updateMatrixWorld?.(true);
@@ -95,6 +99,8 @@ export function applyWarRoomWeatherWindowCornerPose(root) {
   if (root.userData) {
     root.userData.warRoomCanonicalComposition = 'hearth-left-gallery-intact-right-wall-window-after-armor-plant-v10';
   }
+
+  applyWarRoomLocalAtmosphere(root);
   return 1;
 }
 
@@ -122,7 +128,7 @@ function placeWarRoomHansPlant(root, group, floor) {
     group.userData.warRoomPlantSide = sideName;
     group.userData.warRoomPlantHearthRelation = 'opposite';
     group.userData.warRoomPlantPlacement = `beneath-${sideName}-wall-weather-window-v10`;
-    group.userData.warRoomPlantLightRelation = 'window-daylight';
+    group.userData.warRoomPlantLightRelation = 'window-local-atmosphere';
     group.position.set(canonicalAnchor.x, -0.255, canonicalAnchor.z);
     return group;
   }
