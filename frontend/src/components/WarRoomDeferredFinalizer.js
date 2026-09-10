@@ -1,6 +1,7 @@
 import { installWarRoomHansActorTelemetry } from './WarRoomHansActorTelemetry.js';
 import { installWarRoomHansAmbientChoreRoutine } from './WarRoomHansAmbientChoreRoutine.js';
 import { installWarRoomHansAnimator, installWarRoomHansGrounding } from './WarRoomHansAnimator.js';
+import { installWarRoomHansArmorPolishGuard } from './WarRoomHansArmorPolishGuard.js';
 import { installWarRoomHansBoardPeekClockHold } from './WarRoomHansBoardPeekClockHold.js';
 import { installWarRoomHansCanonicalButler } from './WarRoomHansCanonicalButler.js';
 import { installWarRoomHansElderClock } from './WarRoomHansElderClock.js';
@@ -97,6 +98,10 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         // their real target and shoe bottoms are reconciled with the surface at
         // the position chosen by that task, never the previous frame's position.
         installWarRoomHansTaskVisualGuard(root);
+        // Armor polish is a narrow visual specialization layered after generic
+        // task grounding/facing so the cloth follows the working hand without
+        // owning navigation or vertical placement.
+        installWarRoomHansArmorPolishGuard(root);
         // Keep the legacy driver grounding too: it remains the generic fallback
         // for Fire/Iteration and non-task movement owned by HansAnimator.
         installWarRoomHansGrounding(root);

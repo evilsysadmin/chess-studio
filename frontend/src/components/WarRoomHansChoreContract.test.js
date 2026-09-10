@@ -22,6 +22,16 @@ describe('Hans ambient chore contract', () => {
     }
   });
 
+  it('keeps the historical armor event id but makes it a real cloth polish', () => {
+    const chore = warRoomHansChoreForEvent('dust-armor');
+    expect(chore?.targetNames).toEqual([
+      'war-room-teutonic-armor-right',
+      'war-room-teutonic-armor-left',
+    ]);
+    expect(chore?.prop).toBe('cloth');
+    expect(chore?.pose).toBe('polish-armor');
+  });
+
   it('keeps optional dialogue tied to real chore phases', () => {
     expect(warRoomHansChoreDialoguePhase('dust-board', 500)).toBe('matthias-dust-board');
     expect(warRoomHansChoreDialoguePhase('dust-board', 5000)).toBe('hans-dust-board');
