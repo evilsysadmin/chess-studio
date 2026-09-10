@@ -2,6 +2,7 @@ import { STORAGE_SESSION, readJsonStorage, writeJsonStorage } from './safeStorag
 
 export const MATTHIAS_3D_OPENING_BANTER_KEY = 'chess-study-matthias-3d-opening-banter-v1';
 export const MATTHIAS_3D_OPENING_BANTER_CHANCE = 0.4;
+const MAX_SEEN_GAME_IDS = 32;
 
 export const MATTHIAS_3D_OPENING_LINES = Object.freeze([
   'Willkommen. Disponte a ser destruido.',
@@ -32,7 +33,7 @@ function clampRoll(value) {
 export function normalizeMatthias3DOpeningBanterState(value) {
   const source = value && typeof value === 'object' ? value : EMPTY_STATE;
   const seenGameIds = Array.isArray(source.seenGameIds)
-    ? source.seenGameIds.map(cleanGameId).filter(Boolean).slice(-32)
+    ? source.seenGameIds.map(cleanGameId).filter(Boolean).slice(-MAX_SEEN_GAME_IDS)
     : [];
   return {
     seenGameIds,
@@ -68,7 +69,7 @@ export function resolveMatthias3DOpeningBanter({
     return { line: '', state: normalized, consumed: false, reason: 'already-seen' };
   }
 
-  const nextSeen = [...normalized.seenGameIds, cleanId].slice(-32);
+  const nextSeen = [...normalized.seenGameIds, cleanId].slice(-MAX_SEEN_GAME_IDS);
   if (normalized.lastEligibleStartShowed) {
     return {
       line: '',
