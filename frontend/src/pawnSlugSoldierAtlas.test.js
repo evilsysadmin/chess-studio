@@ -5,15 +5,15 @@ import {
 } from './pawnSlugSoldierAtlas.js';
 
 describe('Pawn Slug generated soldier atlas', () => {
-  it('allocates a dense multi-action atlas for all standard enemy classes', () => {
+  it('allocates a dense multi-action atlas contract but draws frames lazily', () => {
     expect(PAWN_SLUG_SOLDIER_ATLAS_META).toMatchObject({
       frameWidth: 96,
       frameHeight: 96,
       columns: 16,
       rows: 18,
       theme: 'military-chess-soldiers',
-      sourceCanvasGeneratedOnce: true,
-      perSpriteUvTexture: true,
+      generatedOnce: true,
+      lazyFrameDrawing: true,
     });
     expect(PAWN_SLUG_SOLDIER_ATLAS_META.types).toEqual(['pawn', 'knight', 'rook']);
     expect(PAWN_SLUG_SOLDIER_ATLAS_META.actions).toEqual(['idle', 'run', 'jump', 'crouch', 'hurt', 'climb']);
