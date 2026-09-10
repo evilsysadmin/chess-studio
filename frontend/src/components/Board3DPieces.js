@@ -123,9 +123,14 @@ function knightGeometrySet(coarsePointer = false) {
   };
 }
 
-function addContactShadow(group, coarsePointer = false) {
+function addContactShadow(group, coarsePointer = false, side = 'b') {
   if (coarsePointer) return;
-  for (const [radius, opacity, y] of [[0.31, 0.2, -0.006], [0.39, 0.075, -0.009]]) {
+  // White pieces get a restrained extra contact pass so ivory keeps a clean
+  // silhouette on the classic light squares without resorting to outlines.
+  const shadowProfile = side === 'w'
+    ? [[0.31, 0.24, -0.006], [0.39, 0.09, -0.009]]
+    : [[0.31, 0.2, -0.006], [0.39, 0.075, -0.009]];
+  for (const [radius, opacity, y] of shadowProfile) {
     const shadow = new THREE.Mesh(
       new THREE.CircleGeometry(radius, 28),
       new THREE.MeshBasicMaterial({
@@ -142,6 +147,7 @@ function addContactShadow(group, coarsePointer = false) {
     shadow.castShadow = false;
     shadow.receiveShadow = false;
     shadow.userData.contactShadow = true;
+    shadow.userData.contactShadowSide = side;
     group.add(shadow);
   }
 }
@@ -206,7 +212,7 @@ function finalizePiece(group, type) {
   return group;
 }
 
-function buildKnight(main, accent, coarsePointer = false) {
+function buildKnight(main, accent, coarsePointer = false, side = 'b') {
   const geometry = knightGeometrySet(coarsePointer);
   const group = new THREE.Group();
   group.userData.board3DKnightGeometryIsolation = 'per-piece-v2';
@@ -223,7 +229,7 @@ function buildKnight(main, accent, coarsePointer = false) {
   addMesh(group, geometry.eye, accent, [coarsePointer ? 0.16 : 0.185, coarsePointer ? 0.80 : 0.835, coarsePointer ? 0.125 : 0.135]);
   addMesh(group, geometry.eye, accent, [coarsePointer ? 0.16 : 0.185, coarsePointer ? 0.80 : 0.835, coarsePointer ? -0.125 : -0.135]);
   addSignatureDetail(group, 'n', accent, coarsePointer);
-  addContactShadow(group, coarsePointer);
+  addContactShadow(group, coarsePointer, side);
   return group;
 }
 
@@ -268,12 +274,12 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
     if (type === 'k') {
       const playerKing = buildPlayerKing3D(main, accent, { coarsePointer });
       addPieceSkinDetails(playerKing, 'k', skinId, accent, coarsePointer);
-      addContactShadow(playerKing, coarsePointer);
+      addContactShadow(playerKing, coarsePointer, color);
       return finalizePiece(playerKing, 'k');
     }
 
     if (type === 'n') {
-      const knight = buildKnight(main, accent, coarsePointer);
+      const knight = buildKnight(main, accent, coarsePointer, color);
       addPieceSkinDetails(knight, type, skinId, accent, coarsePointer);
       knight.scale.setScalar(premiumPieceScale(type, coarsePointer));
       knight.userData.board3DPremiumPieceScale = knight.scale.x;
@@ -371,7 +377,7 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
 
     addSignatureDetail(group, type, accent, coarsePointer);
     addPieceSkinDetails(group, type, skinId, accent, coarsePointer);
-    addContactShadow(group, coarsePointer);
+    addContactShadow(group, coarsePointer, color);
     group.scale.setScalar(premiumPieceScale(type, coarsePointer));
     group.userData.board3DPremiumPieceScale = group.scale.x;
     return finalizePiece(group, type);
