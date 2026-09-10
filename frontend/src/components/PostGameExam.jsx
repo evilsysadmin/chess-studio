@@ -93,7 +93,7 @@ export default function PostGameExam({ history = [], humanColor = 'w', report = 
       const result = await buildShortCounterfactual({
         fen: current.fen,
         suggested: current.suggested,
-        analyzePosition: (fen, level, options) => api.analyzePosition(fen, level, options),
+        analyzeMove: (fen, level, options) => api.analyzeMove(fen, undefined, undefined, undefined, level, options),
         signal: controller.signal,
       });
       if (controller.signal.aborted) return;
@@ -182,7 +182,7 @@ export default function PostGameExam({ history = [], humanColor = 'w', report = 
                   <>
                     <b>Si jugabas {current.suggested}</b>
                     <span>{counterfactual.line.map((move) => move.san).join(' · ')}</span>
-                    <small>Línea corta recalculada desde el FEN real. Más allá de estas jugadas no promete nada.</small>
+                    <small>Línea corta determinista recalculada desde el FEN real. Más allá de estas jugadas no promete nada.</small>
                   </>
                 )}
                 {counterfactual.status === 'unavailable' && <small>No se pudo extender la variante ahora mismo; la alternativa original del análisis sigue siendo válida.</small>}
