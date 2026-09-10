@@ -10,13 +10,17 @@ async function assertOk(response) {
   throw new Error(detail);
 }
 
-export function submitFeedback({ category = 'general', message, context = 'Home', attachments = [], signal } = {}) {
-  return requestJson(`${BASE_URL}/feedback`, {
+function feedbackPost(path, payload, { signal } = {}) {
+  return requestJson(`${BASE_URL}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeader() },
-    body: JSON.stringify({ category, message, context, attachments }),
+    body: JSON.stringify(payload),
     signal,
   });
+}
+
+export function submitFeedback({ category = 'general', message, context = 'Home', attachments = [], signal } = {}) {
+  return feedbackPost('/feedback', { category, message, context, attachments }, { signal });
 }
 
 export function fetchMyFeedback({ signal } = {}) {
@@ -41,11 +45,7 @@ export function fetchAdminFeedbackSummary({ signal } = {}) {
 }
 
 export function updateAdminFeedbackStatus(feedbackId, status) {
-  return requestJson(`${BASE_URL}/admin/feedback/${encodeURIComponent(feedbackId)}/status`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeader() },
-    body: JSON.stringify({ status }),
-  });
+  return feedbackPost(`/admin/feedback/${encodeURIComponent(feedbackId)}/status`, { status });
 }
 
 export async function deleteAdminFeedback(feedbackId) {
@@ -58,11 +58,7 @@ export async function deleteAdminFeedback(feedbackId) {
 }
 
 export function replyAdminFeedback(feedbackId, message, resolve = true) {
-  return requestJson(`${BASE_URL}/admin/feedback/${encodeURIComponent(feedbackId)}/reply`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeader() },
-    body: JSON.stringify({ message, resolve }),
-  });
+  return feedbackPost(`/admin/feedback/${encodeURIComponent(feedbackId)}/reply`, { message, resolve });
 }
 
 export async function fetchAdminFeedbackAttachment(feedbackId, attachmentIndex, { signal } = {}) {
