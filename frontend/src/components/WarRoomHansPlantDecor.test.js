@@ -29,7 +29,37 @@ function addPainting(root, side, z) {
   return painting;
 }
 
+function addWeatherWindow(root, x, z) {
+  const window = new THREE.Group();
+  window.name = 'war-room-weather-window';
+  window.userData.warRoomPlantAnchor = { x, z };
+  root.add(window);
+  return window;
+}
+
 describe('War Room Hans plant placement', () => {
+  it('anchors the plant beside the canonical weather window when that anchor exists', () => {
+    const root = new THREE.Group();
+    addFloor(root);
+    const fireplace = new THREE.Group();
+    fireplace.name = 'war-room-fireplace';
+    fireplace.position.set(-4.95, 0, -6.67);
+    root.add(fireplace);
+    addPainting(root, 'right', 1.9);
+    addWeatherWindow(root, 6.78, -5.52);
+    root.updateMatrixWorld(true);
+
+    const plant = ensureWarRoomHansPlant(root);
+    expect(plant.userData.warRoomPlantSide).toBe('right');
+    expect(plant.userData.warRoomPlantHearthRelation).toBe('opposite');
+    expect(plant.userData.warRoomPlantPlacement).toBe('beside-right-weather-window-v5');
+    expect(plant.userData.warRoomPlantLightRelation).toBe('window-daylight');
+    expect(plant.position.x).toBeCloseTo(6.78, 5);
+    expect(plant.position.z).toBeCloseTo(-5.52, 5);
+
+    dispose(root);
+  });
+
   it('realigns the existing plant when its gallery painting arrives after fallback placement', () => {
     const root = new THREE.Group();
     root.position.set(3.5, 0, -1.75);
@@ -60,7 +90,7 @@ describe('War Room Hans plant placement', () => {
     dispose(root);
   });
 
-  it('keeps the plant opposite the mirrored fireplace so Hans service route cannot cross it', () => {
+  it('keeps the plant opposite the mirrored fireplace so Hans service route cannot cross it without a window anchor', () => {
     const root = new THREE.Group();
     addFloor(root);
     const leftPainting = addPainting(root, 'left', 1.15);

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v4-hearth-opposed-gallery-aligned';
+export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v5-window-anchored';
 
 function rootLocalBounds(root, object) {
   object.updateMatrixWorld?.(true);
@@ -28,9 +28,34 @@ function plantSideOppositeHearth(root) {
   return 1;
 }
 
+function weatherWindowAnchor(root, box) {
+  const weatherWindow = root.getObjectByName?.('war-room-weather-window');
+  const anchor = weatherWindow?.userData?.warRoomPlantAnchor;
+  const x = Number(anchor?.x);
+  const z = Number(anchor?.z);
+  if (![x, z].every(Number.isFinite) || box.isEmpty()) return null;
+
+  const margin = 0.42;
+  return {
+    x: THREE.MathUtils.clamp(x, box.min.x + margin, box.max.x - margin),
+    z: THREE.MathUtils.clamp(z, box.min.z + margin, box.max.z - margin),
+  };
+}
+
 function placeWarRoomHansPlant(root, group, floor) {
   const box = rootLocalBounds(root, floor);
   if (box.isEmpty()) return group;
+
+  const canonicalAnchor = weatherWindowAnchor(root, box);
+  if (canonicalAnchor) {
+    const sideName = canonicalAnchor.x < 0 ? 'left' : 'right';
+    group.userData.warRoomPlantSide = sideName;
+    group.userData.warRoomPlantHearthRelation = 'opposite';
+    group.userData.warRoomPlantPlacement = `beside-${sideName}-weather-window-v5`;
+    group.userData.warRoomPlantLightRelation = 'window-daylight';
+    group.position.set(canonicalAnchor.x, -0.255, canonicalAnchor.z);
+    return group;
+  }
 
   const side = plantSideOppositeHearth(root);
   const inset = Math.min(1.45, (box.max.x - box.min.x) * 0.09);
@@ -42,6 +67,7 @@ function placeWarRoomHansPlant(root, group, floor) {
 
   group.userData.warRoomPlantSide = sideName;
   group.userData.warRoomPlantHearthRelation = 'opposite';
+  delete group.userData.warRoomPlantLightRelation;
 
   if (painting?.getWorldPosition && root.worldToLocal) {
     painting.updateMatrixWorld?.(true);
