@@ -167,7 +167,9 @@ export function makePremiumPieceMaterial({ color, skin, side = 'w', accent = fal
     ior: ivory ? 1.42 : 1.58,
     specularIntensity: accent ? 1 : ivory ? 0.24 : 0.86,
     specularColor: ivory ? new THREE.Color(0xe4cfa5) : new THREE.Color(0xa5b0bb),
-    envMapIntensity: accent ? 1.2 : ivory ? 0.28 : 0.94,
+    // The desktop RoomEnvironment is installed after first paint. Ivory stays on
+    // direct room lighting only so its value/volume cannot jump when PMREM arrives.
+    envMapIntensity: accent ? 1.2 : ivory ? 0 : 0.94,
   });
   material.userData.surfaceVersion = PREMIUM_SURFACE_VERSION;
   material.userData.surfaceRole = accent ? 'metal-inlay' : side === 'w' ? 'ivory' : 'ebony';

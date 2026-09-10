@@ -32,8 +32,7 @@ describe('Board3D reference look', () => {
     expect(ivory.clearcoat).toBeLessThanOrEqual(0.22);
     expect(ivory.specularIntensity).toBeGreaterThanOrEqual(0.2);
     expect(ivory.specularIntensity).toBeLessThanOrEqual(0.26);
-    expect(ivory.envMapIntensity).toBeGreaterThanOrEqual(0.24);
-    expect(ivory.envMapIntensity).toBeLessThanOrEqual(0.3);
+    expect(ivory.envMapIntensity).toBe(0);
 
     disposeMaterial(ivory);
   });

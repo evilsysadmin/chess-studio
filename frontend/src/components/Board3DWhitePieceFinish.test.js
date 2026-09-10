@@ -44,7 +44,7 @@ describe('War Room piece finish', () => {
     expect(material.roughness).toBeGreaterThanOrEqual(0.7);
     expect(material.clearcoat).toBeCloseTo(0.2, 6);
     expect(material.specularIntensity).toBeCloseTo(0.24, 6);
-    expect(material.envMapIntensity).toBeCloseTo(0.28, 6);
+    expect(material.envMapIntensity).toBe(0);
   });
 
   it('da profundidad lacada visible a las negras clásicas sin pisar skins muy metálicos', () => {
