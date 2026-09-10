@@ -1,22 +1,17 @@
-import { installWarRoomHansArticulatedWalk } from './WarRoomHansArticulatedWalk.js';
 import { installWarRoomHansActorTelemetry } from './WarRoomHansActorTelemetry.js';
 import { installWarRoomHansAmbientChoreRoutine } from './WarRoomHansAmbientChoreRoutine.js';
-import { installWarRoomHansBoardCollisionGuard } from './WarRoomHansBoardCollisionGuard.js';
+import { installWarRoomHansAnimator, installWarRoomHansGrounding } from './WarRoomHansAnimator.js';
 import { installWarRoomHansBoardPeekClockHold } from './WarRoomHansBoardPeekClockHold.js';
-import { installWarRoomHansBoardPeekPose } from './WarRoomHansBoardPeekPose.js';
 import { installWarRoomHansCanonicalButler } from './WarRoomHansCanonicalButler.js';
 import { installWarRoomHansElderClock } from './WarRoomHansElderClock.js';
-import { installWarRoomHansFacingGuard } from './WarRoomHansFacingGuard.js';
 import { installWarRoomHansFireNarrative } from './WarRoomHansFireNarrative.js';
-import { installWarRoomHansHearthFacingGuard } from './WarRoomHansHearthFacingGuard.js';
 import { installWarRoomHansMopRoutine } from './WarRoomHansMopRoutine.js';
-import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
 import { ensureWarRoomHansPlant } from './WarRoomHansPlantDecor.js';
 import { installWarRoomHansServiceInfrastructure } from './WarRoomHansServiceRoute.js';
 import { installWarRoomHansServiceRoutine } from './WarRoomHansServiceRoutine.js';
 import { installWarRoomMatthiasHansReaction } from './WarRoomMatthiasHansReaction.js';
 
-export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v1';
+export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v2-hans-runtime-boundary';
 export const WAR_ROOM_ONE_SHOT_RETIREMENT_VERSION = 'one-shot-retirement-v1';
 
 const BEFORE_FINALIZER_STATES = new WeakMap();
@@ -81,12 +76,10 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
       if (key === HANS_FIREPLACE_FINALIZER_KEY) {
         installWarRoomHansCanonicalButler(root);
         installWarRoomHansBoardPeekClockHold(root);
-        installWarRoomHansMotionPolish(root);
+        // Hans owns one body-animation boundary. Internal animation modules are
+        // implementation details of this facade rather than scene-level peers.
+        installWarRoomHansAnimator(root);
         installWarRoomHansActorTelemetry(root);
-        installWarRoomHansFacingGuard(root);
-        installWarRoomHansHearthFacingGuard(root);
-        installWarRoomHansBoardPeekPose(root);
-        installWarRoomHansArticulatedWalk(root);
         installWarRoomHansElderClock(root);
         installWarRoomHansFireNarrative(root);
         installWarRoomMatthiasHansReaction(root);
@@ -94,14 +87,13 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
 
         // Permanent room dressing, independent of which single Hans event wins.
         ensureWarRoomHansPlant(root);
-        // Ambient chores are peer clients of the actor and all obey the same
-        // per-game event selector / routine lease.
+        // Task producers may request work, but no longer own body installation.
         installWarRoomHansMopRoutine(root);
         installWarRoomHansServiceRoutine(root);
         installWarRoomHansAmbientChoreRoutine(root);
-        // Final positional guard: no later Hans routine may cut through the
-        // physical board footprint, even if its own interpolation is wrong.
-        installWarRoomHansBoardCollisionGuard(root);
+        // Keep grounding at the end of scene/task setup so it sees the final
+        // rendered surfaces while still remaining owned by HansAnimator.
+        installWarRoomHansGrounding(root);
       }
       completedKeys.push(key);
     }
