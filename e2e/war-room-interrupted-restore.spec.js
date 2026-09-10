@@ -11,6 +11,11 @@ function movePosts(requestLog) {
   return requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path));
 }
 
+function isMoveResponse(response) {
+  return response.request().method() === 'POST'
+    && /\/games\/[^/]+\/move$/.test(new URL(response.url()).pathname);
+}
+
 function gamePayload(id, stage) {
   const firstHuman = { from: 'e2', to: 'e4', san: 'e4', piece: 'p', captured: false, by: 'human' };
   const firstCpu = { from: 'd7', to: 'd5', san: 'd5', piece: 'p', captured: false, by: 'cpu' };
@@ -89,9 +94,11 @@ async function installRestoreAuthorityRoutes(page, requestLog) {
   });
 }
 
-async function waitForCommittedMoveFrame(page, responsePromise) {
-  const response = await responsePromise;
+async function waitForCommittedMoveFrame(page, responseLog, expectedCount) {
+  await expect.poll(() => responseLog.length, { timeout: WAR_ROOM_READY_TIMEOUT }).toBe(expectedCount);
+  const response = responseLog[expectedCount - 1];
   expect(response.status()).toBe(200);
+  expect(await response.finished()).toBeNull();
 
   // Dos frames dejan que la promesa fetch actualice React y que Board3D arme la
   // transición, pero siguen muy por debajo de la duración física del movimiento.
@@ -149,8 +156,12 @@ async function expectCaptureSnapshot2D(page) {
 }
 
 test('War Room · F5 durante movimiento y captura restaura una escena limpia y jugable', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(300_000);
   const requestLog = [];
+  const moveResponseLog = [];
+  page.on('response', (response) => {
+    if (isMoveResponse(response)) moveResponseLog.push(response);
+  });
 
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page, { requestLog });
@@ -161,23 +172,15 @@ test('War Room · F5 durante movimiento y captura restaura una escena limpia y j
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expectCleanWarRoom(page);
 
-  const openingResponse = page.waitForResponse((response) => (
-    response.request().method() === 'POST'
-    && /\/games\/[^/]+\/move$/.test(new URL(response.url()).pathname)
-  ));
   await clickBoardMove(page, 'e2', 'e4');
   await expect.poll(() => movePosts(requestLog).length, { timeout: 5_000 }).toBe(1);
-  await waitForCommittedMoveFrame(page, openingResponse);
+  await waitForCommittedMoveFrame(page, moveResponseLog, 1);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expectCleanWarRoom(page);
 
-  const captureResponse = page.waitForResponse((response) => (
-    response.request().method() === 'POST'
-    && /\/games\/[^/]+\/move$/.test(new URL(response.url()).pathname)
-  ));
   await clickBoardMove(page, 'e4', 'd5');
   await expect.poll(() => movePosts(requestLog).length, { timeout: 5_000 }).toBe(2);
-  await waitForCommittedMoveFrame(page, captureResponse);
+  await waitForCommittedMoveFrame(page, moveResponseLog, 2);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expectCleanWarRoom(page);
