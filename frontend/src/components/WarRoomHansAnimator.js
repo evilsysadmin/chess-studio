@@ -5,12 +5,12 @@ import { installWarRoomHansFacingGuard } from './WarRoomHansFacingGuard.js';
 import { installWarRoomHansHearthFacingGuard } from './WarRoomHansHearthFacingGuard.js';
 import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
 import {
-  advanceHansWalkCycle,
   createHansWalkCycle,
   resetHansWalkCycle,
 } from './HansWalkCycle.js';
 
-export const WAR_ROOM_HANS_ANIMATOR_VERSION = 'war-room-hans-animator-v1-body-owner';
+export const WAR_ROOM_HANS_ANIMATOR_VERSION = 'war-room-hans-animator-v2-body-owner-single-gait';
+export const WAR_ROOM_HANS_GAIT_OWNER = 'articulated-walk-distance-owner-v1';
 
 const TARGET_EPSILON = 0.09;
 
@@ -20,6 +20,7 @@ function markAnimator(root, hans, driver, installed = []) {
   if (driver?.userData) {
     driver.userData.warRoomHansAnimator = WAR_ROOM_HANS_ANIMATOR_VERSION;
     driver.userData.warRoomHansAnimatorModules = installed;
+    driver.userData.warRoomHansGaitOwner = WAR_ROOM_HANS_GAIT_OWNER;
   }
 }
 
@@ -50,13 +51,27 @@ export function moveWarRoomHansToward(hans, target, maxStep) {
   return { arrived: distance - step <= TARGET_EPSILON, travelled: step, blocked: false };
 }
 
+// Transitional pose-baseline controller. Service/chore/mop still use this to
+// restore their neutral body before applying an action pose. It must not drive
+// walking: the post-render ArticulatedWalk stage is the single gait owner.
 export function createWarRoomHansWalkController(actor, options = {}) {
-  return createHansWalkCycle(actor?.body, options);
+  const controller = createHansWalkCycle(actor?.body, options);
+  if (controller) {
+    controller.warRoomHansCompatibilityResetOnly = true;
+    controller.warRoomHansGaitOwner = WAR_ROOM_HANS_GAIT_OWNER;
+  }
+  return controller;
 }
 
-export function advanceWarRoomHansWalk(controller, options = {}) {
+export function advanceWarRoomHansWalk(controller, { travelled = 0 } = {}) {
   if (!controller) return false;
-  advanceHansWalkCycle(controller, options);
+  controller.warRoomHansDelegatedTravelDistance = Math.max(
+    0,
+    Number(controller.warRoomHansDelegatedTravelDistance || 0) + Math.max(0, Number(travelled) || 0),
+  );
+  controller.warRoomHansGaitOwner = WAR_ROOM_HANS_GAIT_OWNER;
+  // Deliberately no body mutation here. ArticulatedWalk derives gait once from
+  // the actor's real X/Z travel in the ordered post-render pipeline.
   return true;
 }
 
