@@ -1,14 +1,13 @@
 import * as THREE from 'three';
 
-export const WAR_ROOM_NIGHT_WINDOW_VERSION = 'weather-window-gothic-v3';
+export const WAR_ROOM_NIGHT_WINDOW_VERSION = 'weather-window-canonical-v4';
 export const WAR_ROOM_WEATHER_STATES = Object.freeze(['rain', 'cloudy', 'snow', 'sunny']);
 
 const DEFAULT_WEATHER = 'rain';
-const WINDOW_X = 5.18;
-const FIREPLACE_X = 2.48;
-const WINDOW_CENTER_Y = 3.48;
-const WINDOW_WIDTH = 2.22;
-const WINDOW_HEIGHT = 4.02;
+const WINDOW_X = 6.96;
+const WINDOW_CENTER_Y = 3.46;
+const WINDOW_WIDTH = 1.24;
+const WINDOW_HEIGHT = 3.88;
 
 function clampByte(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
@@ -354,6 +353,11 @@ function installWeatherWindow(group, {
   window.userData.weather = weather;
   window.userData.side = side > 0 ? 'right' : 'left';
   window.userData.compact = compact;
+  window.userData.warRoomCanonicalComposition = 'hearth-left-gallery-right-window-plant-v4';
+  window.userData.warRoomPlantAnchor = {
+    x: side * 6.84,
+    z: wallZ + towardBoard * 2.08,
+  };
 
   const frontZ = wallZ + towardBoard * 1.18;
   const frameZ = frontZ + towardBoard * 0.105;
@@ -552,8 +556,7 @@ export function installWarRoomNightWindowDepth(group, {
 
   const fireplace = group.getObjectByName?.('war-room-fireplace');
   if (fireplace) {
-    fireplace.position.x = side * FIREPLACE_X;
-    fireplace.userData.warRoomWeatherWindowLayout = WAR_ROOM_NIGHT_WINDOW_VERSION;
+    fireplace.userData.warRoomWeatherWindowLayout = 'preserved-left-hearth-v4';
   }
 
   const window = installWeatherWindow(group, {
@@ -566,6 +569,7 @@ export function installWarRoomNightWindowDepth(group, {
   group.userData.warRoomNightWindowDepth = WAR_ROOM_NIGHT_WINDOW_VERSION;
   group.userData.warRoomWeather = condition;
   group.userData.warRoomWeatherWindowSide = side > 0 ? 'right' : 'left';
+  group.userData.warRoomCanonicalComposition = 'hearth-left-gallery-right-window-plant-v4';
   group.userData.warRoomWeatherWindowCompact = Boolean(coarsePointer);
   group.userData.warRoomWeatherWindowMeshCount = window.children.filter((child) => child.isMesh).length;
   group.userData.warRoomNightWindowMeshCount = group.userData.warRoomWeatherWindowMeshCount;
