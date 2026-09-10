@@ -25,11 +25,7 @@ describe('Pawn Slug tile maps', () => {
     const scenario = PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon;
     const platforms = pawnSlugScenarioPlatforms(scenario);
     expect(platforms).toHaveLength(1);
-    expect(platforms[0]).toMatchObject({
-      id: 'dungeon-catwalk',
-      theme: 'steel',
-      oneWay: true,
-    });
+    expect(platforms[0]).toMatchObject({ id: 'dungeon-catwalk', theme: 'steel', oneWay: true });
     expect(PAWN_SLUG_PLATFORM_LAYOUT).toContain(platforms[0]);
   });
 
