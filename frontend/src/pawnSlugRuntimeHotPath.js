@@ -1,4 +1,11 @@
 export { PAWN_SLUG_ENEMY_LOADOUTS, pawnSlugEnemyLoadoutFor, pawnSlugEnemyWeaponFor } from './pawnSlugEnemyLoadouts.js';
+export {
+  PAWN_SLUG_ENEMY_FIRE_PROFILES,
+  PAWN_SLUG_ENEMY_ROLE_PRESSURE,
+  pawnSlugEnemyFireCooldown,
+  pawnSlugEnemyFireProfile,
+  pawnSlugEnemyShotPlan,
+} from './pawnSlugEnemyFireDoctrine.js';
 
 export const PAWN_SLUG_RUNTIME_HOT_PATH = 'scalar-collision-index-loops-v1';
 
