@@ -20,6 +20,10 @@ export const PAWN_SLUG_TILE_LEGEND = Object.freeze({
   'R': Object.freeze({ kind: 'forest-root', layer: 'ground' }),
   'K': Object.freeze({ kind: 'fallen-knight', layer: 'landmark' }),
   '*': Object.freeze({ kind: 'fireflies', layer: 'atmosphere', desktopOnly: true }),
+  'I': Object.freeze({ kind: 'ruin-column', layer: 'structure' }),
+  'B': Object.freeze({ kind: 'broken-rook', layer: 'landmark' }),
+  '_': Object.freeze({ kind: 'ruin-slab', layer: 'ground' }),
+  '~': Object.freeze({ kind: 'dust', layer: 'atmosphere', desktopOnly: true }),
 });
 
 export const PAWN_SLUG_SCENARIO_TILEMAPS = Object.freeze({
@@ -44,6 +48,28 @@ export const PAWN_SLUG_SCENARIO_TILEMAPS = Object.freeze({
       { id: 'forest-enemy-knight', kind: 'enemy', type: 'knight', worldX: 20.5 },
       { id: 'forest-pickup-machinegun', kind: 'pickup', type: 'machinegun', worldX: 23.0 },
       { id: 'forest-exit', kind: 'transition', type: 'battlefield', worldX: 27.5 },
+    ]),
+  }),
+  gambitRuins: Object.freeze({
+    id: 'gambit-ruins',
+    label: 'Ruinas del Gambito',
+    originX: 30.5,
+    tileWorldSize: 1,
+    rows: freezeRows([
+      ' I   I   I   I ',
+      '   ~   I   ~   ',
+      ' I   B     I   ',
+      '___ ___ _____ __',
+    ]),
+    platforms: freezePlatforms([
+      { id: 'ruins-shattered-bridge', x: 33.6, y: 1.55, width: 4.9, depth: 1.35, theme: 'stone', oneWay: true },
+      { id: 'ruins-high-arcade', x: 39.2, y: 3.0, width: 3.0, depth: 1.35, theme: 'stone', oneWay: true },
+    ]),
+    markers: freezeMarkers([
+      { id: 'ruins-enemy-rook', kind: 'enemy', type: 'rook', worldX: 34.3 },
+      { id: 'ruins-enemy-pawn', kind: 'enemy', type: 'pawn', worldX: 38.2 },
+      { id: 'ruins-pickup-grenade', kind: 'pickup', type: 'grenade', worldX: 40.6 },
+      { id: 'ruins-exit', kind: 'transition', type: 'castle-dungeon', worldX: 43.5 },
     ]),
   }),
   castleDungeon: Object.freeze({
@@ -71,8 +97,6 @@ export const PAWN_SLUG_SCENARIO_TILEMAPS = Object.freeze({
 });
 
 const LEGACY_PLATFORM_LAYOUT = [
-  { id: 'broken-bridge-a', x: 33.6, y: 1.55, width: 4.9, depth: 1.35, theme: 'steel' },
-  { id: 'broken-bridge-b', x: 39.2, y: 3.0, width: 3.0, depth: 1.35, theme: 'steel' },
   { id: 'shell-crater-rim', x: 59.5, y: 1.35, width: 4.1, depth: 1.45, theme: 'stone' },
   { id: 'signal-platform', x: 67.7, y: 3.1, width: 3.9, depth: 1.45, theme: 'timber' },
   { id: 'bunker-roof', x: 77.6, y: 2.15, width: 6.8, depth: 1.65, theme: 'stone' },
@@ -84,9 +108,9 @@ const LEGACY_PLATFORM_LAYOUT = [
 
 export const PAWN_SLUG_PLATFORM_LAYOUT = freezePlatforms([
   ...PAWN_SLUG_SCENARIO_TILEMAPS.fallenForest.platforms,
-  ...LEGACY_PLATFORM_LAYOUT.slice(0, 2),
+  ...PAWN_SLUG_SCENARIO_TILEMAPS.gambitRuins.platforms,
   ...PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon.platforms,
-  ...LEGACY_PLATFORM_LAYOUT.slice(2),
+  ...LEGACY_PLATFORM_LAYOUT,
 ]);
 
 export function pawnSlugTilesForScenario(scenario) {
