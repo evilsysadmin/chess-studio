@@ -199,7 +199,9 @@ export function makePremiumTileMaterial({ color, light = false, coarsePointer = 
     clearcoatRoughness: light ? 0.52 : 0.34,
     ior: 1.46,
     specularIntensity: light ? 0.28 : 0.46,
-    envMapIntensity: light ? 0.42 : 0.5,
+    // Light squares are matte parchment/stone. Keep them on direct lighting so
+    // delayed PMREM cannot lift their value and collapse contrast against ivory.
+    envMapIntensity: light ? 0 : 0.5,
   });
   material.userData.surfaceVersion = PREMIUM_SURFACE_VERSION;
   material.userData.surfaceRole = light ? 'board-light' : 'board-dark';
