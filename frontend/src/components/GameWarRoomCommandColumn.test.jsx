@@ -10,15 +10,28 @@ vi.mock('../cpuIdentity.js', () => ({
   },
 }));
 
+vi.mock('../auth.js', () => ({
+  getUsername: () => 'evilsysadmin',
+}));
+
+vi.mock('../zenMode.js', () => ({
+  zenModeSummary: (active) => (active ? 'Zen activo' : 'Zen desactivado'),
+}));
+
 import GameWarRoomCommandColumn from './GameWarRoomCommandColumn.jsx';
 
 describe('GameWarRoomCommandColumn', () => {
-  it('convierte el viejo rail izquierdo en una pill compacta de identidad y turno', () => {
+  it('reúne jugador, Matthias, turno y acciones en el encabezado del rail', () => {
     const html = renderToStaticMarkup(
       <GameWarRoomCommandColumn
-        game={{ difficulty: 7, turn: 'w', humanColor: 'w', isGameOver: false }}
+        game={{ difficulty: 7, turn: 'w', humanColor: 'w', isGameOver: false, history: [] }}
         status={{ statusText: 'Tu turno', busy: false }}
         board={{ onCustomize: null }}
+        controls={{
+          hintMode: 'off',
+          onToggleZen: () => {},
+          onAbandon: () => {},
+        }}
         onToggleBoardRenderer={() => {}}
       />,
     );
@@ -26,10 +39,14 @@ describe('GameWarRoomCommandColumn', () => {
     expect(html).toContain('data-matthias-war-room-presence="king-piece"');
     expect(html).toContain('game-3d-turn-pill game-3d-matthias-card is-green');
     expect(html).toContain('aria-label="Estado de la partida"');
+    expect(html).toContain('evilsysadmin');
     expect(html).toContain('Matthias');
     expect(html).toContain('CPU nivel 7');
     expect(html).toContain('Tu turno');
     expect(html).toContain('/matthias.png');
+    expect(html).toContain('Más acciones de partida');
+    expect(html).toContain('Modo Zen');
+    expect(html).toContain('Abandonar partida');
     expect(html).toContain('game-3d-warroom-controls');
     expect(html).not.toContain('RIVAL EN SALA');
     expect(html).not.toContain('is-diegetic-briefing');

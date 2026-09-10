@@ -210,7 +210,7 @@ export default function GameBoardView({
         />
 
         <div className={`board-live-row ${zenMode ? 'zen-mode' : ''}${isThreeD ? ' is-3d-warroom' : ''}`}>
-          {!zenMode && !focusActive && isThreeD && (
+          {!focusActive && isThreeD && (!zenMode || !compactViewport) && (
             <GameWarRoomCommandColumn
               game={game}
               rivalryRecord={rivalryRecord}
@@ -221,6 +221,8 @@ export default function GameBoardView({
               activeMatthiasMessage={activeMatthiasMessage}
               matthiasAnger={matthiasAnger}
               portraitReaction={portraitReaction}
+              zenMode={zenMode}
+              controls={controls}
               onToggleBoardRenderer={toggleBoardRenderer}
             />
           )}

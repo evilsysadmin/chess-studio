@@ -1,7 +1,19 @@
-/* Desktop War Room footer -> diegetic HUD.
-   Keep the normal 2D/mobile footer contract intact; only the full desktop 3D
-   room gets the floating identity/actions treatment. */
-@media (min-width: 821px) {
+/* Desktop War Room: there is no footer.
+   The room owns the full lower edge; player identity and match actions live in
+   the right rail, while scene-only controls stay attached to the room itself. */
+
+@media (min-width: 1081px) {
+  .game-screen .board-live-row.is-3d-warroom {
+    position: relative;
+    grid-template-areas:
+      'board status'
+      'board music'
+      'board rail' !important;
+    grid-template-rows: auto auto minmax(0, 1fr) !important;
+    align-items: stretch;
+    margin-bottom: 0;
+  }
+
   .game-layout-3d .game-board-stack-3d {
     position: relative;
     grid-template-areas: 'board board';
@@ -9,162 +21,293 @@
     row-gap: 0;
     box-sizing: border-box;
     padding-bottom: 0;
+    align-self: stretch !important;
   }
 
-  /* Player identity is a tiny signature on the lower wooden apron, not a
-     footer card and not a second layout row. */
-  .game-layout-3d .game-board-stack-3d > .game-player-rail.is-human {
-    position: absolute;
-    z-index: 26;
-    left: clamp(.62rem, 1vw, .9rem);
-    bottom: .58rem;
-    width: auto;
-    max-width: min(38%, 360px);
+  /* Retire the old bottom chrome completely on desktop 3D. The same controls
+     remain mounted for 2D/compact layouts, but cost zero pixels in War Room. */
+  .game-layout-3d .game-board-stack-3d > .game-player-rail.is-human,
+  .game-layout-3d .game-board-stack-3d > .game-command-deck {
+    display: none !important;
+  }
+
+  /* Matthias + player + turn become the compact status head of the right rail.
+     Leave the first 2.5rem to the already-relocated Feedback/account actions. */
+  .game-screen .game-3d-command-column {
+    grid-area: status !important;
+    z-index: 30 !important;
+    position: relative;
+    align-self: start;
+    justify-self: stretch;
+    display: block;
+    width: 100%;
+    max-width: none;
     min-width: 0;
-    min-height: 28px;
-    margin: 0;
-    padding: .14rem .82rem .14rem .14rem;
-    grid-template-columns: 22px minmax(0, 1fr) auto;
-    gap: .34rem;
-    border: 0;
-    border-radius: 999px;
-    background: linear-gradient(90deg, rgba(5, 8, 12, .7) 0%, rgba(5, 8, 12, .38) 72%, rgba(5, 8, 12, 0) 100%);
-    box-shadow: none;
-    backdrop-filter: blur(6px);
+    min-height: 0;
+    height: auto;
+    margin: 2.55rem 0 .34rem;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: none !important;
+    box-shadow: none !important;
     pointer-events: auto;
   }
 
-  .game-layout-3d .game-board-stack-3d > .game-player-rail.is-human.is-active {
-    border: 0;
-    background: linear-gradient(90deg, rgba(7, 12, 12, .72) 0%, rgba(7, 12, 12, .4) 72%, rgba(7, 12, 12, 0) 100%);
-    box-shadow: none;
+  .game-screen .game-3d-turn-pill,
+  .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 30px !important;
+    grid-template-areas:
+      'match menu'
+      'state menu';
+    align-items: center !important;
+    justify-content: stretch;
+    gap: .22rem .32rem;
+    width: 100%;
+    max-width: none;
+    min-height: 48px !important;
+    padding: .38rem .38rem .38rem .46rem;
+    border-radius: 11px;
+    pointer-events: auto;
   }
 
-  .game-layout-3d .game-player-rail.is-human .game-player-avatar {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    background: rgba(201, 162, 39, .08);
-    box-shadow: none;
-  }
-
-  .game-layout-3d .game-player-rail.is-human .game-player-identity {
+  .game-3d-matchup {
+    grid-area: match;
+    display: flex;
+    align-items: center;
     min-width: 0;
+    gap: .26rem;
+    white-space: nowrap;
   }
 
-  .game-layout-3d .game-player-rail.is-human .game-player-identity strong {
+  .game-3d-human-id {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    max-width: 42%;
+    gap: .22rem;
+    color: color-mix(in srgb, var(--cream) 88%, white);
+  }
+
+  .game-3d-human-pawn {
+    display: inline-grid;
+    place-items: center;
+    width: 17px;
+    height: 17px;
+    flex: 0 0 17px;
+    border: 1px solid rgba(201, 162, 39, .34);
+    border-radius: 50%;
+    color: var(--brass);
+    font-size: .58rem;
+    line-height: 1;
+  }
+
+  .game-3d-human-id strong {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, .72);
-    font-size: .64rem;
+    font-size: .58rem;
+    font-weight: 760;
   }
 
-  /* The piece colour is already visually obvious in the War Room. Hiding the
-     redundant second line keeps the HUD to one unobtrusive row. */
-  .game-layout-3d .game-player-rail.is-human .game-player-identity small {
-    display: none;
+  .game-3d-turn-pill-versus {
+    flex: 0 0 auto;
+    color: color-mix(in srgb, var(--studio-muted) 72%, var(--brass));
+    font-size: .43rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
   }
 
-  .game-layout-3d .game-board-stack-3d > .game-command-deck {
-    position: absolute;
-    z-index: 26;
-    right: clamp(.62rem, 1vw, .9rem);
-    bottom: .58rem;
-    width: auto;
+  .game-screen .game-3d-turn-pill-avatar {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    border-radius: 6px;
+  }
+
+  .game-screen .game-3d-turn-pill-identity {
     min-width: 0;
-    margin: 0;
-    pointer-events: auto;
-  }
-
-  .game-layout-3d .game-board-stack-3d > .game-command-deck .game-controls {
-    width: auto;
-    min-width: 0;
-    min-height: 0;
-    margin: 0;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: transparent;
-    box-shadow: none;
-    backdrop-filter: none;
-  }
-
-  .game-layout-3d .game-board-stack-3d .game-controls-actions {
-    justify-content: flex-end;
-    gap: .28rem;
-    padding: 0;
-  }
-
-  .game-layout-3d .game-board-stack-3d .game-controls-actions > .secondary-btn {
-    min-height: 28px;
-    height: 28px;
-    padding: .2rem .52rem;
-    border: 1px solid rgba(224, 214, 190, .1);
-    border-radius: 999px;
-    background: rgba(8, 12, 18, .52);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, .16);
-    color: color-mix(in srgb, var(--parchment-dim) 92%, white);
-    backdrop-filter: blur(6px);
+    display: inline-flex;
+    align-items: center;
+    gap: 0;
     font-size: .58rem;
   }
 
-  .game-layout-3d .game-board-stack-3d .zen-mode-toggle {
-    min-width: 40px;
-    padding-inline: .46rem;
-    font-size: 0 !important;
+  .game-screen .game-3d-turn-pill-identity strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .61rem;
   }
 
-  .game-layout-3d .game-board-stack-3d .zen-mode-toggle::after {
-    content: 'Zen';
-    font: 700 .58rem/1 var(--font-body);
+  .game-3d-turn-state {
+    grid-area: state;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: .28rem;
   }
 
-  .game-layout-3d .game-board-stack-3d .zen-mode-toggle.active {
-    border-color: rgba(201, 162, 39, .42);
-    background: rgba(201, 162, 39, .08);
-    color: var(--brass);
+  .game-screen .game-3d-turn-pill-light {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 7px;
   }
 
-  .game-layout-3d .game-board-stack-3d .game-abandon-btn {
-    min-width: 68px;
-    font-size: 0 !important;
-    border-color: rgba(224, 214, 190, .1);
-    background: rgba(8, 12, 18, .52);
-    color: var(--parchment-dim);
+  .game-screen .game-3d-turn-pill-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .54rem;
+    font-weight: 760;
   }
 
-  .game-layout-3d .game-board-stack-3d .game-abandon-btn::after {
-    content: 'Abandonar';
-    font: 700 .58rem/1 var(--font-body);
+  .game-3d-cpu-level {
+    margin-left: auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    color: color-mix(in srgb, var(--studio-muted) 82%, var(--cream));
+    font-size: .46rem;
+    letter-spacing: .02em;
   }
 
-  .game-layout-3d .game-board-stack-3d .game-abandon-btn:hover,
-  .game-layout-3d .game-board-stack-3d .game-abandon-btn:focus-visible {
-    border-color: color-mix(in srgb, var(--danger) 54%, transparent);
-    background: color-mix(in srgb, var(--danger) 10%, rgba(8, 12, 18, .66));
-    color: color-mix(in srgb, var(--danger) 78%, var(--parchment));
+  .game-3d-utility-menu {
+    grid-area: menu;
+    position: relative;
+    align-self: center;
+    justify-self: end;
+    width: 30px;
+    height: 30px;
+    pointer-events: auto;
   }
 
-  /* Camera utilities get their own line above the tiny HUD so none of the
-     controls can overlap one another. */
-  .game-layout-3d .board3d-inspect,
+  .game-3d-utility-menu > summary {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    box-sizing: border-box;
+    border: 1px solid rgba(190, 164, 109, .2);
+    border-radius: 8px;
+    background: rgba(5, 9, 14, .62);
+    color: color-mix(in srgb, var(--cream) 82%, var(--brass));
+    cursor: pointer;
+    list-style: none;
+    font: 800 .9rem/1 var(--font-body);
+    letter-spacing: .06em;
+    user-select: none;
+  }
+
+  .game-3d-utility-menu > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .game-3d-utility-menu > summary:hover,
+  .game-3d-utility-menu > summary:focus-visible,
+  .game-3d-utility-menu[open] > summary {
+    border-color: rgba(201, 162, 39, .52);
+    background: rgba(14, 18, 26, .94);
+    color: var(--cream);
+    outline: none;
+  }
+
+  .game-3d-utility-popover {
+    position: absolute;
+    z-index: 90;
+    top: calc(100% + .42rem);
+    right: 0;
+    width: min(208px, calc(100vw - 2rem));
+    padding: .3rem;
+    border: 1px solid rgba(190, 164, 109, .22);
+    border-radius: 10px;
+    background: rgba(7, 10, 15, .97);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .42), inset 0 1px rgba(255, 255, 255, .03);
+    backdrop-filter: blur(10px);
+  }
+
+  .game-3d-utility-popover button {
+    display: block;
+    width: 100%;
+    min-height: 32px;
+    padding: .42rem .55rem;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: color-mix(in srgb, var(--cream) 88%, var(--studio-muted));
+    text-align: left;
+    font: 650 .61rem/1.2 var(--font-body);
+    cursor: pointer;
+  }
+
+  .game-3d-utility-popover button:hover,
+  .game-3d-utility-popover button:focus-visible {
+    background: rgba(201, 162, 39, .09);
+    color: var(--cream);
+    outline: none;
+  }
+
+  .game-3d-utility-popover button:disabled {
+    opacity: .42;
+    cursor: default;
+  }
+
+  .game-3d-utility-popover button.is-danger:hover,
+  .game-3d-utility-popover button.is-danger:focus-visible {
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+    color: color-mix(in srgb, var(--danger) 78%, var(--cream));
+  }
+
+  .game-3d-utility-separator {
+    display: block;
+    height: 1px;
+    margin: .24rem .18rem;
+    background: rgba(190, 164, 109, .14);
+  }
+
+  /* The right rail now owns match identity/actions, so its content starts below
+     that status head instead of sharing the scene's lower edge. */
+  .game-screen .game-side-column-3d .game-side-music {
+    margin-top: 0;
+  }
+
+  /* Scene-only utilities stay diegetic and lateral. Nothing lives on the lower
+     apron anymore, so the artwork reaches the bottom uninterrupted. */
+  .game-layout-3d .board3d-inspect {
+    top: 54%;
+    bottom: auto !important;
+    left: .72rem;
+    transform: translateY(-50%);
+  }
+
   .game-layout-3d .board3d-customize {
-    bottom: 2.9rem;
+    top: 54%;
+    bottom: auto !important;
+    right: .72rem;
+    transform: translateY(-50%);
   }
 }
 
-/* The centre column may stretch with the War Room row, but its shell must keep
-   the viewport-aware height/aspect rules owned by Board3DViewportTuning and
-   Board3DParity. A percentage height here has no reliable definite parent and
-   can collapse the canvas to zero height on desktop. */
-@media (min-width: 1081px) {
-  .game-screen .game-layout-3d .board-live-row.is-3d-warroom {
-    align-items: stretch;
-    margin-bottom: 0;
+/* The markup above keeps the historical mobile pill contract. On compact 3D
+   layouts the new wrappers dissolve and the rail-only utility menu disappears;
+   the existing mobile GameCommandDeck remains the source of game actions. */
+@media (max-width: 1080px) {
+  .game-3d-matchup,
+  .game-3d-turn-state {
+    display: contents;
   }
 
-  .game-screen .game-layout-3d .game-board-stack-3d {
-    align-self: stretch;
+  .game-3d-human-id,
+  .game-3d-turn-pill-versus,
+  .game-3d-utility-menu {
+    display: none !important;
+  }
+
+  .game-3d-cpu-level {
+    white-space: nowrap;
+    font-size: .58rem;
+    color: color-mix(in srgb, var(--cream) 68%, var(--studio-muted));
   }
 }

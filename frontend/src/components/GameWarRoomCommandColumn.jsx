@@ -1,4 +1,6 @@
 import { CPU_IDENTITY } from '../cpuIdentity.js';
+import { getUsername } from '../auth.js';
+import { zenModeSummary } from '../zenMode.js';
 import '../styles/29-war-room-chrome.css';
 import './WarRoomReferencePolish.css';
 import './WarRoomTurnPill.css';
@@ -26,14 +28,11 @@ function resolveWarRoomSignal(game, status) {
   };
 }
 
-export default function GameWarRoomCommandColumn({
-  game,
-  status,
-  board,
-  onToggleBoardRenderer,
-}) {
-  const signal = resolveWarRoomSignal(game, status);
+function closeUtilityMenu(event) {
+  event.currentTarget.closest('details')?.removeAttribute('open');
+}
 
+function LegacyCompactPill({ game, signal, board, onToggleBoardRenderer }) {
   return (
     <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
       <div
@@ -55,6 +54,138 @@ export default function GameWarRoomCommandColumn({
         >
           {signal.label}
         </strong>
+      </div>
+
+      <div className="game-3d-warroom-controls" aria-label="Controles de vista 3D">
+        <button type="button" className="secondary-btn is-selected" aria-pressed="true">3D</button>
+        <button type="button" className="secondary-btn" onClick={onToggleBoardRenderer}>2D</button>
+        {board.onCustomize && <button type="button" className="secondary-btn" onClick={board.onCustomize}>Apariencia</button>}
+      </div>
+    </aside>
+  );
+}
+
+export default function GameWarRoomCommandColumn({
+  game,
+  status,
+  board,
+  zenMode = false,
+  controls = {},
+  compactViewport = false,
+  onToggleBoardRenderer,
+}) {
+  const signal = resolveWarRoomSignal(game, status);
+
+  // Mobile/compact keeps the proven historical DOM contract. The premium rail
+  // composition is deliberately desktop-only so touch layout and status
+  // visibility cannot regress when the desktop chrome evolves.
+  if (compactViewport) {
+    return (
+      <LegacyCompactPill
+        game={game}
+        signal={signal}
+        board={board}
+        onToggleBoardRenderer={onToggleBoardRenderer}
+      />
+    );
+  }
+
+  const username = getUsername() || 'Tú';
+  const hasHint = !zenMode && controls.hintMode !== 'off' && typeof controls.onHint === 'function';
+  const hasUndo = !zenMode && controls.hintMode === 'free' && typeof controls.onUndo === 'function';
+
+  return (
+    <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
+      <div
+        className={`game-3d-turn-pill game-3d-matthias-card is-${signal.tone}`}
+        data-matthias-war-room-presence="king-piece"
+      >
+        <span className="game-3d-matchup">
+          <span className="game-3d-human-id" title={username}>
+            <span className="game-3d-human-pawn" aria-hidden="true">♙</span>
+            <strong>{username}</strong>
+          </span>
+          <span className="game-3d-turn-pill-versus" aria-hidden="true">vs</span>
+          {CPU_IDENTITY.avatar && <img className="game-3d-turn-pill-avatar" src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />}
+          <span className="game-3d-turn-pill-identity">
+            <strong role="heading" aria-level="2">{CPU_IDENTITY.name}</strong>
+          </span>
+        </span>
+
+        <span className="game-3d-turn-state">
+          <span className="game-3d-turn-pill-light" aria-hidden="true" />
+          <strong
+            className="game-3d-turn-pill-label"
+            role="status"
+            aria-live="polite"
+            aria-label="Estado de la partida"
+          >
+            {signal.label}
+          </strong>
+          <span className="game-3d-cpu-level">CPU nivel {game.difficulty}</span>
+        </span>
+
+        <details className="game-3d-utility-menu">
+          <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
+          <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
+            {hasHint && (
+              <button
+                type="button"
+                role="menuitem"
+                disabled={!controls.canHint}
+                onClick={(event) => {
+                  closeUtilityMenu(event);
+                  controls.onHint();
+                }}
+              >
+                {controls.hintButtonLabel || 'Pista'}
+              </button>
+            )}
+            {hasUndo && (
+              <button
+                type="button"
+                role="menuitem"
+                disabled={controls.busy || game.history.length === 0}
+                onClick={(event) => {
+                  closeUtilityMenu(event);
+                  controls.onUndo();
+                }}
+              >
+                Deshacer jugada
+              </button>
+            )}
+            {typeof controls.onToggleZen === 'function' && (
+              <button
+                type="button"
+                role="menuitem"
+                aria-pressed={zenMode}
+                title={zenModeSummary(zenMode)}
+                onClick={(event) => {
+                  closeUtilityMenu(event);
+                  controls.onToggleZen();
+                }}
+              >
+                {zenMode ? 'Salir de Zen' : 'Modo Zen'}
+              </button>
+            )}
+            {typeof controls.onAbandon === 'function' && (
+              <>
+                <span className="game-3d-utility-separator" role="separator" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="is-danger"
+                  onClick={(event) => {
+                    closeUtilityMenu(event);
+                    controls.onAbandon();
+                  }}
+                >
+                  Abandonar partida
+                </button>
+              </>
+            )}
+          </div>
+        </details>
       </div>
 
       <div className="game-3d-warroom-controls" aria-label="Controles de vista 3D">
