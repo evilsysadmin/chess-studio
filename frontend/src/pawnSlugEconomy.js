@@ -34,3 +34,10 @@ export function pawnSlugArmoryPurchase({ credits = 0, item, unlocked = false } =
     heal: offer.heal || 0,
   });
 }
+
+export {
+  createPawnSlugArmoryState,
+  pawnSlugArmoryOffers,
+  pawnSlugBankMissionLoot,
+  pawnSlugBuyArmoryItem,
+} from './pawnSlugArmoryState.js';
