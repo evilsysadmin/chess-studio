@@ -56,6 +56,23 @@ describe('GameWarRoomCommandColumn', () => {
     expect(html).not.toContain('contra ti');
   });
 
+  it('mantiene Apariencia en el overflow también en compacto', () => {
+    const html = renderToStaticMarkup(
+      <GameWarRoomCommandColumn
+        game={{ difficulty: 0, turn: 'w', humanColor: 'w', isGameOver: false, history: [] }}
+        status={{ statusText: 'Tu turno', busy: false }}
+        board={{ onCustomize: () => {} }}
+        compactViewport
+        onToggleBoardRenderer={() => {}}
+      />,
+    );
+
+    expect(html).toContain('Más acciones de partida');
+    expect(html).toContain('role="menuitem"');
+    expect((html.match(/>Apariencia<\/button>/g) || []).length).toBe(1);
+    expect(html).toContain('Controles de vista 3D');
+  });
+
   it('usa rojo para Matthias y ámbar mientras la CPU piensa', () => {
     const cpuHtml = renderToStaticMarkup(
       <GameWarRoomCommandColumn
