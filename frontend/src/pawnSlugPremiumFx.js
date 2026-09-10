@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PAWN_SLUG_FX_RESOURCE_VERSION } from './pawnSlugArt.js';
+import { pawnSlugArcadeProjectileProfile } from './pawnSlugArcadeProjectileProfile.js';
 
 export const PAWN_SLUG_PROJECTILE_FX = Object.freeze({
   pistol: Object.freeze({ core: 0xffe6a1, tracer: 0xffb94d, length: 0.34, radius: 0.032, flash: 0.9 }),
@@ -9,7 +10,7 @@ export const PAWN_SLUG_PROJECTILE_FX = Object.freeze({
   enemy: Object.freeze({ core: 0xff8b73, tracer: 0xff3f31, length: 0.4, radius: 0.034, flash: 0.85 }),
 });
 
-export const PAWN_SLUG_PREMIUM_FX_RESOURCE_VERSION = 'premium-shared-resources-v1';
+export const PAWN_SLUG_PREMIUM_FX_RESOURCE_VERSION = 'premium-shared-resources-v2-arcade-bullets';
 const premiumSharedResources = new Map();
 
 function markShared(resource) {
@@ -61,6 +62,7 @@ function fxKey({ enemy = false, weapon = 'pistol' } = {}) {
 
 export function createPremiumBulletModel({ enemy = false, explosive = false, weapon = 'pistol' } = {}) {
   const profile = fxProfile({ enemy, weapon });
+  const arcade = pawnSlugArcadeProjectileProfile({ enemy, weapon, explosive });
   const key = fxKey({ enemy, weapon });
   const root = new THREE.Group();
   root.name = `pawn-slug-projectile-${enemy ? 'enemy' : weapon}`;
@@ -68,24 +70,25 @@ export function createPremiumBulletModel({ enemy = false, explosive = false, wea
   root.userData.weapon = weapon;
   root.userData.enemy = enemy;
   root.userData.explosive = explosive;
+  root.userData.arcadeProjectileShape = arcade.shape;
   root.userData.premiumFxResources = PAWN_SLUG_PREMIUM_FX_RESOURCE_VERSION;
 
   if (explosive) {
     const body = mesh(
-      shared(`${key}:rocket:body-geometry`, () => new THREE.CylinderGeometry(profile.radius * 0.72, profile.radius, 0.42, 10)),
+      shared(`${key}:rocket:body-geometry`, () => new THREE.CylinderGeometry(arcade.radius * 0.75, arcade.radius, arcade.length * 0.66, 10)),
       shared(`${key}:rocket:body-material`, () => standard(enemy ? 0x7f3f35 : 0x58606a, 0.38, 0.62)),
     );
     body.rotation.z = -Math.PI / 2;
     const tip = mesh(
-      shared(`${key}:rocket:tip-geometry`, () => new THREE.ConeGeometry(profile.radius * 1.28, 0.2, 10)),
+      shared(`${key}:rocket:tip-geometry`, () => new THREE.ConeGeometry(arcade.radius * 1.28, arcade.length * 0.3, 10)),
       shared(`${key}:rocket:tip-material`, () => standard(enemy ? 0xc75442 : 0xc99e49, 0.34, 0.5)),
-      0.3,
+      arcade.length * 0.46,
     );
     tip.rotation.z = -Math.PI / 2;
     const exhaust = mesh(
-      shared(`${key}:rocket:exhaust-geometry`, () => new THREE.ConeGeometry(profile.radius * 1.45, 0.42, 9)),
-      shared(`${key}:rocket:exhaust-material`, () => basic(profile.tracer, 0.72)),
-      -0.42,
+      shared(`${key}:rocket:exhaust-geometry`, () => new THREE.ConeGeometry(arcade.radius * 1.55, arcade.trail, 9)),
+      shared(`${key}:rocket:exhaust-material`, () => basic(profile.tracer, 0.76)),
+      -arcade.length * 0.58,
     );
     exhaust.rotation.z = Math.PI / 2;
     exhaust.userData.projectileGlow = true;
@@ -93,18 +96,36 @@ export function createPremiumBulletModel({ enemy = false, explosive = false, wea
     return root;
   }
 
-  const tracer = mesh(
-    shared(`${key}:bullet:tracer-geometry`, () => new THREE.BoxGeometry(profile.length, profile.radius * 1.35, profile.radius * 0.7)),
-    shared(`${key}:bullet:tracer-material`, () => basic(profile.tracer, enemy ? 0.72 : 0.84)),
-    -profile.length * 0.4,
+  if (arcade.shape === 'pellet') {
+    for (let index = 0; index < arcade.pellets; index += 1) {
+      const offset = index - (arcade.pellets - 1) / 2;
+      const pellet = mesh(
+        shared(`${key}:pellet:geometry`, () => new THREE.SphereGeometry(arcade.radius, 8, 6)),
+        shared(`${key}:pellet:material`, () => basic(profile.core)),
+        offset * arcade.length * 0.46,
+        offset * arcade.spread * 0.12,
+      );
+      pellet.userData.projectileGlow = true;
+      root.add(pellet);
+    }
+    return root;
+  }
+
+  const trail = mesh(
+    shared(`${key}:bullet:trail-geometry`, () => new THREE.BoxGeometry(arcade.trail, arcade.radius * 0.7, arcade.radius * 0.45)),
+    shared(`${key}:bullet:trail-material`, () => basic(profile.tracer, enemy ? 0.72 : 0.82)),
+    -arcade.trail * 0.55,
   );
-  tracer.userData.projectileGlow = true;
-  const core = mesh(
-    shared(`${key}:bullet:core-geometry`, () => new THREE.SphereGeometry(profile.radius, 8, 6)),
-    shared(`${key}:bullet:core-material`, () => basic(profile.core)),
-    profile.radius * 1.2,
+  trail.userData.projectileGlow = true;
+
+  const slug = mesh(
+    shared(`${key}:bullet:slug-geometry`, () => new THREE.CapsuleGeometry(arcade.radius, Math.max(0.02, arcade.length - arcade.radius * 2), 4, 8)),
+    shared(`${key}:bullet:slug-material`, () => basic(profile.core)),
+    arcade.radius * 0.8,
   );
-  root.add(tracer, core);
+  slug.rotation.z = Math.PI / 2;
+  slug.userData.projectileGlow = true;
+  root.add(trail, slug);
   return root;
 }
 
@@ -118,9 +139,6 @@ export function createPremiumMuzzleFlash({ enemy = false, weapon = 'pistol' } = 
   root.userData.baseScale = profile.flash;
   root.userData.premiumFxGeometry = PAWN_SLUG_PREMIUM_FX_RESOURCE_VERSION;
 
-  // Geometry is immutable and identical for every flash of the same weapon, so
-  // keep it on the GPU. Materials remain per-flash because the live fade mutates
-  // opacity independently and overlapping machine-gun flashes must not couple.
   const core = mesh(
     shared(`${key}:muzzle:core-geometry`, () => new THREE.SphereGeometry(0.095 * profile.flash, 8, 6)),
     basic(0xfff7d6, 0.98),
