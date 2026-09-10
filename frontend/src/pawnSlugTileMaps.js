@@ -1,6 +1,8 @@
 export const PAWN_SLUG_TILE_SIZE = 80;
+export const PAWN_SLUG_WORLD_SCALE = 1 / 40;
 
 const freezeRows = (rows) => Object.freeze(rows.map((row) => Object.freeze([...row])));
+const freezeMarkers = (markers) => Object.freeze(markers.map((marker) => Object.freeze({ ...marker })));
 
 export const PAWN_SLUG_TILE_LEGEND = Object.freeze({
   '#': Object.freeze({ kind: 'stone', layer: 'structure' }),
@@ -25,6 +27,12 @@ export const PAWN_SLUG_SCENARIO_TILEMAPS = Object.freeze({
       '|  | G |  |',
       '|  |   | P|',
       '===========',
+    ]),
+    markers: freezeMarkers([
+      { id: 'dungeon-pickup-grenade', kind: 'pickup', type: 'grenade', worldX: 45.25 },
+      { id: 'dungeon-enemy-knight', kind: 'enemy', type: 'knight', worldX: 48.5 },
+      { id: 'dungeon-enemy-pawn', kind: 'enemy', type: 'pawn', worldX: 52.75 },
+      { id: 'dungeon-exit', kind: 'transition', type: 'exterior', worldX: 55.5 },
     ]),
   }),
 });
@@ -52,4 +60,22 @@ export function pawnSlugTilesForScenario(scenario) {
 
 export function pawnSlugScenarioTilesByKind(scenario, kind, { coarse = false } = {}) {
   return pawnSlugTilesForScenario(scenario).filter((tile) => tile.kind === kind && !(coarse && tile.desktopOnly));
+}
+
+export function pawnSlugScenarioMarkers(scenario, kind = null) {
+  const markers = scenario?.markers || [];
+  return kind ? markers.filter((marker) => marker.kind === kind) : [...markers];
+}
+
+export function pawnSlugMarkerLegacyX(marker) {
+  return Math.round((Number(marker?.worldX) || 0) / PAWN_SLUG_WORLD_SCALE);
+}
+
+export function pawnSlugScenarioBounds(scenario) {
+  const width = Math.max(0, ...(scenario?.rows || []).map((row) => row.length));
+  const start = Number(scenario?.originX) || 0;
+  return Object.freeze({
+    start,
+    end: start + Math.max(0, width - 1) * (Number(scenario?.tileWorldSize) || 1),
+  });
 }
