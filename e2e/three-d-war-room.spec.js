@@ -63,9 +63,15 @@ async function clickWarRoomSquare(page, rect, square, worldY = 0.12) {
 
 async function setRendererViaAppearance(page, renderer) {
   const warRoom = page.locator('[data-board3d-war-room="true"]');
-  const button = await warRoom.count()
-    ? page.getByRole('button', { name: 'Apariencia', exact: true })
-    : page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true });
+  let button;
+  if (await warRoom.count()) {
+    const utilityMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+    await expect(utilityMenu).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+    await utilityMenu.click();
+    button = page.getByRole('menuitem', { name: 'Apariencia', exact: true });
+  } else {
+    button = page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true });
+  }
 
   await expect(button).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   await expect(button).toBeEnabled();

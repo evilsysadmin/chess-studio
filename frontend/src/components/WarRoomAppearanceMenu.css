@@ -1,0 +1,8 @@
+/* Desktop War Room keeps secondary board customization in the right-rail
+   overflow menu instead of floating a settings button over the room. Compact
+   layouts keep the established scene control for touch discoverability. */
+@media (min-width: 1081px) {
+  .game-layout-3d .board3d-customize {
+    display: none !important;
+  }
+}
