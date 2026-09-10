@@ -14,6 +14,12 @@ function localDate(year, month, day, hour, minute = 0) {
   return new Date(year, month - 1, day, hour, minute, 0, 0);
 }
 
+function maxPixel(data) {
+  let max = 0;
+  for (const value of data) max = Math.max(max, value);
+  return max;
+}
+
 function fixture() {
   const root = new THREE.Group();
   const window = new THREE.Group();
@@ -93,7 +99,7 @@ describe('War Room browser-local atmosphere', () => {
     expect(sky.material.map).toBeTruthy();
     expect(sky.material.map.userData.warRoomDayPhase).toBe('day');
     expect(sky.material.map.userData.warRoomWeatherWindow).toBe(window.userData.weather);
-    expect(Math.max(...sky.material.map.image.data)).toBeGreaterThan(80);
+    expect(maxPixel(sky.material.map.image.data)).toBeGreaterThan(80);
     expect(sky.material.depthTest).toBe(false);
     expect(sky.material.depthWrite).toBe(false);
     expect(sky.frustumCulled).toBe(false);
@@ -112,7 +118,7 @@ describe('War Room browser-local atmosphere', () => {
 
     const pixels = sky.material.map.image.data;
     expect(sky.material.map.userData.warRoomDayPhase).toBe('night');
-    expect(Math.max(...pixels)).toBeGreaterThan(40);
+    expect(maxPixel(pixels)).toBeGreaterThan(40);
     expect(pixels.some((value) => value > 100)).toBe(true);
   });
 });
