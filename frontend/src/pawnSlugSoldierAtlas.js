@@ -6,7 +6,7 @@ const COLUMNS = 16;
 const TYPES = Object.freeze(['pawn', 'knight', 'rook']);
 const ACTIONS = Object.freeze(['idle', 'run', 'jump', 'crouch', 'hurt', 'climb']);
 const ROWS = TYPES.length * ACTIONS.length;
-let cachedTexture = null;
+let cachedCanvas = null;
 
 const COLORS = Object.freeze({
   ink: '#13171a',
@@ -30,10 +30,8 @@ function rowFor(type, action) {
 function roundedRect(ctx, x, y, w, h, r, fill) {
   const rr = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
-  ctx.roundRect?.(x, y, w, h, rr);
-  if (!ctx.roundRect) {
-    ctx.rect(x, y, w, h);
-  }
+  if (typeof ctx.roundRect === 'function') ctx.roundRect(x, y, w, h, rr);
+  else ctx.rect(x, y, w, h);
   ctx.fillStyle = fill;
   ctx.fill();
 }
@@ -173,7 +171,8 @@ function drawSoldier(ctx, type, action, frameIndex, frameCount) {
   ctx.restore();
 }
 
-function createCanvas() {
+function buildCanvas() {
+  if (cachedCanvas) return cachedCanvas;
   if (typeof document === 'undefined') return null;
   const canvas = document.createElement('canvas');
   canvas.width = COLUMNS * FRAME;
@@ -193,12 +192,12 @@ function createCanvas() {
       }
     }
   }
-  return canvas;
+  cachedCanvas = canvas;
+  return cachedCanvas;
 }
 
 export function createPawnSlugSoldierAtlasTexture() {
-  if (cachedTexture && !cachedTexture.userData?.disposed) return cachedTexture;
-  const canvas = createCanvas();
+  const canvas = buildCanvas();
   if (!canvas) return null;
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -207,7 +206,7 @@ export function createPawnSlugSoldierAtlasTexture() {
   texture.wrapS = THREE.ClampToEdgeWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
   texture.userData.pawnSlugSoldierAtlas = true;
-  cachedTexture = texture;
+  texture.userData.sharedSourceCanvas = true;
   return texture;
 }
 
@@ -241,5 +240,6 @@ export const PAWN_SLUG_SOLDIER_ATLAS_META = Object.freeze({
   types: TYPES,
   actions: ACTIONS,
   theme: 'military-chess-soldiers',
-  generatedOnce: true,
+  sourceCanvasGeneratedOnce: true,
+  perSpriteUvTexture: true,
 });
