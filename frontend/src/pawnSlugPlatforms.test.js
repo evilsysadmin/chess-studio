@@ -9,18 +9,30 @@ import {
   pawnSlugPlatformSupportY,
   pawnSlugResolvePlatformLanding,
 } from './pawnSlugPlatforms.js';
+import {
+  PAWN_SLUG_SCENARIO_TILEMAPS,
+  pawnSlugScenarioPlatforms,
+} from './pawnSlugTileMaps.js';
 
 describe('Pawn Slug platforming', () => {
-  it('adds real vertical routes across the mission', () => {
+  it('adds real vertical routes across the mission from tile-map-owned data', () => {
     expect(PAWN_SLUG_PLATFORM_META.platformCount).toBeGreaterThanOrEqual(12);
     expect(PAWN_SLUG_PLATFORM_META.maxHeight).toBeGreaterThanOrEqual(4);
     expect(PAWN_SLUG_PLATFORM_META.oneWay).toBe(true);
     expect(PAWN_SLUG_PLATFORM_META.jumpThroughFromBelow).toBe(true);
+    expect(PAWN_SLUG_PLATFORM_META.source).toBe('tile-map');
 
     const heights = new Set(PAWN_SLUG_PLATFORM_LAYOUT.map((platform) => platform.y));
     expect(heights.size).toBeGreaterThanOrEqual(6);
     expect(PAWN_SLUG_PLATFORM_LAYOUT[0].x).toBeLessThan(20);
     expect(PAWN_SLUG_PLATFORM_LAYOUT.at(-1).x).toBeGreaterThan(105);
+  });
+
+  it('uses the dungeon scenario platform directly in the runtime physics layout', () => {
+    const [dungeonPlatform] = pawnSlugScenarioPlatforms(PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon);
+    expect(dungeonPlatform.id).toBe('dungeon-catwalk');
+    expect(dungeonPlatform.oneWay).toBe(true);
+    expect(PAWN_SLUG_PLATFORM_LAYOUT).toContain(dungeonPlatform);
   });
 
   it('derives stable platform bounds', () => {
