@@ -4,3 +4,13 @@
 .game-layout-3d .board3d-customize {
   display: none !important;
 }
+
+/* The compact overflow is absolutely positioned, so it must not consume a
+   large slice of the Matthias pill's flex width. Reserving 2.7rem made the
+   turn label collapse to zero width on narrow Android layouts. Keep the
+   historical pill padding; the menu remains anchored at the right edge. */
+@media (max-width: 1080px) {
+  .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+    padding-right: .5rem !important;
+  }
+}
