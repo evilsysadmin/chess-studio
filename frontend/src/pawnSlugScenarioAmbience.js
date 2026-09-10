@@ -1,4 +1,9 @@
 const TAU = Math.PI * 2;
+const AMBIENT_NAMES = new Set([
+  'pawn-slug-forest-fireflies',
+  'pawn-slug-ruins-dust',
+  'pawn-slug-dungeon-chain',
+]);
 
 function stablePhase(index, offset = 0) {
   return ((index * 1.61803398875 + offset) % 1) * TAU;
@@ -23,6 +28,20 @@ function restore(entry) {
   node.position.set(entry.baseX, entry.baseY, entry.baseZ);
   node.rotation.z = entry.baseRz;
   node.scale.set(entry.baseScaleX, entry.baseScaleY, entry.baseScaleZ);
+}
+
+function prefersReducedMotion() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function firstRenderable(node) {
+  if (node?.isMesh) return node;
+  let found = null;
+  node?.traverse?.((child) => {
+    if (!found && child.isMesh) found = child;
+  });
+  return found;
 }
 
 export function createPawnSlugScenarioAmbience(root, { reducedMotion = false } = {}) {
@@ -71,4 +90,27 @@ export function createPawnSlugScenarioAmbience(root, { reducedMotion = false } =
       registry.forEach(restore);
     },
   });
+}
+
+export function attachPawnSlugScenarioAmbience(root, { reducedMotion = prefersReducedMotion() } = {}) {
+  const controller = createPawnSlugScenarioAmbience(root, { reducedMotion });
+  root.userData.pawnSlugScenarioAmbience = controller;
+  if (!controller.enabled) return controller;
+
+  let lastFrame = -1;
+  root.traverse((node) => {
+    if (!AMBIENT_NAMES.has(node.name)) return;
+    const proxy = firstRenderable(node);
+    if (!proxy) return;
+    const previous = proxy.onBeforeRender;
+    proxy.onBeforeRender = function ambientOnBeforeRender(renderer, ...args) {
+      previous?.call(this, renderer, ...args);
+      const frame = Number(renderer?.info?.render?.frame);
+      if (Number.isFinite(frame) && frame === lastFrame) return;
+      if (Number.isFinite(frame)) lastFrame = frame;
+      const now = typeof performance !== 'undefined' ? performance.now() / 1000 : 0;
+      controller.update(now);
+    };
+  });
+  return controller;
 }
