@@ -1,4 +1,4 @@
-import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 
 const KEY = 'chess-study-daily-challenge';
@@ -56,14 +56,10 @@ function normalizeResult(result) {
 }
 
 export function loadDailyChallenge() {
-  try {
-    const parsed = JSON.parse(getStorageItem(STORAGE_LOCAL, KEY) || '{}');
-    const rawResults = parsed?.results && typeof parsed.results === 'object' ? parsed.results : {};
-    const results = Object.fromEntries(Object.entries(rawResults).map(([day, result]) => [day, normalizeResult(result)]));
-    return { solvedDates: [], bestStreak: 0, results, ...parsed, results };
-  } catch {
-    return { solvedDates: [], bestStreak: 0, results: {} };
-  }
+  const parsed = readJsonStorage(STORAGE_LOCAL, KEY, { fallback: {} });
+  const rawResults = parsed?.results && typeof parsed.results === 'object' ? parsed.results : {};
+  const results = Object.fromEntries(Object.entries(rawResults).map(([day, result]) => [day, normalizeResult(result)]));
+  return { solvedDates: [], bestStreak: 0, results, ...parsed, results };
 }
 
 function streakFromDates(dates) {
