@@ -38,9 +38,11 @@ describe('Pawn Slug tile maps', () => {
   it('keeps tile-derived world positions monotonic and deterministic', () => {
     const scenario = PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon;
     const ground = pawnSlugScenarioTilesByKind(scenario, 'drain');
+    const firstPass = pawnSlugTilesForScenario(scenario).map(({ kind, row, column, x }) => `${kind}:${row}:${column}:${x}`);
+    const secondPass = pawnSlugTilesForScenario(scenario).map(({ kind, row, column, x }) => `${kind}:${row}:${column}:${x}`);
     expect(ground.length).toBeGreaterThan(4);
     expect(ground.map((tile) => tile.x)).toEqual([...ground].sort((a, b) => a.x - b.x).map((tile) => tile.x));
-    expect(pawnSlugTilesForScenario(scenario)).toEqual(pawnSlugTilesForScenario(scenario));
+    expect(secondPass).toEqual(firstPass);
   });
 
   it('keeps typed markers and bounds inside the dungeon scenario', () => {
