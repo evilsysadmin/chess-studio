@@ -3,7 +3,9 @@ export const PAWN_SLUG_WORLD_SCALE = 1 / 40;
 
 const freezeRows = (rows) => Object.freeze(rows.map((row) => Object.freeze([...row])));
 const freezeMarkers = (markers) => Object.freeze(markers.map((marker) => Object.freeze({ ...marker })));
-const freezePlatforms = (platforms) => Object.freeze(platforms.map((platform) => Object.freeze({ ...platform })));
+const freezePlatforms = (platforms) => Object.freeze(platforms.map((platform) => (
+  Object.isFrozen(platform) ? platform : Object.freeze({ ...platform })
+)));
 
 export const PAWN_SLUG_TILE_LEGEND = Object.freeze({
   '#': Object.freeze({ kind: 'stone', layer: 'structure' }),
