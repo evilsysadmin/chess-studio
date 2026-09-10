@@ -54,10 +54,11 @@ describe('Hans cold-hearth narrative', () => {
       expect(state.mode, `${phase} no puede apagar el fuego al acercarse Hans`).toBe('cold');
       expect(state.flameVisible).toBe(false);
       expect(state.lightScale).toBeLessThan(0.05);
+      expect(state.bounceScale).toBe(0);
     }
   });
 
-  it('enciende el fuego de forma progresiva solo durante stoke-fire', () => {
+  it('enciende el fuego de forma progresiva solo durante stoke-fire sin devolver fill al tablero', () => {
     const start = warRoomHansNarrativeFireState({ phase: 'stoke-fire', sourceScale: 0.26 });
     const middle = warRoomHansNarrativeFireState({ phase: 'stoke-fire', sourceScale: 0.67 });
     const end = warRoomHansNarrativeFireState({ phase: 'stoke-fire', sourceScale: 1.08 });
@@ -67,6 +68,9 @@ describe('Hans cold-hearth narrative', () => {
     expect(middle.flameScale).toBeGreaterThan(start.flameScale);
     expect(end.flameScale).toBeGreaterThan(middle.flameScale);
     expect(end.lightScale).toBeCloseTo(1, 6);
+    expect(start.bounceScale).toBe(0);
+    expect(middle.bounceScale).toBe(0);
+    expect(end.bounceScale).toBe(0);
   });
 
   it('instala el relato solo en la quick iteration y deja el primer frame ya frío', () => {
@@ -74,13 +78,27 @@ describe('Hans cold-hearth narrative', () => {
 
     expect(installWarRoomHansFireNarrative(root)).toBe(1);
     expect(driver.userData.warRoomHansFireNarrative).toBe(WAR_ROOM_HANS_FIRE_NARRATIVE_VERSION);
-    expect(driver.userData.warRoomHansFireNarrativePolicy).toBe('already-cold-then-rekindle-v1');
+    expect(driver.userData.warRoomHansFireNarrativePolicy).toBe('already-cold-then-rekindle-no-board-bounce-v2');
     expect(fireplace.userData.warRoomHansFireNarrativePhase).toBe('hearth-cold');
     expect(fireCore.visible).toBe(false);
     expect(fireLight.intensity).toBeCloseTo(4 * 0.035, 6);
     expect(fireLight.distance).toBeCloseTo(10 * 0.36, 6);
-    expect(bounce.intensity).toBeCloseTo(2 * 0.025, 6);
+    expect(bounce.intensity).toBe(0);
+    expect(bounce.userData.warRoomBoardSpill).toBe('disabled-v1');
     expect(installWarRoomHansFireNarrative(root)).toBe(0);
+  });
+
+  it('no deja reaparecer el bounce cuando la chimenea ya está encendida', () => {
+    const { root, driver, fireCore, bounce } = makeHarness();
+    expect(installWarRoomHansFireNarrative(root)).toBe(1);
+
+    driver.userData.warRoomHansPhase = 'idle';
+    bounce.intensity = 2;
+    driver.onBeforeRender();
+
+    expect(fireCore.visible).toBe(true);
+    expect(bounce.intensity).toBe(0);
+    expect(bounce.userData.warRoomBoardSpill).toBe('disabled-v1');
   });
 
   it('no se cuela en el cameo ambiental de Hans', () => {
