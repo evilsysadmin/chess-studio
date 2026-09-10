@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildShortCounterfactual } from './postGameCounterfactual.js';
+import { buildShortCounterfactual, counterfactualInputFromReportMove } from './postGameCounterfactual.js';
 
 describe('post-game short counterfactual', () => {
   it('starts from the proven suggested move and asks deterministic analysis only for follow-ups', async () => {
@@ -41,5 +41,27 @@ describe('post-game short counterfactual', () => {
       analyzeMove,
     })).resolves.toBeNull();
     expect(analyzeMove).not.toHaveBeenCalled();
+  });
+
+  it('builds a factual counterfactual input from the analyzed report move', () => {
+    expect(counterfactualInputFromReportMove({
+      suggested: 'Nf3',
+      suggestedFrom: 'g1',
+      suggestedTo: 'f3',
+      suggestedPromotion: null,
+      context: { fenBefore: 'fen-real' },
+    })).toEqual({
+      fen: 'fen-real',
+      suggested: { from: 'g1', to: 'f3', promotion: null, san: 'Nf3' },
+    });
+  });
+
+  it('falls back to factual SAN but never invents missing evidence', () => {
+    expect(counterfactualInputFromReportMove({
+      suggested: 'e4',
+      context: { fenBefore: 'fen-real' },
+    })).toEqual({ fen: 'fen-real', suggested: { san: 'e4' } });
+    expect(counterfactualInputFromReportMove({ suggested: 'e4' })).toBeNull();
+    expect(counterfactualInputFromReportMove({ context: { fenBefore: 'fen-real' } })).toBeNull();
   });
 });
