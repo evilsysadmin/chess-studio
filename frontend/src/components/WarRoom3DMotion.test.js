@@ -67,11 +67,11 @@ describe('WarRoom3DMotion', () => {
     };
     const scene = { children: [hemisphere], userData: {} };
 
-    expect(warRoomHemisphereIntensity()).toBe(1.24);
+    expect(warRoomHemisphereIntensity()).toBe(0.55);
     expect(warRoomHemisphereIntensity({ coarsePointer: true })).toBe(1.35);
     expect(applyWarRoomHemisphereGrade(scene)).toBe(hemisphere);
-    expect(hemisphere.intensity).toBe(1.24);
-    expect(scene.userData.warRoomHemisphereIntensity).toBe(1.24);
+    expect(hemisphere.intensity).toBe(0.55);
+    expect(scene.userData.warRoomHemisphereIntensity).toBe(0.55);
 
     applyWarRoomHemisphereGrade(scene, { coarsePointer: true });
     expect(hemisphere.intensity).toBe(1.35);
