@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   fireCallPhase,
   HANS_BOARD_DIALOGUE_GAP_MS,
+  HANS_BOARD_PEEK_CHOREOGRAPHY_PHASE,
   HANS_BOARD_PEEK_ROUTE,
   HANS_FIRE_REPLY_LINE,
   MATTHIAS_FIRE_CALL_LINE,
@@ -26,29 +27,39 @@ describe('War Room Hans fire call contract', () => {
     expect(fireCallPhase(MATTHIAS_FIRE_CALL_MS + 1, true)).toBe('hans');
   });
 
-  it('suelta la sugerencia al entrar en el pasillo y no depende de una X que los guards puedan recortar', () => {
+  it('suelta la sugerencia al terminar el fuego sin depender de una coordenada exacta del pasillo', () => {
     const suggestion = { line: 'Yo probaría caballo de g1 a f3.' };
     const before = {
       phase: 'await-exit-peek',
       route: 'leave-side',
+      choreographyPhase: 'return-poker',
       logicalX: 1.42,
     };
-    const ready = {
+    const choreComplete = {
+      phase: 'await-exit-peek',
+      route: 'none',
+      choreographyPhase: HANS_BOARD_PEEK_CHOREOGRAPHY_PHASE,
+      logicalX: -2.52,
+    };
+    const legacyReady = {
       phase: 'await-exit-peek',
       route: HANS_BOARD_PEEK_ROUTE,
+      choreographyPhase: '',
       logicalX: 1.42,
     };
     const geometryClamped = {
-      ...ready,
+      ...legacyReady,
       logicalX: 0.72,
     };
 
+    expect(HANS_BOARD_PEEK_CHOREOGRAPHY_PHASE).toBe('satisfied');
     expect(HANS_BOARD_PEEK_ROUTE).toBe('leave-bypass');
     expect(hansBoardPeekPointReached(before)).toBe(false);
-    expect(hansBoardPeekPointReached(ready)).toBe(true);
+    expect(hansBoardPeekPointReached(choreComplete)).toBe(true);
+    expect(hansBoardPeekPointReached(legacyReady)).toBe(true);
     expect(hansBoardPeekPointReached(geometryClamped)).toBe(true);
-    expect(shouldStartHansBoardPeek({ ...geometryClamped, suggestion })).toBe(true);
-    expect(shouldStartHansBoardPeek({ ...ready, suggestion: null })).toBe(false);
+    expect(shouldStartHansBoardPeek({ ...choreComplete, suggestion })).toBe(true);
+    expect(shouldStartHansBoardPeek({ ...legacyReady, suggestion: null })).toBe(false);
     expect(hansBoardPeekHoldsMovement('await-exit-peek')).toBe(false);
     expect(hansBoardPeekHoldsMovement('peek')).toBe(true);
     expect(hansBoardPeekHoldsMovement('gap-after-peek')).toBe(true);
