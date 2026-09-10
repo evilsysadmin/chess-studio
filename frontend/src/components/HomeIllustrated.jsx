@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { IconTrophy, IconBook } from './Icons.jsx';
 import hall from '../assets/home-canonical/great-hall-dungeon.webp';
 import { loadRivalry } from '../rivalry.js';
+import { dailyChallengeStats, loadDailyChallenge } from '../dailyChallenge.js';
 import { buildHomeCastleLife } from '../homeCastleLife.js';
 import './HomeIllustrated.css';
 import './HomeIllustratedDiegetic.css';
@@ -17,11 +18,19 @@ function Flame() {
   return <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 1c1 6 7 7 7 14a8 8 0 0 1-16 0c0-4 2-7 5-10 0 4 1 5 2 6 2-3 3-6 2-10Zm-1 12c-1 3-3 4-3 6a3 3 0 0 0 6 0c0-2-2-3-3-6Z" /></svg>;
 }
 
+function memoryPresentation(memory, { onDaily, onHistory }) {
+  if (memory?.destination === 'daily') return { Icon: Flame, onOpen: onDaily, destinationLabel: 'Desafío diario' };
+  if (memory?.kind === 'trophy') return { Icon: IconTrophy, onOpen: onHistory, destinationLabel: 'Historia' };
+  return { Icon: IconSword, onOpen: onHistory, destinationLabel: 'Historia' };
+}
+
 export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onContinue, onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
   const [toolsOpen, setToolsOpen] = useState(false);
-  const castleLife = useMemo(() => buildHomeCastleLife({ rivalry: loadRivalry() }), []);
-  const memory = castleLife.memory;
-  const MemoryIcon = memory?.kind === 'trophy' ? IconTrophy : IconSword;
+  const castleLife = useMemo(() => buildHomeCastleLife({
+    rivalry: loadRivalry(),
+    dailyStats: dailyChallengeStats(loadDailyChallenge()),
+  }), []);
+  const memories = castleLife.memories || (castleLife.memory ? [castleLife.memory] : []);
   const rooms = [
     ['tournament', 'TORNEOS', 'Compite y escala', IconTrophy, onTournament],
     ['train', 'ENTRENAR', 'Mejora tu juego', IconBook, onTrain],
@@ -35,24 +44,32 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
       <div
         className="illustrated-home__stage"
         data-home-castle-ambient={castleLife.ambient}
-        data-home-castle-memory={memory?.kind || 'none'}
+        data-home-castle-memory={memories.map((memory) => memory.kind).join(' ') || 'none'}
+        data-home-castle-rare={castleLife.rareSighting || 'none'}
         style={{ '--home-hall-art': `url("${hall}")` }}
       >
         <img className="illustrated-home__art" src={hall} alt="" fetchPriority="high" draggable="false" style={{ zIndex: 0 }} />
-        {memory && (
-          <button
-            type="button"
-            className={`illustrated-home__memory-object is-${memory.kind}`}
-            onClick={onHistory}
-            aria-label={`${memory.title}. ${memory.detail} Abrir historia.`}
-          >
-            <MemoryIcon aria-hidden="true" />
-            <span className="illustrated-home__memory-label" aria-hidden="true">
-              <strong>{memory.title}</strong>
-              <span>{memory.detail}</span>
-            </span>
-          </button>
+        {castleLife.rareSighting && (
+          <span className={`illustrated-home__rare-sighting is-${castleLife.rareSighting}`} aria-hidden="true" />
         )}
+        {memories.map((memory, index) => {
+          const { Icon: MemoryIcon, onOpen, destinationLabel } = memoryPresentation(memory, { onDaily, onHistory });
+          return (
+            <button
+              key={memory.id}
+              type="button"
+              className={`illustrated-home__memory-object is-${memory.kind} is-slot-${index + 1}`}
+              onClick={onOpen}
+              aria-label={`${memory.title}. ${memory.detail} Abrir ${destinationLabel}.`}
+            >
+              <MemoryIcon aria-hidden="true" />
+              <span className="illustrated-home__memory-label" aria-hidden="true">
+                <strong>{memory.title}</strong>
+                <span>{memory.detail}</span>
+              </span>
+            </button>
+          );
+        })}
         <header className="illustrated-home__brand">
           <h1>Chess Studio</h1>
           <p>JUEGA · APRENDE · COMPITE</p>
