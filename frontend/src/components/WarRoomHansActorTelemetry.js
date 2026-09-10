@@ -5,7 +5,7 @@ import {
 } from './WarRoomHansActor.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_ACTOR_TELEMETRY_VERSION = 'war-room-hans-actor-telemetry-v1';
+export const WAR_ROOM_HANS_ACTOR_TELEMETRY_VERSION = 'war-room-hans-actor-telemetry-v2-choreography-phase';
 
 const POST_RENDER_ORDER = 6;
 
@@ -30,6 +30,7 @@ export function installWarRoomHansActorTelemetry(root) {
       const state = getWarRoomHansRouteState(actor);
       setDatasetIfChanged(canvas, 'warRoomHansRoute', state.route || 'none');
       setDatasetIfChanged(canvas, 'warRoomHansLogicalX', Number(state.logicalX).toFixed(3));
+      setDatasetIfChanged(canvas, 'warRoomHansChoreographyPhase', driver.userData?.warRoomHansPhase || 'none');
     },
   });
   if (!registered) return 0;
