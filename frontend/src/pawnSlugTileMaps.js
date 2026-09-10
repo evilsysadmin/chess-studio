@@ -74,8 +74,6 @@ export function pawnSlugMarkerLegacyX(marker) {
 export function pawnSlugScenarioBounds(scenario) {
   const width = Math.max(0, ...(scenario?.rows || []).map((row) => row.length));
   const start = Number(scenario?.originX) || 0;
-  return Object.freeze({
-    start,
-    end: start + Math.max(0, width - 1) * (Number(scenario?.tileWorldSize) || 1),
-  });
+  const tileWorldSize = Number(scenario?.tileWorldSize) || 1;
+  return Object.freeze({ start, end: start + width * tileWorldSize });
 }
