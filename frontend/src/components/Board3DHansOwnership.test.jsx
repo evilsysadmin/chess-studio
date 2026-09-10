@@ -48,7 +48,7 @@ describe('Board3D Hans quick-iteration ownership', () => {
     harness.markSeen.mockClear();
   });
 
-  it('mantiene el permiso de Hans durante toda la vida de una partida todavía no vista', () => {
+  it('mantiene el permiso de Hans durante toda la vida de una partida todavía no completada', () => {
     Board3D({ hansFireplaceIteration: true, gameId: 'game-1' });
 
     expect(harness.hasSeen).toHaveBeenCalledWith('game-1');
@@ -61,7 +61,7 @@ describe('Board3D Hans quick-iteration ownership', () => {
     expect(harness.release).toHaveBeenCalledTimes(1);
   });
 
-  it('un montaje transitorio que nunca pinta a Hans no consume el cameo', () => {
+  it('un montaje transitorio no consume el cameo', () => {
     Board3D({ hansFireplaceIteration: true, gameId: 'game-transient' });
     expect(harness.acquire).toHaveBeenCalledTimes(1);
     expect(harness.markSeen).not.toHaveBeenCalled();
@@ -76,7 +76,7 @@ describe('Board3D Hans quick-iteration ownership', () => {
     expect(harness.cleanup).toBeTypeOf('function');
   });
 
-  it('consume el cameo sólo cuando Hans está visible y dentro del viewport', () => {
+  it('estar visible y onscreen no consume la secuencia antes del final narrativo', () => {
     harness.marker = {
       getAttribute: (name) => ({
         'data-war-room-hans-runtime': 'visible',
@@ -84,14 +84,13 @@ describe('Board3D Hans quick-iteration ownership', () => {
       })[name] ?? null,
     };
 
-    Board3D({ hansFireplaceIteration: true, gameId: 'game-seen-now' });
+    Board3D({ hansFireplaceIteration: true, gameId: 'game-onscreen' });
 
     expect(harness.acquire).toHaveBeenCalledTimes(1);
-    expect(harness.markSeen).toHaveBeenCalledTimes(1);
-    expect(harness.markSeen).toHaveBeenCalledWith('game-seen-now');
+    expect(harness.markSeen).not.toHaveBeenCalled();
   });
 
-  it('no rearma a Hans cuando esa misma partida ya confirmó el cameo', () => {
+  it('no rearma a Hans cuando esa misma partida ya completó el cameo', () => {
     harness.hasSeen.mockReturnValue(true);
     Board3D({ hansFireplaceIteration: true, gameId: 'game-seen' });
 

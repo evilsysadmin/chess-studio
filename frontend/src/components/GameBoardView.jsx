@@ -17,7 +17,10 @@ import useMatthiasBoardReactions from './useMatthiasBoardReactions.js';
 import { warRoomHansEventForGame } from './WarRoomHansEventContract.js';
 import { shouldForceHansQuickIteration } from './WarRoomHansIteration.js';
 import { resolveHansFireOpeningLatch } from './WarRoomHansFireCallContract.js';
-import { hasWarRoomHansAppearedForGame } from './WarRoomHansPerGame.js';
+import {
+  hasWarRoomHansAppearedForGame,
+  markWarRoomHansAppearedForGame,
+} from './WarRoomHansPerGame.js';
 import { warRoomHansPresentationPolicy } from './WarRoomHansPresentationPolicy.js';
 import { formatLongMove } from '../notation.js';
 import { USER_PREFERENCES_CHANGED_EVENT, getEffectiveReducedMotion } from '../userPreferences.js';
@@ -168,6 +171,7 @@ export default function GameBoardView({
   const [hansFinishedGameId, setHansFinishedGameId] = useState('');
   const hansFireSequenceComplete = hansFinishedGameId === game.id;
   const handleHansFireCallComplete = useCallback(() => {
+    markWarRoomHansAppearedForGame(game.id);
     setHansFinishedGameId(game.id);
   }, [game.id]);
 
@@ -293,7 +297,7 @@ export default function GameBoardView({
             />
 
             {!isThreeD && !zenMode && !focusActive && activeBoardBubble && (
-              <aside key={activeBoardBubble.id} className="matthias-board-bubble" role="status" aria-label="Comentario de Matthias sobre el tablero">
+              <aside key={activeBoardBubble.id} className="matthias-board-bubble" role="status" aria-live="polite" aria-label="Comentario de Matthias sobre el tablero">
                 <span>MATTHIAS</span>
                 <p>{activeBoardBubble.text}</p>
               </aside>
