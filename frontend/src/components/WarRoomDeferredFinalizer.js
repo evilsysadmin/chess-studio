@@ -9,6 +9,7 @@ import { installWarRoomHansMopRoutine } from './WarRoomHansMopRoutine.js';
 import { ensureWarRoomHansPlant } from './WarRoomHansPlantDecor.js';
 import { installWarRoomHansServiceInfrastructure } from './WarRoomHansServiceRoute.js';
 import { installWarRoomHansServiceRoutine } from './WarRoomHansServiceRoutine.js';
+import { installWarRoomHansTaskVisualGuard } from './WarRoomHansTaskVisualGuard.js';
 import { installWarRoomMatthiasHansReaction } from './WarRoomMatthiasHansReaction.js';
 
 export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v1';
@@ -91,8 +92,13 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         installWarRoomHansMopRoutine(root);
         installWarRoomHansServiceRoutine(root);
         installWarRoomHansAmbientChoreRoutine(root);
-        // Keep grounding at the end of scene/task setup so it sees the final
-        // rendered surfaces while still remaining owned by HansAnimator.
+        // These three task producers still compose on floor.onBeforeRender. Keep
+        // one final same-frame visual pass after all of them so acting poses face
+        // their real target and shoe bottoms are reconciled with the surface at
+        // the position chosen by that task, never the previous frame's position.
+        installWarRoomHansTaskVisualGuard(root);
+        // Keep the legacy driver grounding too: it remains the generic fallback
+        // for Fire/Iteration and non-task movement owned by HansAnimator.
         installWarRoomHansGrounding(root);
       }
       completedKeys.push(key);
