@@ -122,6 +122,12 @@
   .illustrated-home__matthias span,
   .illustrated-home__matthias em { display: none; }
 
+  /* Speech may visually float over the castle, but its empty/card surface must not
+     steal taps from the diegetic destinations underneath. Its own controls remain interactive. */
+  .illustrated-home__speech { pointer-events: none; }
+  .illustrated-home__speech button,
+  .illustrated-home__speech a { pointer-events: auto; }
+
   .illustrated-home__utilities {
     position: absolute;
     z-index: 12;
@@ -183,6 +189,30 @@
 }
 
 @media (max-width: 520px) {
+  .illustrated-home {
+    height: 100dvh;
+    min-height: 100dvh;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .illustrated-home__stage {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    min-height: 100dvh;
+    aspect-ratio: auto;
+    overflow: hidden;
+  }
+
+  .illustrated-home__art {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 50%;
+  }
+
   .illustrated-home__destination > span { display: none; }
   .illustrated-home__destination {
     min-width: 40px;
@@ -193,6 +223,21 @@
   .illustrated-home__destination--play { min-height: 44px; }
   .illustrated-home__dungeon-copy small { display: none; }
   .illustrated-home__dungeon-copy { width: auto; min-width: 64px; }
+
+  /* The castle itself is intentionally clipped full-bleed, but the opened dungeon
+     is an overlay. Let that state escape the stage clip and pin the panel to the viewport. */
+  .illustrated-home__stage:has(.illustrated-home__utilities.is-open) { overflow: visible; }
+  .illustrated-home__utilities.is-open { z-index: 80; }
+  .illustrated-home__utilities.is-open > .illustrated-home__dungeon-panel {
+    position: fixed !important;
+    inset: auto 10px 12px 10px !important;
+    width: auto !important;
+    max-height: 62dvh !important;
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

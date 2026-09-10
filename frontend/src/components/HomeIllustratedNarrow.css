@@ -276,15 +276,186 @@
 }
 
 @media (max-width: 520px) {
-  .illustrated-home__stage { min-height: calc(56.25vw + 520px); }
-  .illustrated-home__stage > nav { grid-template-columns: 1fr; }
-  .illustrated-home__destination--play { grid-column: 1; }
+  body:has(.menu-illustrated) .global-music-dock {
+    top: 8px !important;
+    bottom: auto !important;
+    left: 8px !important;
+    width: auto !important;
+    max-width: 92px;
+    z-index: 54;
+  }
+  body:has(.menu-illustrated) .global-music-dock .music-deck {
+    min-height: 38px;
+    width: 88px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #160e09df;
+    border-color: #8a693e66;
+  }
+
+  .illustrated-home {
+    height: 100dvh;
+    min-height: 100dvh;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .illustrated-home__stage {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .illustrated-home__art {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    object-fit: cover;
+    object-position: 50% 50%;
+  }
+
+  .illustrated-home__brand {
+    top: max(72px, 9.5dvh);
+    left: 20%;
+    width: 60%;
+  }
   .illustrated-home__brand p:first-child { display: none; }
-  .illustrated-home__brand { top: 3vw; left: 18%; width: 64%; }
-  .illustrated-home__brand h1 { font-size: clamp(26px, 10vw, 42px); }
-  .illustrated-home__brand p:last-child { font-size: 8px; letter-spacing: .12em; }
-  body .app-shell-home .masthead-release-trigger { right: 54px; font-size: 0 !important; width: 38px !important; padding: 0 !important; }
-  body .app-shell-home .masthead-feedback-trigger { font-size: 0 !important; width: 38px !important; padding: 0 !important; }
+  .illustrated-home__brand h1 {
+    margin: 0;
+    font-size: clamp(30px, 9.4vw, 40px);
+    line-height: .95;
+  }
+  .illustrated-home__brand p:last-child {
+    margin-top: 5px;
+    font-size: 7px;
+    letter-spacing: .15em;
+  }
+
+  .illustrated-home__stage > nav {
+    position: absolute;
+    inset: 0;
+    display: block;
+    pointer-events: none;
+  }
+
+  .illustrated-home__destination {
+    position: absolute !important;
+    width: auto !important;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 5px 6px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    box-shadow: none;
+    text-align: center;
+    pointer-events: auto;
+    text-shadow: 0 2px 4px #090401, 0 0 8px #090401;
+  }
+  .illustrated-home__destination svg {
+    width: 19px;
+    height: 19px;
+    color: #f4ca67;
+  }
+  .illustrated-home__destination strong {
+    font: 700 clamp(10px, 3.1vw, 13px)/1.05 Georgia, serif;
+    white-space: nowrap;
+  }
+  .illustrated-home__destination > span,
+  .illustrated-home__destination i { display: none; }
+
+  .illustrated-home__destination--tournament { left: 14%; top: 26%; }
+  .illustrated-home__destination--train { left: 37%; top: 28%; }
+  .illustrated-home__destination--combat { left: 55%; top: 28%; }
+  .illustrated-home__destination--daily { right: 3%; top: 28%; }
+  .illustrated-home__destination--history { left: 1%; top: 39%; }
+  .illustrated-home__destination--play {
+    left: 40%;
+    top: 65%;
+    width: 24% !important;
+    min-height: 66px;
+    justify-content: center;
+    border: 1px solid #cda94d66;
+    background: #2a1408a8;
+    backdrop-filter: blur(1.5px);
+  }
+  .illustrated-home__destination--play svg { width: 23px; height: 23px; }
+  .illustrated-home__destination--play strong { font-size: clamp(17px, 5vw, 21px); }
+
+  .illustrated-home__resident {
+    position: absolute;
+    inset: 0;
+  }
+  .illustrated-home__matthias {
+    left: 2.5%;
+    right: auto;
+    bottom: max(58px, 5.5dvh);
+    width: 25%;
+    min-height: 0;
+    display: grid;
+    gap: 2px;
+    padding: 7px 8px;
+    border: 0;
+    background: #150b06a8;
+    border-radius: 8px;
+    text-shadow: 0 2px 4px #090401;
+  }
+  .illustrated-home__matthias strong { font-size: 11px; }
+  .illustrated-home__matthias span { font-size: 10px; }
+  .illustrated-home__matthias em { display: none; }
+
+  .illustrated-home__speech {
+    left: 10px;
+    right: 10px;
+    bottom: 64px;
+    max-height: 46dvh;
+  }
+
+  .illustrated-home__utilities {
+    right: 8px;
+    bottom: 8px;
+  }
+  .illustrated-home__utilities button {
+    min-height: 36px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    font-size: 0;
+  }
+  .illustrated-home__utilities button::after {
+    content: '⋯';
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  body .app-shell-home .masthead-account-menu { left: auto !important; right: 96px !important; top: 8px !important; }
+  body .app-shell-home .masthead-account-trigger {
+    width: 38px !important;
+    padding: 0 !important;
+    overflow: hidden;
+    font-size: 0 !important;
+  }
+  body .app-shell-home .masthead-release-trigger { right: 52px; font-size: 0 !important; width: 38px !important; padding: 0 !important; }
+  body .app-shell-home .masthead-feedback-trigger { right: 8px; font-size: 0 !important; width: 38px !important; padding: 0 !important; }
+  body .app-shell-home .masthead-admin-feedback-inbox { display: none; }
+}
+
+@media (max-width: 390px) {
+  .illustrated-home__brand { top: max(68px, 8.5dvh); left: 18%; width: 64%; }
+  .illustrated-home__brand h1 { font-size: clamp(28px, 9vw, 36px); }
+  .illustrated-home__destination strong { font-size: clamp(9px, 2.8vw, 11px); }
+  .illustrated-home__destination--tournament { left: 12%; }
+  .illustrated-home__destination--train { left: 35%; }
+  .illustrated-home__destination--combat { left: 54%; }
+  .illustrated-home__destination--daily { right: 1%; }
+  .illustrated-home__destination--play { left: 38%; width: 28% !important; }
+  .illustrated-home__matthias { width: 28%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
