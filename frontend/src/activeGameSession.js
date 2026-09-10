@@ -1,8 +1,8 @@
+import { isActiveSessionRoute } from './activeSessionRoutes.js';
 import { STORAGE_LOCAL, readJsonStorage, removeStorageItem, writeJsonStorage } from './safeStorage.js';
 
 export const ACTIVE_GAME_SESSION_KEY = 'chess-study-active-game-session-v1';
 const VERSION = 1;
-const VALID_ROUTES = new Set(['game', 'tournamentGame']);
 
 function safeContext(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
@@ -10,7 +10,7 @@ function safeContext(value) {
 }
 
 export function saveActiveGameSession({ route, game, learningMode = false, gameContext = {}, timeControlId = null }) {
-  if (!VALID_ROUTES.has(route) || !game?.id) return null;
+  if (!isActiveSessionRoute(route) || !game?.id) return null;
   const snapshot = {
     version: VERSION,
     route,
@@ -27,7 +27,7 @@ export function saveActiveGameSession({ route, game, learningMode = false, gameC
 export function loadActiveGameSession() {
   const snapshot = readJsonStorage(STORAGE_LOCAL, ACTIVE_GAME_SESSION_KEY, { fallback: null, removeMalformed: true });
   if (!snapshot || snapshot.version !== VERSION) return null;
-  if (!VALID_ROUTES.has(snapshot.route) || typeof snapshot.gameId !== 'string' || !snapshot.gameId) return null;
+  if (!isActiveSessionRoute(snapshot.route) || typeof snapshot.gameId !== 'string' || !snapshot.gameId) return null;
   return {
     ...snapshot,
     learningMode: !!snapshot.learningMode,
