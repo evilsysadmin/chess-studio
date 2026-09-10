@@ -72,15 +72,21 @@ test('War Room · el número del fuego completa cotilleo, corte de Matthias y re
   // Regression guard: geometry clearance is allowed to clamp Hans' rendered X,
   // but entering the semantic exit-bypass route must still freeze him for the
   // complete board-side exchange instead of letting him walk straight out.
-  const peek = page.getByRole('status', { name: 'Hans cotillea el tablero y propone una jugada' });
+  // These dialogue bubbles are intentionally short-lived. Match their text as
+  // part of the locator so visibility + copy are observed atomically instead of
+  // racing two sequential assertions against a transient DOM node on SwiftShader.
+  const peek = page
+    .getByRole('status', { name: 'Hans cotillea el tablero y propone una jugada' })
+    .filter({ hasText: 'Yo probaría' });
   await expect(peek).toBeVisible({ timeout: HANS_BOARD_PEEK_TIMEOUT });
-  await expect(peek).toContainText('Yo probaría');
 
-  const matthiasWorking = page.getByRole('status', { name: 'Matthias manda a Hans volver al trabajo' });
+  const matthiasWorking = page
+    .getByRole('status', { name: 'Matthias manda a Hans volver al trabajo' })
+    .filter({ hasText: 'Hans, bitte. Estamos trabajando.' });
   await expect(matthiasWorking).toBeVisible({ timeout: 12_000 });
-  await expect(matthiasWorking).toContainText('Hans, bitte. Estamos trabajando.');
 
-  const hansReply = page.getByRole('status', { name: 'Hans obedece a Matthias' });
+  const hansReply = page
+    .getByRole('status', { name: 'Hans obedece a Matthias' })
+    .filter({ hasText: 'Claro, señor.' });
   await expect(hansReply).toBeVisible({ timeout: 12_000 });
-  await expect(hansReply).toContainText('Claro, señor.');
 });
