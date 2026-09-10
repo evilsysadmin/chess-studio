@@ -1,4 +1,4 @@
-import { STORAGE_SESSION, readJsonStorage, removeStorageItem, setStorageItem } from './safeStorage.js';
+import { STORAGE_SESSION, readJsonStorage, removeStorageItem, writeJsonStorage } from './safeStorage.js';
 import { getUsername } from './auth.js';
 import { buildNemesisDossier } from './nemesis.js';
 import { loadPersonalPuzzles } from './personalPuzzles.js';
@@ -169,7 +169,7 @@ export function startGuidedTrainingSession(plan, { now = Date.now() } = {}) {
     currentIndex: 0,
     steps: plan.steps,
   };
-  setStorageItem(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, JSON.stringify(session));
+  writeJsonStorage(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, session);
   return session;
 }
 
@@ -182,7 +182,7 @@ export function advanceGuidedTrainingSession(session, { now = Date.now() } = {})
     return null;
   }
   const next = { ...normalized, currentIndex: nextIndex };
-  setStorageItem(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, JSON.stringify(next));
+  writeJsonStorage(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, next);
   return next;
 }
 
