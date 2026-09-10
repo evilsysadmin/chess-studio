@@ -318,9 +318,10 @@ export function applyWhitePieceReadabilityFinish(group, type, coarsePointer = fa
 
   // A hairline of dark walnut at the widest edge of the plinth gives ivory a
   // stable silhouette on light squares without turning the base into a brown
-  // pedestal. Keep it outside the existing gold inlay so both materials read.
+  // pedestal. The human king has a slightly narrower canonical footprint.
   const walnut = makeWhiteBaseWalnutMaterial();
-  const walnutRim = addRing(group, walnut, 0.057, 0.369, coarsePointer ? 0.009 : 0.0075, coarsePointer);
+  const rimRadius = type === 'k' ? 0.358 : 0.369;
+  const walnutRim = addRing(group, walnut, 0.057, rimRadius, coarsePointer ? 0.009 : 0.0075, coarsePointer);
   walnutRim.userData.whiteBaseWalnutRim = 'subtle-v1';
   walnutRim.castShadow = false;
 
