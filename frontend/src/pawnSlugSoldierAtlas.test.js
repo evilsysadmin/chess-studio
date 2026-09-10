@@ -12,7 +12,8 @@ describe('Pawn Slug generated soldier atlas', () => {
       columns: 16,
       rows: 18,
       theme: 'military-chess-soldiers',
-      generatedOnce: true,
+      sourceCanvasGeneratedOnce: true,
+      perSpriteUvTexture: true,
     });
     expect(PAWN_SLUG_SOLDIER_ATLAS_META.types).toEqual(['pawn', 'knight', 'rook']);
     expect(PAWN_SLUG_SOLDIER_ATLAS_META.actions).toEqual(['idle', 'run', 'jump', 'crouch', 'hurt', 'climb']);
