@@ -7,6 +7,15 @@ export {
   pawnSlugEnemyShotPlan,
 } from './pawnSlugEnemyFireDoctrine.js';
 export { PAWN_SLUG_WANTED_META, pawnSlugWantedCreditBonus, pawnSlugWantedOfficerFor } from './pawnSlugWantedOfficers.js';
+export {
+  PAWN_SLUG_POWS,
+  PAWN_SLUG_POW_META,
+  pawnSlugCanRescuePow,
+  pawnSlugPowById,
+  pawnSlugPowMissionBonus,
+  pawnSlugPowsForScenario,
+  pawnSlugRescuePow,
+} from './pawnSlugPows.js';
 
 export const PAWN_SLUG_RUNTIME_HOT_PATH = 'scalar-collision-index-loops-v1';
 
