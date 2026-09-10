@@ -3,12 +3,11 @@ import { setProfileStorageItem } from './profileKeys.js';
 import { gameModeLabel } from './gameModes.js';
 import { isCompletedGameOutcome } from './gameOutcome.js';
 import { recordMatthiasSessionResult } from './matthiasSessionContext.js';
-import { getBoardRenderer } from './userPreferences.js';
+import { BOARD_RENDERERS, getBoardRenderer } from './userPreferences.js';
 
 const KEY = 'chess-study-game-activity';
 const MAX_EVENTS = 160;
 const STATES = new Set(['started', 'cancelled', 'finished']);
-const BOARD_RENDERERS = new Set(['2d', '3d']);
 
 export function loadGameActivity() {
   const parsed = readJsonStorage(STORAGE_LOCAL, KEY, { fallback: [] });
@@ -41,7 +40,7 @@ export function recordGameActivity({
   // en cada hito; si cambia durante la partida, Admin verá ese cambio entre
   // inicio y final en vez de inventar una única respuesta retrospectiva.
   const rendererCandidate = boardRenderer ?? (mode === 'combat' ? null : getBoardRenderer());
-  const normalizedRenderer = BOARD_RENDERERS.has(rendererCandidate) ? rendererCandidate : null;
+  const normalizedRenderer = BOARD_RENDERERS.some((row) => row.id === rendererCandidate) ? rendererCandidate : null;
   const baseModeLabel = gameModeLabel(record);
   const rendererLabel = normalizedRenderer ? normalizedRenderer.toUpperCase() : null;
   const event = {
