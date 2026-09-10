@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
-  HANS_FIREPLACE_ODDS,
   HANS_FIREPLACE_START_DELAY_S,
   hansFireplaceFrame,
   installWarRoomHansFireplaceRoutine,
-  shouldScheduleHansFireplace,
   writeHansFireplaceFrame,
 } from './WarRoomHansFireplace.js';
 
@@ -46,22 +44,13 @@ function dispose(root) {
 }
 
 describe('Hans fireplace caretaker', () => {
-  it('mantiene el cameo raro en una de cada diez salas elegibles', () => {
-    expect(HANS_FIREPLACE_ODDS).toBe(10);
-    expect(shouldScheduleHansFireplace(0)).toBe(true);
-    expect(shouldScheduleHansFireplace(0.0999)).toBe(true);
-    expect(shouldScheduleHansFireplace(0.1)).toBe(false);
-    expect(shouldScheduleHansFireplace(0.88)).toBe(false);
-  });
-
-  it('deja siempre capazo, leña y herramientas junto a la chimenea', () => {
+  it('deja siempre capazo, leña y herramientas junto a la chimenea sin armar movimiento autónomo', () => {
     const left = makeRoom(-4.95);
     const right = makeRoom(4.95);
 
     for (const room of [left, right]) {
       expect(installWarRoomHansFireplaceRoutine(room, {
         towardBoard: 1,
-        randomValue: 0.7,
         reducedMotion: false,
       })).toBe(2);
       const fireplace = room.getObjectByName('war-room-fireplace');
@@ -84,13 +73,29 @@ describe('Hans fireplace caretaker', () => {
       expect(driver.userData.warRoomHansPhase).toBe('not-selected');
       expect(typeof driver.onBeforeRender).toBe('function');
       expect(driver.renderOrder).toBeGreaterThanOrEqual(1000);
+      expect(fireplace.userData.warRoomHansFireplaceOdds).toBeUndefined();
     }
 
     dispose(left);
     dispose(right);
   });
 
-  it('apaga la chimenea, hace entrar a Hans, añade un tronco y aviva el fuego', () => {
+  it('ignora cualquier randomValue legacy y deja la selección al controlador canónico', () => {
+    const room = makeRoom();
+    installWarRoomHansFireplaceRoutine(room, {
+      towardBoard: 1,
+      randomValue: 0,
+      reducedMotion: false,
+    });
+
+    const driver = room.getObjectByName('war-room-hans-fireplace-driver');
+    expect(driver.userData.warRoomHansSelected).toBe(false);
+    expect(driver.userData.warRoomHansPhase).toBe('not-selected');
+    expect(room.getObjectByName('war-room-fireplace').userData.warRoomHansEventSelected).toBe(false);
+    dispose(room);
+  });
+
+  it('apaga la chimenea, hace entrar a Hans, añade un tronco y aviva el fuego en la timeline pura', () => {
     expect(hansFireplaceFrame(HANS_FIREPLACE_START_DELAY_S - 0.01).phase).toBe('waiting');
 
     const dim = hansFireplaceFrame(HANS_FIREPLACE_START_DELAY_S + 4.9);
@@ -150,21 +155,27 @@ describe('Hans fireplace caretaker', () => {
     expect(waiting.removeBasketLog).toBe(false);
   });
 
-  it('arma el cameo forzado sin depender del azar y conserva geometría determinista', () => {
+  it('un evento forzado sólo prepara al actor para la iteración canónica', () => {
     const ordinary = makeRoom();
     const cameo = makeRoom();
-    installWarRoomHansFireplaceRoutine(ordinary, { towardBoard: 1, randomValue: 0.7, reducedMotion: false });
+    installWarRoomHansFireplaceRoutine(ordinary, { towardBoard: 1, reducedMotion: false });
     installWarRoomHansFireplaceRoutine(cameo, { towardBoard: 1, forceEvent: true, reducedMotion: false });
 
     const ordinaryHans = ordinary.getObjectByName('war-room-hans-butler');
     const cameoHans = cameo.getObjectByName('war-room-hans-butler');
+    const cameoDriver = cameo.getObjectByName('war-room-hans-fireplace-driver');
     expect(ordinaryHans).toBeTruthy();
     expect(cameoHans).toBeTruthy();
     expect(ordinaryHans.visible).toBe(false);
     expect(cameoHans.visible).toBe(false);
     expect(ordinary.getObjectByName('war-room-hans-fireplace-driver').userData.warRoomHansSelected).toBe(false);
-    expect(cameo.getObjectByName('war-room-hans-fireplace-driver').userData.warRoomHansSelected).toBe(true);
+    expect(cameoDriver.userData.warRoomHansSelected).toBe(true);
+    expect(cameoDriver.userData.warRoomHansPhase).toBe('await-canonical-iteration');
     expect(cameo.getObjectByName('war-room-fireplace').userData.warRoomHansEventSelected).toBe(true);
+
+    cameoDriver.onBeforeRender();
+    expect(cameoHans.visible).toBe(false);
+    expect(cameoDriver.userData.warRoomHansPhase).toBe('await-canonical-iteration');
 
     dispose(ordinary);
     dispose(cameo);
