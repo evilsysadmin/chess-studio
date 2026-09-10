@@ -1,6 +1,6 @@
-/* Desktop War Room information architecture.
-   The scene owns the space: the old left command rail becomes a compact overlay
-   on the board, while RetroPlayer plus the tabbed secondary surface stay right. */
+/* Desktop War Room column sizing and secondary-rail layout.
+   WarRoomFloatingFooter.css owns the current status/chrome placement; this
+   sheet only owns responsive column widths plus music/chat rail sizing. */
 
 @media (min-width: 1261px) {
   .game-screen .board-live-row.is-3d-warroom {
@@ -15,14 +15,6 @@
 }
 
 @media (min-width: 1081px) {
-  .game-screen .board-live-row.is-3d-warroom {
-    grid-template-areas:
-      'board music'
-      'board rail' !important;
-    grid-template-rows: auto minmax(0, 1fr);
-    align-items: stretch;
-  }
-
   .game-screen .game-side-column.game-side-column-3d {
     display: contents !important;
     border: 0 !important;
@@ -31,39 +23,6 @@
     background: none !important;
     box-shadow: none !important;
     overflow: visible !important;
-  }
-
-  /* Board3D is lazy-loaded after GameScreen, so its historical desktop CSS is
-     appended later and would otherwise restore grid-area: commander plus the
-     old command-panel chrome. That unnamed/obsolete area creates an implicit
-     third grid column and strands hundreds of pixels on the right. The same
-     deferred sheet also resets every direct War Room child to z-index: 1, so
-     keep both placement and overlay depth authoritative across chunk load order. */
-  .game-screen .game-3d-command-column {
-    grid-area: board !important;
-    z-index: 24 !important;
-    align-self: start;
-    /* Keep the Matthias/turn HUD on the quiet left edge. Centering this block
-       covered the room's mirror/pawn crest, which is the scene's visual anchor. */
-    justify-self: start;
-    display: block;
-    width: max-content;
-    max-width: calc(100% - 1.25rem);
-    min-width: 0;
-    min-height: 0;
-    height: auto;
-    margin: clamp(.44rem, .68vw, .66rem) 0 0 clamp(.55rem, .8vw, .82rem);
-    padding: 0 !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    background: none !important;
-    box-shadow: none !important;
-    grid-template-rows: none !important;
-    pointer-events: none;
-  }
-
-  .game-screen .game-3d-command-column .game-3d-warroom-controls {
-    pointer-events: auto;
   }
 
   .game-screen .game-side-column-3d .game-side-music {
