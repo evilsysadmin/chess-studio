@@ -32,18 +32,23 @@ function runHansFirstFrame(room) {
 afterEach(() => setWarRoomHansQuickIterationEnabled(false));
 
 describe('Hans fire routine polish', () => {
-  it('waits for the door-bypass route but tolerates geometry guards clamping Hans sideways', () => {
-    expect(HANS_BOARD_PEEK_ROUTE).toBe('leave-bypass');
+  it('starts the board peek on the first exit leg and never waits for the armor bypass', () => {
+    expect(HANS_BOARD_PEEK_ROUTE).toBe('leave-side');
     expect(hansBoardPeekPointReached({
       phase: 'await-exit-peek',
       route: 'leave-side',
       logicalX: 1.42,
-    })).toBe(false);
+    })).toBe(true);
+    expect(hansBoardPeekPointReached({
+      phase: 'await-exit-peek',
+      route: 'leave-side',
+      logicalX: 0.55,
+    })).toBe(true);
     expect(hansBoardPeekPointReached({
       phase: 'await-exit-peek',
       route: 'leave-bypass',
       logicalX: 0.55,
-    })).toBe(true);
+    })).toBe(false);
   });
 
   it('rigs the carried poker to Hans right arm so the tool follows the stoking gesture', () => {

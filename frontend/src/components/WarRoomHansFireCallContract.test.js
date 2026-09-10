@@ -16,6 +16,11 @@ import {
   shouldStartHansBoardPeek,
   shouldStartHansFireEpilogue,
 } from './WarRoomHansFireCallContract.js';
+import {
+  HANS_BOARD_PEEK_MAX_APPROACH_DISTANCE,
+  HANS_BOARD_PEEK_MIN_BOARD_CENTER_DISTANCE,
+  resolveHansBoardPeekApproachDistance,
+} from './WarRoomHansBoardPeekPose.js';
 
 describe('War Room Hans fire call contract', () => {
   it('usa el intercambio exacto y pone a Matthias primero', () => {
@@ -27,13 +32,13 @@ describe('War Room Hans fire call contract', () => {
     expect(fireCallPhase(MATTHIAS_FIRE_CALL_MS + 1, true)).toBe('hans');
   });
 
-  it('suelta la sugerencia al terminar el fuego sin depender de una coordenada exacta del pasillo', () => {
+  it('suelta la sugerencia al terminar el fuego antes de que Hans llegue al bypass de la armadura', () => {
     const suggestion = { line: 'Yo probaría caballo de g1 a f3.' };
     const before = {
       phase: 'await-exit-peek',
-      route: 'leave-side',
+      route: 'none',
       choreographyPhase: 'return-poker',
-      logicalX: 1.42,
+      logicalX: -2.52,
     };
     const choreComplete = {
       phase: 'await-exit-peek',
@@ -41,25 +46,27 @@ describe('War Room Hans fire call contract', () => {
       choreographyPhase: HANS_BOARD_PEEK_CHOREOGRAPHY_PHASE,
       logicalX: -2.52,
     };
-    const legacyReady = {
+    const firstExitLeg = {
       phase: 'await-exit-peek',
       route: HANS_BOARD_PEEK_ROUTE,
       choreographyPhase: '',
-      logicalX: 1.42,
+      logicalX: -2.1,
     };
-    const geometryClamped = {
-      ...legacyReady,
-      logicalX: 0.72,
+    const armorBypass = {
+      phase: 'await-exit-peek',
+      route: 'leave-bypass',
+      choreographyPhase: '',
+      logicalX: 1.42,
     };
 
     expect(HANS_BOARD_PEEK_CHOREOGRAPHY_PHASE).toBe('satisfied');
-    expect(HANS_BOARD_PEEK_ROUTE).toBe('leave-bypass');
+    expect(HANS_BOARD_PEEK_ROUTE).toBe('leave-side');
     expect(hansBoardPeekPointReached(before)).toBe(false);
     expect(hansBoardPeekPointReached(choreComplete)).toBe(true);
-    expect(hansBoardPeekPointReached(legacyReady)).toBe(true);
-    expect(hansBoardPeekPointReached(geometryClamped)).toBe(true);
+    expect(hansBoardPeekPointReached(firstExitLeg)).toBe(true);
+    expect(hansBoardPeekPointReached(armorBypass)).toBe(false);
     expect(shouldStartHansBoardPeek({ ...choreComplete, suggestion })).toBe(true);
-    expect(shouldStartHansBoardPeek({ ...legacyReady, suggestion: null })).toBe(false);
+    expect(shouldStartHansBoardPeek({ ...firstExitLeg, suggestion: null })).toBe(false);
     expect(hansBoardPeekHoldsMovement('await-exit-peek')).toBe(false);
     expect(hansBoardPeekHoldsMovement('peek')).toBe(true);
     expect(hansBoardPeekHoldsMovement('gap-after-peek')).toBe(true);
@@ -67,6 +74,15 @@ describe('War Room Hans fire call contract', () => {
     expect(hansBoardPeekHoldsMovement('gap-after-matthias')).toBe(true);
     expect(hansBoardPeekHoldsMovement('hans-working-reply')).toBe(true);
     expect(hansBoardPeekHoldsMovement('grumble')).toBe(false);
+  });
+
+  it('limita el pasito de Hans para que nunca invada el tablero durante el cotilleo', () => {
+    expect(HANS_BOARD_PEEK_MAX_APPROACH_DISTANCE).toBe(0.22);
+    expect(HANS_BOARD_PEEK_MIN_BOARD_CENTER_DISTANCE).toBe(4.85);
+    expect(resolveHansBoardPeekApproachDistance({ x: 5.7, z: 0 })).toBeCloseTo(0.22, 6);
+    expect(resolveHansBoardPeekApproachDistance({ x: 4.95, z: 0 })).toBeCloseTo(0.1, 6);
+    expect(resolveHansBoardPeekApproachDistance({ x: 4.7, z: 0 })).toBe(0);
+    expect(resolveHansBoardPeekApproachDistance({ x: 'nope', z: 0 })).toBe(0);
   });
 
   it('deja exactamente tres segundos entre intervenciones del cotilleo', () => {
