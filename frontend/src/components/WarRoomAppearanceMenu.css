@@ -37,4 +37,11 @@
   .game-screen .game-layout-3d .game-3d-turn-pill-label {
     min-width: max-content;
   }
+
+  /* Mobile Focus is a fixed control at z-index 190. Keep the closed overflow
+     on its normal layer, but raise the open menu above that control so the
+     visible Appearance action receives the tap instead of being intercepted. */
+  .game-screen .game-layout-3d .game-3d-utility-menu[open] {
+    z-index: 220 !important;
+  }
 }
