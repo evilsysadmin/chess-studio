@@ -40,13 +40,9 @@ export function rememberSessionView(view) {
 }
 
 export function loadSessionViewHistory({ isAdminUser = false } = {}) {
-  try {
-    const parsed = readJsonStorage(STORAGE_SESSION, VIEW_HISTORY_STORAGE_KEY, { fallback: [], removeMalformed: true });
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((view) => allowedView(view, { isAdminUser })).slice(-40);
-  } catch {
-    return [];
-  }
+  const parsed = readJsonStorage(STORAGE_SESSION, VIEW_HISTORY_STORAGE_KEY, { fallback: [], removeMalformed: true });
+  if (!Array.isArray(parsed)) return [];
+  return parsed.filter((view) => allowedView(view, { isAdminUser })).slice(-40);
 }
 
 export function rememberSessionViewHistory(history) {
