@@ -29,13 +29,16 @@ function finiteOrNull(value) {
 }
 
 function normalizeMove(move) {
-  if (!move?.from || !move?.to) return null;
-  return {
-    from: move.from,
-    to: move.to,
-    promotion: move.promotion || null,
-    san: move.san || null,
-  };
+  if (move?.from && move?.to) {
+    return {
+      from: move.from,
+      to: move.to,
+      promotion: move.promotion || null,
+      san: move.san || null,
+    };
+  }
+  if (typeof move?.san === 'string' && move.san.trim()) return { san: move.san.trim() };
+  return null;
 }
 
 function reportMove(moveReport, prefix) {
@@ -48,6 +51,9 @@ function reportMove(moveReport, prefix) {
       promotion: moveReport?.[`${prefix}Promotion`],
       san: moveReport?.[prefix],
     });
+  }
+  if (typeof moveReport?.[prefix] === 'string' && moveReport[prefix].trim()) {
+    return { san: moveReport[prefix].trim() };
   }
   return normalizeMove(moveReport?.context?.[prefix]);
 }
