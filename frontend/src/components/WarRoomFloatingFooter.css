@@ -154,10 +154,10 @@
   }
 }
 
-/* The centre column must fill the same grid track as the right rail. The old
-   max-content stack was the real source of the black moat: the row was taller
-   than the 3D shell. Stretch the room instead of inventing viewport math or a
-   fake footer lane. */
+/* The centre column may stretch with the War Room row, but its shell must keep
+   the viewport-aware height/aspect rules owned by Board3DViewportTuning and
+   Board3DParity. A percentage height here has no reliable definite parent and
+   can collapse the canvas to zero height on desktop. */
 @media (min-width: 1081px) {
   .game-screen .game-layout-3d .board-live-row.is-3d-warroom {
     align-items: stretch;
@@ -165,12 +165,6 @@
   }
 
   .game-screen .game-layout-3d .game-board-stack-3d {
-    height: 100% !important;
     align-self: stretch;
-  }
-
-  .game-screen .game-layout-3d .game-board-stack-3d .board3d-main-shell {
-    height: 100% !important;
-    aspect-ratio: auto;
   }
 }
