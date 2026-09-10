@@ -19,7 +19,9 @@ export function resolveBoard3DCameraFov(aspect, { mobile = false } = {}) {
 }
 
 export const BOARD_THEME_3D = Object.freeze({
-  classic: { light: 0xd9cfba, dark: 0x5a4236, frame: 0x34251f, felt: 0x111722, glow: 0xc9a227 },
+  // Warm stone rather than cream-white: the classic light squares stay bright
+  // enough for board readability but keep a visible value gap from ivory pieces.
+  classic: { light: 0xc6baa2, dark: 0x5a4236, frame: 0x34251f, felt: 0x111722, glow: 0xc9a227 },
   midnight: { light: 0xaab2bd, dark: 0x263244, frame: 0x111824, felt: 0x080d16, glow: 0x6f9fc5 },
   blood: { light: 0xc9b5a6, dark: 0x5d2926, frame: 0x2b1515, felt: 0x12090a, glow: 0xb4483a },
   royal: { light: 0xd8c990, dark: 0x493564, frame: 0x221b32, felt: 0x0d0b15, glow: 0xe0b84e },
