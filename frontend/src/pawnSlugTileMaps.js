@@ -71,13 +71,7 @@ export function pawnSlugTilesForScenario(scenario) {
       const symbol = scenario.rows[row][column] || ' ';
       const meta = PAWN_SLUG_TILE_LEGEND[symbol];
       if (!meta) continue;
-      tiles.push(Object.freeze({
-        symbol,
-        row,
-        column,
-        x: scenario.originX + column * scenario.tileWorldSize,
-        ...meta,
-      }));
+      tiles.push(Object.freeze({ symbol, row, column, x: scenario.originX + column * scenario.tileWorldSize, ...meta }));
     }
   }
   return tiles;
