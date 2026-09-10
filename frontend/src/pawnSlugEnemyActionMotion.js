@@ -1,12 +1,13 @@
 const TAU = Math.PI * 2;
 
 export const PAWN_SLUG_ENEMY_ACTIONS = Object.freeze({
-  idle: Object.freeze({ frames: 12, rate: 5.2 }),
-  run: Object.freeze({ frames: 16, rate: 15.5 }),
-  jump: Object.freeze({ frames: 10, rate: 12 }),
-  crouch: Object.freeze({ frames: 8, rate: 10 }),
-  hurt: Object.freeze({ frames: 6, rate: 18 }),
-  climb: Object.freeze({ frames: 12, rate: 11.5 }),
+  idle: Object.freeze({ frames: 12, rate: 5.2, loop: true }),
+  run: Object.freeze({ frames: 16, rate: 15.5, loop: true }),
+  jump: Object.freeze({ frames: 10, rate: 12, loop: true }),
+  crouch: Object.freeze({ frames: 8, rate: 10, loop: true }),
+  hurt: Object.freeze({ frames: 6, rate: 18, loop: false }),
+  climb: Object.freeze({ frames: 12, rate: 11.5, loop: true }),
+  death: Object.freeze({ frames: 14, rate: 16, loop: false }),
 });
 
 function clamp01(value) {
@@ -17,7 +18,12 @@ function wrapFrame(value, count) {
   return ((Math.floor(value) % count) + count) % count;
 }
 
-export function pawnSlugEnemyActionForState({ moving = false, hurt = false, airborne = false, crouch = false, climbing = false } = {}) {
+function clampFrame(value, count) {
+  return Math.max(0, Math.min(count - 1, Math.floor(Number(value) || 0)));
+}
+
+export function pawnSlugEnemyActionForState({ moving = false, hurt = false, airborne = false, crouch = false, climbing = false, dying = false } = {}) {
+  if (dying) return 'death';
   if (hurt) return 'hurt';
   if (climbing) return 'climb';
   if (airborne) return 'jump';
@@ -28,24 +34,32 @@ export function pawnSlugEnemyActionForState({ moving = false, hurt = false, airb
 
 export function pawnSlugEnemyActionFrame(action = 'idle', time = 0) {
   const track = PAWN_SLUG_ENEMY_ACTIONS[action] || PAWN_SLUG_ENEMY_ACTIONS.idle;
-  return wrapFrame((Number(time) || 0) * track.rate, track.frames);
+  const raw = (Number(time) || 0) * track.rate;
+  return track.loop === false ? clampFrame(raw, track.frames) : wrapFrame(raw, track.frames);
 }
 
 export function pawnSlugEnemySourceFrame(action = 'idle', actionFrame = 0, sourceFrames = 8) {
   const count = Math.max(1, Math.floor(sourceFrames) || 1);
   const track = PAWN_SLUG_ENEMY_ACTIONS[action] || PAWN_SLUG_ENEMY_ACTIONS.idle;
-  const phase = wrapFrame(actionFrame, track.frames) / track.frames;
+  const localFrame = track.loop === false ? clampFrame(actionFrame, track.frames) : wrapFrame(actionFrame, track.frames);
+  const phase = localFrame / Math.max(1, track.frames - (track.loop === false ? 1 : 0));
   if (action === 'idle') return 0;
   if (action === 'hurt') return Math.min(count - 1, Math.floor(phase * 3));
   if (action === 'crouch') return Math.min(count - 1, Math.floor(phase * 4));
-  if (action === 'jump') return Math.min(count - 1, Math.floor(phase * count));
-  if (action === 'climb') return Math.min(count - 1, Math.floor(phase * count));
+  if (action === 'death') return Math.min(count - 1, Math.floor(phase * count));
   return Math.min(count - 1, Math.floor(phase * count));
+}
+
+export function pawnSlugEnemyDeathDuration(type = 'pawn') {
+  if (type === 'rook') return 0.88;
+  if (type === 'knight') return 0.72;
+  return 0.64;
 }
 
 export function pawnSlugEnemyActionPose(action = 'idle', actionFrame = 0, { vy = 0, type = 'pawn' } = {}) {
   const track = PAWN_SLUG_ENEMY_ACTIONS[action] || PAWN_SLUG_ENEMY_ACTIONS.idle;
-  const phase = wrapFrame(actionFrame, track.frames) / track.frames;
+  const localFrame = track.loop === false ? clampFrame(actionFrame, track.frames) : wrapFrame(actionFrame, track.frames);
+  const phase = localFrame / Math.max(1, track.frames - (track.loop === false ? 1 : 0));
   const wave = Math.sin(phase * TAU);
   const pulse = Math.cos(phase * TAU);
   const weight = type === 'rook' ? 0.58 : type === 'knight' ? 1.12 : 1;
@@ -68,6 +82,16 @@ export function pawnSlugEnemyActionPose(action = 'idle', actionFrame = 0, { vy =
   if (action === 'climb') {
     return Object.freeze({ x: wave * 0.018, y: Math.abs(wave) * 0.055, rz: wave * 0.018, sx: 0.985, sy: 1.015 });
   }
+  if (action === 'death') {
+    const fall = Math.sin(clamp01(phase) * Math.PI * 0.5);
+    if (type === 'rook') {
+      return Object.freeze({ x: -0.06 * fall, y: -0.11 * fall, rz: 0.42 * fall, sx: 1 + 0.18 * fall, sy: 1 - 0.42 * fall });
+    }
+    if (type === 'knight') {
+      return Object.freeze({ x: -0.18 * fall, y: 0.08 * Math.sin(phase * Math.PI), rz: 1.05 * fall, sx: 1 + 0.08 * fall, sy: 1 - 0.18 * fall });
+    }
+    return Object.freeze({ x: -0.12 * fall, y: -0.04 * fall, rz: 0.72 * fall, sx: 1 + 0.1 * fall, sy: 1 - 0.28 * fall });
+  }
   return Object.freeze({ x: 0, y: Math.max(0, wave) * 0.012, rz: pulse * 0.006, sx: 1 + pulse * 0.004, sy: 1 - pulse * 0.004 });
 }
 
@@ -77,4 +101,5 @@ export const PAWN_SLUG_ENEMY_ACTION_META = Object.freeze({
   actions: PAWN_SLUG_ENEMY_ACTIONS,
   authoredFacings: Object.freeze(['left']),
   runtimeFacings: Object.freeze(['left', 'right']),
+  deathStyleByType: Object.freeze({ pawn: 'backward-collapse', knight: 'violent-tumble', rook: 'heavy-collapse' }),
 });
