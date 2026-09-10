@@ -1,4 +1,5 @@
 import { Chess } from 'chess.js';
+import { buildPostGameIncidentEvidence } from './postGameIncidentEvidence.js';
 
 function normalizeEngineMove(move) {
   if (!move?.from || !move?.to) return null;
@@ -29,26 +30,9 @@ function applyMove(board, move) {
 }
 
 export function counterfactualInputFromReportMove(move) {
-  const fen = move?.context?.fenBefore;
-  if (!fen) return null;
-
-  if (move?.suggestedFrom && move?.suggestedTo) {
-    return {
-      fen,
-      suggested: {
-        from: move.suggestedFrom,
-        to: move.suggestedTo,
-        promotion: move.suggestedPromotion || null,
-        san: move.suggested || null,
-      },
-    };
-  }
-
-  if (typeof move?.suggested === 'string' && move.suggested.trim()) {
-    return { fen, suggested: { san: move.suggested.trim() } };
-  }
-
-  return null;
+  const evidence = buildPostGameIncidentEvidence(move);
+  if (!evidence?.fenBefore || !evidence?.suggested) return null;
+  return { fen: evidence.fenBefore, suggested: evidence.suggested };
 }
 
 export async function buildShortCounterfactual({
