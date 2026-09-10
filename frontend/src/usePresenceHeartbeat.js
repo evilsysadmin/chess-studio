@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { bindPresenceLifecycle } from './presenceLifecycle.js';
 
 const ACTIVITY_BY_VIEW = Object.freeze({
@@ -28,7 +28,7 @@ export function activityForView(view) {
 }
 
 export function usePresenceHeartbeat(view) {
-  const coarseActivity = useMemo(() => activityForView(view), [view]);
+  const coarseActivity = activityForView(view);
 
   useEffect(() => bindPresenceLifecycle(coarseActivity), [coarseActivity]);
 
