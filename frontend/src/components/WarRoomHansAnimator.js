@@ -4,6 +4,11 @@ import { installWarRoomHansBoardPeekPose } from './WarRoomHansBoardPeekPose.js';
 import { installWarRoomHansFacingGuard } from './WarRoomHansFacingGuard.js';
 import { installWarRoomHansHearthFacingGuard } from './WarRoomHansHearthFacingGuard.js';
 import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
+import {
+  advanceHansWalkCycle,
+  createHansWalkCycle,
+  resetHansWalkCycle,
+} from './HansWalkCycle.js';
 
 export const WAR_ROOM_HANS_ANIMATOR_VERSION = 'war-room-hans-animator-v1-body-owner';
 
@@ -16,6 +21,18 @@ function markAnimator(root, hans, driver, installed = []) {
     driver.userData.warRoomHansAnimator = WAR_ROOM_HANS_ANIMATOR_VERSION;
     driver.userData.warRoomHansAnimatorModules = installed;
   }
+}
+
+export function placeWarRoomHansHorizontal(actor, point) {
+  const hans = actor?.hans;
+  if (!hans || !point) return false;
+  const x = Number(point.x);
+  const z = Number(point.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
+  hans.position.x = x;
+  hans.position.z = z;
+  // Vertical placement belongs exclusively to rendered grounding.
+  return true;
 }
 
 export function moveWarRoomHansToward(hans, target, maxStep) {
@@ -31,6 +48,41 @@ export function moveWarRoomHansToward(hans, target, maxStep) {
   // authority for vertical placement; task navigation owns horizontal travel.
   hans.rotation.y = Math.atan2(dx, dz);
   return { arrived: distance - step <= TARGET_EPSILON, travelled: step, blocked: false };
+}
+
+export function createWarRoomHansWalkController(actor, options = {}) {
+  return createHansWalkCycle(actor?.body, options);
+}
+
+export function advanceWarRoomHansWalk(controller, options = {}) {
+  if (!controller) return false;
+  advanceHansWalkCycle(controller, options);
+  return true;
+}
+
+export function resetWarRoomHansWalk(controller, options = {}) {
+  if (!controller) return false;
+  resetHansWalkCycle(controller, options);
+  return true;
+}
+
+export function applyWarRoomHansTaskPose(actor, pose) {
+  const body = actor?.body;
+  if (!body) return false;
+  const poseName = String(pose || '');
+
+  if (poseName === 'water-plant') {
+    if (body.rightArm) body.rightArm.rotation.x -= 0.58;
+    if (body.torso) body.torso.rotation.x += 0.035;
+  } else if (poseName === 'espresso') {
+    if (body.leftArm) body.leftArm.rotation.x -= 0.38;
+    if (body.rightArm) body.rightArm.rotation.x -= 0.38;
+  } else {
+    return false;
+  }
+
+  if (actor?.hans?.userData) actor.hans.userData.warRoomHansTaskPose = poseName;
+  return true;
 }
 
 export function installWarRoomHansAnimator(root) {
