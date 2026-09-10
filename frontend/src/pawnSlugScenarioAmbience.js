@@ -1,3 +1,5 @@
+import { attachPawnSlugReactiveSetpieces } from './pawnSlugScenarioSetpieces.js';
+
 const TAU = Math.PI * 2;
 const AMBIENT_NAMES = new Set([
   'pawn-slug-forest-fireflies',
@@ -95,6 +97,7 @@ export function createPawnSlugScenarioAmbience(root, { reducedMotion = false } =
 export function attachPawnSlugScenarioAmbience(root, { reducedMotion = prefersReducedMotion() } = {}) {
   const controller = createPawnSlugScenarioAmbience(root, { reducedMotion });
   root.userData.pawnSlugScenarioAmbience = controller;
+  attachPawnSlugReactiveSetpieces(root, { reducedMotion });
   if (!controller.enabled) return controller;
 
   let lastFrame = -1;
