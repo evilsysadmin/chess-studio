@@ -7,14 +7,12 @@ function key(gameId) { return `${PREFIX}${gameId}`; }
 
 export function loadClockSnapshot(gameId) {
   if (!gameId) return null;
-  try {
-    const value = readJsonStorage(STORAGE_LOCAL, key(gameId), { fallback: null, removeMalformed: true });
-    if (!value || value.version !== VERSION || value.gameId !== gameId) return null;
-    if (!Number.isFinite(value.whiteTime) || !Number.isFinite(value.blackTime)) return null;
-    if (!['w', 'b'].includes(value.activeColor)) return null;
-    if (!Number.isFinite(value.savedAt)) return null;
-    return value;
-  } catch { return null; }
+  const value = readJsonStorage(STORAGE_LOCAL, key(gameId), { fallback: null, removeMalformed: true });
+  if (!value || value.version !== VERSION || value.gameId !== gameId) return null;
+  if (!Number.isFinite(value.whiteTime) || !Number.isFinite(value.blackTime)) return null;
+  if (!['w', 'b'].includes(value.activeColor)) return null;
+  if (!Number.isFinite(value.savedAt)) return null;
+  return value;
 }
 
 export function saveClockSnapshot({ gameId, timeControlId, whiteTime, blackTime, activeColor, now = Date.now() }) {
