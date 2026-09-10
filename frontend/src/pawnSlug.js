@@ -1,3 +1,5 @@
+export { PAWN_SLUG_WEAPON_MODELS, pawnSlugApplyWeaponModel, pawnSlugWeaponModel } from './pawnSlugWeaponModels.js';
+
 export const PAWN_SLUG_WORLD = Object.freeze({
   width: 5200,
   groundY: 420,
