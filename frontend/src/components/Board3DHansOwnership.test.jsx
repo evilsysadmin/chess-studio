@@ -5,8 +5,7 @@ const harness = vi.hoisted(() => ({
   marker: null,
   acquire: vi.fn(),
   release: vi.fn(),
-  hasSeen: vi.fn(() => false),
-  markSeen: vi.fn(),
+  hasCompleted: vi.fn(() => false),
 }));
 
 vi.mock('react', async () => {
@@ -31,8 +30,7 @@ vi.mock('./WarRoomHansIteration.js', () => ({
   releaseWarRoomHansQuickIteration: harness.release,
 }));
 vi.mock('./WarRoomHansPerGame.js', () => ({
-  hasWarRoomHansAppearedForGame: harness.hasSeen,
-  markWarRoomHansAppearedForGame: harness.markSeen,
+  hasWarRoomHansCompletedForGame: harness.hasCompleted,
 }));
 
 import Board3D from './Board3D.jsx';
@@ -43,17 +41,15 @@ describe('Board3D Hans quick-iteration ownership', () => {
     harness.marker = null;
     harness.acquire.mockClear();
     harness.release.mockClear();
-    harness.hasSeen.mockReset();
-    harness.hasSeen.mockReturnValue(false);
-    harness.markSeen.mockClear();
+    harness.hasCompleted.mockReset();
+    harness.hasCompleted.mockReturnValue(false);
   });
 
-  it('mantiene el permiso de Hans durante toda la vida de una partida todavía no vista', () => {
+  it('mantiene el lease de Hans durante una secuencia todavía no completada', () => {
     Board3D({ hansFireplaceIteration: true, gameId: 'game-1' });
 
-    expect(harness.hasSeen).toHaveBeenCalledWith('game-1');
+    expect(harness.hasCompleted).toHaveBeenCalledWith('game-1');
     expect(harness.acquire).toHaveBeenCalledTimes(1);
-    expect(harness.markSeen).not.toHaveBeenCalled();
     expect(harness.release).not.toHaveBeenCalled();
     expect(harness.cleanup).toBeTypeOf('function');
 
@@ -61,22 +57,20 @@ describe('Board3D Hans quick-iteration ownership', () => {
     expect(harness.release).toHaveBeenCalledTimes(1);
   });
 
-  it('un montaje transitorio que nunca pinta a Hans no consume el cameo', () => {
+  it('un montaje transitorio no puede completar el número', () => {
     Board3D({ hansFireplaceIteration: true, gameId: 'game-transient' });
     expect(harness.acquire).toHaveBeenCalledTimes(1);
-    expect(harness.markSeen).not.toHaveBeenCalled();
     harness.cleanup();
 
     harness.cleanup = null;
     Board3D({ hansFireplaceIteration: true, gameId: 'game-transient' });
 
-    expect(harness.hasSeen).toHaveBeenCalledTimes(2);
+    expect(harness.hasCompleted).toHaveBeenCalledTimes(2);
     expect(harness.acquire).toHaveBeenCalledTimes(2);
-    expect(harness.markSeen).not.toHaveBeenCalled();
     expect(harness.cleanup).toBeTypeOf('function');
   });
 
-  it('consume el cameo sólo cuando Hans está visible y dentro del viewport', () => {
+  it('Hans visible y onscreen sigue sin completar el número desde Board3D', () => {
     harness.marker = {
       getAttribute: (name) => ({
         'data-war-room-hans-runtime': 'visible',
@@ -84,20 +78,19 @@ describe('Board3D Hans quick-iteration ownership', () => {
       })[name] ?? null,
     };
 
-    Board3D({ hansFireplaceIteration: true, gameId: 'game-seen-now' });
+    Board3D({ hansFireplaceIteration: true, gameId: 'game-onscreen' });
 
+    expect(harness.hasCompleted).toHaveBeenCalledWith('game-onscreen');
     expect(harness.acquire).toHaveBeenCalledTimes(1);
-    expect(harness.markSeen).toHaveBeenCalledTimes(1);
-    expect(harness.markSeen).toHaveBeenCalledWith('game-seen-now');
+    expect(harness.release).not.toHaveBeenCalled();
   });
 
-  it('no rearma a Hans cuando esa misma partida ya confirmó el cameo', () => {
-    harness.hasSeen.mockReturnValue(true);
-    Board3D({ hansFireplaceIteration: true, gameId: 'game-seen' });
+  it('no rearma a Hans cuando esa misma partida ya completó el número', () => {
+    harness.hasCompleted.mockReturnValue(true);
+    Board3D({ hansFireplaceIteration: true, gameId: 'game-complete' });
 
-    expect(harness.hasSeen).toHaveBeenCalledWith('game-seen');
+    expect(harness.hasCompleted).toHaveBeenCalledWith('game-complete');
     expect(harness.acquire).not.toHaveBeenCalled();
-    expect(harness.markSeen).not.toHaveBeenCalled();
     expect(harness.release).not.toHaveBeenCalled();
     expect(harness.cleanup).toBeNull();
   });
@@ -106,9 +99,8 @@ describe('Board3D Hans quick-iteration ownership', () => {
     Board3D({ hansFireplaceIteration: false, gameId: 'game-2' });
     Board3D({ gameId: 'game-2' });
 
-    expect(harness.hasSeen).not.toHaveBeenCalled();
+    expect(harness.hasCompleted).not.toHaveBeenCalled();
     expect(harness.acquire).not.toHaveBeenCalled();
-    expect(harness.markSeen).not.toHaveBeenCalled();
     expect(harness.release).not.toHaveBeenCalled();
     expect(harness.cleanup).toBeNull();
   });
