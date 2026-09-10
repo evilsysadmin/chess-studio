@@ -5,6 +5,7 @@ import {
   pawnSlugEnemyActionForState,
   pawnSlugEnemyActionFrame,
   pawnSlugEnemyActionPose,
+  pawnSlugEnemyDeathDuration,
   pawnSlugEnemySourceFrame,
 } from './pawnSlugEnemyActionMotion.js';
 
@@ -23,10 +24,12 @@ describe('Pawn Slug premium soldier action motion', () => {
       crouch: { frames: 8 },
       hurt: { frames: 6 },
       climb: { frames: 12 },
+      death: { frames: 14, loop: false, groundedTailFrames: 4 },
     });
   });
 
-  it('prioritizes impact and special traversal poses over locomotion', () => {
+  it('prioritizes death, impact and special traversal poses over locomotion', () => {
+    expect(pawnSlugEnemyActionForState({ moving: true, hurt: true, airborne: true, dying: true })).toBe('death');
     expect(pawnSlugEnemyActionForState({ moving: true, hurt: true, airborne: true })).toBe('hurt');
     expect(pawnSlugEnemyActionForState({ moving: true, climbing: true })).toBe('climb');
     expect(pawnSlugEnemyActionForState({ moving: true, airborne: true })).toBe('jump');
@@ -35,9 +38,11 @@ describe('Pawn Slug premium soldier action motion', () => {
     expect(pawnSlugEnemyActionForState()).toBe('idle');
   });
 
-  it('keeps action frames deterministic and maps them into the current authored atlas safely', () => {
+  it('keeps action frames deterministic and clamps terminal death frames', () => {
     expect(pawnSlugEnemyActionFrame('run', 0)).toBe(0);
     expect(pawnSlugEnemyActionFrame('run', 1)).toBe(15);
+    expect(pawnSlugEnemyActionFrame('death', 0)).toBe(0);
+    expect(pawnSlugEnemyActionFrame('death', 99)).toBe(13);
     for (const action of Object.keys(PAWN_SLUG_ENEMY_ACTIONS)) {
       const track = PAWN_SLUG_ENEMY_ACTIONS[action];
       for (let frame = 0; frame < track.frames; frame += 1) {
@@ -59,5 +64,18 @@ describe('Pawn Slug premium soldier action motion', () => {
     expect(crouch.sy).toBeLessThan(0.8);
     expect(Math.abs(hurt.rz)).toBeGreaterThan(0.05);
     expect(climb.y).toBeGreaterThan(0);
+  });
+
+  it('keeps the last four death frames grounded for every soldier class', () => {
+    expect(pawnSlugEnemyDeathDuration('pawn')).toBeGreaterThan(0.6);
+    expect(pawnSlugEnemyDeathDuration('rook')).toBeGreaterThan(pawnSlugEnemyDeathDuration('knight'));
+    for (const type of ['pawn', 'knight', 'rook']) {
+      for (const frame of [10, 11, 12, 13]) {
+        const pose = pawnSlugEnemyActionPose('death', frame, { type });
+        expect(pose.grounded).toBe(true);
+        expect(pose.y).toBeLessThan(0);
+        expect(pose.sy).toBeLessThan(0.6);
+      }
+    }
   });
 });
