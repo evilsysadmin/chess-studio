@@ -5,6 +5,7 @@ import './WarRoomTurnPill.css';
 import './WarRoom3DMobileControls.css';
 import './WarRoomDesktopRailLayout.css';
 import './WarRoomMatthiasDiegetic.css';
+import './WarRoomFloatingFooter.css';
 
 function resolveWarRoomSignal(game, status) {
   const text = String(status?.statusText || '').trim();
