@@ -223,6 +223,21 @@
   .illustrated-home__destination--play { min-height: 44px; }
   .illustrated-home__dungeon-copy small { display: none; }
   .illustrated-home__dungeon-copy { width: auto; min-width: 64px; }
+
+  /* The castle itself is intentionally clipped full-bleed, but the opened dungeon
+     is an overlay. Let that state escape the stage clip and pin the panel to the viewport. */
+  .illustrated-home__stage:has(.illustrated-home__utilities.is-open) { overflow: visible; }
+  .illustrated-home__utilities.is-open { z-index: 80; }
+  .illustrated-home__utilities.is-open > .illustrated-home__dungeon-panel {
+    position: fixed !important;
+    inset: auto 10px 12px 10px !important;
+    width: auto !important;
+    max-height: 62dvh !important;
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
