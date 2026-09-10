@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 
-export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v6-corner-window';
-export const WAR_ROOM_WINDOW_CORNER_POSE_VERSION = 'weather-window-corner-pose-v1';
+export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v7-corner-window-clearance';
+export const WAR_ROOM_WINDOW_CORNER_POSE_VERSION = 'weather-window-corner-pose-v2';
 
 const WINDOW_CORNER_ANGLE = THREE.MathUtils.degToRad(26);
-const WINDOW_CORNER_SCALE_X = 1.28;
-const WINDOW_CORNER_INSET = 0.08;
+const WINDOW_CORNER_SCALE_X = 0.9;
+const WINDOW_CORNER_TARGET_X = 7.15;
 
 function rootLocalBounds(root, object) {
   object.updateMatrixWorld?.(true);
@@ -54,17 +54,19 @@ export function applyWarRoomWeatherWindowCornerPose(root) {
   const pivotWorld = worldBox.getCenter(new THREE.Vector3());
   const pivotLocal = weatherWindow.worldToLocal(pivotWorld.clone());
   const desiredRootPivot = root.worldToLocal(pivotWorld.clone());
-  desiredRootPivot.x -= side * WINDOW_CORNER_INSET;
-  const desiredPivotWorld = root.localToWorld(desiredRootPivot.clone());
 
-  // The approved mock places the whole opening on the corner/chamfer rather
-  // than shrinking it against the rear wall. Rotate around the visual centre
-  // so sky, rain, glazing and frame remain a single architectural object.
+  // Canonical mock: the weather opening lives on the right chamfer, outside
+  // the rear-wall gallery vignette. Keep its visual centre near the side wall
+  // and slightly narrow the old over-wide post-process so the whole arch is
+  // visible without colliding with the painting/shelf cluster.
+  desiredRootPivot.x = side * WINDOW_CORNER_TARGET_X;
+
   weatherWindow.rotation.y = -side * WINDOW_CORNER_ANGLE;
   weatherWindow.scale.x = WINDOW_CORNER_SCALE_X;
   weatherWindow.updateMatrixWorld?.(true);
 
   const movedPivotWorld = weatherWindow.localToWorld(pivotLocal.clone());
+  const desiredPivotWorld = root.localToWorld(desiredRootPivot.clone());
   const desiredParentPivot = parent.worldToLocal(desiredPivotWorld.clone());
   const movedParentPivot = parent.worldToLocal(movedPivotWorld.clone());
   weatherWindow.position.add(desiredParentPivot.sub(movedParentPivot));
@@ -73,9 +75,10 @@ export function applyWarRoomWeatherWindowCornerPose(root) {
   weatherWindow.userData.warRoomCornerPose = WAR_ROOM_WINDOW_CORNER_POSE_VERSION;
   weatherWindow.userData.warRoomCornerAngleDegrees = 26;
   weatherWindow.userData.warRoomCornerScaleX = WINDOW_CORNER_SCALE_X;
-  weatherWindow.userData.warRoomCanonicalComposition = 'hearth-left-gallery-right-corner-window-plant-v6';
+  weatherWindow.userData.warRoomCornerTargetX = WINDOW_CORNER_TARGET_X;
+  weatherWindow.userData.warRoomCanonicalComposition = 'hearth-left-gallery-right-clear-corner-window-plant-v7';
   if (root.userData) {
-    root.userData.warRoomCanonicalComposition = 'hearth-left-gallery-right-corner-window-plant-v6';
+    root.userData.warRoomCanonicalComposition = 'hearth-left-gallery-right-clear-corner-window-plant-v7';
   }
   return 1;
 }
@@ -103,7 +106,7 @@ function placeWarRoomHansPlant(root, group, floor) {
     const sideName = canonicalAnchor.x < 0 ? 'left' : 'right';
     group.userData.warRoomPlantSide = sideName;
     group.userData.warRoomPlantHearthRelation = 'opposite';
-    group.userData.warRoomPlantPlacement = `beside-${sideName}-weather-window-v6`;
+    group.userData.warRoomPlantPlacement = `beside-${sideName}-weather-window-v7`;
     group.userData.warRoomPlantLightRelation = 'window-daylight';
     group.position.set(canonicalAnchor.x, -0.255, canonicalAnchor.z);
     return group;
@@ -139,8 +142,7 @@ function placeWarRoomHansPlant(root, group, floor) {
 export function ensureWarRoomHansPlant(root) {
   if (!root) return null;
 
-  // The window is already built when permanent room dressing is finalized.
-  // Lock its approved corner pose before deriving the plant anchor from it.
+  // Lock the approved clear-corner pose before deriving the plant anchor.
   applyWarRoomWeatherWindowCornerPose(root);
 
   const existing = root.getObjectByName?.('war-room-hans-plant');
