@@ -54,11 +54,10 @@ export function shouldRefreshMaterialGrade({
 }
 
 export function warRoomHemisphereIntensity({ coarsePointer = false } = {}) {
-  // The War Room already has practical room lighting plus the board key/rim/warm
-  // package. Keep desktop hemisphere as low-level fill only so ivory retains
-  // self-shadowing and separation from light squares. Touch keeps its readability
-  // contract until it can be tuned independently on-device.
-  return coarsePointer ? 1.35 : 0.55;
+  // The room practicals and directional key now do the modelling work. Keep the
+  // desktop hemisphere as a very low fill so pale ivory preserves self-shadowing;
+  // touch keeps its established readability contract until tuned independently.
+  return coarsePointer ? 1.35 : 0.35;
 }
 
 export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {}) {
@@ -408,16 +407,15 @@ function installWarRoomRenderDiscipline() {
 installWarRoomRenderDiscipline();
 
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
-  // Fine tuning after live visual review: keep room practicals and global exposure
-  // untouched, and lower only the desktop directional key one modest notch. The
-  // render boundary separately normalizes the fixed hemisphere fill that was masking
-  // this key reduction on ivory pieces and light tiles.
+  // The War Room already has fireplace/torch practicals plus the directional key.
+  // Keep the board's point lights as restrained accent fill instead of a second
+  // studio-lighting rig that flattens pale ivory and light squares.
   const baseExposure = coarsePointer ? 1.005 : 1.04;
   if (gameOver) {
     return {
       key: coarsePointer ? 1.52 : 1.26,
-      rim: coarsePointer ? 7.1 : 6.8,
-      warm: coarsePointer ? 3.0 : 2.75,
+      rim: coarsePointer ? 7.1 : 3.2,
+      warm: coarsePointer ? 3.0 : 1.2,
       exposure: baseExposure - 0.075,
       fogDensity: coarsePointer ? 0.0215 : 0.0225,
     };
@@ -425,16 +423,16 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
   if (check) {
     return {
       key: coarsePointer ? 2.32 : 1.74,
-      rim: coarsePointer ? 16.8 : 16.4,
-      warm: coarsePointer ? 4.9 : 4.55,
+      rim: coarsePointer ? 16.8 : 8.0,
+      warm: coarsePointer ? 4.9 : 2.0,
       exposure: baseExposure + 0.005,
       fogDensity: coarsePointer ? 0.019 : 0.0192,
     };
   }
   return {
     key: coarsePointer ? 1.99 : 1.42,
-    rim: coarsePointer ? 12.6 : 12.15,
-    warm: coarsePointer ? 5.0 : 4.85,
+    rim: coarsePointer ? 12.6 : 5.8,
+    warm: coarsePointer ? 5.0 : 2.0,
     exposure: baseExposure,
     fogDensity: coarsePointer ? 0.0178 : 0.0172,
   };
