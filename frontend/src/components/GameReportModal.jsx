@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { analyzeGame } from '../gameReport.js';
+import { buildShortCounterfactual, counterfactualInputFromReportMove } from '../postGameCounterfactual.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { savePersonalPuzzlesFromReport } from '../personalPuzzles.js';
 import { accuracyScore, archiveAnalysis, bestMoveOfReport, explainMoveReport, moveContextLines, pointOfNoReturn } from '../advancedCareer.js';
@@ -52,11 +53,15 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
   const [matthiasPosition, setMatthiasPosition] = useState(null);
   const [matthiasPositionStatus, setMatthiasPositionStatus] = useState('idle');
   const [showCinematicAutopsy, setShowCinematicAutopsy] = useState(false);
+  const [worstCounterfactual, setWorstCounterfactual] = useState({ status: 'idle', line: [] });
+  const worstCounterfactualAbortRef = useRef(null);
   const archivedRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
     const controller = new AbortController();
+    worstCounterfactualAbortRef.current?.abort();
+    setWorstCounterfactual({ status: 'idle', line: [] });
     (async () => {
       try {
         const result = await analyzeGame(history, humanColor, api, { signal: controller.signal, initialFen: meta.initialFen || null });
@@ -68,6 +73,7 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
     return () => {
       cancelled = true;
       controller.abort(new DOMException('Autopsy closed', 'AbortError'));
+      worstCounterfactualAbortRef.current?.abort();
     };
   }, [history, humanColor, meta.initialFen]);
 
@@ -118,12 +124,41 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
     setMatthiasPositionStatus(text ? 'done' : 'unavailable');
   }
 
+  async function revealWorstCounterfactual() {
+    if (!report?.worst || worstCounterfactual.status === 'loading' || worstCounterfactual.status === 'done') return;
+    const input = counterfactualInputFromReportMove(report.worst);
+    if (!input) {
+      setWorstCounterfactual({ status: 'unavailable', line: [] });
+      return;
+    }
+
+    worstCounterfactualAbortRef.current?.abort();
+    const controller = new AbortController();
+    worstCounterfactualAbortRef.current = controller;
+    setWorstCounterfactual({ status: 'loading', line: [] });
+    try {
+      const result = await buildShortCounterfactual({
+        ...input,
+        analyzeMove: (fen, level, options) => api.analyzeMove(fen, undefined, undefined, undefined, level, options),
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
+      setWorstCounterfactual(result?.line?.length
+        ? { status: 'done', line: result.line }
+        : { status: 'unavailable', line: [] });
+    } catch (error) {
+      if (controller.signal.aborted || error?.name === 'AbortError') return;
+      setWorstCounterfactual({ status: 'unavailable', line: [] });
+    }
+  }
+
   const incidents = report?.topMistakes?.filter((m) => m.loss > 15) || [];
   const accuracy = report ? accuracyScore(report) : null;
   const best = report ? bestMoveOfReport(report) : null;
   const noReturn = report ? pointOfNoReturn(report) : null;
   const keyMoments = report ? keyGameMoments(report) : [];
   const cleanEvidence = report ? cleanGameEvidence(report, meta) : null;
+  const worstCounterfactualInput = report ? counterfactualInputFromReportMove(report.worst) : null;
 
   return <>
     <div className="modal-backdrop" onClick={onClose}>
@@ -165,10 +200,13 @@ export default function GameReportModal({ history, humanColor, onClose, onOpenCr
 
             <div className="autopsy-actions">
               {keyMoments.length > 0 && <button className="primary-btn cinematic-autopsy-btn" onClick={() => setShowCinematicAutopsy(true)}>🎬 Autopsia cinematográfica · {keyMoments.length} {keyMoments.length === 1 ? 'momento' : 'momentos'}</button>}
+              {worstCounterfactualInput && report.worst?.loss > 15 && worstCounterfactual.status !== 'done' && <button className="secondary-btn" disabled={worstCounterfactual.status === 'loading'} onClick={() => void revealWorstCounterfactual()}>{worstCounterfactual.status === 'loading' ? 'Calculando línea corta…' : worstCounterfactual.status === 'unavailable' ? '♟ Reintentar línea corta' : `♟ Ver línea corta · ${report.worst.suggested}`}</button>}
               {report.worst && report.worst.loss > 15 && onOpenCrimeScene && <button className="secondary-btn crime-scene-btn" onClick={() => onOpenCrimeScene(report.worst, report)}>🎥 Ver solo el peor momento · jugada {report.worst.moveNumber}</button>}
               {report.worst && onShareIncident && <button className="secondary-btn" onClick={() => onShareIncident(report.worst, report)}>📤 Compartir</button>}
               {report.worst && <button className="secondary-btn" disabled={matthiasPositionStatus === 'loading'} onClick={() => void askMatthiasAboutWorst()}>{matthiasPositionStatus === 'loading' ? 'Matthias está mirando…' : '♟ Preguntar a Matthias'}</button>}
             </div>
+            {worstCounterfactual.status === 'done' && <div className="autopsy-training-note" data-worst-counterfactual="done"><b>Si jugabas {report.worst.suggested}</b> · {worstCounterfactual.line.map((move) => move.san).join(' · ')}. Línea determinista de hasta 3 medias jugadas desde la posición real.</div>}
+            {worstCounterfactual.status === 'unavailable' && <p className="hint-text">No se pudo extender la variante ahora mismo; la alternativa original del análisis sigue siendo válida.</p>}
             {matthiasPosition && <div className="ai-task-card matthias-position-answer"><small>MATTHIAS // ESTA POSICIÓN</small><div className="matthias-inline-answer"><img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" /><p>{matthiasPosition}</p></div></div>}
             {matthiasPositionStatus === 'unavailable' && <p className="hint-text">Matthias no ha podido revisar esta posición ahora mismo. El análisis del motor de arriba sigue siendo válido.</p>}
 
