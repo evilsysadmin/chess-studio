@@ -66,7 +66,7 @@ describe('War Room Hans live render bridge', () => {
     expect(fireplace?.userData?.warRoomHansEventSelected).toBe(true);
     expect(fireplace?.userData?.warRoomHansFireNarrative).toBe(WAR_ROOM_HANS_FIRE_NARRATIVE_VERSION);
     expect(fireplace?.userData?.warRoomHansFireNarrativePhase).toBe('hearth-cold');
-    expect(driver?.userData?.warRoomHansFireNarrativePolicy).toBe('already-cold-then-rekindle-v1');
+    expect(driver?.userData?.warRoomHansFireNarrativePolicy).toBe('already-cold-then-rekindle-no-board-bounce-v2');
     expect(fireCore?.visible).toBe(false);
     expect(Number(fireLight?.intensity || 0)).toBeGreaterThan(0);
     expect(Number(fireLight?.intensity || 0)).toBeLessThan(1);

@@ -1,4 +1,4 @@
-export const WAR_ROOM_HANS_FIRE_NARRATIVE_VERSION = 'cold-hearth-call-v1';
+export const WAR_ROOM_HANS_FIRE_NARRATIVE_VERSION = 'cold-hearth-call-v2';
 export const WAR_ROOM_HANS_COLD_FIRE_SCALE = 0;
 
 const HANS_DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -41,7 +41,7 @@ export function warRoomHansNarrativeFireState({ phase = '', sourceScale = 1 } = 
       flameScale: WAR_ROOM_HANS_COLD_FIRE_SCALE,
       lightScale: 0.035,
       distanceScale: 0.36,
-      bounceScale: 0.025,
+      bounceScale: 0,
     };
   }
 
@@ -56,7 +56,10 @@ export function warRoomHansNarrativeFireState({ phase = '', sourceScale = 1 } = 
       flameScale: 0.025 + progress * 1.055,
       lightScale: 0.045 + progress * 0.955,
       distanceScale: 0.38 + progress * 0.62,
-      bounceScale: 0.03 + progress * 0.97,
+      // The castle driver creates this auxiliary PointLight on the first real
+      // render. Keeping it dark prevents a one-frame-late fill from washing the
+      // board while the visible fireplace light still carries the rekindle.
+      bounceScale: 0,
     };
   }
 
@@ -64,6 +67,7 @@ export function warRoomHansNarrativeFireState({ phase = '', sourceScale = 1 } = 
     mode: 'passthrough',
     narrativePhase: 'hearth-lit',
     flameVisible: true,
+    bounceScale: 0,
   };
 }
 
@@ -108,6 +112,16 @@ function applyNarrativeVisuals(refs, driver) {
   refs.fireplace.userData.warRoomHansFireNarrative = WAR_ROOM_HANS_FIRE_NARRATIVE_VERSION;
   refs.fireplace.userData.warRoomHansFireNarrativePhase = state.narrativePhase;
 
+  // The bounce light is intentionally born inside the castle driver's first
+  // onBeforeRender. Resolve it on every pass until it exists, then keep it dark
+  // so subsequent heartbeats cannot change the board's apparent white balance.
+  const bounce = resolveBounce(refs);
+  if (bounce) {
+    bounce.intensity = refs.bounceBaseIntensity * state.bounceScale;
+    bounce.userData ||= {};
+    bounce.userData.warRoomBoardSpill = 'disabled-v1';
+  }
+
   if (state.mode === 'passthrough') {
     refs.fireCore.visible = true;
     return state;
@@ -123,9 +137,6 @@ function applyNarrativeVisuals(refs, driver) {
   );
   refs.fireLight.intensity = refs.fireLightBaseIntensity * state.lightScale;
   refs.fireLight.distance = refs.fireLightBaseDistance * state.distanceScale;
-
-  const bounce = resolveBounce(refs);
-  if (bounce) bounce.intensity = refs.bounceBaseIntensity * state.bounceScale;
   return state;
 }
 
@@ -156,7 +167,7 @@ export function installWarRoomHansFireNarrative(root) {
   };
 
   driver.userData.warRoomHansFireNarrative = WAR_ROOM_HANS_FIRE_NARRATIVE_VERSION;
-  driver.userData.warRoomHansFireNarrativePolicy = 'already-cold-then-rekindle-v1';
+  driver.userData.warRoomHansFireNarrativePolicy = 'already-cold-then-rekindle-no-board-bounce-v2';
 
   applyNarrativeVisuals(refs, driver);
 
