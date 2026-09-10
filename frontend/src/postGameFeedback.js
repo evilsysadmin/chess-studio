@@ -1,5 +1,5 @@
 import { getUsername } from './auth.js';
-import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, setStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, readJsonStorage, setStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 
 export const POST_GAME_FEEDBACK_KEY = 'chess-study-post-game-feedback-v1';
@@ -10,12 +10,8 @@ const SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 const THANK_YOU_MS = 14 * 24 * 60 * 60 * 1000;
 
 function readState() {
-  try {
-    const parsed = JSON.parse(getStorageItem(STORAGE_LOCAL, POST_GAME_FEEDBACK_KEY) || '{}');
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
+  const parsed = readJsonStorage(STORAGE_LOCAL, POST_GAME_FEEDBACK_KEY, { fallback: {} });
+  return parsed && typeof parsed === 'object' ? parsed : {};
 }
 
 function writeState(state) {

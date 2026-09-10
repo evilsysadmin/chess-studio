@@ -1,4 +1,4 @@
-import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 
 export const CLEAN_GAMES_KEY = 'chess-study-clean-games-v1';
@@ -7,12 +7,8 @@ const MAX_RECORDS = 100;
 const MAJOR_MINOR = new Set(['q', 'r', 'b', 'n']);
 
 function safeRecords() {
-  try {
-    const parsed = JSON.parse(getStorageItem(STORAGE_LOCAL, CLEAN_GAMES_KEY) || '{}');
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
+  const parsed = readJsonStorage(STORAGE_LOCAL, CLEAN_GAMES_KEY, { fallback: {} });
+  return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
 }
 
 function finiteRows(report) {
