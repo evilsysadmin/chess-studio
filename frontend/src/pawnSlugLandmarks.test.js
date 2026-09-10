@@ -34,16 +34,21 @@ describe('Pawn Slug premium landmarks', () => {
     expect(root.getObjectByName('pawn-slug-landmark-boss-fortress')).toBeTruthy();
     expect(root.getObjectByName('pawn-slug-dungeon-arch')).toBeTruthy();
     expect(root.getObjectByName('pawn-slug-dungeon-chain')).toBeTruthy();
+    expect(root.getObjectByName('pawn-slug-dungeon-drain')).toBeTruthy();
+    expect(root.getObjectByName('pawn-slug-dungeon-depth-shadow')).toBeTruthy();
     expect(root.getObjectByName('pawn-slug-boss-fortress-arch')).toBeTruthy();
     expect(root.getObjectByName('pawn-slug-barricade-hedgehog')).toBeTruthy();
     expect(root.children).toHaveLength(5);
   });
 
-  it('marks the dungeon slice as a canonical premium scenario beat', () => {
-    const root = createPawnSlugPremiumLandmarks(new THREE.Group());
-    const dungeon = root.getObjectByName('pawn-slug-landmark-dungeon-gate');
-    expect(dungeon.userData.premiumScenario).toBe('castle-dungeon');
-    expect(dungeon.position.x).toBe(48.5);
+  it('marks the dungeon slice as a canonical premium scenario beat with real scenic span', () => {
+    const desktop = createPawnSlugPremiumLandmarks(new THREE.Group(), { coarse: false });
+    const coarse = createPawnSlugPremiumLandmarks(new THREE.Group(), { coarse: true });
+    const desktopDungeon = desktop.getObjectByName('pawn-slug-landmark-dungeon-gate');
+    const coarseDungeon = coarse.getObjectByName('pawn-slug-landmark-dungeon-gate');
+    expect(desktopDungeon.userData.premiumScenario).toBe('castle-dungeon');
+    expect(desktopDungeon.userData.scenarioSpan).toBeGreaterThan(coarseDungeon.userData.scenarioSpan);
+    expect(desktopDungeon.position.x).toBe(48.5);
   });
 
   it('marks the fortress as the real boss arena rather than a decorative wallpaper', () => {
@@ -84,6 +89,7 @@ describe('Pawn Slug premium landmarks', () => {
     expect(coarse.children).toHaveLength(desktop.children.length);
     expect(coarse.getObjectByName('pawn-slug-barricade-hedgehog')).toBeFalsy();
     expect(coarse.getObjectByName('pawn-slug-dungeon-fallen-pawn')).toBeFalsy();
+    expect(coarse.getObjectByName('pawn-slug-dungeon-depth-shadow')).toBeFalsy();
     expect(coarse.getObjectByName('pawn-slug-landmark-dungeon-gate')).toBeTruthy();
     expect(coarse.getObjectByName('pawn-slug-landmark-boss-fortress')).toBeTruthy();
   });
