@@ -8,6 +8,7 @@ import { STORAGE_SESSION, getStorageItem, readJsonStorage, removeStorageItem, se
 
 export const VIEW_STORAGE_KEY = 'chess-study-current-view';
 export const VIEW_HISTORY_STORAGE_KEY = 'chess-study-view-history';
+const MAX_VIEW_HISTORY = 40;
 
 const RESTORABLE_VIEWS = Object.freeze([
   'menu',
@@ -42,13 +43,13 @@ export function rememberSessionView(view) {
 export function loadSessionViewHistory({ isAdminUser = false } = {}) {
   const parsed = readJsonStorage(STORAGE_SESSION, VIEW_HISTORY_STORAGE_KEY, { fallback: [], removeMalformed: true });
   if (!Array.isArray(parsed)) return [];
-  return parsed.filter((view) => allowedView(view, { isAdminUser })).slice(-40);
+  return parsed.filter((view) => allowedView(view, { isAdminUser })).slice(-MAX_VIEW_HISTORY);
 }
 
 export function rememberSessionViewHistory(history) {
   const safe = (Array.isArray(history) ? history : [])
     .filter((view) => RESTORABLE_VIEWS.includes(view))
-    .slice(-40);
+    .slice(-MAX_VIEW_HISTORY);
   writeJsonStorage(STORAGE_SESSION, VIEW_HISTORY_STORAGE_KEY, safe);
 }
 
