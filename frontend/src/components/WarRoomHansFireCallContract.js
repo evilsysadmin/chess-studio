@@ -11,6 +11,7 @@ export const MATTHIAS_HANS_WORKING_MS = 2600;
 export const HANS_WORKING_REPLY_MS = 2000;
 export const HANS_LEAVING_GRUMBLE_MS = 1500;
 export const HANS_BOARD_PEEK_ROUTE = 'leave-bypass';
+export const HANS_BOARD_PEEK_CHOREOGRAPHY_PHASE = 'satisfied';
 export const HANS_INITIAL_REPLY_ENTRY_MAX_LOGICAL_X = 1.82;
 export const MATTHIAS_FIRE_EPILOGUE_LINE = 'En fin. ¿Por dónde íbamos?';
 export const MATTHIAS_FIRE_EPILOGUE_MS = 1900;
@@ -63,16 +64,19 @@ export function hansInitialReplyPointReached({
     && !routeName.startsWith('leave-');
 }
 
-export function hansBoardPeekPointReached({ phase, route } = {}) {
-  // The route is the semantic arrival signal. Do not gate the dialogue on Hans'
-  // rendered X: collision/door guards are allowed to clamp that coordinate to
-  // fit room geometry, and doing so must never silently skip the narrative.
-  return phase === 'await-exit-peek'
-    && route === HANS_BOARD_PEEK_ROUTE;
+export function hansBoardPeekPointReached({ phase, route, choreographyPhase = '' } = {}) {
+  if (phase !== 'await-exit-peek') return false;
+
+  // The hearth number is semantically complete once Hans has returned the poker
+  // and reaches the satisfied beat. Slow/software renderers can take much longer
+  // to reach one exact corridor coordinate even though the work is already done.
+  // Keep leave-bypass as a compatibility fallback for older scene telemetry.
+  return choreographyPhase === HANS_BOARD_PEEK_CHOREOGRAPHY_PHASE
+    || route === HANS_BOARD_PEEK_ROUTE;
 }
 
-export function shouldStartHansBoardPeek({ phase, route, suggestion } = {}) {
-  return hansBoardPeekPointReached({ phase, route })
+export function shouldStartHansBoardPeek({ phase, route, choreographyPhase, suggestion } = {}) {
+  return hansBoardPeekPointReached({ phase, route, choreographyPhase })
     && Boolean(suggestion?.line);
 }
 
