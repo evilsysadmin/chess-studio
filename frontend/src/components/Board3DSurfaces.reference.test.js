@@ -4,6 +4,7 @@ import {
   applyPremiumDecorSurfacePass,
   getCameraFramingProfile,
   makePremiumPieceMaterial,
+  makePremiumTileMaterial,
 } from './Board3DSurfaces.js';
 
 const skin = {
@@ -35,6 +36,18 @@ describe('Board3D reference look', () => {
     expect(ivory.envMapIntensity).toBe(0);
 
     disposeMaterial(ivory);
+  });
+
+  it('mantiene la casilla clara mate estable cuando entra el IBL diferido', () => {
+    const light = makePremiumTileMaterial({ color: 0xd9cfba, light: true, coarsePointer: false });
+    const dark = makePremiumTileMaterial({ color: 0x76513f, light: false, coarsePointer: false });
+
+    expect(light.userData.surfaceRole).toBe('board-light');
+    expect(light.envMapIntensity).toBe(0);
+    expect(dark.envMapIntensity).toBeGreaterThan(0);
+
+    disposeMaterial(light);
+    disposeMaterial(dark);
   });
 
   it('oscurece y mata el barniz de los muebles existentes', () => {
