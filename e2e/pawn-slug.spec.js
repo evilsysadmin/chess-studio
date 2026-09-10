@@ -59,12 +59,13 @@ test('Pawn Slug · arranca con pistola y arsenal seleccionable sin tocar el ajed
 
   const stage = page.locator('[data-pawn-slug-renderer="three"]');
   await expect(stage).toBeVisible();
-  await expect(stage.locator('canvas')).toBeVisible();
+  await expect(stage.locator('canvas')).toHaveCount(0);
   await expect(page.getByText('BAUERNSCHLAG', { exact: true })).toBeVisible();
   await expect(page.getByText(/Cero ELO/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'INICIAR OPERACIÓN', exact: true })).toBeVisible();
 
   const arsenal = await startPawnSlug(page);
+  await expect(stage.locator('canvas')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('OPERACIÓN BAUERNSCHLAG', { exact: true })).toBeVisible();
   await expect(arsenal).toBeVisible();
   await expect(page.locator('.pawn-slug-hud').getByText('Mk I · ∞', { exact: true })).toBeVisible();
