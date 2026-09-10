@@ -61,6 +61,39 @@ test('Home canónica · el arte y los destinos comparten el lienzo 16:9 sin over
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
+test('Home canónica · móvil usa la escena a pantalla completa sin cementerio negro inferior', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const home = await openCanonicalHome(page);
+  const stage = home.locator('.illustrated-home__stage');
+  const art = home.locator('.illustrated-home__art');
+
+  const [homeBox, stageBox, artBox] = await Promise.all([home.boundingBox(), stage.boundingBox(), art.boundingBox()]);
+  expect(homeBox).not.toBeNull();
+  expect(stageBox).not.toBeNull();
+  expect(artBox).not.toBeNull();
+  expect(homeBox.height).toBeGreaterThanOrEqual(842);
+  expect(stageBox.height).toBeGreaterThanOrEqual(842);
+  expect(artBox.height).toBeGreaterThanOrEqual(842);
+  expect(Math.abs(stageBox.height - artBox.height)).toBeLessThanOrEqual(1);
+
+  for (const selector of [
+    '.illustrated-home__destination--tournament',
+    '.illustrated-home__destination--train',
+    '.illustrated-home__destination--combat',
+    '.illustrated-home__destination--daily',
+    '.illustrated-home__destination--history',
+    '.illustrated-home__destination--play',
+    '.illustrated-home__matthias',
+  ]) {
+    const box = await home.locator(selector).boundingBox();
+    expect(box).not.toBeNull();
+    expect(box.y).toBeGreaterThanOrEqual(-1);
+    expect(box.y + box.height).toBeLessThanOrEqual(845);
+  }
+
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
 test('Home canónica · ultrapanorámica llena el viewport y mantiene la UI clave dentro de zona segura', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 900 });
   const home = await openCanonicalHome(page);
