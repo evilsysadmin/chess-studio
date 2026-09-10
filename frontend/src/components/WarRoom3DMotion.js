@@ -54,10 +54,11 @@ export function shouldRefreshMaterialGrade({
 }
 
 export function warRoomHemisphereIntensity({ coarsePointer = false } = {}) {
-  // Keep the darker desktop grade, but preserve enough global fill for the room
-  // architecture, armor and board surround to remain readable around the practicals.
-  // Touch/coarse devices keep their established brighter readability contract.
-  return coarsePointer ? 1.35 : 1.24;
+  // The War Room already has practical room lighting plus the board key/rim/warm
+  // package. Keep desktop hemisphere as low-level fill only so ivory retains
+  // self-shadowing and separation from light squares. Touch keeps its readability
+  // contract until it can be tuned independently on-device.
+  return coarsePointer ? 1.35 : 0.55;
 }
 
 export function applyWarRoomHemisphereGrade(scene, { coarsePointer = false } = {}) {
