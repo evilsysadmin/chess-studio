@@ -4,15 +4,54 @@ import { installWarRoomHansBoardPeekPose } from './WarRoomHansBoardPeekPose.js';
 import { installWarRoomHansFacingGuard } from './WarRoomHansFacingGuard.js';
 import { installWarRoomHansHearthFacingGuard } from './WarRoomHansHearthFacingGuard.js';
 import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
-import {
-  createHansWalkCycle,
-  resetHansWalkCycle,
-} from './HansWalkCycle.js';
 
-export const WAR_ROOM_HANS_ANIMATOR_VERSION = 'war-room-hans-animator-v2-body-owner-single-gait';
+export const WAR_ROOM_HANS_ANIMATOR_VERSION = 'war-room-hans-animator-v3-pose-baseline-single-gait';
 export const WAR_ROOM_HANS_GAIT_OWNER = 'articulated-walk-distance-owner-v1';
+export const WAR_ROOM_HANS_POSE_BASELINE_VERSION = 'hans-task-pose-baseline-v1';
 
 const TARGET_EPSILON = 0.09;
+const CORE_RESET_PARTS = Object.freeze([
+  'leftKnee',
+  'rightKnee',
+  'leftAnkle',
+  'rightAnkle',
+  'leftLeg',
+  'rightLeg',
+]);
+const FULL_RESET_PARTS = Object.freeze([
+  'leftKnee',
+  'rightKnee',
+  'leftAnkle',
+  'rightAnkle',
+  'leftShoe',
+  'rightShoe',
+  'leftLeg',
+  'rightLeg',
+  'torso',
+  'head',
+  'leftArm',
+  'rightArm',
+  'cane',
+  'tailcoat',
+]);
+
+function capturePart(part) {
+  if (!part?.position || !part?.rotation) return null;
+  return {
+    x: part.position.x,
+    y: part.position.y,
+    z: part.position.z,
+    rx: part.rotation.x,
+    ry: part.rotation.y,
+    rz: part.rotation.z,
+  };
+}
+
+function restorePart(part, base) {
+  if (!part || !base) return;
+  part.position.set(base.x, base.y, base.z);
+  part.rotation.set(base.rx, base.ry, base.rz);
+}
 
 function markAnimator(root, hans, driver, installed = []) {
   if (root?.userData) root.userData.warRoomHansAnimator = WAR_ROOM_HANS_ANIMATOR_VERSION;
@@ -51,16 +90,38 @@ export function moveWarRoomHansToward(hans, target, maxStep) {
   return { arrived: distance - step <= TARGET_EPSILON, travelled: step, blocked: false };
 }
 
-// Transitional pose-baseline controller. Service/chore/mop still use this to
-// restore their neutral body before applying an action pose. It must not drive
-// walking: the post-render ArticulatedWalk stage is the single gait owner.
-export function createWarRoomHansWalkController(actor, options = {}) {
-  const controller = createHansWalkCycle(actor?.body, options);
-  if (controller) {
-    controller.warRoomHansCompatibilityResetOnly = true;
-    controller.warRoomHansGaitOwner = WAR_ROOM_HANS_GAIT_OWNER;
+export function createWarRoomHansPoseBaseline(actor) {
+  const body = actor?.body;
+  if (!body) return null;
+  const bases = {};
+  for (const key of FULL_RESET_PARTS) {
+    const base = capturePart(body[key]);
+    if (base) bases[key] = base;
   }
-  return controller;
+  return {
+    version: WAR_ROOM_HANS_POSE_BASELINE_VERSION,
+    body,
+    bases,
+  };
+}
+
+export function resetWarRoomHansTaskPose(baseline, { full = true } = {}) {
+  if (!baseline?.body || !baseline?.bases) return false;
+  const keys = full ? FULL_RESET_PARTS : CORE_RESET_PARTS;
+  for (const key of keys) restorePart(baseline.body[key], baseline.bases[key]);
+  return true;
+}
+
+// Transitional aliases while Service/Chore/Mop callers move to the explicit
+// pose-baseline vocabulary. These APIs no longer create or drive a walk cycle.
+export function createWarRoomHansWalkController(actor, options = {}) {
+  const baseline = createWarRoomHansPoseBaseline(actor);
+  if (baseline) {
+    baseline.forward = Math.sign(Number(options.forward) || 1) || 1;
+    baseline.warRoomHansCompatibilityResetOnly = true;
+    baseline.warRoomHansGaitOwner = WAR_ROOM_HANS_GAIT_OWNER;
+  }
+  return baseline;
 }
 
 export function advanceWarRoomHansWalk(controller, { travelled = 0 } = {}) {
@@ -76,9 +137,7 @@ export function advanceWarRoomHansWalk(controller, { travelled = 0 } = {}) {
 }
 
 export function resetWarRoomHansWalk(controller, options = {}) {
-  if (!controller) return false;
-  resetHansWalkCycle(controller, options);
-  return true;
+  return resetWarRoomHansTaskPose(controller, { full: options.full === true });
 }
 
 export function applyWarRoomHansTaskPose(actor, pose, { elapsedMs = 0 } = {}) {
