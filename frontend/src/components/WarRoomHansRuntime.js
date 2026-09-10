@@ -91,3 +91,21 @@ export function setWarRoomHansTaskPhase(runtime, phase) {
   if (actor?.driver?.userData) actor.driver.userData.warRoomHansTaskPhase = runtime.phase;
   return true;
 }
+
+export function setWarRoomHansTaskPresentation(runtime, {
+  visible,
+  motionState,
+  route,
+} = {}) {
+  const hans = runtime?.actor?.hans;
+  if (!hans) return false;
+
+  if (typeof visible === 'boolean') hans.visible = visible;
+  if (motionState !== undefined && hans.userData) {
+    hans.userData.warRoomHansMotionState = String(motionState || 'idle');
+  }
+  if (route !== undefined && hans.userData) {
+    hans.userData.warRoomHansRoute = String(route || '');
+  }
+  return true;
+}

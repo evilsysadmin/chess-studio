@@ -7,6 +7,7 @@ import {
   getWarRoomHansRuntime,
   releaseWarRoomHansTask,
   setWarRoomHansTaskPhase,
+  setWarRoomHansTaskPresentation,
   warRoomHansTaskAvailable,
   WAR_ROOM_HANS_RUNTIME_VERSION,
 } from './WarRoomHansRuntime.js';
@@ -44,6 +45,24 @@ describe('War Room Hans runtime', () => {
 
     expect(setWarRoomHansTaskPhase(runtime, 'walking-in')).toBe(true);
     expect(hans.userData.warRoomHansTaskPhase).toBe('walking-in');
+    expect(setWarRoomHansTaskPresentation(runtime, {
+      visible: true,
+      motionState: 'walk-service',
+      route: 'service-espresso',
+    })).toBe(true);
+    expect(hans.visible).toBe(true);
+    expect(hans.userData.warRoomHansMotionState).toBe('walk-service');
+    expect(hans.userData.warRoomHansRoute).toBe('service-espresso');
+
+    expect(setWarRoomHansTaskPresentation(runtime, {
+      visible: false,
+      motionState: 'idle',
+      route: '',
+    })).toBe(true);
+    expect(hans.visible).toBe(false);
+    expect(hans.userData.warRoomHansMotionState).toBe('idle');
+    expect(hans.userData.warRoomHansRoute).toBe('');
+
     expect(releaseWarRoomHansTask(runtime, 'service-espresso')).toBe(true);
     expect(getWarRoomHansActiveTask(runtime)).toBeNull();
     expect(warRoomHansTaskAvailable(runtime, 'chore-mail')).toBe(true);
