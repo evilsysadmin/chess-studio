@@ -220,3 +220,5 @@ export function pawnSlugMatthiasLine(event) {
   };
   return lines[event] || '';
 }
+
+export { PAWN_SLUG_ARMORY, PAWN_SLUG_KILL_CREDITS, pawnSlugArmoryPurchase, pawnSlugCreditsForKill } from './pawnSlugEconomy.js';
