@@ -28,6 +28,29 @@ function applyMove(board, move) {
   }
 }
 
+export function counterfactualInputFromReportMove(move) {
+  const fen = move?.context?.fenBefore;
+  if (!fen) return null;
+
+  if (move?.suggestedFrom && move?.suggestedTo) {
+    return {
+      fen,
+      suggested: {
+        from: move.suggestedFrom,
+        to: move.suggestedTo,
+        promotion: move.suggestedPromotion || null,
+        san: move.suggested || null,
+      },
+    };
+  }
+
+  if (typeof move?.suggested === 'string' && move.suggested.trim()) {
+    return { fen, suggested: { san: move.suggested.trim() } };
+  }
+
+  return null;
+}
+
 export async function buildShortCounterfactual({
   fen,
   suggested,
