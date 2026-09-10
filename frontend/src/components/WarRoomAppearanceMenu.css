@@ -13,4 +13,28 @@
   .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
     padding-right: .5rem !important;
   }
+
+  /* Compact HUD priority: identity may truncate, but the actual turn signal
+     must remain visible and measurable. This also keeps Playwright/accessibility
+     from seeing the live status region collapse to a zero-width box. */
+  .game-screen .game-layout-3d .game-3d-turn-pill-identity {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill-identity > span,
+  .game-screen .game-layout-3d .game-3d-turn-pill-identity > strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill-light,
+  .game-screen .game-layout-3d .game-3d-turn-pill-label {
+    flex: 0 0 auto;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill-label {
+    min-width: max-content;
+  }
 }
