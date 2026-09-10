@@ -49,10 +49,12 @@ describe('Pawn Slug tile maps', () => {
     expect(enemies.map(pawnSlugMarkerLegacyX)).toEqual([1940, 2110]);
   });
 
-  it('exposes deterministic scenario bounds for streaming and transitions', () => {
-    const bounds = pawnSlugScenarioBounds(PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon);
-    expect(bounds.start).toBe(44.5);
-    expect(bounds.end).toBe(54.5);
+  it('treats bounds as scenario edges so transition markers can sit on the exit edge', () => {
+    const scenario = PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon;
+    const bounds = pawnSlugScenarioBounds(scenario);
+    const [exit] = pawnSlugScenarioMarkers(scenario, 'transition');
+    expect(bounds).toEqual({ start: 44.5, end: 55.5 });
+    expect(exit.worldX).toBe(bounds.end);
     expect(Object.isFrozen(bounds)).toBe(true);
   });
 });
