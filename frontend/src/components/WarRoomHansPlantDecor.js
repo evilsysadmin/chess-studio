@@ -1,14 +1,15 @@
 import * as THREE from 'three';
 
-export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v9-side-wall-window';
-export const WAR_ROOM_WINDOW_CORNER_POSE_VERSION = 'weather-window-side-wall-pose-v1';
+export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v10-after-armor-window';
+export const WAR_ROOM_WINDOW_CORNER_POSE_VERSION = 'weather-window-side-wall-pose-v2-after-armor';
 
 const WINDOW_SIDE_WALL_ANGLE = THREE.MathUtils.degToRad(90);
-const WINDOW_SIDE_WALL_SCALE_X = 1;
+const WINDOW_SIDE_WALL_SCALE_X = 1.55;
+const WINDOW_SIDE_WALL_SCALE_Y = 1.12;
 const WINDOW_SIDE_WALL_X = 7.45;
-const WINDOW_SIDE_WALL_Z = 4.55;
+const WINDOW_SIDE_WALL_Z = 1.85;
 const WINDOW_PLANT_X = 7.05;
-const WINDOW_PLANT_Z = 3.58;
+const WINDOW_PLANT_Z = 2.85;
 
 function rootLocalBounds(root, object) {
   object.updateMatrixWorld?.(true);
@@ -58,14 +59,15 @@ export function applyWarRoomWeatherWindowCornerPose(root) {
   const pivotLocal = weatherWindow.worldToLocal(pivotWorld.clone());
   const desiredRootPivot = root.worldToLocal(pivotWorld.clone());
 
-  // Canonical side-wall composition: the rear gallery stays completely intact.
-  // Move the weather opening onto the side wall opposite Hans' service door,
-  // facing across the room instead of competing with the painting/shelf cluster.
+  // Canonical side-wall composition: keep the rear gallery intact, but place the
+  // weather opening beyond the armor toward the player so the outside conditions
+  // read clearly instead of disappearing into the rear-wall perspective.
   desiredRootPivot.x = side * WINDOW_SIDE_WALL_X;
-  desiredRootPivot.z = -side * WINDOW_SIDE_WALL_Z;
+  desiredRootPivot.z = side * WINDOW_SIDE_WALL_Z;
 
   weatherWindow.rotation.y = -side * WINDOW_SIDE_WALL_ANGLE;
   weatherWindow.scale.x = WINDOW_SIDE_WALL_SCALE_X;
+  weatherWindow.scale.y = WINDOW_SIDE_WALL_SCALE_Y;
   weatherWindow.updateMatrixWorld?.(true);
 
   const movedPivotWorld = weatherWindow.localToWorld(pivotLocal.clone());
@@ -78,17 +80,20 @@ export function applyWarRoomWeatherWindowCornerPose(root) {
   weatherWindow.userData.warRoomCornerPose = WAR_ROOM_WINDOW_CORNER_POSE_VERSION;
   weatherWindow.userData.warRoomCornerAngleDegrees = 90;
   weatherWindow.userData.warRoomCornerScaleX = WINDOW_SIDE_WALL_SCALE_X;
+  weatherWindow.userData.warRoomCornerScaleY = WINDOW_SIDE_WALL_SCALE_Y;
   weatherWindow.userData.warRoomCornerTargetX = WINDOW_SIDE_WALL_X;
-  weatherWindow.userData.warRoomCornerForwardShift = 0;
+  weatherWindow.userData.warRoomCornerTargetZ = WINDOW_SIDE_WALL_Z;
+  weatherWindow.userData.warRoomCornerForwardShift = WINDOW_SIDE_WALL_Z;
   weatherWindow.userData.warRoomWindowWall = 'side';
   weatherWindow.userData.warRoomWindowFaces = 'service-door';
+  weatherWindow.userData.warRoomWindowRelation = 'past-armor-toward-player';
   weatherWindow.userData.warRoomPlantAnchor = {
     x: side * WINDOW_PLANT_X,
-    z: -side * WINDOW_PLANT_Z,
+    z: side * WINDOW_PLANT_Z,
   };
-  weatherWindow.userData.warRoomCanonicalComposition = 'hearth-left-gallery-intact-right-wall-window-plant-v9';
+  weatherWindow.userData.warRoomCanonicalComposition = 'hearth-left-gallery-intact-right-wall-window-after-armor-plant-v10';
   if (root.userData) {
-    root.userData.warRoomCanonicalComposition = 'hearth-left-gallery-intact-right-wall-window-plant-v9';
+    root.userData.warRoomCanonicalComposition = 'hearth-left-gallery-intact-right-wall-window-after-armor-plant-v10';
   }
   return 1;
 }
@@ -116,7 +121,7 @@ function placeWarRoomHansPlant(root, group, floor) {
     const sideName = canonicalAnchor.x < 0 ? 'left' : 'right';
     group.userData.warRoomPlantSide = sideName;
     group.userData.warRoomPlantHearthRelation = 'opposite';
-    group.userData.warRoomPlantPlacement = `beneath-${sideName}-wall-weather-window-v9`;
+    group.userData.warRoomPlantPlacement = `beneath-${sideName}-wall-weather-window-v10`;
     group.userData.warRoomPlantLightRelation = 'window-daylight';
     group.position.set(canonicalAnchor.x, -0.255, canonicalAnchor.z);
     return group;
