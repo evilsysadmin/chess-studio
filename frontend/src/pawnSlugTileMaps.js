@@ -3,6 +3,7 @@ export const PAWN_SLUG_WORLD_SCALE = 1 / 40;
 
 const freezeRows = (rows) => Object.freeze(rows.map((row) => Object.freeze([...row])));
 const freezeMarkers = (markers) => Object.freeze(markers.map((marker) => Object.freeze({ ...marker })));
+const freezePlatforms = (platforms) => Object.freeze(platforms.map((platform) => Object.freeze({ ...platform })));
 
 export const PAWN_SLUG_TILE_LEGEND = Object.freeze({
   '#': Object.freeze({ kind: 'stone', layer: 'structure' }),
@@ -28,6 +29,9 @@ export const PAWN_SLUG_SCENARIO_TILEMAPS = Object.freeze({
       '|  |   | P|',
       '===========',
     ]),
+    platforms: freezePlatforms([
+      { id: 'dungeon-catwalk', x: 48.8, y: 4.15, width: 6.2, depth: 1.5, theme: 'steel', oneWay: true },
+    ]),
     markers: freezeMarkers([
       { id: 'dungeon-pickup-grenade', kind: 'pickup', type: 'grenade', worldX: 45.25 },
       { id: 'dungeon-enemy-knight', kind: 'enemy', type: 'knight', worldX: 48.5 },
@@ -36,6 +40,27 @@ export const PAWN_SLUG_SCENARIO_TILEMAPS = Object.freeze({
     ]),
   }),
 });
+
+const LEGACY_PLATFORM_LAYOUT = [
+  { id: 'ruin-steps-a', x: 14.2, y: 1.05, width: 3.3, depth: 1.45, theme: 'stone' },
+  { id: 'ruin-steps-b', x: 18.1, y: 2.35, width: 2.7, depth: 1.4, theme: 'stone' },
+  { id: 'watch-post', x: 24.7, y: 3.5, width: 4.4, depth: 1.55, theme: 'timber' },
+  { id: 'broken-bridge-a', x: 33.6, y: 1.55, width: 4.9, depth: 1.35, theme: 'steel' },
+  { id: 'broken-bridge-b', x: 39.2, y: 3.0, width: 3.0, depth: 1.35, theme: 'steel' },
+  { id: 'shell-crater-rim', x: 59.5, y: 1.35, width: 4.1, depth: 1.45, theme: 'stone' },
+  { id: 'signal-platform', x: 67.7, y: 3.1, width: 3.9, depth: 1.45, theme: 'timber' },
+  { id: 'bunker-roof', x: 77.6, y: 2.15, width: 6.8, depth: 1.65, theme: 'stone' },
+  { id: 'gantry-lower', x: 88.0, y: 1.55, width: 4.5, depth: 1.35, theme: 'steel' },
+  { id: 'gantry-upper', x: 93.0, y: 3.65, width: 4.1, depth: 1.35, theme: 'steel' },
+  { id: 'last-line-wall', x: 103.3, y: 2.25, width: 5.1, depth: 1.6, theme: 'stone' },
+  { id: 'boss-approach', x: 109.1, y: 3.65, width: 3.4, depth: 1.5, theme: 'steel' },
+];
+
+export const PAWN_SLUG_PLATFORM_LAYOUT = freezePlatforms([
+  ...LEGACY_PLATFORM_LAYOUT.slice(0, 5),
+  ...PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon.platforms,
+  ...LEGACY_PLATFORM_LAYOUT.slice(5),
+]);
 
 export function pawnSlugTilesForScenario(scenario) {
   if (!scenario?.rows?.length) return [];
@@ -60,6 +85,10 @@ export function pawnSlugTilesForScenario(scenario) {
 
 export function pawnSlugScenarioTilesByKind(scenario, kind, { coarse = false } = {}) {
   return pawnSlugTilesForScenario(scenario).filter((tile) => tile.kind === kind && !(coarse && tile.desktopOnly));
+}
+
+export function pawnSlugScenarioPlatforms(scenario) {
+  return [...(scenario?.platforms || [])];
 }
 
 export function pawnSlugScenarioMarkers(scenario, kind = null) {
