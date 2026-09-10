@@ -1,3 +1,5 @@
+import { DEFAULT_REQUEST_TIMEOUT_MS } from './requestTimeout.js';
+
 export function isAbortError(error) {
   return error?.name === 'AbortError' || error?.cause?.name === 'AbortError';
 }
@@ -62,11 +64,11 @@ export function withTimeout(promise, timeoutMs = 10000, { signal, message = 'Ope
 // pasan por http.js (release.json, métricas admin, telemetría best-effort...).
 // Mantiene el mismo principio que el cliente HTTP principal: ninguna petición
 // puede vivir para siempre y una cancelación externa sigue teniendo prioridad.
-export async function fetchWithTimeout(fetchImpl, url, options = {}, timeoutMs = 20000) {
+export async function fetchWithTimeout(fetchImpl, url, options = {}, timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS) {
   if (typeof fetchImpl !== 'function') throw new TypeError('fetchImpl must be a function');
   const controller = new AbortController();
   const externalSignal = options?.signal;
-  const duration = Math.max(1, Number(timeoutMs) || 20000);
+  const duration = Math.max(1, Number(timeoutMs) || DEFAULT_REQUEST_TIMEOUT_MS);
   let timedOut = false;
 
   const onExternalAbort = () => controller.abort(externalSignal.reason || abortError());
