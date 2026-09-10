@@ -27,6 +27,8 @@ def test_unwrap_service_shapes() -> None:
         {"id": "srv-2", "name": "dos"},
     ])
     check([row["id"] for row in rows] == ["srv-1", "srv-2"], "list services debe admitir ambas formas API")
+    check(module.unwrap_service({"service": {"id": "srv-1"}})["id"] == "srv-1", "detalle anidado debe desenvolverse")
+    check(module.unwrap_service({"id": "srv-2"})["id"] == "srv-2", "detalle plano debe conservarse")
 
 
 def test_environment_isolated_and_secrets_stable() -> None:
@@ -100,6 +102,46 @@ def test_create_service_uses_noninteractive_boolean_syntax() -> None:
     command = captured[1]
     check("--auto-deploy=false" in command, "Cobra requiere el booleano en el mismo argumento")
     check("--auto-deploy" not in command, "no debe dejar false como argumento posicional")
+
+
+def test_existing_staging_disables_render_autodeploy() -> None:
+    calls = []
+    responses = iter([
+        {"service": {"id": "srv-stage", "autoDeploy": "yes"}},
+        {"service": {"id": "srv-stage", "autoDeploy": "no"}},
+    ])
+
+    def fake_api(method, path, payload=None):
+        calls.append((method, path, payload))
+        if method == "GET" and path == "/services/srv-stage":
+            return next(responses)
+        if method == "PATCH" and path == "/services/srv-stage":
+            return {}
+        raise AssertionError(f"API inesperada: {method} {path} {payload}")
+
+    with patch.object(module, "api", side_effect=fake_api):
+        module.ensure_manual_deploy_only("srv-stage")
+    check(
+        ("PATCH", "/services/srv-stage", {"autoDeploy": "no"}) in calls,
+        "staging existente debe desactivar autoDeploy para no adelantar la cola de Actions",
+    )
+
+
+def test_conforming_staging_does_not_patch_autodeploy() -> None:
+    calls = []
+
+    def fake_api(method, path, payload=None):
+        calls.append((method, path, payload))
+        if method == "GET" and path == "/services/srv-stage":
+            return {"service": {"id": "srv-stage", "autoDeploy": "no"}}
+        raise AssertionError(f"API inesperada: {method} {path} {payload}")
+
+    with patch.object(module, "api", side_effect=fake_api):
+        module.ensure_manual_deploy_only("srv-stage")
+    check(
+        not any(method == "PATCH" for method, _path, _payload in calls),
+        "guardrail conforme debe ser idempotente y no mutar Render",
+    )
 
 
 def test_staging_environment_is_reused_and_service_grouped() -> None:
@@ -185,6 +227,7 @@ def test_main_reconciles_without_duplicate_creation() -> None:
         patch.object(module, "env_values", return_value={"MONGO_DB_NAME": "chess_study_staging", "INVITE_CODE": "invite-stable"}),
         patch.object(module, "api", side_effect=lambda method, path, payload=None: calls.append((method, path, payload)) or {}),
         patch.object(module, "create_service") as create,
+        patch.object(module, "ensure_manual_deploy_only") as manual_only,
         patch.object(module, "reconcile_environment") as reconcile,
         patch.object(module, "ensure_custom_domain") as domain,
         patch.object(module, "ensure_service_grouped", return_value={"id": "env-stage"}) as group,
@@ -193,6 +236,7 @@ def test_main_reconciles_without_duplicate_creation() -> None:
     ):
         module.main()
     create.assert_not_called()
+    manual_only.assert_called_once_with("srv-stage")
     reconcile.assert_called_once_with("srv-stage", {"MONGO_DB_NAME": "chess_study_staging", "INVITE_CODE": "invite-stable"})
     domain.assert_called_once_with("srv-stage")
     group.assert_called_once_with(production, "srv-stage")
@@ -208,9 +252,11 @@ if __name__ == "__main__":
     test_invite_is_exported_only_to_ephemeral_github_env()
     test_production_discovery_uses_repo_and_mongo_evidence()
     test_create_service_uses_noninteractive_boolean_syntax()
+    test_existing_staging_disables_render_autodeploy()
+    test_conforming_staging_does_not_patch_autodeploy()
     test_staging_environment_is_reused_and_service_grouped()
     test_staging_environment_is_created_when_missing()
     test_suspended_staging_is_resumed_before_deploy()
     test_active_staging_does_not_resume_again()
     test_main_reconciles_without_duplicate_creation()
-    print("render-staging-bootstrap-smoke OK · idempotencia + Mongo aislado + invite privado + agrupación + auto-resume Render")
+    print("render-staging-bootstrap-smoke OK · idempotencia + Mongo aislado + invite privado + agrupación + auto-deploy off + auto-resume Render")

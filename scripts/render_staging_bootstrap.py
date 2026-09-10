@@ -72,6 +72,13 @@ def unwrap_services(payload: object) -> list[dict]:
     return unwrap_rows(payload, "service")
 
 
+def unwrap_service(payload: object) -> dict:
+    if not isinstance(payload, dict):
+        return {}
+    nested = payload.get("service")
+    return nested if isinstance(nested, dict) else payload
+
+
 def find_service(name: str) -> dict | None:
     query = urllib.parse.urlencode({"name": name, "limit": "20"})
     matches = [row for row in unwrap_services(api("GET", f"/services?{query}")) if row.get("name") == name]
@@ -240,6 +247,20 @@ def create_service(values: dict[str, str], production: dict) -> None:
         raise SystemExit("Render CLI no pudo crear el servicio de staging")
 
 
+def ensure_manual_deploy_only(service_id: str) -> None:
+    """Impide que un push a main adelante al orquestador de staging."""
+    service = unwrap_service(api("GET", f"/services/{service_id}"))
+    actual = str(service.get("autoDeploy") or "").strip().lower()
+    changed = actual != "no"
+    if changed:
+        api("PATCH", f"/services/{service_id}", {"autoDeploy": "no"})
+        service = unwrap_service(api("GET", f"/services/{service_id}"))
+        actual = str(service.get("autoDeploy") or "").strip().lower()
+    if actual != "no":
+        raise SystemExit(f"Render staging autoDeploy quedó en {actual or '<sin dato>'}, esperaba no")
+    print(f"Render staging guardrail OK: autoDeploy=no · {'corregido' if changed else 'ya conforme'}")
+
+
 def reconcile_environment(service_id: str, values: dict[str, str]) -> None:
     for key, value in values.items():
         encoded = urllib.parse.quote(key, safe="")
@@ -371,6 +392,10 @@ def main() -> None:
     service_id = str(service.get("id") or "")
     if not service_id:
         raise SystemExit("El servicio staging no tiene ID")
+    # Toda mutación de staging debe pasar por GitHub Actions. Un auto-deploy de
+    # Render reaccionando a main podría cancelar el deploy exacto que ya está en
+    # vuelo y dejar frontend/backend en generaciones distintas.
+    ensure_manual_deploy_only(service_id)
     api("PUT", f"/services/{production['id']}/env-vars/ENVIRONMENT", {"value": "production"})
     api("PUT", f"/services/{production['id']}/env-vars/MONGO_DB_NAME", {"value": "chess_study"})
     reconcile_environment(service_id, values)
