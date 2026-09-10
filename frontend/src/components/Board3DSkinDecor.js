@@ -22,7 +22,21 @@ export function reinforcePieceSkinMaterial(material, targetColor, skinId, { acce
   const profile = profileFor(skinId);
   const target = new THREE.Color(targetColor);
   const polishedIvory = material.userData?.surfaceRole === 'ivory' && !accent;
+  const canonicalIvory = polishedIvory && Boolean(material.userData?.surfaceVersion);
   const classicEbony = material.userData?.surfaceRole === 'ebony' && !accent && (material.metalness ?? 0) < 0.58;
+
+  // Board3DSurfaces is the single PBR authority for current ivory. SkinDecor may
+  // identify the skin and add geometry, but it must not brighten or repolish a
+  // versioned material after the canonical warm-satin finish has been created.
+  // Legacy/unversioned ivory keeps the compatibility path below.
+  if (canonicalIvory) {
+    material.userData.pieceFinish = 'canonical-satin-ivory-v5';
+    material.userData.skin3DId = skinId;
+    material.userData.skin3DIdentity = 'distinct-v2';
+    material.userData.skinMaterialAuthority = 'Board3DSurfaces';
+    return material;
+  }
+
   const boost = polishedIvory
     ? Math.min(0.14, profile.colorBoost)
     : accent
