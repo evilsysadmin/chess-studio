@@ -50,7 +50,7 @@ function addWeatherWindow(root, anchorX, anchorZ, side = 'right') {
 }
 
 describe('War Room Hans plant placement', () => {
-  it('gives the canonical right gallery breathing room and keeps the plant tucked under the corner window', () => {
+  it('moves the canonical weather window onto the right wall facing the service door and keeps the gallery intact', () => {
     const root = new THREE.Group();
     addFloor(root);
     const fireplace = new THREE.Group();
@@ -63,23 +63,26 @@ describe('War Room Hans plant placement', () => {
 
     const plant = ensureWarRoomHansPlant(root);
     expect(window.userData.warRoomCornerPose).toBe(WAR_ROOM_WINDOW_CORNER_POSE_VERSION);
-    expect(THREE.MathUtils.radToDeg(window.rotation.y)).toBeCloseTo(-34, 5);
-    expect(window.scale.x).toBeCloseTo(0.9, 5);
-    expect(window.userData.warRoomCornerTargetX).toBeCloseTo(7.25, 5);
-    expect(root.userData.warRoomCanonicalComposition).toBe('hearth-left-gallery-air-right-corner-window-plant-v8');
+    expect(THREE.MathUtils.radToDeg(window.rotation.y)).toBeCloseTo(-90, 5);
+    expect(window.scale.x).toBeCloseTo(1, 5);
+    expect(window.userData.warRoomCornerTargetX).toBeCloseTo(7.45, 5);
+    expect(window.userData.warRoomWindowWall).toBe('side');
+    expect(window.userData.warRoomWindowFaces).toBe('service-door');
+    expect(root.userData.warRoomCanonicalComposition).toBe('hearth-left-gallery-intact-right-wall-window-plant-v9');
 
     root.updateMatrixWorld(true);
     const windowBounds = new THREE.Box3().setFromObject(window);
-    expect(windowBounds.max.x).toBeLessThan(8.0);
-    expect(windowBounds.min.x).toBeGreaterThan(6.5);
-    expect(window.userData.warRoomCornerForwardShift).toBeCloseTo(0.68, 5);
+    expect(windowBounds.max.x).toBeLessThan(7.7);
+    expect(windowBounds.min.x).toBeGreaterThan(7.2);
+    const windowCenter = windowBounds.getCenter(new THREE.Vector3());
+    expect(windowCenter.z).toBeCloseTo(-4.55, 1);
 
     expect(plant.userData.warRoomPlantSide).toBe('right');
     expect(plant.userData.warRoomPlantHearthRelation).toBe('opposite');
-    expect(plant.userData.warRoomPlantPlacement).toBe('beside-right-weather-window-v8');
+    expect(plant.userData.warRoomPlantPlacement).toBe('beneath-right-wall-weather-window-v9');
     expect(plant.userData.warRoomPlantLightRelation).toBe('window-daylight');
-    expect(plant.position.x).toBeCloseTo(7.18, 5);
-    expect(plant.position.z).toBeCloseTo(-4.95, 2);
+    expect(plant.position.x).toBeCloseTo(7.05, 5);
+    expect(plant.position.z).toBeCloseTo(-3.58, 5);
 
     const firstPosition = window.position.clone();
     expect(ensureWarRoomHansPlant(root)).toBe(plant);
@@ -88,7 +91,7 @@ describe('War Room Hans plant placement', () => {
     dispose(root);
   });
 
-  it('mirrors the corner pose with board orientation', () => {
+  it('mirrors the side-wall pose with board orientation', () => {
     const root = new THREE.Group();
     addFloor(root);
     const fireplace = new THREE.Group();
@@ -99,11 +102,13 @@ describe('War Room Hans plant placement', () => {
     root.updateMatrixWorld(true);
 
     const plant = ensureWarRoomHansPlant(root);
-    expect(THREE.MathUtils.radToDeg(window.rotation.y)).toBeCloseTo(34, 5);
-    expect(window.scale.x).toBeCloseTo(0.9, 5);
+    expect(THREE.MathUtils.radToDeg(window.rotation.y)).toBeCloseTo(90, 5);
+    expect(window.scale.x).toBeCloseTo(1, 5);
+    expect(window.userData.warRoomWindowWall).toBe('side');
+    expect(window.userData.warRoomWindowFaces).toBe('service-door');
     expect(plant.userData.warRoomPlantSide).toBe('left');
-    expect(plant.position.x).toBeCloseTo(-7.18, 5);
-    expect(plant.position.z).toBeCloseTo(4.95, 2);
+    expect(plant.position.x).toBeCloseTo(-7.05, 5);
+    expect(plant.position.z).toBeCloseTo(3.58, 5);
 
     dispose(root);
   });
