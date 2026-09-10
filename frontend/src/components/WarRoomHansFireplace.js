@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 
-export const HANS_FIREPLACE_ODDS = 10;
 export const HANS_FIREPLACE_START_DELAY_S = 12;
 
 const HANS_FIREPLACE_VERSION = 'hans-hearthkeeper-v1';
@@ -17,12 +16,6 @@ function smoothstep01(value) {
 
 function lerp(a, b, t) {
   return a + (b - a) * t;
-}
-
-function nowMs() {
-  return typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now()
-    : Date.now();
 }
 
 function reducedMotionRequested() {
@@ -254,12 +247,6 @@ function buildHans(towardBoard) {
   return hans;
 }
 
-export function shouldScheduleHansFireplace(randomValue, odds = HANS_FIREPLACE_ODDS) {
-  const denominator = Math.max(1, Math.floor(Number(odds) || HANS_FIREPLACE_ODDS));
-  const roll = clamp01(randomValue);
-  return roll < (1 / denominator);
-}
-
 function resetHansFireplaceFrame(target) {
   const frame = target || {};
   frame.phase = 'waiting';
@@ -421,67 +408,6 @@ export function hansFireplaceFrame(elapsedSeconds) {
   return writeHansFireplaceFrame({}, elapsedSeconds);
 }
 
-function applyFrame(refs, frame, towardBoard) {
-  const {
-    fireplace, hans, fireCore, fireLight, fireCoreBaseScale, fireLightBaseDistance,
-    basketTopLog, addedLog, standPoker, side,
-  } = refs;
-  if (basketTopLog) basketTopLog.visible = !frame.removeBasketLog;
-  if (addedLog) addedLog.visible = frame.showAddedLog;
-
-  hans.visible = frame.hansVisible;
-  if (frame.hansVisible) {
-    hans.position.x = side * frame.hansX;
-    hans.position.y = -0.34;
-    hans.position.z = towardBoard * 1.16;
-    hans.rotation.y = side < 0 ? Math.PI / 2 : -Math.PI / 2;
-    const body = hans.userData.refs;
-    body.leftLeg.rotation.x = frame.stride;
-    body.rightLeg.rotation.x = -frame.stride;
-    body.leftArm.rotation.x = frame.leftArm - frame.stride * 0.55;
-    body.rightArm.rotation.x = frame.rightArm + frame.stride * 0.35;
-    body.torso.rotation.x = towardBoard * frame.lean * 0.35;
-    body.head.rotation.x = towardBoard * (frame.headNod - frame.lean * 0.12);
-    body.carriedLog.visible = frame.carryLog;
-    body.carriedPoker.visible = frame.carryPoker;
-    body.carriedPoker.rotation.z = frame.stoke * 0.22;
-  }
-  if (standPoker) standPoker.visible = !frame.carryPoker;
-
-  if (frame.active) {
-    const widthScale = 0.74 + frame.fireScale * 0.26;
-    fireCore.scale.set(
-      fireCoreBaseScale.x * widthScale,
-      fireCoreBaseScale.y * frame.fireScale,
-      fireCoreBaseScale.z * widthScale,
-    );
-    const baseIntensity = Number(fireLight.userData?.baseWarRoomIntensity || fireLight.intensity || 1);
-    const lightScale = 0.22 + frame.fireScale * 0.78;
-    fireLight.intensity = baseIntensity * lightScale;
-    fireLight.distance = fireLightBaseDistance * (0.6 + frame.fireScale * 0.4);
-
-    // CastleArchitecture owns the organic fire flicker and creates this bounce
-    // light lazily. Cache it after the first successful lookup so Hans does not
-    // traverse the fireplace subtree on every late render.
-    const bounce = refs.bounce || fireplace.getObjectByName?.('war-room-fire-bounce-light');
-    if (bounce) {
-      refs.bounce = bounce;
-      if (bounce.userData.hansBaseIntensity == null) {
-        bounce.userData.hansBaseIntensity = frame.fireScale > 0.95 ? bounce.intensity : 1.15;
-      }
-      bounce.intensity = Number(bounce.userData.hansBaseIntensity || 1.15) * (0.18 + frame.fireScale * 0.82);
-    }
-  }
-
-  if (frame.complete) {
-    fireCore.scale.copy(fireCoreBaseScale);
-    fireLight.distance = fireLightBaseDistance;
-    const bounce = refs.bounce || fireplace.getObjectByName?.('war-room-fire-bounce-light');
-    if (bounce) refs.bounce = bounce;
-    if (bounce?.userData?.hansBaseIntensity != null) bounce.intensity = bounce.userData.hansBaseIntensity;
-  }
-}
-
 function createLateRenderDriver() {
   const material = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
   material.colorWrite = false;
@@ -497,7 +423,6 @@ function createLateRenderDriver() {
 export function installWarRoomHansFireplaceRoutine(group, {
   towardBoard,
   coarsePointer = false,
-  randomValue = Math.random(),
   forceEvent = false,
   reducedMotion = reducedMotionRequested(),
 } = {}) {
@@ -506,18 +431,18 @@ export function installWarRoomHansFireplaceRoutine(group, {
   if (!fireplace) return 0;
   if (fireplace.userData.warRoomHansFireplaceRoutine === HANS_FIREPLACE_VERSION) return 0;
 
-  const kitRefs = installHearthKit(fireplace, towardBoard, coarsePointer);
-  const eligible = !coarsePointer && !reducedMotion;
-  const selected = eligible && (forceEvent || shouldScheduleHansFireplace(randomValue));
+  installHearthKit(fireplace, towardBoard, coarsePointer);
+  const selected = !coarsePointer && !reducedMotion && forceEvent;
   fireplace.userData.warRoomHansFireplaceRoutine = HANS_FIREPLACE_VERSION;
-  fireplace.userData.warRoomHansFireplaceOdds = `1/${HANS_FIREPLACE_ODDS}`;
   fireplace.userData.warRoomHansEventSelected = selected;
   group.userData.warRoomHansFireplaceRoutine = HANS_FIREPLACE_VERSION;
 
   if (coarsePointer) return 1;
 
-  // Desktop keeps the same geometry whether this mount wins the 1/10 roll or
-  // not. That keeps scene cost/tests deterministic; selection only arms motion.
+  // This layer owns assets only. The deterministic per-game selector in
+  // WarRoomHansIteration is the sole owner of whether Hans moves. Keeping the
+  // driver inert here prevents the retired autonomous 1/10 routine from ever
+  // producing a silent fireplace number without the React narrative.
   const hans = buildHans(towardBoard);
   hans.visible = false;
   fireplace.add(hans);
@@ -525,48 +450,10 @@ export function installWarRoomHansFireplaceRoutine(group, {
   driver.position.set(0, 0.4, towardBoard * 0.4);
   driver.userData.warRoomHansRoutine = HANS_FIREPLACE_VERSION;
   driver.userData.warRoomHansSelected = selected;
+  driver.userData.warRoomHansPhase = selected
+    ? 'await-canonical-iteration'
+    : (reducedMotion ? 'reduced-motion' : 'not-selected');
+  driver.onBeforeRender = () => {};
   fireplace.add(driver);
-
-  if (!selected) {
-    driver.userData.warRoomHansPhase = reducedMotion ? 'reduced-motion' : 'not-selected';
-    driver.onBeforeRender = () => {};
-    return 2;
-  }
-
-  const fireCore = fireplace.getObjectByName?.('war-room-fire-core');
-  const fireLight = fireplace.getObjectByName?.('war-room-fire-light');
-  if (!fireCore || !fireLight) {
-    driver.userData.warRoomHansPhase = 'fire-unavailable';
-    driver.onBeforeRender = () => {};
-    return 2;
-  }
-
-  const startedAt = nowMs();
-  const frameScratch = {};
-  const refs = {
-    fireplace,
-    hans,
-    fireCore,
-    fireLight,
-    fireCoreBaseScale: fireCore.scale.clone(),
-    fireLightBaseDistance: Number(fireLight.distance || 8.8),
-    basketTopLog: kitRefs.basketTopLog,
-    addedLog: kitRefs.addedLog,
-    standPoker: kitRefs.poker,
-    side: kitRefs.side,
-    bounce: null,
-  };
-  driver.userData.warRoomHansStartDelaySeconds = HANS_FIREPLACE_START_DELAY_S;
-  driver.userData.warRoomHansFrameHotPath = 'scratch-writer-v1';
-  driver.onBeforeRender = () => {
-    const frame = writeHansFireplaceFrame(frameScratch, (nowMs() - startedAt) / 1000);
-    applyFrame(refs, frame, towardBoard);
-    driver.userData.warRoomHansPhase = frame.phase;
-    if (frame.complete) {
-      hans.visible = false;
-      driver.userData.warRoomHansCompleted = true;
-      driver.onBeforeRender = () => {};
-    }
-  };
   return 2;
 }
