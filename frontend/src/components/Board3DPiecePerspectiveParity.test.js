@@ -43,10 +43,10 @@ describe('Board3D piece scale parity', () => {
     const farHeight = projectedHeight(camera, -3.5);
     const apparentScaleRatio = nearHeight / farHeight;
 
-    expect(resolveBoard3DCameraFov(1185 / 730)).toBe(29);
-    expect(camera.fov).toBe(29);
+    expect(resolveBoard3DCameraFov(1185 / 730)).toBe(22);
+    expect(camera.fov).toBe(22);
     expect(apparentScaleRatio).toBeGreaterThan(1);
-    expect(apparentScaleRatio).toBeLessThan(1.33);
+    expect(apparentScaleRatio).toBeLessThan(1.16);
   });
 
   it('sube la cámara solo en landscape móvil para separar visualmente las filas', () => {
@@ -73,7 +73,7 @@ describe('Board3D piece scale parity', () => {
   });
 
   it('comprime también la perspectiva móvil sin reutilizar la lente desktop', () => {
-    expect(resolveBoard3DCameraFov(1.8)).toBe(29);
+    expect(resolveBoard3DCameraFov(1.8)).toBe(22);
     expect(resolveBoard3DCameraFov(1.1)).toBe(32);
     expect(resolveBoard3DCameraFov(1.16, { mobile: true })).toBe(34);
   });

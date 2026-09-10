@@ -7,7 +7,7 @@ export const DISPLAY_RANKS = Object.freeze(['8', '7', '6', '5', '4', '3', '2', '
 // profile, but now uses a restrained 34° lens so the castle reads as a scene
 // instead of a board with a decorative strip glued behind it.
 export const BOARD3D_CAMERA_FOV = Object.freeze({
-  wide: 29,
+  wide: 22,
   compact: 32,
   mobile: 34,
 });
