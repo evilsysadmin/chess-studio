@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { installWarRoomHansServiceExitDoorGuard } from './WarRoomHansServiceExitDoorGuard.js';
 import { setWarRoomHansServiceDoorOpen } from './WarRoomHansServiceDoor.js';
 
-export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v4-explicit-infrastructure';
+export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v4-visible-exit-door-explicit-infrastructure';
 export const HANS_SERVICE_WALK_SPEED = 0.78;
 
 const DOOR_NAME = 'war-room-hans-service-door';
