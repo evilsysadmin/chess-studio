@@ -1,7 +1,8 @@
 import { withRequestId, requestErrorMessage } from './requestId.js';
+import { DEFAULT_REQUEST_TIMEOUT_MS } from './requestTimeout.js';
 import { userFacingError } from './userFacingError.js';
 
-export const DEFAULT_REQUEST_TIMEOUT_MS = 20000;
+export { DEFAULT_REQUEST_TIMEOUT_MS } from './requestTimeout.js';
 
 function requestAbortGuard(signal, timeoutMs) {
   const duration = Number(timeoutMs);
