@@ -8,6 +8,7 @@ import './WarRoom3DMobileControls.css';
 import './WarRoomDesktopRailLayout.css';
 import './WarRoomMatthiasDiegetic.css';
 import './WarRoomFloatingFooter.css';
+import './WarRoomAppearanceMenu.css';
 
 function resolveWarRoomSignal(game, status) {
   const text = String(status?.statusText || '').trim();
@@ -152,6 +153,18 @@ export default function GameWarRoomCommandColumn({
                 }}
               >
                 Deshacer jugada
+              </button>
+            )}
+            {typeof board.onCustomize === 'function' && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={(event) => {
+                  closeUtilityMenu(event);
+                  board.onCustomize();
+                }}
+              >
+                Apariencia
               </button>
             )}
             {typeof controls.onToggleZen === 'function' && (

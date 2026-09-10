@@ -26,7 +26,7 @@ describe('GameWarRoomCommandColumn', () => {
       <GameWarRoomCommandColumn
         game={{ difficulty: 7, turn: 'w', humanColor: 'w', isGameOver: false, history: [] }}
         status={{ statusText: 'Tu turno', busy: false }}
-        board={{ onCustomize: null }}
+        board={{ onCustomize: () => {} }}
         controls={{
           hintMode: 'off',
           onToggleZen: () => {},
@@ -45,6 +45,7 @@ describe('GameWarRoomCommandColumn', () => {
     expect(html).toContain('Tu turno');
     expect(html).toContain('/matthias.png');
     expect(html).toContain('Más acciones de partida');
+    expect(html).toContain('Apariencia');
     expect(html).toContain('Modo Zen');
     expect(html).toContain('Abandonar partida');
     expect(html).toContain('game-3d-warroom-controls');
