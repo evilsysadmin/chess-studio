@@ -1,5 +1,9 @@
 import * as THREE from 'three';
-import { createPawnSlugCastleDungeon, createPawnSlugFallenForest } from './pawnSlugScenarioRenderer.js';
+import {
+  createPawnSlugCastleDungeon,
+  createPawnSlugFallenForest,
+  createPawnSlugGambitRuins,
+} from './pawnSlugScenarioRenderer.js';
 import {
   PAWN_SLUG_STATIC_INSTANCE_VERSION,
   createPawnSlugStaticInstanceBatch,
@@ -9,13 +13,14 @@ export const PAWN_SLUG_LANDMARK_META = Object.freeze({
   landmarks: Object.freeze([
     Object.freeze({ id: 'fallen-forest', x: 10.5, label: 'Bosque de las piezas caídas' }),
     Object.freeze({ id: 'command-post', x: 29.5, label: 'Puesto de mando bombardeado' }),
+    Object.freeze({ id: 'gambit-ruins', x: 30.5, label: 'Ruinas del Gambito' }),
     Object.freeze({ id: 'dungeon-gate', x: 44.5, label: 'Dungeon bajo el castillo' }),
     Object.freeze({ id: 'wrecked-searchlight', x: 66.5, label: 'Reflector derribado' }),
     Object.freeze({ id: 'hero-barricade', x: 104.5, label: 'Barricada de última línea' }),
     Object.freeze({ id: 'boss-fortress', x: 114.5, label: 'Fortaleza incendiada del Panzer-Rook' }),
   ]),
-  desktopDetailBudget: 6,
-  coarseDetailBudget: 4,
+  desktopDetailBudget: 7,
+  coarseDetailBudget: 5,
   desktopLocalLightBudget: 4,
   coarseLocalLightBudget: 0,
   staticBatching: PAWN_SLUG_STATIC_INSTANCE_VERSION,
@@ -81,6 +86,13 @@ function commandPost(x, coarse) {
     addInstances(root, 'pawn-slug-command-post-sandbags-instanced', new THREE.SphereGeometry(0.18, 8, 6), material(0x625746, 1), Array.from({ length: 5 }, (_, i) => ({ x: -1.35 + i * 0.46, y: 0.16, z: 0.93 })));
   }
   return root;
+}
+
+function ruinsScenario(x, coarse) {
+  return scenarioRoot(createPawnSlugGambitRuins, x, coarse, {
+    name: 'pawn-slug-landmark-gambit-ruins',
+    id: 'gambit-ruins',
+  });
 }
 
 function dungeonScenario(x, coarse) {
@@ -176,10 +188,11 @@ export function createPawnSlugPremiumLandmarks(parent, { coarse = false } = {}) 
   root.add(
     forestScenario(PAWN_SLUG_LANDMARK_META.landmarks[0].x, coarse),
     commandPost(PAWN_SLUG_LANDMARK_META.landmarks[1].x, coarse),
-    dungeonScenario(PAWN_SLUG_LANDMARK_META.landmarks[2].x, coarse),
-    wreckedSearchlight(PAWN_SLUG_LANDMARK_META.landmarks[3].x, coarse),
-    heroBarricade(PAWN_SLUG_LANDMARK_META.landmarks[4].x, coarse),
-    bossFortress(PAWN_SLUG_LANDMARK_META.landmarks[5].x, coarse),
+    ruinsScenario(PAWN_SLUG_LANDMARK_META.landmarks[2].x, coarse),
+    dungeonScenario(PAWN_SLUG_LANDMARK_META.landmarks[3].x, coarse),
+    wreckedSearchlight(PAWN_SLUG_LANDMARK_META.landmarks[4].x, coarse),
+    heroBarricade(PAWN_SLUG_LANDMARK_META.landmarks[5].x, coarse),
+    bossFortress(PAWN_SLUG_LANDMARK_META.landmarks[6].x, coarse),
   );
   parent.add(root);
   return root;

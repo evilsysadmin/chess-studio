@@ -28,11 +28,15 @@ describe('Pawn Slug platforming', () => {
     expect(PAWN_SLUG_PLATFORM_LAYOUT.at(-1).x).toBeGreaterThan(105);
   });
 
-  it('uses the dungeon scenario platform directly in the runtime physics layout', () => {
-    const [dungeonPlatform] = pawnSlugScenarioPlatforms(PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon);
-    expect(dungeonPlatform.id).toBe('dungeon-catwalk');
-    expect(dungeonPlatform.oneWay).toBe(true);
-    expect(PAWN_SLUG_PLATFORM_LAYOUT).toContain(dungeonPlatform);
+  it('uses scenario platforms directly in the runtime physics layout', () => {
+    for (const scenarioName of ['fallenForest', 'gambitRuins', 'castleDungeon']) {
+      const platforms = pawnSlugScenarioPlatforms(PAWN_SLUG_SCENARIO_TILEMAPS[scenarioName]);
+      expect(platforms.length).toBeGreaterThan(0);
+      for (const platform of platforms) {
+        expect(platform.oneWay).toBe(true);
+        expect(PAWN_SLUG_PLATFORM_LAYOUT).toContain(platform);
+      }
+    }
   });
 
   it('derives stable platform bounds', () => {

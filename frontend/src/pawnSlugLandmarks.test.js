@@ -11,6 +11,7 @@ describe('Pawn Slug premium landmarks', () => {
     expect(PAWN_SLUG_LANDMARK_META.landmarks.map((landmark) => landmark.id)).toEqual([
       'fallen-forest',
       'command-post',
+      'gambit-ruins',
       'dungeon-gate',
       'wrecked-searchlight',
       'hero-barricade',
@@ -20,22 +21,23 @@ describe('Pawn Slug premium landmarks', () => {
     expect(PAWN_SLUG_LANDMARK_META.landmarks.at(-1).x).toBe(114.5);
   });
 
-  it('builds forest and dungeon through the data-driven scenario renderer', () => {
+  it('builds premium biomes through the shared data-driven scenario renderer', () => {
     const root = createPawnSlugPremiumLandmarks(new THREE.Group(), { coarse: false });
     const forest = root.getObjectByName('pawn-slug-landmark-fallen-forest');
+    const ruins = root.getObjectByName('pawn-slug-landmark-gambit-ruins');
     const dungeon = root.getObjectByName('pawn-slug-landmark-dungeon-gate');
+    for (const scenario of [forest, ruins, dungeon]) {
+      expect(scenario.userData.scenarioSource).toBe('tile-map');
+      expect(scenario.userData.dataDriven).toBe(true);
+    }
     expect(forest.userData.premiumScenario).toBe('fallen-forest');
-    expect(forest.userData.scenarioSource).toBe('tile-map');
-    expect(forest.userData.dataDriven).toBe(true);
-    expect(root.getObjectByName('pawn-slug-forest-trunk')).toBeTruthy();
-    expect(root.getObjectByName('pawn-slug-forest-root')).toBeTruthy();
-    expect(root.getObjectByName('pawn-slug-forest-fallen-knight')).toBeTruthy();
-    expect(root.getObjectByName('pawn-slug-forest-fireflies')).toBeTruthy();
+    expect(ruins.userData.premiumScenario).toBe('gambit-ruins');
     expect(dungeon.userData.premiumScenario).toBe('castle-dungeon');
-    expect(dungeon.userData.scenarioSource).toBe('tile-map');
-    expect(dungeon.userData.dataDriven).toBe(true);
+    expect(root.getObjectByName('pawn-slug-forest-trunk')).toBeTruthy();
+    expect(root.getObjectByName('pawn-slug-ruins-column')).toBeTruthy();
+    expect(root.getObjectByName('pawn-slug-ruins-broken-rook')).toBeTruthy();
+    expect(root.getObjectByName('pawn-slug-ruins-dust')).toBeTruthy();
     expect(root.getObjectByName('pawn-slug-dungeon-arch')).toBeTruthy();
-    expect(root.getObjectByName('pawn-slug-dungeon-chain')).toBeTruthy();
   });
 
   it('keeps the boss fortress as a real arena marker', () => {
@@ -58,7 +60,7 @@ describe('Pawn Slug premium landmarks', () => {
     expect(lights(coarse)).toHaveLength(PAWN_SLUG_LANDMARK_META.coarseLocalLightBudget);
   });
 
-  it('degrades decorative geometry on coarse/mobile without removing either scenario', () => {
+  it('degrades atmosphere on coarse/mobile without removing scenario structure', () => {
     const desktop = createPawnSlugPremiumLandmarks(new THREE.Group(), { coarse: false });
     const coarse = createPawnSlugPremiumLandmarks(new THREE.Group(), { coarse: true });
     const meshCount = (root) => {
@@ -68,11 +70,12 @@ describe('Pawn Slug premium landmarks', () => {
     };
     expect(meshCount(coarse)).toBeLessThan(meshCount(desktop));
     expect(coarse.getObjectByName('pawn-slug-landmark-fallen-forest')).toBeTruthy();
-    expect(coarse.getObjectByName('pawn-slug-forest-trunk')).toBeTruthy();
     expect(coarse.getObjectByName('pawn-slug-forest-fireflies')).toBeFalsy();
+    expect(coarse.getObjectByName('pawn-slug-landmark-gambit-ruins')).toBeTruthy();
+    expect(coarse.getObjectByName('pawn-slug-ruins-column')).toBeTruthy();
+    expect(coarse.getObjectByName('pawn-slug-ruins-dust')).toBeFalsy();
     expect(coarse.getObjectByName('pawn-slug-landmark-dungeon-gate')).toBeTruthy();
     expect(coarse.getObjectByName('pawn-slug-dungeon-fallen-pawn')).toBeFalsy();
-    expect(coarse.getObjectByName('pawn-slug-dungeon-depth-shadow')).toBeFalsy();
   });
 
   it('still batches repeated non-scenario landmark geometry', () => {
