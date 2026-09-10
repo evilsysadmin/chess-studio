@@ -1,6 +1,6 @@
 /* Named layers preserve the historical cascade even when a route loads one
  * of these modules later. This makes CSS code-splitting safe and incremental. */
-@layer l01, l02, l03, l04, l05, l06, l07, l08, l09, l10, l11, l13, l14, l15, l16, l17, l18, l19, l21, l22, l23, l24, l25, l26, l27, l28, l29;
+@layer l01, l02, l03, l04, l05, l06, l07, l08, l09, l10, l11, l13, l14, l15, l16, l17, l18, l19, l21, l22, l23, l24, l25, l26, l27, l28;
 
 @import './styles/01-foundation.css' layer(l01);
 @import './styles/02-game-board.css' layer(l02);
@@ -31,4 +31,3 @@
 @import './styles/26-visual-system-overhaul.css' layer(l26);
 @import './styles/27-night-club-tactical.css' layer(l27);
 @import './styles/28-product-resilience.css' layer(l28);
-@import './styles/29-motion-coherence.css' layer(l29);
