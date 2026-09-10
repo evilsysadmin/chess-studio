@@ -67,11 +67,11 @@ describe('WarRoom3DMotion', () => {
     };
     const scene = { children: [hemisphere], userData: {} };
 
-    expect(warRoomHemisphereIntensity()).toBe(0.55);
+    expect(warRoomHemisphereIntensity()).toBe(0.35);
     expect(warRoomHemisphereIntensity({ coarsePointer: true })).toBe(1.35);
     expect(applyWarRoomHemisphereGrade(scene)).toBe(hemisphere);
-    expect(hemisphere.intensity).toBe(0.55);
-    expect(scene.userData.warRoomHemisphereIntensity).toBe(0.55);
+    expect(hemisphere.intensity).toBe(0.35);
+    expect(scene.userData.warRoomHemisphereIntensity).toBe(0.35);
 
     applyWarRoomHemisphereGrade(scene, { coarsePointer: true });
     expect(hemisphere.intensity).toBe(1.35);
@@ -199,24 +199,25 @@ describe('WarRoom3DMotion', () => {
     expect(other.intensity).toBe(2);
   });
 
-  it('locks the desktop board key while leaving room exposure and practical ambience intact', () => {
+  it('keeps the directional key while restraining desktop board fill', () => {
     const normal = reactiveLightProfile();
     const check = reactiveLightProfile({ check: true });
     const terminal = reactiveLightProfile({ gameOver: true });
 
     expect(normal).toMatchObject({
       key: 1.42,
-      rim: 12.15,
-      warm: 4.85,
+      rim: 5.8,
+      warm: 2.0,
       exposure: 1.04,
       fogDensity: 0.0172,
     });
     expect(check.key).toBe(1.74);
-    expect(check.rim).toBeGreaterThan(normal.rim);
-    expect(check.warm).toBeLessThanOrEqual(normal.warm);
+    expect(check.rim).toBe(8.0);
+    expect(check.warm).toBe(2.0);
     expect(terminal.key).toBe(1.26);
+    expect(terminal.rim).toBe(3.2);
+    expect(terminal.warm).toBe(1.2);
     expect(terminal.exposure).toBeLessThan(normal.exposure);
-    expect(terminal.rim).toBeLessThan(normal.rim);
     expect(terminal.fogDensity).toBeGreaterThan(normal.fogDensity);
   });
 
