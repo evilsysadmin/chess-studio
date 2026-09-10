@@ -3,6 +3,13 @@ import { request, requestJson } from './http.js';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
+async function assertOk(response) {
+  if (response.ok) return response;
+  let detail = `HTTP ${response.status}`;
+  try { detail = (await response.json())?.detail || detail; } catch { /* binary/non-json error */ }
+  throw new Error(detail);
+}
+
 export function submitFeedback({ category = 'general', message, context = 'Home', attachments = [], signal } = {}) {
   return requestJson(`${BASE_URL}/feedback`, {
     method: 'POST',
@@ -21,11 +28,7 @@ export async function deleteMyFeedback(feedbackId) {
     method: 'DELETE',
     headers: { ...authHeader() },
   });
-  if (!response.ok) {
-    let detail = `HTTP ${response.status}`;
-    try { detail = (await response.json())?.detail || detail; } catch { /* 204/binary-safe */ }
-    throw new Error(detail);
-  }
+  await assertOk(response);
   return true;
 }
 
@@ -50,11 +53,7 @@ export async function deleteAdminFeedback(feedbackId) {
     method: 'DELETE',
     headers: { ...authHeader() },
   });
-  if (!response.ok) {
-    let detail = `HTTP ${response.status}`;
-    try { detail = (await response.json())?.detail || detail; } catch { /* 204/binary-safe */ }
-    throw new Error(detail);
-  }
+  await assertOk(response);
   return true;
 }
 
@@ -71,10 +70,6 @@ export async function fetchAdminFeedbackAttachment(feedbackId, attachmentIndex, 
     headers: { ...authHeader() },
     signal,
   });
-  if (!response.ok) {
-    let detail = `HTTP ${response.status}`;
-    try { detail = (await response.json())?.detail || detail; } catch { /* binary/non-json error */ }
-    throw new Error(detail);
-  }
+  await assertOk(response);
   return response.blob();
 }
