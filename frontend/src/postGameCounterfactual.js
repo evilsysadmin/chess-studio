@@ -31,12 +31,12 @@ function applyMove(board, move) {
 export async function buildShortCounterfactual({
   fen,
   suggested,
-  analyzePosition,
+  analyzeMove,
   level = 95,
   maxPlies = 3,
   signal,
 } = {}) {
-  if (!fen || !suggested || typeof analyzePosition !== 'function') return null;
+  if (!fen || !suggested || typeof analyzeMove !== 'function') return null;
   const safePlies = Math.max(1, Math.min(3, Math.floor(Number(maxPlies) || 3)));
 
   let board;
@@ -53,7 +53,11 @@ export async function buildShortCounterfactual({
 
   while (line.length < safePlies && !board.isGameOver()) {
     if (signal?.aborted) throw signal.reason || new DOMException('Aborted', 'AbortError');
-    const engineMove = normalizeEngineMove(await analyzePosition(board.fen(), level, { signal }));
+    // `/api/analyze-move` uses the deterministic analyze_move path. Omitting a
+    // played move asks only for the best continuation, without the randomness
+    // and low-level noise intentionally allowed by `/api/analyze` for CPU play.
+    const analysis = await analyzeMove(board.fen(), level, { signal });
+    const engineMove = normalizeEngineMove(analysis?.suggested);
     const applied = applyMove(board, engineMove);
     if (!applied) break;
     line.push(applied);

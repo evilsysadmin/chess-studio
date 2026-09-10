@@ -19,7 +19,9 @@ export function homeCastleMemory(rivalry = {}) {
 
   if (bestHumanStreak >= 5) {
     return {
+      id: 'rivalry-streak',
       kind: 'standard',
+      destination: 'history',
       title: 'Estandarte de la racha',
       detail: `Récord real: ${bestHumanStreak} victorias seguidas contra Matthias.`,
     };
@@ -27,7 +29,9 @@ export function homeCastleMemory(rivalry = {}) {
 
   if (wins >= 10) {
     return {
+      id: 'rivalry-wins',
       kind: 'trophy',
+      destination: 'history',
       title: 'Trofeo de rivalidad',
       detail: `${wins} victorias registradas contra Matthias.`,
     };
@@ -36,9 +40,42 @@ export function homeCastleMemory(rivalry = {}) {
   return null;
 }
 
-export function buildHomeCastleLife({ rivalry = {}, now = new Date() } = {}) {
+export function homeCastleDailyMemory(dailyStats = {}) {
+  const bestStreak = finiteNonNegative(dailyStats?.bestStreak);
+  if (bestStreak < 7) return null;
+  return {
+    id: 'daily-streak',
+    kind: 'daily-seal',
+    destination: 'daily',
+    title: 'Sello de constancia',
+    detail: `Mejor racha real del Desafío diario: ${bestStreak} días.`,
+  };
+}
+
+export function homeCastleMemories({ rivalry = {}, dailyStats = {} } = {}) {
+  return [homeCastleMemory(rivalry), homeCastleDailyMemory(dailyStats)]
+    .filter(Boolean)
+    .slice(0, 2);
+}
+
+export function homeCastleRareSighting(now = new Date()) {
+  const year = Number(now?.getFullYear?.());
+  const month = Number(now?.getMonth?.());
+  const day = Number(now?.getDate?.());
+  if (![year, month, day].every(Number.isFinite)) return null;
+
+  // Determinista por fecha local: aproximadamente un día de cada 47.
+  // No hay RNG por render, timers de elegibilidad ni estado persistido.
+  const daySignature = (year * 372) + ((month + 1) * 31) + day;
+  return daySignature % 47 === 0 ? 'gallery-glint' : null;
+}
+
+export function buildHomeCastleLife({ rivalry = {}, dailyStats = {}, now = new Date() } = {}) {
+  const memories = homeCastleMemories({ rivalry, dailyStats });
   return {
     ambient: homeCastleAmbient(now),
-    memory: homeCastleMemory(rivalry),
+    memory: memories[0] || null,
+    memories,
+    rareSighting: homeCastleRareSighting(now),
   };
 }

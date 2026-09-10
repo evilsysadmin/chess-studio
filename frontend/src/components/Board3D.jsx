@@ -11,10 +11,7 @@ import {
   acquireWarRoomHansQuickIteration,
   releaseWarRoomHansQuickIteration,
 } from './WarRoomHansIteration.js';
-import {
-  hasWarRoomHansAppearedForGame,
-  markWarRoomHansAppearedForGame,
-} from './WarRoomHansPerGame.js';
+import { hasWarRoomHansCompletedForGame } from './WarRoomHansPerGame.js';
 
 // Safe public entrypoint. GameBoardView also imports Board3D directly, so the
 // provider must live here rather than only in the preferred Board wrapper.
@@ -55,42 +52,17 @@ export default function Board3D(props) {
     previousFenRef.current = props.fen;
   }, [props.fen]);
 
-  // Eligibility and consumption are deliberately separate. A transient 3D
-  // mount may arm Hans, but it must not burn the one-shot cameo until the real
-  // scene proves that Hans was both rendered and inside the player's viewport.
+  // Board3D owns only the Three.js quick-iteration lease. Persisting the cameo
+  // here used to mark a game as completed as soon as Hans entered the viewport,
+  // which could kill the React narrative after an F5/remount halfway through
+  // the fireplace number. Completion is persisted by GameBoardView only after
+  // WarRoomHansFireCall reaches its real terminal state.
   useLayoutEffect(() => {
     if (!requestsHansQuickIteration) return undefined;
-    if (hasWarRoomHansAppearedForGame(hansGameId)) return undefined;
+    if (hasWarRoomHansCompletedForGame(hansGameId)) return undefined;
 
     acquireWarRoomHansQuickIteration();
-    const marker = hansMarkerRef.current;
-    let observer = null;
-
-    const consumeWhenActuallySeen = () => {
-      if (!marker) return false;
-      const runtime = marker.getAttribute?.('data-war-room-hans-runtime');
-      const screen = marker.getAttribute?.('data-war-room-hans-screen');
-      if (runtime !== 'visible' || screen !== 'onscreen') return false;
-      markWarRoomHansAppearedForGame(hansGameId);
-      return true;
-    };
-
-    if (!consumeWhenActuallySeen() && marker && typeof MutationObserver !== 'undefined') {
-      observer = new MutationObserver(() => {
-        if (!consumeWhenActuallySeen()) return;
-        observer?.disconnect();
-        observer = null;
-      });
-      observer.observe(marker, {
-        attributes: true,
-        attributeFilter: ['data-war-room-hans-runtime', 'data-war-room-hans-screen'],
-      });
-    }
-
-    return () => {
-      observer?.disconnect();
-      releaseWarRoomHansQuickIteration();
-    };
+    return () => releaseWarRoomHansQuickIteration();
   }, [requestsHansQuickIteration, hansGameId]);
 
   return (
