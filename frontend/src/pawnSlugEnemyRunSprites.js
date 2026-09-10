@@ -26,6 +26,11 @@ import {
   pawnSlugEnemyActionPose,
   pawnSlugEnemySourceFrame,
 } from './pawnSlugEnemyActionMotion.js';
+import {
+  PAWN_SLUG_SOLDIER_ATLAS_META,
+  createPawnSlugSoldierAtlasTexture,
+  pawnSlugSoldierAtlasWindow,
+} from './pawnSlugSoldierAtlas.js';
 
 const ENEMY_FRAME_BY_TYPE = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
 const ENEMY_RUN_FRAME_BASE_BY_TYPE = Object.freeze({ pawn: 0, knight: 8, rook: 16 });
@@ -81,7 +86,9 @@ function fallbackWindow(type, dir) {
   const direction = dir < 0 ? -1 : 1;
   return {
     repeatX: direction / 3,
+    repeatY: 1,
     offsetX: direction < 0 ? (frame + 1) / 3 : frame / 3,
+    offsetY: 0,
   };
 }
 
@@ -90,17 +97,22 @@ function applyAtlasWindow(sprite) {
   const texture = atlas?.texture;
   if (!texture) return;
   configurePawnSlugTexture(texture);
-  const window = atlas.source === 'primary-run'
-    ? pawnSlugEnemyRunAtlasWindow(atlas.enemyType, atlas.frame, atlas.direction)
-    : fallbackWindow(atlas.enemyType, atlas.direction);
-  texture.repeat.set(window.repeatX, 1);
-  texture.offset.set(window.offsetX, 0);
+  let window;
+  if (atlas.source === 'generated-actions') {
+    window = pawnSlugSoldierAtlasWindow(atlas.enemyType, sprite.userData.action, sprite.userData.actionFrame, atlas.direction);
+  } else if (atlas.source === 'primary-run') {
+    window = { ...pawnSlugEnemyRunAtlasWindow(atlas.enemyType, atlas.frame, atlas.direction), repeatY: 1, offsetY: 0 };
+  } else {
+    window = fallbackWindow(atlas.enemyType, atlas.direction);
+  }
+  texture.repeat.set(window.repeatX, window.repeatY);
+  texture.offset.set(window.offsetX, window.offsetY);
   texture.needsUpdate = true;
 }
 
 function tintSprite(sprite, hurt) {
-  sprite.material.opacity = hurt ? 0.68 : 1;
-  sprite.material.color?.setRGB(1, hurt ? 0.62 : 1, hurt ? 0.62 : 1);
+  sprite.material.opacity = hurt ? 0.78 : 1;
+  sprite.material.color?.setRGB(1, hurt ? 0.72 : 1, hurt ? 0.72 : 1);
 }
 
 function inferredVerticalMotion(sprite, time) {
@@ -114,10 +126,7 @@ function inferredVerticalMotion(sprite, time) {
   }
   sprite.userData.lastWorldY = y;
   sprite.userData.lastWorldYAt = time;
-  return Object.freeze({
-    airborne: time < (sprite.userData.airborneUntil || 0),
-    vy,
-  });
+  return Object.freeze({ airborne: time < (sprite.userData.airborneUntil || 0), vy });
 }
 
 export function createSlugEnemySprite(type = 'pawn') {
@@ -163,7 +172,7 @@ export function createSlugEnemySprite(type = 'pawn') {
     material.visible = true;
     material.needsUpdate = true;
     applyAtlasWindow(sprite);
-    if (previous && previous !== texture) previous.dispose?.();
+    if (previous && previous !== texture && previous !== createPawnSlugSoldierAtlasTexture()) previous.dispose?.();
   };
   const loadFallback = () => {
     const atlas = sprite.userData.atlas;
@@ -176,14 +185,17 @@ export function createSlugEnemySprite(type = 'pawn') {
       () => { if (!atlas.disposed) atlas.source = 'failed'; },
     );
   };
-  loader.load(enemyRunAtlasUrl, (texture) => applyTexture(texture, 'primary-run'), undefined, loadFallback);
+
+  const generated = createPawnSlugSoldierAtlasTexture();
+  if (generated) applyTexture(generated, 'generated-actions');
+  else loader.load(enemyRunAtlasUrl, (texture) => applyTexture(texture, 'primary-run'), undefined, loadFallback);
 
   sprite.userData.setFrame = (frame) => {
     const atlas = sprite.userData.atlas;
     const next = wrapFrame(frame, ENEMY_RUN_FRAMES_PER_TYPE);
     if (atlas.frame === next) return;
     atlas.frame = next;
-    applyAtlasWindow(sprite);
+    if (atlas.source !== 'generated-actions') applyAtlasWindow(sprite);
   };
   sprite.userData.setDirection = (dir) => {
     const atlas = sprite.userData.atlas;
@@ -218,6 +230,7 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
   sprite.userData.actionFrame = actionFrame;
   sprite.userData.setDirection?.(direction);
   sprite.userData.setFrame?.(sourceFrame);
+  if (sprite.userData.atlas?.source === 'generated-actions') applyAtlasWindow(sprite);
   sprite.position.x += pose.x * direction;
   sprite.position.y += pose.y;
   sprite.scale.x = baseScaleX * pose.sx * direction;
@@ -243,4 +256,5 @@ export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
   directionMode: 'atlas-uv-mirror',
   frameBaseByType: ENEMY_RUN_FRAME_BASE_BY_TYPE,
   actionMotion: PAWN_SLUG_ENEMY_ACTION_META,
+  generatedActionAtlas: PAWN_SLUG_SOLDIER_ATLAS_META,
 });
