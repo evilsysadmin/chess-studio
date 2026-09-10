@@ -1,4 +1,5 @@
 import { STORAGE_SESSION, getStorageItem, readJsonStorage, removeStorageItem, setStorageItem, writeJsonStorage } from './safeStorage.js';
+import { MAX_VIEW_HISTORY } from './viewNavigationContract.js';
 
 // viewState.js — navegación de sesión resistente a refresh y con historial.
 // Solo persistimos pantallas que pueden reconstruirse únicamente desde el
@@ -8,7 +9,6 @@ import { STORAGE_SESSION, getStorageItem, readJsonStorage, removeStorageItem, se
 
 export const VIEW_STORAGE_KEY = 'chess-study-current-view';
 export const VIEW_HISTORY_STORAGE_KEY = 'chess-study-view-history';
-const MAX_VIEW_HISTORY = 40;
 
 const RESTORABLE_VIEWS = Object.freeze([
   'menu',
