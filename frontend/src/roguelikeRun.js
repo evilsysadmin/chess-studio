@@ -1,4 +1,4 @@
-import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, getStorageItem, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 import { perkById } from './roguelikePerks.js';
 import { loadCombatHistory } from './combatHistory.js';
@@ -54,13 +54,7 @@ function normalizeRun(parsed) {
 }
 
 export function loadRun() {
-  try {
-    const raw = getStorageItem(STORAGE_LOCAL, KEY);
-    if (!raw) return defaultRun();
-    return normalizeRun(JSON.parse(raw));
-  } catch {
-    return defaultRun();
-  }
+  return normalizeRun(readJsonStorage(STORAGE_LOCAL, KEY, { fallback: null }));
 }
 
 function saveRun(run) {
