@@ -52,4 +52,42 @@ describe('War Room Hans animator', () => {
     expect(torso.rotation.x).toBeCloseTo(0, 6);
     expect(hans.userData.warRoomHansTaskPose).toBe('espresso');
   });
+
+  it('owns every ambient chore pose while chore tasks keep only world and prop animation', () => {
+    const hans = new THREE.Group();
+    const rightArm = new THREE.Group();
+    const leftArm = new THREE.Group();
+    const torso = new THREE.Group();
+    const actor = { hans, body: { rightArm, leftArm, torso } };
+    const reset = () => {
+      rightArm.rotation.x = 0;
+      leftArm.rotation.x = 0;
+      torso.rotation.x = 0;
+    };
+
+    expect(applyWarRoomHansTaskPose(actor, 'dust-board', { elapsedMs: 0 })).toBe(true);
+    expect(rightArm.rotation.x).toBeCloseTo(-0.62, 6);
+    expect(torso.rotation.x).toBeCloseTo(0.025, 6);
+
+    reset();
+    expect(applyWarRoomHansTaskPose(actor, 'bring-book')).toBe(true);
+    expect(leftArm.rotation.x).toBeCloseTo(-0.34, 6);
+    expect(rightArm.rotation.x).toBeCloseTo(-0.34, 6);
+
+    reset();
+    expect(applyWarRoomHansTaskPose(actor, 'straighten-room')).toBe(true);
+    expect(leftArm.rotation.x).toBeCloseTo(-0.48, 6);
+    expect(rightArm.rotation.x).toBeCloseTo(-0.62, 6);
+
+    reset();
+    expect(applyWarRoomHansTaskPose(actor, 'sweep-ashes', { elapsedMs: 0 })).toBe(true);
+    expect(rightArm.rotation.x).toBeCloseTo(-0.72, 6);
+    expect(torso.rotation.x).toBeCloseTo(0.06, 6);
+
+    reset();
+    expect(applyWarRoomHansTaskPose(actor, 'polish-brass', { elapsedMs: 0 })).toBe(true);
+    expect(rightArm.rotation.x).toBeCloseTo(-0.55, 6);
+    expect(leftArm.rotation.x).toBeCloseTo(-0.18, 6);
+    expect(hans.userData.warRoomHansTaskPose).toBe('polish-brass');
+  });
 });
