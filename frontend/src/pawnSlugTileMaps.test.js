@@ -45,8 +45,9 @@ describe('Pawn Slug tile maps', () => {
 
   it('keeps tile-derived world positions deterministic', () => {
     for (const scenario of Object.values(PAWN_SLUG_SCENARIO_TILEMAPS)) {
-      const signature = () => pawnSlugTilesForScenario(scenario).map(({ kind, row, column, x }) => `${kind}:${row}:${column}:${x}`);
-      expect(signature()).toEqual(signature());
+      const firstPass = pawnSlugTilesForScenario(scenario).map(({ kind, row, column, x }) => `${kind}:${row}:${column}:${x}`);
+      const secondPass = pawnSlugTilesForScenario(scenario).map(({ kind, row, column, x }) => `${kind}:${row}:${column}:${x}`);
+      expect(secondPass).toEqual(firstPass);
     }
   });
 
