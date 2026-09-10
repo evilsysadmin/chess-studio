@@ -55,12 +55,28 @@ function LegacyCompactPill({ game, signal, board, onToggleBoardRenderer }) {
         >
           {signal.label}
         </strong>
+        {typeof board.onCustomize === 'function' && (
+          <details className="game-3d-utility-menu">
+            <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
+            <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
+              <button
+                type="button"
+                role="menuitem"
+                onClick={(event) => {
+                  closeUtilityMenu(event);
+                  board.onCustomize();
+                }}
+              >
+                Apariencia
+              </button>
+            </div>
+          </details>
+        )}
       </div>
 
       <div className="game-3d-warroom-controls" aria-label="Controles de vista 3D">
         <button type="button" className="secondary-btn is-selected" aria-pressed="true">3D</button>
         <button type="button" className="secondary-btn" onClick={onToggleBoardRenderer}>2D</button>
-        {board.onCustomize && <button type="button" className="secondary-btn" onClick={board.onCustomize}>Apariencia</button>}
       </div>
     </aside>
   );
@@ -77,9 +93,9 @@ export default function GameWarRoomCommandColumn({
 }) {
   const signal = resolveWarRoomSignal(game, status);
 
-  // Mobile/compact keeps the proven historical DOM contract. The premium rail
-  // composition is deliberately desktop-only so touch layout and status
-  // visibility cannot regress when the desktop chrome evolves.
+  // Mobile/compact keeps the established compact composition, but secondary
+  // board customization shares the same overflow contract as desktop so no
+  // floating Appearance control can overlap the board.
   if (compactViewport) {
     return (
       <LegacyCompactPill
