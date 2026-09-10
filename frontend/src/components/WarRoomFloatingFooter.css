@@ -348,9 +348,8 @@
   }
 }
 
-/* The markup above keeps the historical mobile pill contract. On compact 3D
-   layouts the new wrappers dissolve and the rail-only utility menu disappears;
-   the existing mobile GameCommandDeck remains the source of game actions. */
+/* Compact 3D keeps the historical pill, but appearance now lives in the same
+   overflow pattern as desktop instead of floating over the board. */
 @media (max-width: 1080px) {
   .game-3d-matchup,
   .game-3d-turn-state {
@@ -358,8 +357,7 @@
   }
 
   .game-3d-human-id,
-  .game-3d-turn-pill-versus,
-  .game-3d-utility-menu {
+  .game-3d-turn-pill-versus {
     display: none !important;
   }
 
@@ -367,5 +365,68 @@
     white-space: nowrap;
     font-size: .58rem;
     color: color-mix(in srgb, var(--cream) 68%, var(--studio-muted));
+  }
+
+  .game-screen .game-3d-turn-pill.game-3d-matthias-card {
+    position: relative;
+    padding-right: 2.7rem;
+  }
+
+  .game-screen .game-3d-utility-menu {
+    display: block !important;
+    position: absolute;
+    z-index: 45;
+    top: 50%;
+    right: .42rem;
+    width: 30px;
+    height: 30px;
+    transform: translateY(-50%);
+    pointer-events: auto;
+  }
+
+  .game-screen .game-3d-utility-menu > summary {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    box-sizing: border-box;
+    border: 1px solid rgba(190, 164, 109, .2);
+    border-radius: 8px;
+    background: rgba(5, 9, 14, .66);
+    color: color-mix(in srgb, var(--cream) 82%, var(--brass));
+    cursor: pointer;
+    list-style: none;
+    font: 800 .9rem/1 var(--font-body);
+    user-select: none;
+  }
+
+  .game-screen .game-3d-utility-menu > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .game-screen .game-3d-utility-popover {
+    position: absolute;
+    z-index: 90;
+    top: calc(100% + .36rem);
+    right: 0;
+    width: min(190px, calc(100vw - 1.2rem));
+    padding: .3rem;
+    border: 1px solid rgba(190, 164, 109, .22);
+    border-radius: 10px;
+    background: rgba(7, 10, 15, .97);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .42);
+  }
+
+  .game-screen .game-3d-utility-popover button {
+    display: block;
+    width: 100%;
+    min-height: 34px;
+    padding: .44rem .58rem;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: color-mix(in srgb, var(--cream) 88%, var(--studio-muted));
+    text-align: left;
+    font: 650 .66rem/1.2 var(--font-body);
   }
 }
