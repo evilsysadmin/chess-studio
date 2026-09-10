@@ -23,6 +23,7 @@ import {
   pawnSlugXpForKill,
   pawnSlugXpForLevel,
 } from './pawnSlug.js';
+import { pawnSlugCreditsForKill } from './pawnSlugEconomy.js';
 import {
   animateSlugEnemy,
   createExplosionParticle,
@@ -60,6 +61,9 @@ import {
 import { animateMatthiasSlugSprite } from './pawnSlugSprites.js';
 import {
   PAWN_SLUG_RUNTIME_HOT_PATH,
+  pawnSlugEnemyFireCooldown,
+  pawnSlugEnemyShotPlan,
+  pawnSlugEnemyWeaponFor,
   pawnSlugFirstHitEnemyIndex,
   pawnSlugRectsOverlap,
 } from './pawnSlugRuntimeHotPath.js';
@@ -73,7 +77,6 @@ const PLAYER_JUMP = 8.4;
 const GRAVITY = 22;
 const PLAYER_W = 0.82;
 const PLAYER_H = 1.75;
-const ENEMY_BULLET_SPEED = 7.2;
 const CHECKPOINTS = [110, 1480, 2980, 4140].map((value) => value * WORLD_SCALE);
 
 function wx(value) {
@@ -82,6 +85,12 @@ function wx(value) {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function stableEnemyVariant(id = '') {
+  let hash = 0;
+  for (const char of String(id)) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return hash;
 }
 
 function createInitialArsenal() {
@@ -101,6 +110,7 @@ function initialState() {
     time: 0,
     missionTime: 0,
     score: 0,
+    credits: 0,
     combo: 0,
     comboUntil: 0,
     cameraX: 0,
@@ -259,6 +269,7 @@ function hud(state) {
     ammo: Number.isFinite(player.ammo) ? Math.max(0, Math.ceil(player.ammo)) : null,
     weapons: arsenalHud(player),
     grenades: player.grenades,
+    credits: Math.max(0, Math.floor(state.credits || 0)),
     score: Math.floor(state.score),
     combo: state.combo,
     progress: clamp(player.x / wx(PAWN_SLUG_WORLD.extractionX), 0, 1),
@@ -425,10 +436,12 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   }
 
   function startMission() {
+    const bankedCredits = Math.max(0, Math.floor(state.credits || 0));
     resetDynamic();
     resetInput();
     paused = false;
     state = initialState();
+    state.credits = bankedCredits;
     state.phase = 'playing';
     state.toast = pawnSlugMatthiasLine('start');
     state.toastUntil = 3.5;
@@ -456,9 +469,11 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     const x = wx(spawn.x);
     model.position.set(x, 0, midBoss ? 0.08 : 0);
     dynamic.add(model);
+    const weapon = pawnSlugEnemyWeaponFor(spawn.type, stableEnemyVariant(spawn.id));
     const enemy = {
       id: spawn.id,
       type: spawn.type,
+      weapon,
       x,
       y: 0,
       w: stats.width * WORLD_SCALE * 0.92,
@@ -471,7 +486,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       vx: 0,
       vy: 0,
       onGround: true,
-      fireCooldown: midBoss ? 0.75 : 0.45 + Math.random() * 0.8,
+      fireCooldown: midBoss ? 0.75 : pawnSlugEnemyFireCooldown(weapon, Math.random()),
       shellCooldown: midBoss ? 1.65 + Math.random() * 0.45 : null,
       suppressionCooldown: midBoss ? 2.35 + Math.random() * 0.7 : null,
       suppressionShots: 0,
@@ -500,10 +515,11 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     const x = wx(PAWN_SLUG_WORLD.bossX);
     model.position.set(x, 0, -0.15);
     dynamic.add(model);
+    const weapon = pawnSlugEnemyWeaponFor('boss', 0);
     state.enemies.push({
-      id: 'boss-panzer-rook', type: 'boss', x, y: 0, w: 4.6, h: 3.2,
+      id: 'boss-panzer-rook', type: 'boss', weapon, x, y: 0, w: 4.6, h: 3.2,
       hp: stats.hp, maxHp: stats.hp, speed: 0, score: stats.score, dir: -1,
-      vx: 0, vy: 0, onGround: true, fireCooldown: 0.7, shellCooldown: 1.55,
+      vx: 0, vy: 0, onGround: true, fireCooldown: pawnSlugEnemyFireCooldown(weapon, 0.45), shellCooldown: 1.55,
       hurt: 0, dead: false, model,
     });
     state.hitStop = reducedMotion ? 0 : 0.18;
@@ -624,13 +640,27 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   function fireEnemy(enemy, explosive = false) {
     const dir = enemy.x >= state.player.x ? -1 : 1;
     const y = enemy.y + (enemy.type === 'boss' ? 1.9 : enemy.type === 'bishop' ? 1.55 : enemy.type === 'rook' ? 1.15 : 0.88);
-    const speed = explosive ? 5.6 : ENEMY_BULLET_SPEED;
+    const weaponId = explosive ? 'panzerfaust' : (enemy.weapon || pawnSlugEnemyWeaponFor(enemy.type, 0));
+    const plan = pawnSlugEnemyShotPlan(weaponId);
     const targetDy = (state.player.y + 0.8) - y;
     const distance = Math.max(1, Math.abs(state.player.x - enemy.x));
-    const vy = clamp(targetDy / distance * speed, -2.4, 2.4);
+    const aimedVy = clamp(targetDy / distance * plan.speed, -2.4, 2.4);
     const muzzleOffset = enemy.type === 'boss' ? 2 : enemy.type === 'bishop' ? 1.05 : 0.7;
-    addBullet({ x: enemy.x + dir * muzzleOffset, y, vx: dir * speed, vy, damage: explosive ? (enemy.type === 'bishop' ? 24 : 30) : (enemy.type === 'bishop' ? 15 : 13), enemy: true, explosive, life: 4, weapon: 'enemy' });
-    addFlash(enemy.x + dir * muzzleOffset, y, dir, explosive ? 'panzerfaust' : 'pistol', true);
+    for (let pellet = 0; pellet < plan.pellets; pellet += 1) {
+      const spread = (Math.random() * 2 - 1) * plan.spread;
+      addBullet({
+        x: enemy.x + dir * muzzleOffset,
+        y,
+        vx: dir * plan.speed * Math.cos(spread),
+        vy: aimedVy + plan.speed * Math.sin(spread),
+        damage: plan.damage,
+        enemy: true,
+        explosive: plan.explosive,
+        life: 4,
+        weapon: weaponId,
+      });
+    }
+    addFlash(enemy.x + dir * muzzleOffset, y, dir, weaponId, true);
   }
 
   function fireBishopSuppression(enemy, shotIndex) {
@@ -647,7 +677,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       enemy: true,
       explosive: false,
       life: 3.2,
-      weapon: 'enemy',
+      weapon: 'machinegun',
     });
     addFlash(x, y, dir, 'machinegun', true);
   }
@@ -719,6 +749,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     state.score += pawnSlugScoreForKill(enemy.type) * Math.max(1, state.combo || 1);
     state.combo = state.time <= state.comboUntil ? Math.min(9, state.combo + 1) : 1;
     state.comboUntil = state.time + 2.2;
+    state.credits += pawnSlugCreditsForKill(enemy.type, { combo: state.combo });
     grantXp(enemy.type);
     state.hitStop = Math.max(state.hitStop, reducedMotion ? 0 : enemy.type === 'boss' ? 0.22 : enemy.type === 'bishop' ? 0.11 : 0.035);
     burst(enemy.x, enemy.y + enemy.h * 0.5, enemy.type === 'boss' ? 2.4 : enemy.type === 'bishop' ? 1.45 : 0.9, true);
@@ -733,6 +764,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       setToast(pawnSlugMatthiasLine('bossDown'), 3);
       state.shake = reducedMotion ? 0 : 0.65;
     }
+    emitHud(true);
   }
 
   function hurtPlayer(amount) {
@@ -910,7 +942,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
         enemy.vx = distance > 4.6 ? enemy.dir * enemy.speed : 0;
         if (distance < 9 && enemy.fireCooldown <= 0) {
           fireEnemy(enemy);
-          enemy.fireCooldown = 1.15 + Math.random() * 0.55;
+          enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random());
         }
       } else if (enemy.type === 'knight') {
         enemy.vx = distance > 2.1 ? enemy.dir * enemy.speed : enemy.dir * enemy.speed * 0.25;
@@ -921,13 +953,13 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
         }
         if (distance < 8 && enemy.fireCooldown <= 0) {
           fireEnemy(enemy);
-          enemy.fireCooldown = 0.75 + Math.random() * 0.45;
+          enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random());
         }
       } else if (enemy.type === 'rook') {
         enemy.vx = 0;
         if (distance < 12 && enemy.fireCooldown <= 0) {
           fireEnemy(enemy, false);
-          enemy.fireCooldown = 1.35 + Math.random() * 0.5;
+          enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random());
         }
       } else if (enemy.type === 'bishop') {
         enemy.shellCooldown = pawnSlugSturmBishopCooldownTick(
@@ -969,7 +1001,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
           enemy.vx = suppressionCharging ? 0 : (distance > 4.8 ? enemy.dir * enemy.speed : 0);
           if (!suppressionCharging && distance < 11 && enemy.fireCooldown <= 0) {
             fireEnemy(enemy, false);
-            enemy.fireCooldown = 0.42 + Math.random() * 0.16;
+            enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random());
           }
           if (shellClearForSuppression
             && distance < PAWN_SLUG_STURM_BISHOP_META.suppressionRange
@@ -988,7 +1020,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
         enemy.vx = 0;
         if (distance < 16 && enemy.fireCooldown <= 0) {
           fireEnemy(enemy, false);
-          enemy.fireCooldown = 0.52 + Math.random() * 0.18;
+          enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random());
         }
         enemy.shellCooldown -= dt;
         if (distance < 18 && enemy.shellCooldown <= 0) {
