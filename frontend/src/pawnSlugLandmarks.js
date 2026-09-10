@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createPawnSlugCastleDungeon } from './pawnSlugScenarioRenderer.js';
+import { createPawnSlugCastleDungeon, createPawnSlugFallenForest } from './pawnSlugScenarioRenderer.js';
 import {
   PAWN_SLUG_STATIC_INSTANCE_VERSION,
   createPawnSlugStaticInstanceBatch,
@@ -7,14 +7,15 @@ import {
 
 export const PAWN_SLUG_LANDMARK_META = Object.freeze({
   landmarks: Object.freeze([
+    Object.freeze({ id: 'fallen-forest', x: 10.5, label: 'Bosque de las piezas caídas' }),
     Object.freeze({ id: 'command-post', x: 29.5, label: 'Puesto de mando bombardeado' }),
     Object.freeze({ id: 'dungeon-gate', x: 44.5, label: 'Dungeon bajo el castillo' }),
     Object.freeze({ id: 'wrecked-searchlight', x: 66.5, label: 'Reflector derribado' }),
     Object.freeze({ id: 'hero-barricade', x: 104.5, label: 'Barricada de última línea' }),
     Object.freeze({ id: 'boss-fortress', x: 114.5, label: 'Fortaleza incendiada del Panzer-Rook' }),
   ]),
-  desktopDetailBudget: 5,
-  coarseDetailBudget: 3,
+  desktopDetailBudget: 6,
+  coarseDetailBudget: 4,
   desktopLocalLightBudget: 4,
   coarseLocalLightBudget: 0,
   staticBatching: PAWN_SLUG_STATIC_INSTANCE_VERSION,
@@ -47,6 +48,22 @@ function addInstances(parent, name, geometry, mat, instances) {
   return batch;
 }
 
+function scenarioRoot(factory, x, coarse, { name, id }) {
+  const root = factory({ coarse });
+  root.name = name;
+  root.position.set(x, 0, -2.55);
+  root.userData.premiumScenario = id;
+  root.userData.scenarioSource = 'tile-map';
+  return root;
+}
+
+function forestScenario(x, coarse) {
+  return scenarioRoot(createPawnSlugFallenForest, x, coarse, {
+    name: 'pawn-slug-landmark-fallen-forest',
+    id: 'fallen-forest',
+  });
+}
+
 function commandPost(x, coarse) {
   const root = new THREE.Group();
   root.name = 'pawn-slug-landmark-command-post';
@@ -61,32 +78,23 @@ function commandPost(x, coarse) {
       localPointLight('pawn-slug-command-post-light', 0xffb45f, 0.95, 5.2, { x: 1.2, y: 1.02, z: 1.05 }),
       mesh(new THREE.SphereGeometry(0.09, 8, 6), material(0xe7b86a, 0.34, 0.08, 0xffb34f, 2.1), { x: 1.26, y: 0.82, z: 0.87 }),
     );
-    addInstances(
-      root,
-      'pawn-slug-command-post-sandbags-instanced',
-      new THREE.SphereGeometry(0.18, 8, 6),
-      material(0x625746, 1),
-      Array.from({ length: 5 }, (_, i) => ({ x: -1.35 + i * 0.46, y: 0.16, z: 0.93 })),
-    );
+    addInstances(root, 'pawn-slug-command-post-sandbags-instanced', new THREE.SphereGeometry(0.18, 8, 6), material(0x625746, 1), Array.from({ length: 5 }, (_, i) => ({ x: -1.35 + i * 0.46, y: 0.16, z: 0.93 })));
   }
   return root;
 }
 
 function dungeonScenario(x, coarse) {
-  const root = createPawnSlugCastleDungeon({ coarse });
-  root.name = 'pawn-slug-landmark-dungeon-gate';
-  root.position.set(x, 0, -2.55);
-  root.userData.premiumScenario = 'castle-dungeon';
-  root.userData.scenarioSource = 'tile-map';
-  return root;
+  return scenarioRoot(createPawnSlugCastleDungeon, x, coarse, {
+    name: 'pawn-slug-landmark-dungeon-gate',
+    id: 'castle-dungeon',
+  });
 }
 
 function wreckedSearchlight(x, coarse) {
   const root = new THREE.Group();
   root.name = 'pawn-slug-landmark-wrecked-searchlight';
   root.position.set(x, 0, 1.55);
-  const iron = material(0x454b50, 0.62, 0.48);
-  addInstances(root, 'pawn-slug-searchlight-legs-instanced', new THREE.CylinderGeometry(0.055, 0.07, 1, 8), iron, [
+  addInstances(root, 'pawn-slug-searchlight-legs-instanced', new THREE.CylinderGeometry(0.055, 0.07, 1, 8), material(0x454b50, 0.62, 0.48), [
     { x: -0.38, y: 0.72, rz: 0.46, sy: 1.65 },
     { x: 0.38, y: 0.7, rz: -0.56, sy: 1.55 },
     { x: 0.12, y: 0.68, rx: 0.32, rz: 0.12, sy: 1.55 },
@@ -112,35 +120,16 @@ function heroBarricade(x, coarse) {
   for (let row = 0; row < rows; row += 1) {
     const count = 7 - row;
     for (let i = 0; i < count; i += 1) {
-      bagInstances.push({
-        x: (i - (count - 1) / 2) * 0.42 + row * 0.08,
-        y: 0.13 + row * 0.2,
-        z: (i % 2) * 0.035,
-        sx: 1.18,
-        sy: 0.56,
-        sz: 0.82,
-      });
+      bagInstances.push({ x: (i - (count - 1) / 2) * 0.42 + row * 0.08, y: 0.13 + row * 0.2, z: (i % 2) * 0.035, sx: 1.18, sy: 0.56, sz: 0.82 });
     }
   }
-  addInstances(
-    root,
-    'pawn-slug-hero-barricade-sandbags-instanced',
-    new THREE.SphereGeometry(0.25, 8, 6),
-    material(0x655946, 0.98, 0.01),
-    bagInstances,
-  );
+  addInstances(root, 'pawn-slug-hero-barricade-sandbags-instanced', new THREE.SphereGeometry(0.25, 8, 6), material(0x655946, 0.98, 0.01), bagInstances);
   root.add(mesh(new THREE.BoxGeometry(1.6, 0.54, 0.09), material(0x303438, 0.66, 0.45), { y: 0.94, z: 0.02 }));
   if (!coarse) {
     const obstacle = new THREE.Group();
     obstacle.name = 'pawn-slug-barricade-hedgehog';
     obstacle.position.set(1.85, 0.38, 0.18);
-    addInstances(
-      obstacle,
-      'pawn-slug-barricade-hedgehog-beams-instanced',
-      new THREE.BoxGeometry(1.15, 0.11, 0.11),
-      material(0x343a3f, 0.62, 0.5),
-      [-Math.PI / 3, 0, Math.PI / 3].map((rz) => ({ rz })),
-    );
+    addInstances(obstacle, 'pawn-slug-barricade-hedgehog-beams-instanced', new THREE.BoxGeometry(1.15, 0.11, 0.11), material(0x343a3f, 0.62, 0.5), [-Math.PI / 3, 0, Math.PI / 3].map((rz) => ({ rz })));
     root.add(obstacle);
   }
   return root;
@@ -159,15 +148,10 @@ function bossFortress(x, coarse) {
     mesh(new THREE.BoxGeometry(2.55, 7.5, 1.55), dark, { x: 5.55, y: 3.72, z: 0.08 }),
     mesh(new THREE.BoxGeometry(4.15, 4.05, 0.34), material(0x080a0c, 1), { y: 1.85, z: 0.72 }),
   );
-  const arch = mesh(new THREE.TorusGeometry(2.08, 0.43, coarse ? 7 : 10, coarse ? 18 : 28, Math.PI), stone, {
-    y: 3.72,
-    z: 0.83,
-    rz: Math.PI,
-  });
+  const arch = mesh(new THREE.TorusGeometry(2.08, 0.43, coarse ? 7 : 10, coarse ? 18 : 28, Math.PI), stone, { y: 3.72, z: 0.83, rz: Math.PI });
   arch.name = 'pawn-slug-boss-fortress-arch';
   root.add(arch);
-  const brazierPositions = coarse ? [-4.1, 4.1] : [-4.1, -2.9, 2.9, 4.1];
-  for (const bx of brazierPositions) {
+  for (const bx of (coarse ? [-4.1, 4.1] : [-4.1, -2.9, 2.9, 4.1])) {
     root.add(
       mesh(new THREE.CylinderGeometry(0.34, 0.43, 0.52, 8), material(0x30373c, 0.58, 0.52), { x: bx, y: 0.26, z: 1.02 }),
       mesh(new THREE.ConeGeometry(0.31, 0.88, coarse ? 7 : 10), fire, { x: bx, y: 0.95, z: 1.02 }),
@@ -190,11 +174,12 @@ export function createPawnSlugPremiumLandmarks(parent, { coarse = false } = {}) 
   root.name = 'pawn-slug-premium-landmarks';
   root.userData.pawnSlugStaticInstances = PAWN_SLUG_STATIC_INSTANCE_VERSION;
   root.add(
-    commandPost(PAWN_SLUG_LANDMARK_META.landmarks[0].x, coarse),
-    dungeonScenario(PAWN_SLUG_LANDMARK_META.landmarks[1].x, coarse),
-    wreckedSearchlight(PAWN_SLUG_LANDMARK_META.landmarks[2].x, coarse),
-    heroBarricade(PAWN_SLUG_LANDMARK_META.landmarks[3].x, coarse),
-    bossFortress(PAWN_SLUG_LANDMARK_META.landmarks[4].x, coarse),
+    forestScenario(PAWN_SLUG_LANDMARK_META.landmarks[0].x, coarse),
+    commandPost(PAWN_SLUG_LANDMARK_META.landmarks[1].x, coarse),
+    dungeonScenario(PAWN_SLUG_LANDMARK_META.landmarks[2].x, coarse),
+    wreckedSearchlight(PAWN_SLUG_LANDMARK_META.landmarks[3].x, coarse),
+    heroBarricade(PAWN_SLUG_LANDMARK_META.landmarks[4].x, coarse),
+    bossFortress(PAWN_SLUG_LANDMARK_META.landmarks[5].x, coarse),
   );
   parent.add(root);
   return root;

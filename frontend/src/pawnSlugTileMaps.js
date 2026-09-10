@@ -16,9 +16,36 @@ export const PAWN_SLUG_TILE_LEGEND = Object.freeze({
   'C': Object.freeze({ kind: 'chain', layer: 'prop' }),
   'P': Object.freeze({ kind: 'fallen-pawn', layer: 'prop', desktopOnly: true }),
   '=': Object.freeze({ kind: 'drain', layer: 'ground' }),
+  'Y': Object.freeze({ kind: 'forest-trunk', layer: 'structure' }),
+  'R': Object.freeze({ kind: 'forest-root', layer: 'ground' }),
+  'K': Object.freeze({ kind: 'fallen-knight', layer: 'landmark' }),
+  '*': Object.freeze({ kind: 'fireflies', layer: 'atmosphere', desktopOnly: true }),
 });
 
 export const PAWN_SLUG_SCENARIO_TILEMAPS = Object.freeze({
+  fallenForest: Object.freeze({
+    id: 'fallen-forest',
+    label: 'Bosque de las piezas caídas',
+    originX: 10.5,
+    tileWorldSize: 1,
+    rows: freezeRows([
+      '  Y   Y    Y   Y  ',
+      ' *   Y  *   Y     ',
+      '   K      Y    *  ',
+      'RRRR RRRRR RRRRRRR',
+    ]),
+    platforms: freezePlatforms([
+      { id: 'forest-root-rise', x: 14.2, y: 1.05, width: 3.3, depth: 1.45, theme: 'stone', oneWay: true },
+      { id: 'forest-broken-statue', x: 18.1, y: 2.35, width: 2.7, depth: 1.4, theme: 'stone', oneWay: true },
+      { id: 'forest-branch-post', x: 24.7, y: 3.5, width: 4.4, depth: 1.55, theme: 'timber', oneWay: true },
+    ]),
+    markers: freezeMarkers([
+      { id: 'forest-enemy-pawn', kind: 'enemy', type: 'pawn', worldX: 13.8 },
+      { id: 'forest-enemy-knight', kind: 'enemy', type: 'knight', worldX: 20.5 },
+      { id: 'forest-pickup-machinegun', kind: 'pickup', type: 'machinegun', worldX: 23.0 },
+      { id: 'forest-exit', kind: 'transition', type: 'battlefield', worldX: 27.5 },
+    ]),
+  }),
   castleDungeon: Object.freeze({
     id: 'castle-dungeon',
     label: 'Dungeon bajo el castillo',
@@ -44,9 +71,6 @@ export const PAWN_SLUG_SCENARIO_TILEMAPS = Object.freeze({
 });
 
 const LEGACY_PLATFORM_LAYOUT = [
-  { id: 'ruin-steps-a', x: 14.2, y: 1.05, width: 3.3, depth: 1.45, theme: 'stone' },
-  { id: 'ruin-steps-b', x: 18.1, y: 2.35, width: 2.7, depth: 1.4, theme: 'stone' },
-  { id: 'watch-post', x: 24.7, y: 3.5, width: 4.4, depth: 1.55, theme: 'timber' },
   { id: 'broken-bridge-a', x: 33.6, y: 1.55, width: 4.9, depth: 1.35, theme: 'steel' },
   { id: 'broken-bridge-b', x: 39.2, y: 3.0, width: 3.0, depth: 1.35, theme: 'steel' },
   { id: 'shell-crater-rim', x: 59.5, y: 1.35, width: 4.1, depth: 1.45, theme: 'stone' },
@@ -59,9 +83,10 @@ const LEGACY_PLATFORM_LAYOUT = [
 ];
 
 export const PAWN_SLUG_PLATFORM_LAYOUT = freezePlatforms([
-  ...LEGACY_PLATFORM_LAYOUT.slice(0, 5),
+  ...PAWN_SLUG_SCENARIO_TILEMAPS.fallenForest.platforms,
+  ...LEGACY_PLATFORM_LAYOUT.slice(0, 2),
   ...PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon.platforms,
-  ...LEGACY_PLATFORM_LAYOUT.slice(5),
+  ...LEGACY_PLATFORM_LAYOUT.slice(2),
 ]);
 
 export function pawnSlugTilesForScenario(scenario) {
