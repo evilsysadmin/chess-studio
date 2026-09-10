@@ -46,6 +46,7 @@ describe('GameWarRoomCommandColumn', () => {
     expect(html).toContain('/matthias.png');
     expect(html).toContain('Más acciones de partida');
     expect(html).toContain('Apariencia');
+    expect((html.match(/>Apariencia<\/button>/g) || []).length).toBe(1);
     expect(html).toContain('Modo Zen');
     expect(html).toContain('Abandonar partida');
     expect(html).toContain('game-3d-warroom-controls');
