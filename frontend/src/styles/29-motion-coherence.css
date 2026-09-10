@@ -1,0 +1,42 @@
+/* Motion coherence: keep status/dialogue feedback restrained without changing
+ * lifecycle timing or gameplay semantics. Use dedicated keyframe names so the
+ * shared legacy statusPulse animation used by other surfaces is untouched. */
+
+@keyframes status-line-pulse-coherent {
+  0% { opacity: 0; transform: translateY(-2px) scale(.99); }
+  28% { opacity: 1; transform: translateY(0) scale(1.015); }
+  48% { transform: translateY(0) scale(1); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.status-line.pulse {
+  animation-name: status-line-pulse-coherent;
+  animation-duration: 220ms;
+  animation-timing-function: cubic-bezier(.22, 1, .36, 1);
+}
+
+@keyframes matthias-board-bubble-life-coherent {
+  0% { opacity: 0; transform: translateY(2px) scale(.99); }
+  8%, 78% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-1px) scale(.995); visibility: hidden; }
+}
+
+.matthias-board-bubble {
+  animation-name: matthias-board-bubble-life-coherent;
+}
+
+@keyframes audience-in-coherent {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: none; }
+}
+
+.audience-reaction {
+  animation-name: audience-in-coherent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-line.pulse,
+  .audience-reaction {
+    animation: none;
+  }
+}
