@@ -1,4 +1,11 @@
-export const WAR_ROOM_HANS_ACTOR_VERSION = 'war-room-hans-actor-v4-event-context';
+import {
+  assignWarRoomHansTask,
+  getWarRoomHansRuntime,
+  releaseWarRoomHansTask,
+  warRoomHansTaskAvailable,
+} from './WarRoomHansRuntime.js';
+
+export const WAR_ROOM_HANS_ACTOR_VERSION = 'war-room-hans-actor-v5-runtime-bound';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -28,11 +35,11 @@ export function getWarRoomHansActor(root) {
     canvas: null,
     gameMarker: null,
     side: Math.sign(Number(fireplace?.position?.x || -1)) || -1,
-    routine: '',
   };
   ACTORS.set(root, actor);
   hans.userData.warRoomHansActor = WAR_ROOM_HANS_ACTOR_VERSION;
   driver.userData.warRoomHansActor = WAR_ROOM_HANS_ACTOR_VERSION;
+  getWarRoomHansRuntime(actor);
   return actor;
 }
 
@@ -63,29 +70,24 @@ export function getWarRoomHansRouteState(actor) {
   return { route, logicalX };
 }
 
+// Transitional adapters. Existing task producers can keep their old routine
+// vocabulary while ownership already lives in HansRuntime. New code should
+// assign tasks through WarRoomHansRuntime directly.
 export function acquireWarRoomHansRoutine(actor, routineName) {
-  const name = String(routineName || '').trim();
-  if (!actor || !name) return false;
-  if (actor.routine && actor.routine !== name) return false;
-  actor.routine = name;
-  actor.hans.userData.warRoomHansActiveRoutine = name;
-  actor.driver.userData.warRoomHansActiveRoutine = name;
-  return true;
+  const runtime = getWarRoomHansRuntime(actor);
+  return assignWarRoomHansTask(runtime, {
+    id: routineName,
+    kind: 'legacy-routine',
+    source: 'actor-adapter',
+  });
 }
 
 export function releaseWarRoomHansRoutine(actor, routineName) {
-  const name = String(routineName || '').trim();
-  if (!actor || !name || actor.routine !== name) return false;
-  actor.routine = '';
-  actor.hans.userData.warRoomHansActiveRoutine = '';
-  actor.driver.userData.warRoomHansActiveRoutine = '';
-  return true;
+  return releaseWarRoomHansTask(getWarRoomHansRuntime(actor), routineName);
 }
 
 export function warRoomHansRoutineAvailable(actor, routineName = '') {
-  if (!actor) return false;
-  const requested = String(routineName || '').trim();
-  return !actor.routine || actor.routine === requested;
+  return warRoomHansTaskAvailable(getWarRoomHansRuntime(actor), routineName);
 }
 
 export function setWarRoomHansRuntimeState(actor, key, value) {
