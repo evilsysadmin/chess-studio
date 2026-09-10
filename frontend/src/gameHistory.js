@@ -1,3 +1,4 @@
+import { isCompletedGameOutcome } from './gameOutcome.js';
 import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 
@@ -15,7 +16,7 @@ const MAX_RECORDS = 120;
 export function isStatisticalHistoryRecord(record) {
   const outcome = String(record?.outcome || '');
   const endReason = String(record?.endReason || '');
-  if (!['win', 'draw', 'loss'].includes(outcome)) return false;
+  if (!isCompletedGameOutcome(outcome)) return false;
   if (record?.excludedFromStats === true || record?.noPenalty === true) return false;
   return !['cancelled', 'abandoned-no-penalty', 'cancel-no-move'].includes(endReason);
 }
