@@ -90,4 +90,18 @@ describe('War Room Hans animator', () => {
     expect(leftArm.rotation.x).toBeCloseTo(-0.18, 6);
     expect(hans.userData.warRoomHansTaskPose).toBe('polish-brass');
   });
+
+  it('owns the mop posture so the mop task animates props, not Hans limbs', () => {
+    const hans = new THREE.Group();
+    const rightArm = new THREE.Group();
+    const leftArm = new THREE.Group();
+    const torso = new THREE.Group();
+    const actor = { hans, body: { rightArm, leftArm, torso } };
+
+    expect(applyWarRoomHansTaskPose(actor, 'mop')).toBe(true);
+    expect(leftArm.rotation.x).toBeCloseTo(-0.52, 6);
+    expect(rightArm.rotation.x).toBeCloseTo(-0.72, 6);
+    expect(torso.rotation.x).toBeCloseTo(0.04, 6);
+    expect(hans.userData.warRoomHansTaskPose).toBe('mop');
+  });
 });

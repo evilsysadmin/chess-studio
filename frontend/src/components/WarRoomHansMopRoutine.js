@@ -1,12 +1,17 @@
 import * as THREE from 'three';
 import {
-  acquireWarRoomHansRoutine,
   getWarRoomHansActor,
   getWarRoomHansCanvas,
   getWarRoomHansGameId,
-  releaseWarRoomHansRoutine,
-  warRoomHansRoutineAvailable,
 } from './WarRoomHansActor.js';
+import {
+  advanceWarRoomHansWalk,
+  applyWarRoomHansTaskPose,
+  createWarRoomHansWalkController,
+  moveWarRoomHansToward,
+  placeWarRoomHansHorizontal,
+  resetWarRoomHansWalk,
+} from './WarRoomHansAnimator.js';
 import {
   warRoomHansAmbientDelayMs,
   warRoomHansEventMatches,
@@ -21,19 +26,21 @@ import {
 } from './WarRoomHansMopContract.js';
 import { warRoomHansSafeRoomLoop } from './WarRoomHansNavigation.js';
 import {
+  assignWarRoomHansTask,
+  getWarRoomHansRuntime,
+  releaseWarRoomHansTask,
+  setWarRoomHansTaskPhase,
+  setWarRoomHansTaskPresentation,
+  warRoomHansTaskAvailable,
+} from './WarRoomHansRuntime.js';
+import {
   HANS_SERVICE_WALK_SPEED,
-  moveWarRoomHansToward,
   setWarRoomHansServiceDoor,
   warRoomHansServiceHome,
 } from './WarRoomHansServiceRoute.js';
-import {
-  advanceHansWalkCycle,
-  createHansWalkCycle,
-  resetHansWalkCycle,
-} from './HansWalkCycle.js';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
-const ROUTINE_NAME = 'mop-room';
+const TASK_ID = 'mop-room';
 
 function makeBucket() {
   const group = new THREE.Group();
@@ -91,18 +98,23 @@ function setDialogue(actor, value) {
   if (canvas?.dataset) canvas.dataset.warRoomHansMopDialogue = value || '';
 }
 
-function clearRoutineState(actor, props, controller, root) {
-  resetHansWalkCycle(controller, { full: true });
-  actor.hans.visible = false;
-  actor.hans.userData.warRoomHansMotionState = 'idle';
-  actor.hans.userData.warRoomHansRoute = '';
+function clearRoutineState(actor, props, controller, root, runtime) {
+  resetWarRoomHansWalk(controller, { full: true });
+  setWarRoomHansTaskPhase(runtime, 'idle');
+  setWarRoomHansTaskPresentation(runtime, {
+    visible: false,
+    motionState: 'idle',
+    route: '',
+  });
   actor.hans.userData.warRoomHansMopState = 'done';
+  // Transitional compatibility for the old scene diagnostics while all Hans
+  // event clients move to HansRuntime task phases.
   actor.driver.userData.warRoomHansPhase = 'idle';
   props.bucket.visible = false;
   props.mop.visible = false;
   setDialogue(actor, '');
   setWarRoomHansServiceDoor(root, 0);
-  releaseWarRoomHansRoutine(actor, ROUTINE_NAME);
+  releaseWarRoomHansTask(runtime, TASK_ID);
 }
 
 export function installWarRoomHansMopRoutine(root) {
@@ -111,10 +123,11 @@ export function installWarRoomHansMopRoutine(root) {
   if (!actor || !floor || typeof floor.onBeforeRender !== 'function') return 0;
   if (floor.userData?.warRoomHansMopRoutine === WAR_ROOM_HANS_MOP_ROUTINE_VERSION) return 0;
 
+  const runtime = getWarRoomHansRuntime(actor);
   const previous = floor.onBeforeRender;
   const props = ensureProps(actor);
-  const controller = createHansWalkCycle(actor.body, { forward: 1 });
-  if (!controller) return 0;
+  const controller = createWarRoomHansWalkController(actor, { forward: 1 });
+  if (!runtime || !controller) return 0;
 
   let gameId = '';
   let delayMs = 0;
@@ -142,7 +155,7 @@ export function installWarRoomHansMopRoutine(root) {
     const nextGameId = getWarRoomHansGameId(actor);
     if (!nextGameId) return;
     if (nextGameId !== gameId) {
-      if (active) clearRoutineState(actor, props, controller, root);
+      if (active) clearRoutineState(actor, props, controller, root, runtime);
       gameId = nextGameId;
       eligibleSince = now;
       delayMs = warRoomHansAmbientDelayMs(gameId, { min: 18000, max: 46000, salt: 'mop' });
@@ -162,20 +175,30 @@ export function installWarRoomHansMopRoutine(root) {
     if (!warRoomHansEventMatches(gameId, 'mop') || completedGameId === gameId) return;
 
     if (!active) {
-      if (!warRoomHansRoutineAvailable(actor, ROUTINE_NAME) || now - eligibleSince < delayMs) return;
-      if (!acquireWarRoomHansRoutine(actor, ROUTINE_NAME)) return;
+      if (!warRoomHansTaskAvailable(runtime, TASK_ID) || now - eligibleSince < delayMs) return;
+      if (!assignWarRoomHansTask(runtime, {
+        id: TASK_ID,
+        kind: 'mop',
+        source: 'WarRoomHansMopRoutine',
+        payload: { gameId },
+      })) return;
       const service = warRoomHansServiceHome(root, actor.hans.parent);
-      if (!service?.point) { releaseWarRoomHansRoutine(actor, ROUTINE_NAME); return; }
+      if (!service?.point) { releaseWarRoomHansTask(runtime, TASK_ID); return; }
       home = service.point;
-      actor.hans.position.copy(home);
-      actor.hans.visible = true;
+      placeWarRoomHansHorizontal(actor, home);
+      setWarRoomHansTaskPresentation(runtime, {
+        visible: true,
+        motionState: 'walk-mop',
+        route: 'mop-room',
+      });
+      setWarRoomHansTaskPhase(runtime, 'walking');
       setWarRoomHansServiceDoor(root, 1);
       active = true;
       fatigueMs = hansMopFatigueMs();
       activeElapsedMs = 0;
       waypoints = buildRoomWaypoints(floor, actor.hans.parent);
       if (!waypoints.length) {
-        clearRoutineState(actor, props, controller, root);
+        clearRoutineState(actor, props, controller, root, runtime);
         active = false;
         completedGameId = gameId;
         return;
@@ -201,18 +224,23 @@ export function installWarRoomHansMopRoutine(root) {
     if (state === 'walking') {
       const target = waypoints[waypointIndex];
       const motion = moveWarRoomHansToward(actor.hans, target, Math.max(HANS_MOP_WALK_SPEED, HANS_SERVICE_WALK_SPEED) * delta / 1000);
-      actor.hans.userData.warRoomHansMotionState = 'walk-mop';
-      actor.hans.userData.warRoomHansRoute = 'mop-room';
+      setWarRoomHansTaskPresentation(runtime, {
+        motionState: 'walk-mop',
+        route: 'mop-room',
+      });
       actor.hans.userData.warRoomHansMopState = 'walking';
       props.mop.rotation.z = -0.12;
       props.mop.rotation.x = 0.08;
       props.bucket.position.y = 0.16;
       props.bucket.position.x = 0.38 + Math.sin(now * 0.004) * 0.02;
-      if (motion.travelled > 0) advanceHansWalkCycle(controller, { travelled: motion.travelled, horizontalWeight: 0.45 });
+      if (motion.travelled > 0) {
+        advanceWarRoomHansWalk(controller, { travelled: motion.travelled, horizontalWeight: 0.45 });
+      }
       if (motion.arrived) {
         state = 'mopping';
+        setWarRoomHansTaskPhase(runtime, 'mopping');
         patchRemainingMs = hansMopPatchMs();
-        resetHansWalkCycle(controller, { full: true });
+        resetWarRoomHansWalk(controller, { full: true });
         props.bucket.position.y = 0;
         if (dialogueEnabled && !dialogueStarted) {
           dialogueStarted = true;
@@ -225,22 +253,25 @@ export function installWarRoomHansMopRoutine(root) {
 
     if (state === 'mopping') {
       patchRemainingMs -= delta;
-      actor.hans.userData.warRoomHansMotionState = 'mop';
-      actor.hans.userData.warRoomHansRoute = 'mop-room';
+      setWarRoomHansTaskPresentation(runtime, {
+        motionState: 'mop',
+        route: 'mop-room',
+      });
       actor.hans.userData.warRoomHansMopState = 'mopping';
-      resetHansWalkCycle(controller, { full: true });
+      resetWarRoomHansWalk(controller, { full: true });
       const sweep = Math.sin(now * 0.0055);
       props.mop.rotation.z = -0.14 + sweep * 0.24;
       props.mop.position.x = -0.34 + sweep * 0.16;
       props.bucket.position.x = 0.40 + Math.sin(now * 0.002) * 0.025;
-      if (actor.body.leftArm) actor.body.leftArm.rotation.x -= 0.52;
-      if (actor.body.rightArm) actor.body.rightArm.rotation.x -= 0.72;
-      if (actor.body.torso) actor.body.torso.rotation.x += 0.04;
+      applyWarRoomHansTaskPose(actor, 'mop');
       if (patchRemainingMs <= 0) {
-        if (activeElapsedMs >= fatigueMs) state = 'returning';
-        else {
+        if (activeElapsedMs >= fatigueMs) {
+          state = 'returning';
+          setWarRoomHansTaskPhase(runtime, 'returning');
+        } else {
           waypointIndex = (waypointIndex + 1 + Math.floor(Math.random() * 3)) % waypoints.length;
           state = 'walking';
+          setWarRoomHansTaskPhase(runtime, 'walking');
         }
       }
       return;
@@ -248,12 +279,16 @@ export function installWarRoomHansMopRoutine(root) {
 
     if (state === 'returning') {
       const motion = moveWarRoomHansToward(actor.hans, home, HANS_SERVICE_WALK_SPEED * delta / 1000);
-      actor.hans.userData.warRoomHansMotionState = 'walk-mop';
-      actor.hans.userData.warRoomHansRoute = 'mop-return';
+      setWarRoomHansTaskPresentation(runtime, {
+        motionState: 'walk-mop',
+        route: 'mop-return',
+      });
       actor.hans.userData.warRoomHansMopState = 'returning';
-      if (motion.travelled > 0) advanceHansWalkCycle(controller, { travelled: motion.travelled, horizontalWeight: 0.45 });
+      if (motion.travelled > 0) {
+        advanceWarRoomHansWalk(controller, { travelled: motion.travelled, horizontalWeight: 0.45 });
+      }
       if (motion.arrived) {
-        clearRoutineState(actor, props, controller, root);
+        clearRoutineState(actor, props, controller, root, runtime);
         active = false;
         state = 'done';
         completedGameId = gameId;

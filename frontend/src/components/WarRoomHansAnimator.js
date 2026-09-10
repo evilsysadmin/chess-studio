@@ -94,6 +94,10 @@ export function applyWarRoomHansTaskPose(actor, pose, { elapsedMs = 0 } = {}) {
   } else if (poseName === 'polish-brass') {
     if (body.rightArm) body.rightArm.rotation.x -= 0.55 + wave * 0.16;
     if (body.leftArm) body.leftArm.rotation.x -= 0.18;
+  } else if (poseName === 'mop') {
+    if (body.leftArm) body.leftArm.rotation.x -= 0.52;
+    if (body.rightArm) body.rightArm.rotation.x -= 0.72;
+    if (body.torso) body.torso.rotation.x += 0.04;
   } else {
     return false;
   }
