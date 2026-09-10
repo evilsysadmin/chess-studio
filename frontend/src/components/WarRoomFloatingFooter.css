@@ -1,0 +1,149 @@
+/* Desktop War Room footer -> diegetic HUD.
+   Keep the normal 2D/mobile footer contract intact; only the full desktop 3D
+   room gets the floating identity/actions treatment. */
+@media (min-width: 821px) {
+  .game-layout-3d .game-board-stack-3d {
+    position: relative;
+    grid-template-areas: 'board board';
+    grid-template-rows: minmax(0, 1fr);
+    row-gap: 0;
+  }
+
+  /* The old second row no longer participates in layout. The player identity
+     becomes a restrained, borderless signature over the room itself. */
+  .game-layout-3d .game-board-stack-3d > .game-player-rail.is-human {
+    position: absolute;
+    z-index: 26;
+    left: clamp(.7rem, 1.15vw, 1.05rem);
+    bottom: clamp(.68rem, 1vw, .92rem);
+    width: auto;
+    max-width: min(44%, 430px);
+    min-width: 0;
+    min-height: 34px;
+    margin: 0;
+    padding: .22rem 1.1rem .22rem .22rem;
+    grid-template-columns: 26px minmax(0, 1fr) auto;
+    gap: .4rem;
+    border: 0;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(5, 8, 12, .78) 0%, rgba(5, 8, 12, .48) 72%, rgba(5, 8, 12, 0) 100%);
+    box-shadow: none;
+    backdrop-filter: blur(7px);
+    pointer-events: auto;
+  }
+
+  .game-layout-3d .game-board-stack-3d > .game-player-rail.is-human.is-active {
+    border: 0;
+    background: linear-gradient(90deg, rgba(7, 12, 12, .8) 0%, rgba(7, 12, 12, .5) 72%, rgba(7, 12, 12, 0) 100%);
+    box-shadow: none;
+  }
+
+  .game-layout-3d .game-player-rail.is-human .game-player-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(201, 162, 39, .08);
+    box-shadow: none;
+  }
+
+  .game-layout-3d .game-player-rail.is-human .game-player-identity {
+    min-width: 0;
+  }
+
+  .game-layout-3d .game-player-rail.is-human .game-player-identity strong,
+  .game-layout-3d .game-player-rail.is-human .game-player-identity small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .72);
+  }
+
+  /* Actions float independently at the opposite edge. No command-deck panel,
+     no empty central rectangle, no footer row. */
+  .game-layout-3d .game-board-stack-3d > .game-command-deck {
+    position: absolute;
+    z-index: 26;
+    right: clamp(.7rem, 1.15vw, 1.05rem);
+    bottom: clamp(.68rem, 1vw, .92rem);
+    width: auto;
+    min-width: 0;
+    margin: 0;
+    pointer-events: auto;
+  }
+
+  .game-layout-3d .game-board-stack-3d > .game-command-deck .game-controls {
+    width: auto;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+
+  .game-layout-3d .game-board-stack-3d .game-controls-actions {
+    justify-content: flex-end;
+    gap: .32rem;
+    padding: 0;
+  }
+
+  .game-layout-3d .game-board-stack-3d .game-controls-actions > .secondary-btn {
+    min-height: 32px;
+    height: 32px;
+    padding: .26rem .58rem;
+    border: 1px solid rgba(224, 214, 190, .11);
+    border-radius: 999px;
+    background: rgba(8, 12, 18, .58);
+    box-shadow: 0 5px 16px rgba(0, 0, 0, .18);
+    color: color-mix(in srgb, var(--parchment-dim) 92%, white);
+    backdrop-filter: blur(7px);
+    font-size: .61rem;
+  }
+
+  .game-layout-3d .game-board-stack-3d .zen-mode-toggle {
+    min-width: 44px;
+    padding-inline: .5rem;
+    font-size: 0;
+  }
+
+  .game-layout-3d .game-board-stack-3d .zen-mode-toggle::after {
+    content: 'Zen';
+    font: 700 .61rem/1 var(--font-body);
+  }
+
+  .game-layout-3d .game-board-stack-3d .zen-mode-toggle.active {
+    border-color: rgba(201, 162, 39, .42);
+    background: rgba(201, 162, 39, .08);
+    color: var(--brass);
+  }
+
+  .game-layout-3d .game-board-stack-3d .game-abandon-btn {
+    min-width: 74px;
+    font-size: 0;
+    border-color: rgba(224, 214, 190, .1);
+    background: rgba(8, 12, 18, .58);
+    color: var(--parchment-dim);
+  }
+
+  .game-layout-3d .game-board-stack-3d .game-abandon-btn::after {
+    content: 'Abandonar';
+    font: 700 .61rem/1 var(--font-body);
+  }
+
+  .game-layout-3d .game-board-stack-3d .game-abandon-btn:hover,
+  .game-layout-3d .game-board-stack-3d .game-abandon-btn:focus-visible {
+    border-color: color-mix(in srgb, var(--danger) 54%, transparent);
+    background: color-mix(in srgb, var(--danger) 10%, rgba(8, 12, 18, .66));
+    color: color-mix(in srgb, var(--danger) 78%, var(--parchment));
+  }
+
+  /* Camera utilities already occupy the board's lower corners. Lift them one
+     row so the HUD never collides with Inspect/Appearance. */
+  .game-layout-3d .board3d-inspect,
+  .game-layout-3d .board3d-customize {
+    bottom: 3.45rem;
+  }
+}
