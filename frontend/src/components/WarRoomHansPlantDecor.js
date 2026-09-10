@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v3-deterministic-gallery-aligned';
+export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v4-hearth-opposed-gallery-aligned';
 
 function rootLocalBounds(root, object) {
   object.updateMatrixWorld?.(true);
@@ -19,24 +19,39 @@ function rootLocalBounds(root, object) {
   return localBox;
 }
 
+function plantSideOppositeHearth(root) {
+  const fireplace = root.getObjectByName?.('war-room-fireplace');
+  const hearthX = Number(fireplace?.position?.x);
+  if (Number.isFinite(hearthX) && Math.abs(hearthX) > 1e-6) {
+    return -Math.sign(hearthX);
+  }
+  return 1;
+}
+
 function placeWarRoomHansPlant(root, group, floor) {
   const box = rootLocalBounds(root, floor);
   if (box.isEmpty()) return group;
 
-  const x = box.max.x - Math.min(1.45, (box.max.x - box.min.x) * 0.09);
+  const side = plantSideOppositeHearth(root);
+  const inset = Math.min(1.45, (box.max.x - box.min.x) * 0.09);
+  const x = side < 0 ? box.min.x + inset : box.max.x - inset;
   const fallbackZ = box.min.z + (box.max.z - box.min.z) * 0.30;
-  const rightPainting = root.getObjectByName?.('war-room-campaign-painting-right');
+  const sideName = side < 0 ? 'left' : 'right';
+  const painting = root.getObjectByName?.(`war-room-campaign-painting-${sideName}`);
   let z = fallbackZ;
 
-  if (rightPainting?.getWorldPosition && root.worldToLocal) {
-    rightPainting.updateMatrixWorld?.(true);
+  group.userData.warRoomPlantSide = sideName;
+  group.userData.warRoomPlantHearthRelation = 'opposite';
+
+  if (painting?.getWorldPosition && root.worldToLocal) {
+    painting.updateMatrixWorld?.(true);
     root.updateMatrixWorld?.(true);
     const paintingWorld = new THREE.Vector3();
-    rightPainting.getWorldPosition(paintingWorld);
+    painting.getWorldPosition(paintingWorld);
     z = root.worldToLocal(paintingWorld.clone()).z;
-    group.userData.warRoomPlantPlacement = 'under-right-gallery-painting-v2';
+    group.userData.warRoomPlantPlacement = `under-${sideName}-gallery-painting-v3-opposite-hearth`;
   } else {
-    group.userData.warRoomPlantPlacement = 'gallery-aligned-fallback-v2';
+    group.userData.warRoomPlantPlacement = `gallery-aligned-${sideName}-fallback-v3-opposite-hearth`;
   }
 
   group.position.set(x, -0.255, z);

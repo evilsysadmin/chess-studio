@@ -11,7 +11,6 @@ export const MATTHIAS_HANS_WORKING_MS = 2600;
 export const HANS_WORKING_REPLY_MS = 2000;
 export const HANS_LEAVING_GRUMBLE_MS = 1500;
 export const HANS_BOARD_PEEK_ROUTE = 'leave-bypass';
-export const HANS_BOARD_PEEK_LOGICAL_X = 1.35;
 export const HANS_INITIAL_REPLY_ENTRY_MAX_LOGICAL_X = 1.82;
 export const MATTHIAS_FIRE_EPILOGUE_LINE = 'En fin. ¿Por dónde íbamos?';
 export const MATTHIAS_FIRE_EPILOGUE_MS = 1900;
@@ -64,16 +63,16 @@ export function hansInitialReplyPointReached({
     && !routeName.startsWith('leave-');
 }
 
-export function hansBoardPeekPointReached({ phase, route, logicalX } = {}) {
-  const x = Number(logicalX);
+export function hansBoardPeekPointReached({ phase, route } = {}) {
+  // The route is the semantic arrival signal. Do not gate the dialogue on Hans'
+  // rendered X: collision/door guards are allowed to clamp that coordinate to
+  // fit room geometry, and doing so must never silently skip the narrative.
   return phase === 'await-exit-peek'
-    && route === HANS_BOARD_PEEK_ROUTE
-    && Number.isFinite(x)
-    && x >= HANS_BOARD_PEEK_LOGICAL_X;
+    && route === HANS_BOARD_PEEK_ROUTE;
 }
 
-export function shouldStartHansBoardPeek({ phase, route, logicalX, suggestion } = {}) {
-  return hansBoardPeekPointReached({ phase, route, logicalX })
+export function shouldStartHansBoardPeek({ phase, route, suggestion } = {}) {
+  return hansBoardPeekPointReached({ phase, route })
     && Boolean(suggestion?.line);
 }
 

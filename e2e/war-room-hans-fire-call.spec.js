@@ -26,7 +26,7 @@ async function seedGamesBeforeFire(page) {
   }, fireIndex);
 }
 
-test('War Room · Matthias llama a Hans por el fuego y Hans responde al aparecer', async ({ page }) => {
+test('War Room · el número del fuego completa cotilleo, corte de Matthias y respuesta de Hans', async ({ page }) => {
   test.setTimeout(90_000);
 
   await page.setViewportSize({ width: 1440, height: 960 });
@@ -59,9 +59,22 @@ test('War Room · Matthias llama a Hans por el fuego y Hans responde al aparecer
   await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 8_000 });
   // The reply itself is intentionally short, so assert the persistent runtime
   // acknowledgement written only after Hans is physically onscreen and anchored.
-  // This preserves the product contract without racing a 1.6 s DOM bubble on
-  // contended SwiftShader runners.
   await expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: WAR_ROOM_READY_TIMEOUT });
   await expect(canvas).toHaveAttribute('data-war-room-hans-first-screen', /^(edge|onscreen)$/);
   await expect(matthiasCall).toBeHidden();
+
+  // Regression guard: geometry clearance is allowed to clamp Hans' rendered X,
+  // but entering the semantic exit-bypass route must still freeze him for the
+  // complete board-side exchange instead of letting him walk straight out.
+  const peek = page.getByRole('status', { name: 'Hans cotillea el tablero y propone una jugada' });
+  await expect(peek).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(peek).toContainText('Yo probaría');
+
+  const matthiasWorking = page.getByRole('status', { name: 'Matthias manda a Hans volver al trabajo' });
+  await expect(matthiasWorking).toBeVisible({ timeout: 12_000 });
+  await expect(matthiasWorking).toContainText('Hans, bitte. Estamos trabajando.');
+
+  const hansReply = page.getByRole('status', { name: 'Hans obedece a Matthias' });
+  await expect(hansReply).toBeVisible({ timeout: 12_000 });
+  await expect(hansReply).toContainText('Claro, señor.');
 });
