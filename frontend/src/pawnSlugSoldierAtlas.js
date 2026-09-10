@@ -7,6 +7,8 @@ const TYPES = Object.freeze(['pawn', 'knight', 'rook']);
 const ACTIONS = Object.freeze(['idle', 'run', 'jump', 'crouch', 'hurt', 'climb']);
 const ROWS = TYPES.length * ACTIONS.length;
 let cachedCanvas = null;
+let cachedContext = null;
+const drawnFrames = new Set();
 
 const COLORS = Object.freeze({
   ink: '#13171a',
@@ -180,25 +182,29 @@ function buildCanvas() {
   const ctx = canvas.getContext('2d');
   if (!ctx) return null;
   ctx.imageSmoothingEnabled = true;
-  for (const type of TYPES) {
-    for (const action of ACTIONS) {
-      const frames = PAWN_SLUG_ENEMY_ACTIONS[action].frames;
-      const row = rowFor(type, action);
-      for (let frame = 0; frame < frames; frame += 1) {
-        ctx.save();
-        ctx.translate(frame * FRAME, row * FRAME);
-        drawSoldier(ctx, type, action, frame, frames);
-        ctx.restore();
-      }
-    }
-  }
   cachedCanvas = canvas;
+  cachedContext = ctx;
   return cachedCanvas;
+}
+
+function ensureFrameDrawn(type, action, frame) {
+  const canvas = buildCanvas();
+  if (!canvas || !cachedContext) return;
+  const key = `${type}:${action}:${frame}`;
+  if (drawnFrames.has(key)) return;
+  const row = rowFor(type, action);
+  const frameCount = PAWN_SLUG_ENEMY_ACTIONS[action].frames;
+  cachedContext.save();
+  cachedContext.translate(frame * FRAME, row * FRAME);
+  drawSoldier(cachedContext, type, action, frame, frameCount);
+  cachedContext.restore();
+  drawnFrames.add(key);
 }
 
 export function createPawnSlugSoldierAtlasTexture() {
   const canvas = buildCanvas();
   if (!canvas) return null;
+  ensureFrameDrawn('pawn', 'idle', 0);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.minFilter = THREE.LinearFilter;
@@ -206,7 +212,7 @@ export function createPawnSlugSoldierAtlasTexture() {
   texture.wrapS = THREE.ClampToEdgeWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
   texture.userData.pawnSlugSoldierAtlas = true;
-  texture.userData.sharedSourceCanvas = true;
+  texture.userData.lazyFrameDrawing = true;
   return texture;
 }
 
@@ -216,6 +222,7 @@ export function pawnSlugSoldierAtlasWindow(type = 'pawn', action = 'idle', frame
   const count = PAWN_SLUG_ENEMY_ACTIONS[safeAction].frames;
   const frame = ((Math.floor(frameIndex) % count) + count) % count;
   const row = rowFor(safeType, safeAction);
+  ensureFrameDrawn(safeType, safeAction, frame);
   const direction = dir < 0 ? -1 : 1;
   const mirrored = direction > 0;
   return Object.freeze({
@@ -240,6 +247,6 @@ export const PAWN_SLUG_SOLDIER_ATLAS_META = Object.freeze({
   types: TYPES,
   actions: ACTIONS,
   theme: 'military-chess-soldiers',
-  sourceCanvasGeneratedOnce: true,
-  perSpriteUvTexture: true,
+  generatedOnce: true,
+  lazyFrameDrawing: true,
 });
