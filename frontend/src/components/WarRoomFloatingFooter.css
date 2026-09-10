@@ -267,19 +267,77 @@
     background: rgba(190, 164, 109, .14);
   }
 
+  /* Zen and abandon are important enough to be discoverable without opening
+     the overflow menu, but they stay in the rail so the board never pays for
+     their footprint. */
+  .game-screen .game-3d-quick-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: .26rem;
+    width: 100%;
+    margin-top: .28rem;
+    pointer-events: auto;
+  }
+
+  .game-screen .game-3d-quick-action {
+    min-width: 0;
+    min-height: 29px;
+    padding: .34rem .42rem;
+    border: 1px solid rgba(190, 164, 109, .18);
+    border-radius: 8px;
+    background: rgba(7, 11, 17, .58);
+    color: color-mix(in srgb, var(--cream) 82%, var(--studio-muted));
+    font: 700 .55rem/1.1 var(--font-body);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .game-screen .game-3d-quick-action:hover,
+  .game-screen .game-3d-quick-action:focus-visible {
+    border-color: rgba(201, 162, 39, .42);
+    background: rgba(14, 18, 26, .9);
+    color: var(--cream);
+    outline: none;
+  }
+
+  .game-screen .game-3d-quick-action.is-active {
+    border-color: rgba(201, 162, 39, .52);
+    background: rgba(201, 162, 39, .09);
+    color: color-mix(in srgb, var(--brass) 78%, var(--cream));
+  }
+
+  .game-screen .game-3d-quick-action.is-danger {
+    border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+    color: color-mix(in srgb, var(--danger) 62%, var(--cream));
+  }
+
+  .game-screen .game-3d-quick-action.is-danger:hover,
+  .game-screen .game-3d-quick-action.is-danger:focus-visible {
+    border-color: color-mix(in srgb, var(--danger) 48%, transparent);
+    background: color-mix(in srgb, var(--danger) 10%, rgba(7, 11, 17, .78));
+    color: color-mix(in srgb, var(--danger) 76%, var(--cream));
+  }
+
   /* The right rail now owns match identity/actions, so its content starts below
      that status head instead of sharing the scene's lower edge. */
   .game-screen .game-side-column-3d .game-side-music {
     margin-top: 0;
   }
 
-  /* Scene-only utilities stay diegetic and lateral. Nothing lives on the lower
-     apron anymore, so the artwork reaches the bottom uninterrupted. */
+  /* Scene-only inspection remains available, but no longer sits halfway down
+     the table where it competes with the board. Keep it as a small corner chip
+     on the quiet upper wall of the room. */
   .game-layout-3d .board3d-inspect {
-    top: 54%;
+    top: .68rem;
     bottom: auto !important;
-    left: .72rem;
-    transform: translateY(-50%);
+    left: .68rem;
+    transform: none;
+    min-height: 30px;
+    padding: .32rem .56rem;
+    border-radius: 999px;
+    font-size: .58rem;
+    line-height: 1;
+    opacity: .88;
   }
 
   .game-layout-3d .board3d-customize {
