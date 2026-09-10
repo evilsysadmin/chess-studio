@@ -42,42 +42,15 @@ describe('Pawn Slug platforming', () => {
 
   it('lands only while falling through a platform top', () => {
     const platform = { id: 'test', x: 10, y: 3, width: 4 };
-    const landing = pawnSlugResolvePlatformLanding({
-      previousY: 3.25,
-      nextY: 2.8,
-      vy: -4,
-      left: 9.6,
-      right: 10.4,
-    }, [platform]);
+    const landing = pawnSlugResolvePlatformLanding({ previousY: 3.25, nextY: 2.8, vy: -4, left: 9.6, right: 10.4 }, [platform]);
     expect(landing).toBe(platform);
-
-    expect(pawnSlugResolvePlatformLanding({
-      previousY: 2.4,
-      nextY: 2.8,
-      vy: 4,
-      left: 9.6,
-      right: 10.4,
-    }, [platform])).toBeNull();
+    expect(pawnSlugResolvePlatformLanding({ previousY: 2.4, nextY: 2.8, vy: 4, left: 9.6, right: 10.4 }, [platform])).toBeNull();
   });
 
   it('does not catch Matthias outside the platform or while dropping through', () => {
     const platform = { id: 'test', x: 10, y: 3, width: 4 };
-    expect(pawnSlugResolvePlatformLanding({
-      previousY: 3.2,
-      nextY: 2.8,
-      vy: -3,
-      left: 12.1,
-      right: 12.8,
-    }, [platform])).toBeNull();
-
-    expect(pawnSlugResolvePlatformLanding({
-      previousY: 3.2,
-      nextY: 2.8,
-      vy: -3,
-      left: 9.5,
-      right: 10.5,
-      dropThrough: true,
-    }, [platform])).toBeNull();
+    expect(pawnSlugResolvePlatformLanding({ previousY: 3.2, nextY: 2.8, vy: -3, left: 12.1, right: 12.8 }, [platform])).toBeNull();
+    expect(pawnSlugResolvePlatformLanding({ previousY: 3.2, nextY: 2.8, vy: -3, left: 9.5, right: 10.5, dropThrough: true }, [platform])).toBeNull();
   });
 
   it('finds the highest traversable platform under a coordinate', () => {
