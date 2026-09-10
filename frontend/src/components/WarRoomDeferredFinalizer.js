@@ -17,7 +17,6 @@ import { installWarRoomMatthiasHansReaction } from './WarRoomMatthiasHansReactio
 
 export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v1';
 export const WAR_ROOM_ONE_SHOT_RETIREMENT_VERSION = 'one-shot-retirement-v1';
-export const WAR_ROOM_HANS_LEGACY_FIRE_SUPPRESSION_VERSION = 'deterministic-hans-events-v1';
 
 const BEFORE_FINALIZER_STATES = new WeakMap();
 const AFTER_FINALIZER_STATES = new WeakMap();
@@ -42,23 +41,6 @@ function finalizerDriver(group, key) {
     || group?.getObjectByName?.('war-room-castle-wall-left')
     || group?.getObjectByName?.('war-room-castle-floor-slab')
     || null;
-}
-
-function suppressLegacyRandomHansFire(root) {
-  const driver = root?.getObjectByName?.('war-room-hans-fireplace-driver');
-  if (!driver?.userData || driver.userData.warRoomHansSelected !== true) return 0;
-  if (driver.userData.warRoomHansQuickIteration) return 0;
-
-  const hans = root.getObjectByName?.('war-room-hans-butler');
-  const fireplace = root.getObjectByName?.('war-room-fireplace');
-  if (hans) hans.visible = false;
-  if (fireplace?.userData) fireplace.userData.warRoomHansEventSelected = false;
-
-  driver.userData.warRoomHansSelected = false;
-  driver.userData.warRoomHansPhase = 'deterministic-event-required';
-  driver.userData.warRoomHansLegacyRandomSuppressed = WAR_ROOM_HANS_LEGACY_FIRE_SUPPRESSION_VERSION;
-  driver.onBeforeRender = NOOP_RENDER_HOOK;
-  return 1;
 }
 
 function markOwner(owner, state) {
@@ -96,11 +78,6 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
     for (const [key, task] of current.tasks) {
       results[key] = task(root);
       if (key === HANS_FIREPLACE_FINALIZER_KEY) {
-        // The canonical per-game selector owns whether the fireplace number is
-        // allowed to run. Retire the old independent 1/10 roll before any
-        // post-render Hans clients can wrap it; otherwise it produces a silent
-        // log/poker/exit routine with no FireCall narrative attached.
-        suppressLegacyRandomHansFire(root);
         installWarRoomHansCanonicalButler(root);
         installWarRoomHansBoardPeekClockHold(root);
         installWarRoomHansMotionPolish(root);
