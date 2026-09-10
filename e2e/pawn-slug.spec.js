@@ -20,7 +20,13 @@ async function dismissMatthiasSpeech(page) {
   if (!(await speech.isVisible().catch(() => false))) return;
 
   const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
-  if (await close.isVisible().catch(() => false)) await close.click();
+  if (await close.isVisible().catch(() => false)) {
+    // Home can place another diegetic control above the speech close target on
+    // narrow viewports. This helper is test setup, not a hit-target assertion,
+    // so dispatch the semantic close action without coupling Pawn Slug smoke to
+    // unrelated Home stacking.
+    await close.click({ force: true });
+  }
 }
 
 async function openPawnSlug(page) {
