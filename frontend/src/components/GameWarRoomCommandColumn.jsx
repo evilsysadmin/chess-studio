@@ -188,6 +188,31 @@ export default function GameWarRoomCommandColumn({
         </details>
       </div>
 
+      {(typeof controls.onToggleZen === 'function' || typeof controls.onAbandon === 'function') && (
+        <div className="game-3d-quick-actions" aria-label="Acciones rápidas de partida">
+          {typeof controls.onToggleZen === 'function' && (
+            <button
+              type="button"
+              className={zenMode ? 'game-3d-quick-action is-active' : 'game-3d-quick-action'}
+              aria-pressed={zenMode}
+              title={zenModeSummary(zenMode)}
+              onClick={controls.onToggleZen}
+            >
+              {zenMode ? 'Salir de Zen' : 'Zen'}
+            </button>
+          )}
+          {typeof controls.onAbandon === 'function' && (
+            <button
+              type="button"
+              className="game-3d-quick-action is-danger"
+              onClick={controls.onAbandon}
+            >
+              Abandonar
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="game-3d-warroom-controls" aria-label="Controles de vista 3D">
         <button type="button" className="secondary-btn is-selected" aria-pressed="true">3D</button>
         <button type="button" className="secondary-btn" onClick={onToggleBoardRenderer}>2D</button>
