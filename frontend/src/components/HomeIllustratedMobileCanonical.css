@@ -122,6 +122,12 @@
   .illustrated-home__matthias span,
   .illustrated-home__matthias em { display: none; }
 
+  /* Speech may visually float over the castle, but its empty/card surface must not
+     steal taps from the diegetic destinations underneath. Its own controls remain interactive. */
+  .illustrated-home__speech { pointer-events: none; }
+  .illustrated-home__speech button,
+  .illustrated-home__speech a { pointer-events: auto; }
+
   .illustrated-home__utilities {
     position: absolute;
     z-index: 12;
