@@ -1,20 +1,7 @@
 import * as THREE from 'three';
+import { PAWN_SLUG_PLATFORM_LAYOUT } from './pawnSlugTileMaps.js';
 
-export const PAWN_SLUG_PLATFORM_LAYOUT = Object.freeze([
-  Object.freeze({ id: 'ruin-steps-a', x: 14.2, y: 1.05, width: 3.3, depth: 1.45, theme: 'stone' }),
-  Object.freeze({ id: 'ruin-steps-b', x: 18.1, y: 2.35, width: 2.7, depth: 1.4, theme: 'stone' }),
-  Object.freeze({ id: 'watch-post', x: 24.7, y: 3.5, width: 4.4, depth: 1.55, theme: 'timber' }),
-  Object.freeze({ id: 'broken-bridge-a', x: 33.6, y: 1.55, width: 4.9, depth: 1.35, theme: 'steel' }),
-  Object.freeze({ id: 'broken-bridge-b', x: 39.2, y: 3.0, width: 3.0, depth: 1.35, theme: 'steel' }),
-  Object.freeze({ id: 'factory-catwalk', x: 48.8, y: 4.15, width: 6.2, depth: 1.5, theme: 'steel' }),
-  Object.freeze({ id: 'shell-crater-rim', x: 59.5, y: 1.35, width: 4.1, depth: 1.45, theme: 'stone' }),
-  Object.freeze({ id: 'signal-platform', x: 67.7, y: 3.1, width: 3.9, depth: 1.45, theme: 'timber' }),
-  Object.freeze({ id: 'bunker-roof', x: 77.6, y: 2.15, width: 6.8, depth: 1.65, theme: 'stone' }),
-  Object.freeze({ id: 'gantry-lower', x: 88.0, y: 1.55, width: 4.5, depth: 1.35, theme: 'steel' }),
-  Object.freeze({ id: 'gantry-upper', x: 93.0, y: 3.65, width: 4.1, depth: 1.35, theme: 'steel' }),
-  Object.freeze({ id: 'last-line-wall', x: 103.3, y: 2.25, width: 5.1, depth: 1.6, theme: 'stone' }),
-  Object.freeze({ id: 'boss-approach', x: 109.1, y: 3.65, width: 3.4, depth: 1.5, theme: 'steel' }),
-]);
+export { PAWN_SLUG_PLATFORM_LAYOUT } from './pawnSlugTileMaps.js';
 
 export const PAWN_SLUG_PLATFORM_META = Object.freeze({
   oneWay: true,
@@ -22,6 +9,7 @@ export const PAWN_SLUG_PLATFORM_META = Object.freeze({
   platformCount: PAWN_SLUG_PLATFORM_LAYOUT.length,
   maxHeight: Math.max(...PAWN_SLUG_PLATFORM_LAYOUT.map((platform) => platform.y)),
   coarseDecoration: false,
+  source: 'tile-map',
 });
 
 const THEME_MATERIALS = Object.freeze({
