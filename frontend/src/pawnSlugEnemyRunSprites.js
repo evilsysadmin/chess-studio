@@ -24,8 +24,10 @@ import {
   pawnSlugEnemyActionForState,
   pawnSlugEnemyActionFrame,
   pawnSlugEnemyActionPose,
+  pawnSlugEnemyDeathDuration,
   pawnSlugEnemySourceFrame,
 } from './pawnSlugEnemyActionMotion.js';
+import { installPawnSlugEnemyDeathReplay } from './pawnSlugEnemyDeathReplay.js';
 import {
   PAWN_SLUG_SOLDIER_ATLAS_META,
   createPawnSlugSoldierAtlasTexture,
@@ -204,6 +206,13 @@ export function createSlugEnemySprite(type = 'pawn') {
     atlas.direction = direction;
     applyAtlasWindow(sprite);
   };
+  sprite.userData.deathReplay = installPawnSlugEnemyDeathReplay(sprite, {
+    type: safeType,
+    duration: pawnSlugEnemyDeathDuration(safeType),
+    hold: 0.24,
+    reducedMotion: Boolean(typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches),
+    animate: (deathAge) => animateSlugEnemySprite(sprite, safeType, deathAge, { dying: true, deathAge }),
+  });
   return sprite;
 }
 
@@ -215,14 +224,17 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
     airborne = inferred.airborne,
     crouch = false,
     climbing = false,
+    dying = false,
+    deathAge = 0,
     vy = inferred.vy,
   } = state;
   const profile = PAWN_SLUG_MOTION_PROFILES[type] || PAWN_SLUG_MOTION_PROFILES.pawn;
   const direction = sprite.scale.x < 0 ? -1 : 1;
   const baseScaleX = sprite.userData.motionBaseScaleX || Math.abs(sprite.scale.x) || 1;
   const baseScaleY = sprite.userData.motionBaseScaleY || Math.abs(sprite.scale.y) || 1;
-  const action = pawnSlugEnemyActionForState({ moving, hurt, airborne, crouch, climbing });
-  const actionFrame = pawnSlugEnemyActionFrame(action, time);
+  const action = pawnSlugEnemyActionForState({ moving, hurt, airborne, crouch, climbing, dying });
+  const actionTime = action === 'death' ? Math.max(0, Number(deathAge) || 0) : time;
+  const actionFrame = pawnSlugEnemyActionFrame(action, actionTime);
   const sourceFrame = pawnSlugEnemySourceFrame(action, actionFrame, ENEMY_RUN_FRAMES_PER_TYPE);
   const pose = pawnSlugEnemyActionPose(action, actionFrame, { vy, type });
 
@@ -241,7 +253,7 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
     const phase = sprite.userData.motionPhase || 0;
     sprite.position.y += Math.max(0, Math.sin(time * profile.idleRate + phase)) * profile.idleBob;
   }
-  tintSprite(sprite, hurt);
+  tintSprite(sprite, hurt && !dying);
 }
 
 export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
