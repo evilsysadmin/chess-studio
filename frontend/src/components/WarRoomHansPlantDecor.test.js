@@ -89,7 +89,7 @@ describe('War Room Hans plant placement', () => {
     expect(plant.userData.warRoomPlantSide).toBe('right');
     expect(plant.userData.warRoomPlantHearthRelation).toBe('opposite');
     expect(plant.userData.warRoomPlantPlacement).toBe('beneath-right-wall-weather-window-v10');
-    expect(plant.userData.warRoomPlantLightRelation).toBe('window-daylight');
+    expect(plant.userData.warRoomPlantLightRelation).toBe('window-local-atmosphere');
     expect(plant.position.x).toBeCloseTo(7.05, 5);
     expect(plant.position.z).toBeCloseTo(2.85, 5);
 
