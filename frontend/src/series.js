@@ -1,3 +1,4 @@
+import { isCompletedGameOutcome } from './gameOutcome.js';
 import { STORAGE_LOCAL, readJsonStorage, setStorageItem, removeStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { assertSeriesFlowInvariant } from './seriesFlow.js';
@@ -45,7 +46,7 @@ export function validateSeriesState(parsed) {
   const humanWins = Math.max(0, Number(parsed.humanWins || 0));
   const cpuWins = Math.max(0, Number(parsed.cpuWins || 0));
   const draws = Math.max(0, Number(parsed.draws || 0));
-  const games = Array.isArray(parsed.games) ? parsed.games.filter((g) => ['win','loss','draw'].includes(g?.outcome)) : [];
+  const games = Array.isArray(parsed.games) ? parsed.games.filter((g) => isCompletedGameOutcome(g?.outcome)) : [];
   if (humanWins + cpuWins + draws !== games.length) return null;
   if (humanWins > winsNeeded || cpuWins > winsNeeded) return null;
   const winner = humanWins >= winsNeeded ? 'human' : cpuWins >= winsNeeded ? 'cpu' : null;
@@ -96,7 +97,7 @@ function archiveCompletedSeries(series) {
 export function recordSeriesGame(series, outcome, meta = {}) {
   if (!series || series.winner) return series;
   if (series.currentGameId && meta.gameId && series.currentGameId !== meta.gameId) return series;
-  if (!['win', 'loss', 'draw'].includes(outcome)) throw new Error(`Resultado de serie inválido: ${outcome}`);
+  if (!isCompletedGameOutcome(outcome)) throw new Error(`Resultado de serie inválido: ${outcome}`);
   if (meta.gameId && (series.games || []).some((g) => g.gameId === meta.gameId)) return series;
   const next = {
     ...series,
