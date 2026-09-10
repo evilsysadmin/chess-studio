@@ -50,7 +50,7 @@ function addWeatherWindow(root, anchorX, anchorZ, side = 'right') {
 }
 
 describe('War Room Hans plant placement', () => {
-  it('keeps the canonical weather window clear of the right gallery vignette and the plant beside it', () => {
+  it('gives the canonical right gallery breathing room and keeps the plant tucked under the corner window', () => {
     const root = new THREE.Group();
     addFloor(root);
     const fireplace = new THREE.Group();
@@ -63,22 +63,23 @@ describe('War Room Hans plant placement', () => {
 
     const plant = ensureWarRoomHansPlant(root);
     expect(window.userData.warRoomCornerPose).toBe(WAR_ROOM_WINDOW_CORNER_POSE_VERSION);
-    expect(THREE.MathUtils.radToDeg(window.rotation.y)).toBeCloseTo(-26, 5);
+    expect(THREE.MathUtils.radToDeg(window.rotation.y)).toBeCloseTo(-34, 5);
     expect(window.scale.x).toBeCloseTo(0.9, 5);
-    expect(window.userData.warRoomCornerTargetX).toBeCloseTo(7.15, 5);
-    expect(root.userData.warRoomCanonicalComposition).toBe('hearth-left-gallery-right-clear-corner-window-plant-v7');
+    expect(window.userData.warRoomCornerTargetX).toBeCloseTo(7.25, 5);
+    expect(root.userData.warRoomCanonicalComposition).toBe('hearth-left-gallery-air-right-corner-window-plant-v8');
 
     root.updateMatrixWorld(true);
     const windowBounds = new THREE.Box3().setFromObject(window);
     expect(windowBounds.max.x).toBeLessThan(8.0);
-    expect(windowBounds.min.x).toBeGreaterThan(6.25);
+    expect(windowBounds.min.x).toBeGreaterThan(6.5);
+    expect(window.userData.warRoomCornerForwardShift).toBeCloseTo(0.68, 5);
 
     expect(plant.userData.warRoomPlantSide).toBe('right');
     expect(plant.userData.warRoomPlantHearthRelation).toBe('opposite');
-    expect(plant.userData.warRoomPlantPlacement).toBe('beside-right-weather-window-v7');
+    expect(plant.userData.warRoomPlantPlacement).toBe('beside-right-weather-window-v8');
     expect(plant.userData.warRoomPlantLightRelation).toBe('window-daylight');
-    expect(plant.position.x).toBeCloseTo(6.84, 5);
-    expect(plant.position.z).toBeCloseTo(-5.52, 5);
+    expect(plant.position.x).toBeCloseTo(7.18, 5);
+    expect(plant.position.z).toBeCloseTo(-4.95, 2);
 
     const firstPosition = window.position.clone();
     expect(ensureWarRoomHansPlant(root)).toBe(plant);
@@ -98,12 +99,11 @@ describe('War Room Hans plant placement', () => {
     root.updateMatrixWorld(true);
 
     const plant = ensureWarRoomHansPlant(root);
-    expect(THREE.MathUtils.radToDeg(window.rotation.y)).toBeCloseTo(26, 5);
+    expect(THREE.MathUtils.radToDeg(window.rotation.y)).toBeCloseTo(34, 5);
     expect(window.scale.x).toBeCloseTo(0.9, 5);
-    expect(window.userData.warRoomCornerTargetX).toBeCloseTo(7.15, 5);
     expect(plant.userData.warRoomPlantSide).toBe('left');
-    expect(plant.position.x).toBeCloseTo(-6.84, 5);
-    expect(plant.position.z).toBeCloseTo(5.52, 5);
+    expect(plant.position.x).toBeCloseTo(-7.18, 5);
+    expect(plant.position.z).toBeCloseTo(4.95, 2);
 
     dispose(root);
   });
