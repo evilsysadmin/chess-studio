@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 
-export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v5-window-anchored';
+export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v6-corner-window';
+export const WAR_ROOM_WINDOW_CORNER_POSE_VERSION = 'weather-window-corner-pose-v1';
+
+const WINDOW_CORNER_ANGLE = THREE.MathUtils.degToRad(26);
+const WINDOW_CORNER_SCALE_X = 1.28;
+const WINDOW_CORNER_INSET = 0.08;
 
 function rootLocalBounds(root, object) {
   object.updateMatrixWorld?.(true);
@@ -28,6 +33,53 @@ function plantSideOppositeHearth(root) {
   return 1;
 }
 
+export function applyWarRoomWeatherWindowCornerPose(root) {
+  const weatherWindow = root?.getObjectByName?.('war-room-weather-window');
+  const parent = weatherWindow?.parent;
+  if (!root || !weatherWindow || !parent) return 0;
+  if (weatherWindow.userData.warRoomCornerPose === WAR_ROOM_WINDOW_CORNER_POSE_VERSION) return 0;
+
+  root.updateMatrixWorld?.(true);
+  parent.updateMatrixWorld?.(true);
+  weatherWindow.updateMatrixWorld?.(true);
+
+  const worldBox = new THREE.Box3().setFromObject(weatherWindow);
+  if (worldBox.isEmpty()) return 0;
+
+  const side = weatherWindow.userData.side === 'left'
+    ? -1
+    : weatherWindow.userData.side === 'right'
+      ? 1
+      : Math.sign(weatherWindow.position.x || 1) || 1;
+  const pivotWorld = worldBox.getCenter(new THREE.Vector3());
+  const pivotLocal = weatherWindow.worldToLocal(pivotWorld.clone());
+  const desiredRootPivot = root.worldToLocal(pivotWorld.clone());
+  desiredRootPivot.x -= side * WINDOW_CORNER_INSET;
+  const desiredPivotWorld = root.localToWorld(desiredRootPivot.clone());
+
+  // The approved mock places the whole opening on the corner/chamfer rather
+  // than shrinking it against the rear wall. Rotate around the visual centre
+  // so sky, rain, glazing and frame remain a single architectural object.
+  weatherWindow.rotation.y = -side * WINDOW_CORNER_ANGLE;
+  weatherWindow.scale.x = WINDOW_CORNER_SCALE_X;
+  weatherWindow.updateMatrixWorld?.(true);
+
+  const movedPivotWorld = weatherWindow.localToWorld(pivotLocal.clone());
+  const desiredParentPivot = parent.worldToLocal(desiredPivotWorld.clone());
+  const movedParentPivot = parent.worldToLocal(movedPivotWorld.clone());
+  weatherWindow.position.add(desiredParentPivot.sub(movedParentPivot));
+  weatherWindow.updateMatrixWorld?.(true);
+
+  weatherWindow.userData.warRoomCornerPose = WAR_ROOM_WINDOW_CORNER_POSE_VERSION;
+  weatherWindow.userData.warRoomCornerAngleDegrees = 26;
+  weatherWindow.userData.warRoomCornerScaleX = WINDOW_CORNER_SCALE_X;
+  weatherWindow.userData.warRoomCanonicalComposition = 'hearth-left-gallery-right-corner-window-plant-v6';
+  if (root.userData) {
+    root.userData.warRoomCanonicalComposition = 'hearth-left-gallery-right-corner-window-plant-v6';
+  }
+  return 1;
+}
+
 function weatherWindowAnchor(root, box) {
   const weatherWindow = root.getObjectByName?.('war-room-weather-window');
   const anchor = weatherWindow?.userData?.warRoomPlantAnchor;
@@ -51,7 +103,7 @@ function placeWarRoomHansPlant(root, group, floor) {
     const sideName = canonicalAnchor.x < 0 ? 'left' : 'right';
     group.userData.warRoomPlantSide = sideName;
     group.userData.warRoomPlantHearthRelation = 'opposite';
-    group.userData.warRoomPlantPlacement = `beside-${sideName}-weather-window-v5`;
+    group.userData.warRoomPlantPlacement = `beside-${sideName}-weather-window-v6`;
     group.userData.warRoomPlantLightRelation = 'window-daylight';
     group.position.set(canonicalAnchor.x, -0.255, canonicalAnchor.z);
     return group;
@@ -86,6 +138,11 @@ function placeWarRoomHansPlant(root, group, floor) {
 
 export function ensureWarRoomHansPlant(root) {
   if (!root) return null;
+
+  // The window is already built when permanent room dressing is finalized.
+  // Lock its approved corner pose before deriving the plant anchor from it.
+  applyWarRoomWeatherWindowCornerPose(root);
+
   const existing = root.getObjectByName?.('war-room-hans-plant');
   const floor = root.getObjectByName?.('war-room-castle-floor-slab');
   if (!floor) return existing || null;

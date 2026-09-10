@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
-import { ensureWarRoomHansPlant } from './WarRoomHansPlantDecor.js';
+import {
+  WAR_ROOM_WINDOW_CORNER_POSE_VERSION,
+  ensureWarRoomHansPlant,
+} from './WarRoomHansPlantDecor.js';
 
 function dispose(root) {
   root.traverse((object) => {
@@ -29,16 +32,25 @@ function addPainting(root, side, z) {
   return painting;
 }
 
-function addWeatherWindow(root, x, z) {
+function addWeatherWindow(root, anchorX, anchorZ, side = 'right') {
   const window = new THREE.Group();
   window.name = 'war-room-weather-window';
-  window.userData.warRoomPlantAnchor = { x, z };
+  window.userData.side = side;
+  window.userData.warRoomPlantAnchor = { x: anchorX, z: anchorZ };
+  window.position.x = side === 'left' ? -6.96 : 6.96;
+
+  const opening = new THREE.Mesh(
+    new THREE.BoxGeometry(1.66, 4.33, 0.28),
+    new THREE.MeshBasicMaterial(),
+  );
+  opening.position.set(0, 3.46, side === 'left' ? 6.42 : -6.42);
+  window.add(opening);
   root.add(window);
   return window;
 }
 
 describe('War Room Hans plant placement', () => {
-  it('anchors the plant beside the canonical weather window when that anchor exists', () => {
+  it('corners the canonical weather window and keeps the plant beside it', () => {
     const root = new THREE.Group();
     addFloor(root);
     const fireplace = new THREE.Group();
@@ -46,16 +58,50 @@ describe('War Room Hans plant placement', () => {
     fireplace.position.set(-4.95, 0, -6.67);
     root.add(fireplace);
     addPainting(root, 'right', 1.9);
-    addWeatherWindow(root, 6.78, -5.52);
+    const window = addWeatherWindow(root, 6.84, -5.52);
     root.updateMatrixWorld(true);
 
     const plant = ensureWarRoomHansPlant(root);
+    expect(window.userData.warRoomCornerPose).toBe(WAR_ROOM_WINDOW_CORNER_POSE_VERSION);
+    expect(THREE.MathUtils.radToDeg(window.rotation.y)).toBeCloseTo(-26, 5);
+    expect(window.scale.x).toBeCloseTo(1.28, 5);
+    expect(root.userData.warRoomCanonicalComposition).toBe('hearth-left-gallery-right-corner-window-plant-v6');
+
+    root.updateMatrixWorld(true);
+    const windowBounds = new THREE.Box3().setFromObject(window);
+    expect(windowBounds.max.x).toBeLessThan(8.0);
+    expect(windowBounds.min.x).toBeGreaterThan(5.7);
+
     expect(plant.userData.warRoomPlantSide).toBe('right');
     expect(plant.userData.warRoomPlantHearthRelation).toBe('opposite');
-    expect(plant.userData.warRoomPlantPlacement).toBe('beside-right-weather-window-v5');
+    expect(plant.userData.warRoomPlantPlacement).toBe('beside-right-weather-window-v6');
     expect(plant.userData.warRoomPlantLightRelation).toBe('window-daylight');
-    expect(plant.position.x).toBeCloseTo(6.78, 5);
+    expect(plant.position.x).toBeCloseTo(6.84, 5);
     expect(plant.position.z).toBeCloseTo(-5.52, 5);
+
+    const firstPosition = window.position.clone();
+    expect(ensureWarRoomHansPlant(root)).toBe(plant);
+    expect(window.position.distanceTo(firstPosition)).toBeCloseTo(0, 8);
+
+    dispose(root);
+  });
+
+  it('mirrors the corner pose with board orientation', () => {
+    const root = new THREE.Group();
+    addFloor(root);
+    const fireplace = new THREE.Group();
+    fireplace.name = 'war-room-fireplace';
+    fireplace.position.set(4.95, 0, 6.67);
+    root.add(fireplace);
+    const window = addWeatherWindow(root, -6.84, 5.52, 'left');
+    root.updateMatrixWorld(true);
+
+    const plant = ensureWarRoomHansPlant(root);
+    expect(THREE.MathUtils.radToDeg(window.rotation.y)).toBeCloseTo(26, 5);
+    expect(window.scale.x).toBeCloseTo(1.28, 5);
+    expect(plant.userData.warRoomPlantSide).toBe('left');
+    expect(plant.position.x).toBeCloseTo(-6.84, 5);
+    expect(plant.position.z).toBeCloseTo(5.52, 5);
 
     dispose(root);
   });
