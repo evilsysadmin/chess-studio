@@ -240,6 +240,157 @@
   }
 }
 
+/* Android/narrow-phone composition. Keep the castle full-bleed, but reserve real
+   space for global controls and stop squeezing four primary destinations into one row. */
+@media (max-width: 520px) {
+  body .app-shell-home,
+  body .app-shell-home .menu.menu-illustrated,
+  .illustrated-home,
+  .illustrated-home__stage {
+    max-width: 100vw !important;
+    overflow-x: clip !important;
+  }
+
+  body:has(.menu-illustrated) .global-music-dock {
+    top: max(8px, env(safe-area-inset-top)) !important;
+    left: 8px !important;
+    right: auto !important;
+    max-width: 82px !important;
+  }
+
+  body .app-shell-home .live-service-status {
+    position: fixed !important;
+    z-index: 59 !important;
+    top: calc(max(8px, env(safe-area-inset-top)) + 48px) !important;
+    left: 8px !important;
+    right: auto !important;
+    width: auto !important;
+    max-width: calc(100vw - 16px) !important;
+    min-height: 32px !important;
+    padding: 5px 10px !important;
+    border-radius: 999px !important;
+    white-space: nowrap !important;
+    font-size: 11px !important;
+  }
+
+  .illustrated-home__brand {
+    top: calc(max(8px, env(safe-area-inset-top)) + 92px) !important;
+    left: 14% !important;
+    width: 72% !important;
+  }
+  .illustrated-home__brand h1 {
+    font-size: clamp(30px, 10vw, 40px) !important;
+    line-height: .96 !important;
+  }
+  .illustrated-home__brand p:last-child {
+    margin-top: 6px !important;
+    font-size: 7px !important;
+    letter-spacing: .14em !important;
+  }
+
+  .illustrated-home__stage > nav {
+    inset: 0 !important;
+  }
+
+  .illustrated-home__destination {
+    width: 42% !important;
+    min-height: 44px !important;
+    padding: 5px 6px !important;
+    border-radius: 9px !important;
+    background: rgba(14, 8, 5, .28) !important;
+    backdrop-filter: blur(1px);
+  }
+  .illustrated-home__destination strong {
+    max-width: 100%;
+    font-size: clamp(10px, 3vw, 12px) !important;
+    white-space: normal !important;
+    text-wrap: balance;
+  }
+
+  .illustrated-home__destination--tournament { left: 6% !important; top: 28% !important; }
+  .illustrated-home__destination--train { left: 52% !important; top: 28% !important; }
+  .illustrated-home__destination--combat { left: 6% !important; top: 35% !important; }
+  .illustrated-home__destination--daily { left: 52% !important; right: auto !important; top: 35% !important; }
+  .illustrated-home__destination--history {
+    left: 2% !important;
+    top: 44% !important;
+    width: auto !important;
+    min-width: 64px !important;
+    background: rgba(14, 8, 5, .18) !important;
+  }
+  .illustrated-home__destination--play {
+    left: 34% !important;
+    top: 61% !important;
+    width: 32% !important;
+    min-height: 58px !important;
+    background: rgba(38, 19, 8, .68) !important;
+  }
+  .illustrated-home__destination--play strong { font-size: clamp(16px, 4.8vw, 20px) !important; }
+
+  .illustrated-home__utilities {
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 32% !important;
+    height: 24% !important;
+  }
+  .illustrated-home__dungeon-copy {
+    right: 7% !important;
+    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    min-width: 78px !important;
+    padding: 6px 7px !important;
+    border: 1px solid rgba(138, 105, 62, .38) !important;
+    background: rgba(13, 8, 5, .76) !important;
+  }
+  .illustrated-home__dungeon-copy strong { font-size: 10px !important; }
+
+  .illustrated-home__stage:has(.illustrated-home__utilities.is-open) { overflow: hidden !important; }
+  .illustrated-home__utilities.is-open {
+    position: static !important;
+    z-index: 80 !important;
+  }
+  .illustrated-home__utilities.is-open > .illustrated-home__dungeon-panel {
+    inset: auto 12px max(12px, env(safe-area-inset-bottom)) 12px !important;
+    width: auto !important;
+    max-height: 46dvh !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 5px !important;
+    padding: 10px !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    border-radius: 14px !important;
+  }
+  .illustrated-home__dungeon-panel > header {
+    grid-column: 1 / -1 !important;
+    gap: 2px !important;
+    padding: 2px 3px 8px !important;
+  }
+  .illustrated-home__dungeon-panel > header strong { font-size: 21px !important; }
+  .illustrated-home__dungeon-panel > header small { font-size: 11px !important; }
+  .illustrated-home__utilities.is-open > .illustrated-home__dungeon-panel > button {
+    min-width: 0 !important;
+    min-height: 42px !important;
+    height: auto !important;
+    padding: 8px 9px !important;
+    overflow: visible !important;
+    color: #e6ce9f !important;
+    font: 600 12px/1.2 Arial, sans-serif !important;
+    text-align: left !important;
+    text-indent: 0 !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .illustrated-home__brand { left: 10% !important; width: 80% !important; }
+  .illustrated-home__destination { width: 43% !important; }
+  .illustrated-home__destination--tournament,
+  .illustrated-home__destination--combat { left: 4% !important; }
+  .illustrated-home__destination--train,
+  .illustrated-home__destination--daily { left: 53% !important; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .illustrated-home__destination { transition: none; }
 }
