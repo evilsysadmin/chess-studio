@@ -255,7 +255,10 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     // La autoridad F5 ya se acredita en paralelo en staging-war-room-restore.
     // Aquí sólo hacemos el reload 2D que necesita el sabotaje para garantizar
     // que Board3D aún no existe en el runtime fresco antes del primer lazy import.
-    await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
+    const firstUtilityMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+    await expect(firstUtilityMenu).toBeVisible();
+    await firstUtilityMenu.click();
+    await page.getByRole('menuitem', { name: 'Apariencia', exact: true }).click();
     let appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
     await expect(appearanceDialog).toBeVisible();
     await appearanceDialog.getByRole('radio', { name: /2D$/ }).click();
@@ -327,7 +330,10 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
 
     // Finalmente volvemos a 2D sólo para usar el helper accesible/determinista
     // de casillas y acreditar que la misma partida todavía acepta una jugada real.
-    await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
+    const secondUtilityMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+    await expect(secondUtilityMenu).toBeVisible();
+    await secondUtilityMenu.click();
+    await page.getByRole('menuitem', { name: 'Apariencia', exact: true }).click();
     appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
     await expect(appearanceDialog).toBeVisible();
     await expect(appearanceDialog.getByRole('radiogroup', { name: 'Representación del tablero' })).toBeVisible();
