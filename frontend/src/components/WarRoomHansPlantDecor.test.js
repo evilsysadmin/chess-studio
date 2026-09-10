@@ -50,7 +50,7 @@ function addWeatherWindow(root, anchorX, anchorZ, side = 'right') {
 }
 
 describe('War Room Hans plant placement', () => {
-  it('corners the canonical weather window and keeps the plant beside it', () => {
+  it('keeps the canonical weather window clear of the right gallery vignette and the plant beside it', () => {
     const root = new THREE.Group();
     addFloor(root);
     const fireplace = new THREE.Group();
@@ -64,17 +64,18 @@ describe('War Room Hans plant placement', () => {
     const plant = ensureWarRoomHansPlant(root);
     expect(window.userData.warRoomCornerPose).toBe(WAR_ROOM_WINDOW_CORNER_POSE_VERSION);
     expect(THREE.MathUtils.radToDeg(window.rotation.y)).toBeCloseTo(-26, 5);
-    expect(window.scale.x).toBeCloseTo(1.28, 5);
-    expect(root.userData.warRoomCanonicalComposition).toBe('hearth-left-gallery-right-corner-window-plant-v6');
+    expect(window.scale.x).toBeCloseTo(0.9, 5);
+    expect(window.userData.warRoomCornerTargetX).toBeCloseTo(7.15, 5);
+    expect(root.userData.warRoomCanonicalComposition).toBe('hearth-left-gallery-right-clear-corner-window-plant-v7');
 
     root.updateMatrixWorld(true);
     const windowBounds = new THREE.Box3().setFromObject(window);
     expect(windowBounds.max.x).toBeLessThan(8.0);
-    expect(windowBounds.min.x).toBeGreaterThan(5.7);
+    expect(windowBounds.min.x).toBeGreaterThan(6.25);
 
     expect(plant.userData.warRoomPlantSide).toBe('right');
     expect(plant.userData.warRoomPlantHearthRelation).toBe('opposite');
-    expect(plant.userData.warRoomPlantPlacement).toBe('beside-right-weather-window-v6');
+    expect(plant.userData.warRoomPlantPlacement).toBe('beside-right-weather-window-v7');
     expect(plant.userData.warRoomPlantLightRelation).toBe('window-daylight');
     expect(plant.position.x).toBeCloseTo(6.84, 5);
     expect(plant.position.z).toBeCloseTo(-5.52, 5);
@@ -98,7 +99,8 @@ describe('War Room Hans plant placement', () => {
 
     const plant = ensureWarRoomHansPlant(root);
     expect(THREE.MathUtils.radToDeg(window.rotation.y)).toBeCloseTo(26, 5);
-    expect(window.scale.x).toBeCloseTo(1.28, 5);
+    expect(window.scale.x).toBeCloseTo(0.9, 5);
+    expect(window.userData.warRoomCornerTargetX).toBeCloseTo(7.15, 5);
     expect(plant.userData.warRoomPlantSide).toBe('left');
     expect(plant.position.x).toBeCloseTo(-6.84, 5);
     expect(plant.position.z).toBeCloseTo(5.52, 5);
