@@ -12,6 +12,7 @@ import { installWarRoomHansHearthFacingGuard } from './WarRoomHansHearthFacingGu
 import { installWarRoomHansMopRoutine } from './WarRoomHansMopRoutine.js';
 import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
 import { ensureWarRoomHansPlant } from './WarRoomHansPlantDecor.js';
+import { installWarRoomHansServiceInfrastructure } from './WarRoomHansServiceRoute.js';
 import { installWarRoomHansServiceRoutine } from './WarRoomHansServiceRoutine.js';
 import { installWarRoomMatthiasHansReaction } from './WarRoomMatthiasHansReaction.js';
 
@@ -89,6 +90,7 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         installWarRoomHansElderClock(root);
         installWarRoomHansFireNarrative(root);
         installWarRoomMatthiasHansReaction(root);
+        installWarRoomHansServiceInfrastructure(root);
 
         // Permanent room dressing, independent of which single Hans event wins.
         ensureWarRoomHansPlant(root);
