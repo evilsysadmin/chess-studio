@@ -18,7 +18,7 @@ describe('Hans service routing', () => {
     expect(motion.blocked).toBe(true);
   });
 
-  it('builds and walks toward a real command-desk target', () => {
+  it('builds and walks toward a real command-desk target without stealing rendered Y grounding', () => {
     const root = new THREE.Group();
     const parent = new THREE.Group();
     const deskTop = new THREE.Mesh(new THREE.BoxGeometry(3, 0.16, 1), new THREE.MeshBasicMaterial());
@@ -31,14 +31,17 @@ describe('Hans service routing', () => {
     expect(target).toBeTruthy();
 
     const hans = new THREE.Group();
-    hans.position.set(4, -0.34, 4);
+    hans.position.set(4, -0.612, 4);
     parent.add(hans);
-    const before = hans.position.distanceTo(target);
+    const groundedY = hans.position.y;
+    const beforePlanar = Math.hypot(target.x - hans.position.x, target.z - hans.position.z);
     const motion = moveWarRoomHansToward(hans, target, 0.5);
+    const afterPlanar = Math.hypot(target.x - hans.position.x, target.z - hans.position.z);
 
     expect(motion.blocked).toBe(false);
     expect(motion.travelled).toBeGreaterThan(0);
-    expect(hans.position.distanceTo(target)).toBeLessThan(before);
+    expect(afterPlanar).toBeLessThan(beforePlanar);
+    expect(hans.position.y).toBeCloseTo(groundedY, 6);
   });
 
   it('keeps service-home lookup pure and installs the exit guard explicitly', () => {
