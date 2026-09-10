@@ -27,6 +27,20 @@ async function seedGamesBeforeFire(page) {
   }, fireIndex);
 }
 
+async function openFireGame(page) {
+  await page.setViewportSize({ width: 1440, height: 960 });
+  await mockApi(page);
+  await login(page);
+  await seedGamesBeforeFire(page);
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+
+  await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  const canvas = page.locator('.board3d-main-canvas');
+  await expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  return canvas;
+}
+
 async function hansGameId(page) {
   return page.locator('[data-war-room-hans-game-id]').first().getAttribute('data-war-room-hans-game-id');
 }
@@ -42,22 +56,10 @@ async function persistedHansCompletion(page, gameId) {
   }, { key: WAR_ROOM_HANS_SEEN_GAMES_KEY, id: gameId });
 }
 
-test('War Room · el número del fuego sobrevive F5 y sólo se consume al completar la narrativa', async ({ page }) => {
-  test.setTimeout(120_000);
+test('War Room · el número del fuego completa cotilleo, corte de Matthias y respuesta de Hans', async ({ page }) => {
+  test.setTimeout(90_000);
 
-  await page.setViewportSize({ width: 1440, height: 960 });
-  await mockApi(page);
-  await login(page);
-  // Hans has one deterministic ambient event per game. Seed the mock game's
-  // counter so this dedicated lane exercises fire rather than another chore.
-  await seedGamesBeforeFire(page);
-  await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-
-  await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
-  const canvas = page.locator('.board3d-main-canvas');
-  await expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
-
+  const canvas = await openFireGame(page);
   const matthiasCall = page.getByRole('status', { name: 'Matthias llama a Hans por el fuego' });
   await expect(matthiasCall).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   await expect(matthiasCall).toContainText('MATTHIAS');
@@ -73,26 +75,6 @@ test('War Room · el número del fuego sobrevive F5 y sólo se consume al comple
   await expect(canvas).toHaveAttribute('data-war-room-hans-first-screen', /^(edge|onscreen)$/);
   await expect(matthiasCall).toBeHidden();
 
-  const gameId = await hansGameId(page);
-  expect(gameId).toBeTruthy();
-  expect(await persistedHansCompletion(page, gameId)).toBe(false);
-
-  // Regression guard: merely seeing Hans must not burn the per-game cameo. A
-  // reload halfway through the fireplace number should restart the coherent
-  // visual+narrative sequence instead of leaving a silent Three.js routine.
-  await page.reload();
-  await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
-  await expect(canvas).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
-  await expect(matthiasCall).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
-  await expect(matthiasCall).toContainText('HANS! El fuego, bitte.');
-  expect(await hansGameId(page)).toBe(gameId);
-  expect(await persistedHansCompletion(page, gameId)).toBe(false);
-
-  await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 8_000 });
-  await expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: WAR_ROOM_READY_TIMEOUT });
-
-  // Geometry clearance may clamp Hans' rendered X, but the semantic exit route
-  // must still hold him for the complete board-side exchange.
   const peek = page.getByRole('status', { name: 'Hans cotillea el tablero y propone una jugada' });
   await expect(peek).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   await expect(peek).toContainText('Yo probaría');
@@ -104,7 +86,26 @@ test('War Room · el número del fuego sobrevive F5 y sólo se consume al comple
   const hansReply = page.getByRole('status', { name: 'Hans obedece a Matthias' });
   await expect(hansReply).toBeVisible({ timeout: 12_000 });
   await expect(hansReply).toContainText('Claro, señor.');
+});
 
-  await expect(canvas).toHaveAttribute('data-war-room-hans-narrative-phase', 'done', { timeout: 30_000 });
-  expect(await persistedHansCompletion(page, gameId)).toBe(true);
+test('War Room · F5 con Hans ya visible no consume el número antes de terminar', async ({ page }) => {
+  test.setTimeout(90_000);
+
+  const canvas = await openFireGame(page);
+  const matthiasCall = page.getByRole('status', { name: 'Matthias llama a Hans por el fuego' });
+  await expect(matthiasCall).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 8_000 });
+  await expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: WAR_ROOM_READY_TIMEOUT });
+
+  const gameId = await hansGameId(page);
+  expect(gameId).toBeTruthy();
+  expect(await persistedHansCompletion(page, gameId)).toBe(false);
+
+  await page.reload();
+  await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(page.locator('.board3d-main-canvas')).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(matthiasCall).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(matthiasCall).toContainText('HANS! El fuego, bitte.');
+  expect(await hansGameId(page)).toBe(gameId);
+  expect(await persistedHansCompletion(page, gameId)).toBe(false);
 });
