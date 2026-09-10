@@ -30,15 +30,16 @@ export function getCameraFramingProfile(aspect) {
   const wide = safeAspect >= 1.42;
   return wide
     ? {
-        // El tablero sigue siendo protagonista, pero dejamos respirar la sala:
-        // crest, cortinas, estanterías y decoración deben entrar completos.
+        // El tablero sigue siendo protagonista, pero la cámara mira más arriba y
+        // algo más horizontal para que techo, cuadros, cortinas y ventana entren
+        // completos incluso cuando el rail deja un viewport ancho y bajo.
         halfSpan: 5.38,
         padding: 1.07,
         minDistance: 13.2,
         maxDistance: 22.6,
-        targetY: 1.08,
+        targetY: 2.2,
         targetZ: -0.16,
-        cameraY: 7.35,
+        cameraY: 6.0,
         cameraZ: 10.6,
       }
     : {
