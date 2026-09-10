@@ -38,10 +38,21 @@
     min-width: max-content;
   }
 
-  /* Mobile Focus is a fixed control at z-index 190. Keep the closed overflow
-     on its normal layer, but raise the open menu above that control so the
-     visible Appearance action receives the tap instead of being intercepted. */
-  .game-screen .game-layout-3d .game-3d-utility-menu[open] {
+  /* Mobile Focus is a fixed control at z-index 190. Elevating only the details
+     child cannot escape an ancestor stacking context, so raise the whole
+     command column while the overflow is open. */
+  .game-screen .game-layout-3d .game-3d-command-column:has(.game-3d-utility-menu[open]) {
+    position: relative;
     z-index: 220 !important;
+  }
+
+  .game-screen .game-layout-3d .game-3d-utility-menu[open] {
+    z-index: 221 !important;
+  }
+
+  /* An open menu owns pointer interaction. Underlying fixed mobile controls
+     must not steal the tap even if another ancestor creates a stacking context. */
+  .game-screen .game-layout-3d:has(.game-3d-utility-menu[open]) .game-mobile-focus-toggle {
+    pointer-events: none !important;
   }
 }
