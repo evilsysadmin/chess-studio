@@ -1,10 +1,12 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
+  advanceWarRoomHansWalk,
   applyWarRoomHansTaskPose,
   moveWarRoomHansToward,
   placeWarRoomHansHorizontal,
   WAR_ROOM_HANS_ANIMATOR_VERSION,
+  WAR_ROOM_HANS_GAIT_OWNER,
 } from './WarRoomHansAnimator.js';
 
 describe('War Room Hans animator', () => {
@@ -17,11 +19,32 @@ describe('War Room Hans animator', () => {
     const motion = moveWarRoomHansToward(hans, target, 0.5);
 
     expect(WAR_ROOM_HANS_ANIMATOR_VERSION).toContain('body-owner');
+    expect(WAR_ROOM_HANS_ANIMATOR_VERSION).toContain('single-gait');
     expect(motion.blocked).toBe(false);
     expect(motion.travelled).toBeCloseTo(0.5, 6);
     expect(hans.position.x).toBeLessThan(4);
     expect(hans.position.z).toBeLessThan(4);
     expect(hans.position.y).toBeCloseTo(groundedY, 6);
+  });
+
+  it('delegates task walking to the single articulated gait owner without mutating limbs', () => {
+    const leftLeg = new THREE.Group();
+    const rightLeg = new THREE.Group();
+    const torso = new THREE.Group();
+    leftLeg.rotation.x = 0.31;
+    rightLeg.rotation.x = -0.27;
+    torso.rotation.x = 0.12;
+    const controller = {
+      body: { leftLeg, rightLeg, torso },
+      warRoomHansDelegatedTravelDistance: 0,
+    };
+
+    expect(advanceWarRoomHansWalk(controller, { travelled: 0.42, horizontalWeight: 0.8 })).toBe(true);
+    expect(leftLeg.rotation.x).toBeCloseTo(0.31, 6);
+    expect(rightLeg.rotation.x).toBeCloseTo(-0.27, 6);
+    expect(torso.rotation.x).toBeCloseTo(0.12, 6);
+    expect(controller.warRoomHansDelegatedTravelDistance).toBeCloseTo(0.42, 6);
+    expect(controller.warRoomHansGaitOwner).toBe(WAR_ROOM_HANS_GAIT_OWNER);
   });
 
   it('owns service placement and anthropomorphic task poses without stealing Y', () => {
