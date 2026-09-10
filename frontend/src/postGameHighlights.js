@@ -1,4 +1,5 @@
 import { bestMoveOfReport, pointOfNoReturn } from './advancedCareer.js';
+import { buildPostGameIncidentEvidence } from './postGameIncidentEvidence.js';
 
 function sameMove(a, b) {
   return a && b && Number(a.index) === Number(b.index);
@@ -7,6 +8,18 @@ function sameMove(a, b) {
 function moment(kind, label, icon, move, detail) {
   if (!move) return null;
   return { kind, label, icon, move, detail };
+}
+
+function factualWorstLabel(move) {
+  const classification = buildPostGameIncidentEvidence(move)?.classification;
+  const labels = {
+    'missed-mate': 'Mate omitido',
+    'allowed-mate': 'Mate concedido',
+    'stalemate-blunder': 'Ahogado regalado',
+    'tactical-punishment': 'Castigo táctico',
+    'missed-tactic': 'Oportunidad táctica perdida',
+  };
+  return labels[classification] || 'Mayor impacto';
 }
 
 // Resumen deliberadamente pequeño: como máximo tres momentos distintos.
@@ -20,7 +33,7 @@ export function keyGameMoments(report) {
   const candidates = [
     moment('best', 'Mejor decisión', '💎', best, best ? `Pérdida ${best.loss} cp` : null),
     moment('turning', 'Punto de inflexión', '☠', turningPoint, turningPoint ? `−${turningPoint.loss} cp` : null),
-    moment('worst', 'Mayor impacto', '⚰', worst, worst ? `−${worst.loss} cp` : null),
+    moment('worst', factualWorstLabel(worst), '⚰', worst, worst ? `−${worst.loss} cp` : null),
   ].filter(Boolean);
 
   const unique = [];
