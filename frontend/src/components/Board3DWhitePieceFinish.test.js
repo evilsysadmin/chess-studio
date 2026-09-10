@@ -4,7 +4,7 @@ import { makePremiumPieceMaterial } from './Board3DSurfaces.js';
 import { reinforcePieceSkinMaterial } from './Board3DSkinDecor.js';
 
 describe('War Room piece finish', () => {
-  it('convierte las blancas en marfil tallado claramente pulido sin plástico', () => {
+  it('preserva el marfil canónico de Board3DSurfaces al aplicar la identidad de skin', () => {
     const skin = SKIN_3D.studio;
     const material = makePremiumPieceMaterial({
       color: skin.white,
@@ -13,20 +13,38 @@ describe('War Room piece finish', () => {
       accent: false,
       coarsePointer: false,
     });
+    const before = {
+      color: material.color.getHex(),
+      metalness: material.metalness,
+      roughness: material.roughness,
+      clearcoat: material.clearcoat,
+      clearcoatRoughness: material.clearcoatRoughness,
+      specularIntensity: material.specularIntensity,
+      envMapIntensity: material.envMapIntensity,
+      sheen: material.sheen,
+      sheenRoughness: material.sheenRoughness,
+    };
 
     reinforcePieceSkinMaterial(material, skin.white, 'studio', { accent: false });
 
     expect(material.userData.surfaceRole).toBe('ivory');
-    expect(material.userData.pieceFinish).toBe('polished-carved-ivory-v4');
-    expect(material.roughness).toBeGreaterThanOrEqual(0.31);
-    expect(material.roughness).toBeLessThanOrEqual(0.4);
-    expect(material.metalness).toBeLessThanOrEqual(0.01);
-    expect(material.clearcoat).toBeGreaterThanOrEqual(0.4);
-    expect(material.clearcoat).toBeLessThanOrEqual(0.48);
-    expect(material.clearcoatRoughness).toBeGreaterThanOrEqual(0.2);
-    expect(material.clearcoatRoughness).toBeLessThanOrEqual(0.28);
-    expect(material.specularIntensity).toBeGreaterThanOrEqual(0.5);
-    expect(material.envMapIntensity).toBeGreaterThanOrEqual(0.58);
+    expect(material.userData.pieceFinish).toBe('canonical-satin-ivory-v5');
+    expect(material.userData.skinMaterialAuthority).toBe('Board3DSurfaces');
+    expect({
+      color: material.color.getHex(),
+      metalness: material.metalness,
+      roughness: material.roughness,
+      clearcoat: material.clearcoat,
+      clearcoatRoughness: material.clearcoatRoughness,
+      specularIntensity: material.specularIntensity,
+      envMapIntensity: material.envMapIntensity,
+      sheen: material.sheen,
+      sheenRoughness: material.sheenRoughness,
+    }).toEqual(before);
+    expect(material.roughness).toBeGreaterThanOrEqual(0.7);
+    expect(material.clearcoat).toBeCloseTo(0.2, 6);
+    expect(material.specularIntensity).toBeCloseTo(0.24, 6);
+    expect(material.envMapIntensity).toBeCloseTo(0.28, 6);
   });
 
   it('da profundidad lacada visible a las negras clásicas sin pisar skins muy metálicos', () => {
