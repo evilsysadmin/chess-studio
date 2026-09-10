@@ -7,7 +7,6 @@ describe('Pawn Slug arcade projectile language', () => {
     expect(PAWN_SLUG_ARCADE_PROJECTILES.machinegun.shape).toBe('needle');
     expect(PAWN_SLUG_ARCADE_PROJECTILES.shotgun.shape).toBe('pellet');
     expect(PAWN_SLUG_ARCADE_PROJECTILES.panzerfaust.shape).toBe('rocket');
-    expect(PAWN_SLUG_ARCADE_PROJECTILES.enemy.shape).toBe('hostile-slug');
   });
 
   it('makes pistol bullets chunky and shotgun fire visibly multi-pellet', () => {
@@ -19,8 +18,10 @@ describe('Pawn Slug arcade projectile language', () => {
     expect(shotgun.spread).toBeGreaterThan(0);
   });
 
-  it('uses the rocket profile for explosive rounds and hostile profile for enemy fire', () => {
+  it('keeps the same projectile silhouette for both factions', () => {
+    for (const weapon of ['pistol', 'machinegun', 'shotgun', 'panzerfaust']) {
+      expect(pawnSlugArcadeProjectileProfile({ weapon, enemy: true })).toBe(PAWN_SLUG_ARCADE_PROJECTILES[weapon]);
+    }
     expect(pawnSlugArcadeProjectileProfile({ weapon: 'pistol', explosive: true })).toBe(PAWN_SLUG_ARCADE_PROJECTILES.panzerfaust);
-    expect(pawnSlugArcadeProjectileProfile({ enemy: true })).toBe(PAWN_SLUG_ARCADE_PROJECTILES.enemy);
   });
 });
