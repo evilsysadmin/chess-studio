@@ -1,6 +1,7 @@
 import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { gameModeLabel } from './gameModes.js';
+import { isCompletedGameOutcome } from './gameOutcome.js';
 import { recordMatthiasSessionResult } from './matthiasSessionContext.js';
 import { getBoardRenderer } from './userPreferences.js';
 
@@ -61,7 +62,7 @@ export function recordGameActivity({
   };
   const next = [event, ...list].slice(0, MAX_EVENTS);
   setProfileStorageItem(KEY, JSON.stringify(next));
-  if (state === 'finished' && ['win', 'draw', 'loss'].includes(outcome)) {
+  if (state === 'finished' && isCompletedGameOutcome(outcome)) {
     recordMatthiasSessionResult({ gameId, outcome });
   }
   return next;
