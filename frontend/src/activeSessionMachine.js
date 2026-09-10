@@ -1,3 +1,4 @@
+import { isActiveSessionRoute } from './activeSessionRoutes.js';
 import { strictInvariant, transition } from './stateTransition.js';
 
 export const ACTIVE_SESSION_STATE = Object.freeze({
@@ -50,9 +51,9 @@ export function assertActiveSessionInvariant({ state, savedSession = null, route
     strictInvariant(Boolean(gameId || savedSession?.gameId), `${state} requires a game id`);
   }
   if (savedSession?.route) {
-    strictInvariant(['game', 'tournamentGame'].includes(savedSession.route), `unsupported route ${savedSession.route}`);
+    strictInvariant(isActiveSessionRoute(savedSession.route), `unsupported route ${savedSession.route}`);
   }
-  if (route && ['game', 'tournamentGame'].includes(route) && state === ACTIVE_SESSION_STATE.DISCARDED) {
+  if (route && isActiveSessionRoute(route) && state === ACTIVE_SESSION_STATE.DISCARDED) {
     strictInvariant(false, 'discarded session cannot remain on an active game route');
   }
   return true;
