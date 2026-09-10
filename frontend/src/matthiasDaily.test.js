@@ -35,7 +35,7 @@ describe('Matthias daily transport', () => {
     });
   });
 
-  it('comparte una lectura GET concurrente del estado de Matthias y permite refrescar después', async () => {
+  it('comparte una GET concurrente, reutiliza brevemente el resultado e invalida tras consultar', async () => {
     global.fetch.mockResolvedValue(response(200, { used: false, memory: { consultations: 2 } }));
     const first = fetchMatthiasDailyStatus();
     const second = fetchMatthiasDailyStatus();
@@ -46,7 +46,15 @@ describe('Matthias daily transport', () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
 
     await fetchMatthiasDailyStatus();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+
+    global.fetch.mockResolvedValue(response(200, { text: 'ok', memory: { consultations: 3 } }));
+    await askMatthiasDaily('tactics', {}, { id: 'cache-invalidation' });
     expect(global.fetch).toHaveBeenCalledTimes(2);
+
+    global.fetch.mockResolvedValue(response(200, { used: true, memory: { consultations: 3 } }));
+    await fetchMatthiasDailyStatus();
+    expect(global.fetch).toHaveBeenCalledTimes(3);
   });
 
   it('no comparte una GET pendiente entre identidades distintas', async () => {

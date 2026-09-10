@@ -127,12 +127,13 @@ test('War Room · Android usa al rey-peón como única presencia visual de Matth
   await expect(briefing).toContainText(/nivel\s+\d+/i);
 
   // Matthias already exists physically in the room as the enemy king-pawn.
-  // The compact rail must not pay for or visually duplicate the retired
-  // portrait renderer, its fallback image, or a second Three.js context.
+  // The compact HUD may show the canonical lightweight identity avatar, but it
+  // must not resurrect the retired portrait renderer or a second Three.js context.
   await expect(page.locator('.game-3d-matthias-portrait-wrap')).toHaveCount(0);
   await expect(page.locator('.game-3d-matthias-portrait')).toHaveCount(0);
   await expect(page.locator('[data-matthias-three-avatar="true"]')).toHaveCount(0);
-  await expect(briefing.locator('img, canvas')).toHaveCount(0);
+  await expect(briefing.locator('img.game-3d-turn-pill-avatar[aria-hidden="true"]')).toHaveCount(1);
+  await expect(briefing.locator('canvas')).toHaveCount(0);
 });
 
 test('War Room · el bocadillo de Matthias sigue al rey si cambia de casilla', async ({ page }) => {
