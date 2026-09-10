@@ -11,7 +11,7 @@ import { installWarRoomHansServiceInfrastructure } from './WarRoomHansServiceRou
 import { installWarRoomHansServiceRoutine } from './WarRoomHansServiceRoutine.js';
 import { installWarRoomMatthiasHansReaction } from './WarRoomMatthiasHansReaction.js';
 
-export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v2-hans-runtime-boundary';
+export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v1';
 export const WAR_ROOM_ONE_SHOT_RETIREMENT_VERSION = 'one-shot-retirement-v1';
 
 const BEFORE_FINALIZER_STATES = new WeakMap();
