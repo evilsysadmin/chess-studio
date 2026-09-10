@@ -103,6 +103,23 @@ function tintSprite(sprite, hurt) {
   sprite.material.color?.setRGB(1, hurt ? 0.62 : 1, hurt ? 0.62 : 1);
 }
 
+function inferredVerticalMotion(sprite, time) {
+  const y = sprite.position.y;
+  const previousY = sprite.userData.lastWorldY;
+  const previousTime = sprite.userData.lastWorldYAt;
+  let vy = 0;
+  if (Number.isFinite(previousY) && Number.isFinite(previousTime) && time > previousTime) {
+    vy = (y - previousY) / Math.max(1 / 120, time - previousTime);
+    if (Math.abs(y - previousY) > 0.0035) sprite.userData.airborneUntil = time + 0.14;
+  }
+  sprite.userData.lastWorldY = y;
+  sprite.userData.lastWorldYAt = time;
+  return Object.freeze({
+    airborne: time < (sprite.userData.airborneUntil || 0),
+    vy,
+  });
+}
+
 export function createSlugEnemySprite(type = 'pawn') {
   const safeType = Object.prototype.hasOwnProperty.call(ENEMY_SCALE_BY_TYPE, type) ? type : 'pawn';
   const scale = ENEMY_SCALE_BY_TYPE[safeType];
@@ -119,6 +136,7 @@ export function createSlugEnemySprite(type = 'pawn') {
   sprite.userData.motionPhase = Math.random() * Math.PI * 2;
   sprite.userData.action = 'idle';
   sprite.userData.actionFrame = 0;
+  sprite.userData.airborneUntil = 0;
   sprite.userData.atlas = {
     frames: ENEMY_RUN_FRAMES_PER_TYPE,
     frame: 0,
@@ -178,7 +196,15 @@ export function createSlugEnemySprite(type = 'pawn') {
 }
 
 export function animateSlugEnemySprite(sprite, type, time, state = {}) {
-  const { moving = false, hurt = false, airborne = false, crouch = false, climbing = false, vy = 0 } = state;
+  const inferred = inferredVerticalMotion(sprite, Number(time) || 0);
+  const {
+    moving = false,
+    hurt = false,
+    airborne = inferred.airborne,
+    crouch = false,
+    climbing = false,
+    vy = inferred.vy,
+  } = state;
   const profile = PAWN_SLUG_MOTION_PROFILES[type] || PAWN_SLUG_MOTION_PROFILES.pawn;
   const direction = sprite.scale.x < 0 ? -1 : 1;
   const baseScaleX = sprite.userData.motionBaseScaleX || Math.abs(sprite.scale.x) || 1;
