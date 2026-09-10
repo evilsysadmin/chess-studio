@@ -110,7 +110,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           </button>
           {toolsOpen && <nav id="illustrated-home-tools" className="illustrated-home__dungeon-panel" aria-label="Más modos y herramientas">
             <header><span>BAJO EL CASTILLO</span><strong>MAZMORRAS</strong><small>Entra bajo tu cuenta y riesgo!</small></header>
-            {tools.map(([label, action]) => <button type="button" key={label} onClick={() => { setToolsOpen(false); action(); }}>{label}</button>)}
+            {tools.map(([label, action]) => <button type="button" key={label} aria-label={label} onClick={() => { setToolsOpen(false); action(); }}>{label}</button>)}
           </nav>}
         </div>
       </div>
