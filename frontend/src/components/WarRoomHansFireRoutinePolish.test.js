@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildPremiumWarRoomLayer } from './PremiumWarRoomScene.js';
 import {
-  HANS_BOARD_PEEK_LOGICAL_X,
   HANS_BOARD_PEEK_ROUTE,
   hansBoardPeekPointReached,
 } from './WarRoomHansFireCallContract.js';
@@ -33,9 +32,8 @@ function runHansFirstFrame(room) {
 afterEach(() => setWarRoomHansQuickIterationEnabled(false));
 
 describe('Hans fire routine polish', () => {
-  it('waits until Hans has aligned with the door corridor before the board detour', () => {
+  it('waits for the door-bypass route but tolerates geometry guards clamping Hans sideways', () => {
     expect(HANS_BOARD_PEEK_ROUTE).toBe('leave-bypass');
-    expect(HANS_BOARD_PEEK_LOGICAL_X).toBeCloseTo(1.35, 2);
     expect(hansBoardPeekPointReached({
       phase: 'await-exit-peek',
       route: 'leave-side',
@@ -44,7 +42,7 @@ describe('Hans fire routine polish', () => {
     expect(hansBoardPeekPointReached({
       phase: 'await-exit-peek',
       route: 'leave-bypass',
-      logicalX: 1.42,
+      logicalX: 0.55,
     })).toBe(true);
   });
 
