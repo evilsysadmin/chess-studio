@@ -4,6 +4,7 @@ import {
   createPawnSlugFallenForest,
   createPawnSlugGambitRuins,
 } from './pawnSlugScenarioRenderer.js';
+import { attachPawnSlugScenarioAmbience } from './pawnSlugScenarioAmbience.js';
 import {
   PAWN_SLUG_STATIC_INSTANCE_VERSION,
   createPawnSlugStaticInstanceBatch,
@@ -194,6 +195,7 @@ export function createPawnSlugPremiumLandmarks(parent, { coarse = false } = {}) 
     heroBarricade(PAWN_SLUG_LANDMARK_META.landmarks[5].x, coarse),
     bossFortress(PAWN_SLUG_LANDMARK_META.landmarks[6].x, coarse),
   );
+  attachPawnSlugScenarioAmbience(root);
   parent.add(root);
   return root;
 }
