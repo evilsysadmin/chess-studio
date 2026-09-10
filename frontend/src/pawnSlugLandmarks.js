@@ -107,48 +107,74 @@ function dungeonGate(x, coarse) {
   root.name = 'pawn-slug-landmark-dungeon-gate';
   root.position.set(x, 0, -2.55);
   root.userData.premiumScenario = 'castle-dungeon';
+  root.userData.scenarioSpan = coarse ? 8.2 : 11.6;
 
   const stone = material(0x24282d, 0.98, 0.02);
   const stoneEdge = material(0x353a40, 0.93, 0.03);
+  const deepStone = material(0x171b1f, 1, 0.01);
   const iron = material(0x23282c, 0.56, 0.58);
   const warm = material(0x8c5b2f, 0.58, 0.08, 0xff8f3f, coarse ? 0.7 : 2.2);
 
+  const span = coarse ? 8.2 : 11.6;
   root.add(
-    mesh(new THREE.BoxGeometry(7.2, 4.7, 1.0), stone, { y: 2.35 }),
-    mesh(new THREE.BoxGeometry(2.55, 3.9, 0.28), material(0x090b0d, 1), { y: 1.84, z: 0.58 }),
+    mesh(new THREE.BoxGeometry(span, 4.7, 1.0), stone, { y: 2.35 }),
+    mesh(new THREE.BoxGeometry(span - 0.8, 3.55, 0.16), deepStone, { y: 1.72, z: 0.55 }),
+    mesh(new THREE.BoxGeometry(2.55, 3.9, 0.28), material(0x090b0d, 1), { y: 1.84, z: 0.74 }),
     mesh(new THREE.BoxGeometry(0.62, 5.25, 1.18), stoneEdge, { x: -3.1, y: 2.62, z: 0.04 }),
     mesh(new THREE.BoxGeometry(0.62, 5.25, 1.18), stoneEdge, { x: 3.1, y: 2.62, z: 0.04 }),
   );
 
   const arch = mesh(new THREE.TorusGeometry(1.48, 0.46, coarse ? 7 : 10, coarse ? 18 : 28, Math.PI), stoneEdge, {
     y: 3.7,
-    z: 0.68,
+    z: 0.84,
     rz: Math.PI,
   });
   arch.name = 'pawn-slug-dungeon-arch';
   root.add(arch);
 
+  const sideRibs = coarse ? [-3.45, 3.45] : [-4.9, -3.45, 3.45, 4.9];
+  for (const rx of sideRibs) {
+    const rib = new THREE.Group();
+    rib.name = 'pawn-slug-dungeon-rib';
+    rib.position.x = rx;
+    rib.add(
+      mesh(new THREE.BoxGeometry(0.46, 4.35, 0.78), stoneEdge, { y: 2.16, z: 0.24 }),
+      mesh(new THREE.BoxGeometry(1.05, 0.35, 0.82), stoneEdge, { y: 4.3, z: 0.24 }),
+    );
+    root.add(rib);
+  }
+
+  const ceilingRibs = coarse ? [-2.8, 0, 2.8] : [-4.2, -2.1, 0, 2.1, 4.2];
+  for (const rx of ceilingRibs) {
+    root.add(mesh(new THREE.BoxGeometry(0.28, 0.42, 1.3), stoneEdge, { x: rx, y: 4.55, z: 0.1 }));
+  }
+
   const barCount = coarse ? 5 : 7;
   for (let i = 0; i < barCount; i += 1) {
     const offset = (i - (barCount - 1) / 2) * (2.05 / Math.max(1, barCount - 1));
-    root.add(mesh(new THREE.BoxGeometry(0.07, 3.55, 0.09), iron, { x: offset, y: 1.82, z: 0.78 }));
+    root.add(mesh(new THREE.BoxGeometry(0.07, 3.55, 0.09), iron, { x: offset, y: 1.82, z: 0.92 }));
   }
-  root.add(mesh(new THREE.BoxGeometry(2.35, 0.1, 0.12), iron, { y: 2.55, z: 0.79 }));
+  root.add(mesh(new THREE.BoxGeometry(2.35, 0.1, 0.12), iron, { y: 2.55, z: 0.93 }));
 
-  const torchXs = coarse ? [-2.2, 2.2] : [-2.28, 2.28];
+  const torchXs = coarse ? [-2.2, 2.2] : [-4.15, -2.28, 2.28, 4.15];
   for (const tx of torchXs) {
     root.add(
-      mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.72, 7), iron, { x: tx, y: 2.15, z: 0.76, rz: tx < 0 ? -0.18 : 0.18 }),
-      mesh(new THREE.ConeGeometry(0.18, 0.55, coarse ? 6 : 9), warm, { x: tx + (tx < 0 ? -0.06 : 0.06), y: 2.64, z: 0.79 }),
+      mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.72, 7), iron, { x: tx, y: 2.15, z: 0.92, rz: tx < 0 ? -0.18 : 0.18 }),
+      mesh(new THREE.ConeGeometry(0.18, 0.55, coarse ? 6 : 9), warm, { x: tx + (tx < 0 ? -0.06 : 0.06), y: 2.64, z: 0.95 }),
     );
   }
+
+  const drain = mesh(new THREE.BoxGeometry(span - 1.1, 0.035, 0.35), iron, { y: 0.035, z: 1.26 });
+  drain.name = 'pawn-slug-dungeon-drain';
+  drain.castShadow = false;
+  root.add(drain);
 
   const chainLinks = coarse ? 3 : 6;
   for (let i = 0; i < chainLinks; i += 1) {
     const link = mesh(new THREE.TorusGeometry(0.12, 0.028, 5, 8), iron, {
       x: -1.95 + i * 0.02,
       y: 4.35 - i * 0.31,
-      z: 0.73,
+      z: 0.93,
       rz: i % 2 ? Math.PI / 2 : 0,
     });
     link.name = i === 0 ? 'pawn-slug-dungeon-chain' : '';
@@ -158,13 +184,23 @@ function dungeonGate(x, coarse) {
   if (!coarse) {
     const pawnRelic = new THREE.Group();
     pawnRelic.name = 'pawn-slug-dungeon-fallen-pawn';
-    pawnRelic.position.set(2.15, 0.08, 0.95);
+    pawnRelic.position.set(2.15, 0.08, 1.08);
     pawnRelic.rotation.z = -0.38;
     pawnRelic.add(
       mesh(new THREE.CylinderGeometry(0.23, 0.36, 0.48, 10), material(0x4c4a45, 0.95), { y: 0.22 }),
       mesh(new THREE.SphereGeometry(0.23, 10, 7), material(0x56534d, 0.94), { y: 0.64 }),
     );
     root.add(pawnRelic);
+
+    const portcullisShadow = mesh(
+      new THREE.PlaneGeometry(2.9, 3.5),
+      new THREE.MeshBasicMaterial({ color: 0x050607, transparent: true, opacity: 0.42, depthWrite: false }),
+      { y: 1.82, z: 0.46 },
+    );
+    portcullisShadow.name = 'pawn-slug-dungeon-depth-shadow';
+    portcullisShadow.castShadow = false;
+    portcullisShadow.receiveShadow = false;
+    root.add(portcullisShadow);
   }
 
   return root;
