@@ -254,6 +254,97 @@ function addStauntonKnightSculpture(group, accentMaterial, coarsePointer) {
   return count;
 }
 
+function canonicalIvoryMaterial(group) {
+  let ivory = null;
+  group?.traverse?.((child) => {
+    if (ivory || !child?.isMesh || !child.material) return;
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    ivory = materials.find((material) => material?.userData?.surfaceRole === 'ivory') || null;
+  });
+  return ivory;
+}
+
+function makeMatteIvoryHeadMaterial(ivoryMaterial) {
+  const material = ivoryMaterial.clone();
+  material.roughness = Math.max(material.roughness ?? 0.7, 0.92);
+  material.clearcoat = Math.min(material.clearcoat ?? 0.2, 0.035);
+  material.clearcoatRoughness = Math.max(material.clearcoatRoughness ?? 0.48, 0.9);
+  material.specularIntensity = Math.min(material.specularIntensity ?? 0.24, 0.16);
+  material.envMapIntensity = 0;
+  material.sheen = Math.min(material.sheen ?? 0.02, 0.008);
+  material.sheenRoughness = Math.max(material.sheenRoughness ?? 0.72, 0.9);
+  material.userData = {
+    ...ivoryMaterial.userData,
+    surfaceRole: 'ivory',
+    pieceFinish: 'matte-ivory-head-v1',
+    whiteHeadFinish: 'deep-matte-v1',
+  };
+  return material;
+}
+
+function makeWhiteBaseWalnutMaterial() {
+  const material = new THREE.MeshPhysicalMaterial({
+    color: 0x513625,
+    metalness: 0.01,
+    roughness: 0.76,
+    clearcoat: 0.055,
+    clearcoatRoughness: 0.82,
+    specularIntensity: 0.24,
+    envMapIntensity: 0.08,
+  });
+  material.userData.surfaceRole = 'white-base-walnut';
+  material.userData.pieceFinish = 'dark-walnut-rim-v1';
+  return material;
+}
+
+function isWhiteHeadMesh(mesh, type, ivoryMaterial) {
+  if (!mesh?.isMesh || mesh.material !== ivoryMaterial) return false;
+  const geometryRole = mesh.geometry?.userData?.board3DKnightGeometryRole;
+  if (type === 'p') return mesh.geometry?.type === 'SphereGeometry' && mesh.position.y >= 0.65;
+  if (type === 'n') return Boolean(mesh.userData?.knightHeadProfile) || (typeof geometryRole === 'string' && geometryRole.endsWith(':knight-head'));
+  if (type === 'b') return mesh.userData?.bishopPart === 'mitre';
+  if (type === 'r') return mesh.userData?.rookPart === 'crown-base' || mesh.userData?.rookPart === 'battlement';
+  if (type === 'q') return mesh.geometry?.type === 'SphereGeometry' && mesh.position.y >= 1.0;
+  if (type === 'k') {
+    return mesh.userData?.playerKingPart === 'crown-base'
+      || (mesh.geometry?.type === 'SphereGeometry' && mesh.position.y >= 0.9);
+  }
+  return false;
+}
+
+export function applyWhitePieceReadabilityFinish(group, type, coarsePointer = false) {
+  const ivoryMaterial = canonicalIvoryMaterial(group);
+  if (!ivoryMaterial) return { walnutRims: 0, matteHeads: 0 };
+
+  // A hairline of dark walnut at the widest edge of the plinth gives ivory a
+  // stable silhouette on light squares without turning the base into a brown
+  // pedestal. Keep it outside the existing gold inlay so both materials read.
+  const walnut = makeWhiteBaseWalnutMaterial();
+  const walnutRim = addRing(group, walnut, 0.057, 0.369, coarsePointer ? 0.009 : 0.0075, coarsePointer);
+  walnutRim.userData.whiteBaseWalnutRim = 'subtle-v1';
+  walnutRim.castShadow = false;
+
+  // The upper ivory is deliberately drier than the body. The colour remains
+  // identical; only the highlight response changes, so board lights cannot turn
+  // pawn heads, mitres and crowns into white blobs a frame later.
+  const matteHead = makeMatteIvoryHeadMaterial(ivoryMaterial);
+  let matteHeads = 0;
+  group.traverse((child) => {
+    if (!isWhiteHeadMesh(child, type, ivoryMaterial)) return;
+    child.material = matteHead;
+    child.userData.whiteMatteHead = 'deep-matte-v1';
+    matteHeads += 1;
+  });
+
+  // Do not keep an unused cloned material alive on an unexpected custom piece.
+  if (matteHeads === 0) matteHead.dispose?.();
+  group.userData.whitePieceBaseContrast = 'subtle-walnut-rim-v1';
+  group.userData.whitePieceWalnutRimCount = 1;
+  group.userData.whitePieceMatteHeadCount = matteHeads;
+  group.userData.whitePieceReadabilityFinish = 'walnut-and-matte-head-v1';
+  return { walnutRims: 1, matteHeads };
+}
+
 export function addPieceSkinDetails(group, type, skinId, accentMaterial, coarsePointer = false) {
   const profile = profileFor(skinId);
   for (const [y, radius, tube] of profile.rings) addRing(group, accentMaterial, y, radius, tube, coarsePointer);
@@ -279,6 +370,7 @@ export function addPieceSkinDetails(group, type, skinId, accentMaterial, coarseP
     addStauntonKnightSculpture(group, accentMaterial, coarsePointer);
   }
 
+  applyWhitePieceReadabilityFinish(group, type, coarsePointer);
   group.userData.skin3DId = skinId;
   group.userData.skin3DIdentity = 'distinct-v2';
   installPieceBodyMotion(group, type, { coarsePointer });
