@@ -1,8 +1,14 @@
 import { connectionErrorCopy, isConnectionFailure } from './networkErrorCopy.js';
 
+const UNSAFE_BACKEND_MESSAGE = /failed to fetch|networkerror|traceback|exception|undefined|null is not|cannot read/i;
+
 function cleanRequestId(value) {
   const id = String(value || '').trim();
   return /^[A-Za-z0-9._:-]{4,120}$/.test(id) ? id : '';
+}
+
+function isSafeBackendMessage(message) {
+  return Boolean(message) && !UNSAFE_BACKEND_MESSAGE.test(message);
 }
 
 export function userFacingError(error, fallback = 'No se pudo completar la operación.') {
@@ -22,15 +28,13 @@ export function userFacingError(error, fallback = 'No se pudo completar la opera
   // que todavía no existe.
   if (status === 401) {
     if (error?.authenticatedRequest) return 'Tu sesión ha caducado. Vuelve a iniciar sesión para continuar.';
-    if (message && !/failed to fetch|networkerror|traceback|exception|undefined|null is not|cannot read/i.test(message)) return message;
+    if (isSafeBackendMessage(message)) return message;
     return fallback;
   }
   if (status === 403) return 'Esta cuenta no tiene permiso para realizar esa acción.';
   if (status === 429) return `Chess Studio ha recibido demasiadas solicitudes seguidas. Espera un momento y reintenta.${reference}`;
   if (status >= 500) return `Chess Studio ha tenido un problema al procesar esto. Tu progreso guardado no se borra; reintenta en unos segundos.${reference}`;
 
-  if (message && !/failed to fetch|networkerror|traceback|exception|undefined|null is not|cannot read/i.test(message)) {
-    return message;
-  }
+  if (isSafeBackendMessage(message)) return message;
   return fallback;
 }
