@@ -1,4 +1,4 @@
-import { STORAGE_SESSION, getStorageItem, removeStorageItem, setStorageItem } from './safeStorage.js';
+import { STORAGE_SESSION, readJsonStorage, removeStorageItem, setStorageItem } from './safeStorage.js';
 import { getUsername } from './auth.js';
 import { buildNemesisDossier } from './nemesis.js';
 import { loadPersonalPuzzles } from './personalPuzzles.js';
@@ -151,15 +151,10 @@ function normalizeStoredSession(value, now = Date.now()) {
 }
 
 export function loadGuidedTrainingSession({ now = Date.now() } = {}) {
-  try {
-    const parsed = JSON.parse(getStorageItem(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY) || 'null');
-    const normalized = normalizeStoredSession(parsed, Number(now));
-    if (!normalized) removeStorageItem(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY);
-    return normalized;
-  } catch {
-    removeStorageItem(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY);
-    return null;
-  }
+  const parsed = readJsonStorage(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY, { fallback: null });
+  const normalized = normalizeStoredSession(parsed, Number(now));
+  if (!normalized) removeStorageItem(STORAGE_SESSION, GUIDED_TRAINING_SESSION_KEY);
+  return normalized;
 }
 
 export function startGuidedTrainingSession(plan, { now = Date.now() } = {}) {

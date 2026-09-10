@@ -1,4 +1,4 @@
-import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 
 // gameHistory.js — Guarda un registro liviano de las últimas partidas de
@@ -31,14 +31,8 @@ export function statisticalHistoryRecords(records) {
 }
 
 export function loadGameHistory() {
-  try {
-    const raw = getStorageItem(STORAGE_LOCAL, KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  const parsed = readJsonStorage(STORAGE_LOCAL, KEY, { fallback: [] });
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 // Agrega un registro (el más reciente primero) y devuelve la lista actualizada.

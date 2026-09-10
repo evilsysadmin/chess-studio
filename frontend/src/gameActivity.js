@@ -1,4 +1,4 @@
-import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { gameModeLabel } from './gameModes.js';
 import { recordMatthiasSessionResult } from './matthiasSessionContext.js';
@@ -10,12 +10,8 @@ const STATES = new Set(['started', 'cancelled', 'finished']);
 const BOARD_RENDERERS = new Set(['2d', '3d']);
 
 export function loadGameActivity() {
-  try {
-    const parsed = JSON.parse(getStorageItem(STORAGE_LOCAL, KEY) || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  const parsed = readJsonStorage(STORAGE_LOCAL, KEY, { fallback: [] });
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 export function recordGameActivity({

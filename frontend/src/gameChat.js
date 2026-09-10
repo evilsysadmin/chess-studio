@@ -1,4 +1,4 @@
-import { STORAGE_LOCAL, getStorageItem, setStorageItem, removeStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, readJsonStorage, setStorageItem, removeStorageItem } from './safeStorage.js';
 // gameChat.js — Transcript local de los comentarios en vivo de la CPU.
 //
 // Mientras una partida está activa vive en SESSION_STATE_KEYS: así sobrevive
@@ -8,15 +8,6 @@ import { STORAGE_LOCAL, getStorageItem, setStorageItem, removeStorageItem } from
 
 const ACTIVE_CHAT_KEY = 'chess-study-active-game-chat';
 const MAX_MESSAGES = 120;
-
-function safeParse(raw) {
-  try {
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : null;
-  } catch {
-    return null;
-  }
-}
 
 export function compactRepeatedCpuBanter(messages) {
   if (!Array.isArray(messages)) return [];
@@ -35,7 +26,7 @@ export function compactRepeatedCpuBanter(messages) {
 
 export function loadActiveGameChat(gameId) {
   if (!gameId) return [];
-  const saved = safeParse(getStorageItem(STORAGE_LOCAL, ACTIVE_CHAT_KEY));
+  const saved = readJsonStorage(STORAGE_LOCAL, ACTIVE_CHAT_KEY, { fallback: null });
   if (!saved || saved.gameId !== gameId || !Array.isArray(saved.messages)) return [];
   const messages = compactRepeatedCpuBanter(saved.messages);
   // Migra también transcripts que ya quedaron duplicados antes del fix. Se
@@ -83,6 +74,6 @@ export function clearActiveGameChat(gameId = null) {
     removeStorageItem(STORAGE_LOCAL, ACTIVE_CHAT_KEY);
     return;
   }
-  const saved = safeParse(getStorageItem(STORAGE_LOCAL, ACTIVE_CHAT_KEY));
+  const saved = readJsonStorage(STORAGE_LOCAL, ACTIVE_CHAT_KEY, { fallback: null });
   if (!saved || saved.gameId === gameId) removeStorageItem(STORAGE_LOCAL, ACTIVE_CHAT_KEY);
 }

@@ -26,18 +26,14 @@ export function saveActiveGameSession({ route, game, learningMode = false, gameC
 
 export function loadActiveGameSession() {
   const snapshot = readJsonStorage(STORAGE_LOCAL, ACTIVE_GAME_SESSION_KEY, { fallback: null, removeMalformed: true });
-  try {
-    if (!snapshot || snapshot.version !== VERSION) return null;
-    if (!VALID_ROUTES.has(snapshot.route) || typeof snapshot.gameId !== 'string' || !snapshot.gameId) return null;
-    return {
-      ...snapshot,
-      learningMode: !!snapshot.learningMode,
-      gameContext: safeContext(snapshot.gameContext),
-      timeControlId: snapshot.timeControlId || null,
-    };
-  } catch {
-    return null;
-  }
+  if (!snapshot || snapshot.version !== VERSION) return null;
+  if (!VALID_ROUTES.has(snapshot.route) || typeof snapshot.gameId !== 'string' || !snapshot.gameId) return null;
+  return {
+    ...snapshot,
+    learningMode: !!snapshot.learningMode,
+    gameContext: safeContext(snapshot.gameContext),
+    timeControlId: snapshot.timeControlId || null,
+  };
 }
 
 export function clearActiveGameSession() {

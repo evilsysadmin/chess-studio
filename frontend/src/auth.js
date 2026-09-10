@@ -108,6 +108,17 @@ export function watchSessionIdentity(onChange) {
   return () => window.removeEventListener('storage', handleStorage);
 }
 
+// Login explícito y logout deben invalidar el mismo estado efímero. Mantener
+// este contrato en un único sitio evita que una nueva cache/session se limpie
+// en un camino pero sobreviva accidentalmente en el otro.
+function clearSessionRuntimeState() {
+  clearSessionView();
+  clearAllClockSnapshots();
+  clearCombatSession();
+  clearCombatDebriefSession();
+  clearHomePlayNudgeSession();
+}
+
 function saveSession(token, username) {
   // El login acaba de confirmar una identidad nueva. Borramos la caché del
   // usuario anterior ANTES de guardar la nueva sesión; Mongo la rellenará en
@@ -117,9 +128,7 @@ function saveSession(token, username) {
   // no pasan por aquí salvo que el usuario inicie sesión en ellas de verdad.
   bindProfileStorageIdentity(getUsername());
   clearLocalUserState();
-  clearAllClockSnapshots();
-  clearCombatSession();
-  clearCombatDebriefSession();
+  clearSessionRuntimeState();
   setStorageItem(STORAGE_LOCAL, TOKEN_KEY, token);
   setStorageItem(STORAGE_LOCAL, USERNAME_KEY, username);
   rotatePresenceSessionId();
@@ -127,8 +136,6 @@ function saveSession(token, username) {
   // Cada autenticación explícita abre una sesión musical nueva. El usuario
   // puede cambiar el tema después y se conservará hasta logout/nuevo login.
   markAmbientThemeSessionFresh();
-  clearSessionView();
-  clearHomePlayNudgeSession();
   queueMatthiasLoginGreeting();
 }
 
@@ -163,12 +170,8 @@ export function reportPageLeavePresence() {
 
 export function logout() {
   clearAmbientThemeSessionStorage();
-  clearSessionView();
+  clearSessionRuntimeState();
   clearLocalUserState();
-  clearAllClockSnapshots();
-  clearCombatSession();
-  clearCombatDebriefSession();
-  clearHomePlayNudgeSession();
   clearMatthiasSessionSignals();
   removeStorageItem(STORAGE_LOCAL, TOKEN_KEY);
   removeStorageItem(STORAGE_LOCAL, USERNAME_KEY);

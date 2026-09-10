@@ -1,4 +1,4 @@
-import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { seededUnit } from './roguelikeModifiers.js';
 
@@ -73,15 +73,11 @@ export function officerServiceRank(officer, rawRecord = {}) {
 }
 
 export function loadEnemyOfficerHistory() {
-  try {
-    const parsed = JSON.parse(getStorageItem(STORAGE_LOCAL, COMBAT_ENEMY_OFFICERS_KEY) || '{}');
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-    return Object.fromEntries(Object.entries(parsed)
-      .map(([id, record]) => [id, normalizeRecord(record)])
-      .filter(([id, record]) => id && record.officerId === id));
-  } catch {
-    return {};
-  }
+  const parsed = readJsonStorage(STORAGE_LOCAL, COMBAT_ENEMY_OFFICERS_KEY, { fallback: {} });
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+  return Object.fromEntries(Object.entries(parsed)
+    .map(([id, record]) => [id, normalizeRecord(record)])
+    .filter(([id, record]) => id && record.officerId === id));
 }
 
 function officerPoolForNode(node) {

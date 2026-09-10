@@ -1,4 +1,4 @@
-import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 
 // tournament.js — Progreso del modo torneo. Se guarda en la caché local síncrona y la capa de perfil la
@@ -11,20 +11,14 @@ export const POINTS_PER_LEVEL = 50;
 const EMPTY_STATE = { points: 0, progressPoints: 0, wins: 0, draws: 0, losses: 0, winStreak: 0, bestWinStreak: 0 };
 
 export function loadTournament() {
-  try {
-    const raw = getStorageItem(STORAGE_LOCAL, STORAGE_KEY);
-    if (!raw) return { ...EMPTY_STATE };
-    const parsed = JSON.parse(raw);
-    // Compatibilidad con el formato anterior: `points` era a la vez moneda de pistas y XP de
-    // torneo. Conservamos el nivel histórico una vez, pero a partir de ahora
-    // ambas economías avanzan por caminos independientes.
-    const progressPoints = Number.isFinite(Number(parsed.progressPoints))
-      ? Number(parsed.progressPoints)
-      : Number(parsed.points) || 0;
-    return { ...EMPTY_STATE, ...parsed, progressPoints };
-  } catch {
-    return { ...EMPTY_STATE };
-  }
+  const parsed = readJsonStorage(STORAGE_LOCAL, STORAGE_KEY, { fallback: {} });
+  // Compatibilidad con el formato anterior: `points` era a la vez moneda de pistas y XP de
+  // torneo. Conservamos el nivel histórico una vez, pero a partir de ahora
+  // ambas economías avanzan por caminos independientes.
+  const progressPoints = Number.isFinite(Number(parsed?.progressPoints))
+    ? Number(parsed.progressPoints)
+    : Number(parsed?.points) || 0;
+  return { ...EMPTY_STATE, ...(parsed && typeof parsed === 'object' ? parsed : {}), progressPoints };
 }
 
 export function saveTournament(state) {
