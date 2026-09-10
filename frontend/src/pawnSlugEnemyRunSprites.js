@@ -19,6 +19,13 @@ import {
   PAWN_SLUG_MOTION_PROFILES,
   configurePawnSlugTexture,
 } from './pawnSlugSpritesLegacy.js';
+import {
+  PAWN_SLUG_ENEMY_ACTION_META,
+  pawnSlugEnemyActionForState,
+  pawnSlugEnemyActionFrame,
+  pawnSlugEnemyActionPose,
+  pawnSlugEnemySourceFrame,
+} from './pawnSlugEnemyActionMotion.js';
 
 const ENEMY_FRAME_BY_TYPE = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
 const ENEMY_RUN_FRAME_BASE_BY_TYPE = Object.freeze({ pawn: 0, knight: 8, rook: 16 });
@@ -57,7 +64,7 @@ export function pawnSlugEnemyRunAtlasWindow(type = 'pawn', frameIndex = 0, dir =
   const frameInType = wrapFrame(frameIndex, ENEMY_RUN_FRAMES_PER_TYPE);
   const frame = ENEMY_RUN_FRAME_BASE_BY_TYPE[safeType] + frameInType;
   const direction = dir < 0 ? -1 : 1;
-  const mirrored = direction > 0; // Approved source run art faces left.
+  const mirrored = direction > 0;
   return Object.freeze({
     type: safeType,
     frame,
@@ -110,6 +117,8 @@ export function createSlugEnemySprite(type = 'pawn') {
   sprite.userData.motionBaseScaleX = scale[0];
   sprite.userData.motionBaseScaleY = scale[1];
   sprite.userData.motionPhase = Math.random() * Math.PI * 2;
+  sprite.userData.action = 'idle';
+  sprite.userData.actionFrame = 0;
   sprite.userData.atlas = {
     frames: ENEMY_RUN_FRAMES_PER_TYPE,
     frame: 0,
@@ -168,20 +177,31 @@ export function createSlugEnemySprite(type = 'pawn') {
   return sprite;
 }
 
-export function animateSlugEnemySprite(sprite, type, time, { moving = false, hurt = false } = {}) {
+export function animateSlugEnemySprite(sprite, type, time, state = {}) {
+  const { moving = false, hurt = false, airborne = false, crouch = false, climbing = false, vy = 0 } = state;
   const profile = PAWN_SLUG_MOTION_PROFILES[type] || PAWN_SLUG_MOTION_PROFILES.pawn;
-  const phase = sprite.userData.motionPhase || 0;
   const direction = sprite.scale.x < 0 ? -1 : 1;
-  const idleWave = Math.sin(time * profile.idleRate + phase);
+  const baseScaleX = sprite.userData.motionBaseScaleX || Math.abs(sprite.scale.x) || 1;
   const baseScaleY = sprite.userData.motionBaseScaleY || Math.abs(sprite.scale.y) || 1;
-  const runFrame = Math.floor(time * Math.max(8, profile.moveRate)) % ENEMY_RUN_FRAMES_PER_TYPE;
+  const action = pawnSlugEnemyActionForState({ moving, hurt, airborne, crouch, climbing });
+  const actionFrame = pawnSlugEnemyActionFrame(action, time);
+  const sourceFrame = pawnSlugEnemySourceFrame(action, actionFrame, ENEMY_RUN_FRAMES_PER_TYPE);
+  const pose = pawnSlugEnemyActionPose(action, actionFrame, { vy, type });
 
+  sprite.userData.action = action;
+  sprite.userData.actionFrame = actionFrame;
   sprite.userData.setDirection?.(direction);
-  sprite.userData.setFrame?.(moving ? runFrame : 0);
-  if (!moving) sprite.position.y += Math.max(0, idleWave) * profile.idleBob;
-  if (hurt) sprite.position.x -= direction * profile.hurtKick;
-  sprite.scale.y = baseScaleY * (1 - (hurt ? 0.045 : 0));
-  sprite.material.rotation = 0;
+  sprite.userData.setFrame?.(sourceFrame);
+  sprite.position.x += pose.x * direction;
+  sprite.position.y += pose.y;
+  sprite.scale.x = baseScaleX * pose.sx * direction;
+  sprite.scale.y = baseScaleY * pose.sy;
+  sprite.material.rotation = pose.rz * direction;
+
+  if (action === 'idle') {
+    const phase = sprite.userData.motionPhase || 0;
+    sprite.position.y += Math.max(0, Math.sin(time * profile.idleRate + phase)) * profile.idleBob;
+  }
   tintSprite(sprite, hurt);
 }
 
@@ -196,4 +216,5 @@ export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
   runtimeFacings: Object.freeze(['right', 'left']),
   directionMode: 'atlas-uv-mirror',
   frameBaseByType: ENEMY_RUN_FRAME_BASE_BY_TYPE,
+  actionMotion: PAWN_SLUG_ENEMY_ACTION_META,
 });
