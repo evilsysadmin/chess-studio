@@ -26,6 +26,9 @@ const PALETTE = Object.freeze({
   barkDark: 0x241c16,
   moss: 0x48523b,
   relic: 0x5b5a54,
+  ruinStone: 0x71695f,
+  ruinShade: 0x423d38,
+  ruinDust: 0x9b876c,
 });
 
 function localX(tile, scenario) {
@@ -118,19 +121,17 @@ function renderForestTrunk(root, tile, scenario, coarse) {
 }
 
 function renderForestRoot(root, tile, scenario) {
-  const x = localX(tile, scenario);
   const rootMesh = mesh(new THREE.CylinderGeometry(0.13, 0.24, 1.3, 7), material(PALETTE.barkDark, 1), {
-    x, y: 0.12, z: 0.52, rz: Math.PI / 2 - 0.12,
+    x: localX(tile, scenario), y: 0.12, z: 0.52, rz: Math.PI / 2 - 0.12,
   });
   rootMesh.name = 'pawn-slug-forest-root';
   root.add(rootMesh);
 }
 
 function renderFallenKnight(root, tile, scenario) {
-  const x = localX(tile, scenario);
   const relic = new THREE.Group();
   relic.name = 'pawn-slug-forest-fallen-knight';
-  relic.position.set(x, 0.18, 0.75);
+  relic.position.set(localX(tile, scenario), 0.18, 0.75);
   relic.rotation.z = -0.48;
   relic.add(
     mesh(new THREE.CylinderGeometry(0.34, 0.48, 0.52, 10), material(PALETTE.relic, 0.95), { y: 0.2 }),
@@ -141,7 +142,6 @@ function renderFallenKnight(root, tile, scenario) {
 }
 
 function renderFireflies(root, tile, scenario) {
-  const x = localX(tile, scenario);
   const glow = material(0x85935f, 0.4, 0, 0xc6d986, 1.8);
   const group = new THREE.Group();
   group.name = 'pawn-slug-forest-fireflies';
@@ -150,7 +150,60 @@ function renderFireflies(root, tile, scenario) {
     fly.castShadow = false;
     group.add(fly);
   }
-  group.position.x = x;
+  group.position.x = localX(tile, scenario);
+  root.add(group);
+}
+
+function renderRuinColumn(root, tile, scenario, coarse) {
+  const x = localX(tile, scenario);
+  const column = new THREE.Group();
+  column.name = 'pawn-slug-ruins-column';
+  column.position.set(x, 0, -0.42);
+  const stone = material(PALETTE.ruinStone, 0.96, 0.02);
+  const shade = material(PALETTE.ruinShade, 0.99, 0.01);
+  column.add(
+    mesh(new THREE.CylinderGeometry(0.42, 0.5, coarse ? 3.7 : 5.2, coarse ? 8 : 12), stone, { y: coarse ? 1.85 : 2.6 }),
+    mesh(new THREE.CylinderGeometry(0.58, 0.58, 0.22, coarse ? 8 : 12), shade, { y: 0.11 }),
+    mesh(new THREE.BoxGeometry(1.18, 0.28, 0.92), stone, { y: coarse ? 3.65 : 5.08, rz: x % 2 ? 0.04 : -0.05 }),
+  );
+  root.add(column);
+}
+
+function renderRuinSlab(root, tile, scenario) {
+  const slab = mesh(new THREE.BoxGeometry(0.95, 0.18, 1.08), material(PALETTE.ruinShade, 0.98), {
+    x: localX(tile, scenario), y: 0.08, z: 0.55, rz: ((tile.column % 3) - 1) * 0.04,
+  });
+  slab.name = 'pawn-slug-ruins-slab';
+  root.add(slab);
+}
+
+function renderBrokenRook(root, tile, scenario) {
+  const rook = new THREE.Group();
+  rook.name = 'pawn-slug-ruins-broken-rook';
+  rook.position.set(localX(tile, scenario), 0.15, 0.82);
+  rook.rotation.z = -0.31;
+  const stone = material(PALETTE.relic, 0.94, 0.01);
+  rook.add(
+    mesh(new THREE.CylinderGeometry(0.42, 0.55, 0.72, 10), stone, { y: 0.34 }),
+    mesh(new THREE.CylinderGeometry(0.52, 0.46, 0.48, 10), stone, { y: 0.92 }),
+  );
+  for (const cx of [-0.32, 0, 0.32]) {
+    rook.add(mesh(new THREE.BoxGeometry(0.2, 0.34, 0.55), stone, { x: cx, y: 1.3, rz: cx === 0 ? 0.05 : -0.08 }));
+  }
+  root.add(rook);
+}
+
+function renderDust(root, tile, scenario) {
+  const dustMat = new THREE.MeshBasicMaterial({ color: PALETTE.ruinDust, transparent: true, opacity: 0.13, depthWrite: false });
+  const group = new THREE.Group();
+  group.name = 'pawn-slug-ruins-dust';
+  group.position.x = localX(tile, scenario);
+  for (const [dx, dy, scale] of [[-0.35, 0.65, 0.34], [0.15, 1.1, 0.42], [0.5, 0.45, 0.28]]) {
+    const puff = mesh(new THREE.SphereGeometry(scale, 8, 6), dustMat, { x: dx, y: dy, z: 0.35 });
+    puff.castShadow = false;
+    puff.receiveShadow = false;
+    group.add(puff);
+  }
   root.add(group);
 }
 
@@ -174,6 +227,10 @@ export function createPawnSlugScenarioFromTileMap(scenario, { coarse = false } =
   for (const tile of tiles('forest-root')) renderForestRoot(root, tile, scenario);
   for (const tile of tiles('fallen-knight')) renderFallenKnight(root, tile, scenario);
   for (const tile of tiles('fireflies')) renderFireflies(root, tile, scenario);
+  for (const tile of tiles('ruin-column')) renderRuinColumn(root, tile, scenario, coarse);
+  for (const tile of tiles('ruin-slab')) renderRuinSlab(root, tile, scenario);
+  for (const tile of tiles('broken-rook')) renderBrokenRook(root, tile, scenario);
+  for (const tile of tiles('dust')) renderDust(root, tile, scenario);
 
   const gateTiles = tiles('gate');
   if (gateTiles.length) {
@@ -203,4 +260,8 @@ export function createPawnSlugCastleDungeon({ coarse = false } = {}) {
 
 export function createPawnSlugFallenForest({ coarse = false } = {}) {
   return createPawnSlugScenarioFromTileMap(PAWN_SLUG_SCENARIO_TILEMAPS.fallenForest, { coarse });
+}
+
+export function createPawnSlugGambitRuins({ coarse = false } = {}) {
+  return createPawnSlugScenarioFromTileMap(PAWN_SLUG_SCENARIO_TILEMAPS.gambitRuins, { coarse });
 }
