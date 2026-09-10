@@ -183,6 +183,30 @@
 }
 
 @media (max-width: 520px) {
+  .illustrated-home {
+    height: 100dvh;
+    min-height: 100dvh;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .illustrated-home__stage {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    min-height: 100dvh;
+    aspect-ratio: auto;
+    overflow: hidden;
+  }
+
+  .illustrated-home__art {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 50%;
+  }
+
   .illustrated-home__destination > span { display: none; }
   .illustrated-home__destination {
     min-width: 40px;
