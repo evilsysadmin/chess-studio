@@ -42,7 +42,10 @@ export function resolveBoard3DThemeId(candidate, fallback = 'classic') {
 
 export const SKIN_3D = Object.freeze({
   default: {
-    white: 0xe7d7ad, black: 0x2b2d31, whiteAccent: 0xb68a38, blackAccent: 0x9b342f,
+    // The legacy/default palette used to land almost exactly on the light-square
+    // luminance after ACES + room lighting. Keep it recognisably warm, but give the
+    // piece body a real value gap so silhouettes survive on cream squares.
+    white: 0xd0b37e, black: 0x2b2d31, whiteAccent: 0xb68a38, blackAccent: 0x9b342f,
     metalness: 0.18, roughness: 0.62, emissive: 0x000000, emissiveIntensity: 0,
   },
   studio: {
