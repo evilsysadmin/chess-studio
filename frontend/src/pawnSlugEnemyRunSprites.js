@@ -24,8 +24,10 @@ import {
   pawnSlugEnemyActionForState,
   pawnSlugEnemyActionFrame,
   pawnSlugEnemyActionPose,
+  pawnSlugEnemyDeathDuration,
   pawnSlugEnemySourceFrame,
 } from './pawnSlugEnemyActionMotion.js';
+import { installPawnSlugEnemyDeathReplay } from './pawnSlugEnemyDeathReplay.js';
 import {
   PAWN_SLUG_SOLDIER_ATLAS_META,
   createPawnSlugSoldierAtlasTexture,
@@ -204,6 +206,13 @@ export function createSlugEnemySprite(type = 'pawn') {
     atlas.direction = direction;
     applyAtlasWindow(sprite);
   };
+  sprite.userData.deathReplay = installPawnSlugEnemyDeathReplay(sprite, {
+    type: safeType,
+    duration: pawnSlugEnemyDeathDuration(safeType),
+    hold: 0.24,
+    reducedMotion: Boolean(typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches),
+    animate: (deathAge) => animateSlugEnemySprite(sprite, safeType, deathAge, { dying: true, deathAge }),
+  });
   return sprite;
 }
 
