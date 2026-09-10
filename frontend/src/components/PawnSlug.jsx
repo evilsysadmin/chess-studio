@@ -37,6 +37,7 @@ const INITIAL_HUD = Object.freeze({
   ammo: null,
   weapons: INITIAL_WEAPONS,
   grenades: 4,
+  credits: 0,
   score: 0,
   combo: 0,
   progress: 0,
@@ -313,6 +314,7 @@ export default function PawnSlug({ onExit }) {
   const overlay = hud.phase === 'ready' || hud.phase === 'gameover' || hud.phase === 'victory';
   const weapons = hud.weapons?.length ? hud.weapons : INITIAL_WEAPONS;
   const keymap = settings.keymap || PAWN_SLUG_DEFAULT_KEYMAP;
+  const credits = Math.max(0, Math.floor(Number(hud.credits) || 0));
 
   return (
     <div className="pawn-slug" data-pawn-slug="true">
@@ -338,6 +340,7 @@ export default function PawnSlug({ onExit }) {
           <div><span>VIDAS</span><b>{'♥'.repeat(Math.max(0, hud.lives || 0)) || '—'}</b></div>
           <div><span>ARMA</span><b>{hud.weaponLabel}</b><small>{weaponUpgrade.code} · {ammoText}</small></div>
           <div><span>POWER-UP</span><b>{hud.grenades}</b></div>
+          <div><span>CRÉDITOS</span><b>{credits.toLocaleString('es-ES')}</b></div>
           <div><span>PUNTOS</span><b>{hud.score.toLocaleString('es-ES')}</b></div>
           <div><span>TIEMPO</span><b>{missionTime}</b></div>
         </div>
@@ -414,7 +417,7 @@ export default function PawnSlug({ onExit }) {
                   <span><b>Arsenal</b> Empiezas con pistola. Requisa MG, escopeta y Panzerfaust; cada arma desbloquea mejoras Mk propias al ascender.</span>
                 </div>
               )}
-              {hud.phase !== 'ready' && <small>Nivel {hud.level} · {hud.score.toLocaleString('es-ES')} puntos · {missionTime}</small>}
+              {hud.phase !== 'ready' && <small>Nivel {hud.level} · {hud.score.toLocaleString('es-ES')} puntos · {credits.toLocaleString('es-ES')} créditos · {missionTime}</small>}
               <button
                 type="button"
                 className="primary-btn"
