@@ -1,12 +1,16 @@
 import * as THREE from 'three';
 import {
-  acquireWarRoomHansRoutine,
   getWarRoomHansActor,
   getWarRoomHansCanvas,
   getWarRoomHansGameId,
-  releaseWarRoomHansRoutine,
-  warRoomHansRoutineAvailable,
 } from './WarRoomHansActor.js';
+import {
+  advanceWarRoomHansWalk,
+  applyWarRoomHansTaskPose,
+  createWarRoomHansWalkController,
+  placeWarRoomHansHorizontal,
+  resetWarRoomHansWalk,
+} from './WarRoomHansAnimator.js';
 import {
   warRoomHansAmbientDelayMs,
   warRoomHansEventForGame,
@@ -21,18 +25,21 @@ import {
   moveWarRoomHansAlongRoute,
 } from './WarRoomHansNavigation.js';
 import {
+  assignWarRoomHansTask,
+  getWarRoomHansRuntime,
+  releaseWarRoomHansTask,
+  setWarRoomHansTaskPhase,
+  setWarRoomHansTaskPresentation,
+  warRoomHansTaskAvailable,
+} from './WarRoomHansRuntime.js';
+import {
   HANS_SERVICE_WALK_SPEED,
   setWarRoomHansServiceDoor,
   warRoomHansServiceHome,
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
-import {
-  advanceHansWalkCycle,
-  createHansWalkCycle,
-  resetHansWalkCycle,
-} from './HansWalkCycle.js';
 
-export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v3-lifecycle-cleanup';
+export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v4-runtime-task';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
@@ -161,37 +168,24 @@ function restoreAdjustedTarget(targetObject, baseRotation) {
   targetObject.rotation.y = baseRotation;
 }
 
-function applyChorePose(actor, eventName, elapsedMs, targetObject, baseRotation) {
-  const wave = Math.sin(elapsedMs * 0.006);
-  if (eventName === 'dust-armor' || eventName === 'dust-board') {
-    if (actor.body.rightArm) actor.body.rightArm.rotation.x -= 0.62 + wave * 0.18;
-    if (actor.body.torso) actor.body.torso.rotation.x += 0.025;
-  } else if (eventName === 'bring-book' || eventName === 'mail') {
-    if (actor.body.leftArm) actor.body.leftArm.rotation.x -= 0.34;
-    if (actor.body.rightArm) actor.body.rightArm.rotation.x -= 0.34;
-  } else if (eventName === 'straighten-room') {
-    if (actor.body.leftArm) actor.body.leftArm.rotation.x -= 0.48;
-    if (actor.body.rightArm) actor.body.rightArm.rotation.x -= 0.62;
-    if (targetObject && baseRotation != null) targetObject.rotation.y = baseRotation + Math.sin(Math.min(1, elapsedMs / 2200) * Math.PI) * 0.035;
-  } else if (eventName === 'sweep-ashes') {
-    if (actor.body.rightArm) actor.body.rightArm.rotation.x -= 0.72 + wave * 0.14;
-    if (actor.body.torso) actor.body.torso.rotation.x += 0.06;
-  } else if (eventName === 'polish-brass') {
-    if (actor.body.rightArm) actor.body.rightArm.rotation.x -= 0.55 + wave * 0.16;
-    if (actor.body.leftArm) actor.body.leftArm.rotation.x -= 0.18;
-  }
+function applyChoreEnvironment(eventName, elapsedMs, targetObject, baseRotation) {
+  if (eventName !== 'straighten-room' || !targetObject || baseRotation == null) return;
+  targetObject.rotation.y = baseRotation + Math.sin(Math.min(1, elapsedMs / 2200) * Math.PI) * 0.035;
 }
 
-function finish(actor, prop, controller, root, routineName, targetObject, baseRotation) {
-  resetHansWalkCycle(controller, { full: true });
+function finish(actor, prop, controller, root, runtime, taskId, targetObject, baseRotation) {
+  resetWarRoomHansWalk(controller, { full: true });
   restoreAdjustedTarget(targetObject, baseRotation);
-  actor.hans.visible = false;
-  actor.hans.userData.warRoomHansMotionState = 'idle';
-  actor.hans.userData.warRoomHansRoute = '';
+  setWarRoomHansTaskPhase(runtime, 'idle');
+  setWarRoomHansTaskPresentation(runtime, {
+    visible: false,
+    motionState: 'idle',
+    route: '',
+  });
   if (prop) prop.visible = false;
   setDialogue(actor, '');
   setWarRoomHansServiceDoor(root, 0);
-  releaseWarRoomHansRoutine(actor, routineName);
+  releaseWarRoomHansTask(runtime, taskId);
 }
 
 export function installWarRoomHansAmbientChoreRoutine(root) {
@@ -200,9 +194,10 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
   if (!actor || !floor || typeof floor.onBeforeRender !== 'function') return 0;
   if (floor.userData?.warRoomHansAmbientChoreRoutine === WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION) return 0;
 
+  const runtime = getWarRoomHansRuntime(actor);
   const previous = floor.onBeforeRender;
-  const controller = createHansWalkCycle(actor.body, { forward: 1 });
-  if (!controller) return 0;
+  const controller = createWarRoomHansWalkController(actor, { forward: 1 });
+  if (!runtime || !controller) return 0;
 
   let gameId = '';
   let eventName = '';
@@ -234,7 +229,7 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
     if (!nextGameId) return;
     if (nextGameId !== gameId) {
       if (active && eventName) {
-        finish(actor, prop, controller, root, `chore-${eventName}`, targetObject, targetBaseRotation);
+        finish(actor, prop, controller, root, runtime, `chore-${eventName}`, targetObject, targetBaseRotation);
       }
       gameId = nextGameId;
       eventName = warRoomHansEventForGame(gameId);
@@ -261,35 +256,45 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
     }
 
     if (!CHORE_EVENTS.has(eventName) || completedGameId === gameId) return;
-    const routineName = `chore-${eventName}`;
+    const taskId = `chore-${eventName}`;
 
     if (!active) {
-      if (!warRoomHansRoutineAvailable(actor, routineName) || now - eligibleSince < delayMs) return;
+      if (!warRoomHansTaskAvailable(runtime, taskId) || now - eligibleSince < delayMs) return;
       chore = warRoomHansChoreForEvent(eventName);
-      if (!chore || !acquireWarRoomHansRoutine(actor, routineName)) return;
+      if (!chore || !assignWarRoomHansTask(runtime, {
+        id: taskId,
+        kind: 'chore',
+        source: 'WarRoomHansAmbientChoreRoutine',
+        payload: { eventName },
+      })) return;
       const service = warRoomHansServiceHome(root, actor.hans.parent);
       targetObject = firstNamed(root, chore.targetNames);
       if (!service?.point || !targetObject) {
-        releaseWarRoomHansRoutine(actor, routineName);
+        releaseWarRoomHansTask(runtime, taskId);
         return;
       }
       home = service.point;
       target = warRoomHansTargetNearObject(targetObject, actor.hans.parent, { offsetX: chore.offsetX, offsetZ: chore.offsetZ });
       if (!target) {
-        releaseWarRoomHansRoutine(actor, routineName);
+        releaseWarRoomHansTask(runtime, taskId);
         return;
       }
       routeIn = warRoomHansBuildSafeRoute(floor, actor.hans.parent, home, target);
       routeOut = warRoomHansBuildSafeRoute(floor, actor.hans.parent, target, home);
       if (!routeIn.length || !routeOut.length) {
-        releaseWarRoomHansRoutine(actor, routineName);
+        releaseWarRoomHansTask(runtime, taskId);
         return;
       }
       prop = ensureProp(actor, chore.prop);
       deliveredProp = ensureDeliveredProp(root, eventName, targetObject);
       if (deliveredProp) deliveredProp.visible = false;
-      actor.hans.position.copy(home);
-      actor.hans.visible = true;
+      placeWarRoomHansHorizontal(actor, home);
+      setWarRoomHansTaskPresentation(runtime, {
+        visible: true,
+        motionState: 'walk-chore',
+        route: `chore-${eventName}`,
+      });
+      setWarRoomHansTaskPhase(runtime, 'walking-in');
       if (prop) prop.visible = true;
       setWarRoomHansServiceDoor(root, 1);
       targetBaseRotation = Number(targetObject.rotation?.y);
@@ -305,18 +310,23 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
       setWarRoomHansServiceDoor(root, Math.max(0, 1 - Math.min(1, actionElapsed / 1300)));
       const motion = moveWarRoomHansAlongRoute(actor.hans, routeIn, routeIndex, HANS_SERVICE_WALK_SPEED * delta / 1000);
       routeIndex = motion.index;
-      actor.hans.userData.warRoomHansMotionState = 'walk-chore';
-      actor.hans.userData.warRoomHansRoute = `chore-${eventName}`;
+      setWarRoomHansTaskPresentation(runtime, {
+        motionState: 'walk-chore',
+        route: `chore-${eventName}`,
+      });
       if (!motion.valid) {
-        finish(actor, prop, controller, root, routineName, targetObject, targetBaseRotation);
+        finish(actor, prop, controller, root, runtime, taskId, targetObject, targetBaseRotation);
         active = false;
         completedGameId = gameId;
         return;
       }
-      if (motion.travelled > 0) advanceHansWalkCycle(controller, { travelled: motion.travelled, horizontalWeight: 0.42 });
+      if (motion.travelled > 0) {
+        advanceWarRoomHansWalk(controller, { travelled: motion.travelled, horizontalWeight: 0.42 });
+      }
       if (motion.arrived) {
-        resetHansWalkCycle(controller, { full: true });
+        resetWarRoomHansWalk(controller, { full: true });
         state = 'acting';
+        setWarRoomHansTaskPhase(runtime, 'acting');
         actionElapsed = 0;
       }
       return;
@@ -324,11 +334,14 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
 
     if (state === 'acting') {
       actionElapsed += delta;
-      resetHansWalkCycle(controller, { full: true });
-      actor.hans.userData.warRoomHansMotionState = eventName;
-      actor.hans.userData.warRoomHansRoute = `chore-${eventName}`;
+      resetWarRoomHansWalk(controller, { full: true });
+      setWarRoomHansTaskPresentation(runtime, {
+        motionState: eventName,
+        route: `chore-${eventName}`,
+      });
       setDialogue(actor, warRoomHansChoreDialoguePhase(eventName, actionElapsed));
-      applyChorePose(actor, eventName, actionElapsed, targetObject, targetBaseRotation);
+      applyWarRoomHansTaskPose(actor, eventName, { elapsedMs: actionElapsed });
+      applyChoreEnvironment(eventName, actionElapsed, targetObject, targetBaseRotation);
 
       if (deliveredProp && actionElapsed >= Math.min(2600, chore.actionMs * 0.35)) {
         deliveredProp.visible = true;
@@ -339,6 +352,7 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
         restoreAdjustedTarget(targetObject, targetBaseRotation);
         setDialogue(actor, '');
         state = 'returning';
+        setWarRoomHansTaskPhase(runtime, 'returning');
         routeIndex = 0;
         actionElapsed = 0;
       }
@@ -348,17 +362,21 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
     if (state === 'returning') {
       const motion = moveWarRoomHansAlongRoute(actor.hans, routeOut, routeIndex, HANS_SERVICE_WALK_SPEED * delta / 1000);
       routeIndex = motion.index;
-      actor.hans.userData.warRoomHansMotionState = 'walk-chore';
-      actor.hans.userData.warRoomHansRoute = 'chore-return';
+      setWarRoomHansTaskPresentation(runtime, {
+        motionState: 'walk-chore',
+        route: 'chore-return',
+      });
       if (!motion.valid) {
-        finish(actor, prop, controller, root, routineName, targetObject, targetBaseRotation);
+        finish(actor, prop, controller, root, runtime, taskId, targetObject, targetBaseRotation);
         active = false;
         completedGameId = gameId;
         return;
       }
-      if (motion.travelled > 0) advanceHansWalkCycle(controller, { travelled: motion.travelled, horizontalWeight: 0.42 });
+      if (motion.travelled > 0) {
+        advanceWarRoomHansWalk(controller, { travelled: motion.travelled, horizontalWeight: 0.42 });
+      }
       if (motion.arrived) {
-        finish(actor, prop, controller, root, routineName, targetObject, targetBaseRotation);
+        finish(actor, prop, controller, root, runtime, taskId, targetObject, targetBaseRotation);
         active = false;
         state = 'done';
         completedGameId = gameId;

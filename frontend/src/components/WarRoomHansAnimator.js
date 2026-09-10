@@ -66,10 +66,12 @@ export function resetWarRoomHansWalk(controller, options = {}) {
   return true;
 }
 
-export function applyWarRoomHansTaskPose(actor, pose) {
+export function applyWarRoomHansTaskPose(actor, pose, { elapsedMs = 0 } = {}) {
   const body = actor?.body;
   if (!body) return false;
   const poseName = String(pose || '');
+  const elapsed = Math.max(0, Number(elapsedMs) || 0);
+  const wave = Math.sin(elapsed * 0.006);
 
   if (poseName === 'water-plant') {
     if (body.rightArm) body.rightArm.rotation.x -= 0.58;
@@ -77,6 +79,21 @@ export function applyWarRoomHansTaskPose(actor, pose) {
   } else if (poseName === 'espresso') {
     if (body.leftArm) body.leftArm.rotation.x -= 0.38;
     if (body.rightArm) body.rightArm.rotation.x -= 0.38;
+  } else if (poseName === 'dust-armor' || poseName === 'dust-board') {
+    if (body.rightArm) body.rightArm.rotation.x -= 0.62 + wave * 0.18;
+    if (body.torso) body.torso.rotation.x += 0.025;
+  } else if (poseName === 'bring-book' || poseName === 'mail') {
+    if (body.leftArm) body.leftArm.rotation.x -= 0.34;
+    if (body.rightArm) body.rightArm.rotation.x -= 0.34;
+  } else if (poseName === 'straighten-room') {
+    if (body.leftArm) body.leftArm.rotation.x -= 0.48;
+    if (body.rightArm) body.rightArm.rotation.x -= 0.62;
+  } else if (poseName === 'sweep-ashes') {
+    if (body.rightArm) body.rightArm.rotation.x -= 0.72 + wave * 0.14;
+    if (body.torso) body.torso.rotation.x += 0.06;
+  } else if (poseName === 'polish-brass') {
+    if (body.rightArm) body.rightArm.rotation.x -= 0.55 + wave * 0.16;
+    if (body.leftArm) body.leftArm.rotation.x -= 0.18;
   } else {
     return false;
   }
