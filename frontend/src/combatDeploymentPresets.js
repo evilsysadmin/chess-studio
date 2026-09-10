@@ -1,4 +1,4 @@
-import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { ensureDeploymentState, resetDeployment, setDeploymentUnit } from './combatDeployment.js';
 import { setRosterDeploymentType } from './combatMetamorphosis.js';
@@ -6,17 +6,9 @@ import { setRosterDeploymentType } from './combatMetamorphosis.js';
 const COMBAT_DEPLOYMENT_PRESETS_KEY = 'chess-study-combat-deployment-presets-v1';
 const COMBAT_DEPLOYMENT_PRESET_SLOTS = 3;
 
-function safeParse(raw) {
-  try {
-    const parsed = JSON.parse(raw || 'null');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
 export function loadDeploymentPresets() {
-  return safeParse(getStorageItem(STORAGE_LOCAL, COMBAT_DEPLOYMENT_PRESETS_KEY)).slice(0, COMBAT_DEPLOYMENT_PRESET_SLOTS);
+  const parsed = readJsonStorage(STORAGE_LOCAL, COMBAT_DEPLOYMENT_PRESETS_KEY, { fallback: [] });
+  return (Array.isArray(parsed) ? parsed : []).slice(0, COMBAT_DEPLOYMENT_PRESET_SLOTS);
 }
 
 function normalizedPresetName(value, index) {
