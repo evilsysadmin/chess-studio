@@ -1,5 +1,7 @@
 import { DEFAULT_REQUEST_TIMEOUT_MS } from './requestTimeout.js';
 
+const DEFAULT_OPERATION_TIMEOUT_MS = 10000;
+
 export function isAbortError(error) {
   return error?.name === 'AbortError' || error?.cause?.name === 'AbortError';
 }
@@ -32,8 +34,8 @@ export function abortableDelay(ms, signal) {
 // aceptan AbortSignal (clipboard, canvas.toBlob adaptado a Promise, etc.). No
 // puede cancelar el trabajo subyacente, pero sí impide que la UI espere para
 // siempre. Si se aporta signal, un cambio de pantalla gana inmediatamente.
-export function withTimeout(promise, timeoutMs = 10000, { signal, message = 'Operation timed out' } = {}) {
-  const duration = Math.max(1, Number(timeoutMs) || 10000);
+export function withTimeout(promise, timeoutMs = DEFAULT_OPERATION_TIMEOUT_MS, { signal, message = 'Operation timed out' } = {}) {
+  const duration = Math.max(1, Number(timeoutMs) || DEFAULT_OPERATION_TIMEOUT_MS);
   if (signal?.aborted) return Promise.reject(signal.reason || abortError());
   return new Promise((resolve, reject) => {
     let settled = false;
