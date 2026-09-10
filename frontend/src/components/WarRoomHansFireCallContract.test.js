@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   fireCallPhase,
   HANS_BOARD_DIALOGUE_GAP_MS,
-  HANS_BOARD_PEEK_LOGICAL_X,
   HANS_BOARD_PEEK_ROUTE,
   HANS_FIRE_REPLY_LINE,
   MATTHIAS_FIRE_CALL_LINE,
@@ -27,24 +26,28 @@ describe('War Room Hans fire call contract', () => {
     expect(fireCallPhase(MATTHIAS_FIRE_CALL_MS + 1, true)).toBe('hans');
   });
 
-  it('suelta la sugerencia al alinearse con el pasillo de la puerta y congela sólo la conversación', () => {
+  it('suelta la sugerencia al entrar en el pasillo y no depende de una X que los guards puedan recortar', () => {
     const suggestion = { line: 'Yo probaría caballo de g1 a f3.' };
     const before = {
       phase: 'await-exit-peek',
       route: 'leave-side',
-      logicalX: HANS_BOARD_PEEK_LOGICAL_X,
+      logicalX: 1.42,
     };
     const ready = {
       phase: 'await-exit-peek',
       route: HANS_BOARD_PEEK_ROUTE,
-      logicalX: HANS_BOARD_PEEK_LOGICAL_X,
+      logicalX: 1.42,
+    };
+    const geometryClamped = {
+      ...ready,
+      logicalX: 0.72,
     };
 
     expect(HANS_BOARD_PEEK_ROUTE).toBe('leave-bypass');
-    expect(HANS_BOARD_PEEK_LOGICAL_X).toBeCloseTo(1.35, 2);
     expect(hansBoardPeekPointReached(before)).toBe(false);
     expect(hansBoardPeekPointReached(ready)).toBe(true);
-    expect(shouldStartHansBoardPeek({ ...ready, suggestion })).toBe(true);
+    expect(hansBoardPeekPointReached(geometryClamped)).toBe(true);
+    expect(shouldStartHansBoardPeek({ ...geometryClamped, suggestion })).toBe(true);
     expect(shouldStartHansBoardPeek({ ...ready, suggestion: null })).toBe(false);
     expect(hansBoardPeekHoldsMovement('await-exit-peek')).toBe(false);
     expect(hansBoardPeekHoldsMovement('peek')).toBe(true);
