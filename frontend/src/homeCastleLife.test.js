@@ -12,6 +12,8 @@ describe('homeCastleLife', () => {
 
   it('stays silent when there is no meaningful factual milestone', () => {
     expect(homeCastleMemory({ record: { wins: 9, bestHumanStreak: 4 } })).toBeNull();
+    expect(homeCastleMemory({ record: { games: 500, wins: 0, bestHumanStreak: 0 } })).toBeNull();
+    expect(homeCastleMemory({ record: { wins: 'banana', bestHumanStreak: -4 } })).toBeNull();
   });
 
   it('prefers a real streak milestone over aggregate wins', () => {
