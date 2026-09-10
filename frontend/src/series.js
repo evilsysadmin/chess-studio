@@ -13,13 +13,18 @@ export const SERIES_OPTIONS = [
   { value: 5, label: 'Mejor de 5' },
 ];
 
+function isCompetitiveSeriesBestOf(value) {
+  const bestOf = Number(value);
+  return bestOf > 1 && SERIES_OPTIONS.some((option) => option.value === bestOf);
+}
+
 function normalizeColor(color) {
   return color === 'b' ? 'b' : 'w';
 }
 
 export function createSeries({ bestOf, difficulty, firstColor, timeControlId = 'none' }) {
   const n = Number(bestOf);
-  if (![3, 5].includes(n)) return null;
+  if (!isCompetitiveSeriesBestOf(n)) return null;
   const color = normalizeColor(firstColor);
   return {
     version: 1,
@@ -40,7 +45,7 @@ export function createSeries({ bestOf, difficulty, firstColor, timeControlId = '
 }
 
 export function validateSeriesState(parsed) {
-  if (!parsed || ![3, 5].includes(Number(parsed.bestOf))) return null;
+  if (!parsed || !isCompetitiveSeriesBestOf(parsed.bestOf)) return null;
   const bestOf = Number(parsed.bestOf);
   const winsNeeded = Math.floor(bestOf / 2) + 1;
   const humanWins = Math.max(0, Number(parsed.humanWins || 0));
@@ -182,7 +187,7 @@ export function seriesNextActionLabel(series) {
 
 function completedSeriesRows(history) {
   return (Array.isArray(history) ? history : []).filter((series) =>
-    series && [3, 5].includes(Number(series.bestOf)) && ['human', 'cpu'].includes(series.winner)
+    series && isCompetitiveSeriesBestOf(series.bestOf) && ['human', 'cpu'].includes(series.winner)
   );
 }
 
