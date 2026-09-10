@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { installWarRoomHansServiceExitDoorGuard } from './WarRoomHansServiceExitDoorGuard.js';
 import { setWarRoomHansServiceDoorOpen } from './WarRoomHansServiceDoor.js';
 
-export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v3-visible-exit-door';
+export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v4-visible-exit-door-explicit-infrastructure';
 export const HANS_SERVICE_WALK_SPEED = 0.78;
 
 const DOOR_NAME = 'war-room-hans-service-door';
@@ -15,12 +15,17 @@ function localPoint(parent, world) {
   return parent.worldToLocal(world.clone());
 }
 
+export function installWarRoomHansServiceInfrastructure(root) {
+  const door = root?.getObjectByName?.(DOOR_NAME);
+  const refs = door?.userData?.refs || null;
+  return installWarRoomHansServiceExitDoorGuard(root, refs);
+}
+
 export function warRoomHansServiceHome(root, parent) {
   const door = root?.getObjectByName?.(DOOR_NAME);
   const recess = door?.getObjectByName?.(DOOR_RECESS_NAME);
   if (!door || !parent) return null;
   const refs = door.userData?.refs || null;
-  installWarRoomHansServiceExitDoorGuard(root, refs);
   const world = new THREE.Vector3();
   (recess || door).getWorldPosition?.(world);
   const point = localPoint(parent, world);
