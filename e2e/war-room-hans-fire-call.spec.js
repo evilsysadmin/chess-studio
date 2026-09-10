@@ -3,6 +3,7 @@ import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { warRoomHansEventForGame } from '../frontend/src/components/WarRoomHansEventContract.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
+const HANS_BOARD_PEEK_TIMEOUT = 90_000;
 
 function firstE2EFireGameIndex() {
   for (let index = 1; index <= 64; index += 1) {
@@ -27,7 +28,12 @@ async function seedGamesBeforeFire(page) {
 }
 
 test('War Room · el número del fuego completa cotilleo, corte de Matthias y respuesta de Hans', async ({ page }) => {
-  test.setTimeout(90_000);
+  // The dedicated CI lane uses SwiftShader. Hans' choreography advances from
+  // rendered frames and intentionally caps late-frame deltas, so a software
+  // renderer can take roughly twice wall-clock time without production being
+  // stuck. Keep the normal readiness budget, but allow the long board-side
+  // choreography enough time to reach its semantic leave-bypass route.
+  test.setTimeout(180_000);
 
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page);
@@ -67,7 +73,7 @@ test('War Room · el número del fuego completa cotilleo, corte de Matthias y re
   // but entering the semantic exit-bypass route must still freeze him for the
   // complete board-side exchange instead of letting him walk straight out.
   const peek = page.getByRole('status', { name: 'Hans cotillea el tablero y propone una jugada' });
-  await expect(peek).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(peek).toBeVisible({ timeout: HANS_BOARD_PEEK_TIMEOUT });
   await expect(peek).toContainText('Yo probaría');
 
   const matthiasWorking = page.getByRole('status', { name: 'Matthias manda a Hans volver al trabajo' });
