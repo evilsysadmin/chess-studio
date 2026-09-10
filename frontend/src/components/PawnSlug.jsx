@@ -92,9 +92,11 @@ export default function PawnSlug({ onExit }) {
   const pendingRef = useRef([]);
   const settingsRef = useRef(null);
   const settingsOpenRef = useRef(false);
+  const bootRequestedRef = useRef(false);
   const [hud, setHud] = useState(INITIAL_HUD);
-  const [rendererName, setRendererName] = useState('CARGANDO');
+  const [rendererName, setRendererName] = useState('EN ESPERA');
   const [rendererError, setRendererError] = useState('');
+  const [bootRequested, setBootRequested] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [remapAction, setRemapAction] = useState(null);
   const [remapError, setRemapError] = useState('');
@@ -114,7 +116,20 @@ export default function PawnSlug({ onExit }) {
   function send(action, pressed = true) {
     const engine = engineRef.current;
     if (engine) engine.input(action, pressed);
-    else pendingRef.current.push([action, pressed]);
+    else if (bootRequestedRef.current || action === 'action') pendingRef.current.push([action, pressed]);
+  }
+
+  function startOperation() {
+    if (engineRef.current || hud.phase !== 'ready') {
+      send('action', true);
+      return;
+    }
+    if (bootRequestedRef.current) return;
+    pendingRef.current.push(['action', true]);
+    bootRequestedRef.current = true;
+    setRendererError('');
+    setRendererName('PREPARANDO OPERACIÓN…');
+    setBootRequested(true);
   }
 
   function releaseGameplayInput() {
@@ -153,6 +168,7 @@ export default function PawnSlug({ onExit }) {
   }
 
   useEffect(() => {
+    if (!bootRequested) return undefined;
     let cancelled = false;
     let engine = null;
     const host = hostRef.current;
@@ -177,6 +193,9 @@ export default function PawnSlug({ onExit }) {
       .catch((error) => {
         console.error('Pawn Slug Three.js boot failed', error);
         if (!cancelled) {
+          bootRequestedRef.current = false;
+          pendingRef.current = [];
+          setBootRequested(false);
           setRendererName('THREE.JS · ERROR');
           setRendererError('El motor 3D no ha podido arrancar. Matthias está redactando una queja muy alemana.');
         }
@@ -188,7 +207,7 @@ export default function PawnSlug({ onExit }) {
       if (engineRef.current === engine) engineRef.current = null;
       pendingRef.current = [];
     };
-  }, []);
+  }, [bootRequested]);
 
   useEffect(() => {
     function configuredAction(event) {
@@ -396,7 +415,14 @@ export default function PawnSlug({ onExit }) {
                 </div>
               )}
               {hud.phase !== 'ready' && <small>Nivel {hud.level} · {hud.score.toLocaleString('es-ES')} puntos · {missionTime}</small>}
-              <button type="button" className="primary-btn" onClick={() => send('action', true)}>{hud.phase === 'ready' ? 'INICIAR OPERACIÓN' : 'OTRA VEZ, CABRONES'}</button>
+              <button
+                type="button"
+                className="primary-btn"
+                disabled={hud.phase === 'ready' && bootRequested}
+                onClick={hud.phase === 'ready' ? startOperation : () => send('action', true)}
+              >
+                {hud.phase === 'ready' ? (bootRequested ? 'PREPARANDO OPERACIÓN…' : 'INICIAR OPERACIÓN') : 'OTRA VEZ, CABRONES'}
+              </button>
               <em>←/→ mover · ↓ agacharse · SHIFT saltar · ESPACIO disparar · CTRL power-up · 1–4/Q/E armas · ESC settings</em>
             </div>
           )}
