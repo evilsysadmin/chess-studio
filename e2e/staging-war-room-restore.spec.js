@@ -67,10 +67,6 @@ async function seedRestoreProfile(request, token) {
 }
 
 async function loginBrowser(page, username, password) {
-  // El restore smoke corre justo después del rollout. Forzamos una navegación
-  // distinta por intento para no permitir que una caché HTTP/SW antigua pueda
-  // acreditar el login con un shell previo mientras Pages ya sirve la release
-  // nueva. El producto también publica headers no-cache para el shell.
   const loginUrl = new URL(STAGING_URL);
   loginUrl.searchParams.set('staging-restore-smoke', `${Date.now()}`);
   await page.goto(loginUrl.toString(), { waitUntil: 'domcontentloaded' });
@@ -132,8 +128,6 @@ test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida 
     await expect(warRoomSignal).toContainText(/CPU nivel \d+/);
     await expect(warRoomGameStatus).toHaveText(/Tu turno/i);
 
-    // Esperamos a que el snapshot local inicial exista; después mutamos Mongo/API
-    // por fuera del navegador para crear deliberadamente una divergencia real.
     await expect.poll(async () => page.evaluate((key) => {
       try {
         return JSON.parse(localStorage.getItem(key) || 'null')?.gameSnapshot?.fen || null;
@@ -186,9 +180,10 @@ test('staging authority · F5 3D descarta snapshot viejo y rehidrata la partida 
     await expect(warRoomGameStatus).toHaveText(/Tu turno/i);
     await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 
-    // 2D actúa sólo como sonda accesible del estado común: la posición visible
-    // debe corresponder al FEN rehidratado, no al snapshot local deliberadamente viejo.
-    await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
+    const utilityMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+    await expect(utilityMenu).toBeVisible();
+    await utilityMenu.click();
+    await page.getByRole('menuitem', { name: 'Apariencia', exact: true }).click();
     const appearanceDialog = page.getByRole('dialog', { name: 'Ajustes' });
     await expect(appearanceDialog).toBeVisible();
     await appearanceDialog.getByRole('radio', { name: /2D$/ }).click();
