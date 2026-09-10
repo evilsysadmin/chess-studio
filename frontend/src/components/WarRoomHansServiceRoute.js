@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { installWarRoomHansServiceExitDoorGuard } from './WarRoomHansServiceExitDoorGuard.js';
 import { setWarRoomHansServiceDoorOpen } from './WarRoomHansServiceDoor.js';
 
-export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v4-visible-exit-door-explicit-infrastructure';
+export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v5-visible-exit-door-explicit-infrastructure-grounding-owned-y';
 export const HANS_SERVICE_WALK_SPEED = 0.78;
 
 const DOOR_NAME = 'war-room-hans-service-door';
@@ -47,7 +47,9 @@ export function moveWarRoomHansToward(hans, target, maxStep) {
   const step = Math.min(distance, Math.max(0, Number(maxStep) || 0));
   hans.position.x += dx / distance * step;
   hans.position.z += dz / distance * step;
-  hans.position.y = STANDING_Y;
+  // Service navigation owns only the horizontal route. The rendered grounding
+  // stage owns Y from the real shoe bottom and visible room surface; rewriting
+  // Y here made floor-driven routines lift Hans again before he was rendered.
   hans.rotation.y = Math.atan2(dx, dz);
   return { arrived: distance - step <= TARGET_EPSILON, travelled: step, blocked: false };
 }
