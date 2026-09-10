@@ -1,3 +1,5 @@
+export { PAWN_SLUG_ENEMY_LOADOUTS, pawnSlugEnemyLoadoutFor, pawnSlugEnemyWeaponFor } from './pawnSlugEnemyLoadouts.js';
+
 export const PAWN_SLUG_RUNTIME_HOT_PATH = 'scalar-collision-index-loops-v1';
 
 export function pawnSlugRectsOverlap(
