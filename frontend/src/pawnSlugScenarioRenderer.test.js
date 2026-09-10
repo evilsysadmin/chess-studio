@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   createPawnSlugCastleDungeon,
   createPawnSlugFallenForest,
+  createPawnSlugGambitRuins,
   createPawnSlugScenarioFromTileMap,
 } from './pawnSlugScenarioRenderer.js';
 import { PAWN_SLUG_SCENARIO_TILEMAPS } from './pawnSlugTileMaps.js';
@@ -29,6 +30,19 @@ describe('Pawn Slug scenario renderer', () => {
     expect(desktop.getObjectByName('pawn-slug-forest-fireflies')).toBeTruthy();
     expect(coarse.getObjectByName('pawn-slug-forest-trunk')).toBeTruthy();
     expect(coarse.getObjectByName('pawn-slug-forest-fireflies')).toBeFalsy();
+  });
+
+  it('renders Gambit Ruins with structure preserved and desktop dust trimmed on coarse', () => {
+    const desktop = createPawnSlugGambitRuins({ coarse: false });
+    const coarse = createPawnSlugGambitRuins({ coarse: true });
+    expect(desktop.userData.scenarioId).toBe('gambit-ruins');
+    expect(desktop.userData.dataDriven).toBe(true);
+    expect(desktop.getObjectByName('pawn-slug-ruins-column')).toBeTruthy();
+    expect(desktop.getObjectByName('pawn-slug-ruins-slab')).toBeTruthy();
+    expect(desktop.getObjectByName('pawn-slug-ruins-broken-rook')).toBeTruthy();
+    expect(desktop.getObjectByName('pawn-slug-ruins-dust')).toBeTruthy();
+    expect(coarse.getObjectByName('pawn-slug-ruins-column')).toBeTruthy();
+    expect(coarse.getObjectByName('pawn-slug-ruins-dust')).toBeFalsy();
   });
 
   it('uses the same renderer contract for arbitrary scenario data', () => {
