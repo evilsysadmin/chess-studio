@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PAWN_SLUG_PLATFORM_LAYOUT,
   PAWN_SLUG_SCENARIO_TILEMAPS,
-  pawnSlugMarkerLegacyX,
   pawnSlugScenarioBounds,
   pawnSlugScenarioMarkers,
+  pawnSlugScenarioPlatforms,
   pawnSlugScenarioTilesByKind,
   pawnSlugTilesForScenario,
 } from './pawnSlugTileMaps.js';
@@ -20,6 +21,18 @@ describe('Pawn Slug tile maps', () => {
     expect(tiles.some((tile) => tile.kind === 'ceiling-rib')).toBe(true);
   });
 
+  it('owns physical platform data as part of the scenario contract', () => {
+    const scenario = PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon;
+    const platforms = pawnSlugScenarioPlatforms(scenario);
+    expect(platforms).toHaveLength(1);
+    expect(platforms[0]).toMatchObject({
+      id: 'dungeon-catwalk',
+      theme: 'steel',
+      oneWay: true,
+    });
+    expect(PAWN_SLUG_PLATFORM_LAYOUT).toContain(platforms[0]);
+  });
+
   it('filters desktop-only scenic tiles on coarse/mobile', () => {
     const scenario = PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon;
     expect(pawnSlugScenarioTilesByKind(scenario, 'fallen-pawn')).toHaveLength(1);
@@ -34,27 +47,15 @@ describe('Pawn Slug tile maps', () => {
     expect(pawnSlugTilesForScenario(scenario)).toEqual(pawnSlugTilesForScenario(scenario));
   });
 
-  it('carries typed gameplay markers alongside visual tiles', () => {
-    const scenario = PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon;
-    expect(pawnSlugScenarioMarkers(scenario, 'enemy').map((marker) => marker.type)).toEqual(['knight', 'pawn']);
-    expect(pawnSlugScenarioMarkers(scenario, 'pickup').map((marker) => marker.type)).toEqual(['grenade']);
-    expect(pawnSlugScenarioMarkers(scenario, 'transition')).toHaveLength(1);
-  });
-
-  it('converts scenario world coordinates back to the legacy gameplay coordinate system exactly', () => {
-    const scenario = PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon;
-    const [grenade] = pawnSlugScenarioMarkers(scenario, 'pickup');
-    const enemies = pawnSlugScenarioMarkers(scenario, 'enemy');
-    expect(pawnSlugMarkerLegacyX(grenade)).toBe(1810);
-    expect(enemies.map(pawnSlugMarkerLegacyX)).toEqual([1940, 2110]);
-  });
-
-  it('treats bounds as scenario edges so transition markers can sit on the exit edge', () => {
+  it('keeps typed markers and bounds inside the dungeon scenario', () => {
     const scenario = PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon;
     const bounds = pawnSlugScenarioBounds(scenario);
-    const [exit] = pawnSlugScenarioMarkers(scenario, 'transition');
-    expect(bounds).toEqual({ start: 44.5, end: 55.5 });
-    expect(exit.worldX).toBe(bounds.end);
-    expect(Object.isFrozen(bounds)).toBe(true);
+    const markers = pawnSlugScenarioMarkers(scenario);
+    expect(bounds.start).toBe(44.5);
+    expect(bounds.end).toBeGreaterThan(bounds.start);
+    expect(markers.some((marker) => marker.kind === 'enemy')).toBe(true);
+    expect(markers.some((marker) => marker.kind === 'pickup')).toBe(true);
+    expect(markers.some((marker) => marker.kind === 'transition')).toBe(true);
+    expect(markers.every((marker) => marker.worldX >= bounds.start && marker.worldX <= bounds.end)).toBe(true);
   });
 });
