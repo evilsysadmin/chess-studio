@@ -1,10 +1,13 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { IconTrophy, IconBook } from './Icons.jsx';
 import hall from '../assets/home-canonical/great-hall-dungeon.webp';
+import { loadRivalry } from '../rivalry.js';
+import { buildHomeCastleLife } from '../homeCastleLife.js';
 import './HomeIllustrated.css';
 import './HomeIllustratedDiegetic.css';
 import './HomeIllustratedDungeonCanonical.css';
 import './HomeIllustratedMobileCanonical.css';
+import './HomeCastleLife.css';
 
 function IconSword(props) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m3 3 5 2 12 14-1 1L5 8 3 3Zm18 0-5 2L4 19l1 1L19 8l2-5ZM2 16l6 6m8-20 6 6M16 22l6-6M2 8l6-6" /></svg>;
@@ -16,6 +19,9 @@ function Flame() {
 
 export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onContinue, onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
   const [toolsOpen, setToolsOpen] = useState(false);
+  const castleLife = useMemo(() => buildHomeCastleLife({ rivalry: loadRivalry() }), []);
+  const memory = castleLife.memory;
+  const MemoryIcon = memory?.kind === 'trophy' ? IconTrophy : IconSword;
   const rooms = [
     ['tournament', 'TORNEOS', 'Compite y escala', IconTrophy, onTournament],
     ['train', 'ENTRENAR', 'Mejora tu juego', IconBook, onTrain],
@@ -26,8 +32,27 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
   ];
   return (
     <section className="illustrated-home" aria-label="Modos principales">
-      <div className="illustrated-home__stage" style={{ '--home-hall-art': `url("${hall}")` }}>
+      <div
+        className="illustrated-home__stage"
+        data-home-castle-ambient={castleLife.ambient}
+        data-home-castle-memory={memory?.kind || 'none'}
+        style={{ '--home-hall-art': `url("${hall}")` }}
+      >
         <img className="illustrated-home__art" src={hall} alt="" fetchPriority="high" draggable="false" style={{ zIndex: 0 }} />
+        {memory && (
+          <button
+            type="button"
+            className={`illustrated-home__memory-object is-${memory.kind}`}
+            onClick={onHistory}
+            aria-label={`${memory.title}. ${memory.detail} Abrir historia.`}
+          >
+            <MemoryIcon aria-hidden="true" />
+            <span className="illustrated-home__memory-label" aria-hidden="true">
+              <strong>{memory.title}</strong>
+              <span>{memory.detail}</span>
+            </span>
+          </button>
+        )}
         <header className="illustrated-home__brand">
           <h1>Chess Studio</h1>
           <p>JUEGA · APRENDE · COMPITE</p>
