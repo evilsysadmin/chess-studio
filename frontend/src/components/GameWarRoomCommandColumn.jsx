@@ -229,7 +229,6 @@ export default function GameWarRoomCommandColumn({
       <div className="game-3d-warroom-controls" aria-label="Controles de vista 3D">
         <button type="button" className="secondary-btn is-selected" aria-pressed="true">3D</button>
         <button type="button" className="secondary-btn" onClick={onToggleBoardRenderer}>2D</button>
-        {board.onCustomize && <button type="button" className="secondary-btn" onClick={board.onCustomize}>Apariencia</button>}
       </div>
     </aside>
   );
