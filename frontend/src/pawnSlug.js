@@ -16,7 +16,7 @@ export const PAWN_SLUG_PLAYER = Object.freeze({
 export const PAWN_SLUG_WEAPON_ORDER = Object.freeze(['pistol', 'machinegun', 'shotgun', 'panzerfaust']);
 
 export const PAWN_SLUG_WEAPONS = Object.freeze({
-  pistol: Object.freeze({ id: 'pistol', slot: 1, shortLabel: 'PST', label: 'Dienstpistole', trigger: 'semi', ammo: Infinity, cadence: 210, damage: 22, speed: 760, pellets: 1, spread: 0 }),
+  pistol: Object.freeze({ id: 'pistol', slot: 1, shortLabel: 'PST', label: 'Dienstpistole', trigger: 'semi', ammo: Infinity, cadence: 380, damage: 22, speed: 760, pellets: 1, spread: 0 }),
   machinegun: Object.freeze({ id: 'machinegun', slot: 2, shortLabel: 'MG', label: 'MG-42 de bolsillo', trigger: 'auto', ammo: 180, cadence: 82, damage: 13, speed: 860, pellets: 1, spread: 0.025 }),
   shotgun: Object.freeze({ id: 'shotgun', slot: 3, shortLabel: 'SG', label: 'Escopeta diplomática', trigger: 'semi', ammo: 42, cadence: 430, damage: 13, speed: 690, pellets: 6, spread: 0.19 }),
   panzerfaust: Object.freeze({ id: 'panzerfaust', slot: 4, shortLabel: 'PZF', label: 'Panzerfaust', trigger: 'semi', ammo: 9, cadence: 720, damage: 92, speed: 520, pellets: 1, spread: 0, explosive: true }),
