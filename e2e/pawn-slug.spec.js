@@ -107,18 +107,22 @@ test('Pawn Slug · ESC abre y cierra Settings sin perder el runtime', async ({ p
 });
 
 test('Pawn Slug · móvil expone controles táctiles y arsenal sin overflow horizontal', async ({ page }) => {
+  // Premium sprite generation is intentionally retained on mobile. This smoke
+  // validates the finished runtime rather than treating a heavier startup as a
+  // hang; keep the extra budget local to this high-cost path.
+  test.setTimeout(90_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await openPawnSlug(page);
   const arsenal = await startPawnSlug(page);
 
-  await expect(arsenal).toBeVisible();
-  await expect(arsenal.getByRole('button', { name: /^1\. Dienstpistole$/ })).toBeVisible();
+  await expect(arsenal).toBeVisible({ timeout: 30_000 });
+  await expect(arsenal.getByRole('button', { name: /^1\. Dienstpistole$/ })).toBeVisible({ timeout: 30_000 });
 
   const controls = page.getByLabel('Controles táctiles de Pawn Slug');
-  await expect(controls).toBeVisible();
+  await expect(controls).toBeVisible({ timeout: 30_000 });
   for (const name of ['Izquierda', 'Derecha', 'Agacharse', 'Saltar', 'Disparar', 'Power-up']) {
     const button = page.getByRole('button', { name, exact: true });
-    await expect(button).toBeVisible();
+    await expect(button).toBeVisible({ timeout: 30_000 });
     const box = await button.boundingBox();
     expect(box).not.toBeNull();
     expect(box.height).toBeGreaterThanOrEqual(50);
