@@ -4,7 +4,7 @@ import { PAWN_SLUG_ENEMY_ACTIONS } from './pawnSlugEnemyActionMotion.js';
 const FRAME = 96;
 const COLUMNS = 16;
 const TYPES = Object.freeze(['pawn', 'knight', 'rook']);
-const ACTIONS = Object.freeze(['idle', 'run', 'jump', 'crouch', 'hurt', 'climb']);
+const ACTIONS = Object.freeze(['idle', 'run', 'jump', 'crouch', 'hurt', 'climb', 'death']);
 const ROWS = TYPES.length * ACTIONS.length;
 let cachedCanvas = null;
 let cachedContext = null;
@@ -89,9 +89,9 @@ function rookHelmet(ctx) {
   ctx.fillRect(-7, -24, 14, 2.5);
 }
 
-function drawRifle(ctx, heavy = false) {
+function drawRifle(ctx, heavy = false, dropped = false) {
   ctx.save();
-  ctx.rotate(-0.13);
+  ctx.rotate(dropped ? 0.42 : -0.13);
   roundedRect(ctx, 1, -4, heavy ? 30 : 25, heavy ? 6 : 4.5, 2, COLORS.ink);
   ctx.fillStyle = COLORS.leather;
   ctx.fillRect(-5, -3, 9, heavy ? 7 : 5);
@@ -113,11 +113,27 @@ function poseFor(action, phase, type) {
   if (action === 'crouch') return { bob: 9, lean: 0.02, legA: 0.82, legB: -0.72, armA: -0.15, armB: 0.18, crouch: true };
   if (action === 'hurt') return { bob: Math.sin(phase * Math.PI) * -1.5, lean: 0.22 * (1 - phase), legA: -0.18, legB: 0.24, armA: 0.7, armB: -0.55, hurt: true };
   if (action === 'climb') return { bob: Math.abs(wave) * 2, lean: 0, legA: 0.4 * wave, legB: -0.4 * wave, armA: -0.65 * wave, armB: 0.65 * wave, climb: true };
+  if (action === 'death') {
+    const fall = Math.sin(Math.min(1, phase / 0.76) * Math.PI * 0.5);
+    const grounded = phase >= 10 / 13;
+    return {
+      bob: grounded ? 4 : fall * 2,
+      lean: fall * (type === 'knight' ? 0.2 : type === 'rook' ? 0.12 : 0.16),
+      legA: 0.16 + fall * 0.72,
+      legB: -0.12 - fall * 0.58,
+      armA: 0.3 + fall * 0.88,
+      armB: -0.24 - fall * 0.7,
+      hurt: true,
+      dead: true,
+      dropped: phase >= 0.45,
+      grounded,
+    };
+  }
   return { bob: Math.max(0, wave) * 0.7, lean: cos * 0.008, legA: 0.04 * wave, legB: -0.04 * wave, armA: -0.03 * wave, armB: 0.03 * wave };
 }
 
 function drawSoldier(ctx, type, action, frameIndex, frameCount) {
-  const phase = frameCount > 1 ? frameIndex / frameCount : 0;
+  const phase = frameCount > 1 ? frameIndex / Math.max(1, frameCount - 1) : 0;
   const pose = poseFor(action, phase, type);
   ctx.save();
   ctx.translate(FRAME / 2, 76 + pose.bob);
@@ -125,7 +141,7 @@ function drawSoldier(ctx, type, action, frameIndex, frameCount) {
 
   ctx.fillStyle = COLORS.shade;
   ctx.beginPath();
-  ctx.ellipse(0, 7, type === 'rook' ? 18 : 15, 4, 0, 0, Math.PI * 2);
+  ctx.ellipse(0, pose.grounded ? 9 : 7, type === 'rook' ? 18 : 15, pose.grounded ? 5 : 4, 0, 0, Math.PI * 2);
   ctx.fill();
 
   const bodyW = type === 'rook' ? 27 : type === 'knight' ? 22 : 20;
@@ -155,8 +171,8 @@ function drawSoldier(ctx, type, action, frameIndex, frameCount) {
     limb(ctx, -10, bodyY + 8, 20, 6, pose.armA + 0.2, COLORS.cloth);
     limb(ctx, 10, bodyY + 8, 20, 6, pose.armB - 0.55, COLORS.cloth);
     ctx.save();
-    ctx.translate(7, bodyY + 17);
-    drawRifle(ctx, type === 'rook');
+    ctx.translate(pose.dropped ? 4 : 7, bodyY + (pose.dropped ? 23 : 17));
+    drawRifle(ctx, type === 'rook', pose.dropped);
     ctx.restore();
   }
 
