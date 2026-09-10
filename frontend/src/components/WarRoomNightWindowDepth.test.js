@@ -2,78 +2,104 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
   WAR_ROOM_NIGHT_WINDOW_VERSION,
+  WAR_ROOM_WEATHER_STATES,
   installWarRoomNightWindowDepth,
+  normalizeWarRoomWeather,
 } from './WarRoomNightWindowDepth.js';
 
-function meshes(group) {
-  return group.children.filter((child) => child.isMesh);
+function roomWithFireplace(x = -4.95, z = -6.67) {
+  const group = new THREE.Group();
+  const fireplace = new THREE.Group();
+  fireplace.name = 'war-room-fireplace';
+  fireplace.position.set(x, 0.34, z);
+  group.add(fireplace);
+  return { group, fireplace };
 }
 
-describe('War Room night window depth', () => {
-  it('adds exactly two shadow-free layers behind the existing window details', () => {
-    const group = new THREE.Group();
+describe('War Room weather window', () => {
+  it('builds the approved right-hand arched rainy window and moves the hearth beside it', () => {
+    const { group, fireplace } = roomWithFireplace();
     const wallZ = -7.6;
     const towardBoard = 1;
 
-    expect(installWarRoomNightWindowDepth(group, { wallZ, towardBoard })).toBe(2);
+    expect(installWarRoomNightWindowDepth(group, { wallZ, towardBoard, weather: 'rain' })).toBeGreaterThan(8);
     expect(group.userData.warRoomNightWindowDepth).toBe(WAR_ROOM_NIGHT_WINDOW_VERSION);
-    expect(group.userData.warRoomNightWindowMeshCount).toBe(2);
+    expect(group.userData.warRoomWeather).toBe('rain');
+    expect(group.userData.warRoomWeatherWindowSide).toBe('right');
     expect(group.userData.warRoomNightWindowTextureCount).toBe(2);
 
-    const sky = group.getObjectByName('war-room-night-sky-panel');
-    const mist = group.getObjectByName('war-room-night-mist-panel');
-    expect(sky).toBeTruthy();
-    expect(mist).toBeTruthy();
-    expect(meshes(group)).toHaveLength(2);
-    expect(group.children.some((child) => child.isLight)).toBe(false);
+    const window = group.getObjectByName('war-room-weather-window');
+    const sky = group.getObjectByName('war-room-weather-window-sky');
+    const precipitation = group.getObjectByName('war-room-weather-window-precipitation');
+    const glass = group.getObjectByName('war-room-weather-window-glass');
+    const arch = group.getObjectByName('war-room-weather-window-arch-trim');
 
-    for (const panel of [sky, mist]) {
-      expect(panel.castShadow).toBe(false);
-      expect(panel.receiveShadow).toBe(false);
-      expect(panel.position.x).toBeCloseTo(4.2, 5);
-      // Base blue window is at +0.27 from wall; mullions/moon are >= +0.38.
-      const offset = (panel.position.z - wallZ) / towardBoard;
-      expect(offset).toBeGreaterThan(0.27);
-      expect(offset).toBeLessThan(0.38);
-    }
-
+    expect(window).toBeTruthy();
+    expect(window.position.x).toBeCloseTo(5.12, 5);
+    expect(window.userData).toMatchObject({ weather: 'rain', side: 'right' });
+    expect(sky.geometry.type).toBe('ShapeGeometry');
     expect(sky.material.map.userData).toMatchObject({
-      warRoomNightWindow: 'sky',
-      resolution: [128, 64],
+      warRoomWeatherWindow: 'rain',
+      resolution: [160, 128],
     });
-    expect(mist.material.map.userData).toMatchObject({
-      warRoomNightWindow: 'mist',
-      resolution: [128, 32],
-    });
-    expect(mist.material.transparent).toBe(true);
-    expect(mist.material.depthWrite).toBe(false);
+    expect(precipitation.material.transparent).toBe(true);
+    expect(precipitation.material.depthWrite).toBe(false);
+    expect(precipitation.userData.warRoomWeatherAnimated).toBe('rain');
+    expect(typeof precipitation.onBeforeRender).toBe('function');
+    expect(glass.material.transparent).toBe(true);
+    expect(arch.geometry.type).toBe('TorusGeometry');
+    expect(window.children.some((child) => child.isLight)).toBe(false);
+
+    expect(fireplace.position.x).toBeCloseTo(2.55, 5);
+    expect(fireplace.userData.warRoomWeatherWindowLayout).toBe(WAR_ROOM_NIGHT_WINDOW_VERSION);
   });
 
-  it('mirrors the exterior correctly when the board orientation flips', () => {
-    const group = new THREE.Group();
-    const wallZ = 7.6;
-    const towardBoard = -1;
-    installWarRoomNightWindowDepth(group, { wallZ, towardBoard });
+  it('mirrors both the window and hearth when the board orientation flips', () => {
+    const { group, fireplace } = roomWithFireplace(4.95, 6.67);
+    installWarRoomNightWindowDepth(group, { wallZ: 7.6, towardBoard: -1, weather: 'snow' });
 
-    const sky = group.getObjectByName('war-room-night-sky-panel');
-    const mist = group.getObjectByName('war-room-night-mist-panel');
-    expect(sky.position.x).toBeCloseTo(-4.2, 5);
-    expect(mist.position.x).toBeCloseTo(-4.2, 5);
+    const window = group.getObjectByName('war-room-weather-window');
+    const sky = group.getObjectByName('war-room-weather-window-sky');
+    expect(window.position.x).toBeCloseTo(-5.12, 5);
+    expect(window.userData.side).toBe('left');
+    expect(fireplace.position.x).toBeCloseTo(-2.55, 5);
     expect(sky.rotation.y).toBeCloseTo(Math.PI, 5);
-    expect(mist.rotation.y).toBeCloseTo(Math.PI, 5);
-    expect(sky.position.z).toBeLessThan(wallZ);
-    expect(mist.position.z).toBeLessThan(wallZ);
+    expect(sky.position.z).toBeGreaterThan(6);
+    expect(sky.position.z).toBeLessThan(7.6);
   });
 
-  it('is idempotent and adds nothing on coarse/mobile rendering', () => {
-    const desktop = new THREE.Group();
-    expect(installWarRoomNightWindowDepth(desktop, { wallZ: -7.6, towardBoard: 1 })).toBe(2);
-    expect(installWarRoomNightWindowDepth(desktop, { wallZ: -7.6, towardBoard: 1 })).toBe(0);
-    expect(meshes(desktop)).toHaveLength(2);
+  it('supports the four restrained weather looks without inventing an unsupported state', () => {
+    expect(WAR_ROOM_WEATHER_STATES).toEqual(['rain', 'cloudy', 'snow', 'sunny']);
+    expect(normalizeWarRoomWeather(' SNOW ')).toBe('snow');
+    expect(normalizeWarRoomWeather('meteoritos')).toBe('rain');
 
-    const mobile = new THREE.Group();
-    expect(installWarRoomNightWindowDepth(mobile, { wallZ: -7.6, towardBoard: 1, coarsePointer: true })).toBe(0);
-    expect(mobile.children).toHaveLength(0);
-    expect(mobile.userData.warRoomNightWindowDepth).toBeUndefined();
+    for (const weather of WAR_ROOM_WEATHER_STATES) {
+      const { group } = roomWithFireplace();
+      installWarRoomNightWindowDepth(group, { wallZ: -7.6, towardBoard: 1, weather });
+      const sky = group.getObjectByName('war-room-weather-window-sky');
+      const overlay = group.getObjectByName('war-room-weather-window-precipitation');
+      expect(group.userData.warRoomWeather).toBe(weather);
+      expect(sky.material.map.userData.warRoomWeatherWindow).toBe(weather);
+      expect(overlay.material.map.userData.warRoomWeatherWindow).toBe(weather);
+    }
+  });
+
+  it('is idempotent and preserves the mobile/coarse scene budget', () => {
+    const { group, fireplace } = roomWithFireplace();
+    expect(installWarRoomNightWindowDepth(group, { wallZ: -7.6, towardBoard: 1 })).toBeGreaterThan(0);
+    const childCount = group.children.length;
+    expect(installWarRoomNightWindowDepth(group, { wallZ: -7.6, towardBoard: 1 })).toBe(0);
+    expect(group.children).toHaveLength(childCount);
+
+    const mobile = roomWithFireplace();
+    const originalX = mobile.fireplace.position.x;
+    expect(installWarRoomNightWindowDepth(mobile.group, {
+      wallZ: -7.6,
+      towardBoard: 1,
+      coarsePointer: true,
+    })).toBe(0);
+    expect(mobile.group.getObjectByName('war-room-weather-window')).toBeFalsy();
+    expect(mobile.fireplace.position.x).toBe(originalX);
+    expect(mobile.group.userData.warRoomNightWindowDepth).toBeUndefined();
   });
 });
