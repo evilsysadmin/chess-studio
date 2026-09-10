@@ -127,6 +127,7 @@ export default function WarRoomHansFireCall({
         const hansScreen = canvas.dataset.warRoomHansScreen || 'missing';
         const route = canvas.dataset.warRoomHansRoute || '';
         const logicalX = Number(canvas.dataset.warRoomHansLogicalX);
+        const choreographyPhase = canvas.dataset.warRoomHansChoreographyPhase || '';
 
         if (currentPhase === 'loading') {
           readyPaints += 1;
@@ -225,22 +226,25 @@ export default function WarRoomHansFireCall({
           }
         }
 
-        if (!peekAttempted && hansBoardPeekPointReached({ phase: currentPhase, route, logicalX })) {
-          peekAttempted = true;
+        if (!peekAttempted && hansBoardPeekPointReached({
+          phase: currentPhase,
+          route,
+          logicalX,
+          choreographyPhase,
+        })) {
           boardSuggestion = pickHansLegalSuggestion(fenRef.current);
-          setSuggestion(boardSuggestion);
           if (shouldStartHansBoardPeek({
             phase: currentPhase,
             route,
             logicalX,
+            choreographyPhase,
             suggestion: boardSuggestion,
           })) {
+            peekAttempted = true;
+            setSuggestion(boardSuggestion);
             currentPhase = 'peek';
             elapsed = 0;
             setPhase('peek');
-          } else {
-            currentPhase = 'await-exit';
-            setPhase('await-exit');
           }
         }
 
