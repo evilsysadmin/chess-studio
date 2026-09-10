@@ -57,7 +57,7 @@ function addLegacyBaseWindow(group, { wallZ = -7.6, towardBoard = 1 } = {}) {
 }
 
 describe('War Room weather window', () => {
-  it('builds the approved tall right-hand arched rainy window and moves the hearth beside it', () => {
+  it('builds the canonical far-right rainy window without disturbing the hearth vignette', () => {
     const { group, fireplace } = roomWithFireplace();
     const wallZ = -7.6;
     const towardBoard = 1;
@@ -79,13 +79,14 @@ describe('War Room weather window', () => {
     const transoms = window.children.filter((child) => child.name === 'war-room-weather-window-transom');
 
     expect(window).toBeTruthy();
-    expect(window.position.x).toBeCloseTo(5.18, 5);
+    expect(window.position.x).toBeCloseTo(6.96, 5);
     expect(window.userData).toMatchObject({ weather: 'rain', side: 'right', compact: false });
     expect(sky.geometry.type).toBe('ShapeGeometry');
     expect(recess.geometry.type).toBe('ShapeGeometry');
+    expect(sky.geometry.boundingBox).toBeNull();
     sky.geometry.computeBoundingBox();
-    expect(sky.geometry.boundingBox.max.y - sky.geometry.boundingBox.min.y).toBeGreaterThan(3.9);
-    expect(sky.geometry.boundingBox.max.x - sky.geometry.boundingBox.min.x).toBeLessThan(2.3);
+    expect(sky.geometry.boundingBox.max.y - sky.geometry.boundingBox.min.y).toBeGreaterThan(3.8);
+    expect(sky.geometry.boundingBox.max.x - sky.geometry.boundingBox.min.x).toBeLessThan(1.3);
     expect(sky.material.map.userData.warRoomWeatherWindow).toBe('rain');
     expect(precipitation.material.transparent).toBe(true);
     expect(precipitation.material.depthWrite).toBe(false);
@@ -98,8 +99,10 @@ describe('War Room weather window', () => {
     expect(transoms).toHaveLength(2);
     expect(window.children.some((child) => child.isLight)).toBe(false);
 
-    expect(fireplace.position.x).toBeCloseTo(2.48, 5);
-    expect(fireplace.userData.warRoomWeatherWindowLayout).toBe(WAR_ROOM_NIGHT_WINDOW_VERSION);
+    expect(fireplace.position.x).toBeCloseTo(-4.95, 5);
+    expect(fireplace.userData.warRoomWeatherWindowLayout).toBe('preserved-left-hearth-v4');
+    expect(window.userData.warRoomPlantAnchor).toEqual({ x: 6.84, z: -5.52 });
+    expect(group.userData.warRoomCanonicalComposition).toBe('hearth-left-gallery-right-window-plant-v4');
   });
 
   it('retires the old rectangular base window instead of drawing the arch on top of it', () => {
@@ -116,15 +119,15 @@ describe('War Room weather window', () => {
     expect(group.getObjectByName('war-room-weather-window').visible).toBe(true);
   });
 
-  it('mirrors both the window and hearth when the board orientation flips', () => {
+  it('mirrors the far-right window while preserving the mirrored hearth', () => {
     const { group, fireplace } = roomWithFireplace(4.95, 6.67);
     installWarRoomNightWindowDepth(group, { wallZ: 7.6, towardBoard: -1, weather: 'snow' });
 
     const window = group.getObjectByName('war-room-weather-window');
     const sky = group.getObjectByName('war-room-weather-window-sky');
-    expect(window.position.x).toBeCloseTo(-5.18, 5);
+    expect(window.position.x).toBeCloseTo(-6.96, 5);
     expect(window.userData.side).toBe('left');
-    expect(fireplace.position.x).toBeCloseTo(-2.48, 5);
+    expect(fireplace.position.x).toBeCloseTo(4.95, 5);
     expect(sky.rotation.y).toBeCloseTo(Math.PI, 5);
     expect(sky.position.z).toBeGreaterThan(6);
     expect(sky.position.z).toBeLessThan(7.6);
@@ -168,7 +171,7 @@ describe('War Room weather window', () => {
     expect(sky.geometry.type).toBe('ShapeGeometry');
     expect(sky.material.map.userData.resolution).toEqual([112, 128]);
     expect(precipitation.material.map.userData.resolution).toEqual([112, 128]);
-    expect(fireplace.position.x).toBeCloseTo(2.48, 5);
+    expect(fireplace.position.x).toBeCloseTo(-4.95, 5);
     expect(legacy.every((mesh) => mesh.visible === false)).toBe(true);
   });
 
