@@ -10,10 +10,11 @@ import {
 } from './WarRoomHansFireCallContract.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION = 'board-peek-pose-v3-board-approach';
+export const WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION = 'board-peek-pose-v4-safe-board-edge';
+export const HANS_BOARD_PEEK_MAX_APPROACH_DISTANCE = 0.22;
+export const HANS_BOARD_PEEK_MIN_BOARD_CENTER_DISTANCE = 4.85;
 
 const POST_RENDER_ORDER = 21;
-const BOARD_APPROACH_DISTANCE = 0.42;
 const BOARD_APPROACH_MS = 780;
 const BOARD_RETURN_MS = 620;
 
@@ -30,6 +31,22 @@ function clamp01(value) {
 function smoothstep01(value) {
   const t = clamp01(value);
   return t * t * (3 - 2 * t);
+}
+
+export function resolveHansBoardPeekApproachDistance({
+  x,
+  z,
+  maxDistance = HANS_BOARD_PEEK_MAX_APPROACH_DISTANCE,
+  minBoardCenterDistance = HANS_BOARD_PEEK_MIN_BOARD_CENTER_DISTANCE,
+} = {}) {
+  const px = Number(x);
+  const pz = Number(z);
+  const requested = Math.max(0, Number(maxDistance) || 0);
+  const safeRadius = Math.max(0, Number(minBoardCenterDistance) || 0);
+  if (!Number.isFinite(px) || !Number.isFinite(pz)) return 0;
+
+  const radius = Math.hypot(px, pz);
+  return Math.max(0, Math.min(requested, radius - safeRadius));
 }
 
 function capturePart(part) {
@@ -90,6 +107,7 @@ export function installWarRoomHansBoardPeekPose(root) {
   let active = false;
   let activePhase = '';
   let phaseStartedAt = 0;
+  let safeApproachDistance = 0;
 
   const registered = registerWarRoomHansPostRenderStage(driver, {
     key: WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION,
@@ -100,6 +118,7 @@ export function installWarRoomHansBoardPeekPose(root) {
         if (active) restorePoseOffsets(body, bases);
         active = false;
         activePhase = '';
+        safeApproachDistance = 0;
         setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekPoseActive', false);
         return;
       }
@@ -110,9 +129,13 @@ export function installWarRoomHansBoardPeekPose(root) {
         hans.getWorldPosition(startWorld);
         targetWorld.copy(startWorld);
         boardDirection.set(-startWorld.x, 0, -startWorld.z);
-        if (boardDirection.lengthSq() > 1e-8) {
+        safeApproachDistance = resolveHansBoardPeekApproachDistance({
+          x: startWorld.x,
+          z: startWorld.z,
+        });
+        if (boardDirection.lengthSq() > 1e-8 && safeApproachDistance > 0) {
           boardDirection.normalize();
-          targetWorld.addScaledVector(boardDirection, BOARD_APPROACH_DISTANCE);
+          targetWorld.addScaledVector(boardDirection, safeApproachDistance);
         }
         active = true;
         activePhase = narrativePhase;
@@ -152,13 +175,15 @@ export function installWarRoomHansBoardPeekPose(root) {
       setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekPoseActive', true);
       setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekPose', WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION);
       setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekHands', 'behind-back');
-      setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekApproach', 'board-center-world-v1');
+      setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekApproach', 'board-center-safe-edge-v2');
       setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekApproachAmount', approach);
+      setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekApproachDistance', safeApproachDistance);
     },
   });
   if (!registered) return 0;
 
   driver.userData.warRoomHansBoardPeekPose = WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION;
-  driver.userData.warRoomHansBoardPeekApproachDistance = BOARD_APPROACH_DISTANCE;
+  driver.userData.warRoomHansBoardPeekApproachDistance = HANS_BOARD_PEEK_MAX_APPROACH_DISTANCE;
+  driver.userData.warRoomHansBoardPeekMinBoardCenterDistance = HANS_BOARD_PEEK_MIN_BOARD_CENTER_DISTANCE;
   return 1;
 }
