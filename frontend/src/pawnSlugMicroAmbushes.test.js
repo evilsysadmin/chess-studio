@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { PAWN_SLUG_SPAWNS } from './pawnSlug.js';
 import {
   PAWN_SLUG_MICRO_AMBUSHES,
   PAWN_SLUG_MICRO_AMBUSH_META,
+  pawnSlugMicroAmbushPositionForSpawn,
   pawnSlugMicroAmbushSpawns,
-  pawnSlugPendingMicroAmbushes,
   pawnSlugSpawnBelongsToMicroAmbush,
 } from './pawnSlugMicroAmbushes.js';
 
@@ -17,25 +18,34 @@ describe('Pawn Slug micro ambushes', () => {
       expect(Math.min(...ambush.members.map((member) => member.offset))).toBeGreaterThanOrEqual(PAWN_SLUG_MICRO_AMBUSH_META.minLeadDistance);
     }
     expect(PAWN_SLUG_MICRO_AMBUSH_META.reusesMissionPopulation).toBe(true);
+    expect(PAWN_SLUG_MICRO_AMBUSH_META.activation).toBe('existing-camera-spawn-window');
   });
 
-  it('fires each encounter once when Matthias crosses its trigger', () => {
-    const triggered = new Set();
-    expect(pawnSlugPendingMicroAmbushes({ playerX: 899, triggeredIds: triggered })).toHaveLength(0);
-    const first = pawnSlugPendingMicroAmbushes({ playerX: 900, triggeredIds: triggered });
-    expect(first.map((ambush) => ambush.id)).toEqual(['forest-contact']);
-    triggered.add('forest-contact');
-    expect(pawnSlugPendingMicroAmbushes({ playerX: 1659, triggeredIds: triggered })).toHaveLength(0);
-    expect(pawnSlugPendingMicroAmbushes({ playerX: 1660, triggeredIds: triggered }).map((ambush) => ambush.id)).toEqual(['ruins-crossfire']);
-  });
-
-  it('keeps source identities while repositioning the group safely ahead', () => {
-    const ambush = PAWN_SLUG_MICRO_AMBUSHES[0];
-    const spawns = pawnSlugMicroAmbushSpawns(ambush);
-    expect(spawns.map((spawn) => spawn.id)).toEqual(ambush.members.map((member) => member.sourceId));
-    expect(spawns.every((spawn) => spawn.x - ambush.triggerX >= PAWN_SLUG_MICRO_AMBUSH_META.minLeadDistance)).toBe(true);
-    expect(spawns.every((spawn) => pawnSlugSpawnBelongsToMicroAmbush(spawn.id))).toBe(true);
+  it('keeps source identities while repositioning each group safely ahead', () => {
+    for (const ambush of PAWN_SLUG_MICRO_AMBUSHES) {
+      const spawns = pawnSlugMicroAmbushSpawns(ambush);
+      expect(spawns.map((spawn) => spawn.id)).toEqual(ambush.members.map((member) => member.sourceId));
+      expect(spawns.every((spawn) => spawn.x - ambush.triggerX >= PAWN_SLUG_MICRO_AMBUSH_META.minLeadDistance)).toBe(true);
+      expect(spawns.every((spawn) => pawnSlugSpawnBelongsToMicroAmbush(spawn.id))).toBe(true);
+    }
     expect(pawnSlugSpawnBelongsToMicroAmbush('bishop-10')).toBe(false);
     expect(pawnSlugSpawnBelongsToMicroAmbush('boss-panzer-rook')).toBe(false);
+  });
+
+  it('feeds the relocated encounters into the canonical spawn catalog without adding enemies', () => {
+    expect(PAWN_SLUG_SPAWNS).toHaveLength(23);
+    expect(new Set(PAWN_SLUG_SPAWNS.map((spawn) => spawn.id)).size).toBe(PAWN_SLUG_SPAWNS.length);
+
+    const liveAmbushSpawns = PAWN_SLUG_SPAWNS.filter((spawn) => spawn.ambushId);
+    expect(liveAmbushSpawns).toHaveLength(9);
+    for (const spawn of liveAmbushSpawns) {
+      const relocated = pawnSlugMicroAmbushPositionForSpawn({ id: spawn.id, x: -1, type: spawn.type });
+      expect(relocated.x).toBe(spawn.x);
+      expect(relocated.ambushId).toBe(spawn.ambushId);
+    }
+
+    const bishops = PAWN_SLUG_SPAWNS.filter((spawn) => spawn.type === 'bishop');
+    expect(bishops).toHaveLength(2);
+    expect(bishops.every((spawn) => !spawn.ambushId)).toBe(true);
   });
 });
