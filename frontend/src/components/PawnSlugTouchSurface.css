@@ -28,7 +28,7 @@
   .pawn-slug-gesture-hint.is-jump { left: 50%; transform: translateX(-50%); }
   .pawn-slug-gesture-hint.is-fire { right: max(1rem, env(safe-area-inset-right, 0px)); }
 
-  .pawn-slug-touch {
+  .pawn-slug-stage .pawn-slug-touch {
     display: none;
   }
 }
