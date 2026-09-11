@@ -41,17 +41,30 @@ describe('admin account deletion', () => {
 });
 
 describe('admin users', () => {
-  it('propaga AbortSignal hasta fetch para poder cancelar cargas al desmontar', async () => {
-    global.fetch.mockResolvedValue(response(200, { users: [{ username: 'alice' }] }));
+  it('propaga la cancelación hasta el fetch real aunque HTTP componga su propio signal', async () => {
+    let forwardedSignal = null;
+    global.fetch.mockImplementation((_url, options) => {
+      forwardedSignal = options.signal;
+      return new Promise((_resolve, reject) => {
+        options.signal.addEventListener('abort', () => {
+          reject(options.signal.reason || new DOMException('Aborted', 'AbortError'));
+        }, { once: true });
+      });
+    });
     const controller = new AbortController();
 
-    const users = await fetchAdminUsers({ signal: controller.signal });
-
-    expect(users).toEqual([{ username: 'alice' }]);
+    const pending = fetchAdminUsers({ signal: controller.signal });
     const [url, options] = global.fetch.mock.calls.at(-1);
     expect(url).toContain('/admin/users');
-    expect(options.signal).toBe(controller.signal);
     expect(options.headers.Authorization).toBe('Bearer admin-token');
+    expect(forwardedSignal).toBe(options.signal);
+    expect(forwardedSignal).not.toBe(controller.signal);
+    expect(forwardedSignal.aborted).toBe(false);
+
+    controller.abort(new DOMException('Admin section closed', 'AbortError'));
+
+    expect(forwardedSignal.aborted).toBe(true);
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
   });
 });
 
