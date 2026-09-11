@@ -22,6 +22,7 @@ import {
   pawnSlugXpForKill,
   pawnSlugXpForLevel,
 } from './pawnSlug.js';
+import { pawnSlugCameraLookAhead } from './pawnSlugCamera.js';
 import { pawnSlugCreditsForKill } from './pawnSlugEconomy.js';
 import {
   pawnSlugApplyLiveWeaponModel,
@@ -1422,7 +1423,12 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     const bossAlive = state.enemies.some((enemy) => enemy.type === 'boss' && !enemy.dead);
     const desired = bossAlive && state.player.x > wx(PAWN_SLUG_WORLD.bossX - 570)
       ? wx(PAWN_SLUG_WORLD.bossX - 70)
-      : Math.max(VIEW_W / 2, state.player.x + VIEW_W * 0.18);
+      : Math.max(VIEW_W / 2, state.player.x + pawnSlugCameraLookAhead({
+        vx: state.player.vx,
+        dir: state.player.dir,
+        viewWidth: VIEW_W,
+        playerSpeed: PLAYER_SPEED,
+      }));
     const maxCamera = wx(PAWN_SLUG_WORLD.extractionX) - VIEW_W / 2 + 1;
     const target = clamp(desired, VIEW_W / 2, maxCamera);
     state.cameraX += (target - state.cameraX) * (1 - Math.exp(-3.85 * dt));
