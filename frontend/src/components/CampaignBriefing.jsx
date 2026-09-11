@@ -37,13 +37,13 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
       setAiBriefing(null);
       return undefined;
     }
-    let active = true;
+    const controller = new AbortController();
     setAiBriefingLoading(true);
-    void requestRemoteNarrative(aiDossier, { token, timeoutMs: 8000 })
-      .then((text) => { if (active) setAiBriefing(text || null); })
-      .catch(() => { if (active) setAiBriefing(null); })
-      .finally(() => { if (active) setAiBriefingLoading(false); });
-    return () => { active = false; };
+    void requestRemoteNarrative(aiDossier, { token, timeoutMs: 8000, signal: controller.signal })
+      .then((text) => { if (!controller.signal.aborted) setAiBriefing(text || null); })
+      .catch(() => { if (!controller.signal.aborted) setAiBriefing(null); })
+      .finally(() => { if (!controller.signal.aborted) setAiBriefingLoading(false); });
+    return () => controller.abort(new DOMException('Combat briefing superseded', 'AbortError'));
   }, [aiFactsKey]);
 
   if (!node || !intel) return null;
