@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TOKEN_KEY } from './auth.js';
-import { deleteAdminUser, fetchAdminMatthiasMemory, fetchAdminMatthiasStatus, previewAdminMatthiasPersonality, resetAdminMatthiasMemory } from './admin.js';
+import { deleteAdminUser, fetchAdminMatthiasMemory, fetchAdminMatthiasStatus, fetchAdminUsers, previewAdminMatthiasPersonality, resetAdminMatthiasMemory } from './admin.js';
 
 function response(status, body) {
   return {
@@ -37,6 +37,21 @@ describe('admin account deletion', () => {
   it('propaga el error seguro del backend', async () => {
     global.fetch.mockResolvedValue(response(409, { detail: 'No puedes borrar tu propia cuenta.' }));
     await expect(deleteAdminUser('admin')).rejects.toThrow('No puedes borrar tu propia cuenta.');
+  });
+});
+
+describe('admin users', () => {
+  it('propaga AbortSignal hasta fetch para poder cancelar cargas al desmontar', async () => {
+    global.fetch.mockResolvedValue(response(200, { users: [{ username: 'alice' }] }));
+    const controller = new AbortController();
+
+    const users = await fetchAdminUsers({ signal: controller.signal });
+
+    expect(users).toEqual([{ username: 'alice' }]);
+    const [url, options] = global.fetch.mock.calls.at(-1);
+    expect(url).toContain('/admin/users');
+    expect(options.signal).toBe(controller.signal);
+    expect(options.headers.Authorization).toBe('Bearer admin-token');
   });
 });
 
