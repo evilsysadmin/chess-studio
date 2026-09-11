@@ -5,6 +5,7 @@ import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPositio
 import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
+import './LabScreen.css';
 
 const ArenaExperiment = lazy(() => import('./ArenaExperiment.jsx'));
 const PawnTrailblazer = lazy(() => import('./PawnTrailblazer.jsx'));
@@ -77,20 +78,20 @@ export default function LabScreen({ onExit, onStart }){
     {labMode==='hub' ? (
       <div className="experiments-hub">
         <section className="experiments-hero">
-          <span className="section-label">HANGAR DE IDEAS DUDOSAS</span>
+          <span className="section-label">ALA PROHIBIDA · TALLER DE MATTHIAS</span>
           <h2>Experimentos geniales</h2>
-          <p>Aquí viven las cosas que no deberían mezclarse con el ajedrez normal hasta demostrar que son divertidas. Algunas respetan el reglamento. Otras han venido a pegarle fuego.</p>
+          <p>Prototipos, máquinas y pequeñas herejías ajedrecísticas. Algunas respetan el reglamento. Otras han venido a comprobar cuánto tarda en arder.</p>
         </section>
 
         <span className="experiments-group-label">Arcade</span>
-        <div className="experiments-grid">
-          <button type="button" className="experiments-card is-featured" onClick={()=>setLabMode('pawnslug')}>
+        <div className="experiments-grid experiments-arcade-deck">
+          <button type="button" className="experiments-card experiment-pawnslug is-featured" onClick={()=>setLabMode('pawnslug')}>
             <span className="section-label">RUN & GUN · THREE.JS · NUEVO</span>
             <strong>Pawn Slug</strong>
             <small>Matthias contra un frente militar de peones, caballos y torres. Armas, granadas, checkpoints, combos y un Panzer‑Rook con muy malas intenciones.</small>
             <b>Iniciar operación →</b>
           </button>
-          <button type="button" className="experiments-card" onClick={()=>setLabMode('trailblazer')}>
+          <button type="button" className="experiments-card experiment-trailblazer" onClick={()=>setLabMode('trailblazer')}>
             <span className="section-label">ARCADE · POC JUGABLE</span>
             <strong>Pawn Trailblazer</strong>
             <small>Matthias corre como peón por un corredor pseudo‑3D. Capturas diagonales, forcejeos frontales y powerups de torre, alfil y dama.</small>
@@ -99,20 +100,20 @@ export default function LabScreen({ onExit, onStart }){
         </div>
 
         <span className="experiments-group-label">Laboratorio táctico</span>
-        <div className="experiments-grid">
-          <button type="button" className="experiments-card is-featured" onClick={()=>setLabMode('chesscom')}>
+        <div className="experiments-grid experiments-tactical-deck">
+          <button type="button" className="experiments-card experiment-chesscom is-featured" onClick={()=>setLabMode('chesscom')}>
             <span className="section-label">TACTICAL BLACK OPS · BABYLON.JS · POC</span>
             <strong>Chesscom</strong>
             <small>Matthias monta una red mercenaria negable. Cobertura, AP, intel, extracción, despliegue de pago y un gobierno que no sabe absolutamente nada.</small>
             <b>Operation Dust Veil →</b>
           </button>
-          <button type="button" className="experiments-card" onClick={()=>setLabMode('position')}>
+          <button type="button" className="experiments-card experiment-position" onClick={()=>setLabMode('position')}>
             <span className="section-label">POSICIONES</span>
             <strong>Laboratorio libre</strong>
             <small>Construye, pega o modifica una FEN legal y juega desde esa posición sin tocar el rating.</small>
             <b>Abrir editor →</b>
           </button>
-          <button type="button" className="experiments-card" onClick={()=>setLabMode('arena')}>
+          <button type="button" className="experiments-card experiment-arena" onClick={()=>setLabMode('arena')}>
             <span className="section-label">VARIANTE AISLADA</span>
             <strong>Arenas experimentales</strong>
             <small>Geometría y terreno que rompen el tablero sin contaminar las reglas del ajedrez estándar.</small>
