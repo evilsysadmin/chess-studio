@@ -120,6 +120,12 @@ async function readClockSnapshot(page) {
   }, CLOCK_PREFIX);
 }
 
+function expectClockDidNotReset(previous, next) {
+  expect(next).toEqual(expect.objectContaining({ timeControlId: '5+0', activeColor: 'w' }));
+  expect(next.whiteTime).toBeLessThanOrEqual(previous.whiteTime + 0.25);
+  expect(next.blackTime).toBeLessThanOrEqual(previous.blackTime + 0.25);
+}
+
 async function expectClockedWarRoom(page) {
   await expect(page.locator('.game-player-rail .clock-chip')).toHaveCount(2, { timeout: WAR_ROOM_READY_TIMEOUT });
   const snapshot = await readClockSnapshot(page);
@@ -215,8 +221,7 @@ test('War Room · F5 durante movimiento y captura restaura una escena limpia y j
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expectCleanWarRoom(page);
   const clockAfterReload = await expectClockedWarRoom(page);
-  expect(clockAfterReload.whiteTime).toBeLessThanOrEqual(clockBeforeReload.whiteTime + 0.25);
-  expect(clockAfterReload.blackTime).toBeLessThanOrEqual(clockBeforeReload.blackTime + 0.25);
+  expectClockDidNotReset(clockBeforeReload, clockAfterReload);
 
   await clickBoardMove(page, 'e4', 'd5');
   await expect.poll(() => movePosts(requestLog).length, { timeout: 5_000 }).toBe(2);
@@ -224,18 +229,24 @@ test('War Room · F5 durante movimiento y captura restaura una escena limpia y j
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expectCleanWarRoom(page);
-  await expectClockedWarRoom(page);
+  let clockAcrossRendererSwitches = await expectClockedWarRoom(page);
 
-  // 2D actúa como sonda accesible del estado común restaurado. Si quedara una
-  // escena 3D visualmente limpia pero lógicamente vieja, estas casillas fallan.
+  // 2D actúa como sonda accesible del estado común restaurado. El clock debe
+  // pertenecer a esa misma sesión y jamás reiniciarse al desmontar Three.
   await switchTo2D(page);
   await expectCaptureSnapshot2D(page);
   await expect(page.locator('.board3d-main-canvas')).toHaveCount(0);
+  let nextClock = await readClockSnapshot(page);
+  expectClockDidNotReset(clockAcrossRendererSwitches, nextClock);
+  clockAcrossRendererSwitches = nextClock;
 
   // Volver a 3D no puede rehidratar una foto anterior ni conservar selección o
   // destinos fantasma. d5 sólo existe en el FEN restaurado y tiene un único
-  // avance legal (d6); la posición inicial ni siquiera contiene una pieza allí.
+  // avance legal (d6); el reloj tampoco puede saltar al montar WebGL.
   const { board3d, canvas } = await switchTo3D(page);
+  nextClock = await expectClockedWarRoom(page);
+  expectClockDidNotReset(clockAcrossRendererSwitches, nextClock);
+  clockAcrossRendererSwitches = nextClock;
   await navigateWarRoomKeyboard(canvas, board3d, 'd5');
   await canvas.press('Enter');
   await expect(board3d).toHaveAttribute('data-board3d-selected', 'd5');
@@ -244,10 +255,11 @@ test('War Room · F5 durante movimiento y captura restaura una escena limpia y j
   await expect(board3d).toHaveAttribute('data-board3d-selected', '');
   await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '0');
 
-  // Cierra el round-trip 3D→2D→3D→2D y acredita que lastMove también pertenece
-  // al snapshot común, no a residuos privados de un renderer.
+  // Cierra el round-trip 3D→2D→3D→2D: posición, lastMove y clock son comunes.
   await switchTo2D(page);
   await expectCaptureSnapshot2D(page);
+  nextClock = await readClockSnapshot(page);
+  expectClockDidNotReset(clockAcrossRendererSwitches, nextClock);
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
   expect(movePosts(requestLog)).toHaveLength(2);
 });
