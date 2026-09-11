@@ -41,6 +41,13 @@ export function pawnSlugSpawnBelongsToMicroAmbush(spawnId) {
   return AMBUSH_MEMBER_BY_SOURCE_ID.has(String(spawnId || ''));
 }
 
+export function pawnSlugMicroAmbushUnlockedForSpawn(spawn, playerX = 0) {
+  const entry = AMBUSH_MEMBER_BY_SOURCE_ID.get(String(spawn?.id || ''));
+  if (!entry) return true;
+  const x = Math.max(0, Number(playerX) || 0);
+  return x >= entry.triggerX;
+}
+
 export function pawnSlugMicroAmbushPositionForSpawn(spawn) {
   const entry = AMBUSH_MEMBER_BY_SOURCE_ID.get(String(spawn?.id || ''));
   if (!entry) return spawn;
@@ -74,5 +81,5 @@ export const PAWN_SLUG_MICRO_AMBUSH_META = Object.freeze({
   reusesMissionPopulation: true,
   excludesBosses: true,
   excludesMidBosses: true,
-  activation: 'existing-camera-spawn-window',
+  activation: 'player-trigger-gated-camera-window',
 });
