@@ -4,13 +4,14 @@ import { createPawnSlugPremiumLandmarks } from './pawnSlugLandmarks.js';
 import { createPawnSlugReactiveSetpieces } from './pawnSlugScenarioSetpieces.js';
 
 describe('Pawn Slug reactive scenario setpieces', () => {
-  it('installs one proximity setpiece across the premium biome arc including the fortress', () => {
+  it('installs premium proximity setpieces across the biome arc including a distant ruins convoy', () => {
     const root = createPawnSlugPremiumLandmarks(new THREE.Group(), { coarse: false });
     expect(root.getObjectByName('pawn-slug-setpiece-forest-leaves')).toBeTruthy();
     expect(root.getObjectByName('pawn-slug-setpiece-ruins-debris')).toBeTruthy();
+    expect(root.getObjectByName('pawn-slug-setpiece-ruins-convoy')).toBeTruthy();
     expect(root.getObjectByName('pawn-slug-setpiece-dungeon-rats')).toBeTruthy();
     expect(root.getObjectByName('pawn-slug-setpiece-fortress-alarm')).toBeTruthy();
-    expect(root.userData.pawnSlugReactiveSetpieces.count).toBe(4);
+    expect(root.userData.pawnSlugReactiveSetpieces.count).toBe(5);
   });
 
   it('keeps setpieces hidden until their scene position is approached', () => {
@@ -43,6 +44,27 @@ describe('Pawn Slug reactive scenario setpieces', () => {
     expect(rats.children[0].position.x).toBeGreaterThan(startX);
     controller.update(48.7, 13);
     expect(rats.visible).toBe(false);
+  });
+
+  it('sends a non-interactive convoy across the distant ruins background', () => {
+    const root = new THREE.Group();
+    const ruins = new THREE.Group();
+    ruins.name = 'pawn-slug-landmark-gambit-ruins';
+    ruins.position.x = 30.5;
+    root.add(ruins);
+    const controller = createPawnSlugReactiveSetpieces(root);
+    const convoy = root.getObjectByName('pawn-slug-setpiece-ruins-convoy');
+    expect(convoy.visible).toBe(false);
+    expect(convoy.position.z).toBeLessThan(-1);
+    expect(convoy.children).toHaveLength(3);
+    expect(convoy.children.every((vehicle) => vehicle.userData.distantConvoyVehicle)).toBe(true);
+    const startX = convoy.children[0].position.x;
+    controller.update(38.7, 4);
+    expect(convoy.visible).toBe(true);
+    controller.update(38.7, 5);
+    expect(convoy.children[0].position.x).toBeGreaterThan(startX);
+    controller.update(38.7, 7);
+    expect(convoy.visible).toBe(false);
   });
 
   it('warns of the fortress approach with a one-shot beacon and sparks', () => {
