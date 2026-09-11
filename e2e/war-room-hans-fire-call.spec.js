@@ -5,6 +5,7 @@ import { WAR_ROOM_HANS_COMPLETED_GAMES_KEY } from '../frontend/src/components/Wa
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
 const HANS_BOARD_PEEK_TIMEOUT = 90_000;
+const HANS_DIALOGUE_STEP_TIMEOUT = 20_000;
 
 function firstE2EFireGameIndex() {
   for (let index = 1; index <= 64; index += 1) {
@@ -100,12 +101,12 @@ test('War Room · el número del fuego completa cotilleo, corte de Matthias y re
   const matthiasWorking = page
     .getByRole('status', { name: 'Matthias manda a Hans volver al trabajo' })
     .filter({ hasText: 'Hans, bitte. Estamos trabajando.' });
-  await expect(matthiasWorking).toBeVisible({ timeout: 12_000 });
+  await expect(matthiasWorking).toBeVisible({ timeout: HANS_DIALOGUE_STEP_TIMEOUT });
 
   const hansReply = page
     .getByRole('status', { name: 'Hans obedece a Matthias' })
     .filter({ hasText: 'Claro, señor.' });
-  await expect(hansReply).toBeVisible({ timeout: 12_000 });
+  await expect(hansReply).toBeVisible({ timeout: HANS_DIALOGUE_STEP_TIMEOUT });
 });
 
 test('War Room · F5 con Hans ya visible no completa ni silencia el número', async ({ page }) => {
