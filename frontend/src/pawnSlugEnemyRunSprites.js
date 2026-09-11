@@ -27,6 +27,7 @@ import {
   pawnSlugEnemyDeathDuration,
   pawnSlugEnemySourceFrame,
 } from './pawnSlugEnemyActionMotion.js';
+import { pawnSlugEnemyEntryPose } from './pawnSlugEnemyEntryMotion.js';
 import { installPawnSlugEnemyDeathReplay } from './pawnSlugEnemyDeathReplay.js';
 import { playPawnSlugEnemyImpactSfx, playPawnSlugEnemyKoSfx } from './pawnSlugSfx.js';
 import {
@@ -135,6 +136,7 @@ function inferredVerticalMotion(sprite, time) {
 export function createSlugEnemySprite(type = 'pawn') {
   const safeType = Object.prototype.hasOwnProperty.call(ENEMY_SCALE_BY_TYPE, type) ? type : 'pawn';
   const scale = ENEMY_SCALE_BY_TYPE[safeType];
+  const reducedMotion = Boolean(typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
   const material = new THREE.SpriteMaterial({ transparent: true, alphaTest: 0.05, depthWrite: true });
   material.visible = false;
   const sprite = new THREE.Sprite(material);
@@ -151,6 +153,8 @@ export function createSlugEnemySprite(type = 'pawn') {
   sprite.userData.airborneUntil = 0;
   sprite.userData.wasHurt = false;
   sprite.userData.wasDying = false;
+  sprite.userData.entryStartedAt = null;
+  sprite.userData.entryReducedMotion = reducedMotion;
   sprite.userData.atlas = {
     frames: ENEMY_RUN_FRAMES_PER_TYPE,
     frame: 0,
@@ -213,14 +217,15 @@ export function createSlugEnemySprite(type = 'pawn') {
     type: safeType,
     duration: pawnSlugEnemyDeathDuration(safeType),
     hold: 0.24,
-    reducedMotion: Boolean(typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches),
+    reducedMotion,
     animate: (deathAge) => animateSlugEnemySprite(sprite, safeType, deathAge, { dying: true, deathAge }),
   });
   return sprite;
 }
 
 export function animateSlugEnemySprite(sprite, type, time, state = {}) {
-  const inferred = inferredVerticalMotion(sprite, Number(time) || 0);
+  const safeTime = Number(time) || 0;
+  const inferred = inferredVerticalMotion(sprite, safeTime);
   const {
     moving = false,
     hurt = false,
@@ -237,12 +242,18 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
   sprite.userData.wasHurt = Boolean(hurt && !dying);
   sprite.userData.wasDying = Boolean(dying);
 
+  if (!Number.isFinite(sprite.userData.entryStartedAt)) sprite.userData.entryStartedAt = safeTime;
+  const entryPose = pawnSlugEnemyEntryPose(type, safeTime - sprite.userData.entryStartedAt, {
+    reducedMotion: Boolean(sprite.userData.entryReducedMotion),
+    enabled: !dying,
+  });
+
   const profile = PAWN_SLUG_MOTION_PROFILES[type] || PAWN_SLUG_MOTION_PROFILES.pawn;
   const direction = sprite.scale.x < 0 ? -1 : 1;
   const baseScaleX = sprite.userData.motionBaseScaleX || Math.abs(sprite.scale.x) || 1;
   const baseScaleY = sprite.userData.motionBaseScaleY || Math.abs(sprite.scale.y) || 1;
   const action = pawnSlugEnemyActionForState({ moving, hurt, airborne, crouch, climbing, dying });
-  const actionTime = action === 'death' ? Math.max(0, Number(deathAge) || 0) : time;
+  const actionTime = action === 'death' ? Math.max(0, Number(deathAge) || 0) : safeTime;
   const actionFrame = pawnSlugEnemyActionFrame(action, actionTime);
   const sourceFrame = pawnSlugEnemySourceFrame(action, actionFrame, ENEMY_RUN_FRAMES_PER_TYPE);
   const pose = pawnSlugEnemyActionPose(action, actionFrame, { vy, type });
@@ -252,15 +263,15 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
   sprite.userData.setDirection?.(direction);
   sprite.userData.setFrame?.(sourceFrame);
   if (sprite.userData.atlas?.source === 'generated-actions') applyAtlasWindow(sprite);
-  sprite.position.x += pose.x * direction;
-  sprite.position.y += pose.y;
-  sprite.scale.x = baseScaleX * pose.sx * direction;
-  sprite.scale.y = baseScaleY * pose.sy;
-  sprite.material.rotation = pose.rz * direction;
+  sprite.position.x += (pose.x + entryPose.x) * direction;
+  sprite.position.y += pose.y + entryPose.y;
+  sprite.scale.x = baseScaleX * pose.sx * entryPose.sx * direction;
+  sprite.scale.y = baseScaleY * pose.sy * entryPose.sy;
+  sprite.material.rotation = (pose.rz + entryPose.rz) * direction;
 
   if (action === 'idle') {
     const phase = sprite.userData.motionPhase || 0;
-    sprite.position.y += Math.max(0, Math.sin(time * profile.idleRate + phase)) * profile.idleBob;
+    sprite.position.y += Math.max(0, Math.sin(safeTime * profile.idleRate + phase)) * profile.idleBob;
   }
   tintSprite(sprite, hurt && !dying);
 }
