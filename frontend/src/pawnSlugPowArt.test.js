@@ -11,21 +11,38 @@ describe('Pawn Slug POW art', () => {
       expect(model.userData.rescueRadius).toBeGreaterThan(0.7);
       expect(model.getObjectByName('pawn-slug-pow-body')).toBeTruthy();
       expect(model.getObjectByName('pawn-slug-pow-rescue-marker')).toBeTruthy();
+      expect(model.getObjectByName('pawn-slug-pow-release-flash')).toBeTruthy();
       if (pow.pose === 'caged') expect(model.getObjectByName('pawn-slug-pow-cage')).toBeTruthy();
       else expect(model.getObjectByName('pawn-slug-pow-chains')).toBeTruthy();
     }
   });
 
-  it('hides the rescue marker once the prisoner has been rescued', () => {
-    const model = createPawnSlugPowModel(PAWN_SLUG_POWS[0]);
-    animatePawnSlugPowModel(model, 1, { rescued: true });
+  it('visibly breaks captivity and flashes when the prisoner is rescued', () => {
+    const cagedPow = PAWN_SLUG_POWS.find((pow) => pow.pose === 'caged') || PAWN_SLUG_POWS[0];
+    const model = createPawnSlugPowModel(cagedPow);
+    animatePawnSlugPowModel(model, 1, { rescued: false });
+    animatePawnSlugPowModel(model, 1.1, { rescued: true });
     expect(model.userData.rescued).toBe(true);
     expect(model.getObjectByName('pawn-slug-pow-rescue-marker').visible).toBe(false);
+    const restraint = model.getObjectByName('pawn-slug-pow-cage') || model.getObjectByName('pawn-slug-pow-chains');
+    expect(restraint.visible).toBe(false);
+    expect(model.getObjectByName('pawn-slug-pow-release-flash').visible).toBe(true);
+    animatePawnSlugPowModel(model, 1.7, { rescued: true });
+    expect(model.getObjectByName('pawn-slug-pow-release-flash').visible).toBe(false);
+  });
+
+  it('keeps release feedback readable with reduced motion', () => {
+    const model = createPawnSlugPowModel(PAWN_SLUG_POWS[0]);
+    animatePawnSlugPowModel(model, 2, { rescued: true, reducedMotion: true });
+    const flash = model.getObjectByName('pawn-slug-pow-release-flash');
+    expect(flash.visible).toBe(true);
+    expect(flash.scale.x).toBeCloseTo(1.15);
   });
 
   it('keeps the art contract arcade and contact-driven', () => {
     expect(PAWN_SLUG_POW_ART_META.style).toBe('military-arcade-prisoner');
     expect(PAWN_SLUG_POW_ART_META.rescueFeedback).toContain('contact');
+    expect(PAWN_SLUG_POW_ART_META.rescueFeedback).toContain('break');
     expect(PAWN_SLUG_POW_ART_META.poses).toEqual(['kneeling', 'bound', 'caged']);
   });
 });
