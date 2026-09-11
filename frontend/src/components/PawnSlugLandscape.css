@@ -170,12 +170,14 @@
 
   .pawn-slug .pawn-slug-gesture-powerup {
     position: absolute;
-    right: max(2.8rem, calc(env(safe-area-inset-right, 0px) + 2.55rem));
+    right: max(3.2rem, calc(env(safe-area-inset-right, 0px) + 2.95rem));
     bottom: max(.3rem, env(safe-area-inset-bottom, 0px));
     display: grid;
     place-items: center;
-    width: 2.15rem;
-    height: 2.15rem;
+    min-width: 44px;
+    min-height: 44px;
+    width: 2.75rem;
+    height: 2.75rem;
     padding: 0;
     border: 1px solid rgba(208, 173, 91, .42);
     border-radius: 999px;
@@ -186,7 +188,7 @@
     touch-action: none;
   }
 
-  .pawn-slug .pawn-slug-gesture-powerup span { font-size: .62rem; line-height: 1; }
+  .pawn-slug .pawn-slug-gesture-powerup span { font-size: .72rem; line-height: 1; }
   .pawn-slug .pawn-slug-gesture-powerup small { display: none; }
 }
 
