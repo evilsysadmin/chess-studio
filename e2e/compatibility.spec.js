@@ -182,12 +182,12 @@ for (const width of [360, 390, 430]) {
     const canvas = page.locator('.board3d-main-canvas');
     const focus = page.getByRole('button', { name: 'Focus', exact: true });
     const abandon = page.getByRole('button', { name: 'Abandonar partida', exact: true });
-    const appearance = page.locator('.board3d-customize');
+    const utility = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
     await expect(board).toBeVisible({ timeout: 30_000 });
     await expect(canvas).toBeVisible({ timeout: 30_000 });
     await expect(focus).toBeVisible();
     await expect(abandon).toBeVisible();
-    await expect(appearance).toBeVisible();
+    await expect(utility).toBeVisible();
 
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
     const boardRect = await board.boundingBox();
@@ -195,12 +195,22 @@ for (const width of [360, 390, 430]) {
     expect(boardRect.x).toBeGreaterThanOrEqual(-1);
     expect(boardRect.x + boardRect.width).toBeLessThanOrEqual(width + 1);
 
-    for (const control of [focus, abandon, appearance]) {
+    for (const control of [focus, abandon, utility]) {
       const rect = await control.boundingBox();
       expect(rect).not.toBeNull();
       expect(rect.width).toBeGreaterThanOrEqual(40);
       expect(rect.height).toBeGreaterThanOrEqual(40);
     }
+
+    await utility.click();
+    const appearance = page.getByRole('menuitem', { name: 'Apariencia', exact: true });
+    await expect(appearance).toBeVisible();
+    const appearanceRect = await appearance.boundingBox();
+    expect(appearanceRect).not.toBeNull();
+    expect(appearanceRect.width).toBeGreaterThanOrEqual(40);
+    expect(appearanceRect.height).toBeGreaterThanOrEqual(40);
+    await utility.click();
+    await expect(appearance).toBeHidden();
 
     await focus.click();
     await expect(page.locator('.game-layout')).toHaveAttribute('data-mobile-focus', 'true');
