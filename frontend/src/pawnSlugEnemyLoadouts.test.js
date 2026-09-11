@@ -31,4 +31,11 @@ describe('Pawn Slug enemy weapon doctrine', () => {
     expect(pawnSlugEnemyWeaponFor('rook', 2)).toBe('panzerfaust');
     expect(pawnSlugEnemyWeaponFor('rook', 5)).toBe('panzerfaust');
   });
+
+  it('keeps bishop regular fire machinegun-led so artillery remains the telegraphed heavy attack', () => {
+    expect(pawnSlugEnemyLoadoutFor('bishop').primaryWeight).toBe(2);
+    expect(pawnSlugEnemyWeaponFor('bishop', 0)).toBe('machinegun');
+    expect(pawnSlugEnemyWeaponFor('bishop', 1)).toBe('machinegun');
+    expect(pawnSlugEnemyWeaponFor('bishop', 2)).toBe('panzerfaust');
+  });
 });
