@@ -5,6 +5,7 @@ import {
   PAWN_SLUG_MICRO_AMBUSH_META,
   pawnSlugMicroAmbushPositionForSpawn,
   pawnSlugMicroAmbushSpawns,
+  pawnSlugMicroAmbushUnlockedForSpawn,
   pawnSlugSpawnBelongsToMicroAmbush,
 } from './pawnSlugMicroAmbushes.js';
 
@@ -18,7 +19,7 @@ describe('Pawn Slug micro ambushes', () => {
       expect(Math.min(...ambush.members.map((member) => member.offset))).toBeGreaterThanOrEqual(PAWN_SLUG_MICRO_AMBUSH_META.minLeadDistance);
     }
     expect(PAWN_SLUG_MICRO_AMBUSH_META.reusesMissionPopulation).toBe(true);
-    expect(PAWN_SLUG_MICRO_AMBUSH_META.activation).toBe('existing-camera-spawn-window');
+    expect(PAWN_SLUG_MICRO_AMBUSH_META.activation).toBe('player-trigger-gated-camera-window');
   });
 
   it('keeps source identities while repositioning each group safely ahead', () => {
@@ -30,6 +31,16 @@ describe('Pawn Slug micro ambushes', () => {
     }
     expect(pawnSlugSpawnBelongsToMicroAmbush('bishop-10')).toBe(false);
     expect(pawnSlugSpawnBelongsToMicroAmbush('boss-panzer-rook')).toBe(false);
+  });
+
+  it('holds an entire ambush until Matthias crosses its player trigger', () => {
+    for (const ambush of PAWN_SLUG_MICRO_AMBUSHES) {
+      const spawns = pawnSlugMicroAmbushSpawns(ambush);
+      expect(spawns.every((spawn) => !pawnSlugMicroAmbushUnlockedForSpawn(spawn, ambush.triggerX - 1))).toBe(true);
+      expect(spawns.every((spawn) => pawnSlugMicroAmbushUnlockedForSpawn(spawn, ambush.triggerX))).toBe(true);
+    }
+
+    expect(pawnSlugMicroAmbushUnlockedForSpawn({ id: 'bishop-10' }, 0)).toBe(true);
   });
 
   it('feeds the relocated encounters into the canonical spawn catalog without adding enemies', () => {
