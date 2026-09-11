@@ -61,12 +61,18 @@ import {
 import { animateMatthiasSlugSprite } from './pawnSlugSprites.js';
 import {
   PAWN_SLUG_RUNTIME_HOT_PATH,
+  pawnSlugAnimateDestructibles,
+  pawnSlugApplyDestructibleReward,
+  pawnSlugDamageRuntimeDestructible,
   pawnSlugEnemyFireCooldown,
   pawnSlugEnemyShotPlan,
   pawnSlugEnemyWeaponFor,
+  pawnSlugFirstHitDestructibleIndex,
   pawnSlugFirstHitEnemyIndex,
   pawnSlugPowRescueSummary,
   pawnSlugRectsOverlap,
+  pawnSlugRetireDestroyedDestructibles,
+  pawnSlugSpawnDestructiblesAhead,
   pawnSlugSpawnPowsAhead,
   pawnSlugUpdatePowRescues,
 } from './pawnSlugRuntimeHotPath.js';
@@ -125,6 +131,8 @@ function initialState() {
     takenPickups: new Set(),
     pows: [],
     rescuedPows: new Set(),
+    destructibles: [],
+    destroyedDestructibles: new Set(),
     enemies: [],
     pickups: [],
     bullets: [],
@@ -443,12 +451,14 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   function startMission() {
     const bankedCredits = Math.max(0, Math.floor(state.credits || 0));
     const rescuedPows = new Set(state.rescuedPows || []);
+    const destroyedDestructibles = new Set(state.destroyedDestructibles || []);
     resetDynamic();
     resetInput();
     paused = false;
     state = initialState();
     state.credits = bankedCredits;
     state.rescuedPows = rescuedPows;
+    state.destroyedDestructibles = destroyedDestructibles;
     state.phase = 'playing';
     state.toast = pawnSlugMatthiasLine('start');
     state.toastUntil = 3.5;
@@ -560,6 +570,14 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       if (state.takenPickups.has(index) || state.pickups.some((pickup) => pickup.id === index)) continue;
       if (wx(PAWN_SLUG_PICKUPS[index].x) <= right) createPickup(PAWN_SLUG_PICKUPS[index], index);
     }
+    pawnSlugSpawnDestructiblesAhead({
+      rightEdge: right,
+      active: state.destructibles,
+      destroyedIds: state.destroyedDestructibles,
+      resolveY: (x) => pawnSlugPlatformAtX(x)?.y || 0,
+      addModel: (model) => dynamic.add(model),
+      coarse,
+    });
     pawnSlugSpawnPowsAhead(state, dynamic, right, {
       coarse,
       supportAtX: pawnSlugPlatformAtX,
@@ -708,6 +726,33 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     state.shake = Math.max(state.shake, reducedMotion ? 0 : 0.14 * strength);
   }
 
+  function destructibleRewardCopy(reward) {
+    const parts = [];
+    if (reward?.credits) parts.push(`${reward.credits} cr`);
+    if (reward?.grenades) parts.push(`+${reward.grenades} granadas`);
+    for (const [weaponId, amount] of Object.entries(reward?.ammo || {})) parts.push(`${pawnSlugWeaponShortLabel(weaponId)} +${amount}`);
+    return parts.join(' · ') || 'sin suministros';
+  }
+
+  function damageDestructible(item, amount) {
+    const result = pawnSlugDamageRuntimeDestructible(item, amount);
+    if (!result.destroyedNow) return result;
+    state.score += result.score;
+    if (result.reward) {
+      pawnSlugApplyDestructibleReward(result.reward, state);
+      setToast(`${item.secret ? 'CACHE SECRETA' : 'SUMINISTROS'} // ${destructibleRewardCopy(result.reward)}`, 1.85);
+      sfx.play('pickup');
+    }
+    if (result.explosion) explode(item.x, item.y + item.h * 0.5, result.explosion.radius, result.explosion.damage);
+    else {
+      burst(item.x, item.y + item.h * 0.5, 0.65, false);
+      sfx.play('hit');
+    }
+    state.shake = Math.max(state.shake, reducedMotion ? 0 : item.type === 'barrel' ? 0.24 : 0.1);
+    emitHud(true);
+    return result;
+  }
+
   function explode(x, y, radius = 2.2, damage = 90, hurtsPlayer = false) {
     burst(x, y, 1.55, true);
     sfx.play('grenade');
@@ -715,6 +760,11 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       if (enemy.dead) continue;
       const distance = Math.hypot(enemy.x - x, (enemy.y + enemy.h * 0.5) - y);
       if (distance <= radius) damageEnemy(enemy, damage * (1 - distance / (radius * 1.35)));
+    }
+    for (const item of state.destructibles) {
+      if (item.destroyed) continue;
+      const distance = Math.hypot(item.x - x, (item.y + item.h * 0.5) - y);
+      if (distance <= radius) damageDestructible(item, damage * (1 - distance / (radius * 1.35)));
     }
     if (hurtsPlayer) {
       const distance = Math.hypot(state.player.x - x, (state.player.y + PLAYER_H * 0.5) - y);
@@ -1174,18 +1224,32 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
           remove = true;
         }
       } else if (!remove) {
-        const enemyIndex = pawnSlugFirstHitEnemyIndex(
-          state.enemies,
+        const destructibleIndex = pawnSlugFirstHitDestructibleIndex(
+          state.destructibles,
           bulletLeft,
           bulletTop,
           bullet.w,
           bullet.h,
         );
-        if (enemyIndex >= 0) {
-          const enemy = state.enemies[enemyIndex];
+        if (destructibleIndex >= 0) {
+          const item = state.destructibles[destructibleIndex];
           if (bullet.explosive) explode(bullet.x, bullet.y, 1.9, bullet.damage);
-          else damageEnemy(enemy, bullet.damage);
+          else damageDestructible(item, bullet.damage);
           remove = true;
+        } else {
+          const enemyIndex = pawnSlugFirstHitEnemyIndex(
+            state.enemies,
+            bulletLeft,
+            bulletTop,
+            bullet.w,
+            bullet.h,
+          );
+          if (enemyIndex >= 0) {
+            const enemy = state.enemies[enemyIndex];
+            if (bullet.explosive) explode(bullet.x, bullet.y, 1.9, bullet.damage);
+            else damageEnemy(enemy, bullet.damage);
+            remove = true;
+          }
         }
       }
 
@@ -1222,6 +1286,14 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       disposePawnSlugObject(grenade.model);
       state.grenades.splice(index, 1);
     }
+  }
+
+  function updateDestructibles() {
+    pawnSlugAnimateDestructibles(state.destructibles, state.time, { reducedMotion });
+    pawnSlugRetireDestroyedDestructibles(state.destructibles, state.destroyedDestructibles, (model) => {
+      dynamic.remove(model);
+      disposePawnSlugObject(model);
+    });
   }
 
   function updatePickups(dt) {
@@ -1341,6 +1413,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     updateEnemies(dt);
     updateBullets(dt);
     updateGrenades(dt);
+    updateDestructibles();
     updatePickups(dt);
     updateFx(dt);
     updateCamera(dt);
