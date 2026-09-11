@@ -12,6 +12,12 @@ describe('Pawn Slug locomotion polish', () => {
     expect(PAWN_SLUG_MOTION_POLISH.walkToRunSeconds).toBeGreaterThan(0.15);
   });
 
+  it('starts a fresh walk cycle from frame zero regardless of mission time', () => {
+    expect(pawnSlugMatthiasLocomotion({ time: 10, moving: true, speedRatio: 0.35, moveStartedAt: 10 })).toMatchObject({ frame: 0, phase: 'walk' });
+    expect(pawnSlugMatthiasLocomotion({ time: 47.25, moving: true, speedRatio: 0.35, moveStartedAt: 47.25 })).toMatchObject({ frame: 0, phase: 'walk' });
+    expect(pawnSlugMatthiasLocomotion({ time: 47.36, moving: true, speedRatio: 0.35, moveStartedAt: 47.25 }).frame).toBeGreaterThan(0);
+  });
+
   it('matches the approved v5 walk cadence and keeps enough settling frames', () => {
     expect(PAWN_SLUG_MOTION_POLISH.walkFrames).toBe(10);
     expect(PAWN_SLUG_MOTION_POLISH.walkRate).toBeGreaterThan(9);

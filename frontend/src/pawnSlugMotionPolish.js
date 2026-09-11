@@ -41,6 +41,6 @@ export function pawnSlugMatthiasLocomotion({
     || speed < PAWN_SLUG_MOTION_POLISH.runSpeedThreshold;
   if (!walking) return Object.freeze({ action: 'run', frame: null, phase: 'run' });
 
-  const frame = Math.floor(safeTime * PAWN_SLUG_MOTION_POLISH.walkRate) % PAWN_SLUG_MOTION_POLISH.walkFrames;
+  const frame = Math.floor(moveElapsed * PAWN_SLUG_MOTION_POLISH.walkRate) % PAWN_SLUG_MOTION_POLISH.walkFrames;
   return Object.freeze({ action: 'walk', frame, phase: 'walk' });
 }
