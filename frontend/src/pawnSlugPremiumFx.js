@@ -93,6 +93,7 @@ export function createPremiumBulletModel({ enemy = false, explosive = false, wea
     );
     exhaust.rotation.z = Math.PI / 2;
     exhaust.userData.projectileGlow = true;
+    exhaust.userData.projectileExhaust = true;
     root.add(body, tip, exhaust);
     return root;
   }
@@ -140,6 +141,7 @@ export function createPremiumMuzzleFlash({ enemy = false, weapon = 'pistol' } = 
   root.userData.life = weapon === 'panzerfaust' ? 0.115 : weapon === 'shotgun' ? 0.09 : 0.065;
   root.userData.baseScale = profile.flash;
   root.userData.premiumFxGeometry = PAWN_SLUG_PREMIUM_FX_RESOURCE_VERSION;
+  root.userData.panzerfaustPunch = weapon === 'panzerfaust' ? 'shockwave-smoke' : null;
 
   const core = mesh(
     shared(`${key}:muzzle:core-geometry`, () => new THREE.SphereGeometry(0.095 * profile.flash, 8, 6)),
@@ -157,6 +159,32 @@ export function createPremiumMuzzleFlash({ enemy = false, weapon = 'pistol' } = 
   const flare2 = mesh(flareGeometry, flareMaterial, 0.11 * profile.flash, 0, 0.01);
   flare2.rotation.z = Math.PI / 2;
   root.add(core, cone, flare, flare2);
+
+  if (weapon === 'panzerfaust') {
+    const shockwave = mesh(
+      shared(`${key}:muzzle:shockwave-geometry`, () => new THREE.RingGeometry(0.11, 0.2, 16)),
+      basic(enemy ? 0xff5745 : 0xffc35e, 0.52),
+      0.18 * profile.flash,
+      0,
+      -0.005,
+    );
+    shockwave.rotation.y = Math.PI / 2;
+    shockwave.userData.muzzleShockwave = true;
+    root.add(shockwave);
+
+    for (let index = 0; index < 2; index += 1) {
+      const smoke = mesh(
+        shared(`${key}:muzzle:smoke-geometry:${index}`, () => new THREE.SphereGeometry(0.11 + index * 0.035, 7, 5)),
+        basic(enemy ? 0x6d4b47 : 0x6f7478, 0.3 - index * 0.04),
+        (-0.05 - index * 0.1) * profile.flash,
+        (index === 0 ? 0.06 : -0.055) * profile.flash,
+        -0.015,
+      );
+      smoke.userData.muzzleSmoke = true;
+      smoke.userData.smokeIndex = index;
+      root.add(smoke);
+    }
+  }
   return root;
 }
 
@@ -167,6 +195,7 @@ export function animatePremiumProjectile(model, { time = 0, explosive = false } 
     if (!child.userData?.projectileGlow) continue;
     child.scale.y = pulse;
     child.scale.z = pulse;
+    if (child.userData.projectileExhaust) child.scale.x = 0.86 + Math.sin(time * 52) * 0.14;
   }
   if (explosive) model.rotation.x = Math.sin(time * 18) * 0.03;
 }
@@ -174,10 +203,21 @@ export function animatePremiumProjectile(model, { time = 0, explosive = false } 
 export function animatePremiumMuzzleFlash(model, lifeRatio = 1) {
   if (!model?.userData?.premiumMuzzle) return;
   const safe = Math.max(0, Math.min(1, Number(lifeRatio) || 0));
-  const kick = 1 + (1 - safe) * 0.55;
+  const progress = 1 - safe;
+  const kick = 1 + progress * 0.55;
   model.scale.set(kick, 0.9 + safe * 0.18, 1);
   for (const child of model.children) {
+    if (child.userData?.muzzleShockwave) {
+      const waveScale = 0.72 + progress * 2.2;
+      child.scale.set(waveScale, waveScale, waveScale);
+    } else if (child.userData?.muzzleSmoke) {
+      const smokeIndex = child.userData.smokeIndex || 0;
+      const smokeScale = 0.82 + progress * (1.35 + smokeIndex * 0.25);
+      child.scale.set(smokeScale, smokeScale, smokeScale);
+      child.position.x -= progress * (0.015 + smokeIndex * 0.008);
+    }
     if (!child.material || !('opacity' in child.material)) continue;
-    child.material.opacity = Math.max(0, Math.min(1, safe * 1.1));
+    const fade = child.userData?.muzzleSmoke ? safe * 0.42 : child.userData?.muzzleShockwave ? safe * 0.72 : safe * 1.1;
+    child.material.opacity = Math.max(0, Math.min(1, fade));
   }
 }
