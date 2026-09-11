@@ -4,6 +4,7 @@ import {
   PAWN_SLUG_ENEMY_ROLE_PRESSURE,
   pawnSlugEnemyCanFire,
   pawnSlugEnemyFireCooldown,
+  pawnSlugEnemyPrefireStep,
   pawnSlugEnemyShotPlan,
 } from './pawnSlugEnemyFireDoctrine.js';
 
@@ -39,6 +40,22 @@ describe('Pawn Slug enemy fire doctrine', () => {
     expect(pawnSlugEnemyCanFire('unknown', 8.9, 20)).toBe(true);
     expect(pawnSlugEnemyCanFire('unknown', 9.1, 20)).toBe(false);
     expect(pawnSlugEnemyCanFire('pistol', -1, 9)).toBe(false);
+  });
+
+  it('winds up telegraphed weapons, cancels out of range, and keeps normal guns immediate', () => {
+    expect(pawnSlugEnemyPrefireStep('machinegun', { ready: true, dt: 0.016 })).toEqual({ phase: 'fire', remaining: 0, progress: 1 });
+
+    const start = pawnSlugEnemyPrefireStep('panzerfaust', { ready: true, dt: 0.04 });
+    expect(start.phase).toBe('telegraph');
+    expect(start.remaining).toBeCloseTo(0.3, 5);
+    expect(start.progress).toBeGreaterThan(0);
+
+    const middle = pawnSlugEnemyPrefireStep('panzerfaust', { ready: true, remaining: start.remaining, dt: 0.18 });
+    expect(middle.phase).toBe('telegraph');
+    expect(middle.progress).toBeGreaterThan(start.progress);
+
+    expect(pawnSlugEnemyPrefireStep('panzerfaust', { ready: false, remaining: middle.remaining, dt: 0.02 })).toEqual({ phase: 'idle', remaining: 0, progress: 0 });
+    expect(pawnSlugEnemyPrefireStep('panzerfaust', { ready: true, remaining: 0.05, dt: 0.06 })).toEqual({ phase: 'fire', remaining: 0, progress: 1 });
   });
 
   it('interpolates cooldown deterministically and returns a weapon-shaped shot plan', () => {

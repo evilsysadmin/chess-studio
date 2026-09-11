@@ -5,6 +5,7 @@ export {
   pawnSlugEnemyCanFire,
   pawnSlugEnemyFireCooldown,
   pawnSlugEnemyFireProfile,
+  pawnSlugEnemyPrefireStep,
   pawnSlugEnemyShotPlan,
 } from './pawnSlugEnemyFireDoctrine.js';
 export { PAWN_SLUG_WANTED_META, pawnSlugWantedCreditBonus, pawnSlugWantedOfficerFor } from './pawnSlugWantedOfficers.js';
