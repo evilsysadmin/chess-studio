@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   PAWN_SLUG_TOUCH_GESTURE,
   pawnSlugTouchHapticPattern,
+  pawnSlugTouchMinimumPressMs,
   pawnSlugTouchMoveDirection,
   pawnSlugTouchTapAction,
   pawnSlugTouchVerticalAction,
@@ -19,12 +20,15 @@ function haptic(action) {
 export default function PawnSlugTouchSurface({ send }) {
   const sendRef = useRef(send);
   const pointersRef = useRef(new Map());
-  const timersRef = useRef(new Set());
+  const timersRef = useRef(new Map());
   const [trained, setTrained] = useState(false);
   sendRef.current = send;
 
   useEffect(() => () => {
-    for (const timer of timersRef.current) window.clearTimeout(timer);
+    for (const [timer, action] of timersRef.current) {
+      window.clearTimeout(timer);
+      sendRef.current(action, false);
+    }
     timersRef.current.clear();
     for (const pointer of pointersRef.current.values()) {
       if (pointer.action) sendRef.current(pointer.action, false);
@@ -42,19 +46,25 @@ export default function PawnSlugTouchSurface({ send }) {
     };
   }
 
-  function release(pointer) {
+  function release(pointer, { immediate = false } = {}) {
     if (!pointer?.action) return;
-    if (pointer.action !== 'jump') {
+    const minimumPressMs = immediate ? 0 : pawnSlugTouchMinimumPressMs(pointer.action);
+    if (minimumPressMs <= 0) {
       sendRef.current(pointer.action, false);
       return;
     }
     const elapsed = Math.max(0, performance.now() - pointer.actionStartedAt);
-    const delay = Math.max(0, PAWN_SLUG_TOUCH_GESTURE.jumpMinPressMs - elapsed);
+    const delay = Math.max(0, minimumPressMs - elapsed);
+    if (delay <= 0) {
+      sendRef.current(pointer.action, false);
+      return;
+    }
+    const action = pointer.action;
     const timer = window.setTimeout(() => {
       timersRef.current.delete(timer);
-      sendRef.current('jump', false);
+      sendRef.current(action, false);
     }, delay);
-    timersRef.current.add(timer);
+    timersRef.current.set(timer, action);
   }
 
   function onPointerDown(event) {
@@ -115,7 +125,7 @@ export default function PawnSlugTouchSurface({ send }) {
     haptic(action);
   }
 
-  function finish(event, allowTap = true) {
+  function finish(event, allowTap = true, immediateRelease = false) {
     const pointer = pointersRef.current.get(event.pointerId);
     if (!pointer) return;
     event.preventDefault();
@@ -129,7 +139,7 @@ export default function PawnSlugTouchSurface({ send }) {
         haptic(action);
       }
     }
-    release(pointer);
+    release(pointer, { immediate: immediateRelease });
     pointersRef.current.delete(event.pointerId);
     if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
       event.currentTarget.releasePointerCapture?.(event.pointerId);
@@ -137,7 +147,7 @@ export default function PawnSlugTouchSurface({ send }) {
   }
 
   function cancel(event) {
-    finish(event, false);
+    finish(event, false, true);
   }
 
   function powerUpPress(event) {
