@@ -13,6 +13,45 @@ export function fallenClockColor(whiteTime, blackTime) {
   return null;
 }
 
+export function createVisibleClockTicker({
+  tick,
+  intervalMs = 200,
+  doc = typeof document !== 'undefined' ? document : null,
+  setIntervalFn = globalThis.setInterval,
+  clearIntervalFn = globalThis.clearInterval,
+} = {}) {
+  if (typeof tick !== 'function') return () => {};
+
+  let intervalId = null;
+  const stop = () => {
+    if (intervalId === null) return;
+    clearIntervalFn(intervalId);
+    intervalId = null;
+  };
+  const start = () => {
+    if (intervalId !== null || doc?.visibilityState === 'hidden') return;
+    intervalId = setIntervalFn(tick, intervalMs);
+  };
+  const onVisibility = () => {
+    if (doc?.visibilityState === 'hidden') {
+      stop();
+      return;
+    }
+    // Reconcile the whole wall-clock gap immediately when the tab becomes
+    // visible again, then resume the normal 200 ms cadence.
+    tick();
+    start();
+  };
+
+  doc?.addEventListener?.('visibilitychange', onVisibility);
+  start();
+
+  return () => {
+    stop();
+    doc?.removeEventListener?.('visibilitychange', onVisibility);
+  };
+}
+
 export function useGameClock({ game, timeControl, busy, humanColor, forcedOutcome, onPressure }) {
   const hasClock = !!timeControl?.initial;
   const runtimeRef = useRef(null);
@@ -61,12 +100,7 @@ export function useGameClock({ game, timeControl, busy, humanColor, forcedOutcom
     }
     runtime.setTickingColor(activeClockColor({ busy, humanColor, turn: game.turn }));
     tickRef.current = performance.now();
-    const interval = setInterval(() => {
-      // Hidden tabs do not need five clock callbacks per second. Keep tickRef
-      // untouched so the first visible tick reconciles the full wall-clock
-      // elapsed time in one advance instead of burning CPU/battery in background.
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-
+    const tickClock = () => {
       const now = performance.now();
       const elapsed = (now - tickRef.current) / 1000;
       tickRef.current = now;
@@ -92,9 +126,10 @@ export function useGameClock({ game, timeControl, busy, humanColor, forcedOutcom
         lastPersistRef.current = wallNow;
         persistSnapshot(snapshot, color, wallNow);
       }
-    }, 200);
+    };
+    const stopTicker = createVisibleClockTicker({ tick: tickClock });
     return () => {
-      clearInterval(interval);
+      stopTicker();
       persistSnapshot(runtime.getSnapshot(), activeClockColor({ busy, humanColor, turn: game.turn }));
     };
   }, [hasClock, game.id, game.isGameOver, flagFallen, forcedOutcome, busy, game.turn, humanColor, timeControl?.id, runtime]);
