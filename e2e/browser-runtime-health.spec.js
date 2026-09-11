@@ -32,6 +32,17 @@ function attachRuntimeErrorProbe(page) {
   return { faults, httpErrors };
 }
 
+function summarizeRequests(requests = []) {
+  const counts = new Map();
+  for (const request of requests) {
+    const key = `${request.method} ${request.path}`;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([key, count]) => ({ key, count }))
+    .sort((left, right) => right.count - left.count || left.key.localeCompare(right.key));
+}
+
 async function installLifecycleProbe(page) {
   await page.addInitScript(() => {
     const activeIntervals = new Set();
@@ -122,8 +133,9 @@ async function settle(page) {
   await page.waitForTimeout(250);
 }
 
-async function seedRuntimeSession(page) {
+async function seedRuntimeSession(page, { requestLog = [] } = {}) {
   await mockApi(page, {
+    requestLog,
     profileSeed: {
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
@@ -208,4 +220,53 @@ test('Browser lifecycle · abrir y cerrar Así juegas no acumula recursos global
   expect(final.windowListeners, `window listeners: ${JSON.stringify({ baseline, final })}`).toBeLessThanOrEqual(baseline.windowListeners);
   expect(final.documentListeners, `document listeners: ${JSON.stringify({ baseline, final })}`).toBeLessThanOrEqual(baseline.documentListeners);
   expect(final.rafs, `RAF pendientes: ${JSON.stringify({ baseline, final })}`).toBeLessThanOrEqual(baseline.rafs + 1);
+});
+
+test('Browser network · inventaría churn de requests entre Home y Así juegas', async ({ page }) => {
+  await mkdir(ARTIFACT_DIR, { recursive:true });
+  const requestLog = [];
+  await seedRuntimeSession(page, { requestLog });
+  await login(page);
+
+  const home = page.getByRole('region', { name:'Modos principales' });
+  const homeStage = home.locator('.illustrated-home__stage');
+  const matthias = home.getByRole('button', { name:'Abrir Así juegas con Matthias', exact:true });
+  await expect(homeStage).toBeVisible();
+  await settle(page);
+
+  const loginToHome = requestLog.splice(0);
+  const cycles = [];
+  for (let cycle = 1; cycle <= 2; cycle += 1) {
+    await matthias.click();
+    await expect(page.getByRole('heading', { name:'Así juegas', exact:true })).toBeVisible();
+    await settle(page);
+    const openInsights = requestLog.splice(0);
+
+    await page.keyboard.press('Escape');
+    await expect(homeStage).toBeVisible();
+    await settle(page);
+    const backHome = requestLog.splice(0);
+
+    cycles.push({
+      cycle,
+      openInsights:summarizeRequests(openInsights),
+      backHome:summarizeRequests(backHome),
+      openInsightsRaw:openInsights,
+      backHomeRaw:backHome,
+    });
+  }
+
+  const report = {
+    schema:1,
+    loginToHome:summarizeRequests(loginToHome),
+    loginToHomeRaw:loginToHome,
+    cycles,
+  };
+  await writeFile(
+    `${ARTIFACT_DIR}/browser-request-health.json`,
+    `${JSON.stringify(report, null, 2)}\n`,
+    'utf8',
+  );
+
+  expect(cycles).toHaveLength(2);
 });
