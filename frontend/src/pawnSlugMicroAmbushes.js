@@ -6,7 +6,7 @@ export const PAWN_SLUG_MICRO_AMBUSHES = Object.freeze([
     triggerX: 900,
     members: Object.freeze([
       freezeMember('pawn-2', 'pawn', 300),
-      freezeMember('knight-3', 'knight', 470),
+      freezeMember('knight-3', 'knight', 390),
       freezeMember('pawn-4', 'pawn', 620),
     ]),
   }),
