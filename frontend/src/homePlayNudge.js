@@ -5,7 +5,7 @@ import {
   removeStorageItem,
   setStorageItem,
 } from './safeStorage.js';
-import { persistentCooldownActive } from './persistentCooldown.js';
+import { cooldownStateFromTimestamp } from './cooldownClock.js';
 
 export const HOME_PLAY_NUDGE_IDLE_MS = 5 * 60 * 1000;
 export const HOME_PLAY_NUDGE_COOLDOWN_MS = 24 * 60 * 60 * 1000;
@@ -48,7 +48,11 @@ function homePlayNudgeWasShown(session = null) {
 
 export function homePlayNudgeIsCoolingDown(now = Date.now(), persistent = null) {
   const lastAt = Number(read(persistent, STORAGE_LOCAL, HOME_PLAY_NUDGE_LAST_AT_KEY));
-  return persistentCooldownActive({ now, lastAt, durationMs: HOME_PLAY_NUDGE_COOLDOWN_MS });
+  return !cooldownStateFromTimestamp({
+    now,
+    last: lastAt,
+    cooldownMs: HOME_PLAY_NUDGE_COOLDOWN_MS,
+  }).allowed;
 }
 
 export function canShowHomePlayNudge({ now = Date.now(), session = null, persistent = null } = {}) {
