@@ -1,6 +1,7 @@
 export const PAWN_SLUG_CAMERA_META = Object.freeze({
   speedDeadzoneRatio: 0.08,
   fullLeadSpeedRatio: 0.92,
+  leadResponseExponent: 0.72,
   idleLeadRightRatio: 0.05,
   idleLeadLeftRatio: 0.035,
   maxLeadRightRatio: 0.20,
@@ -24,9 +25,10 @@ export function pawnSlugCameraLookAhead({
   const speedRatio = Math.abs(safeVx) / speed;
   const deadzone = PAWN_SLUG_CAMERA_META.speedDeadzoneRatio;
   const fullLead = PAWN_SLUG_CAMERA_META.fullLeadSpeedRatio;
-  const movement = speedRatio <= deadzone
+  const linearMovement = speedRatio <= deadzone
     ? 0
     : clamp((speedRatio - deadzone) / (fullLead - deadzone), 0, 1);
+  const movement = Math.pow(linearMovement, PAWN_SLUG_CAMERA_META.leadResponseExponent);
   const idleRatio = facing < 0
     ? PAWN_SLUG_CAMERA_META.idleLeadLeftRatio
     : PAWN_SLUG_CAMERA_META.idleLeadRightRatio;
