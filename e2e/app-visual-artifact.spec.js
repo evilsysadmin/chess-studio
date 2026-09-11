@@ -46,6 +46,7 @@ async function captureHealth(page, label) {
       .map((node) => {
         const rect = node.getBoundingClientRect();
         const text = (node.getAttribute('aria-label') || node.textContent || node.getAttribute('title') || '').trim().replace(/\s+/g, ' ').slice(0, 80);
+        const intersectsViewport = rect.right > 0 && rect.left < viewport.width && rect.bottom > 0 && rect.top < viewport.height;
         return {
           text,
           tag:node.tagName.toLowerCase(),
@@ -55,13 +56,14 @@ async function captureHealth(page, label) {
           right:Number(rect.right.toFixed(1)),
           top:Number(rect.top.toFixed(1)),
           bottom:Number(rect.bottom.toFixed(1)),
+          intersectsViewport,
         };
       });
     const outOfViewport = interactive
-      .filter((rect) => rect.right < 0 || rect.left > viewport.width || rect.bottom < 0 || rect.top > viewport.height)
+      .filter((rect) => !rect.intersectsViewport)
       .slice(0, 20);
     const clippedInteractive = interactive
-      .filter((rect) => (
+      .filter((rect) => rect.intersectsViewport && (
         rect.left < -1
         || rect.right > viewport.width + 1
         || rect.top < -1
@@ -70,7 +72,7 @@ async function captureHealth(page, label) {
       .slice(0, 30);
     const smallTouchTargets = viewport.width <= 600
       ? interactive
-        .filter((rect) => rect.width < minTouchTarget || rect.height < minTouchTarget)
+        .filter((rect) => rect.intersectsViewport && (rect.width < minTouchTarget || rect.height < minTouchTarget))
         .sort((a, b) => Math.min(a.width, a.height) - Math.min(b.width, b.height))
         .slice(0, 30)
       : [];
@@ -110,15 +112,13 @@ test('App · captura visual canónica desktop + matriz Android sin overflow hori
     await settle(page);
 
     const health = await captureHealth(page, capture.label);
-    captures.push(health);
+    captures.push({ ...health, expectedReducedMotion:capture.reducedMotion === 'reduce' });
     await page.screenshot({
       path:`${ARTIFACT_DIR}/home-${capture.label}.png`,
       fullPage:false,
       animations:'disabled',
     });
 
-    expect(health.horizontalOverflow).toBe(false);
-    expect(health.reducedMotion).toBe(capture.reducedMotion === 'reduce');
     await page.context().clearCookies();
     await page.goto('about:blank');
   }
@@ -128,4 +128,9 @@ test('App · captura visual canónica desktop + matriz Android sin overflow hori
     `${JSON.stringify({ schema:3, minimumTouchTarget:MIN_TOUCH_TARGET, captures }, null, 2)}\n`,
     'utf8',
   );
+
+  for (const capture of captures) {
+    expect(capture.horizontalOverflow, `${capture.label}: horizontal overflow`).toBe(false);
+    expect(capture.reducedMotion, `${capture.label}: reduced-motion media state`).toBe(capture.expectedReducedMotion);
+  }
 });
