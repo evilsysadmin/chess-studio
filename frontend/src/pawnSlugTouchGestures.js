@@ -3,6 +3,7 @@ export const PAWN_SLUG_TOUCH_GESTURE = Object.freeze({
   gestureZoneEnd: 0.68,
   verticalThresholdPx: 30,
   verticalAxisBias: 1.12,
+  tapMaxTravelPx: 18,
   jumpMinPressMs: 72,
 });
 
@@ -32,6 +33,12 @@ export function pawnSlugTouchVerticalAction(deltaX, deltaY) {
   if (vertical < PAWN_SLUG_TOUCH_GESTURE.verticalThresholdPx) return null;
   if (vertical < horizontal * PAWN_SLUG_TOUCH_GESTURE.verticalAxisBias) return null;
   return dy < 0 ? 'jump' : 'crouch';
+}
+
+export function pawnSlugTouchTapAction(deltaX, deltaY) {
+  const dx = Number(deltaX) || 0;
+  const dy = Number(deltaY) || 0;
+  return Math.hypot(dx, dy) <= PAWN_SLUG_TOUCH_GESTURE.tapMaxTravelPx ? 'jump' : null;
 }
 
 export function pawnSlugTouchHapticPattern(action) {
