@@ -37,6 +37,7 @@ test('War Room · desktop prioriza el tablero, deja el borde inferior limpio y c
   // status must remain visible and the retired bottom chrome must stay retired.
   await page.waitForTimeout(1500);
   await expect(turnPill).toBeVisible();
+  await expect(page.locator('.game-3d-command-column .game-3d-warroom-controls')).toHaveCount(0);
 
   const initialGeometry = await page.evaluate(() => {
     const roomNode = document.querySelector('.board-live-row.is-3d-warroom');
@@ -44,7 +45,6 @@ test('War Room · desktop prioriza el tablero, deja el borde inferior limpio y c
     const boardStackNode = document.querySelector('.game-board-stack.game-board-stack-3d');
     const commanderNode = document.querySelector('.game-3d-command-column');
     const turnPillNode = document.querySelector('.game-3d-command-column .game-3d-turn-pill');
-    const controlsNode = document.querySelector('.game-3d-command-column .game-3d-warroom-controls');
     const humanRailNode = document.querySelector('.game-board-stack-3d > .game-player-rail.is-human');
     const commandDeckNode = document.querySelector('.game-board-stack-3d > .game-command-deck');
     const musicNode = document.querySelector('.game-side-column-3d .game-side-music');
@@ -58,7 +58,7 @@ test('War Room · desktop prioriza el tablero, deja el borde inferior limpio y c
     const music = musicNode?.getBoundingClientRect();
     const rail = railNode?.getBoundingClientRect();
     const chat = chatNode?.getBoundingClientRect();
-    if (!room || !board || !boardStackNode || !commander || !turnPillRect || !controlsNode || !humanRailNode || !commandDeckNode || !music || !rail || !chat || !chatLogNode) return null;
+    if (!room || !board || !boardStackNode || !commander || !turnPillRect || !humanRailNode || !commandDeckNode || !music || !rail || !chat || !chatLogNode) return null;
     return {
       roomLeft: room.left,
       roomRight: room.right,
@@ -74,7 +74,6 @@ test('War Room · desktop prioriza el tablero, deja el borde inferior limpio y c
       turnPillLeft: turnPillRect.left,
       turnPillRight: turnPillRect.right,
       turnPillWidth: turnPillRect.width,
-      controlsDisplay: getComputedStyle(controlsNode).display,
       humanRailDisplay: getComputedStyle(humanRailNode).display,
       commandDeckDisplay: getComputedStyle(commandDeckNode).display,
       musicLeft: music.left,
@@ -113,7 +112,6 @@ test('War Room · desktop prioriza el tablero, deja el borde inferior limpio y c
   // Nothing from the match-command UI is allowed to survive on the lower apron.
   expect(initialGeometry.humanRailDisplay).toBe('none');
   expect(initialGeometry.commandDeckDisplay).toBe('none');
-  expect(initialGeometry.controlsDisplay).toBe('none');
 
   expect(initialGeometry.chatWidth).toBeGreaterThan(190);
   expect(initialGeometry.chatOwnedByRail).toBe(true);
