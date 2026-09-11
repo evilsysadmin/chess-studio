@@ -22,14 +22,17 @@ describe('Pawn Slug Sturm-Bishop', () => {
     let weakPoints = 0;
     let telegraphMuzzles = 0;
     let suppressionReceivers = 0;
+    let warningHalos = 0;
     model.traverse((node) => {
       if (node.userData?.weakPoint) weakPoints += 1;
       if (node.userData?.shellTelegraph) telegraphMuzzles += 1;
       if (node.userData?.suppressionTelegraph) suppressionReceivers += 1;
+      if (node.userData?.warningHalo) warningHalos += 1;
     });
     expect(weakPoints).toBe(1);
     expect(telegraphMuzzles).toBe(PAWN_SLUG_STURM_BISHOP_META.weaponMounts);
     expect(suppressionReceivers).toBe(PAWN_SLUG_STURM_BISHOP_META.weaponMounts);
+    expect(warningHalos).toBe(1);
   });
 
   it('enters with a brief heavy settle and disables the motion for reduced-motion', () => {
@@ -118,5 +121,31 @@ describe('Pawn Slug Sturm-Bishop', () => {
     expect(suppressionIntensities).toHaveLength(PAWN_SLUG_STURM_BISHOP_META.weaponMounts);
     expect(suppressionIntensities.every((value) => value > 0)).toBe(true);
     expect(Math.abs(model.scale.x)).toBeCloseTo(base);
+  });
+
+  it('uses one diegetic warning halo and keeps it readable with reduced motion', () => {
+    const model = createSturmBishopModel();
+    model.userData.entryStartedAt = 0;
+    let halo = null;
+    model.traverse((node) => {
+      if (node.userData?.warningHalo) halo = node;
+    });
+    expect(halo).toBeTruthy();
+    expect(halo.visible).toBe(false);
+
+    const settledTime = PAWN_SLUG_STURM_BISHOP_META.entrySeconds + 0.5;
+    animateSturmBishopModel(model, settledTime, { telegraph: 1 });
+    expect(halo.visible).toBe(true);
+    expect(halo.material.opacity).toBeGreaterThan(0.2);
+    expect(halo.material.color.getHex()).toBe(0xffb347);
+
+    animateSturmBishopModel(model, settledTime + 0.2, { suppressionTelegraph: 1 });
+    expect(halo.material.color.getHex()).toBe(0xff5b3d);
+
+    model.userData.entryReducedMotion = true;
+    animateSturmBishopModel(model, settledTime + 0.4, { telegraph: 1 });
+    expect(halo.visible).toBe(true);
+    expect(halo.rotation.z).toBe(0);
+    expect(halo.scale.x).toBeCloseTo(1.04);
   });
 });

@@ -148,6 +148,24 @@ export function createSturmBishopModel() {
   const belt = mesh(new THREE.BoxGeometry(0.98, 0.14, 0.34), leather, { y: 0.63, z: 0.06 });
   root.add(belt);
 
+  const warningHalo = mesh(
+    new THREE.RingGeometry(0.7, 0.79, 28),
+    new THREE.MeshBasicMaterial({
+      color: 0xffb347,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    }),
+    { y: 1.18, z: 0.34 },
+  );
+  warningHalo.name = 'pawn-slug-sturm-warning-halo';
+  warningHalo.userData.warningHalo = true;
+  warningHalo.castShadow = false;
+  warningHalo.receiveShadow = false;
+  warningHalo.visible = false;
+  root.add(warningHalo);
+
   root.scale.setScalar(root.userData.baseScale);
   return root;
 }
@@ -156,7 +174,8 @@ export function animateSturmBishopModel(model, time, { moving = false, hurt = fa
   if (!model) return;
   const safeTime = Number(time) || 0;
   if (!Number.isFinite(model.userData.entryStartedAt)) model.userData.entryStartedAt = safeTime;
-  const entry = pawnSlugSturmBishopEntryPose(safeTime - model.userData.entryStartedAt, { reducedMotion: Boolean(model.userData.entryReducedMotion) });
+  const reducedMotion = Boolean(model.userData.entryReducedMotion);
+  const entry = pawnSlugSturmBishopEntryPose(safeTime - model.userData.entryStartedAt, { reducedMotion });
   const direction = dir < 0 ? -1 : 1;
   const stride = Math.sin(safeTime * 7.2);
   const breath = Math.sin(safeTime * 2.15);
@@ -172,7 +191,20 @@ export function animateSturmBishopModel(model, time, { moving = false, hurt = fa
   model.rotation.z = entry.tilt * direction + (moving ? -direction * stride * 0.018 : direction * suppression * suppressionPulse * 0.012);
 
   model.traverse((node) => {
-    if (!node.isMesh || !node.material?.emissive) return;
+    if (!node.isMesh) return;
+    if (node.userData?.warningHalo) {
+      const rawStrength = Math.max(warning, suppression);
+      const animatedStrength = Math.max(warning * warningPulse, suppression * suppressionPulse);
+      const strength = reducedMotion ? rawStrength : animatedStrength;
+      node.visible = rawStrength > 0.015;
+      node.material.opacity = node.visible ? Math.min(0.78, 0.2 + strength * 0.52) : 0;
+      node.material.color.setHex(suppression > warning ? 0xff5b3d : 0xffb347);
+      const haloScale = reducedMotion ? 1.04 : 0.92 + strength * 0.22;
+      node.scale.setScalar(haloScale);
+      node.rotation.z = reducedMotion ? 0 : safeTime * (suppression > warning ? -0.72 : 0.46);
+      return;
+    }
+    if (!node.material?.emissive) return;
     if (node.userData?.weakPoint) {
       node.material.emissiveIntensity = hurt
         ? 2.5
