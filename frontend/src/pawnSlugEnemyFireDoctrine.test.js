@@ -4,6 +4,7 @@ import {
   PAWN_SLUG_ENEMY_ROLE_PRESSURE,
   pawnSlugEnemyFireCooldown,
   pawnSlugEnemyShotPlan,
+  pawnSlugEnemyTelegraphStrength,
 } from './pawnSlugEnemyFireDoctrine.js';
 
 describe('Pawn Slug enemy fire doctrine', () => {
@@ -36,5 +37,14 @@ describe('Pawn Slug enemy fire doctrine', () => {
     expect(middle).toBeLessThan(max);
     expect(pawnSlugEnemyShotPlan('shotgun')).toMatchObject({ weapon: 'shotgun', pellets: 5, explosive: false });
     expect(pawnSlugEnemyShotPlan('panzerfaust')).toMatchObject({ weapon: 'panzerfaust', pellets: 1, explosive: true });
+  });
+
+  it('builds telegraph intensity only inside the final pre-fire window', () => {
+    expect(pawnSlugEnemyTelegraphStrength('panzerfaust', 0.5)).toBe(0);
+    expect(pawnSlugEnemyTelegraphStrength('panzerfaust', 0.34)).toBe(0);
+    expect(pawnSlugEnemyTelegraphStrength('panzerfaust', 0.17)).toBeCloseTo(0.5, 4);
+    expect(pawnSlugEnemyTelegraphStrength('panzerfaust', 0.01)).toBeGreaterThan(0.9);
+    expect(pawnSlugEnemyTelegraphStrength('panzerfaust', 0)).toBe(0);
+    expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.shotgun.telegraph).toBeGreaterThan(PAWN_SLUG_ENEMY_FIRE_PROFILES.pistol.telegraph);
   });
 });
