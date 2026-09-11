@@ -118,7 +118,7 @@ export default function PostGameExam({ history = [], humanColor = 'w', report = 
 
   if (!started) {
     return (
-      <section className="post-game-exam post-game-exam-intro" data-post-game-exam="ready">
+      <section className="post-game-exam post-game-exam-intro" data-post-game-exam="ready" data-exam-visual="premium-v2">
         <div>
           <span className="eyebrow">EXAMEN // SIN PISTAS</span>
           <h3>¿Lo ves ahora sin que Matthias te lo chive?</h3>
@@ -130,17 +130,19 @@ export default function PostGameExam({ history = [], humanColor = 'w', report = 
   }
 
   if (finished) {
+    const perfect = score === positions.length;
     return (
-      <section className="post-game-exam post-game-exam-finished" data-post-game-exam="finished" role="status">
+      <section className={`post-game-exam post-game-exam-finished ${perfect ? 'is-perfect' : 'is-partial'}`} data-post-game-exam="finished" data-exam-visual="premium-v2" role="status">
         <span className="eyebrow">EXAMEN // TERMINADO</span>
         <h3>{score}/{positions.length} a la primera</h3>
-        <p>{score === positions.length ? 'Bien. Esta vez los cadáveres han servido para algo.' : 'Los fallos ya están guardados como material de entrenamiento personal cuando cumplen el gate táctico.'}</p>
+        <p>{perfect ? 'Bien. Esta vez los cadáveres han servido para algo.' : 'Los fallos ya están guardados como material de entrenamiento personal cuando cumplen el gate táctico.'}</p>
       </section>
     );
   }
 
+  const resultState = attempt?.correct ? ' is-correct' : attempt ? ' is-wrong' : '';
   return (
-    <section className="post-game-exam" data-post-game-exam="active" data-exam-position={`${index + 1}/${positions.length}`}>
+    <section className="post-game-exam" data-post-game-exam="active" data-exam-visual="premium-v2" data-exam-position={`${index + 1}/${positions.length}`}>
       <div className="post-game-exam-heading">
         <div>
           <span className="eyebrow">EXAMEN // POSICIÓN {index + 1} DE {positions.length}</span>
@@ -159,7 +161,7 @@ export default function PostGameExam({ history = [], humanColor = 'w', report = 
             orientation={current.humanColor === 'b' ? 'black' : 'white'}
           />
         </div>
-        <aside className={`post-game-exam-result${attempt ? ' is-revealed' : ''}`} aria-live="polite">
+        <aside className={`post-game-exam-result${attempt ? ' is-revealed' : ''}${resultState}`} aria-live="polite">
           {!attempt ? (
             <>
               <b>Sin pista.</b>

@@ -14,12 +14,13 @@ const report = {
 };
 
 describe('PostGameExam', () => {
-  it('ofrece el examen sin filtrar la jugada original ni la alternativa antes de empezar', () => {
+  it('ofrece el examen premium sin filtrar la jugada original ni la alternativa antes de empezar', () => {
     const html = renderToStaticMarkup(
       <PostGameExam history={history} humanColor="w" report={report} meta={{ gameId: 'g-exam' }} />,
     );
 
     expect(html).toContain('data-post-game-exam="ready"');
+    expect(html).toContain('data-exam-visual="premium-v2"');
     expect(html).toContain('EXAMEN // SIN PISTAS');
     expect(html).toContain('Hacer examen');
     expect(html).not.toContain('Nf3');
