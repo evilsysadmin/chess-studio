@@ -108,9 +108,15 @@ async function runtimeSnapshot(page) {
 
 async function setRenderer(page, renderer) {
   const warRoom = page.locator('[data-board3d-war-room="true"]');
-  const appearance = await warRoom.count()
-    ? page.getByRole('button', { name: 'Apariencia', exact: true })
-    : page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true });
+  let appearance;
+  if (await warRoom.count()) {
+    const utilityMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+    await expect(utilityMenu).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+    await utilityMenu.click();
+    appearance = page.getByRole('menuitem', { name: 'Apariencia', exact: true });
+  } else {
+    appearance = page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true });
+  }
 
   await expect(appearance).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
   await appearance.click();

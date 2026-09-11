@@ -120,7 +120,12 @@ async function expectCleanWarRoom(page) {
 }
 
 async function switchTo2D(page) {
-  await page.getByRole('button', { name: 'Apariencia', exact: true }).click();
+  const utilityMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  await expect(utilityMenu).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await utilityMenu.click();
+  const appearance = page.getByRole('menuitem', { name: 'Apariencia', exact: true });
+  await expect(appearance).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await appearance.click();
   const dialog = page.getByRole('dialog', { name: 'Ajustes' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('radio', { name: /2D$/ }).click();
