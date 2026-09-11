@@ -11,7 +11,77 @@
    historical pill padding; the menu remains anchored at the right edge. */
 @media (max-width: 1080px) {
   .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
-    padding-right: .5rem !important;
+    padding-right: 2.55rem !important;
+  }
+
+  /* FloatingFooter intentionally dissolves desktop-only utility chrome on
+     compact layouts. Appearance is now the one exception: it replaces the
+     Board3D-local floating button and therefore must remain reachable here. */
+  .game-screen .game-layout-3d .game-3d-utility-menu {
+    display: block !important;
+    position: absolute;
+    z-index: 48;
+    top: 50%;
+    right: .42rem;
+    width: 34px;
+    height: 34px;
+    transform: translateY(-50%);
+    pointer-events: auto;
+  }
+
+  .game-screen .game-layout-3d .game-3d-utility-menu > summary {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    box-sizing: border-box;
+    border: 1px solid rgba(190, 164, 109, .24);
+    border-radius: 9px;
+    background: rgba(5, 9, 14, .72);
+    color: color-mix(in srgb, var(--cream) 84%, var(--brass));
+    cursor: pointer;
+    list-style: none;
+    font: 800 .95rem/1 var(--font-body);
+    user-select: none;
+  }
+
+  .game-screen .game-layout-3d .game-3d-utility-menu > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .game-screen .game-layout-3d .game-3d-utility-menu > summary:focus-visible,
+  .game-screen .game-layout-3d .game-3d-utility-menu[open] > summary {
+    border-color: rgba(201, 162, 39, .52);
+    background: rgba(14, 18, 26, .96);
+    color: var(--cream);
+    outline: none;
+  }
+
+  .game-screen .game-layout-3d .game-3d-utility-popover {
+    position: absolute;
+    z-index: 90;
+    top: calc(100% + .38rem);
+    right: 0;
+    width: min(180px, calc(100vw - 1rem));
+    padding: .28rem;
+    border: 1px solid rgba(190, 164, 109, .22);
+    border-radius: 10px;
+    background: rgba(7, 10, 15, .98);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .44);
+  }
+
+  .game-screen .game-layout-3d .game-3d-utility-popover button {
+    display: block;
+    width: 100%;
+    min-height: 44px;
+    padding: .55rem .68rem;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: color-mix(in srgb, var(--cream) 90%, var(--studio-muted));
+    text-align: left;
+    font: 700 .68rem/1.2 var(--font-body);
+    cursor: pointer;
   }
 
   /* Compact HUD priority: identity may truncate, but the actual turn signal
