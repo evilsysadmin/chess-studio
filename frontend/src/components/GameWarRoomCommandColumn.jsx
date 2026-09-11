@@ -45,7 +45,7 @@ function openBoardAppearance(board) {
   document.querySelector('.board3d-customize')?.click();
 }
 
-function LegacyCompactPill({ game, signal, board, onToggleBoardRenderer }) {
+function LegacyCompactPill({ game, signal, board }) {
   return (
     <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
       <div
@@ -83,11 +83,6 @@ function LegacyCompactPill({ game, signal, board, onToggleBoardRenderer }) {
           </div>
         </details>
       </div>
-
-      <div className="game-3d-warroom-controls" aria-label="Controles de vista 3D">
-        <button type="button" className="secondary-btn is-selected" aria-pressed="true">3D</button>
-        <button type="button" className="secondary-btn" onClick={onToggleBoardRenderer}>2D</button>
-      </div>
     </aside>
   );
 }
@@ -99,7 +94,6 @@ export default function GameWarRoomCommandColumn({
   zenMode = false,
   controls = {},
   compactViewport = false,
-  onToggleBoardRenderer,
 }) {
   const signal = resolveWarRoomSignal(game, status);
 
@@ -112,7 +106,6 @@ export default function GameWarRoomCommandColumn({
         game={game}
         signal={signal}
         board={board}
-        onToggleBoardRenderer={onToggleBoardRenderer}
       />
     );
   }
@@ -251,11 +244,6 @@ export default function GameWarRoomCommandColumn({
           )}
         </div>
       )}
-
-      <div className="game-3d-warroom-controls" aria-label="Controles de vista 3D">
-        <button type="button" className="secondary-btn is-selected" aria-pressed="true">3D</button>
-        <button type="button" className="secondary-btn" onClick={onToggleBoardRenderer}>2D</button>
-      </div>
     </aside>
   );
 }
