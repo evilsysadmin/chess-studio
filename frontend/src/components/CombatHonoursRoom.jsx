@@ -107,7 +107,7 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? 'Sin fecha registrada' : date.toLocaleDateString('es-ES');
 }
 
-function MemorialDossier({ entry }) {
+export function MemorialDossier({ entry }) {
   const origin = BASE_STATS[entry.originType]?.name || 'Unidad';
   const stats = entry.stats || {};
   return (
