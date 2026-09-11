@@ -256,7 +256,7 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
   const baseScaleY = sprite.userData.motionBaseScaleY || Math.abs(sprite.scale.y) || 1;
   const action = pawnSlugEnemyActionForState({ moving, hurt, airborne, crouch, climbing, dying });
   const actionTime = action === 'death' ? Math.max(0, Number(deathAge) || 0) : safeTime;
-  const actionFrame = pawnSlugEnemyActionFrame(action, actionTime);
+  const actionFrame = pawnSlugEnemyActionFrame(action, actionTime, type);
   const sourceFrame = pawnSlugEnemySourceFrame(action, actionFrame, ENEMY_RUN_FRAMES_PER_TYPE);
   const pose = pawnSlugEnemyActionPose(action, actionFrame, {
     vy,
