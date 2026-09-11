@@ -14,6 +14,7 @@ import emeraldBlackKnight from '../pieces-medieval-esmeralda/bN.png';
 import studioWhiteKnight from '../pieces-studio/wN.png';
 import studioBlackKnight from '../pieces-studio/bN.png';
 import { GENERATED_SKIN_PREVIEWS } from '../generatedPieceSkins.js';
+import PrivacyDataDisclosure from './PrivacyDataDisclosure.jsx';
 import './UserSettingsBoardRenderer.css';
 
 const SKIN_PREVIEWS = {
@@ -57,9 +58,6 @@ export default function UserSettingsPanelContent({ onClose, isAdminUser = false 
   const availableSkinIds = new Set(unlockedSkins(tournamentLevel, { isAdmin: isAdminUser }).map((skin) => skin.id));
 
   useEffect(() => () => {
-    // El cambio 2D↔3D puede montar o desmontar Three.js. Aplicarlo desde el
-    // cleanup crea una barrera real de ciclo de vida: React ya ha retirado el
-    // modal y su botón Cerrar antes de emitir la preferencia que remonta tablero.
     applyStagedRendererAfterSettingsUnmount({
       pendingRendererRef: pendingBoardRendererRef,
       applyBoardRenderer: setBoardRenderer,
@@ -165,6 +163,8 @@ export default function UserSettingsPanelContent({ onClose, isAdminUser = false 
             <label className="settings-toggle"><input type="checkbox" checked={!fxMuted} onChange={(event) => updateFx(!event.target.checked)} /><span>Efectos de sonido</span></label>
             <label className="settings-field"><span>Volumen música · {Math.round(volume * 100)}%</span><input type="range" min="0" max="1" step="0.05" value={volume} onChange={(event) => updateVolume(event.target.value)} /></label>
           </section>
+
+          <PrivacyDataDisclosure />
 
           <section>
             <h3>Idioma</h3>
