@@ -101,26 +101,28 @@ async function captureHealth(page, label) {
   }, { captureLabel:label, minTouchTarget:MIN_TOUCH_TARGET });
 }
 
-test('App · captura visual canónica desktop + matriz Android sin overflow horizontal', async ({ page }) => {
+test('App · captura visual canónica desktop + matriz Android sin overflow horizontal', async ({ browser }) => {
   test.setTimeout(120_000);
   await mkdir(ARTIFACT_DIR, { recursive:true });
 
   const captures = [];
   for (const capture of CAPTURES) {
-    await page.setViewportSize({ width:capture.width, height:capture.height });
-    await openCanonicalHome(page, { reducedMotion:capture.reducedMotion });
-    await settle(page);
+    const context = await browser.newContext({ viewport:{ width:capture.width, height:capture.height } });
+    const page = await context.newPage();
+    try {
+      await openCanonicalHome(page, { reducedMotion:capture.reducedMotion });
+      await settle(page);
 
-    const health = await captureHealth(page, capture.label);
-    captures.push({ ...health, expectedReducedMotion:capture.reducedMotion === 'reduce' });
-    await page.screenshot({
-      path:`${ARTIFACT_DIR}/home-${capture.label}.png`,
-      fullPage:false,
-      animations:'disabled',
-    });
-
-    await page.context().clearCookies();
-    await page.goto('about:blank');
+      const health = await captureHealth(page, capture.label);
+      captures.push({ ...health, expectedReducedMotion:capture.reducedMotion === 'reduce' });
+      await page.screenshot({
+        path:`${ARTIFACT_DIR}/home-${capture.label}.png`,
+        fullPage:false,
+        animations:'disabled',
+      });
+    } finally {
+      await context.close();
+    }
   }
 
   await writeFile(
