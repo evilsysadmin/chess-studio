@@ -99,7 +99,7 @@ test('Pawn Slug · arranca con pistola y arsenal seleccionable sin tocar el ajed
   await expect(remountedStage).toHaveCount(0);
 });
 
-test('Pawn Slug · ESC abre y cierra Settings sin perder el runtime', async ({ page }) => {
+test('Pawn Slug · ESC abre Settings, persiste remap y conserva el runtime', async ({ page }) => {
   await openPawnSlug(page);
   await startPawnSlug(page);
 
@@ -111,13 +111,29 @@ test('Pawn Slug · ESC abre y cierra Settings sin perder el runtime', async ({ p
   await expect(settings).toBeVisible();
   await expect(canvas).toBeVisible();
 
-  // Settings pausa el runtime mediante engine.setPaused(true); el smoke de navegador
-  // evita depender de relojes/combate y protege el ciclo de apertura/cierre y montaje.
+  const jumpRemap = settings.getByRole('button', { name: 'Cambiar tecla de Saltar', exact: true });
+  await expect(jumpRemap.locator('kbd')).toHaveText('SHIFT IZQ');
+  await jumpRemap.click();
+  await expect(jumpRemap.locator('kbd')).toHaveText('PULSA…');
+  await page.keyboard.press('KeyL');
+  await expect(jumpRemap.locator('kbd')).toHaveText('L');
+
+  // Closing and reopening proves the persisted settings are also the active UI source.
   await page.keyboard.press('Escape');
   await expect(settings).toHaveCount(0);
   await expect(canvas).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(settings).toBeVisible();
+  await expect(settings.getByRole('button', { name: 'Cambiar tecla de Saltar', exact: true }).locator('kbd')).toHaveText('L');
 
-  // El handler sigue vivo tras reanudar: una segunda apertura debe funcionar sin remount.
+  // Leave the shared browser state deterministic for any later smoke work.
+  await settings.getByRole('button', { name: 'Restaurar defaults', exact: true }).click();
+  await expect(settings.getByRole('button', { name: 'Cambiar tecla de Saltar', exact: true }).locator('kbd')).toHaveText('SHIFT IZQ');
+
+  // The handler still works after remapping and reset: close and reopen once more without remount.
+  await page.keyboard.press('Escape');
+  await expect(settings).toHaveCount(0);
+  await expect(canvas).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Pawn Slug Settings' })).toBeVisible();
 });
