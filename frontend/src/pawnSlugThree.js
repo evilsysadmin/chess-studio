@@ -65,7 +65,10 @@ import {
   pawnSlugEnemyShotPlan,
   pawnSlugEnemyWeaponFor,
   pawnSlugFirstHitEnemyIndex,
+  pawnSlugPowRescueSummary,
   pawnSlugRectsOverlap,
+  pawnSlugSpawnPowsAhead,
+  pawnSlugUpdatePowRescues,
 } from './pawnSlugRuntimeHotPath.js';
 
 const WORLD_SCALE = 1 / 40;
@@ -120,6 +123,8 @@ function initialState() {
     toastUntil: Infinity,
     spawned: new Set(),
     takenPickups: new Set(),
+    pows: [],
+    rescuedPows: new Set(),
     enemies: [],
     pickups: [],
     bullets: [],
@@ -437,11 +442,13 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
 
   function startMission() {
     const bankedCredits = Math.max(0, Math.floor(state.credits || 0));
+    const rescuedPows = new Set(state.rescuedPows || []);
     resetDynamic();
     resetInput();
     paused = false;
     state = initialState();
     state.credits = bankedCredits;
+    state.rescuedPows = rescuedPows;
     state.phase = 'playing';
     state.toast = pawnSlugMatthiasLine('start');
     state.toastUntil = 3.5;
@@ -553,6 +560,10 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       if (state.takenPickups.has(index) || state.pickups.some((pickup) => pickup.id === index)) continue;
       if (wx(PAWN_SLUG_PICKUPS[index].x) <= right) createPickup(PAWN_SLUG_PICKUPS[index], index);
     }
+    pawnSlugSpawnPowsAhead(state, dynamic, right, {
+      coarse,
+      supportAtX: pawnSlugPlatformAtX,
+    });
     if (state.player.x >= wx(PAWN_SLUG_WORLD.bossX - 720)) createBoss();
   }
 
@@ -927,6 +938,28 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     animatePlayer();
   }
 
+  function updatePows() {
+    pawnSlugUpdatePowRescues(state, state.time, {
+      reducedMotion,
+      onRescue: (result) => {
+        state.score += 350;
+        const rewards = [];
+        if (result.reward?.credits) rewards.push(`${result.reward.credits} cr`);
+        if (result.reward?.grenades) rewards.push(`+${result.reward.grenades} granadas`);
+        for (const [weaponId, amount] of Object.entries(result.reward?.ammo || {})) {
+          rewards.push(`${pawnSlugWeaponShortLabel(weaponId)} +${amount}`);
+        }
+        setToast(`POW RESCUED // ${rewards.join(' · ') || 'suministros recuperados'}`, 2.2);
+        sfx.play('pickup');
+        emitHud(true);
+      },
+      onRemove: (model) => {
+        dynamic.remove(model);
+        disposePawnSlugObject(model);
+      },
+    });
+  }
+
   function updateEnemies(dt) {
     const player = state.player;
     for (const enemy of state.enemies) {
@@ -1281,8 +1314,10 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   function checkVictory() {
     if (!state.bossDefeated) return;
     if (state.player.x < wx(PAWN_SLUG_WORLD.extractionX - 50)) return;
+    const powSummary = pawnSlugPowRescueSummary(state);
     state.phase = 'victory';
     state.score += Math.max(0, 12000 - Math.floor(state.missionTime * 35));
+    state.score += powSummary.scoreBonus;
     setAmbientDuck(false);
     setToast(pawnSlugMatthiasLine('win'), Infinity);
     burst(state.player.x + 1.5, 2.2, 1.3, true);
@@ -1302,6 +1337,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     if (state.combo && state.time > state.comboUntil) state.combo = 0;
     spawnAhead();
     updatePlayer(dt);
+    updatePows();
     updateEnemies(dt);
     updateBullets(dt);
     updateGrenades(dt);
