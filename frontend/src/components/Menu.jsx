@@ -1,5 +1,6 @@
 import { lazy } from 'react';
 import './HomeIllustratedNarrow.css';
+import './HomeIllustratedMobilePolish.css';
 
 const MenuInner = lazy(() => import('./MenuInner.jsx'));
 
