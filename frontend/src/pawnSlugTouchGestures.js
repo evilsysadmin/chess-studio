@@ -4,6 +4,7 @@ export const PAWN_SLUG_TOUCH_GESTURE = Object.freeze({
   verticalThresholdPx: 30,
   verticalAxisBias: 1.12,
   tapMaxTravelPx: 18,
+  moveMinPressMs: 64,
   jumpMinPressMs: 72,
   fireMinPressMs: 52,
   grenadeMinPressMs: 60,
@@ -44,6 +45,7 @@ export function pawnSlugTouchTapAction(deltaX, deltaY) {
 }
 
 export function pawnSlugTouchMinimumPressMs(action) {
+  if (action === 'left' || action === 'right') return PAWN_SLUG_TOUCH_GESTURE.moveMinPressMs;
   if (action === 'jump') return PAWN_SLUG_TOUCH_GESTURE.jumpMinPressMs;
   if (action === 'fire') return PAWN_SLUG_TOUCH_GESTURE.fireMinPressMs;
   if (action === 'grenade') return PAWN_SLUG_TOUCH_GESTURE.grenadeMinPressMs;
