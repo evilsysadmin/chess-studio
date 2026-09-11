@@ -5,7 +5,7 @@ export const PAWN_SLUG_ENEMY_ACTIONS = Object.freeze({
   run: Object.freeze({ frames: 16, rate: 15.5, loop: true }),
   jump: Object.freeze({ frames: 10, rate: 12, loop: true }),
   crouch: Object.freeze({ frames: 8, rate: 10, loop: true }),
-  hurt: Object.freeze({ frames: 6, rate: 18, loop: false }),
+  hurt: Object.freeze({ frames: 6, rate: 48, loop: false }),
   climb: Object.freeze({ frames: 12, rate: 11.5, loop: true }),
   death: Object.freeze({ frames: 14, rate: 16, loop: false, groundedTailFrames: 4 }),
 });
