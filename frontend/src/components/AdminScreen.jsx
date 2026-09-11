@@ -81,14 +81,18 @@ function AdminObservabilityWorkspace({ onExit }) {
 
   useEffect(() => {
     let mounted = true;
-    fetchAdminUsers()
+    const controller = new AbortController();
+    fetchAdminUsers({ signal: controller.signal })
       .then((result) => {
         if (mounted) setUsers(Array.isArray(result) ? result : []);
       })
       .catch((error) => {
-        if (mounted) setUsersError(error?.message || 'No se pudo cargar la presencia de usuarios.');
+        if (mounted && error?.name !== 'AbortError') setUsersError(error?.message || 'No se pudo cargar la presencia de usuarios.');
       });
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
   }, []);
 
   return (
