@@ -48,6 +48,10 @@ test('Browser runtime · Home y Así juegas no dejan errores silenciosos', async
       'chess-study-home-guide-dismissed-v1': '1',
     },
   });
+  // mockApi intercepta /api/** pero todavía no modela este endpoint real del backend.
+  // La ruta específica se registra después para que Playwright la priorice sobre el wildcard.
+  await page.route('http://localhost:4000/api/client-telemetry', (route) => route.fulfill({ status:204, body:'' }));
+
   await login(page);
 
   const home = page.getByRole('region', { name:'Modos principales' });
