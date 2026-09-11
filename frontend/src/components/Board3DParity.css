@@ -70,7 +70,6 @@
   .game-3d-matthias-card,
   .game-3d-warroom-message,
   .game-3d-warroom-status,
-  .game-3d-warroom-controls,
   .game-side-column-3d .game-side-music,
   .game-side-column-3d .game-notation-disclosure,
   .game-side-column-3d .game-chat
@@ -80,15 +79,4 @@
 
 .game-screen .board-live-row.is-3d-warroom .game-3d-matthias-card {
   border-color: rgba(205, 201, 192, .095);
-}
-
-.game-screen .board-live-row.is-3d-warroom .game-3d-warroom-controls .secondary-btn:not(.is-selected) {
-  border-color: rgba(205, 201, 192, .085);
-  background: rgba(255,255,255,.018);
-}
-
-.game-screen .board-live-row.is-3d-warroom .game-3d-warroom-controls .secondary-btn.is-selected,
-.game-screen .board-live-row.is-3d-warroom .game-3d-warroom-controls .secondary-btn:not(:disabled):hover,
-.game-screen .board-live-row.is-3d-warroom .game-3d-warroom-controls .secondary-btn:not(:disabled):focus-visible {
-  border-color: color-mix(in srgb, var(--war-room-brass) 48%, rgba(255,255,255,.08));
 }
