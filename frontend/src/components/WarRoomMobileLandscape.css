@@ -130,21 +130,6 @@
     flex-basis: 8px;
   }
 
-  .game-screen .game-3d-warroom-controls {
-    grid-area: controls;
-    grid-template-columns: 1fr;
-    gap: .25rem;
-    padding: .28rem;
-  }
-
-  .game-screen .game-3d-warroom-controls .secondary-btn,
-  .game-screen .game-3d-warroom-controls .secondary-btn:last-child:nth-child(3) {
-    grid-column: auto;
-    min-height: 32px;
-    padding: .28rem .34rem;
-    font-size: .58rem;
-  }
-
   .game-screen .game-3d-warroom-message {
     grid-area: message;
     min-height: 0;
