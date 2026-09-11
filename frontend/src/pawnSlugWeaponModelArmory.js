@@ -66,7 +66,7 @@ export function pawnSlugWeaponModelOffers() {
       owned: currentState[weaponId]?.owned.includes(model.id) ?? false,
       equipped: currentState[weaponId]?.equipped === model.id,
     }))),
-  }))));
+  })));
 }
 
 export function pawnSlugBuyOrEquipWeaponModel({ weaponId, modelId, credits = 0 } = {}) {
