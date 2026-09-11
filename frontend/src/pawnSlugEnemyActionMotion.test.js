@@ -54,6 +54,13 @@ describe('Pawn Slug premium soldier action motion', () => {
     }
   });
 
+  it('fits the six-frame hurt choreography inside the 110 ms runtime impact window', () => {
+    expect(PAWN_SLUG_ENEMY_ACTIONS.hurt.rate).toBeGreaterThanOrEqual(45);
+    expect(pawnSlugEnemyActionFrame('hurt', 0)).toBe(0);
+    expect(pawnSlugEnemyActionFrame('hurt', 0.1)).toBeGreaterThanOrEqual(4);
+    expect(pawnSlugEnemyActionFrame('hurt', 0.11)).toBe(5);
+  });
+
   it('matches run cadence to the real movement hierarchy by class', () => {
     expect(PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE.knight).toBeGreaterThan(PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE.pawn);
     expect(PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE.pawn).toBeGreaterThan(PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE.rook);
