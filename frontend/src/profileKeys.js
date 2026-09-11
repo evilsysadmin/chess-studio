@@ -98,12 +98,13 @@ export const PROFILE_STORAGE_KEYS = Object.freeze([
   ...PROFILE_PREFERENCE_KEYS,
 ]);
 
-// Estado local de sesión. No se sincroniza porque apunta a partidas activas
-// del backend y no es portable entre dispositivos, pero sí debe limpiarse al
-// cambiar de identidad para que Bob no vea la partida activa de Alice.
+// Estado local de sesión/caché derivada. No se sincroniza porque apunta a
+// partidas activas o diagnósticos locales y no es portable entre dispositivos,
+// pero sí debe limpiarse al cambiar de identidad.
 export const DERIVED_LOCAL_CACHE_KEYS = Object.freeze([
   'chess-study-ai-player-portrait-v1',
   'chess-study-ai-training-plan-v1',
+  'chess-study-narrative-call-ledger-v1',
 ]);
 
 export const SESSION_STATE_KEYS = [
