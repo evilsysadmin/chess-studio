@@ -1,6 +1,6 @@
 import { setProfileStorageItem } from './profileKeys.js';
 import { getStorageItem, STORAGE_LOCAL } from './safeStorage.js';
-import { PAWN_SLUG_WEAPON_MODELS, pawnSlugWeaponModel } from './pawnSlugWeaponModels.js';
+import { PAWN_SLUG_WEAPON_MODELS } from './pawnSlugWeaponModels.js';
 
 const STORAGE_KEY = 'chess-study-pawn-slug-weapon-models-v1';
 
@@ -71,7 +71,9 @@ export function pawnSlugWeaponModelOffers() {
 
 export function pawnSlugBuyOrEquipWeaponModel({ weaponId, modelId, credits = 0 } = {}) {
   const slot = PAWN_SLUG_WEAPON_MODEL_SLOTS[weaponId];
-  const model = slot ? pawnSlugWeaponModel(slot.family, modelId) : null;
+  const model = slot
+    ? (PAWN_SLUG_WEAPON_MODELS[slot.family] || []).find((candidate) => candidate.id === modelId) || null
+    : null;
   if (!slot || !model) return Object.freeze({ ok: false, reason: 'unknown-model', credits: Math.max(0, Math.floor(Number(credits) || 0)) });
 
   const safeCredits = Math.max(0, Math.floor(Number(credits) || 0));
