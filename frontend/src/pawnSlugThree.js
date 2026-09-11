@@ -84,6 +84,12 @@ import {
   pawnSlugSpawnPowsAhead,
   pawnSlugUpdatePowRescues,
 } from './pawnSlugRuntimeHotPath.js';
+import { animatePawnSlugWantedInsignia, attachPawnSlugWantedInsignia } from './pawnSlugWantedArt.js';
+import {
+  pawnSlugWantedCombatProfile,
+  pawnSlugWantedCreditBonus,
+  pawnSlugWantedOfficerFor,
+} from './pawnSlugWantedOfficers.js';
 
 const WORLD_SCALE = 1 / 40;
 const VIEW_W = 29.5;
@@ -513,6 +519,9 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     const stats = PAWN_SLUG_ENEMIES[spawn.type];
     const midBoss = spawn.type === 'bishop';
     const model = midBoss ? createSturmBishopModel() : createSlugEnemyModel(spawn.type);
+    const wantedOfficer = pawnSlugWantedOfficerFor({ id: spawn.id, type: spawn.type });
+    const wantedProfile = pawnSlugWantedCombatProfile(wantedOfficer);
+    attachPawnSlugWantedInsignia(model, wantedOfficer, { reducedMotion });
     const x = wx(spawn.x);
     model.position.set(x, 0, midBoss ? 0.08 : 0);
     dynamic.add(model);
@@ -521,25 +530,27 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       id: spawn.id,
       type: spawn.type,
       weapon,
+      wantedOfficer,
+      wantedProfile,
       x,
       y: 0,
       w: stats.width * WORLD_SCALE * 0.92,
       h: Math.max(1.25, stats.height * WORLD_SCALE),
       hp: stats.hp,
       maxHp: stats.hp,
-      speed: stats.speed * WORLD_SCALE,
+      speed: stats.speed * WORLD_SCALE * wantedProfile.mobility,
       score: stats.score,
       dir: -1,
       vx: 0,
       vy: 0,
       onGround: true,
-      fireCooldown: midBoss ? 0.75 : pawnSlugEnemyFireCooldown(weapon, Math.random()),
+      fireCooldown: midBoss ? 0.75 : pawnSlugEnemyFireCooldown(weapon, Math.random()) * wantedProfile.cadence,
       shellCooldown: midBoss ? 1.65 + Math.random() * 0.45 : null,
       suppressionCooldown: midBoss ? 2.35 + Math.random() * 0.7 : null,
       suppressionShots: 0,
       suppressionShotIndex: 0,
       suppressionShotCooldown: 0,
-      leapCooldown: 0.7 + Math.random() * 1.2,
+      leapCooldown: (0.7 + Math.random() * 1.2) / wantedProfile.aggression,
       hurt: 0,
       dead: false,
       model,
@@ -840,7 +851,9 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     state.score += pawnSlugScoreForKill(enemy.type) * Math.max(1, state.combo || 1);
     state.combo = state.time <= state.comboUntil ? Math.min(9, state.combo + 1) : 1;
     state.comboUntil = state.time + 2.2;
-    state.credits += pawnSlugCreditsForKill(enemy.type, { combo: state.combo });
+    const wantedBonus = pawnSlugWantedCreditBonus(enemy.wantedOfficer);
+    state.credits += pawnSlugCreditsForKill(enemy.type, { combo: state.combo }) + wantedBonus;
+    if (wantedBonus > 0) setToast(`WANTED ABATIDO // +${wantedBonus} cr`, 1.55);
     grantXp(enemy.type);
     state.hitStop = Math.max(state.hitStop, reducedMotion ? 0 : enemy.type === 'boss' ? 0.22 : enemy.type === 'bishop' ? 0.11 : 0.035);
     burst(enemy.x, enemy.y + enemy.h * 0.5, enemy.type === 'boss' ? 2.4 : enemy.type === 'bishop' ? 1.45 : 0.9, true);
@@ -1058,29 +1071,32 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       const dx = player.x - enemy.x;
       const distance = Math.abs(dx);
       enemy.dir = dx >= 0 ? 1 : -1;
+      const wantedProfile = enemy.wantedProfile || pawnSlugWantedCombatProfile(null);
+      const aggression = wantedProfile.aggression;
+      const cadence = wantedProfile.cadence;
 
       if (enemy.type === 'pawn') {
-        enemy.vx = distance > 4.6 ? enemy.dir * enemy.speed : 0;
-        if (distance < 9 && enemy.fireCooldown <= 0) {
+        enemy.vx = distance > 4.6 / aggression ? enemy.dir * enemy.speed : 0;
+        if (distance < 9 * aggression && enemy.fireCooldown <= 0) {
           fireEnemy(enemy);
-          enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random());
+          enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random()) * cadence;
         }
       } else if (enemy.type === 'knight') {
-        enemy.vx = distance > 2.1 ? enemy.dir * enemy.speed : enemy.dir * enemy.speed * 0.25;
-        if (enemy.leapCooldown <= 0 && distance < 7.5 && enemy.onGround) {
+        enemy.vx = distance > 2.1 / aggression ? enemy.dir * enemy.speed : enemy.dir * enemy.speed * 0.25;
+        if (enemy.leapCooldown <= 0 && distance < 7.5 * aggression && enemy.onGround) {
           enemy.vy = 7.5;
           enemy.onGround = false;
-          enemy.leapCooldown = 2.2 + Math.random() * 1.4;
+          enemy.leapCooldown = (2.2 + Math.random() * 1.4) / aggression;
         }
-        if (distance < 8 && enemy.fireCooldown <= 0) {
+        if (distance < 8 * aggression && enemy.fireCooldown <= 0) {
           fireEnemy(enemy);
-          enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random());
+          enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random()) * cadence;
         }
       } else if (enemy.type === 'rook') {
         enemy.vx = 0;
-        if (distance < 12 && enemy.fireCooldown <= 0) {
+        if (distance < 12 * aggression && enemy.fireCooldown <= 0) {
           fireEnemy(enemy, false);
-          enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random());
+          enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random()) * cadence;
         }
       } else if (enemy.type === 'bishop') {
         enemy.shellCooldown = pawnSlugSturmBishopCooldownTick(
@@ -1194,6 +1210,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
         enemy.model.scale.x = Math.abs(enemy.model.scale.x || 1) * enemy.dir;
         animateSlugEnemy(enemy.model, enemy.type, state.time, { moving: Math.abs(enemy.vx) > 0.2, hurt: enemy.hurt > 0 });
       }
+      animatePawnSlugWantedInsignia(enemy.model, state.time);
 
       if (!reducedMotion && (enemy.type === 'bishop' || enemy.type === 'boss')) {
         const moving = Math.abs(enemy.vx) > 0.2;
