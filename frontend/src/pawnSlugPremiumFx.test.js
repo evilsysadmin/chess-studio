@@ -49,6 +49,17 @@ describe('Pawn Slug premium projectile FX', () => {
     expect(exhaust.scale.x).not.toBe(before);
   });
 
+  it('gives hostile muzzle flashes a bright directional red streak', () => {
+    const hostile = createPremiumMuzzleFlash({ enemy: true, weapon: 'pistol' });
+    expect(hostile.userData.hostileMuzzle).toBe(true);
+    expect(hostile.userData.muzzleSignature).toBe('hostile-red-streak');
+    const streak = hostile.children.find((child) => child.userData.muzzleHostileStreak);
+    expect(streak).toBeTruthy();
+    const before = streak.scale.x;
+    animatePremiumMuzzleFlash(hostile, 0.45);
+    expect(streak.scale.x).toBeGreaterThan(before);
+  });
+
   it('gives machinegun and shotgun muzzle flashes distinct readable signatures', () => {
     const machinegun = createPremiumMuzzleFlash({ weapon: 'machinegun' });
     const shotgun = createPremiumMuzzleFlash({ weapon: 'shotgun' });
