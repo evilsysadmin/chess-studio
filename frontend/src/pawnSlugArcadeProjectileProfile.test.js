@@ -18,13 +18,23 @@ describe('Pawn Slug arcade projectile language', () => {
     expect(shotgun.spread).toBeGreaterThan(0);
   });
 
-  it('gives hostile rounds a larger unmistakable tracer without changing explosive identity', () => {
+  it('gives hostile rounds a larger unmistakable tracer', () => {
     const hostile = pawnSlugArcadeProjectileProfile({ weapon: 'pistol', enemy: true });
     const friendly = pawnSlugArcadeProjectileProfile({ weapon: 'pistol' });
     expect(hostile).toBe(PAWN_SLUG_ARCADE_PROJECTILES.enemy);
     expect(hostile.shape).toBe('needle');
     expect(hostile.trail).toBeGreaterThan(friendly.trail);
     expect(hostile.length).toBeGreaterThan(friendly.length);
-    expect(pawnSlugArcadeProjectileProfile({ weapon: 'pistol', enemy: true, explosive: true })).toBe(PAWN_SLUG_ARCADE_PROJECTILES.panzerfaust);
+  });
+
+  it('makes hostile rockets visually heavier without changing rocket identity', () => {
+    const friendly = pawnSlugArcadeProjectileProfile({ weapon: 'pistol', explosive: true });
+    const hostile = pawnSlugArcadeProjectileProfile({ weapon: 'pistol', enemy: true, explosive: true });
+    expect(friendly).toBe(PAWN_SLUG_ARCADE_PROJECTILES.panzerfaust);
+    expect(hostile).toBe(PAWN_SLUG_ARCADE_PROJECTILES.enemyPanzerfaust);
+    expect(hostile.shape).toBe('rocket');
+    expect(hostile.length).toBeGreaterThan(friendly.length);
+    expect(hostile.radius).toBeGreaterThan(friendly.radius);
+    expect(hostile.trail).toBeGreaterThan(friendly.trail);
   });
 });
