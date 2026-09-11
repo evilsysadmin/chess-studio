@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createPawnSlugDestructibleModel, PAWN_SLUG_DESTRUCTIBLE_ART_META } from './pawnSlugDestructibleArt.js';
+import {
+  animatePawnSlugDestructibleModel,
+  createPawnSlugDestructibleModel,
+  PAWN_SLUG_DESTRUCTIBLE_ART_META,
+} from './pawnSlugDestructibleArt.js';
 import {
   PAWN_SLUG_DESTRUCTIBLE_LAYOUT,
   PAWN_SLUG_DESTRUCTIBLE_LAYOUT_META,
@@ -15,6 +19,19 @@ describe('Pawn Slug destructible art and layout', () => {
     expect(barrel.userData).toMatchObject({ pawnSlugDestructible: true, destructibleType: 'barrel', material: 'metal' });
     expect(crate.userData.hitbox.width).toBeGreaterThan(barrel.userData.hitbox.width);
     expect(PAWN_SLUG_DESTRUCTIBLE_ART_META.damageFeedback).toContain('shake');
+  });
+
+  it('anchors damage shake to the original height instead of accumulating drift', () => {
+    const crate = createPawnSlugDestructibleModel('crate');
+    crate.position.y = 2.5;
+    animatePawnSlugDestructibleModel(crate, 1.2, { hpRatio: 0.4 });
+    const firstY = crate.position.y;
+    animatePawnSlugDestructibleModel(crate, 1.2, { hpRatio: 0.4 });
+    expect(crate.position.y).toBe(firstY);
+    expect(crate.userData.baseY).toBe(2.5);
+    animatePawnSlugDestructibleModel(crate, 2, { hpRatio: 0.4, reducedMotion: true });
+    expect(crate.position.y).toBe(2.5);
+    expect(crate.rotation.z).toBe(0);
   });
 
   it('uses unique authored placements across the active biomes', () => {
