@@ -7,6 +7,7 @@ on:
       - 'frontend/public/**'
       - 'e2e/app-visual-artifact.spec.js'
       - 'e2e/browser-runtime-health.spec.js'
+      - 'e2e/browser-storage-health.spec.js'
       - '.github/workflows/app-visual-artifact.yml'
   workflow_dispatch:
 
@@ -49,9 +50,9 @@ jobs:
           browser-scope: chromium
           build-frontend: 'false'
 
-      - name: Capture canonical views + browser runtime health
+      - name: Capture canonical views + browser health
         working-directory: e2e
-        run: ./node_modules/.bin/playwright test app-visual-artifact.spec.js browser-runtime-health.spec.js --workers=1 --retries=0
+        run: ./node_modules/.bin/playwright test app-visual-artifact.spec.js browser-runtime-health.spec.js browser-storage-health.spec.js --workers=1 --retries=0
 
       - name: Summarize visual health
         if: always()
