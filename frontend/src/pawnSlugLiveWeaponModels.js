@@ -7,22 +7,32 @@ export const PAWN_SLUG_LIVE_WEAPON_MODELS = Object.freeze({
   panzerfaust: Object.freeze({ family: 'launcher', modelId: 'panzerfaust' }),
 });
 
-export function pawnSlugLiveWeaponModel(weaponId) {
-  const binding = PAWN_SLUG_LIVE_WEAPON_MODELS[weaponId] || PAWN_SLUG_LIVE_WEAPON_MODELS.pistol;
-  return pawnSlugWeaponModel(binding.family, binding.modelId);
+function bindingFor(weaponId) {
+  return PAWN_SLUG_LIVE_WEAPON_MODELS[weaponId] || PAWN_SLUG_LIVE_WEAPON_MODELS.pistol;
 }
 
-export function pawnSlugLiveWeaponLabel(weaponId) {
-  return pawnSlugLiveWeaponModel(weaponId)?.label || weaponId;
+function resolvedModelId(weaponId, selectedModelId = null) {
+  const binding = bindingFor(weaponId);
+  if (selectedModelId && pawnSlugWeaponModel(binding.family, selectedModelId)?.id === selectedModelId) return selectedModelId;
+  return binding.modelId;
 }
 
-export function pawnSlugApplyLiveWeaponModel(stats, weaponId) {
-  const binding = PAWN_SLUG_LIVE_WEAPON_MODELS[weaponId] || PAWN_SLUG_LIVE_WEAPON_MODELS.pistol;
-  return pawnSlugApplyWeaponModel(stats, binding.family, binding.modelId);
+export function pawnSlugLiveWeaponModel(weaponId, selectedModelId = null) {
+  const binding = bindingFor(weaponId);
+  return pawnSlugWeaponModel(binding.family, resolvedModelId(weaponId, selectedModelId));
+}
+
+export function pawnSlugLiveWeaponLabel(weaponId, selectedModelId = null) {
+  return pawnSlugLiveWeaponModel(weaponId, selectedModelId)?.label || weaponId;
+}
+
+export function pawnSlugApplyLiveWeaponModel(stats, weaponId, selectedModelId = null) {
+  const binding = bindingFor(weaponId);
+  return pawnSlugApplyWeaponModel(stats, binding.family, resolvedModelId(weaponId, selectedModelId));
 }
 
 export const PAWN_SLUG_LIVE_WEAPON_META = Object.freeze({
-  selection: 'fixed-default-until-armory-selection',
+  selection: 'armory-selectable-with-safe-default',
   affectsStats: true,
   hudUsesConcreteLabel: true,
   visualUsesFamilyAtlas: true,
