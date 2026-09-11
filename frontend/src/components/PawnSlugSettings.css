@@ -211,6 +211,24 @@
   .pawn-slug-settings-trigger::first-letter { font-size: 1rem; }
 }
 
+/* Loaded after the cabinet stylesheet: in short touch landscape, Pawn Slug
+   becomes the app surface so global Chess Studio chrome cannot steal height. */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
+  .pawn-slug {
+    position: fixed;
+    z-index: 500;
+    inset: 0;
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    background: #07090c;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pawn-slug-settings-trigger,
   .pawn-slug-settings-panel,
