@@ -64,6 +64,19 @@ function addChains(root) {
   root.add(chains);
 }
 
+function addRescueFlash(root) {
+  const flash = mesh(
+    new THREE.RingGeometry(0.18, 0.25, 16),
+    new THREE.MeshBasicMaterial({ color: 0xffe07a, transparent: true, opacity: 0, depthWrite: false }),
+    { y: 1.02, z: 0.43, rx: Math.PI / 2 },
+  );
+  flash.name = 'pawn-slug-pow-release-flash';
+  flash.visible = false;
+  flash.castShadow = false;
+  flash.receiveShadow = false;
+  root.add(flash);
+}
+
 export function createPawnSlugPowModel(pow, { coarse = false } = {}) {
   if (!pow?.id) throw new Error('Pawn Slug POW model requires a POW descriptor');
   const root = new THREE.Group();
@@ -73,6 +86,7 @@ export function createPawnSlugPowModel(pow, { coarse = false } = {}) {
   root.userData.pose = pow.pose || 'bound';
   root.userData.rescueRadius = coarse ? 0.95 : 0.82;
   root.userData.rescued = false;
+  root.userData.rescueVisualStartedAt = null;
 
   addPrisoner(root, pow.pose);
   if (pow.pose === 'caged') addCage(root);
@@ -87,18 +101,42 @@ export function createPawnSlugPowModel(pow, { coarse = false } = {}) {
   marker.castShadow = false;
   marker.receiveShadow = false;
   root.add(marker);
+  addRescueFlash(root);
   return root;
 }
 
 export function animatePawnSlugPowModel(model, time = 0, { rescued = false, reducedMotion = false } = {}) {
   if (!model?.userData?.pawnSlugPow) return;
+  const wasRescued = Boolean(model.userData.rescued);
   model.userData.rescued = Boolean(rescued);
+  if (rescued && !wasRescued) model.userData.rescueVisualStartedAt = Number(time) || 0;
+
   const marker = model.getObjectByName('pawn-slug-pow-rescue-marker');
   const body = model.getObjectByName('pawn-slug-pow-body');
+  const cage = model.getObjectByName('pawn-slug-pow-cage');
+  const chains = model.getObjectByName('pawn-slug-pow-chains');
+  const flash = model.getObjectByName('pawn-slug-pow-release-flash');
+
   if (marker) {
     marker.visible = !rescued;
     if (!reducedMotion) marker.scale.setScalar(0.92 + Math.sin(time * 4.6) * 0.08);
   }
+  if (cage) cage.visible = !rescued;
+  if (chains) chains.visible = !rescued;
+
+  if (flash) {
+    const startedAt = model.userData.rescueVisualStartedAt;
+    const age = rescued && Number.isFinite(startedAt) ? Math.max(0, Number(time) - startedAt) : Number.POSITIVE_INFINITY;
+    const active = rescued && age < 0.48;
+    flash.visible = active;
+    if (active) {
+      const progress = Math.max(0, Math.min(1, age / 0.48));
+      const scale = 0.72 + progress * 2.2;
+      flash.scale.setScalar(reducedMotion ? 1.15 : scale);
+      if (flash.material) flash.material.opacity = reducedMotion ? 0.42 : (1 - progress) * 0.82;
+    }
+  }
+
   if (!body || reducedMotion) return;
   if (rescued) {
     body.position.y = Math.min(0.2, (body.position.y || 0) + 0.018);
@@ -111,6 +149,7 @@ export function animatePawnSlugPowModel(model, time = 0, { rescued = false, redu
 export const PAWN_SLUG_POW_ART_META = Object.freeze({
   style: 'military-arcade-prisoner',
   poses: Object.freeze(['kneeling', 'bound', 'caged']),
-  rescueFeedback: 'contact-marker-and-release-rise',
+  rescueFeedback: 'contact-release-break-flash-and-rise',
+  releaseFlashSeconds: 0.48,
   defaultRescueRadius: 0.82,
 });
