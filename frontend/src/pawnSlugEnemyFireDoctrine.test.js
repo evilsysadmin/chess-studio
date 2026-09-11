@@ -11,7 +11,8 @@ import {
 describe('Pawn Slug enemy fire doctrine', () => {
   it('uses the same four weapon families with distinct combat jobs', () => {
     expect(Object.keys(PAWN_SLUG_ENEMY_FIRE_PROFILES)).toEqual(['pistol', 'machinegun', 'shotgun', 'panzerfaust']);
-    expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.machinegun.burstMin).toBeGreaterThanOrEqual(2);
+    expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.machinegun.burstContinueChance).toBeGreaterThan(0.6);
+    expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.machinegun.burstInterval).toBeGreaterThanOrEqual(0.1);
     expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.shotgun.pellets).toBeGreaterThanOrEqual(5);
     expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.shotgun.range).toBeLessThan(PAWN_SLUG_ENEMY_FIRE_PROFILES.machinegun.range);
     expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.panzerfaust.telegraph).toBeGreaterThan(0.25);
@@ -58,10 +59,27 @@ describe('Pawn Slug enemy fire doctrine', () => {
     expect(pawnSlugEnemyPrefireStep('panzerfaust', { ready: true, remaining: 0.05, dt: 0.06 })).toEqual({ phase: 'fire', remaining: 0, progress: 1 });
   });
 
-  it('interpolates cooldown deterministically and returns a weapon-shaped shot plan with travel range', () => {
-    const min = pawnSlugEnemyFireCooldown('machinegun', 0);
-    const middle = pawnSlugEnemyFireCooldown('machinegun', 0.5);
-    const max = pawnSlugEnemyFireCooldown('machinegun', 1);
+  it('clusters machinegun shots into short runs and compensating pauses without raising average cadence', () => {
+    const profile = PAWN_SLUG_ENEMY_FIRE_PROFILES.machinegun;
+    const fastA = pawnSlugEnemyFireCooldown('machinegun', 0);
+    const fastB = pawnSlugEnemyFireCooldown('machinegun', profile.burstContinueChance - 0.01);
+    const pauseA = pawnSlugEnemyFireCooldown('machinegun', profile.burstContinueChance);
+    const pauseB = pawnSlugEnemyFireCooldown('machinegun', 1);
+    expect(fastA).toBeCloseTo(profile.burstInterval, 5);
+    expect(fastB).toBeCloseTo(profile.burstInterval, 5);
+    expect(pauseA).toBeCloseTo(profile.burstPauseMin, 5);
+    expect(pauseB).toBeCloseTo(profile.burstPauseMax, 5);
+
+    const clusteredMean = profile.burstContinueChance * profile.burstInterval
+      + (1 - profile.burstContinueChance) * ((profile.burstPauseMin + profile.burstPauseMax) / 2);
+    const legacyMean = (profile.cooldownMin + profile.cooldownMax) / 2;
+    expect(clusteredMean).toBeCloseTo(legacyMean, 3);
+  });
+
+  it('interpolates non-machinegun cooldowns and returns a weapon-shaped shot plan with travel range', () => {
+    const min = pawnSlugEnemyFireCooldown('pistol', 0);
+    const middle = pawnSlugEnemyFireCooldown('pistol', 0.5);
+    const max = pawnSlugEnemyFireCooldown('pistol', 1);
     expect(min).toBeLessThan(middle);
     expect(middle).toBeLessThan(max);
     expect(pawnSlugEnemyShotPlan('shotgun')).toMatchObject({ weapon: 'shotgun', range: 6.8, pellets: 5, explosive: false });
