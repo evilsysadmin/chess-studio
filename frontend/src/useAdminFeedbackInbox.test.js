@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { startVisiblePolling } from './useAdminFeedbackInbox.js';
+import { startVisiblePolling } from './visiblePolling.js';
 
 function fakeDocument(visibilityState = 'visible') {
   const listeners = new Map();
@@ -26,6 +26,7 @@ describe('admin feedback inbox polling', () => {
 
     const cleanup = startVisiblePolling({
       refresh,
+      intervalMs: 120_000,
       doc,
       setIntervalFn,
       clearIntervalFn,
@@ -54,7 +55,13 @@ describe('admin feedback inbox polling', () => {
     const setIntervalFn = vi.fn(() => 31);
     const clearIntervalFn = vi.fn();
 
-    const cleanup = startVisiblePolling({ refresh, doc, setIntervalFn, clearIntervalFn });
+    const cleanup = startVisiblePolling({
+      refresh,
+      intervalMs: 120_000,
+      doc,
+      setIntervalFn,
+      clearIntervalFn,
+    });
 
     expect(refresh).not.toHaveBeenCalled();
     expect(setIntervalFn).not.toHaveBeenCalled();
