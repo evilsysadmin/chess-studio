@@ -29,23 +29,7 @@
   .pawn-slug-gesture-hint.is-fire { right: max(1rem, env(safe-area-inset-right, 0px)); }
 
   .pawn-slug-touch {
-    left: auto;
-    justify-content: flex-end;
-    pointer-events: none;
-  }
-  .pawn-slug-touch > .pawn-slug-touch-move,
-  .pawn-slug-touch-action > button:not(.is-grenade) {
     display: none;
-  }
-  .pawn-slug-touch-action {
-    pointer-events: auto;
-  }
-  .pawn-slug-touch button.is-grenade {
-    min-width: 48px;
-    min-height: 48px;
-    width: 48px;
-    height: 48px;
-    opacity: .88;
   }
 }
 
