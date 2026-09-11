@@ -1,4 +1,5 @@
 import { STORAGE_LOCAL, readJsonStorage, writeJsonStorage } from './safeStorage.js';
+import { cooldownStateFromTimestamp } from './cooldownClock.js';
 
 export const AI_PLAYER_PORTRAIT_CACHE_KEY = 'chess-study-ai-player-portrait-v1';
 const PORTRAIT_SCHEMA = 6;
@@ -124,8 +125,6 @@ function readPortraitCache(identityScope) {
   if (!scope) return null;
   const cached = readJsonStorage(STORAGE_LOCAL, AI_PLAYER_PORTRAIT_CACHE_KEY, { fallback: null, removeMalformed: true });
   if (!cached || cached.schema !== PORTRAIT_SCHEMA || typeof cached !== 'object') return null;
-  // Defensa adicional al clear de login/logout: un retrato local nunca se
-  // reutiliza si la identidad autenticada actual no coincide exactamente.
   if (cached.identityScope !== scope) return null;
   return cached;
 }
@@ -155,16 +154,11 @@ export function saveCachedPlayerPortrait(generationKey, text, identityScope) {
 export function playerPortraitManualRefreshState({ now = Date.now(), identityScope = null, bypassCooldown = false } = {}) {
   if (bypassCooldown) return { allowed: true, retryAfterMs: 0, nextAllowedAt: null };
   const cached = readPortraitCache(identityScope);
-  const last = Number(cached?.manualRequestedAt);
-  if (!Number.isFinite(last) || last <= 0) {
-    return { allowed: true, retryAfterMs: 0, nextAllowedAt: null };
-  }
-  const remaining = Math.max(0, PLAYER_PORTRAIT_MANUAL_COOLDOWN_MS - (Number(now) - last));
-  return {
-    allowed: remaining <= 0,
-    retryAfterMs: remaining,
-    nextAllowedAt: remaining > 0 ? last + PLAYER_PORTRAIT_MANUAL_COOLDOWN_MS : null,
-  };
+  return cooldownStateFromTimestamp({
+    now,
+    last: cached?.manualRequestedAt,
+    cooldownMs: PLAYER_PORTRAIT_MANUAL_COOLDOWN_MS,
+  });
 }
 
 export function shouldCommitManualPortraitRefresh(requestKind, text) {
