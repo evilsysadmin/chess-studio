@@ -67,15 +67,21 @@ export function createPawnSlugDestructibleModel(type = 'crate') {
 export function animatePawnSlugDestructibleModel(model, time = 0, { hpRatio = 1, destroyed = false, reducedMotion = false } = {}) {
   if (!model?.userData?.pawnSlugDestructible) return;
   const safeHp = Math.max(0, Math.min(1, Number(hpRatio) || 0));
+  if (!Number.isFinite(model.userData.baseY)) model.userData.baseY = model.position.y;
+  const baseY = model.userData.baseY;
   if (destroyed) {
     model.visible = false;
     return;
   }
   model.visible = true;
-  if (reducedMotion) return;
+  if (reducedMotion) {
+    model.rotation.z = 0;
+    model.position.y = baseY;
+    return;
+  }
   const damage = 1 - safeHp;
   model.rotation.z = Math.sin(time * 34 + model.id) * 0.018 * damage;
-  model.position.y += Math.abs(Math.sin(time * 27 + model.id * 0.3)) * 0.018 * damage;
+  model.position.y = baseY + Math.abs(Math.sin(time * 27 + model.id * 0.3)) * 0.018 * damage;
 }
 
 export const PAWN_SLUG_DESTRUCTIBLE_ART_META = Object.freeze({
