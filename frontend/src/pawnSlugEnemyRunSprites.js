@@ -28,6 +28,7 @@ import {
   pawnSlugEnemySourceFrame,
 } from './pawnSlugEnemyActionMotion.js';
 import { installPawnSlugEnemyDeathReplay } from './pawnSlugEnemyDeathReplay.js';
+import { playPawnSlugEnemyImpactSfx, playPawnSlugEnemyKoSfx } from './pawnSlugSfx.js';
 import {
   PAWN_SLUG_SOLDIER_ATLAS_META,
   createPawnSlugSoldierAtlasTexture,
@@ -148,6 +149,8 @@ export function createSlugEnemySprite(type = 'pawn') {
   sprite.userData.action = 'idle';
   sprite.userData.actionFrame = 0;
   sprite.userData.airborneUntil = 0;
+  sprite.userData.wasHurt = false;
+  sprite.userData.wasDying = false;
   sprite.userData.atlas = {
     frames: ENEMY_RUN_FRAMES_PER_TYPE,
     frame: 0,
@@ -228,6 +231,12 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
     deathAge = 0,
     vy = inferred.vy,
   } = state;
+
+  if (hurt && !sprite.userData.wasHurt && !dying) playPawnSlugEnemyImpactSfx(type);
+  if (dying && !sprite.userData.wasDying) playPawnSlugEnemyKoSfx(type);
+  sprite.userData.wasHurt = Boolean(hurt && !dying);
+  sprite.userData.wasDying = Boolean(dying);
+
   const profile = PAWN_SLUG_MOTION_PROFILES[type] || PAWN_SLUG_MOTION_PROFILES.pawn;
   const direction = sprite.scale.x < 0 ? -1 : 1;
   const baseScaleX = sprite.userData.motionBaseScaleX || Math.abs(sprite.scale.x) || 1;
