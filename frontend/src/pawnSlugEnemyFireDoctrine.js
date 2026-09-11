@@ -52,6 +52,7 @@ export function pawnSlugEnemyShotPlan(weapon = 'pistol') {
   const profile = pawnSlugEnemyFireProfile(weapon);
   return freeze({
     weapon,
+    range: profile.range,
     speed: profile.speed,
     damage: profile.damage,
     pellets: profile.pellets,
