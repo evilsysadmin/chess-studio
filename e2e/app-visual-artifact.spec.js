@@ -3,6 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
+const MIN_TOUCH_TARGET = 44;
 const CAPTURES = [
   { label:'desktop-1440x900', width:1440, height:900, reducedMotion:'no-preference' },
   { label:'android-360x800', width:360, height:800, reducedMotion:'no-preference' },
@@ -32,32 +33,51 @@ async function settle(page) {
 }
 
 async function captureHealth(page, label) {
-  return page.evaluate((captureLabel) => {
+  return page.evaluate(({ captureLabel, minTouchTarget }) => {
     const root = document.documentElement;
     const body = document.body;
-    const visibleElements = [...document.querySelectorAll('button, a, [role="button"]')]
+    const viewport = { width:window.innerWidth, height:window.innerHeight };
+    const interactive = [...document.querySelectorAll('button, a[href], input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"])')]
       .filter((node) => {
         const rect = node.getBoundingClientRect();
         const style = getComputedStyle(node);
         return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
-      });
-    const outOfViewport = visibleElements
+      })
       .map((node) => {
         const rect = node.getBoundingClientRect();
+        const text = (node.getAttribute('aria-label') || node.textContent || node.getAttribute('title') || '').trim().replace(/\s+/g, ' ').slice(0, 80);
         return {
-          text:(node.getAttribute('aria-label') || node.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 80),
+          text,
+          tag:node.tagName.toLowerCase(),
+          width:Number(rect.width.toFixed(1)),
+          height:Number(rect.height.toFixed(1)),
           left:Number(rect.left.toFixed(1)),
           right:Number(rect.right.toFixed(1)),
           top:Number(rect.top.toFixed(1)),
           bottom:Number(rect.bottom.toFixed(1)),
         };
-      })
-      .filter((rect) => rect.right < 0 || rect.left > window.innerWidth || rect.bottom < 0 || rect.top > window.innerHeight)
+      });
+    const outOfViewport = interactive
+      .filter((rect) => rect.right < 0 || rect.left > viewport.width || rect.bottom < 0 || rect.top > viewport.height)
       .slice(0, 20);
+    const clippedInteractive = interactive
+      .filter((rect) => (
+        rect.left < -1
+        || rect.right > viewport.width + 1
+        || rect.top < -1
+        || rect.bottom > viewport.height + 1
+      ))
+      .slice(0, 30);
+    const smallTouchTargets = viewport.width <= 600
+      ? interactive
+        .filter((rect) => rect.width < minTouchTarget || rect.height < minTouchTarget)
+        .sort((a, b) => Math.min(a.width, a.height) - Math.min(b.width, b.height))
+        .slice(0, 30)
+      : [];
 
     return {
       label:captureLabel,
-      viewport:{ width:window.innerWidth, height:window.innerHeight, dpr:window.devicePixelRatio },
+      viewport:{ ...viewport, dpr:window.devicePixelRatio },
       reducedMotion:window.matchMedia('(prefers-reduced-motion: reduce)').matches,
       document:{
         clientWidth:root.clientWidth,
@@ -67,10 +87,16 @@ async function captureHealth(page, label) {
         bodyScrollWidth:body?.scrollWidth || 0,
       },
       horizontalOverflow:root.scrollWidth > root.clientWidth + 1,
+      interactiveCount:interactive.length,
       offscreenInteractiveCount:outOfViewport.length,
       offscreenInteractive:outOfViewport,
+      clippedInteractiveCount:clippedInteractive.length,
+      clippedInteractive,
+      minimumTouchTarget:minTouchTarget,
+      smallTouchTargetCount:smallTouchTargets.length,
+      smallTouchTargets,
     };
-  }, label);
+  }, { captureLabel:label, minTouchTarget:MIN_TOUCH_TARGET });
 }
 
 test('App · captura visual canónica desktop + matriz Android sin overflow horizontal', async ({ page }) => {
@@ -99,7 +125,7 @@ test('App · captura visual canónica desktop + matriz Android sin overflow hori
 
   await writeFile(
     `${ARTIFACT_DIR}/visual-health.json`,
-    `${JSON.stringify({ schema:2, captures }, null, 2)}\n`,
+    `${JSON.stringify({ schema:3, minimumTouchTarget:MIN_TOUCH_TARGET, captures }, null, 2)}\n`,
     'utf8',
   );
 });
