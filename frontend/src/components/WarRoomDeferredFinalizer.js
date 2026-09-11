@@ -12,6 +12,7 @@ import { installWarRoomHansServiceInfrastructure } from './WarRoomHansServiceRou
 import { installWarRoomHansServiceRoutine } from './WarRoomHansServiceRoutine.js';
 import { installWarRoomHansTaskVisualGuard } from './WarRoomHansTaskVisualGuard.js';
 import { installWarRoomMatthiasHansReaction } from './WarRoomMatthiasHansReaction.js';
+import { installWarRoomMatthiasIdleGlances } from './WarRoomMatthiasIdleGlances.js';
 
 export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v1';
 export const WAR_ROOM_ONE_SHOT_RETIREMENT_VERSION = 'one-shot-retirement-v1';
@@ -85,6 +86,9 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         installWarRoomHansElderClock(root);
         installWarRoomHansFireNarrative(root);
         installWarRoomMatthiasHansReaction(root);
+        // Idle glances sit after explicit Matthias↔Hans reactions in the shared
+        // post-render pipeline, so narrative attention always wins over ambience.
+        installWarRoomMatthiasIdleGlances(root);
         installWarRoomHansServiceInfrastructure(root);
 
         // Permanent room dressing, independent of which single Hans event wins.
