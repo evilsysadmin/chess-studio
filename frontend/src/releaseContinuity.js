@@ -4,6 +4,7 @@ import {
   setStorageItem,
 } from './safeStorage.js';
 import { isLikelyModuleLoadError } from './moduleLoadRecovery.js';
+import { cooldownStateFromTimestamp } from './cooldownClock.js';
 
 const RELOAD_GUARD_KEY = 'chess-study-release-reload-at';
 const RELOAD_COOLDOWN_MS = 15_000;
@@ -24,7 +25,8 @@ function writeGuard(storage, value) {
 
 export function requestReleaseReload({ storage = null, reload = () => window.location.reload(), now = Date.now() } = {}) {
   const previous = Number(readGuard(storage) || 0);
-  if (Number.isFinite(previous) && previous > 0 && now - previous < RELOAD_COOLDOWN_MS) return false;
+  const cooldown = cooldownStateFromTimestamp({ now, last: previous, cooldownMs: RELOAD_COOLDOWN_MS });
+  if (!cooldown.allowed) return false;
   writeGuard(storage, String(now));
   reload();
   return true;
