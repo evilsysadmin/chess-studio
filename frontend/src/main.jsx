@@ -5,7 +5,6 @@ import AppRootErrorBoundary from './components/AppRootErrorBoundary.jsx';
 import './components/Board3DRegistration.js';
 import './styles.css';
 import './styles/29-motion-coherence.css';
-import './components/LabScreen.css';
 import './components/MatthiasSchoolBoardScale.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
 import { migratePersistentStorage } from './storageMigrations.js';
