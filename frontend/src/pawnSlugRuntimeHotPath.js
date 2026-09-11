@@ -27,6 +27,17 @@ export {
   pawnSlugSpawnPowsAhead,
   pawnSlugUpdatePowRescues,
 } from './pawnSlugPowRuntime.js';
+export {
+  PAWN_SLUG_DESTRUCTIBLE_ART_META,
+  animatePawnSlugDestructibleModel,
+  createPawnSlugDestructibleModel,
+} from './pawnSlugDestructibleArt.js';
+export {
+  PAWN_SLUG_DESTRUCTIBLE_LAYOUT,
+  PAWN_SLUG_DESTRUCTIBLE_LAYOUT_META,
+  pawnSlugDestructibleById,
+  pawnSlugDestructiblesAhead,
+} from './pawnSlugDestructibleLayout.js';
 
 export const PAWN_SLUG_RUNTIME_HOT_PATH = 'scalar-collision-index-loops-v1';
 
