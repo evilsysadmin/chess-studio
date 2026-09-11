@@ -19,6 +19,7 @@ let ctx = null;
 let master = null;
 let lastImpactAt = -Infinity;
 let lastKoAt = -Infinity;
+let lastPlayerHitAt = -Infinity;
 
 function profileVolume() {
   const settings = loadPawnSlugSettings();
@@ -99,7 +100,7 @@ export function pawnSlugImpactSoundProfile(type = 'pawn') {
 
 export function playPawnSlugWeaponSfx(weapon = 'pistol', { enemy = false } = {}) {
   const profile = pawnSlugWeaponSoundProfile(weapon);
-  const scale = enemy ? 0.48 : 1;
+  const scale = enemy ? 0.48 : 0.72;
   const pitch = enemy ? 0.9 : 1;
   noise({ duration: profile.noise, gain: 0.11 * scale, cutoff: weapon === 'panzerfaust' ? 900 : 3100 });
   tone({ freq: profile.body * pitch, endFreq: profile.body * 0.62 * pitch, duration: profile.tail, gain: 0.18 * scale, type: 'sawtooth' });
@@ -132,6 +133,15 @@ export function playPawnSlugEnemyKoSfx(type = 'pawn') {
   }
 }
 
+export function playPawnSlugPlayerHitSfx() {
+  const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+  if (now - lastPlayerHitAt < 90) return;
+  lastPlayerHitAt = now;
+  noise({ duration: 0.07, gain: 0.105, cutoff: 1500 });
+  tone({ freq: 96, endFreq: 58, duration: 0.105, gain: 0.13, type: 'triangle' });
+  tone({ freq: 1180, endFreq: 720, duration: 0.065, gain: 0.055, type: 'square', delay: 0.01 });
+}
+
 export function destroyPawnSlugPremiumSfx() {
   if (!ctx) return;
   try { master?.disconnect(); } catch {}
@@ -140,4 +150,5 @@ export function destroyPawnSlugPremiumSfx() {
   master = null;
   lastImpactAt = -Infinity;
   lastKoAt = -Infinity;
+  lastPlayerHitAt = -Infinity;
 }
