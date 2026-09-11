@@ -30,10 +30,25 @@ export const PAWN_SLUG_MICRO_AMBUSHES = Object.freeze([
   }),
 ]);
 
-const AMBUSH_SOURCE_IDS = new Set(PAWN_SLUG_MICRO_AMBUSHES.flatMap((ambush) => ambush.members.map((member) => member.sourceId)));
+const AMBUSH_MEMBER_BY_SOURCE_ID = new Map(
+  PAWN_SLUG_MICRO_AMBUSHES.flatMap((ambush) => ambush.members.map((member) => [
+    member.sourceId,
+    Object.freeze({ ambushId: ambush.id, triggerX: ambush.triggerX, member }),
+  ])),
+);
 
 export function pawnSlugSpawnBelongsToMicroAmbush(spawnId) {
-  return AMBUSH_SOURCE_IDS.has(String(spawnId || ''));
+  return AMBUSH_MEMBER_BY_SOURCE_ID.has(String(spawnId || ''));
+}
+
+export function pawnSlugMicroAmbushPositionForSpawn(spawn) {
+  const entry = AMBUSH_MEMBER_BY_SOURCE_ID.get(String(spawn?.id || ''));
+  if (!entry) return spawn;
+  return Object.freeze({
+    ...spawn,
+    x: entry.triggerX + entry.member.offset,
+    ambushId: entry.ambushId,
+  });
 }
 
 export function pawnSlugPendingMicroAmbushes({ playerX = 0, triggeredIds = new Set() } = {}) {
@@ -59,4 +74,5 @@ export const PAWN_SLUG_MICRO_AMBUSH_META = Object.freeze({
   reusesMissionPopulation: true,
   excludesBosses: true,
   excludesMidBosses: true,
+  activation: 'existing-camera-spawn-window',
 });
