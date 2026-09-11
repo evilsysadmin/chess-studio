@@ -38,6 +38,15 @@ export {
   pawnSlugDestructibleById,
   pawnSlugDestructiblesAhead,
 } from './pawnSlugDestructibleLayout.js';
+export {
+  PAWN_SLUG_DESTRUCTIBLE_RUNTIME_META,
+  pawnSlugAnimateDestructibles,
+  pawnSlugApplyDestructibleReward,
+  pawnSlugDamageRuntimeDestructible,
+  pawnSlugFirstHitDestructibleIndex,
+  pawnSlugRetireDestroyedDestructibles,
+  pawnSlugSpawnDestructiblesAhead,
+} from './pawnSlugDestructibleRuntime.js';
 
 export const PAWN_SLUG_RUNTIME_HOT_PATH = 'scalar-collision-index-loops-v1';
 
