@@ -58,13 +58,13 @@ describe('Pawn Slug enemy fire doctrine', () => {
     expect(pawnSlugEnemyPrefireStep('panzerfaust', { ready: true, remaining: 0.05, dt: 0.06 })).toEqual({ phase: 'fire', remaining: 0, progress: 1 });
   });
 
-  it('interpolates cooldown deterministically and returns a weapon-shaped shot plan', () => {
+  it('interpolates cooldown deterministically and returns a weapon-shaped shot plan with travel range', () => {
     const min = pawnSlugEnemyFireCooldown('machinegun', 0);
     const middle = pawnSlugEnemyFireCooldown('machinegun', 0.5);
     const max = pawnSlugEnemyFireCooldown('machinegun', 1);
     expect(min).toBeLessThan(middle);
     expect(middle).toBeLessThan(max);
-    expect(pawnSlugEnemyShotPlan('shotgun')).toMatchObject({ weapon: 'shotgun', pellets: 5, explosive: false });
-    expect(pawnSlugEnemyShotPlan('panzerfaust')).toMatchObject({ weapon: 'panzerfaust', pellets: 1, explosive: true });
+    expect(pawnSlugEnemyShotPlan('shotgun')).toMatchObject({ weapon: 'shotgun', range: 6.8, pellets: 5, explosive: false });
+    expect(pawnSlugEnemyShotPlan('panzerfaust')).toMatchObject({ weapon: 'panzerfaust', range: 15, pellets: 1, explosive: true });
   });
 });
