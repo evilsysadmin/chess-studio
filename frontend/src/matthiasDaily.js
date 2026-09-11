@@ -37,14 +37,17 @@ function invalidateDailyStatusCache() {
   dailyStatusCache = null;
 }
 
-export function fetchMatthiasDailyStatus() {
+export function fetchMatthiasDailyStatus({ force = false } = {}) {
   // Home e Insights pueden pedir el mismo expediente al volver de otra vista.
   // Deducimos por identidad y conservamos una foto efímera de 60 s para evitar
   // GET repetidos; nunca cruza usuarios ni persiste fuera de este proceso.
+  // Un retorno explícito a la pestaña puede forzar una lectura nueva porque el
+  // estado pending/used puede haber cambiado en otra pestaña mientras ésta dormía.
   const identity = currentIdentity();
   const now = Date.now();
   if (
-    dailyStatusCache?.identity === identity
+    !force
+    && dailyStatusCache?.identity === identity
     && now - dailyStatusCache.cachedAt < DAILY_STATUS_CACHE_MS
   ) {
     return Promise.resolve(dailyStatusCache.value);
