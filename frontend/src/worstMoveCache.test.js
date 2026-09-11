@@ -14,6 +14,25 @@ describe('worstMoveCache', () => {
     expect(loadWorstMoveCache()).toEqual(cache);
   });
 
+  it('limita el caché a los 145 análisis más recientes', () => {
+    const cache = Object.fromEntries(Array.from({ length: 150 }, (_, index) => [
+      `g${index}`,
+      {
+        worst: { played: `m${index}`, loss: index },
+        analyzedAt: new Date(Date.UTC(2026, 0, index + 1)).toISOString(),
+      },
+    ]));
+
+    saveWorstMoveCache(cache);
+    const stored = loadWorstMoveCache();
+
+    expect(Object.keys(stored)).toHaveLength(145);
+    expect(stored.g149).toBeDefined();
+    expect(stored.g5).toBeDefined();
+    expect(stored.g4).toBeUndefined();
+    expect(stored.g0).toBeUndefined();
+  });
+
   it('no revienta si el valor guardado no es JSON válido', () => {
     localStorage.setItem('chess-study-worst-move-cache', 'esto no es json');
     expect(loadWorstMoveCache()).toEqual({});
