@@ -199,20 +199,6 @@
     margin: auto .18rem auto 0;
   }
 
-  /* Keep Appearance in the established upper interaction rail, but below the
-     centred chamber label so the two controls no longer overlap. */
-  .game-board-stack-3d .board3d-customize {
-    top: 2.35rem;
-    right: .4rem;
-    bottom: auto;
-    min-height: 30px;
-    max-width: 5.2rem;
-    padding: .26rem .42rem;
-    font-size: .56rem;
-    line-height: 1;
-    z-index: 7;
-  }
-
   /* Keep king speech centred even on narrow screens; only the vertical anchor
      and width compact, never the ownership point. */
   .game-board-stack-3d > .matthias-board-bubble:not(.game-mobile-focus-bubble) {
