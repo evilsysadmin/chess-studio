@@ -1,4 +1,5 @@
 import { pawnSlugApplyWeaponModel, pawnSlugWeaponModel } from './pawnSlugWeaponModels.js';
+import { pawnSlugEquippedModelId } from './pawnSlugWeaponModelArmory.js';
 
 export const PAWN_SLUG_LIVE_WEAPON_MODELS = Object.freeze({
   pistol: Object.freeze({ family: 'pistol', modelId: 'dienstpistole' }),
@@ -7,9 +8,13 @@ export const PAWN_SLUG_LIVE_WEAPON_MODELS = Object.freeze({
   panzerfaust: Object.freeze({ family: 'launcher', modelId: 'panzerfaust' }),
 });
 
+function bindingFor(weaponId) {
+  return PAWN_SLUG_LIVE_WEAPON_MODELS[weaponId] || PAWN_SLUG_LIVE_WEAPON_MODELS.pistol;
+}
+
 export function pawnSlugLiveWeaponModel(weaponId) {
-  const binding = PAWN_SLUG_LIVE_WEAPON_MODELS[weaponId] || PAWN_SLUG_LIVE_WEAPON_MODELS.pistol;
-  return pawnSlugWeaponModel(binding.family, binding.modelId);
+  const binding = bindingFor(weaponId);
+  return pawnSlugWeaponModel(binding.family, pawnSlugEquippedModelId(weaponId));
 }
 
 export function pawnSlugLiveWeaponLabel(weaponId) {
@@ -17,12 +22,12 @@ export function pawnSlugLiveWeaponLabel(weaponId) {
 }
 
 export function pawnSlugApplyLiveWeaponModel(stats, weaponId) {
-  const binding = PAWN_SLUG_LIVE_WEAPON_MODELS[weaponId] || PAWN_SLUG_LIVE_WEAPON_MODELS.pistol;
-  return pawnSlugApplyWeaponModel(stats, binding.family, binding.modelId);
+  const binding = bindingFor(weaponId);
+  return pawnSlugApplyWeaponModel(stats, binding.family, pawnSlugEquippedModelId(weaponId));
 }
 
 export const PAWN_SLUG_LIVE_WEAPON_META = Object.freeze({
-  selection: 'fixed-default-until-armory-selection',
+  selection: 'persistent-armory-sidegrades',
   affectsStats: true,
   hudUsesConcreteLabel: true,
   visualUsesFamilyAtlas: true,
