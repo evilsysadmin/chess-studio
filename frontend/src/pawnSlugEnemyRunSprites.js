@@ -149,6 +149,7 @@ export function createSlugEnemySprite(type = 'pawn') {
   sprite.userData.motionBaseScaleX = scale[0];
   sprite.userData.motionBaseScaleY = scale[1];
   sprite.userData.motionPhase = Math.random() * Math.PI * 2;
+  sprite.userData.deathVariant = Math.abs(Math.floor(sprite.userData.motionPhase * 1000)) % PAWN_SLUG_ENEMY_ACTION_META.deathVariants;
   sprite.userData.action = 'idle';
   sprite.userData.actionFrame = 0;
   sprite.userData.airborneUntil = 0;
@@ -257,7 +258,11 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
   const actionTime = action === 'death' ? Math.max(0, Number(deathAge) || 0) : safeTime;
   const actionFrame = pawnSlugEnemyActionFrame(action, actionTime);
   const sourceFrame = pawnSlugEnemySourceFrame(action, actionFrame, ENEMY_RUN_FRAMES_PER_TYPE);
-  const pose = pawnSlugEnemyActionPose(action, actionFrame, { vy, type });
+  const pose = pawnSlugEnemyActionPose(action, actionFrame, {
+    vy,
+    type,
+    variant: sprite.userData.deathVariant,
+  });
 
   sprite.userData.action = action;
   sprite.userData.actionFrame = actionFrame;

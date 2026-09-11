@@ -81,15 +81,28 @@ describe('Pawn Slug premium soldier action motion', () => {
     });
   });
 
-  it('keeps the last four death frames grounded for every soldier class', () => {
+  it('offers three stable visual death variants without changing grounded cleanup', () => {
+    expect(PAWN_SLUG_ENEMY_ACTION_META.deathVariants).toBe(3);
+    const base = pawnSlugEnemyActionPose('death', 6, { type: 'pawn', variant: 0 });
+    const alternate = pawnSlugEnemyActionPose('death', 6, { type: 'pawn', variant: 1 });
+    const heavy = pawnSlugEnemyActionPose('death', 6, { type: 'pawn', variant: 2 });
+    expect(base.rz).not.toBe(alternate.rz);
+    expect(base.x).not.toBe(heavy.x);
+    expect(Math.sign(base.rz)).toBe(-Math.sign(alternate.rz));
+    expect(pawnSlugEnemyActionPose('death', 6, { type: 'pawn', variant: 4 })).toEqual(alternate);
+  });
+
+  it('keeps the last four death frames grounded for every soldier class and variant', () => {
     expect(pawnSlugEnemyDeathDuration('pawn')).toBeGreaterThan(0.6);
     expect(pawnSlugEnemyDeathDuration('rook')).toBeGreaterThan(pawnSlugEnemyDeathDuration('knight'));
     for (const type of ['pawn', 'knight', 'rook']) {
-      for (const frame of [10, 11, 12, 13]) {
-        const pose = pawnSlugEnemyActionPose('death', frame, { type });
-        expect(pose.grounded).toBe(true);
-        expect(pose.y).toBeLessThan(0);
-        expect(pose.sy).toBeLessThan(0.6);
+      for (const variant of [0, 1, 2]) {
+        for (const frame of [10, 11, 12, 13]) {
+          const pose = pawnSlugEnemyActionPose('death', frame, { type, variant });
+          expect(pose.grounded).toBe(true);
+          expect(pose.y).toBeLessThan(0);
+          expect(pose.sy).toBeLessThan(0.6);
+        }
       }
     }
   });

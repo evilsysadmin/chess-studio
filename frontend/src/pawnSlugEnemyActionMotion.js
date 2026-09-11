@@ -22,6 +22,10 @@ function clampFrame(value, count) {
   return Math.max(0, Math.min(count - 1, Math.floor(Number(value) || 0)));
 }
 
+function deathVariant(value = 0) {
+  return ((Math.floor(Number(value) || 0) % 3) + 3) % 3;
+}
+
 export function pawnSlugEnemyActionForState({ moving = false, hurt = false, airborne = false, crouch = false, climbing = false, dying = false } = {}) {
   if (dying) return 'death';
   if (hurt) return 'hurt';
@@ -56,21 +60,25 @@ export function pawnSlugEnemyDeathDuration(type = 'pawn') {
   return 0.64;
 }
 
-function deathPose(type, phase) {
+function deathPose(type, phase, variant = 0) {
   const groundedStart = 10 / 13;
   const grounded = phase >= groundedStart;
   const fallPhase = clamp01(phase / groundedStart);
   const fall = Math.sin(fallPhase * Math.PI * 0.5);
   const settle = grounded ? clamp01((phase - groundedStart) / (1 - groundedStart)) : 0;
   const impactBounce = grounded ? Math.sin(settle * Math.PI) * (1 - settle) : 0;
+  const v = deathVariant(variant);
+  const sway = v === 1 ? -1 : 1;
+  const reach = v === 2 ? 1.18 : v === 1 ? 0.84 : 1;
+  const twist = v === 2 ? 1.08 : v === 1 ? 0.9 : 1;
 
   if (type === 'rook') {
-    return Object.freeze({ x: -0.06 * fall, y: grounded ? -0.36 - impactBounce * 0.03 : -0.28 * fall, rz: 1.36 * fall, sx: 1 + 0.12 * fall, sy: grounded ? 0.56 : 1 - 0.32 * fall, grounded });
+    return Object.freeze({ x: -0.06 * fall * reach, y: grounded ? -0.36 - impactBounce * 0.03 : -0.28 * fall, rz: 1.36 * fall * twist * sway, sx: 1 + 0.12 * fall, sy: grounded ? 0.56 : 1 - 0.32 * fall, grounded });
   }
   if (type === 'knight') {
-    return Object.freeze({ x: -0.2 * fall, y: grounded ? -0.42 - impactBounce * 0.035 : 0.07 * Math.sin(fallPhase * Math.PI), rz: 1.52 * fall, sx: 1 + 0.06 * fall, sy: grounded ? 0.52 : 1 - 0.15 * fall, grounded });
+    return Object.freeze({ x: -0.2 * fall * reach, y: grounded ? -0.42 - impactBounce * 0.035 : 0.07 * Math.sin(fallPhase * Math.PI), rz: 1.52 * fall * twist * sway, sx: 1 + 0.06 * fall, sy: grounded ? 0.52 : 1 - 0.15 * fall, grounded });
   }
-  return Object.freeze({ x: -0.13 * fall, y: grounded ? -0.4 - impactBounce * 0.025 : -0.08 * fall, rz: 1.47 * fall, sx: 1 + 0.08 * fall, sy: grounded ? 0.5 : 1 - 0.2 * fall, grounded });
+  return Object.freeze({ x: -0.13 * fall * reach, y: grounded ? -0.4 - impactBounce * 0.025 : -0.08 * fall, rz: 1.47 * fall * twist * sway, sx: 1 + 0.08 * fall, sy: grounded ? 0.5 : 1 - 0.2 * fall, grounded });
 }
 
 function hurtPose(type, phase, actionFrame, frameCount) {
@@ -85,7 +93,7 @@ function hurtPose(type, phase, actionFrame, frameCount) {
   return Object.freeze({ x: -0.145 * decay, y: bounce * 0.04, rz: 0.12 * decay, sx: 1.08, sy: 0.89 });
 }
 
-export function pawnSlugEnemyActionPose(action = 'idle', actionFrame = 0, { vy = 0, type = 'pawn' } = {}) {
+export function pawnSlugEnemyActionPose(action = 'idle', actionFrame = 0, { vy = 0, type = 'pawn', variant = 0 } = {}) {
   const track = PAWN_SLUG_ENEMY_ACTIONS[action] || PAWN_SLUG_ENEMY_ACTIONS.idle;
   const localFrame = track.loop === false ? clampFrame(actionFrame, track.frames) : wrapFrame(actionFrame, track.frames);
   const phase = localFrame / Math.max(1, track.frames - (track.loop === false ? 1 : 0));
@@ -104,7 +112,7 @@ export function pawnSlugEnemyActionPose(action = 'idle', actionFrame = 0, { vy =
   }
   if (action === 'hurt') return hurtPose(type, phase, localFrame, track.frames);
   if (action === 'climb') return Object.freeze({ x: wave * 0.018, y: Math.abs(wave) * 0.055, rz: wave * 0.018, sx: 0.985, sy: 1.015 });
-  if (action === 'death') return deathPose(type, phase);
+  if (action === 'death') return deathPose(type, phase, variant);
   return Object.freeze({ x: 0, y: Math.max(0, wave) * 0.012, rz: pulse * 0.006, sx: 1 + pulse * 0.004, sy: 1 - pulse * 0.004 });
 }
 
@@ -116,4 +124,5 @@ export const PAWN_SLUG_ENEMY_ACTION_META = Object.freeze({
   runtimeFacings: Object.freeze(['left', 'right']),
   impactStyleByType: Object.freeze({ pawn: 'clear-backstep', knight: 'armored-twist', rook: 'heavy-compression' }),
   deathStyleByType: Object.freeze({ pawn: 'backward-collapse-grounded', knight: 'violent-tumble-grounded', rook: 'heavy-collapse-grounded' }),
+  deathVariants: 3,
 });
