@@ -1,6 +1,7 @@
 import { pawnSlugMicroAmbushPositionForSpawn } from './pawnSlugMicroAmbushes.js';
 
 export { PAWN_SLUG_WEAPON_MODELS, pawnSlugApplyWeaponModel, pawnSlugWeaponModel } from './pawnSlugWeaponModels.js';
+export { PAWN_SLUG_PICKUPS, PAWN_SLUG_PICKUPS_BY_SCENARIO, pawnSlugPickupsForScenario } from './pawnSlugPickupLayout.js';
 
 export const PAWN_SLUG_WORLD = Object.freeze({
   width: 5200,
@@ -61,15 +62,6 @@ export const PAWN_SLUG_WEAPON_UPGRADES = Object.freeze({
     freezeUpgrade({ tier: 3, code: 'Mk III', level: 8, damage: 1.22, cadence: 0.84, speed: 1.1, ammo: 1.22 }),
   ]),
 });
-
-export const PAWN_SLUG_PICKUPS = Object.freeze([
-  Object.freeze({ x: 920, type: 'machinegun' }),
-  Object.freeze({ x: 1810, type: 'grenade' }),
-  Object.freeze({ x: 2470, type: 'shotgun' }),
-  Object.freeze({ x: 3300, type: 'medkit' }),
-  Object.freeze({ x: 3500, type: 'panzerfaust' }),
-  Object.freeze({ x: 4310, type: 'grenade' }),
-]);
 
 export const PAWN_SLUG_SPAWNS = Object.freeze([
   [620, 'pawn'], [790, 'pawn'], [1080, 'pawn'], [1210, 'knight'], [1380, 'pawn'],
