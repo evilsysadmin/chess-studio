@@ -29,9 +29,20 @@ export function pawnSlugWantedCreditBonus(officer) {
   return officer?.wanted ? Math.max(0, Math.floor(Number(officer.creditBonus) || 0)) : 0;
 }
 
+export function pawnSlugWantedCombatProfile(officer) {
+  if (!officer?.wanted) return Object.freeze({ aggression: 1, cadence: 1, mobility: 1 });
+  return Object.freeze({
+    aggression: Math.max(1, Math.min(PAWN_SLUG_WANTED_META.maxAggressionMultiplier, Number(officer.aggression) || 1)),
+    cadence: Math.max(PAWN_SLUG_WANTED_META.minCadenceMultiplier, Math.min(1, Number(officer.cadence) || 1)),
+    mobility: Math.max(1, Math.min(PAWN_SLUG_WANTED_META.maxMobilityMultiplier, Number(officer.mobility) || 1)),
+  });
+}
+
 export const PAWN_SLUG_WANTED_META = Object.freeze({
   frequency: 'rare-deterministic',
   eligibleTypes: OFFICER_TYPES,
   rule: 'behavior-and-bounty-not-hp-sponge',
   maxAggressionMultiplier: 1.18,
+  minCadenceMultiplier: 0.895,
+  maxMobilityMultiplier: 1.075,
 });

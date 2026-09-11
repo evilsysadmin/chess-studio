@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { PAWN_SLUG_WANTED_META, pawnSlugWantedCreditBonus, pawnSlugWantedOfficerFor } from './pawnSlugWantedOfficers.js';
+import {
+  PAWN_SLUG_WANTED_META,
+  pawnSlugWantedCombatProfile,
+  pawnSlugWantedCreditBonus,
+  pawnSlugWantedOfficerFor,
+} from './pawnSlugWantedOfficers.js';
 
 describe('Pawn Slug wanted officers', () => {
   it('keeps officers rare, deterministic and limited to normal soldier classes', () => {
@@ -19,6 +24,21 @@ describe('Pawn Slug wanted officers', () => {
     expect(officer.aggression).toBeGreaterThan(1);
     expect(officer.aggression).toBeLessThanOrEqual(PAWN_SLUG_WANTED_META.maxAggressionMultiplier);
     expect(pawnSlugWantedCreditBonus(officer)).toBeGreaterThan(0);
+  });
+
+  it('turns wanted metadata into bounded live combat multipliers', () => {
+    const ordinary = pawnSlugWantedCombatProfile(null);
+    expect(ordinary).toEqual({ aggression: 1, cadence: 1, mobility: 1 });
+
+    const rankThree = pawnSlugWantedCombatProfile({
+      wanted: true,
+      aggression: 9,
+      cadence: 0.01,
+      mobility: 9,
+    });
+    expect(rankThree.aggression).toBe(PAWN_SLUG_WANTED_META.maxAggressionMultiplier);
+    expect(rankThree.cadence).toBe(PAWN_SLUG_WANTED_META.minCadenceMultiplier);
+    expect(rankThree.mobility).toBe(PAWN_SLUG_WANTED_META.maxMobilityMultiplier);
   });
 
   it('does not invent a bounty for ordinary enemies', () => {
