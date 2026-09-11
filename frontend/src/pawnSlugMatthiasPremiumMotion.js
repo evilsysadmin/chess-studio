@@ -12,6 +12,11 @@ export function pawnSlugJumpVisualPhase(progress = 0) {
   return 'fall';
 }
 
+export function pawnSlugLandingVisualStrength(airtime = 0) {
+  const seconds = Math.max(0, Number(airtime) || 0);
+  return Math.max(0.72, Math.min(1.25, 0.72 + seconds * 0.38));
+}
+
 function applyWeaponRecoil(pose, weapon, time) {
   if (weapon === 'machinegun') {
     const chatter = 0.5 + Math.sin((Number(time) || 0) * 58) * 0.5;
@@ -50,6 +55,7 @@ export function pawnSlugMatthiasPremiumPose({
   pistolPhase = null,
   previousAirborne = false,
   landedAt = Number.NEGATIVE_INFINITY,
+  landingStrength = 1,
   jumpFrame = 0,
   jumpFrames = 9,
 } = {}) {
@@ -58,6 +64,7 @@ export function pawnSlugMatthiasPremiumPose({
   const jumpPhase = airborne ? pawnSlugJumpVisualPhase(jumpProgress) : 'ground';
   const landingAge = Math.max(0, safeTime - (Number(landedAt) || 0));
   const landing = previousAirborne && !airborne ? 1 : clamp01(1 - landingAge / 0.14);
+  const impact = Math.max(0.72, Math.min(1.25, Number(landingStrength) || 1));
 
   let sx = 1;
   let sy = 1;
@@ -90,7 +97,7 @@ export function pawnSlugMatthiasPremiumPose({
     sy *= 0.985;
   }
   if (landing > 0) {
-    const pulse = Math.sin(landing * Math.PI) * landing;
+    const pulse = Math.sin(landing * Math.PI) * landing * impact;
     sx *= 1 + pulse * 0.06;
     sy *= 1 - pulse * 0.085;
     y -= pulse * 0.035;
@@ -134,6 +141,7 @@ export function pawnSlugMatthiasPremiumPose({
     y,
     rz,
     landing,
+    landingStrength: impact,
     jumpPhase,
     pistolPhase: pistolPhase?.phase || 'idle',
     weaponRecoil,
@@ -144,7 +152,13 @@ export function applyPawnSlugMatthiasPremiumMotion(sprite, state = {}) {
   if (!sprite) return null;
   const time = Number(state.time) || 0;
   const previousAirborne = Boolean(sprite.userData.premiumWasAirborne);
-  if (previousAirborne && !state.airborne) sprite.userData.premiumLandedAt = time;
+  if (!previousAirborne && state.airborne) sprite.userData.premiumAirborneStartedAt = time;
+  if (previousAirborne && !state.airborne) {
+    sprite.userData.premiumLandedAt = time;
+    const startedAt = Number(sprite.userData.premiumAirborneStartedAt);
+    const airtime = Number.isFinite(startedAt) ? Math.max(0, time - startedAt) : 0;
+    sprite.userData.premiumLandingStrength = pawnSlugLandingVisualStrength(airtime);
+  }
   const animation = sprite.userData.animation || {};
   const weapon = animation.weapon || 'pistol';
 
@@ -164,6 +178,7 @@ export function applyPawnSlugMatthiasPremiumMotion(sprite, state = {}) {
     pistolPhase,
     previousAirborne,
     landedAt: sprite.userData.premiumLandedAt,
+    landingStrength: sprite.userData.premiumLandingStrength,
     jumpFrame: animation.frameIndex,
   });
   sprite.userData.premiumWasAirborne = Boolean(state.airborne);

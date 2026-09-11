@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   pawnSlugJumpVisualPhase,
+  pawnSlugLandingVisualStrength,
   pawnSlugMatthiasPremiumPose,
 } from './pawnSlugMatthiasPremiumMotion.js';
 
@@ -44,6 +45,31 @@ describe('Pawn Slug Matthias premium motion', () => {
     expect(fall.sy).toBeLessThan(apex.sy);
     expect(takeoff.rz).toBeLessThan(apex.rz);
     expect(fall.rz).toBeGreaterThan(apex.rz);
+  });
+
+  it('scales landing squash by real airtime with restrained caps', () => {
+    const shortStrength = pawnSlugLandingVisualStrength(0.18);
+    const normalStrength = pawnSlugLandingVisualStrength(0.76);
+    const longStrength = pawnSlugLandingVisualStrength(2.4);
+    expect(shortStrength).toBeLessThan(normalStrength);
+    expect(normalStrength).toBeCloseTo(1.009, 2);
+    expect(longStrength).toBe(1.25);
+
+    const shortLanding = pawnSlugMatthiasPremiumPose({
+      time: 3.07,
+      airborne: false,
+      landedAt: 3,
+      landingStrength: shortStrength,
+    });
+    const hardLanding = pawnSlugMatthiasPremiumPose({
+      time: 3.07,
+      airborne: false,
+      landedAt: 3,
+      landingStrength: longStrength,
+    });
+    expect(hardLanding.sx).toBeGreaterThan(shortLanding.sx);
+    expect(hardLanding.sy).toBeLessThan(shortLanding.sy);
+    expect(hardLanding.y).toBeLessThan(shortLanding.y);
   });
 
   it('adds a short landing squash after leaving the air', () => {
