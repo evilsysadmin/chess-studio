@@ -41,6 +41,13 @@ function ensureAudio() {
   return ctx;
 }
 
+export function pawnSlugSoundPitchVariation(unit = 0.5, { enemy = false, width = 0.035 } = {}) {
+  const t = Math.max(0, Math.min(1, Number(unit) || 0));
+  const spread = Math.max(0, Math.min(0.08, Number(width) || 0));
+  const center = enemy ? 0.9 : 1;
+  return center * (1 - spread + t * spread * 2);
+}
+
 function tone({ freq, endFreq = freq, duration = 0.08, gain = 0.12, type = 'triangle', delay = 0, filter = 0 }) {
   const audio = ensureAudio();
   if (!audio || !master || profileVolume() <= 0.001) return;
@@ -90,26 +97,26 @@ function noise({ duration = 0.08, gain = 0.12, cutoff = 2200, delay = 0 }) {
   source.start(audio.currentTime + 0.004 + delay);
 }
 
-function playWeaponMechanic(mechanic, scale) {
+function playWeaponMechanic(mechanic, scale, pitch = 1) {
   if (mechanic === 'casing') {
-    tone({ freq: 1780, endFreq: 1220, duration: 0.035, gain: 0.035 * scale, type: 'square', delay: 0.045 });
-    tone({ freq: 980, endFreq: 780, duration: 0.025, gain: 0.022 * scale, type: 'sine', delay: 0.072 });
+    tone({ freq: 1780 * pitch, endFreq: 1220 * pitch, duration: 0.035, gain: 0.035 * scale, type: 'square', delay: 0.045 });
+    tone({ freq: 980 * pitch, endFreq: 780 * pitch, duration: 0.025, gain: 0.022 * scale, type: 'sine', delay: 0.072 });
     return;
   }
   if (mechanic === 'rattle') {
-    tone({ freq: 720, endFreq: 510, duration: 0.028, gain: 0.025 * scale, type: 'square', delay: 0.022 });
-    tone({ freq: 610, endFreq: 430, duration: 0.024, gain: 0.022 * scale, type: 'square', delay: 0.048 });
+    tone({ freq: 720 * pitch, endFreq: 510 * pitch, duration: 0.028, gain: 0.025 * scale, type: 'square', delay: 0.022 });
+    tone({ freq: 610 * pitch, endFreq: 430 * pitch, duration: 0.024, gain: 0.022 * scale, type: 'square', delay: 0.048 });
     return;
   }
   if (mechanic === 'pump') {
     noise({ duration: 0.038, gain: 0.035 * scale, cutoff: 1800, delay: 0.11 });
-    tone({ freq: 420, endFreq: 250, duration: 0.055, gain: 0.045 * scale, type: 'square', delay: 0.118 });
-    tone({ freq: 260, endFreq: 360, duration: 0.045, gain: 0.04 * scale, type: 'square', delay: 0.182 });
+    tone({ freq: 420 * pitch, endFreq: 250 * pitch, duration: 0.055, gain: 0.045 * scale, type: 'square', delay: 0.118 });
+    tone({ freq: 260 * pitch, endFreq: 360 * pitch, duration: 0.045, gain: 0.04 * scale, type: 'square', delay: 0.182 });
     return;
   }
   if (mechanic === 'tube') {
-    tone({ freq: 210, endFreq: 145, duration: 0.12, gain: 0.045 * scale, type: 'triangle', delay: 0.16 });
-    tone({ freq: 640, endFreq: 390, duration: 0.06, gain: 0.025 * scale, type: 'sine', delay: 0.19 });
+    tone({ freq: 210 * pitch, endFreq: 145 * pitch, duration: 0.12, gain: 0.045 * scale, type: 'triangle', delay: 0.16 });
+    tone({ freq: 640 * pitch, endFreq: 390 * pitch, duration: 0.06, gain: 0.025 * scale, type: 'sine', delay: 0.19 });
   }
 }
 
@@ -124,13 +131,13 @@ export function pawnSlugImpactSoundProfile(type = 'pawn') {
 export function playPawnSlugWeaponSfx(weapon = 'pistol', { enemy = false } = {}) {
   const profile = pawnSlugWeaponSoundProfile(weapon);
   const scale = enemy ? 0.48 : 0.72;
-  const pitch = enemy ? 0.9 : 1;
+  const pitch = pawnSlugSoundPitchVariation(Math.random(), { enemy, width: weapon === 'machinegun' ? 0.028 : 0.035 });
   noise({ duration: profile.noise, gain: 0.11 * scale, cutoff: weapon === 'panzerfaust' ? 900 : 3100 });
   tone({ freq: profile.body * pitch, endFreq: profile.body * 0.62 * pitch, duration: profile.tail, gain: 0.18 * scale, type: 'sawtooth' });
   tone({ freq: profile.crack * pitch, endFreq: profile.crack * 0.72 * pitch, duration: Math.min(0.055, profile.tail), gain: 0.09 * scale, type: 'square' });
   if (weapon === 'shotgun') noise({ duration: 0.055, gain: 0.11 * scale, cutoff: 5200, delay: 0.018 });
-  if (weapon === 'panzerfaust') tone({ freq: 38, endFreq: 28, duration: 0.28, gain: 0.17 * scale, type: 'triangle', delay: 0.02 });
-  if (!enemy) playWeaponMechanic(profile.mechanic, scale);
+  if (weapon === 'panzerfaust') tone({ freq: 38 * pitch, endFreq: 28 * pitch, duration: 0.28, gain: 0.17 * scale, type: 'triangle', delay: 0.02 });
+  if (!enemy) playWeaponMechanic(profile.mechanic, scale, pitch);
 }
 
 export function playPawnSlugEnemyImpactSfx(type = 'pawn') {
@@ -138,9 +145,10 @@ export function playPawnSlugEnemyImpactSfx(type = 'pawn') {
   if (now - lastImpactAt < 24) return;
   lastImpactAt = now;
   const profile = pawnSlugImpactSoundProfile(type);
+  const pitch = pawnSlugSoundPitchVariation(Math.random(), { width: 0.045 });
   noise({ duration: profile.noise, gain: type === 'rook' || type === 'boss' ? 0.115 : 0.085, cutoff: type === 'pawn' ? 1250 : 2600 });
-  tone({ freq: profile.body, endFreq: profile.body * 0.7, duration: 0.075, gain: 0.12, type: 'triangle' });
-  if (profile.ring) tone({ freq: profile.ring, endFreq: profile.ring * 0.76, duration: type === 'rook' ? 0.12 : 0.075, gain: 0.055, type: 'sine' });
+  tone({ freq: profile.body * pitch, endFreq: profile.body * 0.7 * pitch, duration: 0.075, gain: 0.12, type: 'triangle' });
+  if (profile.ring) tone({ freq: profile.ring * pitch, endFreq: profile.ring * 0.76 * pitch, duration: type === 'rook' ? 0.12 : 0.075, gain: 0.055, type: 'sine' });
 }
 
 export function playPawnSlugEnemyKoSfx(type = 'pawn') {
@@ -149,11 +157,12 @@ export function playPawnSlugEnemyKoSfx(type = 'pawn') {
   lastKoAt = now;
   const heavy = type === 'rook' || type === 'boss';
   const armored = type === 'knight' || type === 'rook' || type === 'bishop' || type === 'boss';
+  const pitch = pawnSlugSoundPitchVariation(Math.random(), { width: 0.04 });
   noise({ duration: heavy ? 0.14 : 0.085, gain: heavy ? 0.14 : 0.09, cutoff: heavy ? 1150 : 1900 });
-  tone({ freq: heavy ? 68 : 104, endFreq: heavy ? 42 : 64, duration: heavy ? 0.16 : 0.1, gain: heavy ? 0.16 : 0.11, type: 'triangle' });
+  tone({ freq: (heavy ? 68 : 104) * pitch, endFreq: (heavy ? 42 : 64) * pitch, duration: heavy ? 0.16 : 0.1, gain: heavy ? 0.16 : 0.11, type: 'triangle' });
   if (armored) {
-    tone({ freq: type === 'boss' ? 360 : 620, endFreq: type === 'boss' ? 190 : 410, duration: heavy ? 0.18 : 0.11, gain: 0.07, type: 'square', delay: 0.012 });
-    tone({ freq: type === 'rook' ? 980 : 1260, endFreq: 720, duration: 0.055, gain: 0.045, type: 'sine', delay: 0.028 });
+    tone({ freq: (type === 'boss' ? 360 : 620) * pitch, endFreq: (type === 'boss' ? 190 : 410) * pitch, duration: heavy ? 0.18 : 0.11, gain: 0.07, type: 'square', delay: 0.012 });
+    tone({ freq: (type === 'rook' ? 980 : 1260) * pitch, endFreq: 720 * pitch, duration: 0.055, gain: 0.045, type: 'sine', delay: 0.028 });
   }
 }
 
@@ -161,9 +170,10 @@ export function playPawnSlugPlayerHitSfx() {
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
   if (now - lastPlayerHitAt < 90) return;
   lastPlayerHitAt = now;
+  const pitch = pawnSlugSoundPitchVariation(Math.random(), { width: 0.03 });
   noise({ duration: 0.07, gain: 0.105, cutoff: 1500 });
-  tone({ freq: 96, endFreq: 58, duration: 0.105, gain: 0.13, type: 'triangle' });
-  tone({ freq: 1180, endFreq: 720, duration: 0.065, gain: 0.055, type: 'square', delay: 0.01 });
+  tone({ freq: 96 * pitch, endFreq: 58 * pitch, duration: 0.105, gain: 0.13, type: 'triangle' });
+  tone({ freq: 1180 * pitch, endFreq: 720 * pitch, duration: 0.065, gain: 0.055, type: 'square', delay: 0.01 });
 }
 
 export function destroyPawnSlugPremiumSfx() {
