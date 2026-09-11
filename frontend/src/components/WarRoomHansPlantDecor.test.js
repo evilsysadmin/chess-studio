@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
+  WAR_ROOM_DUST_MOTES_VERSION,
   WAR_ROOM_WINDOW_CORNER_POSE_VERSION,
+  ensureWarRoomDustMotes,
   ensureWarRoomHansPlant,
+  warRoomDustMoteBudget,
 } from './WarRoomHansPlantDecor.js';
 
 function dispose(root) {
@@ -181,6 +184,28 @@ describe('War Room Hans plant placement', () => {
     expect(plant.position.x).toBeGreaterThan(0);
     expect(plant.position.z).toBeCloseTo(rightPainting.position.z, 5);
 
+    dispose(root);
+  });
+});
+
+describe('War Room dust motes', () => {
+  it('uses a hard tiny budget and disables motion for reduced-motion users', () => {
+    expect(warRoomDustMoteBudget({ coarsePointer: false, reducedMotion: false })).toBe(18);
+    expect(warRoomDustMoteBudget({ coarsePointer: true, reducedMotion: false })).toBe(6);
+    expect(warRoomDustMoteBudget({ coarsePointer: false, reducedMotion: true })).toBe(0);
+  });
+
+  it('installs one restrained point field and never duplicates it', () => {
+    const root = new THREE.Group();
+    const motes = ensureWarRoomDustMotes(root, { coarsePointer: false, reducedMotion: false });
+    expect(motes).toBeInstanceOf(THREE.Points);
+    expect(motes.name).toBe('war-room-dust-motes');
+    expect(motes.userData.warRoomDustMotes).toBe(WAR_ROOM_DUST_MOTES_VERSION);
+    expect(motes.userData.warRoomDustMoteBudget).toBe(18);
+    expect(motes.geometry.getAttribute('position').count).toBe(18);
+    expect(motes.material.opacity).toBeLessThanOrEqual(0.16);
+    expect(ensureWarRoomDustMotes(root, { coarsePointer: false, reducedMotion: false })).toBe(motes);
+    expect(root.children.filter((child) => child.name === 'war-room-dust-motes')).toHaveLength(1);
     dispose(root);
   });
 });
