@@ -128,12 +128,20 @@ async function open3DFromAppearance(page) {
   await expect(board3d).toBeVisible({ timeout: 30_000 });
 }
 
-async function switchWarRoomTo2D(page) {
-  const appearanceButton = page.locator('.board3d-customize');
-  await expect(appearanceButton).toBeVisible({ timeout: 30_000 });
-  await appearanceButton.click();
+async function openWarRoomAppearance(page) {
+  const utilityButton = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  await expect(utilityButton).toBeVisible({ timeout: 30_000 });
+  await utilityButton.click();
+  const appearanceItem = page.getByRole('menuitem', { name: 'Apariencia', exact: true });
+  await expect(appearanceItem).toBeVisible();
+  await appearanceItem.click();
   const dialog = page.getByRole('dialog', { name: 'Ajustes' });
   await expect(dialog).toBeVisible();
+  return dialog;
+}
+
+async function switchWarRoomTo2D(page) {
+  const dialog = await openWarRoomAppearance(page);
   await dialog.getByRole('radio', { name: /2D$/ }).click();
   const close = dialog.getByRole('button', { name: 'Cerrar', exact: true });
   await expect(close).toBeVisible();
@@ -240,13 +248,15 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   const focusButton = page.getByRole('button', { name: 'Focus', exact: true });
   const abandonButton = page.getByRole('button', { name: 'Abandonar partida', exact: true });
   const appearanceButton = page.locator('.board3d-customize');
+  const utilityButton = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
   const humanRail = page.locator('.game-board-stack-3d .game-player-rail.is-human');
   const musicRail = page.locator('.game-side-column-3d .game-side-music .music-deck-collapsed');
   const notationDisclosure = page.locator('.game-side-column-3d .game-notation-disclosure');
   await expect(matthiasCard).toBeVisible();
   await expect(focusButton).toBeVisible();
   await expect(abandonButton).toBeVisible();
-  await expect(appearanceButton).toBeVisible();
+  await expect(appearanceButton).toBeHidden();
+  await expect(utilityButton).toBeVisible();
   await expect(humanRail).toBeVisible();
   await expect(musicRail).toBeVisible();
   await expect(notationDisclosure).toBeVisible();
@@ -254,14 +264,14 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   const matthiasRect = await matthiasCard.boundingBox();
   const boardRect = await board3d.boundingBox();
   const focusRect = await focusButton.boundingBox();
-  const appearanceRect = await appearanceButton.boundingBox();
+  const utilityRect = await utilityButton.boundingBox();
   const humanRect = await humanRail.boundingBox();
   const musicRect = await musicRail.boundingBox();
   const notationRect = await notationDisclosure.boundingBox();
   expect(matthiasRect).not.toBeNull();
   expect(boardRect).not.toBeNull();
   expect(focusRect).not.toBeNull();
-  expect(appearanceRect).not.toBeNull();
+  expect(utilityRect).not.toBeNull();
   expect(humanRect).not.toBeNull();
   expect(musicRect).not.toBeNull();
   expect(notationRect).not.toBeNull();
@@ -272,7 +282,7 @@ test('War Room · Android selecciona una pieza en pointerdown y muestra destinos
   expect(Math.abs(musicRect.y - notationRect.y)).toBeLessThanOrEqual(2);
   expect(musicRect.x).toBeLessThan(notationRect.x);
   expect(focusRect.y + focusRect.height).toBeLessThanOrEqual(boardRect.y + 2);
-  expect(appearanceRect.y).toBeLessThan(boardRect.y + 90);
+  expect(utilityRect.y).toBeLessThan(boardRect.y + 90);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
 
   expect(await canvas.evaluate((element) => getComputedStyle(element).touchAction)).toBe('none');
