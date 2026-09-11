@@ -1,7 +1,6 @@
-import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
-import { setProfileStorageItem } from './profileKeys.js';
+import { STORAGE_LOCAL, readJsonStorage, setStorageItem } from './safeStorage.js';
 
-const KEY = 'chess-study-narrative-call-ledger-v1';
+export const NARRATIVE_CALL_LEDGER_KEY = 'chess-study-narrative-call-ledger-v1';
 const MAX_ROWS = 80;
 
 function cleanText(value, fallback, max = 48) {
@@ -15,7 +14,7 @@ function cleanSize(value) {
 }
 
 export function loadNarrativeCallLedger() {
-  const rows = readJsonStorage(STORAGE_LOCAL, KEY, { fallback: [] });
+  const rows = readJsonStorage(STORAGE_LOCAL, NARRATIVE_CALL_LEDGER_KEY, { fallback: [] });
   return Array.isArray(rows)
     ? rows.filter((row) => row && typeof row === 'object').slice(-MAX_ROWS)
     : [];
@@ -40,10 +39,10 @@ export function recordNarrativeCall({
     ok: Boolean(ok),
   };
   const next = [...loadNarrativeCallLedger(), row].slice(-MAX_ROWS);
-  setProfileStorageItem(KEY, JSON.stringify(next));
+  setStorageItem(STORAGE_LOCAL, NARRATIVE_CALL_LEDGER_KEY, JSON.stringify(next));
   return row;
 }
 
 export function clearNarrativeCallLedger() {
-  setProfileStorageItem(KEY, '[]');
+  setStorageItem(STORAGE_LOCAL, NARRATIVE_CALL_LEDGER_KEY, '[]');
 }
