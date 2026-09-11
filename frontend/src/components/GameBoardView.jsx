@@ -102,8 +102,6 @@ export default function GameBoardView({
     activeBoardBubble,
     activeMatthiasKey,
     activeMatthiasMessage,
-    matthiasAnger,
-    portraitReaction,
   } = useMatthiasBoardReactions({
     game,
     humanColor,
@@ -217,14 +215,9 @@ export default function GameBoardView({
           {!focusActive && isThreeD && (!zenMode || !compactViewport) && (
             <GameWarRoomCommandColumn
               game={game}
-              rivalryRecord={rivalryRecord}
               status={status}
               board={board}
-              side={side}
               compactViewport={compactViewport}
-              activeMatthiasMessage={activeMatthiasMessage}
-              matthiasAnger={matthiasAnger}
-              portraitReaction={portraitReaction}
               zenMode={zenMode}
               controls={controls}
             />
