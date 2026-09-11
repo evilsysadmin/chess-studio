@@ -1,3 +1,5 @@
+import { pawnSlugMicroAmbushPositionForSpawn } from './pawnSlugMicroAmbushes.js';
+
 export { PAWN_SLUG_WEAPON_MODELS, pawnSlugApplyWeaponModel, pawnSlugWeaponModel } from './pawnSlugWeaponModels.js';
 
 export const PAWN_SLUG_WORLD = Object.freeze({
@@ -75,7 +77,9 @@ export const PAWN_SLUG_SPAWNS = Object.freeze([
   [2380, 'bishop'], [2590, 'rook'], [2730, 'pawn'], [2890, 'knight'], [3070, 'pawn'], [3210, 'pawn'],
   [3430, 'rook'], [3560, 'knight'], [3740, 'bishop'], [3950, 'pawn'], [4070, 'knight'],
   [4190, 'rook'], [4380, 'pawn'],
-].map(([x, type], index) => Object.freeze({ id: `${type}-${index}`, x, type })));
+]
+  .map(([x, type], index) => Object.freeze({ id: `${type}-${index}`, x, type }))
+  .map((spawn) => pawnSlugMicroAmbushPositionForSpawn(spawn)));
 
 export const PAWN_SLUG_ENEMIES = Object.freeze({
   pawn: Object.freeze({ hp: 34, speed: 54, score: 100, xp: 28, width: 38, height: 62 }),
