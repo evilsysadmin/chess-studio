@@ -30,6 +30,18 @@ export function pawnSlugEnemyCanFire(weapon = 'pistol', distance = Infinity, rol
   return targetDistance < effectiveRange;
 }
 
+export function pawnSlugEnemyPrefireStep(weapon = 'pistol', { remaining = 0, ready = false, dt = 0 } = {}) {
+  const telegraph = Math.max(0, Number(pawnSlugEnemyFireProfile(weapon).telegraph) || 0);
+  if (!ready) return freeze({ phase: 'idle', remaining: 0, progress: 0 });
+  if (telegraph <= 0) return freeze({ phase: 'fire', remaining: 0, progress: 1 });
+
+  const elapsed = Math.max(0, Number(dt) || 0);
+  const current = Math.max(0, Number(remaining) || 0);
+  const next = Math.max(0, (current > 0 ? current : telegraph) - elapsed);
+  if (next <= 0) return freeze({ phase: 'fire', remaining: 0, progress: 1 });
+  return freeze({ phase: 'telegraph', remaining: next, progress: 1 - next / telegraph });
+}
+
 export function pawnSlugEnemyFireCooldown(weapon = 'pistol', unit = 0.5) {
   const profile = pawnSlugEnemyFireProfile(weapon);
   const t = Math.max(0, Math.min(1, Number(unit) || 0));
