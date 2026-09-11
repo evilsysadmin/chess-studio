@@ -43,8 +43,11 @@ async function switchTo3D(page) {
 }
 
 async function switchTo2D(page) {
-  const appearance = page.locator('.board3d-customize');
-  await expect(appearance).toBeVisible({ timeout: 30_000 });
+  const utilityButton = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  await expect(utilityButton).toBeVisible({ timeout: 30_000 });
+  await utilityButton.click();
+  const appearance = page.getByRole('menuitem', { name: 'Apariencia', exact: true });
+  await expect(appearance).toBeVisible();
   await appearance.click();
   const dialog = page.getByRole('dialog', { name: 'Ajustes' });
   await expect(dialog).toBeVisible();
