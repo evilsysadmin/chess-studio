@@ -5,9 +5,10 @@ import { matthiasTimeScene } from './matthiasTime.js';
 import { buildMatthiasDeskArtifacts } from './matthiasDossier.js';
 import { buildMatthiasEpisodicHomeVisit, isMatthiasEpisodicVisitKind } from './matthiasEpisodeHome.js';
 import { matthiasSessionLabel } from './matthiasSessionContext.js';
+import { MATTHIAS_DISCOVERY_DEFAULT_COOLDOWN_MS, shouldSurfaceMatthias } from './matthiasDiscovery.js';
 
 export const MATTHIAS_HOME_LAST_SHOWN_KEY = 'chess-study-matthias-home-last-shown-v1';
-export const MATTHIAS_HOME_COOLDOWN_MS = 8 * 60 * 60 * 1000;
+export const MATTHIAS_HOME_COOLDOWN_MS = MATTHIAS_DISCOVERY_DEFAULT_COOLDOWN_MS;
 export const MATTHIAS_ONBOARDED_KEY = 'matthias.onboarded';
 export const MATTHIAS_ONBOARDED_VERSION = '2';
 
@@ -287,26 +288,17 @@ export function buildMatthiasHomeCardModel({ visit = null, memory = null, sessio
 
 
 export function shouldShowMatthiasHome({ hasOpenOverlay = false, hasPriorityAction = false, sessionSeen = false, lastShownAt = null, now = Date.now(), randomValue = Math.random(), relationshipTier = 'newcomer', visitKind = 'generic' } = {}) {
-  // Matthias puede estar presente como avatar, pero se calla cuando Home ya
-  // tiene una acción prioritaria (especialmente Continuar partida) o un overlay.
-  if (hasOpenOverlay || hasPriorityAction || sessionSeen) return false;
-  const last = Number(lastShownAt || 0);
-  if (last > 0 && now - last < MATTHIAS_HOME_COOLDOWN_MS) return false;
-
-  // A medida que conoce al jugador deja de interrumpir por banalidades. Los
-  // objetivos/hitos reales conservan algo más de margen porque sí aportan
-  // continuidad; la charla genérica se vuelve deliberadamente más escasa.
-  // Un callback episódico cambia el contenido de una visita, no compra permiso
-  // para aparecer más a menudo: usa exactamente el umbral genérico del perfil.
   const meaningful = visitKind !== 'generic' && !isMatthiasEpisodicVisitKind(visitKind);
-  const genericThreshold = {
-    newcomer: 0.40,
-    acquainted: 0.32,
-    regular: 0.24,
-    veteran: 0.18,
-  }[relationshipTier] ?? 0.30;
-  const threshold = meaningful ? 0.42 : genericThreshold;
-  return Number(randomValue) < threshold;
+  return shouldSurfaceMatthias({
+    blocked: hasOpenOverlay || hasPriorityAction,
+    sessionSeen,
+    lastShownAt,
+    now,
+    cooldownMs: MATTHIAS_HOME_COOLDOWN_MS,
+    randomValue,
+    relationshipTier,
+    relevance: meaningful ? 'meaningful' : 'generic',
+  });
 }
 
 export { matthiasHomeSessionSeen } from './matthiasSession.js';
