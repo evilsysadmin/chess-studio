@@ -35,4 +35,18 @@ describe('Pawn Slug Matthias premium motion', () => {
     expect(hurt.sy).toBeLessThan(firing.sy);
     expect(Math.abs(hurt.rz)).toBeGreaterThan(Math.abs(firing.rz));
   });
+
+  it('gives automatic, shotgun and launcher fire visibly different recoil signatures', () => {
+    const machinegun = pawnSlugMatthiasPremiumPose({ time: 0.021, firing: true, weapon: 'machinegun' });
+    const shotgun = pawnSlugMatthiasPremiumPose({ time: 0.021, firing: true, weapon: 'shotgun' });
+    const panzerfaust = pawnSlugMatthiasPremiumPose({ time: 0.021, firing: true, weapon: 'panzerfaust' });
+
+    expect(machinegun.weaponRecoil).toBe('machinegun-chatter');
+    expect(shotgun.weaponRecoil).toBe('shotgun-kick');
+    expect(panzerfaust.weaponRecoil).toBe('panzerfaust-brace');
+    expect(Math.abs(machinegun.rz)).toBeLessThan(Math.abs(shotgun.rz));
+    expect(Math.abs(shotgun.rz)).toBeLessThan(Math.abs(panzerfaust.rz));
+    expect(panzerfaust.sy).toBeLessThan(shotgun.sy);
+    expect(shotgun.sy).toBeLessThan(machinegun.sy);
+  });
 });

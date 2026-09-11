@@ -4,6 +4,34 @@ function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
 }
 
+function applyWeaponRecoil(pose, weapon, time) {
+  if (weapon === 'machinegun') {
+    const chatter = 0.5 + Math.sin((Number(time) || 0) * 58) * 0.5;
+    pose.sx *= 1.014 + chatter * 0.012;
+    pose.sy *= 0.994;
+    pose.y += 0.004 + chatter * 0.005;
+    pose.rz -= 0.015 + chatter * 0.014;
+    return 'machinegun-chatter';
+  }
+  if (weapon === 'shotgun') {
+    pose.sx *= 1.05;
+    pose.sy *= 0.972;
+    pose.y += 0.012;
+    pose.rz += 0.052;
+    return 'shotgun-kick';
+  }
+  if (weapon === 'panzerfaust') {
+    pose.sx *= 1.072;
+    pose.sy *= 0.948;
+    pose.y -= 0.012;
+    pose.rz += 0.078;
+    return 'panzerfaust-brace';
+  }
+  pose.sx *= 1.018;
+  pose.rz -= 0.012;
+  return 'generic';
+}
+
 export function pawnSlugMatthiasPremiumPose({
   time = 0,
   airborne = false,
@@ -26,6 +54,7 @@ export function pawnSlugMatthiasPremiumPose({
   let sy = 1;
   let y = 0;
   let rz = 0;
+  let weaponRecoil = 'idle';
 
   if (airborne) {
     const ascent = jumpProgress < 0.48;
@@ -45,6 +74,7 @@ export function pawnSlugMatthiasPremiumPose({
   }
 
   if (weapon === 'pistol' && pistolPhase?.active) {
+    weaponRecoil = `pistol-${pistolPhase.phase}`;
     if (pistolPhase.phase === 'raise') {
       const p = clamp01(pistolPhase.progress);
       y += 0.018 * p;
@@ -63,8 +93,9 @@ export function pawnSlugMatthiasPremiumPose({
       sx *= 1 + 0.01 * settle;
     }
   } else if (firing) {
-    sx *= 1.018;
-    rz -= 0.012;
+    const pose = { sx, sy, y, rz };
+    weaponRecoil = applyWeaponRecoil(pose, weapon, safeTime);
+    ({ sx, sy, y, rz } = pose);
   }
 
   if (hurt) {
@@ -74,7 +105,15 @@ export function pawnSlugMatthiasPremiumPose({
     y += 0.025;
   }
 
-  return Object.freeze({ sx, sy, y, rz, landing, pistolPhase: pistolPhase?.phase || 'idle' });
+  return Object.freeze({
+    sx,
+    sy,
+    y,
+    rz,
+    landing,
+    pistolPhase: pistolPhase?.phase || 'idle',
+    weaponRecoil,
+  });
 }
 
 export function applyPawnSlugMatthiasPremiumMotion(sprite, state = {}) {
