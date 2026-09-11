@@ -190,12 +190,6 @@
     min-height: 138px;
     max-height: 176px;
   }
-
-  .game-screen .board3d-fixed-camera-note {
-    top: .32rem;
-    left: .36rem;
-    font-size: .44rem;
-  }
 }
 
 /* Very short browser landscape (address/nav bars still visible): preserve the
