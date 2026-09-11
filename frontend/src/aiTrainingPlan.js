@@ -1,4 +1,5 @@
 import { STORAGE_LOCAL, readJsonStorage, writeJsonStorage } from './safeStorage.js';
+import { cooldownStateFromTimestamp } from './cooldownClock.js';
 
 export const AI_TRAINING_PLAN_CACHE_KEY = 'chess-study-ai-training-plan-v1';
 const TRAINING_PLAN_SCHEMA = 1;
@@ -11,7 +12,6 @@ function normalizeIdentityScope(identityScope) {
 }
 
 function stableHash(text) {
-  // FNV-1a de 32 bits: no es seguridad, sólo una clave compacta y estable de caché.
   let hash = 0x811c9dc5;
   for (let index = 0; index < text.length; index += 1) {
     hash ^= text.charCodeAt(index);
@@ -60,14 +60,11 @@ export function saveCachedTrainingPlan(generationKey, text, identityScope) {
 export function trainingPlanManualRefreshState({ now = Date.now(), identityScope = null, bypassCooldown = false } = {}) {
   if (bypassCooldown) return { allowed: true, retryAfterMs: 0, nextAllowedAt: null };
   const cached = readTrainingPlanCache(identityScope);
-  const last = Number(cached?.manualRequestedAt);
-  if (!Number.isFinite(last) || last <= 0) return { allowed: true, retryAfterMs: 0, nextAllowedAt: null };
-  const remaining = Math.max(0, TRAINING_PLAN_MANUAL_COOLDOWN_MS - (Number(now) - last));
-  return {
-    allowed: remaining <= 0,
-    retryAfterMs: remaining,
-    nextAllowedAt: remaining > 0 ? last + TRAINING_PLAN_MANUAL_COOLDOWN_MS : null,
-  };
+  return cooldownStateFromTimestamp({
+    now,
+    last: cached?.manualRequestedAt,
+    cooldownMs: TRAINING_PLAN_MANUAL_COOLDOWN_MS,
+  });
 }
 
 export function shouldCommitManualTrainingPlanRefresh(requestKind, text) {
