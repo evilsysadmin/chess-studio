@@ -3,12 +3,16 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
-const VIEWPORTS = [
-  { label:'desktop-1440x900', width:1440, height:900 },
-  { label:'mobile-390x844', width:390, height:844 },
+const CAPTURES = [
+  { label:'desktop-1440x900', width:1440, height:900, reducedMotion:'no-preference' },
+  { label:'android-360x800', width:360, height:800, reducedMotion:'no-preference' },
+  { label:'android-390x844', width:390, height:844, reducedMotion:'no-preference' },
+  { label:'android-430x932', width:430, height:932, reducedMotion:'no-preference' },
+  { label:'android-390x844-reduced-motion', width:390, height:844, reducedMotion:'reduce' },
 ];
 
-async function openCanonicalHome(page) {
+async function openCanonicalHome(page, { reducedMotion = 'no-preference' } = {}) {
+  await page.emulateMedia({ reducedMotion });
   await mockApi(page, {
     profileSeed: {
       'matthias.onboarded': '2',
@@ -54,6 +58,7 @@ async function captureHealth(page, label) {
     return {
       label:captureLabel,
       viewport:{ width:window.innerWidth, height:window.innerHeight, dpr:window.devicePixelRatio },
+      reducedMotion:window.matchMedia('(prefers-reduced-motion: reduce)').matches,
       document:{
         clientWidth:root.clientWidth,
         scrollWidth:root.scrollWidth,
@@ -68,32 +73,33 @@ async function captureHealth(page, label) {
   }, label);
 }
 
-test('App · captura visual canónica desktop + Android sin overflow horizontal', async ({ page }) => {
-  test.setTimeout(90_000);
+test('App · captura visual canónica desktop + matriz Android sin overflow horizontal', async ({ page }) => {
+  test.setTimeout(120_000);
   await mkdir(ARTIFACT_DIR, { recursive:true });
 
   const captures = [];
-  for (const viewport of VIEWPORTS) {
-    await page.setViewportSize({ width:viewport.width, height:viewport.height });
-    await openCanonicalHome(page);
+  for (const capture of CAPTURES) {
+    await page.setViewportSize({ width:capture.width, height:capture.height });
+    await openCanonicalHome(page, { reducedMotion:capture.reducedMotion });
     await settle(page);
 
-    const health = await captureHealth(page, viewport.label);
+    const health = await captureHealth(page, capture.label);
     captures.push(health);
     await page.screenshot({
-      path:`${ARTIFACT_DIR}/home-${viewport.label}.png`,
+      path:`${ARTIFACT_DIR}/home-${capture.label}.png`,
       fullPage:false,
       animations:'disabled',
     });
 
     expect(health.horizontalOverflow).toBe(false);
+    expect(health.reducedMotion).toBe(capture.reducedMotion === 'reduce');
     await page.context().clearCookies();
     await page.goto('about:blank');
   }
 
   await writeFile(
     `${ARTIFACT_DIR}/visual-health.json`,
-    `${JSON.stringify({ schema:1, captures }, null, 2)}\n`,
+    `${JSON.stringify({ schema:2, captures }, null, 2)}\n`,
     'utf8',
   );
 });
