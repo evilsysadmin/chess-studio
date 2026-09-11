@@ -66,6 +66,21 @@ describe('Pawn Slug premium soldier action motion', () => {
     expect(climb.y).toBeGreaterThan(0);
   });
 
+  it('weights hit reaction by soldier mass without changing logical position', () => {
+    const pawn = pawnSlugEnemyActionPose('hurt', 0, { type: 'pawn' });
+    const knight = pawnSlugEnemyActionPose('hurt', 0, { type: 'knight' });
+    const rook = pawnSlugEnemyActionPose('hurt', 0, { type: 'rook' });
+    expect(Math.abs(pawn.x)).toBeGreaterThan(Math.abs(knight.x));
+    expect(Math.abs(knight.x)).toBeGreaterThan(Math.abs(rook.x));
+    expect(Math.abs(knight.rz)).toBeGreaterThan(Math.abs(pawn.rz));
+    expect(rook.sy).toBeLessThan(pawn.sy);
+    expect(PAWN_SLUG_ENEMY_ACTION_META.impactStyleByType).toEqual({
+      pawn: 'clear-backstep',
+      knight: 'armored-twist',
+      rook: 'heavy-compression',
+    });
+  });
+
   it('keeps the last four death frames grounded for every soldier class', () => {
     expect(pawnSlugEnemyDeathDuration('pawn')).toBeGreaterThan(0.6);
     expect(pawnSlugEnemyDeathDuration('rook')).toBeGreaterThan(pawnSlugEnemyDeathDuration('knight'));
