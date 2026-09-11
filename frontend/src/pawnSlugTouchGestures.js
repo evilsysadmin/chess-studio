@@ -5,6 +5,7 @@ export const PAWN_SLUG_TOUCH_GESTURE = Object.freeze({
   verticalAxisBias: 1.12,
   tapMaxTravelPx: 18,
   jumpMinPressMs: 72,
+  fireMinPressMs: 52,
 });
 
 function clamp01(value) {
@@ -39,6 +40,12 @@ export function pawnSlugTouchTapAction(deltaX, deltaY) {
   const dx = Number(deltaX) || 0;
   const dy = Number(deltaY) || 0;
   return Math.hypot(dx, dy) <= PAWN_SLUG_TOUCH_GESTURE.tapMaxTravelPx ? 'jump' : null;
+}
+
+export function pawnSlugTouchMinimumPressMs(action) {
+  if (action === 'jump') return PAWN_SLUG_TOUCH_GESTURE.jumpMinPressMs;
+  if (action === 'fire') return PAWN_SLUG_TOUCH_GESTURE.fireMinPressMs;
+  return 0;
 }
 
 export function pawnSlugTouchHapticPattern(action) {
