@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { BASE_STATS } from '../combat.js';
-import { unitDecorations } from '../combatUnitService.js';
+import { unitDecorations, unitServiceMarks } from '../combatUnitService.js';
 import './CombatHonoursRoom.css';
 
 const MAX_TROPHIES = 3;
@@ -14,7 +14,11 @@ function stat(record, key) {
 function serviceRecords(roster) {
   return Object.values(roster?.unitRecords || {})
     .filter((record) => record && typeof record === 'object' && record.identityId)
-    .map((record) => ({ ...record, decorationsResolved: unitDecorations(record) }));
+    .map((record) => ({
+      ...record,
+      decorationsResolved: unitDecorations(record),
+      serviceMarksResolved: unitServiceMarks(record),
+    }));
 }
 
 function memorialRecords(roster) {
@@ -22,7 +26,11 @@ function memorialRecords(roster) {
     .filter((record) => record && record.identityId)
     .reverse()
     .slice(0, MAX_MEMORIAL)
-    .map((record) => ({ ...record, decorationsResolved: unitDecorations(record) }));
+    .map((record) => ({
+      ...record,
+      decorationsResolved: unitDecorations(record),
+      serviceMarksResolved: unitServiceMarks(record),
+    }));
 }
 
 function roomMood(trophies, memorial) {
@@ -123,6 +131,16 @@ function MemorialDossier({ entry }) {
             <span key={medal.id} title={medal.description}>
               <b>✦ {medal.short}</b>
               <small>{medal.label}{medal.earnedAt ? ` · ${formatDate(medal.earnedAt)}` : ''}</small>
+            </span>
+          ))}
+        </div>
+      )}
+      {entry.serviceMarksResolved.length > 0 && (
+        <div className="combat-memorial-medals combat-memorial-service-marks" aria-label="Marcas de servicio del caído">
+          {entry.serviceMarksResolved.map((mark) => (
+            <span key={mark.id} title={mark.description} data-service-mark={mark.id}>
+              <b>╱ {mark.short}</b>
+              <small>{mark.label} · {mark.provenance}</small>
             </span>
           ))}
         </div>
