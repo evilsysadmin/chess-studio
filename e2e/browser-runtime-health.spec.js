@@ -6,6 +6,7 @@ const ARTIFACT_DIR = '../.artifacts/app-visual';
 
 function attachRuntimeErrorProbe(page) {
   const faults = [];
+  const httpErrors = [];
 
   page.on('pageerror', (error) => {
     faults.push({ type:'pageerror', message:String(error?.stack || error?.message || error) });
@@ -13,10 +14,22 @@ function attachRuntimeErrorProbe(page) {
 
   page.on('console', (message) => {
     if (message.type() !== 'error') return;
-    faults.push({ type:'console.error', message:message.text() });
+    const location = message.location();
+    faults.push({
+      type:'console.error',
+      message:message.text(),
+      url:location?.url || null,
+      lineNumber:location?.lineNumber ?? null,
+      columnNumber:location?.columnNumber ?? null,
+    });
   });
 
-  return faults;
+  page.on('response', (response) => {
+    if (response.status() < 400) return;
+    httpErrors.push({ status:response.status(), url:response.url() });
+  });
+
+  return { faults, httpErrors };
 }
 
 async function settle(page) {
@@ -26,7 +39,7 @@ async function settle(page) {
 
 test('Browser runtime · Home y Así juegas no dejan errores silenciosos', async ({ page }) => {
   await mkdir(ARTIFACT_DIR, { recursive:true });
-  const faults = attachRuntimeErrorProbe(page);
+  const { faults, httpErrors } = attachRuntimeErrorProbe(page);
   const stages = [];
 
   await mockApi(page, {
@@ -41,20 +54,24 @@ test('Browser runtime · Home y Así juegas no dejan errores silenciosos', async
   await expect(home).toBeVisible();
   await expect(home.locator('.illustrated-home__stage')).toBeVisible();
   await settle(page);
-  stages.push({ name:'home', faultCount:faults.length });
+  stages.push({ name:'home', faultCount:faults.length, httpErrorCount:httpErrors.length });
 
   const matthias = home.getByRole('button', { name:'Abrir Así juegas con Matthias', exact:true });
   await expect(matthias).toBeVisible();
   await matthias.click();
   await expect(page.getByRole('heading', { name:'Así juegas', exact:true })).toBeVisible();
   await settle(page);
-  stages.push({ name:'asi-juegas', faultCount:faults.length });
+  stages.push({ name:'asi-juegas', faultCount:faults.length, httpErrorCount:httpErrors.length });
 
   await writeFile(
     `${ARTIFACT_DIR}/browser-runtime-health.json`,
-    `${JSON.stringify({ schema:1, stages, faults }, null, 2)}\n`,
+    `${JSON.stringify({ schema:2, stages, faults, httpErrors }, null, 2)}\n`,
     'utf8',
   );
 
-  expect(faults, faults.map((fault) => `[${fault.type}] ${fault.message}`).join('\n\n')).toEqual([]);
+  const diagnostic = [
+    ...faults.map((fault) => `[${fault.type}] ${fault.message}${fault.url ? ` @ ${fault.url}` : ''}`),
+    ...httpErrors.map((fault) => `[http ${fault.status}] ${fault.url}`),
+  ].join('\n\n');
+  expect(faults, diagnostic).toEqual([]);
 });
