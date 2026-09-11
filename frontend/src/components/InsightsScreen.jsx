@@ -7,6 +7,7 @@ import InsightsWeeklyGoals from './InsightsWeeklyGoals.jsx';
 import InsightsGuidedSession from './InsightsGuidedSession.jsx';
 import InsightsMatthiasCampaign from './InsightsMatthiasCampaign.jsx';
 import InsightsMatthiasMotion from './InsightsMatthiasMotion.jsx';
+import CareerActivityCalendar from './CareerActivityCalendar.jsx';
 import './InsightsWorkspace.css';
 
 const DIAGNOSIS_VIEWS = [
@@ -113,6 +114,7 @@ export default function InsightsScreen(props) {
           <InsightsRecurringErrors onOpenPuzzles={props.onOpenPuzzles} />
         ) : null}
         {!isCareer && diagnosisView === 'dossier' ? <InsightsCleanGames /> : null}
+        {isCareer ? <CareerActivityCalendar history={props.gameHistory || []} /> : null}
         <InsightsDashboardContent key={section} {...props} initialSection={section} />
       </div>
 
