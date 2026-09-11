@@ -34,6 +34,21 @@ describe('Matthias discovery policy', () => {
     })).toBe(true);
   });
 
+  it('does not let a future timestamp mute discovery indefinitely after device clock correction', () => {
+    const now = 1_000_000_000;
+    expect(shouldSurfaceMatthias({
+      now,
+      lastShownAt: now + (3 * 24 * 60 * 60 * 1000),
+      randomValue: 0,
+    })).toBe(true);
+    expect(shouldSurfaceMatthias({
+      now,
+      lastShownAt: now + (3 * 24 * 60 * 60 * 1000),
+      sessionSeen: true,
+      randomValue: 0,
+    })).toBe(false);
+  });
+
   it('uses relevance and relationship only after eligibility passes', () => {
     expect(shouldSurfaceMatthias({ relationshipTier: 'veteran', randomValue: 0.17 })).toBe(true);
     expect(shouldSurfaceMatthias({ relationshipTier: 'veteran', randomValue: 0.18 })).toBe(false);
