@@ -30,6 +30,13 @@ export default function PrivacyDataDisclosure() {
       : 'Borrado para esta pestaña; Web Storage no confirmó el cambio.');
   }
 
+  function refreshAiHistory(event) {
+    if (!event.currentTarget.open) return;
+    const latest = loadNarrativeCallLedger();
+    setAiRows(latest);
+    if (latest.length > 0) setClearStatus(null);
+  }
+
   return (
     <section data-privacy-data-disclosure="v1">
       <h3>Datos y servicios</h3>
@@ -43,7 +50,7 @@ export default function PrivacyDataDisclosure() {
         </div>
       </details>
 
-      <details className="friendly-disclosure">
+      <details className="friendly-disclosure" onToggle={refreshAiHistory}>
         <summary>Workers AI y narrativa</summary>
         <div className="friendly-disclosure-body">
           <p>Cuando una función pide narrativa remota, el frontend envía al backend un objeto estructurado con tipo de tarea, variante de petición, hechos relevantes, tono e idioma. Los hechos pueden incluir estadísticas o una posición necesaria para esa tarea.</p>
