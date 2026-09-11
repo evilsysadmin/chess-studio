@@ -71,7 +71,6 @@
   .game-3d-matthias-copy p,
   .game-3d-matthias-copy small,
   .game-3d-matthias-card .game-3d-matthias-rank,
-  .game-3d-warroom-message,
   .game-3d-command-column blockquote {
     display: none !important;
   }
