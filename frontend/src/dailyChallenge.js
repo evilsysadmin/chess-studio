@@ -2,6 +2,7 @@ import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 
 const KEY = 'chess-study-daily-challenge';
+const MAX_STORED_DAYS = 120;
 
 export const DAILY_CHALLENGE_SLOTS = Object.freeze([
   { id: 'tactic', label: 'Táctica', title: 'Golpe táctico', description: 'Una posición corta para encontrar la idea correcta.' },
@@ -126,7 +127,7 @@ export function markDailySolved(day = dailyChallengeDayKey(), { clean = null, sl
     result.slots[knownSlot] = { solved: true, ...(typeof clean === 'boolean' ? { clean } : {}) };
   }
   if (firstSolveOfDay) state.solvedDates.push(day);
-  state.solvedDates = state.solvedDates.sort().slice(-120);
+  state.solvedDates = state.solvedDates.sort().slice(-MAX_STORED_DAYS);
   const streak = streakFromDates(state.solvedDates);
   const progress = dailyChallengeProgress({ ...state, results: { ...state.results, [day]: result } }, day);
   state.results[day] = {
@@ -135,6 +136,10 @@ export function markDailySolved(day = dailyChallengeDayKey(), { clean = null, sl
     full: progress.full,
     newBest: firstSolveOfDay && streak > previousBest,
   };
+  const retainedDays = new Set(state.solvedDates);
+  state.results = Object.fromEntries(
+    Object.entries(state.results).filter(([resultDay]) => retainedDays.has(resultDay)),
+  );
   state.bestStreak = Math.max(previousBest, streak);
   setProfileStorageItem(KEY, JSON.stringify(state));
   return { ...state, streak };

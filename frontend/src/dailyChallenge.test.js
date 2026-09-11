@@ -7,6 +7,7 @@ import {
   dailyChallengeStats,
   dailyPuzzle,
   dailyPuzzles,
+  loadDailyChallenge,
   markDailySolved,
 } from './dailyChallenge.js';
 
@@ -58,6 +59,24 @@ describe('daily challenge · tres retos', () => {
     markDailySolved('2026-08-20', { slot: 'tactic', clean: false });
     const state = markDailySolved('2026-08-20', { slot: 'tactic', clean: true });
     expect(dailyChallengeProgress(state, '2026-08-20')).toMatchObject({ solvedCount: 1, cleanCount: 0 });
+  });
+
+  it('limita solvedDates y results a los 120 días más recientes', () => {
+    const start = new Date('2026-01-01T12:00:00');
+    for (let index = 0; index < 121; index += 1) {
+      const current = new Date(start);
+      current.setDate(start.getDate() + index);
+      markDailySolved(current.toISOString().slice(0, 10), { slot: 'tactic', clean: true });
+    }
+
+    const state = loadDailyChallenge();
+    const resultDays = Object.keys(state.results).sort();
+
+    expect(state.solvedDates).toHaveLength(120);
+    expect(resultDays).toHaveLength(120);
+    expect(state.solvedDates).not.toContain('2026-01-01');
+    expect(resultDays).not.toContain('2026-01-01');
+    expect(resultDays.at(-1)).toBe('2026-05-01');
   });
 
   it('resume retos, días activos, plenos y plenos limpios sin duplicar', () => {
