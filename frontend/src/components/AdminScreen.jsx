@@ -3,10 +3,10 @@ import { fetchAdminUsers } from '../admin.js';
 import { getToken, getUsername } from '../auth.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import AdminDashboardContent from './AdminDashboardContent.jsx';
+import ObservabilityPanel from './ObservabilityPanel.jsx';
 import './AdminWorkspace.css';
 
 const AdminRatingEditor = lazy(() => import('./AdminRatingEditor.jsx'));
-const ObservabilityPanel = lazy(() => import('./ObservabilityPanel.jsx'));
 
 const ADMIN_SECTIONS = Object.freeze([
   { id: 'overview', label: 'Resumen', hint: 'Estado esencial' },
@@ -106,9 +106,7 @@ function AdminObservabilityWorkspace({ onExit }) {
         <p>Salud, SLO, logs, métricas y trazas en una vista propia; sin atravesar el censo de usuarios para llegar aquí.</p>
       </div>
       {usersError && <p className="error-text">{usersError}</p>}
-      <Suspense fallback={<AdminPanelFallback />}>
-        <ObservabilityPanel token={getToken()} users={users} currentAdmin={getUsername()} />
-      </Suspense>
+      <ObservabilityPanel token={getToken()} users={users} currentAdmin={getUsername()} />
     </section>
   );
 }
