@@ -2,7 +2,7 @@ export const PAWN_SLUG_ENEMY_LOADOUTS = Object.freeze({
   pawn: Object.freeze({ primary: 'pistol', alternates: Object.freeze(['machinegun']), role: 'pressure-infantry' }),
   knight: Object.freeze({ primary: 'machinegun', alternates: Object.freeze(['shotgun']), role: 'mobile-flanker' }),
   rook: Object.freeze({ primary: 'machinegun', primaryWeight: 2, alternates: Object.freeze(['panzerfaust']), role: 'lane-controller' }),
-  bishop: Object.freeze({ primary: 'machinegun', alternates: Object.freeze(['panzerfaust']), role: 'suppression-artillery' }),
+  bishop: Object.freeze({ primary: 'machinegun', primaryWeight: 2, alternates: Object.freeze(['panzerfaust']), role: 'suppression-artillery' }),
   boss: Object.freeze({ primary: 'machinegun', alternates: Object.freeze(['panzerfaust']), role: 'heavy-combined-arms' }),
 });
 
