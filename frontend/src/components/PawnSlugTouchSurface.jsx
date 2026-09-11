@@ -3,6 +3,7 @@ import {
   PAWN_SLUG_TOUCH_GESTURE,
   pawnSlugTouchHapticPattern,
   pawnSlugTouchMoveDirection,
+  pawnSlugTouchTapAction,
   pawnSlugTouchVerticalAction,
   pawnSlugTouchZone,
 } from '../pawnSlugTouchGestures.js';
@@ -118,6 +119,16 @@ export default function PawnSlugTouchSurface({ send }) {
     const pointer = pointersRef.current.get(event.pointerId);
     if (!pointer) return;
     event.preventDefault();
+    if (pointer.zone === 'gesture' && !pointer.action) {
+      const current = point(event);
+      const action = pawnSlugTouchTapAction(current.x - pointer.startX, current.y - pointer.startY);
+      if (action) {
+        pointer.action = action;
+        pointer.actionStartedAt = performance.now();
+        sendRef.current(action, true);
+        haptic(action);
+      }
+    }
     release(pointer);
     pointersRef.current.delete(event.pointerId);
     if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
@@ -151,7 +162,7 @@ export default function PawnSlugTouchSurface({ send }) {
       onContextMenu={(event) => event.preventDefault()}
     >
       <span className="pawn-slug-gesture-hint is-move" aria-hidden="true">← MOVER →</span>
-      <span className="pawn-slug-gesture-hint is-jump" aria-hidden="true">↑ SALTAR · ↓ AGACHARSE</span>
+      <span className="pawn-slug-gesture-hint is-jump" aria-hidden="true">TAP/↑ SALTAR · ↓ AGACHARSE</span>
       <span className="pawn-slug-gesture-hint is-fire" aria-hidden="true">MANTÉN · DISPARAR</span>
       <button
         type="button"
