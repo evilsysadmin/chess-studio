@@ -52,10 +52,24 @@ export function homeCastleDailyMemory(dailyStats = {}) {
   };
 }
 
+export function homeCastlePrecisionMemory(dailyStats = {}) {
+  const cleanFullDays = finiteNonNegative(dailyStats?.cleanFullDays);
+  if (cleanFullDays < 3) return null;
+  return {
+    id: 'daily-clean-full',
+    kind: 'precision-relic',
+    destination: 'daily',
+    title: 'Medallón de precisión',
+    detail: `${cleanFullDays} plenos diarios 3/3 resueltos sin una sola mancha.`,
+  };
+}
+
 export function homeCastleMemories({ rivalry = {}, dailyStats = {} } = {}) {
-  return [homeCastleMemory(rivalry), homeCastleDailyMemory(dailyStats)]
-    .filter(Boolean)
-    .slice(0, 2);
+  return [
+    homeCastleMemory(rivalry),
+    homeCastleDailyMemory(dailyStats),
+    homeCastlePrecisionMemory(dailyStats),
+  ].filter(Boolean).slice(0, 3);
 }
 
 export function homeCastleRareSighting(now = new Date()) {
