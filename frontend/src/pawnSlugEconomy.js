@@ -119,3 +119,10 @@ export function pawnSlugBankMissionLoot(state, { credits = 0, grenades = 0, weap
     weapons: nextWeapons,
   });
 }
+
+export {
+  PAWN_SLUG_DESTRUCTIBLE_TYPES,
+  pawnSlugClaimDestructibleReward,
+  pawnSlugCreateDestructibleState,
+  pawnSlugDamageDestructible,
+} from './pawnSlugDestructibles.js';
