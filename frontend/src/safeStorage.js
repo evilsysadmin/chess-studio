@@ -145,6 +145,36 @@ export function writeJsonStorage(area, key, value) {
   }
 }
 
+function storageAreaHealth(area) {
+  const name = areaName(area);
+  const storage = nativeStorage(name);
+  let readable = false;
+  if (storage) {
+    try {
+      storage.getItem('__chess_studio_storage_health__');
+      readable = true;
+    } catch {
+      readable = false;
+    }
+  }
+  return Object.freeze({
+    nativeAvailable: Boolean(storage),
+    readable,
+    memoryFallbackActive: overrides[name].size > 0,
+    pendingOverrides: overrides[name].size,
+  });
+}
+
+// Diagnóstico grueso y no destructivo: no escribe probes, no enumera claves ni
+// expone nombres/valores. Sólo informa si Web Storage responde y si esta pestaña
+// ya tuvo que mantener alguna escritura/borrado pendiente únicamente en memoria.
+export function storageHealthSnapshot() {
+  return Object.freeze({
+    local: storageAreaHealth(STORAGE_LOCAL),
+    session: storageAreaHealth(STORAGE_SESSION),
+  });
+}
+
 // Test/support hook. No toca Web Storage real; sólo vacía cache y overrides
 // creados para sobrevivir a fallos temporales dentro de la pestaña.
 export function clearStorageMemoryFallback() {
