@@ -39,7 +39,7 @@ test('Móvil · acciones y Apariencia de partida no escapan del viewport a 360/3
 
     const appearance = page.getByRole('menuitem', { name: 'Apariencia', exact: true });
     await expectInsideViewport(appearance, page, `${width}px appearance menuitem`);
-    const visibleMenuItems = page.getByRole('menuitem').filter({ visible: true });
+    const visibleMenuItems = page.locator('[role="menuitem"]:visible');
     const count = await visibleMenuItems.count();
     for (let index = 0; index < count; index += 1) {
       await expectInsideViewport(visibleMenuItems.nth(index), page, `${width}px menuitem ${index}`);
