@@ -260,7 +260,9 @@
 .pawn-slug-touch {
   position: absolute;
   z-index: 16;
-  inset: auto .75rem .75rem;
+  bottom: max(.75rem, env(safe-area-inset-bottom, 0px));
+  left: max(.75rem, env(safe-area-inset-left, 0px));
+  right: max(.75rem, env(safe-area-inset-right, 0px));
   display: none;
   align-items: flex-end;
   justify-content: space-between;
@@ -349,7 +351,11 @@
   .pawn-slug-overlay > p { max-width: 92%; font-size: .88rem; }
   .pawn-slug-briefing { grid-template-columns: 1fr; width: min(430px,92%); }
   .pawn-slug-briefing span { min-height: 0; padding: .42rem .55rem; }
-  .pawn-slug-touch { inset: auto .45rem .45rem; }
+  .pawn-slug-touch {
+    bottom: max(.45rem, env(safe-area-inset-bottom, 0px));
+    left: max(.45rem, env(safe-area-inset-left, 0px));
+    right: max(.45rem, env(safe-area-inset-right, 0px));
+  }
   .pawn-slug-touch > div { gap: .3rem; }
   .pawn-slug-touch button { min-width: 55px; min-height: 58px; border-radius: 12px; }
   .pawn-slug-touch button.is-fire { width: 72px; height: 72px; }
@@ -360,6 +366,12 @@
   .pawn-slug-touch button.is-fire { width: 66px; height: 66px; }
   .pawn-slug-touch button small { font-size: .5rem; }
   .pawn-slug-hud { grid-template-columns: 1.55fr .5fr 1fr .55fr; }
+}
+
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
+  .pawn-slug-touch button { min-width: 54px; min-height: 54px; }
+  .pawn-slug-touch button.is-fire { width: 68px; height: 68px; }
+  .pawn-slug-touch button small { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
