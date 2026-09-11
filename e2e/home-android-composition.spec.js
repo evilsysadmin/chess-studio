@@ -65,6 +65,30 @@ for (const viewport of [
       expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
     }
 
+    const account = page.locator('.masthead-account-trigger');
+    const feedback = page.locator('.masthead-feedback-trigger');
+    const releases = page.locator('.masthead-release-trigger');
+    await expect(account).toBeVisible();
+    await expect(feedback).toBeVisible();
+    await expect(releases).toBeVisible();
+
+    const [accountBox, feedbackBox, releaseBox] = await Promise.all([
+      account.boundingBox(),
+      feedback.boundingBox(),
+      releases.boundingBox(),
+    ]);
+    expect(accountBox).not.toBeNull();
+    expect(feedbackBox).not.toBeNull();
+    expect(releaseBox).not.toBeNull();
+
+    const accountCenter = accountBox.x + accountBox.width / 2;
+    expect(Math.abs(accountCenter - viewport.width / 2)).toBeLessThanOrEqual(3);
+    expect(accountBox.width).toBeLessThanOrEqual(38);
+    expect(feedbackBox.width).toBeLessThanOrEqual(32);
+    expect(releaseBox.width).toBeLessThanOrEqual(32);
+    expect(releaseBox.x + releaseBox.width).toBeLessThanOrEqual(feedbackBox.x + 1);
+    expect(feedbackBox.x + feedbackBox.width).toBeLessThanOrEqual(viewport.width + 1);
+
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 }
