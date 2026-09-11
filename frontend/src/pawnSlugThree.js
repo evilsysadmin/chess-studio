@@ -16,7 +16,6 @@ import {
   pawnSlugMaxHpForLevel,
   pawnSlugPickupCopy,
   pawnSlugScoreForKill,
-  pawnSlugWeaponLabel,
   pawnSlugWeaponShortLabel,
   pawnSlugWeaponStatsForLevel,
   pawnSlugWeaponUpgradeCrossed,
@@ -24,6 +23,11 @@ import {
   pawnSlugXpForLevel,
 } from './pawnSlug.js';
 import { pawnSlugCreditsForKill } from './pawnSlugEconomy.js';
+import {
+  pawnSlugApplyLiveWeaponModel,
+  pawnSlugLiveWeaponLabel,
+  pawnSlugLiveWeaponModel,
+} from './pawnSlugLiveWeaponModels.js';
 import {
   animateSlugEnemy,
   createExplosionParticle,
@@ -58,7 +62,11 @@ import {
   pawnSlugSturmBishopSuppressionTelegraph,
   pawnSlugSturmBishopTelegraph,
 } from './pawnSlugMidBoss.js';
-import { animateMatthiasSlugSprite } from './pawnSlugSprites.js';
+import {
+  animateMatthiasSlugSprite,
+  createWeaponSprite,
+  disposePawnSlugSprite,
+} from './pawnSlugSprites.js';
 import {
   PAWN_SLUG_RUNTIME_HOT_PATH,
   pawnSlugAnimateDestructibles,
@@ -87,6 +95,7 @@ const GRAVITY = 22;
 const PLAYER_W = 0.82;
 const PLAYER_H = 1.75;
 const CHECKPOINTS = [110, 1480, 2980, 4140].map((value) => value * WORLD_SCALE);
+const WEAPON_VISUAL_FRAME = Object.freeze({ pistol: 0, machinegun: 1, shotgun: 2, panzerfaust: 3 });
 
 function wx(value) {
   return value * WORLD_SCALE;
@@ -250,12 +259,14 @@ function createSfx() {
 function arsenalHud(player) {
   return PAWN_SLUG_WEAPON_ORDER.map((id) => {
     const weapon = PAWN_SLUG_WEAPONS[id];
+    const model = pawnSlugLiveWeaponModel(id);
     const slot = player.arsenal[id];
     return {
       id,
       slot: weapon.slot,
       shortLabel: pawnSlugWeaponShortLabel(id),
-      label: weapon.label,
+      label: pawnSlugLiveWeaponLabel(id),
+      modelId: model?.id || null,
       current: player.weapon === id,
       unlocked: Boolean(slot?.unlocked),
       ammo: id === 'pistol' ? null : Math.max(0, Math.ceil(slot?.ammo || 0)),
@@ -268,6 +279,7 @@ function hud(state) {
   const midBoss = state.enemies.find((enemy) => enemy.type === 'bishop' && !enemy.dead);
   const player = state.player;
   const nextLevelXp = player.level >= PAWN_SLUG_PLAYER.maxLevel ? null : pawnSlugXpForLevel(player.level + 1);
+  const liveModel = pawnSlugLiveWeaponModel(player.weapon);
   return {
     phase: state.phase,
     hp: Math.max(0, Math.ceil(player.hp)),
@@ -278,7 +290,8 @@ function hud(state) {
     xpToNext: nextLevelXp == null ? null : Math.max(0, nextLevelXp - player.xp),
     lives: player.lives,
     weapon: player.weapon,
-    weaponLabel: pawnSlugWeaponLabel(player.weapon),
+    weaponModelId: liveModel?.id || null,
+    weaponLabel: pawnSlugLiveWeaponLabel(player.weapon),
     ammo: Number.isFinite(player.ammo) ? Math.max(0, Math.ceil(player.ammo)) : null,
     weapons: arsenalHud(player),
     grenades: player.grenades,
@@ -338,7 +351,9 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
   scene.add(dynamic, projectileLayer, fxLayer);
 
   const playerModel = createMatthiasSlugModel();
-  scene.add(playerModel);
+  const playerWeaponModel = createWeaponSprite('pistol');
+  playerWeaponModel.name = 'pawn-slug-player-weapon';
+  scene.add(playerModel, playerWeaponModel);
 
   let state = initialState();
   let destroyed = false;
@@ -397,9 +412,22 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     for (const key of Object.keys(input)) input[key] = false;
   }
 
+  function syncPlayerWeaponVisual(id = state.player.weapon) {
+    const frameIndex = WEAPON_VISUAL_FRAME[id] ?? 0;
+    const liveModel = pawnSlugLiveWeaponModel(id);
+    playerWeaponModel.userData.setFrame?.(frameIndex);
+    playerWeaponModel.userData.weaponId = id;
+    playerWeaponModel.userData.modelId = liveModel?.id || null;
+    playerWeaponModel.userData.modelLabel = liveModel?.label || null;
+    const large = id === 'panzerfaust';
+    playerWeaponModel.scale.set(large ? 1.55 : 1.35, large ? 0.78 : 0.68, 1);
+  }
+
   function placePlayer() {
     playerModel.position.set(state.player.x, state.player.y, 0.2);
     playerModel.visible = state.phase !== 'gameover';
+    playerWeaponModel.visible = playerModel.visible;
+    syncPlayerWeaponVisual();
   }
 
   function weaponAvailable(player, id) {
@@ -419,9 +447,10 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     player.weapon = id;
     player.ammo = player.arsenal[id].ammo;
     playerModel.userData.setWeapon?.(id);
+    syncPlayerWeaponVisual(id);
     if (announce) {
       const upgrade = pawnSlugWeaponStatsForLevel(id, player.level);
-      setToast(`ARMA // ${pawnSlugWeaponLabel(id)} · ${upgrade.upgradeCode}`, 1.15);
+      setToast(`ARMA // ${pawnSlugLiveWeaponLabel(id)} · ${upgrade.upgradeCode}`, 1.15);
     }
     emitHud(true);
     return true;
@@ -465,6 +494,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     state.time = 0;
     state.missionTime = 0;
     playerModel.userData.setWeapon?.('pistol');
+    syncPlayerWeaponVisual('pistol');
     placePlayer();
     camera.position.x = VIEW_W / 2;
     camera.position.y = 5.1;
@@ -606,7 +636,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     const player = state.player;
     if (player.fireCooldown > 0 || state.phase !== 'playing') return false;
     const weaponId = player.weapon;
-    const weapon = pawnSlugWeaponStatsForLevel(weaponId, player.level);
+    const weapon = pawnSlugApplyLiveWeaponModel(pawnSlugWeaponStatsForLevel(weaponId, player.level), weaponId);
     if (Number.isFinite(player.ammo) && player.ammo <= 0) {
       selectWeapon('pistol', { announce: false });
       setToast('Munición agotada. Vuelta al hierro reglamentario.', 1.7);
@@ -641,7 +671,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
 
     if (Number.isFinite(player.ammo) && player.ammo <= 0) {
       selectWeapon('pistol', { announce: false });
-      setToast(`${weapon.label}: seco. Pistola.`, 1.35);
+      setToast(`${weapon.modelLabel || pawnSlugLiveWeaponLabel(weaponId)}: seco. Pistola.`, 1.35);
     }
     emitHud(true);
     return true;
@@ -844,6 +874,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     if (player.lives <= 0) {
       state.phase = 'gameover';
       playerModel.visible = false;
+      playerWeaponModel.visible = false;
       setAmbientDuck(false);
       setToast(pawnSlugMatthiasLine('death'), Infinity);
       emitHud(true);
@@ -878,6 +909,13 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       dir: player.dir,
       hurt: player.flash > 0,
     });
+
+    const weaponY = player.crouch ? 0.68 : (!player.onGround ? 1.02 : 1.08);
+    const weaponX = player.dir * (player.weapon === 'panzerfaust' ? 0.54 : 0.48);
+    playerWeaponModel.userData.setDirection?.(player.dir);
+    playerWeaponModel.position.set(player.x + weaponX, player.y + weaponY, 0.44);
+    playerWeaponModel.visible = playerModel.visible && state.phase !== 'gameover';
+    if (player.recoil > 0) playerWeaponModel.position.x -= player.dir * 0.045;
 
     if (player.onGround && !player.crouch) {
       const locomotion = pawnSlugMatthiasLocomotion({
@@ -1563,8 +1601,9 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       setAmbientDuck(false);
       sfx.destroy();
       resetDynamic();
-      scene.remove(playerModel);
+      scene.remove(playerModel, playerWeaponModel);
       disposePawnSlugObject(playerModel);
+      disposePawnSlugSprite(playerWeaponModel);
       disposePawnSlugObject(scene);
       renderer.dispose();
       renderer.forceContextLoss?.();
