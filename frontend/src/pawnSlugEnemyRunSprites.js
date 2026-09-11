@@ -35,6 +35,7 @@ import {
   createPawnSlugSoldierAtlasTexture,
   pawnSlugSoldierAtlasWindow,
 } from './pawnSlugSoldierAtlas.js';
+import { pawnSlugShouldDisposePreviousTexture } from './pawnSlugTextureOwnership.js';
 
 const ENEMY_FRAME_BY_TYPE = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
 const ENEMY_RUN_FRAME_BASE_BY_TYPE = Object.freeze({ pawn: 0, knight: 8, rook: 16 });
@@ -181,7 +182,7 @@ export function createSlugEnemySprite(type = 'pawn') {
     material.visible = true;
     material.needsUpdate = true;
     applyAtlasWindow(sprite);
-    if (previous && previous !== texture && previous !== createPawnSlugSoldierAtlasTexture()) previous.dispose?.();
+    if (pawnSlugShouldDisposePreviousTexture(previous, texture)) previous.dispose?.();
   };
   const loadFallback = () => {
     const atlas = sprite.userData.atlas;
