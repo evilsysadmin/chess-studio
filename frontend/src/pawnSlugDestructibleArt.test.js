@@ -13,12 +13,16 @@ import {
 } from './pawnSlugDestructibleLayout.js';
 
 describe('Pawn Slug destructible art and layout', () => {
-  it('builds readable wood and metal props with collision metadata', () => {
+  it('builds readable wood, metal and fabric props with collision metadata', () => {
     const crate = createPawnSlugDestructibleModel('crate');
     const barrel = createPawnSlugDestructibleModel('barrel');
+    const sandbags = createPawnSlugDestructibleModel('sandbags');
     expect(crate.userData).toMatchObject({ pawnSlugDestructible: true, destructibleType: 'crate', material: 'wood', damageStage: 'intact' });
     expect(barrel.userData).toMatchObject({ pawnSlugDestructible: true, destructibleType: 'barrel', material: 'metal', damageStage: 'intact' });
+    expect(sandbags.userData).toMatchObject({ pawnSlugDestructible: true, destructibleType: 'sandbags', material: 'fabric', damageStage: 'intact' });
     expect(crate.userData.hitbox.width).toBeGreaterThan(barrel.userData.hitbox.width);
+    expect(sandbags.userData.hitbox.width).toBeGreaterThan(crate.userData.hitbox.width);
+    expect(sandbags.children.filter((node) => node.userData.sandbag)).toHaveLength(5);
     expect(PAWN_SLUG_DESTRUCTIBLE_ART_META.damageFeedback).toContain('material-state');
   });
 
@@ -36,6 +40,17 @@ describe('Pawn Slug destructible art and layout', () => {
       if (node.isMesh && node.material?.emissive) emissive.push(node.material.emissiveIntensity);
     });
     expect(emissive.some((value) => value > 0)).toBe(true);
+  });
+
+  it('darkens damaged fabric without giving it metal heat glow', () => {
+    const sandbags = createPawnSlugDestructibleModel('sandbags');
+    animatePawnSlugDestructibleModel(sandbags, 0.7, { hpRatio: 0.2, reducedMotion: true });
+    expect(sandbags.userData.damageStage).toBe('critical');
+    const emissive = [];
+    sandbags.traverse((node) => {
+      if (node.isMesh && node.material?.emissive) emissive.push(node.material.emissiveIntensity);
+    });
+    expect(emissive.every((value) => value === 0)).toBe(true);
   });
 
   it('anchors damage shake to the original height instead of accumulating drift', () => {
@@ -63,6 +78,7 @@ describe('Pawn Slug destructible art and layout', () => {
     ]));
     expect(PAWN_SLUG_DESTRUCTIBLE_LAYOUT.some((entry) => entry.type === 'crate')).toBe(true);
     expect(PAWN_SLUG_DESTRUCTIBLE_LAYOUT.some((entry) => entry.type === 'barrel')).toBe(true);
+    expect(PAWN_SLUG_DESTRUCTIBLE_LAYOUT.filter((entry) => entry.type === 'sandbags')).toHaveLength(2);
     expect(PAWN_SLUG_DESTRUCTIBLE_LAYOUT.some((entry) => entry.secret)).toBe(true);
   });
 
@@ -82,5 +98,6 @@ describe('Pawn Slug destructible art and layout', () => {
       expect(entry.reward.credits ?? 0).toBeGreaterThanOrEqual(0);
       expect(entry.reward.grenades ?? 0).toBeGreaterThanOrEqual(0);
     }
+    expect(PAWN_SLUG_DESTRUCTIBLE_LAYOUT.find((entry) => entry.id === 'forest-sandbags')?.reward).toEqual({ ammo: undefined });
   });
 });
