@@ -133,7 +133,7 @@ test('Pawn Slug · móvil expone controles táctiles y arsenal sin overflow hori
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
-test('Pawn Slug · Android landscape mantiene todos los controles dentro del viewport', async ({ browser }) => {
+test('Pawn Slug · Android landscape usa gestos y mantiene power-up dentro del viewport', async ({ browser }) => {
   test.setTimeout(90_000);
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
@@ -153,14 +153,22 @@ test('Pawn Slug · Android landscape mantiene todos los controles dentro del vie
     expect(cabinetBox.y).toBeGreaterThanOrEqual(-1);
     expect(cabinetBox.y + cabinetBox.height).toBeLessThanOrEqual(391);
 
-    for (const name of ['Izquierda', 'Derecha', 'Agacharse', 'Saltar', 'Disparar', 'Power-up']) {
-      const button = page.getByRole('button', { name, exact: true });
-      await expect(button).toBeVisible({ timeout: 30_000 });
-      const box = await button.boundingBox();
-      expect(box).not.toBeNull();
-      expect(box.y).toBeGreaterThanOrEqual(-1);
-      expect(box.y + box.height).toBeLessThanOrEqual(391);
+    const gestureSurface = page.getByRole('group', { name: 'Controles gestuales de Pawn Slug' });
+    await expect(gestureSurface).toBeVisible({ timeout: 30_000 });
+    const gestureBox = await gestureSurface.boundingBox();
+    expect(gestureBox).not.toBeNull();
+    expect(gestureBox.y).toBeGreaterThanOrEqual(-1);
+    expect(gestureBox.y + gestureBox.height).toBeLessThanOrEqual(391);
+
+    for (const name of ['Izquierda', 'Derecha', 'Agacharse', 'Saltar', 'Disparar']) {
+      await expect(page.getByRole('button', { name, exact: true })).not.toBeVisible();
     }
+
+    const powerUp = page.getByRole('button', { name: 'Power-up', exact: true });
+    await expect(powerUp).toBeVisible();
+    const powerBox = await powerUp.boundingBox();
+    expect(powerBox).not.toBeNull();
+    expect(powerBox.y + powerBox.height).toBeLessThanOrEqual(391);
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);

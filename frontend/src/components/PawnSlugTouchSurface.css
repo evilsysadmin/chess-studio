@@ -1,0 +1,42 @@
+.pawn-slug-gesture-surface {
+  display: none;
+}
+
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
+  .pawn-slug-gesture-surface {
+    position: absolute;
+    z-index: 6;
+    inset: 0;
+    display: block;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .pawn-slug-gesture-hint {
+    position: absolute;
+    bottom: max(.55rem, env(safe-area-inset-bottom, 0px));
+    color: rgba(239, 220, 180, .34);
+    font-size: .54rem;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, .8);
+    pointer-events: none;
+  }
+
+  .pawn-slug-gesture-hint.is-move { left: max(1rem, env(safe-area-inset-left, 0px)); }
+  .pawn-slug-gesture-hint.is-jump { left: 50%; transform: translateX(-50%); }
+  .pawn-slug-gesture-hint.is-fire { right: max(1rem, env(safe-area-inset-right, 0px)); }
+
+  .pawn-slug-stage .pawn-slug-touch {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 390px) {
+  .pawn-slug-gesture-hint { opacity: .72; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pawn-slug-gesture-hint { text-shadow: none; }
+}

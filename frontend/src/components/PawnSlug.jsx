@@ -13,6 +13,7 @@ import {
 } from '../pawnSlugControls.js';
 import { getAmbientVolume, isFxMuted, setAmbientVolume, setFxMuted } from '../sound.js';
 import PawnSlugModelArmory from './PawnSlugModelArmory.jsx';
+import PawnSlugTouchSurface from './PawnSlugTouchSurface.jsx';
 import './PawnSlug.css';
 import './PawnSlugArsenal.css';
 import './PawnSlugSettings.css';
@@ -361,6 +362,8 @@ export default function PawnSlug({ onExit }) {
             data-pawn-slug-renderer="three"
             aria-label="Escenario 2.5D de Pawn Slug renderizado con Three.js"
           />
+
+          {!overlay && !settingsOpen && <PawnSlugTouchSurface send={send} />}
 
           <div className="pawn-slug-mission-progress" aria-label={`Progreso de misión ${missionPercent}%`}>
             <span>OPERACIÓN BAUERNSCHLAG</span>
