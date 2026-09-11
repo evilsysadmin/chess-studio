@@ -1,8 +1,10 @@
 import * as THREE from 'three';
+import { getEffectiveReducedMotion } from '../userPreferences.js';
 import { applyWarRoomLocalAtmosphere } from './WarRoomLocalAtmosphere.js';
 
-export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v11-local-atmosphere';
+export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v12-dust-motes';
 export const WAR_ROOM_WINDOW_CORNER_POSE_VERSION = 'weather-window-side-wall-pose-v2-after-armor';
+export const WAR_ROOM_DUST_MOTES_VERSION = 'war-room-dust-motes-v1';
 
 const WINDOW_SIDE_WALL_ANGLE = THREE.MathUtils.degToRad(90);
 const WINDOW_SIDE_WALL_SCALE_X = 1.55;
@@ -36,6 +38,84 @@ function plantSideOppositeHearth(root) {
     return -Math.sign(hearthX);
   }
   return 1;
+}
+
+function hashUnit(index, salt) {
+  const value = Math.sin((index + 1) * 12.9898 + salt * 78.233) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+export function warRoomDustMoteBudget({ coarsePointer = false, reducedMotion = false } = {}) {
+  if (reducedMotion) return 0;
+  return coarsePointer ? 6 : 18;
+}
+
+export function ensureWarRoomDustMotes(root, {
+  coarsePointer = Boolean(typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)')?.matches),
+  reducedMotion = getEffectiveReducedMotion(),
+} = {}) {
+  if (!root) return null;
+  const existing = root.getObjectByName?.('war-room-dust-motes');
+  if (existing) return existing;
+
+  const count = warRoomDustMoteBudget({ coarsePointer, reducedMotion: false });
+  const positions = new Float32Array(count * 3);
+  const base = new Float32Array(count * 3);
+  const phases = new Float32Array(count);
+  for (let index = 0; index < count; index += 1) {
+    const offset = index * 3;
+    const x = -5.6 + hashUnit(index, 1) * 11.2;
+    const y = 0.55 + hashUnit(index, 2) * 3.4;
+    const z = -3.8 + hashUnit(index, 3) * 7.1;
+    positions[offset] = base[offset] = x;
+    positions[offset + 1] = base[offset + 1] = y;
+    positions[offset + 2] = base[offset + 2] = z;
+    phases[index] = hashUnit(index, 4) * Math.PI * 2;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const baseOpacity = coarsePointer ? 0.11 : 0.16;
+  const material = new THREE.PointsMaterial({
+    color: 0xffd7a0,
+    size: coarsePointer ? 0.026 : 0.022,
+    transparent: true,
+    opacity: reducedMotion ? 0 : baseOpacity,
+    depthWrite: false,
+    sizeAttenuation: true,
+  });
+  const motes = new THREE.Points(geometry, material);
+  motes.name = 'war-room-dust-motes';
+  motes.frustumCulled = false;
+  motes.userData.warRoomDustMotes = WAR_ROOM_DUST_MOTES_VERSION;
+  motes.userData.warRoomDustMoteBudget = count;
+  motes.userData.warRoomDustMoteProfile = coarsePointer ? 'mobile-lite' : 'desktop-restrained';
+
+  motes.onBeforeRender = () => {
+    const motionReduced = getEffectiveReducedMotion();
+    material.opacity = motionReduced ? 0 : baseOpacity;
+    if (motionReduced) return;
+    const now = (typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now()) * 0.001;
+    const attribute = geometry.getAttribute('position');
+    const array = attribute.array;
+    for (let index = 0; index < count; index += 1) {
+      const offset = index * 3;
+      const phase = phases[index];
+      array[offset] = base[offset] + Math.sin(now * 0.19 + phase) * 0.035;
+      array[offset + 1] = base[offset + 1] + Math.sin(now * 0.27 + phase * 1.3) * 0.055;
+      array[offset + 2] = base[offset + 2] + Math.cos(now * 0.15 + phase * 0.7) * 0.025;
+    }
+    attribute.needsUpdate = true;
+  };
+
+  root.add(motes);
+  if (root.userData) {
+    root.userData.warRoomDustMotes = WAR_ROOM_DUST_MOTES_VERSION;
+    root.userData.warRoomDustMoteBudget = count;
+  }
+  return motes;
 }
 
 export function applyWarRoomWeatherWindowCornerPose(root) {
@@ -163,8 +243,10 @@ function placeWarRoomHansPlant(root, group, floor) {
 export function ensureWarRoomHansPlant(root) {
   if (!root) return null;
 
-  // Lock the approved side-wall pose before deriving the plant anchor.
+  // Lock the approved side-wall pose before deriving the plant anchor, then add
+  // only a tiny capped mote field to make the warm air readable at rest.
   applyWarRoomWeatherWindowCornerPose(root);
+  ensureWarRoomDustMotes(root);
 
   const existing = root.getObjectByName?.('war-room-hans-plant');
   const floor = root.getObjectByName?.('war-room-castle-floor-slab');
