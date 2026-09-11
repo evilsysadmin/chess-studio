@@ -38,10 +38,28 @@ export default function MatthiasDailyConsult({ facts, isAdminUser = false }) {
   useEffect(() => {
     if (!eligible) return undefined;
     let active = true;
-    void fetchMatthiasDailyStatus()
-      .then((value) => { if (active) setStatus(value); })
-      .catch(() => { if (active) setStatus({ used: false }); });
-    return () => { active = false; };
+    let requestSeq = 0;
+
+    const refreshStatus = ({ force = false } = {}) => {
+      const seq = ++requestSeq;
+      void fetchMatthiasDailyStatus({ force })
+        .then((value) => { if (active && seq === requestSeq) setStatus(value); })
+        .catch(() => { if (active && seq === requestSeq) setStatus({ used: false }); });
+    };
+    const refreshOnFocus = () => refreshStatus({ force: true });
+    const refreshOnVisibility = () => {
+      if (document.visibilityState === 'visible') refreshStatus({ force: true });
+    };
+
+    refreshStatus();
+    window.addEventListener('focus', refreshOnFocus);
+    document.addEventListener('visibilitychange', refreshOnVisibility);
+    return () => {
+      active = false;
+      requestSeq += 1;
+      window.removeEventListener('focus', refreshOnFocus);
+      document.removeEventListener('visibilitychange', refreshOnVisibility);
+    };
   }, [eligible]);
 
   if (!eligible) return null;
@@ -67,7 +85,7 @@ export default function MatthiasDailyConsult({ facts, isAdminUser = false }) {
     } catch (err) {
       if (err?.status === 429 || err?.status === 409) {
         retryIdsRef.current.delete(kind);
-        const refreshed = await fetchMatthiasDailyStatus().catch(() => ({ used: true }));
+        const refreshed = await fetchMatthiasDailyStatus({ force: true }).catch(() => ({ used: true }));
         setStatus(refreshed);
       } else {
         setError(err?.message || 'Matthias no está disponible ahora mismo.');
