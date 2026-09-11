@@ -38,4 +38,13 @@ describe('Pawn Slug live concrete weapon models', () => {
     expect(benelli.damage).toBeCloseTo(20.6);
     expect(PAWN_SLUG_LIVE_WEAPON_META.affectsStats).toBe(true);
   });
+
+  it('accepts a valid armory selection and falls back safely for invalid ids', () => {
+    const base = { damage: 20, cadence: 100, spread: 0.1, recoil: 1, capacity: 20, reload: 1, mobility: 1 };
+    expect(pawnSlugLiveWeaponModel('pistol', 'desert-eagle')?.id).toBe('desert-eagle');
+    expect(pawnSlugLiveWeaponLabel('shotgun', 'spas12')).toBe('SPAS-12');
+    expect(pawnSlugApplyLiveWeaponModel(base, 'machinegun', 'rpk').modelId).toBe('rpk');
+    expect(pawnSlugLiveWeaponModel('pistol', 'laser-cannon')?.id).toBe('dienstpistole');
+    expect(PAWN_SLUG_LIVE_WEAPON_META.selection).toBe('armory-selectable-with-safe-default');
+  });
 });
