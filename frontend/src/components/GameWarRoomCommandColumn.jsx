@@ -8,6 +8,7 @@ import './WarRoom3DMobileControls.css';
 import './WarRoomDesktopRailLayout.css';
 import './WarRoomMatthiasDiegetic.css';
 import './WarRoomFloatingFooter.css';
+import './WarRoomCinematicHud.css';
 import './WarRoomAppearanceMenu.css';
 
 function resolveWarRoomSignal(game, status) {
