@@ -75,25 +75,25 @@ export function ensureWarRoomDustMotes(root, {
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const baseOpacity = coarsePointer ? 0.11 : 0.16;
   const material = new THREE.PointsMaterial({
     color: 0xffd7a0,
     size: coarsePointer ? 0.026 : 0.022,
     transparent: true,
-    opacity: coarsePointer ? 0.11 : 0.16,
+    opacity: reducedMotion ? 0 : baseOpacity,
     depthWrite: false,
     sizeAttenuation: true,
   });
   const motes = new THREE.Points(geometry, material);
   motes.name = 'war-room-dust-motes';
   motes.frustumCulled = false;
-  motes.visible = !reducedMotion;
   motes.userData.warRoomDustMotes = WAR_ROOM_DUST_MOTES_VERSION;
   motes.userData.warRoomDustMoteBudget = count;
   motes.userData.warRoomDustMoteProfile = coarsePointer ? 'mobile-lite' : 'desktop-restrained';
 
   motes.onBeforeRender = () => {
     const motionReduced = getEffectiveReducedMotion();
-    motes.visible = !motionReduced;
+    material.opacity = motionReduced ? 0 : baseOpacity;
     if (motionReduced) return;
     const now = (typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
