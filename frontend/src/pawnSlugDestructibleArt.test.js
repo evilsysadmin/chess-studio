@@ -3,6 +3,7 @@ import {
   animatePawnSlugDestructibleModel,
   createPawnSlugDestructibleModel,
   PAWN_SLUG_DESTRUCTIBLE_ART_META,
+  pawnSlugDestructibleDamageStage,
 } from './pawnSlugDestructibleArt.js';
 import {
   PAWN_SLUG_DESTRUCTIBLE_LAYOUT,
@@ -15,10 +16,26 @@ describe('Pawn Slug destructible art and layout', () => {
   it('builds readable wood and metal props with collision metadata', () => {
     const crate = createPawnSlugDestructibleModel('crate');
     const barrel = createPawnSlugDestructibleModel('barrel');
-    expect(crate.userData).toMatchObject({ pawnSlugDestructible: true, destructibleType: 'crate', material: 'wood' });
-    expect(barrel.userData).toMatchObject({ pawnSlugDestructible: true, destructibleType: 'barrel', material: 'metal' });
+    expect(crate.userData).toMatchObject({ pawnSlugDestructible: true, destructibleType: 'crate', material: 'wood', damageStage: 'intact' });
+    expect(barrel.userData).toMatchObject({ pawnSlugDestructible: true, destructibleType: 'barrel', material: 'metal', damageStage: 'intact' });
     expect(crate.userData.hitbox.width).toBeGreaterThan(barrel.userData.hitbox.width);
-    expect(PAWN_SLUG_DESTRUCTIBLE_ART_META.damageFeedback).toContain('shake');
+    expect(PAWN_SLUG_DESTRUCTIBLE_ART_META.damageFeedback).toContain('material-state');
+  });
+
+  it('uses stable intact, damaged and critical visual states', () => {
+    expect(pawnSlugDestructibleDamageStage(1)).toBe('intact');
+    expect(pawnSlugDestructibleDamageStage(0.66)).toBe('damaged');
+    expect(pawnSlugDestructibleDamageStage(0.33)).toBe('critical');
+    expect(PAWN_SLUG_DESTRUCTIBLE_ART_META.damageStages).toEqual(['intact', 'damaged', 'critical']);
+
+    const barrel = createPawnSlugDestructibleModel('barrel');
+    animatePawnSlugDestructibleModel(barrel, 0.4, { hpRatio: 0.2, reducedMotion: true });
+    expect(barrel.userData.damageStage).toBe('critical');
+    const emissive = [];
+    barrel.traverse((node) => {
+      if (node.isMesh && node.material?.emissive) emissive.push(node.material.emissiveIntensity);
+    });
+    expect(emissive.some((value) => value > 0)).toBe(true);
   });
 
   it('anchors damage shake to the original height instead of accumulating drift', () => {
@@ -32,6 +49,7 @@ describe('Pawn Slug destructible art and layout', () => {
     animatePawnSlugDestructibleModel(crate, 2, { hpRatio: 0.4, reducedMotion: true });
     expect(crate.position.y).toBe(2.5);
     expect(crate.rotation.z).toBe(0);
+    expect(crate.userData.damageStage).toBe('damaged');
   });
 
   it('uses unique authored placements across the active biomes', () => {
