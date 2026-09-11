@@ -52,13 +52,13 @@ export default function CombatDebrief({ debrief, compact = false, onViewBattle =
       setAiDebrief(null);
       return undefined;
     }
-    let active = true;
+    const controller = new AbortController();
     setAiDebriefLoading(true);
-    void requestRemoteNarrative(aiDossier, { token, timeoutMs: 8000 })
-      .then((text) => { if (active) setAiDebrief(text || null); })
-      .catch(() => { if (active) setAiDebrief(null); })
-      .finally(() => { if (active) setAiDebriefLoading(false); });
-    return () => { active = false; };
+    void requestRemoteNarrative(aiDossier, { token, timeoutMs: 8000, signal: controller.signal })
+      .then((text) => { if (!controller.signal.aborted) setAiDebrief(text || null); })
+      .catch(() => { if (!controller.signal.aborted) setAiDebrief(null); })
+      .finally(() => { if (!controller.signal.aborted) setAiDebriefLoading(false); });
+    return () => controller.abort(new DOMException('Combat debrief superseded', 'AbortError'));
   }, [aiFactsKey]);
 
   if (!debrief) return null;
