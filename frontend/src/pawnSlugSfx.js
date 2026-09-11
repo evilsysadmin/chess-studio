@@ -18,7 +18,7 @@ export const PAWN_SLUG_IMPACT_SOUND_PROFILES = Object.freeze({
 let ctx = null;
 let master = null;
 let lastImpactAt = -Infinity;
-let lastVoiceAt = -Infinity;
+let lastKoAt = -Infinity;
 
 function profileVolume() {
   const settings = loadPawnSlugSettings();
@@ -118,15 +118,18 @@ export function playPawnSlugEnemyImpactSfx(type = 'pawn') {
   if (profile.ring) tone({ freq: profile.ring, endFreq: profile.ring * 0.76, duration: type === 'rook' ? 0.12 : 0.075, gain: 0.055, type: 'sine' });
 }
 
-export function playPawnSlugEnemyDeathSfx(type = 'pawn') {
+export function playPawnSlugEnemyKoSfx(type = 'pawn') {
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  if (now - lastVoiceAt < 105) return;
-  lastVoiceAt = now;
-  const base = type === 'rook' ? 92 : type === 'knight' ? 126 : type === 'bishop' ? 104 : type === 'boss' ? 72 : 142;
-  const variation = 0.92 + Math.random() * 0.16;
-  tone({ freq: base * variation, endFreq: base * 0.46, duration: type === 'boss' ? 0.42 : 0.26, gain: type === 'boss' ? 0.22 : 0.135, type: 'sawtooth', filter: type === 'rook' ? 520 : 720 });
-  tone({ freq: base * 1.8 * variation, endFreq: base * 0.72, duration: type === 'boss' ? 0.34 : 0.2, gain: 0.055, type: 'triangle', filter: 1150, delay: 0.018 });
-  noise({ duration: type === 'boss' ? 0.16 : 0.075, gain: 0.035, cutoff: 950, delay: 0.035 });
+  if (now - lastKoAt < 75) return;
+  lastKoAt = now;
+  const heavy = type === 'rook' || type === 'boss';
+  const armored = type === 'knight' || type === 'rook' || type === 'bishop' || type === 'boss';
+  noise({ duration: heavy ? 0.14 : 0.085, gain: heavy ? 0.14 : 0.09, cutoff: heavy ? 1150 : 1900 });
+  tone({ freq: heavy ? 68 : 104, endFreq: heavy ? 42 : 64, duration: heavy ? 0.16 : 0.1, gain: heavy ? 0.16 : 0.11, type: 'triangle' });
+  if (armored) {
+    tone({ freq: type === 'boss' ? 360 : 620, endFreq: type === 'boss' ? 190 : 410, duration: heavy ? 0.18 : 0.11, gain: 0.07, type: 'square', delay: 0.012 });
+    tone({ freq: type === 'rook' ? 980 : 1260, endFreq: 720, duration: 0.055, gain: 0.045, type: 'sine', delay: 0.028 });
+  }
 }
 
 export function destroyPawnSlugPremiumSfx() {
@@ -136,5 +139,5 @@ export function destroyPawnSlugPremiumSfx() {
   ctx = null;
   master = null;
   lastImpactAt = -Infinity;
-  lastVoiceAt = -Infinity;
+  lastKoAt = -Infinity;
 }
