@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { APP_BUILD_ID, APP_RELEASE } from '../release.js';
 import { fetchLatestRelease, isReleaseUpdateAvailable, RELEASE_CHECK_INTERVAL_MS } from '../releaseUpdate.js';
 import { STORAGE_SESSION, getStorageItem, setStorageItem } from '../safeStorage.js';
+import { startVisiblePolling } from '../visiblePolling.js';
 
 const DISMISS_PREFIX = 'chess-study-release-notice-dismissed:';
 
@@ -55,25 +56,22 @@ export default function ReleaseUpdateNotice({ deferReload = false }) {
       return undefined;
     }
 
-    void check();
+    const stopPolling = startVisiblePolling({
+      refresh: check,
+      intervalMs: RELEASE_CHECK_INTERVAL_MS,
+    });
     const checkIfVisible = () => {
       if (document.visibilityState === 'visible') void check();
     };
-    const timer = window.setInterval(checkIfVisible, RELEASE_CHECK_INTERVAL_MS);
-    const onVisibility = checkIfVisible;
-    const onFocus = checkIfVisible;
-    const onOnline = checkIfVisible;
-    document.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('focus', onFocus);
-    window.addEventListener('online', onOnline);
+    window.addEventListener('focus', checkIfVisible);
+    window.addEventListener('online', checkIfVisible);
     return () => {
       active = false;
       controller.abort();
       checkInFlightRef.current = null;
-      window.clearInterval(timer);
-      document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('online', onOnline);
+      stopPolling();
+      window.removeEventListener('focus', checkIfVisible);
+      window.removeEventListener('online', checkIfVisible);
     };
   }, []);
 
