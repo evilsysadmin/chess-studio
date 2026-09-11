@@ -6,6 +6,7 @@ const WAR_ROOM_READY_TIMEOUT = 45_000;
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const AFTER_OPENING_FEN = 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2';
 const AFTER_CAPTURE_FEN = 'rnbqkb1r/ppp1pppp/5n2/3P4/8/8/PPPP1PPP/RNBQKBNR w KQkq - 1 3';
+const CLOCK_PREFIX = 'chess-study-clock:';
 
 function movePosts(requestLog) {
   return requestLog.filter((entry) => entry.method === 'POST' && /\/games\/[^/]+\/move$/.test(entry.path));
@@ -107,6 +108,25 @@ async function waitForCommittedMoveFrame(page, responseLog, expectedCount) {
   }));
 }
 
+async function readClockSnapshot(page) {
+  return page.evaluate((prefix) => {
+    const key = Object.keys(localStorage).find((candidate) => candidate.startsWith(prefix));
+    if (!key) return null;
+    try {
+      return JSON.parse(localStorage.getItem(key));
+    } catch {
+      return null;
+    }
+  }, CLOCK_PREFIX);
+}
+
+async function expectClockedWarRoom(page) {
+  await expect(page.locator('.game-player-rail .clock-chip')).toHaveCount(2, { timeout: WAR_ROOM_READY_TIMEOUT });
+  const snapshot = await readClockSnapshot(page);
+  expect(snapshot).toEqual(expect.objectContaining({ timeControlId: '5+0', activeColor: 'w' }));
+  return snapshot;
+}
+
 async function expectCleanWarRoom(page) {
   const board3d = page.locator('[data-board3d-war-room="true"]');
   const canvas = page.locator('.board3d-main-canvas');
@@ -174,14 +194,29 @@ test('War Room · F5 durante movimiento y captura restaura una escena limpia y j
   await login(page);
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
+  const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await expect(quickMatch).toBeVisible();
+  await quickMatch.locator('.quick-match-settings > summary').click();
+  await quickMatch.getByRole('combobox', { name: 'Ritmo de reloj' }).selectOption('5+0');
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expectCleanWarRoom(page);
+  await expect(page.locator('.game-player-rail .clock-chip')).toHaveCount(2, { timeout: WAR_ROOM_READY_TIMEOUT });
 
   await clickBoardMove(page, 'e2', 'e4');
   await expect.poll(() => movePosts(requestLog).length, { timeout: 5_000 }).toBe(1);
   await waitForCommittedMoveFrame(page, moveResponseLog, 1);
+
+  // El turno vuelve a blancas tras la respuesta CPU. Dejamos que el reloj corra
+  // lo suficiente para distinguir un restore real de un reinicio silencioso a 5:00.
+  await expect.poll(async () => (await readClockSnapshot(page))?.whiteTime ?? 300, { timeout: 8_000 })
+    .toBeLessThan(299);
+  const clockBeforeReload = await expectClockedWarRoom(page);
+
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expectCleanWarRoom(page);
+  const clockAfterReload = await expectClockedWarRoom(page);
+  expect(clockAfterReload.whiteTime).toBeLessThanOrEqual(clockBeforeReload.whiteTime + 0.25);
+  expect(clockAfterReload.blackTime).toBeLessThanOrEqual(clockBeforeReload.blackTime + 0.25);
 
   await clickBoardMove(page, 'e4', 'd5');
   await expect.poll(() => movePosts(requestLog).length, { timeout: 5_000 }).toBe(2);
@@ -189,6 +224,7 @@ test('War Room · F5 durante movimiento y captura restaura una escena limpia y j
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expectCleanWarRoom(page);
+  await expectClockedWarRoom(page);
 
   // 2D actúa como sonda accesible del estado común restaurado. Si quedara una
   // escena 3D visualmente limpia pero lógicamente vieja, estas casillas fallan.
