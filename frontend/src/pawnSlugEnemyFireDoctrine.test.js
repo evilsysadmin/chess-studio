@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   PAWN_SLUG_ENEMY_FIRE_PROFILES,
   PAWN_SLUG_ENEMY_ROLE_PRESSURE,
+  pawnSlugEnemyCanFire,
   pawnSlugEnemyFireCooldown,
   pawnSlugEnemyShotPlan,
 } from './pawnSlugEnemyFireDoctrine.js';
@@ -26,6 +27,18 @@ describe('Pawn Slug enemy fire doctrine', () => {
     expect(PAWN_SLUG_ENEMY_ROLE_PRESSURE.knight.leap).toBe(true);
     expect(PAWN_SLUG_ENEMY_ROLE_PRESSURE.rook.preferredDistance).toBeGreaterThan(PAWN_SLUG_ENEMY_ROLE_PRESSURE.pawn.preferredDistance);
     expect(PAWN_SLUG_ENEMY_ROLE_PRESSURE.rook.flank).toBe(0);
+  });
+
+  it('caps normal fire by both weapon range and the role-specific range', () => {
+    expect(pawnSlugEnemyCanFire('shotgun', 6.7, 8)).toBe(true);
+    expect(pawnSlugEnemyCanFire('shotgun', 7, 8)).toBe(false);
+    expect(pawnSlugEnemyCanFire('machinegun', 10.4, 16)).toBe(true);
+    expect(pawnSlugEnemyCanFire('machinegun', 10.6, 16)).toBe(false);
+    expect(pawnSlugEnemyCanFire('panzerfaust', 11.9, 12)).toBe(true);
+    expect(pawnSlugEnemyCanFire('panzerfaust', 12.1, 12)).toBe(false);
+    expect(pawnSlugEnemyCanFire('unknown', 8.9, 20)).toBe(true);
+    expect(pawnSlugEnemyCanFire('unknown', 9.1, 20)).toBe(false);
+    expect(pawnSlugEnemyCanFire('pistol', -1, 9)).toBe(false);
   });
 
   it('interpolates cooldown deterministically and returns a weapon-shaped shot plan', () => {
