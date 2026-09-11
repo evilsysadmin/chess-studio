@@ -1,4 +1,5 @@
-import { loadNarrativeCallLedger } from '../narrativeCallLedger.js';
+import { useState } from 'react';
+import { clearNarrativeCallLedger, loadNarrativeCallLedger } from '../narrativeCallLedger.js';
 import { storageHealthSnapshot } from '../safeStorage.js';
 
 function providerLabel(provider) {
@@ -16,9 +17,25 @@ function storageHealthLabel(area) {
 }
 
 export default function PrivacyDataDisclosure() {
-  const aiRows = loadNarrativeCallLedger();
+  const [aiRows, setAiRows] = useState(() => loadNarrativeCallLedger());
+  const [clearStatus, setClearStatus] = useState(null);
   const lastAiCall = aiRows.at(-1) || null;
   const storageHealth = storageHealthSnapshot();
+
+  function clearAiHistory() {
+    const persisted = clearNarrativeCallLedger();
+    setAiRows([]);
+    setClearStatus(persisted
+      ? 'Historial local de llamadas IA borrado.'
+      : 'Borrado para esta pestaña; Web Storage no confirmó el cambio.');
+  }
+
+  function refreshAiHistory(event) {
+    if (!event.currentTarget.open) return;
+    const latest = loadNarrativeCallLedger();
+    setAiRows(latest);
+    if (latest.length > 0) setClearStatus(null);
+  }
 
   return (
     <section data-privacy-data-disclosure="v1">
@@ -33,12 +50,16 @@ export default function PrivacyDataDisclosure() {
         </div>
       </details>
 
-      <details className="friendly-disclosure">
+      <details className="friendly-disclosure" onToggle={refreshAiHistory}>
         <summary>Workers AI y narrativa</summary>
         <div className="friendly-disclosure-body">
           <p>Cuando una función pide narrativa remota, el frontend envía al backend un objeto estructurado con tipo de tarea, variante de petición, hechos relevantes, tono e idioma. Los hechos pueden incluir estadísticas o una posición necesaria para esa tarea.</p>
           <p>El ledger local guarda sólo fecha, tipo de tarea, proveedor, tamaños aproximados y éxito. No guarda prompt, facts, FEN, SAN, JWT ni el texto generado.</p>
           <p><b>{aiRows.length}</b> llamadas recientes registradas localmente{lastAiCall ? ` · última: ${providerLabel(lastAiCall.provider)}` : ''}.</p>
+          <button type="button" className="secondary-btn" onClick={clearAiHistory} disabled={aiRows.length === 0}>
+            Borrar historial local de llamadas IA
+          </button>
+          {clearStatus && <small role="status">{clearStatus}</small>}
         </div>
       </details>
 

@@ -44,5 +44,5 @@ export function recordNarrativeCall({
 }
 
 export function clearNarrativeCallLedger() {
-  setStorageItem(STORAGE_LOCAL, NARRATIVE_CALL_LEDGER_KEY, '[]');
+  return setStorageItem(STORAGE_LOCAL, NARRATIVE_CALL_LEDGER_KEY, '[]');
 }

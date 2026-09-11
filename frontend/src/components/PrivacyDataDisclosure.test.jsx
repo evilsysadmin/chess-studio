@@ -25,9 +25,11 @@ describe('PrivacyDataDisclosure', () => {
     expect(html).toContain('data-privacy-data-disclosure="v1"');
     expect(html).toContain('Backend de Chess Studio');
     expect(html).toContain('Workers AI y narrativa');
+    expect(html).toContain('Almacenamiento local');
     expect(html).toContain('Telemetría técnica');
     expect(html).toContain('<b>1</b> llamadas recientes registradas localmente');
     expect(html).toContain('última: Workers AI');
+    expect(html).toContain('Borrar historial local de llamadas IA');
     expect(html).toContain('no incluye FEN, lista de jugadas, texto narrativo, contraseña ni token');
   });
 
