@@ -12,6 +12,23 @@ import { setProfileStorageItem } from './profileKeys.js';
 // hizo falta ningún endpoint nuevo en el backend.
 
 const KEY = 'chess-study-worst-move-cache';
+// gameHistory conserva 120 registros y combatHistory 25. Mantener más
+// análisis que ambos historiales juntos sólo puede conservar entradas
+// huérfanas de partidas que ya no son accesibles desde la aplicación.
+const MAX_CACHE_RECORDS = 145;
+
+function pruneWorstMoveCache(cache) {
+  if (!cache || typeof cache !== 'object' || Array.isArray(cache)) return {};
+  const entries = Object.entries(cache);
+  if (entries.length <= MAX_CACHE_RECORDS) return cache;
+
+  entries.sort(([, a], [, b]) => {
+    const aTime = Date.parse(a?.analyzedAt || '') || 0;
+    const bTime = Date.parse(b?.analyzedAt || '') || 0;
+    return bTime - aTime;
+  });
+  return Object.fromEntries(entries.slice(0, MAX_CACHE_RECORDS));
+}
 
 export function loadWorstMoveCache() {
   const parsed = readJsonStorage(STORAGE_LOCAL, KEY, { fallback: {} });
@@ -19,6 +36,6 @@ export function loadWorstMoveCache() {
 }
 
 export function saveWorstMoveCache(cache) {
-  setProfileStorageItem(KEY, JSON.stringify(cache));
+  setProfileStorageItem(KEY, JSON.stringify(pruneWorstMoveCache(cache)));
 }
 
