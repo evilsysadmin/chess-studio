@@ -1,14 +1,20 @@
 export const PAWN_SLUG_DESTRUCTIBLE_TYPES = Object.freeze({
   crate: Object.freeze({ hp: 45, material: 'wood', explosive: false, score: 60 }),
   barrel: Object.freeze({ hp: 30, material: 'metal', explosive: true, blastRadius: 2.4, blastDamage: 72, score: 90 }),
+  sandbags: Object.freeze({ hp: 72, material: 'fabric', explosive: false, score: 75 }),
 });
 
+export function pawnSlugDestructibleSpec(type = 'crate') {
+  return PAWN_SLUG_DESTRUCTIBLE_TYPES[type] || null;
+}
+
 export function pawnSlugCreateDestructibleState(type, overrides = {}) {
-  const spec = PAWN_SLUG_DESTRUCTIBLE_TYPES[type];
+  const spec = pawnSlugDestructibleSpec(type);
   if (!spec) throw new Error(`Unknown Pawn Slug destructible type: ${type}`);
   return {
     type,
     hp: spec.hp,
+    maxHp: spec.hp,
     destroyed: false,
     rewardClaimed: false,
     ...overrides,
@@ -19,7 +25,7 @@ export function pawnSlugDamageDestructible(prop, amount) {
   if (!prop || prop.destroyed || !(amount > 0)) {
     return { destroyedNow: false, explosion: null, score: 0 };
   }
-  const spec = PAWN_SLUG_DESTRUCTIBLE_TYPES[prop.type];
+  const spec = pawnSlugDestructibleSpec(prop.type);
   if (!spec) throw new Error(`Unknown Pawn Slug destructible type: ${prop.type}`);
   prop.hp = Math.max(0, prop.hp - amount);
   if (prop.hp > 0) return { destroyedNow: false, explosion: null, score: 0 };
