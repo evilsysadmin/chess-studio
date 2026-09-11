@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { login, mockApi } from './helpers.js';
+
+const ARTIFACT_DIR = '../.artifacts/app-visual';
 
 function attachRuntimeErrorProbe(page) {
   const faults = [];
@@ -22,7 +25,9 @@ async function settle(page) {
 }
 
 test('Browser runtime · Home y Así juegas no dejan errores silenciosos', async ({ page }) => {
+  await mkdir(ARTIFACT_DIR, { recursive:true });
   const faults = attachRuntimeErrorProbe(page);
+  const stages = [];
 
   await mockApi(page, {
     profileSeed: {
@@ -36,12 +41,20 @@ test('Browser runtime · Home y Así juegas no dejan errores silenciosos', async
   await expect(home).toBeVisible();
   await expect(home.locator('.illustrated-home__stage')).toBeVisible();
   await settle(page);
+  stages.push({ name:'home', faultCount:faults.length });
 
   const matthias = home.getByRole('button', { name:'Abrir Así juegas con Matthias', exact:true });
   await expect(matthias).toBeVisible();
   await matthias.click();
   await expect(page.getByRole('heading', { name:'Así juegas', exact:true })).toBeVisible();
   await settle(page);
+  stages.push({ name:'asi-juegas', faultCount:faults.length });
+
+  await writeFile(
+    `${ARTIFACT_DIR}/browser-runtime-health.json`,
+    `${JSON.stringify({ schema:1, stages, faults }, null, 2)}\n`,
+    'utf8',
+  );
 
   expect(faults, faults.map((fault) => `[${fault.type}] ${fault.message}`).join('\n\n')).toEqual([]);
 });
