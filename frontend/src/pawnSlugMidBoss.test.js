@@ -4,6 +4,7 @@ import {
   animateSturmBishopModel,
   createSturmBishopModel,
   pawnSlugSturmBishopCooldownTick,
+  pawnSlugSturmBishopEntryPose,
   pawnSlugSturmBishopSuppressionLane,
   pawnSlugSturmBishopSuppressionTelegraph,
   pawnSlugSturmBishopTelegraph,
@@ -31,14 +32,28 @@ describe('Pawn Slug Sturm-Bishop', () => {
     expect(suppressionReceivers).toBe(PAWN_SLUG_STURM_BISHOP_META.weaponMounts);
   });
 
+  it('enters with a brief heavy settle and disables the motion for reduced-motion', () => {
+    const start = pawnSlugSturmBishopEntryPose(0);
+    const middle = pawnSlugSturmBishopEntryPose(PAWN_SLUG_STURM_BISHOP_META.entrySeconds * 0.5);
+    const settled = pawnSlugSturmBishopEntryPose(PAWN_SLUG_STURM_BISHOP_META.entrySeconds + 0.01);
+    const reduced = pawnSlugSturmBishopEntryPose(0, { reducedMotion: true });
+    expect(start.active).toBe(true);
+    expect(start.scale).toBeLessThan(1);
+    expect(start.y).toBeGreaterThan(middle.y);
+    expect(start.visorBoost).toBeGreaterThan(middle.visorBoost);
+    expect(settled).toEqual({ active: false, scale: 1, y: 0, tilt: 0, visorBoost: 0 });
+    expect(reduced).toEqual(settled);
+  });
+
   it('keeps its premium scale while animating movement and damage feedback', () => {
     const model = createSturmBishopModel();
     const base = model.userData.baseScale;
-    animateSturmBishopModel(model, 0.8, { moving: true, hurt: false, dir: -1 });
+    model.userData.entryStartedAt = 0;
+    animateSturmBishopModel(model, PAWN_SLUG_STURM_BISHOP_META.entrySeconds + 0.8, { moving: true, hurt: false, dir: -1 });
     expect(Math.abs(model.scale.x)).toBeCloseTo(base);
     expect(model.scale.z).toBeCloseTo(base);
 
-    animateSturmBishopModel(model, 1.1, { moving: false, hurt: true, dir: 1 });
+    animateSturmBishopModel(model, PAWN_SLUG_STURM_BISHOP_META.entrySeconds + 1.1, { moving: false, hurt: true, dir: 1 });
     expect(model.scale.x).toBeGreaterThan(0);
     expect(model.scale.y).toBeLessThan(base * 1.02);
   });
@@ -82,10 +97,12 @@ describe('Pawn Slug Sturm-Bishop', () => {
     expect(new Set(lanes.map((lane) => lane.height)).size).toBe(3);
   });
 
-  it('lights both weapon mounts during heavy and suppression warning pulses without disturbing model scale', () => {
+  it('lights both weapon mounts during heavy and suppression warning pulses without disturbing settled model scale', () => {
     const model = createSturmBishopModel();
     const base = model.userData.baseScale;
-    animateSturmBishopModel(model, 0.42, { moving: false, hurt: false, dir: -1, telegraph: 1 });
+    model.userData.entryStartedAt = 0;
+    const settledTime = PAWN_SLUG_STURM_BISHOP_META.entrySeconds + 0.42;
+    animateSturmBishopModel(model, settledTime, { moving: false, hurt: false, dir: -1, telegraph: 1 });
     const shellIntensities = [];
     model.traverse((node) => {
       if (node.userData?.shellTelegraph) shellIntensities.push(node.material.emissiveIntensity);
@@ -93,7 +110,7 @@ describe('Pawn Slug Sturm-Bishop', () => {
     expect(shellIntensities).toHaveLength(PAWN_SLUG_STURM_BISHOP_META.weaponMounts);
     expect(shellIntensities.every((value) => value > 0)).toBe(true);
 
-    animateSturmBishopModel(model, 0.61, { moving: false, hurt: false, dir: 1, suppressionTelegraph: 1 });
+    animateSturmBishopModel(model, settledTime + 0.19, { moving: false, hurt: false, dir: 1, suppressionTelegraph: 1 });
     const suppressionIntensities = [];
     model.traverse((node) => {
       if (node.userData?.suppressionTelegraph) suppressionIntensities.push(node.material.emissiveIntensity);
