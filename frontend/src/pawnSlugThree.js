@@ -74,6 +74,7 @@ import {
   pawnSlugAnimateDestructibles,
   pawnSlugApplyDestructibleReward,
   pawnSlugDamageRuntimeDestructible,
+  pawnSlugEnemyCanFire,
   pawnSlugEnemyFireCooldown,
   pawnSlugEnemyShotPlan,
   pawnSlugEnemyWeaponFor,
@@ -1081,7 +1082,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
 
       if (enemy.type === 'pawn') {
         enemy.vx = distance > 4.6 / aggression ? enemy.dir * enemy.speed : 0;
-        if (distance < 9 * aggression && enemy.fireCooldown <= 0) {
+        if (pawnSlugEnemyCanFire(enemy.weapon, distance, 9 * aggression) && enemy.fireCooldown <= 0) {
           fireEnemy(enemy);
           enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random()) * cadence;
         }
@@ -1092,13 +1093,13 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
           enemy.onGround = false;
           enemy.leapCooldown = (2.2 + Math.random() * 1.4) / aggression;
         }
-        if (distance < 8 * aggression && enemy.fireCooldown <= 0) {
+        if (pawnSlugEnemyCanFire(enemy.weapon, distance, 8 * aggression) && enemy.fireCooldown <= 0) {
           fireEnemy(enemy);
           enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random()) * cadence;
         }
       } else if (enemy.type === 'rook') {
         enemy.vx = 0;
-        if (distance < 12 * aggression && enemy.fireCooldown <= 0) {
+        if (pawnSlugEnemyCanFire(enemy.weapon, distance, 12 * aggression) && enemy.fireCooldown <= 0) {
           fireEnemy(enemy, false);
           enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random()) * cadence;
         }
@@ -1140,7 +1141,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
           }
         } else {
           enemy.vx = suppressionCharging ? 0 : (distance > 4.8 ? enemy.dir * enemy.speed : 0);
-          if (!suppressionCharging && distance < 11 && enemy.fireCooldown <= 0) {
+          if (!suppressionCharging && pawnSlugEnemyCanFire(enemy.weapon, distance, 11) && enemy.fireCooldown <= 0) {
             fireEnemy(enemy, false);
             enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random());
           }
@@ -1159,7 +1160,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
         }
       } else if (enemy.type === 'boss') {
         enemy.vx = 0;
-        if (distance < 16 && enemy.fireCooldown <= 0) {
+        if (pawnSlugEnemyCanFire(enemy.weapon, distance, 16) && enemy.fireCooldown <= 0) {
           fireEnemy(enemy, false);
           enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random());
         }
