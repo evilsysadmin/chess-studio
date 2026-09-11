@@ -4,6 +4,14 @@ function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
 }
 
+export function pawnSlugJumpVisualPhase(progress = 0) {
+  const p = clamp01(progress);
+  if (p < 0.18) return 'takeoff';
+  if (p < 0.48) return 'rise';
+  if (p < 0.68) return 'apex';
+  return 'fall';
+}
+
 function applyWeaponRecoil(pose, weapon, time) {
   if (weapon === 'machinegun') {
     const chatter = 0.5 + Math.sin((Number(time) || 0) * 58) * 0.5;
@@ -47,6 +55,7 @@ export function pawnSlugMatthiasPremiumPose({
 } = {}) {
   const safeTime = Number(time) || 0;
   const jumpProgress = clamp01((Number(jumpFrame) || 0) / Math.max(1, jumpFrames - 1));
+  const jumpPhase = airborne ? pawnSlugJumpVisualPhase(jumpProgress) : 'ground';
   const landingAge = Math.max(0, safeTime - (Number(landedAt) || 0));
   const landing = previousAirborne && !airborne ? 1 : clamp01(1 - landingAge / 0.14);
 
@@ -56,11 +65,25 @@ export function pawnSlugMatthiasPremiumPose({
   let rz = 0;
   let weaponRecoil = 'idle';
 
-  if (airborne) {
-    const ascent = jumpProgress < 0.48;
-    sx *= ascent ? 0.965 : 1.025;
-    sy *= ascent ? 1.045 : 0.975;
-    y += ascent ? 0.025 : -0.012;
+  if (jumpPhase === 'takeoff') {
+    sx *= 0.94;
+    sy *= 1.075;
+    y += 0.032;
+    rz -= 0.04;
+  } else if (jumpPhase === 'rise') {
+    sx *= 0.965;
+    sy *= 1.045;
+    y += 0.025;
+    rz -= 0.018;
+  } else if (jumpPhase === 'apex') {
+    sx *= 1.01;
+    sy *= 1.015;
+    y += 0.012;
+  } else if (jumpPhase === 'fall') {
+    sx *= 1.035;
+    sy *= 0.965;
+    y -= 0.016;
+    rz += 0.028;
   }
   if (crouch) {
     sx *= 1.018;
@@ -111,6 +134,7 @@ export function pawnSlugMatthiasPremiumPose({
     y,
     rz,
     landing,
+    jumpPhase,
     pistolPhase: pistolPhase?.phase || 'idle',
     weaponRecoil,
   });
