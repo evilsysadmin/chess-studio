@@ -191,6 +191,24 @@ export function unitDecorations(record) {
     .map((definition) => ({ ...definition, earnedAt: earned.get(definition.id)?.earnedAt || null }));
 }
 
+// Marcas cosméticas sólo cuando existe provenance inequívoco. Por ahora la
+// única cicatriz literal nace de una resurrección registrada; no inferimos
+// heridas a partir de edad, kills o nivel porque esos datos no demuestran daño.
+export function unitServiceMarks(record) {
+  const revives = finiteNonNegative(record?.stats?.revives);
+  if (revives < 1) return [];
+  return [{
+    id: 'revival-scar',
+    short: 'RET',
+    label: 'Cicatriz de retorno',
+    description: revives === 1
+      ? 'Esta identidad cayó y fue revivida una vez.'
+      : `Esta identidad cayó y fue revivida ${revives} veces.`,
+    provenance: `${revives} revival${revives === 1 ? '' : 's'} registrado${revives === 1 ? '' : 's'}`,
+    count: revives,
+  }];
+}
+
 export function recordUnitBattle(rosterState, event) {
   let state = ensureUnitServiceState(rosterState);
   const battleId = typeof event?.battleId === 'string' ? event.battleId : null;
