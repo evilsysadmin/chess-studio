@@ -82,7 +82,7 @@ describe('Matthias daily transport', () => {
     await expect(bob).resolves.toMatchObject({ memory: { owner: 'bob' } });
   });
 
-  it('lee un briefing persistente sin consumir una audiencia y propaga AbortSignal', async () => {
+  it('lee un briefing persistente sin consumir una audiencia y propaga el aborto externo', async () => {
     global.fetch.mockResolvedValue(response(200, { text: 'Objetivo en vigor.', memory: { consultations: 3 } }));
     const controller = new AbortController();
     const result = await fetchMatthiasBriefing({ signal: controller.signal });
@@ -90,7 +90,9 @@ describe('Matthias daily transport', () => {
     const [url, options] = global.fetch.mock.calls[0];
     expect(url).toContain('/matthias/briefing');
     expect(options.method).toBeUndefined();
-    expect(options.signal).toBe(controller.signal);
+    expect(options.signal.aborted).toBe(false);
+    controller.abort();
+    expect(options.signal.aborted).toBe(true);
   });
 
   it('puede borrar la memoria propia sin tocar otros endpoints de progreso', async () => {
