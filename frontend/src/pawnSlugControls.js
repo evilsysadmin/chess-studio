@@ -1,4 +1,4 @@
-import { STORAGE_LOCAL, getStorageItem, setStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, readJsonStorage, setStorageItem } from './safeStorage.js';
 
 export const PAWN_SLUG_CONTROL_ACTIONS = Object.freeze([
   'moveLeft',
@@ -102,13 +102,9 @@ export function normalizePawnSlugSettings(value) {
 }
 
 export function loadPawnSlugSettings() {
-  const raw = getStorageItem(STORAGE_LOCAL, PAWN_SLUG_SETTINGS_STORAGE_KEY);
-  if (!raw) return normalizePawnSlugSettings(PAWN_SLUG_DEFAULT_SETTINGS);
-  try {
-    return normalizePawnSlugSettings(JSON.parse(raw));
-  } catch {
-    return normalizePawnSlugSettings(PAWN_SLUG_DEFAULT_SETTINGS);
-  }
+  return normalizePawnSlugSettings(
+    readJsonStorage(STORAGE_LOCAL, PAWN_SLUG_SETTINGS_STORAGE_KEY, { fallback: PAWN_SLUG_DEFAULT_SETTINGS }),
+  );
 }
 
 export function savePawnSlugSettings(value) {

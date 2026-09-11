@@ -1,4 +1,4 @@
-import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 import { loadGameActivity } from './gameActivity.js';
 
@@ -49,14 +49,9 @@ function emptyState() {
 }
 
 export function loadRating() {
-  try {
-    const raw = getStorageItem(STORAGE_LOCAL, RATING_KEY);
-    if (!raw) return emptyState();
-    const parsed = JSON.parse(raw);
-    return { rating: parsed.rating ?? DEFAULT_RATING, games: parsed.games || 0 };
-  } catch {
-    return emptyState();
-  }
+  const parsed = readJsonStorage(STORAGE_LOCAL, RATING_KEY, { fallback: null });
+  if (!parsed || typeof parsed !== 'object') return emptyState();
+  return { rating: parsed.rating ?? DEFAULT_RATING, games: parsed.games || 0 };
 }
 
 export function saveRating(state) {
@@ -64,14 +59,8 @@ export function saveRating(state) {
 }
 
 export function loadRatingHistory() {
-  try {
-    const raw = getStorageItem(STORAGE_LOCAL, RATING_HISTORY_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  const parsed = readJsonStorage(STORAGE_LOCAL, RATING_HISTORY_KEY, { fallback: [] });
+  return Array.isArray(parsed) ? parsed : [];
 }
 
 export function recordRatingHistory(rating) {
