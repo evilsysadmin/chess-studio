@@ -18,12 +18,16 @@ function storageHealthLabel(area) {
 
 export default function PrivacyDataDisclosure() {
   const [aiRows, setAiRows] = useState(() => loadNarrativeCallLedger());
+  const [clearStatus, setClearStatus] = useState(null);
   const lastAiCall = aiRows.at(-1) || null;
   const storageHealth = storageHealthSnapshot();
 
   function clearAiHistory() {
-    clearNarrativeCallLedger();
+    const persisted = clearNarrativeCallLedger();
     setAiRows([]);
+    setClearStatus(persisted
+      ? 'Historial local de llamadas IA borrado.'
+      : 'Borrado para esta pestaña; Web Storage no confirmó el cambio.');
   }
 
   return (
@@ -48,6 +52,7 @@ export default function PrivacyDataDisclosure() {
           <button type="button" className="secondary-btn" onClick={clearAiHistory} disabled={aiRows.length === 0}>
             Borrar historial local de llamadas IA
           </button>
+          {clearStatus && <small role="status">{clearStatus}</small>}
         </div>
       </details>
 
