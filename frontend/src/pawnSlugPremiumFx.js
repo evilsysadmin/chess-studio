@@ -142,6 +142,13 @@ export function createPremiumMuzzleFlash({ enemy = false, weapon = 'pistol' } = 
   root.userData.baseScale = profile.flash;
   root.userData.premiumFxGeometry = PAWN_SLUG_PREMIUM_FX_RESOURCE_VERSION;
   root.userData.panzerfaustPunch = weapon === 'panzerfaust' ? 'shockwave-smoke' : null;
+  root.userData.muzzleSignature = weapon === 'machinegun'
+    ? 'staccato-needle'
+    : weapon === 'shotgun'
+      ? 'wide-smoke-blast'
+      : weapon === 'panzerfaust'
+        ? 'shockwave-smoke'
+        : 'dry-crack';
 
   const core = mesh(
     shared(`${key}:muzzle:core-geometry`, () => new THREE.SphereGeometry(0.095 * profile.flash, 8, 6)),
@@ -156,9 +163,43 @@ export function createPremiumMuzzleFlash({ enemy = false, weapon = 'pistol' } = 
   const flareGeometry = shared(`${key}:muzzle:flare-geometry`, () => new THREE.PlaneGeometry(0.7 * profile.flash, 0.055 * profile.flash));
   const flareMaterial = basic(profile.core, 0.54);
   const flare = mesh(flareGeometry, flareMaterial, 0.11 * profile.flash, 0, 0.01);
-  const flare2 = mesh(flareGeometry, flareMaterial, 0.11 * profile.flash, 0, 0.01);
+  const flare2 = mesh(flareGeometry, flareMaterial.clone(), 0.11 * profile.flash, 0, 0.01);
   flare2.rotation.z = Math.PI / 2;
   root.add(core, cone, flare, flare2);
+
+  if (weapon === 'machinegun') {
+    const streak = mesh(
+      shared(`${key}:muzzle:streak-geometry`, () => new THREE.PlaneGeometry(0.96 * profile.flash, 0.032 * profile.flash)),
+      basic(profile.core, 0.66),
+      0.36 * profile.flash,
+      0,
+      0.012,
+    );
+    streak.userData.muzzleStreak = true;
+    root.add(streak);
+  }
+
+  if (weapon === 'shotgun') {
+    const sideGeometry = shared(`${key}:muzzle:shotgun-side-geometry`, () => new THREE.ConeGeometry(0.09 * profile.flash, 0.35 * profile.flash, 7));
+    for (const side of [-1, 1]) {
+      const sideFlare = mesh(sideGeometry, basic(profile.tracer, 0.62), 0.24 * profile.flash, side * 0.09 * profile.flash, 0.008);
+      sideFlare.rotation.z = -Math.PI / 2 + side * 0.18;
+      sideFlare.userData.muzzleShotgunFlare = true;
+      root.add(sideFlare);
+    }
+    for (let index = 0; index < 2; index += 1) {
+      const smoke = mesh(
+        shared(`${key}:muzzle:shotgun-smoke-geometry:${index}`, () => new THREE.SphereGeometry(0.085 + index * 0.025, 7, 5)),
+        basic(0x7c7770, 0.22 - index * 0.025),
+        (-0.025 - index * 0.075) * profile.flash,
+        (index === 0 ? 0.06 : -0.055) * profile.flash,
+        -0.014,
+      );
+      smoke.userData.muzzleShotgunSmoke = true;
+      smoke.userData.smokeIndex = index;
+      root.add(smoke);
+    }
+  }
 
   if (weapon === 'panzerfaust') {
     const shockwave = mesh(
@@ -215,9 +256,26 @@ export function animatePremiumMuzzleFlash(model, lifeRatio = 1) {
       const smokeScale = 0.82 + progress * (1.35 + smokeIndex * 0.25);
       child.scale.set(smokeScale, smokeScale, smokeScale);
       child.position.x -= progress * (0.015 + smokeIndex * 0.008);
+    } else if (child.userData?.muzzleShotgunSmoke) {
+      const smokeIndex = child.userData.smokeIndex || 0;
+      const smokeScale = 0.84 + progress * (0.8 + smokeIndex * 0.18);
+      child.scale.set(smokeScale, smokeScale, smokeScale);
+      child.position.x -= progress * (0.01 + smokeIndex * 0.006);
+    } else if (child.userData?.muzzleShotgunFlare) {
+      child.scale.y = 0.9 + progress * 0.45;
+    } else if (child.userData?.muzzleStreak) {
+      child.scale.x = 0.7 + progress * 1.45;
     }
     if (!child.material || !('opacity' in child.material)) continue;
-    const fade = child.userData?.muzzleSmoke ? safe * 0.42 : child.userData?.muzzleShockwave ? safe * 0.72 : safe * 1.1;
+    const fade = child.userData?.muzzleSmoke
+      ? safe * 0.42
+      : child.userData?.muzzleShotgunSmoke
+        ? safe * 0.32
+        : child.userData?.muzzleShockwave
+          ? safe * 0.72
+          : child.userData?.muzzleStreak
+            ? safe * 0.9
+            : safe * 1.1;
     child.material.opacity = Math.max(0, Math.min(1, fade));
   }
 }
