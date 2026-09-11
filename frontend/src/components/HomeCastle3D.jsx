@@ -1,14 +1,23 @@
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
+import {
+  HOME_CASTLE_ART_HEIGHT,
+  HOME_CASTLE_ART_WIDTH,
+  createCanonicalHallGeometry,
+} from './HomeCastle3DGeometry.js';
 
-const CAMERA_FOV = 35;
-const ART_WIDTH = 3.2;
-const ART_HEIGHT = 1.8;
-const PARALLAX_X = 0.018;
-const PARALLAX_Y = 0.012;
+const CAMERA_Z = 3;
+const PARALLAX_X = 0.034;
+const PARALLAX_Y = 0.022;
 
-function cameraDistanceForHeight(height, fovDegrees) {
-  return (height / 2) / Math.tan(THREE.MathUtils.degToRad(fovDegrees / 2));
+function frameOrthographicCamera(camera, aspect) {
+  const halfHeight = HOME_CASTLE_ART_HEIGHT / 2;
+  const halfWidth = halfHeight * aspect;
+  camera.left = -halfWidth;
+  camera.right = halfWidth;
+  camera.top = halfHeight;
+  camera.bottom = -halfHeight;
+  camera.updateProjectionMatrix();
 }
 
 export default function HomeCastle3D({ artUrl }) {
@@ -34,13 +43,20 @@ export default function HomeCastle3D({ artUrl }) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(CAMERA_FOV, 16 / 9, 0.1, 20);
-    camera.position.set(0, 0, cameraDistanceForHeight(ART_HEIGHT, CAMERA_FOV));
+    const camera = new THREE.OrthographicCamera(
+      -HOME_CASTLE_ART_WIDTH / 2,
+      HOME_CASTLE_ART_WIDTH / 2,
+      HOME_CASTLE_ART_HEIGHT / 2,
+      -HOME_CASTLE_ART_HEIGHT / 2,
+      0.1,
+      10,
+    );
+    camera.position.set(0, 0, CAMERA_Z);
 
-    const geometry = new THREE.PlaneGeometry(ART_WIDTH, ART_HEIGHT);
+    const geometry = createCanonicalHallGeometry();
     const material = new THREE.MeshBasicMaterial({ transparent: true });
     const art = new THREE.Mesh(geometry, material);
-    art.scale.setScalar(1.035);
+    art.scale.setScalar(1.018);
     scene.add(art);
 
     const pointer = new THREE.Vector2();
@@ -54,19 +70,20 @@ export default function HomeCastle3D({ artUrl }) {
       const width = Math.max(1, canvas.clientWidth || canvas.parentElement?.clientWidth || 1);
       const height = Math.max(1, canvas.clientHeight || canvas.parentElement?.clientHeight || 1);
       renderer.setSize(width, height, false);
-      camera.aspect = width / height;
-      camera.updateProjectionMatrix();
+      frameOrthographicCamera(camera, width / height);
     };
 
     const render = () => {
       if (disposed) return;
       if (!reducedMotion?.matches) {
         pointer.lerp(target, 0.055);
-        art.rotation.y = pointer.x * PARALLAX_X;
-        art.rotation.x = -pointer.y * PARALLAX_Y;
+        camera.position.x = pointer.x * PARALLAX_X;
+        camera.position.y = -pointer.y * PARALLAX_Y;
+        camera.lookAt(0, 0, 0.035);
       } else {
         pointer.set(0, 0);
-        art.rotation.set(0, 0, 0);
+        camera.position.set(0, 0, CAMERA_Z);
+        camera.lookAt(0, 0, 0.035);
       }
       renderer.render(scene, camera);
       frame = window.requestAnimationFrame(render);
