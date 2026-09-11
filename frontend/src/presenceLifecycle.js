@@ -22,6 +22,7 @@ export function bindPresenceLifecycle(activity, {
   if (!win || !doc) return () => {};
 
   let backgroundTimer = null;
+  let heartbeatTimer = null;
   const clearBackgroundTimer = () => {
     if (backgroundTimer != null) clearTimeoutFn?.(backgroundTimer);
     backgroundTimer = null;
@@ -29,12 +30,23 @@ export function bindPresenceLifecycle(activity, {
   const report = (foreground = typeof doc.visibilityState === 'string' ? doc.visibilityState === 'visible' : null) => {
     touch(activity, foreground);
   };
+  const stopHeartbeat = () => {
+    if (heartbeatTimer == null) return;
+    clearIntervalFn?.(heartbeatTimer);
+    heartbeatTimer = null;
+  };
+  const startHeartbeat = () => {
+    if (heartbeatTimer != null || doc.visibilityState !== 'visible') return;
+    heartbeatTimer = setIntervalFn?.(() => report(true), heartbeatMs) ?? null;
+  };
   const onVisibility = () => {
     clearBackgroundTimer();
     if (doc.visibilityState === 'visible') {
       report(true);
+      startHeartbeat();
       return;
     }
+    stopHeartbeat();
     // Cambiar de pestaña sí debe reflejar background, pero cerrar/recargar no
     // debe lanzar un touch justo antes del logout. pagehide cancela este timer.
     backgroundTimer = setTimeoutFn?.(() => {
@@ -44,25 +56,27 @@ export function bindPresenceLifecycle(activity, {
   };
   const onPageHide = () => {
     clearBackgroundTimer();
+    stopHeartbeat();
     Promise.resolve(leave()).catch(() => {});
   };
   const onPageShow = () => {
     // Safari/Firefox pueden restaurar el documento desde bfcache sin montar
     // React otra vez. pagehide ya rotó la id; pageshow anuncia la nueva ya.
-    if (doc.visibilityState === 'visible') report(true);
+    if (doc.visibilityState === 'visible') {
+      report(true);
+      startHeartbeat();
+    }
   };
 
   report();
-  const timer = setIntervalFn?.(() => {
-    if (doc.visibilityState === 'visible') report(true);
-  }, heartbeatMs);
+  startHeartbeat();
   doc.addEventListener?.('visibilitychange', onVisibility);
   win.addEventListener?.('pagehide', onPageHide);
   win.addEventListener?.('pageshow', onPageShow);
 
   return () => {
     clearBackgroundTimer();
-    if (timer != null) clearIntervalFn?.(timer);
+    stopHeartbeat();
     doc.removeEventListener?.('visibilitychange', onVisibility);
     win.removeEventListener?.('pagehide', onPageHide);
     win.removeEventListener?.('pageshow', onPageShow);
