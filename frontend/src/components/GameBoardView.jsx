@@ -11,6 +11,7 @@ import WarRoomHansFireCall from './WarRoomHansFireCall.jsx';
 import WarRoomHansMopDialogue from './WarRoomHansMopDialogue.jsx';
 import WarRoomHansServiceDialogue from './WarRoomHansServiceDialogue.jsx';
 import useGameBoardRenderer from './useGameBoardRenderer.js';
+import useWarRoomSpatialAmbience from './useWarRoomSpatialAmbience.js';
 import { useGameFocusBubble, useGameMobileFocus } from './useGameMobileFocus.js';
 import useMatthias3DBubbleAnchor from './useMatthias3DBubbleAnchor.js';
 import useMatthiasBoardReactions from './useMatthiasBoardReactions.js';
@@ -85,6 +86,7 @@ export default function GameBoardView({
   const topColor = humanColor === 'w' ? 'b' : 'w';
   const bottomColor = humanColor;
   const { isThreeD, toggleBoardRenderer } = useGameBoardRenderer();
+  useWarRoomSpatialAmbience({ enabled: isThreeD });
   const [hansReducedMotion, setHansReducedMotion] = useState(() => getEffectiveReducedMotion());
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
