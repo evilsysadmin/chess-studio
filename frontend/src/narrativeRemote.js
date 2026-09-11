@@ -1,5 +1,6 @@
 import { withRequestId } from './requestId.js';
 import { fetchWithTimeout } from './asyncControl.js';
+import { recordNarrativeCall } from './narrativeCallLedger.js';
 const DEFAULT_TIMEOUT_MS = 4500;
 const DEFAULT_MIN_PLY_GAP = 2;
 const DEFAULT_MIN_INTERVAL_MS = 2500;
@@ -50,6 +51,27 @@ function maxOutputCharsFor(dossier) {
   return DEFAULT_MAX_OUTPUT_CHARS;
 }
 
+function narrativePayload(dossier) {
+  return {
+    eventType: String(dossier.eventType || 'generic').slice(0, 48),
+    requestKind: String(dossier.requestKind || 'default').slice(0, 32),
+    facts: dossier.facts && typeof dossier.facts === 'object' ? dossier.facts : {},
+    tone: String(dossier.tone || 'friendly_sarcastic').slice(0, 32),
+    locale: 'es-ES',
+  };
+}
+
+function recordCall(dossier, payloadText, provider, text = '', ok = false) {
+  recordNarrativeCall({
+    eventType: dossier?.eventType,
+    requestKind: dossier?.requestKind,
+    provider,
+    inputChars: payloadText.length,
+    outputChars: typeof text === 'string' ? text.length : 0,
+    ok,
+  });
+}
+
 export async function requestRemoteNarrative(
   dossier,
   {
@@ -62,29 +84,35 @@ export async function requestRemoteNarrative(
   if (!token || !dossier || typeof dossier !== 'object') return null;
   if (cooldownGate && typeof cooldownGate.allow === 'function' && !cooldownGate.allow(dossier)) return null;
 
+  const payload = narrativePayload(dossier);
+  const payloadText = JSON.stringify(payload);
+
   try {
     const response = await fetchWithTimeout(fetchImpl, `${apiBase()}/narrative`, {
       method: 'POST',
       headers: withRequestId({ 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }),
-      body: JSON.stringify({
-        eventType: String(dossier.eventType || 'generic').slice(0, 48),
-        requestKind: String(dossier.requestKind || 'default').slice(0, 32),
-        facts: dossier.facts && typeof dossier.facts === 'object' ? dossier.facts : {},
-        tone: String(dossier.tone || 'friendly_sarcastic').slice(0, 32),
-        locale: 'es-ES',
-      }),
+      body: payloadText,
     }, Math.max(500, timeoutMs));
-    if (!response.ok) return null;
+    if (!response.ok) {
+      recordCall(dossier, payloadText, `http-${response.status || 'error'}`);
+      return null;
+    }
     const body = await response.json();
     // El frontend ya tiene un fallback procedural más rico y contextual.
     // Si FastAPI informa provider=local (kill switch, breaker, CF caído...),
     // tratamos el remoto como no disponible para conservar ese relato local
     // en vez de sustituirlo por el fallback genérico del transporte backend.
-    if (body?.provider !== 'cloudflare') return null;
-    return typeof body?.text === 'string' && body.text.trim()
+    if (body?.provider !== 'cloudflare') {
+      recordCall(dossier, payloadText, String(body?.provider || 'unavailable'));
+      return null;
+    }
+    const text = typeof body?.text === 'string' && body.text.trim()
       ? body.text.trim().slice(0, maxOutputCharsFor(dossier))
       : null;
+    recordCall(dossier, payloadText, 'cloudflare', text || '', Boolean(text));
+    return text;
   } catch {
+    recordCall(dossier, payloadText, 'transport-error');
     return null;
   }
 }
