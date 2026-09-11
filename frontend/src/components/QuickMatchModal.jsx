@@ -47,10 +47,14 @@ export default function QuickMatchModal({
 
   useEffect(() => {
     let active = true;
-    void fetchMatthiasBriefing()
+    const controller = new AbortController();
+    void fetchMatthiasBriefing({ signal: controller.signal })
       .then((result) => { if (active && result?.text) setMatthiasBriefing(result.text); })
       .catch(() => { if (active) setMatthiasBriefing(null); });
-    return () => { active = false; };
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, []);
 
   return (
@@ -131,9 +135,7 @@ export default function QuickMatchModal({
                 className="time-control-select quick-match-series-select"
                 aria-label="Formato de serie"
               >
-                {SERIES_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
+                {SERIES_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
             </div>
             {seriesBestOf > 1 && (
