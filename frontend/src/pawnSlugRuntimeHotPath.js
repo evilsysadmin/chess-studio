@@ -16,6 +16,11 @@ export {
   pawnSlugPowsForScenario,
   pawnSlugRescuePow,
 } from './pawnSlugPows.js';
+export {
+  PAWN_SLUG_POW_ART_META,
+  animatePawnSlugPowModel,
+  createPawnSlugPowModel,
+} from './pawnSlugPowArt.js';
 
 export const PAWN_SLUG_RUNTIME_HOT_PATH = 'scalar-collision-index-loops-v1';
 
