@@ -734,7 +734,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
         damage: plan.damage,
         enemy: true,
         explosive: plan.explosive,
-        life: 4,
+        life: explosive ? 4 : Math.min(4, plan.range / Math.max(0.001, plan.speed) + 0.18),
         weapon: weaponId,
       });
     }
