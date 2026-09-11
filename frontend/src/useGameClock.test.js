@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activeClockColor, createVisibleClockTicker, fallenClockColor } from './useGameClock.js';
+import { activeClockColor, createVisibleClockTicker, elapsedClockSeconds, fallenClockColor } from './useGameClock.js';
 
 describe('game clock orchestration', () => {
   it('durante la espera de CPU cobra tiempo al bando contrario al humano', () => {
@@ -13,7 +13,36 @@ describe('game clock orchestration', () => {
     expect(fallenClockColor(20, 12)).toBeNull();
   });
 
-  it('detiene el ticker al ocultarse, reconcilia al volver y limpia listeners', () => {
+  it('usa tiempo monotónico durante juego visible y wall-clock sólo al reanudar de sleep', () => {
+    expect(elapsedClockSeconds({
+      resumed: false,
+      previousPerf: 1000,
+      currentPerf: 1200,
+      previousWall: 50_000,
+      currentWall: 3_650_000,
+    })).toBeCloseTo(0.2, 6);
+
+    // Simula un dispositivo donde performance.now() queda prácticamente
+    // congelado durante una hora de suspensión profunda.
+    expect(elapsedClockSeconds({
+      resumed: true,
+      previousPerf: 1200,
+      currentPerf: 1201,
+      previousWall: 50_000,
+      currentWall: 3_650_000,
+    })).toBeCloseTo(3600, 6);
+
+    // Un reloj de sistema que retrocede nunca puede regalar tiempo negativo.
+    expect(elapsedClockSeconds({
+      resumed: true,
+      previousPerf: 1200,
+      currentPerf: 1400,
+      previousWall: 50_000,
+      currentWall: 49_000,
+    })).toBe(0);
+  });
+
+  it('detiene el ticker al ocultarse, marca la reconciliación al volver y limpia listeners', () => {
     const listeners = new Map();
     const doc = {
       visibilityState: 'visible',
@@ -24,11 +53,11 @@ describe('game clock orchestration', () => {
     };
     const activeIntervals = new Map();
     const cleared = [];
+    const tickEvents = [];
     let nextIntervalId = 1;
-    let ticks = 0;
 
     const stop = createVisibleClockTicker({
-      tick: () => { ticks += 1; },
+      tick: (event) => { tickEvents.push(event); },
       doc,
       setIntervalFn: (callback, delay) => {
         const id = nextIntervalId;
@@ -44,16 +73,17 @@ describe('game clock orchestration', () => {
 
     expect(activeIntervals.size).toBe(1);
     expect([...activeIntervals.values()][0].delay).toBe(200);
+    [...activeIntervals.values()][0].callback();
+    expect(tickEvents).toEqual([{ resumed: false }]);
 
     doc.visibilityState = 'hidden';
     listeners.get('visibilitychange')();
     expect(activeIntervals.size).toBe(0);
     expect(cleared).toEqual([1]);
-    expect(ticks).toBe(0);
 
     doc.visibilityState = 'visible';
     listeners.get('visibilitychange')();
-    expect(ticks).toBe(1);
+    expect(tickEvents).toEqual([{ resumed: false }, { resumed: true }]);
     expect(activeIntervals.size).toBe(1);
 
     stop();
