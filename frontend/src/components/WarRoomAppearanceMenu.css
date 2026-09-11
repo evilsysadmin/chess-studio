@@ -22,11 +22,9 @@
     z-index: 220 !important;
   }
 
-  /* FloatingFooter intentionally dissolves desktop-only utility chrome on
-     compact layouts. Appearance is now the one exception: it replaces the
-     Board3D-local floating button and therefore must remain reachable here. */
+  /* Compact War Room owns the utility menu here; FloatingFooter no longer
+     hides it, so this layer only positions and sizes the canonical entry point. */
   .game-screen .game-layout-3d .game-3d-utility-menu {
-    display: block !important;
     position: absolute;
     z-index: 221;
     top: 50%;
