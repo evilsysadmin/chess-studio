@@ -369,9 +369,68 @@
 }
 
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
-  .pawn-slug-touch button { min-width: 54px; min-height: 54px; }
-  .pawn-slug-touch button.is-fire { width: 68px; height: 68px; }
+  .pawn-slug {
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  .pawn-slug-head,
+  .pawn-slug-controls { display: none; }
+  .pawn-slug-cabinet {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+  }
+  .pawn-slug-hud {
+    grid-template-columns: 1.8fr .48fr 1fr .52fr;
+    min-height: 0;
+  }
+  .pawn-slug-hud > div {
+    padding: .25rem .4rem .22rem;
+  }
+  .pawn-slug-hud > div:nth-child(5),
+  .pawn-slug-hud > div:nth-child(6) { display: none; }
+  .pawn-slug-hud span,
+  .pawn-slug-hud small { font-size: .48rem; line-height: 1.05; }
+  .pawn-slug-hud b { font-size: .72rem; line-height: 1.05; }
+  .pawn-slug-health { gap: .28rem; }
+  .pawn-slug-health-track { height: 6px; }
+  .pawn-slug-xp-label,
+  .pawn-slug-xp-track,
+  .pawn-slug-xp-value { display: none !important; }
+  .pawn-slug-stage {
+    min-height: 0;
+    height: auto;
+    aspect-ratio: auto;
+  }
+  .pawn-slug-mission-progress {
+    top: .28rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    width: min(54%, 420px);
+    padding: .22rem .45rem;
+  }
+  .pawn-slug-mission-progress span { display: none; }
+  .pawn-slug-boss { top: 1.85rem; width: min(58%, 480px); padding: .28rem .5rem; }
+  .pawn-slug-boss span { margin-bottom: .16rem; font-size: .56rem; }
+  .pawn-slug-boss > div { height: 5px; }
+  .pawn-slug-toast { bottom: 4.35rem; max-width: 45%; padding: .34rem .5rem; font-size: .68rem; }
+  .pawn-slug-touch {
+    bottom: max(.28rem, env(safe-area-inset-bottom, 0px));
+    left: max(.35rem, env(safe-area-inset-left, 0px));
+    right: max(.35rem, env(safe-area-inset-right, 0px));
+  }
+  .pawn-slug-touch > div { gap: .26rem; }
+  .pawn-slug-touch button { min-width: 50px; min-height: 50px; padding: .2rem; border-radius: 11px; }
+  .pawn-slug-touch button.is-fire { width: 62px; height: 62px; }
+  .pawn-slug-touch button span { font-size: 1.15rem; }
   .pawn-slug-touch button small { display: none; }
+  .pawn-slug-settings-trigger { top: .3rem; right: max(.35rem, env(safe-area-inset-right, 0px)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
