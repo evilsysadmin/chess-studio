@@ -13,6 +13,13 @@ export function fallenClockColor(whiteTime, blackTime) {
   return null;
 }
 
+export function elapsedClockSeconds({ resumed = false, previousPerf, currentPerf, previousWall, currentWall }) {
+  const start = resumed ? Number(previousWall) : Number(previousPerf);
+  const end = resumed ? Number(currentWall) : Number(currentPerf);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return 0;
+  return Math.max(0, end - start) / 1000;
+}
+
 export function createVisibleClockTicker({
   tick,
   intervalMs = 200,
@@ -30,16 +37,17 @@ export function createVisibleClockTicker({
   };
   const start = () => {
     if (intervalId !== null || doc?.visibilityState === 'hidden') return;
-    intervalId = setIntervalFn(tick, intervalMs);
+    intervalId = setIntervalFn(() => tick({ resumed: false }), intervalMs);
   };
   const onVisibility = () => {
     if (doc?.visibilityState === 'hidden') {
       stop();
       return;
     }
-    // Reconcile the whole wall-clock gap immediately when the tab becomes
-    // visible again, then resume the normal 200 ms cadence.
-    tick();
+    // A deep mobile sleep may pause performance.now() on some platforms.
+    // Reconcile the hidden gap with wall time exactly once, then resume the
+    // normal monotonic cadence while the tab is visible.
+    tick({ resumed: true });
     start();
   };
 
@@ -99,11 +107,19 @@ export function useGameClock({ game, timeControl, busy, humanColor, forcedOutcom
       return undefined;
     }
     runtime.setTickingColor(activeClockColor({ busy, humanColor, turn: game.turn }));
-    tickRef.current = performance.now();
-    const tickClock = () => {
-      const now = performance.now();
-      const elapsed = (now - tickRef.current) / 1000;
-      tickRef.current = now;
+    tickRef.current = { perf: performance.now(), wall: Date.now() };
+    const tickClock = ({ resumed = false } = {}) => {
+      const currentPerf = performance.now();
+      const currentWall = Date.now();
+      const previous = tickRef.current || { perf: currentPerf, wall: currentWall };
+      const elapsed = elapsedClockSeconds({
+        resumed,
+        previousPerf: previous.perf,
+        currentPerf,
+        previousWall: previous.wall,
+        currentWall,
+      });
+      tickRef.current = { perf: currentPerf, wall: currentWall };
       const color = activeClockColor({ busy, humanColor, turn: game.turn });
       let snapshot = runtime.advance(color, elapsed);
       const fallen = fallenClockColor(snapshot.whiteTime, snapshot.blackTime);
@@ -121,10 +137,9 @@ export function useGameClock({ game, timeControl, busy, humanColor, forcedOutcom
         onPressureRef.current?.();
       }
 
-      const wallNow = Date.now();
-      if (wallNow - lastPersistRef.current >= 900) {
-        lastPersistRef.current = wallNow;
-        persistSnapshot(snapshot, color, wallNow);
+      if (currentWall - lastPersistRef.current >= 900) {
+        lastPersistRef.current = currentWall;
+        persistSnapshot(snapshot, color, currentWall);
       }
     };
     const stopTicker = createVisibleClockTicker({ tick: tickClock });
