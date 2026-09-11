@@ -192,7 +192,9 @@ export function setProfileStorageItem(key, value) {
     throw new Error(`Clave de perfil no registrada: ${key}`);
   }
   if (!profileStorageIdentityMatchesCurrentUser()) return false;
-  setStorageItem(STORAGE_LOCAL, key, value);
+  const nextValue = String(value);
+  if (getStorageItem(STORAGE_LOCAL, key) === nextValue) return true;
+  setStorageItem(STORAGE_LOCAL, key, nextValue);
   markProfileDirtyForCurrentUser(key);
   emitProfileChanged();
   return true;
@@ -203,6 +205,7 @@ export function removeProfileStorageItem(key) {
     throw new Error(`Clave de perfil no registrada: ${key}`);
   }
   if (!profileStorageIdentityMatchesCurrentUser()) return false;
+  if (getStorageItem(STORAGE_LOCAL, key) === null) return true;
   removeStorageItem(STORAGE_LOCAL, key);
   markProfileDirtyForCurrentUser(key);
   emitProfileChanged();
