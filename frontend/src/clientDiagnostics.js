@@ -1,4 +1,6 @@
 import { APP_RELEASE } from './release.js';
+import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
+import { STORAGE_SCHEMA_KEY, STORAGE_SCHEMA_VERSION } from './storageMigrations.js';
 
 function storageReadable(name) {
   try {
@@ -41,16 +43,41 @@ function compactStack(error) {
     .slice(0, 700);
 }
 
-export function buildClientDiagnostic({ error = null, view = null, canRecover = false, now = new Date() } = {}) {
+export function clientCapabilitySummary(runtime = globalThis) {
+  const nav = runtime?.navigator;
+  return {
+    webgl2: typeof runtime?.WebGL2RenderingContext !== 'undefined',
+    worker: typeof runtime?.Worker !== 'undefined',
+    audio: typeof runtime?.AudioContext !== 'undefined' || typeof runtime?.webkitAudioContext !== 'undefined',
+    serviceWorker: Boolean(nav && 'serviceWorker' in nav),
+  };
+}
+
+function storageSchemaSummary() {
+  const raw = getStorageItem(STORAGE_LOCAL, STORAGE_SCHEMA_KEY);
+  const parsed = Number.parseInt(String(raw ?? ''), 10);
+  const current = Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
+  return `${current}/${STORAGE_SCHEMA_VERSION}`;
+}
+
+function yesNo(value) {
+  return value ? 'sí' : 'no';
+}
+
+export function buildClientDiagnostic({ error = null, view = null, canRecover = false, now = new Date(), runtime = globalThis } = {}) {
   const requestId = String(error?.requestId || '').trim().slice(0, 64);
-  const route = String(view || globalThis?.location?.pathname || 'desconocida').slice(0, 80);
-  const online = typeof navigator === 'undefined' || typeof navigator.onLine !== 'boolean' ? 'desconocido' : (navigator.onLine ? 'sí' : 'no');
+  const route = String(view || runtime?.location?.pathname || 'desconocida').slice(0, 80);
+  const nav = runtime?.navigator;
+  const online = !nav || typeof nav.onLine !== 'boolean' ? 'desconocido' : (nav.onLine ? 'sí' : 'no');
   const stack = compactStack(error);
+  const capabilities = clientCapabilitySummary(runtime);
   const lines = [
     'Chess Studio · diagnóstico cliente',
     `release: ${APP_RELEASE}`,
+    `storage schema: ${storageSchemaSummary()}`,
     `pantalla: ${route}`,
     `online: ${online}`,
+    `capacidades: WebGL2 ${yesNo(capabilities.webgl2)} · Worker ${yesNo(capabilities.worker)} · AudioContext ${yesNo(capabilities.audio)} · ServiceWorker ${yesNo(capabilities.serviceWorker)}`,
     `localStorage: ${storageReadable('localStorage') ? 'ok' : 'bloqueado/no disponible'}`,
     `sessionStorage: ${storageReadable('sessionStorage') ? 'ok' : 'bloqueado/no disponible'}`,
     `partida recuperable: ${canRecover ? 'sí' : 'no'}`,
@@ -59,7 +86,7 @@ export function buildClientDiagnostic({ error = null, view = null, canRecover = 
   ];
   if (stack) lines.splice(lines.length - 1, 0, `stack: ${stack}`);
   if (requestId) lines.splice(lines.length - 1, 0, `requestId: ${requestId}`);
-  lines.push('privacidad: sin token, usuario, FEN, jugadas ni contenido de partida');
+  lines.push('privacidad: sin token, usuario, FEN, jugadas ni contenido de partida; sin user-agent completo ni datos de hardware');
   return lines.join('\n');
 }
 
