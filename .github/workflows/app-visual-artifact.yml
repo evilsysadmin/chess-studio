@@ -1,0 +1,63 @@
+name: App · visual artifact
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/src/**'
+      - 'frontend/public/**'
+      - 'e2e/app-visual-artifact.spec.js'
+      - '.github/workflows/app-visual-artifact.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-visual-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  capture:
+    name: App · visual capture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Restore exact frontend dependencies
+        uses: ./.github/actions/cache-node-modules
+        with:
+          working-directory: frontend
+          lockfile: frontend/package-lock.json
+          node-version: '22'
+
+      - name: Build frontend for visual capture
+        run: make frontend-build
+
+      - name: Restore Chromium runtime
+        uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+          build-frontend: 'false'
+
+      - name: Capture canonical desktop + Android views
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test app-visual-artifact.spec.js --workers=1 --retries=0
+
+      - name: Upload app visual artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: app-visual-${{ github.event.pull_request.number || github.run_id }}
+          path: .artifacts/app-visual/
+          if-no-files-found: warn
+          retention-days: 7
