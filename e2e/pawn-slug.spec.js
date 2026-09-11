@@ -152,6 +152,7 @@ test('Pawn Slug · Android landscape usa gestos y conserva targets jugables en p
     for (const viewport of [
       { width: 844, height: 390 },
       { width: 667, height: 375 },
+      { width: 568, height: 320 },
     ]) {
       await page.setViewportSize(viewport);
 
