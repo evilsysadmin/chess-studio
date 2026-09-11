@@ -81,8 +81,9 @@ test('War Room · Android landscape convierte el ancho extra en tablero, no en a
   expect(geometry.gridColumns.split(' ').length).toBeGreaterThanOrEqual(2);
   expect(geometry.overflowX).toBeLessThanOrEqual(1);
 
-  // The short-landscape contract keeps the board before secondary narrative UI.
-  await expect(page.locator('.game-3d-warroom-message')).toBeHidden();
+  // The old narrative card is retired entirely; landscape must not reserve or
+  // restyle a hidden ghost node for it.
+  await expect(page.locator('.game-3d-warroom-message')).toHaveCount(0);
 
   await expect(liveRow).toBeVisible();
 });
