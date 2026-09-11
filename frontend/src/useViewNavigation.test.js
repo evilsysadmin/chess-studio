@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_VIEW_HISTORY, appendViewHistory, popPreviousView } from './useViewNavigation.js';
+import { appendViewHistory, popPreviousView } from './useViewNavigation.js';
+import { MAX_VIEW_HISTORY } from './viewNavigationContract.js';
 
 describe('view navigation helpers', () => {
   it('limita el back-stack para que una sesión larga no crezca sin límite', () => {
