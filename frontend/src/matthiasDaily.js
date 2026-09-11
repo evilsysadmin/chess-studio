@@ -1,5 +1,6 @@
 import { getToken, getUsername } from './auth.js';
 import { fetchWithTimeout } from './asyncControl.js';
+import { emitMatthiasMemoryUpdated } from './matthiasMemoryEvents.js';
 import { withRequestId } from './requestId.js';
 
 const BASE_URL = String(import.meta.env?.VITE_API_URL || 'http://localhost:4000/api').replace(/\/$/, '');
@@ -81,10 +82,22 @@ export function askMatthiasDaily(questionKind, facts, { id = createMatthiasConsu
   return request('/matthias/daily', {
     method: 'POST',
     body: JSON.stringify({ questionKind, facts: facts || {}, consultationId: id }),
-  }).finally(invalidateDailyStatusCache);
+  })
+    .then((result) => {
+      if (Object.prototype.hasOwnProperty.call(result || {}, 'memory')) {
+        emitMatthiasMemoryUpdated(result.memory);
+      }
+      return result;
+    })
+    .finally(invalidateDailyStatusCache);
 }
 
 export function resetOwnMatthiasMemory() {
   invalidateDailyStatusCache();
-  return request('/matthias/reset-memory', { method: 'POST' }).finally(invalidateDailyStatusCache);
+  return request('/matthias/reset-memory', { method: 'POST' })
+    .then((result) => {
+      if (result?.reset) emitMatthiasMemoryUpdated(null);
+      return result;
+    })
+    .finally(invalidateDailyStatusCache);
 }

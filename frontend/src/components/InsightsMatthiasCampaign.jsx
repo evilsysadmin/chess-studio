@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { fetchMatthiasDailyStatus } from '../matthiasDaily.js';
+import { MATTHIAS_MEMORY_UPDATED_EVENT } from '../matthiasMemoryEvents.js';
 import { buildMatthiasPersonalCampaign } from '../matthiasPersonalCampaign.js';
 
 function chapterActionLabel(chapter) {
@@ -16,10 +17,35 @@ export default function InsightsMatthiasCampaign({
   useEffect(() => {
     if (!gameHistory.length) return undefined;
     let active = true;
-    void fetchMatthiasDailyStatus()
-      .then((status) => { if (active) setMemory(status?.memory || null); })
-      .catch(() => { if (active) setMemory(null); });
-    return () => { active = false; };
+    let requestSeq = 0;
+
+    const refreshMemory = ({ force = false } = {}) => {
+      const seq = ++requestSeq;
+      void fetchMatthiasDailyStatus({ force })
+        .then((status) => { if (active && seq === requestSeq) setMemory(status?.memory || null); })
+        .catch(() => { if (active && seq === requestSeq) setMemory(null); });
+    };
+    const onMemoryUpdated = (event) => {
+      if (!active) return;
+      requestSeq += 1;
+      setMemory(event?.detail || null);
+    };
+    const refreshOnFocus = () => refreshMemory({ force: true });
+    const refreshOnVisibility = () => {
+      if (document.visibilityState === 'visible') refreshMemory({ force: true });
+    };
+
+    refreshMemory();
+    window.addEventListener(MATTHIAS_MEMORY_UPDATED_EVENT, onMemoryUpdated);
+    window.addEventListener('focus', refreshOnFocus);
+    document.addEventListener('visibilitychange', refreshOnVisibility);
+    return () => {
+      active = false;
+      requestSeq += 1;
+      window.removeEventListener(MATTHIAS_MEMORY_UPDATED_EVENT, onMemoryUpdated);
+      window.removeEventListener('focus', refreshOnFocus);
+      document.removeEventListener('visibilitychange', refreshOnVisibility);
+    };
   }, [gameHistory.length]);
 
   const campaign = useMemo(
