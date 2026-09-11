@@ -70,6 +70,31 @@ function createRuinsDebris() {
   return group;
 }
 
+function createRuinsConvoy() {
+  const group = new THREE.Group();
+  group.name = 'pawn-slug-setpiece-ruins-convoy';
+  group.position.z = -1.45;
+  const steel = basicMaterial(0x30383d, 0.88);
+  const canopy = basicMaterial(0x4a4d43, 0.84);
+  const lamp = basicMaterial(0xe2a85a, 0.72);
+  for (let i = 0; i < 3; i += 1) {
+    const vehicle = new THREE.Group();
+    vehicle.userData.distantConvoyVehicle = true;
+    vehicle.position.set(-1.65 - i * 1.15, 0.46 + i * 0.035, -0.2 - i * 0.08);
+    vehicle.scale.setScalar(0.72 - i * 0.06);
+    vehicle.add(
+      mesh(new THREE.BoxGeometry(0.82, 0.34, 0.28), steel),
+      mesh(new THREE.BoxGeometry(0.42, 0.23, 0.3), canopy, { x: -0.12, y: 0.26 }),
+      mesh(new THREE.CircleGeometry(0.07, 8), lamp, { x: 0.43, y: 0.03, z: 0.15 }),
+      mesh(new THREE.CircleGeometry(0.13, 8), basicMaterial(0x171b1d, 0.95), { x: -0.25, y: -0.2, z: 0.15 }),
+      mesh(new THREE.CircleGeometry(0.13, 8), basicMaterial(0x171b1d, 0.95), { x: 0.27, y: -0.2, z: 0.15 }),
+    );
+    group.add(vehicle);
+  }
+  group.visible = false;
+  return group;
+}
+
 function createFortressAlarm() {
   const group = new THREE.Group();
   group.name = 'pawn-slug-setpiece-fortress-alarm';
@@ -121,6 +146,9 @@ function animateEntry(entry, elapsed) {
     } else if (entry.kind === 'dungeon') {
       item.child.position.x = item.x + progress * (2.8 + index * 0.4);
       item.child.position.y = item.y + Math.abs(Math.sin(progress * Math.PI * 4 + phase)) * 0.08;
+    } else if (entry.kind === 'convoy') {
+      item.child.position.x = item.x + progress * (5.2 + index * 0.5);
+      item.child.position.y = item.y + Math.abs(Math.sin(progress * Math.PI * 8 + phase)) * 0.035;
     } else if (entry.kind === 'fortress') {
       if (item.child.userData.fortressBeacon) {
         const pulse = 0.88 + Math.max(0, Math.sin(elapsed * 12)) * 0.28;
@@ -154,6 +182,7 @@ export function createPawnSlugReactiveSetpieces(root, { reducedMotion = false } 
   const entries = [
     installIntoScenario(root, 'pawn-slug-landmark-fallen-forest', createForestLeaves, 'forest', 8.2),
     installIntoScenario(root, 'pawn-slug-landmark-gambit-ruins', createRuinsDebris, 'ruins', 5.8),
+    installIntoScenario(root, 'pawn-slug-landmark-gambit-ruins', createRuinsConvoy, 'convoy', 8.2),
     installIntoScenario(root, 'pawn-slug-landmark-dungeon-gate', createDungeonRats, 'dungeon', 4.2),
     installIntoScenario(root, 'pawn-slug-landmark-boss-fortress', createFortressAlarm, 'fortress', -5.2),
   ].filter(Boolean);
@@ -187,7 +216,7 @@ export function createPawnSlugReactiveSetpieces(root, { reducedMotion = false } 
           item.child.position.y = item.y;
           item.child.rotation.z = item.rz;
           item.child.scale.setScalar(1);
-          if (item.child.material?.opacity !== undefined) item.child.material.opacity = item.kind === 'dungeon' ? 0.95 : 1;
+          if (item.child.material?.opacity !== undefined) item.child.material.opacity = 1;
         });
       }
     },
