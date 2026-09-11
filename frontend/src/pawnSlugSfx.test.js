@@ -3,6 +3,7 @@ import {
   PAWN_SLUG_IMPACT_SOUND_PROFILES,
   PAWN_SLUG_WEAPON_SOUND_PROFILES,
   pawnSlugImpactSoundProfile,
+  pawnSlugSoundPitchVariation,
   pawnSlugWeaponSoundProfile,
 } from './pawnSlugSfx.js';
 
@@ -32,5 +33,13 @@ describe('Pawn Slug arcade combat SFX', () => {
   it('falls back to stable pistol and pawn profiles', () => {
     expect(pawnSlugWeaponSoundProfile('unknown')).toBe(PAWN_SLUG_WEAPON_SOUND_PROFILES.pistol);
     expect(pawnSlugImpactSoundProfile('unknown')).toBe(PAWN_SLUG_IMPACT_SOUND_PROFILES.pawn);
+  });
+
+  it('keeps pitch variation subtle and preserves enemy/player separation', () => {
+    expect(pawnSlugSoundPitchVariation(0, { width: 0.035 })).toBeCloseTo(0.965, 5);
+    expect(pawnSlugSoundPitchVariation(1, { width: 0.035 })).toBeCloseTo(1.035, 5);
+    expect(pawnSlugSoundPitchVariation(0.5, { width: 0.035 })).toBeCloseTo(1, 5);
+    expect(pawnSlugSoundPitchVariation(0.5, { enemy: true, width: 0.035 })).toBeCloseTo(0.9, 5);
+    expect(pawnSlugSoundPitchVariation(1, { width: 99 })).toBeLessThanOrEqual(1.08);
   });
 });
