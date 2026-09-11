@@ -22,6 +22,13 @@ describe('Pawn Slug enemy weapon doctrine', () => {
     expect(pawnSlugEnemyWeaponFor('pawn', 0)).toBe('pistol');
     expect(pawnSlugEnemyWeaponFor('pawn', 1)).toBe('machinegun');
     expect(pawnSlugEnemyWeaponFor('knight', 1)).toBe('shotgun');
-    expect(pawnSlugEnemyWeaponFor('rook', 1)).toBe('panzerfaust');
+  });
+
+  it('weights rook machinegun duty above untelegraphed rockets without removing the alternate', () => {
+    expect(pawnSlugEnemyLoadoutFor('rook').primaryWeight).toBe(2);
+    expect(pawnSlugEnemyWeaponFor('rook', 0)).toBe('machinegun');
+    expect(pawnSlugEnemyWeaponFor('rook', 1)).toBe('machinegun');
+    expect(pawnSlugEnemyWeaponFor('rook', 2)).toBe('panzerfaust');
+    expect(pawnSlugEnemyWeaponFor('rook', 5)).toBe('panzerfaust');
   });
 });
