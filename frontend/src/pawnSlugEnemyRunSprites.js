@@ -115,9 +115,11 @@ function applyAtlasWindow(sprite) {
   texture.needsUpdate = true;
 }
 
-function tintSprite(sprite, hurt) {
+function tintSprite(sprite, hurt, telegraph = 0) {
+  const warning = Math.max(0, Math.min(1, Number(telegraph) || 0));
   sprite.material.opacity = hurt ? 0.78 : 1;
-  sprite.material.color?.setRGB(1, hurt ? 0.72 : 1, hurt ? 0.72 : 1);
+  if (hurt) sprite.material.color?.setRGB(1, 0.72, 0.72);
+  else sprite.material.color?.setRGB(1, 1 - warning * 0.12, 1 - warning * 0.42);
 }
 
 function inferredVerticalMotion(sprite, time) {
@@ -235,6 +237,7 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
     climbing = false,
     dying = false,
     deathAge = 0,
+    telegraph = 0,
     vy = inferred.vy,
   } = state;
 
@@ -258,23 +261,25 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
   const actionFrame = pawnSlugEnemyActionFrame(action, actionTime);
   const sourceFrame = pawnSlugEnemySourceFrame(action, actionFrame, ENEMY_RUN_FRAMES_PER_TYPE);
   const pose = pawnSlugEnemyActionPose(action, actionFrame, { vy, type });
+  const warning = dying ? 0 : Math.max(0, Math.min(1, Number(telegraph) || 0));
+  const warningMotion = sprite.userData.entryReducedMotion ? 0 : warning;
 
   sprite.userData.action = action;
   sprite.userData.actionFrame = actionFrame;
   sprite.userData.setDirection?.(direction);
   sprite.userData.setFrame?.(sourceFrame);
   if (sprite.userData.atlas?.source === 'generated-actions') applyAtlasWindow(sprite);
-  sprite.position.x += (pose.x + entryPose.x) * direction;
-  sprite.position.y += pose.y + entryPose.y;
-  sprite.scale.x = baseScaleX * pose.sx * entryPose.sx * direction;
-  sprite.scale.y = baseScaleY * pose.sy * entryPose.sy;
-  sprite.material.rotation = (pose.rz + entryPose.rz) * direction;
+  sprite.position.x += (pose.x + entryPose.x - warningMotion * 0.035) * direction;
+  sprite.position.y += pose.y + entryPose.y + warningMotion * 0.025;
+  sprite.scale.x = baseScaleX * pose.sx * entryPose.sx * (1 + warningMotion * 0.035) * direction;
+  sprite.scale.y = baseScaleY * pose.sy * entryPose.sy * (1 - warningMotion * 0.025);
+  sprite.material.rotation = (pose.rz + entryPose.rz - warningMotion * 0.035) * direction;
 
   if (action === 'idle') {
     const phase = sprite.userData.motionPhase || 0;
     sprite.position.y += Math.max(0, Math.sin(safeTime * profile.idleRate + phase)) * profile.idleBob;
   }
-  tintSprite(sprite, hurt && !dying);
+  tintSprite(sprite, hurt && !dying, warning);
 }
 
 export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
