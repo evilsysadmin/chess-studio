@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   PAWN_SLUG_ENEMY_FIRE_PROFILES,
   PAWN_SLUG_ENEMY_ROLE_PRESSURE,
+  pawnSlugEnemyBurstPlan,
   pawnSlugEnemyCanFire,
   pawnSlugEnemyFireCooldown,
   pawnSlugEnemyPrefireStep,
@@ -12,6 +13,7 @@ describe('Pawn Slug enemy fire doctrine', () => {
   it('uses the same four weapon families with distinct combat jobs', () => {
     expect(Object.keys(PAWN_SLUG_ENEMY_FIRE_PROFILES)).toEqual(['pistol', 'machinegun', 'shotgun', 'panzerfaust']);
     expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.machinegun.burstMin).toBeGreaterThanOrEqual(2);
+    expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.machinegun.burstInterval).toBeGreaterThanOrEqual(0.1);
     expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.shotgun.pellets).toBeGreaterThanOrEqual(5);
     expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.shotgun.range).toBeLessThan(PAWN_SLUG_ENEMY_FIRE_PROFILES.machinegun.range);
     expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.panzerfaust.telegraph).toBeGreaterThan(0.25);
@@ -56,6 +58,24 @@ describe('Pawn Slug enemy fire doctrine', () => {
 
     expect(pawnSlugEnemyPrefireStep('panzerfaust', { ready: false, remaining: middle.remaining, dt: 0.02 })).toEqual({ phase: 'idle', remaining: 0, progress: 0 });
     expect(pawnSlugEnemyPrefireStep('panzerfaust', { ready: true, remaining: 0.05, dt: 0.06 })).toEqual({ phase: 'fire', remaining: 0, progress: 1 });
+  });
+
+  it('turns machinegun fire into 2-4 shot bursts without increasing long-run shot cadence', () => {
+    const short = pawnSlugEnemyBurstPlan('machinegun', { cooldownUnit: 0.5, burstUnit: 0, cadence: 1 });
+    const medium = pawnSlugEnemyBurstPlan('machinegun', { cooldownUnit: 0.5, burstUnit: 0.5, cadence: 1 });
+    const long = pawnSlugEnemyBurstPlan('machinegun', { cooldownUnit: 0.5, burstUnit: 1, cadence: 1 });
+    expect([short.shots, medium.shots, long.shots]).toEqual([2, 3, 4]);
+    expect(medium.interval).toBeCloseTo(0.11, 5);
+    expect(medium.rest + medium.interval * (medium.shots - 1)).toBeCloseTo(medium.baseCooldown * medium.shots, 5);
+
+    const wanted = pawnSlugEnemyBurstPlan('machinegun', { cooldownUnit: 0.5, burstUnit: 0.5, cadence: 0.895 });
+    expect(wanted.interval).toBeLessThan(medium.interval);
+    expect(wanted.baseCooldown).toBeLessThan(medium.baseCooldown);
+
+    const pistol = pawnSlugEnemyBurstPlan('pistol', { cooldownUnit: 0.5, burstUnit: 1, cadence: 1 });
+    expect(pistol.shots).toBe(1);
+    expect(pistol.interval).toBe(0);
+    expect(pistol.rest).toBeCloseTo(pistol.baseCooldown, 5);
   });
 
   it('interpolates cooldown deterministically and returns a weapon-shaped shot plan with travel range', () => {
