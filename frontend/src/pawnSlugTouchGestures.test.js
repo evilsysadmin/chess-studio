@@ -3,6 +3,7 @@ import {
   PAWN_SLUG_TOUCH_GESTURE,
   pawnSlugTouchHapticPattern,
   pawnSlugTouchMoveDirection,
+  pawnSlugTouchTapAction,
   pawnSlugTouchVerticalAction,
   pawnSlugTouchZone,
 } from './pawnSlugTouchGestures.js';
@@ -25,6 +26,13 @@ describe('Pawn Slug landscape touch gestures', () => {
     expect(pawnSlugTouchVerticalAction(4, 48)).toBe('crouch');
     expect(pawnSlugTouchVerticalAction(2, -10)).toBeNull();
     expect(pawnSlugTouchVerticalAction(50, -34)).toBeNull();
+  });
+
+  it('treats a short central tap as jump without swallowing short drags', () => {
+    expect(pawnSlugTouchTapAction(2, 4)).toBe('jump');
+    expect(pawnSlugTouchTapAction(15, 8)).toBe('jump');
+    expect(pawnSlugTouchTapAction(19, 0)).toBeNull();
+    expect(pawnSlugTouchTapAction(14, 14)).toBeNull();
   });
 
   it('keeps haptic feedback brief and never models machine-gun vibration', () => {
