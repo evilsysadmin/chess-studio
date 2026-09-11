@@ -37,6 +37,86 @@
     display: inline !important;
   }
 
+  /* Phone chrome: one obvious account control in the middle, with release and
+     feedback demoted to a tight utility pair on the right. Keep every action
+     reachable without letting three equal-weight circles dominate the scene. */
+  body .app-shell-home .masthead-account-menu {
+    left: 50% !important;
+    right: auto !important;
+    top: max(6px, env(safe-area-inset-top)) !important;
+    transform: translateX(-50%) !important;
+  }
+
+  body .app-shell-home .masthead-account-trigger {
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    border-color: rgba(195, 151, 78, .28) !important;
+    background: rgba(18, 11, 7, .70) !important;
+    box-shadow: 0 5px 14px rgba(0, 0, 0, .14) !important;
+  }
+
+  body .app-shell-home .masthead-account-trigger > span:not(.masthead-account-avatar) {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+  }
+
+  body .app-shell-home .masthead-account-avatar {
+    font-size: 18px !important;
+    line-height: 1 !important;
+  }
+
+  body .app-shell-home .masthead-feedback-trigger,
+  body .app-shell-home .masthead-release-trigger {
+    top: max(8px, env(safe-area-inset-top)) !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    padding: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    border-color: rgba(171, 132, 72, .20) !important;
+    background: rgba(14, 9, 6, .54) !important;
+    color: rgba(239, 211, 155, .88) !important;
+    box-shadow: none !important;
+    opacity: .82 !important;
+  }
+
+  body .app-shell-home .masthead-feedback-trigger { right: 7px !important; }
+  body .app-shell-home .masthead-release-trigger { right: 41px !important; }
+
+  body .app-shell-home .masthead-feedback-trigger > span:last-child,
+  body .app-shell-home .masthead-release-trigger > span:last-child {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+  }
+
+  body .app-shell-home .masthead-release-trigger.is-new::after {
+    width: 5px !important;
+    height: 5px !important;
+    top: 1px !important;
+    right: 1px !important;
+  }
+
+  body .app-shell-home .masthead-account-popover {
+    left: 50% !important;
+    right: auto !important;
+    top: 44px !important;
+    transform: translateX(-50%) !important;
+    width: min(286px, calc(100vw - 20px)) !important;
+  }
+
   body .app-shell-home .menu.menu-illustrated .illustrated-home__brand {
     top: calc(max(6px, env(safe-area-inset-top)) + 58px) !important;
     left: 9% !important;
@@ -139,6 +219,9 @@
     left: 69px !important;
     max-width: 86px !important;
   }
+
+  body .app-shell-home .masthead-release-trigger { right: 39px !important; }
+  body .app-shell-home .masthead-feedback-trigger { right: 5px !important; }
 
   body .app-shell-home .menu.menu-illustrated .illustrated-home__brand {
     left: 7% !important;
