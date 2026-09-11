@@ -132,6 +132,7 @@ export function requestRemoteNarrativeDetached(dossier, {
   onText,
   onUnavailable,
   cooldownGate = null,
+  signal: externalSignal,
   ...options
 } = {}) {
   // A cooldown rejection means "stay silent", not "remote unavailable".
@@ -142,7 +143,17 @@ export function requestRemoteNarrativeDetached(dossier, {
   }
 
   let active = true;
-  void requestRemoteNarrative(dossier, options)
+  const controller = new AbortController();
+  const abortFromExternal = () => {
+    if (!controller.signal.aborted) {
+      controller.abort(externalSignal?.reason || new DOMException('Narrative request aborted', 'AbortError'));
+    }
+  };
+  if (externalSignal?.aborted) abortFromExternal();
+  else externalSignal?.addEventListener?.('abort', abortFromExternal, { once: true });
+  const detachExternal = () => externalSignal?.removeEventListener?.('abort', abortFromExternal);
+
+  void requestRemoteNarrative(dossier, { ...options, signal: controller.signal })
     .then((text) => {
       if (!active) return;
       if (text && typeof onText === 'function') {
@@ -153,6 +164,11 @@ export function requestRemoteNarrativeDetached(dossier, {
     })
     .catch(() => {
       if (active && typeof onUnavailable === 'function') onUnavailable();
-    });
-  return () => { active = false; };
+    })
+    .finally(detachExternal);
+  return () => {
+    active = false;
+    detachExternal();
+    if (!controller.signal.aborted) controller.abort(new DOMException('Detached narrative cancelled', 'AbortError'));
+  };
 }
