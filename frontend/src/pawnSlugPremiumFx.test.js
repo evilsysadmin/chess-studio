@@ -40,11 +40,33 @@ describe('Pawn Slug premium projectile FX', () => {
     expect(exhaust.scale.x).not.toBe(before);
   });
 
+  it('gives machinegun and shotgun muzzle flashes distinct readable signatures', () => {
+    const machinegun = createPremiumMuzzleFlash({ weapon: 'machinegun' });
+    const shotgun = createPremiumMuzzleFlash({ weapon: 'shotgun' });
+    expect(machinegun.userData.muzzleSignature).toBe('staccato-needle');
+    expect(shotgun.userData.muzzleSignature).toBe('wide-smoke-blast');
+
+    const streak = machinegun.children.find((child) => child.userData.muzzleStreak);
+    const shotgunFlares = shotgun.children.filter((child) => child.userData.muzzleShotgunFlare);
+    const shotgunSmoke = shotgun.children.filter((child) => child.userData.muzzleShotgunSmoke);
+    expect(streak).toBeTruthy();
+    expect(shotgunFlares).toHaveLength(2);
+    expect(shotgunSmoke).toHaveLength(2);
+
+    const streakBefore = streak.scale.x;
+    const smokeBefore = shotgunSmoke[0].scale.x;
+    animatePremiumMuzzleFlash(machinegun, 0.45);
+    animatePremiumMuzzleFlash(shotgun, 0.45);
+    expect(streak.scale.x).toBeGreaterThan(streakBefore);
+    expect(shotgunSmoke[0].scale.x).toBeGreaterThan(smokeBefore);
+  });
+
   it('gives Panzerfaust muzzle flashes a short shockwave and smoke bloom', () => {
     const flash = createPremiumMuzzleFlash({ weapon: 'panzerfaust' });
     expect(flash.userData.premiumMuzzle).toBe(true);
     expect(flash.userData.life).toBeGreaterThan(0.08);
     expect(flash.userData.panzerfaustPunch).toBe('shockwave-smoke');
+    expect(flash.userData.muzzleSignature).toBe('shockwave-smoke');
     expect(flash.children.some((child) => child.userData.muzzleShockwave)).toBe(true);
     expect(flash.children.filter((child) => child.userData.muzzleSmoke)).toHaveLength(2);
     const wave = flash.children.find((child) => child.userData.muzzleShockwave);
