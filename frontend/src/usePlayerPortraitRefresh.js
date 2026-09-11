@@ -15,18 +15,18 @@ export function usePlayerPortraitRefresh(insights) {
     const facts = buildPlayerPortraitFacts(insights, loadRivalry());
     if (!facts) return undefined;
 
-    let active = true;
+    const controller = new AbortController();
     void requestRemoteNarrative({
       eventType: 'player_portrait',
       requestKind: 'portrait_auto',
       tone: 'friendly_sarcastic',
       facts,
-    }, { token, timeoutMs: 7000 })
+    }, { token, timeoutMs: 7000, signal: controller.signal })
       .then((text) => {
-        if (!active || !text) return;
+        if (controller.signal.aborted || !text) return;
         saveCachedPlayerPortrait(generationKey, text, identityScope);
       })
       .catch(() => {});
-    return () => { active = false; };
+    return () => controller.abort(new DOMException('Portrait refresh superseded', 'AbortError'));
   }, [insights]);
 }
