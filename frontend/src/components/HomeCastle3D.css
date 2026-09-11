@@ -1,0 +1,39 @@
+@media (min-width: 1000px) {
+  .illustrated-home__castle-3d {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    opacity: 0;
+    pointer-events: none;
+    user-select: none;
+    transition: opacity 180ms ease-out;
+  }
+
+  .illustrated-home__castle-3d.is-ready {
+    opacity: 1;
+  }
+
+  .illustrated-home__castle-3d.is-ready + .illustrated-home__art {
+    opacity: 0;
+  }
+
+  .illustrated-home__art {
+    transition: opacity 180ms ease-out;
+  }
+}
+
+@media (max-width: 999px) {
+  .illustrated-home__castle-3d {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .illustrated-home__castle-3d,
+  .illustrated-home__art {
+    transition: none;
+  }
+}
