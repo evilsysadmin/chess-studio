@@ -4,12 +4,13 @@ import { createPawnSlugPremiumLandmarks } from './pawnSlugLandmarks.js';
 import { createPawnSlugReactiveSetpieces } from './pawnSlugScenarioSetpieces.js';
 
 describe('Pawn Slug reactive scenario setpieces', () => {
-  it('installs one proximity setpiece in each premium biome', () => {
+  it('installs one proximity setpiece across the premium biome arc including the fortress', () => {
     const root = createPawnSlugPremiumLandmarks(new THREE.Group(), { coarse: false });
     expect(root.getObjectByName('pawn-slug-setpiece-forest-leaves')).toBeTruthy();
     expect(root.getObjectByName('pawn-slug-setpiece-ruins-debris')).toBeTruthy();
     expect(root.getObjectByName('pawn-slug-setpiece-dungeon-rats')).toBeTruthy();
-    expect(root.userData.pawnSlugReactiveSetpieces.count).toBe(3);
+    expect(root.getObjectByName('pawn-slug-setpiece-fortress-alarm')).toBeTruthy();
+    expect(root.userData.pawnSlugReactiveSetpieces.count).toBe(4);
   });
 
   it('keeps setpieces hidden until their scene position is approached', () => {
@@ -44,12 +45,49 @@ describe('Pawn Slug reactive scenario setpieces', () => {
     expect(rats.visible).toBe(false);
   });
 
+  it('warns of the fortress approach with a one-shot beacon and sparks', () => {
+    const root = new THREE.Group();
+    const fortress = new THREE.Group();
+    fortress.name = 'pawn-slug-landmark-boss-fortress';
+    fortress.position.x = 114.5;
+    root.add(fortress);
+    const controller = createPawnSlugReactiveSetpieces(root);
+    const alarm = root.getObjectByName('pawn-slug-setpiece-fortress-alarm');
+    expect(alarm.visible).toBe(false);
+    controller.update(109.3, 20);
+    expect(alarm.visible).toBe(true);
+    const beacon = alarm.children.find((node) => node.userData.fortressBeacon);
+    expect(beacon).toBeTruthy();
+    controller.update(109.3, 20.5);
+    expect(beacon.scale.x).not.toBe(1);
+    controller.update(109.3, 23);
+    expect(alarm.visible).toBe(false);
+  });
+
+  it('reset restores one-shot visual state for a clean restart', () => {
+    const root = new THREE.Group();
+    const fortress = new THREE.Group();
+    fortress.name = 'pawn-slug-landmark-boss-fortress';
+    fortress.position.x = 114.5;
+    root.add(fortress);
+    const controller = createPawnSlugReactiveSetpieces(root);
+    const alarm = root.getObjectByName('pawn-slug-setpiece-fortress-alarm');
+    controller.update(109.3, 5);
+    controller.update(109.3, 5.5);
+    controller.reset();
+    expect(alarm.visible).toBe(false);
+    for (const child of alarm.children) expect(child.scale.x).toBe(1);
+    controller.update(109.3, 9);
+    expect(alarm.visible).toBe(true);
+  });
+
   it('is inert under reduced motion', () => {
     const root = new THREE.Group();
     for (const [name, x] of [
       ['pawn-slug-landmark-fallen-forest', 10.5],
       ['pawn-slug-landmark-gambit-ruins', 30.5],
       ['pawn-slug-landmark-dungeon-gate', 44.5],
+      ['pawn-slug-landmark-boss-fortress', 114.5],
     ]) {
       const scenario = new THREE.Group();
       scenario.name = name;
@@ -57,7 +95,7 @@ describe('Pawn Slug reactive scenario setpieces', () => {
       root.add(scenario);
     }
     const controller = createPawnSlugReactiveSetpieces(root, { reducedMotion: true });
-    controller.update(50, 10);
+    controller.update(110, 10);
     expect(controller.enabled).toBe(false);
     expect(root.children.flatMap((node) => node.children).every((node) => node.visible === false)).toBe(true);
   });
