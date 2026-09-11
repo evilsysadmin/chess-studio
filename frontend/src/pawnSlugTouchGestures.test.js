@@ -36,11 +36,13 @@ describe('Pawn Slug landscape touch gestures', () => {
     expect(pawnSlugTouchTapAction(14, 14)).toBeNull();
   });
 
-  it('keeps short jump and fire taps alive long enough for the engine to sample them', () => {
+  it('keeps short jump, fire and power taps alive long enough for the engine to sample them', () => {
     expect(pawnSlugTouchMinimumPressMs('jump')).toBe(PAWN_SLUG_TOUCH_GESTURE.jumpMinPressMs);
     expect(pawnSlugTouchMinimumPressMs('fire')).toBe(PAWN_SLUG_TOUCH_GESTURE.fireMinPressMs);
+    expect(pawnSlugTouchMinimumPressMs('grenade')).toBe(PAWN_SLUG_TOUCH_GESTURE.grenadeMinPressMs);
     expect(PAWN_SLUG_TOUCH_GESTURE.fireMinPressMs).toBeGreaterThanOrEqual(45);
-    expect(PAWN_SLUG_TOUCH_GESTURE.fireMinPressMs).toBeLessThan(PAWN_SLUG_TOUCH_GESTURE.jumpMinPressMs);
+    expect(PAWN_SLUG_TOUCH_GESTURE.grenadeMinPressMs).toBeGreaterThanOrEqual(50);
+    expect(PAWN_SLUG_TOUCH_GESTURE.grenadeMinPressMs).toBeLessThan(PAWN_SLUG_TOUCH_GESTURE.jumpMinPressMs);
     expect(pawnSlugTouchMinimumPressMs('left')).toBe(0);
     expect(pawnSlugTouchMinimumPressMs('crouch')).toBe(0);
   });
