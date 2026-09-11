@@ -1,4 +1,5 @@
-import { getStorageItem, setStorageItem, STORAGE_LOCAL } from './safeStorage.js';
+import { setProfileStorageItem } from './profileKeys.js';
+import { getStorageItem, STORAGE_LOCAL } from './safeStorage.js';
 import { PAWN_SLUG_WEAPON_MODELS, pawnSlugWeaponModel } from './pawnSlugWeaponModels.js';
 
 const STORAGE_KEY = 'chess-study-pawn-slug-weapon-models-v1';
@@ -84,13 +85,13 @@ export function pawnSlugBuyOrEquipWeaponModel({ weaponId, modelId, credits = 0 }
     ...currentState,
     [weaponId]: { equipped: model.id, owned },
   });
-  setStorageItem(STORAGE_LOCAL, STORAGE_KEY, JSON.stringify(currentState));
+  setProfileStorageItem(STORAGE_KEY, JSON.stringify(currentState));
   return Object.freeze({ ok: true, cost, credits: safeCredits - cost, model, state: currentState });
 }
 
 export function resetPawnSlugWeaponModelArmory() {
   currentState = normalize();
-  setStorageItem(STORAGE_LOCAL, STORAGE_KEY, JSON.stringify(currentState));
+  setProfileStorageItem(STORAGE_KEY, JSON.stringify(currentState));
   return currentState;
 }
 
@@ -99,4 +100,5 @@ export const PAWN_SLUG_WEAPON_MODEL_ARMORY_META = Object.freeze({
   defaultsOwned: true,
   powerCurve: 'sidegrades-not-upgrades',
   storage: STORAGE_KEY,
+  profileProgress: true,
 });
