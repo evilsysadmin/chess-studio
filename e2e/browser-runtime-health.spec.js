@@ -222,7 +222,7 @@ test('Browser lifecycle · abrir y cerrar Así juegas no acumula recursos global
   expect(final.rafs, `RAF pendientes: ${JSON.stringify({ baseline, final })}`).toBeLessThanOrEqual(baseline.rafs + 1);
 });
 
-test('Browser network · inventaría churn de requests entre Home y Así juegas', async ({ page }) => {
+test('Browser network · no duplica lecturas dentro de una transición estable', async ({ page }) => {
   await mkdir(ARTIFACT_DIR, { recursive:true });
   const requestLog = [];
   await seedRuntimeSession(page, { requestLog });
@@ -234,33 +234,46 @@ test('Browser network · inventaría churn de requests entre Home y Así juegas'
   await expect(homeStage).toBeVisible();
   await settle(page);
 
-  const loginToHome = requestLog.splice(0);
+  const loginToHomeRaw = requestLog.splice(0);
+  const loginToHome = summarizeRequests(loginToHomeRaw);
   const cycles = [];
   for (let cycle = 1; cycle <= 2; cycle += 1) {
     await matthias.click();
     await expect(page.getByRole('heading', { name:'Así juegas', exact:true })).toBeVisible();
     await settle(page);
-    const openInsights = requestLog.splice(0);
+    const openInsightsRaw = requestLog.splice(0);
 
     await page.keyboard.press('Escape');
     await expect(homeStage).toBeVisible();
     await settle(page);
-    const backHome = requestLog.splice(0);
+    const backHomeRaw = requestLog.splice(0);
 
     cycles.push({
       cycle,
-      openInsights:summarizeRequests(openInsights),
-      backHome:summarizeRequests(backHome),
-      openInsightsRaw:openInsights,
-      backHomeRaw:backHome,
+      openInsights:summarizeRequests(openInsightsRaw),
+      backHome:summarizeRequests(backHomeRaw),
+      openInsightsRaw,
+      backHomeRaw,
     });
   }
 
+  const stages = [
+    { name:'login→home', requests:loginToHome },
+    ...cycles.flatMap(({ cycle, openInsights, backHome }) => [
+      { name:`cycle-${cycle}:home→insights`, requests:openInsights },
+      { name:`cycle-${cycle}:insights→home`, requests:backHome },
+    ]),
+  ];
+  const duplicateReads = stages.flatMap(({ name, requests }) => requests
+    .filter(({ key, count }) => key.startsWith('GET ') && count > 1)
+    .map((request) => ({ stage:name, ...request })));
+
   const report = {
-    schema:1,
-    loginToHome:summarizeRequests(loginToHome),
-    loginToHomeRaw:loginToHome,
+    schema:2,
+    loginToHome,
+    loginToHomeRaw,
     cycles,
+    duplicateReads,
   };
   await writeFile(
     `${ARTIFACT_DIR}/browser-request-health.json`,
@@ -268,5 +281,5 @@ test('Browser network · inventaría churn de requests entre Home y Así juegas'
     'utf8',
   );
 
-  expect(cycles).toHaveLength(2);
+  expect(duplicateReads, JSON.stringify(duplicateReads, null, 2)).toEqual([]);
 });
