@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   PAWN_SLUG_TOUCH_GESTURE,
   pawnSlugTouchHapticPattern,
+  pawnSlugTouchMinimumPressMs,
   pawnSlugTouchMoveDirection,
   pawnSlugTouchTapAction,
   pawnSlugTouchVerticalAction,
@@ -33,6 +34,15 @@ describe('Pawn Slug landscape touch gestures', () => {
     expect(pawnSlugTouchTapAction(15, 8)).toBe('jump');
     expect(pawnSlugTouchTapAction(19, 0)).toBeNull();
     expect(pawnSlugTouchTapAction(14, 14)).toBeNull();
+  });
+
+  it('keeps short jump and fire taps alive long enough for the engine to sample them', () => {
+    expect(pawnSlugTouchMinimumPressMs('jump')).toBe(PAWN_SLUG_TOUCH_GESTURE.jumpMinPressMs);
+    expect(pawnSlugTouchMinimumPressMs('fire')).toBe(PAWN_SLUG_TOUCH_GESTURE.fireMinPressMs);
+    expect(PAWN_SLUG_TOUCH_GESTURE.fireMinPressMs).toBeGreaterThanOrEqual(45);
+    expect(PAWN_SLUG_TOUCH_GESTURE.fireMinPressMs).toBeLessThan(PAWN_SLUG_TOUCH_GESTURE.jumpMinPressMs);
+    expect(pawnSlugTouchMinimumPressMs('left')).toBe(0);
+    expect(pawnSlugTouchMinimumPressMs('crouch')).toBe(0);
   });
 
   it('keeps haptic feedback brief and never models machine-gun vibration', () => {
