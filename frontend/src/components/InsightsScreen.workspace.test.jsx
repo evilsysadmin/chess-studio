@@ -45,6 +45,7 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
     expect(html).toContain('data-weekly-goals="true"');
     expect(html).not.toContain('data-recurring-errors="true"');
     expect(html).not.toContain('data-clean-games="true"');
+    expect(html).not.toContain('data-career-activity-calendar="monthly-v1"');
   });
 
   it('reserva Errores para reincidencias reales y no mezcla orquestadores de Ahora con esa pestaña', () => {
@@ -75,11 +76,19 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
     expect(html).not.toContain('data-recurring-errors="true"');
   });
 
-  it('mantiene Mi progreso como sección superior independiente', () => {
-    const html = renderToStaticMarkup(<InsightsScreen onExit={() => {}} initialSection="career" />);
+  it('mantiene Mi progreso como sección superior independiente y añade sólo allí el calendario factual', () => {
+    const html = renderToStaticMarkup(
+      <InsightsScreen
+        onExit={() => {}}
+        initialSection="career"
+        gameHistory={[{ id: 'w1', date: '2026-09-03T10:00:00', outcome: 'win' }]}
+      />,
+    );
 
     expect(html).toContain('insights-workspace-section-career');
     expect(html).toContain('data-insights-dashboard="career"');
+    expect(html).toContain('data-career-activity-calendar="monthly-v1"');
+    expect(html).toContain('Calendario de partidas');
     expect(html).not.toContain('aria-label="Áreas de Así juegas"');
     expect(html).not.toContain('data-recurring-errors="true"');
     expect(html).not.toContain('data-weekly-goals="true"');
