@@ -66,10 +66,10 @@ export function pawnSlugMatthiasPremiumPose({
   let weaponRecoil = 'idle';
 
   if (jumpPhase === 'takeoff') {
-    sx *= 0.94;
-    sy *= 1.075;
-    y += 0.032;
-    rz -= 0.04;
+    sx *= 1.055;
+    sy *= 0.94;
+    y -= 0.034;
+    rz -= 0.032;
   } else if (jumpPhase === 'rise') {
     sx *= 0.965;
     sy *= 1.045;
