@@ -7,6 +7,7 @@ on:
       - 'e2e/war-room-interrupted-restore.spec.js'
       - 'e2e/war-room-undo-rewind.spec.js'
       - 'e2e/war-room-ephemeral-cleanup.spec.js'
+      - 'e2e/war-room-webgl-fallback.spec.js'
       - 'frontend/src/components/Board3D*.js'
       - 'frontend/src/components/Board3D*.jsx'
       - 'frontend/src/components/WarRoom3D*.js'
@@ -43,7 +44,7 @@ jobs:
 
       - name: Run War Room runtime marathon
         working-directory: e2e
-        run: ./node_modules/.bin/playwright test war-room-runtime-marathon.spec.js war-room-interrupted-restore.spec.js war-room-undo-rewind.spec.js war-room-ephemeral-cleanup.spec.js --workers=1 --retries=0 --timeout=360000
+        run: ./node_modules/.bin/playwright test war-room-runtime-marathon.spec.js war-room-interrupted-restore.spec.js war-room-undo-rewind.spec.js war-room-ephemeral-cleanup.spec.js war-room-webgl-fallback.spec.js --workers=1 --retries=0 --timeout=360000
 
       - name: Upload Playwright diagnostics on failure
         if: failure()
