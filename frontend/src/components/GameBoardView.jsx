@@ -227,7 +227,6 @@ export default function GameBoardView({
               portraitReaction={portraitReaction}
               zenMode={zenMode}
               controls={controls}
-              onToggleBoardRenderer={toggleBoardRenderer}
             />
           )}
 
