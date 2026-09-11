@@ -1,6 +1,8 @@
 export const PAWN_SLUG_MOTION_POLISH = Object.freeze({
   walkFrames: 10,
   walkRate: 9.2,
+  walkRateMinScale: 0.62,
+  walkRateSpeedInfluence: 0.38,
   walkToRunSeconds: 0.24,
   runSpeedThreshold: 0.58,
   settleSeconds: 0.12,
@@ -41,6 +43,9 @@ export function pawnSlugMatthiasLocomotion({
     || speed < PAWN_SLUG_MOTION_POLISH.runSpeedThreshold;
   if (!walking) return Object.freeze({ action: 'run', frame: null, phase: 'run' });
 
-  const frame = Math.floor(moveElapsed * PAWN_SLUG_MOTION_POLISH.walkRate) % PAWN_SLUG_MOTION_POLISH.walkFrames;
+  const cadenceScale = PAWN_SLUG_MOTION_POLISH.walkRateMinScale
+    + speed * PAWN_SLUG_MOTION_POLISH.walkRateSpeedInfluence;
+  const frame = Math.floor(moveElapsed * PAWN_SLUG_MOTION_POLISH.walkRate * cadenceScale)
+    % PAWN_SLUG_MOTION_POLISH.walkFrames;
   return Object.freeze({ action: 'walk', frame, phase: 'walk' });
 }
