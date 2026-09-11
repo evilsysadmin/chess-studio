@@ -12,8 +12,8 @@ function adminPost(path, body) {
   });
 }
 
-export async function fetchAdminUsers() {
-  const body = await requestJson(`${BASE_URL}/admin/users`, { headers: { ...authHeader() } });
+export async function fetchAdminUsers({ signal } = {}) {
+  const body = await requestJson(`${BASE_URL}/admin/users`, { headers: { ...authHeader() }, signal });
   return body.users;
 }
 
