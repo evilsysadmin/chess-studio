@@ -132,3 +132,30 @@ test('Pawn Slug · móvil expone controles táctiles y arsenal sin overflow hori
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 });
+
+test('Pawn Slug · Android landscape mantiene todos los controles dentro del viewport', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openPawnSlug(page);
+  await startPawnSlug(page);
+  await page.setViewportSize({ width: 844, height: 390 });
+
+  const cabinet = page.locator('.pawn-slug-cabinet');
+  await expect(cabinet).toBeVisible({ timeout: 30_000 });
+  const cabinetBox = await cabinet.boundingBox();
+  expect(cabinetBox).not.toBeNull();
+  expect(cabinetBox.y).toBeGreaterThanOrEqual(-1);
+  expect(cabinetBox.y + cabinetBox.height).toBeLessThanOrEqual(391);
+
+  for (const name of ['Izquierda', 'Derecha', 'Agacharse', 'Saltar', 'Disparar', 'Power-up']) {
+    const button = page.getByRole('button', { name, exact: true });
+    await expect(button).toBeVisible({ timeout: 30_000 });
+    const box = await button.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box.y).toBeGreaterThanOrEqual(-1);
+    expect(box.y + box.height).toBeLessThanOrEqual(391);
+  }
+
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
