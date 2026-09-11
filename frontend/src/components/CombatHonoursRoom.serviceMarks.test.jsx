@@ -1,7 +1,7 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import CombatHonoursRoom, { buildCombatHonoursModel } from './CombatHonoursRoom.jsx';
+import { buildCombatHonoursModel, MemorialDossier } from './CombatHonoursRoom.jsx';
 import { unitServiceMarks } from '../combatUnitService.js';
 
 function memorialEntry(overrides = {}) {
@@ -32,14 +32,15 @@ describe('Combat service scars', () => {
     ]);
   });
 
-  it('preserves the factual scar in the Memorial dossier', () => {
+  it('preserves the factual scar in the expanded Memorial dossier', () => {
     const roster = { memorial: [memorialEntry()], unitRecords: {} };
     const model = buildCombatHonoursModel(roster);
-    expect(model.memorial[0].serviceMarksResolved).toEqual([
+    const entry = model.memorial[0];
+    expect(entry.serviceMarksResolved).toEqual([
       expect.objectContaining({ id: 'revival-scar', count: 1 }),
     ]);
 
-    const html = renderToStaticMarkup(<CombatHonoursRoom roster={roster} />);
+    const html = renderToStaticMarkup(<MemorialDossier entry={entry} />);
     expect(html).toContain('data-service-mark="revival-scar"');
     expect(html).toContain('Cicatriz de retorno');
     expect(html).toContain('1 revival registrado');
