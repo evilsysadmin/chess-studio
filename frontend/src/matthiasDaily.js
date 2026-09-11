@@ -65,8 +65,8 @@ export function fetchMatthiasDailyStatus({ force = false } = {}) {
   return promise;
 }
 
-export function fetchMatthiasBriefing() {
-  return request('/matthias/briefing');
+export function fetchMatthiasBriefing({ signal } = {}) {
+  return request('/matthias/briefing', { signal });
 }
 
 export function createMatthiasConsultationId() {
