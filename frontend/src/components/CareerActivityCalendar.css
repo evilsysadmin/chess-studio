@@ -1,0 +1,137 @@
+.career-activity-calendar {
+  margin-top: .8rem;
+  border: 1px solid rgba(201, 163, 91, .22);
+  border-radius: 12px;
+  background: rgba(13, 14, 16, .42);
+  overflow: hidden;
+}
+
+.career-activity-calendar > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .8rem;
+  min-height: 48px;
+  padding: .7rem .85rem;
+  cursor: pointer;
+  color: var(--text, #e6e0d4);
+}
+
+.career-activity-calendar > summary span:first-child {
+  display: grid;
+  gap: .08rem;
+}
+
+.career-activity-calendar > summary b { color: #ddc38d; }
+
+.career-activity-calendar > summary small,
+.career-activity-calendar > summary span:last-child {
+  color: var(--text-muted, #aaa69e);
+  font-size: .74rem;
+}
+
+.career-activity-calendar__body {
+  padding: .8rem;
+  border-top: 1px solid rgba(201, 163, 91, .12);
+}
+
+.career-activity-calendar__weekdays,
+.career-activity-calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: .28rem;
+}
+
+.career-activity-calendar__weekdays {
+  margin-bottom: .3rem;
+  color: rgba(215, 195, 157, .62);
+  font-size: .68rem;
+  text-align: center;
+}
+
+.career-activity-day {
+  position: relative;
+  aspect-ratio: 1 / .8;
+  min-height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .055);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .025);
+  color: rgba(226, 220, 207, .72);
+  font-size: .72rem;
+}
+
+.career-activity-day > b {
+  position: absolute;
+  right: .28rem;
+  bottom: .18rem;
+  font-size: .58rem;
+  color: rgba(246, 232, 199, .68);
+}
+
+.career-activity-day.is-positive {
+  border-color: rgba(116, 161, 102, .34);
+  background: rgba(76, 123, 66, .13);
+}
+
+.career-activity-day.is-mixed {
+  border-color: rgba(190, 156, 86, .28);
+  background: rgba(157, 125, 61, .10);
+}
+
+.career-activity-day.is-negative {
+  border-color: rgba(169, 91, 82, .30);
+  background: rgba(134, 68, 62, .11);
+}
+
+.career-activity-day.is-today {
+  box-shadow: inset 0 0 0 1px rgba(229, 193, 114, .65), 0 0 0 1px rgba(229, 193, 114, .08);
+}
+
+.career-activity-day.is-outside { opacity: .18; }
+
+.career-activity-calendar__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem 1rem;
+  margin-top: .65rem;
+  color: var(--text-muted, #aaa69e);
+  font-size: .68rem;
+}
+
+.career-activity-calendar__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.career-activity-calendar__legend i {
+  width: .58rem;
+  height: .58rem;
+  border-radius: 3px;
+  border: 1px solid currentColor;
+}
+
+.career-activity-calendar__legend i.is-positive { color: rgba(116, 161, 102, .8); }
+.career-activity-calendar__legend i.is-mixed { color: rgba(190, 156, 86, .8); }
+.career-activity-calendar__legend i.is-negative { color: rgba(169, 91, 82, .8); }
+
+@media (max-width: 520px) {
+  .career-activity-calendar > summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: .25rem;
+  }
+
+  .career-activity-calendar__body { padding: .6rem; }
+
+  .career-activity-calendar__weekdays,
+  .career-activity-calendar__grid { gap: .18rem; }
+
+  .career-activity-day {
+    min-height: 34px;
+    border-radius: 5px;
+    font-size: .66rem;
+  }
+}
