@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PAWN_SLUG_FX_RESOURCE_VERSION } from './pawnSlugArt.js';
 import { pawnSlugArcadeProjectileProfile } from './pawnSlugArcadeProjectileProfile.js';
+import { playPawnSlugWeaponSfx } from './pawnSlugSfx.js';
 
 export const PAWN_SLUG_PROJECTILE_FX = Object.freeze({
   pistol: Object.freeze({ core: 0xffe6a1, tracer: 0xffb94d, length: 0.34, radius: 0.032, flash: 0.9 }),
@@ -130,6 +131,7 @@ export function createPremiumBulletModel({ enemy = false, explosive = false, wea
 }
 
 export function createPremiumMuzzleFlash({ enemy = false, weapon = 'pistol' } = {}) {
+  playPawnSlugWeaponSfx(weapon, { enemy });
   const profile = fxProfile({ enemy, weapon });
   const key = fxKey({ enemy, weapon });
   const root = new THREE.Group();
