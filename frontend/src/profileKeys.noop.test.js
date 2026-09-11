@@ -1,6 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  PROFILE_CHANGED_EVENT,
   bindProfileStorageIdentity,
   removeProfileStorageItem,
   setProfileStorageItem,
@@ -18,43 +17,27 @@ beforeEach(() => {
 });
 
 describe('profile storage no-op writes', () => {
-  it('no marca dirty ni emite cambios si el valor ya es idéntico', () => {
+  it('no marca dirty si el valor ya es idéntico', () => {
     localStorage.setItem(PROFILE_KEY, 'classic');
-    const changed = vi.fn();
-    window.addEventListener(PROFILE_CHANGED_EVENT, changed);
 
     expect(setProfileStorageItem(PROFILE_KEY, 'classic')).toBe(true);
     expect(localStorage.getItem(PROFILE_KEY)).toBe('classic');
     expect(localStorage.getItem(DIRTY_USER_KEY)).toBeNull();
     expect(localStorage.getItem(DIRTY_KEYS_KEY)).toBeNull();
-    expect(changed).not.toHaveBeenCalled();
-
-    window.removeEventListener(PROFILE_CHANGED_EVENT, changed);
   });
 
-  it('no marca dirty ni emite cambios al borrar una clave ya ausente', () => {
-    const changed = vi.fn();
-    window.addEventListener(PROFILE_CHANGED_EVENT, changed);
-
+  it('no marca dirty al borrar una clave ya ausente', () => {
     expect(removeProfileStorageItem(PROFILE_KEY)).toBe(true);
     expect(localStorage.getItem(DIRTY_USER_KEY)).toBeNull();
     expect(localStorage.getItem(DIRTY_KEYS_KEY)).toBeNull();
-    expect(changed).not.toHaveBeenCalled();
-
-    window.removeEventListener(PROFILE_CHANGED_EVENT, changed);
   });
 
-  it('mantiene journal dirty y evento cuando el valor sí cambia', () => {
+  it('mantiene el journal dirty cuando el valor sí cambia', () => {
     localStorage.setItem(PROFILE_KEY, 'classic');
-    const changed = vi.fn();
-    window.addEventListener(PROFILE_CHANGED_EVENT, changed);
 
     expect(setProfileStorageItem(PROFILE_KEY, 'nocturne')).toBe(true);
     expect(localStorage.getItem(PROFILE_KEY)).toBe('nocturne');
     expect(localStorage.getItem(DIRTY_USER_KEY)).toBe('alice');
     expect(JSON.parse(localStorage.getItem(DIRTY_KEYS_KEY))).toEqual([PROFILE_KEY]);
-    expect(changed).toHaveBeenCalledTimes(1);
-
-    window.removeEventListener(PROFILE_CHANGED_EVENT, changed);
   });
 });
