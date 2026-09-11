@@ -76,6 +76,7 @@ import {
   pawnSlugDamageRuntimeDestructible,
   pawnSlugEnemyCanFire,
   pawnSlugEnemyFireCooldown,
+  pawnSlugEnemyPrefireStep,
   pawnSlugEnemyShotPlan,
   pawnSlugEnemyWeaponFor,
   pawnSlugFirstHitDestructibleIndex,
@@ -548,6 +549,8 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       vy: 0,
       onGround: true,
       fireCooldown: midBoss ? 0.75 : pawnSlugEnemyFireCooldown(weapon, Math.random()) * wantedProfile.cadence,
+      fireTelegraph: 0,
+      fireTelegraphProgress: 0,
       shellCooldown: midBoss ? 1.65 + Math.random() * 0.45 : null,
       suppressionCooldown: midBoss ? 2.35 + Math.random() * 0.7 : null,
       suppressionShots: 0,
@@ -580,7 +583,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
     state.enemies.push({
       id: 'boss-panzer-rook', type: 'boss', weapon, x, y: 0, w: 4.6, h: 3.2,
       hp: stats.hp, maxHp: stats.hp, speed: 0, score: stats.score, dir: -1,
-      vx: 0, vy: 0, onGround: true, fireCooldown: pawnSlugEnemyFireCooldown(weapon, 0.45), shellCooldown: 1.55,
+      vx: 0, vy: 0, onGround: true, fireCooldown: pawnSlugEnemyFireCooldown(weapon, 0.45), fireTelegraph: 0, fireTelegraphProgress: 0, shellCooldown: 1.55,
       hurt: 0, dead: false, model,
     });
     state.hitStop = reducedMotion ? 0 : 0.18;
@@ -736,6 +739,21 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
       });
     }
     addFlash(enemy.x + dir * muzzleOffset, y, dir, weaponId, true);
+  }
+
+  function updateEnemyRegularFire(enemy, distance, roleRange, cadence, dt) {
+    const ready = enemy.fireCooldown <= 0 && pawnSlugEnemyCanFire(enemy.weapon, distance, roleRange);
+    const prefire = pawnSlugEnemyPrefireStep(enemy.weapon, {
+      remaining: enemy.fireTelegraph,
+      ready,
+      dt,
+    });
+    enemy.fireTelegraph = prefire.remaining;
+    enemy.fireTelegraphProgress = prefire.phase === 'telegraph' ? prefire.progress : 0;
+    if (prefire.phase !== 'fire') return false;
+    fireEnemy(enemy, false);
+    enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random()) * cadence;
+    return true;
   }
 
   function fireBishopSuppression(enemy, shotIndex) {
@@ -1082,10 +1100,7 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
 
       if (enemy.type === 'pawn') {
         enemy.vx = distance > 4.6 / aggression ? enemy.dir * enemy.speed : 0;
-        if (pawnSlugEnemyCanFire(enemy.weapon, distance, 9 * aggression) && enemy.fireCooldown <= 0) {
-          fireEnemy(enemy);
-          enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random()) * cadence;
-        }
+        updateEnemyRegularFire(enemy, distance, 9 * aggression, cadence, dt);
       } else if (enemy.type === 'knight') {
         enemy.vx = distance > 2.1 / aggression ? enemy.dir * enemy.speed : enemy.dir * enemy.speed * 0.25;
         if (enemy.leapCooldown <= 0 && distance < 7.5 * aggression && enemy.onGround) {
@@ -1093,16 +1108,10 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
           enemy.onGround = false;
           enemy.leapCooldown = (2.2 + Math.random() * 1.4) / aggression;
         }
-        if (pawnSlugEnemyCanFire(enemy.weapon, distance, 8 * aggression) && enemy.fireCooldown <= 0) {
-          fireEnemy(enemy);
-          enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random()) * cadence;
-        }
+        updateEnemyRegularFire(enemy, distance, 8 * aggression, cadence, dt);
       } else if (enemy.type === 'rook') {
         enemy.vx = 0;
-        if (pawnSlugEnemyCanFire(enemy.weapon, distance, 12 * aggression) && enemy.fireCooldown <= 0) {
-          fireEnemy(enemy, false);
-          enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random()) * cadence;
-        }
+        updateEnemyRegularFire(enemy, distance, 12 * aggression, cadence, dt);
       } else if (enemy.type === 'bishop') {
         enemy.shellCooldown = pawnSlugSturmBishopCooldownTick(
           enemy.shellCooldown,
@@ -1128,6 +1137,8 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
 
         if (enemy.suppressionShots > 0) {
           enemy.vx = 0;
+          enemy.fireTelegraph = 0;
+          enemy.fireTelegraphProgress = 0;
           enemy.shellCooldown = Math.max(enemy.shellCooldown, PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds + 0.55);
           if (enemy.suppressionShotCooldown <= 0) {
             fireBishopSuppression(enemy, enemy.suppressionShotIndex);
@@ -1141,10 +1152,9 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
           }
         } else {
           enemy.vx = suppressionCharging ? 0 : (distance > 4.8 ? enemy.dir * enemy.speed : 0);
-          if (!suppressionCharging && pawnSlugEnemyCanFire(enemy.weapon, distance, 11) && enemy.fireCooldown <= 0) {
-            fireEnemy(enemy, false);
-            enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random());
-          }
+          const regularFireClear = !suppressionCharging
+            && enemy.shellCooldown > PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds;
+          updateEnemyRegularFire(enemy, distance, regularFireClear ? 11 : 0, 1, dt);
           if (shellClearForSuppression
             && distance < PAWN_SLUG_STURM_BISHOP_META.suppressionRange
             && enemy.suppressionCooldown <= 0) {
@@ -1152,18 +1162,19 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
             enemy.suppressionShotIndex = 0;
             enemy.suppressionShotCooldown = 0;
             enemy.vx = 0;
+            enemy.fireTelegraph = 0;
+            enemy.fireTelegraphProgress = 0;
             enemy.shellCooldown = Math.max(enemy.shellCooldown, PAWN_SLUG_STURM_BISHOP_META.shellTelegraphSeconds + 0.7);
           } else if (distance < PAWN_SLUG_STURM_BISHOP_META.shellRange && enemy.shellCooldown <= 0) {
+            enemy.fireTelegraph = 0;
+            enemy.fireTelegraphProgress = 0;
             fireEnemy(enemy, true);
             enemy.shellCooldown = 2.05 + Math.random() * 0.55;
           }
         }
       } else if (enemy.type === 'boss') {
         enemy.vx = 0;
-        if (pawnSlugEnemyCanFire(enemy.weapon, distance, 16) && enemy.fireCooldown <= 0) {
-          fireEnemy(enemy, false);
-          enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random());
-        }
+        updateEnemyRegularFire(enemy, distance, 16, 1, dt);
         enemy.shellCooldown -= dt;
         if (distance < 18 && enemy.shellCooldown <= 0) {
           fireEnemy(enemy, true);
@@ -1211,9 +1222,30 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
           telegraph,
           suppressionTelegraph,
         });
+        if (enemy.fireTelegraphProgress > 0) {
+          const rawStrength = clamp(enemy.fireTelegraphProgress, 0, 1);
+          const pulse = reducedMotion
+            ? rawStrength
+            : rawStrength * (0.72 + Math.max(0, Math.sin(state.time * (18 + rawStrength * 14))) * 0.5);
+          enemy.model.traverse((node) => {
+            if (!node.userData?.warningHalo) return;
+            node.visible = true;
+            node.material.opacity = Math.max(node.material.opacity || 0, Math.min(0.78, 0.2 + pulse * 0.52));
+            node.material.color.setHex(0xff8a34);
+            if (reducedMotion) node.scale.setScalar(Math.max(node.scale.x || 1, 1.04));
+            else node.scale.setScalar(Math.max(node.scale.x || 1, 0.94 + pulse * 0.2));
+          });
+        }
       } else {
         enemy.model.scale.x = Math.abs(enemy.model.scale.x || 1) * enemy.dir;
         animateSlugEnemy(enemy.model, enemy.type, state.time, { moving: Math.abs(enemy.vx) > 0.2, hurt: enemy.hurt > 0 });
+        if (enemy.fireTelegraphProgress > 0 && enemy.hurt <= 0 && enemy.model.material?.color) {
+          const rawStrength = clamp(enemy.fireTelegraphProgress, 0, 1);
+          const pulse = reducedMotion
+            ? rawStrength
+            : rawStrength * (0.72 + Math.max(0, Math.sin(state.time * (18 + rawStrength * 14))) * 0.5);
+          enemy.model.material.color.setRGB(1, 1 - pulse * 0.38, 1 - pulse * 0.68);
+        }
       }
       animatePawnSlugWantedInsignia(enemy.model, state.time);
 
