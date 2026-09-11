@@ -202,7 +202,10 @@ test('War Room · deshacer en 3D rebobina FEN, lastMove y highlights y sobrevive
   // Esta comprobación prueba el FEN que alimenta al renderer, no una etiqueta auxiliar.
   await expectKnightMobility(canvas, board3d, 3);
 
-  const undo = page.getByRole('button', { name: 'Deshacer jugada', exact: true });
+  const utilityMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
+  await expect(utilityMenu).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await utilityMenu.click();
+  const undo = page.getByRole('menuitem', { name: 'Deshacer jugada', exact: true });
   await expect(undo).toBeVisible();
   await expect(undo).toBeEnabled();
   await undo.click();
