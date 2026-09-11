@@ -17,17 +17,23 @@ export default function AdminRatingEditor() {
 
   useEffect(() => {
     let mounted = true;
+    const controller = new AbortController();
     setLoading(true);
-    fetchAdminUsers()
+    fetchAdminUsers({ signal: controller.signal })
       .then((rows) => {
         if (!mounted) return;
         const next = Array.isArray(rows) ? rows : [];
         setUsers(next);
         setDrafts(initialDrafts(next));
       })
-      .catch((err) => { if (mounted) setError(err?.message || 'No se pudieron cargar los ELO.'); })
+      .catch((err) => {
+        if (mounted && err?.name !== 'AbortError') setError(err?.message || 'No se pudieron cargar los ELO.');
+      })
       .finally(() => { if (mounted) setLoading(false); });
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
   }, []);
 
   async function save(username) {

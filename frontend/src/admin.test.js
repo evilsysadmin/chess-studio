@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TOKEN_KEY } from './auth.js';
-import { deleteAdminUser, fetchAdminMatthiasMemory, fetchAdminMatthiasStatus, previewAdminMatthiasPersonality, resetAdminMatthiasMemory } from './admin.js';
+import { deleteAdminUser, fetchAdminMatthiasMemory, fetchAdminMatthiasStatus, fetchAdminUsers, previewAdminMatthiasPersonality, resetAdminMatthiasMemory } from './admin.js';
 
 function response(status, body) {
   return {
@@ -37,6 +37,34 @@ describe('admin account deletion', () => {
   it('propaga el error seguro del backend', async () => {
     global.fetch.mockResolvedValue(response(409, { detail: 'No puedes borrar tu propia cuenta.' }));
     await expect(deleteAdminUser('admin')).rejects.toThrow('No puedes borrar tu propia cuenta.');
+  });
+});
+
+describe('admin users', () => {
+  it('propaga la cancelación hasta el fetch real aunque HTTP componga su propio signal', async () => {
+    let forwardedSignal = null;
+    global.fetch.mockImplementation((_url, options) => {
+      forwardedSignal = options.signal;
+      return new Promise((_resolve, reject) => {
+        options.signal.addEventListener('abort', () => {
+          reject(options.signal.reason || new DOMException('Aborted', 'AbortError'));
+        }, { once: true });
+      });
+    });
+    const controller = new AbortController();
+
+    const pending = fetchAdminUsers({ signal: controller.signal });
+    const [url, options] = global.fetch.mock.calls.at(-1);
+    expect(url).toContain('/admin/users');
+    expect(options.headers.Authorization).toBe('Bearer admin-token');
+    expect(forwardedSignal).toBe(options.signal);
+    expect(forwardedSignal).not.toBe(controller.signal);
+    expect(forwardedSignal.aborted).toBe(false);
+
+    controller.abort(new DOMException('Admin section closed', 'AbortError'));
+
+    expect(forwardedSignal.aborted).toBe(true);
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
   });
 });
 
