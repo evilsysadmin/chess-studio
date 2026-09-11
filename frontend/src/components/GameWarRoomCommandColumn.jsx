@@ -33,6 +33,18 @@ function closeUtilityMenu(event) {
   event.currentTarget.closest('details')?.removeAttribute('open');
 }
 
+function openBoardAppearance(board) {
+  if (typeof board?.onCustomize === 'function') {
+    board.onCustomize();
+    return;
+  }
+  // Board3D owns the stable customization callback. Compact callers can omit
+  // the raw board callback, so bridge to its already-mounted control instead of
+  // dropping Appearance from the menu. The control is visually hidden by the
+  // War Room chrome, but remains the canonical action owner.
+  document.querySelector('.board3d-customize')?.click();
+}
+
 function LegacyCompactPill({ game, signal, board, onToggleBoardRenderer }) {
   return (
     <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
@@ -55,23 +67,21 @@ function LegacyCompactPill({ game, signal, board, onToggleBoardRenderer }) {
         >
           {signal.label}
         </strong>
-        {typeof board.onCustomize === 'function' && (
-          <details className="game-3d-utility-menu">
-            <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
-            <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
-              <button
-                type="button"
-                role="menuitem"
-                onClick={(event) => {
-                  closeUtilityMenu(event);
-                  board.onCustomize();
-                }}
-              >
-                Apariencia
-              </button>
-            </div>
-          </details>
-        )}
+        <details className="game-3d-utility-menu">
+          <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
+          <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={(event) => {
+                closeUtilityMenu(event);
+                openBoardAppearance(board);
+              }}
+            >
+              Apariencia
+            </button>
+          </div>
+        </details>
       </div>
 
       <div className="game-3d-warroom-controls" aria-label="Controles de vista 3D">
