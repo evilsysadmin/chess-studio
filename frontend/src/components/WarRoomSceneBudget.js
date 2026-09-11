@@ -19,6 +19,12 @@ export const WAR_ROOM_SCENE_BUDGETS = Object.freeze({
   }),
 });
 
+function ownsFunction(object, key) {
+  return Boolean(object)
+    && Object.prototype.hasOwnProperty.call(object, key)
+    && typeof object[key] === 'function';
+}
+
 export function censusWarRoomScene(root) {
   const materials = new Set();
   const geometries = new Set();
@@ -41,8 +47,8 @@ export function censusWarRoomScene(root) {
       census.instances += Math.max(0, Number(object.count) || 0);
     }
     if (object?.isLight) census.lights += 1;
-    if (typeof object?.onBeforeRender === 'function' && object.onBeforeRender.length >= 0) census.renderHooks += 1;
-    if (typeof object?.onAfterRender === 'function' && object.onAfterRender.length >= 0) census.renderHooks += 1;
+    if (ownsFunction(object, 'onBeforeRender')) census.renderHooks += 1;
+    if (ownsFunction(object, 'onAfterRender')) census.renderHooks += 1;
     if (object?.geometry) geometries.add(object.geometry);
     const list = Array.isArray(object?.material) ? object.material : [object?.material];
     for (const material of list) if (material) materials.add(material);
