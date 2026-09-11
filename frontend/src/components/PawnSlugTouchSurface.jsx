@@ -115,11 +115,11 @@ export default function PawnSlugTouchSurface({ send }) {
     haptic(action);
   }
 
-  function finish(event) {
+  function finish(event, allowTap = true) {
     const pointer = pointersRef.current.get(event.pointerId);
     if (!pointer) return;
     event.preventDefault();
-    if (pointer.zone === 'gesture' && !pointer.action) {
+    if (allowTap && pointer.zone === 'gesture' && !pointer.action) {
       const current = point(event);
       const action = pawnSlugTouchTapAction(current.x - pointer.startX, current.y - pointer.startY);
       if (action) {
@@ -134,6 +134,10 @@ export default function PawnSlugTouchSurface({ send }) {
     if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
       event.currentTarget.releasePointerCapture?.(event.pointerId);
     }
+  }
+
+  function cancel(event) {
+    finish(event, false);
   }
 
   function powerUpPress(event) {
@@ -158,7 +162,7 @@ export default function PawnSlugTouchSurface({ send }) {
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={finish}
-      onPointerCancel={finish}
+      onPointerCancel={cancel}
       onContextMenu={(event) => event.preventDefault()}
     >
       <span className="pawn-slug-gesture-hint is-move" aria-hidden="true">← MOVER →</span>
