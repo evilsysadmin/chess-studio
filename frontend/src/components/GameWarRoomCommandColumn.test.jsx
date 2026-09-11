@@ -32,7 +32,6 @@ describe('GameWarRoomCommandColumn', () => {
           onToggleZen: () => {},
           onAbandon: () => {},
         }}
-        onToggleBoardRenderer={() => {}}
       />,
     );
 
@@ -49,7 +48,7 @@ describe('GameWarRoomCommandColumn', () => {
     expect((html.match(/>Apariencia<\/button>/g) || []).length).toBe(1);
     expect(html).toContain('Modo Zen');
     expect(html).toContain('Abandonar partida');
-    expect(html).toContain('game-3d-warroom-controls');
+    expect(html).not.toContain('game-3d-warroom-controls');
     expect(html).not.toContain('RIVAL EN SALA');
     expect(html).not.toContain('is-diegetic-briefing');
     expect(html).not.toContain('game-3d-warroom-status');
@@ -62,7 +61,6 @@ describe('GameWarRoomCommandColumn', () => {
         game={{ difficulty: 3, turn: 'b', humanColor: 'w', isGameOver: false }}
         status={{ statusText: 'Turno de la CPU', busy: false }}
         board={{ onCustomize: null }}
-        onToggleBoardRenderer={() => {}}
       />,
     );
     const busyHtml = renderToStaticMarkup(
@@ -70,7 +68,6 @@ describe('GameWarRoomCommandColumn', () => {
         game={{ difficulty: 3, turn: 'b', humanColor: 'w', isGameOver: false }}
         status={{ statusText: 'La CPU está pensando…', busy: true }}
         board={{ onCustomize: null }}
-        onToggleBoardRenderer={() => {}}
       />,
     );
 
