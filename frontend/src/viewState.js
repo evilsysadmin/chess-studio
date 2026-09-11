@@ -1,4 +1,5 @@
 import { STORAGE_SESSION, getStorageItem, readJsonStorage, removeStorageItem, setStorageItem, writeJsonStorage } from './safeStorage.js';
+import { MAX_VIEW_HISTORY } from './viewNavigationContract.js';
 
 // viewState.js — navegación de sesión resistente a refresh y con historial.
 // Solo persistimos pantallas que pueden reconstruirse únicamente desde el
@@ -42,13 +43,13 @@ export function rememberSessionView(view) {
 export function loadSessionViewHistory({ isAdminUser = false } = {}) {
   const parsed = readJsonStorage(STORAGE_SESSION, VIEW_HISTORY_STORAGE_KEY, { fallback: [], removeMalformed: true });
   if (!Array.isArray(parsed)) return [];
-  return parsed.filter((view) => allowedView(view, { isAdminUser })).slice(-40);
+  return parsed.filter((view) => allowedView(view, { isAdminUser })).slice(-MAX_VIEW_HISTORY);
 }
 
 export function rememberSessionViewHistory(history) {
   const safe = (Array.isArray(history) ? history : [])
     .filter((view) => RESTORABLE_VIEWS.includes(view))
-    .slice(-40);
+    .slice(-MAX_VIEW_HISTORY);
   writeJsonStorage(STORAGE_SESSION, VIEW_HISTORY_STORAGE_KEY, safe);
 }
 

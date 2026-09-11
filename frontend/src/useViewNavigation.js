@@ -5,8 +5,7 @@ import {
   rememberSessionView,
   rememberSessionViewHistory,
 } from './viewState.js';
-
-export const MAX_VIEW_HISTORY = 40;
+import { MAX_VIEW_HISTORY } from './viewNavigationContract.js';
 
 export function appendViewHistory(history, currentView) {
   return [...(Array.isArray(history) ? history : []), currentView].slice(-MAX_VIEW_HISTORY);
