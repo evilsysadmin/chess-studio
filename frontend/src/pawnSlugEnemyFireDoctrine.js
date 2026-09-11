@@ -19,6 +19,17 @@ export function pawnSlugEnemyFireProfile(weapon = 'pistol') {
   return PAWN_SLUG_ENEMY_FIRE_PROFILES[weapon] || PAWN_SLUG_ENEMY_FIRE_PROFILES.pistol;
 }
 
+export function pawnSlugEnemyCanFire(weapon = 'pistol', distance = Infinity, roleRange = Infinity) {
+  const profile = pawnSlugEnemyFireProfile(weapon);
+  const targetDistance = Number(distance);
+  if (!Number.isFinite(targetDistance) || targetDistance < 0) return false;
+  const requestedRange = Number(roleRange);
+  const effectiveRange = Number.isFinite(requestedRange)
+    ? Math.max(0, Math.min(profile.range, requestedRange))
+    : profile.range;
+  return targetDistance < effectiveRange;
+}
+
 export function pawnSlugEnemyFireCooldown(weapon = 'pistol', unit = 0.5) {
   const profile = pawnSlugEnemyFireProfile(weapon);
   const t = Math.max(0, Math.min(1, Number(unit) || 0));
