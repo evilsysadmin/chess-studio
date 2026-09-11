@@ -142,6 +142,7 @@ export function isObviouslyRefutedAutopsyMove(puzzle) {
 // celebrar una pieza que queda capturable sin compensación táctica inmediata.
 export function isObviouslyUnsoundSingleMovePuzzle(puzzle) {
   if (!puzzle?.fen || !Array.isArray(puzzle.solution) || puzzle.solution.length !== 1) return false;
+  if (puzzle.source === 'autopsy') return isObviouslyRefutedAutopsyMove(puzzle);
   try {
     const board = new Chess(puzzle.fen);
     const perspective = board.turn();
