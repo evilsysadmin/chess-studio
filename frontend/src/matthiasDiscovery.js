@@ -24,9 +24,13 @@ export function shouldSurfaceMatthias({
 } = {}) {
   if (blocked || sessionSeen) return false;
 
+  const current = Number(now);
   const last = Number(lastShownAt || 0);
   const cooldown = Math.max(0, Number(cooldownMs) || 0);
-  if (last > 0 && now - last < cooldown) return false;
+  // A corrected device clock must not leave Matthias muted until a timestamp
+  // written by the old (future) clock finally arrives. Treat future values as
+  // invalid cooldown evidence; the next real exposure rewrites the timestamp.
+  if (last > 0 && Number.isFinite(current) && last <= current && current - last < cooldown) return false;
 
   return Number(randomValue) < matthiasDiscoveryChance({ relationshipTier, relevance });
 }
