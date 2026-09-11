@@ -6,6 +6,7 @@ export const PAWN_SLUG_TOUCH_GESTURE = Object.freeze({
   tapMaxTravelPx: 18,
   jumpMinPressMs: 72,
   fireMinPressMs: 52,
+  grenadeMinPressMs: 60,
 });
 
 function clamp01(value) {
@@ -45,6 +46,7 @@ export function pawnSlugTouchTapAction(deltaX, deltaY) {
 export function pawnSlugTouchMinimumPressMs(action) {
   if (action === 'jump') return PAWN_SLUG_TOUCH_GESTURE.jumpMinPressMs;
   if (action === 'fire') return PAWN_SLUG_TOUCH_GESTURE.fireMinPressMs;
+  if (action === 'grenade') return PAWN_SLUG_TOUCH_GESTURE.grenadeMinPressMs;
   return 0;
 }
 

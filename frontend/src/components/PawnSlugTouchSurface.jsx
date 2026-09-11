@@ -21,8 +21,44 @@ export default function PawnSlugTouchSurface({ send }) {
   const sendRef = useRef(send);
   const pointersRef = useRef(new Map());
   const timersRef = useRef(new Map());
+  const powerPressedRef = useRef(false);
+  const powerStartedAtRef = useRef(0);
   const [trained, setTrained] = useState(false);
   sendRef.current = send;
+
+  function cancelPendingRelease(action) {
+    for (const [timer, pendingAction] of timersRef.current) {
+      if (pendingAction !== action) continue;
+      window.clearTimeout(timer);
+      timersRef.current.delete(timer);
+    }
+  }
+
+  function press(action) {
+    cancelPendingRelease(action);
+    sendRef.current(action, true);
+    haptic(action);
+  }
+
+  function scheduleRelease(action, startedAt, { immediate = false } = {}) {
+    if (!action) return;
+    const minimumPressMs = immediate ? 0 : pawnSlugTouchMinimumPressMs(action);
+    if (minimumPressMs <= 0) {
+      sendRef.current(action, false);
+      return;
+    }
+    const elapsed = Math.max(0, performance.now() - startedAt);
+    const delay = Math.max(0, minimumPressMs - elapsed);
+    if (delay <= 0) {
+      sendRef.current(action, false);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      timersRef.current.delete(timer);
+      sendRef.current(action, false);
+    }, delay);
+    timersRef.current.set(timer, action);
+  }
 
   useEffect(() => () => {
     for (const [timer, action] of timersRef.current) {
@@ -34,6 +70,7 @@ export default function PawnSlugTouchSurface({ send }) {
       if (pointer.action) sendRef.current(pointer.action, false);
     }
     pointersRef.current.clear();
+    powerPressedRef.current = false;
     sendRef.current('grenade', false);
   }, []);
 
@@ -48,23 +85,7 @@ export default function PawnSlugTouchSurface({ send }) {
 
   function release(pointer, { immediate = false } = {}) {
     if (!pointer?.action) return;
-    const minimumPressMs = immediate ? 0 : pawnSlugTouchMinimumPressMs(pointer.action);
-    if (minimumPressMs <= 0) {
-      sendRef.current(pointer.action, false);
-      return;
-    }
-    const elapsed = Math.max(0, performance.now() - pointer.actionStartedAt);
-    const delay = Math.max(0, minimumPressMs - elapsed);
-    if (delay <= 0) {
-      sendRef.current(pointer.action, false);
-      return;
-    }
-    const action = pointer.action;
-    const timer = window.setTimeout(() => {
-      timersRef.current.delete(timer);
-      sendRef.current(action, false);
-    }, delay);
-    timersRef.current.set(timer, action);
+    scheduleRelease(pointer.action, pointer.actionStartedAt, { immediate });
   }
 
   function onPointerDown(event) {
@@ -85,13 +106,11 @@ export default function PawnSlugTouchSurface({ send }) {
     if (zone === 'move') {
       pointer.action = pawnSlugTouchMoveDirection(start.x, start.width);
       pointer.actionStartedAt = performance.now();
-      sendRef.current(pointer.action, true);
-      haptic(pointer.action);
+      press(pointer.action);
     } else if (zone === 'fire') {
       pointer.action = 'fire';
       pointer.actionStartedAt = performance.now();
-      sendRef.current('fire', true);
-      haptic('fire');
+      press('fire');
     }
 
     pointersRef.current.set(event.pointerId, pointer);
@@ -110,8 +129,7 @@ export default function PawnSlugTouchSurface({ send }) {
         if (pointer.action) sendRef.current(pointer.action, false);
         pointer.action = direction;
         pointer.actionStartedAt = performance.now();
-        sendRef.current(direction, true);
-        haptic(direction);
+        press(direction);
       }
       return;
     }
@@ -121,8 +139,7 @@ export default function PawnSlugTouchSurface({ send }) {
     if (!action) return;
     pointer.action = action;
     pointer.actionStartedAt = performance.now();
-    sendRef.current(action, true);
-    haptic(action);
+    press(action);
   }
 
   function finish(event, allowTap = true, immediateRelease = false) {
@@ -135,8 +152,7 @@ export default function PawnSlugTouchSurface({ send }) {
       if (action) {
         pointer.action = action;
         pointer.actionStartedAt = performance.now();
-        sendRef.current(action, true);
-        haptic(action);
+        press(action);
       }
     }
     release(pointer, { immediate: immediateRelease });
@@ -154,14 +170,17 @@ export default function PawnSlugTouchSurface({ send }) {
     event.preventDefault();
     event.stopPropagation();
     setTrained(true);
-    sendRef.current('grenade', true);
-    haptic('grenade');
+    powerPressedRef.current = true;
+    powerStartedAtRef.current = performance.now();
+    press('grenade');
   }
 
-  function powerUpRelease(event) {
+  function powerUpRelease(event, immediate = false) {
     event.preventDefault();
     event.stopPropagation();
-    sendRef.current('grenade', false);
+    if (!powerPressedRef.current) return;
+    powerPressedRef.current = false;
+    scheduleRelease('grenade', powerStartedAtRef.current, { immediate });
   }
 
   return (
@@ -183,9 +202,9 @@ export default function PawnSlugTouchSurface({ send }) {
         className="pawn-slug-gesture-powerup"
         aria-label="Power-up"
         onPointerDown={powerUpPress}
-        onPointerUp={powerUpRelease}
-        onPointerCancel={powerUpRelease}
-        onPointerLeave={powerUpRelease}
+        onPointerUp={(event) => powerUpRelease(event)}
+        onPointerCancel={(event) => powerUpRelease(event, true)}
+        onPointerLeave={(event) => powerUpRelease(event, true)}
         onContextMenu={(event) => event.preventDefault()}
       >
         <span aria-hidden="true">●</span>
