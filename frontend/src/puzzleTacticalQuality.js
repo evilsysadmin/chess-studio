@@ -115,11 +115,34 @@ export function immediateCaptureRefutations(fen, san, { continuationDepth = 2 } 
   }
 }
 
+// Guard barato para posiciones de autopsia ya bendecidas por el análisis de la
+// partida. A diferencia del gate Workers-AI, no compara contra todas las jugadas
+// legales: sólo comprueba si la pieza recién movida puede ser capturada de
+// inmediato y si una continuación mínima sigue dejando pérdida material clara.
+// Esto evita convertir cada lectura de la cola personal en un minimax completo.
+export function isObviouslyRefutedAutopsyMove(puzzle) {
+  if (!puzzle?.fen || !Array.isArray(puzzle.solution) || puzzle.solution.length !== 1) return false;
+  try {
+    const board = new Chess(puzzle.fen);
+    const perspective = board.turn();
+    const before = materialBalance(board, perspective);
+    const played = board.move(puzzle.solution[0]);
+    if (!played) return true;
+    if (board.isCheckmate()) return false;
+
+    const refutations = immediateCaptureRefutations(puzzle.fen, puzzle.solution[0], { continuationDepth: 1 });
+    return refutations.some((item) => item.swing < -0.75 && item.tacticalScore < before - 0.75);
+  } catch {
+    return true;
+  }
+}
+
 // Filtro conservador para puzzles de una sola jugada creados por IA. No intenta
 // competir con el motor del backend: busca únicamente la vergüenza obvia de
 // celebrar una pieza que queda capturable sin compensación táctica inmediata.
 export function isObviouslyUnsoundSingleMovePuzzle(puzzle) {
   if (!puzzle?.fen || !Array.isArray(puzzle.solution) || puzzle.solution.length !== 1) return false;
+  if (puzzle.source === 'autopsy') return isObviouslyRefutedAutopsyMove(puzzle);
   try {
     const board = new Chess(puzzle.fen);
     const perspective = board.turn();

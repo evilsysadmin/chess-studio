@@ -29,6 +29,7 @@ export function isPlayablePersonalPuzzle(puzzle) {
       const move = board.move(san);
       if (!move) return false;
     }
+    if (puzzle.source === 'autopsy' && isObviouslyUnsoundSingleMovePuzzle(puzzle)) return false;
     if (puzzle.source === 'workers-ai-validated') {
       // Un puzzle de IA persistido antes del contrato actual no vuelve a la
       // cola por inercia. Si no puede demostrar que pasó los gates vigentes,
@@ -134,7 +135,7 @@ export function personalPuzzleFromMistake(history, humanColor, moveReport, meta 
     return null;
   }
 
-  return {
+  const puzzle = {
     id: stableId(fen, moveReport.suggested),
     kind: 'personal',
     title: moveReport.loss >= 300 ? 'Escena del crimen' : 'Cuenta pendiente',
@@ -154,6 +155,7 @@ export function personalPuzzleFromMistake(history, humanColor, moveReport, meta 
     humanColor,
     incidentKeys: detectIncidentKeys(fen, moveReport),
   };
+  return isObviouslyUnsoundSingleMovePuzzle(puzzle) ? null : puzzle;
 }
 
 export function savePersonalPuzzlesFromReport(history, humanColor, report, meta = {}) {
