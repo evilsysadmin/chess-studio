@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   PAWN_SLUG_ENEMY_ACTION_META,
   PAWN_SLUG_ENEMY_ACTIONS,
+  PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE,
   pawnSlugEnemyActionForState,
   pawnSlugEnemyActionFrame,
   pawnSlugEnemyActionPose,
@@ -51,6 +52,20 @@ describe('Pawn Slug premium soldier action motion', () => {
         expect(source).toBeLessThan(8);
       }
     }
+  });
+
+  it('matches run cadence to the real movement hierarchy by class', () => {
+    expect(PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE.knight).toBeGreaterThan(PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE.pawn);
+    expect(PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE.pawn).toBeGreaterThan(PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE.rook);
+    const at = 0.2;
+    expect(pawnSlugEnemyActionFrame('run', at, 'knight')).toBeGreaterThan(pawnSlugEnemyActionFrame('run', at, 'pawn'));
+    expect(pawnSlugEnemyActionFrame('run', at, 'pawn')).toBeGreaterThan(pawnSlugEnemyActionFrame('run', at, 'rook'));
+    expect(PAWN_SLUG_ENEMY_ACTION_META.runRateByType).toBe(PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE);
+  });
+
+  it('does not alter non-run action cadence when a type is provided', () => {
+    expect(pawnSlugEnemyActionFrame('hurt', 0.12, 'knight')).toBe(pawnSlugEnemyActionFrame('hurt', 0.12));
+    expect(pawnSlugEnemyActionFrame('jump', 0.31, 'rook')).toBe(pawnSlugEnemyActionFrame('jump', 0.31));
   });
 
   it('gives jump, crouch, hurt and climb visibly distinct poses', () => {

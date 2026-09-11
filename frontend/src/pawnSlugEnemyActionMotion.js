@@ -10,6 +10,12 @@ export const PAWN_SLUG_ENEMY_ACTIONS = Object.freeze({
   death: Object.freeze({ frames: 14, rate: 16, loop: false, groundedTailFrames: 4 }),
 });
 
+export const PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE = Object.freeze({
+  pawn: 12.2,
+  knight: 17.4,
+  rook: 8.4,
+});
+
 function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
 }
@@ -36,9 +42,11 @@ export function pawnSlugEnemyActionForState({ moving = false, hurt = false, airb
   return 'idle';
 }
 
-export function pawnSlugEnemyActionFrame(action = 'idle', time = 0) {
+export function pawnSlugEnemyActionFrame(action = 'idle', time = 0, type = null) {
   const track = PAWN_SLUG_ENEMY_ACTIONS[action] || PAWN_SLUG_ENEMY_ACTIONS.idle;
-  const raw = (Number(time) || 0) * track.rate;
+  const runRate = type == null ? null : PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE[type];
+  const rate = action === 'run' && Number.isFinite(runRate) ? runRate : track.rate;
+  const raw = (Number(time) || 0) * rate;
   return track.loop === false ? clampFrame(raw, track.frames) : wrapFrame(raw, track.frames);
 }
 
@@ -120,6 +128,7 @@ export const PAWN_SLUG_ENEMY_ACTION_META = Object.freeze({
   theme: 'military-chess-soldiers',
   silhouetteByType: Object.freeze({ pawn: 'rifle-infantry-pawn', knight: 'assault-knight', rook: 'heavy-rook-gunner' }),
   actions: PAWN_SLUG_ENEMY_ACTIONS,
+  runRateByType: PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE,
   authoredFacings: Object.freeze(['left']),
   runtimeFacings: Object.freeze(['left', 'right']),
   impactStyleByType: Object.freeze({ pawn: 'clear-backstep', knight: 'armored-twist', rook: 'heavy-compression' }),
