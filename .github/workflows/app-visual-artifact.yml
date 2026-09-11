@@ -52,6 +52,42 @@ jobs:
         working-directory: e2e
         run: ./node_modules/.bin/playwright test app-visual-artifact.spec.js --workers=1 --retries=0
 
+      - name: Summarize visual health
+        if: always()
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const reportPath = '.artifacts/app-visual/visual-health.json';
+          const summaryPath = process.env.GITHUB_STEP_SUMMARY;
+          const lines = ['## App · visual health'];
+          if (!fs.existsSync(reportPath)) {
+            lines.push('', '_No se generó `visual-health.json`; revisa el paso de captura._');
+          } else {
+            const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
+            lines.push(
+              '',
+              '| Captura | Overflow X | Recortados | Targets <44 px | Reduced motion |',
+              '| --- | ---: | ---: | ---: | --- |',
+            );
+            for (const capture of report.captures || []) {
+              lines.push(`| ${capture.label} | ${capture.horizontalOverflow ? 'sí' : 'no'} | ${capture.clippedInteractiveCount ?? '—'} | ${capture.smallTouchTargetCount ?? '—'} | ${capture.reducedMotion ? 'sí' : 'no'} |`);
+            }
+            const mobile = (report.captures || []).filter((capture) => capture.viewport?.width <= 600);
+            const worst = mobile.reduce((current, capture) => (
+              !current || (capture.smallTouchTargetCount || 0) > (current.smallTouchTargetCount || 0) ? capture : current
+            ), null);
+            if (worst?.smallTouchTargets?.length) {
+              lines.push('', `**Peores targets en ${worst.label}:**`);
+              for (const target of worst.smallTouchTargets.slice(0, 6)) {
+                const label = target.text || target.tag || 'sin etiqueta';
+                lines.push(`- ${label}: ${target.width}×${target.height}px`);
+              }
+            }
+          }
+          fs.appendFileSync(summaryPath, `${lines.join('\n')}\n`);
+          NODE
+
       - name: Upload app visual artifact
         if: always()
         uses: actions/upload-artifact@v7
