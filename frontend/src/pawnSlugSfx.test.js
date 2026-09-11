@@ -17,6 +17,9 @@ describe('Pawn Slug arcade combat SFX', () => {
     expect(pawnSlugWeaponSoundProfile('pistol').crack).toBeGreaterThan(pawnSlugWeaponSoundProfile('shotgun').crack);
     expect(pawnSlugWeaponSoundProfile('shotgun').noise).toBeGreaterThan(pawnSlugWeaponSoundProfile('machinegun').noise);
     expect(pawnSlugWeaponSoundProfile('panzerfaust').tail).toBeGreaterThan(pawnSlugWeaponSoundProfile('shotgun').tail);
+    expect(new Set(Object.values(PAWN_SLUG_WEAPON_SOUND_PROFILES).map((profile) => profile.mechanic)).size).toBe(4);
+    expect(pawnSlugWeaponSoundProfile('pistol').mechanic).toBe('casing');
+    expect(pawnSlugWeaponSoundProfile('shotgun').mechanic).toBe('pump');
   });
 
   it('uses more metallic impact rings for armored chess soldiers', () => {
