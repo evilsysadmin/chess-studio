@@ -82,13 +82,15 @@ describe('Matthias daily transport', () => {
     await expect(bob).resolves.toMatchObject({ memory: { owner: 'bob' } });
   });
 
-  it('lee un briefing persistente sin consumir una audiencia', async () => {
+  it('lee un briefing persistente sin consumir una audiencia y propaga AbortSignal', async () => {
     global.fetch.mockResolvedValue(response(200, { text: 'Objetivo en vigor.', memory: { consultations: 3 } }));
-    const result = await fetchMatthiasBriefing();
+    const controller = new AbortController();
+    const result = await fetchMatthiasBriefing({ signal: controller.signal });
     expect(result.text).toBe('Objetivo en vigor.');
     const [url, options] = global.fetch.mock.calls[0];
     expect(url).toContain('/matthias/briefing');
     expect(options.method).toBeUndefined();
+    expect(options.signal).toBe(controller.signal);
   });
 
   it('puede borrar la memoria propia sin tocar otros endpoints de progreso', async () => {
