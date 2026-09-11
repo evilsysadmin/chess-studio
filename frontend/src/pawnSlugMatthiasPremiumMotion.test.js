@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { pawnSlugMatthiasPremiumPose } from './pawnSlugMatthiasPremiumMotion.js';
+import {
+  pawnSlugJumpVisualPhase,
+  pawnSlugMatthiasPremiumPose,
+} from './pawnSlugMatthiasPremiumMotion.js';
 
 describe('Pawn Slug Matthias premium motion', () => {
   it('stretches on ascent and compresses on descent', () => {
@@ -9,6 +12,25 @@ describe('Pawn Slug Matthias premium motion', () => {
     expect(ascent.sx).toBeLessThan(1);
     expect(descent.sx).toBeGreaterThan(1);
     expect(descent.sy).toBeLessThan(1);
+  });
+
+  it('reads takeoff, rise, apex and fall as distinct visual phases', () => {
+    expect(pawnSlugJumpVisualPhase(0.05)).toBe('takeoff');
+    expect(pawnSlugJumpVisualPhase(0.3)).toBe('rise');
+    expect(pawnSlugJumpVisualPhase(0.6)).toBe('apex');
+    expect(pawnSlugJumpVisualPhase(0.85)).toBe('fall');
+
+    const takeoff = pawnSlugMatthiasPremiumPose({ airborne: true, jumpFrame: 0, jumpFrames: 9 });
+    const apex = pawnSlugMatthiasPremiumPose({ airborne: true, jumpFrame: 5, jumpFrames: 9 });
+    const fall = pawnSlugMatthiasPremiumPose({ airborne: true, jumpFrame: 8, jumpFrames: 9 });
+
+    expect(takeoff.jumpPhase).toBe('takeoff');
+    expect(apex.jumpPhase).toBe('apex');
+    expect(fall.jumpPhase).toBe('fall');
+    expect(takeoff.sy).toBeGreaterThan(apex.sy);
+    expect(fall.sy).toBeLessThan(apex.sy);
+    expect(takeoff.rz).toBeLessThan(apex.rz);
+    expect(fall.rz).toBeGreaterThan(apex.rz);
   });
 
   it('adds a short landing squash after leaving the air', () => {
