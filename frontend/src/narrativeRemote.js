@@ -1,5 +1,5 @@
 import { withRequestId } from './requestId.js';
-import { fetchWithTimeout } from './asyncControl.js';
+import { fetchWithTimeout, isAbortError } from './asyncControl.js';
 import { recordNarrativeCall } from './narrativeCallLedger.js';
 const DEFAULT_TIMEOUT_MS = 4500;
 const DEFAULT_MIN_PLY_GAP = 2;
@@ -80,6 +80,7 @@ export async function requestRemoteNarrative(
     timeoutMs = DEFAULT_TIMEOUT_MS,
     fetchImpl = fetch,
     cooldownGate = null,
+    signal,
   } = {},
 ) {
   if (!token || !dossier || typeof dossier !== 'object') return null;
@@ -93,6 +94,7 @@ export async function requestRemoteNarrative(
       method: 'POST',
       headers: withRequestId({ 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }),
       body: payloadText,
+      signal,
     }, Math.max(500, timeoutMs));
     if (!response.ok) {
       recordCall(dossier, payloadText, `http-${response.status || 'error'}`);
@@ -112,7 +114,10 @@ export async function requestRemoteNarrative(
       : null;
     recordCall(dossier, payloadText, 'cloudflare', text || '', Boolean(text));
     return text;
-  } catch {
+  } catch (error) {
+    // Una cancelación explícita (cambio de pantalla/identidad) no es un fallo
+    // del proveedor ni debe ensuciar el ledger diagnóstico como transport-error.
+    if (isAbortError(error) && signal?.aborted) return null;
     recordCall(dossier, payloadText, 'transport-error');
     return null;
   }
