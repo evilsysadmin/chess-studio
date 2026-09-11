@@ -1,0 +1,202 @@
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
+  .pawn-slug .pawn-slug-cabinet {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  .pawn-slug .pawn-slug-stage {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    aspect-ratio: auto;
+  }
+
+  .pawn-slug .pawn-slug-hud {
+    position: absolute;
+    z-index: 18;
+    inset: 0;
+    display: block;
+    min-height: 0;
+    border: 0;
+    background: none;
+    pointer-events: none;
+  }
+
+  .pawn-slug .pawn-slug-hud > div {
+    position: absolute;
+    margin: 0;
+    padding: .18rem .32rem;
+    border: 1px solid rgba(213, 167, 82, .16);
+    border-radius: .42rem;
+    background: rgba(8, 10, 12, .54);
+    box-shadow: 0 .18rem .55rem rgba(0, 0, 0, .18);
+    backdrop-filter: blur(4px);
+  }
+
+  .pawn-slug .pawn-slug-hud > div:nth-child(1) {
+    top: max(.28rem, env(safe-area-inset-top, 0px));
+    left: max(.35rem, env(safe-area-inset-left, 0px));
+    width: min(30vw, 15.5rem);
+  }
+
+  .pawn-slug .pawn-slug-hud > div:nth-child(2) {
+    top: max(2.08rem, calc(env(safe-area-inset-top, 0px) + 2rem));
+    left: max(.35rem, env(safe-area-inset-left, 0px));
+    width: auto;
+    padding: .12rem .28rem;
+  }
+
+  .pawn-slug .pawn-slug-hud > div:nth-child(2) span { display: none; }
+  .pawn-slug .pawn-slug-hud > div:nth-child(2) b { font-size: .58rem; letter-spacing: .06em; }
+
+  .pawn-slug .pawn-slug-hud > div:nth-child(3) {
+    top: max(.28rem, env(safe-area-inset-top, 0px));
+    right: max(3.75rem, calc(env(safe-area-inset-right, 0px) + 3.4rem));
+    width: min(23vw, 11.5rem);
+  }
+
+  .pawn-slug .pawn-slug-hud > div:nth-child(4) {
+    top: max(.28rem, env(safe-area-inset-top, 0px));
+    right: max(.35rem, env(safe-area-inset-right, 0px));
+    width: 3rem;
+    text-align: center;
+  }
+
+  .pawn-slug .pawn-slug-hud > div:nth-child(5),
+  .pawn-slug .pawn-slug-hud > div:nth-child(6) { display: none; }
+
+  .pawn-slug .pawn-slug-hud span,
+  .pawn-slug .pawn-slug-hud small { font-size: .43rem; line-height: 1; }
+  .pawn-slug .pawn-slug-hud b { font-size: .64rem; line-height: 1.05; }
+
+  .pawn-slug .pawn-slug-health {
+    grid-template-columns: auto minmax(3.8rem, 1fr) auto;
+    gap: .2rem;
+  }
+
+  .pawn-slug .pawn-slug-health > b { min-width: 2.8rem; }
+  .pawn-slug .pawn-slug-health-track { height: 5px; }
+
+  .pawn-slug .pawn-slug-mission-progress {
+    z-index: 19;
+    top: max(.3rem, env(safe-area-inset-top, 0px));
+    width: min(27vw, 13rem);
+    padding: .17rem .34rem;
+    border-color: rgba(214, 175, 97, .12);
+    background: rgba(9, 10, 12, .42);
+    backdrop-filter: blur(4px);
+  }
+
+  .pawn-slug .pawn-slug-mission-progress > div { height: 3px; }
+  .pawn-slug .pawn-slug-mission-progress b { font-size: .48rem; }
+
+  .pawn-slug .pawn-slug-arsenal {
+    top: max(2.1rem, calc(env(safe-area-inset-top, 0px) + 2rem));
+    right: max(.35rem, env(safe-area-inset-right, 0px));
+    left: auto;
+    width: auto;
+    grid-template-columns: repeat(4, minmax(2.35rem, 2.7rem));
+    gap: .12rem;
+    padding: .12rem;
+    transform: none;
+    border-radius: .45rem;
+    background: rgba(9, 11, 14, .56);
+    box-shadow: 0 .2rem .7rem rgba(0, 0, 0, .2);
+    backdrop-filter: blur(4px);
+  }
+
+  .pawn-slug .pawn-slug-arsenal button {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    gap: 0;
+    min-width: 0;
+    min-height: 1.9rem;
+    padding: .16rem .2rem;
+    border-radius: .35rem;
+  }
+
+  .pawn-slug .pawn-slug-arsenal kbd { display: none; }
+  .pawn-slug .pawn-slug-arsenal span { font-size: .5rem; text-align: center; }
+  .pawn-slug .pawn-slug-arsenal small { min-width: 0; font-size: .43rem; line-height: 1; text-align: center; }
+
+  .pawn-slug .pawn-slug-settings-trigger {
+    top: auto;
+    right: max(.35rem, env(safe-area-inset-right, 0px));
+    bottom: max(.35rem, env(safe-area-inset-bottom, 0px));
+    min-width: 2rem;
+    min-height: 2rem;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border-radius: 999px;
+    font-size: 0;
+    opacity: .62;
+  }
+
+  .pawn-slug .pawn-slug-settings-trigger::first-letter { font-size: .82rem; }
+
+  .pawn-slug .pawn-slug-toast {
+    bottom: max(2.65rem, calc(env(safe-area-inset-bottom, 0px) + 2.25rem));
+    left: max(.45rem, env(safe-area-inset-left, 0px));
+    max-width: 38%;
+    padding: .28rem .42rem;
+    font-size: .62rem;
+    background: rgba(8, 10, 12, .62);
+  }
+
+  .pawn-slug .pawn-slug-boss {
+    top: max(2.05rem, calc(env(safe-area-inset-top, 0px) + 1.95rem));
+    width: min(40%, 21rem);
+  }
+
+  .pawn-slug .pawn-slug-stage::before,
+  .pawn-slug .pawn-slug-stage::after { opacity: .48; }
+
+  .pawn-slug .pawn-slug-gesture-hint {
+    bottom: max(.24rem, env(safe-area-inset-bottom, 0px));
+    color: rgba(239, 220, 180, .2);
+    font-size: .44rem;
+    letter-spacing: .06em;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .72);
+    transition: opacity 180ms ease;
+  }
+
+  .pawn-slug .pawn-slug-gesture-surface.is-trained .pawn-slug-gesture-hint { opacity: 0; }
+
+  .pawn-slug .pawn-slug-gesture-powerup {
+    position: absolute;
+    right: max(2.8rem, calc(env(safe-area-inset-right, 0px) + 2.55rem));
+    bottom: max(.3rem, env(safe-area-inset-bottom, 0px));
+    display: grid;
+    place-items: center;
+    width: 2.15rem;
+    height: 2.15rem;
+    padding: 0;
+    border: 1px solid rgba(208, 173, 91, .42);
+    border-radius: 999px;
+    background: rgba(40, 37, 23, .62);
+    color: #e7ca88;
+    box-shadow: 0 .2rem .55rem rgba(0, 0, 0, .22);
+    backdrop-filter: blur(4px);
+    touch-action: none;
+  }
+
+  .pawn-slug .pawn-slug-gesture-powerup span { font-size: .62rem; line-height: 1; }
+  .pawn-slug .pawn-slug-gesture-powerup small { display: none; }
+}
+
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 390px) {
+  .pawn-slug .pawn-slug-hud > div:nth-child(1) { width: min(28vw, 14rem); }
+  .pawn-slug .pawn-slug-arsenal { grid-template-columns: repeat(4, minmax(2.15rem, 2.45rem)); }
+  .pawn-slug .pawn-slug-gesture-hint { opacity: .45; }
+  .pawn-slug .pawn-slug-gesture-surface.is-trained .pawn-slug-gesture-hint { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pawn-slug .pawn-slug-gesture-hint { transition: none; }
+}
