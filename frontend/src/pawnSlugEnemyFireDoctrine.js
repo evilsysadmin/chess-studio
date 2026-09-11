@@ -19,14 +19,6 @@ export const PAWN_SLUG_ENEMY_FIRE_PROFILES = freeze({
   panzerfaust: freeze({ range: 15, cooldownMin: 1.8, cooldownMax: 2.45, speed: 5.6, damage: 30, pellets: 1, spread: 0, explosive: true, telegraph: 0.34 }),
 });
 
-export const PAWN_SLUG_ENEMY_ROLE_PRESSURE = freeze({
-  pawn: freeze({ preferredDistance: 4.6, aggression: 0.72, flank: 0.08, leap: false }),
-  knight: freeze({ preferredDistance: 2.4, aggression: 0.92, flank: 0.78, leap: true }),
-  rook: freeze({ preferredDistance: 9.2, aggression: 0.58, flank: 0, leap: false }),
-  bishop: freeze({ preferredDistance: 8.4, aggression: 0.68, flank: 0.18, leap: false }),
-  boss: freeze({ preferredDistance: 11, aggression: 0.8, flank: 0, leap: false }),
-});
-
 export function pawnSlugEnemyFireProfile(weapon = 'pistol') {
   return PAWN_SLUG_ENEMY_FIRE_PROFILES[weapon] || PAWN_SLUG_ENEMY_FIRE_PROFILES.pistol;
 }

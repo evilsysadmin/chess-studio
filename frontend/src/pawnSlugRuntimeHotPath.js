@@ -1,7 +1,6 @@
 export { PAWN_SLUG_ENEMY_LOADOUTS, pawnSlugEnemyLoadoutFor, pawnSlugEnemyWeaponFor } from './pawnSlugEnemyLoadouts.js';
 export {
   PAWN_SLUG_ENEMY_FIRE_PROFILES,
-  PAWN_SLUG_ENEMY_ROLE_PRESSURE,
   pawnSlugEnemyCanFire,
   pawnSlugEnemyFireCooldown,
   pawnSlugEnemyFireProfile,

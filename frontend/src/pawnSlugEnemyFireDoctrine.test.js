@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   PAWN_SLUG_ENEMY_FIRE_PROFILES,
-  PAWN_SLUG_ENEMY_ROLE_PRESSURE,
   pawnSlugEnemyCanFire,
   pawnSlugEnemyFireCooldown,
   pawnSlugEnemyPrefireStep,
@@ -25,14 +24,7 @@ describe('Pawn Slug enemy fire doctrine', () => {
     expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.panzerfaust.damage).toBe(30);
   });
 
-  it('makes knights the aggressive flanker and rooks the lane controller', () => {
-    expect(PAWN_SLUG_ENEMY_ROLE_PRESSURE.knight.flank).toBeGreaterThan(0.7);
-    expect(PAWN_SLUG_ENEMY_ROLE_PRESSURE.knight.leap).toBe(true);
-    expect(PAWN_SLUG_ENEMY_ROLE_PRESSURE.rook.preferredDistance).toBeGreaterThan(PAWN_SLUG_ENEMY_ROLE_PRESSURE.pawn.preferredDistance);
-    expect(PAWN_SLUG_ENEMY_ROLE_PRESSURE.rook.flank).toBe(0);
-  });
-
-  it('caps normal fire by both weapon range and the role-specific range', () => {
+  it('caps normal fire by both weapon range and the role-specific runtime range', () => {
     expect(pawnSlugEnemyCanFire('shotgun', 6.7, 8)).toBe(true);
     expect(pawnSlugEnemyCanFire('shotgun', 7, 8)).toBe(false);
     expect(pawnSlugEnemyCanFire('machinegun', 10.4, 16)).toBe(true);
