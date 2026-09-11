@@ -49,6 +49,28 @@ function createBarrel() {
   return root;
 }
 
+function createSandbags() {
+  const root = new THREE.Group();
+  const cloth = standard(0x766a4e, 1, 0.01);
+  const seam = standard(0x4e4737, 0.98, 0.01);
+  const bags = [
+    { x: -0.47, y: 0.23, rz: 0.035 },
+    { x: 0, y: 0.21, rz: -0.025 },
+    { x: 0.47, y: 0.24, rz: 0.045 },
+    { x: -0.25, y: 0.57, rz: -0.055 },
+    { x: 0.28, y: 0.56, rz: 0.04 },
+  ];
+  for (const [index, bag] of bags.entries()) {
+    const body = mesh(new THREE.SphereGeometry(0.33, 10, 7), cloth.clone(), { x: bag.x, y: bag.y, rz: bag.rz });
+    body.scale.set(1.35, 0.62, 0.72);
+    body.userData.sandbag = true;
+    root.add(body);
+    const tie = mesh(new THREE.BoxGeometry(0.025, 0.12, 0.025), seam.clone(), { x: bag.x + (index % 2 ? 0.2 : -0.2), y: bag.y + 0.02, z: 0.25, rz: bag.rz });
+    root.add(tie);
+  }
+  return root;
+}
+
 export function pawnSlugDestructibleDamageStage(hpRatio = 1) {
   const safe = Math.max(0, Math.min(1, Number(hpRatio) || 0));
   if (safe > 0.66) return 'intact';
@@ -58,8 +80,10 @@ export function pawnSlugDestructibleDamageStage(hpRatio = 1) {
 
 function applyMaterialDamageState(model, stage) {
   const materialKind = model.userData.material;
-  const factor = stage === 'critical' ? (materialKind === 'wood' ? 0.68 : 0.8)
-    : stage === 'damaged' ? (materialKind === 'wood' ? 0.84 : 0.91)
+  const factor = stage === 'critical'
+    ? (materialKind === 'wood' ? 0.68 : materialKind === 'fabric' ? 0.74 : 0.8)
+    : stage === 'damaged'
+      ? (materialKind === 'wood' ? 0.84 : materialKind === 'fabric' ? 0.86 : 0.91)
       : 1;
   const emissiveIntensity = materialKind === 'metal'
     ? (stage === 'critical' ? 0.34 : stage === 'damaged' ? 0.1 : 0)
@@ -78,7 +102,7 @@ function applyMaterialDamageState(model, stage) {
 export function createPawnSlugDestructibleModel(type = 'crate') {
   const spec = PAWN_SLUG_DESTRUCTIBLE_TYPES[type];
   if (!spec) throw new Error(`Unknown Pawn Slug destructible art type: ${type}`);
-  const root = type === 'barrel' ? createBarrel() : createCrate();
+  const root = type === 'barrel' ? createBarrel() : type === 'sandbags' ? createSandbags() : createCrate();
   root.name = `pawn-slug-destructible-${type}`;
   root.userData.pawnSlugDestructible = true;
   root.userData.destructibleType = type;
@@ -86,7 +110,9 @@ export function createPawnSlugDestructibleModel(type = 'crate') {
   root.userData.damageStage = 'intact';
   root.userData.hitbox = type === 'barrel'
     ? Object.freeze({ width: 0.82, height: 1.18 })
-    : Object.freeze({ width: 1.12, height: 0.96 });
+    : type === 'sandbags'
+      ? Object.freeze({ width: 1.62, height: 0.88 })
+      : Object.freeze({ width: 1.12, height: 0.96 });
   root.userData.baseScale = 1;
   return root;
 }
@@ -110,7 +136,7 @@ export function animatePawnSlugDestructibleModel(model, time = 0, { hpRatio = 1,
     return;
   }
   const damage = 1 - safeHp;
-  const materialWeight = model.userData.material === 'metal' ? 0.72 : 1;
+  const materialWeight = model.userData.material === 'metal' ? 0.72 : model.userData.material === 'fabric' ? 0.55 : 1;
   model.rotation.z = Math.sin(time * 34 + model.id) * 0.018 * damage * materialWeight;
   model.position.y = baseY + Math.abs(Math.sin(time * 27 + model.id * 0.3)) * 0.018 * damage * materialWeight;
 }
@@ -118,6 +144,7 @@ export function animatePawnSlugDestructibleModel(model, time = 0, { hpRatio = 1,
 export const PAWN_SLUG_DESTRUCTIBLE_ART_META = Object.freeze({
   crate: Object.freeze({ material: 'wood', hitbox: Object.freeze({ width: 1.12, height: 0.96 }) }),
   barrel: Object.freeze({ material: 'metal', hitbox: Object.freeze({ width: 0.82, height: 1.18 }) }),
+  sandbags: Object.freeze({ material: 'fabric', hitbox: Object.freeze({ width: 1.62, height: 0.88 }) }),
   damageFeedback: 'material-state-plus-shake-before-break',
   damageStages: Object.freeze(['intact', 'damaged', 'critical']),
 });
