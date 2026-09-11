@@ -1,7 +1,8 @@
 import { getEffectiveReducedMotion } from '../userPreferences.js';
+import { markWarRoomAmbientActor, resolveWarRoomAmbientActor } from './WarRoomAmbientDirector.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_MATTHIAS_IDLE_GLANCES_VERSION = 'matthias-idle-glances-v1';
+export const WAR_ROOM_MATTHIAS_IDLE_GLANCES_VERSION = 'matthias-idle-glances-v2-ambient-director';
 
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
 const MATTHIAS_NAME = 'matthias-rival-king';
@@ -67,7 +68,9 @@ export function installWarRoomMatthiasIdleGlances(root) {
         : Date.now();
       if (startedAt == null) startedAt = now;
 
-      const blocked = getEffectiveReducedMotion()
+      const reducedMotion = getEffectiveReducedMotion();
+      const ambientActor = markWarRoomAmbientActor(root, resolveWarRoomAmbientActor(root, { reducedMotion }));
+      const blocked = ambientActor !== 'matthias'
         || Boolean(matthias.userData?.warRoomMatthiasHansReactionActive);
       const glance = blocked
         ? { active: false, key: '', yaw: 0, pitch: 0, weight: 0 }
@@ -78,6 +81,7 @@ export function installWarRoomMatthiasIdleGlances(root) {
       headRig.rotation.z = baseRotation.z;
       matthias.userData.warRoomMatthiasIdleGlance = glance.key;
       matthias.userData.warRoomMatthiasIdleGlanceActive = glance.active;
+      matthias.userData.warRoomMatthiasAmbientActor = ambientActor;
     },
   });
   if (!registered) return 0;
