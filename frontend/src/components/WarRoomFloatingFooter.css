@@ -339,18 +339,11 @@
     line-height: 1;
     opacity: .88;
   }
-
-  .game-layout-3d .board3d-customize {
-    top: 54%;
-    bottom: auto !important;
-    right: .72rem;
-    transform: translateY(-50%);
-  }
 }
 
 /* The markup above keeps the historical mobile pill contract. On compact 3D
-   layouts the new wrappers dissolve and the rail-only utility menu disappears;
-   the existing mobile GameCommandDeck remains the source of game actions. */
+   layouts the desktop-only matchup wrappers dissolve, while the utility menu
+   remains available as the canonical Appearance entry point. */
 @media (max-width: 1080px) {
   .game-3d-matchup,
   .game-3d-turn-state {
@@ -358,8 +351,7 @@
   }
 
   .game-3d-human-id,
-  .game-3d-turn-pill-versus,
-  .game-3d-utility-menu {
+  .game-3d-turn-pill-versus {
     display: none !important;
   }
 
