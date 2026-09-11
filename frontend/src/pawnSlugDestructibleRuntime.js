@@ -81,7 +81,7 @@ export function pawnSlugApplyDestructibleReward(reward, state) {
 export function pawnSlugAnimateDestructibles(active = [], time = 0, { reducedMotion = false } = {}) {
   for (const item of active) {
     animatePawnSlugDestructibleModel(item.model, time, {
-      hpRatio: item.hp / Math.max(1, item.type === 'barrel' ? 30 : 45),
+      hpRatio: item.hp / Math.max(1, item.maxHp || item.hp || 1),
       destroyed: item.destroyed,
       reducedMotion,
     });
@@ -106,4 +106,5 @@ export const PAWN_SLUG_DESTRUCTIBLE_RUNTIME_META = Object.freeze({
   reward: 'one-shot',
   destroyedPersistence: 'mission-restart-safe',
   barrelExplosion: 'bounded-single-detonation',
+  hpRatio: 'state-max-hp',
 });
