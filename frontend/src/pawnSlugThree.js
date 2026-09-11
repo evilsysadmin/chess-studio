@@ -40,6 +40,7 @@ import {
   disposePawnSlugObject,
 } from './pawnSlugArt.js';
 import { createPawnSlugPremiumLandmarks } from './pawnSlugLandmarks.js';
+import { pawnSlugMicroAmbushUnlockedForSpawn } from './pawnSlugMicroAmbushes.js';
 import {
   createPawnSlugPlatforms,
   pawnSlugPlatformAtX,
@@ -600,8 +601,10 @@ export function createPawnSlugGame(host, { onReady, onHud } = {}) {
 
   function spawnAhead() {
     const right = camera.position.x + VIEW_W * 0.72;
+    const playerMissionX = state.player.x / WORLD_SCALE;
     for (const spawn of PAWN_SLUG_SPAWNS) {
       if (state.spawned.has(spawn.id)) continue;
+      if (!pawnSlugMicroAmbushUnlockedForSpawn(spawn, playerMissionX)) continue;
       const x = wx(spawn.x);
       if (x <= right) {
         state.spawned.add(spawn.id);
