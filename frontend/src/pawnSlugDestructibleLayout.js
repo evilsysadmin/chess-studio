@@ -4,18 +4,31 @@ const freezeReward = (reward) => Object.freeze({
 });
 
 const freeze = (entry) => Object.freeze({ ...entry, reward: freezeReward(entry.reward || {}) });
+const freezeScenarioEntries = (scenario, entries) => Object.freeze(entries.map((entry) => freeze({ scenario, ...entry })));
 
-export const PAWN_SLUG_DESTRUCTIBLE_LAYOUT = Object.freeze([
-  freeze({ id: 'forest-cache', scenario: 'fallen-forest', type: 'crate', x: 16.2, reward: { credits: 14 } }),
-  freeze({ id: 'forest-barrel', scenario: 'fallen-forest', type: 'barrel', x: 25.2, reward: { grenades: 1 } }),
-  freeze({ id: 'ruins-cache', scenario: 'gambit-ruins', type: 'crate', x: 35.7, reward: { ammo: { shotgun: 6 }, credits: 8 } }),
-  freeze({ id: 'ruins-barrel', scenario: 'gambit-ruins', type: 'barrel', x: 42.1, reward: { credits: 18 } }),
-  freeze({ id: 'dungeon-cache', scenario: 'castle-dungeon', type: 'crate', x: 49.7, reward: { grenades: 2, credits: 10 } }),
-  freeze({ id: 'dungeon-barrel', scenario: 'castle-dungeon', type: 'barrel', x: 54.2, reward: { ammo: { machinegun: 22 } } }),
-  freeze({ id: 'fortress-cache', scenario: 'fortress-approach', type: 'crate', x: 67.4, reward: { ammo: { machinegun: 30 }, credits: 16 } }),
-  freeze({ id: 'fortress-barrel', scenario: 'fortress-approach', type: 'barrel', x: 91.5, reward: { credits: 24 } }),
-  freeze({ id: 'last-line-cache', scenario: 'fortress-approach', type: 'crate', x: 103.0, reward: { ammo: { panzerfaust: 1 }, credits: 20 }, secret: true }),
-]);
+export const PAWN_SLUG_DESTRUCTIBLES_BY_SCENARIO = Object.freeze({
+  'fallen-forest': freezeScenarioEntries('fallen-forest', [
+    { id: 'forest-cache', type: 'crate', x: 16.2, reward: { credits: 14 } },
+    { id: 'forest-barrel', type: 'barrel', x: 25.2, reward: { grenades: 1 } },
+  ]),
+  'gambit-ruins': freezeScenarioEntries('gambit-ruins', [
+    { id: 'ruins-cache', type: 'crate', x: 35.7, reward: { ammo: { shotgun: 6 }, credits: 8 } },
+    { id: 'ruins-barrel', type: 'barrel', x: 42.1, reward: { credits: 18 } },
+  ]),
+  'castle-dungeon': freezeScenarioEntries('castle-dungeon', [
+    { id: 'dungeon-cache', type: 'crate', x: 49.7, reward: { grenades: 2, credits: 10 } },
+    { id: 'dungeon-barrel', type: 'barrel', x: 54.2, reward: { ammo: { machinegun: 22 } } },
+  ]),
+  'fortress-approach': freezeScenarioEntries('fortress-approach', [
+    { id: 'fortress-cache', type: 'crate', x: 67.4, reward: { ammo: { machinegun: 30 }, credits: 16 } },
+    { id: 'fortress-barrel', type: 'barrel', x: 91.5, reward: { credits: 24 } },
+    { id: 'last-line-cache', type: 'crate', x: 103.0, reward: { ammo: { panzerfaust: 1 }, credits: 20 }, secret: true },
+  ]),
+});
+
+export const PAWN_SLUG_DESTRUCTIBLE_LAYOUT = Object.freeze(
+  Object.values(PAWN_SLUG_DESTRUCTIBLES_BY_SCENARIO).flat(),
+);
 
 export function pawnSlugDestructiblesAhead(rightEdge, destroyedIds = new Set()) {
   const edge = Number(rightEdge) || 0;
