@@ -50,7 +50,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
         data-home-castle-rare={castleLife.rareSighting || 'none'}
         style={{ '--home-hall-art': `url("${hall}")` }}
       >
-        <HomeCastle3D artUrl={hall} />
+        <HomeCastle3D artUrl={hall} ambient={castleLife.ambient} />
         <img className="illustrated-home__art" src={hall} alt="" fetchPriority="high" draggable="false" style={{ zIndex: 0 }} />
         {castleLife.rareSighting && (
           <span className={`illustrated-home__rare-sighting is-${castleLife.rareSighting}`} aria-hidden="true" />
