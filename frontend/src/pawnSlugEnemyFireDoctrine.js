@@ -2,7 +2,7 @@ const freeze = (value) => Object.freeze(value);
 
 export const PAWN_SLUG_ENEMY_FIRE_PROFILES = freeze({
   pistol: freeze({ range: 9, cooldownMin: 1.05, cooldownMax: 1.55, speed: 7.2, damage: 13, pellets: 1, spread: 0 }),
-  machinegun: freeze({ range: 10.5, cooldownMin: 0.62, cooldownMax: 0.95, speed: 8.4, damage: 9, pellets: 1, spread: 0.035, burstMin: 2, burstMax: 4 }),
+  machinegun: freeze({ range: 10.5, cooldownMin: 0.62, cooldownMax: 0.95, speed: 8.4, damage: 9, pellets: 1, spread: 0.035, burstMin: 2, burstMax: 4, burstInterval: 0.11 }),
   shotgun: freeze({ range: 6.8, cooldownMin: 1.25, cooldownMax: 1.7, speed: 6.8, damage: 6, pellets: 5, spread: 0.16 }),
   panzerfaust: freeze({ range: 15, cooldownMin: 1.8, cooldownMax: 2.45, speed: 5.6, damage: 30, pellets: 1, spread: 0, explosive: true, telegraph: 0.34 }),
 });
@@ -46,6 +46,19 @@ export function pawnSlugEnemyFireCooldown(weapon = 'pistol', unit = 0.5) {
   const profile = pawnSlugEnemyFireProfile(weapon);
   const t = Math.max(0, Math.min(1, Number(unit) || 0));
   return profile.cooldownMin + (profile.cooldownMax - profile.cooldownMin) * t;
+}
+
+export function pawnSlugEnemyBurstPlan(weapon = 'pistol', { cooldownUnit = 0.5, burstUnit = 0.5, cadence = 1 } = {}) {
+  const profile = pawnSlugEnemyFireProfile(weapon);
+  const minimum = Math.max(1, Math.floor(Number(profile.burstMin) || 1));
+  const maximum = Math.max(minimum, Math.floor(Number(profile.burstMax) || minimum));
+  const burstT = Math.max(0, Math.min(1, Number(burstUnit) || 0));
+  const shots = Math.round(minimum + (maximum - minimum) * burstT);
+  const cadenceScale = Math.max(0.25, Math.min(2, Number(cadence) || 1));
+  const interval = shots > 1 ? Math.max(0, Number(profile.burstInterval) || 0) * cadenceScale : 0;
+  const baseCooldown = pawnSlugEnemyFireCooldown(weapon, cooldownUnit) * cadenceScale;
+  const rest = Math.max(0.05, baseCooldown * shots - interval * Math.max(0, shots - 1));
+  return freeze({ shots, interval, rest, baseCooldown });
 }
 
 export function pawnSlugEnemyShotPlan(weapon = 'pistol') {
