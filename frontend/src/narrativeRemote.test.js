@@ -22,7 +22,6 @@ describe('remote narrative transport', () => {
     expect(init.headers.Authorization).toBe('Bearer jwt');
   });
 
-
   it('no recorta el retrato AI al antiguo límite de 420 caracteres', async () => {
     const portrait = `${'Frase completa con contexto. '.repeat(20)}Final.`;
     expect(portrait.length).toBeGreaterThan(420);
@@ -72,6 +71,20 @@ describe('remote narrative transport', () => {
     now += 1500;
     expect(await requestRemoteNarrative({ eventType:'tactic', ply:12, facts:{} }, { token:'jwt', fetchImpl, cooldownGate:gate })).toBe('ok');
     expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('tolera que el reloj del dispositivo retroceda sin saltarse la separación por ply', () => {
+    let now = 10000;
+    const gate = createNarrativeCooldownGate({ minPlyGap: 2, minIntervalMs: 1000, now: () => now });
+
+    expect(gate.allow({ ply: 10 })).toBe(true);
+    now = 5000;
+    expect(gate.allow({ ply: 11 })).toBe(false);
+    expect(gate.allow({ ply: 12 })).toBe(true);
+    now = 5500;
+    expect(gate.allow({ ply: 14 })).toBe(false);
+    now = 6000;
+    expect(gate.allow({ ply: 14 })).toBe(true);
   });
 
   it('el adapter detached entrega después sin obligar al pipeline de jugada a await', async () => {

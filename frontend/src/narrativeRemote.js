@@ -29,8 +29,9 @@ export function createNarrativeCooldownGate({
       const rawPly = dossier?.ply ?? dossier?.facts?.ply;
       const ply = Number(rawPly);
       const hasPly = Number.isFinite(ply);
+      const clockRolledBack = Number.isFinite(currentAt) && currentAt < lastAcceptedAt;
 
-      if (currentAt - lastAcceptedAt < Math.max(0, minIntervalMs)) return false;
+      if (!clockRolledBack && currentAt - lastAcceptedAt < Math.max(0, minIntervalMs)) return false;
       if (hasPly && lastAcceptedPly != null && ply - lastAcceptedPly < Math.max(0, minPlyGap)) return false;
 
       lastAcceptedAt = currentAt;
