@@ -8,7 +8,9 @@ const freeze = (entry) => Object.freeze({ ...entry, reward: freezeReward(entry.r
 export const PAWN_SLUG_DESTRUCTIBLE_LAYOUT = Object.freeze([
   freeze({ id: 'forest-cache', scenario: 'fallen-forest', type: 'crate', x: 16.2, reward: { credits: 14 } }),
   freeze({ id: 'forest-barrel', scenario: 'fallen-forest', type: 'barrel', x: 25.2, reward: { grenades: 1 } }),
+  freeze({ id: 'forest-sandbags', scenario: 'fallen-forest', type: 'sandbags', x: 28.4, reward: {} }),
   freeze({ id: 'ruins-cache', scenario: 'gambit-ruins', type: 'crate', x: 35.7, reward: { ammo: { shotgun: 6 }, credits: 8 } }),
+  freeze({ id: 'ruins-sandbags', scenario: 'gambit-ruins', type: 'sandbags', x: 39.1, reward: { credits: 6 } }),
   freeze({ id: 'ruins-barrel', scenario: 'gambit-ruins', type: 'barrel', x: 42.1, reward: { credits: 18 } }),
   freeze({ id: 'dungeon-cache', scenario: 'castle-dungeon', type: 'crate', x: 49.7, reward: { grenades: 2, credits: 10 } }),
   freeze({ id: 'dungeon-barrel', scenario: 'castle-dungeon', type: 'barrel', x: 54.2, reward: { ammo: { machinegun: 22 } } }),
