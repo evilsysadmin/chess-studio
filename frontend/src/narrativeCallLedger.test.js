@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { clearStorageMemoryFallback } from './safeStorage.js';
+import { clearLocalUserState, DERIVED_LOCAL_CACHE_KEYS } from './profileKeys.js';
 import {
-  clearNarrativeCallLedger,
+  NARRATIVE_CALL_LEDGER_KEY,
   loadNarrativeCallLedger,
   recordNarrativeCall,
 } from './narrativeCallLedger.js';
@@ -8,7 +10,8 @@ import { requestRemoteNarrative } from './narrativeRemote.js';
 
 describe('narrative call ledger', () => {
   beforeEach(() => {
-    clearNarrativeCallLedger();
+    localStorage.clear();
+    clearStorageMemoryFallback();
   });
 
   it('keeps only bounded sanitized operational metadata', () => {
@@ -53,7 +56,7 @@ describe('narrative call ledger', () => {
       eventType: 'post_game_autopsy',
       requestKind: 'analysis',
       facts: { fen: 'secret-fen', san: 'Qd4' },
-    }, { token: 'jwt', fetchImpl });
+    }, { token: 'SECRET-JWT', fetchImpl });
 
     expect(text).toBe('Respuesta privada que no debe persistirse');
     const [row] = loadNarrativeCallLedger();
@@ -65,11 +68,10 @@ describe('narrative call ledger', () => {
       outputChars: text.length,
     });
     expect(row.inputChars).toBeGreaterThan(0);
-    const serialized = JSON.stringify(row);
-    expect(serialized).not.toContain('secret-fen');
-    expect(serialized).not.toContain('Qd4');
-    expect(serialized).not.toContain('Respuesta privada');
-    expect(serialized).not.toContain('jwt');
+    const serialized = localStorage.getItem(NARRATIVE_CALL_LEDGER_KEY);
+    for (const secret of ['secret-fen', 'Qd4', 'Respuesta privada', 'SECRET-JWT']) {
+      expect(serialized).not.toContain(secret);
+    }
   });
 
   it('distinguishes backend fallback and HTTP failure without leaking response text', async () => {
@@ -79,16 +81,26 @@ describe('narrative call ledger', () => {
     }));
     const failedFetch = vi.fn(async () => ({ ok: false, status: 503 }));
 
-    expect(await requestRemoteNarrative({ eventType: 'mate', facts: { fen: 'private' } }, { token: 'jwt', fetchImpl: localFetch })).toBeNull();
-    expect(await requestRemoteNarrative({ eventType: 'blunder', facts: { san: 'Qa4' } }, { token: 'jwt', fetchImpl: failedFetch })).toBeNull();
+    expect(await requestRemoteNarrative({ eventType: 'mate', facts: { fen: 'private-fen' } }, { token: 'jwt-a', fetchImpl: localFetch })).toBeNull();
+    expect(await requestRemoteNarrative({ eventType: 'blunder', facts: { san: 'Qa4' } }, { token: 'jwt-b', fetchImpl: failedFetch })).toBeNull();
 
     const rows = loadNarrativeCallLedger();
     expect(rows.map((row) => [row.provider, row.ok])).toEqual([
       ['local', false],
       ['http-503', false],
     ]);
-    expect(JSON.stringify(rows)).not.toContain('fallback backend privado');
-    expect(JSON.stringify(rows)).not.toContain('private');
-    expect(JSON.stringify(rows)).not.toContain('Qa4');
+    const serialized = JSON.stringify(rows);
+    for (const secret of ['fallback backend privado', 'private-fen', 'Qa4', 'jwt-a', 'jwt-b']) {
+      expect(serialized).not.toContain(secret);
+    }
+  });
+
+  it('stays local-only and is cleared with local user state', () => {
+    expect(DERIVED_LOCAL_CACHE_KEYS).toContain(NARRATIVE_CALL_LEDGER_KEY);
+    recordNarrativeCall({ eventType: 'training_plan', provider: 'cloudflare', ok: true });
+    expect(loadNarrativeCallLedger()).toHaveLength(1);
+
+    clearLocalUserState();
+    expect(loadNarrativeCallLedger()).toEqual([]);
   });
 });
