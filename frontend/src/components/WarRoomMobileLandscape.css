@@ -196,14 +196,6 @@
     left: .36rem;
     font-size: .44rem;
   }
-
-  .game-screen .board3d-customize {
-    right: .36rem;
-    bottom: .36rem;
-    min-height: 31px;
-    padding: .3rem .45rem;
-    font-size: .56rem;
-  }
 }
 
 /* Very short browser landscape (address/nav bars still visible): preserve the
