@@ -28,17 +28,30 @@ describe('Pawn Slug premium projectile FX', () => {
     expect(() => animatePremiumProjectile(projectile, { time: 0.5 })).not.toThrow();
   });
 
-  it('gives rockets a body, tip and exhaust and muzzle flashes a finite life', () => {
+  it('gives rockets a body, tip and animated exhaust', () => {
     const rocket = createPremiumBulletModel({ weapon: 'panzerfaust', explosive: true });
     expect(rocket.userData.explosive).toBe(true);
     expect(rocket.children.length).toBeGreaterThanOrEqual(3);
     expect(rocket.children.some((child) => child.userData.projectileGlow)).toBe(true);
+    const exhaust = rocket.children.find((child) => child.userData.projectileExhaust);
+    expect(exhaust).toBeTruthy();
+    const before = exhaust.scale.x;
+    animatePremiumProjectile(rocket, { time: 0.5, explosive: true });
+    expect(exhaust.scale.x).not.toBe(before);
+  });
 
+  it('gives Panzerfaust muzzle flashes a short shockwave and smoke bloom', () => {
     const flash = createPremiumMuzzleFlash({ weapon: 'panzerfaust' });
     expect(flash.userData.premiumMuzzle).toBe(true);
     expect(flash.userData.life).toBeGreaterThan(0.08);
-    expect(flash.children.length).toBeGreaterThanOrEqual(4);
-    expect(() => animatePremiumMuzzleFlash(flash, 0.5)).not.toThrow();
+    expect(flash.userData.panzerfaustPunch).toBe('shockwave-smoke');
+    expect(flash.children.some((child) => child.userData.muzzleShockwave)).toBe(true);
+    expect(flash.children.filter((child) => child.userData.muzzleSmoke)).toHaveLength(2);
+    const wave = flash.children.find((child) => child.userData.muzzleShockwave);
+    const smoke = flash.children.find((child) => child.userData.muzzleSmoke);
+    animatePremiumMuzzleFlash(flash, 0.5);
+    expect(wave.scale.x).toBeGreaterThan(1);
+    expect(smoke.scale.x).toBeGreaterThan(1);
   });
 
   it('reuses premium projectile geometry and materials per weapon', () => {
