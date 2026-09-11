@@ -49,9 +49,41 @@
     opacity: .72;
   }
 
+  .illustrated-home__memory-object.is-slot-3 {
+    left: 78.8%;
+    top: 60.6%;
+    width: 2.55cqw;
+    height: 2.55cqw;
+    min-width: 32px;
+    min-height: 32px;
+    opacity: .68;
+  }
+
   .illustrated-home__memory-object.is-daily-seal {
     border-radius: 28% 28% 42% 42%;
     color: rgba(242, 183, 72, .82);
+  }
+
+  .illustrated-home__memory-object.is-precision-relic {
+    border-radius: 28%;
+    border-color: rgba(229, 210, 155, .42);
+    background: radial-gradient(circle at 42% 30%, rgba(246, 231, 185, .22), rgba(105, 78, 38, .18) 52%, rgba(12, 8, 5, .08));
+    color: rgba(239, 221, 174, .86);
+    transform: rotate(45deg);
+  }
+
+  .illustrated-home__memory-object.is-precision-relic > svg,
+  .illustrated-home__memory-object.is-precision-relic > .illustrated-home__memory-label {
+    transform: rotate(-45deg);
+  }
+
+  .illustrated-home__memory-object.is-precision-relic:hover,
+  .illustrated-home__memory-object.is-precision-relic:focus-visible {
+    transform: translateY(-2px) scale(1.035) rotate(45deg);
+  }
+
+  .illustrated-home__memory-object.is-precision-relic .illustrated-home__memory-label {
+    right: calc(100% + 1.2cqw);
   }
 
   .illustrated-home__memory-object svg {
@@ -66,6 +98,11 @@
     filter: brightness(1.15);
     opacity: 1;
     box-shadow: 0 5px 16px rgba(0, 0, 0, .38), 0 0 16px rgba(226, 169, 69, .14), inset 0 0 11px rgba(230, 177, 73, .12);
+  }
+
+  .illustrated-home__memory-object.is-precision-relic:hover,
+  .illustrated-home__memory-object.is-precision-relic:focus-visible {
+    transform: translateY(-2px) scale(1.035) rotate(45deg);
   }
 
   .illustrated-home__memory-label {
@@ -106,6 +143,11 @@
   .illustrated-home__memory-object:focus-visible .illustrated-home__memory-label {
     transform: translateY(-50%) translateX(0);
     opacity: 1;
+  }
+
+  .illustrated-home__memory-object.is-precision-relic:hover .illustrated-home__memory-label,
+  .illustrated-home__memory-object.is-precision-relic:focus-visible .illustrated-home__memory-label {
+    transform: translateY(-50%) translateX(0) rotate(-45deg);
   }
 
   .illustrated-home__rare-sighting {
