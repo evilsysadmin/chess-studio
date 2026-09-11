@@ -9,6 +9,7 @@ import {
   pawnSlugEnemyRunAtlasWindow,
 } from './pawnSlugEnemyRunSprites.js';
 import { applyPawnSlugMatthiasPremiumMotion } from './pawnSlugMatthiasPremiumMotion.js';
+import { playPawnSlugPlayerHitSfx } from './pawnSlugSfx.js';
 
 export * from './pawnSlugSpritesLegacy.js';
 export {
@@ -19,6 +20,9 @@ export {
 };
 
 export function animateMatthiasSlugSprite(sprite, state = {}) {
+  const hurt = Boolean(state.hurt);
+  if (hurt && !sprite.userData.pawnSlugWasHurt) playPawnSlugPlayerHitSfx();
+  sprite.userData.pawnSlugWasHurt = hurt;
   animateLegacyMatthiasSlugSprite(sprite, state);
   applyPawnSlugMatthiasPremiumMotion(sprite, state);
 }
