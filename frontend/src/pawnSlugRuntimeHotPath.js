@@ -2,6 +2,7 @@ export { PAWN_SLUG_ENEMY_LOADOUTS, pawnSlugEnemyLoadoutFor, pawnSlugEnemyWeaponF
 export {
   PAWN_SLUG_ENEMY_FIRE_PROFILES,
   PAWN_SLUG_ENEMY_ROLE_PRESSURE,
+  pawnSlugEnemyBurstPlan,
   pawnSlugEnemyCanFire,
   pawnSlugEnemyFireCooldown,
   pawnSlugEnemyFireProfile,
