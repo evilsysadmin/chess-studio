@@ -5,6 +5,7 @@ import {
   HOME_CASTLE_ART_WIDTH,
   createCanonicalHallGeometry,
 } from './HomeCastle3DGeometry.js';
+import { homeCastleLightingProfile } from './HomeCastle3DLighting.js';
 
 const CAMERA_Z = 3;
 const PARALLAX_X = 0.034;
@@ -20,7 +21,20 @@ function frameOrthographicCamera(camera, aspect) {
   camera.updateProjectionMatrix();
 }
 
-export default function HomeCastle3D({ artUrl }) {
+function addLightRig(scene, profile) {
+  const hemisphere = new THREE.HemisphereLight(0xffead0, 0x26160f, profile.ambient);
+  const key = new THREE.DirectionalLight(profile.keyColor, profile.key);
+  key.position.set(-1.6, 1.25, 2.4);
+  const fill = new THREE.DirectionalLight(profile.fillColor, profile.fill);
+  fill.position.set(1.7, 0.55, 1.8);
+  const leftTorch = new THREE.PointLight(0xff9a48, profile.torch, 2.2, 2);
+  leftTorch.position.set(-1.15, 0.25, 1.1);
+  const rightTorch = leftTorch.clone();
+  rightTorch.position.x = 1.15;
+  scene.add(hemisphere, key, fill, leftTorch, rightTorch);
+}
+
+export default function HomeCastle3D({ artUrl, ambient = 'day' }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -39,10 +53,14 @@ export default function HomeCastle3D({ artUrl }) {
       return undefined;
     }
 
+    const lighting = homeCastleLightingProfile(ambient);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = lighting.exposure;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
 
     const scene = new THREE.Scene();
+    addLightRig(scene, lighting);
     const camera = new THREE.OrthographicCamera(
       -HOME_CASTLE_ART_WIDTH / 2,
       HOME_CASTLE_ART_WIDTH / 2,
@@ -54,7 +72,13 @@ export default function HomeCastle3D({ artUrl }) {
     camera.position.set(0, 0, CAMERA_Z);
 
     const geometry = createCanonicalHallGeometry();
-    const material = new THREE.MeshBasicMaterial({ transparent: true });
+    const material = new THREE.MeshStandardMaterial({
+      transparent: true,
+      roughness: 0.96,
+      metalness: 0,
+      emissive: 0xffffff,
+      emissiveIntensity: 0.72,
+    });
     const art = new THREE.Mesh(geometry, material);
     art.scale.setScalar(1.018);
     scene.add(art);
@@ -120,6 +144,7 @@ export default function HomeCastle3D({ artUrl }) {
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.minFilter = THREE.LinearFilter;
         material.map = texture;
+        material.emissiveMap = texture;
         material.needsUpdate = true;
         canvas.classList.add('is-ready');
       },
@@ -141,7 +166,7 @@ export default function HomeCastle3D({ artUrl }) {
       geometry.dispose();
       renderer.dispose();
     };
-  }, [artUrl]);
+  }, [ambient, artUrl]);
 
   return <canvas ref={canvasRef} className="illustrated-home__castle-3d" aria-hidden="true" />;
 }
