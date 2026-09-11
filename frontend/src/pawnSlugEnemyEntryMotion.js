@@ -8,15 +8,24 @@ function easeOutCubic(value) {
 }
 
 const IDENTITY = Object.freeze({ x: 0, y: 0, rz: 0, sx: 1, sy: 1, active: false });
+const ENTRY_MOTION_SECONDS = 0.48;
 
-export const PAWN_SLUG_ENEMY_ENTRY_DURATION = 0.48;
+export const PAWN_SLUG_ENEMY_ENTRY_STAGGER = Object.freeze({
+  pawn: 0,
+  knight: 0.055,
+  rook: 0.095,
+});
+
+export const PAWN_SLUG_ENEMY_ENTRY_DURATION = ENTRY_MOTION_SECONDS + PAWN_SLUG_ENEMY_ENTRY_STAGGER.rook;
 
 export function pawnSlugEnemyEntryPose(type = 'pawn', age = 0, { reducedMotion = false, enabled = true } = {}) {
   if (!enabled || reducedMotion) return IDENTITY;
   const safeAge = Math.max(0, Number(age) || 0);
   if (safeAge >= PAWN_SLUG_ENEMY_ENTRY_DURATION) return IDENTITY;
 
-  const progress = easeOutCubic(safeAge / PAWN_SLUG_ENEMY_ENTRY_DURATION);
+  const delay = PAWN_SLUG_ENEMY_ENTRY_STAGGER[type] ?? PAWN_SLUG_ENEMY_ENTRY_STAGGER.pawn;
+  const localAge = Math.max(0, safeAge - delay);
+  const progress = easeOutCubic(localAge / ENTRY_MOTION_SECONDS);
   const remaining = 1 - progress;
 
   if (type === 'knight') {
@@ -53,6 +62,8 @@ export function pawnSlugEnemyEntryPose(type = 'pawn', age = 0, { reducedMotion =
 
 export const PAWN_SLUG_ENEMY_ENTRY_META = Object.freeze({
   duration: PAWN_SLUG_ENEMY_ENTRY_DURATION,
+  motionSeconds: ENTRY_MOTION_SECONDS,
+  staggerByType: PAWN_SLUG_ENEMY_ENTRY_STAGGER,
   pawn: 'short-rush-in',
   knight: 'drop-and-settle',
   rook: 'heavy-settle',
