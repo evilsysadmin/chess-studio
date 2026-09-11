@@ -1,0 +1,84 @@
+.pawn-slug-model-armory {
+  width: min(760px, 92vw);
+  margin: .35rem auto 0;
+  border: 1px solid rgba(214, 180, 99, .28);
+  border-radius: 10px;
+  background: rgba(11, 14, 17, .84);
+  text-align: left;
+}
+
+.pawn-slug-model-armory > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .7rem .85rem;
+  cursor: pointer;
+  letter-spacing: .08em;
+  font-size: .78rem;
+}
+
+.pawn-slug-model-armory > summary b { color: #d6b463; }
+
+.pawn-slug-model-armory-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .65rem;
+  padding: 0 .7rem .7rem;
+}
+
+.pawn-slug-model-armory section {
+  min-width: 0;
+  padding: .55rem;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .025);
+}
+
+.pawn-slug-model-armory section > strong {
+  display: block;
+  margin-bottom: .45rem;
+  font-size: .68rem;
+  letter-spacing: .12em;
+  opacity: .68;
+}
+
+.pawn-slug-model-armory section > div {
+  display: grid;
+  gap: .35rem;
+}
+
+.pawn-slug-model-armory button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .18rem .55rem;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: .48rem .58rem;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .035);
+  color: inherit;
+  text-align: left;
+}
+
+.pawn-slug-model-armory button:not(:disabled) { cursor: pointer; }
+.pawn-slug-model-armory button.is-equipped { border-color: rgba(214, 180, 99, .55); background: rgba(214, 180, 99, .09); }
+.pawn-slug-model-armory button:disabled:not(.is-equipped) { opacity: .42; }
+.pawn-slug-model-armory button > span { font-weight: 700; }
+.pawn-slug-model-armory button > b { grid-row: 1 / span 2; grid-column: 2; font-size: .67rem; color: #d6b463; }
+.pawn-slug-model-armory button > small { display: flex; flex-wrap: wrap; gap: .3rem; opacity: .68; }
+.pawn-slug-model-armory button > small i { font-style: normal; font-size: .62rem; }
+
+.pawn-slug-model-armory > p {
+  margin: 0;
+  padding: 0 .8rem .7rem;
+  font-size: .67rem;
+  opacity: .58;
+}
+
+@media (max-width: 680px) {
+  .pawn-slug-model-armory { width: min(94vw, 520px); max-height: 42vh; overflow: auto; }
+  .pawn-slug-model-armory-groups { grid-template-columns: 1fr; }
+}

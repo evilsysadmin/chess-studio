@@ -12,6 +12,7 @@ import {
   savePawnSlugSettings,
 } from '../pawnSlugControls.js';
 import { getAmbientVolume, isFxMuted, setAmbientVolume, setFxMuted } from '../sound.js';
+import PawnSlugModelArmory from './PawnSlugModelArmory.jsx';
 import './PawnSlug.css';
 import './PawnSlugArsenal.css';
 import './PawnSlugSettings.css';
@@ -36,7 +37,9 @@ const INITIAL_HUD = Object.freeze({
   weaponLabel: 'Dienstpistole',
   ammo: null,
   weapons: INITIAL_WEAPONS,
+  weaponModels: [],
   grenades: 4,
+  credits: 0,
   score: 0,
   combo: 0,
   progress: 0,
@@ -174,10 +177,10 @@ export default function PawnSlug({ onExit }) {
     const host = hostRef.current;
     if (!host) return undefined;
 
-    void import('../pawnSlugThree.js')
-      .then(({ createPawnSlugGame }) => {
+    void import('../pawnSlugArmoryRuntime.js')
+      .then(({ createPawnSlugArmoryGame }) => {
         if (cancelled) return;
-        engine = createPawnSlugGame(host, {
+        engine = createPawnSlugArmoryGame(host, {
           onReady: (name) => {
             if (!cancelled) setRendererName(name);
           },
@@ -415,6 +418,13 @@ export default function PawnSlug({ onExit }) {
                 </div>
               )}
               {hud.phase !== 'ready' && <small>Nivel {hud.level} · {hud.score.toLocaleString('es-ES')} puntos · {missionTime}</small>}
+              {hud.phase !== 'ready' && (
+                <PawnSlugModelArmory
+                  groups={hud.weaponModels || []}
+                  credits={hud.credits || 0}
+                  onSelect={(weaponId, modelId) => engineRef.current?.buyOrEquipWeaponModel?.(weaponId, modelId)}
+                />
+              )}
               <button
                 type="button"
                 className="primary-btn"
