@@ -80,8 +80,23 @@ test('Pawn Slug · arranca con pistola y arsenal seleccionable sin tocar el ajed
   // autenticar otra página sólo para volver al hub.
   await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Pawn Slug/ })).toBeVisible();
+  const pawnSlugButton = page.getByRole('button', { name: /Pawn Slug/ });
+  await expect(pawnSlugButton).toBeVisible();
   await expect(page.getByRole('button', { name: /Pawn Trailblazer/ })).toBeVisible();
+
+  // Reenter once in the same authenticated session. The first Three.js runtime
+  // must have cleaned up its RAF/listeners/WebGL host well enough for a fresh
+  // runtime to mount, start and leave again without a reload.
+  await pawnSlugButton.click();
+  await expect(page.getByRole('heading', { name: 'Pawn Slug', exact: true })).toBeVisible();
+  const remountedStage = page.locator('[data-pawn-slug-renderer="three"]');
+  await expect(remountedStage.locator('canvas')).toHaveCount(0);
+  await startPawnSlug(page);
+  await expect(remountedStage.locator('canvas')).toHaveCount(1);
+  await expect(remountedStage.locator('canvas')).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+  await expect(remountedStage).toHaveCount(0);
 });
 
 test('Pawn Slug · ESC abre y cierra Settings sin perder el runtime', async ({ page }) => {
