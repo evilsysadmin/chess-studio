@@ -78,8 +78,7 @@
     grid-template-columns: 1fr;
     grid-template-areas:
       'pill'
-      'controls'
-      'message';
+      'controls';
     gap: .3rem;
     min-width: 0;
     max-width: 100%;
@@ -130,24 +129,6 @@
     flex-basis: 8px;
   }
 
-  .game-screen .game-3d-warroom-message {
-    grid-area: message;
-    min-height: 0;
-    max-height: 88px;
-    overflow: hidden;
-    padding: .42rem .48rem;
-  }
-
-  .game-screen .game-3d-warroom-message > span {
-    font-size: .42rem;
-  }
-
-  .game-screen .game-3d-warroom-message p {
-    margin-top: .24rem;
-    font-size: .58rem;
-    line-height: 1.3;
-  }
-
   .game-screen .game-side-column.game-side-column-3d {
     grid-area: chat;
     display: flex;
@@ -183,10 +164,6 @@
   .game-screen .game-board-stack-3d .board3d-main-shell {
     height: min(76dvh, 330px);
     min-height: 240px;
-  }
-
-  .game-screen .game-3d-warroom-message {
-    display: none;
   }
 
   .game-screen .game-side-column.game-side-column-3d {
