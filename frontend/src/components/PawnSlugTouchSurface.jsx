@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   PAWN_SLUG_TOUCH_GESTURE,
   pawnSlugTouchHapticPattern,
@@ -7,6 +7,7 @@ import {
   pawnSlugTouchZone,
 } from '../pawnSlugTouchGestures.js';
 import './PawnSlugTouchSurface.css';
+import './PawnSlugLandscape.css';
 
 function haptic(action) {
   if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
@@ -18,6 +19,7 @@ export default function PawnSlugTouchSurface({ send }) {
   const sendRef = useRef(send);
   const pointersRef = useRef(new Map());
   const timersRef = useRef(new Set());
+  const [trained, setTrained] = useState(false);
   sendRef.current = send;
 
   useEffect(() => () => {
@@ -57,6 +59,7 @@ export default function PawnSlugTouchSurface({ send }) {
   function onPointerDown(event) {
     if (event.pointerType === 'mouse') return;
     event.preventDefault();
+    setTrained(true);
     const start = point(event);
     const zone = pawnSlugTouchZone(start.x, start.width);
     const pointer = {
@@ -125,6 +128,7 @@ export default function PawnSlugTouchSurface({ send }) {
   function powerUpPress(event) {
     event.preventDefault();
     event.stopPropagation();
+    setTrained(true);
     sendRef.current('grenade', true);
     haptic('grenade');
   }
@@ -137,7 +141,7 @@ export default function PawnSlugTouchSurface({ send }) {
 
   return (
     <div
-      className="pawn-slug-gesture-surface"
+      className={`pawn-slug-gesture-surface${trained ? ' is-trained' : ''}`}
       role="group"
       aria-label="Controles gestuales de Pawn Slug"
       onPointerDown={onPointerDown}
