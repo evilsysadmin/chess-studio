@@ -1,10 +1,10 @@
 import { loadPawnSlugSettings } from './pawnSlugControls.js';
 
 export const PAWN_SLUG_WEAPON_SOUND_PROFILES = Object.freeze({
-  pistol: Object.freeze({ body: 118, crack: 1320, noise: 0.045, tail: 0.07 }),
-  machinegun: Object.freeze({ body: 96, crack: 1680, noise: 0.035, tail: 0.055 }),
-  shotgun: Object.freeze({ body: 68, crack: 760, noise: 0.14, tail: 0.18 }),
-  panzerfaust: Object.freeze({ body: 46, crack: 310, noise: 0.24, tail: 0.32 }),
+  pistol: Object.freeze({ body: 118, crack: 1320, noise: 0.045, tail: 0.07, mechanic: 'casing' }),
+  machinegun: Object.freeze({ body: 96, crack: 1680, noise: 0.035, tail: 0.055, mechanic: 'rattle' }),
+  shotgun: Object.freeze({ body: 68, crack: 760, noise: 0.14, tail: 0.18, mechanic: 'pump' }),
+  panzerfaust: Object.freeze({ body: 46, crack: 310, noise: 0.24, tail: 0.32, mechanic: 'tube' }),
 });
 
 export const PAWN_SLUG_IMPACT_SOUND_PROFILES = Object.freeze({
@@ -90,6 +90,29 @@ function noise({ duration = 0.08, gain = 0.12, cutoff = 2200, delay = 0 }) {
   source.start(audio.currentTime + 0.004 + delay);
 }
 
+function playWeaponMechanic(mechanic, scale) {
+  if (mechanic === 'casing') {
+    tone({ freq: 1780, endFreq: 1220, duration: 0.035, gain: 0.035 * scale, type: 'square', delay: 0.045 });
+    tone({ freq: 980, endFreq: 780, duration: 0.025, gain: 0.022 * scale, type: 'sine', delay: 0.072 });
+    return;
+  }
+  if (mechanic === 'rattle') {
+    tone({ freq: 720, endFreq: 510, duration: 0.028, gain: 0.025 * scale, type: 'square', delay: 0.022 });
+    tone({ freq: 610, endFreq: 430, duration: 0.024, gain: 0.022 * scale, type: 'square', delay: 0.048 });
+    return;
+  }
+  if (mechanic === 'pump') {
+    noise({ duration: 0.038, gain: 0.035 * scale, cutoff: 1800, delay: 0.11 });
+    tone({ freq: 420, endFreq: 250, duration: 0.055, gain: 0.045 * scale, type: 'square', delay: 0.118 });
+    tone({ freq: 260, endFreq: 360, duration: 0.045, gain: 0.04 * scale, type: 'square', delay: 0.182 });
+    return;
+  }
+  if (mechanic === 'tube') {
+    tone({ freq: 210, endFreq: 145, duration: 0.12, gain: 0.045 * scale, type: 'triangle', delay: 0.16 });
+    tone({ freq: 640, endFreq: 390, duration: 0.06, gain: 0.025 * scale, type: 'sine', delay: 0.19 });
+  }
+}
+
 export function pawnSlugWeaponSoundProfile(weapon = 'pistol') {
   return PAWN_SLUG_WEAPON_SOUND_PROFILES[weapon] || PAWN_SLUG_WEAPON_SOUND_PROFILES.pistol;
 }
@@ -107,6 +130,7 @@ export function playPawnSlugWeaponSfx(weapon = 'pistol', { enemy = false } = {})
   tone({ freq: profile.crack * pitch, endFreq: profile.crack * 0.72 * pitch, duration: Math.min(0.055, profile.tail), gain: 0.09 * scale, type: 'square' });
   if (weapon === 'shotgun') noise({ duration: 0.055, gain: 0.11 * scale, cutoff: 5200, delay: 0.018 });
   if (weapon === 'panzerfaust') tone({ freq: 38, endFreq: 28, duration: 0.28, gain: 0.17 * scale, type: 'triangle', delay: 0.02 });
+  if (!enemy) playWeaponMechanic(profile.mechanic, scale);
 }
 
 export function playPawnSlugEnemyImpactSfx(type = 'pawn') {
