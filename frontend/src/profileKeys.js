@@ -99,8 +99,8 @@ export const PROFILE_STORAGE_KEYS = Object.freeze([
 ]);
 
 // Estado local de sesión/caché derivada. No se sincroniza porque apunta a
-// datos no portables o diagnósticos locales, pero sí debe limpiarse al cambiar
-// de identidad para que Bob no herede trazas/cachés de Alice.
+// partidas activas o diagnósticos locales y no es portable entre dispositivos,
+// pero sí debe limpiarse al cambiar de identidad.
 export const DERIVED_LOCAL_CACHE_KEYS = Object.freeze([
   'chess-study-ai-player-portrait-v1',
   'chess-study-ai-training-plan-v1',
@@ -140,12 +140,49 @@ export function markProfileDirtyForCurrentUser(key = null) {
     setStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_KEYS_KEY, '*');
     return;
   }
-  const keys = existing ? existing.split(',').filter(Boolean) : [];
+  let keys = [];
+  try { keys = JSON.parse(existing || '[]'); } catch { keys = []; }
+  if (!Array.isArray(keys)) keys = [];
   if (!keys.includes(key)) keys.push(key);
-  setStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_KEYS_KEY, keys.join(','));
+  setStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_KEYS_KEY, JSON.stringify(keys));
+  return true;
 }
 
-export function clearProfileDirtyJournal() {
+export function profileDirtyStateForCurrentUser() {
+  const username = getStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY);
+  const owner = getStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_USER_KEY);
+  if (!username || owner !== username) {
+    return { dirty: false, valid: true, keys: [] };
+  }
+
+  const raw = getStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_KEYS_KEY);
+  if (raw === '*') return { dirty: true, valid: true, keys: '*' };
+  if (raw === null) return { dirty: true, valid: false, keys: [] };
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return { dirty: true, valid: false, keys: [] };
+    }
+    const valid = parsed.every((key) => typeof key === 'string' && PROFILE_STORAGE_KEYS.includes(key));
+    if (!valid) return { dirty: true, valid: false, keys: [] };
+    return { dirty: true, valid: true, keys: [...new Set(parsed)] };
+  } catch {
+    return { dirty: true, valid: false, keys: [] };
+  }
+}
+
+export function dirtyProfileKeysForCurrentUser() {
+  const state = profileDirtyStateForCurrentUser();
+  return state.dirty && state.valid ? state.keys : [];
+}
+
+export function hasDirtyProfileForCurrentUser() {
+  const username = getStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY);
+  return !!username && getStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_USER_KEY) === username;
+}
+
+export function clearProfileDirty() {
   removeStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_USER_KEY);
   removeStorageItem(STORAGE_LOCAL, PROFILE_DIRTY_KEYS_KEY);
 }
@@ -170,4 +207,29 @@ export function removeProfileStorageItem(key) {
   markProfileDirtyForCurrentUser(key);
   emitProfileChanged();
   return true;
+}
+
+export function clearProfileProgress() {
+  if (!profileStorageIdentityMatchesCurrentUser()) return false;
+  for (const key of PROFILE_PROGRESS_KEYS) removeStorageItem(STORAGE_LOCAL, key);
+  for (const key of DERIVED_LOCAL_CACHE_KEYS) removeStorageItem(STORAGE_LOCAL, key);
+  markProfileDirtyForCurrentUser();
+  emitProfileChanged();
+  return true;
+}
+
+export function clearProfileCache({ notify = false } = {}) {
+  if (!profileStorageIdentityMatchesCurrentUser()) return false;
+  for (const key of PROFILE_STORAGE_KEYS) removeStorageItem(STORAGE_LOCAL, key);
+  for (const key of DERIVED_LOCAL_CACHE_KEYS) removeStorageItem(STORAGE_LOCAL, key);
+  removeStorageItem(STORAGE_LOCAL, 'chess-study-cpu-personality'); // legado de versiones con selector: ya no existe
+  removeStorageItem(STORAGE_LOCAL, 'chess-study-ambient-theme'); // V15.4: la música pasa a ser de sesión, no de perfil
+  if (notify) emitProfileChanged();
+  return true;
+}
+
+export function clearLocalUserState() {
+  clearProfileCache();
+  for (const key of SESSION_STATE_KEYS) removeStorageItem(STORAGE_LOCAL, key);
+  clearProfileDirty();
 }
