@@ -11,29 +11,61 @@
     transform-origin: top left !important;
   }
 
+  /* Service health becomes an instrument LED on phones. Public players still
+     only see it for a real incident; admins keep the live-user counter as a
+     tappable target without carrying backend/latency prose in the first fold. */
   body .app-shell-home .live-service-status {
-    top: max(9px, env(safe-area-inset-top)) !important;
-    left: 76px !important;
+    top: max(7px, env(safe-area-inset-top)) !important;
+    left: 61px !important;
     right: auto !important;
-    width: max-content !important;
-    max-width: 92px !important;
-    min-height: 23px !important;
-    padding: 3px 6px !important;
-    gap: 3px !important;
-    border-radius: 999px !important;
+    width: 30px !important;
+    max-width: 30px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    overflow: visible !important;
+    border-radius: 50% !important;
     font-size: 8px !important;
     line-height: 1 !important;
-    opacity: .72 !important;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, .16) !important;
+    opacity: .82 !important;
+    box-shadow: 0 5px 14px rgba(0, 0, 0, .14) !important;
+  }
+
+  body .app-shell-home .live-service-status .live-service-dot {
+    position: absolute !important;
+    top: 2px !important;
+    right: 2px !important;
+    width: 6px !important;
+    height: 6px !important;
+    margin: 0 !important;
+  }
+
+  body .app-shell-home .live-service-status .live-service-online-link {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    display: grid !important;
+    place-items: center !important;
+    border: 0 !important;
+    background: transparent !important;
+    font-size: 8.5px !important;
+    line-height: 1 !important;
   }
 
   body .app-shell-home .live-service-status .live-service-online-full,
-  body .app-shell-home .live-service-status .live-service-backend-full {
+  body .app-shell-home .live-service-status .live-service-backend-full,
+  body .app-shell-home .live-service-status .live-service-backend-compact,
+  body .app-shell-home .live-service-status .live-service-separator,
+  body .app-shell-home .live-service-status strong {
     display: none !important;
   }
 
-  body .app-shell-home .live-service-status .live-service-online-compact,
-  body .app-shell-home .live-service-status .live-service-backend-compact {
+  body .app-shell-home .live-service-status .live-service-online-compact {
     display: inline !important;
   }
 
@@ -215,11 +247,6 @@
 }
 
 @media (max-width: 380px) {
-  body .app-shell-home .live-service-status {
-    left: 69px !important;
-    max-width: 86px !important;
-  }
-
   body .app-shell-home .masthead-release-trigger { right: 39px !important; }
   body .app-shell-home .masthead-feedback-trigger { right: 5px !important; }
 
