@@ -15,8 +15,16 @@ export const PAWN_SLUG_IMPACT_SOUND_PROFILES = Object.freeze({
   boss: Object.freeze({ body: 52, ring: 430, noise: 0.09 }),
 });
 
+const SHARED_NOISE_SECONDS = 0.5;
+
+export const PAWN_SLUG_SFX_RESOURCE_META = Object.freeze({
+  sharedNoiseBufferSeconds: SHARED_NOISE_SECONDS,
+  noiseStrategy: 'shared-random-window',
+});
+
 let ctx = null;
 let master = null;
+let sharedNoiseBuffer = null;
 let lastImpactAt = -Infinity;
 let lastKoAt = -Infinity;
 let lastPlayerHitAt = -Infinity;
@@ -39,6 +47,23 @@ function ensureAudio() {
   master.gain.value = 0.055 * profileVolume();
   if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
   return ctx;
+}
+
+function ensureSharedNoiseBuffer(audio) {
+  if (sharedNoiseBuffer?.sampleRate === audio.sampleRate) return sharedNoiseBuffer;
+  const length = Math.max(1, Math.floor(audio.sampleRate * SHARED_NOISE_SECONDS));
+  const buffer = audio.createBuffer(1, length, audio.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let index = 0; index < length; index += 1) data[index] = Math.random() * 2 - 1;
+  sharedNoiseBuffer = buffer;
+  return sharedNoiseBuffer;
+}
+
+export function pawnSlugNoiseWindow(duration = 0.08, unit = 0.5) {
+  const safeDuration = Math.max(0.005, Math.min(SHARED_NOISE_SECONDS, Number(duration) || 0.08));
+  const t = Math.max(0, Math.min(1, Number(unit) || 0));
+  const maxOffset = Math.max(0, SHARED_NOISE_SECONDS - safeDuration);
+  return Object.freeze({ duration: safeDuration, offset: maxOffset * t });
 }
 
 export function pawnSlugSoundPitchVariation(unit = 0.5, { enemy = false, width = 0.035 } = {}) {
@@ -77,24 +102,21 @@ function tone({ freq, endFreq = freq, duration = 0.08, gain = 0.12, type = 'tria
 function noise({ duration = 0.08, gain = 0.12, cutoff = 2200, delay = 0 }) {
   const audio = ensureAudio();
   if (!audio || !master || profileVolume() <= 0.001) return;
-  const length = Math.max(1, Math.floor(audio.sampleRate * duration));
-  const buffer = audio.createBuffer(1, length, audio.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let index = 0; index < length; index += 1) {
-    const envelope = 1 - index / length;
-    data[index] = (Math.random() * 2 - 1) * envelope;
-  }
+  const window = pawnSlugNoiseWindow(duration, Math.random());
   const source = audio.createBufferSource();
   const filter = audio.createBiquadFilter();
   const amp = audio.createGain();
-  source.buffer = buffer;
+  const now = audio.currentTime + 0.004 + delay;
+  source.buffer = ensureSharedNoiseBuffer(audio);
   filter.type = 'lowpass';
   filter.frequency.value = cutoff;
-  amp.gain.value = gain;
+  amp.gain.setValueAtTime(Math.max(0.0001, gain), now);
+  amp.gain.exponentialRampToValueAtTime(0.0001, now + window.duration);
   source.connect(filter);
   filter.connect(amp);
   amp.connect(master);
-  source.start(audio.currentTime + 0.004 + delay);
+  source.start(now, window.offset, window.duration);
+  source.stop(now + window.duration + 0.01);
 }
 
 function playWeaponMechanic(mechanic, scale, pitch = 1) {
@@ -182,6 +204,7 @@ export function destroyPawnSlugPremiumSfx() {
   void ctx.close().catch(() => {});
   ctx = null;
   master = null;
+  sharedNoiseBuffer = null;
   lastImpactAt = -Infinity;
   lastKoAt = -Infinity;
   lastPlayerHitAt = -Infinity;
