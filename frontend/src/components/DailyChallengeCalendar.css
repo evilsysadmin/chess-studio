@@ -1,0 +1,120 @@
+.daily-calendar-disclosure {
+  margin-top: 1rem;
+}
+
+.daily-calendar {
+  display: grid;
+  gap: .65rem;
+  padding-top: .35rem;
+}
+
+.daily-calendar__header {
+  display: flex;
+  justify-content: space-between;
+  gap: .75rem;
+  align-items: baseline;
+}
+
+.daily-calendar__header strong {
+  text-transform: capitalize;
+}
+
+.daily-calendar__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem .75rem;
+  color: var(--text-muted, #a8a195);
+  font-size: .75rem;
+}
+
+.daily-calendar__legend span::before {
+  content: '';
+  display: inline-block;
+  width: .55rem;
+  height: .55rem;
+  margin-right: .3rem;
+  border-radius: 50%;
+  vertical-align: -.02rem;
+  border: 1px solid rgba(223, 187, 110, .34);
+  background: rgba(255, 255, 255, .05);
+}
+
+.daily-calendar__legend .is-partial::before { background: rgba(194, 143, 61, .45); }
+.daily-calendar__legend .is-full::before { background: rgba(194, 143, 61, .82); }
+.daily-calendar__legend .is-clean::before { background: rgba(229, 207, 151, .95); }
+
+.daily-calendar__weekdays,
+.daily-calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: .3rem;
+}
+
+.daily-calendar__weekdays span {
+  text-align: center;
+  color: var(--text-muted, #a8a195);
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+}
+
+.daily-calendar__day {
+  min-height: 2.45rem;
+  display: grid;
+  place-items: center;
+  position: relative;
+  border: 1px solid rgba(218, 184, 111, .12);
+  border-radius: .55rem;
+  background: rgba(12, 11, 10, .34);
+  color: rgba(239, 226, 195, .72);
+  font-variant-numeric: tabular-nums;
+}
+
+.daily-calendar__day:not(.is-month) {
+  opacity: .28;
+}
+
+.daily-calendar__day.is-partial {
+  background: linear-gradient(180deg, rgba(128, 86, 35, .46), rgba(40, 30, 19, .46));
+  border-color: rgba(206, 157, 73, .32);
+}
+
+.daily-calendar__day.is-full {
+  background: linear-gradient(180deg, rgba(170, 119, 43, .68), rgba(76, 52, 25, .58));
+  border-color: rgba(224, 179, 91, .55);
+  color: #f1dfb6;
+}
+
+.daily-calendar__day.is-clean {
+  background: linear-gradient(180deg, rgba(223, 201, 145, .86), rgba(139, 99, 40, .72));
+  border-color: rgba(246, 225, 169, .8);
+  color: #17120b;
+  font-weight: 800;
+}
+
+.daily-calendar__day.is-today::after {
+  content: '';
+  position: absolute;
+  inset: .18rem;
+  border: 1px solid rgba(246, 225, 169, .74);
+  border-radius: .4rem;
+  pointer-events: none;
+}
+
+@media (max-width: 430px) {
+  .daily-calendar__day {
+    min-height: 2.15rem;
+    border-radius: .45rem;
+    font-size: .78rem;
+  }
+
+  .daily-calendar__grid,
+  .daily-calendar__weekdays {
+    gap: .2rem;
+  }
+
+  .daily-calendar__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

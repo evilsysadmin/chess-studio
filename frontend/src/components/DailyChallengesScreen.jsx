@@ -7,7 +7,11 @@ import {
   dailyChallengeProgress,
   dailyChallengeStats,
 } from '../dailyChallenge.js';
+import { dailyChallengeCalendarMonth } from '../dailyChallengeCalendar.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import './DailyChallengeCalendar.css';
+
+const WEEKDAYS = Object.freeze(['L', 'M', 'X', 'J', 'V', 'S', 'D']);
 
 export default function DailyChallengesScreen({ onExit, onPlay }) {
   useEscapeToClose(onExit);
@@ -16,6 +20,7 @@ export default function DailyChallengesScreen({ onExit, onPlay }) {
   const progress = dailyChallengeProgress(state, day);
   const brief = dailyChallengeBrief(state, day);
   const totals = dailyChallengeStats(state);
+  const calendar = useMemo(() => dailyChallengeCalendarMonth(state), [state]);
 
   return (
     <div className="tutorial-shell daily-hub-screen">
@@ -56,6 +61,35 @@ export default function DailyChallengesScreen({ onExit, onPlay }) {
           );
         })}
       </div>
+
+      <details className="friendly-disclosure daily-calendar-disclosure">
+        <summary>Ver calendario</summary>
+        <div className="friendly-disclosure-body daily-calendar">
+          <div className="daily-calendar__header">
+            <strong>{calendar.monthLabel}</strong>
+            <div className="daily-calendar__legend" aria-label="Leyenda del calendario">
+              <span className="is-partial">Hecho</span>
+              <span className="is-full">3/3</span>
+              <span className="is-clean">3/3 limpio</span>
+            </div>
+          </div>
+          <div className="daily-calendar__weekdays" aria-hidden="true">
+            {WEEKDAYS.map((weekday) => <span key={weekday}>{weekday}</span>)}
+          </div>
+          <div className="daily-calendar__grid" aria-label={`Calendario de desafíos · ${calendar.monthLabel}`}>
+            {calendar.cells.map((cell) => (
+              <span
+                key={cell.day}
+                className={`daily-calendar__day is-${cell.status}${cell.inMonth ? ' is-month' : ''}${cell.today ? ' is-today' : ''}`}
+                title={`${cell.day} · ${cell.solvedCount}/3${cell.status === 'clean' ? ' limpio' : ''}`}
+                aria-label={`${cell.day}: ${cell.solvedCount} de 3${cell.status === 'clean' ? ', pleno limpio' : cell.status === 'full' ? ', pleno' : ''}`}
+              >
+                {cell.dayOfMonth}
+              </span>
+            ))}
+          </div>
+        </div>
+      </details>
 
       <details className="friendly-disclosure daily-hub-details">
         <summary>Cómo funciona la racha</summary>
