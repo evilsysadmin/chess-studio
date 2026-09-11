@@ -68,7 +68,6 @@
 
 .game-screen .board-live-row.is-3d-warroom :where(
   .game-3d-matthias-card,
-  .game-3d-warroom-message,
   .game-3d-warroom-status,
   .game-side-column-3d .game-side-music,
   .game-side-column-3d .game-notation-disclosure,
