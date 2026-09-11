@@ -18,10 +18,13 @@ describe('Pawn Slug arcade projectile language', () => {
     expect(shotgun.spread).toBeGreaterThan(0);
   });
 
-  it('keeps the same projectile silhouette for both factions', () => {
-    for (const weapon of ['pistol', 'machinegun', 'shotgun', 'panzerfaust']) {
-      expect(pawnSlugArcadeProjectileProfile({ weapon, enemy: true })).toBe(PAWN_SLUG_ARCADE_PROJECTILES[weapon]);
-    }
-    expect(pawnSlugArcadeProjectileProfile({ weapon: 'pistol', explosive: true })).toBe(PAWN_SLUG_ARCADE_PROJECTILES.panzerfaust);
+  it('gives hostile rounds a larger unmistakable tracer without changing explosive identity', () => {
+    const hostile = pawnSlugArcadeProjectileProfile({ weapon: 'pistol', enemy: true });
+    const friendly = pawnSlugArcadeProjectileProfile({ weapon: 'pistol' });
+    expect(hostile).toBe(PAWN_SLUG_ARCADE_PROJECTILES.enemy);
+    expect(hostile.shape).toBe('needle');
+    expect(hostile.trail).toBeGreaterThan(friendly.trail);
+    expect(hostile.length).toBeGreaterThan(friendly.length);
+    expect(pawnSlugArcadeProjectileProfile({ weapon: 'pistol', enemy: true, explosive: true })).toBe(PAWN_SLUG_ARCADE_PROJECTILES.panzerfaust);
   });
 });
