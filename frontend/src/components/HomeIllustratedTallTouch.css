@@ -34,9 +34,8 @@
     transform: translateX(-50%);
   }
 
-  /* Continue the near floor beneath the larger camera. Perspective seams are
-     intentionally very faint: enough to make the lower viewport read as the same
-     room, never enough to turn the castle into a UI grid. */
+  /* Continue the near floor beneath the larger camera. Keep it architectural and
+     soft: pools of reflected firelight plus a few broad floor seams, never a grid. */
   .illustrated-home__stage::before {
     content: '';
     position: absolute;
@@ -51,15 +50,14 @@
       radial-gradient(ellipse at 22% 7%, rgba(186, 90, 39, .15), transparent 27%),
       radial-gradient(ellipse at 84% 29%, rgba(177, 79, 31, .07), transparent 22%),
       radial-gradient(ellipse at 16% 31%, rgba(160, 69, 29, .055), transparent 24%),
-      repeating-conic-gradient(from 76deg at 50% -5%, rgba(255, 214, 153, .018) 0deg .18deg, transparent .18deg 8deg),
-      repeating-linear-gradient(180deg, rgba(255, 220, 170, .026) 0 1px, transparent 1px 106px),
+      radial-gradient(ellipse at 50% 26%, rgba(128, 61, 32, .11), transparent 43%),
+      repeating-linear-gradient(180deg, transparent 0 156px, rgba(255, 220, 170, .018) 157px 158px, transparent 159px 214px),
       linear-gradient(105deg, rgba(0, 0, 0, .18), transparent 34%, transparent 66%, rgba(0, 0, 0, .30)),
       linear-gradient(180deg, #3a1c11 0%, #2a140c 31%, #1b0d08 66%, #0d0704 100%);
   }
 
-  /* Let the canonical carpet become a long perspective runner. Fine edge piping
-     and sparse cross-weave keep the foreground tactile without competing with the
-     interactive Great Hall above. */
+  /* Let the canonical carpet become a long perspective runner. Edge piping adds
+     just enough material detail to carry the eye into the foreground. */
   .illustrated-home__stage::after {
     content: '';
     position: absolute;
@@ -77,7 +75,6 @@
         transparent 8.2% 91.8%,
         rgba(209, 144, 73, .11) 92.2% 92.8%,
         rgba(16, 3, 4, .22) 93% 100%),
-      repeating-linear-gradient(180deg, rgba(222, 163, 94, .028) 0 1px, transparent 1px 88px),
       linear-gradient(180deg, rgba(112, 25, 22, .50), rgba(78, 16, 17, .36) 48%, rgba(42, 9, 12, .19) 78%, rgba(24, 6, 8, .08) 100%);
     filter: drop-shadow(0 16px 24px rgba(0, 0, 0, .20));
   }
