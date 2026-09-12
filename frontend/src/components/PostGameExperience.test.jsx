@@ -26,21 +26,27 @@ function render(props = {}) {
 }
 
 describe('PostGameExperience', () => {
-  it('conserva el resumen y acciones finales fuera de GameScreen', () => {
+  it('mantiene una salida postpartida simple y pliega las acciones secundarias', () => {
     const html = render({ onShareResult: () => {}, onTrainPersonal: () => {} });
     expect(html).toContain('PARTIDA FINALIZADA');
     expect(html).toContain('¡Ganaste la partida!');
-    expect(html).toContain('Compartir resultado');
-    expect(html).toContain('Entrenar mis errores');
-    expect(html).toContain('Resumen de la partida');
+    expect(html).toContain('Más opciones');
+    expect(html).not.toContain('Compartir resultado');
+    expect(html).not.toContain('Entrenar mis errores');
+    expect(html).not.toContain('Resumen de la partida');
   });
 
-  it('prioriza continuar una serie en curso', () => {
+  it('prioriza continuar una serie en curso sin añadir opciones laterales', () => {
     const html = render({
       seriesState: { bestOf: 3, humanWins: 1, cpuWins: 0, games: [{ outcome: 'win' }], winner: null },
       onNextSeriesGame: () => {},
+      onShareResult: () => {},
+      onTrainPersonal: () => {},
     });
     expect(html).toContain('Intentar cerrar la serie');
     expect(html).toContain('Volver al menú');
+    expect(html).not.toContain('Más opciones');
+    expect(html).not.toContain('Compartir resultado');
+    expect(html).not.toContain('Entrenar mis errores');
   });
 });

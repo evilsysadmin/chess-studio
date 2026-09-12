@@ -30,12 +30,14 @@ export default function PostGameExperience({
   postGameFeedbackEnabled = true,
 }) {
   const [showReport, setShowReport] = useState(false);
+  const [showMoreActions, setShowMoreActions] = useState(false);
   const [showPostGameFeedback, setShowPostGameFeedback] = useState(false);
   const feedbackRegisteredGameRef = useRef(null);
   const finished = Boolean(game.isGameOver || flagFallen || forcedOutcome);
 
   useEffect(() => {
     setShowReport(false);
+    setShowMoreActions(false);
     setShowPostGameFeedback(false);
   }, [game.id]);
 
@@ -55,6 +57,16 @@ export default function PostGameExperience({
     hasReport: game.history.length > 0,
   });
   const liveSeriesMoment = seriesState ? seriesLiveMoment(seriesState) : null;
+  const sequenceInProgress = Boolean((seriesState && !seriesState.winner) || runState?.active);
+  const hasMoreActions = Boolean(
+    !sequenceInProgress
+    && (
+      nextAction.id === 'review'
+      || onShareResult
+      || onTrainPersonal
+      || (game.history.length > 0 && nextAction.id !== 'review')
+    )
+  );
 
   return <>
     <div className="modal-backdrop endgame-modal-backdrop" role="presentation">
@@ -97,18 +109,34 @@ export default function PostGameExperience({
         ) : (
           <button className="primary-btn" onClick={onLeave}>{nextAction.label}</button>
         )}
-        {!seriesState && !runState?.active && <p className="endgame-next-detail">{nextAction.detail}</p>}
-        {(seriesState || runState?.active || nextAction.id === 'review') && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onLeave}>Volver al menú</button>}
-        {onShareResult && (
-          <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => onShareResult(finalOutcome)}>
-            Compartir resultado
+        {!sequenceInProgress && <p className="endgame-next-detail">{nextAction.detail}</p>}
+        {sequenceInProgress && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onLeave}>Volver al menú</button>}
+        {hasMoreActions && (
+          <button
+            className="secondary-btn"
+            style={{ marginTop: '0.6rem' }}
+            type="button"
+            aria-expanded={showMoreActions}
+            onClick={() => setShowMoreActions((visible) => !visible)}
+          >
+            {showMoreActions ? 'Ocultar opciones' : 'Más opciones'}
           </button>
         )}
-        {onTrainPersonal && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onTrainPersonal}>Entrenar mis errores</button>}
-        {game.history.length > 0 && nextAction.id !== 'review' && (
-          <button className="secondary-btn" onClick={() => setShowReport(true)}>
-            Resumen de la partida
-          </button>
+        {showMoreActions && !sequenceInProgress && (
+          <div className="endgame-more-actions">
+            {nextAction.id === 'review' && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onLeave}>Volver al menú</button>}
+            {onShareResult && (
+              <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={() => onShareResult(finalOutcome)}>
+                Compartir resultado
+              </button>
+            )}
+            {onTrainPersonal && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onTrainPersonal}>Entrenar mis errores</button>}
+            {game.history.length > 0 && nextAction.id !== 'review' && (
+              <button className="secondary-btn" onClick={() => setShowReport(true)}>
+                Resumen de la partida
+              </button>
+            )}
+          </div>
         )}
         {postGameFeedbackEnabled && showPostGameFeedback && (
           <PostGameFeedbackPrompt onDone={() => setShowPostGameFeedback(false)} />
