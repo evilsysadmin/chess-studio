@@ -28,6 +28,7 @@ function memoryPresentation(memory, { onDaily, onHistory }) {
 
 export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onContinue, onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [activeRoom, setActiveRoom] = useState(null);
   const castleLife = useMemo(() => buildHomeCastleLife({
     rivalry: loadRivalry(),
     dailyStats: dailyChallengeStats(loadDailyChallenge()),
@@ -48,9 +49,10 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
         data-home-castle-ambient={castleLife.ambient}
         data-home-castle-memory={memories.map((memory) => memory.kind).join(' ') || 'none'}
         data-home-castle-rare={castleLife.rareSighting || 'none'}
+        data-home-castle-focus={activeRoom || 'none'}
         style={{ '--home-hall-art': `url("${hall}")` }}
       >
-        <HomeCastle3D artUrl={hall} ambient={castleLife.ambient} />
+        <HomeCastle3D artUrl={hall} ambient={castleLife.ambient} activeRoom={activeRoom} />
         <img className="illustrated-home__art" src={hall} alt="" fetchPriority="high" draggable="false" style={{ zIndex: 0 }} />
         {castleLife.rareSighting && (
           <span className={`illustrated-home__rare-sighting is-${castleLife.rareSighting}`} aria-hidden="true" />
@@ -80,7 +82,16 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
         <nav aria-label="Destinos del gran salón">
           {rooms.map(([id, title, detail, Icon, action]) => (
             <Fragment key={id}>
-              <button type="button" className={`illustrated-home__destination illustrated-home__destination--${id}`} onClick={action} disabled={loading}>
+              <button
+                type="button"
+                className={`illustrated-home__destination illustrated-home__destination--${id}`}
+                onClick={action}
+                onPointerEnter={() => setActiveRoom(id)}
+                onPointerLeave={() => setActiveRoom(null)}
+                onFocus={() => setActiveRoom(id)}
+                onBlur={() => setActiveRoom(null)}
+                disabled={loading}
+              >
                 <Icon aria-hidden="true" />
                 <strong>{title}</strong><span>{detail}</span><i aria-hidden="true">›</i>
               </button>

@@ -6,10 +6,13 @@ import {
   createCanonicalHallGeometry,
 } from './HomeCastle3DGeometry.js';
 import { homeCastleLightingProfile } from './HomeCastle3DLighting.js';
+import { homeCastleRoomFocus } from './HomeCastle3DRoomFocus.js';
 
 const CAMERA_Z = 3;
 const PARALLAX_X = 0.034;
 const PARALLAX_Y = 0.022;
+const ROOM_CAMERA_X = 0.012;
+const ROOM_CAMERA_Y = 0.01;
 
 function frameOrthographicCamera(camera, aspect) {
   const halfHeight = HOME_CASTLE_ART_HEIGHT / 2;
@@ -34,8 +37,13 @@ function addLightRig(scene, profile) {
   scene.add(hemisphere, key, fill, leftTorch, rightTorch);
 }
 
-export default function HomeCastle3D({ artUrl, ambient = 'day' }) {
+export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = null }) {
   const canvasRef = useRef(null);
+  const activeRoomRef = useRef(activeRoom);
+
+  useEffect(() => {
+    activeRoomRef.current = activeRoom;
+  }, [activeRoom]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -61,6 +69,10 @@ export default function HomeCastle3D({ artUrl, ambient = 'day' }) {
 
     const scene = new THREE.Scene();
     addLightRig(scene, lighting);
+    const roomLight = new THREE.PointLight(0xffc76f, 0, 1.45, 2);
+    roomLight.position.set(0, 0, 1.18);
+    scene.add(roomLight);
+
     const camera = new THREE.OrthographicCamera(
       -HOME_CASTLE_ART_WIDTH / 2,
       HOME_CASTLE_ART_WIDTH / 2,
@@ -85,6 +97,8 @@ export default function HomeCastle3D({ artUrl, ambient = 'day' }) {
 
     const pointer = new THREE.Vector2();
     const target = new THREE.Vector2();
+    const roomFocus = new THREE.Vector3();
+    const roomTarget = new THREE.Vector3();
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
     const textureLoader = new THREE.TextureLoader();
     let frame = 0;
@@ -99,11 +113,18 @@ export default function HomeCastle3D({ artUrl, ambient = 'day' }) {
 
     const render = () => {
       if (disposed) return;
+      const focused = homeCastleRoomFocus(activeRoomRef.current);
+      roomTarget.set(focused.x, focused.y, focused.light);
+      roomFocus.lerp(roomTarget, 0.09);
+      roomLight.position.x = roomFocus.x;
+      roomLight.position.y = roomFocus.y;
+      roomLight.intensity = roomFocus.z;
+
       if (!reducedMotion?.matches) {
         pointer.lerp(target, 0.055);
-        camera.position.x = pointer.x * PARALLAX_X;
-        camera.position.y = -pointer.y * PARALLAX_Y;
-        camera.lookAt(0, 0, 0.035);
+        camera.position.x = pointer.x * PARALLAX_X + roomFocus.x * ROOM_CAMERA_X;
+        camera.position.y = -pointer.y * PARALLAX_Y + roomFocus.y * ROOM_CAMERA_Y;
+        camera.lookAt(roomFocus.x * 0.006, roomFocus.y * 0.005, 0.035);
       } else {
         pointer.set(0, 0);
         camera.position.set(0, 0, CAMERA_Z);
