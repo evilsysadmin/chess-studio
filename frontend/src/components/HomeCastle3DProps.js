@@ -13,8 +13,8 @@ export const HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS = Object.freeze([
 export const HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR = Object.freeze({ x: 1.18, y: -0.52, z: 0.88 });
 
 export const HOME_CASTLE_DESTINATION_PROP_ANCHORS = Object.freeze({
-  play: Object.freeze({ x: 0, y: -0.34, z: 0.34 }),
-  daily: Object.freeze({ x: 0.86, y: 0.01, z: 0.31 }),
+  play: Object.freeze({ x: 0, y: -0.365, z: 0.29 }),
+  daily: Object.freeze({ x: 0.86, y: -0.015, z: 0.3 }),
 });
 
 export const HOME_CASTLE_DUST_MOTE_COUNT = 24;
@@ -78,23 +78,23 @@ function createPlayRook(resources) {
     HOME_CASTLE_DESTINATION_PROP_ANCHORS.play.y,
     HOME_CASTLE_DESTINATION_PROP_ANCHORS.play.z,
   );
-  group.rotation.x = -0.04;
+  group.rotation.x = -0.035;
 
-  const brass = new THREE.MeshStandardMaterial({
-    color: 0xd2aa61,
-    roughness: 0.42,
-    metalness: 0.52,
-    emissive: 0x2a1605,
-    emissiveIntensity: 0.08,
+  const warmIvory = new THREE.MeshStandardMaterial({
+    color: 0xd8c39a,
+    roughness: 0.72,
+    metalness: 0.08,
+    emissive: 0x24160b,
+    emissiveIntensity: 0.045,
   });
-  const darkBrass = new THREE.MeshStandardMaterial({
-    color: 0x7d5429,
-    roughness: 0.55,
-    metalness: 0.38,
-    emissive: 0x160b03,
-    emissiveIntensity: 0.04,
+  const agedBase = new THREE.MeshStandardMaterial({
+    color: 0x8f7048,
+    roughness: 0.78,
+    metalness: 0.05,
+    emissive: 0x120b05,
+    emissiveIntensity: 0.025,
   });
-  resources.materials.push(brass, darkBrass);
+  resources.materials.push(warmIvory, agedBase);
 
   const baseGeometry = new THREE.CylinderGeometry(0.046, 0.052, 0.018, 18);
   const footGeometry = new THREE.CylinderGeometry(0.038, 0.045, 0.016, 18);
@@ -111,32 +111,32 @@ function createPlayRook(resources) {
     merlonGeometry,
   );
 
-  const base = new THREE.Mesh(baseGeometry, darkBrass);
+  const base = new THREE.Mesh(baseGeometry, agedBase);
   base.position.y = 0.009;
-  const foot = new THREE.Mesh(footGeometry, brass);
+  const foot = new THREE.Mesh(footGeometry, warmIvory);
   foot.position.y = 0.026;
-  const body = new THREE.Mesh(bodyGeometry, brass);
+  const body = new THREE.Mesh(bodyGeometry, warmIvory);
   body.position.y = 0.059;
-  const collar = new THREE.Mesh(collarGeometry, darkBrass);
+  const collar = new THREE.Mesh(collarGeometry, agedBase);
   collar.position.y = 0.093;
-  const crown = new THREE.Mesh(crownGeometry, brass);
+  const crown = new THREE.Mesh(crownGeometry, warmIvory);
   crown.position.y = 0.11;
 
   group.add(base, foot, body, collar, crown);
 
   for (const x of [-0.022, 0.022]) {
     for (const z of [-0.014, 0.014]) {
-      const merlon = new THREE.Mesh(merlonGeometry, brass);
+      const merlon = new THREE.Mesh(merlonGeometry, warmIvory);
       merlon.position.set(x, 0.129, z);
       group.add(merlon);
     }
   }
 
-  attachViewportScale(group, base, 0.95);
+  attachViewportScale(group, base, 0.72);
   return group;
 }
 
-function createDailyHourglass(resources) {
+function createDailyBrazier(resources) {
   const group = new THREE.Group();
   group.name = 'home-castle-prop-daily';
   group.userData.destination = 'daily';
@@ -145,69 +145,68 @@ function createDailyHourglass(resources) {
     HOME_CASTLE_DESTINATION_PROP_ANCHORS.daily.y,
     HOME_CASTLE_DESTINATION_PROP_ANCHORS.daily.z,
   );
-  group.rotation.z = -0.055;
+  group.rotation.x = -0.025;
 
-  const frame = new THREE.MeshStandardMaterial({
-    color: 0xbc8642,
-    roughness: 0.48,
-    metalness: 0.45,
-    emissive: 0x2a1303,
-    emissiveIntensity: 0.06,
+  const bronze = new THREE.MeshStandardMaterial({
+    color: 0x8c5c2c,
+    roughness: 0.62,
+    metalness: 0.34,
+    emissive: 0x1e0d02,
+    emissiveIntensity: 0.05,
   });
-  const glass = new THREE.MeshStandardMaterial({
-    color: 0xffddb0,
-    roughness: 0.08,
-    metalness: 0,
+  const flameOuter = new THREE.MeshBasicMaterial({
+    color: 0xff9d3b,
     transparent: true,
-    opacity: 0.28,
+    opacity: 0.76,
+    blending: THREE.AdditiveBlending,
     depthWrite: false,
+    toneMapped: false,
   });
-  const sand = new THREE.MeshStandardMaterial({
-    color: 0xe6a33d,
-    roughness: 0.7,
-    metalness: 0,
-    emissive: 0x9a4a08,
-    emissiveIntensity: 0.18,
+  const flameInner = new THREE.MeshBasicMaterial({
+    color: 0xffd37a,
+    transparent: true,
+    opacity: 0.8,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    toneMapped: false,
   });
-  resources.materials.push(frame, glass, sand);
+  resources.materials.push(bronze, flameOuter, flameInner);
 
-  const capGeometry = new THREE.CylinderGeometry(0.034, 0.034, 0.012, 18);
-  const postGeometry = new THREE.CylinderGeometry(0.0045, 0.0045, 0.083, 10);
-  const glassGeometry = new THREE.ConeGeometry(0.025, 0.038, 16, 1, true);
-  const sandGeometry = new THREE.ConeGeometry(0.019, 0.032, 14);
-  resources.geometries.push(capGeometry, postGeometry, glassGeometry, sandGeometry);
+  const footGeometry = new THREE.CylinderGeometry(0.025, 0.032, 0.012, 18);
+  const stemGeometry = new THREE.CylinderGeometry(0.009, 0.014, 0.035, 14);
+  const bowlGeometry = new THREE.CylinderGeometry(0.044, 0.031, 0.02, 20);
+  const rimGeometry = new THREE.TorusGeometry(0.039, 0.004, 8, 24);
+  const flameGeometry = new THREE.ConeGeometry(0.021, 0.07, 14);
+  const coreGeometry = new THREE.ConeGeometry(0.012, 0.045, 12);
+  resources.geometries.push(
+    footGeometry,
+    stemGeometry,
+    bowlGeometry,
+    rimGeometry,
+    flameGeometry,
+    coreGeometry,
+  );
 
-  const bottom = new THREE.Mesh(capGeometry, frame);
-  bottom.position.y = 0.006;
-  const top = new THREE.Mesh(capGeometry, frame);
-  top.position.y = 0.094;
-  group.add(bottom, top);
+  const foot = new THREE.Mesh(footGeometry, bronze);
+  foot.position.y = 0.006;
+  const stem = new THREE.Mesh(stemGeometry, bronze);
+  stem.position.y = 0.027;
+  const bowl = new THREE.Mesh(bowlGeometry, bronze);
+  bowl.position.y = 0.052;
+  const rim = new THREE.Mesh(rimGeometry, bronze);
+  rim.position.y = 0.063;
+  rim.rotation.x = Math.PI / 2;
 
-  for (const x of [-0.027, 0.027]) {
-    const post = new THREE.Mesh(postGeometry, frame);
-    post.position.set(x, 0.05, 0);
-    group.add(post);
-  }
+  const flame = new THREE.Mesh(flameGeometry, flameOuter);
+  flame.position.y = 0.102;
+  flame.scale.set(0.78, 1, 0.62);
+  flame.name = 'home-castle-daily-flame';
+  const core = new THREE.Mesh(coreGeometry, flameInner);
+  core.position.y = 0.097;
+  core.scale.set(0.68, 0.9, 0.54);
 
-  const upperGlass = new THREE.Mesh(glassGeometry, glass);
-  upperGlass.position.y = 0.064;
-  upperGlass.rotation.z = Math.PI;
-  upperGlass.scale.set(0.88, 1, 0.62);
-  const lowerGlass = new THREE.Mesh(glassGeometry, glass);
-  lowerGlass.position.y = 0.036;
-  lowerGlass.scale.set(0.88, 1, 0.62);
-  group.add(upperGlass, lowerGlass);
-
-  const upperSand = new THREE.Mesh(sandGeometry, sand);
-  upperSand.position.y = 0.067;
-  upperSand.rotation.z = Math.PI;
-  upperSand.scale.set(0.8, 0.72, 0.58);
-  const lowerSand = new THREE.Mesh(sandGeometry, sand);
-  lowerSand.position.y = 0.033;
-  lowerSand.scale.set(0.72, 0.6, 0.54);
-  group.add(upperSand, lowerSand);
-
-  attachViewportScale(group, bottom, 1.02);
+  group.add(foot, stem, bowl, rim, flame, core);
+  attachViewportScale(group, bowl, 0.78);
   return group;
 }
 
@@ -220,7 +219,7 @@ export function createHomeCastleDestinationProps() {
     materials: [],
   };
   const play = createPlayRook(resources);
-  const daily = createDailyHourglass(resources);
+  const daily = createDailyBrazier(resources);
   group.add(play, daily);
 
   return {
