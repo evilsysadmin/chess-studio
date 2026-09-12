@@ -64,6 +64,20 @@ describe('Pawn Slug control settings', () => {
     expect(conflict.keymap).toEqual(PAWN_SLUG_DEFAULT_KEYMAP);
   });
 
+  it('repairs collisions introduced by falling back to default keys', () => {
+    const normalized = normalizePawnSlugKeymap({
+      ...PAWN_SLUG_DEFAULT_KEYMAP,
+      moveLeft: 'KeyA',
+      moveRight: 'ArrowLeft',
+      fire: 'KeyA',
+    });
+
+    expect(normalized.moveLeft).toBe('ArrowLeft');
+    expect(normalized.moveRight).toBe('ArrowRight');
+    expect(normalized.fire).toBe('Space');
+    expect(new Set(Object.values(normalized)).size).toBe(PAWN_SLUG_CONTROL_ACTIONS.length);
+  });
+
   it('supports conflict-free swaps and explicit remaps', () => {
     const swapped = normalizePawnSlugKeymap({
       ...PAWN_SLUG_DEFAULT_KEYMAP,
