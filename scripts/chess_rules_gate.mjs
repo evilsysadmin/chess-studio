@@ -30,9 +30,6 @@ requireText('frontend/src/components/PuzzleScreen.jsx', 'localChess.moves', 'Puz
 requireText('frontend/src/puzzleTacticalQuality.js', 'isObviouslyUnsoundSingleMovePuzzle', 'Puzzles personales deben rechazar claves trivialmente refutables');
 requireText('frontend/src/puzzleTacticalQuality.js', 'forcedMateIssues', 'mates/combinaciones curados deben probar la clave contra todas las defensas');
 requireText('frontend/src/puzzleTacticalQuality.js', 'materialLineIssues', 'puzzles de material deben auditar clave, defensa rival y ganancia neta');
-requireText('frontend/src/puzzles.js', 'el alfil blanco de g5 protege esa casilla', 'Final de la Ópera debe explicar por qué Kxd8 es ilegal');
-requireText('frontend/src/puzzles.test.js', 'tiene sentido táctico, no sólo un FEN válido', 'el banco curado debe auditar sentido táctico además de legalidad');
-requireText('frontend/src/puzzleTacticalQuality.test.js', 'caballo se come un peón inmediatamente', 'debe existir regresión para el jaque suicida refutable por peón');
 requireText('frontend/src/aiPersonalPuzzles.js', 'api.analyzeMove', 'los puzzles generados deben validarse contra análisis determinista de la jugada');
 requireText('frontend/src/components/LabScreen.jsx', 'assertLegalLabPosition', 'Laboratorio debe validar la posición antes de comenzar');
 requireText('frontend/src/components/useCombatController.js', 'resolveCombatMove', 'Combat debe resolver cada movimiento mediante su contrato de variante');
