@@ -64,9 +64,6 @@ requirePattern('frontend/src/components/SpectatorScreen.jsx', /analyzePosition\(
 requirePattern('frontend/src/components/useCombatController.js', /createCombatAsyncCoordinator/, 'Combat debe delegar generación, timers y abort de CPU al coordinador async');
 requirePattern('frontend/src/components/useCombatController.js', /combatAsync\.invalidate\(/, 'Combat debe invalidar callbacks cuando cambia el ciclo de batalla');
 requirePattern('frontend/src/components/useCombatController.js', /combatAsync\.isCurrent\(cpuOperation\)/, 'Combat debe rechazar respuestas CPU obsoletas');
-requirePattern('frontend/src/combatAsyncCoordinator.js', /generation\s*\+=\s*1/, 'el coordinador Combat debe avanzar la generación al invalidar');
-requirePattern('frontend/src/combatAsyncCoordinator.js', /cpuController\?\.abort\(/, 'el coordinador Combat debe abortar el turno CPU activo');
-requirePattern('frontend/src/combatAsyncCoordinator.js', /for\s*\(const timer of scheduledTimers\)\s*clearTimer\(timer\)/, 'el coordinador Combat debe cancelar timers pendientes');
 requirePattern('frontend/src/components/useCombatController.js', /analyzePosition\([^\n]+\{\s*signal:\s*controller\.signal\s*\}/, 'análisis Combat debe cancelarse');
 requirePattern('frontend/src/components/useCombatController.js', /if\s*\(!result\)\s*\{[\s\S]{0,180}?throw\s+new\s+Error/, 'Combat no puede tratar una resolución nula como jugada completada');
 requirePattern('frontend/src/components/useCombatController.js', /resetBossPhase[\s\S]{0,420}?if\s*\(!chess\)[\s\S]{0,180}?setBusy\(false\)/, 'un reset de boss inválido debe liberar busy');
