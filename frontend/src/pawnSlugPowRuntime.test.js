@@ -82,4 +82,16 @@ describe('Pawn Slug POW runtime', () => {
     expect(pawnSlugPowRescueSummary(state)).toMatchObject({ rescued: PAWN_SLUG_POWS.length, total: PAWN_SLUG_POWS.length, complete: true });
     expect(pawnSlugPowRescueSummary(state).scoreBonus).toBeGreaterThan(0);
   });
+
+  it('ignores unknown rescued IDs when calculating mission completion and bonus', () => {
+    const state = stateFixture();
+    state.rescuedPows.add(PAWN_SLUG_POWS[0].id);
+    state.rescuedPows.add('pow-retired-from-old-build');
+    state.rescuedPows.add('corrupt-id');
+    state.rescuedPows.add('another-corrupt-id');
+
+    const summary = pawnSlugPowRescueSummary(state);
+    expect(summary).toMatchObject({ rescued: 1, total: PAWN_SLUG_POWS.length, complete: false });
+    expect(summary.scoreBonus).toBe(350);
+  });
 });
