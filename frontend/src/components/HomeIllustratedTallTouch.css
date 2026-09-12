@@ -38,23 +38,19 @@
 
   .illustrated-home__stage::before {
     z-index: -2;
-    background:
-      linear-gradient(180deg, rgba(16, 8, 4, .16), rgba(16, 8, 4, .58) 58%, rgba(10, 5, 3, .92)),
-      var(--home-hall-art) 50% 54% / cover no-repeat;
-    filter: blur(18px) brightness(.52) saturate(.82);
-    opacity: .78;
-    transform: scale(1.06);
+    background: var(--home-hall-art) 50% 54% / cover no-repeat;
+    opacity: .28;
   }
 
   .illustrated-home__stage::after {
     z-index: -1;
     background:
       radial-gradient(ellipse at 50% 34%, rgba(190, 111, 43, .13), transparent 44%),
-      linear-gradient(180deg, transparent 28%, rgba(20, 10, 5, .18) 48%, rgba(10, 5, 3, .72) 100%);
+      linear-gradient(180deg, rgba(16, 8, 4, .20) 0%, rgba(16, 8, 4, .52) 52%, rgba(10, 5, 3, .94) 100%);
   }
 
   .illustrated-home__art,
   .illustrated-home__castle-3d {
-    box-shadow: 0 30px 72px rgba(0, 0, 0, .34);
+    box-shadow: 0 24px 54px rgba(0, 0, 0, .30);
   }
 }
