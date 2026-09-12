@@ -55,9 +55,9 @@ describe('homeCastleFireplacePulse', () => {
     expect(Math.max(...samples)).toBeLessThan(1.04);
   });
 
-  it('changes over time without randomness', () => {
-    expect(homeCastleFireplacePulse(1500)).not.toBe(homeCastleFireplacePulse(3500));
-    expect(homeCastleFireplacePulse(1500)).toBe(homeCastleFireplacePulse(1500));
+  it('follows a deterministic waveform over time', () => {
+    expect(homeCastleFireplacePulse(1500)).toBeCloseTo(0.9857071093, 9);
+    expect(homeCastleFireplacePulse(3500)).toBeCloseTo(1.0355894793, 9);
   });
 
   it('is completely static for reduced motion', () => {
