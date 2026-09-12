@@ -4,6 +4,14 @@ function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
 }
 
+export const PAWN_SLUG_HURT_RECOVERY_SECONDS = 0.12;
+
+export function pawnSlugHurtRecoveryStrength(age = Number.POSITIVE_INFINITY) {
+  const seconds = Number(age);
+  if (!Number.isFinite(seconds) || seconds < 0) return 0;
+  return clamp01(1 - seconds / PAWN_SLUG_HURT_RECOVERY_SECONDS);
+}
+
 export function pawnSlugJumpVisualPhase(progress = 0) {
   const p = clamp01(progress);
   if (p < 0.18) return 'takeoff';
@@ -51,6 +59,7 @@ export function pawnSlugMatthiasPremiumPose({
   running = false,
   firing = false,
   hurt = false,
+  hurtStrength = 0,
   crouch = false,
   weapon = 'pistol',
   pistolPhase = null,
@@ -66,6 +75,7 @@ export function pawnSlugMatthiasPremiumPose({
   const landingAge = Math.max(0, safeTime - (Number(landedAt) || 0));
   const landing = previousAirborne && !airborne ? 1 : clamp01(1 - landingAge / 0.14);
   const impact = Math.max(0.72, Math.min(1.25, Number(landingStrength) || 1));
+  const hurtAmount = hurt ? 1 : clamp01(hurtStrength);
 
   let sx = 1;
   let sy = 1;
@@ -137,11 +147,11 @@ export function pawnSlugMatthiasPremiumPose({
     ({ sx, sy, y, rz } = pose);
   }
 
-  if (hurt) {
-    sx *= 1.045;
-    sy *= 0.93;
-    rz += 0.065;
-    y += 0.025;
+  if (hurtAmount > 0) {
+    sx *= 1 + 0.045 * hurtAmount;
+    sy *= 1 - 0.07 * hurtAmount;
+    rz += 0.065 * hurtAmount;
+    y += 0.025 * hurtAmount;
   }
 
   return Object.freeze({
@@ -151,6 +161,7 @@ export function pawnSlugMatthiasPremiumPose({
     rz,
     landing,
     landingStrength: impact,
+    hurtStrength: hurtAmount,
     jumpPhase,
     locomotion,
     pistolPhase: pistolPhase?.phase || 'idle',
@@ -162,6 +173,7 @@ export function applyPawnSlugMatthiasPremiumMotion(sprite, state = {}) {
   if (!sprite) return null;
   const time = Number(state.time) || 0;
   const previousAirborne = Boolean(sprite.userData.premiumWasAirborne);
+  const previousHurt = Boolean(sprite.userData.premiumWasHurt);
   if (!previousAirborne && state.airborne) sprite.userData.premiumAirborneStartedAt = time;
   if (previousAirborne && !state.airborne) {
     sprite.userData.premiumLandedAt = time;
@@ -169,6 +181,11 @@ export function applyPawnSlugMatthiasPremiumMotion(sprite, state = {}) {
     const airtime = Number.isFinite(startedAt) ? Math.max(0, time - startedAt) : 0;
     sprite.userData.premiumLandingStrength = pawnSlugLandingVisualStrength(airtime);
   }
+  if (previousHurt && !state.hurt) sprite.userData.premiumHurtEndedAt = time;
+  const hurtEndedAt = Number(sprite.userData.premiumHurtEndedAt);
+  const hurtStrength = state.hurt
+    ? 1
+    : pawnSlugHurtRecoveryStrength(Number.isFinite(hurtEndedAt) ? time - hurtEndedAt : Number.POSITIVE_INFINITY);
   const animation = sprite.userData.animation || {};
   const weapon = animation.weapon || 'pistol';
 
@@ -186,6 +203,7 @@ export function applyPawnSlugMatthiasPremiumMotion(sprite, state = {}) {
     time,
     weapon,
     pistolPhase,
+    hurtStrength,
     previousAirborne,
     landedAt: sprite.userData.premiumLandedAt,
     landingStrength: sprite.userData.premiumLandingStrength,
@@ -193,6 +211,7 @@ export function applyPawnSlugMatthiasPremiumMotion(sprite, state = {}) {
   });
   sprite.userData.premiumWasAirborne = Boolean(state.airborne);
   sprite.userData.premiumWasFiring = Boolean(state.firing);
+  sprite.userData.premiumWasHurt = Boolean(state.hurt);
   sprite.userData.premiumPose = pose;
   sprite.position.y += pose.y;
   sprite.scale.x *= pose.sx;
