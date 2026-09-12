@@ -37,6 +37,18 @@
   }
 }
 
+/* Once the real room props are rendered, let them identify each destination.
+ * Keep the old SVG + chevron as an automatic fallback when WebGL is unavailable,
+ * and retain them on narrow mobile where physical props are intentionally tiny. */
+@media (min-width: 521px) {
+  .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
+    .illustrated-home__destination > svg,
+  .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
+    .illustrated-home__destination > i {
+    display: none !important;
+  }
+}
+
 @media (max-width: 359px) {
   .illustrated-home__castle-3d {
     display: none;
