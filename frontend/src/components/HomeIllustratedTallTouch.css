@@ -1,7 +1,8 @@
 /* Android browsers can expose a desktop-like CSS width while keeping a tall,
- * touch-first viewport (for example "Solicitar sitio de escritorio"). Preserve
- * the complete 16:9 canonical Great Hall, then continue the room below it with a
- * generated floor instead of leaving dead space or duplicating the painted hall. */
+ * touch-first viewport (for example "Solicitar sitio de escritorio"). Keep the
+ * canonical 16:9 Great Hall, but treat the narrow portrait viewport like a camera
+ * crop: enlarge the room enough to remain the hero, crop only its far side edges,
+ * and pull the affected diegetic controls back into the visible composition. */
 @media (min-width: 521px) and (max-width: 999px) and (pointer: coarse) and (max-aspect-ratio: 4/5) {
   body:has(.app-shell-home) {
     background: #140b06;
@@ -17,20 +18,24 @@
     background: #140b06;
   }
 
+  /* A 150vw 16:9 camera keeps almost the full hall while lifting the scene from
+     ~32% to ~47% of the 980x1740 reference viewport. This is intentionally a
+     moderate horizontal crop, not a stretched portrait repaint. */
   .illustrated-home__stage {
     position: relative;
     z-index: 1;
-    width: 100%;
-    height: 56.25vw;
+    left: 50%;
+    width: 150vw;
+    height: 84.375vw;
     min-height: 0;
-    margin: clamp(22px, 4dvh, 64px) auto 0;
+    margin: clamp(10px, 1.6dvh, 24px) 0 0;
     aspect-ratio: 16 / 9;
     overflow: visible;
+    transform: translateX(-50%);
   }
 
-  /* Continue the room as an abstract floor plane. Warm light on the right echoes
-     the canonical fireplace while faint perspective bands keep the lower viewport
-     spatial without repeating recognizable furniture or the central table. */
+  /* Continue the near floor beneath the larger camera. Keep it architectural and
+     soft: pools of reflected firelight plus a few broad floor seams, never a grid. */
   .illustrated-home__stage::before {
     content: '';
     position: absolute;
@@ -38,20 +43,21 @@
     left: 0;
     right: 0;
     top: calc(100% - 1px);
-    height: max(0px, calc(100dvh - 58px - clamp(22px, 4dvh, 64px) - 56.25vw + 2px));
+    height: max(0px, calc(100dvh - 58px - clamp(10px, 1.6dvh, 24px) - 84.375vw + 2px));
     pointer-events: none;
     background:
-      radial-gradient(ellipse at 83% 4%, rgba(241, 136, 62, .19), transparent 23%),
-      radial-gradient(ellipse at 16% 6%, rgba(177, 82, 35, .10), transparent 26%),
-      radial-gradient(ellipse at 50% 0%, rgba(120, 58, 28, .16), transparent 38%),
-      repeating-linear-gradient(180deg, rgba(255, 219, 166, .022) 0 1px, transparent 1px 118px),
-      linear-gradient(105deg, rgba(0, 0, 0, .24), transparent 33%, transparent 67%, rgba(0, 0, 0, .36)),
-      linear-gradient(180deg, #30170e 0%, #211008 30%, #120906 68%, #090503 100%);
+      radial-gradient(ellipse at 77% 4%, rgba(244, 145, 68, .24), transparent 25%),
+      radial-gradient(ellipse at 22% 7%, rgba(186, 90, 39, .15), transparent 27%),
+      radial-gradient(ellipse at 84% 29%, rgba(177, 79, 31, .07), transparent 22%),
+      radial-gradient(ellipse at 16% 31%, rgba(160, 69, 29, .055), transparent 24%),
+      radial-gradient(ellipse at 50% 26%, rgba(128, 61, 32, .11), transparent 43%),
+      repeating-linear-gradient(180deg, transparent 0 156px, rgba(255, 220, 170, .018) 157px 158px, transparent 159px 214px),
+      linear-gradient(105deg, rgba(0, 0, 0, .18), transparent 34%, transparent 66%, rgba(0, 0, 0, .30)),
+      linear-gradient(180deg, #3a1c11 0%, #2a140c 31%, #1b0d08 66%, #0d0704 100%);
   }
 
-  /* The red runner only bridges the canonical carpet into the generated floor.
-     It fades early so the lower viewport stays architectural depth rather than a
-     second focal point or an endless runway. */
+  /* Let the canonical carpet become a long perspective runner. Edge piping adds
+     just enough material detail to carry the eye into the foreground. */
   .illustrated-home__stage::after {
     content: '';
     position: absolute;
@@ -59,30 +65,52 @@
     top: calc(100% - 1px);
     left: 22%;
     width: 56%;
-    height: clamp(230px, 31dvh, 520px);
+    height: max(360px, calc(100dvh - 58px - clamp(10px, 1.6dvh, 24px) - 84.375vw + 2px));
     pointer-events: none;
-    clip-path: polygon(42% 0, 58% 0, 86% 100%, 14% 100%);
+    clip-path: polygon(43% 0, 57% 0, 84% 100%, 16% 100%);
     background:
-      linear-gradient(90deg, rgba(16, 3, 4, .22), transparent 22%, transparent 78%, rgba(16, 3, 4, .24)),
-      linear-gradient(180deg, rgba(103, 23, 20, .46), rgba(68, 14, 15, .32) 46%, rgba(28, 7, 9, .10) 80%, transparent 100%);
-    filter: drop-shadow(0 14px 22px rgba(0, 0, 0, .18));
+      linear-gradient(90deg,
+        rgba(16, 3, 4, .20) 0 7%,
+        rgba(209, 144, 73, .12) 7.2% 7.8%,
+        transparent 8.2% 91.8%,
+        rgba(209, 144, 73, .11) 92.2% 92.8%,
+        rgba(16, 3, 4, .22) 93% 100%),
+      linear-gradient(180deg, rgba(112, 25, 22, .50), rgba(78, 16, 17, .36) 48%, rgba(42, 9, 12, .19) 78%, rgba(24, 6, 8, .08) 100%);
+    filter: drop-shadow(0 16px 24px rgba(0, 0, 0, .20));
   }
 
   .illustrated-home__art,
   .illustrated-home__castle-3d {
-    box-shadow: 0 24px 54px rgba(0, 0, 0, .30);
+    box-shadow: 0 26px 58px rgba(0, 0, 0, .32);
   }
 
-  /* Narrow-layout speech is normally fixed near the viewport bottom. On a tall
-     Android desktop-site viewport that detaches Matthias by more than a screen
-     from the castle. Keep the message attached to the diegetic scene instead. */
+  /* The crop removes ~16.7% of each side of the 150vw stage. Pull only the
+     affected edge destinations inward; central destinations keep their canonical
+     anchors and the composition still reads as the same room. */
+  .illustrated-home__destination--tournament { left: 18%; }
+  .illustrated-home__destination--daily { left: 65.5%; width: 17.5% !important; }
+  .illustrated-home__destination--history { left: 17.2%; }
+
+  .illustrated-home__matthias {
+    left: 17.2%;
+    width: 14%;
+  }
+
+  .illustrated-home__utilities {
+    right: 16.7%;
+    width: 22%;
+  }
+
+  /* Give the foreground a little breathing room before Matthias speaks. The card
+     still belongs to the hall, but no longer bunches every focal element into the
+     upper half of an unusually tall viewport. */
   .illustrated-home__speech {
     position: absolute;
     left: 50%;
     right: auto;
-    top: calc(100% + 22px);
+    top: calc(100% + clamp(54px, 5.5dvh, 96px));
     bottom: auto;
-    width: min(760px, calc(100% - 32px));
+    width: min(760px, calc(66.6667% - 32px));
     max-height: min(36dvh, 320px);
     transform: translateX(-50%);
   }
