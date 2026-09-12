@@ -4,7 +4,7 @@ const QuickMatchModal = lazy(() => import('./QuickMatchModal.jsx'));
 const PracticeMatchModal = lazy(() => import('./PracticeMatchModal.jsx'));
 const MirrorModeModal = lazy(() => import('./MirrorModeModal.jsx'));
 import HomeIllustrated from './HomeIllustrated.jsx';
-import { getDefaultTimeControlId, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
+import { getBoardRenderer, getDefaultTimeControlId, setBoardRenderer, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { difficultyForQuickMatchRating } from '../quickMatchDifficulty.js';
 import { loadRivalry } from '../rivalry.js';
 import {
@@ -220,7 +220,9 @@ export default function Menu({
           loading={loading}
           error={error}
           rating={rating}
-          onStart={async () => {
+          onStart={async ({ boardRenderer = null } = {}) => {
+            const previousRenderer = getBoardRenderer();
+            if (boardRenderer === '2d') setBoardRenderer('2d');
             const started = await onNewGame(
               autoDifficulty ? difficultyForQuickMatchRating(rating?.rating ?? 400) : difficulty,
               color,
@@ -233,6 +235,7 @@ export default function Menu({
                 ghostStyle: autoDifficulty ? { balance: true } : null,
               },
             );
+            if (!started && boardRenderer === '2d') setBoardRenderer(previousRenderer);
             if (started) setShowQuickMatch(false);
           }}
           onClose={() => setShowQuickMatch(false)}
