@@ -19,11 +19,11 @@ export const PAWN_SLUG_TILE_LEGEND = Object.freeze({
   'Y': Object.freeze({ kind: 'forest-trunk', layer: 'structure' }),
   'R': Object.freeze({ kind: 'forest-root', layer: 'ground' }),
   'K': Object.freeze({ kind: 'fallen-knight', layer: 'landmark' }),
-  '*': Object.freeze({ kind: 'fireflies', layer: 'atmosphere', desktopOnly: true }),
+  '*': Object.freeze({ kind: 'fireflies', layer: 'atmosphere', coarseLimit: 1 }),
   'I': Object.freeze({ kind: 'ruin-column', layer: 'structure' }),
   'B': Object.freeze({ kind: 'broken-rook', layer: 'landmark' }),
   '_': Object.freeze({ kind: 'ruin-slab', layer: 'ground' }),
-  '~': Object.freeze({ kind: 'dust', layer: 'atmosphere', desktopOnly: true }),
+  '~': Object.freeze({ kind: 'dust', layer: 'atmosphere', coarseLimit: 1 }),
 });
 
 export const PAWN_SLUG_SCENARIO_TILEMAPS = Object.freeze({
@@ -129,7 +129,11 @@ export function pawnSlugTilesForScenario(scenario) {
 }
 
 export function pawnSlugScenarioTilesByKind(scenario, kind, { coarse = false } = {}) {
-  return pawnSlugTilesForScenario(scenario).filter((tile) => tile.kind === kind && !(coarse && tile.desktopOnly));
+  const matches = pawnSlugTilesForScenario(scenario).filter((tile) => tile.kind === kind && !(coarse && tile.desktopOnly));
+  if (!coarse || matches.length === 0) return matches;
+  const coarseLimit = Number(matches[0].coarseLimit);
+  if (!Number.isFinite(coarseLimit)) return matches;
+  return matches.slice(0, Math.max(0, Math.floor(coarseLimit)));
 }
 
 export function pawnSlugScenarioPlatforms(scenario) {
