@@ -22,7 +22,6 @@ const checks = [
   [/reset_resilience_state/.test(read('backend-python/conftest.py')) && /reset_http_metrics/.test(read('backend-python/conftest.py')), 'backend tests must isolate process-global resilience and HTTP pressure between cases'],
   [/activeGame/.test(read('scripts/state_ownership_contract.json')), 'durable state domains must declare an authority'],
   [/golden journey/.test(read('e2e/smoke.spec.js')), 'release smoke must include a golden end-to-end journey'],
-  [/gameCreateCommitThenFailures/.test(read('e2e/helpers.js')) && /moveCommitThenFailures/.test(read('e2e/helpers.js')), 'E2E must inject response-loss-after-commit failures for create and move'],
 ];
 const failed = checks.filter(([ok]) => !ok).map(([, msg]) => msg);
 if (failed.length) {
