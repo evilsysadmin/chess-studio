@@ -7,7 +7,7 @@ import {
 } from './HomeCastle3DGeometry.js';
 import { homeCastleLightingProfile } from './HomeCastle3DLighting.js';
 import { homeCastleRoomFocus } from './HomeCastle3DRoomFocus.js';
-import { HOME_CASTLE_3D_MIN_WIDTH, homeCastle3DRenderPolicy } from './HomeCastle3DRenderPolicy.js';
+import { homeCastle3DRenderPolicy } from './HomeCastle3DRenderPolicy.js';
 import { applyCanonicalHallOcclusion } from './HomeCastle3DOcclusion.js';
 import {
   HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS,
@@ -41,6 +41,19 @@ function frameOrthographicCamera(camera, aspect) {
   camera.top = halfHeight;
   camera.bottom = -halfHeight;
   camera.updateProjectionMatrix();
+}
+
+function browserRenderPolicy() {
+  if (typeof window === 'undefined') {
+    return homeCastle3DRenderPolicy({ viewportWidth: 0, hardwareConcurrency: 4 });
+  }
+  return homeCastle3DRenderPolicy({
+    viewportWidth: window.innerWidth,
+    devicePixelRatio: window.devicePixelRatio || 1,
+    hardwareConcurrency: typeof navigator !== 'undefined'
+      ? (navigator.hardwareConcurrency || 4)
+      : 4,
+  });
 }
 
 function addLightRig(scene, profile) {
@@ -84,17 +97,11 @@ function addLightRig(scene, profile) {
   };
 }
 
-function desktopMediaQuery() {
-  return `(min-width: ${HOME_CASTLE_3D_MIN_WIDTH}px)`;
-}
-
 export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = null }) {
   const canvasRef = useRef(null);
   const activeRoomRef = useRef(activeRoom);
   const renderRequestRef = useRef(null);
-  const [desktopEnabled, setDesktopEnabled] = useState(() => (
-    typeof window !== 'undefined' && window.matchMedia?.(desktopMediaQuery()).matches === true
-  ));
+  const [renderEnabled, setRenderEnabled] = useState(() => browserRenderPolicy().enabled);
 
   useEffect(() => {
     activeRoomRef.current = activeRoom;
@@ -102,36 +109,33 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
   }, [activeRoom]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
-    const media = window.matchMedia(desktopMediaQuery());
-    const sync = () => setDesktopEnabled(media.matches);
+    if (typeof window === 'undefined') return undefined;
+    const sync = () => setRenderEnabled(browserRenderPolicy().enabled);
     sync();
-    media.addEventListener?.('change', sync);
-    return () => media.removeEventListener?.('change', sync);
+    window.addEventListener('resize', sync, { passive: true });
+    return () => window.removeEventListener('resize', sync);
   }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!desktopEnabled || !canvas || !artUrl) return undefined;
+    if (!renderEnabled || !canvas || !artUrl) return undefined;
+
+    const renderPolicy = browserRenderPolicy();
+    if (!renderPolicy.enabled) return undefined;
 
     let renderer;
     try {
       renderer = new THREE.WebGLRenderer({
         canvas,
         alpha: true,
-        antialias: true,
-        powerPreference: 'high-performance',
+        antialias: renderPolicy.antialias,
+        powerPreference: renderPolicy.powerPreference,
       });
     } catch {
       return undefined;
     }
 
     const lighting = homeCastleLightingProfile(ambient);
-    const renderPolicy = homeCastle3DRenderPolicy({
-      viewportWidth: window.innerWidth,
-      devicePixelRatio: window.devicePixelRatio || 1,
-      hardwareConcurrency: navigator.hardwareConcurrency || 8,
-    });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = lighting.exposure;
@@ -366,8 +370,8 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       geometry.dispose();
       renderer.dispose();
     };
-  }, [ambient, artUrl, desktopEnabled]);
+  }, [ambient, artUrl, renderEnabled]);
 
-  if (!desktopEnabled) return null;
+  if (!renderEnabled) return null;
   return <canvas ref={canvasRef} className="illustrated-home__castle-3d" aria-hidden="true" />;
 }
