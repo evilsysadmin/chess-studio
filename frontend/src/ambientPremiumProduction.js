@@ -146,11 +146,11 @@ function premiumRelease(feel, genre, targetRelease) {
 function premiumMixValue(current, target, genre, lane, min, max) {
   const value = finiteOr(current, target);
   // En familias de sustain, un fader muy bajo es parte de la orquestación: una
-  // segunda voz a .22 o una cama a .30 no son un error de mastering. Evitamos
-  // levantarlas hacia el promedio de género; las mezclas normales/calientes sí
-  // reciben el polish habitual. Así se conserva profundidad sin engordar barro.
+  // segunda voz a .20 o una cama a .30 no son un error de mastering. Evitamos
+  // levantarlas hacia el promedio de género e incluso respetamos niveles por
+  // debajo del suelo genérico; las mezclas normales/calientes sí reciben polish.
   if (SUSTAIN_RICH_GENRES.has(genre) && value <= SPARSE_MIX_CEILINGS[lane]) {
-    return clamp(value, min, max);
+    return clamp(value, 0, max);
   }
   return clamp(blend(value, target), min, max);
 }
