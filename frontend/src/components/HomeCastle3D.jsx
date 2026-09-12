@@ -163,7 +163,10 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     );
     camera.position.set(0, 0, CAMERA_Z);
 
-    const geometry = createCanonicalHallGeometry();
+    const geometry = createCanonicalHallGeometry({
+      widthSegments: renderPolicy.geometrySegments.width,
+      heightSegments: renderPolicy.geometrySegments.height,
+    });
     applyCanonicalHallOcclusion(geometry);
     const material = new THREE.MeshStandardMaterial({
       transparent: true,
