@@ -44,10 +44,8 @@ export default function QuickMatchModal({
   const timeControl = TIME_CONTROLS.find((tc) => tc.id === timeControlId) || TIME_CONTROLS[0];
   const series = SERIES_OPTIONS.find((option) => Number(option.value) === Number(seriesBestOf)) || SERIES_OPTIONS[0];
   const [matthiasBriefing, setMatthiasBriefing] = useState(null);
+  const [selectedRenderer, setSelectedRenderer] = useState(() => boardRenderer === '2d' ? '2d' : '3d');
   const matthiasVisual = matthiasTimeVisual();
-  const rememberedRenderer = boardRenderer === '2d' ? '2d' : '3d';
-  const alternateRenderer = rememberedRenderer === '2d' ? '3d' : '2d';
-  const alternateIs2D = alternateRenderer === '2d';
 
   useEffect(() => {
     let active = true;
@@ -107,29 +105,50 @@ export default function QuickMatchModal({
 
         {error && <p className="quick-match-error" role="alert">{error}</p>}
 
+        <div
+          role="group"
+          aria-label="Tipo de tablero"
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '.35rem', marginTop: '.65rem' }}
+        >
+          <span className="hint-text" style={{ margin: '0 .15rem 0 0' }}>Tablero</span>
+          {[
+            ['3d', '3D', 'War Room 3D'],
+            ['2d', '2D', 'Tablero 2D ligero · pixel art por defecto'],
+          ].map(([value, label, title]) => {
+            const selected = selectedRenderer === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                className="secondary-btn"
+                disabled={loading}
+                aria-pressed={selected}
+                title={title}
+                onClick={() => setSelectedRenderer(value)}
+                style={{
+                  minWidth: 48,
+                  minHeight: 44,
+                  padding: '.28rem .55rem',
+                  fontSize: '.75rem',
+                  opacity: selected ? 1 : .58,
+                  borderColor: selected ? 'var(--brass)' : undefined,
+                  color: selected ? 'var(--parchment)' : undefined,
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
         <button
           type="button"
           className="primary-btn friendly-main-cta"
           disabled={loading}
-          onClick={() => onStart()}
+          onClick={() => onStart({ boardRenderer: selectedRenderer })}
         >
           {loading ? 'Creando partida…' : 'Empezar partida'}
         </button>
-
-        <button
-          type="button"
-          className="secondary-btn"
-          disabled={loading}
-          onClick={() => onStart({ boardRenderer: alternateRenderer })}
-          aria-label={alternateIs2D ? 'Jugar en 2D, directo al tablero' : 'Jugar en War Room, 3D'}
-        >
-          {alternateIs2D ? 'Jugar en 2D · directo al tablero' : 'Jugar en War Room · 3D'}
-        </button>
-        <p className="hint-text friendly-inline-note">
-          {alternateIs2D
-            ? 'Más ligero y compacto en móvil; la partida, CPU y progreso son exactamente los mismos.'
-            : 'Vuelve a la experiencia cinematográfica 3D; la partida, CPU y progreso son exactamente los mismos.'}
-        </p>
 
         <details className="friendly-disclosure quick-match-settings">
           <summary>

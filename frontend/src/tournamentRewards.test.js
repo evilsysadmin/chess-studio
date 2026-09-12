@@ -11,6 +11,7 @@ import {
   loadSelectedSkin,
   saveSelectedSkin,
 } from './tournamentRewards.js';
+import { setBoardRenderer } from './userPreferences.js';
 
 beforeEach(() => localStorage.clear());
 
@@ -67,8 +68,21 @@ describe('selección persistida', () => {
     expect(loadSelectedTitle()).toBe('novato');
   });
 
-  it('Studio Marfil es el skin por defecto para cuentas sin preferencia previa', () => {
+  it('Studio Marfil es el skin por defecto en 3D para cuentas sin preferencia previa', () => {
     expect(loadSelectedSkin()).toBe('studio');
+  });
+
+  it('Pixel medieval es el skin por defecto en 2D para cuentas sin preferencia previa', () => {
+    setBoardRenderer('2d');
+    expect(loadSelectedSkin()).toBe('default');
+  });
+
+  it('una selección explícita gana al default específico del renderer', () => {
+    saveSelectedSkin('azul');
+    setBoardRenderer('2d');
+    expect(loadSelectedSkin()).toBe('azul');
+    setBoardRenderer('3d');
+    expect(loadSelectedSkin()).toBe('azul');
   });
 
   it('guarda y recupera la selección', () => {
