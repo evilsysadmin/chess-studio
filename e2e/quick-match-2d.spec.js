@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, clickBoardMove, login, mockApi } from './helpers.js';
 
 const DEVICE_BOARD_RENDERER_KEY = 'chess-study-device-board-renderer-v1';
 
@@ -38,6 +38,24 @@ test('Partida rápida · 2D persiste tras F5 en el mismo dispositivo', async ({ 
   await expectLightweight2D(page);
   await expect(page.getByText('Restaurando partida en curso…', { exact: true })).toHaveCount(0);
   await expect(buttonWithVisibleText(page, 'Partida rápida')).toHaveCount(0);
+  expect(await page.evaluate((key) => localStorage.getItem(key), DEVICE_BOARD_RENDERER_KEY)).toBe('2d');
+});
+
+test('Partida rápida · 2D llega a mate y postpartida sin montar War Room', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 780 });
+  await mockApi(page, { gameScenario: 'mate' });
+  await login(page);
+  await launchQuickMatch2D(page);
+  await expectLightweight2D(page);
+
+  await clickBoardMove(page, 'g6', 'g7');
+
+  const endgame = page.getByRole('dialog').filter({ has: page.getByRole('heading', { name: 'Jaque mate', exact: true }) });
+  await expect(endgame).toBeVisible();
+  await expect(endgame.getByText('¡Ganaste la partida!', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-board3d-war-room="true"]')).toHaveCount(0);
+  await expect(page.locator('.game-layout-3d')).toHaveCount(0);
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
   expect(await page.evaluate((key) => localStorage.getItem(key), DEVICE_BOARD_RENDERER_KEY)).toBe('2d');
 });
 
