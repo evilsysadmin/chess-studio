@@ -84,6 +84,25 @@ export function moveLoss(moverColor, evalAfterSuggested, evalAfterPlayed) {
   return Math.max(0, Math.round(loss));
 }
 
+// El backend factual compara ambos candidatos en el MISMO pase minimax. Ese
+// `loss` es por tanto la autoridad cuando existe. Respuestas de servidores
+// antiguos siguen funcionando con el cálculo legacy sobre los dos evals.
+export function resolvedMoveLoss(moverColor, result) {
+  if (Number.isFinite(result?.loss)) return Math.max(0, Math.round(result.loss));
+  return moveLoss(moverColor, result?.evalAfterSuggested, result?.evalAfterPlayed);
+}
+
+function factualReportFields(result) {
+  return {
+    suggestedReply: result?.suggestedReply || null,
+    playedReply: result?.playedReply || null,
+    factualEvalAfterSuggested: Number.isFinite(result?.factualEvalAfterSuggested) ? result.factualEvalAfterSuggested : null,
+    factualEvalAfterPlayed: Number.isFinite(result?.factualEvalAfterPlayed) ? result.factualEvalAfterPlayed : null,
+    analysisDepth: Number.isFinite(result?.analysisDepth) ? result.analysisDepth : null,
+    candidateCount: Number.isFinite(result?.candidateCount) ? result.candidateCount : null,
+  };
+}
+
 // Valoración general en base a la pérdida promedio por jugada.
 export function performanceLabel(averageLoss) {
   if (averageLoss < 20) return 'Jugaste con mucha precisión.';
@@ -158,7 +177,7 @@ export async function analyzeGame(history, humanColor, api, options = {}) {
     if (moverColor === humanColor && toAnalyze.has(i)) {
       try {
         const result = await throttledAnalyzeMove(api, fenBefore, entry.from, entry.to, entry.promotion, level, throttleMs, signal);
-        const loss = moveLoss(humanColor, result.evalAfterSuggested, result.evalAfterPlayed);
+        const loss = resolvedMoveLoss(humanColor, result);
         const context = buildMoveContext(fenBefore, entry, result.suggested, history[i + 1]);
         moveReports.push({
           index: i, // posición en `history` — para ubicar esta jugada al recorrer la partida
@@ -178,6 +197,7 @@ export async function analyzeGame(history, humanColor, api, options = {}) {
           severity: mistakeSeverity(loss),
           evalAfterSuggested: result.evalAfterSuggested,
           evalAfterPlayed: result.evalAfterPlayed,
+          ...factualReportFields(result),
           suggestedPerspectiveEval: Number.isFinite(result.evalAfterSuggested) ? (humanColor === 'w' ? result.evalAfterSuggested : -result.evalAfterSuggested) : null,
           playedPerspectiveEval: Number.isFinite(result.evalAfterPlayed) ? (humanColor === 'w' ? result.evalAfterPlayed : -result.evalAfterPlayed) : null,
         });
@@ -232,7 +252,7 @@ export async function analyzeCombatLog(log, humanColor, api, options = {}) {
     if (entry.by !== 'human' || !toAnalyze.has(i)) continue;
     try {
       const result = await throttledAnalyzeMove(api, entry.fenBefore, entry.from, entry.to, entry.promotion, level, throttleMs, signal);
-      const loss = moveLoss(humanColor, result.evalAfterSuggested, result.evalAfterPlayed);
+      const loss = resolvedMoveLoss(humanColor, result);
       const context = buildMoveContext(entry.fenBefore, entry, result.suggested, log[i + 1]);
       moveReports.push({
         index: i,
@@ -251,6 +271,7 @@ export async function analyzeCombatLog(log, humanColor, api, options = {}) {
         severity: mistakeSeverity(loss),
         evalAfterSuggested: result.evalAfterSuggested,
         evalAfterPlayed: result.evalAfterPlayed,
+        ...factualReportFields(result),
         suggestedPerspectiveEval: Number.isFinite(result.evalAfterSuggested) ? (humanColor === 'w' ? result.evalAfterSuggested : -result.evalAfterSuggested) : null,
         playedPerspectiveEval: Number.isFinite(result.evalAfterPlayed) ? (humanColor === 'w' ? result.evalAfterPlayed : -result.evalAfterPlayed) : null,
       });
