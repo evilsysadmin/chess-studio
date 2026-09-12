@@ -13,6 +13,9 @@ export function canonicalHallDepth(u, v) {
   const rightForegroundX = THREE.MathUtils.clamp((0.16 - Math.abs(u - 0.87)) / 0.16, 0, 1);
   const rightForegroundY = THREE.MathUtils.clamp((0.16 - Math.abs(v - 0.21)) / 0.16, 0, 1);
   const rightForeground = Math.pow(rightForegroundX, 1.7) * Math.pow(rightForegroundY, 1.55);
+  const leftForegroundX = THREE.MathUtils.clamp((0.2 - Math.abs(u - 0.12)) / 0.2, 0, 1);
+  const leftForegroundY = THREE.MathUtils.clamp((0.18 - Math.abs(v - 0.2)) / 0.18, 0, 1);
+  const leftForeground = Math.pow(leftForegroundX, 1.55) * Math.pow(leftForegroundY, 1.5);
 
   return (
     (0.2 * Math.pow(floor, 1.45))
@@ -20,6 +23,7 @@ export function canonicalHallDepth(u, v) {
     + (0.018 * vault)
     + (0.055 * centralTable)
     + (0.04 * rightForeground)
+    + (0.035 * leftForeground)
   );
 }
 

@@ -28,8 +28,18 @@ describe('HomeCastle3DGeometry', () => {
     const leftMirror = canonicalHallDepth(0.13, 0.21);
 
     expect(hearth).toBeGreaterThan(nearbyFloor + 0.025);
-    expect(hearth).toBeGreaterThan(leftMirror + 0.02);
+    expect(hearth).toBeGreaterThan(leftMirror);
     expect(hearth - nearbyFloor).toBeLessThan(0.06);
+  });
+
+  it('brings the left chair and side table forward with a broader, softer bump', () => {
+    const leftSeat = canonicalHallDepth(0.12, 0.2);
+    const leftInnerFloor = canonicalHallDepth(0.34, 0.2);
+    const leftWallAbove = canonicalHallDepth(0.12, 0.43);
+
+    expect(leftSeat).toBeGreaterThan(leftInnerFloor + 0.02);
+    expect(leftSeat - leftInnerFloor).toBeLessThan(0.055);
+    expect(leftWallAbove).toBeLessThan(leftSeat - 0.025);
   });
 
   it('creates a segmented mesh with a non-flat depth field', () => {
