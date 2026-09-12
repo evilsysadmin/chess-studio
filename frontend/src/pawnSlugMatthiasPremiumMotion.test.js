@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PAWN_SLUG_HURT_RECOVERY_SECONDS,
+  applyPawnSlugMatthiasPremiumMotion,
+  pawnSlugHurtRecoveryStrength,
   pawnSlugJumpVisualPhase,
   pawnSlugLandingVisualStrength,
   pawnSlugMatthiasPremiumPose,
@@ -95,6 +98,39 @@ describe('Pawn Slug Matthias premium motion', () => {
     expect(Math.abs(firing.rz)).toBeGreaterThan(0);
     expect(hurt.sy).toBeLessThan(firing.sy);
     expect(Math.abs(hurt.rz)).toBeGreaterThan(Math.abs(firing.rz));
+  });
+
+  it('eases the hurt pose back to neutral instead of snapping off', () => {
+    expect(pawnSlugHurtRecoveryStrength(0)).toBe(1);
+    expect(pawnSlugHurtRecoveryStrength(PAWN_SLUG_HURT_RECOVERY_SECONDS / 2)).toBeCloseTo(0.5, 5);
+    expect(pawnSlugHurtRecoveryStrength(PAWN_SLUG_HURT_RECOVERY_SECONDS)).toBe(0);
+
+    const full = pawnSlugMatthiasPremiumPose({ hurt: true });
+    const halfway = pawnSlugMatthiasPremiumPose({ hurtStrength: 0.5 });
+    const settled = pawnSlugMatthiasPremiumPose();
+    expect(halfway.sy).toBeGreaterThan(full.sy);
+    expect(halfway.sy).toBeLessThan(settled.sy);
+    expect(Math.abs(halfway.rz)).toBeLessThan(Math.abs(full.rz));
+    expect(Math.abs(halfway.rz)).toBeGreaterThan(Math.abs(settled.rz));
+  });
+
+  it('starts the visual hurt recovery on the first clean frame after damage', () => {
+    const sprite = {
+      userData: { animation: { weapon: 'pistol', frameIndex: 0 } },
+      position: { y: 0 },
+      scale: { x: 1, y: 1 },
+      material: { rotation: 0 },
+    };
+
+    const hit = applyPawnSlugMatthiasPremiumMotion(sprite, { time: 1, hurt: true });
+    const released = applyPawnSlugMatthiasPremiumMotion(sprite, { time: 1.05, hurt: false });
+    const halfway = applyPawnSlugMatthiasPremiumMotion(sprite, { time: 1.11, hurt: false });
+    const settled = applyPawnSlugMatthiasPremiumMotion(sprite, { time: 1.18, hurt: false });
+
+    expect(hit.hurtStrength).toBe(1);
+    expect(released.hurtStrength).toBe(1);
+    expect(halfway.hurtStrength).toBeCloseTo(0.5, 5);
+    expect(settled.hurtStrength).toBe(0);
   });
 
   it('gives automatic, shotgun and launcher fire visibly different recoil signatures', () => {
