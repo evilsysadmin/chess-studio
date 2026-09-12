@@ -48,6 +48,34 @@ describe('ambient premium production pass', () => {
     expect(Object.isFrozen(premium.mix)).toBe(true);
   });
 
+  it('warms generic trip-hop EP chords without replacing the noir rhythm section', () => {
+    const premium = withAmbientPremiumProduction(
+      {
+        id: 'concrete-like',
+        genre: 'Trip-Hop / Downtempo',
+        leadInstrument: 'mutedHorn',
+        counterInstrument: 'rhodesWarm',
+        chordInstrument: 'epiano',
+        bassInstrument: 'synthbass',
+      },
+      {
+        family: 'concrete-trip-hop-noir',
+        leadInstrument: 'mutedHorn',
+        counterInstrument: 'rhodesWarm',
+        chordInstrument: 'epiano',
+        bassInstrument: 'synthbass',
+        swing: 0.08,
+        mix: { lead: 0.48, counter: 0.3, bass: 1.08, chord: 0.56 },
+        percussion: { kit: 'trip-hop', punch: 0.9, period: 16, pattern: { 0: 'K', 8: 'S' } },
+      },
+    );
+
+    expect(premium.chordInstrument).toBe('rhodesWarm');
+    expect(premium.leadInstrument).toBe('mutedHorn');
+    expect(premium.counterInstrument).toBe('rhodesWarm');
+    expect(premium.bassInstrument).toBe('synthbass');
+  });
+
   it('gives rigid jazz and lounge patterns a subtle pocket without flattening strong written swing', () => {
     const straight = withAmbientPremiumProduction(
       { id: 'straight', genre: 'Smooth Jazz' },
