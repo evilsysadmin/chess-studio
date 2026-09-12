@@ -15,6 +15,20 @@ const GENRE_PRODUCTION = Object.freeze({
   'Ambient / Otros': Object.freeze({ warmth: 0.88, releaseScale: 1.14, space: 0.16, delayMs: 212, mix: { lead: 0.58, counter: 0.36, bass: 0.68, chord: 0.42 } }),
 });
 
+const PERFORMANCE_FINISH = Object.freeze({
+  'Smooth Jazz': Object.freeze({ swing: 0.11, signatureVolume: 0.27, signatureDuration: 4.2 }),
+  'Bossa / Latin Lounge': Object.freeze({ swing: 0.18, signatureVolume: 0.25, signatureDuration: 3.4 }),
+  'Lo-Fi / Chill': Object.freeze({ swing: 0.14, signatureVolume: 0.23, signatureDuration: 4.0 }),
+  'Trip-Hop / Downtempo': Object.freeze({ swing: 0.09, signatureVolume: 0.24, signatureDuration: 4.3 }),
+  'Jazz / Mediterráneo': Object.freeze({ swing: 0.085, signatureVolume: 0.28, signatureDuration: 4.1 }),
+  'SPA / Zen': Object.freeze({ signatureVolume: 0.20, signatureDuration: 4.8 }),
+  'Clásica': Object.freeze({ signatureVolume: 0.24, signatureDuration: 4.5 }),
+  'Piano / Minimal': Object.freeze({ signatureVolume: 0.22, signatureDuration: 4.6 }),
+  'Dark Ambient': Object.freeze({ signatureVolume: 0.18, signatureDuration: 5.0 }),
+  'Tropical House': Object.freeze({ signatureVolume: 0.24, signatureDuration: 3.0 }),
+  'Energía': Object.freeze({ signatureVolume: 0.22, signatureDuration: 2.8 }),
+});
+
 const INSTRUMENT_UPGRADES = Object.freeze({
   'Smooth Jazz': Object.freeze({
     lead: Object.freeze({ guitar2: 'jazzGuitar', epiano: 'rhodesWarm', brass: 'mutedHorn' }),
@@ -74,6 +88,38 @@ function premiumPercussion(feel, genre) {
   });
 }
 
+function premiumSwing(feel, genre) {
+  const target = PERFORMANCE_FINISH[genre]?.swing;
+  if (!Number.isFinite(target)) return finiteOr(feel?.swing, 0);
+  const current = finiteOr(feel?.swing, 0);
+  // Un swing fuerte suele ser identidad escrita (bossa, shuffle, jazz lento).
+  // El acabado sólo da bolsillo a patrones demasiado rectos o rígidos.
+  if (Math.abs(current) >= 0.16) return current;
+  return clamp(blend(current, target, 0.22), 0, 0.22);
+}
+
+function premiumSignature(feel, genre) {
+  const signature = feel?.signature;
+  const target = PERFORMANCE_FINISH[genre];
+  if (!signature || !target || !signature.motif || !Object.keys(signature.motif).length) return signature;
+
+  const currentVolume = finiteOr(signature.volume, target.signatureVolume ?? 0.24);
+  const currentDuration = finiteOr(signature.durationSteps, target.signatureDuration ?? 4);
+  const nextVolume = Number.isFinite(target.signatureVolume)
+    ? clamp(blend(currentVolume, target.signatureVolume, 0.30), 0.14, 0.36)
+    : currentVolume;
+  const nextDuration = Number.isFinite(target.signatureDuration)
+    ? clamp(blend(currentDuration, target.signatureDuration, 0.24), 2.2, 5.2)
+    : currentDuration;
+
+  if (nextVolume === currentVolume && nextDuration === currentDuration) return signature;
+  return Object.freeze({
+    ...signature,
+    volume: nextVolume,
+    durationSteps: nextDuration,
+  });
+}
+
 export function withAmbientPremiumProduction(theme, feel) {
   if (!theme || !feel) return feel;
   const target = GENRE_PRODUCTION[theme.genre] || GENRE_PRODUCTION['Ambient / Otros'];
@@ -84,17 +130,21 @@ export function withAmbientPremiumProduction(theme, feel) {
     bass: clamp(blend(finiteOr(currentMix.bass, 0.84), target.mix.bass), 0.38, 1.16),
     chord: clamp(blend(finiteOr(currentMix.chord, 0.44), target.mix.chord), 0.26, 0.72),
   });
+  const signature = premiumSignature(feel, theme.genre);
 
   const result = {
     ...feel,
+    swing: premiumSwing(feel, theme.genre),
     warmth: clamp(blend(finiteOr(feel.warmth, 1), target.warmth, 0.38), 0.7, 1.08),
     releaseScale: clamp(blend(finiteOr(feel.releaseScale, 1), target.releaseScale, 0.36), 0.76, 1.36),
     space: clamp(blend(finiteOr(feel.space, 0), target.space, 0.48), 0.035, 0.24),
     delayMs: Math.round(clamp(blend(finiteOr(feel.delayMs, 160), target.delayMs, 0.5), 72, 310)),
     mix,
     percussion: premiumPercussion(feel, theme.genre),
+    ...(signature ? { signature } : {}),
     production: Object.freeze({
       grade: 'premium-v1',
+      performance: 'articulation-v1',
       genre: theme.genre || 'Ambient / Otros',
       intent: theme.genre === 'Energía' || theme.genre === 'Tropical House' ? 'tight-forward' : theme.genre === 'SPA / Zen' || theme.genre === 'Dark Ambient' ? 'deep-wide' : 'warm-controlled',
     }),
@@ -108,4 +158,4 @@ export function withAmbientPremiumProduction(theme, feel) {
   return Object.freeze(result);
 }
 
-export { GENRE_PRODUCTION, INSTRUMENT_UPGRADES };
+export { GENRE_PRODUCTION, INSTRUMENT_UPGRADES, PERFORMANCE_FINISH };
