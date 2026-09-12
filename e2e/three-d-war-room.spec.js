@@ -301,7 +301,7 @@ test('Partida rápida · una partida activa · vista 3D usa la Sala de guerra y 
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical');
   await expect(warRoom.getByRole('complementary', { name: 'Puesto táctico de Matthias' })).toBeVisible();
   await expect(warRoom.getByText('COMANDANTE RIVAL', { exact: true })).toBeVisible();
-  await expect(warRoom.getByText('SALA DE GUERRA · CÁMARA TÁCTICA', { exact: true })).toBeVisible();
+  await expect(warRoom.locator('.warroom-chamber-label')).toHaveCount(0);
   await expect(warRoom.locator('.game-3d-warroom-controls')).toBeHidden();
   await expect(page.locator('.game-board-stack-3d .matthias-board-bubble')).toBeHidden();
 
