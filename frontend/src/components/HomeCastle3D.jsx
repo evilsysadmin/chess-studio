@@ -305,7 +305,16 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     };
 
     const onPointerLeave = () => target.set(0, 0);
-    const onContextLost = () => canvas.classList.remove('is-ready');
+    const onContextLost = (event) => {
+      event.preventDefault();
+      canvas.classList.remove('is-ready');
+      stopRender();
+    };
+    const onContextRestored = () => {
+      canvas.classList.add('is-ready');
+      resize();
+      resumeRender();
+    };
     const onVisibilityChange = () => {
       if (document.hidden) stopRender();
       else resumeRender();
@@ -329,6 +338,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     canvas.parentElement?.addEventListener('pointermove', onPointerMove, { passive: true });
     canvas.parentElement?.addEventListener('pointerleave', onPointerLeave, { passive: true });
     canvas.addEventListener('webglcontextlost', onContextLost);
+    canvas.addEventListener('webglcontextrestored', onContextRestored);
 
     resize();
     textureLoader.load(
@@ -363,6 +373,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       canvas.parentElement?.removeEventListener('pointermove', onPointerMove);
       canvas.parentElement?.removeEventListener('pointerleave', onPointerLeave);
       canvas.removeEventListener('webglcontextlost', onContextLost);
+      canvas.removeEventListener('webglcontextrestored', onContextRestored);
       material.map?.dispose();
       material.dispose();
       occlusionMaterial.dispose();
