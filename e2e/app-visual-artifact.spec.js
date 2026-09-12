@@ -6,8 +6,8 @@ const ARTIFACT_DIR = '../.artifacts/app-visual';
 const MIN_TOUCH_TARGET = 44;
 const CAPTURES = [
   { label:'desktop-1440x900', width:1440, height:900, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
-  { label:'android-desktop-site-980x1740', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, minStageViewportFill:.66 },
-  { label:'android-desktop-site-980x1740-quiet', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, minStageViewportFill:.66, dismissMatthias:true },
+  { label:'android-desktop-site-980x1740', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, minStageViewportFill:.74 },
+  { label:'android-desktop-site-980x1740-quiet', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, minStageViewportFill:.74, dismissMatthias:true },
   { label:'android-360x800', width:360, height:800, reducedMotion:'no-preference' },
   { label:'android-390x844', width:390, height:844, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
   { label:'android-430x932', width:430, height:932, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
@@ -216,6 +216,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
 
   for (const capture of captures) {
     expect(capture.horizontalOverflow, `${capture.label}: horizontal overflow`).toBe(false);
+    expect(capture.clippedInteractiveCount, `${capture.label}: clipped interactive controls`).toBe(0);
     expect(capture.reducedMotion, `${capture.label}: reduced-motion media state`).toBe(capture.expectedReducedMotion);
     if (capture.expectedCastleReady) {
       expect(capture.castle3dReady, `${capture.label}: 3D canvas ready before screenshot`).toBe(true);
