@@ -36,6 +36,15 @@ async function settle(page, home, { expectCastleReady = false } = {}) {
   await page.waitForTimeout(250);
 }
 
+async function freezeVisualFrame(page) {
+  await page.evaluate(() => {
+    window.requestAnimationFrame = () => 0;
+  });
+  // Deja consumir el único RAF que pudiera estar ya encolado; al intentar
+  // programar el siguiente encontrará el stub y la escena quedará congelada.
+  await page.waitForTimeout(80);
+}
+
 async function captureHealth(page, label) {
   return page.evaluate(({ captureLabel, minTouchTarget }) => {
     const root = document.documentElement;
@@ -158,6 +167,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
           expectedCastleReady:capture.expectCastleReady === true,
           expectedCoarsePointer:capture.hasTouch === true,
         });
+        await freezeVisualFrame(page);
         await page.screenshot({
           path:`${ARTIFACT_DIR}/home-${capture.label}.png`,
           fullPage:false,
