@@ -13,6 +13,8 @@ export const HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS = Object.freeze([
 export const HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR = Object.freeze({ x: 1.18, y: -0.52, z: 0.88 });
 
 export const HOME_CASTLE_DESTINATION_PROP_ANCHORS = Object.freeze({
+  tournament: Object.freeze({ x: -0.96, y: -0.035, z: 0.29 }),
+  train: Object.freeze({ x: -0.34, y: -0.035, z: 0.3 }),
   play: Object.freeze({ x: 0, y: -0.22, z: 0.31 }),
   daily: Object.freeze({ x: 0.86, y: -0.015, z: 0.3 }),
 });
@@ -85,6 +87,164 @@ function createHomeCastleDust() {
   dust.name = 'home-castle-dust';
   dust.renderOrder = 2;
   return { dust, geometry, material };
+}
+
+function createTournamentCup(resources) {
+  const group = new THREE.Group();
+  group.name = 'home-castle-prop-tournament';
+  group.userData.destination = 'tournament';
+  group.position.set(
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.tournament.x,
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.tournament.y,
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.tournament.z,
+  );
+  group.rotation.x = -0.025;
+  group.rotation.z = 0.02;
+
+  const agedBrass = new THREE.MeshStandardMaterial({
+    color: 0xc69a50,
+    roughness: 0.58,
+    metalness: 0.4,
+    emissive: 0x4a2a0a,
+    emissiveIntensity: 0.095,
+  });
+  const darkBrass = new THREE.MeshStandardMaterial({
+    color: 0x80603a,
+    roughness: 0.7,
+    metalness: 0.26,
+    emissive: 0x281407,
+    emissiveIntensity: 0.06,
+  });
+  resources.materials.push(agedBrass, darkBrass);
+
+  const baseGeometry = new THREE.CylinderGeometry(0.038, 0.046, 0.014, 18);
+  const plinthGeometry = new THREE.CylinderGeometry(0.029, 0.035, 0.012, 18);
+  const stemGeometry = new THREE.CylinderGeometry(0.008, 0.012, 0.046, 12);
+  const bowlGeometry = new THREE.CylinderGeometry(0.041, 0.018, 0.05, 20, 1, true);
+  const rimGeometry = new THREE.TorusGeometry(0.039, 0.0038, 8, 24);
+  const handleGeometry = new THREE.TorusGeometry(0.025, 0.0038, 8, 18, Math.PI);
+  resources.geometries.push(
+    baseGeometry,
+    plinthGeometry,
+    stemGeometry,
+    bowlGeometry,
+    rimGeometry,
+    handleGeometry,
+  );
+
+  const base = new THREE.Mesh(baseGeometry, darkBrass);
+  base.position.y = 0.007;
+  const plinth = new THREE.Mesh(plinthGeometry, agedBrass);
+  plinth.position.y = 0.02;
+  const stem = new THREE.Mesh(stemGeometry, agedBrass);
+  stem.position.y = 0.048;
+  const bowl = new THREE.Mesh(bowlGeometry, agedBrass);
+  bowl.position.y = 0.09;
+  const rim = new THREE.Mesh(rimGeometry, agedBrass);
+  rim.position.y = 0.116;
+  rim.rotation.x = Math.PI / 2;
+  group.add(base, plinth, stem, bowl, rim);
+
+  for (const side of [-1, 1]) {
+    const handle = new THREE.Mesh(handleGeometry, agedBrass);
+    handle.position.set(side * 0.044, 0.092, 0);
+    handle.rotation.set(0, side > 0 ? Math.PI / 2 : -Math.PI / 2, Math.PI / 2);
+    group.add(handle);
+  }
+
+  attachViewportScale(group, base, 0.74);
+  return group;
+}
+
+function createTrainingLectern(resources) {
+  const group = new THREE.Group();
+  group.name = 'home-castle-prop-train';
+  group.userData.destination = 'train';
+  group.position.set(
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.train.x,
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.train.y,
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.train.z,
+  );
+  group.rotation.z = -0.025;
+
+  const wood = new THREE.MeshStandardMaterial({
+    color: 0x684326,
+    roughness: 0.82,
+    metalness: 0.02,
+    emissive: 0x241309,
+    emissiveIntensity: 0.055,
+  });
+  const brass = new THREE.MeshStandardMaterial({
+    color: 0xb28a4c,
+    roughness: 0.64,
+    metalness: 0.32,
+    emissive: 0x3b2108,
+    emissiveIntensity: 0.065,
+  });
+  const page = new THREE.MeshStandardMaterial({
+    color: 0xf0e1bc,
+    roughness: 0.88,
+    metalness: 0,
+    emissive: 0x5a4324,
+    emissiveIntensity: 0.14,
+  });
+  const cover = new THREE.MeshStandardMaterial({
+    color: 0x734827,
+    roughness: 0.8,
+    metalness: 0.02,
+    emissive: 0x241007,
+    emissiveIntensity: 0.05,
+  });
+  resources.materials.push(wood, brass, page, cover);
+
+  const baseGeometry = new THREE.BoxGeometry(0.072, 0.014, 0.052);
+  const stemGeometry = new THREE.CylinderGeometry(0.008, 0.012, 0.072, 10);
+  const braceGeometry = new THREE.BoxGeometry(0.014, 0.05, 0.014);
+  const shelfGeometry = new THREE.BoxGeometry(0.13, 0.012, 0.055);
+  const coverGeometry = new THREE.BoxGeometry(0.126, 0.055, 0.006);
+  const pageGeometry = new THREE.BoxGeometry(0.058, 0.048, 0.004);
+  const spineGeometry = new THREE.BoxGeometry(0.009, 0.052, 0.008);
+  resources.geometries.push(
+    baseGeometry,
+    stemGeometry,
+    braceGeometry,
+    shelfGeometry,
+    coverGeometry,
+    pageGeometry,
+    spineGeometry,
+  );
+
+  const base = new THREE.Mesh(baseGeometry, wood);
+  base.position.y = 0.007;
+  const stem = new THREE.Mesh(stemGeometry, brass);
+  stem.position.y = 0.049;
+  const brace = new THREE.Mesh(braceGeometry, wood);
+  brace.position.set(0, 0.072, -0.015);
+  brace.rotation.x = -0.34;
+  const shelf = new THREE.Mesh(shelfGeometry, wood);
+  shelf.position.set(0, 0.092, -0.004);
+  shelf.rotation.x = -0.3;
+
+  const book = new THREE.Group();
+  book.name = 'home-castle-training-book';
+  book.position.set(0, 0.116, 0.022);
+  book.rotation.x = -0.08;
+
+  const bookCover = new THREE.Mesh(coverGeometry, cover);
+  bookCover.position.z = -0.004;
+  const leftPage = new THREE.Mesh(pageGeometry, page);
+  leftPage.position.set(-0.031, 0.002, 0);
+  leftPage.rotation.z = -0.07;
+  const rightPage = new THREE.Mesh(pageGeometry, page);
+  rightPage.position.set(0.031, 0.002, 0);
+  rightPage.rotation.z = 0.07;
+  const spine = new THREE.Mesh(spineGeometry, brass);
+  spine.position.set(0, 0, 0.002);
+  book.add(bookCover, leftPage, rightPage, spine);
+
+  group.add(base, stem, brace, shelf, book);
+  attachViewportScale(group, base, 0.78);
+  return group;
 }
 
 function createPlayRook(resources) {
@@ -236,12 +396,16 @@ export function createHomeCastleDestinationProps() {
     geometries: [],
     materials: [],
   };
+  const tournament = createTournamentCup(resources);
+  const train = createTrainingLectern(resources);
   const play = createPlayRook(resources);
   const daily = createDailyBrazier(resources);
-  group.add(play, daily);
+  group.add(tournament, train, play, daily);
 
   return {
     group,
+    tournament,
+    train,
     play,
     daily,
     dispose() {
