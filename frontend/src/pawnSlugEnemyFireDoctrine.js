@@ -16,7 +16,7 @@ export const PAWN_SLUG_ENEMY_FIRE_PROFILES = freeze({
     burstPauseMax: 2.77,
   }),
   shotgun: freeze({ range: 6.8, cooldownMin: 1.25, cooldownMax: 1.7, speed: 6.8, damage: 6, pellets: 5, spread: 0.16, telegraph: 0.14 }),
-  panzerfaust: freeze({ range: 15, cooldownMin: 1.8, cooldownMax: 2.45, speed: 5.6, damage: 30, pellets: 1, spread: 0, explosive: true, telegraph: 0.34 }),
+  panzerfaust: freeze({ range: 15, minRange: 3.6, cooldownMin: 1.8, cooldownMax: 2.45, speed: 5.6, damage: 30, pellets: 1, spread: 0, explosive: true, telegraph: 0.34 }),
 });
 
 export function pawnSlugEnemyFireProfile(weapon = 'pistol') {
@@ -31,7 +31,8 @@ export function pawnSlugEnemyCanFire(weapon = 'pistol', distance = Infinity, rol
   const effectiveRange = Number.isFinite(requestedRange)
     ? Math.max(0, Math.min(profile.range, requestedRange))
     : profile.range;
-  return targetDistance < effectiveRange;
+  const minimumRange = Math.max(0, Number(profile.minRange) || 0);
+  return targetDistance >= minimumRange && targetDistance < effectiveRange;
 }
 
 export function pawnSlugEnemyPrefireStep(weapon = 'pistol', { remaining = 0, ready = false, dt = 0 } = {}) {
@@ -65,6 +66,7 @@ export function pawnSlugEnemyShotPlan(weapon = 'pistol') {
   return freeze({
     weapon,
     range: profile.range,
+    minRange: Math.max(0, Number(profile.minRange) || 0),
     speed: profile.speed,
     damage: profile.damage,
     pellets: profile.pellets,
