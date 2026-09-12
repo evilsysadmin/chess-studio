@@ -3,6 +3,7 @@ import {
   compactWebGLRendererLabel,
   isSoftwareWebGLRenderer,
   warRoomAmbientFramePlan,
+  warRoomRenderBudget,
   warRoomRendererAttempts,
   warRoomSceneProfile,
 } from './WarRoom3DAnimation.js';
@@ -47,6 +48,36 @@ describe('War Room ambient render cadence', () => {
     ]) {
       expect(warRoomAmbientFramePlan(options).shouldRender).toBe(false);
     }
+  });
+
+  it('expone un budget medible por clase de interacción y renderer', () => {
+    expect(warRoomRenderBudget()).toEqual({
+      tier: 'full',
+      lite: false,
+      pixelRatioCap: 1.2,
+      shadowMapSize: 1024,
+      shadowsEnabled: true,
+      idleFrameIntervalMs: 100,
+      inspectFrameIntervalMs: 16,
+    });
+    expect(warRoomRenderBudget({ coarsePointer: true })).toEqual({
+      tier: 'balanced',
+      lite: false,
+      pixelRatioCap: 1.25,
+      shadowMapSize: 1024,
+      shadowsEnabled: true,
+      idleFrameIntervalMs: 150,
+      inspectFrameIntervalMs: 33,
+    });
+    expect(warRoomRenderBudget({ coarsePointer: true, softwareRenderer: true })).toEqual({
+      tier: 'lite',
+      lite: true,
+      pixelRatioCap: 1,
+      shadowMapSize: 512,
+      shadowsEnabled: false,
+      idleFrameIntervalMs: 150,
+      inspectFrameIntervalMs: 33,
+    });
   });
 
   it('detecta rasterizadores software conocidos sin penalizar GPUs reales', () => {
