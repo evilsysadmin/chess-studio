@@ -170,9 +170,15 @@ function premiumSignature(feel, genre) {
   const nextVolume = !preserveSparseVolume && Number.isFinite(target.signatureVolume)
     ? clamp(blend(currentVolume, target.signatureVolume, 0.30), 0.14, 0.36)
     : currentVolume;
-  const nextDuration = Number.isFinite(target.signatureDuration)
-    ? clamp(blend(currentDuration, target.signatureDuration, 0.24), 2.2, 5.2)
-    : currentDuration;
+  // Las firmas realmente largas son fraseo escrito, no exceso de sustain. Un
+  // muted horn a 7.2 pasos o un piano a 8 deben poder cerrar su respiración;
+  // el polish articula sólo frases cortas/normales y no las poda a 5.2.
+  const preserveLongDuration = currentDuration > 5.2;
+  const nextDuration = preserveLongDuration
+    ? currentDuration
+    : Number.isFinite(target.signatureDuration)
+      ? clamp(blend(currentDuration, target.signatureDuration, 0.24), 2.2, 5.2)
+      : currentDuration;
 
   if (nextVolume === currentVolume && nextDuration === currentDuration) return signature;
   return Object.freeze({
