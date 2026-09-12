@@ -155,6 +155,36 @@
     z-index: 1;
   }
 
+  /* The collapsed player belongs to the same quiet instrument rail as the
+     tabs below it. Keep the expanded player untouched: expansion is the user's
+     explicit request for a full control surface. */
+  .game-screen .game-side-column-3d .game-side-music .music-deck-collapsed {
+    min-height: 38px;
+    border: 0;
+    border-bottom: 1px solid rgba(190, 164, 109, .12);
+    border-radius: 0;
+    background: linear-gradient(180deg, rgba(201, 162, 39, .028), transparent 80%);
+    box-shadow: none;
+  }
+
+  .game-screen .game-side-column-3d .game-side-music .music-deck-expand {
+    min-height: 38px;
+    padding-inline: .22rem;
+    border-radius: 5px;
+    background: transparent;
+  }
+
+  .game-screen .game-side-column-3d .game-side-music .music-deck-expand:hover,
+  .game-screen .game-side-column-3d .game-side-music .music-deck-expand:focus-visible {
+    background: rgba(201, 162, 39, .045);
+  }
+
+  .game-screen .game-side-column-3d .game-side-music .music-deck-collapsed-play {
+    border-color: rgba(190, 164, 109, .16);
+    background: rgba(7, 11, 17, .34);
+    box-shadow: none;
+  }
+
   /* Desktop is deliberately flatter than the reusable compact rail. The room
      already supplies depth, framing and material; another raised card beside it
      reads as dashboard chrome rather than as part of the scene. */
