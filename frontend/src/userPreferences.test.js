@@ -3,6 +3,7 @@ import { clearStorageMemoryFallback } from './safeStorage.js';
 import {
   BOARD_RENDERERS,
   BOARD_RENDERER_KEY,
+  DEVICE_BOARD_RENDERER_KEY,
   EXPLICIT_2D_BOARD_RENDERER_VALUE,
   REDUCED_MOTION_KEY,
   getBoardCoordinates,
@@ -55,28 +56,48 @@ describe('user preferences', () => {
     expect(getReducedMotion()).toBe(true);
   });
 
-  it('hace 3D Sala de guerra el default y mantiene 2D como fallback explícito', () => {
+  it('hace 3D Sala de guerra el default y guarda el renderer nuevo sólo para este dispositivo', () => {
     expect(BOARD_RENDERERS[0]).toMatchObject({ id: '3d' });
     expect(getConfiguredBoardRendererDefault()).toBe('3d');
     expect(getBoardRenderer()).toBe('3d');
 
     expect(setBoardRenderer('2d')).toBe('2d');
-    expect(localStorage.getItem(BOARD_RENDERER_KEY)).toBe(EXPLICIT_2D_BOARD_RENDERER_VALUE);
+    expect(localStorage.getItem(DEVICE_BOARD_RENDERER_KEY)).toBe('2d');
+    expect(localStorage.getItem(BOARD_RENDERER_KEY)).toBe('3d');
     expect(getBoardRenderer()).toBe('2d');
 
     expect(setBoardRenderer('holograma-cuántico')).toBe('3d');
+    expect(localStorage.getItem(DEVICE_BOARD_RENDERER_KEY)).toBe('3d');
     expect(localStorage.getItem(BOARD_RENDERER_KEY)).toBe('3d');
     expect(getBoardRenderer()).toBe('3d');
   });
 
-  it('interpreta un 2D legado sincronizado como 3D pero respeta un 2D elegido después', () => {
-    // Simula un perfil antiguo que llega desde Mongo después de que las
-    // migraciones locales ya hayan terminado en un navegador nuevo.
+  it('mantiene compatibilidad con el 2D explícito antiguo hasta que el dispositivo elige', () => {
+    // Plain 2D sigue siendo el valor legado anterior a War Room y no revive
+    // accidentalmente el renderer antiguo al llegar desde un perfil remoto.
     localStorage.setItem(BOARD_RENDERER_KEY, '2d');
     expect(getBoardRenderer()).toBe('3d');
 
-    expect(setBoardRenderer('2d')).toBe('2d');
-    expect(localStorage.getItem(BOARD_RENDERER_KEY)).toBe(EXPLICIT_2D_BOARD_RENDERER_VALUE);
+    // El marcador explícito de la generación anterior se respeta como fallback.
+    localStorage.setItem(BOARD_RENDERER_KEY, EXPLICIT_2D_BOARD_RENDERER_VALUE);
+    expect(getBoardRenderer()).toBe('2d');
+
+    // En cuanto este dispositivo decide, su override manda y la clave de perfil
+    // queda neutralizada para que otro dispositivo nuevo conserve War Room.
+    expect(setBoardRenderer('3d')).toBe('3d');
+    expect(localStorage.getItem(DEVICE_BOARD_RENDERER_KEY)).toBe('3d');
+    expect(localStorage.getItem(BOARD_RENDERER_KEY)).toBe('3d');
+    localStorage.setItem(BOARD_RENDERER_KEY, EXPLICIT_2D_BOARD_RENDERER_VALUE);
+    expect(getBoardRenderer()).toBe('3d');
+  });
+
+  it('el override 2D del dispositivo sobrevive aunque cambie el fallback sincronizado', () => {
+    setBoardRenderer('2d');
+    expect(getBoardRenderer()).toBe('2d');
+
+    localStorage.setItem(BOARD_RENDERER_KEY, '3d');
+    expect(getBoardRenderer()).toBe('2d');
+    localStorage.setItem(BOARD_RENDERER_KEY, EXPLICIT_2D_BOARD_RENDERER_VALUE);
     expect(getBoardRenderer()).toBe('2d');
   });
 
