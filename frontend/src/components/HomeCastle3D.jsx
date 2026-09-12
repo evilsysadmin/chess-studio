@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import {
   HOME_CASTLE_ART_HEIGHT,
@@ -7,6 +7,7 @@ import {
 } from './HomeCastle3DGeometry.js';
 import { homeCastleLightingProfile } from './HomeCastle3DLighting.js';
 import { homeCastleRoomFocus } from './HomeCastle3DRoomFocus.js';
+import { HOME_CASTLE_3D_MIN_WIDTH, homeCastle3DRenderPolicy } from './HomeCastle3DRenderPolicy.js';
 
 const CAMERA_Z = 3;
 const PARALLAX_X = 0.034;
@@ -37,17 +38,33 @@ function addLightRig(scene, profile) {
   scene.add(hemisphere, key, fill, leftTorch, rightTorch);
 }
 
+function desktopMediaQuery() {
+  return `(min-width: ${HOME_CASTLE_3D_MIN_WIDTH}px)`;
+}
+
 export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = null }) {
   const canvasRef = useRef(null);
   const activeRoomRef = useRef(activeRoom);
+  const [desktopEnabled, setDesktopEnabled] = useState(() => (
+    typeof window !== 'undefined' && window.matchMedia?.(desktopMediaQuery()).matches === true
+  ));
 
   useEffect(() => {
     activeRoomRef.current = activeRoom;
   }, [activeRoom]);
 
   useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const media = window.matchMedia(desktopMediaQuery());
+    const sync = () => setDesktopEnabled(media.matches);
+    sync();
+    media.addEventListener?.('change', sync);
+    return () => media.removeEventListener?.('change', sync);
+  }, []);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !artUrl) return undefined;
+    if (!desktopEnabled || !canvas || !artUrl) return undefined;
 
     let renderer;
     try {
@@ -62,10 +79,15 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     }
 
     const lighting = homeCastleLightingProfile(ambient);
+    const renderPolicy = homeCastle3DRenderPolicy({
+      viewportWidth: window.innerWidth,
+      devicePixelRatio: window.devicePixelRatio || 1,
+      hardwareConcurrency: navigator.hardwareConcurrency || 8,
+    });
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = lighting.exposure;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.setPixelRatio(renderPolicy.pixelRatio);
 
     const scene = new THREE.Scene();
     addLightRig(scene, lighting);
@@ -112,7 +134,8 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     };
 
     const render = () => {
-      if (disposed) return;
+      frame = 0;
+      if (disposed || document.hidden) return;
       const focused = homeCastleRoomFocus(activeRoomRef.current);
       roomTarget.set(focused.x, focused.y, focused.light);
       roomFocus.lerp(roomTarget, 0.09);
@@ -134,6 +157,10 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       frame = window.requestAnimationFrame(render);
     };
 
+    const resumeRender = () => {
+      if (!disposed && !document.hidden && !frame) frame = window.requestAnimationFrame(render);
+    };
+
     const onPointerMove = (event) => {
       if (reducedMotion?.matches) return;
       const rect = canvas.getBoundingClientRect();
@@ -146,10 +173,19 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
 
     const onPointerLeave = () => target.set(0, 0);
     const onContextLost = () => canvas.classList.remove('is-ready');
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        if (frame) window.cancelAnimationFrame(frame);
+        frame = 0;
+      } else {
+        resumeRender();
+      }
+    };
 
     const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null;
     observer?.observe(canvas);
     window.addEventListener('resize', resize, { passive: true });
+    document.addEventListener('visibilitychange', onVisibilityChange);
     canvas.parentElement?.addEventListener('pointermove', onPointerMove, { passive: true });
     canvas.parentElement?.addEventListener('pointerleave', onPointerLeave, { passive: true });
     canvas.addEventListener('webglcontextlost', onContextLost);
@@ -172,13 +208,14 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       undefined,
       () => canvas.classList.remove('is-ready'),
     );
-    render();
+    resumeRender();
 
     return () => {
       disposed = true;
-      window.cancelAnimationFrame(frame);
+      if (frame) window.cancelAnimationFrame(frame);
       observer?.disconnect();
       window.removeEventListener('resize', resize);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
       canvas.parentElement?.removeEventListener('pointermove', onPointerMove);
       canvas.parentElement?.removeEventListener('pointerleave', onPointerLeave);
       canvas.removeEventListener('webglcontextlost', onContextLost);
@@ -187,7 +224,8 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       geometry.dispose();
       renderer.dispose();
     };
-  }, [ambient, artUrl]);
+  }, [ambient, artUrl, desktopEnabled]);
 
+  if (!desktopEnabled) return null;
   return <canvas ref={canvasRef} className="illustrated-home__castle-3d" aria-hidden="true" />;
 }
