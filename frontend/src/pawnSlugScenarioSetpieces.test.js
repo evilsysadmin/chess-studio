@@ -48,6 +48,37 @@ describe('Pawn Slug reactive scenario setpieces', () => {
     expect(material.opacity).toBeCloseTo(0.86);
   });
 
+  it('fades nested convoy and rat materials before hiding their groups', () => {
+    const root = new THREE.Group();
+    const ruins = new THREE.Group();
+    ruins.name = 'pawn-slug-landmark-gambit-ruins';
+    ruins.position.x = 30.5;
+    root.add(ruins);
+    const dungeon = new THREE.Group();
+    dungeon.name = 'pawn-slug-landmark-dungeon-gate';
+    dungeon.position.x = 44.5;
+    root.add(dungeon);
+
+    const controller = createPawnSlugReactiveSetpieces(root);
+    const convoy = root.getObjectByName('pawn-slug-setpiece-ruins-convoy');
+    const rats = root.getObjectByName('pawn-slug-setpiece-dungeon-rats');
+    const convoyMaterial = convoy.children[0].children[0].material;
+    const ratMaterial = rats.children[0].children[0].material;
+
+    controller.update(38.7, 4);
+    controller.update(48.7, 4);
+    expect(convoyMaterial.opacity).toBeCloseTo(0.88);
+    expect(ratMaterial.opacity).toBeCloseTo(0.95);
+
+    controller.update(48.7, 5.2);
+    expect(convoyMaterial.opacity).toBeCloseTo(0.44, 2);
+    expect(ratMaterial.opacity).toBeCloseTo(0.475, 2);
+
+    controller.reset();
+    expect(convoyMaterial.opacity).toBeCloseTo(0.88);
+    expect(ratMaterial.opacity).toBeCloseTo(0.95);
+  });
+
   it('runs a short one-shot reaction and hides it after the beat', () => {
     const root = new THREE.Group();
     const dungeon = new THREE.Group();
