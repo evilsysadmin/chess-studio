@@ -129,7 +129,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           >{matthiasModel.actionLabel}</button>
           <button type="button" onClick={onMatthiasDismiss} aria-label="Cerrar comentario de Matthias">×</button>
         </section>}
-        {!matthiasSpeaking && <button className="illustrated-home__matthias" type="button" onClick={onInsights} aria-label="Abrir Así juegas con Matthias">
+        {(!matthiasSpeaking || matthiasModel.action !== 'insights') && <button className="illustrated-home__matthias" type="button" onClick={onInsights} aria-label="Abrir Así juegas con Matthias">
           <strong>MATTHIAS</strong><span>Comida táctica</span><em>“El progreso se construye jugada a jugada.”</em>
         </button>}
         </aside>
