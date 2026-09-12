@@ -27,6 +27,7 @@ const PARALLAX_Y = 0.022;
 const ROOM_CAMERA_X = 0.012;
 const ROOM_CAMERA_Y = 0.01;
 const IDLE_ROOM_LIGHT_DEPTH = 1.18;
+const IDLE_ROOM_LIGHT_REACH = 1.45;
 
 function frameOrthographicCamera(camera, aspect) {
   const halfHeight = HOME_CASTLE_ART_HEIGHT / 2;
@@ -127,7 +128,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
 
     const scene = new THREE.Scene();
     const torchLights = addLightRig(scene, lighting);
-    const roomLight = new THREE.PointLight(0xffc76f, 0, 1.45, 2);
+    const roomLight = new THREE.PointLight(0xffc76f, 0, IDLE_ROOM_LIGHT_REACH, 2);
     roomLight.position.set(0, 0, IDLE_ROOM_LIGHT_DEPTH);
     scene.add(roomLight);
 
@@ -181,6 +182,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     let disposed = false;
     let intersecting = true;
     let roomLightDepth = IDLE_ROOM_LIGHT_DEPTH;
+    let roomLightReach = IDLE_ROOM_LIGHT_REACH;
 
     const shouldRender = () => homeCastleShouldRender({
       documentHidden: document.hidden,
@@ -209,13 +211,16 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       if (reduced) {
         roomFocus.copy(roomTarget);
         roomLightDepth = focused.depth;
+        roomLightReach = focused.reach;
       } else {
         roomFocus.lerp(roomTarget, 0.09);
         roomLightDepth += (focused.depth - roomLightDepth) * 0.09;
+        roomLightReach += (focused.reach - roomLightReach) * 0.09;
       }
       roomLight.position.x = roomFocus.x;
       roomLight.position.y = roomFocus.y;
       roomLight.position.z = roomLightDepth;
+      roomLight.distance = roomLightReach;
       roomLight.intensity = roomFocus.z;
 
       for (let index = 0; index < torchProps.flames.length; index += 1) {
