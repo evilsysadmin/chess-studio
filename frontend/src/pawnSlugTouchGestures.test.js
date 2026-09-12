@@ -46,18 +46,20 @@ describe('Pawn Slug landscape touch gestures', () => {
     expect(pawnSlugTouchTapAction(14, 14)).toBeNull();
   });
 
-  it('keeps rapid move, jump, fire and power taps alive long enough for the engine to sample them', () => {
+  it('keeps rapid movement and action gestures alive long enough for the engine to sample them', () => {
     expect(pawnSlugTouchMinimumPressMs('left')).toBe(PAWN_SLUG_TOUCH_GESTURE.moveMinPressMs);
     expect(pawnSlugTouchMinimumPressMs('right')).toBe(PAWN_SLUG_TOUCH_GESTURE.moveMinPressMs);
+    expect(pawnSlugTouchMinimumPressMs('crouch')).toBe(PAWN_SLUG_TOUCH_GESTURE.crouchMinPressMs);
     expect(pawnSlugTouchMinimumPressMs('jump')).toBe(PAWN_SLUG_TOUCH_GESTURE.jumpMinPressMs);
     expect(pawnSlugTouchMinimumPressMs('fire')).toBe(PAWN_SLUG_TOUCH_GESTURE.fireMinPressMs);
     expect(pawnSlugTouchMinimumPressMs('grenade')).toBe(PAWN_SLUG_TOUCH_GESTURE.grenadeMinPressMs);
     expect(PAWN_SLUG_TOUCH_GESTURE.fireMinPressMs).toBeGreaterThanOrEqual(45);
     expect(PAWN_SLUG_TOUCH_GESTURE.moveMinPressMs).toBeGreaterThan(PAWN_SLUG_TOUCH_GESTURE.fireMinPressMs);
+    expect(PAWN_SLUG_TOUCH_GESTURE.crouchMinPressMs).toBeGreaterThanOrEqual(PAWN_SLUG_TOUCH_GESTURE.fireMinPressMs);
+    expect(PAWN_SLUG_TOUCH_GESTURE.crouchMinPressMs).toBeLessThan(PAWN_SLUG_TOUCH_GESTURE.jumpMinPressMs);
     expect(PAWN_SLUG_TOUCH_GESTURE.moveMinPressMs).toBeLessThan(PAWN_SLUG_TOUCH_GESTURE.jumpMinPressMs);
     expect(PAWN_SLUG_TOUCH_GESTURE.grenadeMinPressMs).toBeGreaterThanOrEqual(50);
     expect(PAWN_SLUG_TOUCH_GESTURE.grenadeMinPressMs).toBeLessThan(PAWN_SLUG_TOUCH_GESTURE.jumpMinPressMs);
-    expect(pawnSlugTouchMinimumPressMs('crouch')).toBe(0);
   });
 
   it('keeps haptic feedback brief and never models machine-gun vibration', () => {
