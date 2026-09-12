@@ -244,16 +244,21 @@ test('War Room · presupuesto observable de render evita crecimiento GPU acciden
   logRenderAudit('desktop', audit, contract);
 });
 
-test.describe('War Room · Android render budget', () => {
-  test.use({ ...devices['Pixel 5'] });
+test('War Room · Pixel 5 conserva el tier táctil y el presupuesto GPU', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const pixel5 = { ...devices['Pixel 5'] };
+  delete pixel5.defaultBrowserType;
+  const context = await browser.newContext(pixel5);
+  const page = await context.newPage();
 
-  test('Pixel 5 conserva el tier táctil y el presupuesto GPU', async ({ page }) => {
-    test.setTimeout(120_000);
+  try {
     const audit = await collectRenderAudit(page);
     expect(['balanced', 'lite']).toContain(audit.cssAndBacking.sceneTier);
     const contract = expectWithinRenderBudget(audit, { coarsePointer: true });
     expect(contract.idleFrameIntervalMs).toBe(150);
     expect(contract.inspectFrameIntervalMs).toBe(33);
     logRenderAudit('pixel-5', audit, contract);
-  });
+  } finally {
+    await context.close();
+  }
 });
