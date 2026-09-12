@@ -1,5 +1,4 @@
 import { CPU_IDENTITY } from '../cpuIdentity.js';
-import { getUsername } from '../auth.js';
 import { zenModeSummary } from '../zenMode.js';
 import '../styles/29-war-room-chrome.css';
 import './WarRoomReferencePolish.css';
@@ -111,7 +110,6 @@ export default function GameWarRoomCommandColumn({
     );
   }
 
-  const username = getUsername() || 'Tú';
   const hasHint = !zenMode && controls.hintMode !== 'off' && typeof controls.onHint === 'function';
   const hasUndo = !zenMode && controls.hintMode === 'free' && typeof controls.onUndo === 'function';
 
@@ -122,11 +120,6 @@ export default function GameWarRoomCommandColumn({
         data-matthias-war-room-presence="king-piece"
       >
         <span className="game-3d-matchup">
-          <span className="game-3d-human-id" title={username}>
-            <span className="game-3d-human-pawn" aria-hidden="true">♙</span>
-            <strong>{username}</strong>
-          </span>
-          <span className="game-3d-turn-pill-versus" aria-hidden="true">vs</span>
           {CPU_IDENTITY.avatar && <img className="game-3d-turn-pill-avatar" src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />}
           <span className="game-3d-turn-pill-identity">
             <strong role="heading" aria-level="2">{CPU_IDENTITY.name}</strong>

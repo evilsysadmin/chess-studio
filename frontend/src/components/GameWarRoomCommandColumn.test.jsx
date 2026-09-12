@@ -10,10 +10,6 @@ vi.mock('../cpuIdentity.js', () => ({
   },
 }));
 
-vi.mock('../auth.js', () => ({
-  getUsername: () => 'evilsysadmin',
-}));
-
 vi.mock('../zenMode.js', () => ({
   zenModeSummary: (active) => (active ? 'Zen activo' : 'Zen desactivado'),
 }));
@@ -21,7 +17,7 @@ vi.mock('../zenMode.js', () => ({
 import GameWarRoomCommandColumn from './GameWarRoomCommandColumn.jsx';
 
 describe('GameWarRoomCommandColumn', () => {
-  it('reúne jugador, Matthias, turno y acciones en el encabezado del rail', () => {
+  it('reúne Matthias, turno y acciones sin reintroducir identidad del jugador', () => {
     const html = renderToStaticMarkup(
       <GameWarRoomCommandColumn
         game={{ difficulty: 7, turn: 'w', humanColor: 'w', isGameOver: false, history: [] }}
@@ -38,7 +34,8 @@ describe('GameWarRoomCommandColumn', () => {
     expect(html).toContain('data-matthias-war-room-presence="king-piece"');
     expect(html).toContain('game-3d-turn-pill game-3d-matthias-card is-green');
     expect(html).toContain('aria-label="Estado de la partida"');
-    expect(html).toContain('evilsysadmin');
+    expect(html).not.toContain('game-3d-human-id');
+    expect(html).not.toContain('game-3d-turn-pill-versus');
     expect(html).toContain('Matthias');
     expect(html).toContain('CPU nivel 7');
     expect(html).toContain('Tu turno');
