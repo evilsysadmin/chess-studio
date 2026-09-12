@@ -8,7 +8,7 @@
   }
 }
 
-@media (min-width: 1000px) {
+@media (min-width: 390px) {
   .illustrated-home__castle-3d {
     position: absolute;
     inset: 0;
@@ -37,7 +37,7 @@
   }
 }
 
-@media (max-width: 999px) {
+@media (max-width: 389px) {
   .illustrated-home__castle-3d {
     display: none;
   }
