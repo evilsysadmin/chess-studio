@@ -60,6 +60,15 @@ const INSTRUMENT_UPGRADES = Object.freeze({
   }),
 });
 
+const THEME_INSTRUMENT_UPGRADES = Object.freeze({
+  pawnMarshal: Object.freeze({
+    // La marcha pide "metales contenidos": una trompa apagada mantiene el gesto
+    // marcial sin el filo de preset del brass genérico. El resto del arreglo se
+    // conserva intacto para que siga sonando inequívocamente a Matthias.
+    lead: Object.freeze({ brass: 'mutedHorn' }),
+  }),
+});
+
 const EXPANSIVE_SPACE_GENRES = new Set(['SPA / Zen', 'Dark Ambient', 'Ambient / Otros']);
 const SUSTAIN_RICH_GENRES = new Set(['SPA / Zen', 'Clásica', 'Piano / Minimal', 'Dark Ambient', 'Ambient / Otros']);
 
@@ -76,10 +85,11 @@ function blend(current, target, amount = 0.42) {
 }
 
 function upgradedInstrument(theme, feel, lane) {
-  const upgrades = INSTRUMENT_UPGRADES[theme?.genre]?.[lane];
+  const themeUpgrades = THEME_INSTRUMENT_UPGRADES[theme?.id]?.[lane];
+  const genreUpgrades = INSTRUMENT_UPGRADES[theme?.genre]?.[lane];
   const key = `${lane}Instrument`;
   const current = feel?.[key] || theme?.[key] || null;
-  return upgrades?.[current] || current;
+  return themeUpgrades?.[current] || genreUpgrades?.[current] || current;
 }
 
 function premiumPercussion(feel, genre) {
@@ -197,4 +207,4 @@ export function withAmbientPremiumProduction(theme, feel) {
   return Object.freeze(result);
 }
 
-export { GENRE_PRODUCTION, INSTRUMENT_UPGRADES, PERFORMANCE_FINISH };
+export { GENRE_PRODUCTION, INSTRUMENT_UPGRADES, PERFORMANCE_FINISH, THEME_INSTRUMENT_UPGRADES };
