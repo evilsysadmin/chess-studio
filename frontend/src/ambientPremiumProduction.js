@@ -105,7 +105,12 @@ function premiumSignature(feel, genre) {
 
   const currentVolume = finiteOr(signature.volume, target.signatureVolume ?? 0.24);
   const currentDuration = finiteOr(signature.durationSteps, target.signatureDuration ?? 4);
-  const nextVolume = Number.isFinite(target.signatureVolume)
+  // Una firma que ya llega deliberadamente en segundo plano (<= .22) no se
+  // promociona a hook principal durante el mastering. Puede respirar algo más,
+  // pero conserva su presencia escrita. Es el equivalente musical de no subir
+  // al mayordomo encima de la mesa sólo porque hemos comprado mejores focos.
+  const preserveSparseVolume = currentVolume <= 0.22;
+  const nextVolume = !preserveSparseVolume && Number.isFinite(target.signatureVolume)
     ? clamp(blend(currentVolume, target.signatureVolume, 0.30), 0.14, 0.36)
     : currentVolume;
   const nextDuration = Number.isFinite(target.signatureDuration)
