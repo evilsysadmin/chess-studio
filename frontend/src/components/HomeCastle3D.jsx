@@ -8,6 +8,7 @@ import {
 import { homeCastleLightingProfile } from './HomeCastle3DLighting.js';
 import { homeCastleRoomFocus } from './HomeCastle3DRoomFocus.js';
 import { HOME_CASTLE_3D_MIN_WIDTH, homeCastle3DRenderPolicy } from './HomeCastle3DRenderPolicy.js';
+import { applyCanonicalHallOcclusion } from './HomeCastle3DOcclusion.js';
 
 const CAMERA_Z = 3;
 const PARALLAX_X = 0.034;
@@ -106,6 +107,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     camera.position.set(0, 0, CAMERA_Z);
 
     const geometry = createCanonicalHallGeometry();
+    applyCanonicalHallOcclusion(geometry);
     const material = new THREE.MeshStandardMaterial({
       transparent: true,
       roughness: 0.96,
@@ -113,9 +115,21 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       emissive: 0xffffff,
       emissiveIntensity: 0.72,
     });
+    const occlusionMaterial = new THREE.MeshBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.18,
+      blending: THREE.MultiplyBlending,
+      depthWrite: false,
+      toneMapped: false,
+    });
     const art = new THREE.Mesh(geometry, material);
     art.scale.setScalar(1.018);
-    scene.add(art);
+    const occlusion = new THREE.Mesh(geometry, occlusionMaterial);
+    occlusion.scale.setScalar(1.018);
+    occlusion.position.z = 0.0015;
+    occlusion.renderOrder = 1;
+    scene.add(art, occlusion);
 
     const pointer = new THREE.Vector2();
     const target = new THREE.Vector2();
@@ -221,6 +235,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       canvas.removeEventListener('webglcontextlost', onContextLost);
       material.map?.dispose();
       material.dispose();
+      occlusionMaterial.dispose();
       geometry.dispose();
       renderer.dispose();
     };
