@@ -148,8 +148,8 @@ async function startScenario(page, scenario, requestLog) {
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await expect(gameStatus(page)).toBeVisible();
   await setRendererViaAppearance(page, '2D');
+  await expect(gameStatus(page)).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
 }
 
 async function waitForWarRoom(page) {
