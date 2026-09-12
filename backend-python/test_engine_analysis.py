@@ -4,7 +4,14 @@ import chess
 import pytest
 
 import engine_analysis
-from engine_analysis import RootCandidateAnalysis, analyze_root_candidates, compare_root_move, score_root_candidates
+from engine_analysis import (
+    RootCandidateAnalysis,
+    RootMoveComparison,
+    analyze_root_candidates,
+    compare_root_move,
+    compare_root_move_iterative,
+    score_root_candidates,
+)
 
 
 def test_score_root_candidates_covers_every_legal_move_and_preserves_board():
@@ -126,5 +133,67 @@ def test_compare_root_move_rejects_illegal_played_move_before_search(monkeypatch
 
     with pytest.raises(ValueError, match="played_move must be legal"):
         compare_root_move(board, chess.Move.from_uci("e2e5"), depth=2, budget_s=1.0)
+
+    assert searched is False
+
+
+def test_iterative_comparison_returns_deepest_completed_pass(monkeypatch):
+    board = chess.Board()
+    played = chess.Move.from_uci("e2e4")
+    replies = []
+
+    def fake_compare(_board, move, *, depth, deadline=None, **_kwargs):
+        replies.append((depth, deadline))
+        if depth == 3:
+            raise TimeoutError
+        return RootMoveComparison(
+            best_move=played,
+            played_move=move,
+            best_score=10.0 * depth,
+            played_score=10.0 * depth,
+            best_reply=None,
+            played_reply=None,
+            loss=0.0,
+            depth=depth,
+            candidate_count=20,
+        )
+
+    monkeypatch.setattr(engine_analysis, "compare_root_move", fake_compare)
+
+    result = compare_root_move_iterative(board, played, max_depth=4, budget_s=10.0)
+
+    assert result.depth == 2
+    assert [depth for depth, _ in replies] == [1, 2, 3]
+    assert len({deadline for _, deadline in replies}) == 1
+
+
+def test_iterative_comparison_raises_when_no_depth_completes(monkeypatch):
+    board = chess.Board()
+    played = chess.Move.from_uci("e2e4")
+    monkeypatch.setattr(
+        engine_analysis,
+        "compare_root_move",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(TimeoutError()),
+    )
+
+    with pytest.raises(TimeoutError):
+        compare_root_move_iterative(board, played, max_depth=3, budget_s=1.0)
+
+
+def test_iterative_comparison_validates_depth_and_played_move_before_search(monkeypatch):
+    board = chess.Board()
+    searched = False
+
+    def unexpected_search(*_args, **_kwargs):
+        nonlocal searched
+        searched = True
+        raise AssertionError("search should not run")
+
+    monkeypatch.setattr(engine_analysis, "compare_root_move", unexpected_search)
+
+    with pytest.raises(ValueError, match="max_depth"):
+        compare_root_move_iterative(board, chess.Move.from_uci("e2e4"), max_depth=0, budget_s=1.0)
+    with pytest.raises(ValueError, match="played_move must be legal"):
+        compare_root_move_iterative(board, chess.Move.from_uci("e2e5"), max_depth=2, budget_s=1.0)
 
     assert searched is False
