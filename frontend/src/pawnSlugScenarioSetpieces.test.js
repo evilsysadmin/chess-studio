@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import { createPawnSlugPremiumLandmarks } from './pawnSlugLandmarks.js';
-import { createPawnSlugReactiveSetpieces } from './pawnSlugScenarioSetpieces.js';
+import { attachPawnSlugReactiveSetpieces, createPawnSlugReactiveSetpieces } from './pawnSlugScenarioSetpieces.js';
 
 describe('Pawn Slug reactive scenario setpieces', () => {
   it('installs premium proximity setpieces across the biome arc including a distant ruins convoy', () => {
@@ -26,6 +26,28 @@ describe('Pawn Slug reactive scenario setpieces', () => {
     controller.update(0, 1);
     expect(leaves.visible).toBe(false);
     controller.update(18.7, 2);
+    expect(leaves.visible).toBe(true);
+  });
+
+  it('auto-triggers hidden setpieces from visible scenario art', () => {
+    const root = new THREE.Group();
+    const forest = new THREE.Group();
+    forest.name = 'pawn-slug-landmark-fallen-forest';
+    forest.position.x = 10.5;
+    const driver = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
+    forest.add(driver);
+    root.add(forest);
+
+    attachPawnSlugReactiveSetpieces(root);
+    const leaves = root.getObjectByName('pawn-slug-setpiece-forest-leaves');
+    expect(leaves.visible).toBe(false);
+    expect(typeof driver.onBeforeRender).toBe('function');
+
+    driver.onBeforeRender(
+      { info: { render: { frame: 1 } } },
+      null,
+      { position: { x: 18.7 } },
+    );
     expect(leaves.visible).toBe(true);
   });
 
