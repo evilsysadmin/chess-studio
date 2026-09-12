@@ -78,17 +78,31 @@ export default function PawnSlugTouchSurface({ send }) {
     timersRef.current.set(timer, action);
   }
 
-  useEffect(() => () => {
-    const actionsToRelease = new Set();
-    for (const [timer, action] of timersRef.current) {
-      window.clearTimeout(timer);
-      actionsToRelease.add(action);
+  useEffect(() => {
+    function releaseAllTouchInput() {
+      const actionsToRelease = new Set();
+      for (const [timer, action] of timersRef.current) {
+        window.clearTimeout(timer);
+        actionsToRelease.add(action);
+      }
+      timersRef.current.clear();
+      for (const action of ownersRef.current.clear()) actionsToRelease.add(action);
+      pointersRef.current.clear();
+      powerPointersRef.current.clear();
+      for (const action of actionsToRelease) sendRef.current(action, false);
     }
-    timersRef.current.clear();
-    for (const action of ownersRef.current.clear()) actionsToRelease.add(action);
-    pointersRef.current.clear();
-    powerPointersRef.current.clear();
-    for (const action of actionsToRelease) sendRef.current(action, false);
+
+    function onVisibilityChange() {
+      if (document.visibilityState === 'hidden') releaseAllTouchInput();
+    }
+
+    window.addEventListener('blur', releaseAllTouchInput);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.removeEventListener('blur', releaseAllTouchInput);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      releaseAllTouchInput();
+    };
   }, []);
 
   function point(event) {
