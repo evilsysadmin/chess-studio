@@ -14,15 +14,7 @@
     padding: 58px 0 0;
     overflow: hidden;
     isolation: isolate;
-    background:
-      linear-gradient(180deg,
-        rgba(20, 11, 6, 0) 28%,
-        rgba(16, 8, 4, .12) 42%,
-        rgba(12, 6, 3, .46) 68%,
-        rgba(8, 4, 2, .82) 100%),
-      radial-gradient(ellipse at 72% 67%, rgba(187, 94, 38, .14), transparent 36%),
-      var(--home-hall-art) 72% 100% / 210% auto no-repeat,
-      #140b06;
+    background: #140b06;
   }
 
   .illustrated-home__stage {
@@ -36,23 +28,40 @@
     overflow: visible;
   }
 
-  /* The canonical scene remains untouched. The continuation now lives on the
-     Home background so it can use a different crop without duplicating the
-     central table. Keep only a soft seam below the 16:9 hero. */
+  /* --home-hall-art is defined on the stage itself. Build the continuation here
+     so the canonical asset is guaranteed to resolve, and zoom into the lower-right
+     floor/fireplace area rather than repeating the central table. */
   .illustrated-home__stage::before {
-    content: none;
-  }
-
-  .illustrated-home__stage::after {
     content: '';
     position: absolute;
     z-index: -1;
     left: 0;
     right: 0;
-    top: 100%;
-    height: clamp(90px, 12dvh, 180px);
+    top: calc(100% - 1px);
+    height: max(0px, calc(100dvh - 58px - clamp(22px, 4dvh, 64px) - 56.25vw + 2px));
     pointer-events: none;
-    background: linear-gradient(180deg, rgba(10, 5, 3, .58), transparent 100%);
+    background:
+      linear-gradient(180deg,
+        rgba(13, 7, 4, .18) 0%,
+        rgba(11, 6, 3, .34) 38%,
+        rgba(9, 4, 2, .70) 76%,
+        rgba(7, 3, 2, .90) 100%),
+      radial-gradient(ellipse at 72% 24%, rgba(196, 99, 38, .16), transparent 35%),
+      var(--home-hall-art) 72% 100% / 210% auto no-repeat,
+      #140b06;
+    filter: saturate(.82) brightness(.74);
+  }
+
+  .illustrated-home__stage::after {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    left: 0;
+    right: 0;
+    top: calc(100% - 1px);
+    height: clamp(80px, 10dvh, 150px);
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(10, 5, 3, .72), rgba(10, 5, 3, .16) 58%, transparent 100%);
   }
 
   .illustrated-home__art,
