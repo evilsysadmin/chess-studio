@@ -4,13 +4,13 @@ import { buttonWithVisibleText, clickBoardMove, login, mockApi } from './helpers
 const DEVICE_BOARD_RENDERER_KEY = 'chess-study-device-board-renderer-v1';
 const PIECE_SKIN_KEY = 'chess-study-selected-skin';
 
-async function openQuickMatch(page, expectedRenderer = '3d') {
+async function openQuickMatch(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
   await expect(dialog).toBeVisible();
   const renderer = dialog.getByRole('group', { name: 'Tipo de tablero' });
-  await expect(renderer.getByRole('button', { name: '3D', exact: true })).toHaveAttribute('aria-pressed', expectedRenderer === '3d' ? 'true' : 'false');
-  await expect(renderer.getByRole('button', { name: '2D', exact: true })).toHaveAttribute('aria-pressed', expectedRenderer === '2d' ? 'true' : 'false');
+  await expect(renderer.getByRole('button', { name: '3D', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(renderer.getByRole('button', { name: '2D', exact: true })).toHaveAttribute('aria-pressed', 'false');
   return { dialog, renderer };
 }
 
@@ -100,17 +100,18 @@ test('Partida rápida · un dispositivo limpio conserva War Room como camino pri
   expect(await page.evaluate((key) => localStorage.getItem(key), DEVICE_BOARD_RENDERER_KEY)).toBe('3d');
 });
 
-test('Partida rápida · recuerda una elección 2D explícita en este dispositivo', async ({ page }) => {
+test('Partida rápida · vuelve a ofrecer 3D aunque el dispositivo recuerde una partida 2D', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await mockApi(page);
   await login(page);
   await page.evaluate((key) => localStorage.setItem(key, '2d'), DEVICE_BOARD_RENDERER_KEY);
 
-  const { dialog } = await openQuickMatch(page, '2d');
+  const { dialog } = await openQuickMatch(page);
   await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
 
-  await expectLightweight2D(page);
-  expect(await page.evaluate((key) => localStorage.getItem(key), DEVICE_BOARD_RENDERER_KEY)).toBe('2d');
+  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible();
+  await expect(page.locator('.game-layout-3d')).toBeVisible();
+  expect(await page.evaluate((key) => localStorage.getItem(key), DEVICE_BOARD_RENDERER_KEY)).toBe('3d');
 });
 
 test('Partida rápida · 2D prioriza tablero y controles a 360/390/430 px', async ({ page }) => {
