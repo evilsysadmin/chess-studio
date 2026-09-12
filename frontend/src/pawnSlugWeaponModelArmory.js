@@ -88,11 +88,14 @@ export function pawnSlugBuyOrEquipWeaponModel({ weaponId, modelId, credits = 0 }
   if (safeCredits < cost) return Object.freeze({ ok: false, reason: 'insufficient-credits', cost, credits: safeCredits });
 
   const owned = alreadyOwned ? [...current.owned] : [...current.owned, model.id];
-  currentState = normalize({
+  const nextState = normalize({
     ...currentState,
     [weaponId]: { equipped: model.id, owned },
   });
-  setProfileStorageItem(STORAGE_KEY, JSON.stringify(currentState));
+  if (!setProfileStorageItem(STORAGE_KEY, JSON.stringify(nextState))) {
+    return Object.freeze({ ok: false, reason: 'profile-changed', cost, credits: safeCredits });
+  }
+  currentState = nextState;
   return Object.freeze({ ok: true, cost, credits: safeCredits - cost, model, state: currentState });
 }
 
