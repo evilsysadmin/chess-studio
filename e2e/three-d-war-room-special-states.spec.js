@@ -16,14 +16,22 @@ const PROMOTION_END_FEN = 'k5N1/8/p7/8/8/8/8/7K w - - 0 2';
 
 async function setRendererViaAppearance(page, renderer) {
   const warRoom = page.locator('[data-board3d-war-room="true"]');
+  const appearance2D = page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true });
+
+  await expect.poll(async () => {
+    const warRoomVisible = await warRoom.isVisible().catch(() => false);
+    const appearance2DVisible = await appearance2D.isVisible().catch(() => false);
+    return warRoomVisible || appearance2DVisible;
+  }, { timeout: WAR_ROOM_READY_TIMEOUT }).toBe(true);
+
   let button;
-  if (await warRoom.count()) {
+  if (await warRoom.isVisible().catch(() => false)) {
     const utilityMenu = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
     await expect(utilityMenu).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
     await utilityMenu.click();
     button = page.getByRole('menuitem', { name: 'Apariencia', exact: true });
   } else {
-    button = page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true });
+    button = appearance2D;
   }
 
   await expect(button).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
