@@ -36,3 +36,32 @@ test('War Room · sin WebGL degrada a 2D y conserva la partida jugable', async (
   await expect(fallback.locator('.board-grid')).toBeVisible();
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
 });
+
+test('War Room · perder WebGL en mitad de partida cae a 2D sin perder la sesión', async ({ page }) => {
+  test.setTimeout(90_000);
+  const requestLog = [];
+  await mockApi(page, { requestLog });
+  await login(page);
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+
+  const canvas = page.locator('.board3d-main-canvas');
+  await expect(canvas).toBeVisible({ timeout: 30_000 });
+
+  await canvas.evaluate((element) => {
+    element.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+  });
+
+  const fallback = page.locator('.board3d-fallback');
+  await expect(fallback).toBeVisible({ timeout: 10_000 });
+  await expect(fallback).toContainText('3D no disponible en este dispositivo · usando 2D');
+  await expect(fallback.locator('.board-grid')).toBeVisible();
+  await expect(page.locator('.board3d-main-canvas')).toHaveCount(0);
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+
+  await clickBoardMove(page, 'e2', 'e4');
+  await expect.poll(() => movePosts(requestLog).length, { timeout: 10_000 }).toBe(1);
+  await expect(fallback.locator('.board-grid')).toBeVisible();
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+});
