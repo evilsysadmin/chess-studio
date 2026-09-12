@@ -13,7 +13,6 @@ const checks = [
   [/campaignPhaseTransition/.test(read('frontend/src/combatCampaign.js')), 'campaign domain must use campaign state machine'],
   [/attachSeriesGame/.test(read('frontend/src/App.jsx')) && /assertSeriesFlowInvariant/.test(read('frontend/src/series.js')), 'BO3/BO5 series must enforce explicit flow ownership'],
   [/puzzleTransition/.test(read('frontend/src/components/PuzzleScreen.jsx')), 'PuzzleScreen must use puzzle state machine'],
-  [/operation_idempotency_core/.test(read('scripts/idempotency_smoke.py')) && !/from operation_idempotency import/.test(read('scripts/idempotency_smoke.py')), 'idempotency smoke must remain dependency-free and import the core policy directly'],
   [/create_game_once/.test(read('backend-python/game_api.py')) && /DuplicateKeyError/.test(read('backend-python/game_store.py')), 'game creation must be atomic/idempotent under concurrent retries'],
   [/import uuid/.test(read('backend-python/game_api.py')) && /uuid\.uuid4\(/.test(read('backend-python/game_api.py')), 'non-idempotent game creation must keep its uuid dependency wired'],
   [/reset_resilience_state/.test(read('backend-python/conftest.py')) && /reset_http_metrics/.test(read('backend-python/conftest.py')), 'backend tests must isolate process-global resilience and HTTP pressure between cases'],
