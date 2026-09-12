@@ -9,6 +9,7 @@ import { homeCastleLightingProfile } from './HomeCastle3DLighting.js';
 import { homeCastleRoomFocus } from './HomeCastle3DRoomFocus.js';
 import { HOME_CASTLE_3D_MIN_WIDTH, homeCastle3DRenderPolicy } from './HomeCastle3DRenderPolicy.js';
 import { applyCanonicalHallOcclusion } from './HomeCastle3DOcclusion.js';
+import { HOME_CASTLE_TORCH_ANCHORS, createHomeCastleTorchProps } from './HomeCastle3DProps.js';
 
 const CAMERA_Z = 3;
 const PARALLAX_X = 0.034;
@@ -32,11 +33,13 @@ function addLightRig(scene, profile) {
   key.position.set(-1.6, 1.25, 2.4);
   const fill = new THREE.DirectionalLight(profile.fillColor, profile.fill);
   fill.position.set(1.7, 0.55, 1.8);
-  const leftTorch = new THREE.PointLight(0xff9a48, profile.torch, 2.2, 2);
-  leftTorch.position.set(-1.15, 0.25, 1.1);
-  const rightTorch = leftTorch.clone();
-  rightTorch.position.x = 1.15;
-  scene.add(hemisphere, key, fill, leftTorch, rightTorch);
+  scene.add(hemisphere, key, fill);
+
+  for (const anchor of HOME_CASTLE_TORCH_ANCHORS) {
+    const torchLight = new THREE.PointLight(0xff9a48, profile.torch, 2.2, 2);
+    torchLight.position.set(anchor.x, anchor.y + 0.07, 1.1);
+    scene.add(torchLight);
+  }
 }
 
 function desktopMediaQuery() {
@@ -131,6 +134,10 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     occlusion.position.z = 0.0015;
     occlusion.renderOrder = 1;
     scene.add(art, occlusion);
+
+    const torchProps = createHomeCastleTorchProps();
+    torchProps.group.renderOrder = 2;
+    scene.add(torchProps.group);
 
     const pointer = new THREE.Vector2();
     const target = new THREE.Vector2();
@@ -237,6 +244,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       material.map?.dispose();
       material.dispose();
       occlusionMaterial.dispose();
+      torchProps.dispose();
       geometry.dispose();
       renderer.dispose();
     };
