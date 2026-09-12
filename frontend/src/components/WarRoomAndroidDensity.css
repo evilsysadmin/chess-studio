@@ -7,60 +7,100 @@
     display: none !important;
   }
 
+  /* The column is a layout wrapper only. Old mobile layers can leave it above
+     its own children in the hit-test stack; make the wrapper transparent to
+     touches and opt the real HUD controls back in explicitly. */
   .game-screen .game-layout-3d .game-3d-command-column {
     width: 100%;
     margin: 0;
     padding: 0;
+    pointer-events: none;
   }
 
   .game-screen .game-layout-3d .game-3d-turn-pill,
   .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
-    width: min(100%, 22rem);
-    min-height: 34px !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 8px max-content 60px 34px;
+    align-items: center;
+    justify-content: stretch;
+    width: 100%;
+    max-width: 100%;
+    min-height: 38px !important;
     margin-inline: auto;
-    padding: .28rem 6.35rem .28rem .48rem !important;
-    gap: .3rem;
-    justify-content: center;
+    padding: .22rem .34rem !important;
+    gap: .28rem;
+    overflow: visible;
+    pointer-events: auto;
   }
 
-  .game-screen .game-layout-3d .game-3d-turn-pill-avatar {
-    width: 20px;
-    height: 20px;
-    flex-basis: 20px;
-  }
-
+  /* Portrait does not need a second Matthias portrait next to a full 3D room.
+     Spend those pixels on his name + CPU level, which carries more information. */
+  .game-screen .game-layout-3d .game-3d-turn-pill-avatar,
   .game-screen .game-layout-3d .game-3d-turn-pill-divider {
-    height: 16px;
+    display: none !important;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill-identity {
+    display: flex;
+    align-items: baseline;
+    min-width: 0;
+    gap: .18rem;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: .58rem;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill-identity strong {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .64rem;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill-identity > span {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: color-mix(in srgb, var(--studio-muted) 82%, var(--cream));
+    font-size: .52rem;
   }
 
   .game-screen .game-layout-3d .game-3d-turn-pill-light {
     width: 8px;
     height: 8px;
     flex-basis: 8px;
+    margin: 0;
   }
 
-  .game-screen .game-layout-3d .game-3d-turn-pill-identity,
   .game-screen .game-layout-3d .game-3d-turn-pill-label {
-    font-size: .6rem;
-  }
-
-  .game-screen .game-layout-3d .game-3d-turn-pill-identity strong {
-    font-size: .64rem;
+    min-width: max-content;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .59rem;
   }
 
   /* Focus and resign remain one-tap actions, but live as two quiet 28px tools
      inside the tactical HUD instead of a full-width command bar. */
   .game-screen .game-layout-3d .game-3d-compact-actions {
-    position: absolute;
-    z-index: 221;
-    top: 50%;
-    right: 2.78rem;
+    position: relative;
+    z-index: 4;
     display: flex;
-    gap: .22rem;
-    transform: translateY(-50%);
+    align-items: center;
+    justify-content: flex-end;
+    gap: .2rem;
+    width: 60px;
+    transform: none;
+    pointer-events: auto;
   }
 
   .game-screen .game-layout-3d .game-3d-compact-action {
+    position: relative;
+    z-index: 5;
     display: grid;
     place-items: center;
     width: 28px;
@@ -75,6 +115,8 @@
     font: 800 .82rem/1 var(--font-body);
     cursor: pointer;
     opacity: .78;
+    pointer-events: auto;
+    touch-action: manipulation;
   }
 
   .game-screen .game-layout-3d .game-3d-compact-action:is(:hover, :focus-visible) {
@@ -93,6 +135,24 @@
   .game-screen .game-layout-3d .game-3d-compact-action.is-abandon:is(:hover, :focus-visible) {
     border-color: rgba(192, 92, 82, .5);
     color: #dfaaa2;
+  }
+
+  /* Override the older absolutely-positioned compact menu. It is now simply
+     the final grid cell, so hit targets cannot overlap the HUD or each other. */
+  .game-screen .game-layout-3d .game-3d-utility-menu {
+    position: relative;
+    z-index: 6;
+    top: auto;
+    right: auto;
+    width: 34px;
+    height: 34px;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  .game-screen .game-layout-3d .game-3d-utility-menu > summary {
+    pointer-events: auto;
+    touch-action: manipulation;
   }
 
   /* Keep the app masthead functional, but make it a thin utility rail instead
@@ -144,23 +204,42 @@
      the less frequent tools, without turning them into permanent chrome. */
   .game-screen .game-layout-3d .game-3d-utility-popover {
     width: min(196px, calc(100vw - 1rem));
+    pointer-events: auto;
   }
 
   .game-screen .game-layout-3d .game-3d-utility-popover button {
     min-height: 42px;
+    pointer-events: auto;
   }
 }
 
 @media (max-width: 390px) {
   .game-screen .game-layout-3d .game-3d-turn-pill,
   .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
-    width: 100%;
-    padding-left: .4rem !important;
-    padding-right: 6.15rem !important;
-    gap: .24rem;
+    grid-template-columns: minmax(0, 1fr) 7px max-content 56px 32px;
+    gap: .22rem;
+    padding: .2rem .28rem !important;
   }
 
   .game-screen .game-layout-3d .game-3d-turn-pill-identity > span {
-    font-size: .55rem;
+    font-size: .49rem;
+  }
+
+  .game-screen .game-layout-3d .game-3d-compact-actions {
+    width: 56px;
+    gap: .16rem;
+  }
+
+  .game-screen .game-layout-3d .game-3d-compact-action {
+    width: 27px;
+    min-width: 27px;
+    height: 27px;
+    min-height: 27px;
+  }
+
+  .game-screen .game-layout-3d .game-3d-utility-menu,
+  .game-screen .game-layout-3d .game-3d-utility-menu > summary {
+    width: 32px;
+    height: 32px;
   }
 }
