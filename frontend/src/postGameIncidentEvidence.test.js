@@ -31,6 +31,41 @@ describe('post-game incident evidence', () => {
       lossCp: 500,
       evalAfterPlayed: -120,
       evalAfterSuggested: 99999,
+      factualAnalysis: null,
+    });
+  });
+
+  it('keeps shared-minimax scores and replies separate from legacy evals', () => {
+    const evidence = buildPostGameIncidentEvidence({
+      played: 'e4',
+      playedFrom: 'e2',
+      playedTo: 'e4',
+      suggested: 'd4',
+      suggestedFrom: 'd2',
+      suggestedTo: 'd4',
+      loss: 73,
+      evalAfterSuggested: 100000,
+      evalAfterPlayed: 100000,
+      factualEvalAfterSuggested: 42,
+      factualEvalAfterPlayed: -31,
+      suggestedReply: { san: 'd5', from: 'd7', to: 'd5' },
+      playedReply: { san: 'e5', from: 'e7', to: 'e5' },
+      analysisDepth: 3,
+      candidateCount: 20,
+      context: { fenBefore: START_FEN },
+    });
+
+    expect(evidence.evalAfterSuggested).toBe(100000);
+    expect(evidence.evalAfterPlayed).toBe(100000);
+    expect(evidence.factualAnalysis).toEqual({
+      source: 'shared-minimax',
+      lossCp: 73,
+      evalAfterSuggested: 42,
+      evalAfterPlayed: -31,
+      suggestedReply: { san: 'd5', from: 'd7', to: 'd5', promotion: null },
+      playedReply: { san: 'e5', from: 'e7', to: 'e5', promotion: null },
+      analysisDepth: 3,
+      candidateCount: 20,
     });
   });
 
@@ -59,12 +94,15 @@ describe('post-game incident evidence', () => {
       loss: null,
       evalAfterPlayed: null,
       evalAfterSuggested: null,
+      factualEvalAfterPlayed: null,
+      factualEvalAfterSuggested: null,
       context: { fenBefore: START_FEN },
     });
 
     expect(evidence.lossCp).toBeNull();
     expect(evidence.evalAfterPlayed).toBeNull();
     expect(evidence.evalAfterSuggested).toBeNull();
+    expect(evidence.factualAnalysis).toBeNull();
     expect(evidence.severity).toBe('unrated');
     expect(evidence.classification).toBe('unrated');
   });
