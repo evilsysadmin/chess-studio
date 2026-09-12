@@ -1,4 +1,4 @@
-import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
+import { STORAGE_LOCAL, getStorageItem, setStorageItem } from './safeStorage.js';
 import { PROFILE_CHANGED_EVENT, setProfileStorageItem } from './profileKeys.js';
 import { TIME_CONTROLS } from './clock.js';
 
@@ -7,6 +7,7 @@ export const UI_LANGUAGE_KEY = 'chess-study-ui-language';
 export const REDUCED_MOTION_KEY = 'chess-study-reduced-motion';
 export const BOARD_COORDINATES_KEY = 'chess-study-board-coordinates';
 export const BOARD_RENDERER_KEY = 'chess-study-board-renderer';
+export const DEVICE_BOARD_RENDERER_KEY = 'chess-study-device-board-renderer-v1';
 export const EXPLICIT_2D_BOARD_RENDERER_VALUE = '2d-explicit-v1';
 export const USER_PREFERENCES_CHANGED_EVENT = 'chess-study-user-preferences-changed';
 export const SUPPORTED_UI_LANGUAGES = [
@@ -150,6 +151,14 @@ export function getConfiguredBoardRendererDefault() {
 }
 
 export function getBoardRenderer() {
+  // El renderer es una preferencia del dispositivo. Un Android puede usar el
+  // tablero ligero sin arrastrar esa elección al portátil del mismo usuario.
+  const deviceRenderer = getStorageItem(STORAGE_LOCAL, DEVICE_BOARD_RENDERER_KEY);
+  if (BOARD_RENDERERS.some((row) => row.id === deviceRenderer)) return deviceRenderer;
+
+  // Compatibilidad: antes la elección se sincronizaba dentro del perfil. La
+  // respetamos como fallback mientras este dispositivo aún no haya elegido,
+  // pero los setters nuevos dejan la clave remota neutralizada en 3D.
   const stored = getStorageItem(STORAGE_LOCAL, BOARD_RENDERER_KEY);
   if (stored === EXPLICIT_2D_BOARD_RENDERER_VALUE) return '2d';
   // Plain `2d` is the legacy value written before War Room became the product
@@ -163,8 +172,10 @@ export function getBoardRenderer() {
 
 export function setBoardRenderer(value) {
   const normalized = BOARD_RENDERERS.some((row) => row.id === value) ? value : '3d';
-  const persisted = normalized === '2d' ? EXPLICIT_2D_BOARD_RENDERER_VALUE : '3d';
-  setProfileStorageItem(BOARD_RENDERER_KEY, persisted);
+  setStorageItem(STORAGE_LOCAL, DEVICE_BOARD_RENDERER_KEY, normalized);
+  // La antigua preferencia sincronizada queda en el valor canónico para que
+  // un dispositivo nuevo sin override local siga entrando en War Room.
+  setProfileStorageItem(BOARD_RENDERER_KEY, '3d');
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(USER_PREFERENCES_CHANGED_EVENT));
   return normalized;
 }
