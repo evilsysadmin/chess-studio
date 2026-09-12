@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { setStorageItem, STORAGE_LOCAL } from './safeStorage.js';
+import { bindProfileStorageIdentity } from './profileKeys.js';
+import { removeStorageItem, setStorageItem, STORAGE_LOCAL } from './safeStorage.js';
 import {
   PAWN_SLUG_WEAPON_MODEL_ARMORY_META,
   pawnSlugBuyOrEquipWeaponModel,
@@ -9,8 +10,14 @@ import {
   resetPawnSlugWeaponModelArmory,
 } from './pawnSlugWeaponModelArmory.js';
 
+const AUTH_USERNAME_KEY = 'chess-study-auth-username';
+
 describe('Pawn Slug concrete weapon model armory', () => {
-  beforeEach(() => resetPawnSlugWeaponModelArmory());
+  beforeEach(() => {
+    bindProfileStorageIdentity(null);
+    removeStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY);
+    resetPawnSlugWeaponModelArmory();
+  });
 
   it('starts with the live defaults owned and equipped', () => {
     expect(pawnSlugEquippedModelId('pistol')).toBe('dienstpistole');
@@ -52,5 +59,15 @@ describe('Pawn Slug concrete weapon model armory', () => {
     refreshPawnSlugWeaponModelArmory();
     expect(pawnSlugEquippedModelId('pistol')).toBe('glock17');
     expect(pawnSlugWeaponModelOffers().find((slot) => slot.weaponId === 'pistol')?.models.find((model) => model.equipped)?.id).toBe('glock17');
+  });
+
+  it('rejects a purchase when the tab is bound to a stale profile identity', () => {
+    bindProfileStorageIdentity('alice');
+    setStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY, 'bob');
+
+    const result = pawnSlugBuyOrEquipWeaponModel({ weaponId: 'pistol', modelId: 'desert-eagle', credits: 100 });
+
+    expect(result).toMatchObject({ ok: false, reason: 'profile-changed', cost: 65, credits: 100 });
+    expect(pawnSlugEquippedModelId('pistol')).toBe('dienstpistole');
   });
 });
