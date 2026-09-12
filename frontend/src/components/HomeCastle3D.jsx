@@ -6,7 +6,7 @@ import {
   createCanonicalHallGeometry,
 } from './HomeCastle3DGeometry.js';
 import { homeCastleLightingProfile } from './HomeCastle3DLighting.js';
-import { homeCastleRoomFocus } from './HomeCastle3DInteraction.js';
+import { homeCastleRoomFocus } from './HomeCastle3DRoomFocus.js';
 
 const CAMERA_Z = 3;
 const PARALLAX_X = 0.034;
