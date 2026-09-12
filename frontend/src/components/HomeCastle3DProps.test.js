@@ -10,10 +10,12 @@ describe('HomeCastle3DProps', () => {
     expect(left.z).toBe(right.z);
   });
 
-  it('keeps both torch anchors inside the canonical hall framing', () => {
+  it('keeps both torch anchors on the inner wall sconces, away from menu copy', () => {
     for (const anchor of HOME_CASTLE_TORCH_ANCHORS) {
-      expect(Math.abs(anchor.x)).toBeLessThan(1.6);
-      expect(Math.abs(anchor.y)).toBeLessThan(0.9);
+      expect(Math.abs(anchor.x)).toBeGreaterThan(0.65);
+      expect(Math.abs(anchor.x)).toBeLessThan(0.8);
+      expect(anchor.y).toBeGreaterThan(0.18);
+      expect(anchor.y).toBeLessThan(0.3);
       expect(anchor.z).toBeGreaterThan(0);
       expect(anchor.z).toBeLessThan(0.3);
     }
