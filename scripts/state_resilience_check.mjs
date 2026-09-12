@@ -16,7 +16,6 @@ const checks = [
   [/create_game_once/.test(read('backend-python/game_api.py')) && /DuplicateKeyError/.test(read('backend-python/game_store.py')), 'game creation must be atomic/idempotent under concurrent retries'],
   [/import uuid/.test(read('backend-python/game_api.py')) && /uuid\.uuid4\(/.test(read('backend-python/game_api.py')), 'non-idempotent game creation must keep its uuid dependency wired'],
   [/reset_resilience_state/.test(read('backend-python/conftest.py')) && /reset_http_metrics/.test(read('backend-python/conftest.py')), 'backend tests must isolate process-global resilience and HTTP pressure between cases'],
-  [/activeGame/.test(read('scripts/state_ownership_contract.json')), 'durable state domains must declare an authority'],
   [/golden journey/.test(read('e2e/smoke.spec.js')), 'release smoke must include a golden end-to-end journey'],
 ];
 const failed = checks.filter(([ok]) => !ok).map(([, msg]) => msg);
@@ -41,6 +40,7 @@ must(combat.combatFlowTransition('battle', 'reset').ok === false, 'battle may no
 must(campaign.campaignPhaseTransition('fighting', 'win').nextState === 'reward', 'campaign win transition broken');
 must(puzzle.puzzleTransition('solving', 'correct_continue').nextState === 'opponent_reply', 'puzzle reply state broken');
 must(series.seriesFlowPhase(series.attachSeriesGame({ winner: null, currentGameId: null }, 'g-1')) === 'playing', 'series game attachment broken');
+must(ownership.activeGame, 'durable state domains must declare activeGame ownership');
 for (const [domain, owner] of Object.entries(ownership)) {
   must(typeof owner?.authority === 'string' && owner.authority.trim(), `${domain} has no authority`);
   must(!owner.authority.includes(','), `${domain} declares multiple authorities`);
