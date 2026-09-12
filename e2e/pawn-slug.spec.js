@@ -170,7 +170,10 @@ test('Pawn Slug · móvil expone controles táctiles y arsenal sin overflow hori
 });
 
 test('Pawn Slug · Android landscape usa gestos y conserva targets jugables en pantallas cortas', async ({ browser }) => {
-  test.setTimeout(90_000);
+  // One premium WebGL boot plus three real landscape reflows is consistently
+  // slower than the simpler mobile smoke on shared CI runners. Keep the larger
+  // budget local while preserving all three viewport/target assertions.
+  test.setTimeout(120_000);
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
     hasTouch: true,
