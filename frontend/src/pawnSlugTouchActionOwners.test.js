@@ -14,6 +14,28 @@ describe('Pawn Slug touch action ownership', () => {
     expect(owners.has('right')).toBe(false);
   });
 
+  it('keeps movement, jump and fire independently owned during multitouch play', () => {
+    const owners = createPawnSlugTouchActionOwners();
+
+    expect(owners.acquire('right', 11)).toBe(true);
+    expect(owners.acquire('jump', 12)).toBe(true);
+    expect(owners.acquire('fire', 13)).toBe(true);
+    expect(owners.has('right')).toBe(true);
+    expect(owners.has('jump')).toBe(true);
+    expect(owners.has('fire')).toBe(true);
+
+    expect(owners.release('jump', 12)).toBe(true);
+    expect(owners.has('jump')).toBe(false);
+    expect(owners.has('right')).toBe(true);
+    expect(owners.has('fire')).toBe(true);
+
+    expect(owners.release('right', 11)).toBe(true);
+    expect(owners.has('right')).toBe(false);
+    expect(owners.has('fire')).toBe(true);
+    expect(owners.release('fire', 13)).toBe(true);
+    expect(owners.has('fire')).toBe(false);
+  });
+
   it('does not double-count the same pointer and ignores unknown releases', () => {
     const owners = createPawnSlugTouchActionOwners();
 
