@@ -25,7 +25,7 @@ test('jugada pendiente · salir aborta la operación y una respuesta tardía no 
 
   await login(page);
   await page.evaluate(() => {
-    localStorage.setItem('chess-study-board-renderer', '2d-explicit-v1');
+    localStorage.setItem('chess-study-device-board-renderer-v1', '2d');
     window.dispatchEvent(new Event('chess-study-user-preferences-changed'));
   });
 
