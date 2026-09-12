@@ -32,12 +32,17 @@ function applyMove(board, move) {
 export function counterfactualInputFromReportMove(move) {
   const evidence = buildPostGameIncidentEvidence(move);
   if (!evidence?.fenBefore || !evidence?.suggested) return null;
-  return { fen: evidence.fenBefore, suggested: evidence.suggested };
+  return {
+    fen: evidence.fenBefore,
+    suggested: evidence.suggested,
+    suggestedReply: normalizeEngineMove(move?.suggestedReply),
+  };
 }
 
 export async function buildShortCounterfactual({
   fen,
   suggested,
+  suggestedReply = null,
   analyzeMove,
   level = 95,
   maxPlies = 3,
@@ -58,11 +63,18 @@ export async function buildShortCounterfactual({
   if (!first) return null;
   line.push(first);
 
+  if (line.length < safePlies && !board.isGameOver()) {
+    const factualReply = applyMove(board, normalizeEngineMove(suggestedReply));
+    if (factualReply) line.push(factualReply);
+  }
+
   while (line.length < safePlies && !board.isGameOver()) {
     if (signal?.aborted) throw signal.reason || new DOMException('Aborted', 'AbortError');
     // `/api/analyze-move` uses the deterministic analyze_move path. Omitting a
     // played move asks only for the best continuation, without the randomness
     // and low-level noise intentionally allowed by `/api/analyze` for CPU play.
+    // When the report already carries the factual root reply, the second ply is
+    // reused above so this loop only needs to extend whatever remains.
     const analysis = await analyzeMove(board.fen(), level, { signal });
     const engineMove = normalizeEngineMove(analysis?.suggested);
     const applied = applyMove(board, engineMove);
