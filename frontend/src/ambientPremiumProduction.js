@@ -62,10 +62,15 @@ function upgradedInstrument(theme, feel, lane) {
 function premiumPercussion(feel, genre) {
   if (!feel?.percussion) return feel?.percussion;
   if ((feel.percussion.kit || 'legacy') === 'none') return feel.percussion;
+  const currentPunch = finiteOr(feel.percussion.punch, 1);
+  // Punch extremo suele ser una decisión de arreglo, no un defecto de mezcla:
+  // brushes casi ausentes y baterías rock deliberadamente grandes conservan
+  // su contraste. Sólo pulimos la zona media para no homogeneizar el catálogo.
+  if (currentPunch <= 0.65 || currentPunch >= 1.16) return feel.percussion;
   const targetPunch = genre === 'Energía' || genre === 'Tropical House' ? 1.14 : genre === 'Trip-Hop / Downtempo' ? 1.02 : 0.98;
   return Object.freeze({
     ...feel.percussion,
-    punch: clamp(blend(finiteOr(feel.percussion.punch, 1), targetPunch, 0.34), 0.72, 1.24),
+    punch: clamp(blend(currentPunch, targetPunch, 0.18), 0.62, 1.24),
   });
 }
 
