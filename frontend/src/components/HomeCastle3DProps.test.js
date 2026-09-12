@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS,
+  HOME_CASTLE_DESTINATION_PROP_ANCHORS,
   HOME_CASTLE_DUST_MOTE_COUNT,
   HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR,
   HOME_CASTLE_TORCH_ANCHORS,
+  createHomeCastleDestinationProps,
   createHomeCastleTorchProps,
 } from './HomeCastle3DProps.js';
 
@@ -44,6 +46,28 @@ describe('HomeCastle3DProps', () => {
     expect(HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR.z).toBeLessThan(1);
   });
 
+  it('places the play rook on the center table and daily hourglass on the right altar', () => {
+    expect(Math.abs(HOME_CASTLE_DESTINATION_PROP_ANCHORS.play.x)).toBeLessThan(0.1);
+    expect(HOME_CASTLE_DESTINATION_PROP_ANCHORS.play.y).toBeLessThan(-0.25);
+    expect(HOME_CASTLE_DESTINATION_PROP_ANCHORS.play.z).toBeGreaterThan(0.25);
+
+    expect(HOME_CASTLE_DESTINATION_PROP_ANCHORS.daily.x).toBeGreaterThan(0.75);
+    expect(Math.abs(HOME_CASTLE_DESTINATION_PROP_ANCHORS.daily.y)).toBeLessThan(0.12);
+    expect(HOME_CASTLE_DESTINATION_PROP_ANCHORS.daily.z).toBeGreaterThan(0.25);
+  });
+
+  it('builds real 3D destination props instead of HUD-only markers', () => {
+    const props = createHomeCastleDestinationProps();
+    expect(props.group.name).toBe('home-castle-destination-props');
+    expect(props.play.name).toBe('home-castle-prop-play');
+    expect(props.play.userData.destination).toBe('play');
+    expect(props.daily.name).toBe('home-castle-prop-daily');
+    expect(props.daily.userData.destination).toBe('daily');
+    expect(props.play.children.length).toBeGreaterThan(5);
+    expect(props.daily.children.length).toBeGreaterThan(4);
+    props.dispose();
+  });
+
   it('adds only a restrained flame overlay above each painted sconce', () => {
     const props = createHomeCastleTorchProps();
     expect(props.flames).toHaveLength(HOME_CASTLE_TORCH_ANCHORS.length);
@@ -52,6 +76,8 @@ describe('HomeCastle3DProps', () => {
       expect(flame?.material?.transparent).toBe(true);
       expect(flame?.material?.depthWrite).toBe(false);
     }
+    expect(props.destinationProps.play.userData.destination).toBe('play');
+    expect(props.destinationProps.daily.userData.destination).toBe('daily');
     props.dispose();
   });
 
