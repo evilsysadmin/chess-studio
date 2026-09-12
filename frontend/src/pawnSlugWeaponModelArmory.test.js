@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { setStorageItem, STORAGE_LOCAL } from './safeStorage.js';
 import {
   PAWN_SLUG_WEAPON_MODEL_ARMORY_META,
   pawnSlugBuyOrEquipWeaponModel,
   pawnSlugEquippedModelId,
   pawnSlugWeaponModelOffers,
+  refreshPawnSlugWeaponModelArmory,
   resetPawnSlugWeaponModelArmory,
 } from './pawnSlugWeaponModelArmory.js';
 
@@ -36,5 +38,19 @@ describe('Pawn Slug concrete weapon model armory', () => {
     expect(pawnSlugBuyOrEquipWeaponModel({ weaponId: 'shotgun', modelId: 'banana', credits: 999 })).toMatchObject({ ok: false, reason: 'unknown-model' });
     expect(pawnSlugEquippedModelId('shotgun')).toBe('m3-super90');
     expect(PAWN_SLUG_WEAPON_MODEL_ARMORY_META.powerCurve).toBe('sidegrades-not-upgrades');
+  });
+
+  it('refreshes cached selections after the active profile cache is replaced', () => {
+    pawnSlugBuyOrEquipWeaponModel({ weaponId: 'pistol', modelId: 'desert-eagle', credits: 100 });
+    expect(pawnSlugEquippedModelId('pistol')).toBe('desert-eagle');
+
+    setStorageItem(STORAGE_LOCAL, PAWN_SLUG_WEAPON_MODEL_ARMORY_META.storage, JSON.stringify({
+      pistol: { equipped: 'glock17', owned: ['glock17'] },
+    }));
+
+    expect(pawnSlugEquippedModelId('pistol')).toBe('desert-eagle');
+    refreshPawnSlugWeaponModelArmory();
+    expect(pawnSlugEquippedModelId('pistol')).toBe('glock17');
+    expect(pawnSlugWeaponModelOffers().find((slot) => slot.weaponId === 'pistol')?.models.find((model) => model.equipped)?.id).toBe('glock17');
   });
 });

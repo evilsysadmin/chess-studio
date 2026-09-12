@@ -1,6 +1,10 @@
 import { createPawnSlugGame } from './pawnSlugThree.js';
 import { pawnSlugLiveWeaponLabel, pawnSlugLiveWeaponModel } from './pawnSlugLiveWeaponModels.js';
-import { pawnSlugBuyOrEquipWeaponModel, pawnSlugWeaponModelOffers } from './pawnSlugWeaponModelArmory.js';
+import {
+  pawnSlugBuyOrEquipWeaponModel,
+  pawnSlugWeaponModelOffers,
+  refreshPawnSlugWeaponModelArmory,
+} from './pawnSlugWeaponModelArmory.js';
 
 function decorateHud(hud, spentCredits = 0) {
   if (!hud) return hud;
@@ -19,6 +23,7 @@ function decorateHud(hud, spentCredits = 0) {
 }
 
 export function createPawnSlugArmoryGame(host, { onReady, onHud } = {}) {
+  refreshPawnSlugWeaponModelArmory();
   let latestHud = null;
   let spentCredits = 0;
 

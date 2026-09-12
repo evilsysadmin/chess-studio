@@ -47,6 +47,11 @@ function readPersisted() {
 
 let currentState = readPersisted();
 
+export function refreshPawnSlugWeaponModelArmory() {
+  currentState = readPersisted();
+  return currentState;
+}
+
 export function pawnSlugWeaponModelArmoryState() {
   return currentState;
 }
