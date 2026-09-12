@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 
+const DEVICE_BOARD_RENDERER_KEY = 'chess-study-device-board-renderer-v1';
+
 async function launchQuickMatch2D(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
@@ -8,13 +10,51 @@ async function launchQuickMatch2D(page) {
   await dialog.getByRole('button', { name: 'Jugar en 2D, directo al tablero', exact: true }).click();
 }
 
+async function expectLightweight2D(page) {
+  await expect(page.getByRole('group', { name: /Tablero de ajedrez/ })).toBeVisible();
+  await expect(page.locator('[data-board3d-war-room="true"]')).toHaveCount(0);
+  await expect(page.locator('.game-layout-3d')).toHaveCount(0);
+}
+
 test('Partida rápida · 2D entra directo al tablero ligero', async ({ page }) => {
   await mockApi(page);
   await login(page);
   await launchQuickMatch2D(page);
 
-  await expect(page.getByRole('group', { name: /Tablero de ajedrez/ })).toBeVisible();
-  await expect(page.locator('[data-board3d-war-room="true"]')).toHaveCount(0);
+  await expectLightweight2D(page);
+});
+
+test('Partida rápida · 2D persiste tras F5 en el mismo dispositivo', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 780 });
+  await mockApi(page);
+  await login(page);
+  await launchQuickMatch2D(page);
+  await expectLightweight2D(page);
+
+  await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), DEVICE_BOARD_RENDERER_KEY)).toBe('2d');
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+
+  await expectLightweight2D(page);
+  await expect(page.getByText('Restaurando partida en curso…', { exact: true })).toHaveCount(0);
+  await expect(buttonWithVisibleText(page, 'Partida rápida')).toHaveCount(0);
+  expect(await page.evaluate((key) => localStorage.getItem(key), DEVICE_BOARD_RENDERER_KEY)).toBe('2d');
+});
+
+test('Partida rápida · un dispositivo limpio conserva War Room como camino principal', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockApi(page);
+  await login(page);
+
+  expect(await page.evaluate((key) => localStorage.getItem(key), DEVICE_BOARD_RENDERER_KEY)).toBeNull();
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+
+  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible();
+  await expect(page.locator('.game-layout-3d')).toBeVisible();
+  expect(await page.evaluate((key) => localStorage.getItem(key), DEVICE_BOARD_RENDERER_KEY)).toBeNull();
 });
 
 test('Partida rápida · 2D prioriza tablero y controles a 360/390/430 px', async ({ page }) => {
