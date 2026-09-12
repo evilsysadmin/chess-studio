@@ -37,18 +37,21 @@ function attachViewportScale(group, driverMesh, baseScale) {
   group.userData.baseScale = baseScale;
   group.scale.setScalar(baseScale);
   driverMesh.onBeforeRender = (renderer, _scene, camera) => {
-    const width = Math.abs((camera?.right ?? 0) - (camera?.left ?? 0));
-    const height = Math.abs((camera?.top ?? 0) - (camera?.bottom ?? 0));
+    const cameraWidth = Math.abs((camera?.right ?? 0) - (camera?.left ?? 0));
+    const cameraHeight = Math.abs((camera?.top ?? 0) - (camera?.bottom ?? 0));
+    const cameraAspect = cameraHeight > 0
+      ? cameraWidth / cameraHeight
+      : DESTINATION_PROP_REFERENCE_ASPECT;
     const canvas = renderer?.domElement;
-    const canvasWidth = Math.max(1, canvas?.getBoundingClientRect?.().width || canvas?.clientWidth || 1);
-    const viewportWidth = typeof window !== 'undefined'
-      ? Math.max(1, window.innerWidth || canvasWidth)
-      : canvasWidth;
-    const visibleWidthRatio = viewportWidth / canvasWidth;
-    const responsiveScale = homeCastleDestinationPropScale(
-      height > 0 ? width / height : DESTINATION_PROP_REFERENCE_ASPECT,
-      visibleWidthRatio,
-    );
+    const canvasRect = canvas?.getBoundingClientRect?.();
+    const canvasWidth = Math.max(1, canvasRect?.width || canvas?.clientWidth || 1);
+    const view = canvas?.ownerDocument?.defaultView
+      || (typeof window !== 'undefined' ? window : null);
+    const viewportWidth = Math.max(1, view?.innerWidth || canvasWidth);
+    const viewportHeight = Math.max(1, view?.innerHeight || (canvasWidth / cameraAspect));
+    const viewportAspect = viewportWidth / viewportHeight;
+    const visibleWidthRatio = Math.min(1, viewportWidth / canvasWidth);
+    const responsiveScale = homeCastleDestinationPropScale(viewportAspect, visibleWidthRatio);
     group.scale.setScalar(baseScale * responsiveScale);
   };
 }
