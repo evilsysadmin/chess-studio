@@ -19,6 +19,13 @@
   .board3d-main-shell[data-board3d-turn] { transition: none; }
 }
 
+/* Renderer details remain available through the canvas data-* diagnostics.
+   They are implementation metadata, not in-room chrome. */
+.board3d-fixed-camera-note,
+.board3d-renderer-badge {
+  display: none;
+}
+
 /* Final desktop fit guard for War Room. Board3DViewportTuning.css currently
    carries a later historical height rule that can overgrow short desktop
    viewports. This file loads after it, so keep one viewport-driven contract
