@@ -24,6 +24,17 @@ export function normalizeInsightsDiagnosisView(value) {
   return DIAGNOSIS_VIEWS.some((view) => view.id === value) ? value : 'now';
 }
 
+export function InsightsOptionalPlans({ children }) {
+  return (
+    <details className="friendly-disclosure insights-optional-plans">
+      <summary>Más planes personales</summary>
+      <div className="friendly-disclosure-body friendly-stack">
+        {children}
+      </div>
+    </details>
+  );
+}
+
 export default function InsightsScreen(props) {
   const [section, setSection] = useState(() => normalizeInsightsSection(props.initialSection));
   const [diagnosisView, setDiagnosisView] = useState(() => normalizeInsightsDiagnosisView(props.initialDiagnosisView));
@@ -102,12 +113,14 @@ export default function InsightsScreen(props) {
               onOpenPuzzles={props.onOpenPuzzles}
               onPlayFromHere={props.onPlayFromHere}
             />
-            <InsightsMatthiasCampaign
-              gameHistory={props.gameHistory}
-              onOpenPuzzles={props.onOpenPuzzles}
-              onPlayFromHere={props.onPlayFromHere}
-            />
-            <InsightsWeeklyGoals onOpenPuzzles={props.onOpenPuzzles} />
+            <InsightsOptionalPlans>
+              <InsightsMatthiasCampaign
+                gameHistory={props.gameHistory}
+                onOpenPuzzles={props.onOpenPuzzles}
+                onPlayFromHere={props.onPlayFromHere}
+              />
+              <InsightsWeeklyGoals onOpenPuzzles={props.onOpenPuzzles} />
+            </InsightsOptionalPlans>
           </>
         ) : null}
         {!isCareer && diagnosisView === 'errors' ? (
