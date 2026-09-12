@@ -204,7 +204,7 @@ test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) =
     extension.loseContext();
     return true;
   });
-  test.skip(!canLoseContext, 'El runtime Chromium no expone WEBGL_lose_context');
+  expect(canLoseContext, 'El Chromium CI debe exponer WEBGL_lose_context para validar recuperación real').toBe(true);
 
   await expect(canvas).not.toHaveClass(/is-ready/);
   await page.evaluate(() => window.__homeWebglLoseContext?.restoreContext());
