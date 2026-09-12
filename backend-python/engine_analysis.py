@@ -17,6 +17,15 @@ import chess_ai as _engine
 
 
 @dataclass(frozen=True)
+class RootCandidateAnalysis:
+    """Score and immediate best reply for one legal root move."""
+
+    move: chess.Move
+    score: float
+    reply: Optional[chess.Move]
+
+
+@dataclass(frozen=True)
 class RootMoveComparison:
     """One factual root comparison produced by a single complete search pass."""
 
@@ -24,26 +33,31 @@ class RootMoveComparison:
     played_move: chess.Move
     best_score: float
     played_score: float
+    best_reply: Optional[chess.Move]
+    played_reply: Optional[chess.Move]
     loss: float
     depth: int
     candidate_count: int
 
 
-def score_root_candidates(
+def analyze_root_candidates(
     board: chess.Board,
     *,
     depth: int,
     deadline: Optional[float] = None,
     budget_s: Optional[float] = None,
-) -> list[tuple[chess.Move, float]]:
-    """Score every legal root move with one consistent bounded search pass.
+) -> list[RootCandidateAnalysis]:
+    """Analyze every legal root move with one consistent bounded search pass.
+
+    At depth 2 or greater, ``reply`` is the engine's best immediate response
+    from the child position. Keeping that reply beside the score lets post-game
+    consumers explain the first factual consequence without launching a second,
+    potentially contradictory search.
 
     Exactly one of ``deadline`` or ``budget_s`` must be supplied. The function
     is atomic from the caller's point of view: a timeout raises ``TimeoutError``
-    instead of returning a partial candidate set, because comparing scores from
-    an incomplete root pass would make downstream factual claims unreliable.
-
-    The supplied board is always restored before returning or raising.
+    instead of returning a partial candidate set. The supplied board is always
+    restored before returning or raising.
     """
     if depth < 1:
         raise ValueError("depth must be at least 1")
@@ -53,14 +67,14 @@ def score_root_candidates(
         deadline = time.monotonic() + max(0.0, float(budget_s))
 
     moves = _engine._order_moves(board, list(board.legal_moves))
-    scores: list[tuple[chess.Move, float]] = []
+    candidates: list[RootCandidateAnalysis] = []
     tt = {}
     for move in moves:
         if time.monotonic() >= deadline:
             raise TimeoutError
         board.push(move)
         try:
-            score, _ = _engine._minimax(
+            score, reply = _engine._minimax(
                 board,
                 max(0, depth - 1),
                 -_engine.INF,
@@ -71,8 +85,27 @@ def score_root_candidates(
             )
         finally:
             board.pop()
-        scores.append((move, score))
-    return scores
+        candidates.append(RootCandidateAnalysis(move=move, score=score, reply=reply))
+    return candidates
+
+
+def score_root_candidates(
+    board: chess.Board,
+    *,
+    depth: int,
+    deadline: Optional[float] = None,
+    budget_s: Optional[float] = None,
+) -> list[tuple[chess.Move, float]]:
+    """Compatibility score facade over :func:`analyze_root_candidates`."""
+    return [
+        (candidate.move, candidate.score)
+        for candidate in analyze_root_candidates(
+            board,
+            depth=depth,
+            deadline=deadline,
+            budget_s=budget_s,
+        )
+    ]
 
 
 def compare_root_move(
@@ -87,33 +120,36 @@ def compare_root_move(
 
     ``best_score`` and ``played_score`` always come from the same complete root
     pass at the same depth. ``loss`` is from the perspective of the side to move
-    and therefore never negative. This is the primitive post-game, coaching and
-    training code should share instead of mixing unrelated evaluation passes.
+    and therefore never negative. At depth 2+, the comparison also carries the
+    best immediate reply after each line, giving consumers a legal two-ply
+    counterfactual without a second analysis pass.
     """
     if played_move not in board.legal_moves:
         raise ValueError("played_move must be legal in the supplied position")
 
-    scored = score_root_candidates(
+    analyzed = analyze_root_candidates(
         board,
         depth=depth,
         deadline=deadline,
         budget_s=budget_s,
     )
-    if not scored:
+    if not analyzed:
         raise ValueError("position has no legal root moves")
 
     maximizing = board.turn == chess.WHITE
-    best_move, best_score = (max if maximizing else min)(scored, key=lambda item: item[1])
-    score_by_move = dict(scored)
-    played_score = score_by_move[played_move]
-    raw_loss = (best_score - played_score) if maximizing else (played_score - best_score)
+    best = (max if maximizing else min)(analyzed, key=lambda item: item.score)
+    by_move = {candidate.move: candidate for candidate in analyzed}
+    played = by_move[played_move]
+    raw_loss = (best.score - played.score) if maximizing else (played.score - best.score)
 
     return RootMoveComparison(
-        best_move=best_move,
-        played_move=played_move,
-        best_score=best_score,
-        played_score=played_score,
+        best_move=best.move,
+        played_move=played.move,
+        best_score=best.score,
+        played_score=played.score,
+        best_reply=best.reply,
+        played_reply=played.reply,
         loss=max(0.0, raw_loss),
         depth=depth,
-        candidate_count=len(scored),
+        candidate_count=len(analyzed),
     )
