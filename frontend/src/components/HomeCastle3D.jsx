@@ -15,6 +15,7 @@ import {
   HOME_CASTLE_TORCH_ANCHORS,
   createHomeCastleTorchProps,
 } from './HomeCastle3DProps.js';
+import { createHomeCastleSecondaryDestinationProps } from './HomeCastle3DSecondaryProps.js';
 import {
   homeCastleChandelierShimmer,
   homeCastleFireplacePulse,
@@ -195,6 +196,10 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     const torchProps = createHomeCastleTorchProps();
     torchProps.group.renderOrder = 2;
     scene.add(torchProps.group);
+
+    const secondaryDestinationProps = createHomeCastleSecondaryDestinationProps();
+    secondaryDestinationProps.group.renderOrder = 2;
+    scene.add(secondaryDestinationProps.group);
 
     const pointer = new THREE.Vector2();
     const target = new THREE.Vector2();
@@ -380,6 +385,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       material.map?.dispose();
       material.dispose();
       occlusionMaterial.dispose();
+      secondaryDestinationProps.dispose();
       torchProps.dispose();
       geometry.dispose();
       renderer.dispose();
