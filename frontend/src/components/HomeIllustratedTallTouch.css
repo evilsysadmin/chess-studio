@@ -49,22 +49,23 @@
       linear-gradient(180deg, #30170e 0%, #211008 30%, #120906 68%, #090503 100%);
   }
 
-  /* A narrow red runner carries the central composition toward the viewer without
-     swallowing the whole viewport or reading as a giant UI stripe. */
+  /* The red runner only bridges the canonical carpet into the generated floor.
+     It fades early so the lower viewport stays architectural depth rather than a
+     second focal point or an endless runway. */
   .illustrated-home__stage::after {
     content: '';
     position: absolute;
     z-index: 0;
     top: calc(100% - 1px);
-    left: 20%;
-    width: 60%;
-    height: max(0px, calc(100dvh - 58px - clamp(22px, 4dvh, 64px) - 56.25vw + 2px));
+    left: 22%;
+    width: 56%;
+    height: clamp(230px, 31dvh, 520px);
     pointer-events: none;
-    clip-path: polygon(40% 0, 60% 0, 88% 100%, 12% 100%);
+    clip-path: polygon(42% 0, 58% 0, 86% 100%, 14% 100%);
     background:
-      linear-gradient(90deg, rgba(16, 3, 4, .23), transparent 20%, transparent 80%, rgba(16, 3, 4, .25)),
-      linear-gradient(180deg, rgba(103, 23, 20, .46), rgba(68, 14, 15, .37) 46%, rgba(28, 7, 9, .22) 100%);
-    filter: drop-shadow(0 16px 24px rgba(0, 0, 0, .20));
+      linear-gradient(90deg, rgba(16, 3, 4, .22), transparent 22%, transparent 78%, rgba(16, 3, 4, .24)),
+      linear-gradient(180deg, rgba(103, 23, 20, .46), rgba(68, 14, 15, .32) 46%, rgba(28, 7, 9, .10) 80%, transparent 100%);
+    filter: drop-shadow(0 14px 22px rgba(0, 0, 0, .18));
   }
 
   .illustrated-home__art,
