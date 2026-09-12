@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { homeCastleKnownRoom, homeCastleRoomFocus } from './HomeCastle3DRoomFocus.js';
 import {
   HOME_CASTLE_UTILITY_PROP_ANCHORS,
   createHomeCastleUtilityDestinationProps,
@@ -10,6 +11,16 @@ describe('HomeCastle3DUtilityProps', () => {
     expect(HOME_CASTLE_UTILITY_PROP_ANCHORS.pawnslug.y).toBeLessThan(-0.2);
     expect(HOME_CASTLE_UTILITY_PROP_ANCHORS.dungeon.x).toBeGreaterThan(0.45);
     expect(HOME_CASTLE_UTILITY_PROP_ANCHORS.dungeon.y).toBeLessThan(-0.4);
+  });
+
+  it('registers both utility destinations with restrained room-light focus', () => {
+    for (const room of ['pawnslug', 'dungeon']) {
+      expect(homeCastleKnownRoom(room)).toBe(true);
+      const focus = homeCastleRoomFocus(room);
+      expect(focus.light).toBeGreaterThan(0);
+      expect(focus.light).toBeLessThanOrEqual(0.22);
+      expect(focus.reach).toBeLessThan(1.35);
+    }
   });
 
   it('builds physical, focusable destination props instead of extra HUD', () => {
