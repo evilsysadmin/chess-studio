@@ -71,6 +71,7 @@ const THEME_INSTRUMENT_UPGRADES = Object.freeze({
 
 const EXPANSIVE_SPACE_GENRES = new Set(['SPA / Zen', 'Dark Ambient', 'Ambient / Otros']);
 const SUSTAIN_RICH_GENRES = new Set(['SPA / Zen', 'Clásica', 'Piano / Minimal', 'Dark Ambient', 'Ambient / Otros']);
+const SPARSE_MIX_CEILINGS = Object.freeze({ lead: 0.46, counter: 0.28, bass: 0.56, chord: 0.34 });
 
 function finiteOr(value, fallback) {
   return Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -142,6 +143,18 @@ function premiumRelease(feel, genre, targetRelease) {
   return clamp(blend(current, targetRelease, 0.36), 0.76, 1.36);
 }
 
+function premiumMixValue(current, target, genre, lane, min, max) {
+  const value = finiteOr(current, target);
+  // En familias de sustain, un fader muy bajo es parte de la orquestación: una
+  // segunda voz a .20 o una cama a .30 no son un error de mastering. Evitamos
+  // levantarlas hacia el promedio de género e incluso respetamos niveles por
+  // debajo del suelo genérico; las mezclas normales/calientes sí reciben polish.
+  if (SUSTAIN_RICH_GENRES.has(genre) && value <= SPARSE_MIX_CEILINGS[lane]) {
+    return clamp(value, 0, max);
+  }
+  return clamp(blend(value, target), min, max);
+}
+
 function premiumSignature(feel, genre) {
   const signature = feel?.signature;
   const target = PERFORMANCE_FINISH[genre];
@@ -174,10 +187,10 @@ export function withAmbientPremiumProduction(theme, feel) {
   const target = GENRE_PRODUCTION[theme.genre] || GENRE_PRODUCTION['Ambient / Otros'];
   const currentMix = feel.mix || {};
   const mix = Object.freeze({
-    lead: clamp(blend(finiteOr(currentMix.lead, 0.62), target.mix.lead), 0.34, 0.86),
-    counter: clamp(blend(finiteOr(currentMix.counter, 0.38), target.mix.counter), 0.22, 0.66),
-    bass: clamp(blend(finiteOr(currentMix.bass, 0.84), target.mix.bass), 0.38, 1.16),
-    chord: clamp(blend(finiteOr(currentMix.chord, 0.44), target.mix.chord), 0.26, 0.72),
+    lead: premiumMixValue(currentMix.lead, target.mix.lead, theme.genre, 'lead', 0.34, 0.86),
+    counter: premiumMixValue(currentMix.counter, target.mix.counter, theme.genre, 'counter', 0.22, 0.66),
+    bass: premiumMixValue(currentMix.bass, target.mix.bass, theme.genre, 'bass', 0.38, 1.16),
+    chord: premiumMixValue(currentMix.chord, target.mix.chord, theme.genre, 'chord', 0.26, 0.72),
   });
   const signature = premiumSignature(feel, theme.genre);
 
