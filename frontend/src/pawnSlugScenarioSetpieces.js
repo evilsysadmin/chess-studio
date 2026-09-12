@@ -117,6 +117,20 @@ function createFortressAlarm() {
   return group;
 }
 
+function captureMaterialOpacity(group) {
+  const seen = new Set();
+  const materials = [];
+  group.traverse((node) => {
+    const nodeMaterials = Array.isArray(node.material) ? node.material : node.material ? [node.material] : [];
+    for (const material of nodeMaterials) {
+      if (seen.has(material) || !Number.isFinite(material?.opacity)) continue;
+      seen.add(material);
+      materials.push({ material, opacity: material.opacity });
+    }
+  });
+  return materials;
+}
+
 function capture(group, kind) {
   const children = [...group.children];
   return {
@@ -124,12 +138,12 @@ function capture(group, kind) {
     kind,
     triggered: false,
     startedAt: null,
+    materials: captureMaterialOpacity(group),
     base: children.map((child) => ({
       child,
       x: child.position.x,
       y: child.position.y,
       rz: child.rotation.z,
-      opacity: Number.isFinite(child.material?.opacity) ? child.material.opacity : null,
     })),
   };
 }
@@ -165,8 +179,8 @@ function animateEntry(entry, elapsed) {
       item.child.position.y = item.y + Math.sin(progress * Math.PI) * (0.42 + index * 0.035);
       item.child.rotation.z = item.rz + progress * (1.4 + index * 0.18);
     }
-    if (item.opacity != null && item.child.material) item.child.material.opacity = Math.max(0, item.opacity * fade);
   });
+  for (const item of entry.materials) item.material.opacity = Math.max(0, item.opacity * fade);
 }
 
 function installIntoScenario(root, scenarioName, createGroup, kind, localX) {
@@ -217,8 +231,8 @@ export function createPawnSlugReactiveSetpieces(root, { reducedMotion = false } 
           item.child.position.y = item.y;
           item.child.rotation.z = item.rz;
           item.child.scale.setScalar(1);
-          if (item.opacity != null && item.child.material) item.child.material.opacity = item.opacity;
         });
+        for (const item of entry.materials) item.material.opacity = item.opacity;
       }
     },
   });
