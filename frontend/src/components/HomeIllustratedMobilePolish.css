@@ -169,7 +169,7 @@
   }
 
   body .app-shell-home .menu.menu-illustrated .illustrated-home__destination {
-    min-height: 41px !important;
+    min-height: 44px !important;
     border: 1px solid rgba(233, 191, 105, .10) !important;
     background: linear-gradient(180deg, rgba(18, 10, 6, .34), rgba(10, 6, 4, .24)) !important;
     box-shadow: 0 5px 14px rgba(0, 0, 0, .10) !important;
@@ -203,7 +203,7 @@
     top: 57.4% !important;
     left: 6% !important;
     width: 24% !important;
-    min-height: 36px !important;
+    min-height: 44px !important;
     background: rgba(10, 6, 4, .34) !important;
     border-color: rgba(210, 161, 82, .14) !important;
     opacity: .88 !important;
@@ -211,6 +211,11 @@
 
   body .app-shell-home .menu.menu-illustrated .illustrated-home__matthias strong {
     font-size: 9px !important;
+  }
+
+  body .app-shell-home .menu.menu-illustrated .illustrated-home__speech button {
+    min-width: 44px !important;
+    min-height: 44px !important;
   }
 }
 
