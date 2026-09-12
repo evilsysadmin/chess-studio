@@ -29,6 +29,25 @@ describe('Pawn Slug reactive scenario setpieces', () => {
     expect(leaves.visible).toBe(true);
   });
 
+  it('preserves authored opacity through trigger, fade and reset', () => {
+    const root = new THREE.Group();
+    const forest = new THREE.Group();
+    forest.name = 'pawn-slug-landmark-fallen-forest';
+    forest.position.x = 10.5;
+    root.add(forest);
+    const controller = createPawnSlugReactiveSetpieces(root);
+    const leaves = root.getObjectByName('pawn-slug-setpiece-forest-leaves');
+    const material = leaves.children[0].material;
+
+    expect(material.opacity).toBeCloseTo(0.86);
+    controller.update(18.7, 5);
+    expect(material.opacity).toBeCloseTo(0.86);
+    controller.update(18.7, 6.2);
+    expect(material.opacity).toBeCloseTo(0.43, 2);
+    controller.reset();
+    expect(material.opacity).toBeCloseTo(0.86);
+  });
+
   it('runs a short one-shot reaction and hides it after the beat', () => {
     const root = new THREE.Group();
     const dungeon = new THREE.Group();
