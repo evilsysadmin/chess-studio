@@ -5,6 +5,7 @@ import hall from '../assets/home-canonical/great-hall-dungeon.webp';
 import { loadRivalry } from '../rivalry.js';
 import { dailyChallengeStats, loadDailyChallenge } from '../dailyChallenge.js';
 import { buildHomeCastleLife } from '../homeCastleLife.js';
+import { requestLabLaunch } from '../labLaunchIntent.js';
 import './HomeIllustrated.css';
 import './HomeIllustratedDiegetic.css';
 import './HomeIllustratedDungeonCanonical.css';
@@ -12,6 +13,7 @@ import './HomeIllustratedMobileCanonical.css';
 import './HomeCastleLife.css';
 import './HomeCastle3D.css';
 import './HomeIllustratedTallTouch.css';
+import './HomePawnSlugEntity.css';
 
 function IconSword(props) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m3 3 5 2 12 14-1 1L5 8 3 3Zm18 0-5 2L4 19l1 1L19 8l2-5ZM2 16l6 6m8-20 6 6M16 22l6-6M2 8l6-6" /></svg>;
@@ -35,6 +37,12 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     dailyStats: dailyChallengeStats(loadDailyChallenge()),
   }), []);
   const memories = castleLife.memories || (castleLife.memory ? [castleLife.memory] : []);
+  const experimentsAction = tools.find(([label]) => label === 'Experimentos geniales')?.[1];
+  const openPawnSlug = () => {
+    if (!experimentsAction) return;
+    requestLabLaunch('pawnslug');
+    experimentsAction();
+  };
   const rooms = [
     ['tournament', 'TORNEOS', 'Compite y escala', IconTrophy, onTournament],
     ['train', 'ENTRENAR', 'Mejora tu juego', IconBook, onTrain],
@@ -100,6 +108,16 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             </Fragment>
           ))}
         </nav>
+        <button
+          className="illustrated-home__pawn-slug"
+          type="button"
+          onClick={openPawnSlug}
+          disabled={loading || !experimentsAction}
+          aria-label="Abrir Pawn Slug directamente"
+        >
+          <strong>PAWN SLUG</strong>
+          <small>Operación activa</small>
+        </button>
         <aside className="illustrated-home__resident" aria-label="Rincón de Matthias">
         {matthiasSpeaking && <section className="illustrated-home__speech" aria-label="Mensaje de Matthias" aria-live="polite">
           <strong>{matthiasModel.eyebrow}</strong><p>{matthiasModel.text}</p>

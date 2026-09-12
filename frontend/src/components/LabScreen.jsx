@@ -1,6 +1,7 @@
 import { lazy, Suspense, useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import { consumeLabLaunch } from '../labLaunchIntent.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
 import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
@@ -25,7 +26,7 @@ function LabModeFallback() {
 
 export default function LabScreen({ onExit, onStart }){
   const initial = initialState();
-  const [labMode,setLabMode]=useState('hub');
+  const [labMode,setLabMode]=useState(() => consumeLabLaunch() || 'hub');
   const [map,setMap]=useState(initial.map);
   const [brush,setBrush]=useState('');
   const [turn,setTurn]=useState(initial.turn);
