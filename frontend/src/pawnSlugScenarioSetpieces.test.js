@@ -108,6 +108,8 @@ describe('Pawn Slug reactive scenario setpieces', () => {
     expect(convoy.position.z).toBeLessThan(-1);
     expect(convoy.children).toHaveLength(3);
     expect(convoy.children.every((vehicle) => vehicle.userData.distantConvoyVehicle)).toBe(true);
+    const authoredScales = [0.72, 0.66, 0.6];
+    convoy.children.forEach((vehicle, index) => expect(vehicle.scale.x).toBeCloseTo(authoredScales[index]));
     const startX = convoy.children[0].position.x;
     controller.update(38.7, 4);
     expect(convoy.visible).toBe(true);
@@ -115,6 +117,8 @@ describe('Pawn Slug reactive scenario setpieces', () => {
     expect(convoy.children[0].position.x).toBeGreaterThan(startX);
     controller.update(38.7, 7);
     expect(convoy.visible).toBe(false);
+    controller.reset();
+    convoy.children.forEach((vehicle, index) => expect(vehicle.scale.x).toBeCloseTo(authoredScales[index]));
   });
 
   it('warns of the fortress approach with a one-shot beacon and sparks', () => {
