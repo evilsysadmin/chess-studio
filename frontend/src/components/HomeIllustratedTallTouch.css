@@ -136,10 +136,34 @@
     font-size: clamp(18px, 2vw, 22px);
   }
 
+  /* Secondary destinations still belong to the room, but must not collapse into
+     footer microcopy after the height-driven crop. Bring both slightly inward and
+     give them enough hierarchy to read as intentional actions. */
   .illustrated-home__matthias {
-    left: 29.3%;
-    width: 12%;
+    left: 30.5%;
+    width: 13.5%;
+    min-height: 56px;
+    display: grid;
+    grid-template-columns: 1fr;
+    place-items: center;
+    gap: 3px;
+    padding: 8px 10px;
+    border: 1px solid rgba(218, 172, 83, .20);
+    border-radius: 8px;
+    background: rgba(13, 8, 5, .40);
+    text-align: center;
   }
+  .illustrated-home__matthias strong {
+    font: 700 clamp(12px, 1.35vw, 15px)/1.1 Georgia, serif;
+    letter-spacing: .06em;
+  }
+  .illustrated-home__matthias span {
+    display: block;
+    color: rgba(232, 211, 168, .78);
+    font-size: clamp(9px, 1vw, 12px);
+    line-height: 1.1;
+  }
+  .illustrated-home__matthias em { display: none; }
 
   .illustrated-home__pawn-slug {
     left: 41.5%;
@@ -147,8 +171,28 @@
   }
 
   .illustrated-home__utilities {
-    right: 29.2%;
-    width: 15.5%;
+    right: 30.5%;
+    width: 13.5%;
+  }
+  .illustrated-home__dungeon-copy {
+    right: 0;
+    bottom: 8%;
+    width: 100%;
+    justify-items: center;
+    gap: 2px;
+    padding: 8px 10px;
+    border: 1px solid rgba(218, 172, 83, .20);
+    border-radius: 8px;
+    background: rgba(13, 8, 5, .46);
+    text-align: center;
+  }
+  .illustrated-home__dungeon-copy strong {
+    font-size: clamp(12px, 1.35vw, 15px);
+    letter-spacing: .08em;
+  }
+  .illustrated-home__dungeon-copy small {
+    font-size: clamp(9px, 1vw, 12px);
+    line-height: 1.1;
   }
 
   /* Speech remains attached to the hall and fits in the shorter foreground. */
