@@ -31,7 +31,7 @@
     display: none !important;
   }
 
-  /* Matthias + player + turn become the compact status head of the right rail.
+  /* Matthias + turn become the compact status head of the right rail.
      Leave the first 2.5rem to the already-relocated Feedback/account actions. */
   .game-screen .game-3d-command-column {
     grid-area: status !important;
@@ -79,45 +79,6 @@
     min-width: 0;
     gap: .26rem;
     white-space: nowrap;
-  }
-
-  .game-3d-human-id {
-    display: inline-flex;
-    align-items: center;
-    min-width: 0;
-    max-width: 42%;
-    gap: .22rem;
-    color: color-mix(in srgb, var(--cream) 88%, white);
-  }
-
-  .game-3d-human-pawn {
-    display: inline-grid;
-    place-items: center;
-    width: 17px;
-    height: 17px;
-    flex: 0 0 17px;
-    border: 1px solid rgba(201, 162, 39, .34);
-    border-radius: 50%;
-    color: var(--brass);
-    font-size: .58rem;
-    line-height: 1;
-  }
-
-  .game-3d-human-id strong {
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: .58rem;
-    font-weight: 760;
-  }
-
-  .game-3d-turn-pill-versus {
-    flex: 0 0 auto;
-    color: color-mix(in srgb, var(--studio-muted) 72%, var(--brass));
-    font-size: .43rem;
-    text-transform: uppercase;
-    letter-spacing: .08em;
   }
 
   .game-screen .game-3d-turn-pill-avatar {
@@ -341,18 +302,12 @@
   }
 }
 
-/* The markup above keeps the historical mobile pill contract. On compact 3D
-   layouts the desktop-only matchup wrappers dissolve, while the utility menu
-   remains available as the canonical Appearance entry point. */
+/* On compact 3D layouts the desktop-only matchup wrappers dissolve, while the
+   utility menu remains available as the canonical Appearance entry point. */
 @media (max-width: 1080px) {
   .game-3d-matchup,
   .game-3d-turn-state {
     display: contents;
-  }
-
-  .game-3d-human-id,
-  .game-3d-turn-pill-versus {
-    display: none !important;
   }
 
   .game-3d-cpu-level {
