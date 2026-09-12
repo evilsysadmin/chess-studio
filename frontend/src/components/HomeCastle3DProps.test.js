@@ -47,9 +47,9 @@ describe('HomeCastle3DProps', () => {
     expect(HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR.z).toBeLessThan(1);
   });
 
-  it('places the play rook on the center table and daily hourglass on the right altar', () => {
+  it('places the play rook on the center table and daily brazier on the right altar', () => {
     expect(Math.abs(HOME_CASTLE_DESTINATION_PROP_ANCHORS.play.x)).toBeLessThan(0.1);
-    expect(HOME_CASTLE_DESTINATION_PROP_ANCHORS.play.y).toBeLessThan(-0.25);
+    expect(HOME_CASTLE_DESTINATION_PROP_ANCHORS.play.y).toBeLessThan(-0.3);
     expect(HOME_CASTLE_DESTINATION_PROP_ANCHORS.play.z).toBeGreaterThan(0.25);
 
     expect(HOME_CASTLE_DESTINATION_PROP_ANCHORS.daily.x).toBeGreaterThan(0.75);
@@ -71,8 +71,11 @@ describe('HomeCastle3DProps', () => {
     expect(props.play.userData.destination).toBe('play');
     expect(props.daily.name).toBe('home-castle-prop-daily');
     expect(props.daily.userData.destination).toBe('daily');
+    expect(props.play.userData.baseScale).toBeLessThan(0.8);
+    expect(props.daily.userData.baseScale).toBeLessThan(0.9);
     expect(props.play.children.length).toBeGreaterThan(5);
     expect(props.daily.children.length).toBeGreaterThan(4);
+    expect(props.daily.children.some((child) => child.name === 'home-castle-daily-flame')).toBe(true);
     props.dispose();
   });
 
