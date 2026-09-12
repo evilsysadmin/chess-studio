@@ -185,6 +185,8 @@ test('Pawn Slug · Android landscape usa gestos y conserva targets jugables en p
     const gestureSurface = page.getByRole('group', { name: 'Controles gestuales de Pawn Slug' });
     const powerUp = page.getByRole('button', { name: 'Power-up', exact: true });
     const settingsTrigger = page.getByRole('button', { name: 'Abrir ajustes de Pawn Slug', exact: true });
+    const arsenal = page.getByRole('group', { name: 'Seleccionar arma' });
+    const arsenalButtons = arsenal.getByRole('button');
 
     for (const viewport of [
       { width: 844, height: 390 },
@@ -207,6 +209,15 @@ test('Pawn Slug · Android landscape usa gestos y conserva targets jugables en p
 
       for (const name of ['Izquierda', 'Derecha', 'Agacharse', 'Saltar', 'Disparar']) {
         await expect(page.getByRole('button', { name, exact: true })).not.toBeVisible();
+      }
+
+      await expect(arsenal).toBeVisible();
+      await expect(arsenalButtons).toHaveCount(4);
+      for (let index = 0; index < 4; index += 1) {
+        const arsenalBox = await arsenalButtons.nth(index).boundingBox();
+        expect(arsenalBox).not.toBeNull();
+        expect(arsenalBox.width).toBeGreaterThanOrEqual(44);
+        expect(arsenalBox.height).toBeGreaterThanOrEqual(44);
       }
 
       await expect(powerUp).toBeVisible();
