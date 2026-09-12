@@ -8,21 +8,24 @@ describe('HomeCastle3DRoomFocus', () => {
       const focus = homeCastleRoomFocus(room);
       expect(Math.abs(focus.x)).toBeLessThanOrEqual(1.2);
       expect(Math.abs(focus.y)).toBeLessThanOrEqual(0.5);
+      expect(focus.depth).toBeGreaterThanOrEqual(0.9);
+      expect(focus.depth).toBeLessThanOrEqual(1.3);
       expect(focus.light).toBeGreaterThan(0);
       expect(focus.light).toBeLessThan(0.4);
     }
   });
 
   it('returns a neutral response for no focus or unknown destinations', () => {
-    expect(homeCastleRoomFocus(null)).toEqual({ x: 0, y: 0, light: 0 });
-    expect(homeCastleRoomFocus('not-a-room')).toEqual({ x: 0, y: 0, light: 0 });
+    expect(homeCastleRoomFocus(null)).toEqual({ x: 0, y: 0, depth: 1.18, light: 0 });
+    expect(homeCastleRoomFocus('not-a-room')).toEqual({ x: 0, y: 0, depth: 1.18, light: 0 });
     expect(homeCastleKnownRoom('not-a-room')).toBe(false);
   });
 
-  it('keeps the primary play destination as the strongest focus', () => {
+  it('keeps the primary play destination as the strongest and nearest focus', () => {
     const play = homeCastleRoomFocus('play');
     const secondary = ['tournament', 'train', 'combat', 'daily', 'history']
-      .map((room) => homeCastleRoomFocus(room).light);
-    expect(play.light).toBeGreaterThan(Math.max(...secondary));
+      .map((room) => homeCastleRoomFocus(room));
+    expect(play.light).toBeGreaterThan(Math.max(...secondary.map((focus) => focus.light)));
+    expect(play.depth).toBeGreaterThan(Math.max(...secondary.map((focus) => focus.depth)));
   });
 });
