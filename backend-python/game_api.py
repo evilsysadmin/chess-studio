@@ -5,7 +5,6 @@ authentication and router wiring.
 """
 from __future__ import annotations
 
-import math
 import logging
 import random
 import uuid
@@ -17,10 +16,9 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 import game_store as store
 from api_models import AnalyzeMoveRequest, AnalyzeRequest, MoveRequest, NewGameRequest
 from balanced_cpu import get_balanced_cpu_move
-from chess_ai import analyze_move as ai_analyze_move
-from chess_ai import evaluate_board, get_cpu_move, move_to_dict
-from engine_analysis import build_factual_move_analysis
+from chess_ai import get_cpu_move, move_to_dict
 from engine_runtime import run_engine_work
+from move_analysis_service import analyze_move_payload, deterministic_analyze_move
 from shadow_evaluation import maybe_schedule_move_shadow
 from chess_core import HANDICAP_SQUARES, apply_handicap, board_from_valid_fen, board_sans, load_board, resolve_move, serialize_game
 
@@ -34,7 +32,6 @@ from operation_idempotency import (
 )
 
 HINT_STRENGTH = 95
-MATE_SCORE_SENTINEL = 100000.0
 logger = logging.getLogger("chess.game")
 
 
@@ -300,27 +297,6 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         return suggestion
 
 
-    # resolve_move vive en chess_core.py.
-
-
-    def sanitize_eval(score: Optional[float]) -> Optional[float]:
-        """El motor devuelve +-inf en posiciones de mate forzado (evaluate_board
-        en chess_ai.py) — matemáticamente correcto para que minimax compare bien,
-        pero el JSON estándar no admite Infinity/NaN. Starlette (el framework
-        debajo de FastAPI) usa `allow_nan=False` en su encoder, así que un +-inf
-        sin sanear no da un 400 prolijo: revienta el propio serializador con un
-        500 crudo — visto en logs reales de producción, no en teoría. Se
-        reemplaza por un número grande pero finito, que sigue leyéndose como
-        "esto es decisivo" sin romper la respuesta."""
-        if score is None:
-            return None
-        if math.isinf(score):
-            return MATE_SCORE_SENTINEL if score > 0 else -MATE_SCORE_SENTINEL
-        if math.isnan(score):
-            return 0.0
-        return score
-
-
     @router.post("/api/analyze-move")
     @limiter.limit("180/minute", exempt_when=has_valid_api_key)
     @limiter.limit("1000/minute", key_func=api_key_bucket, exempt_when=lambda request: not has_valid_api_key(request))
@@ -333,54 +309,21 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
             raise HTTPException(400, "Esa posición ya está terminada.")
 
         level = body.level if is_valid_difficulty(body.level) else 45
-        played_move = None
-        if body.from_square and body.to:
-            played_move = resolve_move(board, body.from_square, body.to, body.promotion)
-
-        if played_move is not None:
-            try:
-                factual = await run_engine_work(build_factual_move_analysis, board, played_move, level=level, max_depth=6)
-            except TimeoutError:
-                factual = None
-            if factual is not None:
-                analyzed = {"move": factual.suggested, "score": factual.eval_after_suggested}
-                maybe_schedule_move_shadow(board.copy(stack=False), level, analyzed, ai_analyze_move)
-                payload = factual.to_api_payload()
-                factual_suggested = sanitize_eval(payload.get("evalAfterSuggested"))
-                factual_played = sanitize_eval(payload.get("evalAfterPlayed"))
-                played = board.copy(stack=False)
-                played.push(played_move)
-                payload["factualEvalAfterSuggested"] = factual_suggested
-                payload["factualEvalAfterPlayed"] = factual_played
-                payload["evalAfterSuggested"] = factual_suggested
-                payload["evalAfterPlayed"] = sanitize_eval(evaluate_board(played))
-                return payload
-
-        analyzed = await run_engine_work(ai_analyze_move, board, level)
-        if not analyzed:
+        payload, primary = await run_engine_work(
+            analyze_move_payload,
+            board,
+            from_square=body.from_square,
+            to=body.to,
+            promotion=body.promotion,
+            level=level,
+        )
+        if not payload or not primary:
             raise HTTPException(404, "No hay jugadas disponibles.")
 
         # Optional shadow candidate: sampled, background-only and never used to
         # answer this request. Disabled by default on Render Free.
-        maybe_schedule_move_shadow(board.copy(stack=False), level, analyzed, ai_analyze_move)
-
-        eval_after_played = None
-        if played_move is not None:
-            played = board.copy(stack=False)
-            played.push(played_move)
-            eval_after_played = sanitize_eval(evaluate_board(played))
-
-        return {
-            "suggested": {
-                "from": analyzed["move"]["from"],
-                "to": analyzed["move"]["to"],
-                "san": analyzed["move"]["san"],
-                "piece": analyzed["move"]["piece"],
-                "promotion": analyzed["move"].get("promotion"),
-            },
-            "evalAfterSuggested": sanitize_eval(analyzed["score"]),
-            "evalAfterPlayed": eval_after_played,
-        }
+        maybe_schedule_move_shadow(board.copy(stack=False), level, primary, deterministic_analyze_move)
+        return payload
 
 
     @router.post("/api/games/{game_id}/move")
