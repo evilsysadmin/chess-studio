@@ -39,14 +39,18 @@ describe('War Room ambient render cadence', () => {
     expect(mobile.updateCamera).toBe(true);
   });
 
-  it('no fuerza repaint ambiental con pestaña oculta, reduced motion o rasterizador software', () => {
+  it('no fuerza repaint ambiental fuera del viewport, con pestaña oculta, reduced motion o rasterizador software', () => {
     for (const options of [
+      { elapsedMs: 1000, intersecting: false },
       { elapsedMs: 1000, documentHidden: true },
       { elapsedMs: 1000, reducedMotion: true },
       { elapsedMs: 1000, softwareRenderer: true },
       { elapsedMs: 1000, coarsePointer: true, softwareRenderer: true },
     ]) {
-      expect(warRoomAmbientFramePlan(options).shouldRender).toBe(false);
+      const plan = warRoomAmbientFramePlan(options);
+      expect(plan.active).toBe(false);
+      expect(plan.shouldRender).toBe(false);
+      expect(plan.updateCamera).toBe(false);
     }
   });
 
