@@ -98,16 +98,53 @@
     font-size: .78rem;
   }
 
-  /* Quick actions stay discoverable in the rail, but no longer read as a second
-     status card underneath Matthias. */
+  /* Quick actions remain directly discoverable, but behave like quiet rail
+     affordances rather than two more dashboard buttons. The overflow menu is
+     still the complete action surface. */
   .game-screen .game-3d-quick-actions {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .12rem;
     margin-top: 0 !important;
+    padding-top: .28rem;
+    border-top: 1px solid rgba(190, 164, 109, .09);
   }
 
   .game-screen .game-3d-quick-action {
-    min-height: 27px;
-    background: rgba(7, 11, 17, .38);
-    font-size: .52rem;
+    min-height: 25px;
+    padding: .18rem .34rem;
+    border-color: transparent;
+    border-radius: 5px;
+    background: transparent;
+    box-shadow: none;
+    color: color-mix(in srgb, var(--studio-muted) 78%, var(--cream));
+    font-size: .5rem;
+  }
+
+  .game-screen .game-3d-quick-action:hover,
+  .game-screen .game-3d-quick-action:focus-visible,
+  .game-screen .game-3d-quick-action.is-active {
+    border-color: rgba(201, 162, 39, .16);
+    background: rgba(201, 162, 39, .04);
+    color: color-mix(in srgb, var(--cream) 92%, white);
+    box-shadow: none;
+  }
+
+  .game-screen .game-3d-quick-action:focus-visible {
+    outline: 1px solid rgba(201, 162, 39, .32);
+    outline-offset: 1px;
+  }
+
+  .game-screen .game-3d-quick-action.is-danger {
+    color: color-mix(in srgb, #d79a8d 72%, var(--studio-muted));
+  }
+
+  .game-screen .game-3d-quick-action.is-danger:hover,
+  .game-screen .game-3d-quick-action.is-danger:focus-visible {
+    border-color: rgba(184, 82, 66, .18);
+    background: rgba(184, 82, 66, .055);
+    color: #e9b2a7;
   }
 }
 
