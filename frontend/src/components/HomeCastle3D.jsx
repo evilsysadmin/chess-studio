@@ -10,6 +10,7 @@ import { homeCastleRoomFocus } from './HomeCastle3DRoomFocus.js';
 import { HOME_CASTLE_3D_MIN_WIDTH, homeCastle3DRenderPolicy } from './HomeCastle3DRenderPolicy.js';
 import { applyCanonicalHallOcclusion } from './HomeCastle3DOcclusion.js';
 import { HOME_CASTLE_TORCH_ANCHORS, createHomeCastleTorchProps } from './HomeCastle3DProps.js';
+import { homeCastleTorchFlicker } from './HomeCastle3DTorchFlicker.js';
 
 const CAMERA_Z = 3;
 const PARALLAX_X = 0.034;
@@ -35,11 +36,14 @@ function addLightRig(scene, profile) {
   fill.position.set(1.7, 0.55, 1.8);
   scene.add(hemisphere, key, fill);
 
-  for (const anchor of HOME_CASTLE_TORCH_ANCHORS) {
+  const torchLights = HOME_CASTLE_TORCH_ANCHORS.map((anchor) => {
     const torchLight = new THREE.PointLight(0xff9a48, profile.torch, 2.2, 2);
     torchLight.position.set(anchor.x, anchor.y + 0.07, 1.1);
     scene.add(torchLight);
-  }
+    return torchLight;
+  });
+
+  return torchLights;
 }
 
 function desktopMediaQuery() {
@@ -94,7 +98,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     renderer.setPixelRatio(renderPolicy.pixelRatio);
 
     const scene = new THREE.Scene();
-    addLightRig(scene, lighting);
+    const torchLights = addLightRig(scene, lighting);
     const roomLight = new THREE.PointLight(0xffc76f, 0, 1.45, 2);
     roomLight.position.set(0, 0, 1.18);
     scene.add(roomLight);
@@ -155,7 +159,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       frameOrthographicCamera(camera, width / height);
     };
 
-    const render = () => {
+    const render = (timestamp = 0) => {
       frame = 0;
       if (disposed || document.hidden) return;
       const focused = homeCastleRoomFocus(activeRoomRef.current);
@@ -164,6 +168,18 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       roomLight.position.x = roomFocus.x;
       roomLight.position.y = roomFocus.y;
       roomLight.intensity = roomFocus.z;
+
+      for (let index = 0; index < torchProps.flames.length; index += 1) {
+        const flicker = homeCastleTorchFlicker(index, timestamp, reducedMotion?.matches === true);
+        const flame = torchProps.flames[index];
+        const torchLight = torchLights[index];
+        if (flame) {
+          flame.scale.x = 0.82 * (0.985 + ((flicker - 1) * 0.18));
+          flame.scale.z = flame.scale.x;
+          flame.scale.y = 1 + ((flicker - 1) * 0.62);
+        }
+        if (torchLight) torchLight.intensity = lighting.torch * flicker;
+      }
 
       if (!reducedMotion?.matches) {
         pointer.lerp(target, 0.055);
