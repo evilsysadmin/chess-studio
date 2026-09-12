@@ -106,6 +106,25 @@ test('Partida rápida · un dispositivo limpio conserva War Room como camino pri
   expect(await page.evaluate((key) => localStorage.getItem(key), DEVICE_BOARD_RENDERER_KEY)).toBeNull();
 });
 
+test('Partida rápida · un dispositivo que recuerda 2D puede volver a War Room antes de jugar', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await mockApi(page);
+  await login(page);
+  await page.evaluate((key) => localStorage.setItem(key, '2d'), DEVICE_BOARD_RENDERER_KEY);
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Jugar en War Room, 3D', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Jugar en 2D, directo al tablero', exact: true })).toHaveCount(0);
+
+  await dialog.getByRole('button', { name: 'Jugar en War Room, 3D', exact: true }).click();
+
+  await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible();
+  await expect(page.locator('.game-layout-3d')).toBeVisible();
+  expect(await page.evaluate((key) => localStorage.getItem(key), DEVICE_BOARD_RENDERER_KEY)).toBe('3d');
+});
+
 test('Partida rápida · 2D prioriza tablero y controles a 360/390/430 px', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 780 });
   await mockApi(page);

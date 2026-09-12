@@ -34,6 +34,7 @@ export default function QuickMatchModal({
   loading,
   error = null,
   rating,
+  boardRenderer = '3d',
   onStart,
   onClose,
 }) {
@@ -44,6 +45,9 @@ export default function QuickMatchModal({
   const series = SERIES_OPTIONS.find((option) => Number(option.value) === Number(seriesBestOf)) || SERIES_OPTIONS[0];
   const [matthiasBriefing, setMatthiasBriefing] = useState(null);
   const matthiasVisual = matthiasTimeVisual();
+  const rememberedRenderer = boardRenderer === '2d' ? '2d' : '3d';
+  const alternateRenderer = rememberedRenderer === '2d' ? '3d' : '2d';
+  const alternateIs2D = alternateRenderer === '2d';
 
   useEffect(() => {
     let active = true;
@@ -116,12 +120,16 @@ export default function QuickMatchModal({
           type="button"
           className="secondary-btn"
           disabled={loading}
-          onClick={() => onStart({ boardRenderer: '2d' })}
-          aria-label="Jugar en 2D, directo al tablero"
+          onClick={() => onStart({ boardRenderer: alternateRenderer })}
+          aria-label={alternateIs2D ? 'Jugar en 2D, directo al tablero' : 'Jugar en War Room, 3D'}
         >
-          Jugar en 2D · directo al tablero
+          {alternateIs2D ? 'Jugar en 2D · directo al tablero' : 'Jugar en War Room · 3D'}
         </button>
-        <p className="hint-text friendly-inline-note">Más ligero y compacto en móvil; la partida, CPU y progreso son exactamente los mismos.</p>
+        <p className="hint-text friendly-inline-note">
+          {alternateIs2D
+            ? 'Más ligero y compacto en móvil; la partida, CPU y progreso son exactamente los mismos.'
+            : 'Vuelve a la experiencia cinematográfica 3D; la partida, CPU y progreso son exactamente los mismos.'}
+        </p>
 
         <details className="friendly-disclosure quick-match-settings">
           <summary>
