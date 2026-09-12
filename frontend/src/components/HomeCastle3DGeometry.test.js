@@ -22,6 +22,16 @@ describe('HomeCastle3DGeometry', () => {
     expect(wallAbove).toBeCloseTo(0, 6);
   });
 
+  it('adds restrained local depth to the fireplace and right foreground only', () => {
+    const hearth = canonicalHallDepth(0.87, 0.21);
+    const nearbyFloor = canonicalHallDepth(0.68, 0.21);
+    const leftMirror = canonicalHallDepth(0.13, 0.21);
+
+    expect(hearth).toBeGreaterThan(nearbyFloor + 0.025);
+    expect(hearth).toBeGreaterThan(leftMirror + 0.02);
+    expect(hearth - nearbyFloor).toBeLessThan(0.06);
+  });
+
   it('creates a segmented mesh with a non-flat depth field', () => {
     const geometry = createCanonicalHallGeometry({ widthSegments: 4, heightSegments: 4 });
     const position = geometry.attributes.position;
