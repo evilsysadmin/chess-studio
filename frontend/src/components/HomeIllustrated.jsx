@@ -112,6 +112,10 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           className="illustrated-home__pawn-slug"
           type="button"
           onClick={openPawnSlug}
+          onPointerEnter={() => setActiveRoom('pawnslug')}
+          onPointerLeave={() => setActiveRoom(null)}
+          onFocus={() => setActiveRoom('pawnslug')}
+          onBlur={() => setActiveRoom(null)}
           disabled={loading || !experimentsAction}
           aria-label="Abrir Pawn Slug directamente"
         >
@@ -142,6 +146,10 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             aria-expanded={toolsOpen}
             aria-controls="illustrated-home-tools"
             onClick={() => setToolsOpen(!toolsOpen)}
+            onPointerEnter={() => setActiveRoom('dungeon')}
+            onPointerLeave={() => setActiveRoom(null)}
+            onFocus={() => setActiveRoom('dungeon')}
+            onBlur={() => setActiveRoom(null)}
           >
             <span className="illustrated-home__dungeon-copy"><strong>MAZMORRAS</strong><small>Entra bajo tu cuenta y riesgo!</small></span>
             <span className="illustrated-home__dungeon-chevron" aria-hidden="true">{toolsOpen ? '↑' : '↓'}</span>

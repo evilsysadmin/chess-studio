@@ -5,6 +5,8 @@ const ROOM_FOCUS = Object.freeze({
   daily: Object.freeze({ x: 0.72, y: 0.2, depth: 1.02, reach: 1.36, light: 0.26 }),
   history: Object.freeze({ x: -1.14, y: -0.02, depth: 0.96, reach: 1.18, light: 0.2 }),
   play: Object.freeze({ x: 0, y: -0.48, depth: 1.26, reach: 1.58, light: 0.34 }),
+  pawnslug: Object.freeze({ x: 0.86, y: -0.34, depth: 1.08, reach: 1.24, light: 0.2 }),
+  dungeon: Object.freeze({ x: 0.7, y: -0.6, depth: 1.12, reach: 1.3, light: 0.22 }),
 });
 
 const IDLE_FOCUS = Object.freeze({ x: 0, y: 0, depth: 1.18, reach: 1.45, light: 0 });
