@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { homeCastleKnownRoom, homeCastleRoomFocus } from './HomeCastle3DInteraction.js';
+import { homeCastleKnownRoom, homeCastleRoomFocus } from './HomeCastle3DRoomFocus.js';
 
-describe('HomeCastle3DInteraction', () => {
+describe('HomeCastle3DRoomFocus', () => {
   it('maps every canonical destination to a bounded local focus', () => {
     for (const room of ['tournament', 'train', 'combat', 'daily', 'history', 'play']) {
       expect(homeCastleKnownRoom(room)).toBe(true);
