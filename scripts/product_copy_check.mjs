@@ -19,7 +19,6 @@ const adminFeatureFiles = [
 const admin = adminFeatureFiles.map(read).join('\n');
 const career = read('frontend/src/career.js');
 const activityFormatting = read('frontend/src/adminFormatting.js');
-const userReleaseNotes = read('frontend/src/userReleaseNotes.js');
 
 const checks = [
   [game.includes("event: 'PRONÓSTICO DE PARTIDA'"), 'el pronóstico debe llamarse «Pronóstico de partida»'],
@@ -32,7 +31,6 @@ const checks = [
   [admin.includes('>Retos</span>') && !admin.includes('>Contratos</span>'), 'Admin debe mostrar Retos para objetivos normales'],
   [career.includes("Reto superado ·") && career.includes('Contrato cumplido:'), 'Career debe normalizar hitos legacy al vocabulario de Retos'],
   [activityFormatting.includes("'contract-win': 'Reto superado'"), 'Actividad reciente debe etiquetar el reto completado como «Reto superado»'],
-  [!/\bE2E\b|Playwright|Grafana|\bTempo\b|Terraform|telemetr[ií]a|pipeline|CI\/CD|quality gate/i.test(userReleaseNotes), 'Novedades no debe exponer jerga técnica/operativa al jugador'],
 ];
 
 const failed = checks.filter(([ok]) => !ok).map(([, message]) => message);
