@@ -1,0 +1,20 @@
+/* The illustrated Matthias speech CTA can also carry the legacy home-learning-card
+ * hook used by E2E navigation. Keep that hook from importing dashboard-card sizing
+ * into the cinematic Home speech. The speech's own button rules remain canonical. */
+.illustrated-home__speech .home-learning-card {
+  width: auto !important;
+  min-width: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 7px 10px !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 520px) {
+  .illustrated-home__speech .home-learning-card {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+}
