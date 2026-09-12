@@ -8,7 +8,7 @@ export const PAWN_SLUG_PLATFORM_META = Object.freeze({
   jumpThroughFromBelow: true,
   platformCount: PAWN_SLUG_PLATFORM_LAYOUT.length,
   maxHeight: Math.max(...PAWN_SLUG_PLATFORM_LAYOUT.map((platform) => platform.y)),
-  coarseDecoration: false,
+  coarseDecoration: 'front-lip',
   source: 'tile-map',
 });
 
@@ -89,14 +89,20 @@ function addPlatformVisual(root, platform, materials, { coarse }) {
   top.castShadow = !coarse;
   top.receiveShadow = true;
   group.add(top);
+
+  const trimGeo = new THREE.BoxGeometry(platform.width + 0.08, 0.08, 0.09);
+  const frontLip = new THREE.Mesh(trimGeo, materials[`${platform.theme}Trim`]);
+  frontLip.name = `pawn-slug-platform-${platform.id}-front-lip`;
+  frontLip.position.set(0, -0.065, platform.depth / 2 + 0.015);
+  frontLip.castShadow = !coarse;
+  group.add(frontLip);
+
   if (!coarse) {
-    const trimGeo = new THREE.BoxGeometry(platform.width + 0.08, 0.08, 0.09);
-    for (const z of [-platform.depth / 2 - 0.015, platform.depth / 2 + 0.015]) {
-      const trim = new THREE.Mesh(trimGeo, materials[`${platform.theme}Trim`]);
-      trim.position.set(0, -0.065, z);
-      trim.castShadow = true;
-      group.add(trim);
-    }
+    const rearTrim = new THREE.Mesh(trimGeo.clone(), materials[`${platform.theme}Trim`]);
+    rearTrim.name = `pawn-slug-platform-${platform.id}-rear-lip`;
+    rearTrim.position.set(0, -0.065, -platform.depth / 2 - 0.015);
+    rearTrim.castShadow = true;
+    group.add(rearTrim);
     if (platform.theme === 'timber') {
       const postGeo = new THREE.BoxGeometry(0.12, Math.max(0.8, platform.y), 0.12);
       for (const x of [-platform.width * 0.35, platform.width * 0.35]) {
