@@ -28,12 +28,16 @@ export function homeCastle3DRenderPolicy({
 
   const pixelRatioCap = lod === 'full' ? 1.5 : 1.25;
   const minFrameIntervalMs = lod === 'lite' ? 1000 / 30 : 0;
+  const geometrySegments = lod === 'full'
+    ? Object.freeze({ width: 64, height: 36 })
+    : Object.freeze({ width: 32, height: 18 });
 
   return Object.freeze({
     enabled,
     lod,
     pixelRatio: Math.min(dpr, pixelRatioCap),
     minFrameIntervalMs,
+    geometrySegments,
     antialias: lod === 'full',
     powerPreference: lod === 'full' ? 'high-performance' : 'low-power',
   });
