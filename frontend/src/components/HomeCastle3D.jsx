@@ -15,6 +15,7 @@ import {
   createHomeCastleTorchProps,
 } from './HomeCastle3DProps.js';
 import { homeCastleTorchFlicker } from './HomeCastle3DTorchFlicker.js';
+import { homeCastleShouldRender } from './HomeCastle3DVisibility.js';
 
 const CAMERA_Z = 3;
 const PARALLAX_X = 0.034;
@@ -162,6 +163,17 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     const textureLoader = new THREE.TextureLoader();
     let frame = 0;
     let disposed = false;
+    let intersecting = true;
+
+    const shouldRender = () => homeCastleShouldRender({
+      documentHidden: document.hidden,
+      intersecting,
+    });
+
+    const stopRender = () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = 0;
+    };
 
     const resize = () => {
       const width = Math.max(1, canvas.clientWidth || canvas.parentElement?.clientWidth || 1);
@@ -172,7 +184,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
 
     const render = (timestamp = 0) => {
       frame = 0;
-      if (disposed || document.hidden) return;
+      if (disposed || !shouldRender()) return;
       const focused = homeCastleRoomFocus(activeRoomRef.current);
       roomTarget.set(focused.x, focused.y, focused.light);
       roomFocus.lerp(roomTarget, 0.09);
@@ -207,7 +219,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     };
 
     const resumeRender = () => {
-      if (!disposed && !document.hidden && !frame) frame = window.requestAnimationFrame(render);
+      if (!disposed && shouldRender() && !frame) frame = window.requestAnimationFrame(render);
     };
 
     const onPointerMove = (event) => {
@@ -223,16 +235,21 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     const onPointerLeave = () => target.set(0, 0);
     const onContextLost = () => canvas.classList.remove('is-ready');
     const onVisibilityChange = () => {
-      if (document.hidden) {
-        if (frame) window.cancelAnimationFrame(frame);
-        frame = 0;
-      } else {
-        resumeRender();
-      }
+      if (document.hidden) stopRender();
+      else resumeRender();
+    };
+    const onIntersectionChange = (entries) => {
+      intersecting = entries[0]?.isIntersecting !== false;
+      if (intersecting) resumeRender();
+      else stopRender();
     };
 
-    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null;
-    observer?.observe(canvas);
+    const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null;
+    const intersectionObserver = typeof IntersectionObserver === 'function'
+      ? new IntersectionObserver(onIntersectionChange, { threshold: 0.01 })
+      : null;
+    resizeObserver?.observe(canvas);
+    intersectionObserver?.observe(canvas);
     window.addEventListener('resize', resize, { passive: true });
     document.addEventListener('visibilitychange', onVisibilityChange);
     canvas.parentElement?.addEventListener('pointermove', onPointerMove, { passive: true });
@@ -261,8 +278,9 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
 
     return () => {
       disposed = true;
-      if (frame) window.cancelAnimationFrame(frame);
-      observer?.disconnect();
+      stopRender();
+      resizeObserver?.disconnect();
+      intersectionObserver?.disconnect();
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       canvas.parentElement?.removeEventListener('pointermove', onPointerMove);
