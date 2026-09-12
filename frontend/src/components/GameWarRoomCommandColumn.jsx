@@ -76,6 +76,30 @@ function LegacyCompactPill({ game, signal, board, controls, zenMode }) {
         >
           {signal.label}
         </strong>
+
+        <span className="game-3d-compact-actions" aria-label="Acciones rápidas de partida">
+          <button
+            type="button"
+            className="game-3d-compact-action is-focus"
+            aria-label="Focus"
+            title="Focus"
+            onClick={(event) => triggerMountedGameAction(event, '.game-mobile-focus-toggle')}
+          >
+            <span aria-hidden="true">◎</span>
+          </button>
+          {typeof controls.onAbandon === 'function' && (
+            <button
+              type="button"
+              className="game-3d-compact-action is-abandon"
+              aria-label="Abandonar partida"
+              title="Abandonar partida"
+              onClick={controls.onAbandon}
+            >
+              <span aria-hidden="true">⚑</span>
+            </button>
+          )}
+        </span>
+
         <details className="game-3d-utility-menu">
           <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
           <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
@@ -178,7 +202,7 @@ export default function GameWarRoomCommandColumn({
 
   // Compact War Room keeps one HUD surface. Secondary actions are folded into
   // its overflow so Android does not pay for a separate command row above the
-  // board. The mounted legacy controls remain as event owners for Focus/2D.
+  // board. Focus/resign survive as tiny one-tap affordances inside the same HUD.
   if (compactViewport) {
     return (
       <LegacyCompactPill
