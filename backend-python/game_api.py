@@ -339,15 +339,21 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
 
         if played_move is not None:
             try:
-                factual = await run_engine_work(build_factual_move_analysis, board, played_move, level=level)
+                factual = await run_engine_work(build_factual_move_analysis, board, played_move, level=level, max_depth=6)
             except TimeoutError:
                 factual = None
             if factual is not None:
                 analyzed = {"move": factual.suggested, "score": factual.eval_after_suggested}
                 maybe_schedule_move_shadow(board.copy(stack=False), level, analyzed, ai_analyze_move)
                 payload = factual.to_api_payload()
-                payload["evalAfterSuggested"] = sanitize_eval(payload.get("evalAfterSuggested"))
-                payload["evalAfterPlayed"] = sanitize_eval(payload.get("evalAfterPlayed"))
+                factual_suggested = sanitize_eval(payload.get("evalAfterSuggested"))
+                factual_played = sanitize_eval(payload.get("evalAfterPlayed"))
+                played = board.copy(stack=False)
+                played.push(played_move)
+                payload["factualEvalAfterSuggested"] = factual_suggested
+                payload["factualEvalAfterPlayed"] = factual_played
+                payload["evalAfterSuggested"] = factual_suggested
+                payload["evalAfterPlayed"] = sanitize_eval(evaluate_board(played))
                 return payload
 
         analyzed = await run_engine_work(ai_analyze_move, board, level)
