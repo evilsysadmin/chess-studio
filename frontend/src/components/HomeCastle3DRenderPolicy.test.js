@@ -6,17 +6,8 @@ import {
 } from './HomeCastle3DRenderPolicy.js';
 
 describe('HomeCastle3DRenderPolicy', () => {
-  it('keeps 360px mobile on 2D during the first staged rollout', () => {
-    const policy = homeCastle3DRenderPolicy({
-      viewportWidth: 360,
-      devicePixelRatio: 3,
-      hardwareConcurrency: 8,
-    });
-    expect(policy).toMatchObject({ enabled: false, lod: 'lite', pixelRatio: 1.25 });
-  });
-
-  it('enables lite rendering from 390px on mobile hardware with more than four cores', () => {
-    for (const viewportWidth of [HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH, 430, 768]) {
+  it('enables guarded lite rendering from 360px on capable mobile hardware', () => {
+    for (const viewportWidth of [HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH, 390, 430, 768]) {
       const policy = homeCastle3DRenderPolicy({
         viewportWidth,
         devicePixelRatio: 3,
@@ -36,7 +27,7 @@ describe('HomeCastle3DRenderPolicy', () => {
 
   it('keeps constrained mobile hardware on the fallback even at eligible widths', () => {
     expect(homeCastle3DRenderPolicy({
-      viewportWidth: 430,
+      viewportWidth: 360,
       hardwareConcurrency: 4,
     }).enabled).toBe(false);
     expect(homeCastle3DRenderPolicy({
