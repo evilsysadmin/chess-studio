@@ -39,14 +39,19 @@
   .illustrated-home__stage::before {
     z-index: -2;
     background: var(--home-hall-art) 50% 54% / cover no-repeat;
-    opacity: .28;
+    opacity: .26;
   }
 
   .illustrated-home__stage::after {
     z-index: -1;
     background:
-      radial-gradient(ellipse at 50% 34%, rgba(190, 111, 43, .13), transparent 44%),
-      linear-gradient(180deg, rgba(16, 8, 4, .20) 0%, rgba(16, 8, 4, .52) 52%, rgba(10, 5, 3, .94) 100%);
+      radial-gradient(ellipse at 50% 34%, rgba(190, 111, 43, .12), transparent 42%),
+      linear-gradient(180deg,
+        rgba(16, 8, 4, .22) 0%,
+        rgba(16, 8, 4, .44) 34%,
+        rgba(13, 7, 4, .78) 56%,
+        rgba(10, 5, 3, .96) 78%,
+        #0a0503 100%);
   }
 
   .illustrated-home__art,
