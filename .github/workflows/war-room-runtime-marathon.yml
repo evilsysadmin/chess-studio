@@ -30,7 +30,7 @@ jobs:
   runtime-marathon:
     name: Browser required · War Room runtime marathon
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v7
         with:
@@ -45,13 +45,71 @@ jobs:
 
       - name: Run War Room runtime marathon
         working-directory: e2e
-        run: ./node_modules/.bin/playwright test war-room-runtime-marathon.spec.js war-room-interrupted-restore.spec.js war-room-undo-rewind.spec.js war-room-ephemeral-cleanup.spec.js war-room-webgl-fallback.spec.js war-room-render-budget.spec.js --workers=1 --retries=0 --timeout=360000
+        run: ./node_modules/.bin/playwright test war-room-runtime-marathon.spec.js --workers=1 --retries=0 --timeout=360000
 
       - name: Upload Playwright diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: war-room-runtime-marathon-${{ github.sha }}
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  runtime-recovery:
+    name: Browser required · War Room recovery
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Restore browser runtime and build frontend
+        uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+          restore-frontend-deps: 'true'
+          build-frontend: 'true'
+
+      - name: Run War Room recovery gates
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test war-room-interrupted-restore.spec.js war-room-undo-rewind.spec.js war-room-ephemeral-cleanup.spec.js war-room-webgl-fallback.spec.js --workers=1 --retries=0 --timeout=180000
+
+      - name: Upload Playwright diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: war-room-runtime-recovery-${{ github.sha }}
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  render-budget:
+    name: Browser required · War Room render budget
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Restore browser runtime and build frontend
+        uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+          restore-frontend-deps: 'true'
+          build-frontend: 'true'
+
+      - name: Run War Room render budget
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test war-room-render-budget.spec.js --workers=1 --retries=0 --timeout=120000
+
+      - name: Upload Playwright diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: war-room-render-budget-${{ github.sha }}
           path: e2e/test-results/
           if-no-files-found: ignore
           retention-days: 7
