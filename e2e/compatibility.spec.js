@@ -379,8 +379,12 @@ test('Registro · permite elegir inglés y localiza el acceso', async ({ page })
 });
 
 test('Partida · la mesa principal no expone PGN ni una franja avanzada', async ({ page }) => {
-  await mockApi(page, { profileSeed: { 'chess-study-board-renderer': '2d-explicit-v1' } });
+  await mockApi(page);
   await login(page);
+  await page.evaluate(() => {
+    localStorage.setItem('chess-study-device-board-renderer-v1', '2d');
+    window.dispatchEvent(new Event('chess-study-user-preferences-changed'));
+  });
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
 
