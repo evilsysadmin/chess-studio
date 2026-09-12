@@ -2,23 +2,64 @@
  * Keep the first fold visually compact while making the actual interactive
  * rectangles meet the 44px touch target used by the visual-health gate. */
 @media (max-width: 520px) {
+  /* Use two real 44px controls instead of rendering 57px controls and scaling
+     the whole desktop deck to .78. The old trick passed the touch gate but made
+     the mini-Winamp look cropped and visually muddy. */
   body:has(.menu.menu-illustrated) .global-music-dock {
-    max-width: 116px !important;
+    top: max(2px, env(safe-area-inset-top)) !important;
+    left: 2px !important;
+    width: 92px !important;
+    max-width: 92px !important;
+    transform: none !important;
   }
 
   body:has(.menu.menu-illustrated) .global-music-dock .music-deck-collapsed {
-    width: 114px !important;
-    max-width: 114px !important;
-    grid-template-columns: 57px 57px !important;
+    width: 92px !important;
+    max-width: 92px !important;
+    min-height: 44px !important;
+    display: grid !important;
+    grid-template-columns: 44px 44px !important;
+    gap: 4px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
   }
 
   body:has(.menu.menu-illustrated) .global-music-dock .music-deck-expand,
   body:has(.menu.menu-illustrated) .global-music-dock .music-deck-collapsed-play {
-    width: 57px !important;
-    min-width: 57px !important;
-    height: 57px !important;
-    min-height: 57px !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
     padding: 0 !important;
+    border: 1px solid rgba(195, 151, 78, .28) !important;
+    border-radius: 50% !important;
+    background: rgba(18, 11, 7, .70) !important;
+    box-shadow: 0 5px 14px rgba(0, 0, 0, .14) !important;
+    color: #edc96f !important;
+  }
+
+  body:has(.menu.menu-illustrated) .global-music-dock .music-deck-expand {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    place-items: center !important;
+  }
+
+  body:has(.menu.menu-illustrated) .global-music-dock .music-deck-expand > span:not(.music-deck-status-light) {
+    font-size: 17px !important;
+    line-height: 1 !important;
+  }
+
+  body:has(.menu.menu-illustrated) .global-music-dock .music-deck-collapsed-play {
+    font-size: 13px !important;
+    line-height: 1 !important;
+  }
+
+  /* Admin service health used to sit on top of the scaled second music button.
+     Keep the optional LED immediately after the two explicit music controls. */
+  body .app-shell-home .live-service-status {
+    left: 100px !important;
   }
 
   body .app-shell-home .masthead-account-menu {
