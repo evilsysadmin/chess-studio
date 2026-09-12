@@ -8,6 +8,14 @@ import {
 } from './pawnSlugScenarioRenderer.js';
 import { PAWN_SLUG_SCENARIO_TILEMAPS } from './pawnSlugTileMaps.js';
 
+function namedCount(root, name) {
+  let count = 0;
+  root.traverse((child) => {
+    if (child.name === name) count += 1;
+  });
+  return count;
+}
+
 describe('Pawn Slug scenario renderer', () => {
   it('renders the castle dungeon directly from its tile map', () => {
     const root = createPawnSlugCastleDungeon({ coarse: false });
@@ -19,7 +27,7 @@ describe('Pawn Slug scenario renderer', () => {
     expect(root.getObjectByName('pawn-slug-dungeon-fallen-pawn')).toBeTruthy();
   });
 
-  it('renders the fallen forest through the same data-driven renderer', () => {
+  it('keeps a lite firefly signature for the fallen forest on coarse', () => {
     const desktop = createPawnSlugFallenForest({ coarse: false });
     const coarse = createPawnSlugFallenForest({ coarse: true });
     expect(desktop.userData.scenarioId).toBe('fallen-forest');
@@ -27,12 +35,12 @@ describe('Pawn Slug scenario renderer', () => {
     expect(desktop.getObjectByName('pawn-slug-forest-trunk')).toBeTruthy();
     expect(desktop.getObjectByName('pawn-slug-forest-root')).toBeTruthy();
     expect(desktop.getObjectByName('pawn-slug-forest-fallen-knight')).toBeTruthy();
-    expect(desktop.getObjectByName('pawn-slug-forest-fireflies')).toBeTruthy();
+    expect(namedCount(desktop, 'pawn-slug-forest-fireflies')).toBeGreaterThan(1);
     expect(coarse.getObjectByName('pawn-slug-forest-trunk')).toBeTruthy();
-    expect(coarse.getObjectByName('pawn-slug-forest-fireflies')).toBeFalsy();
+    expect(namedCount(coarse, 'pawn-slug-forest-fireflies')).toBe(1);
   });
 
-  it('renders Gambit Ruins with structure preserved and desktop dust trimmed on coarse', () => {
+  it('keeps one dust signature in Gambit Ruins on coarse', () => {
     const desktop = createPawnSlugGambitRuins({ coarse: false });
     const coarse = createPawnSlugGambitRuins({ coarse: true });
     expect(desktop.userData.scenarioId).toBe('gambit-ruins');
@@ -40,9 +48,8 @@ describe('Pawn Slug scenario renderer', () => {
     expect(desktop.getObjectByName('pawn-slug-ruins-column')).toBeTruthy();
     expect(desktop.getObjectByName('pawn-slug-ruins-slab')).toBeTruthy();
     expect(desktop.getObjectByName('pawn-slug-ruins-broken-rook')).toBeTruthy();
-    expect(desktop.getObjectByName('pawn-slug-ruins-dust')).toBeTruthy();
-    expect(coarse.getObjectByName('pawn-slug-ruins-column')).toBeTruthy();
-    expect(coarse.getObjectByName('pawn-slug-ruins-dust')).toBeFalsy();
+    expect(namedCount(desktop, 'pawn-slug-ruins-dust')).toBeGreaterThan(1);
+    expect(namedCount(coarse, 'pawn-slug-ruins-dust')).toBe(1);
   });
 
   it('uses the same renderer contract for arbitrary scenario data', () => {

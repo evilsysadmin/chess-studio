@@ -36,11 +36,29 @@ describe('Pawn Slug tile maps', () => {
     }
   });
 
-  it('filters desktop-only scenic atmosphere on coarse/mobile', () => {
+  it('keeps one atmosphere marker on coarse while still trimming desktop-only props', () => {
+    const forestDesktop = pawnSlugScenarioTilesByKind(PAWN_SLUG_SCENARIO_TILEMAPS.fallenForest, 'fireflies');
+    const forestCoarse = pawnSlugScenarioTilesByKind(PAWN_SLUG_SCENARIO_TILEMAPS.fallenForest, 'fireflies', { coarse: true });
+    const ruinsDesktop = pawnSlugScenarioTilesByKind(PAWN_SLUG_SCENARIO_TILEMAPS.gambitRuins, 'dust');
+    const ruinsCoarse = pawnSlugScenarioTilesByKind(PAWN_SLUG_SCENARIO_TILEMAPS.gambitRuins, 'dust', { coarse: true });
+
     expect(pawnSlugScenarioTilesByKind(PAWN_SLUG_SCENARIO_TILEMAPS.castleDungeon, 'fallen-pawn', { coarse: true })).toHaveLength(0);
-    expect(pawnSlugScenarioTilesByKind(PAWN_SLUG_SCENARIO_TILEMAPS.fallenForest, 'fireflies', { coarse: true })).toHaveLength(0);
-    expect(pawnSlugScenarioTilesByKind(PAWN_SLUG_SCENARIO_TILEMAPS.gambitRuins, 'dust').length).toBeGreaterThan(0);
-    expect(pawnSlugScenarioTilesByKind(PAWN_SLUG_SCENARIO_TILEMAPS.gambitRuins, 'dust', { coarse: true })).toHaveLength(0);
+    expect(forestDesktop.length).toBeGreaterThan(1);
+    expect(forestCoarse).toHaveLength(1);
+    expect(ruinsDesktop.length).toBeGreaterThan(1);
+    expect(ruinsCoarse).toHaveLength(1);
+    expect(forestCoarse[0].coarseLimit).toBe(1);
+    expect(ruinsCoarse[0].coarseLimit).toBe(1);
+  });
+
+  it('keeps typed coarse limits generic for future atmosphere tiles', () => {
+    const scenario = {
+      originX: 0,
+      tileWorldSize: 1,
+      rows: ['***'],
+    };
+    expect(pawnSlugScenarioTilesByKind(scenario, 'fireflies')).toHaveLength(3);
+    expect(pawnSlugScenarioTilesByKind(scenario, 'fireflies', { coarse: true })).toHaveLength(1);
   });
 
   it('keeps tile-derived world positions deterministic', () => {
