@@ -166,7 +166,9 @@
     transition: opacity 180ms ease;
   }
 
-  .pawn-slug .pawn-slug-gesture-surface.is-trained .pawn-slug-gesture-hint { opacity: 0; }
+  .pawn-slug .pawn-slug-gesture-surface.is-move-trained .pawn-slug-gesture-hint.is-move,
+  .pawn-slug .pawn-slug-gesture-surface.is-gesture-trained .pawn-slug-gesture-hint.is-jump,
+  .pawn-slug .pawn-slug-gesture-surface.is-fire-trained .pawn-slug-gesture-hint.is-fire { opacity: 0; }
 
   .pawn-slug .pawn-slug-gesture-powerup {
     position: absolute;
@@ -195,7 +197,9 @@
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 390px) {
   .pawn-slug .pawn-slug-hud > div:nth-child(1) { width: min(28vw, 14rem); }
   .pawn-slug .pawn-slug-gesture-hint { opacity: .45; }
-  .pawn-slug .pawn-slug-gesture-surface.is-trained .pawn-slug-gesture-hint { opacity: 0; }
+  .pawn-slug .pawn-slug-gesture-surface.is-move-trained .pawn-slug-gesture-hint.is-move,
+  .pawn-slug .pawn-slug-gesture-surface.is-gesture-trained .pawn-slug-gesture-hint.is-jump,
+  .pawn-slug .pawn-slug-gesture-surface.is-fire-trained .pawn-slug-gesture-hint.is-fire { opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

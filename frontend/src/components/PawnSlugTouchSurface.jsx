@@ -25,9 +25,14 @@ export default function PawnSlugTouchSurface({ send }) {
   const timersRef = useRef(new Map());
   const ownersRef = useRef(null);
   const powerPointersRef = useRef(new Map());
-  const [trained, setTrained] = useState(false);
+  const [trainedZones, setTrainedZones] = useState(() => ({ move: false, gesture: false, fire: false }));
   if (!ownersRef.current) ownersRef.current = createPawnSlugTouchActionOwners();
   sendRef.current = send;
+
+  function trainZone(zone) {
+    if (!Object.prototype.hasOwnProperty.call(trainedZones, zone) || trainedZones[zone]) return;
+    setTrainedZones((current) => (current[zone] ? current : { ...current, [zone]: true }));
+  }
 
   function cancelPendingRelease(action) {
     let cancelled = false;
@@ -103,7 +108,6 @@ export default function PawnSlugTouchSurface({ send }) {
   function onPointerDown(event) {
     if (event.pointerType === 'mouse') return;
     event.preventDefault();
-    setTrained(true);
     const start = point(event);
     const zone = pawnSlugTouchZone(start.x, start.width);
     const pointer = {
@@ -117,10 +121,12 @@ export default function PawnSlugTouchSurface({ send }) {
     };
 
     if (zone === 'move') {
+      trainZone('move');
       pointer.action = pawnSlugTouchMoveDirection(start.x, start.width);
       pointer.actionStartedAt = performance.now();
       press(pointer.action, pointer.owner);
     } else if (zone === 'fire') {
+      trainZone('fire');
       pointer.action = 'fire';
       pointer.actionStartedAt = performance.now();
       press('fire', pointer.owner);
@@ -152,6 +158,7 @@ export default function PawnSlugTouchSurface({ send }) {
     if (pointer.zone !== 'gesture' || pointer.action) return;
     const action = pawnSlugTouchVerticalAction(current.x - pointer.startX, current.y - pointer.startY);
     if (!action) return;
+    trainZone('gesture');
     pointer.action = action;
     pointer.actionStartedAt = performance.now();
     press(action, pointer.owner);
@@ -165,6 +172,7 @@ export default function PawnSlugTouchSurface({ send }) {
       const current = point(event);
       const action = pawnSlugTouchTapAction(current.x - pointer.startX, current.y - pointer.startY);
       if (action) {
+        trainZone('gesture');
         pointer.action = action;
         pointer.actionStartedAt = performance.now();
         press(action, pointer.owner);
@@ -184,7 +192,6 @@ export default function PawnSlugTouchSurface({ send }) {
   function powerUpPress(event) {
     event.preventDefault();
     event.stopPropagation();
-    setTrained(true);
     const owner = `power:${event.pointerId}`;
     if (powerPointersRef.current.has(owner)) return;
     powerPointersRef.current.set(owner, performance.now());
@@ -201,9 +208,15 @@ export default function PawnSlugTouchSurface({ send }) {
     scheduleRelease('grenade', startedAt, owner, { immediate });
   }
 
+  const trainingClasses = [
+    trainedZones.move ? 'is-move-trained' : '',
+    trainedZones.gesture ? 'is-gesture-trained' : '',
+    trainedZones.fire ? 'is-fire-trained' : '',
+  ].filter(Boolean).join(' ');
+
   return (
     <div
-      className={`pawn-slug-gesture-surface${trained ? ' is-trained' : ''}`}
+      className={`pawn-slug-gesture-surface${trainingClasses ? ` ${trainingClasses}` : ''}`}
       role="group"
       aria-label="Controles gestuales de Pawn Slug"
       onPointerDown={onPointerDown}
@@ -212,7 +225,7 @@ export default function PawnSlugTouchSurface({ send }) {
       onPointerCancel={cancel}
       onContextMenu={(event) => event.preventDefault()}
     >
-      <span className="pawn-slug-gesture-hint is-move" aria-hidden="true">← MOVER →</span>
+      <span className="pawn-slug-gesture-hint is-move" aria-hidden="true">MANTÉN ←/→ · CORRER</span>
       <span className="pawn-slug-gesture-hint is-jump" aria-hidden="true">TAP/↑ SALTAR · ↓ AGACHARSE</span>
       <span className="pawn-slug-gesture-hint is-fire" aria-hidden="true">MANTÉN · DISPARAR</span>
       <button
