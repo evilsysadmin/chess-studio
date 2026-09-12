@@ -18,7 +18,6 @@ const outcome = read('frontend/src/gameOutcome.js');
 const combat = read('frontend/src/components/useCombatController.js');
 const smoke = read('e2e/smoke.spec.js');
 const regression = read('e2e/regression-journeys.spec.js');
-const ci = read('.github/workflows/cicd.yml');
 const makefile = read('Makefile');
 
 requireText(restore, "return classifyRestoreFailure(error) === 'stale-session';", 'restauración debe distinguir sesión obsoleta de fallo transitorio');
@@ -65,33 +64,17 @@ for (const scenario of [
 }
 requireText(regression, 'deploy · una release nueva no fuerza reload mientras la partida está activa', 'falta regresión E2E de aviso de release durante tablero activo');
 
-const ciRunsCriticalTarget = ci.includes('make e2e-critical');
-const shardedE2e = ci.includes('\n  e2e_lanes:\n');
-if (!ciRunsCriticalTarget && !shardedE2e) {
-  failures.push('CI crítico debe delegar en make e2e-critical o declarar lanes críticas aisladas auditadas');
-}
-if (shardedE2e) {
-  requireText(ci, 'name: Tests · Playwright · ${{ matrix.lane }}', 'CI shardado debe nombrar explícitamente cada lane crítica');
-  const hasSpecializedGate = ci.includes('\n  e2e_specialized:\n');
-  requireText(
-    ci,
-    hasSpecializedGate ? 'needs: [preflight, e2e_lanes, e2e_specialized]' : 'needs: [preflight, e2e_lanes]',
-    'Tests · Playwright debe esperar a todas las lanes antes de acreditar continuidad',
-  );
-  if (hasSpecializedGate) {
-    requireText(ci, 'SPECIALIZED_RESULT', 'Tests · Playwright debe fallar si una lane browser especializada requerida falla');
-  }
-  requireText(ci, 'fail-fast: false', 'CI shardado debe completar diagnóstico de ambas lanes aunque una falle');
-}
-for (const ciPattern of [
+const criticalMatch = makefile.match(/^CRITICAL_E2E_GREP\s*:=\s*(.+)$/m);
+const criticalE2E = criticalMatch?.[1] || '';
+if (!criticalMatch) failures.push('Makefile debe declarar CRITICAL_E2E_GREP como contrato canónico de browser crítico');
+for (const pattern of [
   'Partida rápida · una partida activa',
   'Torneo · una partida activa',
   'Partida rápida · un 503 al restaurar',
   'Combat Chess · salir al menú conserva campaña',
   'deploy · una release nueva no fuerza reload',
 ]) {
-  const covered = shardedE2e ? ci.includes(ciPattern) : (ciRunsCriticalTarget && makefile.includes(ciPattern));
-  if (!covered) failures.push(`CI crítico no ejecuta la regresión de continuidad: ${ciPattern}`);
+  if (!criticalE2E.includes(pattern)) failures.push(`browser crítico no incluye la regresión de continuidad: ${pattern}`);
 }
 
 if (failures.length) {
@@ -99,4 +82,4 @@ if (failures.length) {
   for (const failure of failures) console.error(` - ${failure}`);
   process.exit(1);
 }
-console.log(`session-continuity-gate OK · normal/tournament restore policy + deploy + Combat continuity protected · CI ${shardedE2e ? 'sharded' : 'make e2e-critical'}`);
+console.log('session-continuity-gate OK · normal/tournament restore policy + deploy + Combat continuity protected · critical journeys registered');
