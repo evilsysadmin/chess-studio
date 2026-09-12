@@ -60,6 +60,8 @@ const INSTRUMENT_UPGRADES = Object.freeze({
   }),
 });
 
+const EXPANSIVE_SPACE_GENRES = new Set(['SPA / Zen', 'Dark Ambient', 'Ambient / Otros']);
+
 function finiteOr(value, fallback) {
   return Number.isFinite(Number(value)) ? Number(value) : fallback;
 }
@@ -102,6 +104,18 @@ function premiumSwing(feel, genre) {
   // El acabado sólo da bolsillo a patrones demasiado rectos o rígidos.
   if (Math.abs(current) >= 0.16) return current;
   return clamp(blend(current, target, 0.22), 0, 0.22);
+}
+
+function premiumSpace(feel, genre, targetSpace) {
+  const current = finiteOr(feel?.space, 0);
+  // El delay wet del motor ya satura de forma útil alrededor de .30. Las piezas
+  // escritas como espacios grandes (onsen, dark ambient, cámaras ambientales)
+  // pueden conservar esa profundidad hasta ese límite; recortarlas a .24 hacía
+  // que el mastering premium, paradójicamente, sonara más plano que el arreglo.
+  if (EXPANSIVE_SPACE_GENRES.has(genre) && current >= 0.28) {
+    return clamp(current, 0.035, 0.30);
+  }
+  return clamp(blend(current, targetSpace, 0.48), 0.035, 0.30);
 }
 
 function premiumSignature(feel, genre) {
@@ -148,7 +162,7 @@ export function withAmbientPremiumProduction(theme, feel) {
     swing: premiumSwing(feel, theme.genre),
     warmth: clamp(blend(finiteOr(feel.warmth, 1), target.warmth, 0.38), 0.7, 1.08),
     releaseScale: clamp(blend(finiteOr(feel.releaseScale, 1), target.releaseScale, 0.36), 0.76, 1.36),
-    space: clamp(blend(finiteOr(feel.space, 0), target.space, 0.48), 0.035, 0.24),
+    space: premiumSpace(feel, theme.genre, target.space),
     delayMs: Math.round(clamp(blend(finiteOr(feel.delayMs, 160), target.delayMs, 0.5), 72, 310)),
     mix,
     percussion: premiumPercussion(feel, theme.genre),
