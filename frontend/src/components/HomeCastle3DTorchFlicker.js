@@ -19,3 +19,11 @@ export function homeCastleChandelierShimmer(index, elapsedMs, reducedMotion = fa
   const drift = Math.sin((time * 1.31) + (phase * 1.41)) * 0.007;
   return 1 + slow + drift;
 }
+
+export function homeCastleFireplacePulse(elapsedMs, reducedMotion = false) {
+  if (reducedMotion) return 1;
+  const time = Math.max(0, Number(elapsedMs) || 0) / 1000;
+  const body = Math.sin((time * 2.05) + 0.61) * 0.027;
+  const ember = Math.sin((time * 5.15) + 1.73) * 0.011;
+  return 1 + body + ember;
+}
