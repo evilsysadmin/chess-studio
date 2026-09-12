@@ -1,5 +1,6 @@
 import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
+import { getBoardRenderer } from './userPreferences.js';
 
 // tournamentRewards.js — Recompensas cosméticas por nivel de Torneo:
 // títulos junto al nombre de nivel, y skins de color alternativas para
@@ -60,8 +61,10 @@ export function saveSelectedTitle(id) {
   setProfileStorageItem(TITLE_KEY, id);
 }
 
-export function loadSelectedSkin() {
-  return getStorageItem(STORAGE_LOCAL, SKIN_KEY) || 'studio';
+export function loadSelectedSkin(boardRenderer = getBoardRenderer()) {
+  const stored = getStorageItem(STORAGE_LOCAL, SKIN_KEY);
+  if (stored) return stored;
+  return boardRenderer === '2d' ? 'default' : 'studio';
 }
 
 export function saveSelectedSkin(id) {
