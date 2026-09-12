@@ -132,18 +132,21 @@ jobs:
           visual=false
           focus=false
           matthias=false
+          quick_2d=false
 
           if [[ "$EVENT_NAME" == 'workflow_dispatch' ]]; then
             full_logic=true
             visual=true
             focus=true
             matthias=true
+            quick_2d=true
           elif [[ -z "${BASE_SHA:-}" || "$BASE_SHA" =~ ^0+$ ]] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
             echo 'Diff browser no fiable; activando matriz especializada completa.'
             full_logic=true
             visual=true
             focus=true
             matthias=true
+            quick_2d=true
           else
             files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
             while IFS= read -r file; do
@@ -164,6 +167,12 @@ jobs:
               esac
 
               case "$file" in
+                frontend/src/components/Board2D.jsx|frontend/src/components/Game2DMobile.css|frontend/src/components/QuickMatchModal.jsx|frontend/src/components/MenuInner.jsx|frontend/src/components/useGameBoardRenderer.js|frontend/src/components/GameBoardView.jsx|frontend/src/components/GameCommandDeck.jsx|frontend/src/userPreferences.js|frontend/src/styles/02-game-board.css|frontend/src/styles/20-piece-skins.css|frontend/src/styles/25-visual-coherence.css|frontend/src/styles/28-product-resilience.css|e2e/quick-match-2d.spec.js)
+                  quick_2d=true
+                  ;;
+              esac
+
+              case "$file" in
                 frontend/src/components/Matthias*.jsx|frontend/src/components/Matthias*.js|frontend/src/components/Matthias*.css|frontend/src/components/matthias*.jsx|frontend/src/components/matthias*.js|frontend/src/components/matthias*.css|frontend/src/components/InsightsMatthiasMotion.jsx|frontend/src/matthias*.js|frontend/src/assets/matthias-*/*|e2e/matthias-home-visual-critical.spec.js|e2e/matthias-war-room-android-motion.spec.js|e2e/insights-matthias-motion.spec.js)
                   matthias=true
                   ;;
@@ -175,19 +184,21 @@ jobs:
                   visual=true
                   focus=true
                   matthias=true
+                  quick_2d=true
                   ;;
                 .github/workflows/cicd.yml)
                   # Probar el plumbing nuevo sin despertar las 13 escenas WebGL
                   # sólo porque cambia el propio YAML de Quality.
                   visual=true
+                  quick_2d=true
                   ;;
               esac
             done <<< "$files"
           fi
 
-          matrix="$(python3 - "$full_logic" "$visual" "$focus" "$matthias" <<'PY'
+          matrix="$(python3 - "$full_logic" "$visual" "$focus" "$matthias" "$quick_2d" <<'PY'
           import json, sys
-          full_logic, visual, focus, matthias = [value == 'true' for value in sys.argv[1:]]
+          full_logic, visual, focus, matthias, quick_2d = [value == 'true' for value in sys.argv[1:]]
           cases = []
           if full_logic:
               cases.extend([
@@ -220,6 +231,12 @@ jobs:
                   {'id': 'matthias-war-room', 'label': 'Matthias · War Room Android', 'command': './node_modules/.bin/playwright test matthias-war-room-android-motion.spec.js --workers=1 --retries=0'},
                   {'id': 'matthias-insights', 'label': 'Matthias · Así juegas motion', 'command': './node_modules/.bin/playwright test insights-matthias-motion.spec.js --workers=1 --retries=0'},
               ])
+          if quick_2d:
+              cases.append({
+                  'id': 'quick-match-2d',
+                  'label': 'Quick Match · mobile 2D continuity',
+                  'command': './node_modules/.bin/playwright test quick-match-2d.spec.js --workers=1 --retries=0 --timeout=75000',
+              })
           print(json.dumps({'include': cases}, separators=(',', ':')))
           PY
           )"
@@ -237,6 +254,7 @@ jobs:
             echo "- War Room mount/scale: \`$visual\`"
             echo "- Android Focus: \`$focus\`"
             echo "- Matthias motion/paint: \`$matthias\`"
+            echo "- Quick Match mobile 2D: \`$quick_2d\`"
             echo '- Estas lanes forman parte del check requerido Tests · Playwright.'
           } >> "$GITHUB_STEP_SUMMARY"
 
