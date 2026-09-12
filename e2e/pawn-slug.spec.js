@@ -55,6 +55,9 @@ async function startPawnSlug(page) {
 }
 
 test('Pawn Slug · arranca con pistola y arsenal seleccionable sin tocar el ajedrez competitivo', async ({ page }) => {
+  // This path intentionally boots the premium Three.js runtime twice to prove cleanup/remount.
+  // Keep the extra budget local instead of weakening the global Playwright timeout.
+  test.setTimeout(90_000);
   await openPawnSlug(page);
 
   const stage = page.locator('[data-pawn-slug-renderer="three"]');
@@ -100,6 +103,8 @@ test('Pawn Slug · arranca con pistola y arsenal seleccionable sin tocar el ajed
 });
 
 test('Pawn Slug · ESC abre Settings, persiste remap y conserva el runtime', async ({ page }) => {
+  // Premium runtime startup plus the full remap/persistence cycle can exceed the default 45 s on CI.
+  test.setTimeout(90_000);
   await openPawnSlug(page);
   await startPawnSlug(page);
 
