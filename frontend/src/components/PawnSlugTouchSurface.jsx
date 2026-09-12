@@ -223,6 +223,7 @@ export default function PawnSlugTouchSurface({ send }) {
       onPointerMove={onPointerMove}
       onPointerUp={finish}
       onPointerCancel={cancel}
+      onLostPointerCapture={cancel}
       onContextMenu={(event) => event.preventDefault()}
     >
       <span className="pawn-slug-gesture-hint is-move" aria-hidden="true">MANTÉN ←/→ · CORRER</span>
