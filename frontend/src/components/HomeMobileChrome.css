@@ -69,6 +69,15 @@
       0 0 12px rgba(214, 158, 58, .10),
       0 5px 14px rgba(0, 0, 0, .14) !important;
   }
+
+  /* When Matthias already offers Así juegas, his resident card is intentionally
+   * hidden. Reclaim the mobile footer space that would otherwise be reserved for
+   * that absent card, without changing other comments that can coexist with him. */
+  body .app-shell-home .menu.menu-illustrated
+  .illustrated-home__resident:has(> .illustrated-home__speech > button.home-learning-card)
+  > .illustrated-home__speech {
+    bottom: max(12px, env(safe-area-inset-bottom, 0px)) !important;
+  }
 }
 
 /* The illustrated Matthias speech reuses the legacy learning-card class as an
