@@ -37,6 +37,16 @@ describe('Pawn Slug premium projectile FX', () => {
     expect(hostile.children[0].geometry).not.toBe(friendly.children[0].geometry);
   });
 
+  it('renders one visible pellet per physical shotgun projectile', () => {
+    const friendly = createPremiumBulletModel({ weapon: 'shotgun' });
+    const hostile = createPremiumBulletModel({ enemy: true, weapon: 'shotgun' });
+    expect(friendly.userData.arcadeProjectileShape).toBe('pellet');
+    expect(hostile.userData.arcadeProjectileShape).toBe('pellet');
+    expect(friendly.children).toHaveLength(1);
+    expect(hostile.children).toHaveLength(1);
+    expect(hostile.children[0].geometry).not.toBe(friendly.children[0].geometry);
+  });
+
   it('gives rockets a body, tip and animated exhaust', () => {
     const rocket = createPremiumBulletModel({ weapon: 'panzerfaust', explosive: true });
     expect(rocket.userData.explosive).toBe(true);

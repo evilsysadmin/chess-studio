@@ -9,12 +9,13 @@ describe('Pawn Slug arcade projectile language', () => {
     expect(PAWN_SLUG_ARCADE_PROJECTILES.panzerfaust.shape).toBe('rocket');
   });
 
-  it('makes pistol bullets chunky and shotgun fire visibly multi-pellet', () => {
+  it('keeps each shotgun projectile as one visible pellet', () => {
     const pistol = pawnSlugArcadeProjectileProfile({ weapon: 'pistol' });
     const machinegun = pawnSlugArcadeProjectileProfile({ weapon: 'machinegun' });
     const shotgun = pawnSlugArcadeProjectileProfile({ weapon: 'shotgun' });
     expect(pistol.radius).toBeGreaterThan(machinegun.radius);
-    expect(shotgun.pellets).toBeGreaterThanOrEqual(5);
+    expect(shotgun.shape).toBe('pellet');
+    expect(shotgun.pellets).toBe(1);
     expect(shotgun.spread).toBeGreaterThan(0);
   });
 
@@ -25,6 +26,15 @@ describe('Pawn Slug arcade projectile language', () => {
     expect(hostile.shape).toBe('needle');
     expect(hostile.trail).toBeGreaterThan(friendly.trail);
     expect(hostile.length).toBeGreaterThan(friendly.length);
+  });
+
+  it('keeps hostile shotgun pellets chunky without turning them into tracers', () => {
+    const hostile = pawnSlugArcadeProjectileProfile({ weapon: 'shotgun', enemy: true });
+    const friendly = pawnSlugArcadeProjectileProfile({ weapon: 'shotgun' });
+    expect(hostile).toBe(PAWN_SLUG_ARCADE_PROJECTILES.enemyShotgun);
+    expect(hostile.shape).toBe('pellet');
+    expect(hostile.pellets).toBe(1);
+    expect(hostile.radius).toBeGreaterThan(friendly.radius);
   });
 
   it('makes hostile rockets visually heavier without changing rocket identity', () => {
