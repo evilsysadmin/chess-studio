@@ -176,6 +176,8 @@
     bottom: max(.3rem, env(safe-area-inset-bottom, 0px));
     display: grid;
     place-items: center;
+    align-content: center;
+    gap: .04rem;
     min-width: 44px;
     min-height: 44px;
     width: 2.75rem;
@@ -190,8 +192,15 @@
     touch-action: none;
   }
 
-  .pawn-slug .pawn-slug-gesture-powerup span { font-size: .72rem; line-height: 1; }
-  .pawn-slug .pawn-slug-gesture-powerup small { display: none; }
+  .pawn-slug .pawn-slug-gesture-powerup span { font-size: .64rem; line-height: 1; }
+  .pawn-slug .pawn-slug-gesture-powerup small {
+    display: block;
+    font-size: .3rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: .04em;
+    opacity: .78;
+  }
 }
 
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 390px) {
