@@ -7,6 +7,7 @@ import {
   HOME_CASTLE_TORCH_ANCHORS,
   createHomeCastleDestinationProps,
   createHomeCastleTorchProps,
+  homeCastleDestinationPropScale,
 } from './HomeCastle3DProps.js';
 
 describe('HomeCastle3DProps', () => {
@@ -54,6 +55,13 @@ describe('HomeCastle3DProps', () => {
     expect(HOME_CASTLE_DESTINATION_PROP_ANCHORS.daily.x).toBeGreaterThan(0.75);
     expect(Math.abs(HOME_CASTLE_DESTINATION_PROP_ANCHORS.daily.y)).toBeLessThan(0.12);
     expect(HOME_CASTLE_DESTINATION_PROP_ANCHORS.daily.z).toBeGreaterThan(0.25);
+  });
+
+  it('scales destination props down with the actual 3D canvas aspect', () => {
+    expect(homeCastleDestinationPropScale(1.6)).toBe(1);
+    expect(homeCastleDestinationPropScale(16 / 9)).toBe(1);
+    expect(homeCastleDestinationPropScale(0.46)).toBeCloseTo(0.2875, 4);
+    expect(homeCastleDestinationPropScale(0.1)).toBe(0.28);
   });
 
   it('builds real 3D destination props instead of HUD-only markers', () => {
