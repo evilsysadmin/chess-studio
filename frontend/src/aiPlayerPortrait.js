@@ -1,8 +1,9 @@
 import { STORAGE_LOCAL, readJsonStorage, writeJsonStorage } from './safeStorage.js';
 import { cooldownStateFromTimestamp } from './cooldownClock.js';
+import { buildPlayerModel } from './playerModel.js';
 
 export const AI_PLAYER_PORTRAIT_CACHE_KEY = 'chess-study-ai-player-portrait-v1';
-const PORTRAIT_SCHEMA = 6;
+const PORTRAIT_SCHEMA = 7;
 const GAMES_PER_AUTOMATIC_REFRESH = 1;
 export const PLAYER_PORTRAIT_MAX_CHARS = 900;
 const PLAYER_PORTRAIT_MANUAL_COOLDOWN_MS = 6 * 60 * 60 * 1000;
@@ -28,19 +29,23 @@ function compactModeStats(byMode = {}) {
 }
 
 export function buildPlayerPortraitFacts(insights, rivalry = {}, extras = {}, worstMove = null) {
-  if (!insights || Number(insights.totalGames || 0) <= 0) return null;
+  const model = buildPlayerModel({ insights });
+  if (model.samples.games <= 0) return null;
 
   const facts = {
-    total_games: Number(insights.totalGames || 0),
+    total_games: model.samples.games,
+    evidence_strength: {
+      games: model.confidence.games,
+    },
     record: {
-      wins: Number(insights.overall?.wins || 0),
-      draws: Number(insights.overall?.draws || 0),
-      losses: Number(insights.overall?.losses || 0),
-      win_pct: Number(insights.overall?.winPct || 0),
+      wins: Number(model.outcomes?.wins || 0),
+      draws: Number(model.outcomes?.draws || 0),
+      losses: Number(model.outcomes?.losses || 0),
+      win_pct: Number(model.outcomes?.winPct || 0),
     },
     color_usage: {
-      white_games: Number(insights.colorPreference?.white || 0),
-      black_games: Number(insights.colorPreference?.black || 0),
+      white_games: Number(model.colorPreference?.white || 0),
+      black_games: Number(model.colorPreference?.black || 0),
     },
     longest_win_streak: Number(insights.longestWinStreak || 0),
     human_captures: Number(insights.humanCaptures || 0),
@@ -48,30 +53,33 @@ export function buildPlayerPortraitFacts(insights, rivalry = {}, extras = {}, wo
   };
 
   if (insights.favoriteOpening) {
+    const openingEvidence = model.openings.find((row) => row.name === insights.favoriteOpening.name) || null;
     facts.favorite_opening = {
       name: String(insights.favoriteOpening.name || '').slice(0, 100),
       games: Number(insights.favoriteOpening.count || 0),
+      evidence_strength: openingEvidence?.confidence || 'low',
     };
   }
 
-  if (Array.isArray(insights.openingDossier) && insights.openingDossier.length) {
-    facts.openings = insights.openingDossier.slice(0, 5).map((row) => ({
+  if (model.openings.length) {
+    facts.openings = model.openings.slice(0, 5).map((row) => ({
       name: String(row.name || '').slice(0, 100),
       games: Number(row.games || 0),
       wins: Number(row.wins || 0),
       draws: Number(row.draws || 0),
       losses: Number(row.losses || 0),
       win_pct: Number(row.winPct || 0),
+      evidence_strength: row.confidence,
     }));
   }
 
-  if (insights.ratingTrend) {
+  if (model.ratingTrend) {
     facts.rating_trend = {
-      first: finiteNumber(insights.ratingTrend.first),
-      last: finiteNumber(insights.ratingTrend.last),
-      delta: finiteNumber(insights.ratingTrend.delta),
-      min: finiteNumber(insights.ratingTrend.min),
-      max: finiteNumber(insights.ratingTrend.max),
+      first: finiteNumber(model.ratingTrend.first),
+      last: finiteNumber(model.ratingTrend.last),
+      delta: finiteNumber(model.ratingTrend.delta),
+      min: finiteNumber(model.ratingTrend.min),
+      max: finiteNumber(model.ratingTrend.max),
     };
   }
 
