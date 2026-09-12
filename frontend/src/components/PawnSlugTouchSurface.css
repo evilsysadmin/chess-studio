@@ -16,7 +16,7 @@
   .pawn-slug-gesture-hint {
     position: absolute;
     bottom: max(.55rem, env(safe-area-inset-bottom, 0px));
-    color: rgba(239, 220, 180, .34);
+    color: rgba(239, 220, 180, .52);
     font-size: .54rem;
     font-weight: 900;
     letter-spacing: .08em;
@@ -37,7 +37,7 @@
 }
 
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 390px) {
-  .pawn-slug-gesture-hint { opacity: .72; }
+  .pawn-slug-gesture-hint { opacity: .88; }
 }
 
 @media (prefers-reduced-motion: reduce) {
