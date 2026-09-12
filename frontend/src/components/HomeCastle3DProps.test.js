@@ -58,11 +58,12 @@ describe('HomeCastle3DProps', () => {
     expect(HOME_CASTLE_DESTINATION_PROP_ANCHORS.daily.z).toBeGreaterThan(0.25);
   });
 
-  it('scales destination props by both camera aspect and the actually visible stage width', () => {
+  it('scales destination props by real viewport aspect and visible stage width', () => {
     expect(homeCastleDestinationPropScale(1.6)).toBe(1);
     expect(homeCastleDestinationPropScale(16 / 9)).toBe(1);
     expect(homeCastleDestinationPropScale(16 / 9, 0.42)).toBeCloseTo(0.42, 4);
-    expect(homeCastleDestinationPropScale(0.46, 1)).toBeCloseTo(0.2875, 4);
+    expect(homeCastleDestinationPropScale(390 / 844, 1)).toBeCloseTo(0.2889, 4);
+    expect(homeCastleDestinationPropScale(980 / 1740, 1)).toBeCloseTo(0.352, 3);
     expect(homeCastleDestinationPropScale(16 / 9, 0.1)).toBe(0.28);
   });
 
