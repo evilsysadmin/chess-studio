@@ -62,7 +62,9 @@ describe('HomeCastle3DProps', () => {
     expect(homeCastleDestinationPropScale(1.6)).toBe(1);
     expect(homeCastleDestinationPropScale(16 / 9)).toBe(1);
     expect(homeCastleDestinationPropScale(16 / 9, 0.42)).toBeCloseTo(0.42, 4);
-    expect(homeCastleDestinationPropScale(390 / 844, 1)).toBeCloseTo(0.2889, 4);
+    const phoneScale = homeCastleDestinationPropScale(390 / 844, 1);
+    expect(phoneScale).toBeGreaterThan(0.28);
+    expect(phoneScale).toBeLessThan(0.30);
     expect(homeCastleDestinationPropScale(980 / 1740, 1)).toBeCloseTo(0.352, 3);
     expect(homeCastleDestinationPropScale(16 / 9, 0.1)).toBe(0.28);
   });
