@@ -21,6 +21,8 @@ describe('HomeCastle3DRenderPolicy', () => {
       expect(policy.enabled).toBe(false);
       expect(policy.lod).toBe('lite');
       expect(policy.pixelRatio).toBe(1.25);
+      expect(policy.minFrameIntervalMs).toBeGreaterThan(33);
+      expect(policy.minFrameIntervalMs).toBeLessThan(34);
     }
   });
 
@@ -40,20 +42,25 @@ describe('HomeCastle3DRenderPolicy', () => {
       viewportWidth: 1600,
       devicePixelRatio: 3,
       hardwareConcurrency: 8,
-    })).toMatchObject({ enabled: true, lod: 'full', pixelRatio: 1.5 });
+    })).toMatchObject({ enabled: true, lod: 'full', pixelRatio: 1.5, minFrameIntervalMs: 0 });
   });
 
-  it('uses lite LOD and the cheaper 1.25 DPR budget on narrower or low-core desktops', () => {
-    expect(homeCastle3DRenderPolicy({
+  it('uses lite LOD, lower DPR and a 30fps frame budget on narrower or low-core desktops', () => {
+    const narrow = homeCastle3DRenderPolicy({
       viewportWidth: 1100,
       devicePixelRatio: 2,
       hardwareConcurrency: 8,
-    })).toMatchObject({ enabled: true, lod: 'lite', pixelRatio: 1.25 });
-    expect(homeCastle3DRenderPolicy({
+    });
+    const lowCore = homeCastle3DRenderPolicy({
       viewportWidth: 1600,
       devicePixelRatio: 2,
       hardwareConcurrency: 4,
-    })).toMatchObject({ enabled: true, lod: 'lite', pixelRatio: 1.25 });
+    });
+    for (const policy of [narrow, lowCore]) {
+      expect(policy).toMatchObject({ enabled: true, lod: 'lite', pixelRatio: 1.25 });
+      expect(policy.minFrameIntervalMs).toBeGreaterThan(33);
+      expect(policy.minFrameIntervalMs).toBeLessThan(34);
+    }
   });
 
   it('never upscales a low-DPR display', () => {

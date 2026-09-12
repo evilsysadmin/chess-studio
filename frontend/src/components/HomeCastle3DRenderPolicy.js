@@ -21,10 +21,12 @@ export function homeCastle3DRenderPolicy({
     : (enabled && width >= 1200 && cores > 4 ? 'full' : 'lite');
 
   const pixelRatioCap = lod === 'full' ? 1.5 : 1.25;
+  const minFrameIntervalMs = lod === 'lite' ? 1000 / 30 : 0;
 
   return Object.freeze({
     enabled,
     lod,
     pixelRatio: Math.min(dpr, pixelRatioCap),
+    minFrameIntervalMs,
   });
 }

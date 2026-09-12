@@ -200,6 +200,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     let intersecting = true;
     let roomLightDepth = IDLE_ROOM_LIGHT_DEPTH;
     let roomLightReach = IDLE_ROOM_LIGHT_REACH;
+    let lastRenderedAt = Number.NEGATIVE_INFINITY;
 
     const shouldRender = () => homeCastleShouldRender({
       documentHidden: document.hidden,
@@ -223,6 +224,17 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       frame = 0;
       if (disposed || !shouldRender()) return;
       const reduced = reducedMotion?.matches === true;
+      const continuous = homeCastleNeedsContinuousRender({ reducedMotion: reduced });
+      if (
+        !reduced
+        && renderPolicy.minFrameIntervalMs > 0
+        && timestamp - lastRenderedAt < renderPolicy.minFrameIntervalMs
+      ) {
+        if (continuous) frame = window.requestAnimationFrame(render);
+        return;
+      }
+      lastRenderedAt = timestamp;
+
       const focused = homeCastleRoomFocus(activeRoomRef.current);
       roomTarget.set(focused.x, focused.y, focused.light);
       if (reduced) {
@@ -270,9 +282,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
         camera.lookAt(0, 0, 0.035);
       }
       renderer.render(scene, camera);
-      if (homeCastleNeedsContinuousRender({ reducedMotion: reduced })) {
-        frame = window.requestAnimationFrame(render);
-      }
+      if (continuous) frame = window.requestAnimationFrame(render);
     };
 
     const resumeRender = () => {
