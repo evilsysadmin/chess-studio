@@ -9,7 +9,11 @@ import { homeCastleLightingProfile } from './HomeCastle3DLighting.js';
 import { homeCastleRoomFocus } from './HomeCastle3DRoomFocus.js';
 import { HOME_CASTLE_3D_MIN_WIDTH, homeCastle3DRenderPolicy } from './HomeCastle3DRenderPolicy.js';
 import { applyCanonicalHallOcclusion } from './HomeCastle3DOcclusion.js';
-import { HOME_CASTLE_TORCH_ANCHORS, createHomeCastleTorchProps } from './HomeCastle3DProps.js';
+import {
+  HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS,
+  HOME_CASTLE_TORCH_ANCHORS,
+  createHomeCastleTorchProps,
+} from './HomeCastle3DProps.js';
 import { homeCastleTorchFlicker } from './HomeCastle3DTorchFlicker.js';
 
 const CAMERA_Z = 3;
@@ -42,6 +46,13 @@ function addLightRig(scene, profile) {
     scene.add(torchLight);
     return torchLight;
   });
+
+  const chandelierIntensity = Math.max(0.02, profile.torch * 0.42);
+  for (const anchor of HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS) {
+    const chandelierLight = new THREE.PointLight(0xffc778, chandelierIntensity, 1.65, 2);
+    chandelierLight.position.set(anchor.x, anchor.y, anchor.z);
+    scene.add(chandelierLight);
+  }
 
   return torchLights;
 }

@@ -5,6 +5,11 @@ export const HOME_CASTLE_TORCH_ANCHORS = Object.freeze([
   Object.freeze({ x: 0.72, y: 0.235, z: 0.17 }),
 ]);
 
+export const HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS = Object.freeze([
+  Object.freeze({ x: -0.78, y: 0.72, z: 1.05 }),
+  Object.freeze({ x: 0.78, y: 0.72, z: 1.05 }),
+]);
+
 export function createHomeCastleTorchProps() {
   const group = new THREE.Group();
   group.name = 'home-castle-torches';

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { HOME_CASTLE_TORCH_ANCHORS, createHomeCastleTorchProps } from './HomeCastle3DProps.js';
+import {
+  HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS,
+  HOME_CASTLE_TORCH_ANCHORS,
+  createHomeCastleTorchProps,
+} from './HomeCastle3DProps.js';
 
 describe('HomeCastle3DProps', () => {
   it('keeps the canonical torches mirrored around the hall center', () => {
@@ -19,6 +23,16 @@ describe('HomeCastle3DProps', () => {
       expect(anchor.z).toBeGreaterThan(0);
       expect(anchor.z).toBeLessThan(0.3);
     }
+  });
+
+  it('keeps chandelier light anchors mirrored high above the room destinations', () => {
+    expect(HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS).toHaveLength(2);
+    const [left, right] = HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS;
+    expect(left.x).toBe(-right.x);
+    expect(left.y).toBe(right.y);
+    expect(left.z).toBe(right.z);
+    expect(left.y).toBeGreaterThan(0.65);
+    expect(left.z).toBeGreaterThan(0.9);
   });
 
   it('adds only a restrained flame overlay above each painted sconce', () => {
