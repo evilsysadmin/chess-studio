@@ -13,6 +13,8 @@ export const HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS = Object.freeze([
 export const HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR = Object.freeze({ x: 1.18, y: -0.52, z: 0.88 });
 
 export const HOME_CASTLE_DESTINATION_PROP_ANCHORS = Object.freeze({
+  tournament: Object.freeze({ x: -0.62, y: 0.105, z: 0.27 }),
+  train: Object.freeze({ x: -0.255, y: 0.035, z: 0.285 }),
   play: Object.freeze({ x: 0, y: -0.22, z: 0.31 }),
   daily: Object.freeze({ x: 0.86, y: -0.015, z: 0.3 }),
 });
@@ -85,6 +87,144 @@ function createHomeCastleDust() {
   dust.name = 'home-castle-dust';
   dust.renderOrder = 2;
   return { dust, geometry, material };
+}
+
+function createTournamentTrophy(resources) {
+  const group = new THREE.Group();
+  group.name = 'home-castle-prop-tournament';
+  group.userData.destination = 'tournament';
+  group.position.set(
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.tournament.x,
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.tournament.y,
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.tournament.z,
+  );
+
+  const brass = new THREE.MeshStandardMaterial({
+    color: 0xd4a94f,
+    roughness: 0.42,
+    metalness: 0.58,
+    emissive: 0x372006,
+    emissiveIntensity: 0.07,
+  });
+  const darkWood = new THREE.MeshStandardMaterial({
+    color: 0x4e2e1a,
+    roughness: 0.82,
+    metalness: 0.02,
+    emissive: 0x100703,
+    emissiveIntensity: 0.025,
+  });
+  resources.materials.push(brass, darkWood);
+
+  const plinthGeometry = new THREE.BoxGeometry(0.11, 0.025, 0.07);
+  const footGeometry = new THREE.CylinderGeometry(0.027, 0.035, 0.022, 18);
+  const stemGeometry = new THREE.CylinderGeometry(0.011, 0.017, 0.045, 14);
+  const bowlGeometry = new THREE.CylinderGeometry(0.047, 0.027, 0.052, 20);
+  const lipGeometry = new THREE.TorusGeometry(0.043, 0.004, 8, 22);
+  const handleGeometry = new THREE.TorusGeometry(0.027, 0.004, 7, 18);
+  resources.geometries.push(
+    plinthGeometry,
+    footGeometry,
+    stemGeometry,
+    bowlGeometry,
+    lipGeometry,
+    handleGeometry,
+  );
+
+  const plinth = new THREE.Mesh(plinthGeometry, darkWood);
+  plinth.position.y = 0.012;
+  const foot = new THREE.Mesh(footGeometry, brass);
+  foot.position.y = 0.035;
+  const stem = new THREE.Mesh(stemGeometry, brass);
+  stem.position.y = 0.067;
+  const bowl = new THREE.Mesh(bowlGeometry, brass);
+  bowl.position.y = 0.112;
+  const lip = new THREE.Mesh(lipGeometry, brass);
+  lip.position.y = 0.139;
+  lip.rotation.x = Math.PI / 2;
+
+  const leftHandle = new THREE.Mesh(handleGeometry, brass);
+  leftHandle.position.set(-0.049, 0.114, 0);
+  leftHandle.scale.set(0.72, 0.9, 0.72);
+  const rightHandle = new THREE.Mesh(handleGeometry, brass);
+  rightHandle.position.set(0.049, 0.114, 0);
+  rightHandle.scale.set(0.72, 0.9, 0.72);
+
+  group.add(plinth, foot, stem, bowl, lip, leftHandle, rightHandle);
+  attachViewportScale(group, plinth, 0.68);
+  return group;
+}
+
+function createTrainingLectern(resources) {
+  const group = new THREE.Group();
+  group.name = 'home-castle-prop-train';
+  group.userData.destination = 'train';
+  group.position.set(
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.train.x,
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.train.y,
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.train.z,
+  );
+
+  const wood = new THREE.MeshStandardMaterial({
+    color: 0x684022,
+    roughness: 0.84,
+    metalness: 0.015,
+    emissive: 0x160a04,
+    emissiveIntensity: 0.025,
+  });
+  const page = new THREE.MeshStandardMaterial({
+    color: 0xd8c99f,
+    roughness: 0.9,
+    metalness: 0,
+    emissive: 0x2c2110,
+    emissiveIntensity: 0.055,
+  });
+  const cover = new THREE.MeshStandardMaterial({
+    color: 0x5d231d,
+    roughness: 0.76,
+    metalness: 0.01,
+    emissive: 0x160604,
+    emissiveIntensity: 0.025,
+  });
+  resources.materials.push(wood, page, cover);
+
+  const baseGeometry = new THREE.BoxGeometry(0.095, 0.018, 0.064);
+  const postGeometry = new THREE.BoxGeometry(0.018, 0.105, 0.022);
+  const deskGeometry = new THREE.BoxGeometry(0.14, 0.016, 0.085);
+  const bookGeometry = new THREE.BoxGeometry(0.064, 0.009, 0.074);
+  const spineGeometry = new THREE.BoxGeometry(0.009, 0.011, 0.076);
+  resources.geometries.push(baseGeometry, postGeometry, deskGeometry, bookGeometry, spineGeometry);
+
+  const base = new THREE.Mesh(baseGeometry, wood);
+  base.position.y = 0.009;
+  const post = new THREE.Mesh(postGeometry, wood);
+  post.position.y = 0.068;
+  const desk = new THREE.Mesh(deskGeometry, wood);
+  desk.position.set(0, 0.132, -0.002);
+  desk.rotation.x = -0.43;
+
+  const leftCover = new THREE.Mesh(bookGeometry, cover);
+  leftCover.position.set(-0.032, 0.145, 0.008);
+  leftCover.rotation.set(-0.43, 0.13, 0);
+  const rightCover = new THREE.Mesh(bookGeometry, cover);
+  rightCover.position.set(0.032, 0.145, 0.008);
+  rightCover.rotation.set(-0.43, -0.13, 0);
+
+  const leftPage = new THREE.Mesh(bookGeometry, page);
+  leftPage.position.set(-0.031, 0.151, 0.012);
+  leftPage.scale.set(0.94, 0.5, 0.94);
+  leftPage.rotation.set(-0.43, 0.13, 0);
+  const rightPage = new THREE.Mesh(bookGeometry, page);
+  rightPage.position.set(0.031, 0.151, 0.012);
+  rightPage.scale.set(0.94, 0.5, 0.94);
+  rightPage.rotation.set(-0.43, -0.13, 0);
+
+  const spine = new THREE.Mesh(spineGeometry, cover);
+  spine.position.set(0, 0.148, 0.01);
+  spine.rotation.x = -0.43;
+
+  group.add(base, post, desk, leftCover, rightCover, leftPage, rightPage, spine);
+  attachViewportScale(group, base, 0.7);
+  return group;
 }
 
 function createPlayRook(resources) {
@@ -236,12 +376,16 @@ export function createHomeCastleDestinationProps() {
     geometries: [],
     materials: [],
   };
+  const tournament = createTournamentTrophy(resources);
+  const train = createTrainingLectern(resources);
   const play = createPlayRook(resources);
   const daily = createDailyBrazier(resources);
-  group.add(play, daily);
+  group.add(tournament, train, play, daily);
 
   return {
     group,
+    tournament,
+    train,
     play,
     daily,
     dispose() {
