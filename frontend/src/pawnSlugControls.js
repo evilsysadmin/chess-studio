@@ -73,22 +73,35 @@ const clampVolume = (value, fallback) => {
 
 const normalizedCode = (value) => (typeof value === 'string' ? value.trim() : '');
 
+function keyCounts(keymap) {
+  const counts = new Map();
+  for (const code of Object.values(keymap)) counts.set(code, (counts.get(code) || 0) + 1);
+  return counts;
+}
+
 export function normalizePawnSlugKeymap(value) {
   const input = value && typeof value === 'object' ? value : {};
-  const proposed = Object.fromEntries(PAWN_SLUG_CONTROL_ACTIONS.map((action) => {
+  const repaired = Object.fromEntries(PAWN_SLUG_CONTROL_ACTIONS.map((action) => {
     const candidate = normalizedCode(input[action]);
     return [action, candidate || PAWN_SLUG_DEFAULT_KEYMAP[action]];
   }));
-  const counts = new Map();
-  for (const code of Object.values(proposed)) counts.set(code, (counts.get(code) || 0) + 1);
 
-  return Object.fromEntries(PAWN_SLUG_CONTROL_ACTIONS.map((action) => {
-    const candidate = proposed[action];
-    return [
-      action,
-      counts.get(candidate) === 1 ? candidate : PAWN_SLUG_DEFAULT_KEYMAP[action],
-    ];
-  }));
+  for (let pass = 0; pass < PAWN_SLUG_CONTROL_ACTIONS.length; pass += 1) {
+    const counts = keyCounts(repaired);
+    const conflicts = PAWN_SLUG_CONTROL_ACTIONS.filter((action) => counts.get(repaired[action]) > 1);
+    if (!conflicts.length) break;
+
+    let changed = false;
+    for (const action of conflicts) {
+      const fallback = PAWN_SLUG_DEFAULT_KEYMAP[action];
+      if (repaired[action] === fallback) continue;
+      repaired[action] = fallback;
+      changed = true;
+    }
+    if (!changed) break;
+  }
+
+  return repaired;
 }
 
 export function normalizePawnSlugSettings(value) {
