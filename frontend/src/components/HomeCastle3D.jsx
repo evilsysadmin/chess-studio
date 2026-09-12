@@ -98,6 +98,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     const pointer = new THREE.Vector2();
     const target = new THREE.Vector2();
     const roomFocus = new THREE.Vector3();
+    const roomTarget = new THREE.Vector3();
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
     const textureLoader = new THREE.TextureLoader();
     let frame = 0;
@@ -113,7 +114,8 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     const render = () => {
       if (disposed) return;
       const focused = homeCastleRoomFocus(activeRoomRef.current);
-      roomFocus.lerp(new THREE.Vector3(focused.x, focused.y, focused.light), 0.09);
+      roomTarget.set(focused.x, focused.y, focused.light);
+      roomFocus.lerp(roomTarget, 0.09);
       roomLight.position.x = roomFocus.x;
       roomLight.position.y = roomFocus.y;
       roomLight.intensity = roomFocus.z;
