@@ -1,12 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { buttonWithHeading, login, mockApi, openMoreGameModes } from './helpers.js';
 
-test('Laboratorio libre · el editor honra el renderer 3D global', async ({ page }) => {
-  await mockApi(page, {
-    profileSeed: {
-      'chess-study-board-renderer': '3d',
-    },
-  });
+test('Laboratorio libre · el editor usa 3D por defecto en un dispositivo limpio', async ({ page }) => {
+  await mockApi(page);
   await login(page);
 
   const moreModes = await openMoreGameModes(page);
