@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { homeCastleChandelierShimmer, homeCastleTorchFlicker } from './HomeCastle3DTorchFlicker.js';
+import {
+  homeCastleChandelierShimmer,
+  homeCastleFireplacePulse,
+  homeCastleTorchFlicker,
+} from './HomeCastle3DTorchFlicker.js';
 
 describe('homeCastleTorchFlicker', () => {
   it('keeps motion restrained around the base intensity', () => {
@@ -40,5 +44,24 @@ describe('homeCastleChandelierShimmer', () => {
   it('is completely static for reduced motion', () => {
     expect(homeCastleChandelierShimmer(0, 0, true)).toBe(1);
     expect(homeCastleChandelierShimmer(1, 12000, true)).toBe(1);
+  });
+});
+
+describe('homeCastleFireplacePulse', () => {
+  it('keeps the hearth alive without approaching torch flicker amplitude', () => {
+    const samples = [];
+    for (let ms = 0; ms <= 8000; ms += 125) samples.push(homeCastleFireplacePulse(ms));
+    expect(Math.min(...samples)).toBeGreaterThan(0.96);
+    expect(Math.max(...samples)).toBeLessThan(1.04);
+  });
+
+  it('changes over time without randomness', () => {
+    expect(homeCastleFireplacePulse(1500)).not.toBe(homeCastleFireplacePulse(3500));
+    expect(homeCastleFireplacePulse(1500)).toBe(homeCastleFireplacePulse(1500));
+  });
+
+  it('is completely static for reduced motion', () => {
+    expect(homeCastleFireplacePulse(0, true)).toBe(1);
+    expect(homeCastleFireplacePulse(8000, true)).toBe(1);
   });
 });
