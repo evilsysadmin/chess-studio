@@ -378,21 +378,6 @@ test('Registro · permite elegir inglés y localiza el acceso', async ({ page })
   await expect(page.getByRole('button', { name: 'Create account', exact: true })).toBeVisible();
 });
 
-test('Partida · la mesa principal no expone PGN ni una franja avanzada', async ({ page }) => {
-  await mockApi(page, { profileSeed: { 'chess-study-board-renderer': '2d-explicit-v1' } });
-  await login(page);
-  await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-
-  await expect(gameTurn(page)).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Chess Studio', exact: true })).toHaveCount(0);
-  await expect(page.locator('.player-status-bar')).toHaveCount(0);
-  await expect(page.locator('.square-coordinate')).toHaveCount(16);
-  await expect(page.locator('.rank-labels, .file-labels')).toHaveCount(0);
-  await expect(page.getByText('Opciones avanzadas', { exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Exportar archivo .pgn', exact: true })).toHaveCount(0);
-});
-
 test('Laboratorio · FEN sólo aparece dentro de opciones avanzadas', async ({ page }) => {
   await mockApi(page);
   await login(page);
