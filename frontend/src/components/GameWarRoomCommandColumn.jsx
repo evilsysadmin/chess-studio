@@ -8,6 +8,7 @@ import './WarRoomDesktopRailLayout.css';
 import './WarRoomMatthiasDiegetic.css';
 import './WarRoomFloatingFooter.css';
 import './WarRoomAppearanceMenu.css';
+import './WarRoomAndroidDensity.css';
 
 function resolveWarRoomSignal(game, status) {
   const text = String(status?.statusText || '').trim();
@@ -32,6 +33,12 @@ function closeUtilityMenu(event) {
   event.currentTarget.closest('details')?.removeAttribute('open');
 }
 
+function triggerMountedGameAction(event, selector) {
+  const root = event.currentTarget.closest('.game-layout-3d');
+  closeUtilityMenu(event);
+  root?.querySelector(selector)?.click();
+}
+
 function openBoardAppearance(board) {
   if (typeof board?.onCustomize === 'function') {
     board.onCustomize();
@@ -44,7 +51,10 @@ function openBoardAppearance(board) {
   document.querySelector('.board3d-customize')?.click();
 }
 
-function LegacyCompactPill({ game, signal, board }) {
+function LegacyCompactPill({ game, signal, board, controls, zenMode }) {
+  const hasHint = !zenMode && controls.hintMode !== 'off' && typeof controls.onHint === 'function';
+  const hasUndo = !zenMode && controls.hintMode === 'free' && typeof controls.onUndo === 'function';
+
   return (
     <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
       <div
@@ -66,9 +76,73 @@ function LegacyCompactPill({ game, signal, board }) {
         >
           {signal.label}
         </strong>
+
+        <span className="game-3d-compact-actions" aria-label="Acciones rápidas de partida">
+          <button
+            type="button"
+            className="game-3d-compact-action is-focus"
+            aria-label="Focus"
+            title="Focus"
+            onClick={(event) => triggerMountedGameAction(event, '.game-mobile-focus-toggle')}
+          >
+            <span aria-hidden="true">◎</span>
+          </button>
+          {typeof controls.onAbandon === 'function' && (
+            <button
+              type="button"
+              className="game-3d-compact-action is-abandon"
+              aria-label="Abandonar partida"
+              title="Abandonar partida"
+              onClick={controls.onAbandon}
+            >
+              <span aria-hidden="true">⚑</span>
+            </button>
+          )}
+        </span>
+
         <details className="game-3d-utility-menu">
           <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
           <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={(event) => triggerMountedGameAction(event, '.game-mobile-focus-toggle')}
+            >
+              Focus
+            </button>
+            {hasHint && (
+              <button
+                type="button"
+                role="menuitem"
+                disabled={!controls.canHint}
+                onClick={(event) => {
+                  closeUtilityMenu(event);
+                  controls.onHint();
+                }}
+              >
+                {controls.hintButtonLabel || 'Pista'}
+              </button>
+            )}
+            {hasUndo && (
+              <button
+                type="button"
+                role="menuitem"
+                disabled={controls.busy || game.history.length === 0}
+                onClick={(event) => {
+                  closeUtilityMenu(event);
+                  controls.onUndo();
+                }}
+              >
+                Deshacer jugada
+              </button>
+            )}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={(event) => triggerMountedGameAction(event, '.board-renderer-toggle')}
+            >
+              Vista 2D
+            </button>
             <button
               type="button"
               role="menuitem"
@@ -79,6 +153,36 @@ function LegacyCompactPill({ game, signal, board }) {
             >
               Apariencia
             </button>
+            {typeof controls.onToggleZen === 'function' && (
+              <button
+                type="button"
+                role="menuitem"
+                aria-pressed={zenMode}
+                title={zenModeSummary(zenMode)}
+                onClick={(event) => {
+                  closeUtilityMenu(event);
+                  controls.onToggleZen();
+                }}
+              >
+                {zenMode ? 'Salir de Zen' : 'Modo Zen'}
+              </button>
+            )}
+            {typeof controls.onAbandon === 'function' && (
+              <>
+                <span className="game-3d-utility-separator" role="separator" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="is-danger"
+                  onClick={(event) => {
+                    closeUtilityMenu(event);
+                    controls.onAbandon();
+                  }}
+                >
+                  Abandonar partida
+                </button>
+              </>
+            )}
           </div>
         </details>
       </div>
@@ -96,15 +200,17 @@ export default function GameWarRoomCommandColumn({
 }) {
   const signal = resolveWarRoomSignal(game, status);
 
-  // Mobile/compact keeps the established compact composition, but secondary
-  // board customization shares the same overflow contract as desktop so no
-  // floating Appearance control can overlap the board.
+  // Compact War Room keeps one HUD surface. Secondary actions are folded into
+  // its overflow so Android does not pay for a separate command row above the
+  // board. Focus/resign survive as tiny one-tap affordances inside the same HUD.
   if (compactViewport) {
     return (
       <LegacyCompactPill
         game={game}
         signal={signal}
         board={board}
+        controls={controls}
+        zenMode={zenMode}
       />
     );
   }
