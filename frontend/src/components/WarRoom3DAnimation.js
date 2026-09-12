@@ -106,6 +106,7 @@ export function warRoomSceneProfile(options = {}) {
 
 export function warRoomAmbientFramePlan({
   documentHidden = false,
+  intersecting = true,
   reducedMotion = false,
   coarsePointer = false,
   softwareRenderer = false,
@@ -115,6 +116,7 @@ export function warRoomAmbientFramePlan({
 } = {}) {
   const active = threeSurfaceShouldRender({
     documentHidden,
+    intersecting,
     paused: reducedMotion,
   }) && (!softwareRenderer || narrativeActive);
   const budget = warRoomRenderBudget({ coarsePointer, softwareRenderer });
