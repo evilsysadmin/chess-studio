@@ -16,6 +16,7 @@ import {
   createHomeCastleTorchProps,
 } from './HomeCastle3DProps.js';
 import { createHomeCastleSecondaryDestinationProps } from './HomeCastle3DSecondaryProps.js';
+import { applyHomeCastleDestinationPropFocus } from './HomeCastle3DPropFocus.js';
 import {
   homeCastleChandelierShimmer,
   homeCastleFireplacePulse,
@@ -201,6 +202,15 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     secondaryDestinationProps.group.renderOrder = 2;
     scene.add(secondaryDestinationProps.group);
 
+    const destinationPropsByRoom = {
+      tournament: torchProps.destinationProps?.tournament,
+      train: torchProps.destinationProps?.train,
+      combat: secondaryDestinationProps.combat,
+      daily: torchProps.destinationProps?.daily,
+      history: secondaryDestinationProps.history,
+      play: torchProps.destinationProps?.play,
+    };
+
     const pointer = new THREE.Vector2();
     const target = new THREE.Vector2();
     const roomFocus = new THREE.Vector3();
@@ -263,6 +273,12 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       roomLight.position.z = roomLightDepth;
       roomLight.distance = roomLightReach;
       roomLight.intensity = roomFocus.z;
+
+      applyHomeCastleDestinationPropFocus(
+        destinationPropsByRoom,
+        activeRoomRef.current,
+        reduced,
+      );
 
       for (let index = 0; index < torchProps.flames.length; index += 1) {
         const flicker = homeCastleTorchFlicker(index, timestamp, reduced);
