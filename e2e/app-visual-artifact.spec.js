@@ -7,6 +7,7 @@ const MIN_TOUCH_TARGET = 44;
 const CAPTURES = [
   { label:'desktop-1440x900', width:1440, height:900, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
   { label:'android-desktop-site-980x1740', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, minStageViewportFill:.66 },
+  { label:'android-desktop-site-980x1740-quiet', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, minStageViewportFill:.66, dismissMatthias:true },
   { label:'android-360x800', width:360, height:800, reducedMotion:'no-preference' },
   { label:'android-390x844', width:390, height:844, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
   { label:'android-430x932', width:430, height:932, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
@@ -176,6 +177,14 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
       try {
         const home = await openCanonicalHome(page, { reducedMotion:capture.reducedMotion });
         await settle(page, home, { expectCastleReady:capture.expectCastleReady });
+        if (capture.dismissMatthias) {
+          const speech = home.locator('.illustrated-home__speech');
+          if (await speech.count()) {
+            await speech.getByRole('button', { name:'Cerrar comentario de Matthias' }).click();
+            await expect(speech).toHaveCount(0);
+            await page.waitForTimeout(80);
+          }
+        }
 
         const health = await captureHealth(page, capture.label);
         captures.push({
@@ -201,7 +210,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
 
   await writeFile(
     `${ARTIFACT_DIR}/visual-health.json`,
-    `${JSON.stringify({ schema:6, minimumTouchTarget:MIN_TOUCH_TARGET, captures }, null, 2)}\n`,
+    `${JSON.stringify({ schema:7, minimumTouchTarget:MIN_TOUCH_TARGET, captures }, null, 2)}\n`,
     'utf8',
   );
 
