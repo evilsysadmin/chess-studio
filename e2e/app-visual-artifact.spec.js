@@ -37,12 +37,29 @@ async function settle(page, home, { expectCastleReady = false } = {}) {
 }
 
 async function freezeVisualFrame(page) {
+  await page.addStyleTag({
+    content:'*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; }',
+  });
   await page.evaluate(() => {
     window.requestAnimationFrame = () => 0;
   });
   // Deja consumir el único RAF que pudiera estar ya encolado; al intentar
   // programar el siguiente encontrará el stub y la escena quedará congelada.
   await page.waitForTimeout(80);
+}
+
+async function captureViewportPng(context, page, path) {
+  const session = await context.newCDPSession(page);
+  try {
+    const { data } = await session.send('Page.captureScreenshot', {
+      format:'png',
+      fromSurface:true,
+      captureBeyondViewport:false,
+    });
+    await writeFile(path, Buffer.from(data, 'base64'));
+  } finally {
+    await session.detach();
+  }
 }
 
 async function captureHealth(page, label) {
@@ -168,11 +185,11 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
           expectedCoarsePointer:capture.hasTouch === true,
         });
         await freezeVisualFrame(page);
-        await page.screenshot({
-          path:`${ARTIFACT_DIR}/home-${capture.label}.png`,
-          fullPage:false,
-          animations:'disabled',
-        });
+        await captureViewportPng(
+          context,
+          page,
+          `${ARTIFACT_DIR}/home-${capture.label}.png`,
+        );
       } finally {
         await context.close();
       }
