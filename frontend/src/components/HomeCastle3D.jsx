@@ -16,6 +16,7 @@ import {
   createHomeCastleTorchProps,
 } from './HomeCastle3DProps.js';
 import { createHomeCastleSecondaryDestinationProps } from './HomeCastle3DSecondaryProps.js';
+import { createHomeCastleUtilityDestinationProps } from './HomeCastle3DUtilityProps.js';
 import { applyHomeCastleDestinationPropFocus } from './HomeCastle3DPropFocus.js';
 import {
   homeCastleChandelierShimmer,
@@ -202,6 +203,10 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     secondaryDestinationProps.group.renderOrder = 2;
     scene.add(secondaryDestinationProps.group);
 
+    const utilityDestinationProps = createHomeCastleUtilityDestinationProps();
+    utilityDestinationProps.group.renderOrder = 2;
+    scene.add(utilityDestinationProps.group);
+
     const destinationPropsByRoom = {
       tournament: torchProps.destinationProps?.tournament,
       train: torchProps.destinationProps?.train,
@@ -209,6 +214,8 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       daily: torchProps.destinationProps?.daily,
       history: secondaryDestinationProps.history,
       play: torchProps.destinationProps?.play,
+      pawnslug: utilityDestinationProps.pawnslug,
+      dungeon: utilityDestinationProps.dungeon,
     };
 
     const pointer = new THREE.Vector2();
@@ -401,6 +408,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       material.map?.dispose();
       material.dispose();
       occlusionMaterial.dispose();
+      utilityDestinationProps.dispose();
       secondaryDestinationProps.dispose();
       torchProps.dispose();
       geometry.dispose();
