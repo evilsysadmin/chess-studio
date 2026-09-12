@@ -58,4 +58,18 @@
   .illustrated-home__castle-3d {
     box-shadow: 0 24px 54px rgba(0, 0, 0, .30);
   }
+
+  /* Narrow-layout speech is normally fixed near the viewport bottom. On a tall
+     Android desktop-site viewport that detaches Matthias by more than a screen
+     from the castle. Keep the message attached to the diegetic scene instead. */
+  .illustrated-home__speech {
+    position: absolute;
+    left: 50%;
+    right: auto;
+    top: calc(100% + 22px);
+    bottom: auto;
+    width: min(760px, calc(100% - 32px));
+    max-height: min(36dvh, 320px);
+    transform: translateX(-50%);
+  }
 }
