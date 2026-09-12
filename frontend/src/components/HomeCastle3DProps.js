@@ -13,7 +13,7 @@ export const HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS = Object.freeze([
 export const HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR = Object.freeze({ x: 1.18, y: -0.52, z: 0.88 });
 
 export const HOME_CASTLE_DESTINATION_PROP_ANCHORS = Object.freeze({
-  play: Object.freeze({ x: 0, y: -0.365, z: 0.29 }),
+  play: Object.freeze({ x: 0, y: -0.22, z: 0.31 }),
   daily: Object.freeze({ x: 0.86, y: -0.015, z: 0.3 }),
 });
 
@@ -81,18 +81,18 @@ function createPlayRook(resources) {
   group.rotation.x = -0.035;
 
   const warmIvory = new THREE.MeshStandardMaterial({
-    color: 0xd8c39a,
-    roughness: 0.72,
-    metalness: 0.08,
-    emissive: 0x24160b,
-    emissiveIntensity: 0.045,
+    color: 0xead9b2,
+    roughness: 0.68,
+    metalness: 0.06,
+    emissive: 0x3a2714,
+    emissiveIntensity: 0.085,
   });
   const agedBase = new THREE.MeshStandardMaterial({
-    color: 0x8f7048,
-    roughness: 0.78,
+    color: 0x9a784c,
+    roughness: 0.76,
     metalness: 0.05,
-    emissive: 0x120b05,
-    emissiveIntensity: 0.025,
+    emissive: 0x1d1208,
+    emissiveIntensity: 0.04,
   });
   resources.materials.push(warmIvory, agedBase);
 
@@ -132,7 +132,7 @@ function createPlayRook(resources) {
     }
   }
 
-  attachViewportScale(group, base, 0.72);
+  attachViewportScale(group, base, 0.82);
   return group;
 }
 
