@@ -6,6 +6,7 @@ on:
       - 'frontend/src/**'
       - 'frontend/public/**'
       - 'e2e/app-visual-artifact.spec.js'
+      - 'e2e/war-room-visual-artifact.spec.js'
       - 'e2e/browser-runtime-health.spec.js'
       - 'e2e/browser-storage-health.spec.js'
       - '.github/workflows/app-visual-artifact.yml'
@@ -52,7 +53,7 @@ jobs:
 
       - name: Capture canonical views + browser health
         working-directory: e2e
-        run: ./node_modules/.bin/playwright test app-visual-artifact.spec.js browser-runtime-health.spec.js browser-storage-health.spec.js --workers=1 --retries=0
+        run: ./node_modules/.bin/playwright test app-visual-artifact.spec.js war-room-visual-artifact.spec.js browser-runtime-health.spec.js browser-storage-health.spec.js --workers=1 --retries=0
 
       - name: Summarize visual health
         if: always()
@@ -61,6 +62,7 @@ jobs:
           node <<'NODE'
           const fs = require('node:fs');
           const reportPath = '.artifacts/app-visual/visual-health.json';
+          const warRoomPath = '.artifacts/app-visual/war-room-android-390x844-health.json';
           const summaryPath = process.env.GITHUB_STEP_SUMMARY;
           const lines = ['## App · visual health'];
           if (!fs.existsSync(reportPath)) {
@@ -86,6 +88,33 @@ jobs:
                 lines.push(`- ${label}: ${target.width}×${target.height}px`);
               }
             }
+          }
+
+          lines.push('', '### War Room · Android 390×844');
+          if (!fs.existsSync(warRoomPath)) {
+            lines.push('', '_No se generó la captura canónica de War Room._');
+          } else {
+            const { capture = {} } = JSON.parse(fs.readFileSync(warRoomPath, 'utf8'));
+            lines.push(
+              '',
+              '| Métrica | Valor |',
+              '| --- | ---: |',
+              `| Overflow X | ${capture.horizontalOverflowPx ?? '—'} px |`,
+              `| HUD Matthias | ${capture.hud?.height ?? '—'} px |`,
+              `| Escena / ancho viewport | ${capture.boardWidthFill != null ? `${Math.round(capture.boardWidthFill * 100)}%` : '—'} |`,
+              `| Escena visible / alto viewport | ${capture.boardViewportFill != null ? `${Math.round(capture.boardViewportFill * 100)}%` : '—'} |`,
+              `| Hueco HUD → escena | ${capture.hudToBoardGap ?? '—'} px |`,
+              `| Hueco escena → jugador | ${capture.playerToBoardGap ?? '—'} px |`,
+            );
+            const quick = capture.quickActions || {};
+            lines.push(
+              '',
+              `Focus: ${quick.focus ? `${quick.focus.width}×${quick.focus.height}px` : '—'} · `
+                + `Rendirse: ${quick.abandon ? `${quick.abandon.width}×${quick.abandon.height}px` : '—'} · `
+                + `Menú: ${quick.overflow ? `${quick.overflow.width}×${quick.overflow.height}px` : '—'}`,
+              '',
+              'Artefacto visual: `war-room-android-390x844.png`',
+            );
           }
           fs.appendFileSync(summaryPath, `${lines.join('\n')}\n`);
           NODE
