@@ -1,0 +1,109 @@
+/* Mobile 2D is the direct-play surface: board first, essential controls close,
+ * no War Room storytelling chrome. The 3D layout is intentionally untouched. */
+@media (max-width: 700px) {
+  .game-screen .game-layout:not(.game-layout-3d) {
+    --game-board-size: min(640px, calc(100vw - 2rem));
+    width: 100%;
+    max-width: 100%;
+    gap: .35rem;
+  }
+
+  .game-screen .game-layout:not(.game-layout-3d) .board-column,
+  .game-screen .game-layout:not(.game-layout-3d) .board-live-row,
+  .game-screen .game-layout:not(.game-layout-3d) .game-board-stack {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .game-screen .game-layout:not(.game-layout-3d) .board-column {
+    gap: .3rem;
+  }
+
+  .game-screen .game-layout:not(.game-layout-3d) .board-live-row {
+    row-gap: .35rem;
+  }
+
+  /* Direct play deliberately drops the chat/notation rail and ambient banter.
+   * Focus remains an explicit opt-in surface and keeps its own bubble. */
+  .game-screen .game-layout:not(.game-layout-3d) .game-side-column,
+  .game-screen .game-layout:not(.game-layout-3d):not(.game-layout-focus) .matthias-board-bubble:not(.game-mobile-focus-bubble) {
+    display: none;
+  }
+
+  .game-screen .game-layout:not(.game-layout-3d) .status-line {
+    min-height: 1rem;
+    padding-inline: .35rem;
+    font-size: .72rem;
+    line-height: 1.15;
+  }
+
+  .game-screen .game-layout:not(.game-layout-3d) .game-player-rail,
+  .game-screen .game-layout:not(.game-layout-3d) .game-command-deck {
+    width: min(100%, calc(var(--game-board-size) + 1rem));
+    box-sizing: border-box;
+    margin-inline: auto;
+  }
+
+  .game-screen .game-layout:not(.game-layout-3d) .game-player-rail {
+    min-height: 40px;
+    padding: .28rem .4rem;
+    gap: .42rem;
+    border-radius: 7px;
+  }
+
+  .game-screen .game-layout:not(.game-layout-3d) .game-player-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    font-size: 1rem;
+  }
+
+  .game-screen .game-layout:not(.game-layout-3d) .game-player-identity strong {
+    font-size: .76rem;
+  }
+
+  .game-screen .game-layout:not(.game-layout-3d) .game-player-identity small {
+    font-size: .58rem;
+  }
+
+  .game-screen .game-layout:not(.game-layout-3d) .game-player-rail .clock-chip {
+    min-height: 30px;
+    min-width: 68px;
+    padding-inline: .4rem;
+    font-size: .82rem;
+  }
+
+  .game-screen .game-layout:not(.game-layout-3d) .game-controls {
+    padding: .3rem;
+    gap: .3rem;
+  }
+
+  /* Keep actions compact even below 520px. One giant vertical button stack is
+   * precisely what the lightweight mobile surface is trying to avoid. */
+  .game-screen .game-layout:not(.game-layout-3d) .game-controls-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .3rem;
+  }
+
+  .game-screen .game-layout:not(.game-layout-3d) .game-controls-actions > button {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    height: auto;
+    margin: 0;
+    padding: .42rem .36rem;
+    border-radius: 7px;
+    font-size: .68rem;
+    line-height: 1.12;
+    white-space: normal;
+  }
+}
+
+@media (max-width: 380px) {
+  .game-screen .game-layout:not(.game-layout-3d) .game-controls-actions > button {
+    font-size: .64rem;
+    padding-inline: .28rem;
+  }
+}
