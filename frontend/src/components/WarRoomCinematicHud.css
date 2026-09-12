@@ -39,13 +39,6 @@
     min-width: 0;
   }
 
-  /* The player identity is already obvious from the board orientation and the
-     rest of the match UI. Do not turn the primary status signal into a versus card. */
-  .game-screen .game-3d-human-id,
-  .game-screen .game-3d-turn-pill-versus {
-    display: none !important;
-  }
-
   .game-screen .game-3d-turn-pill-avatar {
     width: 21px;
     height: 21px;
