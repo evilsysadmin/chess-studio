@@ -100,7 +100,7 @@
     right: max(.35rem, env(safe-area-inset-right, 0px));
     left: auto;
     width: auto;
-    grid-template-columns: repeat(4, minmax(2.35rem, 2.7rem));
+    grid-template-columns: repeat(4, 2.75rem);
     gap: .12rem;
     padding: .12rem;
     transform: none;
@@ -114,8 +114,8 @@
     grid-template-columns: 1fr;
     grid-template-rows: auto auto;
     gap: 0;
-    min-width: 0;
-    min-height: 1.9rem;
+    min-width: 44px;
+    min-height: 44px;
     padding: .16rem .2rem;
     border-radius: .35rem;
   }
@@ -194,7 +194,6 @@
 
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 390px) {
   .pawn-slug .pawn-slug-hud > div:nth-child(1) { width: min(28vw, 14rem); }
-  .pawn-slug .pawn-slug-arsenal { grid-template-columns: repeat(4, minmax(2.15rem, 2.45rem)); }
   .pawn-slug .pawn-slug-gesture-hint { opacity: .45; }
   .pawn-slug .pawn-slug-gesture-surface.is-trained .pawn-slug-gesture-hint { opacity: 0; }
 }
