@@ -180,6 +180,41 @@ test('Browser runtime · Home y Así juegas no dejan errores silenciosos', async
   expect(faults, diagnostic).toEqual([]);
 });
 
+test('Browser WebGL · Home 3D recupera el contexto perdido', async ({ page }) => {
+  const { faults } = attachRuntimeErrorProbe(page);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'hardwareConcurrency', {
+      configurable:true,
+      get:() => 8,
+    });
+  });
+  await seedRuntimeSession(page);
+  await login(page);
+
+  const home = page.getByRole('region', { name:'Modos principales' });
+  const canvas = home.locator('.illustrated-home__castle-3d');
+  await expect(canvas).toBeVisible();
+  await expect(canvas).toHaveClass(/is-ready/, { timeout:15_000 });
+
+  const canLoseContext = await canvas.evaluate((node) => {
+    const gl = node.getContext('webgl2') || node.getContext('webgl');
+    const extension = gl?.getExtension('WEBGL_lose_context');
+    if (!extension) return false;
+    window.__homeWebglLoseContext = extension;
+    extension.loseContext();
+    return true;
+  });
+  expect(canLoseContext, 'El Chromium CI debe exponer WEBGL_lose_context para validar recuperación real').toBe(true);
+
+  await expect(canvas).not.toHaveClass(/is-ready/);
+  await page.evaluate(() => window.__homeWebglLoseContext?.restoreContext());
+  await expect(canvas).toHaveClass(/is-ready/, { timeout:15_000 });
+  await settle(page);
+
+  const diagnostic = faults.map((fault) => `[${fault.type}] ${fault.message}`).join('\n\n');
+  expect(faults, diagnostic).toEqual([]);
+});
+
 test('Browser lifecycle · abrir y cerrar Así juegas no acumula recursos globales', async ({ page }) => {
   await mkdir(ARTIFACT_DIR, { recursive:true });
   await installLifecycleProbe(page);
