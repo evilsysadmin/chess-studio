@@ -19,6 +19,25 @@ export const HOME_CASTLE_DESTINATION_PROP_ANCHORS = Object.freeze({
 
 export const HOME_CASTLE_DUST_MOTE_COUNT = 24;
 
+const DESTINATION_PROP_REFERENCE_ASPECT = 1.6;
+
+export function homeCastleDestinationPropScale(aspect) {
+  const numericAspect = Number(aspect);
+  if (!Number.isFinite(numericAspect) || numericAspect <= 0) return 1;
+  return THREE.MathUtils.clamp(numericAspect / DESTINATION_PROP_REFERENCE_ASPECT, 0.28, 1);
+}
+
+function attachViewportScale(group, driverMesh, baseScale) {
+  group.userData.baseScale = baseScale;
+  group.scale.setScalar(baseScale);
+  driverMesh.onBeforeRender = (_renderer, _scene, camera) => {
+    const width = Math.abs((camera?.right ?? 0) - (camera?.left ?? 0));
+    const height = Math.abs((camera?.top ?? 0) - (camera?.bottom ?? 0));
+    const responsiveScale = homeCastleDestinationPropScale(height > 0 ? width / height : DESTINATION_PROP_REFERENCE_ASPECT);
+    group.scale.setScalar(baseScale * responsiveScale);
+  };
+}
+
 function fractional(value) {
   return value - Math.floor(value);
 }
@@ -113,7 +132,7 @@ function createPlayRook(resources) {
     }
   }
 
-  group.scale.setScalar(0.95);
+  attachViewportScale(group, base, 0.95);
   return group;
 }
 
@@ -154,7 +173,7 @@ function createDailyHourglass(resources) {
 
   const capGeometry = new THREE.CylinderGeometry(0.034, 0.034, 0.012, 18);
   const postGeometry = new THREE.CylinderGeometry(0.0045, 0.0045, 0.083, 10);
-  const glassGeometry = new THREE.CylinderGeometry(0.025, 0.025, 0.073, 16);
+  const glassGeometry = new THREE.ConeGeometry(0.025, 0.038, 16, 1, true);
   const sandGeometry = new THREE.ConeGeometry(0.019, 0.032, 14);
   resources.geometries.push(capGeometry, postGeometry, glassGeometry, sandGeometry);
 
@@ -170,10 +189,14 @@ function createDailyHourglass(resources) {
     group.add(post);
   }
 
-  const glassBody = new THREE.Mesh(glassGeometry, glass);
-  glassBody.position.y = 0.05;
-  glassBody.scale.set(0.88, 1, 0.62);
-  group.add(glassBody);
+  const upperGlass = new THREE.Mesh(glassGeometry, glass);
+  upperGlass.position.y = 0.064;
+  upperGlass.rotation.z = Math.PI;
+  upperGlass.scale.set(0.88, 1, 0.62);
+  const lowerGlass = new THREE.Mesh(glassGeometry, glass);
+  lowerGlass.position.y = 0.036;
+  lowerGlass.scale.set(0.88, 1, 0.62);
+  group.add(upperGlass, lowerGlass);
 
   const upperSand = new THREE.Mesh(sandGeometry, sand);
   upperSand.position.y = 0.067;
@@ -184,7 +207,7 @@ function createDailyHourglass(resources) {
   lowerSand.scale.set(0.72, 0.6, 0.54);
   group.add(upperSand, lowerSand);
 
-  group.scale.setScalar(1.02);
+  attachViewportScale(group, bottom, 1.02);
   return group;
 }
 
