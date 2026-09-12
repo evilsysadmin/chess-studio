@@ -120,6 +120,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       transparent: true,
       opacity: 0.18,
       blending: THREE.MultiplyBlending,
+      premultipliedAlpha: true,
       depthWrite: false,
       toneMapped: false,
     });
