@@ -37,10 +37,11 @@
   }
 }
 
-/* Once the real room props are rendered, let them identify each destination.
- * Keep the old SVG + chevron as an automatic fallback when WebGL is unavailable,
- * and retain them on narrow mobile where physical props are intentionally tiny. */
-@media (min-width: 521px) {
+/* On real desktop the physical props sit close enough to the labels to become
+ * the primary identifiers. Tall-touch and mobile keep the glyphs because the
+ * cropped camera can place the physical prop farther from its label. WebGL-off
+ * automatically keeps the old glyph + chevron fallback everywhere. */
+@media (min-width: 1000px) {
   .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
     .illustrated-home__destination > svg,
   .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
