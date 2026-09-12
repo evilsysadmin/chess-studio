@@ -121,12 +121,17 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
         <aside className="illustrated-home__resident" aria-label="Rincón de Matthias">
         {matthiasSpeaking && <section className="illustrated-home__speech" aria-label="Mensaje de Matthias" aria-live="polite">
           <strong>{matthiasModel.eyebrow}</strong><p>{matthiasModel.text}</p>
-          <button type="button" onClick={onMatthiasAction}>{matthiasModel.actionLabel}</button>
+          <button
+            type="button"
+            className={matthiasModel.action === 'insights' ? 'home-learning-card' : undefined}
+            onClick={onMatthiasAction}
+            aria-label={matthiasModel.action === 'insights' ? 'Abrir Así juegas con Matthias' : undefined}
+          >{matthiasModel.actionLabel}</button>
           <button type="button" onClick={onMatthiasDismiss} aria-label="Cerrar comentario de Matthias">×</button>
         </section>}
-        <button className="illustrated-home__matthias" type="button" onClick={onInsights} aria-label="Abrir Así juegas con Matthias">
+        {(!matthiasSpeaking || matthiasModel.action !== 'insights') && <button className="illustrated-home__matthias" type="button" onClick={onInsights} aria-label="Abrir Así juegas con Matthias">
           <strong>MATTHIAS</strong><span>Comida táctica</span><em>“El progreso se construye jugada a jugada.”</em>
-        </button>
+        </button>}
         </aside>
         <footer className="illustrated-home__motto"><span aria-hidden="true">─　♛　─</span><p>DISCIPLINA · ESTRATEGIA · UN MUNDO MEJOR</p></footer>
         <div className={`illustrated-home__utilities${toolsOpen ? ' is-open' : ''}`}>
