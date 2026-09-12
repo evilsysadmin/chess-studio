@@ -1,6 +1,6 @@
 export const HOME_CASTLE_3D_MIN_WIDTH = 1000;
 export const HOME_CASTLE_3D_LITE_MIN_WIDTH = 360;
-export const HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH = 390;
+export const HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH = 360;
 
 function finitePositive(value, fallback) {
   const number = Number(value);
