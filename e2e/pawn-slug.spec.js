@@ -244,6 +244,32 @@ test('Pawn Slug · Android landscape usa gestos y conserva targets jugables en p
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow).toBeLessThanOrEqual(1);
     }
+
+    // The final 568×320 layout is intentionally tiny: pausing must not bury the
+    // escape/restart actions below a long remap form. The sticky action rail
+    // keeps all three controls inside the viewport with touch-safe targets.
+    await settingsTrigger.click();
+    const settings = page.getByRole('dialog', { name: 'Pawn Slug Settings' });
+    await expect(settings).toBeVisible();
+    const dialogBox = await settings.boundingBox();
+    expect(dialogBox).not.toBeNull();
+    expect(dialogBox.y).toBeGreaterThanOrEqual(-1);
+    expect(dialogBox.y + dialogBox.height).toBeLessThanOrEqual(321);
+
+    const settingsActions = settings.locator('.pawn-slug-settings-actions');
+    for (const name of ['Reiniciar misión', 'Continuar', 'Salir del juego']) {
+      const button = settingsActions.getByRole('button', { name, exact: true });
+      await expect(button).toBeVisible();
+      const box = await button.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      expect(box.y).toBeGreaterThanOrEqual(-1);
+      expect(box.y + box.height).toBeLessThanOrEqual(321);
+    }
+
+    await settingsActions.getByRole('button', { name: 'Continuar', exact: true }).click();
+    await expect(settings).toHaveCount(0);
+    await expect(gestureSurface).toBeVisible();
   } finally {
     await context.close();
   }
