@@ -1,0 +1,126 @@
+/* Desktop-only cinematic HUD correction.
+ * Keep the War Room scene dominant: the tactical signal floats over the room,
+ * while the right rail retains only the discoverable quick actions. */
+@media (min-width: 1081px) {
+  .game-screen .board-live-row.is-3d-warroom {
+    position: relative;
+  }
+
+  /* The command column still owns quick actions in the rail, but the turn pill
+     itself is removed from rail flow and centered over the board region. */
+  .game-screen .game-3d-command-column {
+    position: static !important;
+  }
+
+  .game-screen .game-3d-turn-pill,
+  .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+    position: absolute !important;
+    z-index: 42;
+    top: .72rem;
+    left: calc((100% - 220px) / 2);
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center;
+    gap: .38rem;
+    width: max-content;
+    max-width: min(34rem, calc(100% - 260px));
+    min-height: 34px !important;
+    padding: .31rem .58rem;
+    border-radius: 999px;
+    transform: translateX(-50%);
+    pointer-events: auto;
+  }
+
+  .game-screen .game-3d-matchup,
+  .game-screen .game-3d-turn-state {
+    display: flex;
+    align-items: center;
+    gap: .3rem;
+    min-width: 0;
+  }
+
+  /* The player identity is already obvious from the board orientation and the
+     rest of the match UI. Do not turn the primary status signal into a versus card. */
+  .game-screen .game-3d-human-id,
+  .game-screen .game-3d-turn-pill-versus {
+    display: none !important;
+  }
+
+  .game-screen .game-3d-turn-pill-avatar {
+    width: 21px;
+    height: 21px;
+    flex: 0 0 21px;
+    border-radius: 6px;
+  }
+
+  .game-screen .game-3d-turn-pill-identity strong {
+    font-size: .67rem;
+    white-space: nowrap;
+  }
+
+  .game-screen .game-3d-turn-state::before {
+    content: '·';
+    color: color-mix(in srgb, var(--studio-muted) 68%, var(--brass));
+    font-size: .62rem;
+  }
+
+  .game-screen .game-3d-turn-pill-light {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 8px;
+  }
+
+  .game-screen .game-3d-turn-pill-label {
+    font-size: .62rem;
+    font-weight: 790;
+  }
+
+  .game-screen .game-3d-cpu-level {
+    order: -1;
+    margin: 0;
+    color: color-mix(in srgb, var(--cream) 72%, var(--studio-muted));
+    font-size: .56rem;
+    white-space: nowrap;
+  }
+
+  .game-screen .game-3d-utility-menu {
+    width: 25px;
+    height: 25px;
+    margin-left: .08rem;
+  }
+
+  .game-screen .game-3d-utility-menu > summary {
+    width: 25px;
+    height: 25px;
+    border-radius: 999px;
+    border-color: rgba(190, 164, 109, .16);
+    background: rgba(5, 9, 14, .42);
+    font-size: .78rem;
+  }
+
+  /* Quick actions stay discoverable in the rail, but no longer read as a second
+     status card underneath Matthias. */
+  .game-screen .game-3d-quick-actions {
+    margin-top: 0 !important;
+  }
+
+  .game-screen .game-3d-quick-action {
+    min-height: 27px;
+    background: rgba(7, 11, 17, .38);
+    font-size: .52rem;
+  }
+}
+
+@media (min-width: 1081px) and (max-width: 1260px) {
+  .game-screen .game-3d-turn-pill,
+  .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+    left: calc((100% - 210px) / 2);
+    max-width: min(32rem, calc(100% - 246px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-screen .game-3d-turn-pill {
+    transition: none !important;
+  }
+}
