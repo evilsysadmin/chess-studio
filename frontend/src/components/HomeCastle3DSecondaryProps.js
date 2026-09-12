@@ -3,7 +3,7 @@ import { homeCastleDestinationPropScale } from './HomeCastle3DProps.js';
 
 export const HOME_CASTLE_SECONDARY_PROP_ANCHORS = Object.freeze({
   history: Object.freeze({ x: -1.24, y: -0.105, z: 0.31 }),
-  combat: Object.freeze({ x: 0.34, y: 0.055, z: 0.285 }),
+  combat: Object.freeze({ x: 0.34, y: 0.11, z: 0.29 }),
 });
 
 function attachViewportScale(group, driverMesh, baseScale) {
@@ -107,37 +107,45 @@ function createCombatHeraldry(resources) {
     HOME_CASTLE_SECONDARY_PROP_ANCHORS.combat.y,
     HOME_CASTLE_SECONDARY_PROP_ANCHORS.combat.z,
   );
-  group.rotation.z = 0.015;
 
   const steel = new THREE.MeshStandardMaterial({
-    color: 0x6f7679,
-    roughness: 0.55,
-    metalness: 0.6,
-    emissive: 0x111517,
-    emissiveIntensity: 0.05,
+    color: 0xb6ad98,
+    roughness: 0.5,
+    metalness: 0.58,
+    emissive: 0x3b2a17,
+    emissiveIntensity: 0.12,
   });
   const darkSteel = new THREE.MeshStandardMaterial({
-    color: 0x303538,
-    roughness: 0.68,
+    color: 0x67635b,
+    roughness: 0.62,
     metalness: 0.5,
-    emissive: 0x090b0c,
-    emissiveIntensity: 0.03,
+    emissive: 0x24180d,
+    emissiveIntensity: 0.08,
   });
   const brass = new THREE.MeshStandardMaterial({
-    color: 0xa77b39,
-    roughness: 0.56,
+    color: 0xc89a4b,
+    roughness: 0.52,
     metalness: 0.46,
-    emissive: 0x2b1805,
-    emissiveIntensity: 0.055,
+    emissive: 0x4a2908,
+    emissiveIntensity: 0.11,
   });
-  resources.materials.push(steel, darkSteel, brass);
+  const mountMaterial = new THREE.MeshStandardMaterial({
+    color: 0x624326,
+    roughness: 0.82,
+    metalness: 0.03,
+    emissive: 0x1c0f06,
+    emissiveIntensity: 0.05,
+  });
+  resources.materials.push(steel, darkSteel, brass, mountMaterial);
 
+  const mountGeometry = new THREE.CylinderGeometry(0.066, 0.066, 0.008, 12);
   const shieldGeometry = new THREE.CylinderGeometry(0.052, 0.052, 0.013, 8);
   const bossGeometry = new THREE.CylinderGeometry(0.016, 0.016, 0.017, 16);
   const bladeGeometry = new THREE.BoxGeometry(0.009, 0.155, 0.007);
   const guardGeometry = new THREE.BoxGeometry(0.044, 0.008, 0.009);
   const gripGeometry = new THREE.BoxGeometry(0.012, 0.036, 0.01);
   resources.geometries.push(
+    mountGeometry,
     shieldGeometry,
     bossGeometry,
     bladeGeometry,
@@ -145,10 +153,15 @@ function createCombatHeraldry(resources) {
     gripGeometry,
   );
 
+  const mount = new THREE.Mesh(mountGeometry, mountMaterial);
+  mount.name = 'home-castle-combat-mount';
+  mount.rotation.x = Math.PI / 2;
+  mount.position.z = -0.022;
+
   const createSword = (rotationZ) => {
     const sword = new THREE.Group();
     sword.rotation.z = rotationZ;
-    sword.position.z = -0.012;
+    sword.position.z = -0.006;
 
     const blade = new THREE.Mesh(bladeGeometry, steel);
     blade.position.y = 0.018;
@@ -160,20 +173,21 @@ function createCombatHeraldry(resources) {
     return sword;
   };
 
-  const leftSword = createSword(-0.68);
-  const rightSword = createSword(0.68);
+  const leftSword = createSword(-0.64);
+  const rightSword = createSword(0.64);
 
   const shield = new THREE.Mesh(shieldGeometry, darkSteel);
   shield.name = 'home-castle-combat-shield';
   shield.rotation.x = Math.PI / 2;
   shield.scale.set(1, 1, 1.14);
+  shield.position.z = 0.008;
 
   const boss = new THREE.Mesh(bossGeometry, brass);
-  boss.position.z = 0.012;
+  boss.position.z = 0.02;
   boss.rotation.x = Math.PI / 2;
 
-  group.add(leftSword, rightSword, shield, boss);
-  attachViewportScale(group, shield, 0.74);
+  group.add(mount, leftSword, rightSword, shield, boss);
+  attachViewportScale(group, mount, 0.72);
   return group;
 }
 
