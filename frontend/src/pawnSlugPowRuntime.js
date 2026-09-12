@@ -87,7 +87,11 @@ export function pawnSlugUpdatePowRescues(state, time = 0, {
 }
 
 export function pawnSlugPowRescueSummary(state) {
-  const rescued = state?.rescuedPows?.size || 0;
+  const rescuedIds = state?.rescuedPows;
+  const rescued = PAWN_SLUG_POWS.reduce(
+    (count, pow) => count + (rescuedIds?.has?.(pow.id) ? 1 : 0),
+    0,
+  );
   return Object.freeze({
     rescued,
     total: PAWN_SLUG_POWS.length,
