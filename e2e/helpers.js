@@ -27,10 +27,10 @@ function scenarioMoveResult(game, payload, scenario) {
       status: 'check',
       isGameOver: false,
       history: [
-        { from: 'g1', to: 'f3', san: 'Nf3', piece: 'n', by: 'human' },
-        { from: 'e8', to: 'e4', san: 'Rxe4+', piece: 'r', captured: 'p', by: 'cpu' },
+        { from: 'g1', to: 'f3', san: 'Nf3', piece: 'n', captured: false, by: 'human' },
+        { from: 'e8', to: 'e4', san: 'Rxe4+', piece: 'r', captured: true, by: 'cpu' },
       ],
-      lastMove: { from: 'e8', to: 'e4', san: 'Rxe4+', piece: 'r', captured: 'p', by: 'cpu' },
+      lastMove: { from: 'e8', to: 'e4', san: 'Rxe4+', piece: 'r', captured: true, by: 'cpu' },
     };
   }
   if (scenario === 'check') {
@@ -41,8 +41,8 @@ function scenarioMoveResult(game, payload, scenario) {
       turn: 'b',
       status: 'check',
       isGameOver: false,
-      history: [{ from: 'e2', to: 'e8', san: 'Qe8+', piece: 'q', by: 'human' }],
-      lastMove: { from: 'e2', to: 'e8', san: 'Qe8+', piece: 'q', by: 'human' },
+      history: [{ from: 'e2', to: 'e8', san: 'Qe8+', piece: 'q', captured: false, by: 'human' }],
+      lastMove: { from: 'e2', to: 'e8', san: 'Qe8+', piece: 'q', captured: false, by: 'human' },
     };
   }
   if (scenario === 'mate') {
@@ -53,8 +53,8 @@ function scenarioMoveResult(game, payload, scenario) {
       turn: 'b',
       status: 'checkmate',
       isGameOver: true,
-      history: [{ from: 'g6', to: 'g7', san: 'Qg7#', piece: 'q', by: 'human' }],
-      lastMove: { from: 'g6', to: 'g7', san: 'Qg7#', piece: 'q', by: 'human' },
+      history: [{ from: 'g6', to: 'g7', san: 'Qg7#', piece: 'q', captured: false, by: 'human' }],
+      lastMove: { from: 'g6', to: 'g7', san: 'Qg7#', piece: 'q', captured: false, by: 'human' },
     };
   }
 
@@ -66,10 +66,10 @@ function scenarioMoveResult(game, payload, scenario) {
       status: 'playing',
       isGameOver: false,
       history: [
-        { from: 'e2', to: 'e4', san: 'e4', piece: 'p', by: 'human' },
-        { from: 'e7', to: 'e5', san: 'e5', piece: 'p', by: 'cpu' },
+        { from: 'e2', to: 'e4', san: 'e4', piece: 'p', captured: false, by: 'human' },
+        { from: 'e7', to: 'e5', san: 'e5', piece: 'p', captured: false, by: 'cpu' },
       ],
-      lastMove: { from: 'e7', to: 'e5', san: 'e5', piece: 'p', by: 'cpu' },
+      lastMove: { from: 'e7', to: 'e5', san: 'e5', piece: 'p', captured: false, by: 'cpu' },
     };
   }
 
@@ -191,7 +191,7 @@ export async function mockApi(page, {
         id: `e2e-feedback-created-${nextFeedbackId++}`,
         username: 'e2e', category: payload.category || 'other', message: payload.message || '', context: payload.context || 'Home',
         status: 'new', attachments: (payload.attachments || []).map((attachment, index) => ({ index, name: attachment.name || `captura-${index + 1}.png`, mime: attachment.mime || 'image/png', size: attachment.size || 1 })),
-        admin_reply: null, admin_replied_at: null, created_at: '2026-08-27T19:00:00Z',
+        admin_reply: null, admin_replied_at: null, created_at: '2026-08-27T19:05:00Z',
       };
       feedback = [created, ...feedback];
       return json({ feedback: created }, 201);

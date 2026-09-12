@@ -2,7 +2,6 @@ import { expect, test } from '@playwright/test';
 import { buttonWithVisibleText, clickBoardMove, login, mockApi } from './helpers.js';
 
 const DEVICE_BOARD_RENDERER_KEY = 'chess-study-device-board-renderer-v1';
-const MATE_END_FEN = '7k/6Q1/5K2/8/8/8/8/8 b - - 1 1';
 
 async function launchQuickMatch2D(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
@@ -15,35 +14,6 @@ async function expectLightweight2D(page) {
   await expect(page.getByRole('group', { name: /Tablero de ajedrez/ })).toBeVisible();
   await expect(page.locator('[data-board3d-war-room="true"]')).toHaveCount(0);
   await expect(page.locator('.game-layout-3d')).toHaveCount(0);
-}
-
-async function installContractValidMateRoute(page) {
-  await page.route('http://localhost:4000/api/games/*/move', async (route) => {
-    if (route.request().method() !== 'POST') return route.fallback();
-    const payload = route.request().postDataJSON?.() ?? {};
-    if (payload.from !== 'g6' || payload.to !== 'g7') return route.fallback();
-
-    const id = new URL(route.request().url()).pathname.match(/\/games\/([^/]+)\/move$/)?.[1] || 'e2e-game-1';
-    const move = { from: 'g6', to: 'g7', san: 'Qg7#', piece: 'q', captured: false, by: 'human' };
-    return route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        id,
-        fen: MATE_END_FEN,
-        turn: 'b',
-        humanColor: 'w',
-        difficulty: 50,
-        status: 'checkmate',
-        insufficientMatingMaterial: { w: false, b: false },
-        isGameOver: true,
-        history: [move],
-        lastMove: move,
-        initialFen: '7k/8/5KQ1/8/8/8/8/8 w - - 0 1',
-        ghostStyle: null,
-      }),
-    });
-  });
 }
 
 test('Partida rápida · 2D entra directo al tablero ligero', async ({ page }) => {
@@ -74,7 +44,6 @@ test('Partida rápida · 2D persiste tras F5 en el mismo dispositivo', async ({ 
 test('Partida rápida · 2D llega a mate y postpartida sin montar War Room', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 780 });
   await mockApi(page, { gameScenario: 'mate' });
-  await installContractValidMateRoute(page);
   await login(page);
   await launchQuickMatch2D(page);
   await expectLightweight2D(page);
