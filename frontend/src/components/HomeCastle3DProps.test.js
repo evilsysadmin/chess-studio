@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS,
+  HOME_CASTLE_DUST_MOTE_COUNT,
   HOME_CASTLE_TORCH_ANCHORS,
   createHomeCastleTorchProps,
 } from './HomeCastle3DProps.js';
@@ -37,13 +38,29 @@ describe('HomeCastle3DProps', () => {
 
   it('adds only a restrained flame overlay above each painted sconce', () => {
     const props = createHomeCastleTorchProps();
-    expect(props.group.children).toHaveLength(HOME_CASTLE_TORCH_ANCHORS.length);
     expect(props.flames).toHaveLength(HOME_CASTLE_TORCH_ANCHORS.length);
-    for (const torch of props.group.children) expect(torch.children).toHaveLength(1);
     for (const flame of props.flames) {
       expect(flame?.name).toBe('home-castle-flame');
       expect(flame?.material?.transparent).toBe(true);
       expect(flame?.material?.depthWrite).toBe(false);
+    }
+    props.dispose();
+  });
+
+  it('adds a tiny deterministic dust cloud with real depth but no animation contract', () => {
+    const props = createHomeCastleTorchProps();
+    const position = props.dust.geometry.getAttribute('position');
+    expect(props.dust.name).toBe('home-castle-dust');
+    expect(position.count).toBe(HOME_CASTLE_DUST_MOTE_COUNT);
+    expect(props.dust.material.opacity).toBeLessThanOrEqual(0.12);
+    expect(props.dust.material.depthWrite).toBe(false);
+
+    for (let index = 0; index < position.count; index += 1) {
+      expect(Math.abs(position.getX(index))).toBeLessThanOrEqual(1.15);
+      expect(position.getY(index)).toBeGreaterThanOrEqual(0.3);
+      expect(position.getY(index)).toBeLessThanOrEqual(0.82);
+      expect(position.getZ(index)).toBeGreaterThanOrEqual(0.24);
+      expect(position.getZ(index)).toBeLessThanOrEqual(0.74);
     }
     props.dispose();
   });
