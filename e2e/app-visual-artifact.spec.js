@@ -5,7 +5,8 @@ import { login, mockApi } from './helpers.js';
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const MIN_TOUCH_TARGET = 44;
 const CAPTURES = [
-  { label:'desktop-1440x900', width:1440, height:900, reducedMotion:'no-preference' },
+  { label:'desktop-1440x900', width:1440, height:900, reducedMotion:'no-preference', expectCastleReady:true },
+  { label:'android-desktop-site-980x1740', width:980, height:1740, reducedMotion:'no-preference', expectCastleReady:true },
   { label:'android-360x800', width:360, height:800, reducedMotion:'no-preference' },
   { label:'android-390x844', width:390, height:844, reducedMotion:'no-preference' },
   { label:'android-430x932', width:430, height:932, reducedMotion:'no-preference' },
@@ -27,9 +28,12 @@ async function openCanonicalHome(page, { reducedMotion = 'no-preference' } = {})
   return home;
 }
 
-async function settle(page) {
+async function settle(page, home, { expectCastleReady = false } = {}) {
+  if (expectCastleReady) {
+    await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout:10_000 });
+  }
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(250);
 }
 
 async function captureHealth(page, label) {
@@ -37,6 +41,16 @@ async function captureHealth(page, label) {
     const root = document.documentElement;
     const body = document.body;
     const viewport = { width:window.innerWidth, height:window.innerHeight };
+    const stageNode = document.querySelector('.illustrated-home__stage');
+    const stageRect = stageNode?.getBoundingClientRect();
+    const stage = stageRect ? {
+      width:Number(stageRect.width.toFixed(1)),
+      height:Number(stageRect.height.toFixed(1)),
+      top:Number(stageRect.top.toFixed(1)),
+      bottom:Number(stageRect.bottom.toFixed(1)),
+      viewportFill:Number((Math.max(0, Math.min(stageRect.bottom, viewport.height) - Math.max(stageRect.top, 0)) / viewport.height).toFixed(3)),
+      blankBelowPx:Number(Math.max(0, viewport.height - stageRect.bottom).toFixed(1)),
+    } : null;
     const interactive = [...document.querySelectorAll('button, a[href], input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"])')]
       .filter((node) => {
         const rect = node.getBoundingClientRect();
@@ -81,6 +95,8 @@ async function captureHealth(page, label) {
       label:captureLabel,
       viewport:{ ...viewport, dpr:window.devicePixelRatio },
       reducedMotion:window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+      castle3dReady:document.querySelector('.illustrated-home__castle-3d.is-ready') !== null,
+      stage,
       document:{
         clientWidth:root.clientWidth,
         scrollWidth:root.scrollWidth,
@@ -101,8 +117,8 @@ async function captureHealth(page, label) {
   }, { captureLabel:label, minTouchTarget:MIN_TOUCH_TARGET });
 }
 
-test('App · captura visual canónica desktop + matriz Android sin overflow horizontal', async ({ browser }) => {
-  test.setTimeout(120_000);
+test('App · captura visual canónica desktop + Android normal/desktop-site', async ({ browser }) => {
+  test.setTimeout(150_000);
   await mkdir(ARTIFACT_DIR, { recursive:true });
 
   const captures = [];
@@ -110,11 +126,15 @@ test('App · captura visual canónica desktop + matriz Android sin overflow hori
     const context = await browser.newContext({ viewport:{ width:capture.width, height:capture.height } });
     const page = await context.newPage();
     try {
-      await openCanonicalHome(page, { reducedMotion:capture.reducedMotion });
-      await settle(page);
+      const home = await openCanonicalHome(page, { reducedMotion:capture.reducedMotion });
+      await settle(page, home, { expectCastleReady:capture.expectCastleReady });
 
       const health = await captureHealth(page, capture.label);
-      captures.push({ ...health, expectedReducedMotion:capture.reducedMotion === 'reduce' });
+      captures.push({
+        ...health,
+        expectedReducedMotion:capture.reducedMotion === 'reduce',
+        expectedCastleReady:capture.expectCastleReady === true,
+      });
       await page.screenshot({
         path:`${ARTIFACT_DIR}/home-${capture.label}.png`,
         fullPage:false,
@@ -127,12 +147,15 @@ test('App · captura visual canónica desktop + matriz Android sin overflow hori
 
   await writeFile(
     `${ARTIFACT_DIR}/visual-health.json`,
-    `${JSON.stringify({ schema:3, minimumTouchTarget:MIN_TOUCH_TARGET, captures }, null, 2)}\n`,
+    `${JSON.stringify({ schema:4, minimumTouchTarget:MIN_TOUCH_TARGET, captures }, null, 2)}\n`,
     'utf8',
   );
 
   for (const capture of captures) {
     expect(capture.horizontalOverflow, `${capture.label}: horizontal overflow`).toBe(false);
     expect(capture.reducedMotion, `${capture.label}: reduced-motion media state`).toBe(capture.expectedReducedMotion);
+    if (capture.expectedCastleReady) {
+      expect(capture.castle3dReady, `${capture.label}: 3D canvas ready before screenshot`).toBe(true);
+    }
   }
 });
