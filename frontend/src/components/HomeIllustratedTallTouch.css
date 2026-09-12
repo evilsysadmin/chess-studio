@@ -1,7 +1,7 @@
 /* Android browsers can expose a desktop-like CSS width while keeping a tall,
  * touch-first viewport (for example "Solicitar sitio de escritorio"). Preserve
- * the complete 16:9 canonical Great Hall and extend its atmosphere behind the
- * hero instead of stretching or heavily cropping the diegetic scene. */
+ * the complete 16:9 canonical Great Hall, then continue the lower architecture
+ * with a zoomed floor/fireplace crop instead of leaving a dark empty viewport. */
 @media (min-width: 521px) and (max-width: 999px) and (pointer: coarse) and (max-aspect-ratio: 4/5) {
   body:has(.app-shell-home) {
     background: #140b06;
@@ -14,7 +14,15 @@
     padding: 58px 0 0;
     overflow: hidden;
     isolation: isolate;
-    background: #140b06;
+    background:
+      linear-gradient(180deg,
+        rgba(20, 11, 6, 0) 28%,
+        rgba(16, 8, 4, .12) 42%,
+        rgba(12, 6, 3, .46) 68%,
+        rgba(8, 4, 2, .82) 100%),
+      radial-gradient(ellipse at 72% 67%, rgba(187, 94, 38, .14), transparent 36%),
+      var(--home-hall-art) 72% 100% / 210% auto no-repeat,
+      #140b06;
   }
 
   .illustrated-home__stage {
@@ -28,34 +36,23 @@
     overflow: visible;
   }
 
-  .illustrated-home__stage::before,
+  /* The canonical scene remains untouched. The continuation now lives on the
+     Home background so it can use a different crop without duplicating the
+     central table. Keep only a soft seam below the 16:9 hero. */
+  .illustrated-home__stage::before {
+    content: none;
+  }
+
   .illustrated-home__stage::after {
     content: '';
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-  }
-
-  .illustrated-home__stage::before {
-    z-index: -2;
-    background: var(--home-hall-art) 50% 58% / cover no-repeat;
-    opacity: .30;
-    filter: blur(18px) saturate(.76);
-    transform: scale(1.045);
-    transform-origin: center;
-  }
-
-  .illustrated-home__stage::after {
+    position: absolute;
     z-index: -1;
-    background:
-      radial-gradient(ellipse at 50% 34%, rgba(190, 111, 43, .12), transparent 42%),
-      radial-gradient(ellipse at 50% 74%, rgba(156, 82, 38, .09), transparent 40%),
-      linear-gradient(180deg,
-        rgba(16, 8, 4, .22) 0%,
-        rgba(16, 8, 4, .44) 34%,
-        rgba(13, 7, 4, .74) 56%,
-        rgba(10, 5, 3, .88) 78%,
-        rgba(10, 5, 3, .92) 100%);
+    left: 0;
+    right: 0;
+    top: 100%;
+    height: clamp(90px, 12dvh, 180px);
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(10, 5, 3, .58), transparent 100%);
   }
 
   .illustrated-home__art,
