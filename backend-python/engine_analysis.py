@@ -153,3 +153,43 @@ def compare_root_move(
         depth=depth,
         candidate_count=len(analyzed),
     )
+
+
+def compare_root_move_iterative(
+    board: chess.Board,
+    played_move: chess.Move,
+    *,
+    max_depth: int,
+    budget_s: float,
+) -> RootMoveComparison:
+    """Return the deepest complete factual comparison within one time budget.
+
+    A deeper partial pass is never exposed. If depth 1 completes and depth 2
+    times out, callers receive the complete depth-1 comparison. If no depth can
+    complete, ``TimeoutError`` is raised so consumers can fall back without
+    presenting an incomplete or internally inconsistent claim.
+    """
+    if max_depth < 1:
+        raise ValueError("max_depth must be at least 1")
+    if played_move not in board.legal_moves:
+        raise ValueError("played_move must be legal in the supplied position")
+
+    deadline = time.monotonic() + max(0.0, float(budget_s))
+    completed: Optional[RootMoveComparison] = None
+    for depth in range(1, max_depth + 1):
+        if time.monotonic() >= deadline:
+            break
+        try:
+            candidate = compare_root_move(
+                board,
+                played_move,
+                depth=depth,
+                deadline=deadline,
+            )
+        except TimeoutError:
+            break
+        completed = candidate
+
+    if completed is None:
+        raise TimeoutError
+    return completed
