@@ -15,7 +15,7 @@ import {
   HOME_CASTLE_TORCH_ANCHORS,
   createHomeCastleTorchProps,
 } from './HomeCastle3DProps.js';
-import { homeCastleTorchFlicker } from './HomeCastle3DTorchFlicker.js';
+import { homeCastleChandelierShimmer, homeCastleTorchFlicker } from './HomeCastle3DTorchFlicker.js';
 import {
   homeCastleNeedsContinuousRender,
   homeCastleShouldRender,
@@ -55,11 +55,12 @@ function addLightRig(scene, profile) {
   });
 
   const chandelierIntensity = Math.max(0.02, profile.torch * 0.42);
-  for (const anchor of HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS) {
+  const chandelierLights = HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS.map((anchor) => {
     const chandelierLight = new THREE.PointLight(0xffc778, chandelierIntensity, 1.65, 2);
     chandelierLight.position.set(anchor.x, anchor.y, anchor.z);
     scene.add(chandelierLight);
-  }
+    return chandelierLight;
+  });
 
   const fireplaceIntensity = Math.max(0.018, profile.torch * 0.34);
   const fireplaceLight = new THREE.PointLight(0xff8c42, fireplaceIntensity, 1.45, 2);
@@ -70,7 +71,7 @@ function addLightRig(scene, profile) {
   );
   scene.add(fireplaceLight);
 
-  return torchLights;
+  return { torchLights, chandelierLights, chandelierIntensity };
 }
 
 function desktopMediaQuery() {
@@ -127,7 +128,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     renderer.setPixelRatio(renderPolicy.pixelRatio);
 
     const scene = new THREE.Scene();
-    const torchLights = addLightRig(scene, lighting);
+    const { torchLights, chandelierLights, chandelierIntensity } = addLightRig(scene, lighting);
     const roomLight = new THREE.PointLight(0xffc76f, 0, IDLE_ROOM_LIGHT_REACH, 2);
     roomLight.position.set(0, 0, IDLE_ROOM_LIGHT_DEPTH);
     scene.add(roomLight);
@@ -233,6 +234,11 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
           flame.scale.y = 1 + ((flicker - 1) * 0.62);
         }
         if (torchLight) torchLight.intensity = lighting.torch * flicker;
+      }
+
+      for (let index = 0; index < chandelierLights.length; index += 1) {
+        const shimmer = homeCastleChandelierShimmer(index, timestamp, reduced);
+        chandelierLights[index].intensity = chandelierIntensity * shimmer;
       }
 
       if (!reduced) {
