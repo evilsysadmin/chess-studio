@@ -67,7 +67,6 @@ export default function Matthias3DOpeningBanter({
       data-testid="matthias-3d-opening-overlay"
       data-speech-anchor="matthias-king"
     >
-      <div className="warroom-chamber-label" aria-hidden="true">SALA DE GUERRA · CÁMARA TÁCTICA</div>
       {line && anchorReady && (
         <aside
           className="matthias-3d-opening-banter"

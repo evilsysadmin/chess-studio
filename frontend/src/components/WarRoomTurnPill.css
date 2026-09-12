@@ -2,8 +2,7 @@
  * The normal status strip and mode banner remain available to 2D, but 3D owns
  * this single visual status surface so the room itself can stay dominant. */
 .game-layout-3d .status-line,
-.game-layout-3d .ghost-strip,
-.game-layout-3d .warroom-chamber-label {
+.game-layout-3d .ghost-strip {
   display: none !important;
 }
 

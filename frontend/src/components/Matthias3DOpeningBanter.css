@@ -6,37 +6,16 @@
   overflow: hidden;
 }
 
-/* El canvas conserva el viejo nodo por compatibilidad, pero la etiqueta visible
-   pertenece ya a la Sala de guerra y no compite con el HUD del renderer. */
+/* Board3D aún conserva una nota de cámara heredada dentro del renderer. La
+   composición War Room la mantiene oculta hasta retirar ese nodo en su propio
+   corte, sin mezclar esta limpieza con el runtime 3D. */
 .game-board-stack-3d .board3d-fixed-camera-note {
   display: none;
 }
 
-.warroom-chamber-label {
-  position: absolute;
-  top: .72rem;
-  left: 50%;
-  transform: translateX(-50%);
-  max-width: calc(100% - 8.5rem);
-  padding: .3rem .78rem;
-  border: 1px solid rgba(208, 170, 93, .36);
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(18, 14, 11, .92), rgba(8, 8, 8, .82));
-  box-shadow: 0 .28rem .95rem rgba(0, 0, 0, .3), inset 0 1px rgba(255, 230, 170, .055);
-  color: rgba(235, 216, 173, .92);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: clamp(.56rem, 1vw, .68rem);
-  font-weight: 800;
-  letter-spacing: .15em;
-  line-height: 1.2;
-  text-align: center;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-/* En desktop la placa deja de estar pegada a las cortinas: vive visualmente en
-   la misma franja superior que Guardado / Feedback / Mi cuenta. El canvas no
-   desborda su caja, por lo que permitir overflow aquí sólo libera este HUD. */
+/* En desktop el bocadillo proyectado de Matthias puede salir ligeramente de la
+   caja del canvas cuando el rey está cerca del borde. Permitimos ese desborde
+   para el speech diegético, no para añadir chrome fijo sobre la escena. */
 @media (min-width: 821px) {
   .game-board-stack-3d .board3d-main-shell {
     overflow: visible;
@@ -44,14 +23,6 @@
 
   .matthias-3d-opening-overlay {
     overflow: visible;
-  }
-
-  .warroom-chamber-label {
-    top: -2.18rem;
-    min-width: 18.5rem;
-    max-width: 32rem;
-    padding: .28rem .88rem;
-    box-shadow: 0 .18rem .72rem rgba(0, 0, 0, .28), inset 0 1px rgba(255, 230, 170, .05);
   }
 }
 
@@ -119,14 +90,6 @@
 }
 
 @media (max-width: 760px) {
-  .warroom-chamber-label {
-    top: .46rem;
-    max-width: calc(100% - 5.8rem);
-    padding: .28rem .52rem;
-    font-size: .5rem;
-    letter-spacing: .1em;
-  }
-
   .matthias-3d-opening-banter {
     width: min(18rem, 76%);
     padding: .67rem .78rem .72rem;
