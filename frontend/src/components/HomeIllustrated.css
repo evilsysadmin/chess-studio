@@ -41,9 +41,9 @@
   .illustrated-home__speech p { line-height: 1.5; color: #eee0c0; }
   .illustrated-home__speech button { padding: 7px 10px; border: 1px solid #a98039; border-radius: 6px; background: #291b10; color: #ffe8ac; }
   /* The insights CTA keeps the legacy home-learning-card hook for the E2E helper,
-     but inside Matthias' speech it must remain a button, not inherit the 146px
-     learning-card dashboard geometry. */
-  body:has(.home-friendly) .illustrated-home__speech > .home-learning-card {
+     but inside Matthias' speech it must remain a button, not inherit legacy
+     learning-card geometry such as the global 168px minimum height. */
+  .illustrated-home__speech > .home-learning-card {
     min-height: 0 !important;
     height: auto !important;
     width: auto !important;
