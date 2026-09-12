@@ -11,6 +11,7 @@ import { HOME_CASTLE_3D_MIN_WIDTH, homeCastle3DRenderPolicy } from './HomeCastle
 import { applyCanonicalHallOcclusion } from './HomeCastle3DOcclusion.js';
 import {
   HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS,
+  HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR,
   HOME_CASTLE_TORCH_ANCHORS,
   createHomeCastleTorchProps,
 } from './HomeCastle3DProps.js';
@@ -57,6 +58,15 @@ function addLightRig(scene, profile) {
     chandelierLight.position.set(anchor.x, anchor.y, anchor.z);
     scene.add(chandelierLight);
   }
+
+  const fireplaceIntensity = Math.max(0.018, profile.torch * 0.34);
+  const fireplaceLight = new THREE.PointLight(0xff8c42, fireplaceIntensity, 1.45, 2);
+  fireplaceLight.position.set(
+    HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR.x,
+    HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR.y,
+    HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR.z,
+  );
+  scene.add(fireplaceLight);
 
   return torchLights;
 }
