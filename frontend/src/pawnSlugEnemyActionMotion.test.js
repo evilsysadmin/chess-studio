@@ -88,6 +88,20 @@ describe('Pawn Slug premium soldier action motion', () => {
     expect(climb.y).toBeGreaterThan(0);
   });
 
+  it('snaps back, rebounds and settles during one compact hurt window', () => {
+    const snap = pawnSlugEnemyActionPose('hurt', 0, { type: 'pawn' });
+    const rebound = pawnSlugEnemyActionPose('hurt', 3, { type: 'pawn' });
+    const settled = pawnSlugEnemyActionPose('hurt', 5, { type: 'pawn' });
+
+    expect(snap.x).toBeLessThan(0);
+    expect(rebound.x).toBeGreaterThan(0);
+    expect(Math.abs(rebound.x)).toBeLessThan(Math.abs(snap.x));
+    expect(settled.x).toBeCloseTo(0, 6);
+    expect(settled.rz).toBeCloseTo(0, 6);
+    expect(settled.sx).toBeCloseTo(1, 6);
+    expect(settled.sy).toBeCloseTo(1, 6);
+  });
+
   it('weights hit reaction by soldier mass without changing logical position', () => {
     const pawn = pawnSlugEnemyActionPose('hurt', 0, { type: 'pawn' });
     const knight = pawnSlugEnemyActionPose('hurt', 0, { type: 'knight' });
