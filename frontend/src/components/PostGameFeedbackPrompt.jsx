@@ -11,6 +11,7 @@ const QUICK_RATINGS = [
 ];
 
 export default function PostGameFeedbackPrompt({ onDone }) {
+  const [expanded, setExpanded] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState(null);
@@ -63,12 +64,24 @@ export default function PostGameFeedbackPrompt({ onDone }) {
   }
 
   return (
-    <section className="post-game-feedback" aria-label="Feedback opcional sobre Chess Studio">
+    <section className={`post-game-feedback ${expanded ? 'is-expanded' : 'is-compact'}`} aria-label="Feedback opcional sobre Chess Studio">
       {sent ? (
         <>
           <strong>Gracias. Pulso recibido.</strong>
           <span>Prometemos no perseguirte con encuestas después de cada peón.</span>
           <button type="button" className="secondary-btn" onClick={() => onDone?.()}>Cerrar</button>
+        </>
+      ) : !expanded ? (
+        <>
+          <div>
+            <span className="section-label">FEEDBACK OPCIONAL</span>
+            <strong>¿Te está gustando Chess Studio?</strong>
+            <small>Una pregunta rápida, sólo de vez en cuando.</small>
+          </div>
+          <div className="post-game-feedback-actions">
+            <button type="button" className="secondary-btn" onClick={() => setExpanded(true)}>Responder</button>
+            <button type="button" className="secondary-btn" onClick={dismiss}>Ahora no</button>
+          </div>
         </>
       ) : (
         <>
