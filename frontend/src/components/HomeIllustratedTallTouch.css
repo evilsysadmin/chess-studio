@@ -93,15 +93,44 @@
   .illustrated-home__destination--history { left: 29.2%; width: 9% !important; }
   .illustrated-home__destination--play { left: 43.3%; width: 13.4% !important; }
 
+  /* Tall-touch hotspots are diegetic labels, not the two-column responsive cards
+     inherited from HomeIllustratedNarrow. Keep the hit boxes in place while
+     centering icon, title and detail as one visual stack. */
+  .illustrated-home__destination {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+    justify-items: center;
+    align-content: center;
+    column-gap: 0;
+    row-gap: clamp(2px, .35dvh, 5px);
+    padding-inline: 6px;
+    text-align: center;
+  }
   .illustrated-home__destination svg {
+    grid-column: 1;
+    grid-row: auto;
+    justify-self: center;
     width: clamp(21px, 2.5vw, 26px);
     height: clamp(21px, 2.5vw, 26px);
+    margin: 0;
   }
   .illustrated-home__destination strong {
+    align-self: auto;
+    justify-self: center;
+    width: 100%;
     font-size: clamp(13px, 1.45vw, 17px);
+    text-align: center;
   }
   .illustrated-home__destination > span {
+    align-self: auto;
+    justify-self: center;
+    width: 100%;
     font-size: clamp(10px, 1.05vw, 13px);
+    text-align: center;
+  }
+  .illustrated-home__destination i {
+    display: none;
   }
   .illustrated-home__destination--play strong {
     font-size: clamp(18px, 2vw, 22px);
