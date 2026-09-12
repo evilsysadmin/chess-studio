@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 import game_api
+import move_analysis_service as service
 
 
 class _NoopLimiter:
@@ -54,8 +55,8 @@ def test_analyze_move_uses_shared_factual_contract_for_valid_played_move(monkeyp
         seen["max_depth"] = max_depth
         return FakeFactual()
 
-    monkeypatch.setattr(game_api, "build_factual_move_analysis", fake_factual)
-    monkeypatch.setattr(game_api, "evaluate_board", lambda _board: 19.0)
+    monkeypatch.setattr(service, "build_factual_move_analysis", fake_factual)
+    monkeypatch.setattr(service, "evaluate_board", lambda _board: 19.0)
     monkeypatch.setattr(game_api, "maybe_schedule_move_shadow", lambda *_args, **_kwargs: None)
 
     response = _client().post(
@@ -88,19 +89,19 @@ def test_analyze_move_uses_shared_factual_contract_for_valid_played_move(monkeyp
 
 def test_analyze_move_falls_back_cleanly_when_factual_budget_times_out(monkeypatch):
     monkeypatch.setattr(
-        game_api,
+        service,
         "build_factual_move_analysis",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(TimeoutError()),
     )
     monkeypatch.setattr(
-        game_api,
-        "ai_analyze_move",
+        service,
+        "deterministic_analyze_move",
         lambda *_args, **_kwargs: {
             "move": {"from": "d2", "to": "d4", "san": "d4", "piece": "p", "promotion": None},
             "score": 30.0,
         },
     )
-    monkeypatch.setattr(game_api, "evaluate_board", lambda _board: 5.0)
+    monkeypatch.setattr(service, "evaluate_board", lambda _board: 5.0)
     monkeypatch.setattr(game_api, "maybe_schedule_move_shadow", lambda *_args, **_kwargs: None)
 
     response = _client().post(
@@ -130,10 +131,10 @@ def test_analyze_move_invalid_played_move_keeps_legacy_null_eval(monkeypatch):
         factual_called = True
         raise AssertionError("invalid played move must not enter factual analysis")
 
-    monkeypatch.setattr(game_api, "build_factual_move_analysis", unexpected_factual)
+    monkeypatch.setattr(service, "build_factual_move_analysis", unexpected_factual)
     monkeypatch.setattr(
-        game_api,
-        "ai_analyze_move",
+        service,
+        "deterministic_analyze_move",
         lambda *_args, **_kwargs: {
             "move": {"from": "d2", "to": "d4", "san": "d4", "piece": "p", "promotion": None},
             "score": 30.0,
