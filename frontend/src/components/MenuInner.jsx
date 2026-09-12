@@ -220,9 +220,11 @@ export default function Menu({
           loading={loading}
           error={error}
           rating={rating}
+          boardRenderer={getBoardRenderer()}
           onStart={async ({ boardRenderer = null } = {}) => {
+            const requestedRenderer = boardRenderer === '2d' || boardRenderer === '3d' ? boardRenderer : null;
             const previousRenderer = getBoardRenderer();
-            if (boardRenderer === '2d') setBoardRenderer('2d');
+            if (requestedRenderer) setBoardRenderer(requestedRenderer);
             const started = await onNewGame(
               autoDifficulty ? difficultyForQuickMatchRating(rating?.rating ?? 400) : difficulty,
               color,
@@ -235,8 +237,9 @@ export default function Menu({
                 ghostStyle: autoDifficulty ? { balance: true } : null,
               },
             );
-            if (!started && boardRenderer === '2d') setBoardRenderer(previousRenderer);
+            if (!started && requestedRenderer) setBoardRenderer(previousRenderer);
             if (started) setShowQuickMatch(false);
+            return started;
           }}
           onClose={() => setShowQuickMatch(false)}
         />
