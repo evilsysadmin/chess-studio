@@ -154,4 +154,94 @@
     position: relative;
     z-index: 1;
   }
+
+  /* Desktop is deliberately flatter than the reusable compact rail. The room
+     already supplies depth, framing and material; another raised card beside it
+     reads as dashboard chrome rather than as part of the scene. */
+  .game-screen .game-warroom-rail {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .game-screen .game-warroom-rail-tabs {
+    gap: .16rem;
+    padding: 0 0 .3rem;
+    border-bottom: 1px solid rgba(190, 164, 109, .12);
+    background: transparent;
+  }
+
+  .game-screen .game-warroom-rail-tabs button {
+    position: relative;
+    min-height: 29px;
+    padding: .28rem .14rem .3rem;
+    border: 0;
+    border-radius: 6px 6px 2px 2px;
+    color: color-mix(in srgb, var(--studio-muted) 76%, var(--cream));
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .game-screen .game-warroom-rail-tabs button:hover,
+  .game-screen .game-warroom-rail-tabs button:focus-visible {
+    color: color-mix(in srgb, var(--cream) 92%, white);
+    background: rgba(201, 162, 39, .045);
+  }
+
+  .game-screen .game-warroom-rail-tabs button:focus-visible {
+    outline: 1px solid rgba(201, 162, 39, .34);
+    outline-offset: 1px;
+    box-shadow: none;
+  }
+
+  .game-screen .game-warroom-rail-tabs button.is-active {
+    color: color-mix(in srgb, var(--cream) 94%, white);
+    background: linear-gradient(180deg, rgba(201, 162, 39, .045), transparent 88%);
+    box-shadow: none;
+  }
+
+  .game-screen .game-warroom-rail-tabs button.is-active::after {
+    content: '';
+    position: absolute;
+    right: 18%;
+    bottom: -.31rem;
+    left: 18%;
+    height: 1px;
+    border-radius: 999px;
+    background: rgba(201, 162, 39, .72);
+    box-shadow: 0 0 7px rgba(201, 162, 39, .22);
+  }
+
+  .game-screen .game-warroom-rail-tabs button > small {
+    opacity: .72;
+  }
+
+  .game-screen .game-warroom-rail-panel {
+    padding: .48rem .16rem .32rem;
+  }
+
+  .game-screen .game-warroom-rail-panel.is-matthias {
+    padding: .38rem 0 0;
+  }
+
+  .game-screen .game-warroom-rail-panel.is-matthias .game-chat-heading {
+    padding-inline: .18rem;
+    border-bottom-color: rgba(190, 164, 109, .1);
+    background: transparent;
+  }
+
+  .game-screen .game-warroom-rail-panel.is-matthias .game-chat-log {
+    padding-inline: .18rem;
+  }
+
+  .game-screen .game-warroom-captures {
+    gap: .4rem;
+  }
+
+  .game-screen .game-warroom-capture-warning {
+    border-top-style: solid;
+    border-top-color: rgba(190, 164, 109, .1);
+  }
 }
