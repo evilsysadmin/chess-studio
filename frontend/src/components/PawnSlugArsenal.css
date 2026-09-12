@@ -37,6 +37,12 @@
   border-color: rgba(225, 190, 113, .62);
 }
 
+.pawn-slug-arsenal button:active:not(:disabled) {
+  transform: translateY(1px) scale(.97);
+  border-color: rgba(247, 211, 124, .82);
+  box-shadow: inset 0 2px 7px rgba(0, 0, 0, .34), 0 0 .7rem rgba(214, 166, 63, .16);
+}
+
 .pawn-slug-arsenal button:focus-visible {
   outline: 2px solid rgba(247, 211, 124, .9);
   outline-offset: 2px;
@@ -236,5 +242,9 @@
   .pawn-slug-arsenal button,
   .pawn-slug-xp-track i {
     transition: none;
+  }
+
+  .pawn-slug-arsenal button:active:not(:disabled) {
+    transform: none;
   }
 }
