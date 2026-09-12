@@ -128,10 +128,10 @@
     top: auto;
     right: max(.35rem, env(safe-area-inset-right, 0px));
     bottom: max(.35rem, env(safe-area-inset-bottom, 0px));
-    min-width: 2rem;
-    min-height: 2rem;
-    width: 2rem;
-    height: 2rem;
+    min-width: 44px;
+    min-height: 44px;
+    width: 2.75rem;
+    height: 2.75rem;
     padding: 0;
     border-radius: 999px;
     font-size: 0;
@@ -170,7 +170,7 @@
 
   .pawn-slug .pawn-slug-gesture-powerup {
     position: absolute;
-    right: max(3.2rem, calc(env(safe-area-inset-right, 0px) + 2.95rem));
+    right: max(3.65rem, calc(env(safe-area-inset-right, 0px) + 3.4rem));
     bottom: max(.3rem, env(safe-area-inset-bottom, 0px));
     display: grid;
     place-items: center;

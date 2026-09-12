@@ -184,6 +184,7 @@ test('Pawn Slug · Android landscape usa gestos y conserva targets jugables en p
     const cabinet = page.locator('.pawn-slug-cabinet');
     const gestureSurface = page.getByRole('group', { name: 'Controles gestuales de Pawn Slug' });
     const powerUp = page.getByRole('button', { name: 'Power-up', exact: true });
+    const settingsTrigger = page.getByRole('button', { name: 'Abrir ajustes de Pawn Slug', exact: true });
 
     for (const viewport of [
       { width: 844, height: 390 },
@@ -216,6 +217,15 @@ test('Pawn Slug · Android landscape usa gestos y conserva targets jugables en p
       expect(powerBox.x).toBeGreaterThanOrEqual(-1);
       expect(powerBox.x + powerBox.width).toBeLessThanOrEqual(viewport.width + 1);
       expect(powerBox.y + powerBox.height).toBeLessThanOrEqual(viewport.height + 1);
+
+      await expect(settingsTrigger).toBeVisible();
+      const settingsBox = await settingsTrigger.boundingBox();
+      expect(settingsBox).not.toBeNull();
+      expect(settingsBox.width).toBeGreaterThanOrEqual(44);
+      expect(settingsBox.height).toBeGreaterThanOrEqual(44);
+      expect(settingsBox.x).toBeGreaterThanOrEqual(-1);
+      expect(settingsBox.x + settingsBox.width).toBeLessThanOrEqual(viewport.width + 1);
+      expect(settingsBox.y + settingsBox.height).toBeLessThanOrEqual(viewport.height + 1);
 
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(overflow).toBeLessThanOrEqual(1);
