@@ -107,10 +107,21 @@ export default function QuickMatchModal({
           type="button"
           className="primary-btn friendly-main-cta"
           disabled={loading}
-          onClick={onStart}
+          onClick={() => onStart()}
         >
           {loading ? 'Creando partida…' : 'Empezar partida'}
         </button>
+
+        <button
+          type="button"
+          className="secondary-btn"
+          disabled={loading}
+          onClick={() => onStart({ boardRenderer: '2d' })}
+          aria-label="Jugar en 2D, directo al tablero"
+        >
+          Jugar en 2D · directo al tablero
+        </button>
+        <p className="hint-text friendly-inline-note">Más ligero y compacto en móvil; la partida, CPU y progreso son exactamente los mismos.</p>
 
         <details className="friendly-disclosure quick-match-settings">
           <summary>
