@@ -1,7 +1,9 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   PAWN_SLUG_PLATFORM_LAYOUT,
   PAWN_SLUG_PLATFORM_META,
+  createPawnSlugPlatforms,
   pawnSlugPlatformAtX,
   pawnSlugPlatformBounds,
   pawnSlugPlatformCameraY,
@@ -37,6 +39,24 @@ describe('Pawn Slug platforming', () => {
         expect(PAWN_SLUG_PLATFORM_LAYOUT).toContain(platform);
       }
     }
+  });
+
+  it('keeps one cheap front depth cue per platform on coarse surfaces', () => {
+    const parent = new THREE.Group();
+    const root = createPawnSlugPlatforms(parent, { coarse: true });
+    const frontLips = [];
+    const rearLips = [];
+    root.traverse((child) => {
+      if (child.name.endsWith('-front-lip')) frontLips.push(child);
+      if (child.name.endsWith('-rear-lip')) rearLips.push(child);
+    });
+
+    expect(PAWN_SLUG_PLATFORM_META.coarseDecoration).toBe('front-lip');
+    expect(frontLips).toHaveLength(PAWN_SLUG_PLATFORM_LAYOUT.length);
+    expect(frontLips.every((lip) => lip.castShadow === false)).toBe(true);
+    expect(rearLips).toHaveLength(0);
+    expect(parent.children).toContain(root);
+    root.userData.dispose();
   });
 
   it('derives stable platform bounds', () => {
