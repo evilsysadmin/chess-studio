@@ -1,7 +1,7 @@
 /* Android browsers can expose a desktop-like CSS width while keeping a tall,
  * touch-first viewport (for example "Solicitar sitio de escritorio"). Preserve
- * the complete 16:9 canonical Great Hall, then continue the lower architecture
- * with a zoomed floor/fireplace crop instead of leaving a dark empty viewport. */
+ * the complete 16:9 canonical Great Hall, then continue the room below it with a
+ * generated floor instead of leaving dead space or duplicating the painted hall. */
 @media (min-width: 521px) and (max-width: 999px) and (pointer: coarse) and (max-aspect-ratio: 4/5) {
   body:has(.app-shell-home) {
     background: #140b06;
@@ -28,9 +28,9 @@
     overflow: visible;
   }
 
-  /* --home-hall-art is defined on the stage itself. Build the continuation here
-     so the canonical asset is guaranteed to resolve, and zoom into the lower-right
-     floor/fireplace area rather than repeating the central table. */
+  /* Continue the room as an abstract floor plane. Warm light on the right echoes
+     the canonical fireplace while faint perspective bands keep the lower viewport
+     spatial without repeating recognizable furniture or the central table. */
   .illustrated-home__stage::before {
     content: '';
     position: absolute;
@@ -41,27 +41,29 @@
     height: max(0px, calc(100dvh - 58px - clamp(22px, 4dvh, 64px) - 56.25vw + 2px));
     pointer-events: none;
     background:
-      linear-gradient(180deg,
-        rgba(13, 7, 4, .18) 0%,
-        rgba(11, 6, 3, .34) 38%,
-        rgba(9, 4, 2, .70) 76%,
-        rgba(7, 3, 2, .90) 100%),
-      radial-gradient(ellipse at 72% 24%, rgba(196, 99, 38, .16), transparent 35%),
-      var(--home-hall-art) 72% 100% / 210% auto no-repeat,
-      #140b06;
-    filter: saturate(.82) brightness(.74);
+      radial-gradient(ellipse at 84% 5%, rgba(241, 136, 62, .24), transparent 24%),
+      radial-gradient(ellipse at 15% 7%, rgba(177, 82, 35, .13), transparent 27%),
+      repeating-linear-gradient(180deg, rgba(255, 219, 166, .025) 0 1px, transparent 1px 118px),
+      linear-gradient(105deg, rgba(0, 0, 0, .22), transparent 31%, transparent 69%, rgba(0, 0, 0, .34)),
+      linear-gradient(180deg, #35190f 0%, #221109 30%, #130a06 68%, #090503 100%);
   }
 
+  /* The red runner continues from the board toward the viewer. Keep it restrained:
+     it should read as perspective and depth, not as another interactive panel. */
   .illustrated-home__stage::after {
     content: '';
     position: absolute;
     z-index: 0;
-    left: 0;
-    right: 0;
     top: calc(100% - 1px);
-    height: clamp(80px, 10dvh, 150px);
+    left: 15%;
+    width: 70%;
+    height: max(0px, calc(100dvh - 58px - clamp(22px, 4dvh, 64px) - 56.25vw + 2px));
     pointer-events: none;
-    background: linear-gradient(180deg, rgba(10, 5, 3, .72), rgba(10, 5, 3, .16) 58%, transparent 100%);
+    clip-path: polygon(34% 0, 66% 0, 96% 100%, 4% 100%);
+    background:
+      linear-gradient(90deg, rgba(16, 3, 4, .26), transparent 18%, transparent 82%, rgba(16, 3, 4, .30)),
+      linear-gradient(180deg, rgba(111, 24, 21, .58), rgba(72, 14, 15, .47) 46%, rgba(31, 7, 9, .30) 100%);
+    filter: drop-shadow(0 18px 26px rgba(0, 0, 0, .22));
   }
 
   .illustrated-home__art,
