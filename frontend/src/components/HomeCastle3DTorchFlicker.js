@@ -9,11 +9,3 @@ export function homeCastleTorchFlicker(index, elapsedMs, reducedMotion = false) 
   const shimmer = Math.sin((time * 15.3) + (phase * 0.61)) * 0.008;
   return 1 + slow + fast + shimmer;
 }
-
-export function homeCastleTorchFlameScale(flicker) {
-  const normalized = Math.max(0.9, Math.min(1.1, Number(flicker) || 1));
-  return {
-    xz: 0.82 * (0.985 + ((normalized - 1) * 0.18)),
-    y: 1 + ((normalized - 1) * 0.62),
-  };
-}
