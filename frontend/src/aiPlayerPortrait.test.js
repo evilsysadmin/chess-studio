@@ -19,7 +19,7 @@ describe('AI player portrait', () => {
     clearStorageMemoryFallback();
   });
 
-  it('envía sólo hechos agregados y medidos', () => {
+  it('envía sólo hechos agregados y medidos con fuerza de evidencia explícita', () => {
     const facts = buildPlayerPortraitFacts({
       totalGames: 9,
       overall: { wins: 4, draws: 1, losses: 4, winPct: 44 },
@@ -36,9 +36,19 @@ describe('AI player portrait', () => {
     }, { puzzlesSolved: 12, personalPuzzles: 4 }, { moveReport: { played: 'Qh5', suggested: 'Nf3', loss: 210 } });
 
     expect(facts.total_games).toBe(9);
+    expect(facts.evidence_strength.games).toBe('medium');
     expect(facts.by_mode.casual.win_pct).toBe(60);
     expect(facts.by_mode.practice).toBeUndefined();
-    expect(facts.favorite_opening.name).toBe('Defensa Siciliana');
+    expect(facts.favorite_opening).toEqual(expect.objectContaining({
+      name: 'Defensa Siciliana',
+      games: 5,
+      evidence_strength: 'medium',
+    }));
+    expect(facts.openings[0]).toEqual(expect.objectContaining({
+      name: 'Defensa Siciliana',
+      games: 5,
+      evidence_strength: 'medium',
+    }));
     expect(facts.noteworthy_incidents).toEqual([{ key: 'human:MISSED_MATE', count: 2 }]);
     expect(facts.worst_recorded_move.centipawn_loss).toBe(210);
   });
@@ -46,7 +56,7 @@ describe('AI player portrait', () => {
   it('regenera automáticamente después de cada partida terminada', () => {
     expect(playerPortraitGenerationKey({ totalGames: 3 })).not.toBe(playerPortraitGenerationKey({ totalGames: 4 }));
     expect(playerPortraitGenerationKey({ totalGames: 4 })).not.toBe(playerPortraitGenerationKey({ totalGames: 5 }));
-    expect(playerPortraitGenerationKey({ totalGames: 5 })).toBe('6:5');
+    expect(playerPortraitGenerationKey({ totalGames: 5 })).toBe('7:5');
   });
 
   it('cachea sólo el retrato de la generación actual', () => {
@@ -59,7 +69,7 @@ describe('AI player portrait', () => {
 
   it('invalida retratos del schema anterior al cambiar de modelo', () => {
     const key = playerPortraitGenerationKey({ totalGames: 7 });
-    localStorage.setItem(AI_PLAYER_PORTRAIT_CACHE_KEY, JSON.stringify({ schema: 5, generationKey: key, text: 'Viejo Llama.' }));
+    localStorage.setItem(AI_PLAYER_PORTRAIT_CACHE_KEY, JSON.stringify({ schema: 6, generationKey: key, text: 'Viejo Llama.' }));
     expect(loadCachedPlayerPortrait(key, 'alice')).toBeNull();
   });
 
