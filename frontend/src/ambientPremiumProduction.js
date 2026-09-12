@@ -61,6 +61,7 @@ const INSTRUMENT_UPGRADES = Object.freeze({
 });
 
 const EXPANSIVE_SPACE_GENRES = new Set(['SPA / Zen', 'Dark Ambient', 'Ambient / Otros']);
+const SUSTAIN_RICH_GENRES = new Set(['SPA / Zen', 'Clásica', 'Piano / Minimal', 'Dark Ambient', 'Ambient / Otros']);
 
 function finiteOr(value, fallback) {
   return Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -118,6 +119,19 @@ function premiumSpace(feel, genre, targetSpace) {
   return clamp(blend(current, targetSpace, 0.48), 0.035, 0.30);
 }
 
+function premiumRelease(feel, genre, targetRelease) {
+  const current = finiteOr(feel?.releaseScale, 1);
+  // En piano minimal, cámara, zen y dark ambient una cola larga es parte de la
+  // escritura: Four Squares llega a 1.60 y Endgame Adagio a 1.72. El mastering
+  // no debe convertir sostenidos de cámara en notas recortadas. Reservamos este
+  // techo largo sólo a familias que viven de sustain; los géneros rítmicos
+  // conservan el techo anterior y siguen secos/precisos.
+  if (SUSTAIN_RICH_GENRES.has(genre) && current >= 1.45) {
+    return clamp(current, 0.76, 1.75);
+  }
+  return clamp(blend(current, targetRelease, 0.36), 0.76, 1.36);
+}
+
 function premiumSignature(feel, genre) {
   const signature = feel?.signature;
   const target = PERFORMANCE_FINISH[genre];
@@ -161,7 +175,7 @@ export function withAmbientPremiumProduction(theme, feel) {
     ...feel,
     swing: premiumSwing(feel, theme.genre),
     warmth: clamp(blend(finiteOr(feel.warmth, 1), target.warmth, 0.38), 0.7, 1.08),
-    releaseScale: clamp(blend(finiteOr(feel.releaseScale, 1), target.releaseScale, 0.36), 0.76, 1.36),
+    releaseScale: premiumRelease(feel, theme.genre, target.releaseScale),
     space: premiumSpace(feel, theme.genre, target.space),
     delayMs: Math.round(clamp(blend(finiteOr(feel.delayMs, 160), target.delayMs, 0.5), 72, 310)),
     mix,

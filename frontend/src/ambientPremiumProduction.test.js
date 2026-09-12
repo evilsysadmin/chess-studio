@@ -144,7 +144,30 @@ describe('ambient premium production pass', () => {
 
     expect(premium.space).toBe(0.30);
     expect(premium.space).toBeGreaterThan(0.24);
+    expect(premium.releaseScale).toBe(1.5);
     expect(premium.production.intent).toBe('deep-wide');
+  });
+
+  it('preserves long chamber and minimal sustain tails instead of mastering them short', () => {
+    const chamber = withAmbientPremiumProduction(
+      { id: 'adagio-like', genre: 'Clásica' },
+      {
+        family: 'chamber-adagio', releaseScale: 1.72, space: 0.28,
+        mix: { lead: 0.52, counter: 0.28, bass: 0.42, chord: 0.46 },
+        percussion: { kit: 'none', punch: 0, period: 32, pattern: {} },
+      },
+    );
+    const minimal = withAmbientPremiumProduction(
+      { id: 'four-squares-like', genre: 'Piano / Minimal' },
+      {
+        family: 'four-squares-minimal-piano', releaseScale: 1.6, space: 0.24,
+        mix: { lead: 0.48, counter: 0.26, bass: 0.34, chord: 0.36 },
+        percussion: { kit: 'none', punch: 0, period: 40, pattern: {} },
+      },
+    );
+
+    expect(chamber.releaseScale).toBe(1.72);
+    expect(minimal.releaseScale).toBe(1.6);
   });
 
   it('keeps energetic mixes tight instead of washing them in ambience', () => {
@@ -161,6 +184,7 @@ describe('ambient premium production pass', () => {
       },
     );
 
+    expect(premium.releaseScale).toBeLessThan(1.1);
     expect(premium.space).toBeLessThan(0.16);
     expect(premium.delayMs).toBeLessThan(180);
     expect(premium.percussion.punch).toBeGreaterThan(1.02);
