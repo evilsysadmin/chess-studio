@@ -10,8 +10,8 @@
   }
 
   .illustrated-home {
-    --tall-touch-stage-height: 70dvh;
-    --tall-touch-stage-width: 124.4444dvh;
+    --tall-touch-stage-height: 76dvh;
+    --tall-touch-stage-width: 135.1111dvh;
     --tall-touch-stage-gap: clamp(8px, 1.2dvh, 18px);
     position: relative;
     height: 100dvh;
@@ -23,9 +23,9 @@
   }
 
   /* Height-driven camera. At the canonical 980x1740 desktop-site capture the
-     Great Hall now owns ~70% of the viewport instead of ~47%. The price is a
-     deliberate lateral crop: this is a portrait camera on the same canonical room,
-     never a stretched repaint. */
+     Great Hall owns ~76% of the viewport. This trims the remaining empty runway
+     without stretching the canonical 16:9 room; the extra scale is paid for with
+     a deliberate, controlled lateral crop. */
   .illustrated-home__stage {
     position: relative;
     z-index: 1;
@@ -83,15 +83,15 @@
     box-shadow: 0 24px 52px rgba(0, 0, 0, .30);
   }
 
-  /* A 70dvh 16:9 stage is roughly 221vw at 980x1740, so only its central ~45%
-     is visible. Reframe the destinations into that safe strip while preserving
-     their left-to-right relationship to the room. */
-  .illustrated-home__destination--tournament { left: 28.4%; width: 10.8% !important; }
-  .illustrated-home__destination--train { left: 39.2%; width: 11% !important; }
-  .illustrated-home__destination--combat { left: 50.8%; width: 11.8% !important; }
-  .illustrated-home__destination--daily { left: 62%; width: 10% !important; }
-  .illustrated-home__destination--history { left: 28.3%; width: 9% !important; }
-  .illustrated-home__destination--play { left: 43%; width: 14% !important; }
+  /* A 76dvh 16:9 stage leaves roughly the central 42% visible at 980x1740.
+     Reframe the edge destinations into that safe strip while preserving the
+     room's left-to-right hierarchy. */
+  .illustrated-home__destination--tournament { left: 29.3%; width: 10.5% !important; }
+  .illustrated-home__destination--train { left: 39.5%; width: 10.8% !important; }
+  .illustrated-home__destination--combat { left: 50.3%; width: 11.2% !important; }
+  .illustrated-home__destination--daily { left: 61.1%; width: 9.5% !important; }
+  .illustrated-home__destination--history { left: 29.2%; width: 9% !important; }
+  .illustrated-home__destination--play { left: 43.3%; width: 13.4% !important; }
 
   .illustrated-home__destination svg {
     width: clamp(21px, 2.5vw, 26px);
@@ -108,30 +108,29 @@
   }
 
   .illustrated-home__matthias {
-    left: 28.5%;
-    width: 12.5%;
+    left: 29.3%;
+    width: 12%;
   }
 
   .illustrated-home__pawn-slug {
-    left: 41%;
-    width: 18%;
+    left: 41.5%;
+    width: 17%;
   }
 
   .illustrated-home__utilities {
-    right: 27.6%;
-    width: 16%;
+    right: 29.2%;
+    width: 15.5%;
   }
 
-  /* Speech remains attached to the hall but no longer needs a large artificial
-     runway beneath it now that the room itself owns the viewport. */
+  /* Speech remains attached to the hall and fits in the shorter foreground. */
   .illustrated-home__speech {
     position: absolute;
     left: 50%;
     right: auto;
-    top: calc(100% + clamp(16px, 1.8dvh, 30px));
+    top: calc(100% + clamp(12px, 1.4dvh, 24px));
     bottom: auto;
-    width: min(700px, calc(44% - 24px));
-    max-height: min(24dvh, 280px);
+    width: min(700px, calc(42% - 24px));
+    max-height: min(20dvh, 250px);
     transform: translateX(-50%);
   }
 }
