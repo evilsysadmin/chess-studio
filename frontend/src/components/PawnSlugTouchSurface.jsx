@@ -8,6 +8,7 @@ import {
   pawnSlugTouchVerticalAction,
   pawnSlugTouchZone,
 } from '../pawnSlugTouchGestures.js';
+import { createPawnSlugTouchActionOwners } from '../pawnSlugTouchActionOwners.js';
 import './PawnSlugTouchSurface.css';
 import './PawnSlugLandscape.css';
 import './PawnSlugTouchPress.css';
@@ -22,57 +23,67 @@ export default function PawnSlugTouchSurface({ send }) {
   const sendRef = useRef(send);
   const pointersRef = useRef(new Map());
   const timersRef = useRef(new Map());
-  const powerPressedRef = useRef(false);
-  const powerStartedAtRef = useRef(0);
+  const ownersRef = useRef(null);
+  const powerPointersRef = useRef(new Map());
   const [trained, setTrained] = useState(false);
+  if (!ownersRef.current) ownersRef.current = createPawnSlugTouchActionOwners();
   sendRef.current = send;
 
   function cancelPendingRelease(action) {
+    let cancelled = false;
     for (const [timer, pendingAction] of timersRef.current) {
       if (pendingAction !== action) continue;
       window.clearTimeout(timer);
       timersRef.current.delete(timer);
+      cancelled = true;
     }
+    return cancelled;
   }
 
-  function press(action) {
-    cancelPendingRelease(action);
-    sendRef.current(action, true);
+  function press(action, owner) {
+    const keptPressed = cancelPendingRelease(action);
+    const firstOwner = ownersRef.current.acquire(action, owner);
+    if (firstOwner && !keptPressed) sendRef.current(action, true);
     haptic(action);
   }
 
-  function scheduleRelease(action, startedAt, { immediate = false } = {}) {
-    if (!action) return;
+  function scheduleRelease(action, startedAt, owner, { immediate = false } = {}) {
+    if (!action || owner == null) return;
+    const lastOwner = ownersRef.current.release(action, owner);
+    if (!lastOwner) return;
+
+    const releaseNow = () => {
+      if (!ownersRef.current.has(action)) sendRef.current(action, false);
+    };
     const minimumPressMs = immediate ? 0 : pawnSlugTouchMinimumPressMs(action);
     if (minimumPressMs <= 0) {
-      sendRef.current(action, false);
+      releaseNow();
       return;
     }
     const elapsed = Math.max(0, performance.now() - startedAt);
     const delay = Math.max(0, minimumPressMs - elapsed);
     if (delay <= 0) {
-      sendRef.current(action, false);
+      releaseNow();
       return;
     }
     const timer = window.setTimeout(() => {
       timersRef.current.delete(timer);
-      sendRef.current(action, false);
+      releaseNow();
     }, delay);
     timersRef.current.set(timer, action);
   }
 
   useEffect(() => () => {
+    const actionsToRelease = new Set();
     for (const [timer, action] of timersRef.current) {
       window.clearTimeout(timer);
-      sendRef.current(action, false);
+      actionsToRelease.add(action);
     }
     timersRef.current.clear();
-    for (const pointer of pointersRef.current.values()) {
-      if (pointer.action) sendRef.current(pointer.action, false);
-    }
+    for (const action of ownersRef.current.clear()) actionsToRelease.add(action);
     pointersRef.current.clear();
-    powerPressedRef.current = false;
-    sendRef.current('grenade', false);
+    powerPointersRef.current.clear();
+    for (const action of actionsToRelease) sendRef.current(action, false);
   }, []);
 
   function point(event) {
@@ -86,7 +97,7 @@ export default function PawnSlugTouchSurface({ send }) {
 
   function release(pointer, { immediate = false } = {}) {
     if (!pointer?.action) return;
-    scheduleRelease(pointer.action, pointer.actionStartedAt, { immediate });
+    scheduleRelease(pointer.action, pointer.actionStartedAt, pointer.owner, { immediate });
   }
 
   function onPointerDown(event) {
@@ -96,6 +107,7 @@ export default function PawnSlugTouchSurface({ send }) {
     const start = point(event);
     const zone = pawnSlugTouchZone(start.x, start.width);
     const pointer = {
+      owner: event.pointerId,
       zone,
       startX: start.x,
       startY: start.y,
@@ -107,11 +119,11 @@ export default function PawnSlugTouchSurface({ send }) {
     if (zone === 'move') {
       pointer.action = pawnSlugTouchMoveDirection(start.x, start.width);
       pointer.actionStartedAt = performance.now();
-      press(pointer.action);
+      press(pointer.action, pointer.owner);
     } else if (zone === 'fire') {
       pointer.action = 'fire';
       pointer.actionStartedAt = performance.now();
-      press('fire');
+      press('fire', pointer.owner);
     }
 
     pointersRef.current.set(event.pointerId, pointer);
@@ -127,10 +139,12 @@ export default function PawnSlugTouchSurface({ send }) {
     if (pointer.zone === 'move') {
       const direction = pawnSlugTouchMoveDirection(current.x, current.width, pointer.action);
       if (direction !== pointer.action) {
-        if (pointer.action) sendRef.current(pointer.action, false);
+        if (pointer.action) {
+          scheduleRelease(pointer.action, pointer.actionStartedAt, pointer.owner, { immediate: true });
+        }
         pointer.action = direction;
         pointer.actionStartedAt = performance.now();
-        press(direction);
+        press(direction, pointer.owner);
       }
       return;
     }
@@ -140,7 +154,7 @@ export default function PawnSlugTouchSurface({ send }) {
     if (!action) return;
     pointer.action = action;
     pointer.actionStartedAt = performance.now();
-    press(action);
+    press(action, pointer.owner);
   }
 
   function finish(event, allowTap = true, immediateRelease = false) {
@@ -153,7 +167,7 @@ export default function PawnSlugTouchSurface({ send }) {
       if (action) {
         pointer.action = action;
         pointer.actionStartedAt = performance.now();
-        press(action);
+        press(action, pointer.owner);
       }
     }
     release(pointer, { immediate: immediateRelease });
@@ -171,17 +185,20 @@ export default function PawnSlugTouchSurface({ send }) {
     event.preventDefault();
     event.stopPropagation();
     setTrained(true);
-    powerPressedRef.current = true;
-    powerStartedAtRef.current = performance.now();
-    press('grenade');
+    const owner = `power:${event.pointerId}`;
+    if (powerPointersRef.current.has(owner)) return;
+    powerPointersRef.current.set(owner, performance.now());
+    press('grenade', owner);
   }
 
   function powerUpRelease(event, immediate = false) {
     event.preventDefault();
     event.stopPropagation();
-    if (!powerPressedRef.current) return;
-    powerPressedRef.current = false;
-    scheduleRelease('grenade', powerStartedAtRef.current, { immediate });
+    const owner = `power:${event.pointerId}`;
+    const startedAt = powerPointersRef.current.get(owner);
+    if (startedAt == null) return;
+    powerPointersRef.current.delete(owner);
+    scheduleRelease('grenade', startedAt, owner, { immediate });
   }
 
   return (
