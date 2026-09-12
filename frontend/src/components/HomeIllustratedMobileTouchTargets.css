@@ -1,0 +1,57 @@
+/* Phone-only ergonomic hit areas for Home chrome.
+ * Keep the first fold visually compact while making the actual interactive
+ * rectangles meet the 44px touch target used by the visual-health gate. */
+@media (max-width: 520px) {
+  body:has(.menu.menu-illustrated) .global-music-dock {
+    max-width: 116px !important;
+  }
+
+  body:has(.menu.menu-illustrated) .global-music-dock .music-deck-collapsed {
+    width: 114px !important;
+    max-width: 114px !important;
+    grid-template-columns: 57px 57px !important;
+  }
+
+  body:has(.menu.menu-illustrated) .global-music-dock .music-deck-expand,
+  body:has(.menu.menu-illustrated) .global-music-dock .music-deck-collapsed-play {
+    width: 57px !important;
+    min-width: 57px !important;
+    height: 57px !important;
+    min-height: 57px !important;
+    padding: 0 !important;
+  }
+
+  body .app-shell-home .masthead-account-menu {
+    top: max(2px, env(safe-area-inset-top)) !important;
+  }
+
+  body .app-shell-home .masthead-account-trigger {
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+  }
+
+  body .app-shell-home .masthead-feedback-trigger,
+  body .app-shell-home .masthead-release-trigger {
+    top: max(2px, env(safe-area-inset-top)) !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    border-color: rgba(171, 132, 72, .16) !important;
+    background: rgba(14, 9, 6, .42) !important;
+  }
+
+  body .app-shell-home .masthead-feedback-trigger {
+    right: 2px !important;
+  }
+
+  body .app-shell-home .masthead-release-trigger {
+    right: 48px !important;
+  }
+
+  body .app-shell-home .masthead-account-popover {
+    top: 52px !important;
+  }
+}
