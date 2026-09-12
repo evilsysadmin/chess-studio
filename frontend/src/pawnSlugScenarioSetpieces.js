@@ -195,6 +195,20 @@ function installIntoScenario(root, scenarioName, createGroup, kind, localX) {
   return capture(group, kind);
 }
 
+function firstRenderableOutsideSetpiece(node) {
+  let found = null;
+  node?.traverse?.((child) => {
+    if (found || !child.isMesh) return;
+    let ancestor = child;
+    while (ancestor && ancestor !== node) {
+      if (ancestor.name?.startsWith('pawn-slug-setpiece-')) return;
+      ancestor = ancestor.parent;
+    }
+    found = child;
+  });
+  return found;
+}
+
 export function createPawnSlugReactiveSetpieces(root, { reducedMotion = false } = {}) {
   if (!root) throw new Error('Pawn Slug reactive setpieces require a root');
   const entries = [
@@ -247,10 +261,12 @@ export function attachPawnSlugReactiveSetpieces(root, { reducedMotion = prefersR
   if (!controller.enabled) return controller;
 
   let lastFrame = -1;
+  const proxies = new Set();
   root.traverse((node) => {
-    if (!node.name?.startsWith('pawn-slug-setpiece-')) return;
-    const proxy = node.children.find((child) => child.isMesh) || node.children[0];
-    if (!proxy) return;
+    if (!node.name?.startsWith('pawn-slug-landmark-')) return;
+    const proxy = firstRenderableOutsideSetpiece(node);
+    if (!proxy || proxies.has(proxy)) return;
+    proxies.add(proxy);
     const previous = proxy.onBeforeRender;
     proxy.onBeforeRender = function setpieceBeforeRender(renderer, scene, camera, ...args) {
       previous?.call(this, renderer, scene, camera, ...args);
