@@ -1,16 +1,16 @@
-import { expect, test } from '@playwright/test';
+import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const MIN_TOUCH_TARGET = 44;
 const CAPTURES = [
-  { label:'desktop-1440x900', width:1440, height:900, reducedMotion:'no-preference', expectCastleReady:true },
-  { label:'android-desktop-site-980x1740', width:980, height:1740, reducedMotion:'no-preference', expectCastleReady:true },
+  { label:'desktop-1440x900', width:1440, height:900, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
+  { label:'android-desktop-site-980x1740', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
   { label:'android-360x800', width:360, height:800, reducedMotion:'no-preference' },
-  { label:'android-390x844', width:390, height:844, reducedMotion:'no-preference' },
-  { label:'android-430x932', width:430, height:932, reducedMotion:'no-preference' },
-  { label:'android-390x844-reduced-motion', width:390, height:844, reducedMotion:'reduce' },
+  { label:'android-390x844', width:390, height:844, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
+  { label:'android-430x932', width:430, height:932, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
+  { label:'android-390x844-reduced-motion', width:390, height:844, reducedMotion:'reduce', forceCores:8, expectCastleReady:true },
 ];
 
 async function openCanonicalHome(page, { reducedMotion = 'no-preference' } = {}) {
@@ -30,7 +30,7 @@ async function openCanonicalHome(page, { reducedMotion = 'no-preference' } = {})
 
 async function settle(page, home, { expectCastleReady = false } = {}) {
   if (expectCastleReady) {
-    await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout:10_000 });
+    await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout:15_000 });
   }
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForTimeout(250);
@@ -94,6 +94,7 @@ async function captureHealth(page, label) {
     return {
       label:captureLabel,
       viewport:{ ...viewport, dpr:window.devicePixelRatio },
+      hardwareConcurrency:navigator.hardwareConcurrency,
       reducedMotion:window.matchMedia('(prefers-reduced-motion: reduce)').matches,
       castle3dReady:document.querySelector('.illustrated-home__castle-3d.is-ready') !== null,
       stage,
@@ -117,32 +118,53 @@ async function captureHealth(page, label) {
   }, { captureLabel:label, minTouchTarget:MIN_TOUCH_TARGET });
 }
 
-test('App · captura visual canónica desktop + Android normal/desktop-site', async ({ browser }) => {
-  test.setTimeout(150_000);
+test('App · captura visual canónica desktop + Android normal/desktop-site', async () => {
+  test.setTimeout(180_000);
   await mkdir(ARTIFACT_DIR, { recursive:true });
 
-  const captures = [];
-  for (const capture of CAPTURES) {
-    const context = await browser.newContext({ viewport:{ width:capture.width, height:capture.height } });
-    const page = await context.newPage();
-    try {
-      const home = await openCanonicalHome(page, { reducedMotion:capture.reducedMotion });
-      await settle(page, home, { expectCastleReady:capture.expectCastleReady });
+  const visualBrowser = await chromium.launch({
+    headless:true,
+    args:[
+      '--use-gl=angle',
+      '--use-angle=swiftshader',
+      '--enable-unsafe-swiftshader',
+    ],
+  });
 
-      const health = await captureHealth(page, capture.label);
-      captures.push({
-        ...health,
-        expectedReducedMotion:capture.reducedMotion === 'reduce',
-        expectedCastleReady:capture.expectCastleReady === true,
-      });
-      await page.screenshot({
-        path:`${ARTIFACT_DIR}/home-${capture.label}.png`,
-        fullPage:false,
-        animations:'disabled',
-      });
-    } finally {
-      await context.close();
+  const captures = [];
+  try {
+    for (const capture of CAPTURES) {
+      const context = await visualBrowser.newContext({ viewport:{ width:capture.width, height:capture.height } });
+      if (capture.forceCores) {
+        await context.addInitScript((cores) => {
+          Object.defineProperty(navigator, 'hardwareConcurrency', {
+            configurable:true,
+            get:() => cores,
+          });
+        }, capture.forceCores);
+      }
+      const page = await context.newPage();
+      try {
+        const home = await openCanonicalHome(page, { reducedMotion:capture.reducedMotion });
+        await settle(page, home, { expectCastleReady:capture.expectCastleReady });
+
+        const health = await captureHealth(page, capture.label);
+        captures.push({
+          ...health,
+          expectedReducedMotion:capture.reducedMotion === 'reduce',
+          expectedCastleReady:capture.expectCastleReady === true,
+        });
+        await page.screenshot({
+          path:`${ARTIFACT_DIR}/home-${capture.label}.png`,
+          fullPage:false,
+          animations:'disabled',
+        });
+      } finally {
+        await context.close();
+      }
     }
+  } finally {
+    await visualBrowser.close();
   }
 
   await writeFile(
