@@ -1,3 +1,5 @@
+import { threeSurfaceShouldRender } from '../threeRenderPolicy.js';
+
 export function isSoftwareWebGLRenderer(rendererLabel = '') {
   return /swiftshader|llvmpipe|lavapipe|software rasterizer|software renderer|mesa offscreen/i.test(String(rendererLabel));
 }
@@ -73,7 +75,10 @@ export function warRoomAmbientFramePlan({
   narrativeActive = false,
   elapsedMs = 0,
 } = {}) {
-  const active = !documentHidden && !reducedMotion && (!softwareRenderer || narrativeActive);
+  const active = threeSurfaceShouldRender({
+    documentHidden,
+    paused: reducedMotion,
+  }) && (!softwareRenderer || narrativeActive);
   // The heartbeat exists mainly to keep fire/light alive. Desktop keeps 10 FPS;
   // coarse-pointer/mobile idles at ~6.7 FPS because those slow practical lights
   // do not benefit from 10 FPS, while inspect mode still raises cadence for input.
