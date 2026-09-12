@@ -22,6 +22,16 @@ describe('Pawn Slug landscape touch gestures', () => {
     expect(pawnSlugTouchMoveDirection(300, 1000)).toBe('right');
   });
 
+  it('holds the current movement direction near the midpoint to avoid thumb jitter', () => {
+    expect(PAWN_SLUG_TOUCH_GESTURE.moveDirectionHysteresisRatio).toBeGreaterThan(0);
+    expect(PAWN_SLUG_TOUCH_GESTURE.moveDirectionHysteresisRatio).toBeLessThan(0.05);
+    expect(pawnSlugTouchMoveDirection(220, 1000)).toBe('right');
+    expect(pawnSlugTouchMoveDirection(220, 1000, 'left')).toBe('left');
+    expect(pawnSlugTouchMoveDirection(240, 1000, 'left')).toBe('right');
+    expect(pawnSlugTouchMoveDirection(200, 1000, 'right')).toBe('right');
+    expect(pawnSlugTouchMoveDirection(180, 1000, 'right')).toBe('left');
+  });
+
   it('recognizes only deliberate vertical swipes for jump and crouch', () => {
     expect(pawnSlugTouchVerticalAction(3, -44)).toBe('jump');
     expect(pawnSlugTouchVerticalAction(4, 48)).toBe('crouch');
