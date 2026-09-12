@@ -1,6 +1,7 @@
 export const PAWN_SLUG_TOUCH_GESTURE = Object.freeze({
   moveZoneEnd: 0.42,
   gestureZoneEnd: 0.68,
+  moveDirectionHysteresisRatio: 0.025,
   verticalThresholdPx: 30,
   verticalAxisBias: 1.12,
   tapMaxTravelPx: 18,
@@ -22,10 +23,15 @@ export function pawnSlugTouchZone(x, width) {
   return 'fire';
 }
 
-export function pawnSlugTouchMoveDirection(x, width) {
+export function pawnSlugTouchMoveDirection(x, width, currentDirection = null) {
   const safeWidth = Math.max(1, Number(width) || 1);
   const split = safeWidth * PAWN_SLUG_TOUCH_GESTURE.moveZoneEnd * 0.5;
-  return (Number(x) || 0) < split ? 'left' : 'right';
+  const hysteresis = safeWidth * PAWN_SLUG_TOUCH_GESTURE.moveDirectionHysteresisRatio;
+  const safeX = Number(x) || 0;
+
+  if (currentDirection === 'left' && safeX <= split + hysteresis) return 'left';
+  if (currentDirection === 'right' && safeX >= split - hysteresis) return 'right';
+  return safeX < split ? 'left' : 'right';
 }
 
 export function pawnSlugTouchVerticalAction(deltaX, deltaY) {
