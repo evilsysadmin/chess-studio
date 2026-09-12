@@ -12,6 +12,7 @@ import { installRadioMatthiasRecompositions } from './ambientRadioMatthiasRecomp
 import { installTropicalHouseMelodies } from './ambientTropicalHouseMelody.js';
 import { installRadioPremiumForms } from './ambientRadioPremiumForms.js';
 import { withRadioMatthiasLeitmotif } from './ambientRadioMatthiasLeitmotifs.js';
+import { withAmbientPremiumProduction } from './ambientPremiumProduction.js';
 
 const RADIO_MATTHIAS_HIDDEN_THEME_IDS = new Set([...CURATED_HIDDEN_THEME_IDS, 'blackArchive']);
 
@@ -119,10 +120,6 @@ const TANGIER_SMOKE_PROFILE = Object.freeze({
   }),
 });
 
-// Tropical House tiene que sonar a house antes que a postal de resort: bombo
-// a negras, hat en contratiempo, bajo corto y acordes con ataque. El tempo ya
-// estaba en la zona correcta; el problema era que el arreglo llevaba el freno
-// de mano puesto. Este overlay conserva melodías, armonías y leitmotivs propios.
 const TROPICAL_HOUSE_GROOVE = Object.freeze({
   0:'K', 2:'H', 4:'K', 6:'H', 8:'K', 10:'H', 12:'K', 14:'H',
 });
@@ -172,21 +169,27 @@ function withTropicalHouseDrive(theme, feel) {
 export function structuredFeel(theme) {
   const radioMatthias = radioMatthiasStructuredFeel(theme);
   if (radioMatthias) {
-    return withTropicalHouseDrive(theme, withRadioMatthiasLeitmotif(theme, radioMatthias));
+    const arranged = withTropicalHouseDrive(theme, withRadioMatthiasLeitmotif(theme, radioMatthias));
+    return withAmbientPremiumProduction(theme, arranged);
   }
 
   const legacy = legacyStructuredFeel(theme);
   if (!legacy) return legacy;
-  if (TROPICAL_HOUSE_DRIVE[theme?.id]) return withTropicalHouseDrive(theme, legacy);
-  if (theme?.id === 'reactorGambit') return Object.freeze({ ...legacy, ...REACTOR_GAMBIT_PROFILE });
-  if (theme?.id === 'tangierSmoke') return Object.freeze({ ...legacy, ...TANGIER_SMOKE_PROFILE });
-  if (!GRANADA_THEME_IDS.has(theme?.id)) return legacy;
-  return Object.freeze({
-    ...legacy,
-    ...GRANADA_MELODIC_PROFILE,
-    leadInstrument: 'nylonGuitar',
-    counterInstrument: 'qanun',
-    drumMode: 'none',
-    percussion: Object.freeze({ period: 32, kit: 'none', punch: 0, pattern: Object.freeze({}) }),
-  });
+
+  let arranged = legacy;
+  if (TROPICAL_HOUSE_DRIVE[theme?.id]) arranged = withTropicalHouseDrive(theme, legacy);
+  else if (theme?.id === 'reactorGambit') arranged = Object.freeze({ ...legacy, ...REACTOR_GAMBIT_PROFILE });
+  else if (theme?.id === 'tangierSmoke') arranged = Object.freeze({ ...legacy, ...TANGIER_SMOKE_PROFILE });
+  else if (GRANADA_THEME_IDS.has(theme?.id)) {
+    arranged = Object.freeze({
+      ...legacy,
+      ...GRANADA_MELODIC_PROFILE,
+      leadInstrument: 'nylonGuitar',
+      counterInstrument: 'qanun',
+      drumMode: 'none',
+      percussion: Object.freeze({ period: 32, kit: 'none', punch: 0, pattern: Object.freeze({}) }),
+    });
+  }
+
+  return withAmbientPremiumProduction(theme, arranged);
 }
