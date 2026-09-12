@@ -1,7 +1,7 @@
 /* Android browsers can expose a desktop-like CSS width while keeping a tall,
  * touch-first viewport (for example "Solicitar sitio de escritorio"). Preserve
- * the complete 16:9 canonical Great Hall and extend its atmosphere behind the
- * hero instead of stretching or heavily cropping the diegetic scene. */
+ * the complete 16:9 canonical Great Hall, then continue the room below it with a
+ * generated floor instead of leaving dead space or duplicating the painted hall. */
 @media (min-width: 521px) and (max-width: 999px) and (pointer: coarse) and (max-aspect-ratio: 4/5) {
   body:has(.app-shell-home) {
     background: #140b06;
@@ -28,34 +28,44 @@
     overflow: visible;
   }
 
-  .illustrated-home__stage::before,
+  /* Continue the room as an abstract floor plane. Warm light on the right echoes
+     the canonical fireplace while faint perspective bands keep the lower viewport
+     spatial without repeating recognizable furniture or the central table. */
+  .illustrated-home__stage::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    left: 0;
+    right: 0;
+    top: calc(100% - 1px);
+    height: max(0px, calc(100dvh - 58px - clamp(22px, 4dvh, 64px) - 56.25vw + 2px));
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at 83% 4%, rgba(241, 136, 62, .19), transparent 23%),
+      radial-gradient(ellipse at 16% 6%, rgba(177, 82, 35, .10), transparent 26%),
+      radial-gradient(ellipse at 50% 0%, rgba(120, 58, 28, .16), transparent 38%),
+      repeating-linear-gradient(180deg, rgba(255, 219, 166, .022) 0 1px, transparent 1px 118px),
+      linear-gradient(105deg, rgba(0, 0, 0, .24), transparent 33%, transparent 67%, rgba(0, 0, 0, .36)),
+      linear-gradient(180deg, #30170e 0%, #211008 30%, #120906 68%, #090503 100%);
+  }
+
+  /* The red runner only bridges the canonical carpet into the generated floor.
+     It fades early so the lower viewport stays architectural depth rather than a
+     second focal point or an endless runway. */
   .illustrated-home__stage::after {
     content: '';
-    position: fixed;
-    inset: 0;
+    position: absolute;
+    z-index: 0;
+    top: calc(100% - 1px);
+    left: 22%;
+    width: 56%;
+    height: clamp(230px, 31dvh, 520px);
     pointer-events: none;
-  }
-
-  .illustrated-home__stage::before {
-    z-index: -2;
-    background: var(--home-hall-art) 50% 58% / cover no-repeat;
-    opacity: .30;
-    filter: blur(18px) saturate(.76);
-    transform: scale(1.045);
-    transform-origin: center;
-  }
-
-  .illustrated-home__stage::after {
-    z-index: -1;
+    clip-path: polygon(42% 0, 58% 0, 86% 100%, 14% 100%);
     background:
-      radial-gradient(ellipse at 50% 34%, rgba(190, 111, 43, .12), transparent 42%),
-      radial-gradient(ellipse at 50% 74%, rgba(156, 82, 38, .09), transparent 40%),
-      linear-gradient(180deg,
-        rgba(16, 8, 4, .22) 0%,
-        rgba(16, 8, 4, .44) 34%,
-        rgba(13, 7, 4, .74) 56%,
-        rgba(10, 5, 3, .88) 78%,
-        rgba(10, 5, 3, .92) 100%);
+      linear-gradient(90deg, rgba(16, 3, 4, .22), transparent 22%, transparent 78%, rgba(16, 3, 4, .24)),
+      linear-gradient(180deg, rgba(103, 23, 20, .46), rgba(68, 14, 15, .32) 46%, rgba(28, 7, 9, .10) 80%, transparent 100%);
+    filter: drop-shadow(0 14px 22px rgba(0, 0, 0, .18));
   }
 
   .illustrated-home__art,
