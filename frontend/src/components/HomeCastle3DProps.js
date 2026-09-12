@@ -15,6 +15,8 @@ export const HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR = Object.freeze({ x: 1.18, y: -0
 export const HOME_CASTLE_DESTINATION_PROP_ANCHORS = Object.freeze({
   tournament: Object.freeze({ x: -0.96, y: -0.035, z: 0.29 }),
   train: Object.freeze({ x: -0.34, y: -0.035, z: 0.3 }),
+  combat: Object.freeze({ x: 0.19, y: 0.015, z: 0.305 }),
+  history: Object.freeze({ x: -1.25, y: -0.02, z: 0.3 }),
   play: Object.freeze({ x: 0, y: -0.22, z: 0.31 }),
   daily: Object.freeze({ x: 0.86, y: -0.015, z: 0.3 }),
 });
@@ -247,6 +249,150 @@ function createTrainingLectern(resources) {
   return group;
 }
 
+function createCombatArmory(resources) {
+  const group = new THREE.Group();
+  group.name = 'home-castle-prop-combat';
+  group.userData.destination = 'combat';
+  group.position.set(
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.combat.x,
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.combat.y,
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.combat.z,
+  );
+  group.rotation.z = 0.025;
+
+  const iron = new THREE.MeshStandardMaterial({
+    color: 0x514943,
+    roughness: 0.74,
+    metalness: 0.34,
+    emissive: 0x15100d,
+    emissiveIntensity: 0.045,
+  });
+  const bronze = new THREE.MeshStandardMaterial({
+    color: 0x9d7342,
+    roughness: 0.64,
+    metalness: 0.38,
+    emissive: 0x2a1606,
+    emissiveIntensity: 0.05,
+  });
+  const leather = new THREE.MeshStandardMaterial({
+    color: 0x42271a,
+    roughness: 0.86,
+    metalness: 0.01,
+    emissive: 0x0f0603,
+    emissiveIntensity: 0.025,
+  });
+  resources.materials.push(iron, bronze, leather);
+
+  const rackGeometry = new THREE.BoxGeometry(0.14, 0.014, 0.045);
+  const bladeGeometry = new THREE.BoxGeometry(0.012, 0.17, 0.007);
+  const guardGeometry = new THREE.BoxGeometry(0.058, 0.009, 0.012);
+  const gripGeometry = new THREE.BoxGeometry(0.012, 0.052, 0.012);
+  const shieldGeometry = new THREE.CylinderGeometry(0.065, 0.065, 0.014, 24);
+  const bossGeometry = new THREE.SphereGeometry(0.019, 14, 10);
+  resources.geometries.push(
+    rackGeometry,
+    bladeGeometry,
+    guardGeometry,
+    gripGeometry,
+    shieldGeometry,
+    bossGeometry,
+  );
+
+  const rack = new THREE.Mesh(rackGeometry, leather);
+  rack.position.y = 0.007;
+
+  for (const side of [-1, 1]) {
+    const sword = new THREE.Group();
+    sword.rotation.z = side * 0.58;
+    sword.position.set(side * 0.015, 0.083, -0.012);
+    const blade = new THREE.Mesh(bladeGeometry, iron);
+    blade.position.y = 0.035;
+    const guard = new THREE.Mesh(guardGeometry, bronze);
+    guard.position.y = -0.052;
+    const grip = new THREE.Mesh(gripGeometry, leather);
+    grip.position.y = -0.082;
+    sword.add(blade, guard, grip);
+    group.add(sword);
+  }
+
+  const shield = new THREE.Mesh(shieldGeometry, iron);
+  shield.name = 'home-castle-combat-shield';
+  shield.position.y = 0.09;
+  shield.rotation.x = Math.PI / 2;
+  shield.scale.set(0.88, 1, 1.05);
+  const boss = new THREE.Mesh(bossGeometry, bronze);
+  boss.position.set(0, 0.09, 0.013);
+  boss.scale.z = 0.58;
+
+  group.add(rack, shield, boss);
+  attachViewportScale(group, rack, 0.72);
+  return group;
+}
+
+function createHistoryTome(resources) {
+  const group = new THREE.Group();
+  group.name = 'home-castle-prop-history';
+  group.userData.destination = 'history';
+  group.position.set(
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.history.x,
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.history.y,
+    HOME_CASTLE_DESTINATION_PROP_ANCHORS.history.z,
+  );
+  group.rotation.z = -0.055;
+
+  const leather = new THREE.MeshStandardMaterial({
+    color: 0x68402b,
+    roughness: 0.86,
+    metalness: 0.01,
+    emissive: 0x1c0d07,
+    emissiveIntensity: 0.04,
+  });
+  const parchment = new THREE.MeshStandardMaterial({
+    color: 0xd8c69d,
+    roughness: 0.92,
+    metalness: 0,
+    emissive: 0x392911,
+    emissiveIntensity: 0.065,
+  });
+  const brass = new THREE.MeshStandardMaterial({
+    color: 0xa77b3f,
+    roughness: 0.62,
+    metalness: 0.42,
+    emissive: 0x2b1605,
+    emissiveIntensity: 0.045,
+  });
+  resources.materials.push(leather, parchment, brass);
+
+  const coverGeometry = new THREE.BoxGeometry(0.145, 0.09, 0.014);
+  const pagesGeometry = new THREE.BoxGeometry(0.132, 0.079, 0.016);
+  const spineGeometry = new THREE.BoxGeometry(0.016, 0.094, 0.021);
+  const claspGeometry = new THREE.BoxGeometry(0.022, 0.012, 0.025);
+  const cornerGeometry = new THREE.BoxGeometry(0.018, 0.018, 0.023);
+  resources.geometries.push(coverGeometry, pagesGeometry, spineGeometry, claspGeometry, cornerGeometry);
+
+  const pages = new THREE.Mesh(pagesGeometry, parchment);
+  pages.position.z = 0.004;
+  const cover = new THREE.Mesh(coverGeometry, leather);
+  cover.position.z = 0.013;
+  cover.name = 'home-castle-history-tome';
+  const spine = new THREE.Mesh(spineGeometry, leather);
+  spine.position.set(-0.073, 0, 0.005);
+  const clasp = new THREE.Mesh(claspGeometry, brass);
+  clasp.position.set(0.073, 0, 0.018);
+
+  for (const x of [-0.06, 0.06]) {
+    for (const y of [-0.033, 0.033]) {
+      const corner = new THREE.Mesh(cornerGeometry, brass);
+      corner.position.set(x, y, 0.019);
+      group.add(corner);
+    }
+  }
+
+  group.add(pages, cover, spine, clasp);
+  attachViewportScale(group, cover, 0.72);
+  return group;
+}
+
 function createPlayRook(resources) {
   const group = new THREE.Group();
   group.name = 'home-castle-prop-play';
@@ -398,14 +544,18 @@ export function createHomeCastleDestinationProps() {
   };
   const tournament = createTournamentCup(resources);
   const train = createTrainingLectern(resources);
+  const combat = createCombatArmory(resources);
+  const history = createHistoryTome(resources);
   const play = createPlayRook(resources);
   const daily = createDailyBrazier(resources);
-  group.add(tournament, train, play, daily);
+  group.add(tournament, train, combat, history, play, daily);
 
   return {
     group,
     tournament,
     train,
+    combat,
+    history,
     play,
     daily,
     dispose() {
