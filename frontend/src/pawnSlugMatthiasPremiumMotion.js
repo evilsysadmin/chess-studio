@@ -48,6 +48,7 @@ function applyWeaponRecoil(pose, weapon, time) {
 export function pawnSlugMatthiasPremiumPose({
   time = 0,
   airborne = false,
+  running = false,
   firing = false,
   hurt = false,
   crouch = false,
@@ -70,6 +71,7 @@ export function pawnSlugMatthiasPremiumPose({
   let sy = 1;
   let y = 0;
   let rz = 0;
+  let locomotion = 'ground';
   let weaponRecoil = 'idle';
 
   if (jumpPhase === 'takeoff') {
@@ -95,6 +97,13 @@ export function pawnSlugMatthiasPremiumPose({
   if (crouch) {
     sx *= 1.018;
     sy *= 0.985;
+    locomotion = 'crouch';
+  } else if (running && !airborne) {
+    sx *= 1.018;
+    sy *= 0.992;
+    y -= 0.006;
+    rz -= 0.018;
+    locomotion = 'run-forward';
   }
   if (landing > 0) {
     const pulse = Math.sin(landing * Math.PI) * landing * impact;
@@ -143,6 +152,7 @@ export function pawnSlugMatthiasPremiumPose({
     landing,
     landingStrength: impact,
     jumpPhase,
+    locomotion,
     pistolPhase: pistolPhase?.phase || 'idle',
     weaponRecoil,
   });

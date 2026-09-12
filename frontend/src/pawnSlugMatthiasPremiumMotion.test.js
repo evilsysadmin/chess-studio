@@ -110,4 +110,27 @@ describe('Pawn Slug Matthias premium motion', () => {
     expect(panzerfaust.sy).toBeLessThan(shotgun.sy);
     expect(shotgun.sy).toBeLessThan(machinegun.sy);
   });
+
+  it('keeps forward run body language while firing instead of visually planting Matthias', () => {
+    const standing = pawnSlugMatthiasPremiumPose();
+    const running = pawnSlugMatthiasPremiumPose({ running: true });
+    const standingShotgun = pawnSlugMatthiasPremiumPose({ firing: true, weapon: 'shotgun' });
+    const runningShotgun = pawnSlugMatthiasPremiumPose({ running: true, firing: true, weapon: 'shotgun' });
+
+    expect(running.locomotion).toBe('run-forward');
+    expect(running.rz).toBeLessThan(standing.rz);
+    expect(running.sy).toBeLessThan(standing.sy);
+    expect(runningShotgun.locomotion).toBe('run-forward');
+    expect(runningShotgun.weaponRecoil).toBe('shotgun-kick');
+    expect(runningShotgun.sx).toBeGreaterThan(standingShotgun.sx);
+    expect(runningShotgun.y).toBeLessThan(standingShotgun.y);
+  });
+
+  it('does not apply the ground run brace while Matthias is airborne or crouching', () => {
+    const airborne = pawnSlugMatthiasPremiumPose({ running: true, airborne: true, jumpFrame: 2, jumpFrames: 9 });
+    const crouching = pawnSlugMatthiasPremiumPose({ running: true, crouch: true });
+
+    expect(airborne.locomotion).toBe('ground');
+    expect(crouching.locomotion).toBe('crouch');
+  });
 });
