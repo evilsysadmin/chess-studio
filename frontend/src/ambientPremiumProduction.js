@@ -52,6 +52,12 @@ const INSTRUMENT_UPGRADES = Object.freeze({
     chord: Object.freeze({ epiano: 'rhodesWarm' }),
     bass: Object.freeze({ bass: 'uprightBass' }),
   }),
+  'Trip-Hop / Downtempo': Object.freeze({
+    // El trip-hop nocturno del catálogo ya describe camas de Rhodes en varias
+    // piezas legacy. Si aún llega un EP genérico, lo calentamos sin tocar los
+    // bajos sintéticos, pads ni metales apagados que definen el noir.
+    chord: Object.freeze({ epiano: 'rhodesWarm' }),
+  }),
 });
 
 function finiteOr(value, fallback) {
