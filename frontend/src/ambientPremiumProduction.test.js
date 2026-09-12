@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { AMBIENT_GENRE_ORDER } from './ambientCatalog.js';
 import {
   GENRE_PRODUCTION,
+  PERFORMANCE_FINISH,
   withAmbientPremiumProduction,
 } from './ambientPremiumProduction.js';
 
@@ -38,9 +39,54 @@ describe('ambient premium production pass', () => {
     expect(premium.bassInstrument).toBe('uprightBass');
     expect(premium.space).toBeGreaterThan(feel.space);
     expect(premium.space).toBeLessThan(0.2);
-    expect(premium.production).toEqual(expect.objectContaining({ grade: 'premium-v1', intent: 'warm-controlled' }));
+    expect(premium.production).toEqual(expect.objectContaining({
+      grade: 'premium-v1',
+      performance: 'articulation-v1',
+      intent: 'warm-controlled',
+    }));
     expect(Object.isFrozen(premium)).toBe(true);
     expect(Object.isFrozen(premium.mix)).toBe(true);
+  });
+
+  it('gives rigid jazz and lounge patterns a subtle pocket without flattening strong written swing', () => {
+    const straight = withAmbientPremiumProduction(
+      { id: 'straight', genre: 'Smooth Jazz' },
+      { swing: 0, mix: {}, percussion: { kit: 'brushes', punch: 0.8 } },
+    );
+    const alreadySwung = withAmbientPremiumProduction(
+      { id: 'swung', genre: 'Bossa / Latin Lounge' },
+      { swing: 0.2, mix: {}, percussion: { kit: 'latin', punch: 0.8 } },
+    );
+
+    expect(straight.swing).toBeGreaterThan(0);
+    expect(straight.swing).toBeLessThan(PERFORMANCE_FINISH['Smooth Jazz'].swing);
+    expect(alreadySwung.swing).toBe(0.2);
+  });
+
+  it('shapes signature phrases while preserving motif, instrument and cadence', () => {
+    const signature = Object.freeze({
+      instrument: 'clarinet',
+      sections: Object.freeze([0, 2]),
+      everyCycles: 2,
+      repeatPeriod: 64,
+      durationSteps: 2.8,
+      volume: 0.34,
+      motif: Object.freeze({ 6: 67, 22: 70 }),
+    });
+    const premium = withAmbientPremiumProduction(
+      { id: 'night-jazz', genre: 'Jazz / Mediterráneo' },
+      { swing: 0.08, signature, mix: {}, percussion: { kit: 'maghreb-hand', punch: 0.9 } },
+    );
+
+    expect(premium.signature).not.toBe(signature);
+    expect(premium.signature.instrument).toBe(signature.instrument);
+    expect(premium.signature.motif).toBe(signature.motif);
+    expect(premium.signature.sections).toBe(signature.sections);
+    expect(premium.signature.everyCycles).toBe(signature.everyCycles);
+    expect(premium.signature.repeatPeriod).toBe(signature.repeatPeriod);
+    expect(premium.signature.volume).toBeLessThan(signature.volume);
+    expect(premium.signature.durationSteps).toBeGreaterThan(signature.durationSteps);
+    expect(Object.isFrozen(premium.signature)).toBe(true);
   });
 
   it('keeps deliberately silent percussion silent', () => {
