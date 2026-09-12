@@ -15,7 +15,11 @@ import {
   HOME_CASTLE_TORCH_ANCHORS,
   createHomeCastleTorchProps,
 } from './HomeCastle3DProps.js';
-import { homeCastleChandelierShimmer, homeCastleTorchFlicker } from './HomeCastle3DTorchFlicker.js';
+import {
+  homeCastleChandelierShimmer,
+  homeCastleFireplacePulse,
+  homeCastleTorchFlicker,
+} from './HomeCastle3DTorchFlicker.js';
 import {
   homeCastleNeedsContinuousRender,
   homeCastleShouldRender,
@@ -71,7 +75,13 @@ function addLightRig(scene, profile) {
   );
   scene.add(fireplaceLight);
 
-  return { torchLights, chandelierLights, chandelierIntensity };
+  return {
+    torchLights,
+    chandelierLights,
+    chandelierIntensity,
+    fireplaceLight,
+    fireplaceIntensity,
+  };
 }
 
 function desktopMediaQuery() {
@@ -128,7 +138,13 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     renderer.setPixelRatio(renderPolicy.pixelRatio);
 
     const scene = new THREE.Scene();
-    const { torchLights, chandelierLights, chandelierIntensity } = addLightRig(scene, lighting);
+    const {
+      torchLights,
+      chandelierLights,
+      chandelierIntensity,
+      fireplaceLight,
+      fireplaceIntensity,
+    } = addLightRig(scene, lighting);
     const roomLight = new THREE.PointLight(0xffc76f, 0, IDLE_ROOM_LIGHT_REACH, 2);
     roomLight.position.set(0, 0, IDLE_ROOM_LIGHT_DEPTH);
     scene.add(roomLight);
@@ -240,6 +256,8 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
         const shimmer = homeCastleChandelierShimmer(index, timestamp, reduced);
         chandelierLights[index].intensity = chandelierIntensity * shimmer;
       }
+
+      fireplaceLight.intensity = fireplaceIntensity * homeCastleFireplacePulse(timestamp, reduced);
 
       if (!reduced) {
         pointer.lerp(target, 0.055);
