@@ -1,0 +1,41 @@
+@media (pointer: coarse) {
+  .pawn-slug .pawn-slug-settings-trigger,
+  .pawn-slug .pawn-slug-gesture-powerup {
+    transition:
+      transform 90ms ease,
+      border-color 90ms ease,
+      background-color 90ms ease,
+      box-shadow 90ms ease,
+      opacity 90ms ease;
+  }
+
+  .pawn-slug .pawn-slug-settings-trigger:active,
+  .pawn-slug .pawn-slug-gesture-powerup:active {
+    transform: translateY(1px) scale(.94);
+  }
+
+  .pawn-slug .pawn-slug-settings-trigger:active {
+    opacity: .92;
+    border-color: rgba(244, 205, 126, .95);
+    background: rgba(44, 39, 28, .96);
+    box-shadow: 0 .2rem .55rem rgba(0, 0, 0, .28), 0 0 .75rem rgba(220, 177, 86, .16);
+  }
+
+  .pawn-slug .pawn-slug-gesture-powerup:active {
+    border-color: rgba(238, 199, 110, .82);
+    background: rgba(77, 65, 31, .88);
+    box-shadow: 0 .12rem .35rem rgba(0, 0, 0, .28), 0 0 .8rem rgba(220, 173, 68, .22);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pawn-slug .pawn-slug-settings-trigger,
+  .pawn-slug .pawn-slug-gesture-powerup {
+    transition: none;
+  }
+
+  .pawn-slug .pawn-slug-settings-trigger:active,
+  .pawn-slug .pawn-slug-gesture-powerup:active {
+    transform: none;
+  }
+}

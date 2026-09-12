@@ -10,6 +10,7 @@ import {
 } from '../pawnSlugTouchGestures.js';
 import './PawnSlugTouchSurface.css';
 import './PawnSlugLandscape.css';
+import './PawnSlugTouchPress.css';
 
 function haptic(action) {
   if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
