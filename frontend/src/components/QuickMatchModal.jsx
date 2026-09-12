@@ -34,7 +34,6 @@ export default function QuickMatchModal({
   loading,
   error = null,
   rating,
-  boardRenderer = '3d',
   onStart,
   onClose,
 }) {
@@ -44,7 +43,7 @@ export default function QuickMatchModal({
   const timeControl = TIME_CONTROLS.find((tc) => tc.id === timeControlId) || TIME_CONTROLS[0];
   const series = SERIES_OPTIONS.find((option) => Number(option.value) === Number(seriesBestOf)) || SERIES_OPTIONS[0];
   const [matthiasBriefing, setMatthiasBriefing] = useState(null);
-  const [selectedRenderer, setSelectedRenderer] = useState(() => boardRenderer === '2d' ? '2d' : '3d');
+  const [selectedRenderer, setSelectedRenderer] = useState('3d');
   const matthiasVisual = matthiasTimeVisual();
 
   useEffect(() => {
