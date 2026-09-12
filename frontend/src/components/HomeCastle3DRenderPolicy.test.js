@@ -17,6 +17,7 @@ describe('HomeCastle3DRenderPolicy', () => {
         enabled: true,
         lod: 'lite',
         pixelRatio: 1.25,
+        geometrySegments: { width: 32, height: 18 },
         antialias: false,
         powerPreference: 'low-power',
       });
@@ -53,12 +54,13 @@ describe('HomeCastle3DRenderPolicy', () => {
       lod: 'full',
       pixelRatio: 1.5,
       minFrameIntervalMs: 0,
+      geometrySegments: { width: 64, height: 36 },
       antialias: true,
       powerPreference: 'high-performance',
     });
   });
 
-  it('uses lite LOD, lower DPR and a 30fps frame budget on narrower or low-core desktops', () => {
+  it('uses lite LOD, lower geometry, lower DPR and a 30fps frame budget on narrower or low-core desktops', () => {
     const narrow = homeCastle3DRenderPolicy({
       viewportWidth: 1100,
       devicePixelRatio: 2,
@@ -74,6 +76,7 @@ describe('HomeCastle3DRenderPolicy', () => {
         enabled: true,
         lod: 'lite',
         pixelRatio: 1.25,
+        geometrySegments: { width: 32, height: 18 },
         antialias: false,
         powerPreference: 'low-power',
       });
