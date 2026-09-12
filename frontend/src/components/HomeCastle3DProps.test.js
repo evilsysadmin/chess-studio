@@ -21,12 +21,16 @@ describe('HomeCastle3DProps', () => {
     }
   });
 
-  it('builds one three-part prop and flame handle per anchor', () => {
+  it('adds only a restrained flame overlay above each painted sconce', () => {
     const props = createHomeCastleTorchProps();
     expect(props.group.children).toHaveLength(HOME_CASTLE_TORCH_ANCHORS.length);
     expect(props.flames).toHaveLength(HOME_CASTLE_TORCH_ANCHORS.length);
-    for (const torch of props.group.children) expect(torch.children).toHaveLength(3);
-    for (const flame of props.flames) expect(flame?.name).toBe('home-castle-flame');
+    for (const torch of props.group.children) expect(torch.children).toHaveLength(1);
+    for (const flame of props.flames) {
+      expect(flame?.name).toBe('home-castle-flame');
+      expect(flame?.material?.transparent).toBe(true);
+      expect(flame?.material?.depthWrite).toBe(false);
+    }
     props.dispose();
   });
 });
