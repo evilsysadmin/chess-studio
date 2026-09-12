@@ -42,6 +42,18 @@ export function pawnSlugEnemyActionForState({ moving = false, hurt = false, airb
   return 'idle';
 }
 
+export function pawnSlugEnemyActionTime(action = 'idle', { time = 0, hurtStartedAt = null, deathAge = 0 } = {}) {
+  const safeTime = Math.max(0, Number(time) || 0);
+  if (action === 'death') return Math.max(0, Number(deathAge) || 0);
+  if (action === 'hurt') {
+    const startedAt = Number(hurtStartedAt);
+    return hurtStartedAt != null && Number.isFinite(startedAt)
+      ? Math.max(0, safeTime - startedAt)
+      : 0;
+  }
+  return safeTime;
+}
+
 export function pawnSlugEnemyActionFrame(action = 'idle', time = 0, type = null) {
   const track = PAWN_SLUG_ENEMY_ACTIONS[action] || PAWN_SLUG_ENEMY_ACTIONS.idle;
   const runRate = type == null ? null : PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE[type];

@@ -24,6 +24,7 @@ import {
   pawnSlugEnemyActionForState,
   pawnSlugEnemyActionFrame,
   pawnSlugEnemyActionPose,
+  pawnSlugEnemyActionTime,
   pawnSlugEnemyDeathDuration,
   pawnSlugEnemySourceFrame,
 } from './pawnSlugEnemyActionMotion.js';
@@ -154,6 +155,7 @@ export function createSlugEnemySprite(type = 'pawn') {
   sprite.userData.actionFrame = 0;
   sprite.userData.airborneUntil = 0;
   sprite.userData.wasHurt = false;
+  sprite.userData.hurtStartedAt = null;
   sprite.userData.wasDying = false;
   sprite.userData.entryStartedAt = null;
   sprite.userData.entryReducedMotion = reducedMotion;
@@ -239,7 +241,11 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
     vy = inferred.vy,
   } = state;
 
-  if (hurt && !sprite.userData.wasHurt && !dying) playPawnSlugEnemyImpactSfx(type);
+  const startingHurt = Boolean(hurt && !sprite.userData.wasHurt && !dying);
+  if (startingHurt) {
+    sprite.userData.hurtStartedAt = safeTime;
+    playPawnSlugEnemyImpactSfx(type);
+  }
   if (dying && !sprite.userData.wasDying) playPawnSlugEnemyKoSfx(type);
   sprite.userData.wasHurt = Boolean(hurt && !dying);
   sprite.userData.wasDying = Boolean(dying);
@@ -255,7 +261,11 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
   const baseScaleX = sprite.userData.motionBaseScaleX || Math.abs(sprite.scale.x) || 1;
   const baseScaleY = sprite.userData.motionBaseScaleY || Math.abs(sprite.scale.y) || 1;
   const action = pawnSlugEnemyActionForState({ moving, hurt, airborne, crouch, climbing, dying });
-  const actionTime = action === 'death' ? Math.max(0, Number(deathAge) || 0) : safeTime;
+  const actionTime = pawnSlugEnemyActionTime(action, {
+    time: safeTime,
+    hurtStartedAt: sprite.userData.hurtStartedAt,
+    deathAge,
+  });
   const actionFrame = pawnSlugEnemyActionFrame(action, actionTime, type);
   const sourceFrame = pawnSlugEnemySourceFrame(action, actionFrame, ENEMY_RUN_FRAMES_PER_TYPE);
   const pose = pawnSlugEnemyActionPose(action, actionFrame, {
