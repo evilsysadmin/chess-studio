@@ -6,6 +6,7 @@ import {
   pawnSlugEnemyActionForState,
   pawnSlugEnemyActionFrame,
   pawnSlugEnemyActionPose,
+  pawnSlugEnemyActionTime,
   pawnSlugEnemyDeathDuration,
   pawnSlugEnemySourceFrame,
 } from './pawnSlugEnemyActionMotion.js';
@@ -52,6 +53,19 @@ describe('Pawn Slug premium soldier action motion', () => {
         expect(source).toBeLessThan(8);
       }
     }
+  });
+
+  it('runs hurt choreography on a local impact clock instead of mission time', () => {
+    const missionTime = 37.04;
+    expect(pawnSlugEnemyActionFrame('hurt', missionTime)).toBe(5);
+
+    const localStart = pawnSlugEnemyActionTime('hurt', { time: 37, hurtStartedAt: 37 });
+    const localProgress = pawnSlugEnemyActionTime('hurt', { time: missionTime, hurtStartedAt: 37 });
+    expect(localStart).toBe(0);
+    expect(localProgress).toBeCloseTo(0.04, 6);
+    expect(pawnSlugEnemyActionFrame('hurt', localProgress)).toBe(1);
+    expect(pawnSlugEnemyActionTime('run', { time: missionTime, hurtStartedAt: 37 })).toBe(missionTime);
+    expect(pawnSlugEnemyActionTime('death', { time: missionTime, deathAge: 0.2 })).toBe(0.2);
   });
 
   it('fits the six-frame hurt choreography inside the 110 ms runtime impact window', () => {
