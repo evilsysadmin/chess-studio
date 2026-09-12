@@ -40,6 +40,25 @@
   .illustrated-home__speech { position: absolute; z-index: 8; left: 13.3%; bottom: 18%; width: min(330px, 28%); max-height: 44%; overflow: auto; padding: 16px; border: 1px solid #a98039; border-radius: 12px; background: #17100df5; box-shadow: 0 8px 28px #0008; font-size: 14px; }
   .illustrated-home__speech p { line-height: 1.5; color: #eee0c0; }
   .illustrated-home__speech button { padding: 7px 10px; border: 1px solid #a98039; border-radius: 6px; background: #291b10; color: #ffe8ac; }
+  /* The insights CTA keeps the legacy home-learning-card hook for the E2E helper,
+     but inside Matthias' speech it must remain a button, not inherit the 146px
+     learning-card dashboard geometry. */
+  body:has(.home-friendly) .illustrated-home__speech > .home-learning-card {
+    min-height: 0 !important;
+    height: auto !important;
+    width: auto !important;
+    padding: 7px 10px !important;
+    display: inline-flex !important;
+    grid-template-columns: none !important;
+    align-content: normal !important;
+    align-items: center !important;
+    gap: 0 !important;
+    overflow: visible !important;
+    border: 1px solid #a98039 !important;
+    border-radius: 6px !important;
+    background: #291b10 !important;
+    box-shadow: none !important;
+  }
   .illustrated-home__speech button:last-child { float: right; }
   .illustrated-home__matthias { position: absolute; left: 13.3%; top: 83%; width: 11%; padding: .7cqw 1.25cqw; display: grid; gap: .22cqw; border: 1px solid #a98039; border-radius: 12px; background: #17100de8; color: #fae6ad; text-align: left; cursor: pointer; }
   .illustrated-home__matthias strong { font: 700 max(12px, .8cqw)/1.2 Arial, sans-serif; }
