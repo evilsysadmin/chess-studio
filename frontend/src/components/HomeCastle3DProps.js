@@ -102,18 +102,18 @@ function createTournamentCup(resources) {
   group.rotation.z = 0.02;
 
   const agedBrass = new THREE.MeshStandardMaterial({
-    color: 0xb58a47,
-    roughness: 0.6,
-    metalness: 0.42,
-    emissive: 0x241405,
-    emissiveIntensity: 0.05,
+    color: 0xc69a50,
+    roughness: 0.58,
+    metalness: 0.4,
+    emissive: 0x4a2a0a,
+    emissiveIntensity: 0.095,
   });
   const darkBrass = new THREE.MeshStandardMaterial({
-    color: 0x72502b,
-    roughness: 0.72,
-    metalness: 0.28,
-    emissive: 0x160b03,
-    emissiveIntensity: 0.035,
+    color: 0x80603a,
+    roughness: 0.7,
+    metalness: 0.26,
+    emissive: 0x281407,
+    emissiveIntensity: 0.06,
   });
   resources.materials.push(agedBrass, darkBrass);
 
@@ -168,42 +168,42 @@ function createTrainingLectern(resources) {
   group.rotation.z = -0.025;
 
   const wood = new THREE.MeshStandardMaterial({
-    color: 0x54331d,
-    roughness: 0.84,
-    metalness: 0.02,
-    emissive: 0x120804,
-    emissiveIntensity: 0.03,
-  });
-  const brass = new THREE.MeshStandardMaterial({
-    color: 0x98713b,
-    roughness: 0.66,
-    metalness: 0.34,
-    emissive: 0x1e1004,
-    emissiveIntensity: 0.04,
-  });
-  const page = new THREE.MeshStandardMaterial({
-    color: 0xe6d7b4,
-    roughness: 0.9,
-    metalness: 0,
-    emissive: 0x2c2114,
-    emissiveIntensity: 0.045,
-  });
-  const cover = new THREE.MeshStandardMaterial({
-    color: 0x654023,
+    color: 0x684326,
     roughness: 0.82,
     metalness: 0.02,
-    emissive: 0x100704,
-    emissiveIntensity: 0.025,
+    emissive: 0x241309,
+    emissiveIntensity: 0.055,
+  });
+  const brass = new THREE.MeshStandardMaterial({
+    color: 0xb28a4c,
+    roughness: 0.64,
+    metalness: 0.32,
+    emissive: 0x3b2108,
+    emissiveIntensity: 0.065,
+  });
+  const page = new THREE.MeshStandardMaterial({
+    color: 0xf0e1bc,
+    roughness: 0.88,
+    metalness: 0,
+    emissive: 0x5a4324,
+    emissiveIntensity: 0.14,
+  });
+  const cover = new THREE.MeshStandardMaterial({
+    color: 0x734827,
+    roughness: 0.8,
+    metalness: 0.02,
+    emissive: 0x241007,
+    emissiveIntensity: 0.05,
   });
   resources.materials.push(wood, brass, page, cover);
 
   const baseGeometry = new THREE.BoxGeometry(0.072, 0.014, 0.052);
   const stemGeometry = new THREE.CylinderGeometry(0.008, 0.012, 0.072, 10);
   const braceGeometry = new THREE.BoxGeometry(0.014, 0.05, 0.014);
-  const shelfGeometry = new THREE.BoxGeometry(0.13, 0.012, 0.075);
-  const coverGeometry = new THREE.BoxGeometry(0.122, 0.006, 0.068);
-  const pageGeometry = new THREE.BoxGeometry(0.058, 0.004, 0.064);
-  const claspGeometry = new THREE.BoxGeometry(0.012, 0.006, 0.068);
+  const shelfGeometry = new THREE.BoxGeometry(0.13, 0.012, 0.055);
+  const coverGeometry = new THREE.BoxGeometry(0.126, 0.055, 0.006);
+  const pageGeometry = new THREE.BoxGeometry(0.058, 0.048, 0.004);
+  const spineGeometry = new THREE.BoxGeometry(0.009, 0.052, 0.008);
   resources.geometries.push(
     baseGeometry,
     stemGeometry,
@@ -211,7 +211,7 @@ function createTrainingLectern(resources) {
     shelfGeometry,
     coverGeometry,
     pageGeometry,
-    claspGeometry,
+    spineGeometry,
   );
 
   const base = new THREE.Mesh(baseGeometry, wood);
@@ -220,30 +220,30 @@ function createTrainingLectern(resources) {
   stem.position.y = 0.049;
   const brace = new THREE.Mesh(braceGeometry, wood);
   brace.position.set(0, 0.072, -0.015);
-  brace.rotation.x = -0.42;
+  brace.rotation.x = -0.34;
   const shelf = new THREE.Mesh(shelfGeometry, wood);
-  shelf.position.set(0, 0.092, 0.008);
-  shelf.rotation.x = -0.43;
+  shelf.position.set(0, 0.092, -0.004);
+  shelf.rotation.x = -0.3;
 
   const book = new THREE.Group();
   book.name = 'home-castle-training-book';
-  book.position.set(0, 0.105, 0.018);
-  book.rotation.x = -0.43;
+  book.position.set(0, 0.116, 0.022);
+  book.rotation.x = -0.08;
 
   const bookCover = new THREE.Mesh(coverGeometry, cover);
-  bookCover.position.y = -0.004;
+  bookCover.position.z = -0.004;
   const leftPage = new THREE.Mesh(pageGeometry, page);
-  leftPage.position.set(-0.031, 0.001, 0);
-  leftPage.rotation.z = -0.055;
+  leftPage.position.set(-0.031, 0.002, 0);
+  leftPage.rotation.z = -0.07;
   const rightPage = new THREE.Mesh(pageGeometry, page);
-  rightPage.position.set(0.031, 0.001, 0);
-  rightPage.rotation.z = 0.055;
-  const clasp = new THREE.Mesh(claspGeometry, brass);
-  clasp.position.set(0, -0.001, 0);
-  book.add(bookCover, leftPage, rightPage, clasp);
+  rightPage.position.set(0.031, 0.002, 0);
+  rightPage.rotation.z = 0.07;
+  const spine = new THREE.Mesh(spineGeometry, brass);
+  spine.position.set(0, 0, 0.002);
+  book.add(bookCover, leftPage, rightPage, spine);
 
   group.add(base, stem, brace, shelf, book);
-  attachViewportScale(group, base, 0.76);
+  attachViewportScale(group, base, 0.78);
   return group;
 }
 
