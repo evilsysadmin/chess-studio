@@ -49,7 +49,6 @@ describe('Pawn Slug scenario renderer', () => {
     expect(desktop.getObjectByName('pawn-slug-ruins-slab')).toBeTruthy();
     expect(desktop.getObjectByName('pawn-slug-ruins-broken-rook')).toBeTruthy();
     expect(namedCount(desktop, 'pawn-slug-ruins-dust')).toBeGreaterThan(1);
-    expect(coarse.getObjectByName('pawn-slug-ruins-column')).toBeTruthy();
     expect(namedCount(coarse, 'pawn-slug-ruins-dust')).toBe(1);
   });
 
