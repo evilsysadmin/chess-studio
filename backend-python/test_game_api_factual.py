@@ -47,13 +47,15 @@ def test_analyze_move_uses_shared_factual_contract_for_valid_played_move(monkeyp
                 "candidateCount": 20,
             }
 
-    def fake_factual(board, played_move, *, level):
+    def fake_factual(board, played_move, *, level, max_depth):
         seen["fen"] = board.fen()
         seen["played"] = played_move.uci()
         seen["level"] = level
+        seen["max_depth"] = max_depth
         return FakeFactual()
 
     monkeypatch.setattr(game_api, "build_factual_move_analysis", fake_factual)
+    monkeypatch.setattr(game_api, "evaluate_board", lambda _board: 19.0)
     monkeypatch.setattr(game_api, "maybe_schedule_move_shadow", lambda *_args, **_kwargs: None)
 
     response = _client().post(
@@ -70,12 +72,15 @@ def test_analyze_move_uses_shared_factual_contract_for_valid_played_move(monkeyp
     body = response.json()
     assert seen["played"] == "e2e4"
     assert seen["level"] == 45
+    assert seen["max_depth"] == 6
     assert body["suggested"]["san"] == "d4"
     assert body["played"]["san"] == "e4"
     assert body["suggestedReply"]["san"] == "d5"
     assert body["playedReply"]["san"] == "e5"
     assert body["evalAfterSuggested"] == 42.0
-    assert body["evalAfterPlayed"] == 17.0
+    assert body["evalAfterPlayed"] == 19.0
+    assert body["factualEvalAfterSuggested"] == 42.0
+    assert body["factualEvalAfterPlayed"] == 17.0
     assert body["loss"] == 25.0
     assert body["analysisDepth"] == 2
     assert body["candidateCount"] == 20
