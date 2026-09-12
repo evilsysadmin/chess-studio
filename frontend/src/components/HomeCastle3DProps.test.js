@@ -47,6 +47,19 @@ describe('HomeCastle3DProps', () => {
     expect(HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR.z).toBeLessThan(1);
   });
 
+  it('places tournament and training props in the left furniture and library zones', () => {
+    const tournament = HOME_CASTLE_DESTINATION_PROP_ANCHORS.tournament;
+    const train = HOME_CASTLE_DESTINATION_PROP_ANCHORS.train;
+    expect(tournament.x).toBeLessThan(-0.8);
+    expect(tournament.x).toBeGreaterThan(-1.1);
+    expect(Math.abs(tournament.y)).toBeLessThan(0.12);
+    expect(tournament.z).toBeGreaterThan(0.25);
+    expect(train.x).toBeLessThan(-0.2);
+    expect(train.x).toBeGreaterThan(-0.5);
+    expect(Math.abs(train.y)).toBeLessThan(0.12);
+    expect(train.z).toBeGreaterThan(0.25);
+  });
+
   it('places the play rook on the visible center board and daily brazier on the right altar', () => {
     expect(Math.abs(HOME_CASTLE_DESTINATION_PROP_ANCHORS.play.x)).toBeLessThan(0.1);
     expect(HOME_CASTLE_DESTINATION_PROP_ANCHORS.play.y).toBeGreaterThan(-0.3);
@@ -72,13 +85,23 @@ describe('HomeCastle3DProps', () => {
   it('builds real 3D destination props instead of HUD-only markers', () => {
     const props = createHomeCastleDestinationProps();
     expect(props.group.name).toBe('home-castle-destination-props');
+    expect(props.tournament.name).toBe('home-castle-prop-tournament');
+    expect(props.tournament.userData.destination).toBe('tournament');
+    expect(props.train.name).toBe('home-castle-prop-train');
+    expect(props.train.userData.destination).toBe('train');
     expect(props.play.name).toBe('home-castle-prop-play');
     expect(props.play.userData.destination).toBe('play');
     expect(props.daily.name).toBe('home-castle-prop-daily');
     expect(props.daily.userData.destination).toBe('daily');
+    expect(props.tournament.userData.baseScale).toBeGreaterThan(0.65);
+    expect(props.tournament.userData.baseScale).toBeLessThan(0.85);
+    expect(props.train.userData.baseScale).toBeGreaterThan(0.65);
+    expect(props.train.userData.baseScale).toBeLessThan(0.85);
     expect(props.play.userData.baseScale).toBeGreaterThan(0.75);
     expect(props.play.userData.baseScale).toBeLessThan(0.9);
     expect(props.daily.userData.baseScale).toBeLessThan(0.9);
+    expect(props.tournament.children.length).toBeGreaterThan(5);
+    expect(props.train.children.some((child) => child.name === 'home-castle-training-book')).toBe(true);
     expect(props.play.children.length).toBeGreaterThan(5);
     expect(props.daily.children.length).toBeGreaterThan(4);
     expect(props.daily.children.some((child) => child.name === 'home-castle-daily-flame')).toBe(true);
@@ -93,6 +116,8 @@ describe('HomeCastle3DProps', () => {
       expect(flame?.material?.transparent).toBe(true);
       expect(flame?.material?.depthWrite).toBe(false);
     }
+    expect(props.destinationProps.tournament.userData.destination).toBe('tournament');
+    expect(props.destinationProps.train.userData.destination).toBe('train');
     expect(props.destinationProps.play.userData.destination).toBe('play');
     expect(props.destinationProps.daily.userData.destination).toBe('daily');
     props.dispose();
