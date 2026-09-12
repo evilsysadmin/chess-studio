@@ -1,4 +1,5 @@
 export const HOME_CASTLE_3D_MIN_WIDTH = 1000;
+export const HOME_CASTLE_3D_LITE_MIN_WIDTH = 360;
 
 function finitePositive(value, fallback) {
   const number = Number(value);
@@ -13,12 +14,17 @@ export function homeCastle3DRenderPolicy({
   const width = finitePositive(viewportWidth, 0);
   const dpr = finitePositive(devicePixelRatio, 1);
   const cores = finitePositive(hardwareConcurrency, 8);
+
   const enabled = width >= HOME_CASTLE_3D_MIN_WIDTH;
-  const constrained = width < 1200 || cores <= 4;
-  const pixelRatioCap = constrained ? 1.25 : 1.5;
+  const lod = width < HOME_CASTLE_3D_LITE_MIN_WIDTH || cores <= 2
+    ? '2d'
+    : (enabled && width >= 1200 && cores > 4 ? 'full' : 'lite');
+
+  const pixelRatioCap = lod === 'full' ? 1.5 : 1.25;
 
   return Object.freeze({
     enabled,
+    lod,
     pixelRatio: Math.min(dpr, pixelRatioCap),
   });
 }
