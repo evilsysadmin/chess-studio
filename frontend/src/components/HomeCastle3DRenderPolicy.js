@@ -1,5 +1,6 @@
 export const HOME_CASTLE_3D_MIN_WIDTH = 1000;
 export const HOME_CASTLE_3D_LITE_MIN_WIDTH = 360;
+export const HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH = 390;
 
 function finitePositive(value, fallback) {
   const number = Number(value);
@@ -15,10 +16,15 @@ export function homeCastle3DRenderPolicy({
   const dpr = finitePositive(devicePixelRatio, 1);
   const cores = finitePositive(hardwareConcurrency, 8);
 
-  const enabled = width >= HOME_CASTLE_3D_MIN_WIDTH;
-  const lod = width < HOME_CASTLE_3D_LITE_MIN_WIDTH || cores <= 2
+  const forced2d = width < HOME_CASTLE_3D_LITE_MIN_WIDTH || cores <= 2;
+  const desktop = width >= HOME_CASTLE_3D_MIN_WIDTH;
+  const mobileLiteEnabled = width >= HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH
+    && width < HOME_CASTLE_3D_MIN_WIDTH
+    && cores > 4;
+  const enabled = !forced2d && (desktop || mobileLiteEnabled);
+  const lod = forced2d
     ? '2d'
-    : (enabled && width >= 1200 && cores > 4 ? 'full' : 'lite');
+    : (desktop && width >= 1200 && cores > 4 ? 'full' : 'lite');
 
   const pixelRatioCap = lod === 'full' ? 1.5 : 1.25;
   const minFrameIntervalMs = lod === 'lite' ? 1000 / 30 : 0;
@@ -28,5 +34,7 @@ export function homeCastle3DRenderPolicy({
     lod,
     pixelRatio: Math.min(dpr, pixelRatioCap),
     minFrameIntervalMs,
+    antialias: lod === 'full',
+    powerPreference: lod === 'full' ? 'high-performance' : 'low-power',
   });
 }
