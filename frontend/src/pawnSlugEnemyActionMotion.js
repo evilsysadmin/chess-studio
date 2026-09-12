@@ -89,16 +89,22 @@ function deathPose(type, phase, variant = 0) {
   return Object.freeze({ x: -0.13 * fall * reach, y: grounded ? -0.4 - impactBounce * 0.025 : -0.08 * fall, rz: 1.47 * fall * twist * sway, sx: 1 + 0.08 * fall, sy: grounded ? 0.5 : 1 - 0.2 * fall, grounded });
 }
 
-function hurtPose(type, phase, actionFrame, frameCount) {
-  const decay = 1 - clamp01(actionFrame / Math.max(1, frameCount - 1));
+function hurtPose(type, phase) {
+  const snap = 1 - clamp01(phase / 0.38);
+  const reboundPhase = clamp01((phase - 0.38) / 0.62);
+  const rebound = Math.sin(reboundPhase * Math.PI) * (1 - reboundPhase);
+  const travel = snap - rebound * 0.24;
+  const twist = snap - rebound * 0.16;
   const bounce = Math.sin(phase * Math.PI);
+  const compression = Math.max(snap, bounce * 0.42);
+
   if (type === 'rook') {
-    return Object.freeze({ x: -0.032 * decay, y: bounce * 0.012, rz: 0.035 * decay, sx: 1.075, sy: 0.86 });
+    return Object.freeze({ x: -0.032 * travel, y: bounce * 0.012, rz: 0.035 * twist, sx: 1 + 0.075 * compression, sy: 1 - 0.14 * compression });
   }
   if (type === 'knight') {
-    return Object.freeze({ x: -0.095 * decay, y: bounce * 0.05, rz: 0.17 * decay, sx: 1.055, sy: 0.915 });
+    return Object.freeze({ x: -0.095 * travel, y: bounce * 0.05, rz: 0.17 * twist, sx: 1 + 0.055 * compression, sy: 1 - 0.085 * compression });
   }
-  return Object.freeze({ x: -0.145 * decay, y: bounce * 0.04, rz: 0.12 * decay, sx: 1.08, sy: 0.89 });
+  return Object.freeze({ x: -0.145 * travel, y: bounce * 0.04, rz: 0.12 * twist, sx: 1 + 0.08 * compression, sy: 1 - 0.11 * compression });
 }
 
 export function pawnSlugEnemyActionPose(action = 'idle', actionFrame = 0, { vy = 0, type = 'pawn', variant = 0 } = {}) {
@@ -118,7 +124,7 @@ export function pawnSlugEnemyActionPose(action = 'idle', actionFrame = 0, { vy =
     const settle = clamp01(actionFrame / Math.max(1, track.frames - 1));
     return Object.freeze({ x: 0.04, y: -0.02 * settle, rz: 0.018, sx: 1.08, sy: 0.76 });
   }
-  if (action === 'hurt') return hurtPose(type, phase, localFrame, track.frames);
+  if (action === 'hurt') return hurtPose(type, phase);
   if (action === 'climb') return Object.freeze({ x: wave * 0.018, y: Math.abs(wave) * 0.055, rz: wave * 0.018, sx: 0.985, sy: 1.015 });
   if (action === 'death') return deathPose(type, phase, variant);
   return Object.freeze({ x: 0, y: Math.max(0, wave) * 0.012, rz: pulse * 0.006, sx: 1 + pulse * 0.004, sy: 1 - pulse * 0.004 });
