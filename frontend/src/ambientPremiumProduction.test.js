@@ -128,6 +128,25 @@ describe('ambient premium production pass', () => {
     expect(premium.percussion.punch).toBe(0);
   });
 
+  it('preserves deliberately deep spatial identities up to the useful wet ceiling', () => {
+    const premium = withAmbientPremiumProduction(
+      { id: 'wide-onsen', genre: 'SPA / Zen' },
+      {
+        family: 'wide-onsen-room',
+        warmth: 1.02,
+        releaseScale: 1.5,
+        space: 0.36,
+        delayMs: 360,
+        mix: { lead: 0.4, counter: 0.28, bass: 0.32, chord: 0.3 },
+        percussion: { kit: 'brush-jazz', punch: 0.28, period: 40, pattern: { 8: 'B' } },
+      },
+    );
+
+    expect(premium.space).toBe(0.30);
+    expect(premium.space).toBeGreaterThan(0.24);
+    expect(premium.production.intent).toBe('deep-wide');
+  });
+
   it('keeps energetic mixes tight instead of washing them in ambience', () => {
     const premium = withAmbientPremiumProduction(
       { id: 'drive', genre: 'Energía', leadInstrument: 'synth', bassInstrument: 'synthbass' },
