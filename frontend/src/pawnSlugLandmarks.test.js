@@ -70,10 +70,10 @@ describe('Pawn Slug premium landmarks', () => {
     };
     expect(meshCount(coarse)).toBeLessThan(meshCount(desktop));
     expect(coarse.getObjectByName('pawn-slug-landmark-fallen-forest')).toBeTruthy();
-    expect(coarse.getObjectByName('pawn-slug-forest-fireflies')).toBeFalsy();
+    expect(coarse.getObjectByName('pawn-slug-forest-fireflies')).toBeTruthy();
     expect(coarse.getObjectByName('pawn-slug-landmark-gambit-ruins')).toBeTruthy();
     expect(coarse.getObjectByName('pawn-slug-ruins-column')).toBeTruthy();
-    expect(coarse.getObjectByName('pawn-slug-ruins-dust')).toBeFalsy();
+    expect(coarse.getObjectByName('pawn-slug-ruins-dust')).toBeTruthy();
     expect(coarse.getObjectByName('pawn-slug-landmark-dungeon-gate')).toBeTruthy();
     expect(coarse.getObjectByName('pawn-slug-dungeon-fallen-pawn')).toBeFalsy();
   });
