@@ -1,5 +1,5 @@
 import { loadPersonalPuzzles } from '../personalPuzzles.js';
-import { buildRecurringErrorPatterns } from '../insightsRecurringErrors.js';
+import { buildPlayerModel } from '../playerModel.js';
 import './InsightsRecurringErrors.css';
 
 function debtCopy(pattern) {
@@ -10,7 +10,8 @@ function debtCopy(pattern) {
 }
 
 export default function InsightsRecurringErrors({ onOpenPuzzles }) {
-  const patterns = buildRecurringErrorPatterns(loadPersonalPuzzles());
+  const playerModel = buildPlayerModel({ personalPuzzles: loadPersonalPuzzles() });
+  const patterns = playerModel.recurringErrors;
 
   return (
     <section className="menu-section insights-recurring-errors" aria-labelledby="insights-recurring-errors-title">
