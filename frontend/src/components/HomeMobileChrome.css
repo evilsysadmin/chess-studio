@@ -1,0 +1,72 @@
+/* Home-only mobile chrome. Keep global actions readable without turning the
+ * full-bleed Great Hall into a conventional app header. */
+@media (max-width: 520px) {
+  body .app-shell-home .masthead-release-trigger,
+  body .app-shell-home .masthead-feedback-trigger {
+    display: grid !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    place-items: center;
+    padding: 0 !important;
+    border-color: rgba(205, 157, 72, .34) !important;
+    background:
+      radial-gradient(circle at 50% 28%, rgba(218, 171, 80, .08), transparent 52%),
+      rgba(13, 9, 6, .68) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 231, 177, .055),
+      0 5px 14px rgba(0, 0, 0, .14) !important;
+    color: #edc96f !important;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+
+  body .app-shell-home .masthead-release-trigger { right: 60px !important; }
+  body .app-shell-home .masthead-feedback-trigger { right: 8px !important; }
+
+  body .app-shell-home .masthead-release-trigger > span:first-child,
+  body .app-shell-home .masthead-feedback-trigger > span:first-child {
+    position: static !important;
+    display: grid !important;
+    width: 22px !important;
+    height: 22px !important;
+    place-items: center;
+    overflow: visible !important;
+    clip: auto !important;
+    color: #edc96f !important;
+    font-size: 0 !important;
+    line-height: 1 !important;
+    text-shadow: 0 1px 5px rgba(234, 177, 65, .22);
+  }
+
+  body .app-shell-home .masthead-release-trigger > span:first-child::before {
+    content: '✦';
+    font: 700 16px/1 Georgia, serif;
+  }
+
+  body .app-shell-home .masthead-feedback-trigger > span:first-child::before {
+    content: '✎';
+    font: 700 17px/1 Georgia, serif;
+    transform: translateY(-1px);
+  }
+
+  body .app-shell-home .masthead-release-trigger:hover,
+  body .app-shell-home .masthead-release-trigger:focus-visible,
+  body .app-shell-home .masthead-feedback-trigger:hover,
+  body .app-shell-home .masthead-feedback-trigger:focus-visible {
+    border-color: rgba(233, 190, 100, .66) !important;
+    background:
+      radial-gradient(circle at 50% 30%, rgba(235, 190, 96, .15), transparent 58%),
+      rgba(20, 12, 7, .78) !important;
+    color: #ffe1a0 !important;
+  }
+
+  body .app-shell-home .masthead-release-trigger.is-new {
+    border-color: rgba(235, 190, 96, .56) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 231, 177, .07),
+      0 0 12px rgba(214, 158, 58, .10),
+      0 5px 14px rgba(0, 0, 0, .14) !important;
+  }
+}

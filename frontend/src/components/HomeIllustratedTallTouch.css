@@ -1,3 +1,5 @@
+@import './HomeMobileChrome.css';
+
 /* Android browsers can expose a desktop-like CSS width while keeping a tall,
  * touch-first viewport (for example "Solicitar sitio de escritorio"). Keep the
  * canonical 16:9 Great Hall, but treat the narrow portrait viewport like a camera
