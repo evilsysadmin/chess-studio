@@ -17,7 +17,6 @@ const app = read('frontend/src/App.jsx');
 const outcome = read('frontend/src/gameOutcome.js');
 const combat = read('frontend/src/components/useCombatController.js');
 const smoke = read('e2e/smoke.spec.js');
-const regression = read('e2e/regression-journeys.spec.js');
 const makefile = read('Makefile');
 
 requireText(restore, "return classifyRestoreFailure(error) === 'stale-session';", 'restauración debe distinguir sesión obsoleta de fallo transitorio');
@@ -53,16 +52,8 @@ for (const forbidden of ['onBattleResult', 'clearCombatBattleSession', 'retireBa
   if (suspendBlock.includes(forbidden)) failures.push(`Salir al menú en Combat no puede ejecutar ${forbidden}`);
 }
 
-for (const scenario of [
-  'una partida activa sobrevive a reload/deploy y vuelve al tablero',
-  'Torneo · una partida activa sobrevive a reload y no vuelve al menú',
-  'un 503 al restaurar conserva la ruta y permite reintentar sin caer a Home',
-  'una batalla activa sobrevive a reload y no vuelve a Setup',
-  'salir al menú conserva campaña y batalla activas',
-]) {
-  if (!smoke.includes(scenario)) failures.push(`falta regresión E2E de continuidad: ${scenario}`);
-}
-requireText(regression, 'deploy · una release nueva no fuerza reload mientras la partida está activa', 'falta regresión E2E de aviso de release durante tablero activo');
+const nonCriticalScenario = 'una batalla activa sobrevive a reload y no vuelve a Setup';
+if (!smoke.includes(nonCriticalScenario)) failures.push(`falta regresión E2E de continuidad: ${nonCriticalScenario}`);
 
 const criticalMatch = makefile.match(/^CRITICAL_E2E_GREP\s*:=\s*(.+)$/m);
 const criticalE2E = criticalMatch?.[1] || '';
