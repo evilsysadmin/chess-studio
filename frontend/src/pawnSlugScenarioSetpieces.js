@@ -144,6 +144,9 @@ function capture(group, kind) {
       x: child.position.x,
       y: child.position.y,
       rz: child.rotation.z,
+      sx: child.scale.x,
+      sy: child.scale.y,
+      sz: child.scale.z,
     })),
   };
 }
@@ -230,7 +233,7 @@ export function createPawnSlugReactiveSetpieces(root, { reducedMotion = false } 
           item.child.position.x = item.x;
           item.child.position.y = item.y;
           item.child.rotation.z = item.rz;
-          item.child.scale.setScalar(1);
+          item.child.scale.set(item.sx, item.sy, item.sz);
         });
         for (const item of entry.materials) item.material.opacity = item.opacity;
       }
