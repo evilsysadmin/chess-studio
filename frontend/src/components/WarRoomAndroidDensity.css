@@ -1,0 +1,119 @@
+/* Android/compact War Room density pass.
+ * The board must arrive immediately after one small tactical HUD. Secondary
+ * actions stay mounted for behavior/continuity but no longer consume a full
+ * command row above the scene. */
+
+@media (max-width: 820px) {
+  .game-screen .game-layout-3d .game-board-stack-3d > .game-command-deck {
+    display: none !important;
+  }
+
+  .game-screen .game-layout-3d .game-3d-command-column {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill,
+  .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+    width: min(100%, 22rem);
+    min-height: 34px !important;
+    margin-inline: auto;
+    padding: .28rem 2.5rem .28rem .48rem !important;
+    gap: .3rem;
+    justify-content: center;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill-avatar {
+    width: 20px;
+    height: 20px;
+    flex-basis: 20px;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill-divider {
+    height: 16px;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill-light {
+    width: 8px;
+    height: 8px;
+    flex-basis: 8px;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill-identity,
+  .game-screen .game-layout-3d .game-3d-turn-pill-label {
+    font-size: .6rem;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill-identity strong {
+    font-size: .64rem;
+  }
+
+  /* Keep the app masthead functional, but make it a thin utility rail instead
+     of a desktop header compressed into portrait. */
+  .app-shell-board-game:has(.game-layout-3d) > .masthead-game-compact {
+    min-height: 34px;
+    margin: 0 0 .16rem;
+    padding: .08rem .32rem;
+    border-bottom: 0;
+    background: transparent;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) > .masthead-game-compact .masthead-top-row {
+    min-height: 32px;
+    padding: 0;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) > .masthead-game-compact .masthead-text,
+  .app-shell-board-game:has(.game-layout-3d) .masthead-release-trigger {
+    display: none !important;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) > .masthead-game-compact .masthead-actions {
+    width: 100%;
+    min-height: 32px;
+    margin: 0;
+    gap: .24rem;
+    justify-content: flex-end;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) .masthead-feedback-trigger,
+  .app-shell-board-game:has(.game-layout-3d) .masthead-account-trigger {
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+    min-height: 30px;
+    padding: 0;
+  }
+
+  .app-shell-board-game:has(.game-layout-3d) .save-status-badge {
+    min-height: 28px;
+    margin-right: auto;
+    padding: .3rem .54rem;
+    font-size: .58rem;
+    line-height: 1;
+  }
+
+  /* The compact HUD menu is now the complete match-action surface. Give it
+     enough width for readable labels without turning it into another card. */
+  .game-screen .game-layout-3d .game-3d-utility-popover {
+    width: min(196px, calc(100vw - 1rem));
+  }
+
+  .game-screen .game-layout-3d .game-3d-utility-popover button {
+    min-height: 42px;
+  }
+}
+
+@media (max-width: 390px) {
+  .game-screen .game-layout-3d .game-3d-turn-pill,
+  .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+    width: 100%;
+    padding-left: .4rem !important;
+    gap: .24rem;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-pill-identity > span {
+    font-size: .55rem;
+  }
+}
