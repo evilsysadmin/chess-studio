@@ -59,6 +59,23 @@ function reportMove(moveReport, prefix) {
   return normalizeMove(moveReport?.context?.[prefix]);
 }
 
+function factualAnalysisFor(moveReport) {
+  const evalAfterSuggested = finiteOrNull(moveReport?.factualEvalAfterSuggested);
+  const evalAfterPlayed = finiteOrNull(moveReport?.factualEvalAfterPlayed);
+  if (evalAfterSuggested === null || evalAfterPlayed === null) return null;
+
+  return {
+    source: 'shared-minimax',
+    lossCp: finiteOrNull(moveReport?.loss),
+    evalAfterSuggested,
+    evalAfterPlayed,
+    suggestedReply: normalizeMove(moveReport?.suggestedReply),
+    playedReply: normalizeMove(moveReport?.playedReply),
+    analysisDepth: finiteOrNull(moveReport?.analysisDepth),
+    candidateCount: finiteOrNull(moveReport?.candidateCount),
+  };
+}
+
 function eventFor(fen, move) {
   if (!fen || !move?.from || !move?.to) return null;
   return detectNoteworthyMove(fen, move);
@@ -151,6 +168,7 @@ export function buildPostGameIncidentEvidence(moveReport) {
     playedEventType: playedEvent?.type || null,
     suggestedEventType: suggestedEvent?.type || null,
     replyEventType: replyEvent?.type || null,
+    factualAnalysis: factualAnalysisFor(moveReport),
     evalAfterPlayed: finiteOrNull(moveReport?.evalAfterPlayed),
     evalAfterSuggested: finiteOrNull(moveReport?.evalAfterSuggested),
     materialSwingPlayedCp: materialSwing(fenBefore, playedFenAfter, moverColor),
