@@ -19,6 +19,7 @@ from api_models import AnalyzeMoveRequest, AnalyzeRequest, MoveRequest, NewGameR
 from balanced_cpu import get_balanced_cpu_move
 from chess_ai import analyze_move as ai_analyze_move
 from chess_ai import evaluate_board, get_cpu_move, move_to_dict
+from engine_analysis import build_factual_move_analysis
 from engine_runtime import run_engine_work
 from shadow_evaluation import maybe_schedule_move_shadow
 from chess_core import HANDICAP_SQUARES, apply_handicap, board_from_valid_fen, board_sans, load_board, resolve_move, serialize_game
@@ -332,6 +333,23 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
             raise HTTPException(400, "Esa posición ya está terminada.")
 
         level = body.level if is_valid_difficulty(body.level) else 45
+        played_move = None
+        if body.from_square and body.to:
+            played_move = resolve_move(board, body.from_square, body.to, body.promotion)
+
+        if played_move is not None:
+            try:
+                factual = await run_engine_work(build_factual_move_analysis, board, played_move, level=level)
+            except TimeoutError:
+                factual = None
+            if factual is not None:
+                analyzed = {"move": factual.suggested, "score": factual.eval_after_suggested}
+                maybe_schedule_move_shadow(board.copy(stack=False), level, analyzed, ai_analyze_move)
+                payload = factual.to_api_payload()
+                payload["evalAfterSuggested"] = sanitize_eval(payload.get("evalAfterSuggested"))
+                payload["evalAfterPlayed"] = sanitize_eval(payload.get("evalAfterPlayed"))
+                return payload
+
         analyzed = await run_engine_work(ai_analyze_move, board, level)
         if not analyzed:
             raise HTTPException(404, "No hay jugadas disponibles.")
@@ -341,16 +359,10 @@ def build_game_router(*, auth_dependency, compute_auth_dependency, limiter, has_
         maybe_schedule_move_shadow(board.copy(stack=False), level, analyzed, ai_analyze_move)
 
         eval_after_played = None
-        if body.from_square and body.to:
-            try:
-                played = board.copy(stack=False)
-                move = resolve_move(played, body.from_square, body.to, body.promotion)
-                if move is None:
-                    raise ValueError("Movimiento inválido.")
-                played.push(move)
-                eval_after_played = sanitize_eval(evaluate_board(played))
-            except Exception:
-                eval_after_played = None  # jugada inválida — no debería pasar si viene del historial real
+        if played_move is not None:
+            played = board.copy(stack=False)
+            played.push(played_move)
+            eval_after_played = sanitize_eval(evaluate_board(played))
 
         return {
             "suggested": {
