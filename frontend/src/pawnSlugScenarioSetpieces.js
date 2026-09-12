@@ -129,6 +129,7 @@ function capture(group, kind) {
       x: child.position.x,
       y: child.position.y,
       rz: child.rotation.z,
+      opacity: Number.isFinite(child.material?.opacity) ? child.material.opacity : null,
     })),
   };
 }
@@ -164,7 +165,7 @@ function animateEntry(entry, elapsed) {
       item.child.position.y = item.y + Math.sin(progress * Math.PI) * (0.42 + index * 0.035);
       item.child.rotation.z = item.rz + progress * (1.4 + index * 0.18);
     }
-    if (item.child.material?.opacity !== undefined) item.child.material.opacity = Math.max(0, fade);
+    if (item.opacity != null && item.child.material) item.child.material.opacity = Math.max(0, item.opacity * fade);
   });
 }
 
@@ -216,7 +217,7 @@ export function createPawnSlugReactiveSetpieces(root, { reducedMotion = false } 
           item.child.position.y = item.y;
           item.child.rotation.z = item.rz;
           item.child.scale.setScalar(1);
-          if (item.child.material?.opacity !== undefined) item.child.material.opacity = 1;
+          if (item.opacity != null && item.child.material) item.child.material.opacity = item.opacity;
         });
       }
     },
