@@ -1,0 +1,61 @@
+/* Android browsers can expose a desktop-like CSS width while keeping a tall,
+ * touch-first viewport (for example "Solicitar sitio de escritorio"). Preserve
+ * the complete 16:9 canonical Great Hall and extend its atmosphere behind the
+ * hero instead of stretching or heavily cropping the diegetic scene. */
+@media (min-width: 521px) and (max-width: 999px) and (pointer: coarse) and (max-aspect-ratio: 4/5) {
+  body:has(.app-shell-home) {
+    background: #140b06;
+  }
+
+  .illustrated-home {
+    position: relative;
+    height: 100dvh;
+    min-height: 100dvh;
+    padding: 58px 0 0;
+    overflow: hidden;
+    isolation: isolate;
+    background: #140b06;
+  }
+
+  .illustrated-home__stage {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 56.25vw;
+    min-height: 0;
+    margin: clamp(22px, 4dvh, 64px) auto 0;
+    aspect-ratio: 16 / 9;
+    overflow: visible;
+  }
+
+  .illustrated-home__stage::before,
+  .illustrated-home__stage::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .illustrated-home__stage::before {
+    z-index: -2;
+    background: var(--home-hall-art) 50% 54% / cover no-repeat;
+    opacity: .26;
+  }
+
+  .illustrated-home__stage::after {
+    z-index: -1;
+    background:
+      radial-gradient(ellipse at 50% 34%, rgba(190, 111, 43, .12), transparent 42%),
+      linear-gradient(180deg,
+        rgba(16, 8, 4, .22) 0%,
+        rgba(16, 8, 4, .44) 34%,
+        rgba(13, 7, 4, .78) 56%,
+        rgba(10, 5, 3, .96) 78%,
+        #0a0503 100%);
+  }
+
+  .illustrated-home__art,
+  .illustrated-home__castle-3d {
+    box-shadow: 0 24px 54px rgba(0, 0, 0, .30);
+  }
+}

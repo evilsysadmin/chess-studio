@@ -6,7 +6,7 @@ const ARTIFACT_DIR = '../.artifacts/app-visual';
 const MIN_TOUCH_TARGET = 44;
 const CAPTURES = [
   { label:'desktop-1440x900', width:1440, height:900, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
-  { label:'android-desktop-site-980x1740', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
+  { label:'android-desktop-site-980x1740', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true },
   { label:'android-360x800', width:360, height:800, reducedMotion:'no-preference' },
   { label:'android-390x844', width:390, height:844, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
   { label:'android-430x932', width:430, height:932, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
@@ -93,6 +93,8 @@ async function captureHealth(page, label) {
       label:captureLabel,
       viewport:{ ...viewport, dpr:window.devicePixelRatio },
       hardwareConcurrency:navigator.hardwareConcurrency,
+      touchPoints:navigator.maxTouchPoints,
+      coarsePointer:window.matchMedia('(pointer: coarse)').matches,
       reducedMotion:window.matchMedia('(prefers-reduced-motion: reduce)').matches,
       castle3dReady:document.querySelector('.illustrated-home__castle-3d.is-ready') !== null,
       stage,
@@ -132,7 +134,10 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
   const captures = [];
   try {
     for (const capture of CAPTURES) {
-      const context = await visualBrowser.newContext({ viewport:{ width:capture.width, height:capture.height } });
+      const context = await visualBrowser.newContext({
+        viewport:{ width:capture.width, height:capture.height },
+        hasTouch:capture.hasTouch === true,
+      });
       if (capture.forceCores) {
         await context.addInitScript((cores) => {
           Object.defineProperty(navigator, 'hardwareConcurrency', {
@@ -151,6 +156,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
           ...health,
           expectedReducedMotion:capture.reducedMotion === 'reduce',
           expectedCastleReady:capture.expectCastleReady === true,
+          expectedCoarsePointer:capture.hasTouch === true,
         });
         await page.screenshot({
           path:`${ARTIFACT_DIR}/home-${capture.label}.png`,
@@ -167,7 +173,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
 
   await writeFile(
     `${ARTIFACT_DIR}/visual-health.json`,
-    `${JSON.stringify({ schema:4, minimumTouchTarget:MIN_TOUCH_TARGET, captures }, null, 2)}\n`,
+    `${JSON.stringify({ schema:5, minimumTouchTarget:MIN_TOUCH_TARGET, captures }, null, 2)}\n`,
     'utf8',
   );
 
@@ -176,6 +182,10 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
     expect(capture.reducedMotion, `${capture.label}: reduced-motion media state`).toBe(capture.expectedReducedMotion);
     if (capture.expectedCastleReady) {
       expect(capture.castle3dReady, `${capture.label}: 3D canvas ready before screenshot`).toBe(true);
+    }
+    if (capture.expectedCoarsePointer) {
+      expect(capture.coarsePointer, `${capture.label}: coarse pointer emulation`).toBe(true);
+      expect(capture.touchPoints, `${capture.label}: touch points`).toBeGreaterThan(0);
     }
   }
 });
