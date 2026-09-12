@@ -1,5 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { devices, expect, test } from '@playwright/test';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { warRoomRenderBudget } from '../frontend/src/components/WarRoom3DAnimation.js';
 
 const WAR_ROOM_READY_TIMEOUT = 45_000;
 const RENDER_BUDGET = Object.freeze({
@@ -173,11 +174,9 @@ async function sampleRafP95(page, samples = 45) {
   }), samples);
 }
 
-test('War Room · presupuesto observable de render evita crecimiento GPU accidental', async ({ page }) => {
-  test.setTimeout(120_000);
-
+async function collectRenderAudit(page, { viewport } = {}) {
   await installGpuProbe(page);
-  await page.setViewportSize({ width: 1440, height: 900 });
+  if (viewport) await page.setViewportSize(viewport);
   await mockApi(page);
   await login(page);
   await page.evaluate(() => window.__warRoomGpuAudit.reset());
@@ -199,26 +198,62 @@ test('War Room · presupuesto observable de render evita crecimiento GPU acciden
   }));
   const metrics = await page.evaluate(() => window.__warRoomGpuAudit.snapshot());
   const rafP95Ms = await sampleRafP95(page);
-
   const effectivePixelRatio = Math.max(
     cssAndBacking.backingWidth / Math.max(1, cssAndBacking.cssWidth),
     cssAndBacking.backingHeight / Math.max(1, cssAndBacking.cssHeight),
   );
-  const expectedDprCap = cssAndBacking.sceneTier === 'lite' ? 1.05 : 1.3;
 
-  expect(effectivePixelRatio).toBeLessThanOrEqual(expectedDprCap);
-  expect(metrics.peakDrawCalls).toBeGreaterThan(0);
-  expect(metrics.peakDrawCalls).toBeLessThanOrEqual(RENDER_BUDGET.peakDrawCalls);
-  expect(metrics.peakTriangles).toBeLessThanOrEqual(RENDER_BUDGET.peakTriangles);
-  expect(metrics.liveTextures).toBeLessThanOrEqual(RENDER_BUDGET.liveTextures);
-  expect(metrics.liveBuffers).toBeLessThanOrEqual(RENDER_BUDGET.liveBuffers);
-  expect(rafP95Ms).toBeLessThanOrEqual(RENDER_BUDGET.maxRafP95Ms);
+  return { cssAndBacking, metrics, rafP95Ms, effectivePixelRatio };
+}
 
+function expectWithinRenderBudget(audit, { coarsePointer = false } = {}) {
+  const softwareRenderer = audit.cssAndBacking.sceneTier === 'lite';
+  const contract = warRoomRenderBudget({ coarsePointer, softwareRenderer });
+
+  expect(audit.effectivePixelRatio).toBeLessThanOrEqual(contract.pixelRatioCap + 0.05);
+  expect(audit.metrics.peakDrawCalls).toBeGreaterThan(0);
+  expect(audit.metrics.peakDrawCalls).toBeLessThanOrEqual(RENDER_BUDGET.peakDrawCalls);
+  expect(audit.metrics.peakTriangles).toBeLessThanOrEqual(RENDER_BUDGET.peakTriangles);
+  expect(audit.metrics.liveTextures).toBeLessThanOrEqual(RENDER_BUDGET.liveTextures);
+  expect(audit.metrics.liveBuffers).toBeLessThanOrEqual(RENDER_BUDGET.liveBuffers);
+  expect(audit.rafP95Ms).toBeLessThanOrEqual(RENDER_BUDGET.maxRafP95Ms);
+
+  return contract;
+}
+
+function logRenderAudit(label, audit, contract) {
   console.log('[war-room-render-budget]', JSON.stringify({
-    rendererClass: cssAndBacking.rendererClass,
-    sceneTier: cssAndBacking.sceneTier,
-    effectivePixelRatio: Number(effectivePixelRatio.toFixed(2)),
-    rafP95Ms: Number(rafP95Ms.toFixed(1)),
-    ...metrics,
+    profile: label,
+    rendererClass: audit.cssAndBacking.rendererClass,
+    sceneTier: audit.cssAndBacking.sceneTier,
+    contractTier: contract.tier,
+    effectivePixelRatio: Number(audit.effectivePixelRatio.toFixed(2)),
+    pixelRatioCap: contract.pixelRatioCap,
+    idleFrameIntervalMs: contract.idleFrameIntervalMs,
+    inspectFrameIntervalMs: contract.inspectFrameIntervalMs,
+    rafP95Ms: Number(audit.rafP95Ms.toFixed(1)),
+    ...audit.metrics,
   }));
+}
+
+test('War Room · presupuesto observable de render evita crecimiento GPU accidental', async ({ page }) => {
+  test.setTimeout(120_000);
+  const audit = await collectRenderAudit(page, { viewport: { width: 1440, height: 900 } });
+  expect(['full', 'lite']).toContain(audit.cssAndBacking.sceneTier);
+  const contract = expectWithinRenderBudget(audit);
+  logRenderAudit('desktop', audit, contract);
+});
+
+test.describe('War Room · Android render budget', () => {
+  test.use({ ...devices['Pixel 5'] });
+
+  test('Pixel 5 conserva el tier táctil y el presupuesto GPU', async ({ page }) => {
+    test.setTimeout(120_000);
+    const audit = await collectRenderAudit(page);
+    expect(['balanced', 'lite']).toContain(audit.cssAndBacking.sceneTier);
+    const contract = expectWithinRenderBudget(audit, { coarsePointer: true });
+    expect(contract.idleFrameIntervalMs).toBe(150);
+    expect(contract.inspectFrameIntervalMs).toBe(33);
+    logRenderAudit('pixel-5', audit, contract);
+  });
 });
