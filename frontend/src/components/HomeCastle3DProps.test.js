@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS,
   HOME_CASTLE_DUST_MOTE_COUNT,
+  HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR,
   HOME_CASTLE_TORCH_ANCHORS,
   createHomeCastleTorchProps,
 } from './HomeCastle3DProps.js';
@@ -34,6 +35,13 @@ describe('HomeCastle3DProps', () => {
     expect(left.z).toBe(right.z);
     expect(left.y).toBeGreaterThan(0.65);
     expect(left.z).toBeGreaterThan(0.9);
+  });
+
+  it('anchors the fireplace light in the right foreground, below the destinations', () => {
+    expect(HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR.x).toBeGreaterThan(1);
+    expect(HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR.y).toBeLessThan(-0.4);
+    expect(HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR.z).toBeGreaterThan(0.7);
+    expect(HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR.z).toBeLessThan(1);
   });
 
   it('adds only a restrained flame overlay above each painted sconce', () => {
