@@ -63,8 +63,13 @@ async function captureWarRoomHealth(page) {
       };
     };
     const buttonBox = (label) => {
-      const node = [...document.querySelectorAll('button')]
-        .find((candidate) => (candidate.getAttribute('aria-label') || '').trim() === label);
+      const node = [...document.querySelectorAll('button, [role="button"]')]
+        .find((candidate) => {
+          if ((candidate.getAttribute('aria-label') || '').trim() !== label) return false;
+          const rect = candidate.getBoundingClientRect();
+          const style = getComputedStyle(candidate);
+          return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+        });
       if (!node) return null;
       const rect = node.getBoundingClientRect();
       return {
