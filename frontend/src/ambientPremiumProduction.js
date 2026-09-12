@@ -72,6 +72,7 @@ const THEME_INSTRUMENT_UPGRADES = Object.freeze({
 const EXPANSIVE_SPACE_GENRES = new Set(['SPA / Zen', 'Dark Ambient', 'Ambient / Otros']);
 const SUSTAIN_RICH_GENRES = new Set(['SPA / Zen', 'Clásica', 'Piano / Minimal', 'Dark Ambient', 'Ambient / Otros']);
 const SPARSE_MIX_CEILINGS = Object.freeze({ lead: 0.46, counter: 0.28, bass: 0.56, chord: 0.34 });
+const AUTHORED_LONG_ECHO_THEMES = new Set(['velvetStatic']);
 
 function finiteOr(value, fallback) {
   return Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -143,6 +144,18 @@ function premiumRelease(feel, genre, targetRelease) {
   return clamp(blend(current, targetRelease, 0.36), 0.76, 1.36);
 }
 
+function premiumDelay(theme, feel, targetDelay) {
+  const current = finiteOr(feel?.delayMs, 160);
+  // Velvet Static es dub por escritura, no un Trip-Hop genérico con demasiada
+  // cola. Sus 310 ms son parte del rebote entre Rhodes/cello/pad; acercarlo a
+  // 188 ms le quitaba profundidad. Sólo preservamos ecos largos explícitamente
+  // curados, de modo que el resto del género conserva el acabado más seco.
+  if (AUTHORED_LONG_ECHO_THEMES.has(theme?.id) && current >= 300) {
+    return Math.round(clamp(current, 72, 340));
+  }
+  return Math.round(clamp(blend(current, targetDelay, 0.5), 72, 310));
+}
+
 function premiumMixValue(current, target, genre, lane, min, max) {
   const value = finiteOr(current, target);
   // En familias de sustain, un fader muy bajo es parte de la orquestación: una
@@ -206,7 +219,7 @@ export function withAmbientPremiumProduction(theme, feel) {
     warmth: clamp(blend(finiteOr(feel.warmth, 1), target.warmth, 0.38), 0.7, 1.08),
     releaseScale: premiumRelease(feel, theme.genre, target.releaseScale),
     space: premiumSpace(feel, theme.genre, target.space),
-    delayMs: Math.round(clamp(blend(finiteOr(feel.delayMs, 160), target.delayMs, 0.5), 72, 310)),
+    delayMs: premiumDelay(theme, feel, target.delayMs),
     mix,
     percussion: premiumPercussion(feel, theme.genre),
     ...(signature ? { signature } : {}),
