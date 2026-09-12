@@ -124,7 +124,7 @@ export default function PawnSlugTouchSurface({ send }) {
     const current = point(event);
 
     if (pointer.zone === 'move') {
-      const direction = pawnSlugTouchMoveDirection(current.x, current.width);
+      const direction = pawnSlugTouchMoveDirection(current.x, current.width, pointer.action);
       if (direction !== pointer.action) {
         if (pointer.action) sendRef.current(pointer.action, false);
         pointer.action = direction;
