@@ -1,16 +1,18 @@
 @import './HomeMobileChrome.css';
 
 /* Android browsers can expose a desktop-like CSS width while keeping a tall,
- * touch-first viewport (for example "Solicitar sitio de escritorio"). Keep the
- * canonical 16:9 Great Hall, but treat the narrow portrait viewport like a camera
- * crop: enlarge the room enough to remain the hero, crop only its far side edges,
- * and pull the affected diegetic controls back into the visible composition. */
+ * touch-first viewport (for example "Solicitar sitio de escritorio"). In that
+ * mode the 16:9 hall must be framed by viewport HEIGHT, not by CSS width: otherwise
+ * the room ends halfway down the phone and the foreground becomes an empty runway. */
 @media (min-width: 521px) and (max-width: 999px) and (pointer: coarse) and (max-aspect-ratio: 4/5) {
   body:has(.app-shell-home) {
     background: #140b06;
   }
 
   .illustrated-home {
+    --tall-touch-stage-height: 70dvh;
+    --tall-touch-stage-width: 124.4444dvh;
+    --tall-touch-stage-gap: clamp(8px, 1.2dvh, 18px);
     position: relative;
     height: 100dvh;
     min-height: 100dvh;
@@ -20,24 +22,24 @@
     background: #140b06;
   }
 
-  /* A 150vw 16:9 camera keeps almost the full hall while lifting the scene from
-     ~32% to ~47% of the 980x1740 reference viewport. This is intentionally a
-     moderate horizontal crop, not a stretched portrait repaint. */
+  /* Height-driven camera. At the canonical 980x1740 desktop-site capture the
+     Great Hall now owns ~70% of the viewport instead of ~47%. The price is a
+     deliberate lateral crop: this is a portrait camera on the same canonical room,
+     never a stretched repaint. */
   .illustrated-home__stage {
     position: relative;
     z-index: 1;
     left: 50%;
-    width: 150vw;
-    height: 84.375vw;
+    width: var(--tall-touch-stage-width);
+    height: var(--tall-touch-stage-height);
     min-height: 0;
-    margin: clamp(10px, 1.6dvh, 24px) 0 0;
+    margin: var(--tall-touch-stage-gap) 0 0;
     aspect-ratio: 16 / 9;
     overflow: visible;
     transform: translateX(-50%);
   }
 
-  /* Continue the near floor beneath the larger camera. Keep it architectural and
-     soft: pools of reflected firelight plus a few broad floor seams, never a grid. */
+  /* Only the genuinely remaining foreground is extended below the hall. */
   .illustrated-home__stage::before {
     content: '';
     position: absolute;
@@ -45,21 +47,16 @@
     left: 0;
     right: 0;
     top: calc(100% - 1px);
-    height: max(0px, calc(100dvh - 58px - clamp(10px, 1.6dvh, 24px) - 84.375vw + 2px));
+    height: max(0px, calc(100dvh - 58px - var(--tall-touch-stage-gap) - var(--tall-touch-stage-height) + 2px));
     pointer-events: none;
     background:
       radial-gradient(ellipse at 77% 4%, rgba(244, 145, 68, .24), transparent 25%),
       radial-gradient(ellipse at 22% 7%, rgba(186, 90, 39, .15), transparent 27%),
-      radial-gradient(ellipse at 84% 29%, rgba(177, 79, 31, .07), transparent 22%),
-      radial-gradient(ellipse at 16% 31%, rgba(160, 69, 29, .055), transparent 24%),
-      radial-gradient(ellipse at 50% 26%, rgba(128, 61, 32, .11), transparent 43%),
-      repeating-linear-gradient(180deg, transparent 0 156px, rgba(255, 220, 170, .018) 157px 158px, transparent 159px 214px),
+      radial-gradient(ellipse at 50% 24%, rgba(128, 61, 32, .10), transparent 43%),
       linear-gradient(105deg, rgba(0, 0, 0, .18), transparent 34%, transparent 66%, rgba(0, 0, 0, .30)),
-      linear-gradient(180deg, #3a1c11 0%, #2a140c 31%, #1b0d08 66%, #0d0704 100%);
+      linear-gradient(180deg, #3a1c11 0%, #2a140c 38%, #1b0d08 72%, #0d0704 100%);
   }
 
-  /* Let the canonical carpet become a long perspective runner. Edge piping adds
-     just enough material detail to carry the eye into the foreground. */
   .illustrated-home__stage::after {
     content: '';
     position: absolute;
@@ -67,7 +64,7 @@
     top: calc(100% - 1px);
     left: 22%;
     width: 56%;
-    height: max(360px, calc(100dvh - 58px - clamp(10px, 1.6dvh, 24px) - 84.375vw + 2px));
+    height: max(180px, calc(100dvh - 58px - var(--tall-touch-stage-gap) - var(--tall-touch-stage-height) + 2px));
     pointer-events: none;
     clip-path: polygon(43% 0, 57% 0, 84% 100%, 16% 100%);
     background:
@@ -77,43 +74,64 @@
         transparent 8.2% 91.8%,
         rgba(209, 144, 73, .11) 92.2% 92.8%,
         rgba(16, 3, 4, .22) 93% 100%),
-      linear-gradient(180deg, rgba(112, 25, 22, .50), rgba(78, 16, 17, .36) 48%, rgba(42, 9, 12, .19) 78%, rgba(24, 6, 8, .08) 100%);
-    filter: drop-shadow(0 16px 24px rgba(0, 0, 0, .20));
+      linear-gradient(180deg, rgba(112, 25, 22, .48), rgba(78, 16, 17, .34) 52%, rgba(30, 7, 10, .10) 100%);
+    filter: drop-shadow(0 14px 22px rgba(0, 0, 0, .18));
   }
 
   .illustrated-home__art,
   .illustrated-home__castle-3d {
-    box-shadow: 0 26px 58px rgba(0, 0, 0, .32);
+    box-shadow: 0 24px 52px rgba(0, 0, 0, .30);
   }
 
-  /* The crop removes ~16.7% of each side of the 150vw stage. Pull only the
-     affected edge destinations inward; central destinations keep their canonical
-     anchors and the composition still reads as the same room. */
-  .illustrated-home__destination--tournament { left: 18%; }
-  .illustrated-home__destination--daily { left: 65.5%; width: 17.5% !important; }
-  .illustrated-home__destination--history { left: 17.2%; }
+  /* A 70dvh 16:9 stage is roughly 221vw at 980x1740, so only its central ~45%
+     is visible. Reframe the destinations into that safe strip while preserving
+     their left-to-right relationship to the room. */
+  .illustrated-home__destination--tournament { left: 28.4%; width: 10.8% !important; }
+  .illustrated-home__destination--train { left: 39.2%; width: 11% !important; }
+  .illustrated-home__destination--combat { left: 50.8%; width: 11.8% !important; }
+  .illustrated-home__destination--daily { left: 62%; width: 10% !important; }
+  .illustrated-home__destination--history { left: 28.3%; width: 9% !important; }
+  .illustrated-home__destination--play { left: 43%; width: 14% !important; }
+
+  .illustrated-home__destination svg {
+    width: clamp(21px, 2.5vw, 26px);
+    height: clamp(21px, 2.5vw, 26px);
+  }
+  .illustrated-home__destination strong {
+    font-size: clamp(13px, 1.45vw, 17px);
+  }
+  .illustrated-home__destination > span {
+    font-size: clamp(10px, 1.05vw, 13px);
+  }
+  .illustrated-home__destination--play strong {
+    font-size: clamp(18px, 2vw, 22px);
+  }
 
   .illustrated-home__matthias {
-    left: 17.2%;
-    width: 14%;
+    left: 28.5%;
+    width: 12.5%;
+  }
+
+  .illustrated-home__pawn-slug {
+    left: 41%;
+    width: 18%;
   }
 
   .illustrated-home__utilities {
-    right: 16.7%;
-    width: 22%;
+    right: 27.6%;
+    width: 16%;
   }
 
-  /* Give the foreground a little breathing room before Matthias speaks. The card
-     still belongs to the hall, but no longer bunches every focal element into the
-     upper half of an unusually tall viewport. */
+  /* Speech remains attached to the hall but no longer needs a large artificial
+     runway beneath it now that the room itself owns the viewport. */
   .illustrated-home__speech {
     position: absolute;
     left: 50%;
     right: auto;
-    top: calc(100% + clamp(54px, 5.5dvh, 96px));
+    top: calc(100% + clamp(16px, 1.8dvh, 30px));
     bottom: auto;
-    width: min(760px, calc(66.6667% - 32px));
-    max-height: min(36dvh, 320px);
+    width: min(700px, calc(44% - 24px));
+    max-height: min(24dvh, 280px);
     transform: translateX(-50%);
   }
 }
