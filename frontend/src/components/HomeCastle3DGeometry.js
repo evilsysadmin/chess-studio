@@ -7,11 +7,15 @@ export function canonicalHallDepth(u, v) {
   const floor = THREE.MathUtils.clamp((0.34 - v) / 0.34, 0, 1);
   const edge = THREE.MathUtils.clamp((Math.abs(u - 0.5) * 2 - 0.62) / 0.38, 0, 1);
   const vault = THREE.MathUtils.clamp((v - 0.83) / 0.17, 0, 1);
+  const tableX = THREE.MathUtils.clamp((0.23 - Math.abs(u - 0.5)) / 0.23, 0, 1);
+  const tableY = THREE.MathUtils.clamp((0.22 - Math.abs(v - 0.31)) / 0.22, 0, 1);
+  const centralTable = Math.pow(tableX, 1.8) * Math.pow(tableY, 1.7);
 
   return (
     (0.2 * Math.pow(floor, 1.45))
     + (0.075 * edge * (0.45 + (0.55 * v)))
     + (0.018 * vault)
+    + (0.055 * centralTable)
   );
 }
 
