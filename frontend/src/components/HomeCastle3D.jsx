@@ -15,7 +15,10 @@ import {
   createHomeCastleTorchProps,
 } from './HomeCastle3DProps.js';
 import { homeCastleTorchFlicker } from './HomeCastle3DTorchFlicker.js';
-import { homeCastleShouldRender } from './HomeCastle3DVisibility.js';
+import {
+  homeCastleNeedsContinuousRender,
+  homeCastleShouldRender,
+} from './HomeCastle3DVisibility.js';
 
 const CAMERA_Z = 3;
 const PARALLAX_X = 0.034;
@@ -65,12 +68,14 @@ function desktopMediaQuery() {
 export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = null }) {
   const canvasRef = useRef(null);
   const activeRoomRef = useRef(activeRoom);
+  const renderRequestRef = useRef(null);
   const [desktopEnabled, setDesktopEnabled] = useState(() => (
     typeof window !== 'undefined' && window.matchMedia?.(desktopMediaQuery()).matches === true
   ));
 
   useEffect(() => {
     activeRoomRef.current = activeRoom;
+    renderRequestRef.current?.();
   }, [activeRoom]);
 
   useEffect(() => {
@@ -180,20 +185,23 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       const height = Math.max(1, canvas.clientHeight || canvas.parentElement?.clientHeight || 1);
       renderer.setSize(width, height, false);
       frameOrthographicCamera(camera, width / height);
+      renderRequestRef.current?.();
     };
 
     const render = (timestamp = 0) => {
       frame = 0;
       if (disposed || !shouldRender()) return;
+      const reduced = reducedMotion?.matches === true;
       const focused = homeCastleRoomFocus(activeRoomRef.current);
       roomTarget.set(focused.x, focused.y, focused.light);
-      roomFocus.lerp(roomTarget, 0.09);
+      if (reduced) roomFocus.copy(roomTarget);
+      else roomFocus.lerp(roomTarget, 0.09);
       roomLight.position.x = roomFocus.x;
       roomLight.position.y = roomFocus.y;
       roomLight.intensity = roomFocus.z;
 
       for (let index = 0; index < torchProps.flames.length; index += 1) {
-        const flicker = homeCastleTorchFlicker(index, timestamp, reducedMotion?.matches === true);
+        const flicker = homeCastleTorchFlicker(index, timestamp, reduced);
         const flame = torchProps.flames[index];
         const torchLight = torchLights[index];
         if (flame) {
@@ -204,7 +212,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
         if (torchLight) torchLight.intensity = lighting.torch * flicker;
       }
 
-      if (!reducedMotion?.matches) {
+      if (!reduced) {
         pointer.lerp(target, 0.055);
         camera.position.x = pointer.x * PARALLAX_X + roomFocus.x * ROOM_CAMERA_X;
         camera.position.y = -pointer.y * PARALLAX_Y + roomFocus.y * ROOM_CAMERA_Y;
@@ -215,12 +223,15 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
         camera.lookAt(0, 0, 0.035);
       }
       renderer.render(scene, camera);
-      frame = window.requestAnimationFrame(render);
+      if (homeCastleNeedsContinuousRender({ reducedMotion: reduced })) {
+        frame = window.requestAnimationFrame(render);
+      }
     };
 
     const resumeRender = () => {
       if (!disposed && shouldRender() && !frame) frame = window.requestAnimationFrame(render);
     };
+    renderRequestRef.current = resumeRender;
 
     const onPointerMove = (event) => {
       if (reducedMotion?.matches) return;
@@ -243,6 +254,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       if (intersecting) resumeRender();
       else stopRender();
     };
+    const onReducedMotionChange = () => resumeRender();
 
     const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null;
     const intersectionObserver = typeof IntersectionObserver === 'function'
@@ -250,6 +262,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       : null;
     resizeObserver?.observe(canvas);
     intersectionObserver?.observe(canvas);
+    reducedMotion?.addEventListener?.('change', onReducedMotionChange);
     window.addEventListener('resize', resize, { passive: true });
     document.addEventListener('visibilitychange', onVisibilityChange);
     canvas.parentElement?.addEventListener('pointermove', onPointerMove, { passive: true });
@@ -270,6 +283,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
         material.emissiveMap = texture;
         material.needsUpdate = true;
         canvas.classList.add('is-ready');
+        resumeRender();
       },
       undefined,
       () => canvas.classList.remove('is-ready'),
@@ -278,9 +292,11 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
 
     return () => {
       disposed = true;
+      if (renderRequestRef.current === resumeRender) renderRequestRef.current = null;
       stopRender();
       resizeObserver?.disconnect();
       intersectionObserver?.disconnect();
+      reducedMotion?.removeEventListener?.('change', onReducedMotionChange);
       window.removeEventListener('resize', resize);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       canvas.parentElement?.removeEventListener('pointermove', onPointerMove);
