@@ -14,7 +14,7 @@ describe('Pawn Slug enemy fire doctrine', () => {
     expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.machinegun.burstInterval).toBeGreaterThanOrEqual(0.1);
     expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.shotgun.pellets).toBeGreaterThanOrEqual(5);
     expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.shotgun.range).toBeLessThan(PAWN_SLUG_ENEMY_FIRE_PROFILES.machinegun.range);
-    expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.shotgun.telegraph).toBeGreaterThanOrEqual(0.12);
+    expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.shotgun.telegraph).toBeGreaterThanOrEqual(0.18);
     expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.panzerfaust.telegraph).toBeGreaterThan(0.25);
     expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.panzerfaust.minRange).toBeGreaterThan(2.2);
   });
@@ -46,9 +46,9 @@ describe('Pawn Slug enemy fire doctrine', () => {
 
     const shotgunStart = pawnSlugEnemyPrefireStep('shotgun', { ready: true, dt: 0.04 });
     expect(shotgunStart.phase).toBe('telegraph');
-    expect(shotgunStart.remaining).toBeCloseTo(0.1, 5);
+    expect(shotgunStart.remaining).toBeCloseTo(0.16, 5);
     expect(shotgunStart.progress).toBeGreaterThan(0);
-    expect(pawnSlugEnemyPrefireStep('shotgun', { ready: true, remaining: shotgunStart.remaining, dt: 0.11 })).toEqual({ phase: 'fire', remaining: 0, progress: 1 });
+    expect(pawnSlugEnemyPrefireStep('shotgun', { ready: true, remaining: shotgunStart.remaining, dt: 0.17 })).toEqual({ phase: 'fire', remaining: 0, progress: 1 });
 
     const start = pawnSlugEnemyPrefireStep('panzerfaust', { ready: true, dt: 0.04 });
     expect(start.phase).toBe('telegraph');
@@ -86,7 +86,7 @@ describe('Pawn Slug enemy fire doctrine', () => {
     const max = pawnSlugEnemyFireCooldown('pistol', 1);
     expect(min).toBeLessThan(middle);
     expect(middle).toBeLessThan(max);
-    expect(pawnSlugEnemyShotPlan('shotgun')).toMatchObject({ weapon: 'shotgun', range: 6.8, minRange: 0, pellets: 5, explosive: false, telegraph: 0.14 });
+    expect(pawnSlugEnemyShotPlan('shotgun')).toMatchObject({ weapon: 'shotgun', range: 6.8, minRange: 0, pellets: 5, explosive: false, telegraph: 0.2 });
     expect(pawnSlugEnemyShotPlan('panzerfaust')).toMatchObject({ weapon: 'panzerfaust', range: 15, minRange: 3.6, pellets: 1, explosive: true });
   });
 });
