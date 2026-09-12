@@ -24,6 +24,20 @@ test('Partida rápida · 2D entra directo al tablero ligero', async ({ page }) =
   await expectLightweight2D(page);
 });
 
+test('Partida rápida · 2D no expone PGN ni una franja avanzada', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await launchQuickMatch2D(page);
+  await expectLightweight2D(page);
+
+  await expect(page.getByRole('heading', { name: 'Chess Studio', exact: true })).toHaveCount(0);
+  await expect(page.locator('.player-status-bar')).toHaveCount(0);
+  await expect(page.locator('.square-coordinate')).toHaveCount(16);
+  await expect(page.locator('.rank-labels, .file-labels')).toHaveCount(0);
+  await expect(page.getByText('Opciones avanzadas', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Exportar archivo .pgn', exact: true })).toHaveCount(0);
+});
+
 test('Partida rápida · 2D persiste tras F5 en el mismo dispositivo', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 780 });
   await mockApi(page);
