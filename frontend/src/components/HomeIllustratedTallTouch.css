@@ -1,4 +1,5 @@
 @import './HomeMobileChrome.css';
+@import './HomeIllustratedSpeechCompat.css';
 
 /* Android browsers can expose a desktop-like CSS width while keeping a tall,
  * touch-first viewport (for example "Solicitar sitio de escritorio"). In that
