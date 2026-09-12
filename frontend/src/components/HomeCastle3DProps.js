@@ -21,19 +21,34 @@ export const HOME_CASTLE_DUST_MOTE_COUNT = 24;
 
 const DESTINATION_PROP_REFERENCE_ASPECT = 1.6;
 
-export function homeCastleDestinationPropScale(aspect) {
+export function homeCastleDestinationPropScale(aspect, visibleWidthRatio = 1) {
   const numericAspect = Number(aspect);
-  if (!Number.isFinite(numericAspect) || numericAspect <= 0) return 1;
-  return THREE.MathUtils.clamp(numericAspect / DESTINATION_PROP_REFERENCE_ASPECT, 0.28, 1);
+  const numericVisibleRatio = Number(visibleWidthRatio);
+  const aspectScale = Number.isFinite(numericAspect) && numericAspect > 0
+    ? numericAspect / DESTINATION_PROP_REFERENCE_ASPECT
+    : 1;
+  const visibleScale = Number.isFinite(numericVisibleRatio) && numericVisibleRatio > 0
+    ? numericVisibleRatio
+    : 1;
+  return THREE.MathUtils.clamp(Math.min(aspectScale, visibleScale), 0.28, 1);
 }
 
 function attachViewportScale(group, driverMesh, baseScale) {
   group.userData.baseScale = baseScale;
   group.scale.setScalar(baseScale);
-  driverMesh.onBeforeRender = (_renderer, _scene, camera) => {
+  driverMesh.onBeforeRender = (renderer, _scene, camera) => {
     const width = Math.abs((camera?.right ?? 0) - (camera?.left ?? 0));
     const height = Math.abs((camera?.top ?? 0) - (camera?.bottom ?? 0));
-    const responsiveScale = homeCastleDestinationPropScale(height > 0 ? width / height : DESTINATION_PROP_REFERENCE_ASPECT);
+    const canvas = renderer?.domElement;
+    const canvasWidth = Math.max(1, canvas?.getBoundingClientRect?.().width || canvas?.clientWidth || 1);
+    const viewportWidth = typeof window !== 'undefined'
+      ? Math.max(1, window.innerWidth || canvasWidth)
+      : canvasWidth;
+    const visibleWidthRatio = viewportWidth / canvasWidth;
+    const responsiveScale = homeCastleDestinationPropScale(
+      height > 0 ? width / height : DESTINATION_PROP_REFERENCE_ASPECT,
+      visibleWidthRatio,
+    );
     group.scale.setScalar(baseScale * responsiveScale);
   };
 }
