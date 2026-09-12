@@ -10,6 +10,8 @@ export const HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS = Object.freeze([
   Object.freeze({ x: 0.78, y: 0.72, z: 1.05 }),
 ]);
 
+export const HOME_CASTLE_FIREPLACE_LIGHT_ANCHOR = Object.freeze({ x: 1.18, y: -0.52, z: 0.88 });
+
 export const HOME_CASTLE_DUST_MOTE_COUNT = 24;
 
 function fractional(value) {
