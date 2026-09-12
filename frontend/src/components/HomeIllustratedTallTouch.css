@@ -34,9 +34,9 @@
     transform: translateX(-50%);
   }
 
-  /* Continue the near floor beneath the larger camera. The continuation stays
-     deliberately quieter than the Great Hall but no longer collapses into a huge
-     near-black block on very tall Android desktop-site viewports. */
+  /* Continue the near floor beneath the larger camera. Perspective seams are
+     intentionally very faint: enough to make the lower viewport read as the same
+     room, never enough to turn the castle into a UI grid. */
   .illustrated-home__stage::before {
     content: '';
     position: absolute;
@@ -49,15 +49,17 @@
     background:
       radial-gradient(ellipse at 77% 4%, rgba(244, 145, 68, .24), transparent 25%),
       radial-gradient(ellipse at 22% 7%, rgba(186, 90, 39, .15), transparent 27%),
-      radial-gradient(ellipse at 50% 0%, rgba(137, 69, 34, .22), transparent 42%),
-      repeating-linear-gradient(180deg, rgba(255, 220, 170, .032) 0 1px, transparent 1px 108px),
+      radial-gradient(ellipse at 84% 29%, rgba(177, 79, 31, .07), transparent 22%),
+      radial-gradient(ellipse at 16% 31%, rgba(160, 69, 29, .055), transparent 24%),
+      repeating-conic-gradient(from 76deg at 50% -5%, rgba(255, 214, 153, .018) 0deg .18deg, transparent .18deg 8deg),
+      repeating-linear-gradient(180deg, rgba(255, 220, 170, .026) 0 1px, transparent 1px 106px),
       linear-gradient(105deg, rgba(0, 0, 0, .18), transparent 34%, transparent 66%, rgba(0, 0, 0, .30)),
       linear-gradient(180deg, #3a1c11 0%, #2a140c 31%, #1b0d08 66%, #0d0704 100%);
   }
 
-  /* Let the canonical carpet become a long perspective runner instead of fading
-     after a few hundred pixels; it gives the lower viewport a clear architectural
-     vanishing line without becoming a second focal point. */
+  /* Let the canonical carpet become a long perspective runner. Fine edge piping
+     and sparse cross-weave keep the foreground tactile without competing with the
+     interactive Great Hall above. */
   .illustrated-home__stage::after {
     content: '';
     position: absolute;
@@ -69,7 +71,13 @@
     pointer-events: none;
     clip-path: polygon(43% 0, 57% 0, 84% 100%, 16% 100%);
     background:
-      linear-gradient(90deg, rgba(16, 3, 4, .20), transparent 22%, transparent 78%, rgba(16, 3, 4, .22)),
+      linear-gradient(90deg,
+        rgba(16, 3, 4, .20) 0 7%,
+        rgba(209, 144, 73, .12) 7.2% 7.8%,
+        transparent 8.2% 91.8%,
+        rgba(209, 144, 73, .11) 92.2% 92.8%,
+        rgba(16, 3, 4, .22) 93% 100%),
+      repeating-linear-gradient(180deg, rgba(222, 163, 94, .028) 0 1px, transparent 1px 88px),
       linear-gradient(180deg, rgba(112, 25, 22, .50), rgba(78, 16, 17, .36) 48%, rgba(42, 9, 12, .19) 78%, rgba(24, 6, 8, .08) 100%);
     filter: drop-shadow(0 16px 24px rgba(0, 0, 0, .20));
   }
@@ -96,14 +104,14 @@
     width: 22%;
   }
 
-  /* Narrow-layout speech is normally fixed near the viewport bottom. On a tall
-     Android desktop-site viewport that detaches Matthias from the castle. Keep the
-     message attached to the scene and cap it to the actually visible stage width. */
+  /* Give the foreground a little breathing room before Matthias speaks. The card
+     still belongs to the hall, but no longer bunches every focal element into the
+     upper half of an unusually tall viewport. */
   .illustrated-home__speech {
     position: absolute;
     left: 50%;
     right: auto;
-    top: calc(100% + 18px);
+    top: calc(100% + clamp(54px, 5.5dvh, 96px));
     bottom: auto;
     width: min(760px, calc(66.6667% - 32px));
     max-height: min(36dvh, 320px);
