@@ -16,7 +16,7 @@ async function openDesktopWarRoom(page) {
   return { warRoom, shell };
 }
 
-test('War Room · desktop prioriza el tablero, deja el borde inferior limpio y concentra estado en el rail', async ({ page }) => {
+test('War Room · desktop prioriza el tablero, flota el estado sobre la escena y mantiene limpio el rail', async ({ page }) => {
   test.setTimeout(90_000);
   const { warRoom, shell } = await openDesktopWarRoom(page);
 
@@ -33,7 +33,7 @@ test('War Room · desktop prioriza el tablero, deja el borde inferior limpio y c
   await expect(turnPill).toContainText(/CPU nivel \d+/i);
   await expect(page.getByRole('button', { name: 'Más acciones de partida', exact: true })).toBeVisible();
 
-  // Board3D is lazy. Recheck once its deferred CSS has settled: the right-rail
+  // Board3D is lazy. Recheck once its deferred CSS has settled: the cinematic
   // status must remain visible and the retired bottom chrome must stay retired.
   await page.waitForTimeout(1500);
   await expect(turnPill).toBeVisible();
@@ -98,13 +98,18 @@ test('War Room · desktop prioriza el tablero, deja el borde inferior limpio y c
   expect(initialGeometry.boardWidth / initialGeometry.roomWidth).toBeGreaterThan(.72);
   expect(initialGeometry.boardLeft - initialGeometry.roomLeft).toBeLessThan(24);
 
-  // The match HUD now belongs to the right rail, not to the board artwork.
+  // Quick actions still belong to the right rail, but the primary match signal
+  // now floats over the board artwork instead of becoming another rail card.
   expect(initialGeometry.commanderLeft).toBeGreaterThanOrEqual(initialGeometry.boardRight - 2);
   expect(initialGeometry.commanderRight).toBeLessThanOrEqual(initialGeometry.roomRight + 2);
   expect(initialGeometry.commanderWidth).toBeGreaterThan(190);
   expect(initialGeometry.turnPillWidth).toBeGreaterThan(190);
-  expect(initialGeometry.turnPillLeft).toBeGreaterThanOrEqual(initialGeometry.commanderLeft - 2);
-  expect(initialGeometry.turnPillRight).toBeLessThanOrEqual(initialGeometry.commanderRight + 2);
+  expect(initialGeometry.turnPillLeft).toBeGreaterThanOrEqual(initialGeometry.boardLeft + 8);
+  expect(initialGeometry.turnPillRight).toBeLessThanOrEqual(initialGeometry.boardRight - 8);
+  expect(Math.abs(
+    ((initialGeometry.turnPillLeft + initialGeometry.turnPillRight) / 2)
+      - ((initialGeometry.boardLeft + initialGeometry.boardRight) / 2),
+  )).toBeLessThan(24);
   expect(Math.abs(initialGeometry.commanderLeft - initialGeometry.musicLeft)).toBeLessThan(4);
   expect(initialGeometry.musicTop).toBeGreaterThanOrEqual(initialGeometry.commanderBottom - 4);
   expect(initialGeometry.musicTop - initialGeometry.commanderBottom).toBeLessThan(20);
