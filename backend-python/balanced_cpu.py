@@ -15,15 +15,8 @@ from typing import Optional
 
 import chess
 
-from chess_ai import (
-    INF,
-    MATE_SCORE,
-    _minimax,
-    _order_moves,
-    get_cpu_move,
-    move_to_dict,
-    settings_for_level,
-)
+from chess_ai import MATE_SCORE, get_cpu_move, move_to_dict, settings_for_level
+from engine_analysis import score_root_candidates
 
 
 @dataclass(frozen=True)
@@ -82,40 +75,6 @@ def _suggested_move(board: chess.Board, suggestion: Optional[dict]) -> Optional[
     return move if move in board.legal_moves else None
 
 
-def _root_candidate_scores(
-    board: chess.Board,
-    *,
-    depth: int,
-    deadline: float,
-) -> list[tuple[chess.Move, float]]:
-    """Score all root moves with the same bounded minimax pass.
-
-    Partial passes are discarded by raising ``TimeoutError``. Comparing a
-    candidate against an incomplete root set would make the safety margin lie.
-    """
-    moves = _order_moves(board, list(board.legal_moves))
-    scores: list[tuple[chess.Move, float]] = []
-    tt = {}
-    for move in moves:
-        if time.monotonic() >= deadline:
-            raise TimeoutError
-        board.push(move)
-        try:
-            score, _ = _minimax(
-                board,
-                max(0, depth - 1),
-                -INF,
-                INF,
-                1,
-                deadline,
-                tt,
-            )
-        finally:
-            board.pop()
-        scores.append((move, score))
-    return scores
-
-
 def _score_gap(best_score: float, candidate_score: float, maximizing: bool) -> float:
     return (best_score - candidate_score) if maximizing else (candidate_score - best_score)
 
@@ -167,7 +126,7 @@ def get_balanced_cpu_move(
     budget = min(profile.budget_s, max(0.08, settings.time_budget_s * 0.20))
     deadline = time.monotonic() + budget
     try:
-        scored = _root_candidate_scores(board, depth=profile.depth, deadline=deadline)
+        scored = score_root_candidates(board, depth=profile.depth, deadline=deadline)
     except TimeoutError:
         return suggestion
     if not scored:
