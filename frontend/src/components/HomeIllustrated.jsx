@@ -123,6 +123,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           <strong>{matthiasModel.eyebrow}</strong><p>{matthiasModel.text}</p>
           <button
             type="button"
+            className={matthiasModel.action === 'insights' ? 'home-learning-card' : undefined}
             onClick={onMatthiasAction}
             aria-label={matthiasModel.action === 'insights' ? 'Abrir Así juegas con Matthias' : undefined}
           >{matthiasModel.actionLabel}</button>
