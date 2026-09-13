@@ -101,10 +101,10 @@ async function captureClip(context, page, path, clip) {
 
 for (const profile of PROFILES) {
   test(`War Room decor · scene-first captures ${profile.label}`, async () => {
-    // Full-quality desktop runs SwiftShader at DPR 2 and writes eight art-review
-    // captures. Keep its budget above the observed ~125s path without relaxing
-    // the much cheaper Android capture or the workflow-level 15 minute ceiling.
-    test.setTimeout(profile.forceFullQuality ? 180_000 : 120_000);
+    // Desktop writes the full scene plus seven decor/detail captures through
+    // SwiftShader and has an observed ~125s path on hosted CI. Android writes
+    // only the lighter broad-capture set, so keep its tighter budget.
+    test.setTimeout(profile.hasTouch ? 120_000 : 180_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const browser = await chromium.launch({
