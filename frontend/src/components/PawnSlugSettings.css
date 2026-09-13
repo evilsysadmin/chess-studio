@@ -257,6 +257,17 @@
   .pawn-slug-settings-actions > button {
     min-height: 44px;
   }
+
+  .pawn-slug .pawn-slug-settings-trigger {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .pawn-slug-hud {
+    right: 3.45rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
