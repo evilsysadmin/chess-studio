@@ -21,23 +21,30 @@ function normalizeDuration(value) {
   return 15;
 }
 
-function resolvedPatternIncidentKeys(playerModel) {
+function nonActionablePatternIncidentKeys(playerModel) {
   return new Set((Array.isArray(playerModel?.recurringErrors) ? playerModel.recurringErrors : [])
-    .filter((pattern) => [
-      PATTERN_IMPROVEMENT_STATES.PROBABLE_IMPROVEMENT,
-      PATTERN_IMPROVEMENT_STATES.CORRECTED_WITH_SUFFICIENT_SAMPLE,
-    ].includes(pattern?.improvementState))
+    .filter((pattern) => (
+      pattern?.improvementState !== PATTERN_IMPROVEMENT_STATES.STILL_OCCURRING
+      && pattern?.debt?.active !== true
+      && (
+        pattern?.debt?.paid === true
+        || [
+          PATTERN_IMPROVEMENT_STATES.PROBABLE_IMPROVEMENT,
+          PATTERN_IMPROVEMENT_STATES.CORRECTED_WITH_SUFFICIENT_SAMPLE,
+        ].includes(pattern?.improvementState)
+      )
+    ))
     .map((pattern) => pattern?.incidentKey)
     .filter(Boolean));
 }
 
 function pendingPersonalPuzzles(puzzles = [], playerModel = null) {
-  const resolvedKeys = resolvedPatternIncidentKeys(playerModel);
+  const suppressedKeys = nonActionablePatternIncidentKeys(playerModel);
   return (Array.isArray(puzzles) ? puzzles : []).filter((puzzle) => {
     if (puzzle?.masteredAt || Number(puzzle?.cleanSolves || 0) > 0) return false;
     const incidentKeys = Array.isArray(puzzle?.incidentKeys) ? puzzle.incidentKeys.filter(Boolean) : [];
-    if (!incidentKeys.length || !resolvedKeys.size) return true;
-    return incidentKeys.some((incidentKey) => !resolvedKeys.has(incidentKey));
+    if (!incidentKeys.length || !suppressedKeys.size) return true;
+    return incidentKeys.some((incidentKey) => !suppressedKeys.has(incidentKey));
   });
 }
 
