@@ -4,6 +4,7 @@ import {
   HOME_CASTLE_UTILITY_PROP_ANCHORS,
   createHomeCastleUtilityDestinationProps,
   homeCastleUtilityPropPositionScale,
+  homeCastleUtilityPropVisualScale,
 } from './HomeCastle3DUtilityProps.js';
 
 describe('HomeCastle3DUtilityProps', () => {
@@ -19,6 +20,14 @@ describe('HomeCastle3DUtilityProps', () => {
     expect(homeCastleUtilityPropPositionScale(16 / 9, 0.42)).toBeCloseTo(0.42, 4);
     expect(homeCastleUtilityPropPositionScale(390 / 844, 1)).toBe(0.34);
     expect(homeCastleUtilityPropPositionScale(0, 0)).toBe(1);
+  });
+
+  it('keeps utility props visually identifiable on portrait and tall-touch stages', () => {
+    expect(homeCastleUtilityPropVisualScale(1.6, 1)).toBe(1);
+    expect(homeCastleUtilityPropVisualScale(16 / 9, 0.42)).toBe(0.5);
+    expect(homeCastleUtilityPropVisualScale(390 / 844, 1)).toBe(0.5);
+    expect(homeCastleUtilityPropVisualScale(980 / 1740, 1)).toBe(0.5);
+    expect(homeCastleUtilityPropVisualScale(0, 0)).toBe(1);
   });
 
   it('registers both utility destinations with restrained room-light focus', () => {

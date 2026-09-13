@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { homeCastleDestinationPropScale } from './HomeCastle3DProps.js';
 
 const DESTINATION_PROP_REFERENCE_ASPECT = 1.6;
+const UTILITY_PROP_MIN_VISUAL_SCALE = 0.5;
 
 export const HOME_CASTLE_UTILITY_PROP_ANCHORS = Object.freeze({
   pawnslug: Object.freeze({ x: 0.92, y: -0.31, z: 0.32 }),
@@ -18,6 +19,13 @@ export function homeCastleUtilityPropPositionScale(aspect, visibleWidthRatio = 1
     ? numericVisibleRatio
     : 1;
   return THREE.MathUtils.clamp(Math.min(aspectScale, visibleScale), 0.34, 1);
+}
+
+export function homeCastleUtilityPropVisualScale(aspect, visibleWidthRatio = 1) {
+  return Math.max(
+    UTILITY_PROP_MIN_VISUAL_SCALE,
+    homeCastleDestinationPropScale(aspect, visibleWidthRatio),
+  );
 }
 
 function attachResponsivePlacement(group, driverMesh, baseScale, anchorX) {
@@ -42,7 +50,7 @@ function attachResponsivePlacement(group, driverMesh, baseScale, anchorX) {
       visibleWidthRatio,
     );
     group.scale.setScalar(
-      baseScale * homeCastleDestinationPropScale(viewportAspect, visibleWidthRatio),
+      baseScale * homeCastleUtilityPropVisualScale(viewportAspect, visibleWidthRatio),
     );
   };
 }
