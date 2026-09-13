@@ -8,6 +8,7 @@ from engine_analysis import (
     RootCandidateAnalysis,
     RootMoveComparison,
     analyze_root_candidates,
+    analyze_root_iterative,
     best_root_candidate,
     build_factual_move_analysis,
     compare_root_move,
@@ -16,6 +17,7 @@ from engine_analysis import (
     score_root_candidates,
     score_root_move,
     top_root_candidates,
+    top_root_candidates_iterative,
 )
 
 
@@ -112,6 +114,70 @@ def test_top_root_candidates_returns_one_ranked_complete_pass(monkeypatch):
 
     with pytest.raises(ValueError, match="limit"):
         top_root_candidates(board, limit=0, depth=3, budget_s=0.4)
+
+
+def test_iterative_root_snapshot_keeps_deepest_complete_ranked_pass(monkeypatch):
+    board = chess.Board()
+    calls = []
+
+    def fake_analyze(_board, *, depth, deadline=None, **_kwargs):
+        calls.append((depth, deadline))
+        if depth == 3:
+            raise TimeoutError
+        return [
+            RootCandidateAnalysis(chess.Move.from_uci("e2e4"), 10.0 * depth, None),
+            RootCandidateAnalysis(chess.Move.from_uci("d2d4"), 20.0 * depth, None),
+        ]
+
+    monkeypatch.setattr(engine_analysis, "analyze_root_candidates", fake_analyze)
+
+    snapshot = analyze_root_iterative(board, max_depth=4, budget_s=10.0)
+
+    assert snapshot.depth == 2
+    assert snapshot.candidate_count == 2
+    assert [candidate.move.uci() for candidate in snapshot.candidates] == ["d2d4", "e2e4"]
+    assert [candidate.score for candidate in snapshot.candidates] == [40.0, 20.0]
+    assert [depth for depth, _ in calls] == [1, 2, 3]
+    assert len({deadline for _, deadline in calls}) == 1
+
+
+def test_iterative_root_snapshot_discards_partial_first_pass_and_validates_depth(monkeypatch):
+    board = chess.Board()
+    monkeypatch.setattr(
+        engine_analysis,
+        "analyze_root_candidates",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(TimeoutError()),
+    )
+
+    with pytest.raises(TimeoutError):
+        analyze_root_iterative(board, max_depth=3, budget_s=1.0)
+    with pytest.raises(ValueError, match="max_depth"):
+        analyze_root_iterative(board, max_depth=0, budget_s=1.0)
+
+
+def test_top_root_candidates_iterative_preserves_total_candidate_count(monkeypatch):
+    board = chess.Board()
+    candidates = tuple(
+        RootCandidateAnalysis(chess.Move.from_uci(uci), score, None)
+        for uci, score in (("d2d4", 30.0), ("e2e4", 20.0), ("g1f3", 10.0))
+    )
+    monkeypatch.setattr(
+        engine_analysis,
+        "analyze_root_iterative",
+        lambda *_args, **_kwargs: engine_analysis.RootAnalysisSnapshot(
+            candidates=candidates,
+            depth=3,
+            candidate_count=20,
+        ),
+    )
+
+    snapshot = top_root_candidates_iterative(board, limit=2, max_depth=4, budget_s=0.5)
+
+    assert snapshot.depth == 3
+    assert snapshot.candidate_count == 20
+    assert [candidate.move.uci() for candidate in snapshot.candidates] == ["d2d4", "e2e4"]
+    with pytest.raises(ValueError, match="limit"):
+        top_root_candidates_iterative(board, limit=0, max_depth=4, budget_s=0.5)
 
 
 def test_best_root_candidate_returns_none_for_terminal_root(monkeypatch):
