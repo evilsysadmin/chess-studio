@@ -71,7 +71,7 @@ describe('expediente individual de Combate', () => {
     expect(unitRecordForKey(state, 'p-a').stats.revives).toBe(1);
   });
 
-  it('la muerte permanente mueve el expediente al Memorial con rango final y lo saca de activos', () => {
+  it('la muerte permanente mueve el expediente al Memorial con rango final y última misión real', () => {
     let state = ensureUnitServiceState(baseRoster());
     state = recordUnitBattle(state, {
       battleId: 'battle-last',
@@ -85,7 +85,13 @@ describe('expediente individual de Combate', () => {
     const archived = archivePermanentCasualty(state, 'p-a', '2026-08-21T16:00:00.000Z');
     expect(archived.unitRecords['unit-rivas']).toBeUndefined();
     expect(archived.memorial).toHaveLength(1);
-    expect(archived.memorial[0]).toMatchObject({ alias: 'Rivas', finalLevel: 10, finalRankLabel: 'Coronel' });
+    expect(archived.memorial[0]).toMatchObject({
+      alias: 'Rivas',
+      finalLevel: 10,
+      finalRankLabel: 'Coronel',
+      lastBattleAt: '2026-08-21T15:00:00.000Z',
+      permanentDeathAt: '2026-08-21T16:00:00.000Z',
+    });
     expect(archived.memorial[0].stats).toMatchObject({ battles: 1, deaths: 1, kills: 3 });
   });
 });

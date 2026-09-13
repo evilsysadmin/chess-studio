@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildCombatHonoursModel } from './CombatHonoursRoom.jsx';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { buildCombatHonoursModel, MemorialDossier } from './CombatHonoursRoom.jsx';
 
 // A visual trophy is not allowed to exist unless the service record proves it.
 function record(overrides = {}) {
@@ -74,6 +75,24 @@ describe('CombatHonoursRoom', () => {
     expect(cabinet.artifact).toBe('medal-cabinet');
     expect(model.memorial[0].alias).toBe('Erika');
     expect(model.roomMood).toBe('honours-and-memorial');
+  });
+
+  it('el expediente del caído muestra la última misión realmente registrada', () => {
+    const html = renderToStaticMarkup(<MemorialDossier entry={{
+      identityId: 'fallen-2',
+      alias: 'Marta',
+      originType: 'p',
+      finalRankLabel: 'Sargento',
+      finalLevel: 5,
+      lastBattleAt: '2026-08-21T15:00:00.000Z',
+      permanentDeathAt: '2026-08-21T16:00:00.000Z',
+      stats: { battles: 4, survivals: 3, kills: 2, bossDamage: 0, revives: 1 },
+      decorationsResolved: [],
+      serviceMarksResolved: [],
+    }} />);
+
+    expect(html).toContain('Última misión');
+    expect(html).toContain('21/8/2026');
   });
 
   it('limita el muro visible pero conserva el total real del memorial', () => {
