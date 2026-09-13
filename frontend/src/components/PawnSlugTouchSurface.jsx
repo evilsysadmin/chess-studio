@@ -111,7 +111,6 @@ export default function PawnSlugTouchSurface({ send }) {
     const rect = event.currentTarget.getBoundingClientRect();
     return {
       x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
       width: rect.width,
     };
   }
@@ -131,6 +130,7 @@ export default function PawnSlugTouchSurface({ send }) {
       zone,
       startClientX: event.clientX,
       startClientY: event.clientY,
+      surfaceLeft: event.clientX - start.x,
       width: start.width,
       action: null,
       actionStartedAt: 0,
@@ -156,10 +156,10 @@ export default function PawnSlugTouchSurface({ send }) {
     const pointer = pointersRef.current.get(event.pointerId);
     if (!pointer) return;
     event.preventDefault();
-    const current = point(event);
 
     if (pointer.zone === 'move') {
-      const direction = pawnSlugTouchMoveDirection(current.x, pointer.width, pointer.action);
+      const x = event.clientX - pointer.surfaceLeft;
+      const direction = pawnSlugTouchMoveDirection(x, pointer.width, pointer.action);
       if (direction !== pointer.action) {
         if (pointer.action) {
           scheduleRelease(pointer.action, pointer.actionStartedAt, pointer.owner, { immediate: true });
