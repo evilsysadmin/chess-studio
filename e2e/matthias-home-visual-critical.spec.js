@@ -26,6 +26,7 @@ test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', as
   await expect(matthias).toContainText('MATTHIAS');
   await expect(matthias).toHaveAttribute('data-home-matthias-scene', /.+/);
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', /.+/);
+  await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', /^(34000|38000|42000|44000|48000|64000)$/);
   await expect(matthias.locator('[data-matthias-layered-art="true"]')).toBeVisible();
 
   await matthias.click();
@@ -56,6 +57,7 @@ test('Home canónica · el expediente raro de Matthias exige derrotas reales y o
   await expect(matthias).toHaveAttribute('data-home-matthias-scene', 'moment-loss-dossier');
   await expect(matthias).toHaveAttribute('data-home-matthias-zone', 'desk');
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Revisando viejas heridas');
+  await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', '44000');
 });
 
 test('Home canónica · Matthias puede quedarse dormido sobre el manual en la biblioteca', async ({ page }) => {
@@ -75,6 +77,7 @@ test('Home canónica · Matthias puede quedarse dormido sobre el manual en la bi
   await expect(matthias).toHaveAttribute('data-home-matthias-scene', 'moment-book-doze-sleep');
   await expect(matthias).toHaveAttribute('data-home-matthias-zone', 'library');
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Dormido sobre el manual');
+  await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', '64000');
   await expect(rig).toHaveAttribute('data-gesture', 'doze');
   await expect(rig).toHaveAttribute('data-rig-family', 'sleep');
 });
