@@ -1,6 +1,6 @@
 import { STORAGE_LOCAL, readJsonStorage, writeJsonStorage } from './safeStorage.js';
 import { cooldownStateFromTimestamp } from './cooldownClock.js';
-import { buildPlayerModel, evidenceConfidence } from './playerModel.js';
+import { buildPlayerModel } from './playerModel.js';
 
 export const AI_PLAYER_PORTRAIT_CACHE_KEY = 'chess-study-ai-player-portrait-v1';
 const PORTRAIT_SCHEMA = 8;
@@ -28,26 +28,24 @@ function compactModeStats(byMode = {}) {
   return out;
 }
 
-function compactTimeControlStats(byTimeControl = {}) {
-  const out = {};
-  for (const [id, stats] of Object.entries(byTimeControl || {})) {
-    const games = Math.max(0, Number(stats?.games || 0));
-    if (!id || id === 'none' || games < 3) continue;
-    const wins = Math.max(0, Number(stats?.wins || 0));
-    out[String(id).slice(0, 32)] = {
-      games,
-      wins,
-      draws: Math.max(0, Number(stats?.draws || 0)),
-      losses: Math.max(0, Number(stats?.losses || 0)),
-      win_pct: games ? Math.round((Math.min(wins, games) / games) * 100) : 0,
-      evidence_strength: evidenceConfidence(games, { mediumAt: 5, highAt: 10 }),
-    };
-  }
-  return out;
+function compactPlayerModelTimeControls(timeControls = []) {
+  return Object.fromEntries((Array.isArray(timeControls) ? timeControls : [])
+    .filter((row) => Number(row?.games || 0) >= 3)
+    .map((row) => [row.id, {
+      games: Number(row.games || 0),
+      wins: Number(row.wins || 0),
+      draws: Number(row.draws || 0),
+      losses: Number(row.losses || 0),
+      win_pct: Number(row.winPct || 0),
+      evidence_strength: row.confidence,
+    }]));
 }
 
 export function buildPlayerPortraitFacts(insights, rivalry = {}, extras = {}, worstMove = null) {
-  const model = buildPlayerModel({ insights });
+  const model = buildPlayerModel({
+    insights,
+    timeControlStats: rivalry?.record?.byTimeControl,
+  });
   if (model.samples.games <= 0) return null;
 
   const facts = {
@@ -112,7 +110,7 @@ export function buildPlayerPortraitFacts(insights, rivalry = {}, extras = {}, wo
     };
   }
 
-  const timeControlFacts = compactTimeControlStats(rivalry?.record?.byTimeControl);
+  const timeControlFacts = compactPlayerModelTimeControls(model.timeControls);
   if (Object.keys(timeControlFacts).length) facts.by_time_control = timeControlFacts;
 
   const incidents = Object.entries(rivalry?.incidents || {})
