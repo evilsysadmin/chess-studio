@@ -26,7 +26,9 @@ test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve a
   await expect(gameTurn(page)).toBeVisible();
 
   const warRoomMatthias = page.getByRole('complementary', { name: 'Puesto táctico de Matthias' });
-  if (await warRoomMatthias.isVisible().catch(() => false)) {
+  const matthiasAvatar = page.locator('.game-player-rail.is-cpu .game-player-avatar.has-portrait img');
+  await expect(warRoomMatthias.or(matthiasAvatar)).toBeVisible();
+  if (await warRoomMatthias.isVisible()) {
     await expect(warRoomMatthias.getByRole('heading', { name: 'Matthias', exact: true })).toBeVisible();
     await expect(warRoomMatthias.locator('[data-matthias-war-room-presence="king-piece"]')).toBeVisible();
     await expect(warRoomMatthias.locator('[data-three-face-rig="face-v1"]')).toHaveCount(0);
@@ -34,7 +36,6 @@ test('Partida rápida · una partida activa sobrevive a reload/deploy y vuelve a
     // Explicit 2D remains a supported user preference; its player rail may
     // still use the canonical CPU portrait because Matthias is not embodied
     // as the 3D king in that renderer.
-    const matthiasAvatar = page.locator('.game-player-rail.is-cpu .game-player-avatar.has-portrait img');
     await expect(matthiasAvatar).toBeVisible();
     expect(await matthiasAvatar.evaluate((img) => img.naturalWidth)).toBeGreaterThan(0);
   }
@@ -167,7 +168,6 @@ test('Mesa de Guerra · hover abre ficha y doble clic mueve Tablero ↔ Banquill
   await login(page);
   await openCampaignBriefing(page);
   const deployment = await openDeployment(page);
-
   const pawnSquare = deployment.getByRole('button', { name: /Casilla a2,/ });
   const pawn = pawnSquare.locator('img.piece.piece-event-target');
   await expect(pawn).toBeVisible();
@@ -507,7 +507,6 @@ test('Onboarding Home · Matthias presenta cuatro pasos y Escuela va primero', a
   const schoolCard = buttonWithHeading(page, 'Escuela de Matthias');
   await expect(schoolCard).toHaveClass(/home-onboarding-target/);
   await expect(schoolCard.getByText('PASO 1/4 · SIGUIENTE', { exact: true })).toBeVisible();
-
   await schoolStep.click();
   await expect(page.getByRole('heading', { name: 'Aprende jugando. Aprueba demostrando.', exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
