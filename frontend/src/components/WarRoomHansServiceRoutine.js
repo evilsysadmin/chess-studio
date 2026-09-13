@@ -39,7 +39,7 @@ import {
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v5-runtime-task';
+export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v6-reset-before-return';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const COMMAND_DESK_TOP_NAME = 'war-room-command-desk-top';
@@ -295,6 +295,7 @@ export function installWarRoomHansServiceRoutine(root) {
         }
       }
       if (actionElapsed >= warRoomHansServiceActionMs(eventName)) {
+        resetWarRoomHansWalk(controller, { full: true });
         setDialogue(actor, '');
         state = 'returning';
         setWarRoomHansTaskPhase(runtime, 'returning');

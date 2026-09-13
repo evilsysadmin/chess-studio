@@ -265,6 +265,7 @@ export function installWarRoomHansMopRoutine(root) {
       props.bucket.position.x = 0.40 + Math.sin(now * 0.002) * 0.025;
       applyWarRoomHansTaskPose(actor, 'mop');
       if (patchRemainingMs <= 0) {
+        resetWarRoomHansWalk(controller, { full: true });
         if (activeElapsedMs >= fatigueMs) {
           state = 'returning';
           setWarRoomHansTaskPhase(runtime, 'returning');
