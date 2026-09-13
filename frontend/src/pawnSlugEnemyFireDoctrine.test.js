@@ -10,7 +10,7 @@ import {
 describe('Pawn Slug enemy fire doctrine', () => {
   it('uses the same four weapon families with distinct combat jobs', () => {
     expect(Object.keys(PAWN_SLUG_ENEMY_FIRE_PROFILES)).toEqual(['pistol', 'machinegun', 'shotgun', 'panzerfaust']);
-    expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.machinegun.burstContinueChance).toBeGreaterThan(0.6);
+    expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.machinegun.burstContinueChance).toBe(0.6);
     expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.machinegun.burstInterval).toBeGreaterThanOrEqual(0.1);
     expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.shotgun.pellets).toBeGreaterThanOrEqual(5);
     expect(PAWN_SLUG_ENEMY_FIRE_PROFILES.shotgun.range).toBeLessThan(PAWN_SLUG_ENEMY_FIRE_PROFILES.machinegun.range);
@@ -63,7 +63,7 @@ describe('Pawn Slug enemy fire doctrine', () => {
     expect(pawnSlugEnemyPrefireStep('panzerfaust', { ready: true, remaining: 0.05, dt: 0.06 })).toEqual({ phase: 'fire', remaining: 0, progress: 1 });
   });
 
-  it('clusters machinegun shots into short runs and compensating pauses without raising average cadence', () => {
+  it('clusters machinegun shots into readable short runs without materially raising average cadence', () => {
     const profile = PAWN_SLUG_ENEMY_FIRE_PROFILES.machinegun;
     const fastA = pawnSlugEnemyFireCooldown('machinegun', 0);
     const fastB = pawnSlugEnemyFireCooldown('machinegun', profile.burstContinueChance - 0.01);
@@ -74,10 +74,15 @@ describe('Pawn Slug enemy fire doctrine', () => {
     expect(pauseA).toBeCloseTo(profile.burstPauseMin, 5);
     expect(pauseB).toBeCloseTo(profile.burstPauseMax, 5);
 
+    const meanBurstShots = 1 / (1 - profile.burstContinueChance);
+    const eightPlusBurstChance = profile.burstContinueChance ** 7;
+    expect(meanBurstShots).toBeCloseTo(2.5, 5);
+    expect(eightPlusBurstChance).toBeLessThan(0.03);
+
     const clusteredMean = profile.burstContinueChance * profile.burstInterval
       + (1 - profile.burstContinueChance) * ((profile.burstPauseMin + profile.burstPauseMax) / 2);
     const legacyMean = (profile.cooldownMin + profile.cooldownMax) / 2;
-    expect(clusteredMean).toBeCloseTo(legacyMean, 3);
+    expect(Math.abs(clusteredMean - legacyMean)).toBeLessThanOrEqual(0.002);
   });
 
   it('interpolates non-machinegun cooldowns and returns a weapon-shaped shot plan with travel range', () => {
