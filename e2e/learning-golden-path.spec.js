@@ -90,8 +90,7 @@ test('Home · el avatar residente de Matthias abre Así juegas · y cierra el lo
   });
   await expect(endgame).toBeVisible();
   await expect(endgame.getByText('¡Ganaste la partida!', { exact: true })).toBeVisible();
-  await endgame.getByRole('button', { name: 'Más opciones', exact: true }).click();
-  await endgame.getByRole('button', { name: 'Volver al menú', exact: true }).click();
+  await endgame.getByRole('button', { name: 'Ver siguiente objetivo', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
 
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
