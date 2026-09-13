@@ -211,6 +211,11 @@
   .pawn-slug-settings-trigger::first-letter { font-size: 1rem; }
 }
 
+/* Loaded last for the Pawn Slug shell: keep the health meter on the flexible
+   portion of row two instead of letting CSS Grid auto-place it at zero width. */
+.pawn-slug-health-track { grid-column: 1 / 3; }
+.pawn-slug-health > b { grid-column: 3; }
+
 /* The canonical gear is intentionally visually small, but touch users keep a
    full 44px hit area in both portrait and landscape. */
 @media (pointer: coarse), (max-width: 760px) {
