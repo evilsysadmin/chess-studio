@@ -104,7 +104,8 @@ async function openPawnSlugFromHome(page) {
   await expect(page.getByRole('heading', { name: 'Pawn Slug', exact: true })).toBeVisible();
 }
 
-test('Browser lifecycle · Home → War Room → Home no deja recursos gráficos o globales zombis', async ({ page }) => {
+test('Browser lifecycle · Home → War Room → Home → Pawn Slug → Home no acumula recursos globales', async ({ page }) => {
+  test.setTimeout(150_000);
   await installGlobalResourceProbe(page);
   await mockApi(page, {
     profileSeed: {
@@ -133,28 +134,8 @@ test('Browser lifecycle · Home → War Room → Home no deja recursos gráficos
   await page.getByRole('button', { name: 'Cancelar sin penalización', exact: true }).click();
   await expect(home).toBeVisible();
   await settle(page);
-
-  const final = await snapshot();
-  expectReturnedResourcesToFitBaseline({ baseline, final });
-});
-
-test('Browser lifecycle · Home → Pawn Slug → Home cierra WebGL, Worker y audio premium', async ({ page }) => {
-  test.setTimeout(100_000);
-  await installGlobalResourceProbe(page);
-  await mockApi(page, {
-    profileSeed: {
-      'matthias.onboarded': '2',
-      'chess-study-home-guide-dismissed-v1': '1',
-    },
-  });
-  await login(page);
-
-  const home = page.getByRole('region', { name: 'Modos principales', exact: true });
-  await expect(home).toBeVisible();
-  await settle(page);
-
-  const snapshot = () => page.evaluate(() => window.__chessGlobalResourceProbe.snapshot());
-  const baseline = await snapshot();
+  const afterWarRoom = await snapshot();
+  expectReturnedResourcesToFitBaseline({ baseline, final: afterWarRoom });
 
   await openPawnSlugFromHome(page);
   await page.getByRole('button', { name: 'INICIAR OPERACIÓN', exact: true }).click();
