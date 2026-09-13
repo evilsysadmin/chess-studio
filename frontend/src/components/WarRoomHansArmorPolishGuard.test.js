@@ -3,8 +3,10 @@ import * as THREE from 'three';
 import {
   applyWarRoomHansArmorPolishPose,
   rigWarRoomHansPolishCloth,
+  warRoomHansChoreUsesHandCloth,
   WAR_ROOM_HANS_ARMOR_POLISH_GUARD_VERSION,
 } from './WarRoomHansArmorPolishGuard.js';
+import { warRoomHansChoreForEvent } from './WarRoomHansChoreContract.js';
 
 describe('WarRoomHansArmorPolishGuard', () => {
   it('rigs the polishing cloth to Hans right hand instead of leaving it floating on the actor root', () => {
@@ -21,6 +23,12 @@ describe('WarRoomHansArmorPolishGuard', () => {
     expect(cloth.position.y).toBeCloseTo(-0.62, 6);
     expect(cloth.userData.warRoomHansClothRig).toBe(WAR_ROOM_HANS_ARMOR_POLISH_GUARD_VERSION);
     expect(cloth.userData.warRoomHansClothHand).toBe('right');
+  });
+
+  it('keeps every polishing cloth chore hand-rigged, including brass polish', () => {
+    expect(warRoomHansChoreUsesHandCloth(warRoomHansChoreForEvent('dust-armor'))).toBe(true);
+    expect(warRoomHansChoreUsesHandCloth(warRoomHansChoreForEvent('polish-brass'))).toBe(true);
+    expect(warRoomHansChoreUsesHandCloth(warRoomHansChoreForEvent('dust-board'))).toBe(false);
   });
 
   it('adds a visible polishing loop while keeping the cloth attached to the working arm', () => {
