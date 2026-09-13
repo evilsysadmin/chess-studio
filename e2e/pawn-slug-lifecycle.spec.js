@@ -41,11 +41,36 @@ async function startPawnSlug(page) {
   await expect(page.getByText('Dienstpistole', { exact: true })).toBeVisible();
 }
 
-test('Pawn Slug · reinicio, F5 y vuelta al laboratorio dejan el runtime limpio', async ({ page }) => {
-  // Keep this lifecycle gate to one expensive Three.js boot. Reload and re-entry
-  // must return to the pre-boot ready state instead of silently spawning another
-  // WebGL runtime or keeping a stale canvas alive.
-  test.setTimeout(100_000);
+async function missionProgress(page) {
+  const label = await page.locator('.pawn-slug-mission-progress').getAttribute('aria-label');
+  const match = String(label || '').match(/(\d+)%/);
+  return Number(match?.[1] || 0);
+}
+
+async function runAndGunToProgress(page, targetPercent) {
+  const deadline = Date.now() + 35_000;
+  await page.keyboard.down('ArrowRight');
+  await page.keyboard.down('Space');
+  try {
+    while (Date.now() < deadline) {
+      const progress = await missionProgress(page);
+      if (progress >= targetPercent) return progress;
+      // Jump often enough to exercise real movement/landing while avoiding a
+      // deterministic straight-line suicide march through every firing lane.
+      await page.keyboard.press('ShiftLeft');
+      await page.waitForTimeout(650);
+    }
+  } finally {
+    await page.keyboard.up('Space');
+    await page.keyboard.up('ArrowRight');
+  }
+  throw new Error(`Pawn Slug no alcanzó ${targetPercent}% con controles reales; progreso=${await missionProgress(page)}%`);
+}
+
+test('Pawn Slug · checkpoint real, reinicio, F5 y vuelta al laboratorio dejan el runtime limpio', async ({ page }) => {
+  // One premium Three.js boot now also has to cross the first real checkpoint
+  // before proving restart/reload/re-entry cleanup.
+  test.setTimeout(140_000);
   await openPawnSlug(page);
   await startPawnSlug(page);
 
@@ -53,6 +78,10 @@ test('Pawn Slug · reinicio, F5 y vuelta al laboratorio dejan el runtime limpio'
   const canvas = stage.locator('canvas');
   await expect(canvas).toHaveCount(1);
   await expect(canvas).toBeVisible({ timeout: 30_000 });
+
+  const checkpointProgress = await runAndGunToProgress(page, 30);
+  expect(checkpointProgress).toBeGreaterThanOrEqual(30);
+  await expect(page.locator('.pawn-slug-mission-progress')).toHaveAttribute('aria-label', /Progreso de misión (?:3\d|[4-9]\d|100)%/);
 
   await page.getByRole('button', { name: 'Abrir ajustes de Pawn Slug', exact: true }).click();
   const settings = page.getByRole('dialog', { name: 'Pawn Slug Settings' });
