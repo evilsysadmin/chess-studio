@@ -42,7 +42,7 @@ export default function PersonalTrainingDebtPanel({ summary, puzzles = [], onTra
 
   const debtBlock = !debts.length ? null : !top ? (
     <p className="hint-text friendly-inline-note" role="status">
-      ✓ Deuda recurrente pagada: {summary.paidCount} patrón{summary.paidCount === 1 ? '' : 'es'} demostrado{summary.paidCount === 1 ? '' : 's'} ya tienen limpios sus dos casos reales más recientes.
+      ✓ Entrenamiento recurrente al día: {summary.paidCount} patrón{summary.paidCount === 1 ? '' : 'es'} tiene{summary.paidCount === 1 ? '' : 'n'} limpios sus dos casos reales más recientes. Aún hacen falta partidas nuevas para hablar de corrección.
     </p>
   ) : (
     <section className="friendly-inline-note personal-training-debt" aria-label="Deuda de errores recurrentes">
@@ -53,13 +53,13 @@ export default function PersonalTrainingDebtPanel({ summary, puzzles = [], onTra
 
       {debts.length > 1 && (
         <details className="friendly-disclosure">
-          <summary>Ver todas las deudas ({summary.activeCount} activas · {summary.paidCount} pagadas)</summary>
+          <summary>Ver todas las deudas ({summary.activeCount} activas · {summary.paidCount} entrenadas)</summary>
           <div className="friendly-disclosure-body personal-puzzle-history-list">
             {debts.map((debt) => (
               <div className="personal-puzzle-history-row" key={debt.id}>
                 <span>
                   <b>{debt.label}</b>
-                  <small>{debt.cases} casos reales · últimos {debt.target}: {debt.progress}/{debt.target} limpios{debt.paid ? ' · pagada' : ''}</small>
+                  <small>{debt.cases} casos reales · últimos {debt.target}: {debt.progress}/{debt.target} limpios{debt.paid ? ' · entrenamiento completo' : ''}</small>
                 </span>
                 {debt.active ? <button type="button" className="secondary-btn" onClick={() => train(debt)}>Entrenar →</button> : <span>✓</span>}
               </div>

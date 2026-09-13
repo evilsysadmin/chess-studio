@@ -74,15 +74,18 @@ describe('InsightsRecurringErrors improvement state', () => {
     expect(html).toContain('data-improvement-state="probable-improvement"');
   });
 
-  it('keeps the old factual debt copy when there is not yet a post-training sample', () => {
+  it('keeps training completion scoped when there is not yet a post-training sample', () => {
     mocks.buildPlayerModel.mockReturnValue({
       recurringErrors: [pattern({ improvementState: 'no-sample' })],
     });
 
     const html = renderToStaticMarkup(<InsightsRecurringErrors />);
 
-    expect(html).toContain('Deuda pagada');
+    expect(html).toContain('Entrenamiento completado');
+    expect(html).toContain('falta observar nuevas partidas');
     expect(html).not.toContain('Mejora probable');
+    expect(html).not.toContain('Corregido con muestra suficiente');
+    expect(html).toContain('data-training-debt="paid"');
     expect(html).toContain('data-improvement-state="no-sample"');
   });
 });
