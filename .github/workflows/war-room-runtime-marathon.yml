@@ -9,6 +9,7 @@ on:
       - 'e2e/war-room-ephemeral-cleanup.spec.js'
       - 'e2e/war-room-webgl-fallback.spec.js'
       - 'e2e/war-room-render-budget.spec.js'
+      - 'e2e/war-room-board-input.js'
       - 'frontend/src/components/Board3D*.js'
       - 'frontend/src/components/Board3D*.jsx'
       - 'frontend/src/components/WarRoom3D*.js'
