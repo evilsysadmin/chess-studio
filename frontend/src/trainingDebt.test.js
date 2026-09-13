@@ -40,7 +40,7 @@ describe('deuda de errores recurrentes', () => {
     expect(debt).toMatchObject({ cleanCases: 1, progress: 1, active: true });
   });
 
-  it('dos casos distintos resueltos limpiamente amortizan la deuda', () => {
+  it('dos casos recientes resueltos limpiamente amortizan la deuda', () => {
     const summary = personalTrainingDebtSummary([
       puzzle('a', { cleanSolves: 1, solves: 1 }),
       puzzle('b', { cleanSolves: 2, solves: 2 }),
@@ -49,6 +49,43 @@ describe('deuda de errores recurrentes', () => {
     expect(summary.activeCount).toBe(0);
     expect(summary.paidCount).toBe(1);
     expect(summary.debts[0]).toMatchObject({ cases: 3, cleanCases: 2, progress: 2, paid: true });
+  });
+
+  it('un caso real nuevo reabre una deuda aunque dos casos antiguos estuvieran limpios', () => {
+    const summary = personalTrainingDebtSummary([
+      puzzle('latest', { createdAt: '2026-09-12T10:00:00Z' }),
+      puzzle('old-clean-2', { createdAt: '2026-09-10T10:00:00Z', cleanSolves: 1, solves: 1 }),
+      puzzle('old-clean-1', { createdAt: '2026-09-01T10:00:00Z', cleanSolves: 1, solves: 1 }),
+    ]);
+    expect(summary.activeCount).toBe(1);
+    expect(summary.paidCount).toBe(0);
+    expect(summary.debts[0]).toMatchObject({
+      cases: 3,
+      historicalCleanCases: 2,
+      cleanCases: 1,
+      progress: 1,
+      active: true,
+      paid: false,
+      recentPuzzleIds: ['latest', 'old-clean-2'],
+    });
+  });
+
+  it('limpiar los dos casos más recientes vuelve a pagar la deuda sin exigir borrar toda la historia', () => {
+    const summary = personalTrainingDebtSummary([
+      puzzle('latest-clean', { createdAt: '2026-09-12T10:00:00Z', cleanSolves: 1, solves: 1 }),
+      puzzle('recent-clean', { createdAt: '2026-09-10T10:00:00Z', cleanSolves: 1, solves: 1 }),
+      puzzle('old-dirty', { createdAt: '2026-09-01T10:00:00Z' }),
+    ]);
+    expect(summary.activeCount).toBe(0);
+    expect(summary.paidCount).toBe(1);
+    expect(summary.debts[0]).toMatchObject({
+      cases: 3,
+      historicalCleanCases: 2,
+      cleanCases: 2,
+      progress: 2,
+      paid: true,
+      recentPuzzleIds: ['latest-clean', 'recent-clean'],
+    });
   });
 
   it('una recaída posterior vuelve a abrir una deuda que estaba pagada', () => {
