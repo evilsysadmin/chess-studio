@@ -37,12 +37,17 @@
     max-width: 100%;
   }
 
+  /* Board3D.css arrives with the lazy 3D bundle and therefore loads after this
+   * static GameScreen stylesheet. Its generic <=1080px tablet composition used
+   * to win the cascade after Three mounted, flipping landscape back to
+   * commander-left / board-right. These declarations are the phone-landscape
+   * contract, so pin only the grid properties that must survive lazy CSS. */
   .game-screen .board-live-row.is-3d-warroom {
-    grid-template-columns: minmax(0, 1fr) minmax(148px, 188px);
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(148px, 188px) !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
     grid-template-areas:
       'board commander'
-      'board chat';
+      'board chat' !important;
     align-items: start;
     gap: .38rem;
     padding: .34rem;
@@ -70,6 +75,13 @@
   .game-screen .game-board-stack-3d .game-player-rail.is-human {
     min-height: 38px;
     padding-block: .25rem;
+  }
+
+  /* GameCommandDeck is retained for the regular responsive hierarchy but the
+   * landscape War Room already exposes its compact actions elsewhere. Keeping
+   * the legacy row here duplicated Zen/abandon and pushed it below the viewport. */
+  .game-screen .game-board-stack-3d > .game-command-deck {
+    display: none !important;
   }
 
   .game-screen .game-3d-command-column {
@@ -129,9 +141,15 @@
     flex-basis: 8px;
   }
 
+  /* Same cascade issue as the room grid: Board3D's generic <=1080px rule
+   * changes this back to a two-column CSS grid after lazy mount. Landscape owns
+   * a compact vertical rail instead; make that display mode explicit. */
   .game-screen .game-side-column.game-side-column-3d {
     grid-area: chat;
-    display: flex;
+    display: flex !important;
+    grid-template-columns: none !important;
+    grid-template-rows: none !important;
+    grid-template-areas: none !important;
     flex-direction: column;
     gap: .28rem;
     width: 100%;
@@ -162,8 +180,8 @@
  * board before secondary rails. The right column remains scrollable. */
 @media (orientation: landscape) and (max-width: 920px) and (max-height: 430px) {
   .game-screen .game-board-stack-3d .board3d-main-shell {
-    height: min(76dvh, 330px);
-    min-height: 240px;
+    height: min(72dvh, 300px);
+    min-height: 220px;
   }
 
   .game-screen .game-side-column.game-side-column-3d {
