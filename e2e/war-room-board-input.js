@@ -22,6 +22,15 @@ async function focusedSquare(board) {
   return String(await board.getAttribute('data-board3d-focused') || '');
 }
 
+async function submitFocusedSquare(page, canvas) {
+  // Locator.press re-runs actionability/focus checks for every key. On the
+  // software War Room runner that can occasionally stall even after the canvas
+  // is already mounted and resolved. Focus explicitly, then send the real
+  // browser keyboard event to the active canvas without synthetic dispatch.
+  await canvas.focus();
+  await page.keyboard.press('Enter');
+}
+
 export async function navigateWarRoomKeyboard(canvas, board, target) {
   await canvas.focus();
 
@@ -69,10 +78,10 @@ export async function clickWarRoomMove(page, from, to) {
   if (!(await board.isVisible().catch(() => false)) || !(await canvas.isVisible().catch(() => false))) return false;
 
   await navigateWarRoomKeyboard(canvas, board, from);
-  await canvas.press('Enter');
+  await submitFocusedSquare(page, canvas);
   await expect(board).toHaveAttribute('data-board3d-selected', from, { timeout: 2_500 });
 
   await navigateWarRoomKeyboard(canvas, board, to);
-  await canvas.press('Enter');
+  await submitFocusedSquare(page, canvas);
   return true;
 }
