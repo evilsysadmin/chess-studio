@@ -106,7 +106,7 @@ export default function LabScreen({ onExit, onStart }){
               <i className="lab-arcade-rook">♜</i>
             </span>
             <span className="lab-arcade-copy">
-              <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.EXPERIMENTAL, 'en pulido')}</small>
+              <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.FROZEN, 'vertical slice')}</small>
               <strong>Pawn Slug</strong>
               <span>Run & gun corto y brutal. Matthias, cuatro armas y un Panzer‑Rook que ha elegido la violencia administrativa.</span>
               <b>Entrar en la operación <i aria-hidden="true">→</i></b>
