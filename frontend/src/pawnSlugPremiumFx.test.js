@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { disposePawnSlugObject } from './pawnSlugArt.js';
 import {
+  PAWN_SLUG_HOSTILE_PROJECTILE_FX,
   PAWN_SLUG_PREMIUM_FX_RESOURCE_VERSION,
   PAWN_SLUG_PROJECTILE_FX,
   animatePremiumMuzzleFlash,
@@ -17,6 +18,14 @@ describe('Pawn Slug premium projectile FX', () => {
     expect(PAWN_SLUG_PROJECTILE_FX.shotgun.flash).toBeGreaterThan(PAWN_SLUG_PROJECTILE_FX.pistol.flash);
     expect(PAWN_SLUG_PROJECTILE_FX.panzerfaust.flash).toBeGreaterThan(PAWN_SLUG_PROJECTILE_FX.shotgun.flash);
     expect(PAWN_SLUG_PROJECTILE_FX.enemy.tracer).not.toBe(PAWN_SLUG_PROJECTILE_FX.pistol.tracer);
+  });
+
+  it('keeps hostile rounds red while preserving each weapon weight', () => {
+    expect(PAWN_SLUG_HOSTILE_PROJECTILE_FX.pistol.core).toBe(PAWN_SLUG_PROJECTILE_FX.enemy.core);
+    expect(PAWN_SLUG_HOSTILE_PROJECTILE_FX.machinegun.tracer).toBe(PAWN_SLUG_PROJECTILE_FX.enemy.tracer);
+    expect(PAWN_SLUG_HOSTILE_PROJECTILE_FX.machinegun.flash).toBeLessThan(PAWN_SLUG_HOSTILE_PROJECTILE_FX.pistol.flash);
+    expect(PAWN_SLUG_HOSTILE_PROJECTILE_FX.shotgun.flash).toBeGreaterThan(PAWN_SLUG_HOSTILE_PROJECTILE_FX.pistol.flash);
+    expect(PAWN_SLUG_HOSTILE_PROJECTILE_FX.panzerfaust.flash).toBeGreaterThan(PAWN_SLUG_HOSTILE_PROJECTILE_FX.shotgun.flash);
   });
 
   it('builds tracer projectiles instead of a single popcorn sphere', () => {
@@ -68,6 +77,22 @@ describe('Pawn Slug premium projectile FX', () => {
     const before = streak.scale.x;
     animatePremiumMuzzleFlash(hostile, 0.45);
     expect(streak.scale.x).toBeGreaterThan(before);
+  });
+
+  it('keeps hostile muzzle resources isolated by weapon instead of cross-pollinating geometry', () => {
+    const pistol = createPremiumMuzzleFlash({ enemy: true, weapon: 'pistol' });
+    const machinegun = createPremiumMuzzleFlash({ enemy: true, weapon: 'machinegun' });
+    const shotgun = createPremiumMuzzleFlash({ enemy: true, weapon: 'shotgun' });
+    const panzerfaust = createPremiumMuzzleFlash({ enemy: true, weapon: 'panzerfaust' });
+    const secondPanzerfaust = createPremiumMuzzleFlash({ enemy: true, weapon: 'panzerfaust' });
+
+    expect(machinegun.userData.baseScale).toBeLessThan(pistol.userData.baseScale);
+    expect(shotgun.userData.baseScale).toBeGreaterThan(pistol.userData.baseScale);
+    expect(panzerfaust.userData.baseScale).toBeGreaterThan(shotgun.userData.baseScale);
+    expect(pistol.children[0].geometry).not.toBe(panzerfaust.children[0].geometry);
+    expect(panzerfaust.children[0].geometry).toBe(secondPanzerfaust.children[0].geometry);
+    expect(shotgun.children.filter((child) => child.userData.muzzleShotgunSmoke)).toHaveLength(2);
+    expect(panzerfaust.children.some((child) => child.userData.muzzleShockwave)).toBe(true);
   });
 
   it('gives machinegun and shotgun muzzle flashes distinct readable signatures', () => {
