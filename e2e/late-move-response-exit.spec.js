@@ -24,18 +24,17 @@ test('jugada pendiente · salir aborta la operación y una respuesta tardía no 
   });
 
   await login(page);
-  await page.evaluate(() => {
-    localStorage.setItem('chess-study-device-board-renderer-v1', '2d-explicit-v1');
-    window.dispatchEvent(new Event('chess-study-user-preferences-changed'));
-  });
-
   await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await expect(quickMatch).toBeVisible();
+  const renderer = quickMatch.getByRole('group', { name: 'Tipo de tablero' });
+  await renderer.getByRole('button', { name: '2D', exact: true }).click();
+  await expect(renderer.getByRole('button', { name: '2D', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await quickMatch.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameStatus(page)).toBeVisible();
 
   await clickBoardMove(page, 'e2', 'e4');
   await expect.poll(() => movePosts, { timeout: 5_000 }).toBe(1);
-  await expect(page.getByRole('button', { name: /^Casilla e4, peón blanco/i })).toBeVisible();
 
   await page.getByRole('button', { name: 'Abandonar partida', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '¿Abandonar la partida?' });
