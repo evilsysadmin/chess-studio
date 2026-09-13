@@ -1,6 +1,6 @@
 /* Desktop War Room: there is no footer.
-   The room owns the full lower edge; player identity and match actions live in
-   the right rail, while scene-only controls stay attached to the room itself. */
+   The room owns the full lower edge; secondary information and music live in
+   the right rail, while match actions live in the central pill overflow. */
 
 @media (min-width: 1081px) {
   .game-screen .board-live-row.is-3d-warroom {
@@ -31,8 +31,9 @@
     display: none !important;
   }
 
-  /* Matthias + turn become the compact status head of the right rail.
-     Leave the first 2.5rem to the already-relocated Feedback/account actions. */
+  /* The base desktop grid reserves status clearance above the quiet right rail.
+     The cinematic override below floats the visible pill over the board while
+     preserving the first 2.5rem for the relocated Feedback/account actions. */
   .game-screen .game-3d-command-column {
     grid-area: status !important;
     z-index: 30 !important;
@@ -228,59 +229,8 @@
     background: rgba(190, 164, 109, .14);
   }
 
-  /* Zen and abandon are important enough to be discoverable without opening
-     the overflow menu, but they stay in the rail so the board never pays for
-     their footprint. */
-  .game-screen .game-3d-quick-actions {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: .26rem;
-    width: 100%;
-    margin-top: .28rem;
-    pointer-events: auto;
-  }
-
-  .game-screen .game-3d-quick-action {
-    min-width: 0;
-    min-height: 29px;
-    padding: .34rem .42rem;
-    border: 1px solid rgba(190, 164, 109, .18);
-    border-radius: 8px;
-    background: rgba(7, 11, 17, .58);
-    color: color-mix(in srgb, var(--cream) 82%, var(--studio-muted));
-    font: 700 .55rem/1.1 var(--font-body);
-    white-space: nowrap;
-    cursor: pointer;
-  }
-
-  .game-screen .game-3d-quick-action:hover,
-  .game-screen .game-3d-quick-action:focus-visible {
-    border-color: rgba(201, 162, 39, .42);
-    background: rgba(14, 18, 26, .9);
-    color: var(--cream);
-    outline: none;
-  }
-
-  .game-screen .game-3d-quick-action.is-active {
-    border-color: rgba(201, 162, 39, .52);
-    background: rgba(201, 162, 39, .09);
-    color: color-mix(in srgb, var(--brass) 78%, var(--cream));
-  }
-
-  .game-screen .game-3d-quick-action.is-danger {
-    border-color: color-mix(in srgb, var(--danger) 30%, transparent);
-    color: color-mix(in srgb, var(--danger) 62%, var(--cream));
-  }
-
-  .game-screen .game-3d-quick-action.is-danger:hover,
-  .game-screen .game-3d-quick-action.is-danger:focus-visible {
-    border-color: color-mix(in srgb, var(--danger) 48%, transparent);
-    background: color-mix(in srgb, var(--danger) 10%, rgba(7, 11, 17, .78));
-    color: color-mix(in srgb, var(--danger) 76%, var(--cream));
-  }
-
-  /* The right rail now owns match identity/actions, so its content starts below
-     that status head instead of sharing the scene's lower edge. */
+  /* Music and the secondary information rail start below the reserved desktop
+     status clearance; all match actions are handled by the central overflow. */
   .game-screen .game-side-column-3d .game-side-music {
     margin-top: 0;
   }
@@ -325,8 +275,8 @@
     position: relative;
   }
 
-  /* The command column still owns quick actions in the rail, but the turn pill
-     itself is removed from rail flow and centered over the board region. */
+  /* The command column remains the action owner, but its visible turn pill is
+     removed from rail flow and centered over the board region. */
   .game-screen .game-3d-command-column {
     position: static !important;
   }
@@ -408,55 +358,6 @@
     border-color: rgba(190, 164, 109, .16);
     background: rgba(5, 9, 14, .42);
     font-size: .78rem;
-  }
-
-  /* Quick actions remain directly discoverable, but behave like quiet rail
-     affordances rather than two more dashboard buttons. The overflow menu is
-     still the complete action surface. */
-  .game-screen .game-3d-quick-actions {
-    display: flex !important;
-    align-items: center;
-    justify-content: flex-end;
-    gap: .12rem;
-    margin-top: 0 !important;
-    padding-top: .28rem;
-    border-top: 1px solid rgba(190, 164, 109, .09);
-  }
-
-  .game-screen .game-3d-quick-action {
-    min-height: 25px;
-    padding: .18rem .34rem;
-    border-color: transparent;
-    border-radius: 5px;
-    background: transparent;
-    box-shadow: none;
-    color: color-mix(in srgb, var(--studio-muted) 78%, var(--cream));
-    font-size: .5rem;
-  }
-
-  .game-screen .game-3d-quick-action:hover,
-  .game-screen .game-3d-quick-action:focus-visible,
-  .game-screen .game-3d-quick-action.is-active {
-    border-color: rgba(201, 162, 39, .16);
-    background: rgba(201, 162, 39, .04);
-    color: color-mix(in srgb, var(--cream) 92%, white);
-    box-shadow: none;
-  }
-
-  .game-screen .game-3d-quick-action:focus-visible {
-    outline: 1px solid rgba(201, 162, 39, .32);
-    outline-offset: 1px;
-  }
-
-  .game-screen .game-3d-quick-action.is-danger {
-    color: color-mix(in srgb, #d79a8d 72%, var(--studio-muted));
-  }
-
-  .game-screen .game-3d-quick-action.is-danger:hover,
-  .game-screen .game-3d-quick-action.is-danger:focus-visible {
-    border-color: rgba(184, 82, 66, .18);
-    background: rgba(184, 82, 66, .055);
-    color: #e9b2a7;
   }
 }
 
