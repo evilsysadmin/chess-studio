@@ -5,6 +5,7 @@ import { buildPostGameIncidentEvidence } from './postGameIncidentEvidence.js';
 export const CLEAN_GAMES_KEY = 'chess-study-clean-games-v1';
 export const CLEAN_GAME_MIN_ANALYZED_MOVES = 8;
 export const CLEAN_GAME_INCIDENT_COVERAGE_VERSION = 1;
+export const CLEAN_GAME_POSITIVE_EVIDENCE_VERSION = 1;
 const MAX_RECORDS = 100;
 const MAJOR_MINOR = new Set(['q', 'r', 'b', 'n']);
 
@@ -36,9 +37,51 @@ function incidentCoverage(rows) {
   };
 }
 
+function normalizedPromotion(value) {
+  const promotion = String(value || '').trim().toLowerCase();
+  return promotion || null;
+}
+
+function comparableMoveIdentity(row) {
+  const playedFrom = String(row?.playedFrom || '').trim().toLowerCase();
+  const playedTo = String(row?.playedTo || '').trim().toLowerCase();
+  const suggestedFrom = String(row?.suggestedFrom || '').trim().toLowerCase();
+  const suggestedTo = String(row?.suggestedTo || '').trim().toLowerCase();
+  if (playedFrom && playedTo && suggestedFrom && suggestedTo) {
+    return {
+      comparable: true,
+      matches: playedFrom === suggestedFrom
+        && playedTo === suggestedTo
+        && normalizedPromotion(row?.playedPromotion) === normalizedPromotion(row?.suggestedPromotion),
+    };
+  }
+
+  const played = String(row?.played || '').trim();
+  const suggested = String(row?.suggested || '').trim();
+  if (!played || !suggested) return { comparable: false, matches: false };
+  return { comparable: true, matches: played === suggested };
+}
+
+function positiveDecisionEvidence(rows) {
+  let comparedMoves = 0;
+  let enginePreferredMoves = 0;
+  for (const row of rows) {
+    const identity = comparableMoveIdentity(row);
+    if (!identity.comparable) continue;
+    comparedMoves += 1;
+    if (identity.matches) enginePreferredMoves += 1;
+  }
+  return {
+    version: CLEAN_GAME_POSITIVE_EVIDENCE_VERSION,
+    comparedMoves,
+    enginePreferredMoves,
+  };
+}
+
 export function cleanGameEvidence(report, meta = {}) {
   const rows = finiteRows(report);
   const coverage = incidentCoverage(rows);
+  const positive = positiveDecisionEvidence(rows);
   const analyzedCount = Math.max(0, Number(report?.analyzedCount || rows.length) || 0);
   const blunders = rows.filter((row) => row.severity === 'blunder' || Number(row.loss) >= 150).length;
   const mistakes = rows.filter((row) => row.severity === 'mistake' || (Number(row.loss) >= 60 && Number(row.loss) < 150)).length;
@@ -73,6 +116,9 @@ export function cleanGameEvidence(report, meta = {}) {
     incidentCoveredMoves: coverage.coveredMoves,
     incidentCoverageSufficient: coverage.sufficient,
     incidentKeys: coverage.incidentKeys,
+    positiveEvidenceVersion: positive.version,
+    positiveComparedMoves: positive.comparedMoves,
+    enginePreferredMoves: positive.enginePreferredMoves,
   };
 }
 
