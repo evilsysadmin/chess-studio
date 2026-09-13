@@ -93,24 +93,37 @@ export function homeMatthiasRareMoment(rivalry = {}, now = new Date()) {
   const hour = Number(now?.getHours?.());
   const losses = finiteNonNegative(rivalry?.record?.losses);
   const daySignature = localDaySignature(now);
+  if (!Number.isFinite(hour) || hour < 6 || daySignature === null) return null;
 
-  // Nada de expedientes inventados: sólo aparece si hay al menos una derrota
-  // humana realmente registrada contra Matthias, y nunca durante su madrugada.
-  if (!Number.isFinite(hour) || hour < 6 || losses < 1 || daySignature === null) return null;
+  // Nada de expedientes inventados: este momento sólo existe si hay al menos
+  // una derrota humana realmente registrada contra Matthias.
+  if (losses >= 1 && daySignature % 37 === 11) {
+    return {
+      id: 'loss-dossier',
+      kind: 'loss-dossier',
+      visualKey: 'dossier',
+      label: 'Revisando viejas heridas',
+      detail: losses === 1
+        ? '1 derrota tuya registrada contra Matthias.'
+        : `${losses} derrotas tuyas registradas contra Matthias.`,
+      zone: 'desk',
+    };
+  }
 
-  // ~1 día de cada 37. Es raro pero determinista dentro del día, de modo que
-  // F5 no convierte la Home en una tragaperras de microeventos.
-  if (daySignature % 37 !== 11) return null;
+  // Rareza puramente ambiental: un día concreto puede vencerle el manual.
+  // Sólo ocurre a horas razonables de lectura y es estable durante todo el día.
+  if (hour >= 12 && hour < 19 && daySignature % 43 === 17) {
+    return {
+      id: 'book-doze-sleep',
+      kind: 'book-doze',
+      visualKey: 'reading',
+      label: 'Dormido sobre el manual',
+      detail: 'La teoría ha ganado esta ronda.',
+      zone: 'library',
+    };
+  }
 
-  return {
-    id: 'loss-dossier',
-    kind: 'loss-dossier',
-    sceneKey: 'dossier',
-    label: 'Revisando viejas heridas',
-    detail: losses === 1
-      ? '1 derrota tuya registrada contra Matthias.'
-      : `${losses} derrotas tuyas registradas contra Matthias.`,
-  };
+  return null;
 }
 
 export function buildHomeCastleLife({ rivalry = {}, dailyStats = {}, now = new Date() } = {}) {
