@@ -9,6 +9,7 @@ import {
   PAWN_SLUG_WEAPON_STEREO_PAN,
   pawnSlugCombatCuePriority,
   pawnSlugImpactSoundProfile,
+  pawnSlugSfxVolumeIsAudible,
   pawnSlugShouldPlayCombatCue,
   pawnSlugSoundPitchVariation,
   pawnSlugWeaponGainScale,
@@ -85,6 +86,16 @@ describe('Pawn Slug arcade combat SFX', () => {
     expect(PAWN_SLUG_SFX_RESOURCE_META.preferenceReadStrategy).toBe('once-per-cue');
     expect(PAWN_SLUG_SFX_RESOURCE_META.noiseStrategy).toBe('shared-random-window');
     expect(PAWN_SLUG_SFX_RESOURCE_META.weaponPannerStrategy).toBe('shared-player-enemy');
+  });
+
+  it('skips the WebAudio graph entirely for effectively muted cues', () => {
+    expect(PAWN_SLUG_SFX_RESOURCE_META.mutedCueStrategy).toBe('skip-before-audio-graph');
+    expect(pawnSlugSfxVolumeIsAudible(0)).toBe(false);
+    expect(pawnSlugSfxVolumeIsAudible(0.001)).toBe(false);
+    expect(pawnSlugSfxVolumeIsAudible('0.001')).toBe(false);
+    expect(pawnSlugSfxVolumeIsAudible(0.0011)).toBe(true);
+    expect(pawnSlugSfxVolumeIsAudible(0.4)).toBe(true);
+    expect(pawnSlugSfxVolumeIsAudible(Number.NaN)).toBe(false);
   });
 
   it('uses more metallic impact rings for armored chess soldiers', () => {
