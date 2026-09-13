@@ -67,10 +67,10 @@ async function runAndGunToProgress(page, targetPercent) {
   throw new Error(`Pawn Slug no alcanzó ${targetPercent}% con controles reales; progreso=${await missionProgress(page)}%`);
 }
 
-test('Pawn Slug · checkpoint real, reinicio, F5 y vuelta al laboratorio dejan el runtime limpio', async ({ page }) => {
-  // One premium Three.js boot now also has to cross the first real checkpoint
-  // before proving restart/reload/re-entry cleanup.
-  test.setTimeout(140_000);
+test('Pawn Slug · checkpoint, boss, reinicio, F5 y vuelta al laboratorio dejan el runtime limpio', async ({ page }) => {
+  // One premium Three.js boot now crosses a real checkpoint and reaches the
+  // Panzer-Rook encounter before proving restart/reload/re-entry cleanup.
+  test.setTimeout(175_000);
   await openPawnSlug(page);
   await startPawnSlug(page);
 
@@ -82,6 +82,10 @@ test('Pawn Slug · checkpoint real, reinicio, F5 y vuelta al laboratorio dejan e
   const checkpointProgress = await runAndGunToProgress(page, 30);
   expect(checkpointProgress).toBeGreaterThanOrEqual(30);
   await expect(page.locator('.pawn-slug-mission-progress')).toHaveAttribute('aria-label', /Progreso de misión (?:3\d|[4-9]\d|100)%/);
+
+  const bossEntryProgress = await runAndGunToProgress(page, 80);
+  expect(bossEntryProgress).toBeGreaterThanOrEqual(80);
+  await expect(page.getByText('PANZER-ROOK · KOMMANDANTENBURG', { exact: true })).toBeVisible({ timeout: 5_000 });
 
   await page.getByRole('button', { name: 'Abrir ajustes de Pawn Slug', exact: true }).click();
   const settings = page.getByRole('dialog', { name: 'Pawn Slug Settings' });
