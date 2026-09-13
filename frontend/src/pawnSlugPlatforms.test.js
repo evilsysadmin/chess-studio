@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
+  PAWN_SLUG_CAMERA_VERTICAL_META,
   PAWN_SLUG_PLATFORM_LAYOUT,
   PAWN_SLUG_PLATFORM_META,
   createPawnSlugPlatforms,
@@ -90,12 +91,15 @@ describe('Pawn Slug platforming', () => {
     expect(pawnSlugPlatformSupportY({ x: 10, feetY: 4 }, [platform])).toBe(0);
   });
 
-  it('lifts the camera smoothly for vertical play while keeping ground framing', () => {
-    expect(pawnSlugPlatformCameraY(0)).toBe(5.1);
-    expect(pawnSlugPlatformLookAtY(0)).toBe(4.25);
-    expect(pawnSlugPlatformCameraY(4)).toBeGreaterThan(5.1);
-    expect(pawnSlugPlatformLookAtY(4)).toBeGreaterThan(4.25);
-    expect(pawnSlugPlatformCameraY(100)).toBeLessThanOrEqual(7.8);
-    expect(pawnSlugPlatformLookAtY(100)).toBeLessThanOrEqual(6.35);
+  it('keeps the battlefield low in frame while preserving vertical platform follow', () => {
+    expect(PAWN_SLUG_CAMERA_VERTICAL_META.groundCameraY).toBe(3.75);
+    expect(PAWN_SLUG_CAMERA_VERTICAL_META.groundLookAtY).toBe(2.9);
+    expect(PAWN_SLUG_CAMERA_VERTICAL_META.groundCameraY - PAWN_SLUG_CAMERA_VERTICAL_META.groundLookAtY).toBeCloseTo(0.85, 5);
+    expect(pawnSlugPlatformCameraY(0)).toBe(3.75);
+    expect(pawnSlugPlatformLookAtY(0)).toBe(2.9);
+    expect(pawnSlugPlatformCameraY(4)).toBeGreaterThan(3.75);
+    expect(pawnSlugPlatformLookAtY(4)).toBeGreaterThan(2.9);
+    expect(pawnSlugPlatformCameraY(100)).toBeLessThanOrEqual(6.45);
+    expect(pawnSlugPlatformLookAtY(100)).toBeLessThanOrEqual(5);
   });
 });
