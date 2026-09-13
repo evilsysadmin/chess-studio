@@ -86,6 +86,7 @@ function cleanPlayFacts(records) {
     cleanRate: summary.rate,
     currentStreak: summary.currentStreak,
     bestStreak: summary.bestStreak,
+    latestEligibleClean: summary.latest ? summary.latest.clean === true : null,
     latestEligibleAt: isoOrNull(summary.latest?.date),
     latestCleanAt: isoOrNull(summary.latestClean?.date),
   };

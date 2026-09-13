@@ -35,6 +35,7 @@ describe('factual player model', () => {
         cleanRate: null,
         currentStreak: 0,
         bestStreak: 0,
+        latestEligibleClean: null,
         latestEligibleAt: null,
         latestCleanAt: null,
       },
@@ -108,6 +109,7 @@ describe('factual player model', () => {
       cleanRate: 67,
       currentStreak: 2,
       bestStreak: 2,
+      latestEligibleClean: true,
       latestEligibleAt: '2026-08-03T10:00:00.000Z',
       latestCleanAt: '2026-08-03T10:00:00.000Z',
     });
