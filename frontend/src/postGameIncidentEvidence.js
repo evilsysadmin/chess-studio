@@ -3,6 +3,7 @@ import { detectNoteworthyMove } from './cpuCommentary.js';
 import { mistakeSeverity } from './gameReport.js';
 
 const PIECE_CP = Object.freeze({ p: 100, n: 320, b: 330, r: 500, q: 900, k: 0 });
+const CLEAR_BEST_GAP_CP = 100;
 const SACRIFICE_OFFERS = new Set(['QUEEN_SACRIFICE_OFFER', 'ROOK_SACRIFICE_OFFER']);
 const TACTICAL_OPPORTUNITIES = new Set([
   'MATE_FOUND',
@@ -59,10 +60,37 @@ function reportMove(moveReport, prefix) {
   return normalizeMove(moveReport?.context?.[prefix]);
 }
 
+function bestMoveConstraintFor({ candidateCount, analysisDepth, secondBest, bestToSecondGap }) {
+  if (candidateCount === 1) {
+    return { kind: 'only-legal', candidateCount, gapCp: null };
+  }
+  if (
+    candidateCount === null
+    || candidateCount < 2
+    || analysisDepth === null
+    || analysisDepth < 2
+    || !secondBest
+    || bestToSecondGap === null
+    || bestToSecondGap < CLEAR_BEST_GAP_CP
+  ) return null;
+
+  return {
+    kind: 'clear-best',
+    candidateCount,
+    gapCp: Math.round(bestToSecondGap),
+  };
+}
+
 function factualAnalysisFor(moveReport) {
   const evalAfterSuggested = finiteOrNull(moveReport?.factualEvalAfterSuggested);
   const evalAfterPlayed = finiteOrNull(moveReport?.factualEvalAfterPlayed);
   if (evalAfterSuggested === null || evalAfterPlayed === null) return null;
+
+  const analysisDepth = finiteOrNull(moveReport?.analysisDepth);
+  const candidateCount = finiteOrNull(moveReport?.candidateCount);
+  const secondBest = normalizeMove(moveReport?.secondBest);
+  const evalAfterSecondBest = finiteOrNull(moveReport?.evalAfterSecondBest);
+  const bestToSecondGap = finiteOrNull(moveReport?.bestToSecondGap);
 
   return {
     source: 'shared-minimax',
@@ -71,8 +99,17 @@ function factualAnalysisFor(moveReport) {
     evalAfterPlayed,
     suggestedReply: normalizeMove(moveReport?.suggestedReply),
     playedReply: normalizeMove(moveReport?.playedReply),
-    analysisDepth: finiteOrNull(moveReport?.analysisDepth),
-    candidateCount: finiteOrNull(moveReport?.candidateCount),
+    analysisDepth,
+    candidateCount,
+    secondBest,
+    evalAfterSecondBest,
+    bestToSecondGap,
+    bestMoveConstraint: bestMoveConstraintFor({
+      candidateCount,
+      analysisDepth,
+      secondBest,
+      bestToSecondGap,
+    }),
   };
 }
 

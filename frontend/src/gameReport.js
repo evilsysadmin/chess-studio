@@ -100,6 +100,9 @@ function factualReportFields(result) {
     factualEvalAfterPlayed: Number.isFinite(result?.factualEvalAfterPlayed) ? result.factualEvalAfterPlayed : null,
     analysisDepth: Number.isFinite(result?.analysisDepth) ? result.analysisDepth : null,
     candidateCount: Number.isFinite(result?.candidateCount) ? result.candidateCount : null,
+    secondBest: result?.secondBest || null,
+    evalAfterSecondBest: Number.isFinite(result?.evalAfterSecondBest) ? result.evalAfterSecondBest : null,
+    bestToSecondGap: Number.isFinite(result?.bestToSecondGap) ? result.bestToSecondGap : null,
   };
 }
 
