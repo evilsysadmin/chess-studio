@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from 'react';
 import { BoardRendererContext } from './Board.jsx';
 import Board3DCore from './Board3DCore.jsx';
+import { serializeBoard3DRankLevels } from './Board3DRankInsignia.js';
 import { chessFromFen } from '../chessRules.js';
 import {
   armWarRoomMoveFinishEvent,
@@ -20,6 +21,7 @@ import { hasWarRoomHansCompletedForGame } from './WarRoomHansPerGame.js';
 export default function Board3D(props) {
   const requestsHansQuickIteration = props.hansFireplaceIteration === true;
   const hansGameId = props.gameId;
+  const rankLevelsPayload = serializeBoard3DRankLevels(props.pieceRankLevels);
   const hansMarkerRef = useRef(null);
   const previousFenRef = useRef(props.fen);
   const moveFinishEvent = deriveWarRoomMoveFinishEvent({
@@ -67,20 +69,22 @@ export default function Board3D(props) {
 
   return (
     <BoardRendererContext.Provider value="3d">
-      <span
-        ref={hansMarkerRef}
-        hidden
-        aria-hidden="true"
-        data-war-room-hans-quick-request={requestsHansQuickIteration ? 'true' : 'false'}
-        data-war-room-hans-game-id={hansGameId || ''}
-        data-war-room-hans-runtime={requestsHansQuickIteration ? 'pending' : 'idle'}
-      />
-      <Board3DCore
-        key={hansGameId || 'war-room'}
-        {...props}
-        hansDiagnosticsMarkerRef={hansMarkerRef}
-        hansDiagnosticsRequested={requestsHansQuickIteration}
-      />
+      <div style={{ display: 'contents' }} data-board3d-rank-levels={rankLevelsPayload}>
+        <span
+          ref={hansMarkerRef}
+          hidden
+          aria-hidden="true"
+          data-war-room-hans-quick-request={requestsHansQuickIteration ? 'true' : 'false'}
+          data-war-room-hans-game-id={hansGameId || ''}
+          data-war-room-hans-runtime={requestsHansQuickIteration ? 'pending' : 'idle'}
+        />
+        <Board3DCore
+          key={hansGameId || 'war-room'}
+          {...props}
+          hansDiagnosticsMarkerRef={hansMarkerRef}
+          hansDiagnosticsRequested={requestsHansQuickIteration}
+        />
+      </div>
     </BoardRendererContext.Provider>
   );
 }
