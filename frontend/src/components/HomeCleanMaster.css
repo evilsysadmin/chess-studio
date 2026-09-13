@@ -1,0 +1,15 @@
+/* Clean Great Hall master contract.
+ * The room artwork owns atmosphere only. Navigation and Matthias stay live.
+ * Top branding and the old bottom motto are deliberately absent. */
+body .app-shell-home .illustrated-home__brand,
+body .app-shell-home .illustrated-home__motto {
+  display: none !important;
+}
+
+@media (min-width: 1000px) and (pointer: fine) {
+  /* Never rebuild the old Matthias card over the room. The portrait is the
+     character; copy remains available through title/aria-label. */
+  .illustrated-home__matthias-copy {
+    display: none !important;
+  }
+}
