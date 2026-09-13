@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   CHRONICLES_DIRECTIONS,
+  chroniclesJournalEntries,
   chroniclesObjective,
   chroniclesReduce,
   createChroniclesState,
@@ -8,20 +9,13 @@ import {
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import './ChroniclesOfMatthias.css';
 import './ChroniclesOfMatthiasArt.css';
+import './ChroniclesOfMatthiasJournal.css';
 
 const KEY_ACTIONS = Object.freeze({
-  ArrowUp: 'forward',
-  w: 'forward',
-  W: 'forward',
-  ArrowDown: 'backward',
-  s: 'backward',
-  S: 'backward',
-  ArrowLeft: 'turn-left',
-  a: 'turn-left',
-  A: 'turn-left',
-  ArrowRight: 'turn-right',
-  d: 'turn-right',
-  D: 'turn-right',
+  ArrowUp: 'forward', w: 'forward', W: 'forward',
+  ArrowDown: 'backward', s: 'backward', S: 'backward',
+  ArrowLeft: 'turn-left', a: 'turn-left', A: 'turn-left',
+  ArrowRight: 'turn-right', d: 'turn-right', D: 'turn-right',
 });
 
 export default function ChroniclesOfMatthias({ onExit }) {
@@ -75,9 +69,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       .then(({ createChroniclesOfMatthiasGame, createChroniclesPartyPortrait }) => {
         if (cancelled) return;
         engine = createChroniclesOfMatthiasGame(host, {
-          onReady: (backend) => {
-            if (!cancelled) setRendererName(backend);
-          },
+          onReady: (backend) => { if (!cancelled) setRendererName(backend); },
         });
         engineRef.current = engine;
         engine.renderState(stateRef.current);
@@ -105,9 +97,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
     };
   }, []);
 
-  useEffect(() => {
-    engineRef.current?.renderState(state);
-  }, [state]);
+  useEffect(() => { engineRef.current?.renderState(state); }, [state]);
 
   useEffect(() => {
     const onKeyDown = (event) => {
@@ -136,6 +126,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const direction = CHRONICLES_DIRECTIONS[state.direction];
   const objective = chroniclesObjective(state);
   const selectedMember = state.party.find((member) => member.id === selectedMemberId) || state.party[0];
+  const journalEntries = chroniclesJournalEntries(state);
+  const latestJournalEntry = journalEntries[journalEntries.length - 1];
 
   return (
     <div className="chronicles" data-chronicles="true" data-chronicles-phase={state.phase}>
@@ -152,12 +144,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
         <aside className="chronicles-party" aria-label="Grupo de Matthias">
           <span className="chronicles-panel-kicker">GRUPO · 1–4 SELECCIONAR</span>
           <div className="chronicles-party-preview">
-            <div
-              ref={portraitHostRef}
-              className="chronicles-party-preview-three"
-              data-chronicles-party-renderer="three"
-              aria-label={`Retrato 3D de ${selectedMember?.name || 'Matthias'}`}
-            />
+            <div ref={portraitHostRef} className="chronicles-party-preview-three" data-chronicles-party-renderer="three" aria-label={`Retrato 3D de ${selectedMember?.name || 'Matthias'}`} />
             <div className="chronicles-party-preview-copy">
               <span>{selectedMember?.role}</span>
               <strong>{selectedMember?.name}</strong>
@@ -192,9 +179,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <div ref={hostRef} className="chronicles-three" data-chronicles-renderer="three" aria-label="Mazmorra 3D en primera persona de Chronicles of Matthias" />
             <div className="chronicles-vignette" aria-hidden="true" />
             <div className="chronicles-crosshair" aria-hidden="true">·</div>
-
             {rendererError && <div className="chronicles-renderer-error" role="alert">{rendererError}</div>}
-
             {state.phase === 'escaped' && (
               <div className="chronicles-finish" role="status">
                 <span>BOOK I · VERTICAL SLICE</span>
@@ -209,6 +194,21 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <span className="chronicles-avatar" aria-hidden="true">♟</span>
             <p><strong>Matthias</strong>{state.message}</p>
           </div>
+
+          <details className="chronicles-journal" aria-label="Crónica de expedición">
+            <summary>
+              <span><i aria-hidden="true">✦</i><b>Crónica de expedición</b><small>{latestJournalEntry?.title}</small></span>
+              <em>{journalEntries.length} {journalEntries.length === 1 ? 'folio' : 'folios'}</em>
+            </summary>
+            <ol>
+              {journalEntries.map((entry) => (
+                <li key={entry.id}>
+                  <span aria-hidden="true">{entry.sigil}</span>
+                  <div><strong>{entry.title}</strong><p>{entry.body}</p></div>
+                </li>
+              ))}
+            </ol>
+          </details>
 
           <div className="chronicles-touch" aria-label="Controles de la mazmorra">
             <button type="button" onClick={() => dispatch('turn-left')} aria-label="Girar a la izquierda">↶<small>GIRAR</small></button>
