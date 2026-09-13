@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/**'
+      - 'scripts/main_lineage_guard.py'
       - 'scripts/workflow_budget_gate.py'
       - 'scripts/workflow_inventory_gate.py'
   push:
@@ -11,6 +12,7 @@ on:
       - main
     paths:
       - '.github/workflows/**'
+      - 'scripts/main_lineage_guard.py'
       - 'scripts/workflow_budget_gate.py'
       - 'scripts/workflow_inventory_gate.py'
   workflow_dispatch:
@@ -33,6 +35,7 @@ jobs:
 
       - name: Validate debt helpers
         run: |
+          python3 -S scripts/main_lineage_guard.py --self-test
           python3 -S scripts/workflow_budget_gate.py --self-test
           python3 -S scripts/workflow_inventory_gate.py --self-test
 
