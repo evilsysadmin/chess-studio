@@ -7,6 +7,7 @@ import {
 } from '../chroniclesOfMatthias.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import './ChroniclesOfMatthias.css';
+import './ChroniclesOfMatthiasArt.css';
 
 const KEY_ACTIONS = Object.freeze({
   ArrowUp: 'forward',
@@ -26,7 +27,9 @@ const KEY_ACTIONS = Object.freeze({
 export default function ChroniclesOfMatthias({ onExit }) {
   useEscapeToClose(onExit);
   const hostRef = useRef(null);
+  const portraitHostRef = useRef(null);
   const engineRef = useRef(null);
+  const portraitEngineRef = useRef(null);
   const stateRef = useRef(createChroniclesState());
   const [state, setState] = useState(stateRef.current);
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
@@ -36,6 +39,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   useEffect(() => {
     selectedMemberIdRef.current = selectedMemberId;
+    portraitEngineRef.current?.renderMember(selectedMemberId);
   }, [selectedMemberId]);
 
   const dispatch = useCallback((action) => {
@@ -60,11 +64,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
   useEffect(() => {
     let cancelled = false;
     let engine = null;
+    let portraitEngine = null;
     const host = hostRef.current;
+    const portraitHost = portraitHostRef.current;
     if (!host) return undefined;
 
     void import('../chroniclesOfMatthiasThree.js')
-      .then(({ createChroniclesOfMatthiasGame }) => {
+      .then(({ createChroniclesOfMatthiasGame, createChroniclesPartyPortrait }) => {
         if (cancelled) return;
         engine = createChroniclesOfMatthiasGame(host, {
           onReady: (backend) => {
@@ -73,6 +79,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
         });
         engineRef.current = engine;
         engine.renderState(stateRef.current);
+
+        if (portraitHost) {
+          portraitEngine = createChroniclesPartyPortrait(portraitHost);
+          portraitEngineRef.current = portraitEngine;
+          portraitEngine.renderMember(selectedMemberIdRef.current);
+        }
       })
       .catch((error) => {
         console.error('Chronicles of Matthias Three.js boot failed', error);
@@ -85,7 +97,9 @@ export default function ChroniclesOfMatthias({ onExit }) {
     return () => {
       cancelled = true;
       engine?.destroy();
+      portraitEngine?.destroy();
       if (engineRef.current === engine) engineRef.current = null;
+      if (portraitEngineRef.current === portraitEngine) portraitEngineRef.current = null;
     };
   }, []);
 
@@ -135,6 +149,19 @@ export default function ChroniclesOfMatthias({ onExit }) {
       <div className="chronicles-shell">
         <aside className="chronicles-party" aria-label="Grupo de Matthias">
           <span className="chronicles-panel-kicker">GRUPO · 1–4 SELECCIONAR</span>
+          <div className="chronicles-party-preview">
+            <div
+              ref={portraitHostRef}
+              className="chronicles-party-preview-three"
+              data-chronicles-party-renderer="three"
+              aria-label={`Retrato 3D de ${selectedMember?.name || 'Matthias'}`}
+            />
+            <div className="chronicles-party-preview-copy">
+              <span>{selectedMember?.role}</span>
+              <strong>{selectedMember?.name}</strong>
+              <small>{selectedMember?.attackName} · alcance {selectedMember?.reach}</small>
+            </div>
+          </div>
           {state.party.map((member, index) => (
             <button
               type="button"
