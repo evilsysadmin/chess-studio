@@ -44,6 +44,26 @@ describe('Matthias visual identity', () => {
     expect(matthiasAmbientVisual('no-existe').key).toBe('base');
   });
 
+  it('varía el orden visible por día sin rerollear al recargar', () => {
+    const date = (day) => ({
+      getFullYear: () => 2026,
+      getMonth: () => 8,
+      getDate: () => day,
+    });
+    const keys = (day) => matthiasAmbientVisuals(16, date(day)).map((scene) => scene.key);
+    const firstVisit = keys(13);
+    const reloadSameDay = keys(13);
+    const nextDay = keys(14);
+
+    expect(firstVisit).toEqual(reloadSameDay);
+    expect(firstVisit[0]).toBe('time-afternoon-ops');
+    expect(nextDay[0]).toBe('time-afternoon-ops');
+    expect(firstVisit.slice(1)).not.toEqual(nextDay.slice(1));
+    expect([...firstVisit.slice(1)].sort()).toEqual([...nextDay.slice(1)].sort());
+    expect(new Set(firstVisit).size).toBe(firstVisit.length);
+    expect(new Set(nextDay).size).toBe(nextDay.length);
+  });
+
   it('mantiene cada actividad un tiempo natural en lugar de rotar como un carrusel fijo', () => {
     const base = matthiasRoutineDwellMs('base');
     const coffee = matthiasRoutineDwellMs('time-morning-coffee');
