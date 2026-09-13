@@ -82,6 +82,19 @@ function activePhase(hans, driver) {
     || 'idle';
 }
 
+function markFacingDiagnostics(hans, state, source, dotBefore = null, dotAfter = null) {
+  hans.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
+  hans.userData.warRoomHansFacingGuardMode = 'rendered-face-vs-travel';
+  // Keep the existing public contract name: visible pre-render is an additional
+  // enforcement point, not a change to how travel ownership is selected.
+  hans.userData.warRoomHansFacingGuardTravelContract = 'phase-motion-route-v1';
+  hans.userData.warRoomHansFacingGuardCorrections = state.corrections;
+  hans.userData.warRoomHansFacingGuardDotBefore = dotBefore;
+  hans.userData.warRoomHansFacingGuardDotAfter = dotAfter;
+  hans.userData.warRoomHansFacingGuardSource = source;
+  hans.userData.warRoomHansFacingGuardHotPath = 'preallocated-scratch-v4-visible';
+}
+
 function reconcileTravelFacing({
   hans,
   driver,
@@ -95,7 +108,10 @@ function reconcileTravelFacing({
 }) {
   if (!hans?.visible) return false;
   const phase = activePhase(hans, driver);
-  if (!hansTravelOwnsFacing(hans, phase)) return false;
+  if (!hansTravelOwnsFacing(hans, phase)) {
+    markFacingDiagnostics(hans, state, source);
+    return false;
+  }
 
   let travelX = Number(dx) || 0;
   let travelZ = Number(dz) || 0;
@@ -105,7 +121,10 @@ function reconcileTravelFacing({
     travelZ = state.lastTravelZ;
     travelSq = state.lastTravelSq;
   }
-  if (travelSq <= MIN_TRAVEL_SQ) return false;
+  if (travelSq <= MIN_TRAVEL_SQ) {
+    markFacingDiagnostics(hans, state, source);
+    return false;
+  }
 
   const travelLength = Math.sqrt(travelSq);
   scratch.movement.set(travelX / travelLength, 0, travelZ / travelLength);
@@ -114,7 +133,10 @@ function reconcileTravelFacing({
   state.lastTravelSq = 1;
 
   const face = faceVectorInParent(hans, head, faceAnchor, scratch, true);
-  if (!face) return false;
+  if (!face) {
+    markFacingDiagnostics(hans, state, source);
+    return false;
+  }
 
   const dotBefore = face.dot(scratch.movement);
   let dotAfter = dotBefore;
@@ -126,14 +148,7 @@ function reconcileTravelFacing({
     state.corrections += 1;
   }
 
-  hans.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
-  hans.userData.warRoomHansFacingGuardMode = 'rendered-face-vs-travel';
-  hans.userData.warRoomHansFacingGuardTravelContract = 'phase-motion-route-v2-visible';
-  hans.userData.warRoomHansFacingGuardCorrections = state.corrections;
-  hans.userData.warRoomHansFacingGuardDotBefore = dotBefore;
-  hans.userData.warRoomHansFacingGuardDotAfter = dotAfter;
-  hans.userData.warRoomHansFacingGuardSource = source;
-  hans.userData.warRoomHansFacingGuardHotPath = 'preallocated-scratch-v4-visible';
+  markFacingDiagnostics(hans, state, source, dotBefore, dotAfter);
   return true;
 }
 
@@ -231,7 +246,7 @@ export function installWarRoomHansFacingGuard(root) {
 
   driver.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
   driver.userData.warRoomHansFacingGuardMode = 'rendered-face-vs-travel';
-  driver.userData.warRoomHansFacingGuardTravelContract = 'phase-motion-route-v2-visible';
+  driver.userData.warRoomHansFacingGuardTravelContract = 'phase-motion-route-v1';
   driver.userData.warRoomHansFacingGuardHotPath = 'preallocated-scratch-v4-visible';
   driver.userData.warRoomHansVisibleFacingHooks = visibleFacingHooks;
   hans.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
