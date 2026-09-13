@@ -38,6 +38,10 @@ function reachGateApproach(state) {
   );
 }
 
+function reachSpectralChapel(state) {
+  return act(state, 'backward', 'turn-right', 'forward', 'forward', 'turn-left');
+}
+
 describe('Chronicles of Matthias vertical slice', () => {
   it('turns the four-piece party into positional combat instead of one generic attack', () => {
     let state = createChroniclesState();
@@ -81,7 +85,7 @@ describe('Chronicles of Matthias vertical slice', () => {
     expect([state.x, state.y]).toEqual([3, 5]);
   });
 
-  it('wakes a second, distinct gate encounter only after the sigil is activated', () => {
+  it('wakes the gate encounter and an optional spectral chapel only after the sigil is activated', () => {
     let state = createChroniclesState();
     expect(chroniclesActiveEnemies(state).map((enemy) => enemy.id)).toEqual(['corrupted-pawn']);
 
@@ -89,12 +93,36 @@ describe('Chronicles of Matthias vertical slice', () => {
     state = awakenSigil(state);
 
     expect(state.sigilAwake).toBe(true);
-    expect(chroniclesActiveEnemies(state).map((enemy) => enemy.id)).toEqual(['gate-jailer']);
+    expect(chroniclesActiveEnemies(state).map((enemy) => enemy.id)).toEqual(['gate-jailer', 'spectral-bishop']);
     expect(chroniclesObjective(state)).toBe('Derrota a la torre carcelero');
-    expect(state.message).toMatch(/algo pesado/i);
+    expect(state.message).toMatch(/al este/i);
   });
 
-  it('makes the gate jailer a stronger blocker before the exit can finish the expedition', () => {
+  it('makes the spectral bishop punish range-two attacks and reward the optional detour', () => {
+    let state = reachSpectralChapel(awakenSigil(clearOpeningPawn(createChroniclesState())));
+    expect([state.x, state.y, state.direction]).toEqual([5, 5, 0]);
+    expect(chroniclesEnemyDistanceAhead(state, 2)).toBe(2);
+    expect(state.spectralLantern).toBe(false);
+
+    const matthiasBefore = state.party.find((member) => member.id === 'matthias')?.hp;
+    state = attack(state, 'bishop');
+    expect(state.spectralBishopHp).toBe(4);
+    expect(state.party.find((member) => member.id === 'matthias')?.hp).toBe(matthiasBefore - 1);
+    expect(state.message).toMatch(/alfil espectral.*responde/i);
+
+    state = attack(state, 'bishop');
+    state = attack(state, 'bishop');
+    state = attack(state, 'bishop');
+    state = attack(state, 'bishop');
+    expect(state.spectralBishopHp).toBe(0);
+    expect(state.spectralLantern).toBe(true);
+    expect(state.party.find((member) => member.id === 'matthias')?.hp).toBe(4);
+    expect(state.party.find((member) => member.id === 'rook')?.hp).toBe(9);
+    expect(chroniclesJournalEntries(state).some((entry) => entry.id === 'spectral-bishop-falls')).toBe(true);
+    expect(chroniclesObjective(state)).toBe('Derrota a la torre carcelero');
+  });
+
+  it('keeps the spectral chapel optional and still lets the gate jailer finish the route', () => {
     let state = awakenSigil(clearOpeningPawn(createChroniclesState()));
     state = reachGateApproach(state);
     expect([state.x, state.y, state.direction]).toEqual([2, 1, 1]);
@@ -113,10 +141,12 @@ describe('Chronicles of Matthias vertical slice', () => {
     state = attack(state, 'rook');
     state = attack(state, 'rook');
     expect(state.jailerHp).toBe(0);
+    expect(state.spectralBishopHp).toBe(5);
     expect(chroniclesObjective(state)).toBe('Cruza la puerta negra');
 
     state = chroniclesReduce(state, 'forward');
     expect(state.phase).toBe('escaped');
+    expect(state.spectralLantern).toBe(false);
     expect(chroniclesObjective(state)).toBe('Vertical slice completado');
   });
 
