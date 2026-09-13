@@ -270,6 +270,12 @@
   }
 }
 
+/* Keep the mission's primary action comfortably targetable after the
+   cinematic cabinet overrides compact the generic button chrome. */
+.pawn-slug-overlay .primary-btn {
+  min-height: 44px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pawn-slug-settings-trigger,
   .pawn-slug-settings-panel,
