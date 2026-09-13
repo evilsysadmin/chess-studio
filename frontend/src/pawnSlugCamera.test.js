@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PAWN_SLUG_CAMERA_META, pawnSlugCameraLookAhead } from './pawnSlugCamera.js';
+import { PAWN_SLUG_ENEMY_FIRE_PROFILES } from './pawnSlugEnemyFireDoctrine.js';
 
 const VIEW_W = 29.5;
 const PLAYER_SPEED = 5.1;
@@ -50,5 +51,21 @@ describe('Pawn Slug directional camera look-ahead', () => {
   it('uses actual movement direction once velocity leaves zero', () => {
     expect(lead(-PLAYER_SPEED, 1)).toBeLessThan(0);
     expect(lead(PLAYER_SPEED, -1)).toBeGreaterThan(0);
+  });
+
+  it('keeps every normal enemy weapon inside the visible firing envelope', () => {
+    // The smallest forward view happens while idle and facing left. If the
+    // longest hostile weapon still cannot reach from beyond that edge, normal
+    // enemies cannot begin damaging the player before they are readable.
+    const visibleAheadRight = VIEW_W / 2 + lead(0, 1);
+    const visibleAheadLeft = VIEW_W / 2 + Math.abs(lead(0, -1));
+    const smallestVisibleAhead = Math.min(visibleAheadRight, visibleAheadLeft);
+    const longestHostileRange = Math.max(
+      ...Object.values(PAWN_SLUG_ENEMY_FIRE_PROFILES).map((profile) => profile.range),
+    );
+
+    expect(longestHostileRange).toBe(15);
+    expect(smallestVisibleAhead).toBeGreaterThan(longestHostileRange);
+    expect(smallestVisibleAhead - longestHostileRange).toBeGreaterThan(0.5);
   });
 });
