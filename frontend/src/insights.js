@@ -418,27 +418,56 @@ function coachingPriority(count) {
   return { priority: 'low', priorityLabel: 'VIGILAR' };
 }
 
+function playerModelPatternNeedsCoaching(pattern) {
+  if (pattern?.improvementState === 'still-occurring') return true;
+  if (['probable-improvement', 'corrected-with-sufficient-sample'].includes(pattern?.improvementState)) return false;
+  return pattern?.debt?.active === true;
+}
+
+function tacticalCoachingEvidence(rivalry, extras) {
+  if (Array.isArray(extras?.recurringErrors)) {
+    return extras.recurringErrors
+      .filter((pattern) => (
+        INCIDENT_COACHING[pattern?.incidentKey]
+        && Number(pattern?.positions) > 0
+        && playerModelPatternNeedsCoaching(pattern)
+      ))
+      .map((pattern) => ({
+        key: pattern.incidentKey,
+        count: Number(pattern.positions),
+        pattern,
+      }))
+      .sort((a, b) => b.count - a.count);
+  }
+
+  const incidents = rivalry?.incidents || extras?.incidents || {};
+  return Object.entries(incidents)
+    .filter(([key, count]) => INCIDENT_COACHING[key] && Number(count) > 0)
+    .map(([key, count]) => ({ key, count: Number(count), pattern: null }))
+    .sort((a, b) => b.count - a.count);
+}
+
 // Consejos accionables a partir de hechos ya guardados. No pretende adivinar
 // debilidades posicionales que no se hayan medido: usa reincidencias tácticas,
 // resultados por apertura, sesgo de color, puzzles y comparación de rating.
 export function generateCoaching(insights, rivalry = null, extras = {}) {
   if (!insights || insights.totalGames === 0) return [];
   const items = [];
-  const incidents = rivalry?.incidents || extras.incidents || {};
+  const tactical = tacticalCoachingEvidence(rivalry, extras);
 
-  const tactical = Object.entries(incidents)
-    .filter(([key, count]) => INCIDENT_COACHING[key] && Number(count) > 0)
-    .sort((a, b) => b[1] - a[1]);
-
-  for (const [key, rawCount] of tactical.slice(0, 2)) {
-    const count = Number(rawCount);
+  for (const { key, count, pattern } of tactical.slice(0, 2)) {
     const rule = INCIDENT_COACHING[key];
     items.push({
       ...coachingPriority(count),
       title: rule.title,
       diagnosis: rule.diagnosis(count),
       action: rule.action,
-      evidence: { kind: 'incident', key, count },
+      evidence: {
+        kind: 'incident',
+        key,
+        count,
+        ...(pattern ? { source: 'player-model', improvementState: pattern.improvementState || null } : {}),
+      },
       training: { filter: { incidentKey: key, label: rule.trainingLabel } },
     });
   }
