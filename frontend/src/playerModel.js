@@ -1,8 +1,9 @@
+import { cleanGameSummary } from './cleanGames.js';
 import { buildRecurringErrorPatterns } from './insightsRecurringErrors.js';
 import { isPersonalPuzzleCurrentlyClean, personalSpacedReviewSummary } from './spacedReview.js';
 import { personalTrainingDebtSummary } from './trainingDebt.js';
 
-export const PLAYER_MODEL_VERSION = 3;
+export const PLAYER_MODEL_VERSION = 4;
 
 function nonNegativeInt(value) {
   const number = Number(value);
@@ -34,6 +35,11 @@ function openingFacts(insights) {
         confidence: evidenceConfidence(sampleSize, { mediumAt: 4, highAt: 8 }),
       };
     });
+}
+
+function isoOrNull(value) {
+  const parsed = Date.parse(value || '');
+  return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
 }
 
 function latestIso(puzzles, fields) {
@@ -71,7 +77,21 @@ function trainingProgressFacts(puzzles, trainingDebt) {
   };
 }
 
-export function buildPlayerModel({ insights = null, personalPuzzles = [] } = {}) {
+function cleanPlayFacts(records) {
+  const source = records && typeof records === 'object' && !Array.isArray(records) ? records : {};
+  const summary = cleanGameSummary(source);
+  return {
+    eligibleGames: summary.eligible,
+    cleanGames: summary.clean,
+    cleanRate: summary.rate,
+    currentStreak: summary.currentStreak,
+    bestStreak: summary.bestStreak,
+    latestEligibleAt: isoOrNull(summary.latest?.date),
+    latestCleanAt: isoOrNull(summary.latestClean?.date),
+  };
+}
+
+export function buildPlayerModel({ insights = null, personalPuzzles = [], cleanGameRecords = {} } = {}) {
   const puzzles = Array.isArray(personalPuzzles) ? personalPuzzles.filter(Boolean) : [];
   const totalGames = nonNegativeInt(insights?.totalGames);
   const recurringErrors = buildRecurringErrorPatterns(puzzles).map((pattern) => ({
@@ -79,16 +99,19 @@ export function buildPlayerModel({ insights = null, personalPuzzles = [] } = {})
     confidence: evidenceConfidence(pattern.positions, { mediumAt: 3, highAt: 5 }),
   }));
   const trainingDebt = personalTrainingDebtSummary(puzzles);
+  const cleanPlay = cleanPlayFacts(cleanGameRecords);
 
   return {
     version: PLAYER_MODEL_VERSION,
     samples: {
       games: totalGames,
       personalPositions: puzzles.length,
+      cleanAutopsies: cleanPlay.eligibleGames,
     },
     confidence: {
       games: evidenceConfidence(totalGames, { mediumAt: 5, highAt: 15 }),
       personalTraining: evidenceConfidence(puzzles.length, { mediumAt: 3, highAt: 8 }),
+      cleanPlay: evidenceConfidence(cleanPlay.eligibleGames, { mediumAt: 3, highAt: 8 }),
     },
     outcomes: insights?.overall ? { ...insights.overall } : null,
     colorPreference: insights?.colorPreference ? { ...insights.colorPreference } : null,
@@ -97,5 +120,6 @@ export function buildPlayerModel({ insights = null, personalPuzzles = [] } = {})
     recurringErrors,
     trainingDebt,
     trainingProgress: trainingProgressFacts(puzzles, trainingDebt),
+    cleanPlay,
   };
 }
