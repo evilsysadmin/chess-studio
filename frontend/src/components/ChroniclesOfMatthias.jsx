@@ -6,6 +6,7 @@ import {
   chroniclesReduce,
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
+import { chroniclesPartyCondition } from '../chroniclesOfMatthiasPartyCondition.js';
 import { chroniclesRetaliationCue } from '../chroniclesOfMatthiasRetaliation.js';
 import { chroniclesTargetAhead } from '../chroniclesOfMatthiasTargeting.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
@@ -15,6 +16,7 @@ import ChroniclesTacticalMargin from './ChroniclesTacticalMargin.jsx';
 import './ChroniclesOfMatthias.css';
 import './ChroniclesOfMatthiasArt.css';
 import './ChroniclesOfMatthiasJournal.css';
+import './ChroniclesPartyCondition.css';
 
 const KEY_ACTIONS = Object.freeze({
   ArrowUp: 'forward', w: 'forward', W: 'forward',
@@ -151,6 +153,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const direction = CHRONICLES_DIRECTIONS[state.direction];
   const objective = chroniclesObjective(state);
   const selectedMember = state.party.find((member) => member.id === selectedMemberId) || state.party[0];
+  const selectedCondition = chroniclesPartyCondition(selectedMember);
   const tacticalTarget = chroniclesTargetAhead(state, selectedMember?.reach || 1);
   const journalEntries = chroniclesJournalEntries(state);
   const latestJournalEntry = journalEntries[journalEntries.length - 1];
@@ -169,7 +172,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
       <div className="chronicles-shell">
         <aside className="chronicles-party" aria-label="Grupo de Matthias">
           <span className="chronicles-panel-kicker">GRUPO · 1–4 SELECCIONAR</span>
-          <div className="chronicles-party-preview">
+          <div className="chronicles-party-preview" data-condition={selectedCondition}>
             <div ref={portraitHostRef} className="chronicles-party-preview-three" data-chronicles-party-renderer="three" aria-label={`Retrato 3D de ${selectedMember?.name || 'Matthias'}`} />
             <div className="chronicles-party-preview-copy">
               <span>{selectedMember?.role}</span>
