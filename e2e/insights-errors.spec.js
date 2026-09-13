@@ -10,7 +10,7 @@ async function dismissHomeGuide(page) {
   }
 }
 
-test('Así juegas · Errores muestra reincidencias reales sin repetir el coaching de Ahora', async ({ page }) => {
+test('Así juegas · Errores reabre una deuda cuando aparece una reincidencia real nueva', async ({ page }) => {
   await mockApi(page);
   await login(page);
   await dismissHomeGuide(page);
@@ -18,17 +18,17 @@ test('Así juegas · Errores muestra reincidencias reales sin repetir el coachin
   await page.evaluate(({ fen }) => {
     localStorage.setItem('chess-study-personal-puzzles', JSON.stringify([
       {
-        id: 'fork-real-1',
+        id: 'fork-real-3',
         kind: 'personal',
         source: 'autopsy',
-        title: 'Horquilla pendiente uno',
-        description: 'Corrige la horquilla.',
+        title: 'Horquilla pendiente tres',
+        description: 'Corrige la recaída reciente.',
         fen,
         solution: ['Ra8#'],
         incidentKeys: ['cpu:KNIGHT_FORK'],
-        sourceGameId: 'game-fork-1',
-        loss: 210,
-        createdAt: '2026-08-29T10:00:00Z',
+        sourceGameId: 'game-fork-3',
+        loss: 330,
+        createdAt: '2026-08-30T10:00:00Z',
         attempts: 0,
         solves: 0,
         cleanSolves: 0,
@@ -37,17 +37,33 @@ test('Así juegas · Errores muestra reincidencias reales sin repetir el coachin
         id: 'fork-real-2',
         kind: 'personal',
         source: 'autopsy',
-        title: 'Horquilla pendiente dos',
-        description: 'Corrige otra horquilla.',
+        title: 'Horquilla limpia dos',
+        description: 'Caso ya corregido.',
         fen,
         solution: ['Ra8#'],
         incidentKeys: ['cpu:KNIGHT_FORK'],
         sourceGameId: 'game-fork-2',
-        loss: 330,
-        createdAt: '2026-08-30T10:00:00Z',
+        loss: 260,
+        createdAt: '2026-08-29T10:00:00Z',
         attempts: 1,
-        solves: 0,
-        cleanSolves: 0,
+        solves: 1,
+        cleanSolves: 1,
+      },
+      {
+        id: 'fork-real-1',
+        kind: 'personal',
+        source: 'autopsy',
+        title: 'Horquilla limpia uno',
+        description: 'Caso antiguo ya corregido.',
+        fen,
+        solution: ['Ra8#'],
+        incidentKeys: ['cpu:KNIGHT_FORK'],
+        sourceGameId: 'game-fork-1',
+        loss: 210,
+        createdAt: '2026-08-28T10:00:00Z',
+        attempts: 1,
+        solves: 1,
+        cleanSolves: 1,
       },
       {
         id: 'mate-singleton',
@@ -74,12 +90,12 @@ test('Así juegas · Errores muestra reincidencias reales sin repetir el coachin
   await page.getByRole('tab', { name: /Errores/ }).click();
   await expect(page.getByRole('heading', { name: 'No vuelvas a hacer esto', exact: true })).toBeVisible();
   await expect(page.getByText('Horquillas de caballo sufridas', { exact: true })).toBeVisible();
-  await expect(page.getByText('2 posiciones reales · 2 partidas fuente · peor pérdida ~330 cp', { exact: true })).toBeVisible();
-  await expect(page.getByText('Deuda activa · 0/2 casos limpios', { exact: true })).toBeVisible();
+  await expect(page.getByText('3 posiciones reales · 3 partidas fuente · peor pérdida ~330 cp', { exact: true })).toBeVisible();
+  await expect(page.getByText('Deuda activa · últimos 2: 1/2 limpios', { exact: true })).toBeVisible();
   await expect(page.locator('[data-training-debt="active"]')).toHaveCount(1);
   await expect(page.getByText('Mates que dejaste escapar', { exact: true })).toHaveCount(0);
   await expect(page.locator('.coaching-section')).toBeHidden();
 
   await page.getByRole('button', { name: 'Entrenar este patrón →', exact: true }).click();
-  await expect(page.getByRole('heading', { name: /Horquilla pendiente (uno|dos)/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Horquilla pendiente tres', exact: true })).toBeVisible();
 });
