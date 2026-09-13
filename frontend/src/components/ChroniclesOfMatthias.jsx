@@ -7,6 +7,7 @@ import {
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
+import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import './ChroniclesOfMatthias.css';
 import './ChroniclesOfMatthiasArt.css';
 import './ChroniclesOfMatthiasJournal.css';
@@ -180,14 +181,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <div className="chronicles-vignette" aria-hidden="true" />
             <div className="chronicles-crosshair" aria-hidden="true">·</div>
             {rendererError && <div className="chronicles-renderer-error" role="alert">{rendererError}</div>}
-            {state.phase === 'escaped' && (
-              <div className="chronicles-finish" role="status">
-                <span>BOOK I · VERTICAL SLICE</span>
-                <strong>La Cripta de las Ocho Casillas</strong>
-                <p>Has salido con el grupo razonablemente entero. Inaceptable nivel de competencia para una primera expedición.</p>
-                <button type="button" className="primary-btn" onClick={restart}>Entrar otra vez</button>
-              </div>
-            )}
+            {state.phase === 'escaped' && <ChroniclesBookOneEpilogue state={state} onRestart={restart} />}
           </div>
 
           <div className="chronicles-narration" aria-live="polite">
