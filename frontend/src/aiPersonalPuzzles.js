@@ -96,6 +96,40 @@ function enginePuzzleProvenance(engine) {
   };
 }
 
+function engineBestDefenseProvenance(boardAfterSolution, engine) {
+  if (boardAfterSolution.isGameOver()) {
+    return {
+      tacticalBestDefenseChecked: true,
+      engineTerminalAfterSolution: true,
+      engineBestDefense: null,
+    };
+  }
+
+  const normalized = normalizeEngineMove(engine?.suggestedReply);
+  if (!normalized) return null;
+  const probe = new Chess(boardAfterSolution.fen());
+  let reply;
+  try {
+    reply = probe.move({
+      from: normalized.from,
+      to: normalized.to,
+      ...(normalized.promotion ? { promotion: normalized.promotion } : {}),
+    });
+  } catch {
+    return null;
+  }
+  if (!reply) return null;
+
+  return {
+    tacticalBestDefenseChecked: true,
+    engineTerminalAfterSolution: false,
+    engineBestDefense: {
+      ...normalized,
+      san: reply.san,
+    },
+  };
+}
+
 export async function validateAiPersonalPuzzleCandidate(candidate, { analyzeMove = api.analyzeMove } = {}) {
   const fen = cleanText(candidate?.fen, 120);
   const intended = uciParts(candidate?.best_uci);
@@ -119,6 +153,8 @@ export async function validateAiPersonalPuzzleCandidate(candidate, { analyzeMove
   if ((suggested.promotion || undefined) !== (intended.promotion || undefined)) return null;
   const provenance = enginePuzzleProvenance(engine);
   if (!provenance) return null;
+  const defenseProvenance = engineBestDefenseProvenance(board, engine);
+  if (!defenseProvenance) return null;
 
   const sourceIncidents = Array.isArray(candidate?.incident_keys)
     ? candidate.incident_keys.slice(0, 4).map((value) => cleanText(value, 48)).filter(Boolean)
@@ -138,6 +174,7 @@ export async function validateAiPersonalPuzzleCandidate(candidate, { analyzeMove
     tacticalBestMoveChecked: true,
     tacticalRefutationChecked: true,
     ...provenance,
+    ...defenseProvenance,
     generatedAt: new Date().toISOString(),
   };
   if (isObviouslyUnsoundSingleMovePuzzle(validated)) return null;
