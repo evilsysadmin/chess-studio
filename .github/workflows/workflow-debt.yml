@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/**'
       - 'scripts/branch_housekeeping.sh'
+      - 'scripts/browser_quality_scope.py'
       - 'scripts/cloudflare_exporter_config.py'
       - 'scripts/cloudflare_exporter_health.py'
       - 'scripts/main_lineage_guard.py'
@@ -17,6 +18,7 @@ on:
     paths:
       - '.github/workflows/**'
       - 'scripts/branch_housekeeping.sh'
+      - 'scripts/browser_quality_scope.py'
       - 'scripts/cloudflare_exporter_config.py'
       - 'scripts/cloudflare_exporter_health.py'
       - 'scripts/main_lineage_guard.py'
@@ -44,6 +46,7 @@ jobs:
       - name: Validate debt helpers
         run: |
           bash scripts/branch_housekeeping.sh --self-test
+          python3 -S scripts/browser_quality_scope.py --self-test
           python3 -S scripts/cloudflare_exporter_config.py --self-test
           python3 -S scripts/cloudflare_exporter_health.py --self-test
           python3 -S scripts/main_lineage_guard.py --self-test
