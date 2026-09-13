@@ -2,8 +2,8 @@ import { STORAGE_SESSION, readJsonStorage, removeStorageItem, writeJsonStorage }
 import { getUsername } from './auth.js';
 import { buildNemesisDossier } from './nemesis.js';
 import { loadPersonalPuzzles } from './personalPuzzles.js';
+import { buildPlayerModel } from './playerModel.js';
 import { loadRivalry } from './rivalry.js';
-import { personalTrainingDebtSummary } from './trainingDebt.js';
 
 export const GUIDED_TRAINING_SESSION_KEY = 'chess-study-guided-training-session-v1';
 const SESSION_SCHEMA = 1;
@@ -20,8 +20,8 @@ function pendingPersonalPuzzles(puzzles = []) {
   ));
 }
 
-function focusStep(puzzles) {
-  const debt = personalTrainingDebtSummary(puzzles).top;
+function focusStep(puzzles, trainingDebt) {
+  const debt = trainingDebt?.top;
   if (debt) {
     return {
       id: `debt:${debt.incidentKey}`,
@@ -91,9 +91,11 @@ export function buildGuidedTrainingPlan({
   history = [],
   puzzles = loadPersonalPuzzles(),
   rivalry = loadRivalry(),
+  playerModel = null,
 } = {}) {
   const duration = Number(minutes) === 30 ? 30 : 15;
-  const focus = focusStep(puzzles);
+  const model = playerModel || buildPlayerModel({ personalPuzzles: puzzles });
+  const focus = focusStep(puzzles, model.trainingDebt);
   const nemesis = nemesisStep(history, rivalry);
   if (!focus && !nemesis) {
     return {
