@@ -86,6 +86,8 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     ['history', 'HISTORIA', 'Descubre el legado', IconBook, onHistory],
     ['play', hasSavedGame ? 'CONTINUAR' : 'JUGAR', hasSavedGame ? 'Vuelve a tu partida' : 'Partida rápida o privada', IconSword, hasSavedGame ? onContinue : onPlay],
   ];
+  const matthiasActivity = matthiasVisual?.label || 'En observación';
+  const matthiasActionDuplicated = matthiasSpeaking && matthiasModel?.action === 'insights';
   return (
     <section className="illustrated-home" aria-label="Modos principales">
       <div
@@ -172,10 +174,10 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           className={`illustrated-home__matthias${matthiasSpeaking ? ' is-speaking' : ''}`}
           type="button"
           onClick={onInsights}
-          aria-label="Abrir Así juegas con Matthias"
-          title={`Matthias · ${matthiasVisual?.label || 'En observación'}`}
+          aria-label={matthiasActionDuplicated ? `Matthias · ${matthiasActivity}` : 'Abrir Así juegas con Matthias'}
+          title={`Matthias · ${matthiasActivity}`}
           data-home-matthias-scene={matthiasVisual?.key || 'base'}
-          data-home-matthias-activity={matthiasVisual?.label || 'En observación'}
+          data-home-matthias-activity={matthiasActivity}
         >
           {matthiasVisual && (
             <span
@@ -199,7 +201,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           )}
           <span className="illustrated-home__matthias-copy">
             <strong>MATTHIAS</strong>
-            <span>{matthiasVisual?.label || 'En observación'}</span>
+            <span>{matthiasActivity}</span>
             <em>{matthiasSpeaking ? 'Dictando sentencia' : 'Así juegas →'}</em>
           </span>
         </button>
