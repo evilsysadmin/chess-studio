@@ -99,62 +99,25 @@ jobs:
           echo "Staging accreditation lineage OK: $DEPLOY_SHA pertenece a main actual $CURRENT_MAIN."
 
       - name: Verify staging backend still serves approved SHA
-        shell: bash
-        run: |
-          set -euo pipefail
-          body="$RUNNER_TEMP/staging-backend-release.json"
-          status="$(curl --fail-with-body --silent --show-error \
-            --connect-timeout 5 --max-time 15 \
-            --output "$body" --write-out '%{http_code}' \
-            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-            "$STAGING_API_URL/release?sha=$DEPLOY_SHA")"
-          [[ "$status" == 200 ]] || { echo "::error::Backend staging release HTTP $status"; exit 1; }
-          python3 - "$body" "$DEPLOY_SHA" <<'PY'
-          import json, pathlib, sys
-          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          expected = sys.argv[2].lower()
-          actual = str(payload.get('build') or '').lower()
-          raise SystemExit(0 if actual == expected else f"Backend staging sirve {actual or '<sin build>'}, esperaba {expected}")
-          PY
+        run: >-
+          python3 -S scripts/staging_release_identity.py
+          --kind backend
+          --url "$STAGING_API_URL/release?sha=$DEPLOY_SHA"
+          --sha "$DEPLOY_SHA"
 
       - name: Verify staging frontend still serves approved SHA
-        shell: bash
-        run: |
-          set -euo pipefail
-          body="$RUNNER_TEMP/staging-frontend-release.json"
-          status="$(curl --fail-with-body --silent --show-error \
-            --connect-timeout 5 --max-time 15 \
-            --output "$body" --write-out '%{http_code}' \
-            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-            "$STAGING_URL/release.json?sha=$DEPLOY_SHA")"
-          [[ "$status" == 200 ]] || { echo "::error::Frontend staging release HTTP $status"; exit 1; }
-          python3 - "$body" "$DEPLOY_SHA" <<'PY'
-          import json, pathlib, sys
-          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          expected = sys.argv[2].lower()
-          actual = str(payload.get('build') or '').lower()
-          raise SystemExit(0 if actual == expected else f"Frontend staging sirve {actual or '<sin build>'}, esperaba {expected}")
-          PY
+        run: >-
+          python3 -S scripts/staging_release_identity.py
+          --kind frontend
+          --url "$STAGING_URL/release.json?sha=$DEPLOY_SHA"
+          --sha "$DEPLOY_SHA"
 
       - name: Verify staging AI health and build identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          body="$RUNNER_TEMP/staging-ai-health.json"
-          status="$(curl --fail-with-body --silent --show-error \
-            --connect-timeout 5 --max-time 15 \
-            --output "$body" --write-out '%{http_code}' \
-            -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-            "$STAGING_AI_URL/health")"
-          [[ "$status" == 200 ]] || { echo "::error::Workers AI staging health HTTP $status"; exit 1; }
-          python3 scripts/cloudflare_health_contract.py "$body"
-          python3 - "$body" "$DEPLOY_SHA" <<'PY'
-          import json, pathlib, sys
-          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          expected = sys.argv[2].lower()
-          actual = str(payload.get('build') or '').lower()
-          raise SystemExit(0 if actual == expected else f"Workers AI staging sirve {actual or '<sin build>'}, esperaba {expected}")
-          PY
+        run: >-
+          python3 -S scripts/staging_release_identity.py
+          --kind ai
+          --url "$STAGING_AI_URL/health"
+          --sha "$DEPLOY_SHA"
 
       - name: Shared Workers AI live contract
         run: python3 scripts/cloudflare_ai_preflight.py --worker-url "$STAGING_AI_URL"
