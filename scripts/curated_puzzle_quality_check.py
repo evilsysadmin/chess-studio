@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the canonical curated puzzle catalog against shared minimax facts."""
+"""Validate the canonical curated puzzle catalog against best-play chess facts."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -16,7 +16,7 @@ from engine_analysis import compare_root_move  # noqa: E402
 
 CATALOG_PATH = ROOT / "frontend" / "src" / "puzzles.catalog.json"
 MAX_ACCEPTED_LOSS_CP = 0.5
-ANALYSIS_BUDGET_S = 3.0
+MATERIAL_ANALYSIS_BUDGET_S = 3.0
 
 PIECE_VALUES = {
     chess.PAWN: 100,
@@ -56,28 +56,136 @@ def material_balance(board: chess.Board, color: chess.Color) -> int:
     return own - enemy
 
 
-def target_depth(solution_length: int, ply: int, kind: str) -> int:
-    remaining = max(1, solution_length - ply)
-    if kind.startswith("mate") or kind == "combination":
-        return max(2, min(5, remaining))
-    return 2
+def is_mating_kind(kind: str) -> bool:
+    # "material" also starts with the letters "mate". Keep the semantic
+    # distinction explicit instead of relying on a string prefix accident.
+    return kind != "material" and (kind.startswith("mate") or kind == "combination")
 
 
-def validate_curated_puzzle(puzzle: dict) -> list[PuzzleQualityIssue]:
-    puzzle_id = str(puzzle.get("id") or "<missing-id>")
+def forced_mate_distance(
+    board: chess.Board,
+    attacker: chess.Color,
+    max_plies: int,
+    cache: dict[tuple[str, chess.Color, int], int | None],
+) -> int | None:
+    """Exact bounded minimax mate distance in plies.
+
+    The attacker minimizes time to mate; the defender maximizes survival and
+    escapes the proof if any legal branch avoids mate inside the remaining
+    horizon. This is stronger and more deterministic than heuristic cp scoring
+    for the short curated mate lines.
+    """
+    key = (board.fen(), attacker, max_plies)
+    if key in cache:
+        return cache[key]
+
+    if board.is_checkmate():
+        result = 0 if board.turn != attacker else None
+        cache[key] = result
+        return result
+    if max_plies <= 0 or board.is_game_over(claim_draw=True):
+        cache[key] = None
+        return None
+
+    moves = list(board.legal_moves)
+    if not moves:
+        cache[key] = None
+        return None
+
+    if board.turn == attacker:
+        best: int | None = None
+        for move in moves:
+            board.push(move)
+            try:
+                child = forced_mate_distance(board, attacker, max_plies - 1, cache)
+            finally:
+                board.pop()
+            if child is None:
+                continue
+            distance = child + 1
+            if best is None or distance < best:
+                best = distance
+        cache[key] = best
+        return best
+
+    # Defender gets best play too: one escape refutes the forced mate; if every
+    # reply loses, the best defense is the line that postpones mate the longest.
+    worst = 0
+    for move in moves:
+        board.push(move)
+        try:
+            child = forced_mate_distance(board, attacker, max_plies - 1, cache)
+        finally:
+            board.pop()
+        if child is None:
+            cache[key] = None
+            return None
+        worst = max(worst, child + 1)
+    cache[key] = worst
+    return worst
+
+
+def validate_mating_line(
+    puzzle_id: str,
+    board: chess.Board,
+    solution: list[str],
+) -> list[PuzzleQualityIssue]:
     issues: list[PuzzleQualityIssue] = []
-    try:
-        board = chess.Board(str(puzzle["fen"]))
-    except Exception as exc:
-        return [PuzzleQualityIssue(puzzle_id, "invalid-fen", str(exc))]
+    attacker = board.turn
+    cache: dict[tuple[str, chess.Color, int], int | None] = {}
+    root_distance = forced_mate_distance(board, attacker, len(solution), cache)
+    if root_distance is None:
+        return [PuzzleQualityIssue(
+            puzzle_id,
+            "mate-not-forced",
+            f"no forced mate within the stored {len(solution)} plies against best defense",
+        )]
+    if root_distance != len(solution):
+        return [PuzzleQualityIssue(
+            puzzle_id,
+            "mate-distance-mismatch",
+            f"stored line has {len(solution)} plies but best play mates in {root_distance}",
+        )]
 
-    if not board.is_valid():
-        return [PuzzleQualityIssue(puzzle_id, "invalid-position", str(puzzle.get("fen")))]
+    for ply, san in enumerate(solution):
+        remaining = len(solution) - ply
+        current_distance = forced_mate_distance(board, attacker, remaining, cache)
+        if current_distance is None:
+            issues.append(PuzzleQualityIssue(puzzle_id, "mate-proof-lost", f"ply {ply + 1}: {san}"))
+            break
+        try:
+            move = board.parse_san(str(san))
+        except Exception as exc:
+            issues.append(PuzzleQualityIssue(puzzle_id, "illegal-san", f"ply {ply + 1} {san!r}: {exc}"))
+            break
 
-    solution = puzzle.get("solution")
-    if not isinstance(solution, list) or not solution:
-        return [PuzzleQualityIssue(puzzle_id, "missing-solution", "solution must contain at least one SAN move")]
+        board.push(move)
+        try:
+            child_distance = forced_mate_distance(board, attacker, remaining - 1, cache)
+        finally:
+            board.pop()
+        stored_distance = None if child_distance is None else child_distance + 1
+        if stored_distance != current_distance:
+            role = "defense" if ply % 2 else "solution"
+            issues.append(PuzzleQualityIssue(
+                puzzle_id,
+                f"{role}-not-best",
+                f"ply {ply + 1}: stored {san} yields mate-distance {stored_distance}, optimal is {current_distance}",
+            ))
+            break
+        board.push(move)
 
+    if not issues and not board.is_checkmate():
+        issues.append(PuzzleQualityIssue(puzzle_id, "objective-not-proven", "stored line does not end in checkmate"))
+    return issues
+
+
+def validate_material_line(
+    puzzle_id: str,
+    board: chess.Board,
+    solution: list[str],
+) -> list[PuzzleQualityIssue]:
+    issues: list[PuzzleQualityIssue] = []
     solver_color = board.turn
     initial_material = material_balance(board, solver_color)
     last_solver_reply: chess.Move | None = None
@@ -92,16 +200,15 @@ def validate_curated_puzzle(puzzle: dict) -> list[PuzzleQualityIssue]:
             issues.append(PuzzleQualityIssue(puzzle_id, "illegal-san", f"ply {ply + 1} {san!r}: {exc}"))
             break
 
-        depth = target_depth(len(solution), ply, str(puzzle.get("kind") or ""))
         try:
             comparison = compare_root_move(
                 board,
                 move,
-                depth=depth,
-                budget_s=ANALYSIS_BUDGET_S,
+                depth=2,
+                budget_s=MATERIAL_ANALYSIS_BUDGET_S,
             )
         except TimeoutError:
-            issues.append(PuzzleQualityIssue(puzzle_id, "analysis-timeout", f"ply {ply + 1}, depth {depth}"))
+            issues.append(PuzzleQualityIssue(puzzle_id, "analysis-timeout", f"ply {ply + 1}, depth 2"))
             break
 
         if comparison.loss > MAX_ACCEPTED_LOSS_CP:
@@ -110,7 +217,7 @@ def validate_curated_puzzle(puzzle: dict) -> list[PuzzleQualityIssue]:
             issues.append(PuzzleQualityIssue(
                 puzzle_id,
                 f"{role}-not-best",
-                f"ply {ply + 1}: stored {san}, minimax {best_san}, loss {comparison.loss:.1f} cp at depth {depth}",
+                f"ply {ply + 1}: stored {san}, minimax {best_san}, loss {comparison.loss:.1f} cp at depth 2",
             ))
             break
 
@@ -121,26 +228,44 @@ def validate_curated_puzzle(puzzle: dict) -> list[PuzzleQualityIssue]:
     if issues:
         return issues
 
-    kind = str(puzzle.get("kind") or "")
-    if kind.startswith("mate") or kind == "combination":
-        if not board.is_checkmate():
-            issues.append(PuzzleQualityIssue(puzzle_id, "objective-not-proven", "stored line does not end in checkmate"))
-    elif kind == "material":
-        probe = board.copy(stack=True)
-        if not probe.is_game_over(claim_draw=True) and last_solver_reply is not None:
-            if last_solver_reply not in probe.legal_moves:
-                issues.append(PuzzleQualityIssue(puzzle_id, "invalid-best-reply", "minimax reply is not legal after stored line"))
-                return issues
-            probe.push(last_solver_reply)
-        swing = material_balance(probe, solver_color) - initial_material
-        if swing < 100:
-            issues.append(PuzzleQualityIssue(
+    probe = board.copy(stack=True)
+    if not probe.is_game_over(claim_draw=True) and last_solver_reply is not None:
+        if last_solver_reply not in probe.legal_moves:
+            return [PuzzleQualityIssue(
                 puzzle_id,
-                "material-objective-not-proven",
-                f"best-defense material swing is only {swing:+d} cp",
-            ))
-
+                "invalid-best-reply",
+                "minimax reply is not legal after stored line",
+            )]
+        probe.push(last_solver_reply)
+    swing = material_balance(probe, solver_color) - initial_material
+    if swing < 100:
+        issues.append(PuzzleQualityIssue(
+            puzzle_id,
+            "material-objective-not-proven",
+            f"best-defense material swing is only {swing:+d} cp",
+        ))
     return issues
+
+
+def validate_curated_puzzle(puzzle: dict) -> list[PuzzleQualityIssue]:
+    puzzle_id = str(puzzle.get("id") or "<missing-id>")
+    try:
+        board = chess.Board(str(puzzle["fen"]))
+    except Exception as exc:
+        return [PuzzleQualityIssue(puzzle_id, "invalid-fen", str(exc))]
+    if not board.is_valid():
+        return [PuzzleQualityIssue(puzzle_id, "invalid-position", str(puzzle.get("fen")))]
+
+    solution = puzzle.get("solution")
+    if not isinstance(solution, list) or not solution:
+        return [PuzzleQualityIssue(puzzle_id, "missing-solution", "solution must contain at least one SAN move")]
+
+    kind = str(puzzle.get("kind") or "")
+    if is_mating_kind(kind):
+        return validate_mating_line(puzzle_id, board, solution)
+    if kind == "material":
+        return validate_material_line(puzzle_id, board, solution)
+    return [PuzzleQualityIssue(puzzle_id, "unknown-kind", repr(kind))]
 
 
 def validate_curated_catalog(path: Path = CATALOG_PATH) -> tuple[list[dict], list[PuzzleQualityIssue]]:
