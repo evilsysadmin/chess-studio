@@ -13,6 +13,7 @@ import { installWarRoomHansServiceRoutine } from './WarRoomHansServiceRoutine.js
 import { installWarRoomHansTaskVisualGuard } from './WarRoomHansTaskVisualGuard.js';
 import { installWarRoomMatthiasHansReaction } from './WarRoomMatthiasHansReaction.js';
 import { installWarRoomMatthiasIdleGlances } from './WarRoomMatthiasIdleGlances.js';
+import { lockWarRoomCanonicalPlantPlacement } from './WarRoomPlantCanonicalPlacement.js';
 
 export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v1';
 export const WAR_ROOM_ONE_SHOT_RETIREMENT_VERSION = 'one-shot-retirement-v1';
@@ -109,6 +110,11 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         // Keep the legacy driver grounding too: it remains the generic fallback
         // for Fire/Iteration and non-task movement owned by HansAnimator.
         installWarRoomHansGrounding(root);
+        // Service installation re-enters ensureWarRoomHansPlant(), whose sofa-relative
+        // fallback can drag the plant toward the board. Canonical composition owns
+        // this final coordinate: pin it to the weather-window corner only after all
+        // installers have finished touching the shared plant object.
+        lockWarRoomCanonicalPlantPlacement(root);
       }
       completedKeys.push(key);
     }
