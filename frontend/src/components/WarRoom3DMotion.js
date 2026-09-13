@@ -29,6 +29,7 @@ const WAR_ROOM_RENDER_DISCIPLINE = Symbol.for('chess-studio.war-room-render-disc
 const shadowRefreshState = new WeakMap();
 const warRoomHemisphereState = new WeakMap();
 const warRoomKeyLightState = new WeakMap();
+const warRoomWarmLightState = new WeakMap();
 const warRoomMaterialGradeRootState = new WeakMap();
 const warRoomMaterialGradeSignatureState = new WeakMap();
 const warRoomMaterialGradeObjectIds = new WeakMap();
@@ -109,6 +110,49 @@ export function applyWarRoomKeyLightGrade(scene) {
   scene.userData.warRoomKeyLightPose = 'high-side-v1';
   scene.userData.warRoomKeyLightPosition = pose;
   return key;
+}
+
+export function warRoomWarmFillPose({ whiteSide = true } = {}) {
+  return {
+    x: -4.6,
+    y: 4.4,
+    z: whiteSide ? 5.8 : -5.8,
+  };
+}
+
+export function applyWarRoomWarmFillGrade(scene) {
+  if (!scene) return null;
+  let warm = warRoomWarmLightState.get(scene) || null;
+  if (!warm || !warm.parent) {
+    warm = scene.children?.find((object) => (
+      object?.isPointLight
+      && object.color?.getHex?.() === 0xffa449
+    )) || null;
+    if (warm) warRoomWarmLightState.set(scene, warm);
+  }
+  if (!warm) return null;
+
+  // The theme-colored rim already lives behind the opponent rank. Mirror the
+  // existing warm practical to the camera/player side so each army gets one
+  // restrained edge light. This improves rook/knight-vs-pawn separation on both
+  // halves of the board without adding another light or lifting global exposure.
+  let key = warRoomKeyLightState.get(scene) || null;
+  if (!key || !key.parent) {
+    key = scene.children?.find((object) => (
+      object?.isDirectionalLight
+      && object.color?.getHex?.() === 0xffe1aa
+    )) || null;
+    if (key) warRoomKeyLightState.set(scene, key);
+  }
+  const keyZ = Number(scene.userData?.warRoomKeyLightPosition?.z ?? key?.position?.z) || 0;
+  const pose = warRoomWarmFillPose({ whiteSide: keyZ >= 0 });
+  if (typeof warm.position?.set === 'function') warm.position.set(pose.x, pose.y, pose.z);
+  else if (warm.position) Object.assign(warm.position, pose);
+
+  scene.userData ||= {};
+  scene.userData.warRoomRankSeparation = 'split-ranks-v1';
+  scene.userData.warRoomWarmFillPosition = pose;
+  return warm;
 }
 
 export function warRoomMaterialIblProfile({ coarsePointer = false } = {}) {
@@ -346,6 +390,10 @@ function installWarRoomRenderDiscipline() {
     if (boardKey && this.domElement?.dataset) {
       this.domElement.dataset.warRoomKeyLightPose = 'high-side-v1';
     }
+    const warmFill = applyWarRoomWarmFillGrade(scene);
+    if (warmFill && this.domElement?.dataset) {
+      this.domElement.dataset.warRoomRankSeparation = 'split-ranks-v1';
+    }
     const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
       : Date.now();
@@ -408,9 +456,9 @@ installWarRoomRenderDiscipline();
 
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
   // The War Room already has fireplace/torch practicals plus the directional key.
-  // These two point lights sit just beyond the opponent back rank. Give them a
-  // little more authority than the old grade so rook/knight crowns keep a clean
-  // edge against the pawn rank without lifting the room exposure or flat ambient.
+  // One point light now stays behind the opponent rank while the warm fill is
+  // mirrored to the player side. This gives both armies restrained silhouette
+  // separation without adding lights or lifting exposure/flat ambient.
   const baseExposure = coarsePointer ? 1.005 : 1.04;
   if (gameOver) {
     return {
