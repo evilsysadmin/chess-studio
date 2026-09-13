@@ -1,8 +1,10 @@
+import { bestMoveConstraintFor } from './factualBestMoveConstraint.js';
+
 // Contrato único de calidad para puzzles personales generados por Workers AI.
 // Incrementar esta versión significa que los puzzles persistidos por una versión
 // anterior deben demostrar explícitamente que pasaron TODOS los gates actuales
 // antes de volver a la cola activa.
-export const PERSONAL_PUZZLE_QUALITY_VERSION = 6;
+export const PERSONAL_PUZZLE_QUALITY_VERSION = 7;
 export const PERSONAL_PUZZLE_MIN_ENGINE_LEVEL = 92;
 export const PERSONAL_PUZZLE_MIN_ANALYSIS_DEPTH = 2;
 
@@ -12,8 +14,13 @@ export function provesCurrentPersonalPuzzleQuality(puzzle) {
   const candidateCount = Number(puzzle?.engineCandidateCount);
   const analysisDepth = Number(puzzle?.engineAnalysisDepth);
   const rawGap = puzzle?.engineBestToSecondGap;
-  const rootConstraintProven = candidateCount === 1
-    || (rawGap != null && Number.isFinite(Number(rawGap)));
+  const gap = rawGap == null ? null : Number(rawGap);
+  const bestMoveConstraint = bestMoveConstraintFor({
+    candidateCount,
+    analysisDepth,
+    secondBest: puzzle?.engineSecondBest || null,
+    bestToSecondGap: gap,
+  });
 
   return Number(puzzle?.aiQualityVersion) === PERSONAL_PUZZLE_QUALITY_VERSION
     && puzzle?.tacticalBestMoveChecked === true
@@ -23,5 +30,5 @@ export function provesCurrentPersonalPuzzleQuality(puzzle) {
     && analysisDepth >= PERSONAL_PUZZLE_MIN_ANALYSIS_DEPTH
     && Number.isInteger(candidateCount)
     && candidateCount >= 1
-    && rootConstraintProven;
+    && bestMoveConstraint !== null;
 }

@@ -8,7 +8,12 @@ import {
 import { provesCurrentPersonalPuzzleQuality } from './personalPuzzleQuality.js';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-const FACTUAL_ROOT = { analysisDepth: 3, candidateCount: 20, bestToSecondGap: 18 };
+const FACTUAL_ROOT = {
+  analysisDepth: 3,
+  candidateCount: 20,
+  secondBest: { from: 'd2', to: 'd4', san: 'd4' },
+  bestToSecondGap: 120,
+};
 
 describe('AI personal puzzle batches', () => {
   it('manda como máximo dos semillas reales y no filtra ids de partida', () => {
@@ -39,7 +44,7 @@ describe('AI personal puzzle batches', () => {
     expect(parsePersonalPuzzleBatch('esto no es json')).toEqual([]);
   });
 
-  it('acepta sólo una jugada legal que coincida con el minimax y conserva provenance del root', async () => {
+  it('acepta sólo una jugada legal con mejor movimiento claramente probado y conserva provenance', async () => {
     const candidate = { fen: START, best_uci: 'e2e4', title: 'Centro', description: 'Empuja el centro.' };
     const accepted = await validateAiPersonalPuzzleCandidate(candidate, {
       analyzeMove: async () => ({ suggested: { from: 'e2', to: 'e4', san: 'e4' }, ...FACTUAL_ROOT }),
@@ -48,12 +53,13 @@ describe('AI personal puzzle batches', () => {
       solution: ['e4'],
       source: 'workers-ai-validated',
       aiValidatedLevel: 92,
-      aiQualityVersion: 6,
+      aiQualityVersion: 7,
       tacticalBestMoveChecked: true,
       tacticalRefutationChecked: true,
       engineAnalysisDepth: 3,
       engineCandidateCount: 20,
-      engineBestToSecondGap: 18,
+      engineSecondBest: { from: 'd2', to: 'd4', san: 'd4' },
+      engineBestToSecondGap: 120,
     });
     expect(provesCurrentPersonalPuzzleQuality(accepted)).toBe(true);
 
@@ -63,28 +69,52 @@ describe('AI personal puzzle batches', () => {
     expect(rejected).toBeNull();
   });
 
-  it('rechaza validaciones sin un root minimax suficientemente probado', async () => {
+  it('rechaza roots poco profundos, incompletos o ambiguos', async () => {
     const candidate = { fen: START, best_uci: 'e2e4' };
     const matching = { suggested: { from: 'e2', to: 'e4', san: 'e4' } };
 
     expect(await validateAiPersonalPuzzleCandidate(candidate, {
-      analyzeMove: async () => ({ ...matching, analysisDepth: 1, candidateCount: 20, bestToSecondGap: 10 }),
+      analyzeMove: async () => ({ ...matching, analysisDepth: 1, candidateCount: 20, secondBest: { from: 'd2', to: 'd4' }, bestToSecondGap: 300 }),
     })).toBeNull();
     expect(await validateAiPersonalPuzzleCandidate(candidate, {
-      analyzeMove: async () => ({ ...matching, analysisDepth: 3, candidateCount: 20, bestToSecondGap: null }),
+      analyzeMove: async () => ({ ...matching, analysisDepth: 3, candidateCount: 20, secondBest: null, bestToSecondGap: 300 }),
     })).toBeNull();
     expect(await validateAiPersonalPuzzleCandidate(candidate, {
-      analyzeMove: async () => ({ ...matching, analysisDepth: 3, candidateCount: 0, bestToSecondGap: null }),
+      analyzeMove: async () => ({ ...matching, analysisDepth: 3, candidateCount: 20, secondBest: { from: 'd2', to: 'd4' }, bestToSecondGap: 99 }),
+    })).toBeNull();
+    expect(await validateAiPersonalPuzzleCandidate(candidate, {
+      analyzeMove: async () => ({ ...matching, analysisDepth: 3, candidateCount: 0, secondBest: null, bestToSecondGap: null }),
     })).toBeNull();
   });
 
-  it('retira del contrato actual un puzzle AI legacy que no conserva provenance minimax', () => {
+  it('acepta la única jugada legal como constraint factual sin inventar gap', async () => {
+    const candidate = { fen: START, best_uci: 'e2e4' };
+    const accepted = await validateAiPersonalPuzzleCandidate(candidate, {
+      analyzeMove: async () => ({
+        suggested: { from: 'e2', to: 'e4', san: 'e4' },
+        analysisDepth: 2,
+        candidateCount: 1,
+        secondBest: null,
+        bestToSecondGap: null,
+      }),
+    });
+    expect(accepted).toMatchObject({
+      engineCandidateCount: 1,
+      engineSecondBest: null,
+      engineBestToSecondGap: null,
+    });
+  });
+
+  it('retira del contrato actual un puzzle AI legacy que no conserva la prueba clear-best', () => {
     expect(provesCurrentPersonalPuzzleQuality({
       source: 'workers-ai-validated',
       aiValidatedLevel: 92,
-      aiQualityVersion: 5,
+      aiQualityVersion: 6,
       tacticalBestMoveChecked: true,
       tacticalRefutationChecked: true,
+      engineAnalysisDepth: 3,
+      engineCandidateCount: 20,
+      engineBestToSecondGap: 300,
     })).toBe(false);
   });
 
