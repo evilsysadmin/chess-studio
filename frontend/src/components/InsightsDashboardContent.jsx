@@ -31,6 +31,8 @@ import { formatLongMove } from '../notation.js';
 import { loadUnlocked, ACHIEVEMENTS } from '../achievements.js';
 import { loadPuzzlesSolved } from '../puzzleStats.js';
 import { loadPersonalPuzzles } from '../personalPuzzles.js';
+import { loadCleanGameRecords } from '../cleanGames.js';
+import { buildPlayerModel } from '../playerModel.js';
 import { loadWorstMoveCache, saveWorstMoveCache } from '../worstMoveCache.js';
 import RatingChart from './RatingChart.jsx';
 import MatthiasDailyConsult from './MatthiasDailyConsult.jsx';
@@ -142,6 +144,12 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   // de "Buscar mi peor jugada de siempre" — sin volver a llamar al
   // backend, todo esto ya está calculado.
   const personalPuzzles = useMemo(() => loadPersonalPuzzles(), [gameHistory.length]);
+  const cleanGameRecords = useMemo(() => loadCleanGameRecords(), [gameHistory.length]);
+  const playerModel = useMemo(() => buildPlayerModel({
+    insights,
+    personalPuzzles,
+    cleanGameRecords,
+  }), [insights, personalPuzzles, cleanGameRecords]);
   const personalPuzzleCount = personalPuzzles.length;
   const roastExtras = useMemo(() => ({
     achievementsUnlocked: loadUnlocked().size,
@@ -245,7 +253,11 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
     setPortraitRefresh((value) => value + 1);
   }
 
-  const coaching = useMemo(() => generateCoaching(insights, rivalry, roastExtras), [insights, rivalry, roastExtras]);
+  const coachingExtras = useMemo(() => ({
+    ...roastExtras,
+    recurringErrors: playerModel.recurringErrors,
+  }), [roastExtras, playerModel.recurringErrors]);
+  const coaching = useMemo(() => generateCoaching(insights, rivalry, coachingExtras), [insights, rivalry, coachingExtras]);
   const coachingWithTraining = useMemo(() => coaching.map((item) => ({
     item,
     target: trainingTargetForCoaching(item, personalPuzzles),
