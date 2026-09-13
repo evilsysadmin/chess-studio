@@ -1,11 +1,15 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { IconTrophy, IconBook } from './Icons.jsx';
 import HomeCastle3D from './HomeCastle3D.jsx';
+import MatthiasCoffeeSteam from './MatthiasCoffeeSteam.jsx';
+import MatthiasLayeredArt from './MatthiasLayeredArt.jsx';
 import hall from '../assets/home-canonical/great-hall-dungeon.webp';
 import { loadRivalry } from '../rivalry.js';
 import { dailyChallengeStats, loadDailyChallenge } from '../dailyChallenge.js';
 import { buildHomeCastleLife } from '../homeCastleLife.js';
 import { requestLabLaunch } from '../labLaunchIntent.js';
+import { matthiasAmbientVisuals } from '../matthiasVisuals.js';
+import { reducedMotionStatus, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import './HomeIllustrated.css';
 import './HomeIllustratedDiegetic.css';
 import './HomeIllustratedDungeonCanonical.css';
@@ -14,6 +18,7 @@ import './HomeCastleLife.css';
 import './HomeCastle3D.css';
 import './HomeIllustratedTallTouch.css';
 import './HomePawnSlugEntity.css';
+import './HomeMatthiasRoutine.css';
 
 function IconSword(props) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m3 3 5 2 12 14-1 1L5 8 3 3Zm18 0-5 2L4 19l1 1L19 8l2-5ZM2 16l6 6m8-20 6 6M16 22l6-6M2 8l6-6" /></svg>;
@@ -29,13 +34,21 @@ function memoryPresentation(memory, { onDaily, onHistory }) {
   return { Icon: IconSword, onOpen: onHistory, destinationLabel: 'Historia' };
 }
 
+function currentReducedMotion() {
+  return reducedMotionStatus().effective;
+}
+
 export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, onContinue, onTournament, onTrain, onCombat, onDaily, onHistory, onInsights, tools, matthiasModel, matthiasSpeaking, onMatthiasAction, onMatthiasDismiss }) {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [activeRoom, setActiveRoom] = useState(null);
+  const [matthiasRoutineIndex, setMatthiasRoutineIndex] = useState(0);
+  const [reducedMotion, setReducedMotion] = useState(currentReducedMotion);
   const castleLife = useMemo(() => buildHomeCastleLife({
     rivalry: loadRivalry(),
     dailyStats: dailyChallengeStats(loadDailyChallenge()),
   }), []);
+  const matthiasRoutine = useMemo(() => matthiasAmbientVisuals(), []);
+  const matthiasVisual = matthiasRoutine[matthiasRoutineIndex % Math.max(1, matthiasRoutine.length)] || matthiasRoutine[0];
   const memories = castleLife.memories || (castleLife.memory ? [castleLife.memory] : []);
   const experimentsAction = tools.find(([label]) => label === 'Experimentos geniales')?.[1];
   const openPawnSlug = () => {
@@ -43,6 +56,28 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     requestLabLaunch('pawnslug');
     experimentsAction();
   };
+
+  useEffect(() => {
+    const refresh = () => setReducedMotion(currentReducedMotion());
+    window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
+    const media = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    media?.addEventListener?.('change', refresh);
+    return () => {
+      window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
+      media?.removeEventListener?.('change', refresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (reducedMotion || matthiasSpeaking || matthiasRoutine.length < 2) return undefined;
+    const rotate = () => {
+      if (document.hidden) return;
+      setMatthiasRoutineIndex((current) => (current + 1) % matthiasRoutine.length);
+    };
+    const timer = window.setInterval(rotate, 28_000);
+    return () => window.clearInterval(timer);
+  }, [matthiasRoutine.length, matthiasSpeaking, reducedMotion]);
+
   const rooms = [
     ['tournament', 'TORNEOS', 'Compite y escala', IconTrophy, onTournament],
     ['train', 'ENTRENAR', 'Mejora tu juego', IconBook, onTrain],
@@ -51,6 +86,8 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     ['history', 'HISTORIA', 'Descubre el legado', IconBook, onHistory],
     ['play', hasSavedGame ? 'CONTINUAR' : 'JUGAR', hasSavedGame ? 'Vuelve a tu partida' : 'Partida rápida o privada', IconSword, hasSavedGame ? onContinue : onPlay],
   ];
+  const matthiasActivity = matthiasVisual?.label || 'En observación';
+  const matthiasActionDuplicated = matthiasSpeaking && matthiasModel?.action === 'insights';
   return (
     <section className="illustrated-home" aria-label="Modos principales">
       <div
@@ -133,9 +170,41 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           >{matthiasModel.actionLabel}</button>
           <button type="button" onClick={onMatthiasDismiss} aria-label="Cerrar comentario de Matthias">×</button>
         </section>}
-        {(!matthiasSpeaking || matthiasModel.action !== 'insights') && <button className="illustrated-home__matthias" type="button" onClick={onInsights} aria-label="Abrir Así juegas con Matthias">
-          <strong>MATTHIAS</strong><span>Comida táctica</span><em>“El progreso se construye jugada a jugada.”</em>
-        </button>}
+        <button
+          className={`illustrated-home__matthias${matthiasSpeaking ? ' is-speaking' : ''}`}
+          type="button"
+          onClick={onInsights}
+          aria-label={matthiasActionDuplicated ? `Matthias · ${matthiasActivity}` : 'Abrir Así juegas con Matthias'}
+          title={`Matthias · ${matthiasActivity}`}
+          data-home-matthias-scene={matthiasVisual?.key || 'base'}
+          data-home-matthias-activity={matthiasActivity}
+        >
+          {matthiasVisual && (
+            <span
+              key={matthiasVisual.key}
+              className="illustrated-home__matthias-portrait"
+              data-reduced-motion={reducedMotion ? 'true' : 'false'}
+              aria-hidden="true"
+            >
+              <MatthiasLayeredArt
+                avatar={matthiasVisual.avatar}
+                scene={matthiasVisual.key}
+                activity={matthiasVisual.label}
+                speaking={matthiasSpeaking}
+                reducedMotion={reducedMotion}
+              />
+              <MatthiasCoffeeSteam
+                scene={matthiasVisual.key}
+                reducedMotion={reducedMotion}
+              />
+            </span>
+          )}
+          <span className="illustrated-home__matthias-copy">
+            <strong>MATTHIAS</strong>
+            <span>{matthiasActivity}</span>
+            <em>{matthiasSpeaking ? 'Dictando sentencia' : 'Así juegas →'}</em>
+          </span>
+        </button>
         </aside>
         <footer className="illustrated-home__motto"><span aria-hidden="true">─　♛　─</span><p>DISCIPLINA · ESTRATEGIA · UN MUNDO MEJOR</p></footer>
         <div className={`illustrated-home__utilities${toolsOpen ? ' is-open' : ''}`}>

@@ -1,0 +1,116 @@
+/* Matthias is a resident of the Great Hall, not a static menu badge. The
+ * existing scene renders and layered-art rig provide the acting; this file only
+ * gives the routine enough visual presence to read without turning Home into a
+ * dashboard. */
+.illustrated-home__matthias-portrait {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  flex: none;
+  border-radius: 9px;
+  background: rgba(12, 8, 5, .76);
+  box-shadow: inset 0 0 0 1px rgba(221, 177, 91, .22), 0 8px 18px rgba(0, 0, 0, .24);
+  transform-origin: 50% 78%;
+}
+
+.illustrated-home__matthias-portrait > span {
+  display: block;
+}
+
+.illustrated-home__matthias-portrait[data-reduced-motion='false'] {
+  animation: home-matthias-scene-arrive 620ms cubic-bezier(.2,.7,.2,1) both;
+}
+
+.illustrated-home__matthias-copy {
+  min-width: 0;
+  display: grid;
+  gap: .18rem;
+  align-content: center;
+}
+
+.illustrated-home__matthias-copy > strong,
+.illustrated-home__matthias-copy > span,
+.illustrated-home__matthias-copy > em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.illustrated-home__matthias-copy > span {
+  color: #f3d89a;
+  white-space: nowrap;
+}
+
+.illustrated-home__matthias-copy > em {
+  color: #bda986;
+  white-space: nowrap;
+}
+
+@keyframes home-matthias-scene-arrive {
+  from { opacity: .35; transform: translate3d(0, 4px, 0) scale(.975); filter: brightness(.82); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: brightness(1); }
+}
+
+@media (min-width: 1000px) {
+  .illustrated-home__matthias {
+    left: 10.9%;
+    top: 83%;
+    width: 16.2%;
+    min-height: 11.5%;
+    grid-template-columns: clamp(60px, 4.9cqw, 88px) minmax(0, 1fr);
+    align-items: center;
+    column-gap: .55cqw;
+    padding: .48cqw .58cqw;
+    overflow: hidden;
+    background: linear-gradient(100deg, rgba(18, 11, 7, .93), rgba(22, 14, 9, .74));
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .22);
+    transition: filter .18s ease, background-color .18s ease;
+  }
+
+  .illustrated-home__matthias:hover,
+  .illustrated-home__matthias:focus-visible {
+    filter: brightness(1.08);
+  }
+
+  .illustrated-home__matthias-portrait {
+    width: 100%;
+    aspect-ratio: 4 / 5;
+  }
+
+  .illustrated-home__matthias.is-speaking .illustrated-home__matthias-copy > em {
+    color: #e9c66f;
+  }
+}
+
+@media (max-width: 999px) {
+  /* Mobile keeps the diegetic hotspot footprint. Replace the old text-only
+     marker with Matthias himself; the activity name remains available through
+     aria-label/title without cluttering the castle. */
+  .illustrated-home__matthias {
+    overflow: visible;
+  }
+
+  .illustrated-home__matthias-portrait {
+    display: block !important;
+    width: clamp(46px, 13vw, 62px);
+    aspect-ratio: 1 / 1.08;
+    margin: auto;
+  }
+
+  .illustrated-home__matthias-portrait span {
+    display: block !important;
+  }
+
+  .illustrated-home__matthias-copy {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .illustrated-home__matthias {
+    transition: none;
+  }
+
+  .illustrated-home__matthias-portrait {
+    animation: none !important;
+  }
+}

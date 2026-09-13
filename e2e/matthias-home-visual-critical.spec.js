@@ -17,13 +17,15 @@ async function openCanonicalHome(page, { reducedMotion = 'no-preference' } = {})
   return home;
 }
 
-test('Home canónica · Matthias permanece visible y abre Así juegas', async ({ page }) => {
+test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', async ({ page }) => {
   const home = await openCanonicalHome(page);
-  const matthias = home.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true });
+  const matthias = home.locator('.illustrated-home__matthias');
 
   await expect(matthias).toBeVisible();
   await expect(matthias).toContainText('MATTHIAS');
-  await expect(matthias).toContainText('Comida táctica');
+  await expect(matthias).toHaveAttribute('data-home-matthias-scene', /.+/);
+  await expect(matthias).toHaveAttribute('data-home-matthias-activity', /.+/);
+  await expect(matthias.locator('[data-matthias-layered-art="true"]')).toBeVisible();
 
   await matthias.click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
@@ -126,7 +128,9 @@ test('Home canónica · ultrapanorámica llena el viewport y mantiene la UI clav
 test('Home canónica · reduced motion elimina transiciones decorativas', async ({ page }) => {
   const home = await openCanonicalHome(page, { reducedMotion: 'reduce' });
   const destination = home.locator('.illustrated-home__destination--tournament');
+  const matthiasRig = home.locator('.illustrated-home__matthias [data-matthias-layered-art="true"]');
   await expect(destination).toBeVisible();
+  await expect(matthiasRig).toHaveAttribute('data-gesture-state', 'reduced');
 
   const transitionSeconds = await destination.evaluate((node) => Number.parseFloat(getComputedStyle(node).transitionDuration) || 0);
   expect(transitionSeconds).toBeLessThanOrEqual(0.001);
