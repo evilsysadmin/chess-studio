@@ -1,6 +1,6 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURE_PROFILES = Object.freeze([
@@ -32,6 +32,13 @@ const CAPTURE_PROFILES = Object.freeze([
 
 async function open3DFromAppearance(page) {
   const board3d = page.locator('[data-board3d-war-room="true"]');
+  if (await board3d.isVisible().catch(() => false)) return board3d;
+
+  // Quick Match defaults to 3D, but its lazy Three chunk can settle a moment
+  // after the game route itself. Give the canonical renderer a short chance to
+  // appear before falling back to the Appearance control, which is intentionally
+  // hidden once the War Room owns the screen.
+  await board3d.waitFor({ state: 'visible', timeout: 3_000 }).catch(() => {});
   if (await board3d.isVisible().catch(() => false)) return board3d;
 
   await page.getByRole('button', { name: 'Cambiar apariencia y piezas del tablero', exact: true }).click();
@@ -106,6 +113,43 @@ async function captureWarRoomHealth(page, label) {
         bottom: Number(rect.bottom.toFixed(1)),
       };
     };
+    const overflowOffenders = [...document.body.querySelectorAll('*')]
+      .map((node) => {
+        const style = getComputedStyle(node);
+        const rect = node.getBoundingClientRect();
+        if (
+          style.display === 'none'
+          || style.visibility === 'hidden'
+          || rect.width <= 0
+          || rect.height <= 0
+        ) return null;
+        const overflowLeft = Math.max(0, -rect.left);
+        const overflowRight = Math.max(0, rect.right - viewport.width);
+        const overflowTop = Math.max(0, -rect.top);
+        const overflowBottom = Math.max(0, rect.bottom - viewport.height);
+        const overflow = Math.max(overflowLeft, overflowRight, overflowTop, overflowBottom);
+        if (overflow <= 1) return null;
+        const className = typeof node.className === 'string'
+          ? node.className
+          : (node.getAttribute('class') || '');
+        return {
+          tag: node.tagName.toLowerCase(),
+          id: node.id || null,
+          className: className || null,
+          ariaLabel: node.getAttribute('aria-label') || null,
+          position: style.position,
+          overflow: Number(overflow.toFixed(1)),
+          left: Number(rect.left.toFixed(1)),
+          right: Number(rect.right.toFixed(1)),
+          top: Number(rect.top.toFixed(1)),
+          bottom: Number(rect.bottom.toFixed(1)),
+          width: Number(rect.width.toFixed(1)),
+          height: Number(rect.height.toFixed(1)),
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.overflow - a.overflow)
+      .slice(0, 18);
 
     const root = document.documentElement;
     const board = box('[data-board3d-war-room="true"]');
@@ -115,6 +159,11 @@ async function captureWarRoomHealth(page, label) {
     const notation = box('.game-side-column-3d .game-notation-disclosure');
     const legacyCommandDeck = box('.game-board-stack-3d > .game-command-deck');
     const masthead = box('.masthead-game-compact');
+    const appShell = box('.app-shell-board-game');
+    const gameScreen = box('.game-screen');
+    const gameLayout = box('.game-layout.game-layout-3d');
+    const liveRow = box('.board-live-row.is-3d-warroom');
+    const sideColumn = box('.game-side-column.game-side-column-3d');
     const focus = buttonBox('Focus');
     const abandon = buttonBox('Abandonar partida');
     const overflow = buttonBox('Más acciones de partida');
@@ -132,8 +181,14 @@ async function captureWarRoomHealth(page, label) {
       hardwareConcurrency: navigator.hardwareConcurrency,
       touchPoints: navigator.maxTouchPoints,
       coarsePointer: window.matchMedia('(pointer: coarse)').matches,
-      horizontalOverflowPx: Math.max(0, root.scrollWidth - root.clientWidth),
-      verticalOverflowPx: Math.max(0, root.scrollHeight - root.clientHeight),
+      horizontalOverflowPx: Math.max(0, root.scrollWidth - viewport.width),
+      verticalOverflowPx: Math.max(0, root.scrollHeight - viewport.height),
+      overflowOffenders,
+      appShell,
+      gameScreen,
+      gameLayout,
+      liveRow,
+      sideColumn,
       board,
       hud,
       masthead,
@@ -163,7 +218,7 @@ async function openCanonicalWarRoom(page) {
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await expect(gameTurn(page)).toBeVisible();
+  await expect(page.locator('.game-screen')).toBeVisible({ timeout: 30_000 });
 
   const board3d = await open3DFromAppearance(page);
   const canvas = page.locator('.board3d-main-canvas');
@@ -243,7 +298,7 @@ for (const profile of CAPTURE_PROFILES) {
       const health = await captureWarRoomHealth(page, profile.label);
       await writeFile(
         `${ARTIFACT_DIR}/${profile.label}-health.json`,
-        `${JSON.stringify({ schema: 2, capture: health }, null, 2)}\n`,
+        `${JSON.stringify({ schema: 3, capture: health }, null, 2)}\n`,
         'utf8',
       );
 
