@@ -1,8 +1,10 @@
 import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
+import { buildPostGameIncidentEvidence } from './postGameIncidentEvidence.js';
 
 export const CLEAN_GAMES_KEY = 'chess-study-clean-games-v1';
 export const CLEAN_GAME_MIN_ANALYZED_MOVES = 8;
+export const CLEAN_GAME_INCIDENT_COVERAGE_VERSION = 1;
 const MAX_RECORDS = 100;
 const MAJOR_MINOR = new Set(['q', 'r', 'b', 'n']);
 
@@ -15,8 +17,28 @@ function finiteRows(report) {
   return (Array.isArray(report?.moveReports) ? report.moveReports : []).filter((row) => Number.isFinite(row?.loss));
 }
 
+function incidentCoverage(rows) {
+  const keys = new Set();
+  let coveredMoves = 0;
+  for (const row of rows) {
+    const evidence = buildPostGameIncidentEvidence(row);
+    if (!evidence) continue;
+    coveredMoves += 1;
+    for (const key of evidence.incidentKeys || []) {
+      if (key) keys.add(key);
+    }
+  }
+  return {
+    version: CLEAN_GAME_INCIDENT_COVERAGE_VERSION,
+    coveredMoves,
+    sufficient: coveredMoves >= CLEAN_GAME_MIN_ANALYZED_MOVES,
+    incidentKeys: [...keys].sort(),
+  };
+}
+
 export function cleanGameEvidence(report, meta = {}) {
   const rows = finiteRows(report);
+  const coverage = incidentCoverage(rows);
   const analyzedCount = Math.max(0, Number(report?.analyzedCount || rows.length) || 0);
   const blunders = rows.filter((row) => row.severity === 'blunder' || Number(row.loss) >= 150).length;
   const mistakes = rows.filter((row) => row.severity === 'mistake' || (Number(row.loss) >= 60 && Number(row.loss) < 150)).length;
@@ -47,6 +69,10 @@ export function cleanGameEvidence(report, meta = {}) {
     missedMates,
     maxLoss,
     averageLoss: Number.isFinite(Number(report?.averageLoss)) ? Number(report.averageLoss) : null,
+    incidentCoverageVersion: coverage.version,
+    incidentCoveredMoves: coverage.coveredMoves,
+    incidentCoverageSufficient: coverage.sufficient,
+    incidentKeys: coverage.incidentKeys,
   };
 }
 

@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+  CLEAN_GAME_INCIDENT_COVERAGE_VERSION,
   CLEAN_GAME_MIN_ANALYZED_MOVES,
   cleanGameEvidence,
   cleanGameSummary,
   loadCleanGameRecords,
   recordCleanGameEvidence,
 } from './cleanGames.js';
+
+const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+const MISSED_MATE_FEN = 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4';
 
 function move(loss = 12, extras = {}) {
   return {
@@ -16,6 +20,19 @@ function move(loss = 12, extras = {}) {
     context: {},
     ...extras,
   };
+}
+
+function factualMove(loss = 12, extras = {}) {
+  return move(loss, {
+    played: 'e4',
+    playedFrom: 'e2',
+    playedTo: 'e4',
+    suggested: 'e4',
+    suggestedFrom: 'e2',
+    suggestedTo: 'e4',
+    context: { fenBefore: START_FEN },
+    ...extras,
+  });
 }
 
 function report(rows) {
@@ -37,7 +54,18 @@ describe('Partida limpia', () => {
 
   it('concede el sello sólo sin mistakes, blunders, mate omitido ni regalo severo de pieza', () => {
     const clean = cleanGameEvidence(report(Array.from({ length: 10 }, () => move(18))));
-    expect(clean).toMatchObject({ sufficientSample: true, clean: true, mistakes: 0, blunders: 0, materialGifts: 0, missedMates: 0 });
+    expect(clean).toMatchObject({
+      sufficientSample: true,
+      clean: true,
+      mistakes: 0,
+      blunders: 0,
+      materialGifts: 0,
+      missedMates: 0,
+      incidentCoverageVersion: CLEAN_GAME_INCIDENT_COVERAGE_VERSION,
+      incidentCoveredMoves: 0,
+      incidentCoverageSufficient: false,
+      incidentKeys: [],
+    });
 
     const missedMateRows = Array.from({ length: 10 }, () => move(18));
     missedMateRows[4] = move(18, { suggested: 'Qh7#', context: { suggested: { checkmate: true }, played: { checkmate: false } } });
@@ -46,6 +74,34 @@ describe('Partida limpia', () => {
     const giftRows = Array.from({ length: 10 }, () => move(18));
     giftRows[3] = move(90, { context: { played: { piece: 'q' }, reply: { capturedPlayedPiece: true } } });
     expect(cleanGameEvidence(report(giftRows))).toMatchObject({ clean: false, mistakes: 1, materialGifts: 1 });
+  });
+
+  it('guarda cobertura factual e incidentes observados sin confundir muestra global con cobertura reconstruible', () => {
+    const coveredRows = Array.from({ length: CLEAN_GAME_MIN_ANALYZED_MOVES }, () => factualMove(10));
+    coveredRows[3] = factualMove(500, {
+      played: 'Qh3',
+      playedFrom: 'h5',
+      playedTo: 'h3',
+      suggested: 'Qxf7#',
+      suggestedFrom: 'h5',
+      suggestedTo: 'f7',
+      context: { fenBefore: MISSED_MATE_FEN },
+    });
+
+    const covered = cleanGameEvidence(report(coveredRows));
+    expect(covered).toMatchObject({
+      incidentCoverageVersion: CLEAN_GAME_INCIDENT_COVERAGE_VERSION,
+      incidentCoveredMoves: CLEAN_GAME_MIN_ANALYZED_MOVES,
+      incidentCoverageSufficient: true,
+      incidentKeys: ['human:MISSED_MATE'],
+    });
+
+    const partialRows = [...coveredRows];
+    partialRows[0] = move(10);
+    const partial = cleanGameEvidence(report(partialRows));
+    expect(partial.sufficientSample).toBe(true);
+    expect(partial.incidentCoveredMoves).toBe(CLEAN_GAME_MIN_ANALYZED_MOVES - 1);
+    expect(partial.incidentCoverageSufficient).toBe(false);
   });
 
   it('persiste sólo evidencia de autopsia y calcula ratio y rachas', () => {
