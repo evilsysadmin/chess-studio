@@ -67,6 +67,47 @@ async function runAndGunToProgress(page, targetPercent) {
   throw new Error(`Pawn Slug no alcanzó ${targetPercent}% con controles reales; progreso=${await missionProgress(page)}%`);
 }
 
+test('Pawn Slug · Modo Experto es opt-in, persiste y Arcade sigue siendo el default', async ({ page }) => {
+  test.setTimeout(45_000);
+  await openPawnSlug(page);
+
+  const root = page.locator('[data-pawn-slug="true"]');
+  await expect(root).toHaveAttribute('data-pawn-slug-expert', 'false');
+  await expect(page.getByText(/Sin XP, niveles ni economía/)).toBeVisible();
+
+  await page.keyboard.press('Escape');
+  let settings = page.getByRole('dialog', { name: 'Pawn Slug Settings' });
+  await expect(settings).toBeVisible();
+  let expertSection = settings.locator('.pawn-slug-settings-remap').filter({ hasText: 'Modo experto' });
+  let expertToggle = expertSection.getByRole('button');
+  await expect(expertToggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(expertToggle).toHaveText('OFF');
+  await expertToggle.click();
+  await expect(expertToggle).toHaveAttribute('aria-pressed', 'true');
+  await expect(expertToggle).toHaveText('ACTIVO');
+  await page.keyboard.press('Escape');
+
+  await expect(root).toHaveAttribute('data-pawn-slug-expert', 'true');
+  await expect(page.getByText(/Las bajas dan XP/)).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Pawn Slug', exact: true })).toBeVisible();
+  await expect(page.locator('[data-pawn-slug="true"]')).toHaveAttribute('data-pawn-slug-expert', 'true');
+  await expect(page.getByText(/Las bajas dan XP/)).toBeVisible();
+
+  // Restore the default so this test documents both directions of the contract.
+  await page.keyboard.press('Escape');
+  settings = page.getByRole('dialog', { name: 'Pawn Slug Settings' });
+  await expect(settings).toBeVisible();
+  expertSection = settings.locator('.pawn-slug-settings-remap').filter({ hasText: 'Modo experto' });
+  expertToggle = expertSection.getByRole('button');
+  await expect(expertToggle).toHaveAttribute('aria-pressed', 'true');
+  await expertToggle.click();
+  await expect(expertToggle).toHaveAttribute('aria-pressed', 'false');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-pawn-slug="true"]')).toHaveAttribute('data-pawn-slug-expert', 'false');
+});
+
 test('Pawn Slug · checkpoint, boss, reinicio, F5 y vuelta al laboratorio dejan el runtime limpio', async ({ page }) => {
   // One premium Three.js boot now crosses a real checkpoint and reaches the
   // Panzer-Rook encounter before proving restart/reload/re-entry cleanup.
