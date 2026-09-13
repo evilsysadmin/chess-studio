@@ -89,15 +89,19 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 20_000 });
 
     // Capture Hans himself, not a dialogue card covering his head and torso.
-    // The acknowledgement is short-lived; after it disappears Hans is still
-    // physically in the room for the fireplace choreography.
-    const hansReply = page.getByRole('status', { name: 'Hans obedece a Matthias' });
-    await expect(hansReply).toBeHidden({ timeout: 8_000 });
+    // Observe the real narrative phase so copy/aria-label changes cannot make
+    // this canary silently capture the acknowledgement bubble again.
+    const fireOverlay = page.getByTestId('warroom-hans-fire-call-overlay');
+    const hansBubble = page.locator('.warroom-fire-call-bubble-hans');
+    await expect(fireOverlay).toHaveAttribute('data-fire-call-phase', 'hans', { timeout: 5_000 });
+    await expect(fireOverlay).not.toHaveAttribute('data-fire-call-phase', 'hans', { timeout: 8_000 });
+    await expect(hansBubble).toHaveCount(0, { timeout: 2_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 5_000 });
     await page.waitForTimeout(120);
-    const replyBubbleVisible = await hansReply.isVisible().catch(() => false);
 
-    const diagnostic = await canvas.evaluate((node, bubbleVisible) => ({
+    const replyBubbleVisible = await hansBubble.isVisible().catch(() => false);
+    const fireCallPhase = await fireOverlay.getAttribute('data-fire-call-phase');
+    const diagnostic = await canvas.evaluate((node, extra) => ({
       schema: 1,
       viewport: { width: window.innerWidth, height: window.innerHeight },
       screen: node.dataset.warRoomHansScreen || '',
@@ -107,13 +111,15 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
       sceneReady: node.dataset.warRoomHansSceneReady === 'true',
       callReleased: node.dataset.warRoomHansCallReleased === 'true',
       replySeen: node.dataset.warRoomHansReplySeen === 'true',
-      replyBubbleVisible: bubbleVisible,
-    }), replyBubbleVisible);
+      replyBubbleVisible: extra.replyBubbleVisible,
+      fireCallPhase: extra.fireCallPhase || '',
+    }), { replyBubbleVisible, fireCallPhase });
 
     expect(diagnostic.sceneReady).toBe(true);
     expect(diagnostic.callReleased).toBe(true);
     expect(diagnostic.replySeen).toBe(true);
     expect(diagnostic.replyBubbleVisible).toBe(false);
+    expect(diagnostic.fireCallPhase).not.toBe('hans');
     expect(diagnostic.screen).toBe('onscreen');
     expect(Number.isFinite(diagnostic.ndcX)).toBe(true);
     expect(Number.isFinite(diagnostic.ndcY)).toBe(true);
