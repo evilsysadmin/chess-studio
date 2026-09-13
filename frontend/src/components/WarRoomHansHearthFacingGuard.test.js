@@ -23,6 +23,16 @@ function makeScene() {
   fire.position.set(0, 0, 0);
   fireplace.add(fire);
 
+  const basket = new THREE.Group();
+  basket.name = 'war-room-hearth-log-basket';
+  basket.position.set(-1.6, 0, 0.1);
+  fireplace.add(basket);
+
+  const tools = new THREE.Group();
+  tools.name = 'war-room-hearth-tool-stand';
+  tools.position.set(1.7, 0, 0.15);
+  fireplace.add(tools);
+
   const hans = new THREE.Group();
   hans.name = 'war-room-hans-butler';
   hans.visible = true;
@@ -51,7 +61,7 @@ function makeScene() {
   driver.onBeforeRender = () => {};
   fireplace.add(driver);
 
-  return { root, hans, bodyMesh, driver, head, fire };
+  return { root, hans, bodyMesh, driver, head, fire, basket, tools };
 }
 
 function faceDotPoint(hans, head, point) {
@@ -63,8 +73,8 @@ function faceDotPoint(hans, head, point) {
   return face.dot(target);
 }
 
-function fireWorldPosition(fire) {
-  return fire.getWorldPosition(new THREE.Vector3());
+function objectWorldPosition(object) {
+  return object.getWorldPosition(new THREE.Vector3());
 }
 
 function paintVisibleMesh(mesh, frame) {
@@ -79,29 +89,43 @@ function paintVisibleMesh(mesh, frame) {
 }
 
 describe('Hans hearth-facing guard', () => {
-  it('turns the rendered face toward the fire and repairs a late root rotation before paint', () => {
+  it.each([
+    ['take-log', 'basket', 'basket'],
+    ['carry-log', 'hearth', 'fire'],
+    ['place-log', 'fire', 'fire'],
+    ['take-poker', 'tools', 'tools'],
+    ['stoke-fire', 'fire', 'fire'],
+    ['return-poker', 'tools', 'tools'],
+    ['satisfied', 'fire', 'fire'],
+  ])('reafirma el objetivo de trabajo estacionario en %s justo antes de pintar', (phase, facingTarget, targetKey) => {
     globalThis.document = { querySelector: vi.fn(() => null) };
-    const { root, hans, bodyMesh, driver, head, fire } = makeScene();
-    expect(faceDotPoint(hans, head, fireWorldPosition(fire))).toBeLessThan(0);
+    const scene = makeScene();
+    const { root, hans, bodyMesh, driver, head } = scene;
     expect(installWarRoomHansHearthFacingGuard(root)).toBe(1);
-    expect(driver.userData.warRoomHansHearthFacingHotPath).toBe('preallocated-scratch-v5-board-world');
-    expect(hans.userData.warRoomHansVisibleHearthFacingHooks).toBeGreaterThanOrEqual(1);
+
+    driver.userData.warRoomHansPhase = phase;
+    hans.userData.warRoomHansMovementFacing = 'work-target';
+    hans.userData.warRoomHansFacingTarget = facingTarget;
+    hans.rotation.y = Math.PI;
+    hans.updateMatrixWorld(true);
 
     driver.onBeforeRender();
-    expect(hans.userData.warRoomHansHearthFacingGuard).toBe(WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION);
-    expect(hans.userData.warRoomHansHearthFacingTarget).toBe('fire-core-rendered');
-    expect(faceDotPoint(hans, head, fireWorldPosition(fire))).toBeGreaterThan(0.99);
+    const target = scene[targetKey];
+    expect(faceDotPoint(hans, head, objectWorldPosition(target))).toBeGreaterThan(0.99);
 
+    // A later writer may still mutate the root; visible pre-render owns the last
+    // word for stationary work orientation.
     hans.rotation.y += Math.PI;
     hans.updateMatrixWorld(true);
-    expect(faceDotPoint(hans, head, fireWorldPosition(fire))).toBeLessThan(-0.99);
+    expect(faceDotPoint(hans, head, objectWorldPosition(target))).toBeLessThan(-0.99);
 
-    paintVisibleMesh(bodyMesh, 31);
-    expect(faceDotPoint(hans, head, fireWorldPosition(fire))).toBeGreaterThan(0.99);
+    paintVisibleMesh(bodyMesh, 30 + phase.length);
+    expect(faceDotPoint(hans, head, objectWorldPosition(target))).toBeGreaterThan(0.99);
     expect(hans.userData.warRoomHansHearthFacingSource).toBe('visible-mesh-pre-render');
+    expect(hans.userData.warRoomHansVisibleHearthFacingHooks).toBeGreaterThanOrEqual(1);
   });
 
-  it('keeps board-peek facing correct even if another stage flips Hans after the driver pass', () => {
+  it('turns Hans toward the board only while the board-side conversation is holding him', () => {
     globalThis.document = {
       querySelector: vi.fn(() => ({ dataset: { warRoomHansNarrativePhase: 'peek' } })),
     };
@@ -117,7 +141,7 @@ describe('Hans hearth-facing guard', () => {
     hans.updateMatrixWorld(true);
     expect(faceDotPoint(hans, head, new THREE.Vector3(0, 0, 0))).toBeLessThan(-0.99);
 
-    paintVisibleMesh(bodyMesh, 32);
+    paintVisibleMesh(bodyMesh, 52);
     expect(faceDotPoint(hans, head, new THREE.Vector3(0, 0, 0))).toBeGreaterThan(0.99);
     expect(hans.userData.warRoomHansHearthFacingSource).toBe('visible-mesh-pre-render');
   });
