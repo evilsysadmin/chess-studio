@@ -49,6 +49,30 @@ function openingFacts(insights) {
     });
 }
 
+function timeControlFacts(timeControlStats) {
+  const source = timeControlStats && typeof timeControlStats === 'object' && !Array.isArray(timeControlStats)
+    ? timeControlStats
+    : {};
+  return Object.entries(source)
+    .map(([rawId, row]) => {
+      const id = String(rawId || '').trim();
+      const games = nonNegativeInt(row?.games);
+      if (!id || id === 'none' || games <= 0) return null;
+      const wins = Math.min(games, nonNegativeInt(row?.wins));
+      return {
+        id: id.slice(0, 32),
+        games,
+        wins,
+        draws: Math.min(games, nonNegativeInt(row?.draws)),
+        losses: Math.min(games, nonNegativeInt(row?.losses)),
+        winPct: Math.round((wins / games) * 100),
+        confidence: evidenceConfidence(games, { mediumAt: 5, highAt: 10 }),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => b.games - a.games || b.winPct - a.winPct || a.id.localeCompare(b.id));
+}
+
 function isoOrNull(value) {
   const parsed = Date.parse(value || '');
   return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
@@ -210,7 +234,7 @@ function patternImprovementState(pattern, currentNoRecurrenceStreak) {
   return PATTERN_IMPROVEMENT_STATES.NO_SAMPLE;
 }
 
-export function buildPlayerModel({ insights = null, personalPuzzles = [], cleanGameRecords = {} } = {}) {
+export function buildPlayerModel({ insights = null, personalPuzzles = [], cleanGameRecords = {}, timeControlStats = null } = {}) {
   const puzzles = Array.isArray(personalPuzzles) ? personalPuzzles.filter(Boolean) : [];
   const totalGames = nonNegativeInt(insights?.totalGames);
   const recurringErrors = buildRecurringErrorPatterns(puzzles).map((pattern) => {
@@ -232,6 +256,7 @@ export function buildPlayerModel({ insights = null, personalPuzzles = [], cleanG
   const trainingDebt = personalTrainingDebtSummary(puzzles);
   const cleanPlay = cleanPlayFacts(cleanGameRecords);
   const positiveDecisions = positiveDecisionFacts(cleanGameRecords);
+  const timeControls = timeControlFacts(timeControlStats);
 
   return {
     version: PLAYER_MODEL_VERSION,
@@ -251,6 +276,7 @@ export function buildPlayerModel({ insights = null, personalPuzzles = [], cleanG
     colorPreference: insights?.colorPreference ? { ...insights.colorPreference } : null,
     ratingTrend: insights?.ratingTrend ? { ...insights.ratingTrend } : null,
     openings: openingFacts(insights),
+    ...(timeControls.length ? { timeControls } : {}),
     recurringErrors,
     trainingDebt,
     trainingProgress: trainingProgressFacts(puzzles, trainingDebt),
