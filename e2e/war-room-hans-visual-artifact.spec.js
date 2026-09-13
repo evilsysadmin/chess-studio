@@ -5,6 +5,7 @@ import { warRoomHansEventForGame } from '../frontend/src/components/WarRoomHansE
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const LABEL = 'war-room-hans-desktop-1440x900';
+const MAX_GROUND_GAP = 0.005;
 
 function firstE2EFireGameIndex() {
   for (let index = 1; index <= 64; index += 1) {
@@ -87,6 +88,7 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 12_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: 60_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 20_000 });
+    await expect(canvas).toHaveAttribute('data-war-room-hans-ground-gap', /.+/, { timeout: 20_000 });
 
     // Capture Hans himself, not a dialogue card covering his head and torso.
     // Observe the real narrative phase so copy/aria-label changes cannot make
@@ -102,12 +104,15 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     const replyBubbleVisible = await hansBubble.isVisible().catch(() => false);
     const fireCallPhase = await fireOverlay.getAttribute('data-fire-call-phase');
     const diagnostic = await canvas.evaluate((node, extra) => ({
-      schema: 1,
+      schema: 2,
       viewport: { width: window.innerWidth, height: window.innerHeight },
       screen: node.dataset.warRoomHansScreen || '',
       firstScreen: node.dataset.warRoomHansFirstScreen || '',
       ndcX: Number(node.dataset.warRoomHansNdcX),
       ndcY: Number(node.dataset.warRoomHansNdcY),
+      groundGap: Number(node.dataset.warRoomHansGroundGap),
+      groundSurface: node.dataset.warRoomHansGroundSurface || '',
+      groundLock: node.dataset.warRoomHansGroundLock || '',
       sceneReady: node.dataset.warRoomHansSceneReady === 'true',
       callReleased: node.dataset.warRoomHansCallReleased === 'true',
       replySeen: node.dataset.warRoomHansReplySeen === 'true',
@@ -125,6 +130,10 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     expect(Number.isFinite(diagnostic.ndcY)).toBe(true);
     expect(Math.abs(diagnostic.ndcX)).toBeLessThanOrEqual(1.05);
     expect(Math.abs(diagnostic.ndcY)).toBeLessThanOrEqual(1.05);
+    expect(Number.isFinite(diagnostic.groundGap)).toBe(true);
+    expect(diagnostic.groundGap).toBeLessThanOrEqual(MAX_GROUND_GAP);
+    expect(diagnostic.groundSurface).toMatch(/^war-room-(command-carpet|castle-floor)/);
+    expect(diagnostic.groundLock).toMatch(/^hans-visible-ground-lock-v/);
 
     await writeFile(
       `${ARTIFACT_DIR}/${LABEL}-health.json`,
