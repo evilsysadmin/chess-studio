@@ -101,3 +101,11 @@ body .app-shell-home .menu.menu-illustrated .illustrated-home__speech > button.h
   line-height: 1.2 !important;
   text-align: center !important;
 }
+
+/* The canonical hall now carries the composition by itself. Keep the old brand
+ * and motto nodes as harmless semantic fallbacks, but never paint them over the
+ * regenerated artwork on desktop, mobile, or Android desktop-site framing. */
+body .app-shell-home .illustrated-home__brand,
+body .app-shell-home .illustrated-home__motto {
+  display: none !important;
+}
