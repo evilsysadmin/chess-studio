@@ -37,28 +37,31 @@ async function expectNoHorizontalOverflow(page) {
 }
 
 async function expectDesktopChromeContract(page, shell) {
-  const status = page.locator('.game-3d-command-column');
+  const status = page.locator('.game-3d-turn-pill');
   const inspect = page.getByRole('button', { name: 'Inspeccionar', exact: true });
-  const zen = page.getByRole('button', { name: 'Zen', exact: true });
-  const abandon = page.getByRole('button', { name: 'Abandonar', exact: true });
+  const zenQuick = page.getByRole('button', { name: 'Zen', exact: true });
+  const abandonQuick = page.getByRole('button', { name: 'Abandonar', exact: true });
   const more = page.getByRole('button', { name: 'Más acciones de partida', exact: true });
 
   await expect(status).toBeVisible();
   await expect(inspect).toBeVisible();
-  await expect(zen).toBeVisible();
-  await expect(abandon).toBeVisible();
+  await expect(zenQuick).toHaveCount(0);
+  await expect(abandonQuick).toHaveCount(0);
   await expect(more).toBeVisible();
 
   const shellBox = await box(shell);
   const statusBox = await box(status);
   const inspectBox = await box(inspect);
-  const zenBox = await box(zen);
-  const abandonBox = await box(abandon);
 
-  // Match controls live in the right rail, never on top of the board scene.
-  expect(statusBox.x).toBeGreaterThanOrEqual(shellBox.x + shellBox.width - 2);
-  expect(zenBox.x).toBeGreaterThanOrEqual(shellBox.x + shellBox.width - 2);
-  expect(abandonBox.x).toBeGreaterThanOrEqual(shellBox.x + shellBox.width - 2);
+  // The compact Matthias/turn pill floats over the room; secondary actions live
+  // only in its overflow so the right rail can use that vertical space.
+  expect(statusBox.x).toBeGreaterThanOrEqual(shellBox.x - 1);
+  expect(statusBox.x + statusBox.width).toBeLessThanOrEqual(shellBox.x + shellBox.width + 1);
+
+  await more.click();
+  await expect(page.getByRole('menuitem', { name: 'Modo Zen', exact: true })).toBeVisible();
+  await expect(page.getByRole('menuitem', { name: 'Abandonar partida', exact: true })).toBeVisible();
+  await more.click();
 
   // Inspect is a compact scene chip on the quiet upper wall, not a board-eating CTA.
   expect(inspectBox.width).toBeLessThan(Math.min(160, shellBox.width * 0.2));
