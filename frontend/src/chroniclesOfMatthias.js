@@ -25,6 +25,7 @@ export const CHRONICLES_PARTY = Object.freeze([
 export const CHRONICLES_ENEMIES = Object.freeze([
   Object.freeze({ id: 'corrupted-pawn', name: 'peón corrompido', x: 3, y: 5, hpKey: 'enemyHp', maxHp: 6, retaliation: 1, activation: 'always' }),
   Object.freeze({ id: 'gate-jailer', name: 'torre carcelero', x: 3, y: 1, hpKey: 'jailerHp', maxHp: 8, retaliation: 2, activation: 'sigil' }),
+  Object.freeze({ id: 'spectral-bishop', name: 'alfil espectral', x: 5, y: 3, hpKey: 'spectralBishopHp', maxHp: 5, retaliation: 1, retaliationReach: 2, activation: 'sigil', optional: true }),
 ]);
 
 const INITIAL_JOURNAL = Object.freeze({
@@ -55,6 +56,8 @@ export function createChroniclesState() {
     direction: 1,
     enemyHp: 6,
     jailerHp: 8,
+    spectralBishopHp: 5,
+    spectralLantern: false,
     sigilAwake: false,
     phase: 'explore',
     party: partyState(),
@@ -122,11 +125,11 @@ function enterTile(state, x, y) {
       y,
       sigilAwake: true,
       turns: state.turns + 1,
-      message: 'El sello despierta. Arriba, metal contra piedra: algo pesado acaba de tomar guardia ante la puerta negra.',
+      message: 'El sello despierta. Arriba, metal contra piedra. Al este, una luz verdosa abre los ojos en una capilla que nadie había solicitado.',
     }, {
       id: 'sigil-awake',
       title: 'El sello responde',
-      body: 'La piedra arde bajo el grupo. En la distancia, una torre de hierro acepta el turno de guardia con entusiasmo burocrático.',
+      body: 'La piedra arde bajo el grupo. Una torre toma guardia ante la salida y, al este, algo diagonal empieza a rezar al revés.',
       sigil: 'III',
     });
   }
@@ -161,12 +164,23 @@ function retaliationTargetId(state, attacker) {
 
 function defeatMessage(attacker, enemy) {
   if (enemy.id === 'gate-jailer') return `${attacker.name} derriba a la torre carcelero con ${attacker.attackName.toLowerCase()}. La puerta, privada de personal, parece bastante menos autoritaria.`;
+  if (enemy.id === 'spectral-bishop') return `${attacker.name} deshace al alfil espectral con ${attacker.attackName.toLowerCase()}. Aziz recupera el Farol Espectral y el grupo recuerda vagamente cómo funciona la circulación.`;
   return `${attacker.name} remata al peón corrompido con ${attacker.attackName.toLowerCase()}. Matthias aprueba con una cantidad ofensivamente pequeña de entusiasmo.`;
 }
 
 function rangedHitMessage(attacker, enemy) {
   if (enemy.id === 'gate-jailer') return `${attacker.name} castiga a la torre carcelero desde la retaguardia con ${attacker.attackName.toLowerCase()}. La mole no alcanza a devolver el golpe.`;
+  if (enemy.id === 'spectral-bishop') return `${attacker.name} alcanza al alfil espectral con ${attacker.attackName.toLowerCase()}. Esta vez la diagonal del fantasma se queda corta.`;
   return `${attacker.name} alcanza desde la retaguardia con ${attacker.attackName.toLowerCase()}. El peón sisea, demasiado lejos para devolver el golpe.`;
+}
+
+function rewardForDefeat(state, enemy) {
+  if (enemy.id !== 'spectral-bishop') return state;
+  return {
+    ...state,
+    spectralLantern: true,
+    party: state.party.map((member) => member.hp > 0 ? { ...member, hp: Math.min(member.maxHp, member.hp + 1) } : member),
+  };
 }
 
 function journalForDefeat(state, attacker, enemy) {
@@ -176,6 +190,14 @@ function journalForDefeat(state, attacker, enemy) {
       title: 'La Torre Carcelero pierde la plaza',
       body: `${attacker.name} firma el golpe final. Varias toneladas de autoridad penitenciaria descubren la gravedad.`,
       sigil: 'V',
+    });
+  }
+  if (enemy.id === 'spectral-bishop') {
+    return appendJournal(state, {
+      id: 'spectral-bishop-falls',
+      title: 'Aziz recupera el Farol Espectral',
+      body: `${attacker.name} rompe la liturgia inversa. Aziz reclama el farol y su luz devuelve un poco de vida a cada superviviente.`,
+      sigil: 'IV',
     });
   }
   return appendJournal(state, {
@@ -197,10 +219,12 @@ function resolveAttack(state, memberId) {
   const { enemy, distance } = target;
   const nextHp = Math.max(0, Number(state[enemy.hpKey] || 0) - attacker.damage);
   if (nextHp === 0) {
-    return journalForDefeat({ ...state, [enemy.hpKey]: 0, turns: state.turns + 1, message: defeatMessage(attacker, enemy) }, attacker, enemy);
+    const defeated = rewardForDefeat({ ...state, [enemy.hpKey]: 0, turns: state.turns + 1, message: defeatMessage(attacker, enemy) }, enemy);
+    return journalForDefeat(defeated, attacker, enemy);
   }
 
-  if (distance > 1) {
+  const retaliationReach = Number(enemy.retaliationReach ?? 1);
+  if (distance > retaliationReach) {
     return { ...state, [enemy.hpKey]: nextHp, turns: state.turns + 1, message: rangedHitMessage(attacker, enemy) };
   }
 
@@ -228,6 +252,12 @@ function resolveAttack(state, memberId) {
   return nextState;
 }
 
+function blockingEnemyMessage(enemy) {
+  if (enemy.id === 'gate-jailer') return 'La torre carcelero sella la puerta negra. Es una cerradura de varias toneladas y bastante mal humor.';
+  if (enemy.id === 'spectral-bishop') return 'El alfil espectral ocupa la nave lateral. La cortesía religiosa termina exactamente a una casilla de distancia.';
+  return 'El peón corrompido bloquea el corredor. Convéncelo con violencia reglamentaria.';
+}
+
 export function chroniclesReduce(state, action) {
   if (!state || state.phase === 'escaped') return state;
   const actionType = typeof action === 'string' ? action : action?.type;
@@ -244,12 +274,7 @@ export function chroniclesReduce(state, action) {
 
   if (tile === '#') return withMessage(state, 'Hay una pared. Incluso Matthias concede que atravesarla sería excesivo.');
   const blockingEnemy = chroniclesEnemyAt(state, x, y);
-  if (blockingEnemy) {
-    const message = blockingEnemy.id === 'gate-jailer'
-      ? 'La torre carcelero sella la puerta negra. Es una cerradura de varias toneladas y bastante mal humor.'
-      : 'El peón corrompido bloquea el corredor. Convéncelo con violencia reglamentaria.';
-    return withMessage(state, message);
-  }
+  if (blockingEnemy) return withMessage(state, blockingEnemyMessage(blockingEnemy));
   if (tile === 'X' && !state.sigilAwake) return withMessage(state, 'La puerta negra no cede. El sello de la cripta sigue dormido.');
   return enterTile(state, x, y);
 }
