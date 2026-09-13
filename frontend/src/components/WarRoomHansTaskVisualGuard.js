@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { getWarRoomHansActor } from './WarRoomHansActor.js';
 import { warRoomHansChoreForEvent } from './WarRoomHansChoreContract.js';
 
-export const WAR_ROOM_HANS_TASK_VISUAL_GUARD_VERSION = 'hans-task-visual-guard-v1-ground-face';
+export const WAR_ROOM_HANS_TASK_VISUAL_GUARD_VERSION = 'hans-task-visual-guard-v2-visible-pre-render';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const SURFACE_NAMES = [
@@ -13,6 +13,7 @@ const SURFACE_NAMES = [
 const ACTIVE_TASK_KINDS = new Set(['chore', 'service', 'mop']);
 const MAX_GROUND_CORRECTION = 0.8;
 const MIN_FACING_DOT = 0.995;
+const VISIBLE_TASK_VISUAL_HOOK = 'war-room-hans-visible-task-visual-v1';
 
 function findFaceAnchor(head) {
   if (!head?.children?.length) return null;
@@ -59,6 +60,12 @@ function taskTargetObject(root, hans) {
   }
 
   return null;
+}
+
+function taskVisualActive(hans) {
+  const taskKind = String(hans?.userData?.warRoomHansActiveTaskKind || '');
+  const taskId = String(hans?.userData?.warRoomHansActiveTask || '');
+  return Boolean(hans?.visible && taskId && ACTIVE_TASK_KINDS.has(taskKind));
 }
 
 export function captureWarRoomHansTaskGroundSurfaces(root) {
@@ -183,6 +190,65 @@ export function faceWarRoomHansTowardObject(hans, head, targetObject, scratch = 
   return true;
 }
 
+function createTaskVisualState(root, hans, body, surfaces) {
+  return {
+    root,
+    hans,
+    body,
+    surfaces,
+    lastVisibleRenderFrame: -1,
+    groundScratch: {
+      hansWorld: new THREE.Vector3(),
+      targetWorld: new THREE.Vector3(),
+      targetLocal: new THREE.Vector3(),
+      leftShoeBox: new THREE.Box3(),
+      rightShoeBox: new THREE.Box3(),
+    },
+    facingScratch: {
+      headWorld: new THREE.Vector3(),
+      faceWorld: new THREE.Vector3(),
+      targetWorld: new THREE.Vector3(),
+      face: new THREE.Vector3(),
+      towardTarget: new THREE.Vector3(),
+    },
+  };
+}
+
+function reconcileTaskVisualState(state, source) {
+  const { root, hans, body, surfaces, groundScratch, facingScratch } = state;
+  if (!taskVisualActive(hans)) return false;
+
+  const grounded = groundWarRoomHansTaskActor(hans, body, surfaces, groundScratch);
+  const targetObject = taskTargetObject(root, hans);
+  const faced = targetObject
+    ? faceWarRoomHansTowardObject(hans, body.head, targetObject, facingScratch)
+    : false;
+
+  hans.userData.warRoomHansTaskVisualGuard = WAR_ROOM_HANS_TASK_VISUAL_GUARD_VERSION;
+  hans.userData.warRoomHansTaskVisualGuardOrder = 'producer-pass-plus-visible-mesh-finalizer';
+  hans.userData.warRoomHansTaskVisualSource = source;
+  return grounded || faced;
+}
+
+function installVisibleTaskVisualFinalizer(hans, state) {
+  let hooks = 0;
+  hans?.traverse?.((object) => {
+    if (!object?.isMesh || object.userData?.warRoomHansVisibleTaskVisualHook === VISIBLE_TASK_VISUAL_HOOK) return;
+    const previous = object.onBeforeRender;
+    object.onBeforeRender = (renderer, scene, camera, geometry, material, renderGroup) => {
+      previous?.(renderer, scene, camera, geometry, material, renderGroup);
+      const renderFrame = Number(renderer?.info?.render?.frame);
+      if (Number.isFinite(renderFrame) && state.lastVisibleRenderFrame === renderFrame) return;
+      if (Number.isFinite(renderFrame)) state.lastVisibleRenderFrame = renderFrame;
+      reconcileTaskVisualState(state, 'visible-mesh-pre-render');
+    };
+    object.userData ||= {};
+    object.userData.warRoomHansVisibleTaskVisualHook = VISIBLE_TASK_VISUAL_HOOK;
+    hooks += 1;
+  });
+  return hooks;
+}
+
 export function installWarRoomHansTaskVisualGuard(root) {
   const actor = getWarRoomHansActor(root);
   const hans = actor?.hans;
@@ -194,43 +260,21 @@ export function installWarRoomHansTaskVisualGuard(root) {
   const surfaces = captureWarRoomHansTaskGroundSurfaces(root);
   if (!surfaces.length) return 0;
 
+  const state = createTaskVisualState(root, hans, body, surfaces);
   const previous = floor.onBeforeRender;
-  const groundScratch = {
-    hansWorld: new THREE.Vector3(),
-    targetWorld: new THREE.Vector3(),
-    targetLocal: new THREE.Vector3(),
-    leftShoeBox: new THREE.Box3(),
-    rightShoeBox: new THREE.Box3(),
-  };
-  const facingScratch = {
-    headWorld: new THREE.Vector3(),
-    faceWorld: new THREE.Vector3(),
-    targetWorld: new THREE.Vector3(),
-    face: new THREE.Vector3(),
-    towardTarget: new THREE.Vector3(),
-  };
 
   floor.onBeforeRender = (...args) => {
     previous?.(...args);
-    const taskKind = String(hans.userData?.warRoomHansActiveTaskKind || '');
-    const taskId = String(hans.userData?.warRoomHansActiveTask || '');
-    if (!hans.visible || !taskId || !ACTIVE_TASK_KINDS.has(taskKind)) return;
-
-    // This hook is deliberately installed after Mop/Service/Chore. It therefore
-    // sees Hans at the position and pose those producers chose for this exact
-    // frame, then resolves his visual contact with the room before rendering.
-    groundWarRoomHansTaskActor(hans, body, surfaces, groundScratch);
-
-    const targetObject = taskTargetObject(root, hans);
-    if (targetObject) {
-      faceWarRoomHansTowardObject(hans, body.head, targetObject, facingScratch);
-    }
-
-    hans.userData.warRoomHansTaskVisualGuard = WAR_ROOM_HANS_TASK_VISUAL_GUARD_VERSION;
-    hans.userData.warRoomHansTaskVisualGuardOrder = 'after-task-producers-same-frame';
+    // Preserve the producer-following pass for task position/pose changes. A
+    // second pass on Hans' first visible mesh is the final authority in case a
+    // later choreography writer resets root Y or facing before he is painted.
+    reconcileTaskVisualState(state, 'task-producer-pass');
   };
+
+  const visibleHooks = installVisibleTaskVisualFinalizer(hans, state);
 
   floor.userData.warRoomHansTaskVisualGuard = WAR_ROOM_HANS_TASK_VISUAL_GUARD_VERSION;
   hans.userData.warRoomHansTaskVisualGuard = WAR_ROOM_HANS_TASK_VISUAL_GUARD_VERSION;
+  hans.userData.warRoomHansVisibleTaskVisualHooks = visibleHooks;
   return 1;
 }
