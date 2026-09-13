@@ -5,6 +5,7 @@ import {
   matthiasAmbientVisuals,
   matthiasHomeZone,
   matthiasMoodAvatar,
+  matthiasRoutineDwellMs,
   matthiasTimeVisual,
 } from './matthiasVisuals.js';
 
@@ -41,6 +42,23 @@ describe('Matthias visual identity', () => {
     expect(dossier.key).toBe('dossier');
     expect(dossier.avatar).toBeTruthy();
     expect(matthiasAmbientVisual('no-existe').key).toBe('base');
+  });
+
+  it('mantiene cada actividad un tiempo natural en lugar de rotar como un carrusel fijo', () => {
+    const base = matthiasRoutineDwellMs('base');
+    const coffee = matthiasRoutineDwellMs('time-morning-coffee');
+    const ops = matthiasRoutineDwellMs('time-chess-inception');
+    const dossier = matthiasRoutineDwellMs({ key: 'moment-loss-dossier' });
+    const reading = matthiasRoutineDwellMs('time-chess-weekly');
+    const sleep = matthiasRoutineDwellMs('moment-book-doze-sleep');
+
+    expect(base).toBe(34_000);
+    expect(coffee).toBe(38_000);
+    expect(ops).toBe(42_000);
+    expect(dossier).toBe(44_000);
+    expect(reading).toBe(48_000);
+    expect(sleep).toBe(64_000);
+    expect(new Set([base, coffee, ops, dossier, reading, sleep]).size).toBe(6);
   });
 
   it('bloquea Sobando durante toda la madrugada y no activa el carrusel sonámbulo', () => {
