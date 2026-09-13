@@ -11,6 +11,7 @@ import { ensureWarRoomHansPlant } from './WarRoomHansPlantDecor.js';
 import { installWarRoomHansServiceInfrastructure } from './WarRoomHansServiceRoute.js';
 import { installWarRoomHansServiceRoutine } from './WarRoomHansServiceRoutine.js';
 import { installWarRoomHansTaskVisualGuard } from './WarRoomHansTaskVisualGuard.js';
+import { installWarRoomHansVisibleGroundLock } from './WarRoomHansVisibleGroundLock.js';
 import { installWarRoomMatthiasHansReaction } from './WarRoomMatthiasHansReaction.js';
 import { installWarRoomMatthiasIdleGlances } from './WarRoomMatthiasIdleGlances.js';
 import { lockWarRoomCanonicalPlantPlacement } from './WarRoomPlantCanonicalPlacement.js';
@@ -110,6 +111,9 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         // Keep the legacy driver grounding too: it remains the generic fallback
         // for Fire/Iteration and non-task movement owned by HansAnimator.
         installWarRoomHansGrounding(root);
+        // Absolute last Hans visible-mesh authority. Any legacy choreography may
+        // write its historical root Y first; rendered shoe contact wins before paint.
+        installWarRoomHansVisibleGroundLock(root);
         // Service installation re-enters ensureWarRoomHansPlant(), whose sofa-relative
         // fallback can drag the plant toward the board. Canonical composition owns
         // this final coordinate: pin it to the weather-window corner only after all
