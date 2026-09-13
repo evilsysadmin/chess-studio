@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { buildPlayerModel, evidenceConfidence, PLAYER_MODEL_VERSION } from './playerModel.js';
+import {
+  buildPlayerModel,
+  evidenceConfidence,
+  PATTERN_IMPROVEMENT_CORRECTED_OBSERVATIONS,
+  PATTERN_IMPROVEMENT_PROBABLE_OBSERVATIONS,
+  PATTERN_IMPROVEMENT_STATES,
+  PLAYER_MODEL_VERSION,
+} from './playerModel.js';
 
 describe('factual player model', () => {
   it('keeps missing evidence empty instead of inventing a weakness', () => {
-    expect(PLAYER_MODEL_VERSION).toBe(5);
+    expect(PLAYER_MODEL_VERSION).toBe(6);
     expect(buildPlayerModel()).toEqual({
       version: PLAYER_MODEL_VERSION,
       samples: { games: 0, personalPositions: 0, cleanAutopsies: 0 },
@@ -151,6 +158,7 @@ describe('factual player model', () => {
       sourceGames: 2,
       maxLoss: 420,
       confidence: 'low',
+      improvementState: PATTERN_IMPROVEMENT_STATES.NO_SAMPLE,
       postTrainingObservations: {
         latestCleanTrainingAt: null,
         observedGames: 0,
@@ -229,8 +237,60 @@ describe('factual player model', () => {
       latestRecurrenceAt: '2026-09-13T11:00:00.000Z',
       latestNoRecurrenceAt: '2026-09-14T11:00:00.000Z',
     });
+    expect(model.recurringErrors[0].improvementState).toBe(PATTERN_IMPROVEMENT_STATES.STILL_OCCURRING);
     expect(model.recurringErrors[0].postTrainingObservations).not.toHaveProperty('improved');
     expect(model.recurringErrors[0].postTrainingObservations).not.toHaveProperty('state');
+  });
+
+  it('requires conservative post-training samples before escalating an improvement state', () => {
+    expect(PATTERN_IMPROVEMENT_PROBABLE_OBSERVATIONS).toBe(2);
+    expect(PATTERN_IMPROVEMENT_CORRECTED_OBSERVATIONS).toBe(5);
+
+    const paidPuzzles = [
+      {
+        id: 'paid-1',
+        source: 'autopsy',
+        sourceGameId: 'source-1',
+        incidentKeys: ['human:MISSED_MATE'],
+        cleanSolves: 1,
+        lastCleanAt: '2026-09-10T10:00:00Z',
+      },
+      {
+        id: 'paid-2',
+        source: 'autopsy',
+        sourceGameId: 'source-2',
+        incidentKeys: ['human:MISSED_MATE'],
+        cleanSolves: 1,
+        lastCleanAt: '2026-09-11T10:00:00Z',
+      },
+    ];
+    const covered = (index) => ({
+      version: 1,
+      gameId: `new-${index}`,
+      date: `2026-09-${String(11 + index).padStart(2, '0')}T12:00:00Z`,
+      sufficientSample: true,
+      clean: true,
+      incidentCoverageVersion: 1,
+      incidentCoverageSufficient: true,
+      incidentKeys: [],
+    });
+    const records = (count) => Object.fromEntries(
+      Array.from({ length: count }, (_, index) => [`g${index + 1}`, covered(index + 1)]),
+    );
+    const stateFor = (count, puzzles = paidPuzzles) => buildPlayerModel({
+      personalPuzzles: puzzles,
+      cleanGameRecords: records(count),
+    }).recurringErrors[0].improvementState;
+
+    expect(stateFor(1)).toBe(PATTERN_IMPROVEMENT_STATES.NO_SAMPLE);
+    expect(stateFor(2)).toBe(PATTERN_IMPROVEMENT_STATES.PROBABLE_IMPROVEMENT);
+    expect(stateFor(5)).toBe(PATTERN_IMPROVEMENT_STATES.CORRECTED_WITH_SUFFICIENT_SAMPLE);
+
+    const activeDebt = [
+      paidPuzzles[0],
+      { ...paidPuzzles[1], cleanSolves: 0, lastCleanAt: null },
+    ];
+    expect(stateFor(5, activeDebt)).toBe(PATTERN_IMPROVEMENT_STATES.PROBABLE_IMPROVEMENT);
   });
 
   it('keeps recurring classification empty when any supporting position lacks shared evidence', () => {
