@@ -39,7 +39,7 @@ import {
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v6-reset-before-return';
+export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v7-reset-prop-baselines';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const COMMAND_DESK_TOP_NAME = 'war-room-command-desk-top';
@@ -82,11 +82,25 @@ function makeTray() {
   return group;
 }
 
+export function resetWarRoomHansServiceProps(props) {
+  const can = props?.can;
+  const tray = props?.tray;
+  if (can) {
+    can.position.set(-0.34, 0.64, 0.16);
+    can.rotation.set(0, 0, 0);
+  }
+  if (tray) {
+    tray.position.set(0, 0.76, 0.38);
+    tray.rotation.set(0, 0, 0);
+  }
+}
+
 function ensureCarriedProps(actor) {
   let can = actor.hans.getObjectByName?.('war-room-hans-watering-can');
   let tray = actor.hans.getObjectByName?.('war-room-hans-espresso-tray');
   if (!can) { can = makeWateringCan(); actor.hans.add(can); }
   if (!tray) { tray = makeTray(); actor.hans.add(tray); }
+  resetWarRoomHansServiceProps({ can, tray });
   can.visible = false;
   tray.visible = false;
   return { can, tray };
@@ -130,6 +144,7 @@ function setDialogue(actor, phase) {
 
 function finish(actor, props, controller, root, runtime, taskId) {
   resetWarRoomHansWalk(controller, { full: true });
+  resetWarRoomHansServiceProps(props);
   setWarRoomHansTaskPhase(runtime, 'idle');
   setWarRoomHansTaskPresentation(runtime, {
     visible: false,
@@ -228,6 +243,7 @@ export function installWarRoomHansServiceRoutine(root) {
         releaseWarRoomHansTask(runtime, taskId);
         return;
       }
+      resetWarRoomHansServiceProps(props);
       placeWarRoomHansHorizontal(actor, home);
       setWarRoomHansTaskPresentation(runtime, {
         visible: true,
@@ -296,6 +312,7 @@ export function installWarRoomHansServiceRoutine(root) {
       }
       if (actionElapsed >= warRoomHansServiceActionMs(eventName)) {
         resetWarRoomHansWalk(controller, { full: true });
+        resetWarRoomHansServiceProps(props);
         setDialogue(actor, '');
         state = 'returning';
         setWarRoomHansTaskPhase(runtime, 'returning');
