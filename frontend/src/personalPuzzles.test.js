@@ -2,14 +2,17 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { isPersonalPuzzleMastered, isPlayablePersonalPuzzle, loadPersonalPuzzles, matchesPersonalPuzzleFilter, personalPuzzleHistory, personalPuzzlesForFilter, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult, saveGeneratedPersonalPuzzles, savePersonalPuzzlesFromReport } from './personalPuzzles.js';
 
 const CURRENT_AI_PROVENANCE = Object.freeze({
-  aiQualityVersion: 7,
+  aiQualityVersion: 8,
   aiValidatedLevel: 92,
   tacticalBestMoveChecked: true,
   tacticalRefutationChecked: true,
+  tacticalBestDefenseChecked: true,
   engineAnalysisDepth: 3,
   engineCandidateCount: 12,
   engineSecondBest: { from: 'a1', to: 'a7', san: 'Ra7' },
   engineBestToSecondGap: 200,
+  engineTerminalAfterSolution: true,
+  engineBestDefense: null,
 });
 
 describe('personal puzzles', () => {
