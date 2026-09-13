@@ -28,6 +28,15 @@ class RootCandidateAnalysis:
 
 
 @dataclass(frozen=True)
+class RootAnalysisSnapshot:
+    """Deepest complete ranked root pass produced inside one time budget."""
+
+    candidates: tuple[RootCandidateAnalysis, ...]
+    depth: int
+    candidate_count: int
+
+
+@dataclass(frozen=True)
 class RootMoveComparison:
     """One factual root comparison produced by a single complete search pass."""
 
@@ -168,6 +177,63 @@ def top_root_candidates(
         budget_s=budget_s,
     )
     return rank_root_candidates(board, analyzed)[:limit]
+
+
+def analyze_root_iterative(
+    board: chess.Board,
+    *,
+    max_depth: int,
+    budget_s: float,
+) -> RootAnalysisSnapshot:
+    """Return the deepest complete ranked root pass inside one time budget.
+
+    A pass that times out is discarded in full. Consumers therefore get a
+    coherent candidate set with one explicit completed depth rather than a mix
+    of scores from partially explored depths. Terminal roots return an empty
+    snapshot as soon as the first complete pass establishes that no moves exist.
+    """
+    if max_depth < 1:
+        raise ValueError("max_depth must be at least 1")
+
+    deadline = time.monotonic() + max(0.0, float(budget_s))
+    completed: Optional[RootAnalysisSnapshot] = None
+    for depth in range(1, max_depth + 1):
+        if time.monotonic() >= deadline:
+            break
+        try:
+            analyzed = analyze_root_candidates(board, depth=depth, deadline=deadline)
+        except TimeoutError:
+            break
+        ranked = tuple(rank_root_candidates(board, analyzed))
+        completed = RootAnalysisSnapshot(
+            candidates=ranked,
+            depth=depth,
+            candidate_count=len(ranked),
+        )
+        if not ranked:
+            return completed
+
+    if completed is None:
+        raise TimeoutError
+    return completed
+
+
+def top_root_candidates_iterative(
+    board: chess.Board,
+    *,
+    limit: int,
+    max_depth: int,
+    budget_s: float,
+) -> RootAnalysisSnapshot:
+    """Return top-N candidates from the deepest complete iterative root pass."""
+    if limit < 1:
+        raise ValueError("limit must be at least 1")
+    snapshot = analyze_root_iterative(board, max_depth=max_depth, budget_s=budget_s)
+    return RootAnalysisSnapshot(
+        candidates=snapshot.candidates[:limit],
+        depth=snapshot.depth,
+        candidate_count=snapshot.candidate_count,
+    )
 
 
 def best_root_candidate(
