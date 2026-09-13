@@ -8,12 +8,30 @@ makefile = (ROOT / 'Makefile').read_text(encoding='utf-8')
 ci = (ROOT / '.github/workflows/cicd.yml').read_text(encoding='utf-8')
 
 
-def playwright_test_titles(relative_path: str) -> list[str]:
-    source = (ROOT / 'e2e' / relative_path).read_text(encoding='utf-8')
+def playwright_test_titles(relative_path: str, seen: set[str] | None = None) -> list[str]:
+    """Extract test titles from a spec and static side-effect imports it aggregates."""
+    seen = set() if seen is None else seen
+    normalized = Path(relative_path).as_posix()
+    if normalized in seen:
+        return []
+    seen.add(normalized)
+
+    path = ROOT / 'e2e' / normalized
+    source = path.read_text(encoding='utf-8')
     titles = [
         match.group(2)
         for match in re.finditer(r"\btest\s*\(\s*(['\"])(.*?)\1\s*,", source, re.S)
     ]
+
+    # Entry specs may be tiny aggregators. Follow only explicit relative
+    # side-effect imports; named helper imports must not become test sources.
+    for imported in re.findall(r"^\s*import\s+(['\"])(\./[^'\"]+)\1\s*;?\s*$", source, re.M):
+        candidate = (path.parent / imported[1]).resolve()
+        e2e_root = (ROOT / 'e2e').resolve()
+        if not candidate.is_relative_to(e2e_root) or candidate.suffix != '.js' or not candidate.exists():
+            continue
+        titles.extend(playwright_test_titles(candidate.relative_to(e2e_root).as_posix(), seen))
+
     if not titles:
         raise SystemExit(f'No se pudieron extraer tests Playwright de e2e/{relative_path}')
     return titles
@@ -31,9 +49,14 @@ def assert_lane_pattern_targets_real_test(spec_name: str, item: str) -> None:
             f'Grep crítico fantasma en {spec_name}: {item!r} no coincide con ningún test real del spec ejecutado'
         )
     if len(matches) > 1:
-        raise SystemExit(
-            f'Grep crítico ambiguo en {spec_name}: {item!r} coincide con {len(matches)} tests: {matches}'
-        )
+        # Permit a critical anchor to grow stricter derivative journeys while
+        # retaining one exact canonical test. This keeps grep stable and makes
+        # extensions additive instead of forcing ever-more-specific CI regexes.
+        exact = [title for title in matches if title == item]
+        if len(exact) != 1:
+            raise SystemExit(
+                f'Grep crítico ambiguo en {spec_name}: {item!r} coincide con {len(matches)} tests: {matches}'
+            )
 
 
 def ci_job_block(job_name: str) -> str:
