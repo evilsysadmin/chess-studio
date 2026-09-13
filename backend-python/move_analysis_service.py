@@ -60,6 +60,8 @@ def analyze_move_payload(
             payload = factual.to_api_payload()
             factual_suggested = sanitize_eval(payload.get("evalAfterSuggested"))
             factual_played = sanitize_eval(payload.get("evalAfterPlayed"))
+            payload["evalAfterSecondBest"] = sanitize_eval(payload.get("evalAfterSecondBest"))
+            payload["bestToSecondGap"] = sanitize_eval(payload.get("bestToSecondGap"))
             played = board.copy(stack=False)
             played.push(played_move)
             payload["factualEvalAfterSuggested"] = factual_suggested
