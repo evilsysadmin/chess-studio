@@ -57,6 +57,23 @@
       opacity: 0.3;
     }
 
+    /* The circular chevron remains a fallback/affordance, but once the physical
+     * prop is present it should not compete with that prop at rest. Reveal it
+     * again on an actual pointer/keyboard interaction. */
+    .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
+      .illustrated-home__destination > i {
+      opacity: 0.18;
+      transform: scale(0.9);
+      transition: opacity 160ms ease-out, transform 240ms ease, box-shadow 240ms ease;
+    }
+
+    .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
+      .illustrated-home__destination:hover > i,
+    .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
+      .illustrated-home__destination:focus-visible > i {
+      opacity: 0.72;
+    }
+
     /* Keep the interaction boxes on their canonical art anchors, but bring the
      * visible labels closer to the physical props that now carry destination
      * identity. This is intentionally desktop-only: cropped touch cameras keep
@@ -86,7 +103,8 @@
 @media (prefers-reduced-motion: reduce) {
   .illustrated-home__castle-3d,
   .illustrated-home__art,
-  .illustrated-home__destination > svg {
+  .illustrated-home__destination > svg,
+  .illustrated-home__destination > i {
     transition: none;
   }
 
