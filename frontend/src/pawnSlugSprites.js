@@ -2,6 +2,7 @@ import {
   PAWN_SLUG_SPRITE_META as LEGACY_SPRITE_META,
   animateMatthiasSlugSprite as animateLegacyMatthiasSlugSprite,
   animatePanzerRookSprite as animateLegacyPanzerRookSprite,
+  createWeaponSprite as createLegacyWeaponSprite,
 } from './pawnSlugSpritesLegacy.js';
 import {
   PAWN_SLUG_ENEMY_RUN_META,
@@ -20,6 +21,18 @@ export {
   createSlugEnemySprite,
   pawnSlugEnemyRunAtlasWindow,
 };
+
+// The runtime positions the weapon at Matthias' hand/grip height. Legacy weapon
+// sprites were bottom-anchored, so that world-space position effectively became
+// the weapon's lower edge and lifted the barrel up toward his face. Keep the
+// legacy atlas and dimensions, but pivot the live player weapon around its
+// vertical centre so the same runtime anchor reads as a two-handed chest grip.
+export function createWeaponSprite(kind = 'pistol') {
+  const sprite = createLegacyWeaponSprite(kind);
+  sprite.center?.set(0.5, 0.5);
+  sprite.userData.pawnSlugGripAnchored = true;
+  return sprite;
+}
 
 export function animateMatthiasSlugSprite(sprite, state = {}) {
   const hurt = Boolean(state.hurt);
@@ -66,6 +79,7 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
   matthias: Object.freeze({
     ...LEGACY_SPRITE_META.matthias,
     premiumMotion: true,
+    weaponGripAnchor: 'centered-sprite',
   }),
   enemies: Object.freeze({
     ...LEGACY_SPRITE_META.enemies,

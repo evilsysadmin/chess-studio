@@ -3,10 +3,13 @@ export const PAWN_SLUG_MOTION_POLISH = Object.freeze({
   walkRate: 9.2,
   walkRateMinScale: 0.62,
   walkRateSpeedInfluence: 0.38,
-  walkToRunSeconds: 0.24,
-  runSpeedThreshold: 0.58,
-  settleSeconds: 0.12,
-  settleFrames: 5,
+  // Keyboard/touch movement reaches arcade speed quickly. Keep only a tiny
+  // walk lead-in so the dedicated 16-frame run row owns sustained locomotion
+  // instead of being overwritten by the walk row for a visibly long beat.
+  walkToRunSeconds: 0.09,
+  runSpeedThreshold: 0.34,
+  settleSeconds: 0.08,
+  settleFrames: 4,
 });
 
 function clamp01(value) {
