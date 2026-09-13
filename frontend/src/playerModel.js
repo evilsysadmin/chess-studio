@@ -1,9 +1,9 @@
-import { cleanGameSummary } from './cleanGames.js';
+import { CLEAN_GAME_INCIDENT_COVERAGE_VERSION, cleanGameSummary } from './cleanGames.js';
 import { buildRecurringErrorPatterns } from './insightsRecurringErrors.js';
 import { isPersonalPuzzleCurrentlyClean, personalSpacedReviewSummary } from './spacedReview.js';
 import { personalTrainingDebtSummary } from './trainingDebt.js';
 
-export const PLAYER_MODEL_VERSION = 4;
+export const PLAYER_MODEL_VERSION = 5;
 
 function nonNegativeInt(value) {
   const number = Number(value);
@@ -92,12 +92,69 @@ function cleanPlayFacts(records) {
   };
 }
 
+function patternPostTrainingObservations(puzzles, records, incidentKey) {
+  const relevantPuzzles = puzzles.filter((puzzle) => (
+    Array.isArray(puzzle?.incidentKeys) && puzzle.incidentKeys.includes(incidentKey)
+  ));
+  const latestCleanTrainingAt = latestIso(relevantPuzzles, ['lastCleanAt', 'retentionCompletedAt']);
+  const empty = {
+    latestCleanTrainingAt,
+    observedGames: 0,
+    recurrenceGames: 0,
+    noRecurrenceGames: 0,
+    latestObservationAt: null,
+    latestRecurrenceAt: null,
+    latestNoRecurrenceAt: null,
+  };
+  if (!latestCleanTrainingAt) return empty;
+
+  const anchorMs = Date.parse(latestCleanTrainingAt);
+  const sourceGameIds = new Set(relevantPuzzles
+    .map((puzzle) => puzzle?.sourceGameId)
+    .filter(Boolean)
+    .map(String));
+  const source = records && typeof records === 'object' && !Array.isArray(records) ? records : {};
+  const observations = Object.values(source)
+    .filter((row) => (
+      row?.version === 1
+      && row?.sufficientSample === true
+      && row?.incidentCoverageVersion === CLEAN_GAME_INCIDENT_COVERAGE_VERSION
+      && row?.incidentCoverageSufficient === true
+      && !sourceGameIds.has(String(row?.gameId || ''))
+    ))
+    .map((row) => ({ row, atMs: Date.parse(row?.date || '') }))
+    .filter(({ atMs }) => Number.isFinite(atMs) && atMs > anchorMs)
+    .sort((a, b) => a.atMs - b.atMs);
+
+  const recurrence = observations.filter(({ row }) => (
+    Array.isArray(row?.incidentKeys) && row.incidentKeys.includes(incidentKey)
+  ));
+  const noRecurrence = observations.filter(({ row }) => (
+    !Array.isArray(row?.incidentKeys) || !row.incidentKeys.includes(incidentKey)
+  ));
+
+  return {
+    latestCleanTrainingAt,
+    observedGames: observations.length,
+    recurrenceGames: recurrence.length,
+    noRecurrenceGames: noRecurrence.length,
+    latestObservationAt: observations.length ? new Date(observations.at(-1).atMs).toISOString() : null,
+    latestRecurrenceAt: recurrence.length ? new Date(recurrence.at(-1).atMs).toISOString() : null,
+    latestNoRecurrenceAt: noRecurrence.length ? new Date(noRecurrence.at(-1).atMs).toISOString() : null,
+  };
+}
+
 export function buildPlayerModel({ insights = null, personalPuzzles = [], cleanGameRecords = {} } = {}) {
   const puzzles = Array.isArray(personalPuzzles) ? personalPuzzles.filter(Boolean) : [];
   const totalGames = nonNegativeInt(insights?.totalGames);
   const recurringErrors = buildRecurringErrorPatterns(puzzles).map((pattern) => ({
     ...pattern,
     confidence: evidenceConfidence(pattern.positions, { mediumAt: 3, highAt: 5 }),
+    postTrainingObservations: patternPostTrainingObservations(
+      puzzles,
+      cleanGameRecords,
+      pattern.incidentKey,
+    ),
   }));
   const trainingDebt = personalTrainingDebtSummary(puzzles);
   const cleanPlay = cleanPlayFacts(cleanGameRecords);
