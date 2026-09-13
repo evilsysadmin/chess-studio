@@ -128,6 +128,93 @@ def analyze_root_candidates(
     return candidates
 
 
+def rank_root_candidates(
+    board: chess.Board,
+    candidates: list[RootCandidateAnalysis],
+) -> list[RootCandidateAnalysis]:
+    """Return root candidates best-first for the side whose turn it is.
+
+    Engine scores stay on the engine's canonical White-positive scale. This
+    helper is the single public place that turns that scale into root ordering,
+    so callers do not each reinvent the White=max / Black=min rule.
+    """
+    return sorted(
+        candidates,
+        key=lambda candidate: candidate.score,
+        reverse=board.turn == chess.WHITE,
+    )
+
+
+def top_root_candidates(
+    board: chess.Board,
+    *,
+    limit: int,
+    depth: int,
+    deadline: Optional[float] = None,
+    budget_s: Optional[float] = None,
+) -> list[RootCandidateAnalysis]:
+    """Analyze one complete root pass and return its best ``limit`` moves.
+
+    All returned candidates come from the same depth, deadline and transposition
+    table, making the list suitable for factual near-best policies such as CPU
+    difficulty, Rival Fantasma and puzzle validation.
+    """
+    if limit < 1:
+        raise ValueError("limit must be at least 1")
+    analyzed = analyze_root_candidates(
+        board,
+        depth=depth,
+        deadline=deadline,
+        budget_s=budget_s,
+    )
+    return rank_root_candidates(board, analyzed)[:limit]
+
+
+def best_root_candidate(
+    board: chess.Board,
+    *,
+    depth: int,
+    deadline: Optional[float] = None,
+    budget_s: Optional[float] = None,
+) -> Optional[RootCandidateAnalysis]:
+    """Return the best legal root candidate, or ``None`` in a terminal position."""
+    candidates = top_root_candidates(
+        board,
+        limit=1,
+        depth=depth,
+        deadline=deadline,
+        budget_s=budget_s,
+    )
+    return candidates[0] if candidates else None
+
+
+def score_root_move(
+    board: chess.Board,
+    move: chess.Move,
+    *,
+    depth: int,
+    deadline: Optional[float] = None,
+    budget_s: Optional[float] = None,
+) -> RootCandidateAnalysis:
+    """Return factual evidence for one legal move from a complete root pass.
+
+    This deliberately evaluates the complete root instead of launching a
+    one-off child search. Consumers can therefore compare the returned score
+    with ``top_root_candidates`` or another scored move without scale drift.
+    """
+    if move not in board.legal_moves:
+        raise ValueError("move must be legal in the supplied position")
+    for candidate in analyze_root_candidates(
+        board,
+        depth=depth,
+        deadline=deadline,
+        budget_s=budget_s,
+    ):
+        if candidate.move == move:
+            return candidate
+    raise RuntimeError("legal root move disappeared during analysis")
+
+
 def score_root_candidates(
     board: chess.Board,
     *,
@@ -178,7 +265,7 @@ def compare_root_move(
         raise ValueError("position has no legal root moves")
 
     maximizing = board.turn == chess.WHITE
-    ordered = sorted(analyzed, key=lambda item: item.score, reverse=maximizing)
+    ordered = rank_root_candidates(board, analyzed)
     best = ordered[0]
     second_best = ordered[1] if len(ordered) > 1 else None
     by_move = {candidate.move: candidate for candidate in analyzed}

@@ -8,10 +8,14 @@ from engine_analysis import (
     RootCandidateAnalysis,
     RootMoveComparison,
     analyze_root_candidates,
+    best_root_candidate,
     build_factual_move_analysis,
     compare_root_move,
     compare_root_move_iterative,
+    rank_root_candidates,
     score_root_candidates,
+    score_root_move,
+    top_root_candidates,
 )
 
 
@@ -65,6 +69,79 @@ def test_analyze_root_candidates_keeps_immediate_reply_from_same_search(monkeypa
         child.push(candidate.move)
         assert candidate.reply in child.legal_moves
     assert board.fen() == before
+
+
+def test_rank_root_candidates_orders_for_side_to_move_without_changing_scores():
+    white = chess.Board()
+    white_candidates = [
+        RootCandidateAnalysis(chess.Move.from_uci("e2e4"), 12.0, None),
+        RootCandidateAnalysis(chess.Move.from_uci("d2d4"), 31.0, None),
+    ]
+    assert [candidate.move.uci() for candidate in rank_root_candidates(white, white_candidates)] == ["d2d4", "e2e4"]
+
+    black = chess.Board()
+    black.push_uci("e2e4")
+    black_candidates = [
+        RootCandidateAnalysis(chess.Move.from_uci("e7e5"), 18.0, None),
+        RootCandidateAnalysis(chess.Move.from_uci("c7c5"), 4.0, None),
+    ]
+    ordered = rank_root_candidates(black, black_candidates)
+    assert [candidate.move.uci() for candidate in ordered] == ["c7c5", "e7e5"]
+    assert [candidate.score for candidate in ordered] == [4.0, 18.0]
+
+
+def test_top_root_candidates_returns_one_ranked_complete_pass(monkeypatch):
+    board = chess.Board()
+    seen = []
+    candidates = [
+        RootCandidateAnalysis(chess.Move.from_uci("e2e4"), 20.0, None),
+        RootCandidateAnalysis(chess.Move.from_uci("d2d4"), 35.0, None),
+        RootCandidateAnalysis(chess.Move.from_uci("g1f3"), 10.0, None),
+    ]
+
+    def fake_analyze(_board, **kwargs):
+        seen.append(kwargs)
+        return candidates
+
+    monkeypatch.setattr(engine_analysis, "analyze_root_candidates", fake_analyze)
+
+    top = top_root_candidates(board, limit=2, depth=3, budget_s=0.4)
+
+    assert [candidate.move.uci() for candidate in top] == ["d2d4", "e2e4"]
+    assert seen == [{"depth": 3, "deadline": None, "budget_s": 0.4}]
+
+    with pytest.raises(ValueError, match="limit"):
+        top_root_candidates(board, limit=0, depth=3, budget_s=0.4)
+
+
+def test_best_root_candidate_returns_none_for_terminal_root(monkeypatch):
+    board = chess.Board()
+    monkeypatch.setattr(engine_analysis, "top_root_candidates", lambda *_args, **_kwargs: [])
+
+    assert best_root_candidate(board, depth=2, budget_s=0.1) is None
+
+
+def test_score_root_move_comes_from_complete_root_pass(monkeypatch):
+    board = chess.Board()
+    move = chess.Move.from_uci("e2e4")
+    wanted = RootCandidateAnalysis(move, 22.0, chess.Move.from_uci("e7e5"))
+    calls = []
+
+    def fake_analyze(_board, **kwargs):
+        calls.append(kwargs)
+        return [
+            RootCandidateAnalysis(chess.Move.from_uci("d2d4"), 18.0, None),
+            wanted,
+        ]
+
+    monkeypatch.setattr(engine_analysis, "analyze_root_candidates", fake_analyze)
+
+    assert score_root_move(board, move, depth=2, budget_s=0.25) == wanted
+    assert calls == [{"depth": 2, "deadline": None, "budget_s": 0.25}]
+
+    with pytest.raises(ValueError, match="move must be legal"):
+        score_root_move(board, chess.Move.from_uci("e2e5"), depth=2, budget_s=0.25)
+    assert len(calls) == 1
 
 
 def test_compare_root_move_uses_one_white_root_scale_and_preserves_board(monkeypatch):
