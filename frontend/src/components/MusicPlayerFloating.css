@@ -77,18 +77,6 @@
   }
 }
 
-/* 821px is a desktop threshold for the floating deck, but phones in landscape
-   can legitimately cross it (844×390 is our canonical Android case). Keep the
-   desktop nudge on real desktop while cancelling it at the source for short
-   landscape viewports; otherwise this late-loaded stylesheet reintroduces ~20px
-   of document overflow after the War Room layout has already settled. */
-@media (orientation: landscape) and (min-width: 821px) and (max-width: 920px) and (max-height: 620px) {
-  .app-shell-board-game .masthead-game-compact .masthead-actions {
-    transform: none;
-    max-width: 100%;
-  }
-}
-
 @media (max-width: 820px) {
   .music-deck-floating {
     position: static !important;
