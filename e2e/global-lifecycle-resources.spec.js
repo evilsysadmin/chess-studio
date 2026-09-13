@@ -6,6 +6,11 @@ async function installGlobalResourceProbe(page) {
     const webglCanvases = new Set();
     const workers = new Set();
     const audioContexts = new Set();
+    const pendingAnimationFrames = new Set();
+    const globalListeners = new Map([
+      [window, new Map()],
+      [document, new Map()],
+    ]);
 
     const nativeGetContext = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function getContext(type, ...args) {
@@ -15,6 +20,74 @@ async function installGlobalResourceProbe(page) {
         webglCanvases.add(this);
       }
       return context;
+    };
+
+    const nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+    const nativeCancelAnimationFrame = window.cancelAnimationFrame.bind(window);
+    window.requestAnimationFrame = (callback) => {
+      let id = 0;
+      id = nativeRequestAnimationFrame((time) => {
+        pendingAnimationFrames.delete(id);
+        callback(time);
+      });
+      pendingAnimationFrames.add(id);
+      return id;
+    };
+    window.cancelAnimationFrame = (id) => {
+      pendingAnimationFrames.delete(id);
+      nativeCancelAnimationFrame(id);
+    };
+
+    const nativeAddEventListener = EventTarget.prototype.addEventListener;
+    const nativeRemoveEventListener = EventTarget.prototype.removeEventListener;
+    const captureFor = (options) => typeof options === 'boolean' ? options : Boolean(options?.capture);
+    const bucketFor = (target, type, capture) => {
+      const targetRegistry = globalListeners.get(target);
+      if (!targetRegistry) return null;
+      const key = `${type}:${capture ? 1 : 0}`;
+      if (!targetRegistry.has(key)) targetRegistry.set(key, new Map());
+      return targetRegistry.get(key);
+    };
+    const forgetGlobalListener = (target, type, listener, capture, removeNative = false) => {
+      const bucket = bucketFor(target, type, capture);
+      const record = bucket?.get(listener);
+      if (!record) return false;
+      bucket.delete(listener);
+      if (removeNative) nativeRemoveEventListener.call(target, type, record.wrapped, capture);
+      if (record.signal && record.abortHandler) {
+        nativeRemoveEventListener.call(record.signal, 'abort', record.abortHandler, false);
+      }
+      return true;
+    };
+
+    EventTarget.prototype.addEventListener = function addEventListener(type, listener, options) {
+      const capture = captureFor(options);
+      const bucket = bucketFor(this, type, capture);
+      if (!bucket || listener == null || options?.signal?.aborted) {
+        return nativeAddEventListener.call(this, type, listener, options);
+      }
+      if (bucket.has(listener)) return undefined;
+
+      const once = typeof options === 'object' && options?.once === true;
+      const signal = typeof options === 'object' ? options?.signal : null;
+      const wrapped = function wrappedGlobalListener(event) {
+        if (once) forgetGlobalListener(this, type, listener, capture, false);
+        if (typeof listener === 'function') return listener.call(this, event);
+        return listener?.handleEvent?.call(listener, event);
+      };
+      const record = { wrapped, signal, abortHandler: null };
+      if (signal) {
+        record.abortHandler = () => forgetGlobalListener(this, type, listener, capture, false);
+        nativeAddEventListener.call(signal, 'abort', record.abortHandler, { once: true });
+      }
+      bucket.set(listener, record);
+      return nativeAddEventListener.call(this, type, wrapped, options);
+    };
+
+    EventTarget.prototype.removeEventListener = function removeEventListener(type, listener, options) {
+      const capture = captureFor(options);
+      if (forgetGlobalListener(this, type, listener, capture, true)) return undefined;
+      return nativeRemoveEventListener.call(this, type, listener, options);
     };
 
     const NativeWorker = window.Worker;
@@ -60,11 +133,16 @@ async function installGlobalResourceProbe(page) {
 
     window.__chessGlobalResourceProbe = {
       snapshot() {
+        const listenerCount = (target) => [...globalListeners.get(target).values()]
+          .reduce((total, bucket) => total + bucket.size, 0);
         return {
           canvases: document.querySelectorAll('canvas').length,
           webglCanvases: [...webglCanvases].filter((canvas) => canvas.isConnected).length,
           workers: workers.size,
           audioContexts: [...audioContexts].filter((context) => context.state !== 'closed').length,
+          pendingAnimationFrames: pendingAnimationFrames.size,
+          windowListeners: listenerCount(window),
+          documentListeners: listenerCount(document),
         };
       },
     };
@@ -80,6 +158,12 @@ function expectReturnedResourcesToFitBaseline({ baseline, final }) {
   expect(final.canvases, `canvas leak: ${JSON.stringify({ baseline, final })}`).toBeLessThanOrEqual(baseline.canvases);
   expect(final.webglCanvases, `WebGL canvas leak: ${JSON.stringify({ baseline, final })}`).toBeLessThanOrEqual(baseline.webglCanvases);
   expect(final.workers, `Worker leak: ${JSON.stringify({ baseline, final })}`).toBeLessThanOrEqual(baseline.workers);
+  expect(final.pendingAnimationFrames, `RAF leak: ${JSON.stringify({ baseline, final })}`)
+    .toBeLessThanOrEqual(baseline.pendingAnimationFrames);
+  expect(final.windowListeners, `window listener leak: ${JSON.stringify({ baseline, final })}`)
+    .toBeLessThanOrEqual(baseline.windowListeners);
+  expect(final.documentListeners, `document listener leak: ${JSON.stringify({ baseline, final })}`)
+    .toBeLessThanOrEqual(baseline.documentListeners);
 
   // AudioContext has session ownership: one shared context may be lazily created
   // by the first game and intentionally survive while the authenticated session
