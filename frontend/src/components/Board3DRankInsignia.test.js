@@ -4,6 +4,9 @@ import {
   BOARD3D_RANK_INSIGNIA_NAME,
   board3DRankInsigniaPlan,
   buildBoard3DRankInsignia,
+  clearBoard3DRankContext,
+  setBoard3DRankContext,
+  syncActiveBoard3DRankInsignias,
   syncBoard3DRankInsignias,
 } from './Board3DRankInsignia.js';
 
@@ -46,5 +49,21 @@ describe('Board3D Combat rank insignia', () => {
     expect(syncBoard3DRankInsignias(pieceMeshes, { pieceLevels: { e2: 1 } })).toBe(0);
     expect(piece.getObjectByName(BOARD3D_RANK_INSIGNIA_NAME)).toBeUndefined();
     expect(piece.userData.board3DRankId).toBeUndefined();
+  });
+
+  it('scopes active Combat ranks to the owning 3D board lifecycle', () => {
+    const piece = new THREE.Group();
+    const renderer = { domElement: { dataset: {} } };
+    const state = { pieceMeshes: new Map([['c3', piece]]), coarsePointer: false, renderer };
+    const token = {};
+
+    setBoard3DRankContext(token, { pieceLevels: { c3: 8 } });
+    expect(syncActiveBoard3DRankInsignias(state, 'white')).toBe(1);
+    expect(piece.getObjectByName(BOARD3D_RANK_INSIGNIA_NAME)?.userData.rankId).toBe('commander');
+    expect(renderer.domElement.dataset.board3dRankInsigniaCount).toBe('1');
+
+    clearBoard3DRankContext(token);
+    expect(syncActiveBoard3DRankInsignias(state, 'white')).toBe(0);
+    expect(piece.getObjectByName(BOARD3D_RANK_INSIGNIA_NAME)?.userData.rankId).toBe('commander');
   });
 });
