@@ -8,7 +8,7 @@ import { loadRivalry } from '../rivalry.js';
 import { dailyChallengeStats, loadDailyChallenge } from '../dailyChallenge.js';
 import { buildHomeCastleLife } from '../homeCastleLife.js';
 import { requestLabLaunch } from '../labLaunchIntent.js';
-import { matthiasAmbientVisuals, matthiasHomeZone } from '../matthiasVisuals.js';
+import { matthiasAmbientVisual, matthiasAmbientVisuals, matthiasHomeZone } from '../matthiasVisuals.js';
 import { reducedMotionStatus, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import './HomeIllustrated.css';
 import './HomeIllustratedDiegetic.css';
@@ -51,16 +51,17 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
   const matthiasRoutine = useMemo(() => {
     const moment = castleLife.matthiasMoment;
     if (!moment) return baseMatthiasRoutine;
-    const sourceScene = baseMatthiasRoutine.find((scene) => scene.key === moment.sceneKey);
-    if (!sourceScene) return baseMatthiasRoutine;
+    const sourceScene = matthiasAmbientVisual(moment.visualKey);
+    if (!sourceScene?.avatar) return baseMatthiasRoutine;
     const rareScene = {
       ...sourceScene,
       key: `moment-${moment.id}`,
       label: moment.label,
       detail: moment.detail,
       momentId: moment.id,
+      zone: moment.zone,
     };
-    return [rareScene, ...baseMatthiasRoutine.filter((scene) => scene.key !== moment.sceneKey)];
+    return [rareScene, ...baseMatthiasRoutine.filter((scene) => scene.avatar !== sourceScene.avatar)];
   }, [baseMatthiasRoutine, castleLife.matthiasMoment]);
   const matthiasVisual = matthiasRoutine[matthiasRoutineIndex % Math.max(1, matthiasRoutine.length)] || matthiasRoutine[0];
   const memories = castleLife.memories || (castleLife.memory ? [castleLife.memory] : []);
@@ -111,7 +112,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     ['play', hasSavedGame ? 'CONTINUAR' : 'JUGAR', hasSavedGame ? 'Vuelve a tu partida' : 'Partida rápida o privada', IconSword, hasSavedGame ? onContinue : onPlay],
   ];
   const matthiasActivity = matthiasVisual?.label || 'En observación';
-  const matthiasZone = matthiasHomeZone(matthiasVisual?.key);
+  const matthiasZone = matthiasVisual?.zone || matthiasHomeZone(matthiasVisual?.key);
   const matthiasActionDuplicated = matthiasSpeaking && matthiasModel?.action === 'insights';
   return (
     <section className="illustrated-home" aria-label="Modos principales">

@@ -68,6 +68,10 @@ export function matthiasTimeVisual(hour = new Date().getHours()) {
   };
 }
 
+export function matthiasAmbientVisual(key = 'base') {
+  return AMBIENT_SCENES[key] || AMBIENT_SCENES.base;
+}
+
 export function matthiasAmbientVisuals(hour = new Date().getHours()) {
   const h = Number.isFinite(Number(hour)) ? Number(hour) : 12;
   const timed = matthiasTimeVisual(h);

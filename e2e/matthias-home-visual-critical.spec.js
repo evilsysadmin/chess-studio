@@ -58,6 +58,27 @@ test('Home canónica · el expediente raro de Matthias exige derrotas reales y o
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Revisando viejas heridas');
 });
 
+test('Home canónica · Matthias puede quedarse dormido sobre el manual en la biblioteca', async ({ page }) => {
+  await page.addInitScript(() => {
+    Date.prototype.getFullYear = () => 2026;
+    Date.prototype.getMonth = () => 8;
+    Date.prototype.getDate = () => 28;
+    Date.prototype.getHours = () => 15;
+  });
+
+  const home = await openCanonicalHome(page);
+  const matthias = home.locator('.illustrated-home__matthias');
+  const rig = matthias.locator('[data-matthias-layered-art="true"]');
+
+  await expect(matthias).toBeVisible();
+  await expect(matthias).toHaveAttribute('data-home-matthias-moment', 'book-doze-sleep');
+  await expect(matthias).toHaveAttribute('data-home-matthias-scene', 'moment-book-doze-sleep');
+  await expect(matthias).toHaveAttribute('data-home-matthias-zone', 'library');
+  await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Dormido sobre el manual');
+  await expect(rig).toHaveAttribute('data-gesture', 'doze');
+  await expect(rig).toHaveAttribute('data-rig-family', 'sleep');
+});
+
 test('Home canónica · el arte y los destinos comparten el lienzo 16:9 sin overflow', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const home = await openCanonicalHome(page);
