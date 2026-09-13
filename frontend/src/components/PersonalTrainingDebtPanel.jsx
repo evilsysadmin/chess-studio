@@ -1,9 +1,14 @@
-import { personalSpacedReviewSummary } from '../spacedReview.js';
+import { isPersonalPuzzleCurrentlyClean, personalSpacedReviewSummary } from '../spacedReview.js';
 
 function reviewDateLabel(value) {
   const date = new Date(value || '');
   if (!Number.isFinite(date.getTime())) return null;
   return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' }).format(date);
+}
+
+function puzzleDate(puzzle) {
+  const parsed = Date.parse(puzzle?.createdAt || '');
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 export default function PersonalTrainingDebtPanel({ summary, puzzles = [], onTrain }) {
@@ -14,11 +19,14 @@ export default function PersonalTrainingDebtPanel({ summary, puzzles = [], onTra
   if (!debts.length && spaced.dueCount === 0 && spaced.upcomingCount === 0) return null;
 
   function train(debt) {
-    if (!debt?.puzzleIds?.length) return;
-    const candidates = debt.puzzleIds
+    const candidateIds = debt?.recentPuzzleIds?.length ? debt.recentPuzzleIds : debt?.puzzleIds;
+    if (!candidateIds?.length) return;
+    const candidates = candidateIds
       .map((id) => puzzles.find((puzzle) => puzzle?.id === id))
       .filter(Boolean)
-      .sort((a, b) => Number(a.cleanSolves || 0) - Number(b.cleanSolves || 0) || Number(a.attempts || 0) - Number(b.attempts || 0));
+      .sort((a, b) => Number(isPersonalPuzzleCurrentlyClean(a)) - Number(isPersonalPuzzleCurrentlyClean(b))
+        || puzzleDate(b) - puzzleDate(a)
+        || Number(a.attempts || 0) - Number(b.attempts || 0));
     onTrain?.(candidates[0] || null, debt);
   }
 
@@ -34,13 +42,13 @@ export default function PersonalTrainingDebtPanel({ summary, puzzles = [], onTra
 
   const debtBlock = !debts.length ? null : !top ? (
     <p className="hint-text friendly-inline-note" role="status">
-      ✓ Deuda recurrente pagada: {summary.paidCount} patrón{summary.paidCount === 1 ? '' : 'es'} demostrado{summary.paidCount === 1 ? '' : 's'} ya tienen dos casos distintos resueltos limpiamente.
+      ✓ Deuda recurrente pagada: {summary.paidCount} patrón{summary.paidCount === 1 ? '' : 'es'} demostrado{summary.paidCount === 1 ? '' : 's'} ya tienen limpios sus dos casos reales más recientes.
     </p>
   ) : (
     <section className="friendly-inline-note personal-training-debt" aria-label="Deuda de errores recurrentes">
       <span className="eyebrow">NO VUELVAS A HACER ESTO</span>
       <p><b>{top.label}</b></p>
-      <p className="hint-text">{top.cases} casos reales · {top.progress}/{top.target} casos resueltos limpiamente.</p>
+      <p className="hint-text">{top.cases} casos reales · últimos {top.target}: {top.progress}/{top.target} limpios.</p>
       <button type="button" className="secondary-btn" onClick={() => train(top)}>Entrenar esta deuda →</button>
 
       {debts.length > 1 && (
@@ -51,7 +59,7 @@ export default function PersonalTrainingDebtPanel({ summary, puzzles = [], onTra
               <div className="personal-puzzle-history-row" key={debt.id}>
                 <span>
                   <b>{debt.label}</b>
-                  <small>{debt.cases} casos reales · {debt.progress}/{debt.target} limpios{debt.paid ? ' · pagada' : ''}</small>
+                  <small>{debt.cases} casos reales · últimos {debt.target}: {debt.progress}/{debt.target} limpios{debt.paid ? ' · pagada' : ''}</small>
                 </span>
                 {debt.active ? <button type="button" className="secondary-btn" onClick={() => train(debt)}>Entrenar →</button> : <span>✓</span>}
               </div>

@@ -5,8 +5,8 @@ import './InsightsRecurringErrors.css';
 function debtCopy(pattern) {
   const debt = pattern?.debt;
   if (!debt) return null;
-  if (debt.paid) return `✓ Deuda pagada · ${debt.progress}/${debt.target} casos limpios`;
-  return `Deuda activa · ${debt.progress}/${debt.target} casos limpios`;
+  if (debt.paid) return `✓ Deuda pagada · últimos ${debt.target}: ${debt.progress}/${debt.target} limpios`;
+  return `Deuda activa · últimos ${debt.target}: ${debt.progress}/${debt.target} limpios`;
 }
 
 export default function InsightsRecurringErrors({ onOpenPuzzles }) {
