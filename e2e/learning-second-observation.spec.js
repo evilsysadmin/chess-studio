@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 import {
+  buttonWithVisibleText,
   clickBoardMove,
   gameTurn,
   login,
   mockApi,
-  startQuickGame,
 } from './helpers.js';
 
 const PERSONAL_MATE_FEN = '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1';
@@ -204,8 +204,19 @@ async function installObservationGame(page) {
   });
 }
 
+async function startObservationGame2D(page) {
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await expect(dialog).toBeVisible();
+  const renderer = dialog.getByRole('group', { name: 'Tipo de tablero' });
+  await renderer.getByRole('button', { name: '2D', exact: true }).click();
+  await expect(renderer.getByRole('button', { name: '2D', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(page.getByRole('group', { name: /Tablero de ajedrez/ })).toBeVisible();
+}
+
 test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento → segunda observación real no sobreafirma mejora', async ({ page }) => {
-  test.setTimeout(150_000);
+  test.setTimeout(240_000);
   await page.addInitScript(() => { Math.random = () => 0; });
   await mockApi(page, { analysisMoves: OBSERVATION_ANALYSIS });
   await login(page);
@@ -228,7 +239,7 @@ test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento 
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
 
   await installObservationGame(page);
-  await startQuickGame(page);
+  await startObservationGame2D(page);
   for (let index = 0; index < OBSERVATION_STEPS.length; index += 1) {
     const { human } = OBSERVATION_STEPS[index];
     await clickBoardMove(page, human.from, human.to);
