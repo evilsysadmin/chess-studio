@@ -17,6 +17,15 @@
   display: block;
 }
 
+/* Home keeps Matthias' canonical facial geometry rigid. The layered rig reuses
+ * clipped copies of the same raster for head/eyes; moving or squashing those
+ * copies over the static base can read as a warped face at Home scale. Limbs,
+ * props, routine changes and scene arrivals remain animated. */
+.illustrated-home__matthias .matthias-art-rig__part--head,
+.illustrated-home__matthias .matthias-art-rig__part--eyes {
+  display: none;
+}
+
 .illustrated-home__matthias-portrait[data-reduced-motion='false'] {
   animation: home-matthias-scene-arrive 620ms cubic-bezier(.2,.7,.2,1) both;
 }
