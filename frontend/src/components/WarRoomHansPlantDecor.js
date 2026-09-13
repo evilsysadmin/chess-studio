@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { getEffectiveReducedMotion } from '../userPreferences.js';
 import { applyWarRoomLocalAtmosphere } from './WarRoomLocalAtmosphere.js';
 
-export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v13-sofa-visible';
+export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v14-console-corner';
 export const WAR_ROOM_WINDOW_CORNER_POSE_VERSION = 'weather-window-side-wall-pose-v2-after-armor';
 export const WAR_ROOM_DUST_MOTES_VERSION = 'war-room-dust-motes-v1';
 
@@ -13,6 +13,8 @@ const WINDOW_SIDE_WALL_X = 7.45;
 const WINDOW_SIDE_WALL_Z = 1.85;
 const WINDOW_PLANT_X = 7.05;
 const WINDOW_PLANT_Z = 2.85;
+const CONSOLE_PLANT_INWARD_OFFSET = 0.08;
+const CONSOLE_PLANT_DEPTH_OFFSET = 0.16;
 const SOFA_PLANT_ROOM_INSET = 0.78;
 const SOFA_PLANT_END_OFFSET = 1.58;
 
@@ -207,6 +209,30 @@ function weatherWindowAnchor(root, box) {
   };
 }
 
+function sideConsoleAnchor(root, box, side) {
+  if (box.isEmpty()) return null;
+  const sideName = side < 0 ? 'left' : 'right';
+  const consoleGroup = root.getObjectByName?.(`war-room-side-console-${sideName}`);
+  const consolePosition = rootLocalPosition(root, consoleGroup);
+  if (!consolePosition) return null;
+
+  const margin = 0.5;
+  return {
+    x: THREE.MathUtils.clamp(
+      consolePosition.x - side * CONSOLE_PLANT_INWARD_OFFSET,
+      box.min.x + margin,
+      box.max.x - margin,
+    ),
+    z: THREE.MathUtils.clamp(
+      consolePosition.z + side * CONSOLE_PLANT_DEPTH_OFFSET,
+      box.min.z + margin,
+      box.max.z - margin,
+    ),
+    sideName,
+    consolePosition,
+  };
+}
+
 function sofaVisibleAnchor(root, box, side, windowAnchor = null) {
   if (box.isEmpty()) return null;
   const sideName = side < 0 ? 'left' : 'right';
@@ -224,9 +250,8 @@ function sofaVisibleAnchor(root, box, side, windowAnchor = null) {
   const towardReference = Math.sign(referenceZ - sofaPosition.z) || -1;
   const margin = 0.5;
 
-  // Put the plant at the armor/window end of the sofa, but on the room-facing
-  // side rather than against the wall. This keeps the pot and lower foliage
-  // visible instead of letting the sofa occlude everything except a few leaves.
+  // Legacy fallback only: when the side console is unavailable, keep the old
+  // sofa-relative anchor so incomplete/test scenes remain stable.
   return {
     x: THREE.MathUtils.clamp(
       sofaPosition.x - side * SOFA_PLANT_ROOM_INSET,
@@ -248,6 +273,18 @@ function placeWarRoomHansPlant(root, group, floor) {
 
   const canonicalAnchor = weatherWindowAnchor(root, box);
   const canonicalSide = canonicalAnchor ? Math.sign(canonicalAnchor.x) || 1 : plantSideOppositeHearth(root);
+  const consoleAnchor = sideConsoleAnchor(root, box, canonicalSide);
+  if (consoleAnchor) {
+    group.userData.warRoomPlantSide = consoleAnchor.sideName;
+    group.userData.warRoomPlantHearthRelation = 'opposite';
+    group.userData.warRoomPlantPlacement = `under-${consoleAnchor.sideName}-side-console-v14`;
+    group.userData.warRoomPlantLightRelation = canonicalAnchor ? 'window-local-atmosphere' : 'ambient-room';
+    group.userData.warRoomPlantOcclusionFix = 'console-corner-board-clearance-v14';
+    group.userData.warRoomPlantBoardClearance = 'outside-table-footprint';
+    group.position.set(consoleAnchor.x, -0.255, consoleAnchor.z);
+    return group;
+  }
+
   const sofaAnchor = sofaVisibleAnchor(root, box, canonicalSide, canonicalAnchor);
   if (sofaAnchor) {
     group.userData.warRoomPlantSide = sofaAnchor.sideName;
@@ -255,6 +292,7 @@ function placeWarRoomHansPlant(root, group, floor) {
     group.userData.warRoomPlantPlacement = `beside-${sofaAnchor.sideName}-sofa-room-side-v13`;
     group.userData.warRoomPlantLightRelation = canonicalAnchor ? 'window-local-atmosphere' : 'ambient-room';
     group.userData.warRoomPlantOcclusionFix = 'sofa-room-side-clearance-v13';
+    delete group.userData.warRoomPlantBoardClearance;
     group.position.set(sofaAnchor.x, -0.255, sofaAnchor.z);
     return group;
   }
@@ -266,6 +304,7 @@ function placeWarRoomHansPlant(root, group, floor) {
     group.userData.warRoomPlantPlacement = `beneath-${sideName}-wall-weather-window-v10`;
     group.userData.warRoomPlantLightRelation = 'window-local-atmosphere';
     delete group.userData.warRoomPlantOcclusionFix;
+    delete group.userData.warRoomPlantBoardClearance;
     group.position.set(canonicalAnchor.x, -0.255, canonicalAnchor.z);
     return group;
   }
@@ -282,6 +321,7 @@ function placeWarRoomHansPlant(root, group, floor) {
   group.userData.warRoomPlantHearthRelation = 'opposite';
   delete group.userData.warRoomPlantLightRelation;
   delete group.userData.warRoomPlantOcclusionFix;
+  delete group.userData.warRoomPlantBoardClearance;
 
   if (painting?.getWorldPosition && root.worldToLocal) {
     painting.updateMatrixWorld?.(true);
