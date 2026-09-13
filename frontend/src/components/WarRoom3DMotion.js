@@ -408,8 +408,9 @@ installWarRoomRenderDiscipline();
 
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
   // The War Room already has fireplace/torch practicals plus the directional key.
-  // Keep the board's point lights as restrained accent fill instead of a second
-  // studio-lighting rig that flattens pale ivory and light squares.
+  // These two point lights sit just beyond the opponent back rank. Give them a
+  // little more authority than the old grade so rook/knight crowns keep a clean
+  // edge against the pawn rank without lifting the room exposure or flat ambient.
   const baseExposure = coarsePointer ? 1.005 : 1.04;
   if (gameOver) {
     return {
@@ -431,8 +432,8 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
   }
   return {
     key: coarsePointer ? 1.99 : 1.42,
-    rim: coarsePointer ? 12.6 : 5.8,
-    warm: coarsePointer ? 5.0 : 2.0,
+    rim: coarsePointer ? 13.4 : 6.8,
+    warm: coarsePointer ? 5.4 : 2.6,
     exposure: baseExposure,
     fogDensity: coarsePointer ? 0.0178 : 0.0172,
   };
