@@ -23,6 +23,26 @@ function realAutopsyCases(puzzles = []) {
   ));
 }
 
+function recentCases(cases, target) {
+  return cases
+    .map((puzzle, index) => ({
+      puzzle,
+      index,
+      createdAt: Date.parse(puzzle?.createdAt || ''),
+    }))
+    .sort((a, b) => {
+      const aDated = Number.isFinite(a.createdAt);
+      const bDated = Number.isFinite(b.createdAt);
+      if (aDated && bDated && a.createdAt !== b.createdAt) return b.createdAt - a.createdAt;
+      if (aDated !== bDated) return aDated ? -1 : 1;
+      // Persisted personal puzzles are already newest-first. Preserve that order
+      // for legacy records without createdAt instead of inventing chronology.
+      return a.index - b.index;
+    })
+    .slice(0, target)
+    .map((entry) => entry.puzzle);
+}
+
 export function personalTrainingDebts(puzzles = []) {
   const groups = new Map();
   for (const puzzle of realAutopsyCases(puzzles)) {
@@ -38,9 +58,11 @@ export function personalTrainingDebts(puzzles = []) {
     .map(([key, cases]) => {
       const uniqueCases = [...new Map(cases.map((puzzle) => [puzzle.id, puzzle])).values()];
       if (uniqueCases.length < 2) return null;
-      const cleanCases = uniqueCases.filter(isPersonalPuzzleCurrentlyClean);
       const target = 2;
-      const progress = Math.min(target, cleanCases.length);
+      const evidenceCases = recentCases(uniqueCases, target);
+      const cleanEvidenceCases = evidenceCases.filter(isPersonalPuzzleCurrentlyClean);
+      const historicalCleanCases = uniqueCases.filter(isPersonalPuzzleCurrentlyClean).length;
+      const progress = cleanEvidenceCases.length;
       const paid = progress >= target;
       return {
         id: `incident:${key}`,
@@ -48,11 +70,13 @@ export function personalTrainingDebts(puzzles = []) {
         label: debtLabel(key),
         cases: uniqueCases.length,
         distinctGames: new Set(uniqueCases.map((puzzle) => puzzle.sourceGameId || puzzle.id)).size,
-        cleanCases: cleanCases.length,
+        cleanCases: cleanEvidenceCases.length,
+        historicalCleanCases,
         progress,
         target,
         paid,
         active: !paid,
+        recentPuzzleIds: evidenceCases.map((puzzle) => puzzle.id),
         puzzleIds: uniqueCases.map((puzzle) => puzzle.id),
       };
     })
