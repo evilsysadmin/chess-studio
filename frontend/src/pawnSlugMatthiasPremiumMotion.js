@@ -42,10 +42,14 @@ function applyWeaponRecoil(pose, weapon, time) {
     return 'shotgun-kick';
   }
   if (weapon === 'panzerfaust') {
-    pose.sx *= 1.072;
-    pose.sy *= 0.948;
-    pose.y -= 0.012;
-    pose.rz += 0.078;
+    // The launcher should read as Matthias bracing against a genuinely heavy
+    // discharge, not as a slightly larger shotgun recoil. Keep the change
+    // purely visual: widen/compress the silhouette and plant it lower while
+    // preserving the existing hitbox, projectile model and cadence.
+    pose.sx *= 1.09;
+    pose.sy *= 0.925;
+    pose.y -= 0.024;
+    pose.rz += 0.105;
     return 'panzerfaust-brace';
   }
   pose.sx *= 1.018;
