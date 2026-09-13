@@ -1,6 +1,7 @@
 import { Chess } from 'chess.js';
 import { api } from './api.js';
 import { getToken } from './auth.js';
+import { bestMoveConstraintFor } from './factualBestMoveConstraint.js';
 import { requestRemoteNarrative } from './narrativeRemote.js';
 import { loadPersonalPuzzles, saveGeneratedPersonalPuzzles } from './personalPuzzles.js';
 import { isObviouslyUnsoundSingleMovePuzzle } from './puzzleTacticalQuality.js';
@@ -56,19 +57,41 @@ function uciParts(value) {
   return match ? { from: match[1], to: match[2], promotion: match[3] || undefined } : null;
 }
 
+function normalizeEngineMove(move) {
+  const from = String(move?.from || '').trim().toLowerCase();
+  const to = String(move?.to || '').trim().toLowerCase();
+  if (!/^[a-h][1-8]$/.test(from) || !/^[a-h][1-8]$/.test(to)) return null;
+  const rawPromotion = String(move?.promotion || '').trim().toLowerCase();
+  const promotion = rawPromotion && /^[qrbn]$/.test(rawPromotion) ? rawPromotion : null;
+  return {
+    from,
+    to,
+    promotion,
+    san: cleanText(move?.san, 24),
+  };
+}
+
 function enginePuzzleProvenance(engine) {
   const analysisDepth = Number(engine?.analysisDepth);
   const candidateCount = Number(engine?.candidateCount);
   const rawGap = engine?.bestToSecondGap;
   const gap = rawGap == null ? null : Number(rawGap);
+  const secondBest = candidateCount > 1 ? normalizeEngineMove(engine?.secondBest) : null;
 
   if (!Number.isInteger(analysisDepth) || analysisDepth < PERSONAL_PUZZLE_MIN_ANALYSIS_DEPTH) return null;
   if (!Number.isInteger(candidateCount) || candidateCount < 1) return null;
-  if (candidateCount > 1 && !Number.isFinite(gap)) return null;
+  const bestMoveConstraint = bestMoveConstraintFor({
+    candidateCount,
+    analysisDepth,
+    secondBest,
+    bestToSecondGap: gap,
+  });
+  if (!bestMoveConstraint) return null;
 
   return {
     engineAnalysisDepth: analysisDepth,
     engineCandidateCount: candidateCount,
+    engineSecondBest: secondBest,
     engineBestToSecondGap: candidateCount === 1 ? null : gap,
   };
 }
