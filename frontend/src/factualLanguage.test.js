@@ -115,6 +115,7 @@ describe('factual language contract', () => {
   it('does not call one clean observation an improvement', () => {
     const result = progressWith([coveredObservation(1)]);
     expect(result.state).toBe(PATTERN_IMPROVEMENT_STATES.NO_SAMPLE);
+    expect(result.copy).toContain('falta observar nuevas partidas');
     expect(result.copy).not.toMatch(/mejora|corregido/i);
     expect(containsFactualLanguageAbsolute(result.copy)).toBe(false);
   });
