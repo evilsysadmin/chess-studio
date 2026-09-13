@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PAWN_SLUG_HOSTILE_WEAPON_SCALES,
   PAWN_SLUG_IMPACT_SOUND_PROFILES,
   PAWN_SLUG_WEAPON_PITCH_WIDTHS,
   PAWN_SLUG_WEAPON_SOUND_PROFILES,
   pawnSlugImpactSoundProfile,
   pawnSlugSoundPitchVariation,
+  pawnSlugWeaponGainScale,
   pawnSlugWeaponPitchWidth,
   pawnSlugWeaponSoundProfile,
 } from './pawnSlugSfx.js';
@@ -37,6 +39,27 @@ describe('Pawn Slug arcade combat SFX', () => {
     expect(pawnSlugWeaponPitchWidth('pistol')).toBeLessThan(pawnSlugWeaponPitchWidth('shotgun'));
     expect(pawnSlugWeaponPitchWidth('unknown')).toBe(pawnSlugWeaponPitchWidth('pistol'));
     expect(Math.max(...Object.values(PAWN_SLUG_WEAPON_PITCH_WIDTHS))).toBeLessThanOrEqual(0.035);
+  });
+
+  it('keeps routine hostile fire restrained while prioritizing shotgun and Panzerfaust warnings', () => {
+    expect(Object.keys(PAWN_SLUG_HOSTILE_WEAPON_SCALES)).toEqual([
+      'pistol',
+      'machinegun',
+      'shotgun',
+      'panzerfaust',
+    ]);
+    expect(pawnSlugWeaponGainScale('machinegun', { enemy: true })).toBeLessThan(pawnSlugWeaponGainScale('pistol', { enemy: true }));
+    expect(pawnSlugWeaponGainScale('pistol', { enemy: true })).toBeLessThan(pawnSlugWeaponGainScale('shotgun', { enemy: true }));
+    expect(pawnSlugWeaponGainScale('shotgun', { enemy: true })).toBeLessThan(pawnSlugWeaponGainScale('panzerfaust', { enemy: true }));
+    expect(pawnSlugWeaponGainScale('unknown', { enemy: true })).toBe(pawnSlugWeaponGainScale('pistol', { enemy: true }));
+    expect(pawnSlugWeaponGainScale('panzerfaust', { enemy: true })).toBeLessThan(pawnSlugWeaponGainScale('panzerfaust'));
+  });
+
+  it('does not change player weapon gain when hostile prioritization is enabled', () => {
+    const playerScales = ['pistol', 'machinegun', 'shotgun', 'panzerfaust']
+      .map((weapon) => pawnSlugWeaponGainScale(weapon));
+    expect(new Set(playerScales)).toEqual(new Set([0.72]));
+    expect(pawnSlugWeaponGainScale('unknown')).toBe(0.72);
   });
 
   it('uses more metallic impact rings for armored chess soldiers', () => {

@@ -14,6 +14,13 @@ export const PAWN_SLUG_WEAPON_PITCH_WIDTHS = Object.freeze({
   panzerfaust: 0.016,
 });
 
+export const PAWN_SLUG_HOSTILE_WEAPON_SCALES = Object.freeze({
+  pistol: 0.46,
+  machinegun: 0.44,
+  shotgun: 0.56,
+  panzerfaust: 0.64,
+});
+
 export const PAWN_SLUG_IMPACT_SOUND_PROFILES = Object.freeze({
   pawn: Object.freeze({ body: 112, ring: 0, noise: 0.055 }),
   knight: Object.freeze({ body: 92, ring: 880, noise: 0.045 }),
@@ -23,6 +30,7 @@ export const PAWN_SLUG_IMPACT_SOUND_PROFILES = Object.freeze({
 });
 
 const SHARED_NOISE_SECONDS = 0.5;
+const PLAYER_WEAPON_SCALE = 0.72;
 
 export const PAWN_SLUG_SFX_RESOURCE_META = Object.freeze({
   sharedNoiseBufferSeconds: SHARED_NOISE_SECONDS,
@@ -82,6 +90,11 @@ export function pawnSlugSoundPitchVariation(unit = 0.5, { enemy = false, width =
 
 export function pawnSlugWeaponPitchWidth(weapon = 'pistol') {
   return PAWN_SLUG_WEAPON_PITCH_WIDTHS[weapon] ?? PAWN_SLUG_WEAPON_PITCH_WIDTHS.pistol;
+}
+
+export function pawnSlugWeaponGainScale(weapon = 'pistol', { enemy = false } = {}) {
+  if (!enemy) return PLAYER_WEAPON_SCALE;
+  return PAWN_SLUG_HOSTILE_WEAPON_SCALES[weapon] ?? PAWN_SLUG_HOSTILE_WEAPON_SCALES.pistol;
 }
 
 function tone({ freq, endFreq = freq, duration = 0.08, gain = 0.12, type = 'triangle', delay = 0, filter = 0 }) {
@@ -163,7 +176,7 @@ export function pawnSlugImpactSoundProfile(type = 'pawn') {
 
 export function playPawnSlugWeaponSfx(weapon = 'pistol', { enemy = false } = {}) {
   const profile = pawnSlugWeaponSoundProfile(weapon);
-  const scale = enemy ? 0.48 : 0.72;
+  const scale = pawnSlugWeaponGainScale(weapon, { enemy });
   const pitch = pawnSlugSoundPitchVariation(Math.random(), { enemy, width: pawnSlugWeaponPitchWidth(weapon) });
   noise({ duration: profile.noise, gain: 0.11 * scale, cutoff: weapon === 'panzerfaust' ? 900 : 3100 });
   tone({ freq: profile.body * pitch, endFreq: profile.body * 0.62 * pitch, duration: profile.tail, gain: 0.18 * scale, type: 'sawtooth' });
