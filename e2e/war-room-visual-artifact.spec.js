@@ -10,6 +10,7 @@ const CAPTURE_PROFILES = Object.freeze([
     viewport: Object.freeze({ width: 390, height: 844 }),
     hasTouch: true,
     portraitContract: true,
+    landscapeContract: false,
   }),
   Object.freeze({
     label: 'war-room-android-landscape-844x390',
@@ -17,6 +18,7 @@ const CAPTURE_PROFILES = Object.freeze([
     viewport: Object.freeze({ width: 844, height: 390 }),
     hasTouch: true,
     portraitContract: false,
+    landscapeContract: true,
   }),
   Object.freeze({
     label: 'war-room-desktop-1440x900',
@@ -24,6 +26,7 @@ const CAPTURE_PROFILES = Object.freeze([
     viewport: Object.freeze({ width: 1440, height: 900 }),
     hasTouch: false,
     portraitContract: false,
+    landscapeContract: false,
   }),
 ]);
 
@@ -190,6 +193,15 @@ function expectPortraitHealth(health) {
   expect(Math.abs((health.music?.top ?? 0) - (health.notation?.top ?? 0)), 'music/notebook row alignment').toBeLessThanOrEqual(2);
 }
 
+function expectLandscapeHealth(health) {
+  expect(health.verticalOverflowPx, 'Android landscape must fit the play-first War Room in one viewport').toBeLessThanOrEqual(1);
+  expect(health.legacyCommandDeck?.display, 'Android landscape must not revive the legacy command row').toBe('none');
+  expect(health.board?.left, 'Android landscape keeps the board in the primary left pane').toBeLessThan(80);
+  expect(health.boardViewportFill, 'Android landscape should spend most viewport height on the board').toBeGreaterThanOrEqual(0.62);
+  expect(health.boardWidthFill, 'Android landscape keeps a substantial board surface').toBeGreaterThanOrEqual(0.58);
+  expect(health.human?.bottom, 'Android landscape player rail must stay inside the viewport').toBeLessThanOrEqual(health.viewport.height + 1);
+}
+
 for (const profile of CAPTURE_PROFILES) {
   test(`War Room · captura visual canónica ${profile.title}`, async () => {
     test.setTimeout(120_000);
@@ -243,6 +255,7 @@ for (const profile of CAPTURE_PROFILES) {
         expect(health.coarsePointer, 'Desktop capture must retain a fine pointer').toBe(false);
       }
       if (profile.portraitContract) expectPortraitHealth(health);
+      if (profile.landscapeContract) expectLandscapeHealth(health);
 
       await freezeVisualFrame(page);
       await captureViewportPng(
