@@ -1,54 +1,112 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearStorageMemoryFallback } from './safeStorage.js';
-import { migratePersistentStorage, STORAGE_SCHEMA_KEY, STORAGE_SCHEMA_VERSION } from './storageMigrations.js';
+import { migratePersistentStorage } from './storageMigrations.js';
 
-describe('save compatibility N / N-1 / N-2', () => {
+// Raw localStorage snapshots used by the compatibility drill.
+// Keep these literals independent from current implementation constants: they
+// represent what an older browser profile actually has on disk before boot.
+const PROGRESS = Object.freeze({
+  'chess-study-game-history': JSON.stringify([{ id: 'game-42', result: 'win' }]),
+  'chess-study-player-rating': '1375',
+  'chess-study-personal-puzzles': JSON.stringify([{ id: 'puzzle-9', fen: 'fixture-fen' }]),
+  'chess-study-combat-roster': JSON.stringify({ credits: 17, identities: { 'p-a': { alias: 'Rivas' } } }),
+  'chess-study-achievements': JSON.stringify(['first-win']),
+  'chess-study-unknown-progress-key': JSON.stringify({ keep: true }),
+});
+
+function snapshot(extra = {}) {
+  return Object.freeze({ ...PROGRESS, ...extra });
+}
+
+const STORAGE_COMPATIBILITY_FIXTURES = Object.freeze([
+  Object.freeze({
+    label: 'schema v0 · legacy mute + retired preferences',
+    before: snapshot({
+      'chess-study-muted': '1',
+      'chess-study-board-renderer': '2d',
+      'chess-study-cpu-personality': 'old-sarcastic',
+      'chess-study-ambient-theme': 'old-theme',
+    }),
+    after: snapshot({
+      'chess-study-muted': '1',
+      'chess-study-music-muted': '1',
+      'chess-study-fx-muted': '1',
+      'chess-study-board-renderer': '3d',
+      'chess-study-storage-schema-version': '3',
+    }),
+    result: Object.freeze({ status: 'ok', from: 0, to: 3, durable: true }),
+  }),
+  Object.freeze({
+    label: 'schema v1 · retired preferences still present',
+    before: snapshot({
+      'chess-study-storage-schema-version': '1',
+      'chess-study-board-renderer': '2d',
+      'chess-study-cpu-personality': 'old-sarcastic',
+      'chess-study-ambient-theme': 'old-theme',
+    }),
+    after: snapshot({
+      'chess-study-storage-schema-version': '3',
+      'chess-study-board-renderer': '3d',
+    }),
+    result: Object.freeze({ status: 'ok', from: 1, to: 3, durable: true }),
+  }),
+  Object.freeze({
+    label: 'schema v2 · renderer migration pending',
+    before: snapshot({
+      'chess-study-storage-schema-version': '2',
+      'chess-study-board-renderer': '2d',
+    }),
+    after: snapshot({
+      'chess-study-storage-schema-version': '3',
+      'chess-study-board-renderer': '3d',
+    }),
+    result: Object.freeze({ status: 'ok', from: 2, to: 3, durable: true }),
+  }),
+  Object.freeze({
+    label: 'schema v3 · current snapshot is stable',
+    before: snapshot({
+      'chess-study-storage-schema-version': '3',
+      'chess-study-board-renderer': '2d',
+      'chess-study-music-muted': '0',
+      'chess-study-fx-muted': '1',
+    }),
+    after: snapshot({
+      'chess-study-storage-schema-version': '3',
+      'chess-study-board-renderer': '2d',
+      'chess-study-music-muted': '0',
+      'chess-study-fx-muted': '1',
+    }),
+    result: Object.freeze({ status: 'ok', from: 3, to: 3, durable: true }),
+  }),
+]);
+
+function seedSnapshot(snapshotValue) {
+  for (const [key, value] of Object.entries(snapshotValue)) localStorage.setItem(key, value);
+}
+
+function readSnapshot() {
+  return Object.fromEntries(
+    Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
+      .filter(Boolean)
+      .sort()
+      .map((key) => [key, localStorage.getItem(key)]),
+  );
+}
+
+describe('legacy save migration snapshot drill', () => {
   beforeEach(() => {
     localStorage.clear();
     clearStorageMemoryFallback();
   });
 
-  const fixtures = [
-    {
-      label: 'N-2 · schema v1',
-      version: 1,
-      renderer: '2d',
-      expectedRenderer: '3d',
-    },
-    {
-      label: 'N-1 · schema v2',
-      version: 2,
-      renderer: '2d',
-      expectedRenderer: '3d',
-    },
-    {
-      label: 'N · schema v3',
-      version: 3,
-      renderer: '3d',
-      expectedRenderer: '3d',
-    },
-  ];
-
-  for (const fixture of fixtures) {
-    it(`${fixture.label} preserves representative user progress while reaching current schema`, () => {
-      localStorage.setItem(STORAGE_SCHEMA_KEY, String(fixture.version));
-      localStorage.setItem('chess-study-board-renderer', fixture.renderer);
-      localStorage.setItem('chess-study-game-history', JSON.stringify([{ id: 'game-42', result: 'win' }]));
-      localStorage.setItem('chess-study-player-rating', '1375');
-      localStorage.setItem('chess-study-personal-puzzles', JSON.stringify([{ id: 'puzzle-9', fen: 'fixture-fen' }]));
-      localStorage.setItem('chess-study-combat-roster', JSON.stringify({ credits: 17, identities: { 'p-a': { alias: 'Rivas' } } }));
-      localStorage.setItem('chess-study-achievements', JSON.stringify(['first-win']));
+  for (const fixture of STORAGE_COMPATIBILITY_FIXTURES) {
+    it(`${fixture.label} reaches the expected snapshot without collateral data loss`, () => {
+      seedSnapshot(fixture.before);
 
       const result = migratePersistentStorage();
 
-      expect(result).toMatchObject({ status: 'ok', from: fixture.version, to: STORAGE_SCHEMA_VERSION });
-      expect(localStorage.getItem(STORAGE_SCHEMA_KEY)).toBe(String(STORAGE_SCHEMA_VERSION));
-      expect(localStorage.getItem('chess-study-board-renderer')).toBe(fixture.expectedRenderer);
-      expect(JSON.parse(localStorage.getItem('chess-study-game-history'))).toEqual([{ id: 'game-42', result: 'win' }]);
-      expect(localStorage.getItem('chess-study-player-rating')).toBe('1375');
-      expect(JSON.parse(localStorage.getItem('chess-study-personal-puzzles'))).toEqual([{ id: 'puzzle-9', fen: 'fixture-fen' }]);
-      expect(JSON.parse(localStorage.getItem('chess-study-combat-roster'))).toEqual({ credits: 17, identities: { 'p-a': { alias: 'Rivas' } } });
-      expect(JSON.parse(localStorage.getItem('chess-study-achievements'))).toEqual(['first-win']);
+      expect(result).toEqual(fixture.result);
+      expect(readSnapshot()).toEqual(fixture.after);
     });
   }
 });
