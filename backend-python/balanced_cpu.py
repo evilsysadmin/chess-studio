@@ -16,7 +16,7 @@ from typing import Optional
 import chess
 
 from chess_ai import MATE_SCORE, get_cpu_move, move_to_dict, settings_for_level
-from engine_analysis import score_root_candidates
+from engine_analysis import RootCandidateAnalysis, top_root_candidates
 
 
 @dataclass(frozen=True)
@@ -80,7 +80,7 @@ def _score_gap(best_score: float, candidate_score: float, maximizing: bool) -> f
 
 
 def _near_best_candidates(
-    scored: list[tuple[chess.Move, float]],
+    analyzed: list[RootCandidateAnalysis],
     *,
     base_move: chess.Move,
     base_score: float,
@@ -88,12 +88,12 @@ def _near_best_candidates(
     margin_cp: float,
 ) -> list[chess.Move]:
     candidates: list[tuple[float, chess.Move]] = []
-    for move, score in scored:
-        if move == base_move:
+    for candidate in analyzed:
+        if candidate.move == base_move:
             continue
-        gap = _score_gap(base_score, score, maximizing)
+        gap = _score_gap(base_score, candidate.score, maximizing)
         if -CONSISTENCY_MARGIN_CP <= gap <= margin_cp:
-            candidates.append((max(0.0, gap), move))
+            candidates.append((max(0.0, gap), candidate.move))
     candidates.sort(key=lambda item: (item[0], item[1].uci()))
     return [move for _, move in candidates[:3]]
 
@@ -126,27 +126,33 @@ def get_balanced_cpu_move(
     budget = min(profile.budget_s, max(0.08, settings.time_budget_s * 0.20))
     deadline = time.monotonic() + budget
     try:
-        scored = score_root_candidates(board, depth=profile.depth, deadline=deadline)
+        analyzed = top_root_candidates(
+            board,
+            limit=max(1, len(list(board.legal_moves))),
+            depth=profile.depth,
+            deadline=deadline,
+        )
     except TimeoutError:
         return suggestion
-    if not scored:
+    if not analyzed:
+        return suggestion
+
+    shallow_best = analyzed[0]
+    base = next((candidate for candidate in analyzed if candidate.move == base_move), None)
+    if base is None:
+        return suggestion
+
+    if abs(shallow_best.score) >= MATE_SCORE - 1000 or abs(base.score) >= MATE_SCORE - 1000:
         return suggestion
 
     maximizing = board.turn == chess.WHITE
-    shallow_best = max(score for _, score in scored) if maximizing else min(score for _, score in scored)
-    base_score = next((score for move, score in scored if move == base_move), None)
-    if base_score is None:
-        return suggestion
-
-    if abs(shallow_best) >= MATE_SCORE - 1000 or abs(base_score) >= MATE_SCORE - 1000:
-        return suggestion
-    if _score_gap(shallow_best, base_score, maximizing) > CONSISTENCY_MARGIN_CP:
+    if _score_gap(shallow_best.score, base.score, maximizing) > CONSISTENCY_MARGIN_CP:
         return suggestion
 
     alternatives = _near_best_candidates(
-        scored,
+        analyzed,
         base_move=base_move,
-        base_score=base_score,
+        base_score=base.score,
         maximizing=maximizing,
         margin_cp=profile.margin_cp,
     )
