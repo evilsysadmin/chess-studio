@@ -22,6 +22,7 @@ export default function InsightsGuidedSession({
 }) {
   const [session, setSession] = useState(() => loadGuidedTrainingSession());
   const plans = useMemo(() => ({
+    5: buildGuidedTrainingPlan({ minutes: 5, history: gameHistory }),
     15: buildGuidedTrainingPlan({ minutes: 15, history: gameHistory }),
     30: buildGuidedTrainingPlan({ minutes: 30, history: gameHistory }),
   }), [gameHistory]);
@@ -76,20 +77,21 @@ export default function InsightsGuidedSession({
   }
 
   if (!session) {
-    const available = plans[15].available || plans[30].available;
+    const available = plans[5].available || plans[15].available || plans[30].available;
     return (
       <section className="menu-section insights-guided-session" aria-labelledby="guided-session-title">
         <span className="section-label">Sin buscar por menús</span>
         <h2 id="guided-session-title">Sesión automática</h2>
-        <p className="hint-text">Chess Studio compone el recorrido con errores personales y Némesis demostradas, añade una partida corta de práctica y termina de nuevo aquí. El paso actual sobrevive mientras vas y vuelves entre pantallas.</p>
+        <p className="hint-text">Chess Studio compone el recorrido con errores personales y Némesis demostradas. En 5 minutos concentra todo en un único foco; con 15/30 añade una partida corta de práctica y termina de nuevo aquí. El paso actual sobrevive mientras vas y vuelves entre pantallas.</p>
         {available ? (
           <div className="coaching-action">
+            <button type="button" className="secondary-btn" disabled={!plans[5].available} onClick={() => begin(5)}>Tengo 5 min</button>
             <button type="button" className="primary-btn" disabled={!plans[15].available} onClick={() => begin(15)}>Tengo 15 min</button>
             <button type="button" className="secondary-btn" disabled={!plans[30].available} onClick={() => begin(30)}>Tengo 30 min</button>
-            <span>{plans[15].available ? `${plans[15].steps.length} pasos basados en tu expediente real.` : plans[15].reason}</span>
+            <span>Elige tiempo; cada recorrido respeta ese presupuesto y usa sólo evidencia de tu expediente.</span>
           </div>
         ) : (
-          <p className="hint-text">{plans[15].reason}</p>
+          <p className="hint-text">{plans[5].reason}</p>
         )}
       </section>
     );
