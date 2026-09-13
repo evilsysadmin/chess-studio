@@ -56,6 +56,24 @@
       .illustrated-home__destination:focus-visible > svg {
       opacity: 0.3;
     }
+
+    /* Keep the interaction boxes on their canonical art anchors, but bring the
+     * visible labels closer to the physical props that now carry destination
+     * identity. This is intentionally desktop-only: cropped touch cameras keep
+     * the established label geometry as their reliable fallback. */
+    .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
+      :is(
+        .illustrated-home__destination--train,
+        .illustrated-home__destination--combat,
+        .illustrated-home__destination--daily
+      ) > :is(svg, strong, span, i) {
+      translate: 0 1.8cqw;
+    }
+
+    .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
+      .illustrated-home__destination--tournament > :is(svg, strong, span, i) {
+      translate: 0 2.15cqw;
+    }
   }
 }
 
