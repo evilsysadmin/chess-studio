@@ -145,7 +145,7 @@ describe('Hans rendered facing guard', () => {
     driver.onBeforeRender();
 
     expect(hans.rotation.y).toBeCloseTo(0.47, 8);
-    expect(hans.userData.warRoomHansFacingGuardCorrections).toBeUndefined();
+    expect(hans.userData.warRoomHansFacingGuardCorrections).toBe(0);
   });
 
   it('es idempotente y no apila wrappers', () => {
