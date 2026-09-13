@@ -53,7 +53,7 @@
 @media (min-width: 1000px) {
   .illustrated-home__matthias {
     left: 10.9%;
-    top: 75.2%;
+    top: 83%;
     width: 16.2%;
     min-height: 11.5%;
     grid-template-columns: clamp(60px, 4.9cqw, 88px) minmax(0, 1fr);
