@@ -35,6 +35,37 @@ describe('objetivos semanales personales', () => {
     expect(goals[0].title).toContain('Horquillas de caballo sufridas');
   });
 
+  it('consume la deuda del Player Model en vez de recalcularla dentro de objetivos', () => {
+    const goals = buildPersonalWeeklyGoals({
+      now: NOW,
+      puzzles: [],
+      cleanRecords: {},
+      playerModel: {
+        trainingDebt: {
+          top: {
+            incidentKey: 'human:MISSED_MATE',
+            label: 'Mates que dejaste escapar',
+            cases: 3,
+            progress: 1,
+            target: 2,
+            paid: false,
+          },
+        },
+      },
+    });
+
+    expect(goals).toEqual([
+      expect.objectContaining({
+        id: 'debt:human:MISSED_MATE',
+        kind: 'debt',
+        progress: 1,
+        target: 2,
+        done: false,
+        filter: { incidentKey: 'human:MISSED_MATE' },
+      }),
+    ]);
+  });
+
   it('cuenta sólo partidas limpias demostradas dentro de la ventana de siete días', () => {
     const goals = buildPersonalWeeklyGoals({
       now: NOW,
