@@ -158,6 +158,24 @@
   }
 }
 
+/* Android desktop-site portrait/tall touch: the physical 3D field crate is the
+ * object. Keep navigation as a compact caption beside it instead of a broad HUD
+ * strip across the foreground. Landscape has its own framing and is untouched. */
+@media (min-width: 521px) and (max-width: 999px) and (pointer: coarse) and (max-aspect-ratio: 4/5) {
+  .illustrated-home__pawn-slug {
+    left: 61.2%;
+    top: 68.2%;
+    width: clamp(148px, 7.4%, 176px);
+    padding: 6px 10px 6px 29px;
+    background:
+      linear-gradient(90deg, rgba(10, 7, 5, .68), rgba(25, 15, 9, .48) 68%, rgba(34, 18, 9, .12)),
+      linear-gradient(180deg, rgba(232, 179, 77, .04), transparent 45%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 221, 153, .06),
+      0 6px 14px rgba(0, 0, 0, .12);
+  }
+}
+
 @media (max-width: 520px) {
   body .app-shell-home .menu.menu-illustrated .illustrated-home__pawn-slug {
     left: auto;
