@@ -1,4 +1,4 @@
-export const WAR_ROOM_HANS_MOP_ROUTINE_VERSION = 'hans-mop-routine-v1-room-roam';
+export const WAR_ROOM_HANS_MOP_ROUTINE_VERSION = 'hans-mop-routine-v2-reset-between-work-and-walk';
 export const HANS_MOP_START_CHANCE = 0.48;
 export const HANS_MOP_DIALOGUE_CHANCE = 0.56;
 export const HANS_MOP_MIN_FATIGUE_MS = 60_000;

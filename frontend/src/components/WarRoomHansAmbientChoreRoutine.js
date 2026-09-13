@@ -39,7 +39,7 @@ import {
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v4-runtime-task';
+export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v5-reset-before-return';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
@@ -349,6 +349,7 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
       }
 
       if (actionElapsed >= chore.actionMs) {
+        resetWarRoomHansWalk(controller, { full: true });
         restoreAdjustedTarget(targetObject, targetBaseRotation);
         setDialogue(actor, '');
         state = 'returning';
