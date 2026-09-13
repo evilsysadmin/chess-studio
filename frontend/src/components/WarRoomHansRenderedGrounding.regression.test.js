@@ -77,12 +77,30 @@ describe('Hans rendered fire-routine contract', () => {
     expect(installWarRoomHansBoardCollisionGuard(root)).toBe(1);
     driver.onBeforeRender();
 
-    const renderedBottom = Math.min(shoeBottomWorldY(leftShoe), shoeBottomWorldY(rightShoe));
     const carpetTop = -0.221;
+    let renderedBottom = Math.min(shoeBottomWorldY(leftShoe), shoeBottomWorldY(rightShoe));
     expect(renderedBottom).toBeCloseTo(carpetTop, 5);
     expect(hans.position.y).toBeLessThan(-0.5);
     expect(hans.userData.warRoomHansGroundSurface).toBe('war-room-command-carpet-inner-field');
     expect(hans.userData.warRoomHansWorldGrounding).toBe('shoe-bottom-to-rendered-surface-v1');
+
+    // Reproduce the real visual failure mode: a later choreography writer puts
+    // the legacy local root Y back just before Hans is painted. The first Hans
+    // mesh that WebGL is about to draw must plant the shoes again in that same
+    // render frame, rather than relying on the invisible late driver.
+    hans.position.y = -0.34;
+    hans.updateMatrixWorld(true);
+    expect(Math.min(shoeBottomWorldY(leftShoe), shoeBottomWorldY(rightShoe))).toBeGreaterThan(carpetTop + 0.15);
+
+    const renderer = { info: { render: { frame: 7 } } };
+    leftShoe.onBeforeRender(renderer, null, null, leftShoe.geometry, leftShoe.material, null);
+
+    renderedBottom = Math.min(shoeBottomWorldY(leftShoe), shoeBottomWorldY(rightShoe));
+    expect(renderedBottom).toBeCloseTo(carpetTop, 5);
+    expect(hans.userData.warRoomHansGroundingSource).toBe('visible-mesh-pre-render');
+    expect(hans.userData.warRoomHansGroundingContract).toBe('visible-mesh-pre-render-v2');
+    expect(hans.userData.warRoomHansGroundGap).toBeCloseTo(0, 8);
+    expect(driver.userData.warRoomHansVisibleGroundingHooks).toBeGreaterThanOrEqual(2);
   });
 
   it('keeps transit facing tied to route/motion even when a narrative phase masks the fire phase', () => {
