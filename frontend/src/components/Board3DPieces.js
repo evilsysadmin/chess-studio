@@ -5,6 +5,7 @@ import { makePremiumPieceMaterial } from './Board3DSurfaces.js';
 import { SKIN_3D } from './Board3DConfig.js';
 import { addPieceSkinDetails, reinforcePieceSkinMaterial } from './Board3DSkinDecor.js';
 import { COARSE_PIECE_HIT_TARGET } from './WarRoom3DTouch.js';
+import { syncBoard3DRankInsignias } from './Board3DRankInsignia.js';
 
 function makeMaterial(color, skin, accent = false, side = 'w', coarsePointer = false, skinId = 'studio') {
   const material = reinforcePieceSkinMaterial(
@@ -396,6 +397,7 @@ export function buildPiece(type, color, skinId, coarsePointer = false, options =
 
 export function applyMatthiasCheckPose(state, checkSquare, orientation) {
   if (!state?.pieceMeshes) return;
+  syncBoard3DRankInsignias(state);
   for (const [square, mesh] of state.pieceMeshes.entries()) {
     if (!mesh?.userData?.matthiasKing) continue;
     const baseScale = mesh.userData.baseScale;
