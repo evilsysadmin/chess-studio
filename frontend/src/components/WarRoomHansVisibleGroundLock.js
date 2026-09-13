@@ -1,14 +1,15 @@
 import * as THREE from 'three';
 
-export const WAR_ROOM_HANS_VISIBLE_GROUND_LOCK_VERSION = 'hans-visible-ground-lock-v1-final-mesh-authority';
+export const WAR_ROOM_HANS_VISIBLE_GROUND_LOCK_VERSION = 'hans-visible-ground-lock-v2-dom-health';
 
 const HANS_NAME = 'war-room-hans-butler';
+const CANVAS_SELECTOR = '.game-board-stack-3d .board3d-main-canvas';
 const SURFACE_NAMES = Object.freeze([
   'war-room-command-carpet-inner-field',
   'war-room-command-carpet-bed',
   'war-room-castle-floor-slab',
 ]);
-const HOOK_MARKER = 'war-room-hans-visible-ground-lock-v1';
+const HOOK_MARKER = 'war-room-hans-visible-ground-lock-v2';
 const MAX_CORRECTION = 1.5;
 
 function captureSurfaces(root) {
@@ -41,6 +42,17 @@ function shoeBottomWorldY(shoe, scratchBox) {
   shoe.updateMatrixWorld?.(true);
   scratchBox.copy(shoe.geometry.boundingBox).applyMatrix4(shoe.matrixWorld);
   return Number.isFinite(scratchBox.min.y) ? scratchBox.min.y : null;
+}
+
+function publishGroundHealth(state, surfaceName, gap) {
+  if (!Number.isFinite(gap)) return;
+  if (!state.canvas || state.canvas.isConnected === false) {
+    state.canvas = globalThis.document?.querySelector?.(CANVAS_SELECTOR) || null;
+  }
+  if (!state.canvas?.dataset) return;
+  state.canvas.dataset.warRoomHansGroundGap = gap.toFixed(5);
+  state.canvas.dataset.warRoomHansGroundSurface = String(surfaceName || '');
+  state.canvas.dataset.warRoomHansGroundLock = WAR_ROOM_HANS_VISIBLE_GROUND_LOCK_VERSION;
 }
 
 function reconcileVisibleGround(state, source = 'visible-mesh-finalizer') {
@@ -82,12 +94,14 @@ function reconcileVisibleGround(state, source = 'visible-mesh-finalizer') {
     shoeBottomWorldY(rightShoe, scratch.rightShoeBox),
   ].filter(Number.isFinite);
   const renderedBottom = correctedBottoms.length ? Math.min(...correctedBottoms) : groundY;
+  const gap = Math.abs(renderedBottom - groundY);
 
   hans.userData.warRoomHansVisibleGroundLock = WAR_ROOM_HANS_VISIBLE_GROUND_LOCK_VERSION;
   hans.userData.warRoomHansVisibleGroundLockSource = source;
   hans.userData.warRoomHansVisibleGroundSurface = surface.name;
   hans.userData.warRoomHansVisibleGroundCorrection = correction;
-  hans.userData.warRoomHansVisibleGroundGap = Math.abs(renderedBottom - groundY);
+  hans.userData.warRoomHansVisibleGroundGap = gap;
+  publishGroundHealth(state, surface.name, gap);
   return true;
 }
 
@@ -105,6 +119,7 @@ export function installWarRoomHansVisibleGroundLock(root) {
     hans,
     body,
     surfaces,
+    canvas: null,
     scratch: {
       hansWorld: new THREE.Vector3(),
       targetWorld: new THREE.Vector3(),
