@@ -1,11 +1,12 @@
-export const BOARD3D_HIGHLIGHT_Y = 0.122;
-export const BOARD3D_HIGHLIGHT_SIZE = 0.86;
+export const BOARD3D_HIGHLIGHT_Y = 0.116;
+export const BOARD3D_HIGHLIGHT_SIZE = 0.84;
 
 /* The War Room stays warm (brass, wood, stone and fire), but legal destinations
  * need a deliberately cool contrast so they remain readable on both light and
- * dark board tiles. The extra parity tones let non-standard surfaces preserve
- * information that used to exist only as 2D CSS classes. Active interaction
- * still wins over ambient annotations: parity < legal/technique < selection < check. */
+ * dark board tiles. Highlights intentionally stay inset and translucent: they
+ * should read as light caught by the stone surface, not coloured UI cards laid
+ * over the board. Active interaction still wins over ambient annotations:
+ * parity < legal/technique < selection < check. */
 export const BOARD3D_HIGHLIGHT_COLORS = Object.freeze({
   focus: 0x76674f,
   hover: 0xb5873f,
@@ -26,13 +27,13 @@ export const BOARD3D_HIGHLIGHT_COLORS = Object.freeze({
 });
 
 const PARITY_STYLE = Object.freeze({
-  mistake: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.mistake, opacity: 0.76, scale: 0.94 }),
-  terrain: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.terrain, opacity: 0.82, scale: 0.9 }),
-  deployment: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.deployment, opacity: 0.64, scale: 0.88 }),
-  mercenary: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.mercenary, opacity: 0.58, scale: 0.88 }),
-  veteran: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.veteran, opacity: 0.48, scale: 0.86 }),
-  xp: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.xp, opacity: 0.5, scale: 0.84 }),
-  special: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.special, opacity: 0.58, scale: 0.88 }),
+  mistake: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.mistake, opacity: 0.62, scale: 0.92 }),
+  terrain: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.terrain, opacity: 0.64, scale: 0.9 }),
+  deployment: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.deployment, opacity: 0.52, scale: 0.88 }),
+  mercenary: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.mercenary, opacity: 0.48, scale: 0.88 }),
+  veteran: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.veteran, opacity: 0.42, scale: 0.86 }),
+  xp: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.xp, opacity: 0.44, scale: 0.84 }),
+  special: Object.freeze({ color: BOARD3D_HIGHLIGHT_COLORS.special, opacity: 0.5, scale: 0.88 }),
 });
 
 function legalMeta(value) {
@@ -54,20 +55,22 @@ export function board3DHighlightStyle({
 } = {}) {
   let kind = null;
   let color = null;
-  let opacity = 0.74;
+  let opacity = 0.62;
   let scale = 1;
 
-  if (focusedSquare === square) { kind = 'focus'; color = BOARD3D_HIGHLIGHT_COLORS.focus; opacity = 0.3; }
-  if (hoveredSquare === square) { kind = 'hover'; color = BOARD3D_HIGHLIGHT_COLORS.hover; opacity = 0.48; scale = 1.012; }
+  if (focusedSquare === square) { kind = 'focus'; color = BOARD3D_HIGHLIGHT_COLORS.focus; opacity = 0.24; scale = 0.94; }
+  if (hoveredSquare === square) { kind = 'hover'; color = BOARD3D_HIGHLIGHT_COLORS.hover; opacity = 0.34; scale = 0.96; }
   if (lastMove && (square === lastMove.from || square === lastMove.to)) {
     kind = 'lastMove';
     color = BOARD3D_HIGHLIGHT_COLORS.lastMove;
-    opacity = 0.58;
+    opacity = 0.42;
+    scale = 0.94;
   }
   if (hintMove && (square === hintMove.from || square === hintMove.to)) {
     kind = 'hint';
     color = BOARD3D_HIGHLIGHT_COLORS.hint;
-    opacity = 0.7;
+    opacity = 0.5;
+    scale = 0.92;
   }
 
   const parityKind = hintMove?.parityHighlights?.[square];
@@ -84,26 +87,26 @@ export function board3DHighlightStyle({
     if (meta.technique) {
       kind = 'technique';
       color = BOARD3D_HIGHLIGHT_COLORS.technique;
-      opacity = 0.9;
-      scale = 0.91;
+      opacity = 0.68;
+      scale = 0.88;
     } else {
       kind = meta.capture ? 'capture' : 'legal';
       color = meta.capture ? BOARD3D_HIGHLIGHT_COLORS.capture : BOARD3D_HIGHLIGHT_COLORS.legal;
-      opacity = meta.capture ? 0.8 : 0.84;
-      scale = meta.capture ? 0.9 : 0.82;
+      opacity = meta.capture ? 0.66 : 0.62;
+      scale = meta.capture ? 0.86 : 0.8;
     }
   }
   if (selectedSquare === square) {
     kind = 'selected';
     color = BOARD3D_HIGHLIGHT_COLORS.selected;
-    opacity = 0.82;
-    scale = 1.03;
+    opacity = 0.7;
+    scale = 0.96;
   }
   if (checkSquare === square) {
     kind = 'check';
     color = BOARD3D_HIGHLIGHT_COLORS.check;
-    opacity = 0.9;
-    scale = 1.035;
+    opacity = 0.78;
+    scale = 0.98;
   }
 
   return color == null ? null : { kind, color, opacity, scale };
