@@ -424,29 +424,7 @@ jobs:
             "/repos/$GITHUB_REPOSITORY/actions/workflows/staging-ai-worker.yml/runs?event=workflow_run&status=success&branch=main&per_page=100" \
             > "$runs_file"
 
-          mapfile -t candidate_run_ids < <(python3 - "$runs_file" "$SOURCE_STAGING_AI_RUN_NUMBER" <<'PY'
-          import json, pathlib, sys
-          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          source_number = int(sys.argv[2])
-          rows = payload.get('workflow_runs') or []
-          candidates = []
-          for row in rows:
-              if not isinstance(row, dict):
-                  continue
-              number = int(row.get('run_number') or 0)
-              run_id = int(row.get('id') or 0)
-              if (
-                  run_id
-                  and number > source_number
-                  and row.get('event') == 'workflow_run'
-                  and row.get('status') == 'completed'
-                  and row.get('conclusion') == 'success'
-              ):
-                  candidates.append((number, run_id))
-          for _, run_id in sorted(candidates, reverse=True):
-              print(run_id)
-          PY
-          )
+          mapfile -t candidate_run_ids < <(python3 "$GITHUB_WORKSPACE/scripts/production_promotion_supersede.py" candidates "$runs_file" "$SOURCE_STAGING_AI_RUN_NUMBER")
 
           newer_accredited_run=''
           for run_id in "${candidate_run_ids[@]}"; do
@@ -457,18 +435,7 @@ jobs:
                 -H 'Accept: application/vnd.github+json' \
                 "/repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts?per_page=100" \
                 > "$artifacts_file"
-              if python3 - "$artifacts_file" <<'PY'
-          import json, pathlib, sys
-          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          matches = [
-              item for item in (payload.get('artifacts') or [])
-              if isinstance(item, dict)
-              and item.get('name') == 'staging-promotion-accreditation'
-              and not item.get('expired')
-          ]
-          raise SystemExit(0 if len(matches) == 1 else 1)
-          PY
-              then
+              if python3 "$GITHUB_WORKSPACE/scripts/production_promotion_supersede.py" artifact-valid "$artifacts_file"; then
                 found=true
                 break
               fi

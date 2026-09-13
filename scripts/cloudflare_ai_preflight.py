@@ -11,6 +11,7 @@ import urllib.error
 import urllib.request
 
 from cloudflare_health_contract import EXPECTED_MODELS, EXPECTED_SERVICE, validate_health_payload
+from production_promotion_supersede import ARTIFACT_NAME, candidate_run_ids, has_exact_current_accreditation
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 WORKER = ROOT / "infra/cloudflare/worker/index.js"
@@ -216,8 +217,8 @@ def static_check() -> list[str]:
         ("Verify staging AI health contract · diagnostic only", "promotion AI staging check is diagnostic"),
         ("SOURCE_STAGING_AI_RUN_NUMBER", "promotion carries source accreditation order into mutation gate"),
         ("actions/workflows/staging-ai-worker.yml/runs?event=workflow_run&status=success&branch=main&per_page=100", "promotion searches only newer automatic green staging runs"),
-        ("number > source_number", "promotion requires strictly newer staging run"),
-        ("and not item.get('expired')", "promotion requires non-expired newer accreditation"),
+        ('production_promotion_supersede.py" candidates', "promotion delegates strictly-newer run selection"),
+        ('production_promotion_supersede.py" artifact-valid', "promotion delegates non-expired accreditation validation"),
         ("newer_accredited_run", "promotion supersede decision is accreditation-based"),
         ("Production · Cloudflare Worker", "promotion Worker stage"),
         ("Supersede stale production promotion before first mutation", "promotion final accreditation queue guard"),
@@ -244,6 +245,42 @@ def static_check() -> list[str]:
         "promotion final accreditation queue guard ordering",
         errors,
     )
+
+    # Validate supersede semantics by behavior instead of coupling this preflight
+    # to implementation text inside the helper. The workflow contract above proves
+    # the helper is wired before apply; these fixtures prove its critical decisions.
+    supersede_runs = {
+        "workflow_runs": [
+            {"id": 120, "run_number": 12, "event": "workflow_run", "status": "completed", "conclusion": "success"},
+            {"id": 110, "run_number": 11, "event": "workflow_run", "status": "completed", "conclusion": "success"},
+            {"id": 130, "run_number": 13, "event": "push", "status": "completed", "conclusion": "success"},
+            {"id": 125, "run_number": 12, "event": "workflow_run", "status": "completed", "conclusion": "failure"},
+            {"id": 90, "run_number": 9, "event": "workflow_run", "status": "completed", "conclusion": "success"},
+        ]
+    }
+    try:
+        selected_runs = candidate_run_ids(supersede_runs, "10")
+    except ValueError as exc:
+        errors.append(f"promotion supersede helper: fixture válida rechazada: {exc}")
+    else:
+        if selected_runs != [120, 110]:
+            errors.append(f"promotion supersede helper: selección de runs inesperada: {selected_runs}")
+
+    current_accreditation = {"artifacts": [{"name": ARTIFACT_NAME, "expired": False}]}
+    expired_accreditation = {"artifacts": [{"name": ARTIFACT_NAME, "expired": True}]}
+    duplicate_accreditation = {
+        "artifacts": [
+            {"name": ARTIFACT_NAME, "expired": False},
+            {"name": ARTIFACT_NAME, "expired": False},
+        ]
+    }
+    if not has_exact_current_accreditation(current_accreditation):
+        errors.append("promotion supersede helper: rechaza acreditación única vigente")
+    if has_exact_current_accreditation(expired_accreditation):
+        errors.append("promotion supersede helper: acepta acreditación expirada")
+    if has_exact_current_accreditation(duplicate_accreditation):
+        errors.append("promotion supersede helper: acepta acreditación duplicada")
+
     active_wrapper_sha = re.search(
         r"^\s*DEPLOY_SHA:\s*\$\{\{\s*github\.event\.workflow_run\.head_sha\s*\}\}\s*$",
         promotion,
