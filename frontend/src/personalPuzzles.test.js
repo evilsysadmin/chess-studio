@@ -2,12 +2,13 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { isPersonalPuzzleMastered, isPlayablePersonalPuzzle, loadPersonalPuzzles, matchesPersonalPuzzleFilter, personalPuzzleHistory, personalPuzzlesForFilter, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult, saveGeneratedPersonalPuzzles, savePersonalPuzzlesFromReport } from './personalPuzzles.js';
 
 const CURRENT_AI_PROVENANCE = Object.freeze({
-  aiQualityVersion: 6,
+  aiQualityVersion: 7,
   aiValidatedLevel: 92,
   tacticalBestMoveChecked: true,
   tacticalRefutationChecked: true,
   engineAnalysisDepth: 3,
   engineCandidateCount: 12,
+  engineSecondBest: { from: 'a1', to: 'a7', san: 'Ra7' },
   engineBestToSecondGap: 200,
 });
 
@@ -158,7 +159,8 @@ describe('calidad versionada de puzzles personales IA', () => {
       {
         id: 'legacy-ai', kind: 'personal', source: 'workers-ai-validated',
         fen: '7k/8/6K1/8/8/8/8/R7 w - - 0 1', solution: ['Ra8#'],
-        aiQualityVersion: 5, aiValidatedLevel: 92, tacticalBestMoveChecked: true, tacticalRefutationChecked: true,
+        aiQualityVersion: 6, aiValidatedLevel: 92, tacticalBestMoveChecked: true, tacticalRefutationChecked: true,
+        engineAnalysisDepth: 3, engineCandidateCount: 12, engineBestToSecondGap: 200,
       },
       {
         id: 'current-low-engine', kind: 'personal', source: 'workers-ai-validated',
