@@ -195,19 +195,25 @@ async function sampleSteadyGpuFrame(page) {
   let metrics = await page.evaluate(() => window.__warRoomGpuAudit.snapshot());
 
   for (let attempt = 1; attempt <= 3 && metrics.peakDrawCalls === 0; attempt += 1) {
-    if (steadyViewport) {
-      await page.setViewportSize({
-        width: Math.max(1, steadyViewport.width - attempt),
-        height: steadyViewport.height,
-      });
-      await page.setViewportSize(steadyViewport);
-    }
+    if (!steadyViewport) break;
 
-    // Touch/software runners can coalesce the first resize while the renderer is
-    // settling. Retry a bounded number of genuine ResizeObserver-driven renders
-    // instead of accepting a zero-sample or relaxing the GPU budget.
-    await page.waitForTimeout(500);
+    await page.setViewportSize({
+      width: Math.max(1, steadyViewport.width - attempt),
+      height: steadyViewport.height,
+    });
+
+    // Keep the viewport genuinely changed until ResizeObserver has produced a
+    // real gameplay frame. Restoring it immediately can be coalesced into a
+    // no-op on software Chromium, leaving the audit at zero despite a healthy
+    // event-driven renderer.
+    await page.waitForFunction(
+      () => window.__warRoomGpuAudit.snapshot().peakDrawCalls > 0,
+      null,
+      { timeout: 1_500 },
+    ).catch(() => null);
     metrics = await page.evaluate(() => window.__warRoomGpuAudit.snapshot());
+    await page.setViewportSize(steadyViewport);
+
     if (metrics.peakDrawCalls > 0) return { metrics, attempts: attempt };
   }
 
@@ -235,9 +241,8 @@ async function collectRenderAudit(page, { viewport } = {}) {
   await page.evaluate(() => window.__warRoomGpuAudit.resetFramePeaks());
 
   // Idle War Room is intentionally event-driven, so after resetting the probe it
-  // may render nothing at all. Nudge the real ResizeObserver path until one
-  // genuine steady-state gameplay frame is observed, with a small bounded retry
-  // for touch/software runners that can coalesce the first resize.
+  // may render nothing at all. Hold a tiny real viewport change until
+  // ResizeObserver produces one genuine steady-state gameplay frame.
   const steadySample = await sampleSteadyGpuFrame(page);
 
   const cssAndBacking = await canvas.evaluate((element) => ({
