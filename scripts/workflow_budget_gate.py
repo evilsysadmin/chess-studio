@@ -27,6 +27,7 @@ BUDGETS = (
     Budget('.github/workflows/cicd.yml', 30009),
     Budget('.github/workflows/staging-deploy.yml', 25880),
     Budget('.github/workflows/app-visual-artifact.yml', 2571),
+    Budget('.github/workflows/chesscom-visual-artifact.yml', 1490),
 )
 
 
