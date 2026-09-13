@@ -17,6 +17,14 @@ function makeRig(forwardSign = 1, phase = 'carry-log') {
   hans.position.set(0, -0.34, 0.72);
   fireplace.add(hans);
 
+  const bodyMesh = new THREE.Mesh(
+    new THREE.BoxGeometry(0.5, 1, 0.3),
+    new THREE.MeshBasicMaterial(),
+  );
+  bodyMesh.name = 'fixture-hans-visible-body';
+  bodyMesh.position.y = 1;
+  hans.add(bodyMesh);
+
   const head = new THREE.Group();
   head.name = 'war-room-hans-head';
   head.position.y = 2.12;
@@ -45,7 +53,7 @@ function makeRig(forwardSign = 1, phase = 'carry-log') {
     hans.rotation.y = forwardSign > 0 ? Math.PI / 2 : -Math.PI / 2;
   };
 
-  return { root, fireplace, hans, head, face, driver };
+  return { root, fireplace, hans, bodyMesh, head, face, driver };
 }
 
 function renderedFaceDotTravel(hans, head, face, movement) {
@@ -96,6 +104,35 @@ describe('Hans rendered facing guard', () => {
     },
   );
 
+  it('restaura el frente de marcha justo antes del mesh visible si un writer tardío lo invierte', () => {
+    const { root, hans, bodyMesh, head, face, driver } = makeRig(1, 'carry-log');
+    const before = hans.position.clone();
+    expect(installWarRoomHansFacingGuard(root)).toBe(1);
+
+    driver.onBeforeRender();
+    const movement = hans.position.clone().sub(before);
+    expect(renderedFaceDotTravel(hans, head, face, movement)).toBeGreaterThan(0.98);
+
+    // Reproduce the shared failure family: another stage mutates the root after
+    // the travel guard, but before WebGL paints Hans.
+    hans.rotation.y = Math.PI / 2;
+    hans.updateMatrixWorld(true);
+    expect(renderedFaceDotTravel(hans, head, face, movement)).toBeLessThan(-0.98);
+
+    bodyMesh.onBeforeRender(
+      { info: { render: { frame: 17 } } },
+      null,
+      null,
+      bodyMesh.geometry,
+      bodyMesh.material,
+      null,
+    );
+
+    expect(renderedFaceDotTravel(hans, head, face, movement)).toBeGreaterThan(0.98);
+    expect(hans.userData.warRoomHansFacingGuardSource).toBe('visible-mesh-pre-render');
+    expect(hans.userData.warRoomHansVisibleFacingHooks).toBeGreaterThanOrEqual(1);
+  });
+
   it('no roba la orientación de trabajo cuando Hans está quieto', () => {
     const { root, hans, driver } = makeRig(1, 'place-log');
     driver.onBeforeRender = () => {
@@ -108,7 +145,7 @@ describe('Hans rendered facing guard', () => {
     driver.onBeforeRender();
 
     expect(hans.rotation.y).toBeCloseTo(0.47, 8);
-    expect(hans.userData.warRoomHansFacingGuardCorrections).toBe(0);
+    expect(hans.userData.warRoomHansFacingGuardCorrections).toBeUndefined();
   });
 
   it('es idempotente y no apila wrappers', () => {
