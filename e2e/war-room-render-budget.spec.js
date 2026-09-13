@@ -190,6 +190,30 @@ async function sampleRafP95(page, samples = 45) {
   }), samples);
 }
 
+async function sampleSteadyGpuFrame(page) {
+  const steadyViewport = page.viewportSize();
+  let metrics = await page.evaluate(() => window.__warRoomGpuAudit.snapshot());
+
+  for (let attempt = 1; attempt <= 3 && metrics.peakDrawCalls === 0; attempt += 1) {
+    if (steadyViewport) {
+      await page.setViewportSize({
+        width: Math.max(1, steadyViewport.width - attempt),
+        height: steadyViewport.height,
+      });
+      await page.setViewportSize(steadyViewport);
+    }
+
+    // Touch/software runners can coalesce the first resize while the renderer is
+    // settling. Retry a bounded number of genuine ResizeObserver-driven renders
+    // instead of accepting a zero-sample or relaxing the GPU budget.
+    await page.waitForTimeout(500);
+    metrics = await page.evaluate(() => window.__warRoomGpuAudit.snapshot());
+    if (metrics.peakDrawCalls > 0) return { metrics, attempts: attempt };
+  }
+
+  return { metrics, attempts: 3 };
+}
+
 async function collectRenderAudit(page, { viewport } = {}) {
   await installGpuProbe(page);
   if (viewport) await page.setViewportSize(viewport);
@@ -211,18 +235,10 @@ async function collectRenderAudit(page, { viewport } = {}) {
   await page.evaluate(() => window.__warRoomGpuAudit.resetFramePeaks());
 
   // Idle War Room is intentionally event-driven, so after resetting the probe it
-  // may render nothing at all. Nudge the viewport by 1px and restore it: the real
-  // ResizeObserver path calls Board3DCore.resize() -> render(), giving the audit a
-  // genuine steady-state gameplay frame without changing production behavior.
-  const steadyViewport = page.viewportSize();
-  if (steadyViewport) {
-    await page.setViewportSize({
-      width: Math.max(1, steadyViewport.width - 1),
-      height: steadyViewport.height,
-    });
-    await page.setViewportSize(steadyViewport);
-  }
-  await page.waitForTimeout(500);
+  // may render nothing at all. Nudge the real ResizeObserver path until one
+  // genuine steady-state gameplay frame is observed, with a small bounded retry
+  // for touch/software runners that can coalesce the first resize.
+  const steadySample = await sampleSteadyGpuFrame(page);
 
   const cssAndBacking = await canvas.evaluate((element) => ({
     cssWidth: element.clientWidth,
@@ -232,14 +248,20 @@ async function collectRenderAudit(page, { viewport } = {}) {
     rendererClass: element.dataset.board3dRendererClass || 'UNKNOWN',
     sceneTier: element.dataset.board3dSceneTier || 'unknown',
   }));
-  const steadyMetrics = await page.evaluate(() => window.__warRoomGpuAudit.snapshot());
   const rafP95Ms = await sampleRafP95(page);
   const effectivePixelRatio = Math.max(
     cssAndBacking.backingWidth / Math.max(1, cssAndBacking.cssWidth),
     cssAndBacking.backingHeight / Math.max(1, cssAndBacking.cssHeight),
   );
 
-  return { cssAndBacking, startupResources, steadyMetrics, rafP95Ms, effectivePixelRatio };
+  return {
+    cssAndBacking,
+    startupResources,
+    steadyMetrics: steadySample.metrics,
+    steadySampleAttempts: steadySample.attempts,
+    rafP95Ms,
+    effectivePixelRatio,
+  };
 }
 
 function logRenderAudit(label, audit, contract) {
@@ -254,6 +276,7 @@ function logRenderAudit(label, audit, contract) {
     inspectFrameIntervalMs: contract.inspectFrameIntervalMs,
     rafP95Ms: Number(audit.rafP95Ms.toFixed(1)),
     steadyDrawCallCap: RENDER_BUDGET.steadyPeakDrawCalls[audit.cssAndBacking.sceneTier],
+    steadySampleAttempts: audit.steadySampleAttempts,
     startupLiveTextures: audit.startupResources.liveTextures,
     startupLiveBuffers: audit.startupResources.liveBuffers,
     steadyPeakDrawCalls: audit.steadyMetrics.peakDrawCalls,
