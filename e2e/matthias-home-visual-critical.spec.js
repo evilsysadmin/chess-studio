@@ -1,12 +1,13 @@
 import { expect, test } from '@playwright/test';
 import { login, mockApi } from './helpers.js';
 
-async function openCanonicalHome(page, { reducedMotion = 'no-preference' } = {}) {
+async function openCanonicalHome(page, { reducedMotion = 'no-preference', profileSeed = {} } = {}) {
   await page.emulateMedia({ reducedMotion });
   await mockApi(page, {
     profileSeed: {
       'matthias.onboarded': '2',
       'chess-study-home-guide-dismissed-v1': '1',
+      ...profileSeed,
     },
   });
   await login(page);
@@ -29,6 +30,32 @@ test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', as
 
   await matthias.click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+});
+
+test('Home canónica · el expediente raro de Matthias exige derrotas reales y ocupa su escritorio', async ({ page }) => {
+  await page.addInitScript(() => {
+    Date.prototype.getFullYear = () => 2026;
+    Date.prototype.getMonth = () => 8;
+    Date.prototype.getDate = () => 9;
+    Date.prototype.getHours = () => 15;
+  });
+
+  const rivalry = {
+    version: 3,
+    totalGames: 3,
+    record: { games: 3, wins: 0, draws: 0, losses: 3 },
+    incidents: {},
+  };
+  const home = await openCanonicalHome(page, {
+    profileSeed: { 'chess-study-cpu-rivalry': JSON.stringify(rivalry) },
+  });
+  const matthias = home.locator('.illustrated-home__matthias');
+
+  await expect(matthias).toBeVisible();
+  await expect(matthias).toHaveAttribute('data-home-matthias-moment', 'loss-dossier');
+  await expect(matthias).toHaveAttribute('data-home-matthias-scene', 'moment-loss-dossier');
+  await expect(matthias).toHaveAttribute('data-home-matthias-zone', 'desk');
+  await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Revisando viejas heridas');
 });
 
 test('Home canónica · el arte y los destinos comparten el lienzo 16:9 sin overflow', async ({ page }) => {
