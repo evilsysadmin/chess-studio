@@ -17,6 +17,7 @@ import game_store as store
 from api_models import AnalyzeMoveRequest, AnalyzeRequest, MoveRequest, NewGameRequest
 from balanced_cpu import get_balanced_cpu_move
 from chess_ai import get_cpu_move, move_to_dict
+from cpu_difficulty import get_factual_difficulty_cpu_move
 from engine_runtime import run_engine_work
 from move_analysis_service import analyze_move_payload, deterministic_analyze_move
 from shadow_evaluation import maybe_schedule_move_shadow
@@ -106,8 +107,11 @@ def compute_engine_move_or_fallback(board: chess.Board, difficulty: float, ghost
         balanced = isinstance(ghost_style, dict) and ghost_style.get("balance") is True
         if balanced:
             suggestion = get_balanced_cpu_move(board, difficulty, ghost_style)
-        else:
+        elif ghost_style is not None:
+            # Rival Fantasma conserva exactamente su ruta/estilo actual.
             suggestion = get_cpu_move(board, difficulty, ghost_style)
+        else:
+            suggestion = get_factual_difficulty_cpu_move(board, difficulty)
     except Exception as exc:
         # No incluimos FEN ni contenido de la partida en logs operativos.
         logger.warning("cpu_move_failed_using_legal_fallback error_type=%s", type(exc).__name__)
