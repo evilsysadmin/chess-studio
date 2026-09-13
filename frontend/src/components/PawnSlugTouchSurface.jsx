@@ -97,9 +97,11 @@ export default function PawnSlugTouchSurface({ send }) {
     }
 
     window.addEventListener('blur', releaseAllTouchInput);
+    window.addEventListener('orientationchange', releaseAllTouchInput);
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       window.removeEventListener('blur', releaseAllTouchInput);
+      window.removeEventListener('orientationchange', releaseAllTouchInput);
       document.removeEventListener('visibilitychange', onVisibilityChange);
       releaseAllTouchInput();
     };
