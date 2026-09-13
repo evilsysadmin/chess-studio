@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MATTHIAS_BASE_AVATAR,
+  matthiasAmbientVisual,
   matthiasAmbientVisuals,
   matthiasHomeZone,
   matthiasMoodAvatar,
@@ -30,6 +31,16 @@ describe('Matthias visual identity', () => {
     }
     expect(matthiasTimeVisual(15).key).toBe('chess-inception');
     expect(matthiasTimeVisual(15).avatar).not.toBe(MATTHIAS_BASE_AVATAR);
+  });
+
+  it('expone escenas ambientales canónicas reutilizables por microeventos', () => {
+    const reading = matthiasAmbientVisual('reading');
+    const dossier = matthiasAmbientVisual('dossier');
+    expect(reading.key).toBe('reading');
+    expect(reading.avatar).toBeTruthy();
+    expect(dossier.key).toBe('dossier');
+    expect(dossier.avatar).toBeTruthy();
+    expect(matthiasAmbientVisual('no-existe').key).toBe('base');
   });
 
   it('bloquea Sobando durante toda la madrugada y no activa el carrusel sonámbulo', () => {
