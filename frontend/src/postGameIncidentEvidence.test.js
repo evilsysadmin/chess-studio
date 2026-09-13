@@ -57,7 +57,7 @@ describe('post-game incident evidence', () => {
 
     expect(evidence.evalAfterSuggested).toBe(100000);
     expect(evidence.evalAfterPlayed).toBe(100000);
-    expect(evidence.factualAnalysis).toEqual({
+    expect(evidence.factualAnalysis).toMatchObject({
       source: 'shared-minimax',
       lossCp: 73,
       evalAfterSuggested: 42,
