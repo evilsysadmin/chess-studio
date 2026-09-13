@@ -21,10 +21,24 @@ function normalizeDuration(value) {
   return 15;
 }
 
-function pendingPersonalPuzzles(puzzles = []) {
-  return (Array.isArray(puzzles) ? puzzles : []).filter((puzzle) => (
-    !puzzle?.masteredAt && Number(puzzle?.cleanSolves || 0) <= 0
-  ));
+function resolvedPatternIncidentKeys(playerModel) {
+  return new Set((Array.isArray(playerModel?.recurringErrors) ? playerModel.recurringErrors : [])
+    .filter((pattern) => [
+      PATTERN_IMPROVEMENT_STATES.PROBABLE_IMPROVEMENT,
+      PATTERN_IMPROVEMENT_STATES.CORRECTED_WITH_SUFFICIENT_SAMPLE,
+    ].includes(pattern?.improvementState))
+    .map((pattern) => pattern?.incidentKey)
+    .filter(Boolean));
+}
+
+function pendingPersonalPuzzles(puzzles = [], playerModel = null) {
+  const resolvedKeys = resolvedPatternIncidentKeys(playerModel);
+  return (Array.isArray(puzzles) ? puzzles : []).filter((puzzle) => {
+    if (puzzle?.masteredAt || Number(puzzle?.cleanSolves || 0) > 0) return false;
+    const incidentKeys = Array.isArray(puzzle?.incidentKeys) ? puzzle.incidentKeys.filter(Boolean) : [];
+    if (!incidentKeys.length || !resolvedKeys.size) return true;
+    return incidentKeys.some((incidentKey) => !resolvedKeys.has(incidentKey));
+  });
 }
 
 function actionableRecurringPattern(playerModel) {
@@ -75,7 +89,7 @@ function focusStep(puzzles, playerModel) {
     }
   }
 
-  const pending = pendingPersonalPuzzles(puzzles);
+  const pending = pendingPersonalPuzzles(puzzles, playerModel);
   if (!pending.length) return null;
   return {
     id: 'personal-errors',
