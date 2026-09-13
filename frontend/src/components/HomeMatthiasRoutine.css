@@ -52,8 +52,10 @@
 
 @media (min-width: 1000px) {
   .illustrated-home__matthias {
-    left: 10.9%;
-    top: 83%;
+    --home-matthias-zone-left: 10.9%;
+    --home-matthias-zone-top: 83%;
+    left: var(--home-matthias-zone-left);
+    top: var(--home-matthias-zone-top);
     width: 16.2%;
     min-height: 11.5%;
     grid-template-columns: clamp(60px, 4.9cqw, 88px) minmax(0, 1fr);
@@ -63,7 +65,40 @@
     overflow: hidden;
     background: linear-gradient(100deg, rgba(18, 11, 7, .93), rgba(22, 14, 9, .74));
     box-shadow: 0 8px 24px rgba(0, 0, 0, .22);
-    transition: filter .18s ease, background-color .18s ease;
+    transition:
+      left 1050ms cubic-bezier(.2,.72,.2,1),
+      top 1050ms cubic-bezier(.2,.72,.2,1),
+      filter .18s ease,
+      background-color .18s ease;
+  }
+
+  /* The movement stays in the quiet lower-left band of the hall. It reads as
+     Matthias changing stations without crossing the primary destination art. */
+  .illustrated-home__matthias[data-home-matthias-zone='table'] {
+    --home-matthias-zone-left: 16.4%;
+    --home-matthias-zone-top: 81.5%;
+  }
+
+  .illustrated-home__matthias[data-home-matthias-zone='desk'] {
+    --home-matthias-zone-left: 7.8%;
+    --home-matthias-zone-top: 79.6%;
+  }
+
+  .illustrated-home__matthias[data-home-matthias-zone='library'] {
+    --home-matthias-zone-left: 22.1%;
+    --home-matthias-zone-top: 78.9%;
+  }
+
+  .illustrated-home__matthias[data-home-matthias-zone='rest'] {
+    --home-matthias-zone-left: 12.4%;
+    --home-matthias-zone-top: 82.8%;
+  }
+
+  /* When Matthias addresses the player he returns to the established speech
+     position, so the bubble never has to chase him around the room. */
+  .illustrated-home__matthias.is-speaking {
+    --home-matthias-zone-left: 10.9%;
+    --home-matthias-zone-top: 83%;
   }
 
   .illustrated-home__matthias:hover,
