@@ -11,6 +11,8 @@ const FAMILY_FINISH = Object.freeze({
   general: 0xe1cf9c,
 });
 
+let activeRankContext = null;
+
 function rectShape(width, height, x = 0, y = 0) {
   const shape = new THREE.Shape();
   shape.moveTo(x - width / 2, y - height / 2);
@@ -212,5 +214,28 @@ export function syncBoard3DRankInsignias(pieceMeshes, {
     visible += 1;
   }
 
+  return visible;
+}
+
+export function setBoard3DRankContext(token, { pieceLevels, pieceRankLevels } = {}) {
+  activeRankContext = { token, pieceLevels, pieceRankLevels };
+}
+
+export function clearBoard3DRankContext(token) {
+  if (activeRankContext?.token === token) activeRankContext = null;
+}
+
+export function syncActiveBoard3DRankInsignias(state, orientation = 'white') {
+  if (!activeRankContext || !state?.pieceMeshes) return 0;
+  const visible = syncBoard3DRankInsignias(state.pieceMeshes, {
+    pieceLevels: activeRankContext.pieceLevels,
+    pieceRankLevels: activeRankContext.pieceRankLevels,
+    faceTowardCamera: orientation !== 'black',
+    coarsePointer: Boolean(state.coarsePointer),
+  });
+  if (state.renderer?.domElement) {
+    state.renderer.domElement.dataset.board3dRankInsigniaCount = String(visible);
+    state.renderer.domElement.dataset.board3dRankInsigniaFinish = 'raised-brass-plinth-v1';
+  }
   return visible;
 }
