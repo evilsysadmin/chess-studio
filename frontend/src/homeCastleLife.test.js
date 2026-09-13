@@ -6,6 +6,7 @@ import {
   homeCastleMemories,
   homeCastleMemory,
   homeCastleRareSighting,
+  homeMatthiasRareMoment,
 } from './homeCastleLife.js';
 
 describe('homeCastleLife', () => {
@@ -68,6 +69,26 @@ describe('homeCastleLife', () => {
     expect(homeCastleRareSighting(date(2026, 2, 6))).toBeNull();
   });
 
+  it('lets Matthias inspect a real loss dossier rarely, deterministically and only while awake', () => {
+    const momentAt = (day, hour = 15) => ({
+      getHours: () => hour,
+      getFullYear: () => 2026,
+      getMonth: () => 8,
+      getDate: () => day,
+    });
+
+    expect(homeMatthiasRareMoment({ record: { losses: 3 } }, momentAt(9))).toEqual({
+      id: 'loss-dossier',
+      kind: 'loss-dossier',
+      sceneKey: 'dossier',
+      label: 'Revisando viejas heridas',
+      detail: '3 derrotas tuyas registradas contra Matthias.',
+    });
+    expect(homeMatthiasRareMoment({ record: { losses: 0 } }, momentAt(9))).toBeNull();
+    expect(homeMatthiasRareMoment({ record: { losses: 3 } }, momentAt(10))).toBeNull();
+    expect(homeMatthiasRareMoment({ record: { losses: 3 } }, momentAt(9, 3))).toBeNull();
+  });
+
   it('builds ambient, factual memories and rare state without inventing data', () => {
     const now = {
       getHours: () => 8,
@@ -85,5 +106,6 @@ describe('homeCastleLife', () => {
     expect(result.memory?.id).toBe('rivalry-wins');
     expect(result.memories[1]?.id).toBe('daily-streak');
     expect(result.rareSighting).toBeNull();
+    expect(result.matthiasMoment).toBeNull();
   });
 });

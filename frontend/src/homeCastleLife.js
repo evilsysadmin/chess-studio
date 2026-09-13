@@ -3,6 +3,14 @@ function finiteNonNegative(value) {
   return Number.isFinite(number) && number > 0 ? number : 0;
 }
 
+function localDaySignature(now = new Date()) {
+  const year = Number(now?.getFullYear?.());
+  const month = Number(now?.getMonth?.());
+  const day = Number(now?.getDate?.());
+  if (![year, month, day].every(Number.isFinite)) return null;
+  return (year * 372) + ((month + 1) * 31) + day;
+}
+
 export function homeCastleAmbient(now = new Date()) {
   const hour = Number(now?.getHours?.());
   if (!Number.isFinite(hour)) return 'day';
@@ -73,15 +81,36 @@ export function homeCastleMemories({ rivalry = {}, dailyStats = {} } = {}) {
 }
 
 export function homeCastleRareSighting(now = new Date()) {
-  const year = Number(now?.getFullYear?.());
-  const month = Number(now?.getMonth?.());
-  const day = Number(now?.getDate?.());
-  if (![year, month, day].every(Number.isFinite)) return null;
+  const daySignature = localDaySignature(now);
+  if (daySignature === null) return null;
 
   // Determinista por fecha local: aproximadamente un día de cada 47.
   // No hay RNG por render, timers de elegibilidad ni estado persistido.
-  const daySignature = (year * 372) + ((month + 1) * 31) + day;
   return daySignature % 47 === 0 ? 'gallery-glint' : null;
+}
+
+export function homeMatthiasRareMoment(rivalry = {}, now = new Date()) {
+  const hour = Number(now?.getHours?.());
+  const losses = finiteNonNegative(rivalry?.record?.losses);
+  const daySignature = localDaySignature(now);
+
+  // Nada de expedientes inventados: sólo aparece si hay al menos una derrota
+  // humana realmente registrada contra Matthias, y nunca durante su madrugada.
+  if (!Number.isFinite(hour) || hour < 6 || losses < 1 || daySignature === null) return null;
+
+  // ~1 día de cada 37. Es raro pero determinista dentro del día, de modo que
+  // F5 no convierte la Home en una tragaperras de microeventos.
+  if (daySignature % 37 !== 11) return null;
+
+  return {
+    id: 'loss-dossier',
+    kind: 'loss-dossier',
+    sceneKey: 'dossier',
+    label: 'Revisando viejas heridas',
+    detail: losses === 1
+      ? '1 derrota tuya registrada contra Matthias.'
+      : `${losses} derrotas tuyas registradas contra Matthias.`,
+  };
 }
 
 export function buildHomeCastleLife({ rivalry = {}, dailyStats = {}, now = new Date() } = {}) {
@@ -91,5 +120,6 @@ export function buildHomeCastleLife({ rivalry = {}, dailyStats = {}, now = new D
     memory: memories[0] || null,
     memories,
     rareSighting: homeCastleRareSighting(now),
+    matthiasMoment: homeMatthiasRareMoment(rivalry, now),
   };
 }
