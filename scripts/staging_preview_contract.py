@@ -13,6 +13,7 @@ PROMOTE = ROOT / ".github/workflows/production-promote.yml"
 STAGING_WRANGLER = ROOT / "infra/cloudflare/wrangler.staging.toml"
 STAGING_WORKER_WRAPPER = ROOT / "infra/cloudflare/worker/staging.js"
 STAGING_WORKER_DEPLOY = ROOT / "scripts/deploy_staging_ai_worker.py"
+STAGING_RELEASE_IDENTITY = ROOT / "scripts/staging_release_identity.py"
 
 
 def require(text: str, needle: str, label: str, errors: list[str]) -> None:
@@ -30,6 +31,7 @@ def main() -> int:
         STAGING_WRANGLER,
         STAGING_WORKER_WRAPPER,
         STAGING_WORKER_DEPLOY,
+        STAGING_RELEASE_IDENTITY,
     ):
         if not path.exists():
             errors.append(f"falta {path.relative_to(ROOT)}")
@@ -45,6 +47,7 @@ def main() -> int:
     staging_wrangler = STAGING_WRANGLER.read_text(encoding="utf-8")
     staging_worker_wrapper = STAGING_WORKER_WRAPPER.read_text(encoding="utf-8")
     staging_worker_deploy = STAGING_WORKER_DEPLOY.read_text(encoding="utf-8")
+    staging_release_identity = STAGING_RELEASE_IDENTITY.read_text(encoding="utf-8")
 
     require(preview, "name: Staging · preview", "workflow name", errors)
     require(preview, "workflow_dispatch:", "manual-only trigger", errors)
@@ -233,7 +236,15 @@ def main() -> int:
     require(staging_ai, "Verify staging backend still serves approved SHA", "staging AI backend attestation", errors)
     require(staging_ai, "Verify staging frontend still serves approved SHA", "staging AI frontend attestation", errors)
     require(staging_ai, "Verify staging AI health and build identity", "staging AI runtime Worker attestation", errors)
-    require(staging_ai, "payload.get('build')", "staging AI Worker exact SHA check", errors)
+    for needle, label in (
+        ("scripts/staging_release_identity.py", "staging AI shared identity helper"),
+        ("--kind backend", "staging AI backend exact identity path"),
+        ("--kind frontend", "staging AI frontend exact identity path"),
+        ("--kind ai", "staging AI Worker exact identity path"),
+    ):
+        require(staging_ai, needle, label, errors)
+    require(staging_release_identity, 'payload.get("build")', "staging exact SHA helper build check", errors)
+    require(staging_release_identity, "validate_health_payload", "staging AI shared health contract", errors)
     if "deploy_staging_ai_worker.py" in staging_ai:
         errors.append("staging AI accreditation vuelve a desplegar el Worker")
     if "Refuse stale staging Worker commit" in staging_ai:
