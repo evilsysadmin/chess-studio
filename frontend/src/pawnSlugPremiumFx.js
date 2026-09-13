@@ -231,6 +231,8 @@ export function createPremiumMuzzleFlash({ enemy = false, weapon = 'pistol' } = 
       );
       smoke.userData.muzzleShotgunSmoke = true;
       smoke.userData.smokeIndex = index;
+      smoke.userData.muzzleBaseX = smoke.position.x;
+      smoke.userData.muzzleDriftX = 0.01 + index * 0.006;
       root.add(smoke);
     }
   }
@@ -257,6 +259,8 @@ export function createPremiumMuzzleFlash({ enemy = false, weapon = 'pistol' } = 
       );
       smoke.userData.muzzleSmoke = true;
       smoke.userData.smokeIndex = index;
+      smoke.userData.muzzleBaseX = smoke.position.x;
+      smoke.userData.muzzleDriftX = 0.015 + index * 0.008;
       root.add(smoke);
     }
   }
@@ -275,6 +279,13 @@ export function animatePremiumProjectile(model, { time = 0, explosive = false } 
   if (explosive) model.rotation.x = Math.sin(time * 18) * 0.03;
 }
 
+function applyMuzzleSmokeDrift(child, progress) {
+  const baseX = Number(child?.userData?.muzzleBaseX);
+  const driftX = Number(child?.userData?.muzzleDriftX);
+  if (!Number.isFinite(baseX) || !Number.isFinite(driftX)) return;
+  child.position.x = baseX - progress * Math.max(0, driftX);
+}
+
 export function animatePremiumMuzzleFlash(model, lifeRatio = 1) {
   if (!model?.userData?.premiumMuzzle) return;
   const safe = Math.max(0, Math.min(1, Number(lifeRatio) || 0));
@@ -289,12 +300,12 @@ export function animatePremiumMuzzleFlash(model, lifeRatio = 1) {
       const smokeIndex = child.userData.smokeIndex || 0;
       const smokeScale = 0.82 + progress * (1.35 + smokeIndex * 0.25);
       child.scale.set(smokeScale, smokeScale, smokeScale);
-      child.position.x -= progress * (0.015 + smokeIndex * 0.008);
+      applyMuzzleSmokeDrift(child, progress);
     } else if (child.userData?.muzzleShotgunSmoke) {
       const smokeIndex = child.userData.smokeIndex || 0;
       const smokeScale = 0.84 + progress * (0.8 + smokeIndex * 0.18);
       child.scale.set(smokeScale, smokeScale, smokeScale);
-      child.position.x -= progress * (0.01 + smokeIndex * 0.006);
+      applyMuzzleSmokeDrift(child, progress);
     } else if (child.userData?.muzzleShotgunFlare) {
       child.scale.y = 0.9 + progress * 0.45;
     } else if (child.userData?.muzzleHostileStreak) {
