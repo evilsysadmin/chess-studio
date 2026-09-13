@@ -123,6 +123,20 @@ export function homeMatthiasRareMoment(rivalry = {}, now = new Date()) {
     };
   }
 
+  // Rareza puramente ambiental: de vez en cuando Matthias ensaya una línea
+  // completa él solo. El id incluye inception para reutilizar el gesto board-move
+  // del rig sin añadir assets, estado persistido ni una personalidad nueva.
+  if (hour >= 9 && hour < 18 && daySignature % 53 === 29) {
+    return {
+      id: 'solo-board-inception',
+      kind: 'solo-rehearsal',
+      visualKey: 'ops',
+      label: 'Ensayando una emboscada',
+      detail: 'Juega ambos bandos. Por supuesto, critica a los dos.',
+      zone: 'desk',
+    };
+  }
+
   return null;
 }
 
