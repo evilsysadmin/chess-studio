@@ -1,0 +1,131 @@
+/* Desktop Great Hall chrome.
+ * The approved 1814×867 master already paints the visual shells for account,
+ * release notes, feedback and music. Keep the real controls interactive, but
+ * place them directly over those painted twins instead of reserving a second
+ * application header/footer around the room. */
+@media (min-width: 1000px) and (pointer: fine) {
+  body:has(.app-shell-home) {
+    background: #140b06;
+  }
+
+  body .app-shell.app-shell-home {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  body .app-shell-home .menu.menu-illustrated {
+    display: block;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* The header owns semantics only on Home. Its visible controls sit on the
+     master; the header itself must not consume ~100px above the Great Hall. */
+  body .app-shell-home > .masthead {
+    position: absolute !important;
+    z-index: 70;
+    inset: 0 0 auto !important;
+    width: 100%;
+    max-width: none;
+    min-height: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    pointer-events: none;
+  }
+
+  body .app-shell-home .masthead-text,
+  body .app-shell-home .masthead > .player-status-bar,
+  body .app-shell-home .live-service-status {
+    display: none !important;
+  }
+
+  body .app-shell-home .masthead-top-row,
+  body .app-shell-home .masthead-actions,
+  body .app-shell-home .masthead-account-stack {
+    display: contents !important;
+    position: static !important;
+    transform: none !important;
+  }
+
+  body .app-shell-home .masthead-account-menu {
+    position: absolute !important;
+    left: 2.15vw !important;
+    right: auto !important;
+    top: 12px !important;
+    pointer-events: auto;
+  }
+
+  body .app-shell-home .masthead-release-trigger {
+    position: absolute !important;
+    right: 11.2vw !important;
+    top: 12px !important;
+    pointer-events: auto;
+  }
+
+  body .app-shell-home .masthead-feedback-trigger {
+    position: absolute !important;
+    right: 3.25vw !important;
+    top: 12px !important;
+    pointer-events: auto;
+  }
+
+  body .app-shell-home .masthead-account-trigger,
+  body .app-shell-home .masthead-release-trigger,
+  body .app-shell-home .masthead-feedback-trigger {
+    min-height: 40px !important;
+    height: 40px !important;
+    min-width: 0 !important;
+    border-color: rgba(139, 104, 56, .76) !important;
+    background: rgba(15, 12, 10, .99) !important;
+    box-shadow: 0 5px 16px rgba(0, 0, 0, .24) !important;
+  }
+
+  body .app-shell-home .masthead-account-popover {
+    left: 0 !important;
+    right: auto !important;
+    pointer-events: auto;
+  }
+
+  body .app-shell-home .masthead-admin-feedback-inbox {
+    position: absolute !important;
+    left: 12.5vw !important;
+    top: 12px !important;
+    pointer-events: auto;
+  }
+
+  body .app-shell-home .masthead-session-error {
+    position: absolute !important;
+    top: 58px !important;
+    left: 2.15vw !important;
+    right: 2.15vw !important;
+    pointer-events: auto;
+  }
+
+  /* The painted player starts ~74px above the bottom edge of the master once
+     scaled to the viewport width. Anchor the real deck to that same coordinate.
+     Higher specificity deliberately wins over the generic Home dock rule loaded
+     later by HomeMatthiasRoutine.css. */
+  html body:has(.app-shell-home) .global-music-dock {
+    position: fixed !important;
+    left: max(12px, .8vw) !important;
+    top: calc(47.795vw - 74px) !important;
+    bottom: auto !important;
+    width: clamp(230px, 15.6vw, 282px) !important;
+    z-index: 72 !important;
+  }
+
+  html body:has(.app-shell-home) .global-music-dock .music-deck {
+    min-height: 58px !important;
+    background: rgba(13, 12, 11, .99) !important;
+    border-color: rgba(138, 105, 62, .8) !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .25) !important;
+  }
+}
