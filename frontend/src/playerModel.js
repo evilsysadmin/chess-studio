@@ -1,7 +1,8 @@
 import { buildRecurringErrorPatterns } from './insightsRecurringErrors.js';
+import { isPersonalPuzzleCurrentlyClean, personalSpacedReviewSummary } from './spacedReview.js';
 import { personalTrainingDebtSummary } from './trainingDebt.js';
 
-export const PLAYER_MODEL_VERSION = 2;
+export const PLAYER_MODEL_VERSION = 3;
 
 function nonNegativeInt(value) {
   const number = Number(value);
@@ -35,6 +36,41 @@ function openingFacts(insights) {
     });
 }
 
+function latestIso(puzzles, fields) {
+  let latest = null;
+  for (const puzzle of puzzles) {
+    for (const field of fields) {
+      const parsed = Date.parse(puzzle?.[field] || '');
+      if (!Number.isFinite(parsed)) continue;
+      if (latest === null || parsed > latest) latest = parsed;
+    }
+  }
+  return latest === null ? null : new Date(latest).toISOString();
+}
+
+function trainingProgressFacts(puzzles, trainingDebt) {
+  const retention = personalSpacedReviewSummary(puzzles);
+  return {
+    attempts: puzzles.reduce((sum, puzzle) => sum + nonNegativeInt(puzzle?.attempts), 0),
+    solves: puzzles.reduce((sum, puzzle) => sum + nonNegativeInt(puzzle?.solves), 0),
+    cleanSolves: puzzles.reduce((sum, puzzle) => sum + nonNegativeInt(puzzle?.cleanSolves), 0),
+    attemptedPositions: puzzles.filter((puzzle) => nonNegativeInt(puzzle?.attempts) > 0).length,
+    solvedPositions: puzzles.filter((puzzle) => (
+      nonNegativeInt(puzzle?.solves) > 0
+      || nonNegativeInt(puzzle?.cleanSolves) > 0
+      || Boolean(puzzle?.masteredAt)
+    )).length,
+    currentlyCleanPositions: puzzles.filter(isPersonalPuzzleCurrentlyClean).length,
+    retentionCompletedPositions: retention.completedCount,
+    retentionDuePositions: retention.dueCount,
+    activeDebts: trainingDebt.activeCount,
+    paidDebts: trainingDebt.paidCount,
+    lastAttemptAt: latestIso(puzzles, ['lastAttemptAt']),
+    lastSolvedAt: latestIso(puzzles, ['lastSolvedAt', 'masteredAt']),
+    lastCleanAt: latestIso(puzzles, ['lastCleanAt', 'retentionCompletedAt']),
+  };
+}
+
 export function buildPlayerModel({ insights = null, personalPuzzles = [] } = {}) {
   const puzzles = Array.isArray(personalPuzzles) ? personalPuzzles.filter(Boolean) : [];
   const totalGames = nonNegativeInt(insights?.totalGames);
@@ -60,5 +96,6 @@ export function buildPlayerModel({ insights = null, personalPuzzles = [] } = {})
     openings: openingFacts(insights),
     recurringErrors,
     trainingDebt,
+    trainingProgress: trainingProgressFacts(puzzles, trainingDebt),
   };
 }
