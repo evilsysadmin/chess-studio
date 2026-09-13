@@ -22,6 +22,7 @@ describe('LabScreen experiment hub', () => {
     const html = renderHub();
 
     expect(html).toContain('ninguno es necesario para disfrutar Chess Studio');
+    expect(html).toContain('CONGELADO · VERTICAL SLICE');
     expect(html).toContain('EXPERIMENTAL · EN PULIDO');
     expect(html).toContain('POC · JUGABLE');
     expect(html).toContain('MADURO · HERRAMIENTA');
