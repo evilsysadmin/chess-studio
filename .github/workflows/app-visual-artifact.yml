@@ -6,6 +6,7 @@ on:
       - 'frontend/src/**'
       - 'frontend/public/**'
       - 'e2e/app-visual-artifact.spec.js'
+      - 'e2e/experiments-visual-artifact.spec.js'
       - 'e2e/home-3d-focus-visual.spec.js'
       - 'e2e/war-room-visual-artifact.spec.js'
       - 'e2e/war-room-hans-visual-artifact.spec.js'
@@ -33,28 +34,28 @@ jobs:
         with:
           ref: ${{ github.sha }}
 
-      - name: Restore Chromium runtime and build frontend once
+      - name: Restore browser + build
         uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
           build-frontend: 'true'
 
-      - name: Capture canonical views + browser health
+      - name: Capture visual health
         working-directory: e2e
-        run: ./node_modules/.bin/playwright test app-visual-artifact.spec.js home-3d-focus-visual.spec.js war-room-visual-artifact.spec.js war-room-hans-visual-artifact.spec.js browser-runtime-health.spec.js browser-storage-health.spec.js --workers=1 --retries=0
+        run: ./node_modules/.bin/playwright test app-visual-artifact.spec.js experiments-visual-artifact.spec.js home-3d-focus-visual.spec.js war-room-visual-artifact.spec.js war-room-hans-visual-artifact.spec.js browser-runtime-health.spec.js browser-storage-health.spec.js --workers=1 --retries=0
 
       - name: Enforce War Room visual freeze
         run: node scripts/war_room_visual_freeze_check.mjs
 
-      - name: Validate visual summary reporter
+      - name: Validate summary
         if: always()
         run: node scripts/app_visual_summary.mjs --self-test
 
-      - name: Summarize visual health
+      - name: Summary
         if: always()
         run: node scripts/app_visual_summary.mjs
 
-      - name: Upload app visual artifact
+      - name: Upload artifact
         if: always()
         uses: actions/upload-artifact@v7
         with:
