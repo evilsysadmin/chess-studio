@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test';
 import {
-  buttonWithHeading,
   clickBoardMove,
   gameTurn,
   login,
@@ -74,7 +73,7 @@ async function seedRecurringTrainingDebt(page) {
   }, { fen: PERSONAL_MATE_FEN });
 }
 
-test('golden learning loop · jugar → entender deuda real → entrenarla → volver a jugar', async ({ page }) => {
+test('Home · el avatar residente de Matthias abre Así juegas · y cierra el loop jugar → entrenar → volver a jugar', async ({ page }) => {
   test.setTimeout(120_000);
   await page.addInitScript(() => { Math.random = () => 0; });
   await mockApi(page, { gameScenario: 'mate' });
@@ -94,13 +93,13 @@ test('golden learning loop · jugar → entender deuda real → entrenarla → v
   await endgame.getByRole('button', { name: 'Volver al menú', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
 
-  await buttonWithHeading(page, 'Así juegas').click();
+  const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
+  await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   await page.getByRole('tab', { name: /Errores/ }).click();
   await expect(page.getByText('Horquillas de caballo sufridas', { exact: true })).toBeVisible();
   await expect(page.locator('[data-training-debt="active"]')).toHaveCount(1);
 
-  // El tramo de aprendizaje debe sobrevivir una recarga, no sólo una navegación feliz.
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   await page.getByRole('tab', { name: /Errores/ }).click();
@@ -118,7 +117,6 @@ test('golden learning loop · jugar → entender deuda real → entrenarla → v
 
   await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
-
   await startQuickGame(page);
   await expect(gameTurn(page)).toBeVisible();
 });
