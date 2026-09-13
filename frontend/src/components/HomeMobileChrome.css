@@ -1,4 +1,5 @@
 @import './HomeDesktopChrome.css';
+@import './HomeCleanMaster.css';
 
 /* Home-only mobile chrome. Keep global actions readable without turning the
  * full-bleed Great Hall into a conventional app header. */
