@@ -1,6 +1,6 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURE_PROFILES = Object.freeze([
@@ -218,7 +218,7 @@ async function openCanonicalWarRoom(page) {
 
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await expect(gameTurn(page)).toBeVisible();
+  await expect(page.locator('.game-screen')).toBeVisible({ timeout: 30_000 });
 
   const board3d = await open3DFromAppearance(page);
   const canvas = page.locator('.board3d-main-canvas');
