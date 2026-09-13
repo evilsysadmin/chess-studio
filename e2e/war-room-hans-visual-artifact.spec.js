@@ -95,8 +95,9 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     await expect(hansReply).toBeHidden({ timeout: 8_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 5_000 });
     await page.waitForTimeout(120);
+    const replyBubbleVisible = await hansReply.isVisible().catch(() => false);
 
-    const diagnostic = await canvas.evaluate((node) => ({
+    const diagnostic = await canvas.evaluate((node, bubbleVisible) => ({
       schema: 1,
       viewport: { width: window.innerWidth, height: window.innerHeight },
       screen: node.dataset.warRoomHansScreen || '',
@@ -106,12 +107,13 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
       sceneReady: node.dataset.warRoomHansSceneReady === 'true',
       callReleased: node.dataset.warRoomHansCallReleased === 'true',
       replySeen: node.dataset.warRoomHansReplySeen === 'true',
-      replyBubbleVisible: !hansReply.isHidden,
-    }));
+      replyBubbleVisible: bubbleVisible,
+    }), replyBubbleVisible);
 
     expect(diagnostic.sceneReady).toBe(true);
     expect(diagnostic.callReleased).toBe(true);
     expect(diagnostic.replySeen).toBe(true);
+    expect(diagnostic.replyBubbleVisible).toBe(false);
     expect(diagnostic.screen).toBe('onscreen');
     expect(Number.isFinite(diagnostic.ndcX)).toBe(true);
     expect(Number.isFinite(diagnostic.ndcY)).toBe(true);
