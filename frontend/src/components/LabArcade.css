@@ -1,0 +1,252 @@
+.lab-screen .lab-arcade-zone {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(260px, .55fr);
+  gap: 14px;
+}
+
+.lab-screen .lab-arcade-launch {
+  --arcade-accent: 214, 157, 71;
+  position: relative;
+  display: grid;
+  min-height: 250px;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid rgba(var(--arcade-accent), .48);
+  border-bottom: 1px solid rgba(var(--arcade-accent), .24);
+  border-radius: 2px 2px 18px 4px;
+  background:
+    linear-gradient(90deg, rgba(9, 10, 10, .96) 0%, rgba(18, 18, 16, .9) 48%, rgba(12, 12, 12, .54) 100%),
+    radial-gradient(circle at 78% 38%, rgba(var(--arcade-accent), .22), transparent 34%),
+    #0b0c0c;
+  box-shadow:
+    0 20px 46px rgba(0, 0, 0, .34),
+    inset 0 1px rgba(255, 239, 204, .04);
+  color: #f3ead8;
+  text-align: left;
+  cursor: pointer;
+  isolation: isolate;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, filter 180ms ease;
+}
+
+.lab-screen .lab-arcade-launch::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(116deg, transparent 0 38px, rgba(var(--arcade-accent), .025) 39px 40px),
+    linear-gradient(105deg, transparent 0 64%, rgba(255,255,255,.025) 64.2% 64.7%, transparent 65%);
+  opacity: .9;
+}
+
+.lab-screen .lab-arcade-launch::after {
+  content: 'OPERATION 01';
+  position: absolute;
+  right: -8px;
+  bottom: 10px;
+  color: rgba(var(--arcade-accent), .105);
+  font-size: clamp(2.4rem, 6vw, 5.6rem);
+  font-weight: 900;
+  line-height: .78;
+  letter-spacing: -.055em;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: rotate(-4deg);
+}
+
+.lab-screen .lab-arcade-launch.is-trailblazer {
+  --arcade-accent: 122, 151, 126;
+  min-height: 250px;
+  background:
+    linear-gradient(145deg, rgba(13, 16, 14, .96), rgba(20, 24, 20, .88) 62%, rgba(9, 11, 10, .98)),
+    radial-gradient(circle at 78% 28%, rgba(var(--arcade-accent), .14), transparent 34%);
+}
+
+.lab-screen .lab-arcade-launch.is-trailblazer::after {
+  content: 'TRAIL 02';
+  font-size: clamp(2.1rem, 4vw, 3.8rem);
+}
+
+.lab-screen .lab-arcade-scenery {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 44%;
+  pointer-events: none;
+}
+
+.lab-screen .lab-arcade-pawn,
+.lab-screen .lab-arcade-rook {
+  position: absolute;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: normal;
+  line-height: 1;
+  filter: drop-shadow(0 22px 30px rgba(0,0,0,.46));
+}
+
+.lab-screen .lab-arcade-pawn {
+  right: 15%;
+  bottom: -12%;
+  color: rgba(226, 205, 160, .14);
+  font-size: clamp(9rem, 18vw, 16rem);
+  transform: rotate(5deg);
+}
+
+.lab-screen .lab-arcade-rook {
+  right: -3%;
+  top: 4%;
+  color: rgba(172, 67, 48, .18);
+  font-size: clamp(6.5rem, 12vw, 11rem);
+  transform: rotate(-7deg);
+}
+
+.lab-screen .is-trailblazer .lab-arcade-pawn {
+  right: -2%;
+  bottom: -8%;
+  color: rgba(166, 193, 164, .12);
+  font-size: clamp(8rem, 14vw, 12rem);
+}
+
+.lab-screen .lab-arcade-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  align-content: end;
+  gap: 11px;
+  width: min(68%, 680px);
+  min-height: 250px;
+  padding: clamp(24px, 4vw, 40px);
+}
+
+.lab-screen .is-trailblazer .lab-arcade-copy {
+  width: min(78%, 520px);
+  padding: 26px;
+}
+
+.lab-screen .lab-arcade-copy > small {
+  color: rgba(var(--arcade-accent), .9);
+  font-size: .66rem;
+  font-weight: 800;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.lab-screen .lab-arcade-copy > strong {
+  color: #f4ead4;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.25rem, 5vw, 4.6rem);
+  font-weight: 600;
+  line-height: .9;
+  letter-spacing: -.045em;
+  text-shadow: 0 10px 26px rgba(0,0,0,.4);
+}
+
+.lab-screen .is-trailblazer .lab-arcade-copy > strong {
+  font-size: clamp(1.7rem, 3vw, 2.8rem);
+}
+
+.lab-screen .lab-arcade-copy > span {
+  max-width: 620px;
+  color: rgba(241, 232, 214, .7);
+  font-size: .96rem;
+  line-height: 1.55;
+}
+
+.lab-screen .lab-arcade-copy > b {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  width: fit-content;
+  margin-top: 7px;
+  color: rgb(var(--arcade-accent));
+  font-size: .77rem;
+  font-weight: 850;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.lab-screen .lab-arcade-copy > b i {
+  font-style: normal;
+  transition: transform 180ms ease;
+}
+
+.lab-screen .lab-arcade-launch:hover,
+.lab-screen .lab-arcade-launch:focus-visible {
+  transform: translateY(-3px);
+  border-top-color: rgba(var(--arcade-accent), .78);
+  box-shadow:
+    0 28px 56px rgba(0, 0, 0, .42),
+    0 0 34px rgba(var(--arcade-accent), .055),
+    inset 0 1px rgba(255, 241, 211, .065);
+  filter: brightness(1.035);
+}
+
+.lab-screen .lab-arcade-launch:hover .lab-arcade-copy > b i,
+.lab-screen .lab-arcade-launch:focus-visible .lab-arcade-copy > b i {
+  transform: translateX(4px);
+}
+
+.lab-screen .lab-arcade-launch:focus-visible {
+  outline: 2px solid rgba(var(--arcade-accent), .78);
+  outline-offset: 3px;
+}
+
+@media (max-width: 780px) {
+  .lab-screen .lab-arcade-zone {
+    grid-template-columns: 1fr;
+    gap: 11px;
+  }
+
+  .lab-screen .lab-arcade-launch,
+  .lab-screen .lab-arcade-launch.is-trailblazer {
+    min-height: 205px;
+  }
+
+  .lab-screen .lab-arcade-copy,
+  .lab-screen .is-trailblazer .lab-arcade-copy {
+    width: 78%;
+    min-height: 205px;
+    padding: 22px;
+  }
+
+  .lab-screen .lab-arcade-copy > strong,
+  .lab-screen .is-trailblazer .lab-arcade-copy > strong {
+    font-size: clamp(2rem, 10vw, 3.2rem);
+  }
+
+  .lab-screen .lab-arcade-copy > span {
+    font-size: .88rem;
+  }
+}
+
+@media (max-width: 460px) {
+  .lab-screen .lab-arcade-scenery {
+    width: 40%;
+    opacity: .7;
+  }
+
+  .lab-screen .lab-arcade-copy,
+  .lab-screen .is-trailblazer .lab-arcade-copy {
+    width: 86%;
+    padding: 19px 18px;
+  }
+
+  .lab-screen .lab-arcade-launch::after {
+    right: -4px;
+    bottom: 8px;
+    font-size: 2.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab-screen .lab-arcade-launch,
+  .lab-screen .lab-arcade-copy > b i {
+    transition: none;
+  }
+
+  .lab-screen .lab-arcade-launch:hover,
+  .lab-screen .lab-arcade-launch:focus-visible {
+    transform: none;
+  }
+}
