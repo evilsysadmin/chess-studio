@@ -181,3 +181,45 @@ test('Accesibilidad · 2D mantiene teclado y nombres útiles para lector de pant
   await expect(e3).toHaveAttribute('tabindex', '0');
   expect(await squares.evaluateAll((nodes) => nodes.filter((node) => node.tabIndex === 0).length)).toBe(1);
 });
+
+test('Accesibilidad · 2D conserva foco y estados tácticos en forced-colors', async ({ page }) => {
+  await page.emulateMedia({ forcedColors: 'active' });
+  await mockApi(page);
+  await login(page);
+  await launchQuickMatch2D(page);
+  await expectLightweight2D(page);
+
+  const board = page.getByRole('group', { name: /Tablero de ajedrez/ }).first();
+  const e2 = board.getByRole('button', { name: /^Casilla e2, peón blanco/i });
+  const e3 = board.getByRole('button', { name: /^Casilla e3, vacía/i });
+
+  await e2.focus();
+  await page.keyboard.press('Enter');
+  await expect(e2).toHaveClass(/selected/);
+  await expect(e3).toHaveClass(/legal-move/);
+
+  const state = await page.evaluate(() => {
+    const selected = document.querySelector('.board-grid .square.selected');
+    const legal = document.querySelector('.board-grid .square.legal-move');
+    if (!selected || !legal) return null;
+    const focus = getComputedStyle(selected);
+    const selectedMark = getComputedStyle(selected, '::after');
+    const legalMark = getComputedStyle(legal, '::before');
+    return {
+      focusOutlineStyle: focus.outlineStyle,
+      focusOutlineWidth: Number.parseFloat(focus.outlineWidth),
+      selectedBorderStyle: selectedMark.borderTopStyle,
+      selectedBorderWidth: Number.parseFloat(selectedMark.borderTopWidth),
+      legalBorderStyle: legalMark.borderTopStyle,
+      legalBackground: legalMark.backgroundColor,
+    };
+  });
+
+  expect(state).not.toBeNull();
+  expect(state.focusOutlineStyle).toBe('solid');
+  expect(state.focusOutlineWidth).toBeGreaterThanOrEqual(2);
+  expect(state.selectedBorderStyle).toBe('solid');
+  expect(state.selectedBorderWidth).toBeGreaterThanOrEqual(2);
+  expect(state.legalBorderStyle).toBe('solid');
+  expect(['transparent', 'rgba(0, 0, 0, 0)']).not.toContain(state.legalBackground);
+});
