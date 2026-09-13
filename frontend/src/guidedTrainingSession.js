@@ -14,6 +14,12 @@ function sessionOwner() {
   return String(getUsername() || '').trim().toLowerCase() || null;
 }
 
+function normalizeDuration(value) {
+  const minutes = Number(value);
+  if (minutes === 5 || minutes === 30) return minutes;
+  return 15;
+}
+
 function pendingPersonalPuzzles(puzzles = []) {
   return (Array.isArray(puzzles) ? puzzles : []).filter((puzzle) => (
     !puzzle?.masteredAt && Number(puzzle?.cleanSolves || 0) <= 0
@@ -78,6 +84,10 @@ function recentHumanColor(history = []) {
 }
 
 function allocateDurations(minutes, hasFocus, hasNemesis) {
+  if (minutes === 5) {
+    if (hasFocus) return { focus: 4, nemesis: 0, game: 0, review: 1 };
+    return { focus: 0, nemesis: hasNemesis ? 4 : 0, game: 0, review: 1 };
+  }
   if (minutes === 30) {
     if (hasFocus && hasNemesis) return { focus: 10, nemesis: 8, game: 8, review: 4 };
     return { focus: hasFocus ? 16 : 0, nemesis: hasNemesis ? 16 : 0, game: 10, review: 4 };
@@ -93,7 +103,7 @@ export function buildGuidedTrainingPlan({
   rivalry = loadRivalry(),
   playerModel = null,
 } = {}) {
-  const duration = Number(minutes) === 30 ? 30 : 15;
+  const duration = normalizeDuration(minutes);
   const model = playerModel || buildPlayerModel({ personalPuzzles: puzzles });
   const focus = focusStep(puzzles, model.trainingDebt);
   const nemesis = nemesisStep(history, rivalry);
@@ -108,21 +118,23 @@ export function buildGuidedTrainingPlan({
 
   const allocation = allocateDurations(duration, Boolean(focus), Boolean(nemesis));
   const steps = [];
-  if (focus) steps.push({ ...focus, minutes: allocation.focus });
-  if (nemesis) steps.push({ ...nemesis, minutes: allocation.nemesis });
-  steps.push({
-    id: 'short-practice-game',
-    kind: 'short-game',
-    title: 'Partida corta de práctica',
-    detail: 'Desde la posición inicial, sin rating. Usa sólo el presupuesto de este bloque y vuelve al recorrido al terminar.',
-    action: 'short-game',
-    training: {
-      fen: INITIAL_FEN,
-      humanColor: recentHumanColor(history),
-      difficulty: recentPracticeDifficulty(history),
-    },
-    minutes: allocation.game,
-  });
+  if (focus && allocation.focus > 0) steps.push({ ...focus, minutes: allocation.focus });
+  if (nemesis && allocation.nemesis > 0) steps.push({ ...nemesis, minutes: allocation.nemesis });
+  if (allocation.game > 0) {
+    steps.push({
+      id: 'short-practice-game',
+      kind: 'short-game',
+      title: 'Partida corta de práctica',
+      detail: 'Desde la posición inicial, sin rating. Usa sólo el presupuesto de este bloque y vuelve al recorrido al terminar.',
+      action: 'short-game',
+      training: {
+        fen: INITIAL_FEN,
+        humanColor: recentHumanColor(history),
+        difficulty: recentPracticeDifficulty(history),
+      },
+      minutes: allocation.game,
+    });
+  }
   steps.push({
     id: 'review',
     kind: 'review',
@@ -145,7 +157,7 @@ function normalizeStoredSession(value, now = Date.now()) {
     schema: SESSION_SCHEMA,
     id: String(value.id || `guided-${startedAt}`),
     owner: value.owner || null,
-    minutes: Number(value.minutes) === 30 ? 30 : 15,
+    minutes: normalizeDuration(value.minutes),
     startedAt,
     currentIndex,
     steps: value.steps,
@@ -166,7 +178,7 @@ export function startGuidedTrainingSession(plan, { now = Date.now() } = {}) {
     schema: SESSION_SCHEMA,
     id: `guided-${startedAt}-${plan.minutes}`,
     owner: sessionOwner(),
-    minutes: plan.minutes,
+    minutes: normalizeDuration(plan.minutes),
     startedAt,
     currentIndex: 0,
     steps: plan.steps,
