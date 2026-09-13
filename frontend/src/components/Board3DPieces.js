@@ -124,15 +124,20 @@ function knightGeometrySet(coarsePointer = false) {
 }
 
 function addContactShadow(group, coarsePointer = false, side = 'b') {
-  if (coarsePointer) return;
-  // White pieces get a restrained extra contact pass so ivory keeps a clean
-  // silhouette on the classic light squares without resorting to outlines.
-  const shadowProfile = side === 'w'
-    ? [[0.31, 0.24, -0.006], [0.39, 0.09, -0.009]]
-    : [[0.31, 0.2, -0.006], [0.39, 0.075, -0.009]];
+  // Coarse-pointer/mobile used to drop contact shadows entirely. Keep a single,
+  // lower-segment grounding pass there: it costs one cheap unlit mesh per piece
+  // but removes the strongest source of the "hovering chessmen" look. Desktop
+  // retains the richer two-pass profile that is already part of the approved look.
+  const shadowProfile = coarsePointer
+    ? (side === 'w' ? [[0.34, 0.13, -0.006]] : [[0.34, 0.11, -0.006]])
+    : (side === 'w'
+      ? [[0.31, 0.24, -0.006], [0.39, 0.09, -0.009]]
+      : [[0.31, 0.2, -0.006], [0.39, 0.075, -0.009]]);
+  const segments = coarsePointer ? 16 : 28;
+  const tier = coarsePointer ? 'lite-single-pass' : 'full-dual-pass';
   for (const [radius, opacity, y] of shadowProfile) {
     const shadow = new THREE.Mesh(
-      new THREE.CircleGeometry(radius, 28),
+      new THREE.CircleGeometry(radius, segments),
       new THREE.MeshBasicMaterial({
         color: 0x000000,
         transparent: true,
@@ -148,6 +153,7 @@ function addContactShadow(group, coarsePointer = false, side = 'b') {
     shadow.receiveShadow = false;
     shadow.userData.contactShadow = true;
     shadow.userData.contactShadowSide = side;
+    shadow.userData.contactShadowTier = tier;
     group.add(shadow);
   }
 }
