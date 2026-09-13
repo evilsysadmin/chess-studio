@@ -14,7 +14,7 @@ const report = {
 };
 
 describe('PostGameExam', () => {
-  it('ofrece el examen premium sin filtrar la jugada original ni la alternativa antes de empezar', () => {
+  it('ofrece el examen premium sin filtrar la jugada original, la alternativa ni su explicación antes de empezar', () => {
     const html = renderToStaticMarkup(
       <PostGameExam history={history} humanColor="w" report={report} meta={{ gameId: 'g-exam' }} />,
     );
@@ -25,6 +25,7 @@ describe('PostGameExam', () => {
     expect(html).toContain('Hacer examen');
     expect(html).not.toContain('Nf3');
     expect(html).not.toContain('Bc4');
+    expect(html).not.toContain('No entiendo qué pasó');
     expect(html).not.toContain('post-game-exam-board');
   });
 
