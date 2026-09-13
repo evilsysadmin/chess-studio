@@ -1,6 +1,12 @@
 from copy import deepcopy
+from pathlib import Path
+import sys
 
-from game_state_doctor import compare_restore_baseline, diagnose_game_document
+SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
+
+from game_state_doctor import compare_restore_baseline, diagnose_game_document  # noqa: E402
 
 
 def persisted_game():
