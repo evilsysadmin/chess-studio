@@ -15,7 +15,11 @@ const WAR_ROOM_RENDER_BUDGETS = Object.freeze({
     shadowMapSize: 1024,
     shadowsEnabled: true,
     idleFrameIntervalMs: 150,
-    inspectFrameIntervalMs: 33,
+    // Inspection is a direct-manipulation surface: ~30 FPS felt visibly
+    // stepped on Android even though ambient animation needs far less cadence.
+    // Keep it below desktop 60 FPS, but give drag enough temporal resolution to
+    // feel weighted rather than sticky without changing scene complexity/DPR.
+    inspectFrameIntervalMs: 24,
   }),
   software: Object.freeze({
     tier: 'lite',
