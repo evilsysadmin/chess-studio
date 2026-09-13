@@ -3,7 +3,7 @@ import { buildPlayerModel, evidenceConfidence, PLAYER_MODEL_VERSION } from './pl
 
 describe('factual player model', () => {
   it('keeps missing evidence empty instead of inventing a weakness', () => {
-    expect(PLAYER_MODEL_VERSION).toBe(4);
+    expect(PLAYER_MODEL_VERSION).toBe(5);
     expect(buildPlayerModel()).toEqual({
       version: PLAYER_MODEL_VERSION,
       samples: { games: 0, personalPositions: 0, cleanAutopsies: 0 },
@@ -151,8 +151,86 @@ describe('factual player model', () => {
       sourceGames: 2,
       maxLoss: 420,
       confidence: 'low',
+      postTrainingObservations: {
+        latestCleanTrainingAt: null,
+        observedGames: 0,
+        recurrenceGames: 0,
+        noRecurrenceGames: 0,
+        latestObservationAt: null,
+        latestRecurrenceAt: null,
+        latestNoRecurrenceAt: null,
+      },
     }));
     expect(model.trainingDebt.activeCount).toBe(1);
+  });
+
+  it('counts only fully covered new autopsies after clean training as pattern observations', () => {
+    const personalPuzzles = [
+      {
+        id: 'p1',
+        source: 'autopsy',
+        sourceGameId: 'source-1',
+        incidentKeys: ['human:MISSED_MATE'],
+        factualEvidence: { version: 2, classification: 'missed-mate' },
+        createdAt: '2026-09-01T10:00:00Z',
+        cleanSolves: 1,
+        lastCleanAt: '2026-09-10T10:00:00Z',
+      },
+      {
+        id: 'p2',
+        source: 'autopsy',
+        sourceGameId: 'source-2',
+        incidentKeys: ['human:MISSED_MATE'],
+        factualEvidence: { version: 2, classification: 'missed-mate' },
+        createdAt: '2026-09-02T10:00:00Z',
+        cleanSolves: 1,
+        lastCleanAt: '2026-09-11T10:00:00Z',
+      },
+    ];
+    const covered = (gameId, date, incidentKeys = []) => ({
+      version: 1,
+      gameId,
+      date,
+      sufficientSample: true,
+      clean: incidentKeys.length === 0,
+      incidentCoverageVersion: 1,
+      incidentCoverageSufficient: true,
+      incidentKeys,
+    });
+
+    const model = buildPlayerModel({
+      personalPuzzles,
+      cleanGameRecords: {
+        beforeTraining: covered('before', '2026-09-09T10:00:00Z'),
+        sourceReplay: covered('source-2', '2026-09-12T08:00:00Z'),
+        legacyCoverage: {
+          version: 1,
+          gameId: 'legacy',
+          date: '2026-09-12T09:00:00Z',
+          sufficientSample: true,
+          clean: true,
+        },
+        partialCoverage: {
+          ...covered('partial', '2026-09-12T10:00:00Z'),
+          incidentCoverageSufficient: false,
+        },
+        noRecurrence1: covered('new-1', '2026-09-12T11:00:00Z'),
+        recurrence: covered('new-2', '2026-09-13T11:00:00Z', ['human:MISSED_MATE']),
+        noRecurrence2: covered('new-3', '2026-09-14T11:00:00Z', ['human:ALLOWED_MATE']),
+      },
+    });
+
+    expect(model.recurringErrors[0].postTrainingObservations).toEqual({
+      latestCleanTrainingAt: '2026-09-11T10:00:00.000Z',
+      observedGames: 3,
+      recurrenceGames: 1,
+      noRecurrenceGames: 2,
+      latestObservationAt: '2026-09-14T11:00:00.000Z',
+      latestRecurrenceAt: '2026-09-13T11:00:00.000Z',
+      latestNoRecurrenceAt: '2026-09-14T11:00:00.000Z',
+    });
+    expect(model.recurringErrors[0].postTrainingObservations).not.toHaveProperty('improved');
+    expect(model.recurringErrors[0].postTrainingObservations).not.toHaveProperty('state');
   });
 
   it('keeps recurring classification empty when any supporting position lacks shared evidence', () => {
