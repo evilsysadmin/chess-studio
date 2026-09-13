@@ -3,7 +3,15 @@ import { buildRecurringErrorPatterns } from './insightsRecurringErrors.js';
 import { isPersonalPuzzleCurrentlyClean, personalSpacedReviewSummary } from './spacedReview.js';
 import { personalTrainingDebtSummary } from './trainingDebt.js';
 
-export const PLAYER_MODEL_VERSION = 5;
+export const PLAYER_MODEL_VERSION = 6;
+export const PATTERN_IMPROVEMENT_PROBABLE_OBSERVATIONS = 2;
+export const PATTERN_IMPROVEMENT_CORRECTED_OBSERVATIONS = 5;
+export const PATTERN_IMPROVEMENT_STATES = Object.freeze({
+  NO_SAMPLE: 'no-sample',
+  STILL_OCCURRING: 'still-occurring',
+  PROBABLE_IMPROVEMENT: 'probable-improvement',
+  CORRECTED_WITH_SUFFICIENT_SAMPLE: 'corrected-with-sufficient-sample',
+});
 
 function nonNegativeInt(value) {
   const number = Number(value);
@@ -144,18 +152,45 @@ function patternPostTrainingObservations(puzzles, records, incidentKey) {
   };
 }
 
+function patternImprovementState(pattern) {
+  const observations = pattern?.postTrainingObservations;
+  if (!pattern?.debt || !observations?.latestCleanTrainingAt) {
+    return PATTERN_IMPROVEMENT_STATES.NO_SAMPLE;
+  }
+  if (observations.recurrenceGames > 0) {
+    return PATTERN_IMPROVEMENT_STATES.STILL_OCCURRING;
+  }
+  if (
+    pattern.debt.paid === true
+    && observations.noRecurrenceGames >= PATTERN_IMPROVEMENT_CORRECTED_OBSERVATIONS
+  ) {
+    return PATTERN_IMPROVEMENT_STATES.CORRECTED_WITH_SUFFICIENT_SAMPLE;
+  }
+  if (observations.noRecurrenceGames >= PATTERN_IMPROVEMENT_PROBABLE_OBSERVATIONS) {
+    return PATTERN_IMPROVEMENT_STATES.PROBABLE_IMPROVEMENT;
+  }
+  return PATTERN_IMPROVEMENT_STATES.NO_SAMPLE;
+}
+
 export function buildPlayerModel({ insights = null, personalPuzzles = [], cleanGameRecords = {} } = {}) {
   const puzzles = Array.isArray(personalPuzzles) ? personalPuzzles.filter(Boolean) : [];
   const totalGames = nonNegativeInt(insights?.totalGames);
-  const recurringErrors = buildRecurringErrorPatterns(puzzles).map((pattern) => ({
-    ...pattern,
-    confidence: evidenceConfidence(pattern.positions, { mediumAt: 3, highAt: 5 }),
-    postTrainingObservations: patternPostTrainingObservations(
+  const recurringErrors = buildRecurringErrorPatterns(puzzles).map((pattern) => {
+    const postTrainingObservations = patternPostTrainingObservations(
       puzzles,
       cleanGameRecords,
       pattern.incidentKey,
-    ),
-  }));
+    );
+    const enriched = {
+      ...pattern,
+      confidence: evidenceConfidence(pattern.positions, { mediumAt: 3, highAt: 5 }),
+      postTrainingObservations,
+    };
+    return {
+      ...enriched,
+      improvementState: patternImprovementState(enriched),
+    };
+  });
   const trainingDebt = personalTrainingDebtSummary(puzzles);
   const cleanPlay = cleanPlayFacts(cleanGameRecords);
 
