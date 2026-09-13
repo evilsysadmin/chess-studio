@@ -87,13 +87,15 @@
   .game-screen .game-3d-command-column {
     grid-area: commander;
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
       'pill'
       'controls';
     gap: .3rem;
+    width: 100%;
     min-width: 0;
     max-width: 100%;
+    justify-self: stretch;
     box-sizing: border-box;
   }
 
@@ -106,39 +108,118 @@
     display: none;
   }
 
-  .game-screen .game-3d-turn-pill.game-3d-matthias-card {
+  /* At 821–920px compactViewport is false, so the desktop matchup/state wrappers
+   * are mounted even though this is still a coarse-pointer phone landscape.
+   * Keep those wrappers and stack them inside the narrow commander track instead
+   * of letting display:contents expose every child as one wide flex row. The
+   * !important padding also beats WarRoomAppearanceMenu's generic 2.55rem menu
+   * reservation, which was the remaining 21px document overflow at 844×390. */
+  .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
     grid-area: pill;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 30px !important;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      'match menu'
+      'state menu';
+    align-items: center !important;
+    justify-content: stretch;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: 48px !important;
+    box-sizing: border-box;
+    padding: .24rem .3rem !important;
+    gap: .08rem .22rem;
+  }
+
+  .game-screen .game-layout-3d .game-3d-matchup,
+  .game-screen .game-layout-3d .game-3d-turn-state {
     display: flex !important;
-    width: 100%;
+    align-items: center;
+    min-width: 0;
     max-width: 100%;
-    min-height: 34px !important;
-    padding: .28rem .42rem;
-    gap: .3rem;
+    overflow: hidden;
+  }
+
+  .game-screen .game-layout-3d .game-3d-matchup {
+    grid-area: match;
+    gap: .2rem;
+  }
+
+  .game-screen .game-layout-3d .game-3d-turn-state {
+    grid-area: state;
+    gap: .2rem;
   }
 
   .game-screen .game-3d-turn-pill-avatar {
-    width: 20px;
-    height: 20px;
-    flex-basis: 20px;
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
   }
 
-  .game-screen .game-3d-turn-pill-identity,
-  .game-screen .game-3d-turn-pill-label {
-    font-size: .58rem;
+  .game-screen .game-layout-3d .game-3d-turn-pill-identity,
+  .game-screen .game-layout-3d .game-3d-turn-pill-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .55rem;
   }
 
-  .game-screen .game-3d-turn-pill-identity strong {
-    font-size: .62rem;
+  .game-screen .game-layout-3d .game-3d-turn-pill-identity strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .6rem;
   }
 
   .game-screen .game-3d-turn-pill-divider {
-    height: 16px;
+    display: none;
   }
 
   .game-screen .game-3d-turn-pill-light {
-    width: 8px;
-    height: 8px;
-    flex-basis: 8px;
+    width: 7px;
+    height: 7px;
+    flex: 0 0 7px;
+  }
+
+  .game-screen .game-layout-3d .game-3d-cpu-level {
+    margin-left: auto;
+    flex: 0 0 auto;
+    white-space: nowrap;
+    font-size: .47rem;
+  }
+
+  /* The overflow menu is already the complete action surface in this compact
+   * layout. Hide the desktop Zen/Abandon row so it cannot increase document
+   * height; restore the menu to normal grid flow so the pill itself stays
+   * inside its 148–188px track. */
+  .game-screen .game-3d-command-column > .game-3d-quick-actions {
+    display: none !important;
+  }
+
+  .game-screen .game-layout-3d .game-3d-utility-menu {
+    grid-area: menu;
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    align-self: center;
+    justify-self: end;
+    width: 30px;
+    height: 30px;
+    transform: none !important;
+  }
+
+  .game-screen .game-layout-3d .game-3d-utility-menu > summary {
+    width: 30px;
+    height: 30px;
+  }
+
+  .game-screen .game-layout-3d .game-3d-utility-popover {
+    top: calc(100% + .32rem);
+    right: 0;
   }
 
   /* Same cascade issue as the room grid: Board3D's generic <=1080px rule
