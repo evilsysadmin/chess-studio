@@ -31,7 +31,21 @@ describe('AI player portrait', () => {
       ratingTrend: { first: 1200, last: 1260, delta: 60, min: 1180, max: 1270 },
       humanCaptures: 31,
     }, {
-      record: { games: 9, wins: 4, draws: 1, losses: 4, bestHumanStreak: 2, bestCpuStreak: 2 },
+      record: {
+        games: 9,
+        wins: 4,
+        draws: 1,
+        losses: 4,
+        bestHumanStreak: 2,
+        bestCpuStreak: 2,
+        byTimeControl: {
+          '3+2': { games: 4, wins: 1, draws: 1, losses: 2 },
+          '5+0': { games: 5, wins: 3, draws: 0, losses: 2 },
+          '15+10': { games: 10, wins: 7, draws: 1, losses: 2 },
+          '1+0': { games: 2, wins: 2, draws: 0, losses: 0 },
+          none: { games: 99, wins: 99, draws: 0, losses: 0 },
+        },
+      },
       incidents: { 'human:MISSED_MATE': 2 },
     }, { puzzlesSolved: 12, personalPuzzles: 4 }, { moveReport: { played: 'Qh5', suggested: 'Nf3', loss: 210 } });
 
@@ -39,6 +53,11 @@ describe('AI player portrait', () => {
     expect(facts.evidence_strength.games).toBe('medium');
     expect(facts.by_mode.casual.win_pct).toBe(60);
     expect(facts.by_mode.practice).toBeUndefined();
+    expect(facts.by_time_control).toEqual({
+      '3+2': { games: 4, wins: 1, draws: 1, losses: 2, win_pct: 25, evidence_strength: 'low' },
+      '5+0': { games: 5, wins: 3, draws: 0, losses: 2, win_pct: 60, evidence_strength: 'medium' },
+      '15+10': { games: 10, wins: 7, draws: 1, losses: 2, win_pct: 70, evidence_strength: 'high' },
+    });
     expect(facts.favorite_opening).toEqual(expect.objectContaining({
       name: 'Defensa Siciliana',
       games: 5,
@@ -56,7 +75,7 @@ describe('AI player portrait', () => {
   it('regenera automáticamente después de cada partida terminada', () => {
     expect(playerPortraitGenerationKey({ totalGames: 3 })).not.toBe(playerPortraitGenerationKey({ totalGames: 4 }));
     expect(playerPortraitGenerationKey({ totalGames: 4 })).not.toBe(playerPortraitGenerationKey({ totalGames: 5 }));
-    expect(playerPortraitGenerationKey({ totalGames: 5 })).toBe('7:5');
+    expect(playerPortraitGenerationKey({ totalGames: 5 })).toBe('8:5');
   });
 
   it('cachea sólo el retrato de la generación actual', () => {
@@ -69,7 +88,7 @@ describe('AI player portrait', () => {
 
   it('invalida retratos del schema anterior al cambiar de modelo', () => {
     const key = playerPortraitGenerationKey({ totalGames: 7 });
-    localStorage.setItem(AI_PLAYER_PORTRAIT_CACHE_KEY, JSON.stringify({ schema: 6, generationKey: key, text: 'Viejo Llama.' }));
+    localStorage.setItem(AI_PLAYER_PORTRAIT_CACHE_KEY, JSON.stringify({ schema: 7, generationKey: key, text: 'Viejo Llama.' }));
     expect(loadCachedPlayerPortrait(key, 'alice')).toBeNull();
   });
 
