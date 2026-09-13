@@ -122,7 +122,7 @@ test('War Room · offline→online durante /move pendiente reconcilia 3D sin rem
 
   await login(page);
   await page.evaluate(() => {
-    localStorage.setItem('chess-study-device-board-renderer-v1', '2d');
+    localStorage.setItem('chess-study-device-board-renderer-v1', '2d-explicit-v1');
     window.dispatchEvent(new Event('chess-study-user-preferences-changed'));
   });
 
