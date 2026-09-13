@@ -180,7 +180,7 @@ function retaliationTargetId(state, attacker) {
   if (attacker.row === 'front' && attacker.hp > 0) return attacker.id;
   const matchingFront = state.party.find((member) => member.row === 'front' && member.lane === attacker.lane && member.hp > 0);
   if (matchingFront) return matchingFront.id;
-  return state.party.find((member) => member.row === 'front' && member.hp > 0)?.id || null;
+  return state.party.find((member) => member.row === 'front' && member.hp > 0)?.id || attacker.id;
 }
 
 function defeatMessage(attacker, enemy) {
