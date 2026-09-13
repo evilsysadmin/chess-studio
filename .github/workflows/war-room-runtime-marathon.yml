@@ -28,10 +28,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  stress:
-    name: Browser required · War Room stress
+  marathon:
+    name: Browser required · War Room ${{ matrix.label }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: stress
+            specs: war-room-runtime-marathon.spec.js
+            artifact: war-room-runtime-stress
+          - label: continuity
+            specs: war-room-interrupted-restore.spec.js war-room-undo-rewind.spec.js war-room-ephemeral-cleanup.spec.js
+            artifact: war-room-runtime-continuity
+          - label: GPU
+            specs: war-room-webgl-fallback.spec.js war-room-render-budget.spec.js
+            artifact: war-room-runtime-gpu
     steps:
       - uses: actions/checkout@v7
         with:
@@ -44,73 +57,15 @@ jobs:
           restore-frontend-deps: 'true'
           build-frontend: 'true'
 
-      - name: Run War Room stress marathon
+      - name: Run War Room ${{ matrix.label }} marathon
         working-directory: e2e
-        run: ./node_modules/.bin/playwright test war-room-runtime-marathon.spec.js --workers=1 --retries=0 --timeout=360000
+        run: ./node_modules/.bin/playwright test ${{ matrix.specs }} --workers=1 --retries=0 --timeout=360000
 
-      - name: Upload stress diagnostics on failure
+      - name: Upload ${{ matrix.label }} diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: war-room-runtime-stress-${{ github.sha }}
-          path: e2e/test-results/
-          if-no-files-found: ignore
-          retention-days: 7
-
-  continuity:
-    name: Browser required · War Room continuity
-    runs-on: ubuntu-24.04
-    timeout-minutes: 12
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
-
-      - name: Restore browser runtime and build frontend
-        uses: ./.github/actions/setup-browser-e2e
-        with:
-          browser-scope: chromium
-          restore-frontend-deps: 'true'
-          build-frontend: 'true'
-
-      - name: Run War Room continuity marathon
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright test war-room-interrupted-restore.spec.js war-room-undo-rewind.spec.js war-room-ephemeral-cleanup.spec.js --workers=1 --retries=0 --timeout=360000
-
-      - name: Upload continuity diagnostics on failure
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: war-room-runtime-continuity-${{ github.sha }}
-          path: e2e/test-results/
-          if-no-files-found: ignore
-          retention-days: 7
-
-  gpu:
-    name: Browser required · War Room GPU
-    runs-on: ubuntu-24.04
-    timeout-minutes: 12
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
-
-      - name: Restore browser runtime and build frontend
-        uses: ./.github/actions/setup-browser-e2e
-        with:
-          browser-scope: chromium
-          restore-frontend-deps: 'true'
-          build-frontend: 'true'
-
-      - name: Run War Room GPU marathon
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright test war-room-webgl-fallback.spec.js war-room-render-budget.spec.js --workers=1 --retries=0 --timeout=360000
-
-      - name: Upload GPU diagnostics on failure
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: war-room-runtime-gpu-${{ github.sha }}
+          name: ${{ matrix.artifact }}-${{ github.sha }}
           path: e2e/test-results/
           if-no-files-found: ignore
           retention-days: 7
