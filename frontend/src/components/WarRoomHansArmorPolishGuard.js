@@ -1,11 +1,16 @@
 import { getWarRoomHansActor } from './WarRoomHansActor.js';
 import { warRoomHansChoreForEvent } from './WarRoomHansChoreContract.js';
 
-export const WAR_ROOM_HANS_ARMOR_POLISH_GUARD_VERSION = 'hans-armor-polish-v1-hand-cloth';
+export const WAR_ROOM_HANS_ARMOR_POLISH_GUARD_VERSION = 'hans-armor-polish-v2-all-hand-cloth';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const CLOTH_NAME = 'war-room-hans-chore-prop-cloth';
 const RIGHT_HAND_CLOTH_POSITION = Object.freeze([0.055, -0.62, 0.1]);
+const HAND_CLOTH_POSES = new Set(['polish-armor', 'polish-brass']);
+
+export function warRoomHansChoreUsesHandCloth(chore) {
+  return chore?.prop === 'cloth' && HAND_CLOTH_POSES.has(String(chore?.pose || ''));
+}
 
 export function rigWarRoomHansPolishCloth(actor, cloth) {
   const rightArm = actor?.body?.rightArm;
@@ -61,7 +66,7 @@ export function installWarRoomHansArmorPolishGuard(root) {
     const chore = warRoomHansChoreForEvent(eventName);
     const activeTask = String(hans.userData?.warRoomHansActiveTask || '');
     const activeKind = String(hans.userData?.warRoomHansActiveTaskKind || '');
-    if (!activeTask || activeKind !== 'chore' || chore?.pose !== 'polish-armor') {
+    if (!activeTask || activeKind !== 'chore' || !warRoomHansChoreUsesHandCloth(chore)) {
       actingSince = null;
       return;
     }
@@ -70,7 +75,7 @@ export function installWarRoomHansArmorPolishGuard(root) {
     if (!cloth || !rigWarRoomHansPolishCloth(actor, cloth)) return;
 
     const taskPhase = String(hans.userData?.warRoomHansTaskPhase || '');
-    if (taskPhase !== 'acting') {
+    if (taskPhase !== 'acting' || chore?.pose !== 'polish-armor') {
       actingSince = null;
       return;
     }
