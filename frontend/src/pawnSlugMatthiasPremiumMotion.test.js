@@ -147,6 +147,18 @@ describe('Pawn Slug Matthias premium motion', () => {
     expect(shotgun.sy).toBeLessThan(machinegun.sy);
   });
 
+  it('makes the Panzerfaust read as a planted heavy discharge without touching gameplay', () => {
+    const shotgun = pawnSlugMatthiasPremiumPose({ time: 0.021, firing: true, weapon: 'shotgun' });
+    const panzerfaust = pawnSlugMatthiasPremiumPose({ time: 0.021, firing: true, weapon: 'panzerfaust' });
+
+    expect(panzerfaust.weaponRecoil).toBe('panzerfaust-brace');
+    expect(panzerfaust.sx).toBeGreaterThan(shotgun.sx);
+    expect(panzerfaust.sy).toBeLessThan(0.95);
+    expect(panzerfaust.y).toBeLessThan(0);
+    expect(shotgun.y).toBeGreaterThan(0);
+    expect(Math.abs(panzerfaust.rz)).toBeGreaterThan(Math.abs(shotgun.rz) * 1.8);
+  });
+
   it('keeps forward run body language while firing instead of visually planting Matthias', () => {
     const standing = pawnSlugMatthiasPremiumPose();
     const running = pawnSlugMatthiasPremiumPose({ running: true });
