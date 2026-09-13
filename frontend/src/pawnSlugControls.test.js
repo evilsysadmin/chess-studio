@@ -25,9 +25,11 @@ describe('Pawn Slug control settings', () => {
       .toBe(PAWN_SLUG_CONTROL_ACTIONS.length);
   });
 
-  it('drops the retired expert-mode flag from legacy stored settings', () => {
-    expect(normalizePawnSlugSettings({ expertMode: true })).not.toHaveProperty('expertMode');
-    expect(normalizePawnSlugSettings({ expertMode: false })).not.toHaveProperty('expertMode');
+  it('keeps expert mode off by default and only enables an explicit boolean true', () => {
+    expect(normalizePawnSlugSettings({}).expertMode).toBe(false);
+    expect(normalizePawnSlugSettings({ expertMode: false }).expertMode).toBe(false);
+    expect(normalizePawnSlugSettings({ expertMode: 'true' }).expertMode).toBe(false);
+    expect(normalizePawnSlugSettings({ expertMode: true }).expertMode).toBe(true);
   });
 
   it('maps UI controls to the engine vocabulary while keeping pause outside gameplay input', () => {
@@ -51,7 +53,7 @@ describe('Pawn Slug control settings', () => {
     expect(settings.masterVolume).toBe(1);
     expect(settings.musicVolume).toBe(0);
     expect(settings.sfxVolume).toBe(0.35);
-    expect(settings).not.toHaveProperty('expertMode');
+    expect(settings.expertMode).toBe(true);
     expect(settings.keymap.fire).toBe('Space');
     expect(settings.keymap.jump).toBe('KeyV');
   });
