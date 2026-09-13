@@ -29,3 +29,16 @@
   --castle-surface-radius: 10px;
   --castle-panel-radius: 8px;
 }
+
+/*
+ * Coarse-pointer screens tend to crush the War Room's deepest tones more than
+ * desktop does. Keep the cinematic night grade, but lift the rendered canvas a
+ * notch and soften contrast just enough to recover ebony pieces and room detail.
+ * !important is intentional: Android's “desktop site” viewport must not inherit
+ * the darker desktop post-grade later in Board3DViewportTuning.css.
+ */
+@media (pointer: coarse) {
+  .game-screen .game-board-stack-3d .board3d-main-canvas {
+    filter: brightness(1.06) contrast(.985) saturate(1.01) !important;
+  }
+}
