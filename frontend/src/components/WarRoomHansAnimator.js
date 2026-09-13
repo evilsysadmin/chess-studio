@@ -6,7 +6,7 @@ import { installWarRoomHansHearthFacingGuard } from './WarRoomHansHearthFacingGu
 import { installWarRoomHansHearthReachGuard } from './WarRoomHansHearthReachGuard.js';
 import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
 
-export const WAR_ROOM_HANS_ANIMATOR_VERSION = 'war-room-hans-animator-v4-hearth-reach';
+export const WAR_ROOM_HANS_ANIMATOR_VERSION = 'war-room-hans-animator-v4-hearth-reach-pose-baseline-single-gait';
 export const WAR_ROOM_HANS_GAIT_OWNER = 'articulated-walk-distance-owner-v1';
 export const WAR_ROOM_HANS_POSE_BASELINE_VERSION = 'hans-task-pose-baseline-v1';
 
