@@ -37,11 +37,11 @@ describe('Pawn Slug premium projectile FX', () => {
     expect(() => animatePremiumProjectile(projectile, { time: 0.5 })).not.toThrow();
   });
 
-  it('binds hostile rounds to their own readable arcade silhouette', () => {
+  it('binds hostile pistol rounds to their own readable arcade silhouette', () => {
     const hostile = createPremiumBulletModel({ enemy: true, weapon: 'pistol' });
     const friendly = createPremiumBulletModel({ weapon: 'pistol' });
     expect(hostile.userData.enemy).toBe(true);
-    expect(hostile.userData.arcadeProjectileShape).toBe('needle');
+    expect(hostile.userData.arcadeProjectileShape).toBe('slug');
     expect(friendly.userData.arcadeProjectileShape).toBe('slug');
     expect(hostile.children[0].geometry).not.toBe(friendly.children[0].geometry);
   });
