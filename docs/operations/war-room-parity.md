@@ -1,6 +1,6 @@
 # War Room · matriz de paridad 2D ↔ 3D
 
-Última auditoría: 2026-09-11.
+Última auditoría: 2026-09-13.
 
 Objetivo: que 2D y War Room 3D sean dos renderers de la **misma partida**, no dos implementaciones de ajedrez. Las reglas, el turno, la posición, los clocks y la persistencia pertenecen al estado común; cambiar renderer sólo puede cambiar presentación e interacción equivalente.
 
@@ -36,10 +36,10 @@ No se eleva una fila a GATE por inspección de código o porque “parece que de
 | Clocks | **GATE F5 / CUBIERTO switch** | `war-room-interrupted-restore.spec.js` arranca una War Room cronometrada, deja correr el reloj humano, recarga y exige que el snapshot `chess-study-clock:*` continúe sin reset a 5:00; el rail vuelve con ambos clocks. | Añadir torture con reloj corriendo durante cambios repetidos 2D↔3D y sin reset/salto. |
 | Chat/comentarios Matthias | **CUBIERTO** | `GameBoardView` mantiene chat/contexto fuera del renderer; War Room reutiliza los mismos mensajes. | Cambiar repetidamente de renderer durante comentario y verificar no duplicación. |
 | Renderer switch repetido | **GATE** | `three-d-war-room.spec.js`: recorrido real 2D→3D→2D→3D→2D; conserva FEN y selección e4 al remontar, ejecuta una captura final única y termina sin selección residual. | Mantener en F5/restore y añadir torture con clocks. |
-| Limpieza de estado efímero | **PENDIENTE** | El gate repetido ya acredita limpieza de selección tras la captura, pero hover/inspect/cámara todavía no tienen ciclo E2E completo de desmontaje/remontaje. | Verificar hover/inspect/cámara al desmontar/remontar. |
+| Limpieza de estado efímero | **GATE** | `war-room-ephemeral-cleanup.spec.js`: deja selección, foco, modo inspección y cámara arrastrada; desmonta 3D pasando a 2D y remonta War Room exigiendo selección/targets/inspect limpios, foco canónico y un único canvas. | Mantener al añadir nuevos estados privados del renderer. |
 | Resize / orientation change | **CUBIERTO** | Gates War Room verifican desktop y Android sin overflow; lógica de resize existe. | Añadir resize/orientation durante partida con selección activa y después mover. |
 | F5 / restore | **GATE** | `war-room-interrupted-restore.spec.js`: juega y captura en War Room 3D, recarga tras movimientos confirmados, vuelve con renderer 3D limpio, reconcilia la posición autoritativa, preserva el clock sin reset, cruza 3D→2D→3D→2D y termina sin mutaciones duplicadas. | Mantener junto a reconnect y lifecycle. |
-| Reconnect | **CUBIERTO general** | `useGameReconnect` y gates de continuidad cubren reconciliación de partida; no están especializados en War Room. | Cortar red estando en 3D y acreditar la misma recuperación sin remount destructivo. |
+| Reconnect | **GATE** | `offline-pending-move-reconnect.spec.js`: provoca offline→online con `/move` pendiente ya dentro de War Room; difiere la reconciliación hasta acabar la mutación, conserva el mismo canvas, consume la foto autoritativa y no duplica POST. | Mantener junto a lifecycle y añadir una variante con corte de red ya estabilizada si cambia el reconciliador. |
 | Abandono / salida | **CUBIERTO general** | Flujo de partida común, fuera del renderer. | Un E2E desde War Room que abandone y confirme exactamente una transición/cleanup. |
 | Reduced motion | **CUBIERTO** | War Room consulta `getEffectiveReducedMotion`; animaciones físicas y Matthias respetan reducción. | Browser gate con media feature activa y operación completa. |
 | Fallback 3D → 2D por WebGL | **CUBIERTO** | `Board3D` captura fallo de `WebGLRenderer` y monta `<Board>` con nota de fallback. | E2E que fuerce fallo WebGL y confirme continuidad de la misma partida. |
@@ -61,9 +61,9 @@ Un renderer **no puede**:
 1. ~~Captura normal cross-renderer.~~ **Gateada** en `three-d-war-room.spec.js`.
 2. ~~Torture básico 2D→3D→2D→3D.~~ **Gateado** en el mismo recorrido de captura.
 3. ~~F5/restore específico de War Room 3D.~~ **Gateado** en `war-room-interrupted-restore.spec.js`, incluido clock persistido.
-4. Añadir **reconnect** específico con red interrumpida.
-5. Cerrar limpieza efímera de hover/inspect/cámara.
+4. ~~Reconnect específico con red interrumpida.~~ **Gateado** en `offline-pending-move-reconnect.spec.js`, incluido `/move` pendiente sin remount ni mutación duplicada.
+5. ~~Limpieza efímera de selección/foco/inspect/cámara tras remount.~~ **Gateada** en `war-room-ephemeral-cleanup.spec.js`.
 6. Añadir clocks durante renderer switch + orientación negra + resize/orientation + reduced-motion/fallback a la última milla.
 7. Mantener en cada slice los gates ya cerrados de jaque, mate, enroque, en passant, promoción, captura ordinaria, Android y Focus.
 
-El cierre final exige que reconnect y limpieza efímera dejen de depender de confianza manual.
+El cierre final exige que clocks durante switch, orientación negra, resize/orientation, reduced-motion y fallback WebGL dejen de depender de cobertura parcial o confianza manual.
