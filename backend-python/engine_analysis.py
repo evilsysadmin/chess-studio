@@ -60,6 +60,8 @@ class RootMoveComparison:
     loss: float
     depth: int
     candidate_count: int
+    best_principal_variation: tuple[chess.Move, ...] = ()
+    played_principal_variation: tuple[chess.Move, ...] = ()
     second_best_move: Optional[chess.Move] = None
     second_best_score: Optional[float] = None
     best_to_second_gap: Optional[float] = None
@@ -78,6 +80,8 @@ class FactualMoveAnalysis:
     loss: float
     depth: int
     candidate_count: int
+    suggested_line: tuple[dict, ...] = ()
+    played_line: tuple[dict, ...] = ()
     second_best: Optional[dict] = None
     eval_after_second_best: Optional[float] = None
     best_to_second_gap: Optional[float] = None
@@ -88,6 +92,8 @@ class FactualMoveAnalysis:
             "played": self.played,
             "suggestedReply": self.suggested_reply,
             "playedReply": self.played_reply,
+            "suggestedLine": list(self.suggested_line),
+            "playedLine": list(self.played_line),
             "evalAfterSuggested": self.eval_after_suggested,
             "evalAfterPlayed": self.eval_after_played,
             "loss": self.loss,
@@ -418,11 +424,10 @@ def compare_root_move(
 
     ``best_score`` and ``played_score`` always come from the same complete root
     pass at the same depth. ``loss`` is from the perspective of the side to move
-    and therefore never negative. At depth 2+, the comparison also carries the
-    best immediate reply after each line, giving consumers a legal two-ply
-    counterfactual without a second analysis pass. The runner-up and its gap to
-    the best move are preserved from that exact same complete root pass so later
-    consumers can reason about how constrained the choice really was.
+    and therefore never negative. The proven PV prefix for each root candidate
+    is carried forward from that exact pass, so consumers can inspect best
+    defense without launching a second search. The runner-up and its gap to the
+    best move are preserved from the same complete root pass as well.
     """
     if played_move not in board.legal_moves:
         raise ValueError("played_move must be legal in the supplied position")
@@ -461,6 +466,8 @@ def compare_root_move(
         loss=max(0.0, raw_loss),
         depth=depth,
         candidate_count=len(analyzed),
+        best_principal_variation=best.principal_variation or (best.move,),
+        played_principal_variation=played.principal_variation or (played.move,),
         second_best_move=second_best.move if second_best else None,
         second_best_score=second_best.score if second_best else None,
         best_to_second_gap=best_to_second_gap,
@@ -517,6 +524,18 @@ def _reply_dict(board: chess.Board, root_move: chess.Move, reply: Optional[chess
     return _engine.move_to_dict(child, reply)
 
 
+def _line_dicts(board: chess.Board, line: tuple[chess.Move, ...]) -> tuple[dict, ...]:
+    """Serialize one proven PV while rechecking every move against its position."""
+    probe = board.copy(stack=False)
+    serialized = []
+    for move in line:
+        if move not in probe.legal_moves:
+            raise ValueError("analysis principal variation contains an illegal move")
+        serialized.append(_engine.move_to_dict(probe, move))
+        probe.push(move)
+    return tuple(serialized)
+
+
 def build_factual_move_analysis(
     board: chess.Board,
     played_move: chess.Move,
@@ -528,8 +547,8 @@ def build_factual_move_analysis(
     """Build one reusable factual comparison for a played move.
 
     Search depth is capped by both the caller and the engine level. Only fully
-    completed iterative depths are exposed, and both root lines plus their first
-    legal reply remain on the same minimax scale.
+    completed iterative depths are exposed; root scores, replies and proven PV
+    prefixes all come from the same minimax pass and scale.
     """
     requested_depth = int(max_depth)
     if requested_depth < 1:
@@ -545,6 +564,9 @@ def build_factual_move_analysis(
         budget_s=effective_budget,
     )
 
+    suggested_line = comparison.best_principal_variation or (comparison.best_move,)
+    played_line = comparison.played_principal_variation or (comparison.played_move,)
+
     return FactualMoveAnalysis(
         suggested=_engine.move_to_dict(board, comparison.best_move),
         played=_engine.move_to_dict(board, comparison.played_move),
@@ -555,6 +577,8 @@ def build_factual_move_analysis(
         loss=comparison.loss,
         depth=comparison.depth,
         candidate_count=comparison.candidate_count,
+        suggested_line=_line_dicts(board, suggested_line),
+        played_line=_line_dicts(board, played_line),
         second_best=(
             _engine.move_to_dict(board, comparison.second_best_move)
             if comparison.second_best_move is not None
