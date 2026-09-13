@@ -347,8 +347,14 @@ export async function mockApi(page, {
 export async function login(page) {
   await page.goto('./');
   await page.getByLabel('Usuario').fill('e2e');
-  await page.getByLabel('Contraseña').fill('clave123456');
-  await page.getByRole('button', { name: 'Entrar' }).click();
+  const password = page.getByLabel('Contraseña');
+  await password.fill('clave123456');
+  const submit = page.getByRole('button', { name: 'Entrar' });
+  await expect(submit).toBeEnabled();
+  // Submit through the native form keyboard path. This exercises the same
+  // handleSubmit contract without coupling CI to transient button geometry
+  // while fonts/layout settle during the login screen's first frames.
+  await password.press('Enter');
   // Stable Home-ready landmark shared by immersive desktop and compact mobile.
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
 }

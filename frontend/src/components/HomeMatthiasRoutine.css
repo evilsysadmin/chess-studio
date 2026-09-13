@@ -159,3 +159,217 @@
     animation: none !important;
   }
 }
+
+/* Approved 1814×867 desktop master.
+ * The art already contains the static title and destination typography. React
+ * keeps ownership of interaction, live state, Matthias and account controls;
+ * those layers either become hotspots or deliberately cover their baked twin.
+ * This prevents the old "two Matthias" / double-label effect while preserving
+ * keyboard and pointer semantics. */
+@media (min-width: 1000px) and (pointer: fine) {
+  .illustrated-home__stage {
+    aspect-ratio: 1814 / 867 !important;
+  }
+
+  .illustrated-home__art,
+  .illustrated-home__castle-3d {
+    image-rendering: auto;
+  }
+
+  /* Static typography belongs to the approved master at desktop size. */
+  .illustrated-home__brand,
+  .illustrated-home__motto {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  .illustrated-home__destination:not(.illustrated-home__destination--play) {
+    color: transparent !important;
+    text-shadow: none !important;
+    border-radius: 16px;
+  }
+
+  .illustrated-home__destination:not(.illustrated-home__destination--play) > :is(svg, strong, span, i) {
+    opacity: 0 !important;
+  }
+
+  /* The invisible semantic buttons cover the labels painted into the master. */
+  .illustrated-home__destination--tournament {
+    left: 14.3% !important;
+    top: 18.2% !important;
+    width: 11.8% !important;
+    height: 23.5%;
+  }
+
+  .illustrated-home__destination--train {
+    left: 32.9% !important;
+    top: 18.2% !important;
+    width: 13.6% !important;
+    height: 23.5%;
+  }
+
+  .illustrated-home__destination--combat {
+    left: 51.6% !important;
+    top: 18.2% !important;
+    width: 14.5% !important;
+    height: 23.5%;
+  }
+
+  .illustrated-home__destination--daily {
+    left: 70.8% !important;
+    top: 18.2% !important;
+    width: 15.5% !important;
+    height: 23.5%;
+  }
+
+  .illustrated-home__destination--history {
+    left: .7% !important;
+    top: 34.2% !important;
+    width: 10.2% !important;
+    height: 22%;
+  }
+
+  .illustrated-home__destination:not(.illustrated-home__destination--play):hover,
+  .illustrated-home__destination:not(.illustrated-home__destination--play):focus-visible {
+    background: radial-gradient(ellipse, rgba(246, 190, 78, .13), transparent 72%) !important;
+    box-shadow: inset 0 0 0 1px rgba(245, 208, 126, .22), 0 0 28px rgba(222, 148, 42, .12);
+    filter: brightness(1.08);
+  }
+
+  /* JUGAR is stateful (CONTINUAR can replace it), so the live control covers the
+     baked panel instead of becoming a transparent hotspot. */
+  .illustrated-home__destination--play {
+    left: 39.1% !important;
+    top: 64.1% !important;
+    width: 21.9% !important;
+    min-height: 21.7% !important;
+    justify-content: center;
+    gap: .38cqw;
+    padding: 1.55cqw 2.6cqw 2.3cqw !important;
+    border: 1px solid rgba(194, 119, 62, .33) !important;
+    border-radius: 2px !important;
+    clip-path: polygon(0 0, 100% 0, 100% 79%, 50% 100%, 0 79%);
+    background:
+      radial-gradient(ellipse at 50% 24%, rgba(177, 42, 40, .24), transparent 52%),
+      linear-gradient(180deg, rgba(92, 8, 14, .985), rgba(70, 5, 11, .985)) !important;
+    box-shadow: inset 0 0 28px rgba(222, 91, 48, .12), 0 10px 28px rgba(0, 0, 0, .18) !important;
+  }
+
+  .illustrated-home__destination--play svg {
+    width: 1.75cqw !important;
+    height: 1.75cqw !important;
+    opacity: .55;
+  }
+
+  .illustrated-home__destination--play strong {
+    font-size: max(24px, 1.78cqw) !important;
+  }
+
+  .illustrated-home__destination--play > span {
+    font-size: max(14px, 1cqw) !important;
+  }
+
+  .illustrated-home__destination--play i {
+    display: none !important;
+  }
+
+  /* One Matthias, one card. His live routine remains dynamic but stays on top of
+     the exact card position in the master rather than wandering over a second
+     painted Matthias. */
+  .illustrated-home__matthias,
+  .illustrated-home__matthias[data-home-matthias-zone='table'],
+  .illustrated-home__matthias[data-home-matthias-zone='desk'],
+  .illustrated-home__matthias[data-home-matthias-zone='library'],
+  .illustrated-home__matthias[data-home-matthias-zone='rest'],
+  .illustrated-home__matthias.is-speaking {
+    --home-matthias-zone-left: 10.7% !important;
+    --home-matthias-zone-top: 63.7% !important;
+    left: var(--home-matthias-zone-left) !important;
+    top: var(--home-matthias-zone-top) !important;
+    width: 20.2% !important;
+    min-height: 18.8% !important;
+    grid-template-columns: clamp(72px, 5.3cqw, 102px) minmax(0, 1fr) !important;
+    column-gap: .8cqw !important;
+    padding: .62cqw .78cqw !important;
+    border: 1px solid rgba(169, 128, 57, .72) !important;
+    border-radius: 12px !important;
+    background: linear-gradient(104deg, rgba(15, 12, 10, .99), rgba(20, 15, 12, .965)) !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .28) !important;
+    transition: filter .18s ease, background-color .18s ease !important;
+  }
+
+  /* Keep remarks in the strip between the top destinations and Matthias' card.
+     The previous unconstrained 44% panel could physically cover Torneos. */
+  .illustrated-home__speech {
+    left: 11.2% !important;
+    bottom: 36.8% !important;
+    width: min(370px, 19.5%) !important;
+    max-height: 20% !important;
+    overflow: auto;
+  }
+
+  /* The approved master uses one Experimentos Geniales portal. Pawn Slug stays
+     inside that catalog instead of advertising itself as a second dashboard card. */
+  .illustrated-home__pawn-slug {
+    display: none !important;
+  }
+
+  .illustrated-home__utilities {
+    right: 8.1% !important;
+    bottom: 27.5% !important;
+    width: 16.4% !important;
+    height: 10.5% !important;
+    pointer-events: none;
+  }
+
+  .illustrated-home__utilities > .illustrated-home__dungeon-trigger {
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 12px !important;
+    pointer-events: auto;
+  }
+
+  .illustrated-home__utilities > .illustrated-home__dungeon-trigger::before {
+    inset: 0 !important;
+    border-radius: 12px !important;
+    background: radial-gradient(ellipse, rgba(246, 165, 55, .18), transparent 72%) !important;
+  }
+
+  .illustrated-home__dungeon-copy,
+  .illustrated-home__dungeon-chevron {
+    opacity: 0 !important;
+  }
+
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel {
+    right: 0 !important;
+    bottom: calc(100% + 12px) !important;
+    width: min(430px, 31cqw) !important;
+  }
+
+  /* Live global controls cover their painted twins with opaque chrome. */
+  body:has(.menu-illustrated) .global-music-dock {
+    left: 14px !important;
+    bottom: 12px !important;
+    width: 282px !important;
+  }
+
+  body:has(.menu-illustrated) .global-music-dock .music-deck {
+    min-height: 58px;
+    background: rgba(13, 12, 11, .985) !important;
+    border-color: rgba(138, 105, 62, .78) !important;
+  }
+
+  body .app-shell-home .masthead-account-trigger,
+  body .app-shell-home .masthead-release-trigger,
+  body .app-shell-home .masthead-feedback-trigger {
+    background: rgba(18, 15, 12, .985) !important;
+    border-color: rgba(139, 104, 56, .72) !important;
+  }
+
+  .illustrated-home__resident,
+  .illustrated-home__motto,
+  .illustrated-home__brand {
+    transform: none !important;
+  }
+}

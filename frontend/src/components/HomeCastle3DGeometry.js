@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 
-export const HOME_CASTLE_ART_WIDTH = 3.2;
+export const HOME_CASTLE_MASTER_WIDTH = 1814;
+export const HOME_CASTLE_MASTER_HEIGHT = 867;
 export const HOME_CASTLE_ART_HEIGHT = 1.8;
+export const HOME_CASTLE_ART_WIDTH = HOME_CASTLE_ART_HEIGHT * (HOME_CASTLE_MASTER_WIDTH / HOME_CASTLE_MASTER_HEIGHT);
 
 export function canonicalHallDepth(u, v) {
   const floor = THREE.MathUtils.clamp((0.34 - v) / 0.34, 0, 1);
