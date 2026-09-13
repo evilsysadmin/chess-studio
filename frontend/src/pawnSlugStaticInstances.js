@@ -1,13 +1,17 @@
 import * as THREE from 'three';
 
-export const PAWN_SLUG_STATIC_INSTANCE_VERSION = 'static-instance-batches-v1';
+export const PAWN_SLUG_STATIC_INSTANCE_VERSION = 'static-instance-batches-v2-shadow-budget';
 
 export function createPawnSlugStaticInstanceBatch({
   name,
   geometry,
   material,
   instances = [],
-  castShadow = true,
+  // Repeated scenery still receives the scene's directional shadows, but does
+  // not need to be rendered again into the shadow map. Callers can opt a rare
+  // hero prop back in explicitly when its cast silhouette is compositionally
+  // important.
+  castShadow = false,
   receiveShadow = true,
 } = {}) {
   if (!geometry || !material || instances.length === 0) return null;
