@@ -1,9 +1,9 @@
 import { STORAGE_LOCAL, readJsonStorage, writeJsonStorage } from './safeStorage.js';
 import { cooldownStateFromTimestamp } from './cooldownClock.js';
-import { buildPlayerModel } from './playerModel.js';
+import { buildPlayerModel, evidenceConfidence } from './playerModel.js';
 
 export const AI_PLAYER_PORTRAIT_CACHE_KEY = 'chess-study-ai-player-portrait-v1';
-const PORTRAIT_SCHEMA = 7;
+const PORTRAIT_SCHEMA = 8;
 const GAMES_PER_AUTOMATIC_REFRESH = 1;
 export const PLAYER_PORTRAIT_MAX_CHARS = 900;
 const PLAYER_PORTRAIT_MANUAL_COOLDOWN_MS = 6 * 60 * 60 * 1000;
@@ -23,6 +23,24 @@ function compactModeStats(byMode = {}) {
       draws: Number(stats.draws || 0),
       losses: Number(stats.losses || 0),
       win_pct: Number(stats.winPct || 0),
+    };
+  }
+  return out;
+}
+
+function compactTimeControlStats(byTimeControl = {}) {
+  const out = {};
+  for (const [id, stats] of Object.entries(byTimeControl || {})) {
+    const games = Math.max(0, Number(stats?.games || 0));
+    if (!id || id === 'none' || games < 3) continue;
+    const wins = Math.max(0, Number(stats?.wins || 0));
+    out[String(id).slice(0, 32)] = {
+      games,
+      wins,
+      draws: Math.max(0, Number(stats?.draws || 0)),
+      losses: Math.max(0, Number(stats?.losses || 0)),
+      win_pct: games ? Math.round((Math.min(wins, games) / games) * 100) : 0,
+      evidence_strength: evidenceConfidence(games, { mediumAt: 5, highAt: 10 }),
     };
   }
   return out;
@@ -93,6 +111,9 @@ export function buildPlayerPortraitFacts(insights, rivalry = {}, extras = {}, wo
       best_cpu_streak: Number(rivalry.record.bestCpuStreak || 0),
     };
   }
+
+  const timeControlFacts = compactTimeControlStats(rivalry?.record?.byTimeControl);
+  if (Object.keys(timeControlFacts).length) facts.by_time_control = timeControlFacts;
 
   const incidents = Object.entries(rivalry?.incidents || {})
     .filter(([, count]) => Number(count || 0) > 0)
