@@ -13,6 +13,7 @@ const FACTUAL_ROOT = {
   candidateCount: 20,
   secondBest: { from: 'd2', to: 'd4', san: 'd4' },
   bestToSecondGap: 120,
+  suggestedReply: { from: 'e7', to: 'e5', san: 'e5' },
 };
 
 describe('AI personal puzzle batches', () => {
@@ -44,7 +45,7 @@ describe('AI personal puzzle batches', () => {
     expect(parsePersonalPuzzleBatch('esto no es json')).toEqual([]);
   });
 
-  it('acepta sólo una jugada legal con mejor movimiento claramente probado y conserva provenance', async () => {
+  it('acepta sólo una jugada legal con mejor movimiento y mejor defensa probados', async () => {
     const candidate = { fen: START, best_uci: 'e2e4', title: 'Centro', description: 'Empuja el centro.' };
     const accepted = await validateAiPersonalPuzzleCandidate(candidate, {
       analyzeMove: async () => ({ suggested: { from: 'e2', to: 'e4', san: 'e4' }, ...FACTUAL_ROOT }),
@@ -53,13 +54,16 @@ describe('AI personal puzzle batches', () => {
       solution: ['e4'],
       source: 'workers-ai-validated',
       aiValidatedLevel: 92,
-      aiQualityVersion: 7,
+      aiQualityVersion: 8,
       tacticalBestMoveChecked: true,
       tacticalRefutationChecked: true,
+      tacticalBestDefenseChecked: true,
       engineAnalysisDepth: 3,
       engineCandidateCount: 20,
       engineSecondBest: { from: 'd2', to: 'd4', san: 'd4' },
       engineBestToSecondGap: 120,
+      engineTerminalAfterSolution: false,
+      engineBestDefense: { from: 'e7', to: 'e5', san: 'e5' },
     });
     expect(provesCurrentPersonalPuzzleQuality(accepted)).toBe(true);
 
@@ -69,9 +73,49 @@ describe('AI personal puzzle batches', () => {
     expect(rejected).toBeNull();
   });
 
+  it('rechaza una solución no terminal sin respuesta rival legal del mismo análisis', async () => {
+    const candidate = { fen: START, best_uci: 'e2e4' };
+    const matching = { suggested: { from: 'e2', to: 'e4', san: 'e4' }, ...FACTUAL_ROOT };
+
+    expect(await validateAiPersonalPuzzleCandidate(candidate, {
+      analyzeMove: async () => ({ ...matching, suggestedReply: null }),
+    })).toBeNull();
+    expect(await validateAiPersonalPuzzleCandidate(candidate, {
+      analyzeMove: async () => ({ ...matching, suggestedReply: { from: 'e2', to: 'e4', san: 'e4' } }),
+    })).toBeNull();
+  });
+
+  it('acepta mate terminal sin inventar una defensa inexistente', async () => {
+    const candidate = {
+      fen: '7k/8/6K1/8/8/8/Q7/8 w - - 0 1',
+      best_uci: 'a2a8',
+    };
+    const accepted = await validateAiPersonalPuzzleCandidate(candidate, {
+      analyzeMove: async () => ({
+        suggested: { from: 'a2', to: 'a8', san: 'Qa8#' },
+        analysisDepth: 3,
+        candidateCount: 12,
+        secondBest: { from: 'a2', to: 'b2', san: 'Qb2' },
+        bestToSecondGap: 500,
+        suggestedReply: null,
+      }),
+    });
+
+    expect(accepted).toMatchObject({
+      solution: ['Qa8#'],
+      tacticalBestDefenseChecked: true,
+      engineTerminalAfterSolution: true,
+      engineBestDefense: null,
+    });
+    expect(provesCurrentPersonalPuzzleQuality(accepted)).toBe(true);
+  });
+
   it('rechaza roots poco profundos, incompletos o ambiguos', async () => {
     const candidate = { fen: START, best_uci: 'e2e4' };
-    const matching = { suggested: { from: 'e2', to: 'e4', san: 'e4' } };
+    const matching = {
+      suggested: { from: 'e2', to: 'e4', san: 'e4' },
+      suggestedReply: { from: 'e7', to: 'e5', san: 'e5' },
+    };
 
     expect(await validateAiPersonalPuzzleCandidate(candidate, {
       analyzeMove: async () => ({ ...matching, analysisDepth: 1, candidateCount: 20, secondBest: { from: 'd2', to: 'd4' }, bestToSecondGap: 300 }),
@@ -92,6 +136,7 @@ describe('AI personal puzzle batches', () => {
     const accepted = await validateAiPersonalPuzzleCandidate(candidate, {
       analyzeMove: async () => ({
         suggested: { from: 'e2', to: 'e4', san: 'e4' },
+        suggestedReply: { from: 'e7', to: 'e5', san: 'e5' },
         analysisDepth: 2,
         candidateCount: 1,
         secondBest: null,
@@ -102,19 +147,35 @@ describe('AI personal puzzle batches', () => {
       engineCandidateCount: 1,
       engineSecondBest: null,
       engineBestToSecondGap: null,
+      engineBestDefense: { from: 'e7', to: 'e5', san: 'e5' },
     });
   });
 
-  it('retira del contrato actual un puzzle AI legacy que no conserva la prueba clear-best', () => {
+  it('retira del contrato actual un puzzle AI legacy sin prueba de mejor defensa', () => {
     expect(provesCurrentPersonalPuzzleQuality({
       source: 'workers-ai-validated',
       aiValidatedLevel: 92,
-      aiQualityVersion: 6,
+      aiQualityVersion: 7,
       tacticalBestMoveChecked: true,
       tacticalRefutationChecked: true,
       engineAnalysisDepth: 3,
       engineCandidateCount: 20,
+      engineSecondBest: { from: 'd2', to: 'd4' },
       engineBestToSecondGap: 300,
+    })).toBe(false);
+    expect(provesCurrentPersonalPuzzleQuality({
+      source: 'workers-ai-validated',
+      aiValidatedLevel: 92,
+      aiQualityVersion: 8,
+      tacticalBestMoveChecked: true,
+      tacticalRefutationChecked: true,
+      tacticalBestDefenseChecked: true,
+      engineAnalysisDepth: 3,
+      engineCandidateCount: 20,
+      engineSecondBest: { from: 'd2', to: 'd4' },
+      engineBestToSecondGap: 300,
+      engineTerminalAfterSolution: false,
+      engineBestDefense: null,
     })).toBe(false);
   });
 
@@ -125,7 +186,11 @@ describe('AI personal puzzle batches', () => {
       title: 'Jaque de humo',
     };
     const rejected = await validateAiPersonalPuzzleCandidate(candidate, {
-      analyzeMove: async () => ({ suggested: { from: 'c5', to: 'e6', san: 'Ne6+' }, ...FACTUAL_ROOT }),
+      analyzeMove: async () => ({
+        suggested: { from: 'c5', to: 'e6', san: 'Ne6+' },
+        ...FACTUAL_ROOT,
+        suggestedReply: { from: 'f7', to: 'e6', san: 'fxe6' },
+      }),
     });
     expect(rejected).toBeNull();
   });
