@@ -13,7 +13,7 @@ const debtPuzzles = [
   { id: 'p2', source: 'autopsy', sourceGameId: 'g2', incidentKeys: ['human:MISSED_MATE'], cleanSolves: 0 },
 ];
 
-describe('sesiones guiadas 15/30 minutos', () => {
+describe('sesiones guiadas 5/15/30 minutos', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
@@ -26,7 +26,20 @@ describe('sesiones guiadas 15/30 minutos', () => {
     expect(plan.reason).toContain('Aún no hay errores personales');
   });
 
-  it('prioriza deuda real, añade práctica sin rating y respeta exactamente el presupuesto', () => {
+  it('usa los cinco minutos como bloque express en un único foco factual más cierre', () => {
+    const plan = buildGuidedTrainingPlan({ minutes: 5, history: [], puzzles: debtPuzzles, rivalry: {} });
+
+    expect(plan.available).toBe(true);
+    expect(plan.minutes).toBe(5);
+    expect(plan.steps).toEqual([
+      expect.objectContaining({ kind: 'debt', action: 'personal-filter', minutes: 4 }),
+      expect.objectContaining({ kind: 'review', action: 'review', minutes: 1 }),
+    ]);
+    expect(plan.steps.some((step) => step.kind === 'short-game')).toBe(false);
+    expect(plan.steps.reduce((sum, step) => sum + step.minutes, 0)).toBe(5);
+  });
+
+  it('prioriza deuda real, añade práctica sin rating y respeta exactamente los presupuestos largos', () => {
     const plan15 = buildGuidedTrainingPlan({ minutes: 15, history: [], puzzles: debtPuzzles, rivalry: {} });
     const plan30 = buildGuidedTrainingPlan({ minutes: 30, history: [], puzzles: debtPuzzles, rivalry: {} });
 
@@ -82,6 +95,19 @@ describe('sesiones guiadas 15/30 minutos', () => {
     expect(practice.training.difficulty).toBe(50);
     expect(practice.training.humanColor).toBe('b');
     expect(practice.training.fen).toContain('rnbqkbnr');
+  });
+
+  it('persiste también una sesión express de cinco minutos sin normalizarla a quince', () => {
+    const plan = buildGuidedTrainingPlan({ minutes: 5, history: [], puzzles: debtPuzzles, rivalry: {} });
+    const started = startGuidedTrainingSession(plan, { now: NOW });
+
+    expect(started).toMatchObject({ minutes: 5, currentIndex: 0 });
+    expect(loadGuidedTrainingSession({ now: NOW })).toMatchObject({ id: started.id, minutes: 5, currentIndex: 0 });
+
+    const review = advanceGuidedTrainingSession(started, { now: NOW });
+    expect(review).toMatchObject({ minutes: 5, currentIndex: 1 });
+    expect(advanceGuidedTrainingSession(review, { now: NOW })).toBeNull();
+    expect(sessionStorage.getItem(GUIDED_TRAINING_SESSION_KEY)).toBeNull();
   });
 
   it('conserva el paso actual en sessionStorage y lo elimina al terminar', () => {
