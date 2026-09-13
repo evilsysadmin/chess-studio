@@ -17,6 +17,7 @@ import users_store as ustore
 import release_info
 from auth import verify_password
 from feature_flags import public_feature_flags
+from observability import record_process_ready
 from observability_history import record_presence_snapshot
 from api_models import ClientTelemetryRequest, DeleteAccountRequest
 from client_telemetry import record_client_event
@@ -63,7 +64,16 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
         storage_required = db.persistent_storage_required()
         if storage_required and await db.get_db() is None:
             raise HTTPException(503, "MongoDB no está lista.")
-        return {"ok": True, "storage": "mongo" if storage_required else "memory"}
+        storage = "mongo" if storage_required else "memory"
+        cold_start_ms, first_observation = record_process_ready()
+        if first_observation:
+            _logger.info(
+                "backend_first_ready_observed cold_start_ms=%.2f storage=%s",
+                cold_start_ms,
+                storage,
+            )
+        # Conservamos deliberadamente el shape público de readiness.
+        return {"ok": True, "storage": storage}
 
     @router.get("/api/features")
     async def public_features(_username: str = Depends(auth_dependency)):
