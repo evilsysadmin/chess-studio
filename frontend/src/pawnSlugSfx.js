@@ -34,6 +34,14 @@ export const PAWN_SLUG_IMPACT_SOUND_PROFILES = Object.freeze({
   boss: Object.freeze({ body: 52, ring: 430, noise: 0.09 }),
 });
 
+export const PAWN_SLUG_COMBAT_CUE_PRIORITY = Object.freeze({
+  pawn: 1,
+  knight: 2,
+  bishop: 2,
+  rook: 3,
+  boss: 4,
+});
+
 const SHARED_NOISE_SECONDS = 0.5;
 const PLAYER_WEAPON_SCALE = 0.72;
 
@@ -49,7 +57,9 @@ let playerWeaponPanner = null;
 let enemyWeaponPanner = null;
 let sharedNoiseBuffer = null;
 let lastImpactAt = -Infinity;
+let lastImpactPriority = 0;
 let lastKoAt = -Infinity;
+let lastKoPriority = 0;
 let lastPlayerHitAt = -Infinity;
 
 function profileVolume() {
@@ -117,6 +127,27 @@ export function pawnSlugWeaponGainScale(weapon = 'pistol', { enemy = false } = {
 
 export function pawnSlugWeaponStereoPan({ enemy = false } = {}) {
   return enemy ? PAWN_SLUG_WEAPON_STEREO_PAN.enemy : PAWN_SLUG_WEAPON_STEREO_PAN.player;
+}
+
+export function pawnSlugCombatCuePriority(type = 'pawn') {
+  return PAWN_SLUG_COMBAT_CUE_PRIORITY[type] ?? PAWN_SLUG_COMBAT_CUE_PRIORITY.pawn;
+}
+
+export function pawnSlugShouldPlayCombatCue({
+  now,
+  lastAt = -Infinity,
+  lastPriority = 0,
+  type = 'pawn',
+  cooldown = 0,
+} = {}) {
+  const safeNow = Number(now);
+  const safeLastAt = Number(lastAt);
+  const elapsed = Number.isFinite(safeNow) && Number.isFinite(safeLastAt)
+    ? Math.max(0, safeNow - safeLastAt)
+    : Infinity;
+  const safeCooldown = Math.max(0, Number(cooldown) || 0);
+  const previousPriority = Math.max(0, Number(lastPriority) || 0);
+  return elapsed >= safeCooldown || pawnSlugCombatCuePriority(type) > previousPriority;
 }
 
 function connectOutput(node, pan = 0) {
@@ -224,8 +255,16 @@ export function playPawnSlugWeaponSfx(weapon = 'pistol', { enemy = false } = {})
 
 export function playPawnSlugEnemyImpactSfx(type = 'pawn') {
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  if (now - lastImpactAt < 24) return;
+  const priority = pawnSlugCombatCuePriority(type);
+  if (!pawnSlugShouldPlayCombatCue({
+    now,
+    lastAt: lastImpactAt,
+    lastPriority: lastImpactPriority,
+    type,
+    cooldown: 24,
+  })) return;
   lastImpactAt = now;
+  lastImpactPriority = priority;
   const profile = pawnSlugImpactSoundProfile(type);
   const pitch = pawnSlugSoundPitchVariation(Math.random(), { width: 0.045 });
   noise({ duration: profile.noise, gain: type === 'rook' || type === 'boss' ? 0.115 : 0.085, cutoff: type === 'pawn' ? 1250 : 2600 });
@@ -235,8 +274,16 @@ export function playPawnSlugEnemyImpactSfx(type = 'pawn') {
 
 export function playPawnSlugEnemyKoSfx(type = 'pawn') {
   const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  if (now - lastKoAt < 75) return;
+  const priority = pawnSlugCombatCuePriority(type);
+  if (!pawnSlugShouldPlayCombatCue({
+    now,
+    lastAt: lastKoAt,
+    lastPriority: lastKoPriority,
+    type,
+    cooldown: 75,
+  })) return;
   lastKoAt = now;
+  lastKoPriority = priority;
   const heavy = type === 'rook' || type === 'boss';
   const armored = type === 'knight' || type === 'rook' || type === 'bishop' || type === 'boss';
   const pitch = pawnSlugSoundPitchVariation(Math.random(), { width: 0.04 });
@@ -270,6 +317,8 @@ export function destroyPawnSlugPremiumSfx() {
   enemyWeaponPanner = null;
   sharedNoiseBuffer = null;
   lastImpactAt = -Infinity;
+  lastImpactPriority = 0;
   lastKoAt = -Infinity;
+  lastKoPriority = 0;
   lastPlayerHitAt = -Infinity;
 }

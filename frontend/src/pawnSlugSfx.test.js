@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PAWN_SLUG_COMBAT_CUE_PRIORITY,
   PAWN_SLUG_HOSTILE_WEAPON_SCALES,
   PAWN_SLUG_IMPACT_SOUND_PROFILES,
   PAWN_SLUG_WEAPON_PITCH_WIDTHS,
   PAWN_SLUG_WEAPON_SOUND_PROFILES,
   PAWN_SLUG_WEAPON_STEREO_PAN,
+  pawnSlugCombatCuePriority,
   pawnSlugImpactSoundProfile,
+  pawnSlugShouldPlayCombatCue,
   pawnSlugSoundPitchVariation,
   pawnSlugWeaponGainScale,
   pawnSlugWeaponPitchWidth,
@@ -82,6 +85,52 @@ describe('Pawn Slug arcade combat SFX', () => {
     expect(pawnSlugImpactSoundProfile('knight').ring).toBeGreaterThan(0);
     expect(pawnSlugImpactSoundProfile('rook').ring).toBeGreaterThan(0);
     expect(pawnSlugImpactSoundProfile('boss').body).toBeLessThan(pawnSlugImpactSoundProfile('pawn').body);
+  });
+
+  it('ranks combat cues by threat weight', () => {
+    expect(PAWN_SLUG_COMBAT_CUE_PRIORITY).toEqual({
+      pawn: 1,
+      knight: 2,
+      bishop: 2,
+      rook: 3,
+      boss: 4,
+    });
+    expect(pawnSlugCombatCuePriority('pawn')).toBeLessThan(pawnSlugCombatCuePriority('knight'));
+    expect(pawnSlugCombatCuePriority('knight')).toBe(pawnSlugCombatCuePriority('bishop'));
+    expect(pawnSlugCombatCuePriority('bishop')).toBeLessThan(pawnSlugCombatCuePriority('rook'));
+    expect(pawnSlugCombatCuePriority('rook')).toBeLessThan(pawnSlugCombatCuePriority('boss'));
+    expect(pawnSlugCombatCuePriority('unknown')).toBe(pawnSlugCombatCuePriority('pawn'));
+  });
+
+  it('lets heavier cues preempt throttling without letting routine cues spam', () => {
+    expect(pawnSlugShouldPlayCombatCue({
+      now: 10,
+      lastAt: 0,
+      lastPriority: pawnSlugCombatCuePriority('pawn'),
+      type: 'rook',
+      cooldown: 24,
+    })).toBe(true);
+    expect(pawnSlugShouldPlayCombatCue({
+      now: 10,
+      lastAt: 0,
+      lastPriority: pawnSlugCombatCuePriority('rook'),
+      type: 'pawn',
+      cooldown: 24,
+    })).toBe(false);
+    expect(pawnSlugShouldPlayCombatCue({
+      now: 10,
+      lastAt: 0,
+      lastPriority: pawnSlugCombatCuePriority('rook'),
+      type: 'rook',
+      cooldown: 24,
+    })).toBe(false);
+    expect(pawnSlugShouldPlayCombatCue({
+      now: 24,
+      lastAt: 0,
+      lastPriority: pawnSlugCombatCuePriority('boss'),
+      type: 'pawn',
+      cooldown: 24,
+    })).toBe(true);
   });
 
   it('falls back to stable pistol and pawn profiles', () => {
