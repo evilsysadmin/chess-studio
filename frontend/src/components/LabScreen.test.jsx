@@ -1,6 +1,11 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  EXPERIMENT_MATURITY,
+  EXPERIMENT_MATURITY_VALUES,
+  experimentMaturityLabel,
+} from '../experimentMaturity.js';
 import { requestLabLaunch } from '../labLaunchIntent.js';
 import LabScreen from './LabScreen.jsx';
 
@@ -21,6 +26,27 @@ describe('LabScreen experiment hub', () => {
     expect(html).toContain('POC · JUGABLE');
     expect(html).toContain('MADURO · HERRAMIENTA');
     expect(html).toContain('EXPERIMENTAL · VARIANTE');
+  });
+
+  it('usa un contrato común con todos los estados de madurez del producto', () => {
+    expect(EXPERIMENT_MATURITY_VALUES).toEqual([
+      EXPERIMENT_MATURITY.POC,
+      EXPERIMENT_MATURITY.EXPERIMENTAL,
+      EXPERIMENT_MATURITY.MATURE,
+      EXPERIMENT_MATURITY.CANONICAL,
+      EXPERIMENT_MATURITY.FROZEN,
+      EXPERIMENT_MATURITY.RETIRED,
+    ]);
+    expect(EXPERIMENT_MATURITY_VALUES.map((maturity) => experimentMaturityLabel(maturity))).toEqual([
+      'POC',
+      'EXPERIMENTAL',
+      'MADURO',
+      'CANÓNICO',
+      'CONGELADO',
+      'RETIRADO',
+    ]);
+    expect(experimentMaturityLabel(EXPERIMENT_MATURITY.EXPERIMENTAL, ' en pulido ')).toBe('EXPERIMENTAL · EN PULIDO');
+    expect(() => experimentMaturityLabel('inventado')).toThrow('Unknown experiment maturity');
   });
 
   it('no usa detalles de implementación o novedad como jerarquía principal', () => {
