@@ -42,6 +42,36 @@ describe('sesiones guiadas 15/30 minutos', () => {
     expect(plan30.steps[0].minutes).toBe(16);
   });
 
+  it('toma la deuda focal del Player Model sin recalcularla en la sesión', () => {
+    const plan = buildGuidedTrainingPlan({
+      minutes: 15,
+      history: [],
+      puzzles: [],
+      rivalry: {},
+      playerModel: {
+        trainingDebt: {
+          top: {
+            incidentKey: 'human:ALLOWED_MATE',
+            label: 'Mates que regalaste',
+            progress: 1,
+            target: 2,
+            cases: 3,
+            paid: false,
+          },
+        },
+      },
+    });
+
+    expect(plan.available).toBe(true);
+    expect(plan.steps[0]).toMatchObject({
+      id: 'debt:human:ALLOWED_MATE',
+      kind: 'debt',
+      action: 'personal-filter',
+      filter: { incidentKey: 'human:ALLOWED_MATE' },
+    });
+    expect(plan.steps[0].title).toContain('Mates que regalaste');
+  });
+
   it('ajusta la práctica desde datos recientes sin convertirlos en una afirmación inventada', () => {
     const history = [
       { id: 'g1', difficulty: 40, humanColor: 'b' },
