@@ -3,7 +3,29 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
-const VIEWPORT = { width: 390, height: 844 };
+const CAPTURE_PROFILES = Object.freeze([
+  Object.freeze({
+    label: 'war-room-android-390x844',
+    title: 'Android portrait',
+    viewport: Object.freeze({ width: 390, height: 844 }),
+    hasTouch: true,
+    portraitContract: true,
+  }),
+  Object.freeze({
+    label: 'war-room-android-landscape-844x390',
+    title: 'Android landscape',
+    viewport: Object.freeze({ width: 844, height: 390 }),
+    hasTouch: true,
+    portraitContract: false,
+  }),
+  Object.freeze({
+    label: 'war-room-desktop-1440x900',
+    title: 'Desktop 1440×900',
+    viewport: Object.freeze({ width: 1440, height: 900 }),
+    hasTouch: false,
+    portraitContract: false,
+  }),
+]);
 
 async function open3DFromAppearance(page) {
   const board3d = page.locator('[data-board3d-war-room="true"]');
@@ -43,8 +65,8 @@ async function captureViewportPng(context, page, path) {
   }
 }
 
-async function captureWarRoomHealth(page) {
-  return page.evaluate(() => {
+async function captureWarRoomHealth(page, label) {
+  return page.evaluate((captureLabel) => {
     const viewport = { width: window.innerWidth, height: window.innerHeight };
     const box = (selector) => {
       const node = document.querySelector(selector);
@@ -62,10 +84,10 @@ async function captureWarRoomHealth(page) {
         visibility: style.visibility,
       };
     };
-    const buttonBox = (label) => {
+    const buttonBox = (labelText) => {
       const node = [...document.querySelectorAll('button, [role="button"]')]
         .find((candidate) => {
-          if ((candidate.getAttribute('aria-label') || '').trim() !== label) return false;
+          if ((candidate.getAttribute('aria-label') || '').trim() !== labelText) return false;
           const rect = candidate.getBoundingClientRect();
           const style = getComputedStyle(candidate);
           return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
@@ -93,18 +115,22 @@ async function captureWarRoomHealth(page) {
     const focus = buttonBox('Focus');
     const abandon = buttonBox('Abandonar partida');
     const overflow = buttonBox('Más acciones de partida');
+    const boardVisibleWidth = board
+      ? Math.max(0, Math.min(board.right, viewport.width) - Math.max(board.left, 0))
+      : 0;
     const boardVisibleHeight = board
       ? Math.max(0, Math.min(board.bottom, viewport.height) - Math.max(board.top, 0))
       : 0;
 
     return {
-      label: 'war-room-android-390x844',
+      label: captureLabel,
       viewport,
       dpr: window.devicePixelRatio,
       hardwareConcurrency: navigator.hardwareConcurrency,
       touchPoints: navigator.maxTouchPoints,
       coarsePointer: window.matchMedia('(pointer: coarse)').matches,
       horizontalOverflowPx: Math.max(0, root.scrollWidth - root.clientWidth),
+      verticalOverflowPx: Math.max(0, root.scrollHeight - root.clientHeight),
       board,
       hud,
       masthead,
@@ -115,90 +141,118 @@ async function captureWarRoomHealth(page) {
       quickActions: { focus, abandon, overflow },
       boardViewportFill: Number((boardVisibleHeight / viewport.height).toFixed(3)),
       boardWidthFill: board ? Number((board.width / viewport.width).toFixed(3)) : 0,
+      boardVisibleWidthFill: Number((boardVisibleWidth / viewport.width).toFixed(3)),
       hudToBoardGap: board && hud ? Number((board.top - hud.bottom).toFixed(1)) : null,
       playerToBoardGap: board && human ? Number((human.top - board.bottom).toFixed(1)) : null,
     };
-  });
+  }, label);
 }
 
-test('War Room · captura visual canónica Android portrait', async () => {
-  test.setTimeout(120_000);
-  await mkdir(ARTIFACT_DIR, { recursive: true });
-
-  const browser = await chromium.launch({
-    headless: true,
-    args: [
-      '--use-gl=angle',
-      '--use-angle=swiftshader',
-      '--enable-unsafe-swiftshader',
-    ],
+async function openCanonicalWarRoom(page) {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await mockApi(page, {
+    profileSeed: {
+      'matthias.onboarded': '2',
+      'chess-study-home-guide-dismissed-v1': '1',
+    },
   });
+  await login(page);
 
-  const context = await browser.newContext({
-    viewport: VIEWPORT,
-    hasTouch: true,
-  });
-  await context.addInitScript(() => {
-    Object.defineProperty(navigator, 'hardwareConcurrency', {
-      configurable: true,
-      get: () => 8,
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameTurn(page)).toBeVisible();
+
+  const board3d = await open3DFromAppearance(page);
+  const canvas = page.locator('.board3d-main-canvas');
+  await expect(canvas).toBeVisible({ timeout: 30_000 });
+  await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
+  await expect(page.locator('.game-3d-matthias-card')).toBeVisible();
+  return board3d;
+}
+
+function expectSharedHealth(health) {
+  expect(health.horizontalOverflowPx, `${health.label} must not overflow horizontally`).toBeLessThanOrEqual(1);
+  expect(health.board?.width, `${health.label} must render the 3D scene`).toBeGreaterThan(0);
+  expect(health.board?.height, `${health.label} must render the 3D scene`).toBeGreaterThan(0);
+  expect(health.boardVisibleWidthFill, `${health.label} must keep the scene meaningfully visible`).toBeGreaterThan(0.4);
+}
+
+function expectPortraitHealth(health) {
+  expect(health.coarsePointer, 'Android capture must emulate a coarse pointer').toBe(true);
+  expect(health.touchPoints, 'Android capture must expose touch points').toBeGreaterThan(0);
+  expect(health.hud?.height, 'compact Matthias HUD height').toBeLessThanOrEqual(72);
+  expect(health.legacyCommandDeck?.display, 'legacy Focus/Abandon row must stay visually folded').toBe('none');
+  expect(health.boardWidthFill, '3D scene should remain the dominant mobile surface').toBeGreaterThanOrEqual(0.88);
+  expect(health.hudToBoardGap, 'HUD should sit directly above the board').toBeLessThanOrEqual(20);
+  expect(health.human?.height, 'human rail height').toBeLessThanOrEqual(50);
+  expect(health.music?.height, 'music rail height').toBeLessThanOrEqual(50);
+  expect(health.notation?.height, 'notation rail height').toBeLessThanOrEqual(50);
+  expect(Math.abs((health.music?.top ?? 0) - (health.notation?.top ?? 0)), 'music/notebook row alignment').toBeLessThanOrEqual(2);
+}
+
+for (const profile of CAPTURE_PROFILES) {
+  test(`War Room · captura visual canónica ${profile.title}`, async () => {
+    test.setTimeout(120_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+
+    const browser = await chromium.launch({
+      headless: true,
+      args: [
+        '--use-gl=angle',
+        '--use-angle=swiftshader',
+        '--enable-unsafe-swiftshader',
+      ],
     });
-  });
 
-  const page = await context.newPage();
-  try {
-    await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await mockApi(page, {
-      profileSeed: {
-        'matthias.onboarded': '2',
-        'chess-study-home-guide-dismissed-v1': '1',
-      },
+    const context = await browser.newContext({
+      viewport: profile.viewport,
+      hasTouch: profile.hasTouch,
     });
-    await login(page);
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, 'hardwareConcurrency', {
+        configurable: true,
+        get: () => 8,
+      });
+    });
 
-    await buttonWithVisibleText(page, 'Partida rápida').click();
-    await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-    await expect(gameTurn(page)).toBeVisible();
+    const page = await context.newPage();
+    try {
+      await openCanonicalWarRoom(page);
 
-    const board3d = await open3DFromAppearance(page);
-    const canvas = page.locator('.board3d-main-canvas');
-    await expect(canvas).toBeVisible({ timeout: 30_000 });
-    await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
-    await expect(page.locator('.game-3d-matthias-card')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Focus', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Abandonar partida', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Más acciones de partida', exact: true })).toBeVisible();
+      if (profile.portraitContract) {
+        await expect(page.getByRole('button', { name: 'Focus', exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Abandonar partida', exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: 'Más acciones de partida', exact: true })).toBeVisible();
+      }
 
-    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-    await page.waitForTimeout(350);
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await page.waitForTimeout(350);
 
-    const health = await captureWarRoomHealth(page);
-    await writeFile(
-      `${ARTIFACT_DIR}/war-room-android-390x844-health.json`,
-      `${JSON.stringify({ schema: 1, capture: health }, null, 2)}\n`,
-      'utf8',
-    );
+      const health = await captureWarRoomHealth(page, profile.label);
+      await writeFile(
+        `${ARTIFACT_DIR}/${profile.label}-health.json`,
+        `${JSON.stringify({ schema: 2, capture: health }, null, 2)}\n`,
+        'utf8',
+      );
 
-    expect(health.coarsePointer, 'Android capture must emulate a coarse pointer').toBe(true);
-    expect(health.touchPoints, 'Android capture must expose touch points').toBeGreaterThan(0);
-    expect(health.horizontalOverflowPx, 'War Room must not overflow horizontally').toBeLessThanOrEqual(1);
-    expect(health.hud?.height, 'compact Matthias HUD height').toBeLessThanOrEqual(72);
-    expect(health.legacyCommandDeck?.display, 'legacy Focus/Abandon row must stay visually folded').toBe('none');
-    expect(health.boardWidthFill, '3D scene should remain the dominant mobile surface').toBeGreaterThanOrEqual(0.88);
-    expect(health.hudToBoardGap, 'HUD should sit directly above the board').toBeLessThanOrEqual(20);
-    expect(health.human?.height, 'human rail height').toBeLessThanOrEqual(50);
-    expect(health.music?.height, 'music rail height').toBeLessThanOrEqual(50);
-    expect(health.notation?.height, 'notation rail height').toBeLessThanOrEqual(50);
-    expect(Math.abs((health.music?.top ?? 0) - (health.notation?.top ?? 0)), 'music/notebook row alignment').toBeLessThanOrEqual(2);
+      expectSharedHealth(health);
+      if (profile.hasTouch) {
+        expect(health.coarsePointer, `${profile.title} must emulate a coarse pointer`).toBe(true);
+        expect(health.touchPoints, `${profile.title} must expose touch points`).toBeGreaterThan(0);
+      } else {
+        expect(health.coarsePointer, 'Desktop capture must retain a fine pointer').toBe(false);
+      }
+      if (profile.portraitContract) expectPortraitHealth(health);
 
-    await freezeVisualFrame(page);
-    await captureViewportPng(
-      context,
-      page,
-      `${ARTIFACT_DIR}/war-room-android-390x844.png`,
-    );
-  } finally {
-    await context.close();
-    await browser.close();
-  }
-});
+      await freezeVisualFrame(page);
+      await captureViewportPng(
+        context,
+        page,
+        `${ARTIFACT_DIR}/${profile.label}.png`,
+      );
+    } finally {
+      await context.close();
+      await browser.close();
+    }
+  });
+}
