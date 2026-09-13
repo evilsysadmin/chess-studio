@@ -92,7 +92,8 @@
       'pill'
       'controls';
     gap: .3rem;
-    min-width: 0;
+    width: 100%;
+    min-width: 0 !important;
     max-width: 100%;
     box-sizing: border-box;
   }
@@ -106,11 +107,18 @@
     display: none;
   }
 
+  /* At 821–920px the portrait-density layer no longer applies, but the compact
+   * Appearance menu still reserves ~2.55rem on the right. A legacy card rule can
+   * otherwise treat that padding as extra intrinsic width, growing the 188px
+   * commander rail to ~228px and producing document-level horizontal overflow.
+   * Pin the pill to the rail's border box while leaving the menu itself visible. */
   .game-screen .game-3d-turn-pill.game-3d-matthias-card {
     grid-area: pill;
     display: flex !important;
-    width: 100%;
-    max-width: 100%;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
     min-height: 34px !important;
     padding: .28rem .42rem;
     gap: .3rem;
@@ -120,6 +128,19 @@
     width: 20px;
     height: 20px;
     flex-basis: 20px;
+  }
+
+  .game-screen .game-3d-turn-pill-identity {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .game-screen .game-3d-turn-pill-label {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .game-screen .game-3d-turn-pill-identity,
