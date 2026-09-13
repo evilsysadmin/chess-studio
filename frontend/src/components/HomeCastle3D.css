@@ -37,6 +37,28 @@
   }
 }
 
+/* Once the real 3D props are visible on a wide fine-pointer layout, the old
+ * destination pictograms become a quiet fallback instead of competing with
+ * the physical objects. Coarse/tall/mobile compositions keep the full icons
+ * because their camera crop may legitimately hide an edge prop. */
+@media (min-width: 1000px) and (pointer: fine) {
+  @supports selector(.illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)) {
+    .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
+      .illustrated-home__destination > svg {
+      opacity: 0.16;
+      transform: scale(0.88);
+      transition: opacity 160ms ease-out, transform 160ms ease-out;
+    }
+
+    .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
+      .illustrated-home__destination:hover > svg,
+    .illustrated-home__stage:has(.illustrated-home__castle-3d.is-ready)
+      .illustrated-home__destination:focus-visible > svg {
+      opacity: 0.3;
+    }
+  }
+}
+
 @media (max-width: 359px) {
   .illustrated-home__castle-3d {
     display: none;
@@ -45,7 +67,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .illustrated-home__castle-3d,
-  .illustrated-home__art {
+  .illustrated-home__art,
+  .illustrated-home__destination > svg {
     transition: none;
   }
 
