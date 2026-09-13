@@ -8,6 +8,7 @@ import {
 import { homeCastleLightingProfile } from './HomeCastle3DLighting.js';
 import { homeCastleRoomFocus } from './HomeCastle3DRoomFocus.js';
 import { homeCastle3DRenderPolicy } from './HomeCastle3DRenderPolicy.js';
+import { createHomeCastle3DPerformanceGovernor } from './HomeCastle3DPerformanceGovernor.js';
 import { applyCanonicalHallOcclusion } from './HomeCastle3DOcclusion.js';
 import {
   HOME_CASTLE_CHANDELIER_LIGHT_ANCHORS,
@@ -46,9 +47,13 @@ function frameOrthographicCamera(camera, aspect) {
   camera.updateProjectionMatrix();
 }
 
-function browserRenderPolicy() {
+function browserRenderPolicy(runtimeLodCap = null) {
   if (typeof window === 'undefined') {
-    return homeCastle3DRenderPolicy({ viewportWidth: 0, hardwareConcurrency: 4 });
+    return homeCastle3DRenderPolicy({
+      viewportWidth: 0,
+      hardwareConcurrency: 4,
+      runtimeLodCap,
+    });
   }
   return homeCastle3DRenderPolicy({
     viewportWidth: window.innerWidth,
@@ -56,7 +61,26 @@ function browserRenderPolicy() {
     hardwareConcurrency: typeof navigator !== 'undefined'
       ? (navigator.hardwareConcurrency || 4)
       : 4,
+    runtimeLodCap,
   });
+}
+
+function sameRenderPolicy(a, b) {
+  return a.enabled === b.enabled
+    && a.lod === b.lod
+    && a.pixelRatio === b.pixelRatio
+    && a.minFrameIntervalMs === b.minFrameIntervalMs
+    && a.geometrySegments.width === b.geometrySegments.width
+    && a.geometrySegments.height === b.geometrySegments.height
+    && a.antialias === b.antialias
+    && a.powerPreference === b.powerPreference;
+}
+
+function tighterRuntimeLodCap(current, next) {
+  if (current === '2d' || next === current) return current;
+  if (next === '2d') return '2d';
+  if (next === 'lite' && current == null) return 'lite';
+  return current;
 }
 
 function addLightRig(scene, profile) {
@@ -104,7 +128,8 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
   const canvasRef = useRef(null);
   const activeRoomRef = useRef(activeRoom);
   const renderRequestRef = useRef(null);
-  const [renderEnabled, setRenderEnabled] = useState(() => browserRenderPolicy().enabled);
+  const [runtimeLodCap, setRuntimeLodCap] = useState(null);
+  const [renderPolicy, setRenderPolicy] = useState(() => browserRenderPolicy());
 
   useEffect(() => {
     activeRoomRef.current = activeRoom;
@@ -113,18 +138,18 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
-    const sync = () => setRenderEnabled(browserRenderPolicy().enabled);
+    const sync = () => {
+      const next = browserRenderPolicy(runtimeLodCap);
+      setRenderPolicy((current) => (sameRenderPolicy(current, next) ? current : next));
+    };
     sync();
     window.addEventListener('resize', sync, { passive: true });
     return () => window.removeEventListener('resize', sync);
-  }, []);
+  }, [runtimeLodCap]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!renderEnabled || !canvas || !artUrl) return undefined;
-
-    const renderPolicy = browserRenderPolicy();
-    if (!renderPolicy.enabled) return undefined;
+    if (!renderPolicy.enabled || !canvas || !artUrl) return undefined;
 
     let renderer;
     try {
@@ -224,9 +249,11 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     const roomTarget = new THREE.Vector3();
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
     const textureLoader = new THREE.TextureLoader();
+    const performanceGovernor = createHomeCastle3DPerformanceGovernor(renderPolicy.lod);
     let frame = 0;
     let disposed = false;
     let intersecting = true;
+    let performanceReady = false;
     let roomLightDepth = IDLE_ROOM_LIGHT_DEPTH;
     let roomLightReach = IDLE_ROOM_LIGHT_REACH;
     let lastRenderedAt = Number.NEGATIVE_INFINITY;
@@ -263,6 +290,14 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
         return;
       }
       lastRenderedAt = timestamp;
+
+      if (performanceReady && !reduced) {
+        const nextLod = performanceGovernor.observe(timestamp);
+        if (nextLod) {
+          setRuntimeLodCap((current) => tighterRuntimeLodCap(current, nextLod));
+          return;
+        }
+      }
 
       const focused = homeCastleRoomFocus(activeRoomRef.current);
       roomTarget.set(focused.x, focused.y, focused.light);
@@ -384,6 +419,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
         material.map = texture;
         material.emissiveMap = texture;
         material.needsUpdate = true;
+        performanceReady = true;
         canvas.classList.add('is-ready');
         resumeRender();
       },
@@ -414,8 +450,15 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       geometry.dispose();
       renderer.dispose();
     };
-  }, [ambient, artUrl, renderEnabled]);
+  }, [ambient, artUrl, renderPolicy]);
 
-  if (!renderEnabled) return null;
-  return <canvas ref={canvasRef} className="illustrated-home__castle-3d" aria-hidden="true" />;
+  if (!renderPolicy.enabled) return null;
+  return (
+    <canvas
+      ref={canvasRef}
+      className="illustrated-home__castle-3d"
+      data-home-castle-lod={renderPolicy.lod}
+      aria-hidden="true"
+    />
+  );
 }
