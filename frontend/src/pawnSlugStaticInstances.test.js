@@ -6,7 +6,7 @@ import {
 } from './pawnSlugStaticInstances.js';
 
 describe('Pawn Slug static instance batches', () => {
-  it('packs repeated meshes into one InstancedMesh with stable transforms', () => {
+  it('packs repeated meshes into one InstancedMesh with stable transforms and receive-only shadows by default', () => {
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const material = new THREE.MeshStandardMaterial({ color: 0x334455 });
     const batch = createPawnSlugStaticInstanceBatch({
@@ -22,7 +22,7 @@ describe('Pawn Slug static instance batches', () => {
     expect(batch).toBeInstanceOf(THREE.InstancedMesh);
     expect(batch.count).toBe(2);
     expect(batch.userData.pawnSlugStaticInstances).toBe(PAWN_SLUG_STATIC_INSTANCE_VERSION);
-    expect(batch.castShadow).toBe(true);
+    expect(batch.castShadow).toBe(false);
     expect(batch.receiveShadow).toBe(true);
 
     const matrix = new THREE.Matrix4();
@@ -41,6 +41,21 @@ describe('Pawn Slug static instance batches', () => {
     expect(position.toArray()).toEqual([-2, 1, 0]);
     expect(scale.toArray()).toEqual([2, 3, 4]);
 
+    geometry.dispose();
+    material.dispose();
+  });
+
+  it('allows a rare hero batch to opt back into casting shadows explicitly', () => {
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshStandardMaterial();
+    const batch = createPawnSlugStaticInstanceBatch({
+      geometry,
+      material,
+      instances: [{ x: 0, y: 0, z: 0 }],
+      castShadow: true,
+    });
+    expect(batch.castShadow).toBe(true);
+    expect(batch.receiveShadow).toBe(true);
     geometry.dispose();
     material.dispose();
   });

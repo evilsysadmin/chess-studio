@@ -41,16 +41,16 @@ describe('Pawn Slug battlefield art contracts', () => {
     disposePawnSlugObject(root);
   });
 
-  it('instances repeated static scenery while preserving semantic groups and materials', () => {
+  it('instances repeated static scenery while preserving semantic groups, materials and receive shadows', () => {
     const scene = new THREE.Scene();
     const { root, far } = createSlugEnvironment(scene);
     const expectedSingleBatches = [
-      ['pawn-slug-crater-rocks-instanced', 55, true],
-      ['pawn-slug-rubble-dark-instanced', 28, true],
-      ['pawn-slug-rubble-light-instanced', 35, true],
-      ['pawn-slug-wall-battlements-instanced', 127, true],
+      ['pawn-slug-crater-rocks-instanced', 55, false],
+      ['pawn-slug-rubble-dark-instanced', 28, false],
+      ['pawn-slug-rubble-light-instanced', 35, false],
+      ['pawn-slug-wall-battlements-instanced', 127, false],
       ['pawn-slug-track-ruts-instanced', 4, false],
-      ['pawn-slug-wall-segments-instanced', 17, true],
+      ['pawn-slug-wall-segments-instanced', 17, false],
       ['pawn-slug-far-hills-dark-instanced', 8, false],
       ['pawn-slug-far-hills-light-instanced', 7, false],
     ];
@@ -76,7 +76,7 @@ describe('Pawn Slug battlefield art contracts', () => {
     expect(towerBattlements).toHaveLength(8);
     expect(towerBattlements.every((batch) => batch instanceof THREE.InstancedMesh)).toBe(true);
     expect(towerBattlements.reduce((total, batch) => total + batch.count, 0)).toBe(32);
-    expect(towerBattlements.every((batch) => batch.count === 4 && batch.castShadow && batch.receiveShadow)).toBe(true);
+    expect(towerBattlements.every((batch) => batch.count === 4 && !batch.castShadow && batch.receiveShadow)).toBe(true);
     expect(far.getObjectByName('pawn-slug-far-hills-dark-instanced')).toBeTruthy();
     expect(far.getObjectByName('pawn-slug-far-hills-light-instanced')).toBeTruthy();
 

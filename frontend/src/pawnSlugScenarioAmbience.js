@@ -1,3 +1,4 @@
+import { installPawnSlugRenderBudget } from './pawnSlugRenderBudget.js';
 import { attachPawnSlugReactiveSetpieces } from './pawnSlugScenarioSetpieces.js';
 
 const TAU = Math.PI * 2;
@@ -97,6 +98,10 @@ export function createPawnSlugScenarioAmbience(root, { reducedMotion = false } =
 export function attachPawnSlugScenarioAmbience(root, { reducedMotion = prefersReducedMotion() } = {}) {
   const controller = createPawnSlugScenarioAmbience(root, { reducedMotion });
   root.userData.pawnSlugScenarioAmbience = controller;
+  // Render budgeting is independent from decorative motion. Reduced-motion
+  // users should still get the GPU savings, so install it before the ambience
+  // early-return and let it piggyback on one existing scene render callback.
+  installPawnSlugRenderBudget(root);
   attachPawnSlugReactiveSetpieces(root, { reducedMotion });
   if (!controller.enabled) return controller;
 
