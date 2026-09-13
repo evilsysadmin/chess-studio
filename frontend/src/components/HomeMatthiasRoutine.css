@@ -298,10 +298,14 @@
     transition: filter .18s ease, background-color .18s ease !important;
   }
 
+  /* Keep remarks in the strip between the top destinations and Matthias' card.
+     The previous unconstrained 44% panel could physically cover Torneos. */
   .illustrated-home__speech {
-    left: 10.7% !important;
-    bottom: 38% !important;
-    width: min(370px, 25%) !important;
+    left: 11.2% !important;
+    bottom: 36.8% !important;
+    width: min(370px, 19.5%) !important;
+    max-height: 20% !important;
+    overflow: auto;
   }
 
   /* The approved master uses one Experimentos Geniales portal. Pawn Slug stays
