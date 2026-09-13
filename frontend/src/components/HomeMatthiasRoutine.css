@@ -170,11 +170,9 @@
 }
 
 /* Approved 1814×867 desktop master.
- * The art already contains the static title and destination typography. React
- * keeps ownership of interaction, live state, Matthias and account controls;
- * those layers either become hotspots or deliberately cover their baked twin.
- * This prevents the old "two Matthias" / double-label effect while preserving
- * keyboard and pointer semantics. */
+ * The art already contains the static title, destination typography and the
+ * canonical Matthias. React owns interaction and live state; baked elements
+ * stay visible and receive transparent semantic hotspots instead of duplicates. */
 @media (min-width: 1000px) and (pointer: fine) {
   .illustrated-home__stage {
     aspect-ratio: 1814 / 867 !important;
@@ -282,9 +280,9 @@
     display: none !important;
   }
 
-  /* Matthias is part of the room, not a dashboard card. Keep the established
-     hit area and semantic action, but let the resident and his small caption sit
-     directly over the scene with no panel chrome. */
+  /* Matthias is already painted into the desktop master. The live resident is
+     only the semantic hotspot: rendering his portrait/caption here would place
+     a second Matthias and the old card copy directly over the canonical art. */
   .illustrated-home__matthias,
   .illustrated-home__matthias[data-home-matthias-zone='table'],
   .illustrated-home__matthias[data-home-matthias-zone='desk'],
@@ -295,36 +293,37 @@
     --home-matthias-zone-top: 63.7% !important;
     left: var(--home-matthias-zone-left) !important;
     top: var(--home-matthias-zone-top) !important;
-    width: 20.2% !important;
+    display: block !important;
+    width: 6.4% !important;
     min-height: 18.8% !important;
-    grid-template-columns: clamp(72px, 5.3cqw, 102px) minmax(0, 1fr) !important;
-    column-gap: .8cqw !important;
-    padding: .62cqw .78cqw !important;
+    padding: 0 !important;
+    overflow: visible !important;
     border: 0 !important;
-    border-radius: 0 !important;
+    border-radius: 14px !important;
+    color: transparent !important;
     background: transparent !important;
     box-shadow: none !important;
-    transition: filter .18s ease !important;
+    transition: background .18s ease, outline-color .18s ease !important;
   }
 
+  .illustrated-home__matthias-portrait,
   .illustrated-home__matthias-copy {
-    align-self: center;
-    padding: .18cqw 0;
-    background: transparent;
+    display: none !important;
   }
 
-  .illustrated-home__matthias-copy > strong {
-    color: #f5ce69;
-    font-size: max(12px, .8cqw);
-    letter-spacing: .035em;
+  .illustrated-home__matthias:hover {
+    filter: none !important;
+    background: radial-gradient(ellipse at 50% 52%, rgba(246, 190, 78, .10), transparent 72%) !important;
   }
 
-  .illustrated-home__matthias-copy > span,
-  .illustrated-home__matthias-copy > em {
-    font-size: max(11px, .72cqw);
+  .illustrated-home__matthias:focus-visible {
+    filter: none !important;
+    outline: 1px solid rgba(245, 208, 126, .62) !important;
+    outline-offset: 3px;
+    background: radial-gradient(ellipse at 50% 52%, rgba(246, 190, 78, .12), transparent 72%) !important;
   }
 
-  /* Keep remarks in the strip between the top destinations and Matthias.
+  /* Keep remarks in the strip between the top destinations and canonical Matthias.
      The previous unconstrained 44% panel could physically cover Torneos. */
   .illustrated-home__speech {
     left: 11.2% !important;
