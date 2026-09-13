@@ -3,6 +3,7 @@ import { buildPlayerModel, evidenceConfidence, PLAYER_MODEL_VERSION } from './pl
 
 describe('factual player model', () => {
   it('keeps missing evidence empty instead of inventing a weakness', () => {
+    expect(PLAYER_MODEL_VERSION).toBe(2);
     expect(buildPlayerModel()).toEqual({
       version: PLAYER_MODEL_VERSION,
       samples: { games: 0, personalPositions: 0 },
@@ -46,6 +47,7 @@ describe('factual player model', () => {
         source: 'autopsy',
         sourceGameId: 'g1',
         incidentKeys: ['human:MISSED_MATE'],
+        factualEvidence: { version: 1, classification: 'missed-mate' },
         loss: 420,
         createdAt: '2026-09-10T10:00:00Z',
       },
@@ -54,6 +56,7 @@ describe('factual player model', () => {
         source: 'autopsy',
         sourceGameId: 'g2',
         incidentKeys: ['human:MISSED_MATE'],
+        factualEvidence: { version: 1, classification: 'missed-mate' },
         loss: 260,
         createdAt: '2026-09-11T10:00:00Z',
       },
@@ -66,12 +69,30 @@ describe('factual player model', () => {
     expect(model.recurringErrors).toHaveLength(1);
     expect(model.recurringErrors[0]).toEqual(expect.objectContaining({
       incidentKey: 'human:MISSED_MATE',
+      classification: 'missed-mate',
       positions: 2,
       sourceGames: 2,
       maxLoss: 420,
       confidence: 'low',
     }));
     expect(model.trainingDebt.activeCount).toBe(1);
+  });
+
+  it('keeps recurring classification empty when any supporting position lacks shared evidence', () => {
+    const model = buildPlayerModel({
+      personalPuzzles: [
+        { id: 'legacy', incidentKeys: ['human:MISSED_MATE'], loss: 180 },
+        {
+          id: 'factual',
+          incidentKeys: ['human:MISSED_MATE'],
+          factualEvidence: { version: 1, classification: 'missed-mate' },
+          loss: 220,
+        },
+      ],
+    });
+
+    expect(model.recurringErrors).toHaveLength(1);
+    expect(model.recurringErrors[0].classification).toBeNull();
   });
 });
 

@@ -20,6 +20,11 @@ function incidentLabel(key) {
   return `Patrón táctico: ${raw.toLowerCase().replaceAll('_', ' ')}`;
 }
 
+function factualClassification(puzzle) {
+  const classification = puzzle?.factualEvidence?.classification;
+  return typeof classification === 'string' && classification.trim() ? classification.trim() : null;
+}
+
 export function buildRecurringErrorPatterns(puzzles = []) {
   const source = Array.isArray(puzzles) ? puzzles : [];
   const groups = new Map();
@@ -37,6 +42,8 @@ export function buildRecurringErrorPatterns(puzzles = []) {
         cleanSolves: 0,
         maxLoss: 0,
         newestAt: 0,
+        factualClassifications: new Set(),
+        factualClassificationPositions: 0,
       };
       current.positions += 1;
       if (!mastered(puzzle)) current.pending += 1;
@@ -44,6 +51,11 @@ export function buildRecurringErrorPatterns(puzzles = []) {
       current.attempts += Math.max(0, Number(puzzle?.attempts || 0));
       current.cleanSolves += Math.max(0, Number(puzzle?.cleanSolves || 0));
       current.maxLoss = Math.max(current.maxLoss, Math.max(0, Number(puzzle?.loss || 0)));
+      const classification = factualClassification(puzzle);
+      if (classification) {
+        current.factualClassificationPositions += 1;
+        current.factualClassifications.add(classification);
+      }
       const createdAt = Date.parse(puzzle?.createdAt || '');
       if (Number.isFinite(createdAt)) current.newestAt = Math.max(current.newestAt, createdAt);
       groups.set(key, current);
@@ -54,9 +66,14 @@ export function buildRecurringErrorPatterns(puzzles = []) {
     .filter((group) => group.positions >= 2)
     .map((group) => {
       const debt = debtByIncident.get(group.incidentKey) || null;
+      const classification = group.factualClassificationPositions === group.positions
+        && group.factualClassifications.size === 1
+        ? [...group.factualClassifications][0]
+        : null;
       return {
         incidentKey: group.incidentKey,
         label: incidentLabel(group.incidentKey),
+        classification,
         positions: group.positions,
         pending: group.pending,
         sourceGames: group.sourceGames.size,

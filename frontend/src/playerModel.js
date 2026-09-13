@@ -1,7 +1,7 @@
 import { buildRecurringErrorPatterns } from './insightsRecurringErrors.js';
 import { personalTrainingDebtSummary } from './trainingDebt.js';
 
-export const PLAYER_MODEL_VERSION = 1;
+export const PLAYER_MODEL_VERSION = 2;
 
 function nonNegativeInt(value) {
   const number = Number(value);
