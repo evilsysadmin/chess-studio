@@ -4,11 +4,13 @@ import {
   PAWN_SLUG_IMPACT_SOUND_PROFILES,
   PAWN_SLUG_WEAPON_PITCH_WIDTHS,
   PAWN_SLUG_WEAPON_SOUND_PROFILES,
+  PAWN_SLUG_WEAPON_STEREO_PAN,
   pawnSlugImpactSoundProfile,
   pawnSlugSoundPitchVariation,
   pawnSlugWeaponGainScale,
   pawnSlugWeaponPitchWidth,
   pawnSlugWeaponSoundProfile,
+  pawnSlugWeaponStereoPan,
 } from './pawnSlugSfx.js';
 
 describe('Pawn Slug arcade combat SFX', () => {
@@ -60,6 +62,19 @@ describe('Pawn Slug arcade combat SFX', () => {
       .map((weapon) => pawnSlugWeaponGainScale(weapon));
     expect(new Set(playerScales)).toEqual(new Set([0.72]));
     expect(pawnSlugWeaponGainScale('unknown')).toBe(0.72);
+  });
+
+  it('uses restrained stereo separation between Matthias and hostile fire', () => {
+    const playerPan = pawnSlugWeaponStereoPan();
+    const enemyPan = pawnSlugWeaponStereoPan({ enemy: true });
+
+    expect(playerPan).toBe(PAWN_SLUG_WEAPON_STEREO_PAN.player);
+    expect(enemyPan).toBe(PAWN_SLUG_WEAPON_STEREO_PAN.enemy);
+    expect(playerPan).toBeLessThan(0);
+    expect(enemyPan).toBeGreaterThan(0);
+    expect(Math.abs(playerPan)).toBeLessThanOrEqual(0.1);
+    expect(Math.abs(enemyPan)).toBeLessThanOrEqual(0.15);
+    expect(enemyPan - playerPan).toBeLessThanOrEqual(0.25);
   });
 
   it('uses more metallic impact rings for armored chess soldiers', () => {
