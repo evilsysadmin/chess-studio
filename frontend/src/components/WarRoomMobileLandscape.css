@@ -2,6 +2,14 @@
  * The PWA already allows any orientation; this layer simply spends the extra
  * horizontal space on the board instead of preserving the portrait stack. */
 @media (orientation: landscape) and (max-width: 920px) and (max-height: 620px) {
+  /* The generic game shell reserves a full 1rem footer. In phone landscape the
+   * War Room itself already finishes at the visual viewport edge, so that spare
+   * footer is the last source of document scroll. Preserve only a real device
+   * safe-area inset; do not manufacture 16px of empty space below the table. */
+  .app-shell-board-game:has(.game-layout-3d) {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
   .game-screen,
   .game-screen .board-column,
   .game-screen .game-layout.game-layout-3d,
