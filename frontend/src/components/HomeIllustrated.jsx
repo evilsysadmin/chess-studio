@@ -70,12 +70,22 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
 
   useEffect(() => {
     if (reducedMotion || matthiasSpeaking || matthiasRoutine.length < 2) return undefined;
-    const rotate = () => {
-      if (document.hidden) return;
-      setMatthiasRoutineIndex((current) => (current + 1) % matthiasRoutine.length);
+    let cancelled = false;
+    let timer = null;
+    const scheduleNext = () => {
+      timer = window.setTimeout(() => {
+        if (cancelled) return;
+        if (!document.hidden) {
+          setMatthiasRoutineIndex((current) => (current + 1) % matthiasRoutine.length);
+        }
+        scheduleNext();
+      }, 28_000);
     };
-    const timer = window.setInterval(rotate, 28_000);
-    return () => window.clearInterval(timer);
+    scheduleNext();
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
   }, [matthiasRoutine.length, matthiasSpeaking, reducedMotion]);
 
   const rooms = [
