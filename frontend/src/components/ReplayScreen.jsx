@@ -16,6 +16,7 @@ import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { getToken } from '../auth.js';
 import { requestRemoteNarrative } from '../narrativeRemote.js';
 import { buildMatthiasPositionDossier } from '../aiNarrativeTasks.js';
+import { REPLAY_OK_VERDICT } from '../factualLanguage.js';
 
 // Reconstruye el FEN en cada punto de la partida a partir de la lista de
 // jugadas guardada. positions[0] es la posición inicial; positions[i] es la
@@ -286,7 +287,7 @@ export default function ReplayScreen({ record, initialStep, pinnedReport, crimeM
             {wasHumanMove && moveReportAtStep && (
               <p className={`hint-caption replay-verdict sev-${moveReportAtStep.severity}`}>
                 {moveReportAtStep.severity === 'ok'
-                  ? '✓ No había nada mejor a mano — buena jugada.'
+                  ? REPLAY_OK_VERDICT
                   : `${SEVERITY_LABEL[moveReportAtStep.severity]}: jugaste ${formatLongMove(moveAtStep)}, pero el motor prefería ${formatLongMove({ piece: moveReportAtStep.suggestedPiece, from: moveReportAtStep.suggestedFrom, to: moveReportAtStep.suggestedTo })} (el recuadro punteado azul del tablero) — perdiste ~${moveReportAtStep.loss} de evaluación ahí.`}
               </p>
             )}
