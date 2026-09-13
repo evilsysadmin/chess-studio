@@ -77,3 +77,25 @@ test('Home 1920×1080 · el Great Hall es la Home y no reaparece el dashboard', 
   await expect(page.locator('.home-castle-hub__scene canvas')).toHaveCount(0);
   expect(view.overflow).toBeLessThanOrEqual(1);
 });
+
+test('Home 3D · resize aplica full→lite→full sin conservar un LOD obsoleto', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'hardwareConcurrency', {
+      configurable: true,
+      get: () => 8,
+    });
+  });
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await openHome(page);
+
+  const castle3d = page.locator('.illustrated-home__castle-3d');
+  await expect(castle3d).toBeVisible({ timeout: 15_000 });
+  await expect(castle3d).toHaveClass(/is-ready/, { timeout: 15_000 });
+  await expect(castle3d).toHaveAttribute('data-home-castle-lod', 'full');
+
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await expect(castle3d).toHaveAttribute('data-home-castle-lod', 'lite');
+
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await expect(castle3d).toHaveAttribute('data-home-castle-lod', 'full');
+});

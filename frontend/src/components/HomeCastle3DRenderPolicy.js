@@ -7,10 +7,17 @@ function finitePositive(value, fallback) {
   return Number.isFinite(number) && number > 0 ? number : fallback;
 }
 
+function cappedLod(baselineLod, runtimeLodCap) {
+  if (runtimeLodCap === '2d') return '2d';
+  if (runtimeLodCap === 'lite' && baselineLod === 'full') return 'lite';
+  return baselineLod;
+}
+
 export function homeCastle3DRenderPolicy({
   viewportWidth,
   devicePixelRatio = 1,
   hardwareConcurrency = 8,
+  runtimeLodCap = null,
 } = {}) {
   const width = finitePositive(viewportWidth, 0);
   const dpr = finitePositive(devicePixelRatio, 1);
@@ -21,10 +28,12 @@ export function homeCastle3DRenderPolicy({
   const mobileLiteEnabled = width >= HOME_CASTLE_3D_MOBILE_ENABLE_MIN_WIDTH
     && width < HOME_CASTLE_3D_MIN_WIDTH
     && cores > 4;
-  const enabled = !forced2d && (desktop || mobileLiteEnabled);
-  const lod = forced2d
+  const baselineEnabled = !forced2d && (desktop || mobileLiteEnabled);
+  const baselineLod = forced2d
     ? '2d'
     : (desktop && width >= 1200 && cores > 4 ? 'full' : 'lite');
+  const lod = cappedLod(baselineLod, runtimeLodCap);
+  const enabled = baselineEnabled && lod !== '2d';
 
   const pixelRatioCap = lod === 'full' ? 1.5 : 1.25;
   const minFrameIntervalMs = lod === 'lite' ? 1000 / 30 : 0;
