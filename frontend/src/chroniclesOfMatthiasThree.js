@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CHRONICLES_DIRECTIONS, CHRONICLES_ENEMIES, CHRONICLES_MAP } from './chroniclesOfMatthias.js';
 import { buildChroniclesCharacter, buildCorruptedPawn, buildGateJailer } from './chroniclesOfMatthiasArt.js';
 import { buildChroniclesDungeonDressing } from './chroniclesOfMatthiasDungeonArt.js';
+import { buildSpectralBishop, buildSpectralChapel } from './chroniclesOfMatthiasSpectralBishop.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 
 const CELL = 4;
@@ -63,6 +64,7 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
   const enemyModels = {
     'corrupted-pawn': buildCorruptedPawn({ coarsePointer }),
     'gate-jailer': buildGateJailer({ coarsePointer }),
+    'spectral-bishop': buildSpectralBishop({ coarsePointer }),
   };
   CHRONICLES_ENEMIES.forEach((enemyDefinition) => {
     const enemy = enemyModels[enemyDefinition.id];
@@ -75,6 +77,11 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
     enemy.userData.chroniclesBaseScale = enemy.scale.x;
     scene.add(enemy);
   });
+
+  const spectralChapel = buildSpectralChapel({ coarsePointer });
+  const spectralChapelCell = worldForCell(5, 3);
+  spectralChapel.position.set(spectralChapelCell.x, 0, spectralChapelCell.z);
+  scene.add(spectralChapel);
 
   const gateMaterial = new THREE.MeshStandardMaterial({ color: 0x171513, roughness: 0.66, metalness: 0.72, emissive: 0x120700, emissiveIntensity: 0.15 });
   const gate = new THREE.Group();
@@ -109,7 +116,7 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
     torches.push({ root, flame, light, phase: index * 1.7 });
   });
 
-  return { enemies: enemyModels, sigilMaterial, gateMaterial, gateRune, torches };
+  return { enemies: enemyModels, spectralChapel, sigilMaterial, gateMaterial, gateRune, torches };
 }
 
 function disposeObject(root) {
@@ -137,14 +144,7 @@ function createCombatFx(camera) {
   group.name = 'chronicles-combat-fx';
   group.visible = false;
 
-  const slashMaterial = new THREE.MeshBasicMaterial({
-    color: 0xd5aa62,
-    transparent: true,
-    opacity: 0,
-    depthTest: false,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-  });
+  const slashMaterial = new THREE.MeshBasicMaterial({ color: 0xd5aa62, transparent: true, opacity: 0, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending });
   const ringMaterial = slashMaterial.clone();
   const slash = new THREE.Mesh(new THREE.BoxGeometry(1, 0.035, 0.035), slashMaterial);
   slash.position.set(0, -0.12, -1.12);
@@ -225,6 +225,12 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
         const baseGlow = enemy.userData.chroniclesBaseGlow || 1.7;
         glow.emissiveIntensity = hp === 1 ? baseGlow + 1.1 : baseGlow;
       });
+    });
+    (dungeon.spectralChapel.userData.chroniclesGlowMaterials || []).forEach((glow) => {
+      glow.emissiveIntensity = state.sigilAwake ? 1.25 : 0.18;
+    });
+    (dungeon.spectralChapel.userData.chroniclesLights || []).forEach((light) => {
+      light.intensity = state.sigilAwake ? (coarse ? 0.62 : 1.05) : 0.08;
     });
     dungeon.sigilMaterial.emissive.setHex(state.sigilAwake ? 0x7e3c0a : 0x241300);
     dungeon.sigilMaterial.emissiveIntensity = state.sigilAwake ? 1.8 : 0.3;
