@@ -131,6 +131,28 @@ describe('Pawn Slug premium projectile FX', () => {
     expect(smoke.scale.x).toBeGreaterThan(1);
   });
 
+  it('keeps muzzle smoke drift deterministic across repeated animation frames', () => {
+    const panzerfaust = createPremiumMuzzleFlash({ weapon: 'panzerfaust' });
+    const panzerSmoke = panzerfaust.children.find((child) => child.userData.muzzleSmoke);
+    const panzerBaseX = panzerSmoke.position.x;
+    animatePremiumMuzzleFlash(panzerfaust, 0.5);
+    const panzerMidX = panzerSmoke.position.x;
+    animatePremiumMuzzleFlash(panzerfaust, 0.5);
+    expect(panzerSmoke.position.x).toBeCloseTo(panzerMidX, 8);
+    expect(panzerMidX).toBeLessThan(panzerBaseX);
+    animatePremiumMuzzleFlash(panzerfaust, 0.25);
+    expect(panzerSmoke.position.x).toBeLessThan(panzerMidX);
+
+    const shotgun = createPremiumMuzzleFlash({ weapon: 'shotgun' });
+    const shotgunSmoke = shotgun.children.find((child) => child.userData.muzzleShotgunSmoke);
+    const shotgunBaseX = shotgunSmoke.position.x;
+    animatePremiumMuzzleFlash(shotgun, 0.5);
+    const shotgunMidX = shotgunSmoke.position.x;
+    animatePremiumMuzzleFlash(shotgun, 0.5);
+    expect(shotgunSmoke.position.x).toBeCloseTo(shotgunMidX, 8);
+    expect(shotgunMidX).toBeLessThan(shotgunBaseX);
+  });
+
   it('reuses premium projectile geometry and materials per weapon', () => {
     const first = createPremiumBulletModel({ weapon: 'machinegun' });
     const second = createPremiumBulletModel({ weapon: 'machinegun' });
