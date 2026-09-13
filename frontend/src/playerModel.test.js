@@ -3,11 +3,11 @@ import { buildPlayerModel, evidenceConfidence, PLAYER_MODEL_VERSION } from './pl
 
 describe('factual player model', () => {
   it('keeps missing evidence empty instead of inventing a weakness', () => {
-    expect(PLAYER_MODEL_VERSION).toBe(3);
+    expect(PLAYER_MODEL_VERSION).toBe(4);
     expect(buildPlayerModel()).toEqual({
       version: PLAYER_MODEL_VERSION,
-      samples: { games: 0, personalPositions: 0 },
-      confidence: { games: 'none', personalTraining: 'none' },
+      samples: { games: 0, personalPositions: 0, cleanAutopsies: 0 },
+      confidence: { games: 'none', personalTraining: 'none', cleanPlay: 'none' },
       outcomes: null,
       colorPreference: null,
       ratingTrend: null,
@@ -28,6 +28,15 @@ describe('factual player model', () => {
         lastAttemptAt: null,
         lastSolvedAt: null,
         lastCleanAt: null,
+      },
+      cleanPlay: {
+        eligibleGames: 0,
+        cleanGames: 0,
+        cleanRate: null,
+        currentStreak: 0,
+        bestStreak: 0,
+        latestEligibleAt: null,
+        latestCleanAt: null,
       },
     });
   });
@@ -53,6 +62,57 @@ describe('factual player model', () => {
       expect.objectContaining({ name: 'Siciliana', games: 8, confidence: 'high' }),
     ]);
     expect(model.ratingTrend).toEqual(expect.objectContaining({ delta: 36 }));
+  });
+
+  it('adds positive clean-play evidence only from eligible persisted autopsies', () => {
+    const model = buildPlayerModel({
+      cleanGameRecords: {
+        bad: {
+          version: 1,
+          sufficientSample: true,
+          clean: false,
+          date: '2026-08-01T10:00:00Z',
+        },
+        clean1: {
+          version: 1,
+          sufficientSample: true,
+          clean: true,
+          date: '2026-08-02T10:00:00Z',
+        },
+        clean2: {
+          version: 1,
+          sufficientSample: true,
+          clean: true,
+          date: '2026-08-03T10:00:00Z',
+        },
+        tooShort: {
+          version: 1,
+          sufficientSample: false,
+          clean: true,
+          date: '2026-08-04T10:00:00Z',
+        },
+        legacy: {
+          version: 0,
+          sufficientSample: true,
+          clean: true,
+          date: '2026-08-05T10:00:00Z',
+        },
+      },
+    });
+
+    expect(model.samples.cleanAutopsies).toBe(3);
+    expect(model.confidence.cleanPlay).toBe('medium');
+    expect(model.cleanPlay).toEqual({
+      eligibleGames: 3,
+      cleanGames: 2,
+      cleanRate: 67,
+      currentStreak: 2,
+      bestStreak: 2,
+      latestEligibleAt: '2026-08-03T10:00:00.000Z',
+      latestCleanAt: '2026-08-03T10:00:00.000Z',
+    });
+    expect(model.cleanPlay).not.toHaveProperty('skill');
+    expect(model.cleanPlay).not.toHaveProperty('trend');
   });
 
   it('promotes a recurring incident only from the same real positions already used by training', () => {
