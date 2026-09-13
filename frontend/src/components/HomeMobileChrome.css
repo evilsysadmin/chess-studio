@@ -1,3 +1,5 @@
+@import './HomeDesktopChrome.css';
+
 /* Home-only mobile chrome. Keep global actions readable without turning the
  * full-bleed Great Hall into a conventional app header. */
 @media (max-width: 520px) {
