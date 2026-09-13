@@ -4,13 +4,35 @@ import { bestMoveConstraintFor } from './factualBestMoveConstraint.js';
 // Incrementar esta versión significa que los puzzles persistidos por una versión
 // anterior deben demostrar explícitamente que pasaron TODOS los gates actuales
 // antes de volver a la cola activa.
-export const PERSONAL_PUZZLE_QUALITY_VERSION = 8;
+export const PERSONAL_PUZZLE_QUALITY_VERSION = 9;
 export const PERSONAL_PUZZLE_MIN_ENGINE_LEVEL = 92;
 export const PERSONAL_PUZZLE_MIN_ANALYSIS_DEPTH = 2;
 
 function hasEngineMoveShape(move) {
   return /^[a-h][1-8]$/.test(String(move?.from || ''))
     && /^[a-h][1-8]$/.test(String(move?.to || ''));
+}
+
+function sameEngineMove(left, right) {
+  return hasEngineMoveShape(left)
+    && hasEngineMoveShape(right)
+    && left.from === right.from
+    && left.to === right.to
+    && (left.promotion || null) === (right.promotion || null);
+}
+
+function hasProvenPrincipalVariation(puzzle) {
+  if (puzzle?.enginePrincipalVariationChecked !== true) return false;
+  const line = puzzle?.enginePrincipalVariation;
+  if (!Array.isArray(line) || !line.length || !line.every(hasEngineMoveShape)) return false;
+
+  if (puzzle?.engineTerminalAfterSolution === true) {
+    return line.length === 1 && puzzle?.engineBestDefense == null;
+  }
+
+  return line.length >= 2
+    && hasEngineMoveShape(puzzle?.engineBestDefense)
+    && sameEngineMove(line[1], puzzle.engineBestDefense);
 }
 
 export function provesCurrentPersonalPuzzleQuality(puzzle) {
@@ -27,10 +49,7 @@ export function provesCurrentPersonalPuzzleQuality(puzzle) {
     bestToSecondGap: gap,
   });
   const bestDefenseProven = puzzle?.tacticalBestDefenseChecked === true
-    && (
-      puzzle?.engineTerminalAfterSolution === true
-      || hasEngineMoveShape(puzzle?.engineBestDefense)
-    );
+    && hasProvenPrincipalVariation(puzzle);
 
   return Number(puzzle?.aiQualityVersion) === PERSONAL_PUZZLE_QUALITY_VERSION
     && puzzle?.tacticalBestMoveChecked === true
