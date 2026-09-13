@@ -47,7 +47,21 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     rivalry: loadRivalry(),
     dailyStats: dailyChallengeStats(loadDailyChallenge()),
   }), []);
-  const matthiasRoutine = useMemo(() => matthiasAmbientVisuals(), []);
+  const baseMatthiasRoutine = useMemo(() => matthiasAmbientVisuals(), []);
+  const matthiasRoutine = useMemo(() => {
+    const moment = castleLife.matthiasMoment;
+    if (!moment) return baseMatthiasRoutine;
+    const sourceScene = baseMatthiasRoutine.find((scene) => scene.key === moment.sceneKey);
+    if (!sourceScene) return baseMatthiasRoutine;
+    const rareScene = {
+      ...sourceScene,
+      key: `moment-${moment.id}`,
+      label: moment.label,
+      detail: moment.detail,
+      momentId: moment.id,
+    };
+    return [rareScene, ...baseMatthiasRoutine.filter((scene) => scene.key !== moment.sceneKey)];
+  }, [baseMatthiasRoutine, castleLife.matthiasMoment]);
   const matthiasVisual = matthiasRoutine[matthiasRoutineIndex % Math.max(1, matthiasRoutine.length)] || matthiasRoutine[0];
   const memories = castleLife.memories || (castleLife.memory ? [castleLife.memory] : []);
   const experimentsAction = tools.find(([label]) => label === 'Experimentos geniales')?.[1];
@@ -190,6 +204,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           data-home-matthias-scene={matthiasVisual?.key || 'base'}
           data-home-matthias-activity={matthiasActivity}
           data-home-matthias-zone={matthiasZone}
+          data-home-matthias-moment={matthiasVisual?.momentId || 'none'}
         >
           {matthiasVisual && (
             <span
