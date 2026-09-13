@@ -38,7 +38,7 @@ async function switchTo3D(page) {
   return expectWarRoom(page);
 }
 
-test('War Room · inspect, foco y cámara privados se limpian sin borrar selección compartida', async ({ page }) => {
+test('War Room · inspect accesible y estado efímero se limpian sin borrar selección compartida', async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page);
@@ -59,13 +59,66 @@ test('War Room · inspect, foco y cámara privados se limpian sin borrar selecci
   await inspect.click();
   await expect(board3d).toHaveAttribute('data-board3d-inspect', 'true');
   await expect(page.getByRole('button', { name: 'Volver a jugar', exact: true })).toBeVisible();
+  await expect(canvas).toBeFocused();
+  await expect(canvas).toHaveAttribute('aria-label', /Inspección activa/);
+  await expect(canvas).toHaveAttribute('aria-keyshortcuts', 'ArrowLeft ArrowRight ArrowUp ArrowDown Home Escape');
+  await expect(canvas).toHaveAttribute('data-board3d-inspect-yaw', '0.000');
+  await expect(canvas).toHaveAttribute('data-board3d-inspect-pitch', '0.000');
 
+  // Teclado: las flechas orbitan la cámara y no mueven el foco de casillas.
+  await canvas.press('ArrowLeft');
+  await expect.poll(async () => Math.abs(Number(await canvas.getAttribute('data-board3d-inspect-yaw') || 0))).toBeGreaterThan(0.001);
+  await canvas.press('ArrowUp');
+  await expect.poll(async () => Math.abs(Number(await canvas.getAttribute('data-board3d-inspect-pitch') || 0))).toBeGreaterThan(0.001);
+  await canvas.press('Enter');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
+  await expect(board3d).toHaveAttribute('data-board3d-legal-target-count', '2');
+
+  // Home devuelve exactamente a la cámara táctica y Escape vuelve a juego sin
+  // mandar el foco a un control remoto del tablero.
+  await canvas.press('Home');
+  await expect(canvas).toHaveAttribute('data-board3d-inspect-yaw', '0.000');
+  await expect(canvas).toHaveAttribute('data-board3d-inspect-pitch', '0.000');
+  await canvas.press('Escape');
+  await expect(board3d).toHaveAttribute('data-board3d-inspect', 'false');
+  await expect(canvas).toBeFocused();
+  await expect(canvas).toHaveAttribute('aria-label', /Usa flechas y Enter para jugar con teclado/);
+  await expect(canvas).not.toHaveAttribute('aria-keyshortcuts', /./);
+
+  // Ratón: conserva el drag ya existente y expone la misma posición de cámara
+  // que usa el contrato de teclado.
+  await inspect.click();
+  await expect(canvas).toBeFocused();
   const box = await canvas.boundingBox();
   expect(box).not.toBeNull();
   await page.mouse.move(box.x + box.width * 0.52, box.y + box.height * 0.52);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width * 0.68, box.y + box.height * 0.42, { steps: 5 });
   await page.mouse.up();
+  await expect.poll(async () => Math.abs(Number(await canvas.getAttribute('data-board3d-inspect-yaw') || 0))).toBeGreaterThan(0.001);
+  await canvas.press('Home');
+
+  // Touch/pen pasa por el mismo PointerEvent del canvas. No depende de un
+  // gesto inventado o de controles visuales adicionales.
+  await canvas.dispatchEvent('pointerdown', {
+    pointerId: 77,
+    pointerType: 'touch',
+    clientX: box.x + box.width * 0.52,
+    clientY: box.y + box.height * 0.52,
+  });
+  await canvas.dispatchEvent('pointermove', {
+    pointerId: 77,
+    pointerType: 'touch',
+    clientX: box.x + box.width * 0.62,
+    clientY: box.y + box.height * 0.46,
+  });
+  await canvas.dispatchEvent('pointerup', {
+    pointerId: 77,
+    pointerType: 'touch',
+    clientX: box.x + box.width * 0.62,
+    clientY: box.y + box.height * 0.46,
+  });
+  await expect.poll(async () => Math.abs(Number(await canvas.getAttribute('data-board3d-inspect-yaw') || 0))).toBeGreaterThan(0.001);
 
   await switchTo2D(page);
   const remounted = await switchTo3D(page);
@@ -74,6 +127,8 @@ test('War Room · inspect, foco y cámara privados se limpian sin borrar selecci
   await expect(remounted.board3d).toHaveAttribute('data-board3d-selected', 'e2');
   await expect(remounted.board3d).toHaveAttribute('data-board3d-legal-target-count', '2');
   await expect(remounted.board3d).toHaveAttribute('data-board3d-focused', 'e1');
+  await expect(remounted.canvas).toHaveAttribute('data-board3d-inspect-yaw', '0.000');
+  await expect(remounted.canvas).toHaveAttribute('data-board3d-inspect-pitch', '0.000');
   await expect(page.getByRole('button', { name: 'Inspeccionar', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByRole('button', { name: 'Volver a jugar', exact: true })).toHaveCount(0);
   await expect(page.locator('.board3d-main-canvas')).toHaveCount(1);

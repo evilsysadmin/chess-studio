@@ -35,6 +35,15 @@ import './Board3D.css';
 import './Board3DViewportTuning.css';
 import './Board3DParity.css';
 
+const BOARD3D_PLAY_ARIA_LABEL = 'Tablero de ajedrez 3D en Sala de guerra. Cámara táctica fija desde tu lado. Usa flechas y Enter para jugar con teclado.';
+const BOARD3D_INSPECT_ARIA_LABEL = 'Tablero de ajedrez 3D en Sala de guerra. Inspección activa. Usa flechas para mover la cámara, Inicio para centrarla y Escape para volver a jugar.';
+const BOARD3D_INSPECT_SHORTCUTS = 'ArrowLeft ArrowRight ArrowUp ArrowDown Home Escape';
+const INSPECT_YAW_LIMIT = 0.14;
+const INSPECT_PITCH_MIN = -0.08;
+const INSPECT_PITCH_MAX = 0.075;
+const INSPECT_YAW_STEP = 0.025;
+const INSPECT_PITCH_STEP = 0.018;
+
 function clearObjectGroup(group) {
   if (!group) return;
   for (const child of [...group.children]) {
@@ -135,24 +144,36 @@ function Board3DCanvas({
 
   useEffect(() => {
     inspectModeRef.current = inspectMode;
-    if (!inspectMode) {
-      const motion = cameraMotionRef.current;
-      motion.x = 0;
-      motion.y = 0;
-      motion.targetX = 0;
-      motion.targetY = 0;
-      motion.yaw = 0;
-      motion.pitch = 0;
-      motion.dragging = false;
-      const state = sceneStateRef.current;
-      state?.clearInspectCameraDirty?.();
-      const basePosition = state?.camera?.userData?.basePosition;
-      const baseTarget = state?.camera?.userData?.baseTarget;
-      if (state && basePosition && baseTarget) {
-        state.camera.position.copy(basePosition);
-        state.camera.lookAt(baseTarget);
-        state.render();
-      }
+    const state = sceneStateRef.current;
+    const canvas = state?.renderer?.domElement;
+    if (inspectMode) {
+      canvas?.setAttribute('aria-label', BOARD3D_INSPECT_ARIA_LABEL);
+      canvas?.setAttribute('aria-keyshortcuts', BOARD3D_INSPECT_SHORTCUTS);
+      canvas?.focus?.({ preventScroll: true });
+      return;
+    }
+
+    canvas?.setAttribute('aria-label', BOARD3D_PLAY_ARIA_LABEL);
+    canvas?.removeAttribute('aria-keyshortcuts');
+    if (canvas) {
+      canvas.dataset.board3dInspectYaw = '0.000';
+      canvas.dataset.board3dInspectPitch = '0.000';
+    }
+    const motion = cameraMotionRef.current;
+    motion.x = 0;
+    motion.y = 0;
+    motion.targetX = 0;
+    motion.targetY = 0;
+    motion.yaw = 0;
+    motion.pitch = 0;
+    motion.dragging = false;
+    state?.clearInspectCameraDirty?.();
+    const basePosition = state?.camera?.userData?.basePosition;
+    const baseTarget = state?.camera?.userData?.baseTarget;
+    if (state && basePosition && baseTarget) {
+      state.camera.position.copy(basePosition);
+      state.camera.lookAt(baseTarget);
+      state.render();
     }
   }, [inspectMode]);
 
@@ -227,7 +248,7 @@ function Board3DCanvas({
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = initialLights.exposure;
     renderer.domElement.className = 'board3d-main-canvas';
-    renderer.domElement.setAttribute('aria-label', 'Tablero de ajedrez 3D en Sala de guerra. Cámara táctica fija desde tu lado. Usa flechas y Enter para jugar con teclado.');
+    renderer.domElement.setAttribute('aria-label', BOARD3D_PLAY_ARIA_LABEL);
     renderer.domElement.setAttribute('role', 'application');
     renderer.domElement.tabIndex = 0;
     renderer.domElement.style.touchAction = 'none';
@@ -237,6 +258,8 @@ function Board3DCanvas({
     renderer.domElement.dataset.board3dSceneTier = sceneProfile.tier;
     renderer.domElement.dataset.warRoomDomDiagnostics = 'diff-only-ref-v2';
     renderer.domElement.dataset.board3dInteractionHotPath = 'cached-pick-pulse-capture-v1';
+    renderer.domElement.dataset.board3dInspectYaw = '0.000';
+    renderer.domElement.dataset.board3dInspectPitch = '0.000';
     host.appendChild(renderer.domElement);
 
     const releaseEnvironment = installPremiumEnvironment(renderer, scene, { coarsePointer: renderLite });
@@ -524,8 +547,10 @@ function Board3DCanvas({
           motion.lastX = event.clientX;
           motion.lastY = event.clientY;
           if (dx || dy) {
-            motion.yaw = THREE.MathUtils.clamp(motion.yaw - dx * 0.0023, -0.14, 0.14);
-            motion.pitch = THREE.MathUtils.clamp(motion.pitch - dy * 0.0018, -0.08, 0.075);
+            motion.yaw = THREE.MathUtils.clamp(motion.yaw - dx * 0.0023, -INSPECT_YAW_LIMIT, INSPECT_YAW_LIMIT);
+            motion.pitch = THREE.MathUtils.clamp(motion.pitch - dy * 0.0018, INSPECT_PITCH_MIN, INSPECT_PITCH_MAX);
+            renderer.domElement.dataset.board3dInspectYaw = motion.yaw.toFixed(3);
+            renderer.domElement.dataset.board3dInspectPitch = motion.pitch.toFixed(3);
             inspectCameraDirty = true;
             ambientScheduler?.wake();
           }
@@ -1081,7 +1106,64 @@ function Board3DCanvas({
     state.render();
   }, [checkSquare, gameOver, effectiveThemeId, orientation, showCoordinates]);
 
+  function applyInspectKeyboardCamera() {
+    const state = sceneStateRef.current;
+    if (!state) return;
+    const motion = cameraMotionRef.current;
+    const basePosition = state.camera?.userData?.basePosition;
+    const baseTarget = state.camera?.userData?.baseTarget;
+    if (basePosition && baseTarget) {
+      const euler = new THREE.Euler(motion.pitch, motion.yaw, 0, 'YXZ');
+      const offset = basePosition.clone().sub(baseTarget).applyEuler(euler);
+      state.camera.position.copy(baseTarget).add(offset);
+      state.camera.lookAt(baseTarget);
+    }
+    state.renderer.domElement.dataset.board3dInspectYaw = motion.yaw.toFixed(3);
+    state.renderer.domElement.dataset.board3dInspectPitch = motion.pitch.toFixed(3);
+    state.clearInspectCameraDirty?.();
+    state.render();
+  }
+
   function handleKeyDown(event) {
+    if (inspectModeRef.current) {
+      const motion = cameraMotionRef.current;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setInspectMode(false);
+        return;
+      }
+      if (event.key === 'Home') {
+        event.preventDefault();
+        motion.yaw = 0;
+        motion.pitch = 0;
+        applyInspectKeyboardCamera();
+        return;
+      }
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        return;
+      }
+
+      let handled = true;
+      if (event.key === 'ArrowLeft') {
+        motion.yaw = THREE.MathUtils.clamp(motion.yaw + INSPECT_YAW_STEP, -INSPECT_YAW_LIMIT, INSPECT_YAW_LIMIT);
+      } else if (event.key === 'ArrowRight') {
+        motion.yaw = THREE.MathUtils.clamp(motion.yaw - INSPECT_YAW_STEP, -INSPECT_YAW_LIMIT, INSPECT_YAW_LIMIT);
+      } else if (event.key === 'ArrowUp') {
+        motion.pitch = THREE.MathUtils.clamp(motion.pitch + INSPECT_PITCH_STEP, INSPECT_PITCH_MIN, INSPECT_PITCH_MAX);
+      } else if (event.key === 'ArrowDown') {
+        motion.pitch = THREE.MathUtils.clamp(motion.pitch - INSPECT_PITCH_STEP, INSPECT_PITCH_MIN, INSPECT_PITCH_MAX);
+      } else {
+        handled = false;
+      }
+
+      if (handled) {
+        event.preventDefault();
+        applyInspectKeyboardCamera();
+        return;
+      }
+    }
+
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       onSquareClick?.(focusedSquare);
