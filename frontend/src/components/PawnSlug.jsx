@@ -317,6 +317,7 @@ export default function PawnSlug({ onExit }) {
   const overlay = hud.phase === 'ready' || hud.phase === 'gameover' || hud.phase === 'victory';
   const weapons = hud.weapons?.length ? hud.weapons : INITIAL_WEAPONS;
   const keymap = settings.keymap || PAWN_SLUG_DEFAULT_KEYMAP;
+  const expertMode = settings.expertMode === true;
 
   return (
     <div className="pawn-slug" data-pawn-slug="true">
@@ -421,7 +422,7 @@ export default function PawnSlug({ onExit }) {
                 </div>
               )}
               {hud.phase !== 'ready' && <small>Nivel {hud.level} · {hud.score.toLocaleString('es-ES')} puntos · {missionTime}</small>}
-              {hud.phase !== 'ready' && (
+              {expertMode && hud.phase !== 'ready' && (
                 <PawnSlugModelArmory
                   groups={hud.weaponModels || []}
                   credits={hud.credits || 0}
@@ -500,6 +501,20 @@ export default function PawnSlug({ onExit }) {
                       )}
                     />
                   </label>
+                </div>
+
+                <div className="pawn-slug-settings-remap">
+                  <div className="pawn-slug-settings-section-title">
+                    <span>Modo experto</span>
+                    <button
+                      type="button"
+                      aria-pressed={expertMode}
+                      onClick={() => commitSettings({ ...settings, expertMode: !expertMode })}
+                    >
+                      {expertMode ? 'ACTIVO' : 'OFF'}
+                    </button>
+                  </div>
+                  <small>Activa créditos y la armería avanzada al terminar una misión. El arcade base permanece limpio por defecto.</small>
                 </div>
 
                 <div className="pawn-slug-settings-remap">
