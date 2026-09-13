@@ -53,6 +53,105 @@ describe('AI player portrait', () => {
     expect(facts.worst_recorded_move.centipawn_loss).toBe(210);
   });
 
+  it('prefiere estado longitudinal y evidencia positiva del Player Model frente a contadores históricos crudos', () => {
+    const insights = {
+      totalGames: 12,
+      overall: { wins: 6, draws: 1, losses: 5, winPct: 50 },
+      byMode: {},
+      favoriteOpening: null,
+      openingDossier: [],
+      colorPreference: { white: 7, black: 5 },
+      longestWinStreak: 3,
+      ratingTrend: null,
+      humanCaptures: 40,
+    };
+    const playerModel = {
+      samples: { games: 12 },
+      confidence: {
+        games: 'medium',
+        cleanPlay: 'medium',
+        positiveDecisions: 'medium',
+      },
+      outcomes: { wins: 6, draws: 1, losses: 5, total: 12, winPct: 50 },
+      colorPreference: { white: 7, black: 5 },
+      openings: [],
+      ratingTrend: null,
+      recurringErrors: [
+        {
+          incidentKey: 'human:MISSED_MATE',
+          positions: 3,
+          improvementState: 'still-occurring',
+          debt: { active: false, paid: true },
+          postTrainingObservations: { observedGames: 1, recurrenceGames: 1, noRecurrenceGames: 0 },
+        },
+        {
+          incidentKey: 'cpu:KNIGHT_FORK',
+          positions: 4,
+          improvementState: 'probable-improvement',
+          debt: { active: false, paid: true },
+          postTrainingObservations: { observedGames: 2, recurrenceGames: 0, noRecurrenceGames: 2 },
+        },
+        {
+          incidentKey: 'cpu:PAWN_FORK',
+          positions: 5,
+          improvementState: 'corrected-with-sufficient-sample',
+          debt: { active: false, paid: true },
+          postTrainingObservations: { observedGames: 5, recurrenceGames: 0, noRecurrenceGames: 5 },
+        },
+      ],
+      cleanPlay: {
+        eligibleGames: 4,
+        cleanGames: 3,
+        cleanRate: 75,
+        currentStreak: 2,
+        bestStreak: 3,
+        latestEligibleClean: true,
+      },
+      positiveDecisions: {
+        eligibleGames: 3,
+        comparedMoves: 24,
+        enginePreferredMoves: 9,
+        preferredRate: 38,
+        gamesWithPreferredMoves: 3,
+      },
+    };
+
+    const facts = buildPlayerPortraitFacts(
+      insights,
+      { incidents: { 'human:MISSED_MATE': 99, 'cpu:KNIGHT_FORK': 77 } },
+      { playerModel },
+    );
+
+    expect(facts.noteworthy_incidents).toBeUndefined();
+    expect(facts.active_recurring_patterns).toEqual([
+      expect.objectContaining({
+        key: 'human:MISSED_MATE',
+        count: 3,
+        improvement_state: 'still-occurring',
+        recurrence_games_after_training: 1,
+      }),
+    ]);
+    expect(facts.improving_or_corrected_patterns.map((pattern) => pattern.key)).toEqual([
+      'cpu:KNIGHT_FORK',
+      'cpu:PAWN_FORK',
+    ]);
+    expect(facts.clean_play).toEqual(expect.objectContaining({
+      eligible_games: 4,
+      clean_games: 3,
+      clean_rate: 75,
+      current_streak: 2,
+      evidence_strength: 'medium',
+    }));
+    expect(facts.positive_decisions).toEqual(expect.objectContaining({
+      eligible_games: 3,
+      compared_moves: 24,
+      engine_preferred_moves: 9,
+      preferred_rate: 38,
+      games_with_preferred_moves: 3,
+      evidence_strength: 'medium',
+    }));
+  });
+
   it('regenera automáticamente después de cada partida terminada', () => {
     expect(playerPortraitGenerationKey({ totalGames: 3 })).not.toBe(playerPortraitGenerationKey({ totalGames: 4 }));
     expect(playerPortraitGenerationKey({ totalGames: 4 })).not.toBe(playerPortraitGenerationKey({ totalGames: 5 }));
