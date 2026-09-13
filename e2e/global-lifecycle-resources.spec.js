@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { login, mockApi, startQuickGame } from './helpers.js';
+import { login, mockApi, openMoreGameModes, startQuickGame } from './helpers.js';
 
 async function installGlobalResourceProbe(page) {
   await page.addInitScript(() => {
@@ -88,6 +88,22 @@ function expectReturnedResourcesToFitBaseline({ baseline, final }) {
     .toBeLessThanOrEqual(Math.max(1, baseline.audioContexts));
 }
 
+async function openPawnSlugFromHome(page) {
+  const speech = page.getByRole('region', { name: 'Mensaje de Matthias', exact: true });
+  if (await speech.isVisible().catch(() => false)) {
+    const close = speech.getByRole('button', { name: 'Cerrar comentario de Matthias', exact: true });
+    if (await close.isVisible().catch(() => false)) await close.click({ force: true });
+  }
+
+  await openMoreGameModes(page);
+  const moreModes = page.locator('#illustrated-home-tools');
+  await expect(moreModes).toBeVisible();
+  await moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
+  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: /Pawn Slug/ }).click();
+  await expect(page.getByRole('heading', { name: 'Pawn Slug', exact: true })).toBeVisible();
+}
+
 test('Browser lifecycle · Home → War Room → Home no deja recursos gráficos o globales zombis', async ({ page }) => {
   await installGlobalResourceProbe(page);
   await mockApi(page, {
@@ -115,6 +131,45 @@ test('Browser lifecycle · Home → War Room → Home no deja recursos gráficos
   await page.getByRole('button', { name: 'Salir al menú', exact: true }).click();
   await expect(page.getByRole('heading', { name: '¿Abandonar la partida?', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Cancelar sin penalización', exact: true }).click();
+  await expect(home).toBeVisible();
+  await settle(page);
+
+  const final = await snapshot();
+  expectReturnedResourcesToFitBaseline({ baseline, final });
+});
+
+test('Browser lifecycle · Home → Pawn Slug → Home cierra WebGL, Worker y audio premium', async ({ page }) => {
+  test.setTimeout(100_000);
+  await installGlobalResourceProbe(page);
+  await mockApi(page, {
+    profileSeed: {
+      'matthias.onboarded': '2',
+      'chess-study-home-guide-dismissed-v1': '1',
+    },
+  });
+  await login(page);
+
+  const home = page.getByRole('region', { name: 'Modos principales', exact: true });
+  await expect(home).toBeVisible();
+  await settle(page);
+
+  const snapshot = () => page.evaluate(() => window.__chessGlobalResourceProbe.snapshot());
+  const baseline = await snapshot();
+
+  await openPawnSlugFromHome(page);
+  await page.getByRole('button', { name: 'INICIAR OPERACIÓN', exact: true }).click();
+  await expect(page.getByText('Dienstpistole', { exact: true })).toBeVisible();
+  const stage = page.locator('[data-pawn-slug-renderer="three"]');
+  await expect(stage.locator('canvas')).toBeVisible({ timeout: 30_000 });
+  await settle(page);
+
+  const pawnSlug = await snapshot();
+  expect(pawnSlug.webglCanvases, `Pawn Slug debe acreditar al menos un canvas WebGL: ${JSON.stringify(pawnSlug)}`)
+    .toBeGreaterThanOrEqual(1);
+
+  await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
   await expect(home).toBeVisible();
   await settle(page);
 
