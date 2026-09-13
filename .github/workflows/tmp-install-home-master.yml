@@ -48,6 +48,7 @@ jobs:
             d245bbd49020d4c681787ff4e756017eeeb3cd0c
           )
           for sha in "${blobs[@]}"; do
+            echo "fetch ${sha}"
             curl -fsSL \
               -H "Authorization: Bearer ${GH_TOKEN}" \
               -H 'Accept: application/vnd.github+json' \
@@ -59,6 +60,7 @@ jobs:
           done
           bytes="$(wc -c < "$tmp" | tr -d ' ')"
           sha="$(git hash-object "$tmp")"
+          echo "reconstructed bytes=${bytes} sha=${sha}"
           test "$bytes" = '172392'
           test "$sha" = 'f898f1e302e6f7358601b4da0ca8e7c50b41fe08'
           mv "$tmp" "$target"
