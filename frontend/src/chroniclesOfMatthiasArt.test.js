@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildChroniclesCharacter, buildCorruptedPawn } from './chroniclesOfMatthiasArt.js';
+import { buildChroniclesCharacter, buildCorruptedPawn, buildGateJailer } from './chroniclesOfMatthiasArt.js';
 
 describe('Chronicles of Matthias 3D cast art', () => {
   it('gives every party member a distinct expedition silhouette', () => {
@@ -23,6 +23,17 @@ describe('Chronicles of Matthias 3D cast art', () => {
     expect(enemy.getObjectByName('corrupted-pawn-eye-left')).toBeTruthy();
     expect(enemy.userData.chroniclesGlowMaterials).toHaveLength(1);
     expect(enemy.userData.chroniclesGlowMaterials[0].emissiveIntensity).toBeGreaterThan(1);
+  });
+
+  it('gives the awakened gate encounter a corrupted rook silhouette of its own', () => {
+    const jailer = buildGateJailer();
+
+    expect(jailer.userData.chroniclesEnemy).toBe('gate-jailer');
+    expect(jailer.userData.chroniclesSilhouette).toBe('corrupted-rook-jailer');
+    expect(jailer.getObjectByName('gate-jailer-crown')).toBeTruthy();
+    expect(jailer.getObjectByName('gate-jailer-key-ring')).toBeTruthy();
+    expect(jailer.getObjectByName('gate-jailer-fissure-main')).toBeTruthy();
+    expect(jailer.userData.chroniclesGlowMaterials[0].emissiveIntensity).toBeGreaterThan(2);
   });
 
   it('keeps coarse-pointer geometry deliberately cheaper', () => {

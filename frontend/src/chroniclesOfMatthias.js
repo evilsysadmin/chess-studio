@@ -22,7 +22,28 @@ export const CHRONICLES_PARTY = Object.freeze([
   Object.freeze({ id: 'knight', name: 'Morcilla', role: 'Caballo logístico', glyph: '♞', maxHp: 8, row: 'back', lane: 'right', attackName: 'Salto brutal', damage: 1, reach: 2 }),
 ]);
 
-const ENEMY_CELL = Object.freeze({ x: 3, y: 5 });
+export const CHRONICLES_ENEMIES = Object.freeze([
+  Object.freeze({
+    id: 'corrupted-pawn',
+    name: 'peón corrompido',
+    x: 3,
+    y: 5,
+    hpKey: 'enemyHp',
+    maxHp: 6,
+    retaliation: 1,
+    activation: 'always',
+  }),
+  Object.freeze({
+    id: 'gate-jailer',
+    name: 'torre carcelero',
+    x: 3,
+    y: 1,
+    hpKey: 'jailerHp',
+    maxHp: 8,
+    retaliation: 2,
+    activation: 'sigil',
+  }),
+]);
 
 function partyState() {
   return CHRONICLES_PARTY.map((member) => ({ ...member, hp: member.maxHp }));
@@ -34,6 +55,7 @@ export function createChroniclesState() {
     y: 5,
     direction: 1,
     enemyHp: 6,
+    jailerHp: 8,
     sigilAwake: false,
     phase: 'explore',
     party: partyState(),
@@ -46,8 +68,24 @@ export function chroniclesTileAt(x, y) {
   return CHRONICLES_MAP[y]?.[x] || '#';
 }
 
+function enemyActive(state, enemy) {
+  return enemy.activation === 'always' || (enemy.activation === 'sigil' && state.sigilAwake);
+}
+
+function enemyAlive(state, enemy) {
+  return enemyActive(state, enemy) && Number(state[enemy.hpKey] || 0) > 0;
+}
+
 export function chroniclesEnemyAlive(state) {
-  return state.enemyHp > 0;
+  return CHRONICLES_ENEMIES.some((enemy) => enemyAlive(state, enemy));
+}
+
+export function chroniclesActiveEnemies(state) {
+  return CHRONICLES_ENEMIES.filter((enemy) => enemyAlive(state, enemy));
+}
+
+function chroniclesEnemyAt(state, x, y) {
+  return CHRONICLES_ENEMIES.find((enemy) => enemy.x === x && enemy.y === y && enemyAlive(state, enemy)) || null;
 }
 
 export function chroniclesFrontCell(state) {
@@ -55,16 +93,20 @@ export function chroniclesFrontCell(state) {
   return { x: state.x + direction.dx, y: state.y + direction.dy };
 }
 
-export function chroniclesEnemyDistanceAhead(state, maxReach = 2) {
-  if (!chroniclesEnemyAlive(state)) return null;
+function chroniclesEnemyTargetAhead(state, maxReach = 2) {
   const direction = CHRONICLES_DIRECTIONS[state.direction];
   for (let distance = 1; distance <= maxReach; distance += 1) {
     const x = state.x + direction.dx * distance;
     const y = state.y + direction.dy * distance;
     if (chroniclesTileAt(x, y) === '#') return null;
-    if (x === ENEMY_CELL.x && y === ENEMY_CELL.y) return distance;
+    const enemy = chroniclesEnemyAt(state, x, y);
+    if (enemy) return { enemy, distance };
   }
   return null;
+}
+
+export function chroniclesEnemyDistanceAhead(state, maxReach = 2) {
+  return chroniclesEnemyTargetAhead(state, maxReach)?.distance ?? null;
 }
 
 function withMessage(state, message) {
@@ -74,7 +116,14 @@ function withMessage(state, message) {
 function enterTile(state, x, y) {
   const tile = chroniclesTileAt(x, y);
   if (tile === 'S' && !state.sigilAwake) {
-    return { ...state, x, y, sigilAwake: true, turns: state.turns + 1, message: 'El sello despierta. En alguna parte, una puerta decide dejar de ser insoportable.' };
+    return {
+      ...state,
+      x,
+      y,
+      sigilAwake: true,
+      turns: state.turns + 1,
+      message: 'El sello despierta. Arriba, metal contra piedra: algo pesado acaba de tomar guardia ante la puerta negra.',
+    };
   }
   if (tile === 'X') {
     return { ...state, x, y, phase: 'escaped', turns: state.turns + 1, message: 'Salida encontrada. Matthias anota que sobrevivir cuenta como excelencia operativa.' };
@@ -93,46 +142,61 @@ function retaliationTargetId(state, attacker) {
   return state.party.find((member) => member.row === 'front' && member.hp > 0)?.id || null;
 }
 
+function defeatMessage(attacker, enemy) {
+  if (enemy.id === 'gate-jailer') {
+    return `${attacker.name} derriba a la torre carcelero con ${attacker.attackName.toLowerCase()}. La puerta, privada de personal, parece bastante menos autoritaria.`;
+  }
+  return `${attacker.name} remata al peón corrompido con ${attacker.attackName.toLowerCase()}. Matthias aprueba con una cantidad ofensivamente pequeña de entusiasmo.`;
+}
+
+function rangedHitMessage(attacker, enemy) {
+  if (enemy.id === 'gate-jailer') {
+    return `${attacker.name} castiga a la torre carcelero desde la retaguardia con ${attacker.attackName.toLowerCase()}. La mole no alcanza a devolver el golpe.`;
+  }
+  return `${attacker.name} alcanza desde la retaguardia con ${attacker.attackName.toLowerCase()}. El peón sisea, demasiado lejos para devolver el golpe.`;
+}
+
 function resolveAttack(state, memberId) {
   const attacker = partyMember(state, memberId);
   if (!attacker) return state;
   if (attacker.hp <= 0) return withMessage(state, `${attacker.name} está fuera de combate. Incluso la épica tiene límites médicos.`);
 
-  const distance = chroniclesEnemyDistanceAhead(state, attacker.reach);
-  if (!distance) {
+  const target = chroniclesEnemyTargetAhead(state, attacker.reach);
+  if (!target) {
     return withMessage(state, `${attacker.name} ejecuta ${attacker.attackName.toLowerCase()} contra absolutamente nada. La nada resiste.`);
   }
 
-  const nextHp = Math.max(0, state.enemyHp - attacker.damage);
+  const { enemy, distance } = target;
+  const nextHp = Math.max(0, Number(state[enemy.hpKey] || 0) - attacker.damage);
   if (nextHp === 0) {
     return {
       ...state,
-      enemyHp: 0,
+      [enemy.hpKey]: 0,
       turns: state.turns + 1,
-      message: `${attacker.name} remata al peón corrompido con ${attacker.attackName.toLowerCase()}. Matthias aprueba con una cantidad ofensivamente pequeña de entusiasmo.`,
+      message: defeatMessage(attacker, enemy),
     };
   }
 
   if (distance > 1) {
     return {
       ...state,
-      enemyHp: nextHp,
+      [enemy.hpKey]: nextHp,
       turns: state.turns + 1,
-      message: `${attacker.name} alcanza desde la retaguardia con ${attacker.attackName.toLowerCase()}. El peón sisea, demasiado lejos para devolver el golpe.`,
+      message: rangedHitMessage(attacker, enemy),
     };
   }
 
   const targetId = retaliationTargetId(state, attacker);
   const party = targetId
-    ? state.party.map((member) => member.id === targetId ? { ...member, hp: Math.max(0, member.hp - 1) } : member)
+    ? state.party.map((member) => member.id === targetId ? { ...member, hp: Math.max(0, member.hp - enemy.retaliation) } : member)
     : state.party;
-  const target = party.find((member) => member.id === targetId);
+  const retaliationTarget = party.find((member) => member.id === targetId);
   return {
     ...state,
-    enemyHp: nextHp,
+    [enemy.hpKey]: nextHp,
     party,
     turns: state.turns + 1,
-    message: `${attacker.name} impacta con ${attacker.attackName.toLowerCase()}. La criatura responde${target ? ` y alcanza a ${target.name}` : ''}.`,
+    message: `${attacker.name} impacta con ${attacker.attackName.toLowerCase()}. ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} responde${retaliationTarget ? ` y alcanza a ${retaliationTarget.name}` : ''}.`,
   };
 }
 
@@ -154,14 +218,21 @@ export function chroniclesReduce(state, action) {
   const tile = chroniclesTileAt(x, y);
 
   if (tile === '#') return withMessage(state, 'Hay una pared. Incluso Matthias concede que atravesarla sería excesivo.');
-  if (x === ENEMY_CELL.x && y === ENEMY_CELL.y && chroniclesEnemyAlive(state)) return withMessage(state, 'El peón corrompido bloquea el corredor. Convéncelo con violencia reglamentaria.');
+  const blockingEnemy = chroniclesEnemyAt(state, x, y);
+  if (blockingEnemy) {
+    const message = blockingEnemy.id === 'gate-jailer'
+      ? 'La torre carcelero sella la puerta negra. Es una cerradura de varias toneladas y bastante mal humor.'
+      : 'El peón corrompido bloquea el corredor. Convéncelo con violencia reglamentaria.';
+    return withMessage(state, message);
+  }
   if (tile === 'X' && !state.sigilAwake) return withMessage(state, 'La puerta negra no cede. El sello de la cripta sigue dormido.');
   return enterTile(state, x, y);
 }
 
 export function chroniclesObjective(state) {
   if (state.phase === 'escaped') return 'Vertical slice completado';
-  if (chroniclesEnemyAlive(state)) return 'Derrota al peón corrompido';
+  if (state.enemyHp > 0) return 'Derrota al peón corrompido';
   if (!state.sigilAwake) return 'Encuentra y pisa el sello';
-  return 'Regresa a la puerta negra';
+  if (state.jailerHp > 0) return 'Derrota a la torre carcelero';
+  return 'Cruza la puerta negra';
 }
