@@ -1,13 +1,15 @@
 import * as THREE from 'three';
 
 export const HOME_CASTLE_PROP_FOCUS_LERP = 0.18;
-export const HOME_CASTLE_PROP_FOCUS_MAX_EMISSIVE = 0.3;
+export const HOME_CASTLE_PROP_FOCUS_MAX_EMISSIVE = 0.32;
+export const HOME_CASTLE_PROP_FOCUS_MIN_BOOST = 0.055;
+export const HOME_CASTLE_PROP_FOCUS_BOOST_RATIO = 0.75;
 
 function materialTarget(base, focused) {
   if (!focused) return base;
   return Math.min(
     HOME_CASTLE_PROP_FOCUS_MAX_EMISSIVE,
-    base + Math.max(0.035, base * 0.45),
+    base + Math.max(HOME_CASTLE_PROP_FOCUS_MIN_BOOST, base * HOME_CASTLE_PROP_FOCUS_BOOST_RATIO),
   );
 }
 
