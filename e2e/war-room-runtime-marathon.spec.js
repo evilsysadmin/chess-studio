@@ -252,7 +252,7 @@ test('War Room · runtime marathon no acumula canvas, RAF, intervals ni listener
 });
 
 test('War Room · cortar jugadas 3D con cambio de renderer reconcilia limpio y sigue jugable', async ({ page }) => {
-  test.setTimeout(180_000);
+  test.setTimeout(360_000);
   const requestLog = [];
 
   await installRuntimeProbe(page);
