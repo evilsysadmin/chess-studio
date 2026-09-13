@@ -2,6 +2,7 @@ import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, removeStorageItem, setS
 import { Chess } from 'chess.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { detectNoteworthyMove } from './cpuCommentary.js';
+import { buildPostGameIncidentEvidence } from './postGameIncidentEvidence.js';
 import { isObviouslyUnsoundSingleMovePuzzle } from './puzzleTacticalQuality.js';
 import { provesCurrentPersonalPuzzleQuality } from './personalPuzzleQuality.js';
 import { spacedReviewResultPatch } from './spacedReview.js';
@@ -63,31 +64,11 @@ export function isPersonalPuzzleMastered(puzzle) {
 }
 
 function detectIncidentKeys(fenBefore, moveReport) {
-  const keys = [];
-  const played = moveReport?.playedFrom && moveReport?.playedTo
-    ? { from: moveReport.playedFrom, to: moveReport.playedTo, promotion: moveReport.playedPromotion || undefined }
-    : (() => {
-        if (!fenBefore || !moveReport?.played) return null;
-        try {
-          const board = new Chess(fenBefore);
-          const move = board.move(moveReport.played);
-          return move ? { from: move.from, to: move.to, promotion: move.promotion } : null;
-        } catch { return null; }
-      })();
-
-  if (played) {
-    const event = detectNoteworthyMove(fenBefore, played);
-    if (event?.type) keys.push(`human:${event.type}`);
-  }
-
-  const reply = moveReport?.context?.reply;
-  const replyFen = moveReport?.context?.played?.fenAfter;
-  if (replyFen && reply?.from && reply?.to) {
-    const event = detectNoteworthyMove(replyFen, { from: reply.from, to: reply.to, promotion: reply.promotion });
-    if (event?.type) keys.push(`cpu:${event.type}`);
-  }
-
-  return [...new Set(keys)];
+  const context = {
+    ...(moveReport?.context || {}),
+    fenBefore: moveReport?.context?.fenBefore || fenBefore,
+  };
+  return buildPostGameIncidentEvidence({ ...moveReport, context })?.incidentKeys || [];
 }
 
 export function matchesPersonalPuzzleFilter(puzzle, filter = null) {
