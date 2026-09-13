@@ -11,8 +11,9 @@ export function provesCurrentPersonalPuzzleQuality(puzzle) {
 
   const candidateCount = Number(puzzle?.engineCandidateCount);
   const analysisDepth = Number(puzzle?.engineAnalysisDepth);
-  const gap = puzzle?.engineBestToSecondGap;
-  const rootConstraintProven = candidateCount === 1 || Number.isFinite(Number(gap));
+  const rawGap = puzzle?.engineBestToSecondGap;
+  const rootConstraintProven = candidateCount === 1
+    || (rawGap != null && Number.isFinite(Number(rawGap)));
 
   return Number(puzzle?.aiQualityVersion) === PERSONAL_PUZZLE_QUALITY_VERSION
     && puzzle?.tacticalBestMoveChecked === true
