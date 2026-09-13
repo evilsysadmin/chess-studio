@@ -5,8 +5,10 @@ import {
   shouldOfferAiPersonalPuzzleGeneration,
   validateAiPersonalPuzzleCandidate,
 } from './aiPersonalPuzzles.js';
+import { provesCurrentPersonalPuzzleQuality } from './personalPuzzleQuality.js';
 
 const START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+const FACTUAL_ROOT = { analysisDepth: 3, candidateCount: 20, bestToSecondGap: 18 };
 
 describe('AI personal puzzle batches', () => {
   it('manda como máximo dos semillas reales y no filtra ids de partida', () => {
@@ -37,19 +39,54 @@ describe('AI personal puzzle batches', () => {
     expect(parsePersonalPuzzleBatch('esto no es json')).toEqual([]);
   });
 
-  it('acepta sólo una jugada legal que coincida con el minimax local', async () => {
+  it('acepta sólo una jugada legal que coincida con el minimax y conserva provenance del root', async () => {
     const candidate = { fen: START, best_uci: 'e2e4', title: 'Centro', description: 'Empuja el centro.' };
     const accepted = await validateAiPersonalPuzzleCandidate(candidate, {
-      analyzeMove: async () => ({ suggested: { from: 'e2', to: 'e4', san: 'e4' } }),
+      analyzeMove: async () => ({ suggested: { from: 'e2', to: 'e4', san: 'e4' }, ...FACTUAL_ROOT }),
     });
-    expect(accepted).toMatchObject({ solution: ['e4'], source: 'workers-ai-validated', aiValidatedLevel: 92, aiQualityVersion: 5, tacticalBestMoveChecked: true, tacticalRefutationChecked: true });
+    expect(accepted).toMatchObject({
+      solution: ['e4'],
+      source: 'workers-ai-validated',
+      aiValidatedLevel: 92,
+      aiQualityVersion: 6,
+      tacticalBestMoveChecked: true,
+      tacticalRefutationChecked: true,
+      engineAnalysisDepth: 3,
+      engineCandidateCount: 20,
+      engineBestToSecondGap: 18,
+    });
+    expect(provesCurrentPersonalPuzzleQuality(accepted)).toBe(true);
 
     const rejected = await validateAiPersonalPuzzleCandidate(candidate, {
-      analyzeMove: async () => ({ suggested: { from: 'd2', to: 'd4', san: 'd4' } }),
+      analyzeMove: async () => ({ suggested: { from: 'd2', to: 'd4', san: 'd4' }, ...FACTUAL_ROOT }),
     });
     expect(rejected).toBeNull();
   });
 
+  it('rechaza validaciones sin un root minimax suficientemente probado', async () => {
+    const candidate = { fen: START, best_uci: 'e2e4' };
+    const matching = { suggested: { from: 'e2', to: 'e4', san: 'e4' } };
+
+    expect(await validateAiPersonalPuzzleCandidate(candidate, {
+      analyzeMove: async () => ({ ...matching, analysisDepth: 1, candidateCount: 20, bestToSecondGap: 10 }),
+    })).toBeNull();
+    expect(await validateAiPersonalPuzzleCandidate(candidate, {
+      analyzeMove: async () => ({ ...matching, analysisDepth: 3, candidateCount: 20, bestToSecondGap: null }),
+    })).toBeNull();
+    expect(await validateAiPersonalPuzzleCandidate(candidate, {
+      analyzeMove: async () => ({ ...matching, analysisDepth: 3, candidateCount: 0, bestToSecondGap: null }),
+    })).toBeNull();
+  });
+
+  it('retira del contrato actual un puzzle AI legacy que no conserva provenance minimax', () => {
+    expect(provesCurrentPersonalPuzzleQuality({
+      source: 'workers-ai-validated',
+      aiValidatedLevel: 92,
+      aiQualityVersion: 5,
+      tacticalBestMoveChecked: true,
+      tacticalRefutationChecked: true,
+    })).toBe(false);
+  });
 
   it('rechaza aunque el mock de motor lo bendiga si la jugada deja la pieza comestible sin compensación', async () => {
     const candidate = {
@@ -58,7 +95,7 @@ describe('AI personal puzzle batches', () => {
       title: 'Jaque de humo',
     };
     const rejected = await validateAiPersonalPuzzleCandidate(candidate, {
-      analyzeMove: async () => ({ suggested: { from: 'c5', to: 'e6', san: 'Ne6+' } }),
+      analyzeMove: async () => ({ suggested: { from: 'c5', to: 'e6', san: 'Ne6+' }, ...FACTUAL_ROOT }),
     });
     expect(rejected).toBeNull();
   });

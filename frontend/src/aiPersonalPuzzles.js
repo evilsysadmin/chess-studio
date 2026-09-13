@@ -4,7 +4,11 @@ import { getToken } from './auth.js';
 import { requestRemoteNarrative } from './narrativeRemote.js';
 import { loadPersonalPuzzles, saveGeneratedPersonalPuzzles } from './personalPuzzles.js';
 import { isObviouslyUnsoundSingleMovePuzzle } from './puzzleTacticalQuality.js';
-import { PERSONAL_PUZZLE_MIN_ENGINE_LEVEL, PERSONAL_PUZZLE_QUALITY_VERSION } from './personalPuzzleQuality.js';
+import {
+  PERSONAL_PUZZLE_MIN_ANALYSIS_DEPTH,
+  PERSONAL_PUZZLE_MIN_ENGINE_LEVEL,
+  PERSONAL_PUZZLE_QUALITY_VERSION,
+} from './personalPuzzleQuality.js';
 
 const MAX_SEEDS = 2;
 const MAX_CANDIDATES = 4;
@@ -52,6 +56,23 @@ function uciParts(value) {
   return match ? { from: match[1], to: match[2], promotion: match[3] || undefined } : null;
 }
 
+function enginePuzzleProvenance(engine) {
+  const analysisDepth = Number(engine?.analysisDepth);
+  const candidateCount = Number(engine?.candidateCount);
+  const rawGap = engine?.bestToSecondGap;
+  const gap = rawGap == null ? null : Number(rawGap);
+
+  if (!Number.isInteger(analysisDepth) || analysisDepth < PERSONAL_PUZZLE_MIN_ANALYSIS_DEPTH) return null;
+  if (!Number.isInteger(candidateCount) || candidateCount < 1) return null;
+  if (candidateCount > 1 && !Number.isFinite(gap)) return null;
+
+  return {
+    engineAnalysisDepth: analysisDepth,
+    engineCandidateCount: candidateCount,
+    engineBestToSecondGap: candidateCount === 1 ? null : gap,
+  };
+}
+
 export async function validateAiPersonalPuzzleCandidate(candidate, { analyzeMove = api.analyzeMove } = {}) {
   const fen = cleanText(candidate?.fen, 120);
   const intended = uciParts(candidate?.best_uci);
@@ -73,6 +94,8 @@ export async function validateAiPersonalPuzzleCandidate(candidate, { analyzeMove
   const suggested = engine?.suggested;
   if (!suggested || suggested.from !== intended.from || suggested.to !== intended.to) return null;
   if ((suggested.promotion || undefined) !== (intended.promotion || undefined)) return null;
+  const provenance = enginePuzzleProvenance(engine);
+  if (!provenance) return null;
 
   const sourceIncidents = Array.isArray(candidate?.incident_keys)
     ? candidate.incident_keys.slice(0, 4).map((value) => cleanText(value, 48)).filter(Boolean)
@@ -91,6 +114,7 @@ export async function validateAiPersonalPuzzleCandidate(candidate, { analyzeMove
     aiQualityVersion: PERSONAL_PUZZLE_QUALITY_VERSION,
     tacticalBestMoveChecked: true,
     tacticalRefutationChecked: true,
+    ...provenance,
     generatedAt: new Date().toISOString(),
   };
   if (isObviouslyUnsoundSingleMovePuzzle(validated)) return null;
