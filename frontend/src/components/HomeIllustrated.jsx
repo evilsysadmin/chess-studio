@@ -8,6 +8,7 @@ import { loadRivalry } from '../rivalry.js';
 import { dailyChallengeStats, loadDailyChallenge } from '../dailyChallenge.js';
 import { buildHomeCastleLife } from '../homeCastleLife.js';
 import { requestLabLaunch } from '../labLaunchIntent.js';
+import { msUntilNextLocalHour } from '../matthiasRoutineClock.js';
 import { matthiasAmbientVisual, matthiasAmbientVisuals, matthiasHomeZone, matthiasRoutineDwellMs } from '../matthiasVisuals.js';
 import { reducedMotionStatus, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import './HomeIllustrated.css';
@@ -42,12 +43,16 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
   const [toolsOpen, setToolsOpen] = useState(false);
   const [activeRoom, setActiveRoom] = useState(null);
   const [matthiasRoutineIndex, setMatthiasRoutineIndex] = useState(0);
+  const [matthiasRoutineClock, setMatthiasRoutineClock] = useState(() => new Date());
   const [reducedMotion, setReducedMotion] = useState(currentReducedMotion);
   const castleLife = useMemo(() => buildHomeCastleLife({
     rivalry: loadRivalry(),
     dailyStats: dailyChallengeStats(loadDailyChallenge()),
   }), []);
-  const baseMatthiasRoutine = useMemo(() => matthiasAmbientVisuals(), []);
+  const baseMatthiasRoutine = useMemo(() => matthiasAmbientVisuals(
+    matthiasRoutineClock.getHours(),
+    matthiasRoutineClock,
+  ), [matthiasRoutineClock]);
   const matthiasRoutine = useMemo(() => {
     const moment = castleLife.matthiasMoment;
     if (!moment) return baseMatthiasRoutine;
@@ -64,6 +69,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     return [rareScene, ...baseMatthiasRoutine.filter((scene) => scene.avatar !== sourceScene.avatar)];
   }, [baseMatthiasRoutine, castleLife.matthiasMoment]);
   const matthiasVisual = matthiasRoutine[matthiasRoutineIndex % Math.max(1, matthiasRoutine.length)] || matthiasRoutine[0];
+  const matthiasSceneKey = matthiasVisual?.key || 'base';
   const matthiasDwellMs = matthiasRoutineDwellMs(matthiasVisual);
   const memories = castleLife.memories || (castleLife.memory ? [castleLife.memory] : []);
   const experimentsAction = tools.find(([label]) => label === 'Experimentos geniales')?.[1];
@@ -81,6 +87,24 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     return () => {
       window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
       media?.removeEventListener?.('change', refresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer = null;
+    const scheduleNextHour = () => {
+      timer = window.setTimeout(() => {
+        if (cancelled) return;
+        setMatthiasRoutineClock(new Date());
+        setMatthiasRoutineIndex(0);
+        scheduleNextHour();
+      }, msUntilNextLocalHour(new Date()));
+    };
+    scheduleNextHour();
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
     };
   }, []);
 
@@ -103,7 +127,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
       cancelled = true;
       if (timer !== null) window.clearTimeout(timer);
     };
-  }, [matthiasDwellMs, matthiasRoutine.length, matthiasSpeaking, reducedMotion]);
+  }, [matthiasDwellMs, matthiasRoutine.length, matthiasSceneKey, matthiasSpeaking, reducedMotion]);
 
   const rooms = [
     ['tournament', 'TORNEOS', 'Compite y escala', IconTrophy, onTournament],
@@ -204,7 +228,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           onClick={onInsights}
           aria-label={matthiasActionDuplicated ? `Matthias · ${matthiasActivity}` : 'Abrir Así juegas con Matthias'}
           title={`Matthias · ${matthiasActivity}`}
-          data-home-matthias-scene={matthiasVisual?.key || 'base'}
+          data-home-matthias-scene={matthiasSceneKey}
           data-home-matthias-activity={matthiasActivity}
           data-home-matthias-zone={matthiasZone}
           data-home-matthias-moment={matthiasVisual?.momentId || 'none'}
