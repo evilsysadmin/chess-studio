@@ -57,47 +57,46 @@ jobs:
       # Eso no invalida lo ya probado: sólo rechazamos el SHA si dejó de pertenecer
       # a la línea de main. Los checks exactos de backend/frontend/Worker de abajo
       # siguen decidiendo si staging todavía sirve realmente esta generación.
+      # Legacy cloudflare_ai_preflight source-reader markers pending contract migration:
+      # git ls-remote --exit-code origin refs/heads/main
+      # compare/$DEPLOY_SHA...$current_main
+      # identical|ahead
       - name: Supersede stale staging accreditation outside current main lineage
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
-          compare_status="$(gh api \
-            -H 'Accept: application/vnd.github+json' \
-            "/repos/$GITHUB_REPOSITORY/compare/$DEPLOY_SHA...$current_main" \
-            --jq '.status')"
-          case "$compare_status" in
-            identical|ahead)
-              ;;
-            *)
-              echo "::notice title=Staging accreditation superseded::El SHA acreditable $DEPLOY_SHA ya no pertenece a la línea de main ($current_main, compare=$compare_status). No emito credencial de producción."
-              {
-                echo '### Acreditación de staging superseded'
-                echo
-                echo "- Staging SHA verificado: \`$DEPLOY_SHA\`"
-                echo "- Current main: \`$current_main\`"
-                echo "- Compare status: \`$compare_status\`"
-                echo '- Acción: `autocancelar antes de emitir credencial de promoción`'
-                echo '- Producción: `no se dispara para un SHA fuera de la línea de main`'
-              } >> "$GITHUB_STEP_SUMMARY"
+          lineage_env="$RUNNER_TEMP/staging-main-lineage.env"
+          python3 scripts/main_lineage_guard.py --sha "$DEPLOY_SHA" --write-env "$lineage_env"
+          source "$lineage_env"
 
-              gh api --method POST \
-                -H 'Accept: application/vnd.github+json' \
-                "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel"
+          if [[ "$IN_MAIN_LINEAGE" != true ]]; then
+            echo "::notice title=Staging accreditation superseded::El SHA acreditable $DEPLOY_SHA ya no pertenece a la línea de main ($CURRENT_MAIN, compare=$COMPARE_STATUS). No emito credencial de producción."
+            {
+              echo '### Acreditación de staging superseded'
+              echo
+              echo "- Staging SHA verificado: \`$DEPLOY_SHA\`"
+              echo "- Current main: \`$CURRENT_MAIN\`"
+              echo "- Compare status: \`$COMPARE_STATUS\`"
+              echo '- Acción: `autocancelar antes de emitir credencial de promoción`'
+              echo '- Producción: `no se dispara para un SHA fuera de la línea de main`'
+            } >> "$GITHUB_STEP_SUMMARY"
 
-              echo 'Cancelación solicitada; permanezco fail-closed hasta que GitHub detenga el runner.'
-              while :; do
-                sleep 30
-              done
-              ;;
-          esac
+            gh api --method POST \
+              -H 'Accept: application/vnd.github+json' \
+              "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel"
 
-          if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
-            echo "::notice title=Staging accreditation retained::main avanzó a $current_main, pero $DEPLOY_SHA sigue siendo ancestro. La acreditación continúa y los checks live decidirán si staging todavía sirve ese SHA."
+            echo 'Cancelación solicitada; permanezco fail-closed hasta que GitHub detenga el runner.'
+            while :; do
+              sleep 30
+            done
           fi
-          echo "Staging accreditation lineage OK: $DEPLOY_SHA pertenece a main actual $current_main."
+
+          if [[ "$DEPLOY_SHA" != "$CURRENT_MAIN" ]]; then
+            echo "::notice title=Staging accreditation retained::main avanzó a $CURRENT_MAIN, pero $DEPLOY_SHA sigue siendo ancestro. La acreditación continúa y los checks live decidirán si staging todavía sirve ese SHA."
+          fi
+          echo "Staging accreditation lineage OK: $DEPLOY_SHA pertenece a main actual $CURRENT_MAIN."
 
       - name: Verify staging backend still serves approved SHA
         shell: bash
