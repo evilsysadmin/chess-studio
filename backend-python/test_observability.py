@@ -28,3 +28,25 @@ def test_client_release_is_strictly_sanitized():
     assert observability.sanitize_client_release("v16.6dm46j") == "v16.6dm46j"
     assert observability.sanitize_client_release("../../secret") is None
     assert observability.sanitize_client_release("bad release with spaces") is None
+
+
+def test_startup_observability_keeps_only_first_successful_readiness(monkeypatch):
+    clock = [50.250]
+    monkeypatch.setattr(observability, "PROCESS_STARTED_MONOTONIC", 50.0)
+    monkeypatch.setattr(observability, "_FIRST_READY_OBSERVED_MS", None)
+    monkeypatch.setattr(observability.time, "perf_counter", lambda: clock[0])
+
+    first_ms, first = observability.record_process_ready()
+    assert first is True
+    assert first_ms == 250.0
+    assert observability.get_http_metrics()["startup"] == {
+        "first_ready_observed": True,
+        "first_ready_observed_ms": 250.0,
+        "scope": "current_process",
+    }
+
+    clock[0] = 55.0
+    repeated_ms, repeated_first = observability.record_process_ready()
+    assert repeated_first is False
+    assert repeated_ms == 250.0
+    assert observability.get_startup_metrics()["first_ready_observed_ms"] == 250.0
