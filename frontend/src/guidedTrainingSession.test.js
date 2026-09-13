@@ -85,6 +85,65 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     expect(plan.steps[0].title).toContain('Mates que regalaste');
   });
 
+  it('reactiva entrenamiento cuando el Player Model observa una recaída posterior', () => {
+    const plan = buildGuidedTrainingPlan({
+      minutes: 5,
+      history: [],
+      puzzles: [],
+      rivalry: {},
+      playerModel: {
+        recurringErrors: [{
+          incidentKey: 'human:MISSED_MATE',
+          label: 'Mates que dejaste escapar',
+          positions: 3,
+          filter: { incidentKey: 'human:MISSED_MATE' },
+          debt: { progress: 2, target: 2, paid: true, active: false, realCases: 3 },
+          improvementState: 'still-occurring',
+          postTrainingObservations: { recurrenceGames: 1 },
+        }],
+        trainingDebt: { top: null },
+      },
+    });
+
+    expect(plan.available).toBe(true);
+    expect(plan.steps[0]).toMatchObject({
+      id: 'debt:human:MISSED_MATE',
+      kind: 'debt',
+      action: 'personal-filter',
+      filter: { incidentKey: 'human:MISSED_MATE' },
+      minutes: 4,
+    });
+    expect(plan.steps[0].title).toContain('Recaída detectada');
+    expect(plan.steps[0].detail).toContain('reapareció');
+    expect(plan.steps[0].detail).toContain('después del entrenamiento');
+  });
+
+  it('no resucita un patrón cuando la observación posterior sólo permite mejora probable o corrección suficiente', () => {
+    for (const improvementState of ['probable-improvement', 'corrected-with-sufficient-sample']) {
+      const plan = buildGuidedTrainingPlan({
+        minutes: 15,
+        history: [],
+        puzzles: [],
+        rivalry: {},
+        playerModel: {
+          recurringErrors: [{
+            incidentKey: 'human:MISSED_MATE',
+            label: 'Mates que dejaste escapar',
+            positions: 3,
+            filter: { incidentKey: 'human:MISSED_MATE' },
+            debt: { progress: 2, target: 2, paid: true, active: false, realCases: 3 },
+            improvementState,
+            postTrainingObservations: { recurrenceGames: 0, noRecurrenceGames: 5 },
+          }],
+          trainingDebt: { top: null },
+        },
+      });
+
+      expect(plan.available).toBe(false);
+      expect(plan.steps).toEqual([]);
+    }
+  });
+
   it('ajusta la práctica desde datos recientes sin convertirlos en una afirmación inventada', () => {
     const history = [
       { id: 'g1', difficulty: 40, humanColor: 'b' },
