@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   chroniclesActiveEnemies,
   chroniclesEnemyDistanceAhead,
+  chroniclesJournalEntries,
   chroniclesObjective,
   chroniclesReduce,
   createChroniclesState,
@@ -117,6 +118,40 @@ describe('Chronicles of Matthias vertical slice', () => {
     state = chroniclesReduce(state, 'forward');
     expect(state.phase).toBe('escaped');
     expect(chroniclesObjective(state)).toBe('Vertical slice completado');
+  });
+
+  it('records only real expedition milestones instead of logging routine movement', () => {
+    let state = createChroniclesState();
+    expect(chroniclesJournalEntries(state).map((entry) => entry.id)).toEqual(['descent']);
+
+    state = act(state, 'turn-left', 'turn-right', 'backward');
+    expect(chroniclesJournalEntries(state).map((entry) => entry.id)).toEqual(['descent']);
+
+    state = clearOpeningPawn(createChroniclesState());
+    expect(chroniclesJournalEntries(state).map((entry) => entry.id)).toEqual(['descent', 'corrupted-pawn-falls']);
+
+    state = awakenSigil(state);
+    expect(chroniclesJournalEntries(state).map((entry) => entry.id)).toEqual(['descent', 'corrupted-pawn-falls', 'sigil-awake']);
+
+    state = reachGateApproach(state);
+    state = attack(state, 'rook');
+    state = attack(state, 'rook');
+    state = attack(state, 'rook');
+    state = attack(state, 'rook');
+    expect(chroniclesJournalEntries(state).some((entry) => entry.id === 'gate-jailer-falls')).toBe(true);
+
+    state = chroniclesReduce(state, 'forward');
+    expect(chroniclesJournalEntries(state).at(-1)?.id).toBe('escape');
+  });
+
+  it('records a party member only when they actually fall', () => {
+    let state = awakenSigil(clearOpeningPawn(createChroniclesState()));
+    state = reachGateApproach(state);
+    state = { ...state, party: state.party.map((member) => member.id === 'rook' ? { ...member, hp: 2 } : member) };
+    state = attack(state, 'rook');
+    const fall = chroniclesJournalEntries(state).find((entry) => entry.id === 'down-rook');
+    expect(fall?.title).toMatch(/Hildegard cae/i);
+    expect(state.party.find((member) => member.id === 'rook')?.hp).toBe(0);
   });
 
   it('does not let the party walk through stone', () => {
