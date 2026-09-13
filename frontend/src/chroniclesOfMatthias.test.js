@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHRONICLES_ENEMIES,
   chroniclesActiveEnemies,
   chroniclesEnemyDistanceAhead,
+  chroniclesEnemyPosition,
   chroniclesJournalEntries,
   chroniclesObjective,
   chroniclesReduce,
@@ -40,6 +42,24 @@ function reachGateApproach(state) {
 
 function reachSpectralChapel(state) {
   return act(state, 'backward', 'turn-right', 'forward', 'forward', 'turn-left');
+}
+
+function wakeScavenger(state) {
+  let next = reachGateApproach(state);
+  next = { ...next, jailerHp: 2 };
+  return attack(next, 'rook');
+}
+
+function defeatScavenger(state) {
+  let next = attack(state, 'rook');
+  next = act(next, 'turn-left', 'turn-left', 'forward', 'turn-left');
+  next = attack(next, 'rook');
+  next = act(next, 'turn-left', 'forward');
+  return attack(next, 'rook');
+}
+
+function expectKnightJump(from, to) {
+  expect([Math.abs(from.x - to.x), Math.abs(from.y - to.y)].sort((a, b) => a - b)).toEqual([1, 2]);
 }
 
 describe('Chronicles of Matthias vertical slice', () => {
@@ -122,32 +142,60 @@ describe('Chronicles of Matthias vertical slice', () => {
     expect(chroniclesObjective(state)).toBe('Derrota a la torre carcelero');
   });
 
-  it('keeps the spectral chapel optional and still lets the gate jailer finish the route', () => {
-    let state = awakenSigil(clearOpeningPawn(createChroniclesState()));
-    state = reachGateApproach(state);
+  it('keeps the gate jailer stronger and wakes the scavenger only when the jailer falls', () => {
+    let state = reachGateApproach(awakenSigil(clearOpeningPawn(createChroniclesState())));
     expect([state.x, state.y, state.direction]).toEqual([2, 1, 1]);
     expect(chroniclesEnemyDistanceAhead(state, 1)).toBe(1);
 
-    const blocked = chroniclesReduce(state, 'forward');
-    expect([blocked.x, blocked.y]).toEqual([2, 1]);
-    expect(blocked.message).toMatch(/torre carcelero/i);
-
-    state = blocked;
     const hpBefore = state.party.find((member) => member.id === 'rook')?.hp;
     state = attack(state, 'rook');
     expect(state.jailerHp).toBe(6);
     expect(state.party.find((member) => member.id === 'rook')?.hp).toBe(hpBefore - 2);
-    state = attack(state, 'rook');
-    state = attack(state, 'rook');
+    expect(chroniclesActiveEnemies(state).map((enemy) => enemy.id)).not.toContain('scavenger-knight');
+
+    state = { ...state, jailerHp: 2 };
     state = attack(state, 'rook');
     expect(state.jailerHp).toBe(0);
-    expect(state.spectralBishopHp).toBe(5);
+    expect(chroniclesActiveEnemies(state).map((enemy) => enemy.id)).toContain('scavenger-knight');
+    expect(chroniclesObjective(state)).toBe('Caza al caballo carroñero');
+  });
+
+  it('makes the scavenger steal the exit key and flee only by legal knight moves', () => {
+    const scavenger = CHRONICLES_ENEMIES.find((enemy) => enemy.id === 'scavenger-knight');
+    let state = wakeScavenger(awakenSigil(clearOpeningPawn(createChroniclesState())));
+    expect(scavenger).toBeTruthy();
+    expect(state.blackGateKey).toBe(false);
+    expect(chroniclesEnemyPosition(state, scavenger)).toEqual({ x: 3, y: 1 });
+
+    const firstPosition = chroniclesEnemyPosition(state, scavenger);
+    state = attack(state, 'rook');
+    const secondPosition = chroniclesEnemyPosition(state, scavenger);
+    expect(state.scavengerHp).toBe(4);
+    expectKnightJump(firstPosition, secondPosition);
+    expect(secondPosition).toEqual({ x: 1, y: 2 });
+
+    const escapeAttempt = chroniclesReduce(state, 'forward');
+    expect([escapeAttempt.x, escapeAttempt.y]).toEqual([2, 1]);
+    expect(escapeAttempt.phase).toBe('explore');
+    expect(escapeAttempt.message).toMatch(/Llave Negra/i);
+
+    state = act(escapeAttempt, 'turn-left', 'turn-left', 'forward', 'turn-left');
+    state = attack(state, 'rook');
+    const thirdPosition = chroniclesEnemyPosition(state, scavenger);
+    expect(state.scavengerHp).toBe(2);
+    expectKnightJump(secondPosition, thirdPosition);
+    expect(thirdPosition).toEqual({ x: 3, y: 1 });
+
+    state = act(state, 'turn-left', 'forward');
+    state = attack(state, 'rook');
+    expect(state.scavengerHp).toBe(0);
+    expect(state.blackGateKey).toBe(true);
     expect(chroniclesObjective(state)).toBe('Cruza la puerta negra');
+    expect(chroniclesJournalEntries(state).some((entry) => entry.id === 'scavenger-knight-falls')).toBe(true);
 
     state = chroniclesReduce(state, 'forward');
     expect(state.phase).toBe('escaped');
-    expect(state.spectralLantern).toBe(false);
-    expect(chroniclesObjective(state)).toBe('Vertical slice completado');
+    expect(chroniclesJournalEntries(state).at(-1)?.id).toBe('escape');
   });
 
   it('records only real expedition milestones instead of logging routine movement', () => {
@@ -163,12 +211,17 @@ describe('Chronicles of Matthias vertical slice', () => {
     state = awakenSigil(state);
     expect(chroniclesJournalEntries(state).map((entry) => entry.id)).toEqual(['descent', 'corrupted-pawn-falls', 'sigil-awake']);
 
-    state = reachGateApproach(state);
-    state = attack(state, 'rook');
-    state = attack(state, 'rook');
-    state = attack(state, 'rook');
-    state = attack(state, 'rook');
+    state = wakeScavenger(state);
     expect(chroniclesJournalEntries(state).some((entry) => entry.id === 'gate-jailer-falls')).toBe(true);
+    const foliosBeforeChase = chroniclesJournalEntries(state).length;
+    state = attack(state, 'rook');
+    expect(chroniclesJournalEntries(state)).toHaveLength(foliosBeforeChase);
+
+    state = act(state, 'turn-left', 'turn-left', 'forward', 'turn-left');
+    state = attack(state, 'rook');
+    state = act(state, 'turn-left', 'forward');
+    state = attack(state, 'rook');
+    expect(chroniclesJournalEntries(state).some((entry) => entry.id === 'scavenger-knight-falls')).toBe(true);
 
     state = chroniclesReduce(state, 'forward');
     expect(chroniclesJournalEntries(state).at(-1)?.id).toBe('escape');
