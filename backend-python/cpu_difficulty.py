@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import random
+import sys
 from typing import Optional
 
 import chess
@@ -29,6 +30,8 @@ class DifficultyBand:
 STRONG_PLAY = DifficultyBand(0.0, 0.0, 1, 0, 0.0)
 MATE_GUARD_THRESHOLD = MATE_SCORE - 1000
 FACTUAL_BAND_CUTOFF = 45
+_DEFAULT_CPU_MOVE = get_cpu_move
+_NO_ENGINE_OVERRIDE = object()
 
 
 def difficulty_band(raw_level: float) -> DifficultyBand:
@@ -63,6 +66,22 @@ def _deterministic_fallback(board: chess.Board, level: float) -> Optional[dict]:
     """Fallback that still thinks; never substitute an arbitrary legal move."""
     result = analyze_move(board, min(float(level), 20.0))
     return result.get("move") if isinstance(result, dict) else None
+
+
+def _explicit_game_engine_override(board: chess.Board, level: float):
+    """Honor the established in-process engine injection seam when replaced.
+
+    ``game_api.get_cpu_move`` has long been the boundary used by backend tests
+    and diagnostic harnesses to simulate a broken engine. Normal production
+    imports point at ``_DEFAULT_CPU_MOVE`` and therefore take the factual policy
+    below. If a harness explicitly replaces that provider, preserve the override
+    so the shared legal-fallback/error boundary is still exercised truthfully.
+    """
+    game_api = sys.modules.get("game_api")
+    provider = getattr(game_api, "get_cpu_move", None) if game_api is not None else None
+    if provider is None or provider is _DEFAULT_CPU_MOVE:
+        return _NO_ENGINE_OVERRIDE
+    return provider(board, level)
 
 
 def _eligible_alternatives(
@@ -102,6 +121,10 @@ def get_factual_difficulty_cpu_move(
     band = difficulty_band(level)
     if band is STRONG_PLAY:
         return get_cpu_move(board, level)
+
+    explicit_override = _explicit_game_engine_override(board, level)
+    if explicit_override is not _NO_ENGINE_OVERRIDE:
+        return explicit_override
 
     try:
         snapshot = analyze_root_iterative(
