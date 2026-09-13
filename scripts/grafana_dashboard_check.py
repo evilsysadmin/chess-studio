@@ -11,6 +11,7 @@ INFRA = ROOT / "infra" / "grafana"
 WORKFLOW = ROOT / ".github" / "workflows" / "grafana-dashboards.yml"
 PUBLISHER = ROOT / "scripts" / "grafana_publish.py"
 EXPORTER_WORKFLOW = ROOT / ".github" / "workflows" / "cloudflare-prometheus-exporter.yml"
+EXPORTER_CONFIG = ROOT / "scripts" / "cloudflare_exporter_config.py"
 ALLOY_EXAMPLE = INFRA / "alloy" / "cloudflare-exporter.alloy.example"
 
 
@@ -114,22 +115,31 @@ def main() -> int:
             fail(f"publisher Grafana debe ser stdlib/state-less: {forbidden}")
 
     exporter_workflow = EXPORTER_WORKFLOW.read_text(encoding="utf-8") if EXPORTER_WORKFLOW.exists() else ""
+    exporter_config = EXPORTER_CONFIG.read_text(encoding="utf-8") if EXPORTER_CONFIG.exists() else ""
     for token in (
         'cloudflare/cloudflare-prometheus-exporter',
         'c98fd6772a4ff806e40ba08cb5d4edb002ef13dc',
         'CLOUDFLARE_EXPORTER_API_TOKEN',
         'CLOUDFLARE_EXPORTER_BASIC_AUTH_USER',
         'CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD',
-        'DISABLE_UI',
-        'DISABLE_CONFIG_API',
-        'HOST_METRICS_ALLOWLIST',
-        'chess-studio.shadowops.dpdns.org',
-        'staging.chess-studio.shadowops.dpdns.org',
+        'python3 -S chess-studio/scripts/cloudflare_exporter_config.py --self-test',
+        'python3 -S chess-studio/scripts/cloudflare_exporter_config.py --root upstream-exporter',
         'unauth_code',
         'esperaba 401',
     ):
         if token not in exporter_workflow:
             fail(f"workflow exporter Cloudflare incompleto: {token}")
+    for token in (
+        'DISABLE_UI',
+        'DISABLE_CONFIG_API',
+        'HOST_METRICS_ALLOWLIST',
+        'chess-studio.shadowops.dpdns.org',
+        'staging.chess-studio.shadowops.dpdns.org',
+        'CF_HTTP_STATUS_GROUP',
+        'workers_dev',
+    ):
+        if token not in exporter_config:
+            fail(f"config exporter Cloudflare incompleta: {token}")
     if 'printf \'%s\' "$CLOUDFLARE_API_TOKEN"' in exporter_workflow:
         fail("exporter no debe reutilizar el token write-capable de CI como token runtime")
 

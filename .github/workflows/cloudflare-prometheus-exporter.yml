@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/cloudflare-prometheus-exporter.yml'
       - 'infra/grafana/alloy/cloudflare-exporter.alloy.example'
+      - 'scripts/cloudflare_exporter_config.py'
 
 permissions:
   contents: read
@@ -63,6 +64,16 @@ jobs:
           fi
           echo 'configured=true' >> "$GITHUB_OUTPUT"
 
+      - name: Checkout Chess Studio deployment helpers
+        if: steps.gate.outputs.configured == 'true'
+        uses: actions/checkout@v7
+        with:
+          path: chess-studio
+
+      - name: Validate exporter config builder
+        if: steps.gate.outputs.configured == 'true'
+        run: python3 -S chess-studio/scripts/cloudflare_exporter_config.py --self-test
+
       - name: Checkout pinned official exporter
         if: steps.gate.outputs.configured == 'true'
         uses: actions/checkout@v7
@@ -103,52 +114,7 @@ jobs:
 
       - name: Build hardened Chess Studio exporter config
         if: steps.gate.outputs.configured == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import json
-          import os
-          import pathlib
-
-          root = pathlib.Path('upstream-exporter')
-          text = (root / 'wrangler.jsonc').read_text(encoding='utf-8')
-          cfg = json.loads(text[text.index('{'):])
-          cfg['name'] = os.environ['EXPORTER_NAME']
-          cfg['workers_dev'] = False
-          cfg['routes'] = [
-              {
-                  'pattern': os.environ['EXPORTER_HOSTNAME'],
-                  'custom_domain': True,
-              }
-          ]
-          vars_cfg = dict(cfg.get('vars') or {})
-          account_id = os.environ['CLOUDFLARE_ACCOUNT_ID']
-          vars_cfg.update({
-              'CF_ACCOUNTS': account_id,
-              'HOST_METRICS_ALLOWLIST': (
-                  'chess-studio.shadowops.dpdns.org,'
-                  'staging.chess-studio.shadowops.dpdns.org'
-              ),
-              'CF_HTTP_STATUS_GROUP': True,
-              'DISABLE_UI': True,
-              'DISABLE_CONFIG_API': True,
-              'LOG_LEVEL': 'info',
-              'LOG_FORMAT': 'json',
-          })
-          if os.environ.get('CLOUDFLARE_EXPORTER_FREE_TIER', 'true').lower() in {'1', 'true', 'yes', 'on'}:
-              vars_cfg['CF_FREE_TIER_ACCOUNTS'] = account_id
-          else:
-              vars_cfg.pop('CF_FREE_TIER_ACCOUNTS', None)
-          cfg['vars'] = vars_cfg
-          (root / 'wrangler.chess-studio.json').write_text(
-              json.dumps(cfg, indent=2) + '\n', encoding='utf-8'
-          )
-          print(
-              f"Exporter pinned={os.environ['EXPORTER_UPSTREAM_SHA']} "
-              f"name={cfg['name']} host={os.environ['EXPORTER_HOSTNAME']}"
-          )
-          PY
+        run: python3 -S chess-studio/scripts/cloudflare_exporter_config.py --root upstream-exporter
 
       - name: Validate upstream exporter
         if: steps.gate.outputs.configured == 'true'
