@@ -1,6 +1,16 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { isPersonalPuzzleMastered, isPlayablePersonalPuzzle, loadPersonalPuzzles, matchesPersonalPuzzleFilter, personalPuzzleHistory, personalPuzzlesForFilter, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult, saveGeneratedPersonalPuzzles, savePersonalPuzzlesFromReport } from './personalPuzzles.js';
 
+const CURRENT_AI_PROVENANCE = Object.freeze({
+  aiQualityVersion: 6,
+  aiValidatedLevel: 92,
+  tacticalBestMoveChecked: true,
+  tacticalRefutationChecked: true,
+  engineAnalysisDepth: 3,
+  engineCandidateCount: 12,
+  engineBestToSecondGap: 200,
+});
+
 describe('personal puzzles', () => {
   beforeEach(() => localStorage.clear());
 
@@ -113,10 +123,7 @@ describe('personal puzzles', () => {
       suggested: 'Ra8#',
       title: 'Centro o funeral',
       source: 'workers-ai-validated',
-      aiQualityVersion: 5,
-      aiValidatedLevel: 92,
-      tacticalBestMoveChecked: true,
-      tacticalRefutationChecked: true,
+      ...CURRENT_AI_PROVENANCE,
     };
     expect(saveGeneratedPersonalPuzzles([generated]).added).toBe(1);
     expect(saveGeneratedPersonalPuzzles([generated]).added).toBe(0);
@@ -151,22 +158,22 @@ describe('calidad versionada de puzzles personales IA', () => {
       {
         id: 'legacy-ai', kind: 'personal', source: 'workers-ai-validated',
         fen: '7k/8/6K1/8/8/8/8/R7 w - - 0 1', solution: ['Ra8#'],
-        aiQualityVersion: 4, aiValidatedLevel: 92, tacticalBestMoveChecked: true, tacticalRefutationChecked: true,
+        aiQualityVersion: 5, aiValidatedLevel: 92, tacticalBestMoveChecked: true, tacticalRefutationChecked: true,
       },
       {
         id: 'current-low-engine', kind: 'personal', source: 'workers-ai-validated',
         fen: '7k/8/6K1/8/8/8/8/R7 w - - 0 1', solution: ['Ra8#'],
-        aiQualityVersion: 5, aiValidatedLevel: 80, tacticalBestMoveChecked: true, tacticalRefutationChecked: true,
+        ...CURRENT_AI_PROVENANCE, aiValidatedLevel: 80,
       },
       {
         id: 'current-no-engine', kind: 'personal', source: 'workers-ai-validated',
         fen: '7k/8/6K1/8/8/8/8/R7 w - - 0 1', solution: ['Ra8#'],
-        aiQualityVersion: 5, tacticalBestMoveChecked: true, tacticalRefutationChecked: true,
+        ...CURRENT_AI_PROVENANCE, aiValidatedLevel: undefined,
       },
       {
         id: 'current-ai', kind: 'personal', source: 'workers-ai-validated',
         fen: '7k/8/6K1/8/8/8/8/R7 w - - 0 1', solution: ['Ra8#'],
-        aiQualityVersion: 5, aiValidatedLevel: 92, tacticalBestMoveChecked: true, tacticalRefutationChecked: true,
+        ...CURRENT_AI_PROVENANCE,
       },
     ]));
     expect(loadPersonalPuzzles().map((item) => item.id)).toEqual(['current-ai']);
