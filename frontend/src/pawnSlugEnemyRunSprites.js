@@ -29,6 +29,7 @@ import {
   pawnSlugEnemySourceFrame,
 } from './pawnSlugEnemyActionMotion.js';
 import { pawnSlugEnemyEntryPose } from './pawnSlugEnemyEntryMotion.js';
+import { pawnSlugEnemyHitFlash } from './pawnSlugEnemyHitFlash.js';
 import { installPawnSlugEnemyDeathReplay } from './pawnSlugEnemyDeathReplay.js';
 import { playPawnSlugEnemyImpactSfx, playPawnSlugEnemyKoSfx } from './pawnSlugSfx.js';
 import {
@@ -116,9 +117,14 @@ function applyAtlasWindow(sprite) {
   texture.needsUpdate = true;
 }
 
-function tintSprite(sprite, hurt) {
-  sprite.material.opacity = hurt ? 0.78 : 1;
-  sprite.material.color?.setRGB(1, hurt ? 0.72 : 1, hurt ? 0.72 : 1);
+function tintSprite(sprite, hurt, time) {
+  const startedAt = Number(sprite.userData.hurtStartedAt);
+  const age = hurt && Number.isFinite(startedAt)
+    ? Math.max(0, Number(time) - startedAt)
+    : Number.POSITIVE_INFINITY;
+  const flash = pawnSlugEnemyHitFlash(age, { hurt });
+  sprite.material.opacity = flash.opacity;
+  sprite.material.color?.setRGB(flash.r, flash.g, flash.b);
 }
 
 function inferredVerticalMotion(sprite, time) {
@@ -289,7 +295,7 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
     const phase = sprite.userData.motionPhase || 0;
     sprite.position.y += Math.max(0, Math.sin(safeTime * profile.idleRate + phase)) * profile.idleBob;
   }
-  tintSprite(sprite, hurt && !dying);
+  tintSprite(sprite, hurt && !dying, safeTime);
 }
 
 export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
