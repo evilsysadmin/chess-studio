@@ -40,7 +40,7 @@ No se eleva una fila a GATE por inspección de código o porque “parece que de
 | Resize / orientation change | **GATE** | `mobile-war-room-lifecycle.spec.js`: mantiene una selección real durante 12 ciclos portrait↔landscape + background/foreground, conserva un único canvas y después ejecuta exactamente una jugada real. | Mantener como lifecycle Android al tocar resize/cámara/render policy. |
 | F5 / restore | **GATE** | `war-room-interrupted-restore.spec.js`: juega y captura en War Room 3D, recarga tras movimientos confirmados, vuelve con renderer 3D limpio, reconcilia la posición autoritativa, preserva el clock sin reset, cruza 3D→2D→3D→2D y termina sin mutaciones duplicadas. | Mantener junto a reconnect y lifecycle. |
 | Reconnect | **GATE** | `offline-pending-move-reconnect.spec.js`: provoca offline→online con `/move` pendiente ya dentro de War Room; difiere la reconciliación hasta acabar la mutación, conserva el mismo canvas, consume la foto autoritativa y no duplica POST. | Mantener junto a lifecycle y añadir una variante con corte de red ya estabilizada si cambia el reconciliador. |
-| Abandono / salida | **CUBIERTO general** | El flujo común de abandono y respuestas tardías tiene E2E, pero su recorrido dedicado fuerza renderer 2D. | E2E desde War Room que abandone y confirme exactamente una transición y teardown 3D. |
+| Abandono / salida | **GATE** | `war-room-ephemeral-cleanup.spec.js`: abandona desde War Room con selección + inspect activos, confirma vuelta única a Home, exige desmontaje total de shell/canvas 3D y eliminación del snapshot de sesión activa sin ErrorBoundary. | Mantener al tocar salida, snapshot activo o lifecycle del renderer. |
 | Reduced motion | **GATE** | `mobile-war-room-lifecycle.spec.js` corre War Room con `reducedMotion: reduce`, conserva selección durante rotaciones/background y ejecuta una jugada real; `war-room-undo-rewind.spec.js` además juega, deshace, recarga y cruza a 2D bajo la misma media feature. | Mantener al añadir nuevos FX/microanimaciones de War Room. |
 | Fallback 3D → 2D por WebGL | **GATE** | `war-room-webgl-fallback.spec.js` cubre tanto arranque sin WebGL como `webglcontextlost` en mitad de partida; en ambos casos aparece el tablero 2D, desaparece el canvas 3D y e2→e4 sigue produciendo exactamente una mutación sin ErrorBoundary. | Mantener al tocar lifecycle/context recovery/fallback. |
 
@@ -65,7 +65,8 @@ Un renderer **no puede**:
 5. ~~Limpieza efímera de selección/foco/inspect/cámara tras remount.~~ **Gateada** en `war-room-ephemeral-cleanup.spec.js`.
 6. ~~Resize/orientation con selección activa + reduced-motion funcional.~~ **Gateados** en `mobile-war-room-lifecycle.spec.js`; undo/F5 añade evidencia extra para reduced-motion.
 7. ~~Orientación negras cross-renderer + fallback WebGL antes/durante partida.~~ **Gateados** en `three-d-war-room-android-touch.spec.js` y `war-room-webgl-fallback.spec.js`.
-8. Cerrar únicamente los contratos que aún merezcan paridad específica: abandono desde War Room e inspección accesible; chat/highlights sólo si se decide que necesitan un E2E cross-renderer propio.
-9. Mantener en cada slice los gates ya cerrados de jaque, mate, enroque, en passant, promoción, captura ordinaria, Android y Focus.
+8. ~~Abandono desde War Room con teardown del renderer/snapshot.~~ **Gateado** en `war-room-ephemeral-cleanup.spec.js`.
+9. Cerrar únicamente inspección accesible si se decide que requiere una equivalencia 2D↔3D explícita; chat/highlights sólo si se exige un E2E cross-renderer propio.
+10. Mantener en cada slice los gates ya cerrados de jaque, mate, enroque, en passant, promoción, captura ordinaria, Android y Focus.
 
-La frontera de renderer está ampliamente gateada. Los huecos restantes son de última milla/UX específica, no de legalidad, persistencia, clocks, lifecycle, orientación o degradación WebGL.
+La frontera de renderer está ampliamente gateada. Los huecos restantes son de última milla/UX específica, no de legalidad, persistencia, clocks, lifecycle, orientación, abandono o degradación WebGL.

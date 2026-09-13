@@ -3,6 +3,7 @@ import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 import { navigateWarRoomKeyboard } from './war-room-board-input.js';
 
 const READY_TIMEOUT = 45_000;
+const ACTIVE_GAME_SESSION_KEY = 'chess-study-active-game-session-v1';
 
 async function expectWarRoom(page) {
   const board3d = page.locator('[data-board3d-war-room="true"]');
@@ -79,4 +80,41 @@ test('War Room · inspección, foco y cámara efímeros se limpian al desmontar 
   await expect(page.getByRole('button', { name: 'Volver a jugar', exact: true })).toHaveCount(0);
   await expect(page.locator('.board3d-main-canvas')).toHaveCount(1);
   await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+});
+
+test('War Room · abandonar desde 3D destruye renderer y snapshot activo antes de volver a Home', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1440, height: 960 });
+  await mockApi(page);
+  await login(page);
+
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  const { board3d, canvas } = await expectWarRoom(page);
+
+  await expect.poll(() => page.evaluate((key) => localStorage.getItem(key) !== null, ACTIVE_GAME_SESSION_KEY), {
+    timeout: 5_000,
+  }).toBe(true);
+
+  // Salimos con estado privado deliberadamente vivo para asegurar que abandonar
+  // no deja selección/inspect/canvas huérfanos detrás de Home.
+  await navigateWarRoomKeyboard(canvas, board3d, 'e2');
+  await canvas.press('Enter');
+  await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
+  await page.getByRole('button', { name: 'Inspeccionar', exact: true }).click();
+  await expect(board3d).toHaveAttribute('data-board3d-inspect', 'true');
+
+  await page.getByRole('button', { name: 'Abandonar partida', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '¿Abandonar la partida?' });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: /Cancelar sin penalización|Abandonar y asumir resultado/ }).click();
+
+  await expect(page.locator('.illustrated-home')).toBeVisible({ timeout: 10_000 });
+  await expect(dialog).toHaveCount(0);
+  await expect(page.locator('[data-board3d-war-room="true"]')).toHaveCount(0);
+  await expect(page.locator('.board3d-main-canvas')).toHaveCount(0);
+  await expect(page.locator('.error-boundary-screen')).toHaveCount(0);
+  await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), ACTIVE_GAME_SESSION_KEY), {
+    timeout: 5_000,
+  }).toBeNull();
 });
