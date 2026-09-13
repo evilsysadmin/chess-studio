@@ -17,6 +17,9 @@ const CSS_EXTENSIONS = new Set(['.css']);
 const LARGE_JS_BYTES = 60 * 1024;
 const LARGE_CSS_BYTES = 80 * 1024;
 const INITIAL_CSS_GZIP_BUDGET_BYTES = 68 * 1024;
+// Architectural ratchet: lower this ceiling when renderer ownership is consolidated.
+// Raising it requires an explicit lifecycle/GPU decision rather than accidental growth.
+const MAX_WEBGL_RENDERER_SITES = 4;
 
 function walk(dir, rows = []) {
   if (!fs.existsSync(dir)) return rows;
@@ -96,6 +99,9 @@ const report = {
     intersectionObserver: intersectionObserverSites,
     resizeObserver: resizeObserverSites,
   },
+  runtimeBudgets: {
+    webglRenderer: MAX_WEBGL_RENDERER_SITES,
+  },
   largeModules: {
     jsThresholdBytes: LARGE_JS_BYTES,
     cssThresholdBytes: LARGE_CSS_BYTES,
@@ -120,7 +126,7 @@ const summary = [
   `- Source files scanned: ${report.sourceFileCount}`,
   `- JS/TS source: ${kib(jsBytes)} KiB`,
   `- CSS source: ${kib(cssBytes)} KiB`,
-  `- WebGLRenderer construction sites: ${webglRendererSites}`,
+  `- WebGLRenderer construction sites: ${webglRendererSites} (budget ${MAX_WEBGL_RENDERER_SITES})`,
   `- requestAnimationFrame sites: ${rafSites}`,
   `- IntersectionObserver sites: ${intersectionObserverSites}`,
   `- ResizeObserver sites: ${resizeObserverSites}`,
@@ -134,11 +140,15 @@ const summary = [
   '### Largest CSS files',
   formatRows(report.topCss),
   '',
-  '> Informational only. Track the trend first; turn stable budgets into gates later.',
+  '> WebGL renderer count and initial CSS are ratchets. Lower their ceilings when the architecture gets smaller.',
 ].join('\n');
 
 console.log(summary);
 console.log(`\nJSON report: ${relative(OUTPUT_FILE)}`);
+
+if (webglRendererSites > MAX_WEBGL_RENDERER_SITES) {
+  throw new Error(`WebGLRenderer construction sites are ${webglRendererSites}; budget is ${MAX_WEBGL_RENDERER_SITES}`);
+}
 
 if (initialCssGzipBytes > INITIAL_CSS_GZIP_BUDGET_BYTES) {
   throw new Error(`Initial CSS is ${kib(initialCssGzipBytes)} KiB gzip; budget is ${INITIAL_CSS_GZIP_BUDGET_BYTES / 1024} KiB`);
