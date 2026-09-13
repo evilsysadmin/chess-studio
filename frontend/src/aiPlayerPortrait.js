@@ -28,8 +28,73 @@ function compactModeStats(byMode = {}) {
   return out;
 }
 
+function suppliedPlayerModel(extras) {
+  const model = extras?.playerModel;
+  return model && typeof model === 'object' && !Array.isArray(model) ? model : null;
+}
+
+function compactPattern(pattern) {
+  const observations = pattern?.postTrainingObservations || {};
+  return {
+    key: String(pattern?.incidentKey || '').slice(0, 80),
+    count: Math.max(0, Number(pattern?.positions || 0)),
+    improvement_state: String(pattern?.improvementState || 'no-sample').slice(0, 48),
+    training_debt_active: pattern?.debt?.active === true,
+    observed_games_after_training: Math.max(0, Number(observations.observedGames || 0)),
+    recurrence_games_after_training: Math.max(0, Number(observations.recurrenceGames || 0)),
+    no_recurrence_games_after_training: Math.max(0, Number(observations.noRecurrenceGames || 0)),
+  };
+}
+
+function addLongitudinalPatternFacts(facts, model) {
+  const patterns = Array.isArray(model?.recurringErrors)
+    ? model.recurringErrors.filter((pattern) => pattern?.incidentKey && Number(pattern?.positions || 0) > 0)
+    : [];
+  const active = patterns
+    .filter((pattern) => pattern?.improvementState === 'still-occurring' || pattern?.debt?.active === true)
+    .slice(0, 8)
+    .map(compactPattern);
+  const improving = patterns
+    .filter((pattern) => ['probable-improvement', 'corrected-with-sufficient-sample'].includes(pattern?.improvementState))
+    .slice(0, 8)
+    .map(compactPattern);
+
+  if (active.length) facts.active_recurring_patterns = active;
+  if (improving.length) facts.improving_or_corrected_patterns = improving;
+}
+
+function addPositivePlayerModelFacts(facts, model) {
+  if (Number(model?.cleanPlay?.eligibleGames || 0) > 0) {
+    facts.clean_play = {
+      eligible_games: Number(model.cleanPlay.eligibleGames || 0),
+      clean_games: Number(model.cleanPlay.cleanGames || 0),
+      clean_rate: finiteNumber(model.cleanPlay.cleanRate),
+      current_streak: Number(model.cleanPlay.currentStreak || 0),
+      best_streak: Number(model.cleanPlay.bestStreak || 0),
+      latest_eligible_clean: model.cleanPlay.latestEligibleClean === true
+        ? true
+        : model.cleanPlay.latestEligibleClean === false
+          ? false
+          : null,
+      evidence_strength: model?.confidence?.cleanPlay || 'none',
+    };
+  }
+
+  if (Number(model?.positiveDecisions?.eligibleGames || 0) > 0) {
+    facts.positive_decisions = {
+      eligible_games: Number(model.positiveDecisions.eligibleGames || 0),
+      compared_moves: Number(model.positiveDecisions.comparedMoves || 0),
+      engine_preferred_moves: Number(model.positiveDecisions.enginePreferredMoves || 0),
+      preferred_rate: finiteNumber(model.positiveDecisions.preferredRate),
+      games_with_preferred_moves: Number(model.positiveDecisions.gamesWithPreferredMoves || 0),
+      evidence_strength: model?.confidence?.positiveDecisions || 'none',
+    };
+  }
+}
+
 export function buildPlayerPortraitFacts(insights, rivalry = {}, extras = {}, worstMove = null) {
-  const model = buildPlayerModel({ insights });
+  const suppliedModel = suppliedPlayerModel(extras);
+  const model = suppliedModel || buildPlayerModel({ insights });
   if (model.samples.games <= 0) return null;
 
   const facts = {
@@ -94,12 +159,17 @@ export function buildPlayerPortraitFacts(insights, rivalry = {}, extras = {}, wo
     };
   }
 
-  const incidents = Object.entries(rivalry?.incidents || {})
-    .filter(([, count]) => Number(count || 0) > 0)
-    .sort((a, b) => Number(b[1]) - Number(a[1]))
-    .slice(0, 8)
-    .map(([key, count]) => ({ key: String(key).slice(0, 80), count: Number(count || 0) }));
-  if (incidents.length) facts.noteworthy_incidents = incidents;
+  if (suppliedModel) {
+    addLongitudinalPatternFacts(facts, model);
+    addPositivePlayerModelFacts(facts, model);
+  } else {
+    const incidents = Object.entries(rivalry?.incidents || {})
+      .filter(([, count]) => Number(count || 0) > 0)
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
+      .slice(0, 8)
+      .map(([key, count]) => ({ key: String(key).slice(0, 80), count: Number(count || 0) }));
+    if (incidents.length) facts.noteworthy_incidents = incidents;
+  }
 
   if (Number.isFinite(Number(extras.puzzlesSolved))) facts.puzzles_solved = Number(extras.puzzlesSolved);
   if (Number.isFinite(Number(extras.personalPuzzles))) facts.personal_training_positions = Number(extras.personalPuzzles);
