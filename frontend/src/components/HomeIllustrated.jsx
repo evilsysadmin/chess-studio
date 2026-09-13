@@ -172,7 +172,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           className={`illustrated-home__matthias${matthiasSpeaking ? ' is-speaking' : ''}`}
           type="button"
           onClick={onInsights}
-          aria-label={`Abrir Así juegas con Matthias. Ahora: ${matthiasVisual?.label || 'en observación'}.`}
+          aria-label="Abrir Así juegas con Matthias"
           title={`Matthias · ${matthiasVisual?.label || 'En observación'}`}
           data-home-matthias-scene={matthiasVisual?.key || 'base'}
           data-home-matthias-activity={matthiasVisual?.label || 'En observación'}
