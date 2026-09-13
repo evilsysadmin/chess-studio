@@ -2,7 +2,8 @@ import { STORAGE_SESSION, readJsonStorage, removeStorageItem, writeJsonStorage }
 import { getUsername } from './auth.js';
 import { buildNemesisDossier } from './nemesis.js';
 import { loadPersonalPuzzles } from './personalPuzzles.js';
-import { buildPlayerModel } from './playerModel.js';
+import { loadCleanGameRecords } from './cleanGames.js';
+import { buildPlayerModel, PATTERN_IMPROVEMENT_STATES } from './playerModel.js';
 import { loadRivalry } from './rivalry.js';
 
 export const GUIDED_TRAINING_SESSION_KEY = 'chess-study-guided-training-session-v1';
@@ -26,18 +27,54 @@ function pendingPersonalPuzzles(puzzles = []) {
   ));
 }
 
-function focusStep(puzzles, trainingDebt) {
-  const debt = trainingDebt?.top;
-  if (debt) {
-    return {
-      id: `debt:${debt.incidentKey}`,
-      kind: 'debt',
-      title: `Ataca la deuda: ${debt.label}`,
-      detail: `${debt.progress}/${debt.target} casos limpios · ${debt.cases} posiciones reales en el expediente.`,
-      action: 'personal-filter',
-      filter: { incidentKey: debt.incidentKey },
-    };
+function actionableRecurringPattern(playerModel) {
+  return (Array.isArray(playerModel?.recurringErrors) ? playerModel.recurringErrors : []).find((pattern) => {
+    if (pattern?.improvementState === PATTERN_IMPROVEMENT_STATES.STILL_OCCURRING) return true;
+    if ([
+      PATTERN_IMPROVEMENT_STATES.PROBABLE_IMPROVEMENT,
+      PATTERN_IMPROVEMENT_STATES.CORRECTED_WITH_SUFFICIENT_SAMPLE,
+    ].includes(pattern?.improvementState)) return false;
+    return pattern?.debt?.active === true;
+  }) || null;
+}
+
+function recurringPatternFocus(pattern) {
+  const debt = pattern?.debt;
+  const relapse = pattern?.improvementState === PATTERN_IMPROVEMENT_STATES.STILL_OCCURRING && debt?.paid === true;
+  const recurrenceGames = Math.max(0, Number(pattern?.postTrainingObservations?.recurrenceGames || 0));
+  const label = pattern?.label || String(pattern?.incidentKey || '').replace(/^(human|cpu):/, '').replaceAll('_', ' ').toLowerCase();
+  return {
+    id: `debt:${pattern.incidentKey}`,
+    kind: 'debt',
+    title: relapse ? `Recaída detectada: ${label}` : `Ataca la deuda: ${label}`,
+    detail: relapse
+      ? `El patrón reapareció en ${recurrenceGames || 1} ${recurrenceGames === 1 ? 'partida observada' : 'partidas observadas'} después del entrenamiento. Vuelve a una posición real antes de darlo por cerrado.`
+      : `${Number(debt?.progress || 0)}/${Number(debt?.target || 2)} casos limpios · ${Number(debt?.realCases || pattern?.positions || 0)} posiciones reales en el expediente.`,
+    action: 'personal-filter',
+    filter: pattern?.filter || { incidentKey: pattern.incidentKey },
+  };
+}
+
+function focusStep(puzzles, playerModel) {
+  const pattern = actionableRecurringPattern(playerModel);
+  if (pattern) return recurringPatternFocus(pattern);
+
+  // Compatibilidad con modelos parciales/antiguos: si aún no traen
+  // recurringErrors, conserva la deuda factual existente como fallback.
+  if (!Array.isArray(playerModel?.recurringErrors)) {
+    const debt = playerModel?.trainingDebt?.top;
+    if (debt) {
+      return {
+        id: `debt:${debt.incidentKey}`,
+        kind: 'debt',
+        title: `Ataca la deuda: ${debt.label}`,
+        detail: `${debt.progress}/${debt.target} casos limpios · ${debt.cases} posiciones reales en el expediente.`,
+        action: 'personal-filter',
+        filter: { incidentKey: debt.incidentKey },
+      };
+    }
   }
+
   const pending = pendingPersonalPuzzles(puzzles);
   if (!pending.length) return null;
   return {
@@ -102,10 +139,14 @@ export function buildGuidedTrainingPlan({
   puzzles = loadPersonalPuzzles(),
   rivalry = loadRivalry(),
   playerModel = null,
+  cleanGameRecords = null,
 } = {}) {
   const duration = normalizeDuration(minutes);
-  const model = playerModel || buildPlayerModel({ personalPuzzles: puzzles });
-  const focus = focusStep(puzzles, model.trainingDebt);
+  const model = playerModel || buildPlayerModel({
+    personalPuzzles: puzzles,
+    cleanGameRecords: cleanGameRecords ?? loadCleanGameRecords(),
+  });
+  const focus = focusStep(puzzles, model);
   const nemesis = nemesisStep(history, rivalry);
   if (!focus && !nemesis) {
     return {
