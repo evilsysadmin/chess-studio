@@ -92,4 +92,41 @@ describe('HomeCastle3DRenderPolicy', () => {
       hardwareConcurrency: 12,
     }).pixelRatio).toBe(1);
   });
+
+  it('can cap a capable desktop at lite without disabling 3D', () => {
+    expect(homeCastle3DRenderPolicy({
+      viewportWidth: 1600,
+      devicePixelRatio: 3,
+      hardwareConcurrency: 8,
+      runtimeLodCap: 'lite',
+    })).toMatchObject({
+      enabled: true,
+      lod: 'lite',
+      pixelRatio: 1.25,
+      geometrySegments: { width: 32, height: 18 },
+      antialias: false,
+      powerPreference: 'low-power',
+    });
+  });
+
+  it('can force canonical 2D after runtime performance proves 3D too expensive', () => {
+    expect(homeCastle3DRenderPolicy({
+      viewportWidth: 1600,
+      hardwareConcurrency: 8,
+      runtimeLodCap: '2d',
+    })).toMatchObject({ enabled: false, lod: '2d' });
+  });
+
+  it('never lets a runtime cap upgrade baseline quality', () => {
+    expect(homeCastle3DRenderPolicy({
+      viewportWidth: 430,
+      hardwareConcurrency: 8,
+      runtimeLodCap: 'lite',
+    })).toMatchObject({ enabled: true, lod: 'lite' });
+    expect(homeCastle3DRenderPolicy({
+      viewportWidth: 430,
+      hardwareConcurrency: 4,
+      runtimeLodCap: 'lite',
+    })).toMatchObject({ enabled: false, lod: 'lite' });
+  });
 });
