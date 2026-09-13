@@ -2,6 +2,7 @@ import { lazy, Suspense, useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { consumeLabLaunch } from '../labLaunchIntent.js';
+import { EXPERIMENT_MATURITY, experimentMaturityLabel } from '../experimentMaturity.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
 import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
@@ -87,13 +88,13 @@ export default function LabScreen({ onExit, onStart }){
         <span className="experiments-group-label">Arcade</span>
         <div className="experiments-grid experiments-arcade-deck">
           <button type="button" className="experiments-card experiment-pawnslug is-featured" onClick={()=>setLabMode('pawnslug')}>
-            <span className="section-label">EXPERIMENTAL · EN PULIDO</span>
+            <span className="section-label">{experimentMaturityLabel(EXPERIMENT_MATURITY.EXPERIMENTAL, 'en pulido')}</span>
             <strong>Pawn Slug</strong>
             <small>Run & gun corto y brutal con armas, rescates, set-pieces y un Panzer‑Rook con muy malas intenciones.</small>
             <b>Iniciar operación →</b>
           </button>
           <button type="button" className="experiments-card experiment-trailblazer" onClick={()=>setLabMode('trailblazer')}>
-            <span className="section-label">POC · JUGABLE</span>
+            <span className="section-label">{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'jugable')}</span>
             <strong>Pawn Trailblazer</strong>
             <small>Plataformas y exploración con Matthias; el movimiento se abre, pero sus ataques siguen reglas de peón.</small>
             <b>Vorwärts →</b>
@@ -103,19 +104,19 @@ export default function LabScreen({ onExit, onStart }){
         <span className="experiments-group-label">Laboratorio táctico</span>
         <div className="experiments-grid experiments-tactical-deck">
           <button type="button" className="experiments-card experiment-chesscom is-featured" onClick={()=>setLabMode('chesscom')}>
-            <span className="section-label">EXPERIMENTAL · EN PULIDO</span>
+            <span className="section-label">{experimentMaturityLabel(EXPERIMENT_MATURITY.EXPERIMENTAL, 'en pulido')}</span>
             <strong>Chesscom</strong>
             <small>Escaramuzas tácticas con cobertura, AP, intel y extracción. La presentación sigue en fase de pulido.</small>
             <b>Operation Dust Veil →</b>
           </button>
           <button type="button" className="experiments-card experiment-position" onClick={()=>setLabMode('position')}>
-            <span className="section-label">MADURO · HERRAMIENTA</span>
+            <span className="section-label">{experimentMaturityLabel(EXPERIMENT_MATURITY.MATURE, 'herramienta')}</span>
             <strong>Laboratorio libre</strong>
             <small>Construye, pega o modifica una FEN legal y juega desde esa posición sin tocar el rating.</small>
             <b>Abrir editor →</b>
           </button>
           <button type="button" className="experiments-card experiment-arena" onClick={()=>setLabMode('arena')}>
-            <span className="section-label">EXPERIMENTAL · VARIANTE</span>
+            <span className="section-label">{experimentMaturityLabel(EXPERIMENT_MATURITY.EXPERIMENTAL, 'variante')}</span>
             <strong>Arenas experimentales</strong>
             <small>Terreno y geometría alterados en un espacio aislado, sin contaminar las reglas del ajedrez estándar.</small>
             <b>Entrar en Arena →</b>
