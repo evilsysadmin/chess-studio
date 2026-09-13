@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   MATTHIAS_BASE_AVATAR,
   matthiasAmbientVisuals,
+  matthiasHomeZone,
   matthiasMoodAvatar,
   matthiasTimeVisual,
 } from './matthiasVisuals.js';
@@ -42,5 +43,16 @@ describe('Matthias visual identity', () => {
     const reveille = matthiasAmbientVisuals(6);
     expect(reveille.length).toBeGreaterThan(1);
     expect(reveille[0].key).toBe('time-morning-coffee');
+  });
+
+  it('sitúa cada actividad en una zona coherente del gran salón', () => {
+    expect(matthiasHomeZone('time-morning-coffee')).toBe('table');
+    expect(matthiasHomeZone('time-breakfast-news')).toBe('table');
+    expect(matthiasHomeZone('time-chess-inception')).toBe('desk');
+    expect(matthiasHomeZone('dossier')).toBe('desk');
+    expect(matthiasHomeZone('reading')).toBe('library');
+    expect(matthiasHomeZone('time-chess-weekly')).toBe('library');
+    expect(matthiasHomeZone('time-late-sleep')).toBe('rest');
+    expect(matthiasHomeZone('base')).toBe('watch');
   });
 });

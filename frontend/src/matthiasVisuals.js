@@ -51,6 +51,13 @@ const AMBIENT_SCENES = Object.freeze({
   reading: { key: 'reading', avatar: strategyBook, label: 'Leyendo estrategia' },
 });
 
+const HOME_ZONE_PATTERNS = Object.freeze([
+  ['rest', /sleep/],
+  ['library', /reading|strategy-book|chess-weekly/],
+  ['desk', /dossier|ops|chess-inception/],
+  ['table', /coffee|breakfast|lunch|dinner|beer/],
+]);
+
 export const MATTHIAS_BASE_AVATAR = baseAvatar;
 
 export function matthiasTimeVisual(hour = new Date().getHours()) {
@@ -89,6 +96,11 @@ export function matthiasAmbientVisuals(hour = new Date().getHours()) {
     seen.add(scene.avatar);
     return true;
   });
+}
+
+export function matthiasHomeZone(sceneKey = 'base') {
+  const key = String(sceneKey || 'base').toLowerCase();
+  return HOME_ZONE_PATTERNS.find(([, pattern]) => pattern.test(key))?.[0] || 'watch';
 }
 
 export function matthiasMoodAvatar(mood = 'observant') {
