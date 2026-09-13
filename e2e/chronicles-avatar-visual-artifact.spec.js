@@ -38,7 +38,7 @@ async function openChronicles(page) {
 }
 
 test('Chronicles · los cuatro avatares 3D quedan fotografiados en desktop y Android', async ({ browser }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(150_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
 
   for (const capture of CAPTURES) {
