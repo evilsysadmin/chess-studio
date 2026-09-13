@@ -69,6 +69,33 @@ async function captureHealth(page, label) {
   }, label);
 }
 
+async function captureChroniclesHealth(page) {
+  return page.evaluate(() => {
+    const root = document.documentElement;
+    const rect = (selector) => {
+      const node = document.querySelector(selector);
+      if (!node) return null;
+      const box = node.getBoundingClientRect();
+      return {
+        left: Number(box.left.toFixed(1)),
+        top: Number(box.top.toFixed(1)),
+        right: Number(box.right.toFixed(1)),
+        bottom: Number(box.bottom.toFixed(1)),
+        width: Number(box.width.toFixed(1)),
+        height: Number(box.height.toFixed(1)),
+      };
+    };
+    return {
+      horizontalOverflow: root.scrollWidth > root.clientWidth + 1,
+      gameCanvasCount: document.querySelectorAll('[data-chronicles-renderer="three"] canvas').length,
+      portraitCanvasCount: document.querySelectorAll('[data-chronicles-party-renderer="three"] canvas').length,
+      stage: rect('.chronicles-stage'),
+      gameCanvas: rect('[data-chronicles-renderer="three"] canvas'),
+      portraitCanvas: rect('[data-chronicles-party-renderer="three"] canvas'),
+    };
+  });
+}
+
 async function capturePawnSlugReadyHealth(page) {
   return page.evaluate(() => {
     const root = document.documentElement;
@@ -128,8 +155,8 @@ async function capturePawnSlugPlayingHealth(page) {
   });
 }
 
-test('Experimentos + Pawn Slug ready/live · canary visual desktop + Android', async ({ browser }) => {
-  test.setTimeout(150_000);
+test('Experimentos + Chronicles + Pawn Slug ready/live · canary visual desktop + Android', async ({ browser }) => {
+  test.setTimeout(180_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
 
   const captures = [];
@@ -143,9 +170,11 @@ test('Experimentos + Pawn Slug ready/live · canary visual desktop + Android', a
     try {
       await openExperiments(page);
 
+      const chronicles = page.getByRole('button', { name: /Chronicles of Matthias/ });
       const arcade = page.locator('.lab-arcade-zone');
       const pawnSlug = arcade.getByRole('button', { name: /Pawn Slug/ });
       const trailblazer = arcade.getByRole('button', { name: /Pawn Trailblazer/ });
+      await expect(chronicles).toBeVisible();
       await expect(arcade).toBeVisible();
       await expect(pawnSlug).toBeVisible();
       await expect(trailblazer).toBeVisible();
@@ -174,6 +203,36 @@ test('Experimentos + Pawn Slug ready/live · canary visual desktop + Android', a
         path: `${ARTIFACT_DIR}/experiments-${capture.label}.png`,
         fullPage: true,
       });
+
+      await chronicles.click();
+      await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
+      const chroniclesCanvas = page.locator('[data-chronicles-renderer="three"] canvas');
+      const portraitCanvas = page.locator('[data-chronicles-party-renderer="three"] canvas');
+      await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });
+      await expect(chroniclesCanvas).toBeVisible();
+      await expect(portraitCanvas).toHaveCount(1, { timeout: 20_000 });
+      await expect(portraitCanvas).toBeVisible();
+      await page.waitForTimeout(450);
+
+      const chroniclesHealth = await captureChroniclesHealth(page);
+      health.chronicles = chroniclesHealth;
+      expect(chroniclesHealth.horizontalOverflow, `${capture.label}: Chronicles overflow`).toBe(false);
+      expect(chroniclesHealth.gameCanvasCount, `${capture.label}: Chronicles dungeon canvas`).toBe(1);
+      expect(chroniclesHealth.portraitCanvasCount, `${capture.label}: Chronicles portrait canvas`).toBe(1);
+      expect(chroniclesHealth.stage?.width || 0, `${capture.label}: Chronicles stage visible`).toBeGreaterThan(0);
+      expect(chroniclesHealth.gameCanvas?.width || 0, `${capture.label}: Chronicles dungeon canvas visible`).toBeGreaterThan(0);
+      expect(chroniclesHealth.gameCanvas?.height || 0, `${capture.label}: Chronicles dungeon canvas height`).toBeGreaterThan(0);
+      expect(chroniclesHealth.portraitCanvas?.width || 0, `${capture.label}: Chronicles portrait visible`).toBeGreaterThan(0);
+      expect(chroniclesHealth.portraitCanvas?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
+
+      await freezeVisualFrame(page);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`,
+        fullPage: true,
+      });
+
+      await page.getByRole('button', { name: /Experimentos/ }).click();
+      await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
 
       await pawnSlug.click();
       await expect(page.getByRole('heading', { name: 'Pawn Slug', exact: true })).toBeVisible();
