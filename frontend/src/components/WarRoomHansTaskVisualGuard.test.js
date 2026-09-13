@@ -83,7 +83,7 @@ describe('WarRoomHansTaskVisualGuard', () => {
     expect(hans.userData.warRoomHansTaskFacingTarget).toBe('armor-target');
   });
 
-  it('reconciles armor-polish grounding and facing on the visible Hans mesh after a late reset', () => {
+  it('reconciles chore/service/mop visuals on the visible Hans mesh after late writers', () => {
     const root = new THREE.Group();
     const material = new THREE.MeshBasicMaterial();
 
@@ -130,10 +130,6 @@ describe('WarRoomHansTaskVisualGuard', () => {
       rightShoe,
       torso: new THREE.Group(),
     };
-    hans.userData.warRoomHansActiveTask = 'chore-dust-armor';
-    hans.userData.warRoomHansActiveTaskKind = 'chore';
-    hans.userData.warRoomHansTaskPhase = 'acting';
-    hans.userData.warRoomHansChoreEvent = 'dust-armor';
 
     const driver = new THREE.Group();
     driver.name = 'war-room-hans-fireplace-driver';
@@ -144,11 +140,20 @@ describe('WarRoomHansTaskVisualGuard', () => {
     armor.position.set(-1.2, 0.8, 0);
     root.add(armor);
 
+    const plant = new THREE.Group();
+    plant.name = 'war-room-hans-plant';
+    plant.position.set(1.7, 0.5, 0.4);
+    root.add(plant);
+
     expect(installWarRoomHansTaskVisualGuard(root)).toBe(1);
 
-    // Let the normal task-producer pass resolve once, then reproduce the real
-    // failure: a later writer restores legacy root Y and arrival heading before
-    // the visible Hans mesh is painted.
+    // getWarRoomHansActor initializes the single-task runtime during install, so
+    // drive the public diagnostics after installation just like the runtime does.
+    hans.userData.warRoomHansActiveTask = 'chore-dust-armor';
+    hans.userData.warRoomHansActiveTaskKind = 'chore';
+    hans.userData.warRoomHansTaskPhase = 'acting';
+    hans.userData.warRoomHansChoreEvent = 'dust-armor';
+
     floor.onBeforeRender();
     hans.position.y = -0.34;
     hans.rotation.y = Math.PI / 2;
@@ -157,23 +162,69 @@ describe('WarRoomHansTaskVisualGuard', () => {
     const carpetTop = -0.221;
     expect(shoeBottomWorldY(leftShoe)).toBeGreaterThan(carpetTop + 0.15);
 
-    const towardBefore = armor.getWorldPosition(new THREE.Vector3())
+    const towardArmorBefore = armor.getWorldPosition(new THREE.Vector3())
       .sub(head.getWorldPosition(new THREE.Vector3()))
       .setY(0)
       .normalize();
-    expect(renderedFaceVector(hans, head, faceAnchor).dot(towardBefore)).toBeLessThan(0);
+    expect(renderedFaceVector(hans, head, faceAnchor).dot(towardArmorBefore)).toBeLessThan(0);
 
-    const renderer = { info: { render: { frame: 41 } } };
-    leftShoe.onBeforeRender(renderer, null, null, leftShoe.geometry, leftShoe.material, null);
+    leftShoe.onBeforeRender(
+      { info: { render: { frame: 41 } } },
+      null,
+      null,
+      leftShoe.geometry,
+      leftShoe.material,
+      null,
+    );
 
     expect(shoeBottomWorldY(leftShoe)).toBeCloseTo(carpetTop, 5);
-    const towardAfter = armor.getWorldPosition(new THREE.Vector3())
+    const towardArmorAfter = armor.getWorldPosition(new THREE.Vector3())
       .sub(head.getWorldPosition(new THREE.Vector3()))
       .setY(0)
       .normalize();
-    expect(renderedFaceVector(hans, head, faceAnchor).dot(towardAfter)).toBeGreaterThan(0.99);
+    expect(renderedFaceVector(hans, head, faceAnchor).dot(towardArmorAfter)).toBeGreaterThan(0.99);
     expect(hans.userData.warRoomHansTaskVisualSource).toBe('visible-mesh-pre-render');
     expect(hans.userData.warRoomHansTaskFacingTarget).toBe('war-room-teutonic-armor-right');
+
+    // Service actions share the same stationary-facing contract.
+    hans.userData.warRoomHansActiveTask = 'service-water-plant';
+    hans.userData.warRoomHansActiveTaskKind = 'service';
+    hans.userData.warRoomHansTaskPhase = 'acting';
+    hans.userData.warRoomHansServiceEvent = 'water-plant';
+    hans.rotation.y = -Math.PI / 2;
+    hans.updateMatrixWorld(true);
+    leftShoe.onBeforeRender(
+      { info: { render: { frame: 42 } } },
+      null,
+      null,
+      leftShoe.geometry,
+      leftShoe.material,
+      null,
+    );
+    const towardPlant = plant.getWorldPosition(new THREE.Vector3())
+      .sub(head.getWorldPosition(new THREE.Vector3()))
+      .setY(0)
+      .normalize();
+    expect(renderedFaceVector(hans, head, faceAnchor).dot(towardPlant)).toBeGreaterThan(0.99);
+    expect(hans.userData.warRoomHansTaskFacingTarget).toBe('war-room-hans-plant');
+
+    // Mop has no external look target while scrubbing, but it must still be
+    // grounded if a late writer restores the old root Y.
+    hans.userData.warRoomHansActiveTask = 'mop-room';
+    hans.userData.warRoomHansActiveTaskKind = 'mop';
+    hans.userData.warRoomHansTaskPhase = 'mopping';
+    hans.position.y = -0.34;
+    hans.updateMatrixWorld(true);
+    expect(shoeBottomWorldY(leftShoe)).toBeGreaterThan(carpetTop + 0.15);
+    leftShoe.onBeforeRender(
+      { info: { render: { frame: 43 } } },
+      null,
+      null,
+      leftShoe.geometry,
+      leftShoe.material,
+      null,
+    );
+    expect(shoeBottomWorldY(leftShoe)).toBeCloseTo(carpetTop, 5);
     expect(hans.userData.warRoomHansVisibleTaskVisualHooks).toBeGreaterThanOrEqual(2);
   });
 });
