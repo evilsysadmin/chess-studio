@@ -8,6 +8,7 @@ import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import './LabScreen.css';
+import './LabArcade.css';
 
 const ArenaExperiment = lazy(() => import('./ArenaExperiment.jsx'));
 const PawnTrailblazer = lazy(() => import('./PawnTrailblazer.jsx'));
@@ -86,18 +87,27 @@ export default function LabScreen({ onExit, onStart }){
         </section>
 
         <span className="experiments-group-label">Arcade</span>
-        <div className="experiments-grid experiments-arcade-deck">
-          <button type="button" className="experiments-card experiment-pawnslug is-featured" onClick={()=>setLabMode('pawnslug')}>
-            <span className="section-label">{experimentMaturityLabel(EXPERIMENT_MATURITY.EXPERIMENTAL, 'en pulido')}</span>
-            <strong>Pawn Slug</strong>
-            <small>Run & gun corto y brutal con armas, rescates, set-pieces y un Panzer‑Rook con muy malas intenciones.</small>
-            <b>Iniciar operación →</b>
+        <div className="lab-arcade-zone">
+          <button type="button" className="lab-arcade-launch is-pawnslug" onClick={()=>setLabMode('pawnslug')}>
+            <span className="lab-arcade-scenery" aria-hidden="true">
+              <i className="lab-arcade-pawn">♟</i>
+              <i className="lab-arcade-rook">♜</i>
+            </span>
+            <span className="lab-arcade-copy">
+              <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.EXPERIMENTAL, 'en pulido')}</small>
+              <strong>Pawn Slug</strong>
+              <span>Run & gun corto y brutal. Matthias, cuatro armas y un Panzer‑Rook que ha elegido la violencia administrativa.</span>
+              <b>Entrar en la operación <i aria-hidden="true">→</i></b>
+            </span>
           </button>
-          <button type="button" className="experiments-card experiment-trailblazer" onClick={()=>setLabMode('trailblazer')}>
-            <span className="section-label">{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'jugable')}</span>
-            <strong>Pawn Trailblazer</strong>
-            <small>Plataformas y exploración con Matthias; el movimiento se abre, pero sus ataques siguen reglas de peón.</small>
-            <b>Vorwärts →</b>
+          <button type="button" className="lab-arcade-launch is-trailblazer" onClick={()=>setLabMode('trailblazer')}>
+            <span className="lab-arcade-scenery" aria-hidden="true"><i className="lab-arcade-pawn">♟</i></span>
+            <span className="lab-arcade-copy">
+              <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'jugable')}</small>
+              <strong>Pawn Trailblazer</strong>
+              <span>Plataformas y exploración; el movimiento se abre, los ataques siguen siendo de peón.</span>
+              <b>Vorwärts <i aria-hidden="true">→</i></b>
+            </span>
           </button>
         </div>
 
