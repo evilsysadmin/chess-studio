@@ -1,1 +1,0 @@
-This marker file intentionally documents the regression guard introduced for the War Room plant placement fix. The canonical plant position is derived from the weather-window anchor after Hans installers finish, preventing sofa-relative placement from dragging the plant back toward the board.
