@@ -88,8 +88,16 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     await expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: 60_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 20_000 });
 
-    await page.waitForTimeout(160);
-    const diagnostic = await canvas.evaluate((node) => ({
+    // Capture Hans himself, not a dialogue card covering his head and torso.
+    // The acknowledgement is short-lived; after it disappears Hans is still
+    // physically in the room for the fireplace choreography.
+    const hansReply = page.getByRole('status', { name: 'Hans obedece a Matthias' });
+    await expect(hansReply).toBeHidden({ timeout: 8_000 });
+    await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 5_000 });
+    await page.waitForTimeout(120);
+    const replyBubbleVisible = await hansReply.isVisible().catch(() => false);
+
+    const diagnostic = await canvas.evaluate((node, bubbleVisible) => ({
       schema: 1,
       viewport: { width: window.innerWidth, height: window.innerHeight },
       screen: node.dataset.warRoomHansScreen || '',
@@ -99,11 +107,13 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
       sceneReady: node.dataset.warRoomHansSceneReady === 'true',
       callReleased: node.dataset.warRoomHansCallReleased === 'true',
       replySeen: node.dataset.warRoomHansReplySeen === 'true',
-    }));
+      replyBubbleVisible: bubbleVisible,
+    }), replyBubbleVisible);
 
     expect(diagnostic.sceneReady).toBe(true);
     expect(diagnostic.callReleased).toBe(true);
     expect(diagnostic.replySeen).toBe(true);
+    expect(diagnostic.replyBubbleVisible).toBe(false);
     expect(diagnostic.screen).toBe('onscreen');
     expect(Number.isFinite(diagnostic.ndcX)).toBe(true);
     expect(Number.isFinite(diagnostic.ndcY)).toBe(true);
