@@ -300,7 +300,7 @@ test('War Room · Pixel 5 conserva el tier táctil y el presupuesto GPU', async 
     expect(['balanced', 'lite']).toContain(audit.cssAndBacking.sceneTier);
     const contract = expectWithinRenderBudget(audit, { coarsePointer: true, label: 'pixel-5' });
     expect(contract.idleFrameIntervalMs).toBe(150);
-    expect(contract.inspectFrameIntervalMs).toBe(33);
+    expect(contract.inspectFrameIntervalMs).toBe(24);
   } finally {
     await context.close();
   }
