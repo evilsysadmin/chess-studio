@@ -6,6 +6,11 @@ import {
   loadGuidedTrainingSession,
   startGuidedTrainingSession,
 } from '../guidedTrainingSession.js';
+import {
+  clearGuidedTrainingCompletion,
+  loadGuidedTrainingCompletion,
+  saveGuidedTrainingCompletion,
+} from '../guidedTrainingCompletion.js';
 
 function actionLabel(step) {
   if (step?.action === 'nemesis-position') return 'Abrir posición Némesis →';
@@ -21,6 +26,7 @@ export default function InsightsGuidedSession({
   onPlayFromHere,
 }) {
   const [session, setSession] = useState(() => loadGuidedTrainingSession());
+  const [completion, setCompletion] = useState(() => loadGuidedTrainingCompletion());
   const plans = useMemo(() => ({
     5: buildGuidedTrainingPlan({ minutes: 5, history: gameHistory }),
     15: buildGuidedTrainingPlan({ minutes: 15, history: gameHistory }),
@@ -28,6 +34,8 @@ export default function InsightsGuidedSession({
   }), [gameHistory]);
 
   function begin(minutes) {
+    clearGuidedTrainingCompletion();
+    setCompletion(null);
     const next = startGuidedTrainingSession(plans[minutes]);
     setSession(next);
   }
@@ -38,8 +46,15 @@ export default function InsightsGuidedSession({
   }
 
   function nextStep() {
+    const finishing = session && session.currentIndex >= session.steps.length - 1;
     const next = advanceGuidedTrainingSession(session);
     setSession(next);
+    if (finishing && !next) setCompletion(saveGuidedTrainingCompletion(session));
+  }
+
+  function hideCompletion() {
+    clearGuidedTrainingCompletion();
+    setCompletion(null);
   }
 
   function openTrainingPosition(step, meta = {}) {
@@ -83,6 +98,28 @@ export default function InsightsGuidedSession({
         <span className="section-label">Sin buscar por menús</span>
         <h2 id="guided-session-title">Sesión automática</h2>
         <p className="hint-text">Chess Studio compone el recorrido con errores personales y Némesis demostradas. En 5 minutos concentra todo en un único foco; con 15/30 añade una partida corta de práctica y termina de nuevo aquí. El paso actual sobrevive mientras vas y vuelves entre pantallas.</p>
+
+        {completion ? (
+          <div className="insights-recurring-error-card" data-guided-training-completion="true">
+            <div className="insights-recurring-error-topline">
+              <strong>Última sesión cerrada</strong>
+              <span>{completion.minutes} min</span>
+            </div>
+            <p>Marcaste como hechos {completion.blocks.length} {completion.blocks.length === 1 ? 'bloque' : 'bloques'} de práctica. Esto resume tu recorrido; no afirma que hayas mejorado.</p>
+            <details className="friendly-disclosure">
+              <summary>Ver qué incluía</summary>
+              <ol>
+                {completion.blocks.map((block) => (
+                  <li key={block.id}><b>{block.title}</b>{block.minutes > 0 ? ` · ~${block.minutes} min` : ''}</li>
+                ))}
+              </ol>
+            </details>
+            <div className="coaching-action">
+              <button type="button" className="secondary-btn" onClick={hideCompletion}>Ocultar resumen</button>
+            </div>
+          </div>
+        ) : null}
+
         {available ? (
           <div className="coaching-action">
             <button type="button" className="secondary-btn" disabled={!plans[5].available} onClick={() => begin(5)}>Tengo 5 min</button>
