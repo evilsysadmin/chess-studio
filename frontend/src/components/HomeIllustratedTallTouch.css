@@ -207,3 +207,217 @@
     transform: translateX(-50%);
   }
 }
+
+/* Android "desktop site" in landscape is a different failure mode from the
+ * tall-touch case above: CSS width looks desktop-ish while the usable height is
+ * still phone-sized. Keep the Great Hall on its canonical 16:9 camera and crop
+ * the stage symmetrically instead of feeding the low viewport aspect ratio into
+ * the 3D scene. This also prevents the empty side moat seen on real devices. */
+@media (pointer: coarse) and (orientation: landscape) and (min-width: 760px) and (max-height: 620px) {
+  body:has(.app-shell-home) {
+    background: #140b06;
+  }
+
+  body .app-shell.app-shell-home,
+  body .app-shell-home .menu.menu-illustrated {
+    width: 100%;
+    max-width: none;
+    min-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .illustrated-home {
+    position: relative;
+    display: block;
+    width: 100vw;
+    height: 100dvh;
+    min-height: 100dvh;
+    padding: 0 !important;
+    overflow: hidden;
+    isolation: isolate;
+    background: #140b06;
+  }
+
+  .illustrated-home__stage {
+    position: absolute !important;
+    z-index: 1;
+    top: 50% !important;
+    left: 50% !important;
+    width: max(100vw, 177.7778dvh) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    aspect-ratio: 16 / 9 !important;
+    overflow: visible;
+    transform: translate(-50%, -50%) !important;
+  }
+
+  .illustrated-home__art,
+  .illustrated-home__castle-3d {
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+
+  /* Preserve the product identity even when the hall is vertically cropped.
+     Only the nonessential community/motto furniture disappears in this mode. */
+  .illustrated-home__community,
+  .illustrated-home__motto {
+    display: none !important;
+  }
+
+  .illustrated-home__brand {
+    display: block !important;
+    z-index: 10;
+    top: 12.4% !important;
+    left: 34% !important;
+    width: 32% !important;
+    text-align: center;
+    text-shadow: 0 2px 8px #100906, 0 0 14px rgba(20, 8, 2, .6);
+  }
+
+  .illustrated-home__brand h1 {
+    margin: 0;
+    color: #ffe7a5;
+    font: 500 clamp(25px, 7dvh, 34px)/1 Georgia, 'Times New Roman', serif;
+    letter-spacing: -.045em;
+    white-space: nowrap;
+  }
+
+  .illustrated-home__brand p {
+    margin: 3px 0 0;
+    color: #d8bd83;
+    font: 600 clamp(8px, 2dvh, 10px)/1.1 monospace;
+    letter-spacing: .22em;
+    white-space: nowrap;
+  }
+
+  .illustrated-home__stage > nav {
+    position: absolute;
+    inset: 0;
+    display: block;
+    pointer-events: none;
+  }
+
+  .illustrated-home__destination {
+    position: absolute !important;
+    z-index: 7;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 3px 5px;
+    border: 0;
+    border-radius: 7px;
+    background: rgba(12, 8, 5, .12);
+    box-shadow: none;
+    text-align: center;
+    pointer-events: auto;
+  }
+
+  .illustrated-home__destination svg {
+    width: clamp(16px, 4dvh, 22px);
+    height: clamp(16px, 4dvh, 22px);
+  }
+
+  .illustrated-home__destination strong {
+    font-size: clamp(9px, 2.45dvh, 13px);
+    white-space: nowrap;
+  }
+
+  .illustrated-home__destination > span {
+    max-width: 11em;
+    font-size: clamp(7px, 1.8dvh, 10px);
+    line-height: 1.05;
+  }
+
+  .illustrated-home__destination i {
+    display: none;
+  }
+
+  .illustrated-home__destination--tournament { left: 15%; top: 25.5%; width: 12% !important; }
+  .illustrated-home__destination--train { left: 33.5%; top: 26.5%; width: 13% !important; }
+  .illustrated-home__destination--combat { left: 51.8%; top: 26.5%; width: 14% !important; }
+  .illustrated-home__destination--daily { left: 70.5%; top: 26.5%; width: 15% !important; }
+  .illustrated-home__destination--history { left: 8.5%; top: 40%; width: 10% !important; }
+  .illustrated-home__destination--play {
+    left: 40.5%;
+    top: 64.5%;
+    width: 19% !important;
+    min-height: 48px;
+  }
+  .illustrated-home__destination--play strong {
+    font-size: clamp(11px, 3dvh, 16px);
+  }
+
+  /* Keep secondary modes attached to the lower room rather than to the cropped
+     viewport edge. The later Pawn Slug stylesheet may refine its own marker; the
+     shared stage framing remains canonical either way. */
+  .illustrated-home__matthias {
+    left: 4.5% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 12% !important;
+    width: clamp(92px, 14%, 142px) !important;
+    min-height: 48px;
+    padding: 5px 7px;
+    border: 1px solid rgba(218, 172, 83, .18);
+    border-radius: 8px;
+    background: rgba(13, 8, 5, .34);
+  }
+
+  .illustrated-home__matthias-portrait {
+    width: clamp(44px, 11dvh, 58px) !important;
+    max-width: 58px;
+    margin: auto;
+  }
+
+  .illustrated-home__speech {
+    position: absolute;
+    z-index: 18;
+    left: 18% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 10% !important;
+    width: min(290px, 30vw) !important;
+    max-height: 31dvh;
+    overflow: auto;
+    padding: 10px 12px;
+    font-size: 12px;
+    transform: none !important;
+  }
+
+  .illustrated-home__speech p {
+    margin: .42rem 0 .55rem;
+    line-height: 1.32;
+  }
+
+  .illustrated-home__utilities {
+    right: 4% !important;
+    bottom: 11% !important;
+    width: 22% !important;
+    height: 24% !important;
+  }
+
+  .illustrated-home__dungeon-copy {
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    padding: 5px 7px;
+    background: rgba(12, 8, 5, .48);
+  }
+
+  .illustrated-home__dungeon-copy strong {
+    font-size: clamp(9px, 2.3dvh, 12px);
+  }
+
+  .illustrated-home__dungeon-copy small {
+    font-size: clamp(7px, 1.7dvh, 9px);
+  }
+}
