@@ -20,11 +20,12 @@ DEFAULT_FACTUAL_MAX_DEPTH = 3
 
 @dataclass(frozen=True)
 class RootCandidateAnalysis:
-    """Score and immediate best reply for one legal root move."""
+    """Score, immediate reply and proven principal line for one root move."""
 
     move: chess.Move
     score: float
     reply: Optional[chess.Move]
+    principal_variation: tuple[chess.Move, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,16 @@ class RootAnalysisSnapshot:
     """Deepest complete ranked root pass produced inside one time budget."""
 
     candidates: tuple[RootCandidateAnalysis, ...]
+    depth: int
+    candidate_count: int
+
+
+@dataclass(frozen=True)
+class PrincipalVariationAnalysis:
+    """Best proven line from the deepest complete root pass."""
+
+    moves: tuple[chess.Move, ...]
+    score: float
     depth: int
     candidate_count: int
 
@@ -88,6 +99,55 @@ class FactualMoveAnalysis:
         }
 
 
+def _principal_variation_from_tt(
+    board: chess.Board,
+    root_move: chess.Move,
+    reply: Optional[chess.Move],
+    *,
+    depth: int,
+    tt: dict[tuple, _engine.TTEntry],
+) -> tuple[chess.Move, ...]:
+    """Recover only the exact, legal PV already proven by one root search.
+
+    No extra search is launched. The immediate reply is the move returned by
+    the child minimax call itself; deeper moves are accepted only from EXACT TT
+    entries with enough stored depth. Bound entries are deliberately ignored so
+    a cutoff can shorten the line but can never masquerade as an exact PV.
+    """
+    if root_move not in board.legal_moves:
+        return ()
+
+    line = [root_move]
+    if depth <= 1 or reply is None:
+        return tuple(line)
+
+    probe = board.copy(stack=True)
+    probe.push(root_move)
+    if reply not in probe.legal_moves:
+        return tuple(line)
+    line.append(reply)
+    probe.push(reply)
+
+    ply = 2
+    remaining_depth = depth - 2
+    while remaining_depth > 0:
+        entry = tt.get((*_engine._tt_key(probe), ply))
+        if (
+            entry is None
+            or entry.flag != "EXACT"
+            or entry.depth < remaining_depth
+            or entry.move is None
+            or entry.move not in probe.legal_moves
+        ):
+            break
+        line.append(entry.move)
+        probe.push(entry.move)
+        ply += 1
+        remaining_depth -= 1
+
+    return tuple(line)
+
+
 def analyze_root_candidates(
     board: chess.Board,
     *,
@@ -98,9 +158,9 @@ def analyze_root_candidates(
     """Analyze every legal root move with one consistent bounded search pass.
 
     At depth 2 or greater, ``reply`` is the engine's best immediate response
-    from the child position. Keeping that reply beside the score lets post-game
-    consumers explain the first factual consequence without launching a second,
-    potentially contradictory search.
+    from the child position. ``principal_variation`` extends that line only with
+    exact legal moves recovered from the same shared transposition table: no
+    follow-up search is launched merely to make the line look longer.
 
     Exactly one of ``deadline`` or ``budget_s`` must be supplied. The function
     is atomic from the caller's point of view: a timeout raises ``TimeoutError``
@@ -116,7 +176,7 @@ def analyze_root_candidates(
 
     moves = _engine._order_moves(board, list(board.legal_moves))
     candidates: list[RootCandidateAnalysis] = []
-    tt = {}
+    tt: dict[tuple, _engine.TTEntry] = {}
     for move in moves:
         if time.monotonic() >= deadline:
             raise TimeoutError
@@ -133,7 +193,18 @@ def analyze_root_candidates(
             )
         finally:
             board.pop()
-        candidates.append(RootCandidateAnalysis(move=move, score=score, reply=reply))
+        candidates.append(RootCandidateAnalysis(
+            move=move,
+            score=score,
+            reply=reply,
+            principal_variation=_principal_variation_from_tt(
+                board,
+                move,
+                reply,
+                depth=depth,
+                tt=tt,
+            ),
+        ))
     return candidates
 
 
@@ -234,6 +305,41 @@ def top_root_candidates_iterative(
         depth=snapshot.depth,
         candidate_count=snapshot.candidate_count,
     )
+
+
+def principal_variation(
+    board: chess.Board,
+    *,
+    max_depth: int,
+    budget_s: float,
+) -> Optional[PrincipalVariationAnalysis]:
+    """Return the best proven PV from the deepest complete iterative root pass.
+
+    ``None`` means the supplied position is terminal. The returned line may be
+    shorter than ``depth`` when alpha-beta only left bound entries below the
+    proven prefix; callers must treat the actual line length as authoritative.
+    """
+    snapshot = top_root_candidates_iterative(
+        board,
+        limit=1,
+        max_depth=max_depth,
+        budget_s=budget_s,
+    )
+    if not snapshot.candidates:
+        return None
+    best = snapshot.candidates[0]
+    return PrincipalVariationAnalysis(
+        moves=best.principal_variation or (best.move,),
+        score=best.score,
+        depth=snapshot.depth,
+        candidate_count=snapshot.candidate_count,
+    )
+
+
+def only_legal_move(board: chess.Board) -> Optional[chess.Move]:
+    """Return the sole legal move when the position has exactly one, else None."""
+    moves = list(board.legal_moves)
+    return moves[0] if len(moves) == 1 else None
 
 
 def best_root_candidate(
