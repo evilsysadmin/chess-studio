@@ -12,6 +12,14 @@ export const PAWN_SLUG_PLATFORM_META = Object.freeze({
   source: 'tile-map',
 });
 
+export const PAWN_SLUG_CAMERA_VERTICAL_META = Object.freeze({
+  groundCameraY: 3.75,
+  groundLookAtY: 2.9,
+  minPlayerY: 1.2,
+  maxCameraLift: 2.7,
+  maxLookAtLift: 2.1,
+});
+
 const THEME_MATERIALS = Object.freeze({
   stone: Object.freeze({ top: 0x7f7569, side: 0x3f3a35, trim: 0xa38d70 }),
   timber: Object.freeze({ top: 0x765438, side: 0x38281d, trim: 0xaa7a4b }),
@@ -60,12 +68,20 @@ export function pawnSlugPlatformSupportY({ x, feetY, tolerance = 0.08 }, platfor
   return support;
 }
 
-export function pawnSlugPlatformCameraY(playerY, { groundCameraY = 5.1, minPlayerY = 1.2, maxLift = 2.7 } = {}) {
+export function pawnSlugPlatformCameraY(playerY, {
+  groundCameraY = PAWN_SLUG_CAMERA_VERTICAL_META.groundCameraY,
+  minPlayerY = PAWN_SLUG_CAMERA_VERTICAL_META.minPlayerY,
+  maxLift = PAWN_SLUG_CAMERA_VERTICAL_META.maxCameraLift,
+} = {}) {
   const lift = clamp((playerY - minPlayerY) * 0.55, 0, maxLift);
   return groundCameraY + lift;
 }
 
-export function pawnSlugPlatformLookAtY(playerY, { groundLookAtY = 4.25, minPlayerY = 1.2, maxLift = 2.1 } = {}) {
+export function pawnSlugPlatformLookAtY(playerY, {
+  groundLookAtY = PAWN_SLUG_CAMERA_VERTICAL_META.groundLookAtY,
+  minPlayerY = PAWN_SLUG_CAMERA_VERTICAL_META.minPlayerY,
+  maxLift = PAWN_SLUG_CAMERA_VERTICAL_META.maxLookAtLift,
+} = {}) {
   const lift = clamp((playerY - minPlayerY) * 0.43, 0, maxLift);
   return groundLookAtY + lift;
 }
