@@ -295,6 +295,7 @@ export function archivePermanentCasualty(rosterState, slotKey, at = new Date().t
     slotKey,
     originType: record.originType || String(slotKey).split('-')[0] || null,
     createdAt: record.createdAt || identity.createdAt || null,
+    lastBattleAt: record.lastBattleAt || record.stats?.lastDeathAt || at,
     diedAt: record.stats?.lastDeathAt || at,
     permanentDeathAt: at,
     finalLevel,
