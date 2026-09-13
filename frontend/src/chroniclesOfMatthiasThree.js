@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { CHRONICLES_DIRECTIONS, CHRONICLES_MAP } from './chroniclesOfMatthias.js';
-import { buildChroniclesCharacter, buildCorruptedPawn } from './chroniclesOfMatthiasArt.js';
+import { CHRONICLES_DIRECTIONS, CHRONICLES_ENEMIES, CHRONICLES_MAP } from './chroniclesOfMatthias.js';
+import { buildChroniclesCharacter, buildCorruptedPawn, buildGateJailer } from './chroniclesOfMatthiasArt.js';
 import { buildChroniclesDungeonDressing } from './chroniclesOfMatthiasDungeonArt.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 
@@ -60,12 +60,21 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
   sigil.receiveShadow = true;
   scene.add(sigil);
 
-  const enemy = buildCorruptedPawn({ coarsePointer });
-  const enemyCell = worldForCell(3, 5);
-  enemy.position.set(enemyCell.x, 0, enemyCell.z);
-  enemy.scale.setScalar(1.08);
-  enemy.rotation.y = Math.PI;
-  scene.add(enemy);
+  const enemyModels = {
+    'corrupted-pawn': buildCorruptedPawn({ coarsePointer }),
+    'gate-jailer': buildGateJailer({ coarsePointer }),
+  };
+  CHRONICLES_ENEMIES.forEach((enemyDefinition) => {
+    const enemy = enemyModels[enemyDefinition.id];
+    if (!enemy) return;
+    const enemyCell = worldForCell(enemyDefinition.x, enemyDefinition.y);
+    enemy.position.set(enemyCell.x, 0, enemyCell.z);
+    enemy.scale.setScalar(enemyDefinition.id === 'gate-jailer' ? 1.16 : 1.08);
+    enemy.rotation.y = enemyDefinition.id === 'gate-jailer' ? 0 : Math.PI;
+    enemy.userData.chroniclesBaseYaw = enemy.rotation.y;
+    enemy.userData.chroniclesBaseScale = enemy.scale.x;
+    scene.add(enemy);
+  });
 
   const gateMaterial = new THREE.MeshStandardMaterial({ color: 0x171513, roughness: 0.66, metalness: 0.72, emissive: 0x120700, emissiveIntensity: 0.15 });
   const gate = new THREE.Group();
@@ -100,7 +109,7 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
     torches.push({ root, flame, light, phase: index * 1.7 });
   });
 
-  return { enemy, sigilMaterial, gateMaterial, gateRune, torches };
+  return { enemies: enemyModels, sigilMaterial, gateMaterial, gateRune, torches };
 }
 
 function disposeObject(root) {
@@ -177,8 +186,8 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
   let frame = 0;
   let attackFxStartedAt = -1;
   let attackFxConfig = ATTACK_FX.matthias;
-  let enemyHitStartedAt = -1;
-  let enemyDeathStartedAt = -1;
+  const enemyHitStartedAt = new Map();
+  const enemyDeathStartedAt = new Map();
   const clock = new THREE.Clock();
 
   camera.position.copy(desiredPosition);
@@ -193,18 +202,29 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
   }
 
   function syncState(state) {
-    const previousEnemyHp = latestState?.enemyHp;
     const now = clock.getElapsedTime();
-    if (previousEnemyHp != null && state.enemyHp < previousEnemyHp) enemyHitStartedAt = now;
-    if (!reducedMotion && previousEnemyHp > 0 && state.enemyHp === 0) enemyDeathStartedAt = now;
+    CHRONICLES_ENEMIES.forEach((enemyDefinition) => {
+      const previousHp = latestState?.[enemyDefinition.hpKey];
+      const nextHp = state[enemyDefinition.hpKey];
+      if (previousHp != null && nextHp < previousHp) enemyHitStartedAt.set(enemyDefinition.id, now);
+      if (!reducedMotion && previousHp > 0 && nextHp === 0) enemyDeathStartedAt.set(enemyDefinition.id, now);
+    });
     latestState = state;
     desiredPosition = worldForCell(state.x, state.y);
     const direction = CHRONICLES_DIRECTIONS[state.direction];
     desiredYaw = Math.atan2(-direction.dx, -direction.dy);
-    dungeon.enemy.visible = state.enemyHp > 0 || (!reducedMotion && enemyDeathStartedAt >= 0);
-    const enemyGlow = dungeon.enemy.userData.chroniclesGlowMaterials || [];
-    enemyGlow.forEach((glow) => {
-      glow.emissiveIntensity = state.enemyHp === 1 ? 2.8 : 1.7;
+    CHRONICLES_ENEMIES.forEach((enemyDefinition) => {
+      const enemy = dungeon.enemies[enemyDefinition.id];
+      if (!enemy) return;
+      const active = enemyDefinition.activation === 'always' || state.sigilAwake;
+      const hp = state[enemyDefinition.hpKey];
+      const deathStartedAt = enemyDeathStartedAt.get(enemyDefinition.id);
+      enemy.visible = active && (hp > 0 || (!reducedMotion && deathStartedAt != null));
+      const enemyGlow = enemy.userData.chroniclesGlowMaterials || [];
+      enemyGlow.forEach((glow) => {
+        const baseGlow = enemy.userData.chroniclesBaseGlow || 1.7;
+        glow.emissiveIntensity = hp === 1 ? baseGlow + 1.1 : baseGlow;
+      });
     });
     dungeon.sigilMaterial.emissive.setHex(state.sigilAwake ? 0x7e3c0a : 0x241300);
     dungeon.sigilMaterial.emissiveIntensity = state.sigilAwake ? 1.8 : 0.3;
@@ -255,25 +275,38 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
         torch.light.intensity = 1.75 * pulse;
         torch.flame.scale.y = 1.65 + pulse * 0.18;
       });
-      if (latestState?.enemyHp > 0) {
-        const hitElapsed = time - enemyHitStartedAt;
-        const hitKick = hitElapsed >= 0 && hitElapsed < 0.24 ? Math.sin((hitElapsed / 0.24) * Math.PI) : 0;
-        dungeon.enemy.visible = true;
-        dungeon.enemy.rotation.y = Math.PI + Math.sin(time * 0.9) * 0.12 + hitKick * 0.16;
-        dungeon.enemy.rotation.z = hitKick * -0.08;
-        dungeon.enemy.position.y = Math.sin(time * 1.7) * 0.018;
-        dungeon.enemy.scale.setScalar(1.08 + hitKick * 0.07);
-      } else if (enemyDeathStartedAt >= 0) {
-        const deathElapsed = time - enemyDeathStartedAt;
-        if (deathElapsed < 0.5) {
-          dungeon.enemy.visible = true;
-          dungeon.enemy.position.y = -Math.max(0, deathElapsed) * 1.45;
-          dungeon.enemy.rotation.z = Math.max(0, deathElapsed) * 1.4;
-          dungeon.enemy.scale.setScalar(Math.max(0.52, 1.08 - Math.max(0, deathElapsed) * 0.72));
+      CHRONICLES_ENEMIES.forEach((enemyDefinition, index) => {
+        const enemy = dungeon.enemies[enemyDefinition.id];
+        if (!enemy) return;
+        const active = enemyDefinition.activation === 'always' || latestState?.sigilAwake;
+        const hp = latestState?.[enemyDefinition.hpKey] ?? enemyDefinition.maxHp;
+        const baseYaw = enemy.userData.chroniclesBaseYaw || 0;
+        const baseScale = enemy.userData.chroniclesBaseScale || 1;
+        const hitStartedAt = enemyHitStartedAt.get(enemyDefinition.id) ?? -1;
+        const deathStartedAt = enemyDeathStartedAt.get(enemyDefinition.id);
+
+        if (active && hp > 0) {
+          const hitElapsed = time - hitStartedAt;
+          const hitKick = hitElapsed >= 0 && hitElapsed < 0.24 ? Math.sin((hitElapsed / 0.24) * Math.PI) : 0;
+          enemy.visible = true;
+          enemy.rotation.y = baseYaw + Math.sin(time * 0.9 + index) * 0.1 + hitKick * 0.16;
+          enemy.rotation.z = hitKick * -0.08;
+          enemy.position.y = Math.sin(time * 1.7 + index * 0.8) * 0.018;
+          enemy.scale.setScalar(baseScale + hitKick * 0.07);
+        } else if (active && deathStartedAt != null) {
+          const deathElapsed = time - deathStartedAt;
+          if (deathElapsed < 0.5) {
+            enemy.visible = true;
+            enemy.position.y = -Math.max(0, deathElapsed) * 1.45;
+            enemy.rotation.z = Math.max(0, deathElapsed) * 1.4;
+            enemy.scale.setScalar(Math.max(baseScale * 0.48, baseScale - Math.max(0, deathElapsed) * 0.72));
+          } else {
+            enemy.visible = false;
+          }
         } else {
-          dungeon.enemy.visible = false;
+          enemy.visible = false;
         }
-      }
+      });
 
       const fxElapsed = time - attackFxStartedAt;
       if (fxElapsed >= 0 && fxElapsed < 0.24) {

@@ -188,3 +188,67 @@ export function buildCorruptedPawn({ coarsePointer = false } = {}) {
   root.userData.chroniclesBaseGlow = 1.7;
   return root;
 }
+
+export function buildGateJailer({ coarsePointer = false } = {}) {
+  const segments = coarsePointer ? 18 : 30;
+  const root = new THREE.Group();
+  root.name = 'chronicles-gate-jailer';
+  root.userData.chroniclesEnemy = 'gate-jailer';
+
+  const blackIron = material(0x17191b, { metalness: 0.66, roughness: 0.34, clearcoat: 0.14 });
+  const oldSteel = material(0x55595a, { metalness: 0.72, roughness: 0.32, clearcoat: 0.12 });
+  const crust = material(0x352722, { metalness: 0.18, roughness: 0.78 });
+  const glow = material(0x4a0b09, { metalness: 0.08, roughness: 0.38, emissive: 0xe3311d, emissiveIntensity: 2.05 });
+
+  basePlinth(root, crust, blackIron, segments);
+  lathe(root, [
+    [0.5, 0.34], [0.48, 0.48], [0.44, 0.72], [0.48, 1.02], [0.5, 1.28],
+  ], blackIron, segments, 'gate-jailer-tower-body');
+  add(root, new THREE.TorusGeometry(0.46, 0.045, 8, segments), oldSteel, [0, 0.56, 0], [Math.PI / 2, 0, 0], null, 'gate-jailer-iron-band-low');
+  add(root, new THREE.TorusGeometry(0.49, 0.05, 8, segments), oldSteel, [0, 1.14, 0], [Math.PI / 2, 0, 0], null, 'gate-jailer-iron-band-high');
+
+  const crown = new THREE.Group();
+  crown.name = 'gate-jailer-crown';
+  root.add(crown);
+  add(crown, new THREE.CylinderGeometry(0.5, 0.47, 0.23, segments), blackIron, [0, 1.34, 0], [0, 0, 0], null, 'gate-jailer-crown-drum');
+  for (let i = 0; i < 8; i += 1) {
+    const angle = (i / 8) * Math.PI * 2;
+    const radial = 0.39;
+    add(
+      crown,
+      new THREE.BoxGeometry(0.17, 0.26, 0.18),
+      i % 2 ? oldSteel : blackIron,
+      [Math.cos(angle) * radial, 1.52, Math.sin(angle) * radial],
+      [0, -angle, 0],
+      null,
+      `gate-jailer-crenel-${i}`,
+    );
+  }
+
+  add(root, new THREE.BoxGeometry(0.52, 0.065, 0.04), glow, [0, 0.92, 0.455], [0, 0, 0.12], null, 'gate-jailer-fissure-main');
+  add(root, new THREE.BoxGeometry(0.32, 0.045, 0.035), glow, [-0.12, 1.04, 0.465], [0, 0, -0.58], null, 'gate-jailer-fissure-diagonal');
+  add(root, new THREE.BoxGeometry(0.12, 0.055, 0.04), glow, [-0.16, 1.39, 0.47], [0, 0, -0.12], null, 'gate-jailer-eye-left');
+  add(root, new THREE.BoxGeometry(0.12, 0.055, 0.04), glow, [0.16, 1.39, 0.47], [0, 0, 0.12], null, 'gate-jailer-eye-right');
+
+  const chainMat = oldSteel;
+  for (let i = 0; i < (coarsePointer ? 3 : 5); i += 1) {
+    const link = add(
+      root,
+      new THREE.TorusGeometry(0.09, 0.022, 6, coarsePointer ? 10 : 14),
+      chainMat,
+      [0.52, 1.05 - i * 0.17, 0.03],
+      [Math.PI / 2, 0, i % 2 ? Math.PI / 2 : 0],
+      null,
+      `gate-jailer-chain-${i}`,
+    );
+    link.scale.y = 1.3;
+  }
+
+  add(root, new THREE.BoxGeometry(0.18, 0.64, 0.12), oldSteel, [-0.52, 0.85, 0], [0, 0, -0.08], null, 'gate-jailer-key-blade');
+  add(root, new THREE.TorusGeometry(0.18, 0.045, 8, segments), oldSteel, [-0.54, 1.19, 0], [Math.PI / 2, 0, 0], null, 'gate-jailer-key-ring');
+
+  root.userData.chroniclesGlowMaterials = [glow];
+  root.userData.chroniclesBaseGlow = 2.05;
+  root.userData.chroniclesSilhouette = 'corrupted-rook-jailer';
+  return root;
+}

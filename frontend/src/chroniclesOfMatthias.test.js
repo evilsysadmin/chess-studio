@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  chroniclesActiveEnemies,
   chroniclesEnemyDistanceAhead,
   chroniclesObjective,
   chroniclesReduce,
@@ -12,6 +13,28 @@ function act(state, ...actions) {
 
 function attack(state, memberId) {
   return chroniclesReduce(state, { type: 'attack', memberId });
+}
+
+function clearOpeningPawn(state) {
+  let next = chroniclesReduce(state, 'forward');
+  next = attack(next, 'rook');
+  next = attack(next, 'rook');
+  next = attack(next, 'rook');
+  return next;
+}
+
+function awakenSigil(state) {
+  return act(state, 'forward', 'turn-left', 'forward');
+}
+
+function reachGateApproach(state) {
+  return act(
+    state,
+    'forward',
+    'turn-left', 'forward', 'forward',
+    'turn-right', 'forward', 'forward',
+    'turn-right', 'forward',
+  );
 }
 
 describe('Chronicles of Matthias vertical slice', () => {
@@ -57,24 +80,41 @@ describe('Chronicles of Matthias vertical slice', () => {
     expect([state.x, state.y]).toEqual([3, 5]);
   });
 
-  it('requires the sigil before the black gate can finish the expedition', () => {
+  it('wakes a second, distinct gate encounter only after the sigil is activated', () => {
     let state = createChroniclesState();
-    state = chroniclesReduce(state, 'forward');
-    state = attack(state, 'rook');
-    state = attack(state, 'rook');
-    state = attack(state, 'rook');
-    state = act(state, 'forward', 'turn-left', 'forward');
-    expect([state.x, state.y]).toEqual([3, 4]);
-    expect(state.sigilAwake).toBe(true);
-    expect(chroniclesObjective(state)).toBe('Regresa a la puerta negra');
+    expect(chroniclesActiveEnemies(state).map((enemy) => enemy.id)).toEqual(['corrupted-pawn']);
 
-    state = act(
-      state,
-      'forward',
-      'turn-left', 'forward', 'forward',
-      'turn-right', 'forward', 'forward',
-      'turn-right', 'forward', 'forward',
-    );
+    state = clearOpeningPawn(state);
+    state = awakenSigil(state);
+
+    expect(state.sigilAwake).toBe(true);
+    expect(chroniclesActiveEnemies(state).map((enemy) => enemy.id)).toEqual(['gate-jailer']);
+    expect(chroniclesObjective(state)).toBe('Derrota a la torre carcelero');
+    expect(state.message).toMatch(/algo pesado/i);
+  });
+
+  it('makes the gate jailer a stronger blocker before the exit can finish the expedition', () => {
+    let state = awakenSigil(clearOpeningPawn(createChroniclesState()));
+    state = reachGateApproach(state);
+    expect([state.x, state.y, state.direction]).toEqual([2, 1, 1]);
+    expect(chroniclesEnemyDistanceAhead(state, 1)).toBe(1);
+
+    const blocked = chroniclesReduce(state, 'forward');
+    expect([blocked.x, blocked.y]).toEqual([2, 1]);
+    expect(blocked.message).toMatch(/torre carcelero/i);
+
+    state = blocked;
+    const hpBefore = state.party.find((member) => member.id === 'rook')?.hp;
+    state = attack(state, 'rook');
+    expect(state.jailerHp).toBe(6);
+    expect(state.party.find((member) => member.id === 'rook')?.hp).toBe(hpBefore - 2);
+    state = attack(state, 'rook');
+    state = attack(state, 'rook');
+    state = attack(state, 'rook');
+    expect(state.jailerHp).toBe(0);
+    expect(chroniclesObjective(state)).toBe('Cruza la puerta negra');
+
+    state = chroniclesReduce(state, 'forward');
     expect(state.phase).toBe('escaped');
     expect(chroniclesObjective(state)).toBe('Vertical slice completado');
   });
