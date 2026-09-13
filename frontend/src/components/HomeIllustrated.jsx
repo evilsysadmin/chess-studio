@@ -8,7 +8,7 @@ import { loadRivalry } from '../rivalry.js';
 import { dailyChallengeStats, loadDailyChallenge } from '../dailyChallenge.js';
 import { buildHomeCastleLife } from '../homeCastleLife.js';
 import { requestLabLaunch } from '../labLaunchIntent.js';
-import { matthiasAmbientVisual, matthiasAmbientVisuals, matthiasHomeZone } from '../matthiasVisuals.js';
+import { matthiasAmbientVisual, matthiasAmbientVisuals, matthiasHomeZone, matthiasRoutineDwellMs } from '../matthiasVisuals.js';
 import { reducedMotionStatus, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import './HomeIllustrated.css';
 import './HomeIllustratedDiegetic.css';
@@ -64,6 +64,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     return [rareScene, ...baseMatthiasRoutine.filter((scene) => scene.avatar !== sourceScene.avatar)];
   }, [baseMatthiasRoutine, castleLife.matthiasMoment]);
   const matthiasVisual = matthiasRoutine[matthiasRoutineIndex % Math.max(1, matthiasRoutine.length)] || matthiasRoutine[0];
+  const matthiasDwellMs = matthiasRoutineDwellMs(matthiasVisual);
   const memories = castleLife.memories || (castleLife.memory ? [castleLife.memory] : []);
   const experimentsAction = tools.find(([label]) => label === 'Experimentos geniales')?.[1];
   const openPawnSlug = () => {
@@ -87,21 +88,22 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     if (reducedMotion || matthiasSpeaking || matthiasRoutine.length < 2) return undefined;
     let cancelled = false;
     let timer = null;
-    const scheduleNext = () => {
+    const scheduleAttempt = () => {
       timer = window.setTimeout(() => {
         if (cancelled) return;
-        if (!document.hidden) {
-          setMatthiasRoutineIndex((current) => (current + 1) % matthiasRoutine.length);
+        if (document.hidden) {
+          scheduleAttempt();
+          return;
         }
-        scheduleNext();
-      }, 28_000);
+        setMatthiasRoutineIndex((current) => (current + 1) % matthiasRoutine.length);
+      }, matthiasDwellMs);
     };
-    scheduleNext();
+    scheduleAttempt();
     return () => {
       cancelled = true;
       if (timer !== null) window.clearTimeout(timer);
     };
-  }, [matthiasRoutine.length, matthiasSpeaking, reducedMotion]);
+  }, [matthiasDwellMs, matthiasRoutine.length, matthiasSpeaking, reducedMotion]);
 
   const rooms = [
     ['tournament', 'TORNEOS', 'Compite y escala', IconTrophy, onTournament],
@@ -206,6 +208,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           data-home-matthias-activity={matthiasActivity}
           data-home-matthias-zone={matthiasZone}
           data-home-matthias-moment={matthiasVisual?.momentId || 'none'}
+          data-home-matthias-dwell-ms={matthiasDwellMs}
         >
           {matthiasVisual && (
             <span

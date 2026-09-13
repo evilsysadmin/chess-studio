@@ -102,6 +102,20 @@ export function matthiasAmbientVisuals(hour = new Date().getHours()) {
   });
 }
 
+// Una rutina viva no cambia de escena como un carrusel cada N segundos exactos.
+// Los tiempos siguen siendo deterministas (sin RNG ni estado extra), pero cada
+// actividad permanece en pantalla lo suficiente para que parezca una acción y
+// no una diapositiva. Las siestas duran más; café/comida son más breves.
+export function matthiasRoutineDwellMs(scene = 'base') {
+  const key = String(typeof scene === 'string' ? scene : scene?.key || 'base').toLowerCase();
+  if (/sleep/.test(key)) return 64_000;
+  if (/reading|strategy-book|chess-weekly/.test(key)) return 48_000;
+  if (/dossier/.test(key)) return 44_000;
+  if (/ops|chess-inception/.test(key)) return 42_000;
+  if (/coffee|breakfast|lunch|dinner|beer|night/.test(key)) return 38_000;
+  return 34_000;
+}
+
 export function matthiasHomeZone(sceneKey = 'base') {
   const key = String(sceneKey || 'base').toLowerCase();
   return HOME_ZONE_PATTERNS.find(([, pattern]) => pattern.test(key))?.[0] || 'watch';
