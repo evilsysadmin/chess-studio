@@ -6,6 +6,7 @@ import {
   armWarRoomOneShotHookRetirement,
   registerWarRoomDeferredFinalizer,
 } from './WarRoomDeferredFinalizer.js';
+import { WAR_ROOM_CANONICAL_PLANT_PLACEMENT_VERSION } from './WarRoomPlantCanonicalPlacement.js';
 
 function mesh(name) {
   const item = new THREE.Mesh(
@@ -54,6 +55,50 @@ describe('WarRoomDeferredFinalizer', () => {
     expect(previous).toHaveBeenCalledTimes(2);
     expect(first).toHaveBeenCalledTimes(1);
     expect(second).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the approved visible plant coordinate as the final Hans scene authority', () => {
+    const root = new THREE.Group();
+    const owner = new THREE.Group();
+    const floor = new THREE.Mesh(
+      new THREE.BoxGeometry(16, 0.5, 12),
+      new THREE.MeshStandardMaterial({ color: 0x555555 }),
+    );
+    floor.name = 'war-room-castle-floor-slab';
+    floor.position.y = -0.5;
+    owner.add(floor);
+    root.add(owner);
+
+    const weatherWindow = new THREE.Group();
+    weatherWindow.name = 'war-room-weather-window';
+    weatherWindow.userData.warRoomPlantAnchor = { x: 7.05, z: 2.85 };
+    root.add(weatherWindow);
+
+    const plant = new THREE.Group();
+    plant.name = 'war-room-hans-plant';
+    plant.position.set(0.5, -0.255, 0.5);
+    root.add(plant);
+
+    const sceneTask = vi.fn(() => 1);
+    expect(registerWarRoomDeferredFinalizer(owner, {
+      key: 'hans-fireplace-scene-install-v2',
+      run: sceneTask,
+    })).toBe(1);
+    expect(typeof floor.onAfterRender).toBe('function');
+
+    floor.onAfterRender();
+
+    expect(sceneTask).toHaveBeenCalledTimes(1);
+    expect(plant.position.x).toBeCloseTo(5.77, 5);
+    expect(plant.position.z).toBeCloseTo(3.37, 5);
+    expect(plant.userData.warRoomPlantPlacement).toBe('canonical-visible-sofa-corner-v16');
+    expect(plant.userData.warRoomCanonicalPlacement).toBe(WAR_ROOM_CANONICAL_PLANT_PLACEMENT_VERSION);
+    expect(root.userData.warRoomCanonicalPlantPlacement).toBe(WAR_ROOM_CANONICAL_PLANT_PLACEMENT_VERSION);
+
+    floor.onAfterRender();
+    expect(sceneTask).toHaveBeenCalledTimes(1);
+    expect(plant.position.x).toBeCloseTo(5.77, 5);
+    expect(plant.position.z).toBeCloseTo(3.37, 5);
   });
 
   it('falls back to the castle wall, rejects duplicates and only runs coarse tasks when explicitly allowed', () => {
