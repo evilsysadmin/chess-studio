@@ -5,12 +5,15 @@ import { installWarRoomHansFacingGuard } from './WarRoomHansFacingGuard.js';
 import { installWarRoomHansHearthFacingGuard } from './WarRoomHansHearthFacingGuard.js';
 import { installWarRoomHansHearthReachGuard } from './WarRoomHansHearthReachGuard.js';
 import { installWarRoomHansMotionPolish } from './WarRoomHansMotionPolishV2.js';
+import {
+  moveWarRoomHansToward as moveWarRoomHansTransformToward,
+  placeWarRoomHansHorizontal as placeWarRoomHansTransformHorizontal,
+} from './WarRoomHansTransformOwner.js';
 
-export const WAR_ROOM_HANS_ANIMATOR_VERSION = 'war-room-hans-animator-v4-hearth-reach-pose-baseline-single-gait';
+export const WAR_ROOM_HANS_ANIMATOR_VERSION = 'war-room-hans-animator-v5-transform-owner-hearth-reach-pose-baseline-single-gait';
 export const WAR_ROOM_HANS_GAIT_OWNER = 'articulated-walk-distance-owner-v1';
 export const WAR_ROOM_HANS_POSE_BASELINE_VERSION = 'hans-task-pose-baseline-v1';
 
-const TARGET_EPSILON = 0.09;
 const CORE_RESET_PARTS = Object.freeze([
   'leftKnee',
   'rightKnee',
@@ -64,31 +67,14 @@ function markAnimator(root, hans, driver, installed = []) {
   }
 }
 
+// Compatibility facade: callers keep the existing animator API while all Hans
+// root X/Z/yaw writes are owned by WarRoomHansTransformOwner.
 export function placeWarRoomHansHorizontal(actor, point) {
-  const hans = actor?.hans;
-  if (!hans || !point) return false;
-  const x = Number(point.x);
-  const z = Number(point.z);
-  if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
-  hans.position.x = x;
-  hans.position.z = z;
-  // Vertical placement belongs exclusively to rendered grounding.
-  return true;
+  return placeWarRoomHansTransformHorizontal(actor, point, 'animator-place');
 }
 
 export function moveWarRoomHansToward(hans, target, maxStep) {
-  if (!hans || !target) return { arrived: false, travelled: 0, blocked: true };
-  const dx = target.x - hans.position.x;
-  const dz = target.z - hans.position.z;
-  const distance = Math.hypot(dx, dz);
-  if (distance <= TARGET_EPSILON) return { arrived: true, travelled: 0, blocked: false };
-  const step = Math.min(distance, Math.max(0, Number(maxStep) || 0));
-  hans.position.x += dx / distance * step;
-  hans.position.z += dz / distance * step;
-  // Y is deliberately untouched. Rendered shoe/surface grounding is the only
-  // authority for vertical placement; task navigation owns horizontal travel.
-  hans.rotation.y = Math.atan2(dx, dz);
-  return { arrived: distance - step <= TARGET_EPSILON, travelled: step, blocked: false };
+  return moveWarRoomHansTransformToward(hans, target, maxStep, 'animator-navigation');
 }
 
 export function createWarRoomHansPoseBaseline(actor) {
