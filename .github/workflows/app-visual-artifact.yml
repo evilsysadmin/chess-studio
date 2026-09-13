@@ -10,6 +10,7 @@ on:
       - 'e2e/chronicles-avatar-visual-artifact.spec.js'
       - 'e2e/home-3d-focus-visual.spec.js'
       - 'e2e/war-room-visual-artifact.spec.js'
+      - 'e2e/war-room-decor-visual-artifact.spec.js'
       - 'e2e/war-room-hans-visual-artifact.spec.js'
       - 'e2e/browser-runtime-health.spec.js'
       - 'e2e/browser-storage-health.spec.js'
@@ -43,7 +44,7 @@ jobs:
 
       - name: Capture visual health
         working-directory: e2e
-        run: ./node_modules/.bin/playwright test app-visual-artifact.spec.js experiments-visual-artifact.spec.js chronicles-avatar-visual-artifact.spec.js home-3d-focus-visual.spec.js war-room-visual-artifact.spec.js war-room-hans-visual-artifact.spec.js browser-runtime-health.spec.js browser-storage-health.spec.js --workers=1 --retries=0
+        run: ./node_modules/.bin/playwright test app-visual-artifact.spec.js experiments-visual-artifact.spec.js chronicles-avatar-visual-artifact.spec.js home-3d-focus-visual.spec.js war-room-visual-artifact.spec.js war-room-decor-visual-artifact.spec.js war-room-hans-visual-artifact.spec.js browser-runtime-health.spec.js browser-storage-health.spec.js --workers=1 --retries=0
 
       - name: Enforce War Room visual freeze
         run: node scripts/war_room_visual_freeze_check.mjs
