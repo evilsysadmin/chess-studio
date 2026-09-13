@@ -33,17 +33,29 @@
 
   .game-screen .game-side-column-3d .game-warroom-rail {
     grid-area: rail;
-    align-self: start;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
     min-width: 0;
+    min-height: 0;
     width: 100%;
     margin: .35rem 0 0;
+  }
+
+  /* The desktop rail owns the remaining grid row. Matthias is the one surface
+     that benefits from that vertical room continuously, so let chat consume it
+     instead of keeping the former 310px cap. Notebook/captures remain compact. */
+  .game-screen .game-side-column-3d .game-warroom-rail-panel.is-matthias {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
   }
 
   .game-screen .game-side-column-3d .game-warroom-rail .game-chat {
     width: 100%;
     min-width: 0;
     min-height: 0;
-    height: auto;
+    height: 100%;
     max-height: none;
     margin: 0;
     overflow: hidden;
@@ -99,7 +111,7 @@
   .game-screen .game-side-column-3d .game-warroom-rail .game-chat-log {
     flex: 1 1 auto;
     min-height: 0;
-    max-height: min(34dvh, 310px);
+    max-height: none;
     overflow-y: auto;
     overflow-x: hidden;
     overscroll-behavior: contain;
