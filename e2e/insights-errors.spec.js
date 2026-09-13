@@ -99,3 +99,80 @@ test('Así juegas · Errores reabre una deuda cuando aparece una reincidencia re
   await page.getByRole('button', { name: 'Entrenar este patrón →', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Horquilla pendiente tres', exact: true })).toBeVisible();
 });
+
+test('Así juegas · Errores muestra mejora probable sólo tras dos autopsias completas sin recurrencia', async ({ page }) => {
+  await mockApi(page);
+  await login(page);
+  await dismissHomeGuide(page);
+
+  await page.evaluate(({ fen }) => {
+    localStorage.setItem('chess-study-personal-puzzles', JSON.stringify([
+      {
+        id: 'fork-trained-2',
+        kind: 'personal',
+        source: 'autopsy',
+        title: 'Horquilla entrenada dos',
+        description: 'Segundo caso entrenado.',
+        fen,
+        solution: ['Ra8#'],
+        incidentKeys: ['cpu:KNIGHT_FORK'],
+        sourceGameId: 'source-fork-2',
+        loss: 260,
+        createdAt: '2026-08-29T10:00:00Z',
+        attempts: 1,
+        solves: 1,
+        cleanSolves: 1,
+        lastCleanAt: '2026-08-29T12:00:00Z',
+      },
+      {
+        id: 'fork-trained-1',
+        kind: 'personal',
+        source: 'autopsy',
+        title: 'Horquilla entrenada uno',
+        description: 'Primer caso entrenado.',
+        fen,
+        solution: ['Ra8#'],
+        incidentKeys: ['cpu:KNIGHT_FORK'],
+        sourceGameId: 'source-fork-1',
+        loss: 210,
+        createdAt: '2026-08-28T10:00:00Z',
+        attempts: 1,
+        solves: 1,
+        cleanSolves: 1,
+        lastCleanAt: '2026-08-28T12:00:00Z',
+      },
+    ]));
+
+    localStorage.setItem('chess-study-clean-games-v1', JSON.stringify({
+      observation1: {
+        version: 1,
+        gameId: 'observation-1',
+        date: '2026-08-30T12:00:00Z',
+        sufficientSample: true,
+        clean: true,
+        incidentCoverageVersion: 1,
+        incidentCoverageSufficient: true,
+        incidentKeys: [],
+      },
+      observation2: {
+        version: 1,
+        gameId: 'observation-2',
+        date: '2026-08-31T12:00:00Z',
+        sufficientSample: true,
+        clean: true,
+        incidentCoverageVersion: 1,
+        incidentCoverageSufficient: true,
+        incidentKeys: [],
+      },
+    }));
+  }, { fen: PERSONAL_MATE_FEN });
+
+  await buttonWithHeading(page, 'Así juegas').click();
+  await page.getByRole('tab', { name: /Errores/ }).click();
+
+  await expect(page.getByText('Horquillas de caballo sufridas', { exact: true })).toBeVisible();
+  await expect(page.getByText('Mejora probable · varias autopsias completas recientes sin repetir este patrón.', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Deuda pagada/)).toHaveCount(0);
+  await expect(page.locator('[data-improvement-state="probable-improvement"]')).toHaveCount(1);
+  await expect(page.locator('[data-training-debt="paid"]')).toHaveCount(1);
+});
