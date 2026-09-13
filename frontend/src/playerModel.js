@@ -7,7 +7,7 @@ import { buildRecurringErrorPatterns } from './insightsRecurringErrors.js';
 import { isPersonalPuzzleCurrentlyClean, personalSpacedReviewSummary } from './spacedReview.js';
 import { personalTrainingDebtSummary } from './trainingDebt.js';
 
-export const PLAYER_MODEL_VERSION = 7;
+export const PLAYER_MODEL_VERSION = 8;
 export const PATTERN_IMPROVEMENT_PROBABLE_OBSERVATIONS = 2;
 export const PATTERN_IMPROVEMENT_CORRECTED_OBSERVATIONS = 5;
 export const PATTERN_IMPROVEMENT_STATES = Object.freeze({
