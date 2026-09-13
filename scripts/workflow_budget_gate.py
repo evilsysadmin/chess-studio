@@ -32,6 +32,7 @@ BUDGETS = (
     Budget('.github/workflows/app-visual-artifact.yml', 2123),
     Budget('.github/workflows/chesscom-visual-artifact.yml', 1490),
     Budget('.github/workflows/war-room-runtime-marathon.yml', 2464),
+    Budget('.github/workflows/branch-housekeeping.yml', 652),
 )
 
 
