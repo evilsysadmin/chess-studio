@@ -16,6 +16,9 @@ from typing import Any
 
 
 PROCESS_STARTED_AT = time.time()
+PROCESS_STARTED_MONOTONIC = time.perf_counter()
+_STARTUP_LOCK = threading.Lock()
+_FIRST_READY_OBSERVED_MS: float | None = None
 
 _CLIENT_RELEASE_RE = re.compile(r"^v?[0-9A-Za-z][0-9A-Za-z._-]{0,39}$")
 
@@ -23,6 +26,33 @@ _CLIENT_RELEASE_RE = re.compile(r"^v?[0-9A-Za-z][0-9A-Za-z._-]{0,39}$")
 def sanitize_client_release(value: Any) -> str | None:
     raw = str(value or "").strip()[:40]
     return raw if raw and _CLIENT_RELEASE_RE.fullmatch(raw) else None
+
+
+def record_process_ready() -> tuple[float, bool]:
+    """Record the first successful readiness observation for this process.
+
+    The value is intentionally named/treated as *observed* readiness: it also
+    includes any delay before the platform or synthetic checker first calls
+    ``/api/ready``. A monotonic clock keeps wall-clock adjustments out of the
+    duration. Repeated probes never rewrite the first sample.
+    """
+    global _FIRST_READY_OBSERVED_MS
+    observed_ms = max(0.0, (time.perf_counter() - PROCESS_STARTED_MONOTONIC) * 1000.0)
+    with _STARTUP_LOCK:
+        first = _FIRST_READY_OBSERVED_MS is None
+        if first:
+            _FIRST_READY_OBSERVED_MS = observed_ms
+        return round(float(_FIRST_READY_OBSERVED_MS or 0.0), 2), first
+
+
+def get_startup_metrics() -> dict[str, Any]:
+    with _STARTUP_LOCK:
+        observed_ms = _FIRST_READY_OBSERVED_MS
+    return {
+        "first_ready_observed": observed_ms is not None,
+        "first_ready_observed_ms": round(float(observed_ms), 2) if observed_ms is not None else None,
+        "scope": "current_process",
+    }
 
 
 MAX_HTTP_EVENTS = 5000
@@ -136,6 +166,7 @@ def _summarize_http(events: list[dict[str, Any]], window_seconds: int) -> dict[s
 def get_http_metrics() -> dict[str, Any]:
     return {
         "uptime_seconds": max(0, int(time.time() - PROCESS_STARTED_AT)),
+        "startup": get_startup_metrics(),
         "last_15m": _summarize_http(_window_events(15 * 60), 15 * 60),
         "last_1h": _summarize_http(_window_events(HTTP_WINDOW_SECONDS), HTTP_WINDOW_SECONDS),
         "capacity": MAX_HTTP_EVENTS,
