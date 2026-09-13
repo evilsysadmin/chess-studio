@@ -19,13 +19,28 @@ describe('Pawn Slug arcade projectile language', () => {
     expect(shotgun.spread).toBeGreaterThan(0);
   });
 
-  it('gives hostile rounds a larger unmistakable tracer', () => {
+  it('keeps hostile pistol rounds chunky and backwards-compatible with the enemy alias', () => {
     const hostile = pawnSlugArcadeProjectileProfile({ weapon: 'pistol', enemy: true });
     const friendly = pawnSlugArcadeProjectileProfile({ weapon: 'pistol' });
+    expect(hostile).toBe(PAWN_SLUG_ARCADE_PROJECTILES.enemyPistol);
     expect(hostile).toBe(PAWN_SLUG_ARCADE_PROJECTILES.enemy);
-    expect(hostile.shape).toBe('needle');
+    expect(hostile.shape).toBe('slug');
     expect(hostile.trail).toBeGreaterThan(friendly.trail);
     expect(hostile.length).toBeGreaterThan(friendly.length);
+    expect(hostile.radius).toBeGreaterThan(friendly.radius);
+  });
+
+  it('gives hostile MG fire a longer thinner needle than hostile pistol fire', () => {
+    const pistol = pawnSlugArcadeProjectileProfile({ weapon: 'pistol', enemy: true });
+    const machinegun = pawnSlugArcadeProjectileProfile({ weapon: 'machinegun', enemy: true });
+    const friendly = pawnSlugArcadeProjectileProfile({ weapon: 'machinegun' });
+    expect(machinegun).toBe(PAWN_SLUG_ARCADE_PROJECTILES.enemyMachinegun);
+    expect(machinegun.shape).toBe('needle');
+    expect(machinegun.length).toBeGreaterThan(pistol.length);
+    expect(machinegun.radius).toBeLessThan(pistol.radius);
+    expect(machinegun.trail).toBeGreaterThan(pistol.trail);
+    expect(machinegun.length).toBeGreaterThan(friendly.length);
+    expect(machinegun.radius).toBeGreaterThan(friendly.radius);
   });
 
   it('keeps hostile shotgun pellets chunky without turning them into tracers', () => {
