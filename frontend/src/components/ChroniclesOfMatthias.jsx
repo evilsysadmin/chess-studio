@@ -6,8 +6,10 @@ import {
   chroniclesReduce,
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
+import { chroniclesTargetAhead } from '../chroniclesOfMatthiasTargeting.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
+import ChroniclesTacticalMargin from './ChroniclesTacticalMargin.jsx';
 import './ChroniclesOfMatthias.css';
 import './ChroniclesOfMatthiasArt.css';
 import './ChroniclesOfMatthiasJournal.css';
@@ -127,6 +129,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const direction = CHRONICLES_DIRECTIONS[state.direction];
   const objective = chroniclesObjective(state);
   const selectedMember = state.party.find((member) => member.id === selectedMemberId) || state.party[0];
+  const tacticalTarget = chroniclesTargetAhead(state, selectedMember?.reach || 1);
   const journalEntries = chroniclesJournalEntries(state);
   const latestJournalEntry = journalEntries[journalEntries.length - 1];
 
@@ -180,6 +183,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <div ref={hostRef} className="chronicles-three" data-chronicles-renderer="three" aria-label="Mazmorra 3D en primera persona de Chronicles of Matthias" />
             <div className="chronicles-vignette" aria-hidden="true" />
             <div className="chronicles-crosshair" aria-hidden="true">·</div>
+            <ChroniclesTacticalMargin target={tacticalTarget} />
             {rendererError && <div className="chronicles-renderer-error" role="alert">{rendererError}</div>}
             {state.phase === 'escaped' && <ChroniclesBookOneEpilogue state={state} onRestart={restart} />}
           </div>
