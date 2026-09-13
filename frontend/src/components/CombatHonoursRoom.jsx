@@ -123,6 +123,7 @@ export function MemorialDossier({ entry }) {
         <div><dt>Bajas</dt><dd>{stats.kills || 0}</dd></div>
         <div><dt>Boss damage</dt><dd>{stats.bossDamage || 0}</dd></div>
         <div><dt>Revivals</dt><dd>{stats.revives || 0}</dd></div>
+        <div><dt>Última misión</dt><dd>{formatDate(entry.lastBattleAt || entry.diedAt)}</dd></div>
         <div><dt>Muerte final</dt><dd>{formatDate(entry.permanentDeathAt)}</dd></div>
       </dl>
       {entry.decorationsResolved.length > 0 && (
