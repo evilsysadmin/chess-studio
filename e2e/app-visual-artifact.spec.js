@@ -8,6 +8,7 @@ const CAPTURES = [
   { label:'desktop-1440x900', width:1440, height:900, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
   { label:'android-desktop-site-980x1740', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, minStageViewportFill:.74 },
   { label:'android-desktop-site-980x1740-quiet', width:980, height:1740, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, minStageViewportFill:.74, dismissMatthias:true },
+  { label:'android-desktop-site-landscape-980x430', width:980, height:430, reducedMotion:'no-preference', forceCores:8, hasTouch:true, expectCastleReady:true, minStageViewportFill:.98, minStageVisibleWidthFill:.98, minVisibleDestinations:6, expectMatthiasVisible:true },
   { label:'android-360x800', width:360, height:800, reducedMotion:'no-preference' },
   { label:'android-390x844', width:390, height:844, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
   { label:'android-430x932', width:430, height:932, reducedMotion:'no-preference', forceCores:8, expectCastleReady:true },
@@ -70,12 +71,18 @@ async function captureHealth(page, label) {
     const viewport = { width:window.innerWidth, height:window.innerHeight };
     const stageNode = document.querySelector('.illustrated-home__stage');
     const stageRect = stageNode?.getBoundingClientRect();
+    const stageVisibleWidth = stageRect
+      ? Math.max(0, Math.min(stageRect.right, viewport.width) - Math.max(stageRect.left, 0))
+      : 0;
     const stage = stageRect ? {
       width:Number(stageRect.width.toFixed(1)),
       height:Number(stageRect.height.toFixed(1)),
+      left:Number(stageRect.left.toFixed(1)),
+      right:Number(stageRect.right.toFixed(1)),
       top:Number(stageRect.top.toFixed(1)),
       bottom:Number(stageRect.bottom.toFixed(1)),
       viewportFill:Number((Math.max(0, Math.min(stageRect.bottom, viewport.height) - Math.max(stageRect.top, 0)) / viewport.height).toFixed(3)),
+      visibleWidthFill:Number((stageVisibleWidth / viewport.width).toFixed(3)),
       blankBelowPx:Number(Math.max(0, viewport.height - stageRect.bottom).toFixed(1)),
     } : null;
     const interactive = [...document.querySelectorAll('button, a[href], input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"])')]
@@ -115,6 +122,34 @@ async function captureHealth(page, label) {
         .sort((a, b) => Math.min(a.width, a.height) - Math.min(b.width, b.height))
         .slice(0, 30)
       : [];
+    const visibleDestinationCount = [...document.querySelectorAll('.illustrated-home__destination')]
+      .filter((node) => {
+        const rect = node.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        return rect.width > 0
+          && rect.height > 0
+          && style.visibility !== 'hidden'
+          && style.display !== 'none'
+          && rect.right > 0
+          && rect.left < viewport.width
+          && rect.bottom > 0
+          && rect.top < viewport.height;
+      }).length;
+    const matthiasNode = document.querySelector('.illustrated-home__matthias');
+    const matthiasRect = matthiasNode?.getBoundingClientRect();
+    const matthiasStyle = matthiasNode ? getComputedStyle(matthiasNode) : null;
+    const matthiasVisible = Boolean(
+      matthiasRect
+      && matthiasStyle
+      && matthiasStyle.visibility !== 'hidden'
+      && matthiasStyle.display !== 'none'
+      && matthiasRect.width > 0
+      && matthiasRect.height > 0
+      && matthiasRect.right > 0
+      && matthiasRect.left < viewport.width
+      && matthiasRect.bottom > 0
+      && matthiasRect.top < viewport.height
+    );
 
     return {
       label:captureLabel,
@@ -125,6 +160,8 @@ async function captureHealth(page, label) {
       reducedMotion:window.matchMedia('(prefers-reduced-motion: reduce)').matches,
       castle3dReady:document.querySelector('.illustrated-home__castle-3d.is-ready') !== null,
       stage,
+      visibleDestinationCount,
+      matthiasVisible,
       document:{
         clientWidth:root.clientWidth,
         scrollWidth:root.scrollWidth,
@@ -146,7 +183,7 @@ async function captureHealth(page, label) {
 }
 
 test('App · captura visual canónica desktop + Android normal/desktop-site', async () => {
-  test.setTimeout(180_000);
+  test.setTimeout(210_000);
   await mkdir(ARTIFACT_DIR, { recursive:true });
 
   const visualBrowser = await chromium.launch({
@@ -193,6 +230,9 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
           expectedCastleReady:capture.expectCastleReady === true,
           expectedCoarsePointer:capture.hasTouch === true,
           minStageViewportFill:capture.minStageViewportFill ?? null,
+          minStageVisibleWidthFill:capture.minStageVisibleWidthFill ?? null,
+          minVisibleDestinations:capture.minVisibleDestinations ?? null,
+          expectMatthiasVisible:capture.expectMatthiasVisible === true,
         });
         await freezeVisualFrame(page);
         await captureViewportPng(
@@ -210,7 +250,7 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
 
   await writeFile(
     `${ARTIFACT_DIR}/visual-health.json`,
-    `${JSON.stringify({ schema:7, minimumTouchTarget:MIN_TOUCH_TARGET, captures }, null, 2)}\n`,
+    `${JSON.stringify({ schema:8, minimumTouchTarget:MIN_TOUCH_TARGET, captures }, null, 2)}\n`,
     'utf8',
   );
 
@@ -227,6 +267,15 @@ test('App · captura visual canónica desktop + Android normal/desktop-site', as
     }
     if (capture.minStageViewportFill !== null) {
       expect(capture.stage?.viewportFill, `${capture.label}: Great Hall viewport fill`).toBeGreaterThanOrEqual(capture.minStageViewportFill);
+    }
+    if (capture.minStageVisibleWidthFill !== null) {
+      expect(capture.stage?.visibleWidthFill, `${capture.label}: Great Hall visible width fill`).toBeGreaterThanOrEqual(capture.minStageVisibleWidthFill);
+    }
+    if (capture.minVisibleDestinations !== null) {
+      expect(capture.visibleDestinationCount, `${capture.label}: visible diegetic destinations`).toBeGreaterThanOrEqual(capture.minVisibleDestinations);
+    }
+    if (capture.expectMatthiasVisible) {
+      expect(capture.matthiasVisible, `${capture.label}: Matthias remains inside the visible hall`).toBe(true);
     }
   }
 });
