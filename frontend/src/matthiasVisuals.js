@@ -58,6 +58,21 @@ const HOME_ZONE_PATTERNS = Object.freeze([
   ['table', /coffee|breakfast|lunch|dinner|beer/],
 ]);
 
+function localDaySignature(now = new Date()) {
+  const year = Number(now?.getFullYear?.());
+  const month = Number(now?.getMonth?.());
+  const day = Number(now?.getDate?.());
+  if (![year, month, day].every(Number.isFinite)) return null;
+  return (year * 372) + ((month + 1) * 31) + day;
+}
+
+function rotateScenes(scenes, offset) {
+  if (!Array.isArray(scenes) || scenes.length < 2) return scenes;
+  const shift = ((Number(offset) || 0) % scenes.length + scenes.length) % scenes.length;
+  if (!shift) return scenes;
+  return [...scenes.slice(shift), ...scenes.slice(0, shift)];
+}
+
 export const MATTHIAS_BASE_AVATAR = baseAvatar;
 
 export function matthiasTimeVisual(hour = new Date().getHours()) {
@@ -72,7 +87,7 @@ export function matthiasAmbientVisual(key = 'base') {
   return AMBIENT_SCENES[key] || AMBIENT_SCENES.base;
 }
 
-export function matthiasAmbientVisuals(hour = new Date().getHours()) {
+export function matthiasAmbientVisuals(hour = new Date().getHours(), now = new Date()) {
   const h = Number.isFinite(Number(hour)) ? Number(hour) : 12;
   const timed = matthiasTimeVisual(h);
   const first = {
@@ -82,9 +97,8 @@ export function matthiasAmbientVisuals(hour = new Date().getHours()) {
   };
 
   // Overnight is not an ambient carousel. From midnight until reveille Matthias
-  // is canonically asleep and stays asleep; Home must not wake him every 28 s to
-  // read strategy, audit dossiers or drink coffee like a sleepwalker. At 06:00
-  // the hourly scene advances naturally to Primer café.
+  // is canonically asleep and stays asleep; Home must not wake him to read,
+  // audit dossiers or drink coffee like a sleepwalker.
   if (h >= 0 && h < 6) return [first];
 
   let extras;
@@ -94,12 +108,25 @@ export function matthiasAmbientVisuals(hour = new Date().getHours()) {
   else if (h >= 20 || h < 1) extras = [AMBIENT_SCENES.night, AMBIENT_SCENES.reading, AMBIENT_SCENES.dossier];
   else extras = [AMBIENT_SCENES.sleep, AMBIENT_SCENES.reading, AMBIENT_SCENES.base];
 
-  const seen = new Set();
-  return [first, ...extras].filter((scene) => {
+  // Deduplicamos antes de variar el día. De lo contrario, una rotación cuyo
+  // primer extra comparte avatar con la escena horaria puede desaparecer después
+  // del giro y dejar exactamente el mismo orden visible que el día anterior.
+  const seen = new Set(first.avatar ? [first.avatar] : []);
+  const visibleExtras = extras.filter((scene) => {
     if (!scene?.avatar || seen.has(scene.avatar)) return false;
     seen.add(scene.avatar);
     return true;
   });
+
+  // La escena horaria exacta siempre manda. Sólo variamos el reparto que el
+  // jugador realmente verá: mismo día + F5 => misma rutina; al cambiar de día
+  // cambia el orden si existen al menos dos escenas secundarias visibles.
+  const daySignature = localDaySignature(now);
+  const orderedExtras = daySignature === null
+    ? visibleExtras
+    : rotateScenes(visibleExtras, daySignature);
+
+  return [first, ...orderedExtras];
 }
 
 // Una rutina viva no cambia de escena como un carrusel cada N segundos exactos.
