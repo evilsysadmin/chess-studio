@@ -122,7 +122,7 @@ function tintSprite(sprite, hurt, time) {
   const age = hurt && Number.isFinite(startedAt)
     ? Math.max(0, Number(time) - startedAt)
     : Number.POSITIVE_INFINITY;
-  const flash = pawnSlugEnemyHitFlash(age, { hurt });
+  const flash = pawnSlugEnemyHitFlash(age, { hurt, type: sprite.userData.enemyType });
   sprite.material.opacity = flash.opacity;
   sprite.material.color?.setRGB(flash.r, flash.g, flash.b);
 }
