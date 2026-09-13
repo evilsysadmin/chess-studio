@@ -60,7 +60,7 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function clipFromRatio(scene, viewport, { x, y, width, height }) {
+function clipFromRatio(scene, viewport, { x, y, width, height, scale = 1 }) {
   const left = clamp(scene.x + scene.width * x, 0, viewport.width - 1);
   const top = clamp(scene.y + scene.height * y, 0, viewport.height - 1);
   const right = clamp(scene.x + scene.width * (x + width), left + 1, viewport.width);
@@ -70,7 +70,7 @@ function clipFromRatio(scene, viewport, { x, y, width, height }) {
     y: Number(top.toFixed(2)),
     width: Number((right - left).toFixed(2)),
     height: Number((bottom - top).toFixed(2)),
-    scale: 1,
+    scale,
   };
 }
 
@@ -112,12 +112,19 @@ for (const profile of PROFILES) {
 
       await freezeVisualFrame(page);
 
-      const captures = [
+      const baseCaptures = [
         { name: 'scene', ratio: { x: 0, y: 0, width: 1, height: 1 } },
         { name: 'decor-left', ratio: { x: 0, y: 0, width: 0.34, height: 1 } },
         { name: 'decor-right', ratio: { x: 0.66, y: 0, width: 0.34, height: 1 } },
         { name: 'decor-upper', ratio: { x: 0, y: 0, width: 1, height: 0.52 } },
-      ].map((capture) => ({
+      ];
+      const desktopDetailCaptures = profile.hasTouch ? [] : [
+        { name: 'armor-left-detail', ratio: { x: 0.075, y: 0.25, width: 0.18, height: 0.43, scale: 2 } },
+        { name: 'armor-right-detail', ratio: { x: 0.745, y: 0.25, width: 0.18, height: 0.43, scale: 2 } },
+        { name: 'gallery-left-detail', ratio: { x: 0.14, y: 0.035, width: 0.27, height: 0.31, scale: 2 } },
+        { name: 'gallery-right-detail', ratio: { x: 0.59, y: 0.035, width: 0.27, height: 0.31, scale: 2 } },
+      ];
+      const captures = [...baseCaptures, ...desktopDetailCaptures].map((capture) => ({
         ...capture,
         clip: clipFromRatio(scene, profile.viewport, capture.ratio),
       }));
