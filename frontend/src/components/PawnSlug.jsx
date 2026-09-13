@@ -154,6 +154,19 @@ export default function PawnSlug({ onExit }) {
     return saved;
   }
 
+  function toggleExpertMode() {
+    const current = settingsRef.current || settings;
+    commitSettings({ ...current, expertMode: current.expertMode !== true });
+    if (!bootRequestedRef.current) return;
+    releaseGameplayInput();
+    bootRequestedRef.current = false;
+    pendingRef.current = [];
+    setBootRequested(false);
+    setHud(INITIAL_HUD);
+    setRendererName('EN ESPERA');
+    setRendererError('');
+  }
+
   function openSettings() {
     releaseGameplayInput();
     setRemapAction(null);
@@ -182,6 +195,7 @@ export default function PawnSlug({ onExit }) {
       .then(({ createPawnSlugArmoryGame }) => {
         if (cancelled) return;
         engine = createPawnSlugArmoryGame(host, {
+          expertMode: settingsRef.current?.expertMode === true,
           onReady: (name) => {
             if (!cancelled) setRendererName(name);
           },
@@ -320,12 +334,12 @@ export default function PawnSlug({ onExit }) {
   const expertMode = settings.expertMode === true;
 
   return (
-    <div className="pawn-slug" data-pawn-slug="true">
+    <div className="pawn-slug" data-pawn-slug="true" data-pawn-slug-expert={expertMode ? 'true' : 'false'}>
       <header className="pawn-slug-head">
         <div>
           <span className="section-label">ARCADE · THREE.JS · OPERACIÓN ABSOLUTAMENTE NO FIDE</span>
           <h2>Pawn Slug</h2>
-          <p>Matthias ha encontrado armas de fuego. Cruza el sector, requisa arsenal enemigo, sube de nivel y conviértete en un problema administrativo para todo el tablero negro.</p>
+          <p>Matthias ha encontrado armas de fuego. Cruza el sector, requisa arsenal enemigo y conviértete en un problema administrativo para todo el tablero negro.</p>
         </div>
         <button type="button" className="secondary-btn" onClick={onExit}>← Experimentos</button>
       </header>
@@ -333,15 +347,17 @@ export default function PawnSlug({ onExit }) {
       <section className="pawn-slug-cabinet" aria-label="Pawn Slug arcade">
         <div className="pawn-slug-hud" aria-live="polite">
           <div className="pawn-slug-health">
-            <span>MATTHIAS · NIVEL {hud.level}</span>
+            <span>{expertMode ? `MATTHIAS · NIVEL ${hud.level}` : 'MATTHIAS'}</span>
             <div className="pawn-slug-health-track" aria-label={`Salud ${hud.hp} de ${hud.maxHp}`}><i style={{ width: `${healthPercent}%` }} /></div>
             <b>{hud.hp}/{hud.maxHp}</b>
-            <small className="pawn-slug-xp-label">XP</small>
-            <div className="pawn-slug-xp-track" aria-label={`Experiencia ${Math.round(xpPercent)}% del nivel`}><i style={{ width: `${xpPercent}%` }} /></div>
-            <small className="pawn-slug-xp-value">{hud.xpToNext == null ? 'MAX' : `${hud.xpToNext} para ascenso`}</small>
+            {expertMode && <>
+              <small className="pawn-slug-xp-label">XP</small>
+              <div className="pawn-slug-xp-track" aria-label={`Experiencia ${Math.round(xpPercent)}% del nivel`}><i style={{ width: `${xpPercent}%` }} /></div>
+              <small className="pawn-slug-xp-value">{hud.xpToNext == null ? 'MAX' : `${hud.xpToNext} para ascenso`}</small>
+            </>}
           </div>
           <div><span>VIDAS</span><b>{'♥'.repeat(Math.max(0, hud.lives || 0)) || '—'}</b></div>
-          <div><span>ARMA</span><b>{hud.weaponLabel}</b><small>{weaponUpgrade.code} · {ammoText}</small></div>
+          <div><span>ARMA</span><b>{hud.weaponLabel}</b><small>{expertMode ? `${weaponUpgrade.code} · ${ammoText}` : ammoText}</small></div>
           <div><span>POWER-UP</span><b>{hud.grenades}</b></div>
           <div><span>PUNTOS</span><b>{hud.score.toLocaleString('es-ES')}</b></div>
           <div><span>TIEMPO</span><b>{missionTime}</b></div>
@@ -385,13 +401,13 @@ export default function PawnSlug({ onExit }) {
                     className={weapon.current ? 'is-current' : ''}
                     aria-pressed={Boolean(weapon.current)}
                     aria-label={`${weapon.slot}. ${weapon.label}${disabled ? ' · no disponible' : ''}`}
-                    title={`${weapon.slot} · ${weapon.label} · ${tier}`}
+                    title={expertMode ? `${weapon.slot} · ${weapon.label} · ${tier}` : `${weapon.slot} · ${weapon.label}`}
                     disabled={disabled}
                     onClick={() => send(`weapon:${weapon.id}`, true)}
                   >
                     <kbd>{weapon.slot}</kbd>
                     <span>{weapon.shortLabel}</span>
-                    <small>{tier} · {count}</small>
+                    <small>{expertMode ? `${tier} · ${count}` : count}</small>
                   </button>
                 );
               })}
@@ -417,11 +433,13 @@ export default function PawnSlug({ onExit }) {
               {hud.phase === 'ready' && (
                 <div className="pawn-slug-briefing">
                   <span><b>Objetivo</b> Rompe el frente, sobrevive a los Sturm‑Bischof y elimina el Panzer‑Rook.</span>
-                  <span><b>Progresión</b> Las bajas dan XP. Cada nivel aumenta tu HP máximo y potencia el daño. Cero ELO: esta locura vive sólo en Pawn Slug.</span>
-                  <span><b>Arsenal</b> Empiezas con pistola. Requisa MG, escopeta y Panzerfaust; cada arma desbloquea mejoras Mk propias al ascender.</span>
+                  <span><b>Arsenal</b> Empiezas con pistola. Requisa MG, escopeta y Panzerfaust durante la operación.</span>
+                  {expertMode
+                    ? <span><b>Experto</b> Las bajas dan XP; los niveles aumentan HP/daño, desbloquean mejoras Mk y habilitan créditos + armería avanzada.</span>
+                    : <span><b>Arcade</b> Sin XP, niveles ni economía. Activa Modo experto en Settings si quieres la capa RPG.</span>}
                 </div>
               )}
-              {hud.phase !== 'ready' && <small>Nivel {hud.level} · {hud.score.toLocaleString('es-ES')} puntos · {missionTime}</small>}
+              {hud.phase !== 'ready' && <small>{expertMode ? `Nivel ${hud.level} · ` : ''}{hud.score.toLocaleString('es-ES')} puntos · {missionTime}</small>}
               {expertMode && hud.phase !== 'ready' && (
                 <PawnSlugModelArmory
                   groups={hud.weaponModels || []}
@@ -509,12 +527,12 @@ export default function PawnSlug({ onExit }) {
                     <button
                       type="button"
                       aria-pressed={expertMode}
-                      onClick={() => commitSettings({ ...settings, expertMode: !expertMode })}
+                      onClick={toggleExpertMode}
                     >
                       {expertMode ? 'ACTIVO' : 'OFF'}
                     </button>
                   </div>
-                  <small>Activa créditos y la armería avanzada al terminar una misión. El arcade base permanece limpio por defecto.</small>
+                  <small>Activa créditos, armería avanzada, XP/niveles, HP/daño por nivel y mejoras Mk. Cambiarlo reinicia la operación actual.</small>
                 </div>
 
                 <div className="pawn-slug-settings-remap">
