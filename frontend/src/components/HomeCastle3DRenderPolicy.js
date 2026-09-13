@@ -35,7 +35,10 @@ export function homeCastle3DRenderPolicy({
   const lod = cappedLod(baselineLod, runtimeLodCap);
   const enabled = baselineEnabled && lod !== '2d';
 
-  const pixelRatioCap = lod === 'full' ? 1.5 : 1.25;
+  // Full desktop may use the real display DPR up to 2x. The canonical master is
+  // now 1814px wide rather than the old 800px thumbnail, so a HiDPI canvas no
+  // longer magnifies a tiny source before compositing it back to CSS pixels.
+  const pixelRatioCap = lod === 'full' ? 2 : 1.25;
   const minFrameIntervalMs = lod === 'lite' ? 1000 / 30 : 0;
   const geometrySegments = lod === 'full'
     ? Object.freeze({ width: 64, height: 36 })

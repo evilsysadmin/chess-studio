@@ -104,7 +104,7 @@ test('Home canónica · Matthias ensaya una emboscada solo en el escritorio', as
   await expect(rig).toHaveAttribute('data-rig-family', 'ops');
 });
 
-test('Home canónica · el arte y los destinos comparten el lienzo 16:9 sin overflow', async ({ page }) => {
+test('Home canónica · arte y destinos comparten el master 1814×867 sin overflow', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const home = await openCanonicalHome(page);
   const stage = home.locator('.illustrated-home__stage');
@@ -125,8 +125,8 @@ test('Home canónica · el arte y los destinos comparten el lienzo 16:9 sin over
     const rect = node.getBoundingClientRect();
     return { width: rect.width, height: rect.height, ratio: rect.width / rect.height };
   });
-  expect(geometry.ratio).toBeGreaterThan(1.75);
-  expect(geometry.ratio).toBeLessThan(1.80);
+  expect(geometry.ratio).toBeGreaterThan(2.08);
+  expect(geometry.ratio).toBeLessThan(2.10);
 
   const [stageBox, artBox] = await Promise.all([stage.boundingBox(), art.boundingBox()]);
   expect(stageBox).not.toBeNull();
@@ -183,8 +183,8 @@ test('Home canónica · ultrapanorámica llena el viewport y mantiene la UI clav
   expect(Math.abs(homeBox.height - 900)).toBeLessThanOrEqual(1);
   expect(Math.abs(stageBox.width - 1920)).toBeLessThanOrEqual(1);
   expect(stageBox.height).toBeGreaterThan(900);
-  expect(stageBox.width / stageBox.height).toBeGreaterThan(1.75);
-  expect(stageBox.width / stageBox.height).toBeLessThan(1.80);
+  expect(stageBox.width / stageBox.height).toBeGreaterThan(2.08);
+  expect(stageBox.width / stageBox.height).toBeLessThan(2.10);
   expect(Math.abs(stageBox.width - artBox.width)).toBeLessThanOrEqual(1);
   expect(Math.abs(stageBox.height - artBox.height)).toBeLessThanOrEqual(1);
 

@@ -44,7 +44,7 @@ describe('HomeCastle3DRenderPolicy', () => {
     })).toMatchObject({ enabled: false, lod: '2d' });
   });
 
-  it('uses full LOD only on roomy desktops with more than four cores', () => {
+  it('uses full LOD and up to 2x DPR on roomy desktops with more than four cores', () => {
     expect(homeCastle3DRenderPolicy({
       viewportWidth: 1600,
       devicePixelRatio: 3,
@@ -52,7 +52,7 @@ describe('HomeCastle3DRenderPolicy', () => {
     })).toMatchObject({
       enabled: true,
       lod: 'full',
-      pixelRatio: 1.5,
+      pixelRatio: 2,
       minFrameIntervalMs: 0,
       geometrySegments: { width: 64, height: 36 },
       antialias: true,
