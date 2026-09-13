@@ -24,7 +24,7 @@ class Budget:
 
 BUDGETS = (
     Budget('.github/workflows/production-promote.yml', 35727),
-    Budget('.github/workflows/cicd.yml', 20994),
+    Budget('.github/workflows/cicd.yml', 20565),
     Budget('.github/workflows/staging-deploy.yml', 25880),
     Budget('.github/workflows/staging-ai-worker.yml', 8000),
     Budget('.github/workflows/cloudflare-prometheus-exporter.yml', 5964),
