@@ -23,30 +23,29 @@ export const CHRONICLES_PARTY = Object.freeze([
 ]);
 
 export const CHRONICLES_ENEMIES = Object.freeze([
-  Object.freeze({
-    id: 'corrupted-pawn',
-    name: 'peón corrompido',
-    x: 3,
-    y: 5,
-    hpKey: 'enemyHp',
-    maxHp: 6,
-    retaliation: 1,
-    activation: 'always',
-  }),
-  Object.freeze({
-    id: 'gate-jailer',
-    name: 'torre carcelero',
-    x: 3,
-    y: 1,
-    hpKey: 'jailerHp',
-    maxHp: 8,
-    retaliation: 2,
-    activation: 'sigil',
-  }),
+  Object.freeze({ id: 'corrupted-pawn', name: 'peón corrompido', x: 3, y: 5, hpKey: 'enemyHp', maxHp: 6, retaliation: 1, activation: 'always' }),
+  Object.freeze({ id: 'gate-jailer', name: 'torre carcelero', x: 3, y: 1, hpKey: 'jailerHp', maxHp: 8, retaliation: 2, activation: 'sigil' }),
 ]);
+
+const INITIAL_JOURNAL = Object.freeze({
+  id: 'descent',
+  title: 'Descenso a la Cripta de las Ocho Casillas',
+  body: 'Cuatro piezas entran. Matthias insiste en llamarlo expedición y no una serie de decisiones evitables.',
+  sigil: 'I',
+});
 
 function partyState() {
   return CHRONICLES_PARTY.map((member) => ({ ...member, hp: member.maxHp }));
+}
+
+function appendJournal(state, entry) {
+  const journal = Array.isArray(state.journal) ? state.journal : [INITIAL_JOURNAL];
+  if (journal.some((item) => item.id === entry.id)) return state;
+  return { ...state, journal: [...journal, entry] };
+}
+
+export function chroniclesJournalEntries(state) {
+  return Array.isArray(state?.journal) && state.journal.length ? state.journal : [INITIAL_JOURNAL];
 }
 
 export function createChroniclesState() {
@@ -60,6 +59,7 @@ export function createChroniclesState() {
     phase: 'explore',
     party: partyState(),
     turns: 0,
+    journal: [INITIAL_JOURNAL],
     message: 'La Cripta de las Ocho Casillas. Huele a humedad y a una decisión cuestionable.',
   };
 }
@@ -116,17 +116,34 @@ function withMessage(state, message) {
 function enterTile(state, x, y) {
   const tile = chroniclesTileAt(x, y);
   if (tile === 'S' && !state.sigilAwake) {
-    return {
+    return appendJournal({
       ...state,
       x,
       y,
       sigilAwake: true,
       turns: state.turns + 1,
       message: 'El sello despierta. Arriba, metal contra piedra: algo pesado acaba de tomar guardia ante la puerta negra.',
-    };
+    }, {
+      id: 'sigil-awake',
+      title: 'El sello responde',
+      body: 'La piedra arde bajo el grupo. En la distancia, una torre de hierro acepta el turno de guardia con entusiasmo burocrático.',
+      sigil: 'III',
+    });
   }
   if (tile === 'X') {
-    return { ...state, x, y, phase: 'escaped', turns: state.turns + 1, message: 'Salida encontrada. Matthias anota que sobrevivir cuenta como excelencia operativa.' };
+    return appendJournal({
+      ...state,
+      x,
+      y,
+      phase: 'escaped',
+      turns: state.turns + 1,
+      message: 'Salida encontrada. Matthias anota que sobrevivir cuenta como excelencia operativa.',
+    }, {
+      id: 'escape',
+      title: 'Salida, técnicamente gloriosa',
+      body: 'La compañía abandona la cripta. Matthias registra la supervivencia como victoria y omite prudentemente el olor.',
+      sigil: 'VI',
+    });
   }
   return { ...state, x, y, turns: state.turns + 1, message: 'Piedra, polvo y la sospecha de que algo respira detrás del muro.' };
 }
@@ -143,17 +160,30 @@ function retaliationTargetId(state, attacker) {
 }
 
 function defeatMessage(attacker, enemy) {
-  if (enemy.id === 'gate-jailer') {
-    return `${attacker.name} derriba a la torre carcelero con ${attacker.attackName.toLowerCase()}. La puerta, privada de personal, parece bastante menos autoritaria.`;
-  }
+  if (enemy.id === 'gate-jailer') return `${attacker.name} derriba a la torre carcelero con ${attacker.attackName.toLowerCase()}. La puerta, privada de personal, parece bastante menos autoritaria.`;
   return `${attacker.name} remata al peón corrompido con ${attacker.attackName.toLowerCase()}. Matthias aprueba con una cantidad ofensivamente pequeña de entusiasmo.`;
 }
 
 function rangedHitMessage(attacker, enemy) {
-  if (enemy.id === 'gate-jailer') {
-    return `${attacker.name} castiga a la torre carcelero desde la retaguardia con ${attacker.attackName.toLowerCase()}. La mole no alcanza a devolver el golpe.`;
-  }
+  if (enemy.id === 'gate-jailer') return `${attacker.name} castiga a la torre carcelero desde la retaguardia con ${attacker.attackName.toLowerCase()}. La mole no alcanza a devolver el golpe.`;
   return `${attacker.name} alcanza desde la retaguardia con ${attacker.attackName.toLowerCase()}. El peón sisea, demasiado lejos para devolver el golpe.`;
+}
+
+function journalForDefeat(state, attacker, enemy) {
+  if (enemy.id === 'gate-jailer') {
+    return appendJournal(state, {
+      id: 'gate-jailer-falls',
+      title: 'La Torre Carcelero pierde la plaza',
+      body: `${attacker.name} firma el golpe final. Varias toneladas de autoridad penitenciaria descubren la gravedad.`,
+      sigil: 'V',
+    });
+  }
+  return appendJournal(state, {
+    id: 'corrupted-pawn-falls',
+    title: 'Primer contacto, pésima diplomacia',
+    body: `${attacker.name} elimina al peón corrompido. El grupo concluye que la negociación habría sido innecesariamente larga.`,
+    sigil: 'II',
+  });
 }
 
 function resolveAttack(state, memberId) {
@@ -162,42 +192,40 @@ function resolveAttack(state, memberId) {
   if (attacker.hp <= 0) return withMessage(state, `${attacker.name} está fuera de combate. Incluso la épica tiene límites médicos.`);
 
   const target = chroniclesEnemyTargetAhead(state, attacker.reach);
-  if (!target) {
-    return withMessage(state, `${attacker.name} ejecuta ${attacker.attackName.toLowerCase()} contra absolutamente nada. La nada resiste.`);
-  }
+  if (!target) return withMessage(state, `${attacker.name} ejecuta ${attacker.attackName.toLowerCase()} contra absolutamente nada. La nada resiste.`);
 
   const { enemy, distance } = target;
   const nextHp = Math.max(0, Number(state[enemy.hpKey] || 0) - attacker.damage);
   if (nextHp === 0) {
-    return {
-      ...state,
-      [enemy.hpKey]: 0,
-      turns: state.turns + 1,
-      message: defeatMessage(attacker, enemy),
-    };
+    return journalForDefeat({ ...state, [enemy.hpKey]: 0, turns: state.turns + 1, message: defeatMessage(attacker, enemy) }, attacker, enemy);
   }
 
   if (distance > 1) {
-    return {
-      ...state,
-      [enemy.hpKey]: nextHp,
-      turns: state.turns + 1,
-      message: rangedHitMessage(attacker, enemy),
-    };
+    return { ...state, [enemy.hpKey]: nextHp, turns: state.turns + 1, message: rangedHitMessage(attacker, enemy) };
   }
 
   const targetId = retaliationTargetId(state, attacker);
+  const previousTarget = state.party.find((member) => member.id === targetId);
   const party = targetId
     ? state.party.map((member) => member.id === targetId ? { ...member, hp: Math.max(0, member.hp - enemy.retaliation) } : member)
     : state.party;
   const retaliationTarget = party.find((member) => member.id === targetId);
-  return {
+  let nextState = {
     ...state,
     [enemy.hpKey]: nextHp,
     party,
     turns: state.turns + 1,
     message: `${attacker.name} impacta con ${attacker.attackName.toLowerCase()}. ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} responde${retaliationTarget ? ` y alcanza a ${retaliationTarget.name}` : ''}.`,
   };
+  if (previousTarget?.hp > 0 && retaliationTarget?.hp === 0) {
+    nextState = appendJournal(nextState, {
+      id: `down-${retaliationTarget.id}`,
+      title: `${retaliationTarget.name} cae`,
+      body: `${retaliationTarget.name} queda fuera de combate. Matthias deja un espacio en el margen para comentarios médicamente inapropiados.`,
+      sigil: '†',
+    });
+  }
+  return nextState;
 }
 
 export function chroniclesReduce(state, action) {
@@ -205,10 +233,7 @@ export function chroniclesReduce(state, action) {
   const actionType = typeof action === 'string' ? action : action?.type;
   if (actionType === 'turn-left') return { ...state, direction: (state.direction + 3) % 4, turns: state.turns + 1, message: 'Giras a la izquierda.' };
   if (actionType === 'turn-right') return { ...state, direction: (state.direction + 1) % 4, turns: state.turns + 1, message: 'Giras a la derecha.' };
-
-  if (actionType === 'attack') {
-    return resolveAttack(state, typeof action === 'object' ? action.memberId : 'matthias');
-  }
+  if (actionType === 'attack') return resolveAttack(state, typeof action === 'object' ? action.memberId : 'matthias');
 
   const direction = CHRONICLES_DIRECTIONS[state.direction];
   const sign = actionType === 'backward' ? -1 : actionType === 'forward' ? 1 : 0;
