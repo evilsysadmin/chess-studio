@@ -2,13 +2,25 @@
 // Incrementar esta versión significa que los puzzles persistidos por una versión
 // anterior deben demostrar explícitamente que pasaron TODOS los gates actuales
 // antes de volver a la cola activa.
-export const PERSONAL_PUZZLE_QUALITY_VERSION = 5;
+export const PERSONAL_PUZZLE_QUALITY_VERSION = 6;
 export const PERSONAL_PUZZLE_MIN_ENGINE_LEVEL = 92;
+export const PERSONAL_PUZZLE_MIN_ANALYSIS_DEPTH = 2;
 
 export function provesCurrentPersonalPuzzleQuality(puzzle) {
   if (puzzle?.source !== 'workers-ai-validated') return true;
+
+  const candidateCount = Number(puzzle?.engineCandidateCount);
+  const analysisDepth = Number(puzzle?.engineAnalysisDepth);
+  const gap = puzzle?.engineBestToSecondGap;
+  const rootConstraintProven = candidateCount === 1 || Number.isFinite(Number(gap));
+
   return Number(puzzle?.aiQualityVersion) === PERSONAL_PUZZLE_QUALITY_VERSION
     && puzzle?.tacticalBestMoveChecked === true
     && puzzle?.tacticalRefutationChecked === true
-    && Number(puzzle?.aiValidatedLevel) >= PERSONAL_PUZZLE_MIN_ENGINE_LEVEL;
+    && Number(puzzle?.aiValidatedLevel) >= PERSONAL_PUZZLE_MIN_ENGINE_LEVEL
+    && Number.isInteger(analysisDepth)
+    && analysisDepth >= PERSONAL_PUZZLE_MIN_ANALYSIS_DEPTH
+    && Number.isInteger(candidateCount)
+    && candidateCount >= 1
+    && rootConstraintProven;
 }
