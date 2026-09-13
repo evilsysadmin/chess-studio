@@ -5,6 +5,7 @@ import { api } from '../api.js';
 import { chessFromFen } from '../chessRules.js';
 import { matchesExpectedPuzzleMove } from '../puzzleMoveValidation.js';
 import { buildPostGameExamPositions } from '../postGameExam.js';
+import { buildPlainPostGameExplanation } from '../postGameExplanation.js';
 import { buildShortCounterfactual } from '../postGameCounterfactual.js';
 import './PostGameExam.css';
 
@@ -19,6 +20,7 @@ export default function PostGameExam({ history = [], humanColor = 'w', report = 
   const [attempt, setAttempt] = useState(null);
   const [score, setScore] = useState(0);
   const [pendingPromotion, setPendingPromotion] = useState(null);
+  const [showPlainExplanation, setShowPlainExplanation] = useState(false);
   const [counterfactual, setCounterfactual] = useState({ status: 'idle', line: [] });
   const counterfactualAbortRef = useRef(null);
 
@@ -34,6 +36,7 @@ export default function PostGameExam({ history = [], humanColor = 'w', report = 
     ? localChess.moves({ square: selected, verbose: true }).map((move) => ({ to: move.to, san: move.san }))
     : [];
   const finished = started && index >= positions.length;
+  const plainExplanation = attempt && showPlainExplanation ? buildPlainPostGameExplanation(current) : [];
 
   function commitMove(from, to, promotion = null) {
     if (attempt || !current) return;
@@ -112,6 +115,7 @@ export default function PostGameExam({ history = [], humanColor = 'w', report = 
     setSelected(null);
     setAttempt(null);
     setPendingPromotion(null);
+    setShowPlainExplanation(false);
     setCounterfactual({ status: 'idle', line: [] });
     setIndex(next);
   }
@@ -172,6 +176,18 @@ export default function PostGameExam({ history = [], humanColor = 'w', report = 
               <b>{attempt.correct ? '✓ Correcto.' : `✗ ${attempt.san} no era.`}</b>
               <span>En la partida jugaste <strong>{current.played}</strong>. La alternativa era <strong>{current.suggested}</strong>.</span>
               <small>Jugada {current.moveNumber} · pérdida estimada del error original: ~{current.loss} cp.</small>
+
+              {!showPlainExplanation ? (
+                <button type="button" className="secondary-btn" onClick={() => setShowPlainExplanation(true)}>
+                  No entiendo qué pasó
+                </button>
+              ) : (
+                <div className="post-game-counterfactual" data-plain-postgame-explanation="revealed">
+                  <b>Qué cambió realmente</b>
+                  {plainExplanation.map((line) => <span key={line}>{line}</span>)}
+                  <small>Explicación local basada sólo en la jugada, la alternativa y la evaluación ya calculadas.</small>
+                </div>
+              )}
 
               <div className="post-game-counterfactual" data-counterfactual-status={counterfactual.status}>
                 {counterfactual.status === 'idle' && (
