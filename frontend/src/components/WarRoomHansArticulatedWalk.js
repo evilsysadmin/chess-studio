@@ -7,7 +7,7 @@ import {
 import { HANS_ELDER_POSTURE, WAR_ROOM_HANS_ELDER_POSTURE_VERSION } from './WarRoomHansElderPostureContract.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_ARTICULATED_WALK_VERSION = 'war-room-hans-articulated-walk-v8-elder-posture';
+export const WAR_ROOM_HANS_ARTICULATED_WALK_VERSION = 'war-room-hans-articulated-walk-v9-measured-travel-owner';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -32,10 +32,6 @@ function smooth01(value) {
 
 function mix(a, b, t) {
   return a + (b - a) * t;
-}
-
-function walkingState(hans) {
-  return String(hans?.userData?.warRoomHansMotionState || '').startsWith('walk');
 }
 
 function horizontalTravelWeight(dx, dz) {
@@ -109,6 +105,7 @@ function publishGaitTelemetry(hans, controller, sample, horizontalBlend, realTra
   hans.userData.warRoomHansWalkCyclePhaseDistance = controller.distance;
   hans.userData.warRoomHansGaitDistance = realTravelDistance;
   hans.userData.warRoomHansGaitGrounding = 'real-distance-foot-plant-v3';
+  hans.userData.warRoomHansGaitDrive = 'measured-root-travel-v1';
   hans.userData.warRoomHansGaitTeleportSuppressed = false;
   hans.userData.warRoomHansElderPostureContract = WAR_ROOM_HANS_ELDER_POSTURE_VERSION;
 }
@@ -138,9 +135,12 @@ export function installWarRoomHansArticulatedWalk(root) {
       const dx = x - previousX;
       const dz = z - previousZ;
       const travelSq = dx * dx + dz * dz;
-      const isWalking = hans.visible && walkingState(hans);
+      const measuredWalk = hans.visible && travelSq > MIN_TRAVEL_SQ && travelSq <= TELEPORT_DISTANCE_SQ;
 
-      if (isWalking && travelSq > MIN_TRAVEL_SQ && travelSq <= TELEPORT_DISTANCE_SQ) {
+      // Root travel is the physical truth. Semantic phase/motion labels are
+      // client diagnostics and must never be allowed to freeze Hans' legs while
+      // his body is actually translating through the room.
+      if (measuredWalk) {
         const travelled = Math.sqrt(travelSq);
         realTravelDistance += travelled;
         const targetHorizontal = horizontalTravelWeight(dx, dz);
@@ -151,7 +151,7 @@ export function installWarRoomHansArticulatedWalk(root) {
         });
         applyCanonicalElderGait(body, sample, controller.forward);
         publishGaitTelemetry(hans, controller, sample, horizontalBlend, realTravelDistance);
-      } else if (!isWalking || travelSq > TELEPORT_DISTANCE_SQ) {
+      } else {
         horizontalBlend = mix(horizontalBlend, 0, HORIZONTAL_BLEND_RESPONSE);
         resetHansWalkCycle(controller);
         if (travelSq > TELEPORT_DISTANCE_SQ) {
@@ -170,7 +170,8 @@ export function installWarRoomHansArticulatedWalk(root) {
   driver.userData.warRoomHansWalkCycle = HANS_WALK_CYCLE_VERSION;
   driver.userData.warRoomHansLegRig = 'thigh-knee-shin-foot-v1';
   driver.userData.warRoomHansLegRigInternal = 'thigh-knee-shin-ankle-foot-v2';
-  driver.userData.warRoomHansWalkCycleSource = 'local-foot-target-two-bone-ik-v8-elder-posture';
+  driver.userData.warRoomHansWalkCycleSource = 'measured-root-travel-foot-target-ik-v9';
+  driver.userData.warRoomHansGaitDrive = 'measured-root-travel-v1';
   driver.userData.warRoomHansElderWalk = LEGACY_ELDER_WALK_VERSION;
   driver.userData.warRoomHansGaitFrames = LEGACY_GAIT_FRAME_COUNT;
   hans.userData.warRoomHansElderWalk = LEGACY_ELDER_WALK_VERSION;
@@ -178,6 +179,7 @@ export function installWarRoomHansArticulatedWalk(root) {
   hans.userData.warRoomHansWalkCycle = HANS_WALK_CYCLE_VERSION;
   hans.userData.warRoomHansLegRig = 'thigh-knee-shin-foot-v1';
   hans.userData.warRoomHansLegRigInternal = 'thigh-knee-shin-ankle-foot-v2';
+  hans.userData.warRoomHansGaitDrive = 'measured-root-travel-v1';
   hans.userData.warRoomHansElderPostureContract = WAR_ROOM_HANS_ELDER_POSTURE_VERSION;
   return 1;
 }
