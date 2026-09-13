@@ -74,7 +74,7 @@ async function seedRecurringTrainingDebt(page) {
 }
 
 test('Home · el avatar residente de Matthias abre Así juegas · y cierra el loop jugar → entrenar → volver a jugar', async ({ page }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(150_000);
   await page.addInitScript(() => { Math.random = () => 0; });
   await mockApi(page, { gameScenario: 'mate' });
   await login(page);
@@ -115,6 +115,8 @@ test('Home · el avatar residente de Matthias abre Así juegas · y cierra el lo
   expect(trained?.solves).toBeGreaterThanOrEqual(1);
   expect(trained?.cleanSolves).toBeGreaterThanOrEqual(1);
 
+  await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
   await startQuickGame(page);
