@@ -80,13 +80,35 @@ describe('homeCastleLife', () => {
     expect(homeMatthiasRareMoment({ record: { losses: 3 } }, momentAt(9))).toEqual({
       id: 'loss-dossier',
       kind: 'loss-dossier',
-      sceneKey: 'dossier',
+      visualKey: 'dossier',
       label: 'Revisando viejas heridas',
       detail: '3 derrotas tuyas registradas contra Matthias.',
+      zone: 'desk',
     });
     expect(homeMatthiasRareMoment({ record: { losses: 0 } }, momentAt(9))).toBeNull();
     expect(homeMatthiasRareMoment({ record: { losses: 3 } }, momentAt(10))).toBeNull();
     expect(homeMatthiasRareMoment({ record: { losses: 3 } }, momentAt(9, 3))).toBeNull();
+  });
+
+  it('lets Matthias fall asleep over the manual rarely without inventing player history', () => {
+    const momentAt = (day, hour = 15) => ({
+      getHours: () => hour,
+      getFullYear: () => 2026,
+      getMonth: () => 8,
+      getDate: () => day,
+    });
+
+    expect(homeMatthiasRareMoment({}, momentAt(28))).toEqual({
+      id: 'book-doze-sleep',
+      kind: 'book-doze',
+      visualKey: 'reading',
+      label: 'Dormido sobre el manual',
+      detail: 'La teoría ha ganado esta ronda.',
+      zone: 'library',
+    });
+    expect(homeMatthiasRareMoment({}, momentAt(27))).toBeNull();
+    expect(homeMatthiasRareMoment({}, momentAt(28, 11))).toBeNull();
+    expect(homeMatthiasRareMoment({}, momentAt(28, 19))).toBeNull();
   });
 
   it('builds ambient, factual memories and rare state without inventing data', () => {
