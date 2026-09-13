@@ -6,7 +6,7 @@ import './InsightsRecurringErrors.css';
 function debtCopy(pattern) {
   const debt = pattern?.debt;
   if (!debt) return null;
-  if (debt.paid) return `✓ Deuda pagada · últimos ${debt.target}: ${debt.progress}/${debt.target} limpios`;
+  if (debt.paid) return `✓ Entrenamiento completado · últimos ${debt.target}: ${debt.progress}/${debt.target} limpios · falta observar nuevas partidas`;
   return `Deuda activa · últimos ${debt.target}: ${debt.progress}/${debt.target} limpios`;
 }
 
@@ -17,7 +17,7 @@ export function patternProgressCopy(pattern) {
     case PATTERN_IMPROVEMENT_STATES.PROBABLE_IMPROVEMENT:
       return 'Mejora probable · varias autopsias completas recientes sin repetir este patrón.';
     case PATTERN_IMPROVEMENT_STATES.CORRECTED_WITH_SUFFICIENT_SAMPLE:
-      return '✓ Corregido con muestra suficiente · deuda pagada y una racha sostenida sin recurrencia.';
+      return '✓ Corregido con muestra suficiente · entrenamiento completado y una racha sostenida sin recurrencia.';
     default:
       return debtCopy(pattern);
   }
