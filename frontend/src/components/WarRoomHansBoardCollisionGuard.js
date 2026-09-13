@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION = 'board-depth-guard-v6-world-foot-grounding';
+export const WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION = 'board-depth-guard-v7-visible-pre-render-grounding';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -20,6 +20,8 @@ const SURFACE_NAMES = [
   'war-room-castle-floor-slab',
 ];
 const TRANSIT_PHASES = new Set(['fire-dimming', 'walk-to-basket', 'leave']);
+const GROUNDING_STATES = new WeakMap();
+const VISIBLE_GROUNDING_HOOK = 'war-room-hans-visible-grounding-v1';
 
 function isTransitPhase(phase, route) {
   const routeName = String(route || '');
@@ -54,6 +56,15 @@ function captureGroundSurfaces(root) {
     .sort((a, b) => b.box.max.y - a.box.max.y);
 }
 
+function refreshGroundSurfaces(root, state) {
+  if (!root || !state || state.surfaces.length >= SURFACE_NAMES.length) return state?.surfaces || [];
+  if (state.surfaceRefreshAttempts >= 2) return state.surfaces;
+  state.surfaceRefreshAttempts += 1;
+  const surfaces = captureGroundSurfaces(root);
+  if (surfaces.length > state.surfaces.length) state.surfaces = surfaces;
+  return state.surfaces;
+}
+
 function groundSurfaceAt(surfaces, worldPosition) {
   const x = Number(worldPosition?.x);
   const z = Number(worldPosition?.z);
@@ -74,7 +85,7 @@ function shoeBottomWorldY(shoe, scratchBox) {
   return Number.isFinite(scratchBox.min.y) ? scratchBox.min.y : null;
 }
 
-function groundHansToRenderedSurface(hans, body, surfaces, scratch) {
+function groundHansToRenderedSurface(hans, body, surfaces, scratch, source = 'post-render') {
   if (!hans?.visible || !hans.parent || !surfaces.length) return false;
   const leftShoe = body?.leftShoe || null;
   const rightShoe = body?.rightShoe || null;
@@ -104,12 +115,71 @@ function groundHansToRenderedSurface(hans, body, surfaces, scratch) {
   hans.position.y = scratch.targetLocal.y;
   hans.updateMatrixWorld?.(true);
   hans.userData.warRoomHansWorldGrounding = 'shoe-bottom-to-rendered-surface-v1';
+  hans.userData.warRoomHansGroundingContract = 'visible-mesh-pre-render-v2';
+  hans.userData.warRoomHansGroundingSource = source;
   hans.userData.warRoomHansGroundSurface = surface.name;
   hans.userData.warRoomHansGroundWorldY = groundY;
   hans.userData.warRoomHansFootBottomWorldY = footBottom;
+  hans.userData.warRoomHansRenderedFootBottomWorldY = footBottom + correction;
+  hans.userData.warRoomHansGroundGap = Math.abs((footBottom + correction) - groundY);
   hans.userData.warRoomHansGroundCorrection = correction;
   hans.userData.warRoomHansGroundedY = hans.position.y;
   return true;
+}
+
+function createGroundingState(root, hans, body) {
+  const state = {
+    hans,
+    body,
+    surfaces: captureGroundSurfaces(root),
+    surfaceRefreshAttempts: 0,
+    lastVisibleRenderFrame: -1,
+    scratch: {
+      hansWorld: new THREE.Vector3(),
+      targetWorld: new THREE.Vector3(),
+      targetLocal: new THREE.Vector3(),
+      leftShoeBox: new THREE.Box3(),
+      rightShoeBox: new THREE.Box3(),
+    },
+  };
+  GROUNDING_STATES.set(root, state);
+  return state;
+}
+
+function installVisibleMeshGrounding(root, hans, state) {
+  let hooks = 0;
+  hans?.traverse?.((object) => {
+    if (!object?.isMesh || object.userData?.warRoomHansVisibleGroundingHook === VISIBLE_GROUNDING_HOOK) return;
+    const previous = object.onBeforeRender;
+    object.onBeforeRender = (renderer, scene, camera, geometry, material, renderGroup) => {
+      previous?.(renderer, scene, camera, geometry, material, renderGroup);
+      const renderFrame = Number(renderer?.info?.render?.frame);
+      if (Number.isFinite(renderFrame) && state.lastVisibleRenderFrame === renderFrame) return;
+      if (Number.isFinite(renderFrame)) state.lastVisibleRenderFrame = renderFrame;
+      reconcileWarRoomHansGrounding(root, 'visible-mesh-pre-render');
+    };
+    object.userData ||= {};
+    object.userData.warRoomHansVisibleGroundingHook = VISIBLE_GROUNDING_HOOK;
+    hooks += 1;
+  });
+  return hooks;
+}
+
+export function reconcileWarRoomHansGrounding(root, source = 'board3d-pre-render') {
+  const state = GROUNDING_STATES.get(root);
+  if (!state) return false;
+  const surfaces = refreshGroundSurfaces(root, state);
+  const grounded = groundHansToRenderedSurface(
+    state.hans,
+    state.body,
+    surfaces,
+    state.scratch,
+    source,
+  );
+  if (grounded && root?.userData) {
+    root.userData.warRoomHansPreRenderGrounding = WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION;
+  }
+  return grounded;
 }
 
 export function installWarRoomHansBoardCollisionGuard(root) {
@@ -124,14 +194,7 @@ export function installWarRoomHansBoardCollisionGuard(root) {
   const hansWorld = new THREE.Vector3();
   const fireplaceWorld = new THREE.Vector3();
   const safeWorldPosition = new THREE.Vector3();
-  const surfaces = captureGroundSurfaces(root);
-  const groundScratch = {
-    hansWorld: new THREE.Vector3(),
-    targetWorld: new THREE.Vector3(),
-    targetLocal: new THREE.Vector3(),
-    leftShoeBox: new THREE.Box3(),
-    rightShoeBox: new THREE.Box3(),
-  };
+  const groundingState = createGroundingState(root, hans, body);
 
   const collisionRegistered = registerWarRoomHansPostRenderStage(driver, {
     key: WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION,
@@ -142,9 +205,10 @@ export function installWarRoomHansBoardCollisionGuard(root) {
         return;
       }
 
-      // Keep the legacy local baseline for all consumers that still sample Hans
-      // before the final visual grounding stage. The actual rendered ground is
-      // resolved from shoe geometry + room surface later in this same pipeline.
+      // Keep the legacy local baseline for consumers that still sample Hans
+      // inside the late choreography driver. The real visible Y is reconciled
+      // from shoe geometry + room surfaces both later in this pipeline and once
+      // more immediately before Board3D paints the next frame.
       hans.position.y = STANDING_Y;
       hans.userData.warRoomHansBoardGroundedY = STANDING_Y;
 
@@ -187,14 +251,18 @@ export function installWarRoomHansBoardCollisionGuard(root) {
     order: GROUNDING_POST_RENDER_ORDER,
     run: () => {
       if (!hans.visible) return;
-      groundHansToRenderedSurface(hans, body, surfaces, groundScratch);
+      const surfaces = refreshGroundSurfaces(root, groundingState);
+      groundHansToRenderedSurface(hans, body, surfaces, groundingState.scratch, 'post-render-pipeline');
     },
   });
   if (!groundingRegistered) return 0;
 
+  const visibleGroundingHooks = installVisibleMeshGrounding(root, hans, groundingState);
+
   driver.userData.warRoomHansBoardCollisionGuard = WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION;
   driver.userData.warRoomHansBoardCollisionGuardOrder = COLLISION_POST_RENDER_ORDER;
   driver.userData.warRoomHansWorldGroundingOrder = GROUNDING_POST_RENDER_ORDER;
+  driver.userData.warRoomHansVisibleGroundingHooks = visibleGroundingHooks;
   hans.userData.warRoomHansBoardCollisionGuard = WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION;
   root.userData.warRoomHansBoardCollisionGuard = WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION;
   return 1;
