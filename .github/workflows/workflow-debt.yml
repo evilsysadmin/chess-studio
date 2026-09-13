@@ -5,12 +5,14 @@ on:
     paths:
       - '.github/workflows/**'
       - 'scripts/workflow_budget_gate.py'
+      - 'scripts/workflow_inventory_gate.py'
   push:
     branches:
       - main
     paths:
       - '.github/workflows/**'
       - 'scripts/workflow_budget_gate.py'
+      - 'scripts/workflow_inventory_gate.py'
   workflow_dispatch:
 
 permissions:
@@ -22,15 +24,20 @@ concurrency:
 
 jobs:
   workflow-budget:
-    name: Workflow size ratchet
+    name: Workflow debt gates
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Validate ratchet helper
-        run: python3 -S scripts/workflow_budget_gate.py --self-test
+      - name: Validate debt helpers
+        run: |
+          python3 -S scripts/workflow_budget_gate.py --self-test
+          python3 -S scripts/workflow_inventory_gate.py --self-test
+
+      - name: Enforce workflow ownership inventory
+        run: python3 -S scripts/workflow_inventory_gate.py
 
       - name: Enforce workflow budgets
         run: python3 -S scripts/workflow_budget_gate.py
