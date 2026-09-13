@@ -1,9 +1,13 @@
-import { CLEAN_GAME_INCIDENT_COVERAGE_VERSION, cleanGameSummary } from './cleanGames.js';
+import {
+  CLEAN_GAME_INCIDENT_COVERAGE_VERSION,
+  CLEAN_GAME_POSITIVE_EVIDENCE_VERSION,
+  cleanGameSummary,
+} from './cleanGames.js';
 import { buildRecurringErrorPatterns } from './insightsRecurringErrors.js';
 import { isPersonalPuzzleCurrentlyClean, personalSpacedReviewSummary } from './spacedReview.js';
 import { personalTrainingDebtSummary } from './trainingDebt.js';
 
-export const PLAYER_MODEL_VERSION = 6;
+export const PLAYER_MODEL_VERSION = 7;
 export const PATTERN_IMPROVEMENT_PROBABLE_OBSERVATIONS = 2;
 export const PATTERN_IMPROVEMENT_CORRECTED_OBSERVATIONS = 5;
 export const PATTERN_IMPROVEMENT_STATES = Object.freeze({
@@ -97,6 +101,32 @@ function cleanPlayFacts(records) {
     latestEligibleClean: summary.latest ? summary.latest.clean === true : null,
     latestEligibleAt: isoOrNull(summary.latest?.date),
     latestCleanAt: isoOrNull(summary.latestClean?.date),
+  };
+}
+
+function positiveDecisionFacts(records) {
+  const source = records && typeof records === 'object' && !Array.isArray(records) ? records : {};
+  const eligible = Object.values(source)
+    .filter((row) => (
+      row?.version === 1
+      && row?.sufficientSample === true
+      && row?.positiveEvidenceVersion === CLEAN_GAME_POSITIVE_EVIDENCE_VERSION
+      && nonNegativeInt(row?.positiveComparedMoves) > 0
+    ))
+    .sort((a, b) => new Date(a?.date || 0) - new Date(b?.date || 0));
+  const comparedMoves = eligible.reduce((sum, row) => sum + nonNegativeInt(row?.positiveComparedMoves), 0);
+  const enginePreferredMoves = eligible.reduce((sum, row) => (
+    sum + Math.min(nonNegativeInt(row?.enginePreferredMoves), nonNegativeInt(row?.positiveComparedMoves))
+  ), 0);
+  const gamesWithPreferredMoves = eligible.filter((row) => nonNegativeInt(row?.enginePreferredMoves) > 0).length;
+
+  return {
+    eligibleGames: eligible.length,
+    comparedMoves,
+    enginePreferredMoves,
+    preferredRate: comparedMoves ? Math.round(enginePreferredMoves / comparedMoves * 100) : null,
+    gamesWithPreferredMoves,
+    latestEvidenceAt: isoOrNull(eligible.at(-1)?.date),
   };
 }
 
@@ -201,6 +231,7 @@ export function buildPlayerModel({ insights = null, personalPuzzles = [], cleanG
   });
   const trainingDebt = personalTrainingDebtSummary(puzzles);
   const cleanPlay = cleanPlayFacts(cleanGameRecords);
+  const positiveDecisions = positiveDecisionFacts(cleanGameRecords);
 
   return {
     version: PLAYER_MODEL_VERSION,
@@ -208,11 +239,13 @@ export function buildPlayerModel({ insights = null, personalPuzzles = [], cleanG
       games: totalGames,
       personalPositions: puzzles.length,
       cleanAutopsies: cleanPlay.eligibleGames,
+      positiveDecisionGames: positiveDecisions.eligibleGames,
     },
     confidence: {
       games: evidenceConfidence(totalGames, { mediumAt: 5, highAt: 15 }),
       personalTraining: evidenceConfidence(puzzles.length, { mediumAt: 3, highAt: 8 }),
       cleanPlay: evidenceConfidence(cleanPlay.eligibleGames, { mediumAt: 3, highAt: 8 }),
+      positiveDecisions: evidenceConfidence(positiveDecisions.eligibleGames, { mediumAt: 3, highAt: 8 }),
     },
     outcomes: insights?.overall ? { ...insights.overall } : null,
     colorPreference: insights?.colorPreference ? { ...insights.colorPreference } : null,
@@ -222,5 +255,6 @@ export function buildPlayerModel({ insights = null, personalPuzzles = [], cleanG
     trainingDebt,
     trainingProgress: trainingProgressFacts(puzzles, trainingDebt),
     cleanPlay,
+    positiveDecisions,
   };
 }

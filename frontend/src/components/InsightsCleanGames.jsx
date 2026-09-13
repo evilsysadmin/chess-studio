@@ -2,7 +2,10 @@ import { CLEAN_GAME_MIN_ANALYZED_MOVES, loadCleanGameRecords } from '../cleanGam
 import { buildPlayerModel } from '../playerModel.js';
 
 export default function InsightsCleanGames() {
-  const cleanPlay = buildPlayerModel({ cleanGameRecords: loadCleanGameRecords() }).cleanPlay;
+  const playerModel = buildPlayerModel({ cleanGameRecords: loadCleanGameRecords() });
+  const cleanPlay = playerModel.cleanPlay;
+  const positiveDecisions = playerModel.positiveDecisions;
+  const hasRepeatedPositiveEvidence = positiveDecisions?.gamesWithPreferredMoves >= 2;
 
   return (
     <section className="menu-section" aria-labelledby="clean-games-title">
@@ -28,6 +31,12 @@ export default function InsightsCleanGames() {
           <p className="hint-text">Abre la autopsia después de tus partidas. Las antiguas sin evidencia completa no reciben el sello retroactivamente.</p>
         </div>
       )}
+
+      {hasRepeatedPositiveEvidence ? (
+        <p className="hint-text" data-positive-decision-evidence="true">
+          También hay evidencia positiva: en {positiveDecisions.enginePreferredMoves} de {positiveDecisions.comparedMoves} jugadas comparables elegiste exactamente la primera opción del motor, repartidas en {positiveDecisions.gamesWithPreferredMoves} autopsias.
+        </p>
+      ) : null}
     </section>
   );
 }

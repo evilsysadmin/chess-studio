@@ -10,11 +10,11 @@ import {
 
 describe('factual player model', () => {
   it('keeps missing evidence empty instead of inventing a weakness', () => {
-    expect(PLAYER_MODEL_VERSION).toBe(6);
+    expect(PLAYER_MODEL_VERSION).toBe(7);
     expect(buildPlayerModel()).toEqual({
       version: PLAYER_MODEL_VERSION,
-      samples: { games: 0, personalPositions: 0, cleanAutopsies: 0 },
-      confidence: { games: 'none', personalTraining: 'none', cleanPlay: 'none' },
+      samples: { games: 0, personalPositions: 0, cleanAutopsies: 0, positiveDecisionGames: 0 },
+      confidence: { games: 'none', personalTraining: 'none', cleanPlay: 'none', positiveDecisions: 'none' },
       outcomes: null,
       colorPreference: null,
       ratingTrend: null,
@@ -45,6 +45,14 @@ describe('factual player model', () => {
         latestEligibleClean: null,
         latestEligibleAt: null,
         latestCleanAt: null,
+      },
+      positiveDecisions: {
+        eligibleGames: 0,
+        comparedMoves: 0,
+        enginePreferredMoves: 0,
+        preferredRate: null,
+        gamesWithPreferredMoves: 0,
+        latestEvidenceAt: null,
       },
     });
   });
@@ -122,6 +130,57 @@ describe('factual player model', () => {
     });
     expect(model.cleanPlay).not.toHaveProperty('skill');
     expect(model.cleanPlay).not.toHaveProperty('trend');
+  });
+
+  it('aggregates repeated positive decisions only from versioned sufficient autopsies', () => {
+    const model = buildPlayerModel({
+      cleanGameRecords: {
+        g1: {
+          version: 1,
+          sufficientSample: true,
+          date: '2026-09-10T10:00:00Z',
+          positiveEvidenceVersion: 1,
+          positiveComparedMoves: 8,
+          enginePreferredMoves: 3,
+        },
+        g2: {
+          version: 1,
+          sufficientSample: true,
+          date: '2026-09-11T10:00:00Z',
+          positiveEvidenceVersion: 1,
+          positiveComparedMoves: 10,
+          enginePreferredMoves: 4,
+        },
+        short: {
+          version: 1,
+          sufficientSample: false,
+          date: '2026-09-12T10:00:00Z',
+          positiveEvidenceVersion: 1,
+          positiveComparedMoves: 4,
+          enginePreferredMoves: 4,
+        },
+        legacy: {
+          version: 1,
+          sufficientSample: true,
+          date: '2026-09-13T10:00:00Z',
+          positiveComparedMoves: 20,
+          enginePreferredMoves: 20,
+        },
+      },
+    });
+
+    expect(model.samples.positiveDecisionGames).toBe(2);
+    expect(model.confidence.positiveDecisions).toBe('low');
+    expect(model.positiveDecisions).toEqual({
+      eligibleGames: 2,
+      comparedMoves: 18,
+      enginePreferredMoves: 7,
+      preferredRate: 39,
+      gamesWithPreferredMoves: 2,
+      latestEvidenceAt: '2026-09-11T10:00:00.000Z',
+    });
+    expect(model.positiveDecisions).not.toHaveProperty('skill');
+    expect(model.positiveDecisions).not.toHaveProperty('improved');
   });
 
   it('promotes a recurring incident only from the same real positions already used by training', () => {
