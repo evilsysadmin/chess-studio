@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from 'react';
 import { BoardRendererContext } from './Board.jsx';
 import Board3DCore from './Board3DCore.jsx';
 import { chessFromFen } from '../chessRules.js';
+import { clearBoard3DRankContext, setBoard3DRankContext } from './Board3DRankInsignia.js';
 import {
   armWarRoomMoveFinishEvent,
   clearWarRoomMoveFinishEvent,
@@ -22,6 +23,8 @@ export default function Board3D(props) {
   const hansGameId = props.gameId;
   const hansMarkerRef = useRef(null);
   const previousFenRef = useRef(props.fen);
+  const rankContextTokenRef = useRef(null);
+  if (!rankContextTokenRef.current) rankContextTokenRef.current = {};
   const moveFinishEvent = deriveWarRoomMoveFinishEvent({
     previousFen: previousFenRef.current,
     fen: props.fen,
@@ -30,6 +33,15 @@ export default function Board3D(props) {
     animate: props.animate,
     chessFromFen,
   });
+
+  useLayoutEffect(() => {
+    const token = rankContextTokenRef.current;
+    setBoard3DRankContext(token, {
+      pieceLevels: props.pieceLevels,
+      pieceRankLevels: props.pieceRankLevels,
+    });
+    return () => clearBoard3DRankContext(token);
+  }, [props.pieceLevels, props.pieceRankLevels]);
 
   useLayoutEffect(() => {
     clearWarRoomMoveFinishEvent();
