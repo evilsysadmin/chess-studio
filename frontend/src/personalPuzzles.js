@@ -63,12 +63,23 @@ export function isPersonalPuzzleMastered(puzzle) {
   return Boolean(puzzle?.masteredAt) || Number(puzzle?.solves || 0) > 0;
 }
 
-function detectIncidentKeys(fenBefore, moveReport) {
+function incidentEvidenceFor(fenBefore, moveReport) {
   const context = {
     ...(moveReport?.context || {}),
     fenBefore: moveReport?.context?.fenBefore || fenBefore,
   };
-  return buildPostGameIncidentEvidence({ ...moveReport, context })?.incidentKeys || [];
+  return buildPostGameIncidentEvidence({ ...moveReport, context });
+}
+
+function compactIncidentEvidence(evidence) {
+  if (!evidence) return null;
+  return {
+    version: evidence.version,
+    classification: evidence.classification,
+    severity: evidence.severity,
+    primaryIncidentKey: evidence.primaryIncidentKey,
+    factualAnalysis: evidence.factualAnalysis,
+  };
 }
 
 export function matchesPersonalPuzzleFilter(puzzle, filter = null) {
@@ -116,6 +127,7 @@ export function personalPuzzleFromMistake(history, humanColor, moveReport, meta 
     return null;
   }
 
+  const incidentEvidence = incidentEvidenceFor(fen, moveReport);
   const puzzle = {
     id: stableId(fen, moveReport.suggested),
     kind: 'personal',
@@ -134,7 +146,8 @@ export function personalPuzzleFromMistake(history, humanColor, moveReport, meta 
     opening: meta.opening || null,
     sourceGameId: meta.gameId || null,
     humanColor,
-    incidentKeys: detectIncidentKeys(fen, moveReport),
+    incidentKeys: incidentEvidence?.incidentKeys || [],
+    factualEvidence: compactIncidentEvidence(incidentEvidence),
   };
   return isObviouslyUnsoundSingleMovePuzzle(puzzle) ? null : puzzle;
 }
