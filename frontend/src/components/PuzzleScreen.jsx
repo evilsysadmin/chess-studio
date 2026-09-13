@@ -4,7 +4,7 @@ import Board from './Board.jsx';
 import PersonalTrainingDebtPanel from './PersonalTrainingDebtPanel.jsx';
 import { PUZZLES, PUZZLE_DIFFICULTY_LABELS, randomPuzzle } from '../puzzles.js';
 import { isPersonalPuzzleMastered, loadPersonalPuzzles, matchesPersonalPuzzleFilter, personalPuzzleHistory, personalTrainingSummary, randomPersonalPuzzle, recordPersonalPuzzleResult } from '../personalPuzzles.js';
-import { personalTrainingDebtSummary } from '../trainingDebt.js';
+import { buildPlayerModel } from '../playerModel.js';
 import { generateValidatedPersonalPuzzleBatch, shouldOfferAiPersonalPuzzleGeneration } from '../aiPersonalPuzzles.js';
 import { dailyChallengeBrief, dailyPuzzle, markDailySolved, currentDailyStreak } from '../dailyChallenge.js';
 import { playMoveSound, playCaptureSound, playSuccessSound } from '../sound.js';
@@ -80,7 +80,9 @@ export default function PuzzleScreen({ onExit, points = 0, onSpendPoints, initia
   const filteredPersonalTotalCount = useMemo(() => personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter)).length, [personalPuzzles, initialFilter]);
   const filteredPersonalActiveCount = useMemo(() => personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter) && !isPersonalPuzzleMastered(item)).length, [personalPuzzles, initialFilter]);
   const personalHistory = useMemo(() => personalPuzzleHistory(initialFilter), [personalPuzzles, initialFilter]);
-  const personalDebtSummary = useMemo(() => personalTrainingDebtSummary(personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter))), [personalPuzzles, initialFilter]);
+  const personalDebtSummary = useMemo(() => buildPlayerModel({
+    personalPuzzles: personalPuzzles.filter((item) => matchesPersonalPuzzleFilter(item, initialFilter)),
+  }).trainingDebt, [personalPuzzles, initialFilter]);
   const currentPersonalMastered = source === 'personal' && isPersonalPuzzleMastered(puzzle);
   const offerAiGeneration = source === 'personal' && shouldOfferAiPersonalPuzzleGeneration({ ...personalStats, active: filteredPersonalActiveCount, total: filteredPersonalTotalCount });
   const dailyCells = useMemo(() => lastDailyCells(dailyStats.solvedDates, 28), [dailyStats]);
