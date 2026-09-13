@@ -51,7 +51,9 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, []);
 
   const attackWithSelected = useCallback(() => {
-    dispatch({ type: 'attack', memberId: selectedMemberIdRef.current });
+    const memberId = selectedMemberIdRef.current;
+    engineRef.current?.playAttack?.(memberId);
+    dispatch({ type: 'attack', memberId });
   }, [dispatch]);
 
   const restart = useCallback(() => {

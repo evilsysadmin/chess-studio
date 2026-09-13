@@ -6,6 +6,12 @@ import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js'
 
 const CELL = 4;
 const CAMERA_Y = 1.62;
+const ATTACK_FX = Object.freeze({
+  matthias: Object.freeze({ color: 0xd5aa62, angle: -0.18, width: 0.9, ring: 0.78 }),
+  rook: Object.freeze({ color: 0xc96a3e, angle: 0.04, width: 1.3, ring: 1.18 }),
+  bishop: Object.freeze({ color: 0xf0c66d, angle: 0.72, width: 1.05, ring: 0.92 }),
+  knight: Object.freeze({ color: 0x8da8bd, angle: -0.62, width: 1.12, ring: 0.86 }),
+});
 
 function worldForCell(x, y) {
   return new THREE.Vector3((x - 3) * CELL, CAMERA_Y, (y - 3) * CELL);
@@ -117,6 +123,32 @@ function configureRenderer(renderer, { coarsePointer, alpha = false }) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 }
 
+function createCombatFx(camera) {
+  const group = new THREE.Group();
+  group.name = 'chronicles-combat-fx';
+  group.visible = false;
+
+  const slashMaterial = new THREE.MeshBasicMaterial({
+    color: 0xd5aa62,
+    transparent: true,
+    opacity: 0,
+    depthTest: false,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const ringMaterial = slashMaterial.clone();
+  const slash = new THREE.Mesh(new THREE.BoxGeometry(1, 0.035, 0.035), slashMaterial);
+  slash.position.set(0, -0.12, -1.12);
+  slash.renderOrder = 20;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.022, 8, 28), ringMaterial);
+  ring.position.set(0, 0.02, -1.18);
+  ring.renderOrder = 20;
+  group.add(slash, ring);
+  camera.add(group);
+
+  return { group, slash, ring, slashMaterial, ringMaterial };
+}
+
 export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
   if (!host) throw new Error('Chronicles of Matthias requires a host element');
 
@@ -131,6 +163,8 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
   scene.add(new THREE.HemisphereLight(0x6b7480, 0x1b130d, 0.42));
   const camera = new THREE.PerspectiveCamera(67, 1, 0.08, 70);
   camera.rotation.order = 'YXZ';
+  scene.add(camera);
+  const combatFx = createCombatFx(camera);
 
   const dungeon = createDungeonScene(scene, { coarsePointer: coarse });
   const dressing = buildChroniclesDungeonDressing({ coarsePointer: coarse });
@@ -141,6 +175,10 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
   let desiredYaw = -Math.PI / 2;
   let latestState = null;
   let frame = 0;
+  let attackFxStartedAt = -1;
+  let attackFxConfig = ATTACK_FX.matthias;
+  let enemyHitStartedAt = -1;
+  let enemyDeathStartedAt = -1;
   const clock = new THREE.Clock();
 
   camera.position.copy(desiredPosition);
@@ -155,11 +193,15 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
   }
 
   function syncState(state) {
+    const previousEnemyHp = latestState?.enemyHp;
+    const now = clock.getElapsedTime();
+    if (previousEnemyHp != null && state.enemyHp < previousEnemyHp) enemyHitStartedAt = now;
+    if (!reducedMotion && previousEnemyHp > 0 && state.enemyHp === 0) enemyDeathStartedAt = now;
     latestState = state;
     desiredPosition = worldForCell(state.x, state.y);
     const direction = CHRONICLES_DIRECTIONS[state.direction];
     desiredYaw = Math.atan2(-direction.dx, -direction.dy);
-    dungeon.enemy.visible = state.enemyHp > 0;
+    dungeon.enemy.visible = state.enemyHp > 0 || (!reducedMotion && enemyDeathStartedAt >= 0);
     const enemyGlow = dungeon.enemy.userData.chroniclesGlowMaterials || [];
     enemyGlow.forEach((glow) => {
       glow.emissiveIntensity = state.enemyHp === 1 ? 2.8 : 1.7;
@@ -179,6 +221,18 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
       camera.rotation.y = desiredYaw;
       renderer.render(scene, camera);
     }
+  }
+
+  function playAttack(memberId) {
+    if (reducedMotion) return;
+    attackFxConfig = ATTACK_FX[memberId] || ATTACK_FX.matthias;
+    attackFxStartedAt = clock.getElapsedTime();
+    combatFx.slashMaterial.color.setHex(attackFxConfig.color);
+    combatFx.ringMaterial.color.setHex(attackFxConfig.color);
+    combatFx.slash.rotation.z = attackFxConfig.angle;
+    combatFx.slash.scale.set(attackFxConfig.width, 1, 1);
+    combatFx.ring.scale.setScalar(attackFxConfig.ring);
+    combatFx.group.visible = true;
   }
 
   function wrapAngle(value) {
@@ -202,8 +256,36 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
         torch.flame.scale.y = 1.65 + pulse * 0.18;
       });
       if (latestState?.enemyHp > 0) {
-        dungeon.enemy.rotation.y = Math.PI + Math.sin(time * 0.9) * 0.12;
+        const hitElapsed = time - enemyHitStartedAt;
+        const hitKick = hitElapsed >= 0 && hitElapsed < 0.24 ? Math.sin((hitElapsed / 0.24) * Math.PI) : 0;
+        dungeon.enemy.visible = true;
+        dungeon.enemy.rotation.y = Math.PI + Math.sin(time * 0.9) * 0.12 + hitKick * 0.16;
+        dungeon.enemy.rotation.z = hitKick * -0.08;
         dungeon.enemy.position.y = Math.sin(time * 1.7) * 0.018;
+        dungeon.enemy.scale.setScalar(1.08 + hitKick * 0.07);
+      } else if (enemyDeathStartedAt >= 0) {
+        const deathElapsed = time - enemyDeathStartedAt;
+        if (deathElapsed < 0.5) {
+          dungeon.enemy.visible = true;
+          dungeon.enemy.position.y = -Math.max(0, deathElapsed) * 1.45;
+          dungeon.enemy.rotation.z = Math.max(0, deathElapsed) * 1.4;
+          dungeon.enemy.scale.setScalar(Math.max(0.52, 1.08 - Math.max(0, deathElapsed) * 0.72));
+        } else {
+          dungeon.enemy.visible = false;
+        }
+      }
+
+      const fxElapsed = time - attackFxStartedAt;
+      if (fxElapsed >= 0 && fxElapsed < 0.24) {
+        const progress = fxElapsed / 0.24;
+        combatFx.group.visible = true;
+        combatFx.slashMaterial.opacity = (1 - progress) * 0.82;
+        combatFx.ringMaterial.opacity = (1 - progress) * 0.54;
+        const ringScale = attackFxConfig.ring * (0.7 + progress * 0.9);
+        combatFx.ring.scale.setScalar(ringScale);
+        combatFx.slash.position.x = (progress - 0.5) * 0.24;
+      } else {
+        combatFx.group.visible = false;
       }
     }
     renderer.render(scene, camera);
@@ -221,6 +303,7 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
 
   return {
     renderState: syncState,
+    playAttack,
     destroy() {
       if (destroyed) return;
       destroyed = true;
