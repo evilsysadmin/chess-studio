@@ -79,11 +79,37 @@ function makeMop() {
   return group;
 }
 
+export function resetWarRoomHansMopProps(props) {
+  const bucket = props?.bucket;
+  const mop = props?.mop;
+  if (bucket) {
+    bucket.position.set(0.38, 0, -0.18);
+    bucket.rotation.set(0, 0, 0);
+  }
+  if (mop) {
+    mop.position.set(-0.34, 0, 0.12);
+    mop.rotation.set(0, 0, 0);
+  }
+}
+
+export function applyWarRoomHansMopCarryPose(props, now = 0) {
+  resetWarRoomHansMopProps(props);
+  if (props?.mop) {
+    props.mop.rotation.z = -0.12;
+    props.mop.rotation.x = 0.08;
+  }
+  if (props?.bucket) {
+    props.bucket.position.y = 0.16;
+    props.bucket.position.x = 0.38 + Math.sin(Number(now) * 0.004) * 0.02;
+  }
+}
+
 function ensureProps(actor) {
   let bucket = actor.hans.getObjectByName?.('war-room-hans-mop-bucket');
   let mop = actor.hans.getObjectByName?.('war-room-hans-mop');
   if (!bucket) { bucket = makeBucket(); actor.hans.add(bucket); }
   if (!mop) { mop = makeMop(); actor.hans.add(mop); }
+  resetWarRoomHansMopProps({ bucket, mop });
   bucket.visible = false;
   mop.visible = false;
   return { bucket, mop };
@@ -100,6 +126,7 @@ function setDialogue(actor, value) {
 
 function clearRoutineState(actor, props, controller, root, runtime) {
   resetWarRoomHansWalk(controller, { full: true });
+  resetWarRoomHansMopProps(props);
   setWarRoomHansTaskPhase(runtime, 'idle');
   setWarRoomHansTaskPresentation(runtime, {
     visible: false,
@@ -185,6 +212,7 @@ export function installWarRoomHansMopRoutine(root) {
       const service = warRoomHansServiceHome(root, actor.hans.parent);
       if (!service?.point) { releaseWarRoomHansTask(runtime, TASK_ID); return; }
       home = service.point;
+      resetWarRoomHansMopProps(props);
       placeWarRoomHansHorizontal(actor, home);
       setWarRoomHansTaskPresentation(runtime, {
         visible: true,
@@ -229,10 +257,7 @@ export function installWarRoomHansMopRoutine(root) {
         route: 'mop-room',
       });
       actor.hans.userData.warRoomHansMopState = 'walking';
-      props.mop.rotation.z = -0.12;
-      props.mop.rotation.x = 0.08;
-      props.bucket.position.y = 0.16;
-      props.bucket.position.x = 0.38 + Math.sin(now * 0.004) * 0.02;
+      applyWarRoomHansMopCarryPose(props, now);
       if (motion.travelled > 0) {
         advanceWarRoomHansWalk(controller, { travelled: motion.travelled, horizontalWeight: 0.45 });
       }
@@ -266,6 +291,7 @@ export function installWarRoomHansMopRoutine(root) {
       applyWarRoomHansTaskPose(actor, 'mop');
       if (patchRemainingMs <= 0) {
         resetWarRoomHansWalk(controller, { full: true });
+        resetWarRoomHansMopProps(props);
         if (activeElapsedMs >= fatigueMs) {
           state = 'returning';
           setWarRoomHansTaskPhase(runtime, 'returning');
@@ -285,6 +311,7 @@ export function installWarRoomHansMopRoutine(root) {
         route: 'mop-return',
       });
       actor.hans.userData.warRoomHansMopState = 'returning';
+      applyWarRoomHansMopCarryPose(props, now);
       if (motion.travelled > 0) {
         advanceWarRoomHansWalk(controller, { travelled: motion.travelled, horizontalWeight: 0.45 });
       }
