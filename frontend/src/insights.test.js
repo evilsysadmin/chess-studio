@@ -129,6 +129,17 @@ describe('generateRoast', () => {
     expect(withZasca.some((l) => l.includes('Qb1-b8') && l.includes('294'))).toBe(true);
   });
 
+  it('describe el delta de rating sin convertirlo en una trayectoria', () => {
+    const rising = { totalGames: 10, overall: { winPct: 50 }, colorPreference: { white: 5, black: 5 }, humanCaptures: 30, favoriteOpening: null, longestWinStreak: 2, byMode: {}, ratingTrend: { first: 600, last: 660, min: 540, max: 690, delta: 60 } };
+    const falling = { ...rising, ratingTrend: { first: 700, last: 640, min: 620, max: 760, delta: -60 } };
+    const risingCopy = generateRoast(rising).join(' ');
+    const fallingCopy = generateRoast(falling).join(' ');
+    expect(risingCopy).toMatch(/60 puntos por encima del primero|60 puntos por encima del primer registro/);
+    expect(fallingCopy).toMatch(/60 puntos por debajo del primero|60 puntos por debajo del primer registro/);
+    expect(risingCopy).not.toMatch(/sube que da gusto|mejorando de verdad|racha de gloria/i);
+    expect(fallingCopy).not.toMatch(/va en picada|no para de bajar|cuesta abajo/i);
+  });
+
   it('siempre devuelve al menos una línea si hay partidas jugadas', () => {
     const balanced = { totalGames: 20, overall: { winPct: 55 }, colorPreference: { white: 10, black: 10 }, humanCaptures: 60, favoriteOpening: { name: 'Apertura Italiana', count: 5 }, longestWinStreak: 3, byMode: {} };
     expect(generateRoast(balanced).length).toBeGreaterThan(0);
@@ -136,29 +147,34 @@ describe('generateRoast', () => {
 });
 
 describe('tierTrendComment', () => {
-  it('sin historial suficiente, avisa en vez de inventar una tendencia', () => {
+  it('sin variación observada, describe el dato sin inventar una tendencia', () => {
     const flat = { min: 800, max: 800, first: 800, last: 800, delta: 0 };
-    expect(tierTrendComment('Aficionado', flat)).toContain('todavía no hay suficiente historial');
+    const comment = tierTrendComment('Aficionado', flat);
+    expect(comment).toContain('no muestran variación de rating');
+    expect(comment).not.toMatch(/mejorando|bajando|estancado/i);
   });
 
-  it('detecta mejora real', () => {
+  it('un último registro mayor no se vende como mejora demostrada', () => {
     const trend = { min: 500, max: 600, first: 500, last: 560, delta: 60 };
     const comment = tierTrendComment('Principiante', trend);
-    expect(comment).toContain('mejorando');
-    expect(comment).toContain('60');
+    expect(comment).toContain('+60');
+    expect(comment).toContain('primer y el último registro');
+    expect(comment).toContain('no demuestra por sí solo');
   });
 
-  it('detecta bajada real, con una sugerencia (no un diagnóstico inventado)', () => {
+  it('un último registro menor no se vende como caída sostenida', () => {
     const trend = { min: 1300, max: 1450, first: 1450, last: 1360, delta: -90 };
     const comment = tierTrendComment('Avanzado', trend);
-    expect(comment).toContain('bajando');
     expect(comment).toContain('-90');
+    expect(comment).toContain('primer y el último registro');
+    expect(comment).toContain('no demuestra por sí solo');
   });
 
-  it('estancado (delta chico) no se confunde con mejora ni bajada', () => {
+  it('un delta chico no se convierte en estancamiento demostrado', () => {
     const trend = { min: 590, max: 610, first: 600, last: 598, delta: -2 };
     const comment = tierTrendComment('Principiante', trend);
-    expect(comment).toContain('estancado');
+    expect(comment).toContain('-2');
+    expect(comment).toContain('demasiado poco para llamarlo estancado');
     expect(comment).not.toContain('mejorando');
     expect(comment).not.toContain('bajando');
   });
@@ -223,6 +239,22 @@ describe('generateCoaching', () => {
   it('sugiere puzzles personales cuando hay poca táctica entrenada', () => {
     const tips = generateCoaching(base, { incidents: { 'cpu:KNIGHT_FORK': 2 } }, { puzzlesSolved: 1, personalPuzzles: 4 });
     expect(tips.some((t) => t.action.includes('Tus crímenes'))).toBe(true);
+  });
+
+  it('mantiene el coaching de rating en hechos primer-último, no en causas o trayectorias', () => {
+    const lower = generateCoaching(base, { incidents: {} }, { puzzlesSolved: 8 })
+      .find((item) => item.evidence?.kind === 'rating');
+    const higher = generateCoaching({
+      ...base,
+      totalGames: 12,
+      ratingTrend: { min: 580, max: 710, first: 600, last: 670, delta: 70 },
+    }, { incidents: {} }, { puzzlesSolved: 8 }).find((item) => item.evidence?.kind === 'rating');
+    expect(lower?.diagnosis).toContain('50 puntos por debajo del primero');
+    expect(lower?.diagnosis).toContain('no demuestra por sí solo');
+    expect(higher?.diagnosis).toContain('70 puntos por encima del primero');
+    expect(higher?.diagnosis).toContain('no una tendencia garantizada');
+    expect(lower?.title).not.toMatch(/volumen/i);
+    expect(higher?.title).not.toMatch(/cómodo/i);
   });
 });
 

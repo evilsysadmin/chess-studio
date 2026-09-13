@@ -264,14 +264,15 @@ export function generateRoast(insights, worstMove = null, extras = {}) {
   if (insights.ratingTrend) {
     const { delta } = insights.ratingTrend;
     if (delta <= -40) {
+      const gap = Math.abs(delta);
       lines.push(pickRoastLine([
-        'Tu rating va en picada. Cuesta abajo y sin frenos.',
-        'El rating no para de bajar. En algún momento tocará fondo, supongo.',
+        `El último rating está ${gap} puntos por debajo del primero. La gráfica ha visto días mejores.`,
+        `Acabas ${gap} puntos por debajo del primer registro. Eso sí es dato; el drama viene gratis.`,
       ], seed));
     } else if (delta >= 40) {
       lines.push(pickRoastLine([
-        'Tu rating sube que da gusto. A ver cuánto dura la racha de gloria.',
-        'Vas mejorando de verdad, según el número. No te lo creas demasiado todavía.',
+        `El último rating está ${delta} puntos por encima del primero. Puedes mirarlo con satisfacción moderada.`,
+        `Acabas ${delta} puntos por encima del primer registro. El gráfico, al menos, te concede esa.`,
       ], seed));
     }
   }
@@ -419,7 +420,7 @@ function coachingPriority(count) {
 
 // Consejos accionables a partir de hechos ya guardados. No pretende adivinar
 // debilidades posicionales que no se hayan medido: usa reincidencias tácticas,
-// resultados por apertura, sesgo de color, puzzles y tendencia de rating.
+// resultados por apertura, sesgo de color, puzzles y comparación de rating.
 export function generateCoaching(insights, rivalry = null, extras = {}) {
   if (!insights || insights.totalGames === 0) return [];
   const items = [];
@@ -502,19 +503,20 @@ export function generateCoaching(insights, rivalry = null, extras = {}) {
   }
 
   if (insights.ratingTrend?.delta <= -30) {
+    const gap = Math.abs(insights.ratingTrend.delta);
     items.push({
       priority: 'high', priorityLabel: 'ALTA',
-      title: 'Deja de hacer volumen por hacer volumen',
-      diagnosis: `El rating ha caído ${Math.abs(insights.ratingTrend.delta)} puntos desde el primer registro. Seguir encadenando partidas puede entrenar exactamente los errores que quieres quitar.`,
+      title: 'El último rating queda por debajo',
+      diagnosis: `El último registro está ${gap} puntos por debajo del primero. Eso no demuestra por sí solo qué pasó entre medias, pero sí merece revisar las derrotas recientes.`,
       action: 'Abre Autopsia tras cada derrota durante las próximas 3 partidas y revisa sólo el peor incidente. Una corrección concreta por partida, no veinte.',
-      evidence: { kind: 'rating', count: Math.abs(insights.ratingTrend.delta), delta: insights.ratingTrend.delta },
+      evidence: { kind: 'rating', count: gap, delta: insights.ratingTrend.delta },
     });
   } else if (insights.ratingTrend?.delta >= 60 && insights.totalGames >= 10) {
     items.push({
       priority: 'low', priorityLabel: 'SUBIR LISTÓN',
-      title: 'Te estás quedando cómodo',
-      diagnosis: `Has ganado ${insights.ratingTrend.delta} puntos. Bien. Ahora deja de admirar la gráfica como si fuera una estatua ecuestre.`,
-      action: 'Si encadenas 3 victorias más con margen, sube un nivel de dificultad y conserva el mismo repertorio unas partidas para comparar.',
+      title: 'El último rating queda por encima',
+      diagnosis: `El último registro está ${insights.ratingTrend.delta} puntos por encima del primero. Bien; eso describe los extremos observados, no una tendencia garantizada.`,
+      action: 'Si las próximas 3 partidas mantienen resultados sólidos, prueba un nivel más de dificultad y conserva el mismo repertorio unas partidas para comparar.',
       evidence: { kind: 'rating', count: insights.ratingTrend.delta, delta: insights.ratingTrend.delta },
     });
   }
@@ -582,12 +584,11 @@ export function trainingTargetForCoaching(item, personalPuzzles = []) {
 // Genérico a propósito a la hora de sugerir qué hacer — no analiza tus
 // jugadas para esto (eso sí sería caro), así que no inventa un
 // diagnóstico específico tipo "te falla el medio juego". Solo combina tu
-// categoría actual con la tendencia reciente del rating, y sugiere
-// herramientas que ya existen en la app, no problemas que no puede saber
-// que tienes de verdad.
+// categoría actual con la comparación entre primer y último registro de
+// rating, y sugiere herramientas que ya existen en la app.
 export function tierTrendComment(tierLabel, trend) {
   if (!trend || trend.min === trend.max) {
-    return `${tierLabel} — todavía no hay suficiente historial para ver una tendencia clara.`;
+    return `${tierLabel} — los registros disponibles no muestran variación de rating.`;
   }
 
   const { delta } = trend;
@@ -602,10 +603,10 @@ export function tierTrendComment(tierLabel, trend) {
   const tip = TIER_TIPS[tierLabel] || '';
 
   if (delta >= 30) {
-    return `${tierLabel}, pero vas mejorando — el número no miente, subiste ${delta} puntos desde el primer registro.`;
+    return `${tierLabel} — +${delta} entre el primer y el último registro. Eso no demuestra por sí solo que estés mejorando; sí demuestra dónde acabó el marcador.`;
   }
   if (delta <= -30) {
-    return `${tierLabel}, y viene bajando últimamente (${delta} puntos) — ${tip}`;
+    return `${tierLabel} — ${delta} entre el primer y el último registro. Eso no demuestra por sí solo que siga bajando; ${tip}`;
   }
-  return `${tierLabel}, bastante estancado por ahora (apenas ${delta >= 0 ? '+' : ''}${delta} desde el primer registro) — ${tip}`;
+  return `${tierLabel} — ${delta >= 0 ? '+' : ''}${delta} entre el primer y el último registro: demasiado poco para llamarlo estancado. ${tip}`;
 }
