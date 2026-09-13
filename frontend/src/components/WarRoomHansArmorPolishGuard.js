@@ -1,7 +1,8 @@
 import { getWarRoomHansActor } from './WarRoomHansActor.js';
 import { warRoomHansChoreForEvent } from './WarRoomHansChoreContract.js';
+import { installWarRoomHansHandPropGuard } from './WarRoomHansHandPropGuard.js';
 
-export const WAR_ROOM_HANS_ARMOR_POLISH_GUARD_VERSION = 'hans-armor-polish-v2-all-hand-cloth';
+export const WAR_ROOM_HANS_ARMOR_POLISH_GUARD_VERSION = 'hans-armor-polish-v3-hand-prop-composed';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const CLOTH_NAME = 'war-room-hans-chore-prop-cloth';
@@ -50,6 +51,11 @@ export function applyWarRoomHansArmorPolishPose(actor, cloth, elapsedMs = 0) {
 }
 
 export function installWarRoomHansArmorPolishGuard(root) {
+  // This finalizer is the existing scene-level entry point for hand-held task
+  // visuals. Install the generic one-hand rig first, then layer cloth-specific
+  // polish motion on top so every utensil follows the animated working arm.
+  installWarRoomHansHandPropGuard(root);
+
   const actor = getWarRoomHansActor(root);
   const hans = actor?.hans;
   const floor = root?.getObjectByName?.(FLOOR_NAME);
