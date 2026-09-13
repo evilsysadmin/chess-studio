@@ -18,6 +18,22 @@ export const PAWN_SLUG_PLAYER = Object.freeze({
   xpCurveStep: 20,
 });
 
+let runtimeRpgEnabled = true;
+
+export function setPawnSlugRuntimeRpgEnabled(enabled = true) {
+  runtimeRpgEnabled = enabled !== false;
+  return runtimeRpgEnabled;
+}
+
+export function pawnSlugRuntimeRpgEnabled() {
+  return runtimeRpgEnabled;
+}
+
+function pawnSlugRuntimeLevel(level) {
+  if (!runtimeRpgEnabled) return 1;
+  return pawnSlugClamp(Math.floor(Number(level) || 1), 1, PAWN_SLUG_PLAYER.maxLevel);
+}
+
 export const PAWN_SLUG_WEAPON_ORDER = Object.freeze(['pistol', 'machinegun', 'shotgun', 'panzerfaust']);
 
 export const PAWN_SLUG_WEAPONS = Object.freeze({
@@ -95,7 +111,7 @@ export function pawnSlugWeaponShortLabel(id) {
 
 export function pawnSlugWeaponUpgradeForLevel(id, level = 1) {
   const upgrades = PAWN_SLUG_WEAPON_UPGRADES[id] || PAWN_SLUG_WEAPON_UPGRADES.pistol;
-  const safeLevel = pawnSlugClamp(Math.floor(Number(level) || 1), 1, PAWN_SLUG_PLAYER.maxLevel);
+  const safeLevel = pawnSlugRuntimeLevel(level);
   let result = upgrades[0];
   for (const upgrade of upgrades) {
     if (upgrade.level > safeLevel) break;
@@ -110,6 +126,7 @@ export function pawnSlugWeaponDisplayLabel(id, level = 1) {
 }
 
 export function pawnSlugWeaponUpgradeCrossed(id, previousLevel, nextLevel) {
+  if (!runtimeRpgEnabled) return null;
   const previous = pawnSlugWeaponUpgradeForLevel(id, previousLevel);
   const next = pawnSlugWeaponUpgradeForLevel(id, nextLevel);
   return next.tier > previous.tier ? next : null;
@@ -117,13 +134,14 @@ export function pawnSlugWeaponUpgradeCrossed(id, previousLevel, nextLevel) {
 
 export function pawnSlugWeaponStatsForLevel(id, level = 1) {
   const weapon = PAWN_SLUG_WEAPONS[id] || PAWN_SLUG_WEAPONS.pistol;
-  const upgrade = pawnSlugWeaponUpgradeForLevel(weapon.id, level);
+  const effectiveLevel = pawnSlugRuntimeLevel(level);
+  const upgrade = pawnSlugWeaponUpgradeForLevel(weapon.id, effectiveLevel);
   return Object.freeze({
     ...weapon,
     tier: upgrade.tier,
     upgradeCode: upgrade.code,
     cadence: Math.max(45, Math.round(weapon.cadence * upgrade.cadence)),
-    damage: weapon.damage * pawnSlugDamageMultiplier(level) * upgrade.damage,
+    damage: weapon.damage * pawnSlugDamageMultiplier(effectiveLevel) * upgrade.damage,
     speed: weapon.speed * upgrade.speed,
     pellets: Math.max(1, weapon.pellets + upgrade.pelletsBonus),
     spread: weapon.spread * upgrade.spread,
@@ -145,6 +163,7 @@ export function pawnSlugScoreForKill(type) {
 }
 
 export function pawnSlugXpForKill(type) {
+  if (!runtimeRpgEnabled) return 0;
   return PAWN_SLUG_ENEMIES[type]?.xp || 0;
 }
 
@@ -155,6 +174,7 @@ export function pawnSlugXpForLevel(level) {
 }
 
 export function pawnSlugLevelForXp(xp) {
+  if (!runtimeRpgEnabled) return 1;
   const safeXp = Math.max(0, Math.floor(Number(xp) || 0));
   let level = 1;
   while (level < PAWN_SLUG_PLAYER.maxLevel && safeXp >= pawnSlugXpForLevel(level + 1)) level += 1;
@@ -162,6 +182,7 @@ export function pawnSlugLevelForXp(xp) {
 }
 
 export function pawnSlugLevelProgress(xp, level = pawnSlugLevelForXp(xp)) {
+  if (!runtimeRpgEnabled) return 0;
   const safeLevel = pawnSlugClamp(Math.floor(Number(level) || 1), 1, PAWN_SLUG_PLAYER.maxLevel);
   if (safeLevel >= PAWN_SLUG_PLAYER.maxLevel) return 1;
   const start = pawnSlugXpForLevel(safeLevel);
@@ -170,12 +191,12 @@ export function pawnSlugLevelProgress(xp, level = pawnSlugLevelForXp(xp)) {
 }
 
 export function pawnSlugMaxHpForLevel(level) {
-  const safeLevel = pawnSlugClamp(Math.floor(Number(level) || 1), 1, PAWN_SLUG_PLAYER.maxLevel);
+  const safeLevel = pawnSlugRuntimeLevel(level);
   return PAWN_SLUG_PLAYER.baseMaxHp + (safeLevel - 1) * PAWN_SLUG_PLAYER.hpPerLevel;
 }
 
 export function pawnSlugDamageMultiplier(level) {
-  const safeLevel = pawnSlugClamp(Math.floor(Number(level) || 1), 1, PAWN_SLUG_PLAYER.maxLevel);
+  const safeLevel = pawnSlugRuntimeLevel(level);
   return 1 + (safeLevel - 1) * PAWN_SLUG_PLAYER.damagePerLevel;
 }
 

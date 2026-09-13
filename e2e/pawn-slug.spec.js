@@ -60,21 +60,24 @@ test('Pawn Slug · arranca con pistola y arsenal seleccionable sin tocar el ajed
   test.setTimeout(90_000);
   await openPawnSlug(page);
 
+  const root = page.locator('[data-pawn-slug="true"]');
   const stage = page.locator('[data-pawn-slug-renderer="three"]');
+  await expect(root).toHaveAttribute('data-pawn-slug-expert', 'false');
   await expect(stage).toBeVisible();
   await expect(stage.locator('canvas')).toHaveCount(0);
   await expect(page.getByText('BAUERNSCHLAG', { exact: true })).toBeVisible();
-  await expect(page.getByText(/Cero ELO/)).toBeVisible();
+  await expect(page.getByText(/Sin XP, niveles ni economía/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'INICIAR OPERACIÓN', exact: true })).toBeVisible();
 
   const arsenal = await startPawnSlug(page);
   await expect(stage.locator('canvas')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText('OPERACIÓN BAUERNSCHLAG', { exact: true })).toBeVisible();
   await expect(arsenal).toBeVisible();
-  await expect(page.locator('.pawn-slug-hud').getByText('Mk I · ∞', { exact: true })).toBeVisible();
+  await expect(page.locator('.pawn-slug-xp-track')).toHaveCount(0);
+  await expect(page.locator('.pawn-slug-hud').getByText(/Mk I/)).toHaveCount(0);
   const pistol = arsenal.getByRole('button', { name: /^1\. Dienstpistole$/ });
   await expect(pistol).toHaveAttribute('aria-pressed', 'true');
-  await expect(pistol).toHaveAttribute('title', /Dienstpistole · Mk I/);
+  await expect(pistol).toHaveAttribute('title', '1 · Dienstpistole');
   await expect(arsenal.getByRole('button', { name: /^2\. MG-42 · no disponible$/ })).toBeDisabled();
   await expect(arsenal.getByRole('button', { name: /^3\. Benelli M3 · no disponible$/ })).toBeDisabled();
   await expect(arsenal.getByRole('button', { name: /^4\. Panzerfaust · no disponible$/ })).toBeDisabled();
