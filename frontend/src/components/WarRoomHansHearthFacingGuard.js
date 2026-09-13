@@ -6,12 +6,15 @@ import {
 import { hansBoardPeekHoldsMovement } from './WarRoomHansFireCallContract.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION = 'hearth-facing-guard-v4-actor-board-world';
+export const WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION = 'hearth-facing-guard-v6-visible-work-targets';
 
 const FIRE_CORE_NAME = 'war-room-fire-core';
+const BASKET_NAME = 'war-room-hearth-log-basket';
+const TOOLS_NAME = 'war-room-hearth-tool-stand';
 const POST_RENDER_ORDER = 15;
 const MIN_DOT = 0.995;
 const HEARTH_FACING_HOT_PATH_VERSION = 'preallocated-scratch-v5-board-world';
+const VISIBLE_HEARTH_FACING_HOOK = 'war-room-hans-visible-hearth-facing-v1';
 
 function findFaceAnchor(head) {
   if (!head?.children?.length) return null;
@@ -72,14 +75,12 @@ function sampleRenderedDirectionsToBoard(hans, head, faceAnchor, scratch) {
   parent.updateMatrixWorld?.(true);
   head.updateMatrixWorld?.(true);
   faceAnchor.updateMatrixWorld?.(true);
-
   head.getWorldPosition(scratch.headWorld);
   faceAnchor.getWorldPosition(scratch.faceWorld);
   scratch.targetWorld.set(0, scratch.headWorld.y, 0);
   parent.worldToLocal(scratch.headWorld);
   parent.worldToLocal(scratch.faceWorld);
   parent.worldToLocal(scratch.targetWorld);
-
   scratch.face.copy(scratch.faceWorld).sub(scratch.headWorld);
   scratch.towardTarget.copy(scratch.targetWorld).sub(scratch.headWorld);
   scratch.face.y = 0;
@@ -88,6 +89,51 @@ function sampleRenderedDirectionsToBoard(hans, head, faceAnchor, scratch) {
   scratch.face.normalize();
   scratch.towardTarget.normalize();
   return true;
+}
+
+function stationaryWorkTarget(root, hans, phase) {
+  const owner = String(hans?.userData?.warRoomHansMovementFacing || '');
+  const workOwned = owner === 'work-target';
+  const targetLabel = String(hans?.userData?.warRoomHansFacingTarget || '');
+  const stationaryFallback = phase === 'take-log' || phase === 'place-log' || phase === 'satisfied';
+  if (!workOwned && !stationaryFallback) return null;
+
+  if (phase === 'take-log' || targetLabel === 'basket') {
+    return root?.getObjectByName?.(BASKET_NAME) || null;
+  }
+  if (phase === 'take-poker' || phase === 'return-poker' || targetLabel === 'tools') {
+    return root?.getObjectByName?.(TOOLS_NAME) || null;
+  }
+  if (
+    phase === 'carry-log'
+    || phase === 'place-log'
+    || phase === 'stoke-fire'
+    || phase === 'satisfied'
+    || targetLabel === 'fire'
+    || targetLabel === 'hearth'
+  ) {
+    return root?.getObjectByName?.(FIRE_CORE_NAME) || null;
+  }
+  return null;
+}
+
+function installVisibleHearthFacingFinalizer(hans, reconcile, state) {
+  let hooks = 0;
+  hans?.traverse?.((object) => {
+    if (!object?.isMesh || object.userData?.warRoomHansVisibleHearthFacingHook === VISIBLE_HEARTH_FACING_HOOK) return;
+    const previous = object.onBeforeRender;
+    object.onBeforeRender = (renderer, scene, camera, geometry, material, renderGroup) => {
+      previous?.(renderer, scene, camera, geometry, material, renderGroup);
+      const renderFrame = Number(renderer?.info?.render?.frame);
+      if (Number.isFinite(renderFrame) && state.lastVisibleRenderFrame === renderFrame) return;
+      if (Number.isFinite(renderFrame)) state.lastVisibleRenderFrame = renderFrame;
+      reconcile('visible-mesh-pre-render');
+    };
+    object.userData ||= {};
+    object.userData.warRoomHansVisibleHearthFacingHook = VISIBLE_HEARTH_FACING_HOOK;
+    hooks += 1;
+  });
+  return hooks;
 }
 
 export function installWarRoomHansHearthFacingGuard(root) {
@@ -101,49 +147,61 @@ export function installWarRoomHansHearthFacingGuard(root) {
   if (driver.userData?.warRoomHansHearthFacingGuard === WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION) return 0;
 
   const scratch = createDirectionScratch();
-  let corrections = 0;
+  const state = { corrections: 0, lastVisibleRenderFrame: -1 };
+
+  const reconcile = (source) => {
+    if (!hans.visible) return false;
+    const narrativePhase = getWarRoomHansNarrativePhase(actor);
+    const boardPeek = hansBoardPeekHoldsMovement(narrativePhase);
+    const phase = driver.userData?.warRoomHansPhase
+      || hans.userData?.warRoomHansChoreographyPhase
+      || 'idle';
+    const workTarget = boardPeek ? null : stationaryWorkTarget(root, hans, phase);
+    if (!boardPeek && !workTarget) return false;
+
+    const sampled = boardPeek
+      ? sampleRenderedDirectionsToBoard(hans, head, faceAnchor, scratch)
+      : sampleRenderedDirections(hans, head, faceAnchor, workTarget, scratch);
+    if (!sampled) return false;
+
+    const dotBefore = scratch.face.dot(scratch.towardTarget);
+    let dotAfter = dotBefore;
+    if (dotBefore < MIN_DOT) {
+      hans.rotation.y += signedPlanarAngle(scratch.face, scratch.towardTarget);
+      hans.updateMatrixWorld?.(true);
+      const resampled = boardPeek
+        ? sampleRenderedDirectionsToBoard(hans, head, faceAnchor, scratch)
+        : sampleRenderedDirections(hans, head, faceAnchor, workTarget, scratch);
+      if (resampled) dotAfter = scratch.face.dot(scratch.towardTarget);
+      state.corrections += 1;
+    }
+
+    hans.userData.warRoomHansHearthFacingGuard = WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION;
+    hans.userData.warRoomHansHearthFacingTarget = boardPeek
+      ? 'board-center-world'
+      : (workTarget.name || 'hearth-work-target');
+    hans.userData.warRoomHansHearthFacingDotBefore = dotBefore;
+    hans.userData.warRoomHansHearthFacingDotAfter = dotAfter;
+    hans.userData.warRoomHansHearthFacingCorrections = state.corrections;
+    hans.userData.warRoomHansHearthFacingHotPath = HEARTH_FACING_HOT_PATH_VERSION;
+    hans.userData.warRoomHansHearthFacingSource = source;
+    return true;
+  };
+
   const registered = registerWarRoomHansPostRenderStage(driver, {
     key: WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION,
     order: POST_RENDER_ORDER,
-    run: () => {
-      if (!hans.visible) return;
-      const narrativePhase = getWarRoomHansNarrativePhase(actor);
-      const boardPeek = hansBoardPeekHoldsMovement(narrativePhase);
-      const phase = driver.userData?.warRoomHansPhase
-        || hans.userData?.warRoomHansChoreographyPhase
-        || 'idle';
-      if (!boardPeek && phase !== 'place-log') return;
-
-      const sampled = boardPeek
-        ? sampleRenderedDirectionsToBoard(hans, head, faceAnchor, scratch)
-        : sampleRenderedDirections(hans, head, faceAnchor, fireCore, scratch);
-      if (!sampled) return;
-
-      const dotBefore = scratch.face.dot(scratch.towardTarget);
-      let dotAfter = dotBefore;
-      if (dotBefore < MIN_DOT) {
-        hans.rotation.y += signedPlanarAngle(scratch.face, scratch.towardTarget);
-        hans.updateMatrixWorld?.(true);
-        const resampled = boardPeek
-          ? sampleRenderedDirectionsToBoard(hans, head, faceAnchor, scratch)
-          : sampleRenderedDirections(hans, head, faceAnchor, fireCore, scratch);
-        if (resampled) dotAfter = scratch.face.dot(scratch.towardTarget);
-        corrections += 1;
-      }
-
-      hans.userData.warRoomHansHearthFacingGuard = WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION;
-      hans.userData.warRoomHansHearthFacingTarget = boardPeek ? 'board-center-world' : 'fire-core-rendered';
-      hans.userData.warRoomHansHearthFacingDotBefore = dotBefore;
-      hans.userData.warRoomHansHearthFacingDotAfter = dotAfter;
-      hans.userData.warRoomHansHearthFacingCorrections = corrections;
-      hans.userData.warRoomHansHearthFacingHotPath = HEARTH_FACING_HOT_PATH_VERSION;
-    },
+    run: () => reconcile('post-render-pipeline'),
   });
   if (!registered) return 0;
 
+  const visibleFacingHooks = installVisibleHearthFacingFinalizer(hans, reconcile, state);
+
   driver.userData.warRoomHansHearthFacingGuard = WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION;
   driver.userData.warRoomHansHearthFacingHotPath = HEARTH_FACING_HOT_PATH_VERSION;
+  driver.userData.warRoomHansVisibleHearthFacingHooks = visibleFacingHooks;
   hans.userData.warRoomHansHearthFacingGuard = WAR_ROOM_HANS_HEARTH_FACING_GUARD_VERSION;
   hans.userData.warRoomHansHearthFacingHotPath = HEARTH_FACING_HOT_PATH_VERSION;
+  hans.userData.warRoomHansVisibleHearthFacingHooks = visibleFacingHooks;
   return 1;
 }
