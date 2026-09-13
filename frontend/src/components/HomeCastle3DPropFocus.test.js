@@ -30,7 +30,7 @@ describe('HomeCastle3DPropFocus', () => {
 
     applyHomeCastleDestinationPropFocus({ play: play.group, daily: daily.group }, 'play', true);
 
-    expect(play.material.emissiveIntensity).toBeGreaterThan(0.08);
+    expect(play.material.emissiveIntensity).toBeCloseTo(0.14, 6);
     expect(play.material.emissiveIntensity).toBeLessThanOrEqual(HOME_CASTLE_PROP_FOCUS_MAX_EMISSIVE);
     expect(daily.material.emissiveIntensity).toBe(0.05);
     expect(play.group.scale.equals(initialScale)).toBe(true);
@@ -61,12 +61,22 @@ describe('HomeCastle3DPropFocus', () => {
     applyHomeCastleDestinationPropFocus({ history: history.group }, 'history', false);
     const firstStep = history.material.emissiveIntensity;
     expect(firstStep).toBeGreaterThan(0.04);
-    expect(firstStep).toBeLessThan(0.075);
+    expect(firstStep).toBeLessThan(0.095);
 
     applyHomeCastleDestinationPropFocus({ history: history.group }, 'history', true);
-    expect(history.material.emissiveIntensity).toBeCloseTo(0.075, 6);
+    expect(history.material.emissiveIntensity).toBeCloseTo(0.095, 6);
 
     history.dispose();
+  });
+
+  it('caps unusually bright materials instead of turning focus into a glow spike', () => {
+    const bright = createProp(0.3);
+
+    applyHomeCastleDestinationPropFocus({ play: bright.group }, 'play', true);
+
+    expect(bright.material.emissiveIntensity).toBe(HOME_CASTLE_PROP_FOCUS_MAX_EMISSIVE);
+
+    bright.dispose();
   });
 
   it('ignores null groups, unknown destinations and materials without emissive intensity', () => {
