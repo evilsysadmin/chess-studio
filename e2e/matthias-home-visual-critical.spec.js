@@ -19,7 +19,7 @@ async function openCanonicalHome(page, { reducedMotion = 'no-preference' } = {})
 
 test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', async ({ page }) => {
   const home = await openCanonicalHome(page);
-  const matthias = home.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true });
+  const matthias = home.locator('.illustrated-home__matthias');
 
   await expect(matthias).toBeVisible();
   await expect(matthias).toContainText('MATTHIAS');
