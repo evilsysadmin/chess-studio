@@ -129,8 +129,8 @@ export default function PawnSlugTouchSurface({ send }) {
     const pointer = {
       owner: event.pointerId,
       zone,
-      startX: start.x,
-      startY: start.y,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
       width: start.width,
       action: null,
       actionStartedAt: 0,
@@ -172,7 +172,10 @@ export default function PawnSlugTouchSurface({ send }) {
     }
 
     if (pointer.zone !== 'gesture' || pointer.action) return;
-    const action = pawnSlugTouchVerticalAction(current.x - pointer.startX, current.y - pointer.startY);
+    const action = pawnSlugTouchVerticalAction(
+      event.clientX - pointer.startClientX,
+      event.clientY - pointer.startClientY,
+    );
     if (!action) return;
     trainZone('gesture');
     pointer.action = action;
@@ -185,8 +188,10 @@ export default function PawnSlugTouchSurface({ send }) {
     if (!pointer) return;
     event.preventDefault();
     if (allowTap && pointer.zone === 'gesture' && !pointer.action) {
-      const current = point(event);
-      const action = pawnSlugTouchTapAction(current.x - pointer.startX, current.y - pointer.startY);
+      const action = pawnSlugTouchTapAction(
+        event.clientX - pointer.startClientX,
+        event.clientY - pointer.startClientY,
+      );
       if (action) {
         trainZone('gesture');
         pointer.action = action;
