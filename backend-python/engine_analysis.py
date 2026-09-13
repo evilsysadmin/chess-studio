@@ -40,6 +40,9 @@ class RootMoveComparison:
     loss: float
     depth: int
     candidate_count: int
+    second_best_move: Optional[chess.Move] = None
+    second_best_score: Optional[float] = None
+    best_to_second_gap: Optional[float] = None
 
 
 @dataclass(frozen=True)
@@ -55,6 +58,9 @@ class FactualMoveAnalysis:
     loss: float
     depth: int
     candidate_count: int
+    second_best: Optional[dict] = None
+    eval_after_second_best: Optional[float] = None
+    best_to_second_gap: Optional[float] = None
 
     def to_api_payload(self) -> dict:
         return {
@@ -67,6 +73,9 @@ class FactualMoveAnalysis:
             "loss": self.loss,
             "analysisDepth": self.depth,
             "candidateCount": self.candidate_count,
+            "secondBest": self.second_best,
+            "evalAfterSecondBest": self.eval_after_second_best,
+            "bestToSecondGap": self.best_to_second_gap,
         }
 
 
@@ -152,7 +161,9 @@ def compare_root_move(
     pass at the same depth. ``loss`` is from the perspective of the side to move
     and therefore never negative. At depth 2+, the comparison also carries the
     best immediate reply after each line, giving consumers a legal two-ply
-    counterfactual without a second analysis pass.
+    counterfactual without a second analysis pass. The runner-up and its gap to
+    the best move are preserved from that exact same complete root pass so later
+    consumers can reason about how constrained the choice really was.
     """
     if played_move not in board.legal_moves:
         raise ValueError("played_move must be legal in the supplied position")
@@ -167,10 +178,19 @@ def compare_root_move(
         raise ValueError("position has no legal root moves")
 
     maximizing = board.turn == chess.WHITE
-    best = (max if maximizing else min)(analyzed, key=lambda item: item.score)
+    ordered = sorted(analyzed, key=lambda item: item.score, reverse=maximizing)
+    best = ordered[0]
+    second_best = ordered[1] if len(ordered) > 1 else None
     by_move = {candidate.move: candidate for candidate in analyzed}
     played = by_move[played_move]
     raw_loss = (best.score - played.score) if maximizing else (played.score - best.score)
+    if second_best is None:
+        best_to_second_gap = None
+    elif best.score == second_best.score:
+        best_to_second_gap = 0.0
+    else:
+        raw_gap = (best.score - second_best.score) if maximizing else (second_best.score - best.score)
+        best_to_second_gap = max(0.0, raw_gap)
 
     return RootMoveComparison(
         best_move=best.move,
@@ -182,6 +202,9 @@ def compare_root_move(
         loss=max(0.0, raw_loss),
         depth=depth,
         candidate_count=len(analyzed),
+        second_best_move=second_best.move if second_best else None,
+        second_best_score=second_best.score if second_best else None,
+        best_to_second_gap=best_to_second_gap,
     )
 
 
@@ -273,4 +296,11 @@ def build_factual_move_analysis(
         loss=comparison.loss,
         depth=comparison.depth,
         candidate_count=comparison.candidate_count,
+        second_best=(
+            _engine.move_to_dict(board, comparison.second_best_move)
+            if comparison.second_best_move is not None
+            else None
+        ),
+        eval_after_second_best=comparison.second_best_score,
+        best_to_second_gap=comparison.best_to_second_gap,
     )
