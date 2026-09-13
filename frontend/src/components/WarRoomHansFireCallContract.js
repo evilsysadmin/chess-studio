@@ -82,7 +82,7 @@ export function shouldStartHansBoardPeek({ phase, route, choreographyPhase, sugg
 
 export function shouldStartHansLeavingGrumble({ phase, route, alreadyPlayed = false } = {}) {
   return phase === 'await-exit'
-    && String(route || '').startsWith('leave-')
+    && route === 'leave-door'
     && !alreadyPlayed;
 }
 
