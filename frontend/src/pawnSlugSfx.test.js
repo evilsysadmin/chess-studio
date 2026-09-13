@@ -3,6 +3,7 @@ import {
   PAWN_SLUG_COMBAT_CUE_PRIORITY,
   PAWN_SLUG_HOSTILE_WEAPON_SCALES,
   PAWN_SLUG_IMPACT_SOUND_PROFILES,
+  PAWN_SLUG_SFX_RESOURCE_META,
   PAWN_SLUG_WEAPON_PITCH_WIDTHS,
   PAWN_SLUG_WEAPON_SOUND_PROFILES,
   PAWN_SLUG_WEAPON_STEREO_PAN,
@@ -78,6 +79,12 @@ describe('Pawn Slug arcade combat SFX', () => {
     expect(Math.abs(playerPan)).toBeLessThanOrEqual(0.1);
     expect(Math.abs(enemyPan)).toBeLessThanOrEqual(0.15);
     expect(enemyPan - playerPan).toBeLessThanOrEqual(0.25);
+  });
+
+  it('batches settings reads once per composite cue', () => {
+    expect(PAWN_SLUG_SFX_RESOURCE_META.preferenceReadStrategy).toBe('once-per-cue');
+    expect(PAWN_SLUG_SFX_RESOURCE_META.noiseStrategy).toBe('shared-random-window');
+    expect(PAWN_SLUG_SFX_RESOURCE_META.weaponPannerStrategy).toBe('shared-player-enemy');
   });
 
   it('uses more metallic impact rings for armored chess soldiers', () => {
