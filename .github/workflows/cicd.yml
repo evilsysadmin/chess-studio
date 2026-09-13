@@ -131,6 +131,7 @@ jobs:
           python3 -S scripts/quality_scope.py --self-test
           python3 -S scripts/browser_quality_scope.py --self-test
           python3 -S scripts/quality_provenance.py --self-test
+          python3 -S scripts/security_scope.py --self-test
 
       - name: Staging preview isolation contract
         run: python3 scripts/staging_preview_contract.py
@@ -291,24 +292,18 @@ jobs:
           set -euo pipefail
 
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
-            echo "run_security=true" >> "$GITHUB_OUTPUT"
+            python3 -S scripts/security_scope.py --all --github-output "$GITHUB_OUTPUT"
             exit 0
           fi
 
           if [[ -z "${BASE_SHA:-}" || "$BASE_SHA" =~ ^0+$ ]] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
-            echo "run_security=true" >> "$GITHUB_OUTPUT"
+            python3 -S scripts/security_scope.py --all --github-output "$GITHUB_OUTPUT"
             exit 0
           fi
 
           files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
           printf '%s\n' "$files"
-
-          security_pattern='(^|/)(Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|\.dockerignore)$|^compose\.ya?ml$|^frontend/package(-lock)?\.json$|^backend-python/requirements[^/]*\.txt$|^Makefile$|^\.trivy(ignore|\.ya?ml)?$|^scripts/(npm_audit_gate\.py|pip_audit_report\.py|compose_smoke\.py|security[^/]*|trivy_[^/]*|install_trivy\.sh)$|^\.github/workflows/cicd\.yml$|^\.github/actions/cache-python-venv/action\.yml$|^(infra|deploy)/|^render\.ya?ml$'
-          if grep -Eq "$security_pattern" <<< "$files"; then
-            echo "run_security=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run_security=false" >> "$GITHUB_OUTPUT"
-          fi
+          printf '%s\n' "$files" | python3 -S scripts/security_scope.py --github-output "$GITHUB_OUTPUT"
 
       - name: Security gate skipped · no sensitive surface changed
         if: steps.changes.outputs.run_security != 'true'
