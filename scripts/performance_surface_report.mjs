@@ -51,6 +51,17 @@ function formatRows(rows) {
   return rows.map((row) => `- ${row.path}: ${kib(row.bytes)} KiB`).join('\n') || '- none';
 }
 
+function normalizeDistAsset(asset) {
+  return asset.replace(/^\/+/, '');
+}
+
+function gzipDistAssets(assets) {
+  return assets.reduce((total, asset) => {
+    const assetPath = path.join(FRONTEND_DIST, normalizeDistAsset(asset));
+    return total + gzipSync(fs.readFileSync(assetPath)).byteLength;
+  }, 0);
+}
+
 const files = walk(FRONTEND_SRC);
 const sourceRows = [];
 let jsBytes = 0;
@@ -83,11 +94,14 @@ const jsRows = sourceRows.filter((row) => JS_EXTENSIONS.has(path.extname(row.pat
 const cssRows = sourceRows.filter((row) => CSS_EXTENSIONS.has(path.extname(row.path).toLowerCase()));
 const indexHtml = fs.readFileSync(path.join(FRONTEND_DIST, 'index.html'), 'utf8');
 const initialCssAssets = [...indexHtml.matchAll(/<link\b[^>]*\brel=["']stylesheet["'][^>]*\bhref=["']([^"']+\.css)["'][^>]*>/g)]
-  .map((match) => match[1].replace(/^\//, ''));
-const initialCssGzipBytes = initialCssAssets.reduce((total, asset) => {
-  const assetPath = path.join(FRONTEND_DIST, asset.replace(/^assets\//, 'assets/'));
-  return total + gzipSync(fs.readFileSync(assetPath)).byteLength;
-}, 0);
+  .map((match) => match[1]);
+const initialJsEntryAssets = [...indexHtml.matchAll(/<script\b[^>]*\bsrc=["']([^"']+\.js)["'][^>]*>/g)]
+  .map((match) => match[1]);
+const initialJsPreloadAssets = [...indexHtml.matchAll(/<link\b[^>]*\brel=["']modulepreload["'][^>]*\bhref=["']([^"']+\.js)["'][^>]*>/g)]
+  .map((match) => match[1]);
+const initialJsAssets = [...new Set([...initialJsEntryAssets, ...initialJsPreloadAssets])];
+const initialCssGzipBytes = gzipDistAssets(initialCssAssets);
+const initialJsGzipBytes = gzipDistAssets(initialJsAssets);
 const report = {
   generatedAt: new Date().toISOString(),
   sourceFileCount: sourceRows.length,
@@ -114,6 +128,10 @@ const report = {
     initialCss: initialCssAssets,
     initialCssGzipBytes,
     initialCssGzipBudgetBytes: INITIAL_CSS_GZIP_BUDGET_BYTES,
+    initialJs: initialJsAssets,
+    initialJsEntry: initialJsEntryAssets,
+    initialJsPreload: initialJsPreloadAssets,
+    initialJsGzipBytes,
   },
 };
 
@@ -132,6 +150,7 @@ const summary = [
   `- ResizeObserver sites: ${resizeObserverSites}`,
   `- Large JS modules (>= ${LARGE_JS_BYTES / 1024} KiB): ${report.largeModules.js.length}`,
   `- Large CSS files (>= ${LARGE_CSS_BYTES / 1024} KiB): ${report.largeModules.css.length}`,
+  `- Initial JS: ${kib(initialJsGzipBytes)} KiB gzip across ${initialJsAssets.length} asset(s) (report-only baseline)`,
   `- Initial CSS: ${kib(initialCssGzipBytes)} KiB gzip (budget ${INITIAL_CSS_GZIP_BUDGET_BYTES / 1024} KiB)`,
   '',
   '### Largest JS/TS modules',
@@ -140,7 +159,7 @@ const summary = [
   '### Largest CSS files',
   formatRows(report.topCss),
   '',
-  '> WebGL renderer count and initial CSS are ratchets. Lower their ceilings when the architecture gets smaller.',
+  '> WebGL renderer count and initial CSS are ratchets. Initial JS is measured first so a follow-up can set a data-backed ceiling instead of guessing one.',
 ].join('\n');
 
 console.log(summary);
