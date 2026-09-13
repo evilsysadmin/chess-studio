@@ -138,7 +138,7 @@ export function matthiasRoutineDwellMs(scene = 'base') {
   if (/sleep/.test(key)) return 64_000;
   if (/reading|strategy-book|chess-weekly/.test(key)) return 48_000;
   if (/dossier/.test(key)) return 44_000;
-  if (/ops|chess-inception/.test(key)) return 42_000;
+  if (/ops|inception/.test(key)) return 42_000;
   if (/coffee|breakfast|lunch|dinner|beer|night/.test(key)) return 38_000;
   return 34_000;
 }

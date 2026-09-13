@@ -82,6 +82,28 @@ test('Home canónica · Matthias puede quedarse dormido sobre el manual en la bi
   await expect(rig).toHaveAttribute('data-rig-family', 'sleep');
 });
 
+test('Home canónica · Matthias ensaya una emboscada solo en el escritorio', async ({ page }) => {
+  await page.addInitScript(() => {
+    Date.prototype.getFullYear = () => 2026;
+    Date.prototype.getMonth = () => 8;
+    Date.prototype.getDate = () => 3;
+    Date.prototype.getHours = () => 15;
+  });
+
+  const home = await openCanonicalHome(page);
+  const matthias = home.locator('.illustrated-home__matthias');
+  const rig = matthias.locator('[data-matthias-layered-art="true"]');
+
+  await expect(matthias).toBeVisible();
+  await expect(matthias).toHaveAttribute('data-home-matthias-moment', 'solo-board-inception');
+  await expect(matthias).toHaveAttribute('data-home-matthias-scene', 'moment-solo-board-inception');
+  await expect(matthias).toHaveAttribute('data-home-matthias-zone', 'desk');
+  await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Ensayando una emboscada');
+  await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', '42000');
+  await expect(rig).toHaveAttribute('data-gesture', 'board-move');
+  await expect(rig).toHaveAttribute('data-rig-family', 'ops');
+});
+
 test('Home canónica · el arte y los destinos comparten el lienzo 16:9 sin overflow', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   const home = await openCanonicalHome(page);

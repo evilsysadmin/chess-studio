@@ -111,6 +111,27 @@ describe('homeCastleLife', () => {
     expect(homeMatthiasRareMoment({}, momentAt(28, 19))).toBeNull();
   });
 
+  it('lets Matthias rehearse a solo board line rarely without inventing player history', () => {
+    const momentAt = (day, hour = 15) => ({
+      getHours: () => hour,
+      getFullYear: () => 2026,
+      getMonth: () => 8,
+      getDate: () => day,
+    });
+
+    expect(homeMatthiasRareMoment({}, momentAt(3))).toEqual({
+      id: 'solo-board-inception',
+      kind: 'solo-rehearsal',
+      visualKey: 'ops',
+      label: 'Ensayando una emboscada',
+      detail: 'Juega ambos bandos. Por supuesto, critica a los dos.',
+      zone: 'desk',
+    });
+    expect(homeMatthiasRareMoment({}, momentAt(2))).toBeNull();
+    expect(homeMatthiasRareMoment({}, momentAt(3, 8))).toBeNull();
+    expect(homeMatthiasRareMoment({}, momentAt(3, 18))).toBeNull();
+  });
+
   it('builds ambient, factual memories and rare state without inventing data', () => {
     const now = {
       getHours: () => 8,
