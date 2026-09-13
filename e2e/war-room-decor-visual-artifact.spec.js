@@ -4,8 +4,20 @@ import { buttonWithVisibleText, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const PROFILES = Object.freeze([
-  Object.freeze({ label: 'desktop-1440x900', viewport: Object.freeze({ width: 1440, height: 900 }), hasTouch: false }),
-  Object.freeze({ label: 'android-landscape-844x390', viewport: Object.freeze({ width: 844, height: 390 }), hasTouch: true }),
+  Object.freeze({
+    label: 'desktop-inspection-1600x1000',
+    viewport: Object.freeze({ width: 1600, height: 1000 }),
+    hasTouch: false,
+    deviceScaleFactor: 2,
+    forceFullQuality: true,
+  }),
+  Object.freeze({
+    label: 'android-landscape-844x390',
+    viewport: Object.freeze({ width: 844, height: 390 }),
+    hasTouch: true,
+    deviceScaleFactor: 1,
+    forceFullQuality: false,
+  }),
 ]);
 
 async function open3DFromAppearance(page) {
@@ -60,7 +72,7 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function clipFromRatio(scene, viewport, { x, y, width, height }) {
+function clipFromRatio(scene, viewport, { x, y, width, height, scale = 1 }) {
   const left = clamp(scene.x + scene.width * x, 0, viewport.width - 1);
   const top = clamp(scene.y + scene.height * y, 0, viewport.height - 1);
   const right = clamp(scene.x + scene.width * (x + width), left + 1, viewport.width);
@@ -70,7 +82,7 @@ function clipFromRatio(scene, viewport, { x, y, width, height }) {
     y: Number(top.toFixed(2)),
     width: Number((right - left).toFixed(2)),
     height: Number((bottom - top).toFixed(2)),
-    scale: 1,
+    scale,
   };
 }
 
@@ -98,10 +110,34 @@ for (const profile of PROFILES) {
       headless: true,
       args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
     });
-    const context = await browser.newContext({ viewport: profile.viewport, hasTouch: profile.hasTouch });
-    await context.addInitScript(() => {
-      Object.defineProperty(navigator, 'hardwareConcurrency', { configurable: true, get: () => 8 });
+    const context = await browser.newContext({
+      viewport: profile.viewport,
+      hasTouch: profile.hasTouch,
+      deviceScaleFactor: profile.deviceScaleFactor,
     });
+    await context.addInitScript(({ forceFullQuality }) => {
+      Object.defineProperty(navigator, 'hardwareConcurrency', { configurable: true, get: () => 8 });
+      if (!forceFullQuality) return;
+
+      // CI runs WebGL through SwiftShader. For the art-review capture only, make
+      // the app select the same full-quality War Room budget as a normal desktop
+      // GPU while SwiftShader still does the actual rasterization. This changes
+      // no production behavior; it only prevents the visual artifact from
+      // silently dropping to the lite/no-shadows software tier.
+      const fakeGpuParameter = (prototype) => {
+        if (!prototype?.getParameter || prototype.getParameter.__warRoomVisualQa) return;
+        const original = prototype.getParameter;
+        const wrapped = function getParameter(parameter) {
+          if (parameter === 0x9246 || parameter === 0x1f01) return 'ANGLE (NVIDIA GeForce RTX Visual QA)';
+          if (parameter === 0x9245 || parameter === 0x1f00) return 'NVIDIA Corporation';
+          return original.call(this, parameter);
+        };
+        wrapped.__warRoomVisualQa = true;
+        prototype.getParameter = wrapped;
+      };
+      fakeGpuParameter(globalThis.WebGLRenderingContext?.prototype);
+      fakeGpuParameter(globalThis.WebGL2RenderingContext?.prototype);
+    }, { forceFullQuality: profile.forceFullQuality });
 
     const page = await context.newPage();
     try {
@@ -112,12 +148,19 @@ for (const profile of PROFILES) {
 
       await freezeVisualFrame(page);
 
-      const captures = [
+      const baseCaptures = [
         { name: 'scene', ratio: { x: 0, y: 0, width: 1, height: 1 } },
         { name: 'decor-left', ratio: { x: 0, y: 0, width: 0.34, height: 1 } },
         { name: 'decor-right', ratio: { x: 0.66, y: 0, width: 0.34, height: 1 } },
         { name: 'decor-upper', ratio: { x: 0, y: 0, width: 1, height: 0.52 } },
-      ].map((capture) => ({
+      ];
+      const desktopDetailCaptures = profile.hasTouch ? [] : [
+        { name: 'armor-left-detail', ratio: { x: 0.075, y: 0.27, width: 0.12, height: 0.22, scale: 2 } },
+        { name: 'armor-right-detail', ratio: { x: 0.81, y: 0.27, width: 0.12, height: 0.22, scale: 2 } },
+        { name: 'gallery-left-detail', ratio: { x: 0.14, y: 0.035, width: 0.27, height: 0.31, scale: 2 } },
+        { name: 'gallery-right-detail', ratio: { x: 0.59, y: 0.035, width: 0.27, height: 0.31, scale: 2 } },
+      ];
+      const captures = [...baseCaptures, ...desktopDetailCaptures].map((capture) => ({
         ...capture,
         clip: clipFromRatio(scene, profile.viewport, capture.ratio),
       }));
