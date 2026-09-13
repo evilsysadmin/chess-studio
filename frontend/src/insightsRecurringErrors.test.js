@@ -8,6 +8,7 @@ describe('buildRecurringErrorPatterns', () => {
         id: 'fork-1',
         source: 'autopsy',
         incidentKeys: ['cpu:KNIGHT_FORK'],
+        factualEvidence: { version: 1, classification: 'tactical-punishment' },
         sourceGameId: 'g1',
         loss: 180,
         attempts: 2,
@@ -18,6 +19,7 @@ describe('buildRecurringErrorPatterns', () => {
         id: 'fork-2',
         source: 'autopsy',
         incidentKeys: ['cpu:KNIGHT_FORK'],
+        factualEvidence: { version: 1, classification: 'tactical-punishment' },
         sourceGameId: 'g2',
         loss: 260,
         attempts: 1,
@@ -30,6 +32,7 @@ describe('buildRecurringErrorPatterns', () => {
         id: 'mate-singleton',
         source: 'autopsy',
         incidentKeys: ['human:MISSED_MATE'],
+        factualEvidence: { version: 1, classification: 'missed-mate' },
         sourceGameId: 'g3',
         loss: 400,
       },
@@ -39,6 +42,7 @@ describe('buildRecurringErrorPatterns', () => {
     expect(patterns[0]).toMatchObject({
       incidentKey: 'cpu:KNIGHT_FORK',
       label: 'Horquillas de caballo sufridas',
+      classification: 'tactical-punishment',
       positions: 2,
       pending: 1,
       sourceGames: 2,
@@ -56,6 +60,31 @@ describe('buildRecurringErrorPatterns', () => {
     });
   });
 
+  it('no inventa clasificación si falta provenance o las posiciones factuales discrepan', () => {
+    const patterns = buildRecurringErrorPatterns([
+      { id: 'legacy-mate', incidentKeys: ['human:MISSED_MATE'] },
+      {
+        id: 'factual-mate',
+        incidentKeys: ['human:MISSED_MATE'],
+        factualEvidence: { version: 1, classification: 'missed-mate' },
+      },
+      {
+        id: 'fork-a',
+        incidentKeys: ['cpu:KNIGHT_FORK'],
+        factualEvidence: { version: 1, classification: 'tactical-punishment' },
+      },
+      {
+        id: 'fork-b',
+        incidentKeys: ['cpu:KNIGHT_FORK'],
+        factualEvidence: { version: 1, classification: 'blunder' },
+      },
+    ]);
+
+    expect(patterns).toHaveLength(2);
+    expect(patterns.find((pattern) => pattern.incidentKey === 'human:MISSED_MATE')?.classification).toBeNull();
+    expect(patterns.find((pattern) => pattern.incidentKey === 'cpu:KNIGHT_FORK')?.classification).toBeNull();
+  });
+
   it('no cuenta dos veces la misma incidentKey dentro de una sola posición', () => {
     const patterns = buildRecurringErrorPatterns([
       { id: 'one', source: 'autopsy', incidentKeys: ['human:ALLOWED_MATE', 'human:ALLOWED_MATE'] },
@@ -64,6 +93,7 @@ describe('buildRecurringErrorPatterns', () => {
 
     expect(patterns).toHaveLength(1);
     expect(patterns[0].positions).toBe(2);
+    expect(patterns[0].classification).toBeNull();
   });
 
   it('marca una deuda como pagada sólo con dos casos reales distintos resueltos limpiamente', () => {
