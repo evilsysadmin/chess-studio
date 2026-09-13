@@ -22,10 +22,16 @@ export const CHRONICLES_PARTY = Object.freeze([
   Object.freeze({ id: 'knight', name: 'Morcilla', role: 'Caballo logístico', glyph: '♞', maxHp: 8, row: 'back', lane: 'right', attackName: 'Salto brutal', damage: 1, reach: 2 }),
 ]);
 
+const SCAVENGER_POSITIONS = Object.freeze({
+  gate: Object.freeze({ x: 3, y: 1 }),
+  west: Object.freeze({ x: 1, y: 2 }),
+});
+
 export const CHRONICLES_ENEMIES = Object.freeze([
   Object.freeze({ id: 'corrupted-pawn', name: 'peón corrompido', x: 3, y: 5, hpKey: 'enemyHp', maxHp: 6, retaliation: 1, activation: 'always' }),
   Object.freeze({ id: 'gate-jailer', name: 'torre carcelero', x: 3, y: 1, hpKey: 'jailerHp', maxHp: 8, retaliation: 2, activation: 'sigil' }),
   Object.freeze({ id: 'spectral-bishop', name: 'alfil espectral', x: 5, y: 3, hpKey: 'spectralBishopHp', maxHp: 5, retaliation: 1, retaliationReach: 2, activation: 'sigil', optional: true }),
+  Object.freeze({ id: 'scavenger-knight', name: 'caballo carroñero', x: 2, y: 3, hpKey: 'scavengerHp', maxHp: 6, retaliation: 1, activation: 'jailer-down', positionKey: 'scavengerPosition', positions: SCAVENGER_POSITIONS, evadesOnHit: true }),
 ]);
 
 const INITIAL_JOURNAL = Object.freeze({
@@ -57,7 +63,10 @@ export function createChroniclesState() {
     enemyHp: 6,
     jailerHp: 8,
     spectralBishopHp: 5,
+    scavengerHp: 6,
+    scavengerPosition: 'gate',
     spectralLantern: false,
+    blackGateKey: false,
     sigilAwake: false,
     phase: 'explore',
     party: partyState(),
@@ -71,12 +80,15 @@ export function chroniclesTileAt(x, y) {
   return CHRONICLES_MAP[y]?.[x] || '#';
 }
 
-function enemyActive(state, enemy) {
-  return enemy.activation === 'always' || (enemy.activation === 'sigil' && state.sigilAwake);
+export function chroniclesEnemyIsActive(state, enemy) {
+  if (enemy.activation === 'always') return true;
+  if (enemy.activation === 'sigil') return Boolean(state.sigilAwake);
+  if (enemy.activation === 'jailer-down') return Boolean(state.sigilAwake && state.jailerHp <= 0);
+  return false;
 }
 
 function enemyAlive(state, enemy) {
-  return enemyActive(state, enemy) && Number(state[enemy.hpKey] || 0) > 0;
+  return chroniclesEnemyIsActive(state, enemy) && Number(state[enemy.hpKey] || 0) > 0;
 }
 
 export function chroniclesEnemyAlive(state) {
@@ -87,8 +99,17 @@ export function chroniclesActiveEnemies(state) {
   return CHRONICLES_ENEMIES.filter((enemy) => enemyAlive(state, enemy));
 }
 
+export function chroniclesEnemyPosition(state, enemy) {
+  const keyed = enemy.positionKey && enemy.positions ? enemy.positions[state?.[enemy.positionKey]] : null;
+  return keyed || { x: enemy.x, y: enemy.y };
+}
+
 function chroniclesEnemyAt(state, x, y) {
-  return CHRONICLES_ENEMIES.find((enemy) => enemy.x === x && enemy.y === y && enemyAlive(state, enemy)) || null;
+  return CHRONICLES_ENEMIES.find((enemy) => {
+    if (!enemyAlive(state, enemy)) return false;
+    const position = chroniclesEnemyPosition(state, enemy);
+    return position.x === x && position.y === y;
+  }) || null;
 }
 
 export function chroniclesFrontCell(state) {
@@ -145,7 +166,7 @@ function enterTile(state, x, y) {
       id: 'escape',
       title: 'Salida, técnicamente gloriosa',
       body: 'La compañía abandona la cripta. Matthias registra la supervivencia como victoria y omite prudentemente el olor.',
-      sigil: 'VI',
+      sigil: 'VII',
     });
   }
   return { ...state, x, y, turns: state.turns + 1, message: 'Piedra, polvo y la sospecha de que algo respira detrás del muro.' };
@@ -163,24 +184,29 @@ function retaliationTargetId(state, attacker) {
 }
 
 function defeatMessage(attacker, enemy) {
-  if (enemy.id === 'gate-jailer') return `${attacker.name} derriba a la torre carcelero con ${attacker.attackName.toLowerCase()}. La puerta, privada de personal, parece bastante menos autoritaria.`;
+  if (enemy.id === 'gate-jailer') return `${attacker.name} derriba a la torre carcelero con ${attacker.attackName.toLowerCase()}. La puerta parece libre durante una cantidad sospechosamente pequeña de tiempo.`;
   if (enemy.id === 'spectral-bishop') return `${attacker.name} deshace al alfil espectral con ${attacker.attackName.toLowerCase()}. Aziz recupera el Farol Espectral y el grupo recuerda vagamente cómo funciona la circulación.`;
+  if (enemy.id === 'scavenger-knight') return `${attacker.name} derriba al caballo carroñero con ${attacker.attackName.toLowerCase()}. La Llave Negra rebota por el suelo con mucha menos dignidad que su ladrón.`;
   return `${attacker.name} remata al peón corrompido con ${attacker.attackName.toLowerCase()}. Matthias aprueba con una cantidad ofensivamente pequeña de entusiasmo.`;
 }
 
 function rangedHitMessage(attacker, enemy) {
   if (enemy.id === 'gate-jailer') return `${attacker.name} castiga a la torre carcelero desde la retaguardia con ${attacker.attackName.toLowerCase()}. La mole no alcanza a devolver el golpe.`;
   if (enemy.id === 'spectral-bishop') return `${attacker.name} alcanza al alfil espectral con ${attacker.attackName.toLowerCase()}. Esta vez la diagonal del fantasma se queda corta.`;
+  if (enemy.id === 'scavenger-knight') return `${attacker.name} alcanza al caballo carroñero con ${attacker.attackName.toLowerCase()}. El ladrón relincha algo jurídicamente dudoso.`;
   return `${attacker.name} alcanza desde la retaguardia con ${attacker.attackName.toLowerCase()}. El peón sisea, demasiado lejos para devolver el golpe.`;
 }
 
 function rewardForDefeat(state, enemy) {
-  if (enemy.id !== 'spectral-bishop') return state;
-  return {
-    ...state,
-    spectralLantern: true,
-    party: state.party.map((member) => member.hp > 0 ? { ...member, hp: Math.min(member.maxHp, member.hp + 1) } : member),
-  };
+  if (enemy.id === 'spectral-bishop') {
+    return {
+      ...state,
+      spectralLantern: true,
+      party: state.party.map((member) => member.hp > 0 ? { ...member, hp: Math.min(member.maxHp, member.hp + 1) } : member),
+    };
+  }
+  if (enemy.id === 'scavenger-knight') return { ...state, blackGateKey: true };
+  return state;
 }
 
 function journalForDefeat(state, attacker, enemy) {
@@ -188,7 +214,7 @@ function journalForDefeat(state, attacker, enemy) {
     return appendJournal(state, {
       id: 'gate-jailer-falls',
       title: 'La Torre Carcelero pierde la plaza',
-      body: `${attacker.name} firma el golpe final. Varias toneladas de autoridad penitenciaria descubren la gravedad.`,
+      body: `${attacker.name} firma el golpe final. La salida queda libre durante unas décimas; algo relincha en L desde la oscuridad.`,
       sigil: 'V',
     });
   }
@@ -200,12 +226,30 @@ function journalForDefeat(state, attacker, enemy) {
       sigil: 'IV',
     });
   }
+  if (enemy.id === 'scavenger-knight') {
+    return appendJournal(state, {
+      id: 'scavenger-knight-falls',
+      title: 'La persecución termina con devolución de propiedad',
+      body: `${attacker.name} abate al caballo carroñero. La Llave Negra vuelve al inventario y Matthias propone no auditar el resto de sus bolsillos.`,
+      sigil: 'VI',
+    });
+  }
   return appendJournal(state, {
     id: 'corrupted-pawn-falls',
     title: 'Primer contacto, pésima diplomacia',
     body: `${attacker.name} elimina al peón corrompido. El grupo concluye que la negociación habría sido innecesariamente larga.`,
     sigil: 'II',
   });
+}
+
+function evadeAfterHit(state, enemy) {
+  if (!enemy.evadesOnHit || enemy.id !== 'scavenger-knight') return state;
+  const scavengerPosition = state.scavengerPosition === 'gate' ? 'west' : 'gate';
+  return {
+    ...state,
+    scavengerPosition,
+    message: `${state.message} El caballo se lleva la Llave Negra y salta en L hacia otra esquina.`,
+  };
 }
 
 function resolveAttack(state, memberId) {
@@ -225,7 +269,7 @@ function resolveAttack(state, memberId) {
 
   const retaliationReach = Number(enemy.retaliationReach ?? 1);
   if (distance > retaliationReach) {
-    return { ...state, [enemy.hpKey]: nextHp, turns: state.turns + 1, message: rangedHitMessage(attacker, enemy) };
+    return evadeAfterHit({ ...state, [enemy.hpKey]: nextHp, turns: state.turns + 1, message: rangedHitMessage(attacker, enemy) }, enemy);
   }
 
   const targetId = retaliationTargetId(state, attacker);
@@ -249,12 +293,13 @@ function resolveAttack(state, memberId) {
       sigil: '†',
     });
   }
-  return nextState;
+  return evadeAfterHit(nextState, enemy);
 }
 
 function blockingEnemyMessage(enemy) {
   if (enemy.id === 'gate-jailer') return 'La torre carcelero sella la puerta negra. Es una cerradura de varias toneladas y bastante mal humor.';
   if (enemy.id === 'spectral-bishop') return 'El alfil espectral ocupa la nave lateral. La cortesía religiosa termina exactamente a una casilla de distancia.';
+  if (enemy.id === 'scavenger-knight') return 'El caballo carroñero planta la Llave Negra delante de la salida como si acabara de inventar el peaje.';
   return 'El peón corrompido bloquea el corredor. Convéncelo con violencia reglamentaria.';
 }
 
@@ -276,6 +321,7 @@ export function chroniclesReduce(state, action) {
   const blockingEnemy = chroniclesEnemyAt(state, x, y);
   if (blockingEnemy) return withMessage(state, blockingEnemyMessage(blockingEnemy));
   if (tile === 'X' && !state.sigilAwake) return withMessage(state, 'La puerta negra no cede. El sello de la cripta sigue dormido.');
+  if (tile === 'X' && state.jailerHp <= 0 && !state.blackGateKey) return withMessage(state, 'La puerta está libre, sí. La Llave Negra no: el caballo carroñero se la ha llevado saltando como un imbécil reglamentario.');
   return enterTile(state, x, y);
 }
 
@@ -284,5 +330,6 @@ export function chroniclesObjective(state) {
   if (state.enemyHp > 0) return 'Derrota al peón corrompido';
   if (!state.sigilAwake) return 'Encuentra y pisa el sello';
   if (state.jailerHp > 0) return 'Derrota a la torre carcelero';
+  if (state.scavengerHp > 0) return 'Caza al caballo carroñero';
   return 'Cruza la puerta negra';
 }

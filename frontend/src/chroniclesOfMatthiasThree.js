@@ -1,7 +1,14 @@
 import * as THREE from 'three';
-import { CHRONICLES_DIRECTIONS, CHRONICLES_ENEMIES, CHRONICLES_MAP } from './chroniclesOfMatthias.js';
+import {
+  CHRONICLES_DIRECTIONS,
+  CHRONICLES_ENEMIES,
+  CHRONICLES_MAP,
+  chroniclesEnemyIsActive,
+  chroniclesEnemyPosition,
+} from './chroniclesOfMatthias.js';
 import { buildChroniclesCharacter, buildCorruptedPawn, buildGateJailer } from './chroniclesOfMatthiasArt.js';
 import { buildChroniclesDungeonDressing } from './chroniclesOfMatthiasDungeonArt.js';
+import { buildScavengerKnight } from './chroniclesOfMatthiasScavengerKnight.js';
 import { buildSpectralBishop, buildSpectralChapel } from './chroniclesOfMatthiasSpectralBishop.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 
@@ -65,6 +72,7 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
     'corrupted-pawn': buildCorruptedPawn({ coarsePointer }),
     'gate-jailer': buildGateJailer({ coarsePointer }),
     'spectral-bishop': buildSpectralBishop({ coarsePointer }),
+    'scavenger-knight': buildScavengerKnight({ coarsePointer }),
   };
   CHRONICLES_ENEMIES.forEach((enemyDefinition) => {
     const enemy = enemyModels[enemyDefinition.id];
@@ -75,6 +83,7 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
     enemy.rotation.y = enemyDefinition.id === 'gate-jailer' ? 0 : Math.PI;
     enemy.userData.chroniclesBaseYaw = enemy.rotation.y;
     enemy.userData.chroniclesBaseScale = enemy.scale.x;
+    enemy.userData.chroniclesTargetPosition = new THREE.Vector3(enemyCell.x, 0, enemyCell.z);
     scene.add(enemy);
   });
 
@@ -188,6 +197,8 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
   let attackFxConfig = ATTACK_FX.matthias;
   const enemyHitStartedAt = new Map();
   const enemyDeathStartedAt = new Map();
+  const enemyMoveStartedAt = new Map();
+  const enemyMoveFrom = new Map();
   const clock = new THREE.Clock();
 
   camera.position.copy(desiredPosition);
@@ -203,22 +214,37 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
 
   function syncState(state) {
     const now = clock.getElapsedTime();
+    const previousState = latestState;
     CHRONICLES_ENEMIES.forEach((enemyDefinition) => {
-      const previousHp = latestState?.[enemyDefinition.hpKey];
+      const previousHp = previousState?.[enemyDefinition.hpKey];
       const nextHp = state[enemyDefinition.hpKey];
       if (previousHp != null && nextHp < previousHp) enemyHitStartedAt.set(enemyDefinition.id, now);
       if (!reducedMotion && previousHp > 0 && nextHp === 0) enemyDeathStartedAt.set(enemyDefinition.id, now);
     });
-    latestState = state;
     desiredPosition = worldForCell(state.x, state.y);
     const direction = CHRONICLES_DIRECTIONS[state.direction];
     desiredYaw = Math.atan2(-direction.dx, -direction.dy);
     CHRONICLES_ENEMIES.forEach((enemyDefinition) => {
       const enemy = dungeon.enemies[enemyDefinition.id];
       if (!enemy) return;
-      const active = enemyDefinition.activation === 'always' || state.sigilAwake;
+      const active = chroniclesEnemyIsActive(state, enemyDefinition);
       const hp = state[enemyDefinition.hpKey];
       const deathStartedAt = enemyDeathStartedAt.get(enemyDefinition.id);
+      const currentCell = chroniclesEnemyPosition(state, enemyDefinition);
+      let previousCell = previousState ? chroniclesEnemyPosition(previousState, enemyDefinition) : { x: enemyDefinition.x, y: enemyDefinition.y };
+      if (enemyDefinition.id === 'scavenger-knight' && previousState?.jailerHp > 0 && state.jailerHp <= 0) {
+        previousCell = { x: enemyDefinition.x, y: enemyDefinition.y };
+      }
+      if (!reducedMotion && (previousCell.x !== currentCell.x || previousCell.y !== currentCell.y)) {
+        const from = worldForCell(previousCell.x, previousCell.y);
+        from.y = 0;
+        enemyMoveFrom.set(enemyDefinition.id, from);
+        enemyMoveStartedAt.set(enemyDefinition.id, now);
+      }
+      const target = worldForCell(currentCell.x, currentCell.y);
+      target.y = 0;
+      enemy.userData.chroniclesTargetPosition = target;
+      if (reducedMotion) enemy.position.copy(target);
       enemy.visible = active && (hp > 0 || (!reducedMotion && deathStartedAt != null));
       const enemyGlow = enemy.userData.chroniclesGlowMaterials || [];
       enemyGlow.forEach((glow) => {
@@ -226,6 +252,7 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
         glow.emissiveIntensity = hp === 1 ? baseGlow + 1.1 : baseGlow;
       });
     });
+    latestState = state;
     (dungeon.spectralChapel.userData.chroniclesGlowMaterials || []).forEach((glow) => {
       glow.emissiveIntensity = state.sigilAwake ? 1.25 : 0.18;
     });
@@ -284,20 +311,38 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
       CHRONICLES_ENEMIES.forEach((enemyDefinition, index) => {
         const enemy = dungeon.enemies[enemyDefinition.id];
         if (!enemy) return;
-        const active = enemyDefinition.activation === 'always' || latestState?.sigilAwake;
+        const active = latestState ? chroniclesEnemyIsActive(latestState, enemyDefinition) : enemyDefinition.activation === 'always';
         const hp = latestState?.[enemyDefinition.hpKey] ?? enemyDefinition.maxHp;
         const baseYaw = enemy.userData.chroniclesBaseYaw || 0;
         const baseScale = enemy.userData.chroniclesBaseScale || 1;
         const hitStartedAt = enemyHitStartedAt.get(enemyDefinition.id) ?? -1;
         const deathStartedAt = enemyDeathStartedAt.get(enemyDefinition.id);
+        const target = enemy.userData.chroniclesTargetPosition || enemy.position;
+        const moveStartedAt = enemyMoveStartedAt.get(enemyDefinition.id) ?? -1;
+        const moveFrom = enemyMoveFrom.get(enemyDefinition.id);
+        const moveElapsed = time - moveStartedAt;
+        let jumpLift = 0;
+        let jumpTwist = 0;
+
+        if (moveFrom && moveElapsed >= 0 && moveElapsed < 0.46) {
+          const progress = moveElapsed / 0.46;
+          const eased = progress * progress * (3 - 2 * progress);
+          enemy.position.x = THREE.MathUtils.lerp(moveFrom.x, target.x, eased);
+          enemy.position.z = THREE.MathUtils.lerp(moveFrom.z, target.z, eased);
+          jumpLift = Math.sin(progress * Math.PI) * 1.35;
+          jumpTwist = Math.sin(progress * Math.PI) * 1.05;
+        } else {
+          enemy.position.x = target.x;
+          enemy.position.z = target.z;
+        }
 
         if (active && hp > 0) {
           const hitElapsed = time - hitStartedAt;
           const hitKick = hitElapsed >= 0 && hitElapsed < 0.24 ? Math.sin((hitElapsed / 0.24) * Math.PI) : 0;
           enemy.visible = true;
-          enemy.rotation.y = baseYaw + Math.sin(time * 0.9 + index) * 0.1 + hitKick * 0.16;
+          enemy.rotation.y = baseYaw + Math.sin(time * 0.9 + index) * 0.1 + hitKick * 0.16 + jumpTwist;
           enemy.rotation.z = hitKick * -0.08;
-          enemy.position.y = Math.sin(time * 1.7 + index * 0.8) * 0.018;
+          enemy.position.y = jumpLift + Math.sin(time * 1.7 + index * 0.8) * 0.018;
           enemy.scale.setScalar(baseScale + hitKick * 0.07);
         } else if (active && deathStartedAt != null) {
           const deathElapsed = time - deathStartedAt;
