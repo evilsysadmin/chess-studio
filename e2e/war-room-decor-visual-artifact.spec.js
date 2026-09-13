@@ -86,26 +86,73 @@ function clipFromRatio(scene, viewport, { x, y, width, height, scale = 1 }) {
   };
 }
 
-async function captureClip(context, page, path, clip) {
+async function captureSceneOnce(context, page, clip) {
   const session = await context.newCDPSession(page);
   try {
     const { data } = await session.send('Page.captureScreenshot', {
       format: 'png',
       fromSurface: true,
       captureBeyondViewport: false,
-      clip,
+      clip: { ...clip, scale: 1 },
     });
-    await writeFile(path, Buffer.from(data, 'base64'));
+    return data;
   } finally {
     await session.detach();
   }
 }
 
+async function deriveCropsFromScene(page, scenePng, sourceClip, captures) {
+  return page.evaluate(async ({ png, source, items }) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${png}`;
+    await image.decode();
+
+    const sourceScaleX = image.naturalWidth / source.width;
+    const sourceScaleY = image.naturalHeight / source.height;
+    const outputs = [];
+
+    for (const item of items) {
+      const outputScale = Number.isFinite(item.clip.scale) ? item.clip.scale : 1;
+      const outputWidth = Math.max(1, Math.round(item.clip.width * outputScale));
+      const outputHeight = Math.max(1, Math.round(item.clip.height * outputScale));
+      const canvas = document.createElement('canvas');
+      canvas.width = outputWidth;
+      canvas.height = outputHeight;
+      const context2d = canvas.getContext('2d');
+      if (!context2d) throw new Error(`2D canvas unavailable while deriving ${item.name}`);
+      context2d.imageSmoothingEnabled = true;
+      context2d.imageSmoothingQuality = 'high';
+
+      const sourceX = Math.max(0, (item.clip.x - source.x) * sourceScaleX);
+      const sourceY = Math.max(0, (item.clip.y - source.y) * sourceScaleY);
+      const sourceWidth = Math.min(image.naturalWidth - sourceX, item.clip.width * sourceScaleX);
+      const sourceHeight = Math.min(image.naturalHeight - sourceY, item.clip.height * sourceScaleY);
+      context2d.drawImage(
+        image,
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+        0,
+        0,
+        outputWidth,
+        outputHeight,
+      );
+      outputs.push({
+        name: item.name,
+        data: canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, ''),
+      });
+    }
+
+    return outputs;
+  }, { png: scenePng, source: sourceClip, items: captures });
+}
+
 for (const profile of PROFILES) {
   test(`War Room decor · scene-first captures ${profile.label}`, async () => {
-    // Desktop writes eight art-review crops and is materially heavier than the
-    // four-crop Android pass. Keep an explicit budget instead of keying it to a
-    // rendering-quality property that no longer exists on these profiles.
+    // SwiftShader was spending minutes re-rasterizing the same frozen WebGL
+    // frame once per crop. Capture the scene once, then derive review crops on a
+    // cheap 2D canvas. The visual evidence stays coherent and deterministic.
     test.setTimeout(profile.hasTouch ? 120_000 : 180_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
@@ -148,20 +195,29 @@ for (const profile of PROFILES) {
         clip: clipFromRatio(scene, profile.viewport, capture.ratio),
       }));
 
-      for (const capture of captures) {
-        await captureClip(
-          context,
-          page,
+      const sceneCapture = captures.find(({ name }) => name === 'scene');
+      if (!sceneCapture) throw new Error('War Room scene capture definition missing');
+      const scenePng = await captureSceneOnce(context, page, sceneCapture.clip);
+      await writeFile(
+        `${ARTIFACT_DIR}/war-room-${profile.label}-scene.png`,
+        Buffer.from(scenePng, 'base64'),
+      );
+
+      const cropCaptures = captures.filter(({ name }) => name !== 'scene');
+      const derived = await deriveCropsFromScene(page, scenePng, sceneCapture.clip, cropCaptures);
+      for (const capture of derived) {
+        await writeFile(
           `${ARTIFACT_DIR}/war-room-${profile.label}-${capture.name}.png`,
-          capture.clip,
+          Buffer.from(capture.data, 'base64'),
         );
       }
 
       await writeFile(
         `${ARTIFACT_DIR}/war-room-${profile.label}-decor-manifest.json`,
         `${JSON.stringify({
-          schema: 1,
+          schema: 2,
           purpose: 'scene-first War Room decor review',
+          captureStrategy: 'single-webgl-frame-derived-crops',
           profile,
           scene: {
             x: Number(scene.x.toFixed(2)),
