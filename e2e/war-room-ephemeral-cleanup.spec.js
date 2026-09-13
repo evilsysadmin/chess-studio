@@ -38,7 +38,7 @@ async function switchTo3D(page) {
   return expectWarRoom(page);
 }
 
-test('War Room · inspección, foco y cámara efímeros se limpian al desmontar y remontar 3D', async ({ page }) => {
+test('War Room · inspect, foco y cámara privados se limpian sin borrar selección compartida', async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 1440, height: 960 });
   await mockApi(page);
@@ -48,8 +48,8 @@ test('War Room · inspección, foco y cámara efímeros se limpian al desmontar 
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   const { board3d, canvas } = await expectWarRoom(page);
 
-  // Dejamos estado deliberadamente no canónico dentro del renderer: foco lejos
-  // de la casilla inicial, selección activa, modo inspección y cámara arrastrada.
+  // La selección pertenece al estado común del tablero y debe sobrevivir al
+  // cambio de renderer. Inspect, foco de teclado y cámara sí son privados de 3D.
   await navigateWarRoomKeyboard(canvas, board3d, 'e2');
   await canvas.press('Enter');
   await expect(board3d).toHaveAttribute('data-board3d-selected', 'e2');
@@ -67,14 +67,12 @@ test('War Room · inspección, foco y cámara efímeros se limpian al desmontar 
   await page.mouse.move(box.x + box.width * 0.68, box.y + box.height * 0.42, { steps: 5 });
   await page.mouse.up();
 
-  // Cambiar renderer debe destruir todo el estado privado anterior; sólo la
-  // partida común puede sobrevivir al desmontaje.
   await switchTo2D(page);
   const remounted = await switchTo3D(page);
 
   await expect(remounted.board3d).toHaveAttribute('data-board3d-inspect', 'false');
-  await expect(remounted.board3d).toHaveAttribute('data-board3d-selected', '');
-  await expect(remounted.board3d).toHaveAttribute('data-board3d-legal-target-count', '0');
+  await expect(remounted.board3d).toHaveAttribute('data-board3d-selected', 'e2');
+  await expect(remounted.board3d).toHaveAttribute('data-board3d-legal-target-count', '2');
   await expect(remounted.board3d).toHaveAttribute('data-board3d-focused', 'e1');
   await expect(page.getByRole('button', { name: 'Inspeccionar', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByRole('button', { name: 'Volver a jugar', exact: true })).toHaveCount(0);
@@ -104,7 +102,7 @@ test('War Room · abandonar desde 3D destruye renderer y snapshot activo antes d
   await page.getByRole('button', { name: 'Inspeccionar', exact: true }).click();
   await expect(board3d).toHaveAttribute('data-board3d-inspect', 'true');
 
-  await page.getByRole('button', { name: 'Abandonar partida', exact: true }).click();
+  await page.getByRole('button', { name: 'Abandonar', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '¿Abandonar la partida?' });
   await expect(dialog).toBeVisible();
   await dialog.getByRole('button', { name: /Cancelar sin penalización|Abandonar y asumir resultado/ }).click();
