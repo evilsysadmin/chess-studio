@@ -14,6 +14,7 @@ const ArenaExperiment = lazy(() => import('./ArenaExperiment.jsx'));
 const PawnTrailblazer = lazy(() => import('./PawnTrailblazer.jsx'));
 const PawnSlug = lazy(() => import('./PawnSlug.jsx'));
 const Chesscom = lazy(() => import('./Chesscom.jsx'));
+const ChroniclesOfMatthias = lazy(() => import('./ChroniclesOfMatthias.jsx'));
 
 const GLYPH={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟','':''};
 const BRUSHES=['','K','Q','R','B','N','P','k','q','r','b','n','p'];
@@ -39,7 +40,7 @@ export default function LabScreen({ onExit, onStart }){
   const [difficulty,setDifficulty]=useState(50);
   const [error,setError]=useState('');
 
-  const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug' || labMode==='chesscom';
+  const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug' || labMode==='chesscom' || labMode==='chronicles';
   useEscapeToClose(() => labMode==='hub' ? onExit() : setLabMode('hub'), { disabled: childOwnsBack });
 
   const fen=useMemo(()=>fenFromLabState({map,turn,castling,ep,halfmove,fullmove}),[map,turn,castling,ep,halfmove,fullmove]);
@@ -74,6 +75,7 @@ export default function LabScreen({ onExit, onStart }){
   if (labMode==='trailblazer') return <Suspense fallback={<LabModeFallback />}><PawnTrailblazer onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='pawnslug') return <Suspense fallback={<LabModeFallback />}><PawnSlug onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chesscom') return <Suspense fallback={<LabModeFallback />}><Chesscom onExit={()=>setLabMode('hub')} /></Suspense>;
+  if (labMode==='chronicles') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthias onExit={()=>setLabMode('hub')} /></Suspense>;
 
   return <div className="menu tournament-panel lab-screen">
     <button className="back-link" onClick={labMode==='hub'?onExit:()=>setLabMode('hub')}>← {labMode==='hub'?'Volver al menú':'Experimentos geniales'}</button>
@@ -85,6 +87,16 @@ export default function LabScreen({ onExit, onStart }){
           <h2>Experimentos geniales</h2>
           <p>Modos secundarios y prototipos, fuera del camino principal. Entra si te apetece: ninguno es necesario para disfrutar Chess Studio.</p>
         </section>
+
+        <span className="experiments-group-label">Aventura imposible</span>
+        <div className="experiments-grid experiments-tactical-deck">
+          <button type="button" className="experiments-card experiment-chronicles is-featured" onClick={()=>setLabMode('chronicles')}>
+            <span className="section-label">{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'Book I')}</span>
+            <strong>Chronicles of Matthias</strong>
+            <small>Dungeon crawler 3D en primera persona. Grupo de cuatro, combate por casillas y una cripta que piensa como un tablero.</small>
+            <b>Descender a la cripta →</b>
+          </button>
+        </div>
 
         <span className="experiments-group-label">Arcade</span>
         <div className="lab-arcade-zone">
