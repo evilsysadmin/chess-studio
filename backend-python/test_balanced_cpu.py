@@ -2,6 +2,7 @@ import chess
 
 import balanced_cpu as balanced
 from api_models import GhostStyle
+from engine_analysis import RootCandidateAnalysis
 
 
 BALANCED_PROFILE = {'balance': True}
@@ -43,9 +44,13 @@ def test_near_best_candidates_respect_score_gap():
     base = chess.Move.from_uci('e2e4')
     near = chess.Move.from_uci('d2d4')
     far = chess.Move.from_uci('g1f3')
-    scored = [(base, 100.0), (near, 76.0), (far, 20.0)]
+    analyzed = [
+        RootCandidateAnalysis(base, 100.0, None),
+        RootCandidateAnalysis(near, 76.0, None),
+        RootCandidateAnalysis(far, 20.0, None),
+    ]
     candidates = balanced._near_best_candidates(
-        scored,
+        analyzed,
         base_move=base,
         base_score=100.0,
         maximizing=True,
@@ -53,6 +58,39 @@ def test_near_best_candidates_respect_score_gap():
     )
     assert near in candidates
     assert far not in candidates
+
+
+def test_balanced_cpu_consumes_ranked_root_facade(monkeypatch):
+    board = chess.Board()
+    base = chess.Move.from_uci('e2e4')
+    near = chess.Move.from_uci('d2d4')
+    seen = {}
+
+    monkeypatch.setattr(
+        balanced,
+        'get_cpu_move',
+        lambda *_args, **_kwargs: {'from': 'e2', 'to': 'e4', 'san': 'e4'},
+    )
+    monkeypatch.setattr(balanced.random, 'random', lambda: 0.0)
+    monkeypatch.setattr(balanced.random, 'choice', lambda moves: moves[0])
+
+    def fake_top(_board, **kwargs):
+        seen.update(kwargs)
+        return [
+            RootCandidateAnalysis(base, 40.0, None),
+            RootCandidateAnalysis(near, 20.0, None),
+        ]
+
+    monkeypatch.setattr(balanced, 'top_root_candidates', fake_top)
+
+    move = balanced.get_balanced_cpu_move(board, 70, BALANCED_PROFILE)
+
+    assert move is not None
+    assert move['from'] == 'd2'
+    assert move['to'] == 'd4'
+    assert seen['depth'] == 2
+    assert seen['limit'] == 20
+    assert 'deadline' in seen
 
 
 def test_balanced_cpu_never_overrides_forced_mate(monkeypatch):
