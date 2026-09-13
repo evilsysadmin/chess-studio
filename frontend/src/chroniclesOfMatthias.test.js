@@ -38,9 +38,10 @@ describe('Chronicles of Matthias vertical slice', () => {
 
     state = act(
       state,
-      'turn-right', 'forward', 'forward',
-      'turn-left', 'forward', 'forward', 'forward', 'forward',
+      'forward',
       'turn-left', 'forward', 'forward',
+      'turn-right', 'forward', 'forward',
+      'turn-right', 'forward', 'forward',
     );
     expect(state.phase).toBe('escaped');
     expect(chroniclesObjective(state)).toBe('Vertical slice completado');
