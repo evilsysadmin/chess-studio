@@ -50,6 +50,7 @@ export const PAWN_SLUG_SFX_RESOURCE_META = Object.freeze({
   noiseStrategy: 'shared-random-window',
   weaponPannerStrategy: 'shared-player-enemy',
   preferenceReadStrategy: 'once-per-cue',
+  mutedCueStrategy: 'skip-before-audio-graph',
 });
 
 let ctx = null;
@@ -67,6 +68,11 @@ function profileVolume() {
   const settings = loadPawnSlugSettings();
   return Math.max(0, Math.min(1, Number(settings.masterVolume) || 0))
     * Math.max(0, Math.min(1, Number(settings.sfxVolume) || 0));
+}
+
+export function pawnSlugSfxVolumeIsAudible(volume = 0) {
+  const safe = Math.max(0, Math.min(1, Number(volume) || 0));
+  return safe > 0.001;
 }
 
 function createWeaponPanner(audio, pan) {
@@ -92,12 +98,13 @@ function ensureAudioGraph() {
 }
 
 function beginSoundCue() {
+  const volume = profileVolume();
+  if (!pawnSlugSfxVolumeIsAudible(volume)) return null;
   const audio = ensureAudioGraph();
   if (!audio || !master) return null;
-  const volume = profileVolume();
   master.gain.value = 0.055 * volume;
   if (audio.state === 'suspended') void audio.resume().catch(() => {});
-  return volume > 0.001 ? audio : null;
+  return audio;
 }
 
 function ensureSharedNoiseBuffer(audio) {
