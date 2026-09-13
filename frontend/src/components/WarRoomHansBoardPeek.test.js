@@ -13,7 +13,7 @@ describe('Hans board peek', () => {
     expect(suggestion.line).not.toBe(`Yo probaría ${suggestion.san}.`);
   });
 
-  it('usa el azar sólo para escoger dentro del conjunto legal', () => {
+  it('conserva algo de variedad, pero sólo dentro de las jugadas plausibles mejor puntuadas', () => {
     const chess = new Chess();
     const first = pickHansLegalSuggestion(chess.fen(), 0);
     const last = pickHansLegalSuggestion(chess.fen(), 0.999999);
@@ -22,13 +22,20 @@ describe('Hans board peek', () => {
     expect(first.san).not.toBe(last.san);
   });
 
-  it('describe un caballo con origen y destino sin exigir notación SAN al usuario', () => {
-    const chess = new Chess('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
-    const legal = chess.moves({ verbose: true });
-    const knightIndex = legal.findIndex((move) => move.piece === 'n');
-    const suggestion = pickHansLegalSuggestion(chess.fen(), (knightIndex + 0.1) / legal.length);
+  it('prefiere ganar una dama con caballo a una jugada legal cualquiera', () => {
+    const chess = new Chess('7k/8/8/4q3/8/5N2/8/7K w - - 0 1');
+    const suggestion = pickHansLegalSuggestion(chess.fen(), 0.7);
+    expect(suggestion).toBeTruthy();
+    expect(suggestion.san).toBe('Nxe5');
     expect(suggestion.piece).toBe('n');
-    expect(suggestion.line).toMatch(/^Yo probaría caballo de [a-h][1-8] a [a-h][1-8]\.$/);
+    expect(suggestion.line).toBe('Yo probaría caballo de f3 a e5.');
+  });
+
+  it('prioriza un mate en una sobre cualquier consejo decorativo', () => {
+    const chess = new Chess('7k/8/6QK/8/8/8/8/8 w - - 0 1');
+    const suggestion = pickHansLegalSuggestion(chess.fen(), 0.99);
+    expect(suggestion).toBeTruthy();
+    expect(suggestion.san).toContain('#');
   });
 
   it('no inventa jugadas si el FEN es inválido o la partida terminó', () => {
