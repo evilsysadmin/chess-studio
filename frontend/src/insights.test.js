@@ -242,7 +242,7 @@ describe('generateCoaching', () => {
   });
 
   it('mantiene el coaching de rating en hechos primer-último, no en causas o trayectorias', () => {
-    const lower = generateCoaching(base, { incidents: {} }, { puzzlesSolved: 8 });
+    const lower = generateCoaching(base, { incidents: {} }, { puzzlesSolved: 8 })
       .find((item) => item.evidence?.kind === 'rating');
     const higher = generateCoaching({
       ...base,
