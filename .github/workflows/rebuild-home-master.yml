@@ -1,0 +1,72 @@
+name: Home · canonical master reconstruction
+
+on:
+  push:
+    branches:
+      - fix/home-single-matthias-sharp-desktop
+    paths:
+      - .github/workflows/rebuild-home-master.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: home-canonical-master-rebuild
+  cancel-in-progress: false
+
+jobs:
+  rebuild:
+    if: ${{ !contains(github.event.head_commit.message || '', '[home-master-ready]') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/home-single-matthias-sharp-desktop
+          fetch-depth: 1
+
+      - name: Reconstruct and verify approved master
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHUNKS: >-
+            f565935e9168d54f62a00f88bbf534937bfafe56
+            e41b76f2cc084184836d1e70a97ec604ba5ab4a4
+            e1b400c704bcfffcaecae850ce6189e4c55cae7f
+            5a4e467cbdee73d359301ef88775b544dde5322b
+            5f104bf34084c60b6ed871f4c8ec115780f7b151
+            a35606b3afa2f67ff3e9cd6566aa7daf606df2bb
+            6a1a7e05ac3526985b414fde48b2f79991f50b39
+            268897cebc185409fcf94b22c46570cdfdb33cb7
+            1ce506680f86514fd514f2f1a4815045a84e52c0
+            29bf99a1d2f07da5d40d8709a0b36a276ebdbc6e
+            aebf167229ede01b3e519106d160406bd230c383
+            53e856dcaa21d92b1da6cafab0063688e923742d
+            54a55e2bb807fc247ea2636e594340390e1fcb9f
+            2acda942ff6d8d623b021525a65bc31db56f295c
+            2dfe932ea65b8a201481300809a6b3805c86824a
+        run: |
+          set -euo pipefail
+          target=/tmp/great-hall-dungeon.webp
+          : > "$target"
+          for sha in $CHUNKS; do
+            curl --fail --silent --show-error \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/git/blobs/${sha}" \
+              | python3 -c 'import base64,json,sys; sys.stdout.buffer.write(base64.b64decode(json.load(sys.stdin)["content"]))' \
+              >> "$target"
+          done
+          test "$(wc -c < "$target")" -eq 172392
+          test "$(git hash-object "$target")" = "f898f1e302e6f7358601b4da0ca8e7c50b41fe08"
+          cp "$target" frontend/src/assets/home-canonical/great-hall-dungeon.webp
+
+      - name: Commit verified binary and self-remove transport workflow
+        run: |
+          set -euo pipefail
+          rm .github/workflows/rebuild-home-master.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/assets/home-canonical/great-hall-dungeon.webp .github/workflows/rebuild-home-master.yml
+          git diff --cached --check
+          git commit -m "fix(home): install canonical master binary [home-master-ready]"
+          git push origin HEAD:fix/home-single-matthias-sharp-desktop
