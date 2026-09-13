@@ -37,48 +37,64 @@ function dispose(root) {
 }
 
 describe('War Room armor articulation', () => {
-  it('cierra placas y pulgar sobre la empuñadura para que la espada lea como agarrada, no flotando', () => {
+  it('envuelve visualmente la empuñadura con dedos y pulgar acorazados, no solo contacto matemático', () => {
     const armor = armorFixture('war-room-teutonic-armor-left');
     const leftHand = armor.children.find((child) => child.name === 'war-room-armor-gauntlet' && child.position.x < 0);
     const rightHand = armor.children.find((child) => child.name === 'war-room-armor-gauntlet' && child.position.x > 0);
 
     expect(bindArmorGauntletFingerPlates(armor, 1)).toBe(6);
-    expect(armor.userData.warRoomGauntletArticulation).toBe('parented-finger-plates-grip-v2');
+    expect(armor.userData.warRoomGauntletArticulation).toBe('parented-finger-plates-grip-v3');
     expect(armor.userData.warRoomGauntletFingerPlateCount).toBe(6);
     expect(armor.userData.warRoomGauntletThumbPlateCount).toBe(2);
-    expect(armor.userData.warRoomGauntletGrip).toBe('zweihander-contact-v2');
+    expect(armor.userData.warRoomGauntletGripFingerCount).toBe(6);
+    expect(armor.userData.warRoomGauntletGrip).toBe('zweihander-wrap-v3');
 
     const leftPlates = leftHand.children.filter((child) => child.name === 'war-room-armor-gauntlet-finger-plate');
     expect(leftPlates).toHaveLength(3);
-    expect(leftPlates.every((plate) => plate.userData.warRoomArticulation === 'gauntlet-local-v2')).toBe(true);
-    expect(leftPlates.every((plate) => plate.userData.warRoomGripContact === 'zweihander-contact-v2')).toBe(true);
-    expect(leftPlates[0].position.x).toBeGreaterThan(0.03);
-    expect(leftPlates[0].position.z).toBeGreaterThan(0.06);
+    expect(leftPlates.every((plate) => plate.userData.warRoomArticulation === 'gauntlet-local-v3')).toBe(true);
+    expect(leftPlates.every((plate) => plate.userData.warRoomGripContact === 'zweihander-wrap-v3')).toBe(true);
+    expect(leftPlates[0].position.x).toBeGreaterThan(0.04);
+    expect(leftPlates[0].position.z).toBeGreaterThan(0.05);
 
     const leftThumb = leftHand.getObjectByName('war-room-armor-gauntlet-thumb-plate');
     const rightThumb = rightHand.getObjectByName('war-room-armor-gauntlet-thumb-plate');
     expect(leftThumb).toBeTruthy();
     expect(rightThumb).toBeTruthy();
-    expect(leftThumb.userData.warRoomGripContact).toBe('zweihander-contact-v2');
+    expect(leftThumb.userData.warRoomGripContact).toBe('zweihander-wrap-v3');
+
+    const leftGripFingers = leftHand.children.filter((child) => child.name === 'war-room-armor-gauntlet-grip-finger');
+    const rightGripFingers = rightHand.children.filter((child) => child.name === 'war-room-armor-gauntlet-grip-finger');
+    expect(leftGripFingers).toHaveLength(3);
+    expect(rightGripFingers).toHaveLength(3);
+    expect(leftGripFingers.every((finger) => finger.userData.warRoomGripContact === 'zweihander-wrap-v3')).toBe(true);
 
     armor.updateMatrixWorld(true);
     const leftThumbWorld = leftThumb.getWorldPosition(new THREE.Vector3());
     const rightThumbWorld = rightThumb.getWorldPosition(new THREE.Vector3());
     expect(Math.abs(leftThumbWorld.x)).toBeLessThan(0.035);
     expect(Math.abs(rightThumbWorld.x)).toBeLessThan(0.035);
-    expect(leftThumbWorld.z).toBeCloseTo(0.445, 3);
-    expect(rightThumbWorld.z).toBeCloseTo(0.445, 3);
+    expect(leftThumbWorld.z).toBeCloseTo(0.454, 3);
+    expect(rightThumbWorld.z).toBeCloseTo(0.454, 3);
+
+    for (const finger of [...leftGripFingers, ...rightGripFingers]) {
+      const world = finger.getWorldPosition(new THREE.Vector3());
+      expect(Math.abs(world.x)).toBeLessThan(0.035);
+      expect(world.z).toBeGreaterThan(0.44);
+      expect(finger.rotation.z).toBeGreaterThan(1.45);
+      expect(finger.rotation.z).toBeLessThan(1.7);
+    }
 
     const before = new THREE.Vector3();
-    leftPlates[0].getWorldPosition(before);
+    leftGripFingers[0].getWorldPosition(before);
     leftHand.position.y = 1.5;
     armor.updateMatrixWorld(true);
     const after = new THREE.Vector3();
-    leftPlates[0].getWorldPosition(after);
+    leftGripFingers[0].getWorldPosition(after);
     expect(after.y - before.y).toBeCloseTo(0.61, 5);
 
     expect(bindArmorGauntletFingerPlates(armor, 1)).toBe(0);
     expect(leftHand.children.filter((child) => child.name === 'war-room-armor-gauntlet-thumb-plate')).toHaveLength(1);
+    expect(leftHand.children.filter((child) => child.name === 'war-room-armor-gauntlet-grip-finger')).toHaveLength(3);
     dispose(armor);
   });
 
@@ -88,19 +104,23 @@ describe('War Room armor articulation', () => {
     root.add(armorFixture('war-room-teutonic-armor-right'));
 
     expect(bindWarRoomArmorArticulation(root, 1)).toBe(12);
-    expect(root.userData.warRoomArmorArticulation).toBe('gauntlet-zweihander-grip-v2');
+    expect(root.userData.warRoomArmorArticulation).toBe('gauntlet-zweihander-wrap-v3');
     for (const name of ['war-room-teutonic-armor-left', 'war-room-teutonic-armor-right']) {
       const armor = root.getObjectByName(name);
       expect(armor.userData.warRoomGauntletFingerPlateCount).toBe(6);
       expect(armor.userData.warRoomGauntletThumbPlateCount).toBe(2);
-      expect(armor.userData.warRoomGauntletGrip).toBe('zweihander-contact-v2');
+      expect(armor.userData.warRoomGauntletGripFingerCount).toBe(6);
+      expect(armor.userData.warRoomGauntletGrip).toBe('zweihander-wrap-v3');
       const loose = armor.children.filter((child) => child.name === 'war-room-armor-gauntlet-finger-plate');
       expect(loose).toHaveLength(0);
       const thumbs = [];
+      const gripFingers = [];
       armor.traverse((child) => {
         if (child.name === 'war-room-armor-gauntlet-thumb-plate') thumbs.push(child);
+        if (child.name === 'war-room-armor-gauntlet-grip-finger') gripFingers.push(child);
       });
       expect(thumbs).toHaveLength(2);
+      expect(gripFingers).toHaveLength(6);
     }
 
     dispose(root);
