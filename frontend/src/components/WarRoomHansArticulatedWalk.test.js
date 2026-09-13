@@ -43,6 +43,9 @@ function makeRig() {
     if (mode === 'walk') {
       hans.position.x -= 0.065;
       hans.userData.warRoomHansMotionState = 'walk';
+    } else if (mode === 'stale-motion-state') {
+      hans.position.x -= 0.065;
+      hans.userData.warRoomHansMotionState = 'stoke-fire-action';
     } else if (mode === 'teleport') {
       hans.position.x -= 0.6;
       hans.userData.warRoomHansMotionState = 'walk';
@@ -76,6 +79,7 @@ describe('War Room Hans articulated walk adapter', () => {
     expect(hans.userData.warRoomHansGaitSolver).toBe('local-foot-target-ik-v1');
     expect(hans.userData.warRoomHansLegRigInternal).toBe('thigh-knee-shin-ankle-foot-v2');
     expect(hans.userData.warRoomHansWalkCycleDistance).toBeCloseTo(0.13, 6);
+    expect(hans.userData.warRoomHansGaitDrive).toBe('measured-root-travel-v1');
     expect(Math.max(
       hans.userData.warRoomHansKneeFlexLeft,
       hans.userData.warRoomHansKneeFlexRight,
@@ -96,7 +100,23 @@ describe('War Room Hans articulated walk adapter', () => {
     expect(hans.userData.warRoomHansFootDirection).toBe('toe-forward-v4-ankle-roll');
   });
 
-  it('drops the complete gait pose when Hans enters a non-walking action', () => {
+  it('walks from measured root travel even when a client leaves a stale non-walk motion label', () => {
+    const { root, hans, driver, setMode } = makeRig();
+    expect(installWarRoomHansArticulatedWalk(root)).toBe(1);
+    setMode('stale-motion-state');
+
+    driver.onBeforeRender();
+    driver.onBeforeRender();
+
+    expect(hans.userData.warRoomHansMotionState).toBe('stoke-fire-action');
+    expect(hans.userData.warRoomHansWalkCycleDistance).toBeCloseTo(0.13, 6);
+    expect(Math.max(
+      Math.abs(hans.userData.refs.leftKnee.rotation.x),
+      Math.abs(hans.userData.refs.rightKnee.rotation.x),
+    )).toBeGreaterThan(0.1);
+  });
+
+  it('drops the complete gait pose when Hans physically stops', () => {
     const { root, hans, driver, setMode } = makeRig();
     expect(installWarRoomHansArticulatedWalk(root)).toBe(1);
     driver.onBeforeRender();
