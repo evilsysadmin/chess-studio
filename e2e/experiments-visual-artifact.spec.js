@@ -97,8 +97,39 @@ async function capturePawnSlugReadyHealth(page) {
   });
 }
 
-test('Experimentos + Pawn Slug ready · canary visual desktop + Android', async ({ browser }) => {
-  test.setTimeout(90_000);
+async function capturePawnSlugPlayingHealth(page) {
+  return page.evaluate(() => {
+    const root = document.documentElement;
+    const rect = (selector) => {
+      const node = document.querySelector(selector);
+      if (!node) return null;
+      const box = node.getBoundingClientRect();
+      return {
+        left: Number(box.left.toFixed(1)),
+        top: Number(box.top.toFixed(1)),
+        right: Number(box.right.toFixed(1)),
+        bottom: Number(box.bottom.toFixed(1)),
+        width: Number(box.width.toFixed(1)),
+        height: Number(box.height.toFixed(1)),
+      };
+    };
+    return {
+      horizontalOverflow: root.scrollWidth > root.clientWidth + 1,
+      canvasCount: document.querySelectorAll('[data-pawn-slug-renderer="three"] canvas').length,
+      overlayCount: document.querySelectorAll('.pawn-slug-overlay').length,
+      stage: rect('.pawn-slug-stage'),
+      canvas: rect('[data-pawn-slug-renderer="three"] canvas'),
+      hud: rect('.pawn-slug-hud'),
+      health: rect('.pawn-slug-health-track'),
+      missionProgress: rect('.pawn-slug-mission-progress'),
+      settingsTrigger: rect('.pawn-slug-settings-trigger'),
+      touchControls: rect('.pawn-slug-touch'),
+    };
+  });
+}
+
+test('Experimentos + Pawn Slug ready/live · canary visual desktop + Android', async ({ browser }) => {
+  test.setTimeout(150_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
 
   const captures = [];
@@ -168,6 +199,36 @@ test('Experimentos + Pawn Slug ready · canary visual desktop + Android', async 
       await freezeVisualFrame(page);
       await page.screenshot({
         path: `${ARTIFACT_DIR}/pawn-slug-ready-${capture.label}.png`,
+        fullPage: true,
+      });
+
+      await start.click();
+      const canvas = page.locator('[data-pawn-slug-renderer="three"] canvas');
+      await expect(canvas).toHaveCount(1, { timeout: 20_000 });
+      await expect(canvas).toBeVisible();
+      await expect(page.locator('.pawn-slug-overlay')).toHaveCount(0);
+      await expect(page.locator('.pawn-slug-hud')).toBeVisible();
+      await page.waitForTimeout(450);
+
+      const playingHealth = await capturePawnSlugPlayingHealth(page);
+      health.pawnSlugPlaying = playingHealth;
+      expect(playingHealth.horizontalOverflow, `${capture.label}: live Pawn Slug overflow`).toBe(false);
+      expect(playingHealth.canvasCount, `${capture.label}: live canvas count`).toBe(1);
+      expect(playingHealth.overlayCount, `${capture.label}: ready overlay retired after start`).toBe(0);
+      expect(playingHealth.stage?.width || 0, `${capture.label}: live stage visible`).toBeGreaterThan(0);
+      expect(playingHealth.canvas?.width || 0, `${capture.label}: live Three.js canvas visible`).toBeGreaterThan(0);
+      expect(playingHealth.hud?.width || 0, `${capture.label}: live HUD visible`).toBeGreaterThan(0);
+      expect(playingHealth.health?.width || 0, `${capture.label}: live health strip visible`).toBeGreaterThan(0);
+      expect(playingHealth.settingsTrigger?.width || 0, `${capture.label}: live Settings trigger visible`).toBeGreaterThan(0);
+      if (capture.hasTouch) {
+        expect(playingHealth.settingsTrigger.width, `${capture.label}: live Settings touch width`).toBeGreaterThanOrEqual(44);
+        expect(playingHealth.settingsTrigger.height, `${capture.label}: live Settings touch height`).toBeGreaterThanOrEqual(44);
+        expect(playingHealth.touchControls?.width || 0, `${capture.label}: live touch controls visible`).toBeGreaterThan(0);
+      }
+
+      await freezeVisualFrame(page);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/pawn-slug-playing-${capture.label}.png`,
         fullPage: true,
       });
     } finally {
