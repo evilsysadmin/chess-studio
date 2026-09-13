@@ -91,7 +91,7 @@ test('War Room · canario visual de Hans físicamente en escena', async () => {
     // Capture Hans himself, not a dialogue card covering his head and torso.
     // The acknowledgement is short-lived; after it disappears Hans is still
     // physically in the room for the fireplace choreography.
-    const hansReply = page.getByRole('status', { name: 'Hans responde a Matthias' });
+    const hansReply = page.getByRole('status', { name: 'Hans obedece a Matthias' });
     await expect(hansReply).toBeHidden({ timeout: 8_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-screen', 'onscreen', { timeout: 5_000 });
     await page.waitForTimeout(120);
