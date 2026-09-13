@@ -1,6 +1,6 @@
 import { loadCleanGameRecords } from './cleanGames.js';
 import { loadPersonalPuzzles } from './personalPuzzles.js';
-import { personalTrainingDebtSummary } from './trainingDebt.js';
+import { buildPlayerModel } from './playerModel.js';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const GOAL_PRIORITY = Object.freeze({ debt: 0, 'clean-games': 1, 'personal-puzzles': 2 });
@@ -33,8 +33,8 @@ function cleanGamesGoal(records, now) {
   };
 }
 
-function debtGoal(puzzles) {
-  const debt = personalTrainingDebtSummary(puzzles).top;
+function debtGoal(trainingDebt) {
+  const debt = trainingDebt?.top;
   if (!debt) return null;
   return {
     id: `debt:${debt.incidentKey}`,
@@ -78,11 +78,16 @@ function personalPuzzleGoal(puzzles, now) {
 export function buildPersonalWeeklyGoals({
   puzzles = loadPersonalPuzzles(),
   cleanRecords = loadCleanGameRecords(),
+  playerModel = null,
   now = Date.now(),
 } = {}) {
   const safeNow = Number.isFinite(Number(now)) ? Number(now) : Date.now();
+  const model = playerModel || buildPlayerModel({
+    personalPuzzles: puzzles,
+    cleanGameRecords: cleanRecords,
+  });
   const candidates = [
-    debtGoal(puzzles),
+    debtGoal(model.trainingDebt),
     cleanGamesGoal(cleanRecords, safeNow),
     personalPuzzleGoal(puzzles, safeNow),
   ].filter(Boolean);
