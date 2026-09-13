@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, clickBoardMove, gameStatus, login, mockApi } from './helpers.js';
 
 test('jugada pendiente · salir aborta la operación y una respuesta tardía no resucita la partida', async ({ page }) => {
   test.setTimeout(60_000);
@@ -25,7 +25,7 @@ test('jugada pendiente · salir aborta la operación y una respuesta tardía no 
 
   await login(page);
   await page.evaluate(() => {
-    localStorage.setItem('chess-study-device-board-renderer-v1', '2d');
+    localStorage.setItem('chess-study-device-board-renderer-v1', '2d-explicit-v1');
     window.dispatchEvent(new Event('chess-study-user-preferences-changed'));
   });
 
@@ -33,10 +33,7 @@ test('jugada pendiente · salir aborta la operación y una respuesta tardía no 
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expect(gameStatus(page)).toBeVisible();
 
-  const e2 = page.locator('.square[aria-label^="Casilla e2,"]');
-  const e4 = page.locator('.square[aria-label^="Casilla e4,"]');
-  await e2.click();
-  await e4.click();
+  await clickBoardMove(page, 'e2', 'e4');
   await expect.poll(() => movePosts, { timeout: 5_000 }).toBe(1);
   await expect(page.getByRole('button', { name: /^Casilla e4, peón blanco/i })).toBeVisible();
 
