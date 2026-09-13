@@ -19,7 +19,7 @@ async function openChronicles(page) {
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
 }
 
-test('Chronicles of Matthias · abre una cripta Three.js real y responde a controles', async ({ page }) => {
+test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posicional de grupo', async ({ page }) => {
   await openChronicles(page);
   const mode = page.locator('[data-chronicles="true"]');
   const stage = mode.locator('[data-chronicles-renderer="three"]');
@@ -27,10 +27,13 @@ test('Chronicles of Matthias · abre una cripta Three.js real y responde a contr
   await expect(mode.getByText(/Motor THREE\.JS · FIRST PERSON/)).toBeVisible({ timeout: 30_000 });
   await expect(mode.getByText(/motor 3D no ha arrancado/i)).toHaveCount(0);
 
+  const hildegard = mode.getByRole('button', { name: 'Seleccionar Hildegard', exact: true });
+  await hildegard.click();
+  await expect(hildegard).toHaveAttribute('aria-pressed', 'true');
   await mode.getByRole('button', { name: 'Avanzar', exact: true }).click();
   await mode.getByRole('button', { name: 'Atacar', exact: true }).click();
-  await expect(mode.getByText(/Impacto/i)).toBeVisible();
-  await expect(mode.getByText('6/7', { exact: true })).toBeVisible();
+  await expect(mode.getByText(/Hildegard impacta/i)).toBeVisible();
+  await expect(mode.getByText('9/10', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();

@@ -16,11 +16,13 @@ export const CHRONICLES_DIRECTIONS = Object.freeze([
 ]);
 
 export const CHRONICLES_PARTY = Object.freeze([
-  Object.freeze({ id: 'matthias', name: 'Matthias', role: 'Peón cronista', glyph: '♟', maxHp: 7 }),
-  Object.freeze({ id: 'rook', name: 'Hildegard', role: 'Torre guardiana', glyph: '♜', maxHp: 10 }),
-  Object.freeze({ id: 'bishop', name: 'Aziz', role: 'Alfil del farol', glyph: '♝', maxHp: 6 }),
-  Object.freeze({ id: 'knight', name: 'Morcilla', role: 'Caballo logístico', glyph: '♞', maxHp: 8 }),
+  Object.freeze({ id: 'matthias', name: 'Matthias', role: 'Peón cronista', glyph: '♟', maxHp: 7, row: 'front', lane: 'left', attackName: 'Estocada', damage: 1, reach: 1 }),
+  Object.freeze({ id: 'rook', name: 'Hildegard', role: 'Torre guardiana', glyph: '♜', maxHp: 10, row: 'front', lane: 'right', attackName: 'Embestida', damage: 2, reach: 1 }),
+  Object.freeze({ id: 'bishop', name: 'Aziz', role: 'Alfil del farol', glyph: '♝', maxHp: 6, row: 'back', lane: 'left', attackName: 'Rayo diagonal', damage: 1, reach: 2 }),
+  Object.freeze({ id: 'knight', name: 'Morcilla', role: 'Caballo logístico', glyph: '♞', maxHp: 8, row: 'back', lane: 'right', attackName: 'Salto brutal', damage: 1, reach: 2 }),
 ]);
+
+const ENEMY_CELL = Object.freeze({ x: 3, y: 5 });
 
 function partyState() {
   return CHRONICLES_PARTY.map((member) => ({ ...member, hp: member.maxHp }));
@@ -31,7 +33,7 @@ export function createChroniclesState() {
     x: 1,
     y: 5,
     direction: 1,
-    enemyHp: 2,
+    enemyHp: 6,
     sigilAwake: false,
     phase: 'explore',
     party: partyState(),
@@ -53,6 +55,18 @@ export function chroniclesFrontCell(state) {
   return { x: state.x + direction.dx, y: state.y + direction.dy };
 }
 
+export function chroniclesEnemyDistanceAhead(state, maxReach = 2) {
+  if (!chroniclesEnemyAlive(state)) return null;
+  const direction = CHRONICLES_DIRECTIONS[state.direction];
+  for (let distance = 1; distance <= maxReach; distance += 1) {
+    const x = state.x + direction.dx * distance;
+    const y = state.y + direction.dy * distance;
+    if (chroniclesTileAt(x, y) === '#') return null;
+    if (x === ENEMY_CELL.x && y === ENEMY_CELL.y) return distance;
+  }
+  return null;
+}
+
 function withMessage(state, message) {
   return { ...state, message, turns: state.turns + 1 };
 }
@@ -68,31 +82,79 @@ function enterTile(state, x, y) {
   return { ...state, x, y, turns: state.turns + 1, message: 'Piedra, polvo y la sospecha de que algo respira detrás del muro.' };
 }
 
+function partyMember(state, memberId) {
+  return state.party.find((member) => member.id === memberId) || null;
+}
+
+function retaliationTargetId(state, attacker) {
+  if (attacker.row === 'front' && attacker.hp > 0) return attacker.id;
+  const matchingFront = state.party.find((member) => member.row === 'front' && member.lane === attacker.lane && member.hp > 0);
+  if (matchingFront) return matchingFront.id;
+  return state.party.find((member) => member.row === 'front' && member.hp > 0)?.id || null;
+}
+
+function resolveAttack(state, memberId) {
+  const attacker = partyMember(state, memberId);
+  if (!attacker) return state;
+  if (attacker.hp <= 0) return withMessage(state, `${attacker.name} está fuera de combate. Incluso la épica tiene límites médicos.`);
+
+  const distance = chroniclesEnemyDistanceAhead(state, attacker.reach);
+  if (!distance) {
+    return withMessage(state, `${attacker.name} ejecuta ${attacker.attackName.toLowerCase()} contra absolutamente nada. La nada resiste.`);
+  }
+
+  const nextHp = Math.max(0, state.enemyHp - attacker.damage);
+  if (nextHp === 0) {
+    return {
+      ...state,
+      enemyHp: 0,
+      turns: state.turns + 1,
+      message: `${attacker.name} remata al peón corrompido con ${attacker.attackName.toLowerCase()}. Matthias aprueba con una cantidad ofensivamente pequeña de entusiasmo.`,
+    };
+  }
+
+  if (distance > 1) {
+    return {
+      ...state,
+      enemyHp: nextHp,
+      turns: state.turns + 1,
+      message: `${attacker.name} alcanza desde la retaguardia con ${attacker.attackName.toLowerCase()}. El peón sisea, demasiado lejos para devolver el golpe.`,
+    };
+  }
+
+  const targetId = retaliationTargetId(state, attacker);
+  const party = targetId
+    ? state.party.map((member) => member.id === targetId ? { ...member, hp: Math.max(0, member.hp - 1) } : member)
+    : state.party;
+  const target = party.find((member) => member.id === targetId);
+  return {
+    ...state,
+    enemyHp: nextHp,
+    party,
+    turns: state.turns + 1,
+    message: `${attacker.name} impacta con ${attacker.attackName.toLowerCase()}. La criatura responde${target ? ` y alcanza a ${target.name}` : ''}.`,
+  };
+}
+
 export function chroniclesReduce(state, action) {
   if (!state || state.phase === 'escaped') return state;
-  if (action === 'turn-left') return { ...state, direction: (state.direction + 3) % 4, turns: state.turns + 1, message: 'Giras a la izquierda.' };
-  if (action === 'turn-right') return { ...state, direction: (state.direction + 1) % 4, turns: state.turns + 1, message: 'Giras a la derecha.' };
+  const actionType = typeof action === 'string' ? action : action?.type;
+  if (actionType === 'turn-left') return { ...state, direction: (state.direction + 3) % 4, turns: state.turns + 1, message: 'Giras a la izquierda.' };
+  if (actionType === 'turn-right') return { ...state, direction: (state.direction + 1) % 4, turns: state.turns + 1, message: 'Giras a la derecha.' };
 
-  if (action === 'attack') {
-    const front = chroniclesFrontCell(state);
-    if (front.x !== 3 || front.y !== 5 || !chroniclesEnemyAlive(state)) {
-      return withMessage(state, 'Golpeas el aire. El aire, sorprendentemente, sobrevive.');
-    }
-    const nextHp = Math.max(0, state.enemyHp - 1);
-    if (nextHp === 0) return { ...state, enemyHp: 0, turns: state.turns + 1, message: 'El peón corrompido cae. Matthias parece ofendido por su falta de disciplina.' };
-    const party = state.party.map((member, index) => index === 0 ? { ...member, hp: Math.max(1, member.hp - 1) } : member);
-    return { ...state, enemyHp: nextHp, party, turns: state.turns + 1, message: 'Impacto. La criatura responde y araña el orgullo —y 1 HP— de Matthias.' };
+  if (actionType === 'attack') {
+    return resolveAttack(state, typeof action === 'object' ? action.memberId : 'matthias');
   }
 
   const direction = CHRONICLES_DIRECTIONS[state.direction];
-  const sign = action === 'backward' ? -1 : action === 'forward' ? 1 : 0;
+  const sign = actionType === 'backward' ? -1 : actionType === 'forward' ? 1 : 0;
   if (!sign) return state;
   const x = state.x + direction.dx * sign;
   const y = state.y + direction.dy * sign;
   const tile = chroniclesTileAt(x, y);
 
   if (tile === '#') return withMessage(state, 'Hay una pared. Incluso Matthias concede que atravesarla sería excesivo.');
-  if (x === 3 && y === 5 && chroniclesEnemyAlive(state)) return withMessage(state, 'El peón corrompido bloquea el corredor. Convéncelo con violencia reglamentaria.');
+  if (x === ENEMY_CELL.x && y === ENEMY_CELL.y && chroniclesEnemyAlive(state)) return withMessage(state, 'El peón corrompido bloquea el corredor. Convéncelo con violencia reglamentaria.');
   if (tile === 'X' && !state.sigilAwake) return withMessage(state, 'La puerta negra no cede. El sello de la cripta sigue dormido.');
   return enterTile(state, x, y);
 }

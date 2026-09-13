@@ -21,7 +21,6 @@ const KEY_ACTIONS = Object.freeze({
   ArrowRight: 'turn-right',
   d: 'turn-right',
   D: 'turn-right',
-  ' ': 'attack',
 });
 
 export default function ChroniclesOfMatthias({ onExit }) {
@@ -30,8 +29,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const engineRef = useRef(null);
   const stateRef = useRef(createChroniclesState());
   const [state, setState] = useState(stateRef.current);
+  const [selectedMemberId, setSelectedMemberId] = useState('matthias');
+  const selectedMemberIdRef = useRef(selectedMemberId);
   const [rendererName, setRendererName] = useState('CARGANDO');
   const [rendererError, setRendererError] = useState('');
+
+  useEffect(() => {
+    selectedMemberIdRef.current = selectedMemberId;
+  }, [selectedMemberId]);
 
   const dispatch = useCallback((action) => {
     setState((current) => {
@@ -41,9 +46,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
     });
   }, []);
 
+  const attackWithSelected = useCallback(() => {
+    dispatch({ type: 'attack', memberId: selectedMemberIdRef.current });
+  }, [dispatch]);
+
   const restart = useCallback(() => {
     const next = createChroniclesState();
     stateRef.current = next;
+    setSelectedMemberId('matthias');
     setState(next);
   }, []);
 
@@ -85,6 +95,19 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
   useEffect(() => {
     const onKeyDown = (event) => {
+      if (/^[1-4]$/.test(event.key)) {
+        const member = stateRef.current.party[Number(event.key) - 1];
+        if (member) {
+          event.preventDefault();
+          setSelectedMemberId(member.id);
+        }
+        return;
+      }
+      if (event.key === ' ') {
+        event.preventDefault();
+        attackWithSelected();
+        return;
+      }
       const action = KEY_ACTIONS[event.key];
       if (!action) return;
       event.preventDefault();
@@ -92,10 +115,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [dispatch]);
+  }, [attackWithSelected, dispatch]);
 
   const direction = CHRONICLES_DIRECTIONS[state.direction];
   const objective = chroniclesObjective(state);
+  const selectedMember = state.party.find((member) => member.id === selectedMemberId) || state.party[0];
 
   return (
     <div className="chronicles" data-chronicles="true" data-chronicles-phase={state.phase}>
@@ -110,13 +134,20 @@ export default function ChroniclesOfMatthias({ onExit }) {
 
       <div className="chronicles-shell">
         <aside className="chronicles-party" aria-label="Grupo de Matthias">
-          <span className="chronicles-panel-kicker">GRUPO</span>
-          {state.party.map((member) => (
-            <div key={member.id} className={`chronicles-party-member ${member.id === 'matthias' ? 'is-leader' : ''}`}>
+          <span className="chronicles-panel-kicker">GRUPO · 1–4 SELECCIONAR</span>
+          {state.party.map((member, index) => (
+            <button
+              type="button"
+              key={member.id}
+              className={`chronicles-party-member ${member.id === 'matthias' ? 'is-leader' : ''} ${member.id === selectedMemberId ? 'is-selected' : ''} ${member.hp <= 0 ? 'is-down' : ''}`}
+              onClick={() => setSelectedMemberId(member.id)}
+              aria-label={`Seleccionar ${member.name}`}
+              aria-pressed={member.id === selectedMemberId}
+            >
               <span className="chronicles-party-glyph" aria-hidden="true">{member.glyph}</span>
-              <span><strong>{member.name}</strong><small>{member.role}</small></span>
+              <span><strong>{index + 1}. {member.name}</strong><small>{member.row === 'front' ? 'FRENTE' : 'RETAGUARDIA'} · {member.attackName} · alcance {member.reach}</small></span>
               <b>{member.hp}/{member.maxHp}</b>
-            </div>
+            </button>
           ))}
         </aside>
 
@@ -124,7 +155,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
           <div className="chronicles-statusbar" aria-live="polite">
             <span>CRIPTA <b>01</b></span>
             <span>RUMBO <b>{direction.label}</b></span>
-            <span>TURNOS <b>{state.turns}</b></span>
+            <span>ACTIVO <b>{selectedMember?.name}</b></span>
             <span>OBJETIVO <b>{objective}</b></span>
           </div>
 
@@ -153,7 +184,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
           <div className="chronicles-touch" aria-label="Controles de la mazmorra">
             <button type="button" onClick={() => dispatch('turn-left')} aria-label="Girar a la izquierda">↶<small>GIRAR</small></button>
             <button type="button" onClick={() => dispatch('forward')} aria-label="Avanzar">↑<small>AVANZAR</small></button>
-            <button type="button" className="is-attack" onClick={() => dispatch('attack')} aria-label="Atacar">⚔<small>ATACAR</small></button>
+            <button type="button" className="is-attack" onClick={attackWithSelected} aria-label="Atacar">⚔<small>{selectedMember?.name?.toUpperCase() || 'ATACAR'}</small></button>
             <button type="button" onClick={() => dispatch('backward')} aria-label="Retroceder">↓<small>ATRÁS</small></button>
             <button type="button" onClick={() => dispatch('turn-right')} aria-label="Girar a la derecha">↷<small>GIRAR</small></button>
           </div>
@@ -162,12 +193,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <span><kbd>W</kbd>/<kbd>↑</kbd> avanzar</span>
             <span><kbd>S</kbd>/<kbd>↓</kbd> retroceder</span>
             <span><kbd>A</kbd><kbd>D</kbd> girar</span>
+            <span><kbd>1</kbd>–<kbd>4</kbd> pieza</span>
             <span><kbd>ESPACIO</kbd> atacar</span>
           </div>
         </main>
       </div>
 
-      <p className="chronicles-tech-note">Motor {rendererName}. Primer vertical slice deliberadamente pequeño: exploración por cuadrícula, grupo persistente dentro de la expedición, combate frontal, sello y salida. Sin rating, sin economía y sin tocar el ajedrez estándar.</p>
+      <p className="chronicles-tech-note">Motor {rendererName}. Combate de grupo posicional: piezas de frente absorben represalias; retaguardia puede golpear a distancia según su geometría. Sin rating, sin economía y sin tocar el ajedrez estándar.</p>
     </div>
   );
 }
