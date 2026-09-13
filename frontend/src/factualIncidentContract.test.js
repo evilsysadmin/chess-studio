@@ -57,6 +57,13 @@ describe('factual incident consumer contract', () => {
     expect(puzzle.fen).toBe(evidence.fenBefore);
     expect(puzzle.solution).toEqual(['Qxf7#']);
     expect(puzzle.incidentKeys).toEqual(evidence.incidentKeys);
+    expect(puzzle.factualEvidence).toEqual({
+      version: evidence.version,
+      classification: evidence.classification,
+      severity: evidence.severity,
+      primaryIncidentKey: evidence.primaryIncidentKey,
+      factualAnalysis: null,
+    });
   });
 
   it('reuses the shared-minimax factual root reply before any extra engine continuation', async () => {
@@ -101,5 +108,12 @@ describe('factual incident consumer contract', () => {
     expect(puzzle).not.toBeNull();
     expect(puzzle.fen).toBe(evidence.fenBefore);
     expect(puzzle.incidentKeys).toEqual(evidence.incidentKeys);
+    expect(puzzle.factualEvidence).toEqual({
+      version: evidence.version,
+      classification: evidence.classification,
+      severity: evidence.severity,
+      primaryIncidentKey: evidence.primaryIncidentKey,
+      factualAnalysis: evidence.factualAnalysis,
+    });
   });
 });
