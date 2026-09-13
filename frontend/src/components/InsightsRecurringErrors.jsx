@@ -1,5 +1,6 @@
 import { loadPersonalPuzzles } from '../personalPuzzles.js';
 import { buildPlayerModel } from '../playerModel.js';
+import { latestTrainingImprovement } from '../matthiasTrainingImprovement.js';
 import './InsightsRecurringErrors.css';
 
 function debtCopy(pattern) {
@@ -9,9 +10,22 @@ function debtCopy(pattern) {
   return `Deuda activa · últimos ${debt.target}: ${debt.progress}/${debt.target} limpios`;
 }
 
+function improvementCopy(improvement) {
+  if (improvement?.kind === 'debt-paid') {
+    return `${improvement.label}: los dos casos reales más recientes ya están limpios. Esto sí cuenta como mejora. No lo estropees.`;
+  }
+  if (improvement?.kind === 'retention-completed') {
+    return `Has completado el ciclo 3/7/21 de «${improvement.title}». Bien. Ya no puedo llamarlo un acierto aislado.`;
+  }
+  return null;
+}
+
 export default function InsightsRecurringErrors({ onOpenPuzzles }) {
-  const playerModel = buildPlayerModel({ personalPuzzles: loadPersonalPuzzles() });
+  const personalPuzzles = loadPersonalPuzzles();
+  const playerModel = buildPlayerModel({ personalPuzzles });
   const patterns = playerModel.recurringErrors;
+  const improvement = latestTrainingImprovement(personalPuzzles);
+  const improvementText = improvementCopy(improvement);
 
   return (
     <section className="menu-section insights-recurring-errors" aria-labelledby="insights-recurring-errors-title">
@@ -23,6 +37,12 @@ export default function InsightsRecurringErrors({ onOpenPuzzles }) {
         </div>
         {patterns.length > 0 ? <strong>{patterns.length} {patterns.length === 1 ? 'patrón' : 'patrones'}</strong> : null}
       </div>
+
+      {improvementText ? (
+        <aside className="friendly-inline-note" data-matthias-training-improvement={improvement.kind} aria-label="Mejora reconocida por Matthias">
+          <strong>Matthias:</strong> {improvementText}
+        </aside>
+      ) : null}
 
       {patterns.length > 0 ? (
         <div className="insights-recurring-errors-grid">
