@@ -1,0 +1,36 @@
+name: Quality · workflow debt ratchet
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+      - 'scripts/workflow_budget_gate.py'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/**'
+      - 'scripts/workflow_budget_gate.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: workflow-debt-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  workflow-budget:
+    name: Workflow size ratchet
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate ratchet helper
+        run: python3 -S scripts/workflow_budget_gate.py --self-test
+
+      - name: Enforce workflow budgets
+        run: python3 -S scripts/workflow_budget_gate.py
