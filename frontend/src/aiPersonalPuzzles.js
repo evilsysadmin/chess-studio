@@ -71,6 +71,13 @@ function normalizeEngineMove(move) {
   };
 }
 
+function sameEngineMove(left, right) {
+  return Boolean(left && right
+    && left.from === right.from
+    && left.to === right.to
+    && (left.promotion || null) === (right.promotion || null));
+}
+
 function enginePuzzleProvenance(engine) {
   const analysisDepth = Number(engine?.analysisDepth);
   const candidateCount = Number(engine?.candidateCount);
@@ -96,37 +103,61 @@ function enginePuzzleProvenance(engine) {
   };
 }
 
-function engineBestDefenseProvenance(boardAfterSolution, engine) {
+function enginePrincipalVariationProvenance(fen, boardAfterSolution, intended, engine) {
+  if (!Array.isArray(engine?.suggestedLine) || !engine.suggestedLine.length) return null;
+  const normalizedLine = engine.suggestedLine.map(normalizeEngineMove);
+  if (normalizedLine.some((move) => !move)) return null;
+
+  const root = {
+    from: intended.from,
+    to: intended.to,
+    promotion: intended.promotion || null,
+  };
+  if (!sameEngineMove(normalizedLine[0], root)) return null;
+
+  let probe;
+  try { probe = new Chess(fen); } catch { return null; }
+  const provenLine = [];
+  for (const move of normalizedLine) {
+    let played;
+    try {
+      played = probe.move({
+        from: move.from,
+        to: move.to,
+        ...(move.promotion ? { promotion: move.promotion } : {}),
+      });
+    } catch {
+      return null;
+    }
+    if (!played) return null;
+    provenLine.push({
+      ...move,
+      promotion: move.promotion || null,
+      san: played.san,
+    });
+  }
+
   if (boardAfterSolution.isGameOver()) {
+    if (provenLine.length !== 1 || normalizeEngineMove(engine?.suggestedReply)) return null;
     return {
       tacticalBestDefenseChecked: true,
+      enginePrincipalVariationChecked: true,
+      enginePrincipalVariation: provenLine,
       engineTerminalAfterSolution: true,
       engineBestDefense: null,
     };
   }
 
-  const normalized = normalizeEngineMove(engine?.suggestedReply);
-  if (!normalized) return null;
-  const probe = new Chess(boardAfterSolution.fen());
-  let reply;
-  try {
-    reply = probe.move({
-      from: normalized.from,
-      to: normalized.to,
-      ...(normalized.promotion ? { promotion: normalized.promotion } : {}),
-    });
-  } catch {
-    return null;
-  }
-  if (!reply) return null;
+  if (provenLine.length < 2) return null;
+  const suggestedReply = normalizeEngineMove(engine?.suggestedReply);
+  if (!suggestedReply || !sameEngineMove(provenLine[1], suggestedReply)) return null;
 
   return {
     tacticalBestDefenseChecked: true,
+    enginePrincipalVariationChecked: true,
+    enginePrincipalVariation: provenLine,
     engineTerminalAfterSolution: false,
-    engineBestDefense: {
-      ...normalized,
-      san: reply.san,
-    },
+    engineBestDefense: provenLine[1],
   };
 }
 
@@ -153,7 +184,7 @@ export async function validateAiPersonalPuzzleCandidate(candidate, { analyzeMove
   if ((suggested.promotion || undefined) !== (intended.promotion || undefined)) return null;
   const provenance = enginePuzzleProvenance(engine);
   if (!provenance) return null;
-  const defenseProvenance = engineBestDefenseProvenance(board, engine);
+  const defenseProvenance = enginePrincipalVariationProvenance(fen, board, intended, engine);
   if (!defenseProvenance) return null;
 
   const sourceIncidents = Array.isArray(candidate?.incident_keys)
