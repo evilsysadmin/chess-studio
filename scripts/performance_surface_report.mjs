@@ -16,6 +16,9 @@ const JS_EXTENSIONS = new Set(['.js', '.jsx', '.mjs', '.ts', '.tsx']);
 const CSS_EXTENSIONS = new Set(['.css']);
 const LARGE_JS_BYTES = 60 * 1024;
 const LARGE_CSS_BYTES = 80 * 1024;
+// Data-backed ratchet: the measured baseline before this gate was 161.4 KiB gzip.
+// 164 KiB leaves ~1.6% headroom for deterministic chunking noise without hiding real growth.
+const INITIAL_JS_GZIP_BUDGET_BYTES = 164 * 1024;
 const INITIAL_CSS_GZIP_BUDGET_BYTES = 68 * 1024;
 // Architectural ratchet: lower this ceiling when renderer ownership is consolidated.
 // Raising it requires an explicit lifecycle/GPU decision rather than accidental growth.
@@ -132,6 +135,7 @@ const report = {
     initialJsEntry: initialJsEntryAssets,
     initialJsPreload: initialJsPreloadAssets,
     initialJsGzipBytes,
+    initialJsGzipBudgetBytes: INITIAL_JS_GZIP_BUDGET_BYTES,
   },
 };
 
@@ -150,7 +154,7 @@ const summary = [
   `- ResizeObserver sites: ${resizeObserverSites}`,
   `- Large JS modules (>= ${LARGE_JS_BYTES / 1024} KiB): ${report.largeModules.js.length}`,
   `- Large CSS files (>= ${LARGE_CSS_BYTES / 1024} KiB): ${report.largeModules.css.length}`,
-  `- Initial JS: ${kib(initialJsGzipBytes)} KiB gzip across ${initialJsAssets.length} asset(s) (report-only baseline)`,
+  `- Initial JS: ${kib(initialJsGzipBytes)} KiB gzip across ${initialJsAssets.length} asset(s) (budget ${INITIAL_JS_GZIP_BUDGET_BYTES / 1024} KiB)`,
   `- Initial CSS: ${kib(initialCssGzipBytes)} KiB gzip (budget ${INITIAL_CSS_GZIP_BUDGET_BYTES / 1024} KiB)`,
   '',
   '### Largest JS/TS modules',
@@ -159,7 +163,7 @@ const summary = [
   '### Largest CSS files',
   formatRows(report.topCss),
   '',
-  '> WebGL renderer count and initial CSS are ratchets. Initial JS is measured first so a follow-up can set a data-backed ceiling instead of guessing one.',
+  '> WebGL renderer count, initial JS and initial CSS are ratchets. Lower the ceilings as ownership and loading improve.',
 ].join('\n');
 
 console.log(summary);
@@ -167,6 +171,10 @@ console.log(`\nJSON report: ${relative(OUTPUT_FILE)}`);
 
 if (webglRendererSites > MAX_WEBGL_RENDERER_SITES) {
   throw new Error(`WebGLRenderer construction sites are ${webglRendererSites}; budget is ${MAX_WEBGL_RENDERER_SITES}`);
+}
+
+if (initialJsGzipBytes > INITIAL_JS_GZIP_BUDGET_BYTES) {
+  throw new Error(`Initial JS is ${kib(initialJsGzipBytes)} KiB gzip; budget is ${INITIAL_JS_GZIP_BUDGET_BYTES / 1024} KiB`);
 }
 
 if (initialCssGzipBytes > INITIAL_CSS_GZIP_BUDGET_BYTES) {
