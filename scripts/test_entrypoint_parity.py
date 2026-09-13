@@ -49,9 +49,14 @@ def assert_lane_pattern_targets_real_test(spec_name: str, item: str) -> None:
             f'Grep crítico fantasma en {spec_name}: {item!r} no coincide con ningún test real del spec ejecutado'
         )
     if len(matches) > 1:
-        raise SystemExit(
-            f'Grep crítico ambiguo en {spec_name}: {item!r} coincide con {len(matches)} tests: {matches}'
-        )
+        # Permit a critical anchor to grow stricter derivative journeys while
+        # retaining one exact canonical test. This keeps grep stable and makes
+        # extensions additive instead of forcing ever-more-specific CI regexes.
+        exact = [title for title in matches if title == item]
+        if len(exact) != 1:
+            raise SystemExit(
+                f'Grep crítico ambiguo en {spec_name}: {item!r} coincide con {len(matches)} tests: {matches}'
+            )
 
 
 def ci_job_block(job_name: str) -> str:
