@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   PAWN_SLUG_IMPACT_SOUND_PROFILES,
+  PAWN_SLUG_WEAPON_PITCH_WIDTHS,
   PAWN_SLUG_WEAPON_SOUND_PROFILES,
   pawnSlugImpactSoundProfile,
   pawnSlugSoundPitchVariation,
+  pawnSlugWeaponPitchWidth,
   pawnSlugWeaponSoundProfile,
 } from './pawnSlugSfx.js';
 
@@ -21,6 +23,20 @@ describe('Pawn Slug arcade combat SFX', () => {
     expect(new Set(Object.values(PAWN_SLUG_WEAPON_SOUND_PROFILES).map((profile) => profile.mechanic)).size).toBe(4);
     expect(pawnSlugWeaponSoundProfile('pistol').mechanic).toBe('casing');
     expect(pawnSlugWeaponSoundProfile('shotgun').mechanic).toBe('pump');
+  });
+
+  it('uses intentional pitch stability per weapon instead of one global wobble', () => {
+    expect(Object.keys(PAWN_SLUG_WEAPON_PITCH_WIDTHS)).toEqual([
+      'pistol',
+      'machinegun',
+      'shotgun',
+      'panzerfaust',
+    ]);
+    expect(pawnSlugWeaponPitchWidth('machinegun')).toBeLessThan(pawnSlugWeaponPitchWidth('panzerfaust'));
+    expect(pawnSlugWeaponPitchWidth('panzerfaust')).toBeLessThan(pawnSlugWeaponPitchWidth('pistol'));
+    expect(pawnSlugWeaponPitchWidth('pistol')).toBeLessThan(pawnSlugWeaponPitchWidth('shotgun'));
+    expect(pawnSlugWeaponPitchWidth('unknown')).toBe(pawnSlugWeaponPitchWidth('pistol'));
+    expect(Math.max(...Object.values(PAWN_SLUG_WEAPON_PITCH_WIDTHS))).toBeLessThanOrEqual(0.035);
   });
 
   it('uses more metallic impact rings for armored chess soldiers', () => {
