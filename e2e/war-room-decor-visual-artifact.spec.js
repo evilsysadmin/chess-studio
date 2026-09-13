@@ -1,6 +1,6 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { buttonWithVisibleText, gameStatus, login, mockApi } from './helpers.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const PROFILES = Object.freeze([
@@ -44,8 +44,10 @@ async function openCanonicalWarRoom(page) {
   });
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
-  await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
-  await expect(page.locator('.game-screen')).toBeVisible({ timeout: 30_000 });
+  const quickMatch = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await expect(quickMatch).toBeVisible();
+  await quickMatch.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(gameStatus(page)).toBeVisible({ timeout: 60_000 });
   await open3DFromAppearance(page);
 
   const canvas = page.locator('.board3d-main-canvas');
@@ -101,10 +103,10 @@ async function captureClip(context, page, path, clip) {
 
 for (const profile of PROFILES) {
   test(`War Room decor · scene-first captures ${profile.label}`, async () => {
-    // Full-quality desktop runs SwiftShader at DPR 2 and writes eight art-review
-    // captures. Keep its budget above the observed ~125s path without relaxing
-    // the much cheaper Android capture or the workflow-level 15 minute ceiling.
-    test.setTimeout(profile.forceFullQuality ? 180_000 : 120_000);
+    // Desktop writes eight art-review crops and is materially heavier than the
+    // four-crop Android pass. Keep an explicit budget instead of keying it to a
+    // rendering-quality property that no longer exists on these profiles.
+    test.setTimeout(profile.hasTouch ? 120_000 : 180_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const browser = await chromium.launch({
