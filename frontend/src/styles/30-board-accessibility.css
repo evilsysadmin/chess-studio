@@ -1,0 +1,56 @@
+/* Board accessibility hardening.
+   Forced-colors users must not lose chess state when normal palette, shadows
+   and translucent overlays are replaced by the OS high-contrast palette. */
+
+@media (forced-colors: active) {
+  .board-grid {
+    border-color: CanvasText;
+    box-shadow: none;
+  }
+
+  .square:focus-visible,
+  .square.last-move:focus-visible,
+  .square.mistake-move:focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: -3px;
+    box-shadow: none;
+  }
+
+  .square.selected::after {
+    border: 3px solid Highlight;
+    forced-color-adjust: none;
+  }
+
+  .square.legal-move::before {
+    width: 28%;
+    height: 28%;
+    border: 2px solid Canvas;
+    background: Highlight;
+    forced-color-adjust: none;
+  }
+
+  .square.legal-capture::before {
+    inset: 7%;
+    border: 3px dashed Highlight;
+    background: transparent;
+    forced-color-adjust: none;
+  }
+
+  .square.king-in-check::after {
+    border: 4px double CanvasText;
+    box-shadow: none;
+    animation: none;
+    forced-color-adjust: none;
+  }
+
+  .square.hint-move::after {
+    border: 2px dashed CanvasText;
+    animation: none;
+    forced-color-adjust: none;
+  }
+
+  .square.mistake-move::before {
+    border: 3px dotted CanvasText;
+    forced-color-adjust: none;
+  }
+}
