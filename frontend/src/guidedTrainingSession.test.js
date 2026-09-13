@@ -144,6 +144,61 @@ describe('sesiones guiadas 5/15/30 minutos', () => {
     }
   });
 
+  it('no deja que un puzzle viejo pendiente resucite un patrón que el Player Model ya considera mejorando o corregido', () => {
+    const puzzles = [
+      { id: 'old-pending', source: 'autopsy', incidentKeys: ['cpu:KNIGHT_FORK'], cleanSolves: 0 },
+      { id: 'recent-clean-1', source: 'autopsy', incidentKeys: ['cpu:KNIGHT_FORK'], cleanSolves: 1 },
+      { id: 'recent-clean-2', source: 'autopsy', incidentKeys: ['cpu:KNIGHT_FORK'], cleanSolves: 1 },
+    ];
+
+    for (const improvementState of ['probable-improvement', 'corrected-with-sufficient-sample']) {
+      const plan = buildGuidedTrainingPlan({
+        minutes: 15,
+        history: [],
+        puzzles,
+        rivalry: {},
+        playerModel: {
+          recurringErrors: [{
+            incidentKey: 'cpu:KNIGHT_FORK',
+            positions: 3,
+            debt: { progress: 2, target: 2, paid: true, active: false, realCases: 3 },
+            improvementState,
+          }],
+          trainingDebt: { top: null },
+        },
+      });
+
+      expect(plan.available).toBe(false);
+      expect(plan.steps).toEqual([]);
+    }
+  });
+
+  it('mantiene entrenable un pendiente aislado que el Player Model no ha resuelto', () => {
+    const plan = buildGuidedTrainingPlan({
+      minutes: 5,
+      history: [],
+      puzzles: [{ id: 'singleton', source: 'autopsy', incidentKeys: ['human:ALLOWED_MATE'], cleanSolves: 0 }],
+      rivalry: {},
+      playerModel: {
+        recurringErrors: [{
+          incidentKey: 'cpu:KNIGHT_FORK',
+          positions: 3,
+          improvementState: 'corrected-with-sufficient-sample',
+          debt: { paid: true, active: false },
+        }],
+        trainingDebt: { top: null },
+      },
+    });
+
+    expect(plan.available).toBe(true);
+    expect(plan.steps[0]).toMatchObject({
+      id: 'personal-errors',
+      kind: 'personal-errors',
+      minutes: 4,
+    });
+    expect(plan.steps[0].detail).toContain('1 posición real pendiente');
+  });
+
   it('ajusta la práctica desde datos recientes sin convertirlos en una afirmación inventada', () => {
     const history = [
       { id: 'g1', difficulty: 40, humanColor: 'b' },
