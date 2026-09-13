@@ -154,6 +154,19 @@ export default function PawnSlug({ onExit }) {
     return saved;
   }
 
+  function toggleExpertMode() {
+    const current = settingsRef.current || settings;
+    commitSettings({ ...current, expertMode: current.expertMode !== true });
+    if (!bootRequestedRef.current) return;
+    releaseGameplayInput();
+    bootRequestedRef.current = false;
+    pendingRef.current = [];
+    setBootRequested(false);
+    setHud(INITIAL_HUD);
+    setRendererName('EN ESPERA');
+    setRendererError('');
+  }
+
   function openSettings() {
     releaseGameplayInput();
     setRemapAction(null);
@@ -182,6 +195,7 @@ export default function PawnSlug({ onExit }) {
       .then(({ createPawnSlugArmoryGame }) => {
         if (cancelled) return;
         engine = createPawnSlugArmoryGame(host, {
+          expertMode: settingsRef.current?.expertMode === true,
           onReady: (name) => {
             if (!cancelled) setRendererName(name);
           },
@@ -317,10 +331,10 @@ export default function PawnSlug({ onExit }) {
   const overlay = hud.phase === 'ready' || hud.phase === 'gameover' || hud.phase === 'victory';
   const weapons = hud.weapons?.length ? hud.weapons : INITIAL_WEAPONS;
   const keymap = settings.keymap || PAWN_SLUG_DEFAULT_KEYMAP;
-  const expertMode = false;
+  const expertMode = settings.expertMode === true;
 
   return (
-    <div className="pawn-slug" data-pawn-slug="true" data-pawn-slug-expert="false">
+    <div className="pawn-slug" data-pawn-slug="true" data-pawn-slug-expert={expertMode ? 'true' : 'false'}>
       <header className="pawn-slug-head">
         <div>
           <span className="section-label">ARCADE · THREE.JS · OPERACIÓN ABSOLUTAMENTE NO FIDE</span>
@@ -420,7 +434,9 @@ export default function PawnSlug({ onExit }) {
                 <div className="pawn-slug-briefing">
                   <span><b>Objetivo</b> Rompe el frente, sobrevive a los Sturm‑Bischof y elimina el Panzer‑Rook.</span>
                   <span><b>Arsenal</b> Empiezas con pistola. Requisa MG, escopeta y Panzerfaust durante la operación.</span>
-                  <span><b>Arcade</b> Sin XP, niveles ni economía. Aquí mandan el movimiento, el plomo y llegar vivo al Panzer‑Rook.</span>
+                  {expertMode
+                    ? <span><b>Experto</b> Las bajas dan XP; los niveles aumentan HP/daño, desbloquean mejoras Mk y habilitan créditos + armería avanzada.</span>
+                    : <span><b>Arcade</b> Sin XP, niveles ni economía. Activa Modo experto en Settings si quieres la capa RPG.</span>}
                 </div>
               )}
               {hud.phase !== 'ready' && <small>{expertMode ? `Nivel ${hud.level} · ` : ''}{hud.score.toLocaleString('es-ES')} puntos · {missionTime}</small>}
@@ -503,6 +519,20 @@ export default function PawnSlug({ onExit }) {
                       )}
                     />
                   </label>
+                </div>
+
+                <div className="pawn-slug-settings-remap">
+                  <div className="pawn-slug-settings-section-title">
+                    <span>Modo experto</span>
+                    <button
+                      type="button"
+                      aria-pressed={expertMode}
+                      onClick={toggleExpertMode}
+                    >
+                      {expertMode ? 'ACTIVO' : 'OFF'}
+                    </button>
+                  </div>
+                  <small>Activa créditos, armería avanzada, XP/niveles, HP/daño por nivel y mejoras Mk. Cambiarlo reinicia la operación actual.</small>
                 </div>
 
                 <div className="pawn-slug-settings-remap">
