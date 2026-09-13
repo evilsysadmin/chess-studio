@@ -8,15 +8,13 @@ const PROFILES = Object.freeze([
     label: 'desktop-inspection-1600x1000',
     viewport: Object.freeze({ width: 1600, height: 1000 }),
     hasTouch: false,
-    deviceScaleFactor: 2,
-    forceFullQuality: true,
+    deviceScaleFactor: 1,
   }),
   Object.freeze({
     label: 'android-landscape-844x390',
     viewport: Object.freeze({ width: 844, height: 390 }),
     hasTouch: true,
     deviceScaleFactor: 1,
-    forceFullQuality: false,
   }),
 ]);
 
@@ -115,29 +113,9 @@ for (const profile of PROFILES) {
       hasTouch: profile.hasTouch,
       deviceScaleFactor: profile.deviceScaleFactor,
     });
-    await context.addInitScript(({ forceFullQuality }) => {
+    await context.addInitScript(() => {
       Object.defineProperty(navigator, 'hardwareConcurrency', { configurable: true, get: () => 8 });
-      if (!forceFullQuality) return;
-
-      // CI runs WebGL through SwiftShader. For the art-review capture only, make
-      // the app select the same full-quality War Room budget as a normal desktop
-      // GPU while SwiftShader still does the actual rasterization. This changes
-      // no production behavior; it only prevents the visual artifact from
-      // silently dropping to the lite/no-shadows software tier.
-      const fakeGpuParameter = (prototype) => {
-        if (!prototype?.getParameter || prototype.getParameter.__warRoomVisualQa) return;
-        const original = prototype.getParameter;
-        const wrapped = function getParameter(parameter) {
-          if (parameter === 0x9246 || parameter === 0x1f01) return 'ANGLE (NVIDIA GeForce RTX Visual QA)';
-          if (parameter === 0x9245 || parameter === 0x1f00) return 'NVIDIA Corporation';
-          return original.call(this, parameter);
-        };
-        wrapped.__warRoomVisualQa = true;
-        prototype.getParameter = wrapped;
-      };
-      fakeGpuParameter(globalThis.WebGLRenderingContext?.prototype);
-      fakeGpuParameter(globalThis.WebGL2RenderingContext?.prototype);
-    }, { forceFullQuality: profile.forceFullQuality });
+    });
 
     const page = await context.newPage();
     try {
