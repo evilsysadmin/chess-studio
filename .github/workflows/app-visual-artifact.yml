@@ -51,7 +51,7 @@ jobs:
         if: always()
         run: node scripts/app_visual_summary.mjs --self-test
 
-      - name: Summarize
+      - name: Summary
         if: always()
         run: node scripts/app_visual_summary.mjs
 
