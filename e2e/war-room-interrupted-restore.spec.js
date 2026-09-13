@@ -127,9 +127,16 @@ function expectClockDidNotReset(previous, next) {
 }
 
 async function expectClockedWarRoom(page) {
-  await expect(page.locator('.game-player-rail .clock-chip')).toHaveCount(2, { timeout: WAR_ROOM_READY_TIMEOUT });
+  // En 3D Matthias ocupa el puesto rival y sólo el rail humano se renderiza;
+  // ambos tiempos siguen viviendo en el mismo snapshot autoritativo del clock.
+  await expect(page.locator('.game-player-rail .clock-chip')).toHaveCount(1, { timeout: WAR_ROOM_READY_TIMEOUT });
   const snapshot = await readClockSnapshot(page);
-  expect(snapshot).toEqual(expect.objectContaining({ timeControlId: '5+0', activeColor: 'w' }));
+  expect(snapshot).toEqual(expect.objectContaining({
+    timeControlId: '5+0',
+    activeColor: 'w',
+    whiteTime: expect.any(Number),
+    blackTime: expect.any(Number),
+  }));
   return snapshot;
 }
 
@@ -177,6 +184,7 @@ async function switchTo3D(page) {
 async function expectCaptureSnapshot2D(page) {
   const board = page.locator('.board-grid').first();
   await expect(board).toBeVisible({ timeout: WAR_ROOM_READY_TIMEOUT });
+  await expect(page.locator('.game-player-rail .clock-chip')).toHaveCount(2, { timeout: WAR_ROOM_READY_TIMEOUT });
   await expect(page.getByRole('button', { name: /^Casilla d5, peón blanco/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Casilla f6, caballo negro/i })).toBeVisible();
   await expect(board.locator('.square.selected')).toHaveCount(0);
@@ -206,7 +214,7 @@ test('War Room · F5 durante movimiento y captura restaura una escena limpia y j
   await quickMatch.getByRole('combobox', { name: 'Ritmo de reloj' }).selectOption('5+0');
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
   await expectCleanWarRoom(page);
-  await expect(page.locator('.game-player-rail .clock-chip')).toHaveCount(2, { timeout: WAR_ROOM_READY_TIMEOUT });
+  await expectClockedWarRoom(page);
 
   await clickBoardMove(page, 'e2', 'e4');
   await expect.poll(() => movePosts(requestLog).length, { timeout: 5_000 }).toBe(1);
