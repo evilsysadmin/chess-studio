@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CHRONICLES_DIRECTIONS, CHRONICLES_MAP } from './chroniclesOfMatthias.js';
 import { buildChroniclesCharacter, buildCorruptedPawn } from './chroniclesOfMatthiasArt.js';
+import { buildChroniclesDungeonDressing } from './chroniclesOfMatthiasDungeonArt.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 
 const CELL = 4;
@@ -132,6 +133,8 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
   camera.rotation.order = 'YXZ';
 
   const dungeon = createDungeonScene(scene, { coarsePointer: coarse });
+  const dressing = buildChroniclesDungeonDressing({ coarsePointer: coarse });
+  scene.add(dressing);
   let destroyed = false;
   let visible = document.visibilityState !== 'hidden';
   let desiredPosition = worldForCell(1, 5);
@@ -167,6 +170,10 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
     dungeon.gateMaterial.emissiveIntensity = state.sigilAwake ? 0.9 : 0.15;
     dungeon.gateRune.material.emissive.setHex(state.sigilAwake ? 0xcc6a16 : 0x241300);
     dungeon.gateRune.material.emissiveIntensity = state.sigilAwake ? 2.2 : 0.25;
+    (dressing.userData.chroniclesRuneMaterials || []).forEach((runeMaterial) => {
+      runeMaterial.emissive.setHex(state.sigilAwake ? 0x9d410b : 0x4b1d05);
+      runeMaterial.emissiveIntensity = state.sigilAwake ? 1.35 : 0.55;
+    });
     if (reducedMotion) {
       camera.position.copy(desiredPosition);
       camera.rotation.y = desiredYaw;
