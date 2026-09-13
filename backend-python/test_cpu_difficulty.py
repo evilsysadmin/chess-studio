@@ -94,6 +94,21 @@ def test_timeout_falls_back_to_deterministic_analysis_not_legal_roulette(monkeyp
     assert policy.get_factual_difficulty_cpu_move(board, 0)["san"] == "e4"
 
 
+def test_low_level_honors_explicit_game_api_engine_override(monkeypatch):
+    import game_api
+
+    board = chess.Board()
+    injected = {"from": "d2", "to": "d4", "san": "d4", "piece": "p", "promotion": None, "captured": False}
+    monkeypatch.setattr(game_api, "get_cpu_move", lambda *_args, **_kwargs: injected)
+    monkeypatch.setattr(
+        policy,
+        "analyze_root_iterative",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("explicit provider must win")),
+    )
+
+    assert policy.get_factual_difficulty_cpu_move(board, 20) is injected
+
+
 def test_level_45_and_styled_cpu_keep_established_engine_path(monkeypatch):
     board = chess.Board()
     seen = []
