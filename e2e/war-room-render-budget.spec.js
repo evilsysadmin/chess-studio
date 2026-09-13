@@ -208,6 +208,19 @@ async function collectRenderAudit(page, { viewport } = {}) {
   // work gets mislabeled as one gameplay frame and creates a false regression.
   const startupResources = await page.evaluate(() => window.__warRoomGpuAudit.snapshot());
   await page.evaluate(() => window.__warRoomGpuAudit.resetFramePeaks());
+
+  // Idle War Room is intentionally event-driven, so after resetting the probe it
+  // may render nothing at all. Nudge the viewport by 1px and restore it: the real
+  // ResizeObserver path calls Board3DCore.resize() -> render(), giving the audit a
+  // genuine steady-state gameplay frame without changing production behavior.
+  const steadyViewport = page.viewportSize();
+  if (steadyViewport) {
+    await page.setViewportSize({
+      width: Math.max(1, steadyViewport.width - 1),
+      height: steadyViewport.height,
+    });
+    await page.setViewportSize(steadyViewport);
+  }
   await page.waitForTimeout(500);
 
   const cssAndBacking = await canvas.evaluate((element) => ({
