@@ -69,7 +69,35 @@ async function captureHealth(page, label) {
   }, label);
 }
 
-test('Experimentos · canary visual Arcade desktop + Android', async ({ browser }) => {
+async function capturePawnSlugReadyHealth(page) {
+  return page.evaluate(() => {
+    const root = document.documentElement;
+    const rect = (selector) => {
+      const node = document.querySelector(selector);
+      if (!node) return null;
+      const box = node.getBoundingClientRect();
+      return {
+        left: Number(box.left.toFixed(1)),
+        top: Number(box.top.toFixed(1)),
+        right: Number(box.right.toFixed(1)),
+        bottom: Number(box.bottom.toFixed(1)),
+        width: Number(box.width.toFixed(1)),
+        height: Number(box.height.toFixed(1)),
+      };
+    };
+    const pawnSlugRoot = document.querySelector('[data-pawn-slug="true"]');
+    return {
+      horizontalOverflow: root.scrollWidth > root.clientWidth + 1,
+      expert: pawnSlugRoot?.getAttribute('data-pawn-slug-expert') || null,
+      canvasCount: document.querySelectorAll('[data-pawn-slug-renderer="three"] canvas').length,
+      cabinet: rect('.pawn-slug-cabinet'),
+      overlay: rect('.pawn-slug-overlay'),
+      settingsTrigger: rect('.pawn-slug-settings-trigger'),
+    };
+  });
+}
+
+test('Experimentos + Pawn Slug ready · canary visual desktop + Android', async ({ browser }) => {
   test.setTimeout(90_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
 
@@ -113,6 +141,33 @@ test('Experimentos · canary visual Arcade desktop + Android', async ({ browser 
       await freezeVisualFrame(page);
       await page.screenshot({
         path: `${ARTIFACT_DIR}/experiments-${capture.label}.png`,
+        fullPage: true,
+      });
+
+      await pawnSlug.click();
+      await expect(page.getByRole('heading', { name: 'Pawn Slug', exact: true })).toBeVisible();
+      const root = page.locator('[data-pawn-slug="true"]');
+      const start = page.getByRole('button', { name: 'INICIAR OPERACIÓN', exact: true });
+      await expect(root).toHaveAttribute('data-pawn-slug-expert', 'false');
+      await expect(start).toBeVisible();
+      await expect(page.getByText(/Sin XP, niveles ni economía/)).toBeVisible();
+      await expect(page.locator('[data-pawn-slug-renderer="three"] canvas')).toHaveCount(0);
+
+      const readyHealth = await capturePawnSlugReadyHealth(page);
+      health.pawnSlugReady = readyHealth;
+      expect(readyHealth.horizontalOverflow, `${capture.label}: Pawn Slug ready overflow`).toBe(false);
+      expect(readyHealth.expert, `${capture.label}: Pawn Slug default mode`).toBe('false');
+      expect(readyHealth.canvasCount, `${capture.label}: ready screen must stay boot-free`).toBe(0);
+      expect(readyHealth.cabinet?.width || 0, `${capture.label}: Pawn Slug cabinet visible`).toBeGreaterThan(0);
+      expect(readyHealth.overlay?.width || 0, `${capture.label}: mission overlay visible`).toBeGreaterThan(0);
+      expect(readyHealth.settingsTrigger?.width || 0, `${capture.label}: Settings trigger visible`).toBeGreaterThan(0);
+      const startBox = await start.boundingBox();
+      expect(startBox, `${capture.label}: start action bounds`).not.toBeNull();
+      expect(startBox.height, `${capture.label}: start action touch height`).toBeGreaterThanOrEqual(44);
+
+      await freezeVisualFrame(page);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/pawn-slug-ready-${capture.label}.png`,
         fullPage: true,
       });
     } finally {
