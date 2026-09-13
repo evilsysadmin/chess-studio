@@ -100,7 +100,11 @@ function cleanPlayFacts(records) {
   };
 }
 
-function patternPostTrainingObservations(puzzles, records, incidentKey) {
+function hasIncident(row, incidentKey) {
+  return Array.isArray(row?.incidentKeys) && row.incidentKeys.includes(incidentKey);
+}
+
+function patternPostTrainingObservationBundle(puzzles, records, incidentKey) {
   const relevantPuzzles = puzzles.filter((puzzle) => (
     Array.isArray(puzzle?.incidentKeys) && puzzle.incidentKeys.includes(incidentKey)
   ));
@@ -114,7 +118,7 @@ function patternPostTrainingObservations(puzzles, records, incidentKey) {
     latestRecurrenceAt: null,
     latestNoRecurrenceAt: null,
   };
-  if (!latestCleanTrainingAt) return empty;
+  if (!latestCleanTrainingAt) return { facts: empty, currentNoRecurrenceStreak: 0 };
 
   const anchorMs = Date.parse(latestCleanTrainingAt);
   const sourceGameIds = new Set(relevantPuzzles
@@ -134,40 +138,44 @@ function patternPostTrainingObservations(puzzles, records, incidentKey) {
     .filter(({ atMs }) => Number.isFinite(atMs) && atMs > anchorMs)
     .sort((a, b) => a.atMs - b.atMs);
 
-  const recurrence = observations.filter(({ row }) => (
-    Array.isArray(row?.incidentKeys) && row.incidentKeys.includes(incidentKey)
-  ));
-  const noRecurrence = observations.filter(({ row }) => (
-    !Array.isArray(row?.incidentKeys) || !row.incidentKeys.includes(incidentKey)
-  ));
+  const recurrence = observations.filter(({ row }) => hasIncident(row, incidentKey));
+  const noRecurrence = observations.filter(({ row }) => !hasIncident(row, incidentKey));
+  let currentNoRecurrenceStreak = 0;
+  for (let index = observations.length - 1; index >= 0; index -= 1) {
+    if (hasIncident(observations[index].row, incidentKey)) break;
+    currentNoRecurrenceStreak += 1;
+  }
 
   return {
-    latestCleanTrainingAt,
-    observedGames: observations.length,
-    recurrenceGames: recurrence.length,
-    noRecurrenceGames: noRecurrence.length,
-    latestObservationAt: observations.length ? new Date(observations.at(-1).atMs).toISOString() : null,
-    latestRecurrenceAt: recurrence.length ? new Date(recurrence.at(-1).atMs).toISOString() : null,
-    latestNoRecurrenceAt: noRecurrence.length ? new Date(noRecurrence.at(-1).atMs).toISOString() : null,
+    facts: {
+      latestCleanTrainingAt,
+      observedGames: observations.length,
+      recurrenceGames: recurrence.length,
+      noRecurrenceGames: noRecurrence.length,
+      latestObservationAt: observations.length ? new Date(observations.at(-1).atMs).toISOString() : null,
+      latestRecurrenceAt: recurrence.length ? new Date(recurrence.at(-1).atMs).toISOString() : null,
+      latestNoRecurrenceAt: noRecurrence.length ? new Date(noRecurrence.at(-1).atMs).toISOString() : null,
+    },
+    currentNoRecurrenceStreak,
   };
 }
 
-function patternImprovementState(pattern) {
+function patternImprovementState(pattern, currentNoRecurrenceStreak) {
   const observations = pattern?.postTrainingObservations;
   if (!pattern?.debt || !observations?.latestCleanTrainingAt) {
     return PATTERN_IMPROVEMENT_STATES.NO_SAMPLE;
   }
-  if (observations.recurrenceGames > 0) {
-    return PATTERN_IMPROVEMENT_STATES.STILL_OCCURRING;
-  }
   if (
     pattern.debt.paid === true
-    && observations.noRecurrenceGames >= PATTERN_IMPROVEMENT_CORRECTED_OBSERVATIONS
+    && currentNoRecurrenceStreak >= PATTERN_IMPROVEMENT_CORRECTED_OBSERVATIONS
   ) {
     return PATTERN_IMPROVEMENT_STATES.CORRECTED_WITH_SUFFICIENT_SAMPLE;
   }
-  if (observations.noRecurrenceGames >= PATTERN_IMPROVEMENT_PROBABLE_OBSERVATIONS) {
+  if (currentNoRecurrenceStreak >= PATTERN_IMPROVEMENT_PROBABLE_OBSERVATIONS) {
     return PATTERN_IMPROVEMENT_STATES.PROBABLE_IMPROVEMENT;
+  }
+  if (observations.recurrenceGames > 0) {
+    return PATTERN_IMPROVEMENT_STATES.STILL_OCCURRING;
   }
   return PATTERN_IMPROVEMENT_STATES.NO_SAMPLE;
 }
@@ -176,7 +184,7 @@ export function buildPlayerModel({ insights = null, personalPuzzles = [], cleanG
   const puzzles = Array.isArray(personalPuzzles) ? personalPuzzles.filter(Boolean) : [];
   const totalGames = nonNegativeInt(insights?.totalGames);
   const recurringErrors = buildRecurringErrorPatterns(puzzles).map((pattern) => {
-    const postTrainingObservations = patternPostTrainingObservations(
+    const observationBundle = patternPostTrainingObservationBundle(
       puzzles,
       cleanGameRecords,
       pattern.incidentKey,
@@ -184,11 +192,11 @@ export function buildPlayerModel({ insights = null, personalPuzzles = [], cleanG
     const enriched = {
       ...pattern,
       confidence: evidenceConfidence(pattern.positions, { mediumAt: 3, highAt: 5 }),
-      postTrainingObservations,
+      postTrainingObservations: observationBundle.facts,
     };
     return {
       ...enriched,
-      improvementState: patternImprovementState(enriched),
+      improvementState: patternImprovementState(enriched, observationBundle.currentNoRecurrenceStreak),
     };
   });
   const trainingDebt = personalTrainingDebtSummary(puzzles);
