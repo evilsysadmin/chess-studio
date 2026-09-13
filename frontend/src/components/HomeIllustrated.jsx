@@ -48,7 +48,8 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
   const castleLife = useMemo(() => buildHomeCastleLife({
     rivalry: loadRivalry(),
     dailyStats: dailyChallengeStats(loadDailyChallenge()),
-  }), []);
+    now: matthiasRoutineClock,
+  }), [matthiasRoutineClock]);
   const baseMatthiasRoutine = useMemo(() => matthiasAmbientVisuals(
     matthiasRoutineClock.getHours(),
     matthiasRoutineClock,
