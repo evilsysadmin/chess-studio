@@ -245,6 +245,21 @@ test('Pawn Slug · Android landscape usa gestos y conserva targets jugables en p
       expect(overflow).toBeLessThanOrEqual(1);
     }
 
+    // Exercise the three invisible landscape zones with Chromium's real touch
+    // input in the same runtime we already paid to boot above. The trained-zone
+    // classes are emitted only after Pawn Slug consumes each corresponding
+    // pointer path, so this catches a dead overlay or broken touch routing.
+    const touchBox = await gestureSurface.boundingBox();
+    expect(touchBox).not.toBeNull();
+    const touchY = touchBox.y + touchBox.height * 0.5;
+    await page.touchscreen.tap(touchBox.x + touchBox.width * 0.1, touchY);
+    await expect(gestureSurface).toHaveClass(/is-move-trained/);
+    await page.touchscreen.tap(touchBox.x + touchBox.width * 0.55, touchY);
+    await expect(gestureSurface).toHaveClass(/is-gesture-trained/);
+    await page.touchscreen.tap(touchBox.x + touchBox.width * 0.75, touchY);
+    await expect(gestureSurface).toHaveClass(/is-fire-trained/);
+    await page.waitForTimeout(100);
+
     // The final 568×320 layout is intentionally tiny: pausing must not bury the
     // escape/restart actions below a long remap form. The sticky action rail
     // keeps all three controls inside the viewport with touch-safe targets.
