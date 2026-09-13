@@ -133,6 +133,26 @@ describe('Hans rendered facing guard', () => {
     expect(hans.userData.warRoomHansVisibleFacingHooks).toBeGreaterThanOrEqual(1);
   });
 
+  it('cede la orientación a work-target cuando una fase nominalmente móvil ya está parada', () => {
+    const { root, hans, bodyMesh, driver } = makeRig(1, 'carry-log');
+    driver.onBeforeRender = () => {
+      driver.userData.warRoomHansPhase = 'carry-log';
+      hans.userData.warRoomHansMovementFacing = 'work-target';
+      hans.userData.warRoomHansMotionState = 'carry-log';
+      hans.rotation.y = 0.73;
+    };
+
+    expect(installWarRoomHansFacingGuard(root)).toBe(1);
+    driver.onBeforeRender();
+    expect(hans.rotation.y).toBeCloseTo(0.73, 8);
+    expect(hans.userData.warRoomHansFacingGuardCorrections).toBe(0);
+
+    hans.rotation.y = -0.41;
+    paintVisible(bodyMesh, 18);
+    expect(hans.rotation.y).toBeCloseTo(-0.41, 8);
+    expect(hans.userData.warRoomHansFacingGuardCorrections).toBe(0);
+  });
+
   it('no roba la orientación de trabajo cuando Hans está quieto', () => {
     const { root, hans, driver } = makeRig(1, 'place-log');
     driver.onBeforeRender = () => {
@@ -154,3 +174,14 @@ describe('Hans rendered facing guard', () => {
     expect(installWarRoomHansFacingGuard(root)).toBe(0);
   });
 });
+
+function paintVisible(mesh, frame) {
+  mesh.onBeforeRender(
+    { info: { render: { frame } } },
+    null,
+    null,
+    mesh.geometry,
+    mesh.material,
+    null,
+  );
+}
