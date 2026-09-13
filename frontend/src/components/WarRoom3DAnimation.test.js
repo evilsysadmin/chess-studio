@@ -27,14 +27,15 @@ describe('War Room ambient render cadence', () => {
     expect(plan.updateCamera).toBe(false);
   });
 
-  it('sube la cámara de inspección a ~60 FPS en desktop y ~30 FPS en móvil', () => {
+  it('sube la cámara de inspección a ~60 FPS en desktop y ~42 FPS en móvil', () => {
     const desktop = warRoomAmbientFramePlan({ elapsedMs: 16, inspectMode: true });
     expect(desktop.intervalMs).toBe(16);
     expect(desktop.shouldRender).toBe(true);
     expect(desktop.updateCamera).toBe(true);
 
-    const mobile = warRoomAmbientFramePlan({ elapsedMs: 33, inspectMode: true, coarsePointer: true });
-    expect(mobile.intervalMs).toBe(33);
+    expect(warRoomAmbientFramePlan({ elapsedMs: 23, inspectMode: true, coarsePointer: true }).shouldRender).toBe(false);
+    const mobile = warRoomAmbientFramePlan({ elapsedMs: 24, inspectMode: true, coarsePointer: true });
+    expect(mobile.intervalMs).toBe(24);
     expect(mobile.shouldRender).toBe(true);
     expect(mobile.updateCamera).toBe(true);
   });
@@ -71,7 +72,7 @@ describe('War Room ambient render cadence', () => {
       shadowMapSize: 1024,
       shadowsEnabled: true,
       idleFrameIntervalMs: 150,
-      inspectFrameIntervalMs: 33,
+      inspectFrameIntervalMs: 24,
     });
     expect(warRoomRenderBudget({ coarsePointer: true, softwareRenderer: true })).toEqual({
       tier: 'lite',
@@ -80,7 +81,7 @@ describe('War Room ambient render cadence', () => {
       shadowMapSize: 512,
       shadowsEnabled: false,
       idleFrameIntervalMs: 150,
-      inspectFrameIntervalMs: 33,
+      inspectFrameIntervalMs: 24,
     });
   });
 
