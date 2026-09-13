@@ -118,7 +118,7 @@ test('Experimentos + Pawn Slug ready · canary visual desktop + Android', async 
       await expect(arcade).toBeVisible();
       await expect(pawnSlug).toBeVisible();
       await expect(trailblazer).toBeVisible();
-      await expect(page.locator('.experiments-tactical-deck')).toBeVisible();
+      await expect(page.locator('.experiments-tactical-deck').first()).toBeVisible();
       await expect(arcade.locator('.experiments-card')).toHaveCount(0);
 
       const health = await captureHealth(page, capture.label);
