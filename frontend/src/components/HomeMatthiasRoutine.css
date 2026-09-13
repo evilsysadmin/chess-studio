@@ -5,11 +5,11 @@
 .illustrated-home__matthias-portrait {
   position: relative;
   display: block;
-  overflow: hidden;
+  overflow: visible;
   flex: none;
-  border-radius: 9px;
-  background: rgba(12, 8, 5, .76);
-  box-shadow: inset 0 0 0 1px rgba(221, 177, 91, .22), 0 8px 18px rgba(0, 0, 0, .24);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   transform-origin: 50% 78%;
 }
 
@@ -26,6 +26,7 @@
   display: grid;
   gap: .18rem;
   align-content: center;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, .92), 0 0 2px rgba(0, 0, 0, .95);
 }
 
 .illustrated-home__matthias-copy > strong,
@@ -41,7 +42,7 @@
 }
 
 .illustrated-home__matthias-copy > em {
-  color: #bda986;
+  color: #d7c39f;
   white-space: nowrap;
 }
 
@@ -62,14 +63,14 @@
     align-items: center;
     column-gap: .55cqw;
     padding: .48cqw .58cqw;
-    overflow: hidden;
-    background: linear-gradient(100deg, rgba(18, 11, 7, .93), rgba(22, 14, 9, .74));
-    box-shadow: 0 8px 24px rgba(0, 0, 0, .22);
+    overflow: visible;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
     transition:
       left 1050ms cubic-bezier(.2,.72,.2,1),
       top 1050ms cubic-bezier(.2,.72,.2,1),
-      filter .18s ease,
-      background-color .18s ease;
+      filter .18s ease;
   }
 
   /* The movement stays in the quiet lower-left band of the hall. It reads as
@@ -103,7 +104,7 @@
 
   .illustrated-home__matthias:hover,
   .illustrated-home__matthias:focus-visible {
-    filter: brightness(1.08);
+    filter: brightness(1.1) drop-shadow(0 5px 10px rgba(0, 0, 0, .34));
   }
 
   .illustrated-home__matthias-portrait {
@@ -142,8 +143,7 @@
 
 /* Forced-desktop Android landscape keeps the 16:9 hall taller than the viewport.
  * Anchor speech far enough above the cropped lower edge that its touch controls
- * remain fully visible while preserving the compact card introduced by the
- * wide-touch composition. */
+ * remain fully visible while preserving the compact wide-touch composition. */
 @media (pointer: coarse) and (orientation: landscape) and (min-width: 760px) and (max-height: 620px) {
   .illustrated-home__speech {
     bottom: 13% !important;
@@ -273,9 +273,9 @@
     display: none !important;
   }
 
-  /* One Matthias, one card. His live routine remains dynamic but stays on top of
-     the exact card position in the master rather than wandering over a second
-     painted Matthias. */
+  /* Matthias is part of the room, not a dashboard card. Keep the established
+     hit area and semantic action, but let the resident and his small caption sit
+     directly over the scene with no panel chrome. */
   .illustrated-home__matthias,
   .illustrated-home__matthias[data-home-matthias-zone='table'],
   .illustrated-home__matthias[data-home-matthias-zone='desk'],
@@ -291,14 +291,31 @@
     grid-template-columns: clamp(72px, 5.3cqw, 102px) minmax(0, 1fr) !important;
     column-gap: .8cqw !important;
     padding: .62cqw .78cqw !important;
-    border: 1px solid rgba(169, 128, 57, .72) !important;
-    border-radius: 12px !important;
-    background: linear-gradient(104deg, rgba(15, 12, 10, .99), rgba(20, 15, 12, .965)) !important;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, .28) !important;
-    transition: filter .18s ease, background-color .18s ease !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    transition: filter .18s ease !important;
   }
 
-  /* Keep remarks in the strip between the top destinations and Matthias' card.
+  .illustrated-home__matthias-copy {
+    align-self: center;
+    padding: .18cqw 0;
+    background: transparent;
+  }
+
+  .illustrated-home__matthias-copy > strong {
+    color: #f5ce69;
+    font-size: max(12px, .8cqw);
+    letter-spacing: .035em;
+  }
+
+  .illustrated-home__matthias-copy > span,
+  .illustrated-home__matthias-copy > em {
+    font-size: max(11px, .72cqw);
+  }
+
+  /* Keep remarks in the strip between the top destinations and Matthias.
      The previous unconstrained 44% panel could physically cover Torneos. */
   .illustrated-home__speech {
     left: 11.2% !important;
