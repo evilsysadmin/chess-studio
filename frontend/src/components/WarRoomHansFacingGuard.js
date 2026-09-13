@@ -68,6 +68,13 @@ function signedPlanarAngle(from, to) {
 }
 
 function hansTravelOwnsFacing(hans, phase) {
+  const facingOwner = String(hans?.userData?.warRoomHansMovementFacing || '');
+  // MotionPolishV2 is the authoritative arbiter when available. This prevents a
+  // nominally "moving" phase such as carry-log/stoke-fire from stealing a
+  // stationary work turn after travel has actually stopped.
+  if (facingOwner === 'work-target') return false;
+  if (facingOwner === 'velocity-vector') return true;
+
   const motion = String(hans?.userData?.warRoomHansMotionState || '');
   const route = String(hans?.userData?.warRoomHansRoute || '');
   return MOVING_PHASES.has(String(phase || ''))
