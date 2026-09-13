@@ -27,8 +27,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lifecycle:
-    name: Browser required · War Room lifecycle
+  stress:
+    name: Browser required · War Room stress
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -43,15 +43,44 @@ jobs:
           restore-frontend-deps: 'true'
           build-frontend: 'true'
 
-      - name: Run War Room lifecycle marathon
+      - name: Run War Room stress marathon
         working-directory: e2e
-        run: ./node_modules/.bin/playwright test war-room-runtime-marathon.spec.js war-room-interrupted-restore.spec.js war-room-undo-rewind.spec.js war-room-ephemeral-cleanup.spec.js --workers=1 --retries=0 --timeout=360000
+        run: ./node_modules/.bin/playwright test war-room-runtime-marathon.spec.js --workers=1 --retries=0 --timeout=360000
 
-      - name: Upload lifecycle diagnostics on failure
+      - name: Upload stress diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: war-room-runtime-lifecycle-${{ github.sha }}
+          name: war-room-runtime-stress-${{ github.sha }}
+          path: e2e/test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  continuity:
+    name: Browser required · War Room continuity
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Restore browser runtime and build frontend
+        uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+          restore-frontend-deps: 'true'
+          build-frontend: 'true'
+
+      - name: Run War Room continuity marathon
+        working-directory: e2e
+        run: ./node_modules/.bin/playwright test war-room-interrupted-restore.spec.js war-room-undo-rewind.spec.js war-room-ephemeral-cleanup.spec.js --workers=1 --retries=0 --timeout=360000
+
+      - name: Upload continuity diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: war-room-runtime-continuity-${{ github.sha }}
           path: e2e/test-results/
           if-no-files-found: ignore
           retention-days: 7
