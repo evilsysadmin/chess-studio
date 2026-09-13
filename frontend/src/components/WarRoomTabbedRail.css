@@ -275,3 +275,50 @@
     border-top-color: rgba(190, 164, 109, .1);
   }
 }
+
+/* Phone landscape can cross the 821px desktop threshold while retaining only
+   390px of vertical room. Board3D's lazy <=1080px CSS arrives after the static
+   game layout and can re-expand the secondary rail. Keep the tactical rail
+   strictly inside its 148–188px grid track and let it scroll internally; the
+   board remains the height owner of the play-first composition. */
+@media (orientation: landscape) and (max-width: 920px) and (max-height: 620px) {
+  .game-screen .game-side-column.game-side-column-3d {
+    display: flex !important;
+    grid-template-columns: none !important;
+    grid-template-rows: none !important;
+    grid-template-areas: none !important;
+    flex-direction: column !important;
+    align-self: start !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: min(36dvh, 160px) !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    box-sizing: border-box;
+  }
+
+  .game-screen .game-side-column-3d > .game-side-music,
+  .game-screen .game-side-column-3d > .game-warroom-rail,
+  .game-screen .game-side-column-3d .game-warroom-rail-tabs,
+  .game-screen .game-side-column-3d .game-warroom-rail-panel,
+  .game-screen .game-side-column-3d .game-chat,
+  .game-screen .game-side-column-3d .game-chat-heading,
+  .game-screen .game-side-column-3d .game-chat-log {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .game-screen .game-side-column-3d .game-warroom-rail {
+    overflow: hidden !important;
+  }
+
+  .game-screen .game-side-column-3d .game-chat {
+    min-height: 0 !important;
+    height: auto !important;
+    max-height: 176px !important;
+  }
+}
