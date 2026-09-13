@@ -26,19 +26,23 @@ function expectOnlySquares(state, expected, kind = null) {
 }
 
 describe('War Room 3D premium highlight visibility', () => {
-  it('keeps the overlay safely above the settled tile surface', () => {
+  it('keeps the overlay safely above the settled tile surface while staying inset', () => {
     expect(BOARD3D_HIGHLIGHT_Y).toBeGreaterThan(0.11);
+    expect(BOARD3D_HIGHLIGHT_Y).toBeLessThan(0.12);
     expect(BOARD3D_HIGHLIGHT_SIZE).toBeGreaterThan(0.8);
+    expect(BOARD3D_HIGHLIGHT_SIZE).toBeLessThan(0.9);
   });
 
-  it('uses a cool high-contrast blue for legal destinations while preserving warm semantics', () => {
+  it('uses a cool readable blue for legal destinations without turning the tile into a UI card', () => {
     expect(BOARD3D_HIGHLIGHT_COLORS.legal).toBe(0x245f9f);
     expect(BOARD3D_HIGHLIGHT_COLORS.selected).toBe(0xc99a43);
     expect(BOARD3D_HIGHLIGHT_COLORS.capture).toBe(0x96462e);
     const legal = board3DHighlightStyle({ square: 'e4', legalMap: new Map([['e4', false]]) });
     const selected = board3DHighlightStyle({ square: 'e2', selectedSquare: 'e2', legalMap: new Map() });
-    expect(legal).toMatchObject({ kind: 'legal', color: 0x245f9f, opacity: 0.84, scale: 0.82 });
-    expect(selected).toMatchObject({ kind: 'selected', color: 0xc99a43, opacity: 0.82 });
+    expect(legal).toMatchObject({ kind: 'legal', color: 0x245f9f, opacity: 0.62, scale: 0.8 });
+    expect(selected).toMatchObject({ kind: 'selected', color: 0xc99a43, opacity: 0.7, scale: 0.96 });
+    expect(legal.opacity).toBeLessThan(0.7);
+    expect(selected.scale).toBeLessThan(1);
   });
 
   it('binds selection and legal targets to exact algebraic squares with no mirrored spill', () => {
@@ -102,7 +106,7 @@ describe('War Room 3D premium highlight visibility', () => {
       square: 'e4',
       legalMap: new Map([['e4', { capture: false, technique: false }]]),
     });
-    expect(technique).toMatchObject({ kind: 'technique', color: BOARD3D_HIGHLIGHT_COLORS.technique, opacity: 0.9 });
+    expect(technique).toMatchObject({ kind: 'technique', color: BOARD3D_HIGHLIGHT_COLORS.technique, opacity: 0.68, scale: 0.88 });
     expect(technique.color).not.toBe(normal.color);
   });
 
