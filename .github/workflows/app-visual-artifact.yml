@@ -7,6 +7,7 @@ on:
       - 'frontend/public/**'
       - 'e2e/app-visual-artifact.spec.js'
       - 'e2e/war-room-visual-artifact.spec.js'
+      - 'e2e/war-room-hans-visual-artifact.spec.js'
       - 'e2e/browser-runtime-health.spec.js'
       - 'e2e/browser-storage-health.spec.js'
       - 'scripts/war_room_visual_freeze_check.mjs'
@@ -54,7 +55,7 @@ jobs:
 
       - name: Capture canonical views + browser health
         working-directory: e2e
-        run: ./node_modules/.bin/playwright test app-visual-artifact.spec.js war-room-visual-artifact.spec.js browser-runtime-health.spec.js browser-storage-health.spec.js --workers=1 --retries=0
+        run: ./node_modules/.bin/playwright test app-visual-artifact.spec.js war-room-visual-artifact.spec.js war-room-hans-visual-artifact.spec.js browser-runtime-health.spec.js browser-storage-health.spec.js --workers=1 --retries=0
 
       - name: Enforce War Room visual freeze
         run: node scripts/war_room_visual_freeze_check.mjs
@@ -116,6 +117,17 @@ jobs:
             const sceneHeight = capture.boardViewportFill != null ? `${Math.round(capture.boardViewportFill * 100)}%` : '—';
             const pointer = capture.coarsePointer ? 'coarse' : 'fine';
             lines.push(`| ${label} | ${capture.horizontalOverflowPx ?? '—'} px | ${sceneWidth} | ${sceneHeight} | ${pointer} | \`${slug}.png\` |`);
+          }
+
+          const hansPath = '.artifacts/app-visual/war-room-hans-desktop-1440x900-health.json';
+          if (fs.existsSync(hansPath)) {
+            const hans = JSON.parse(fs.readFileSync(hansPath, 'utf8'));
+            lines.push(
+              '',
+              '### Hans · visual canary',
+              '',
+              `Estado: **${hans.screen || '—'}** · NDC ${Number.isFinite(hans.ndcX) ? hans.ndcX.toFixed(3) : '—'}, ${Number.isFinite(hans.ndcY) ? hans.ndcY.toFixed(3) : '—'} · \`war-room-hans-desktop-1440x900.png\``,
+            );
           }
 
           const portraitPath = '.artifacts/app-visual/war-room-android-390x844-health.json';
