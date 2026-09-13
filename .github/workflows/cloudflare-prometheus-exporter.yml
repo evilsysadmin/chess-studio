@@ -8,6 +8,7 @@ on:
       - '.github/workflows/cloudflare-prometheus-exporter.yml'
       - 'infra/grafana/alloy/cloudflare-exporter.alloy.example'
       - 'scripts/cloudflare_exporter_config.py'
+      - 'scripts/cloudflare_exporter_health.py'
 
 permissions:
   contents: read
@@ -70,9 +71,11 @@ jobs:
         with:
           path: chess-studio
 
-      - name: Validate exporter config builder
+      - name: Validate exporter deployment helpers
         if: steps.gate.outputs.configured == 'true'
-        run: python3 -S chess-studio/scripts/cloudflare_exporter_config.py --self-test
+        run: |
+          python3 -S chess-studio/scripts/cloudflare_exporter_config.py --self-test
+          python3 -S chess-studio/scripts/cloudflare_exporter_health.py --self-test
 
       - name: Checkout pinned official exporter
         if: steps.gate.outputs.configured == 'true'
@@ -143,40 +146,4 @@ jobs:
 
       - name: Verify protected exporter health and metrics
         if: steps.gate.outputs.configured == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          base="https://$EXPORTER_HOSTNAME"
-          healthy=false
-          for attempt in {1..60}; do
-            health_code="$(curl --silent --show-error --connect-timeout 5 --max-time 15 \
-              --user "$CLOUDFLARE_EXPORTER_BASIC_AUTH_USER:$CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD" \
-              --output "$RUNNER_TEMP/cf-exporter-health.json" --write-out '%{http_code}' \
-              "$base/health" || true)"
-            metrics_code="$(curl --silent --show-error --connect-timeout 5 --max-time 25 \
-              --user "$CLOUDFLARE_EXPORTER_BASIC_AUTH_USER:$CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD" \
-              --output "$RUNNER_TEMP/cf-exporter-metrics.txt" --write-out '%{http_code}' \
-              "$base/metrics" || true)"
-            if [[ "$health_code" == 200 && "$metrics_code" == 200 ]] \
-              && grep -q '^cloudflare_' "$RUNNER_TEMP/cf-exporter-metrics.txt"; then
-              healthy=true
-              break
-            fi
-            echo "Exporter aún propagando (health=$health_code metrics=$metrics_code intento $attempt/60)"
-            sleep 5
-          done
-          [[ "$healthy" == true ]] || { echo '::error::Exporter no quedó healthy con métricas Cloudflare'; exit 1; }
-
-          unauth_code="$(curl --silent --show-error --connect-timeout 5 --max-time 10 \
-            --output /dev/null --write-out '%{http_code}' "$base/metrics" || true)"
-          [[ "$unauth_code" == 401 ]] || { echo "::error::/metrics sin auth devolvió HTTP $unauth_code, esperaba 401"; exit 1; }
-
-          {
-            echo '### Cloudflare Prometheus exporter operativo'
-            echo
-            echo "- Upstream pin: \`$EXPORTER_UPSTREAM_SHA\`"
-            echo "- Endpoint: \`https://$EXPORTER_HOSTNAME/metrics\`"
-            echo '- Protección: `HTTP Basic Auth`'
-            echo '- UI/config API: `disabled`'
-            echo '- Host metrics: `production + staging`'
-          } >> "$GITHUB_STEP_SUMMARY"
+        run: python3 -S chess-studio/scripts/cloudflare_exporter_health.py
