@@ -211,6 +211,21 @@
   .pawn-slug-settings-trigger::first-letter { font-size: 1rem; }
 }
 
+/* The canonical gear is intentionally visually small, but touch users keep a
+   full 44px hit area in both portrait and landscape. */
+@media (pointer: coarse), (max-width: 760px) {
+  .pawn-slug .pawn-slug-settings-trigger {
+    width: 2.75rem;
+    min-width: 2.75rem;
+    height: 2.75rem;
+    min-height: 2.75rem;
+  }
+
+  .pawn-slug-hud {
+    right: 3.45rem;
+  }
+}
+
 /* Loaded after the cabinet stylesheet: in short touch landscape, Pawn Slug
    becomes the app surface so global Chess Studio chrome cannot steal height. */
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
@@ -257,17 +272,12 @@
   .pawn-slug-settings-actions > button {
     min-height: 44px;
   }
+}
 
-  .pawn-slug .pawn-slug-settings-trigger {
-    width: 2.75rem;
-    min-width: 2.75rem;
-    height: 2.75rem;
-    min-height: 2.75rem;
-  }
-
-  .pawn-slug-hud {
-    right: 3.45rem;
-  }
+/* Keep the mission's primary action comfortably targetable after the
+   cinematic cabinet overrides compact the generic button chrome. */
+.pawn-slug-overlay .primary-btn {
+  min-height: 44px;
 }
 
 @media (prefers-reduced-motion: reduce) {
