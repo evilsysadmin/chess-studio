@@ -11,6 +11,19 @@ export const PAWN_SLUG_PROJECTILE_FX = Object.freeze({
   enemy: Object.freeze({ core: 0xff6b5f, tracer: 0xff241d, length: 0.4, radius: 0.034, flash: 1.02 }),
 });
 
+const HOSTILE_WEAPONS = Object.freeze(['pistol', 'machinegun', 'shotgun', 'panzerfaust']);
+const HOSTILE_PALETTE = PAWN_SLUG_PROJECTILE_FX.enemy;
+export const PAWN_SLUG_HOSTILE_PROJECTILE_FX = Object.freeze(Object.fromEntries(
+  HOSTILE_WEAPONS.map((weapon) => [
+    weapon,
+    Object.freeze({
+      ...PAWN_SLUG_PROJECTILE_FX[weapon],
+      core: HOSTILE_PALETTE.core,
+      tracer: HOSTILE_PALETTE.tracer,
+    }),
+  ]),
+));
+
 export const PAWN_SLUG_PREMIUM_FX_RESOURCE_VERSION = 'premium-shared-resources-v2-arcade-bullets';
 const premiumSharedResources = new Map();
 
@@ -53,12 +66,18 @@ function mesh(geometry, material, x = 0, y = 0, z = 0) {
   return node;
 }
 
+function safeWeapon(weapon = 'pistol') {
+  return HOSTILE_WEAPONS.includes(weapon) ? weapon : 'pistol';
+}
+
 function fxProfile({ enemy = false, weapon = 'pistol' } = {}) {
-  return PAWN_SLUG_PROJECTILE_FX[enemy ? 'enemy' : weapon] || PAWN_SLUG_PROJECTILE_FX.pistol;
+  const safe = safeWeapon(weapon);
+  return enemy ? PAWN_SLUG_HOSTILE_PROJECTILE_FX[safe] : PAWN_SLUG_PROJECTILE_FX[safe];
 }
 
 function fxKey({ enemy = false, weapon = 'pistol' } = {}) {
-  return enemy ? 'enemy' : weapon;
+  const safe = safeWeapon(weapon);
+  return enemy ? `enemy:${safe}` : safe;
 }
 
 export function createPremiumBulletModel({ enemy = false, explosive = false, weapon = 'pistol' } = {}) {
