@@ -40,10 +40,13 @@ const PLAYER_WEAPON_SCALE = 0.72;
 export const PAWN_SLUG_SFX_RESOURCE_META = Object.freeze({
   sharedNoiseBufferSeconds: SHARED_NOISE_SECONDS,
   noiseStrategy: 'shared-random-window',
+  weaponPannerStrategy: 'shared-player-enemy',
 });
 
 let ctx = null;
 let master = null;
+let playerWeaponPanner = null;
+let enemyWeaponPanner = null;
 let sharedNoiseBuffer = null;
 let lastImpactAt = -Infinity;
 let lastKoAt = -Infinity;
@@ -55,6 +58,14 @@ function profileVolume() {
     * Math.max(0, Math.min(1, Number(settings.sfxVolume) || 0));
 }
 
+function createWeaponPanner(audio, pan) {
+  if (typeof audio.createStereoPanner !== 'function') return null;
+  const panner = audio.createStereoPanner();
+  panner.pan.value = pan;
+  panner.connect(master);
+  return panner;
+}
+
 function ensureAudio() {
   if (typeof window === 'undefined') return null;
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -63,6 +74,8 @@ function ensureAudio() {
     ctx = new AudioCtx();
     master = ctx.createGain();
     master.connect(ctx.destination);
+    playerWeaponPanner = createWeaponPanner(ctx, PAWN_SLUG_WEAPON_STEREO_PAN.player);
+    enemyWeaponPanner = createWeaponPanner(ctx, PAWN_SLUG_WEAPON_STEREO_PAN.enemy);
   }
   master.gain.value = 0.055 * profileVolume();
   if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
@@ -106,16 +119,17 @@ export function pawnSlugWeaponStereoPan({ enemy = false } = {}) {
   return enemy ? PAWN_SLUG_WEAPON_STEREO_PAN.enemy : PAWN_SLUG_WEAPON_STEREO_PAN.player;
 }
 
-function connectOutput(audio, node, pan = 0) {
+function connectOutput(node, pan = 0) {
   const safePan = Math.max(-1, Math.min(1, Number(pan) || 0));
-  if (!master || Math.abs(safePan) < 0.001 || typeof audio.createStereoPanner !== 'function') {
-    node.connect(master);
+  if (Math.abs(safePan - PAWN_SLUG_WEAPON_STEREO_PAN.player) < 0.001 && playerWeaponPanner) {
+    node.connect(playerWeaponPanner);
     return;
   }
-  const panner = audio.createStereoPanner();
-  panner.pan.value = safePan;
-  node.connect(panner);
-  panner.connect(master);
+  if (Math.abs(safePan - PAWN_SLUG_WEAPON_STEREO_PAN.enemy) < 0.001 && enemyWeaponPanner) {
+    node.connect(enemyWeaponPanner);
+    return;
+  }
+  node.connect(master);
 }
 
 function tone({ freq, endFreq = freq, duration = 0.08, gain = 0.12, type = 'triangle', delay = 0, filter = 0, pan = 0 }) {
@@ -139,7 +153,7 @@ function tone({ freq, endFreq = freq, duration = 0.08, gain = 0.12, type = 'tria
   } else {
     osc.connect(amp);
   }
-  connectOutput(audio, amp, pan);
+  connectOutput(amp, pan);
   osc.start(now);
   osc.stop(now + duration + 0.025);
 }
@@ -159,7 +173,7 @@ function noise({ duration = 0.08, gain = 0.12, cutoff = 2200, delay = 0, pan = 0
   amp.gain.exponentialRampToValueAtTime(0.0001, now + window.duration);
   source.connect(filter);
   filter.connect(amp);
-  connectOutput(audio, amp, pan);
+  connectOutput(amp, pan);
   source.start(now, window.offset, window.duration);
   source.stop(now + window.duration + 0.01);
 }
@@ -246,10 +260,14 @@ export function playPawnSlugPlayerHitSfx() {
 
 export function destroyPawnSlugPremiumSfx() {
   if (!ctx) return;
+  try { playerWeaponPanner?.disconnect(); } catch {}
+  try { enemyWeaponPanner?.disconnect(); } catch {}
   try { master?.disconnect(); } catch {}
   void ctx.close().catch(() => {});
   ctx = null;
   master = null;
+  playerWeaponPanner = null;
+  enemyWeaponPanner = null;
   sharedNoiseBuffer = null;
   lastImpactAt = -Infinity;
   lastKoAt = -Infinity;
