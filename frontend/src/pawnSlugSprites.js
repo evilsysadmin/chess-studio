@@ -11,7 +11,7 @@ import {
 } from './pawnSlugEnemyRunSprites.js';
 import { pawnSlugPanzerRookEntryPose } from './pawnSlugBossEntryMotion.js';
 import { applyPawnSlugMatthiasPremiumMotion } from './pawnSlugMatthiasPremiumMotion.js';
-import { playPawnSlugPlayerHitSfx } from './pawnSlugSfx.js';
+import { playPawnSlugEnemyImpactSfx, playPawnSlugPlayerHitSfx } from './pawnSlugSfx.js';
 
 export * from './pawnSlugSpritesLegacy.js';
 export {
@@ -32,6 +32,10 @@ export function animateMatthiasSlugSprite(sprite, state = {}) {
 export function animatePanzerRookSprite(sprite, time = 0, state = {}) {
   animateLegacyPanzerRookSprite(sprite, time, state);
   if (!sprite) return;
+
+  const hurt = Boolean(state.hurt);
+  if (hurt && !sprite.userData.pawnSlugBossWasHurt) playPawnSlugEnemyImpactSfx('boss');
+  sprite.userData.pawnSlugBossWasHurt = hurt;
 
   const safeTime = Number(time) || 0;
   if (!Number.isFinite(sprite.userData.panzerRookEntryStartedAt)) {
@@ -67,5 +71,6 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
     ...LEGACY_SPRITE_META.enemies,
     runAtlas: PAWN_SLUG_ENEMY_RUN_META,
     panzerRookEntry: true,
+    panzerRookImpactCue: 'premium-boss-edge-trigger',
   }),
 });
