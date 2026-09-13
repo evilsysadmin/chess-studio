@@ -26,7 +26,7 @@ BUDGETS = (
     Budget('.github/workflows/production-promote.yml', 35727),
     Budget('.github/workflows/cicd.yml', 30009),
     Budget('.github/workflows/staging-deploy.yml', 25880),
-    Budget('.github/workflows/cloudflare-prometheus-exporter.yml', 7761),
+    Budget('.github/workflows/cloudflare-prometheus-exporter.yml', 5964),
     Budget('.github/workflows/app-visual-artifact.yml', 2571),
     Budget('.github/workflows/chesscom-visual-artifact.yml', 1490),
 )

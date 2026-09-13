@@ -12,6 +12,7 @@ WORKFLOW = ROOT / ".github" / "workflows" / "grafana-dashboards.yml"
 PUBLISHER = ROOT / "scripts" / "grafana_publish.py"
 EXPORTER_WORKFLOW = ROOT / ".github" / "workflows" / "cloudflare-prometheus-exporter.yml"
 EXPORTER_CONFIG = ROOT / "scripts" / "cloudflare_exporter_config.py"
+EXPORTER_HEALTH = ROOT / "scripts" / "cloudflare_exporter_health.py"
 ALLOY_EXAMPLE = INFRA / "alloy" / "cloudflare-exporter.alloy.example"
 
 
@@ -116,6 +117,7 @@ def main() -> int:
 
     exporter_workflow = EXPORTER_WORKFLOW.read_text(encoding="utf-8") if EXPORTER_WORKFLOW.exists() else ""
     exporter_config = EXPORTER_CONFIG.read_text(encoding="utf-8") if EXPORTER_CONFIG.exists() else ""
+    exporter_health = EXPORTER_HEALTH.read_text(encoding="utf-8") if EXPORTER_HEALTH.exists() else ""
     for token in (
         'cloudflare/cloudflare-prometheus-exporter',
         'c98fd6772a4ff806e40ba08cb5d4edb002ef13dc',
@@ -123,9 +125,9 @@ def main() -> int:
         'CLOUDFLARE_EXPORTER_BASIC_AUTH_USER',
         'CLOUDFLARE_EXPORTER_BASIC_AUTH_PASSWORD',
         'python3 -S chess-studio/scripts/cloudflare_exporter_config.py --self-test',
+        'python3 -S chess-studio/scripts/cloudflare_exporter_health.py --self-test',
         'python3 -S chess-studio/scripts/cloudflare_exporter_config.py --root upstream-exporter',
-        'unauth_code',
-        'esperaba 401',
+        'python3 -S chess-studio/scripts/cloudflare_exporter_health.py',
     ):
         if token not in exporter_workflow:
             fail(f"workflow exporter Cloudflare incompleto: {token}")
@@ -140,6 +142,18 @@ def main() -> int:
     ):
         if token not in exporter_config:
             fail(f"config exporter Cloudflare incompleta: {token}")
+    for token in (
+        'attempts: int = 60',
+        'delay_seconds: float = 5',
+        'health.status == 200',
+        'metrics.status == 200',
+        'line.startswith(b"cloudflare_")',
+        'unauth.status != 401',
+        'esperaba 401',
+        'HTTP Basic Auth',
+    ):
+        if token not in exporter_health:
+            fail(f"health exporter Cloudflare incompleta: {token}")
     if 'printf \'%s\' "$CLOUDFLARE_API_TOKEN"' in exporter_workflow:
         fail("exporter no debe reutilizar el token write-capable de CI como token runtime")
 
