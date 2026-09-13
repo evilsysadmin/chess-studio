@@ -8,7 +8,7 @@ import { loadRivalry } from '../rivalry.js';
 import { dailyChallengeStats, loadDailyChallenge } from '../dailyChallenge.js';
 import { buildHomeCastleLife } from '../homeCastleLife.js';
 import { requestLabLaunch } from '../labLaunchIntent.js';
-import { matthiasAmbientVisuals } from '../matthiasVisuals.js';
+import { matthiasAmbientVisuals, matthiasHomeZone } from '../matthiasVisuals.js';
 import { reducedMotionStatus, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import './HomeIllustrated.css';
 import './HomeIllustratedDiegetic.css';
@@ -87,6 +87,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
     ['play', hasSavedGame ? 'CONTINUAR' : 'JUGAR', hasSavedGame ? 'Vuelve a tu partida' : 'Partida rápida o privada', IconSword, hasSavedGame ? onContinue : onPlay],
   ];
   const matthiasActivity = matthiasVisual?.label || 'En observación';
+  const matthiasZone = matthiasHomeZone(matthiasVisual?.key);
   const matthiasActionDuplicated = matthiasSpeaking && matthiasModel?.action === 'insights';
   return (
     <section className="illustrated-home" aria-label="Modos principales">
@@ -178,6 +179,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           title={`Matthias · ${matthiasActivity}`}
           data-home-matthias-scene={matthiasVisual?.key || 'base'}
           data-home-matthias-activity={matthiasActivity}
+          data-home-matthias-zone={matthiasZone}
         >
           {matthiasVisual && (
             <span
