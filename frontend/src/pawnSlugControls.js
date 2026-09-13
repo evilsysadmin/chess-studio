@@ -44,6 +44,7 @@ export const PAWN_SLUG_DEFAULT_SETTINGS = Object.freeze({
   masterVolume: 1,
   musicVolume: 0.8,
   sfxVolume: 0.9,
+  expertMode: false,
   keymap: PAWN_SLUG_DEFAULT_KEYMAP,
 });
 
@@ -110,6 +111,7 @@ export function normalizePawnSlugSettings(value) {
     masterVolume: clampVolume(input.masterVolume, PAWN_SLUG_DEFAULT_SETTINGS.masterVolume),
     musicVolume: clampVolume(input.musicVolume, PAWN_SLUG_DEFAULT_SETTINGS.musicVolume),
     sfxVolume: clampVolume(input.sfxVolume, PAWN_SLUG_DEFAULT_SETTINGS.sfxVolume),
+    expertMode: input.expertMode === true,
     keymap: normalizePawnSlugKeymap(input.keymap),
   };
 }
