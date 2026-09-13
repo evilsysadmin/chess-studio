@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CHRONICLES_DIRECTIONS, CHRONICLES_MAP } from './chroniclesOfMatthias.js';
+import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 
 const CELL = 4;
 const CAMERA_Y = 1.62;
@@ -112,7 +113,7 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
 
   const coarse = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
   const reducedMotion = Boolean(window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
-  const renderer = new THREE.WebGLRenderer({ antialias: !coarse, alpha: false, powerPreference: 'high-performance' });
+  const renderer = createExperimentalThreeRenderer({ antialias: !coarse, alpha: false, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setClearColor(0x080706, 1);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? 1.2 : 1.65));
