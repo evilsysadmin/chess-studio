@@ -6,9 +6,11 @@ import {
   chroniclesReduce,
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
+import { chroniclesRetaliationCue } from '../chroniclesOfMatthiasRetaliation.js';
 import { chroniclesTargetAhead } from '../chroniclesOfMatthiasTargeting.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
+import ChroniclesEnemyRetaliationFx from './ChroniclesEnemyRetaliationFx.jsx';
 import ChroniclesTacticalMargin from './ChroniclesTacticalMargin.jsx';
 import './ChroniclesOfMatthias.css';
 import './ChroniclesOfMatthiasArt.css';
@@ -27,12 +29,15 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const portraitHostRef = useRef(null);
   const engineRef = useRef(null);
   const portraitEngineRef = useRef(null);
+  const retaliationTimerRef = useRef(null);
+  const retaliationSequenceRef = useRef(0);
   const stateRef = useRef(createChroniclesState());
   const [state, setState] = useState(stateRef.current);
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
   const selectedMemberIdRef = useRef(selectedMemberId);
   const [rendererName, setRendererName] = useState('CARGANDO');
   const [rendererError, setRendererError] = useState('');
+  const [retaliationCue, setRetaliationCue] = useState(null);
 
   useEffect(() => {
     selectedMemberIdRef.current = selectedMemberId;
@@ -40,11 +45,21 @@ export default function ChroniclesOfMatthias({ onExit }) {
   }, [selectedMemberId]);
 
   const dispatch = useCallback((action) => {
-    setState((current) => {
-      const next = chroniclesReduce(current, action);
-      stateRef.current = next;
-      return next;
-    });
+    const current = stateRef.current;
+    const next = chroniclesReduce(current, action);
+    stateRef.current = next;
+    setState(next);
+
+    const cue = chroniclesRetaliationCue(current, next);
+    if (cue) {
+      const token = retaliationSequenceRef.current + 1;
+      retaliationSequenceRef.current = token;
+      if (retaliationTimerRef.current) clearTimeout(retaliationTimerRef.current);
+      setRetaliationCue({ ...cue, token });
+      retaliationTimerRef.current = setTimeout(() => {
+        setRetaliationCue((active) => active?.token === token ? null : active);
+      }, 320);
+    }
   }, []);
 
   const attackWithSelected = useCallback(() => {
@@ -58,6 +73,13 @@ export default function ChroniclesOfMatthias({ onExit }) {
     stateRef.current = next;
     setSelectedMemberId('matthias');
     setState(next);
+    if (retaliationTimerRef.current) clearTimeout(retaliationTimerRef.current);
+    retaliationTimerRef.current = null;
+    setRetaliationCue(null);
+  }, []);
+
+  useEffect(() => () => {
+    if (retaliationTimerRef.current) clearTimeout(retaliationTimerRef.current);
   }, []);
 
   useEffect(() => {
@@ -184,6 +206,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <div className="chronicles-vignette" aria-hidden="true" />
             <div className="chronicles-crosshair" aria-hidden="true">·</div>
             <ChroniclesTacticalMargin target={tacticalTarget} />
+            <ChroniclesEnemyRetaliationFx key={retaliationCue?.token || 'none'} cue={retaliationCue} />
             {rendererError && <div className="chronicles-renderer-error" role="alert">{rendererError}</div>}
             {state.phase === 'escaped' && <ChroniclesBookOneEpilogue state={state} onRestart={restart} />}
           </div>
