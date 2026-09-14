@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { createExperimentalThreeRenderer } from '../experimentalThreeRenderer.js';
-import { buildMatthiasKing3D } from './MatthiasKing3D.js';
+import { buildHomeMatthiasAvatar3D } from './HomeMatthiasAvatar3D.js';
 import './HomeMatthias3D.css';
 
 function disposeObject(root) {
@@ -82,54 +82,33 @@ export default function HomeMatthias3D({
 
     const stage = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(29, 1, 0.1, 20);
-    camera.position.set(0, 0.83, 3.35);
-    camera.lookAt(0, 0.72, 0);
+    camera.position.set(0, 0.86, 3.28);
+    camera.lookAt(0, 0.82, 0);
 
-    const mainMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x171b21,
-      metalness: 0.2,
-      roughness: 0.5,
-      clearcoat: 0.2,
-      clearcoatRoughness: 0.32,
-      envMapIntensity: 0.42,
-    });
-    const accentMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xcaa24f,
-      metalness: 0.72,
-      roughness: 0.28,
-      clearcoat: 0.28,
-      clearcoatRoughness: 0.22,
-      envMapIntensity: 0.62,
-    });
-
-    const matthias = buildMatthiasKing3D(mainMaterial, accentMaterial, {
-      coarsePointer,
-      faceTowardCamera: true,
-      pieceColor: 'b',
-      skinId: 'studio',
-    });
-    matthias.position.set(0, 0.02, 0);
-    matthias.rotation.y = 0.035;
-    matthias.scale.multiplyScalar(1.08);
+    const matthias = buildHomeMatthiasAvatar3D({ coarsePointer });
+    matthias.position.set(0, 0.015, 0);
+    matthias.rotation.y = 0.018;
     stage.add(matthias);
 
-    const headRig = matthias.getObjectByName('matthias-head-rig');
+    const headRig = matthias.getObjectByName('home-matthias-head-rig');
+    const bodyRig = matthias.getObjectByName('home-matthias-body-rig');
     const basePosition = matthias.position.clone();
     const baseRotation = matthias.rotation.clone();
     const baseScale = matthias.scale.clone();
     const baseHeadRotation = headRig?.rotation.clone();
+    const baseBodyRotation = bodyRig?.rotation.clone();
     const eyeNodes = [
-      matthias.getObjectByName('matthias-eye-white-left'),
-      matthias.getObjectByName('matthias-eye-white-right'),
-      matthias.getObjectByName('matthias-eye-left'),
-      matthias.getObjectByName('matthias-eye-right'),
+      matthias.getObjectByName('home-matthias-eye-white-left'),
+      matthias.getObjectByName('home-matthias-eye-white-right'),
+      matthias.getObjectByName('home-matthias-eye-left'),
+      matthias.getObjectByName('home-matthias-eye-right'),
     ].filter(Boolean);
     const eyeBaseScaleY = eyeNodes.map((eye) => eye.scale.y);
 
-    const hemisphere = new THREE.HemisphereLight(0xf8e6c5, 0x11151d, 2.2);
+    const hemisphere = new THREE.HemisphereLight(0xf7e6ca, 0x10141b, 2.35);
     stage.add(hemisphere);
 
-    const keyLight = new THREE.DirectionalLight(0xffe0ad, 4.6);
+    const keyLight = new THREE.DirectionalLight(0xffdfaa, 4.8);
     keyLight.position.set(-2.1, 3.2, 3.6);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(coarsePointer ? 512 : 1024, coarsePointer ? 512 : 1024);
@@ -137,20 +116,20 @@ export default function HomeMatthias3D({
     keyLight.shadow.camera.far = 9;
     stage.add(keyLight);
 
-    const rimLight = new THREE.DirectionalLight(0x769ac7, 2.2);
-    rimLight.position.set(2.6, 1.8, -2.2);
+    const rimLight = new THREE.DirectionalLight(0x789dcc, 2.15);
+    rimLight.position.set(2.5, 1.9, -2.1);
     stage.add(rimLight);
 
-    const warmFill = new THREE.PointLight(0xd3a85f, 1.5, 5.5, 2);
-    warmFill.position.set(1.25, 0.75, 2.2);
+    const warmFill = new THREE.PointLight(0xd4a75a, 1.55, 5.5, 2);
+    warmFill.position.set(1.2, 0.8, 2.15);
     stage.add(warmFill);
 
     const shadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(1.8, 0.9),
-      new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.28 }),
+      new THREE.PlaneGeometry(1.55, 0.72),
+      new THREE.ShadowMaterial({ color: 0x000000, opacity: 0.24 }),
     );
     shadow.rotation.x = -Math.PI / 2;
-    shadow.position.set(0, 0.012, 0.08);
+    shadow.position.set(0, 0.008, 0.05);
     shadow.receiveShadow = true;
     stage.add(shadow);
 
@@ -176,21 +155,26 @@ export default function HomeMatthias3D({
       matthias.scale.copy(baseScale);
 
       if (animate) {
-        matthias.position.y += breath * 0.0085;
-        matthias.rotation.z += slowSway * 0.0085 * profile.sway;
-        matthias.rotation.y += Math.sin(t * 0.43) * 0.022 * profile.sway;
-        matthias.scale.y *= 1 + breath * 0.0035;
+        matthias.position.y += breath * 0.0065;
+        matthias.rotation.z += slowSway * 0.006 * profile.sway;
+        matthias.rotation.y += Math.sin(t * 0.43) * 0.017 * profile.sway;
+        matthias.scale.y *= 1 + breath * 0.0025;
+      }
+
+      if (bodyRig && baseBodyRotation) {
+        bodyRig.rotation.copy(baseBodyRotation);
+        if (animate) bodyRig.rotation.z += slowSway * 0.004 * profile.sway;
       }
 
       if (headRig && baseHeadRotation) {
         headRig.rotation.copy(baseHeadRotation);
         headRig.rotation.x += profile.headPitch;
         if (animate) {
-          headRig.rotation.y += Math.sin(t * 0.64 + 0.7) * 0.035 * profile.headYaw;
-          headRig.rotation.x += Math.sin(t * 0.92) * 0.012;
+          headRig.rotation.y += Math.sin(t * 0.64 + 0.7) * 0.038 * profile.headYaw;
+          headRig.rotation.x += Math.sin(t * 0.92) * 0.011;
           if (listening) {
-            headRig.rotation.x += Math.sin(t * 2.35) * 0.012 - 0.012;
-            headRig.rotation.y += Math.sin(t * 1.75) * 0.012;
+            headRig.rotation.x += Math.sin(t * 2.35) * 0.01 - 0.01;
+            headRig.rotation.y += Math.sin(t * 1.75) * 0.011;
           }
         }
       }
@@ -243,6 +227,7 @@ export default function HomeMatthias3D({
     resize();
     renderOnce(0, false);
     canvas.dataset.motion = reducedMotion ? 'still-3d' : 'procedural-3d';
+    canvas.dataset.matthiasIdentity = 'canonical-officer-avatar';
     setReady(true);
     if (!reducedMotion) animationFrame = window.requestAnimationFrame(loop);
 
@@ -253,8 +238,8 @@ export default function HomeMatthias3D({
       resizeObserver?.disconnect();
       if (!resizeObserver) window.removeEventListener('resize', resize);
       canvas.removeEventListener('webglcontextlost', onContextLost, false);
-      disposeObject(matthias);
       stage.remove(matthias);
+      disposeObject(matthias);
       disposeObject(stage);
       renderer.dispose();
     };
