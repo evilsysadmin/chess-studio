@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import json
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -29,6 +30,7 @@ class BrowserScope:
         return cls(True, True, True, True, True)
 
 
+FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
 VISUAL_PATTERNS = (
     "frontend/src/components/WarRoomCastleArchitecture.js",
     "frontend/src/components/WarRoomPremiumPaintings.js",
@@ -60,7 +62,6 @@ FULL_LOGIC_PATTERNS = (
     "frontend/src/components/useGameMobileFocus.js",
     "frontend/src/components/useMatthiasBoardReactions.js",
     "frontend/src/warRoomPointerCapture.js",
-    "frontend/src/warRoomPointerCapture.test.js",
     "frontend/src/main.jsx",
     "e2e/three-d-war-room.spec.js",
     "e2e/three-d-war-room-android-touch.spec.js",
@@ -124,6 +125,9 @@ def classify(paths: Iterable[str]) -> BrowserScope:
     full_logic = visual = focus = matthias = quick_2d = False
 
     for path in _clean_paths(paths):
+        if FRONTEND_TEST_RE.search(path):
+            continue
+
         if _matches(path, VISUAL_PATTERNS):
             visual = True
 
@@ -272,6 +276,10 @@ def self_test() -> None:
     assert classify(["frontend/src/components/WarRoomPracticalLighting.js"]) == BrowserScope(visual=True)
     assert _ids(classify(["frontend/src/styles/19-game-focus.css"])) == ["desktop-scale", "android-focus"]
 
+    assert classify(["frontend/src/components/Board3DParity.test.js"]) == BrowserScope()
+    assert classify(["frontend/src/warRoomPointerCapture.test.js"]) == BrowserScope()
+    assert classify(["frontend/src/components/MatthiasAvatar.spec.jsx"]) == BrowserScope()
+
     full = classify(["frontend/src/components/Board3DRenderer.js"])
     assert full == BrowserScope(full_logic=True, visual=True, focus=True)
     assert _ids(full) == [
@@ -287,6 +295,14 @@ def self_test() -> None:
         "desktop-scale",
         "android-focus",
     ]
+
+    mixed = classify(
+        [
+            "frontend/src/components/Board3DRenderer.js",
+            "frontend/src/components/Board3DParity.test.js",
+        ]
+    )
+    assert mixed == BrowserScope(full_logic=True, visual=True, focus=True)
 
     assert _ids(classify(["frontend/src/components/MatthiasAvatar.jsx"])) == [
         "matthias-home-motion",
