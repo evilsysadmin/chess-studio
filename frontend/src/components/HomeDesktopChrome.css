@@ -112,12 +112,13 @@
     pointer-events: auto;
   }
 
-  /* The player sits ~74px above the bottom edge of the 1814×867 master once
-     scaled to viewport width. Anchor the real deck to that same coordinate. */
+  /* The deck is live UI, not part of the artwork. Keep it directly below the
+     top chrome instead of anchoring it to the retired painted-player position,
+     which can overlap Matthias on shorter desktop viewports. */
   html body:has(.app-shell-home) .global-music-dock {
     position: fixed !important;
     left: max(12px, .8vw) !important;
-    top: calc(47.795vw - 74px) !important;
+    top: 64px !important;
     bottom: auto !important;
     width: clamp(230px, 15.6vw, 282px) !important;
     z-index: 72 !important;
