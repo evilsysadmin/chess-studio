@@ -1971,6 +1971,53 @@ Object.assign(AMBIENT_THEMES, {
   },
 });
 
+// Una pieza escaparate para la nueva plantilla de cámara. El ostinato conserva
+// un motivo reconocible entre secciones, mientras piano, bajos y cuerdas largas
+// cambian de función hasta una reprise final más grande.
+Object.assign(AMBIENT_THEMES, {
+  clockworkOverture: {
+    id:'clockworkOverture', genre:'Clásica', engine:'structured', label:'Obertura del reloj',
+    description:'Orquesta de cámara con spiccato real, cello rítmico, piano de fieltro y un motivo que crece hasta la reprise. Elegante, tensa y con gancho.',
+    stepMs:150, stepsPerSection:64, longFormMs:460000,
+    leadInstrument:'spiccatoStrings', counterInstrument:'felt', chordInstrument:'strings', bassInstrument:'spiccatoCello',
+    sections:[
+      {
+        // Exposición: ocho notas fáciles de reconocer, repetidas con una cola ascendente.
+        lead:{0:64,2:67,4:71,6:69,8:67,10:64,12:62,14:64,16:64,18:67,20:71,22:74,24:71,26:69,28:67,30:64,32:64,34:67,36:71,38:69,40:67,42:64,44:62,46:64,48:67,50:71,52:74,54:76,56:74,58:71,60:69,62:67},
+        counter:{10:76,26:74,42:71,58:76},
+        chords:{0:[52,55,59,64],16:[48,52,55,60],32:[55,59,62,67],48:[50,54,57,62]},
+        bass:{0:45,4:45,8:48,12:45,16:43,20:48,24:45,28:43,32:47,36:47,40:50,44:47,48:45,52:50,56:48,60:45},
+        drums:{0:'K',4:'H',8:'S',12:'H',16:'K',20:'H',24:'S',28:'H',32:'K',36:'H',40:'S',44:'H',48:'K',52:'H',56:'S',60:'H'},
+      },
+      {
+        // Desarrollo: el mismo ADN rítmico cambia de acento y abre el registro.
+        lead:{0:67,2:71,4:74,6:71,8:69,10:67,12:64,14:67,16:69,18:72,20:76,22:74,24:72,26:69,28:67,30:64,32:67,34:71,36:74,38:76,40:74,42:71,44:69,46:67,48:69,50:72,52:76,54:74,56:76,58:74,60:71,62:69},
+        counter:{6:74,22:76,38:74,54:76},
+        chords:{0:[55,59,62,67],16:[57,60,64,69],32:[52,55,59,64],48:[53,57,60,65]},
+        bass:{0:47,4:50,8:47,12:45,16:48,20:52,24:48,28:45,32:45,36:48,40:45,44:43,48:45,52:48,56:52,60:48},
+        drums:{0:'K',4:'H',8:'S',12:'H',16:'K',20:'H',24:'S',28:'H',32:'K',36:'H',40:'S',44:'H',48:'K',52:'H',56:'S',60:'H'},
+      },
+      {
+        // Puente: cae el pulso, el piano cuenta la melodía y deja aire antes del clímax.
+        lead:{0:64,6:67,12:71,18:69,24:62,30:64,36:67,42:71,48:69,54:67,60:64},
+        counter:{2:76,10:74,18:71,26:72,34:76,42:74,50:76,58:74},
+        chords:{0:[52,55,59,64],24:[50,54,57,62],48:[48,52,55,60]},
+        bass:{0:45,8:48,16:45,24:43,32:47,40:45,48:43,56:45},
+        drums:{0:'K',8:'S',16:'K',24:'S',32:'K',40:'S',48:'K',56:'S'},
+      },
+      {
+        // Reprise: ostinato completo y una línea larga por encima; aquí abre el techo.
+        counterInstrument:'strings',
+        lead:{0:64,2:67,4:71,6:69,8:67,10:64,12:62,14:64,16:67,18:71,20:74,22:71,24:69,26:67,28:64,30:67,32:69,34:72,36:76,38:74,40:72,42:69,44:67,46:69,48:71,50:74,52:76,54:74,56:72,58:71,60:69,62:64},
+        counter:{8:71,24:74,40:76,56:74},
+        chords:{0:[52,55,59,64],16:[55,59,62,67],32:[57,60,64,69],48:[52,55,59,64]},
+        bass:{0:45,4:52,8:48,12:52,16:47,20:50,24:47,28:50,32:48,36:52,40:48,44:52,48:45,52:52,56:48,60:45},
+        drums:{0:'K',4:'H',8:'S',12:'H',16:'K',20:'H',24:'S',28:'H',32:'K',36:'H',40:'S',44:'H',48:'K',52:'H',56:'S',60:'H'},
+      },
+    ],
+  },
+});
+
 export const AMBIENT_GENRE_ORDER = ['SPA / Zen', 'Smooth Jazz', 'Tropical House', 'Energía', 'Ecléctica', 'Clásica', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Dark Ambient', 'Jazz / Mediterráneo', 'Electrónica / Experimental', 'Ambient / Otros'];
 const MEDITERRANEAN_IDS = new Set([
   'andalus','casablanca','velvet','alexandria241','cairo0047','beirut0113','damascusBlueHour','istanbul0326','tangierSmoke','bosphorusRain',
