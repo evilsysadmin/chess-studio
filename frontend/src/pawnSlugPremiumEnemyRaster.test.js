@@ -6,17 +6,20 @@ import {
 } from './pawnSlugPremiumEnemyRaster.js';
 
 describe('Pawn Slug premium enemy raster', () => {
-  it('uses the approved compact six-row raster as the primary art source', () => {
+  it('uses the cleaned canonical 80px raster as the primary art source', () => {
     expect(PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL).toMatch(/^data:image\/png;base64,/);
     expect(PAWN_SLUG_PREMIUM_ENEMY_RASTER_META).toMatchObject({
-      version: 'v2-approved-raster',
-      width: 640,
-      height: 240,
-      frameWidth: 40,
-      frameHeight: 40,
+      version: 'v3-canonical-raster',
+      width: 1280,
+      height: 480,
+      frameWidth: 80,
+      frameHeight: 80,
       columns: 16,
       rows: 6,
       sourceFacing: 'left',
+      canonicalSource: 'Pawn Slug: Enemy Sprite Sheet',
+      isolatedSilhouettes: true,
+      transparentBackground: true,
       proceduralFallbackOnly: true,
     });
     expect(PAWN_SLUG_PREMIUM_ENEMY_RASTER_META.authoredActions).toEqual(['idle', 'run']);
