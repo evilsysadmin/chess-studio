@@ -110,13 +110,17 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
   const root = new THREE.Group();
   root.name = 'chronicles-dungeon-dressing';
 
-  const floorMat = material(0x3a342d, { roughness: 0.94 });
-  const floorAlt = material(0x302b26, { roughness: 0.97 });
-  const floorInset = material(0x201d1b, { roughness: 0.98 });
-  const edgeMat = material(0x50463a, { roughness: 0.9 });
-  const wallAccent = material(0x625647, { roughness: 0.88 });
-  const iron = material(0x242426, { metalness: 0.66, roughness: 0.42 });
+  const floorMat = material(0x4a4238, { roughness: 0.94 });
+  const floorAlt = material(0x3d3730, { roughness: 0.97 });
+  const floorInset = material(0x292522, { roughness: 0.98 });
+  const edgeMat = material(0x625545, { roughness: 0.9 });
+  const wallAccent = material(0x796957, { roughness: 0.88 });
+  const iron = material(0x302e2f, { metalness: 0.66, roughness: 0.42 });
   const rune = material(0xa96a2b, { metalness: 0.46, roughness: 0.35, emissive: 0x4b1d05, emissiveIntensity: 0.55 });
+
+  const readabilityFill = new THREE.HemisphereLight(0xa4afbd, 0x2b180f, coarsePointer ? 0.9 : 0.72);
+  readabilityFill.name = 'chronicles-readability-fill';
+  root.add(readabilityFill);
 
   chroniclesWalkableCells().forEach(({ x, y }, index) => {
     const [wx, wz] = cellWorld(x, y);
@@ -195,7 +199,7 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
     );
   }
 
-  const sigilLight = new THREE.PointLight(0xb84c18, coarsePointer ? 0.35 : 0.52, 6.5, 2);
+  const sigilLight = new THREE.PointLight(0xb84c18, coarsePointer ? 0.85 : 1.15, 8, 2);
   sigilLight.position.set(sigilX, 0.7, sigilZ);
   sigilLight.name = 'chronicles-sigil-light';
   root.add(sigilLight);
@@ -211,18 +215,19 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
   add(gateRelief, new THREE.BoxGeometry(2.25, 0.16, 0.15), wallAccent, [0, 2.48, -0.04], [0, 0, 0], 'chronicles-gate-lintel');
   root.add(gateRelief);
 
-  const gateLight = new THREE.PointLight(0xd46b28, coarsePointer ? 0.5 : 0.78, 7.5, 2);
+  const gateLight = new THREE.PointLight(0xd46b28, coarsePointer ? 1.05 : 1.45, 9, 2);
   gateLight.position.set(gateX, 1.55, gateZ - 0.88);
   gateLight.name = 'chronicles-gate-light';
   root.add(gateLight);
 
   const [coldX, coldZ] = cellWorld(3, 5);
-  const coldFill = new THREE.PointLight(0x466b82, coarsePointer ? 0.22 : 0.34, 9.5, 2);
+  const coldFill = new THREE.PointLight(0x557a92, coarsePointer ? 0.72 : 0.95, 12, 2);
   coldFill.position.set(coldX, 1.2, coldZ);
   coldFill.name = 'chronicles-crypt-cold-fill';
   root.add(coldFill);
 
   root.userData.chroniclesRuneMaterials = [rune];
   root.userData.chroniclesAccentLights = [sigilLight, gateLight, coldFill];
+  root.userData.chroniclesReadabilityLight = readabilityFill;
   return root;
 }
