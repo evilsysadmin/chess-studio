@@ -10,11 +10,13 @@ import {
   createSlugEnemySprite,
   pawnSlugEnemyRunAtlasWindow,
 } from './pawnSlugEnemyRunSprites.js';
+import { PAWN_SLUG_PREMIUM_ENEMY_FACING_CONTRACT } from './pawnSlugEnemyPremiumArtContract.js';
 import { pawnSlugPanzerRookEntryPose } from './pawnSlugBossEntryMotion.js';
 import { applyPawnSlugMatthiasPremiumMotion } from './pawnSlugMatthiasPremiumMotion.js';
 import { playPawnSlugEnemyImpactSfx, playPawnSlugPlayerHitSfx } from './pawnSlugSfx.js';
 
 export * from './pawnSlugSpriteCore.js';
+export * from './pawnSlugEnemyPremiumArtContract.js';
 export {
   PAWN_SLUG_ENEMY_RUN_META,
   animateSlugEnemySprite,
@@ -84,6 +86,7 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
   enemies: Object.freeze({
     ...LEGACY_SPRITE_META.enemies,
     runAtlas: PAWN_SLUG_ENEMY_RUN_META,
+    premiumFacing: PAWN_SLUG_PREMIUM_ENEMY_FACING_CONTRACT,
     panzerRookEntry: true,
     panzerRookImpactCue: 'premium-boss-edge-trigger',
   }),
