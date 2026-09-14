@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { login, mockApi } from './helpers.js';
 
-test('Home clean master keeps live Matthias and retired chrome out', async ({ page }) => {
+test('Home clean master keeps live diegetic Matthias and retired chrome out', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await mockApi(page, {
     profileSeed: {
@@ -21,8 +21,16 @@ test('Home clean master keeps live Matthias and retired chrome out', async ({ pa
   }
 
   const matthias = home.locator('.illustrated-home__matthias');
+  const layeredArt = matthias.locator('[data-matthias-layered-art="true"]');
+  const copy = matthias.locator('.illustrated-home__matthias-copy');
+
   await expect(matthias).toBeVisible();
   await expect(matthias.locator('.illustrated-home__matthias-portrait')).toBeVisible();
-  await expect(matthias.locator('[data-matthias-layered-art="true"]')).toBeVisible();
-  await expect(matthias.locator('.illustrated-home__matthias-copy')).toBeHidden();
+  await expect(layeredArt).toBeVisible();
+  await expect(copy).toBeVisible();
+  await expect(copy.locator('strong')).toHaveText('MATTHIAS');
+  await expect(copy.locator('span')).not.toHaveText('');
+
+  // The resident must actually act, not merely render a frozen canonical frame.
+  await expect(layeredArt).not.toHaveAttribute('data-gesture-count', '0');
 });

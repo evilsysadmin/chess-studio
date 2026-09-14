@@ -66,12 +66,12 @@
     --home-matthias-zone-top: 83%;
     left: var(--home-matthias-zone-left);
     top: var(--home-matthias-zone-top);
-    width: clamp(60px, 4.9cqw, 88px);
-    min-height: 11.5%;
-    grid-template-columns: 1fr;
+    width: 19%;
+    min-height: 12.5%;
+    grid-template-columns: clamp(84px, 6.2cqw, 112px) minmax(0, 1fr);
     align-items: center;
-    column-gap: 0;
-    padding: 0;
+    column-gap: .65cqw;
+    padding: .34cqw .42cqw;
     overflow: visible;
     border-color: transparent;
     background: transparent;
@@ -122,10 +122,29 @@
     aspect-ratio: 4 / 5;
   }
 
-  /* The desktop master is clean: Matthias is a live resident, but the old
-     MATTHIAS/activity/Así juegas copy must never rebuild the retired card. */
+  /* Keep the clean master, but do not amputate Matthias' identity. The caption
+     is diegetic text only: no card, no panel chrome, and enough portrait scale
+     for the existing limb/prop rig and room-to-room routine to read again. */
   .illustrated-home__matthias-copy {
-    display: none !important;
+    display: grid !important;
+    align-self: center;
+    padding: .12cqw 0;
+    background: transparent;
+  }
+
+  .illustrated-home__matthias-copy > strong {
+    color: #f5ce69;
+    font-size: max(12px, .8cqw);
+    letter-spacing: .035em;
+  }
+
+  .illustrated-home__matthias-copy > span,
+  .illustrated-home__matthias-copy > em {
+    font-size: max(11px, .72cqw);
+  }
+
+  .illustrated-home__matthias.is-speaking .illustrated-home__matthias-copy > em {
+    color: #e9c66f;
   }
 }
 
