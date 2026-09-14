@@ -123,6 +123,43 @@
     z-index: 72 !important;
   }
 
+  /* Collapsed means collapsed. Keeping the full 230–282px shell here made the
+     open-player button overlap Matthias' desk station and steal his click.
+     The full track metadata remains one deliberate click away in the expanded
+     deck; the idle Home keeps only two explicit controls in the radio corner. */
+  html body:has(.app-shell-home) .global-music-dock:has(.music-deck-collapsed) {
+    left: max(4px, .35vw) !important;
+    width: 68px !important;
+  }
+
+  html body:has(.app-shell-home) .global-music-dock .music-deck.music-deck-collapsed {
+    min-height: 38px !important;
+    grid-template-columns: 30px 30px !important;
+    gap: 2px !important;
+    padding: 3px !important;
+  }
+
+  html body:has(.app-shell-home) .global-music-dock .music-deck-collapsed .music-deck-expand {
+    width: 30px !important;
+    min-width: 30px !important;
+    grid-template-columns: 1fr !important;
+    place-items: center !important;
+    padding: 0 !important;
+  }
+
+  html body:has(.app-shell-home) .global-music-dock .music-deck-collapsed :is(
+    .music-deck-status-light,
+    .music-deck-collapsed-track,
+    .music-deck-collapsed-hint
+  ) {
+    display: none !important;
+  }
+
+  html body:has(.app-shell-home) .global-music-dock .music-deck-collapsed .music-deck-collapsed-play {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
   /* The canonical coordinate is correct for the compact player, but on short
      desktop viewports an expanded deck would grow below the fold. Once the
      user explicitly opens it, treat it as a control surface: keep the whole

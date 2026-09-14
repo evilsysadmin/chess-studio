@@ -1,15 +1,21 @@
-import { STORAGE_LOCAL, readJsonStorage, writeJsonStorage } from './safeStorage.js';
-import { cooldownStateFromTimestamp } from './cooldownClock.js';
+import {
+  AI_NARRATIVE_MANUAL_COOLDOWN_MS,
+  createAiNarrativeCache,
+  formatAiNarrativeCooldown,
+} from './aiNarrativeCache.js';
 
 export const AI_TRAINING_PLAN_CACHE_KEY = 'chess-study-ai-training-plan-v1';
 const TRAINING_PLAN_SCHEMA = 1;
 export const TRAINING_PLAN_MAX_CHARS = 900;
-const TRAINING_PLAN_MANUAL_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
-function normalizeIdentityScope(identityScope) {
-  const clean = String(identityScope || '').trim().toLowerCase();
-  return clean ? clean.slice(0, 120) : null;
-}
+const trainingPlanCache = createAiNarrativeCache({
+  cacheKey: AI_TRAINING_PLAN_CACHE_KEY,
+  schema: TRAINING_PLAN_SCHEMA,
+  maxChars: TRAINING_PLAN_MAX_CHARS,
+  manualRequestKind: 'training_plan_manual',
+  cooldownMs: AI_NARRATIVE_MANUAL_COOLDOWN_MS,
+  generationKeyRequired: true,
+});
 
 function stableHash(text) {
   let hash = 0x811c9dc5;
@@ -26,68 +32,26 @@ export function trainingPlanGenerationKey(dossier) {
   return `${TRAINING_PLAN_SCHEMA}:${stableHash(JSON.stringify(facts))}`;
 }
 
-function readTrainingPlanCache(identityScope) {
-  const scope = normalizeIdentityScope(identityScope);
-  if (!scope) return null;
-  const cached = readJsonStorage(STORAGE_LOCAL, AI_TRAINING_PLAN_CACHE_KEY, { fallback: null, removeMalformed: true });
-  if (!cached || cached.schema !== TRAINING_PLAN_SCHEMA || cached.identityScope !== scope) return null;
-  return cached;
-}
-
 export function loadCachedTrainingPlan(generationKey, identityScope) {
-  if (!generationKey) return null;
-  const cached = readTrainingPlanCache(identityScope);
-  if (!cached || cached.generationKey !== generationKey) return null;
-  if (typeof cached.text !== 'string' || !cached.text.trim()) return null;
-  return cached.text.trim().slice(0, TRAINING_PLAN_MAX_CHARS);
+  return trainingPlanCache.load(generationKey, identityScope);
 }
 
 export function saveCachedTrainingPlan(generationKey, text, identityScope) {
-  const scope = normalizeIdentityScope(identityScope);
-  const clean = typeof text === 'string' ? text.trim().slice(0, TRAINING_PLAN_MAX_CHARS) : '';
-  if (!scope || !generationKey || !clean) return false;
-  const previous = readTrainingPlanCache(scope) || {};
-  return writeJsonStorage(STORAGE_LOCAL, AI_TRAINING_PLAN_CACHE_KEY, {
-    schema: TRAINING_PLAN_SCHEMA,
-    identityScope: scope,
-    generationKey,
-    text: clean,
-    generatedAt: new Date().toISOString(),
-    ...(Number.isFinite(Number(previous.manualRequestedAt)) ? { manualRequestedAt: Number(previous.manualRequestedAt) } : {}),
-  });
+  return trainingPlanCache.save(generationKey, text, identityScope);
 }
 
-export function trainingPlanManualRefreshState({ now = Date.now(), identityScope = null, bypassCooldown = false } = {}) {
-  if (bypassCooldown) return { allowed: true, retryAfterMs: 0, nextAllowedAt: null };
-  const cached = readTrainingPlanCache(identityScope);
-  return cooldownStateFromTimestamp({
-    now,
-    last: cached?.manualRequestedAt,
-    cooldownMs: TRAINING_PLAN_MANUAL_COOLDOWN_MS,
-  });
+export function trainingPlanManualRefreshState(options = {}) {
+  return trainingPlanCache.manualRefreshState(options);
 }
 
 export function shouldCommitManualTrainingPlanRefresh(requestKind, text) {
-  return requestKind === 'training_plan_manual' && typeof text === 'string' && Boolean(text.trim());
+  return trainingPlanCache.shouldCommitManualRefresh(requestKind, text);
 }
 
-export function markTrainingPlanManualRefresh({ now = Date.now(), identityScope = null } = {}) {
-  const scope = normalizeIdentityScope(identityScope);
-  if (!scope) return false;
-  const previous = readTrainingPlanCache(scope) || {};
-  return writeJsonStorage(STORAGE_LOCAL, AI_TRAINING_PLAN_CACHE_KEY, {
-    ...previous,
-    schema: TRAINING_PLAN_SCHEMA,
-    identityScope: scope,
-    manualRequestedAt: Number(now),
-  });
+export function markTrainingPlanManualRefresh(options = {}) {
+  return trainingPlanCache.markManualRefresh(options);
 }
 
 export function formatTrainingPlanCooldown(ms) {
-  const totalMinutes = Math.max(1, Math.ceil(Number(ms || 0) / 60000));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours <= 0) return `${minutes} min`;
-  if (!minutes) return `${hours} h`;
-  return `${hours} h ${minutes} min`;
+  return formatAiNarrativeCooldown(ms);
 }
