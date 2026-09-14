@@ -8,7 +8,12 @@ const stagingLiveSpec = '**/staging-live.spec.js';
 const testIgnore = chaosMode
   ? [stagingLiveSpec]
   : ['**/chaos-local.spec.js', stagingLiveSpec];
-if (fullSweep) testIgnore.push('**/regression-journeys.spec.js');
+if (fullSweep) {
+  // Artifact producers already have scoped Chromium capture workflows. Replaying
+  // screenshot/video generation in Chromium + Firefox + WebKit adds runner cost
+  // without exercising a distinct functional compatibility contract.
+  testIgnore.push('**/regression-journeys.spec.js', '**/*-visual-artifact.spec.js');
+}
 
 export default defineConfig({
   testDir: '.',
