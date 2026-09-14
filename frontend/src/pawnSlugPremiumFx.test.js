@@ -4,6 +4,7 @@ import {
   PAWN_SLUG_HOSTILE_PROJECTILE_FX,
   PAWN_SLUG_PREMIUM_FX_RESOURCE_VERSION,
   PAWN_SLUG_PROJECTILE_FX,
+  PAWN_SLUG_TRANSIENT_MATERIAL_POOL_SIZE,
   animatePremiumMuzzleFlash,
   animatePremiumProjectile,
   createPremiumBulletModel,
@@ -169,7 +170,7 @@ describe('Pawn Slug premium projectile FX', () => {
     expect(materialDispose).not.toHaveBeenCalled();
   });
 
-  it('shares muzzle geometry but keeps fade materials isolated between overlapping flashes', () => {
+  it('gives overlapping muzzle flashes independent pooled fade materials', () => {
     const first = createPremiumMuzzleFlash({ weapon: 'machinegun' });
     const second = createPremiumMuzzleFlash({ weapon: 'machinegun' });
     expect(first.children[0].geometry).toBe(second.children[0].geometry);
@@ -186,6 +187,19 @@ describe('Pawn Slug premium projectile FX', () => {
     const materialDispose = vi.spyOn(first.children[0].material, 'dispose');
     disposePawnSlugObject(first);
     expect(geometryDispose).not.toHaveBeenCalled();
-    expect(materialDispose).toHaveBeenCalledTimes(1);
+    expect(materialDispose).not.toHaveBeenCalled();
+  });
+
+  it('bounds transient muzzle material creation instead of allocating forever', () => {
+    const flashes = Array.from(
+      { length: PAWN_SLUG_TRANSIENT_MATERIAL_POOL_SIZE * 2 + 3 },
+      () => createPremiumMuzzleFlash({ weapon: 'machinegun' }),
+    );
+    const coreMaterials = new Set(flashes.map((flash) => flash.children[0].material));
+    const streakMaterials = new Set(flashes.map((flash) => flash.children.find((child) => child.userData.muzzleStreak)?.material));
+
+    expect(coreMaterials.size).toBeLessThanOrEqual(PAWN_SLUG_TRANSIENT_MATERIAL_POOL_SIZE);
+    expect(streakMaterials.size).toBeLessThanOrEqual(PAWN_SLUG_TRANSIENT_MATERIAL_POOL_SIZE);
+    expect(flashes[0].userData.transientMaterialPoolSize).toBe(PAWN_SLUG_TRANSIENT_MATERIAL_POOL_SIZE);
   });
 });
