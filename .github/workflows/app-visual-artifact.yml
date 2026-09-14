@@ -7,10 +7,12 @@ on:
       - frontend/src/**/*.css
       - frontend/src/components/**
       - frontend/src/assets/**
+      - frontend/src/chesscom*.js
       - '!frontend/src/**/*.test.js'
       - '!frontend/src/**/*.test.jsx'
       - frontend/public/**
       - e2e/*visual*.spec.js
+      - e2e/chesscom*.spec.js
       - e2e/browser-*-health.spec.js
       - scripts/app_visual_*
       - scripts/war_room_visual_freeze_check.mjs
@@ -26,39 +28,15 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  canonical:
+  capture:
     name: App · visual capture
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
+          fetch-depth: 2
       - uses: ./.github/actions/app-visual-pipeline
         with:
           mode: canonical
-
-  hans:
-    name: Hans · routine video capture
-    runs-on: ubuntu-24.04
-    timeout-minutes: 8
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-      - id: scope
-        if: github.event_name == 'pull_request'
-        env:
-          BASE: ${{ github.event.pull_request.base.sha }}
-          HEAD: ${{ github.event.pull_request.head.sha }}
-        run: |
-          if git diff --name-only "$BASE" "$HEAD" | grep -Eqi 'hans|Board3D|WarRoom3D|GameBoardView|app_visual|app-visual'; then
-            echo run=true >> "$GITHUB_OUTPUT"
-          else
-            echo run=false >> "$GITHUB_OUTPUT"
-          fi
-      - if: github.event_name != 'pull_request' || steps.scope.outputs.run == 'true'
-        uses: ./.github/actions/app-visual-pipeline
-        with:
-          mode: hans
