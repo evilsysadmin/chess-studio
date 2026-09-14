@@ -26,7 +26,7 @@ describe('Chronicles of Matthias dungeon art', () => {
     expect(faces.some((face) => face.side === 'west')).toBe(true);
   });
 
-  it('puts deterministic masonry and flagstone texture relief on the visible dungeon shell', () => {
+  it('uses deterministic albedo, relief and roughness maps on the dungeon shell', () => {
     const dungeon = buildChroniclesDungeonDressing();
     const floor = dungeon.getObjectByName('chronicles-floor-slab-0');
     const wall = dungeon.getObjectByName('chronicles-wall-surface-0');
@@ -34,8 +34,10 @@ describe('Chronicles of Matthias dungeon art', () => {
     expect(wall).toBeTruthy();
     expect(floor?.material?.map?.isDataTexture).toBe(true);
     expect(floor?.material?.bumpMap?.isDataTexture).toBe(true);
+    expect(floor?.material?.roughnessMap?.isDataTexture).toBe(true);
     expect(wall?.material?.map?.isDataTexture).toBe(true);
     expect(wall?.material?.bumpMap?.isDataTexture).toBe(true);
+    expect(wall?.material?.roughnessMap?.isDataTexture).toBe(true);
     expect(wall?.material?.bumpScale).toBeGreaterThan(0);
   });
 
@@ -66,15 +68,30 @@ describe('Chronicles of Matthias dungeon art', () => {
     expect(dungeon.userData.chroniclesRuneMaterials).toHaveLength(1);
   });
 
-  it('builds a restrained warm/cold lighting composition without adding shadow-casting dungeon lights', () => {
-    const dungeon = buildChroniclesDungeonDressing();
-    const lights = dungeon.userData.chroniclesAccentLights;
+  it('adds desktop-only dampness and wall ageing without bloating the coarse-pointer scene', () => {
+    const desktop = buildChroniclesDungeonDressing();
+    const coarse = buildChroniclesDungeonDressing({ coarsePointer: true });
 
-    expect(lights).toHaveLength(3);
-    expect(dungeon.getObjectByName('chronicles-sigil-light')).toBeTruthy();
-    expect(dungeon.getObjectByName('chronicles-gate-light')).toBeTruthy();
-    expect(dungeon.getObjectByName('chronicles-crypt-cold-fill')).toBeTruthy();
-    expect(lights.every((light) => light.castShadow === false)).toBe(true);
+    expect(desktop.getObjectByName('chronicles-floor-puddle-0')).toBeTruthy();
+    expect(desktop.getObjectByName('chronicles-wall-grime-0-0')).toBeTruthy();
+    expect(coarse.getObjectByName('chronicles-floor-puddle-0')).toBeFalsy();
+    expect(coarse.getObjectByName('chronicles-wall-grime-0-0')).toBeFalsy();
+  });
+
+  it('uses a restrained warm/cold hero-light composition and disables expensive shadows on coarse pointers', () => {
+    const desktop = buildChroniclesDungeonDressing();
+    const coarse = buildChroniclesDungeonDressing({ coarsePointer: true });
+    const desktopLights = desktop.userData.chroniclesAccentLights;
+    const coarseLights = coarse.userData.chroniclesAccentLights;
+
+    expect(desktopLights).toHaveLength(5);
+    expect(desktop.getObjectByName('chronicles-sigil-light')).toBeTruthy();
+    expect(desktop.getObjectByName('chronicles-gate-light')).toBeTruthy();
+    expect(desktop.getObjectByName('chronicles-crypt-cold-fill')).toBeTruthy();
+    expect(desktop.getObjectByName('chronicles-gate-key')?.isSpotLight).toBe(true);
+    expect(desktop.getObjectByName('chronicles-crypt-rim')?.isSpotLight).toBe(true);
+    expect(desktopLights.some((light) => light.castShadow)).toBe(true);
+    expect(coarseLights.every((light) => light.castShadow === false)).toBe(true);
   });
 
   it('keeps a non-shadow readability fill and gives coarse pointers extra ambient help', () => {
@@ -93,7 +110,7 @@ describe('Chronicles of Matthias dungeon art', () => {
     const desktop = buildChroniclesDungeonDressing();
     const coarse = buildChroniclesDungeonDressing({ coarsePointer: true });
 
-    const decorativeCount = (root) => root.children.filter((node) => /floor-crack|floor-inset|wall-pilaster|wall-relief|crypt-crest/.test(node.name)).length;
+    const decorativeCount = (root) => root.children.filter((node) => /floor-crack|floor-inset|floor-puddle|wall-pilaster|wall-relief|wall-grime|wall-mineral|crypt-crest/.test(node.name)).length;
     expect(decorativeCount(desktop)).toBeGreaterThan(decorativeCount(coarse));
     expect(coarse.getObjectByName('chronicles-ceiling-rib-0-0')).toBeTruthy();
     expect(coarse.getObjectByName('chronicles-gate-keystone')).toBeTruthy();

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { CHRONICLES_MAP } from './chroniclesOfMatthias.js';
 
 const CELL = 4;
-const TEXTURE_SIZE = 64;
+const TEXTURE_SIZE = 96;
 
 function textureNoise(x, y, seed) {
   let value = Math.imul(x + seed * 17, 374761393) ^ Math.imul(y + seed * 29, 668265263);
@@ -10,40 +10,77 @@ function textureNoise(x, y, seed) {
   return ((value ^ (value >>> 16)) >>> 0) & 0xff;
 }
 
-function createDungeonSurfaceTexture({ pattern, seed, repeat = [1, 1], colorSpace = true }) {
+function surfaceSample(pattern, x, y, seed) {
+  const noise = textureNoise(x, y, seed);
+  const broad = Math.sin((x + seed * 3) * 0.14) * 9 + Math.cos((y - seed) * 0.17) * 8;
+  let value = 214 + (noise - 128) * 0.18 + broad;
+  let joint = false;
+  let edge = false;
+
+  if (pattern === 'masonry') {
+    const courseHeight = 18;
+    const course = Math.floor(y / courseHeight);
+    const localY = y % courseHeight;
+    const localX = (x + (course % 2) * 18) % 36;
+    joint = localY < 2 || localX < 2;
+    edge = localY < 5 || localX < 5;
+    if (joint) value = 96 + noise * 0.075;
+    else if (edge) value -= 19;
+    if (((x * 3 + y * 7 + seed) % 113) < 3) value -= 32;
+  } else if (pattern === 'flagstone') {
+    const bandHeight = 36;
+    const band = Math.floor(y / bandHeight);
+    const localY = y % bandHeight;
+    const localX = (x + (band % 2) * 13) % 36;
+    joint = localY < 2 || localX < 2;
+    edge = localY < 6 || localX < 6;
+    if (joint) value = 102 + noise * 0.065;
+    else if (edge) value -= 17;
+    const wornCenter = Math.abs(localX - 18) + Math.abs(localY - 18) < 12;
+    if (wornCenter) value += 7;
+  } else if (pattern === 'worn') {
+    const scratch = ((x * 5 + y * 3 + seed) % 37) === 0;
+    const pock = ((x * 11 + y * 17 + seed * 3) % 97) < 3;
+    if (scratch) value -= 36;
+    if (pock) value -= 22;
+  }
+
+  return { noise, value, joint, edge };
+}
+
+function createDungeonSurfaceTexture({ pattern, seed, repeat = [1, 1], kind = 'albedo' }) {
   const data = new Uint8Array(TEXTURE_SIZE * TEXTURE_SIZE * 4);
 
   for (let y = 0; y < TEXTURE_SIZE; y += 1) {
     for (let x = 0; x < TEXTURE_SIZE; x += 1) {
-      const noise = textureNoise(x, y, seed);
-      const broad = Math.sin((x + seed * 3) * 0.19) * 8 + Math.cos((y - seed) * 0.23) * 7;
-      let value = 214 + (noise - 128) * 0.2 + broad;
+      const sample = surfaceSample(pattern, x, y, seed);
+      let value = sample.value;
+      let red;
+      let green;
+      let blue;
 
-      if (pattern === 'masonry') {
-        const course = Math.floor(y / 16);
-        const localY = y % 16;
-        const localX = (x + (course % 2) * 16) % 32;
-        const mortar = localY < 2 || localX < 2;
-        const chippedEdge = localY < 4 || localX < 4;
-        if (mortar) value = 104 + noise * 0.08;
-        else if (chippedEdge) value -= 20;
-      } else if (pattern === 'flagstone') {
-        const band = Math.floor(y / 32);
-        const localY = y % 32;
-        const localX = (x + (band % 2) * 11) % 32;
-        const joint = localY < 2 || localX < 2;
-        if (joint) value = 112 + noise * 0.07;
-        else if (localY < 5 || localX < 5) value -= 18;
-      } else if (pattern === 'worn') {
-        const scratch = ((x * 5 + y * 3 + seed) % 37) === 0;
-        if (scratch) value -= 36;
+      if (kind === 'roughness') {
+        value = sample.joint ? 244 : sample.edge ? 230 : 205 + (sample.noise - 128) * 0.08;
+        red = green = blue = value;
+      } else if (kind === 'height') {
+        value = sample.joint ? 72 : sample.edge ? sample.value - 18 : sample.value;
+        red = green = blue = value;
+      } else {
+        const mineral = (sample.noise - 128) * 0.035;
+        red = value + mineral + 4;
+        green = value + mineral * 0.45;
+        blue = value - mineral - 6;
+        if (sample.joint) {
+          red -= 11;
+          green -= 9;
+          blue -= 7;
+        }
       }
 
-      value = Math.max(64, Math.min(252, Math.round(value)));
       const offset = (y * TEXTURE_SIZE + x) * 4;
-      data[offset] = value;
-      data[offset + 1] = value;
-      data[offset + 2] = value;
+      data[offset] = Math.max(42, Math.min(252, Math.round(red)));
+      data[offset + 1] = Math.max(42, Math.min(252, Math.round(green)));
+      data[offset + 2] = Math.max(42, Math.min(252, Math.round(blue)));
       data[offset + 3] = 255;
     }
   }
@@ -55,15 +92,16 @@ function createDungeonSurfaceTexture({ pattern, seed, repeat = [1, 1], colorSpac
   texture.magFilter = THREE.LinearFilter;
   texture.minFilter = THREE.LinearMipmapLinearFilter;
   texture.generateMipmaps = true;
-  texture.colorSpace = colorSpace ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  texture.colorSpace = kind === 'albedo' ? THREE.SRGBColorSpace : THREE.NoColorSpace;
   texture.needsUpdate = true;
   return texture;
 }
 
 function surfaceMaps(pattern, seed, repeat) {
   return {
-    map: createDungeonSurfaceTexture({ pattern, seed, repeat, colorSpace: true }),
-    bumpMap: createDungeonSurfaceTexture({ pattern, seed, repeat, colorSpace: false }),
+    map: createDungeonSurfaceTexture({ pattern, seed, repeat, kind: 'albedo' }),
+    bumpMap: createDungeonSurfaceTexture({ pattern, seed, repeat, kind: 'height' }),
+    roughnessMap: createDungeonSurfaceTexture({ pattern, seed, repeat, kind: 'roughness' }),
   };
 }
 
@@ -79,8 +117,12 @@ function material(color, options = {}) {
     clearcoatRoughness: options.clearcoatRoughness ?? 0.64,
     emissive: options.emissive ?? 0x000000,
     emissiveIntensity: options.emissiveIntensity ?? 0,
+    transparent: options.transparent ?? false,
+    opacity: options.opacity ?? 1,
+    depthWrite: options.depthWrite ?? true,
     map: surface?.map ?? null,
     bumpMap: surface?.bumpMap ?? null,
+    roughnessMap: surface?.roughnessMap ?? null,
     bumpScale: options.bumpScale ?? (surface ? 0.045 : 0),
   });
 
@@ -91,6 +133,7 @@ function material(color, options = {}) {
       texturesDisposed = true;
       surface.map.dispose();
       surface.bumpMap.dispose();
+      surface.roughnessMap.dispose();
     });
   }
 
@@ -114,7 +157,7 @@ function cellWorld(x, y) {
 
 function addRubble(root, stoneMat, x, y, index, coarsePointer) {
   const [wx, wz] = cellWorld(x, y);
-  const count = coarsePointer ? 2 : 4;
+  const count = coarsePointer ? 2 : 5;
   for (let piece = 0; piece < count; piece += 1) {
     const size = 0.13 + ((index + piece * 3) % 4) * 0.045;
     add(
@@ -130,15 +173,15 @@ function addRubble(root, stoneMat, x, y, index, coarsePointer) {
 
 function addCeilingRib(root, stoneMat, x, y, index, coarsePointer) {
   const [wx, wz] = cellWorld(x, y);
-  const segments = coarsePointer ? 3 : 5;
+  const segments = coarsePointer ? 3 : 7;
   for (let segment = 0; segment < segments; segment += 1) {
     const t = segments === 1 ? 0.5 : segment / (segments - 1);
-    const angle = Math.PI * (0.14 + 0.72 * t);
-    const archX = Math.cos(angle) * 1.72;
-    const archY = 2.25 + Math.sin(angle) * 1.34;
+    const angle = Math.PI * (0.13 + 0.74 * t);
+    const archX = Math.cos(angle) * 1.74;
+    const archY = 2.23 + Math.sin(angle) * 1.35;
     add(
       root,
-      new THREE.BoxGeometry(0.3, 0.34, CELL * 0.92),
+      new THREE.BoxGeometry(0.29, 0.32, CELL * 0.94),
       stoneMat,
       [wx + archX, archY, wz],
       [0, 0, angle - Math.PI / 2],
@@ -156,6 +199,69 @@ function addCryptCrest(root, iron, rune, x, y, index) {
   add(crest, new THREE.BoxGeometry(0.09, 0.54, 0.05), rune, [-0.13, 0.01, 0.035], [0, 0, -0.55], `chronicles-crypt-crest-slash-a-${index}`);
   add(crest, new THREE.BoxGeometry(0.09, 0.54, 0.05), rune, [0.13, 0.01, 0.035], [0, 0, 0.55], `chronicles-crypt-crest-slash-b-${index}`);
   root.add(crest);
+}
+
+function addFloorPuddle(root, wetMat, x, y, scaleX, scaleZ, rotation, index) {
+  const [wx, wz] = cellWorld(x, y);
+  const puddle = add(
+    root,
+    new THREE.CircleGeometry(0.78, 28),
+    wetMat,
+    [wx + 0.48, 0.018, wz - 0.42],
+    [-Math.PI / 2, 0, rotation],
+    `chronicles-floor-puddle-${index}`,
+  );
+  puddle.scale.set(scaleX, scaleZ, 1);
+  puddle.castShadow = false;
+  puddle.renderOrder = 2;
+}
+
+function addWallAge(root, grimeMat, mineralMat, px, pz, rotY, horizontal, outward, index) {
+  const dripCount = 2 + (index % 2);
+  for (let drip = 0; drip < dripCount; drip += 1) {
+    const lateral = -1.08 + drip * 0.82 + ((index * 7 + drip * 5) % 4) * 0.08;
+    const height = 0.46 + ((index + drip * 3) % 4) * 0.17;
+    const x = horizontal ? px + lateral : px + outward * 0.018;
+    const z = horizontal ? pz + outward * 0.018 : pz + lateral;
+    const stain = add(
+      root,
+      new THREE.BoxGeometry(horizontal ? 0.16 : 0.025, height, horizontal ? 0.025 : 0.16),
+      grimeMat,
+      [x, 2.68 - height * 0.5, z],
+      [0, rotY, 0],
+      `chronicles-wall-grime-${index}-${drip}`,
+    );
+    stain.castShadow = false;
+  }
+
+  if (index % 3 === 0) {
+    const bloom = add(
+      root,
+      new THREE.BoxGeometry(horizontal ? 0.5 : 0.024, 0.22, horizontal ? 0.024 : 0.5),
+      mineralMat,
+      [horizontal ? px + 0.82 : px + outward * 0.02, 0.76, horizontal ? pz + outward * 0.02 : pz + 0.82],
+      [0, rotY, 0],
+      `chronicles-wall-mineral-bloom-${index}`,
+    );
+    bloom.castShadow = false;
+  }
+}
+
+function addHeroSpot(root, { color, intensity, distance, angle, position, target, name, castShadow }) {
+  const light = new THREE.SpotLight(color, intensity, distance, angle, 0.62, 1.55);
+  light.position.set(...position);
+  light.target.position.set(...target);
+  light.name = name;
+  light.castShadow = castShadow;
+  if (castShadow) {
+    light.shadow.mapSize.set(512, 512);
+    light.shadow.bias = -0.0008;
+    light.shadow.normalBias = 0.035;
+    light.shadow.camera.near = 0.4;
+    light.shadow.camera.far = distance;
+  }
+  root.add(light, light.target);
+  return light;
 }
 
 export function chroniclesWalkableCells() {
@@ -192,45 +298,48 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
   const root = new THREE.Group();
   root.name = 'chronicles-dungeon-dressing';
 
-  const floorMat = material(0x5a5044, {
-    roughness: 0.92,
-    surface: { pattern: 'flagstone', seed: 11, repeat: [1.35, 1.35] },
-    bumpScale: 0.055,
-  });
-  const floorAlt = material(0x494239, {
-    roughness: 0.96,
-    surface: { pattern: 'flagstone', seed: 23, repeat: [1.35, 1.35] },
-    bumpScale: 0.05,
-  });
-  const floorInset = material(0x35302b, {
-    roughness: 0.98,
-    surface: { pattern: 'worn', seed: 31, repeat: [1.15, 1.15] },
-    bumpScale: 0.03,
-  });
-  const wallStone = material(0x786b5a, {
-    roughness: 0.95,
-    surface: { pattern: 'masonry', seed: 41, repeat: [1.15, 1] },
+  const floorMat = material(0x5b5146, {
+    roughness: 0.88,
+    surface: { pattern: 'flagstone', seed: 11, repeat: [1.3, 1.3] },
     bumpScale: 0.075,
   });
-  const wallStoneAlt = material(0x675d50, {
-    roughness: 0.96,
-    surface: { pattern: 'masonry', seed: 53, repeat: [1.15, 1] },
+  const floorAlt = material(0x48423b, {
+    roughness: 0.92,
+    surface: { pattern: 'flagstone', seed: 23, repeat: [1.3, 1.3] },
     bumpScale: 0.07,
   });
-  const edgeMat = material(0x6b5d4b, {
-    roughness: 0.9,
+  const floorInset = material(0x302d29, {
+    roughness: 0.95,
+    surface: { pattern: 'worn', seed: 31, repeat: [1.2, 1.2] },
+    bumpScale: 0.045,
+  });
+  const wallStone = material(0x776b5b, {
+    roughness: 0.89,
+    surface: { pattern: 'masonry', seed: 41, repeat: [1.08, 1] },
+    bumpScale: 0.11,
+  });
+  const wallStoneAlt = material(0x625a4e, {
+    roughness: 0.92,
+    surface: { pattern: 'masonry', seed: 53, repeat: [1.08, 1] },
+    bumpScale: 0.1,
+  });
+  const edgeMat = material(0x655947, {
+    roughness: 0.88,
     surface: { pattern: 'worn', seed: 67, repeat: [1.05, 1.05] },
-    bumpScale: 0.035,
+    bumpScale: 0.05,
   });
   const wallAccent = material(0x87745f, {
-    roughness: 0.88,
+    roughness: 0.84,
     surface: { pattern: 'worn', seed: 79, repeat: [1.05, 1.05] },
-    bumpScale: 0.03,
+    bumpScale: 0.045,
   });
-  const iron = material(0x302e2f, { metalness: 0.66, roughness: 0.42 });
-  const rune = material(0xa96a2b, { metalness: 0.46, roughness: 0.35, emissive: 0x4b1d05, emissiveIntensity: 0.55 });
+  const iron = material(0x302e2f, { metalness: 0.68, roughness: 0.37, clearcoat: 0.08 });
+  const rune = material(0xa96a2b, { metalness: 0.46, roughness: 0.32, emissive: 0x4b1d05, emissiveIntensity: 0.55 });
+  const wetStone = material(0x151b1d, { roughness: 0.24, clearcoat: 0.96, clearcoatRoughness: 0.12, transparent: true, opacity: 0.7, depthWrite: false });
+  const grime = material(0x171715, { roughness: 1, transparent: true, opacity: 0.5, depthWrite: false });
+  const mineral = material(0x6c6a5b, { roughness: 0.96, transparent: true, opacity: 0.42, depthWrite: false });
 
-  const readabilityFill = new THREE.HemisphereLight(0xa4afbd, 0x2b180f, coarsePointer ? 0.9 : 0.72);
+  const readabilityFill = new THREE.HemisphereLight(0x91a2b2, 0x21130c, coarsePointer ? 0.78 : 0.52);
   readabilityFill.name = 'chronicles-readability-fill';
   root.add(readabilityFill);
 
@@ -257,16 +366,22 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
       );
     }
     if (!coarsePointer && index % 3 === 0) {
-      add(root, new THREE.BoxGeometry(CELL * 0.48, 0.018, 0.028), edgeMat, [wx + 0.28, 0.004, wz - 0.35], [0, 0.35, 0], `chronicles-floor-crack-${index}`);
+      add(root, new THREE.BoxGeometry(CELL * 0.52, 0.018, 0.025), edgeMat, [wx + 0.28, 0.004, wz - 0.35], [0, 0.35, 0], `chronicles-floor-crack-${index}`);
     }
   });
+
+  if (!coarsePointer) {
+    addFloorPuddle(root, wetStone, 1, 5, 1.18, 0.58, -0.18, 0);
+    addFloorPuddle(root, wetStone, 5, 3, 0.78, 0.42, 0.48, 1);
+    addFloorPuddle(root, wetStone, 3, 2, 0.62, 0.34, -0.64, 2);
+  }
 
   chroniclesExposedWallFaces().forEach(({ x, y, side }, index) => {
     const [wx, wz] = cellWorld(x, y);
     const horizontal = side === 'north' || side === 'south';
     const outward = side === 'north' ? -1 : side === 'south' ? 1 : side === 'east' ? 1 : -1;
     const surfaceOffset = CELL / 2 + 0.045;
-    const detailOffset = CELL / 2 + 0.115;
+    const detailOffset = CELL / 2 + 0.118;
     const surfaceX = horizontal ? wx : wx + outward * surfaceOffset;
     const surfaceZ = horizontal ? wz + outward * surfaceOffset : wz;
     const px = horizontal ? wx : wx + outward * detailOffset;
@@ -283,19 +398,24 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
       [0, rotY, 0],
       `chronicles-wall-surface-${index}`,
     );
-    add(root, new THREE.BoxGeometry(CELL * 0.88, 0.18, 0.1), faceMat, [px, 0.55, pz], [0, rotY, 0], `chronicles-wall-course-low-${index}`);
-    add(root, new THREE.BoxGeometry(CELL * 0.88, 0.13, 0.09), faceMat, [px, 2.18, pz], [0, rotY, 0], `chronicles-wall-course-high-${index}`);
-    add(root, new THREE.BoxGeometry(CELL * 0.34, 0.11, 0.12), edgeMat, [px, 1.38, pz], [0, rotY, 0], `chronicles-wall-keystone-${index}`);
+    add(root, new THREE.BoxGeometry(CELL * 0.9, 0.2, 0.11), faceMat, [px, 0.5, pz], [0, rotY, 0], `chronicles-wall-course-low-${index}`);
+    add(root, new THREE.BoxGeometry(CELL * 0.9, 0.14, 0.1), faceMat, [px, 2.22, pz], [0, rotY, 0], `chronicles-wall-course-high-${index}`);
+    add(root, new THREE.BoxGeometry(CELL * 0.36, 0.12, 0.13), edgeMat, [px, 1.38, pz], [0, rotY, 0], `chronicles-wall-keystone-${index}`);
+    add(root, new THREE.BoxGeometry(CELL * 0.96, 0.18, 0.13), edgeMat, [px, 3.26, pz], [0, rotY, 0], `chronicles-wall-crown-${index}`);
 
-    if (!coarsePointer && index % 2 === 0) {
-      const pillarX = horizontal ? px - 1.55 : px;
-      const pillarZ = horizontal ? pz : pz - 1.55;
-      add(root, new THREE.BoxGeometry(0.28, 2.65, 0.24), edgeMat, [pillarX, 1.35, pillarZ], [0, rotY, 0], `chronicles-wall-pilaster-${index}`);
-    }
-    if (!coarsePointer && index % 4 === 1) {
-      const reliefX = horizontal ? px + 1.18 : px;
-      const reliefZ = horizontal ? pz : pz + 1.18;
-      add(root, new THREE.BoxGeometry(0.58, 0.34, 0.08), wallAccent, [reliefX, 1.42, reliefZ], [0, rotY, 0], `chronicles-wall-relief-${index}`);
+    if (!coarsePointer) {
+      if (index % 2 === 0) {
+        const pillarX = horizontal ? px - 1.55 : px;
+        const pillarZ = horizontal ? pz : pz - 1.55;
+        add(root, new THREE.BoxGeometry(0.3, 2.72, 0.26), edgeMat, [pillarX, 1.38, pillarZ], [0, rotY, 0], `chronicles-wall-pilaster-${index}`);
+        add(root, new THREE.BoxGeometry(0.44, 0.2, 0.38), wallAccent, [pillarX, 2.77, pillarZ], [0, rotY, 0], `chronicles-wall-pilaster-cap-${index}`);
+      }
+      if (index % 4 === 1) {
+        const reliefX = horizontal ? px + 1.18 : px;
+        const reliefZ = horizontal ? pz : pz + 1.18;
+        add(root, new THREE.BoxGeometry(0.6, 0.36, 0.09), wallAccent, [reliefX, 1.44, reliefZ], [0, rotY, 0], `chronicles-wall-relief-${index}`);
+      }
+      addWallAge(root, grime, mineral, px, pz, rotY, horizontal, outward, index);
     }
   });
 
@@ -307,6 +427,8 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
   [[1, 2], [5, 2], [1, 5], [5, 5]].forEach(([x, y], index) => addRubble(root, edgeMat, x, y, index, coarsePointer));
   [[3, 2], [3, 4], [3, 5]].forEach(([x, y], index) => addCeilingRib(root, edgeMat, x, y, index, coarsePointer));
   if (!coarsePointer) {
+    addCeilingRib(root, wallAccent, 1, 3, 3, false);
+    addCeilingRib(root, wallAccent, 5, 3, 4, false);
     addCryptCrest(root, iron, rune, 1, 1, 0);
     addCryptCrest(root, iron, rune, 5, 1, 1);
   }
@@ -324,8 +446,8 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
     );
   }
 
-  const sigilLight = new THREE.PointLight(0xb84c18, coarsePointer ? 0.85 : 1.15, 8, 2);
-  sigilLight.position.set(sigilX, 0.7, sigilZ);
+  const sigilLight = new THREE.PointLight(0xb84c18, coarsePointer ? 0.8 : 1.05, 8, 2);
+  sigilLight.position.set(sigilX, 0.68, sigilZ);
   sigilLight.name = 'chronicles-sigil-light';
   root.add(sigilLight);
 
@@ -340,19 +462,40 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
   add(gateRelief, new THREE.BoxGeometry(2.25, 0.16, 0.15), wallAccent, [0, 2.48, -0.04], [0, 0, 0], 'chronicles-gate-lintel');
   root.add(gateRelief);
 
-  const gateLight = new THREE.PointLight(0xd46b28, coarsePointer ? 1.05 : 1.45, 9, 2);
+  const gateLight = new THREE.PointLight(0xd46b28, coarsePointer ? 0.92 : 1.24, 9, 2);
   gateLight.position.set(gateX, 1.55, gateZ - 0.88);
   gateLight.name = 'chronicles-gate-light';
   root.add(gateLight);
 
   const [coldX, coldZ] = cellWorld(3, 5);
-  const coldFill = new THREE.PointLight(0x557a92, coarsePointer ? 0.72 : 0.95, 12, 2);
+  const coldFill = new THREE.PointLight(0x557a92, coarsePointer ? 0.62 : 0.82, 12, 2);
   coldFill.position.set(coldX, 1.2, coldZ);
   coldFill.name = 'chronicles-crypt-cold-fill';
   root.add(coldFill);
 
+  const gateKey = addHeroSpot(root, {
+    color: 0xff8a3c,
+    intensity: coarsePointer ? 2.2 : 3.1,
+    distance: 18,
+    angle: Math.PI * 0.24,
+    position: [gateX, 2.75, gateZ - 0.35],
+    target: [sigilX, 0.85, sigilZ + 1.2],
+    name: 'chronicles-gate-key',
+    castShadow: !coarsePointer,
+  });
+  const cryptRim = addHeroSpot(root, {
+    color: 0x6d96b6,
+    intensity: coarsePointer ? 1.25 : 1.7,
+    distance: 14,
+    angle: Math.PI * 0.31,
+    position: [coldX, 2.95, coldZ + 0.8],
+    target: [sigilX, 1.2, sigilZ],
+    name: 'chronicles-crypt-rim',
+    castShadow: false,
+  });
+
   root.userData.chroniclesRuneMaterials = [rune];
-  root.userData.chroniclesAccentLights = [sigilLight, gateLight, coldFill];
+  root.userData.chroniclesAccentLights = [sigilLight, gateLight, coldFill, gateKey, cryptRim];
   root.userData.chroniclesReadabilityLight = readabilityFill;
   return root;
 }
