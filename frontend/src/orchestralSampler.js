@@ -1,3 +1,5 @@
+import { request } from './http.js';
+
 const assetBase = (() => {
   const configured = import.meta.env?.BASE_URL || '/';
   return configured.endsWith('/') ? configured : `${configured}/`;
@@ -87,7 +89,7 @@ export function requestOrchestralSample(ctx, kind, midiNote) {
   if (existing?.failed) return Promise.resolve(null);
 
   const record = {};
-  record.pending = fetch(sample.url, { cache: 'force-cache' })
+  record.pending = request(sample.url, { cache: 'force-cache' })
     .then((response) => {
       if (!response.ok) throw new Error(`Orchestral sample ${response.status}`);
       return response.arrayBuffer();
