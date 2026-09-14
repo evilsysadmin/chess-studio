@@ -1,6 +1,7 @@
 import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
 import { loadGameActivity } from './gameActivity.js';
+import { loadActiveGameSession } from './activeGameSession.js';
 
 // playerRating.js — Estimación de nivel del jugador tipo ELO, calculada a
 // partir de tus partidas normales y de Torneo contra una dificultad conocida.
@@ -44,18 +45,31 @@ function tierFor(rating) {
   return RATING_TIERS.find((t) => rating >= t.min && rating <= t.max) || RATING_TIERS[RATING_TIERS.length - 1];
 }
 
+function processedGameIds(value) {
+  return Array.isArray(value) ? [...new Set(value.filter(Boolean))].slice(0, 256) : [];
+}
+
+function activeRatingGameId() {
+  return loadActiveGameSession()?.gameId || null;
+}
+
 function emptyState() {
-  return { rating: DEFAULT_RATING, games: 0 };
+  return { rating: DEFAULT_RATING, games: 0, processedGameIds: [] };
 }
 
 export function loadRating() {
   const parsed = readJsonStorage(STORAGE_LOCAL, RATING_KEY, { fallback: null });
   if (!parsed || typeof parsed !== 'object') return emptyState();
-  return { rating: parsed.rating ?? DEFAULT_RATING, games: parsed.games || 0 };
+  return {
+    rating: parsed.rating ?? DEFAULT_RATING,
+    games: parsed.games || 0,
+    processedGameIds: processedGameIds(parsed.processedGameIds),
+  };
 }
 
 export function saveRating(state) {
   setProfileStorageItem(RATING_KEY, JSON.stringify(state));
+  return state;
 }
 
 export function loadRatingHistory() {
@@ -65,7 +79,9 @@ export function loadRatingHistory() {
 
 export function recordRatingHistory(rating) {
   const history = loadRatingHistory();
-  history.push({ date: new Date().toISOString(), rating });
+  const gameId = activeRatingGameId();
+  if (gameId && history.some((point) => point?.gameId === gameId)) return history;
+  history.push({ date: new Date().toISOString(), rating, ...(gameId ? { gameId } : {}) });
   const trimmed = history.slice(-MAX_HISTORY_POINTS);
   setProfileStorageItem(RATING_HISTORY_KEY, JSON.stringify(trimmed));
   return trimmed;
@@ -144,17 +160,36 @@ export function ratingScoreForOutcome(outcome) {
 }
 
 export function ratingChangeDetails(state, cpuDifficulty, score) {
+  const gameId = activeRatingGameId();
+  const persisted = gameId ? loadRating() : null;
+  const baseRating = state?.rating ?? DEFAULT_RATING;
+  const games = Number(state?.games || 0);
   const cpuRating = cpuRatingForDifficulty(cpuDifficulty);
-  const expected = 1 / (1 + Math.pow(10, (cpuRating - state.rating) / 400));
-  const k = state.games < PROVISIONAL_GAMES ? PROVISIONAL_K_FACTOR : K_FACTOR;
-  const unclamped = Math.round(state.rating + k * (score - expected));
+  const expected = 1 / (1 + Math.pow(10, (cpuRating - baseRating) / 400));
+  const k = games < PROVISIONAL_GAMES ? PROVISIONAL_K_FACTOR : K_FACTOR;
+  if (gameId && persisted?.processedGameIds.includes(gameId)) {
+    return {
+      next: persisted,
+      delta: persisted.rating - baseRating,
+      cpuRating,
+      expectedScore: expected,
+      kFactor: k,
+      duplicate: true,
+    };
+  }
+
+  const unclamped = Math.round(baseRating + k * (score - expected));
   const nextRating = Math.max(400, unclamped);
+  const knownGameIds = processedGameIds([...(persisted?.processedGameIds || []), ...(state?.processedGameIds || [])]);
+  const next = { rating: nextRating, games: games + 1 };
+  if (gameId || knownGameIds.length) next.processedGameIds = processedGameIds(gameId ? [gameId, ...knownGameIds] : knownGameIds);
   return {
-    next: { rating: nextRating, games: state.games + 1 },
-    delta: nextRating - state.rating,
+    next,
+    delta: nextRating - baseRating,
     cpuRating,
     expectedScore: expected,
     kFactor: k,
+    duplicate: false,
   };
 }
 
