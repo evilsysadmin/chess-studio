@@ -27,7 +27,6 @@ import { pawnSlugWantedCombatProfile, pawnSlugWantedOfficerFor } from './pawnSlu
 import {
   PAWN_SLUG_GRAVITY,
   PAWN_SLUG_PLAYER_H,
-  PAWN_SLUG_VIEW_W,
   PAWN_SLUG_WORLD_SCALE,
   pawnSlugClamp,
   pawnSlugStableEnemyVariant,
@@ -123,7 +122,7 @@ export function createPawnSlugEnemySystem(runtime) {
 
   function spawnAhead() {
     const state = runtime.state;
-    const right = runtime.camera.position.x + PAWN_SLUG_VIEW_W * 0.72;
+    const right = runtime.view.spawnRightEdge();
     const playerMissionX = state.player.x / PAWN_SLUG_WORLD_SCALE;
     for (const spawn of PAWN_SLUG_SPAWNS) {
       if (state.spawned.has(spawn.id)) continue;
