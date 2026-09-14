@@ -22,12 +22,13 @@ describe('Hans ambient chore contract', () => {
     }
   });
 
-  it('keeps the historical armor event id but makes it a real cloth polish', () => {
+  it('keeps the historical armor event id but makes it a real cloth polish with safe standoff', () => {
     const chore = warRoomHansChoreForEvent('dust-armor');
     expect(chore?.targetNames).toEqual([
       'war-room-teutonic-armor-right',
       'war-room-teutonic-armor-left',
     ]);
+    expect(Math.abs(chore?.offsetX || 0)).toBeGreaterThanOrEqual(1.2);
     expect(chore?.prop).toBe('cloth');
     expect(chore?.pose).toBe('polish-armor');
   });

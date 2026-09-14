@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { moveWarRoomHansToward } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v2-board-clear-perimeter';
-export const WAR_ROOM_HANS_NAVIGATION_WALL_INSET = 0.72;
+export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v3-furniture-clear-lane';
+export const WAR_ROOM_HANS_NAVIGATION_CLEAR_LANE_HALF_EXTENT = 5.25;
+export const WAR_ROOM_HANS_NAVIGATION_EDGE_MARGIN = 0.12;
 
 function localPoint(parent, world) {
   parent.updateMatrixWorld?.(true);
@@ -29,9 +30,10 @@ function nearestIndex(points, point) {
   return bestIndex;
 }
 
-function roomInset(span) {
+function clearLaneHalfExtent(span) {
   const safeSpan = Math.max(0, Number(span) || 0);
-  return Math.min(WAR_ROOM_HANS_NAVIGATION_WALL_INSET, Math.max(0.12, safeSpan * 0.08));
+  const roomHalfExtent = Math.max(0.12, safeSpan * 0.5 - WAR_ROOM_HANS_NAVIGATION_EDGE_MARGIN);
+  return Math.min(WAR_ROOM_HANS_NAVIGATION_CLEAR_LANE_HALF_EXTENT, roomHalfExtent);
 }
 
 export function warRoomHansSafeRoomLoop(floor, parent) {
@@ -42,15 +44,19 @@ export function warRoomHansSafeRoomLoop(floor, parent) {
   const size = box.getSize(new THREE.Vector3());
   if (!Number.isFinite(size.x) || !Number.isFinite(size.z) || size.x <= 0 || size.z <= 0) return [];
 
-  const insetX = roomInset(size.x);
-  const insetZ = roomInset(size.z);
-  const left = box.min.x + insetX;
-  const right = box.max.x - insetX;
-  const rear = box.min.z + insetZ;
-  const front = box.max.z - insetZ;
   const centerX = (box.min.x + box.max.x) * 0.5;
   const centerZ = (box.min.z + box.max.z) * 0.5;
+  const laneHalfX = clearLaneHalfExtent(size.x);
+  const laneHalfZ = clearLaneHalfExtent(size.z);
+  const left = centerX - laneHalfX;
+  const right = centerX + laneHalfX;
+  const rear = centerZ - laneHalfZ;
+  const front = centerZ + laneHalfZ;
 
+  // Hans used to hug the room shell. That cleared the board, but it also sent
+  // him through wall furniture (most visibly the Teutonic armours and their
+  // zweihanders). Keep the circulation lane just outside the board-safe area
+  // and inside the fixed wall furniture instead.
   const worldPoints = [
     [left, rear],
     [centerX, rear],
