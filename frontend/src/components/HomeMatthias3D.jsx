@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { createExperimentalThreeRenderer } from '../experimentalThreeRenderer.js';
 import { buildMatthiasKing3D } from './MatthiasKing3D.js';
 import './HomeMatthias3D.css';
 
@@ -53,7 +54,7 @@ export default function HomeMatthias3D({
 
     let renderer;
     try {
-      renderer = new THREE.WebGLRenderer({
+      renderer = createExperimentalThreeRenderer({
         canvas,
         alpha: true,
         antialias: true,
