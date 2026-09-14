@@ -16,8 +16,8 @@ BUDGETS = {
     "frontend/src/components/useCombatController.js": 1310,
     "backend-python/game_api.py": 450,
     # Backlog hotspots: lower these ceilings whenever an extraction shrinks them.
-    "backend-python/matthias_memory_store.py": 1280,
-    "backend-python/narrative_cloudflare.py": 1050,
+    "backend-python/matthias_memory_store.py": 1264,
+    "backend-python/narrative_cloudflare.py": 1039,
 }
 
 failures = []
