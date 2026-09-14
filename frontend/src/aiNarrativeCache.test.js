@@ -38,7 +38,7 @@ describe('shared AI narrative cache', () => {
   it('migrates the legacy single-record shape without discarding that identity', () => {
     localStorage.setItem(CACHE_KEY, JSON.stringify({
       schema: 3,
-      identityScope: 'alice',
+      identityScope: 'Alice',
       generationKey: 'g-alice',
       text: 'Legacy Alice.',
       manualRequestedAt: 1_000_000,
@@ -47,7 +47,7 @@ describe('shared AI narrative cache', () => {
 
     expect(cache.load('g-alice', 'alice')).toBe('Legacy Alice.');
     expect(cache.save('g-bob', 'Nueva lectura de Bob.', 'bob')).toBe(true);
-    expect(cache.load('g-alice', 'alice')).toBe('Legacy Alice.');
+    expect(cache.load('g-alice', 'ALICE')).toBe('Legacy Alice.');
     expect(cache.load('g-bob', 'bob')).toBe('Nueva lectura de Bob.');
     expect(cache.manualRefreshState({ now: 1_000_001, identityScope: 'alice' }).retryAfterMs).toBe(SIX_HOURS - 1);
 
