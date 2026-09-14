@@ -1,18 +1,8 @@
 import * as THREE from 'three';
 import { moveWarRoomHansToward } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v1-safe-loop';
-
-const SAFE_LOOP_FRACTIONS = Object.freeze([
-  [0.18, 0.20],
-  [0.50, 0.16],
-  [0.82, 0.20],
-  [0.86, 0.50],
-  [0.82, 0.80],
-  [0.50, 0.84],
-  [0.18, 0.80],
-  [0.14, 0.50],
-]);
+export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v2-board-clear-perimeter';
+export const WAR_ROOM_HANS_NAVIGATION_WALL_INSET = 0.72;
 
 function localPoint(parent, world) {
   parent.updateMatrixWorld?.(true);
@@ -39,6 +29,11 @@ function nearestIndex(points, point) {
   return bestIndex;
 }
 
+function roomInset(span) {
+  const safeSpan = Math.max(0, Number(span) || 0);
+  return Math.min(WAR_ROOM_HANS_NAVIGATION_WALL_INSET, Math.max(0.12, safeSpan * 0.08));
+}
+
 export function warRoomHansSafeRoomLoop(floor, parent) {
   if (!floor || !parent) return [];
   floor.updateMatrixWorld?.(true);
@@ -47,14 +42,27 @@ export function warRoomHansSafeRoomLoop(floor, parent) {
   const size = box.getSize(new THREE.Vector3());
   if (!Number.isFinite(size.x) || !Number.isFinite(size.z) || size.x <= 0 || size.z <= 0) return [];
 
-  return SAFE_LOOP_FRACTIONS.map(([px, pz]) => {
-    const world = new THREE.Vector3(
-      box.min.x + size.x * px,
-      -0.34,
-      box.min.z + size.z * pz,
-    );
-    return localPoint(parent, world);
-  });
+  const insetX = roomInset(size.x);
+  const insetZ = roomInset(size.z);
+  const left = box.min.x + insetX;
+  const right = box.max.x - insetX;
+  const rear = box.min.z + insetZ;
+  const front = box.max.z - insetZ;
+  const centerX = (box.min.x + box.max.x) * 0.5;
+  const centerZ = (box.min.z + box.max.z) * 0.5;
+
+  const worldPoints = [
+    [left, rear],
+    [centerX, rear],
+    [right, rear],
+    [right, centerZ],
+    [right, front],
+    [centerX, front],
+    [left, front],
+    [left, centerZ],
+  ];
+
+  return worldPoints.map(([x, z]) => localPoint(parent, new THREE.Vector3(x, -0.34, z)));
 }
 
 export function warRoomHansBuildSafeRoute(floor, parent, from, to) {
