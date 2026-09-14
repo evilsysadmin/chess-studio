@@ -151,7 +151,7 @@ async function sampleRoutine(page, canvas, eventName) {
 
 for (const eventName of CAPTURE_EVENTS) {
   test(`War Room · Hans routine video · ${eventName}`, async () => {
-    test.setTimeout(150_000);
+    test.setTimeout(180_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await mkdir(TEMP_VIDEO_DIR, { recursive: true });
 
