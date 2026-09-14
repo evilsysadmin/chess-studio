@@ -36,9 +36,23 @@ export function loadGameHistory() {
   return Array.isArray(parsed) ? parsed : [];
 }
 
+function alreadyArchived(list, record) {
+  const sourceGameId = record?.sourceGameId == null ? '' : String(record.sourceGameId).trim();
+  const recordId = record?.id == null ? '' : String(record.id).trim();
+  if (sourceGameId) {
+    return list.some((item) => item?.sourceGameId === sourceGameId || item?.id === sourceGameId);
+  }
+  if (recordId) return list.some((item) => item?.id === recordId);
+  return false;
+}
+
 // Agrega un registro (el más reciente primero) y devuelve la lista actualizada.
+// El sourceGameId es la identidad estable: App puede regenerar el id del
+// registro durante un retry, pero una misma partida sólo debe tener un cadáver
+// en Historial. Sin identidad estable conservamos el comportamiento legacy.
 export function saveGameRecord(record) {
   const list = loadGameHistory();
+  if (alreadyArchived(list, record)) return list;
   list.unshift(record);
   if (list.length > MAX_RECORDS) list.length = MAX_RECORDS;
   setProfileStorageItem(KEY, JSON.stringify(list));

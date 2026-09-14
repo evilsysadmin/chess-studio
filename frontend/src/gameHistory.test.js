@@ -12,6 +12,19 @@ describe('gameHistory transcript', () => {
     expect(history[0].gameChat).toHaveLength(1);
     expect(history[0].gameChat[0].text).toContain('ceremonia');
   });
+
+  it('archiva una partida una sola vez aunque el callback regenere el id del registro', () => {
+    saveGameRecord({ id: 'rec-1', sourceGameId: 'game-7', outcome: 'win', moves: [] });
+    const afterRetry = saveGameRecord({ id: 'rec-2', sourceGameId: 'game-7', outcome: 'win', moves: [] });
+    expect(afterRetry).toHaveLength(1);
+    expect(afterRetry[0]).toMatchObject({ id: 'rec-1', sourceGameId: 'game-7' });
+  });
+
+  it('mantiene dedupe legacy por id cuando no existe sourceGameId', () => {
+    saveGameRecord({ id: 'legacy-1', outcome: 'draw', moves: [] });
+    saveGameRecord({ id: 'legacy-1', outcome: 'draw', moves: [] });
+    expect(loadGameHistory()).toHaveLength(1);
+  });
 });
 
 
