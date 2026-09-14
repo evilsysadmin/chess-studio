@@ -3,7 +3,7 @@ import { IconTrophy, IconBook } from './Icons.jsx';
 import HomeCastle3D from './HomeCastle3D.jsx';
 import MatthiasCoffeeSteam from './MatthiasCoffeeSteam.jsx';
 import MatthiasLayeredArt from './MatthiasLayeredArt.jsx';
-import hall from '../assets/home-canonical/great-hall-dungeon.webp';
+import hall from '../assets/home-canonical/great-hall-dungeon.avif';
 import { loadRivalry } from '../rivalry.js';
 import { dailyChallengeStats, loadDailyChallenge } from '../dailyChallenge.js';
 import { buildHomeCastleLife } from '../homeCastleLife.js';
