@@ -42,7 +42,7 @@ export function createAiNarrativeCache({
     const records = recordsFromStored(readStored());
     for (let index = records.length - 1; index >= 0; index -= 1) {
       const record = records[index];
-      if (validRecord(record) && record.identityScope === scope) return record;
+      if (validRecord(record) && normalizeIdentityScope(record.identityScope) === scope) return record;
     }
     return null;
   }
@@ -50,7 +50,7 @@ export function createAiNarrativeCache({
   function writeRecord(record) {
     const records = recordsFromStored(readStored())
       .filter(validRecord)
-      .filter((entry) => entry.identityScope !== record.identityScope);
+      .filter((entry) => normalizeIdentityScope(entry.identityScope) !== record.identityScope);
     const nextRecords = [...records.slice(-(MAX_IDENTITY_RECORDS - 1)), record];
     return writeJsonStorage(STORAGE_LOCAL, cacheKey, {
       schema,
