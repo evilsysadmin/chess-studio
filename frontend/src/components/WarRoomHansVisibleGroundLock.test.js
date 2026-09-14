@@ -4,6 +4,7 @@ import {
   installWarRoomHansVisibleGroundLock,
   WAR_ROOM_HANS_VISIBLE_GROUND_LOCK_VERSION,
 } from './WarRoomHansVisibleGroundLock.js';
+import { WAR_ROOM_HANS_TRANSFORM_OWNER_VERSION } from './WarRoomHansTransformOwner.js';
 
 function shoe(material, x) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.12, 0.38), material);
@@ -18,7 +19,7 @@ function bottomWorldY(mesh) {
 }
 
 describe('WarRoomHansVisibleGroundLock', () => {
-  it('wins after a late writer restores the legacy standing Y', () => {
+  it('wins after a late writer restores the legacy standing Y through the transform owner', () => {
     const root = new THREE.Group();
     const material = new THREE.MeshBasicMaterial();
 
@@ -72,5 +73,7 @@ describe('WarRoomHansVisibleGroundLock', () => {
     expect(hans.userData.warRoomHansVisibleGroundLock).toBe(WAR_ROOM_HANS_VISIBLE_GROUND_LOCK_VERSION);
     expect(hans.userData.warRoomHansVisibleGroundSurface).toBe('war-room-command-carpet-inner-field');
     expect(hans.userData.warRoomHansVisibleGroundGap).toBeCloseTo(0, 8);
+    expect(hans.userData.warRoomHansTransformOwner).toBe(WAR_ROOM_HANS_TRANSFORM_OWNER_VERSION);
+    expect(hans.userData.warRoomHansVerticalCommitSource).toBe('visible-mesh-finalizer');
   });
 });
