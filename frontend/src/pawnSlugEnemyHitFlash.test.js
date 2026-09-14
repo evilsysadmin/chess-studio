@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   PAWN_SLUG_ENEMY_HIT_FLASH_META,
   pawnSlugEnemyHitFlash,
+  pawnSlugEnemyHitFlashValues,
 } from './pawnSlugEnemyHitFlash.js';
 
 describe('Pawn Slug enemy hit flash', () => {
@@ -58,5 +59,17 @@ describe('Pawn Slug enemy hit flash', () => {
       });
       expect(settled).toBe(pawn);
     }
+  });
+
+  it('keeps scalar and object APIs equivalent while sharing steady-state singletons', () => {
+    expect(pawnSlugEnemyHitFlashValues(0.01, true, 'knight')).toEqual(
+      pawnSlugEnemyHitFlash(0.01, { hurt: true, type: 'knight' }),
+    );
+    expect(pawnSlugEnemyHitFlashValues(Infinity, false, 'rook')).toBe(
+      pawnSlugEnemyHitFlash(Infinity, { hurt: false, type: 'rook' }),
+    );
+    expect(pawnSlugEnemyHitFlashValues(Infinity, true, 'rook')).toBe(
+      pawnSlugEnemyHitFlash(Infinity, { hurt: true, type: 'rook' }),
+    );
   });
 });

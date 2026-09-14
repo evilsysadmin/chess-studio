@@ -4,6 +4,7 @@ import {
   PAWN_SLUG_ENEMY_ENTRY_META,
   PAWN_SLUG_ENEMY_ENTRY_STAGGER,
   pawnSlugEnemyEntryPose,
+  pawnSlugEnemyEntryPoseValues,
 } from './pawnSlugEnemyEntryMotion.js';
 
 describe('Pawn Slug enemy entry choreography', () => {
@@ -45,5 +46,14 @@ describe('Pawn Slug enemy entry choreography', () => {
   it('becomes an identity pose for reduced motion or disabled states', () => {
     expect(pawnSlugEnemyEntryPose('pawn', 0.1, { reducedMotion: true }).active).toBe(false);
     expect(pawnSlugEnemyEntryPose('rook', 0.1, { enabled: false }).active).toBe(false);
+  });
+
+  it('keeps scalar and object APIs equivalent and shares settled identity', () => {
+    expect(pawnSlugEnemyEntryPoseValues('knight', 0.12, false, true)).toEqual(
+      pawnSlugEnemyEntryPose('knight', 0.12, { reducedMotion: false, enabled: true }),
+    );
+    const scalarSettled = pawnSlugEnemyEntryPoseValues('rook', 99, false, true);
+    const objectSettled = pawnSlugEnemyEntryPose('rook', 99);
+    expect(scalarSettled).toBe(objectSettled);
   });
 });
