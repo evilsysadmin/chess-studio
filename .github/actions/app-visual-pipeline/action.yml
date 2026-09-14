@@ -1,5 +1,5 @@
 name: App visual pipeline
-description: Build once, then capture canonical visuals plus scoped Hans/Chesscom artifacts.
+description: Build once, then capture only affected canonical visuals plus scoped Hans/Chesscom artifacts.
 inputs:
   mode:
     description: canonical or hans
@@ -13,35 +13,31 @@ runs:
         browser-scope: chromium
         build-frontend: 'true'
 
-    - name: Detect optional visual captures
+    - name: Resolve visual capture scope
       if: inputs.mode == 'canonical'
       id: scope
       shell: bash
       run: |
         set -euo pipefail
+        python3 -S scripts/app_visual_scope.py --self-test
         if [[ "${{ github.event_name }}" != "pull_request" ]]; then
-          echo "hans=true" >> "$GITHUB_OUTPUT"
-          echo "chesscom=true" >> "$GITHUB_OUTPUT"
+          python3 -S scripts/app_visual_scope.py --all --github-output "$GITHUB_OUTPUT"
           exit 0
         fi
         files="$(git diff --name-only HEAD^ HEAD)"
-        if grep -Eqi 'hans|Board3D|WarRoom3D|GameBoardView|app_visual|app-visual' <<<"$files"; then
-          echo "hans=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "hans=false" >> "$GITHUB_OUTPUT"
-        fi
-        if grep -Eqi '(^|/)(chesscom[^/]*|Chesscom[^/]*|assets/chesscom|public/chesscom)|e2e/chesscom|app-visual-pipeline' <<<"$files"; then
-          echo "chesscom=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "chesscom=false" >> "$GITHUB_OUTPUT"
-        fi
+        printf '%s\n' "$files"
+        printf '%s\n' "$files" | python3 -S scripts/app_visual_scope.py --github-output "$GITHUB_OUTPUT"
 
-    - name: Capture
+    - name: Capture affected canonical surfaces
       shell: bash
-      run: bash scripts/app_visual_capture.sh "${{ inputs.mode }}"
+      run: |
+        set -euo pipefail
+        groups='${{ steps.scope.outputs.capture_groups }}'
+        [[ -n "$groups" ]] || groups=all
+        bash scripts/app_visual_capture.sh "${{ inputs.mode }}" "$groups"
 
     - name: Enforce War Room visual freeze
-      if: inputs.mode == 'canonical'
+      if: inputs.mode == 'canonical' && steps.scope.outputs.warroom == 'true'
       shell: bash
       run: node scripts/war_room_visual_freeze_check.mjs
 
@@ -56,7 +52,7 @@ runs:
       run: node scripts/app_visual_summary.mjs
 
     - name: Upload canonical artifact
-      if: always() && inputs.mode == 'canonical'
+      if: always() && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none'
       uses: actions/upload-artifact@v7
       with:
         name: app-visual-${{ github.event.pull_request.number || github.run_id }}
