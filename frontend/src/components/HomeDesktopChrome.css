@@ -129,4 +129,21 @@
     border-color: rgba(138, 105, 62, .8) !important;
     box-shadow: 0 6px 18px rgba(0, 0, 0, .25) !important;
   }
+
+  /* Keep the canonical lower-left radio position without turning the collapsed
+     player into a 230px invisible wall over Matthias. The compact treatment is
+     already used on narrow layouts: on desktop Home it leaves only open/play
+     until the user explicitly expands the deck. */
+  html body:has(.app-shell-home) .global-music-dock:has(.music-deck-collapsed) {
+    width: 76px !important;
+  }
+
+  html body:has(.app-shell-home) .global-music-dock .music-deck-collapsed {
+    grid-template-columns: 42px 32px !important;
+  }
+
+  html body:has(.app-shell-home) .global-music-dock .music-deck-collapsed-track,
+  html body:has(.app-shell-home) .global-music-dock .music-deck-collapsed-hint {
+    display: none !important;
+  }
 }
