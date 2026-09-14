@@ -110,16 +110,22 @@ test('Home canónica · arte y destinos comparten el master 1814×867 sin overfl
   const stage = home.locator('.illustrated-home__stage');
   const art = home.locator('.illustrated-home__art');
 
-  for (const selector of [
-    '.illustrated-home__destination--tournament',
-    '.illustrated-home__destination--train',
-    '.illustrated-home__destination--combat',
-    '.illustrated-home__destination--daily',
-    '.illustrated-home__destination--history',
-    '.illustrated-home__destination--play',
-  ]) {
-    await expect(home.locator(selector)).toBeVisible();
+  const destinations = [
+    ['tournament', 'TORNEOS'],
+    ['train', 'ENTRENAR'],
+    ['combat', 'COMBAT CHESS'],
+    ['daily', 'DESAFÍO DIARIO'],
+    ['history', 'HISTORIA'],
+    ['play', /^(JUGAR|CONTINUAR)$/],
+  ];
+  for (const [id, label] of destinations) {
+    const destination = home.locator(`.illustrated-home__destination--${id}`);
+    await expect(destination).toBeVisible();
+    await expect(destination.locator('strong')).toHaveText(label);
+    expect(await destination.evaluate((node) => node.tagName)).toBe('BUTTON');
   }
+  await expect(home.locator('.illustrated-home__brand')).toHaveCount(0);
+  await expect(home.locator('.illustrated-home__motto')).toHaveCount(0);
 
   const geometry = await stage.evaluate((node) => {
     const rect = node.getBoundingClientRect();
@@ -188,12 +194,12 @@ test('Home canónica · ultrapanorámica llena el viewport y mantiene la UI clav
   expect(Math.abs(stageBox.width - artBox.width)).toBeLessThanOrEqual(1);
   expect(Math.abs(stageBox.height - artBox.height)).toBeLessThanOrEqual(1);
 
-  for (const selector of ['.illustrated-home__brand', '.illustrated-home__matthias', '.illustrated-home__motto']) {
-    const box = await home.locator(selector).boundingBox();
-    expect(box).not.toBeNull();
-    expect(box.y).toBeGreaterThanOrEqual(-1);
-    expect(box.y + box.height).toBeLessThanOrEqual(901);
-  }
+  const matthiasBox = await home.locator('.illustrated-home__matthias').boundingBox();
+  expect(matthiasBox).not.toBeNull();
+  expect(matthiasBox.y).toBeGreaterThanOrEqual(-1);
+  expect(matthiasBox.y + matthiasBox.height).toBeLessThanOrEqual(901);
+  await expect(home.locator('.illustrated-home__brand')).toHaveCount(0);
+  await expect(home.locator('.illustrated-home__motto')).toHaveCount(0);
 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
