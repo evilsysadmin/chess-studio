@@ -76,6 +76,14 @@ CORE_E2E_RE = re.compile(
     r"^frontend/(?:index\.html|vite\.config\.(?:js|mjs|ts)|package(?:-lock)?\.json)$"
 )
 
+# War Room renderer/paint modules have a dedicated browser matrix that exercises
+# 3D input, special states, scale and Android focus. Running the generic
+# login/admin/school regression journey as well is expensive duplication.
+DEDICATED_3D_BROWSER_RE = re.compile(
+    r"^frontend/src/components/(?:Board3D|WarRoom3D)[^/]*\.(?:js|jsx)$|"
+    r"^frontend/src/components/(?:WarRoomCastleArchitecture|WarRoomPremiumPaintings|WarRoomArchitectural[^/]*|WarRoomPracticalLighting|WarRoomPremiumFinishPass|WarRoomTeutonicDecor|PremiumWarRoomScene)\.js$"
+)
+
 TARGETED_E2E = {
     "e2e/pawn-slug.spec.js": "run_pawn_slug_e2e",
     "e2e/chesscom.spec.js": "run_chesscom_e2e",
@@ -139,7 +147,7 @@ def classify(paths: Iterable[str]) -> Scope:
             if MATTHIAS_HOME_RE.search(path):
                 scope.run_matthias_home_e2e = True
                 targeted = True
-            if not targeted and CORE_E2E_RE.search(path):
+            if not targeted and CORE_E2E_RE.search(path) and not DEDICATED_3D_BROWSER_RE.search(path):
                 scope.run_e2e = True
             continue
 
@@ -192,6 +200,15 @@ def self_test() -> None:
         run_security=True,
     )
     _expect(["frontend/src/App.jsx"], run_frontend=True, run_e2e=True)
+    _expect(["frontend/src/components/Board3DRenderer.js"], run_frontend=True)
+    _expect(["frontend/src/components/WarRoom3DAnimation.js"], run_frontend=True)
+    _expect(["frontend/src/components/WarRoomPracticalLighting.js"], run_frontend=True)
+    _expect(["frontend/src/components/GameBoardView.jsx"], run_frontend=True, run_e2e=True)
+    _expect(
+        ["frontend/src/components/Board3DRenderer.js", "frontend/src/App.jsx"],
+        run_frontend=True,
+        run_e2e=True,
+    )
     _expect(["frontend/src/styles/28-product-resilience.css"], run_frontend=True)
     _expect(["frontend/src/assets/home-canonical/great-hall-dungeon.webp"], run_frontend=True)
     _expect(["frontend/public/home-canonical.webp"], run_frontend=True)
@@ -240,7 +257,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · producto dirigido; CSS/art no despiertan core browser; backend sin browser mockeado; harness full")
+    print("quality-scope self-test OK · producto dirigido; CSS/art y módulos 3D dedicados no despiertan core browser; backend sin browser mockeado; harness full")
 
 
 def main() -> int:
