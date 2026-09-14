@@ -1,35 +1,23 @@
 name: War Room runtime marathon
 
+# Deep stress/continuity/GPU diagnostics are intentionally manual. The PR gate
+# already runs the path-aware War Room browser contracts from Quality, while the
+# weekly Browser E2E sweep exercises the complete Playwright suite. Keeping this
+# workflow as an escape hatch avoids three extra browser builds on every relevant
+# War Room PR without deleting the diagnostic tool.
 on:
-  pull_request:
-    paths:
-      - 'e2e/war-room-runtime-marathon.spec.js'
-      - 'e2e/war-room-interrupted-restore.spec.js'
-      - 'e2e/war-room-undo-rewind.spec.js'
-      - 'e2e/war-room-ephemeral-cleanup.spec.js'
-      - 'e2e/war-room-webgl-fallback.spec.js'
-      - 'e2e/war-room-render-budget.spec.js'
-      - 'e2e/war-room-board-input.js'
-      - 'frontend/src/components/Board3D*.js'
-      - 'frontend/src/components/Board3D*.jsx'
-      - 'frontend/src/components/WarRoom3D*.js'
-      - 'frontend/src/components/WarRoom3D*.jsx'
-      - 'frontend/src/components/GameBoardView.jsx'
-      - 'frontend/src/components/useGameBoardRenderer.js'
-      - '.github/workflows/war-room-runtime-marathon.yml'
-      - '.github/actions/setup-browser-e2e/action.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: war-room-runtime-marathon-${{ github.event.pull_request.number || github.ref }}
+  group: war-room-runtime-marathon-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   marathon:
-    name: Browser required · War Room ${{ matrix.label }}
+    name: Browser deep-dive · War Room ${{ matrix.label }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     strategy:
