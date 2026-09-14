@@ -36,6 +36,10 @@ function firstGameIndexForEvent(eventName) {
   throw new Error(`Hans routine visual capture could not find ${eventName}`);
 }
 
+function expectedGameId(eventName) {
+  return `e2e-game-${firstGameIndexForEvent(eventName)}`;
+}
+
 async function seedGamesBeforeEvent(page, eventName) {
   const targetIndex = firstGameIndexForEvent(eventName);
   if (targetIndex <= 1) return;
@@ -58,6 +62,20 @@ function expectedRoute(eventName) {
   return '';
 }
 
+async function captureViewportPng(context, page, path) {
+  const session = await context.newCDPSession(page);
+  try {
+    const { data } = await session.send('Page.captureScreenshot', {
+      format: 'png',
+      fromSurface: true,
+      captureBeyondViewport: false,
+    });
+    await writeFile(path, Buffer.from(data, 'base64'));
+  } finally {
+    await session.detach();
+  }
+}
+
 async function waitForRoutineStart(canvas, eventName) {
   if (eventName === 'fire') {
     await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: 45_000 });
@@ -67,8 +85,15 @@ async function waitForRoutineStart(canvas, eventName) {
     return;
   }
 
-  await expect(canvas).toHaveAttribute('data-war-room-hans-route', expectedRoute(eventName), { timeout: 75_000 });
-  await expect(canvas).toHaveAttribute('data-war-room-hans-screen', VISIBLE_SCREEN, { timeout: 20_000 });
+  const route = expectedRoute(eventName);
+  await expect.poll(
+    () => canvas.evaluate((node, expected) => {
+      const screen = node.dataset.warRoomHansScreen || '';
+      return node.dataset.warRoomHansRoute === expected
+        && (screen === 'onscreen' || screen === 'edge' || screen === 'offscreen');
+    }, route),
+    { timeout: 75_000, intervals: [100, 100, 200, 300, 500] },
+  ).toBe(true);
 }
 
 async function sampleRoutine(page, canvas, eventName) {
@@ -104,6 +129,7 @@ async function sampleRoutine(page, canvas, eventName) {
   return {
     schema: 1,
     event: eventName,
+    expectedGameId: expectedGameId(eventName),
     expectedRoute: expectedRoute(eventName),
     observedRoutes: unique('route'),
     observedScreens: unique('screen'),
@@ -122,6 +148,7 @@ for (const eventName of CAPTURE_EVENTS) {
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await mkdir(TEMP_VIDEO_DIR, { recursive: true });
 
+    const emulateSupportedGpu = eventName !== 'fire';
     const browser = await chromium.launch({
       headless: true,
       args: [
@@ -138,13 +165,30 @@ for (const eventName of CAPTURE_EVENTS) {
         size: { width: 640, height: 400 },
       },
     });
-    await context.addInitScript(() => {
+    await context.addInitScript(({ emulateGpu }) => {
       Object.defineProperty(navigator, 'hardwareConcurrency', {
         configurable: true,
         get: () => 8,
       });
-      Math.random = () => 0.25;
-    });
+      if (!emulateGpu) Math.random = () => 0.25;
+
+      if (!emulateGpu) return;
+      globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ = true;
+      const rendererName = 'ANGLE (NVIDIA GeForce RTX 3060 Direct3D11)';
+      for (const constructorName of ['WebGLRenderingContext', 'WebGL2RenderingContext']) {
+        const prototype = globalThis[constructorName]?.prototype;
+        const originalGetParameter = prototype?.getParameter;
+        if (typeof originalGetParameter !== 'function') continue;
+        Object.defineProperty(prototype, 'getParameter', {
+          configurable: true,
+          writable: true,
+          value(parameter) {
+            if (parameter === 0x9246 || parameter === 0x1F01) return rendererName;
+            return originalGetParameter.call(this, parameter);
+          },
+        });
+      }
+    }, { emulateGpu: emulateSupportedGpu });
 
     const page = await context.newPage();
     const video = page.video();
@@ -166,13 +210,27 @@ for (const eventName of CAPTURE_EVENTS) {
 
       const canvas = page.locator('.board3d-main-canvas');
       await expect(canvas).toBeVisible({ timeout: 45_000 });
+      await expect(page.locator('[data-war-room-hans-game-id]').first()).toHaveAttribute(
+        'data-war-room-hans-game-id',
+        expectedGameId(eventName),
+        { timeout: 10_000 },
+      );
+      await expect(canvas).toHaveAttribute(
+        'data-board3d-renderer-class',
+        emulateSupportedGpu ? 'NVIDIA' : 'SOFTWARE',
+        { timeout: 10_000 },
+      );
+      await expect(canvas).toHaveAttribute(
+        'data-board3d-scene-tier',
+        emulateSupportedGpu ? 'full' : 'lite',
+        { timeout: 10_000 },
+      );
       await waitForRoutineStart(canvas, eventName);
 
       const manifest = await sampleRoutine(page, canvas, eventName);
-      await page.screenshot({
-        path: `${ARTIFACT_DIR}/${eventName}.png`,
-        fullPage: false,
-      });
+      manifest.rendererClass = emulateSupportedGpu ? 'NVIDIA-emulated-on-SwiftShader' : 'SOFTWARE';
+      manifest.sceneTier = emulateSupportedGpu ? 'full' : 'lite';
+      await captureViewportPng(context, page, `${ARTIFACT_DIR}/${eventName}.png`);
       await writeFile(
         `${ARTIFACT_DIR}/${eventName}.json`,
         `${JSON.stringify(manifest, null, 2)}\n`,
