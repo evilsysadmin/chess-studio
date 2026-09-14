@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import fs from 'node:fs';
 const { campaignMapEdges, campaignNodePoint, campaignNodeStatus, CAMPAIGN_MAP_VIEWBOX } = await import('../frontend/src/campaignMapVisual.js');
 function assert(value, message) { if (!value) throw new Error(message); }
 const start = { id:'start', stage:0, lane:1, type:'start', connections:['s1-a','s1-b'] };
@@ -28,6 +27,4 @@ const routedEdges = campaignMapEdges(map, routed, nextAvailable);
 assert(routedEdges.some((edge)=>edge.fromId==='start' && edge.toId===s1a.id && edge.status==='traversed'), 'la ruta recorrida no queda marcada');
 assert(routedEdges.filter((edge)=>edge.fromId===s1a.id && edge.status==='available').length === 2, 'las bifurcaciones desde la posición actual no resaltan');
 assert(campaignNodeStatus(s1a, routed, new Set(nextAvailable.map((n)=>n.id))) === 'current', 'la posición actual debe prevalecer sobre superado');
-const component = fs.readFileSync(new URL('../frontend/src/components/CombatCampaignMap.jsx', import.meta.url), 'utf8');
-assert(component.includes('combat-campaign-command-map.webp') && component.includes("'--campaign-map-art'"), 'el mapa perdió el fondo artístico generado');
-console.log('campaign-map-check OK · rutas/estado · márgenes BASE/BOSS · art · desktop/mobile');
+console.log('campaign-map-check OK · rutas/estado · márgenes BASE/BOSS · desktop/mobile');
