@@ -87,6 +87,28 @@
 .chronicles-party-preview-copy span { text-transform: uppercase; }
 .chronicles-party-preview-copy small { letter-spacing: .02em; color: #baaa93; }
 
+/* The Three.js lighting now carries the mood. Keep the optical frame cinematic
+   without crushing the newly-readable masonry back into black, especially on
+   narrow touch layouts where the old vignette covered a large share of canvas. */
+.chronicles-stage {
+  box-shadow:
+    inset 0 0 0 1px rgba(202, 159, 94, .24),
+    inset 0 0 0 3px rgba(0, 0, 0, .66),
+    inset 0 0 42px rgba(0, 0, 0, .38),
+    0 14px 40px rgba(0, 0, 0, .2);
+}
+.chronicles-stage::after {
+  background:
+    linear-gradient(180deg, rgba(198, 145, 69, .03), transparent 24%),
+    radial-gradient(circle at 50% 48%, transparent 60%, rgba(0, 0, 0, .18) 100%);
+}
+.chronicles-vignette {
+  box-shadow:
+    inset 0 0 72px 12px rgba(0, 0, 0, .42),
+    inset 0 -48px 78px rgba(0, 0, 0, .24),
+    inset 0 20px 42px rgba(107, 69, 32, .07);
+}
+
 @media (max-width: 800px) {
   .chronicles-party-preview {
     grid-column: 1/-1;
@@ -119,4 +141,22 @@
   .chronicles-party-preview-three[aria-label="Retrato 3D de Hildegard"] { transform: translateY(-4px) scale(1.2); }
   .chronicles-party-preview-three[aria-label="Retrato 3D de Aziz"] { transform: translateY(-5px) scale(1.2); }
   .chronicles-party-preview-three[aria-label="Retrato 3D de Morcilla"] { transform: translateY(-4px) scale(1.18); }
+  .chronicles-stage {
+    box-shadow:
+      inset 0 0 0 1px rgba(202, 159, 94, .24),
+      inset 0 0 0 3px rgba(0, 0, 0, .62),
+      inset 0 0 30px rgba(0, 0, 0, .28),
+      0 10px 28px rgba(0, 0, 0, .18);
+  }
+  .chronicles-stage::after {
+    background:
+      linear-gradient(180deg, rgba(198, 145, 69, .025), transparent 24%),
+      radial-gradient(circle at 50% 48%, transparent 64%, rgba(0, 0, 0, .13) 100%);
+  }
+  .chronicles-vignette {
+    box-shadow:
+      inset 0 0 46px 7px rgba(0, 0, 0, .34),
+      inset 0 -34px 56px rgba(0, 0, 0, .2),
+      inset 0 16px 34px rgba(107, 69, 32, .065);
+  }
 }
