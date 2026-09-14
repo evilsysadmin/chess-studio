@@ -3,13 +3,13 @@ import {
   FACTUAL_LANGUAGE_FORBIDDEN_ABSOLUTES,
   REPLAY_OK_VERDICT,
   containsFactualLanguageAbsolute,
+  patternProgressCopy,
 } from './factualLanguage.js';
 import { buildPostGameIncidentEvidence } from './postGameIncidentEvidence.js';
 import {
   buildPlayerModel,
   PATTERN_IMPROVEMENT_STATES,
 } from './playerModel.js';
-import { patternProgressCopy } from './components/InsightsRecurringErrors.jsx';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const INCIDENT = 'human:MISSED_MATE';
