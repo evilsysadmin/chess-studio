@@ -96,7 +96,7 @@ function WinBar({ stats }) {
   );
 }
 
-export default function InsightsScreen({ insights, gameHistory, combatHistory, ratingHistory, onExit, onJumpToMove, onOpenRecord, onMovie, onPlayFromHere, onOpenPuzzles, onStartRun, onContinueRun, isAdminUser = false, initialSection = 'diagnosis' }) {
+export default function InsightsScreen({ insights, gameHistory, combatHistory, ratingHistory, onExit, onJumpToMove, onOpenRecord, onMovie, onPlayFromHere, onOpenPuzzles, onStartRun, onContinueRun, isAdminUser = false, initialSection = 'diagnosis', playerModel: sharedPlayerModel = null, personalPuzzles: sharedPersonalPuzzles = null, cleanGameRecords: sharedCleanGameRecords = null }) {
   useEscapeToClose(onExit);
   const [section, setSection] = useState(initialSection === 'career' ? 'career' : 'diagnosis');
   const matthiasVisual = matthiasTimeVisual();
@@ -143,13 +143,24 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   // Se recalcula si cambian los insights o si aparece un resultado nuevo
   // de "Buscar mi peor jugada de siempre" — sin volver a llamar al
   // backend, todo esto ya está calculado.
-  const personalPuzzles = useMemo(() => loadPersonalPuzzles(), [gameHistory.length]);
-  const cleanGameRecords = useMemo(() => loadCleanGameRecords(), [gameHistory.length]);
-  const playerModel = useMemo(() => buildPlayerModel({
-    insights,
-    personalPuzzles,
-    cleanGameRecords,
-  }), [insights, personalPuzzles, cleanGameRecords]);
+  const personalPuzzles = useMemo(
+    () => Array.isArray(sharedPersonalPuzzles) ? sharedPersonalPuzzles : loadPersonalPuzzles(),
+    [sharedPersonalPuzzles, gameHistory.length],
+  );
+  const cleanGameRecords = useMemo(
+    () => sharedCleanGameRecords && typeof sharedCleanGameRecords === 'object' && !Array.isArray(sharedCleanGameRecords)
+      ? sharedCleanGameRecords
+      : loadCleanGameRecords(),
+    [sharedCleanGameRecords, gameHistory.length],
+  );
+  const playerModel = useMemo(() => sharedPlayerModel?.samples
+    ? sharedPlayerModel
+    : buildPlayerModel({
+      insights,
+      personalPuzzles,
+      cleanGameRecords,
+      timeControlStats: rivalry?.record?.byTimeControl,
+    }), [sharedPlayerModel, insights, personalPuzzles, cleanGameRecords, rivalry]);
   const personalPuzzleCount = personalPuzzles.length;
   const roastExtras = useMemo(() => ({
     achievementsUnlocked: loadUnlocked().size,
@@ -161,8 +172,8 @@ export default function InsightsScreen({ insights, gameHistory, combatHistory, r
   }), [rivalry, personalPuzzleCount]);
   const roastLines = useMemo(() => generateRoast(insights, searchResult, roastExtras), [insights, searchResult, roastExtras]);
   const portraitFacts = useMemo(
-    () => buildPlayerPortraitFacts(insights, rivalry, roastExtras, searchResult),
-    [insights, rivalry, roastExtras, searchResult],
+    () => buildPlayerPortraitFacts(insights, rivalry, roastExtras, searchResult, playerModel),
+    [insights, rivalry, roastExtras, searchResult, playerModel],
   );
   const portraitGenerationKey = useMemo(() => playerPortraitGenerationKey(insights), [insights]);
   const portraitIdentityScope = getUsername();
