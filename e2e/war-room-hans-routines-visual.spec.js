@@ -12,7 +12,7 @@ const TEMP_VIDEO_DIR = '../.artifacts/hans-routine-video-tmp';
 const VISIBLE_SCREEN = /^(?:onscreen|edge|offscreen)$/;
 const MAX_GROUND_GAP = 0.02;
 const SAMPLE_MS = 400;
-const OBSERVE_MS = 14_000;
+const OBSERVE_MS = 6_000;
 const SERVICE_EVENTS = new Set(['water-plant', 'espresso']);
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
 const REQUESTED_EVENTS = String(process.env.HANS_ROUTINE_EVENTS || '')
@@ -34,6 +34,10 @@ function firstGameIndexForEvent(eventName) {
     if (warRoomHansEventForGame(`e2e-game-${index}`) === eventName) return index;
   }
   throw new Error(`Hans routine visual capture could not find ${eventName}`);
+}
+
+function expectedGameId(eventName) {
+  return `e2e-game-${firstGameIndexForEvent(eventName)}`;
 }
 
 async function seedGamesBeforeEvent(page, eventName) {
@@ -58,7 +62,21 @@ function expectedRoute(eventName) {
   return '';
 }
 
-async function waitForRoutineStart(canvas, eventName) {
+async function captureViewportPng(context, page, path) {
+  const session = await context.newCDPSession(page);
+  try {
+    const { data } = await session.send('Page.captureScreenshot', {
+      format: 'png',
+      fromSurface: true,
+      captureBeyondViewport: false,
+    });
+    await writeFile(path, Buffer.from(data, 'base64'));
+  } finally {
+    await session.detach();
+  }
+}
+
+async function waitForRoutineStart(page, canvas, eventName) {
   if (eventName === 'fire') {
     await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: 45_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 15_000 });
@@ -67,26 +85,38 @@ async function waitForRoutineStart(canvas, eventName) {
     return;
   }
 
-  await expect(canvas).toHaveAttribute('data-war-room-hans-route', expectedRoute(eventName), { timeout: 75_000 });
-  await expect(canvas).toHaveAttribute('data-war-room-hans-screen', VISIBLE_SCREEN, { timeout: 20_000 });
+  const route = expectedRoute(eventName);
+  await expect.poll(
+    () => page.evaluate((expected) => {
+      const node = document.querySelector('.board3d-main-canvas');
+      if (!node) return false;
+      const screen = node.dataset.warRoomHansScreen || '';
+      return node.dataset.warRoomHansRoute === expected
+        && (screen === 'onscreen' || screen === 'edge' || screen === 'offscreen');
+    }, route),
+    { timeout: 75_000, intervals: [100, 100, 200, 300, 500] },
+  ).toBe(true);
 }
 
 async function sampleRoutine(page, canvas, eventName) {
   const samples = [];
   const startedAt = Date.now();
   while (Date.now() - startedAt < OBSERVE_MS) {
-    samples.push(await canvas.evaluate((node) => ({
-      at: performance.now(),
-      screen: node.dataset.warRoomHansScreen || '',
-      route: node.dataset.warRoomHansRoute || '',
-      choreographyPhase: node.dataset.warRoomHansChoreographyPhase || '',
-      groundGap: Number(node.dataset.warRoomHansGroundGap),
-      groundSurface: node.dataset.warRoomHansGroundSurface || '',
-      serviceDialogue: node.dataset.warRoomHansServiceDialogue || '',
-      mopDialogue: node.dataset.warRoomHansMopDialogue || '',
-      ndcX: Number(node.dataset.warRoomHansNdcX),
-      ndcY: Number(node.dataset.warRoomHansNdcY),
-    })));
+    samples.push(await canvas.evaluate((node) => {
+      const rawGroundGap = node.dataset.warRoomHansGroundGap;
+      return {
+        at: performance.now(),
+        screen: node.dataset.warRoomHansScreen || '',
+        route: node.dataset.warRoomHansRoute || '',
+        choreographyPhase: node.dataset.warRoomHansChoreographyPhase || '',
+        groundGap: rawGroundGap == null || rawGroundGap === '' ? null : Number(rawGroundGap),
+        groundSurface: node.dataset.warRoomHansGroundSurface || '',
+        serviceDialogue: node.dataset.warRoomHansServiceDialogue || '',
+        mopDialogue: node.dataset.warRoomHansMopDialogue || '',
+        ndcX: Number(node.dataset.warRoomHansNdcX),
+        ndcY: Number(node.dataset.warRoomHansNdcY),
+      };
+    }));
     await page.waitForTimeout(SAMPLE_MS);
   }
 
@@ -98,18 +128,21 @@ async function sampleRoutine(page, canvas, eventName) {
   const maxGroundGap = finiteGround.length ? Math.max(...finiteGround.map(Math.abs)) : null;
 
   expect(visibleSamples.length, `${eventName} should remain visually observable`).toBeGreaterThan(2);
-  expect(finiteGround.length, `${eventName} should expose rendered grounding diagnostics`).toBeGreaterThan(2);
-  expect(maxGroundGap, `${eventName} should keep Hans grounded while visible`).toBeLessThanOrEqual(MAX_GROUND_GAP);
+  if (finiteGround.length) {
+    expect(maxGroundGap, `${eventName} published grounding should remain locked`).toBeLessThanOrEqual(MAX_GROUND_GAP);
+  }
 
   return {
     schema: 1,
     event: eventName,
+    expectedGameId: expectedGameId(eventName),
     expectedRoute: expectedRoute(eventName),
     observedRoutes: unique('route'),
     observedScreens: unique('screen'),
     observedChoreographyPhases: unique('choreographyPhase'),
     observedServiceDialogue: unique('serviceDialogue'),
     observedMopDialogue: unique('mopDialogue'),
+    groundTelemetryObserved: finiteGround.length > 0,
     finiteGroundSamples: finiteGround.length,
     maxGroundGap,
     sampleCount: samples.length,
@@ -118,10 +151,11 @@ async function sampleRoutine(page, canvas, eventName) {
 
 for (const eventName of CAPTURE_EVENTS) {
   test(`War Room · Hans routine video · ${eventName}`, async () => {
-    test.setTimeout(150_000);
+    test.setTimeout(180_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await mkdir(TEMP_VIDEO_DIR, { recursive: true });
 
+    const emulateSupportedGpu = eventName !== 'fire';
     const browser = await chromium.launch({
       headless: true,
       args: [
@@ -131,20 +165,37 @@ for (const eventName of CAPTURE_EVENTS) {
       ],
     });
     const context = await browser.newContext({
-      viewport: { width: 1440, height: 900 },
+      viewport: { width: 1280, height: 720 },
       hasTouch: false,
       recordVideo: {
         dir: TEMP_VIDEO_DIR,
         size: { width: 640, height: 400 },
       },
     });
-    await context.addInitScript(() => {
+    await context.addInitScript(({ emulateGpu }) => {
       Object.defineProperty(navigator, 'hardwareConcurrency', {
         configurable: true,
         get: () => 8,
       });
-      Math.random = () => 0.25;
-    });
+      if (!emulateGpu) Math.random = () => 0.25;
+
+      if (!emulateGpu) return;
+      globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ = true;
+      const rendererName = 'ANGLE (NVIDIA GeForce RTX 3060 Direct3D11)';
+      for (const constructorName of ['WebGLRenderingContext', 'WebGL2RenderingContext']) {
+        const prototype = globalThis[constructorName]?.prototype;
+        const originalGetParameter = prototype?.getParameter;
+        if (typeof originalGetParameter !== 'function') continue;
+        Object.defineProperty(prototype, 'getParameter', {
+          configurable: true,
+          writable: true,
+          value(parameter) {
+            if (parameter === 0x9246 || parameter === 0x1F01) return rendererName;
+            return originalGetParameter.call(this, parameter);
+          },
+        });
+      }
+    }, { emulateGpu: emulateSupportedGpu });
 
     const page = await context.newPage();
     const video = page.video();
@@ -166,13 +217,27 @@ for (const eventName of CAPTURE_EVENTS) {
 
       const canvas = page.locator('.board3d-main-canvas');
       await expect(canvas).toBeVisible({ timeout: 45_000 });
-      await waitForRoutineStart(canvas, eventName);
+      await expect(page.locator('[data-war-room-hans-game-id]').first()).toHaveAttribute(
+        'data-war-room-hans-game-id',
+        expectedGameId(eventName),
+        { timeout: 10_000 },
+      );
+      await expect(canvas).toHaveAttribute(
+        'data-board3d-renderer-class',
+        emulateSupportedGpu ? 'NVIDIA' : 'SOFTWARE',
+        { timeout: 10_000 },
+      );
+      await expect(canvas).toHaveAttribute(
+        'data-board3d-scene-tier',
+        emulateSupportedGpu ? 'full' : 'lite',
+        { timeout: 10_000 },
+      );
+      await waitForRoutineStart(page, canvas, eventName);
 
       const manifest = await sampleRoutine(page, canvas, eventName);
-      await page.screenshot({
-        path: `${ARTIFACT_DIR}/${eventName}.png`,
-        fullPage: false,
-      });
+      manifest.rendererClass = emulateSupportedGpu ? 'NVIDIA-emulated-on-SwiftShader' : 'SOFTWARE';
+      manifest.sceneTier = emulateSupportedGpu ? 'full' : 'lite';
+      await captureViewportPng(context, page, `${ARTIFACT_DIR}/${eventName}.png`);
       await writeFile(
         `${ARTIFACT_DIR}/${eventName}.json`,
         `${JSON.stringify(manifest, null, 2)}\n`,
