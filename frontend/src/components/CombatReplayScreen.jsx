@@ -3,6 +3,7 @@ import Board from './Board.jsx';
 import { api } from '../api.js';
 import { formatLongMove } from '../notation.js';
 import { analyzeCombatLog } from '../gameReport.js';
+import { COMBAT_REPLAY_OK_VERDICT } from '../factualLanguage.js';
 import { identifyOpening } from '../openings.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { useArrowKeyNav } from '../useArrowKeyNav.js';
@@ -137,7 +138,7 @@ export default function CombatReplayScreen({ record, initialStep, pinnedReport, 
             {wasHumanMove && reportAtStep && (
               <p className={`hint-caption replay-verdict sev-${reportAtStep.severity}`}>
                 {reportAtStep.severity === 'ok'
-                  ? '✓ No había nada mejor a mano — buena decisión, más allá de cómo salió el dado.'
+                  ? COMBAT_REPLAY_OK_VERDICT
                   : `${SEVERITY_LABEL[reportAtStep.severity]}: jugaste ${formatLongMove(entryAtStep)}, pero el motor prefería ${formatLongMove({ piece: reportAtStep.suggestedPiece, from: reportAtStep.suggestedFrom, to: reportAtStep.suggestedTo })} (recuadro punteado azul) — perdiste ~${reportAtStep.loss} de evaluación con esa decisión.`}
               </p>
             )}
