@@ -54,6 +54,8 @@ async function startPawnSlug(page) {
   return page.getByRole('group', { name: 'Seleccionar arma' });
 }
 
+const LIVE_PREMIUM_ENEMY = /^(premium-raster|premium-fallback):visible:mapped:readable:attached$/;
+
 test('Pawn Slug · arranca con pistola y arsenal seleccionable sin tocar el ajedrez competitivo', async ({ page }) => {
   // This path intentionally boots the premium Three.js runtime twice to prove cleanup/remount.
   // Keep the extra budget local instead of weakening the global Playwright timeout.
@@ -71,6 +73,11 @@ test('Pawn Slug · arranca con pistola y arsenal seleccionable sin tocar el ajed
 
   const arsenal = await startPawnSlug(page);
   await expect(stage.locator('canvas')).toBeVisible({ timeout: 30_000 });
+  // A canvas is not enough: the exact regression we are guarding rendered the
+  // scene and POWs while regular enemies were absent. Require a regular enemy
+  // to have premium art, a visible mapped material, the combat readability
+  // layer and an attached Three.js parent in the live browser runtime.
+  await expect(stage).toHaveAttribute('data-pawn-slug-enemy-visual', LIVE_PREMIUM_ENEMY, { timeout: 30_000 });
   await expect(page.getByText('OPERACIÓN BAUERNSCHLAG', { exact: true })).toBeVisible();
   await expect(arsenal).toBeVisible();
   await expect(page.locator('.pawn-slug-xp-track')).toHaveCount(0);
@@ -100,6 +107,7 @@ test('Pawn Slug · arranca con pistola y arsenal seleccionable sin tocar el ajed
   await startPawnSlug(page);
   await expect(remountedStage.locator('canvas')).toHaveCount(1);
   await expect(remountedStage.locator('canvas')).toBeVisible({ timeout: 30_000 });
+  await expect(remountedStage).toHaveAttribute('data-pawn-slug-enemy-visual', LIVE_PREMIUM_ENEMY, { timeout: 30_000 });
   await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await expect(remountedStage).toHaveCount(0);
