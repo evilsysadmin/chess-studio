@@ -5,12 +5,14 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 const frontendSrc = path.join(root, 'frontend', 'src');
 const backendSrc = path.join(root, 'backend-python');
+const e2eSrc = path.join(root, 'e2e');
+const workerRuntimeTest = path.join(root, 'infra', 'cloudflare', 'worker', 'index.test.mjs');
 
 function discoverTests(dir, found = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) discoverTests(full, found);
-    else if (/\.test\.[jt]sx?$/.test(entry.name)) found.push(full);
+    else if (/\.test\.(?:[jt]sx?|mjs)$/.test(entry.name)) found.push(full);
   }
   return found;
 }
@@ -29,7 +31,11 @@ const frontendModules = discoverFrontendModules(frontendSrc);
 const backendTests = fs.readdirSync(backendSrc, { withFileTypes: true })
   .filter((entry) => entry.isFile() && /^test_.*\.py$/.test(entry.name))
   .map((entry) => path.join(backendSrc, entry.name));
-const tests = [...frontendTests, ...backendTests];
+const e2eTests = fs.readdirSync(e2eSrc, { withFileTypes: true })
+  .filter((entry) => entry.isFile() && entry.name.endsWith('.spec.js'))
+  .map((entry) => path.join(e2eSrc, entry.name));
+const workerTests = fs.existsSync(workerRuntimeTest) ? [workerRuntimeTest] : [];
+const tests = [...frontendTests, ...backendTests, ...e2eTests, ...workerTests];
 const readers = tests.filter((file) => {
   const source = fs.readFileSync(file, 'utf8');
   return /(?:readFileSync|fs\.readFileSync|readFile\s*\(|\.read_text\s*\(|inspect\.getsource|getsource\s*\()/.test(source);
@@ -89,7 +95,7 @@ if (readers.length > SOURCE_READER_BUDGET || findings.length > IMPLEMENTATION_AS
   console.error('FAIL: contrato fósil detectado. Prueba comportamiento/helper público o usa un gate dedicado; no leas implementación como texto.');
   process.exit(1);
 }
-console.log('OK: cero tests frontend/backend leen implementación como texto; los contratos viven en comportamiento o gates dedicados.');
+console.log('OK: cero tests frontend/backend/e2e/worker leen implementación como texto; los contratos viven en comportamiento o gates dedicados.');
 for (const boundary of legacyBoundaries) {
   console.log(`OK: ${boundary.legacyModule} queda encapsulado detrás de ${boundary.owner}.`);
 }
