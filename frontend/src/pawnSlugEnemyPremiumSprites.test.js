@@ -9,6 +9,10 @@ import {
   pawnSlugPremiumEnemyFallbackWindow,
   reassertPawnSlugPremiumEnemyTexture,
 } from './pawnSlugEnemyPremiumSprites.js';
+import {
+  PAWN_SLUG_ENEMY_READABILITY,
+  applyPawnSlugEnemyReadability,
+} from './pawnSlugEnemyReadabilityContract.js';
 
 function fakeTexture() {
   return {
@@ -50,6 +54,37 @@ describe('Pawn Slug premium enemy runtime integration', () => {
       frameHeight: 128,
     });
     expect(PAWN_SLUG_SPRITE_META.enemies.runAtlas.primaryVisualSource).toBe('premium-raster');
+  });
+
+  it('keeps combat sprites readable over 2.5D scenery', () => {
+    const sprite = {
+      renderOrder: 0,
+      userData: {},
+      material: {
+        map: {},
+        visible: false,
+        depthTest: true,
+        depthWrite: true,
+        needsUpdate: false,
+      },
+    };
+
+    applyPawnSlugEnemyReadability(sprite);
+
+    expect(PAWN_SLUG_ENEMY_READABILITY).toMatchObject({
+      renderOrder: 30,
+      depthTest: false,
+      depthWrite: false,
+    });
+    expect(sprite.renderOrder).toBe(30);
+    expect(sprite.material).toMatchObject({
+      visible: true,
+      depthTest: false,
+      depthWrite: false,
+      needsUpdate: true,
+    });
+    expect(sprite.userData.pawnSlugEnemyReadability).toBe(true);
+    expect(PAWN_SLUG_SPRITE_META.enemies.readability).toBe(PAWN_SLUG_ENEMY_READABILITY);
   });
 
   it('clones per-enemy UV state while sharing the decoded premium image source', () => {

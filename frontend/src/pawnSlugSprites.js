@@ -7,10 +7,14 @@ import {
 import {
   PAWN_SLUG_ENEMY_RUN_META,
   animateSlugEnemySprite,
-  createSlugEnemySprite,
+  createSlugEnemySprite as createPremiumSlugEnemySprite,
   pawnSlugEnemyRunAtlasWindow,
 } from './pawnSlugEnemyPremiumSprites.js';
 import { PAWN_SLUG_PREMIUM_ENEMY_FACING_CONTRACT } from './pawnSlugEnemyPremiumArtContract.js';
+import {
+  PAWN_SLUG_ENEMY_READABILITY,
+  applyPawnSlugEnemyReadability,
+} from './pawnSlugEnemyReadabilityContract.js';
 import { pawnSlugPanzerRookEntryPose } from './pawnSlugBossEntryMotion.js';
 import { applyPawnSlugMatthiasPremiumMotion } from './pawnSlugMatthiasPremiumMotion.js';
 import {
@@ -23,12 +27,20 @@ export * from './pawnSlugSpriteCore.js';
 export * from './pawnSlugEnemyPremiumArtContract.js';
 export * from './pawnSlugPremiumEnemyRaster.js';
 export * from './pawnSlugMatthiasRunPolish.js';
+export * from './pawnSlugEnemyReadabilityContract.js';
 export {
   PAWN_SLUG_ENEMY_RUN_META,
   animateSlugEnemySprite,
-  createSlugEnemySprite,
   pawnSlugEnemyRunAtlasWindow,
 };
+
+// Enemy combatants are 2D sprites living inside a 2.5D Three.js scene. They must
+// not disappear behind decorative scenery just because their old runtime z was
+// deeper than POWs, pickups and foreground props. Keep depth for the actual 3D
+// world, but render combat sprites as a dedicated readability layer.
+export function createSlugEnemySprite(type = 'pawn') {
+  return applyPawnSlugEnemyReadability(createPremiumSlugEnemySprite(type));
+}
 
 // The runtime positions the weapon at Matthias' hand/grip height. Legacy weapon
 // sprites were bottom-anchored, so that world-space position effectively became
@@ -95,6 +107,7 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
     ...LEGACY_SPRITE_META.enemies,
     runAtlas: PAWN_SLUG_ENEMY_RUN_META,
     premiumFacing: PAWN_SLUG_PREMIUM_ENEMY_FACING_CONTRACT,
+    readability: PAWN_SLUG_ENEMY_READABILITY,
     panzerRookEntry: true,
     panzerRookImpactCue: 'premium-boss-edge-trigger',
   }),
