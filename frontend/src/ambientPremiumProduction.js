@@ -72,7 +72,7 @@ const THEME_INSTRUMENT_UPGRADES = Object.freeze({
 const EXPANSIVE_SPACE_GENRES = new Set(['SPA / Zen', 'Dark Ambient', 'Ambient / Otros']);
 const SUSTAIN_RICH_GENRES = new Set(['SPA / Zen', 'Clásica', 'Piano / Minimal', 'Dark Ambient', 'Ambient / Otros']);
 const SPARSE_MIX_CEILINGS = Object.freeze({ lead: 0.46, counter: 0.28, bass: 0.56, chord: 0.34 });
-const AUTHORED_LONG_ECHO_THEMES = new Set(['velvetStatic']);
+const AUTHORED_LONG_ECHO_THEMES = new Set(['velvetStatic', 'granadaCopperRain0232']);
 
 function finiteOr(value, fallback) {
   return Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -119,8 +119,11 @@ function premiumSwing(feel, genre) {
   return clamp(blend(current, target, 0.22), 0, 0.22);
 }
 
-function premiumSpace(feel, genre, targetSpace) {
+function premiumSpace(theme, feel, genre, targetSpace) {
   const current = finiteOr(feel?.space, 0);
+  // The copper-rain guitar/clarinet dialogue sits in a long stone room. A
+  // generic jazz target would collapse it onto the dry Patio mix.
+  if (theme?.id === 'granadaCopperRain0232') return clamp(current, 0.035, 0.30);
   // El delay wet del motor ya satura de forma útil alrededor de .30. Las piezas
   // escritas como espacios grandes (onsen, dark ambient, cámaras ambientales)
   // pueden conservar esa profundidad hasta ese límite; recortarlas a .24 hacía
@@ -218,7 +221,7 @@ export function withAmbientPremiumProduction(theme, feel) {
     swing: premiumSwing(feel, theme.genre),
     warmth: clamp(blend(finiteOr(feel.warmth, 1), target.warmth, 0.38), 0.7, 1.08),
     releaseScale: premiumRelease(feel, theme.genre, target.releaseScale),
-    space: premiumSpace(feel, theme.genre, target.space),
+    space: premiumSpace(theme, feel, theme.genre, target.space),
     delayMs: premiumDelay(theme, feel, target.delayMs),
     mix,
     percussion: premiumPercussion(feel, theme.genre),

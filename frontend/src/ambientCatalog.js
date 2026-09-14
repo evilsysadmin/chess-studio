@@ -1694,7 +1694,7 @@ Object.assign(AMBIENT_THEMES, {
   },
   fourSquares: {
     id:'fourSquares', genre:'Piano / Minimal', engine:'structured', label:'Minimal · cuatro casillas',
-    description:'Piano de fieltro repetitivo y cello casi inmóvil; cambia poco a poco, como una posición que se aprieta sin avisar.',
+    description:'Piano de fieltro repetitivo y cello pizzicato casi inmóvil; cambia poco a poco, como una posición que se aprieta sin avisar.',
     stepMs:224, stepsPerSection:48, longFormMs:390000, leadInstrument:'felt', counterInstrument:'cello', chordInstrument:'felt', bassInstrument:'cello',
     sections:[
       {lead:{0:60,8:64,16:62,24:67,32:64,40:62},counter:{12:48,36:47},chords:{0:[48,55,60],24:[47,53,59]},bass:{0:36,24:35}},

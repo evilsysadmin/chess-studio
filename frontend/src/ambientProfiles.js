@@ -48,7 +48,32 @@ const GRANADA_MELODIC_PROFILE = Object.freeze({
     repeatPeriod: 96,
     durationSteps: 4.2,
     volume: 0.28,
-    motif: Object.freeze({ 6: 64, 30: 68, 54: 63, 78: 61 }),
+    motif: Object.freeze({ 6: 64, 30: 68, 54: 63, 62: 61 }),
+  }),
+});
+
+// Copper Rain is a slow conversation between nylon guitar, clarinet and cello.
+// Sharing the Patio's qanun, pizzicato bass and exact guitar signature made
+// two otherwise different scores converge on the same audible palette.
+const GRANADA_COPPER_PROFILE = Object.freeze({
+  ...GRANADA_MELODIC_PROFILE,
+  family: 'granada-guitar-clarinet-rain-chamber',
+  harmonyPath: Object.freeze([0, 0, -2, 0, 3, 0]),
+  warmth: 0.88,
+  releaseScale: 1.34,
+  space: 0.26,
+  delayMs: 310,
+  chordHoldSteps: 24,
+  bassHoldSteps: 7,
+  mix: Object.freeze({ lead: 0.54, counter: 0.30, bass: 0.36, chord: 0.28 }),
+  signature: Object.freeze({
+    instrument: 'clarinet',
+    sections: Object.freeze([0, 3]),
+    everyCycles: 2,
+    repeatPeriod: 56,
+    durationSteps: 7,
+    volume: 0.20,
+    motif: Object.freeze({ 8: 67, 22: 71, 36: 69, 50: 64 }),
   }),
 });
 
@@ -181,14 +206,22 @@ export function structuredFeel(theme) {
   else if (theme?.id === 'reactorGambit') arranged = Object.freeze({ ...legacy, ...REACTOR_GAMBIT_PROFILE });
   else if (theme?.id === 'tangierSmoke') arranged = Object.freeze({ ...legacy, ...TANGIER_SMOKE_PROFILE });
   else if (GRANADA_THEME_IDS.has(theme?.id)) {
+    const copperRain = theme.id === 'granadaCopperRain0232';
     arranged = Object.freeze({
       ...legacy,
-      ...GRANADA_MELODIC_PROFILE,
+      ...(copperRain ? GRANADA_COPPER_PROFILE : GRANADA_MELODIC_PROFILE),
       leadInstrument: 'nylonGuitar',
-      counterInstrument: 'qanun',
+      counterInstrument: copperRain ? 'clarinet' : 'qanun',
+      bassInstrument: copperRain ? 'cello' : 'pizz',
       drumMode: 'none',
       percussion: Object.freeze({ period: 32, kit: 'none', punch: 0, pattern: Object.freeze({}) }),
     });
+  }
+
+  if (theme?.id === 'fourSquares') {
+    // A short plucked cello answer separates its clock-like motif from the
+    // sustained cello in Vertical Rain, without adding beats to minimal piano.
+    arranged = Object.freeze({ ...arranged, counterInstrument: 'pizz' });
   }
 
   return withAmbientPremiumProduction(theme, arranged);
