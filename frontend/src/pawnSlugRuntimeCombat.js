@@ -73,7 +73,7 @@ export function createPawnSlugCombatSystem(runtime) {
     if (result.explosion) explode(item.x, item.y + item.h * 0.5, result.explosion.radius, result.explosion.damage);
     else {
       burst(item.x, item.y + item.h * 0.5, 0.65, false);
-      runtime.sfx.play('hit', { enemyType: 'rook' });
+      runtime.sfx.play('hit');
     }
     state.shake = Math.max(state.shake, runtime.reducedMotion ? 0 : item.type === 'barrel' ? 0.24 : 0.1);
     runtime.emitHud(true);
@@ -132,10 +132,9 @@ export function createPawnSlugCombatSystem(runtime) {
     const state = runtime.state;
     enemy.hp -= amount;
     enemy.hurt = 0.11;
-    runtime.sfx.play('hit', { enemyType: enemy.type });
+    runtime.sfx.play('hit');
     if (enemy.hp > 0) return;
     enemy.dead = true;
-    runtime.sfx.play('hit', { enemyType: enemy.type, ko: true });
     state.score += pawnSlugScoreForKill(enemy.type) * Math.max(1, state.combo || 1);
     state.combo = state.time <= state.comboUntil ? Math.min(9, state.combo + 1) : 1;
     state.comboUntil = state.time + 2.2;
