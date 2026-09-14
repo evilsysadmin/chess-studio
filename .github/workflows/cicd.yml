@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 0
+          fetch-depth: 2
       - name: Capture immutable PR quality provenance
         if: github.event_name == 'pull_request'
         env:
@@ -52,7 +52,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
 
@@ -61,13 +61,12 @@ jobs:
             exit 0
           fi
 
-          if [[ -z "${BASE_SHA:-}" || "$BASE_SHA" =~ ^0+$ ]] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
-            echo 'Diff base no fiable; activando Quality completo.'
+          if ! files="$(python3 -S scripts/pr_merge_diff.py --base "$BASE_SHA" --merge "$EVENT_SHA")"; then
+            echo 'Diff merge no fiable; activando Quality completo.'
             python3 -S scripts/quality_scope.py --all >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
           printf '%s\n' "$files"
           printf '%s\n' "$files" | python3 -S scripts/quality_scope.py >> "$GITHUB_OUTPUT"
       - name: Classify required specialized browser surface
@@ -76,7 +75,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
 
@@ -87,15 +86,14 @@ jobs:
             exit 0
           fi
 
-          if [[ -z "${BASE_SHA:-}" || "$BASE_SHA" =~ ^0+$ ]] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
-            echo 'Diff browser no fiable; activando matriz especializada completa.'
+          if ! files="$(python3 -S scripts/pr_merge_diff.py --base "$BASE_SHA" --merge "$EVENT_SHA")"; then
+            echo 'Diff merge no fiable; activando matriz especializada completa.'
             python3 -S scripts/browser_quality_scope.py --all \
               --github-output "$GITHUB_OUTPUT" \
               --summary "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
-          files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
           printf '%s\n' "$files"
           printf '%s\n' "$files" | python3 -S scripts/browser_quality_scope.py \
             --github-output "$GITHUB_OUTPUT" \
@@ -119,6 +117,7 @@ jobs:
           python3 -S scripts/quality_scope.py --self-test
           python3 -S scripts/browser_quality_scope.py --self-test
           python3 -S scripts/quality_provenance.py --self-test
+          python3 -S scripts/pr_merge_diff.py --self-test
           python3 -S scripts/security_scope.py --self-test
       - name: Staging preview isolation contract
         run: python3 scripts/staging_preview_contract.py
@@ -240,14 +239,14 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 0
+          fetch-depth: 2
       - name: Detect Docker/dependency/security changes
         id: changes
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
 
@@ -256,12 +255,11 @@ jobs:
             exit 0
           fi
 
-          if [[ -z "${BASE_SHA:-}" || "$BASE_SHA" =~ ^0+$ ]] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+          if ! files="$(python3 -S scripts/pr_merge_diff.py --base "$BASE_SHA" --merge "$EVENT_SHA")"; then
             python3 -S scripts/security_scope.py --all --github-output "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
           printf '%s\n' "$files"
           printf '%s\n' "$files" | python3 -S scripts/security_scope.py --github-output "$GITHUB_OUTPUT"
       - name: Security gate skipped · no sensitive surface changed
