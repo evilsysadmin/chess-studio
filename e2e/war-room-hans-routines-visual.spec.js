@@ -12,7 +12,7 @@ const TEMP_VIDEO_DIR = '../.artifacts/hans-routine-video-tmp';
 const VISIBLE_SCREEN = /^(?:onscreen|edge|offscreen)$/;
 const MAX_GROUND_GAP = 0.02;
 const SAMPLE_MS = 400;
-const OBSERVE_MS = 14_000;
+const OBSERVE_MS = 8_000;
 const SERVICE_EVENTS = new Set(['water-plant', 'espresso']);
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
 const REQUESTED_EVENTS = String(process.env.HANS_ROUTINE_EVENTS || '')
@@ -158,7 +158,7 @@ for (const eventName of CAPTURE_EVENTS) {
       ],
     });
     const context = await browser.newContext({
-      viewport: { width: 1440, height: 900 },
+      viewport: { width: 1280, height: 720 },
       hasTouch: false,
       recordVideo: {
         dir: TEMP_VIDEO_DIR,
