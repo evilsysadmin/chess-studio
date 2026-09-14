@@ -43,6 +43,24 @@ describe('Pawn Slug locomotion polish', () => {
     expect(pawnSlugMatthiasLocomotion({ time: 20.1, moving: false, stoppedAt: 20 })).toMatchObject({ action: 'idle', phase: 'idle' });
   });
 
+  it('reuses immutable locomotion results instead of allocating one object per frame', () => {
+    const idleA = pawnSlugMatthiasLocomotion({ time: 20.2, moving: false, stoppedAt: 20 });
+    const idleB = pawnSlugMatthiasLocomotion({ time: 25, moving: false });
+    expect(idleB).toBe(idleA);
+
+    const runA = pawnSlugMatthiasLocomotion({ time: 10.2, moving: true, speedRatio: 0.9, moveStartedAt: 10 });
+    const runB = pawnSlugMatthiasLocomotion({ time: 18.4, moving: true, speedRatio: 0.8, moveStartedAt: 18 });
+    expect(runB).toBe(runA);
+
+    const walkA = pawnSlugMatthiasLocomotion({ time: 30, moving: true, speedRatio: 0.2, moveStartedAt: 30 });
+    const walkB = pawnSlugMatthiasLocomotion({ time: 45, moving: true, speedRatio: 0.2, moveStartedAt: 45 });
+    expect(walkB).toBe(walkA);
+
+    const settleA = pawnSlugMatthiasLocomotion({ time: 60.01, moving: false, stoppedAt: 60 });
+    const settleB = pawnSlugMatthiasLocomotion({ time: 70.01, moving: false, stoppedAt: 70 });
+    expect(settleB).toBe(settleA);
+  });
+
   it('never addresses a walk frame outside the ten-frame v5 row', () => {
     for (let step = 0; step < 60; step += 1) {
       const sample = pawnSlugMatthiasLocomotion({
