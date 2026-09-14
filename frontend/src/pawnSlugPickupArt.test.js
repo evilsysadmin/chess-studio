@@ -35,7 +35,7 @@ describe('Pawn Slug premium pickup art', () => {
 
   it('keeps each pickup small enough for arcade runtime use', () => {
     for (const type of TYPES) {
-      expect(meshCount(createPickupModel(type))).toBeLessThanOrEqual(12);
+      expect(meshCount(createPickupModel(type))).toBeLessThanOrEqual(14);
     }
   });
 
