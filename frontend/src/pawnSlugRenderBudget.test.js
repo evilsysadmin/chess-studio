@@ -7,6 +7,7 @@ import {
   pawnSlugAdaptiveTierForFrameMs,
   pawnSlugCappedPixelRatio,
   pawnSlugGpuRendererLabel,
+  tickPawnSlugRenderBudget,
 } from './pawnSlugRenderBudget.js';
 
 function fakeRenderer(pixelRatio = 1.7) {
@@ -81,6 +82,19 @@ describe('Pawn Slug render budget', () => {
     expect(renderer.shadowMap.enabled).toBe(false);
     expect(renderer.domElement.dataset.pawnSlugQuality).toBe('low');
     expect(renderer.domElement.dataset.pawnSlugShadows).toBe('adaptive-off');
+  });
+
+  it('keeps the render hook on a scalar hot-path tick without changing adaptive behavior', async () => {
+    const renderer = fakeRenderer(1.35);
+    expect(tickPawnSlugRenderBudget(renderer, 0)).toBe('high');
+    let tier = 'high';
+    for (let frame = 1; frame <= PAWN_SLUG_RENDER_BUDGET.sampleFrames; frame += 1) {
+      tier = tickPawnSlugRenderBudget(renderer, frame * 32);
+    }
+    expect(tier).toBe('low');
+    await flushMicrotasks();
+    expect(renderer.getPixelRatio()).toBe(PAWN_SLUG_RENDER_BUDGET.lowPixelRatioCap);
+    expect(renderer.shadowMap.enabled).toBe(false);
   });
 
   it('keeps the high-quality tier on healthy 60fps frame times', async () => {
