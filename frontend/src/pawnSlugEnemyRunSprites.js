@@ -99,11 +99,19 @@ function fallbackWindow(type, dir) {
   };
 }
 
+function atlasWindowKey(atlas, sprite) {
+  if (atlas.source === 'generated-actions') {
+    return `${atlas.source}:${atlas.enemyType}:${sprite.userData.action}:${sprite.userData.actionFrame}:${atlas.direction}`;
+  }
+  return `${atlas.source}:${atlas.enemyType}:${atlas.frame}:${atlas.direction}`;
+}
+
 function applyAtlasWindow(sprite) {
   const atlas = sprite.userData.atlas;
   const texture = atlas?.texture;
   if (!texture) return;
-  configurePawnSlugTexture(texture);
+  const key = atlasWindowKey(atlas, sprite);
+  if (atlas.appliedWindowKey === key) return;
   let window;
   if (atlas.source === 'generated-actions') {
     window = pawnSlugSoldierAtlasWindow(atlas.enemyType, sprite.userData.action, sprite.userData.actionFrame, atlas.direction);
@@ -114,6 +122,7 @@ function applyAtlasWindow(sprite) {
   }
   texture.repeat.set(window.repeatX, window.repeatY);
   texture.offset.set(window.offsetX, window.offsetY);
+  atlas.appliedWindowKey = key;
   // repeat/offset only change the texture transform uniform. Marking the texture
   // itself dirty here forces Three.js to re-upload the full atlas to the GPU.
 }
@@ -139,7 +148,10 @@ function inferredVerticalMotion(sprite, time) {
   }
   sprite.userData.lastWorldY = y;
   sprite.userData.lastWorldYAt = time;
-  return Object.freeze({ airborne: time < (sprite.userData.airborneUntil || 0), vy });
+  const inferred = sprite.userData.inferredMotion;
+  inferred.airborne = time < (sprite.userData.airborneUntil || 0);
+  inferred.vy = vy;
+  return inferred;
 }
 
 export function createSlugEnemySprite(type = 'pawn') {
@@ -161,6 +173,7 @@ export function createSlugEnemySprite(type = 'pawn') {
   sprite.userData.action = 'idle';
   sprite.userData.actionFrame = 0;
   sprite.userData.airborneUntil = 0;
+  sprite.userData.inferredMotion = { airborne: false, vy: 0 };
   sprite.userData.wasHurt = false;
   sprite.userData.hurtStartedAt = null;
   sprite.userData.wasDying = false;
@@ -175,6 +188,7 @@ export function createSlugEnemySprite(type = 'pawn') {
     source: 'loading',
     ready: false,
     disposed: false,
+    appliedWindowKey: null,
   };
 
   const loader = new THREE.TextureLoader();
@@ -185,9 +199,11 @@ export function createSlugEnemySprite(type = 'pawn') {
       return;
     }
     const previous = atlas.texture;
+    configurePawnSlugTexture(texture);
     atlas.texture = texture;
     atlas.source = source;
     atlas.ready = true;
+    atlas.appliedWindowKey = null;
     material.map = texture;
     material.visible = true;
     material.needsUpdate = true;
@@ -280,12 +296,13 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
     type,
     variant: sprite.userData.deathVariant,
   });
+  const actionChanged = sprite.userData.action !== action || sprite.userData.actionFrame !== actionFrame;
 
   sprite.userData.action = action;
   sprite.userData.actionFrame = actionFrame;
   sprite.userData.setDirection?.(direction);
   sprite.userData.setFrame?.(sourceFrame);
-  if (sprite.userData.atlas?.source === 'generated-actions') applyAtlasWindow(sprite);
+  if (sprite.userData.atlas?.source === 'generated-actions' && actionChanged) applyAtlasWindow(sprite);
   sprite.position.x += (pose.x + entryPose.x) * direction;
   sprite.position.y += pose.y + entryPose.y;
   sprite.scale.x = baseScaleX * pose.sx * entryPose.sx * direction;
