@@ -47,7 +47,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 | Workflow | Responsabilidad |
 | --- | --- |
 | `e2e-full.yml` | Sweep completo Chromium/Firefox/WebKit semanal/manual e informativo. Ya no duplica PR: la matriz requerida y path-aware War Room/Matthias vive en `cicd.yml`. |
-| `coverage.yml` | Coverage frontend/backend mensual/manual e informativo, con caches exactas Node/Python. Conserva una señal periódica barata sin ejecutar dos suites completas cada semana. |
+| `coverage.yml` | Señales periódicas no bloqueantes: coverage frontend/backend mensual y CodeQL semanal; `workflow_dispatch` ejecuta ambos bajo demanda. CodeQL mantiene `security-events: write` limitado a su propio job. |
 | `oci-readiness.yml` | Readiness OCI unificado y path-aware: ARM64 backend y/o Terraform OCI `fmt/init/validate`. Sustituye `oci-arm64-readiness.yml` + `oci-terraform-readiness.yml`. No hace apply. |
 
 ## Observabilidad y operación
@@ -104,6 +104,7 @@ Production · promote
 - `matthias-visual.yml` → absorbido primero por `e2e-full.yml`; sus gates PR path-aware viven ahora en `cicd.yml`.
 - `oci-arm64-readiness.yml` + `oci-terraform-readiness.yml` → `oci-readiness.yml`.
 - `war-room-runtime-marathon.yml` → retirado; sus specs siguen cubiertas por el gate War Room path-aware y el sweep completo de `e2e-full.yml`.
+- `codeql.yml` → absorbido por `coverage.yml` como señal periódica; conserva cadence semanal y permisos `security-events` limitados al job CodeQL.
 - `infra/grafana/terraform/` → eliminado; dashboards pasan a publisher API state-less.
 - Instalaciones Node directas en CI/coverage/browser/staging preview/producción → acciones de cache exacta.
 - Cache Trivy por `github.run_id` → namespace estable por versión + epoch diario.
