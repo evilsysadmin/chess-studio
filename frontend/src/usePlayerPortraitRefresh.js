@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
-import { buildPlayerPortraitFacts, loadCachedPlayerPortrait, playerPortraitGenerationKey, saveCachedPlayerPortrait } from './aiPlayerPortrait.js';
+import { loadCachedPlayerPortrait, playerPortraitGenerationKey, saveCachedPlayerPortrait } from './aiPlayerPortrait.js';
 import { getToken, getUsername } from './auth.js';
-import { loadRivalry } from './rivalry.js';
 import { requestRemoteNarrative } from './narrativeRemote.js';
 
 export function usePlayerPortraitRefresh(insights) {
@@ -12,16 +11,20 @@ export function usePlayerPortraitRefresh(insights) {
     if (!identityScope || !token) return undefined;
     const generationKey = playerPortraitGenerationKey(insights);
     if (loadCachedPlayerPortrait(generationKey, identityScope)) return undefined;
-    const facts = buildPlayerPortraitFacts(insights, loadRivalry());
-    if (!facts) return undefined;
 
     const controller = new AbortController();
-    void requestRemoteNarrative({
-      eventType: 'player_portrait',
-      requestKind: 'portrait_auto',
-      tone: 'friendly_sarcastic',
-      facts,
-    }, { token, timeoutMs: 7000, signal: controller.signal })
+    void import('./playerPortraitRefreshFacts.js')
+      .then(({ buildPlayerPortraitRefreshFacts }) => {
+        if (controller.signal.aborted) return null;
+        const facts = buildPlayerPortraitRefreshFacts(insights);
+        if (!facts) return null;
+        return requestRemoteNarrative({
+          eventType: 'player_portrait',
+          requestKind: 'portrait_auto',
+          tone: 'friendly_sarcastic',
+          facts,
+        }, { token, timeoutMs: 7000, signal: controller.signal });
+      })
       .then((text) => {
         if (controller.signal.aborted || !text) return;
         saveCachedPlayerPortrait(generationKey, text, identityScope);

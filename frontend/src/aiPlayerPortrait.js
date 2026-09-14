@@ -6,7 +6,7 @@ import {
 import { buildPlayerModel } from './playerModel.js';
 
 export const AI_PLAYER_PORTRAIT_CACHE_KEY = 'chess-study-ai-player-portrait-v1';
-const PORTRAIT_SCHEMA = 8;
+const PORTRAIT_SCHEMA = 9;
 const GAMES_PER_AUTOMATIC_REFRESH = 1;
 export const PLAYER_PORTRAIT_MAX_CHARS = 900;
 
@@ -21,6 +21,11 @@ const playerPortraitCache = createAiNarrativeCache({
 function finiteNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function nonNegativeInt(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : 0;
 }
 
 function compactModeStats(byMode = {}) {
@@ -49,6 +54,102 @@ function compactPlayerModelTimeControls(timeControls = []) {
       win_pct: Number(row.winPct || 0),
       evidence_strength: row.confidence,
     }]));
+}
+
+function compactRecurringPatterns(patterns = []) {
+  return (Array.isArray(patterns) ? patterns : [])
+    .filter((pattern) => pattern?.incidentKey && nonNegativeInt(pattern?.positions) > 0)
+    .slice(0, 5)
+    .map((pattern) => {
+      const row = {
+        incident_key: String(pattern.incidentKey).slice(0, 80),
+        label: String(pattern.label || pattern.incidentKey).slice(0, 120),
+        positions: nonNegativeInt(pattern.positions),
+        evidence_strength: String(pattern.confidence || 'none').slice(0, 24),
+        improvement_state: String(pattern.improvementState || 'no-sample').slice(0, 64),
+      };
+      const debt = pattern.debt;
+      if (debt && (debt.active === true || debt.paid === true || nonNegativeInt(debt.target) > 0)) {
+        row.training_debt = {
+          active: debt.active === true,
+          paid: debt.paid === true,
+          progress: nonNegativeInt(debt.progress),
+          target: nonNegativeInt(debt.target),
+        };
+      }
+      const observations = pattern.postTrainingObservations;
+      if (observations?.latestCleanTrainingAt) {
+        row.post_training = {
+          observed_games: nonNegativeInt(observations.observedGames),
+          recurrence_games: nonNegativeInt(observations.recurrenceGames),
+          no_recurrence_games: nonNegativeInt(observations.noRecurrenceGames),
+          latest_clean_training_at: String(observations.latestCleanTrainingAt).slice(0, 40),
+          latest_observation_at: observations.latestObservationAt ? String(observations.latestObservationAt).slice(0, 40) : null,
+        };
+      }
+      return row;
+    });
+}
+
+function compactLearningEvidence(model) {
+  const learning = {};
+  const recurringPatterns = compactRecurringPatterns(model?.recurringErrors);
+  if (recurringPatterns.length) learning.recurring_patterns = recurringPatterns;
+
+  const progress = model?.trainingProgress;
+  if (progress && (
+    nonNegativeInt(progress.attempts) > 0
+    || nonNegativeInt(progress.cleanSolves) > 0
+    || nonNegativeInt(progress.activeDebts) > 0
+    || nonNegativeInt(progress.paidDebts) > 0
+  )) {
+    learning.training_progress = {
+      attempts: nonNegativeInt(progress.attempts),
+      solves: nonNegativeInt(progress.solves),
+      clean_solves: nonNegativeInt(progress.cleanSolves),
+      attempted_positions: nonNegativeInt(progress.attemptedPositions),
+      solved_positions: nonNegativeInt(progress.solvedPositions),
+      currently_clean_positions: nonNegativeInt(progress.currentlyCleanPositions),
+      retention_completed_positions: nonNegativeInt(progress.retentionCompletedPositions),
+      retention_due_positions: nonNegativeInt(progress.retentionDuePositions),
+      active_debts: nonNegativeInt(progress.activeDebts),
+      paid_debts: nonNegativeInt(progress.paidDebts),
+      last_attempt_at: progress.lastAttemptAt || null,
+      last_clean_at: progress.lastCleanAt || null,
+    };
+  }
+
+  const cleanPlay = model?.cleanPlay;
+  if (nonNegativeInt(cleanPlay?.eligibleGames) > 0) {
+    learning.clean_play = {
+      eligible_games: nonNegativeInt(cleanPlay.eligibleGames),
+      clean_games: nonNegativeInt(cleanPlay.cleanGames),
+      clean_rate: finiteNumber(cleanPlay.cleanRate),
+      current_streak: nonNegativeInt(cleanPlay.currentStreak),
+      best_streak: nonNegativeInt(cleanPlay.bestStreak),
+      latest_eligible_clean: cleanPlay.latestEligibleClean === true
+        ? true
+        : cleanPlay.latestEligibleClean === false
+          ? false
+          : null,
+      latest_eligible_at: cleanPlay.latestEligibleAt || null,
+      latest_clean_at: cleanPlay.latestCleanAt || null,
+    };
+  }
+
+  const positive = model?.positiveDecisions;
+  if (nonNegativeInt(positive?.comparedMoves) > 0) {
+    learning.positive_decisions = {
+      eligible_games: nonNegativeInt(positive.eligibleGames),
+      compared_moves: nonNegativeInt(positive.comparedMoves),
+      engine_preferred_moves: nonNegativeInt(positive.enginePreferredMoves),
+      preferred_rate: finiteNumber(positive.preferredRate),
+      games_with_preferred_moves: nonNegativeInt(positive.gamesWithPreferredMoves),
+      latest_evidence_at: positive.latestEvidenceAt || null,
+    };
+  }
+
+  return Object.keys(learning).length ? learning : null;
 }
 
 export function buildPlayerPortraitFacts(insights, rivalry = {}, extras = {}, worstMove = null, sharedPlayerModel = null) {
@@ -124,6 +225,9 @@ export function buildPlayerPortraitFacts(insights, rivalry = {}, extras = {}, wo
 
   const timeControlFacts = compactPlayerModelTimeControls(model.timeControls);
   if (Object.keys(timeControlFacts).length) facts.by_time_control = timeControlFacts;
+
+  const learningEvidence = compactLearningEvidence(model);
+  if (learningEvidence) facts.learning_evidence = learningEvidence;
 
   const incidents = Object.entries(rivalry?.incidents || {})
     .filter(([, count]) => Number(count || 0) > 0)
