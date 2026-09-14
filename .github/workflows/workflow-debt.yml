@@ -13,8 +13,7 @@ on:
       - 'scripts/quality_provenance.py'
       - 'scripts/security_scope.py'
       - 'scripts/staging_release_identity.py'
-      - 'scripts/workflow_budget_gate.py'
-      - 'scripts/workflow_inventory_gate.py'
+      - 'scripts/workflow_debt_gate.py'
   push:
     branches:
       - main
@@ -29,8 +28,7 @@ on:
       - 'scripts/quality_provenance.py'
       - 'scripts/security_scope.py'
       - 'scripts/staging_release_identity.py'
-      - 'scripts/workflow_budget_gate.py'
-      - 'scripts/workflow_inventory_gate.py'
+      - 'scripts/workflow_debt_gate.py'
   workflow_dispatch:
 
 permissions:
@@ -60,11 +58,7 @@ jobs:
           python3 -S scripts/quality_provenance.py --self-test
           python3 -S scripts/security_scope.py --self-test
           python3 -S scripts/staging_release_identity.py --self-test
-          python3 -S scripts/workflow_budget_gate.py --self-test
-          python3 -S scripts/workflow_inventory_gate.py --self-test
+          python3 -S scripts/workflow_debt_gate.py --self-test
 
-      - name: Enforce workflow ownership inventory
-        run: python3 -S scripts/workflow_inventory_gate.py
-
-      - name: Enforce workflow budgets
-        run: python3 -S scripts/workflow_budget_gate.py
+      - name: Enforce workflow debt contracts
+        run: python3 -S scripts/workflow_debt_gate.py
