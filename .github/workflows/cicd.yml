@@ -1,18 +1,12 @@
 name: Quality · CI gate
-
 on:
   pull_request:
   workflow_dispatch:
-
 permissions:
   contents: read
-
-# Cada PR sólo necesita validar el head más reciente. La admisión de un SHA ya
-# mergeado en main vive separada en Main · admission para no repetir este gate.
 concurrency:
   group: chess-studio-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   preflight:
     name: Preflight · scope
@@ -34,7 +28,6 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-
       - name: Capture immutable PR quality provenance
         if: github.event_name == 'pull_request'
         env:
@@ -44,7 +37,6 @@ jobs:
           RUN_ID: ${{ github.run_id }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
         run: python3 -S scripts/quality_provenance.py
-
       - name: Upload immutable PR quality provenance
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v7
@@ -53,7 +45,6 @@ jobs:
           path: .ci/quality-provenance.json
           if-no-files-found: error
           retention-days: 7
-
       - name: Classify quality-test surface
         id: quality_paths
         shell: bash
@@ -78,7 +69,6 @@ jobs:
           files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
           printf '%s\n' "$files"
           printf '%s\n' "$files" | python3 -S scripts/quality_scope.py >> "$GITHUB_OUTPUT"
-
       - name: Classify required specialized browser surface
         id: browser_scope
         shell: bash
@@ -109,7 +99,6 @@ jobs:
           printf '%s\n' "$files" | python3 -S scripts/browser_quality_scope.py \
             --github-output "$GITHUB_OUTPUT" \
             --summary "$GITHUB_STEP_SUMMARY"
-
   contracts:
     name: Preflight · contracts
     runs-on: ubuntu-24.04
@@ -118,11 +107,9 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-
       - name: Static preflight + CI wiring
         shell: bash
         run: |
@@ -132,10 +119,8 @@ jobs:
           python3 -S scripts/browser_quality_scope.py --self-test
           python3 -S scripts/quality_provenance.py --self-test
           python3 -S scripts/security_scope.py --self-test
-
       - name: Staging preview isolation contract
         run: python3 scripts/staging_preview_contract.py
-
   frontend:
     name: Tests · Frontend
     needs: preflight
@@ -146,39 +131,29 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-
       - name: Restore exact frontend dependencies
         uses: ./.github/actions/cache-node-modules
         with:
           working-directory: frontend
           lockfile: frontend/package-lock.json
           node-version: '22'
-
       - name: Frontend tests
         if: needs.preflight.outputs.run_frontend == 'true'
         run: make test-frontend
-
-      # Los smokes experimentales siguen viviendo en este runner y necesitan un
-      # dist local. El frontend genérico/core no recompila aquí: consume el único
-      # build compartido que genera e2e_build para Playwright.
       - name: Frontend build · targeted browser smoke only
         if: needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true'
         run: make frontend-build
-
       - name: Bundle size report · targeted-only path
         if: (needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true') && needs.preflight.outputs.run_e2e != 'true' && needs.preflight.outputs.browser_has_cases != 'true'
         run: node scripts/bundle_size_report.mjs
-
       - name: Prepare security report
         if: needs.preflight.outputs.run_security == 'true'
         run: mkdir -p .security
-
       - name: Node dependency audit
         if: needs.preflight.outputs.run_security == 'true'
         working-directory: frontend
@@ -192,34 +167,28 @@ jobs:
             printf '%s\n' '{"error":{"code":"AUDIT_UNAVAILABLE","summary":"npm audit no produjo informe","detail":"endpoint remoto o red no disponibles"}}' > ../.security/npm-audit.json
           fi
           python3 ../scripts/npm_audit_gate.py ../.security/npm-audit.json
-
       - name: Restore targeted experiment browser runtime
         if: needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true'
         uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
           build-frontend: 'false'
-
       - name: Pawn Slug browser smoke
         if: needs.preflight.outputs.run_pawn_slug_e2e == 'true'
         working-directory: e2e
         run: ./node_modules/.bin/playwright test pawn-slug.spec.js --workers=1 --retries=0
-
       - name: Chesscom browser smoke
         if: needs.preflight.outputs.run_chesscom_e2e == 'true'
         working-directory: e2e
         run: ./node_modules/.bin/playwright test chesscom.spec.js --workers=1 --retries=0
-
       - name: Pawn Trailblazer browser smoke
         if: needs.preflight.outputs.run_trailblazer_e2e == 'true'
         working-directory: e2e
         run: ./node_modules/.bin/playwright test pawn-trailblazer.spec.js --workers=1 --retries=0
-
       - name: Matthias Home browser smoke
         if: needs.preflight.outputs.run_matthias_home_e2e == 'true'
         working-directory: e2e
         run: ./node_modules/.bin/playwright test matthias-home-priority.spec.js --workers=1 --retries=0
-
       - name: Upload targeted browser diagnostics on failure
         if: failure() && (needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true')
         uses: actions/upload-artifact@v7
@@ -228,7 +197,6 @@ jobs:
           path: e2e/test-results/
           if-no-files-found: ignore
           retention-days: 7
-
   backend:
     name: Tests · Backend
     needs: preflight
@@ -239,7 +207,6 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-
       - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
@@ -247,28 +214,21 @@ jobs:
           cache-dependency-path: |
             backend-python/requirements.txt
             backend-python/requirements-dev.txt
-
       - name: Restore exact backend virtualenv
         uses: ./.github/actions/cache-python-venv
-
       - name: Backend smoke · engine + AI
         run: make test-backend-smoke
-
       - name: Backend integration/API
         run: make test-backend-integration
-
       - name: Python dependency consistency
         run: make backend-check
-
       - name: Prepare security report
         if: needs.preflight.outputs.run_security == 'true'
         run: mkdir -p .security
-
       - name: Python advisory inventory (informative)
         if: needs.preflight.outputs.run_security == 'true'
         continue-on-error: true
         run: make security-be
-
   security:
     name: Security · Trivy + Docker
     needs: preflight
@@ -280,7 +240,6 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
-
       - name: Detect Docker/dependency/security changes
         id: changes
         shell: bash
@@ -304,18 +263,15 @@ jobs:
           files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
           printf '%s\n' "$files"
           printf '%s\n' "$files" | python3 -S scripts/security_scope.py --github-output "$GITHUB_OUTPUT"
-
       - name: Security gate skipped · no sensitive surface changed
         if: steps.changes.outputs.run_security != 'true'
         run: |
           echo "Trivy/Docker omitidos: este cambio no toca dependencias, imágenes, compose ni infraestructura sensible."
-
       - name: Resolve Trivy cache epoch
         if: steps.changes.outputs.run_security == 'true'
         id: trivy_epoch
         shell: bash
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
-
       - name: Cache Trivy binary and vulnerability DB
         if: steps.changes.outputs.run_security == 'true'
         uses: actions/cache@v6
@@ -326,23 +282,19 @@ jobs:
           key: trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-${{ steps.trivy_epoch.outputs.day }}
           restore-keys: |
             trivy-${{ runner.os }}-${{ runner.arch }}-v0.74.0-
-
       - name: Trivy filesystem
         if: steps.changes.outputs.run_security == 'true'
         env:
           TRIVY_DB_TTL_MINUTES: '1440'
         run: make security-trivy
-
       - name: Set up Docker Buildx cache backend
         if: steps.changes.outputs.run_security == 'true'
         uses: docker/setup-buildx-action@v4
-
       - name: Docker image security
         if: steps.changes.outputs.run_security == 'true'
         env:
           TRIVY_DB_TTL_MINUTES: '1440'
         run: make security-images
-
       - name: Real stack smoke · Docker Compose
         if: steps.changes.outputs.run_security == 'true'
         shell: bash
@@ -352,7 +304,6 @@ jobs:
           trap cleanup EXIT
           docker compose up -d --build
           python3 scripts/compose_smoke.py
-
   e2e_build:
     name: Build browser artifact once
     needs: preflight
@@ -363,27 +314,22 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-
       - name: Restore exact frontend dependencies
         uses: ./.github/actions/cache-node-modules
         with:
           working-directory: frontend
           lockfile: frontend/package-lock.json
           node-version: '22'
-
       - name: Build frontend once for all required browser gates
         working-directory: frontend
         run: npm run build
-
       - name: Bundle size report from shared build
         run: node scripts/bundle_size_report.mjs
-
       - name: Upload immutable browser frontend
         uses: actions/upload-artifact@v7
         with:
@@ -391,7 +337,6 @@ jobs:
           path: frontend/dist/
           if-no-files-found: error
           retention-days: 1
-
   e2e_lanes:
     name: Tests · Playwright · ${{ matrix.lane }}
     needs: [preflight, e2e_build]
@@ -410,23 +355,38 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-
       - name: Restore critical browser runtime
         uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
           build-frontend: 'false'
-
       - name: Download shared browser frontend
         uses: actions/download-artifact@v6
         with:
           name: quality-browser-frontend-${{ github.sha }}
           path: frontend/dist
-
       - name: Critical browser lane
         working-directory: e2e
-        run: bash ./run-critical-lane.sh "${{ matrix.lane }}"
-
+        env:
+          CRITICAL_E2E_LANE: ${{ matrix.lane }}
+        run: |
+          case "$CRITICAL_E2E_LANE" in
+            regression)
+              ./node_modules/.bin/playwright test regression-journeys.spec.js \
+                --grep "sesión · dos contextos de navegador|deploy · una release nueva no fuerza reload|admin · presencia distingue|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos|Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar" \
+                --grep-invert "y cierra el loop jugar → entrenar → volver a jugar|entrenamiento → segunda observación real no sobreafirma mejora" \
+                --workers=1 --retries=0 --timeout=75000
+              ;;
+            learning-golden) ./node_modules/.bin/playwright test learning-golden-path.spec.js --workers=1 --retries=0 ;;
+            learning-observation) ./node_modules/.bin/playwright test learning-second-observation.spec.js --workers=1 --retries=0 ;;
+            smoke)
+              ./node_modules/.bin/playwright test smoke.spec.js \
+                --grep "login → menú|Partida rápida · una partida activa|Torneo · una partida activa|Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|Combat Chess · salir al menú conserva campaña" \
+                --workers=1 --retries=0
+              ./node_modules/.bin/playwright test mobile-final-interactions.spec.js --workers=1 --retries=0
+              ;;
+            *) echo "::error::Lane Playwright desconocida: $CRITICAL_E2E_LANE"; exit 2 ;;
+          esac
       - name: Upload Playwright diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v7
@@ -435,7 +395,6 @@ jobs:
           path: e2e/test-results/
           if-no-files-found: ignore
           retention-days: 7
-
   e2e_specialized:
     name: Browser required · ${{ matrix.label }}
     needs: [preflight, e2e_build]
@@ -449,23 +408,19 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-
       - name: Restore specialized browser runtime
         uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
           build-frontend: 'false'
-
       - name: Download shared browser frontend
         uses: actions/download-artifact@v6
         with:
           name: quality-browser-frontend-${{ github.sha }}
           path: frontend/dist
-
       - name: Run ${{ matrix.label }}
         working-directory: e2e
         run: ${{ matrix.command }}
-
       - name: Upload Playwright diagnostics on failure
         if: failure()
         uses: actions/upload-artifact@v7
@@ -476,7 +431,6 @@ jobs:
             e2e/playwright-report/
           if-no-files-found: ignore
           retention-days: 7
-
   e2e:
     name: Tests · Playwright
     needs: [preflight, e2e_lanes, e2e_specialized]
