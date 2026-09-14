@@ -5,6 +5,12 @@ import { warRoomHansServiceDialogueSpec } from './WarRoomHansServiceContract.js'
 import { projectHansFireReplyAnchor } from './WarRoomHansFireCallContract.js';
 import './WarRoomHansFireCall.css';
 
+const HANS_DIALOGUE_ANCHOR_SCREEN_STATES = new Set(['onscreen', 'edge', 'offscreen']);
+
+export function hansDialogueAnchorScreenEligible(screenState) {
+  return HANS_DIALOGUE_ANCHOR_SCREEN_STATES.has(String(screenState || ''));
+}
+
 function sameAnchor(current, next) {
   if (current === next) return true;
   if (!current || !next) return false;
@@ -62,13 +68,18 @@ export default function WarRoomHansServiceDialogue({
       const spec = warRoomHansServiceDialogueSpec(rawPhase) || warRoomHansChoreDialogueSpec(rawPhase);
       const nextPhase = !dialogueUiSuppressed() && spec ? rawPhase : '';
       setPhase((current) => current === nextPhase ? current : nextPhase);
-      if (spec?.speaker === 'HANS' && nextPhase && canvas?.dataset?.warRoomHansScreen === 'onscreen') {
-        const anchor = projectHansFireReplyAnchor({
-          ndcX: canvas.dataset.warRoomHansNdcX,
-          ndcY: canvas.dataset.warRoomHansNdcY,
-          coarsePointer: Boolean(window.matchMedia?.('(pointer: coarse)')?.matches),
-        });
-        if (anchor) setHansAnchor((current) => sameAnchor(current, anchor) ? current : anchor);
+      if (spec?.speaker === 'HANS' && nextPhase) {
+        const screenState = canvas?.dataset?.warRoomHansScreen || '';
+        if (hansDialogueAnchorScreenEligible(screenState)) {
+          const anchor = projectHansFireReplyAnchor({
+            ndcX: canvas.dataset.warRoomHansNdcX,
+            ndcY: canvas.dataset.warRoomHansNdcY,
+            coarsePointer: Boolean(window.matchMedia?.('(pointer: coarse)')?.matches),
+          });
+          if (anchor) setHansAnchor((current) => sameAnchor(current, anchor) ? current : anchor);
+        } else {
+          setHansAnchor((current) => current == null ? current : null);
+        }
       }
       frameId = window.requestAnimationFrame(tick);
     };
