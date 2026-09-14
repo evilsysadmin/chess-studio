@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relative) => fs.readFileSync(path.join(root, relative), 'utf8');
+const readBytes = (relative) => fs.readFileSync(path.join(root, relative));
 const entry = read('frontend/src/styles.css').trim().split(/\r?\n/);
 const contractImport = "@import './styles/28-product-resilience.css' layer(l28);";
 const contractCss = read('frontend/src/styles/28-product-resilience.css');
@@ -39,6 +40,58 @@ const matthiasVisuals = read('frontend/src/matthiasVisuals.js');
 const feedbackE2e = read('e2e/feedback-critical.spec.js');
 const smoke = read('e2e/smoke.spec.js');
 
+const HOME_CANONICAL_PATH = 'frontend/src/assets/home-canonical/great-hall-dungeon.webp';
+const HOME_CANONICAL_GIT_BLOB_SHA1 = 'fe2d2a1b934b49041cdd958e9f3b9a74135c4cad';
+const HOME_CANONICAL_WIDTH = 1814;
+const HOME_CANONICAL_HEIGHT = 867;
+const homeCanonicalBytes = readBytes(HOME_CANONICAL_PATH);
+const homeCanonicalDir = fs.readdirSync(path.join(root, 'frontend/src/assets/home-canonical')).sort();
+const homeCanonicalGitBlobSha1 = createHash('sha1')
+  .update(Buffer.from(`blob ${homeCanonicalBytes.length}\0`))
+  .update(homeCanonicalBytes)
+  .digest('hex');
+
+function webpDimensions(buffer) {
+  if (
+    buffer.length < 30
+    || buffer.subarray(0, 4).toString('ascii') !== 'RIFF'
+    || buffer.subarray(8, 12).toString('ascii') !== 'WEBP'
+  ) return null;
+
+  let offset = 12;
+  while (offset + 8 <= buffer.length) {
+    const kind = buffer.subarray(offset, offset + 4).toString('ascii');
+    const chunkSize = buffer.readUInt32LE(offset + 4);
+    const data = offset + 8;
+    if (data + chunkSize > buffer.length) return null;
+
+    if (kind === 'VP8 ' && chunkSize >= 10) {
+      if (buffer[data + 3] !== 0x9d || buffer[data + 4] !== 0x01 || buffer[data + 5] !== 0x2a) return null;
+      return {
+        width: buffer.readUInt16LE(data + 6) & 0x3fff,
+        height: buffer.readUInt16LE(data + 8) & 0x3fff,
+      };
+    }
+    if (kind === 'VP8X' && chunkSize >= 10) {
+      return {
+        width: buffer.readUIntLE(data + 4, 3) + 1,
+        height: buffer.readUIntLE(data + 7, 3) + 1,
+      };
+    }
+    if (kind === 'VP8L' && chunkSize >= 5 && buffer[data] === 0x2f) {
+      const bits = buffer.readUInt32LE(data + 1);
+      return {
+        width: (bits & 0x3fff) + 1,
+        height: ((bits >> 14) & 0x3fff) + 1,
+      };
+    }
+    offset = data + chunkSize + (chunkSize & 1);
+  }
+  return null;
+}
+
+const homeCanonicalDimensions = webpDimensions(homeCanonicalBytes);
+
 const canonicalPayload = read('frontend/public/matthias-home-canonical.b64').trim();
 const canonicalBytes = Buffer.from(canonicalPayload, 'base64');
 const uint24le = (buffer, offset) => buffer[offset] | (buffer[offset + 1] << 8) | (buffer[offset + 2] << 16);
@@ -69,6 +122,27 @@ const checks = [
       && /aspect-ratio:\s*16\s*\/\s*9/.test(homeIllustratedCss)
       && /object-fit:\s*fill/.test(homeIllustratedCss),
     'Home debe usar una única superficie ilustrada 16:9, sin rama legacy ni recorte del arte canónico',
+  ],
+  [
+    homeCanonicalDir.length === 1 && homeCanonicalDir[0] === 'great-hall-dungeon.webp',
+    `Home canónica debe tener un único master; encontrados: ${homeCanonicalDir.join(', ') || '(ninguno)'}`,
+  ],
+  [
+    homeCanonicalGitBlobSha1 === HOME_CANONICAL_GIT_BLOB_SHA1,
+    `Home canónica fue modificada sin aprobar: blob ${homeCanonicalGitBlobSha1}; esperado ${HOME_CANONICAL_GIT_BLOB_SHA1}`,
+  ],
+  [
+    homeCanonicalDimensions?.width === HOME_CANONICAL_WIDTH && homeCanonicalDimensions?.height === HOME_CANONICAL_HEIGHT,
+    `Home canónica debe medir ${HOME_CANONICAL_WIDTH}x${HOME_CANONICAL_HEIGHT}; recibido ${homeCanonicalDimensions ? `${homeCanonicalDimensions.width}x${homeCanonicalDimensions.height}` : 'WebP inválido'}`,
+  ],
+  [
+    homeIllustrated.includes("import hall from '../assets/home-canonical/great-hall-dungeon.webp';"),
+    'HomeIllustrated debe importar exclusivamente el master canónico protegido',
+  ],
+  [
+    !homeIllustrated.includes('JUEGA · APRENDE · COMPITE')
+      && !homeIllustrated.includes('DISCIPLINA · ESTRATEGIA · UN MUNDO MEJOR'),
+    'Home no debe reintroducir slogans/chrome retirados como copy hardcoded',
   ],
   [
     /illustrated-home__resident/.test(homeIllustrated)
@@ -106,4 +180,4 @@ if (failed.length) {
   for (const message of failed) console.error(` - ${message}`);
   process.exit(1);
 }
-console.log('visual-ux-contract OK · viewport + barra única de mando + Home ilustrada canónica + mapa artístico + Matthias + coach de replay + inbox admin protegidos');
+console.log('visual-ux-contract OK · viewport + barra única de mando + Home canónica congelada + mapa artístico + Matthias + coach de replay + inbox admin protegidos');
