@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -27,17 +28,18 @@ def _git(root: Path, *args: str) -> str:
     return result.stdout.strip()
 
 
-def changed_files(root: Path, base_sha: str, merge_sha: str) -> list[str]:
-    if not base_sha or not merge_sha:
-        raise DiffError('faltan BASE_SHA/MERGE_SHA')
-
-    _git(root, 'cat-file', '-e', f'{base_sha}^{{commit}}')
+def merge_parents(root: Path, merge_sha: str) -> tuple[str, str]:
+    if not merge_sha:
+        raise DiffError('falta MERGE_SHA')
     _git(root, 'cat-file', '-e', f'{merge_sha}^{{commit}}')
-    first_parent = _git(root, 'rev-parse', f'{merge_sha}^1')
-    if first_parent != base_sha:
-        raise DiffError(f'el primer padre del merge ({first_parent}) no coincide con base ({base_sha})')
-    _git(root, 'rev-parse', f'{merge_sha}^2')
+    parents = _git(root, 'show', '-s', '--format=%P', merge_sha).split()
+    if len(parents) != 2:
+        raise DiffError('el SHA probado no es un merge sintético de exactamente dos padres')
+    return parents[0], parents[1]
 
+
+def changed_files(root: Path, merge_sha: str) -> list[str]:
+    base_sha, _ = merge_parents(root, merge_sha)
     output = _git(root, 'diff', '--name-only', base_sha, merge_sha)
     return [line for line in output.splitlines() if line]
 
@@ -51,12 +53,12 @@ def self_test() -> None:
         (root / 'base.txt').write_text('base\n', encoding='utf-8')
         _git(root, 'add', '.')
         _git(root, 'commit', '-qm', 'base')
-        ancestor = _git(root, 'rev-parse', 'HEAD')
 
         _git(root, 'checkout', '-qb', 'feature')
         (root / 'feature.txt').write_text('feature\n', encoding='utf-8')
         _git(root, 'add', '.')
         _git(root, 'commit', '-qm', 'feature')
+        feature = _git(root, 'rev-parse', 'HEAD')
 
         _git(root, 'checkout', '-q', 'master')
         (root / 'main.txt').write_text('main advanced\n', encoding='utf-8')
@@ -66,25 +68,25 @@ def self_test() -> None:
         _git(root, 'merge', '--no-ff', 'feature', '-qm', 'synthetic merge')
         merge = _git(root, 'rev-parse', 'HEAD')
 
-        assert changed_files(root, base, merge) == ['feature.txt']
-        try:
-            changed_files(root, ancestor, merge)
-        except DiffError as exc:
-            assert 'primer padre' in str(exc)
-        else:
-            raise AssertionError('una base que no es el primer padre debe fallar cerrada')
+        assert merge_parents(root, merge) == (base, feature)
+        assert changed_files(root, merge) == ['feature.txt']
 
         try:
-            changed_files(root, ancestor, base)
-        except DiffError:
-            pass
+            changed_files(root, base)
+        except DiffError as exc:
+            assert 'exactamente dos padres' in str(exc)
         else:
             raise AssertionError('un commit no-merge no puede actuar como merge sintético')
+
+    print('pr-merge-diff self-test: OK · primer padre del merge define la base probada')
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument('--base')
+    parser.add_argument(
+        '--base',
+        help='base del evento (sólo diagnóstico; en reruns puede quedar obsoleta)',
+    )
     parser.add_argument('--merge')
     parser.add_argument('--root', default='.')
     parser.add_argument('--self-test', action='store_true')
@@ -92,14 +94,23 @@ def main() -> int:
 
     if args.self_test:
         self_test()
-        print('pr-merge-diff self-test: OK · base→merge excluye avances ajenos de main')
         return 0
 
+    root = Path(args.root).resolve()
     try:
-        files = changed_files(Path(args.root).resolve(), args.base or '', args.merge or '')
+        actual_base, _ = merge_parents(root, args.merge or '')
+        files = changed_files(root, args.merge or '')
     except DiffError as exc:
         print(f'pr merge diff no fiable: {exc}')
         return 2
+
+    expected_base = (args.base or '').strip().lower()
+    if expected_base and expected_base != actual_base.lower():
+        print(
+            f'aviso: base del evento {expected_base[:12]} obsoleta; '
+            f'usando primer padre probado {actual_base[:12]}',
+            file=sys.stderr,
+        )
 
     if files:
         print('\n'.join(files))
