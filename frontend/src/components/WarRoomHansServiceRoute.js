@@ -5,7 +5,7 @@ import { setWarRoomHansServiceDoorOpen } from './WarRoomHansServiceDoor.js';
 
 export { moveWarRoomHansToward };
 
-export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v7-armor-inward-standoff';
+export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v7-visible-exit-door-armor-inward-standoff';
 export const HANS_SERVICE_WALK_SPEED = 0.78;
 
 const DOOR_NAME = 'war-room-hans-service-door';
