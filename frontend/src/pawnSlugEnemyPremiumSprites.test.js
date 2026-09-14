@@ -24,10 +24,12 @@ function fakeTexture() {
 }
 
 describe('Pawn Slug premium enemy runtime integration', () => {
-  it('promotes the canonical premium raster ahead of procedural soldier art', () => {
+  it('prefers authored premium art while retaining generated actions as the visible safety net', () => {
     expect(PAWN_SLUG_ENEMY_RUN_META.primaryVisualSource).toBe('premium-raster');
     expect(PAWN_SLUG_ENEMY_RUN_META.fallbackVisualSource).toBe('premium-static-raster');
-    expect(PAWN_SLUG_ENEMY_RUN_META.proceduralRole).toBe('last-resort');
+    expect(PAWN_SLUG_ENEMY_RUN_META.proceduralRole).toBe('known-good-safety-net');
+    expect(PAWN_SLUG_ENEMY_RUN_META.visualEvidencePolicy).toBe('premium-alpha-readback-before-replacing-generated-actions');
+    expect(PAWN_SLUG_ENEMY_RUN_META.browserFallbackAlias).toBe('generated-actions -> premium-fallback');
     expect(PAWN_SLUG_ENEMY_RUN_META.lateFallbackOverwriteProtection).toBe(true);
     expect(PAWN_SLUG_ENEMY_RUN_META.sourceDecodePolicy).toBe('shared-once-per-page-cloned-per-enemy');
     expect(PAWN_SLUG_ENEMY_RUN_META.sharedDecodedSourceCount).toBe(2);

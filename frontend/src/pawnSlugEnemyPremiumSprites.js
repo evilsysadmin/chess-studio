@@ -13,12 +13,20 @@ import {
   pawnSlugPremiumEnemyRasterWindow,
 } from './pawnSlugPremiumEnemyRaster.js';
 import { pawnSlugShouldDisposePreviousTexture } from './pawnSlugTextureOwnership.js';
+import {
+  PAWN_SLUG_ENEMY_VISUAL_EVIDENCE,
+  inspectPawnSlugEnemyImage,
+} from './pawnSlugEnemyVisualEvidence.js';
 
 const PREMIUM_FALLBACK_FRAME_BY_TYPE = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
 const PREMIUM_FALLBACK_COLUMNS = 3;
 const PREMIUM_VISUAL_PRIORITY = Object.freeze({
   'premium-fallback': 10,
   'premium-raster': 20,
+});
+const PREMIUM_VISUAL_EVIDENCE_LAYOUT = Object.freeze({
+  'premium-fallback': Object.freeze({ axis: 'x', segments: PAWN_SLUG_ENEMY_VISUAL_EVIDENCE.fallbackSegments }),
+  'premium-raster': Object.freeze({ axis: 'y', segments: PAWN_SLUG_ENEMY_VISUAL_EVIDENCE.canonicalSegments }),
 });
 const premiumSourceLoads = new Map();
 
@@ -41,12 +49,13 @@ export function pawnSlugPremiumEnemyFallbackWindow(type = 'pawn', dir = 1) {
 
 export function clonePawnSlugPremiumEnemyTexture(masterTexture) {
   const texture = masterTexture.clone();
+  texture.userData = { ...(masterTexture.userData || {}) };
   configurePawnSlugTexture(texture);
   texture.needsUpdate = true;
   return texture;
 }
 
-function loadPremiumSource(url) {
+function loadPremiumSource(url, source) {
   let pending = premiumSourceLoads.get(url);
   if (pending) return pending;
   pending = new Promise((resolve, reject) => {
@@ -54,6 +63,11 @@ function loadPremiumSource(url) {
       url,
       (texture) => {
         configurePawnSlugTexture(texture);
+        texture.userData ||= {};
+        texture.userData.pawnSlugPremiumEnemyVisualEvidence = inspectPawnSlugEnemyImage(
+          texture.image,
+          PREMIUM_VISUAL_EVIDENCE_LAYOUT[source],
+        );
         resolve(texture);
       },
       undefined,
@@ -64,8 +78,8 @@ function loadPremiumSource(url) {
   return pending;
 }
 
-function loadPremiumTexture(url, onLoad, onError) {
-  loadPremiumSource(url)
+function loadPremiumTexture(url, source, onLoad, onError) {
+  loadPremiumSource(url, source)
     .then((masterTexture) => onLoad(clonePawnSlugPremiumEnemyTexture(masterTexture)))
     .catch(() => onError?.());
 }
@@ -97,8 +111,12 @@ function applyPremiumWindow(sprite) {
 export function pawnSlugPremiumEnemyRenderStatus(sprite) {
   const atlas = sprite?.userData?.atlas;
   const material = sprite?.material;
+  // Keep the long-standing browser contract stable: generated-actions is the
+  // synchronous premium safety net and is reported as premium-fallback to the
+  // smoke while its internal source remains explicit for runtime diagnostics.
+  const contractSource = atlas?.source === 'generated-actions' ? 'premium-fallback' : (atlas?.source || 'unknown');
   return [
-    atlas?.source || 'unknown',
+    contractSource,
     material?.visible !== false ? 'visible' : 'hidden',
     material?.map ? 'mapped' : 'unmapped',
     sprite?.userData?.pawnSlugEnemyReadability ? 'readable' : 'depth',
@@ -110,8 +128,19 @@ function publishPremiumEnemyRenderStatus(sprite) {
   if (typeof document === 'undefined') return;
   const stage = document.querySelector?.('[data-pawn-slug-renderer="three"]');
   if (!stage?.dataset) return;
+  const atlas = sprite?.userData?.atlas;
+  const source = atlas?.source;
+  const evidence = atlas?.premiumVisual?.evidence
+    || sprite?.material?.map?.userData?.pawnSlugPremiumEnemyVisualEvidence;
+  const verifiedPremium = ['premium-raster', 'premium-fallback'].includes(source)
+    && evidence?.checked
+    && evidence?.opaque;
+  // generated-actions is built synchronously by our own canvas renderer and is
+  // the known-good safety net. A premium image is only allowed to replace it
+  // after alpha readback proves useful pixels in every authored region.
+  const verifiedFallback = source === 'generated-actions';
+  if (!verifiedPremium && !verifiedFallback) return;
   const status = pawnSlugPremiumEnemyRenderStatus(sprite);
-  if (!status.startsWith('premium-')) return;
   if (stage.dataset.pawnSlugEnemyVisual !== status) stage.dataset.pawnSlugEnemyVisual = status;
 }
 
@@ -165,6 +194,12 @@ function installPremiumRaster(sprite) {
       return false;
     }
 
+    const evidence = texture.userData?.pawnSlugPremiumEnemyVisualEvidence;
+    if (!evidence?.checked || !evidence.opaque) {
+      texture.dispose?.();
+      return false;
+    }
+
     configurePawnSlugTexture(texture);
     if (source === 'premium-raster') texture.generateMipmaps = false;
     texture.userData ||= {};
@@ -172,7 +207,7 @@ function installPremiumRaster(sprite) {
 
     const previous = atlas.texture;
     const supersededPreferred = preferred?.texture;
-    atlas.premiumVisual = { texture, source, priority };
+    atlas.premiumVisual = { texture, source, priority, evidence };
     atlas.texture = texture;
     atlas.source = source;
     atlas.ready = true;
@@ -210,6 +245,7 @@ function installPremiumRaster(sprite) {
   // decoded image/source instead of re-decoding the atlas for every spawn.
   loadPremiumTexture(
     enemyPremiumFallbackUrl,
+    'premium-fallback',
     (texture) => {
       if (atlas.disposed) {
         texture.dispose?.();
@@ -220,7 +256,7 @@ function installPremiumRaster(sprite) {
         atlas.premiumFallbackState = 'superseded';
         return;
       }
-      atlas.premiumFallbackState = installTexture(texture, 'premium-fallback') ? 'ready' : 'superseded';
+      atlas.premiumFallbackState = installTexture(texture, 'premium-fallback') ? 'ready' : 'failed';
       if (atlas.premiumRasterState === 'failed') atlas.premiumRasterState = 'fallback';
     },
     () => {
@@ -232,12 +268,17 @@ function installPremiumRaster(sprite) {
 
   loadPremiumTexture(
     PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL,
+    'premium-raster',
     (texture) => {
       if (atlas.disposed) {
         texture.dispose?.();
         return;
       }
-      atlas.premiumRasterState = installTexture(texture, 'premium-raster') ? 'ready' : atlas.premiumRasterState;
+      const installed = installTexture(texture, 'premium-raster');
+      atlas.premiumRasterState = installed
+        ? 'ready'
+        : (atlas.premiumVisual?.source === 'premium-fallback' ? 'fallback' : 'failed');
+      if (!installed) restoreBaseControlsIfNeeded();
     },
     () => {
       if (atlas.disposed) return;
@@ -278,6 +319,8 @@ export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
   sourceDecodePolicy: 'shared-once-per-page-cloned-per-enemy',
   sharedDecodedSourceCount: 2,
   lateFallbackOverwriteProtection: true,
+  visualEvidencePolicy: 'premium-alpha-readback-before-replacing-generated-actions',
   browserRenderContract: 'data-pawn-slug-enemy-visual',
-  proceduralRole: 'last-resort',
+  browserFallbackAlias: 'generated-actions -> premium-fallback',
+  proceduralRole: 'known-good-safety-net',
 });
