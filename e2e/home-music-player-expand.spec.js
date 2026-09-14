@@ -10,14 +10,29 @@ async function openHome(page) {
   }
 }
 
-test('Home desktop · el reproductor expandido permanece entero dentro del viewport', async ({ page }) => {
+test('Home desktop · el reproductor plegado no roba el hitbox de Matthias y expandido cabe en viewport', async ({ page }) => {
   await page.setViewportSize({ width: 1366, height: 520 });
   await openHome(page);
 
   const dock = page.locator('.global-music-dock');
   const openPlayer = page.getByRole('button', { name: 'Abrir reproductor de música', exact: true });
+  const matthias = page.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true });
   await expect(dock).toBeVisible();
   await expect(openPlayer).toBeVisible();
+  await expect(matthias).toBeVisible();
+
+  const collapsedBox = await dock.boundingBox();
+  const openBox = await openPlayer.boundingBox();
+  const matthiasBox = await matthias.boundingBox();
+  expect(collapsedBox).not.toBeNull();
+  expect(openBox).not.toBeNull();
+  expect(matthiasBox).not.toBeNull();
+  expect(collapsedBox.width).toBeLessThanOrEqual(70);
+  const overlapsMatthias = openBox.x < matthiasBox.x + matthiasBox.width
+    && openBox.x + openBox.width > matthiasBox.x
+    && openBox.y < matthiasBox.y + matthiasBox.height
+    && openBox.y + openBox.height > matthiasBox.y;
+  expect(overlapsMatthias).toBe(false);
 
   await openPlayer.click();
 
