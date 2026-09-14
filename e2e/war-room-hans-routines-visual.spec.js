@@ -36,6 +36,10 @@ function firstGameIndexForEvent(eventName) {
   throw new Error(`Hans routine visual capture could not find ${eventName}`);
 }
 
+function expectedGameId(eventName) {
+  return `e2e-game-${firstGameIndexForEvent(eventName)}`;
+}
+
 async function seedGamesBeforeEvent(page, eventName) {
   const targetIndex = firstGameIndexForEvent(eventName);
   if (targetIndex <= 1) return;
@@ -56,6 +60,20 @@ function expectedRoute(eventName) {
   if (SERVICE_EVENTS.has(eventName)) return `service-${eventName}`;
   if (CHORE_EVENTS.has(eventName)) return `chore-${eventName}`;
   return '';
+}
+
+async function captureViewportPng(context, page, path) {
+  const session = await context.newCDPSession(page);
+  try {
+    const { data } = await session.send('Page.captureScreenshot', {
+      format: 'png',
+      fromSurface: true,
+      captureBeyondViewport: false,
+    });
+    await writeFile(path, Buffer.from(data, 'base64'));
+  } finally {
+    await session.detach();
+  }
 }
 
 async function waitForRoutineStart(canvas, eventName) {
@@ -104,6 +122,7 @@ async function sampleRoutine(page, canvas, eventName) {
   return {
     schema: 1,
     event: eventName,
+    expectedGameId: expectedGameId(eventName),
     expectedRoute: expectedRoute(eventName),
     observedRoutes: unique('route'),
     observedScreens: unique('screen'),
@@ -139,6 +158,7 @@ for (const eventName of CAPTURE_EVENTS) {
       },
     });
     await context.addInitScript(() => {
+      globalThis.__CHESS_STUDIO_HANS_AMBIENT_AUDIT__ = true;
       Object.defineProperty(navigator, 'hardwareConcurrency', {
         configurable: true,
         get: () => 8,
@@ -166,13 +186,17 @@ for (const eventName of CAPTURE_EVENTS) {
 
       const canvas = page.locator('.board3d-main-canvas');
       await expect(canvas).toBeVisible({ timeout: 45_000 });
+      await expect(page.locator('[data-war-room-hans-game-id]').first()).toHaveAttribute(
+        'data-war-room-hans-game-id',
+        expectedGameId(eventName),
+        { timeout: 10_000 },
+      );
+      await expect(canvas).toHaveAttribute('data-board3d-renderer-class', 'SOFTWARE', { timeout: 10_000 });
+      await expect(canvas).toHaveAttribute('data-board3d-scene-tier', 'lite', { timeout: 10_000 });
       await waitForRoutineStart(canvas, eventName);
 
       const manifest = await sampleRoutine(page, canvas, eventName);
-      await page.screenshot({
-        path: `${ARTIFACT_DIR}/${eventName}.png`,
-        fullPage: false,
-      });
+      await captureViewportPng(context, page, `${ARTIFACT_DIR}/${eventName}.png`);
       await writeFile(
         `${ARTIFACT_DIR}/${eventName}.json`,
         `${JSON.stringify(manifest, null, 2)}\n`,
