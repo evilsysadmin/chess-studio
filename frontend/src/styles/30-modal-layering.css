@@ -1,0 +1,11 @@
+/* Post-game autopsy is the dominant interaction while open.
+   Keep persistent game chrome out of its pointer/stacking plane so every
+   dialog action remains genuinely clickable in compact 2D and 3D layouts. */
+body:has(.game-autopsy) .app-shell-board-game > .masthead-game-compact {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.modal-backdrop:has(.game-autopsy) {
+  z-index: 220;
+}
