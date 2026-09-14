@@ -2,13 +2,23 @@ import { useEffect, useState } from 'react';
 import { getToken } from './auth.js';
 import { requestRemoteNarrative } from './narrativeRemote.js';
 
+export function remoteNarrativeDossierKey(dossier) {
+  if (!dossier || typeof dossier !== 'object') return 'null';
+  return JSON.stringify({
+    eventType: dossier.eventType ?? null,
+    requestKind: dossier.requestKind ?? null,
+    tone: dossier.tone ?? null,
+    facts: dossier.facts && typeof dossier.facts === 'object' ? dossier.facts : {},
+  });
+}
+
 export function useRemoteNarrativeDossier(dossier, {
   timeoutMs = 8000,
   abortMessage = 'Remote narrative superseded',
 } = {}) {
   const [text, setText] = useState(null);
   const [loading, setLoading] = useState(false);
-  const factsKey = JSON.stringify(dossier?.facts || {});
+  const requestKey = remoteNarrativeDossierKey(dossier);
 
   useEffect(() => {
     const token = getToken();
@@ -32,7 +42,7 @@ export function useRemoteNarrativeDossier(dossier, {
       });
 
     return () => controller.abort(new DOMException(abortMessage, 'AbortError'));
-  }, [factsKey, timeoutMs, abortMessage]);
+  }, [requestKey, timeoutMs, abortMessage]);
 
   return { text, loading };
 }
