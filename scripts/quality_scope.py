@@ -34,20 +34,26 @@ class Scope:
         return [f"{field.name}={'true' if getattr(self, field.name) else 'false'}" for field in fields(self)]
 
 
-# Changes to the Quality harness itself must exercise every lane because they can
-# alter selection, setup or aggregation globally. Other workflow/tooling changes
-# are validated by static-preflight and their own dedicated workflows.
-FULL_HARNESS_PATHS = {
+# Only files that can alter global Quality selection/commands wake every lane.
+# Supporting harness pieces are scoped to the runtime they can actually affect;
+# pure auditors are already exercised by the always-on contracts job.
+GLOBAL_HARNESS_PATHS = {
     ".github/workflows/cicd.yml",
-    ".github/actions/setup-browser-e2e/action.yml",
-    ".github/actions/cache-node-modules/action.yml",
-    ".github/actions/cache-python-venv/action.yml",
     "Makefile",
     "scripts/quality_scope.py",
+}
+FRONTEND_HARNESS_PATHS = {
     "scripts/frontend_test_groups.mjs",
     "scripts/run_frontend_test_group.mjs",
-    "scripts/test_entrypoint_parity.py",
-    "scripts/test_suite_audit.mjs",
+}
+NODE_HARNESS_PATHS = {
+    ".github/actions/cache-node-modules/action.yml",
+}
+BACKEND_HARNESS_PATHS = {
+    ".github/actions/cache-python-venv/action.yml",
+}
+BROWSER_HARNESS_PATHS = {
+    ".github/actions/setup-browser-e2e/action.yml",
 }
 
 PAWN_SLUG_RE = re.compile(
@@ -125,11 +131,34 @@ def _clean_paths(paths: Iterable[str]) -> list[str]:
 
 def classify(paths: Iterable[str]) -> Scope:
     changed = _clean_paths(paths)
-    if any(path in FULL_HARNESS_PATHS for path in changed):
+    if any(path in GLOBAL_HARNESS_PATHS for path in changed):
         return Scope.all()
 
     scope = Scope()
     for path in changed:
+        if path in FRONTEND_HARNESS_PATHS:
+            scope.run_frontend = True
+            continue
+
+        if path in NODE_HARNESS_PATHS:
+            # The exact Node cache backs both Vitest and Playwright dependency
+            # restores. Browser-specific setup is additionally exercised by the
+            # specialized selector, which treats this action as a browser gate.
+            scope.run_frontend = True
+            scope.run_e2e = True
+            continue
+
+        if path in BACKEND_HARNESS_PATHS:
+            scope.run_backend = True
+            continue
+
+        if path in BROWSER_HARNESS_PATHS:
+            # browser_quality_scope.py separately expands this action to every
+            # specialized browser contract. The generic core lane is enough here
+            # to cover the shared setup without waking unrelated backend/security.
+            scope.run_e2e = True
+            continue
+
         if SECURITY_RE.search(path):
             scope.run_security = True
 
@@ -255,6 +284,19 @@ def self_test() -> None:
     _expect([".github/workflows/e2e-full.yml"])
     _expect(["scripts/release_consistency_check.mjs"])
     _expect([".githooks/pre-push"])
+    _expect(["scripts/test_entrypoint_parity.py"])
+    _expect(["scripts/test_suite_audit.mjs"])
+
+    # Harness pieces pay only for the runtime they can change.
+    _expect(["scripts/frontend_test_groups.mjs"], run_frontend=True)
+    _expect(["scripts/run_frontend_test_group.mjs"], run_frontend=True)
+    _expect([".github/actions/cache-python-venv/action.yml"], run_backend=True)
+    _expect(
+        [".github/actions/cache-node-modules/action.yml"],
+        run_frontend=True,
+        run_e2e=True,
+    )
+    _expect([".github/actions/setup-browser-e2e/action.yml"], run_e2e=True)
 
     assert classify([".github/workflows/cicd.yml"]) == Scope.all()
     assert classify(["Makefile"]) == Scope.all()
@@ -267,7 +309,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · producto dirigido; test-only/CSS/art y módulos 3D dedicados no despiertan core browser; backend sin browser mockeado; harness full")
+    print("quality-scope self-test OK · producto dirigido; auditoría estática sin lanes caras; harness por runtime; test-only/CSS/art y módulos 3D dedicados no despiertan core browser")
 
 
 def main() -> int:
