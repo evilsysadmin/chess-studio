@@ -23,8 +23,13 @@ vi.mock('../playerModel.js', () => ({
 }));
 
 vi.mock('./InsightsDashboardContent.jsx', () => ({
-  default: ({ initialSection, playerModel }) => (
-    <div data-insights-dashboard={initialSection} data-player-model={playerModel?.version || 'none'}>dashboard</div>
+  default: ({ initialSection, playerModel, personalPuzzles, cleanGameRecords }) => (
+    <div
+      data-insights-dashboard={initialSection}
+      data-player-model={playerModel?.version || 'none'}
+      data-dashboard-puzzle-snapshot={personalPuzzles?.length || 0}
+      data-dashboard-clean-snapshot={Object.keys(cleanGameRecords || {}).length}
+    >dashboard</div>
   ),
 }));
 vi.mock('./InsightsRecurringErrors.jsx', () => ({
@@ -101,6 +106,8 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
     expect(html.match(/data-player-model="7"/g)?.length).toBeGreaterThanOrEqual(3);
     expect(html).toContain('data-puzzle-snapshot="1"');
     expect(html).toContain('data-clean-snapshot="1"');
+    expect(html).toContain('data-dashboard-puzzle-snapshot="1"');
+    expect(html).toContain('data-dashboard-clean-snapshot="1"');
   });
 
   it('abre Así juegas en Ahora con sesión guiada, campaña personal y objetivos semanales', () => {
