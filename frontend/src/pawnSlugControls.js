@@ -49,6 +49,7 @@ export const PAWN_SLUG_DEFAULT_SETTINGS = Object.freeze({
 });
 
 export const PAWN_SLUG_SETTINGS_STORAGE_KEY = 'chess-studio:pawn-slug:settings:v1';
+export const PAWN_SLUG_SETTINGS_CACHE_MS = 250;
 
 const KEY_LABELS = Object.freeze({
   ArrowLeft: '←',
@@ -66,6 +67,9 @@ const KEY_LABELS = Object.freeze({
   Backspace: 'BACKSPACE',
 });
 
+let cachedSettings = null;
+let cachedSettingsAt = Number.NEGATIVE_INFINITY;
+
 const clampVolume = (value, fallback) => {
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
@@ -78,6 +82,21 @@ function keyCounts(keymap) {
   const counts = new Map();
   for (const code of Object.values(keymap)) counts.set(code, (counts.get(code) || 0) + 1);
   return counts;
+}
+
+function settingsNow() {
+  return Date.now();
+}
+
+function cacheSettings(settings, now = settingsNow()) {
+  cachedSettings = settings;
+  cachedSettingsAt = now;
+  return settings;
+}
+
+export function invalidatePawnSlugSettingsCache() {
+  cachedSettings = null;
+  cachedSettingsAt = Number.NEGATIVE_INFINITY;
 }
 
 export function normalizePawnSlugKeymap(value) {
@@ -117,15 +136,19 @@ export function normalizePawnSlugSettings(value) {
 }
 
 export function loadPawnSlugSettings() {
-  return normalizePawnSlugSettings(
+  const now = settingsNow();
+  if (cachedSettings && now - cachedSettingsAt >= 0 && now - cachedSettingsAt < PAWN_SLUG_SETTINGS_CACHE_MS) {
+    return cachedSettings;
+  }
+  return cacheSettings(normalizePawnSlugSettings(
     readJsonStorage(STORAGE_LOCAL, PAWN_SLUG_SETTINGS_STORAGE_KEY, { fallback: PAWN_SLUG_DEFAULT_SETTINGS }),
-  );
+  ), now);
 }
 
 export function savePawnSlugSettings(value) {
   const settings = normalizePawnSlugSettings(value);
   setStorageItem(STORAGE_LOCAL, PAWN_SLUG_SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-  return settings;
+  return cacheSettings(settings);
 }
 
 export function pawnSlugControlActionForCode(keymap, code) {
