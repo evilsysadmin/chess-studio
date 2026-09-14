@@ -196,182 +196,185 @@ async function capturePawnSlugPlayingHealth(page) {
   });
 }
 
-test('Experimentos · landing visual desktop + Android', async ({ browser }) => {
-  test.skip(!scopeEnabled('landing'), 'Experiments landing is outside this PR visual scope');
-  test.setTimeout(75_000);
-  await mkdir(ARTIFACT_DIR, { recursive: true });
+if (scopeEnabled('landing')) {
+  test('Experimentos · landing visual desktop + Android', async ({ browser }) => {
+    test.setTimeout(75_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
 
-  const captures = [];
-  for (const capture of CAPTURES) {
-    await withCapturePage(browser, capture, async (page) => {
-      const chronicles = page.getByRole('button', { name: /Chronicles of Matthias/ });
-      const arcade = page.locator('.lab-arcade-zone');
-      const pawnSlug = arcade.getByRole('button', { name: /Pawn Slug/ });
-      const trailblazer = arcade.getByRole('button', { name: /Pawn Trailblazer/ });
-      await expect(chronicles).toBeVisible();
-      await expect(arcade).toBeVisible();
-      await expect(pawnSlug).toBeVisible();
-      await expect(trailblazer).toBeVisible();
-      await expect(page.locator('.experiments-tactical-deck').first()).toBeVisible();
-      await expect(arcade.locator('.experiments-card')).toHaveCount(0);
+    const captures = [];
+    for (const capture of CAPTURES) {
+      await withCapturePage(browser, capture, async (page) => {
+        const chronicles = page.getByRole('button', { name: /Chronicles of Matthias/ });
+        const arcade = page.locator('.lab-arcade-zone');
+        const pawnSlug = arcade.getByRole('button', { name: /Pawn Slug/ });
+        const trailblazer = arcade.getByRole('button', { name: /Pawn Trailblazer/ });
+        await expect(chronicles).toBeVisible();
+        await expect(arcade).toBeVisible();
+        await expect(pawnSlug).toBeVisible();
+        await expect(trailblazer).toBeVisible();
+        await expect(page.locator('.experiments-tactical-deck').first()).toBeVisible();
+        await expect(arcade.locator('.experiments-card')).toHaveCount(0);
 
-      const health = await captureHealth(page, capture.label);
-      captures.push(health);
-      expect(health.horizontalOverflow, `${capture.label}: horizontal overflow`).toBe(false);
-      expect(health.genericCardsInsideArcade, `${capture.label}: Arcade regressed to generic cards`).toBe(0);
-      expect(health.pawnSlug?.width || 0, `${capture.label}: Pawn Slug visible width`).toBeGreaterThan(0);
-      expect(health.trailblazer?.width || 0, `${capture.label}: Trailblazer visible width`).toBeGreaterThan(0);
+        const health = await captureHealth(page, capture.label);
+        captures.push(health);
+        expect(health.horizontalOverflow, `${capture.label}: horizontal overflow`).toBe(false);
+        expect(health.genericCardsInsideArcade, `${capture.label}: Arcade regressed to generic cards`).toBe(0);
+        expect(health.pawnSlug?.width || 0, `${capture.label}: Pawn Slug visible width`).toBeGreaterThan(0);
+        expect(health.trailblazer?.width || 0, `${capture.label}: Trailblazer visible width`).toBeGreaterThan(0);
 
-      if (capture.hasTouch) {
-        expect(health.trailblazer.top, `${capture.label}: Trailblazer stacked below Pawn Slug`).toBeGreaterThan(health.pawnSlug.top);
-        expect(Math.abs(health.pawnSlug.width - health.trailblazer.width), `${capture.label}: stacked Arcade widths`).toBeLessThanOrEqual(2);
-        expect(health.pawnSlug.height, `${capture.label}: Pawn Slug touch target`).toBeGreaterThanOrEqual(44);
-        expect(health.trailblazer.height, `${capture.label}: Trailblazer touch target`).toBeGreaterThanOrEqual(44);
-      } else {
-        expect(health.pawnSlug.width, `${capture.label}: Pawn Slug remains the primary operation`).toBeGreaterThan(health.trailblazer.width * 1.5);
-        expect(Math.abs(health.pawnSlug.top - health.trailblazer.top), `${capture.label}: desktop Arcade alignment`).toBeLessThanOrEqual(2);
-      }
+        if (capture.hasTouch) {
+          expect(health.trailblazer.top, `${capture.label}: Trailblazer stacked below Pawn Slug`).toBeGreaterThan(health.pawnSlug.top);
+          expect(Math.abs(health.pawnSlug.width - health.trailblazer.width), `${capture.label}: stacked Arcade widths`).toBeLessThanOrEqual(2);
+          expect(health.pawnSlug.height, `${capture.label}: Pawn Slug touch target`).toBeGreaterThanOrEqual(44);
+          expect(health.trailblazer.height, `${capture.label}: Trailblazer touch target`).toBeGreaterThanOrEqual(44);
+        } else {
+          expect(health.pawnSlug.width, `${capture.label}: Pawn Slug remains the primary operation`).toBeGreaterThan(health.trailblazer.width * 1.5);
+          expect(Math.abs(health.pawnSlug.top - health.trailblazer.top), `${capture.label}: desktop Arcade alignment`).toBeLessThanOrEqual(2);
+        }
 
-      await freezeVisualFrame(page);
-      await page.screenshot({
-        path: `${ARTIFACT_DIR}/experiments-${capture.label}.png`,
-        fullPage: true,
+        await freezeVisualFrame(page);
+        await page.screenshot({
+          path: `${ARTIFACT_DIR}/experiments-${capture.label}.png`,
+          fullPage: true,
+        });
       });
-    });
-  }
+    }
 
-  await writeFile(
-    `${ARTIFACT_DIR}/experiments-visual-health.json`,
-    `${JSON.stringify({ schema: 2, scope: 'landing', captures }, null, 2)}\n`,
-    'utf8',
-  );
-});
+    await writeFile(
+      `${ARTIFACT_DIR}/experiments-visual-health.json`,
+      `${JSON.stringify({ schema: 2, scope: 'landing', captures }, null, 2)}\n`,
+      'utf8',
+    );
+  });
+}
 
-test('Chronicles · gameplay visual desktop + Android', async ({ browser }) => {
-  test.skip(!scopeEnabled('chronicles'), 'Chronicles is outside this PR visual scope');
-  test.setTimeout(120_000);
-  await mkdir(ARTIFACT_DIR, { recursive: true });
+if (scopeEnabled('chronicles')) {
+  test('Chronicles · gameplay visual desktop + Android', async ({ browser }) => {
+    test.setTimeout(120_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
 
-  const captures = [];
-  for (const capture of CAPTURES) {
-    await withCapturePage(browser, capture, async (page) => {
-      const chronicles = page.getByRole('button', { name: /Chronicles of Matthias/ });
-      await expect(chronicles).toBeVisible();
-      await chronicles.click();
-      await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
-      const chroniclesCanvas = page.locator('[data-chronicles-renderer="three"] canvas');
-      const portraitCanvas = page.locator('[data-chronicles-party-renderer="three"] canvas');
-      await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });
-      await expect(chroniclesCanvas).toBeVisible();
-      await expect(portraitCanvas).toHaveCount(1, { timeout: 20_000 });
-      await expect(portraitCanvas).toBeVisible();
-      await page.waitForTimeout(450);
+    const captures = [];
+    for (const capture of CAPTURES) {
+      await withCapturePage(browser, capture, async (page) => {
+        const chronicles = page.getByRole('button', { name: /Chronicles of Matthias/ });
+        await expect(chronicles).toBeVisible();
+        await chronicles.click();
+        await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
+        const chroniclesCanvas = page.locator('[data-chronicles-renderer="three"] canvas');
+        const portraitCanvas = page.locator('[data-chronicles-party-renderer="three"] canvas');
+        await expect(chroniclesCanvas).toHaveCount(1, { timeout: 20_000 });
+        await expect(chroniclesCanvas).toBeVisible();
+        await expect(portraitCanvas).toHaveCount(1, { timeout: 20_000 });
+        await expect(portraitCanvas).toBeVisible();
+        await page.waitForTimeout(450);
 
-      const health = await captureChroniclesHealth(page);
-      captures.push({ label: capture.label, ...health });
-      expect(health.horizontalOverflow, `${capture.label}: Chronicles overflow`).toBe(false);
-      expect(health.gameCanvasCount, `${capture.label}: Chronicles dungeon canvas`).toBe(1);
-      expect(health.portraitCanvasCount, `${capture.label}: Chronicles portrait canvas`).toBe(1);
-      expect(health.stage?.width || 0, `${capture.label}: Chronicles stage visible`).toBeGreaterThan(0);
-      expect(health.gameCanvas?.width || 0, `${capture.label}: Chronicles dungeon canvas visible`).toBeGreaterThan(0);
-      expect(health.gameCanvas?.height || 0, `${capture.label}: Chronicles dungeon canvas height`).toBeGreaterThan(0);
-      expect(health.portraitCanvas?.width || 0, `${capture.label}: Chronicles portrait visible`).toBeGreaterThan(0);
-      expect(health.portraitCanvas?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
+        const health = await captureChroniclesHealth(page);
+        captures.push({ label: capture.label, ...health });
+        expect(health.horizontalOverflow, `${capture.label}: Chronicles overflow`).toBe(false);
+        expect(health.gameCanvasCount, `${capture.label}: Chronicles dungeon canvas`).toBe(1);
+        expect(health.portraitCanvasCount, `${capture.label}: Chronicles portrait canvas`).toBe(1);
+        expect(health.stage?.width || 0, `${capture.label}: Chronicles stage visible`).toBeGreaterThan(0);
+        expect(health.gameCanvas?.width || 0, `${capture.label}: Chronicles dungeon canvas visible`).toBeGreaterThan(0);
+        expect(health.gameCanvas?.height || 0, `${capture.label}: Chronicles dungeon canvas height`).toBeGreaterThan(0);
+        expect(health.portraitCanvas?.width || 0, `${capture.label}: Chronicles portrait visible`).toBeGreaterThan(0);
+        expect(health.portraitCanvas?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
 
-      await freezeVisualFrame(page);
-      await page.screenshot({
-        path: `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`,
-        fullPage: true,
+        await freezeVisualFrame(page);
+        await page.screenshot({
+          path: `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`,
+          fullPage: true,
+        });
+
+        await stageChroniclesSigilAwake(page);
+        await freezeVisualFrame(page);
+        await page.screenshot({
+          path: `${ARTIFACT_DIR}/chronicles-sigil-awake-${capture.label}.png`,
+          fullPage: true,
+        });
       });
+    }
 
-      await stageChroniclesSigilAwake(page);
-      await freezeVisualFrame(page);
-      await page.screenshot({
-        path: `${ARTIFACT_DIR}/chronicles-sigil-awake-${capture.label}.png`,
-        fullPage: true,
+    await writeFile(
+      `${ARTIFACT_DIR}/chronicles-visual-health.json`,
+      `${JSON.stringify({ schema: 1, scope: 'chronicles', captures }, null, 2)}\n`,
+      'utf8',
+    );
+  });
+}
+
+if (scopeEnabled('pawnslug')) {
+  test('Pawn Slug · ready/live visual desktop + Android', async ({ browser }) => {
+    test.setTimeout(120_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+
+    const captures = [];
+    for (const capture of CAPTURES) {
+      await withCapturePage(browser, capture, async (page) => {
+        const arcade = page.locator('.lab-arcade-zone');
+        const pawnSlug = arcade.getByRole('button', { name: /Pawn Slug/ });
+        await expect(pawnSlug).toBeVisible();
+        await pawnSlug.click();
+        await expect(page.getByRole('heading', { name: 'Pawn Slug', exact: true })).toBeVisible();
+        const root = page.locator('[data-pawn-slug="true"]');
+        const start = page.getByRole('button', { name: 'INICIAR OPERACIÓN', exact: true });
+        await expect(root).toHaveAttribute('data-pawn-slug-expert', 'false');
+        await expect(start).toBeVisible();
+        await expect(page.getByText(/Sin XP, niveles ni economía/)).toBeVisible();
+        await expect(page.locator('[data-pawn-slug-renderer="three"] canvas')).toHaveCount(0);
+
+        const readyHealth = await capturePawnSlugReadyHealth(page);
+        expect(readyHealth.horizontalOverflow, `${capture.label}: Pawn Slug ready overflow`).toBe(false);
+        expect(readyHealth.expert, `${capture.label}: Pawn Slug default mode`).toBe('false');
+        expect(readyHealth.canvasCount, `${capture.label}: ready screen must stay boot-free`).toBe(0);
+        expect(readyHealth.cabinet?.width || 0, `${capture.label}: Pawn Slug cabinet visible`).toBeGreaterThan(0);
+        expect(readyHealth.overlay?.width || 0, `${capture.label}: mission overlay visible`).toBeGreaterThan(0);
+        expect(readyHealth.settingsTrigger?.width || 0, `${capture.label}: Settings trigger visible`).toBeGreaterThan(0);
+        const startBox = await start.boundingBox();
+        expect(startBox, `${capture.label}: start action bounds`).not.toBeNull();
+        expect(startBox.height, `${capture.label}: start action touch height`).toBeGreaterThanOrEqual(44);
+
+        await freezeVisualFrame(page);
+        await page.screenshot({
+          path: `${ARTIFACT_DIR}/pawn-slug-ready-${capture.label}.png`,
+          fullPage: true,
+        });
+
+        await start.click();
+        const canvas = page.locator('[data-pawn-slug-renderer="three"] canvas');
+        await expect(canvas).toHaveCount(1, { timeout: 20_000 });
+        await expect(canvas).toBeVisible();
+        await expect(page.locator('.pawn-slug-overlay')).toHaveCount(0);
+        await expect(page.locator('.pawn-slug-hud')).toBeVisible();
+        await page.waitForTimeout(450);
+
+        const playingHealth = await capturePawnSlugPlayingHealth(page);
+        captures.push({ label: capture.label, ready: readyHealth, playing: playingHealth });
+        expect(playingHealth.horizontalOverflow, `${capture.label}: live Pawn Slug overflow`).toBe(false);
+        expect(playingHealth.canvasCount, `${capture.label}: live canvas count`).toBe(1);
+        expect(playingHealth.overlayCount, `${capture.label}: ready overlay retired after start`).toBe(0);
+        expect(playingHealth.stage?.width || 0, `${capture.label}: live stage visible`).toBeGreaterThan(0);
+        expect(playingHealth.canvas?.width || 0, `${capture.label}: live Three.js canvas visible`).toBeGreaterThan(0);
+        expect(playingHealth.hud?.width || 0, `${capture.label}: live HUD visible`).toBeGreaterThan(0);
+        expect(playingHealth.health?.width || 0, `${capture.label}: live health strip visible`).toBeGreaterThan(0);
+        expect(playingHealth.settingsTrigger?.width || 0, `${capture.label}: live Settings trigger visible`).toBeGreaterThan(0);
+        if (capture.hasTouch) {
+          expect(playingHealth.settingsTrigger.width, `${capture.label}: live Settings touch width`).toBeGreaterThanOrEqual(44);
+          expect(playingHealth.settingsTrigger.height, `${capture.label}: live Settings touch height`).toBeGreaterThanOrEqual(44);
+          expect(playingHealth.touchControls?.width || 0, `${capture.label}: live touch controls visible`).toBeGreaterThan(0);
+        }
+
+        await freezeVisualFrame(page);
+        await page.screenshot({
+          path: `${ARTIFACT_DIR}/pawn-slug-playing-${capture.label}.png`,
+          fullPage: true,
+        });
       });
-    });
-  }
+    }
 
-  await writeFile(
-    `${ARTIFACT_DIR}/chronicles-visual-health.json`,
-    `${JSON.stringify({ schema: 1, scope: 'chronicles', captures }, null, 2)}\n`,
-    'utf8',
-  );
-});
-
-test('Pawn Slug · ready/live visual desktop + Android', async ({ browser }) => {
-  test.skip(!scopeEnabled('pawnslug'), 'Pawn Slug is outside this PR visual scope');
-  test.setTimeout(120_000);
-  await mkdir(ARTIFACT_DIR, { recursive: true });
-
-  const captures = [];
-  for (const capture of CAPTURES) {
-    await withCapturePage(browser, capture, async (page) => {
-      const arcade = page.locator('.lab-arcade-zone');
-      const pawnSlug = arcade.getByRole('button', { name: /Pawn Slug/ });
-      await expect(pawnSlug).toBeVisible();
-      await pawnSlug.click();
-      await expect(page.getByRole('heading', { name: 'Pawn Slug', exact: true })).toBeVisible();
-      const root = page.locator('[data-pawn-slug="true"]');
-      const start = page.getByRole('button', { name: 'INICIAR OPERACIÓN', exact: true });
-      await expect(root).toHaveAttribute('data-pawn-slug-expert', 'false');
-      await expect(start).toBeVisible();
-      await expect(page.getByText(/Sin XP, niveles ni economía/)).toBeVisible();
-      await expect(page.locator('[data-pawn-slug-renderer="three"] canvas')).toHaveCount(0);
-
-      const readyHealth = await capturePawnSlugReadyHealth(page);
-      expect(readyHealth.horizontalOverflow, `${capture.label}: Pawn Slug ready overflow`).toBe(false);
-      expect(readyHealth.expert, `${capture.label}: Pawn Slug default mode`).toBe('false');
-      expect(readyHealth.canvasCount, `${capture.label}: ready screen must stay boot-free`).toBe(0);
-      expect(readyHealth.cabinet?.width || 0, `${capture.label}: Pawn Slug cabinet visible`).toBeGreaterThan(0);
-      expect(readyHealth.overlay?.width || 0, `${capture.label}: mission overlay visible`).toBeGreaterThan(0);
-      expect(readyHealth.settingsTrigger?.width || 0, `${capture.label}: Settings trigger visible`).toBeGreaterThan(0);
-      const startBox = await start.boundingBox();
-      expect(startBox, `${capture.label}: start action bounds`).not.toBeNull();
-      expect(startBox.height, `${capture.label}: start action touch height`).toBeGreaterThanOrEqual(44);
-
-      await freezeVisualFrame(page);
-      await page.screenshot({
-        path: `${ARTIFACT_DIR}/pawn-slug-ready-${capture.label}.png`,
-        fullPage: true,
-      });
-
-      await start.click();
-      const canvas = page.locator('[data-pawn-slug-renderer="three"] canvas');
-      await expect(canvas).toHaveCount(1, { timeout: 20_000 });
-      await expect(canvas).toBeVisible();
-      await expect(page.locator('.pawn-slug-overlay')).toHaveCount(0);
-      await expect(page.locator('.pawn-slug-hud')).toBeVisible();
-      await page.waitForTimeout(450);
-
-      const playingHealth = await capturePawnSlugPlayingHealth(page);
-      captures.push({ label: capture.label, ready: readyHealth, playing: playingHealth });
-      expect(playingHealth.horizontalOverflow, `${capture.label}: live Pawn Slug overflow`).toBe(false);
-      expect(playingHealth.canvasCount, `${capture.label}: live canvas count`).toBe(1);
-      expect(playingHealth.overlayCount, `${capture.label}: ready overlay retired after start`).toBe(0);
-      expect(playingHealth.stage?.width || 0, `${capture.label}: live stage visible`).toBeGreaterThan(0);
-      expect(playingHealth.canvas?.width || 0, `${capture.label}: live Three.js canvas visible`).toBeGreaterThan(0);
-      expect(playingHealth.hud?.width || 0, `${capture.label}: live HUD visible`).toBeGreaterThan(0);
-      expect(playingHealth.health?.width || 0, `${capture.label}: live health strip visible`).toBeGreaterThan(0);
-      expect(playingHealth.settingsTrigger?.width || 0, `${capture.label}: live Settings trigger visible`).toBeGreaterThan(0);
-      if (capture.hasTouch) {
-        expect(playingHealth.settingsTrigger.width, `${capture.label}: live Settings touch width`).toBeGreaterThanOrEqual(44);
-        expect(playingHealth.settingsTrigger.height, `${capture.label}: live Settings touch height`).toBeGreaterThanOrEqual(44);
-        expect(playingHealth.touchControls?.width || 0, `${capture.label}: live touch controls visible`).toBeGreaterThan(0);
-      }
-
-      await freezeVisualFrame(page);
-      await page.screenshot({
-        path: `${ARTIFACT_DIR}/pawn-slug-playing-${capture.label}.png`,
-        fullPage: true,
-      });
-    });
-  }
-
-  await writeFile(
-    `${ARTIFACT_DIR}/pawn-slug-visual-health.json`,
-    `${JSON.stringify({ schema: 1, scope: 'pawnslug', captures }, null, 2)}\n`,
-    'utf8',
-  );
-});
+    await writeFile(
+      `${ARTIFACT_DIR}/pawn-slug-visual-health.json`,
+      `${JSON.stringify({ schema: 1, scope: 'pawnslug', captures }, null, 2)}\n`,
+      'utf8',
+    );
+  });
+}
