@@ -247,6 +247,68 @@ function addWallAge(root, grimeMat, mineralMat, px, pz, rotY, horizontal, outwar
   }
 }
 
+function addWallNiche(root, backingMat, frameMat, urnMat, px, pz, rotY, index) {
+  const niche = new THREE.Group();
+  niche.name = `chronicles-wall-niche-${index}`;
+  niche.position.set(px, 1.48, pz);
+  niche.rotation.y = rotY;
+
+  const backing = add(niche, new THREE.BoxGeometry(1.05, 1.5, 0.035), backingMat, [0, 0, 0], [0, 0, 0], `chronicles-wall-niche-backing-${index}`);
+  backing.castShadow = false;
+  add(niche, new THREE.BoxGeometry(0.11, 1.5, 0.12), frameMat, [-0.58, 0, 0.045], [0, 0, 0], `chronicles-wall-niche-frame-left-${index}`);
+  add(niche, new THREE.BoxGeometry(0.11, 1.5, 0.12), frameMat, [0.58, 0, 0.045], [0, 0, 0], `chronicles-wall-niche-frame-right-${index}`);
+  add(niche, new THREE.TorusGeometry(0.58, 0.065, 8, 24, Math.PI), frameMat, [0, 0.75, 0.045], [0, 0, 0], `chronicles-wall-niche-arch-${index}`);
+  add(niche, new THREE.CylinderGeometry(0.16, 0.21, 0.42, 12), urnMat, [0, -0.49, 0.12], [0, 0, 0], `chronicles-wall-niche-urn-${index}`);
+  add(niche, new THREE.SphereGeometry(0.12, 10, 8), urnMat, [0, -0.24, 0.12], [0, 0, 0], `chronicles-wall-niche-urn-cap-${index}`);
+  root.add(niche);
+}
+
+function addHangingChain(root, iron, px, pz, rotY, index) {
+  const chain = new THREE.Group();
+  chain.name = `chronicles-hanging-chain-${index}`;
+  chain.position.set(px, 2.72, pz);
+  chain.rotation.y = rotY;
+  for (let link = 0; link < 7; link += 1) {
+    const ring = add(
+      chain,
+      new THREE.TorusGeometry(0.095, 0.022, 6, 12),
+      iron,
+      [0.1 * Math.sin(link * 0.8), -link * 0.19, 0.09],
+      [0, link % 2 ? Math.PI / 2 : 0, link * 0.04],
+      `chronicles-hanging-chain-link-${index}-${link}`,
+    );
+    ring.castShadow = false;
+  }
+  root.add(chain);
+}
+
+function addSarcophagus(root, baseMat, lidMat, px, pz, rotY, horizontal, outward, index) {
+  const tomb = new THREE.Group();
+  tomb.name = `chronicles-sarcophagus-${index}`;
+  const offset = 0.48;
+  tomb.position.set(horizontal ? px : px + outward * offset, 0.18, horizontal ? pz + outward * offset : pz);
+  tomb.rotation.y = rotY;
+  add(tomb, new THREE.BoxGeometry(1.55, 0.34, 0.72), baseMat, [0, 0, 0], [0, 0, 0], `chronicles-sarcophagus-base-${index}`);
+  add(tomb, new THREE.BoxGeometry(1.42, 0.16, 0.64), lidMat, [0, 0.25, 0], [0, 0, 0], `chronicles-sarcophagus-lid-${index}`);
+  add(tomb, new THREE.BoxGeometry(0.62, 0.045, 0.05), baseMat, [0, 0.36, 0], [0, 0, 0], `chronicles-sarcophagus-sigil-${index}`);
+  root.add(tomb);
+}
+
+function addDrainGrate(root, iron, x, y, index) {
+  const [wx, wz] = cellWorld(x, y);
+  const drain = new THREE.Group();
+  drain.name = `chronicles-drain-${index}`;
+  drain.position.set(wx - 0.72, 0.018, wz + 0.74);
+  add(drain, new THREE.BoxGeometry(0.9, 0.025, 0.09), iron, [0, 0, -0.36], [0, 0, 0], `chronicles-drain-frame-a-${index}`).castShadow = false;
+  add(drain, new THREE.BoxGeometry(0.9, 0.025, 0.09), iron, [0, 0, 0.36], [0, 0, 0], `chronicles-drain-frame-b-${index}`).castShadow = false;
+  add(drain, new THREE.BoxGeometry(0.09, 0.025, 0.82), iron, [-0.41, 0, 0], [0, 0, 0], `chronicles-drain-frame-c-${index}`).castShadow = false;
+  add(drain, new THREE.BoxGeometry(0.09, 0.025, 0.82), iron, [0.41, 0, 0], [0, 0, 0], `chronicles-drain-frame-d-${index}`).castShadow = false;
+  for (let bar = -2; bar <= 2; bar += 1) {
+    add(drain, new THREE.BoxGeometry(0.055, 0.03, 0.72), iron, [bar * 0.15, 0.006, 0], [0, 0, 0], `chronicles-drain-bar-${index}-${bar + 2}`).castShadow = false;
+  }
+  root.add(drain);
+}
+
 function addHeroSpot(root, { color, intensity, distance, angle, position, target, name, castShadow }) {
   const light = new THREE.SpotLight(color, intensity, distance, angle, 0.62, 1.55);
   light.position.set(...position);
@@ -338,6 +400,8 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
   const wetStone = material(0x151b1d, { roughness: 0.24, clearcoat: 0.96, clearcoatRoughness: 0.12, transparent: true, opacity: 0.7, depthWrite: false });
   const grime = material(0x171715, { roughness: 1, transparent: true, opacity: 0.5, depthWrite: false });
   const mineral = material(0x6c6a5b, { roughness: 0.96, transparent: true, opacity: 0.42, depthWrite: false });
+  const nicheVoid = material(0x0b0d0e, { roughness: 1 });
+  const urnStone = material(0x8d8373, { roughness: 0.78, surface: { pattern: 'worn', seed: 97, repeat: [1.1, 1.1] }, bumpScale: 0.03 });
 
   const readabilityFill = new THREE.HemisphereLight(0x91a2b2, 0x21130c, coarsePointer ? 0.78 : 0.52);
   readabilityFill.name = 'chronicles-readability-fill';
@@ -374,6 +438,8 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
     addFloorPuddle(root, wetStone, 1, 5, 1.18, 0.58, -0.18, 0);
     addFloorPuddle(root, wetStone, 5, 3, 0.78, 0.42, 0.48, 1);
     addFloorPuddle(root, wetStone, 3, 2, 0.62, 0.34, -0.64, 2);
+    addDrainGrate(root, iron, 3, 5, 0);
+    addDrainGrate(root, iron, 1, 3, 1);
   }
 
   chroniclesExposedWallFaces().forEach(({ x, y, side }, index) => {
@@ -387,6 +453,7 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
     const px = horizontal ? wx : wx + outward * detailOffset;
     const pz = horizontal ? wz + outward * detailOffset : wz;
     const rotY = horizontal ? 0 : Math.PI / 2;
+    const facingYaw = side === 'north' ? Math.PI : side === 'south' ? 0 : side === 'east' ? Math.PI / 2 : -Math.PI / 2;
     const faceMat = index % 3 === 0 ? wallAccent : edgeMat;
     const surfaceMat = index % 3 === 0 ? wallStone : wallStoneAlt;
 
@@ -416,6 +483,15 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
         add(root, new THREE.BoxGeometry(0.6, 0.36, 0.09), wallAccent, [reliefX, 1.44, reliefZ], [0, rotY, 0], `chronicles-wall-relief-${index}`);
       }
       addWallAge(root, grime, mineral, px, pz, rotY, horizontal, outward, index);
+
+      const nicheFace = (x === 0 && y === 3 && side === 'east') || (x === 6 && y === 3 && side === 'west') || (x === 2 && y === 2 && side === 'south');
+      if (nicheFace) addWallNiche(root, nicheVoid, wallAccent, urnStone, px, pz, facingYaw, index);
+
+      const chainFace = (x === 0 && y === 4 && side === 'east') || (x === 6 && y === 2 && side === 'west');
+      if (chainFace) addHangingChain(root, iron, px, pz, facingYaw, index);
+
+      const tombFace = (x === 6 && y === 5 && side === 'west') || (x === 4 && y === 4 && side === 'east');
+      if (tombFace) addSarcophagus(root, edgeMat, wallAccent, px, pz, facingYaw, horizontal, outward, index);
     }
   });
 
