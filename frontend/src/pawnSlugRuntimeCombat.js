@@ -193,8 +193,7 @@ export function createPawnSlugCombatSystem(runtime) {
     player.moving = false;
     player.stoppedAt = state.time;
     runtime.weapons.selectWeapon('pistol', { announce: false });
-    runtime.camera.position.x = Math.max(PAWN_SLUG_VIEW_W / 2, player.x + PAWN_SLUG_VIEW_W * 0.14);
-    runtime.camera.position.y = 5.1;
+    runtime.view.placeCameraAfterRespawn(player.x);
     runtime.setToast(`Vida menos. Reagrupando en ${Math.round(player.x / PAWN_SLUG_WORLD_SCALE)} m. Pistola fuera.`, 2.2);
   }
 
