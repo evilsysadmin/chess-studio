@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { hansDialogueAnchorScreenEligible } from './WarRoomHansDialogueAnchor.js';
 import {
   HANS_MOP_REPLY_LINE,
   MATTHIAS_MOP_LINE,
@@ -60,13 +61,18 @@ export default function WarRoomHansMopDialogue({
       const canvas = portalHost.querySelector('.board3d-main-canvas');
       const nextPhase = canvas?.dataset?.warRoomHansMopDialogue || '';
       setPhase((current) => current === nextPhase ? current : nextPhase);
-      if (nextPhase === 'hans' && canvas?.dataset?.warRoomHansScreen === 'onscreen') {
-        const anchor = projectHansFireReplyAnchor({
-          ndcX: canvas.dataset.warRoomHansNdcX,
-          ndcY: canvas.dataset.warRoomHansNdcY,
-          coarsePointer: Boolean(window.matchMedia?.('(pointer: coarse)')?.matches),
-        });
-        if (anchor) setHansAnchor((current) => sameAnchor(current, anchor) ? current : anchor);
+      if (nextPhase === 'hans') {
+        const screenState = canvas?.dataset?.warRoomHansScreen || '';
+        if (hansDialogueAnchorScreenEligible(screenState)) {
+          const anchor = projectHansFireReplyAnchor({
+            ndcX: canvas.dataset.warRoomHansNdcX,
+            ndcY: canvas.dataset.warRoomHansNdcY,
+            coarsePointer: Boolean(window.matchMedia?.('(pointer: coarse)')?.matches),
+          });
+          if (anchor) setHansAnchor((current) => sameAnchor(current, anchor) ? current : anchor);
+        } else {
+          setHansAnchor((current) => current == null ? current : null);
+        }
       }
       frameId = window.requestAnimationFrame(tick);
     };
