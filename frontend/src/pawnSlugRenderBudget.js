@@ -1,9 +1,19 @@
 export const PAWN_SLUG_RENDER_BUDGET = Object.freeze({
-  version: 'desktop-fill-rate-v1',
+  version: 'adaptive-gpu-budget-v2',
   desktopPixelRatioCap: 1.35,
+  balancedPixelRatioCap: 1.15,
+  lowPixelRatioCap: 1,
+  balancedFrameMs: 23,
+  lowFrameMs: 30,
+  sampleFrames: 24,
+  maxPaintHz: 90,
+  localLightRange: 24,
 });
 
 const configuredRenderers = new WeakSet();
+const adaptiveRendererState = new WeakMap();
+const paintLimitedRenderers = new WeakSet();
+const lightBudgetedScenes = new WeakSet();
 
 export function pawnSlugCappedPixelRatio(
   currentPixelRatio,
@@ -14,12 +24,35 @@ export function pawnSlugCappedPixelRatio(
   return Math.min(current, safeCap);
 }
 
+export function pawnSlugAdaptiveTierForFrameMs(frameMs) {
+  const value = Math.max(0, Number(frameMs) || 0);
+  if (value >= PAWN_SLUG_RENDER_BUDGET.lowFrameMs) return 'low';
+  if (value >= PAWN_SLUG_RENDER_BUDGET.balancedFrameMs) return 'balanced';
+  return 'high';
+}
+
 function deferAfterRender(task) {
   if (typeof queueMicrotask === 'function') {
     queueMicrotask(task);
     return;
   }
   Promise.resolve().then(task);
+}
+
+function rendererDataset(renderer) {
+  return renderer?.domElement?.dataset || null;
+}
+
+function schedulePixelRatio(renderer, target) {
+  if (!renderer || typeof renderer.setPixelRatio !== 'function') return false;
+  const current = Math.max(0.5, Number(renderer.getPixelRatio?.()) || 1);
+  if (target >= current - 0.001) return false;
+  deferAfterRender(() => {
+    if (renderer.domElement?.isConnected === false) return;
+    const latest = Math.max(0.5, Number(renderer.getPixelRatio?.()) || current);
+    if (latest > target + 0.001) renderer.setPixelRatio(target);
+  });
+  return true;
 }
 
 export function applyPawnSlugRenderBudget(renderer, {
@@ -32,24 +65,140 @@ export function applyPawnSlugRenderBudget(renderer, {
 
   const current = Math.max(0.5, Number(renderer.getPixelRatio?.()) || 1);
   const target = pawnSlugCappedPixelRatio(current, pixelRatioCap);
-  const dataset = renderer.domElement?.dataset;
-  if (dataset) dataset.pawnSlugRenderBudget = `dpr<=${target.toFixed(2)}`;
+  const dataset = rendererDataset(renderer);
+  if (dataset) {
+    dataset.pawnSlugRenderBudget = `dpr<=${target.toFixed(2)}`;
+    dataset.pawnSlugQuality = 'high';
+  }
 
   if (target >= current - 0.001 || typeof renderer.setPixelRatio !== 'function') {
     return Object.freeze({ configured: true, changed: false, scheduled: false, current, target });
   }
 
-  // The hook is reached from an object's onBeforeRender. Resizing the drawing
-  // buffer there would mutate the active render pass, so apply once in a
-  // microtask after renderer.render() has unwound. Mobile is already capped at
-  // 1.25 by the runtime and therefore never enters this branch.
-  deferAfterRender(() => {
-    if (renderer.domElement?.isConnected === false) return;
-    const latest = Math.max(0.5, Number(renderer.getPixelRatio?.()) || current);
-    if (latest > target + 0.001) renderer.setPixelRatio(target);
-  });
+  const scheduled = schedulePixelRatio(renderer, target);
+  return Object.freeze({ configured: true, changed: scheduled, scheduled, current, target });
+}
 
-  return Object.freeze({ configured: true, changed: true, scheduled: true, current, target });
+export function pawnSlugGpuRendererLabel(renderer) {
+  try {
+    const gl = renderer?.getContext?.();
+    if (!gl) return '';
+    const debug = gl.getExtension?.('WEBGL_debug_renderer_info');
+    const key = debug?.UNMASKED_RENDERER_WEBGL;
+    const raw = key != null ? gl.getParameter?.(key) : '';
+    return String(raw || '').trim().slice(0, 160);
+  } catch {
+    return '';
+  }
+}
+
+function installPawnSlugPaintLimiter(renderer, maxPaintHz = PAWN_SLUG_RENDER_BUDGET.maxPaintHz) {
+  if (!renderer || paintLimitedRenderers.has(renderer) || typeof renderer.render !== 'function') return false;
+  paintLimitedRenderers.add(renderer);
+  const originalRender = renderer.render.bind(renderer);
+  const minimumInterval = 1000 / Math.max(60, Number(maxPaintHz) || PAWN_SLUG_RENDER_BUDGET.maxPaintHz);
+  let lastPaintAt = Number.NEGATIVE_INFINITY;
+
+  renderer.render = function pawnSlugBudgetedRender(scene, camera) {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    if (now - lastPaintAt < minimumInterval) return undefined;
+    lastPaintAt = now;
+    return originalRender(scene, camera);
+  };
+  const dataset = rendererDataset(renderer);
+  if (dataset) dataset.pawnSlugPaintCap = `${Math.round(1000 / minimumInterval)}hz`;
+  return true;
+}
+
+function worldXOf(node) {
+  try {
+    node?.updateWorldMatrix?.(true, false);
+    const x = node?.matrixWorld?.elements?.[12];
+    return Number.isFinite(x) ? x : Number(node?.position?.x) || 0;
+  } catch {
+    return Number(node?.position?.x) || 0;
+  }
+}
+
+function installPawnSlugLocalLightBudget(root, scene) {
+  if (!root || !scene || lightBudgetedScenes.has(scene)) return false;
+  const lights = [];
+  root.traverse?.((node) => {
+    if (!node?.isPointLight) return;
+    lights.push({ light: node, worldX: worldXOf(node) });
+  });
+  if (!lights.length) return false;
+
+  lightBudgetedScenes.add(scene);
+  const previous = scene.onBeforeRender;
+  scene.onBeforeRender = function pawnSlugSceneBeforeRender(renderer, currentScene, camera, ...args) {
+    previous?.call(this, renderer, currentScene, camera, ...args);
+    const cameraX = Number(camera?.position?.x) || 0;
+    for (const entry of lights) {
+      entry.light.visible = Math.abs(entry.worldX - cameraX) <= PAWN_SLUG_RENDER_BUDGET.localLightRange;
+    }
+  };
+  return true;
+}
+
+function applyAdaptiveTier(renderer, tier) {
+  const dataset = rendererDataset(renderer);
+  if (dataset) dataset.pawnSlugQuality = tier;
+  if (tier === 'balanced') {
+    schedulePixelRatio(renderer, PAWN_SLUG_RENDER_BUDGET.balancedPixelRatioCap);
+    return;
+  }
+  if (tier !== 'low') return;
+  schedulePixelRatio(renderer, PAWN_SLUG_RENDER_BUDGET.lowPixelRatioCap);
+  if (renderer.shadowMap?.enabled) {
+    deferAfterRender(() => {
+      if (renderer.domElement?.isConnected === false) return;
+      renderer.shadowMap.enabled = false;
+      const latestDataset = rendererDataset(renderer);
+      if (latestDataset) latestDataset.pawnSlugShadows = 'adaptive-off';
+    });
+  }
+}
+
+export function observePawnSlugRenderBudget(renderer, now = null) {
+  if (!renderer) return Object.freeze({ sampled: false, tier: 'high' });
+  const stamp = Number.isFinite(now)
+    ? Number(now)
+    : (typeof performance !== 'undefined' ? performance.now() : Date.now());
+  let state = adaptiveRendererState.get(renderer);
+  if (!state) {
+    state = { lastAt: stamp, emaMs: 0, samples: 0, tier: 'high' };
+    adaptiveRendererState.set(renderer, state);
+    const dataset = rendererDataset(renderer);
+    const gpu = pawnSlugGpuRendererLabel(renderer);
+    if (dataset && gpu) dataset.pawnSlugGpu = gpu;
+    return Object.freeze({ sampled: false, tier: state.tier, emaMs: state.emaMs });
+  }
+
+  const delta = stamp - state.lastAt;
+  state.lastAt = stamp;
+  if (!(delta >= 4 && delta <= 180)) {
+    state.emaMs = 0;
+    state.samples = 0;
+    return Object.freeze({ sampled: false, tier: state.tier, emaMs: state.emaMs });
+  }
+
+  state.emaMs = state.samples === 0 ? delta : state.emaMs * 0.88 + delta * 0.12;
+  state.samples += 1;
+  if (state.samples < PAWN_SLUG_RENDER_BUDGET.sampleFrames) {
+    return Object.freeze({ sampled: true, changed: false, tier: state.tier, emaMs: state.emaMs });
+  }
+
+  const measuredTier = pawnSlugAdaptiveTierForFrameMs(state.emaMs);
+  const rank = { high: 0, balanced: 1, low: 2 };
+  let changed = false;
+  if (rank[measuredTier] > rank[state.tier]) {
+    state.tier = measuredTier;
+    applyAdaptiveTier(renderer, measuredTier);
+    changed = true;
+  }
+  state.samples = 0;
+  return Object.freeze({ sampled: true, changed, tier: state.tier, emaMs: state.emaMs });
 }
 
 function firstRenderable(root) {
@@ -69,12 +218,19 @@ export function installPawnSlugRenderBudget(root, options = {}) {
   const proxy = firstRenderable(root);
   if (!proxy) return null;
   const previous = proxy.onBeforeRender;
-  proxy.onBeforeRender = function pawnSlugRenderBudgetBeforeRender(renderer, ...args) {
-    previous?.call(this, renderer, ...args);
-    applyPawnSlugRenderBudget(renderer, options);
-    // One real render is enough to discover/configure the renderer. Restore the
-    // original callback immediately so the budget has zero steady-state CPU cost.
-    proxy.onBeforeRender = previous || (() => {});
+  let rendererConfigured = false;
+  let sceneConfigured = false;
+  proxy.onBeforeRender = function pawnSlugRenderBudgetBeforeRender(renderer, scene, camera, ...args) {
+    previous?.call(this, renderer, scene, camera, ...args);
+    if (!rendererConfigured) {
+      rendererConfigured = true;
+      applyPawnSlugRenderBudget(renderer, options);
+      installPawnSlugPaintLimiter(renderer, options.maxPaintHz);
+    }
+    if (!sceneConfigured && scene) {
+      sceneConfigured = installPawnSlugLocalLightBudget(root, scene) || sceneConfigured;
+    }
+    observePawnSlugRenderBudget(renderer);
   };
   return proxy;
 }
