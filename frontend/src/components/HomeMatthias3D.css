@@ -1,0 +1,42 @@
+.home-matthias-3d {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 1px;
+  overflow: visible;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 220ms ease;
+}
+
+.home-matthias-3d.is-ready,
+.home-matthias-3d.is-fallback {
+  opacity: 1;
+}
+
+.home-matthias-3d canvas,
+.home-matthias-3d img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.home-matthias-3d canvas {
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, .38));
+}
+
+.home-matthias-3d.is-fallback img {
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+.illustrated-home__matthias.is-speaking .home-matthias-3d canvas {
+  filter: brightness(1.04) drop-shadow(0 8px 12px rgba(0, 0, 0, .42));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-matthias-3d {
+    transition: none;
+  }
+}
