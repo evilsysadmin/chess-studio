@@ -4,7 +4,8 @@ import {
   PAWN_SLUG_SPAWNS,
   PAWN_SLUG_WORLD,
 } from './pawnSlug.js';
-import { createPickupModel, createSlugEnemyModel, disposePawnSlugObject, animateSlugEnemy } from './pawnSlugArt.js';
+import { createSlugEnemyModel, disposePawnSlugObject, animateSlugEnemy } from './pawnSlugArt.js';
+import { createPickupModel } from './pawnSlugPickupArt.js';
 import { pawnSlugMicroAmbushUnlockedForSpawn } from './pawnSlugMicroAmbushes.js';
 import { pawnSlugPlatformAtX, pawnSlugResolvePlatformLanding } from './pawnSlugPlatforms.js';
 import {
