@@ -4,10 +4,21 @@ import {
   pawnSlugDamageDestructible,
 } from './pawnSlugDestructibles.js';
 import { createPawnSlugDestructibleModel, animatePawnSlugDestructibleModel } from './pawnSlugDestructibleArt.js';
-import { pawnSlugDestructiblesAhead } from './pawnSlugDestructibleLayout.js';
+import { PAWN_SLUG_DESTRUCTIBLE_LAYOUT } from './pawnSlugDestructibleLayout.js';
+
+const activeDestructibleIds = new WeakMap();
 
 function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
   return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+}
+
+function destructibleIdsFor(active) {
+  let ids = activeDestructibleIds.get(active);
+  if (ids) return ids;
+  ids = new Set();
+  for (const item of active) if (item?.id) ids.add(item.id);
+  activeDestructibleIds.set(active, ids);
+  return ids;
 }
 
 export function pawnSlugSpawnDestructiblesAhead({
@@ -18,10 +29,10 @@ export function pawnSlugSpawnDestructiblesAhead({
   addModel = () => {},
   coarse = false,
 } = {}) {
-  const activeIds = new Set(active.map((item) => item.id));
+  const activeIds = destructibleIdsFor(active);
   const spawned = [];
-  for (const entry of pawnSlugDestructiblesAhead(rightEdge, destroyedIds)) {
-    if (activeIds.has(entry.id)) continue;
+  for (const entry of PAWN_SLUG_DESTRUCTIBLE_LAYOUT) {
+    if (entry.x > rightEdge || destroyedIds.has(entry.id) || activeIds.has(entry.id)) continue;
     const model = createPawnSlugDestructibleModel(entry.type);
     const hitbox = model.userData.hitbox;
     const y = Number(resolveY(entry.x, entry)) || 0;
@@ -89,6 +100,7 @@ export function pawnSlugAnimateDestructibles(active = [], time = 0, { reducedMot
 }
 
 export function pawnSlugRetireDestroyedDestructibles(active = [], destroyedIds = new Set(), removeModel = () => {}) {
+  const activeIds = activeDestructibleIds.get(active);
   for (let index = 0; index < active.length;) {
     const item = active[index];
     if (!item.destroyed) {
@@ -96,6 +108,7 @@ export function pawnSlugRetireDestroyedDestructibles(active = [], destroyedIds =
       continue;
     }
     destroyedIds.add(item.id);
+    activeIds?.delete(item.id);
     removeModel(item.model);
     active.splice(index, 1);
   }
@@ -106,4 +119,6 @@ export const PAWN_SLUG_DESTRUCTIBLE_RUNTIME_META = Object.freeze({
   reward: 'one-shot',
   destroyedPersistence: 'mission-restart-safe',
   barrelExplosion: 'bounded-single-detonation',
+  spawnRegistry: 'weakmap-active-id-set',
+  spawnScan: 'direct-static-layout',
 });
