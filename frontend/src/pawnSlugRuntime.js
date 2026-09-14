@@ -97,6 +97,25 @@ export function createPawnSlugRuntime(host, { onReady, onHud } = {}) {
   runtime.enemies = createPawnSlugEnemySystem(runtime);
   runtime.player = createPawnSlugPlayerSystem(runtime);
 
+  function frameLoopActive() {
+    return !destroyed && visible && inViewport && !paused;
+  }
+
+  function scheduleFrame() {
+    if (!frameLoopActive() || frame) return;
+    frame = window.requestAnimationFrame(loop);
+  }
+
+  function syncFrameLoop() {
+    previous = performance.now();
+    if (!frameLoopActive()) {
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = 0;
+      return;
+    }
+    scheduleFrame();
+  }
+
   function startMission() {
     const bankedCredits = Math.max(0, Math.floor(runtime.state.credits || 0));
     const rescuedPows = new Set(runtime.state.rescuedPows || []);
@@ -116,6 +135,7 @@ export function createPawnSlugRuntime(host, { onReady, onHud } = {}) {
     view.resetCamera(runtime.state);
     setAmbientDuck(true);
     emitHud(true);
+    syncFrameLoop();
   }
 
   function update(dt) {
@@ -189,13 +209,16 @@ export function createPawnSlugRuntime(host, { onReady, onHud } = {}) {
 
   function onVisibility() {
     visible = document.visibilityState !== 'hidden';
-    previous = performance.now();
+    syncFrameLoop();
   }
 
   const resizeObserver = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(view.resize) : null;
   resizeObserver?.observe(host);
   const intersectionObserver = typeof IntersectionObserver !== 'undefined'
-    ? new IntersectionObserver((entries) => { inViewport = Boolean(entries[0]?.isIntersecting); previous = performance.now(); }, { threshold: 0.01 })
+    ? new IntersectionObserver((entries) => {
+      inViewport = Boolean(entries[0]?.isIntersecting);
+      syncFrameLoop();
+    }, { threshold: 0.01 })
     : null;
   intersectionObserver?.observe(host);
   window.addEventListener('keydown', onKeyDown, { passive: false });
@@ -207,16 +230,16 @@ export function createPawnSlugRuntime(host, { onReady, onHud } = {}) {
   onReady?.(`THREE.JS · ${renderer.capabilities.isWebGL2 ? 'WEBGL2' : 'WEBGL1'}${coarse ? ' · MOBILE' : ''}`);
 
   function loop(now) {
-    if (destroyed) return;
-    frame = window.requestAnimationFrame(loop);
+    frame = 0;
+    if (!frameLoopActive()) return;
     const dt = pawnSlugClamp((now - previous) / 1000, 0, 0.04);
     previous = now;
-    if (!visible || !inViewport) return;
     update(dt);
     view.render();
     emitHud();
+    scheduleFrame();
   }
-  frame = window.requestAnimationFrame(loop);
+  syncFrameLoop();
 
   return {
     input(action, pressed = true) {
@@ -225,7 +248,7 @@ export function createPawnSlugRuntime(host, { onReady, onHud } = {}) {
     setPaused(value) {
       paused = Boolean(value);
       resetPawnSlugInput(runtime.input);
-      previous = performance.now();
+      syncFrameLoop();
     },
     setAudioMix({ sfxVolume } = {}) {
       if (sfxVolume != null) runtime.sfx.setVolume(sfxVolume);
@@ -236,7 +259,8 @@ export function createPawnSlugRuntime(host, { onReady, onHud } = {}) {
     destroy() {
       if (destroyed) return;
       destroyed = true;
-      window.cancelAnimationFrame(frame);
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = 0;
       resizeObserver?.disconnect();
       intersectionObserver?.disconnect();
       window.removeEventListener('keydown', onKeyDown);
