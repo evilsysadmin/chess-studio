@@ -173,6 +173,7 @@ for (const eventName of CAPTURE_EVENTS) {
       if (!emulateGpu) Math.random = () => 0.25;
 
       if (!emulateGpu) return;
+      globalThis.__CHESS_E2E_HANS_AMBIENT_AUDIT__ = true;
       const rendererName = 'ANGLE (NVIDIA GeForce RTX 3060 Direct3D11)';
       for (const constructorName of ['WebGLRenderingContext', 'WebGL2RenderingContext']) {
         const prototype = globalThis[constructorName]?.prototype;
