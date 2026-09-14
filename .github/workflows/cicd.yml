@@ -75,7 +75,7 @@ jobs:
             exit 0
           fi
 
-          files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
           printf '%s\n' "$files"
           printf '%s\n' "$files" | python3 -S scripts/quality_scope.py >> "$GITHUB_OUTPUT"
 
@@ -104,7 +104,7 @@ jobs:
             exit 0
           fi
 
-          files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
           printf '%s\n' "$files"
           printf '%s\n' "$files" | python3 -S scripts/browser_quality_scope.py \
             --github-output "$GITHUB_OUTPUT" \
@@ -301,7 +301,7 @@ jobs:
             exit 0
           fi
 
-          files="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          files="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"
           printf '%s\n' "$files"
           printf '%s\n' "$files" | python3 -S scripts/security_scope.py --github-output "$GITHUB_OUTPUT"
 
