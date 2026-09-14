@@ -59,7 +59,7 @@ async function waitForRoutineStart(canvas, eventName) {
   await expect(canvas).toHaveAttribute('data-war-room-hans-screen', VISIBLE_SCREEN, { timeout: 20_000 });
 }
 
-async function sampleRoutine(canvas, eventName) {
+async function sampleRoutine(page, canvas, eventName) {
   const samples = [];
   const startedAt = Date.now();
   while (Date.now() - startedAt < OBSERVE_MS) {
@@ -75,7 +75,7 @@ async function sampleRoutine(canvas, eventName) {
       ndcX: Number(node.dataset.warRoomHansNdcX),
       ndcY: Number(node.dataset.warRoomHansNdcY),
     })));
-    await canvas.page().waitForTimeout(SAMPLE_MS);
+    await page.waitForTimeout(SAMPLE_MS);
   }
 
   const finiteGround = samples
@@ -157,7 +157,7 @@ for (const eventName of WAR_ROOM_HANS_EVENTS) {
       await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: 45_000 });
       await waitForRoutineStart(canvas, eventName);
 
-      const manifest = await sampleRoutine(canvas, eventName);
+      const manifest = await sampleRoutine(page, canvas, eventName);
       await page.screenshot({
         path: `${ARTIFACT_DIR}/${eventName}.png`,
         fullPage: false,
