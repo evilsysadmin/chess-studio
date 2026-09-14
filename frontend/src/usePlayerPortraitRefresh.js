@@ -4,12 +4,13 @@ import { getToken, getUsername } from './auth.js';
 import { requestRemoteNarrative } from './narrativeRemote.js';
 
 export function usePlayerPortraitRefresh(insights) {
+  const generationKey = playerPortraitGenerationKey(insights);
+  const identityScope = getUsername();
+  const token = getToken();
+
   useEffect(() => {
     if (Number(insights?.totalGames || 0) < 3) return undefined;
-    const identityScope = getUsername();
-    const token = getToken();
     if (!identityScope || !token) return undefined;
-    const generationKey = playerPortraitGenerationKey(insights);
     if (loadCachedPlayerPortrait(generationKey, identityScope)) return undefined;
 
     const controller = new AbortController();
@@ -31,5 +32,5 @@ export function usePlayerPortraitRefresh(insights) {
       })
       .catch(() => {});
     return () => controller.abort(new DOMException('Portrait refresh superseded', 'AbortError'));
-  }, [insights]);
+  }, [generationKey, identityScope, token]);
 }
