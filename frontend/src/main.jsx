@@ -5,6 +5,7 @@ import AppRootErrorBoundary from './components/AppRootErrorBoundary.jsx';
 import './components/Board3DRegistration.js';
 import './styles.css';
 import './styles/29-motion-coherence.css';
+import './styles/30-modal-layering.css';
 import './components/MatthiasSchoolBoardScale.css';
 import './components/Game2DMobile.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
