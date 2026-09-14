@@ -111,8 +111,12 @@ function applyPremiumWindow(sprite) {
 export function pawnSlugPremiumEnemyRenderStatus(sprite) {
   const atlas = sprite?.userData?.atlas;
   const material = sprite?.material;
+  // Keep the long-standing browser contract stable: generated-actions is the
+  // synchronous premium safety net and is reported as premium-fallback to the
+  // smoke while its internal source remains explicit for runtime diagnostics.
+  const contractSource = atlas?.source === 'generated-actions' ? 'premium-fallback' : (atlas?.source || 'unknown');
   return [
-    atlas?.source || 'unknown',
+    contractSource,
     material?.visible !== false ? 'visible' : 'hidden',
     material?.map ? 'mapped' : 'unmapped',
     sprite?.userData?.pawnSlugEnemyReadability ? 'readable' : 'depth',
@@ -317,5 +321,6 @@ export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
   lateFallbackOverwriteProtection: true,
   visualEvidencePolicy: 'premium-alpha-readback-before-replacing-generated-actions',
   browserRenderContract: 'data-pawn-slug-enemy-visual',
+  browserFallbackAlias: 'generated-actions -> premium-fallback',
   proceduralRole: 'known-good-safety-net',
 });
