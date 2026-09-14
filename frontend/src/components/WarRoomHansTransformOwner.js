@@ -1,4 +1,4 @@
-export const WAR_ROOM_HANS_TRANSFORM_OWNER_VERSION = 'hans-transform-owner-v1-planar-root-authority';
+export const WAR_ROOM_HANS_TRANSFORM_OWNER_VERSION = 'hans-transform-owner-v2-root-authority';
 
 const TARGET_EPSILON = 0.09;
 
@@ -30,6 +30,34 @@ function markOwner(hans, source) {
   if (!hans?.userData) return;
   hans.userData.warRoomHansTransformOwner = WAR_ROOM_HANS_TRANSFORM_OWNER_VERSION;
   hans.userData.warRoomHansTransformSource = String(source || 'actor');
+}
+
+export function setWarRoomHansCrouchIntent(subject, amount, source = 'actor-vertical-intent') {
+  const hans = hansRoot(subject);
+  if (!hans?.userData) return false;
+  const crouch = Math.max(0, Number(amount) || 0);
+  hans.userData.warRoomHansCrouchIntent = crouch;
+  hans.userData.warRoomHansVerticalIntentSource = String(source || 'actor-vertical-intent');
+  markOwner(hans, source);
+  return true;
+}
+
+export function warRoomHansCrouchIntent(subject) {
+  const hans = hansRoot(subject);
+  return Math.max(0, Number(hans?.userData?.warRoomHansCrouchIntent) || 0);
+}
+
+export function commitWarRoomHansGroundedY(subject, y, source = 'rendered-grounding') {
+  const hans = hansRoot(subject);
+  const groundedY = Number(y);
+  if (!hans?.position || !Number.isFinite(groundedY)) return false;
+  hans.position.y = groundedY;
+  if (hans.userData) {
+    hans.userData.warRoomHansGroundedY = groundedY;
+    hans.userData.warRoomHansVerticalCommitSource = String(source || 'rendered-grounding');
+  }
+  markOwner(hans, source);
+  return true;
 }
 
 export function faceWarRoomHansToward(subject, target, source = 'actor-facing') {
