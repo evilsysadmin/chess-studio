@@ -14,7 +14,10 @@ case "$mode" in
     ;;
   hans)
     if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
-      export HANS_ROUTINE_EVENTS="fire,mop,espresso,dust-board"
+      # `fire` already has its own canonical visual canary above. Keep this
+      # parallel lane focused on the ambient scheduler and order espresso last
+      # so it runs with less SwiftShader contention after a worker frees up.
+      export HANS_ROUTINE_EVENTS="mop,dust-board,espresso"
     fi
     ./node_modules/.bin/playwright test \
       war-room-hans-routines-visual.spec.js \
