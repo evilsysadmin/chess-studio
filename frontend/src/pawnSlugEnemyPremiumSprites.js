@@ -62,10 +62,10 @@ function applyPremiumWindow(sprite) {
   atlas.premiumWindowKey = key;
 }
 
-function disposeSupersededPreferredTexture(texture, currentTexture) {
-  if (!texture || texture === currentTexture) return;
+function releaseSupersededPreferredTexture(texture, currentTexture) {
+  if (!texture) return;
   if (texture.userData) delete texture.userData.pawnSlugPremiumEnemyRetained;
-  texture.dispose?.();
+  if (texture !== currentTexture) texture.dispose?.();
 }
 
 export function reassertPawnSlugPremiumEnemyTexture(sprite) {
@@ -136,7 +136,7 @@ function installPremiumRaster(sprite) {
     applyPremiumWindow(sprite);
 
     if (supersededPreferred && supersededPreferred !== texture) {
-      disposeSupersededPreferredTexture(supersededPreferred, previous);
+      releaseSupersededPreferredTexture(supersededPreferred, previous);
     }
     if (pawnSlugShouldDisposePreviousTexture(previous, texture)) previous.dispose?.();
     return true;
