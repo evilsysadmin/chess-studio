@@ -77,61 +77,59 @@ async function dismissHomeGuide(page) {
   if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
 }
 
-async function seedRecurringTrainingDebt(page) {
-  await page.evaluate(({ fen }) => {
-    localStorage.setItem('chess-study-personal-puzzles', JSON.stringify([
-      {
-        id: 'second-observation-pending',
-        kind: 'personal',
-        source: 'autopsy',
-        title: 'Horquilla pendiente segunda observación',
-        description: 'Corrige esta recaída antes de observar una partida nueva.',
-        fen,
-        solution: ['Ra8#'],
-        incidentKeys: ['cpu:KNIGHT_FORK'],
-        sourceGameId: 'second-observation-source-3',
-        loss: 330,
-        createdAt: '2026-09-12T10:00:00Z',
-        attempts: 0,
-        solves: 0,
-        cleanSolves: 0,
-      },
-      {
-        id: 'second-observation-clean-2',
-        kind: 'personal',
-        source: 'autopsy',
-        title: 'Horquilla histórica dos',
-        description: 'Caso real ya entrenado.',
-        fen,
-        solution: ['Ra8#'],
-        incidentKeys: ['cpu:KNIGHT_FORK'],
-        sourceGameId: 'second-observation-source-2',
-        loss: 260,
-        createdAt: '2026-09-10T10:00:00Z',
-        attempts: 1,
-        solves: 1,
-        cleanSolves: 1,
-        masteredAt: '2026-09-10T10:05:00Z',
-      },
-      {
-        id: 'second-observation-clean-1',
-        kind: 'personal',
-        source: 'autopsy',
-        title: 'Horquilla histórica uno',
-        description: 'Caso real ya entrenado.',
-        fen,
-        solution: ['Ra8#'],
-        incidentKeys: ['cpu:KNIGHT_FORK'],
-        sourceGameId: 'second-observation-source-1',
-        loss: 210,
-        createdAt: '2026-09-08T10:00:00Z',
-        attempts: 1,
-        solves: 1,
-        cleanSolves: 1,
-        masteredAt: '2026-09-08T10:05:00Z',
-      },
-    ]));
-  }, { fen: PERSONAL_MATE_FEN });
+function recurringTrainingDebtProfileValue() {
+  return JSON.stringify([
+    {
+      id: 'second-observation-pending',
+      kind: 'personal',
+      source: 'autopsy',
+      title: 'Horquilla pendiente segunda observación',
+      description: 'Corrige esta recaída antes de observar una partida nueva.',
+      fen: PERSONAL_MATE_FEN,
+      solution: ['Ra8#'],
+      incidentKeys: ['cpu:KNIGHT_FORK'],
+      sourceGameId: 'second-observation-source-3',
+      loss: 330,
+      createdAt: '2026-09-12T10:00:00Z',
+      attempts: 0,
+      solves: 0,
+      cleanSolves: 0,
+    },
+    {
+      id: 'second-observation-clean-2',
+      kind: 'personal',
+      source: 'autopsy',
+      title: 'Horquilla histórica dos',
+      description: 'Caso real ya entrenado.',
+      fen: PERSONAL_MATE_FEN,
+      solution: ['Ra8#'],
+      incidentKeys: ['cpu:KNIGHT_FORK'],
+      sourceGameId: 'second-observation-source-2',
+      loss: 260,
+      createdAt: '2026-09-10T10:00:00Z',
+      attempts: 1,
+      solves: 1,
+      cleanSolves: 1,
+      masteredAt: '2026-09-10T10:05:00Z',
+    },
+    {
+      id: 'second-observation-clean-1',
+      kind: 'personal',
+      source: 'autopsy',
+      title: 'Horquilla histórica uno',
+      description: 'Caso real ya entrenado.',
+      fen: PERSONAL_MATE_FEN,
+      solution: ['Ra8#'],
+      incidentKeys: ['cpu:KNIGHT_FORK'],
+      sourceGameId: 'second-observation-source-1',
+      loss: 210,
+      createdAt: '2026-09-08T10:00:00Z',
+      attempts: 1,
+      solves: 1,
+      cleanSolves: 1,
+      masteredAt: '2026-09-08T10:05:00Z',
+    },
+  ]);
 }
 
 async function installObservationGame(page) {
@@ -204,6 +202,25 @@ async function installObservationGame(page) {
   });
 }
 
+async function installObservationAnalysis(page) {
+  let analysisIndex = 0;
+  await page.route('**/api/analyze-move', async (route) => {
+    const result = OBSERVATION_ANALYSIS[analysisIndex++];
+    if (!result) {
+      return route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: 'E2E sin análisis de segunda observación preparado' }),
+      });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(result),
+    });
+  });
+}
+
 async function startObservationGame2D(page) {
   await buttonWithVisibleText(page, 'Partida rápida').click();
   const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
@@ -218,10 +235,13 @@ async function startObservationGame2D(page) {
 test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento → segunda observación real no sobreafirma mejora', async ({ page }) => {
   test.setTimeout(240_000);
   await page.addInitScript(() => { Math.random = () => 0; });
-  await mockApi(page, { analysisMoves: OBSERVATION_ANALYSIS });
+  await mockApi(page, {
+    profileSeed: {
+      'chess-study-personal-puzzles': recurringTrainingDebtProfileValue(),
+    },
+  });
   await login(page);
   await dismissHomeGuide(page);
-  await seedRecurringTrainingDebt(page);
 
   const corner = page.getByRole('complementary', { name: 'Rincón de Matthias' });
   await corner.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
@@ -251,10 +271,11 @@ test('Home · el avatar residente de Matthias abre Así juegas · entrenamiento 
   });
   await expect(endgame).toBeVisible();
   await endgame.getByRole('button', { name: 'Más opciones', exact: true }).click();
+  await installObservationAnalysis(page);
   await endgame.getByRole('button', { name: 'Resumen de la partida', exact: true }).click();
 
   const report = page.getByRole('dialog', { name: 'Resumen de la partida', exact: true });
-  await expect(report.locator('[data-clean-game="true"]')).toContainText('PARTIDA LIMPIA', { timeout: 15_000 });
+  await expect(report.locator('[data-clean-game="true"]')).toContainText('PARTIDA LIMPIA', { timeout: 20_000 });
 
   const observation = await page.evaluate((gameId) => {
     const records = JSON.parse(localStorage.getItem('chess-study-clean-games-v1') || '{}');

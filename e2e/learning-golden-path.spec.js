@@ -16,70 +16,72 @@ async function dismissHomeGuide(page) {
   if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
 }
 
-async function seedRecurringTrainingDebt(page) {
-  await page.evaluate(({ fen }) => {
-    localStorage.setItem('chess-study-personal-puzzles', JSON.stringify([
-      {
-        id: 'golden-fork-pending',
-        kind: 'personal',
-        source: 'autopsy',
-        title: 'Horquilla pendiente golden path',
-        description: 'Corrige una recaída real antes de volver a jugar.',
-        fen,
-        solution: ['Ra8#'],
-        incidentKeys: ['cpu:KNIGHT_FORK'],
-        sourceGameId: 'golden-source-3',
-        loss: 330,
-        createdAt: '2026-09-12T10:00:00Z',
-        attempts: 0,
-        solves: 0,
-        cleanSolves: 0,
-      },
-      {
-        id: 'golden-fork-clean-2',
-        kind: 'personal',
-        source: 'autopsy',
-        title: 'Horquilla histórica dos',
-        description: 'Caso real ya entrenado.',
-        fen,
-        solution: ['Ra8#'],
-        incidentKeys: ['cpu:KNIGHT_FORK'],
-        sourceGameId: 'golden-source-2',
-        loss: 260,
-        createdAt: '2026-09-10T10:00:00Z',
-        attempts: 1,
-        solves: 1,
-        cleanSolves: 1,
-        masteredAt: '2026-09-10T10:05:00Z',
-      },
-      {
-        id: 'golden-fork-clean-1',
-        kind: 'personal',
-        source: 'autopsy',
-        title: 'Horquilla histórica uno',
-        description: 'Caso real ya entrenado.',
-        fen,
-        solution: ['Ra8#'],
-        incidentKeys: ['cpu:KNIGHT_FORK'],
-        sourceGameId: 'golden-source-1',
-        loss: 210,
-        createdAt: '2026-09-08T10:00:00Z',
-        attempts: 1,
-        solves: 1,
-        cleanSolves: 1,
-        masteredAt: '2026-09-08T10:05:00Z',
-      },
-    ]));
-  }, { fen: PERSONAL_MATE_FEN });
+function recurringTrainingDebtProfileValue() {
+  return JSON.stringify([
+    {
+      id: 'golden-fork-pending',
+      kind: 'personal',
+      source: 'autopsy',
+      title: 'Horquilla pendiente golden path',
+      description: 'Corrige una recaída real antes de volver a jugar.',
+      fen: PERSONAL_MATE_FEN,
+      solution: ['Ra8#'],
+      incidentKeys: ['cpu:KNIGHT_FORK'],
+      sourceGameId: 'golden-source-3',
+      loss: 330,
+      createdAt: '2026-09-12T10:00:00Z',
+      attempts: 0,
+      solves: 0,
+      cleanSolves: 0,
+    },
+    {
+      id: 'golden-fork-clean-2',
+      kind: 'personal',
+      source: 'autopsy',
+      title: 'Horquilla histórica dos',
+      description: 'Caso real ya entrenado.',
+      fen: PERSONAL_MATE_FEN,
+      solution: ['Ra8#'],
+      incidentKeys: ['cpu:KNIGHT_FORK'],
+      sourceGameId: 'golden-source-2',
+      loss: 260,
+      createdAt: '2026-09-10T10:00:00Z',
+      attempts: 1,
+      solves: 1,
+      cleanSolves: 1,
+      masteredAt: '2026-09-10T10:05:00Z',
+    },
+    {
+      id: 'golden-fork-clean-1',
+      kind: 'personal',
+      source: 'autopsy',
+      title: 'Horquilla histórica uno',
+      description: 'Caso real ya entrenado.',
+      fen: PERSONAL_MATE_FEN,
+      solution: ['Ra8#'],
+      incidentKeys: ['cpu:KNIGHT_FORK'],
+      sourceGameId: 'golden-source-1',
+      loss: 210,
+      createdAt: '2026-09-08T10:00:00Z',
+      attempts: 1,
+      solves: 1,
+      cleanSolves: 1,
+      masteredAt: '2026-09-08T10:05:00Z',
+    },
+  ]);
 }
 
 test('Home · el avatar residente de Matthias abre Así juegas · y cierra el loop jugar → entrenar → volver a jugar', async ({ page }) => {
   test.setTimeout(150_000);
   await page.addInitScript(() => { Math.random = () => 0; });
-  await mockApi(page, { gameScenario: 'mate' });
+  await mockApi(page, {
+    gameScenario: 'mate',
+    profileSeed: {
+      'chess-study-personal-puzzles': recurringTrainingDebtProfileValue(),
+    },
+  });
   await login(page);
   await dismissHomeGuide(page);
-  await seedRecurringTrainingDebt(page);
 
   await startQuickGame(page);
   await expect(gameTurn(page)).toBeVisible();
