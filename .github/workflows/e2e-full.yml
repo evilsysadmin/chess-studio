@@ -31,6 +31,7 @@ jobs:
         working-directory: e2e
         env:
           PLAYWRIGHT_ALL_BROWSERS: '1'
+          PLAYWRIGHT_FULL_SWEEP: '1'
         run: ./node_modules/.bin/playwright test --workers=2
 
       - name: Upload Playwright diagnostics
