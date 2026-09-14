@@ -1,17 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const disposePawnSlugObject = vi.fn();
-const animatePremiumProjectile = vi.fn();
-const pawnSlugFirstHitDestructibleIndex = vi.fn();
-const pawnSlugFirstHitEnemyIndex = vi.fn();
-const pawnSlugRectsOverlap = vi.fn();
+const mocks = vi.hoisted(() => ({
+  disposePawnSlugObject: vi.fn(),
+  animatePremiumProjectile: vi.fn(),
+  pawnSlugFirstHitDestructibleIndex: vi.fn(),
+  pawnSlugFirstHitEnemyIndex: vi.fn(),
+  pawnSlugRectsOverlap: vi.fn(),
+}));
 
-vi.mock('./pawnSlugArt.js', () => ({ disposePawnSlugObject }));
-vi.mock('./pawnSlugPremiumFx.js', () => ({ animatePremiumProjectile }));
+vi.mock('./pawnSlugArt.js', () => ({ disposePawnSlugObject: mocks.disposePawnSlugObject }));
+vi.mock('./pawnSlugPremiumFx.js', () => ({ animatePremiumProjectile: mocks.animatePremiumProjectile }));
 vi.mock('./pawnSlugRuntimeHotPath.js', () => ({
-  pawnSlugFirstHitDestructibleIndex,
-  pawnSlugFirstHitEnemyIndex,
-  pawnSlugRectsOverlap,
+  pawnSlugFirstHitDestructibleIndex: mocks.pawnSlugFirstHitDestructibleIndex,
+  pawnSlugFirstHitEnemyIndex: mocks.pawnSlugFirstHitEnemyIndex,
+  pawnSlugRectsOverlap: mocks.pawnSlugRectsOverlap,
 }));
 
 import { createPawnSlugProjectileSystem } from './pawnSlugRuntimeProjectiles.js';
@@ -41,9 +43,9 @@ function runtime() {
 describe('Pawn Slug runtime projectiles', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    pawnSlugRectsOverlap.mockReturnValue(false);
-    pawnSlugFirstHitDestructibleIndex.mockReturnValue(-1);
-    pawnSlugFirstHitEnemyIndex.mockReturnValue(-1);
+    mocks.pawnSlugRectsOverlap.mockReturnValue(false);
+    mocks.pawnSlugFirstHitDestructibleIndex.mockReturnValue(-1);
+    mocks.pawnSlugFirstHitEnemyIndex.mockReturnValue(-1);
   });
 
   it('routes a player bullet hit to combat damage and retires the projectile', () => {
@@ -53,7 +55,7 @@ describe('Pawn Slug runtime projectiles', () => {
       x: 2, y: 0.8, vx: 0, vy: 0, damage: 22, enemy: false, explosive: false,
       life: 1, weapon: 'pistol', w: 0.15, h: 0.12, model: bulletModel,
     });
-    pawnSlugFirstHitEnemyIndex.mockReturnValue(0);
+    mocks.pawnSlugFirstHitEnemyIndex.mockReturnValue(0);
     const damageEnemy = vi.fn();
     const system = createPawnSlugProjectileSystem(ctx, { damageEnemy });
 
@@ -62,8 +64,8 @@ describe('Pawn Slug runtime projectiles', () => {
     expect(damageEnemy).toHaveBeenCalledWith(ctx.state.enemies[0], 22);
     expect(ctx.state.bullets).toHaveLength(0);
     expect(ctx.projectileLayer.remove).toHaveBeenCalledWith(bulletModel);
-    expect(disposePawnSlugObject).toHaveBeenCalledWith(bulletModel);
-    expect(animatePremiumProjectile).toHaveBeenCalledTimes(1);
+    expect(mocks.disposePawnSlugObject).toHaveBeenCalledWith(bulletModel);
+    expect(mocks.animatePremiumProjectile).toHaveBeenCalledTimes(1);
   });
 
   it('routes an enemy bullet overlapping the player to player damage', () => {
@@ -74,14 +76,14 @@ describe('Pawn Slug runtime projectiles', () => {
       x: 1, y: 0.5, vx: 0, vy: 0, damage: 17, enemy: true, explosive: false,
       life: 1, weapon: 'machinegun', w: 0.15, h: 0.12, model: bulletModel,
     });
-    pawnSlugRectsOverlap.mockReturnValue(true);
+    mocks.pawnSlugRectsOverlap.mockReturnValue(true);
     const hurtPlayer = vi.fn();
     const system = createPawnSlugProjectileSystem(ctx, { hurtPlayer });
 
     system.updateBullets(0.016);
 
     expect(hurtPlayer).toHaveBeenCalledWith(17);
-    expect(pawnSlugRectsOverlap).toHaveBeenCalledTimes(1);
+    expect(mocks.pawnSlugRectsOverlap).toHaveBeenCalledTimes(1);
     expect(ctx.state.bullets).toHaveLength(0);
   });
 
@@ -98,6 +100,6 @@ describe('Pawn Slug runtime projectiles', () => {
     expect(explode.mock.calls[0][3]).toBeGreaterThan(0);
     expect(ctx.state.grenades).toHaveLength(0);
     expect(ctx.projectileLayer.remove).toHaveBeenCalledWith(grenadeModel);
-    expect(disposePawnSlugObject).toHaveBeenCalledWith(grenadeModel);
+    expect(mocks.disposePawnSlugObject).toHaveBeenCalledWith(grenadeModel);
   });
 });
