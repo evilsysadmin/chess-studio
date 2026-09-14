@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 GROUP_ORDER = ("home", "experiments", "training", "warroom", "health")
+EXPERIMENT_ORDER = ("landing", "chronicles", "pawnslug")
 
 
 @dataclass(frozen=True)
@@ -20,10 +21,17 @@ class Scope:
     groups: tuple[str, ...]
     hans: bool = False
     chesscom: bool = False
+    experiment_parts: tuple[str, ...] = ()
 
     @property
     def capture_groups(self) -> str:
         return ",".join(self.groups) if self.groups else "none"
+
+    @property
+    def experiments_scope(self) -> str:
+        if "experiments" not in self.groups:
+            return "none"
+        return ",".join(self.experiment_parts or EXPERIMENT_ORDER)
 
     @property
     def warroom(self) -> bool:
@@ -31,7 +39,7 @@ class Scope:
 
 
 def full_scope() -> Scope:
-    return Scope(GROUP_ORDER, hans=True, chesscom=True)
+    return Scope(GROUP_ORDER, hans=True, chesscom=True, experiment_parts=EXPERIMENT_ORDER)
 
 
 def _surface_groups(path: str) -> set[str] | None:
@@ -101,12 +109,31 @@ def _surface_groups(path: str) -> set[str] | None:
     return None
 
 
+def _experiment_parts(path: str) -> set[str]:
+    lower = path.lower()
+    name = Path(lower).name
+    if name == "experiments-visual-artifact.spec.js":
+        return set(EXPERIMENT_ORDER)
+    if name == "chronicles-avatar-visual-artifact.spec.js" or "chronicles" in lower:
+        return {"chronicles"}
+    if "pawnslug" in lower or "pawn-slug" in lower:
+        return {"pawnslug"}
+    if "trailblazer" in lower or "arcade" in lower:
+        return {"landing"}
+    # The Experiments hub owns navigation into both sub-modes; changes to the
+    # hub itself prove all three paths, not merely its landing screenshot.
+    if "experiment" in lower:
+        return set(EXPERIMENT_ORDER)
+    return set(EXPERIMENT_ORDER)
+
+
 def classify(paths: list[str]) -> Scope:
     cleaned = [path.strip().replace("\\", "/") for path in paths if path.strip()]
     if not cleaned:
         return full_scope()
 
     groups: set[str] = set()
+    experiment_parts: set[str] = set()
     hans = False
     chesscom = False
 
@@ -121,14 +148,18 @@ def classify(paths: list[str]) -> Scope:
         if surface is None:
             return full_scope()
         groups.update(surface)
+        if "experiments" in surface:
+            experiment_parts.update(_experiment_parts(path))
 
     ordered = tuple(group for group in GROUP_ORDER if group in groups)
-    return Scope(ordered, hans=hans, chesscom=chesscom)
+    ordered_experiments = tuple(part for part in EXPERIMENT_ORDER if part in experiment_parts)
+    return Scope(ordered, hans=hans, chesscom=chesscom, experiment_parts=ordered_experiments)
 
 
 def write_outputs(scope: Scope, output_path: str) -> None:
     values = {
         "capture_groups": scope.capture_groups,
+        "experiments_scope": scope.experiments_scope,
         "warroom": str(scope.warroom).lower(),
         "hans": str(scope.hans).lower(),
         "chesscom": str(scope.chesscom).lower(),
@@ -139,7 +170,14 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 
 
 def self_test() -> None:
-    assert classify(["frontend/src/pawnSlugThree.js"]).capture_groups == "experiments"
+    pawn = classify(["frontend/src/pawnSlugThree.js"])
+    assert pawn.capture_groups == "experiments" and pawn.experiments_scope == "pawnslug"
+    chronicles = classify(["frontend/src/chroniclesDungeon.js"])
+    assert chronicles.capture_groups == "experiments" and chronicles.experiments_scope == "chronicles"
+    trailblazer = classify(["frontend/src/pawnTrailblazerThree.js"])
+    assert trailblazer.experiments_scope == "landing"
+    hub = classify(["frontend/src/components/ExperimentsScreen.jsx"])
+    assert hub.experiments_scope == "landing,chronicles,pawnslug"
     assert classify(["frontend/src/components/WarRoom3D.jsx"]) == Scope(("warroom",), hans=True)
     assert classify(["frontend/src/components/HomeCastle3D.jsx"]).capture_groups == "home"
     assert classify(["frontend/src/components/MatthiasAvatar.jsx"]).capture_groups == "home,warroom"
@@ -168,6 +206,7 @@ def main(argv: list[str] | None = None) -> int:
         write_outputs(scope, args.github_output)
     else:
         print(f"capture_groups={scope.capture_groups}")
+        print(f"experiments_scope={scope.experiments_scope}")
         print(f"warroom={str(scope.warroom).lower()}")
         print(f"hans={str(scope.hans).lower()}")
         print(f"chesscom={str(scope.chesscom).lower()}")
