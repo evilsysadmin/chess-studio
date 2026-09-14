@@ -8,6 +8,7 @@ const ACTIONS = Object.freeze(['idle', 'run', 'jump', 'crouch', 'hurt', 'climb',
 const ROWS = TYPES.length * ACTIONS.length;
 let cachedCanvas = null;
 let cachedContext = null;
+let cachedBaseTexture = null;
 const drawnFrames = new Set();
 
 const COLORS = Object.freeze({
@@ -217,18 +218,44 @@ function ensureFrameDrawn(type, action, frame) {
   drawnFrames.add(key);
 }
 
-export function createPawnSlugSoldierAtlasTexture() {
+function prewarmAtlas() {
   const canvas = buildCanvas();
   if (!canvas) return null;
-  ensureFrameDrawn('pawn', 'idle', 0);
+  for (const type of TYPES) {
+    for (const action of ACTIONS) {
+      const count = PAWN_SLUG_ENEMY_ACTIONS[action].frames;
+      for (let frame = 0; frame < count; frame += 1) ensureFrameDrawn(type, action, frame);
+    }
+  }
+  return canvas;
+}
+
+function baseAtlasTexture() {
+  if (cachedBaseTexture) return cachedBaseTexture;
+  const canvas = prewarmAtlas();
+  if (!canvas) return null;
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.minFilter = THREE.LinearFilter;
   texture.magFilter = THREE.LinearFilter;
   texture.wrapS = THREE.ClampToEdgeWrapping;
   texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.generateMipmaps = false;
   texture.userData.pawnSlugSoldierAtlas = true;
-  texture.userData.lazyFrameDrawing = true;
+  texture.userData.sharedSource = true;
+  texture.userData.prewarmedBeforeUpload = true;
+  cachedBaseTexture = texture;
+  return cachedBaseTexture;
+}
+
+export function createPawnSlugSoldierAtlasTexture() {
+  const base = baseAtlasTexture();
+  if (!base) return null;
+  const texture = base.clone();
+  texture.userData = {
+    ...base.userData,
+    pawnSlugSoldierAtlasClone: true,
+  };
   return texture;
 }
 
@@ -264,5 +291,8 @@ export const PAWN_SLUG_SOLDIER_ATLAS_META = Object.freeze({
   actions: ACTIONS,
   theme: 'military-chess-soldiers',
   generatedOnce: true,
-  lazyFrameDrawing: true,
+  lazyFrameDrawing: false,
+  prewarmedBeforeUpload: true,
+  sharedTextureSource: true,
+  mipmaps: false,
 });
