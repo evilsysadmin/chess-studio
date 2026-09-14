@@ -96,6 +96,21 @@ async function captureChroniclesHealth(page) {
   });
 }
 
+async function stageChroniclesSigilAwake(page) {
+  const forward = page.getByRole('button', { name: 'Avanzar', exact: true });
+  const attack = page.getByRole('button', { name: 'Atacar', exact: true });
+
+  await forward.click();
+  await page.getByRole('button', { name: 'Seleccionar Hildegard', exact: true }).click();
+  for (let hit = 0; hit < 3; hit += 1) await attack.click();
+  await forward.click();
+  await page.getByRole('button', { name: 'Girar a la izquierda', exact: true }).click();
+  await forward.click();
+  await expect(page.getByText('Derrota a la torre carcelero', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Retroceder', exact: true }).click();
+  await page.waitForTimeout(220);
+}
+
 async function capturePawnSlugReadyHealth(page) {
   return page.evaluate(() => {
     const root = document.documentElement;
@@ -228,6 +243,13 @@ test('Experimentos + Chronicles + Pawn Slug ready/live · canary visual desktop 
       await freezeVisualFrame(page);
       await page.screenshot({
         path: `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`,
+        fullPage: true,
+      });
+
+      await stageChroniclesSigilAwake(page);
+      await freezeVisualFrame(page);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/chronicles-sigil-awake-${capture.label}.png`,
         fullPage: true,
       });
 
