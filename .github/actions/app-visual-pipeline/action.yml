@@ -34,9 +34,11 @@ runs:
         set -euo pipefail
         groups='${{ steps.scope.outputs.capture_groups }}'
         experiments='${{ steps.scope.outputs.experiments_scope }}'
+        chronicles_avatar='${{ steps.scope.outputs.chronicles_avatar }}'
         [[ -n "$groups" ]] || groups=all
         [[ -n "$experiments" ]] || experiments=all
-        bash scripts/app_visual_capture.sh "${{ inputs.mode }}" "$groups" "$experiments"
+        [[ "$chronicles_avatar" == 'true' || "$chronicles_avatar" == 'false' ]] || chronicles_avatar=true
+        bash scripts/app_visual_capture.sh "${{ inputs.mode }}" "$groups" "$experiments" "$chronicles_avatar"
 
     - name: Enforce War Room visual freeze
       if: inputs.mode == 'canonical' && steps.scope.outputs.warroom == 'true'

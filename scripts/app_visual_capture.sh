@@ -4,6 +4,7 @@ set -euo pipefail
 mode="${1:-canonical}"
 groups="${2:-all}"
 experiments_scope="${3:-all}"
+chronicles_avatar="${4:-true}"
 cd e2e
 
 has_group() {
@@ -33,7 +34,7 @@ case "$mode" in
     fi
     if has_group experiments; then
       specs+=(experiments-visual-artifact.spec.js)
-      if has_experiment_scope chronicles; then
+      if has_experiment_scope chronicles && [[ "$chronicles_avatar" == "true" ]]; then
         specs+=(chronicles-avatar-visual-artifact.spec.js)
       fi
     fi
@@ -64,6 +65,7 @@ case "$mode" in
     echo "App visual capture groups: $groups"
     if has_group experiments; then
       echo "Experiments visual subscopes: $experiments_scope"
+      echo "Chronicles avatar proof: $chronicles_avatar"
     fi
     printf ' - %s\n' "${specs[@]}"
     ./node_modules/.bin/playwright test \

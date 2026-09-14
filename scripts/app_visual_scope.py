@@ -22,6 +22,7 @@ class Scope:
     hans: bool = False
     chesscom: bool = False
     experiment_parts: tuple[str, ...] = ()
+    chronicles_avatar: bool = False
 
     @property
     def capture_groups(self) -> str:
@@ -39,7 +40,13 @@ class Scope:
 
 
 def full_scope() -> Scope:
-    return Scope(GROUP_ORDER, hans=True, chesscom=True, experiment_parts=EXPERIMENT_ORDER)
+    return Scope(
+        GROUP_ORDER,
+        hans=True,
+        chesscom=True,
+        experiment_parts=EXPERIMENT_ORDER,
+        chronicles_avatar=True,
+    )
 
 
 def _surface_groups(path: str) -> set[str] | None:
@@ -127,6 +134,36 @@ def _experiment_parts(path: str) -> set[str]:
     return set(EXPERIMENT_ORDER)
 
 
+def _needs_hans_routines(path: str) -> bool:
+    """Deep Hans routine videos are for actor/choreography owners, not every War Room edit."""
+    lower = path.lower()
+    name = Path(lower).name
+    if "hans" in lower:
+        return True
+    if lower.startswith("e2e/"):
+        return False
+    # These shared 3D owners can move Hans, alter his physical scene or remount
+    # the renderer even when the file name itself does not mention Hans.
+    return any(token in name for token in ("board3d", "warroom3d", "gameboardview", "game3d"))
+
+
+def _needs_chronicles_avatar(path: str) -> bool:
+    """The 8-avatar proof is only needed for portrait/UI/Three ownership."""
+    lower = path.lower()
+    name = Path(lower).name
+    if name == "chronicles-avatar-visual-artifact.spec.js":
+        return True
+    if lower.startswith("e2e/"):
+        return False
+    if lower.startswith("frontend/src/components/chronicles"):
+        return True
+    if "chronicles" not in lower:
+        return False
+    # Root gameplay reducers/targeting/retaliation still get the Chronicles
+    # gameplay canary, but do not need to boot and photograph all four portraits.
+    return any(token in name for token in ("three", "party", "portrait", "relic", "condition", "visual", "art"))
+
+
 def classify(paths: list[str]) -> Scope:
     cleaned = [path.strip().replace("\\", "/") for path in paths if path.strip()]
     if not cleaned:
@@ -136,12 +173,13 @@ def classify(paths: list[str]) -> Scope:
     experiment_parts: set[str] = set()
     hans = False
     chesscom = False
+    chronicles_avatar = False
 
     for path in cleaned:
         lower = path.lower()
         if "chesscom" in lower:
             chesscom = True
-        if any(token in lower for token in ("hans", "board3d", "warroom", "war-room", "gameboardview")):
+        if _needs_hans_routines(path):
             hans = True
 
         surface = _surface_groups(path)
@@ -149,17 +187,27 @@ def classify(paths: list[str]) -> Scope:
             return full_scope()
         groups.update(surface)
         if "experiments" in surface:
-            experiment_parts.update(_experiment_parts(path))
+            parts = _experiment_parts(path)
+            experiment_parts.update(parts)
+            if "chronicles" in parts and _needs_chronicles_avatar(path):
+                chronicles_avatar = True
 
     ordered = tuple(group for group in GROUP_ORDER if group in groups)
     ordered_experiments = tuple(part for part in EXPERIMENT_ORDER if part in experiment_parts)
-    return Scope(ordered, hans=hans, chesscom=chesscom, experiment_parts=ordered_experiments)
+    return Scope(
+        ordered,
+        hans=hans,
+        chesscom=chesscom,
+        experiment_parts=ordered_experiments,
+        chronicles_avatar=chronicles_avatar,
+    )
 
 
 def write_outputs(scope: Scope, output_path: str) -> None:
     values = {
         "capture_groups": scope.capture_groups,
         "experiments_scope": scope.experiments_scope,
+        "chronicles_avatar": str(scope.chronicles_avatar).lower(),
         "warroom": str(scope.warroom).lower(),
         "hans": str(scope.hans).lower(),
         "chesscom": str(scope.chesscom).lower(),
@@ -172,13 +220,34 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 def self_test() -> None:
     pawn = classify(["frontend/src/pawnSlugThree.js"])
     assert pawn.capture_groups == "experiments" and pawn.experiments_scope == "pawnslug"
-    chronicles = classify(["frontend/src/chroniclesDungeon.js"])
-    assert chronicles.capture_groups == "experiments" and chronicles.experiments_scope == "chronicles"
+
+    chronicles_logic = classify(["frontend/src/chroniclesDungeon.js"])
+    assert chronicles_logic.capture_groups == "experiments"
+    assert chronicles_logic.experiments_scope == "chronicles"
+    assert not chronicles_logic.chronicles_avatar
+
+    chronicles_ui = classify(["frontend/src/components/ChroniclesOfMatthias.jsx"])
+    assert chronicles_ui.experiments_scope == "chronicles" and chronicles_ui.chronicles_avatar
+    chronicles_three = classify(["frontend/src/chroniclesOfMatthiasThree.js"])
+    assert chronicles_three.chronicles_avatar
+    chronicles_party = classify(["frontend/src/chroniclesOfMatthiasPartyCondition.js"])
+    assert chronicles_party.chronicles_avatar
+
     trailblazer = classify(["frontend/src/pawnTrailblazerThree.js"])
     assert trailblazer.experiments_scope == "landing"
     hub = classify(["frontend/src/components/ExperimentsScreen.jsx"])
     assert hub.experiments_scope == "landing,chronicles,pawnslug"
-    assert classify(["frontend/src/components/WarRoom3D.jsx"]) == Scope(("warroom",), hans=True)
+    assert not hub.chronicles_avatar
+
+    warroom_3d = classify(["frontend/src/components/WarRoom3D.jsx"])
+    assert warroom_3d.capture_groups == "warroom" and warroom_3d.hans
+    warroom_ui = classify(["frontend/src/components/WarRoomRain.css"])
+    assert warroom_ui.capture_groups == "warroom" and not warroom_ui.hans
+    warroom_visual = classify(["e2e/war-room-decor-visual-artifact.spec.js"])
+    assert warroom_visual.capture_groups == "warroom" and not warroom_visual.hans
+    hans_visual = classify(["e2e/war-room-hans-visual-artifact.spec.js"])
+    assert hans_visual.hans
+
     assert classify(["frontend/src/components/HomeCastle3D.jsx"]).capture_groups == "home"
     assert classify(["frontend/src/components/MatthiasAvatar.jsx"]).capture_groups == "home,warroom"
     assert classify(["frontend/src/components/MatthiasSchool.jsx"]).capture_groups == "training"
@@ -207,6 +276,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(f"capture_groups={scope.capture_groups}")
         print(f"experiments_scope={scope.experiments_scope}")
+        print(f"chronicles_avatar={str(scope.chronicles_avatar).lower()}")
         print(f"warroom={str(scope.warroom).lower()}")
         print(f"hans={str(scope.hans).lower()}")
         print(f"chesscom={str(scope.chesscom).lower()}")
