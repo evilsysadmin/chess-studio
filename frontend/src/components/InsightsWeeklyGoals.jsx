@@ -1,7 +1,7 @@
 import { buildPersonalWeeklyGoals } from '../personalWeeklyGoals.js';
 
-export default function InsightsWeeklyGoals({ onOpenPuzzles }) {
-  const goals = buildPersonalWeeklyGoals();
+export default function InsightsWeeklyGoals({ onOpenPuzzles, playerModel = null }) {
+  const goals = buildPersonalWeeklyGoals({ playerModel });
   if (!goals.length) return null;
 
   function runGoal(goal) {
