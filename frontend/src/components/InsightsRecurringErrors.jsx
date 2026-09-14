@@ -1,27 +1,8 @@
 import { loadCleanGameRecords } from '../cleanGames.js';
+import { patternProgressCopy } from '../factualLanguage.js';
 import { loadPersonalPuzzles } from '../personalPuzzles.js';
 import { buildPlayerModel, PATTERN_IMPROVEMENT_STATES } from '../playerModel.js';
 import './InsightsRecurringErrors.css';
-
-function debtCopy(pattern) {
-  const debt = pattern?.debt;
-  if (!debt) return null;
-  if (debt.paid) return `✓ Entrenamiento completado · últimos ${debt.target}: ${debt.progress}/${debt.target} limpios · falta observar nuevas partidas`;
-  return `Deuda activa · últimos ${debt.target}: ${debt.progress}/${debt.target} limpios`;
-}
-
-export function patternProgressCopy(pattern) {
-  switch (pattern?.improvementState) {
-    case PATTERN_IMPROVEMENT_STATES.STILL_OCCURRING:
-      return 'Sigue ocurriendo · reapareció después de entrenarlo y aún no hay muestra limpia suficiente.';
-    case PATTERN_IMPROVEMENT_STATES.PROBABLE_IMPROVEMENT:
-      return 'Mejora probable · varias autopsias completas recientes sin repetir este patrón.';
-    case PATTERN_IMPROVEMENT_STATES.CORRECTED_WITH_SUFFICIENT_SAMPLE:
-      return '✓ Corregido con muestra suficiente · entrenamiento completado y una racha sostenida sin recurrencia.';
-    default:
-      return debtCopy(pattern);
-  }
-}
 
 export default function InsightsRecurringErrors({ onOpenPuzzles }) {
   const playerModel = buildPlayerModel({

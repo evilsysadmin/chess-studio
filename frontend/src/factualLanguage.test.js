@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COMBAT_REPLAY_OK_VERDICT,
   FACTUAL_LANGUAGE_FORBIDDEN_ABSOLUTES,
   REPLAY_OK_VERDICT,
   containsFactualLanguageAbsolute,
+  patternProgressCopy,
 } from './factualLanguage.js';
 import { buildPostGameIncidentEvidence } from './postGameIncidentEvidence.js';
 import {
   buildPlayerModel,
   PATTERN_IMPROVEMENT_STATES,
 } from './playerModel.js';
-import { patternProgressCopy } from './components/InsightsRecurringErrors.jsx';
 
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 const INCIDENT = 'human:MISSED_MATE';
@@ -83,9 +84,11 @@ function progressWith(observations) {
 }
 
 describe('factual language contract', () => {
-  it('keeps an ok replay verdict scoped to the actual analysis instead of claiming uniqueness', () => {
+  it('keeps ok replay verdicts scoped to actual analysis instead of claiming uniqueness', () => {
     expect(REPLAY_OK_VERDICT).toContain('este análisis');
     expect(containsFactualLanguageAbsolute(REPLAY_OK_VERDICT)).toBe(false);
+    expect(COMBAT_REPLAY_OK_VERDICT).toContain('dado');
+    expect(containsFactualLanguageAbsolute(COMBAT_REPLAY_OK_VERDICT)).toBe(false);
     expect(FACTUAL_LANGUAGE_FORBIDDEN_ABSOLUTES).toContain('no había nada mejor');
   });
 

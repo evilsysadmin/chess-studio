@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { FACTUAL_LANGUAGE_FORBIDDEN_ABSOLUTES } from '../frontend/src/factualLanguage.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (relative) => fs.readFileSync(path.join(root, relative), 'utf8');
@@ -20,6 +21,28 @@ const admin = adminFeatureFiles.map(read).join('\n');
 const career = read('frontend/src/career.js');
 const activityFormatting = read('frontend/src/adminFormatting.js');
 
+function productionFrontendModules(dir, found = []) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      productionFrontendModules(full, found);
+      continue;
+    }
+    if (!/\.(?:js|jsx|mjs)$/.test(entry.name) || /\.test\./.test(entry.name)) continue;
+    if (entry.name === 'factualLanguage.js') continue;
+    found.push(full);
+  }
+  return found;
+}
+
+const frontendSrc = path.join(root, 'frontend', 'src');
+const factualLanguageViolations = productionFrontendModules(frontendSrc).flatMap((file) => {
+  const source = fs.readFileSync(file, 'utf8').toLocaleLowerCase('es');
+  return FACTUAL_LANGUAGE_FORBIDDEN_ABSOLUTES
+    .filter((phrase) => source.includes(phrase))
+    .map((phrase) => `${path.relative(root, file).split(path.sep).join('/')}: ${JSON.stringify(phrase)}`);
+});
+
 const checks = [
   [game.includes("event: 'PRONÓSTICO DE PARTIDA'"), 'el pronóstico debe llamarse «Pronóstico de partida»'],
   [game.includes("event: 'RETO DE PARTIDA'"), 'el objetivo opcional normal debe llamarse «Reto de partida»'],
@@ -31,6 +54,7 @@ const checks = [
   [admin.includes('>Retos</span>') && !admin.includes('>Contratos</span>'), 'Admin debe mostrar Retos para objetivos normales'],
   [career.includes("Reto superado ·") && career.includes('Contrato cumplido:'), 'Career debe normalizar hitos legacy al vocabulario de Retos'],
   [activityFormatting.includes("'contract-win': 'Reto superado'"), 'Actividad reciente debe etiquetar el reto completado como «Reto superado»'],
+  [factualLanguageViolations.length === 0, `copy factual absoluto fuera del contrato: ${factualLanguageViolations.join(' · ')}`],
 ];
 
 const failed = checks.filter(([ok]) => !ok).map(([, message]) => message);
@@ -39,4 +63,4 @@ if (failed.length) {
   failed.forEach((message) => console.error(` - ${message}`));
   process.exit(1);
 }
-console.log('product-copy-check OK · Matthias + Retos + pronóstico + chat/voz + dificultad coherentes');
+console.log('product-copy-check OK · Matthias + Retos + pronóstico + chat/voz + dificultad + lenguaje factual coherentes');
