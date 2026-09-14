@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { warRoomSpatialMixForAtmosphere } from './useWarRoomSpatialAmbience.js';
+import {
+  warRoomAmbienceShouldPlay,
+  warRoomSpatialMixForAtmosphere,
+} from './useWarRoomSpatialAmbience.js';
 
 describe('War Room spatial ambience', () => {
   it('keeps the base room restrained and places weather outside the window', () => {
@@ -13,5 +16,12 @@ describe('War Room spatial ambience', () => {
     expect(sunnyDay.fire).toBeLessThan(0.02);
     expect(rainyNight.rareEventMinMs).toBeGreaterThanOrEqual(30_000);
     expect(rainyNight.rareEventMaxMs).toBeGreaterThan(rainyNight.rareEventMinMs);
+  });
+
+  it('lets either global FX mute or the dedicated room mute silence only this ambience hook', () => {
+    expect(warRoomAmbienceShouldPlay({ enabled: true, fxMuted: false, ambienceMuted: false })).toBe(true);
+    expect(warRoomAmbienceShouldPlay({ enabled: true, fxMuted: true, ambienceMuted: false })).toBe(false);
+    expect(warRoomAmbienceShouldPlay({ enabled: true, fxMuted: false, ambienceMuted: true })).toBe(false);
+    expect(warRoomAmbienceShouldPlay({ enabled: false, fxMuted: false, ambienceMuted: false })).toBe(false);
   });
 });
