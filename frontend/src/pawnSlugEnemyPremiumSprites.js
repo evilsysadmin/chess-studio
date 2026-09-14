@@ -322,5 +322,5 @@ export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
   visualEvidencePolicy: 'premium-alpha-readback-before-replacing-generated-actions',
   browserRenderContract: 'data-pawn-slug-enemy-visual',
   browserFallbackAlias: 'generated-actions -> premium-fallback',
-  proceduralRole: 'known-good-safety-net',
+  proceduralRole: 'last-resort',
 });
