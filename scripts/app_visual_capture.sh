@@ -3,11 +3,17 @@ set -euo pipefail
 
 mode="${1:-canonical}"
 groups="${2:-all}"
+experiments_scope="${3:-all}"
 cd e2e
 
 has_group() {
   local needle="$1"
   [[ ",$groups," == *",all,"* || ",$groups," == *",$needle,"* ]]
+}
+
+has_experiment_scope() {
+  local needle="$1"
+  [[ ",$experiments_scope," == *",all,"* || ",$experiments_scope," == *",$needle,"* ]]
 }
 
 case "$mode" in
@@ -26,10 +32,10 @@ case "$mode" in
       )
     fi
     if has_group experiments; then
-      specs+=(
-        experiments-visual-artifact.spec.js
-        chronicles-avatar-visual-artifact.spec.js
-      )
+      specs+=(experiments-visual-artifact.spec.js)
+      if has_experiment_scope chronicles; then
+        specs+=(chronicles-avatar-visual-artifact.spec.js)
+      fi
     fi
     if has_group training; then
       specs+=(training-visual-artifact.spec.js)
@@ -54,7 +60,11 @@ case "$mode" in
       exit 0
     fi
 
+    export APP_VISUAL_EXPERIMENTS_SCOPE="$experiments_scope"
     echo "App visual capture groups: $groups"
+    if has_group experiments; then
+      echo "Experiments visual subscopes: $experiments_scope"
+    fi
     printf ' - %s\n' "${specs[@]}"
     ./node_modules/.bin/playwright test \
       "${specs[@]}" \
