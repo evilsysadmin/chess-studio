@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 
 from quality_scope import CORE_E2E_LANES
+from workflow_static_contracts import validate_workflow_static_contracts
 
 ROOT = Path(__file__).resolve().parents[1]
 makefile = (ROOT / 'Makefile').read_text(encoding='utf-8')
@@ -199,6 +200,8 @@ else:
 
 if 'python -m pip_audit' in ci:
     raise SystemExit('CI volvió a ejecutar pip-audit fuera del venv; usa `make security-be`')
+
+validate_workflow_static_contracts(ROOT)
 
 mode = (
     'lanes core auditadas contra CRITICAL_E2E_GREP + gate especializado agregado'
