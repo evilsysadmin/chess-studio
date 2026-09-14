@@ -159,4 +159,15 @@ describe('Pawn Slug contracts', () => {
     expect(panzerIII.speed).toBeGreaterThan(panzerI.speed);
     expect(pawnSlugAmmoForPickup('machinegun', 9)).toBeGreaterThan(pawnSlugAmmoForPickup('machinegun', 1));
   });
+
+  it('reuses immutable weapon stats for the same effective weapon level', () => {
+    const first = pawnSlugWeaponStatsForLevel('machinegun', 9);
+    const second = pawnSlugWeaponStatsForLevel('machinegun', 9);
+    const clamped = pawnSlugWeaponStatsForLevel('machinegun', 999);
+    const maxLevel = pawnSlugWeaponStatsForLevel('machinegun', PAWN_SLUG_PLAYER.maxLevel);
+
+    expect(second).toBe(first);
+    expect(clamped).toBe(maxLevel);
+    expect(Object.isFrozen(first)).toBe(true);
+  });
 });
