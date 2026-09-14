@@ -13,6 +13,7 @@ import {
   releaseWarRoomHansQuickIteration,
 } from './WarRoomHansIteration.js';
 import { hasWarRoomHansCompletedForGame } from './WarRoomHansPerGame.js';
+import { warRoomHansDiagnosticsRequested } from './WarRoomHansDiagnosticsPolicy.js';
 
 // Safe public entrypoint. GameBoardView also imports Board3D directly, so the
 // provider must live here rather than only in the preferred Board wrapper.
@@ -20,6 +21,12 @@ import { hasWarRoomHansCompletedForGame } from './WarRoomHansPerGame.js';
 // nested Board to render the concrete 2D implementation instead of recursing.
 export default function Board3D(props) {
   const requestsHansQuickIteration = props.hansFireplaceIteration === true;
+  const requestsHansDiagnostics = warRoomHansDiagnosticsRequested({
+    quickIteration: requestsHansQuickIteration,
+    webdriver: typeof navigator !== 'undefined' && navigator.webdriver === true,
+    ambientAudit: typeof globalThis !== 'undefined'
+      && globalThis.__CHESS_STUDIO_HANS_AMBIENT_AUDIT__ === true,
+  });
   const hansGameId = props.gameId;
   const rankLevelsPayload = serializeBoard3DRankLevels(props.pieceRankLevels);
   const hansMarkerRef = useRef(null);
@@ -82,7 +89,7 @@ export default function Board3D(props) {
           key={hansGameId || 'war-room'}
           {...props}
           hansDiagnosticsMarkerRef={hansMarkerRef}
-          hansDiagnosticsRequested={requestsHansQuickIteration}
+          hansDiagnosticsRequested={requestsHansDiagnostics}
         />
       </div>
     </BoardRendererContext.Provider>
