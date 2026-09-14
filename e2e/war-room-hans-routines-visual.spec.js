@@ -15,6 +15,17 @@ const SAMPLE_MS = 400;
 const OBSERVE_MS = 14_000;
 const SERVICE_EVENTS = new Set(['water-plant', 'espresso']);
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
+const REQUESTED_EVENTS = String(process.env.HANS_ROUTINE_EVENTS || '')
+  .split(',')
+  .map((eventName) => eventName.trim())
+  .filter(Boolean);
+const CAPTURE_EVENTS = REQUESTED_EVENTS.length ? REQUESTED_EVENTS : [...WAR_ROOM_HANS_EVENTS];
+
+for (const eventName of CAPTURE_EVENTS) {
+  if (!WAR_ROOM_HANS_EVENTS.includes(eventName)) {
+    throw new Error(`Unknown Hans routine video event: ${eventName}`);
+  }
+}
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -104,7 +115,7 @@ async function sampleRoutine(page, canvas, eventName) {
   };
 }
 
-for (const eventName of WAR_ROOM_HANS_EVENTS) {
+for (const eventName of CAPTURE_EVENTS) {
   test(`War Room · Hans routine video · ${eventName}`, async () => {
     test.setTimeout(150_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
