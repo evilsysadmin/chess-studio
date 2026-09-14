@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 
+const WANTED_ENTRANCE_SECONDS = 0.75;
+const wantedBadgeByModel = new WeakMap();
+
 const RANK_STYLE = Object.freeze({
   1: Object.freeze({ color: 0xa9342a, metalness: 0.32, emissive: 0x54120d }),
   2: Object.freeze({ color: 0xaeb5bc, metalness: 0.78, emissive: 0x303840 }),
@@ -23,6 +26,12 @@ function badgeGeometry(rank) {
   return new THREE.BoxGeometry(0.34, 0.16, 0.065);
 }
 
+function settleBadge(badge) {
+  badge.scale.setScalar(1);
+  if (badge.material) badge.material.emissiveIntensity = 0.28;
+  badge.userData.settled = true;
+}
+
 export function attachPawnSlugWantedInsignia(model, officer, { reducedMotion = false } = {}) {
   if (!model || !officer?.wanted) return null;
   const badge = new THREE.Mesh(badgeGeometry(officer.rank), materialFor(officer.rank));
@@ -33,24 +42,27 @@ export function attachPawnSlugWantedInsignia(model, officer, { reducedMotion = f
   badge.userData.wanted = true;
   badge.userData.rank = officer.rank;
   badge.userData.insignia = officer.insignia;
-  badge.userData.spawnedAt = 0;
+  badge.userData.spawnedAt = null;
   badge.userData.reducedMotion = Boolean(reducedMotion);
+  badge.userData.settled = Boolean(reducedMotion);
   model.add(badge);
   model.userData.wantedOfficer = officer;
+  wantedBadgeByModel.set(model, badge);
+  if (reducedMotion) settleBadge(badge);
   return badge;
 }
 
 export function animatePawnSlugWantedInsignia(model, time = 0) {
-  const badge = model?.children?.find((child) => child?.userData?.wanted);
-  if (!badge) return;
-  if (!badge.userData.spawnedAt) badge.userData.spawnedAt = Number(time) || 0;
-  if (badge.userData.reducedMotion) {
-    badge.scale.setScalar(1);
-    if (badge.material) badge.material.emissiveIntensity = 0.28;
+  const badge = wantedBadgeByModel.get(model);
+  if (!badge || badge.userData.settled) return;
+  const safeTime = Number(time) || 0;
+  if (!Number.isFinite(badge.userData.spawnedAt)) badge.userData.spawnedAt = safeTime;
+  const age = Math.max(0, safeTime - badge.userData.spawnedAt);
+  if (age >= WANTED_ENTRANCE_SECONDS) {
+    settleBadge(badge);
     return;
   }
-  const age = Math.max(0, (Number(time) || 0) - badge.userData.spawnedAt);
-  const entrance = Math.max(0, 1 - age / 0.75);
+  const entrance = 1 - age / WANTED_ENTRANCE_SECONDS;
   const pulse = Math.sin(age * 18) * 0.08 * entrance;
   badge.scale.setScalar(1 + pulse + entrance * 0.14);
   if (badge.material) badge.material.emissiveIntensity = 0.28 + entrance * 0.55;
@@ -62,4 +74,7 @@ export const PAWN_SLUG_WANTED_ART_META = Object.freeze({
   rank3: 'gold-rook-chevron',
   extraLights: false,
   entrance: 'brief-pulse',
+  entranceSeconds: WANTED_ENTRANCE_SECONDS,
+  runtimeLookup: 'weakmap',
+  settledCost: 'early-return',
 });
