@@ -1,5 +1,6 @@
 import { STORAGE_LOCAL, readJsonStorage } from './safeStorage.js';
 import { setProfileStorageItem, removeProfileStorageItem } from './profileKeys.js';
+import { loadActiveGameSession } from './activeGameSession.js';
 
 // tournament.js — Progreso del modo torneo. Se guarda en la caché local síncrona y la capa de perfil la
 // sincroniza con MongoDB. Así las funciones siguen siendo rápidas y simples
@@ -151,22 +152,37 @@ export function applyCaptureReward(state, gained) {
 // Aplica el resultado de una partida al estado del torneo. No penaliza las
 // derrotas (siempre se puede reintentar): victoria +20, tablas +5, derrota +0.
 export function applyResult(state, outcome) {
+  const gameId = loadActiveGameSession()?.gameId;
   const gained = outcome === 'win' ? 20 : outcome === 'draw' ? 5 : 0;
+  const persisted = gameId ? loadTournament() : null;
+  if (gameId && persisted.lastGameId === gameId) {
+    const newLevel = levelForPoints(persisted.progressPoints);
+    return {
+      state: persisted,
+      gained,
+      leveledUp: levelForPoints(Math.max(0, persisted.progressPoints - gained)) < newLevel,
+      newLevel,
+      duplicate: true,
+    };
+  }
+
   const priorProgress = Number.isFinite(Number(state.progressPoints)) ? Number(state.progressPoints) : Number(state.points) || 0;
   const prevLevel = levelForPoints(priorProgress);
   const points = state.points || 0;
   const progressPoints = priorProgress + gained;
   const winStreak = outcome === 'win' ? (state.winStreak || 0) + 1 : 0;
   const bestWinStreak = Math.max(state.bestWinStreak || 0, winStreak);
+  const newLevel = levelForPoints(progressPoints);
   const next = {
+    ...state,
     points,
     progressPoints,
-    wins: state.wins + (outcome === 'win' ? 1 : 0),
-    draws: state.draws + (outcome === 'draw' ? 1 : 0),
-    losses: state.losses + (outcome === 'loss' ? 1 : 0),
+    wins: (state.wins || 0) + (outcome === 'win' ? 1 : 0),
+    draws: (state.draws || 0) + (outcome === 'draw' ? 1 : 0),
+    losses: (state.losses || 0) + (outcome === 'loss' ? 1 : 0),
     winStreak,
     bestWinStreak,
   };
-  const newLevel = levelForPoints(progressPoints);
-  return { state: next, gained, leveledUp: newLevel > prevLevel, newLevel };
+  if (gameId) next.lastGameId = gameId;
+  return { state: next, gained, leveledUp: newLevel > prevLevel, newLevel, duplicate: false };
 }
