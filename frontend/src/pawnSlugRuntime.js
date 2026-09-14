@@ -133,6 +133,13 @@ export function createPawnSlugRuntime(host, { onReady, onHud } = {}) {
     runtime.weapons.syncPlayerWeaponVisual('pistol');
     runtime.player.placePlayer();
     view.resetCamera(runtime.state);
+    // Materialize the opening encounter before the mission depends on another
+    // requestAnimationFrame/IntersectionObserver turn. This prevents a visible
+    // playing scene from ever starting with an empty enemy layer when the RAF
+    // is briefly suspended or the viewport observer reports late.
+    runtime.enemies.spawnAhead();
+    runtime.enemies.updateEnemies(0);
+    view.render();
     setAmbientDuck(true);
     emitHud(true);
     syncFrameLoop();
