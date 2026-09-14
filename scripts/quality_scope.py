@@ -67,6 +67,15 @@ TRAILBLAZER_RE = re.compile(
 )
 MATTHIAS_HOME_RE = re.compile(r"^frontend/src/components/MatthiasPremiumHome3D\.js$")
 
+# Core browser journeys validate behaviour and persistence, not pixels. Pure CSS
+# and art changes still run the frontend suite plus the app/specialized visual
+# workflows; waking the ~multi-minute generic regression lane for them only burns
+# runner time without exercising a code path they can change.
+CORE_E2E_RE = re.compile(
+    r"^frontend/src/.*\.(?:js|jsx|ts|tsx)$|"
+    r"^frontend/(?:index\.html|vite\.config\.(?:js|mjs|ts)|package(?:-lock)?\.json)$"
+)
+
 TARGETED_E2E = {
     "e2e/pawn-slug.spec.js": "run_pawn_slug_e2e",
     "e2e/chesscom.spec.js": "run_chesscom_e2e",
@@ -130,7 +139,7 @@ def classify(paths: Iterable[str]) -> Scope:
             if MATTHIAS_HOME_RE.search(path):
                 scope.run_matthias_home_e2e = True
                 targeted = True
-            if not targeted:
+            if not targeted and CORE_E2E_RE.search(path):
                 scope.run_e2e = True
             continue
 
@@ -182,6 +191,15 @@ def self_test() -> None:
         run_e2e=True,
         run_security=True,
     )
+    _expect(["frontend/src/App.jsx"], run_frontend=True, run_e2e=True)
+    _expect(["frontend/src/styles/28-product-resilience.css"], run_frontend=True)
+    _expect(["frontend/src/assets/home-canonical/great-hall-dungeon.webp"], run_frontend=True)
+    _expect(["frontend/public/home-canonical.webp"], run_frontend=True)
+    _expect(
+        ["frontend/src/styles/28-product-resilience.css", "frontend/src/App.jsx"],
+        run_frontend=True,
+        run_e2e=True,
+    )
     _expect(
         ["backend-python/game_api.py"],
         run_backend=True,
@@ -222,7 +240,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · producto dirigido; backend sin browser mockeado; harness full; tooling/infra no despiertan browsers ajenos")
+    print("quality-scope self-test OK · producto dirigido; CSS/art no despiertan core browser; backend sin browser mockeado; harness full")
 
 
 def main() -> int:
