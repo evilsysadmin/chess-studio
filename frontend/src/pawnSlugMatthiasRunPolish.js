@@ -1,20 +1,25 @@
 const TAU = Math.PI * 2;
 
+const ATLAS_COLUMNS = 16;
 const ATLAS_ROWS = 5;
+const FRAME_WIDTH = 96;
 const FRAME_HEIGHT = 96;
 const RUN_ROW = 2;
 const RUN_FRAMES = 16;
 
 export const PAWN_SLUG_MATTHIAS_RUN_POLISH = Object.freeze({
   frameCount: RUN_FRAMES,
-  topTrimTexels: 1,
-  bottomTrimTexels: 4,
-  maxVerticalCompensation: 0.016,
-  forwardLean: 0.012,
-  cadenceLean: 0.006,
-  stretchX: 1.012,
-  compressY: 0.995,
-  purpose: 'sprint-readability-and-lower-corner-cleanup',
+  frameRate: 10.5,
+  leftTrimTexels: 3,
+  rightTrimTexels: 3,
+  topTrimTexels: 2,
+  bottomTrimTexels: 7,
+  maxVerticalCompensation: 0,
+  forwardLean: 0.01,
+  cadenceLean: 0.003,
+  stretchX: 1.008,
+  compressY: 0.998,
+  purpose: 'grounded-sprint-with-clean-four-edge-crop-and-no-trotting-bob',
 });
 
 function wrapFrame(frame, count) {
@@ -28,13 +33,34 @@ export function pawnSlugMatthiasRunCadence(frameIndex = 0, frameCount = RUN_FRAM
   return Math.abs(Math.sin((frame / safeCount) * TAU));
 }
 
-export function pawnSlugMatthiasRunUvWindow() {
+export function pawnSlugMatthiasRunFrame(time = 0, runStartedAt = 0) {
+  const elapsed = Math.max(0, (Number(time) || 0) - (Number(runStartedAt) || 0));
+  return wrapFrame(Math.floor(elapsed * PAWN_SLUG_MATTHIAS_RUN_POLISH.frameRate), RUN_FRAMES);
+}
+
+export function pawnSlugMatthiasRunUvWindow(frameIndex = 0, dir = 1) {
+  const atlasWidth = ATLAS_COLUMNS * FRAME_WIDTH;
   const atlasHeight = ATLAS_ROWS * FRAME_HEIGHT;
-  const top = PAWN_SLUG_MATTHIAS_RUN_POLISH.topTrimTexels;
-  const bottom = PAWN_SLUG_MATTHIAS_RUN_POLISH.bottomTrimTexels;
+  const frame = wrapFrame(frameIndex, RUN_FRAMES);
+  const direction = Number(dir) < 0 ? -1 : 1;
+  const {
+    leftTrimTexels: left,
+    rightTrimTexels: right,
+    topTrimTexels: top,
+    bottomTrimTexels: bottom,
+  } = PAWN_SLUG_MATTHIAS_RUN_POLISH;
+  const guardedWidth = FRAME_WIDTH - left - right;
+  const guardedHeight = FRAME_HEIGHT - top - bottom;
+  const leftEdge = (frame * FRAME_WIDTH) + left;
+  const rightEdge = ((frame + 1) * FRAME_WIDTH) - right;
+  const bottomEdge = atlasHeight - ((RUN_ROW + 1) * FRAME_HEIGHT) + bottom;
   return Object.freeze({
-    repeatY: (FRAME_HEIGHT - top - bottom) / atlasHeight,
-    offsetY: (atlasHeight - ((RUN_ROW + 1) * FRAME_HEIGHT) + bottom) / atlasHeight,
+    frame,
+    direction,
+    repeatX: direction * (guardedWidth / atlasWidth),
+    repeatY: guardedHeight / atlasHeight,
+    offsetX: (direction < 0 ? rightEdge : leftEdge) / atlasWidth,
+    offsetY: bottomEdge / atlasHeight,
   });
 }
 
@@ -43,17 +69,20 @@ export function applyPawnSlugMatthiasRunPolish(sprite, state = {}) {
   const animation = sprite.userData?.animation;
   if (animation?.action !== 'run') return null;
 
-  const frameIndex = animation.frameIndex || 0;
-  const cadence = pawnSlugMatthiasRunCadence(frameIndex);
+  const frameIndex = pawnSlugMatthiasRunFrame(state.time, animation.runStartedAt);
+  if (animation.frameIndex !== frameIndex) sprite.userData.setActionFrame?.('run', frameIndex);
+  const appliedFrame = sprite.userData?.animation?.frameIndex ?? frameIndex;
+  const cadence = pawnSlugMatthiasRunCadence(appliedFrame);
+  const direction = Number(state.dir) < 0 ? -1 : 1;
   const atlas = sprite.userData?.atlas;
   if (atlas?.source === 'primary' && atlas.texture) {
-    const uv = pawnSlugMatthiasRunUvWindow();
-    atlas.texture.repeat?.set?.(atlas.texture.repeat.x, uv.repeatY);
-    atlas.texture.offset?.set?.(atlas.texture.offset.x, uv.offsetY);
+    const uv = pawnSlugMatthiasRunUvWindow(appliedFrame, direction);
+    atlas.texture.repeat?.set?.(uv.repeatX, uv.repeatY);
+    atlas.texture.offset?.set?.(uv.offsetX, uv.offsetY);
   }
 
-  const direction = Number(state.dir) < 0 ? -1 : 1;
-  sprite.position.y -= cadence * PAWN_SLUG_MATTHIAS_RUN_POLISH.maxVerticalCompensation;
+  // Keep the sprite planted. The authored frames already contain leg motion;
+  // adding world-space Y oscillation is what made Matthias visibly "trot".
   sprite.scale.x *= PAWN_SLUG_MATTHIAS_RUN_POLISH.stretchX;
   sprite.scale.y *= PAWN_SLUG_MATTHIAS_RUN_POLISH.compressY;
   if (sprite.material) {
@@ -63,7 +92,7 @@ export function applyPawnSlugMatthiasRunPolish(sprite, state = {}) {
     );
   }
 
-  const result = Object.freeze({ cadence, frameIndex, direction });
+  const result = Object.freeze({ cadence, frameIndex: appliedFrame, direction });
   sprite.userData.pawnSlugRunPolish = result;
   return result;
 }
