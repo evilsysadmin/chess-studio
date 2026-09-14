@@ -37,7 +37,6 @@ INVENTORY = {
     'staging-preview.yml': 'delivery-preview',
     'synthetic-health.yml': 'observability',
     'war-room-runtime-marathon.yml': 'soak-regression',
-    'workflow-debt.yml': 'quality-meta',
 }
 
 BUDGETS = (
