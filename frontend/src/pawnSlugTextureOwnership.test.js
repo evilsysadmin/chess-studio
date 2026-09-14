@@ -18,6 +18,13 @@ describe('Pawn Slug texture ownership', () => {
     expect(PAWN_SLUG_TEXTURE_OWNERSHIP_META.compareWithoutAllocation).toBe(true);
   });
 
+  it('protects an active premium enemy texture from a late legacy loader', () => {
+    const premium = { userData: { pawnSlugPremiumEnemyRetained: true }, dispose: vi.fn() };
+    const lateFallback = { userData: {} };
+    expect(pawnSlugShouldDisposePreviousTexture(premium, lateFallback)).toBe(false);
+    expect(PAWN_SLUG_TEXTURE_OWNERSHIP_META.premiumEnemyTextureProtectedFromLateFallback).toBe(true);
+  });
+
   it('never disposes when there is no previous texture or it is unchanged', () => {
     const texture = { userData: {} };
     expect(pawnSlugShouldDisposePreviousTexture(null, texture)).toBe(false);
