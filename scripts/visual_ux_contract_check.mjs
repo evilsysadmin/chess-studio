@@ -79,7 +79,7 @@ const checks = [
     'Home debe mantener a Matthias como residente no bloqueante, con bocadillo sólo al hablar y reduced-motion',
   ],
   [/\.combat-battle-screen[\s\S]*?calc\(100dvh - 14\.5rem\)/.test(viewportCss), 'Combat debe presupuestar HUD y controles en altura'],
-  [/--campaign-map-art/.test(read('frontend/src/components/CombatCampaignMap.jsx')) && /campaign-map-art/.test(finalCss), 'el mapa debe conservar el fondo artístico de campaña'],
+  [/\.campaign-map-art/.test(finalCss) && /var\(--campaign-map-art\)/.test(finalCss), 'el CSS del mapa debe conservar el fondo artístico de campaña'],
   [/9\.375%[\s\S]*11\.607%/.test(finalCss), 'BASE/BOSS deben usar márgenes horizontales seguros'],
   [/desktop 1440x900 · Partida completa cabe en viewport/.test(smoke), 'falta regresión desktop 1440x900 de partida'],
   [/desktop 1366x768 · Partida compacta conserva tablero/.test(smoke), 'falta regresión portátil 1366x768 de partida'],
