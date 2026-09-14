@@ -22,6 +22,20 @@ async function assertNoHorizontalOverflow(page, label) {
   expect(overflow.scrollWidth, `${label}: horizontal overflow`).toBeLessThanOrEqual(overflow.clientWidth + 1);
 }
 
+async function assertSpecialModesDensity(shell) {
+  const density = await shell.locator('.mechanic-library').evaluate((root) => {
+    const list = root.querySelector('.mechanic-library-list')?.getBoundingClientRect();
+    const detail = root.querySelector('.mechanic-library-detail')?.getBoundingClientRect();
+    return {
+      listHeight: list?.height || 0,
+      detailHeight: detail?.height || 0,
+    };
+  });
+
+  expect(density.detailHeight, 'special modes: detail should size to its lesson, not the rail').toBeLessThanOrEqual(480);
+  expect(density.detailHeight, 'special modes: detail should remain visibly shorter than the scroll rail').toBeLessThan(density.listHeight - 40);
+}
+
 async function capture(page, label) {
   await settle(page);
   await assertNoHorizontalOverflow(page, label);
@@ -57,5 +71,7 @@ test('Entrenar · captura visual de Escuela, Glosario y Modos especiales', async
 
   await shell.getByRole('button', { name: 'Modos especiales' }).click();
   await expect(shell.locator('.mechanic-library')).toBeVisible();
+  await settle(page);
+  await assertSpecialModesDensity(shell);
   await capture(page, 'special-modes');
 });
