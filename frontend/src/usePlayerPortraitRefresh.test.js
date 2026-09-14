@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPlayerPortraitRefreshFacts } from './usePlayerPortraitRefresh.js';
+import { buildPlayerPortraitRefreshFacts } from './playerPortraitRefreshFacts.js';
 
 describe('player portrait prewarm facts', () => {
   it('precalienta con el mismo historial factual de entrenamiento que Player Model', () => {
