@@ -3,7 +3,7 @@ import {
   animateMatthiasSlugSprite as animateLegacyMatthiasSlugSprite,
   animatePanzerRookSprite as animateLegacyPanzerRookSprite,
   createWeaponSprite as createLegacyWeaponSprite,
-} from './pawnSlugSpritesLegacy.js';
+} from './pawnSlugSpriteCore.js';
 import {
   PAWN_SLUG_ENEMY_RUN_META,
   animateSlugEnemySprite,
@@ -14,7 +14,7 @@ import { pawnSlugPanzerRookEntryPose } from './pawnSlugBossEntryMotion.js';
 import { applyPawnSlugMatthiasPremiumMotion } from './pawnSlugMatthiasPremiumMotion.js';
 import { playPawnSlugEnemyImpactSfx, playPawnSlugPlayerHitSfx } from './pawnSlugSfx.js';
 
-export * from './pawnSlugSpritesLegacy.js';
+export * from './pawnSlugSpriteCore.js';
 export {
   PAWN_SLUG_ENEMY_RUN_META,
   animateSlugEnemySprite,
