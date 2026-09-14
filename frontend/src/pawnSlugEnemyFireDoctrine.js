@@ -19,6 +19,28 @@ export const PAWN_SLUG_ENEMY_FIRE_PROFILES = freeze({
   panzerfaust: freeze({ range: 15, minRange: 3.6, cooldownMin: 1.8, cooldownMax: 2.45, speed: 5.6, damage: 30, pellets: 1, spread: 0, explosive: true, telegraph: 0.34 }),
 });
 
+const PREFIRE_IDLE = freeze({ phase: 'idle', remaining: 0, progress: 0 });
+const PREFIRE_FIRE = freeze({ phase: 'fire', remaining: 0, progress: 1 });
+
+function createShotPlan(weapon, profile) {
+  return freeze({
+    weapon,
+    range: profile.range,
+    minRange: Math.max(0, Number(profile.minRange) || 0),
+    speed: profile.speed,
+    damage: profile.damage,
+    pellets: profile.pellets,
+    spread: profile.spread,
+    explosive: Boolean(profile.explosive),
+    telegraph: profile.telegraph || 0,
+  });
+}
+
+const SHOT_PLAN_CACHE = freeze(Object.fromEntries(
+  Object.entries(PAWN_SLUG_ENEMY_FIRE_PROFILES)
+    .map(([weapon, profile]) => [weapon, createShotPlan(weapon, profile)]),
+));
+
 export function pawnSlugEnemyFireProfile(weapon = 'pistol') {
   return PAWN_SLUG_ENEMY_FIRE_PROFILES[weapon] || PAWN_SLUG_ENEMY_FIRE_PROFILES.pistol;
 }
@@ -37,13 +59,13 @@ export function pawnSlugEnemyCanFire(weapon = 'pistol', distance = Infinity, rol
 
 export function pawnSlugEnemyPrefireStep(weapon = 'pistol', { remaining = 0, ready = false, dt = 0 } = {}) {
   const telegraph = Math.max(0, Number(pawnSlugEnemyFireProfile(weapon).telegraph) || 0);
-  if (!ready) return freeze({ phase: 'idle', remaining: 0, progress: 0 });
-  if (telegraph <= 0) return freeze({ phase: 'fire', remaining: 0, progress: 1 });
+  if (!ready) return PREFIRE_IDLE;
+  if (telegraph <= 0) return PREFIRE_FIRE;
 
   const elapsed = Math.max(0, Number(dt) || 0);
   const current = Math.max(0, Number(remaining) || 0);
   const next = Math.max(0, (current > 0 ? current : telegraph) - elapsed);
-  if (next <= 0) return freeze({ phase: 'fire', remaining: 0, progress: 1 });
+  if (next <= 0) return PREFIRE_FIRE;
   return freeze({ phase: 'telegraph', remaining: next, progress: 1 - next / telegraph });
 }
 
@@ -62,16 +84,7 @@ export function pawnSlugEnemyFireCooldown(weapon = 'pistol', unit = 0.5) {
 }
 
 export function pawnSlugEnemyShotPlan(weapon = 'pistol') {
-  const profile = pawnSlugEnemyFireProfile(weapon);
-  return freeze({
-    weapon,
-    range: profile.range,
-    minRange: Math.max(0, Number(profile.minRange) || 0),
-    speed: profile.speed,
-    damage: profile.damage,
-    pellets: profile.pellets,
-    spread: profile.spread,
-    explosive: Boolean(profile.explosive),
-    telegraph: profile.telegraph || 0,
-  });
+  const cached = SHOT_PLAN_CACHE[weapon];
+  if (cached) return cached;
+  return createShotPlan(weapon, pawnSlugEnemyFireProfile(weapon));
 }
