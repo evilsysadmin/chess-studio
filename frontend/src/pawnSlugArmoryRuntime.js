@@ -102,6 +102,7 @@ export function createPawnSlugArmoryGame(host, { onReady, onHud, expertMode = fa
   let latestHud = null;
   let spentCredits = 0;
   let engine;
+  if (host?.dataset) host.dataset.pawnSlugPaused = 'false';
   const hudForwarder = createPawnSlugHudForwarder(
     onHud,
     (hud) => decorateHud(hud, spentCredits, expert),
@@ -109,6 +110,7 @@ export function createPawnSlugArmoryGame(host, { onReady, onHud, expertMode = fa
 
   function forwardHud(nextHud) {
     latestHud = nextHud;
+    if (host?.dataset && nextHud?.phase) host.dataset.pawnSlugPhase = String(nextHud.phase);
     hudForwarder.forward(nextHud);
   }
 
@@ -116,17 +118,30 @@ export function createPawnSlugArmoryGame(host, { onReady, onHud, expertMode = fa
     engine = createPawnSlugGame(host, { onReady, onHud: forwardHud });
   } catch (error) {
     hudForwarder.stop();
+    if (host?.dataset) {
+      delete host.dataset.pawnSlugPaused;
+      delete host.dataset.pawnSlugPhase;
+    }
     setPawnSlugRuntimeRpgEnabled(true);
     throw error;
   }
 
   return {
     ...engine,
+    setPaused(value) {
+      const paused = Boolean(value);
+      if (host?.dataset) host.dataset.pawnSlugPaused = paused ? 'true' : 'false';
+      engine.setPaused?.(paused);
+    },
     destroy() {
       hudForwarder.stop();
       try {
         engine.destroy?.();
       } finally {
+        if (host?.dataset) {
+          delete host.dataset.pawnSlugPaused;
+          delete host.dataset.pawnSlugPhase;
+        }
         setPawnSlugRuntimeRpgEnabled(true);
         destroyPawnSlugPremiumSfx();
       }
@@ -151,4 +166,5 @@ export const PAWN_SLUG_ARMORY_RUNTIME_META = Object.freeze({
   expertModeOwnsEconomyAndRpg: true,
   premiumSfxLifecycle: 'destroy-with-runtime',
   hudForwarding: `coalesced-${PAWN_SLUG_HUD_FORWARD_INTERVAL_MS}ms-critical-immediate`,
+  renderStateDataset: 'phase-plus-paused',
 });

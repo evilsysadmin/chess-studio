@@ -1,5 +1,5 @@
 export const PAWN_SLUG_RENDER_BUDGET = Object.freeze({
-  version: 'adaptive-gpu-budget-v2',
+  version: 'adaptive-gpu-budget-v3-idle-cadence',
   desktopPixelRatioCap: 1.35,
   balancedPixelRatioCap: 1.15,
   lowPixelRatioCap: 1,
@@ -7,6 +7,9 @@ export const PAWN_SLUG_RENDER_BUDGET = Object.freeze({
   lowFrameMs: 30,
   sampleFrames: 24,
   maxPaintHz: 90,
+  idlePaintHz: 24,
+  pausedPaintHz: 2,
+  diagnosticsSampleMs: 1000,
   localLightRange: 24,
 });
 
@@ -31,6 +34,28 @@ export function pawnSlugAdaptiveTierForFrameMs(frameMs) {
   return 'high';
 }
 
+export function pawnSlugPaintHzForState({
+  paused = false,
+  phase = 'playing',
+  maxPaintHz = PAWN_SLUG_RENDER_BUDGET.maxPaintHz,
+} = {}) {
+  if (paused === true || paused === 'true') return PAWN_SLUG_RENDER_BUDGET.pausedPaintHz;
+  if (phase && phase !== 'playing') return PAWN_SLUG_RENDER_BUDGET.idlePaintHz;
+  return Math.max(60, Number(maxPaintHz) || PAWN_SLUG_RENDER_BUDGET.maxPaintHz);
+}
+
+export function pawnSlugRenderDiagnostics(renderer) {
+  const render = renderer?.info?.render || {};
+  const memory = renderer?.info?.memory || {};
+  return Object.freeze({
+    drawCalls: Math.max(0, Number(render.calls) || 0),
+    triangles: Math.max(0, Number(render.triangles) || 0),
+    points: Math.max(0, Number(render.points) || 0),
+    textures: Math.max(0, Number(memory.textures) || 0),
+    geometries: Math.max(0, Number(memory.geometries) || 0),
+  });
+}
+
 function deferAfterRender(task) {
   if (typeof queueMicrotask === 'function') {
     queueMicrotask(task);
@@ -41,6 +66,21 @@ function deferAfterRender(task) {
 
 function rendererDataset(renderer) {
   return renderer?.domElement?.dataset || null;
+}
+
+function rendererHostDataset(renderer) {
+  return renderer?.domElement?.parentElement?.dataset || null;
+}
+
+function writeRenderDiagnostics(renderer) {
+  const dataset = rendererDataset(renderer);
+  if (!dataset || !renderer?.info) return;
+  const metrics = pawnSlugRenderDiagnostics(renderer);
+  dataset.pawnSlugDrawCalls = String(metrics.drawCalls);
+  dataset.pawnSlugTriangles = String(metrics.triangles);
+  dataset.pawnSlugPoints = String(metrics.points);
+  dataset.pawnSlugTextures = String(metrics.textures);
+  dataset.pawnSlugGeometries = String(metrics.geometries);
 }
 
 function schedulePixelRatio(renderer, target) {
@@ -96,17 +136,35 @@ function installPawnSlugPaintLimiter(renderer, maxPaintHz = PAWN_SLUG_RENDER_BUD
   if (!renderer || paintLimitedRenderers.has(renderer) || typeof renderer.render !== 'function') return false;
   paintLimitedRenderers.add(renderer);
   const originalRender = renderer.render.bind(renderer);
-  const minimumInterval = 1000 / Math.max(60, Number(maxPaintHz) || PAWN_SLUG_RENDER_BUDGET.maxPaintHz);
   let lastPaintAt = Number.NEGATIVE_INFINITY;
+  let lastPaintHz = null;
+  let lastDiagnosticsAt = Number.NEGATIVE_INFINITY;
 
   renderer.render = function pawnSlugBudgetedRender(scene, camera) {
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const hostDataset = rendererHostDataset(renderer);
+    const paintHz = pawnSlugPaintHzForState({
+      paused: hostDataset?.pawnSlugPaused,
+      phase: hostDataset?.pawnSlugPhase || 'playing',
+      maxPaintHz,
+    });
+    const minimumInterval = 1000 / paintHz;
+    if (paintHz !== lastPaintHz) {
+      lastPaintHz = paintHz;
+      const dataset = rendererDataset(renderer);
+      if (dataset) dataset.pawnSlugPaintCap = `${paintHz}hz`;
+    }
     if (now - lastPaintAt < minimumInterval) return undefined;
     lastPaintAt = now;
-    return originalRender(scene, camera);
+    const result = originalRender(scene, camera);
+    if (now - lastDiagnosticsAt >= PAWN_SLUG_RENDER_BUDGET.diagnosticsSampleMs) {
+      lastDiagnosticsAt = now;
+      writeRenderDiagnostics(renderer);
+    }
+    return result;
   };
   const dataset = rendererDataset(renderer);
-  if (dataset) dataset.pawnSlugPaintCap = `${Math.round(1000 / minimumInterval)}hz`;
+  if (dataset) dataset.pawnSlugPaintCap = `${pawnSlugPaintHzForState({ maxPaintHz })}hz`;
   return true;
 }
 
