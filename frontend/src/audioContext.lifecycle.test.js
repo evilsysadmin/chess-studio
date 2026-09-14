@@ -11,6 +11,7 @@ vi.mock('./soundPreferences.js', () => ({
 }));
 
 import { createChesscomAudio } from './chesscomAudio.js';
+import { createPawnSlugRuntimeSfx } from './pawnSlugRuntimeSfx.js';
 
 class FakeAudioParam {
   setValueAtTime() {}
@@ -99,6 +100,24 @@ describe('audio context lifecycle', () => {
 
     expect(FakeAudioContext.created).toBe(100);
     expect(FakeAudioContext.closed).toBe(100);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('cancels delayed Pawn Slug cues and cannot resurrect audio after destroy', async () => {
+    const sfx = createPawnSlugRuntimeSfx();
+    sfx.play('levelUp');
+
+    expect(FakeAudioContext.created).toBe(1);
+    expect(vi.getTimerCount()).toBe(2);
+
+    sfx.destroy();
+    sfx.destroy();
+    sfx.play('pickup');
+    vi.runAllTimers();
+    await Promise.resolve();
+
+    expect(FakeAudioContext.closed).toBe(1);
+    expect(FakeAudioContext.created).toBe(1);
     expect(vi.getTimerCount()).toBe(0);
   });
 });
