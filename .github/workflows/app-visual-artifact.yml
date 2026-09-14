@@ -3,19 +3,19 @@ name: App · visual artifact
 on:
   pull_request:
     paths:
-      - 'frontend/src/**/*.jsx'
-      - 'frontend/src/**/*.css'
-      - 'frontend/src/components/**'
-      - 'frontend/src/assets/**'
+      - frontend/src/**/*.jsx
+      - frontend/src/**/*.css
+      - frontend/src/components/**
+      - frontend/src/assets/**
       - '!frontend/src/**/*.test.js'
       - '!frontend/src/**/*.test.jsx'
-      - 'frontend/public/**'
-      - 'e2e/*visual*.spec.js'
-      - 'e2e/browser-*-health.spec.js'
-      - 'scripts/app_visual_*'
-      - 'scripts/war_room_visual_freeze_check.mjs'
-      - '.github/actions/app-visual-pipeline/**'
-      - '.github/workflows/app-visual-artifact.yml'
+      - frontend/public/**
+      - e2e/*visual*.spec.js
+      - e2e/browser-*-health.spec.js
+      - scripts/app_visual_*
+      - scripts/war_room_visual_freeze_check.mjs
+      - .github/actions/app-visual-pipeline/**
+      - .github/workflows/app-visual-artifact.yml
   workflow_dispatch:
 
 permissions:
@@ -49,7 +49,6 @@ jobs:
           fetch-depth: 0
       - id: scope
         if: github.event_name == 'pull_request'
-        shell: bash
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
