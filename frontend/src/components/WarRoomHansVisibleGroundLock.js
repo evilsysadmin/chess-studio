@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import { commitWarRoomHansGroundedY } from './WarRoomHansTransformOwner.js';
 
-export const WAR_ROOM_HANS_VISIBLE_GROUND_LOCK_VERSION = 'hans-visible-ground-lock-v2-dom-health';
+export const WAR_ROOM_HANS_VISIBLE_GROUND_LOCK_VERSION = 'hans-visible-ground-lock-v3-transform-owner';
 
 const HANS_NAME = 'war-room-hans-butler';
 const CANVAS_SELECTOR = '.game-board-stack-3d .board3d-main-canvas';
@@ -9,7 +10,7 @@ const SURFACE_NAMES = Object.freeze([
   'war-room-command-carpet-bed',
   'war-room-castle-floor-slab',
 ]);
-const HOOK_MARKER = 'war-room-hans-visible-ground-lock-v2';
+const HOOK_MARKER = 'war-room-hans-visible-ground-lock-v3';
 const MAX_CORRECTION = 1.5;
 
 function captureSurfaces(root) {
@@ -85,8 +86,7 @@ function reconcileVisibleGround(state, source = 'visible-mesh-finalizer') {
   scratch.targetLocal.copy(scratch.targetWorld);
   hans.parent.worldToLocal?.(scratch.targetLocal);
   if (!Number.isFinite(scratch.targetLocal.y)) return false;
-
-  hans.position.y = scratch.targetLocal.y;
+  if (!commitWarRoomHansGroundedY(hans, scratch.targetLocal.y, source)) return false;
   hans.updateMatrixWorld?.(true);
 
   const correctedBottoms = [
