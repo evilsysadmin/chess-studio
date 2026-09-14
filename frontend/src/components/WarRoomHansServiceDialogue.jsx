@@ -1,15 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { warRoomHansChoreDialogueSpec } from './WarRoomHansChoreContract.js';
+import { hansDialogueAnchorScreenEligible } from './WarRoomHansDialogueAnchor.js';
 import { warRoomHansServiceDialogueSpec } from './WarRoomHansServiceContract.js';
 import { projectHansFireReplyAnchor } from './WarRoomHansFireCallContract.js';
 import './WarRoomHansFireCall.css';
-
-const HANS_DIALOGUE_ANCHOR_SCREEN_STATES = new Set(['onscreen', 'edge', 'offscreen']);
-
-export function hansDialogueAnchorScreenEligible(screenState) {
-  return HANS_DIALOGUE_ANCHOR_SCREEN_STATES.has(String(screenState || ''));
-}
 
 function sameAnchor(current, next) {
   if (current === next) return true;
