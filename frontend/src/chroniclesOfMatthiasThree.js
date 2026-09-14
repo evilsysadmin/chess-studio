@@ -14,6 +14,7 @@ import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js'
 
 const CELL = 4;
 const CAMERA_Y = 1.62;
+const TORCH_WALL_OFFSET = 1.9;
 const ATTACK_FX = Object.freeze({
   matthias: Object.freeze({ color: 0xd5aa62, angle: -0.18, width: 0.9, ring: 0.78 }),
   rook: Object.freeze({ color: 0xc96a3e, angle: 0.04, width: 1.3, ring: 1.18 }),
@@ -21,8 +22,33 @@ const ATTACK_FX = Object.freeze({
   knight: Object.freeze({ color: 0x8da8bd, angle: -0.62, width: 1.12, ring: 0.86 }),
 });
 
+export const CHRONICLES_TORCH_PLACEMENTS = Object.freeze([
+  Object.freeze({ x: 1, y: 5, side: 'west' }),
+  Object.freeze({ x: 5, y: 5, side: 'east' }),
+  Object.freeze({ x: 1, y: 3, side: 'west' }),
+  Object.freeze({ x: 5, y: 3, side: 'east' }),
+  Object.freeze({ x: 2, y: 1, side: 'north' }),
+  Object.freeze({ x: 5, y: 1, side: 'north' }),
+]);
+
 function worldForCell(x, y) {
   return new THREE.Vector3((x - 3) * CELL, CAMERA_Y, (y - 3) * CELL);
+}
+
+export function chroniclesTorchTransform(x, y, side) {
+  const cell = worldForCell(x, y);
+  const faces = {
+    west: { dx: -TORCH_WALL_OFFSET, dz: 0, yaw: 0 },
+    east: { dx: TORCH_WALL_OFFSET, dz: 0, yaw: Math.PI },
+    north: { dx: 0, dz: -TORCH_WALL_OFFSET, yaw: -Math.PI / 2 },
+    south: { dx: 0, dz: TORCH_WALL_OFFSET, yaw: Math.PI / 2 },
+  };
+  const face = faces[side];
+  if (!face) throw new Error(`Unknown Chronicles torch wall side: ${side}`);
+  return {
+    position: new THREE.Vector3(cell.x + face.dx, 2.12, cell.z + face.dz),
+    yaw: face.yaw,
+  };
 }
 
 function createDungeonScene(scene, { coarsePointer = false } = {}) {
@@ -108,21 +134,35 @@ function createDungeonScene(scene, { coarsePointer = false } = {}) {
   const torchMaterial = new THREE.MeshStandardMaterial({ color: 0x3b2618, roughness: 0.7, metalness: 0.45 });
   const flameMaterial = new THREE.MeshStandardMaterial({ color: 0xffaa44, roughness: 0.5, emissive: 0xff5b16, emissiveIntensity: 2.4 });
   const torches = [];
-  [[1, 5], [5, 5], [1, 3], [5, 3], [2, 1], [5, 1]].forEach(([x, y], index) => {
-    const p = worldForCell(x, y);
+  CHRONICLES_TORCH_PLACEMENTS.forEach(({ x, y, side }, index) => {
+    const transform = chroniclesTorchTransform(x, y, side);
     const root = new THREE.Group();
-    const bracket = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 0.7, 8), torchMaterial);
+    root.name = `chronicles-wall-torch-${index}`;
+
+    const wallPlate = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.42, 0.3), torchMaterial);
+    wallPlate.position.x = -0.035;
+    wallPlate.castShadow = true;
+    const bracket = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.075, 0.72, 8), torchMaterial);
+    bracket.position.x = 0.2;
     bracket.rotation.z = Math.PI / 2;
+    bracket.castShadow = true;
     const flame = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), flameMaterial);
-    flame.scale.y = 1.8;
-    flame.position.set(0.38, 0.18, 0);
-    const light = new THREE.PointLight(0xff7a32, 1.8, 10, 2);
-    light.position.set(0.38, 0.18, 0);
-    root.add(bracket, flame, light);
-    root.position.set(p.x, 2.1, p.z);
-    root.rotation.y = (index % 2) * Math.PI;
+    flame.scale.set(0.92, 1.76, 0.92);
+    flame.position.set(0.51, 0.2, 0);
+    const baseIntensity = coarsePointer ? 1.5 : 1.95;
+    const light = new THREE.PointLight(0xff7a32, baseIntensity, 9.5, 2);
+    light.position.set(0.51, 0.2, 0);
+    if (!coarsePointer && (index === 2 || index === 3)) {
+      light.castShadow = true;
+      light.shadow.mapSize.set(256, 256);
+      light.shadow.bias = -0.001;
+      light.shadow.normalBias = 0.04;
+    }
+    root.add(wallPlate, bracket, flame, light);
+    root.position.copy(transform.position);
+    root.rotation.y = transform.yaw;
     scene.add(root);
-    torches.push({ root, flame, light, phase: index * 1.7 });
+    torches.push({ root, flame, light, baseIntensity, phase: index * 1.7 });
   });
 
   return { enemies: enemyModels, spectralChapel, sigilMaterial, gateMaterial, gateRune, torches };
@@ -142,6 +182,8 @@ function disposeScene(scene) {
 
 function configureRenderer(renderer, { coarsePointer, alpha = false }) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = alpha ? 1.02 : coarsePointer ? 1.14 : 1.08;
   renderer.setClearColor(0x080706, alpha ? 0 : 1);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarsePointer ? 1.2 : 1.65));
   renderer.shadowMap.enabled = !coarsePointer;
@@ -177,8 +219,8 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
   host.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x090807, 0.045);
-  scene.add(new THREE.HemisphereLight(0x6b7480, 0x1b130d, 0.42));
+  scene.fog = new THREE.FogExp2(0x0a0c0f, coarse ? 0.038 : 0.034);
+  scene.add(new THREE.HemisphereLight(0x6f8191, 0x1b130d, coarse ? 0.35 : 0.24));
   const camera = new THREE.PerspectiveCamera(67, 1, 0.08, 70);
   camera.rotation.order = 'YXZ';
   scene.add(camera);
@@ -305,8 +347,10 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
       camera.rotation.y += wrapAngle(desiredYaw - camera.rotation.y) * 0.18;
       dungeon.torches.forEach((torch) => {
         const pulse = 0.9 + Math.sin(time * 8.5 + torch.phase) * 0.08 + Math.sin(time * 17 + torch.phase) * 0.04;
-        torch.light.intensity = 1.75 * pulse;
-        torch.flame.scale.y = 1.65 + pulse * 0.18;
+        torch.light.intensity = torch.baseIntensity * pulse;
+        const width = 0.91 + (pulse - 0.9) * 0.42;
+        torch.flame.scale.set(width, 1.54 + pulse * 0.24, width);
+        torch.flame.rotation.z = Math.sin(time * 5.7 + torch.phase) * 0.07;
       });
       CHRONICLES_ENEMIES.forEach((enemyDefinition, index) => {
         const enemy = dungeon.enemies[enemyDefinition.id];
