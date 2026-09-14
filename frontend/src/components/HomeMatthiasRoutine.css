@@ -168,3 +168,11 @@
     animation: none !important;
   }
 }
+
+/* The canonical artwork owns the stage geometry regardless of Matthias. Keep
+ * the live DOM and the 3D canvas on the same 1814×867 coordinate system. */
+@media (min-width: 1000px) and (pointer: fine) {
+  .illustrated-home__stage {
+    aspect-ratio: 1814 / 867 !important;
+  }
+}
