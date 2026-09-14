@@ -78,6 +78,18 @@ describe('Chronicles of Matthias dungeon art', () => {
     expect(coarse.getObjectByName('chronicles-wall-grime-0-0')).toBeFalsy();
   });
 
+  it('authors crypt set dressing against real wall faces while leaving coarse-pointer geometry lean', () => {
+    const desktop = buildChroniclesDungeonDressing();
+    const coarse = buildChroniclesDungeonDressing({ coarsePointer: true });
+    const names = desktop.children.map((node) => node.name);
+    const coarseNames = coarse.children.map((node) => node.name);
+
+    ['chronicles-wall-niche-', 'chronicles-hanging-chain-', 'chronicles-sarcophagus-', 'chronicles-drain-'].forEach((prefix) => {
+      expect(names.some((name) => name.startsWith(prefix))).toBe(true);
+      expect(coarseNames.some((name) => name.startsWith(prefix))).toBe(false);
+    });
+  });
+
   it('uses a restrained warm/cold hero-light composition and disables expensive shadows on coarse pointers', () => {
     const desktop = buildChroniclesDungeonDressing();
     const coarse = buildChroniclesDungeonDressing({ coarsePointer: true });
@@ -110,7 +122,7 @@ describe('Chronicles of Matthias dungeon art', () => {
     const desktop = buildChroniclesDungeonDressing();
     const coarse = buildChroniclesDungeonDressing({ coarsePointer: true });
 
-    const decorativeCount = (root) => root.children.filter((node) => /floor-crack|floor-inset|floor-puddle|wall-pilaster|wall-relief|wall-grime|wall-mineral|crypt-crest/.test(node.name)).length;
+    const decorativeCount = (root) => root.children.filter((node) => /floor-crack|floor-inset|floor-puddle|wall-pilaster|wall-relief|wall-grime|wall-mineral|wall-niche|hanging-chain|sarcophagus|drain|crypt-crest/.test(node.name)).length;
     expect(decorativeCount(desktop)).toBeGreaterThan(decorativeCount(coarse));
     expect(coarse.getObjectByName('chronicles-ceiling-rib-0-0')).toBeTruthy();
     expect(coarse.getObjectByName('chronicles-gate-keystone')).toBeTruthy();
