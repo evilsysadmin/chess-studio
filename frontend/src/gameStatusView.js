@@ -1,3 +1,5 @@
+import { boardGameOutcome } from './gameOutcome.js';
+
 export const GAME_STATUS_LABELS = Object.freeze({
   playing: '',
   check: 'Jaque',
@@ -6,6 +8,8 @@ export const GAME_STATUS_LABELS = Object.freeze({
   draw: 'Tablas',
   repetition: 'Tablas por repetición',
 });
+
+const TERMINAL_BOARD_STATUSES = new Set(['checkmate', 'stalemate', 'draw', 'repetition']);
 
 export function gameStatusView({
   status,
@@ -25,11 +29,13 @@ export function gameStatusView({
       ? 'success'
       : '';
 
-  const finalOutcome = forcedOutcome || (flagFallen
-    ? flagFinalOutcome
-    : status === 'checkmate'
-      ? (turn === humanColor ? 'loss' : 'win')
-      : 'draw');
+  const boardOutcome = boardGameOutcome({
+    isGameOver: TERMINAL_BOARD_STATUSES.has(status),
+    status,
+    turn,
+    humanColor,
+  }, humanColor);
+  const finalOutcome = forcedOutcome || (flagFallen ? flagFinalOutcome : boardOutcome);
 
   let statusText;
   if (forcedOutcome) statusText = 'Sudden Death · tres vidas agotadas';
