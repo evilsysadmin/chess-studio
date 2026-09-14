@@ -1,6 +1,6 @@
 # GitHub Actions · mapa operativo
 
-Última auditoría: 2026-09-06.
+Última auditoría: 2026-09-15.
 
 Regla: cada workflow debe representar un dominio operativo o blast radius real. Se fusiona duplicación histórica; no se fusionan promoción, rollback o acreditación sólo para bajar el contador.
 
@@ -47,7 +47,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 | Workflow | Responsabilidad |
 | --- | --- |
 | `e2e-full.yml` | Sweep completo Chromium/Firefox/WebKit semanal/manual e informativo. Ya no duplica PR: la matriz requerida y path-aware War Room/Matthias vive en `cicd.yml`. |
-| `coverage.yml` | Coverage frontend/backend semanal/manual e informativo, con caches exactas Node/Python. |
+| `coverage.yml` | Coverage frontend/backend manual e informativo, con caches exactas Node/Python. Se ejecuta bajo demanda cuando se necesita investigar cobertura; no consume runners de forma periódica. |
 | `oci-readiness.yml` | Readiness OCI unificado y path-aware: ARM64 backend y/o Terraform OCI `fmt/init/validate`. Sustituye `oci-arm64-readiness.yml` + `oci-terraform-readiness.yml`. No hace apply. |
 
 ## Observabilidad y operación
@@ -103,6 +103,7 @@ Production · promote
 - `main-delivery-handoff.yml` → retirado; el merge nativo produce el `push` normal a `main` y no necesita redispatch.
 - `matthias-visual.yml` → absorbido primero por `e2e-full.yml`; sus gates PR path-aware viven ahora en `cicd.yml`.
 - `oci-arm64-readiness.yml` + `oci-terraform-readiness.yml` → `oci-readiness.yml`.
+- `war-room-runtime-marathon.yml` → retirado; sus specs siguen cubiertas por el gate War Room path-aware y el sweep completo de `e2e-full.yml`.
 - `infra/grafana/terraform/` → eliminado; dashboards pasan a publisher API state-less.
 - Instalaciones Node directas en CI/coverage/browser/staging preview/producción → acciones de cache exacta.
 - Cache Trivy por `github.run_id` → namespace estable por versión + epoch diario.
