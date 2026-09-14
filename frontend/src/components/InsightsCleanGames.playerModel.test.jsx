@@ -34,6 +34,26 @@ describe('InsightsCleanGames · Player Model wiring', () => {
     mocks.buildPlayerModel.mockReset();
   });
 
+  it('uses the workspace Player Model without rebuilding a parallel snapshot', () => {
+    const shared = model({
+      eligibleGames: 2,
+      cleanGames: 2,
+      cleanRate: 100,
+      currentStreak: 2,
+      bestStreak: 2,
+      latestEligibleClean: true,
+      latestEligibleAt: '2026-09-14T10:00:00.000Z',
+      latestCleanAt: '2026-09-14T10:00:00.000Z',
+    });
+
+    const html = renderToStaticMarkup(<InsightsCleanGames playerModel={shared} />);
+
+    expect(mocks.loadCleanGameRecords).not.toHaveBeenCalled();
+    expect(mocks.buildPlayerModel).not.toHaveBeenCalled();
+    expect(html).toContain('2/2');
+    expect(html).toContain('100%');
+  });
+
   it('renders clean-play facts and repeated positive decisions from Player Model', () => {
     const records = { g1: { version: 1, sufficientSample: true, clean: true } };
     mocks.loadCleanGameRecords.mockReturnValue(records);
