@@ -49,7 +49,7 @@ GLOBAL_HARNESS_PATHS = {
 FRONTEND_HARNESS_PATHS = {"scripts/frontend_test_groups.mjs", "scripts/run_frontend_test_group.mjs"}
 NODE_HARNESS_PATHS = {".github/actions/cache-node-modules/action.yml"}
 BACKEND_HARNESS_PATHS = {".github/actions/cache-python-venv/action.yml"}
-BROWSER_HARNESS_PATHS = {".github/actions/setup-browser-e2e/action.yml"}
+BROWSER_HARNESS_PATHS = {".github/actions/setup-browser-e2e/action.yml", "scripts/run_core_e2e_lane.py"}
 PACKAGE_METADATA_PATH = "frontend/package.json"
 
 PAWN_SLUG_RE = re.compile(
@@ -265,6 +265,7 @@ def self_test() -> None:
     _expect([".github/actions/cache-python-venv/action.yml"], run_backend=True)
     _expect_core([".github/actions/cache-node-modules/action.yml"], run_frontend=True)
     _expect_core([".github/actions/setup-browser-e2e/action.yml"])
+    _expect_core(["scripts/run_core_e2e_lane.py"])
 
     assert json.loads(dict(line.split("=", 1) for line in classify([PACKAGE_METADATA_PATH]).lines())["core_e2e_matrix"]) == {"lane": ["smoke"]}
     assert classify([".github/workflows/cicd.yml"]) == Scope.all()
