@@ -114,7 +114,8 @@ function applyAtlasWindow(sprite) {
   }
   texture.repeat.set(window.repeatX, window.repeatY);
   texture.offset.set(window.offsetX, window.offsetY);
-  texture.needsUpdate = true;
+  // repeat/offset only change the texture transform uniform. Marking the texture
+  // itself dirty here forces Three.js to re-upload the full atlas to the GPU.
 }
 
 function tintSprite(sprite, hurt, time) {
