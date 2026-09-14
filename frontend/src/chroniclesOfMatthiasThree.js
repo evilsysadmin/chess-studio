@@ -8,6 +8,7 @@ import {
 } from './chroniclesOfMatthias.js';
 import { buildChroniclesCharacter, buildCorruptedPawn, buildGateJailer } from './chroniclesOfMatthiasArt.js';
 import { buildChroniclesDungeonDressing } from './chroniclesOfMatthiasDungeonArt.js';
+import { buildChroniclesDungeonAtmosphere } from './chroniclesOfMatthiasAtmosphere.js';
 import { buildScavengerKnight } from './chroniclesOfMatthiasScavengerKnight.js';
 import { buildSpectralBishop, buildSpectralChapel } from './chroniclesOfMatthiasSpectralBishop.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
@@ -228,7 +229,8 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
 
   const dungeon = createDungeonScene(scene, { coarsePointer: coarse });
   const dressing = buildChroniclesDungeonDressing({ coarsePointer: coarse });
-  scene.add(dressing);
+  const atmosphere = buildChroniclesDungeonAtmosphere({ coarsePointer: coarse, reducedMotion });
+  scene.add(dressing, atmosphere);
   let destroyed = false;
   let visible = document.visibilityState !== 'hidden';
   let desiredPosition = worldForCell(1, 5);
@@ -345,6 +347,7 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
     if (!reducedMotion) {
       camera.position.lerp(desiredPosition, 0.16);
       camera.rotation.y += wrapAngle(desiredYaw - camera.rotation.y) * 0.18;
+      atmosphere.userData.updateChroniclesAtmosphere?.(time);
       dungeon.torches.forEach((torch) => {
         const pulse = 0.9 + Math.sin(time * 8.5 + torch.phase) * 0.08 + Math.sin(time * 17 + torch.phase) * 0.04;
         torch.light.intensity = torch.baseIntensity * pulse;
