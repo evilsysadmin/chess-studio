@@ -110,6 +110,13 @@ for command in ['make static-preflight', 'make test-frontend', 'make test-backen
     if command not in ci:
         raise SystemExit(f'CI se ha desalineado del entrypoint local: falta `{command}`')
 
+two_dot_diff = 'git diff --name-only "$BASE_SHA" "$HEAD_SHA"'
+three_dot_diff = 'git diff --name-only "$BASE_SHA...$HEAD_SHA"'
+if two_dot_diff in ci:
+    raise SystemExit('CI no puede comparar base/head directamente: el scope de PR debe partir del merge-base')
+if ci.count(three_dot_diff) != 3:
+    raise SystemExit('CI debe usar exactamente tres diffs PR merge-base: Quality, browser especializado y seguridad')
+
 canonical_match = re.search(r'^CRITICAL_E2E_GREP\s*:=\s*(.+)$', makefile, re.M)
 if not canonical_match:
     raise SystemExit('El grep E2E crítico debe vivir en Makefile como contrato único')
