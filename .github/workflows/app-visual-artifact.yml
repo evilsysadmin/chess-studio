@@ -1,5 +1,4 @@
 name: App · visual artifact
-
 on:
   pull_request:
     paths:
@@ -20,17 +19,13 @@ on:
       - .github/actions/app-visual-pipeline/**
       - .github/workflows/app-visual-artifact.yml
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
   group: app-visual-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   capture:
-    name: App · visual capture
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
