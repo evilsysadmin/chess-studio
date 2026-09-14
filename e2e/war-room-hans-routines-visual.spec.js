@@ -1,0 +1,188 @@
+import { chromium, expect, test } from '@playwright/test';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { WAR_ROOM_HANS_CHORE_EVENTS } from '../frontend/src/components/WarRoomHansChoreContract.js';
+import {
+  WAR_ROOM_HANS_EVENTS,
+  warRoomHansEventForGame,
+} from '../frontend/src/components/WarRoomHansEventContract.js';
+
+const ARTIFACT_DIR = '../.artifacts/app-visual/hans-routines';
+const TEMP_VIDEO_DIR = '../.artifacts/hans-routine-video-tmp';
+const VISIBLE_SCREEN = /^(?:onscreen|edge|offscreen)$/;
+const MAX_GROUND_GAP = 0.02;
+const SAMPLE_MS = 400;
+const OBSERVE_MS = 14_000;
+const SERVICE_EVENTS = new Set(['water-plant', 'espresso']);
+const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
+const REQUESTED_EVENTS = String(process.env.HANS_ROUTINE_EVENTS || '')
+  .split(',')
+  .map((eventName) => eventName.trim())
+  .filter(Boolean);
+const CAPTURE_EVENTS = REQUESTED_EVENTS.length ? REQUESTED_EVENTS : [...WAR_ROOM_HANS_EVENTS];
+
+for (const eventName of CAPTURE_EVENTS) {
+  if (!WAR_ROOM_HANS_EVENTS.includes(eventName)) {
+    throw new Error(`Unknown Hans routine video event: ${eventName}`);
+  }
+}
+
+test.describe.configure({ mode: 'parallel' });
+
+function firstGameIndexForEvent(eventName) {
+  for (let index = 1; index <= 96; index += 1) {
+    if (warRoomHansEventForGame(`e2e-game-${index}`) === eventName) return index;
+  }
+  throw new Error(`Hans routine visual capture could not find ${eventName}`);
+}
+
+async function seedGamesBeforeEvent(page, eventName) {
+  const targetIndex = firstGameIndexForEvent(eventName);
+  if (targetIndex <= 1) return;
+  await page.evaluate(async (count) => {
+    for (let index = 1; index < count; index += 1) {
+      await fetch('http://localhost:4000/api/games', {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: '{}',
+      });
+    }
+  }, targetIndex);
+}
+
+function expectedRoute(eventName) {
+  if (eventName === 'mop') return 'mop-room';
+  if (SERVICE_EVENTS.has(eventName)) return `service-${eventName}`;
+  if (CHORE_EVENTS.has(eventName)) return `chore-${eventName}`;
+  return '';
+}
+
+async function waitForRoutineStart(canvas, eventName) {
+  if (eventName === 'fire') {
+    await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: 45_000 });
+    await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 15_000 });
+    await expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: 60_000 });
+    await expect(canvas).toHaveAttribute('data-war-room-hans-screen', VISIBLE_SCREEN, { timeout: 20_000 });
+    return;
+  }
+
+  await expect(canvas).toHaveAttribute('data-war-room-hans-route', expectedRoute(eventName), { timeout: 75_000 });
+  await expect(canvas).toHaveAttribute('data-war-room-hans-screen', VISIBLE_SCREEN, { timeout: 20_000 });
+}
+
+async function sampleRoutine(page, canvas, eventName) {
+  const samples = [];
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < OBSERVE_MS) {
+    samples.push(await canvas.evaluate((node) => ({
+      at: performance.now(),
+      screen: node.dataset.warRoomHansScreen || '',
+      route: node.dataset.warRoomHansRoute || '',
+      choreographyPhase: node.dataset.warRoomHansChoreographyPhase || '',
+      groundGap: Number(node.dataset.warRoomHansGroundGap),
+      groundSurface: node.dataset.warRoomHansGroundSurface || '',
+      serviceDialogue: node.dataset.warRoomHansServiceDialogue || '',
+      mopDialogue: node.dataset.warRoomHansMopDialogue || '',
+      ndcX: Number(node.dataset.warRoomHansNdcX),
+      ndcY: Number(node.dataset.warRoomHansNdcY),
+    })));
+    await page.waitForTimeout(SAMPLE_MS);
+  }
+
+  const finiteGround = samples
+    .map((sample) => sample.groundGap)
+    .filter(Number.isFinite);
+  const visibleSamples = samples.filter((sample) => VISIBLE_SCREEN.test(sample.screen));
+  const unique = (key) => [...new Set(samples.map((sample) => sample[key]).filter(Boolean))];
+  const maxGroundGap = finiteGround.length ? Math.max(...finiteGround.map(Math.abs)) : null;
+
+  expect(visibleSamples.length, `${eventName} should remain visually observable`).toBeGreaterThan(2);
+  expect(finiteGround.length, `${eventName} should expose rendered grounding diagnostics`).toBeGreaterThan(2);
+  expect(maxGroundGap, `${eventName} should keep Hans grounded while visible`).toBeLessThanOrEqual(MAX_GROUND_GAP);
+
+  return {
+    schema: 1,
+    event: eventName,
+    expectedRoute: expectedRoute(eventName),
+    observedRoutes: unique('route'),
+    observedScreens: unique('screen'),
+    observedChoreographyPhases: unique('choreographyPhase'),
+    observedServiceDialogue: unique('serviceDialogue'),
+    observedMopDialogue: unique('mopDialogue'),
+    finiteGroundSamples: finiteGround.length,
+    maxGroundGap,
+    sampleCount: samples.length,
+  };
+}
+
+for (const eventName of CAPTURE_EVENTS) {
+  test(`War Room · Hans routine video · ${eventName}`, async () => {
+    test.setTimeout(150_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+    await mkdir(TEMP_VIDEO_DIR, { recursive: true });
+
+    const browser = await chromium.launch({
+      headless: true,
+      args: [
+        '--use-gl=angle',
+        '--use-angle=swiftshader',
+        '--enable-unsafe-swiftshader',
+      ],
+    });
+    const context = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+      hasTouch: false,
+      recordVideo: {
+        dir: TEMP_VIDEO_DIR,
+        size: { width: 800, height: 500 },
+      },
+    });
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, 'hardwareConcurrency', {
+        configurable: true,
+        get: () => 8,
+      });
+      Math.random = () => 0.25;
+    });
+
+    const page = await context.newPage();
+    const video = page.video();
+    const videoPath = `${ARTIFACT_DIR}/${eventName}.webm`;
+    try {
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      await mockApi(page, {
+        profileSeed: {
+          'matthias.onboarded': '2',
+          'chess-study-home-guide-dismissed-v1': '1',
+        },
+      });
+      await login(page);
+      await seedGamesBeforeEvent(page, eventName);
+
+      await buttonWithVisibleText(page, 'Partida rápida').click();
+      await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+      await expect(page.locator('.board-live-row.is-3d-warroom')).toBeVisible({ timeout: 45_000 });
+
+      const canvas = page.locator('.board3d-main-canvas');
+      await expect(canvas).toBeVisible({ timeout: 45_000 });
+      await waitForRoutineStart(canvas, eventName);
+
+      const manifest = await sampleRoutine(page, canvas, eventName);
+      await page.screenshot({
+        path: `${ARTIFACT_DIR}/${eventName}.png`,
+        fullPage: false,
+      });
+      await writeFile(
+        `${ARTIFACT_DIR}/${eventName}.json`,
+        `${JSON.stringify(manifest, null, 2)}\n`,
+        'utf8',
+      );
+    } finally {
+      await page.close().catch(() => {});
+      if (video) await video.saveAs(videoPath).catch(() => {});
+      await context.close().catch(() => {});
+      await browser.close().catch(() => {});
+    }
+  });
+}

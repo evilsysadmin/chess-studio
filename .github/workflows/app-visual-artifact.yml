@@ -6,10 +6,10 @@ on:
       - 'frontend/src/**'
       - 'frontend/public/**'
       - 'e2e/*visual*.spec.js'
-      - 'e2e/browser-runtime-health.spec.js'
-      - 'e2e/browser-storage-health.spec.js'
-      - 'scripts/app_visual_summary.mjs'
+      - 'e2e/browser-*-health.spec.js'
+      - 'scripts/app_visual_*'
       - 'scripts/war_room_visual_freeze_check.mjs'
+      - '.github/actions/app-visual-pipeline/**'
       - '.github/workflows/app-visual-artifact.yml'
   workflow_dispatch:
 
@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  capture:
+  canonical:
     name: App · visual capture
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -29,33 +29,18 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
-
-      - name: Restore browser + build
-        uses: ./.github/actions/setup-browser-e2e
+      - uses: ./.github/actions/app-visual-pipeline
         with:
-          browser-scope: chromium
-          build-frontend: 'true'
+          mode: canonical
 
-      - name: Capture visual health
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright test {app,experiments,chronicles-avatar,war-room,war-room-decor,war-room-armor-oblique,war-room-hans}-visual-artifact.spec.js home-3d-focus-visual.spec.js browser-{runtime,storage}-health.spec.js --workers=1 --retries=0
-
-      - name: Enforce War Room visual freeze
-        run: node scripts/war_room_visual_freeze_check.mjs
-
-      - name: Validate summary
-        if: always()
-        run: node scripts/app_visual_summary.mjs --self-test
-
-      - name: Summary
-        if: always()
-        run: node scripts/app_visual_summary.mjs
-
-      - name: Upload artifact
-        if: always()
-        uses: actions/upload-artifact@v7
+  hans:
+    name: Hans · routine video capture
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v7
         with:
-          name: app-visual-${{ github.event.pull_request.number || github.run_id }}
-          path: .artifacts/app-visual/
-          if-no-files-found: warn
-          retention-days: 7
+          ref: ${{ github.sha }}
+      - uses: ./.github/actions/app-visual-pipeline
+        with:
+          mode: hans
