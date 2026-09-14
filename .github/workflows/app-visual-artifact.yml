@@ -36,7 +36,7 @@ jobs:
   hans:
     name: Hans · routine video capture
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v7
         with:
