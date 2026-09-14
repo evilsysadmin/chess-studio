@@ -151,6 +151,11 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     const canvas = canvasRef.current;
     if (!renderPolicy.enabled || !canvas || !artUrl) return undefined;
 
+    // Never let readiness survive a renderer restart. The 2D canonical art is
+    // our safety net and must remain visible until this renderer has actually
+    // painted a textured frame.
+    canvas.classList.remove('is-ready');
+
     let renderer;
     try {
       renderer = new THREE.WebGLRenderer({
@@ -254,6 +259,8 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     let disposed = false;
     let intersecting = true;
     let performanceReady = false;
+    let textureReady = false;
+    let texturedFramePainted = false;
     let roomLightDepth = IDLE_ROOM_LIGHT_DEPTH;
     let roomLightReach = IDLE_ROOM_LIGHT_REACH;
     let lastRenderedAt = Number.NEGATIVE_INFINITY;
@@ -351,7 +358,19 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
         camera.position.set(0, 0, CAMERA_Z);
         camera.lookAt(0, 0, 0.035);
       }
-      renderer.render(scene, camera);
+
+      try {
+        renderer.render(scene, camera);
+      } catch {
+        texturedFramePainted = false;
+        canvas.classList.remove('is-ready');
+        return;
+      }
+
+      if (textureReady && !texturedFramePainted) {
+        texturedFramePainted = true;
+        canvas.classList.add('is-ready');
+      }
       if (continuous) frame = window.requestAnimationFrame(render);
     };
 
@@ -373,11 +392,13 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
     const onPointerLeave = () => target.set(0, 0);
     const onContextLost = (event) => {
       event.preventDefault();
+      texturedFramePainted = false;
       canvas.classList.remove('is-ready');
       stopRender();
     };
     const onContextRestored = () => {
-      canvas.classList.add('is-ready');
+      texturedFramePainted = false;
+      canvas.classList.remove('is-ready');
       resize();
       resumeRender();
     };
@@ -419,17 +440,22 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
         material.map = texture;
         material.emissiveMap = texture;
         material.needsUpdate = true;
+        textureReady = true;
         performanceReady = true;
-        canvas.classList.add('is-ready');
         resumeRender();
       },
       undefined,
-      () => canvas.classList.remove('is-ready'),
+      () => {
+        textureReady = false;
+        texturedFramePainted = false;
+        canvas.classList.remove('is-ready');
+      },
     );
     resumeRender();
 
     return () => {
       disposed = true;
+      canvas.classList.remove('is-ready');
       if (renderRequestRef.current === resumeRender) renderRequestRef.current = null;
       stopRender();
       resizeObserver?.disconnect();
