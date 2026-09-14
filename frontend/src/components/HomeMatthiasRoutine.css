@@ -1,7 +1,6 @@
 /* Matthias is a resident of the Great Hall, not a static menu badge. The
- * existing scene renders and layered-art rig provide the acting; this file only
- * gives the routine enough visual presence to read without turning Home into a
- * dashboard. */
+ * canonical scene renders stay visually intact; Home adds only rigid-body
+ * motion and routine changes so Matthias reads as alive without raster seams. */
 .illustrated-home__matthias-portrait {
   position: relative;
   display: block;
@@ -17,13 +16,52 @@
   display: block;
 }
 
-/* Home keeps Matthias' canonical facial geometry rigid. The layered rig reuses
- * clipped copies of the same raster for head/eyes; moving or squashing those
- * copies over the static base can read as a warped face at Home scale. Limbs,
- * props, routine changes and scene arrivals remain animated. */
-.illustrated-home__matthias .matthias-art-rig__part--head,
-.illustrated-home__matthias .matthias-art-rig__part--eyes {
-  display: none;
+/* The generic layered rig is useful at larger portrait sizes, but in Home its
+ * feathered copies of the same raster become visible as duplicated/glitchy
+ * fragments around the torso and props. Keep one clean canonical bitmap here.
+ * Gesture state still drives a tiny rigid transform on the whole render below,
+ * so Matthias moves without deforming his face or tearing his uniform apart. */
+.illustrated-home__matthias .matthias-art-rig__part {
+  display: none !important;
+}
+
+.illustrated-home__matthias .matthias-art-rig {
+  transform-origin: 50% 78%;
+  will-change: transform;
+}
+
+.illustrated-home__matthias .matthias-art-rig[data-gesture-state='acting'] {
+  animation: home-matthias-rigid-idle 2.2s cubic-bezier(.35,0,.18,1) both;
+}
+
+.illustrated-home__matthias .matthias-art-rig[data-gesture-state='acting'][data-gesture='sip'],
+.illustrated-home__matthias .matthias-art-rig[data-gesture-state='acting'][data-gesture='sip-night'] {
+  animation-name: home-matthias-rigid-sip;
+  animation-duration: 2.4s;
+}
+
+.illustrated-home__matthias .matthias-art-rig[data-gesture-state='acting'][data-gesture='bite'] {
+  animation-name: home-matthias-rigid-bite;
+  animation-duration: 2.5s;
+}
+
+.illustrated-home__matthias .matthias-art-rig[data-gesture-state='acting'][data-gesture='write-notes'],
+.illustrated-home__matthias .matthias-art-rig[data-gesture-state='acting'][data-gesture='audit-dossier'],
+.illustrated-home__matthias .matthias-art-rig[data-gesture-state='acting'][data-gesture='read-dossier'],
+.illustrated-home__matthias .matthias-art-rig[data-gesture-state='acting'][data-gesture='read-book'],
+.illustrated-home__matthias .matthias-art-rig[data-gesture-state='acting'][data-gesture='board-move'] {
+  animation-name: home-matthias-rigid-work;
+  animation-duration: 2.8s;
+}
+
+.illustrated-home__matthias .matthias-art-rig[data-gesture-state='acting'][data-gesture='doze'] {
+  animation-name: home-matthias-rigid-doze;
+  animation-duration: 3.2s;
+}
+
+.illustrated-home__matthias .matthias-art-rig[data-gesture-state='acting'][data-gesture='speak'] {
+  animation-name: home-matthias-rigid-speak;
+  animation-duration: 1.8s;
 }
 
 .illustrated-home__matthias-portrait[data-reduced-motion='false'] {
@@ -58,6 +96,44 @@
 @keyframes home-matthias-scene-arrive {
   from { opacity: .35; transform: translate3d(0, 4px, 0) scale(.975); filter: brightness(.82); }
   to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: brightness(1); }
+}
+
+@keyframes home-matthias-rigid-idle {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  34% { transform: translate3d(-.7px, -.8px, 0) rotate(-.28deg); }
+  68% { transform: translate3d(.6px, -.25px, 0) rotate(.22deg); }
+}
+
+@keyframes home-matthias-rigid-sip {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  30%, 68% { transform: translate3d(.6px, -1.7px, 0) rotate(.5deg); }
+  84% { transform: translate3d(-.2px, -.5px, 0) rotate(-.12deg); }
+}
+
+@keyframes home-matthias-rigid-bite {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  32%, 66% { transform: translate3d(0, -1.35px, 0) rotate(-.35deg); }
+  82% { transform: translate3d(.35px, -.3px, 0) rotate(.18deg); }
+}
+
+@keyframes home-matthias-rigid-work {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  26% { transform: translate3d(-.7px, .45px, 0) rotate(-.34deg); }
+  58% { transform: translate3d(.45px, .2px, 0) rotate(.2deg); }
+  78% { transform: translate3d(-.3px, -.35px, 0) rotate(-.14deg); }
+}
+
+@keyframes home-matthias-rigid-doze {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  42%, 70% { transform: translate3d(.45px, 1.8px, 0) rotate(.62deg); }
+  86% { transform: translate3d(0, .65px, 0) rotate(.2deg); }
+}
+
+@keyframes home-matthias-rigid-speak {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  22% { transform: translate3d(-.65px, -.75px, 0) rotate(-.42deg); }
+  48% { transform: translate3d(.6px, -.35px, 0) rotate(.34deg); }
+  72% { transform: translate3d(-.4px, -.55px, 0) rotate(-.24deg); }
 }
 
 @media (min-width: 1000px) {
@@ -123,8 +199,7 @@
   }
 
   /* Keep the clean master, but do not amputate Matthias' identity. The caption
-     is diegetic text only: no card, no panel chrome, and enough portrait scale
-     for the existing limb/prop rig and room-to-room routine to read again. */
+     is diegetic text only: no card, no panel chrome. */
   .illustrated-home__matthias-copy {
     display: grid !important;
     align-self: center;
@@ -186,7 +261,8 @@
     transition: none;
   }
 
-  .illustrated-home__matthias-portrait {
+  .illustrated-home__matthias-portrait,
+  .illustrated-home__matthias .matthias-art-rig {
     animation: none !important;
   }
 }
