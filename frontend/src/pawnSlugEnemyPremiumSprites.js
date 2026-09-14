@@ -20,6 +20,7 @@ const PREMIUM_VISUAL_PRIORITY = Object.freeze({
   'premium-fallback': 10,
   'premium-raster': 20,
 });
+const premiumSourceLoads = new Map();
 
 export function pawnSlugPremiumEnemyFallbackWindow(type = 'pawn', dir = 1) {
   const safeType = Object.prototype.hasOwnProperty.call(PREMIUM_FALLBACK_FRAME_BY_TYPE, type) ? type : 'pawn';
@@ -36,6 +37,37 @@ export function pawnSlugPremiumEnemyFallbackWindow(type = 'pawn', dir = 1) {
     offsetX: (mirrored ? frame + 1 : frame) / PREMIUM_FALLBACK_COLUMNS,
     offsetY: 0,
   });
+}
+
+export function clonePawnSlugPremiumEnemyTexture(masterTexture) {
+  const texture = masterTexture.clone();
+  configurePawnSlugTexture(texture);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function loadPremiumSource(url) {
+  let pending = premiumSourceLoads.get(url);
+  if (pending) return pending;
+  pending = new Promise((resolve, reject) => {
+    new THREE.TextureLoader().load(
+      url,
+      (texture) => {
+        configurePawnSlugTexture(texture);
+        resolve(texture);
+      },
+      undefined,
+      reject,
+    );
+  });
+  premiumSourceLoads.set(url, pending);
+  return pending;
+}
+
+function loadPremiumTexture(url, onLoad, onError) {
+  loadPremiumSource(url)
+    .then((masterTexture) => onLoad(clonePawnSlugPremiumEnemyTexture(masterTexture)))
+    .catch(() => onError?.());
 }
 
 function premiumWindowKey(sprite) {
@@ -96,7 +128,6 @@ function installPremiumRaster(sprite) {
 
   const baseSetFrame = sprite.userData.setFrame;
   const baseSetDirection = sprite.userData.setDirection;
-  const loader = new THREE.TextureLoader();
   atlas.premiumRasterState = 'loading';
   atlas.premiumFallbackState = 'loading';
   atlas.premiumVisual = null;
@@ -148,10 +179,10 @@ function installPremiumRaster(sprite) {
     sprite.userData.setDirection = baseSetDirection;
   };
 
-  // Bootstrap from the already-shipped premium static atlas instead of leaving
-  // procedural soldier art on screen while the canonical animated raster is
-  // decoding. The canonical raster always wins if both loads complete.
-  loader.load(
+  // Decode each premium source only once per page. Every enemy gets a Texture
+  // clone so repeat/offset stay independent while all clones share the same
+  // decoded image/source instead of re-decoding the atlas for every spawn.
+  loadPremiumTexture(
     enemyPremiumFallbackUrl,
     (texture) => {
       if (atlas.disposed) {
@@ -166,7 +197,6 @@ function installPremiumRaster(sprite) {
       atlas.premiumFallbackState = installTexture(texture, 'premium-fallback') ? 'ready' : 'superseded';
       if (atlas.premiumRasterState === 'failed') atlas.premiumRasterState = 'fallback';
     },
-    undefined,
     () => {
       if (atlas.disposed) return;
       atlas.premiumFallbackState = 'failed';
@@ -174,7 +204,7 @@ function installPremiumRaster(sprite) {
     },
   );
 
-  loader.load(
+  loadPremiumTexture(
     PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL,
     (texture) => {
       if (atlas.disposed) {
@@ -183,7 +213,6 @@ function installPremiumRaster(sprite) {
       }
       atlas.premiumRasterState = installTexture(texture, 'premium-raster') ? 'ready' : atlas.premiumRasterState;
     },
-    undefined,
     () => {
       if (atlas.disposed) return;
       atlas.premiumRasterState = atlas.premiumVisual?.source === 'premium-fallback' ? 'fallback' : 'failed';
@@ -219,6 +248,8 @@ export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
   primaryVisualSource: 'premium-raster',
   fallbackVisualSource: 'premium-static-raster',
   visualPriority: Object.freeze({ canonical: 20, premiumFallback: 10, procedural: 0 }),
+  sourceDecodePolicy: 'shared-once-per-page-cloned-per-enemy',
+  sharedDecodedSourceCount: 2,
   lateFallbackOverwriteProtection: true,
   proceduralRole: 'last-resort',
 });
