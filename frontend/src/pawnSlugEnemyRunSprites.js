@@ -21,10 +21,10 @@ import {
 } from './pawnSlugSpriteCore.js';
 import {
   PAWN_SLUG_ENEMY_ACTION_META,
-  pawnSlugEnemyActionForState,
+  pawnSlugEnemyActionForFlags,
   pawnSlugEnemyActionFrame,
-  pawnSlugEnemyActionPose,
-  pawnSlugEnemyActionTime,
+  pawnSlugEnemyActionPoseValues,
+  pawnSlugEnemyActionTimeValues,
   pawnSlugEnemyDeathDuration,
   pawnSlugEnemySourceFrame,
 } from './pawnSlugEnemyActionMotion.js';
@@ -287,19 +287,22 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
   const direction = sprite.scale.x < 0 ? -1 : 1;
   const baseScaleX = sprite.userData.motionBaseScaleX || Math.abs(sprite.scale.x) || 1;
   const baseScaleY = sprite.userData.motionBaseScaleY || Math.abs(sprite.scale.y) || 1;
-  const action = pawnSlugEnemyActionForState({ moving, hurt, airborne, crouch, climbing, dying });
-  const actionTime = pawnSlugEnemyActionTime(action, {
-    time: safeTime,
-    hurtStartedAt: sprite.userData.hurtStartedAt,
+  const action = pawnSlugEnemyActionForFlags(moving, hurt, airborne, crouch, climbing, dying);
+  const actionTime = pawnSlugEnemyActionTimeValues(
+    action,
+    safeTime,
+    sprite.userData.hurtStartedAt,
     deathAge,
-  });
+  );
   const actionFrame = pawnSlugEnemyActionFrame(action, actionTime, type);
   const sourceFrame = pawnSlugEnemySourceFrame(action, actionFrame, ENEMY_RUN_FRAMES_PER_TYPE);
-  const pose = pawnSlugEnemyActionPose(action, actionFrame, {
+  const pose = pawnSlugEnemyActionPoseValues(
+    action,
+    actionFrame,
     vy,
     type,
-    variant: sprite.userData.deathVariant,
-  });
+    sprite.userData.deathVariant,
+  );
   const actionChanged = sprite.userData.action !== action || sprite.userData.actionFrame !== actionFrame;
 
   sprite.userData.action = action;
