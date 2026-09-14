@@ -35,6 +35,15 @@
   filter: brightness(1.04) drop-shadow(0 8px 12px rgba(0, 0, 0, .42));
 }
 
+/* Mobile Home historically hides generic spans inside the Matthias button to
+ * suppress caption copy. The live 3D host is also a span, so keep the renderer
+ * explicitly visible without reviving any of that retired mobile copy. */
+@media (max-width: 999px) {
+  .illustrated-home__matthias .home-matthias-3d {
+    display: block;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .home-matthias-3d {
     transition: none;
