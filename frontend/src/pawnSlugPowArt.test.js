@@ -22,6 +22,27 @@ describe('Pawn Slug POW art', () => {
     }
   });
 
+  it('adds premium readable prisoner details without dynamic lights', () => {
+    const bound = PAWN_SLUG_POWS.find((pow) => pow.pose === 'bound') || PAWN_SLUG_POWS[0];
+    const caged = PAWN_SLUG_POWS.find((pow) => pow.pose === 'caged') || PAWN_SLUG_POWS[0];
+    const boundModel = createPawnSlugPowModel(bound);
+    const cagedModel = createPawnSlugPowModel(caged);
+
+    for (const name of [
+      'pawn-slug-pow-torso',
+      'pawn-slug-pow-vest',
+      'pawn-slug-pow-belt',
+      'pawn-slug-pow-head',
+      'pawn-slug-pow-headgear',
+      'pawn-slug-pow-ground-shadow',
+    ]) expect(boundModel.getObjectByName(name)).toBeTruthy();
+    expect(boundModel.getObjectByName('pawn-slug-pow-cuffs')).toBeTruthy();
+    expect(cagedModel.getObjectByName('pawn-slug-pow-cage-floor')).toBeTruthy();
+    expect(cagedModel.getObjectByName('pawn-slug-pow-cage-lock')).toBeTruthy();
+    expect(PAWN_SLUG_POW_ART_META.dynamicLights).toBe(0);
+    expect(PAWN_SLUG_POW_ART_META.perFrameTraversal).toBe(false);
+  });
+
   it('animates from cached visual refs instead of recursively searching the model every frame', () => {
     const model = createPawnSlugPowModel(PAWN_SLUG_POWS[0]);
     const body = model.getObjectByName('pawn-slug-pow-body');
@@ -80,12 +101,15 @@ describe('Pawn Slug POW art', () => {
     expect(flash.scale.x).toBeCloseTo(1.15);
   });
 
-  it('keeps the art contract arcade and contact-driven', () => {
-    expect(PAWN_SLUG_POW_ART_META.style).toBe('military-arcade-prisoner');
+  it('keeps the art contract arcade, contact-driven and diegetic', () => {
+    expect(PAWN_SLUG_POW_ART_META.style).toBe('premium-military-arcade-prisoner-v2');
     expect(PAWN_SLUG_POW_ART_META.rescueFeedback).toContain('contact');
     expect(PAWN_SLUG_POW_ART_META.rescueFeedback).toContain('break');
     expect(PAWN_SLUG_POW_ART_META.rescueRiseSeconds).toBeGreaterThan(0.15);
     expect(PAWN_SLUG_POW_ART_META.rescueRiseHeight).toBeCloseTo(0.2, 6);
     expect(PAWN_SLUG_POW_ART_META.poses).toEqual(['kneeling', 'bound', 'caged']);
+    expect(PAWN_SLUG_POW_ART_META.materialLanguage).toContain('gunmetal');
+    expect(PAWN_SLUG_POW_ART_META.premiumDetails).toContain('cage-lock');
+    expect(PAWN_SLUG_POW_ART_META.premiumDetails).toContain('diegetic-rescue-beacon');
   });
 });
