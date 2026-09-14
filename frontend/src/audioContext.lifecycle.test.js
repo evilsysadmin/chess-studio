@@ -45,7 +45,7 @@ class FakeAudioContext {
   createGain() { return new FakeNode(); }
   createOscillator() { return new FakeNode(); }
   createBuffer() {
-    return { getChannelData: () => new Float32Array(8) };
+    return { sampleRate: this.sampleRate, getChannelData: () => new Float32Array(24_000) };
   }
   createBufferSource() { return new FakeNode(); }
   createBiquadFilter() { return new FakeNode(); }
@@ -103,20 +103,24 @@ describe('audio context lifecycle', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it('cancels delayed Pawn Slug cues and cannot resurrect audio after destroy', async () => {
-    const sfx = createPawnSlugRuntimeSfx();
-    sfx.play('levelUp');
+  it('shares Pawn Slug audio, schedules composite cues in WebAudio, and never owns context teardown', async () => {
+    const first = createPawnSlugRuntimeSfx();
+    const second = createPawnSlugRuntimeSfx();
+    first.play('levelUp');
+    second.play('pickup');
 
     expect(FakeAudioContext.created).toBe(1);
-    expect(vi.getTimerCount()).toBe(2);
+    expect(vi.getTimerCount()).toBe(0);
 
-    sfx.destroy();
-    sfx.destroy();
-    sfx.play('pickup');
+    first.destroy();
+    first.destroy();
+    second.destroy();
+    first.play('boss');
+    second.play('pickup');
     vi.runAllTimers();
     await Promise.resolve();
 
-    expect(FakeAudioContext.closed).toBe(1);
+    expect(FakeAudioContext.closed).toBe(0);
     expect(FakeAudioContext.created).toBe(1);
     expect(vi.getTimerCount()).toBe(0);
   });
