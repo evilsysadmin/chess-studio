@@ -105,6 +105,15 @@ CORE_E2E_RE = re.compile(
     r"^frontend/(?:index\.html|vite\.config\.(?:js|mjs|ts)|package(?:-lock)?\.json)$"
 )
 
+# Admin has a dedicated critical smoke journey. Changes confined to Admin cannot
+# alter game persistence, Matthias school or learning flows, so running those four
+# unrelated lanes is duplicate CI work rather than extra signal.
+ADMIN_SMOKE_RE = re.compile(
+    r"^frontend/src/admin[^/]*\.js$|"
+    r"^frontend/src/components/(?:Admin|Observability)[^/]*\.(?:js|jsx)$|"
+    r"^frontend/src/components/useAdmin[^/]*\.js$"
+)
+
 # War Room renderer/paint modules have a dedicated browser matrix that exercises
 # 3D input, special states, scale and Android focus. Running the generic
 # login/admin/school regression journey as well is expensive duplication.
@@ -210,7 +219,9 @@ def classify(paths: Iterable[str]) -> Scope:
             if MATTHIAS_HOME_RE.search(path):
                 scope.run_matthias_home_e2e = True
                 targeted = True
-            if not targeted and CORE_E2E_RE.search(path) and not DEDICATED_3D_BROWSER_RE.search(path):
+            if not targeted and ADMIN_SMOKE_RE.search(path):
+                _enable_core_e2e(scope, ("smoke",))
+            elif not targeted and CORE_E2E_RE.search(path) and not DEDICATED_3D_BROWSER_RE.search(path):
                 _enable_core_e2e(scope)
             continue
 
@@ -265,16 +276,31 @@ def self_test() -> None:
         run_frontend=True,
         run_chesscom_e2e=True,
     )
-    _expect_core(
-        ["frontend/package-lock.json"],
-        run_frontend=True,
-        run_security=True,
-    )
+    _expect_core(["frontend/package-lock.json"], run_frontend=True, run_security=True)
     _expect_core(["frontend/src/App.jsx"], run_frontend=True)
     _expect(["frontend/src/activeGameSession.test.js"], run_frontend=True)
     _expect(["frontend/src/components/Chesscom.test.jsx"], run_frontend=True)
     _expect_core(
         ["frontend/src/activeGameSession.test.js", "frontend/src/App.jsx"],
+        run_frontend=True,
+    )
+    _expect_core(
+        ["frontend/src/components/AdminDashboardContent.jsx"],
+        lanes=("smoke",),
+        run_frontend=True,
+    )
+    _expect_core(
+        ["frontend/src/components/useAdminFeedbackController.js"],
+        lanes=("smoke",),
+        run_frontend=True,
+    )
+    _expect_core(
+        ["frontend/src/adminDashboardInsights.js"],
+        lanes=("smoke",),
+        run_frontend=True,
+    )
+    _expect_core(
+        ["frontend/src/components/AdminDashboardContent.jsx", "frontend/src/App.jsx"],
         run_frontend=True,
     )
     _expect(["frontend/src/components/Board3DRenderer.js"], run_frontend=True)
@@ -293,11 +319,7 @@ def self_test() -> None:
         run_frontend=True,
     )
     _expect(["backend-python/game_api.py"], run_backend=True)
-    _expect(
-        ["backend-python/requirements.txt"],
-        run_backend=True,
-        run_security=True,
-    )
+    _expect(["backend-python/requirements.txt"], run_backend=True, run_security=True)
     _expect(["e2e/pawn-slug.spec.js"], run_pawn_slug_e2e=True)
     _expect_core(
         ["e2e/helpers.js"],
@@ -330,15 +352,16 @@ def self_test() -> None:
     _expect(["scripts/frontend_test_groups.mjs"], run_frontend=True)
     _expect(["scripts/run_frontend_test_group.mjs"], run_frontend=True)
     _expect([".github/actions/cache-python-venv/action.yml"], run_backend=True)
-    _expect_core(
-        [".github/actions/cache-node-modules/action.yml"],
-        run_frontend=True,
-    )
+    _expect_core([".github/actions/cache-node-modules/action.yml"], run_frontend=True)
     _expect_core([".github/actions/setup-browser-e2e/action.yml"])
 
     golden = classify(["e2e/learning-golden-path.spec.js"])
     outputs = dict(line.split("=", 1) for line in golden.lines())
     assert json.loads(outputs["core_e2e_matrix"]) == {"lane": ["learning-golden"]}
+
+    admin = classify(["frontend/src/components/AdminDashboardContent.jsx"])
+    admin_outputs = dict(line.split("=", 1) for line in admin.lines())
+    assert json.loads(admin_outputs["core_e2e_matrix"]) == {"lane": ["smoke"]}
 
     assert classify([".github/workflows/cicd.yml"]) == Scope.all()
     assert classify(["Makefile"]) == Scope.all()
@@ -352,7 +375,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · producto usa core completo; specs críticos pagan sólo su lane; auditoría/harness siguen fail-closed")
+    print("quality-scope self-test OK · Admin paga sólo smoke; producto general conserva core completo")
 
 
 def main() -> int:
