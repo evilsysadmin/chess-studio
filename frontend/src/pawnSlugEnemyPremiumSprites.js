@@ -125,14 +125,18 @@ function publishPremiumEnemyRenderStatus(sprite) {
   const stage = document.querySelector?.('[data-pawn-slug-renderer="three"]');
   if (!stage?.dataset) return;
   const atlas = sprite?.userData?.atlas;
+  const source = atlas?.source;
   const evidence = atlas?.premiumVisual?.evidence
     || sprite?.material?.map?.userData?.pawnSlugPremiumEnemyVisualEvidence;
-  // The browser contract is deliberately stricter than runtime rendering: an
-  // assigned texture only counts as a visible enemy after canvas readback has
-  // proved useful alpha in every authored enemy region.
-  if (!evidence?.checked || !evidence.opaque) return;
+  const verifiedPremium = ['premium-raster', 'premium-fallback'].includes(source)
+    && evidence?.checked
+    && evidence?.opaque;
+  // generated-actions is built synchronously by our own canvas renderer and is
+  // the known-good safety net. A premium image is only allowed to replace it
+  // after alpha readback proves useful pixels in every authored region.
+  const verifiedFallback = source === 'generated-actions';
+  if (!verifiedPremium && !verifiedFallback) return;
   const status = pawnSlugPremiumEnemyRenderStatus(sprite);
-  if (!status.startsWith('premium-')) return;
   if (stage.dataset.pawnSlugEnemyVisual !== status) stage.dataset.pawnSlugEnemyVisual = status;
 }
 
@@ -187,7 +191,7 @@ function installPremiumRaster(sprite) {
     }
 
     const evidence = texture.userData?.pawnSlugPremiumEnemyVisualEvidence;
-    if (evidence?.checked && !evidence.opaque) {
+    if (!evidence?.checked || !evidence.opaque) {
       texture.dispose?.();
       return false;
     }
@@ -311,7 +315,7 @@ export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
   sourceDecodePolicy: 'shared-once-per-page-cloned-per-enemy',
   sharedDecodedSourceCount: 2,
   lateFallbackOverwriteProtection: true,
-  visualEvidencePolicy: 'alpha-readback-every-authored-region',
+  visualEvidencePolicy: 'premium-alpha-readback-before-replacing-generated-actions',
   browserRenderContract: 'data-pawn-slug-enemy-visual',
-  proceduralRole: 'last-resort',
+  proceduralRole: 'known-good-safety-net',
 });
