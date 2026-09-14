@@ -8,6 +8,7 @@ on:
       - 'e2e/*visual*.spec.js'
       - 'e2e/browser-runtime-health.spec.js'
       - 'e2e/browser-storage-health.spec.js'
+      - 'scripts/app_visual_capture.sh'
       - 'scripts/app_visual_summary.mjs'
       - 'scripts/war_room_visual_freeze_check.mjs'
       - '.github/workflows/app-visual-artifact.yml'
@@ -37,12 +38,7 @@ jobs:
           build-frontend: 'true'
 
       - name: Capture visual health
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright test {app,experiments,chronicles-avatar,war-room,war-room-decor,war-room-armor-oblique,war-room-hans}-visual-artifact.spec.js home-3d-focus-visual.spec.js browser-{runtime,storage}-health.spec.js --workers=1 --retries=0
-
-      - name: Capture Hans routine videos
-        working-directory: e2e
-        run: ./node_modules/.bin/playwright test war-room-hans-routines-visual.spec.js --workers=4 --retries=0
+        run: bash scripts/app_visual_capture.sh
 
       - name: Enforce War Room visual freeze
         run: node scripts/war_room_visual_freeze_check.mjs
