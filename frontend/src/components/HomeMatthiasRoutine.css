@@ -66,12 +66,12 @@
     --home-matthias-zone-top: 83%;
     left: var(--home-matthias-zone-left);
     top: var(--home-matthias-zone-top);
-    width: 16.2%;
+    width: clamp(60px, 4.9cqw, 88px);
     min-height: 11.5%;
-    grid-template-columns: clamp(60px, 4.9cqw, 88px) minmax(0, 1fr);
+    grid-template-columns: 1fr;
     align-items: center;
-    column-gap: .55cqw;
-    padding: .48cqw .58cqw;
+    column-gap: 0;
+    padding: 0;
     overflow: visible;
     border-color: transparent;
     background: transparent;
@@ -117,12 +117,15 @@
   }
 
   .illustrated-home__matthias-portrait {
+    display: block !important;
     width: 100%;
     aspect-ratio: 4 / 5;
   }
 
-  .illustrated-home__matthias.is-speaking .illustrated-home__matthias-copy > em {
-    color: #e9c66f;
+  /* The desktop master is clean: Matthias is a live resident, but the old
+     MATTHIAS/activity/Así juegas copy must never rebuild the retired card. */
+  .illustrated-home__matthias-copy {
+    display: none !important;
   }
 }
 
