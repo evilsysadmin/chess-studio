@@ -41,11 +41,13 @@ function compactPlayerModelTimeControls(timeControls = []) {
     }]));
 }
 
-export function buildPlayerPortraitFacts(insights, rivalry = {}, extras = {}, worstMove = null) {
-  const model = buildPlayerModel({
-    insights,
-    timeControlStats: rivalry?.record?.byTimeControl,
-  });
+export function buildPlayerPortraitFacts(insights, rivalry = {}, extras = {}, worstMove = null, sharedPlayerModel = null) {
+  const model = sharedPlayerModel?.samples
+    ? sharedPlayerModel
+    : buildPlayerModel({
+      insights,
+      timeControlStats: rivalry?.record?.byTimeControl,
+    });
   if (model.samples.games <= 0) return null;
 
   const facts = {
