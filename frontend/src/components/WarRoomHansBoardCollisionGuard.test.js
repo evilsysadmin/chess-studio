@@ -76,7 +76,7 @@ function renderedFaceDotTravel(hans, head, face, movement) {
 }
 
 describe('Hans board collision guard', () => {
-  it('keeps Hans behind the board, grounded, without changing choreography X', () => {
+  it('keeps Hans behind the board without changing choreography X or Y', () => {
     const { root, fireplace, hans, driver } = makeRig({ worldX: 0, worldY: 0.22, worldZ: 0 });
     const expectedLocalX = 0 - fireplace.position.x;
 
@@ -87,10 +87,10 @@ describe('Hans board collision guard', () => {
     expect(world.x).toBeCloseTo(0, 6);
     expect(world.z).toBeCloseTo(-5.1, 6);
     expect(hans.position.x).toBeCloseTo(expectedLocalX, 6);
-    expect(hans.position.y).toBeCloseTo(-0.34, 6);
+    expect(hans.position.y).toBeCloseTo(0.22, 6);
     expect(hans.userData.warRoomHansBoardCollisionApplied).toBe(true);
     expect(hans.userData.warRoomHansBoardCollisionAxis).toBe('z');
-    expect(hans.userData.warRoomHansBoardGroundedY).toBeCloseTo(-0.34, 6);
+    expect(hans.userData.warRoomHansBoardPreservedY).toBeCloseTo(0.22, 6);
     expect(driver.userData.warRoomHansBoardCollisionGuard).toBe(WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION);
   });
 
@@ -148,12 +148,12 @@ describe('Hans board collision guard', () => {
     const travel = after.clone().sub(before);
 
     expect(after.z).toBeCloseTo(-5.1, 6);
-    expect(hans.position.y).toBeCloseTo(-0.34, 6);
+    expect(hans.position.y).toBeCloseTo(0.18, 6);
     expect(renderedFaceDotTravel(hans, head, face, travel)).toBeGreaterThan(0.98);
     expect(hans.userData.warRoomHansFacingGuardCorrections).toBe(1);
   });
 
-  it('does not disturb a transit position that is already outside the board, except to ground Hans', () => {
+  it('does not disturb a transit position already outside the board', () => {
     const { root, hans, driver } = makeRig({ worldX: -5.4, worldY: 0.12, worldZ: -5.8 });
 
     expect(installWarRoomHansBoardCollisionGuard(root)).toBe(1);
@@ -162,8 +162,8 @@ describe('Hans board collision guard', () => {
     const world = worldPosition(hans);
     expect(world.x).toBeCloseTo(-5.4, 6);
     expect(world.z).toBeCloseTo(-5.8, 6);
-    expect(hans.position.y).toBeCloseTo(-0.34, 6);
+    expect(hans.position.y).toBeCloseTo(0.12, 6);
     expect(hans.userData.warRoomHansBoardCollisionApplied).toBe(false);
-    expect(hans.userData.warRoomHansBoardGroundedY).toBeCloseTo(-0.34, 6);
+    expect(hans.userData.warRoomHansBoardPreservedY).toBeCloseTo(0.12, 6);
   });
 });
