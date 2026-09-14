@@ -129,4 +129,22 @@
     border-color: rgba(138, 105, 62, .8) !important;
     box-shadow: 0 6px 18px rgba(0, 0, 0, .25) !important;
   }
+
+  /* The collapsed deck overlaps part of Matthias' lower-left routine zone.
+     Its decorative shell must not swallow clicks intended for the diegetic
+     scene; only the real player controls keep an interactive hitbox. */
+  html body:has(.app-shell-home) .global-music-dock .music-deck.music-deck-collapsed {
+    pointer-events: none;
+  }
+
+  html body:has(.app-shell-home) .global-music-dock .music-deck.music-deck-collapsed :is(
+    button,
+    input,
+    select,
+    textarea,
+    [role='button'],
+    [role='slider']
+  ) {
+    pointer-events: auto;
+  }
 }
