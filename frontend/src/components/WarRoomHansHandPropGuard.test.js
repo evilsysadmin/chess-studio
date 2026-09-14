@@ -5,6 +5,7 @@ import {
   reconcileWarRoomHansTwoHandProps,
   rigWarRoomHansSingleHandProp,
   rigWarRoomHansTwoHandProp,
+  upgradeWarRoomHansEspressoVisuals,
 } from './WarRoomHansHandPropGuard.js';
 
 function actorFixture() {
@@ -114,6 +115,45 @@ describe('WarRoomHansHandPropGuard', () => {
     expect(reconcileWarRoomHansTwoHandProps(actor)).toBe(false);
     expect(mop.parent).toBe(actor.hans);
     expect(bucket.parent).toBe(actor.hans);
+  });
+
+  it('makes carried and delivered espresso visibly readable without changing service state', () => {
+    const actor = actorFixture();
+    const root = new THREE.Group();
+    root.add(actor.hans);
+
+    const tray = addProp(actor.hans, 'war-room-hans-espresso-tray');
+    const trayMaterial = new THREE.MeshPhysicalMaterial({ color: 0x755d37, metalness: 0.45, roughness: 0.38 });
+    const porcelain = new THREE.MeshPhysicalMaterial({ color: 0xe5dfd1, roughness: 0.34 });
+    tray.add(
+      new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.035, 20), trayMaterial),
+      new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.072, 0.12, 16), porcelain),
+    );
+
+    const deskArt = new THREE.Group();
+    const drawer = new THREE.Group();
+    drawer.name = 'war-room-command-desk-drawer';
+    drawer.position.z = 0.405;
+    deskArt.add(drawer);
+    const delivered = new THREE.Group();
+    delivered.name = 'war-room-hans-delivered-espresso';
+    delivered.position.set(0.94, 0, 0.12);
+    delivered.add(
+      new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.018, 18), porcelain),
+      new THREE.Mesh(new THREE.CylinderGeometry(0.078, 0.068, 0.12, 16), porcelain),
+    );
+    deskArt.add(delivered);
+    root.add(deskArt);
+
+    expect(upgradeWarRoomHansEspressoVisuals(root, actor)).toBe(2);
+    expect(tray.scale.x).toBeCloseTo(1.18, 8);
+    expect(tray.getObjectByName('war-room-hans-espresso-carried-handle')).toBeTruthy();
+    expect(tray.userData.warRoomHansEspressoPresentation).toBe('hand-height-readable-v2');
+    expect(delivered.position.x).toBeCloseTo(0.88, 8);
+    expect(delivered.position.z).toBeCloseTo(0.32, 8);
+    expect(delivered.scale.x).toBeCloseTo(1.28, 8);
+    expect(delivered.getObjectByName('war-room-hans-espresso-delivered-handle')).toBeTruthy();
+    expect(delivered.userData.warRoomHansEspressoPresentation).toBe('desk-front-edge-readable-v2');
   });
 
   it('supports direct rigging for a visible single-hand prop', () => {
