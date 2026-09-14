@@ -16,6 +16,10 @@ export const PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE = Object.freeze({
   rook: 8.4,
 });
 
+const ACTION_INDEX = Object.freeze({ idle: 0, run: 1, jump: 2, crouch: 3, hurt: 4, climb: 5, death: 6 });
+const TYPE_INDEX = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
+const ACTION_POSE_CACHE = new Map();
+
 function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
 }
@@ -30,6 +34,14 @@ function clampFrame(value, count) {
 
 function deathVariant(value = 0) {
   return ((Math.floor(Number(value) || 0) % 3) + 3) % 3;
+}
+
+function poseCacheKey(action, frame, type, variant, vy) {
+  const actionIndex = ACTION_INDEX[action] ?? ACTION_INDEX.idle;
+  const typeIndex = TYPE_INDEX[type] ?? TYPE_INDEX.pawn;
+  const variantIndex = action === 'death' ? deathVariant(variant) : 0;
+  const jumpDirection = action === 'jump' && Number(vy) > 0 ? 1 : 0;
+  return (((typeIndex * 7 + actionIndex) * 16 + frame) * 3 + variantIndex) * 2 + jumpDirection;
 }
 
 export function pawnSlugEnemyActionForState({ moving = false, hurt = false, airborne = false, crouch = false, climbing = false, dying = false } = {}) {
@@ -120,26 +132,33 @@ function hurtPose(type, phase) {
 }
 
 export function pawnSlugEnemyActionPose(action = 'idle', actionFrame = 0, { vy = 0, type = 'pawn', variant = 0 } = {}) {
-  const track = PAWN_SLUG_ENEMY_ACTIONS[action] || PAWN_SLUG_ENEMY_ACTIONS.idle;
+  const safeAction = PAWN_SLUG_ENEMY_ACTIONS[action] ? action : 'idle';
+  const track = PAWN_SLUG_ENEMY_ACTIONS[safeAction];
   const localFrame = track.loop === false ? clampFrame(actionFrame, track.frames) : wrapFrame(actionFrame, track.frames);
+  const key = poseCacheKey(safeAction, localFrame, type, variant, vy);
+  const cached = ACTION_POSE_CACHE.get(key);
+  if (cached) return cached;
+
   const phase = localFrame / Math.max(1, track.frames - (track.loop === false ? 1 : 0));
   const wave = Math.sin(phase * TAU);
   const pulse = Math.cos(phase * TAU);
   const weight = type === 'rook' ? 0.58 : type === 'knight' ? 1.12 : 1;
+  let pose;
 
-  if (action === 'run') return Object.freeze({ x: wave * 0.028 * weight, y: Math.abs(wave) * 0.035 * weight, rz: -wave * 0.025 * weight, sx: 1 + pulse * 0.012, sy: 1 - pulse * 0.018 });
-  if (action === 'jump') {
+  if (safeAction === 'run') pose = Object.freeze({ x: wave * 0.028 * weight, y: Math.abs(wave) * 0.035 * weight, rz: -wave * 0.025 * weight, sx: 1 + pulse * 0.012, sy: 1 - pulse * 0.018 });
+  else if (safeAction === 'jump') {
     const ascending = Number(vy) > 0;
-    return Object.freeze({ x: 0, y: ascending ? 0.055 : -0.018, rz: ascending ? -0.055 : 0.045, sx: ascending ? 0.965 : 1.035, sy: ascending ? 1.055 : 0.965 });
-  }
-  if (action === 'crouch') {
-    const settle = clamp01(actionFrame / Math.max(1, track.frames - 1));
-    return Object.freeze({ x: 0.04, y: -0.02 * settle, rz: 0.018, sx: 1.08, sy: 0.76 });
-  }
-  if (action === 'hurt') return hurtPose(type, phase);
-  if (action === 'climb') return Object.freeze({ x: wave * 0.018, y: Math.abs(wave) * 0.055, rz: wave * 0.018, sx: 0.985, sy: 1.015 });
-  if (action === 'death') return deathPose(type, phase, variant);
-  return Object.freeze({ x: 0, y: Math.max(0, wave) * 0.012, rz: pulse * 0.006, sx: 1 + pulse * 0.004, sy: 1 - pulse * 0.004 });
+    pose = Object.freeze({ x: 0, y: ascending ? 0.055 : -0.018, rz: ascending ? -0.055 : 0.045, sx: ascending ? 0.965 : 1.035, sy: ascending ? 1.055 : 0.965 });
+  } else if (safeAction === 'crouch') {
+    const settle = clamp01(localFrame / Math.max(1, track.frames - 1));
+    pose = Object.freeze({ x: 0.04, y: -0.02 * settle, rz: 0.018, sx: 1.08, sy: 0.76 });
+  } else if (safeAction === 'hurt') pose = hurtPose(type, phase);
+  else if (safeAction === 'climb') pose = Object.freeze({ x: wave * 0.018, y: Math.abs(wave) * 0.055, rz: wave * 0.018, sx: 0.985, sy: 1.015 });
+  else if (safeAction === 'death') pose = deathPose(type, phase, variant);
+  else pose = Object.freeze({ x: 0, y: Math.max(0, wave) * 0.012, rz: pulse * 0.006, sx: 1 + pulse * 0.004, sy: 1 - pulse * 0.004 });
+
+  ACTION_POSE_CACHE.set(key, pose);
+  return pose;
 }
 
 export const PAWN_SLUG_ENEMY_ACTION_META = Object.freeze({
@@ -152,4 +171,5 @@ export const PAWN_SLUG_ENEMY_ACTION_META = Object.freeze({
   impactStyleByType: Object.freeze({ pawn: 'clear-backstep', knight: 'armored-twist', rook: 'heavy-compression' }),
   deathStyleByType: Object.freeze({ pawn: 'backward-collapse-grounded', knight: 'violent-tumble-grounded', rook: 'heavy-collapse-grounded' }),
   deathVariants: 3,
+  poseCache: 'discrete-frame-v1',
 });
