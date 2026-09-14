@@ -132,12 +132,114 @@ describe('AI player portrait', () => {
       games: 4,
       win_pct: 75,
     }));
+    expect(facts).not.toHaveProperty('learning_evidence');
+  });
+
+  it('incluye evidencia longitudinal ya medida sin inventar una conclusión paralela', () => {
+    const sharedModel = {
+      samples: { games: 12 },
+      confidence: { games: 'medium' },
+      outcomes: { wins: 6, draws: 2, losses: 4, winPct: 50 },
+      colorPreference: { white: 6, black: 6 },
+      openings: [],
+      ratingTrend: null,
+      timeControls: [],
+      recurringErrors: [{
+        incidentKey: 'cpu:KNIGHT_FORK',
+        label: 'Horquillas de caballo sufridas',
+        positions: 3,
+        confidence: 'medium',
+        improvementState: 'still-occurring',
+        debt: { active: true, paid: false, progress: 1, target: 2 },
+        postTrainingObservations: {
+          latestCleanTrainingAt: '2026-09-10T10:00:00.000Z',
+          observedGames: 2,
+          recurrenceGames: 1,
+          noRecurrenceGames: 1,
+          latestObservationAt: '2026-09-14T10:00:00.000Z',
+        },
+      }],
+      trainingProgress: {
+        attempts: 4,
+        solves: 3,
+        cleanSolves: 2,
+        attemptedPositions: 3,
+        solvedPositions: 2,
+        currentlyCleanPositions: 1,
+        retentionCompletedPositions: 1,
+        retentionDuePositions: 1,
+        activeDebts: 1,
+        paidDebts: 0,
+        lastAttemptAt: '2026-09-14T09:00:00.000Z',
+        lastCleanAt: '2026-09-14T09:05:00.000Z',
+      },
+      cleanPlay: {
+        eligibleGames: 4,
+        cleanGames: 2,
+        cleanRate: 50,
+        currentStreak: 1,
+        bestStreak: 2,
+        latestEligibleClean: true,
+        latestEligibleAt: '2026-09-14T10:00:00.000Z',
+        latestCleanAt: '2026-09-14T10:00:00.000Z',
+      },
+      positiveDecisions: {
+        eligibleGames: 3,
+        comparedMoves: 20,
+        enginePreferredMoves: 8,
+        preferredRate: 40,
+        gamesWithPreferredMoves: 3,
+        latestEvidenceAt: '2026-09-14T10:00:00.000Z',
+      },
+    };
+    const facts = buildPlayerPortraitFacts({
+      totalGames: 12,
+      overall: { wins: 6, draws: 2, losses: 4, winPct: 50 },
+      byMode: {},
+      colorPreference: { white: 6, black: 6 },
+      longestWinStreak: 2,
+      humanCaptures: 24,
+    }, {}, {}, null, sharedModel);
+
+    expect(facts.learning_evidence.recurring_patterns[0]).toEqual({
+      incident_key: 'cpu:KNIGHT_FORK',
+      label: 'Horquillas de caballo sufridas',
+      positions: 3,
+      evidence_strength: 'medium',
+      improvement_state: 'still-occurring',
+      training_debt: { active: true, paid: false, progress: 1, target: 2 },
+      post_training: {
+        observed_games: 2,
+        recurrence_games: 1,
+        no_recurrence_games: 1,
+        latest_clean_training_at: '2026-09-10T10:00:00.000Z',
+        latest_observation_at: '2026-09-14T10:00:00.000Z',
+      },
+    });
+    expect(facts.learning_evidence.training_progress).toEqual(expect.objectContaining({
+      attempts: 4,
+      clean_solves: 2,
+      active_debts: 1,
+      paid_debts: 0,
+    }));
+    expect(facts.learning_evidence.clean_play).toEqual(expect.objectContaining({
+      eligible_games: 4,
+      clean_games: 2,
+      clean_rate: 50,
+    }));
+    expect(facts.learning_evidence.positive_decisions).toEqual(expect.objectContaining({
+      compared_moves: 20,
+      engine_preferred_moves: 8,
+      preferred_rate: 40,
+    }));
+    expect(facts.learning_evidence).not.toHaveProperty('improved');
+    expect(facts.learning_evidence).not.toHaveProperty('trend');
   });
 
   it('regenera automáticamente después de cada partida terminada', () => {
     expect(playerPortraitGenerationKey({ totalGames: 3 })).not.toBe(playerPortraitGenerationKey({ totalGames: 4 }));
     expect(playerPortraitGenerationKey({ totalGames: 4 })).not.toBe(playerPortraitGenerationKey({ totalGames: 5 }));
-    expect(playerPortraitGenerationKey({ totalGames: 5 })).toBe('8:5');
+    expect(playerPortraitGenerationKey({ totalGames: 5 })).toBe('9:5');
   });
 
   it('cachea sólo el retrato de la generación actual', () => {
@@ -150,7 +252,7 @@ describe('AI player portrait', () => {
 
   it('invalida retratos del schema anterior al cambiar de modelo', () => {
     const key = playerPortraitGenerationKey({ totalGames: 7 });
-    localStorage.setItem(AI_PLAYER_PORTRAIT_CACHE_KEY, JSON.stringify({ schema: 7, generationKey: key, text: 'Viejo Llama.' }));
+    localStorage.setItem(AI_PLAYER_PORTRAIT_CACHE_KEY, JSON.stringify({ schema: 8, generationKey: key, text: 'Viejo Llama.' }));
     expect(loadCachedPlayerPortrait(key, 'alice')).toBeNull();
   });
 
@@ -197,5 +299,4 @@ describe('AI player portrait', () => {
     expect(shouldCommitManualPortraitRefresh('portrait_manual', '')).toBe(false);
     expect(shouldCommitManualPortraitRefresh('portrait_manual', null)).toBe(false);
   });
-
 });
