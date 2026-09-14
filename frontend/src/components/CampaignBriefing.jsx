@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   campaignIntelBriefing,
   nextCampaignIntelTier,
@@ -9,10 +9,9 @@ import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import CampaignOperationSteps from './CampaignOperationSteps.jsx';
 import CombatEnemyOfficerDossier from './CombatEnemyOfficerDossier.jsx';
 import { loadMechanicTutorialProgress } from '../mechanicTutorials.js';
-import { getToken } from '../auth.js';
-import { requestRemoteNarrative } from '../narrativeRemote.js';
 import { buildCombatBriefingDossier } from '../aiNarrativeTasks.js';
 import { campaignBossForSeed } from '../combatBosses.js';
+import { useRemoteNarrativeDossier } from '../useRemoteNarrativeDossier.js';
 import ironKing from '../assets/bosses/iron-king.webp';
 import nomadKing from '../assets/bosses/nomad-king.webp';
 import shadowKing from '../assets/bosses/shadow-king.webp';
@@ -26,25 +25,10 @@ export default function CampaignBriefing({ campaign, node, armySummary, onBuyInt
   const missionOrders = useMemo(() => campaignMissionOrders(campaign?.seed, node), [campaign?.seed, node]);
   const classifiedMission = useMemo(() => classifiedCampaignMission(campaign?.seed, node, intel?.level), [campaign?.seed, intel?.level, node]);
   const [showTutorial, setShowTutorial] = useState(() => !loadMechanicTutorialProgress()?.['combat-intelligence']?.seen);
-  const [aiBriefing, setAiBriefing] = useState(null);
-  const [aiBriefingLoading, setAiBriefingLoading] = useState(false);
   const aiDossier = useMemo(() => buildCombatBriefingDossier({ campaign, node, intel, armySummary }), [campaign?.operationalCredits, node, intel, armySummary?.assignedCount, armySummary?.totalSlots]);
-  const aiFactsKey = JSON.stringify(aiDossier?.facts || {});
-
-  useEffect(() => {
-    const token = getToken();
-    if (!token || !aiDossier) {
-      setAiBriefing(null);
-      return undefined;
-    }
-    const controller = new AbortController();
-    setAiBriefingLoading(true);
-    void requestRemoteNarrative(aiDossier, { token, timeoutMs: 8000, signal: controller.signal })
-      .then((text) => { if (!controller.signal.aborted) setAiBriefing(text || null); })
-      .catch(() => { if (!controller.signal.aborted) setAiBriefing(null); })
-      .finally(() => { if (!controller.signal.aborted) setAiBriefingLoading(false); });
-    return () => controller.abort(new DOMException('Combat briefing superseded', 'AbortError'));
-  }, [aiFactsKey]);
+  const { text: aiBriefing, loading: aiBriefingLoading } = useRemoteNarrativeDossier(aiDossier, {
+    abortMessage: 'Combat briefing superseded',
+  });
 
   if (!node || !intel) return null;
   const canBuy = nextTier && campaign.operationalCredits >= nextTier.cost;
