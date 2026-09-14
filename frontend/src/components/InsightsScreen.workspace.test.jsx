@@ -34,10 +34,24 @@ vi.mock('./InsightsCleanGames.jsx', () => ({
   default: ({ playerModel }) => <section data-clean-games="true" data-player-model={playerModel?.version || 'none'}>Partidas limpias</section>,
 }));
 vi.mock('./InsightsWeeklyGoals.jsx', () => ({
-  default: ({ playerModel }) => <section data-weekly-goals="true" data-player-model={playerModel?.version || 'none'}>Objetivos personales</section>,
+  default: ({ playerModel, personalPuzzles, cleanGameRecords }) => (
+    <section
+      data-weekly-goals="true"
+      data-player-model={playerModel?.version || 'none'}
+      data-puzzle-snapshot={personalPuzzles?.length || 0}
+      data-clean-snapshot={Object.keys(cleanGameRecords || {}).length}
+    >Objetivos personales</section>
+  ),
 }));
 vi.mock('./InsightsGuidedSession.jsx', () => ({
-  default: ({ playerModel }) => <section data-guided-session="true" data-player-model={playerModel?.version || 'none'}>Sesión automática</section>,
+  default: ({ playerModel, personalPuzzles, cleanGameRecords }) => (
+    <section
+      data-guided-session="true"
+      data-player-model={playerModel?.version || 'none'}
+      data-puzzle-snapshot={personalPuzzles?.length || 0}
+      data-clean-snapshot={Object.keys(cleanGameRecords || {}).length}
+    >Sesión automática</section>
+  ),
 }));
 vi.mock('./InsightsMatthiasCampaign.jsx', () => ({
   default: () => <section data-matthias-campaign="true">Campaña personal de Matthias</section>,
@@ -85,6 +99,8 @@ describe('InsightsScreen Matthias-led coaching workspace', () => {
       },
     });
     expect(html.match(/data-player-model="7"/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(html).toContain('data-puzzle-snapshot="1"');
+    expect(html).toContain('data-clean-snapshot="1"');
   });
 
   it('abre Así juegas en Ahora con sesión guiada, campaña personal y objetivos semanales', () => {
