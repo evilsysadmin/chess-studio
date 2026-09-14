@@ -1,0 +1,51 @@
+name: App visual pipeline
+description: Build, capture and upload canonical or Hans visual artifacts.
+inputs:
+  mode:
+    description: canonical or hans
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Restore browser + build
+      uses: ./.github/actions/setup-browser-e2e
+      with:
+        browser-scope: chromium
+        build-frontend: 'true'
+
+    - name: Capture
+      shell: bash
+      run: bash scripts/app_visual_capture.sh "${{ inputs.mode }}"
+
+    - name: Enforce War Room visual freeze
+      if: inputs.mode == 'canonical'
+      shell: bash
+      run: node scripts/war_room_visual_freeze_check.mjs
+
+    - name: Validate summary
+      if: always() && inputs.mode == 'canonical'
+      shell: bash
+      run: node scripts/app_visual_summary.mjs --self-test
+
+    - name: Summary
+      if: always() && inputs.mode == 'canonical'
+      shell: bash
+      run: node scripts/app_visual_summary.mjs
+
+    - name: Upload canonical artifact
+      if: always() && inputs.mode == 'canonical'
+      uses: actions/upload-artifact@v7
+      with:
+        name: app-visual-${{ github.event.pull_request.number || github.run_id }}
+        path: .artifacts/app-visual/
+        if-no-files-found: warn
+        retention-days: 7
+
+    - name: Upload Hans routine artifact
+      if: always() && inputs.mode == 'hans'
+      uses: actions/upload-artifact@v7
+      with:
+        name: hans-routines-${{ github.event.pull_request.number || github.run_id }}
+        path: .artifacts/app-visual/hans-routines/
+        if-no-files-found: error
+        retention-days: 7
