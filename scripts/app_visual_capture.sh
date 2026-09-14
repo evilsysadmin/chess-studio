@@ -8,6 +8,7 @@ case "$mode" in
   canonical)
     ./node_modules/.bin/playwright test \
       {app,experiments,chronicles-avatar,training,war-room,war-room-decor,war-room-armor-oblique,war-room-hans}-visual-artifact.spec.js \
+      matthias-home-visual-artifact.spec.js \
       home-3d-focus-visual.spec.js \
       browser-{runtime,storage}-health.spec.js \
       --workers=1 --retries=0
