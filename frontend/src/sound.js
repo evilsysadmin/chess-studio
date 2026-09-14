@@ -4,6 +4,7 @@ import { getAudioContext as getContext } from './audioContext.js';
 import { structuredFeel } from './ambientProfiles.js';
 import { connectFinishedAmbientVoice, scheduleAmbientFilterSweep } from './ambientVoiceFinish.js';
 import { structuredSectionInstrument } from './ambientInstrumentRouting.js';
+import { primeOrchestralTheme, readyOrchestralSample } from './orchestralSampler.js';
 import {
   MUSIC_EXCLUDED_KEY,
   MUSIC_FAVORITES_KEY,
@@ -27,10 +28,8 @@ export {
 } from './soundFx.js';
 
 
-// sound.js — Efectos de sonido cortitos generados con la Web Audio API. Nada
-// de archivos de audio: son un par de "beeps" sintetizados al vuelo, así que
-// no suman peso ni dependen de una CDN. El estado de silencio se guarda en
-// localStorage para que se recuerde entre sesiones.
+// sound.js — Secuenciación Web Audio, instrumentos físicos/sintéticos y una
+// pequeña capa de cuerdas grabadas que sólo se carga cuando la pieza la usa.
 
 import {
   AMBIENT_THEME_SESSION_KEY,
@@ -1059,8 +1058,40 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
 
   const preset = voicePreset(kind);
   const freq = midiToFreq(midiNote);
-  const start = ctx.currentTime;
+  const start = ctx.currentTime + Math.max(0, Number(tone?.startDelayMs) || 0) / 1000;
   const release = Math.max(0.12, durationOverride || preset.release * (tone?.releaseScale || 1));
+  const recorded = readyOrchestralSample(ctx, kind, midiNote);
+  if (recorded) {
+    const source = ctx.createBufferSource();
+    const filter = ctx.createBiquadFilter();
+    const gainNode = ctx.createGain();
+    source.buffer = recorded.buffer;
+    source.playbackRate.value = recorded.playbackRate;
+    filter.type = 'lowpass';
+    filter.frequency.value = Math.max(2800, preset.cutoff * 3.8 * (tone?.warmth || 1));
+    filter.Q.value = 0.34;
+
+    const attack = Math.min(kind === 'cello' ? 0.038 : 0.026, release * 0.18);
+    const peak = (kind === 'cello' ? 0.205 : 0.17) * volumeScale;
+    const sustainUntil = start + Math.max(attack + 0.03, release * 0.78);
+    gainNode.gain.setValueAtTime(0.0001, start);
+    gainNode.gain.linearRampToValueAtTime(peak, start + attack);
+    gainNode.gain.setValueAtTime(peak * 0.94, sustainUntil);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, start + release);
+
+    source.connect(filter);
+    filter.connect(gainNode);
+    connectFinishedAmbientVoice(ctx, gainNode, getAmbientOutput(ctx), tone, {
+      start,
+      duration: release,
+      tremolo: 0,
+      wetLimit: 0.38,
+    });
+    source.start(start);
+    source.stop(start + release + 0.06);
+    return;
+  }
+
   const attack = Math.min(preset.attack, release * 0.38);
   const filter = ctx.createBiquadFilter();
   const gainNode = ctx.createGain();
@@ -1828,6 +1859,13 @@ export function startAmbientMusic() {
   }
 
   const theme = getActiveAmbientTheme();
+  const orchestraContext = getContext();
+  if (theme.engine === 'structured' && orchestraContext) {
+    // Comenzamos la descarga/decodificación al seleccionar una pieza de
+    // cámara. Las primeras notas conservan el sintetizador como respaldo y
+    // las siguientes entran con intérpretes grabados sin bloquear Play.
+    primeOrchestralTheme(orchestraContext, theme);
+  }
   const durationMs = getAmbientTrackDurationMs(theme.id);
   if (durationMs) startPositionMs = Math.min(startPositionMs, Math.max(0, durationMs - 1));
   ambientTransport.status = 'playing';
