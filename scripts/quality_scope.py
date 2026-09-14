@@ -16,9 +16,10 @@ from pathlib import PurePosixPath
 from typing import Iterable
 
 
-CORE_E2E_LANES = ("regression", "learning-golden", "learning-observation", "smoke")
+CORE_E2E_LANES = ("regression-state", "regression-school", "learning-golden", "learning-observation", "smoke")
 CORE_E2E_FIELDS = {
-    "regression": "run_e2e_regression",
+    "regression-state": "run_e2e_regression_state",
+    "regression-school": "run_e2e_regression_school",
     "learning-golden": "run_e2e_learning_golden",
     "learning-observation": "run_e2e_learning_observation",
     "smoke": "run_e2e_smoke",
@@ -35,7 +36,8 @@ class Scope:
     run_chesscom_e2e: bool = False
     run_trailblazer_e2e: bool = False
     run_matthias_home_e2e: bool = False
-    run_e2e_regression: bool = False
+    run_e2e_regression_state: bool = False
+    run_e2e_regression_school: bool = False
     run_e2e_learning_golden: bool = False
     run_e2e_learning_observation: bool = False
     run_e2e_smoke: bool = False
@@ -118,12 +120,12 @@ TARGETED_E2E = {
     "e2e/matthias-home-priority.spec.js": "run_matthias_home_e2e",
 }
 CORE_E2E_SPEC_LANES = {
-    "e2e/regression-journeys.spec.js": "regression",
-    "e2e/regression-journeys-core.js": "regression",
-    "e2e/learning-golden-path.spec.js": "learning-golden",
-    "e2e/learning-second-observation.spec.js": "learning-observation",
-    "e2e/smoke.spec.js": "smoke",
-    "e2e/mobile-final-interactions.spec.js": "smoke",
+    "e2e/regression-journeys.spec.js": ("regression-state", "regression-school"),
+    "e2e/regression-journeys-core.js": ("regression-state", "regression-school"),
+    "e2e/learning-golden-path.spec.js": ("learning-golden",),
+    "e2e/learning-second-observation.spec.js": ("learning-observation",),
+    "e2e/smoke.spec.js": ("smoke",),
+    "e2e/mobile-final-interactions.spec.js": ("smoke",),
 }
 E2E_SHARED = {
     "e2e/helpers.js",
@@ -229,7 +231,7 @@ def classify(paths: Iterable[str]) -> Scope:
             elif path in TARGETED_E2E:
                 setattr(scope, TARGETED_E2E[path], True)
             elif path in CORE_E2E_SPEC_LANES:
-                _enable_core_e2e(scope, (CORE_E2E_SPEC_LANES[path],))
+                _enable_core_e2e(scope, CORE_E2E_SPEC_LANES[path])
             else:
                 # Unknown browser tests fail closed to the complete core matrix.
                 _enable_core_e2e(scope)
@@ -304,8 +306,8 @@ def self_test() -> None:
         run_trailblazer_e2e=True,
         run_matthias_home_e2e=True,
     )
-    _expect_core(["e2e/regression-journeys.spec.js"], lanes=("regression",))
-    _expect_core(["e2e/regression-journeys-core.js"], lanes=("regression",))
+    _expect_core(["e2e/regression-journeys.spec.js"], lanes=("regression-state", "regression-school"))
+    _expect_core(["e2e/regression-journeys-core.js"], lanes=("regression-state", "regression-school"))
     _expect_core(["e2e/learning-golden-path.spec.js"], lanes=("learning-golden",))
     _expect_core(["e2e/learning-second-observation.spec.js"], lanes=("learning-observation",))
     _expect_core(["e2e/smoke.spec.js"], lanes=("smoke",))
