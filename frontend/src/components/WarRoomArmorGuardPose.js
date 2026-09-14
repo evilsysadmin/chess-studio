@@ -31,8 +31,8 @@ export function applyArmorGuardPose(armor, towardBoard = 1) {
 
   // Keep the canonical sword anchor at y=.7, but pull its hilt into the same
   // depth plane as the hands and make the weapon read as a true centreline
-  // guard. Moving the grip itself by 1 cm keeps both derived hands chest-high
-  // without weakening the long-standing sword-position contract.
+  // guard. Move the grip itself by a hair over 1 cm so both derived hands stay
+  // chest-high with a real margin instead of sitting on a floating-point edge.
   sword.position.y = 0.7;
   sword.position.z = towardBoard * 0.405;
   sword.rotation.z = 0;
@@ -40,7 +40,7 @@ export function applyArmorGuardPose(armor, towardBoard = 1) {
 
   const grip = sword.getObjectByName?.('war-room-zweihander-grip');
   if (grip) {
-    grip.position.y = 0.64;
+    grip.position.y = 0.641;
     grip.userData.warRoomArmorGuardPose = WAR_ROOM_ARMOR_GUARD_POSE_VERSION;
   }
 
