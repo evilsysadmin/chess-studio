@@ -3,6 +3,7 @@ import * as THREE from 'three';
 const POW_RELEASE_FLASH_SECONDS = 0.48;
 const POW_RESCUE_RISE_SECONDS = 0.22;
 const POW_RESCUE_RISE_HEIGHT = 0.2;
+const powVisualRefs = new WeakMap();
 
 function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
@@ -47,6 +48,7 @@ function addPrisoner(root, pose = 'bound') {
     body.add(mesh(new THREE.TorusGeometry(0.24, 0.025, 6, 12), mat(0x44484a, 0.5, 0.72), { y: baseY + 0.15, rx: Math.PI / 2 }));
   }
   root.add(body);
+  return body;
 }
 
 function addCage(root) {
@@ -61,6 +63,7 @@ function addCage(root) {
     mesh(new THREE.BoxGeometry(1.35, 0.08, 0.08), iron, { y: 1.7, z: 0.22 }),
   );
   root.add(bars);
+  return bars;
 }
 
 function addChains(root) {
@@ -76,6 +79,7 @@ function addChains(root) {
     }));
   }
   root.add(chains);
+  return chains;
 }
 
 function addRescueFlash(root) {
@@ -89,6 +93,7 @@ function addRescueFlash(root) {
   flash.castShadow = false;
   flash.receiveShadow = false;
   root.add(flash);
+  return flash;
 }
 
 export function createPawnSlugPowModel(pow, { coarse = false } = {}) {
@@ -102,9 +107,9 @@ export function createPawnSlugPowModel(pow, { coarse = false } = {}) {
   root.userData.rescued = false;
   root.userData.rescueVisualStartedAt = null;
 
-  addPrisoner(root, pow.pose);
-  if (pow.pose === 'caged') addCage(root);
-  else addChains(root);
+  const body = addPrisoner(root, pow.pose);
+  const cage = pow.pose === 'caged' ? addCage(root) : null;
+  const chains = pow.pose === 'caged' ? null : addChains(root);
 
   const marker = mesh(
     new THREE.RingGeometry(0.08, 0.12, 12),
@@ -115,7 +120,8 @@ export function createPawnSlugPowModel(pow, { coarse = false } = {}) {
   marker.castShadow = false;
   marker.receiveShadow = false;
   root.add(marker);
-  addRescueFlash(root);
+  const flash = addRescueFlash(root);
+  powVisualRefs.set(root, { marker, body, cage, chains, flash });
   return root;
 }
 
@@ -126,33 +132,27 @@ export function animatePawnSlugPowModel(model, time = 0, { rescued = false, redu
   model.userData.rescued = Boolean(rescued);
   if (rescued && !wasRescued) model.userData.rescueVisualStartedAt = safeTime;
 
-  const marker = model.getObjectByName('pawn-slug-pow-rescue-marker');
-  const body = model.getObjectByName('pawn-slug-pow-body');
-  const cage = model.getObjectByName('pawn-slug-pow-cage');
-  const chains = model.getObjectByName('pawn-slug-pow-chains');
-  const flash = model.getObjectByName('pawn-slug-pow-release-flash');
+  const refs = powVisualRefs.get(model);
+  if (!refs) return;
+  const { marker, body, cage, chains, flash } = refs;
   const startedAt = model.userData.rescueVisualStartedAt;
   const rescueAge = rescued && Number.isFinite(startedAt) ? Math.max(0, safeTime - startedAt) : Number.POSITIVE_INFINITY;
 
-  if (marker) {
-    marker.visible = !rescued;
-    if (!reducedMotion) marker.scale.setScalar(0.92 + Math.sin(safeTime * 4.6) * 0.08);
-  }
+  marker.visible = !rescued;
+  if (!reducedMotion) marker.scale.setScalar(0.92 + Math.sin(safeTime * 4.6) * 0.08);
   if (cage) cage.visible = !rescued;
   if (chains) chains.visible = !rescued;
 
-  if (flash) {
-    const active = rescued && rescueAge < POW_RELEASE_FLASH_SECONDS;
-    flash.visible = active;
-    if (active) {
-      const progress = clamp01(rescueAge / POW_RELEASE_FLASH_SECONDS);
-      const scale = 0.72 + progress * 2.2;
-      flash.scale.setScalar(reducedMotion ? 1.15 : scale);
-      if (flash.material) flash.material.opacity = reducedMotion ? 0.42 : (1 - progress) * 0.82;
-    }
+  const activeFlash = rescued && rescueAge < POW_RELEASE_FLASH_SECONDS;
+  flash.visible = activeFlash;
+  if (activeFlash) {
+    const progress = clamp01(rescueAge / POW_RELEASE_FLASH_SECONDS);
+    const scale = 0.72 + progress * 2.2;
+    flash.scale.setScalar(reducedMotion ? 1.15 : scale);
+    flash.material.opacity = reducedMotion ? 0.42 : (1 - progress) * 0.82;
   }
 
-  if (!body || reducedMotion) return;
+  if (reducedMotion) return;
   if (rescued) {
     body.position.y = pawnSlugPowRescueRise(rescueAge);
     body.rotation.z *= 0.85;
@@ -169,4 +169,5 @@ export const PAWN_SLUG_POW_ART_META = Object.freeze({
   rescueRiseSeconds: POW_RESCUE_RISE_SECONDS,
   rescueRiseHeight: POW_RESCUE_RISE_HEIGHT,
   defaultRescueRadius: 0.82,
+  animationLookup: 'weakmap-cached-refs',
 });

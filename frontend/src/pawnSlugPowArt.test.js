@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PAWN_SLUG_POWS } from './pawnSlugPows.js';
 import {
   PAWN_SLUG_POW_ART_META,
@@ -20,6 +20,22 @@ describe('Pawn Slug POW art', () => {
       if (pow.pose === 'caged') expect(model.getObjectByName('pawn-slug-pow-cage')).toBeTruthy();
       else expect(model.getObjectByName('pawn-slug-pow-chains')).toBeTruthy();
     }
+  });
+
+  it('animates from cached visual refs instead of recursively searching the model every frame', () => {
+    const model = createPawnSlugPowModel(PAWN_SLUG_POWS[0]);
+    const body = model.getObjectByName('pawn-slug-pow-body');
+    const marker = model.getObjectByName('pawn-slug-pow-rescue-marker');
+    const lookup = vi.spyOn(model, 'getObjectByName');
+
+    animatePawnSlugPowModel(model, 1, { rescued: false });
+    animatePawnSlugPowModel(model, 1.1, { rescued: true });
+    animatePawnSlugPowModel(model, 1.2, { rescued: true });
+
+    expect(lookup).not.toHaveBeenCalled();
+    expect(body.position.y).toBeGreaterThan(0);
+    expect(marker.visible).toBe(false);
+    expect(PAWN_SLUG_POW_ART_META.animationLookup).toBe('weakmap-cached-refs');
   });
 
   it('visibly breaks captivity and flashes when the prisoner is rescued', () => {
