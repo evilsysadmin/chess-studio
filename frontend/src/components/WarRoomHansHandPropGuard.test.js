@@ -74,7 +74,7 @@ describe('WarRoomHansHandPropGuard', () => {
   });
 
   it.each([
-    ['service', 'espresso', 'war-room-hans-espresso-tray', -0.60, 0.38],
+    ['service', 'espresso', 'war-room-hans-espresso-tray', -0.34, 0.48],
     ['chore', 'bring-book', 'war-room-hans-chore-prop-book', -0.56, 0.32],
     ['chore', 'mail', 'war-room-hans-chore-prop-letters', -0.56, 0.32],
   ])('anchors %s:%s between both hands on the torso', (kind, eventName, propName, torsoY, forwardZ) => {
