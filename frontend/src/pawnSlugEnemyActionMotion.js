@@ -10,10 +10,13 @@ export const PAWN_SLUG_ENEMY_ACTIONS = Object.freeze({
   death: Object.freeze({ frames: 14, rate: 16, loop: false, groundedTailFrames: 4 }),
 });
 
+// These are source-frame rates, not complete gait cycles. With a 16-frame run
+// track they land around 1.4–2.4 full strides/sec instead of the old sub-1 Hz
+// "cardboard glide" that made authored sprites look static in motion.
 export const PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE = Object.freeze({
-  pawn: 12.2,
-  knight: 17.4,
-  rook: 8.4,
+  pawn: 30,
+  knight: 38,
+  rook: 22,
 });
 
 const ACTION_INDEX = Object.freeze({ idle: 0, run: 1, jump: 2, crouch: 3, hurt: 4, climb: 5, death: 6 });
@@ -146,6 +149,49 @@ function hurtPose(type, phase) {
   return Object.freeze({ x: -0.145 * travel, y: bounce * 0.04, rz: 0.12 * twist, sx: 1 + 0.08 * compression, sy: 1 - 0.11 * compression });
 }
 
+function runPose(type, wave, pulse) {
+  const lift = Math.abs(wave);
+  const plant = Math.max(0, pulse);
+  const backPlant = Math.max(0, -pulse);
+  if (type === 'rook') {
+    return Object.freeze({
+      x: wave * 0.024,
+      y: lift * 0.045 - plant * 0.012,
+      rz: -wave * 0.028,
+      sx: 1 + lift * 0.012,
+      sy: 1 + lift * 0.018 - plant * 0.055,
+    });
+  }
+  if (type === 'knight') {
+    return Object.freeze({
+      x: wave * 0.062,
+      y: lift * 0.092 - plant * 0.018,
+      rz: -wave * 0.082,
+      sx: 1 + lift * 0.024 - backPlant * 0.008,
+      sy: 1 + lift * 0.035 - plant * 0.048,
+    });
+  }
+  return Object.freeze({
+    x: wave * 0.048,
+    y: lift * 0.078 - plant * 0.016,
+    rz: -wave * 0.058,
+    sx: 1 + lift * 0.02 - backPlant * 0.006,
+    sy: 1 + lift * 0.03 - plant * 0.052,
+  });
+}
+
+function idlePose(type, wave, pulse) {
+  const inhale = (1 - pulse) * 0.5;
+  const mass = type === 'rook' ? 0.5 : type === 'knight' ? 1.08 : 1;
+  return Object.freeze({
+    x: wave * 0.006 * mass,
+    y: inhale * 0.006 * mass,
+    rz: wave * 0.012 * mass,
+    sx: 1 - inhale * 0.003,
+    sy: 1 + inhale * 0.014 * mass,
+  });
+}
+
 export function pawnSlugEnemyActionPoseValues(action = 'idle', actionFrame = 0, vy = 0, type = 'pawn', variant = 0) {
   const safeAction = PAWN_SLUG_ENEMY_ACTIONS[action] ? action : 'idle';
   const track = PAWN_SLUG_ENEMY_ACTIONS[safeAction];
@@ -157,10 +203,9 @@ export function pawnSlugEnemyActionPoseValues(action = 'idle', actionFrame = 0, 
   const phase = localFrame / Math.max(1, track.frames - (track.loop === false ? 1 : 0));
   const wave = Math.sin(phase * TAU);
   const pulse = Math.cos(phase * TAU);
-  const weight = type === 'rook' ? 0.58 : type === 'knight' ? 1.12 : 1;
   let pose;
 
-  if (safeAction === 'run') pose = Object.freeze({ x: wave * 0.028 * weight, y: Math.abs(wave) * 0.035 * weight, rz: -wave * 0.025 * weight, sx: 1 + pulse * 0.012, sy: 1 - pulse * 0.018 });
+  if (safeAction === 'run') pose = runPose(type, wave, pulse);
   else if (safeAction === 'jump') {
     const ascending = Number(vy) > 0;
     pose = Object.freeze({ x: 0, y: ascending ? 0.055 : -0.018, rz: ascending ? -0.055 : 0.045, sx: ascending ? 0.965 : 1.035, sy: ascending ? 1.055 : 0.965 });
@@ -170,7 +215,7 @@ export function pawnSlugEnemyActionPoseValues(action = 'idle', actionFrame = 0, 
   } else if (safeAction === 'hurt') pose = hurtPose(type, phase);
   else if (safeAction === 'climb') pose = Object.freeze({ x: wave * 0.018, y: Math.abs(wave) * 0.055, rz: wave * 0.018, sx: 0.985, sy: 1.015 });
   else if (safeAction === 'death') pose = deathPose(type, phase, variant);
-  else pose = Object.freeze({ x: 0, y: Math.max(0, wave) * 0.012, rz: pulse * 0.006, sx: 1 + pulse * 0.004, sy: 1 - pulse * 0.004 });
+  else pose = idlePose(type, wave, pulse);
 
   ACTION_POSE_CACHE.set(key, pose);
   return pose;
@@ -187,6 +232,9 @@ export const PAWN_SLUG_ENEMY_ACTION_META = Object.freeze({
   runRateByType: PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE,
   authoredFacings: Object.freeze(['left']),
   runtimeFacings: Object.freeze(['left', 'right']),
+  locomotionVersion: 'premium-weight-shift-v2',
+  runStyleByType: Object.freeze({ pawn: 'rifle-stride', knight: 'assault-charge', rook: 'heavy-stomp' }),
+  idleStyleByType: Object.freeze({ pawn: 'guard-breath', knight: 'predator-breath', rook: 'heavy-breath' }),
   impactStyleByType: Object.freeze({ pawn: 'clear-backstep', knight: 'armored-twist', rook: 'heavy-compression' }),
   deathStyleByType: Object.freeze({ pawn: 'backward-collapse-grounded', knight: 'violent-tumble-grounded', rook: 'heavy-collapse-grounded' }),
   deathVariants: 3,
