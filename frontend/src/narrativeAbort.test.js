@@ -42,7 +42,7 @@ describe('remote narrative cancellation', () => {
     );
 
     controller.abort(new DOMException('Game view changed', 'AbortError'));
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    for (let index = 0; index < 4; index += 1) await Promise.resolve();
 
     expect(onText).not.toHaveBeenCalled();
     expect(onUnavailable).not.toHaveBeenCalled();
