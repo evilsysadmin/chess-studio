@@ -47,7 +47,7 @@ Regla: cada workflow debe representar un dominio operativo o blast radius real. 
 | Workflow | Responsabilidad |
 | --- | --- |
 | `e2e-full.yml` | Sweep completo Chromium/Firefox/WebKit semanal/manual e informativo. Ya no duplica PR: la matriz requerida y path-aware War Room/Matthias vive en `cicd.yml`. |
-| `coverage.yml` | Coverage frontend/backend manual e informativo, con caches exactas Node/Python. Se ejecuta bajo demanda cuando se necesita investigar cobertura; no consume runners de forma periódica. |
+| `coverage.yml` | Coverage frontend/backend mensual/manual e informativo, con caches exactas Node/Python. Conserva una señal periódica barata sin ejecutar dos suites completas cada semana. |
 | `oci-readiness.yml` | Readiness OCI unificado y path-aware: ARM64 backend y/o Terraform OCI `fmt/init/validate`. Sustituye `oci-arm64-readiness.yml` + `oci-terraform-readiness.yml`. No hace apply. |
 
 ## Observabilidad y operación
