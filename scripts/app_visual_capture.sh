@@ -1,14 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+mode="${1:-canonical}"
 cd e2e
 
-./node_modules/.bin/playwright test \
-  {app,experiments,chronicles-avatar,war-room,war-room-decor,war-room-armor-oblique,war-room-hans}-visual-artifact.spec.js \
-  home-3d-focus-visual.spec.js \
-  browser-{runtime,storage}-health.spec.js \
-  --workers=1 --retries=0
-
-./node_modules/.bin/playwright test \
-  war-room-hans-routines-visual.spec.js \
-  --workers=4 --retries=0
+case "$mode" in
+  canonical)
+    ./node_modules/.bin/playwright test \
+      {app,experiments,chronicles-avatar,war-room,war-room-decor,war-room-armor-oblique,war-room-hans}-visual-artifact.spec.js \
+      home-3d-focus-visual.spec.js \
+      browser-{runtime,storage}-health.spec.js \
+      --workers=1 --retries=0
+    ;;
+  hans)
+    ./node_modules/.bin/playwright test \
+      war-room-hans-routines-visual.spec.js \
+      --workers=4 --retries=0
+    ;;
+  *)
+    echo "Unknown app visual capture mode: $mode" >&2
+    exit 2
+    ;;
+esac
