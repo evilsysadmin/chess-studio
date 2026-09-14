@@ -24,8 +24,10 @@ export const PAWN_SLUG_HOSTILE_PROJECTILE_FX = Object.freeze(Object.fromEntries(
   ]),
 ));
 
-export const PAWN_SLUG_PREMIUM_FX_RESOURCE_VERSION = 'premium-shared-resources-v2-arcade-bullets';
+export const PAWN_SLUG_PREMIUM_FX_RESOURCE_VERSION = 'premium-shared-resources-v3-pooled-muzzle-materials';
+export const PAWN_SLUG_TRANSIENT_MATERIAL_POOL_SIZE = 12;
 const premiumSharedResources = new Map();
+const transientBasicMaterialPools = new Map();
 
 function markShared(resource) {
   if (!resource) return resource;
@@ -52,6 +54,28 @@ function basic(color, opacity = 1) {
     depthWrite: opacity >= 0.9,
     blending: opacity < 1 ? THREE.AdditiveBlending : THREE.NormalBlending,
   });
+}
+
+function transientBasic(key, color, opacity = 1) {
+  let pool = transientBasicMaterialPools.get(key);
+  if (!pool) {
+    pool = { cursor: 0, materials: [] };
+    transientBasicMaterialPools.set(key, pool);
+  }
+
+  let material;
+  if (pool.materials.length < PAWN_SLUG_TRANSIENT_MATERIAL_POOL_SIZE) {
+    material = markShared(basic(color, opacity));
+    material.userData.pawnSlugTransientFxPool = key;
+    pool.materials.push(material);
+  } else {
+    material = pool.materials[pool.cursor];
+  }
+  pool.cursor = (pool.cursor + 1) % PAWN_SLUG_TRANSIENT_MATERIAL_POOL_SIZE;
+
+  material.color.setHex(color);
+  material.opacity = opacity;
+  return material;
 }
 
 function standard(color, roughness = 0.4, metalness = 0.5) {
@@ -161,6 +185,7 @@ export function createPremiumMuzzleFlash({ enemy = false, weapon = 'pistol' } = 
   root.userData.life = weapon === 'panzerfaust' ? 0.115 : weapon === 'shotgun' ? 0.09 : 0.065;
   root.userData.baseScale = profile.flash;
   root.userData.premiumFxGeometry = PAWN_SLUG_PREMIUM_FX_RESOURCE_VERSION;
+  root.userData.transientMaterialPoolSize = PAWN_SLUG_TRANSIENT_MATERIAL_POOL_SIZE;
   root.userData.panzerfaustPunch = weapon === 'panzerfaust' ? 'shockwave-smoke' : null;
   root.userData.muzzleSignature = enemy
     ? 'hostile-red-streak'
@@ -174,25 +199,24 @@ export function createPremiumMuzzleFlash({ enemy = false, weapon = 'pistol' } = 
 
   const core = mesh(
     shared(`${key}:muzzle:core-geometry`, () => new THREE.SphereGeometry(0.095 * profile.flash, 8, 6)),
-    basic(enemy ? 0xffd0c8 : 0xfff7d6, 0.98),
+    transientBasic(`${key}:muzzle:core-material`, enemy ? 0xffd0c8 : 0xfff7d6, 0.98),
   );
   const cone = mesh(
     shared(`${key}:muzzle:cone-geometry`, () => new THREE.ConeGeometry(0.13 * profile.flash, 0.46 * profile.flash, 8)),
-    basic(profile.tracer, 0.88),
+    transientBasic(`${key}:muzzle:cone-material`, profile.tracer, 0.88),
     0.27 * profile.flash,
   );
   cone.rotation.z = -Math.PI / 2;
   const flareGeometry = shared(`${key}:muzzle:flare-geometry`, () => new THREE.PlaneGeometry(0.7 * profile.flash, 0.055 * profile.flash));
-  const flareMaterial = basic(profile.core, 0.54);
-  const flare = mesh(flareGeometry, flareMaterial, 0.11 * profile.flash, 0, 0.01);
-  const flare2 = mesh(flareGeometry, flareMaterial.clone(), 0.11 * profile.flash, 0, 0.01);
+  const flare = mesh(flareGeometry, transientBasic(`${key}:muzzle:flare-material`, profile.core, 0.54), 0.11 * profile.flash, 0, 0.01);
+  const flare2 = mesh(flareGeometry, transientBasic(`${key}:muzzle:flare-material`, profile.core, 0.54), 0.11 * profile.flash, 0, 0.01);
   flare2.rotation.z = Math.PI / 2;
   root.add(core, cone, flare, flare2);
 
   if (enemy) {
     const hostileStreak = mesh(
       shared(`${key}:muzzle:hostile-streak-geometry`, () => new THREE.PlaneGeometry(0.82 * profile.flash, 0.045 * profile.flash)),
-      basic(profile.tracer, 0.78),
+      transientBasic(`${key}:muzzle:hostile-streak-material`, profile.tracer, 0.78),
       0.31 * profile.flash,
       0,
       0.014,
@@ -204,7 +228,7 @@ export function createPremiumMuzzleFlash({ enemy = false, weapon = 'pistol' } = 
   if (weapon === 'machinegun') {
     const streak = mesh(
       shared(`${key}:muzzle:streak-geometry`, () => new THREE.PlaneGeometry(0.96 * profile.flash, 0.032 * profile.flash)),
-      basic(profile.core, 0.66),
+      transientBasic(`${key}:muzzle:streak-material`, profile.core, 0.66),
       0.36 * profile.flash,
       0,
       0.012,
@@ -216,7 +240,13 @@ export function createPremiumMuzzleFlash({ enemy = false, weapon = 'pistol' } = 
   if (weapon === 'shotgun') {
     const sideGeometry = shared(`${key}:muzzle:shotgun-side-geometry`, () => new THREE.ConeGeometry(0.09 * profile.flash, 0.35 * profile.flash, 7));
     for (const side of [-1, 1]) {
-      const sideFlare = mesh(sideGeometry, basic(profile.tracer, 0.62), 0.24 * profile.flash, side * 0.09 * profile.flash, 0.008);
+      const sideFlare = mesh(
+        sideGeometry,
+        transientBasic(`${key}:muzzle:shotgun-side-material`, profile.tracer, 0.62),
+        0.24 * profile.flash,
+        side * 0.09 * profile.flash,
+        0.008,
+      );
       sideFlare.rotation.z = -Math.PI / 2 + side * 0.18;
       sideFlare.userData.muzzleShotgunFlare = true;
       root.add(sideFlare);
@@ -224,7 +254,7 @@ export function createPremiumMuzzleFlash({ enemy = false, weapon = 'pistol' } = 
     for (let index = 0; index < 2; index += 1) {
       const smoke = mesh(
         shared(`${key}:muzzle:shotgun-smoke-geometry:${index}`, () => new THREE.SphereGeometry(0.085 + index * 0.025, 7, 5)),
-        basic(0x7c7770, 0.22 - index * 0.025),
+        transientBasic(`${key}:muzzle:shotgun-smoke-material:${index}`, 0x7c7770, 0.22 - index * 0.025),
         (-0.025 - index * 0.075) * profile.flash,
         (index === 0 ? 0.06 : -0.055) * profile.flash,
         -0.014,
@@ -240,7 +270,7 @@ export function createPremiumMuzzleFlash({ enemy = false, weapon = 'pistol' } = 
   if (weapon === 'panzerfaust') {
     const shockwave = mesh(
       shared(`${key}:muzzle:shockwave-geometry`, () => new THREE.RingGeometry(0.11, 0.2, 16)),
-      basic(enemy ? 0xff5745 : 0xffc35e, 0.52),
+      transientBasic(`${key}:muzzle:shockwave-material`, enemy ? 0xff5745 : 0xffc35e, 0.52),
       0.18 * profile.flash,
       0,
       -0.005,
@@ -252,7 +282,7 @@ export function createPremiumMuzzleFlash({ enemy = false, weapon = 'pistol' } = 
     for (let index = 0; index < 2; index += 1) {
       const smoke = mesh(
         shared(`${key}:muzzle:smoke-geometry:${index}`, () => new THREE.SphereGeometry(0.11 + index * 0.035, 7, 5)),
-        basic(enemy ? 0x6d4b47 : 0x6f7478, 0.3 - index * 0.04),
+        transientBasic(`${key}:muzzle:smoke-material:${index}`, enemy ? 0x6d4b47 : 0x6f7478, 0.3 - index * 0.04),
         (-0.05 - index * 0.1) * profile.flash,
         (index === 0 ? 0.06 : -0.055) * profile.flash,
         -0.015,
