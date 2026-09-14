@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   animatePawnSlugDestructibleModel,
   createPawnSlugDestructibleModel,
@@ -36,6 +36,33 @@ describe('Pawn Slug destructible art and layout', () => {
       if (node.isMesh && node.material?.emissive) emissive.push(node.material.emissiveIntensity);
     });
     expect(emissive.some((value) => value > 0)).toBe(true);
+  });
+
+  it('does no material traversal or shake math for intact props on steady frames', () => {
+    const crate = createPawnSlugDestructibleModel('crate');
+    crate.position.y = 1.75;
+    const traverse = vi.spyOn(crate, 'traverse');
+
+    animatePawnSlugDestructibleModel(crate, 1, { hpRatio: 1 });
+    animatePawnSlugDestructibleModel(crate, 2, { hpRatio: 1 });
+
+    expect(traverse).not.toHaveBeenCalled();
+    expect(crate.position.y).toBe(1.75);
+    expect(crate.rotation.z).toBe(0);
+    expect(PAWN_SLUG_DESTRUCTIBLE_ART_META.materialRefresh).toBe('stage-change-only');
+    expect(PAWN_SLUG_DESTRUCTIBLE_ART_META.intactIdleAnimation).toBe('none');
+  });
+
+  it('refreshes material state only when the damage stage changes', () => {
+    const barrel = createPawnSlugDestructibleModel('barrel');
+    const traverse = vi.spyOn(barrel, 'traverse');
+
+    animatePawnSlugDestructibleModel(barrel, 0.3, { hpRatio: 0.6 });
+    animatePawnSlugDestructibleModel(barrel, 0.4, { hpRatio: 0.58 });
+    animatePawnSlugDestructibleModel(barrel, 0.5, { hpRatio: 0.2 });
+
+    expect(traverse).toHaveBeenCalledTimes(2);
+    expect(barrel.userData.damageStage).toBe('critical');
   });
 
   it('anchors damage shake to the original height instead of accumulating drift', () => {
