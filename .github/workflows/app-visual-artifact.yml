@@ -8,11 +8,11 @@ on:
       - frontend/src/assets/**
       - frontend/src/chesscom*.js
       - frontend/src/chronicles*.js
+      - frontend/src/pawn*.js
       - '!frontend/src/**/*.test.js'
       - '!frontend/src/**/*.test.jsx'
       - frontend/public/**
       - e2e/*visual*.spec.js
-      - e2e/chesscom*.spec.js
       - e2e/browser-*-health.spec.js
       - scripts/app_visual_*
       - scripts/war_room_visual_freeze_check.mjs
