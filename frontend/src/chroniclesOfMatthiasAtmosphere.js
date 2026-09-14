@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CHRONICLES_MAP } from './chroniclesOfMatthias.js';
+import { buildChroniclesDungeonCeiling } from './chroniclesOfMatthiasCeiling.js';
 
 const CELL = 4;
 const DUST_DESKTOP = 84;
@@ -100,6 +101,7 @@ function addMistPatch(root, texture, { name, x, z, width, depth, color, opacity,
 export function buildChroniclesDungeonAtmosphere({ coarsePointer = false, reducedMotion = false } = {}) {
   const root = new THREE.Group();
   root.name = 'chronicles-dungeon-atmosphere';
+  root.add(buildChroniclesDungeonCeiling({ coarsePointer }));
 
   const dustCount = coarsePointer ? DUST_COARSE : DUST_DESKTOP;
   const dustData = createDust(dustCount);
