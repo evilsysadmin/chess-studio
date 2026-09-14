@@ -3,7 +3,7 @@ name: Quality · coverage (informative)
 on:
   workflow_dispatch:
   schedule:
-    - cron: '17 3 * * 0'
+    - cron: '17 3 1 * *'
 
 permissions:
   contents: read
