@@ -1,13 +1,9 @@
 name: Security · CodeQL signal
 
+# Trivy/dependency gates stay path-aware and blocking in PR Quality. CodeQL is a
+# slower complementary SAST signal, so run it periodically (and on demand)
+# instead of analyzing both languages again after every merge to main.
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'frontend/**'
-      - 'backend-python/**'
-      - '.github/workflows/codeql.yml'
   schedule:
     - cron: '17 4 * * 1'
   workflow_dispatch:
