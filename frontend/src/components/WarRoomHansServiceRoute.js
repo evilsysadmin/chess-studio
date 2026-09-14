@@ -5,7 +5,7 @@ import { setWarRoomHansServiceDoorOpen } from './WarRoomHansServiceDoor.js';
 
 export { moveWarRoomHansToward };
 
-export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v7-visible-exit-door-armor-inward-standoff';
+export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v8-command-desk-front-standoff';
 export const HANS_SERVICE_WALK_SPEED = 0.78;
 
 const DOOR_NAME = 'war-room-hans-service-door';
@@ -20,6 +20,25 @@ function localPoint(parent, world) {
 function isWallArmor(object) {
   const name = String(object?.name || '');
   return name.startsWith('war-room-teutonic-armor-') || name.startsWith('war-room-armor-guard-');
+}
+
+function commandDeskHost(object) {
+  let current = object || null;
+  while (current) {
+    const name = String(current.name || '');
+    if (name === 'command-cabinet' || name === 'war-room-teutonic-command-desk-v28') return current;
+    current = current.parent || null;
+  }
+  return null;
+}
+
+function commandDeskFrontZSign(object) {
+  const host = commandDeskHost(object);
+  if (!host) return 0;
+  const drawer = host.getObjectByName?.('war-room-command-desk-drawer');
+  const localZ = Number(drawer?.position?.z);
+  if (!Number.isFinite(localZ) || Math.abs(localZ) < 1e-4) return 0;
+  return Math.sign(localZ);
 }
 
 export function installWarRoomHansServiceInfrastructure(root) {
@@ -60,7 +79,15 @@ export function warRoomHansTargetNearObject(object, parent, { offsetX = 0, offse
   } else {
     world.x += Number(offsetX) || 0;
   }
-  world.z += Number(offsetZ) || 0;
+
+  // The command desk can be mirrored with the room. Its drawer faces the board,
+  // so use that local Z sign as the source of truth for which side is actually
+  // the front. Desk chore offsets are standoff magnitudes; applying raw +Z sent
+  // Hans behind/inside the desk whenever the room orientation was reversed.
+  const zOffset = Number(offsetZ) || 0;
+  const deskFrontSign = commandDeskFrontZSign(object);
+  world.z += deskFrontSign && zOffset ? deskFrontSign * Math.abs(zOffset) : zOffset;
+
   const point = localPoint(parent, world);
   point.y = STANDING_Y;
   return point;
