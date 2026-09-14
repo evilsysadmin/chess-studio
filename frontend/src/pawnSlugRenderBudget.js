@@ -9,6 +9,7 @@ export const PAWN_SLUG_RENDER_BUDGET = Object.freeze({
   maxPaintHz: 90,
   idlePaintHz: 24,
   pausedPaintHz: 2,
+  diagnosticsSampleMs: 1000,
   localLightRange: 24,
 });
 
@@ -43,6 +44,18 @@ export function pawnSlugPaintHzForState({
   return Math.max(60, Number(maxPaintHz) || PAWN_SLUG_RENDER_BUDGET.maxPaintHz);
 }
 
+export function pawnSlugRenderDiagnostics(renderer) {
+  const render = renderer?.info?.render || {};
+  const memory = renderer?.info?.memory || {};
+  return Object.freeze({
+    drawCalls: Math.max(0, Number(render.calls) || 0),
+    triangles: Math.max(0, Number(render.triangles) || 0),
+    points: Math.max(0, Number(render.points) || 0),
+    textures: Math.max(0, Number(memory.textures) || 0),
+    geometries: Math.max(0, Number(memory.geometries) || 0),
+  });
+}
+
 function deferAfterRender(task) {
   if (typeof queueMicrotask === 'function') {
     queueMicrotask(task);
@@ -57,6 +70,17 @@ function rendererDataset(renderer) {
 
 function rendererHostDataset(renderer) {
   return renderer?.domElement?.parentElement?.dataset || null;
+}
+
+function writeRenderDiagnostics(renderer) {
+  const dataset = rendererDataset(renderer);
+  if (!dataset || !renderer?.info) return;
+  const metrics = pawnSlugRenderDiagnostics(renderer);
+  dataset.pawnSlugDrawCalls = String(metrics.drawCalls);
+  dataset.pawnSlugTriangles = String(metrics.triangles);
+  dataset.pawnSlugPoints = String(metrics.points);
+  dataset.pawnSlugTextures = String(metrics.textures);
+  dataset.pawnSlugGeometries = String(metrics.geometries);
 }
 
 function schedulePixelRatio(renderer, target) {
@@ -114,6 +138,7 @@ function installPawnSlugPaintLimiter(renderer, maxPaintHz = PAWN_SLUG_RENDER_BUD
   const originalRender = renderer.render.bind(renderer);
   let lastPaintAt = Number.NEGATIVE_INFINITY;
   let lastPaintHz = null;
+  let lastDiagnosticsAt = Number.NEGATIVE_INFINITY;
 
   renderer.render = function pawnSlugBudgetedRender(scene, camera) {
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
@@ -131,7 +156,12 @@ function installPawnSlugPaintLimiter(renderer, maxPaintHz = PAWN_SLUG_RENDER_BUD
     }
     if (now - lastPaintAt < minimumInterval) return undefined;
     lastPaintAt = now;
-    return originalRender(scene, camera);
+    const result = originalRender(scene, camera);
+    if (now - lastDiagnosticsAt >= PAWN_SLUG_RENDER_BUDGET.diagnosticsSampleMs) {
+      lastDiagnosticsAt = now;
+      writeRenderDiagnostics(renderer);
+    }
+    return result;
   };
   const dataset = rendererDataset(renderer);
   if (dataset) dataset.pawnSlugPaintCap = `${pawnSlugPaintHzForState({ maxPaintHz })}hz`;
