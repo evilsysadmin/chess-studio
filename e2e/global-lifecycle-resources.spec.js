@@ -4,6 +4,7 @@ import { login, mockApi, openMoreGameModes, startQuickGame } from './helpers.js'
 async function installGlobalResourceProbe(page) {
   await page.addInitScript(() => {
     const webglCanvases = new Set();
+    const webglContexts = new Set();
     const workers = new Set();
     const audioContexts = new Set();
     const pendingAnimationFrames = new Set();
@@ -18,6 +19,7 @@ async function installGlobalResourceProbe(page) {
       const kind = String(type || '').toLowerCase();
       if (context && (kind === 'webgl' || kind === 'webgl2' || kind === 'experimental-webgl')) {
         webglCanvases.add(this);
+        webglContexts.add(context);
       }
       return context;
     };
@@ -135,9 +137,17 @@ async function installGlobalResourceProbe(page) {
       snapshot() {
         const listenerCount = (target) => [...globalListeners.get(target).values()]
           .reduce((total, bucket) => total + bucket.size, 0);
+        const liveWebglContexts = [...webglContexts].filter((context) => {
+          try {
+            return typeof context.isContextLost !== 'function' || !context.isContextLost();
+          } catch {
+            return true;
+          }
+        }).length;
         return {
           canvases: document.querySelectorAll('canvas').length,
           webglCanvases: [...webglCanvases].filter((canvas) => canvas.isConnected).length,
+          liveWebglContexts,
           workers: workers.size,
           audioContexts: [...audioContexts].filter((context) => context.state !== 'closed').length,
           pendingAnimationFrames: pendingAnimationFrames.size,
@@ -157,6 +167,8 @@ async function settle(page) {
 function expectReturnedResourcesToFitBaseline({ baseline, final }) {
   expect(final.canvases, `canvas leak: ${JSON.stringify({ baseline, final })}`).toBeLessThanOrEqual(baseline.canvases);
   expect(final.webglCanvases, `WebGL canvas leak: ${JSON.stringify({ baseline, final })}`).toBeLessThanOrEqual(baseline.webglCanvases);
+  expect(final.liveWebglContexts, `live WebGL context leak: ${JSON.stringify({ baseline, final })}`)
+    .toBeLessThanOrEqual(baseline.liveWebglContexts);
   expect(final.workers, `Worker leak: ${JSON.stringify({ baseline, final })}`).toBeLessThanOrEqual(baseline.workers);
   expect(final.pendingAnimationFrames, `RAF leak: ${JSON.stringify({ baseline, final })}`)
     .toBeLessThanOrEqual(baseline.pendingAnimationFrames);
@@ -212,6 +224,8 @@ test('Browser lifecycle · Home → War Room → Home → Pawn Slug → Home no 
   const warRoom = await snapshot();
   expect(warRoom.webglCanvases, `War Room debe acreditar al menos un canvas WebGL: ${JSON.stringify(warRoom)}`)
     .toBeGreaterThanOrEqual(1);
+  expect(warRoom.liveWebglContexts, `War Room debe acreditar al menos un contexto WebGL vivo: ${JSON.stringify(warRoom)}`)
+    .toBeGreaterThanOrEqual(1);
 
   await page.getByRole('button', { name: 'Salir al menú', exact: true }).click();
   await expect(page.getByRole('heading', { name: '¿Abandonar la partida?', exact: true })).toBeVisible();
@@ -230,6 +244,8 @@ test('Browser lifecycle · Home → War Room → Home → Pawn Slug → Home no 
 
   const pawnSlug = await snapshot();
   expect(pawnSlug.webglCanvases, `Pawn Slug debe acreditar al menos un canvas WebGL: ${JSON.stringify(pawnSlug)}`)
+    .toBeGreaterThanOrEqual(1);
+  expect(pawnSlug.liveWebglContexts, `Pawn Slug debe acreditar al menos un contexto WebGL vivo: ${JSON.stringify(pawnSlug)}`)
     .toBeGreaterThanOrEqual(1);
 
   await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
