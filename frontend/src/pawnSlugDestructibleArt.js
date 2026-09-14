@@ -84,6 +84,7 @@ export function createPawnSlugDestructibleModel(type = 'crate') {
   root.userData.destructibleType = type;
   root.userData.material = spec.material;
   root.userData.damageStage = 'intact';
+  root.userData.materialDamageStage = 'intact';
   root.userData.hitbox = type === 'barrel'
     ? Object.freeze({ width: 0.82, height: 1.18 })
     : Object.freeze({ width: 1.12, height: 0.96 });
@@ -103,13 +104,17 @@ export function animatePawnSlugDestructibleModel(model, time = 0, { hpRatio = 1,
   model.visible = true;
   const stage = pawnSlugDestructibleDamageStage(safeHp);
   model.userData.damageStage = stage;
-  applyMaterialDamageState(model, stage);
-  if (reducedMotion) {
+  if (model.userData.materialDamageStage !== stage) {
+    applyMaterialDamageState(model, stage);
+    model.userData.materialDamageStage = stage;
+  }
+
+  const damage = 1 - safeHp;
+  if (reducedMotion || damage <= 0.0001) {
     model.rotation.z = 0;
     model.position.y = baseY;
     return;
   }
-  const damage = 1 - safeHp;
   const materialWeight = model.userData.material === 'metal' ? 0.72 : 1;
   model.rotation.z = Math.sin(time * 34 + model.id) * 0.018 * damage * materialWeight;
   model.position.y = baseY + Math.abs(Math.sin(time * 27 + model.id * 0.3)) * 0.018 * damage * materialWeight;
@@ -120,4 +125,6 @@ export const PAWN_SLUG_DESTRUCTIBLE_ART_META = Object.freeze({
   barrel: Object.freeze({ material: 'metal', hitbox: Object.freeze({ width: 0.82, height: 1.18 }) }),
   damageFeedback: 'material-state-plus-shake-before-break',
   damageStages: Object.freeze(['intact', 'damaged', 'critical']),
+  materialRefresh: 'stage-change-only',
+  intactIdleAnimation: 'none',
 });
