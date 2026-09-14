@@ -7,6 +7,7 @@ const CONTRACT_KEY = 'chess-study-active-contract';
 const RUN_KEY = 'chess-study-special-run';
 const BOARD_THEME_KEY = 'chess-study-board-theme';
 const MAX_PROCESSED_GAME_IDS = 256;
+const MAX_RUN_PROCESSED_GAME_IDS = 16;
 
 export const BOARD_THEMES = [
   { id: 'classic', label: 'Clásico', unlock: () => true },
@@ -234,7 +235,7 @@ export function reconcileCareerHistory(history = []) {
 }
 
 export function startSpecialRun(mode='streak') {
-  const baseRun = {id:`${mode}-${Date.now()}`,mode,active:true,stage:0,completedStages:0,wins:0,draws:0,losses:0,points:0,startedAt:new Date().toISOString()};
+  const baseRun = {id:`${mode}-${Date.now()}`,mode,active:true,stage:0,completedStages:0,wins:0,draws:0,losses:0,points:0,processedGameIds:[],startedAt:new Date().toISOString()};
   const run = mode==='boss'
     ? {...baseRun,difficulty:35}
     : mode==='cup'
@@ -246,8 +247,26 @@ export function loadSpecialRun(){try{return JSON.parse(getStorageItem(STORAGE_LO
 export function saveSpecialRun(run){ if(run) setProfileStorageItem(RUN_KEY,JSON.stringify(run)); return run; }
 export function clearSpecialRun(){ removeProfileStorageItem(RUN_KEY); return null; }
 function persistRun(run){ if(run?.active)saveSpecialRun(run); else clearSpecialRun(); return run; }
+function specialRunGameId(run){const value=run?.currentGameId;return value==null?'':String(value).trim();}
+function specialRunProcessedGameIds(run){return Array.isArray(run?.processedGameIds)?run.processedGameIds.map((id)=>String(id)).filter(Boolean).slice(0,MAX_RUN_PROCESSED_GAME_IDS):[];}
+function markSpecialRunGameProcessed(run,gameId){if(!gameId)return run;const ids=[gameId,...specialRunProcessedGameIds(run).filter((id)=>id!==gameId)].slice(0,MAX_RUN_PROCESSED_GAME_IDS);return {...run,processedGameIds:ids};}
+function resolveSpecialRunReplay(run,gameId){
+  if(!gameId)return {duplicate:null,base:run};
+  const active=loadSpecialRun();
+  if(active?.id===run?.id){
+    if(specialRunProcessedGameIds(active).includes(gameId))return {duplicate:active,base:active};
+    if(specialRunGameId(active)===gameId)return {duplicate:null,base:active};
+    return {duplicate:null,base:run};
+  }
+  const archived=(loadCareer().runHistory||[]).find((row)=>row?.id===run?.id&&specialRunProcessedGameIds(row).includes(gameId));
+  return {duplicate:archived||null,base:run};
+}
 export function recordSpecialRunResult(run,outcome){
   if(!run?.active)return run;
+  const gameId=specialRunGameId(run);
+  const resolution=resolveSpecialRunReplay(run,gameId);
+  if(resolution.duplicate)return resolution.duplicate;
+  run=gameId?markSpecialRunGameProcessed(resolution.base,gameId):resolution.base;
   if (run.mode === 'cup') {
     const wins=(run.wins||0)+(outcome==='win'?1:0), draws=(run.draws||0)+(outcome==='draw'?1:0), losses=(run.losses||0)+(outcome==='loss'?1:0);
     const completed=(run.completedStages||0)+1; const points=wins+draws*.5;
