@@ -79,6 +79,8 @@ export const PAWN_SLUG_WEAPON_UPGRADES = Object.freeze({
   ]),
 });
 
+const WEAPON_STATS_CACHE = new Map();
+
 export const PAWN_SLUG_SPAWNS = Object.freeze([
   [620, 'pawn'], [790, 'pawn'], [1080, 'pawn'], [1210, 'knight'], [1380, 'pawn'],
   [1560, 'rook'], [1710, 'pawn'], [1940, 'knight'], [2110, 'pawn'], [2250, 'pawn'],
@@ -135,8 +137,12 @@ export function pawnSlugWeaponUpgradeCrossed(id, previousLevel, nextLevel) {
 export function pawnSlugWeaponStatsForLevel(id, level = 1) {
   const weapon = PAWN_SLUG_WEAPONS[id] || PAWN_SLUG_WEAPONS.pistol;
   const effectiveLevel = pawnSlugRuntimeLevel(level);
+  const cacheKey = `${weapon.id}:${effectiveLevel}`;
+  const cached = WEAPON_STATS_CACHE.get(cacheKey);
+  if (cached) return cached;
+
   const upgrade = pawnSlugWeaponUpgradeForLevel(weapon.id, effectiveLevel);
-  return Object.freeze({
+  const stats = Object.freeze({
     ...weapon,
     tier: upgrade.tier,
     upgradeCode: upgrade.code,
@@ -147,6 +153,8 @@ export function pawnSlugWeaponStatsForLevel(id, level = 1) {
     spread: weapon.spread * upgrade.spread,
     ammoMultiplier: upgrade.ammo,
   });
+  WEAPON_STATS_CACHE.set(cacheKey, stats);
+  return stats;
 }
 
 export function pawnSlugAmmoForPickup(type, level = 1) {
