@@ -18,18 +18,63 @@ function mesh(geometry, material, { x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0 
   return node;
 }
 
+function contactShadow(width, depth, opacity = 0.26) {
+  const shadow = mesh(
+    new THREE.CircleGeometry(0.5, 16),
+    new THREE.MeshBasicMaterial({ color: 0x08090a, transparent: true, opacity, depthWrite: false }),
+    { y: 0.012, rx: -Math.PI / 2 },
+  );
+  shadow.name = 'pawn-slug-destructible-contact-shadow';
+  shadow.scale.set(width, depth, 1);
+  shadow.castShadow = false;
+  shadow.receiveShadow = false;
+  return shadow;
+}
+
+function addRivet(root, x, y, z, material) {
+  const rivet = mesh(new THREE.SphereGeometry(0.025, 6, 4), material, { x, y, z });
+  rivet.scale.z = 0.45;
+  root.add(rivet);
+}
+
 function createCrate() {
   const root = new THREE.Group();
-  const wood = standard(0x79502e, 0.94, 0.02);
-  const darkWood = standard(0x4a2d1c, 0.98, 0.01);
-  const iron = standard(0x42474a, 0.52, 0.65);
-  root.add(mesh(new THREE.BoxGeometry(1.1, 0.92, 0.86), wood, { y: 0.46 }));
-  for (const x of [-0.48, 0.48]) root.add(mesh(new THREE.BoxGeometry(0.1, 1.0, 0.91), darkWood, { x, y: 0.49, z: 0.01 }));
-  for (const y of [0.16, 0.78]) root.add(mesh(new THREE.BoxGeometry(1.16, 0.095, 0.91), darkWood, { y, z: 0.01 }));
-  const braceA = mesh(new THREE.BoxGeometry(0.08, 1.25, 0.06), iron, { y: 0.48, z: 0.47, rz: Math.PI / 4 });
-  const braceB = mesh(new THREE.BoxGeometry(0.08, 1.25, 0.06), iron, { y: 0.48, z: 0.47, rz: -Math.PI / 4 });
+  const wood = standard(0x765032, 0.93, 0.02);
+  const woodHighlight = standard(0x936642, 0.9, 0.02);
+  const darkWood = standard(0x432b1d, 0.98, 0.01);
+  const iron = standard(0x343a3d, 0.46, 0.72);
+  const ironEdge = standard(0x5a6062, 0.4, 0.68);
+
+  root.add(contactShadow(1.14, 0.72, 0.3));
+  root.add(mesh(new THREE.BoxGeometry(1.08, 0.86, 0.8), wood, { y: 0.45 }));
+
+  // Layered slats keep the silhouette chunky while adding enough surface relief
+  // to read as a real field crate at normal play zoom.
+  for (const y of [0.22, 0.48, 0.74]) {
+    root.add(mesh(new THREE.BoxGeometry(0.94, 0.13, 0.035), woodHighlight, { y, z: 0.425 }));
+  }
+  for (const x of [-0.49, 0.49]) {
+    root.add(mesh(new THREE.BoxGeometry(0.11, 0.96, 0.86), darkWood, { x, y: 0.49, z: 0.005 }));
+  }
+  for (const y of [0.13, 0.82]) {
+    root.add(mesh(new THREE.BoxGeometry(1.15, 0.11, 0.86), darkWood, { y, z: 0.005 }));
+  }
+
+  const braceA = mesh(new THREE.BoxGeometry(0.075, 1.2, 0.055), iron, { y: 0.48, z: 0.46, rz: Math.PI / 4 });
+  const braceB = mesh(new THREE.BoxGeometry(0.075, 1.2, 0.055), iron, { y: 0.48, z: 0.46, rz: -Math.PI / 4 });
   root.add(braceA, braceB);
-  const stencil = mesh(new THREE.PlaneGeometry(0.34, 0.34), basic(0xd6b463, 0.78), { y: 0.48, z: 0.505 });
+
+  for (const x of [-0.48, 0.48]) {
+    for (const y of [0.14, 0.8]) {
+      const corner = mesh(new THREE.BoxGeometry(0.16, 0.16, 0.055), ironEdge, { x, y, z: 0.472 });
+      root.add(corner);
+      addRivet(root, x, y, 0.505, iron);
+    }
+  }
+
+  const stencilPlate = mesh(new THREE.BoxGeometry(0.38, 0.28, 0.035), standard(0x252a2d, 0.6, 0.42), { y: 0.49, z: 0.495 });
+  root.add(stencilPlate);
+  const stencil = mesh(new THREE.PlaneGeometry(0.24, 0.24), basic(0xd8b45f, 0.9), { y: 0.49, z: 0.517 });
   stencil.name = 'pawn-slug-destructible-stencil';
   root.add(stencil);
   return root;
@@ -37,15 +82,32 @@ function createCrate() {
 
 function createBarrel() {
   const root = new THREE.Group();
-  const steel = standard(0x4d5558, 0.46, 0.72);
-  const ring = standard(0x252a2d, 0.38, 0.82);
-  const warning = standard(0x9a3b2c, 0.5, 0.48);
-  const body = mesh(new THREE.CylinderGeometry(0.38, 0.4, 1.12, 14), steel, { y: 0.56 });
-  root.add(body);
-  for (const y of [0.18, 0.56, 0.94]) root.add(mesh(new THREE.TorusGeometry(0.4, 0.035, 6, 14), ring, { y, rx: Math.PI / 2 }));
-  root.add(mesh(new THREE.CylinderGeometry(0.405, 0.405, 0.18, 14), warning, { y: 0.58 }));
-  const cap = mesh(new THREE.CylinderGeometry(0.16, 0.16, 0.06, 10), ring, { y: 1.15 });
-  root.add(cap);
+  const steel = standard(0x485157, 0.42, 0.74);
+  const steelHighlight = standard(0x667078, 0.36, 0.78);
+  const ring = standard(0x22272a, 0.32, 0.88);
+  const warning = standard(0x9f3c2c, 0.46, 0.5);
+  const warningBright = standard(0xd28b35, 0.48, 0.38);
+
+  root.add(contactShadow(0.82, 0.62, 0.3));
+  root.add(mesh(new THREE.CylinderGeometry(0.37, 0.4, 1.1, 18), steel, { y: 0.56 }));
+  root.add(mesh(new THREE.CylinderGeometry(0.34, 0.36, 1.04, 18, 1, true), steelHighlight, { y: 0.56 }));
+
+  for (const y of [0.14, 0.55, 0.96]) {
+    root.add(mesh(new THREE.TorusGeometry(0.397, 0.034, 7, 18), ring, { y, rx: Math.PI / 2 }));
+  }
+
+  // A proper hazard band reads much better than the old plain red cylinder.
+  root.add(mesh(new THREE.CylinderGeometry(0.405, 0.405, 0.2, 18), warning, { y: 0.58 }));
+  for (const x of [-0.22, 0, 0.22]) {
+    const stripe = mesh(new THREE.BoxGeometry(0.09, 0.22, 0.025), warningBright, { x, y: 0.58, z: 0.405, rz: -0.5 });
+    stripe.castShadow = false;
+    root.add(stripe);
+  }
+
+  const top = mesh(new THREE.CylinderGeometry(0.37, 0.37, 0.055, 18), ring, { y: 1.115 });
+  const cap = mesh(new THREE.CylinderGeometry(0.105, 0.105, 0.065, 10), steelHighlight, { x: 0.16, y: 1.165, z: 0.05 });
+  const bung = mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.04, 8), ring, { x: -0.15, y: 1.16, z: -0.08 });
+  root.add(top, cap, bung);
   return root;
 }
 
@@ -89,6 +151,7 @@ export function createPawnSlugDestructibleModel(type = 'crate') {
     ? Object.freeze({ width: 0.82, height: 1.18 })
     : Object.freeze({ width: 1.12, height: 0.96 });
   root.userData.baseScale = 1;
+  root.userData.premiumArt = 'field-prop-v2';
   return root;
 }
 
@@ -116,15 +179,18 @@ export function animatePawnSlugDestructibleModel(model, time = 0, { hpRatio = 1,
     return;
   }
   const materialWeight = model.userData.material === 'metal' ? 0.72 : 1;
-  model.rotation.z = Math.sin(time * 34 + model.id) * 0.018 * damage * materialWeight;
-  model.position.y = baseY + Math.abs(Math.sin(time * 27 + model.id * 0.3)) * 0.018 * damage * materialWeight;
+  model.rotation.z = Math.sin(time * 34 + model.id) * 0.014 * damage * materialWeight;
+  model.position.y = baseY + Math.abs(Math.sin(time * 27 + model.id * 0.3)) * 0.012 * damage * materialWeight;
 }
 
 export const PAWN_SLUG_DESTRUCTIBLE_ART_META = Object.freeze({
   crate: Object.freeze({ material: 'wood', hitbox: Object.freeze({ width: 1.12, height: 0.96 }) }),
   barrel: Object.freeze({ material: 'metal', hitbox: Object.freeze({ width: 0.82, height: 1.18 }) }),
-  damageFeedback: 'material-state-plus-shake-before-break',
+  damageFeedback: 'material-state-plus-restrained-shake-before-break',
   damageStages: Object.freeze(['intact', 'damaged', 'critical']),
   materialRefresh: 'stage-change-only',
   intactIdleAnimation: 'none',
+  artVersion: 'field-prop-v2',
+  contactShadow: true,
+  dynamicLights: 0,
 });
