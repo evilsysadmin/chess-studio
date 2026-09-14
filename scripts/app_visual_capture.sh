@@ -13,6 +13,9 @@ case "$mode" in
       --workers=1 --retries=0
     ;;
   hans)
+    if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
+      export HANS_ROUTINE_EVENTS="fire,mop,espresso,dust-board"
+    fi
     ./node_modules/.bin/playwright test \
       war-room-hans-routines-visual.spec.js \
       --workers=4 --retries=0
