@@ -9,12 +9,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 BUDGETS = {
-    "frontend/src/App.jsx": 1190,
-    "frontend/src/useGameLaunchController.js": 120,
-    "frontend/src/components/GameScreen.jsx": 1030,
-    "frontend/src/components/Board3DCore.jsx": 1250,
-    "frontend/src/components/useCombatController.js": 1310,
-    "backend-python/game_api.py": 450,
+    "frontend/src/App.jsx": 1174,
+    "frontend/src/useGameLaunchController.js": 99,
+    "frontend/src/components/GameScreen.jsx": 866,
+    "frontend/src/components/Board3DCore.jsx": 1221,
+    "frontend/src/components/useCombatController.js": 1279,
+    "backend-python/game_api.py": 402,
     # Backlog hotspots: lower these ceilings whenever an extraction shrinks them.
     "backend-python/matthias_memory_store.py": 1264,
     "backend-python/narrative_cloudflare.py": 1039,
