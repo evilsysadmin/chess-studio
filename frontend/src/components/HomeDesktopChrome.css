@@ -123,6 +123,22 @@
     z-index: 72 !important;
   }
 
+  /* The canonical coordinate is correct for the compact player, but on short
+     desktop viewports an expanded deck would grow below the fold. Once the
+     user explicitly opens it, treat it as a control surface: keep the whole
+     deck in-view and give it the width the full controls were designed for. */
+  html body:has(.app-shell-home) .global-music-dock:has(.music-deck-expanded) {
+    top: auto !important;
+    bottom: max(12px, env(safe-area-inset-bottom)) !important;
+    width: min(460px, calc(100vw - 24px)) !important;
+  }
+
+  html body:has(.app-shell-home) .global-music-dock .music-deck.music-deck-expanded {
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   html body:has(.app-shell-home) .global-music-dock .music-deck {
     min-height: 58px !important;
     background: rgba(13, 12, 11, .99) !important;
