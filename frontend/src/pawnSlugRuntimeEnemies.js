@@ -5,6 +5,11 @@ import {
   PAWN_SLUG_WORLD,
 } from './pawnSlug.js';
 import { createSlugEnemyModel, disposePawnSlugObject, animateSlugEnemy } from './pawnSlugArt.js';
+import {
+  pawnSlugEnemyDidFire,
+  pawnSlugEnemyFireMotion,
+  pawnSlugEnemyRecoilStep,
+} from './pawnSlugEnemyFireMotion.js';
 import { createPickupModel } from './pawnSlugPickupArt.js';
 import { pawnSlugMicroAmbushUnlockedForSpawn } from './pawnSlugMicroAmbushes.js';
 import { pawnSlugPlatformAtX, pawnSlugResolvePlatformLanding } from './pawnSlugPlatforms.js';
@@ -33,6 +38,10 @@ import {
   pawnSlugStableEnemyVariant,
   pawnSlugWorldX,
 } from './pawnSlugRuntimeCore.js';
+
+function regularSoldier(type) {
+  return type === 'pawn' || type === 'knight' || type === 'rook';
+}
 
 export function createPawnSlugEnemySystem(runtime) {
   function createEnemy(spawn) {
@@ -67,6 +76,7 @@ export function createPawnSlugEnemySystem(runtime) {
       fireCooldown: midBoss ? 0.75 : pawnSlugEnemyFireCooldown(weapon, Math.random()) * wantedProfile.cadence,
       fireTelegraph: 0,
       fireTelegraphProgress: 0,
+      visualRecoil: 0,
       shellCooldown: midBoss ? 1.65 + Math.random() * 0.45 : null,
       suppressionCooldown: midBoss ? 2.35 + Math.random() * 0.7 : null,
       suppressionShots: 0,
@@ -158,6 +168,10 @@ export function createPawnSlugEnemySystem(runtime) {
     const player = state.player;
     for (const enemy of state.enemies) {
       if (enemy.dead) continue;
+      const previousFireTelegraphProgress = enemy.fireTelegraphProgress || 0;
+      if (regularSoldier(enemy.type)) {
+        enemy.visualRecoil = pawnSlugEnemyRecoilStep(enemy.visualRecoil, dt, enemy.type);
+      }
       enemy.hurt = Math.max(0, enemy.hurt - dt);
       enemy.fireCooldown -= dt;
       enemy.leapCooldown = Math.max(0, (enemy.leapCooldown || 0) - dt);
@@ -237,6 +251,14 @@ export function createPawnSlugEnemySystem(runtime) {
         }
       }
 
+      if (regularSoldier(enemy.type) && pawnSlugEnemyDidFire(
+        previousFireTelegraphProgress,
+        enemy.fireTelegraphProgress,
+        enemy.fireCooldown,
+      )) {
+        enemy.visualRecoil = 1;
+      }
+
       const previousEnemyY = enemy.y;
       enemy.vy -= PAWN_SLUG_GRAVITY * dt;
       enemy.x += enemy.vx * dt;
@@ -283,7 +305,24 @@ export function createPawnSlugEnemySystem(runtime) {
         }
       } else {
         enemy.model.scale.x = Math.abs(enemy.model.scale.x || 1) * enemy.dir;
-        animateSlugEnemy(enemy.model, enemy.type, state.time, { moving: Math.abs(enemy.vx) > 0.2, hurt: enemy.hurt > 0 });
+        animateSlugEnemy(enemy.model, enemy.type, state.time, {
+          moving: Math.abs(enemy.vx) > 0.2,
+          hurt: enemy.hurt > 0,
+          airborne: !enemy.onGround,
+          vy: enemy.vy,
+        });
+        if (regularSoldier(enemy.type)) {
+          const fireMotion = pawnSlugEnemyFireMotion(
+            enemy.type,
+            enemy.fireTelegraphProgress,
+            enemy.visualRecoil,
+            { reducedMotion: runtime.reducedMotion },
+          );
+          enemy.model.position.x += fireMotion.x * enemy.dir;
+          enemy.model.position.y += fireMotion.y;
+          enemy.model.scale.y *= fireMotion.sy;
+          if (enemy.model.material) enemy.model.material.rotation += fireMotion.rz * enemy.dir;
+        }
         if (enemy.fireTelegraphProgress > 0 && enemy.hurt <= 0 && enemy.model.material?.color) {
           const rawStrength = pawnSlugClamp(enemy.fireTelegraphProgress, 0, 1);
           const pulse = runtime.reducedMotion ? rawStrength : rawStrength * (0.72 + Math.max(0, Math.sin(state.time * (18 + rawStrength * 14))) * 0.5);
