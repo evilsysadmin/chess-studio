@@ -8,11 +8,21 @@ reviewable and self-tested instead of duplicating regex policy in workflow YAML.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from dataclasses import dataclass, fields
 from pathlib import PurePosixPath
 from typing import Iterable
+
+
+CORE_E2E_LANES = ("regression", "learning-golden", "learning-observation", "smoke")
+CORE_E2E_FIELDS = {
+    "regression": "run_e2e_regression",
+    "learning-golden": "run_e2e_learning_golden",
+    "learning-observation": "run_e2e_learning_observation",
+    "smoke": "run_e2e_smoke",
+}
 
 
 @dataclass
@@ -25,13 +35,22 @@ class Scope:
     run_chesscom_e2e: bool = False
     run_trailblazer_e2e: bool = False
     run_matthias_home_e2e: bool = False
+    run_e2e_regression: bool = False
+    run_e2e_learning_golden: bool = False
+    run_e2e_learning_observation: bool = False
+    run_e2e_smoke: bool = False
 
     @classmethod
     def all(cls) -> "Scope":
         return cls(**{field.name: True for field in fields(cls)})
 
     def lines(self) -> list[str]:
-        return [f"{field.name}={'true' if getattr(self, field.name) else 'false'}" for field in fields(self)]
+        output = [f"{field.name}={'true' if getattr(self, field.name) else 'false'}" for field in fields(self)]
+        matrix = {
+            "lane": [lane for lane in CORE_E2E_LANES if getattr(self, CORE_E2E_FIELDS[lane])],
+        }
+        output.append(f"core_e2e_matrix={json.dumps(matrix, separators=(',', ':'))}")
+        return output
 
 
 # Only files that can alter global Quality selection/commands wake every lane.
@@ -97,6 +116,14 @@ TARGETED_E2E = {
     "e2e/pawn-trailblazer.spec.js": "run_trailblazer_e2e",
     "e2e/matthias-home-priority.spec.js": "run_matthias_home_e2e",
 }
+CORE_E2E_SPEC_LANES = {
+    "e2e/regression-journeys.spec.js": "regression",
+    "e2e/regression-journeys-core.js": "regression",
+    "e2e/learning-golden-path.spec.js": "learning-golden",
+    "e2e/learning-second-observation.spec.js": "learning-observation",
+    "e2e/smoke.spec.js": "smoke",
+    "e2e/mobile-final-interactions.spec.js": "smoke",
+}
 E2E_SHARED = {
     "e2e/helpers.js",
     "e2e/playwright.config.js",
@@ -121,12 +148,19 @@ def _clean_paths(paths: Iterable[str]) -> list[str]:
         path = raw.strip().replace("\\", "/")
         if not path:
             continue
-        # Reject traversal-like input rather than accidentally classifying a path
-        # outside the repository namespace.
         if path.startswith("/") or ".." in PurePosixPath(path).parts:
             raise ValueError(f"ruta de diff inválida: {raw!r}")
         cleaned.append(path)
     return cleaned
+
+
+def _enable_core_e2e(scope: Scope, lanes: Iterable[str] = CORE_E2E_LANES) -> None:
+    scope.run_e2e = True
+    for lane in lanes:
+        field_name = CORE_E2E_FIELDS.get(lane)
+        if field_name is None:
+            raise ValueError(f"lane E2E core desconocida: {lane}")
+        setattr(scope, field_name, True)
 
 
 def classify(paths: Iterable[str]) -> Scope:
@@ -141,11 +175,8 @@ def classify(paths: Iterable[str]) -> Scope:
             continue
 
         if path in NODE_HARNESS_PATHS:
-            # The exact Node cache backs both Vitest and Playwright dependency
-            # restores. Browser-specific setup is additionally exercised by the
-            # specialized selector, which treats this action as a browser gate.
             scope.run_frontend = True
-            scope.run_e2e = True
+            _enable_core_e2e(scope)
             continue
 
         if path in BACKEND_HARNESS_PATHS:
@@ -153,10 +184,7 @@ def classify(paths: Iterable[str]) -> Scope:
             continue
 
         if path in BROWSER_HARNESS_PATHS:
-            # browser_quality_scope.py separately expands this action to every
-            # specialized browser contract. The generic core lane is enough here
-            # to cover the shared setup without waking unrelated backend/security.
-            scope.run_e2e = True
+            _enable_core_e2e(scope)
             continue
 
         if SECURITY_RE.search(path):
@@ -180,7 +208,7 @@ def classify(paths: Iterable[str]) -> Scope:
                 scope.run_matthias_home_e2e = True
                 targeted = True
             if not targeted and CORE_E2E_RE.search(path) and not DEDICATED_3D_BROWSER_RE.search(path):
-                scope.run_e2e = True
+                _enable_core_e2e(scope)
             continue
 
         if path.startswith("backend-python/"):
@@ -192,15 +220,18 @@ def classify(paths: Iterable[str]) -> Scope:
 
         if path.startswith("e2e/"):
             if path in E2E_SHARED:
-                scope.run_e2e = True
+                _enable_core_e2e(scope)
                 scope.run_pawn_slug_e2e = True
                 scope.run_chesscom_e2e = True
                 scope.run_trailblazer_e2e = True
                 scope.run_matthias_home_e2e = True
             elif path in TARGETED_E2E:
                 setattr(scope, TARGETED_E2E[path], True)
+            elif path in CORE_E2E_SPEC_LANES:
+                _enable_core_e2e(scope, (CORE_E2E_SPEC_LANES[path],))
             else:
-                scope.run_e2e = True
+                # Unknown browser tests fail closed to the complete core matrix.
+                _enable_core_e2e(scope)
 
     return scope
 
@@ -213,67 +244,72 @@ def _expect(paths: list[str], **expected: bool) -> None:
     assert actual == wanted, f"{paths}: esperado {wanted}, obtenido {actual}"
 
 
+def _expect_core(paths: list[str], lanes: Iterable[str] = CORE_E2E_LANES, **expected: bool) -> None:
+    expected["run_e2e"] = True
+    for lane in lanes:
+        expected[CORE_E2E_FIELDS[lane]] = True
+    _expect(paths, **expected)
+
+
 def self_test() -> None:
     _expect(
         ["frontend/src/components/Chesscom.jsx"],
         run_frontend=True,
         run_chesscom_e2e=True,
     )
-    _expect(
+    _expect_core(
         ["frontend/src/components/Chesscom.jsx", "frontend/src/App.jsx"],
         run_frontend=True,
-        run_e2e=True,
         run_chesscom_e2e=True,
     )
-    _expect(
+    _expect_core(
         ["frontend/package-lock.json"],
         run_frontend=True,
-        run_e2e=True,
         run_security=True,
     )
-    _expect(["frontend/src/App.jsx"], run_frontend=True, run_e2e=True)
+    _expect_core(["frontend/src/App.jsx"], run_frontend=True)
     _expect(["frontend/src/activeGameSession.test.js"], run_frontend=True)
     _expect(["frontend/src/components/Chesscom.test.jsx"], run_frontend=True)
-    _expect(
+    _expect_core(
         ["frontend/src/activeGameSession.test.js", "frontend/src/App.jsx"],
         run_frontend=True,
-        run_e2e=True,
     )
     _expect(["frontend/src/components/Board3DRenderer.js"], run_frontend=True)
     _expect(["frontend/src/components/WarRoom3DAnimation.js"], run_frontend=True)
     _expect(["frontend/src/components/WarRoomPracticalLighting.js"], run_frontend=True)
-    _expect(["frontend/src/components/GameBoardView.jsx"], run_frontend=True, run_e2e=True)
-    _expect(
+    _expect_core(["frontend/src/components/GameBoardView.jsx"], run_frontend=True)
+    _expect_core(
         ["frontend/src/components/Board3DRenderer.js", "frontend/src/App.jsx"],
         run_frontend=True,
-        run_e2e=True,
     )
     _expect(["frontend/src/styles/28-product-resilience.css"], run_frontend=True)
     _expect(["frontend/src/assets/home-canonical/great-hall-dungeon.webp"], run_frontend=True)
     _expect(["frontend/public/home-canonical.webp"], run_frontend=True)
-    _expect(
+    _expect_core(
         ["frontend/src/styles/28-product-resilience.css", "frontend/src/App.jsx"],
         run_frontend=True,
-        run_e2e=True,
     )
-    _expect(
-        ["backend-python/game_api.py"],
-        run_backend=True,
-    )
+    _expect(["backend-python/game_api.py"], run_backend=True)
     _expect(
         ["backend-python/requirements.txt"],
         run_backend=True,
         run_security=True,
     )
     _expect(["e2e/pawn-slug.spec.js"], run_pawn_slug_e2e=True)
-    _expect(
+    _expect_core(
         ["e2e/helpers.js"],
-        run_e2e=True,
         run_pawn_slug_e2e=True,
         run_chesscom_e2e=True,
         run_trailblazer_e2e=True,
         run_matthias_home_e2e=True,
     )
+    _expect_core(["e2e/regression-journeys.spec.js"], lanes=("regression",))
+    _expect_core(["e2e/regression-journeys-core.js"], lanes=("regression",))
+    _expect_core(["e2e/learning-golden-path.spec.js"], lanes=("learning-golden",))
+    _expect_core(["e2e/learning-second-observation.spec.js"], lanes=("learning-observation",))
+    _expect_core(["e2e/smoke.spec.js"], lanes=("smoke",))
+    _expect_core(["e2e/mobile-final-interactions.spec.js"], lanes=("smoke",))
+    _expect_core(["e2e/new-critical-journey.spec.js"])
     _expect(["infra/cloudflare/main.tf"], run_security=True)
     _expect(["Dockerfile"], run_security=True)
     _expect(["scripts/npm_audit_gate.py"], run_security=True)
@@ -291,12 +327,15 @@ def self_test() -> None:
     _expect(["scripts/frontend_test_groups.mjs"], run_frontend=True)
     _expect(["scripts/run_frontend_test_group.mjs"], run_frontend=True)
     _expect([".github/actions/cache-python-venv/action.yml"], run_backend=True)
-    _expect(
+    _expect_core(
         [".github/actions/cache-node-modules/action.yml"],
         run_frontend=True,
-        run_e2e=True,
     )
-    _expect([".github/actions/setup-browser-e2e/action.yml"], run_e2e=True)
+    _expect_core([".github/actions/setup-browser-e2e/action.yml"])
+
+    golden = classify(["e2e/learning-golden-path.spec.js"])
+    outputs = dict(line.split("=", 1) for line in golden.lines())
+    assert json.loads(outputs["core_e2e_matrix"]) == {"lane": ["learning-golden"]}
 
     assert classify([".github/workflows/cicd.yml"]) == Scope.all()
     assert classify(["Makefile"]) == Scope.all()
@@ -309,7 +348,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · producto dirigido; auditoría estática sin lanes caras; harness por runtime; test-only/CSS/art y módulos 3D dedicados no despiertan core browser")
+    print("quality-scope self-test OK · producto usa core completo; specs críticos pagan sólo su lane; auditoría/harness siguen fail-closed")
 
 
 def main() -> int:
