@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
+import { commitWarRoomHansGroundedY } from './WarRoomHansTransformOwner.js';
 
-export const WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION = 'board-depth-guard-v7-visible-pre-render-grounding';
+export const WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION = 'board-depth-guard-v8-preserve-y-grounding';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -9,7 +10,6 @@ const FIREPLACE_NAME = 'war-room-fireplace';
 const BOARD_HALF_EXTENT = 4.52;
 const HANS_BOARD_CLEARANCE = 0.58;
 const SAFE_BOARD_HALF_EXTENT = BOARD_HALF_EXTENT + HANS_BOARD_CLEARANCE;
-const STANDING_Y = -0.34;
 const COLLISION_POST_RENDER_ORDER = 5;
 const GROUNDING_POST_RENDER_ORDER = 30;
 const GROUNDING_STAGE_KEY = `${WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION}:world-foot-grounding`;
@@ -111,8 +111,8 @@ function groundHansToRenderedSurface(hans, body, surfaces, scratch, source = 'po
   scratch.targetLocal.copy(scratch.targetWorld);
   hans.parent.worldToLocal?.(scratch.targetLocal);
   if (!Number.isFinite(scratch.targetLocal.y)) return false;
+  if (!commitWarRoomHansGroundedY(hans, scratch.targetLocal.y, source)) return false;
 
-  hans.position.y = scratch.targetLocal.y;
   hans.updateMatrixWorld?.(true);
   hans.userData.warRoomHansWorldGrounding = 'shoe-bottom-to-rendered-surface-v1';
   hans.userData.warRoomHansGroundingContract = 'visible-mesh-pre-render-v2';
@@ -123,7 +123,6 @@ function groundHansToRenderedSurface(hans, body, surfaces, scratch, source = 'po
   hans.userData.warRoomHansRenderedFootBottomWorldY = footBottom + correction;
   hans.userData.warRoomHansGroundGap = Math.abs((footBottom + correction) - groundY);
   hans.userData.warRoomHansGroundCorrection = correction;
-  hans.userData.warRoomHansGroundedY = hans.position.y;
   return true;
 }
 
@@ -205,12 +204,9 @@ export function installWarRoomHansBoardCollisionGuard(root) {
         return;
       }
 
-      // Keep the legacy local baseline for consumers that still sample Hans
-      // inside the late choreography driver. The real visible Y is reconciled
-      // from shoe geometry + room surfaces both later in this pipeline and once
-      // more immediately before Board3D paints the next frame.
-      hans.position.y = STANDING_Y;
-      hans.userData.warRoomHansBoardGroundedY = STANDING_Y;
+      // Board collision owns depth only. Root Y belongs to the grounding owner;
+      // pose clients publish vertical intent rather than smuggling it through Y.
+      hans.userData.warRoomHansBoardPreservedY = Number(hans.position.y);
 
       const phase = driver.userData?.warRoomHansPhase || hans.userData?.warRoomHansChoreographyPhase || '';
       const route = hans.userData?.warRoomHansRoute || '';
@@ -232,16 +228,15 @@ export function installWarRoomHansBoardCollisionGuard(root) {
       hans.parent?.worldToLocal?.(safeWorldPosition);
 
       // X is the canonical choreography progress coordinate. Only depth is
-      // clamped here; final Y comes from the visible shoe/surface contract.
+      // clamped here; Y is intentionally preserved for the grounding stage.
       hans.position.z = safeWorldPosition.z;
-      hans.position.y = STANDING_Y;
       if (Number.isFinite(logicalX)) hans.position.x = logicalX;
 
       hans.userData.warRoomHansBoardCollisionApplied = true;
       hans.userData.warRoomHansBoardCollisionGuard = WAR_ROOM_HANS_BOARD_COLLISION_GUARD_VERSION;
       hans.userData.warRoomHansBoardCollisionAxis = 'z';
       hans.userData.warRoomHansBoardSafeWorldZ = safeZ;
-      hans.userData.warRoomHansBoardGroundedY = STANDING_Y;
+      hans.userData.warRoomHansBoardPreservedY = Number(hans.position.y);
     },
   });
   if (!collisionRegistered) return 0;
