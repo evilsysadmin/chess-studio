@@ -17,6 +17,12 @@ const NEUTRAL_TINT = Object.freeze({
   opacity: 1,
 });
 
+const SUSTAINED_TINT = Object.freeze({
+  active: true,
+  hot: 0,
+  ...PAWN_SLUG_ENEMY_HIT_FLASH_META.sustained,
+});
+
 function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
 }
@@ -28,6 +34,8 @@ export function pawnSlugEnemyHitFlash(age = Number.POSITIVE_INFINITY, { hurt = f
   const hot = Number.isFinite(seconds) && seconds >= 0
     ? 1 - clamp01(seconds / PAWN_SLUG_ENEMY_HIT_FLASH_META.hotSeconds)
     : 0;
+  if (hot <= 0) return SUSTAINED_TINT;
+
   const sustained = PAWN_SLUG_ENEMY_HIT_FLASH_META.sustained;
   const hotBoost = PAWN_SLUG_ENEMY_HIT_FLASH_META.hotBoostByType[type]
     || PAWN_SLUG_ENEMY_HIT_FLASH_META.hotBoostByType.pawn;

@@ -47,18 +47,16 @@ describe('Pawn Slug enemy hit flash', () => {
     expect(pawnSlugEnemyHitFlash(0, { hurt: true, type: 'unknown' })).toEqual(pawn);
   });
 
-  it('preserves the old red hurt tint for sustained damage instead of flickering', () => {
+  it('preserves and reuses the old red hurt tint for sustained damage', () => {
+    const pawn = pawnSlugEnemyHitFlash(0.5, { hurt: true, type: 'pawn' });
     for (const type of ['pawn', 'knight', 'rook']) {
-      expect(pawnSlugEnemyHitFlash(0.5, { hurt: true, type })).toMatchObject({
+      const settled = pawnSlugEnemyHitFlash(Number.POSITIVE_INFINITY, { hurt: true, type });
+      expect(settled).toMatchObject({
         active: true,
         hot: 0,
         ...PAWN_SLUG_ENEMY_HIT_FLASH_META.sustained,
       });
-      expect(pawnSlugEnemyHitFlash(Number.POSITIVE_INFINITY, { hurt: true, type })).toMatchObject({
-        active: true,
-        hot: 0,
-        ...PAWN_SLUG_ENEMY_HIT_FLASH_META.sustained,
-      });
+      expect(settled).toBe(pawn);
     }
   });
 });
