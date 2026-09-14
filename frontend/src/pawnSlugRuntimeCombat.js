@@ -10,7 +10,8 @@ import {
   pawnSlugXpForKill,
 } from './pawnSlug.js';
 import { pawnSlugCreditsForKill } from './pawnSlugEconomy.js';
-import { createExplosionParticle, disposePawnSlugObject } from './pawnSlugArt.js';
+import { disposePawnSlugObject } from './pawnSlugArt.js';
+import { createExplosionParticle } from './pawnSlugExplosionArt.js';
 import { animatePremiumMuzzleFlash, animatePremiumProjectile } from './pawnSlugPremiumFx.js';
 import {
   pawnSlugAnimateDestructibles,
