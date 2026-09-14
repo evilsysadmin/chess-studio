@@ -78,6 +78,10 @@ ADMIN_SMOKE_RE = re.compile(
     r"^frontend/src/components/(?:Admin|Observability)[^/]*\.(?:js|jsx)$|"
     r"^frontend/src/components/useAdmin[^/]*\.js$"
 )
+AUDIO_SMOKE_RE = re.compile(
+    r"^frontend/src/(?:ambientCatalog|ambientProfiles|ambientProfilesLegacy|audioContext|"
+    r"orchestralSampler|sound|soundFx|soundPreferences|useAuthenticatedAudio)\.js$"
+)
 DEDICATED_3D_BROWSER_RE = re.compile(
     r"^frontend/src/components/(?:Board3D|WarRoom3D)[^/]*\.(?:js|jsx)$|"
     r"^frontend/src/components/(?:WarRoomCastleArchitecture|WarRoomPremiumPaintings|"
@@ -177,7 +181,9 @@ def classify(paths: Iterable[str]) -> Scope:
 
             if targeted:
                 continue
-            if ADMIN_SMOKE_RE.search(path):
+            if AUDIO_SMOKE_RE.search(path):
+                _enable_core_e2e(scope, ("smoke",))
+            elif ADMIN_SMOKE_RE.search(path):
                 _enable_core_e2e(scope, ("smoke",))
             elif CORE_E2E_RE.search(path) and not DEDICATED_3D_BROWSER_RE.search(path):
                 _enable_core_e2e(scope)
@@ -224,6 +230,15 @@ def self_test() -> None:
     _expect_core(["frontend/src/App.jsx"], run_frontend=True)
     _expect(["frontend/src/activeGameSession.test.js"], run_frontend=True)
     _expect(["frontend/src/components/Chesscom.test.jsx"], run_frontend=True)
+    for audio_path in (
+        "frontend/src/sound.js",
+        "frontend/src/ambientCatalog.js",
+        "frontend/src/ambientProfilesLegacy.js",
+        "frontend/src/orchestralSampler.js",
+        "frontend/src/useAuthenticatedAudio.js",
+    ):
+        _expect_core([audio_path], lanes=("smoke",), run_frontend=True)
+    _expect_core(["frontend/src/sound.js", "frontend/src/App.jsx"], run_frontend=True)
     _expect_core(["frontend/src/components/AdminDashboardContent.jsx"], lanes=("smoke",), run_frontend=True)
     _expect_core(["frontend/src/components/useAdminFeedbackController.js"], lanes=("smoke",), run_frontend=True)
     _expect_core(["frontend/src/adminDashboardInsights.js"], lanes=("smoke",), run_frontend=True)
@@ -280,7 +295,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · package metadata/Admin pagan smoke; producto general conserva core completo")
+    print("quality-scope self-test OK · audio/package/Admin pagan smoke; producto general conserva core completo")
 
 
 def main() -> int:
