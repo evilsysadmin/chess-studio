@@ -16,6 +16,10 @@ import { pawnSlugShouldDisposePreviousTexture } from './pawnSlugTextureOwnership
 
 const PREMIUM_FALLBACK_FRAME_BY_TYPE = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
 const PREMIUM_FALLBACK_COLUMNS = 3;
+const PREMIUM_VISUAL_PRIORITY = Object.freeze({
+  'premium-fallback': 10,
+  'premium-raster': 20,
+});
 
 export function pawnSlugPremiumEnemyFallbackWindow(type = 'pawn', dir = 1) {
   const safeType = Object.prototype.hasOwnProperty.call(PREMIUM_FALLBACK_FRAME_BY_TYPE, type) ? type : 'pawn';
@@ -58,6 +62,34 @@ function applyPremiumWindow(sprite) {
   atlas.premiumWindowKey = key;
 }
 
+function releaseSupersededPreferredTexture(texture, currentTexture) {
+  if (!texture) return;
+  if (texture.userData) delete texture.userData.pawnSlugPremiumEnemyRetained;
+  if (texture !== currentTexture) texture.dispose?.();
+}
+
+export function reassertPawnSlugPremiumEnemyTexture(sprite) {
+  const atlas = sprite?.userData?.atlas;
+  const preferred = atlas?.premiumVisual;
+  const texture = preferred?.texture;
+  if (!atlas || atlas.disposed || !texture || !preferred.source) return false;
+  if (atlas.texture === texture && atlas.source === preferred.source && sprite.material?.map === texture) return false;
+
+  const previous = atlas.texture;
+  atlas.texture = texture;
+  atlas.source = preferred.source;
+  atlas.ready = true;
+  atlas.premiumWindowKey = null;
+  if (sprite.material) {
+    sprite.material.map = texture;
+    sprite.material.visible = true;
+    sprite.material.needsUpdate = true;
+  }
+  applyPremiumWindow(sprite);
+  if (pawnSlugShouldDisposePreviousTexture(previous, texture)) previous.dispose?.();
+  return true;
+}
+
 function installPremiumRaster(sprite) {
   const atlas = sprite.userData.atlas;
   if (!atlas || typeof document === 'undefined') return sprite;
@@ -67,15 +99,24 @@ function installPremiumRaster(sprite) {
   const loader = new THREE.TextureLoader();
   atlas.premiumRasterState = 'loading';
   atlas.premiumFallbackState = 'loading';
+  atlas.premiumVisual = null;
 
   const installTexture = (texture, source) => {
-    if (atlas.disposed || (source === 'premium-fallback' && atlas.source === 'premium-raster')) {
+    const priority = PREMIUM_VISUAL_PRIORITY[source] || 0;
+    const preferred = atlas.premiumVisual;
+    if (atlas.disposed || (preferred && preferred.priority > priority)) {
       texture.dispose?.();
       return false;
     }
+
     configurePawnSlugTexture(texture);
     if (source === 'premium-raster') texture.generateMipmaps = false;
+    texture.userData ||= {};
+    texture.userData.pawnSlugPremiumEnemyRetained = true;
+
     const previous = atlas.texture;
+    const supersededPreferred = preferred?.texture;
+    atlas.premiumVisual = { texture, source, priority };
     atlas.texture = texture;
     atlas.source = source;
     atlas.ready = true;
@@ -93,6 +134,10 @@ function installPremiumRaster(sprite) {
       applyPremiumWindow(sprite);
     };
     applyPremiumWindow(sprite);
+
+    if (supersededPreferred && supersededPreferred !== texture) {
+      releaseSupersededPreferredTexture(supersededPreferred, previous);
+    }
     if (pawnSlugShouldDisposePreviousTexture(previous, texture)) previous.dispose?.();
     return true;
   };
@@ -113,7 +158,7 @@ function installPremiumRaster(sprite) {
         texture.dispose?.();
         return;
       }
-      if (atlas.source === 'premium-raster') {
+      if (atlas.premiumVisual?.source === 'premium-raster') {
         texture.dispose?.();
         atlas.premiumFallbackState = 'superseded';
         return;
@@ -141,7 +186,7 @@ function installPremiumRaster(sprite) {
     undefined,
     () => {
       if (atlas.disposed) return;
-      atlas.premiumRasterState = atlas.source === 'premium-fallback' ? 'fallback' : 'failed';
+      atlas.premiumRasterState = atlas.premiumVisual?.source === 'premium-fallback' ? 'fallback' : 'failed';
       restoreBaseControlsIfNeeded();
     },
   );
@@ -153,6 +198,7 @@ export function createSlugEnemySprite(type = 'pawn') {
 }
 
 export function animateSlugEnemySprite(sprite, type, time, state = {}) {
+  reassertPawnSlugPremiumEnemyTexture(sprite);
   animateBaseSlugEnemySprite(sprite, type, time, state);
   applyPremiumWindow(sprite);
 }
@@ -172,5 +218,7 @@ export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
   }),
   primaryVisualSource: 'premium-raster',
   fallbackVisualSource: 'premium-static-raster',
+  visualPriority: Object.freeze({ canonical: 20, premiumFallback: 10, procedural: 0 }),
+  lateFallbackOverwriteProtection: true,
   proceduralRole: 'last-resort',
 });
