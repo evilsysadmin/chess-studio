@@ -71,7 +71,7 @@ describe('Tropical House · melodic lift', () => {
         }
       }
 
-      expect(feel.percussion.kit).toBe('tropical-house-sidechain');
+      expect(feel.percussion.kit).toMatch(/^tropical-/);
       expect(feel.layers.signature).toBe(true);
       expect(feel.signature).toBeTruthy();
     }

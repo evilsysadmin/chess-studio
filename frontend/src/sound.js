@@ -245,6 +245,8 @@ export function getAmbientThemeSoundProfile(themeId) {
     percussionPeriod: feel.percussion?.period || null,
     percussionKit: feel.percussion?.kit || 'legacy',
     percussionPunch: feel.percussion?.punch || 1,
+    sidechainDepth: feel.percussion?.sidechainDepth || null,
+    sidechainReleaseMs: feel.percussion?.sidechainReleaseMs || null,
     percussionHumanized: (feel.percussion?.kit || 'legacy') !== 'none',
     percussionMicrotimingMs: (feel.percussion?.kit || 'legacy') === 'none' ? 0 : 12,
     drumMode: feel.drumMode || 'dynamic',
@@ -448,6 +450,7 @@ export function seekAmbientMusic(positionMs) {
 
 let ambientOutputNode = null;
 let ambientPercussionBus = null;
+let ambientStructuredMusicBus = null;
 let ambientDuckFactor = 1;
 
 function rotateAmbientOutputForSeek(fadeSeconds = 0.055) {
@@ -456,6 +459,7 @@ function rotateAmbientOutputForSeek(fadeSeconds = 0.055) {
   // aislamos el bus viejo y creamos uno nuevo para la escena reconstruida.
   ambientOutputNode = null;
   ambientPercussionBus = null;
+  ambientStructuredMusicBus = null;
   if (!oldOutput) return;
   const ctx = oldOutput.context;
   const now = ctx.currentTime;
@@ -514,6 +518,16 @@ function getAmbientOutput(ctx) {
     ambientOutputNode.connect(ctx.destination);
   }
   return ambientOutputNode;
+}
+
+function getAmbientStructuredMusicOutput(ctx) {
+  if (!ctx) return null;
+  if (!ambientStructuredMusicBus || ambientStructuredMusicBus.context !== ctx) {
+    ambientStructuredMusicBus = ctx.createGain();
+    ambientStructuredMusicBus.gain.value = 1;
+    ambientStructuredMusicBus.connect(getAmbientOutput(ctx));
+  }
+  return ambientStructuredMusicBus;
 }
 
 function getAmbientPercussionOutput(ctx) {
@@ -942,7 +956,7 @@ function playStructuredGuitar(kind, midiNote, volumeScale = 1, durationOverride 
   const startDelay = Math.max(0, Number(tone?.startDelayMs) || 0) / 1000;
   const start = ctx.currentTime + startDelay;
   const duration = Math.max(.28, durationOverride || (kind === 'nylonGuitar' ? 1.28 : kind === 'jazzGuitar' ? 1.45 : kind === 'tremoloGuitar' ? 1.72 : .9));
-  const output = getAmbientOutput(ctx);
+  const output = getAmbientStructuredMusicOutput(ctx);
   const body = ctx.createGain();
   const bodyFilter = ctx.createBiquadFilter();
 
@@ -1050,6 +1064,7 @@ function voicePreset(kind) {
     case 'guitar2': return { waves: [['triangle', 1, 1], ['sawtooth', 2, 0.07]], gain: 0.018, attack: 0.004, release: 0.82, cutoff: 2300 };
     case 'arp': return { waves: [['square', 1, 0.45], ['sawtooth', 1, 1]], gain: 0.014, attack: 0.004, release: 0.28, cutoff: 1800 };
     case 'marimba': return { waves: [['sine', 1, 1], ['sine', 4, 0.14], ['triangle', 2, 0.05]], gain: 0.022, attack: 0.004, release: 0.78, cutoff: 3100 };
+    case 'tropicalPluck': return { waves: [['sine', 1, 1], ['triangle', 2, 0.18], ['sine', 3.01, 0.11], ['sine', 6.07, 0.035]], gain: 0.019, attack: 0.003, release: 0.96, cutoff: 3650 };
     case 'glass': return { waves: [['sine', 1, 1], ['sine', 2.7, 0.12], ['sine', 5.4, 0.025]], gain: 0.013, attack: 0.024, release: 2.7, cutoff: 4700, tremolo: 2.6 };
     case 'bandoneon': return { waves: [['sawtooth', 1, 0.72], ['square', 2, 0.16], ['sine', 1, 0.3]], gain: 0.016, attack: 0.045, release: 0.9, cutoff: 1850 };
     case 'choir': return { waves: [['sine', 1, 1], ['triangle', 1, 0.24], ['sine', 2, 0.12]], gain: 0.013, attack: 0.38, release: 4.4, cutoff: 1550, tremolo: 4.2 };
@@ -1110,7 +1125,7 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
 
     source.connect(filter);
     filter.connect(gainNode);
-    connectFinishedAmbientVoice(ctx, gainNode, getAmbientOutput(ctx), tone, {
+    connectFinishedAmbientVoice(ctx, gainNode, getAmbientStructuredMusicOutput(ctx), tone, {
       start,
       duration: audibleDuration,
       tremolo: 0,
@@ -1137,7 +1152,7 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
   gainNode.gain.exponentialRampToValueAtTime(0.0001, start + release);
 
   filter.connect(gainNode);
-  const output = getAmbientOutput(ctx);
+  const output = getAmbientStructuredMusicOutput(ctx);
   connectFinishedAmbientVoice(ctx, gainNode, output, tone, { start, duration: release, tremolo: preset.tremolo });
 
   const oscillators = preset.waves.map(([type, ratio, mix], index) => {
@@ -1415,6 +1430,27 @@ function percussionVoiceKit(feel) {
   return configured;
 }
 
+function scheduleStructuredSidechain(feel, human, code) {
+  if (code !== 'K' && code !== 'A') return;
+  const depth = Number(feel?.percussion?.sidechainDepth);
+  const releaseMs = Number(feel?.percussion?.sidechainReleaseMs);
+  if (!Number.isFinite(depth) || !Number.isFinite(releaseMs)) return;
+  const ctx = getContext();
+  if (!ctx) return;
+  const bus = getAmbientStructuredMusicOutput(ctx);
+  const start = ctx.currentTime + Math.max(0, Number(human?.delayMs) || 0) / 1000;
+  const floor = Math.max(0.38, Math.min(0.86, depth));
+  const release = Math.max(0.07, Math.min(0.24, releaseMs / 1000));
+  try {
+    bus.gain.cancelScheduledValues(start);
+    bus.gain.setValueAtTime(Math.max(floor, Math.min(1, bus.gain.value)), start);
+    bus.gain.linearRampToValueAtTime(floor, start + 0.012);
+    bus.gain.exponentialRampToValueAtTime(1, start + release);
+  } catch {
+    bus.gain.value = 1;
+  }
+}
+
 export function getPercussionVoiceKit(themeId) {
   return percussionVoiceKit(structuredFeel(AMBIENT_THEMES[themeId]));
 }
@@ -1423,6 +1459,7 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
   const kit = percussionVoiceKit(feel);
   const human = percussionHumanization(feel, localStep, code);
   const velocity = human.velocity;
+  scheduleStructuredSidechain(feel, human, code);
   const handKit = ['darbuka', 'cairo-hand', 'frame-drum', 'istanbul-frame', 'maghreb-hand', 'andalus-hand'].includes(kit);
   const brushKit = ['brush-jazz', 'rooftop-jazz', 'walking-brush'].includes(kit);
 
@@ -1564,15 +1601,19 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
     return;
   }
 
-  if (kit === 'tropical-house' || kit === 'tropical-house-sidechain') {
-    const sidechain = kit === 'tropical-house-sidechain';
-    if (code === 'K') {
-      playBassDrum((sidechain ? 0.052 : 0.046) * velocity, { ...human, tone: -0.34, decay: 0.82 });
+  if (kit === 'tropical-house' || kit === 'tropical-house-sidechain' || kit === 'tropical-sunset-pump' || kit === 'tropical-island-organic' || kit === 'tropical-bishop-clave') {
+    const sunset = kit === 'tropical-sunset-pump';
+    const organic = kit === 'tropical-island-organic';
+    const bishop = kit === 'tropical-bishop-clave';
+    if (code === 'K' || code === 'A') {
+      playBassDrum((sunset ? 0.054 : organic ? 0.047 : 0.051) * velocity, { ...human, tone: organic ? -0.46 : -0.34, decay: organic ? 0.94 : 0.82 });
       playSoftPercussion(0.010 * velocity, { ...human, decay: 0.72 });
+      if (code === 'A') playNoiseHit('snare', (bishop ? 0.026 : 0.023) * velocity, { ...human, brightness: bishop ? 0.96 : 0.88, durationScale: 0.78 });
     } else if (code === 'S') {
-      playNoiseHit('snare', 0.022 * velocity, { ...human, brightness: 0.88, durationScale: 0.82 });
+      if (organic) { playMembraneHit('tak', 0.029 * velocity, { ...human, tone: 0.08, decay: 0.78 }); playNoiseHit('snare', 0.014 * velocity, { ...human, brightness: 0.74, durationScale: 0.92 }); }
+      else playNoiseHit('snare', 0.022 * velocity, { ...human, brightness: 0.88, durationScale: 0.82 });
     } else if (code === 'H') {
-      playNoiseHit('hat', 0.007 * velocity, { ...human, brightness: 1.02, durationScale: 0.56 });
+      playNoiseHit(organic ? 'brush' : 'hat', (organic ? 0.009 : 0.007) * velocity, { ...human, brightness: organic ? 0.82 : 1.02, durationScale: organic ? 0.78 : 0.56 });
     } else if (code === 'B') {
       playWoodKnock();
     }

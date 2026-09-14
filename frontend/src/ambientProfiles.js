@@ -146,24 +146,32 @@ const TANGIER_SMOKE_PROFILE = Object.freeze({
   }),
 });
 
-const TROPICAL_HOUSE_GROOVE = Object.freeze({
-  0:'K', 2:'H', 4:'K', 6:'H', 8:'K', 10:'H', 12:'K', 14:'H',
-});
-
 const TROPICAL_HOUSE_DRIVE = Object.freeze({
   palmsAtDusk: Object.freeze({
     swing: 0.025, releaseScale: 0.82, space: 0.055, delayMs: 84,
     chordHoldSteps: 6, bassHoldSteps: 2.0, punch: 1.18,
+    leadInstrument: 'marimba', counterInstrument: 'nylonGuitar', chordInstrument: 'rhodesWarm',
+    kit: 'tropical-sunset-pump', sidechainDepth: 0.52, sidechainReleaseMs: 178,
+    pattern: Object.freeze({ 0:'K', 2:'H', 4:'A', 6:'H', 8:'K', 10:'H', 12:'A', 14:'H', 15:'B' }),
+    signature: Object.freeze({ instrument:'nylonGuitar', sections:Object.freeze([0,1]), everyCycles:2, repeatPeriod:64, durationSteps:3.8, volume:0.18, motif:Object.freeze({ 6:67, 14:72, 38:64, 46:69 }) }),
     mix: Object.freeze({ lead: 0.62, counter: 0.42, bass: 1.08, chord: 0.60 }),
   }),
   islandKnight: Object.freeze({
     swing: 0.04, releaseScale: 0.80, space: 0.06, delayMs: 88,
-    chordHoldSteps: 6, bassHoldSteps: 1.8, punch: 1.22,
+    chordHoldSteps: 5, bassHoldSteps: 1.8, punch: 1.22,
+    leadInstrument: 'nylonGuitar', counterInstrument: 'marimba', chordInstrument: 'pad',
+    kit: 'tropical-island-organic', sidechainDepth: 0.70, sidechainReleaseMs: 112,
+    pattern: Object.freeze({ 0:'K', 3:'H', 4:'S', 6:'B', 7:'K', 10:'H', 12:'S', 14:'B', 15:'K' }),
+    signature: Object.freeze({ instrument:'marimba', sections:Object.freeze([0,2]), everyCycles:2, repeatPeriod:64, durationSteps:2.9, volume:0.17, motif:Object.freeze({ 4:79, 12:83, 36:76, 44:81 }) }),
     mix: Object.freeze({ lead: 0.64, counter: 0.38, bass: 1.12, chord: 0.58 }),
   }),
   bishopSunset: Object.freeze({
     swing: 0.03, releaseScale: 0.82, space: 0.055, delayMs: 86,
     chordHoldSteps: 6, bassHoldSteps: 1.9, punch: 1.20,
+    leadInstrument: 'tropicalPluck', counterInstrument: 'nylonGuitar', chordInstrument: 'rhodesWarm',
+    kit: 'tropical-bishop-clave', sidechainDepth: 0.60, sidechainReleaseMs: 142,
+    pattern: Object.freeze({ 0:'K', 2:'B', 4:'A', 6:'H', 8:'K', 11:'B', 12:'A', 14:'H' }),
+    signature: Object.freeze({ instrument:'nylonGuitar', sections:Object.freeze([0,3]), everyCycles:2, repeatPeriod:64, durationSteps:3.2, volume:0.20, motif:Object.freeze({ 4:67, 18:74, 36:71, 54:76 }) }),
     mix: Object.freeze({ lead: 0.70, counter: 0.44, bass: 1.10, chord: 0.62 }),
   }),
 });
@@ -180,12 +188,18 @@ function withTropicalHouseDrive(theme, feel) {
     delayMs: drive.delayMs,
     chordHoldSteps: drive.chordHoldSteps,
     bassHoldSteps: drive.bassHoldSteps,
+    leadInstrument: drive.leadInstrument,
+    counterInstrument: drive.counterInstrument,
+    chordInstrument: drive.chordInstrument,
+    signature: drive.signature,
     mix: Object.freeze({ ...(feel.mix || {}), ...drive.mix }),
     percussion: Object.freeze({
       period: 16,
-      kit: 'tropical-house-sidechain',
+      kit: drive.kit,
       punch: drive.punch,
-      pattern: TROPICAL_HOUSE_GROOVE,
+      sidechainDepth: drive.sidechainDepth,
+      sidechainReleaseMs: drive.sidechainReleaseMs,
+      pattern: drive.pattern,
     }),
   });
 }

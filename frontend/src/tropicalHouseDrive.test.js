@@ -3,22 +3,24 @@ import { AMBIENT_THEMES } from './ambientCatalog.js';
 import { structuredFeel } from './ambientProfiles.js';
 
 const TROPICAL_HOUSE_IDS = Object.freeze(['palmsAtDusk', 'islandKnight', 'bishopSunset']);
-const EXPECTED_GROOVE = Object.freeze({
-  0:'K', 2:'H', 4:'K', 6:'H', 8:'K', 10:'H', 12:'K', 14:'H',
-});
-
 describe('Tropical House · dance drive', () => {
-  it('keeps every published Tropical House theme on a real four-on-the-floor groove', () => {
+  it('gives every published Tropical House theme its own groove and percussion production', () => {
+    const kits = [];
+    const grooves = [];
     for (const id of TROPICAL_HOUSE_IDS) {
       const theme = AMBIENT_THEMES[id];
       const feel = structuredFeel(theme);
 
       expect(theme?.genre).toBe('Tropical House');
-      expect(feel?.percussion?.kit).toBe('tropical-house-sidechain');
       expect(feel?.percussion?.period).toBe(16);
-      expect(feel?.percussion?.pattern).toEqual(EXPECTED_GROOVE);
       expect(feel?.percussion?.punch).toBeGreaterThanOrEqual(1.18);
+      expect(feel?.percussion?.sidechainDepth).toBeGreaterThanOrEqual(0.5);
+      expect(feel?.percussion?.sidechainReleaseMs).toBeGreaterThanOrEqual(100);
+      kits.push(feel.percussion.kit);
+      grooves.push(JSON.stringify(feel.percussion.pattern));
     }
+    expect(new Set(kits).size).toBe(TROPICAL_HOUSE_IDS.length);
+    expect(new Set(grooves).size).toBe(TROPICAL_HOUSE_IDS.length);
   });
 
   it('uses short house stabs and an active bass instead of the old resort-bed arrangement', () => {
@@ -41,6 +43,16 @@ describe('Tropical House · dance drive', () => {
       const feel = structuredFeel(AMBIENT_THEMES[id]);
       expect(feel?.layers?.signature).toBe(true);
       expect(feel?.signature?.motif).toBeTruthy();
+      expect(Object.keys(feel.signature.motif).length).toBeGreaterThanOrEqual(4);
     }
+  });
+
+  it('uses three distinct lead/counter palettes instead of one resort preset', () => {
+    const palettes = TROPICAL_HOUSE_IDS.map((id) => {
+      const feel = structuredFeel(AMBIENT_THEMES[id]);
+      return `${feel.leadInstrument}/${feel.counterInstrument}/${feel.chordInstrument}`;
+    });
+    expect(new Set(palettes).size).toBe(TROPICAL_HOUSE_IDS.length);
+    expect(structuredFeel(AMBIENT_THEMES.bishopSunset).leadInstrument).toBe('tropicalPluck');
   });
 });
