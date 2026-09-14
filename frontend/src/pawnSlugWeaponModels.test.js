@@ -45,4 +45,22 @@ describe('Pawn Slug weapon model variants', () => {
     expect(akm.damage).toBeGreaterThan(m16.damage);
     expect(akm.recoil).toBeGreaterThan(m16.recoil);
   });
+
+  it('reuses applied model stats for immutable inputs while respecting mutable callers', () => {
+    const frozen = Object.freeze({ damage: 20, cadence: 100, spread: 0.04, recoil: 1, capacity: 30, reload: 1, mobility: 1 });
+    const first = pawnSlugApplyWeaponModel(frozen, 'machinegun', 'mg42');
+    const second = pawnSlugApplyWeaponModel(frozen, 'machinegun', 'mg42');
+    const sibling = pawnSlugApplyWeaponModel(frozen, 'machinegun', 'rpk');
+
+    expect(second).toBe(first);
+    expect(sibling).not.toBe(first);
+    expect(Object.isFrozen(first)).toBe(true);
+
+    const mutable = { damage: 20, cadence: 100, spread: 0.04, recoil: 1, capacity: 30, reload: 1, mobility: 1 };
+    const mutableFirst = pawnSlugApplyWeaponModel(mutable, 'machinegun', 'mg42');
+    mutable.damage = 40;
+    const mutableSecond = pawnSlugApplyWeaponModel(mutable, 'machinegun', 'mg42');
+    expect(mutableSecond).not.toBe(mutableFirst);
+    expect(mutableSecond.damage).toBeGreaterThan(mutableFirst.damage);
+  });
 });

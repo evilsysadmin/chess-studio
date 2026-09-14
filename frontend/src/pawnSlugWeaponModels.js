@@ -42,6 +42,8 @@ export const PAWN_SLUG_WEAPON_MODELS = Object.freeze({
   ]),
 });
 
+const APPLIED_MODEL_CACHE = new WeakMap();
+
 export function pawnSlugWeaponModel(family, id) {
   const models = PAWN_SLUG_WEAPON_MODELS[family] || [];
   return models.find((model) => model.id === id) || models[0] || null;
@@ -50,7 +52,15 @@ export function pawnSlugWeaponModel(family, id) {
 export function pawnSlugApplyWeaponModel(stats, family, id) {
   const model = pawnSlugWeaponModel(family, id);
   if (!model) return Object.freeze({ ...stats });
-  return Object.freeze({
+
+  const cacheable = stats != null && typeof stats === 'object' && Object.isFrozen(stats);
+  const cacheKey = `${family}:${model.id}`;
+  if (cacheable) {
+    const cached = APPLIED_MODEL_CACHE.get(stats)?.get(cacheKey);
+    if (cached) return cached;
+  }
+
+  const applied = Object.freeze({
     ...stats,
     modelId: model.id,
     modelLabel: model.label,
@@ -62,4 +72,14 @@ export function pawnSlugApplyWeaponModel(stats, family, id) {
     reload: (stats.reload ?? 1) * model.reload,
     mobility: (stats.mobility ?? 1) * model.mobility,
   });
+
+  if (cacheable) {
+    let entries = APPLIED_MODEL_CACHE.get(stats);
+    if (!entries) {
+      entries = new Map();
+      APPLIED_MODEL_CACHE.set(stats, entries);
+    }
+    entries.set(cacheKey, applied);
+  }
+  return applied;
 }
