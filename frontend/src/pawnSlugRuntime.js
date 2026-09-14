@@ -24,9 +24,6 @@ export function createPawnSlugRuntime(host, { onReady, onHud } = {}) {
   const view = createPawnSlugRuntimeView(host, { coarse, reducedMotion });
   const {
     renderer,
-    scene,
-    camera,
-    farEnvironment,
     dynamic,
     projectileLayer,
     fxLayer,
@@ -48,10 +45,7 @@ export function createPawnSlugRuntime(host, { onReady, onHud } = {}) {
     input: createPawnSlugInputState(),
     coarse,
     reducedMotion,
-    renderer,
-    scene,
-    camera,
-    farEnvironment,
+    view,
     dynamic,
     projectileLayer,
     fxLayer,
