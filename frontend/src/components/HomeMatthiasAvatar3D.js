@@ -26,155 +26,237 @@ function add(parent, geometry, surface, position = [0, 0, 0], rotation = [0, 0, 
   return mesh;
 }
 
+function lathe(parent, profile, surface, segments, name = '') {
+  return add(
+    parent,
+    new THREE.LatheGeometry(profile.map(([radius, y]) => new THREE.Vector2(radius, y)), segments),
+    surface,
+    [0, 0, 0],
+    [0, 0, 0],
+    null,
+    name,
+  );
+}
+
 /**
- * Home Matthias is an avatar, not the rival king chess piece.
+ * Matthias in Home is a character first and a chess mascot second.
  *
- * The silhouette follows the canonical portrait used around the product:
- * oversized pale round face, severe brows, proper peaked officer cap, compact
- * black command tunic, burgundy accents and restrained brass. The chess-piece
- * base is only a small visual plinth; there is deliberately no king crown,
- * cross or lathed king body here.
+ * Keep the approved face/cap language that makes him immediately recognisable,
+ * but never reuse the rival-king silhouette: no king crown, no cross, no tall
+ * lathed king body. The lower half is a compact officer/pawn mascot with real
+ * shoulders and arms, while the head and plate cap carry Matthias' identity.
  */
 export function buildHomeMatthiasAvatar3D({ coarsePointer = false } = {}) {
   const root = new THREE.Group();
   root.name = 'home-matthias-avatar';
   root.userData.homeMatthiasAvatar = true;
-  root.userData.identity = 'canonical-officer-avatar-v1';
-  root.userData.motionRig = 'portrait-head-and-body-v1';
+  root.userData.identity = 'canonical-officer-avatar-v2';
+  root.userData.motionRig = 'portrait-head-and-body-v2';
 
-  const segments = coarsePointer ? 22 : 36;
-  const skin = material(0xe9d8bd, {
+  const segments = coarsePointer ? 24 : 42;
+  const front = 1;
+
+  const face = material(0xf2eadb, {
     metalness: 0,
-    roughness: 0.86,
-    clearcoat: 0.015,
-    envMapIntensity: 0.12,
-    specularIntensity: 0.1,
+    roughness: 0.82,
+    clearcoat: 0.025,
+    clearcoatRoughness: 0.82,
+    envMapIntensity: 0.18,
+    specularIntensity: 0.14,
   });
-  const skinShadow = material(0xba9874, {
+  const faceShadow = material(0xc1ad91, {
     metalness: 0,
     roughness: 0.92,
-    clearcoat: 0,
+    clearcoat: 0.01,
+    envMapIntensity: 0.1,
+    specularIntensity: 0.08,
+  });
+  const uniform = material(0x171d24, {
+    metalness: 0.1,
+    roughness: 0.58,
+    clearcoat: 0.12,
+    clearcoatRoughness: 0.4,
+    envMapIntensity: 0.34,
+    specularIntensity: 0.3,
+  });
+  const uniformShadow = material(0x0d1116, {
+    metalness: 0.08,
+    roughness: 0.66,
+    clearcoat: 0.08,
+    envMapIntensity: 0.22,
+    specularIntensity: 0.2,
+  });
+  const cap = material(0x10141a, {
+    metalness: 0.16,
+    roughness: 0.56,
+    clearcoat: 0.12,
+    envMapIntensity: 0.32,
+    specularIntensity: 0.28,
+  });
+  const capBand = material(0x74272a, {
+    metalness: 0.08,
+    roughness: 0.68,
+    clearcoat: 0.04,
+    envMapIntensity: 0.16,
+    specularIntensity: 0.14,
+  });
+  const brass = material(0xc99b3f, {
+    metalness: 0.8,
+    roughness: 0.28,
+    clearcoat: 0.24,
+    clearcoatRoughness: 0.22,
+    envMapIntensity: 0.62,
+    specularIntensity: 0.62,
+  });
+  const eyeWhite = material(0xd8d8d2, {
+    metalness: 0,
+    roughness: 0.88,
+    clearcoat: 0.01,
     envMapIntensity: 0.08,
     specularIntensity: 0.06,
   });
-  const uniform = material(0x10151b, {
-    metalness: 0.12,
-    roughness: 0.57,
-    clearcoat: 0.16,
-    clearcoatRoughness: 0.36,
-    envMapIntensity: 0.38,
-    specularIntensity: 0.34,
+  const ink = material(0x05070a, {
+    metalness: 0.02,
+    roughness: 0.78,
+    clearcoat: 0.01,
+    envMapIntensity: 0.08,
+    specularIntensity: 0.08,
   });
-  const uniformSoft = material(0x1e252c, {
-    metalness: 0.07,
-    roughness: 0.68,
-    clearcoat: 0.06,
-    envMapIntensity: 0.24,
-  });
-  const burgundy = material(0x74272b, {
-    metalness: 0.06,
-    roughness: 0.66,
-    clearcoat: 0.08,
-    envMapIntensity: 0.2,
-  });
-  const brass = material(0xc99a42, {
-    metalness: 0.82,
-    roughness: 0.27,
-    clearcoat: 0.22,
-    clearcoatRoughness: 0.2,
-    envMapIntensity: 0.62,
-    specularIntensity: 0.58,
-  });
-  const ink = material(0x030507, {
-    metalness: 0,
-    roughness: 0.82,
-    clearcoat: 0,
-    envMapIntensity: 0.06,
-    specularIntensity: 0.05,
-  });
-  const eyeWhite = material(0xe8e4d9, {
-    metalness: 0,
-    roughness: 0.92,
-    clearcoat: 0,
-    envMapIntensity: 0.05,
-    specularIntensity: 0.04,
+  const sash = material(0x683235, {
+    metalness: 0.04,
+    roughness: 0.7,
+    clearcoat: 0.03,
+    envMapIntensity: 0.14,
+    specularIntensity: 0.12,
   });
 
-  // Small plinth only. Matthias must read as a character before he reads as a
-  // chess object, unlike MatthiasKing3D in the War Room.
-  add(root, new THREE.CylinderGeometry(0.39, 0.43, 0.12, segments), uniform, [0, 0.075, 0], [0, 0, 0], null, 'home-matthias-plinth');
-  add(root, new THREE.TorusGeometry(0.385, 0.018, 8, segments), brass, [0, 0.132, 0], [Math.PI / 2, 0, 0], null, 'home-matthias-plinth-trim');
+  // Restrained mascot plinth. It grounds Matthias but never turns him into a king.
+  add(root, new THREE.CylinderGeometry(0.34, 0.38, 0.105, segments), uniformShadow, [0, 0.058, 0], [0, 0, 0], null, 'home-matthias-plinth');
+  add(root, new THREE.TorusGeometry(0.342, 0.016, 8, segments), brass, [0, 0.112, 0], [Math.PI / 2, 0, 0], null, 'home-matthias-plinth-trim');
 
   const bodyRig = new THREE.Group();
   bodyRig.name = 'home-matthias-body-rig';
   bodyRig.userData.baseRotation = bodyRig.rotation.clone();
   root.add(bodyRig);
 
-  // Compact rounded military torso, broad shoulders and visible arms.
-  add(bodyRig, new THREE.SphereGeometry(0.42, segments, coarsePointer ? 14 : 22), uniform, [0, 0.52, 0], [0, 0, 0], [0.92, 1.02, 0.72], 'home-matthias-command-jacket');
-  add(bodyRig, new THREE.BoxGeometry(0.42, 0.43, 0.055), uniformSoft, [0, 0.54, 0.292], [0, 0, 0], null, 'home-matthias-jacket-front');
-  add(bodyRig, new THREE.BoxGeometry(0.055, 0.5, 0.026), burgundy, [-0.06, 0.55, 0.329], [0, 0, -0.42], null, 'home-matthias-sash');
+  // A compact officer coat: broad at the shoulders, gently tapered at the waist.
+  // This keeps the canonical toy-soldier/pawn flavour without the rival king body.
+  lathe(bodyRig, [
+    [0.29, 0.11], [0.31, 0.16], [0.30, 0.22], [0.255, 0.30],
+    [0.235, 0.42], [0.245, 0.58], [0.285, 0.70], [0.30, 0.755],
+    [0.245, 0.805], [0.205, 0.83],
+  ], uniform, segments, 'home-matthias-command-jacket');
+  add(bodyRig, new THREE.TorusGeometry(0.19, 0.014, 8, segments), brass, [0, 0.814, 0], [Math.PI / 2, 0, 0], null, 'home-matthias-collar-trim');
+  add(bodyRig, new THREE.BoxGeometry(0.072, 0.36, 0.024), sash, [-0.052, 0.56, 0.244], [0, 0, -0.42], null, 'home-matthias-sash');
 
-  add(bodyRig, new THREE.SphereGeometry(0.15, 20, 14), uniform, [-0.31, 0.67, 0.015], [0, 0, 0], [1.0, 0.78, 0.82], 'home-matthias-shoulder-left');
-  add(bodyRig, new THREE.SphereGeometry(0.15, 20, 14), uniform, [0.31, 0.67, 0.015], [0, 0, 0], [1.0, 0.78, 0.82], 'home-matthias-shoulder-right');
-  add(bodyRig, new THREE.BoxGeometry(0.19, 0.045, 0.09), brass, [-0.29, 0.79, 0.02], [0, 0, -0.05], null, 'home-matthias-epaulette-left');
-  add(bodyRig, new THREE.BoxGeometry(0.19, 0.045, 0.09), brass, [0.29, 0.79, 0.02], [0, 0, 0.05], null, 'home-matthias-epaulette-right');
+  // Rounded shoulders and short arms make him read as a resident, not a chess glyph.
+  add(bodyRig, new THREE.SphereGeometry(0.135, 18, 12), uniform, [-0.26, 0.70, 0.005], [0, 0, 0], [1.05, 0.75, 0.86], 'home-matthias-shoulder-left');
+  add(bodyRig, new THREE.SphereGeometry(0.135, 18, 12), uniform, [0.26, 0.70, 0.005], [0, 0, 0], [1.05, 0.75, 0.86], 'home-matthias-shoulder-right');
+  add(bodyRig, new THREE.CylinderGeometry(0.062, 0.072, 0.34, 16), uniformShadow, [-0.285, 0.50, 0.12], [0.18, 0, -0.18], null, 'home-matthias-arm-left');
+  add(bodyRig, new THREE.CylinderGeometry(0.062, 0.072, 0.34, 16), uniformShadow, [0.285, 0.50, 0.12], [0.18, 0, 0.18], null, 'home-matthias-arm-right');
+  add(bodyRig, new THREE.SphereGeometry(0.074, 16, 11), uniformShadow, [-0.245, 0.335, 0.17], [0, 0, 0], [1, 0.88, 0.9], 'home-matthias-glove-left');
+  add(bodyRig, new THREE.SphereGeometry(0.074, 16, 11), uniformShadow, [0.245, 0.335, 0.17], [0, 0, 0], [1, 0.88, 0.9], 'home-matthias-glove-right');
 
-  const armGeometry = new THREE.CylinderGeometry(0.075, 0.085, 0.43, 16);
-  add(bodyRig, armGeometry, uniformSoft, [-0.315, 0.47, 0.205], [0.22, 0, -0.25], null, 'home-matthias-arm-left');
-  add(bodyRig, armGeometry.clone(), uniformSoft, [0.315, 0.47, 0.205], [0.22, 0, 0.25], null, 'home-matthias-arm-right');
-  add(bodyRig, new THREE.SphereGeometry(0.084, 18, 12), uniform, [-0.255, 0.28, 0.265], [0, 0, 0], [1, 0.9, 0.85], 'home-matthias-glove-left');
-  add(bodyRig, new THREE.SphereGeometry(0.084, 18, 12), uniform, [0.255, 0.28, 0.265], [0, 0, 0], [1, 0.9, 0.85], 'home-matthias-glove-right');
-
-  // Officer details survive at Home scale without turning into RPG clutter.
-  add(bodyRig, new THREE.TorusGeometry(0.19, 0.012, 7, segments), brass, [0, 0.825, 0], [Math.PI / 2, 0, 0], [1.0, 0.78, 1], 'home-matthias-collar-trim');
-  for (const y of [0.65, 0.54, 0.43]) {
-    add(bodyRig, new THREE.SphereGeometry(0.022, 12, 8), brass, [0.055, y, 0.334], [0, 0, 0], null, `home-matthias-button-${String(y).replace('.', '-')}`);
+  add(bodyRig, new THREE.BoxGeometry(0.17, 0.042, 0.075), brass, [-0.215, 0.765, 0.028], [0, 0, -0.06], null, 'home-matthias-epaulette-left');
+  add(bodyRig, new THREE.BoxGeometry(0.17, 0.042, 0.075), brass, [0.215, 0.765, 0.028], [0, 0, 0.06], null, 'home-matthias-epaulette-right');
+  add(bodyRig, new THREE.SphereGeometry(0.024, 12, 8), brass, [-0.10, 0.61, 0.255], [0, 0, 0], null, 'home-matthias-medal-left');
+  add(bodyRig, new THREE.SphereGeometry(0.020, 12, 8), brass, [-0.04, 0.585, 0.258], [0, 0, 0], null, 'home-matthias-medal-right');
+  for (const [index, y] of [0.67, 0.57, 0.47].entries()) {
+    add(bodyRig, new THREE.SphereGeometry(0.016, 10, 7), brass, [0.065, y, 0.258], [0, 0, 0], null, `home-matthias-button-${index + 1}`);
   }
-  add(bodyRig, new THREE.BoxGeometry(0.065, 0.065, 0.018), brass, [-0.135, 0.66, 0.34], [0, 0, Math.PI / 4], null, 'home-matthias-medal');
-  add(bodyRig, new THREE.BoxGeometry(0.032, 0.032, 0.022), burgundy, [-0.135, 0.66, 0.353], [0, 0, Math.PI / 4], null, 'home-matthias-medal-inset');
 
   const headRig = new THREE.Group();
   headRig.name = 'home-matthias-head-rig';
   headRig.userData.baseRotation = headRig.rotation.clone();
+  headRig.userData.expression = 'command-fury-v3';
   root.add(headRig);
 
-  // The large round face is Matthias' most important identifying feature.
-  add(headRig, new THREE.SphereGeometry(0.29, segments, coarsePointer ? 16 : 24), skin, [0, 1.08, 0.02], [0, 0, 0], [1.06, 0.96, 0.91], 'home-matthias-face');
-  add(headRig, new THREE.SphereGeometry(0.045, 14, 9), skinShadow, [0.004, 1.045, 0.289], [0, 0, 0], [0.58, 1.02, 0.46], 'home-matthias-nose');
-
-  const faceZ = 0.279;
-  add(headRig, new THREE.SphereGeometry(0.042, 14, 9), eyeWhite, [-0.09, 1.105, faceZ], [0, 0, -0.12], [1.4, 0.45, 0.34], 'home-matthias-eye-white-left');
-  add(headRig, new THREE.SphereGeometry(0.042, 14, 9), eyeWhite, [0.09, 1.105, faceZ], [0, 0, 0.12], [1.4, 0.45, 0.34], 'home-matthias-eye-white-right');
-  add(headRig, new THREE.SphereGeometry(0.026, 12, 8), ink, [-0.088, 1.103, 0.292], [0, 0, 0], [1.0, 0.42, 0.34], 'home-matthias-eye-left');
-  add(headRig, new THREE.SphereGeometry(0.026, 12, 8), ink, [0.088, 1.103, 0.292], [0, 0, 0], [1.0, 0.42, 0.34], 'home-matthias-eye-right');
-
-  add(headRig, new THREE.BoxGeometry(0.135, 0.024, 0.022), ink, [-0.078, 1.158, 0.292], [0, 0, -0.38], null, 'home-matthias-brow-left');
-  add(headRig, new THREE.BoxGeometry(0.135, 0.024, 0.022), ink, [0.078, 1.158, 0.292], [0, 0, 0.38], null, 'home-matthias-brow-right');
+  // Reuse the approved proportions that already read as Matthias at tactical scale.
+  add(headRig, new THREE.SphereGeometry(0.235, segments, coarsePointer ? 16 : 24), face, [0, 1.016, 0], [0, 0, 0], [1.06, 0.94, 0.94], 'home-matthias-face');
+  const faceZ = front * 0.226;
+  add(headRig, new THREE.SphereGeometry(0.036, 14, 9), eyeWhite, [-0.071, 1.028, faceZ], [0, 0, -0.16], [1.34, 0.42, 0.36], 'home-matthias-eye-white-left');
+  add(headRig, new THREE.SphereGeometry(0.036, 14, 9), eyeWhite, [0.071, 1.028, faceZ], [0, 0, 0.16], [1.34, 0.42, 0.36], 'home-matthias-eye-white-right');
+  add(headRig, new THREE.SphereGeometry(0.024, 14, 9), ink, [-0.069, 1.026, 0.233], [0, 0, -0.16], [1.2, 0.27, 0.30], 'home-matthias-eye-left');
+  add(headRig, new THREE.SphereGeometry(0.024, 14, 9), ink, [0.069, 1.026, 0.233], [0, 0, 0.16], [1.2, 0.27, 0.30], 'home-matthias-eye-right');
+  add(headRig, new THREE.BoxGeometry(0.112, 0.022, 0.02), ink, [-0.064, 1.071, 0.231], [0, 0, -0.55], null, 'home-matthias-brow-left');
+  add(headRig, new THREE.BoxGeometry(0.112, 0.022, 0.02), ink, [0.064, 1.071, 0.231], [0, 0, 0.55], null, 'home-matthias-brow-right');
+  add(headRig, new THREE.SphereGeometry(0.022, 14, 9), faceShadow, [0.004, 0.992, 0.236], [0, 0, 0], [0.62, 1.05, 0.46], 'home-matthias-nose');
 
   const mouthCurve = new THREE.QuadraticBezierCurve3(
-    new THREE.Vector3(-0.064, 1.002, 0.292),
-    new THREE.Vector3(0, 0.976, 0.3),
-    new THREE.Vector3(0.064, 1.002, 0.292),
+    new THREE.Vector3(-0.056, 0.949, 0.233),
+    new THREE.Vector3(0, 0.921, 0.239),
+    new THREE.Vector3(0.056, 0.949, 0.233),
   );
-  add(headRig, new THREE.TubeGeometry(mouthCurve, coarsePointer ? 6 : 10, 0.0065, 6, false), ink, [0, 0, 0], [0, 0, 0], null, 'home-matthias-mouth');
+  const mouth = add(
+    headRig,
+    new THREE.TubeGeometry(mouthCurve, coarsePointer ? 6 : 10, 0.0068, 6, false),
+    ink,
+    [0, 0, 0],
+    [0, 0, 0],
+    null,
+    'home-matthias-mouth',
+  );
+  mouth.userData.expression = 'furious-downturn-v1';
 
-  // Canonical peaked officer cap. No king crown, finial or chess cross.
+  // Proper structured plate cap: tall flared crown, wine band, curved visor and
+  // command crest. This is Matthias' strongest silhouette cue in the Home art.
   const capRig = new THREE.Group();
   capRig.name = 'home-matthias-officer-cap';
-  capRig.position.set(0, 1.29, 0);
-  capRig.rotation.x = -0.018;
+  capRig.position.set(0, 1.168, -0.003);
+  capRig.rotation.z = -0.012;
+  capRig.rotation.x = -0.026;
+  capRig.userData.silhouette = 'home-hero-plate-cap';
   headRig.add(capRig);
 
-  add(capRig, new THREE.CylinderGeometry(0.235, 0.245, 0.075, segments), uniform, [0, 0.035, 0], [0, 0, 0], [1.0, 1, 0.94], 'home-matthias-cap-band');
-  add(capRig, new THREE.CylinderGeometry(0.285, 0.235, 0.13, segments), uniform, [0, 0.13, -0.008], [0, 0, 0], [1.03, 1, 0.92], 'home-matthias-cap-crown');
-  add(capRig, new THREE.CylinderGeometry(0.29, 0.282, 0.025, segments), uniform, [-0.006, 0.205, -0.014], [0, 0, 0.015], [1.03, 1, 0.92], 'home-matthias-cap-top');
-  add(capRig, new THREE.CylinderGeometry(0.245, 0.247, 0.032, segments), burgundy, [0, 0.053, 0.003], [0, 0, 0], [1.0, 1, 0.94], 'home-matthias-cap-red-band');
-  add(capRig, new THREE.BoxGeometry(0.31, 0.035, 0.14), uniform, [0, -0.005, 0.205], [-0.11, 0, 0], [1.0, 1, 0.76], 'home-matthias-cap-visor');
-  add(capRig, new THREE.BoxGeometry(0.075, 0.075, 0.018), brass, [0, 0.105, 0.228], [0, 0, Math.PI / 4], null, 'home-matthias-cap-badge');
-  add(capRig, new THREE.BoxGeometry(0.034, 0.034, 0.022), burgundy, [0, 0.105, 0.241], [0, 0, Math.PI / 4], null, 'home-matthias-cap-badge-inset');
-  add(capRig, new THREE.TorusGeometry(0.195, 0.007, 7, 24, Math.PI), brass, [0, 0.03, 0.226], [Math.PI / 2, 0, 0], [1.0, 0.72, 1], 'home-matthias-cap-cord');
+  add(capRig, new THREE.CylinderGeometry(0.205, 0.212, 0.078, segments), cap, [0, 0.037, 0], [0, 0, 0], [1.02, 1, 0.94], 'home-matthias-cap');
+  add(capRig, new THREE.CylinderGeometry(0.269, 0.207, 0.132, segments), cap, [-0.002, 0.141, -0.004], [0, 0, 0.008], [1.025, 1, 0.92], 'home-matthias-cap-crown');
+  add(capRig, new THREE.CylinderGeometry(0.276, 0.268, 0.026, segments), cap, [-0.006, 0.226, -0.009], [0, 0, 0.018], [1.025, 1, 0.92], 'home-matthias-cap-top');
+  add(capRig, new THREE.TorusGeometry(0.267, 0.0075, 8, segments), cap, [-0.004, 0.211, -0.007], [Math.PI / 2, 0, 0], [1.025, 0.92, 1], 'home-matthias-cap-crown-break');
+  add(capRig, new THREE.CylinderGeometry(0.214, 0.216, 0.034, segments), capBand, [0, 0.058, 0.001], [0, 0, 0], [1.02, 1, 0.94], 'home-matthias-cap-band-fill');
+  add(capRig, new THREE.TorusGeometry(0.213, 0.0085, 8, segments), brass, [0, 0.077, 0.002], [Math.PI / 2, 0, 0], [1.02, 0.94, 1], 'home-matthias-cap-band');
+  add(capRig, new THREE.TorusGeometry(0.271, 0.0055, 7, segments), capBand, [-0.006, 0.237, -0.009], [Math.PI / 2, 0, 0], [1.025, 0.92, 1], 'home-matthias-cap-red-piping');
 
-  root.scale.setScalar(0.96);
+  const visorShape = new THREE.Shape();
+  visorShape.moveTo(-0.162, 0);
+  visorShape.quadraticCurveTo(-0.158, 0.082, -0.101, 0.115);
+  visorShape.quadraticCurveTo(0, 0.139, 0.101, 0.115);
+  visorShape.quadraticCurveTo(0.158, 0.082, 0.162, 0);
+  visorShape.quadraticCurveTo(0, -0.01, -0.162, 0);
+  const visorGeometry = new THREE.ExtrudeGeometry(visorShape, {
+    depth: 0.018,
+    bevelEnabled: true,
+    bevelSegments: 2,
+    bevelSize: 0.004,
+    bevelThickness: 0.0025,
+    curveSegments: coarsePointer ? 5 : 9,
+    steps: 1,
+  });
+  visorGeometry.translate(0, 0, -0.009);
+  const visor = add(
+    capRig,
+    visorGeometry,
+    cap,
+    [0, -0.004, 0.137],
+    [Math.PI / 2 - 0.052, 0, 0],
+    null,
+    'home-matthias-cap-visor',
+  );
+  visor.userData.shortPremiumBrim = true;
+
+  const cordCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-0.162, 0.068, 0.195),
+    new THREE.Vector3(-0.083, 0.057, 0.214),
+    new THREE.Vector3(0, 0.052, 0.22),
+    new THREE.Vector3(0.083, 0.057, 0.214),
+    new THREE.Vector3(0.162, 0.068, 0.195),
+  ]);
+  add(capRig, new THREE.TubeGeometry(cordCurve, coarsePointer ? 12 : 22, 0.0072, 7, false), brass, [0, 0, 0], [0, 0, 0], null, 'home-matthias-cap-cord');
+  add(capRig, new THREE.SphereGeometry(0.013, 10, 7), brass, [-0.168, 0.071, 0.194], [0, 0, 0], null, 'home-matthias-cap-cord-stud-left');
+  add(capRig, new THREE.SphereGeometry(0.013, 10, 7), brass, [0.168, 0.071, 0.194], [0, 0, 0], null, 'home-matthias-cap-cord-stud-right');
+  add(capRig, new THREE.BoxGeometry(0.072, 0.076, 0.014), brass, [0, 0.119, 0.214], [0, 0, Math.PI / 4], [1, 1.12, 1], 'home-matthias-cap-badge');
+  add(capRig, new THREE.BoxGeometry(0.048, 0.052, 0.016), ink, [0, 0.119, 0.223], [0, 0, Math.PI / 4], [1, 1.08, 1], 'home-matthias-cap-badge-inset');
+  add(capRig, new THREE.BoxGeometry(0.023, 0.025, 0.018), capBand, [0, 0.119, 0.234], [0, 0, Math.PI / 4], [1, 1.05, 1], 'home-matthias-cap-badge-gem');
+
+  root.scale.setScalar(1.06);
   return root;
 }
