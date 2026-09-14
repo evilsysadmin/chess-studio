@@ -1,7 +1,6 @@
 import baseAvatar from './assets/matthias-scenes/base.webp';
 import morningCoffee from './assets/matthias-scenes/morning-coffee.webp';
 import lunchBocata from './assets/matthias-scenes/lunch-bocata.webp';
-import campaignDinner from './assets/matthias-scenes/campaign-dinner.webp';
 import afternoonOps from './assets/matthias-scenes/afternoon-ops.webp';
 import nightCoffee from './assets/matthias-scenes/night-coffee.webp';
 import lateSleep from './assets/matthias-scenes/late-sleep.webp';
@@ -11,12 +10,15 @@ import moodAnnoyed from './assets/matthias-scenes/mood-annoyed.webp';
 import { matthiasTimeScene } from './matthiasTime.js';
 
 // Las claves horarias son estables aunque una ilustración concreta cambie.
-// Hasta reintroducir los cuatro artes dañados con un canal binario verificado,
+// Hasta reintroducir los artes dañados con un canal binario verificado,
 // reutilizamos escenas válidas para que Matthias nunca desaparezca de Home.
 const TIME_ASSETS = Object.freeze({
   'morning-coffee': morningCoffee,
   'lunch-bocata': lunchBocata,
-  'lunch-campaign-dinner': campaignDinner,
+  // campaign-dinner.webp contiene corrupción raster visible en la mitad inferior.
+  // Conservamos la escena/label de cena, pero usamos temporalmente el render
+  // limpio de comida hasta que exista un asset de cena verificado.
+  'lunch-campaign-dinner': lunchBocata,
   'afternoon-ops': afternoonOps,
   'night-coffee': nightCoffee,
   'late-sleep': lateSleep,

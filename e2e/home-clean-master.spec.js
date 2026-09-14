@@ -40,8 +40,13 @@ test('Home clean master keeps live diegetic Matthias and retired chrome out', as
     await expect(rasterFragments.nth(index)).toBeHidden();
   }
 
-  // Matthias must still move: gesture state drives a tiny rigid animation on
-  // the whole clean render instead of tearing individual raster fragments.
+  // Even between explicit gestures Matthias must visibly live in the room. The
+  // continuous stance/breath animation prevents several seconds of dead-still
+  // sticker time, while explicit gesture state temporarily overrides it.
+  await expect.poll(async () => layeredArt.evaluate((node) => (
+    window.getComputedStyle(node).animationName
+  )), { timeout: 2_000 }).toMatch(/^home-matthias-rigid-/);
+
   await expect.poll(async () => layeredArt.evaluate((node) => {
     const style = window.getComputedStyle(node);
     return node.dataset.gestureState === 'acting'
