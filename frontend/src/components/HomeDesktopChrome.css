@@ -123,6 +123,30 @@
     z-index: 72 !important;
   }
 
+  /* Matthias can stand at the desk only ~7.8% into the scene. Keep the Home
+     player's collapsed hitbox genuinely compact so the player never steals the
+     resident hotspot. Full metadata returns when the user explicitly expands. */
+  html body:has(.app-shell-home) .global-music-dock:has(.music-deck-collapsed) {
+    width: 88px !important;
+  }
+
+  html body:has(.app-shell-home) .global-music-dock .music-deck.music-deck-collapsed {
+    width: 88px !important;
+    max-width: 88px !important;
+    grid-template-columns: 52px 32px !important;
+  }
+
+  html body:has(.app-shell-home) .global-music-dock .music-deck-collapsed-track,
+  html body:has(.app-shell-home) .global-music-dock .music-deck-collapsed-hint {
+    display: none !important;
+  }
+
+  html body:has(.app-shell-home) .global-music-dock .music-deck-expand {
+    grid-template-columns: auto auto !important;
+    justify-content: center !important;
+    padding-inline: .35rem !important;
+  }
+
   /* The canonical coordinate is correct for the compact player, but on short
      desktop viewports an expanded deck would grow below the fold. Once the
      user explicitly opens it, treat it as a control surface: keep the whole
