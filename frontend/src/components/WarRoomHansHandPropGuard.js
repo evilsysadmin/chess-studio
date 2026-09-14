@@ -1,9 +1,14 @@
+import * as THREE from 'three';
 import { getWarRoomHansActor } from './WarRoomHansActor.js';
 
 export const WAR_ROOM_HANS_HAND_PROP_GUARD_VERSION = 'hans-hand-prop-guard-v3-readable-espresso';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const RIGHT_HAND_POSITION = Object.freeze([0.055, -0.62, 0.08]);
+const ESPRESSO_TRAY_NAME = 'war-room-hans-espresso-tray';
+const DELIVERED_ESPRESSO_NAME = 'war-room-hans-delivered-espresso';
+const ESPRESSO_CARRIED_SCALE = 1.18;
+const ESPRESSO_DELIVERED_SCALE = 1.28;
 
 const SINGLE_HAND_PROPS = Object.freeze({
   'service:water-plant': Object.freeze({
@@ -25,7 +30,7 @@ const SINGLE_HAND_PROPS = Object.freeze({
 
 const TWO_HAND_PROPS = Object.freeze({
   'service:espresso': Object.freeze({
-    name: 'war-room-hans-espresso-tray',
+    name: ESPRESSO_TRAY_NAME,
     // Torso pivot sits at ~1.36m and both animated hands settle around ~1.0m
     // during the espresso pose. Keep the tray there instead of at hip height.
     torsoY: -0.34,
@@ -59,6 +64,58 @@ function inferForward(actor) {
   const logZ = Number(actor?.body?.carriedLog?.position?.z);
   if (Number.isFinite(logZ) && Math.abs(logZ) > 0.0001) return Math.sign(logZ);
   return 1;
+}
+
+function ensureEspressoHandle(group, cup, { name, x, y } = {}) {
+  if (!group || !cup?.material || !name) return false;
+  if (group.getObjectByName?.(name)) return true;
+  const handle = new THREE.Mesh(new THREE.TorusGeometry(0.052, 0.012, 6, 16), cup.material);
+  handle.name = name;
+  handle.position.set(Number(x) || 0, Number(y) || 0, 0);
+  handle.castShadow = true;
+  group.add(handle);
+  return true;
+}
+
+export function upgradeWarRoomHansEspressoVisuals(root, actor) {
+  let upgraded = 0;
+  const tray = actor?.hans?.getObjectByName?.(ESPRESSO_TRAY_NAME) || null;
+  if (tray) {
+    tray.scale.setScalar(ESPRESSO_CARRIED_SCALE);
+    const platter = tray.children?.[0] || null;
+    const cup = tray.children?.[1] || null;
+    if (platter?.material?.color?.setHex) {
+      platter.material.color.setHex(0x9b7233);
+      platter.material.metalness = Math.max(Number(platter.material.metalness) || 0, 0.62);
+      platter.material.roughness = Math.min(Number(platter.material.roughness) || 1, 0.32);
+    }
+    ensureEspressoHandle(tray, cup, {
+      name: 'war-room-hans-espresso-carried-handle',
+      x: 0.105,
+      y: 0.09,
+    });
+    tray.userData.warRoomHansEspressoPresentation = 'hand-height-readable-v2';
+    upgraded += 1;
+  }
+
+  const delivered = root?.getObjectByName?.(DELIVERED_ESPRESSO_NAME) || null;
+  if (delivered) {
+    const deskArt = delivered.parent || null;
+    const drawer = deskArt?.getObjectByName?.('war-room-command-desk-drawer') || null;
+    const front = Math.sign(Number(drawer?.position?.z)) || Math.sign(Number(delivered.position.z)) || 1;
+    delivered.position.x = 0.88;
+    delivered.position.z = front * 0.32;
+    delivered.scale.setScalar(ESPRESSO_DELIVERED_SCALE);
+    const cup = delivered.children?.[1] || null;
+    ensureEspressoHandle(delivered, cup, {
+      name: 'war-room-hans-espresso-delivered-handle',
+      x: 0.105,
+      y: 1.215,
+    });
+    delivered.userData.warRoomHansEspressoPresentation = 'desk-front-edge-readable-v2';
+    upgraded += 1;
+  }
+  return upgraded;
 }
 
 export function rigWarRoomHansSingleHandProp(actor, prop, spec) {
@@ -152,6 +209,8 @@ export function installWarRoomHansHandPropGuard(root) {
   const floor = root?.getObjectByName?.(FLOOR_NAME);
   if (!actor || !floor || typeof floor.onBeforeRender !== 'function') return 0;
   if (floor.userData?.warRoomHansHandPropGuard === WAR_ROOM_HANS_HAND_PROP_GUARD_VERSION) return 0;
+
+  upgradeWarRoomHansEspressoVisuals(root, actor);
 
   const previous = floor.onBeforeRender;
   floor.onBeforeRender = (...args) => {
