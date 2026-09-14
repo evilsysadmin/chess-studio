@@ -4,6 +4,7 @@ from pathlib import Path
 import re
 
 from quality_scope import CORE_E2E_LANES
+from run_core_e2e_lane import LANE_COMMANDS, critical_targets, self_test as core_e2e_lane_self_test
 from workflow_static_contracts import validate_workflow_static_contracts
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,8 +27,6 @@ def playwright_test_titles(relative_path: str, seen: set[str] | None = None) -> 
         for match in re.finditer(r"\btest\s*\(\s*(['\"])(.*?)\1\s*,", source, re.S)
     ]
 
-    # Entry specs may be tiny aggregators. Follow only explicit relative
-    # side-effect imports; named helper imports must not become test sources.
     for imported in re.findall(r"^\s*import\s+(['\"])(\./[^'\"]+)\1\s*;?\s*$", source, re.M):
         candidate = (path.parent / imported[1]).resolve()
         e2e_root = (ROOT / 'e2e').resolve()
@@ -60,7 +59,6 @@ def assert_lane_pattern_targets_real_test(spec_name: str, item: str) -> None:
 
 
 def ci_job_block(job_name: str) -> str:
-    """Return one top-level GitHub Actions job without swallowing sibling jobs."""
     match = re.search(
         rf'^  {re.escape(job_name)}:\n(.*?)(?=^  [A-Za-z0-9_-]+:\n|\Z)',
         ci,
@@ -133,28 +131,26 @@ sharded_playwright = 'e2e_lanes:' in ci
 if sharded_playwright:
     core_lanes = ci_job_block('e2e_lanes')
     expected_lanes = ('regression-state', 'regression-school', 'learning-golden', 'learning-observation', 'smoke')
+    core_e2e_lane_self_test()
     if CORE_E2E_LANES != expected_lanes:
         raise SystemExit(f'quality_scope perdió las lanes core canónicas: {CORE_E2E_LANES!r}')
+    if tuple(LANE_COMMANDS) != expected_lanes:
+        raise SystemExit(f'runner core perdió las lanes canónicas: {tuple(LANE_COMMANDS)!r}')
     for marker in [
         'matrix: ${{ fromJSON(needs.preflight.outputs.core_e2e_matrix) }}',
         'Tests · Playwright · ${{ matrix.lane }}',
-        'mobile-final-interactions.spec.js',
+        'python3 -S scripts/run_core_e2e_lane.py "$CRITICAL_E2E_LANE"',
     ]:
         if marker not in core_lanes:
             raise SystemExit(f'CI shardado incompleto: falta `{marker}`')
-    for lane in expected_lanes:
-        if f'{lane})' not in core_lanes:
-            raise SystemExit(f'CI shardado no implementa la lane `{lane}`')
+    if 'case "$CRITICAL_E2E_LANE"' in core_lanes:
+        raise SystemExit('CI volvió a duplicar el dispatch de lanes en YAML; usa run_core_e2e_lane.py')
 
-    lane_commands = re.findall(
-        r'playwright test\s+([A-Za-z0-9_.-]+\.spec\.js)[\s\\]+--grep\s+"([^"]+)"',
-        core_lanes,
-    )
+    lane_commands = critical_targets()
     if len(lane_commands) != 3:
         raise SystemExit(
-            f'CI shardado core debe declarar exactamente tres comandos spec+grep críticos; encontrados: {len(lane_commands)}'
+            f'runner core debe declarar exactamente tres comandos spec+grep críticos; encontrados: {len(lane_commands)}'
         )
-
     lane_patterns = [pattern for _, pattern in lane_commands]
     sharded_critical = {
         item.strip()
