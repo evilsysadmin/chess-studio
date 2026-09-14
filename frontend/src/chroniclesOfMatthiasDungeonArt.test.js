@@ -49,6 +49,18 @@ describe('Chronicles of Matthias dungeon art', () => {
     expect(lights.every((light) => light.castShadow === false)).toBe(true);
   });
 
+  it('keeps a non-shadow readability fill and gives coarse pointers extra ambient help', () => {
+    const desktop = buildChroniclesDungeonDressing();
+    const coarse = buildChroniclesDungeonDressing({ coarsePointer: true });
+    const desktopFill = desktop.userData.chroniclesReadabilityLight;
+    const coarseFill = coarse.userData.chroniclesReadabilityLight;
+
+    expect(desktopFill?.isHemisphereLight).toBe(true);
+    expect(desktopFill?.castShadow).toBe(false);
+    expect(coarseFill?.isHemisphereLight).toBe(true);
+    expect(coarseFill?.intensity).toBeGreaterThan(desktopFill?.intensity || 0);
+  });
+
   it('reduces decorative geometry on coarse pointers while retaining authored depth cues', () => {
     const desktop = buildChroniclesDungeonDressing();
     const coarse = buildChroniclesDungeonDressing({ coarsePointer: true });
