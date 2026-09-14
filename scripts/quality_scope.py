@@ -83,6 +83,7 @@ AUDIO_APP_BOOT_RE = re.compile(
     r"^frontend/src/(?:ambientCatalog|ambientProfiles|ambientProfilesLegacy|audioContext|"
     r"orchestralSampler|sound|soundFx|soundPreferences|useAuthenticatedAudio)\.js$"
 )
+TOURNAMENT_SMOKE_RE = re.compile(r"^frontend/src/tournament\.js$")
 DEDICATED_3D_BROWSER_RE = re.compile(
     r"^frontend/src/components/(?:Board3D|WarRoom3D)[^/]*\.(?:js|jsx)$|"
     r"^frontend/src/components/(?:WarRoomCastleArchitecture|WarRoomPremiumPaintings|"
@@ -184,6 +185,8 @@ def classify(paths: Iterable[str]) -> Scope:
                 continue
             if AUDIO_APP_BOOT_RE.search(path):
                 _enable_core_e2e(scope, ("app-boot",))
+            elif TOURNAMENT_SMOKE_RE.search(path):
+                _enable_core_e2e(scope, ("smoke",))
             elif ADMIN_SMOKE_RE.search(path):
                 _enable_core_e2e(scope, ("smoke",))
             elif CORE_E2E_RE.search(path) and not DEDICATED_3D_BROWSER_RE.search(path):
@@ -240,6 +243,8 @@ def self_test() -> None:
     ):
         _expect_core([audio_path], lanes=("app-boot",), run_frontend=True)
     _expect_core(["frontend/src/sound.js", "frontend/src/App.jsx"], run_frontend=True)
+    _expect_core(["frontend/src/tournament.js"], lanes=("smoke",), run_frontend=True)
+    _expect_core(["frontend/src/tournament.js", "frontend/src/App.jsx"], run_frontend=True)
     _expect_core(["frontend/src/components/AdminDashboardContent.jsx"], lanes=("smoke",), run_frontend=True)
     _expect_core(["frontend/src/components/useAdminFeedbackController.js"], lanes=("smoke",), run_frontend=True)
     _expect_core(["frontend/src/adminDashboardInsights.js"], lanes=("smoke",), run_frontend=True)
@@ -296,7 +301,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · audio/package pagan app-boot; Admin conserva smoke y producto general core completo")
+    print("quality-scope self-test OK · audio/package pagan app-boot; torneo/Admin conservan smoke y producto general core completo")
 
 
 def main() -> int:
