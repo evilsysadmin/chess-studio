@@ -9,7 +9,7 @@ import {
   animateSlugEnemySprite,
   createSlugEnemySprite,
   pawnSlugEnemyRunAtlasWindow,
-} from './pawnSlugEnemyRunSprites.js';
+} from './pawnSlugEnemyPremiumSprites.js';
 import { PAWN_SLUG_PREMIUM_ENEMY_FACING_CONTRACT } from './pawnSlugEnemyPremiumArtContract.js';
 import { pawnSlugPanzerRookEntryPose } from './pawnSlugBossEntryMotion.js';
 import { applyPawnSlugMatthiasPremiumMotion } from './pawnSlugMatthiasPremiumMotion.js';
@@ -21,6 +21,7 @@ import { playPawnSlugEnemyImpactSfx, playPawnSlugPlayerHitSfx } from './pawnSlug
 
 export * from './pawnSlugSpriteCore.js';
 export * from './pawnSlugEnemyPremiumArtContract.js';
+export * from './pawnSlugPremiumEnemyRaster.js';
 export * from './pawnSlugMatthiasRunPolish.js';
 export {
   PAWN_SLUG_ENEMY_RUN_META,
