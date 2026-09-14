@@ -191,7 +191,6 @@ export function createPawnSlugWeaponSystem(runtime) {
       });
     }
     addFlash(enemy.x + dir * muzzleOffset, y, dir, weaponId, true);
-    runtime.sfx.play(weaponId, { enemy: true });
   }
 
   function updateEnemyRegularFire(enemy, distance, roleRange, cadence, dt) {
@@ -224,7 +223,6 @@ export function createPawnSlugWeaponSystem(runtime) {
       life: 3.2,
     });
     addFlash(x, y, dir, 'machinegun', true);
-    runtime.sfx.play('machinegun', { enemy: true });
   }
 
   return {
