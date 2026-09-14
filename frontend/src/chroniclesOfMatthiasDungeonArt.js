@@ -2,9 +2,76 @@ import * as THREE from 'three';
 import { CHRONICLES_MAP } from './chroniclesOfMatthias.js';
 
 const CELL = 4;
+const TEXTURE_SIZE = 64;
+
+function textureNoise(x, y, seed) {
+  let value = Math.imul(x + seed * 17, 374761393) ^ Math.imul(y + seed * 29, 668265263);
+  value = Math.imul(value ^ (value >>> 13), 1274126177);
+  return ((value ^ (value >>> 16)) >>> 0) & 0xff;
+}
+
+function createDungeonSurfaceTexture({ pattern, seed, repeat = [1, 1], colorSpace = true }) {
+  const data = new Uint8Array(TEXTURE_SIZE * TEXTURE_SIZE * 4);
+
+  for (let y = 0; y < TEXTURE_SIZE; y += 1) {
+    for (let x = 0; x < TEXTURE_SIZE; x += 1) {
+      const noise = textureNoise(x, y, seed);
+      const broad = Math.sin((x + seed * 3) * 0.19) * 8 + Math.cos((y - seed) * 0.23) * 7;
+      let value = 214 + (noise - 128) * 0.2 + broad;
+
+      if (pattern === 'masonry') {
+        const course = Math.floor(y / 16);
+        const localY = y % 16;
+        const localX = (x + (course % 2) * 16) % 32;
+        const mortar = localY < 2 || localX < 2;
+        const chippedEdge = localY < 4 || localX < 4;
+        if (mortar) value = 104 + noise * 0.08;
+        else if (chippedEdge) value -= 20;
+      } else if (pattern === 'flagstone') {
+        const band = Math.floor(y / 32);
+        const localY = y % 32;
+        const localX = (x + (band % 2) * 11) % 32;
+        const joint = localY < 2 || localX < 2;
+        if (joint) value = 112 + noise * 0.07;
+        else if (localY < 5 || localX < 5) value -= 18;
+      } else if (pattern === 'worn') {
+        const scratch = ((x * 5 + y * 3 + seed) % 37) === 0;
+        if (scratch) value -= 36;
+      }
+
+      value = Math.max(64, Math.min(252, Math.round(value)));
+      const offset = (y * TEXTURE_SIZE + x) * 4;
+      data[offset] = value;
+      data[offset + 1] = value;
+      data[offset + 2] = value;
+      data[offset + 3] = 255;
+    }
+  }
+
+  const texture = new THREE.DataTexture(data, TEXTURE_SIZE, TEXTURE_SIZE, THREE.RGBAFormat);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(...repeat);
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.colorSpace = colorSpace ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function surfaceMaps(pattern, seed, repeat) {
+  return {
+    map: createDungeonSurfaceTexture({ pattern, seed, repeat, colorSpace: true }),
+    bumpMap: createDungeonSurfaceTexture({ pattern, seed, repeat, colorSpace: false }),
+  };
+}
 
 function material(color, options = {}) {
-  return new THREE.MeshPhysicalMaterial({
+  const surface = options.surface
+    ? surfaceMaps(options.surface.pattern, options.surface.seed, options.surface.repeat)
+    : null;
+  const mat = new THREE.MeshPhysicalMaterial({
     color,
     metalness: options.metalness ?? 0.04,
     roughness: options.roughness ?? 0.82,
@@ -12,7 +79,22 @@ function material(color, options = {}) {
     clearcoatRoughness: options.clearcoatRoughness ?? 0.64,
     emissive: options.emissive ?? 0x000000,
     emissiveIntensity: options.emissiveIntensity ?? 0,
+    map: surface?.map ?? null,
+    bumpMap: surface?.bumpMap ?? null,
+    bumpScale: options.bumpScale ?? (surface ? 0.045 : 0),
   });
+
+  if (surface) {
+    let texturesDisposed = false;
+    mat.addEventListener('dispose', () => {
+      if (texturesDisposed) return;
+      texturesDisposed = true;
+      surface.map.dispose();
+      surface.bumpMap.dispose();
+    });
+  }
+
+  return mat;
 }
 
 function add(group, geometry, mat, position, rotation = [0, 0, 0], name = '') {
@@ -110,11 +192,41 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
   const root = new THREE.Group();
   root.name = 'chronicles-dungeon-dressing';
 
-  const floorMat = material(0x4a4238, { roughness: 0.94 });
-  const floorAlt = material(0x3d3730, { roughness: 0.97 });
-  const floorInset = material(0x292522, { roughness: 0.98 });
-  const edgeMat = material(0x625545, { roughness: 0.9 });
-  const wallAccent = material(0x796957, { roughness: 0.88 });
+  const floorMat = material(0x5a5044, {
+    roughness: 0.92,
+    surface: { pattern: 'flagstone', seed: 11, repeat: [1.35, 1.35] },
+    bumpScale: 0.055,
+  });
+  const floorAlt = material(0x494239, {
+    roughness: 0.96,
+    surface: { pattern: 'flagstone', seed: 23, repeat: [1.35, 1.35] },
+    bumpScale: 0.05,
+  });
+  const floorInset = material(0x35302b, {
+    roughness: 0.98,
+    surface: { pattern: 'worn', seed: 31, repeat: [1.15, 1.15] },
+    bumpScale: 0.03,
+  });
+  const wallStone = material(0x786b5a, {
+    roughness: 0.95,
+    surface: { pattern: 'masonry', seed: 41, repeat: [1.15, 1] },
+    bumpScale: 0.075,
+  });
+  const wallStoneAlt = material(0x675d50, {
+    roughness: 0.96,
+    surface: { pattern: 'masonry', seed: 53, repeat: [1.15, 1] },
+    bumpScale: 0.07,
+  });
+  const edgeMat = material(0x6b5d4b, {
+    roughness: 0.9,
+    surface: { pattern: 'worn', seed: 67, repeat: [1.05, 1.05] },
+    bumpScale: 0.035,
+  });
+  const wallAccent = material(0x87745f, {
+    roughness: 0.88,
+    surface: { pattern: 'worn', seed: 79, repeat: [1.05, 1.05] },
+    bumpScale: 0.03,
+  });
   const iron = material(0x302e2f, { metalness: 0.66, roughness: 0.42 });
   const rune = material(0xa96a2b, { metalness: 0.46, roughness: 0.35, emissive: 0x4b1d05, emissiveIntensity: 0.55 });
 
@@ -153,11 +265,24 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
     const [wx, wz] = cellWorld(x, y);
     const horizontal = side === 'north' || side === 'south';
     const outward = side === 'north' ? -1 : side === 'south' ? 1 : side === 'east' ? 1 : -1;
-    const px = horizontal ? wx : wx + outward * (CELL / 2 - 0.08);
-    const pz = horizontal ? wz + outward * (CELL / 2 - 0.08) : wz;
+    const surfaceOffset = CELL / 2 + 0.045;
+    const detailOffset = CELL / 2 + 0.115;
+    const surfaceX = horizontal ? wx : wx + outward * surfaceOffset;
+    const surfaceZ = horizontal ? wz + outward * surfaceOffset : wz;
+    const px = horizontal ? wx : wx + outward * detailOffset;
+    const pz = horizontal ? wz + outward * detailOffset : wz;
     const rotY = horizontal ? 0 : Math.PI / 2;
     const faceMat = index % 3 === 0 ? wallAccent : edgeMat;
+    const surfaceMat = index % 3 === 0 ? wallStone : wallStoneAlt;
 
+    add(
+      root,
+      new THREE.BoxGeometry(CELL * 0.965, 3.3, 0.08),
+      surfaceMat,
+      [surfaceX, 1.7, surfaceZ],
+      [0, rotY, 0],
+      `chronicles-wall-surface-${index}`,
+    );
     add(root, new THREE.BoxGeometry(CELL * 0.88, 0.18, 0.1), faceMat, [px, 0.55, pz], [0, rotY, 0], `chronicles-wall-course-low-${index}`);
     add(root, new THREE.BoxGeometry(CELL * 0.88, 0.13, 0.09), faceMat, [px, 2.18, pz], [0, rotY, 0], `chronicles-wall-course-high-${index}`);
     add(root, new THREE.BoxGeometry(CELL * 0.34, 0.11, 0.12), edgeMat, [px, 1.38, pz], [0, rotY, 0], `chronicles-wall-keystone-${index}`);
