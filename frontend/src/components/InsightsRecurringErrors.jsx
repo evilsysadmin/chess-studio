@@ -4,8 +4,8 @@ import { loadPersonalPuzzles } from '../personalPuzzles.js';
 import { buildPlayerModel, PATTERN_IMPROVEMENT_STATES } from '../playerModel.js';
 import './InsightsRecurringErrors.css';
 
-export default function InsightsRecurringErrors({ onOpenPuzzles }) {
-  const playerModel = buildPlayerModel({
+export default function InsightsRecurringErrors({ onOpenPuzzles, playerModel: sharedPlayerModel = null }) {
+  const playerModel = sharedPlayerModel || buildPlayerModel({
     personalPuzzles: loadPersonalPuzzles(),
     cleanGameRecords: loadCleanGameRecords(),
   });

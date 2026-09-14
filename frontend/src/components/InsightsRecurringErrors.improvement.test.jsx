@@ -52,7 +52,18 @@ describe('InsightsRecurringErrors improvement state', () => {
     mocks.loadCleanGameRecords.mockReturnValue({ g1: { gameId: 'g1' } });
   });
 
-  it('feeds both training positions and covered autopsies into the Player Model', () => {
+  it('uses the workspace Player Model without rebuilding recurring-error evidence', () => {
+    const shared = { recurringErrors: [pattern()] };
+
+    const html = renderToStaticMarkup(<InsightsRecurringErrors playerModel={shared} />);
+
+    expect(mocks.loadPersonalPuzzles).not.toHaveBeenCalled();
+    expect(mocks.loadCleanGameRecords).not.toHaveBeenCalled();
+    expect(mocks.buildPlayerModel).not.toHaveBeenCalled();
+    expect(html).toContain('Mejora probable');
+  });
+
+  it('feeds both training positions and covered autopsies into the Player Model when used standalone', () => {
     mocks.buildPlayerModel.mockReturnValue({ recurringErrors: [pattern()] });
 
     renderToStaticMarkup(<InsightsRecurringErrors />);
