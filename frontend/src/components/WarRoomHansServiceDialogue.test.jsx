@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import {
-  default as WarRoomHansServiceDialogue,
-  hansDialogueAnchorScreenEligible,
-} from './WarRoomHansServiceDialogue.jsx';
+import { hansDialogueAnchorScreenEligible } from './WarRoomHansServiceDialogue.jsx';
 import { warRoomHansChoreDialogueSpec } from './WarRoomHansChoreContract.js';
 import { warRoomHansServiceDialogueSpec } from './WarRoomHansServiceContract.js';
-
-void WarRoomHansServiceDialogue;
 
 describe('Hans generic service dialogue coverage', () => {
   it('keeps service and chore dialogue phases available to the shared renderer', () => {
