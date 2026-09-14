@@ -1,6 +1,9 @@
-import enemyPremiumPart1 from './assets/pawnSlug/enemy_premium_idle_run_v2_part1.b64?raw';
-import enemyPremiumPart2 from './assets/pawnSlug/enemy_premium_idle_run_v2_part2.b64?raw';
-import enemyPremiumPart3 from './assets/pawnSlug/enemy_premium_idle_run_v2_part3.b64?raw';
+import enemyPremiumPart1 from './assets/pawnSlug/enemy_premium_idle_run_v3_part1.b64?raw';
+import enemyPremiumPart2 from './assets/pawnSlug/enemy_premium_idle_run_v3_part2.b64?raw';
+import enemyPremiumPart3 from './assets/pawnSlug/enemy_premium_idle_run_v3_part3.b64?raw';
+import enemyPremiumPart4 from './assets/pawnSlug/enemy_premium_idle_run_v3_part4.b64?raw';
+import enemyPremiumPart5 from './assets/pawnSlug/enemy_premium_idle_run_v3_part5.b64?raw';
+import enemyPremiumPart6 from './assets/pawnSlug/enemy_premium_idle_run_v3_part6.b64?raw';
 
 const TYPES = Object.freeze(['pawn', 'knight', 'rook']);
 const COLUMNS = 16;
@@ -15,6 +18,9 @@ export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL = `data:image/png;base64,${[
   enemyPremiumPart1,
   enemyPremiumPart2,
   enemyPremiumPart3,
+  enemyPremiumPart4,
+  enemyPremiumPart5,
+  enemyPremiumPart6,
 ].map((part) => part.trim()).join('')}`;
 
 function wrapFrame(frame, count = COLUMNS) {
@@ -44,12 +50,12 @@ export function pawnSlugPremiumEnemyRasterWindow(type = 'pawn', action = 'idle',
 }
 
 export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_META = Object.freeze({
-  version: 'v2-approved-raster',
-  format: 'png-indexed-128',
-  width: 640,
-  height: 240,
-  frameWidth: 40,
-  frameHeight: 40,
+  version: 'v3-canonical-raster',
+  format: 'png-indexed-128-premium',
+  width: 1280,
+  height: 480,
+  frameWidth: 80,
+  frameHeight: 80,
   columns: COLUMNS,
   rows: ROWS,
   sourceFacing: 'left',
@@ -58,5 +64,8 @@ export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_META = Object.freeze({
   authoredActions: Object.freeze(['idle', 'run']),
   poseFallback: 'premium-idle-row-plus-runtime-pose',
   rowByTypeAction: ROW_BY_TYPE_ACTION,
+  canonicalSource: 'Pawn Slug: Enemy Sprite Sheet',
+  isolatedSilhouettes: true,
+  transparentBackground: true,
   proceduralFallbackOnly: true,
 });
