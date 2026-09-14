@@ -7,10 +7,9 @@ import { loadActiveGameSession } from './activeGameSession.js';
 // para React sin convertir cada cambio de puntos en una llamada bloqueante.
 
 const STORAGE_KEY = 'chess-study-tournament';
-const MAX_PROCESSED_GAME_IDS = 256;
 export const POINTS_PER_LEVEL = 50;
 
-const EMPTY_STATE = { points: 0, progressPoints: 0, wins: 0, draws: 0, losses: 0, winStreak: 0, bestWinStreak: 0, processedGameIds: [], lastGameResult: null };
+const EMPTY_STATE = { points: 0, progressPoints: 0, wins: 0, draws: 0, losses: 0, winStreak: 0, bestWinStreak: 0, processedGameIds: [] };
 
 export function loadTournament() {
   const parsed = readJsonStorage(STORAGE_LOCAL, STORAGE_KEY, { fallback: {} });
@@ -24,8 +23,7 @@ export function loadTournament() {
     ...EMPTY_STATE,
     ...(parsed && typeof parsed === 'object' ? parsed : {}),
     progressPoints,
-    processedGameIds: Array.isArray(parsed?.processedGameIds) ? parsed.processedGameIds.slice(0, MAX_PROCESSED_GAME_IDS) : [],
-    lastGameResult: parsed?.lastGameResult && typeof parsed.lastGameResult === 'object' ? parsed.lastGameResult : null,
+    processedGameIds: Array.isArray(parsed?.processedGameIds) ? parsed.processedGameIds.slice(0, 256) : [],
   };
 }
 
@@ -35,7 +33,7 @@ export function saveTournament(state) {
 
 export function resetTournament() {
   removeProfileStorageItem(STORAGE_KEY);
-  return { ...EMPTY_STATE, processedGameIds: [] };
+  return { ...EMPTY_STATE };
 }
 
 // Nivel del torneo (1, 2, 3…) según los puntos totales acumulados.
@@ -159,22 +157,20 @@ export function applyCaptureReward(state, gained) {
 // Aplica el resultado de una partida al estado del torneo. No penaliza las
 // derrotas (siempre se puede reintentar): victoria +20, tablas +5, derrota +0.
 export function applyResult(state, outcome) {
-  const gameId = loadActiveGameSession()?.gameId || null;
+  const gameId = loadActiveGameSession()?.gameId;
+  const gained = outcome === 'win' ? 20 : outcome === 'draw' ? 5 : 0;
   const persisted = gameId ? loadTournament() : null;
-  const processed = Array.isArray(state?.processedGameIds) ? state.processedGameIds : [];
-  if (gameId && (processed.includes(gameId) || persisted?.processedGameIds?.includes(gameId))) {
-    const canonical = persisted?.processedGameIds?.includes(gameId) ? persisted : state;
-    const remembered = canonical?.lastGameResult?.gameId === gameId ? canonical.lastGameResult : null;
+  if (gameId && persisted.processedGameIds.includes(gameId)) {
+    const newLevel = levelForPoints(persisted.progressPoints);
     return {
-      state: canonical,
-      gained: remembered?.gained ?? (outcome === 'win' ? 20 : outcome === 'draw' ? 5 : 0),
-      leveledUp: remembered?.leveledUp ?? false,
-      newLevel: remembered?.newLevel ?? levelForPoints(canonical?.progressPoints ?? canonical?.points ?? 0),
+      state: persisted,
+      gained,
+      leveledUp: levelForPoints(Math.max(0, persisted.progressPoints - gained)) < newLevel,
+      newLevel,
       duplicate: true,
     };
   }
 
-  const gained = outcome === 'win' ? 20 : outcome === 'draw' ? 5 : 0;
   const priorProgress = Number.isFinite(Number(state.progressPoints)) ? Number(state.progressPoints) : Number(state.points) || 0;
   const prevLevel = levelForPoints(priorProgress);
   const points = state.points || 0;
@@ -182,7 +178,6 @@ export function applyResult(state, outcome) {
   const winStreak = outcome === 'win' ? (state.winStreak || 0) + 1 : 0;
   const bestWinStreak = Math.max(state.bestWinStreak || 0, winStreak);
   const newLevel = levelForPoints(progressPoints);
-  const leveledUp = newLevel > prevLevel;
   const next = {
     ...state,
     points,
@@ -193,9 +188,6 @@ export function applyResult(state, outcome) {
     winStreak,
     bestWinStreak,
   };
-  if (gameId) {
-    next.processedGameIds = [gameId, ...processed.filter((id) => id !== gameId)].slice(0, MAX_PROCESSED_GAME_IDS);
-    next.lastGameResult = { gameId, outcome, gained, leveledUp, newLevel };
-  }
-  return { state: next, gained, leveledUp, newLevel, duplicate: false };
+  if (gameId) next.processedGameIds = [gameId, ...(Array.isArray(state.processedGameIds) ? state.processedGameIds.filter((id) => id !== gameId) : [])].slice(0, 256);
+  return { state: next, gained, leveledUp: newLevel > prevLevel, newLevel, duplicate: false };
 }
