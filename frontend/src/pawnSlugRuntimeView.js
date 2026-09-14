@@ -18,6 +18,10 @@ import {
   pawnSlugWorldX,
 } from './pawnSlugRuntimeCore.js';
 
+const SPAWN_AHEAD_RATIO = 0.72;
+const RESPAWN_CAMERA_LEAD_RATIO = 0.14;
+const DEFAULT_CAMERA_Y = 5.1;
+
 export function pawnSlugViewportBounds(width, height) {
   const safeWidth = Math.max(1, Number(width) || 1);
   const safeHeight = Math.max(1, Number(height) || 1);
@@ -45,6 +49,18 @@ export function pawnSlugViewportBounds(width, height) {
   };
 }
 
+export function pawnSlugSpawnRightEdge(cameraX = PAWN_SLUG_VIEW_W / 2) {
+  const parsed = Number(cameraX);
+  const safeCameraX = Number.isFinite(parsed) ? parsed : PAWN_SLUG_VIEW_W / 2;
+  return safeCameraX + PAWN_SLUG_VIEW_W * SPAWN_AHEAD_RATIO;
+}
+
+export function pawnSlugRespawnCameraX(playerX = 0) {
+  const parsed = Number(playerX);
+  const safePlayerX = Number.isFinite(parsed) ? parsed : 0;
+  return Math.max(PAWN_SLUG_VIEW_W / 2, safePlayerX + PAWN_SLUG_VIEW_W * RESPAWN_CAMERA_LEAD_RATIO);
+}
+
 export function createPawnSlugRuntimeView(host, { coarse = false, reducedMotion = false } = {}) {
   const renderer = new THREE.WebGLRenderer({ antialias: !coarse, alpha: false, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -67,7 +83,7 @@ export function createPawnSlugRuntimeView(host, { coarse = false, reducedMotion 
     0.1,
     80,
   );
-  camera.position.set(PAWN_SLUG_VIEW_W / 2, 5.1, 15);
+  camera.position.set(PAWN_SLUG_VIEW_W / 2, DEFAULT_CAMERA_Y, 15);
   camera.lookAt(PAWN_SLUG_VIEW_W / 2, 4.25, 0);
 
   const hemi = new THREE.HemisphereLight(0xb9c9df, 0x332a21, 1.7);
@@ -109,8 +125,17 @@ export function createPawnSlugRuntimeView(host, { coarse = false, reducedMotion 
 
   function resetCamera(state) {
     camera.position.x = PAWN_SLUG_VIEW_W / 2;
-    camera.position.y = 5.1;
+    camera.position.y = DEFAULT_CAMERA_Y;
     state.cameraX = PAWN_SLUG_VIEW_W / 2;
+  }
+
+  function spawnRightEdge() {
+    return pawnSlugSpawnRightEdge(camera.position.x);
+  }
+
+  function placeCameraAfterRespawn(playerX) {
+    camera.position.x = pawnSlugRespawnCameraX(playerX);
+    camera.position.y = DEFAULT_CAMERA_Y;
   }
 
   function updateCamera(state, dt) {
@@ -166,9 +191,6 @@ export function createPawnSlugRuntimeView(host, { coarse = false, reducedMotion 
 
   return {
     renderer,
-    scene,
-    camera,
-    farEnvironment,
     dynamic,
     projectileLayer,
     fxLayer,
@@ -176,6 +198,8 @@ export function createPawnSlugRuntimeView(host, { coarse = false, reducedMotion 
     playerWeaponModel,
     resetDynamic,
     resetCamera,
+    spawnRightEdge,
+    placeCameraAfterRespawn,
     updateCamera,
     render,
     resize,
