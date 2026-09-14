@@ -36,7 +36,6 @@ INVENTORY = {
     'staging-deploy.yml': 'delivery-staging',
     'staging-preview.yml': 'delivery-preview',
     'synthetic-health.yml': 'observability',
-    'war-room-runtime-marathon.yml': 'soak-regression',
 }
 
 BUDGETS = (
@@ -47,7 +46,6 @@ BUDGETS = (
     Budget('.github/workflows/cloudflare-prometheus-exporter.yml', 5964),
     Budget('.github/workflows/oci-readiness.yml', 2840),
     Budget('.github/workflows/app-visual-artifact.yml', 1108),
-    Budget('.github/workflows/war-room-runtime-marathon.yml', 2464),
     Budget('.github/workflows/branch-housekeeping.yml', 652),
 )
 
