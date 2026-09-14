@@ -130,7 +130,7 @@ if not canonical_critical:
 sharded_playwright = 'e2e_lanes:' in ci
 if sharded_playwright:
     core_lanes = ci_job_block('e2e_lanes')
-    expected_lanes = ('regression-state', 'regression-school', 'learning-golden', 'learning-observation', 'smoke')
+    expected_lanes = ('regression-state', 'regression-school', 'learning-golden', 'learning-observation', 'app-boot', 'smoke')
     core_e2e_lane_self_test()
     if CORE_E2E_LANES != expected_lanes:
         raise SystemExit(f'quality_scope perdió las lanes core canónicas: {CORE_E2E_LANES!r}')
