@@ -127,6 +127,8 @@ export default function InsightsScreen(props) {
               onOpenPuzzles={props.onOpenPuzzles}
               onPlayFromHere={props.onPlayFromHere}
               playerModel={playerModel}
+              personalPuzzles={personalPuzzles}
+              cleanGameRecords={cleanGameRecords}
             />
             <InsightsOptionalPlans>
               <InsightsMatthiasCampaign
@@ -134,7 +136,12 @@ export default function InsightsScreen(props) {
                 onOpenPuzzles={props.onOpenPuzzles}
                 onPlayFromHere={props.onPlayFromHere}
               />
-              <InsightsWeeklyGoals onOpenPuzzles={props.onOpenPuzzles} playerModel={playerModel} />
+              <InsightsWeeklyGoals
+                onOpenPuzzles={props.onOpenPuzzles}
+                playerModel={playerModel}
+                personalPuzzles={personalPuzzles}
+                cleanGameRecords={cleanGameRecords}
+              />
             </InsightsOptionalPlans>
           </>
         ) : null}
