@@ -17,6 +17,7 @@ export const PAWN_SLUG_PLATFORM_META = Object.freeze({
   renderBatching: PAWN_SLUG_STATIC_INSTANCE_VERSION,
   desktopVisualBatchBudget: 11,
   coarseVisualBatchBudget: 9,
+  physicsBounds: 'scalar-inline-no-per-platform-allocation',
 });
 
 export const PAWN_SLUG_CAMERA_VERTICAL_META = Object.freeze({
@@ -45,7 +46,9 @@ export function pawnSlugPlatformBounds(platform) {
 export function pawnSlugPlatformAtX(x, platforms = PAWN_SLUG_PLATFORM_LAYOUT) {
   let best = null;
   for (const platform of platforms) {
-    const { left, right } = pawnSlugPlatformBounds(platform);
+    const half = platform.width / 2;
+    const left = platform.x - half;
+    const right = platform.x + half;
     if (x < left || x > right) continue;
     if (!best || platform.y > best.y) best = platform;
   }
@@ -55,12 +58,19 @@ export function pawnSlugPlatformAtX(x, platforms = PAWN_SLUG_PLATFORM_LAYOUT) {
 export function pawnSlugResolvePlatformLanding({ previousY, nextY, vy, left, right, dropThrough = false }, platforms = PAWN_SLUG_PLATFORM_LAYOUT) {
   if (dropThrough || vy > 0) return null;
   let landing = null;
+  let landingTop = Number.NEGATIVE_INFINITY;
   for (const platform of platforms) {
-    const bounds = pawnSlugPlatformBounds(platform);
-    if (right <= bounds.left || left >= bounds.right) continue;
-    if (previousY + 0.001 < bounds.top) continue;
-    if (nextY > bounds.top) continue;
-    if (!landing || bounds.top > landing.y) landing = platform;
+    const half = platform.width / 2;
+    const platformLeft = platform.x - half;
+    const platformRight = platform.x + half;
+    const top = platform.y;
+    if (right <= platformLeft || left >= platformRight) continue;
+    if (previousY + 0.001 < top) continue;
+    if (nextY > top) continue;
+    if (top > landingTop) {
+      landing = platform;
+      landingTop = top;
+    }
   }
   return landing;
 }
@@ -68,9 +78,12 @@ export function pawnSlugResolvePlatformLanding({ previousY, nextY, vy, left, rig
 export function pawnSlugPlatformSupportY({ x, feetY, tolerance = 0.08 }, platforms = PAWN_SLUG_PLATFORM_LAYOUT) {
   let support = 0;
   for (const platform of platforms) {
-    const { left, right, top } = pawnSlugPlatformBounds(platform);
+    const half = platform.width / 2;
+    const left = platform.x - half;
+    const right = platform.x + half;
+    const top = platform.y;
     if (x < left || x > right) continue;
-    if (Math.abs(feetY - top) <= tolerance) support = Math.max(support, top);
+    if (Math.abs(feetY - top) <= tolerance && top > support) support = top;
   }
   return support;
 }
