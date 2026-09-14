@@ -8,6 +8,7 @@ import { BOARD_RENDERERS, getBoardRenderer } from './userPreferences.js';
 const KEY = 'chess-study-game-activity';
 const MAX_EVENTS = 160;
 const STATES = new Set(['started', 'cancelled', 'finished']);
+const TERMINAL_STATES = new Set(['cancelled', 'finished']);
 
 export function loadGameActivity() {
   const parsed = readJsonStorage(STORAGE_LOCAL, KEY, { fallback: [] });
@@ -26,12 +27,17 @@ export function recordGameActivity({
   boardRenderer = null,
 } = {}) {
   if (!gameId || !STATES.has(state)) return loadGameActivity();
+  if (state === 'finished' && !isCompletedGameOutcome(outcome)) return loadGameActivity();
+
   const list = loadGameActivity();
+  const gameEvents = list.filter((event) => event?.gameId === gameId);
+  // El journal es una pequeña máquina de estados monotónica: una vez una
+  // partida queda terminal (acabada o cancelada), ninguna respuesta tardía,
+  // remount o retry puede resucitarla ni reescribir su desenlace.
+  if (gameEvents.some((event) => TERMINAL_STATES.has(event?.state))) return list;
+
   const dedupeKey = `${gameId}:${state}`;
-  if (list.some((event) => event?.dedupeKey === dedupeKey)) return list;
-  // Una partida ya finalizada no debe convertirse después en "cancelada"
-  // simplemente porque el usuario pulse volver desde la pantalla de resultado.
-  if (state === 'cancelled' && list.some((event) => event?.gameId === gameId && event?.state === 'finished')) return list;
+  if (gameEvents.some((event) => event?.dedupeKey === dedupeKey)) return list;
 
   const record = modeRecord || { mode };
   // El renderer es una propiedad de la experiencia de tablero normal. Combat
@@ -61,7 +67,7 @@ export function recordGameActivity({
   };
   const next = [event, ...list].slice(0, MAX_EVENTS);
   setProfileStorageItem(KEY, JSON.stringify(next));
-  if (state === 'finished' && isCompletedGameOutcome(outcome)) {
+  if (state === 'finished') {
     recordMatthiasSessionResult({ gameId, outcome });
   }
   return next;
