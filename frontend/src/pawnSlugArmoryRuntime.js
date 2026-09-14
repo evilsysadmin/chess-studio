@@ -8,6 +8,8 @@ import {
   refreshPawnSlugWeaponModelArmory,
 } from './pawnSlugWeaponModelArmory.js';
 
+export const PAWN_SLUG_HUD_FORWARD_INTERVAL_MS = 80;
+
 function decorateHud(hud, spentCredits = 0, expertMode = false) {
   if (!hud) return hud;
   return {
@@ -24,6 +26,75 @@ function decorateHud(hud, spentCredits = 0, expertMode = false) {
   };
 }
 
+function hudCriticalKey(hud) {
+  if (!hud) return '';
+  return [
+    hud.phase,
+    hud.hp,
+    hud.maxHp,
+    hud.lives,
+    hud.level,
+    hud.weapon,
+    hud.grenades,
+    hud.toast,
+  ].join('|');
+}
+
+export function createPawnSlugHudForwarder(onHud, decorate, {
+  intervalMs = PAWN_SLUG_HUD_FORWARD_INTERVAL_MS,
+  now = () => Date.now(),
+  schedule = (task, delay) => setTimeout(task, delay),
+  cancel = (handle) => clearTimeout(handle),
+} = {}) {
+  let lastSentAt = Number.NEGATIVE_INFINITY;
+  let lastCriticalKey = null;
+  let pendingHud = null;
+  let pendingTimer = null;
+  let stopped = false;
+
+  function send(hud) {
+    if (stopped || !hud) return;
+    pendingHud = null;
+    if (pendingTimer != null) {
+      cancel(pendingTimer);
+      pendingTimer = null;
+    }
+    lastSentAt = now();
+    lastCriticalKey = hudCriticalKey(hud);
+    onHud?.(decorate(hud));
+  }
+
+  function flush() {
+    pendingTimer = null;
+    if (pendingHud) send(pendingHud);
+  }
+
+  function forward(hud) {
+    if (stopped || !hud) return;
+    const stamp = now();
+    const criticalKey = hudCriticalKey(hud);
+    const criticalChanged = lastCriticalKey == null || criticalKey !== lastCriticalKey;
+    const elapsed = stamp - lastSentAt;
+    if (criticalChanged || elapsed >= intervalMs) {
+      send(hud);
+      return;
+    }
+
+    pendingHud = hud;
+    if (pendingTimer != null) return;
+    pendingTimer = schedule(flush, Math.max(0, intervalMs - elapsed));
+  }
+
+  function stop() {
+    stopped = true;
+    pendingHud = null;
+    if (pendingTimer != null) cancel(pendingTimer);
+    pendingTimer = null;
+  }
+
+  return Object.freeze({ forward, flush, stop });
+}
+
 export function createPawnSlugArmoryGame(host, { onReady, onHud, expertMode = false } = {}) {
   const expert = expertMode === true;
   refreshPawnSlugWeaponModelArmory();
@@ -31,15 +102,20 @@ export function createPawnSlugArmoryGame(host, { onReady, onHud, expertMode = fa
   let latestHud = null;
   let spentCredits = 0;
   let engine;
+  const hudForwarder = createPawnSlugHudForwarder(
+    onHud,
+    (hud) => decorateHud(hud, spentCredits, expert),
+  );
 
   function forwardHud(nextHud) {
     latestHud = nextHud;
-    onHud?.(decorateHud(nextHud, spentCredits, expert));
+    hudForwarder.forward(nextHud);
   }
 
   try {
     engine = createPawnSlugGame(host, { onReady, onHud: forwardHud });
   } catch (error) {
+    hudForwarder.stop();
     setPawnSlugRuntimeRpgEnabled(true);
     throw error;
   }
@@ -47,6 +123,7 @@ export function createPawnSlugArmoryGame(host, { onReady, onHud, expertMode = fa
   return {
     ...engine,
     destroy() {
+      hudForwarder.stop();
       try {
         engine.destroy?.();
       } finally {
@@ -73,4 +150,5 @@ export const PAWN_SLUG_ARMORY_RUNTIME_META = Object.freeze({
   creditLedger: 'current-runtime-session',
   expertModeOwnsEconomyAndRpg: true,
   premiumSfxLifecycle: 'destroy-with-runtime',
+  hudForwarding: `coalesced-${PAWN_SLUG_HUD_FORWARD_INTERVAL_MS}ms-critical-immediate`,
 });
