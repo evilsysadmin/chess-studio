@@ -109,12 +109,17 @@ for command in ['make static-preflight', 'make test-frontend', 'make test-backen
     if command not in ci:
         raise SystemExit(f'CI se ha desalineado del entrypoint local: falta `{command}`')
 
-two_dot_diff = 'git diff --name-only "$BASE_SHA" "$HEAD_SHA"'
-three_dot_diff = 'git diff --name-only "$BASE_SHA...$HEAD_SHA"'
-if two_dot_diff in ci:
-    raise SystemExit('CI no puede comparar base/head directamente: el scope de PR debe partir del merge-base')
-if ci.count(three_dot_diff) != 3:
-    raise SystemExit('CI debe usar exactamente tres diffs PR merge-base: Quality, browser especializado y seguridad')
+legacy_head_diff = 'git diff --name-only "$BASE_SHA" "$HEAD_SHA"'
+legacy_three_dot = 'git diff --name-only "$BASE_SHA...$HEAD_SHA"'
+merge_diff = 'scripts/pr_merge_diff.py --base "$BASE_SHA" --merge "$EVENT_SHA"'
+if legacy_head_diff in ci or legacy_three_dot in ci:
+    raise SystemExit('CI debe clasificar el PR desde el merge sintético, no desde base/head con historial completo')
+if ci.count(merge_diff) != 3:
+    raise SystemExit('CI debe usar exactamente tres diffs base→merge sintético: Quality, browser especializado y seguridad')
+for job_name in ['preflight', 'security']:
+    job = ci_job_block(job_name)
+    if 'fetch-depth: 2' not in job or 'fetch-depth: 0' in job:
+        raise SystemExit(f'{job_name} debe conservar checkout shallow de dos generaciones para el merge sintético')
 
 canonical_match = re.search(r'^CRITICAL_E2E_GREP\s*:=\s*(.+)$', makefile, re.M)
 if not canonical_match:
