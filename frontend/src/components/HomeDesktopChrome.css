@@ -139,6 +139,18 @@
     overscroll-behavior: contain;
   }
 
+  /* On very short desktop viewports the expanded deck becomes scrollable.
+     Keep its exit affordance pinned to the visible top edge so the user never
+     has to scroll back through the radio catalogue merely to close it. */
+  html body:has(.app-shell-home) .global-music-dock .music-deck-expanded .music-deck-collapse {
+    position: sticky !important;
+    top: .22rem !important;
+    margin-left: auto;
+    margin-bottom: -1.75rem;
+    z-index: 8;
+    background: rgba(13, 12, 11, .97);
+  }
+
   html body:has(.app-shell-home) .global-music-dock .music-deck {
     min-height: 58px !important;
     background: rgba(13, 12, 11, .99) !important;
