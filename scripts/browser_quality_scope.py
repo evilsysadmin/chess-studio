@@ -24,10 +24,11 @@ class BrowserScope:
     focus: bool = False
     matthias: bool = False
     quick_2d: bool = False
+    network_race: bool = False
 
     @classmethod
     def all(cls) -> "BrowserScope":
-        return cls(True, True, True, True, True)
+        return cls(True, True, True, True, True, True)
 
 
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
@@ -98,6 +99,14 @@ MATTHIAS_PATTERNS = (
     "e2e/matthias-war-room-android-motion.spec.js",
     "e2e/insights-matthias-motion.spec.js",
 )
+NETWORK_RACE_PATTERNS = (
+    "frontend/src/useGameReconnect.js",
+    "frontend/src/gameReconnect.js",
+    "frontend/src/gameMutationCoordinator.js",
+    "frontend/src/components/GameScreen.jsx",
+    "e2e/offline-pending-move-reconnect.spec.js",
+    "e2e/late-move-response-exit.spec.js",
+)
 BROWSER_ACTION_PATHS = {
     ".github/actions/setup-browser-e2e/action.yml",
     ".github/actions/cache-node-modules/action.yml",
@@ -122,7 +131,7 @@ def _matches(path: str, patterns: tuple[str, ...]) -> bool:
 
 
 def classify(paths: Iterable[str]) -> BrowserScope:
-    full_logic = visual = focus = matthias = quick_2d = False
+    full_logic = visual = focus = matthias = quick_2d = network_race = False
 
     for path in _clean_paths(paths):
         if FRONTEND_TEST_RE.search(path):
@@ -146,8 +155,11 @@ def classify(paths: Iterable[str]) -> BrowserScope:
         if _matches(path, MATTHIAS_PATTERNS):
             matthias = True
 
+        if _matches(path, NETWORK_RACE_PATTERNS):
+            network_race = True
+
         if path in BROWSER_ACTION_PATHS:
-            full_logic = visual = focus = matthias = quick_2d = True
+            full_logic = visual = focus = matthias = quick_2d = network_race = True
 
         if path == CICD_WORKFLOW:
             # Exercise the selection plumbing without waking every WebGL scene
@@ -155,7 +167,7 @@ def classify(paths: Iterable[str]) -> BrowserScope:
             visual = True
             quick_2d = True
 
-    return BrowserScope(full_logic, visual, focus, matthias, quick_2d)
+    return BrowserScope(full_logic, visual, focus, matthias, quick_2d, network_race)
 
 
 def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
@@ -238,6 +250,14 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                 "command": "./node_modules/.bin/playwright test quick-match-2d.spec.js --workers=1 --retries=0 --timeout=75000",
             }
         )
+    if scope.network_race:
+        cases.append(
+            {
+                "id": "game-network-races",
+                "label": "Game network · reconnect and late response",
+                "command": "./node_modules/.bin/playwright test offline-pending-move-reconnect.spec.js late-move-response-exit.spec.js --workers=1 --retries=0 --timeout=75000",
+            }
+        )
     return {"include": cases}
 
 
@@ -261,6 +281,7 @@ def render_summary(scope: BrowserScope) -> str:
             f"- Android Focus: `{yn(scope.focus)}`",
             f"- Matthias motion/paint: `{yn(scope.matthias)}`",
             f"- Quick Match mobile 2D: `{yn(scope.quick_2d)}`",
+            f"- Game network races: `{yn(scope.network_race)}`",
             "- Estas lanes forman parte del check requerido Tests · Playwright.",
             "",
         ]
@@ -310,10 +331,14 @@ def self_test() -> None:
         "matthias-insights",
     ]
     assert _ids(classify(["frontend/src/components/QuickMatchModal.jsx"])) == ["quick-match-2d"]
+    assert _ids(classify(["frontend/src/useGameReconnect.js"])) == ["game-network-races"]
+    assert _ids(classify(["frontend/src/components/GameScreen.jsx"])) == ["game-network-races"]
+    assert _ids(classify(["e2e/offline-pending-move-reconnect.spec.js"])) == ["game-network-races"]
+    assert _ids(classify(["e2e/late-move-response-exit.spec.js"])) == ["game-network-races"]
 
     all_scope = classify([".github/actions/setup-browser-e2e/action.yml"])
     assert all_scope == BrowserScope.all()
-    assert len(_ids(all_scope)) == 15
+    assert len(_ids(all_scope)) == 16
 
     harness = classify([".github/workflows/cicd.yml"])
     assert harness == BrowserScope(visual=True, quick_2d=True)
@@ -325,10 +350,11 @@ def self_test() -> None:
             "frontend/src/components/MatthiasAvatar.jsx",
         ]
     )
-    assert combined == BrowserScope(True, True, True, True, True)
+    assert combined == BrowserScope(True, True, True, True, True, False)
 
     assert output_lines(BrowserScope()) == ['matrix={"include":[]}', "has_cases=false"]
     assert "War Room mount/scale: `true`" in render_summary(BrowserScope(visual=True))
+    assert "Game network races: `true`" in render_summary(BrowserScope(network_race=True))
 
     try:
         classify(["../outside"])
