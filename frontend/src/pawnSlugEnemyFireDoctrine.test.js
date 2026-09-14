@@ -63,6 +63,20 @@ describe('Pawn Slug enemy fire doctrine', () => {
     expect(pawnSlugEnemyPrefireStep('panzerfaust', { ready: true, remaining: 0.05, dt: 0.06 })).toEqual({ phase: 'fire', remaining: 0, progress: 1 });
   });
 
+  it('reuses stable prefire states and known weapon shot plans', () => {
+    const idleA = pawnSlugEnemyPrefireStep('pistol', { ready: false, dt: 0.016 });
+    const idleB = pawnSlugEnemyPrefireStep('panzerfaust', { ready: false, remaining: 0.2, dt: 0.016 });
+    const fireA = pawnSlugEnemyPrefireStep('pistol', { ready: true, dt: 0.016 });
+    const fireB = pawnSlugEnemyPrefireStep('machinegun', { ready: true, dt: 0.016 });
+    expect(idleB).toBe(idleA);
+    expect(fireB).toBe(fireA);
+
+    const planA = pawnSlugEnemyShotPlan('machinegun');
+    const planB = pawnSlugEnemyShotPlan('machinegun');
+    expect(planB).toBe(planA);
+    expect(Object.isFrozen(planA)).toBe(true);
+  });
+
   it('clusters machinegun shots into readable short runs without materially raising average cadence', () => {
     const profile = PAWN_SLUG_ENEMY_FIRE_PROFILES.machinegun;
     const fastA = pawnSlugEnemyFireCooldown('machinegun', 0);
