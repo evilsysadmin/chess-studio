@@ -3,6 +3,8 @@
 // anti-trampas, así que no hace falta que el servidor arbitre el tiempo —
 // alcanza con que el navegador lleve la cuenta y declare la bandera caída.
 
+import { flagGameOutcome } from './gameOutcome.js';
+
 export const TIME_CONTROLS = [
   { id: 'none', label: 'Sin reloj', initial: null, increment: 0 },
   { id: '1+0', label: '1 min · Bullet', initial: 60, increment: 0 },
@@ -30,12 +32,10 @@ export function formatClock(seconds) {
 
 // Resultado reglamentario cuando cae una bandera. El servidor adjunta si
 // cada color tiene material insuficiente para dar mate en la posición actual.
-// Si el bando que aún conserva tiempo no puede dar mate, es tablas.
+// La semántica terminal vive en gameOutcome.js para no divergir del cierre
+// normal de partida ni de otros finales forzados.
 export function flagOutcome(flagColor, humanColor, insufficientMatingMaterial = {}) {
-  if (flagColor !== 'w' && flagColor !== 'b') return null;
-  const survivingColor = flagColor === 'w' ? 'b' : 'w';
-  if (insufficientMatingMaterial?.[survivingColor]) return 'draw';
-  return flagColor === humanColor ? 'loss' : 'win';
+  return flagGameOutcome(flagColor, humanColor, insufficientMatingMaterial);
 }
 
 export function flagPgnResult(flagColor, insufficientMatingMaterial = {}) {

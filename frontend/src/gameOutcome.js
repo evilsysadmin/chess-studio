@@ -24,6 +24,30 @@ export function humanHasLostPiece(game = {}) {
   });
 }
 
+export function flagGameOutcome(flagColor, humanColor = 'w', insufficientMatingMaterial = {}) {
+  if (flagColor !== 'w' && flagColor !== 'b') return null;
+  const survivingColor = flagColor === 'w' ? 'b' : 'w';
+  if (insufficientMatingMaterial?.[survivingColor]) return 'draw';
+  return flagColor === humanColor ? 'loss' : 'win';
+}
+
+export function boardGameOutcome(game = {}, humanColor = game?.humanColor || 'w') {
+  if (!game?.isGameOver) return null;
+  if (game.status === 'checkmate') return game.turn === humanColor ? 'loss' : 'win';
+  return 'draw';
+}
+
+export function terminalGameOutcome({
+  game = null,
+  humanColor = game?.humanColor || 'w',
+  flagFallen = null,
+  forcedOutcome = null,
+} = {}) {
+  if (isCompletedGameOutcome(forcedOutcome)) return forcedOutcome;
+  if (flagFallen) return flagGameOutcome(flagFallen, humanColor, game?.insufficientMatingMaterial);
+  return boardGameOutcome(game, humanColor);
+}
+
 export function shouldTreatExitAsForfeit({ moveCount = 0, humanPieceLost = true, isGameOver = false, learningMode = false, trainingPosition = false } = {}) {
   return Number(moveCount || 0) > 0 && humanPieceLost && !isGameOver && !learningMode && !trainingPosition;
 }

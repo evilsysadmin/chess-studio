@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { chessGameExitDisposition, gameExitDisposition, humanHasLostPiece, humanMoveCount, isCompletedGameOutcome, shouldApplyCompetitiveProgress, shouldTreatExitAsForfeit } from './gameOutcome.js';
+import {
+  boardGameOutcome,
+  chessGameExitDisposition,
+  flagGameOutcome,
+  gameExitDisposition,
+  humanHasLostPiece,
+  humanMoveCount,
+  isCompletedGameOutcome,
+  shouldApplyCompetitiveProgress,
+  shouldTreatExitAsForfeit,
+  terminalGameOutcome,
+} from './gameOutcome.js';
 
 describe('completed game outcomes', () => {
   it('solo considera completadas victoria, tablas y derrota', () => {
@@ -16,6 +27,28 @@ describe('completed game outcomes', () => {
     expect(shouldApplyCompetitiveProgress('win')).toBe(true);
     expect(shouldApplyCompetitiveProgress('win', { learningMode: true })).toBe(false);
     expect(shouldApplyCompetitiveProgress('win', { trainingPosition: true })).toBe(false);
+  });
+
+  it('centraliza el resultado terminal del tablero desde el punto de vista humano', () => {
+    expect(boardGameOutcome({ isGameOver: false, status: 'playing', turn: 'w' }, 'w')).toBeNull();
+    expect(boardGameOutcome({ isGameOver: true, status: 'checkmate', turn: 'w' }, 'w')).toBe('loss');
+    expect(boardGameOutcome({ isGameOver: true, status: 'checkmate', turn: 'b' }, 'w')).toBe('win');
+    expect(boardGameOutcome({ isGameOver: true, status: 'stalemate', turn: 'w' }, 'w')).toBe('draw');
+  });
+
+  it('centraliza la caída de bandera, incluido material insuficiente', () => {
+    expect(flagGameOutcome('w', 'w', { w: false, b: false })).toBe('loss');
+    expect(flagGameOutcome('b', 'w', { w: false, b: false })).toBe('win');
+    expect(flagGameOutcome('w', 'w', { w: false, b: true })).toBe('draw');
+    expect(flagGameOutcome(null, 'w')).toBeNull();
+  });
+
+  it('resuelve una única semántica terminal con prioridad explícita', () => {
+    const mated = { isGameOver: true, status: 'checkmate', turn: 'w', humanColor: 'w', insufficientMatingMaterial: { w: false, b: false } };
+    expect(terminalGameOutcome({ game: mated })).toBe('loss');
+    expect(terminalGameOutcome({ game: mated, flagFallen: 'b' })).toBe('win');
+    expect(terminalGameOutcome({ game: mated, flagFallen: 'b', forcedOutcome: 'loss' })).toBe('loss');
+    expect(terminalGameOutcome({ game: { isGameOver: false, humanColor: 'w' } })).toBeNull();
   });
 
   it('abandono explícito penaliza, pero una sesión recuperable no se convierte en rendición', () => {
@@ -80,5 +113,4 @@ describe('completed game outcomes', () => {
     expect(humanHasLostPiece(blackToMove)).toBe(true);
     expect(chessGameExitDisposition(blackToMove, { explicitAction: true })).toBe('forfeit');
   });
-
 });
