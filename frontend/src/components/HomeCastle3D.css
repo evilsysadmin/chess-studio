@@ -36,6 +36,16 @@
   }
 }
 
+/* Android browsers in "desktop site" can expose a desktop-ish CSS width while
+ * remaining a tall coarse-pointer viewport. Keep the approved 2D hall as the
+ * authoritative scene there: the WebGL enrichment is optional and must never
+ * be allowed to replace or obscure the canonical art. */
+@media (min-width: 521px) and (max-width: 999px) and (pointer: coarse) and (max-aspect-ratio: 4/5) {
+  .illustrated-home__castle-3d {
+    display: none !important;
+  }
+}
+
 /* Once the real 3D props are visible on a wide fine-pointer layout, the old
  * destination pictograms become a quiet fallback instead of competing with
  * the physical objects. Coarse/tall/mobile compositions keep the full icons
