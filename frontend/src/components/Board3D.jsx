@@ -13,7 +13,6 @@ import {
   releaseWarRoomHansQuickIteration,
 } from './WarRoomHansIteration.js';
 import { hasWarRoomHansCompletedForGame } from './WarRoomHansPerGame.js';
-import { warRoomHansDiagnosticsRequested } from './WarRoomHansDiagnosticsPolicy.js';
 
 // Safe public entrypoint. GameBoardView also imports Board3D directly, so the
 // provider must live here rather than only in the preferred Board wrapper.
@@ -21,12 +20,6 @@ import { warRoomHansDiagnosticsRequested } from './WarRoomHansDiagnosticsPolicy.
 // nested Board to render the concrete 2D implementation instead of recursing.
 export default function Board3D(props) {
   const requestsHansQuickIteration = props.hansFireplaceIteration === true;
-  const requestsHansDiagnostics = warRoomHansDiagnosticsRequested({
-    quickIteration: requestsHansQuickIteration,
-    webdriver: typeof navigator !== 'undefined' && navigator.webdriver === true,
-    ambientAudit: typeof globalThis !== 'undefined'
-      && globalThis.__CHESS_STUDIO_HANS_AMBIENT_AUDIT__ === true,
-  });
   const hansGameId = props.gameId;
   const rankLevelsPayload = serializeBoard3DRankLevels(props.pieceRankLevels);
   const hansMarkerRef = useRef(null);
@@ -61,17 +54,18 @@ export default function Board3D(props) {
     previousFenRef.current = props.fen;
   }, [props.fen]);
 
-  // The scene lease is the one shared infrastructure switch that guarantees
-  // Hans exists even in the lite War Room. Real fireplace iteration owns it in
-  // production; the guarded WebDriver audit may borrow it only to render the
-  // ambient routines under SwiftShader. The audit does not arm the fire call.
+  // Board3D owns only the Three.js quick-iteration lease. Persisting the cameo
+  // here used to mark a game as completed as soon as Hans entered the viewport,
+  // which could kill the React narrative after an F5/remount halfway through
+  // the fireplace number. Completion is persisted by GameBoardView only after
+  // WarRoomHansFireCall reaches its real terminal state.
   useLayoutEffect(() => {
-    if (!requestsHansDiagnostics) return undefined;
-    if (requestsHansQuickIteration && hasWarRoomHansCompletedForGame(hansGameId)) return undefined;
+    if (!requestsHansQuickIteration) return undefined;
+    if (hasWarRoomHansCompletedForGame(hansGameId)) return undefined;
 
     acquireWarRoomHansQuickIteration();
     return () => releaseWarRoomHansQuickIteration();
-  }, [requestsHansDiagnostics, requestsHansQuickIteration, hansGameId]);
+  }, [requestsHansQuickIteration, hansGameId]);
 
   return (
     <BoardRendererContext.Provider value="3d">
@@ -88,7 +82,7 @@ export default function Board3D(props) {
           key={hansGameId || 'war-room'}
           {...props}
           hansDiagnosticsMarkerRef={hansMarkerRef}
-          hansDiagnosticsRequested={requestsHansDiagnostics}
+          hansDiagnosticsRequested={requestsHansQuickIteration}
         />
       </div>
     </BoardRendererContext.Provider>
