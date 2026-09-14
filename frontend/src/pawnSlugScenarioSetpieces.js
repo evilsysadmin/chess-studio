@@ -133,10 +133,13 @@ function captureMaterialOpacity(group) {
 
 function capture(group, kind) {
   const children = [...group.children];
+  group.updateWorldMatrix(true, false);
   return {
     group,
     kind,
+    triggerX: Number(group.matrixWorld?.elements?.[12]) || group.position.x,
     triggered: false,
+    completed: false,
     startedAt: null,
     materials: captureMaterialOpacity(group),
     base: children.map((child) => ({
@@ -184,6 +187,7 @@ function animateEntry(entry, elapsed) {
     }
   });
   for (const item of entry.materials) item.material.opacity = Math.max(0, item.opacity * fade);
+  return progress >= 1;
 }
 
 function installIntoScenario(root, scenarioName, createGroup, kind, localX) {
@@ -219,7 +223,6 @@ export function createPawnSlugReactiveSetpieces(root, { reducedMotion = false } 
     installIntoScenario(root, 'pawn-slug-landmark-boss-fortress', createFortressAlarm, 'fortress', -5.2),
   ].filter(Boolean);
   const enabled = !reducedMotion && entries.length > 0;
-  const world = new THREE.Vector3();
 
   return Object.freeze({
     enabled,
@@ -229,18 +232,21 @@ export function createPawnSlugReactiveSetpieces(root, { reducedMotion = false } 
       const x = Number(cameraX) || 0;
       const t = Number(time) || 0;
       for (const entry of entries) {
-        entry.group.getWorldPosition(world);
-        if (!entry.triggered && Math.abs(world.x - x) <= SETPIECE_RANGE) {
+        if (entry.completed) continue;
+        if (!entry.triggered && Math.abs(entry.triggerX - x) <= SETPIECE_RANGE) {
           entry.triggered = true;
           entry.startedAt = t;
           entry.group.visible = true;
         }
-        if (entry.triggered && entry.startedAt != null) animateEntry(entry, t - entry.startedAt);
+        if (entry.triggered && entry.startedAt != null) {
+          entry.completed = animateEntry(entry, t - entry.startedAt);
+        }
       }
     },
     reset() {
       for (const entry of entries) {
         entry.triggered = false;
+        entry.completed = false;
         entry.startedAt = null;
         entry.group.visible = false;
         entry.base.forEach((item) => {
