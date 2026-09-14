@@ -92,3 +92,49 @@ for (const viewport of [
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 }
+
+test('Home Android desktop-site · el copy visible es el touch target real', async ({ browser }) => {
+  const context = await browser.newContext({
+    viewport: { width: 980, height: 1740 },
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+
+  try {
+    const home = await openHome(page);
+    expect(await page.evaluate(() => window.matchMedia('(pointer: coarse)').matches)).toBe(true);
+    expect(await page.evaluate(() => navigator.maxTouchPoints)).toBeGreaterThan(0);
+
+    const speech = home.locator('.illustrated-home__speech');
+    if (await speech.count()) {
+      await speech.getByRole('button', { name: 'Cerrar comentario de Matthias' }).click();
+      await expect(speech).toHaveCount(0);
+    }
+
+    const destinations = [
+      ['tournament', 'TORNEOS'],
+      ['train', 'ENTRENAR'],
+      ['combat', 'COMBAT CHESS'],
+      ['daily', 'DESAFÍO DIARIO'],
+      ['history', 'HISTORIA'],
+      ['play', /^(JUGAR|CONTINUAR)$/],
+    ];
+
+    for (const [id, label] of destinations) {
+      const destination = home.locator(`.illustrated-home__destination--${id}`);
+      const copy = destination.locator('strong');
+      await expect(destination).toBeVisible();
+      await expect(copy).toHaveText(label);
+      expect(await copy.evaluate((node) => {
+        const rect = node.getBoundingClientRect();
+        const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+        return Boolean(hit && hit.closest('button') === node.closest('button'));
+      }), `${id}: el texto visible debe resolver al botón real`).toBe(true);
+    }
+
+    await home.locator('.illustrated-home__destination--play strong').tap();
+    await expect(page.getByRole('dialog')).toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
