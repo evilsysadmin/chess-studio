@@ -1,9 +1,11 @@
+import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import {
   PAWN_SLUG_ENEMY_RUN_META,
   PAWN_SLUG_SPRITE_META,
 } from './pawnSlugSprites.js';
 import {
+  clonePawnSlugPremiumEnemyTexture,
   pawnSlugPremiumEnemyFallbackWindow,
   reassertPawnSlugPremiumEnemyTexture,
 } from './pawnSlugEnemyPremiumSprites.js';
@@ -23,6 +25,8 @@ describe('Pawn Slug premium enemy runtime integration', () => {
     expect(PAWN_SLUG_ENEMY_RUN_META.fallbackVisualSource).toBe('premium-static-raster');
     expect(PAWN_SLUG_ENEMY_RUN_META.proceduralRole).toBe('last-resort');
     expect(PAWN_SLUG_ENEMY_RUN_META.lateFallbackOverwriteProtection).toBe(true);
+    expect(PAWN_SLUG_ENEMY_RUN_META.sourceDecodePolicy).toBe('shared-once-per-page-cloned-per-enemy');
+    expect(PAWN_SLUG_ENEMY_RUN_META.sharedDecodedSourceCount).toBe(2);
     expect(PAWN_SLUG_ENEMY_RUN_META.visualPriority).toEqual({
       canonical: 20,
       premiumFallback: 10,
@@ -46,6 +50,28 @@ describe('Pawn Slug premium enemy runtime integration', () => {
       frameHeight: 128,
     });
     expect(PAWN_SLUG_SPRITE_META.enemies.runAtlas.primaryVisualSource).toBe('premium-raster');
+  });
+
+  it('clones per-enemy UV state while sharing the decoded premium image source', () => {
+    const master = new THREE.Texture({ width: 1280, height: 480 });
+    master.repeat.set(1 / 16, 1 / 6);
+    master.offset.set(0.25, 0.5);
+
+    const first = clonePawnSlugPremiumEnemyTexture(master);
+    const second = clonePawnSlugPremiumEnemyTexture(master);
+
+    expect(first).not.toBe(master);
+    expect(second).not.toBe(master);
+    expect(first).not.toBe(second);
+    expect(first.source).toBe(master.source);
+    expect(second.source).toBe(master.source);
+    expect(first.repeat).not.toBe(second.repeat);
+    expect(first.offset).not.toBe(second.offset);
+
+    first.repeat.set(-1 / 16, 1 / 6);
+    first.offset.set(0.5, 1 / 3);
+    expect(second.repeat.x).toBeCloseTo(1 / 16, 12);
+    expect(second.offset.x).toBeCloseTo(0.25, 12);
   });
 
   it('keeps the static premium fallback correctly framed and mirrored', () => {
