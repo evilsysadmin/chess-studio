@@ -1,0 +1,141 @@
+import { request } from './http.js';
+
+const assetBase = (() => {
+  const configured = import.meta.env?.BASE_URL || '/';
+  return configured.endsWith('/') ? configured : `${configured}/`;
+})();
+
+export const ORCHESTRAL_SAMPLE_LIBRARY = Object.freeze({
+  strings: Object.freeze([
+    { root: 54, file: 'violin-fs3.mp3' },
+    { root: 60, file: 'violin-c4.mp3' },
+    { root: 64, file: 'violin-e4.mp3' },
+    { root: 67, file: 'violin-g4.mp3' },
+    { root: 71, file: 'violin-b4.mp3' },
+    { root: 74, file: 'violin-d5.mp3' },
+  ]),
+  cello: Object.freeze([
+    { root: 45, file: 'cello-a2.mp3' },
+    { root: 48, file: 'cello-c3.mp3' },
+    { root: 52, file: 'cello-e3.mp3' },
+    { root: 55, file: 'cello-g3.mp3' },
+    { root: 59, file: 'cello-b3.mp3' },
+  ]),
+});
+
+const contextCaches = new WeakMap();
+
+function sampleUrl(file) {
+  return `${assetBase}audio/orchestra/${file}`;
+}
+
+export function selectOrchestralSample(kind, midiNote) {
+  const samples = ORCHESTRAL_SAMPLE_LIBRARY[kind];
+  const note = Number(midiNote);
+  if (!samples || !Number.isFinite(note)) return null;
+  const selected = samples.reduce((nearest, candidate) => (
+    Math.abs(note - candidate.root) < Math.abs(note - nearest.root) ? candidate : nearest
+  ));
+  return {
+    ...selected,
+    url: sampleUrl(selected.file),
+    semitones: note - selected.root,
+    playbackRate: 2 ** ((note - selected.root) / 12),
+  };
+}
+
+function cacheFor(ctx) {
+  let cache = contextCaches.get(ctx);
+  if (!cache) {
+    cache = new Map();
+    contextCaches.set(ctx, cache);
+  }
+  return cache;
+}
+
+function decodeAudio(ctx, bytes) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const done = (buffer) => {
+      if (!settled) {
+        settled = true;
+        resolve(buffer);
+      }
+    };
+    const fail = (error) => {
+      if (!settled) {
+        settled = true;
+        reject(error);
+      }
+    };
+    try {
+      const pending = ctx.decodeAudioData(bytes, done, fail);
+      if (pending?.then) pending.then(done, fail);
+    } catch (error) {
+      fail(error);
+    }
+  });
+}
+
+export function requestOrchestralSample(ctx, kind, midiNote) {
+  const sample = selectOrchestralSample(kind, midiNote);
+  if (!ctx || !sample || typeof fetch !== 'function' || typeof ctx.decodeAudioData !== 'function') {
+    return Promise.resolve(null);
+  }
+  const cache = cacheFor(ctx);
+  const existing = cache.get(sample.url);
+  if (existing?.buffer) return Promise.resolve(existing.buffer);
+  if (existing?.pending) return existing.pending;
+  if (existing?.failed) return Promise.resolve(null);
+
+  const record = {};
+  record.pending = request(sample.url, { cache: 'force-cache' })
+    .then((response) => {
+      if (!response.ok) throw new Error(`Orchestral sample ${response.status}`);
+      return response.arrayBuffer();
+    })
+    .then((bytes) => decodeAudio(ctx, bytes))
+    .then((buffer) => {
+      record.buffer = buffer;
+      record.pending = null;
+      return buffer;
+    })
+    .catch(() => {
+      record.failed = true;
+      record.pending = null;
+      return null;
+    });
+  cache.set(sample.url, record);
+  return record.pending;
+}
+
+export function readyOrchestralSample(ctx, kind, midiNote) {
+  const sample = selectOrchestralSample(kind, midiNote);
+  if (!ctx || !sample) return null;
+  const record = cacheFor(ctx).get(sample.url);
+  if (!record?.buffer) {
+    requestOrchestralSample(ctx, kind, midiNote);
+    return null;
+  }
+  return { ...sample, buffer: record.buffer };
+}
+
+export function primeOrchestralTheme(ctx, theme) {
+  if (!ctx || !theme) return Promise.resolve([]);
+  const kinds = new Set([
+    theme.leadInstrument,
+    theme.counterInstrument,
+    theme.chordInstrument,
+    theme.bassInstrument,
+    ...(theme.sections || []).flatMap((section) => [
+      section.leadInstrument,
+      section.counterInstrument,
+      section.chordInstrument,
+      section.bassInstrument,
+    ]),
+  ]);
+  const requests = [...kinds]
+    .filter((kind) => ORCHESTRAL_SAMPLE_LIBRARY[kind])
+    .flatMap((kind) => ORCHESTRAL_SAMPLE_LIBRARY[kind].map(({ root }) => requestOrchestralSample(ctx, kind, root)));
+  return Promise.all(requests);
+}
