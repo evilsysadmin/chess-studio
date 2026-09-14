@@ -1,5 +1,9 @@
 import * as THREE from 'three';
 import { PAWN_SLUG_PLATFORM_LAYOUT } from './pawnSlugTileMaps.js';
+import {
+  PAWN_SLUG_STATIC_INSTANCE_VERSION,
+  createPawnSlugStaticInstanceBatch,
+} from './pawnSlugStaticInstances.js';
 
 export { PAWN_SLUG_PLATFORM_LAYOUT } from './pawnSlugTileMaps.js';
 
@@ -10,6 +14,9 @@ export const PAWN_SLUG_PLATFORM_META = Object.freeze({
   maxHeight: Math.max(...PAWN_SLUG_PLATFORM_LAYOUT.map((platform) => platform.y)),
   coarseDecoration: 'front-lip',
   source: 'tile-map',
+  renderBatching: PAWN_SLUG_STATIC_INSTANCE_VERSION,
+  desktopVisualBatchBudget: 11,
+  coarseVisualBatchBudget: 9,
 });
 
 export const PAWN_SLUG_CAMERA_VERTICAL_META = Object.freeze({
@@ -90,54 +97,108 @@ function material(color, roughness = 0.83, metalness = 0.04) {
   return new THREE.MeshStandardMaterial({ color, roughness, metalness });
 }
 
-function addPlatformVisual(root, platform, materials, { coarse }) {
+function push(bucket, instance) {
+  bucket.push(instance);
+}
+
+function addPlatformCompatibilityMarkers(root, platform, coarse) {
   const group = new THREE.Group();
   group.name = `pawn-slug-platform-${platform.id}`;
   group.position.set(platform.x, platform.y, -0.06);
-  const slabHeight = platform.theme === 'steel' ? 0.2 : 0.3;
-  const slab = new THREE.Mesh(new THREE.BoxGeometry(platform.width, slabHeight, platform.depth), materials[`${platform.theme}Side`]);
-  slab.position.y = -slabHeight / 2;
-  slab.castShadow = !coarse;
-  slab.receiveShadow = true;
-  group.add(slab);
-  const top = new THREE.Mesh(new THREE.BoxGeometry(platform.width + 0.05, 0.075, platform.depth + 0.04), materials[`${platform.theme}Top`]);
-  top.position.y = 0.018;
-  top.castShadow = !coarse;
-  top.receiveShadow = true;
-  group.add(top);
+  group.userData.pawnSlugBatchedPlatformMarker = true;
 
-  const trimGeo = new THREE.BoxGeometry(platform.width + 0.08, 0.08, 0.09);
-  const frontLip = new THREE.Mesh(trimGeo, materials[`${platform.theme}Trim`]);
+  const frontLip = new THREE.Object3D();
   frontLip.name = `pawn-slug-platform-${platform.id}-front-lip`;
   frontLip.position.set(0, -0.065, platform.depth / 2 + 0.015);
   frontLip.castShadow = !coarse;
   group.add(frontLip);
 
   if (!coarse) {
-    const rearTrim = new THREE.Mesh(trimGeo.clone(), materials[`${platform.theme}Trim`]);
-    rearTrim.name = `pawn-slug-platform-${platform.id}-rear-lip`;
-    rearTrim.position.set(0, -0.065, -platform.depth / 2 - 0.015);
-    rearTrim.castShadow = true;
-    group.add(rearTrim);
-    if (platform.theme === 'timber') {
-      const postGeo = new THREE.BoxGeometry(0.12, Math.max(0.8, platform.y), 0.12);
-      for (const x of [-platform.width * 0.35, platform.width * 0.35]) {
-        const post = new THREE.Mesh(postGeo, materials.timberSide);
-        post.position.set(x, -Math.max(0.8, platform.y) / 2 - 0.14, 0);
-        post.rotation.z = x < 0 ? -0.03 : 0.03;
-        group.add(post);
-      }
-    } else if (platform.theme === 'steel') {
-      const braceGeo = new THREE.BoxGeometry(0.095, Math.max(0.7, platform.y * 0.78), 0.095);
-      for (const x of [-platform.width * 0.37, platform.width * 0.37]) {
-        const brace = new THREE.Mesh(braceGeo, materials.steelSide);
-        brace.position.set(x, -Math.max(0.7, platform.y * 0.78) / 2 - 0.12, 0);
-        brace.rotation.z = x < 0 ? -0.24 : 0.24;
-        group.add(brace);
+    const rearLip = new THREE.Object3D();
+    rearLip.name = `pawn-slug-platform-${platform.id}-rear-lip`;
+    rearLip.position.set(0, -0.065, -platform.depth / 2 - 0.015);
+    rearLip.castShadow = true;
+    group.add(rearLip);
+  }
+  root.add(group);
+}
+
+function platformInstanceBuckets(coarse) {
+  const buckets = {};
+  for (const theme of Object.keys(THEME_MATERIALS)) {
+    buckets[`${theme}Slab`] = [];
+    buckets[`${theme}Top`] = [];
+    buckets[`${theme}Trim`] = [];
+  }
+  buckets.timberSupport = [];
+  buckets.steelSupport = [];
+
+  for (const platform of PAWN_SLUG_PLATFORM_LAYOUT) {
+    const baseZ = -0.06;
+    const slabHeight = platform.theme === 'steel' ? 0.2 : 0.3;
+    push(buckets[`${platform.theme}Slab`], {
+      x: platform.x,
+      y: platform.y - slabHeight / 2,
+      z: baseZ,
+      sx: platform.width,
+      sy: slabHeight,
+      sz: platform.depth,
+    });
+    push(buckets[`${platform.theme}Top`], {
+      x: platform.x,
+      y: platform.y + 0.018,
+      z: baseZ,
+      sx: platform.width + 0.05,
+      sy: 0.075,
+      sz: platform.depth + 0.04,
+    });
+    push(buckets[`${platform.theme}Trim`], {
+      x: platform.x,
+      y: platform.y - 0.065,
+      z: baseZ + platform.depth / 2 + 0.015,
+      sx: platform.width + 0.08,
+      sy: 0.08,
+      sz: 0.09,
+    });
+    if (!coarse) {
+      push(buckets[`${platform.theme}Trim`], {
+        x: platform.x,
+        y: platform.y - 0.065,
+        z: baseZ - platform.depth / 2 - 0.015,
+        sx: platform.width + 0.08,
+        sy: 0.08,
+        sz: 0.09,
+      });
+      if (platform.theme === 'timber') {
+        const height = Math.max(0.8, platform.y);
+        for (const x of [-platform.width * 0.35, platform.width * 0.35]) {
+          push(buckets.timberSupport, {
+            x: platform.x + x,
+            y: platform.y - height / 2 - 0.14,
+            z: baseZ,
+            rz: x < 0 ? -0.03 : 0.03,
+            sx: 0.12,
+            sy: height,
+            sz: 0.12,
+          });
+        }
+      } else if (platform.theme === 'steel') {
+        const height = Math.max(0.7, platform.y * 0.78);
+        for (const x of [-platform.width * 0.37, platform.width * 0.37]) {
+          push(buckets.steelSupport, {
+            x: platform.x + x,
+            y: platform.y - height / 2 - 0.12,
+            z: baseZ,
+            rz: x < 0 ? -0.24 : 0.24,
+            sx: 0.095,
+            sy: height,
+            sz: 0.095,
+          });
+        }
       }
     }
   }
-  root.add(group);
+  return buckets;
 }
 
 export function createPawnSlugPlatforms(parent, { coarse = false } = {}) {
@@ -149,11 +210,46 @@ export function createPawnSlugPlatforms(parent, { coarse = false } = {}) {
     materials[`${theme}Side`] = material(palette.side, theme === 'steel' ? 0.64 : 0.92, theme === 'steel' ? 0.42 : 0.02);
     materials[`${theme}Trim`] = material(palette.trim, 0.7, theme === 'steel' ? 0.32 : 0.05);
   }
-  for (const platform of PAWN_SLUG_PLATFORM_LAYOUT) addPlatformVisual(root, platform, materials, { coarse });
+
+  const unitBox = new THREE.BoxGeometry(1, 1, 1);
+  const buckets = platformInstanceBuckets(coarse);
+  let visualBatchCount = 0;
+  let visualInstanceCount = 0;
+
+  function addBatch(name, instances, materialValue, { castShadow = !coarse } = {}) {
+    const batch = createPawnSlugStaticInstanceBatch({
+      name,
+      geometry: unitBox,
+      material: materialValue,
+      instances,
+      castShadow,
+      receiveShadow: true,
+    });
+    if (!batch) return;
+    batch.userData.pawnSlugPlatformBatch = true;
+    visualBatchCount += 1;
+    visualInstanceCount += batch.count;
+    root.add(batch);
+  }
+
+  for (const theme of Object.keys(THEME_MATERIALS)) {
+    addBatch(`pawn-slug-platform-${theme}-slabs-instanced`, buckets[`${theme}Slab`], materials[`${theme}Side`]);
+    addBatch(`pawn-slug-platform-${theme}-tops-instanced`, buckets[`${theme}Top`], materials[`${theme}Top`]);
+    addBatch(`pawn-slug-platform-${theme}-trims-instanced`, buckets[`${theme}Trim`], materials[`${theme}Trim`]);
+  }
+  if (!coarse) {
+    addBatch('pawn-slug-platform-timber-supports-instanced', buckets.timberSupport, materials.timberSide, { castShadow: false });
+    addBatch('pawn-slug-platform-steel-supports-instanced', buckets.steelSupport, materials.steelSide, { castShadow: false });
+  }
+
+  for (const platform of PAWN_SLUG_PLATFORM_LAYOUT) addPlatformCompatibilityMarkers(root, platform, coarse);
+
   parent?.add(root);
   root.userData.platforms = PAWN_SLUG_PLATFORM_LAYOUT;
+  root.userData.pawnSlugPlatformVisualBatches = visualBatchCount;
+  root.userData.pawnSlugPlatformVisualInstances = visualInstanceCount;
   root.userData.dispose = () => {
-    root.traverse((child) => child.geometry?.dispose?.());
+    unitBox.dispose();
     for (const value of Object.values(materials)) value.dispose?.();
   };
   return root;
