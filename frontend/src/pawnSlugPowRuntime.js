@@ -7,6 +7,16 @@ import {
 import { animatePawnSlugPowModel, createPawnSlugPowModel } from './pawnSlugPowArt.js';
 
 const clampAmmo = (value) => Math.max(0, Number(value) || 0);
+const activePowIds = new WeakMap();
+
+function powIdsFor(pows) {
+  let ids = activePowIds.get(pows);
+  if (ids) return ids;
+  ids = new Set();
+  for (const entry of pows) if (entry?.id) ids.add(entry.id);
+  activePowIds.set(pows, ids);
+  return ids;
+}
 
 export function pawnSlugApplyPowReward(state, reward = {}) {
   if (!state?.player) return state;
@@ -30,7 +40,7 @@ export function pawnSlugSpawnPowsAhead(state, dynamic, rightEdge, {
   if (!state || !dynamic) return [];
   state.pows ||= [];
   state.rescuedPows ||= new Set();
-  const spawnedIds = new Set(state.pows.map((entry) => entry.id));
+  const spawnedIds = powIdsFor(state.pows);
   const created = [];
 
   for (const pow of PAWN_SLUG_POWS) {
@@ -42,6 +52,7 @@ export function pawnSlugSpawnPowsAhead(state, dynamic, rightEdge, {
     dynamic.add(model);
     const entry = { id: pow.id, pow, x: pow.x, y, model, rescuedAt: null };
     state.pows.push(entry);
+    spawnedIds.add(entry.id);
     created.push(entry);
   }
   return created;
@@ -54,6 +65,7 @@ export function pawnSlugUpdatePowRescues(state, time = 0, {
 } = {}) {
   if (!state?.player || !Array.isArray(state.pows)) return [];
   state.rescuedPows ||= new Set();
+  const spawnedIds = activePowIds.get(state.pows);
   const rescuedNow = [];
 
   for (let index = state.pows.length - 1; index >= 0; index -= 1) {
@@ -64,6 +76,7 @@ export function pawnSlugUpdatePowRescues(state, time = 0, {
     if (alreadyRescued) {
       if (entry.rescuedAt != null && time - entry.rescuedAt >= 0.72) {
         onRemove?.(entry.model);
+        spawnedIds?.delete(entry.id);
         state.pows.splice(index, 1);
       }
       continue;
@@ -99,3 +112,8 @@ export function pawnSlugPowRescueSummary(state) {
     complete: rescued >= PAWN_SLUG_POWS.length,
   });
 }
+
+export const PAWN_SLUG_POW_RUNTIME_META = Object.freeze({
+  spawnRegistry: 'weakmap-active-id-set',
+  spawnScan: 'direct-static-layout',
+});
