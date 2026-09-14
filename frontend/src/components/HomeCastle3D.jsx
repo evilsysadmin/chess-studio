@@ -449,6 +449,7 @@ export default function HomeCastle3D({ artUrl, ambient = 'day', activeRoom = nul
       torchProps.dispose();
       geometry.dispose();
       renderer.dispose();
+      renderer.forceContextLoss?.();
     };
   }, [ambient, artUrl, renderPolicy]);
 
