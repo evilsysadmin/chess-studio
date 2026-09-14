@@ -11,12 +11,6 @@ import {
 } from '../admin.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import { getToken, getUsername } from '../auth.js';
-import {
-  deleteAdminFeedback,
-  replyAdminFeedback,
-  submitFeedback,
-  updateAdminFeedbackStatus,
-} from '../feedback.js';
 import { buildAdminInsights } from '../adminDashboardInsights.js';
 import { createAsyncCommitGuard } from '../asyncLifecycle.js';
 import AdminFeedbackSection from './AdminFeedbackSection.jsx';
@@ -25,6 +19,7 @@ import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
 import AdminUserDirectory from './AdminUserDirectory.jsx';
 import ObservabilityPanel from './ObservabilityPanel.jsx';
 import useAdminDashboardData from './useAdminDashboardData.js';
+import useAdminFeedbackController from './useAdminFeedbackController.js';
 
 const BUILD_SHA = import.meta.env.VITE_BUILD_SHA || 'local';
 
@@ -46,16 +41,25 @@ export default function AdminScreen({ onExit }) {
     setMatthiasStatusError,
     invalidateAdminData,
   } = useAdminDashboardData();
+  const {
+    feedbackUpdating,
+    feedbackTestCreating,
+    feedbackDeleteCandidate,
+    feedbackReplies,
+    dismissFeedbackDelete,
+    setFeedbackReply,
+    requestFeedbackDelete,
+    handleFeedbackReply,
+    handleFeedbackStatus,
+    handleCreateTestFeedback,
+    confirmFeedbackDelete,
+  } = useAdminFeedbackController({ setFeedback, setFeedbackError, invalidateAdminData });
   const [expanded, setExpanded] = useState(null);
   const [insightsByUser, setInsightsByUser] = useState({});
   const [insightsLoading, setInsightsLoading] = useState({});
   const [insightsErrors, setInsightsErrors] = useState({});
   const [deletingUser, setDeletingUser] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
-  const [feedbackUpdating, setFeedbackUpdating] = useState(null);
-  const [feedbackTestCreating, setFeedbackTestCreating] = useState(false);
-  const [feedbackDeleteCandidate, setFeedbackDeleteCandidate] = useState(null);
-  const [feedbackReplies, setFeedbackReplies] = useState({});
   const [activityFilter, setActivityFilter] = useState('all');
   const [adminView, setAdminView] = useState('overview');
   const [aiPortraitByUser, setAiPortraitByUser] = useState({});
@@ -69,77 +73,6 @@ export default function AdminScreen({ onExit }) {
   const [matthiasPreview, setMatthiasPreview] = useState(null);
   const [matthiasPreviewLoading, setMatthiasPreviewLoading] = useState(false);
   const [matthiasPreviewError, setMatthiasPreviewError] = useState(null);
-
-  async function handleFeedbackStatus(feedbackId, status) {
-    invalidateAdminData();
-    setFeedbackUpdating(feedbackId);
-    setFeedbackError(null);
-    try {
-      const result = await updateAdminFeedbackStatus(feedbackId, status);
-      setFeedback((current) => (current || []).map((item) => item.id === feedbackId ? result.feedback : item));
-    } catch (e) {
-      setFeedbackError(e?.message || 'No se pudo actualizar el feedback.');
-    } finally {
-      setFeedbackUpdating(null);
-    }
-  }
-
-  async function handleFeedbackReply(feedbackId, resolve = false) {
-    const message = String(feedbackReplies[feedbackId] || '').trim();
-    if (!message || feedbackUpdating) return;
-    invalidateAdminData();
-    setFeedbackUpdating(feedbackId);
-    setFeedbackError(null);
-    try {
-      const result = await replyAdminFeedback(feedbackId, message, resolve);
-      setFeedback((current) => (current || []).map((item) => item.id === feedbackId ? result.feedback : item));
-      setFeedbackReplies((current) => ({ ...current, [feedbackId]: '' }));
-    } catch (e) {
-      setFeedbackError(e?.message || 'No se pudo responder al feedback.');
-    } finally {
-      setFeedbackUpdating(null);
-    }
-  }
-
-  async function handleCreateTestFeedback() {
-    if (feedbackTestCreating) return;
-    setFeedbackTestCreating(true);
-    setFeedbackError(null);
-    try {
-      const result = await submitFeedback({
-        category: 'general',
-        message: 'Feedback de prueba generado desde Admin.',
-        context: 'Admin · prueba',
-      });
-      if (result?.feedback) setFeedback((current) => [result.feedback, ...(current || [])]);
-    } catch (e) {
-      setFeedbackError(e?.message || 'No se pudo crear el feedback de prueba.');
-    } finally {
-      setFeedbackTestCreating(false);
-    }
-  }
-
-  async function confirmFeedbackDelete() {
-    const feedbackId = feedbackDeleteCandidate;
-    if (!feedbackId || feedbackUpdating) return;
-    setFeedbackDeleteCandidate(null);
-    invalidateAdminData();
-    setFeedbackUpdating(feedbackId);
-    setFeedbackError(null);
-    try {
-      await deleteAdminFeedback(feedbackId);
-      setFeedback((current) => (current || []).filter((item) => item.id !== feedbackId));
-      setFeedbackReplies((current) => {
-        const next = { ...current };
-        delete next[feedbackId];
-        return next;
-      });
-    } catch (e) {
-      setFeedbackError(e?.message || 'No se pudo borrar el feedback.');
-    } finally {
-      setFeedbackUpdating(null);
-    }
-  }
 
   async function handleDeleteUser(targetUsername) {
     const confirmed = window.confirm(
@@ -159,8 +92,8 @@ export default function AdminScreen({ onExit }) {
         delete next[targetUsername];
         return next;
       });
-    } catch (e) {
-      setDeleteError(e.message || 'No se pudo eliminar la cuenta.');
+    } catch (error) {
+      setDeleteError(error.message || 'No se pudo eliminar la cuenta.');
     } finally {
       setDeletingUser(null);
     }
@@ -173,7 +106,7 @@ export default function AdminScreen({ onExit }) {
     setInsightsErrors((prev) => ({ ...prev, [expanded]: null }));
     fetchAdminUserInsights(expanded)
       .then((payload) => guard.commit(() => setInsightsByUser((prev) => ({ ...prev, [expanded]: buildAdminInsights(payload) }))))
-      .catch((e) => guard.commit(() => setInsightsErrors((prev) => ({ ...prev, [expanded]: e.message }))))
+      .catch((error) => guard.commit(() => setInsightsErrors((prev) => ({ ...prev, [expanded]: error.message }))))
       .finally(() => guard.commit(() => setInsightsLoading((prev) => ({ ...prev, [expanded]: false }))));
     return () => guard.dispose();
   }, [expanded, insightsByUser, insightsLoading, insightsErrors]);
@@ -266,13 +199,13 @@ export default function AdminScreen({ onExit }) {
   return (
     <div className="menu admin-screen">
       {feedbackDeleteCandidate && (
-        <div className="modal-backdrop admin-confirm-backdrop" role="presentation" onMouseDown={() => setFeedbackDeleteCandidate(null)}>
+        <div className="modal-backdrop admin-confirm-backdrop" role="presentation" onMouseDown={dismissFeedbackDelete}>
           <section className="army-card admin-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="feedback-delete-title" onMouseDown={(event) => event.stopPropagation()}>
             <span className="section-label">Feedback · acción irreversible</span>
             <h2 id="feedback-delete-title">¿Borrar este feedback?</h2>
             <p>Útil para limpiar mensajes de prueba. Esta acción no se puede deshacer.</p>
             <div className="admin-confirm-actions">
-              <button type="button" className="secondary-btn" onClick={() => setFeedbackDeleteCandidate(null)}>Cancelar</button>
+              <button type="button" className="secondary-btn" onClick={dismissFeedbackDelete}>Cancelar</button>
               <button type="button" className="primary-btn danger-btn" onClick={() => void confirmFeedbackDelete()}>Borrar definitivamente</button>
             </div>
           </section>
@@ -303,10 +236,10 @@ export default function AdminScreen({ onExit }) {
           updating={feedbackUpdating}
           testCreating={feedbackTestCreating}
           replies={feedbackReplies}
-          onReplyChange={(feedbackId, value) => setFeedbackReplies((current) => ({ ...current, [feedbackId]: value }))}
+          onReplyChange={setFeedbackReply}
           onReply={(feedbackId, resolve) => void handleFeedbackReply(feedbackId, resolve)}
           onStatus={(feedbackId, status) => void handleFeedbackStatus(feedbackId, status)}
-          onDelete={(feedbackId) => { if (!feedbackUpdating) setFeedbackDeleteCandidate(feedbackId); }}
+          onDelete={requestFeedbackDelete}
           onCreateTest={() => void handleCreateTestFeedback()}
         />
 
