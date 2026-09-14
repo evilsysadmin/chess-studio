@@ -3,7 +3,7 @@ name: Browser E2E sweep
 on:
   workflow_dispatch:
   schedule:
-    - cron: '17 2 * * 0'
+    - cron: '17 2 1 * *'
 
 permissions:
   contents: read
