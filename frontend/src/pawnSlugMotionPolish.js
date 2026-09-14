@@ -12,6 +12,17 @@ export const PAWN_SLUG_MOTION_POLISH = Object.freeze({
   settleFrames: 4,
 });
 
+const IDLE_RESULT = Object.freeze({ action: 'idle', frame: 0, phase: 'idle' });
+const RUN_RESULT = Object.freeze({ action: 'run', frame: null, phase: 'run' });
+const WALK_RESULTS = Object.freeze(Array.from(
+  { length: PAWN_SLUG_MOTION_POLISH.walkFrames },
+  (_, frame) => Object.freeze({ action: 'walk', frame, phase: 'walk' }),
+));
+const SETTLE_RESULTS = Object.freeze(Array.from(
+  { length: PAWN_SLUG_MOTION_POLISH.settleFrames },
+  (_, frame) => Object.freeze({ action: 'walk', frame, phase: 'settle' }),
+));
+
 function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
 }
@@ -33,22 +44,23 @@ export function pawnSlugMatthiasLocomotion({
   if (!moving) {
     if (settleElapsed < PAWN_SLUG_MOTION_POLISH.settleSeconds) {
       const settleProgress = settleElapsed / PAWN_SLUG_MOTION_POLISH.settleSeconds;
-      return Object.freeze({
-        action: 'walk',
-        frame: Math.max(0, PAWN_SLUG_MOTION_POLISH.settleFrames - 1 - Math.floor(settleProgress * PAWN_SLUG_MOTION_POLISH.settleFrames)),
-        phase: 'settle',
-      });
+      const frame = Math.max(
+        0,
+        PAWN_SLUG_MOTION_POLISH.settleFrames - 1
+          - Math.floor(settleProgress * PAWN_SLUG_MOTION_POLISH.settleFrames),
+      );
+      return SETTLE_RESULTS[frame];
     }
-    return Object.freeze({ action: 'idle', frame: 0, phase: 'idle' });
+    return IDLE_RESULT;
   }
 
   const walking = moveElapsed < PAWN_SLUG_MOTION_POLISH.walkToRunSeconds
     || speed < PAWN_SLUG_MOTION_POLISH.runSpeedThreshold;
-  if (!walking) return Object.freeze({ action: 'run', frame: null, phase: 'run' });
+  if (!walking) return RUN_RESULT;
 
   const cadenceScale = PAWN_SLUG_MOTION_POLISH.walkRateMinScale
     + speed * PAWN_SLUG_MOTION_POLISH.walkRateSpeedInfluence;
   const frame = Math.floor(moveElapsed * PAWN_SLUG_MOTION_POLISH.walkRate * cadenceScale)
     % PAWN_SLUG_MOTION_POLISH.walkFrames;
-  return Object.freeze({ action: 'walk', frame, phase: 'walk' });
+  return WALK_RESULTS[frame];
 }
