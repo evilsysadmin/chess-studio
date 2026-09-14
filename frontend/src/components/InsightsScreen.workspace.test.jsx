@@ -1,21 +1,43 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const modelMocks = vi.hoisted(() => ({
+  loadPersonalPuzzles: vi.fn(),
+  loadCleanGameRecords: vi.fn(),
+  loadRivalry: vi.fn(),
+  buildPlayerModel: vi.fn(),
+}));
+
+vi.mock('../personalPuzzles.js', () => ({
+  loadPersonalPuzzles: modelMocks.loadPersonalPuzzles,
+}));
+vi.mock('../cleanGames.js', () => ({
+  loadCleanGameRecords: modelMocks.loadCleanGameRecords,
+}));
+vi.mock('../rivalry.js', () => ({
+  loadRivalry: modelMocks.loadRivalry,
+}));
+vi.mock('../playerModel.js', () => ({
+  buildPlayerModel: modelMocks.buildPlayerModel,
+}));
 
 vi.mock('./InsightsDashboardContent.jsx', () => ({
-  default: ({ initialSection }) => <div data-insights-dashboard={initialSection}>dashboard</div>,
+  default: ({ initialSection, playerModel }) => (
+    <div data-insights-dashboard={initialSection} data-player-model={playerModel?.version || 'none'}>dashboard</div>
+  ),
 }));
 vi.mock('./InsightsRecurringErrors.jsx', () => ({
-  default: () => <section data-recurring-errors="true">No vuelvas a hacer esto</section>,
+  default: ({ playerModel }) => <section data-recurring-errors="true" data-player-model={playerModel?.version || 'none'}>No vuelvas a hacer esto</section>,
 }));
 vi.mock('./InsightsCleanGames.jsx', () => ({
-  default: () => <section data-clean-games="true">Partidas limpias</section>,
+  default: ({ playerModel }) => <section data-clean-games="true" data-player-model={playerModel?.version || 'none'}>Partidas limpias</section>,
 }));
 vi.mock('./InsightsWeeklyGoals.jsx', () => ({
-  default: () => <section data-weekly-goals="true">Objetivos personales</section>,
+  default: ({ playerModel }) => <section data-weekly-goals="true" data-player-model={playerModel?.version || 'none'}>Objetivos personales</section>,
 }));
 vi.mock('./InsightsGuidedSession.jsx', () => ({
-  default: () => <section data-guided-session="true">Sesión automática</section>,
+  default: ({ playerModel }) => <section data-guided-session="true" data-player-model={playerModel?.version || 'none'}>Sesión automática</section>,
 }));
 vi.mock('./InsightsMatthiasCampaign.jsx', () => ({
   default: () => <section data-matthias-campaign="true">Campaña personal de Matthias</section>,
@@ -25,6 +47,46 @@ vi.mock('./MechanicTutorialHelp.jsx', () => ({ default: () => <span data-insight
 import InsightsScreen, { normalizeInsightsDiagnosisView, normalizeInsightsSection } from './InsightsScreen.jsx';
 
 describe('InsightsScreen Matthias-led coaching workspace', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    modelMocks.loadPersonalPuzzles.mockReturnValue([{ id: 'p1' }]);
+    modelMocks.loadCleanGameRecords.mockReturnValue({ g1: { gameId: 'g1' } });
+    modelMocks.loadRivalry.mockReturnValue({
+      record: {
+        byTimeControl: {
+          '5+0': { games: 5, wins: 3, draws: 0, losses: 2 },
+        },
+      },
+    });
+    modelMocks.buildPlayerModel.mockReturnValue({ version: 7 });
+  });
+
+  it('construye una sola snapshot factual y la comparte con los consumidores de Así juegas', () => {
+    const insights = { totalGames: 5 };
+    const html = renderToStaticMarkup(
+      <InsightsScreen
+        onExit={() => {}}
+        insights={insights}
+        gameHistory={[{ id: 'g1' }]}
+        initialSection="diagnosis"
+      />,
+    );
+
+    expect(modelMocks.loadPersonalPuzzles).toHaveBeenCalledTimes(1);
+    expect(modelMocks.loadCleanGameRecords).toHaveBeenCalledTimes(1);
+    expect(modelMocks.loadRivalry).toHaveBeenCalledTimes(1);
+    expect(modelMocks.buildPlayerModel).toHaveBeenCalledTimes(1);
+    expect(modelMocks.buildPlayerModel).toHaveBeenCalledWith({
+      insights,
+      personalPuzzles: [{ id: 'p1' }],
+      cleanGameRecords: { g1: { gameId: 'g1' } },
+      timeControlStats: {
+        '5+0': { games: 5, wins: 3, draws: 0, losses: 2 },
+      },
+    });
+    expect(html.match(/data-player-model="7"/g)?.length).toBeGreaterThanOrEqual(3);
+  });
+
   it('abre Así juegas en Ahora con sesión guiada, campaña personal y objetivos semanales', () => {
     const html = renderToStaticMarkup(<InsightsScreen onExit={() => {}} initialSection="diagnosis" />);
 
