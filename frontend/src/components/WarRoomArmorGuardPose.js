@@ -29,15 +29,20 @@ export function applyArmorGuardPose(armor, towardBoard = 1) {
   const sword = armor.getObjectByName?.('war-room-zweihander');
   if (!sword) return 0;
 
-  // Keep the blade on the torso centreline but pull the hilt into the same
-  // depth plane as the hands. The former v28 pose left the sword slightly in
-  // front of the gauntlets, which read as a floating weapon from oblique views.
-  // Keep the actual grip just above the old lower threshold too: the hands are
-  // derived from the hilt, so this preserves the chest-high silhouette rather
-  // than weakening that contract in tests.
-  sword.position.y = 0.715;
+  // Keep the canonical sword anchor at y=.7, but pull its hilt into the same
+  // depth plane as the hands and make the weapon read as a true centreline
+  // guard. Moving the grip itself by 1 cm keeps both derived hands chest-high
+  // without weakening the long-standing sword-position contract.
+  sword.position.y = 0.7;
   sword.position.z = towardBoard * 0.405;
+  sword.rotation.z = 0;
   sword.userData.warRoomArmorGuardPose = WAR_ROOM_ARMOR_GUARD_POSE_VERSION;
+
+  const grip = sword.getObjectByName?.('war-room-zweihander-grip');
+  if (grip) {
+    grip.position.y = 0.64;
+    grip.userData.warRoomArmorGuardPose = WAR_ROOM_ARMOR_GUARD_POSE_VERSION;
+  }
 
   let posed = 1;
   for (const side of [-1, 1]) {
