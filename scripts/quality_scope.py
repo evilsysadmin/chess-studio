@@ -59,6 +59,7 @@ class Scope:
 GLOBAL_HARNESS_PATHS = {
     ".github/workflows/cicd.yml",
     "Makefile",
+    "scripts/pr_merge_diff.py",
     "scripts/quality_scope.py",
 }
 FRONTEND_HARNESS_PATHS = {
@@ -339,6 +340,7 @@ def self_test() -> None:
 
     assert classify([".github/workflows/cicd.yml"]) == Scope.all()
     assert classify(["Makefile"]) == Scope.all()
+    assert classify(["scripts/pr_merge_diff.py"]) == Scope.all()
     assert classify(["scripts/quality_scope.py"]) == Scope.all()
 
     try:
