@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { saveActiveGameSession } from './activeGameSession.js';
 import { loadRivalry, reconcileRivalryHistory, recordRivalryIncident, recordRivalryResult, recurrenceSuffix } from './rivalry.js';
 
 describe('cpu rivalry', () => {
@@ -23,6 +24,17 @@ describe('cpu rivalry', () => {
     expect(state.record.wins).toBe(1);
     expect(state.processedGameIds).toContain('g-1');
     expect(state.record.recentGames[0]).toMatchObject({ gameId: 'g-1', outcome: 'win' });
+  });
+
+  it('usa la identidad de la sesión activa cuando el caller aún no pasa gameId', () => {
+    saveActiveGameSession({ route: 'game', game: { id: 'g-session' } });
+    recordRivalryResult('win', { difficulty: 50 });
+    recordRivalryResult('win', { difficulty: 50 });
+    const state = loadRivalry();
+    expect(state.record.games).toBe(1);
+    expect(state.record.wins).toBe(1);
+    expect(state.processedGameIds).toContain('g-session');
+    expect(state.record.recentGames[0]).toMatchObject({ gameId: 'g-session', outcome: 'win' });
   });
 
   it('siembra ids desde Historial y no vuelve a contar una partida reconciliada', () => {

@@ -1,6 +1,7 @@
 import { STORAGE_LOCAL, getStorageItem } from './safeStorage.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { isCompetitiveHistoryRecord } from './gameHistory.js';
+import { loadActiveGameSession } from './activeGameSession.js';
 
 const KEY = 'chess-study-cpu-rivalry';
 const MAX_RECENT_GAMES = 80;
@@ -232,7 +233,7 @@ function updateMilestones(record, outcome, meta) {
 export function recordRivalryResult(outcome, meta = {}) {
   const state = loadRivalry();
   if (!['win', 'draw', 'loss'].includes(outcome)) return state;
-  const gameId = normalizedGameId(meta.gameId);
+  const gameId = normalizedGameId(meta.gameId) || normalizedGameId(loadActiveGameSession()?.gameId);
   if (gameId && state.processedGameIds.includes(gameId)) return state;
   const record = state.record;
   state.totalGames += 1;
