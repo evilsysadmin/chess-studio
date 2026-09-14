@@ -72,6 +72,68 @@ describe('AI player portrait', () => {
     expect(facts.worst_recorded_move.centipawn_loss).toBe(210);
   });
 
+  it('reutiliza el Player Model compartido como autoridad del retrato', () => {
+    const sharedModel = {
+      samples: { games: 7 },
+      confidence: { games: 'medium' },
+      outcomes: { wins: 5, draws: 1, losses: 1, winPct: 71 },
+      colorPreference: { white: 4, black: 3 },
+      openings: [{
+        name: 'Defensa Siciliana',
+        games: 4,
+        wins: 3,
+        draws: 0,
+        losses: 1,
+        winPct: 75,
+        confidence: 'low',
+      }],
+      ratingTrend: { first: 1200, last: 1240, delta: 40, min: 1190, max: 1250 },
+      timeControls: [{
+        id: '5+0',
+        games: 5,
+        wins: 4,
+        draws: 0,
+        losses: 1,
+        winPct: 80,
+        confidence: 'medium',
+      }],
+    };
+    const facts = buildPlayerPortraitFacts({
+      totalGames: 99,
+      overall: { wins: 0, draws: 0, losses: 99, winPct: 0 },
+      byMode: {},
+      favoriteOpening: { name: 'Defensa Siciliana', count: 4 },
+      longestWinStreak: 2,
+      humanCaptures: 20,
+    }, {
+      record: {
+        games: 99,
+        wins: 0,
+        draws: 0,
+        losses: 99,
+        byTimeControl: {
+          '5+0': { games: 99, wins: 0, draws: 0, losses: 99 },
+        },
+      },
+    }, {}, null, sharedModel);
+
+    expect(facts.total_games).toBe(7);
+    expect(facts.record).toEqual({ wins: 5, draws: 1, losses: 1, win_pct: 71 });
+    expect(facts.by_time_control['5+0']).toEqual({
+      games: 5,
+      wins: 4,
+      draws: 0,
+      losses: 1,
+      win_pct: 80,
+      evidence_strength: 'medium',
+    });
+    expect(facts.openings[0]).toEqual(expect.objectContaining({
+      name: 'Defensa Siciliana',
+      games: 4,
+      win_pct: 75,
+    }));
+  });
+
   it('regenera automáticamente después de cada partida terminada', () => {
     expect(playerPortraitGenerationKey({ totalGames: 3 })).not.toBe(playerPortraitGenerationKey({ totalGames: 4 }));
     expect(playerPortraitGenerationKey({ totalGames: 4 })).not.toBe(playerPortraitGenerationKey({ totalGames: 5 }));
