@@ -5,7 +5,7 @@ import {
 } from './pawnSlugSoldierAtlas.js';
 
 describe('Pawn Slug generated soldier atlas', () => {
-  it('allocates a dense multi-action atlas contract but draws frames lazily', () => {
+  it('allocates one prewarmed shared atlas instead of lazily mutating GPU texture content during play', () => {
     expect(PAWN_SLUG_SOLDIER_ATLAS_META).toMatchObject({
       frameWidth: 96,
       frameHeight: 96,
@@ -13,7 +13,10 @@ describe('Pawn Slug generated soldier atlas', () => {
       rows: 21,
       theme: 'military-chess-soldiers',
       generatedOnce: true,
-      lazyFrameDrawing: true,
+      lazyFrameDrawing: false,
+      prewarmedBeforeUpload: true,
+      sharedTextureSource: true,
+      mipmaps: false,
     });
     expect(PAWN_SLUG_SOLDIER_ATLAS_META.types).toEqual(['pawn', 'knight', 'rook']);
     expect(PAWN_SLUG_SOLDIER_ATLAS_META.actions).toEqual(['idle', 'run', 'jump', 'crouch', 'hurt', 'climb', 'death']);
