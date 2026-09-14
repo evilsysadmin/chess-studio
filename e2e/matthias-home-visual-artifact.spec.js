@@ -46,6 +46,36 @@ async function forceCanonicalHomeCapabilities(context) {
   });
 }
 
+async function expectLiveMatthiasCanvas(home) {
+  const avatar = home.locator('[data-home-matthias-3d="ready"]');
+  const canvas = avatar.locator('canvas');
+  await expect(avatar).toHaveCount(1, { timeout:15_000 });
+  await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready', { timeout:15_000 });
+  await expect(canvas).toHaveAttribute('data-matthias-identity', 'canonical-officer-avatar', { timeout:15_000 });
+  await expect.poll(async () => canvas.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    const style = window.getComputedStyle(node);
+    return {
+      width:Math.round(rect.width),
+      height:Math.round(rect.height),
+      display:style.display,
+      visibility:style.visibility,
+    };
+  }), { timeout:15_000 }).toMatchObject({
+    width:expect.any(Number),
+    height:expect.any(Number),
+    display:'block',
+    visibility:'visible',
+  });
+  const dimensions = await canvas.evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    return { width:rect.width, height:rect.height };
+  });
+  expect(dimensions.width).toBeGreaterThan(30);
+  expect(dimensions.height).toBeGreaterThan(30);
+  return { avatar, canvas };
+}
+
 async function openDeterministicHome(page) {
   await page.emulateMedia({ reducedMotion:'no-preference' });
   await mockApi(page, {
@@ -60,7 +90,7 @@ async function openDeterministicHome(page) {
   await expect(home).toBeVisible();
   await expect(home.locator('.illustrated-home__stage')).toBeVisible();
   await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout:15_000 });
-  await expect(home.locator('.home-matthias-3d.is-ready')).toBeVisible({ timeout:15_000 });
+  await expectLiveMatthiasCanvas(home);
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForTimeout(250);
   return home;
@@ -128,13 +158,10 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
       try {
         const home = await openDeterministicHome(page);
         const matthias = home.locator('.illustrated-home__matthias');
-        const avatar = matthias.locator('[data-home-matthias-3d="ready"]');
-        const canvas = avatar.locator('canvas');
+        const { canvas } = await expectLiveMatthiasCanvas(home);
         const copy = matthias.locator('.illustrated-home__matthias-copy');
 
         await expect(matthias).toBeVisible();
-        await expect(avatar).toBeVisible();
-        await expect(canvas).toBeVisible();
         await expect(canvas).toHaveAttribute('data-matthias-identity', 'canonical-officer-avatar');
         await expect(matthias.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
 
