@@ -220,6 +220,175 @@
   text-align: center;
 }
 
+/* Premium coherence for the whole Entrenar route, not just the School tab. */
+.tutorial-shell.matthias-school-shell .tutorial-section-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .32rem;
+  padding: .32rem;
+  border-color: color-mix(in srgb, var(--brass) 22%, var(--ui-border));
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--ui-panel) 91%, transparent);
+  box-shadow: 0 10px 28px rgba(0,0,0,.12), inset 0 1px rgba(255,255,255,.025);
+  backdrop-filter: blur(12px);
+}
+
+.tutorial-shell.matthias-school-shell .tutorial-section-tabs button {
+  min-height: 42px;
+  padding: .58rem .72rem;
+  border-radius: 9px;
+  font-size: .68rem;
+  letter-spacing: .02em;
+  transition: border-color .14s ease, background .14s ease, color .14s ease, transform .14s ease;
+}
+
+.tutorial-shell.matthias-school-shell .tutorial-section-tabs button:hover,
+.tutorial-shell.matthias-school-shell .tutorial-section-tabs button:focus-visible {
+  border-color: color-mix(in srgb, var(--brass) 34%, var(--ui-border));
+  color: var(--parchment);
+  outline: none;
+}
+
+.tutorial-shell.matthias-school-shell .tutorial-section-tabs button.active {
+  border-color: color-mix(in srgb, var(--brass) 62%, var(--ui-border));
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.035), transparent 62%),
+    color-mix(in srgb, var(--brass) 10%, var(--ui-panel));
+  color: var(--brass);
+  box-shadow: 0 6px 16px rgba(0,0,0,.14), inset 0 1px rgba(255,255,255,.035);
+}
+
+.tutorial-shell.matthias-school-shell .chess-glossary {
+  width: 100%;
+  padding: clamp(.9rem, 1.35vw, 1.25rem);
+  border-color: color-mix(in srgb, var(--brass) 28%, var(--ui-border));
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(198,164,93,.07), transparent 28%),
+    color-mix(in srgb, var(--ui-panel) 94%, var(--ink) 6%);
+  box-shadow: 0 18px 46px rgba(0,0,0,.16), inset 0 1px rgba(255,255,255,.03);
+}
+
+.tutorial-shell.matthias-school-shell .chess-glossary-heading {
+  align-items: center;
+  padding-bottom: .72rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--brass) 15%, var(--ui-border));
+}
+
+.tutorial-shell.matthias-school-shell .chess-glossary-heading h2 {
+  font-size: clamp(1.15rem, 1.6vw, 1.45rem);
+}
+
+.tutorial-shell.matthias-school-shell .chess-glossary-count {
+  padding: .32rem .58rem;
+  border-color: color-mix(in srgb, var(--brass) 30%, var(--ui-border));
+  background: rgba(0,0,0,.12);
+}
+
+.tutorial-shell.matthias-school-shell .chess-glossary-search {
+  margin: .85rem 0 1rem;
+}
+
+.tutorial-shell.matthias-school-shell .chess-glossary-search input {
+  min-height: 44px;
+  padding: .68rem .78rem;
+  border-color: color-mix(in srgb, var(--brass) 20%, var(--ui-border));
+  border-radius: 9px;
+  background: rgba(0,0,0,.16);
+}
+
+.tutorial-shell.matthias-school-shell .chess-glossary-search input:focus {
+  border-color: color-mix(in srgb, var(--brass) 58%, var(--ui-border));
+  box-shadow: 0 0 0 3px rgba(198,164,93,.08);
+  outline: none;
+}
+
+.tutorial-shell.matthias-school-shell .chess-glossary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .65rem;
+}
+
+.tutorial-shell.matthias-school-shell .chess-glossary-entry {
+  min-width: 0;
+  padding: .78rem .82rem;
+  border-color: color-mix(in srgb, var(--brass) 15%, var(--ui-border));
+  border-radius: 10px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.018), transparent 48%),
+    rgba(0,0,0,.11);
+}
+
+.tutorial-shell.matthias-school-shell .chess-glossary-entry strong {
+  font-size: .84rem;
+}
+
+.tutorial-shell.matthias-school-shell .chess-glossary-entry p {
+  font-size: .76rem;
+  line-height: 1.55;
+}
+
+.tutorial-shell.matthias-school-shell .mechanic-library {
+  grid-template-columns: minmax(250px, 310px) minmax(0, 1fr);
+  gap: 1rem;
+  margin-top: 0;
+}
+
+.tutorial-shell.matthias-school-shell .mechanic-library-list {
+  gap: .45rem;
+  max-height: min(72vh, 740px);
+  padding: .45rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 20%, var(--ui-border));
+  border-radius: 13px;
+  background: rgba(0,0,0,.1);
+}
+
+.tutorial-shell.matthias-school-shell .mechanic-library-list button {
+  min-height: 58px;
+  padding: .65rem .7rem;
+  border-color: color-mix(in srgb, var(--brass) 12%, var(--ui-border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--ui-panel) 91%, var(--ink) 9%);
+  transition: border-color .14s ease, background .14s ease, transform .14s ease;
+}
+
+.tutorial-shell.matthias-school-shell .mechanic-library-list button:hover,
+.tutorial-shell.matthias-school-shell .mechanic-library-list button:focus-visible {
+  transform: translateX(2px);
+  border-color: color-mix(in srgb, var(--brass) 46%, var(--ui-border));
+  outline: none;
+}
+
+.tutorial-shell.matthias-school-shell .mechanic-library-list button.active {
+  border-color: color-mix(in srgb, var(--brass) 66%, var(--ui-border));
+  background: linear-gradient(90deg, rgba(198,164,93,.12), transparent 66%), var(--ui-panel);
+  box-shadow: inset 3px 0 color-mix(in srgb, var(--brass) 78%, transparent);
+}
+
+.tutorial-shell.matthias-school-shell .mechanic-library-detail {
+  min-height: 420px;
+  padding: clamp(1rem, 1.45vw, 1.3rem);
+  border-color: color-mix(in srgb, var(--brass) 28%, var(--ui-border));
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(198,164,93,.075), transparent 30%),
+    color-mix(in srgb, var(--ui-panel) 94%, var(--ink) 6%);
+  box-shadow: 0 18px 46px rgba(0,0,0,.16), inset 0 1px rgba(255,255,255,.03);
+}
+
+.tutorial-shell.matthias-school-shell .mechanic-library-detail h2 {
+  margin: .28rem 0 .4rem;
+  font-size: clamp(1.2rem, 1.7vw, 1.55rem);
+}
+
+.tutorial-shell.matthias-school-shell .mechanic-library-detail .mechanic-tutorial-step {
+  min-height: 190px;
+  margin: .9rem 0;
+  padding: 1rem;
+  border-color: color-mix(in srgb, var(--brass) 16%, var(--ui-border));
+  border-radius: 11px;
+  background: rgba(0,0,0,.13);
+}
+
 @media (min-width: 1360px) {
   .tutorial-shell.matthias-school-shell .matthias-school-stage {
     grid-template-columns: minmax(560px, 1fr) minmax(365px, 430px);
@@ -238,6 +407,10 @@
   .tutorial-shell.matthias-school-shell .matthias-school-stage {
     grid-template-columns: minmax(420px, 1fr) minmax(310px, 360px);
   }
+
+  .tutorial-shell.matthias-school-shell .chess-glossary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 940px) {
@@ -251,6 +424,20 @@
 
   .tutorial-shell.matthias-school-shell .matthias-school-coach {
     position: static;
+  }
+}
+
+@media (max-width: 780px) {
+  .tutorial-shell.matthias-school-shell .mechanic-library {
+    grid-template-columns: 1fr;
+  }
+
+  .tutorial-shell.matthias-school-shell .mechanic-library-list {
+    max-height: 300px;
+  }
+
+  .tutorial-shell.matthias-school-shell .mechanic-library-detail {
+    min-height: 0;
   }
 }
 
@@ -284,6 +471,20 @@
   }
 }
 
+@media (max-width: 620px) {
+  .tutorial-shell.matthias-school-shell .tutorial-section-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .tutorial-shell.matthias-school-shell .tutorial-section-tabs button {
+    min-height: 38px;
+  }
+
+  .tutorial-shell.matthias-school-shell .chess-glossary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 520px) {
   .tutorial-shell.matthias-school-shell .matthias-school-nav {
     grid-template-columns: 1fr 1fr;
@@ -297,14 +498,18 @@
 
 @media (prefers-reduced-motion: reduce) {
   .tutorial-shell.matthias-school-shell .matthias-school-course-strip button,
-  .tutorial-shell.matthias-school-shell .matthias-school-lessons button {
+  .tutorial-shell.matthias-school-shell .matthias-school-lessons button,
+  .tutorial-shell.matthias-school-shell .tutorial-section-tabs button,
+  .tutorial-shell.matthias-school-shell .mechanic-library-list button {
     transition: none;
   }
 
   .tutorial-shell.matthias-school-shell .matthias-school-course-strip button:not(:disabled):hover,
   .tutorial-shell.matthias-school-shell .matthias-school-course-strip button:not(:disabled):focus-visible,
   .tutorial-shell.matthias-school-shell .matthias-school-lessons button:not(:disabled):hover,
-  .tutorial-shell.matthias-school-shell .matthias-school-lessons button:not(:disabled):focus-visible {
+  .tutorial-shell.matthias-school-shell .matthias-school-lessons button:not(:disabled):focus-visible,
+  .tutorial-shell.matthias-school-shell .mechanic-library-list button:hover,
+  .tutorial-shell.matthias-school-shell .mechanic-library-list button:focus-visible {
     transform: none;
   }
 }
