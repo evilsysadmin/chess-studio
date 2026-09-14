@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import enemyPremiumFallbackUrl from './assets/pawnSlug/enemy_atlas_premium.webp';
 import {
   PAWN_SLUG_ENEMY_RUN_META as BASE_ENEMY_RUN_META,
   animateSlugEnemySprite as animateBaseSlugEnemySprite,
@@ -13,23 +14,45 @@ import {
 } from './pawnSlugPremiumEnemyRaster.js';
 import { pawnSlugShouldDisposePreviousTexture } from './pawnSlugTextureOwnership.js';
 
+const PREMIUM_FALLBACK_FRAME_BY_TYPE = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
+const PREMIUM_FALLBACK_COLUMNS = 3;
+
+export function pawnSlugPremiumEnemyFallbackWindow(type = 'pawn', dir = 1) {
+  const safeType = Object.prototype.hasOwnProperty.call(PREMIUM_FALLBACK_FRAME_BY_TYPE, type) ? type : 'pawn';
+  const frame = PREMIUM_FALLBACK_FRAME_BY_TYPE[safeType];
+  const direction = Number(dir) < 0 ? -1 : 1;
+  const mirrored = direction > 0;
+  return Object.freeze({
+    type: safeType,
+    frame,
+    direction,
+    mirrored,
+    repeatX: (mirrored ? -1 : 1) / PREMIUM_FALLBACK_COLUMNS,
+    repeatY: 1,
+    offsetX: (mirrored ? frame + 1 : frame) / PREMIUM_FALLBACK_COLUMNS,
+    offsetY: 0,
+  });
+}
+
 function premiumWindowKey(sprite) {
   const atlas = sprite.userData.atlas;
-  return `${atlas.enemyType}:${sprite.userData.action}:${sprite.userData.actionFrame}:${atlas.direction}`;
+  return `${atlas.source}:${atlas.enemyType}:${sprite.userData.action}:${sprite.userData.actionFrame}:${atlas.direction}`;
 }
 
 function applyPremiumWindow(sprite) {
   const atlas = sprite.userData.atlas;
   const texture = atlas?.texture;
-  if (!texture || atlas.source !== 'premium-raster') return;
+  if (!texture || !['premium-raster', 'premium-fallback'].includes(atlas.source)) return;
   const key = premiumWindowKey(sprite);
   if (atlas.premiumWindowKey === key) return;
-  const window = pawnSlugPremiumEnemyRasterWindow(
-    atlas.enemyType,
-    sprite.userData.action,
-    sprite.userData.actionFrame,
-    atlas.direction,
-  );
+  const window = atlas.source === 'premium-raster'
+    ? pawnSlugPremiumEnemyRasterWindow(
+      atlas.enemyType,
+      sprite.userData.action,
+      sprite.userData.actionFrame,
+      atlas.direction,
+    )
+    : pawnSlugPremiumEnemyFallbackWindow(atlas.enemyType, atlas.direction);
   texture.repeat.set(window.repeatX, window.repeatY);
   texture.offset.set(window.offsetX, window.offsetY);
   atlas.premiumWindowKey = key;
@@ -41,44 +64,85 @@ function installPremiumRaster(sprite) {
 
   const baseSetFrame = sprite.userData.setFrame;
   const baseSetDirection = sprite.userData.setDirection;
+  const loader = new THREE.TextureLoader();
   atlas.premiumRasterState = 'loading';
+  atlas.premiumFallbackState = 'loading';
 
-  new THREE.TextureLoader().load(
+  const installTexture = (texture, source) => {
+    if (atlas.disposed || (source === 'premium-fallback' && atlas.source === 'premium-raster')) {
+      texture.dispose?.();
+      return false;
+    }
+    configurePawnSlugTexture(texture);
+    if (source === 'premium-raster') texture.generateMipmaps = false;
+    const previous = atlas.texture;
+    atlas.texture = texture;
+    atlas.source = source;
+    atlas.ready = true;
+    atlas.premiumWindowKey = null;
+    sprite.material.map = texture;
+    sprite.material.visible = true;
+    sprite.material.needsUpdate = true;
+
+    sprite.userData.setFrame = (frame) => {
+      atlas.frame = Number.isFinite(Number(frame)) ? Math.floor(Number(frame)) : 0;
+      applyPremiumWindow(sprite);
+    };
+    sprite.userData.setDirection = (dir) => {
+      atlas.direction = Number(dir) < 0 ? -1 : 1;
+      applyPremiumWindow(sprite);
+    };
+    applyPremiumWindow(sprite);
+    if (pawnSlugShouldDisposePreviousTexture(previous, texture)) previous.dispose?.();
+    return true;
+  };
+
+  const restoreBaseControlsIfNeeded = () => {
+    if (['premium-raster', 'premium-fallback'].includes(atlas.source)) return;
+    sprite.userData.setFrame = baseSetFrame;
+    sprite.userData.setDirection = baseSetDirection;
+  };
+
+  // Bootstrap from the already-shipped premium static atlas instead of leaving
+  // procedural soldier art on screen while the canonical animated raster is
+  // decoding. The canonical raster always wins if both loads complete.
+  loader.load(
+    enemyPremiumFallbackUrl,
+    (texture) => {
+      if (atlas.disposed) {
+        texture.dispose?.();
+        return;
+      }
+      if (atlas.source === 'premium-raster') {
+        texture.dispose?.();
+        atlas.premiumFallbackState = 'superseded';
+        return;
+      }
+      atlas.premiumFallbackState = installTexture(texture, 'premium-fallback') ? 'ready' : 'superseded';
+      if (atlas.premiumRasterState === 'failed') atlas.premiumRasterState = 'fallback';
+    },
+    undefined,
+    () => {
+      if (atlas.disposed) return;
+      atlas.premiumFallbackState = 'failed';
+      restoreBaseControlsIfNeeded();
+    },
+  );
+
+  loader.load(
     PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL,
     (texture) => {
       if (atlas.disposed) {
         texture.dispose?.();
         return;
       }
-      configurePawnSlugTexture(texture);
-      texture.generateMipmaps = false;
-      const previous = atlas.texture;
-      atlas.texture = texture;
-      atlas.source = 'premium-raster';
-      atlas.ready = true;
-      atlas.premiumRasterState = 'ready';
-      atlas.premiumWindowKey = null;
-      sprite.material.map = texture;
-      sprite.material.visible = true;
-      sprite.material.needsUpdate = true;
-
-      sprite.userData.setFrame = (frame) => {
-        atlas.frame = Number.isFinite(Number(frame)) ? Math.floor(Number(frame)) : 0;
-        applyPremiumWindow(sprite);
-      };
-      sprite.userData.setDirection = (dir) => {
-        atlas.direction = Number(dir) < 0 ? -1 : 1;
-        applyPremiumWindow(sprite);
-      };
-      applyPremiumWindow(sprite);
-      if (pawnSlugShouldDisposePreviousTexture(previous, texture)) previous.dispose?.();
+      atlas.premiumRasterState = installTexture(texture, 'premium-raster') ? 'ready' : atlas.premiumRasterState;
     },
     undefined,
     () => {
       if (atlas.disposed) return;
-      atlas.premiumRasterState = 'fallback';
-      sprite.userData.setFrame = baseSetFrame;
-      sprite.userData.setDirection = baseSetDirection;
+      atlas.premiumRasterState = atlas.source === 'premium-fallback' ? 'fallback' : 'failed';
+      restoreBaseControlsIfNeeded();
     },
   );
   return sprite;
@@ -98,6 +162,15 @@ export { pawnSlugEnemyRunAtlasWindow };
 export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
   ...BASE_ENEMY_RUN_META,
   premiumRaster: PAWN_SLUG_PREMIUM_ENEMY_RASTER_META,
+  premiumFallback: Object.freeze({
+    asset: 'enemy_atlas_premium.webp',
+    width: 384,
+    height: 128,
+    columns: PREMIUM_FALLBACK_COLUMNS,
+    frameWidth: 128,
+    frameHeight: 128,
+  }),
   primaryVisualSource: 'premium-raster',
-  proceduralRole: 'fallback-only',
+  fallbackVisualSource: 'premium-static-raster',
+  proceduralRole: 'last-resort',
 });
