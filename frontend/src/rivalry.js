@@ -5,6 +5,7 @@ import { isCompetitiveHistoryRecord } from './gameHistory.js';
 const KEY = 'chess-study-cpu-rivalry';
 const MAX_RECENT_GAMES = 80;
 const MAX_MEMORIES = 40;
+const MAX_PROCESSED_GAMES = 256;
 
 function emptyRecord() {
   return {
@@ -20,7 +21,19 @@ function emptyRecord() {
 }
 
 function blank() {
-  return { version: 3, totalGames: 0, record: emptyRecord(), incidents: {} };
+  return { version: 3, totalGames: 0, record: emptyRecord(), incidents: {}, processedGameIds: [] };
+}
+
+function normalizedGameId(value) {
+  return value == null ? '' : String(value).trim();
+}
+
+function rememberProcessedGame(state, gameId) {
+  const normalized = normalizedGameId(gameId);
+  if (!normalized) return state;
+  const existing = Array.isArray(state.processedGameIds) ? state.processedGameIds : [];
+  state.processedGameIds = [...existing.filter((id) => id !== normalized), normalized].slice(-MAX_PROCESSED_GAMES);
+  return state;
 }
 
 function asNumber(value) {
@@ -86,6 +99,7 @@ export function loadRivalry() {
           memories: Array.isArray(parsed.record.memories) ? parsed.record.memories : [],
         },
         incidents: parsed.incidents && typeof parsed.incidents === 'object' ? parsed.incidents : {},
+        processedGameIds: Array.isArray(parsed.processedGameIds) ? parsed.processedGameIds.slice(-MAX_PROCESSED_GAMES) : [],
       };
     }
 
@@ -110,7 +124,17 @@ export function reconcileRivalryHistory(history = []) {
     .filter((r) => ['win', 'draw', 'loss'].includes(r?.outcome))
     .sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
 
-  if (rows.length <= Number(state.record?.games || 0)) return state;
+  const historyGameIds = rows
+    .map((row) => normalizedGameId(row?.sourceGameId || row?.id))
+    .filter(Boolean);
+  const knownGameIds = new Set(Array.isArray(state.processedGameIds) ? state.processedGameIds : []);
+  const hasMissingGameIds = historyGameIds.some((id) => !knownGameIds.has(id));
+
+  if (rows.length <= Number(state.record?.games || 0)) {
+    if (!hasMissingGameIds) return state;
+    for (const gameId of historyGameIds) rememberProcessedGame(state, gameId);
+    return save(state);
+  }
 
   const record = emptyRecord();
   record.incidents = { ...(state.record?.incidents || {}) };
@@ -152,6 +176,7 @@ export function reconcileRivalryHistory(history = []) {
   }
 
   record.recentGames = [...rows].reverse().slice(0, MAX_RECENT_GAMES).map((row) => ({
+    gameId: normalizedGameId(row?.sourceGameId || row?.id) || null,
     date: row.date || null,
     outcome: row.outcome,
     difficulty: row.difficulty ?? null,
@@ -170,6 +195,7 @@ export function reconcileRivalryHistory(history = []) {
     totalGames: Math.max(Number(state.totalGames || 0), rows.length),
     record,
   };
+  for (const gameId of historyGameIds) rememberProcessedGame(next, gameId);
   return save(next);
 }
 
@@ -205,6 +231,9 @@ function updateMilestones(record, outcome, meta) {
 
 export function recordRivalryResult(outcome, meta = {}) {
   const state = loadRivalry();
+  if (!['win', 'draw', 'loss'].includes(outcome)) return state;
+  const gameId = normalizedGameId(meta.gameId);
+  if (gameId && state.processedGameIds.includes(gameId)) return state;
   const record = state.record;
   state.totalGames += 1;
   record.games += 1;
@@ -223,6 +252,7 @@ export function recordRivalryResult(outcome, meta = {}) {
 
   const recent = Array.isArray(record.recentGames) ? [...record.recentGames] : [];
   recent.unshift({
+    gameId: gameId || null,
     date: meta.date || new Date().toISOString(),
     outcome,
     difficulty: meta.difficulty ?? null,
@@ -266,6 +296,7 @@ export function recordRivalryResult(outcome, meta = {}) {
   if (record.currentStreak < 0 && Math.abs(record.currentStreak) === record.bestCpuStreak && Math.abs(record.currentStreak) >= 3) memories.unshift({ type: 'cpuStreak', date: now, text: `Nueva racha de la CPU: ${Math.abs(record.currentStreak)} victorias.` });
   if (record.games % 25 === 0) memories.unshift({ type: 'anniversary', date: now, text: `${record.games} partidas de rivalidad acumuladas.` });
   record.memories = memories.slice(0, MAX_MEMORIES);
+  rememberProcessedGame(state, gameId);
   return save(state);
 }
 
@@ -301,4 +332,3 @@ export function recurrenceSuffix(event, actor, count) {
   if (actor !== 'human') return '';
   return ` Incidente nº ${count} de este tipo. El patrón empieza a ser estadísticamente incómodo.`;
 }
-
