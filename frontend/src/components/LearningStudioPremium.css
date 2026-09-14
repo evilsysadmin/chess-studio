@@ -232,7 +232,32 @@
   }
 
   .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-list.mechanic-library-list {
-    max-height: min(64vh, 610px);
+    max-height: min(50vh, 470px);
+    padding: .36rem;
+  }
+
+  .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-list.mechanic-library-list button {
+    min-height: 50px;
+    padding: .5rem .56rem;
+  }
+
+  .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-list.mechanic-library-list button.active {
+    margin: .1rem 0;
+  }
+
+  .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-list.mechanic-library-list span {
+    font-size: .54rem;
+    letter-spacing: .085em;
+    opacity: .64;
+  }
+
+  .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-list.mechanic-library-list strong {
+    font-size: .76rem;
+  }
+
+  .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-list.mechanic-library-list small {
+    padding: .14rem .28rem;
+    font-size: .5rem;
   }
 
   .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-detail.mechanic-library-detail {
