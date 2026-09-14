@@ -2,6 +2,7 @@ import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, setStorageItem, removeS
 import { setProfileStorageItem } from './profileKeys.js';
 import { getAudioContext as getContext } from './audioContext.js';
 import { structuredFeel } from './ambientProfiles.js';
+import { connectFinishedAmbientVoice, scheduleAmbientFilterSweep } from './ambientVoiceFinish.js';
 import { structuredSectionInstrument } from './ambientInstrumentRouting.js';
 import {
   MUSIC_EXCLUDED_KEY,
@@ -995,19 +996,9 @@ function playStructuredGuitar(kind, midiNote, volumeScale = 1, durationOverride 
     drive.curve = curve;
     drive.oversample = '2x';
     body.connect(drive);
-    drive.connect(output);
+    connectFinishedAmbientVoice(ctx, drive, output, tone, { start, duration, wetLimit: 0.12 });
   } else {
-    body.connect(output);
-  }
-
-  if ((tone?.space || 0) > 0 && typeof ctx.createDelay === 'function') {
-    const echo = ctx.createDelay(.65);
-    const wet = ctx.createGain();
-    echo.delayTime.value = Math.min(.46, Math.max(.09, Number(tone?.delayMs || 170) / 1000));
-    wet.gain.value = Math.min(.12, Math.max(0, Number(tone?.space) || 0));
-    body.connect(echo);
-    echo.connect(wet);
-    wet.connect(output);
+    connectFinishedAmbientVoice(ctx, body, output, tone, { start, duration, wetLimit: 0.12 });
   }
 
   source.start(start);
@@ -1069,35 +1060,25 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
   const preset = voicePreset(kind);
   const freq = midiToFreq(midiNote);
   const start = ctx.currentTime;
-  const release = durationOverride || preset.release * (tone?.releaseScale || 1);
+  const release = Math.max(0.12, durationOverride || preset.release * (tone?.releaseScale || 1));
+  const attack = Math.min(preset.attack, release * 0.38);
   const filter = ctx.createBiquadFilter();
   const gainNode = ctx.createGain();
   filter.type = 'lowpass';
-  filter.frequency.value = Math.max(260, preset.cutoff * (tone?.warmth || 1));
+  scheduleAmbientFilterSweep(filter.frequency, Math.max(260, preset.cutoff * (tone?.warmth || 1)), start, attack, release);
   filter.Q.value = kind === 'synth' || kind === 'arp' ? 1.4 : 0.55;
 
   const peak = preset.gain * volumeScale;
   gainNode.gain.setValueAtTime(0.0001, start);
-  gainNode.gain.linearRampToValueAtTime(peak, start + preset.attack);
+  gainNode.gain.linearRampToValueAtTime(peak, start + attack);
   if (kind === 'organ' || kind === 'organbass' || kind === 'pad') {
-    gainNode.gain.setValueAtTime(peak * 0.82, start + Math.max(preset.attack + 0.05, release * 0.7));
+    gainNode.gain.setValueAtTime(peak * 0.82, start + Math.max(attack + 0.05, release * 0.7));
   }
   gainNode.gain.exponentialRampToValueAtTime(0.0001, start + release);
 
   filter.connect(gainNode);
   const output = getAmbientOutput(ctx);
-  gainNode.connect(output);
-  // Un eco único y muy bajo da profundidad sin convertir el generador en una
-  // sopa reverberante. Cada familia decide cuánto espacio necesita.
-  if (tone?.space > 0 && typeof ctx.createDelay === 'function') {
-    const delay = ctx.createDelay(0.6);
-    const wet = ctx.createGain();
-    delay.delayTime.value = Math.min(0.55, Math.max(0.06, (tone.delayMs || 180) / 1000));
-    wet.gain.value = Math.min(0.3, Math.max(0, tone.space));
-    gainNode.connect(delay);
-    delay.connect(wet);
-    wet.connect(output);
-  }
+  connectFinishedAmbientVoice(ctx, gainNode, output, tone, { start, duration: release, tremolo: preset.tremolo });
 
   const oscillators = preset.waves.map(([type, ratio, mix], index) => {
     const osc = ctx.createOscillator();
@@ -1112,19 +1093,6 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
     mixGain.connect(filter);
     return osc;
   });
-
-  let lfo = null;
-  let lfoGain = null;
-  if (preset.tremolo) {
-    lfo = ctx.createOscillator();
-    lfoGain = ctx.createGain();
-    lfo.frequency.value = preset.tremolo;
-    lfoGain.gain.value = peak * 0.2;
-    lfo.connect(lfoGain);
-    lfoGain.connect(gainNode.gain);
-    lfo.start(start);
-    lfo.stop(start + release + 0.05);
-  }
 
   oscillators.forEach((osc) => {
     osc.start(start);
@@ -1721,11 +1689,11 @@ function startStructuredMusic(theme, startPositionMs = 0) {
 
     if (signature && layerEnabled('signature')) {
       const signatureDuration = (theme.stepMs * (signature.durationSteps || 3)) / 1000;
-      playStructuredVoice(signature.instrument || theme.leadInstrument, signature.note + t, (signature.volume || 0.55) * arrangement.masterTrim, signatureDuration, tone);
+      playStructuredVoice(signature.instrument || theme.leadInstrument, signature.note + t, (signature.volume || 0.55) * arrangement.masterTrim, signatureDuration, { ...tone, pan: -0.06 });
     }
 
     if (lead != null && layerEnabled('lead') && shouldPlayStructuredLead(arrangement.leadMode, localStep, stepsPerSection)) {
-      playStructuredVoice(structuredSectionInstrument(theme, feel, section, 'lead'), lead + t + arrangement.leadOctave, arrangement.leadVolume, null, tone);
+      playStructuredVoice(structuredSectionInstrument(theme, feel, section, 'lead'), lead + t + arrangement.leadOctave, arrangement.leadVolume, null, { ...tone, pan: -0.10 });
     }
     if (counter != null && layerEnabled('counter') && arrangement.leadMode !== 'sparse') {
       playStructuredVoice(
@@ -1733,7 +1701,7 @@ function startStructuredMusic(theme, startPositionMs = 0) {
         counter + t + arrangement.counterOctave,
         arrangement.counterVolume,
         null,
-        tone,
+        { ...tone, pan: 0.12 },
       );
     }
     if (bass != null && layerEnabled('bass')) {
@@ -1746,7 +1714,7 @@ function startStructuredMusic(theme, startPositionMs = 0) {
       const longChord = ['organ', 'pad'].includes(chordInstrument);
       const chordHoldSteps = feel?.chordHoldSteps || (longChord ? 15.5 : null);
       const duration = chordHoldSteps ? (theme.stepMs * chordHoldSteps) / 1000 : null;
-      playStructuredChord(chordInstrument, chord.map((note) => note + t), duration, arrangement.chordVolume, tone);
+      playStructuredChord(chordInstrument, chord.map((note) => note + t), duration, arrangement.chordVolume, { ...tone, pan: 0.04 });
     }
     if (drum && layerEnabled('drums') && shouldPlayStructuredDrum(arrangement.drumMode, drum)) playStructuredDrum(drum, feel, step);
 
