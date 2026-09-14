@@ -1,10 +1,13 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
+  commitWarRoomHansGroundedY,
   faceWarRoomHansToward,
   moveWarRoomHansToward,
   placeWarRoomHansHorizontal,
+  setWarRoomHansCrouchIntent,
   WAR_ROOM_HANS_TRANSFORM_OWNER_VERSION,
+  warRoomHansCrouchIntent,
   warRoomHansLocalForward,
 } from './WarRoomHansTransformOwner.js';
 
@@ -47,6 +50,26 @@ describe('War Room Hans transform owner', () => {
 
     expect(placeWarRoomHansHorizontal(actor, new THREE.Vector3(-1, 99, -2))).toBe(true);
     expect(hans.position.toArray()).toEqual([-1, -0.613, -2]);
+  });
+
+  it('stores crouch as actor intent without moving the rendered root vertically', () => {
+    const hans = makeHans(-1);
+    hans.position.set(0, -0.613, 0);
+
+    expect(setWarRoomHansCrouchIntent(hans, 0.14, 'hearth-choreography')).toBe(true);
+    expect(warRoomHansCrouchIntent(hans)).toBeCloseTo(0.14, 8);
+    expect(hans.position.y).toBeCloseTo(-0.613, 8);
+    expect(hans.userData.warRoomHansVerticalIntentSource).toBe('hearth-choreography');
+  });
+
+  it('changes root Y only through an explicit grounding commit', () => {
+    const hans = makeHans(1);
+    hans.position.y = -0.34;
+
+    expect(commitWarRoomHansGroundedY(hans, -0.612, 'visible-shoe-grounding')).toBe(true);
+    expect(hans.position.y).toBeCloseTo(-0.612, 8);
+    expect(hans.userData.warRoomHansGroundedY).toBeCloseTo(-0.612, 8);
+    expect(hans.userData.warRoomHansVerticalCommitSource).toBe('visible-shoe-grounding');
   });
 
   it('uses an explicit local-forward declaration before compatibility geometry hints', () => {
