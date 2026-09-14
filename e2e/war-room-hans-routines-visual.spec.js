@@ -170,7 +170,7 @@ for (const eventName of CAPTURE_EVENTS) {
         configurable: true,
         get: () => 8,
       });
-      Math.random = () => 0.25;
+      if (!emulateGpu) Math.random = () => 0.25;
 
       if (!emulateGpu) return;
       const rendererName = 'ANGLE (NVIDIA GeForce RTX 3060 Direct3D11)';
