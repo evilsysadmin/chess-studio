@@ -1,0 +1,413 @@
+/* Premium presentation pass for Entrenar / Escuela de Matthias.
+   Keeps the training logic untouched and only raises density, hierarchy and focus. */
+
+.matthias-school-shell {
+  width: min(100%, 1480px);
+  max-width: 1480px;
+  gap: clamp(.8rem, 1.4vw, 1.2rem);
+  padding-inline: clamp(.35rem, 1.3vw, 1rem);
+}
+
+.matthias-school-shell > .back-link {
+  margin-bottom: -.25rem;
+}
+
+.tutorial-section-tabs {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .32rem;
+  padding: .3rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 18%, var(--ui-border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ui-panel) 88%, transparent);
+  box-shadow: inset 0 1px rgba(255,255,255,.025), 0 12px 34px rgba(0,0,0,.14);
+  backdrop-filter: blur(14px);
+}
+
+.tutorial-section-tabs button {
+  min-height: 42px;
+  border-radius: 10px;
+  font-size: .7rem;
+  letter-spacing: .025em;
+}
+
+.tutorial-section-tabs button.active {
+  border-color: color-mix(in srgb, var(--brass) 58%, var(--ui-border));
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.045), transparent 55%),
+    color-mix(in srgb, var(--brass) 10%, var(--ui-panel));
+  box-shadow: 0 6px 18px rgba(0,0,0,.18), inset 0 1px rgba(255,255,255,.04);
+}
+
+.matthias-school-hero {
+  position: relative;
+  isolation: isolate;
+  min-height: 164px;
+  grid-template-columns: 126px minmax(0, 1fr) minmax(190px, 240px);
+  gap: clamp(1rem, 1.8vw, 1.65rem);
+  padding: clamp(1rem, 1.8vw, 1.45rem);
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--brass) 48%, var(--ui-border));
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 7% 34%, rgba(198,164,93,.2), transparent 29%),
+    radial-gradient(circle at 92% 12%, rgba(110,129,157,.09), transparent 31%),
+    linear-gradient(128deg, color-mix(in srgb, var(--ui-panel) 96%, var(--ink) 4%), color-mix(in srgb, var(--ui-panel) 83%, var(--ink) 17%));
+  box-shadow: 0 22px 58px rgba(0,0,0,.22), inset 0 1px rgba(255,255,255,.035);
+}
+
+.matthias-school-hero::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: auto -8% -82px 18%;
+  height: 145px;
+  transform: rotate(-4deg);
+  border-top: 1px solid rgba(198,164,93,.12);
+  background: linear-gradient(90deg, transparent, rgba(198,164,93,.025), transparent);
+  pointer-events: none;
+}
+
+.matthias-school-hero > img {
+  width: 118px;
+  height: 142px;
+  align-self: end;
+  margin-bottom: -1.45rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  filter: drop-shadow(0 15px 18px rgba(0,0,0,.38));
+}
+
+.matthias-school-hero h1 {
+  max-width: 19ch;
+  margin: .28rem 0 .45rem;
+  font-size: clamp(1.55rem, 2.15vw, 2.05rem);
+  line-height: 1.03;
+  letter-spacing: -.025em;
+}
+
+.matthias-school-hero p {
+  max-width: 82ch;
+  font-size: clamp(.78rem, .95vw, .9rem);
+  line-height: 1.6;
+}
+
+.matthias-school-progress {
+  align-self: stretch;
+  align-content: center;
+  min-width: 0;
+  padding: .75rem .82rem;
+  border-left: 1px solid color-mix(in srgb, var(--brass) 22%, var(--ui-border));
+}
+
+.matthias-school-progress strong {
+  font-size: clamp(1.7rem, 2.5vw, 2.3rem);
+  line-height: .95;
+}
+
+.matthias-school-progress span {
+  max-width: 22ch;
+  line-height: 1.35;
+}
+
+.matthias-school-progress i {
+  height: 7px;
+  margin-top: .42rem;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,.3);
+}
+
+.matthias-school-course-strip {
+  gap: .55rem;
+}
+
+.matthias-school-course-strip button {
+  position: relative;
+  min-height: 68px;
+  padding: .62rem .7rem;
+  grid-template-columns: 34px minmax(0, 1fr);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.025), transparent 55%),
+    color-mix(in srgb, var(--ui-panel) 94%, var(--ink) 6%);
+  box-shadow: inset 0 1px rgba(255,255,255,.02);
+  transition: transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease;
+}
+
+.matthias-school-course-strip button > span {
+  width: 34px;
+  height: 34px;
+}
+
+.matthias-school-course-strip button b {
+  font-size: .76rem;
+}
+
+.matthias-school-course-strip button small {
+  margin-top: .04rem;
+  font-size: .57rem;
+}
+
+.matthias-school-course-strip button:not(:disabled):hover,
+.matthias-school-course-strip button:not(:disabled):focus-visible {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--brass) 50%, var(--ui-border));
+  box-shadow: 0 10px 24px rgba(0,0,0,.16), inset 0 1px rgba(255,255,255,.035);
+  outline: none;
+}
+
+.matthias-school-course-strip button.active {
+  border-color: color-mix(in srgb, var(--brass) 72%, var(--ui-border));
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.035), transparent 55%),
+    color-mix(in srgb, var(--brass) 11%, var(--ui-panel));
+  box-shadow: 0 12px 28px rgba(0,0,0,.16), inset 0 1px rgba(255,255,255,.04);
+}
+
+.matthias-school-layout {
+  grid-template-columns: minmax(228px, 270px) minmax(0, 1fr);
+  gap: clamp(.85rem, 1.4vw, 1.25rem);
+}
+
+.matthias-school-lessons {
+  gap: .48rem;
+  top: 1rem;
+}
+
+.matthias-school-course-intro {
+  padding: .8rem .82rem;
+  border-radius: 12px;
+  border-color: color-mix(in srgb, var(--brass) 28%, var(--ui-border));
+  background:
+    linear-gradient(135deg, rgba(198,164,93,.07), transparent 58%),
+    color-mix(in srgb, var(--ui-panel) 92%, var(--ink) 8%);
+}
+
+.matthias-school-course-intro p {
+  margin-top: .35rem;
+  font-size: .69rem;
+  line-height: 1.5;
+}
+
+.matthias-school-lessons button {
+  min-height: 58px;
+  padding: .62rem .68rem;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.018), transparent 58%),
+    color-mix(in srgb, var(--ui-panel) 93%, var(--ink) 7%);
+  transition: transform .14s ease, border-color .14s ease, background .14s ease;
+}
+
+.matthias-school-lessons button:not(:disabled):hover,
+.matthias-school-lessons button:not(:disabled):focus-visible {
+  transform: translateX(3px);
+}
+
+.matthias-school-lessons button.active {
+  border-color: color-mix(in srgb, var(--brass) 70%, var(--ui-border));
+  background: linear-gradient(90deg, rgba(198,164,93,.12), rgba(198,164,93,.025) 60%), var(--ui-panel);
+}
+
+.matthias-school-stage {
+  grid-template-columns: minmax(430px, 1.15fr) minmax(340px, .85fr);
+  gap: clamp(.9rem, 1.4vw, 1.25rem);
+}
+
+.matthias-school-board {
+  padding: clamp(.6rem, 1vw, .85rem);
+  border: 1px solid color-mix(in srgb, var(--brass) 22%, var(--ui-border));
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(198,164,93,.055), transparent 52%),
+    color-mix(in srgb, var(--ui-panel) 90%, var(--ink) 10%);
+  box-shadow: 0 18px 44px rgba(0,0,0,.2), inset 0 1px rgba(255,255,255,.025);
+}
+
+.matthias-school-board-actions {
+  gap: .6rem;
+}
+
+.matthias-school-board-actions .secondary-btn {
+  min-height: 40px;
+}
+
+.matthias-school-coach {
+  position: relative;
+  gap: .82rem;
+  padding: clamp(.9rem, 1.25vw, 1.1rem);
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--brass) 34%, var(--ui-border));
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(198,164,93,.08), transparent 33%),
+    linear-gradient(145deg, color-mix(in srgb, var(--ui-panel) 96%, var(--ink) 4%), color-mix(in srgb, var(--ui-panel) 90%, var(--ink) 10%));
+  box-shadow: 0 18px 44px rgba(0,0,0,.18), inset 0 1px rgba(255,255,255,.03);
+}
+
+.matthias-school-coach::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--brass) 62%, transparent), transparent);
+  opacity: .65;
+  pointer-events: none;
+}
+
+.matthias-school-coach-heading {
+  grid-template-columns: 70px minmax(0, 1fr) auto;
+  gap: .75rem;
+  padding-bottom: .08rem;
+}
+
+.matthias-school-coach-heading img {
+  width: 68px;
+  height: 82px;
+  border: 1px solid color-mix(in srgb, var(--brass) 24%, var(--ui-border));
+  border-radius: 11px;
+  background: radial-gradient(circle at 50% 25%, rgba(198,164,93,.09), rgba(0,0,0,.2));
+}
+
+.matthias-school-coach-heading h2 {
+  font-size: clamp(1.05rem, 1.3vw, 1.24rem);
+}
+
+.matthias-school-objective {
+  padding: .78rem .82rem;
+  border-left-width: 3px;
+  border-radius: 0 10px 10px 0;
+  background: linear-gradient(90deg, rgba(198,164,93,.095), rgba(198,164,93,.025));
+}
+
+.matthias-school-objective p {
+  font-size: .86rem;
+}
+
+.matthias-school-sequence-status {
+  min-height: 34px;
+  padding: .42rem .55rem;
+  border-radius: 9px;
+}
+
+.matthias-school-feedback {
+  padding: .8rem .85rem;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--ink) 18%, transparent);
+}
+
+.matthias-school-feedback p {
+  font-size: .82rem;
+  line-height: 1.55;
+}
+
+.matthias-school-nav {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(120px, 1fr) minmax(0, auto);
+  align-items: center;
+  gap: .55rem;
+}
+
+.matthias-school-nav .tutorial-progress {
+  text-align: center;
+}
+
+.mechanic-library {
+  width: 100%;
+  gap: 1rem;
+}
+
+.mechanic-library-list,
+.mechanic-library-detail {
+  border-radius: 15px;
+}
+
+.mechanic-library-detail {
+  padding: clamp(1rem, 1.5vw, 1.35rem);
+  background:
+    radial-gradient(circle at 100% 0, rgba(198,164,93,.065), transparent 30%),
+    color-mix(in srgb, var(--ui-panel) 94%, var(--ink) 6%);
+  box-shadow: 0 18px 44px rgba(0,0,0,.15), inset 0 1px rgba(255,255,255,.025);
+}
+
+@media (max-width: 1180px) {
+  .matthias-school-shell { max-width: 1180px; }
+  .matthias-school-stage { grid-template-columns: minmax(360px, 1fr) minmax(310px, .82fr); }
+  .matthias-school-layout { grid-template-columns: minmax(210px, 238px) minmax(0, 1fr); }
+}
+
+@media (max-width: 980px) {
+  .matthias-school-layout { grid-template-columns: 1fr; }
+  .matthias-school-lessons {
+    position: static;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .matthias-school-course-intro { grid-column: 1 / -1; }
+  .matthias-school-stage { grid-template-columns: minmax(320px, 1fr) minmax(285px, .82fr); }
+}
+
+@media (max-width: 760px) {
+  .matthias-school-shell { padding-inline: .15rem; }
+  .matthias-school-hero {
+    min-height: 0;
+    grid-template-columns: 78px minmax(0, 1fr);
+    gap: .8rem;
+    padding: .9rem;
+  }
+  .matthias-school-hero > img {
+    width: 74px;
+    height: 92px;
+    margin-bottom: -.9rem;
+  }
+  .matthias-school-hero h1 { max-width: none; font-size: 1.45rem; }
+  .matthias-school-progress {
+    grid-column: 1 / -1;
+    padding: .55rem 0 0;
+    border-top: 1px solid color-mix(in srgb, var(--brass) 18%, var(--ui-border));
+    border-left: 0;
+  }
+  .matthias-school-stage { grid-template-columns: 1fr; }
+  .matthias-school-coach { order: -1; }
+  .matthias-school-lessons { grid-template-columns: 1fr 1fr; }
+  .matthias-school-nav { grid-template-columns: 1fr 1fr; }
+  .matthias-school-nav .tutorial-progress { grid-column: 1 / -1; grid-row: 1; }
+}
+
+@media (max-width: 620px) {
+  .tutorial-section-tabs { grid-template-columns: 1fr; }
+  .tutorial-section-tabs button { min-height: 38px; }
+  .matthias-school-course-strip { grid-template-columns: 1fr 1fr; }
+  .matthias-school-course-strip button { min-height: 60px; }
+}
+
+@media (max-width: 430px) {
+  .matthias-school-hero {
+    grid-template-columns: 62px minmax(0, 1fr);
+    padding: .8rem;
+    border-radius: 14px;
+  }
+  .matthias-school-hero > img { width: 58px; height: 76px; }
+  .matthias-school-hero h1 { font-size: 1.22rem; }
+  .matthias-school-hero p { font-size: .73rem; line-height: 1.5; }
+  .matthias-school-course-strip,
+  .matthias-school-lessons { grid-template-columns: 1fr; }
+  .matthias-school-course-strip button:last-child { grid-column: auto; }
+  .matthias-school-board { padding: .45rem; border-radius: 12px; }
+  .matthias-school-coach { padding: .75rem; border-radius: 12px; }
+  .matthias-school-coach-heading { grid-template-columns: 54px minmax(0, 1fr); }
+  .matthias-school-coach-heading img { width: 52px; height: 64px; }
+  .matthias-school-complete-badge { grid-column: 1 / -1; justify-self: start; }
+  .matthias-school-board-actions,
+  .matthias-school-nav { grid-template-columns: 1fr; }
+  .matthias-school-nav .tutorial-progress { grid-column: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .matthias-school-course-strip button,
+  .matthias-school-lessons button { transition: none; }
+  .matthias-school-course-strip button:not(:disabled):hover,
+  .matthias-school-course-strip button:not(:disabled):focus-visible,
+  .matthias-school-lessons button:not(:disabled):hover,
+  .matthias-school-lessons button:not(:disabled):focus-visible { transform: none; }
+}
