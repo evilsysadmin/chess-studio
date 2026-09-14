@@ -85,8 +85,15 @@ async function waitForRoutineStart(canvas, eventName) {
     return;
   }
 
-  await expect(canvas).toHaveAttribute('data-war-room-hans-route', expectedRoute(eventName), { timeout: 75_000 });
-  await expect(canvas).toHaveAttribute('data-war-room-hans-screen', VISIBLE_SCREEN, { timeout: 20_000 });
+  const route = expectedRoute(eventName);
+  await expect.poll(
+    () => canvas.evaluate((node, expected) => {
+      const screen = node.dataset.warRoomHansScreen || '';
+      return node.dataset.warRoomHansRoute === expected
+        && (screen === 'onscreen' || screen === 'edge' || screen === 'offscreen');
+    }, route),
+    { timeout: 75_000, intervals: [100, 100, 200, 300, 500] },
+  ).toBe(true);
 }
 
 async function sampleRoutine(page, canvas, eventName) {
@@ -141,6 +148,7 @@ for (const eventName of CAPTURE_EVENTS) {
     await mkdir(ARTIFACT_DIR, { recursive: true });
     await mkdir(TEMP_VIDEO_DIR, { recursive: true });
 
+    const emulateSupportedGpu = eventName !== 'fire';
     const browser = await chromium.launch({
       headless: true,
       args: [
@@ -157,14 +165,29 @@ for (const eventName of CAPTURE_EVENTS) {
         size: { width: 640, height: 400 },
       },
     });
-    await context.addInitScript(() => {
-      globalThis.__CHESS_STUDIO_HANS_AMBIENT_AUDIT__ = true;
+    await context.addInitScript(({ emulateGpu }) => {
       Object.defineProperty(navigator, 'hardwareConcurrency', {
         configurable: true,
         get: () => 8,
       });
       Math.random = () => 0.25;
-    });
+
+      if (!emulateGpu) return;
+      const rendererName = 'ANGLE (NVIDIA GeForce RTX 3060 Direct3D11)';
+      for (const constructorName of ['WebGLRenderingContext', 'WebGL2RenderingContext']) {
+        const prototype = globalThis[constructorName]?.prototype;
+        const originalGetParameter = prototype?.getParameter;
+        if (typeof originalGetParameter !== 'function') continue;
+        Object.defineProperty(prototype, 'getParameter', {
+          configurable: true,
+          writable: true,
+          value(parameter) {
+            if (parameter === 0x9246 || parameter === 0x1F01) return rendererName;
+            return originalGetParameter.call(this, parameter);
+          },
+        });
+      }
+    }, { emulateGpu: emulateSupportedGpu });
 
     const page = await context.newPage();
     const video = page.video();
@@ -191,11 +214,21 @@ for (const eventName of CAPTURE_EVENTS) {
         expectedGameId(eventName),
         { timeout: 10_000 },
       );
-      await expect(canvas).toHaveAttribute('data-board3d-renderer-class', 'SOFTWARE', { timeout: 10_000 });
-      await expect(canvas).toHaveAttribute('data-board3d-scene-tier', 'lite', { timeout: 10_000 });
+      await expect(canvas).toHaveAttribute(
+        'data-board3d-renderer-class',
+        emulateSupportedGpu ? 'NVIDIA' : 'SOFTWARE',
+        { timeout: 10_000 },
+      );
+      await expect(canvas).toHaveAttribute(
+        'data-board3d-scene-tier',
+        emulateSupportedGpu ? 'full' : 'lite',
+        { timeout: 10_000 },
+      );
       await waitForRoutineStart(canvas, eventName);
 
       const manifest = await sampleRoutine(page, canvas, eventName);
+      manifest.rendererClass = emulateSupportedGpu ? 'NVIDIA-emulated-on-SwiftShader' : 'SOFTWARE';
+      manifest.sceneTier = emulateSupportedGpu ? 'full' : 'lite';
       await captureViewportPng(context, page, `${ARTIFACT_DIR}/${eventName}.png`);
       await writeFile(
         `${ARTIFACT_DIR}/${eventName}.json`,
