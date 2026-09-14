@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('./pawnSlugSpritesLegacy.js', () => ({
+vi.mock('./pawnSlugSpriteCore.js', () => ({
   PAWN_SLUG_SPRITE_META: { matthias: {}, enemies: {} },
   animateMatthiasSlugSprite: vi.fn(),
   animatePanzerRookSprite: vi.fn(),
+  createWeaponSprite: vi.fn(),
 }));
 vi.mock('./pawnSlugEnemyRunSprites.js', () => ({
   PAWN_SLUG_ENEMY_RUN_META: {},
