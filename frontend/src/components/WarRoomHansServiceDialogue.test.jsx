@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { hansDialogueAnchorScreenEligible } from './WarRoomHansServiceDialogue.jsx';
 import { warRoomHansChoreDialogueSpec } from './WarRoomHansChoreContract.js';
+import { hansDialogueAnchorScreenEligible } from './WarRoomHansDialogueAnchor.js';
 import { warRoomHansServiceDialogueSpec } from './WarRoomHansServiceContract.js';
 
 describe('Hans generic service dialogue coverage', () => {
@@ -14,7 +14,7 @@ describe('Hans generic service dialogue coverage', () => {
     expect(warRoomHansChoreDialogueSpec('hans-mail')?.speaker).toBe('HANS');
   });
 
-  it('keeps Hans reply anchoring alive at the viewport edge without rendering hidden actors', () => {
+  it('keeps every Hans dialogue anchored at the viewport edge without rendering hidden actors', () => {
     expect(hansDialogueAnchorScreenEligible('onscreen')).toBe(true);
     expect(hansDialogueAnchorScreenEligible('edge')).toBe(true);
     expect(hansDialogueAnchorScreenEligible('offscreen')).toBe(true);
