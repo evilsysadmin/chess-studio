@@ -16,6 +16,7 @@ jobs:
       run_frontend: ${{ steps.quality_paths.outputs.run_frontend }}
       run_backend: ${{ steps.quality_paths.outputs.run_backend }}
       run_e2e: ${{ steps.quality_paths.outputs.run_e2e }}
+      core_e2e_matrix: ${{ steps.quality_paths.outputs.core_e2e_matrix }}
       run_security: ${{ steps.quality_paths.outputs.run_security }}
       run_pawn_slug_e2e: ${{ steps.quality_paths.outputs.run_pawn_slug_e2e }}
       run_chesscom_e2e: ${{ steps.quality_paths.outputs.run_chesscom_e2e }}
@@ -345,12 +346,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       fail-fast: false
-      matrix:
-        lane:
-          - regression
-          - learning-golden
-          - learning-observation
-          - smoke
+      matrix: ${{ fromJSON(needs.preflight.outputs.core_e2e_matrix) }}
     steps:
       - uses: actions/checkout@v7
         with:
