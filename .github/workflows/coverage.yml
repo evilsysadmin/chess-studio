@@ -1,20 +1,22 @@
-name: Quality · coverage (informative)
+name: Quality · periodic signals
 
 on:
   workflow_dispatch:
   schedule:
     - cron: '17 3 1 * *'
+    - cron: '17 4 * * 1'
 
 permissions:
   contents: read
 
 concurrency:
-  group: coverage-${{ github.ref }}
+  group: quality-periodic-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   frontend-coverage:
     name: Frontend · V8 coverage
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 3 1 * *'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     continue-on-error: true
@@ -49,6 +51,7 @@ jobs:
 
   backend-coverage:
     name: Backend · branch coverage
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 3 1 * *'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     continue-on-error: true
@@ -78,3 +81,30 @@ jobs:
           path: backend-python/coverage.xml
           if-no-files-found: ignore
           retention-days: 7
+
+  codeql:
+    name: CodeQL · ${{ matrix.language }}
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 4 * * 1'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - javascript-typescript
+          - python
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: '/language:${{ matrix.language }}'
