@@ -44,6 +44,30 @@ describe('Hans service routing', () => {
     expect(hans.position.y).toBeCloseTo(groundedY, 6);
   });
 
+  it.each([1, -1])('keeps desk chores on the visible front when the room Z orientation is %s', (frontSign) => {
+    const root = new THREE.Group();
+    const parent = new THREE.Group();
+    const deskArt = new THREE.Group();
+    deskArt.name = 'war-room-teutonic-command-desk-v28';
+    deskArt.position.z = -2;
+
+    const deskTop = new THREE.Mesh(new THREE.BoxGeometry(3, 0.16, 1), new THREE.MeshBasicMaterial());
+    deskTop.name = 'war-room-command-desk-top';
+    deskTop.position.y = 1.03;
+    const drawer = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.16, 0.045), new THREE.MeshBasicMaterial());
+    drawer.name = 'war-room-command-desk-drawer';
+    drawer.position.z = frontSign * 0.405;
+    deskArt.add(deskTop, drawer);
+    root.add(parent, deskArt);
+    root.updateMatrixWorld(true);
+
+    const target = warRoomHansTargetNearObject(deskTop, parent, { offsetX: -1.72, offsetZ: 0.78 });
+
+    expect(target).toBeTruthy();
+    expect(target.z).toBeCloseTo(-2 + frontSign * 0.78, 6);
+    expect(Math.sign(target.z - deskArt.position.z)).toBe(frontSign);
+  });
+
   it('mirrors armour standoff toward the room on both side walls', () => {
     const root = new THREE.Group();
     const parent = new THREE.Group();
