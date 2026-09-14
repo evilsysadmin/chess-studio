@@ -27,7 +27,7 @@ function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
 }
 
-export function pawnSlugEnemyHitFlash(age = Number.POSITIVE_INFINITY, { hurt = false, type = 'pawn' } = {}) {
+export function pawnSlugEnemyHitFlashValues(age = Number.POSITIVE_INFINITY, hurt = false, type = 'pawn') {
   if (!hurt) return NEUTRAL_TINT;
 
   const seconds = Number(age);
@@ -48,4 +48,8 @@ export function pawnSlugEnemyHitFlash(age = Number.POSITIVE_INFINITY, { hurt = f
     b: sustained.b + hot * hotBoost.b,
     opacity: sustained.opacity + hot * (1 - sustained.opacity),
   });
+}
+
+export function pawnSlugEnemyHitFlash(age = Number.POSITIVE_INFINITY, { hurt = false, type = 'pawn' } = {}) {
+  return pawnSlugEnemyHitFlashValues(age, hurt, type);
 }

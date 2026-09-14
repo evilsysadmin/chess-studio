@@ -18,7 +18,7 @@ export const PAWN_SLUG_ENEMY_ENTRY_STAGGER = Object.freeze({
 
 export const PAWN_SLUG_ENEMY_ENTRY_DURATION = ENTRY_MOTION_SECONDS + PAWN_SLUG_ENEMY_ENTRY_STAGGER.rook;
 
-export function pawnSlugEnemyEntryPose(type = 'pawn', age = 0, { reducedMotion = false, enabled = true } = {}) {
+export function pawnSlugEnemyEntryPoseValues(type = 'pawn', age = 0, reducedMotion = false, enabled = true) {
   if (!enabled || reducedMotion) return IDENTITY;
   const safeAge = Math.max(0, Number(age) || 0);
   if (safeAge >= PAWN_SLUG_ENEMY_ENTRY_DURATION) return IDENTITY;
@@ -58,6 +58,10 @@ export function pawnSlugEnemyEntryPose(type = 'pawn', age = 0, { reducedMotion =
     sy: 0.96 + 0.04 * progress,
     active: true,
   });
+}
+
+export function pawnSlugEnemyEntryPose(type = 'pawn', age = 0, { reducedMotion = false, enabled = true } = {}) {
+  return pawnSlugEnemyEntryPoseValues(type, age, reducedMotion, enabled);
 }
 
 export const PAWN_SLUG_ENEMY_ENTRY_META = Object.freeze({
