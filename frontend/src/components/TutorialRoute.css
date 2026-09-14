@@ -1,5 +1,6 @@
 /* Matthias School and glossary styles stay with the lazy tutorial route. */
 @import '../styles/05-learning-guidance.css' layer(l05);
+@import './LearningStudioPremium.css';
 
 /* Escuela de Matthias · premium training room
    Keep the information architecture intact, but let the board and coaching
