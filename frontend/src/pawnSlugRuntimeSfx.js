@@ -1,23 +1,14 @@
-import {
-  destroyPawnSlugPremiumSfx,
-  playPawnSlugEnemyImpactSfx,
-  playPawnSlugEnemyKoSfx,
-  playPawnSlugPlayerHitSfx,
-  playPawnSlugWeaponSfx,
-} from './pawnSlugSfx.js';
 import { pawnSlugClamp } from './pawnSlugRuntimeCore.js';
-
-const WEAPON_CUES = new Set(['pistol', 'machinegun', 'shotgun', 'panzerfaust']);
 
 export function createPawnSlugRuntimeSfx() {
   if (typeof window === 'undefined') return { play() {}, setVolume() {}, destroy() {} };
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return { play() {}, setVolume() {}, destroy() {} };
   let ctx = null;
   let master = null;
   let volume = 1;
 
   function ensure() {
-    if (!AudioCtx) return null;
     if (ctx) return ctx;
     ctx = new AudioCtx();
     master = ctx.createGain();
@@ -26,11 +17,10 @@ export function createPawnSlugRuntimeSfx() {
     return ctx;
   }
 
-  function tone(freq, duration, type = 'square', gainValue = 0.32, slide = 0, delay = 0) {
+  function tone(freq, duration, type = 'square', gainValue = 0.32, slide = 0) {
     const audio = ensure();
-    if (!audio || !master) return;
     if (audio.state === 'suspended') void audio.resume().catch(() => {});
-    const now = audio.currentTime + 0.005 + delay;
+    const now = audio.currentTime + 0.005;
     const osc = audio.createOscillator();
     const gain = audio.createGain();
     osc.type = type;
@@ -46,11 +36,10 @@ export function createPawnSlugRuntimeSfx() {
 
   function noise(duration = 0.12, gainValue = 0.18) {
     const audio = ensure();
-    if (!audio || !master) return;
     const length = Math.max(1, Math.floor(audio.sampleRate * duration));
     const buffer = audio.createBuffer(1, length, audio.sampleRate);
     const data = buffer.getChannelData(0);
-    for (let index = 0; index < length; index += 1) data[index] = (Math.random() * 2 - 1) * (1 - index / length);
+    for (let i = 0; i < length; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / length);
     const source = audio.createBufferSource();
     const gain = audio.createGain();
     source.buffer = buffer;
@@ -60,46 +49,24 @@ export function createPawnSlugRuntimeSfx() {
     source.start();
   }
 
-  function playUiCue(kind) {
-    if (kind === 'pickup') {
-      tone(440, 0.08, 'square', 0.15, 220);
-      tone(660, 0.09, 'square', 0.12, 220, 0.045);
-    } else if (kind === 'levelUp') {
-      tone(392, 0.08, 'triangle', 0.16, 120);
-      tone(523, 0.09, 'triangle', 0.14, 160, 0.07);
-      tone(784, 0.12, 'triangle', 0.12, 120, 0.145);
-    } else if (kind === 'grenade') {
-      noise(0.28, 0.36);
-      tone(58, 0.24, 'triangle', 0.3, -25);
-    } else if (kind === 'boss') {
-      tone(55, 0.32, 'sawtooth', 0.22, 22);
-      tone(73, 0.32, 'sawtooth', 0.18, -18, 0.18);
-    }
-  }
-
   return {
-    play(kind, { enemy = false, enemyType = 'pawn', ko = false } = {}) {
-      if (WEAPON_CUES.has(kind)) {
-        playPawnSlugWeaponSfx(kind, { enemy });
-        return;
-      }
-      if (kind === 'hit') {
-        if (ko) playPawnSlugEnemyKoSfx(enemyType);
-        else playPawnSlugEnemyImpactSfx(enemyType);
-        return;
-      }
-      if (kind === 'hurt') {
-        playPawnSlugPlayerHitSfx();
-        return;
-      }
-      playUiCue(kind);
+    play(kind) {
+      if (kind === 'pistol') tone(220, 0.055, 'square', 0.22, -100);
+      else if (kind === 'machinegun') tone(155, 0.045, 'square', 0.16, -65);
+      else if (kind === 'shotgun') { noise(0.12, 0.28); tone(92, 0.12, 'sawtooth', 0.2, -45); }
+      else if (kind === 'panzerfaust') { noise(0.22, 0.34); tone(70, 0.2, 'sawtooth', 0.24, -35); }
+      else if (kind === 'grenade') { noise(0.28, 0.36); tone(58, 0.24, 'triangle', 0.3, -25); }
+      else if (kind === 'hit') tone(105, 0.06, 'square', 0.13, -35);
+      else if (kind === 'pickup') { tone(440, 0.08, 'square', 0.15, 220); setTimeout(() => tone(660, 0.09, 'square', 0.12, 220), 45); }
+      else if (kind === 'levelUp') { tone(392, 0.08, 'triangle', 0.16, 120); setTimeout(() => tone(523, 0.09, 'triangle', 0.14, 160), 70); setTimeout(() => tone(784, 0.12, 'triangle', 0.12, 120), 145); }
+      else if (kind === 'hurt') { noise(0.08, 0.14); tone(84, 0.13, 'sawtooth', 0.18, -30); }
+      else if (kind === 'boss') { tone(55, 0.32, 'sawtooth', 0.22, 22); setTimeout(() => tone(73, 0.32, 'sawtooth', 0.18, -18), 180); }
     },
     setVolume(value) {
       volume = pawnSlugClamp(Number(value) || 0, 0, 1);
       if (master) master.gain.value = 0.055 * volume;
     },
     destroy() {
-      destroyPawnSlugPremiumSfx();
       if (!ctx) return;
       try { master?.disconnect(); } catch {}
       void ctx.close().catch(() => {});
