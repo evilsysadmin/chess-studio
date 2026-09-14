@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import InsightsDashboardContent from './InsightsDashboardContent.jsx';
 import InsightsRecurringErrors from './InsightsRecurringErrors.jsx';
@@ -8,6 +8,10 @@ import InsightsGuidedSession from './InsightsGuidedSession.jsx';
 import InsightsMatthiasCampaign from './InsightsMatthiasCampaign.jsx';
 import InsightsMatthiasMotion from './InsightsMatthiasMotion.jsx';
 import CareerActivityCalendar from './CareerActivityCalendar.jsx';
+import { loadPersonalPuzzles } from '../personalPuzzles.js';
+import { loadCleanGameRecords } from '../cleanGames.js';
+import { loadRivalry } from '../rivalry.js';
+import { buildPlayerModel } from '../playerModel.js';
 import './InsightsWorkspace.css';
 
 const DIAGNOSIS_VIEWS = [
@@ -39,6 +43,16 @@ export default function InsightsScreen(props) {
   const [section, setSection] = useState(() => normalizeInsightsSection(props.initialSection));
   const [diagnosisView, setDiagnosisView] = useState(() => normalizeInsightsDiagnosisView(props.initialDiagnosisView));
   const isCareer = section === 'career';
+  const gameHistoryLength = Array.isArray(props.gameHistory) ? props.gameHistory.length : 0;
+  const personalPuzzles = useMemo(() => loadPersonalPuzzles(), [gameHistoryLength]);
+  const cleanGameRecords = useMemo(() => loadCleanGameRecords(), [gameHistoryLength]);
+  const rivalry = useMemo(() => loadRivalry(), []);
+  const playerModel = useMemo(() => buildPlayerModel({
+    insights: props.insights,
+    personalPuzzles,
+    cleanGameRecords,
+    timeControlStats: rivalry?.record?.byTimeControl,
+  }), [props.insights, personalPuzzles, cleanGameRecords, rivalry]);
 
   return (
     <div className={`insights-coach-workspace insights-workspace-section-${section} insights-workspace-view-${diagnosisView}`}>
@@ -112,6 +126,7 @@ export default function InsightsScreen(props) {
               gameHistory={props.gameHistory}
               onOpenPuzzles={props.onOpenPuzzles}
               onPlayFromHere={props.onPlayFromHere}
+              playerModel={playerModel}
             />
             <InsightsOptionalPlans>
               <InsightsMatthiasCampaign
@@ -119,16 +134,16 @@ export default function InsightsScreen(props) {
                 onOpenPuzzles={props.onOpenPuzzles}
                 onPlayFromHere={props.onPlayFromHere}
               />
-              <InsightsWeeklyGoals onOpenPuzzles={props.onOpenPuzzles} />
+              <InsightsWeeklyGoals onOpenPuzzles={props.onOpenPuzzles} playerModel={playerModel} />
             </InsightsOptionalPlans>
           </>
         ) : null}
         {!isCareer && diagnosisView === 'errors' ? (
-          <InsightsRecurringErrors onOpenPuzzles={props.onOpenPuzzles} />
+          <InsightsRecurringErrors onOpenPuzzles={props.onOpenPuzzles} playerModel={playerModel} />
         ) : null}
-        {!isCareer && diagnosisView === 'dossier' ? <InsightsCleanGames /> : null}
+        {!isCareer && diagnosisView === 'dossier' ? <InsightsCleanGames playerModel={playerModel} /> : null}
         {isCareer ? <CareerActivityCalendar history={props.gameHistory || []} /> : null}
-        <InsightsDashboardContent key={section} {...props} initialSection={section} />
+        <InsightsDashboardContent key={section} {...props} initialSection={section} playerModel={playerModel} />
       </div>
 
       {!isCareer && diagnosisView === 'now' ? <InsightsMatthiasMotion /> : null}
