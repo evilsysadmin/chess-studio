@@ -401,7 +401,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        lane: [regression, learning-golden, learning-observation, smoke]
+        lane:
+          - regression
+          - learning-golden
+          - learning-observation
+          - smoke
     steps:
       - uses: actions/checkout@v7
         with:
