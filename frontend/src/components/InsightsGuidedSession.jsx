@@ -24,14 +24,15 @@ export default function InsightsGuidedSession({
   gameHistory = [],
   onOpenPuzzles,
   onPlayFromHere,
+  playerModel = null,
 }) {
   const [session, setSession] = useState(() => loadGuidedTrainingSession());
   const [completion, setCompletion] = useState(() => loadGuidedTrainingCompletion());
   const plans = useMemo(() => ({
-    5: buildGuidedTrainingPlan({ minutes: 5, history: gameHistory }),
-    15: buildGuidedTrainingPlan({ minutes: 15, history: gameHistory }),
-    30: buildGuidedTrainingPlan({ minutes: 30, history: gameHistory }),
-  }), [gameHistory]);
+    5: buildGuidedTrainingPlan({ minutes: 5, history: gameHistory, playerModel }),
+    15: buildGuidedTrainingPlan({ minutes: 15, history: gameHistory, playerModel }),
+    30: buildGuidedTrainingPlan({ minutes: 30, history: gameHistory, playerModel }),
+  }), [gameHistory, playerModel]);
 
   function begin(minutes) {
     clearGuidedTrainingCompletion();
