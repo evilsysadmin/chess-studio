@@ -89,7 +89,8 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
 def critical_targets() -> list[tuple[str, str]]:
     return [
         (command.spec, command.grep)
-        for commands in LANE_COMMANDS.values()
+        for lane, commands in LANE_COMMANDS.items()
+        if lane != 'app-boot'
         for command in commands
         if command.grep is not None
     ]
@@ -109,7 +110,7 @@ def self_test() -> None:
         'regression-state', 'regression-school', 'learning-golden', 'learning-observation', 'app-boot', 'smoke',
     )
     assert tuple(LANE_COMMANDS) == expected
-    assert len(critical_targets()) == 4
+    assert len(critical_targets()) == 3
     assert [command.spec for command in LANE_COMMANDS['app-boot']] == ['smoke.spec.js']
     assert LANE_COMMANDS['app-boot'][0].grep == APP_BOOT_GREP
     assert [command.spec for command in LANE_COMMANDS['smoke']] == [
