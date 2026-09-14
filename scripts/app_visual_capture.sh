@@ -2,15 +2,62 @@
 set -euo pipefail
 
 mode="${1:-canonical}"
+groups="${2:-all}"
 cd e2e
+
+has_group() {
+  local needle="$1"
+  [[ ",$groups," == *",all,"* || ",$groups," == *",$needle,"* ]]
+}
 
 case "$mode" in
   canonical)
+    if [[ "$groups" == "none" ]]; then
+      echo "App visual capture: no canonical surface selected."
+      exit 0
+    fi
+
+    specs=()
+    if has_group home; then
+      specs+=(
+        app-visual-artifact.spec.js
+        matthias-home-visual-artifact.spec.js
+        home-3d-focus-visual.spec.js
+      )
+    fi
+    if has_group experiments; then
+      specs+=(
+        experiments-visual-artifact.spec.js
+        chronicles-avatar-visual-artifact.spec.js
+      )
+    fi
+    if has_group training; then
+      specs+=(training-visual-artifact.spec.js)
+    fi
+    if has_group warroom; then
+      specs+=(
+        war-room-visual-artifact.spec.js
+        war-room-decor-visual-artifact.spec.js
+        war-room-armor-oblique-visual-artifact.spec.js
+        war-room-hans-visual-artifact.spec.js
+      )
+    fi
+    if has_group health; then
+      specs+=(
+        browser-runtime-health.spec.js
+        browser-storage-health.spec.js
+      )
+    fi
+
+    if (( ${#specs[@]} == 0 )); then
+      echo "App visual capture: scope '$groups' resolved to no canonical specs."
+      exit 0
+    fi
+
+    echo "App visual capture groups: $groups"
+    printf ' - %s\n' "${specs[@]}"
     ./node_modules/.bin/playwright test \
-      {app,experiments,chronicles-avatar,training,war-room,war-room-decor,war-room-armor-oblique,war-room-hans}-visual-artifact.spec.js \
-      matthias-home-visual-artifact.spec.js \
-      home-3d-focus-visual.spec.js \
-      browser-{runtime,storage}-health.spec.js \
+      "${specs[@]}" \
       --workers=1 --retries=0
     ;;
   hans)
