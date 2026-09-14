@@ -4,11 +4,11 @@ import {
   createPawnSlugInitialState,
   createPawnSlugInputState,
   pawnSlugClamp,
-  pawnSlugKeyAction,
   pawnSlugWorldX,
   resetPawnSlugInput,
 } from './pawnSlugRuntimeCore.js';
 import { pawnSlugRuntimeHud } from './pawnSlugRuntimeHud.js';
+import { createPawnSlugRuntimeInputController } from './pawnSlugRuntimeInput.js';
 import { createPawnSlugRuntimeSfx } from './pawnSlugRuntimeSfx.js';
 import { createPawnSlugRuntimeView } from './pawnSlugRuntimeView.js';
 import { createPawnSlugWeaponSystem } from './pawnSlugRuntimeWeapons.js';
@@ -132,6 +132,8 @@ export function createPawnSlugRuntime(host, { onReady, onHud } = {}) {
     syncFrameLoop();
   }
 
+  const inputController = createPawnSlugRuntimeInputController(runtime, { startMission });
+
   function update(dt) {
     if (paused) return;
     const state = runtime.state;
@@ -157,50 +159,6 @@ export function createPawnSlugRuntime(host, { onReady, onHud } = {}) {
     runtime.combat.checkVictory();
   }
 
-  function setInput(action, pressed = true) {
-    if (action === 'action') {
-      if (pressed && ['ready', 'gameover', 'victory'].includes(runtime.state.phase)) startMission();
-      return;
-    }
-    if (action === 'weapon-prev') {
-      if (pressed) runtime.weapons.cycleWeapon(-1);
-      return;
-    }
-    if (action === 'weapon-next') {
-      if (pressed) runtime.weapons.cycleWeapon(1);
-      return;
-    }
-    if (action.startsWith('weapon:')) {
-      if (pressed) runtime.weapons.selectWeapon(action.slice('weapon:'.length));
-      return;
-    }
-    if (action === 'fire') {
-      const next = Boolean(pressed);
-      if (next && !runtime.input.fire) runtime.input.firePressed = true;
-      runtime.input.fire = next;
-      return;
-    }
-    if (!(action in runtime.input)) return;
-    runtime.input[action] = Boolean(pressed);
-  }
-
-  function onKeyDown(event) {
-    const action = pawnSlugKeyAction(event);
-    if (!action) return;
-    if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown', ' '].includes(event.key.toLowerCase())) event.preventDefault();
-    if (event.repeat && action.startsWith('weapon')) return;
-    if (['ready', 'gameover', 'victory'].includes(runtime.state.phase)) {
-      if (action === 'fire' || action === 'jump') startMission();
-      return;
-    }
-    setInput(action, true);
-  }
-
-  function onKeyUp(event) {
-    const action = pawnSlugKeyAction(event);
-    if (action) setInput(action, false);
-  }
-
   function onVisibility() {
     visible = document.visibilityState !== 'hidden';
     syncFrameLoop();
@@ -215,8 +173,7 @@ export function createPawnSlugRuntime(host, { onReady, onHud } = {}) {
     }, { threshold: 0.01 })
     : null;
   intersectionObserver?.observe(host);
-  window.addEventListener('keydown', onKeyDown, { passive: false });
-  window.addEventListener('keyup', onKeyUp);
+  inputController.attach();
   document.addEventListener('visibilitychange', onVisibility);
   view.resize();
   runtime.player.placePlayer();
@@ -237,7 +194,7 @@ export function createPawnSlugRuntime(host, { onReady, onHud } = {}) {
 
   return {
     input(action, pressed = true) {
-      setInput(action, pressed);
+      inputController.input(action, pressed);
     },
     setPaused(value) {
       paused = Boolean(value);
@@ -257,8 +214,7 @@ export function createPawnSlugRuntime(host, { onReady, onHud } = {}) {
       frame = 0;
       resizeObserver?.disconnect();
       intersectionObserver?.disconnect();
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
+      inputController.destroy();
       document.removeEventListener('visibilitychange', onVisibility);
       setAmbientDuck(false);
       runtime.sfx.destroy();
