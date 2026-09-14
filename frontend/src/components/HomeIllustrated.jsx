@@ -174,10 +174,6 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             </button>
           );
         })}
-        <header className="illustrated-home__brand">
-          <h1>Chess Studio</h1>
-          <p>JUEGA · APRENDE · COMPITE</p>
-        </header>
         <nav aria-label="Destinos del gran salón">
           {rooms.map(([id, title, detail, Icon, action]) => (
             <Fragment key={id}>
@@ -262,7 +258,6 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
           </span>
         </button>
         </aside>
-        <footer className="illustrated-home__motto"><span aria-hidden="true">─　♛　─</span><p>DISCIPLINA · ESTRATEGIA · UN MUNDO MEJOR</p></footer>
         <div className={`illustrated-home__utilities${toolsOpen ? ' is-open' : ''}`}>
           <button
             className="illustrated-home__dungeon-trigger"
