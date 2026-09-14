@@ -135,7 +135,7 @@ for (const eventName of CAPTURE_EVENTS) {
       hasTouch: false,
       recordVideo: {
         dir: TEMP_VIDEO_DIR,
-        size: { width: 800, height: 500 },
+        size: { width: 640, height: 400 },
       },
     });
     await context.addInitScript(() => {
