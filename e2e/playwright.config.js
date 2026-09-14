@@ -1,15 +1,19 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const allBrowsers = process.env.PLAYWRIGHT_ALL_BROWSERS === '1';
+const fullSweep = process.env.PLAYWRIGHT_FULL_SWEEP === '1';
 const chaosMode = process.env.CHESS_CHAOS === '1';
 const ciMode = Boolean(process.env.CI);
 const stagingLiveSpec = '**/staging-live.spec.js';
+const testIgnore = chaosMode
+  ? [stagingLiveSpec]
+  : ['**/chaos-local.spec.js', stagingLiveSpec];
+if (fullSweep) testIgnore.push('**/regression-journeys.spec.js');
 
 export default defineConfig({
   testDir: '.',
-  testIgnore: chaosMode
-    ? [stagingLiveSpec]
-    : ['**/chaos-local.spec.js', stagingLiveSpec],
+  testMatch: fullSweep ? ['**/*.spec.js', '**/regression-journeys-core.js'] : undefined,
+  testIgnore,
   reporter: ciMode ? [['list']] : [['line']],
   // Production/staging now enter Three/WebGL by default. Hosted CI has no GPU
   // budget comparable to a developer browser, so give *CI only* enough time to
