@@ -5,6 +5,7 @@ import {
   WAR_ROOM_HANS_CANONICAL_SCALE,
   WAR_ROOM_HANS_MOTION_POLISH_V2_VERSION,
 } from './WarRoomHansMotionPolishV2.js';
+import { setWarRoomHansCrouchIntent } from './WarRoomHansTransformOwner.js';
 
 function makeRig() {
   const root = new THREE.Group();
@@ -152,10 +153,11 @@ describe('Hans motion polish v2', () => {
     expect(driver.userData.warRoomHansArmorClearance).toBe('box3-expanded-by-hans-v1');
   });
 
-  it('picks up a log by folding at the hips with asymmetric weight instead of sinking the whole rig', () => {
+  it('picks up a log from explicit crouch intent without changing grounded root Y', () => {
     const { root, hans, driver } = makeRig();
     driver.onBeforeRender = () => {
-      hans.position.set(-1.62, -0.49, 0.72);
+      hans.position.set(-1.62, -0.612, 0.72);
+      setWarRoomHansCrouchIntent(hans, 0.15, 'test-pick-log');
       driver.userData.warRoomHansPhase = 'take-log';
       hans.userData.refs.carriedLog.visible = false;
     };
@@ -164,7 +166,7 @@ describe('Hans motion polish v2', () => {
     driver.onBeforeRender();
 
     const { torso, head, leftLeg, rightLeg, leftArm, rightArm } = hans.userData.refs;
-    expect(hans.position.y).toBeCloseTo(-0.34, 6);
+    expect(hans.position.y).toBeCloseTo(-0.612, 6);
     expect(Math.abs(torso.rotation.x)).toBeGreaterThan(0.25);
     expect(Math.abs(head.rotation.x)).toBeGreaterThan(0.1);
     expect(leftLeg.rotation.x).toBeGreaterThan(0.1);
@@ -172,12 +174,14 @@ describe('Hans motion polish v2', () => {
     expect(rightArm.rotation.x).toBeLessThan(leftArm.rotation.x - 0.35);
     expect(hans.userData.warRoomHansMotionState).toBe('pick-log');
     expect(hans.userData.warRoomHansActionPose).toBe('pick-log');
+    expect(hans.userData.warRoomHansVerticalPoseInput).toBe('transform-owner-crouch-intent-v1');
   });
 
-  it('places the log with a forward reach and staggered stance instead of repeating the pickup squat', () => {
+  it('places the log from explicit crouch intent while preserving grounded root Y', () => {
     const { root, hans, driver } = makeRig();
     driver.onBeforeRender = () => {
-      hans.position.set(-0.9, -0.45, 0.72);
+      hans.position.set(-0.9, -0.588, 0.72);
+      setWarRoomHansCrouchIntent(hans, 0.11, 'test-place-log');
       driver.userData.warRoomHansPhase = 'place-log';
       hans.userData.refs.carriedLog.visible = true;
     };
@@ -186,13 +190,14 @@ describe('Hans motion polish v2', () => {
     driver.onBeforeRender();
 
     const { torso, leftLeg, rightLeg, leftArm, rightArm } = hans.userData.refs;
-    expect(hans.position.y).toBeCloseTo(-0.34, 6);
+    expect(hans.position.y).toBeCloseTo(-0.588, 6);
     expect(Math.abs(torso.rotation.x)).toBeGreaterThan(0.15);
     expect(Math.abs(torso.position.z)).toBeGreaterThan(0.015);
     expect(leftLeg.rotation.x).toBeGreaterThan(0.05);
     expect(rightLeg.rotation.x).toBeLessThan(0);
     expect(rightArm.rotation.x).toBeLessThan(leftArm.rotation.x - 0.1);
     expect(hans.userData.warRoomHansMotionState).toBe('place-log');
+    expect(hans.userData.warRoomHansVerticalPoseInput).toBe('transform-owner-crouch-intent-v1');
   });
 
   it('stokes from a planted stance with arm thrust rather than a full-body genuflection', () => {

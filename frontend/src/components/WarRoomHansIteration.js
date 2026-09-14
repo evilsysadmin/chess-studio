@@ -8,6 +8,7 @@ import {
   ensureWarRoomHansServiceDoor,
   setWarRoomHansServiceDoorOpen,
 } from './WarRoomHansServiceDoor.js';
+import { setWarRoomHansCrouchIntent } from './WarRoomHansTransformOwner.js';
 
 const QUICK_ITERATION_VERSION = 'always-quick-v10-slow-obstacle-safe';
 const QUICK_ENTRY_SECONDS = 7;
@@ -427,7 +428,7 @@ function applyHansFacingTarget(hans, targetName, side, towardBoard, doorDepth) {
 
 function applyHansTransform(hans, frame, side, towardBoard, doorDepth) {
   hans.position.x = side * frame.hansX;
-  hans.position.y = -0.34 - Number(frame.crouch || 0);
+  setWarRoomHansCrouchIntent(hans, frame.crouch, 'quick-iteration-crouch');
   hans.position.z = towardBoard * routeDepth(frame, doorDepth);
   applyHansFacingTarget(
     hans,
@@ -471,6 +472,8 @@ function applyQuickIterationFrame(refs, frame, towardBoard) {
     hans.userData.warRoomHansChoreographyPhase = frame.choreography || frame.phase;
     hans.userData.warRoomHansFacingTarget = frame.facingTarget || null;
     hans.userData.warRoomHansRoute = frame.route || null;
+  } else {
+    setWarRoomHansCrouchIntent(hans, 0, 'quick-iteration-hidden');
   }
   if (standPoker) standPoker.visible = !frame.carryPoker;
 
@@ -552,6 +555,7 @@ function armQuickIteration(root, towardBoard, doorRefs, { coarsePointer = false 
   driver.userData.warRoomHansChoreography = 'door-log-fire-poker-armor-bypass-door-v3';
   driver.userData.warRoomHansFrameHotPath = 'scratch-writer-v2';
   driver.userData.warRoomHansFacingHotPath = 'scalar-targets-v1';
+  driver.userData.warRoomHansVerticalPoseOutput = 'transform-owner-crouch-intent-v1';
 
   const initialFrame = writeHansQuickIterationFrame(frameScratch, 0, useCoarseEntry);
   if (awaitCall) {

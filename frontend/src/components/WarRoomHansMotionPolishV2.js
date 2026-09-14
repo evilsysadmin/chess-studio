@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import { warRoomHansCrouchIntent } from './WarRoomHansTransformOwner.js';
 
-export const WAR_ROOM_HANS_MOTION_POLISH_V2_VERSION = 'grounded-butler-motion-v3-articulated';
+export const WAR_ROOM_HANS_MOTION_POLISH_V2_VERSION = 'grounded-butler-motion-v4-transform-owner-crouch';
 export const WAR_ROOM_HANS_CANONICAL_SCALE = 0.74;
 
 const LEGACY_MOTION_MARKER = 'grounded-butler-motion-v1';
@@ -12,7 +13,6 @@ const VISUAL_ROOT_NAME = 'war-room-hans-visual-root';
 const HANS_UNSCALED_HALF_WIDTH = 0.49;
 const WALL_MARGIN = 0.13;
 const ARMOR_MARGIN = 0.16;
-const STANDING_Y = -0.34;
 const ENTRY_DOOR_X = 2.65;
 const ENTRY_BASKET_X = -1.62;
 const ENTRY_WORK_Z = 0.72;
@@ -401,10 +401,8 @@ export function installWarRoomHansMotionPolish(root) {
 
     const phase = driver.userData?.warRoomHansPhase || hans.userData?.warRoomHansChoreographyPhase || 'idle';
     const route = hans.userData?.warRoomHansRoute || null;
-    const rawCrouch = Math.max(0, STANDING_Y - Number(hans.position.y || STANDING_Y));
+    const rawCrouch = warRoomHansCrouchIntent(hans);
     const rawStoke = Number(body.carriedPoker?.rotation?.z || 0);
-
-    hans.position.y = STANDING_Y;
 
     entryPathOptions.phase = phase;
     entryPathOptions.route = route;
@@ -460,6 +458,7 @@ export function installWarRoomHansMotionPolish(root) {
     hans.userData.warRoomHansMovementFacing = moving ? 'velocity-vector' : 'work-target';
     hans.userData.warRoomHansEntryRouteStage = entryRouteStage || hans.userData.warRoomHansEntryRouteStage || null;
     hans.userData.warRoomHansMotionHotPath = MOTION_HOT_PATH_VERSION;
+    hans.userData.warRoomHansVerticalPoseInput = 'transform-owner-crouch-intent-v1';
 
     previousX = currentX;
     previousZ = currentZ;
@@ -477,5 +476,6 @@ export function installWarRoomHansMotionPolish(root) {
   driver.userData.warRoomHansArmorClearance = 'box3-expanded-by-hans-v1';
   driver.userData.warRoomHansActionPoses = 'pick-place-stoke-articulated-v1';
   driver.userData.warRoomHansEntryPath = 'door-bypass-rear-wall-v1';
+  driver.userData.warRoomHansVerticalPoseInput = 'transform-owner-crouch-intent-v1';
   return 1;
 }
