@@ -94,6 +94,27 @@ function applyPremiumWindow(sprite) {
   atlas.premiumWindowKey = key;
 }
 
+export function pawnSlugPremiumEnemyRenderStatus(sprite) {
+  const atlas = sprite?.userData?.atlas;
+  const material = sprite?.material;
+  return [
+    atlas?.source || 'unknown',
+    material?.visible !== false ? 'visible' : 'hidden',
+    material?.map ? 'mapped' : 'unmapped',
+    sprite?.userData?.pawnSlugEnemyReadability ? 'readable' : 'depth',
+    sprite?.parent ? 'attached' : 'detached',
+  ].join(':');
+}
+
+function publishPremiumEnemyRenderStatus(sprite) {
+  if (typeof document === 'undefined') return;
+  const stage = document.querySelector?.('[data-pawn-slug-renderer="three"]');
+  if (!stage?.dataset) return;
+  const status = pawnSlugPremiumEnemyRenderStatus(sprite);
+  if (!status.startsWith('premium-')) return;
+  if (stage.dataset.pawnSlugEnemyVisual !== status) stage.dataset.pawnSlugEnemyVisual = status;
+}
+
 function releaseSupersededPreferredTexture(texture, currentTexture) {
   if (!texture) return;
   if (texture.userData) delete texture.userData.pawnSlugPremiumEnemyRetained;
@@ -105,7 +126,10 @@ export function reassertPawnSlugPremiumEnemyTexture(sprite) {
   const preferred = atlas?.premiumVisual;
   const texture = preferred?.texture;
   if (!atlas || atlas.disposed || !texture || !preferred.source) return false;
-  if (atlas.texture === texture && atlas.source === preferred.source && sprite.material?.map === texture) return false;
+  if (atlas.texture === texture && atlas.source === preferred.source && sprite.material?.map === texture) {
+    publishPremiumEnemyRenderStatus(sprite);
+    return false;
+  }
 
   const previous = atlas.texture;
   atlas.texture = texture;
@@ -119,6 +143,7 @@ export function reassertPawnSlugPremiumEnemyTexture(sprite) {
   }
   applyPremiumWindow(sprite);
   if (pawnSlugShouldDisposePreviousTexture(previous, texture)) previous.dispose?.();
+  publishPremiumEnemyRenderStatus(sprite);
   return true;
 }
 
@@ -170,6 +195,7 @@ function installPremiumRaster(sprite) {
       releaseSupersededPreferredTexture(supersededPreferred, previous);
     }
     if (pawnSlugShouldDisposePreviousTexture(previous, texture)) previous.dispose?.();
+    publishPremiumEnemyRenderStatus(sprite);
     return true;
   };
 
@@ -230,6 +256,7 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
   reassertPawnSlugPremiumEnemyTexture(sprite);
   animateBaseSlugEnemySprite(sprite, type, time, state);
   applyPremiumWindow(sprite);
+  publishPremiumEnemyRenderStatus(sprite);
 }
 
 export { pawnSlugEnemyRunAtlasWindow };
@@ -251,5 +278,6 @@ export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
   sourceDecodePolicy: 'shared-once-per-page-cloned-per-enemy',
   sharedDecodedSourceCount: 2,
   lateFallbackOverwriteProtection: true,
+  browserRenderContract: 'data-pawn-slug-enemy-visual',
   proceduralRole: 'last-resort',
 });
