@@ -44,7 +44,14 @@ function poseCacheKey(action, frame, type, variant, vy) {
   return (((typeIndex * 7 + actionIndex) * 16 + frame) * 3 + variantIndex) * 2 + jumpDirection;
 }
 
-export function pawnSlugEnemyActionForState({ moving = false, hurt = false, airborne = false, crouch = false, climbing = false, dying = false } = {}) {
+export function pawnSlugEnemyActionForFlags(
+  moving = false,
+  hurt = false,
+  airborne = false,
+  crouch = false,
+  climbing = false,
+  dying = false,
+) {
   if (dying) return 'death';
   if (hurt) return 'hurt';
   if (climbing) return 'climb';
@@ -54,7 +61,11 @@ export function pawnSlugEnemyActionForState({ moving = false, hurt = false, airb
   return 'idle';
 }
 
-export function pawnSlugEnemyActionTime(action = 'idle', { time = 0, hurtStartedAt = null, deathAge = 0 } = {}) {
+export function pawnSlugEnemyActionForState({ moving = false, hurt = false, airborne = false, crouch = false, climbing = false, dying = false } = {}) {
+  return pawnSlugEnemyActionForFlags(moving, hurt, airborne, crouch, climbing, dying);
+}
+
+export function pawnSlugEnemyActionTimeValues(action = 'idle', time = 0, hurtStartedAt = null, deathAge = 0) {
   const safeTime = Math.max(0, Number(time) || 0);
   if (action === 'death') return Math.max(0, Number(deathAge) || 0);
   if (action === 'hurt') {
@@ -64,6 +75,10 @@ export function pawnSlugEnemyActionTime(action = 'idle', { time = 0, hurtStarted
       : 0;
   }
   return safeTime;
+}
+
+export function pawnSlugEnemyActionTime(action = 'idle', { time = 0, hurtStartedAt = null, deathAge = 0 } = {}) {
+  return pawnSlugEnemyActionTimeValues(action, time, hurtStartedAt, deathAge);
 }
 
 export function pawnSlugEnemyActionFrame(action = 'idle', time = 0, type = null) {
@@ -131,7 +146,7 @@ function hurtPose(type, phase) {
   return Object.freeze({ x: -0.145 * travel, y: bounce * 0.04, rz: 0.12 * twist, sx: 1 + 0.08 * compression, sy: 1 - 0.11 * compression });
 }
 
-export function pawnSlugEnemyActionPose(action = 'idle', actionFrame = 0, { vy = 0, type = 'pawn', variant = 0 } = {}) {
+export function pawnSlugEnemyActionPoseValues(action = 'idle', actionFrame = 0, vy = 0, type = 'pawn', variant = 0) {
   const safeAction = PAWN_SLUG_ENEMY_ACTIONS[action] ? action : 'idle';
   const track = PAWN_SLUG_ENEMY_ACTIONS[safeAction];
   const localFrame = track.loop === false ? clampFrame(actionFrame, track.frames) : wrapFrame(actionFrame, track.frames);
@@ -159,6 +174,10 @@ export function pawnSlugEnemyActionPose(action = 'idle', actionFrame = 0, { vy =
 
   ACTION_POSE_CACHE.set(key, pose);
   return pose;
+}
+
+export function pawnSlugEnemyActionPose(action = 'idle', actionFrame = 0, { vy = 0, type = 'pawn', variant = 0 } = {}) {
+  return pawnSlugEnemyActionPoseValues(action, actionFrame, vy, type, variant);
 }
 
 export const PAWN_SLUG_ENEMY_ACTION_META = Object.freeze({
