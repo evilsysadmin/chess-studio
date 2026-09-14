@@ -92,23 +92,44 @@
   outline-offset: 1px;
 }
 
+/* Treat the glossary as a reference desk, not a dashboard of repeated cards. */
 .chess-glossary-grid {
-  gap: .65rem;
+  gap: 0 1.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--ui-border, var(--ink-3)) 72%, transparent);
 }
 
 .chess-glossary-entry {
-  min-height: 96px;
-  padding: .8rem .84rem;
-  border-color: color-mix(in srgb, var(--ui-border, var(--ink-3)) 82%, transparent);
-  border-radius: 10px;
-  background:
-    linear-gradient(145deg, rgba(255,255,255,.015), transparent 48%),
-    rgba(0,0,0,.105);
-  box-shadow: inset 0 1px rgba(255,255,255,.018);
+  min-height: 0;
+  padding: .92rem .08rem 1rem;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--ui-border, var(--ink-3)) 70%, transparent);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .chess-glossary-entry strong {
+  display: block;
+  margin-bottom: .18rem;
   color: color-mix(in srgb, var(--brass) 88%, var(--parchment));
+  font-size: .9rem;
+  line-height: 1.25;
+}
+
+.chess-glossary-entry small {
+  display: block;
+  margin-bottom: .34rem;
+  color: var(--parchment-dim);
+  font-size: .58rem;
+  letter-spacing: .035em;
+  opacity: .72;
+}
+
+.chess-glossary-entry p {
+  margin: .22rem 0 0;
+  max-width: 58ch;
+  color: var(--parchment-dim);
+  line-height: 1.55;
 }
 
 .mechanic-library {
@@ -315,6 +336,7 @@
 
   .chess-glossary-entry {
     min-height: 0;
+    padding-inline: 0;
   }
 
   .mechanic-library-list {
