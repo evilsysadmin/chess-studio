@@ -365,12 +365,12 @@ jobs:
           CRITICAL_E2E_LANE: ${{ matrix.lane }}
         run: |
           case "$CRITICAL_E2E_LANE" in
-            regression)
+            regression-state)
               ./node_modules/.bin/playwright test regression-journeys.spec.js \
-                --grep "sesión · dos contextos de navegador|deploy · una release nueva no fuerza reload|admin · presencia distingue|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos|Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar" \
-                --grep-invert "y cierra el loop jugar → entrenar → volver a jugar|entrenamiento → segunda observación real no sobreafirma mejora" \
-                --workers=1 --retries=0 --timeout=75000
+                --grep "sesión · dos contextos de navegador|deploy · una release nueva no fuerza reload|admin · presencia distingue|Matthias · saluda una vez tras login y no repite el saludo con F5|Home · el avatar residente de Matthias abre Así juegas|Matthias · el briefing persistente aparece antes de una partida rápida|Matthias · banco de personalidad Admin usa sólo datos sintéticos" \
+                --grep-invert "y cierra el loop jugar → entrenar → volver a jugar|entrenamiento → segunda observación real no sobreafirma mejora" --workers=1 --retries=0 --timeout=75000
               ;;
+            regression-school) ./node_modules/.bin/playwright test regression-journeys.spec.js --grep "Escuela de Matthias · el primer movimiento se aprende hands-on y persiste tras F5|Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar" --workers=1 --retries=0 --timeout=75000 ;;
             learning-golden) ./node_modules/.bin/playwright test learning-golden-path.spec.js --workers=1 --retries=0 ;;
             learning-observation) ./node_modules/.bin/playwright test learning-second-observation.spec.js --workers=1 --retries=0 ;;
             smoke)
