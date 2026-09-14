@@ -33,11 +33,15 @@ def classify(files: list[str], *, event_name: str) -> Scope:
     return Scope(arm64=arm64, terraform=terraform)
 
 
-def changed_files(base_sha: str, head_sha: str) -> list[str]:
+def diff_spec(base_sha: str, head_sha: str) -> str:
     if not base_sha or not head_sha:
         raise ValueError("BASE_SHA y HEAD_SHA son obligatorios para eventos no manuales")
+    return f"{base_sha}...{head_sha}"
+
+
+def changed_files(base_sha: str, head_sha: str) -> list[str]:
     completed = subprocess.run(
-        ["git", "diff", "--name-only", base_sha, head_sha],
+        ["git", "diff", "--name-only", diff_spec(base_sha, head_sha)],
         check=True,
         capture_output=True,
         text=True,
@@ -52,6 +56,7 @@ def write_outputs(path: Path, scope: Scope) -> None:
 
 
 def self_test() -> None:
+    assert diff_spec("base", "head") == "base...head"
     assert classify([], event_name="workflow_dispatch") == Scope(True, True)
     assert classify(["backend-python/Dockerfile"], event_name="pull_request") == Scope(True, False)
     assert classify(["backend-python/requirements-dev.txt"], event_name="pull_request") == Scope(True, False)
