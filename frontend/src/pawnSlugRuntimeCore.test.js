@@ -31,9 +31,9 @@ describe('Pawn Slug runtime core', () => {
     expect(pawnSlugNearestCheckpoint(-999)).toBe(PAWN_SLUG_CHECKPOINTS[0]);
   });
 
-  it('keeps stable enemy variants stable without coupling them to runtime state', () => {
-    expect(pawnSlugStableEnemyVariant('ambush-7')).toBe(pawnSlugStableEnemyVariant('ambush-7'));
-    expect(pawnSlugStableEnemyVariant('ambush-7')).not.toBe(pawnSlugStableEnemyVariant('ambush-8'));
+  it('keeps stable enemy variants deterministic without coupling them to runtime state', () => {
+    expect(pawnSlugStableEnemyVariant('ambush-7')).toBe(2419767486);
+    expect(pawnSlugStableEnemyVariant('ambush-8')).toBe(2419767487);
   });
 
   it('maps keyboard controls without needing a live renderer', () => {
