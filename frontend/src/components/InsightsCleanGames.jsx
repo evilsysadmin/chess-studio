@@ -1,8 +1,8 @@
 import { CLEAN_GAME_MIN_ANALYZED_MOVES, loadCleanGameRecords } from '../cleanGames.js';
 import { buildPlayerModel } from '../playerModel.js';
 
-export default function InsightsCleanGames() {
-  const playerModel = buildPlayerModel({ cleanGameRecords: loadCleanGameRecords() });
+export default function InsightsCleanGames({ playerModel: sharedPlayerModel = null }) {
+  const playerModel = sharedPlayerModel || buildPlayerModel({ cleanGameRecords: loadCleanGameRecords() });
   const cleanPlay = playerModel.cleanPlay;
   const positiveDecisions = playerModel.positiveDecisions;
   const hasRepeatedPositiveEvidence = positiveDecisions?.gamesWithPreferredMoves >= 2;
