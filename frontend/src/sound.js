@@ -2,6 +2,7 @@ import { STORAGE_LOCAL, STORAGE_SESSION, getStorageItem, setStorageItem, removeS
 import { setProfileStorageItem } from './profileKeys.js';
 import { getAudioContext as getContext } from './audioContext.js';
 import { structuredFeel } from './ambientProfiles.js';
+import { structuredSectionInstrument } from './ambientInstrumentRouting.js';
 import {
   MUSIC_EXCLUDED_KEY,
   MUSIC_FAVORITES_KEY,
@@ -1724,11 +1725,11 @@ function startStructuredMusic(theme, startPositionMs = 0) {
     }
 
     if (lead != null && layerEnabled('lead') && shouldPlayStructuredLead(arrangement.leadMode, localStep, stepsPerSection)) {
-      playStructuredVoice(feel?.leadInstrument || section.leadInstrument || theme.leadInstrument, lead + t + arrangement.leadOctave, arrangement.leadVolume, null, tone);
+      playStructuredVoice(structuredSectionInstrument(theme, feel, section, 'lead'), lead + t + arrangement.leadOctave, arrangement.leadVolume, null, tone);
     }
     if (counter != null && layerEnabled('counter') && arrangement.leadMode !== 'sparse') {
       playStructuredVoice(
-        feel?.counterInstrument || section.counterInstrument || theme.counterInstrument || theme.leadInstrument,
+        structuredSectionInstrument(theme, feel, section, 'counter'),
         counter + t + arrangement.counterOctave,
         arrangement.counterVolume,
         null,
@@ -1736,12 +1737,12 @@ function startStructuredMusic(theme, startPositionMs = 0) {
       );
     }
     if (bass != null && layerEnabled('bass')) {
-      const bassInstrument = feel?.bassInstrument || section.bassInstrument || theme.bassInstrument;
+      const bassInstrument = structuredSectionInstrument(theme, feel, section, 'bass');
       const bassDuration = feel?.bassHoldSteps ? (theme.stepMs * feel.bassHoldSteps) / 1000 : null;
       playStructuredVoice(bassInstrument, bass + t, arrangement.bassVolume, bassDuration, tone);
     }
     if (chord && layerEnabled('chords')) {
-      const chordInstrument = feel?.chordInstrument || section.chordInstrument || theme.chordInstrument;
+      const chordInstrument = structuredSectionInstrument(theme, feel, section, 'chord');
       const longChord = ['organ', 'pad'].includes(chordInstrument);
       const chordHoldSteps = feel?.chordHoldSteps || (longChord ? 15.5 : null);
       const duration = chordHoldSteps ? (theme.stepMs * chordHoldSteps) / 1000 : null;
