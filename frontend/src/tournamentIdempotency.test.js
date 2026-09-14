@@ -15,11 +15,10 @@ describe('tournament result idempotency by game', () => {
 
     const retry = applyResult(staleState, 'win');
     expect(retry).toMatchObject({ gained: 20, leveledUp: true, newLevel: 2, duplicate: true });
-    expect(retry.state).toMatchObject({ progressPoints: 65, wins: 3, winStreak: 3, bestWinStreak: 3 });
-    expect(retry.state.processedGameIds).toContain('tournament-g1');
+    expect(retry.state).toMatchObject({ progressPoints: 65, wins: 3, winStreak: 3, bestWinStreak: 3, lastGameId: 'tournament-g1' });
 
     saveTournament(retry.state);
-    expect(loadTournament()).toMatchObject({ progressPoints: 65, wins: 3, draws: 1, losses: 0, winStreak: 3, bestWinStreak: 3 });
+    expect(loadTournament()).toMatchObject({ progressPoints: 65, wins: 3, draws: 1, losses: 0, winStreak: 3, bestWinStreak: 3, lastGameId: 'tournament-g1' });
   });
 
   it('una partida nueva sí puede avanzar después de una ya procesada', () => {
@@ -30,7 +29,6 @@ describe('tournament result idempotency by game', () => {
     saveActiveGameSession({ route: 'tournamentGame', game: { id: 'tournament-g2' } });
     const second = applyResult(loadTournament(), 'draw');
     expect(second.duplicate).toBe(false);
-    expect(second.state).toMatchObject({ progressPoints: 25, wins: 1, draws: 1 });
-    expect(second.state.processedGameIds).toEqual(expect.arrayContaining(['tournament-g1', 'tournament-g2']));
+    expect(second.state).toMatchObject({ progressPoints: 25, wins: 1, draws: 1, lastGameId: 'tournament-g2' });
   });
 });
