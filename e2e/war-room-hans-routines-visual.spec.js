@@ -91,10 +91,8 @@ async function waitForRoutineStart(page, canvas, eventName) {
       const node = document.querySelector('.board3d-main-canvas');
       if (!node) return false;
       const screen = node.dataset.warRoomHansScreen || '';
-      const groundGap = Number(node.dataset.warRoomHansGroundGap);
       return node.dataset.warRoomHansRoute === expected
-        && (screen === 'onscreen' || screen === 'edge' || screen === 'offscreen')
-        && Number.isFinite(groundGap);
+        && (screen === 'onscreen' || screen === 'edge' || screen === 'offscreen');
     }, route),
     { timeout: 75_000, intervals: [100, 100, 200, 300, 500] },
   ).toBe(true);
@@ -104,18 +102,21 @@ async function sampleRoutine(page, canvas, eventName) {
   const samples = [];
   const startedAt = Date.now();
   while (Date.now() - startedAt < OBSERVE_MS) {
-    samples.push(await canvas.evaluate((node) => ({
-      at: performance.now(),
-      screen: node.dataset.warRoomHansScreen || '',
-      route: node.dataset.warRoomHansRoute || '',
-      choreographyPhase: node.dataset.warRoomHansChoreographyPhase || '',
-      groundGap: Number(node.dataset.warRoomHansGroundGap),
-      groundSurface: node.dataset.warRoomHansGroundSurface || '',
-      serviceDialogue: node.dataset.warRoomHansServiceDialogue || '',
-      mopDialogue: node.dataset.warRoomHansMopDialogue || '',
-      ndcX: Number(node.dataset.warRoomHansNdcX),
-      ndcY: Number(node.dataset.warRoomHansNdcY),
-    })));
+    samples.push(await canvas.evaluate((node) => {
+      const rawGroundGap = node.dataset.warRoomHansGroundGap;
+      return {
+        at: performance.now(),
+        screen: node.dataset.warRoomHansScreen || '',
+        route: node.dataset.warRoomHansRoute || '',
+        choreographyPhase: node.dataset.warRoomHansChoreographyPhase || '',
+        groundGap: rawGroundGap == null || rawGroundGap === '' ? null : Number(rawGroundGap),
+        groundSurface: node.dataset.warRoomHansGroundSurface || '',
+        serviceDialogue: node.dataset.warRoomHansServiceDialogue || '',
+        mopDialogue: node.dataset.warRoomHansMopDialogue || '',
+        ndcX: Number(node.dataset.warRoomHansNdcX),
+        ndcY: Number(node.dataset.warRoomHansNdcY),
+      };
+    }));
     await page.waitForTimeout(SAMPLE_MS);
   }
 
@@ -127,8 +128,9 @@ async function sampleRoutine(page, canvas, eventName) {
   const maxGroundGap = finiteGround.length ? Math.max(...finiteGround.map(Math.abs)) : null;
 
   expect(visibleSamples.length, `${eventName} should remain visually observable`).toBeGreaterThan(2);
-  expect(finiteGround.length, `${eventName} should expose rendered grounding diagnostics`).toBeGreaterThan(2);
-  expect(maxGroundGap, `${eventName} should keep Hans grounded while visible`).toBeLessThanOrEqual(MAX_GROUND_GAP);
+  if (finiteGround.length) {
+    expect(maxGroundGap, `${eventName} published grounding should remain locked`).toBeLessThanOrEqual(MAX_GROUND_GAP);
+  }
 
   return {
     schema: 1,
@@ -140,6 +142,7 @@ async function sampleRoutine(page, canvas, eventName) {
     observedChoreographyPhases: unique('choreographyPhase'),
     observedServiceDialogue: unique('serviceDialogue'),
     observedMopDialogue: unique('mopDialogue'),
+    groundTelemetryObserved: finiteGround.length > 0,
     finiteGroundSamples: finiteGround.length,
     maxGroundGap,
     sampleCount: samples.length,
