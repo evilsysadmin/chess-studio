@@ -6,6 +6,7 @@ const CAREER_KEY = 'chess-study-career';
 const CONTRACT_KEY = 'chess-study-active-contract';
 const RUN_KEY = 'chess-study-special-run';
 const BOARD_THEME_KEY = 'chess-study-board-theme';
+const MAX_PROCESSED_GAME_IDS = 256;
 
 export const BOARD_THEMES = [
   { id: 'classic', label: 'Clásico', unlock: () => true },
@@ -45,6 +46,7 @@ function blank() {
     pressure: { moves: 0, incidents: 0 },
     milestones: [],
     runHistory: [],
+    processedGameIds: [],
   };
 }
 export function loadCareer() {
@@ -58,6 +60,7 @@ export function loadCareer() {
       byTimeControl: { ...(parsed?.byTimeControl || {}) },
       milestones: normalizeMilestones(parsed?.milestones),
       runHistory: Array.isArray(parsed?.runHistory) ? parsed.runHistory : [],
+      processedGameIds: Array.isArray(parsed?.processedGameIds) ? parsed.processedGameIds.map(String).slice(0, MAX_PROCESSED_GAME_IDS) : [],
     };
   } catch { return blank(); }
 }
@@ -110,8 +113,29 @@ function contractResult(contract, record, meta={}) {
   return { id:source.id, label:source.label, success:!!source.test?.(ctx) };
 }
 
+function careerGameKey(record) {
+  const value = record?.sourceGameId ?? record?.id;
+  return value == null ? null : String(value).trim() || null;
+}
+
+function mergeProcessedGameIds(current = [], incoming = []) {
+  const seen = new Set();
+  const next = [];
+  for (const value of [...incoming, ...current]) {
+    const key = value == null ? '' : String(value).trim();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    next.push(key);
+    if (next.length >= MAX_PROCESSED_GAME_IDS) break;
+  }
+  return next;
+}
+
 export function recordCareerGame(record, meta={}) {
-  let state=loadCareer(); const sid=monthId();
+  let state=loadCareer();
+  const gameKey=careerGameKey(record);
+  if (gameKey && state.processedGameIds.includes(gameKey)) return state;
+  const sid=monthId();
   if (state.season?.id!==sid) {
     state=milestone(state,`Temporada ${state.season?.id} cerrada: ${state.season?.wins||0}V/${state.season?.draws||0}T/${state.season?.losses||0}D.`,'season');
     state.season={id:sid,games:0,wins:0,draws:0,losses:0,startedAt:new Date().toISOString()};
@@ -128,6 +152,7 @@ export function recordCareerGame(record, meta={}) {
   state.pressure = { moves: Number(state.pressure?.moves||0)+Number(meta.pressureMoves||0), incidents: Number(state.pressure?.incidents||0)+Number(meta.pressureIncidents||0) };
   const cr=contractResult(meta.contract,record,meta);
   if(cr){state.contracts={...state.contracts,offered:(state.contracts?.offered||0)+1,completed:(state.contracts?.completed||0)+(cr.success?1:0),failed:(state.contracts?.failed||0)+(cr.success?0:1)};state=milestone(state,`${cr.success?'Reto superado':'Reto fallido'} · ${cr.label}.`,cr.success?'contract-win':'contract-loss');}
+  if (gameKey) state.processedGameIds = mergeProcessedGameIds(state.processedGameIds, [gameKey]);
   return saveCareer(state);
 }
 
@@ -142,13 +167,20 @@ export function reconcileCareerHistory(history = []) {
   let state = loadCareer();
   if (!rows.length) return state;
 
+  let changed = false;
+  const historicalGameIds = rows.map(careerGameKey).filter(Boolean).reverse();
+  const reconciledGameIds = mergeProcessedGameIds(state.processedGameIds, historicalGameIds);
+  if (reconciledGameIds.join('\u0000') !== state.processedGameIds.join('\u0000')) {
+    state = { ...state, processedGameIds: reconciledGameIds };
+    changed = true;
+  }
+
   const sid = monthId();
   const currentMonth = rows.filter((r) => {
     const d = new Date(r.date || 0);
     return Number.isFinite(d.getTime()) && monthId(d) === sid;
   });
   const trackedGames = Object.values(state.byTimeControl || {}).reduce((sum, row) => sum + Number(row?.games || 0), 0);
-  let changed = false;
 
   if (state.season?.id !== sid || currentMonth.length > Number(state.season?.games || 0)) {
     const season = { id: sid, games: currentMonth.length, wins: 0, draws: 0, losses: 0, startedAt: currentMonth[0]?.date || new Date().toISOString() };

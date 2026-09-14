@@ -86,6 +86,18 @@ describe('career persistente', () => {
     ]);
   });
 
+  it('procesa una partida una sola vez aunque el caller regenere el record', () => {
+    const first = recordCareerGame(game({ id: 'history-1', sourceGameId: 'source-1' }), { pressureMoves: 3 });
+    expect(first.season.games).toBe(1);
+    expect(first.pressure.moves).toBe(3);
+    expect(first.processedGameIds).toContain('source-1');
+
+    const duplicate = recordCareerGame(game({ id: 'history-1-retry', sourceGameId: 'source-1' }), { pressureMoves: 99 });
+    expect(duplicate.season.games).toBe(1);
+    expect(duplicate.pressure.moves).toBe(3);
+    expect(duplicate.records.currentWinStreak).toBe(1);
+  });
+
   it('una derrota corta la racha y puede fallar un contrato', () => {
     recordCareerGame(game());
     const contract = CONTRACTS.find((item) => item.id === 'win');
@@ -106,6 +118,11 @@ describe('career persistente', () => {
     expect(state.records).toMatchObject({ fastestWinPlies: 20, longestGamePlies: 50, highestDifficultyWin: 40, bestWinStreak: 1 });
     expect(state.contracts).toEqual({ offered: 0, completed: 0, failed: 0 });
     expect(state.pressure).toEqual({ moves: 0, incidents: 0 });
+    expect(state.processedGameIds).toEqual(expect.arrayContaining(['a', 'b']));
+
+    const replayed = recordCareerGame(game({ id: 'a' }));
+    expect(replayed.season.games).toBe(2);
+    expect(replayed.byTimeControl['3+2'].games).toBe(2);
   });
 
   it('Boss Run progresa seis victorias y archiva el resultado', () => {
