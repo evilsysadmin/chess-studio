@@ -60,6 +60,7 @@ function expectedRoute(eventName) {
 
 async function waitForRoutineStart(canvas, eventName) {
   if (eventName === 'fire') {
+    await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: 45_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 15_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-reply-seen', 'true', { timeout: 60_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-screen', VISIBLE_SCREEN, { timeout: 20_000 });
@@ -165,7 +166,6 @@ for (const eventName of CAPTURE_EVENTS) {
 
       const canvas = page.locator('.board3d-main-canvas');
       await expect(canvas).toBeVisible({ timeout: 45_000 });
-      await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: 45_000 });
       await waitForRoutineStart(canvas, eventName);
 
       const manifest = await sampleRoutine(page, canvas, eventName);
