@@ -11,7 +11,7 @@ from pathlib import PurePosixPath
 from typing import Iterable
 
 CORE_E2E_LANES = (
-    "regression-state", "regression-school", "learning-golden", "learning-observation", "smoke",
+    "regression-state", "regression-school", "learning-golden", "learning-observation", "app-boot", "smoke",
 )
 CORE_E2E_FIELDS = {lane: f"run_e2e_{lane.replace('-', '_')}" for lane in CORE_E2E_LANES}
 
@@ -30,6 +30,7 @@ class Scope:
     run_e2e_regression_school: bool = False
     run_e2e_learning_golden: bool = False
     run_e2e_learning_observation: bool = False
+    run_e2e_app_boot: bool = False
     run_e2e_smoke: bool = False
 
     @classmethod
@@ -78,7 +79,7 @@ ADMIN_SMOKE_RE = re.compile(
     r"^frontend/src/components/(?:Admin|Observability)[^/]*\.(?:js|jsx)$|"
     r"^frontend/src/components/useAdmin[^/]*\.js$"
 )
-AUDIO_SMOKE_RE = re.compile(
+AUDIO_APP_BOOT_RE = re.compile(
     r"^frontend/src/(?:ambientCatalog|ambientProfiles|ambientProfilesLegacy|audioContext|"
     r"orchestralSampler|sound|soundFx|soundPreferences|useAuthenticatedAudio)\.js$"
 )
@@ -164,8 +165,8 @@ def classify(paths: Iterable[str]) -> Scope:
                 continue
             if path == PACKAGE_METADATA_PATH:
                 # Script/metadata-only package changes still prove build/preview
-                # via smoke, but do not need the four unrelated core journeys.
-                _enable_core_e2e(scope, ("smoke",))
+                # via app-boot, but do not need the unrelated product journeys.
+                _enable_core_e2e(scope, ("app-boot",))
                 continue
 
             targeted = False
@@ -181,8 +182,8 @@ def classify(paths: Iterable[str]) -> Scope:
 
             if targeted:
                 continue
-            if AUDIO_SMOKE_RE.search(path):
-                _enable_core_e2e(scope, ("smoke",))
+            if AUDIO_APP_BOOT_RE.search(path):
+                _enable_core_e2e(scope, ("app-boot",))
             elif ADMIN_SMOKE_RE.search(path):
                 _enable_core_e2e(scope, ("smoke",))
             elif CORE_E2E_RE.search(path) and not DEDICATED_3D_BROWSER_RE.search(path):
@@ -226,7 +227,7 @@ def self_test() -> None:
     _expect(["frontend/src/components/Chesscom.jsx"], run_frontend=True, run_chesscom_e2e=True)
     _expect_core(["frontend/src/components/Chesscom.jsx", "frontend/src/App.jsx"], run_frontend=True, run_chesscom_e2e=True)
     _expect_core(["frontend/package-lock.json"], run_frontend=True, run_security=True)
-    _expect_core([PACKAGE_METADATA_PATH], lanes=("smoke",), run_frontend=True)
+    _expect_core([PACKAGE_METADATA_PATH], lanes=("app-boot",), run_frontend=True)
     _expect_core(["frontend/src/App.jsx"], run_frontend=True)
     _expect(["frontend/src/activeGameSession.test.js"], run_frontend=True)
     _expect(["frontend/src/components/Chesscom.test.jsx"], run_frontend=True)
@@ -237,7 +238,7 @@ def self_test() -> None:
         "frontend/src/orchestralSampler.js",
         "frontend/src/useAuthenticatedAudio.js",
     ):
-        _expect_core([audio_path], lanes=("smoke",), run_frontend=True)
+        _expect_core([audio_path], lanes=("app-boot",), run_frontend=True)
     _expect_core(["frontend/src/sound.js", "frontend/src/App.jsx"], run_frontend=True)
     _expect_core(["frontend/src/components/AdminDashboardContent.jsx"], lanes=("smoke",), run_frontend=True)
     _expect_core(["frontend/src/components/useAdminFeedbackController.js"], lanes=("smoke",), run_frontend=True)
@@ -282,7 +283,7 @@ def self_test() -> None:
     _expect_core([".github/actions/setup-browser-e2e/action.yml"])
     _expect_core(["scripts/run_core_e2e_lane.py"])
 
-    assert json.loads(dict(line.split("=", 1) for line in classify([PACKAGE_METADATA_PATH]).lines())["core_e2e_matrix"]) == {"lane": ["smoke"]}
+    assert json.loads(dict(line.split("=", 1) for line in classify([PACKAGE_METADATA_PATH]).lines())["core_e2e_matrix"]) == {"lane": ["app-boot"]}
     assert classify([".github/workflows/cicd.yml"]) == Scope.all()
     assert classify(["Makefile"]) == Scope.all()
     assert classify(["scripts/pr_merge_diff.py"]) == Scope.all()
@@ -295,7 +296,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · audio/package/Admin pagan smoke; producto general conserva core completo")
+    print("quality-scope self-test OK · audio/package pagan app-boot; Admin conserva smoke y producto general core completo")
 
 
 def main() -> int:
