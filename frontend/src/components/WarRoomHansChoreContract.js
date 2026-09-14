@@ -1,4 +1,4 @@
-export const WAR_ROOM_HANS_CHORE_CONTRACT_VERSION = 'hans-chore-contract-v2-armor-polish';
+export const WAR_ROOM_HANS_CHORE_CONTRACT_VERSION = 'hans-chore-contract-v3-armor-safe-standoff';
 
 export const WAR_ROOM_HANS_CHORE_EVENTS = Object.freeze([
   'dust-armor',
@@ -12,8 +12,9 @@ export const WAR_ROOM_HANS_CHORE_EVENTS = Object.freeze([
 
 export const WAR_ROOM_HANS_CHORES = Object.freeze({
   // Keep the historical event id so deterministic per-game event selection is
-  // stable, but the canonical visual action is now a real armor polish.
-  'dust-armor': Object.freeze({ targetNames: ['war-room-teutonic-armor-right', 'war-room-teutonic-armor-left'], offsetX: -0.68, offsetZ: 0.18, actionMs: 10500, prop: 'cloth', pose: 'polish-armor' }),
+  // stable, but the canonical visual action is now a real armor polish. The X
+  // offset is a standoff magnitude; ServiceRoute mirrors it inward per wall.
+  'dust-armor': Object.freeze({ targetNames: ['war-room-teutonic-armor-right', 'war-room-teutonic-armor-left'], offsetX: -1.20, offsetZ: 0.18, actionMs: 10500, prop: 'cloth', pose: 'polish-armor' }),
   'dust-board': Object.freeze({ targetNames: ['war-room-command-desk-top'], offsetX: -1.72, offsetZ: 0.78, actionMs: 11200, prop: 'duster' }),
   'bring-book': Object.freeze({ targetNames: ['war-room-command-desk-top'], offsetX: -1.78, offsetZ: 0.72, actionMs: 9000, prop: 'book', leavesProp: true }),
   mail: Object.freeze({ targetNames: ['war-room-command-desk-top'], offsetX: -1.80, offsetZ: 0.70, actionMs: 8600, prop: 'letters', leavesProp: true }),
