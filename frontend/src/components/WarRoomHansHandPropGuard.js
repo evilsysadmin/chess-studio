@@ -1,6 +1,6 @@
 import { getWarRoomHansActor } from './WarRoomHansActor.js';
 
-export const WAR_ROOM_HANS_HAND_PROP_GUARD_VERSION = 'hans-hand-prop-guard-v2-two-hand-anchors';
+export const WAR_ROOM_HANS_HAND_PROP_GUARD_VERSION = 'hans-hand-prop-guard-v3-readable-espresso';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const RIGHT_HAND_POSITION = Object.freeze([0.055, -0.62, 0.08]);
@@ -26,8 +26,10 @@ const SINGLE_HAND_PROPS = Object.freeze({
 const TWO_HAND_PROPS = Object.freeze({
   'service:espresso': Object.freeze({
     name: 'war-room-hans-espresso-tray',
-    torsoY: -0.60,
-    forwardZ: 0.38,
+    // Torso pivot sits at ~1.36m and both animated hands settle around ~1.0m
+    // during the espresso pose. Keep the tray there instead of at hip height.
+    torsoY: -0.34,
+    forwardZ: 0.48,
     rotation: [0, 0, 0],
   }),
   'chore:bring-book': Object.freeze({
