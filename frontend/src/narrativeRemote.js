@@ -145,6 +145,7 @@ export function requestRemoteNarrativeDetached(dossier, {
   let active = true;
   const controller = new AbortController();
   const abortFromExternal = () => {
+    active = false;
     if (!controller.signal.aborted) {
       controller.abort(externalSignal?.reason || new DOMException('Narrative request aborted', 'AbortError'));
     }
