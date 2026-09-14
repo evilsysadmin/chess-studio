@@ -18,7 +18,6 @@ import { loadActiveGameSession } from './activeGameSession.js';
 const RATING_KEY = 'chess-study-player-rating';
 const RATING_HISTORY_KEY = 'chess-study-rating-history';
 const MAX_HISTORY_POINTS = 200;
-const MAX_PROCESSED_GAME_IDS = 256;
 const DEFAULT_RATING = 400;
 const K_FACTOR = 24;
 const PROVISIONAL_K_FACTOR = 48;
@@ -46,17 +45,12 @@ function tierFor(rating) {
   return RATING_TIERS.find((t) => rating >= t.min && rating <= t.max) || RATING_TIERS[RATING_TIERS.length - 1];
 }
 
-function normalizedGameId(value) {
-  return value == null ? '' : String(value).trim();
-}
-
 function processedGameIds(value) {
-  if (!Array.isArray(value)) return [];
-  return [...new Set(value.map(normalizedGameId).filter(Boolean))].slice(0, MAX_PROCESSED_GAME_IDS);
+  return Array.isArray(value) ? [...new Set(value.filter(Boolean))].slice(0, 256) : [];
 }
 
 function activeRatingGameId() {
-  return normalizedGameId(loadActiveGameSession()?.gameId);
+  return loadActiveGameSession()?.gameId || null;
 }
 
 function emptyState() {
@@ -86,7 +80,7 @@ export function loadRatingHistory() {
 export function recordRatingHistory(rating) {
   const history = loadRatingHistory();
   const gameId = activeRatingGameId();
-  if (gameId && history.some((point) => normalizedGameId(point?.gameId) === gameId)) return history;
+  if (gameId && history.some((point) => point?.gameId === gameId)) return history;
   history.push({ date: new Date().toISOString(), rating, ...(gameId ? { gameId } : {}) });
   const trimmed = history.slice(-MAX_HISTORY_POINTS);
   setProfileStorageItem(RATING_HISTORY_KEY, JSON.stringify(trimmed));
@@ -169,23 +163,21 @@ export function ratingChangeDetails(state, cpuDifficulty, score) {
   const gameId = activeRatingGameId();
   const persisted = gameId ? loadRating() : null;
   const baseRating = state?.rating ?? DEFAULT_RATING;
+  const games = Number(state?.games || 0);
+  const cpuRating = cpuRatingForDifficulty(cpuDifficulty);
+  const expected = 1 / (1 + Math.pow(10, (cpuRating - baseRating) / 400));
+  const k = games < PROVISIONAL_GAMES ? PROVISIONAL_K_FACTOR : K_FACTOR;
   if (gameId && persisted?.processedGameIds.includes(gameId)) {
-    const cpuRating = cpuRatingForDifficulty(cpuDifficulty);
-    const expected = 1 / (1 + Math.pow(10, (cpuRating - persisted.rating) / 400));
     return {
       next: persisted,
       delta: persisted.rating - baseRating,
       cpuRating,
       expectedScore: expected,
-      kFactor: persisted.games < PROVISIONAL_GAMES ? PROVISIONAL_K_FACTOR : K_FACTOR,
+      kFactor: k,
       duplicate: true,
     };
   }
 
-  const games = Number(state?.games || 0);
-  const cpuRating = cpuRatingForDifficulty(cpuDifficulty);
-  const expected = 1 / (1 + Math.pow(10, (cpuRating - baseRating) / 400));
-  const k = games < PROVISIONAL_GAMES ? PROVISIONAL_K_FACTOR : K_FACTOR;
   const unclamped = Math.round(baseRating + k * (score - expected));
   const nextRating = Math.max(400, unclamped);
   const knownGameIds = processedGameIds([...(persisted?.processedGameIds || []), ...(state?.processedGameIds || [])]);
