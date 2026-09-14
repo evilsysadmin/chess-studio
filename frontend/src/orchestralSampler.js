@@ -21,6 +21,18 @@ export const ORCHESTRAL_SAMPLE_LIBRARY = Object.freeze({
     { root: 55, file: 'cello-g3.mp3' },
     { root: 59, file: 'cello-b3.mp3' },
   ]),
+  spiccatoStrings: Object.freeze([
+    { root: 60, files: ['spiccato-violin-c4-rr1.mp3', 'spiccato-violin-c4-rr2.mp3'] },
+    { root: 64, files: ['spiccato-violin-e4-rr1.mp3', 'spiccato-violin-e4-rr2.mp3'] },
+    { root: 67, files: ['spiccato-violin-g4-rr1.mp3', 'spiccato-violin-g4-rr2.mp3'] },
+    { root: 71, files: ['spiccato-violin-b4-rr1.mp3', 'spiccato-violin-b4-rr2.mp3'] },
+    { root: 74, files: ['spiccato-violin-d5-rr1.mp3', 'spiccato-violin-d5-rr2.mp3'] },
+  ]),
+  spiccatoCello: Object.freeze([
+    { root: 45, files: ['spiccato-cello-a2-rr1.mp3', 'spiccato-cello-a2-rr2.mp3'] },
+    { root: 48, files: ['spiccato-cello-c3-rr1.mp3', 'spiccato-cello-c3-rr2.mp3'] },
+    { root: 52, files: ['spiccato-cello-e3-rr1.mp3', 'spiccato-cello-e3-rr2.mp3'] },
+  ]),
 });
 
 const contextCaches = new WeakMap();
@@ -29,16 +41,20 @@ function sampleUrl(file) {
   return `${assetBase}audio/orchestra/${file}`;
 }
 
-export function selectOrchestralSample(kind, midiNote) {
+export function selectOrchestralSample(kind, midiNote, variation = 0) {
   const samples = ORCHESTRAL_SAMPLE_LIBRARY[kind];
   const note = Number(midiNote);
   if (!samples || !Number.isFinite(note)) return null;
   const selected = samples.reduce((nearest, candidate) => (
     Math.abs(note - candidate.root) < Math.abs(note - nearest.root) ? candidate : nearest
   ));
+  const variants = selected.files || [selected.file];
+  const variantIndex = Math.abs(Math.floor(Number(variation) || 0)) % variants.length;
+  const file = variants[variantIndex];
   return {
     ...selected,
-    url: sampleUrl(selected.file),
+    file,
+    url: sampleUrl(file),
     semitones: note - selected.root,
     playbackRate: 2 ** ((note - selected.root) / 12),
   };
@@ -77,8 +93,8 @@ function decodeAudio(ctx, bytes) {
   });
 }
 
-export function requestOrchestralSample(ctx, kind, midiNote) {
-  const sample = selectOrchestralSample(kind, midiNote);
+export function requestOrchestralSample(ctx, kind, midiNote, variation = 0) {
+  const sample = selectOrchestralSample(kind, midiNote, variation);
   if (!ctx || !sample || typeof fetch !== 'function' || typeof ctx.decodeAudioData !== 'function') {
     return Promise.resolve(null);
   }
@@ -109,12 +125,15 @@ export function requestOrchestralSample(ctx, kind, midiNote) {
   return record.pending;
 }
 
+let articulationSequence = 0;
+
 export function readyOrchestralSample(ctx, kind, midiNote) {
-  const sample = selectOrchestralSample(kind, midiNote);
+  const variation = kind.startsWith('spiccato') ? articulationSequence++ : 0;
+  const sample = selectOrchestralSample(kind, midiNote, variation);
   if (!ctx || !sample) return null;
   const record = cacheFor(ctx).get(sample.url);
   if (!record?.buffer) {
-    requestOrchestralSample(ctx, kind, midiNote);
+    requestOrchestralSample(ctx, kind, midiNote, variation);
     return null;
   }
   return { ...sample, buffer: record.buffer };
@@ -136,6 +155,8 @@ export function primeOrchestralTheme(ctx, theme) {
   ]);
   const requests = [...kinds]
     .filter((kind) => ORCHESTRAL_SAMPLE_LIBRARY[kind])
-    .flatMap((kind) => ORCHESTRAL_SAMPLE_LIBRARY[kind].map(({ root }) => requestOrchestralSample(ctx, kind, root)));
+    .flatMap((kind) => ORCHESTRAL_SAMPLE_LIBRARY[kind].flatMap(({ root, files }) => (
+      (files || [null]).map((_, variation) => requestOrchestralSample(ctx, kind, root, variation))
+    )));
   return Promise.all(requests);
 }

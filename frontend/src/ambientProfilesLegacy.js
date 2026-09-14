@@ -596,11 +596,25 @@ const DM46ZEY_STRUCTURED_FEELS = Object.freeze({
     mix: { lead: 0.62, counter: 0.33, bass: 0.84, chord: 0.38 },
     percussion: { period: 16, kit: 'cairo-hand', punch: 0.74, pattern: { 0:'K', 8:'B', 12:'H' } },
   }),
+  clockworkOverture: Object.freeze({
+    family: 'orchestral-clockwork-overture', preserveSectionOrder: true,
+    harmonyPath: [0, 0, 5, 0, -2, 0, 3, 0], swing: 0.015, warmth: 0.96, releaseScale: 0.94, space: 0.22, delayMs: 245,
+    leadInstrument: 'spiccatoStrings', counterInstrument: 'felt', chordInstrument: 'strings', bassInstrument: 'spiccatoCello',
+    chordHoldSteps: 15.5, bassHoldSteps: 3.2,
+    layers: { lead: true, counter: true, chords: true, bass: true, drums: true, signature: true },
+    mix: { lead: 0.62, counter: 0.24, bass: 0.68, chord: 0.38 },
+    percussion: { period: 16, kit: 'orchestral-pulse', punch: 0.78, pattern: { 0:'K', 4:'H', 8:'S', 12:'H' } },
+    signature: {
+      instrument: 'spiccatoStrings', sections: [0, 1, 3], everyCycles: 2,
+      repeatPeriod: 64, durationSteps: 2.6, volume: 0.18,
+      motif: { 0:64, 2:67, 4:71, 6:69, 32:64, 34:67, 36:74, 38:71 },
+    },
+  }),
 });
 
 const DM46ZEY_STRUCTURED_FEEL_BY_THEME = Object.freeze({
   pawnMarshal: 'pawnMarshal', cafeGambit213: 'cafeGambit213', rainOnE4: 'rainOnE4',
-  knightAlleyNoir: 'knightAlleyNoir', oudTrench: 'oudTrench',
+  knightAlleyNoir: 'knightAlleyNoir', oudTrench: 'oudTrench', clockworkOverture: 'clockworkOverture',
 });
 
 const V166BT_STRUCTURED_FEEL_BY_THEME = Object.freeze({

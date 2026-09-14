@@ -1012,6 +1012,7 @@ function voicePreset(kind) {
     case 'epiano': return { waves: [['sine', 1, 1], ['triangle', 2, 0.18]], gain: 0.021, attack: 0.018, release: 1.45, cutoff: 2600 };
     case 'rhodesWarm': return { waves: [['sine', 1, 1], ['triangle', 2, 0.16], ['sine', 0.5, 0.1]], gain: 0.020, attack: 0.028, release: 2.15, cutoff: 1950, tremolo: 3.1 };
     case 'cello': return { waves: [['sawtooth', 1, 1], ['triangle', 0.5, 0.18]], gain: 0.017, attack: 0.09, release: 2.1, cutoff: 920 };
+    case 'spiccatoCello': return { waves: [['triangle', 1, 0.82], ['sawtooth', 1, 0.18]], gain: 0.025, attack: 0.004, release: 0.62, cutoff: 1480 };
     case 'pizz': return { waves: [['triangle', 1, 1], ['sine', 2, 0.12]], gain: 0.026, attack: 0.004, release: 0.52, cutoff: 1700 };
     case 'bass': return { waves: [['triangle', 1, 1], ['sine', 0.5, 0.18]], gain: 0.029, attack: 0.008, release: 0.72, cutoff: 760 };
     case 'uprightBass': return { waves: [['triangle', 1, 0.88], ['sine', 0.5, 0.34], ['sine', 2, 0.06]], gain: 0.027, attack: 0.014, release: 1.08, cutoff: 680 };
@@ -1042,6 +1043,7 @@ function voicePreset(kind) {
     case 'singingBowl': return { waves: [['sine', 1, 1], ['sine', 2.39, 0.16], ['sine', 4.71, 0.04]], gain: 0.012, attack: 0.026, release: 4.9, cutoff: 4300, tremolo: 2.0 };
     case 'overdriveGuitar': return { waves: [['sawtooth', 1, 0.68], ['square', 1, 0.18], ['triangle', 0.5, 0.22]], gain: 0.015, attack: 0.006, release: 0.9, cutoff: 1850 };
     case 'strings': return { waves: [['sawtooth', 1, 0.42], ['triangle', 1, 0.62], ['sine', 2, 0.08]], gain: 0.014, attack: 0.18, release: 3.4, cutoff: 1350, tremolo: 5.1 };
+    case 'spiccatoStrings': return { waves: [['triangle', 1, 0.68], ['sawtooth', 1, 0.32], ['sine', 2, 0.05]], gain: 0.021, attack: 0.003, release: 0.48, cutoff: 2450 };
     default: return { waves: [['sine', 1, 1]], gain: 0.02, attack: 0.01, release: 0.8, cutoff: 2500 };
   }
 }
@@ -1071,24 +1073,27 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
     filter.frequency.value = Math.max(2800, preset.cutoff * 3.8 * (tone?.warmth || 1));
     filter.Q.value = 0.34;
 
-    const attack = Math.min(kind === 'cello' ? 0.038 : 0.026, release * 0.18);
-    const peak = (kind === 'cello' ? 0.205 : 0.17) * volumeScale;
-    const sustainUntil = start + Math.max(attack + 0.03, release * 0.78);
+    const shortBow = kind.startsWith('spiccato');
+    const celloFamily = kind === 'cello' || kind === 'spiccatoCello';
+    const attack = Math.min(shortBow ? 0.006 : celloFamily ? 0.038 : 0.026, release * 0.18);
+    const peak = (shortBow ? 0.235 : celloFamily ? 0.205 : 0.17) * volumeScale;
+    const audibleDuration = Math.min(release, recorded.buffer.duration / recorded.playbackRate);
+    const sustainUntil = start + Math.max(attack + 0.02, audibleDuration * (shortBow ? 0.26 : 0.78));
     gainNode.gain.setValueAtTime(0.0001, start);
     gainNode.gain.linearRampToValueAtTime(peak, start + attack);
-    gainNode.gain.setValueAtTime(peak * 0.94, sustainUntil);
-    gainNode.gain.exponentialRampToValueAtTime(0.0001, start + release);
+    gainNode.gain.setValueAtTime(peak * (shortBow ? 0.82 : 0.94), sustainUntil);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, start + audibleDuration);
 
     source.connect(filter);
     filter.connect(gainNode);
     connectFinishedAmbientVoice(ctx, gainNode, getAmbientOutput(ctx), tone, {
       start,
-      duration: release,
+      duration: audibleDuration,
       tremolo: 0,
       wetLimit: 0.38,
     });
     source.start(start);
-    source.stop(start + release + 0.06);
+    source.stop(start + audibleDuration + 0.04);
     return;
   }
 
@@ -1417,6 +1422,18 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
     else if (code === 'H') playMembraneHit('tak', 0.010 * velocity, { ...human, tone: Math.min(human.tone, -0.18), decay: 0.82 });
     else if (code === 'B') playNoiseHit('brush', 0.008 * velocity, human);
     else if (code === 'S') playMembraneHit('tak', 0.016 * velocity, { ...human, tone: Math.min(human.tone, -0.12) });
+    return;
+  }
+
+  if (kit === 'orchestral-pulse') {
+    if (code === 'K') {
+      playMembraneHit('dum', 0.054 * velocity, { ...human, tone: -0.5, decay: 1.18 });
+      playBassDrum(0.034 * velocity, { ...human, tone: -0.55, decay: 1.1 });
+    } else if (code === 'S') {
+      playMembraneHit('dum', 0.032 * velocity, { ...human, tone: -0.18, decay: 0.86 });
+    } else if (code === 'H') {
+      playMembraneHit('tak', 0.009 * velocity, { ...human, tone: -0.42, decay: 0.66 });
+    }
     return;
   }
 
