@@ -60,6 +60,7 @@ async function openDeterministicHome(page) {
   await expect(home).toBeVisible();
   await expect(home.locator('.illustrated-home__stage')).toBeVisible();
   await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout:15_000 });
+  await expect(home.locator('.home-matthias-3d.is-ready')).toBeVisible({ timeout:15_000 });
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForTimeout(250);
   return home;
@@ -127,15 +128,15 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
       try {
         const home = await openDeterministicHome(page);
         const matthias = home.locator('.illustrated-home__matthias');
-        const layeredArt = matthias.locator('[data-matthias-layered-art="true"]');
+        const avatar = matthias.locator('[data-home-matthias-3d="ready"]');
+        const canvas = avatar.locator('canvas');
         const copy = matthias.locator('.illustrated-home__matthias-copy');
 
         await expect(matthias).toBeVisible();
-        await expect(layeredArt).toBeVisible();
-        await expect(layeredArt.locator('img').first()).toBeVisible();
-
-        const imageSrc = await layeredArt.locator('img').first().getAttribute('src');
-        expect(imageSrc, `${capture.label}: corrupt dinner art must remain quarantined`).not.toContain('campaign-dinner');
+        await expect(avatar).toBeVisible();
+        await expect(canvas).toBeVisible();
+        await expect(canvas).toHaveAttribute('data-matthias-identity', 'canonical-officer-avatar');
+        await expect(matthias.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
 
         if (capture.expectCopy) {
           await expect(copy).toBeVisible();
