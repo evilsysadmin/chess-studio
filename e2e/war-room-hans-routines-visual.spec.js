@@ -12,7 +12,7 @@ const TEMP_VIDEO_DIR = '../.artifacts/hans-routine-video-tmp';
 const VISIBLE_SCREEN = /^(?:onscreen|edge|offscreen)$/;
 const MAX_GROUND_GAP = 0.02;
 const SAMPLE_MS = 400;
-const OBSERVE_MS = 8_000;
+const OBSERVE_MS = 6_000;
 const SERVICE_EVENTS = new Set(['water-plant', 'espresso']);
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
 const REQUESTED_EVENTS = String(process.env.HANS_ROUTINE_EVENTS || '')
@@ -91,8 +91,10 @@ async function waitForRoutineStart(page, canvas, eventName) {
       const node = document.querySelector('.board3d-main-canvas');
       if (!node) return false;
       const screen = node.dataset.warRoomHansScreen || '';
+      const groundGap = Number(node.dataset.warRoomHansGroundGap);
       return node.dataset.warRoomHansRoute === expected
-        && (screen === 'onscreen' || screen === 'edge' || screen === 'offscreen');
+        && (screen === 'onscreen' || screen === 'edge' || screen === 'offscreen')
+        && Number.isFinite(groundGap);
     }, route),
     { timeout: 75_000, intervals: [100, 100, 200, 300, 500] },
   ).toBe(true);
