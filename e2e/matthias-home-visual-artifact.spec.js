@@ -37,6 +37,15 @@ async function freezeClockAtCampaignDinner(context) {
   }, FIXED_LOCAL_TIME);
 }
 
+async function forceCanonicalHomeCapabilities(context) {
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, 'hardwareConcurrency', {
+      configurable:true,
+      get:() => 8,
+    });
+  });
+}
+
 async function openDeterministicHome(page) {
   await page.emulateMedia({ reducedMotion:'no-preference' });
   await mockApi(page, {
@@ -111,6 +120,7 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         viewport:{ width:capture.width, height:capture.height },
         hasTouch:capture.hasTouch === true,
       });
+      await forceCanonicalHomeCapabilities(context);
       await freezeClockAtCampaignDinner(context);
       const page = await context.newPage();
 
