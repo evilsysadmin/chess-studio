@@ -252,6 +252,7 @@ export default function HomeMatthias3D({
       resizeObserver?.disconnect();
       if (!resizeObserver) window.removeEventListener('resize', resize);
       canvas.removeEventListener('webglcontextlost', onContextLost, false);
+      disposeObject(matthias);
       stage.remove(matthias);
       disposeObject(stage);
       renderer.dispose();
