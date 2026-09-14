@@ -1,6 +1,7 @@
 // Copy shared by evidence-backed surfaces. These phrases deliberately avoid
 // turning an engine result or a small sample into a stronger factual claim.
 export const REPLAY_OK_VERDICT = '✓ Sin pérdida apreciable en este análisis — buena jugada.';
+export const COMBAT_REPLAY_OK_VERDICT = `${REPLAY_OK_VERDICT} El resultado del dado se evalúa aparte.`;
 
 export const FACTUAL_LANGUAGE_FORBIDDEN_ABSOLUTES = Object.freeze([
   'no había nada mejor',
