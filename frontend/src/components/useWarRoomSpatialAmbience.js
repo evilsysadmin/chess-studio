@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
 import { getAudioContext, resumeAudioContext } from '../audioContext.js';
+import { PROFILE_CHANGED_EVENT } from '../profileKeys.js';
 import { isFxMuted } from '../soundPreferences.js';
 import { USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
+import {
+  WAR_ROOM_AMBIENCE_CHANGED_EVENT,
+  isWarRoomAmbienceMuted,
+} from '../warRoomAmbiencePreferences.js';
 import { resolveWarRoomLocalAtmosphere } from './WarRoomLocalAtmosphere.js';
 
-export const WAR_ROOM_SPATIAL_AMBIENCE_VERSION = 'war-room-spatial-ambience-v1';
+export const WAR_ROOM_SPATIAL_AMBIENCE_VERSION = 'war-room-spatial-ambience-v2';
 
 export function warRoomSpatialMixForAtmosphere(atmosphere = {}) {
   const weather = String(atmosphere.weather || 'sunny');
@@ -17,6 +22,10 @@ export function warRoomSpatialMixForAtmosphere(atmosphere = {}) {
     rareEventMinMs: 32_000,
     rareEventMaxMs: 68_000,
   });
+}
+
+export function warRoomAmbienceShouldPlay({ enabled, fxMuted, ambienceMuted }) {
+  return Boolean(enabled) && !fxMuted && !ambienceMuted;
 }
 
 function makeNoiseBuffer(context, seconds = 2.4) {
@@ -166,11 +175,23 @@ export default function useWarRoomSpatialAmbience({ enabled }) {
     if (typeof window === 'undefined') return undefined;
     const refresh = () => setPreferenceRevision((value) => value + 1);
     window.addEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
-    return () => window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
+    window.addEventListener(PROFILE_CHANGED_EVENT, refresh);
+    window.addEventListener(WAR_ROOM_AMBIENCE_CHANGED_EVENT, refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener(USER_PREFERENCES_CHANGED_EVENT, refresh);
+      window.removeEventListener(PROFILE_CHANGED_EVENT, refresh);
+      window.removeEventListener(WAR_ROOM_AMBIENCE_CHANGED_EVENT, refresh);
+      window.removeEventListener('storage', refresh);
+    };
   }, []);
 
   useEffect(() => {
-    if (!enabled || isFxMuted()) return undefined;
+    if (!warRoomAmbienceShouldPlay({
+      enabled,
+      fxMuted: isFxMuted(),
+      ambienceMuted: isWarRoomAmbienceMuted(),
+    })) return undefined;
     const context = getAudioContext();
     if (!context) return undefined;
     void resumeAudioContext();

@@ -1,0 +1,75 @@
+.game-side-music-warroom {
+  display: flex;
+  align-items: center;
+  gap: .28rem;
+  min-width: 0;
+}
+
+.game-side-music-warroom > .music-deck {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.war-room-ambience-toggle {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid rgba(190, 164, 109, .18);
+  border-radius: 7px;
+  background: rgba(7, 11, 17, .28);
+  color: color-mix(in srgb, var(--cream) 72%, var(--studio-muted));
+  box-shadow: none;
+  cursor: pointer;
+  opacity: .72;
+  transition: opacity .15s ease, color .15s ease, border-color .15s ease, background .15s ease;
+}
+
+.war-room-ambience-toggle svg {
+  width: 16px;
+  height: 16px;
+  overflow: visible;
+  fill: currentColor;
+}
+
+.war-room-ambience-toggle__waves,
+.war-room-ambience-toggle__slash {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+}
+
+.war-room-ambience-toggle:hover,
+.war-room-ambience-toggle:focus-visible {
+  opacity: 1;
+  color: #f0ddbc;
+  border-color: rgba(212, 167, 44, .42);
+  background: rgba(201, 162, 39, .055);
+  outline: none;
+}
+
+.war-room-ambience-toggle:focus-visible {
+  box-shadow: inset 0 0 0 1px rgba(212, 167, 44, .42);
+}
+
+.war-room-ambience-toggle.is-muted {
+  color: color-mix(in srgb, var(--studio-muted) 82%, #8f7459);
+  border-color: rgba(142, 121, 88, .14);
+  background: rgba(7, 11, 17, .18);
+}
+
+@media (max-width: 820px) {
+  .war-room-ambience-toggle {
+    width: 34px;
+    height: 34px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .war-room-ambience-toggle {
+    transition: none;
+  }
+}
