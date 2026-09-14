@@ -92,13 +92,15 @@
   outline-offset: 1px;
 }
 
-/* Treat the glossary as a reference desk, not a dashboard of repeated cards. */
-.chess-glossary-grid {
+/* Treat the glossary as a reference desk, not a dashboard of repeated cards.
+   Scope through the real route structure so this premium layer wins over the
+   later TutorialRoute defaults without resorting to !important. */
+.tutorial-shell.matthias-school-shell .chess-glossary > .chess-glossary-grid {
   gap: 0 1.5rem;
   border-top: 1px solid color-mix(in srgb, var(--ui-border, var(--ink-3)) 72%, transparent);
 }
 
-.chess-glossary-entry {
+.tutorial-shell.matthias-school-shell .chess-glossary-grid > .chess-glossary-entry {
   min-height: 0;
   padding: .92rem .08rem 1rem;
   border: 0;
@@ -108,7 +110,7 @@
   box-shadow: none;
 }
 
-.chess-glossary-entry strong {
+.tutorial-shell.matthias-school-shell .chess-glossary-grid > .chess-glossary-entry strong {
   display: block;
   margin-bottom: .18rem;
   color: color-mix(in srgb, var(--brass) 88%, var(--parchment));
@@ -116,7 +118,7 @@
   line-height: 1.25;
 }
 
-.chess-glossary-entry small {
+.tutorial-shell.matthias-school-shell .chess-glossary-grid > .chess-glossary-entry small {
   display: block;
   margin-bottom: .34rem;
   color: var(--parchment-dim);
@@ -125,7 +127,7 @@
   opacity: .72;
 }
 
-.chess-glossary-entry p {
+.tutorial-shell.matthias-school-shell .chess-glossary-grid > .chess-glossary-entry p {
   margin: .22rem 0 0;
   max-width: 58ch;
   color: var(--parchment-dim);
@@ -292,7 +294,7 @@
 }
 
 @media (min-width: 1050px) {
-  .chess-glossary-grid {
+  .tutorial-shell.matthias-school-shell .chess-glossary > .chess-glossary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
