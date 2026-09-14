@@ -32,6 +32,21 @@ describe('game activity lifecycle', () => {
     expect(loadGameActivity().map((row) => row.state)).toEqual(['finished', 'started']);
   });
 
+  it('treats cancellation as terminal against late finish or restart events', () => {
+    recordGameActivity({ gameId: 'g-cancelled', state: 'started', mode: 'casual', boardRenderer: '2d' });
+    recordGameActivity({ gameId: 'g-cancelled', state: 'cancelled', mode: 'casual', boardRenderer: '2d' });
+    recordGameActivity({ gameId: 'g-cancelled', state: 'finished', mode: 'casual', outcome: 'loss', boardRenderer: '2d' });
+    recordGameActivity({ gameId: 'g-cancelled', state: 'started', mode: 'casual', boardRenderer: '3d' });
+    expect(loadGameActivity().map((row) => row.state)).toEqual(['cancelled', 'started']);
+  });
+
+  it('rejects finished lifecycle entries without a completed chess outcome', () => {
+    recordGameActivity({ gameId: 'g-invalid', state: 'started', mode: 'casual' });
+    recordGameActivity({ gameId: 'g-invalid', state: 'finished', mode: 'casual', outcome: null });
+    recordGameActivity({ gameId: 'g-invalid', state: 'finished', mode: 'casual', outcome: 'retired' });
+    expect(loadGameActivity().map((row) => row.state)).toEqual(['started']);
+  });
+
   it('does not attribute the normal 2D/3D preference to Combat Chess', () => {
     recordGameActivity({ gameId: 'combat-1', state: 'started', mode: 'combat' });
     expect(loadGameActivity()[0]).toMatchObject({ gameId: 'combat-1', boardRenderer: null });
