@@ -13,10 +13,15 @@ import {
 import { PAWN_SLUG_PREMIUM_ENEMY_FACING_CONTRACT } from './pawnSlugEnemyPremiumArtContract.js';
 import { pawnSlugPanzerRookEntryPose } from './pawnSlugBossEntryMotion.js';
 import { applyPawnSlugMatthiasPremiumMotion } from './pawnSlugMatthiasPremiumMotion.js';
+import {
+  PAWN_SLUG_MATTHIAS_RUN_POLISH,
+  applyPawnSlugMatthiasRunPolish,
+} from './pawnSlugMatthiasRunPolish.js';
 import { playPawnSlugEnemyImpactSfx, playPawnSlugPlayerHitSfx } from './pawnSlugSfx.js';
 
 export * from './pawnSlugSpriteCore.js';
 export * from './pawnSlugEnemyPremiumArtContract.js';
+export * from './pawnSlugMatthiasRunPolish.js';
 export {
   PAWN_SLUG_ENEMY_RUN_META,
   animateSlugEnemySprite,
@@ -42,6 +47,7 @@ export function animateMatthiasSlugSprite(sprite, state = {}) {
   sprite.userData.pawnSlugWasHurt = hurt;
   animateLegacyMatthiasSlugSprite(sprite, state);
   applyPawnSlugMatthiasPremiumMotion(sprite, state);
+  applyPawnSlugMatthiasRunPolish(sprite, state);
 }
 
 export function animatePanzerRookSprite(sprite, time = 0, state = {}) {
@@ -81,6 +87,7 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
   matthias: Object.freeze({
     ...LEGACY_SPRITE_META.matthias,
     premiumMotion: true,
+    runPolish: PAWN_SLUG_MATTHIAS_RUN_POLISH,
     weaponGripAnchor: 'centered-sprite',
   }),
   enemies: Object.freeze({
