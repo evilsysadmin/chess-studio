@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { combatVeteranHighlight } from '../combatDebrief.js';
-import { getToken } from '../auth.js';
-import { requestRemoteNarrative } from '../narrativeRemote.js';
 import { buildCombatDebriefDossier } from '../aiNarrativeTasks.js';
+import { useRemoteNarrativeDossier } from '../useRemoteNarrativeDossier.js';
 
 
 const PIECE = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' };
@@ -41,25 +40,10 @@ function debriefNextStep(debrief, nextAction) {
 }
 
 export default function CombatDebrief({ debrief, compact = false, onViewBattle = null, nextAction = null }) {
-  const [aiDebrief, setAiDebrief] = useState(null);
-  const [aiDebriefLoading, setAiDebriefLoading] = useState(false);
   const aiDossier = useMemo(() => buildCombatDebriefDossier(debrief), [debrief]);
-  const aiFactsKey = JSON.stringify(aiDossier?.facts || {});
-
-  useEffect(() => {
-    const token = getToken();
-    if (!token || !aiDossier) {
-      setAiDebrief(null);
-      return undefined;
-    }
-    const controller = new AbortController();
-    setAiDebriefLoading(true);
-    void requestRemoteNarrative(aiDossier, { token, timeoutMs: 8000, signal: controller.signal })
-      .then((text) => { if (!controller.signal.aborted) setAiDebrief(text || null); })
-      .catch(() => { if (!controller.signal.aborted) setAiDebrief(null); })
-      .finally(() => { if (!controller.signal.aborted) setAiDebriefLoading(false); });
-    return () => controller.abort(new DOMException('Combat debrief superseded', 'AbortError'));
-  }, [aiFactsKey]);
+  const { text: aiDebrief, loading: aiDebriefLoading } = useRemoteNarrativeDossier(aiDossier, {
+    abortMessage: 'Combat debrief superseded',
+  });
 
   if (!debrief) return null;
   const fallen = debrief.units.filter((unit) => unit.fallen);
