@@ -127,14 +127,17 @@ function applyAtlasWindow(sprite) {
   // itself dirty here forces Three.js to re-upload the full atlas to the GPU.
 }
 
-function tintSprite(sprite, hurt, time) {
+export function applyPawnSlugEnemyTint(sprite, hurt, time) {
   const startedAt = Number(sprite.userData.hurtStartedAt);
   const age = hurt && Number.isFinite(startedAt)
     ? Math.max(0, Number(time) - startedAt)
     : Number.POSITIVE_INFINITY;
   const flash = pawnSlugEnemyHitFlash(age, { hurt, type: sprite.userData.enemyType });
+  if (sprite.userData.appliedHitFlash === flash) return false;
+  sprite.userData.appliedHitFlash = flash;
   sprite.material.opacity = flash.opacity;
   sprite.material.color?.setRGB(flash.r, flash.g, flash.b);
+  return true;
 }
 
 function inferredVerticalMotion(sprite, time) {
@@ -176,6 +179,7 @@ export function createSlugEnemySprite(type = 'pawn') {
   sprite.userData.inferredMotion = { airborne: false, vy: 0 };
   sprite.userData.wasHurt = false;
   sprite.userData.hurtStartedAt = null;
+  sprite.userData.appliedHitFlash = null;
   sprite.userData.wasDying = false;
   sprite.userData.entryStartedAt = null;
   sprite.userData.entryReducedMotion = reducedMotion;
@@ -313,7 +317,7 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
     const phase = sprite.userData.motionPhase || 0;
     sprite.position.y += Math.max(0, Math.sin(safeTime * profile.idleRate + phase)) * profile.idleBob;
   }
-  tintSprite(sprite, hurt && !dying, safeTime);
+  applyPawnSlugEnemyTint(sprite, hurt && !dying, safeTime);
 }
 
 export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
