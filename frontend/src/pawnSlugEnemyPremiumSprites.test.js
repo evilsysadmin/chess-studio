@@ -39,12 +39,14 @@ describe('Pawn Slug premium enemy runtime integration', () => {
       procedural: 0,
     });
     expect(PAWN_SLUG_ENEMY_RUN_META.premiumRaster).toMatchObject({
-      version: 'v3-canonical-raster',
-      frameWidth: 80,
-      frameHeight: 80,
+      version: 'v4-authored-canonical-static',
+      frameWidth: 160,
+      frameHeight: 160,
+      columns: 3,
+      rows: 1,
       sourceFacing: 'left',
-      authoredActions: ['idle', 'run'],
-      canonicalSource: 'Pawn Slug: Enemy Sprite Sheet',
+      authoredActions: ['idle'],
+      canonicalSource: 'Pawn Slug: authored premium enemy lineup v4',
       isolatedSilhouettes: true,
     });
     expect(PAWN_SLUG_ENEMY_RUN_META.premiumFallback).toMatchObject({
@@ -90,9 +92,9 @@ describe('Pawn Slug premium enemy runtime integration', () => {
   });
 
   it('clones per-enemy UV state while sharing the decoded premium image source', () => {
-    const master = new THREE.Texture({ width: 1280, height: 480 });
-    master.repeat.set(1 / 16, 1 / 6);
-    master.offset.set(0.25, 0.5);
+    const master = new THREE.Texture({ width: 480, height: 160 });
+    master.repeat.set(1 / 3, 1);
+    master.offset.set(1 / 3, 0);
 
     const first = clonePawnSlugPremiumEnemyTexture(master);
     const second = clonePawnSlugPremiumEnemyTexture(master);
@@ -105,10 +107,10 @@ describe('Pawn Slug premium enemy runtime integration', () => {
     expect(first.repeat).not.toBe(second.repeat);
     expect(first.offset).not.toBe(second.offset);
 
-    first.repeat.set(-1 / 16, 1 / 6);
-    first.offset.set(0.5, 1 / 3);
-    expect(second.repeat.x).toBeCloseTo(1 / 16, 12);
-    expect(second.offset.x).toBeCloseTo(0.25, 12);
+    first.repeat.set(-1 / 3, 1);
+    first.offset.set(2 / 3, 0);
+    expect(second.repeat.x).toBeCloseTo(1 / 3, 12);
+    expect(second.offset.x).toBeCloseTo(1 / 3, 12);
   });
 
   it('keeps the static premium fallback correctly framed and mirrored', () => {
