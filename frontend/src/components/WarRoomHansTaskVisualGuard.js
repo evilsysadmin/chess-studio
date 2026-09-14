@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import { getWarRoomHansActor } from './WarRoomHansActor.js';
 import { warRoomHansChoreForEvent } from './WarRoomHansChoreContract.js';
+import { commitWarRoomHansGroundedY } from './WarRoomHansTransformOwner.js';
 
-export const WAR_ROOM_HANS_TASK_VISUAL_GUARD_VERSION = 'hans-task-visual-guard-v2-visible-pre-render';
+export const WAR_ROOM_HANS_TASK_VISUAL_GUARD_VERSION = 'hans-task-visual-guard-v3-transform-owner-grounding';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const SURFACE_NAMES = [
@@ -137,8 +138,8 @@ export function groundWarRoomHansTaskActor(hans, body, surfaces, scratch = null)
   state.targetLocal.copy(state.targetWorld);
   hans.parent.worldToLocal?.(state.targetLocal);
   if (!Number.isFinite(state.targetLocal.y)) return false;
+  if (!commitWarRoomHansGroundedY(hans, state.targetLocal.y, 'task-visual-grounding')) return false;
 
-  hans.position.y = state.targetLocal.y;
   hans.updateMatrixWorld?.(true);
   hans.userData.warRoomHansTaskVisualGrounding = WAR_ROOM_HANS_TASK_VISUAL_GUARD_VERSION;
   hans.userData.warRoomHansTaskGroundSurface = surface.name;
