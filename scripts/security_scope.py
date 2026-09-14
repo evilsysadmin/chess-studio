@@ -17,7 +17,11 @@ from pathlib import Path
 SECURITY_PATTERN = re.compile(
     r"(^|/)(Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|\.dockerignore)$"
     r"|^compose\.ya?ml$"
-    r"|^frontend/package(-lock)?\.json$"
+    # package-lock.json is the dependency closure scanned by npm/Trivy. A
+    # package.json-only script/metadata edit does not justify rebuilding and
+    # scanning Docker images; dependency edits without a matching lock update
+    # are rejected by npm ci before they can merge.
+    r"|^frontend/package-lock\.json$"
     r"|^backend-python/requirements[^/]*\.txt$"
     r"|^Makefile$"
     r"|^\.trivy(ignore|\.ya?ml)?$"
@@ -60,7 +64,6 @@ def self_test() -> None:
         "frontend/.dockerignore",
         "compose.yml",
         "compose.yaml",
-        "frontend/package.json",
         "frontend/package-lock.json",
         "backend-python/requirements.txt",
         "backend-python/requirements-dev.txt",
@@ -87,6 +90,7 @@ def self_test() -> None:
     negative = (
         "README.md",
         "frontend/src/App.jsx",
+        "frontend/package.json",
         "scripts/quality_provenance.py",
         "scripts/browser_quality_scope.py",
         ".github/workflows/workflow-debt.yml",
