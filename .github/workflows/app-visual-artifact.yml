@@ -8,6 +8,7 @@ on:
       - frontend/src/components/**
       - frontend/src/assets/**
       - frontend/src/chesscom*.js
+      - frontend/src/chronicles*.js
       - '!frontend/src/**/*.test.js'
       - '!frontend/src/**/*.test.jsx'
       - frontend/public/**
