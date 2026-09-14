@@ -1,12 +1,22 @@
-import { STORAGE_LOCAL, readJsonStorage, writeJsonStorage } from './safeStorage.js';
-import { cooldownStateFromTimestamp } from './cooldownClock.js';
+import {
+  AI_NARRATIVE_MANUAL_COOLDOWN_MS,
+  createAiNarrativeCache,
+  formatAiNarrativeCooldown,
+} from './aiNarrativeCache.js';
 import { buildPlayerModel } from './playerModel.js';
 
 export const AI_PLAYER_PORTRAIT_CACHE_KEY = 'chess-study-ai-player-portrait-v1';
 const PORTRAIT_SCHEMA = 8;
 const GAMES_PER_AUTOMATIC_REFRESH = 1;
 export const PLAYER_PORTRAIT_MAX_CHARS = 900;
-const PLAYER_PORTRAIT_MANUAL_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+
+const playerPortraitCache = createAiNarrativeCache({
+  cacheKey: AI_PLAYER_PORTRAIT_CACHE_KEY,
+  schema: PORTRAIT_SCHEMA,
+  maxChars: PLAYER_PORTRAIT_MAX_CHARS,
+  manualRequestKind: 'portrait_manual',
+  cooldownMs: AI_NARRATIVE_MANUAL_COOLDOWN_MS,
+});
 
 function finiteNumber(value) {
   const number = Number(value);
@@ -144,73 +154,26 @@ export function playerPortraitGenerationKey(insights) {
   return `${PORTRAIT_SCHEMA}:${Math.floor(games / GAMES_PER_AUTOMATIC_REFRESH)}`;
 }
 
-function normalizeIdentityScope(identityScope) {
-  const clean = String(identityScope || '').trim().toLowerCase();
-  return clean ? clean.slice(0, 120) : null;
-}
-
-function readPortraitCache(identityScope) {
-  const scope = normalizeIdentityScope(identityScope);
-  if (!scope) return null;
-  const cached = readJsonStorage(STORAGE_LOCAL, AI_PLAYER_PORTRAIT_CACHE_KEY, { fallback: null, removeMalformed: true });
-  if (!cached || cached.schema !== PORTRAIT_SCHEMA || typeof cached !== 'object') return null;
-  if (cached.identityScope !== scope) return null;
-  return cached;
-}
-
 export function loadCachedPlayerPortrait(generationKey, identityScope) {
-  const cached = readPortraitCache(identityScope);
-  if (!cached || cached.generationKey !== generationKey) return null;
-  if (typeof cached.text !== 'string' || !cached.text.trim()) return null;
-  return cached.text.trim().slice(0, PLAYER_PORTRAIT_MAX_CHARS);
+  return playerPortraitCache.load(generationKey, identityScope);
 }
 
 export function saveCachedPlayerPortrait(generationKey, text, identityScope) {
-  const scope = normalizeIdentityScope(identityScope);
-  const clean = typeof text === 'string' ? text.trim().slice(0, PLAYER_PORTRAIT_MAX_CHARS) : '';
-  if (!scope || !clean) return false;
-  const previous = readPortraitCache(scope) || {};
-  return writeJsonStorage(STORAGE_LOCAL, AI_PLAYER_PORTRAIT_CACHE_KEY, {
-    schema: PORTRAIT_SCHEMA,
-    identityScope: scope,
-    generationKey,
-    text: clean,
-    generatedAt: new Date().toISOString(),
-    ...(Number.isFinite(Number(previous.manualRequestedAt)) ? { manualRequestedAt: Number(previous.manualRequestedAt) } : {}),
-  });
+  return playerPortraitCache.save(generationKey, text, identityScope);
 }
 
-export function playerPortraitManualRefreshState({ now = Date.now(), identityScope = null, bypassCooldown = false } = {}) {
-  if (bypassCooldown) return { allowed: true, retryAfterMs: 0, nextAllowedAt: null };
-  const cached = readPortraitCache(identityScope);
-  return cooldownStateFromTimestamp({
-    now,
-    last: cached?.manualRequestedAt,
-    cooldownMs: PLAYER_PORTRAIT_MANUAL_COOLDOWN_MS,
-  });
+export function playerPortraitManualRefreshState(options = {}) {
+  return playerPortraitCache.manualRefreshState(options);
 }
 
 export function shouldCommitManualPortraitRefresh(requestKind, text) {
-  return requestKind === 'portrait_manual' && typeof text === 'string' && Boolean(text.trim());
+  return playerPortraitCache.shouldCommitManualRefresh(requestKind, text);
 }
 
-export function markPlayerPortraitManualRefresh({ now = Date.now(), identityScope = null } = {}) {
-  const scope = normalizeIdentityScope(identityScope);
-  if (!scope) return false;
-  const previous = readPortraitCache(scope) || {};
-  return writeJsonStorage(STORAGE_LOCAL, AI_PLAYER_PORTRAIT_CACHE_KEY, {
-    ...previous,
-    schema: PORTRAIT_SCHEMA,
-    identityScope: scope,
-    manualRequestedAt: Number(now),
-  });
+export function markPlayerPortraitManualRefresh(options = {}) {
+  return playerPortraitCache.markManualRefresh(options);
 }
 
 export function formatPlayerPortraitCooldown(ms) {
-  const totalMinutes = Math.max(1, Math.ceil(Number(ms || 0) / 60000));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours <= 0) return `${minutes} min`;
-  if (!minutes) return `${hours} h`;
-  return `${hours} h ${minutes} min`;
+  return formatAiNarrativeCooldown(ms);
 }
