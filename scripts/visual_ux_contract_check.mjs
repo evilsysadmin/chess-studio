@@ -40,8 +40,8 @@ const matthiasVisuals = read('frontend/src/matthiasVisuals.js');
 const feedbackE2e = read('e2e/feedback-critical.spec.js');
 const smoke = read('e2e/smoke.spec.js');
 
-const HOME_CANONICAL_PATH = 'frontend/src/assets/home-canonical/great-hall-dungeon.webp';
-const HOME_CANONICAL_GIT_BLOB_SHA1 = '0d2a088581ab29f3a44eb7d19b1521f49bdb9f0d';
+const HOME_CANONICAL_PATH = 'frontend/src/assets/home-canonical/great-hall-dungeon.avif';
+const HOME_CANONICAL_GIT_BLOB_SHA1 = 'a7dd652b3353bd62eab2cfac516c1730cdeb35e0';
 const HOME_CANONICAL_WIDTH = 1814;
 const HOME_CANONICAL_HEIGHT = 867;
 const homeCanonicalBytes = readBytes(HOME_CANONICAL_PATH);
@@ -51,46 +51,20 @@ const homeCanonicalGitBlobSha1 = createHash('sha1')
   .update(homeCanonicalBytes)
   .digest('hex');
 
-function webpDimensions(buffer) {
-  if (
-    buffer.length < 30
-    || buffer.subarray(0, 4).toString('ascii') !== 'RIFF'
-    || buffer.subarray(8, 12).toString('ascii') !== 'WEBP'
-  ) return null;
-
-  let offset = 12;
-  while (offset + 8 <= buffer.length) {
-    const kind = buffer.subarray(offset, offset + 4).toString('ascii');
-    const chunkSize = buffer.readUInt32LE(offset + 4);
-    const data = offset + 8;
-    if (data + chunkSize > buffer.length) return null;
-
-    if (kind === 'VP8 ' && chunkSize >= 10) {
-      if (buffer[data + 3] !== 0x9d || buffer[data + 4] !== 0x01 || buffer[data + 5] !== 0x2a) return null;
-      return {
-        width: buffer.readUInt16LE(data + 6) & 0x3fff,
-        height: buffer.readUInt16LE(data + 8) & 0x3fff,
-      };
-    }
-    if (kind === 'VP8X' && chunkSize >= 10) {
-      return {
-        width: buffer.readUIntLE(data + 4, 3) + 1,
-        height: buffer.readUIntLE(data + 7, 3) + 1,
-      };
-    }
-    if (kind === 'VP8L' && chunkSize >= 5 && buffer[data] === 0x2f) {
-      const bits = buffer.readUInt32LE(data + 1);
-      return {
-        width: (bits & 0x3fff) + 1,
-        height: ((bits >> 14) & 0x3fff) + 1,
-      };
-    }
-    offset = data + chunkSize + (chunkSize & 1);
-  }
-  return null;
+function avifDimensions(buffer) {
+  if (buffer.length < 24 || buffer.subarray(4, 8).toString('ascii') !== 'ftyp') return null;
+  const marker = Buffer.from('ispe');
+  const index = buffer.indexOf(marker);
+  if (index < 4 || index + 16 > buffer.length) return null;
+  const boxSize = buffer.readUInt32BE(index - 4);
+  if (boxSize < 20 || index - 4 + boxSize > buffer.length) return null;
+  return {
+    width: buffer.readUInt32BE(index + 8),
+    height: buffer.readUInt32BE(index + 12),
+  };
 }
 
-const homeCanonicalDimensions = webpDimensions(homeCanonicalBytes);
+const homeCanonicalDimensions = avifDimensions(homeCanonicalBytes);
 
 const canonicalPayload = read('frontend/public/matthias-home-canonical.b64').trim();
 const canonicalBytes = Buffer.from(canonicalPayload, 'base64');
@@ -124,7 +98,7 @@ const checks = [
     'Home debe usar una única superficie ilustrada 16:9, sin rama legacy ni recorte del arte canónico',
   ],
   [
-    homeCanonicalDir.length === 1 && homeCanonicalDir[0] === 'great-hall-dungeon.webp',
+    homeCanonicalDir.length === 1 && homeCanonicalDir[0] === 'great-hall-dungeon.avif',
     `Home canónica debe tener un único master; encontrados: ${homeCanonicalDir.join(', ') || '(ninguno)'}`,
   ],
   [
@@ -133,10 +107,10 @@ const checks = [
   ],
   [
     homeCanonicalDimensions?.width === HOME_CANONICAL_WIDTH && homeCanonicalDimensions?.height === HOME_CANONICAL_HEIGHT,
-    `Home canónica debe medir ${HOME_CANONICAL_WIDTH}x${HOME_CANONICAL_HEIGHT}; recibido ${homeCanonicalDimensions ? `${homeCanonicalDimensions.width}x${homeCanonicalDimensions.height}` : 'WebP inválido'}`,
+    `Home canónica debe medir ${HOME_CANONICAL_WIDTH}x${HOME_CANONICAL_HEIGHT}; recibido ${homeCanonicalDimensions ? `${homeCanonicalDimensions.width}x${homeCanonicalDimensions.height}` : 'AVIF inválido'}`,
   ],
   [
-    homeIllustrated.includes("import hall from '../assets/home-canonical/great-hall-dungeon.webp';"),
+    homeIllustrated.includes("import hall from '../assets/home-canonical/great-hall-dungeon.avif';"),
     'HomeIllustrated debe importar exclusivamente el master canónico protegido',
   ],
   [
