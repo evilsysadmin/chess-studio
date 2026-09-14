@@ -9,7 +9,7 @@ import { loadActiveGameSession } from './activeGameSession.js';
 const STORAGE_KEY = 'chess-study-tournament';
 export const POINTS_PER_LEVEL = 50;
 
-const EMPTY_STATE = { points: 0, progressPoints: 0, wins: 0, draws: 0, losses: 0, winStreak: 0, bestWinStreak: 0, processedGameIds: [] };
+const EMPTY_STATE = { points: 0, progressPoints: 0, wins: 0, draws: 0, losses: 0, winStreak: 0, bestWinStreak: 0 };
 
 export function loadTournament() {
   const parsed = readJsonStorage(STORAGE_LOCAL, STORAGE_KEY, { fallback: {} });
@@ -19,12 +19,7 @@ export function loadTournament() {
   const progressPoints = Number.isFinite(Number(parsed?.progressPoints))
     ? Number(parsed.progressPoints)
     : Number(parsed?.points) || 0;
-  return {
-    ...EMPTY_STATE,
-    ...(parsed && typeof parsed === 'object' ? parsed : {}),
-    progressPoints,
-    processedGameIds: Array.isArray(parsed?.processedGameIds) ? parsed.processedGameIds.slice(0, 256) : [],
-  };
+  return { ...EMPTY_STATE, ...(parsed && typeof parsed === 'object' ? parsed : {}), progressPoints };
 }
 
 export function saveTournament(state) {
@@ -160,7 +155,7 @@ export function applyResult(state, outcome) {
   const gameId = loadActiveGameSession()?.gameId;
   const gained = outcome === 'win' ? 20 : outcome === 'draw' ? 5 : 0;
   const persisted = gameId ? loadTournament() : null;
-  if (gameId && persisted.processedGameIds.includes(gameId)) {
+  if (gameId && persisted.lastGameId === gameId) {
     const newLevel = levelForPoints(persisted.progressPoints);
     return {
       state: persisted,
@@ -188,6 +183,6 @@ export function applyResult(state, outcome) {
     winStreak,
     bestWinStreak,
   };
-  if (gameId) next.processedGameIds = [gameId, ...(Array.isArray(state.processedGameIds) ? state.processedGameIds.filter((id) => id !== gameId) : [])].slice(0, 256);
+  if (gameId) next.lastGameId = gameId;
   return { state: next, gained, leveledUp: newLevel > prevLevel, newLevel, duplicate: false };
 }
