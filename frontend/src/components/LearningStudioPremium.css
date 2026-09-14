@@ -1,100 +1,10 @@
-/* Premium presentation layer for the complete learning route.
-   The goal is one coherent studio: compact section navigation, a generous
-   reference desk for the glossary and a non-dashboard mechanics library. */
+/* Final refinements for the lazy Entrenar route.
+   TutorialRoute.css owns the base School / tabs / glossary / mechanics layout.
+   This file only owns the two presentation decisions that intentionally need
+   stronger route-scoped specificity: glossary-as-reference-desk and the
+   screenshot-derived desktop density correction for Modos especiales. */
 
-.tutorial-shell {
-  width: min(100%, 1180px);
-  max-width: 1180px;
-}
-
-.tutorial-section-tabs {
-  width: min(100%, 720px);
-  align-self: center;
-  gap: .2rem;
-  padding: .28rem;
-  border-color: color-mix(in srgb, var(--brass) 24%, var(--ui-border, var(--ink-3)));
-  border-radius: 12px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.02), rgba(0,0,0,.08)),
-    color-mix(in srgb, var(--ui-panel, var(--ink-2)) 94%, var(--ink) 6%);
-  box-shadow: 0 10px 28px rgba(0,0,0,.12), inset 0 1px rgba(255,255,255,.025);
-}
-
-.tutorial-section-tabs button {
-  min-height: 42px;
-  padding: .58rem .78rem;
-  border-radius: 9px;
-  font-size: .68rem;
-  font-weight: 800;
-  letter-spacing: .025em;
-  transition: color .15s ease, background .15s ease, box-shadow .15s ease, transform .15s ease;
-}
-
-.tutorial-section-tabs button:hover,
-.tutorial-section-tabs button:focus-visible {
-  color: var(--parchment);
-  background: rgba(255,255,255,.024);
-  outline: none;
-}
-
-.tutorial-section-tabs button.active {
-  border-color: color-mix(in srgb, var(--brass) 40%, transparent);
-  background:
-    linear-gradient(135deg, rgba(198,164,93,.14), rgba(198,164,93,.035)),
-    rgba(0,0,0,.08);
-  color: color-mix(in srgb, var(--brass) 86%, var(--parchment));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--brass) 18%, transparent), 0 5px 15px rgba(0,0,0,.1);
-}
-
-.chess-glossary {
-  width: 100%;
-  padding: clamp(.9rem, 1.8vw, 1.3rem);
-  border-color: color-mix(in srgb, var(--brass) 28%, var(--ui-border, var(--ink-3)));
-  border-radius: 14px;
-  background:
-    radial-gradient(circle at 8% 0%, rgba(198,164,93,.075), transparent 24%),
-    linear-gradient(145deg, rgba(255,255,255,.018), transparent 38%),
-    color-mix(in srgb, var(--ui-panel, var(--ink-2)) 94%, var(--ink) 6%);
-  box-shadow: 0 20px 50px rgba(0,0,0,.17), inset 0 1px rgba(255,255,255,.03);
-}
-
-.chess-glossary-heading {
-  padding-bottom: .72rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--ui-border, var(--ink-3)) 80%, transparent);
-}
-
-.chess-glossary-heading h2 {
-  font-size: clamp(1.2rem, 1.5vw, 1.45rem);
-}
-
-.chess-glossary-count {
-  padding: .32rem .55rem;
-  border-color: color-mix(in srgb, var(--brass) 25%, var(--ui-border, var(--ink-3)));
-  background: rgba(0,0,0,.11);
-}
-
-.chess-glossary-search {
-  margin: .9rem 0 1rem;
-}
-
-.chess-glossary-search input {
-  min-height: 44px;
-  padding: .7rem .78rem;
-  border-color: color-mix(in srgb, var(--brass) 24%, var(--ui-border, var(--ink-3)));
-  border-radius: 10px;
-  background: rgba(0,0,0,.18);
-  box-shadow: inset 0 1px 3px rgba(0,0,0,.18);
-}
-
-.chess-glossary-search input:focus {
-  border-color: color-mix(in srgb, var(--brass) 58%, var(--ui-border, var(--ink-3)));
-  outline: 2px solid color-mix(in srgb, var(--brass) 14%, transparent);
-  outline-offset: 1px;
-}
-
-/* Treat the glossary as a reference desk, not a dashboard of repeated cards.
-   Scope through the real route structure so this premium layer wins over the
-   later TutorialRoute defaults without resorting to !important. */
+/* Glosario: keep it readable like a reference desk instead of a wall of cards. */
 .tutorial-shell.matthias-school-shell .chess-glossary > .chess-glossary-grid {
   gap: 0 1.5rem;
   border-top: 1px solid color-mix(in srgb, var(--ui-border, var(--ink-3)) 72%, transparent);
@@ -134,121 +44,14 @@
   line-height: 1.55;
 }
 
-.mechanic-library {
-  width: 100%;
-  grid-template-columns: minmax(240px, 285px) minmax(0, 1fr);
-  gap: 1rem;
-  margin-top: .15rem;
+@media (min-width: 1050px) {
+  .tutorial-shell.matthias-school-shell .chess-glossary > .chess-glossary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-.mechanic-library-list {
-  gap: 0;
-  max-height: min(72vh, 680px);
-  padding: .42rem;
-  border: 1px solid color-mix(in srgb, var(--brass) 22%, var(--ui-border, var(--ink-3)));
-  border-radius: 13px;
-  background:
-    linear-gradient(150deg, rgba(198,164,93,.035), transparent 30%),
-    color-mix(in srgb, var(--ui-panel, var(--ink-2)) 94%, var(--ink) 6%);
-  box-shadow: 0 14px 34px rgba(0,0,0,.13), inset 0 1px rgba(255,255,255,.025);
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--brass) 35%, var(--ink-3)) transparent;
-}
-
-.mechanic-library-list button {
-  min-height: 58px;
-  padding: .62rem .62rem;
-  border: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--ui-border, var(--ink-3)) 74%, transparent);
-  border-radius: 0;
-  background: transparent;
-  transition: background .14s ease, transform .14s ease, box-shadow .14s ease;
-}
-
-.mechanic-library-list button:last-child {
-  border-bottom: 0;
-}
-
-.mechanic-library-list button:hover,
-.mechanic-library-list button:focus-visible {
-  background: rgba(255,255,255,.02);
-  transform: translateX(2px);
-  outline: none;
-}
-
-.mechanic-library-list button.active {
-  margin: .18rem 0;
-  border-bottom-color: transparent;
-  border-radius: 9px;
-  background:
-    linear-gradient(90deg, rgba(198,164,93,.13), rgba(198,164,93,.025) 76%),
-    rgba(0,0,0,.055);
-  box-shadow: inset 3px 0 color-mix(in srgb, var(--brass) 82%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--brass) 24%, transparent);
-}
-
-.mechanic-library-list span {
-  color: var(--parchment-dim);
-  opacity: .72;
-}
-
-.mechanic-library-list strong {
-  color: var(--parchment);
-  font-size: .78rem;
-  line-height: 1.3;
-}
-
-.mechanic-library-list small {
-  padding: .18rem .32rem;
-  border: 1px solid color-mix(in srgb, var(--ui-border, var(--ink-3)) 75%, transparent);
-  border-radius: 999px;
-  font-family: var(--font-mono);
-  font-size: .55rem;
-}
-
-.mechanic-library-detail {
-  min-width: 0;
-  padding: clamp(.95rem, 1.8vw, 1.25rem);
-  border-color: color-mix(in srgb, var(--brass) 30%, var(--ui-border, var(--ink-3)));
-  border-radius: 14px;
-  background:
-    radial-gradient(circle at 8% 0%, rgba(198,164,93,.075), transparent 25%),
-    linear-gradient(145deg, rgba(255,255,255,.018), transparent 42%),
-    color-mix(in srgb, var(--ui-panel, var(--ink-2)) 94%, var(--ink) 6%);
-  box-shadow: 0 20px 50px rgba(0,0,0,.17), inset 0 1px rgba(255,255,255,.03);
-}
-
-.mechanic-library-detail h2 {
-  margin-top: .22rem;
-  font-size: clamp(1.2rem, 1.55vw, 1.5rem);
-}
-
-.mechanic-library-detail .hero-scope-note {
-  max-width: 72ch;
-  line-height: 1.55;
-}
-
-.mechanic-library-detail .mechanic-tutorial-step {
-  min-height: 170px;
-  margin: .9rem 0;
-  padding: 1rem;
-  border-color: color-mix(in srgb, var(--brass) 18%, var(--ui-border, var(--ink-3)));
-  border-radius: 11px;
-  background:
-    linear-gradient(145deg, rgba(0,0,0,.18), rgba(0,0,0,.09));
-}
-
-.mechanic-library-detail .mechanic-tutorial-step h3 {
-  margin-top: .25rem;
-  font-size: 1.02rem;
-}
-
-.mechanic-library-detail .mechanic-tutorial-actions {
-  padding-top: .1rem;
-}
-
-/* Screenshot-derived density correction. The desktop mechanics rail is tall by
-   design, but its detail card should size to the current lesson instead of
-   stretching to the rail's scroll height and leaving a large dead panel. */
+/* Modos especiales: the rail may scroll, but the current lesson card should
+   size to its own content instead of stretching into a tall dead panel. */
 @media (min-width: 781px) {
   .tutorial-shell.matthias-school-shell .mechanic-library.mechanic-library {
     align-items: start;
@@ -293,67 +96,14 @@
   }
 }
 
-@media (min-width: 1050px) {
-  .tutorial-shell.matthias-school-shell .chess-glossary > .chess-glossary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 780px) {
-  .tutorial-section-tabs {
-    width: 100%;
-  }
-
-  .mechanic-library {
-    grid-template-columns: 1fr;
-  }
-
-  .mechanic-library-list {
-    max-height: 300px;
-  }
-}
-
 @media (max-width: 560px) {
-  .tutorial-section-tabs {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-
-  .tutorial-section-tabs button {
-    min-height: 44px;
-  }
-
-  .chess-glossary {
-    padding: .78rem;
-  }
-
-  .chess-glossary-heading {
+  .tutorial-shell.matthias-school-shell .chess-glossary-heading {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .chess-glossary-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .chess-glossary-entry {
+  .tutorial-shell.matthias-school-shell .chess-glossary-grid > .chess-glossary-entry {
     min-height: 0;
     padding-inline: 0;
-  }
-
-  .mechanic-library-list {
-    padding: .3rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .tutorial-section-tabs button,
-  .mechanic-library-list button {
-    transition: none;
-  }
-
-  .mechanic-library-list button:hover,
-  .mechanic-library-list button:focus-visible {
-    transform: none;
   }
 }
