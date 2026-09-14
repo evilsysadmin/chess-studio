@@ -14,6 +14,13 @@ export const PAWN_SLUG_STURM_BISHOP_META = Object.freeze({
   entrySeconds: 0.72,
 });
 
+const STURM_BISHOP_ENTRY_IDENTITY = Object.freeze({ active: false, scale: 1, y: 0, tilt: 0, visorBoost: 0 });
+const STURM_BISHOP_SUPPRESSION_LANES = Object.freeze([
+  Object.freeze({ height: 0.62, speed: 8.35, damage: 12, cue: 'jump' }),
+  Object.freeze({ height: 1.68, speed: 8.15, damage: 12, cue: 'crouch' }),
+  Object.freeze({ height: 1.08, speed: 8.45, damage: 13, cue: 'move' }),
+]);
+
 export function pawnSlugSturmBishopCooldownTick(cooldown, distance, range, telegraphSeconds, dt) {
   const current = Number(cooldown);
   const targetDistance = Number(distance);
@@ -43,12 +50,11 @@ export function pawnSlugSturmBishopSuppressionTelegraph(cooldown, distance) {
   return Math.max(0, Math.min(1, 1 - remaining / PAWN_SLUG_STURM_BISHOP_META.suppressionTelegraphSeconds));
 }
 
-export function pawnSlugSturmBishopEntryPose(age = 0, { reducedMotion = false } = {}) {
-  const identity = Object.freeze({ active: false, scale: 1, y: 0, tilt: 0, visorBoost: 0 });
-  if (reducedMotion) return identity;
+export function pawnSlugSturmBishopEntryPoseValues(age = 0, reducedMotion = false) {
+  if (reducedMotion) return STURM_BISHOP_ENTRY_IDENTITY;
   const duration = PAWN_SLUG_STURM_BISHOP_META.entrySeconds;
   const safeAge = Math.max(0, Number(age) || 0);
-  if (safeAge >= duration) return identity;
+  if (safeAge >= duration) return STURM_BISHOP_ENTRY_IDENTITY;
   const t = Math.max(0, Math.min(1, safeAge / duration));
   const settle = 1 - ((1 - t) ** 3);
   const remaining = 1 - settle;
@@ -61,14 +67,14 @@ export function pawnSlugSturmBishopEntryPose(age = 0, { reducedMotion = false } 
   });
 }
 
+export function pawnSlugSturmBishopEntryPose(age = 0, { reducedMotion = false } = {}) {
+  return pawnSlugSturmBishopEntryPoseValues(age, reducedMotion);
+}
+
 export function pawnSlugSturmBishopSuppressionLane(shotIndex = 0) {
-  const lanes = Object.freeze([
-    Object.freeze({ height: 0.62, speed: 8.35, damage: 12, cue: 'jump' }),
-    Object.freeze({ height: 1.68, speed: 8.15, damage: 12, cue: 'crouch' }),
-    Object.freeze({ height: 1.08, speed: 8.45, damage: 13, cue: 'move' }),
-  ]);
-  const index = ((Math.floor(Number(shotIndex) || 0) % lanes.length) + lanes.length) % lanes.length;
-  return lanes[index];
+  const index = ((Math.floor(Number(shotIndex) || 0) % STURM_BISHOP_SUPPRESSION_LANES.length)
+    + STURM_BISHOP_SUPPRESSION_LANES.length) % STURM_BISHOP_SUPPRESSION_LANES.length;
+  return STURM_BISHOP_SUPPRESSION_LANES[index];
 }
 
 function standard(color, roughness = 0.62, metalness = 0.34, emissive = 0x000000, emissiveIntensity = 0) {
@@ -92,6 +98,13 @@ export function createSturmBishopModel() {
   root.userData.baseScale = 1.18;
   root.userData.entryStartedAt = null;
   root.userData.entryReducedMotion = Boolean(typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches);
+  const visualRefs = {
+    warningHalo: null,
+    weakPoints: [],
+    suppressionTelegraphs: [],
+    shellTelegraphs: [],
+  };
+  root.userData.sturmVisualRefs = visualRefs;
 
   const armor = standard(0x3d444b, 0.52, 0.52);
   const armorDark = standard(0x20262b, 0.7, 0.42);
@@ -127,6 +140,7 @@ export function createSturmBishopModel() {
 
   const eye = mesh(new THREE.BoxGeometry(0.43, 0.1, 0.055), visor, { y: 1.69, z: 0.32 });
   eye.userData.weakPoint = true;
+  visualRefs.weakPoints.push(eye);
   root.add(eye);
 
   for (const side of [-1, 1]) {
@@ -138,9 +152,11 @@ export function createSturmBishopModel() {
     gun.position.set(side * 0.64, 1.26, 0.04);
     const receiver = mesh(new THREE.BoxGeometry(0.32, 0.18, 0.2), standard(0x20262b, 0.7, 0.42, 0xd45a22, 0));
     receiver.userData.suppressionTelegraph = true;
+    visualRefs.suppressionTelegraphs.push(receiver);
     const barrel = mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.76, 8), armor.clone(), { x: side * 0.4, rz: Math.PI / 2 });
     const muzzle = mesh(new THREE.CylinderGeometry(0.075, 0.075, 0.11, 8), standard(0xb38b43, 0.38, 0.58, 0xff6b2f, 0), { x: side * 0.79, rz: Math.PI / 2 });
     muzzle.userData.shellTelegraph = true;
+    visualRefs.shellTelegraphs.push(muzzle);
     gun.add(receiver, barrel, muzzle);
     root.add(gun);
   }
@@ -164,10 +180,24 @@ export function createSturmBishopModel() {
   warningHalo.castShadow = false;
   warningHalo.receiveShadow = false;
   warningHalo.visible = false;
+  visualRefs.warningHalo = warningHalo;
   root.add(warningHalo);
 
   root.scale.setScalar(root.userData.baseScale);
   return root;
+}
+
+function animateWarningHalo(node, safeTime, warning, suppression, warningPulse, suppressionPulse, reducedMotion) {
+  if (!node) return;
+  const rawStrength = Math.max(warning, suppression);
+  const animatedStrength = Math.max(warning * warningPulse, suppression * suppressionPulse);
+  const strength = reducedMotion ? rawStrength : animatedStrength;
+  node.visible = rawStrength > 0.015;
+  node.material.opacity = node.visible ? Math.min(0.78, 0.2 + strength * 0.52) : 0;
+  node.material.color.setHex(suppression > warning ? 0xff5b3d : 0xffb347);
+  const haloScale = reducedMotion ? 1.04 : 0.92 + strength * 0.22;
+  node.scale.setScalar(haloScale);
+  node.rotation.z = reducedMotion ? 0 : safeTime * (suppression > warning ? -0.72 : 0.46);
 }
 
 export function animateSturmBishopModel(model, time, { moving = false, hurt = false, dir = -1, telegraph = 0, suppressionTelegraph = 0 } = {}) {
@@ -175,7 +205,7 @@ export function animateSturmBishopModel(model, time, { moving = false, hurt = fa
   const safeTime = Number(time) || 0;
   if (!Number.isFinite(model.userData.entryStartedAt)) model.userData.entryStartedAt = safeTime;
   const reducedMotion = Boolean(model.userData.entryReducedMotion);
-  const entry = pawnSlugSturmBishopEntryPose(safeTime - model.userData.entryStartedAt, { reducedMotion });
+  const entry = pawnSlugSturmBishopEntryPoseValues(safeTime - model.userData.entryStartedAt, reducedMotion);
   const direction = dir < 0 ? -1 : 1;
   const stride = Math.sin(safeTime * 7.2);
   const breath = Math.sin(safeTime * 2.15);
@@ -190,34 +220,19 @@ export function animateSturmBishopModel(model, time, { moving = false, hurt = fa
   model.position.y = model.userData.baseY + entry.y + (moving ? Math.abs(stride) * 0.035 : Math.max(0, breath) * 0.012);
   model.rotation.z = entry.tilt * direction + (moving ? -direction * stride * 0.018 : direction * suppression * suppressionPulse * 0.012);
 
-  model.traverse((node) => {
-    if (!node.isMesh) return;
-    if (node.userData?.warningHalo) {
-      const rawStrength = Math.max(warning, suppression);
-      const animatedStrength = Math.max(warning * warningPulse, suppression * suppressionPulse);
-      const strength = reducedMotion ? rawStrength : animatedStrength;
-      node.visible = rawStrength > 0.015;
-      node.material.opacity = node.visible ? Math.min(0.78, 0.2 + strength * 0.52) : 0;
-      node.material.color.setHex(suppression > warning ? 0xff5b3d : 0xffb347);
-      const haloScale = reducedMotion ? 1.04 : 0.92 + strength * 0.22;
-      node.scale.setScalar(haloScale);
-      node.rotation.z = reducedMotion ? 0 : safeTime * (suppression > warning ? -0.72 : 0.46);
-      return;
-    }
-    if (!node.material?.emissive) return;
-    if (node.userData?.weakPoint) {
-      node.material.emissiveIntensity = hurt
-        ? 2.5
-        : 1.25 + entry.visorBoost + Math.max(0, breath) * 0.45 + warning * warningPulse * 1.5 + suppression * suppressionPulse * 0.7;
-      return;
-    }
-    if (node.userData?.suppressionTelegraph) {
-      node.material.emissiveIntensity = suppression * suppressionPulse * 2.4;
-      return;
-    }
-    if (node.userData?.shellTelegraph) {
-      node.material.emissiveIntensity = Math.max(warning * warningPulse * 3.2, suppression * suppressionPulse * 1.65);
-      node.scale.setScalar(1 + Math.max(warning * warningPulse * 0.16, suppression * suppressionPulse * 0.08));
-    }
-  });
+  const refs = model.userData.sturmVisualRefs;
+  animateWarningHalo(refs?.warningHalo, safeTime, warning, suppression, warningPulse, suppressionPulse, reducedMotion);
+
+  for (const node of refs?.weakPoints || []) {
+    node.material.emissiveIntensity = hurt
+      ? 2.5
+      : 1.25 + entry.visorBoost + Math.max(0, breath) * 0.45 + warning * warningPulse * 1.5 + suppression * suppressionPulse * 0.7;
+  }
+  for (const node of refs?.suppressionTelegraphs || []) {
+    node.material.emissiveIntensity = suppression * suppressionPulse * 2.4;
+  }
+  for (const node of refs?.shellTelegraphs || []) {
+    node.material.emissiveIntensity = Math.max(warning * warningPulse * 3.2, suppression * suppressionPulse * 1.65);
+    node.scale.setScalar(1 + Math.max(warning * warningPulse * 0.16, suppression * suppressionPulse * 0.08));
+  }
 }
