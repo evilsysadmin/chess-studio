@@ -3,6 +3,8 @@
 from pathlib import Path
 import re
 
+from quality_scope import CORE_E2E_LANES
+
 ROOT = Path(__file__).resolve().parents[1]
 makefile = (ROOT / 'Makefile').read_text(encoding='utf-8')
 ci = (ROOT / '.github/workflows/cicd.yml').read_text(encoding='utf-8')
@@ -49,9 +51,6 @@ def assert_lane_pattern_targets_real_test(spec_name: str, item: str) -> None:
             f'Grep crítico fantasma en {spec_name}: {item!r} no coincide con ningún test real del spec ejecutado'
         )
     if len(matches) > 1:
-        # Permit a critical anchor to grow stricter derivative journeys while
-        # retaining one exact canonical test. This keeps grep stable and makes
-        # extensions additive instead of forcing ever-more-specific CI regexes.
         exact = [title for title in matches if title == item]
         if len(exact) != 1:
             raise SystemExit(
@@ -124,18 +123,22 @@ canonical_critical = {item.strip() for item in canonical_match.group(1).split('|
 if not canonical_critical:
     raise SystemExit('CRITICAL_E2E_GREP no puede estar vacío')
 
-# El modo normal delega el gate crítico entero en Make. El modo shardado es una
-# excepción deliberada: reparte el mismo contrato entre runners aislados, pero
-# esta auditoría exige que la unión de sus --grep sea EXACTAMENTE el contrato
-# canónico del Makefile. Sólo inspeccionamos el job `e2e_lanes`: otros jobs
-# browser pueden usar --grep para contratos especializados sin convertirse por
-# accidente en una tercera lane del core.
 sharded_playwright = 'e2e_lanes:' in ci
 if sharded_playwright:
     core_lanes = ci_job_block('e2e_lanes')
-    for marker in ['- regression', '- smoke', 'Tests · Playwright · ${{ matrix.lane }}', 'mobile-final-interactions.spec.js']:
+    expected_lanes = ('regression', 'learning-golden', 'learning-observation', 'smoke')
+    if CORE_E2E_LANES != expected_lanes:
+        raise SystemExit(f'quality_scope perdió las lanes core canónicas: {CORE_E2E_LANES!r}')
+    for marker in [
+        'matrix: ${{ fromJSON(needs.preflight.outputs.core_e2e_matrix) }}',
+        'Tests · Playwright · ${{ matrix.lane }}',
+        'mobile-final-interactions.spec.js',
+    ]:
         if marker not in core_lanes:
             raise SystemExit(f'CI shardado incompleto: falta `{marker}`')
+    for lane in expected_lanes:
+        if f'{lane})' not in core_lanes:
+            raise SystemExit(f'CI shardado no implementa la lane `{lane}`')
 
     lane_commands = re.findall(
         r'playwright test\s+([A-Za-z0-9_.-]+\.spec\.js)[\s\\]+--grep\s+"([^"]+)"',
