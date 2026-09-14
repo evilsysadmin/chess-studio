@@ -61,18 +61,17 @@ export default function Board3D(props) {
     previousFenRef.current = props.fen;
   }, [props.fen]);
 
-  // Board3D owns only the Three.js quick-iteration lease. Persisting the cameo
-  // here used to mark a game as completed as soon as Hans entered the viewport,
-  // which could kill the React narrative after an F5/remount halfway through
-  // the fireplace number. Completion is persisted by GameBoardView only after
-  // WarRoomHansFireCall reaches its real terminal state.
+  // The scene lease is the one shared infrastructure switch that guarantees
+  // Hans exists even in the lite War Room. Real fireplace iteration owns it in
+  // production; the guarded WebDriver audit may borrow it only to render the
+  // ambient routines under SwiftShader. The audit does not arm the fire call.
   useLayoutEffect(() => {
-    if (!requestsHansQuickIteration) return undefined;
-    if (hasWarRoomHansCompletedForGame(hansGameId)) return undefined;
+    if (!requestsHansDiagnostics) return undefined;
+    if (requestsHansQuickIteration && hasWarRoomHansCompletedForGame(hansGameId)) return undefined;
 
     acquireWarRoomHansQuickIteration();
     return () => releaseWarRoomHansQuickIteration();
-  }, [requestsHansQuickIteration, hansGameId]);
+  }, [requestsHansDiagnostics, requestsHansQuickIteration, hansGameId]);
 
   return (
     <BoardRendererContext.Provider value="3d">
