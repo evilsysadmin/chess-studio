@@ -1,5 +1,5 @@
 name: App visual pipeline
-description: Build, capture and upload canonical or Hans visual artifacts.
+description: Build once, then capture canonical visuals plus scoped Hans/Chesscom artifacts.
 inputs:
   mode:
     description: canonical or hans
@@ -12,6 +12,29 @@ runs:
       with:
         browser-scope: chromium
         build-frontend: 'true'
+
+    - name: Detect optional visual captures
+      if: inputs.mode == 'canonical'
+      id: scope
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+          echo "hans=true" >> "$GITHUB_OUTPUT"
+          echo "chesscom=true" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        files="$(git diff --name-only HEAD^ HEAD)"
+        if grep -Eqi 'hans|Board3D|WarRoom3D|GameBoardView|app_visual|app-visual' <<<"$files"; then
+          echo "hans=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "hans=false" >> "$GITHUB_OUTPUT"
+        fi
+        if grep -Eqi '(^|/)(chesscom[^/]*|Chesscom[^/]*|assets/chesscom|public/chesscom)|e2e/chesscom|app-visual-pipeline' <<<"$files"; then
+          echo "chesscom=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "chesscom=false" >> "$GITHUB_OUTPUT"
+        fi
 
     - name: Capture
       shell: bash
@@ -41,7 +64,37 @@ runs:
         if-no-files-found: warn
         retention-days: 7
 
+    - name: Capture Hans routines
+      if: inputs.mode == 'canonical' && steps.scope.outputs.hans == 'true'
+      shell: bash
+      run: bash scripts/app_visual_capture.sh hans
+
     - name: Upload Hans routine artifact
+      if: always() && inputs.mode == 'canonical' && steps.scope.outputs.hans == 'true'
+      uses: actions/upload-artifact@v7
+      with:
+        name: hans-routines-${{ github.event.pull_request.number || github.run_id }}
+        path: .artifacts/app-visual/hans-routines/
+        if-no-files-found: error
+        retention-days: 7
+
+    - name: Capture Chesscom desktop + mobile
+      if: inputs.mode == 'canonical' && steps.scope.outputs.chesscom == 'true'
+      continue-on-error: true
+      shell: bash
+      working-directory: e2e
+      run: ./node_modules/.bin/playwright test chesscom-visual-artifact.spec.js --workers=1 --retries=0
+
+    - name: Upload Chesscom visual artifact
+      if: always() && inputs.mode == 'canonical' && steps.scope.outputs.chesscom == 'true'
+      uses: actions/upload-artifact@v7
+      with:
+        name: chesscom-visual-${{ github.event.pull_request.number || github.run_id }}
+        path: .artifacts/chesscom-visual/
+        if-no-files-found: warn
+        retention-days: 7
+
+    - name: Upload Hans-only routine artifact
       if: always() && inputs.mode == 'hans'
       uses: actions/upload-artifact@v7
       with:

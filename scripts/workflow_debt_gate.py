@@ -20,7 +20,6 @@ class Budget:
 INVENTORY = {
     'app-visual-artifact.yml': 'visual-artifact',
     'branch-housekeeping.yml': 'housekeeping',
-    'chesscom-visual-artifact.yml': 'visual-artifact',
     'cicd.yml': 'quality-required',
     'cloudflare-prometheus-exporter.yml': 'observability',
     'codeql.yml': 'security-signal',
@@ -49,8 +48,7 @@ BUDGETS = (
     Budget('.github/workflows/staging-ai-worker.yml', 7227),
     Budget('.github/workflows/cloudflare-prometheus-exporter.yml', 5964),
     Budget('.github/workflows/oci-readiness.yml', 2840),
-    Budget('.github/workflows/app-visual-artifact.yml', 1884),
-    Budget('.github/workflows/chesscom-visual-artifact.yml', 1490),
+    Budget('.github/workflows/app-visual-artifact.yml', 1108),
     Budget('.github/workflows/war-room-runtime-marathon.yml', 2464),
     Budget('.github/workflows/branch-housekeeping.yml', 652),
 )
