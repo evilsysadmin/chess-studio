@@ -7,6 +7,7 @@ import './styles.css';
 import './styles/29-motion-coherence.css';
 import './styles/30-modal-layering.css';
 import './components/MatthiasSchoolBoardScale.css';
+import './components/LearningStudioPremium.css';
 import './components/Game2DMobile.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
 import { migratePersistentStorage } from './storageMigrations.js';
