@@ -66,6 +66,7 @@ TRAILBLAZER_RE = re.compile(
     r"^frontend/src/assets/pawnTrailblazer/"
 )
 MATTHIAS_HOME_RE = re.compile(r"^frontend/src/components/MatthiasPremiumHome3D\.js$")
+FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
 
 # Core browser journeys validate behaviour and persistence, not pixels. Pure CSS
 # and art changes still run the frontend suite plus the app/specialized visual
@@ -134,6 +135,8 @@ def classify(paths: Iterable[str]) -> Scope:
 
         if path.startswith("frontend/"):
             scope.run_frontend = True
+            if FRONTEND_TEST_RE.search(path):
+                continue
             targeted = False
             if PAWN_SLUG_RE.search(path):
                 scope.run_pawn_slug_e2e = True
@@ -200,6 +203,13 @@ def self_test() -> None:
         run_security=True,
     )
     _expect(["frontend/src/App.jsx"], run_frontend=True, run_e2e=True)
+    _expect(["frontend/src/activeGameSession.test.js"], run_frontend=True)
+    _expect(["frontend/src/components/Chesscom.test.jsx"], run_frontend=True)
+    _expect(
+        ["frontend/src/activeGameSession.test.js", "frontend/src/App.jsx"],
+        run_frontend=True,
+        run_e2e=True,
+    )
     _expect(["frontend/src/components/Board3DRenderer.js"], run_frontend=True)
     _expect(["frontend/src/components/WarRoom3DAnimation.js"], run_frontend=True)
     _expect(["frontend/src/components/WarRoomPracticalLighting.js"], run_frontend=True)
@@ -257,7 +267,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · producto dirigido; CSS/art y módulos 3D dedicados no despiertan core browser; backend sin browser mockeado; harness full")
+    print("quality-scope self-test OK · producto dirigido; test-only/CSS/art y módulos 3D dedicados no despiertan core browser; backend sin browser mockeado; harness full")
 
 
 def main() -> int:
