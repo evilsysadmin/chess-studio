@@ -4,12 +4,11 @@ import {
   PAWN_SLUG_WEAPONS,
   PAWN_SLUG_WORLD,
   pawnSlugLevelProgress,
-  pawnSlugLiveWeaponLabel,
   pawnSlugMaxHpForLevel,
   pawnSlugWeaponShortLabel,
   pawnSlugXpForLevel,
 } from './pawnSlug.js';
-import { pawnSlugLiveWeaponModel } from './pawnSlugLiveWeaponModels.js';
+import { pawnSlugLiveWeaponLabel, pawnSlugLiveWeaponModel } from './pawnSlugLiveWeaponModels.js';
 import { PAWN_SLUG_STURM_BISHOP_META } from './pawnSlugMidBoss.js';
 
 export const PAWN_SLUG_WORLD_SCALE = 1 / 40;
