@@ -22,7 +22,6 @@ INVENTORY = {
     'branch-housekeeping.yml': 'housekeeping',
     'cicd.yml': 'quality-required',
     'cloudflare-prometheus-exporter.yml': 'observability',
-    'codeql.yml': 'security-signal',
     'coverage.yml': 'quality-scheduled',
     'e2e-full.yml': 'quality-scheduled',
     'grafana-dashboards.yml': 'observability',
