@@ -29,6 +29,7 @@ export function useRemoteNarrativeDossier(dossier, {
     }
 
     const controller = new AbortController();
+    setText(null);
     setLoading(true);
     void requestRemoteNarrative(dossier, { token, timeoutMs, signal: controller.signal })
       .then((nextText) => {
