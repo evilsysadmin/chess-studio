@@ -223,6 +223,28 @@
   padding-top: .1rem;
 }
 
+/* Screenshot-derived density correction. The desktop mechanics rail is tall by
+   design, but its detail card should size to the current lesson instead of
+   stretching to the rail's scroll height and leaving a large dead panel. */
+@media (min-width: 781px) {
+  .tutorial-shell.matthias-school-shell .mechanic-library.mechanic-library {
+    align-items: start;
+  }
+
+  .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-list.mechanic-library-list {
+    max-height: min(64vh, 610px);
+  }
+
+  .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-detail.mechanic-library-detail {
+    min-height: 0;
+    align-self: start;
+  }
+
+  .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-detail .mechanic-tutorial-step.mechanic-tutorial-step {
+    min-height: clamp(150px, 18vh, 176px);
+  }
+}
+
 @media (min-width: 1050px) {
   .chess-glossary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
