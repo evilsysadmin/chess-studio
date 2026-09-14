@@ -1,4 +1,4 @@
-import { structuredFeel as legacyStructuredFeel } from './ambientProfilesLegacy.js';
+import { structuredFeel as legacyStructuredFeel } from './ambientProfileBase.js';
 import {
   AMBIENT_GENRE_ORDER,
   AMBIENT_THEMES,
