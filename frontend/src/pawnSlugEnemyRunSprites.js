@@ -18,7 +18,7 @@ import enemyRunAtlasPart10b from './assets/pawnSlug/enemy_run_left_atlas_v1_part
 import {
   PAWN_SLUG_MOTION_PROFILES,
   configurePawnSlugTexture,
-} from './pawnSlugSpritesLegacy.js';
+} from './pawnSlugSpriteCore.js';
 import {
   PAWN_SLUG_ENEMY_ACTION_META,
   pawnSlugEnemyActionForState,
