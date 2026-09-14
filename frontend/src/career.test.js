@@ -5,10 +5,12 @@ import {
   chooseContract,
   loadBoardTheme,
   loadCareer,
+  loadSpecialRun,
   recordCareerGame,
   reconcileCareerHistory,
   recordSpecialRunResult,
   saveBoardTheme,
+  saveSpecialRun,
   startSpecialRun,
   unlockedBoardThemes,
 } from './career.js';
@@ -132,6 +134,35 @@ describe('career persistente', () => {
     const career = loadCareer();
     expect(career.records.bestBossStage).toBe(6);
     expect(career.runHistory[0]).toMatchObject({ mode: 'boss', outcome: 'win', completedStages: 6 });
+  });
+
+  it('Special Run no suma dos veces una callback repetida del mismo gameId', () => {
+    const run = saveSpecialRun({ ...startSpecialRun('streak'), currentGameId: 'run-g1' });
+    const first = recordSpecialRunResult(run, 'win');
+    const duplicate = recordSpecialRunResult(run, 'win');
+    expect(first).toMatchObject({ active: true, wins: 1, completedStages: 1 });
+    expect(duplicate).toMatchObject({ active: true, wins: 1, completedStages: 1 });
+    expect(duplicate.processedGameIds).toContain('run-g1');
+    expect(loadSpecialRun()).toMatchObject({ wins: 1, completedStages: 1, processedGameIds: ['run-g1'] });
+  });
+
+  it('un callback zombi tras cerrar Boss Run no duplica archivo ni hito', () => {
+    const run = saveSpecialRun({
+      ...startSpecialRun('boss'),
+      stage: 5,
+      completedStages: 5,
+      wins: 5,
+      difficulty: 95,
+      currentGameId: 'boss-final',
+    });
+    const first = recordSpecialRunResult(run, 'win');
+    const duplicate = recordSpecialRunResult(run, 'win');
+    const career = loadCareer();
+    expect(first).toMatchObject({ active: false, outcome: 'win', completedStages: 6, wins: 6 });
+    expect(duplicate).toMatchObject({ active: false, outcome: 'win', completedStages: 6, wins: 6 });
+    expect(loadSpecialRun()).toBeNull();
+    expect(career.runHistory.filter((row) => row.id === run.id)).toHaveLength(1);
+    expect(career.milestones.filter((row) => row.text.includes('Boss Run completado'))).toHaveLength(1);
   });
 
   it('themes sólo se pueden seleccionar cuando sus requisitos están demostrados', () => {
