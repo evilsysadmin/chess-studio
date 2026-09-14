@@ -930,7 +930,7 @@ function midiToFreq(note) {
   return 440 * Math.pow(2, (note - 69) / 12);
 }
 
-const STRUCTURED_GUITAR_KINDS = new Set(['guitar2', 'nylonGuitar', 'jazzGuitar', 'overdriveGuitar']);
+const STRUCTURED_GUITAR_KINDS = new Set(['guitar2', 'nylonGuitar', 'jazzGuitar', 'overdriveGuitar', 'tremoloGuitar']);
 
 function playStructuredGuitar(kind, midiNote, volumeScale = 1, durationOverride = null, tone = null) {
   if (isMusicMuted() || midiNote == null) return;
@@ -941,13 +941,13 @@ function playStructuredGuitar(kind, midiNote, volumeScale = 1, durationOverride 
   const freq = midiToFreq(midiNote);
   const startDelay = Math.max(0, Number(tone?.startDelayMs) || 0) / 1000;
   const start = ctx.currentTime + startDelay;
-  const duration = Math.max(.28, durationOverride || (kind === 'nylonGuitar' ? 1.28 : kind === 'jazzGuitar' ? 1.45 : .9));
+  const duration = Math.max(.28, durationOverride || (kind === 'nylonGuitar' ? 1.28 : kind === 'jazzGuitar' ? 1.45 : kind === 'tremoloGuitar' ? 1.72 : .9));
   const output = getAmbientOutput(ctx);
   const body = ctx.createGain();
   const bodyFilter = ctx.createBiquadFilter();
 
-  const brightness = kind === 'nylonGuitar' ? 3000 : kind === 'jazzGuitar' ? 2200 : kind === 'overdriveGuitar' ? 2800 : 3800;
-  const peak = (kind === 'overdriveGuitar' ? .015 : kind === 'nylonGuitar' ? .020 : .019) * Math.max(.2, volumeScale);
+  const brightness = kind === 'nylonGuitar' ? 3000 : kind === 'jazzGuitar' ? 2200 : kind === 'overdriveGuitar' ? 2800 : kind === 'tremoloGuitar' ? 3350 : 3800;
+  const peak = (kind === 'overdriveGuitar' ? .015 : kind === 'nylonGuitar' ? .020 : kind === 'tremoloGuitar' ? .017 : .019) * Math.max(.2, volumeScale);
   bodyFilter.type = 'lowpass';
   bodyFilter.frequency.value = brightness * Math.max(.74, Math.min(1.18, Number(tone?.warmth) || 1));
   bodyFilter.Q.value = kind === 'jazzGuitar' ? .38 : .52;
@@ -967,11 +967,16 @@ function playStructuredGuitar(kind, midiNote, volumeScale = 1, durationOverride 
   const period = Math.max(2, Math.round(sampleRate / Math.max(45, freq)));
   const stringBuffer = ctx.createBuffer(1, sampleCount, sampleRate);
   const data = stringBuffer.getChannelData(0);
-  const pickSoftness = kind === 'nylonGuitar' ? .72 : kind === 'jazzGuitar' ? .66 : .58;
-  const decay = kind === 'nylonGuitar' ? .9970 : kind === 'jazzGuitar' ? .9974 : .9962;
+  const pickSoftness = kind === 'nylonGuitar' ? .72 : kind === 'jazzGuitar' ? .66 : kind === 'tremoloGuitar' ? .63 : .58;
+  const decay = kind === 'nylonGuitar' ? .9970 : kind === 'jazzGuitar' ? .9974 : kind === 'tremoloGuitar' ? .9977 : .9962;
+  let previousExcitation = 0;
   for (let i = 0; i < Math.min(period, sampleCount); i += 1) {
     const edge = Math.sin(Math.PI * Math.min(1, i / Math.max(1, period - 1)));
-    data[i] = (Math.random() * 2 - 1) * (.55 + edge * .45);
+    const noise = Math.random() * 2 - 1;
+    // A tiny pick-position filter removes the synthetic white-noise fizz while
+    // retaining the sharp transient of a real plectrum.
+    previousExcitation = (previousExcitation * pickSoftness) + (noise * (1 - pickSoftness));
+    data[i] = ((noise * .42) + (previousExcitation * .58)) * (.55 + edge * .45);
   }
   for (let i = period; i < sampleCount; i += 1) {
     const a = data[i - period];
@@ -994,8 +999,27 @@ function playStructuredGuitar(kind, midiNote, volumeScale = 1, durationOverride 
     }
     drive.curve = curve;
     drive.oversample = '2x';
+    const cabinet = ctx.createBiquadFilter();
+    cabinet.type = 'lowpass';
+    cabinet.frequency.value = 3600;
+    cabinet.Q.value = .72;
     body.connect(drive);
-    connectFinishedAmbientVoice(ctx, drive, output, tone, { start, duration, wetLimit: 0.12 });
+    drive.connect(cabinet);
+    connectFinishedAmbientVoice(ctx, cabinet, output, tone, { start, duration, wetLimit: 0.10 });
+  } else if (kind === 'tremoloGuitar' && typeof ctx.createOscillator === 'function') {
+    const tremolo = ctx.createGain();
+    const lfo = ctx.createOscillator();
+    const depth = ctx.createGain();
+    tremolo.gain.setValueAtTime(.78, start);
+    lfo.type = 'sine';
+    lfo.frequency.value = 5.4;
+    depth.gain.value = .20;
+    lfo.connect(depth);
+    depth.connect(tremolo.gain);
+    body.connect(tremolo);
+    connectFinishedAmbientVoice(ctx, tremolo, output, tone, { start, duration, wetLimit: 0.18 });
+    lfo.start(start);
+    lfo.stop(start + duration + .04);
   } else {
     connectFinishedAmbientVoice(ctx, body, output, tone, { start, duration, wetLimit: 0.12 });
   }
@@ -1464,6 +1488,32 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
     else if (code === 'S') { playNoiseHit('snare', 0.046 * velocity, { ...human, brightness: 0.86, durationScale: 1.28 }); playMembraneHit('tak', 0.011 * velocity, { ...human, tone: -0.35 }); }
     else if (code === 'H') playNoiseHit('hat', 0.010 * velocity, { ...human, brightness: 0.88, durationScale: 0.72 });
     else if (code === 'B') playNoiseHit('brush', 0.014 * velocity, human);
+    else if (code === 'W') playWoodKnock();
+    return;
+  }
+
+  if (kit === 'post-rock-live-room') {
+    if (code === 'K') { playBassDrum(0.052 * velocity, { ...human, tone: -0.46, decay: 1.08 }); playMembraneHit('dum', 0.012 * velocity, { ...human, decay: 1.0 }); }
+    else if (code === 'S') { playNoiseHit('snare', 0.042 * velocity, { ...human, brightness: 0.76, durationScale: 1.52 }); playMembraneHit('tak', 0.008 * velocity, { ...human, tone: -0.5 }); }
+    else if (code === 'H') playNoiseHit('hat', 0.007 * velocity, { ...human, brightness: 0.82, durationScale: 0.88 });
+    else if (code === 'T') playMembraneHit('dum', 0.034 * velocity, { ...human, tone: -0.22, decay: 1.16 });
+    else if (code === 'M') playMetalHit();
+    return;
+  }
+
+  if (kit === 'garage-live-dry') {
+    if (code === 'K') { playBassDrum(0.066 * velocity, { ...human, tone: -0.34, decay: 0.68 }); playSoftPercussion(0.014 * velocity, { ...human, decay: 0.54 }); }
+    else if (code === 'S') { playNoiseHit('snare', 0.054 * velocity, { ...human, brightness: 0.96, durationScale: 0.84 }); playMembraneHit('tak', 0.014 * velocity, { ...human, tone: -0.12, decay: 0.64 }); }
+    else if (code === 'H') playNoiseHit('hat', 0.011 * velocity, { ...human, brightness: 1.06, durationScale: 0.48 });
+    else if (code === 'M') playMetalHit();
+    return;
+  }
+
+  if (kit === 'desert-stomp-shuffle') {
+    if (code === 'K') { playBassDrum(0.050 * velocity, { ...human, tone: -0.48, decay: 0.98 }); playMembraneHit('dum', 0.018 * velocity, { ...human, tone: -0.36, decay: 0.92 }); }
+    else if (code === 'S') { playNoiseHit('snare', 0.033 * velocity, { ...human, brightness: 0.72, durationScale: 1.18 }); playSoftPercussion(0.014 * velocity, { ...human, decay: 0.92 }); }
+    else if (code === 'H') playNoiseHit('brush', 0.010 * velocity, { ...human, brightness: 0.76, durationScale: 0.72 });
+    else if (code === 'B') { playNoiseHit('hat', 0.007 * velocity, { ...human, brightness: 0.66, durationScale: 1.08 }); playWoodKnock(); }
     else if (code === 'W') playWoodKnock();
     return;
   }

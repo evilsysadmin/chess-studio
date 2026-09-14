@@ -13,6 +13,7 @@ import { installTropicalHouseMelodies } from './ambientTropicalHouseMelody.js';
 import { installRadioPremiumForms } from './ambientRadioPremiumForms.js';
 import { withRadioMatthiasLeitmotif } from './ambientRadioMatthiasLeitmotifs.js';
 import { withAmbientPremiumProduction } from './ambientPremiumProduction.js';
+import { withRockProduction } from './ambientRockProduction.js';
 
 const RADIO_MATTHIAS_HIDDEN_THEME_IDS = new Set([...CURATED_HIDDEN_THEME_IDS, 'blackArchive']);
 
@@ -203,6 +204,7 @@ export function structuredFeel(theme) {
 
   let arranged = legacy;
   if (TROPICAL_HOUSE_DRIVE[theme?.id]) arranged = withTropicalHouseDrive(theme, legacy);
+  else if (theme?.id === 'postRockMidnight' || theme?.id === 'rookGarage' || theme?.id === 'desertDriveRock') arranged = withRockProduction(theme, legacy);
   else if (theme?.id === 'reactorGambit') arranged = Object.freeze({ ...legacy, ...REACTOR_GAMBIT_PROFILE });
   else if (theme?.id === 'tangierSmoke') arranged = Object.freeze({ ...legacy, ...TANGIER_SMOKE_PROFILE });
   else if (GRANADA_THEME_IDS.has(theme?.id)) {
