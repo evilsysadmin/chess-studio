@@ -19,10 +19,10 @@ import {
   createPawnSlugInputState,
   pawnSlugClamp,
   pawnSlugKeyAction,
-  pawnSlugRuntimeHud,
   pawnSlugWorldX,
   resetPawnSlugInput,
 } from './pawnSlugRuntimeCore.js';
+import { pawnSlugRuntimeHud } from './pawnSlugRuntimeHud.js';
 import { createPawnSlugRuntimeSfx } from './pawnSlugRuntimeSfx.js';
 import { createPawnSlugWeaponSystem } from './pawnSlugRuntimeWeapons.js';
 import { createPawnSlugCombatSystem } from './pawnSlugRuntimeCombat.js';
