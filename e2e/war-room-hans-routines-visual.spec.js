@@ -76,7 +76,7 @@ async function captureViewportPng(context, page, path) {
   }
 }
 
-async function waitForRoutineStart(canvas, eventName) {
+async function waitForRoutineStart(page, canvas, eventName) {
   if (eventName === 'fire') {
     await expect(canvas).toHaveAttribute('data-war-room-hans-scene-ready', 'true', { timeout: 45_000 });
     await expect(canvas).toHaveAttribute('data-war-room-hans-call-released', 'true', { timeout: 15_000 });
@@ -87,7 +87,9 @@ async function waitForRoutineStart(canvas, eventName) {
 
   const route = expectedRoute(eventName);
   await expect.poll(
-    () => canvas.evaluate((node, expected) => {
+    () => page.evaluate((expected) => {
+      const node = document.querySelector('.board3d-main-canvas');
+      if (!node) return false;
       const screen = node.dataset.warRoomHansScreen || '';
       return node.dataset.warRoomHansRoute === expected
         && (screen === 'onscreen' || screen === 'edge' || screen === 'offscreen');
@@ -225,7 +227,7 @@ for (const eventName of CAPTURE_EVENTS) {
         emulateSupportedGpu ? 'full' : 'lite',
         { timeout: 10_000 },
       );
-      await waitForRoutineStart(canvas, eventName);
+      await waitForRoutineStart(page, canvas, eventName);
 
       const manifest = await sampleRoutine(page, canvas, eventName);
       manifest.rendererClass = emulateSupportedGpu ? 'NVIDIA-emulated-on-SwiftShader' : 'SOFTWARE';
