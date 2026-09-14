@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { loadRivalry, recordRivalryIncident, recordRivalryResult, recurrenceSuffix } from './rivalry.js';
+import { loadRivalry, reconcileRivalryHistory, recordRivalryIncident, recordRivalryResult, recurrenceSuffix } from './rivalry.js';
 
 describe('cpu rivalry', () => {
   beforeEach(() => localStorage.clear());
@@ -13,6 +13,29 @@ describe('cpu rivalry', () => {
     expect(row.wins).toBe(2);
     expect(row.losses).toBe(1);
     expect(row.bestHumanStreak).toBe(2);
+  });
+
+  it('cuenta una partida una sola vez cuando recibe una identidad estable', () => {
+    recordRivalryResult('win', { gameId: 'g-1', difficulty: 50 });
+    recordRivalryResult('win', { gameId: 'g-1', difficulty: 50 });
+    const state = loadRivalry();
+    expect(state.record.games).toBe(1);
+    expect(state.record.wins).toBe(1);
+    expect(state.processedGameIds).toContain('g-1');
+    expect(state.record.recentGames[0]).toMatchObject({ gameId: 'g-1', outcome: 'win' });
+  });
+
+  it('siembra ids desde Historial y no vuelve a contar una partida reconciliada', () => {
+    reconcileRivalryHistory([{ id: 'archive-1', sourceGameId: 'g-old', outcome: 'draw', date: '2026-09-01T10:00:00Z', mode: 'casual', moves: [] }]);
+    recordRivalryResult('draw', { gameId: 'g-old' });
+    const state = loadRivalry();
+    expect(state.record.games).toBe(1);
+    expect(state.record.draws).toBe(1);
+  });
+
+  it('ignora resultados no terminales o desconocidos', () => {
+    recordRivalryResult('cancelled', { gameId: 'g-cancelled' });
+    expect(loadRivalry().record.games).toBe(0);
   });
 
   it('migra los viejos marcadores separados a una sola CPU', () => {
