@@ -1,10 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { APP_RELEASE } from '../release.js';
 import {
   deleteAdminUser,
   fetchAdminMatthiasMemory,
   fetchAdminMatthiasStatus,
-  fetchAdminUsers,
   fetchAdminUserInsights,
   previewAdminMatthiasPersonality,
   reanalyzeAdminUser,
@@ -14,12 +13,10 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { getToken, getUsername } from '../auth.js';
 import {
   deleteAdminFeedback,
-  fetchAdminFeedback,
   replyAdminFeedback,
   submitFeedback,
   updateAdminFeedbackStatus,
 } from '../feedback.js';
-import { ADMIN_REFRESH_MS, shouldRefreshAdminPresence } from '../presenceCadence.js';
 import { buildAdminInsights } from '../adminDashboardInsights.js';
 import { createAsyncCommitGuard } from '../asyncLifecycle.js';
 import AdminFeedbackSection from './AdminFeedbackSection.jsx';
@@ -27,21 +24,34 @@ import AdminMatthiasStatusSection from './AdminMatthiasStatusSection.jsx';
 import AdminObservabilitySummary from './AdminObservabilitySummary.jsx';
 import AdminUserDirectory from './AdminUserDirectory.jsx';
 import ObservabilityPanel from './ObservabilityPanel.jsx';
+import useAdminDashboardData from './useAdminDashboardData.js';
 
 const BUILD_SHA = import.meta.env.VITE_BUILD_SHA || 'local';
 
 export default function AdminScreen({ onExit }) {
   useEscapeToClose(onExit);
-  const [users, setUsers] = useState(null);
-  const [error, setError] = useState(null);
+  const {
+    users,
+    setUsers,
+    error,
+    feedback,
+    setFeedback,
+    feedbackError,
+    setFeedbackError,
+    lastAdminRefreshAt,
+    adminNow,
+    matthiasStatus,
+    setMatthiasStatus,
+    matthiasStatusError,
+    setMatthiasStatusError,
+    invalidateAdminData,
+  } = useAdminDashboardData();
   const [expanded, setExpanded] = useState(null);
   const [insightsByUser, setInsightsByUser] = useState({});
   const [insightsLoading, setInsightsLoading] = useState({});
   const [insightsErrors, setInsightsErrors] = useState({});
   const [deletingUser, setDeletingUser] = useState(null);
   const [deleteError, setDeleteError] = useState(null);
-  const [feedback, setFeedback] = useState(null);
-  const [feedbackError, setFeedbackError] = useState(null);
   const [feedbackUpdating, setFeedbackUpdating] = useState(null);
   const [feedbackTestCreating, setFeedbackTestCreating] = useState(false);
   const [feedbackDeleteCandidate, setFeedbackDeleteCandidate] = useState(null);
@@ -51,12 +61,6 @@ export default function AdminScreen({ onExit }) {
   const [aiPortraitByUser, setAiPortraitByUser] = useState({});
   const [aiPortraitLoading, setAiPortraitLoading] = useState({});
   const [aiPortraitError, setAiPortraitError] = useState({});
-  const adminDataEpochRef = useRef(0);
-  const adminRefreshInFlightRef = useRef(null);
-  const [lastAdminRefreshAt, setLastAdminRefreshAt] = useState(null);
-  const [adminNow, setAdminNow] = useState(() => Date.now());
-  const [matthiasStatus, setMatthiasStatus] = useState(null);
-  const [matthiasStatusError, setMatthiasStatusError] = useState(null);
   const [matthiasResettingUser, setMatthiasResettingUser] = useState(null);
   const [matthiasResetError, setMatthiasResetError] = useState(null);
   const [matthiasMemoryByUser, setMatthiasMemoryByUser] = useState({});
@@ -66,64 +70,8 @@ export default function AdminScreen({ onExit }) {
   const [matthiasPreviewLoading, setMatthiasPreviewLoading] = useState(false);
   const [matthiasPreviewError, setMatthiasPreviewError] = useState(null);
 
-  useEffect(() => {
-    let mounted = true;
-    async function refreshAdminData(silent = false) {
-      if (adminRefreshInFlightRef.current) return adminRefreshInFlightRef.current.pending;
-      const epoch = adminDataEpochRef.current;
-      const requestToken = Symbol('admin-refresh');
-      const pending = Promise.allSettled([fetchAdminUsers(), fetchAdminFeedback(), fetchAdminMatthiasStatus()]);
-      adminRefreshInFlightRef.current = { requestToken, pending };
-      try {
-        const [usersResult, feedbackResult, matthiasResult] = await pending;
-        if (!mounted || adminDataEpochRef.current !== epoch || adminRefreshInFlightRef.current?.requestToken !== requestToken) return;
-        if (usersResult.status === 'fulfilled') {
-          setUsers(usersResult.value);
-          setLastAdminRefreshAt(Date.now());
-          setAdminNow(Date.now());
-          setError(null);
-        } else if (!silent) {
-          setError(usersResult.reason?.message || 'No se pudieron cargar los usuarios.');
-        }
-        if (feedbackResult.status === 'fulfilled') {
-          setFeedback(feedbackResult.value.feedback || []);
-          setFeedbackError(null);
-        } else if (!silent) {
-          setFeedbackError(feedbackResult.reason?.message || 'No se pudo cargar el feedback.');
-        }
-        if (matthiasResult.status === 'fulfilled') {
-          setMatthiasStatus(matthiasResult.value || null);
-          setMatthiasStatusError(null);
-        } else if (!silent) {
-          setMatthiasStatusError(matthiasResult.reason?.message || 'No se pudo cargar el estado de Matthias.');
-        }
-      } finally {
-        if (adminRefreshInFlightRef.current?.requestToken === requestToken) adminRefreshInFlightRef.current = null;
-      }
-    }
-
-    refreshAdminData();
-    const refreshIfVisible = () => {
-      if (shouldRefreshAdminPresence(document.visibilityState)) refreshAdminData(true);
-    };
-    const handleVisibility = () => {
-      if (shouldRefreshAdminPresence(document.visibilityState)) refreshAdminData(true);
-    };
-    const timer = window.setInterval(refreshIfVisible, ADMIN_REFRESH_MS);
-    const ageTimer = window.setInterval(() => {
-      if (shouldRefreshAdminPresence(document.visibilityState)) setAdminNow(Date.now());
-    }, 5000);
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => {
-      mounted = false;
-      window.clearInterval(timer);
-      window.clearInterval(ageTimer);
-      document.removeEventListener('visibilitychange', handleVisibility);
-    };
-  }, []);
-
   async function handleFeedbackStatus(feedbackId, status) {
-    adminDataEpochRef.current += 1;
+    invalidateAdminData();
     setFeedbackUpdating(feedbackId);
     setFeedbackError(null);
     try {
@@ -139,7 +87,7 @@ export default function AdminScreen({ onExit }) {
   async function handleFeedbackReply(feedbackId, resolve = false) {
     const message = String(feedbackReplies[feedbackId] || '').trim();
     if (!message || feedbackUpdating) return;
-    adminDataEpochRef.current += 1;
+    invalidateAdminData();
     setFeedbackUpdating(feedbackId);
     setFeedbackError(null);
     try {
@@ -175,7 +123,7 @@ export default function AdminScreen({ onExit }) {
     const feedbackId = feedbackDeleteCandidate;
     if (!feedbackId || feedbackUpdating) return;
     setFeedbackDeleteCandidate(null);
-    adminDataEpochRef.current += 1;
+    invalidateAdminData();
     setFeedbackUpdating(feedbackId);
     setFeedbackError(null);
     try {
@@ -199,7 +147,7 @@ export default function AdminScreen({ onExit }) {
     );
     if (!confirmed) return;
 
-    adminDataEpochRef.current += 1;
+    invalidateAdminData();
     setDeletingUser(targetUsername);
     setDeleteError(null);
     try {
