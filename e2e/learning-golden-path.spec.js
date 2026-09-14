@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 import {
+  buttonWithVisibleText,
   clickBoardMove,
   gameTurn,
   login,
   mockApi,
-  startQuickGame,
 } from './helpers.js';
 
 const PERSONAL_MATE_FEN = '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1';
@@ -14,6 +14,18 @@ async function dismissHomeGuide(page) {
   if (!(await guide.isVisible().catch(() => false))) return;
   const dismiss = guide.getByRole('button', { name: 'Ahora no', exact: true });
   if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
+}
+
+async function startQuickGame2D(page) {
+  await buttonWithVisibleText(page, 'Partida rápida').click();
+  const dialog = page.getByRole('dialog', { name: 'Configurar partida rápida' });
+  await expect(dialog).toBeVisible();
+  const renderer = dialog.getByRole('group', { name: 'Tipo de tablero' });
+  const twoD = renderer.getByRole('button', { name: '2D', exact: true });
+  await twoD.click();
+  await expect(twoD).toHaveAttribute('aria-pressed', 'true');
+  await dialog.getByRole('button', { name: 'Empezar partida', exact: true }).click();
+  await expect(page.getByRole('group', { name: /Tablero de ajedrez/ })).toBeVisible();
 }
 
 function recurringTrainingDebtProfileValue() {
@@ -83,7 +95,7 @@ test('Home · el avatar residente de Matthias abre Así juegas · y cierra el lo
   await login(page);
   await dismissHomeGuide(page);
 
-  await startQuickGame(page);
+  await startQuickGame2D(page);
   await expect(gameTurn(page)).toBeVisible();
   await clickBoardMove(page, 'g6', 'g7');
 
@@ -121,6 +133,6 @@ test('Home · el avatar residente de Matthias abre Así juegas · y cierra el lo
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Modos principales', exact: true })).toBeVisible();
-  await startQuickGame(page);
+  await startQuickGame2D(page);
   await expect(gameTurn(page)).toBeVisible();
 });
