@@ -1,8 +1,6 @@
 /* Desktop Great Hall chrome.
- * The approved 1814×867 master already paints the visual shells for account,
- * release notes, feedback and music. Keep the real controls interactive, but
- * place them directly over those painted twins instead of reserving a second
- * application header/footer around the room. */
+ * The approved 1814×867 master owns the room geometry. Account, release notes,
+ * feedback and music remain live controls layered over the scene. */
 @media (min-width: 1000px) and (pointer: fine) {
   body:has(.app-shell-home) {
     background: #140b06;
@@ -23,8 +21,13 @@
     padding: 0;
   }
 
-  /* The header owns semantics only on Home. Its visible controls sit on the
-     master; the header itself must not consume ~100px above the Great Hall. */
+  /* Geometry belongs to the canonical artwork, never to Matthias or baked copy. */
+  .illustrated-home__stage {
+    aspect-ratio: 1814 / 867 !important;
+  }
+
+  /* The header owns semantics only on Home. Its controls float over the room;
+     the header itself must not consume ~100px above the Great Hall. */
   body .app-shell-home > .masthead {
     position: absolute !important;
     z-index: 70;
@@ -109,10 +112,8 @@
     pointer-events: auto;
   }
 
-  /* The painted player starts ~74px above the bottom edge of the master once
-     scaled to the viewport width. Anchor the real deck to that same coordinate.
-     Higher specificity deliberately wins over the generic Home dock rule loaded
-     later by HomeMatthiasRoutine.css. */
+  /* The player sits ~74px above the bottom edge of the 1814×867 master once
+     scaled to viewport width. Anchor the real deck to that same coordinate. */
   html body:has(.app-shell-home) .global-music-dock {
     position: fixed !important;
     left: max(12px, .8vw) !important;
