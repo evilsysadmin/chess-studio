@@ -18,7 +18,7 @@ case "$mode" in
     fi
     ./node_modules/.bin/playwright test \
       war-room-hans-routines-visual.spec.js \
-      --workers=2 --retries=0
+      --workers=1 --retries=0
     ;;
   *)
     echo "Unknown app visual capture mode: $mode" >&2
