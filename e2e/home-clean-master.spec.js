@@ -3,6 +3,7 @@ import { login, mockApi } from './helpers.js';
 
 test('Home clean master keeps live diegetic Matthias and retired chrome out', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await mockApi(page, {
     profileSeed: {
       'matthias.onboarded': '2',
@@ -21,36 +22,30 @@ test('Home clean master keeps live diegetic Matthias and retired chrome out', as
   }
 
   const matthias = home.locator('.illustrated-home__matthias');
-  const layeredArt = matthias.locator('[data-matthias-layered-art="true"]');
+  const portrait = matthias.locator('.illustrated-home__matthias-portrait');
+  const avatar3d = portrait.locator('[data-home-matthias-3d]');
+  const canvas = avatar3d.locator('canvas');
   const copy = matthias.locator('.illustrated-home__matthias-copy');
-  const rasterFragments = layeredArt.locator('[data-matthias-art-part]');
 
   await expect(matthias).toBeVisible();
-  await expect(matthias.locator('.illustrated-home__matthias-portrait')).toBeVisible();
-  await expect(layeredArt).toBeVisible();
+  await expect(portrait).toBeVisible();
+  await expect(avatar3d).toHaveAttribute('data-home-matthias-3d', 'ready');
+  await expect(canvas).toBeVisible();
+  await expect(canvas).toHaveAttribute('data-motion', 'procedural-3d');
   await expect(copy).toBeVisible();
   await expect(copy.locator('strong')).toHaveText('MATTHIAS');
   await expect(copy.locator('span')).not.toHaveText('');
 
-  // At Home scale the copied limb/prop rasters create visible seams and digital
-  // garbage. They stay in the reusable rig for larger contexts, but Home must
-  // render exactly one clean canonical bitmap.
-  await expect(rasterFragments).toHaveCount(5);
-  for (let index = 0; index < 5; index += 1) {
-    await expect(rasterFragments.nth(index)).toBeHidden();
-  }
+  // Home must render the real Three.js Matthias model. The old layered bitmap
+  // rig literally shook the portrait rectangle and made him read as a sticker.
+  await expect(matthias.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
+  await expect(matthias.locator('[data-matthias-art-part]')).toHaveCount(0);
 
-  // Even between explicit gestures Matthias must visibly live in the room. The
-  // continuous stance/breath animation prevents several seconds of dead-still
-  // sticker time, while explicit gesture state temporarily overrides it.
-  await expect.poll(async () => layeredArt.evaluate((node) => (
-    window.getComputedStyle(node).animationName
-  )), { timeout: 2_000 }).toMatch(/^home-matthias-rigid-/);
-
-  await expect.poll(async () => layeredArt.evaluate((node) => {
-    const style = window.getComputedStyle(node);
-    return node.dataset.gestureState === 'acting'
-      && style.animationName.startsWith('home-matthias-rigid');
-  }), { timeout: 8_000 }).toBe(true);
-  await expect(layeredArt).not.toHaveAttribute('data-gesture-count', '0');
+  // The procedural rig keeps moving even between explicit Home routine changes.
+  // motionTick is emitted sparsely by the render loop so the test verifies that
+  // WebGL is alive without depending on fragile pixel diffs.
+  const firstTick = Number(await canvas.getAttribute('data-motion-tick'));
+  await expect.poll(async () => Number(await canvas.getAttribute('data-motion-tick')), {
+    timeout: 3_000,
+  }).toBeGreaterThan(firstTick);
 });
