@@ -1,4 +1,4 @@
-import { ACHIEVEMENTS } from './achievements.js';
+import { ACHIEVEMENTS } from './achievementCatalog.js';
 import { buildWorstMoveAutopsy } from './adminWorstMove.js';
 import { buildPlayerPortraitFacts } from './aiPlayerPortrait.js';
 import { computeInsights, generateCoaching, generateRoast } from './insights.js';
