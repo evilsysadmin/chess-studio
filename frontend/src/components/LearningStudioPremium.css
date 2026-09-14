@@ -50,14 +50,16 @@
   }
 }
 
-/* Modos especiales: the rail may scroll, but the current lesson card should
-   size to its own content instead of stretching into a tall dead panel. */
+/* Modos especiales: the rail may scroll, but it should read as one index of
+   lessons rather than a stack of dashboard cards. The current lesson remains
+   the only row with a contained highlight, while the detail sizes to content. */
 @media (min-width: 781px) {
   .tutorial-shell.matthias-school-shell .mechanic-library.mechanic-library {
     align-items: start;
   }
 
   .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-list.mechanic-library-list {
+    gap: 0;
     max-height: min(50vh, 470px);
     padding: .36rem;
   }
@@ -65,10 +67,29 @@
   .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-list.mechanic-library-list button {
     min-height: 50px;
     padding: .5rem .56rem;
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--ui-border, var(--ink-3)) 74%, transparent);
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-list.mechanic-library-list button:last-child {
+    border-bottom: 0;
+  }
+
+  .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-list.mechanic-library-list button:hover,
+  .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-list.mechanic-library-list button:focus-visible {
+    background: rgba(255,255,255,.02);
   }
 
   .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-list.mechanic-library-list button.active {
     margin: .1rem 0;
+    border-bottom-color: transparent;
+    border-radius: 9px;
+    background:
+      linear-gradient(90deg, rgba(198,164,93,.13), rgba(198,164,93,.025) 76%),
+      rgba(0,0,0,.055);
+    box-shadow: inset 3px 0 color-mix(in srgb, var(--brass) 82%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--brass) 24%, transparent);
   }
 
   .tutorial-shell.matthias-school-shell .mechanic-library > .mechanic-library-list.mechanic-library-list span {
