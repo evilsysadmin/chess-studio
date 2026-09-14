@@ -44,6 +44,29 @@ describe('Hans service routing', () => {
     expect(hans.position.y).toBeCloseTo(groundedY, 6);
   });
 
+  it('mirrors armour standoff toward the room on both side walls', () => {
+    const root = new THREE.Group();
+    const parent = new THREE.Group();
+    root.add(parent);
+
+    const rightArmor = new THREE.Group();
+    rightArmor.name = 'war-room-teutonic-armor-right';
+    rightArmor.position.set(6.68, 0, -3.12);
+    const leftArmor = new THREE.Group();
+    leftArmor.name = 'war-room-teutonic-armor-left';
+    leftArmor.position.set(-6.68, 0, -3.12);
+    root.add(rightArmor, leftArmor);
+    root.updateMatrixWorld(true);
+
+    const rightTarget = warRoomHansTargetNearObject(rightArmor, parent, { offsetX: -1.2, offsetZ: 0.18 });
+    const leftTarget = warRoomHansTargetNearObject(leftArmor, parent, { offsetX: -1.2, offsetZ: 0.18 });
+
+    expect(rightTarget.x).toBeCloseTo(5.48, 6);
+    expect(leftTarget.x).toBeCloseTo(-5.48, 6);
+    expect(rightTarget.z).toBeCloseTo(-2.94, 6);
+    expect(leftTarget.z).toBeCloseTo(-2.94, 6);
+  });
+
   it('keeps service-home lookup pure and installs the exit guard explicitly', () => {
     const root = new THREE.Group();
     const parent = new THREE.Group();
