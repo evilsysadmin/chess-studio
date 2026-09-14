@@ -131,7 +131,7 @@ if not canonical_critical:
 sharded_playwright = 'e2e_lanes:' in ci
 if sharded_playwright:
     core_lanes = ci_job_block('e2e_lanes')
-    expected_lanes = ('regression', 'learning-golden', 'learning-observation', 'smoke')
+    expected_lanes = ('regression-state', 'regression-school', 'learning-golden', 'learning-observation', 'smoke')
     if CORE_E2E_LANES != expected_lanes:
         raise SystemExit(f'quality_scope perdió las lanes core canónicas: {CORE_E2E_LANES!r}')
     for marker in [
@@ -149,9 +149,9 @@ if sharded_playwright:
         r'playwright test\s+([A-Za-z0-9_.-]+\.spec\.js)[\s\\]+--grep\s+"([^"]+)"',
         core_lanes,
     )
-    if len(lane_commands) != 2:
+    if len(lane_commands) != 3:
         raise SystemExit(
-            f'CI shardado core debe declarar exactamente dos comandos spec+grep críticos; encontrados: {len(lane_commands)}'
+            f'CI shardado core debe declarar exactamente tres comandos spec+grep críticos; encontrados: {len(lane_commands)}'
         )
 
     lane_patterns = [pattern for _, pattern in lane_commands]
