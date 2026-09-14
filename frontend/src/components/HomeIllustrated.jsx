@@ -1,8 +1,7 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { IconTrophy, IconBook } from './Icons.jsx';
 import HomeCastle3D from './HomeCastle3D.jsx';
-import MatthiasCoffeeSteam from './MatthiasCoffeeSteam.jsx';
-import MatthiasLayeredArt from './MatthiasLayeredArt.jsx';
+import HomeMatthias3D from './HomeMatthias3D.jsx';
 import hall from '../assets/home-canonical/great-hall-dungeon.webp';
 import { loadRivalry } from '../rivalry.js';
 import { dailyChallengeStats, loadDailyChallenge } from '../dailyChallenge.js';
@@ -238,15 +237,10 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
               data-reduced-motion={reducedMotion ? 'true' : 'false'}
               aria-hidden="true"
             >
-              <MatthiasLayeredArt
-                avatar={matthiasVisual.avatar}
+              <HomeMatthias3D
+                fallbackAvatar={matthiasVisual.avatar}
                 scene={matthiasVisual.key}
-                activity={matthiasVisual.label}
                 speaking={matthiasSpeaking}
-                reducedMotion={reducedMotion}
-              />
-              <MatthiasCoffeeSteam
-                scene={matthiasVisual.key}
                 reducedMotion={reducedMotion}
               />
             </span>
