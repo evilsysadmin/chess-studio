@@ -32,6 +32,10 @@ export function applyArmorGuardPose(armor, towardBoard = 1) {
   // Keep the blade on the torso centreline but pull the hilt into the same
   // depth plane as the hands. The former v28 pose left the sword slightly in
   // front of the gauntlets, which read as a floating weapon from oblique views.
+  // Keep the actual grip just above the old lower threshold too: the hands are
+  // derived from the hilt, so this preserves the chest-high silhouette rather
+  // than weakening that contract in tests.
+  sword.position.y = 0.715;
   sword.position.z = towardBoard * 0.405;
   sword.userData.warRoomArmorGuardPose = WAR_ROOM_ARMOR_GUARD_POSE_VERSION;
 
