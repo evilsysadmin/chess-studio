@@ -105,7 +105,9 @@ export function upgradeWarRoomHansEspressoVisuals(root, actor) {
     const front = Math.sign(Number(drawer?.position?.z)) || Math.sign(Number(delivered.position.z)) || 1;
     delivered.position.x = 0.88;
     delivered.position.z = front * 0.32;
-    delivered.scale.setScalar(ESPRESSO_DELIVERED_SCALE);
+    // Grow the footprint for legibility, but never scale the local Y offsets:
+    // those encode the exact saucer/cup height over the desk surface.
+    delivered.scale.set(ESPRESSO_DELIVERED_SCALE, 1, ESPRESSO_DELIVERED_SCALE);
     const cup = delivered.children?.[1] || null;
     ensureEspressoHandle(delivered, cup, {
       name: 'war-room-hans-espresso-delivered-handle',
