@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { PAWN_SLUG_VIEW_H, PAWN_SLUG_VIEW_W } from './pawnSlugRuntimeCore.js';
-import { pawnSlugViewportBounds } from './pawnSlugRuntimeView.js';
+import {
+  pawnSlugRespawnCameraX,
+  pawnSlugSpawnRightEdge,
+  pawnSlugViewportBounds,
+} from './pawnSlugRuntimeView.js';
 
 describe('Pawn Slug runtime viewport', () => {
   it('keeps the canonical world frame at the target aspect ratio', () => {
@@ -33,5 +37,19 @@ describe('Pawn Slug runtime viewport', () => {
     expect(bounds.height).toBe(1);
     expect(Number.isFinite(bounds.left)).toBe(true);
     expect(Number.isFinite(bounds.top)).toBe(true);
+  });
+
+  it('keeps spawn-ahead geometry owned by the view instead of enemy code', () => {
+    const cameraX = 42;
+    const edge = pawnSlugSpawnRightEdge(cameraX);
+    expect(edge).toBeCloseTo(cameraX + PAWN_SLUG_VIEW_W * 0.72, 8);
+    expect(edge).toBeGreaterThan(cameraX);
+    expect(pawnSlugSpawnRightEdge(Number.NaN)).toBeCloseTo(PAWN_SLUG_VIEW_W * 1.22, 8);
+  });
+
+  it('keeps respawn framing ahead of the player without crossing the world origin frame', () => {
+    expect(pawnSlugRespawnCameraX(0)).toBeCloseTo(PAWN_SLUG_VIEW_W / 2, 8);
+    expect(pawnSlugRespawnCameraX(80)).toBeCloseTo(80 + PAWN_SLUG_VIEW_W * 0.14, 8);
+    expect(pawnSlugRespawnCameraX(Number.NaN)).toBeCloseTo(PAWN_SLUG_VIEW_W / 2, 8);
   });
 });
