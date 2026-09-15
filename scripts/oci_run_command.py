@@ -12,11 +12,13 @@ import os
 import re
 import sys
 import time
+import uuid
 from typing import Any
 
 COMPARTMENT_NAME = "chess-studio-staging"
 INSTANCE_NAME = "chess-studio-staging"
 PLUGIN_NAME = "Compute Instance Run Command"
+OPERATIONS = ("diagnose", "smoke", "reboot-agent", "deploy")
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 TERMINAL_STATES = {"SUCCEEDED", "FAILED", "TIMED_OUT", "CANCELED"}
 HEALTHY_PLUGIN_STATES = {"RUNNING"}
@@ -145,6 +147,26 @@ def resolve_staging(oci: Any, config: dict[str, str]) -> tuple[str, str]:
     return compartment_id, instances[0].id
 
 
+def read_plugin_observation(
+    oci: Any,
+    config: dict[str, str],
+    compartment_id: str,
+    instance_id: str,
+) -> tuple[str, Any, str]:
+    client = oci.compute_instance_agent.PluginClient(config)
+    observed = client.get_instance_agent_plugin(
+        instanceagent_id=instance_id,
+        compartment_id=compartment_id,
+        plugin_name=PLUGIN_NAME,
+        retry_strategy=oci.retry.DEFAULT_RETRY_STRATEGY,
+    ).data
+    return (
+        str(getattr(observed, "status", None) or "UNKNOWN").upper(),
+        getattr(observed, "time_last_updated_utc", None),
+        safe_plugin_message(getattr(observed, "message", "")),
+    )
+
+
 def diagnose_plugin(oci: Any, config: dict[str, str]) -> str:
     compartment_id, instance_id = resolve_staging(oci, config)
     compute = oci.core.ComputeClient(config)
@@ -166,25 +188,79 @@ def diagnose_plugin(oci: Any, config: dict[str, str]) -> str:
         "OCI Run Command desired: "
         f"state={desired} "
         f"management_disabled={getattr(agent, 'is_management_disabled', None)} "
-        f"all_plugins_disabled={getattr(agent, 'are_all_plugins_disabled', None)}"
+        f"all_plugins_disabled={getattr(agent, 'are_all_plugins_disabled', None)}",
+        flush=True,
     )
 
-    client = oci.compute_instance_agent.PluginClient(config)
-    observed = client.get_instance_agent_plugin(
-        instanceagent_id=instance_id,
-        compartment_id=compartment_id,
-        plugin_name=PLUGIN_NAME,
-        retry_strategy=oci.retry.DEFAULT_RETRY_STRATEGY,
-    ).data
-    status = str(getattr(observed, "status", None) or "UNKNOWN").upper()
-    updated = getattr(observed, "time_last_updated_utc", None)
-    message = safe_plugin_message(getattr(observed, "message", ""))
-    print(f"OCI Run Command observed: status={status} last_updated={updated}")
+    status, updated, message = read_plugin_observation(oci, config, compartment_id, instance_id)
+    print(f"OCI Run Command observed: status={status} last_updated={updated}", flush=True)
     if message:
-        print(f"OCI Run Command observed message: {message}")
+        print(f"OCI Run Command observed message: {message}", flush=True)
     if not plugin_status_is_healthy(status):
         raise SystemExit(f"OCI Run Command plugin is not running: status={status}")
     return status
+
+
+def reboot_agent(oci: Any, config: dict[str, str], *, timeout: int = 600) -> None:
+    compartment_id, instance_id = resolve_staging(oci, config)
+    before_status, before_updated, before_message = read_plugin_observation(
+        oci, config, compartment_id, instance_id
+    )
+    print(
+        f"OCI agent recovery: before status={before_status} last_updated={before_updated}",
+        flush=True,
+    )
+    if before_message:
+        print(f"OCI agent recovery: before message={before_message}", flush=True)
+
+    compute = oci.core.ComputeClient(config)
+    compute.instance_action(
+        instance_id=instance_id,
+        action="SOFTRESET",
+        opc_retry_token=str(uuid.uuid4()),
+        retry_strategy=oci.retry.DEFAULT_RETRY_STRATEGY,
+    )
+    print("OCI agent recovery: SOFTRESET requested", flush=True)
+
+    deadline = time.monotonic() + timeout
+    last_instance_state = ""
+    last_plugin_marker: tuple[str, str] | None = None
+    while time.monotonic() < deadline:
+        try:
+            instance = compute.get_instance(
+                instance_id,
+                retry_strategy=oci.retry.DEFAULT_RETRY_STRATEGY,
+            ).data
+            instance_state = str(instance.lifecycle_state or "UNKNOWN")
+            if instance_state != last_instance_state:
+                print(f"OCI agent recovery: instance state={instance_state}", flush=True)
+                last_instance_state = instance_state
+
+            status, updated, message = read_plugin_observation(
+                oci, config, compartment_id, instance_id
+            )
+            marker = (status, str(updated))
+            if marker != last_plugin_marker:
+                print(
+                    f"OCI agent recovery: plugin status={status} last_updated={updated}",
+                    flush=True,
+                )
+                if message:
+                    print(f"OCI agent recovery: plugin message={message}", flush=True)
+                last_plugin_marker = marker
+            if (
+                instance_state == "RUNNING"
+                and plugin_status_is_healthy(status)
+                and str(updated) != str(before_updated)
+            ):
+                print("OCI agent recovery: plugin refreshed after SOFTRESET", flush=True)
+                return
+        except oci.exceptions.ServiceError as exc:
+            if exc.status not in {404, 409, 429, 500, 502, 503, 504}:
+                raise
+            print(f"OCI agent recovery: transient API status={exc.status}", flush=True)
+        time.sleep(5)
+    raise SystemExit("OCI agent recovery timed out waiting for refreshed RUNNING plugin")
 
 
 def execute(oci: Any, config: dict[str, str], command: str, *, display_name: str, timeout: int = 180) -> None:
@@ -218,7 +294,7 @@ def execute(oci: Any, config: dict[str, str], command: str, *, display_name: str
         ).data
         state = str(execution.lifecycle_state or "UNKNOWN")
         if state != last_state:
-            print(f"OCI Run Command state: {state}")
+            print(f"OCI Run Command state: {state}", flush=True)
             last_state = state
         if state in TERMINAL_STATES:
             content = execution.content
@@ -226,7 +302,7 @@ def execute(oci: Any, config: dict[str, str], command: str, *, display_name: str
             text = (getattr(content, "text", "") or "").strip()
             message = (getattr(content, "message", "") or "").strip()
             if text:
-                print(text[:4000])
+                print(text[:4000], flush=True)
             if state != "SUCCEEDED" or exit_code not in (None, 0):
                 detail = message or text or "no command output"
                 raise SystemExit(f"OCI Run Command failed: state={state} exit={exit_code} detail={detail[:500]}")
@@ -244,6 +320,7 @@ def self_test() -> None:
         pass
     else:
         raise AssertionError("mutable refs must be rejected")
+    assert OPERATIONS == ("diagnose", "smoke", "reboot-agent", "deploy")
     assert plugin_status_is_healthy("RUNNING")
     assert plugin_status_is_healthy(" running ")
     assert not plugin_status_is_healthy("STOPPED")
@@ -268,7 +345,7 @@ def self_test() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("operation", nargs="?", choices=("diagnose", "smoke", "deploy"))
+    parser.add_argument("operation", nargs="?", choices=OPERATIONS)
     parser.add_argument("--repo-ref", default="")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
@@ -287,6 +364,8 @@ def main() -> int:
     config = config_from_env(oci)
     if args.operation == "diagnose":
         diagnose_plugin(oci, config)
+    elif args.operation == "reboot-agent":
+        reboot_agent(oci, config)
     elif args.operation == "smoke":
         diagnose_plugin(oci, config)
         execute(oci, config, smoke_command(), display_name="chess-studio-agent-smoke", timeout=120)
