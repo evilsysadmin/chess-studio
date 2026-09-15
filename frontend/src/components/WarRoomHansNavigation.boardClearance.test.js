@@ -26,6 +26,16 @@ function expectSegmentOutsideBoard(from, to) {
   }
 }
 
+function expectOrthogonalSegments(path) {
+  for (let index = 1; index < path.length; index += 1) {
+    const from = path[index - 1];
+    const to = path[index];
+    const sameX = Math.abs(Number(from.x) - Number(to.x)) <= 1e-6;
+    const sameZ = Math.abs(Number(from.z) - Number(to.z)) <= 1e-6;
+    expect(sameX || sameZ).toBe(true);
+  }
+}
+
 function planarDistanceToSegment(point, from, to) {
   const vx = to.x - from.x;
   const vz = to.z - from.z;
@@ -56,7 +66,7 @@ describe('Hans room navigation board clearance', () => {
     for (const point of loop) expect(outsideBoard(point)).toBe(true);
   });
 
-  it('routes espresso from the service corridor to the desk without a diagonal through the board', () => {
+  it('routes espresso from the service corridor to the desk without a diagonal through the board or furniture approach', () => {
     const root = new THREE.Group();
     const parent = new THREE.Group();
     const floor = new THREE.Mesh(
@@ -78,6 +88,7 @@ describe('Hans room navigation board clearance', () => {
     for (let index = 1; index < path.length; index += 1) {
       expectSegmentOutsideBoard(path[index - 1], path[index]);
     }
+    expectOrthogonalSegments(path);
     expect(route.at(-1)?.x).toBeCloseTo(espressoTarget.x, 6);
     expect(route.at(-1)?.z).toBeCloseTo(espressoTarget.z, 6);
   });
@@ -97,6 +108,7 @@ describe('Hans room navigation board clearance', () => {
     const frontRightTarget = new THREE.Vector3(6.0, -0.34, 2.8);
     const route = warRoomHansBuildSafeRoute(floor, parent, serviceDoor, frontRightTarget);
     const path = [serviceDoor, ...route];
+    expectOrthogonalSegments(path);
     const minimumClearance = Math.min(...path.slice(1).map((point, index) => planarDistanceToSegment(
       CANONICAL_RIGHT_ARMOR,
       path[index],
