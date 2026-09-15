@@ -97,6 +97,7 @@ AUDIO_APP_BOOT_RE = re.compile(
     r"^frontend/src/(?:ambient[^/]*|audio[^/]*|orchestral[^/]*|sound[^/]*|useAuthenticatedAudio)\.js$"
 )
 TOURNAMENT_BROWSER_RE = re.compile(r"^frontend/src/tournament\.js$")
+QUICK_2D_CORE_RE = re.compile(r"^frontend/src/components/(?:QuickMatchModal|Board2D)\.jsx$")
 COMBAT_DOMAIN_RE = re.compile(r"^frontend/src/combat[^/]*\.js$")
 COMBAT_COMPONENT_RE = re.compile(r"^frontend/src/components/Combat[^/]*\.(?:js|jsx)$")
 MATTHIAS_SCHOOL_RE = re.compile(r"^frontend/src/matthiasSchool\.js$")
@@ -209,7 +210,7 @@ def classify(paths: Iterable[str]) -> Scope:
 
             if targeted:
                 continue
-            if AUDIO_APP_BOOT_RE.search(path):
+            if AUDIO_APP_BOOT_RE.search(path) or QUICK_2D_CORE_RE.search(path):
                 _enable_core_e2e(scope, ("app-boot",))
             elif MATTHIAS_SCHOOL_RE.search(path):
                 _enable_core_e2e(scope, ("regression-school",))
@@ -282,6 +283,9 @@ def self_test() -> None:
     _expect_core(["frontend/src/sound.js", "frontend/src/App.jsx"], run_frontend=True)
     _expect_core(["frontend/src/tournament.js"], lanes=("tournament",), run_frontend=True)
     _expect_core(["frontend/src/tournament.js", "frontend/src/App.jsx"], run_frontend=True)
+    _expect_core(["frontend/src/components/QuickMatchModal.jsx"], lanes=("app-boot",), run_frontend=True)
+    _expect_core(["frontend/src/components/Board2D.jsx"], lanes=("app-boot",), run_frontend=True)
+    _expect_core(["frontend/src/components/QuickMatchModal.jsx", "frontend/src/App.jsx"], run_frontend=True)
     _expect_core(["frontend/src/combatBosses.js"], lanes=("combat",), run_frontend=True)
     _expect_core(["frontend/src/combatDeployment.js"], lanes=("combat",), run_frontend=True)
     _expect_core(["frontend/src/combatSession.js"], lanes=("combat",), run_frontend=True)
@@ -373,7 +377,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · classifier self-change proporcional; dominio y componentes Combat usan canario propio")
+    print("quality-scope self-test OK · Quick Match 2D usa app-boot; Combat y resto de aliases mantienen scope proporcional")
 
 
 def main() -> int:
