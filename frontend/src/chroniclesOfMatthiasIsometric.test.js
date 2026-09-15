@@ -19,15 +19,22 @@ describe('Chronicles canonical isometric viewport', () => {
     expect(east.x - centre.x).toBeCloseTo(south.z - centre.z, 6);
   });
 
-  it('keeps the camera above and diagonally offset from its focus', () => {
-    const pose = chroniclesIsometricCameraPose({ x: 2, z: -3 });
+  it('keeps the camera close, low and aimed through the party into the dungeon', () => {
+    const focus = { x: 2, z: -3 };
+    const pose = chroniclesIsometricCameraPose(focus);
+    const horizontalDistance = Math.hypot(pose.position.x - focus.x, pose.position.z - focus.z);
 
-    expect(pose.position.y).toBeGreaterThan(8);
-    expect(pose.position.x).toBeGreaterThan(pose.target.x);
-    expect(pose.position.z).toBeGreaterThan(pose.target.z);
+    expect(pose.position.y).toBeGreaterThan(4.5);
+    expect(pose.position.y).toBeLessThan(6.5);
+    expect(horizontalDistance).toBeGreaterThan(7);
+    expect(horizontalDistance).toBeLessThan(10);
+    expect(pose.position.x).toBeGreaterThan(focus.x);
+    expect(pose.position.z).toBeGreaterThan(focus.z);
+    expect(pose.target.x).toBeLessThan(focus.x);
+    expect(pose.target.z).toBeLessThan(focus.z);
     expect(pose.target.y).toBeGreaterThan(0);
-    expect(pose.fov).toBeGreaterThanOrEqual(34);
-    expect(pose.fov).toBeLessThanOrEqual(42);
+    expect(pose.fov).toBeGreaterThanOrEqual(38);
+    expect(pose.fov).toBeLessThanOrEqual(43);
   });
 
   it('accepts only highlighted cells while move mode is active', () => {
