@@ -51,7 +51,7 @@ async function capture(page, label) {
   await captureAt(page, label);
 }
 
-test('Entrenar · captura visual de Escuela, Glosario, Modos especiales y Aperturas', async ({ page }) => {
+test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Aperturas y Mi progreso', async ({ page }) => {
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await mockApi(page, {
     profileSeed: {
@@ -93,4 +93,19 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales y Apertu
   await capture(page, 'openings');
   await captureAt(page, 'openings', { width: 390, height: 844, variant: 'mobile' });
   await expect(page.locator('.masthead:not(.masthead-game-compact) .masthead-text')).toBeHidden();
+
+  await openings.getByRole('button', { name: '← Volver al menú', exact: true }).click();
+  await expect(page.locator('.illustrated-home')).toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
+  await page.getByRole('menuitem', { name: /Mi progreso/ }).click();
+  await page.getByRole('tab', { name: 'Mi progreso', exact: true }).click();
+
+  const career = page.locator('.career-screen');
+  await expect(page.getByRole('heading', { name: 'Mi progreso', exact: true })).toBeVisible();
+  await expect(career).toBeVisible();
+  await expect(career.locator('.career-hero-grid')).toBeVisible();
+  await expect(career.locator('.career-mini-grid').first()).toBeVisible();
+  await captureAt(page, 'career', { width: 1440, height: 900, variant: 'desktop' });
+  await captureAt(page, 'career', { width: 390, height: 844, variant: 'mobile' });
 });

@@ -119,7 +119,10 @@ def _surface_groups(path: str) -> set[str] | None:
     groups: set[str] = set()
     if any(token in lower for token in ("experiment", "pawnslug", "pawn-slug", "chronicles", "trailblazer", "arcade")):
         groups.add("experiments")
-    if any(token in lower for token in ("training", "tutorial", "glossary", "school", "mechanic-library", "openingsscreen")):
+    if any(token in lower for token in (
+        "training", "tutorial", "glossary", "school", "mechanic-library", "openingsscreen",
+        "insights", "career-dossier", "careerscreen", "rivalrydossier",
+    )):
         groups.add("training")
     if any(token in lower for token in ("war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d")):
         groups.add("warroom")
@@ -286,6 +289,10 @@ def self_test() -> None:
     assert classify(["frontend/src/components/MatthiasSchool.jsx"]).capture_groups == "training"
     assert classify(["frontend/src/components/OpeningsScreen.jsx"]).capture_groups == "training"
     assert classify(["frontend/src/components/OpeningsScreen.css"]).capture_groups == "training"
+    assert classify(["frontend/src/components/InsightsScreen.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/CareerScreen.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/styles/04-career-dossier.css"]).capture_groups == "training"
+    assert classify(["frontend/src/components/RivalryDossier.jsx"]).capture_groups == "training"
     assert classify(["e2e/browser-storage-health.spec.js"]).capture_groups == "health"
     chesscom = classify(["frontend/src/chesscomClient.js"])
     assert chesscom.capture_groups == "none" and chesscom.chesscom
