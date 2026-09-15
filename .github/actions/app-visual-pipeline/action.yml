@@ -69,6 +69,9 @@ runs:
         path: .artifacts/app-visual/
         if-no-files-found: warn
         retention-days: 7
+        # PNG/WebP are already compressed. Recompressing them burns runner CPU
+        # for very little size reduction and makes the visual lane finish later.
+        compression-level: 0
 
     - name: Capture Hans routines
       if: inputs.mode == 'canonical' && steps.scope.outputs.hans == 'true'
@@ -83,12 +86,15 @@ runs:
         path: .artifacts/app-visual/hans-routines/
         if-no-files-found: error
         retention-days: 7
+        compression-level: 0
 
     - name: Capture Chesscom desktop + mobile
       if: inputs.mode == 'canonical' && steps.scope.outputs.chesscom == 'true'
       continue-on-error: true
       shell: bash
       working-directory: e2e
+      env:
+        APP_VISUAL_ARTIFACT: '1'
       run: ./node_modules/.bin/playwright test chesscom-visual-artifact.spec.js --workers=1 --retries=0
 
     - name: Upload Chesscom visual artifact
@@ -99,6 +105,7 @@ runs:
         path: .artifacts/chesscom-visual/
         if-no-files-found: warn
         retention-days: 7
+        compression-level: 0
 
     - name: Upload Hans-only routine artifact
       if: always() && inputs.mode == 'hans'
@@ -108,3 +115,4 @@ runs:
         path: .artifacts/app-visual/hans-routines/
         if-no-files-found: error
         retention-days: 7
+        compression-level: 0

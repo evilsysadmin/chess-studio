@@ -5,6 +5,12 @@ mode="${1:-canonical}"
 groups="${2:-all}"
 experiments_scope="${3:-all}"
 chronicles_avatar="${4:-true}"
+
+# Dedicated visual producers already create the canonical screenshots/artifacts
+# that matter. Tell Playwright not to continuously record trace/video on these
+# software-rendered WebGL runs; required functional E2E keeps diagnostics.
+export APP_VISUAL_ARTIFACT=1
+
 cd e2e
 
 has_group() {
