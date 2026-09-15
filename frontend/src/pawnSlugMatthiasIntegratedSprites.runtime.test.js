@@ -20,6 +20,7 @@ vi.mock('three', async () => {
 });
 
 import {
+  PAWN_SLUG_MATTHIAS_INTEGRATED_FOOT_ANCHOR,
   PAWN_SLUG_MATTHIAS_INTEGRATED_SCALE,
   createIntegratedMatthiasSlugSprite,
 } from './pawnSlugMatthiasIntegratedSprites.js';
@@ -45,6 +46,12 @@ describe('Pawn Slug integrated Matthias runtime', () => {
     expect(sprite.scale.y).toBeCloseTo(3.84, 3);
     expect(sprite.userData.motionBaseScaleX).toBeCloseTo(2.655, 3);
     expect(sprite.userData.motionBaseScaleY).toBeCloseTo(3.84, 3);
+  });
+
+  it('anchors the enlarged quad at the authored Blender foot line', () => {
+    const sprite = createIntegratedMatthiasSlugSprite();
+    expect(PAWN_SLUG_MATTHIAS_INTEGRATED_FOOT_ANCHOR).toBeCloseTo(17 / 96, 6);
+    expect(sprite.center.y).toBeCloseTo(17 / 96, 6);
   });
 
   it('does not apply the legacy primary-aspect squeeze to Blender-integrated art', () => {
