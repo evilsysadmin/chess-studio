@@ -1,5 +1,5 @@
 name: Setup Blender canonical art
-description: Restore cached Blender/Pillow toolchains and prefer the runner's preinstalled Xvfb for headless rendering.
+description: Restore cached Blender, EGL and Pillow toolchains while keeping product-specific host packages minimal.
 inputs:
   blender-version:
     description: Portable Blender version shared by canonical art workflows.
@@ -46,38 +46,52 @@ runs:
         echo "${blender_home}" >> "${GITHUB_PATH}"
         "${blender_home}/blender" --version | head -n 1
 
-    - name: Start preinstalled Xvfb when available
-      id: xvfb
+    - name: Resolve host runtime identity
+      id: host-runtime
       shell: bash
       run: |
         set -euo pipefail
+        os_version="$(. /etc/os-release; printf '%s' "${VERSION_ID//./}")"
+        echo "os-version=${os_version}" >> "${GITHUB_OUTPUT}"
+
+    - name: Restore EGL package cache
+      id: egl-cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/blender-egl-debs
+        key: blender-egl-debs-${{ runner.os }}-${{ runner.arch }}-${{ steps.host-runtime.outputs.os-version }}-v2
+
+    - name: Download EGL packages on cache miss
+      if: steps.egl-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        deb_root="${RUNNER_TEMP}/blender-egl-debs"
+        rm -rf "${deb_root}"
+        mkdir -p "${deb_root}"
+        cd "${deb_root}"
+        apt-get download libegl1 libegl-mesa0 >/dev/null
+        test -n "$(find . -maxdepth 1 -name '*.deb' -print -quit)"
+
+    - name: Materialize cached EGL into runner
+      id: egl-runtime
+      shell: bash
+      run: |
+        set -euo pipefail
+        deb_root="${RUNNER_TEMP}/blender-egl-debs"
+        mapfile -t debs < <(find "${deb_root}" -maxdepth 1 -name '*.deb' -type f -print | sort)
+        if (( ${#debs[@]} == 0 )); then
+          echo 'ready=false' >> "${GITHUB_OUTPUT}"
+          exit 0
+        fi
+        for deb in "${debs[@]}"; do
+          sudo dpkg-deb -x "${deb}" /
+        done
+        sudo ldconfig
         ready=false
-        display=':99'
-        socket='/tmp/.X11-unix/X99'
-        if command -v Xvfb >/dev/null 2>&1 \
-          && ldconfig -p | grep -q 'libGLX.so.0' \
-          && ldconfig -p | grep -q 'libGL.so.1'; then
-          rm -f "${socket}"
-          Xvfb "${display}" -screen 0 1280x1024x24 -nolisten tcp -ac \
-            >"${RUNNER_TEMP}/blender-xvfb.log" 2>&1 &
-          xvfb_pid=$!
-          for _ in $(seq 1 20); do
-            if [[ -S "${socket}" ]] && kill -0 "${xvfb_pid}" 2>/dev/null; then
-              ready=true
-              break
-            fi
-            if ! kill -0 "${xvfb_pid}" 2>/dev/null; then
-              break
-            fi
-            sleep 0.1
-          done
-          if [[ "${ready}" == true ]]; then
-            echo "DISPLAY=${display}" >> "${GITHUB_ENV}"
-            echo "Blender headless display: Xvfb ${display}"
-          else
-            kill "${xvfb_pid}" 2>/dev/null || true
-            cat "${RUNNER_TEMP}/blender-xvfb.log" || true
-          fi
+        if ldconfig -p | grep -q 'libEGL\.so\.1' && ldconfig -p | grep -q 'libEGL_mesa\.so\.0'; then
+          ready=true
+          echo 'Cached EGL runtime materialized into runner root.'
         fi
         echo "ready=${ready}" >> "${GITHUB_OUTPUT}"
 
@@ -85,11 +99,11 @@ runs:
       shell: bash
       env:
         EXTRA_PACKAGES: ${{ inputs.extra-packages }}
-        XVFB_READY: ${{ steps.xvfb.outputs.ready }}
+        EGL_READY: ${{ steps.egl-runtime.outputs.ready }}
       run: |
         set -euo pipefail
         packages=()
-        if [[ "${XVFB_READY}" != 'true' ]]; then
+        if [[ "${EGL_READY}" != 'true' ]]; then
           packages+=(libegl1)
         fi
         if [[ -n "${EXTRA_PACKAGES}" ]]; then
