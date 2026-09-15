@@ -22,6 +22,11 @@ on:
       - .github/actions/app-visual-pipeline/**
       - .github/workflows/app-visual-artifact.yml
   workflow_dispatch:
+concurrency:
+  # Only the newest pushed main state is useful. Keep manual runs isolated so a
+  # deliberate visual investigation is never cancelled by a later push.
+  group: app-visual-artifact-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
