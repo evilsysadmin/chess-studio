@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { moveWarRoomHansToward } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v4-orthogonal-furniture-clear-approach';
-export const WAR_ROOM_HANS_NAVIGATION_CLEAR_LANE_HALF_EXTENT = 5.25;
+export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v5-footprint-clearance';
+export const WAR_ROOM_HANS_NAVIGATION_CLEAR_LANE_HALF_EXTENT = 5.5;
 export const WAR_ROOM_HANS_NAVIGATION_EDGE_MARGIN = 0.12;
 
 function localPoint(parent, world) {
@@ -126,10 +126,10 @@ export function warRoomHansSafeRoomLoop(floor, parent) {
   const rear = centerZ - laneHalfZ;
   const front = centerZ + laneHalfZ;
 
-  // Hans used to hug the room shell. That cleared the board, but it also sent
-  // him through wall furniture (most visibly the Teutonic armours and their
-  // zweihanders). Keep the circulation lane just outside the board-safe area
-  // and inside the fixed wall furniture instead.
+  // Point clearance was not enough: Hans' feet and coat still visibly clipped
+  // the board edge while his root stayed technically outside the old 5.25 lane.
+  // Keep the circulation centreline far enough out for his footprint, while
+  // still staying inside the fixed wall furniture and armour clearance.
   const worldPoints = [
     [left, rear],
     [centerX, rear],
