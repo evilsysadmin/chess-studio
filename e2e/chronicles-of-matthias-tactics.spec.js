@@ -72,7 +72,14 @@ test('Chronicles Tactics · elegir doctrina consume skill point y cierra la alte
   const mode = page.locator('[data-chronicles-tactics="true"]');
   const summary = mode.getByText('Técnicas · 1 punto', { exact: true });
   await expect(summary).toBeVisible();
-  await summary.click();
+  // Continuous WebGL rendering can keep Playwright's pointer action waiting even
+  // after <summary> is visible and stable. Open the native disclosure directly;
+  // this test exercises doctrine state, not browser pointer dispatch semantics.
+  await summary.evaluate((node) => {
+    const details = node.closest('details');
+    if (details) details.open = true;
+    else node.click();
+  });
 
   const tempo = mode.getByRole('button', { name: /Tempo de hierro/i });
   const rupture = mode.getByRole('button', { name: /Ruptura maestra/i });
