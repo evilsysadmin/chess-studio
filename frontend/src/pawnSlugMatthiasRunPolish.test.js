@@ -18,19 +18,19 @@ describe('Pawn Slug Matthias run polish', () => {
     expect(pawnSlugMatthiasRunFrame(1, 0)).toBe(10);
   });
 
-  it('crops all four dirty edges of the authored run cell', () => {
+  it('crops all four dirty edges of the authored run cell with extra lower-corner cleanup', () => {
     const uv = pawnSlugMatthiasRunUvWindow(4, 1);
-    expect(PAWN_SLUG_MATTHIAS_RUN_POLISH.leftTrimTexels).toBeGreaterThanOrEqual(3);
-    expect(PAWN_SLUG_MATTHIAS_RUN_POLISH.rightTrimTexels).toBeGreaterThanOrEqual(3);
-    expect(PAWN_SLUG_MATTHIAS_RUN_POLISH.bottomTrimTexels).toBeGreaterThanOrEqual(7);
-    expect(uv.repeatX).toBeCloseTo(90 / 1536, 12);
-    expect(uv.repeatY).toBeCloseTo(87 / 480, 12);
-    expect(uv.offsetX).toBeCloseTo((4 * 96 + 3) / 1536, 12);
-    expect(uv.offsetY).toBeCloseTo(199 / 480, 12);
+    expect(PAWN_SLUG_MATTHIAS_RUN_POLISH.leftTrimTexels).toBeGreaterThanOrEqual(4);
+    expect(PAWN_SLUG_MATTHIAS_RUN_POLISH.rightTrimTexels).toBeGreaterThanOrEqual(4);
+    expect(PAWN_SLUG_MATTHIAS_RUN_POLISH.bottomTrimTexels).toBeGreaterThanOrEqual(10);
+    expect(uv.repeatX).toBeCloseTo(88 / 1536, 12);
+    expect(uv.repeatY).toBeCloseTo(84 / 480, 12);
+    expect(uv.offsetX).toBeCloseTo((4 * 96 + 4) / 1536, 12);
+    expect(uv.offsetY).toBeCloseTo(202 / 480, 12);
 
     const mirrored = pawnSlugMatthiasRunUvWindow(4, -1);
-    expect(mirrored.repeatX).toBeCloseTo(-90 / 1536, 12);
-    expect(mirrored.offsetX).toBeCloseTo((5 * 96 - 3) / 1536, 12);
+    expect(mirrored.repeatX).toBeCloseTo(-88 / 1536, 12);
+    expect(mirrored.offsetX).toBeCloseTo((5 * 96 - 4) / 1536, 12);
   });
 
   it('keeps grounded running planted while applying the clean run UV window', () => {
