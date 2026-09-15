@@ -13,6 +13,7 @@ import game_store as gstore
 import matthias_daily_store
 import matthias_memory_store
 import profile_store as pstore
+import pvp_store
 import users_store as ustore
 import release_info
 from auth import verify_password
@@ -21,12 +22,17 @@ from observability import record_process_ready
 from observability_history import record_presence_snapshot
 from api_models import ClientTelemetryRequest, DeleteAccountRequest
 from client_telemetry import record_client_event
+from pvp_api import build_pvp_router
 
 _logger = logging.getLogger("chess.system")
 
 
 def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usernames_getter=None) -> APIRouter:
     router = APIRouter()
+    # Keep the PvP router behind the same authenticated system-router aggregate
+    # already mounted by main.py. This avoids a second auth stack and keeps the
+    # War Room transport isolated from the CPU game API.
+    router.include_router(build_pvp_router(auth_dependency=auth_dependency, limiter=limiter))
 
     @router.get("/")
     @limiter.exempt
@@ -118,6 +124,7 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
 
         deleted_games = await gstore.delete_games_by_owner(username)
         await pstore.delete_profile(username)
+        await pvp_store.delete_user_data(username)
         await matthias_daily_store.delete_user_daily(username)
         await matthias_memory_store.delete_user_memory(username)
         deleted = await ustore.delete_user(username)
