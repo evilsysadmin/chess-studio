@@ -46,6 +46,7 @@ function basePlinth(group, stone, metal, segments) {
     [0.42, 0.31], [0.4, 0.36],
   ], stone, segments, 'chronicles-piece-plinth');
   add(group, new THREE.TorusGeometry(0.52, 0.035, 8, segments), metal, [0, 0.2, 0], [Math.PI / 2, 0, 0], null, 'chronicles-piece-plinth-ring');
+  add(group, new THREE.TorusGeometry(0.61, 0.017, 6, segments), metal, [0, 0.095, 0], [Math.PI / 2, 0, 0], null, 'chronicles-piece-plinth-inlay');
 }
 
 function faceRig(group, { skin, ink, segments, y = 1.42, mood = 'stern' }) {
@@ -53,12 +54,21 @@ function faceRig(group, { skin, ink, segments, y = 1.42, mood = 'stern' }) {
   rig.name = 'chronicles-face-rig';
   group.add(rig);
   add(rig, new THREE.SphereGeometry(0.22, segments, Math.max(12, segments / 2)), skin, [0, y, 0], [0, 0, 0], [1, 0.95, 0.92], 'chronicles-face');
+
+  const eyeWhite = material(0xeee9de, { metalness: 0, roughness: 0.72, clearcoat: 0.03 });
   const z = 0.205;
   const browTilt = mood === 'stern' ? 0.36 : 0.18;
-  add(rig, new THREE.SphereGeometry(0.024, 10, 8), ink, [-0.066, y + 0.012, z], [0, 0, 0], [1.2, 0.45, 0.38], 'chronicles-eye-left');
-  add(rig, new THREE.SphereGeometry(0.024, 10, 8), ink, [0.066, y + 0.012, z], [0, 0, 0], [1.2, 0.45, 0.38], 'chronicles-eye-right');
+  [-1, 1].forEach((side) => {
+    const eyeX = side * 0.066;
+    add(rig, new THREE.SphereGeometry(0.031, 12, 8), eyeWhite, [eyeX, y + 0.012, z], [0, 0, 0], [1.18, 0.72, 0.48], side < 0 ? 'chronicles-eye-white-left' : 'chronicles-eye-white-right');
+    add(rig, new THREE.SphereGeometry(0.016, 10, 8), ink, [eyeX, y + 0.012, z + 0.017], [0, 0, 0], [1, 1, 0.65], side < 0 ? 'chronicles-eye-left' : 'chronicles-eye-right');
+  });
   add(rig, new THREE.BoxGeometry(0.098, 0.018, 0.015), ink, [-0.06, y + 0.065, z + 0.004], [0, 0, -browTilt], null, 'chronicles-brow-left');
   add(rig, new THREE.BoxGeometry(0.098, 0.018, 0.015), ink, [0.06, y + 0.065, z + 0.004], [0, 0, browTilt], null, 'chronicles-brow-right');
+  add(rig, new THREE.ConeGeometry(0.032, 0.095, 8), skin, [0, y - 0.018, z + 0.018], [Math.PI / 2, 0, 0], [0.9, 1, 0.82], 'chronicles-nose');
+  add(rig, new THREE.BoxGeometry(0.092, 0.013, 0.014), ink, [0, y - 0.072, z + 0.018], [0, 0, mood === 'stern' ? -0.04 : 0.02], null, 'chronicles-mouth');
+  add(rig, new THREE.SphereGeometry(0.052, 10, 8), skin, [-0.205, y, -0.01], [0, 0, 0], [0.45, 0.9, 0.5], 'chronicles-ear-left');
+  add(rig, new THREE.SphereGeometry(0.052, 10, 8), skin, [0.205, y, -0.01], [0, 0, 0], [0.45, 0.9, 0.5], 'chronicles-ear-right');
   return rig;
 }
 
@@ -67,6 +77,7 @@ function buildMatthias(segments) {
   const ivory = material(0xd8cdbb, { metalness: 0.02, roughness: 0.72, clearcoat: 0.06 });
   const brass = material(0xb88936, { metalness: 0.78, roughness: 0.3, clearcoat: 0.24 });
   const coat = material(0x35302b, { roughness: 0.68, clearcoat: 0.04 });
+  const coatEdge = material(0x49413a, { roughness: 0.61, clearcoat: 0.05 });
   const wine = material(0x6f2f2d, { roughness: 0.72 });
   const leather = material(0x5a3822, { roughness: 0.82 });
   const skin = material(0xeee2d0, { metalness: 0, roughness: 0.86, clearcoat: 0.02 });
@@ -74,16 +85,23 @@ function buildMatthias(segments) {
   basePlinth(root, ivory, brass, segments);
   lathe(root, [[0.34, 0.34], [0.28, 0.54], [0.25, 0.83], [0.31, 1.06], [0.27, 1.18]], coat, segments, 'matthias-expedition-coat');
   add(root, new THREE.TorusGeometry(0.29, 0.024, 8, segments), brass, [0, 0.56, 0], [Math.PI / 2, 0, 0], null, 'matthias-expedition-belt');
-  add(root, new THREE.BoxGeometry(0.1, 0.46, 0.025), wine, [-0.065, 0.83, 0.285], [0, 0, -0.42], null, 'matthias-expedition-sash');
+  add(root, new THREE.BoxGeometry(0.13, 0.57, 0.035), coatEdge, [-0.115, 0.88, 0.26], [0, 0, -0.16], null, 'matthias-lapel-left');
+  add(root, new THREE.BoxGeometry(0.13, 0.57, 0.035), coatEdge, [0.115, 0.88, 0.26], [0, 0, 0.16], null, 'matthias-lapel-right');
+  add(root, new THREE.BoxGeometry(0.1, 0.46, 0.025), wine, [-0.065, 0.83, 0.305], [0, 0, -0.42], null, 'matthias-expedition-sash');
+  add(root, new THREE.SphereGeometry(0.14, 14, 10), coatEdge, [-0.31, 1.04, 0], [0, 0, 0], [1.05, 0.62, 0.9], 'matthias-shoulder-left');
+  add(root, new THREE.SphereGeometry(0.14, 14, 10), coatEdge, [0.31, 1.04, 0], [0, 0, 0], [1.05, 0.62, 0.9], 'matthias-shoulder-right');
   add(root, new THREE.BoxGeometry(0.24, 0.18, 0.1), leather, [0.31, 0.72, -0.02], [0, -0.24, 0], null, 'matthias-satchel');
+  add(root, new THREE.BoxGeometry(0.18, 0.035, 0.115), brass, [0.31, 0.79, 0.045], [0, -0.24, 0], null, 'matthias-satchel-clasp');
   add(root, new THREE.CylinderGeometry(0.035, 0.035, 0.56, 8), leather, [-0.34, 0.82, 0.04], [0.12, 0, -0.18], null, 'matthias-map-case');
   faceRig(root, { skin, ink, segments, y: 1.39, mood: 'stern' });
   const cap = material(0x14181e, { metalness: 0.15, roughness: 0.5, clearcoat: 0.12 });
   add(root, new THREE.CylinderGeometry(0.245, 0.21, 0.12, segments), cap, [0, 1.57, 0], [0, 0, 0], [1.06, 1, 0.94], 'matthias-expedition-cap');
+  add(root, new THREE.TorusGeometry(0.218, 0.018, 6, segments), brass, [0, 1.535, 0], [Math.PI / 2, 0, 0], [1.02, 1, 0.94], 'matthias-cap-band');
   add(root, new THREE.BoxGeometry(0.28, 0.028, 0.16), cap, [0, 1.515, 0.17], [-0.12, 0, 0], null, 'matthias-expedition-visor');
   add(root, new THREE.BoxGeometry(0.1, 0.055, 0.026), brass, [0, 1.57, 0.23], [0, 0, Math.PI / 4], null, 'matthias-expedition-cap-badge');
   root.userData.chroniclesCharacterId = 'matthias';
   root.userData.chroniclesSilhouette = 'pawn-chronist-expedition';
+  root.userData.chroniclesArtTier = 'portrait-premium-v2';
   return root;
 }
 
@@ -93,20 +111,28 @@ function buildHildegard(segments) {
   const steel = material(0xaeb4b7, { metalness: 0.72, roughness: 0.28, clearcoat: 0.22 });
   const dark = material(0x25292d, { metalness: 0.38, roughness: 0.46 });
   const cloth = material(0x39434a, { roughness: 0.76 });
-  const ember = material(0x9c5d2f, { metalness: 0.24, roughness: 0.5 });
+  const ember = material(0x9c5d2f, { metalness: 0.24, roughness: 0.5, emissive: 0x4d1507, emissiveIntensity: 0.35 });
   basePlinth(root, stone, steel, segments);
   lathe(root, [[0.42, 0.35], [0.36, 0.58], [0.39, 0.9], [0.43, 1.12]], cloth, segments, 'hildegard-guard-body');
+  add(root, new THREE.TorusGeometry(0.39, 0.055, 8, segments), steel, [0, 1.02, 0], [Math.PI / 2, 0, 0], null, 'hildegard-armour-collar');
+  add(root, new THREE.SphereGeometry(0.17, 14, 10), steel, [-0.36, 1.02, 0], [0, 0, 0], [1.1, 0.65, 0.92], 'hildegard-pauldron-left');
+  add(root, new THREE.SphereGeometry(0.17, 14, 10), steel, [0.36, 1.02, 0], [0, 0, 0], [1.1, 0.65, 0.92], 'hildegard-pauldron-right');
   add(root, new THREE.CylinderGeometry(0.42, 0.42, 0.26, segments), dark, [0, 1.17, 0], [0, 0, 0], null, 'hildegard-rook-helm');
+  add(root, new THREE.BoxGeometry(0.36, 0.055, 0.035), ember, [0, 1.2, 0.42], [0, 0, 0], null, 'hildegard-visor-slit');
   for (let i = 0; i < 6; i += 1) {
     const angle = (i / 6) * Math.PI * 2;
     add(root, new THREE.BoxGeometry(0.16, 0.18, 0.16), steel, [Math.cos(angle) * 0.31, 1.36, Math.sin(angle) * 0.31], [0, -angle, 0], null, `hildegard-crenel-${i}`);
   }
   add(root, new THREE.BoxGeometry(0.62, 0.72, 0.11), steel, [0.43, 0.78, 0.08], [0, -0.18, 0.02], null, 'hildegard-tower-shield');
-  add(root, new THREE.BoxGeometry(0.42, 0.09, 0.06), ember, [0.43, 0.8, 0.145], [0, -0.18, 0], null, 'hildegard-shield-mark');
+  add(root, new THREE.BoxGeometry(0.48, 0.58, 0.025), dark, [0.43, 0.78, 0.145], [0, -0.18, 0.02], null, 'hildegard-shield-inset');
+  add(root, new THREE.SphereGeometry(0.12, 14, 10), steel, [0.43, 0.78, 0.18], [0, 0, 0], [1, 1, 0.62], 'hildegard-shield-boss');
+  add(root, new THREE.BoxGeometry(0.42, 0.09, 0.06), ember, [0.43, 0.8, 0.205], [0, -0.18, 0], null, 'hildegard-shield-mark');
   add(root, new THREE.CylinderGeometry(0.07, 0.07, 0.72, 10), steel, [-0.42, 0.8, 0.02], [0, 0, -0.22], null, 'hildegard-mace-haft');
+  add(root, new THREE.TorusGeometry(0.085, 0.018, 6, 12), dark, [-0.38, 0.62, 0.02], [0, 0, -0.22], null, 'hildegard-mace-grip');
   add(root, new THREE.DodecahedronGeometry(0.16, 0), steel, [-0.5, 1.14, 0.03], [0, 0, 0], null, 'hildegard-mace-head');
   root.userData.chroniclesCharacterId = 'rook';
   root.userData.chroniclesSilhouette = 'rook-guardian';
+  root.userData.chroniclesArtTier = 'portrait-premium-v2';
   return root;
 }
 
@@ -115,21 +141,28 @@ function buildAziz(segments) {
   const sandstone = material(0xb9a47d, { metalness: 0.03, roughness: 0.78 });
   const brass = material(0xc29a45, { metalness: 0.75, roughness: 0.3, clearcoat: 0.2 });
   const robe = material(0x30423d, { roughness: 0.75 });
+  const robeEdge = material(0x536057, { roughness: 0.66 });
   const scarf = material(0x8c6736, { roughness: 0.7 });
   const glow = material(0xe6b55a, { metalness: 0.08, roughness: 0.34, emissive: 0xff8b20, emissiveIntensity: 1.8 });
   const skin = material(0xb8845f, { metalness: 0, roughness: 0.9 });
   const ink = material(0x0a0908, { metalness: 0, roughness: 0.9 });
   basePlinth(root, sandstone, brass, segments);
   lathe(root, [[0.4, 0.34], [0.32, 0.56], [0.28, 0.94], [0.31, 1.18]], robe, segments, 'aziz-bishop-robe');
+  add(root, new THREE.TorusGeometry(0.29, 0.03, 8, segments), robeEdge, [0, 1.08, 0], [Math.PI / 2, 0, 0], null, 'aziz-robe-collar');
   add(root, new THREE.BoxGeometry(0.11, 0.52, 0.025), scarf, [0.09, 0.86, 0.285], [0, 0, 0.48], null, 'aziz-diagonal-scarf');
+  add(root, new THREE.BoxGeometry(0.075, 0.42, 0.025), brass, [0.16, 0.84, 0.304], [0, 0, 0.48], null, 'aziz-scarf-trim');
   faceRig(root, { skin, ink, segments, y: 1.39, mood: 'calm' });
   add(root, new THREE.ConeGeometry(0.27, 0.46, segments), robe, [0, 1.68, 0], [0, 0, 0], null, 'aziz-split-mitre');
+  add(root, new THREE.TorusGeometry(0.225, 0.025, 8, segments), brass, [0, 1.5, 0], [Math.PI / 2, 0, 0], null, 'aziz-mitre-band');
   add(root, new THREE.BoxGeometry(0.04, 0.34, 0.03), sandstone, [0, 1.72, 0.23], [0, 0, 0.38], null, 'aziz-mitre-split');
   add(root, new THREE.CylinderGeometry(0.035, 0.035, 0.8, 8), brass, [-0.42, 0.82, 0.02], [0.05, 0, -0.16], null, 'aziz-lantern-staff');
+  add(root, new THREE.TorusGeometry(0.19, 0.018, 6, 16), brass, [-0.47, 1.22, 0.04], [Math.PI / 2, 0, 0], null, 'aziz-lantern-cage');
   add(root, new THREE.OctahedronGeometry(0.17, 0), glow, [-0.47, 1.22, 0.04], [0, 0, 0], null, 'aziz-lantern');
+  add(root, new THREE.ConeGeometry(0.08, 0.17, 8), brass, [-0.47, 1.43, 0.04], [0, 0, 0], null, 'aziz-lantern-finial');
   root.userData.chroniclesCharacterId = 'bishop';
   root.userData.chroniclesSilhouette = 'bishop-lantern-seer';
   root.userData.chroniclesGlowMaterials = [glow];
+  root.userData.chroniclesArtTier = 'portrait-premium-v2';
   return root;
 }
 
@@ -138,8 +171,11 @@ function buildMorcilla(segments) {
   const bone = material(0x9c8f79, { metalness: 0.05, roughness: 0.78 });
   const iron = material(0x4d5358, { metalness: 0.56, roughness: 0.38 });
   const leather = material(0x65422b, { roughness: 0.82 });
+  const darkLeather = material(0x322219, { roughness: 0.88 });
   const cloth = material(0x3d3330, { roughness: 0.78 });
   const copper = material(0x9a6036, { metalness: 0.55, roughness: 0.36 });
+  const eye = material(0xd7c89f, { metalness: 0, roughness: 0.7 });
+  const pupil = material(0x080706, { metalness: 0, roughness: 0.95 });
   basePlinth(root, bone, iron, segments);
   lathe(root, [[0.38, 0.34], [0.31, 0.54], [0.28, 0.86], [0.32, 1.08]], cloth, segments, 'morcilla-logistics-body');
   const neck = new THREE.Group();
@@ -151,16 +187,31 @@ function buildMorcilla(segments) {
   add(neck, new THREE.ConeGeometry(0.065, 0.26, 8), bone, [-0.13, 0.69, 0.05], [0.16, 0, 0.08], null, 'morcilla-ear-left');
   add(neck, new THREE.ConeGeometry(0.065, 0.26, 8), bone, [0.13, 0.69, 0.05], [0.16, 0, -0.08], null, 'morcilla-ear-right');
   add(neck, new THREE.BoxGeometry(0.28, 0.12, 0.12), iron, [0, 0.48, 0.27], [0.12, 0, 0], null, 'morcilla-brow-plate');
+  add(neck, new THREE.SphereGeometry(0.035, 10, 8), eye, [-0.09, 0.48, 0.345], [0, 0, 0], [1, 0.8, 0.55], 'morcilla-eye-left');
+  add(neck, new THREE.SphereGeometry(0.035, 10, 8), eye, [0.09, 0.48, 0.345], [0, 0, 0], [1, 0.8, 0.55], 'morcilla-eye-right');
+  add(neck, new THREE.SphereGeometry(0.017, 8, 6), pupil, [-0.09, 0.48, 0.365], [0, 0, 0], null, 'morcilla-pupil-left');
+  add(neck, new THREE.SphereGeometry(0.017, 8, 6), pupil, [0.09, 0.48, 0.365], [0, 0, 0], null, 'morcilla-pupil-right');
+  add(neck, new THREE.BoxGeometry(0.34, 0.035, 0.025), darkLeather, [0, 0.4, 0.315], [0.12, 0, 0], null, 'morcilla-bridle-brow');
+  add(neck, new THREE.BoxGeometry(0.035, 0.4, 0.025), darkLeather, [-0.17, 0.37, 0.21], [0.12, 0, -0.1], null, 'morcilla-bridle-left');
+  add(neck, new THREE.BoxGeometry(0.035, 0.4, 0.025), darkLeather, [0.17, 0.37, 0.21], [0.12, 0, 0.1], null, 'morcilla-bridle-right');
+  for (let i = 0; i < 4; i += 1) {
+    add(neck, new THREE.ConeGeometry(0.045, 0.18, 7), darkLeather, [0, 0.28 + i * 0.1, -0.16], [-0.28, 0, 0], null, `morcilla-mane-${i}`);
+  }
   add(root, new THREE.BoxGeometry(0.3, 0.38, 0.18), leather, [-0.35, 0.78, -0.04], [0, 0.12, 0], null, 'morcilla-pack-left');
   add(root, new THREE.BoxGeometry(0.3, 0.38, 0.18), leather, [0.35, 0.78, -0.04], [0, -0.12, 0], null, 'morcilla-pack-right');
+  add(root, new THREE.BoxGeometry(0.055, 0.44, 0.19), darkLeather, [-0.35, 0.78, -0.02], [0, 0.12, 0], null, 'morcilla-pack-strap-left');
+  add(root, new THREE.BoxGeometry(0.055, 0.44, 0.19), darkLeather, [0.35, 0.78, -0.02], [0, -0.12, 0], null, 'morcilla-pack-strap-right');
+  add(root, new THREE.BoxGeometry(0.1, 0.055, 0.2), copper, [-0.35, 0.8, 0.07], [0, 0.12, 0], null, 'morcilla-pack-buckle-left');
+  add(root, new THREE.BoxGeometry(0.1, 0.055, 0.2), copper, [0.35, 0.8, 0.07], [0, -0.12, 0], null, 'morcilla-pack-buckle-right');
   add(root, new THREE.CylinderGeometry(0.055, 0.055, 0.6, 8), copper, [0.4, 0.92, 0.04], [0, 0, 0.12], null, 'morcilla-tool-roll');
   root.userData.chroniclesCharacterId = 'knight';
   root.userData.chroniclesSilhouette = 'knight-quartermaster';
+  root.userData.chroniclesArtTier = 'portrait-premium-v2';
   return root;
 }
 
 export function buildChroniclesCharacter(memberId, { coarsePointer = false } = {}) {
-  const segments = coarsePointer ? 18 : 30;
+  const segments = coarsePointer ? 18 : 36;
   if (memberId === 'rook') return buildHildegard(segments);
   if (memberId === 'bishop') return buildAziz(segments);
   if (memberId === 'knight') return buildMorcilla(segments);
