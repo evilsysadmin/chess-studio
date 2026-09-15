@@ -83,7 +83,7 @@ export function buildSpectralBishop({ coarsePointer = false } = {}) {
     add(root, new THREE.BoxGeometry(0.48 - i * 0.05, 0.025, 0.025), glow, [0.17, 0.62 + i * 0.19, 0.37], [0, 0, -0.72], null, `spectral-bishop-robe-rift-${i}`);
   }
 
-  root.userData.chroniclesGlowMaterials = [glow, faintGlow];
+  root.userData.chroniclesGlowMaterials = [glow];
   root.userData.chroniclesBaseGlow = 2.35;
   root.userData.chroniclesSilhouette = 'spectral-bishop-diagonal-seer';
   root.userData.chroniclesArtTier = 'premium-threat-v2';
