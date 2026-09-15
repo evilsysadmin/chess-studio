@@ -119,7 +119,7 @@ def _surface_groups(path: str) -> set[str] | None:
     groups: set[str] = set()
     if any(token in lower for token in ("experiment", "pawnslug", "pawn-slug", "chronicles", "trailblazer", "arcade")):
         groups.add("experiments")
-    if any(token in lower for token in ("training", "tutorial", "glossary", "school", "mechanic-library")):
+    if any(token in lower for token in ("training", "tutorial", "glossary", "school", "mechanic-library", "openingsscreen")):
         groups.add("training")
     if any(token in lower for token in ("war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d")):
         groups.add("warroom")
@@ -284,6 +284,8 @@ def self_test() -> None:
     assert classify(["frontend/src/components/HomeCastle3D.jsx"]).capture_groups == "home"
     assert classify(["frontend/src/components/MatthiasAvatar.jsx"]).capture_groups == "home,warroom"
     assert classify(["frontend/src/components/MatthiasSchool.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/OpeningsScreen.jsx"]).capture_groups == "training"
+    assert classify(["frontend/src/components/OpeningsScreen.css"]).capture_groups == "training"
     assert classify(["e2e/browser-storage-health.spec.js"]).capture_groups == "health"
     chesscom = classify(["frontend/src/chesscomClient.js"])
     assert chesscom.capture_groups == "none" and chesscom.chesscom

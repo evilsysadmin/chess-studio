@@ -36,17 +36,22 @@ async function assertSpecialModesDensity(shell) {
   expect(density.detailHeight, 'special modes: detail should remain visibly shorter than the scroll rail').toBeLessThan(density.listHeight - 40);
 }
 
-async function capture(page, label) {
+async function captureAt(page, label, { width = 1440, height = 900, variant = 'desktop' } = {}) {
+  await page.setViewportSize({ width, height });
   await settle(page);
-  await assertNoHorizontalOverflow(page, label);
+  await assertNoHorizontalOverflow(page, `${label}-${variant}`);
   await page.screenshot({
-    path: `${ARTIFACT_DIR}/training-${label}-desktop-1440x900.png`,
+    path: `${ARTIFACT_DIR}/training-${label}-${variant}-${width}x${height}.png`,
     fullPage: false,
     animations: 'disabled',
   });
 }
 
-test('Entrenar · captura visual de Escuela, Glosario y Modos especiales', async ({ page }) => {
+async function capture(page, label) {
+  await captureAt(page, label);
+}
+
+test('Entrenar · captura visual de Escuela, Glosario, Modos especiales y Aperturas', async ({ page }) => {
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await mockApi(page, {
     profileSeed: {
@@ -74,4 +79,17 @@ test('Entrenar · captura visual de Escuela, Glosario y Modos especiales', async
   await settle(page);
   await assertSpecialModesDensity(shell);
   await capture(page, 'special-modes');
+
+  await page.getByRole('button', { name: '← Volver a la Escuela', exact: true }).click();
+  await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
+  await expect(page.locator('.illustrated-home')).toBeVisible();
+  await page.getByRole('button', { name: 'Más modos y herramientas · Mazmorras', exact: true }).click();
+  await page.getByRole('button', { name: 'Aperturas', exact: true }).click();
+
+  const openings = page.locator('.openings-library-screen');
+  await expect(openings).toBeVisible();
+  await expect(openings.getByRole('heading', { name: 'Aperturas famosas', exact: true })).toBeVisible();
+  await expect(openings.locator('.openings-volume').first()).toBeVisible();
+  await capture(page, 'openings');
+  await captureAt(page, 'openings', { width: 390, height: 844, variant: 'mobile' });
 });
