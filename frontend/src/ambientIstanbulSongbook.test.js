@@ -38,13 +38,14 @@ function largestMelodicGap(section) {
 }
 
 describe('Istanbul songbook recomposition', () => {
-  it('keeps the three published identities while replacing the underlying scores', () => {
+  it('keeps the three authored identities while Tavla is no longer published', () => {
     expect(ISTANBUL_SONGBOOK_IDS).toEqual(['istanbul0326', 'istanbulBackgammon', 'bosphorusRain']);
     for (const id of ISTANBUL_SONGBOOK_IDS) {
       const theme = AMBIENT_THEMES[id];
       const option = AMBIENT_THEME_OPTIONS.find((entry) => entry.id === id);
       expect(theme?.sections, id).toHaveLength(4);
-      expect(option?.description, id).toBe(theme.description);
+      if (id === 'istanbulBackgammon') expect(option, id).toBeUndefined();
+      else expect(option?.description, id).toBe(theme.description);
     }
     expect(AMBIENT_THEMES.istanbul0326.description).toContain('9/8');
     expect(AMBIENT_THEMES.istanbulBackgammon.description).toContain('Tavla');
@@ -75,7 +76,7 @@ describe('Istanbul songbook recomposition', () => {
     expect(theme.sections.some((section) => section.leadInstrument && section.counterInstrument)).toBe(true);
   });
 
-  it('makes Tavla dry and bass-forward while Bosphorus becomes a rain chamber', () => {
+  it('preserves retired Tavla production while Bosphorus remains a rain chamber', () => {
     const broken = structuredFeel(AMBIENT_THEMES.istanbul0326);
     const tavla = structuredFeel(AMBIENT_THEMES.istanbulBackgammon);
     const rain = structuredFeel(AMBIENT_THEMES.bosphorusRain);
