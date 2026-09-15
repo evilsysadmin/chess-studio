@@ -98,10 +98,39 @@ function addMistPatch(root, texture, { name, x, z, width, depth, color, opacity,
   return { material, baseOpacity: opacity };
 }
 
+function addReadabilityLighting(root, { coarsePointer }) {
+  const ambient = new THREE.AmbientLight(0x69727d, coarsePointer ? 0.3 : 0.24);
+  ambient.name = 'chronicles-readability-ambient';
+
+  const entryBounce = new THREE.PointLight(
+    0xd28a4a,
+    coarsePointer ? 0.72 : 0.62,
+    12.5,
+    2,
+  );
+  entryBounce.name = 'chronicles-readability-entry-bounce';
+  entryBounce.position.set(-6.2, 1.35, 8.1);
+  entryBounce.castShadow = false;
+
+  const cryptBounce = new THREE.PointLight(
+    0x7189a3,
+    coarsePointer ? 0.5 : 0.42,
+    15.5,
+    2,
+  );
+  cryptBounce.name = 'chronicles-readability-crypt-bounce';
+  cryptBounce.position.set(0.4, 1.75, -1.2);
+  cryptBounce.castShadow = false;
+
+  root.add(ambient, entryBounce, cryptBounce);
+  return 3;
+}
+
 export function buildChroniclesDungeonAtmosphere({ coarsePointer = false, reducedMotion = false } = {}) {
   const root = new THREE.Group();
   root.name = 'chronicles-dungeon-atmosphere';
   root.add(buildChroniclesDungeonCeiling({ coarsePointer }));
+  const readabilityLightCount = addReadabilityLighting(root, { coarsePointer });
 
   const dustCount = coarsePointer ? DUST_COARSE : DUST_DESKTOP;
   const dustData = createDust(dustCount);
@@ -156,6 +185,7 @@ export function buildChroniclesDungeonAtmosphere({ coarsePointer = false, reduce
   root.userData.chroniclesAtmosphereStats = {
     dustCount,
     mistCount: mistMaterials.length,
+    readabilityLightCount,
   };
   root.userData.updateChroniclesAtmosphere = update;
   return root;
