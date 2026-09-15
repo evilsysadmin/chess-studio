@@ -57,6 +57,43 @@ def box(name, loc, scale, material, rot=(0, 0, 0), bevel=.014):
     return finish(o, material, False, bevel=bevel)
 
 
+def revolve_profile(name, profile, material, segments=96, bevel=.0):
+    """Build a smooth pawn-like solid by revolving an (radius, z) profile."""
+    verts = []
+    rings = len(profile)
+    for i in range(segments):
+        angle = (math.tau * i) / segments
+        ca, sa = math.cos(angle), math.sin(angle)
+        for radius, z in profile:
+            verts.append((radius * ca, radius * sa, z))
+
+    faces = []
+    for i in range(segments):
+        nxt = (i + 1) % segments
+        for j in range(rings - 1):
+            a = i * rings + j
+            b = nxt * rings + j
+            c = nxt * rings + j + 1
+            d = i * rings + j + 1
+            faces.append((a, b, c, d))
+
+    bottom_center = len(verts)
+    verts.append((0, 0, profile[0][1]))
+    top_center = len(verts)
+    verts.append((0, 0, profile[-1][1]))
+    for i in range(segments):
+        nxt = (i + 1) % segments
+        faces.append((bottom_center, nxt * rings, i * rings))
+        faces.append((top_center, i * rings + rings - 1, nxt * rings + rings - 1))
+
+    mesh = bpy.data.meshes.new(name + 'Mesh')
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    return finish(obj, material, True, bevel)
+
+
 def cyl_between(name, start, end, radius, material, verts=48, bevel=.018):
     a = Vector(start)
     b = Vector(end)
@@ -95,14 +132,14 @@ def build_rig():
 
     bone('root', (0, 0, 0), (0, 0, .42))
     bone('spine', (0, 0, .68), (0, 0, 1.58), 'root')
-    bone('head', (0, 0, 1.55), (0, 0, 2.28), 'spine')
-    bone('upper_arm.L', (-.30, 0, 1.38), (-.43, -.02, 1.18), 'spine')
-    bone('forearm.L', (-.43, -.02, 1.18), (-.38, -.13, .98), 'upper_arm.L')
-    bone('upper_arm.R', (.30, 0, 1.38), (.43, -.02, 1.18), 'spine')
-    bone('forearm.R', (.43, -.02, 1.18), (.38, -.13, .98), 'upper_arm.R')
-    bone('prop_book', (-.12, -.30, 1.12), (-.12, -.30, 1.30), 'spine')
-    bone('prop_cup', (.36, -.25, 1.03), (.36, -.25, 1.13), 'forearm.R')
-    bone('prop_pen', (.37, -.29, .97), (.37, -.29, 1.08), 'forearm.R')
+    bone('head', (0, 0, 1.48), (0, 0, 2.18), 'spine')
+    bone('upper_arm.L', (-.28, .02, 1.28), (-.39, .04, 1.13), 'spine')
+    bone('forearm.L', (-.39, .04, 1.13), (-.33, -.05, 1.00), 'upper_arm.L')
+    bone('upper_arm.R', (.28, .02, 1.28), (.39, .04, 1.13), 'spine')
+    bone('forearm.R', (.39, .04, 1.13), (.33, -.05, 1.00), 'upper_arm.R')
+    bone('prop_book', (-.12, -.30, 1.10), (-.12, -.30, 1.28), 'spine')
+    bone('prop_cup', (.34, -.23, 1.02), (.34, -.23, 1.12), 'forearm.R')
+    bone('prop_pen', (.35, -.27, .96), (.35, -.27, 1.07), 'forearm.R')
     bpy.ops.object.mode_set(mode='POSE')
     for item in rig.pose.bones:
         item.rotation_mode = 'XYZ'
@@ -111,96 +148,93 @@ def build_rig():
 
 
 def build_character():
-    """Canonical Home Matthias restored to the classic pawn-first identity.
-
-    The early avatar works because the pawn silhouette dominates and the military
-    costume is merely painted onto it. This builder keeps the modern rig, props
-    and clips while returning to that visual hierarchy: compact angry face,
-    simple cap, integrated navy tunic and restrained limbs.
-    """
-    ivory = mat('classic warm ivory', (.72, .64, .50), .46, .01)
-    ivory_hi = mat('classic ivory highlight', (.90, .81, .65), .38, .01)
-    navy = mat('classic midnight navy', (.020, .032, .052), .62, .03)
-    navy_soft = mat('classic navy cloth', (.030, .046, .070), .78)
-    leather = mat('classic black leather', (.030, .022, .018), .72, .02)
-    brass = mat('classic aged brass', (.47, .27, .065), .32, .82)
-    black = mat('classic brow pupil mouth', (.004, .005, .006), .72)
-    eye = mat('classic eye ivory', (.88, .84, .75), .52)
-    iris = mat('classic cold iris', (.025, .075, .080), .42, .04)
+    """Canonical Home Matthias: compact, angry and unmistakably a pawn."""
+    ivory = mat('classic warm ivory', (.70, .63, .52), .47, .01)
+    ivory_hi = mat('classic ivory highlight', (.86, .79, .67), .39, .01)
+    navy = mat('classic midnight pawn', (.008, .013, .022), .30, .13)
+    navy_soft = mat('classic navy cloth', (.015, .024, .038), .42, .07)
+    leather = mat('classic black leather', (.015, .011, .009), .44, .10)
+    brass = mat('classic aged brass', (.50, .29, .074), .26, .88)
+    black = mat('classic brow eye mouth', (.002, .003, .004), .54)
     paper = mat('paper', (.67, .58, .43), .88)
 
     rig = build_rig()
-    rig['matthias_asset_version'] = 'home-blender-classic-v7b'
+    rig['matthias_asset_version'] = 'home-blender-classic-v8c'
     rig['canonical_identity'] = 'stern-no-moustache-pawn'
     rig['canonical_reference'] = 'classic-pawn-first-avatar'
     root, spine, head = [], [], []
 
+    # Stepped chess plinth plus a compact continuous core. The shoulder swell is
+    # part of the pawn profile, not a human torso placed on top of a base.
     root += [
-        cyl('Classic ivory base', (0, 0, .095), .48, .19, ivory, verts=88, bevel=.034),
-        cyl('Classic navy base band', (0, 0, .205), .445, .040, navy, verts=84, bevel=.010),
-        cyl('Classic brass base hairline', (0, 0, .228), .435, .012, brass, verts=84, bevel=.004),
-        cone('Classic lower pawn', (0, 0, .66), .42, .255, .84, ivory, bevel=.060),
+        cyl('Classic plinth lower', (0, 0, .060), .525, .120, navy, verts=112, bevel=.020),
+        cyl('Classic plinth brass edge', (0, 0, .124), .510, .014, brass, verts=108, bevel=.003),
+        cyl('Classic plinth upper', (0, 0, .170), .485, .070, navy, verts=108, bevel=.014),
+        revolve_profile('Classic lower pawn', [
+            (.465, .185), (.448, .240), (.422, .315), (.395, .405),
+            (.370, .505), (.350, .610), (.337, .715), (.334, .820),
+            (.342, .915), (.356, 1.000), (.366, 1.075), (.358, 1.145),
+            (.342, 1.215), (.320, 1.275), (.298, 1.330), (.286, 1.365),
+        ], navy, 120, .009),
+        cyl('Classic lower brass line', (0, 0, .325), .420, .014, brass, verts=100, bevel=.003),
+        cyl('Classic service brass line', (0, 0, .715), .340, .012, brass, verts=96, bevel=.003),
     ]
 
+    # The animated coat is a shallow skin that follows the pawn's own shoulder
+    # bulge. It carries only a few diegetic details from the original avatar.
     spine += [
-        cone('Classic navy tunic', (0, -.006, 1.115), .315, .292, .60, navy, bevel=.040),
-        cyl('Classic belt', (0, -.006, .855), .318, .050, leather, verts=72, bevel=.010),
-        box('Classic buckle', (0, -.323, .855), (.050, .012, .036), brass, bevel=.007),
-        cyl('Classic ivory collar ring', (0, 0, 1.455), .270, .095, ivory_hi, verts=76, bevel=.016),
-        cyl('Classic navy collar', (0, -.004, 1.500), .272, .085, navy_soft, verts=76, bevel=.012),
-        cyl('Classic brass collar line', (0, -.004, 1.545), .276, .014, brass, verts=76, bevel=.004),
-        box('Classic piping.L', (-.165, -.292, 1.135), (.008, .008, .220), brass, (0, math.radians(-3), 0), .003),
-        box('Classic piping.R', (.165, -.292, 1.135), (.008, .008, .220), brass, (0, math.radians(3), 0), .003),
-        sphere('Classic chest button upper', (0, -.307, 1.235), (.020, .010, .020), brass, 20),
-        sphere('Classic chest button lower', (0, -.307, 1.095), (.020, .010, .020), brass, 20),
+        revolve_profile('Classic navy tunic', [
+            (.341, .800), (.350, .895), (.362, .985), (.373, 1.060),
+            (.368, 1.125), (.354, 1.195), (.333, 1.260), (.306, 1.325),
+            (.292, 1.365),
+        ], navy_soft, 104, .006),
+        cyl('Classic waist service ring', (0, 0, .820), .346, .020, brass, verts=94, bevel=.004),
+        cyl('Classic neck plinth', (0, 0, 1.377), .292, .058, navy, verts=94, bevel=.010),
+        cyl('Classic brass collar line', (0, 0, 1.408), .297, .013, brass, verts=94, bevel=.003),
+        box('Classic chest crest field', (0, -.374, 1.085), (.090, .008, .112), leather, bevel=.008),
+        box('Classic chest crest vertical', (0, -.385, 1.085), (.020, .006, .074), brass, bevel=.004),
+        box('Classic chest crest horizontal', (0, -.385, 1.085), (.060, .006, .020), brass, bevel=.004),
+        sphere('Classic chest badge', (0, -.394, 1.085), (.018, .006, .018), navy, 18),
     ]
 
-    # Lower, slightly tighter head makes the old avatar read as one pawn rather
-    # than a floating humanoid head above a chess-piece body.
+    # Angry pawn face: sparse features, permanently displeased expression.
     head += [
-        sphere('Head', (0, -.012, 1.880), (.322, .294, .342), ivory, 72),
-        sphere('Nose', (0, -.303, 1.855), (.026, .030, .030), ivory_hi, 28),
-    ]
-    for side, x in [('L', -.108), ('R', .108)]:
-        head += [
-            sphere('Eye.' + side, (x, -.297, 1.932), (.050, .018, .026), eye, 28),
-            sphere('Iris.' + side, (x, -.313, 1.928), (.020, .008, .015), iris, 20),
-            sphere('Pupil.' + side, (x, -.321, 1.926), (.009, .005, .009), black, 16),
-        ]
-    head += [
-        box('Brow.L', (-.112, -.330, 2.010), (.114, .013, .021), black, (0, math.radians(30), 0), .006),
-        box('Brow.R', (.112, -.330, 2.010), (.114, .013, .021), black, (0, math.radians(-30), 0), .006),
-        box('Upper lid.L', (-.108, -.327, 1.950), (.058, .008, .013), ivory, (0, math.radians(13), 0), .006),
-        box('Upper lid.R', (.108, -.327, 1.950), (.058, .008, .013), ivory, (0, math.radians(-13), 0), .006),
-        box('Mouth', (0, -.316, 1.783), (.038, .006, .005), black, bevel=.003),
-        sphere('Classic cap crown', (0, -.004, 2.198), (.286, .262, .078), navy, 64),
-        cyl('Classic cap band', (0, -.006, 2.157), .276, .050, navy_soft, verts=76, bevel=.009),
-        cyl('Classic cap brass line', (0, -.007, 2.132), .270, .013, brass, verts=76, bevel=.004),
-        box('Classic cap visor', (0, -.246, 2.126), (.168, .078, .017), leather, (math.radians(7), 0, 0), .010),
-        sphere('Classic cap badge', (0, -.272, 2.177), (.027, .010, .030), brass, 22),
+        sphere('Head', (0, -.010, 1.625), (.305, .290, .302), ivory, 80),
+        sphere('Nose', (0, -.296, 1.606), (.018, .022, .020), ivory_hi, 24),
+        sphere('Eye.L', (-.098, -.298, 1.670), (.023, .009, .017), black, 22),
+        sphere('Eye.R', (.098, -.298, 1.670), (.023, .009, .017), black, 22),
+        box('Brow.L', (-.098, -.313, 1.738), (.080, .010, .015), black, (0, math.radians(28), 0), .004),
+        box('Brow.R', (.098, -.313, 1.738), (.080, .010, .015), black, (0, math.radians(-28), 0), .004),
+        box('Mouth.L', (-.016, -.304, 1.550), (.020, .005, .004), black, (0, math.radians(-11), 0), .002),
+        box('Mouth.R', (.016, -.304, 1.550), (.020, .005, .004), black, (0, math.radians(11), 0), .002),
+        sphere('Classic cap crown', (0, -.006, 1.892), (.288, .258, .108), navy, 76),
+        cyl('Classic cap band', (0, -.009, 1.844), .278, .064, navy_soft, verts=92, bevel=.010),
+        cyl('Classic cap brass line', (0, -.011, 1.811), .274, .013, brass, verts=92, bevel=.003),
+        box('Classic cap visor', (0, -.244, 1.799), (.166, .076, .020), leather, (math.radians(9), 0, 0), .010),
+        sphere('Classic cap badge', (0, -.278, 1.875), (.025, .010, .030), brass, 22),
     ]
 
-    # Keep the animation bones, but make neutral limbs little more than hints at
-    # the edge of the pawn. The props still have room to come forward in clips.
-    shoulder_l = (-.275, .045, 1.335); elbow_l = (-.365, .060, 1.180); wrist_l = (-.315, .000, 1.020)
-    shoulder_r = (.275, .045, 1.335); elbow_r = (.365, .060, 1.180); wrist_r = (.315, .000, 1.020)
-    upper_l = cyl_between('Upper arm.L', shoulder_l, elbow_l, .056, navy, 44, .014)
-    upper_r = cyl_between('Upper arm.R', shoulder_r, elbow_r, .056, navy, 44, .014)
-    fore_l = cyl_between('Forearm.L', elbow_l, wrist_l, .048, navy_soft, 44, .012)
-    fore_r = cyl_between('Forearm.R', elbow_r, wrist_r, .048, navy_soft, 44, .012)
-    cuff_l = cyl('Cuff.L', wrist_l, .052, .024, brass, verts=36, bevel=.005)
-    cuff_r = cyl('Cuff.R', wrist_r, .052, .024, brass, verts=36, bevel=.005)
-    hand_l = sphere('Hand.L', (-.302, -.030, .995), (.043, .037, .045), ivory, 26)
-    hand_r = sphere('Hand.R', (.302, -.030, .995), (.043, .037, .045), ivory, 26)
+    # Neutral arms sit entirely behind the body. Animation clips can rotate them
+    # into view for Read/Write/Dossier/Sip/Bite without Playmobil hands in Idle.
+    shoulder_l = (-.245, .165, 1.235); elbow_l = (-.292, .180, 1.115); wrist_l = (-.250, .165, 1.010)
+    shoulder_r = (.245, .165, 1.235); elbow_r = (.292, .180, 1.115); wrist_r = (.250, .165, 1.010)
+    upper_l = cyl_between('Upper arm.L', shoulder_l, elbow_l, .037, navy, 38, .008)
+    upper_r = cyl_between('Upper arm.R', shoulder_r, elbow_r, .037, navy, 38, .008)
+    fore_l = cyl_between('Forearm.L', elbow_l, wrist_l, .032, navy_soft, 38, .007)
+    fore_r = cyl_between('Forearm.R', elbow_r, wrist_r, .032, navy_soft, 38, .007)
+    cuff_l = cyl('Cuff.L', wrist_l, .035, .017, brass, verts=30, bevel=.003)
+    cuff_r = cyl('Cuff.R', wrist_r, .035, .017, brass, verts=30, bevel=.003)
+    hand_l = sphere('Hand.L', (-.247, .155, .995), (.025, .023, .027), ivory, 22)
+    hand_r = sphere('Hand.R', (.247, .155, .995), (.025, .023, .027), ivory, 22)
 
-    book = box('RoutineBook', (0, -.40, 1.12), (.19, .025, .23), leather, (math.radians(7), 0, 0), .012)
-    book_page = box('RoutineBookPages', (0, -.427, 1.12), (.165, .008, .205), paper, (math.radians(7), 0, 0), .004)
-    book_badge = sphere('RoutineBookBadge', (0, -.442, 1.11), (.036, .008, .045), brass, 20)
-    cup = cyl('RoutineCup', (.37, -.315, 1.05), .072, .10, ivory_hi, verts=48, bevel=.010)
-    cup_band = cyl('RoutineCupBand', (.37, -.315, 1.095), .074, .012, brass, verts=48, bevel=.004)
-    cup_handle = sphere('RoutineCupHandle', (.455, -.315, 1.055), (.038, .018, .052), brass, 24)
-    pen = cyl('RoutinePen', (.37, -.345, 1.02), .010, .30, leather, (math.radians(65), 0, math.radians(-22)), verts=24, bevel=.004)
-    pen_tip = cone('RoutinePenTip', (.315, -.39, .90), .016, .003, .07, brass, (math.radians(65), 0, math.radians(-22)), .003)
+    book = box('RoutineBook', (0, -.40, 1.10), (.19, .025, .23), leather, (math.radians(7), 0, 0), .012)
+    book_page = box('RoutineBookPages', (0, -.427, 1.10), (.165, .008, .205), paper, (math.radians(7), 0, 0), .004)
+    book_badge = sphere('RoutineBookBadge', (0, -.442, 1.09), (.036, .008, .045), brass, 20)
+    cup = cyl('RoutineCup', (.35, -.305, 1.02), .070, .098, ivory_hi, verts=48, bevel=.010)
+    cup_band = cyl('RoutineCupBand', (.35, -.305, 1.064), .072, .012, brass, verts=48, bevel=.004)
+    cup_handle = sphere('RoutineCupHandle', (.432, -.305, 1.025), (.036, .018, .050), brass, 24)
+    pen = cyl('RoutinePen', (.35, -.335, .99), .010, .29, leather, (math.radians(65), 0, math.radians(-22)), verts=24, bevel=.004)
+    pen_tip = cone('RoutinePenTip', (.298, -.378, .875), .016, .003, .068, brass, (math.radians(65), 0, math.radians(-22)), .003)
 
     for obj in root:
         parent_bone(obj, rig, 'root')
