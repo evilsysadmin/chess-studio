@@ -37,13 +37,32 @@ async function openChronicles(page) {
   await expect(page.locator('[data-chronicles-party-renderer="three"] canvas')).toHaveCount(1, { timeout: 20_000 });
 }
 
-test('Chronicles · los cuatro avatares 3D quedan fotografiados en desktop y Android', async ({ browser }) => {
-  // Software WebGL on hosted runners needs room for 8 deterministic portrait renders.
-  // Screenshot/action budgets stay strict; only this visual proof gets the wider wall clock.
-  test.setTimeout(240_000);
-  await mkdir(ARTIFACT_DIR, { recursive: true });
+async function captureElement(page, locator, path) {
+  await locator.scrollIntoViewIfNeeded({ timeout: 20_000 });
+  await page.waitForTimeout(100);
+  const box = await locator.boundingBox();
+  expect(box, `${path}: capture bounds`).not.toBeNull();
+  const scroll = await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }));
+  await page.screenshot({
+    path,
+    animations: 'disabled',
+    timeout: 30_000,
+    clip: {
+      x: Math.max(0, box.x + scroll.x),
+      y: Math.max(0, box.y + scroll.y),
+      width: Math.max(1, box.width),
+      height: Math.max(1, box.height),
+    },
+  });
+}
 
-  for (const capture of CAPTURES) {
+for (const capture of CAPTURES) {
+  test(`Chronicles · los cuatro avatares 3D · ${capture.label}`, async ({ browser }) => {
+    // One viewport per test keeps hosted SwiftShader stalls from consuming the
+    // other viewport's wall-clock budget while preserving all eight portraits.
+    test.setTimeout(150_000);
+    await mkdir(ARTIFACT_DIR, { recursive: true });
+
     const context = await browser.newContext({
       viewport: { width: capture.width, height: capture.height },
       hasTouch: capture.hasTouch,
@@ -65,14 +84,14 @@ test('Chronicles · los cuatro avatares 3D quedan fotografiados en desktop y And
         expect(canvasBox, `${capture.label}/${member.name}: canvas bounds`).not.toBeNull();
         expect(canvasBox.width, `${capture.label}/${member.name}: canvas width`).toBeGreaterThan(80);
         expect(canvasBox.height, `${capture.label}/${member.name}: canvas height`).toBeGreaterThan(80);
-        await preview.screenshot({
-          path: `${ARTIFACT_DIR}/chronicles-avatar-${member.id}-${capture.label}.png`,
-          animations: 'disabled',
-          timeout: 12_000,
-        });
+        await captureElement(
+          page,
+          preview,
+          `${ARTIFACT_DIR}/chronicles-avatar-${member.id}-${capture.label}.png`,
+        );
       }
     } finally {
       await context.close();
     }
-  }
-});
+  });
+}
