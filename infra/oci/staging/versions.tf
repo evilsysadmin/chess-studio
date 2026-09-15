@@ -8,3 +8,7 @@ terraform {
     }
   }
 }
+
+provider "oci" {
+  region = var.region
+}
