@@ -326,7 +326,7 @@ def setup_scene():
     camera = bpy.context.object
     camera.name = "enemy_sheet_camera"
     camera.data.type = "ORTHO"
-    camera.data.ortho_scale = 2.90
+    camera.data.ortho_scale = 3.25
     look_at(camera, (0, -0.03, 1.08))
     scene.camera = camera
 
