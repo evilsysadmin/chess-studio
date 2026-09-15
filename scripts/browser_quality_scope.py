@@ -320,8 +320,13 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
         cases.append(
             {
                 "id": "chronicles",
-                "label": "Chronicles · dungeon gameplay",
-                "command": "./node_modules/.bin/playwright test chronicles-of-matthias.spec.js chronicles-of-matthias-tactics.spec.js --workers=1 --retries=0 --timeout=90000",
+                "label": "Chronicles · WebGL canaries",
+                # Keep the required lane focused on renderer integration. Progression,
+                # disclosure and responsive contracts are already covered by cheaper
+                # frontend tests and remain in the full browser sweep. Running every
+                # Chronicles browser assertion under SwiftShader costs minutes without
+                # proving an additional renderer contract.
+                "command": "./node_modules/.bin/playwright test chronicles-of-matthias.spec.js chronicles-of-matthias-tactics.spec.js --grep \"arranca como action RPG isométrico|abre una cripta Three\\.js real\" --workers=1 --retries=0 --timeout=90000",
             }
         )
     return {"include": cases}
@@ -418,6 +423,8 @@ def self_test() -> None:
     chronicles_case = build_matrix(BrowserScope(chronicles=True))["include"][0]
     assert "chronicles-of-matthias.spec.js" in chronicles_case["command"]
     assert "chronicles-of-matthias-tactics.spec.js" in chronicles_case["command"]
+    assert "arranca como action RPG isométrico" in chronicles_case["command"]
+    assert "abre una cripta Three\\.js real" in chronicles_case["command"]
 
     all_scope = classify([".github/actions/setup-browser-e2e/action.yml"])
     assert all_scope == BrowserScope.all()
