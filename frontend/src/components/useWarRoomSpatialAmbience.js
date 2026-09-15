@@ -9,8 +9,9 @@ import {
 } from '../warRoomAmbiencePreferences.js';
 import { resolveWarRoomLocalAtmosphere } from './WarRoomLocalAtmosphere.js';
 
-export const WAR_ROOM_SPATIAL_AMBIENCE_VERSION = 'war-room-spatial-ambience-v3-weather-whisper';
-export const WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN = 3.4;
+export const WAR_ROOM_SPATIAL_AMBIENCE_VERSION = 'war-room-spatial-ambience-v4-window-focus';
+export const WAR_ROOM_WEATHER_IDLE_GAIN = 0.05;
+export const WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN = 1;
 
 export function warRoomSpatialMixForAtmosphere(atmosphere = {}) {
   const weather = String(atmosphere.weather || 'sunny');
@@ -30,7 +31,7 @@ export function warRoomAmbienceShouldPlay({ enabled, fxMuted, ambienceMuted }) {
 }
 
 export function warRoomWeatherGainForWindowHover(active) {
-  return active ? WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN : 1;
+  return active ? WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN : WAR_ROOM_WEATHER_IDLE_GAIN;
 }
 
 export function warRoomWeatherPointInHitbox({ clientX, clientY, rect, hitbox }) {
@@ -149,7 +150,7 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
   master.gain.value = 1;
   master.connect(context.destination);
   const weatherBus = context.createGain();
-  weatherBus.gain.value = 1;
+  weatherBus.gain.value = warRoomWeatherGainForWindowHover(false);
   weatherBus.connect(master);
 
   const noiseBuffer = makeNoiseBuffer(context);

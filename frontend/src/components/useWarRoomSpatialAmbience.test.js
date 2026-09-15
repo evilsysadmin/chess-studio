@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  WAR_ROOM_WEATHER_IDLE_GAIN,
   WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN,
   warRoomAmbienceShouldPlay,
   warRoomSpatialMixForAtmosphere,
@@ -8,7 +9,7 @@ import {
 } from './useWarRoomSpatialAmbience.js';
 
 describe('War Room spatial ambience', () => {
-  it('keeps weather at whisper level until the player listens at the window', () => {
+  it('keeps weather almost silent until the player listens at the window', () => {
     const rainyNight = warRoomSpatialMixForAtmosphere({ weather: 'rain', phase: 'night' });
     const cloudyDay = warRoomSpatialMixForAtmosphere({ weather: 'cloudy', phase: 'day' });
     const sunnyDay = warRoomSpatialMixForAtmosphere({ weather: 'sunny', phase: 'day' });
@@ -20,9 +21,11 @@ describe('War Room spatial ambience', () => {
     expect(rainyNight.wind).toBeGreaterThan(sunnyDay.wind);
     expect(sunnyDay.rain).toBe(0);
     expect(sunnyDay.fire).toBeLessThan(0.02);
-    expect(warRoomWeatherGainForWindowHover(false)).toBe(1);
+    expect(warRoomWeatherGainForWindowHover(false)).toBe(WAR_ROOM_WEATHER_IDLE_GAIN);
     expect(warRoomWeatherGainForWindowHover(true)).toBe(WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN);
-    expect(WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN).toBeGreaterThan(1);
+    expect(WAR_ROOM_WEATHER_IDLE_GAIN).toBeLessThanOrEqual(0.05);
+    expect(WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN).toBe(1);
+    expect(WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN / WAR_ROOM_WEATHER_IDLE_GAIN).toBeGreaterThanOrEqual(20);
     expect(rainyNight.rareEventMinMs).toBeGreaterThanOrEqual(30_000);
     expect(rainyNight.rareEventMaxMs).toBeGreaterThan(rainyNight.rareEventMinMs);
   });
