@@ -15,6 +15,7 @@ import { installWarRoomHansVisibleGroundLock } from './WarRoomHansVisibleGroundL
 import { installWarRoomMatthiasHansReaction } from './WarRoomMatthiasHansReaction.js';
 import { installWarRoomMatthiasIdleGlances } from './WarRoomMatthiasIdleGlances.js';
 import { lockWarRoomCanonicalPlantPlacement } from './WarRoomPlantCanonicalPlacement.js';
+import { ensureWarRoomCat } from './WarRoomCatDecor.js';
 
 export const WAR_ROOM_DEFERRED_FINALIZER_VERSION = 'deferred-finalizer-v1';
 export const WAR_ROOM_ONE_SHOT_RETIREMENT_VERSION = 'one-shot-retirement-v1';
@@ -95,6 +96,7 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
 
         // Permanent room dressing, independent of which single Hans event wins.
         ensureWarRoomHansPlant(root);
+        ensureWarRoomCat(root);
         // Task producers may request work, but no longer own body installation.
         installWarRoomHansMopRoutine(root);
         installWarRoomHansServiceRoutine(root);
