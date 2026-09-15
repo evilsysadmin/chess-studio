@@ -1,6 +1,6 @@
 {
   "id": "crypt-eight-squares",
-  "version": 1,
+  "version": 2,
   "title": "Cripta de las Ocho Casillas",
   "grid": [
     "#######",
@@ -53,7 +53,13 @@
       "retaliationReach": 2,
       "activation": "sigil",
       "optional": true,
-      "ai": { "movement": "cardinal-chase", "attackReach": 2, "requiresLineOfSight": true }
+      "ai": { "movement": "cardinal-chase", "attackReach": 2, "requiresLineOfSight": true },
+      "onDefeat": {
+        "effects": [
+          { "type": "set", "key": "spectralLantern", "value": true },
+          { "type": "heal-party", "amount": 1 }
+        ]
+      }
     },
     {
       "id": "scavenger-knight",
@@ -71,17 +77,126 @@
       },
       "initialPosition": "gate",
       "evadesOnHit": true,
-      "ai": { "movement": "knight-chase", "attackReach": 1 }
+      "ai": { "movement": "knight-chase", "attackReach": 1 },
+      "onDefeat": {
+        "effects": [
+          { "type": "set", "key": "blackGateKey", "value": true }
+        ]
+      }
+    }
+  ],
+  "triggers": [
+    {
+      "id": "ancient-sigil",
+      "kind": "trigger",
+      "tile": "S",
+      "label": "Activar sello",
+      "when": [
+        { "key": "sigilAwake", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "sigilAwake", "value": true }
+        ],
+        "message": "La compañía activa el sello. La piedra despierta y más piezas hostiles entran en la partida.",
+        "journal": {
+          "id": "tactics-sigil-awake",
+          "title": "El sello despierta",
+          "body": "La formación activa el sello de la cripta. Torre y alfil reciben la noticia con una hostilidad muy profesional.",
+          "sigil": "III"
+        }
+      }
     }
   ],
   "interactables": [
-    { "id": "rune-cache-lever", "kind": "lever", "x": 5, "y": 5 },
-    { "id": "rune-core", "kind": "treasure", "x": 5, "y": 4 }
+    {
+      "id": "rune-cache-lever",
+      "kind": "lever",
+      "x": 5,
+      "y": 5,
+      "label": "Accionar palanca",
+      "when": [
+        { "key": "runeCacheOpened", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "runeCacheOpened", "value": true }
+        ],
+        "message": "La palanca baja con un golpe seco. Una hornacina cercana expulsa un núcleo rúnico con la discreción de una tostadora medieval.",
+        "journal": {
+          "id": "tactics-rune-cache-open",
+          "title": "La pared admite que tenía compartimento secreto",
+          "body": "Una palanca de latón abre un pequeño alijo. Dentro espera un núcleo rúnico capaz de rearmar las habilidades de la compañía.",
+          "sigil": "✦"
+        }
+      }
+    }
   ],
   "treasures": [
-    { "id": "rune-core", "x": 5, "y": 4, "requires": "runeCacheOpened" }
+    {
+      "id": "rune-core",
+      "kind": "pickup",
+      "x": 5,
+      "y": 4,
+      "label": "Recoger núcleo rúnico",
+      "when": [
+        { "key": "runeCacheOpened", "equals": true },
+        { "key": "runeCoreCollected", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "runeCoreCollected", "value": true },
+          { "type": "refill-class-abilities" }
+        ],
+        "message": "La compañía recoge el núcleo rúnico. Las habilidades de clase vuelven a estar cargadas. Aziz lo llama taumaturgia; Matthias, logística cara.",
+        "journal": {
+          "id": "tactics-rune-core-collected",
+          "title": "Núcleo rúnico recuperado",
+          "body": "El alijo recarga las habilidades de clase una vez. Nadie pregunta quién dejó una batería arcana en una cripta.",
+          "sigil": "✦"
+        }
+      }
+    }
   ],
   "traps": [],
+  "exits": [
+    {
+      "id": "black-gate",
+      "kind": "exit",
+      "tile": "X",
+      "openLabel": "Abrir Puerta Negra",
+      "lockedLabel": "Examinar Puerta Negra",
+      "requirements": [
+        {
+          "key": "sigilAwake",
+          "equals": true,
+          "message": "La Puerta Negra no responde. Algo en la cripta sigue dormido, por desgracia temporalmente."
+        },
+        {
+          "key": "jailerHp",
+          "lte": 0,
+          "message": "La Puerta Negra no cede mientras la torre carcelero siga defendiendo el umbral."
+        },
+        {
+          "key": "blackGateKey",
+          "equals": true,
+          "message": "La cerradura exige la Llave Negra. Alguien con pezuñas la considera propiedad privada."
+        }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "phase", "value": "escaped" }
+        ],
+        "message": "La compañía abre la Puerta Negra y abandona la cripta. Sobrevivir sigue siendo una métrica de rendimiento perfectamente válida.",
+        "journal": {
+          "id": "tactics-escape",
+          "title": "Extracción completada",
+          "body": "La compañía abandona la cripta táctica con más miembros que cadáveres. Matthias lo registra como excelencia.",
+          "sigil": "VII"
+        }
+      }
+    }
+  ],
   "initialJournal": {
     "id": "descent",
     "title": "Descenso a la Cripta de las Ocho Casillas",

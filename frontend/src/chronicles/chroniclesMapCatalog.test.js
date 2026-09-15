@@ -26,16 +26,37 @@ describe('Chronicles declarative map catalog', () => {
     expect(chroniclesMapTileAt(map, -1, 0)).toBe('#');
   });
 
-  it('owns enemy spawns, AI policies, interactables, treasure and trap slots', () => {
+  it('owns enemy AI, interactions, rewards, treasure, trap and exit rules', () => {
     const map = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID);
     const knight = map.enemies.find((enemy) => enemy.id === 'scavenger-knight');
+    const bishop = map.enemies.find((enemy) => enemy.id === 'spectral-bishop');
     const pawn = map.enemies.find((enemy) => enemy.id === 'corrupted-pawn');
 
     expect(pawn.ai.movement).toBe('cardinal-chase');
     expect(knight.ai.movement).toBe('knight-chase');
-    expect(map.interactables.map((entry) => entry.id)).toEqual(['rune-cache-lever', 'rune-core']);
+    expect(knight.onDefeat.effects).toContainEqual({ type: 'set', key: 'blackGateKey', value: true });
+    expect(bishop.onDefeat.effects).toContainEqual({ type: 'heal-party', amount: 1 });
+    expect(map.triggers).toEqual([
+      expect.objectContaining({ id: 'ancient-sigil', tile: 'S', label: 'Activar sello' }),
+    ]);
+    expect(map.interactables.map((entry) => entry.id)).toEqual(['rune-cache-lever']);
     expect(map.treasures).toEqual([
-      expect.objectContaining({ id: 'rune-core', requires: 'runeCacheOpened' }),
+      expect.objectContaining({
+        id: 'rune-core',
+        kind: 'pickup',
+        when: expect.arrayContaining([
+          expect.objectContaining({ key: 'runeCacheOpened', equals: true }),
+        ]),
+      }),
+    ]);
+    expect(map.exits).toEqual([
+      expect.objectContaining({
+        id: 'black-gate',
+        tile: 'X',
+        requirements: expect.arrayContaining([
+          expect.objectContaining({ key: 'blackGateKey', equals: true }),
+        ]),
+      }),
     ]);
     expect(map.traps).toEqual([]);
   });
