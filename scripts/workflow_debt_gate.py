@@ -20,7 +20,7 @@ class Budget:
 INVENTORY = {
     'app-visual-artifact.yml': 'visual-artifact',
     'branch-housekeeping.yml': 'housekeeping',
-    'chronicles-blender-art.yml': 'art-generation',
+    'chronicles-party-blender-art.yml': 'art-generation',
     'cicd.yml': 'quality-required',
     'cloudflare-prometheus-exporter.yml': 'observability',
     'coverage.yml': 'quality-scheduled',

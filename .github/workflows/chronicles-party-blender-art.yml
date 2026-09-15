@@ -1,0 +1,81 @@
+name: Chronicles party · Blender canonical art
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/blender/build_chronicles_tactics_party.py'
+      - 'scripts/blender/render_chronicles_party_preview.py'
+      - '.github/actions/setup-blender-canonical/**'
+      - '.github/workflows/chronicles-party-blender-art.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chronicles-party-blender-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  canonical-party:
+    name: Build · Chronicles party canonical
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-blender-canonical
+      - name: Build canonical party blend + GLB
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/chronicles-party/previews
+          blender --background \
+            --python scripts/blender/build_chronicles_tactics_party.py \
+            -- \
+            --blend /tmp/chronicles-party/chronicles-tactics-party.blend \
+            --glb /tmp/chronicles-party/chronicles-tactics-party.glb
+      - name: Render deterministic review previews
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -euo pipefail
+          blender --background \
+            --python scripts/blender/render_chronicles_party_preview.py \
+            -- \
+            --blend /tmp/chronicles-party/chronicles-tactics-party.blend \
+            --output-dir /tmp/chronicles-party/previews
+      - name: Validate Chronicles visual contract
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -euo pipefail
+          test -s /tmp/chronicles-party/chronicles-tactics-party.blend
+          test -s /tmp/chronicles-party/chronicles-tactics-party.glb
+          for member in rook bishop knight; do
+            test -s "/tmp/chronicles-party/previews/chronicles-party-${member}.png"
+          done
+          test -s /tmp/chronicles-party/previews/chronicles-party-group.png
+          blender --background /tmp/chronicles-party/chronicles-tactics-party.blend --python-expr "import bpy; members=('rook','bishop','knight'); roots=[bpy.data.objects.get('ChroniclesParty__'+m) for m in members]; assert all(roots), roots; assert bpy.context.scene.get('chronicles_cast') == 'rook,bishop,knight'; [(_ for _ in ()).throw(AssertionError((r.name, len([o for o in r.children if o.type == 'MESH'])))) if len([o for o in r.children if o.type == 'MESH']) < 10 else None for r in roots]"
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          root = Path('/tmp/chronicles-party/previews')
+          for name in ('rook', 'bishop', 'knight'):
+              image = Image.open(root / f'chronicles-party-{name}.png').convert('RGB')
+              assert image.size == (720, 820), (name, image.size)
+              assert any(high - low > 24 for low, high in image.getextrema()), name
+          group = Image.open(root / 'chronicles-party-group.png')
+          assert group.size == (1280, 720), group.size
+          PY
+          sha256sum /tmp/chronicles-party/chronicles-tactics-party.blend \
+            /tmp/chronicles-party/chronicles-tactics-party.glb \
+            /tmp/chronicles-party/previews/*.png \
+            > /tmp/chronicles-party/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chronicles-party-canonical-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/chronicles-party/
+          if-no-files-found: error
+          retention-days: 7
