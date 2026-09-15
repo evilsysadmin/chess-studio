@@ -7,6 +7,7 @@ Home-specific; the shared Blender setup remains product-agnostic.
 
 CANONICAL_IDENTITY = "stern-no-moustache-pawn"
 CANONICAL_REFERENCE = "classic-pawn-first-avatar"
+CANONICAL_REFERENCE_FILE = "frontend/art-source/matthias-home-canonical-reference.webp"
 CANONICAL_REFERENCE_SHA256 = "beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975"
 CANONICAL_POSE_LANGUAGE = "permanently-stern"
 
@@ -27,7 +28,6 @@ REQUIRED_OBJECTS = {
     "Classic navy tunic",
     "Classic cap crown",
     "Classic cap top",
-    "Classic cap dome",
     "Classic cap band",
     "Classic cap visor",
     "Head",
@@ -37,10 +37,8 @@ REQUIRED_OBJECTS = {
     "Brow.R",
     "Mouth.L",
     "Mouth.R",
-    "Classic chest crest shadow vertical",
-    "Classic chest crest shadow horizontal",
-    "Classic chest crest vertical",
-    "Classic chest crest horizontal",
+    "Classic chest cross brass",
+    "Classic chest cross inset",
     "RoutineBook",
     "RoutineCup",
     "RoutinePen",
@@ -69,15 +67,15 @@ HEAD_TO_BODY_HEIGHT = (0.34, 0.40)
 CAP_TO_HEAD_WIDTH = (1.18, 1.30)
 BODY_HEIGHT_TO_BASE_WIDTH = (1.40, 1.60)
 
-# The cap must read as a broad, tilted peaked officer cap, never a flat beret.
+# Broad, tilted, curved officer cap; never a flat beret or cylindrical kepi.
 CAP_TOP_TO_CROWN_WIDTH = (1.08, 1.18)
 CAP_TOP_MIN_REAR_OFFSET = 0.040
 CAP_TOP_MIN_VERTICAL_SEPARATION = 0.080
 CAP_VISOR_TO_HEAD_WIDTH = (0.62, 0.82)
 
-# The front cross has real visual weight in the approved design.
-CHEST_CREST_HEIGHT_TO_HEAD_WIDTH = (0.34, 0.50)
-CHEST_CREST_WIDTH_TO_HEAD_WIDTH = (0.34, 0.50)
+# The approved black/brass iron cross has real visual weight.
+CHEST_CREST_HEIGHT_TO_HEAD_WIDTH = (0.42, 0.52)
+CHEST_CREST_WIDTH_TO_HEAD_WIDTH = (0.42, 0.52)
 
 DARK_BODY_MAX_LUMA = 0.10
 IVORY_HEAD_MIN_LUMA = 0.42
