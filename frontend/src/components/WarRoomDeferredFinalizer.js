@@ -94,9 +94,7 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         installWarRoomMatthiasIdleGlances(root);
         installWarRoomHansServiceInfrastructure(root);
 
-        // Permanent room dressing, independent of which single Hans event wins.
         ensureWarRoomHansPlant(root);
-        ensureWarRoomCat(root);
         // Task producers may request work, but no longer own body installation.
         installWarRoomHansMopRoutine(root);
         installWarRoomHansServiceRoutine(root);
@@ -124,6 +122,11 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
       }
       completedKeys.push(key);
     }
+
+    // The cat is permanent room dressing, not a Hans cameo. Install it after any
+    // ordinary deferred room pass so desktop and coarse/mobile War Rooms both get
+    // exactly one sofa sleeper even when no Hans-specific finalizer is registered.
+    ensureWarRoomCat(root);
 
     current.completed = true;
     current.runCount += 1;
