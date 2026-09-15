@@ -118,8 +118,8 @@ run "runtime_config_channel_is_private_and_least_privilege" {
   }
 
   assert {
-    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 1
-    error_message = "Runtime config access should stay on one narrow read-only Object Storage statement."
+    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 2
+    error_message = "Runtime IAM should contain only Object Storage read and self-scoped Run Command execution permissions."
   }
 
   assert {
@@ -130,6 +130,16 @@ run "runtime_config_channel_is_private_and_least_privilege" {
   assert {
     condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[0], "target.bucket.name='chess-studio-staging-runtime'")
     error_message = "Instance-principal policy must be restricted to the dedicated runtime bucket."
+  }
+
+  assert {
+    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[1], "to use instance-agent-command-execution-family")
+    error_message = "Staging instances need the OCI Run Command execution-family permission to poll accepted commands."
+  }
+
+  assert {
+    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[1], "request.instance.id=target.instance.id")
+    error_message = "Run Command execution permission must be restricted to the target instance itself."
   }
 }
 
