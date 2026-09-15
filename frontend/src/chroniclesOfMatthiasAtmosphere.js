@@ -122,8 +122,20 @@ function addReadabilityLighting(root, { coarsePointer }) {
   cryptBounce.position.set(0.4, 1.75, -1.2);
   cryptBounce.castShadow = false;
 
-  root.add(ambient, entryBounce, cryptBounce);
-  return 3;
+  // A low, warm bounce skims the first corridor instead of lifting the whole
+  // exposure. Damp slabs and bump relief catch it while the ceiling stays dark.
+  const floorBounce = new THREE.PointLight(
+    0xc8793d,
+    coarsePointer ? 2.35 : 2.05,
+    coarsePointer ? 8.5 : 9.5,
+    2.15,
+  );
+  floorBounce.name = 'chronicles-readability-floor-bounce';
+  floorBounce.position.set(-2.8, 0.42, 8.05);
+  floorBounce.castShadow = false;
+
+  root.add(ambient, entryBounce, cryptBounce, floorBounce);
+  return 4;
 }
 
 export function buildChroniclesDungeonAtmosphere({ coarsePointer = false, reducedMotion = false } = {}) {

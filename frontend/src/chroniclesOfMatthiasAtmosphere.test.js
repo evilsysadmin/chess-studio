@@ -6,8 +6,8 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     const desktop = buildChroniclesDungeonAtmosphere();
     const coarse = buildChroniclesDungeonAtmosphere({ coarsePointer: true });
 
-    expect(desktop.userData.chroniclesAtmosphereStats).toEqual({ dustCount: 84, mistCount: 3, readabilityLightCount: 3 });
-    expect(coarse.userData.chroniclesAtmosphereStats).toEqual({ dustCount: 24, mistCount: 0, readabilityLightCount: 3 });
+    expect(desktop.userData.chroniclesAtmosphereStats).toEqual({ dustCount: 84, mistCount: 3, readabilityLightCount: 4 });
+    expect(coarse.userData.chroniclesAtmosphereStats).toEqual({ dustCount: 24, mistCount: 0, readabilityLightCount: 4 });
     expect(desktop.getObjectByName('chronicles-gate-mist')).toBeTruthy();
     expect(coarse.getObjectByName('chronicles-gate-mist')).toBeFalsy();
   });
@@ -17,15 +17,21 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     const ambient = desktop.getObjectByName('chronicles-readability-ambient');
     const entryBounce = desktop.getObjectByName('chronicles-readability-entry-bounce');
     const cryptBounce = desktop.getObjectByName('chronicles-readability-crypt-bounce');
+    const floorBounce = desktop.getObjectByName('chronicles-readability-floor-bounce');
 
     expect(ambient?.isAmbientLight).toBe(true);
     expect(ambient?.intensity).toBeGreaterThanOrEqual(0.2);
     expect(entryBounce?.isPointLight).toBe(true);
     expect(cryptBounce?.isPointLight).toBe(true);
+    expect(floorBounce?.isPointLight).toBe(true);
     expect(entryBounce?.castShadow).toBe(false);
     expect(cryptBounce?.castShadow).toBe(false);
+    expect(floorBounce?.castShadow).toBe(false);
     expect(entryBounce?.distance).toBeLessThanOrEqual(13);
     expect(cryptBounce?.distance).toBeLessThanOrEqual(16);
+    expect(floorBounce?.position.y).toBeLessThan(0.5);
+    expect(floorBounce?.distance).toBeLessThanOrEqual(10);
+    expect(floorBounce?.decay).toBeGreaterThan(2);
   });
 
   it('generates deterministic dust only across the authored dungeon volume', () => {
