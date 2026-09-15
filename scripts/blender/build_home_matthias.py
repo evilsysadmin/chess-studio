@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministically build the editable .blend and runtime .glb for Home Matthias."""
+"""Deterministically build the editable .blend, runtime .glb and optional preview for Home Matthias."""
 import argparse
 import os
 import sys
@@ -9,6 +9,7 @@ if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
 import bpy
+from mathutils import Vector
 from home_matthias_parts import build_character
 from home_matthias_animations import build_actions
 
@@ -17,12 +18,75 @@ def args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--blend', required=True)
     parser.add_argument('--glb', required=True)
+    parser.add_argument('--preview')
     tail = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
     return parser.parse_args(tail)
 
 
 def parent(path):
     os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+
+
+def look_at(obj, target):
+    direction = target - obj.location
+    obj.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+
+
+def add_area(name, location, energy, size, color, target):
+    data = bpy.data.lights.new(name=name, type='AREA')
+    data.energy = energy
+    data.shape = 'DISK'
+    data.size = size
+    data.color = color
+    obj = bpy.data.objects.new(name, data)
+    bpy.context.collection.objects.link(obj)
+    obj.location = location
+    look_at(obj, target)
+    return obj
+
+
+def render_preview(path):
+    parent(path)
+    scene = bpy.context.scene
+    scene.frame_set(1)
+    scene.render.resolution_x = 560
+    scene.render.resolution_y = 700
+    scene.render.resolution_percentage = 100
+    scene.render.image_settings.file_format = 'PNG'
+    scene.render.film_transparent = False
+    scene.render.filepath = os.path.abspath(path)
+    scene.world.color = (0.012, 0.016, 0.022)
+
+    target = Vector((0, 0, 1.28))
+
+    camera_data = bpy.data.cameras.new('MatthiasPreviewCamera')
+    camera_data.lens = 64
+    camera = bpy.data.objects.new('MatthiasPreviewCamera', camera_data)
+    bpy.context.collection.objects.link(camera)
+    camera.location = (0, -5.7, 1.42)
+    look_at(camera, target)
+    scene.camera = camera
+
+    preview_objects = [camera]
+    preview_objects.append(add_area('preview key', (-2.8, -3.6, 4.6), 780, 3.0, (1.0, .77, .52), target))
+    preview_objects.append(add_area('preview fill', (2.8, -2.2, 2.7), 430, 2.5, (.45, .68, 1.0), target))
+    preview_objects.append(add_area('preview rim', (1.6, 2.8, 4.0), 620, 2.2, (1.0, .45, .18), target))
+
+    bpy.ops.mesh.primitive_plane_add(size=20, location=(0, 0, 0))
+    ground = bpy.context.object
+    ground.name = 'PreviewGround'
+    ground_mat = bpy.data.materials.new('preview ground')
+    ground_mat.use_nodes = True
+    bsdf = ground_mat.node_tree.nodes.get('Principled BSDF')
+    bsdf.inputs['Base Color'].default_value = (.018, .023, .030, 1)
+    bsdf.inputs['Roughness'].default_value = .92
+    ground.data.materials.append(ground_mat)
+    preview_objects.append(ground)
+
+    bpy.ops.render.render(write_still=True)
+
+    for obj in preview_objects:
+        bpy.data.objects.remove(obj, do_unlink=True)
 
 
 def main():
@@ -53,9 +117,13 @@ def main():
         kwargs['export_nla_strips'] = True
     if 'export_optimize_animation_size' in props:
         kwargs['export_optimize_animation_size'] = True
+    if 'export_extras' in props:
+        kwargs['export_extras'] = True
 
     bpy.ops.export_scene.gltf(**kwargs)
-    print('canonical Blender Matthias:', parsed.blend, parsed.glb)
+    if parsed.preview:
+        render_preview(parsed.preview)
+    print('canonical Blender Matthias:', parsed.blend, parsed.glb, parsed.preview or '')
 
 
 if __name__ == '__main__':
