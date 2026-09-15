@@ -36,7 +36,7 @@ function roomPolish(releaseScale, space, delayMs, mix, signatureEveryCycles, sig
 const BEIRUT_ROOM = roomPolish(1.06, 0.085, 112, { lead:0.54, counter:0.22, bass:0.55, chord:0.27 }, 4, 0.115);
 const ISTANBUL_ROOM = roomPolish(1.04, 0.075, 96, { lead:0.52, counter:0.20, bass:0.52, chord:0.25 }, 4, 0.11);
 const EGYPT_ROOM = roomPolish(1.09, 0.105, 126, { lead:0.55, counter:0.22, bass:0.54, chord:0.28 }, 3, 0.12);
-const LEVANT_ROOM = roomPolish(1.08, 0.095, 120, { lead:0.53, counter:0.21, bass:0.53, chord:0.27 }, 4, 0.115);
+const LEVANT_ROOM = roomPolish(1.08, 0.105, 120, { lead:0.53, counter:0.21, bass:0.53, chord:0.27 }, 4, 0.115);
 
 const MEDITERRANEAN_ORGANIC_POLISH = Object.freeze({
   beirut0113:BEIRUT_ROOM,
