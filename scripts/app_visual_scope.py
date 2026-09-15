@@ -49,6 +49,17 @@ def full_scope() -> Scope:
     )
 
 
+def _is_noncanonical_admin_surface(path: str) -> bool:
+    """Admin/observability UI has browser canaries but no canonical art capture."""
+    lower = path.lower()
+    if lower.startswith("frontend/src/admin"):
+        return True
+    if not lower.startswith("frontend/src/components/"):
+        return False
+    name = Path(lower).name
+    return name.startswith(("admin", "observability", "useadmin"))
+
+
 def _surface_groups(path: str) -> set[str] | None:
     """Return explicit groups, empty set for optional-only, or None for full fallback."""
     lower = path.lower()
@@ -90,6 +101,13 @@ def _surface_groups(path: str) -> set[str] | None:
         return None
 
     if "chesscom" in lower:
+        return set()
+
+    # Admin and observability own their own browser behaviour canaries but are
+    # not rendered by the canonical Home/Experiments/Training/War Room capture.
+    # Treat them as an explicit no-capture surface instead of failing open to
+    # the entire visual suite merely because they are generic components.
+    if _is_noncanonical_admin_surface(path):
         return set()
 
     groups: set[str] = set()
@@ -254,6 +272,22 @@ def self_test() -> None:
     assert classify(["e2e/browser-storage-health.spec.js"]).capture_groups == "health"
     chesscom = classify(["frontend/src/chesscomClient.js"])
     assert chesscom.capture_groups == "none" and chesscom.chesscom
+
+    for admin_path in (
+        "frontend/src/components/AdminDashboardContent.jsx",
+        "frontend/src/components/ObservabilityPanel.jsx",
+        "frontend/src/components/useAdminFeedbackController.js",
+        "frontend/src/adminDashboard.jsx",
+    ):
+        admin = classify([admin_path])
+        assert admin.capture_groups == "none"
+        assert not admin.hans and not admin.chesscom
+    mixed_admin_home = classify([
+        "frontend/src/components/AdminDashboardContent.jsx",
+        "frontend/src/components/HomeCastle3D.jsx",
+    ])
+    assert mixed_admin_home.capture_groups == "home"
+
     assert classify(["frontend/src/App.css"]) == full_scope()
     assert classify([".github/actions/app-visual-pipeline/action.yml"]) == full_scope()
     print("app visual scope self-test: OK")

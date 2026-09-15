@@ -1,5 +1,5 @@
 name: App visual pipeline
-description: Build once, then capture only affected canonical visuals plus scoped Hans/Chesscom artifacts.
+description: Classify first, then build/capture only affected canonical visuals plus scoped Hans/Chesscom artifacts.
 inputs:
   mode:
     description: canonical or hans
@@ -7,12 +7,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Restore browser + build
-      uses: ./.github/actions/setup-browser-e2e
-      with:
-        browser-scope: chromium
-        build-frontend: 'true'
-
     - name: Resolve visual capture scope
       if: inputs.mode == 'canonical'
       id: scope
@@ -28,7 +22,19 @@ runs:
         printf '%s\n' "$files"
         printf '%s\n' "$files" | python3 -S scripts/app_visual_scope.py --github-output "$GITHUB_OUTPUT"
 
+    - name: Restore browser + build when capture is required
+      if: >-
+        inputs.mode == 'hans' ||
+        steps.scope.outputs.capture_groups != 'none' ||
+        steps.scope.outputs.hans == 'true' ||
+        steps.scope.outputs.chesscom == 'true'
+      uses: ./.github/actions/setup-browser-e2e
+      with:
+        browser-scope: chromium
+        build-frontend: 'true'
+
     - name: Capture affected canonical surfaces
+      if: inputs.mode == 'hans' || (inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none')
       shell: bash
       run: |
         set -euo pipefail
@@ -46,12 +52,12 @@ runs:
       run: node scripts/war_room_visual_freeze_check.mjs
 
     - name: Validate summary
-      if: always() && inputs.mode == 'canonical'
+      if: always() && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none'
       shell: bash
       run: node scripts/app_visual_summary.mjs --self-test
 
     - name: Summary
-      if: always() && inputs.mode == 'canonical'
+      if: always() && inputs.mode == 'canonical' && steps.scope.outputs.capture_groups != 'none'
       shell: bash
       run: node scripts/app_visual_summary.mjs
 
