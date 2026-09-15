@@ -208,14 +208,15 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     <div
       className="chronicles-tactics"
       data-chronicles-tactics="true"
+      data-camera="third-person"
       data-phase={state.phase}
       data-action-mode={actionMode || 'idle'}
     >
       <header className="chronicles-tactics__head">
         <div>
-          <span className="section-label">EXPERIMENTO TÁCTICO · THREE.JS · TURNO ALTERNADO</span>
+          <span className="section-label">EXPERIMENTO TÁCTICO · THREE.JS · TERCERA PERSONA</span>
           <h2>Chronicles of Matthias Tactics</h2>
-          <p>La misma compañía, otra guerra: cripta isométrica, casillas visibles y criaturas que reciben su propio turno.</p>
+          <p>La compañía entra en cuadro: cuatro héroes, un campo 3D y la amenaza siempre delante.</p>
         </div>
         <button type="button" className="secondary-btn" onClick={onExit}>← Experimentos</button>
       </header>
