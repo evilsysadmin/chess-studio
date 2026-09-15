@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import bpy
+from mathutils import Vector
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -35,11 +36,27 @@ def materials():
         canonical.mat('armor', (0.085, 0.095, 0.105, 1), 0.15, 0.40),
         canonical.mat('boots', (0.020, 0.021, 0.024, 1), 0.10, 0.32),
         canonical.mat('badge', (0.80, 0.78, 0.70, 1), 0.20, 0.30),
-        canonical.mat('gunmetal', (0.055, 0.065, 0.075, 1), 0.72, 0.24),
-        canonical.mat('polymer', (0.020, 0.024, 0.029, 1), 0.05, 0.43),
-        canonical.mat('olive', (0.19, 0.22, 0.15, 1), 0.28, 0.48),
-        canonical.mat('brass', (0.40, 0.25, 0.08, 1), 0.72, 0.24),
+        canonical.mat('gunmetal', (0.10, 0.12, 0.14, 1), 0.72, 0.22),
+        canonical.mat('polymer', (0.030, 0.036, 0.043, 1), 0.05, 0.40),
+        canonical.mat('olive', (0.24, 0.28, 0.17, 1), 0.28, 0.45),
+        canonical.mat('brass', (0.52, 0.33, 0.10, 1), 0.72, 0.22),
     )
+
+
+def aim_camera(scene):
+    """Lock the orthographic camera to the X/Z sprite plane explicitly.
+
+    Euler-only camera setup proved too fragile across Blender versions and could
+    turn the integrated weapon into depth. A tracked -Z axis guarantees that
+    +X remains screen-horizontal and Z remains screen-vertical.
+    """
+    center_x = (canonical.COLS - 1) * canonical.WORLD_CELL_X / 2
+    center_z = -(canonical.ROWS_PER_WEAPON - 1) * canonical.WORLD_CELL_Z / 2 + 1.08
+    cam = scene.camera
+    cam.location = (center_x, -78.0, center_z)
+    target = Vector((center_x, 0.0, center_z))
+    direction = target - cam.location
+    cam.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
 
 
 def main():
@@ -54,6 +71,7 @@ def main():
     canonical.WORLD_CELL_Z = CELL_WORLD
     canonical.clear_scene()
     scene = canonical.setup_scene()
+    aim_camera(scene)
     mats = materials()
     for row, (action, count) in enumerate(canonical.ACTIONS):
         for frame in range(count):
