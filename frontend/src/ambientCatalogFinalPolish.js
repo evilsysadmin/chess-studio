@@ -78,7 +78,7 @@ const FINAL_CATALOG_POLISH = Object.freeze({
     signature:signature('mutedHorn', { 4:55, 12:62, 20:58, 28:65 }, [0], 32, 4.2, 0.18, 2),
   }),
   pawnMarshal: Object.freeze({
-    family:'illustrated-pawn-march-chamber', leadInstrument:'mutedHorn', counterInstrument:'feltGrand', chordInstrument:'strings', bassInstrument:'cello',
+    family:'illustrated-pawn-march-chamber', leadInstrument:'mutedHorn', counterInstrument:'feltGrand', chordInstrument:'strings', bassInstrument:'uprightBass',
     percussion:percussion('illustrated-march', 16, { 0:'K', 6:'W', 8:'S', 14:'W' }, 0.82),
     signature:signature('mutedHorn', { 2:60, 10:67, 18:64, 26:69 }, [0,1], 32, 4.0, 0.17, 2),
   }),
