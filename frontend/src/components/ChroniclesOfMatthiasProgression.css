@@ -129,6 +129,16 @@
   line-height: 1.25;
 }
 
+@media (min-width: 721px) {
+  .chronicles-tactics__party {
+    max-height: calc(100% - 154px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+  }
+}
+
 @media (max-width: 720px) {
   .chronicles-tactics__attribute-grid,
   .chronicles-tactics__skill-grid { grid-template-columns: 1fr; }

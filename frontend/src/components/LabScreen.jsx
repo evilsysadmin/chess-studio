@@ -98,7 +98,7 @@ export default function LabScreen({ onExit, onStart }){
             <small>Dungeon crawler 3D en primera persona. Grupo de cuatro, combate por casillas y una cripta que piensa como un tablero.</small>
             <b>Descender a la cripta →</b>
           </button>
-          <button type="button" className="experiments-card experiment-chronicles-tactics" onClick={()=>setLabMode('chronicles-tactics')}>
+          <button type="button" className="experiments-card experiment-chronicles-tactics" aria-label="Abrir Tactics RPG isométrico" onClick={()=>setLabMode('chronicles-tactics')}>
             <span className="section-label">{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'táctico por turnos')}</span>
             <strong>Chronicles of Matthias Tactics</strong>
             <small>La compañía sale al tablero: vista isométrica, formación visible y criaturas con su propio turno.</small>
