@@ -27,6 +27,7 @@ INVENTORY = {
     'grafana-dashboards.yml': 'observability',
     'main-admission.yml': 'delivery-admission',
     'oci-readiness.yml': 'infra-readiness',
+    'oci-staging-lab.yml': 'infra-staging-lifecycle',
     'production-promote.yml': 'delivery-production',
     'production-rollback.yml': 'delivery-rollback',
     'render-production-guardrail.yml': 'delivery-guardrail',
