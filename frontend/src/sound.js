@@ -5,6 +5,7 @@ import { structuredFeel } from './ambientProfiles.js';
 import { connectFinishedAmbientVoice, scheduleAmbientFilterSweep } from './ambientVoiceFinish.js';
 import { structuredSectionInstrument } from './ambientInstrumentRouting.js';
 import { primeOrchestralTheme, readyOrchestralSample } from './orchestralSampler.js';
+import { midiToChessStudioFrequency, tuneStandardFrequency } from './musicTuning.js';
 import {
   MUSIC_EXCLUDED_KEY,
   MUSIC_FAVORITES_KEY,
@@ -116,7 +117,7 @@ export function setAmbientVolume(value) {
 let keyCenterIndex = 0;
 
 function transpose(freq, semitones) {
-  return freq * Math.pow(2, semitones / 12);
+  return tuneStandardFrequency(freq) * Math.pow(2, semitones / 12);
 }
 
 function currentOffset(theme) {
@@ -941,7 +942,7 @@ function playHighTak(volume, options = {}) {
 }
 
 function midiToFreq(note) {
-  return 440 * Math.pow(2, (note - 69) / 12);
+  return midiToChessStudioFrequency(note);
 }
 
 const STRUCTURED_GUITAR_KINDS = new Set(['guitar2', 'nylonGuitar', 'jazzGuitar', 'overdriveGuitar', 'tremoloGuitar']);

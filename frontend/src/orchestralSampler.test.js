@@ -5,6 +5,7 @@ import {
   ORCHESTRAL_SAMPLE_LIBRARY,
   selectOrchestralSample,
 } from './orchestralSampler.js';
+import { CHESS_STUDIO_TUNING_RATIO } from './musicTuning.js';
 
 describe('orchestral sampler', () => {
   it('keeps every recorded pitch within a restrained transposition range', () => {
@@ -31,7 +32,7 @@ describe('orchestral sampler', () => {
     expect(first.root).toBe(67);
     expect(second.root).toBe(67);
     expect(first.file).not.toBe(second.file);
-    expect(first.playbackRate).toBeCloseTo(2 ** (-1 / 12), 5);
+    expect(first.playbackRate).toBeCloseTo(CHESS_STUDIO_TUNING_RATIO * (2 ** (-1 / 12)), 5);
   });
 
   it('declines unsupported synthetic instruments cleanly', () => {
