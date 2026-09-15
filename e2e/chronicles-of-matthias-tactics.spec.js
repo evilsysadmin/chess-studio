@@ -19,32 +19,30 @@ async function openTactics(page) {
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias Tactics', exact: true })).toBeVisible();
 }
 
-test('Chronicles Tactics · arranca Three.js y completa un turno táctico', async ({ page }) => {
+test('Chronicles Tactics · arranca como action RPG isométrico', async ({ page }) => {
   await openTactics(page);
   const mode = page.locator('[data-chronicles-tactics="true"]');
   const canvas = mode.locator('[data-chronicles-tactics-renderer="three"] canvas');
   await expect(canvas).toBeVisible({ timeout: 30_000 });
+  await expect(mode).toHaveAttribute('data-camera', 'isometric-behind-party');
+  await expect(mode).toHaveAttribute('data-combat', 'realtime');
+  await expect(mode.getByText(/Action RPG isométrico/i)).toBeVisible();
+  await expect(mode.getByText(/TURNO DEL JUGADOR/i)).toHaveCount(0);
+  await expect(mode.getByRole('button', { name: 'Esperar', exact: true })).toHaveCount(0);
 
   await mode.getByRole('button').filter({ hasText: '3. Aziz' }).click();
   await mode.getByRole('button', { name: 'Atacar', exact: true }).click();
-  await expect(mode).toHaveAttribute('data-action-mode', 'attack');
-
-  const targets = mode.getByRole('group', { name: /Objetivos de Aziz/ });
-  await expect(targets).toBeVisible();
-  await targets.getByRole('button').first().click();
-
-  await expect(mode).toHaveAttribute('data-action-mode', 'idle');
-  await expect(mode.getByText('RONDA 2', { exact: true })).toBeVisible();
   await expect(mode.getByText(/Aziz usa rayo diagonal/i)).toBeVisible();
 });
 
-test('Chronicles Tactics · móvil conserva canvas y controles sin overflow', async ({ page }) => {
+test('Chronicles Tactics · móvil conserva canvas y controles de acción sin overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openTactics(page);
   const mode = page.locator('[data-chronicles-tactics="true"]');
   await expect(mode.locator('[data-chronicles-tactics-renderer="three"] canvas')).toBeVisible({ timeout: 30_000 });
-  await expect(mode.getByRole('button', { name: 'Mover', exact: true })).toBeVisible();
-  await expect(mode.getByRole('button', { name: 'Esperar', exact: true })).toBeVisible();
+  await expect(mode.getByRole('button', { name: 'Mover al norte' })).toBeVisible();
+  await expect(mode.getByRole('button', { name: 'Mover al oeste' })).toBeVisible();
+  await expect(mode.getByRole('button', { name: 'Atacar', exact: true })).toBeVisible();
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
