@@ -72,20 +72,18 @@ test('Chronicles Tactics · elegir doctrina consume skill point y cierra la alte
   const mode = page.locator('[data-chronicles-tactics="true"]');
   const summary = mode.getByText('Técnicas · 1 punto', { exact: true });
   await expect(summary).toBeVisible();
-  // Continuous WebGL rendering can keep Playwright's pointer action waiting even
-  // after <summary> is visible and stable. Open the native disclosure directly;
-  // this test exercises doctrine state, not browser pointer dispatch semantics.
-  await summary.evaluate((node) => {
-    const details = node.closest('details');
-    if (details) details.open = true;
-    else node.click();
-  });
+  await summary.click();
 
   const tempo = mode.getByRole('button', { name: /Tempo de hierro/i });
   const rupture = mode.getByRole('button', { name: /Ruptura maestra/i });
   await expect(tempo).toBeEnabled();
   await expect(rupture).toBeEnabled();
-  await tempo.click();
+  // This case owns the progression state contract, not pointer hit-testing. On
+  // software WebGL runners Playwright's physical-click navigation waiter can be
+  // starved by the live scene after the browser has already dispatched the same
+  // DOM click. Invoke the real button click directly, then prove the resulting
+  // learned/closed state below.
+  await tempo.evaluate((button) => button.click());
 
   await expect(mode.getByRole('button', { name: /Tempo de hierro.*Aprendida/i })).toBeDisabled();
   await expect(mode.getByRole('button', { name: /Ruptura maestra.*Rama cerrada/i })).toBeDisabled();
