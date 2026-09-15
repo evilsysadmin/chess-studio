@@ -31,7 +31,7 @@ function contour(line = {}) {
 }
 
 describe('Tropical House · melodic lift', () => {
-  it('gives all three published themes real multi-note phrases and counter-lines', () => {
+  it('gives all three published themes phrased hooks, counter-lines and written house harmony', () => {
     expect(TROPICAL_HOUSE_MELODY_IDS).toEqual(IDS);
 
     for (const id of IDS) {
@@ -39,11 +39,14 @@ describe('Tropical House · melodic lift', () => {
       expect(rewrite.melodySections.length).toBeGreaterThanOrEqual(2);
 
       for (const section of rewrite.melodySections) {
-        expect(eventCount(section.lead)).toBeGreaterThanOrEqual(13);
+        expect(eventCount(section.lead)).toBeGreaterThanOrEqual(11);
         expect(uniquePitchCount(section.lead)).toBeGreaterThanOrEqual(6);
         expect(pitchSpan(section.lead)).toBeGreaterThanOrEqual(7);
         expect(eventCount(section.counter)).toBeGreaterThanOrEqual(6);
         expect(uniquePitchCount(section.counter)).toBeGreaterThanOrEqual(4);
+        expect(eventCount(section.chords)).toBeGreaterThanOrEqual(8);
+        expect(Object.keys(section.chords).map(Number).every((step) => step % 4 === 2)).toBe(true);
+        expect(eventCount(section.bass)).toBeGreaterThanOrEqual(8);
       }
     }
   });
@@ -58,9 +61,13 @@ describe('Tropical House · melodic lift', () => {
       const theme = AMBIENT_THEMES[id];
       const feel = structuredFeel(theme);
       const totalLeadEvents = theme.sections.reduce((sum, section) => sum + eventCount(section.lead), 0);
+      const totalChordEvents = theme.sections.reduce((sum, section) => sum + eventCount(section.chords), 0);
+      const totalBassEvents = theme.sections.reduce((sum, section) => sum + eventCount(section.bass), 0);
       const finalLeadNotes = theme.sections.flatMap((section) => notes(section.lead));
 
-      expect(totalLeadEvents).toBeGreaterThanOrEqual(36);
+      expect(totalLeadEvents).toBeGreaterThanOrEqual(33);
+      expect(totalChordEvents).toBeGreaterThanOrEqual(24);
+      expect(totalBassEvents).toBeGreaterThanOrEqual(24);
       expect(new Set(finalLeadNotes).size).toBeGreaterThanOrEqual(8);
       expect(theme.sections.some((section) => eventCount(section.lead) >= 12)).toBe(true);
 

@@ -1078,6 +1078,8 @@ function voicePreset(kind) {
     case 'marimba': return { waves: [['sine', 1, 1], ['sine', 4, 0.14], ['triangle', 2, 0.05]], gain: 0.022, attack: 0.004, release: 0.78, cutoff: 3100 };
     case 'warmMarimba': return { waves: [['sine', 1, 0.92], ['sine', 3.96, 0.09], ['triangle', 2, 0.045], ['sine', 0.5, 0.10]], gain: 0.021, attack: 0.006, release: 1.18, cutoff: 2620 };
     case 'tropicalPluck': return { waves: [['sine', 1, 1], ['triangle', 2, 0.18], ['sine', 3.01, 0.11], ['sine', 6.07, 0.035]], gain: 0.019, attack: 0.003, release: 0.96, cutoff: 3650 };
+    case 'housePiano': return { waves: [['triangle', 1, 0.78], ['sine', 2, 0.28], ['triangle', 3.01, 0.09], ['sine', 5.98, 0.035]], gain: 0.021, attack: 0.004, release: 1.12, cutoff: 4250 };
+    case 'vocalAir': return { waves: [['sine', 1, 0.88], ['triangle', 1, 0.16], ['sine', 2.01, 0.13], ['sine', 3.02, 0.04]], gain: 0.014, attack: 0.065, release: 1.7, cutoff: 2250, tremolo: 4.8 };
     case 'glass': return { waves: [['sine', 1, 1], ['sine', 2.7, 0.12], ['sine', 5.4, 0.025]], gain: 0.013, attack: 0.024, release: 2.7, cutoff: 4700, tremolo: 2.6 };
     case 'bandoneon': return { waves: [['sawtooth', 1, 0.72], ['square', 2, 0.16], ['sine', 1, 0.3]], gain: 0.016, attack: 0.045, release: 0.9, cutoff: 1850 };
     case 'choir': return { waves: [['sine', 1, 1], ['triangle', 1, 0.24], ['sine', 2, 0.12]], gain: 0.013, attack: 0.38, release: 4.4, cutoff: 1550, tremolo: 4.2 };
@@ -1738,7 +1740,9 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
     } else if (code === 'H') {
       playNoiseHit(organic ? 'brush' : 'hat', (organic ? 0.009 : 0.007) * velocity, { ...human, brightness: organic ? 0.82 : 1.02, durationScale: organic ? 0.78 : 0.56 });
     } else if (code === 'B') {
-      playWoodKnock();
+      // Un toque de piel corto aporta síncopa sin el “toc” de souvenir que
+      // convertía la percusión tropical en un efecto aislado.
+      playMembraneHit(bishop ? 'tak' : 'dum', (organic ? 0.018 : 0.014) * velocity, { ...human, tone: bishop ? 0.24 : -0.08, decay: organic ? 0.70 : 0.58 });
     }
     return;
   }
