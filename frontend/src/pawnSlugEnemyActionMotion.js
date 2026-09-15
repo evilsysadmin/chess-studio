@@ -19,6 +19,15 @@ export const PAWN_SLUG_ENEMY_RUN_RATE_BY_TYPE = Object.freeze({
   rook: 22,
 });
 
+// Nominal sprite footprint used by the authored soldier atlas. Death poses rotate
+// around the bottom-center anchor, so their projected half-width must be lifted
+// above the support plane instead of being allowed to swing through the floor.
+export const PAWN_SLUG_ENEMY_DEATH_VISUAL_SIZE_BY_TYPE = Object.freeze({
+  pawn: Object.freeze([2.05, 2.05]),
+  knight: Object.freeze([2.22, 2.22]),
+  rook: Object.freeze([2.65, 2.65]),
+});
+
 const ACTION_INDEX = Object.freeze({ idle: 0, run: 1, jump: 2, crouch: 3, hurt: 4, climb: 5, death: 6 });
 const TYPE_INDEX = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
 const ACTION_POSE_CACHE = new Map();
@@ -110,6 +119,16 @@ export function pawnSlugEnemyDeathDuration(type = 'pawn') {
   return 0.64;
 }
 
+function keepDeathPoseAboveGround(type, pose) {
+  const visualSize = PAWN_SLUG_ENEMY_DEATH_VISUAL_SIZE_BY_TYPE[type]
+    || PAWN_SLUG_ENEMY_DEATH_VISUAL_SIZE_BY_TYPE.pawn;
+  const width = visualSize[0] * pose.sx;
+  const height = visualSize[1] * pose.sy;
+  const projectedMinY = -(width * 0.5) * Math.abs(Math.sin(pose.rz))
+    + Math.min(0, height * Math.cos(pose.rz));
+  return Object.freeze({ ...pose, y: Math.max(pose.y, -projectedMinY) });
+}
+
 function deathPose(type, phase, variant = 0) {
   const groundedStart = 10 / 13;
   const grounded = phase >= groundedStart;
@@ -123,12 +142,12 @@ function deathPose(type, phase, variant = 0) {
   const twist = v === 2 ? 1.08 : v === 1 ? 0.9 : 1;
 
   if (type === 'rook') {
-    return Object.freeze({ x: -0.06 * fall * reach, y: grounded ? -0.36 - impactBounce * 0.03 : -0.28 * fall, rz: 1.36 * fall * twist * sway, sx: 1 + 0.12 * fall, sy: grounded ? 0.56 : 1 - 0.32 * fall, grounded });
+    return keepDeathPoseAboveGround(type, { x: -0.06 * fall * reach, y: grounded ? -0.36 - impactBounce * 0.03 : -0.28 * fall, rz: 1.36 * fall * twist * sway, sx: 1 + 0.12 * fall, sy: grounded ? 0.56 : 1 - 0.32 * fall, grounded });
   }
   if (type === 'knight') {
-    return Object.freeze({ x: -0.2 * fall * reach, y: grounded ? -0.42 - impactBounce * 0.035 : 0.07 * Math.sin(fallPhase * Math.PI), rz: 1.52 * fall * twist * sway, sx: 1 + 0.06 * fall, sy: grounded ? 0.52 : 1 - 0.15 * fall, grounded });
+    return keepDeathPoseAboveGround(type, { x: -0.2 * fall * reach, y: grounded ? -0.42 - impactBounce * 0.035 : 0.07 * Math.sin(fallPhase * Math.PI), rz: 1.52 * fall * twist * sway, sx: 1 + 0.06 * fall, sy: grounded ? 0.52 : 1 - 0.15 * fall, grounded });
   }
-  return Object.freeze({ x: -0.13 * fall * reach, y: grounded ? -0.4 - impactBounce * 0.025 : -0.08 * fall, rz: 1.47 * fall * twist * sway, sx: 1 + 0.08 * fall, sy: grounded ? 0.5 : 1 - 0.2 * fall, grounded });
+  return keepDeathPoseAboveGround(type, { x: -0.13 * fall * reach, y: grounded ? -0.4 - impactBounce * 0.025 : -0.08 * fall, rz: 1.47 * fall * twist * sway, sx: 1 + 0.08 * fall, sy: grounded ? 0.5 : 1 - 0.2 * fall, grounded });
 }
 
 function hurtPose(type, phase) {
