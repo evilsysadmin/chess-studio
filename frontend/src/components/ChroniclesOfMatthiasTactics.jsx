@@ -239,13 +239,11 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
             <div className="chronicles-tactics__cinema" aria-hidden="true" />
             <div className="chronicles-tactics__narrator" aria-live="polite">
               <span>CRÓNICA</span>
-              <p>{state.message}</p>
+              <p>
+                {state.message}
+                {actionMode && <><br /><em>{actionMode === 'move' ? 'Elige una casilla iluminada.' : `Elige el objetivo de ${selectedMember?.name || 'la compañía'}.`}</em></>}
+              </p>
             </div>
-            {actionMode && (
-              <div className="chronicles-tactics__pick-hint" aria-live="polite">
-                {actionMode === 'move' ? 'Elige una casilla iluminada' : `Elige el objetivo de ${selectedMember?.name || 'la compañía'}`}
-              </div>
-            )}
             {rendererError && <div className="chronicles-tactics__error" role="alert">{rendererError}</div>}
           </div>
 
