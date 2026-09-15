@@ -1125,10 +1125,13 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
     filter.frequency.value = Math.max(2800, preset.cutoff * 3.8 * (tone?.warmth || 1));
     filter.Q.value = 0.34;
 
+    const performance = tone?.finish || {};
     const shortBow = kind.startsWith('spiccato');
     const celloFamily = kind === 'cello' || kind === 'spiccatoCello';
-    const attack = Math.min(shortBow ? 0.006 : celloFamily ? 0.038 : 0.026, release * 0.18);
-    const peak = (shortBow ? 0.235 : celloFamily ? 0.205 : 0.17) * volumeScale;
+    const attackScale = Math.max(0.72, Math.min(1.28, Number(performance.sampleAttack) || 1));
+    const sampleGain = Math.max(0.82, Math.min(1.14, Number(performance.sampleGain) || 1));
+    const attack = Math.min((shortBow ? 0.006 : celloFamily ? 0.038 : 0.026) * attackScale, release * 0.18);
+    const peak = (shortBow ? 0.235 : celloFamily ? 0.205 : 0.17) * volumeScale * sampleGain;
     const audibleDuration = Math.min(release, recorded.buffer.duration / recorded.playbackRate);
     const sustainUntil = start + Math.max(attack + 0.02, audibleDuration * (shortBow ? 0.26 : 0.78));
     gainNode.gain.setValueAtTime(0.0001, start);
@@ -1509,6 +1512,29 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
       playMembraneHit('dum', 0.032 * velocity, { ...human, tone: -0.18, decay: 0.86 });
     } else if (code === 'H') {
       playMembraneHit('tak', 0.009 * velocity, { ...human, tone: -0.42, decay: 0.66 });
+    }
+    return;
+  }
+
+  if (['baroque-wood', 'western-brush', 'riga-rain-glass', 'tango-stage', 'chamber-waltz'].includes(kit)) {
+    const baroque = kit === 'baroque-wood';
+    const western = kit === 'western-brush';
+    const riga = kit === 'riga-rain-glass';
+    const tango = kit === 'tango-stage';
+    if (code === 'K') {
+      playSoftPercussion((tango ? 0.034 : 0.022) * velocity, { ...human, tone: tango ? -0.44 : -0.52, decay: tango ? 0.86 : 1.08 });
+      if (tango) playBassDrum(0.020 * velocity, { ...human, tone: -0.48, decay: 0.78 });
+    } else if (code === 'S') {
+      playNoiseHit('brush', (tango ? 0.016 : 0.010) * velocity, { ...human, brightness: 0.58, durationScale: western ? 1.5 : 1.16 });
+    } else if (code === 'B') {
+      playNoiseHit('brush', (western ? 0.009 : 0.006) * velocity, { ...human, brightness: western ? 0.48 : 0.62, durationScale: western ? 1.72 : 1.28 });
+    } else if (code === 'H') {
+      playMembraneHit('tak', (baroque ? 0.006 : 0.008) * velocity, { ...human, tone: baroque ? 0.22 : -0.18, decay: 0.68 });
+    } else if (code === 'W') {
+      playMembraneHit('tak', (baroque ? 0.010 : tango ? 0.012 : 0.007) * velocity, { ...human, tone: baroque ? 0.34 : 0.08, decay: 0.74 });
+    } else if (code === 'M' && riga) {
+      playNoiseHit('hat', 0.004 * velocity, { ...human, brightness: 0.86, durationScale: 1.6 });
+      playMembraneHit('tak', 0.003 * velocity, { ...human, tone: 0.46, decay: 1.2, delayMs: human.delayMs + 26 });
     }
     return;
   }
@@ -2046,7 +2072,14 @@ export function startAmbientMusic() {
     // Comenzamos la descarga/decodificación al seleccionar una pieza de
     // cámara. Las primeras notas conservan el sintetizador como respaldo y
     // las siguientes entran con intérpretes grabados sin bloquear Play.
-    primeOrchestralTheme(orchestraContext, theme);
+    const feel = structuredFeel(theme);
+    primeOrchestralTheme(orchestraContext, {
+      ...theme,
+      leadInstrument: feel?.leadInstrument || theme.leadInstrument,
+      counterInstrument: feel?.counterInstrument || theme.counterInstrument,
+      chordInstrument: feel?.chordInstrument || theme.chordInstrument,
+      bassInstrument: feel?.bassInstrument || theme.bassInstrument,
+    });
   }
   const durationMs = getAmbientTrackDurationMs(theme.id);
   if (durationMs) startPositionMs = Math.min(startPositionMs, Math.max(0, durationMs - 1));
