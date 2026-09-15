@@ -29,6 +29,15 @@ const TORCH_CELLS = Object.freeze([
   Object.freeze({ x: 5, y: 1, ox: 0.72, oz: -0.92 }),
 ]);
 
+const RUBBLE = Object.freeze([
+  Object.freeze({ x: -5.95, z: 2.9, scale: 0.22, yaw: 0.5 }),
+  Object.freeze({ x: -5.55, z: 3.18, scale: 0.13, yaw: 1.15 }),
+  Object.freeze({ x: 5.72, z: -2.75, scale: 0.18, yaw: 0.2 }),
+  Object.freeze({ x: 5.35, z: -3.08, scale: 0.11, yaw: 1.7 }),
+  Object.freeze({ x: -2.9, z: -5.86, scale: 0.16, yaw: 0.95 }),
+  Object.freeze({ x: 3.2, z: 5.62, scale: 0.14, yaw: 0.35 }),
+]);
+
 export function chroniclesIsoWorldForCell(x, y) {
   return new THREE.Vector3((x - 3) * CELL, 0, (y - 3) * CELL);
 }
@@ -77,6 +86,19 @@ function runtimeEnemyPosition(state, enemy) {
   return chroniclesEnemyPosition(state, enemy);
 }
 
+function deterministicNoise(x, y, salt = 0) {
+  const value = Math.sin((x + 17.31 + salt) * 12.9898 + (y - 9.17 - salt) * 78.233) * 43758.5453;
+  return value - Math.floor(value);
+}
+
+function facingAngle(from, to) {
+  return Math.atan2(to.x - from.x, to.z - from.z);
+}
+
+function shortestAngleDelta(from, to) {
+  return Math.atan2(Math.sin(to - from), Math.cos(to - from));
+}
+
 function ownedMaterial(params) {
   const material = new THREE.MeshStandardMaterial(params);
   material.userData.chroniclesIsoOwned = true;
@@ -93,27 +115,133 @@ function addMesh(root, geometry, material, position, name, { castShadow = true, 
   return mesh;
 }
 
+function buildDungeonColumn(root, material, trimMaterial, x, z, index, { coarsePointer }) {
+  const segments = coarsePointer ? 10 : 16;
+  const column = new THREE.Group();
+  column.name = `chronicles-iso-column-${index}`;
+  column.position.set(x, 0, z);
+
+  const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.31, 2.65, segments), material);
+  shaft.position.y = 1.38;
+  shaft.castShadow = !coarsePointer;
+  shaft.receiveShadow = true;
+  column.add(shaft);
+
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.43, 0.48, 0.18, segments), trimMaterial);
+  base.position.y = 0.09;
+  base.castShadow = !coarsePointer;
+  base.receiveShadow = true;
+  column.add(base);
+
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.055, 8, segments), trimMaterial);
+  collar.rotation.x = Math.PI / 2;
+  collar.position.y = 2.55;
+  collar.castShadow = !coarsePointer;
+  column.add(collar);
+
+  const capital = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.34, 0.2, segments), trimMaterial);
+  capital.position.y = 2.72;
+  capital.castShadow = !coarsePointer;
+  capital.receiveShadow = true;
+  column.add(capital);
+
+  root.add(column);
+  return column;
+}
+
+function buildFarShrine(root, wall, trim, brass, { coarsePointer }) {
+  const shrine = new THREE.Group();
+  shrine.name = 'chronicles-iso-far-shrine';
+  shrine.position.set(0, 0, -8.35);
+
+  const pillarGeometry = new THREE.BoxGeometry(0.78, 3.5, 0.72);
+  [-2.3, 2.3].forEach((x, index) => {
+    const pillar = new THREE.Mesh(pillarGeometry, wall);
+    pillar.position.set(x, 1.65, 0);
+    pillar.castShadow = !coarsePointer;
+    pillar.receiveShadow = true;
+    pillar.name = `chronicles-iso-shrine-pillar-${index}`;
+    shrine.add(pillar);
+
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(1.02, 0.2, 0.94), trim);
+    foot.position.set(x, 0.1, 0.02);
+    foot.castShadow = !coarsePointer;
+    foot.receiveShadow = true;
+    shrine.add(foot);
+  });
+
+  const lintel = new THREE.Mesh(new THREE.BoxGeometry(5.35, 0.68, 0.78), wall);
+  lintel.position.set(0, 3.16, 0);
+  lintel.castShadow = !coarsePointer;
+  lintel.receiveShadow = true;
+  shrine.add(lintel);
+
+  const portalRing = new THREE.Mesh(
+    new THREE.TorusGeometry(1.28, 0.11, 10, coarsePointer ? 24 : 40),
+    brass,
+  );
+  portalRing.position.set(0, 1.62, 0.42);
+  portalRing.castShadow = !coarsePointer;
+  shrine.add(portalRing);
+
+  const recess = new THREE.Mesh(
+    new THREE.CircleGeometry(1.12, coarsePointer ? 24 : 40),
+    ownedMaterial({ color: 0x15191b, roughness: 0.94, metalness: 0.02, emissive: 0x0c171a, emissiveIntensity: 0.32 }),
+  );
+  recess.position.set(0, 1.62, 0.34);
+  shrine.add(recess);
+
+  const shrineGlow = new THREE.PointLight(0x78a6b6, coarsePointer ? 0.38 : 0.52, 9.5, 2);
+  shrineGlow.position.set(0, 1.8, 1.15);
+  shrine.add(shrineGlow);
+
+  root.add(shrine);
+  return shrine;
+}
+
 function buildIsoDungeon({ coarsePointer }) {
   const root = new THREE.Group();
   root.name = 'chronicles-isometric-dungeon';
   const floorTargets = [];
 
-  const floorLight = ownedMaterial({ color: 0x56564c, roughness: 0.88, metalness: 0.03 });
-  const floorDark = ownedMaterial({ color: 0x2a2b28, roughness: 0.94, metalness: 0.02 });
-  const wall = ownedMaterial({ color: 0x403a34, roughness: 0.97, metalness: 0.01 });
+  const floorMaterials = [
+    ownedMaterial({ color: 0x4e4a43, roughness: 0.9, metalness: 0.025 }),
+    ownedMaterial({ color: 0x575249, roughness: 0.86, metalness: 0.025 }),
+    ownedMaterial({ color: 0x45423d, roughness: 0.93, metalness: 0.02 }),
+    ownedMaterial({ color: 0x5b554b, roughness: 0.89, metalness: 0.025 }),
+  ];
+  const foundation = ownedMaterial({ color: 0x211f1c, roughness: 0.98, metalness: 0 });
+  const wallMaterials = [
+    ownedMaterial({ color: 0x403a34, roughness: 0.97, metalness: 0.01 }),
+    ownedMaterial({ color: 0x49423a, roughness: 0.95, metalness: 0.012 }),
+    ownedMaterial({ color: 0x393530, roughness: 0.98, metalness: 0.008 }),
+  ];
   const wallTrim = ownedMaterial({ color: 0x1d1a17, roughness: 0.98, metalness: 0 });
-  const brass = ownedMaterial({ color: 0x6e4b26, roughness: 0.52, metalness: 0.62, emissive: 0x160a02, emissiveIntensity: 0.22 });
+  const brass = ownedMaterial({ color: 0x7b562c, roughness: 0.45, metalness: 0.68, emissive: 0x160a02, emissiveIntensity: 0.24 });
   const runeMaterial = ownedMaterial({ color: 0x8ed8c7, roughness: 0.22, metalness: 0.16, emissive: 0x2aa88e, emissiveIntensity: 1.7 });
 
-  const tileGeometry = new THREE.BoxGeometry(CELL * 0.96, 0.18, CELL * 0.96);
+  addMesh(
+    root,
+    new THREE.BoxGeometry(CELL * 7.25, 0.34, CELL * 7.25),
+    foundation,
+    [0, -0.31, 0],
+    'chronicles-iso-foundation',
+    { castShadow: false, receiveShadow: true },
+  );
+
+  const tileGeometry = new THREE.BoxGeometry(CELL * 0.982, 0.17, CELL * 0.982);
   const wallGeometry = new THREE.BoxGeometry(CELL, 2.65, CELL);
+  const wallCapGeometry = new THREE.BoxGeometry(CELL * 0.96, 0.12, CELL * 0.96);
 
   CHRONICLES_MAP.forEach((row, y) => {
     [...row].forEach((tile, x) => {
       const world = chroniclesIsoWorldForCell(x, y);
       if (tile !== '#') {
-        const tileMesh = new THREE.Mesh(tileGeometry, (x + y) % 2 ? floorDark : floorLight);
-        tileMesh.position.set(world.x, -0.1, world.z);
+        const noise = deterministicNoise(x, y);
+        const material = floorMaterials[Math.min(floorMaterials.length - 1, Math.floor(noise * floorMaterials.length))];
+        const tileMesh = new THREE.Mesh(tileGeometry, material);
+        tileMesh.position.set(world.x, -0.095 + (noise - 0.5) * 0.025, world.z);
+        tileMesh.rotation.y = (deterministicNoise(x, y, 3) - 0.5) * 0.014;
         tileMesh.receiveShadow = true;
         tileMesh.name = `chronicles-iso-floor-${x}-${y}`;
         tileMesh.userData.chroniclesIsoCell = { x, y };
@@ -125,6 +253,8 @@ function buildIsoDungeon({ coarsePointer }) {
       // Leave the south/east shell open for the close behind-party camera,
       // otherwise the foreground wall would swallow the heroes and action.
       if (x === CHRONICLES_MAP[0].length - 1 || y === CHRONICLES_MAP.length - 1) return;
+      const noise = deterministicNoise(x, y, 7);
+      const wall = wallMaterials[Math.min(wallMaterials.length - 1, Math.floor(noise * wallMaterials.length))];
       const block = new THREE.Mesh(wallGeometry, wall);
       block.position.set(world.x, 1.23, world.z);
       block.castShadow = !coarsePointer;
@@ -132,7 +262,13 @@ function buildIsoDungeon({ coarsePointer }) {
       block.name = `chronicles-iso-wall-${x}-${y}`;
       root.add(block);
 
-      const trim = new THREE.Mesh(new THREE.BoxGeometry(CELL * 0.98, 0.08, CELL * 1.01), wallTrim);
+      const cap = new THREE.Mesh(wallCapGeometry, wallTrim);
+      cap.position.set(world.x, 2.59, world.z);
+      cap.castShadow = !coarsePointer;
+      cap.receiveShadow = true;
+      root.add(cap);
+
+      const trim = new THREE.Mesh(new THREE.BoxGeometry(CELL * 0.98, 0.075, CELL * 1.01), wallTrim);
       trim.position.set(world.x, 0.5 + ((x * 5 + y * 3) % 3) * 0.68, world.z);
       trim.receiveShadow = true;
       root.add(trim);
@@ -190,12 +326,25 @@ function buildIsoDungeon({ coarsePointer }) {
   runeCoreRoot.visible = false;
   root.add(runeCoreRoot);
 
-  // A few chunky architectural anchors create the framed, premium room seen
-  // in the canonical reference without spending the mobile budget on clutter.
-  const columnGeometry = new THREE.CylinderGeometry(0.22, 0.28, 2.8, coarsePointer ? 10 : 16);
-  [[-5.9, -4.9], [5.9, -4.9], [-5.9, 5.9]].forEach(([x, z], index) => {
-    addMesh(root, columnGeometry, wall, [x, 1.3, z], `chronicles-iso-column-${index}`);
-  });
+  buildDungeonColumn(root, wallMaterials[0], wallTrim, -5.9, -4.9, 0, { coarsePointer });
+  buildDungeonColumn(root, wallMaterials[1], wallTrim, 5.9, -4.9, 1, { coarsePointer });
+  buildDungeonColumn(root, wallMaterials[2], wallTrim, -5.9, 5.9, 2, { coarsePointer });
+  buildFarShrine(root, wallMaterials[2], wallTrim, brass, { coarsePointer });
+
+  if (!coarsePointer) {
+    const rubbleMaterial = ownedMaterial({ color: 0x34312d, roughness: 0.96, metalness: 0.01 });
+    RUBBLE.forEach((piece, index) => {
+      const rubble = addMesh(
+        root,
+        new THREE.DodecahedronGeometry(piece.scale, 0),
+        rubbleMaterial,
+        [piece.x, piece.scale * 0.4 - 0.02, piece.z],
+        `chronicles-iso-rubble-${index}`,
+      );
+      rubble.rotation.set(piece.yaw * 0.25, piece.yaw, piece.yaw * 0.16);
+      rubble.scale.set(1.35, 0.68, 0.92);
+    });
+  }
 
   return {
     root,
@@ -215,10 +364,18 @@ function buildTorches(scene, { coarsePointer }) {
   const flameMaterial = new THREE.MeshStandardMaterial({
     color: 0xffc16f,
     emissive: 0xff5b14,
-    emissiveIntensity: 3.1,
-    roughness: 0.38,
+    emissiveIntensity: 3.25,
+    roughness: 0.34,
   });
   flameMaterial.userData.chroniclesIsoOwned = true;
+  const glowMaterial = new THREE.MeshBasicMaterial({
+    color: 0xff8b3d,
+    transparent: true,
+    opacity: coarsePointer ? 0.12 : 0.15,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  glowMaterial.userData.chroniclesIsoOwned = true;
 
   TORCH_CELLS.forEach(({ x, y, ox, oz }, index) => {
     const cell = chroniclesIsoWorldForCell(x, y);
@@ -232,13 +389,16 @@ function buildTorches(scene, { coarsePointer }) {
     const flame = new THREE.Mesh(new THREE.SphereGeometry(0.11, 10, 8), flameMaterial);
     flame.scale.set(0.88, 1.62, 0.88);
     flame.position.y = 1.06;
-    const baseIntensity = coarsePointer ? 2.2 : 2.8;
-    const light = new THREE.PointLight(0xff8538, baseIntensity, coarsePointer ? 6.8 : 8.4, 2);
+    const glow = new THREE.Mesh(new THREE.SphereGeometry(0.38, 12, 8), glowMaterial);
+    glow.position.y = 1.05;
+    glow.scale.set(0.8, 1.45, 0.8);
+    const baseIntensity = coarsePointer ? 2.35 : 3.05;
+    const light = new THREE.PointLight(0xff8538, baseIntensity, coarsePointer ? 6.8 : 8.8, 2);
     light.position.y = 1.02;
-    root.add(stem, cup, flame, light);
+    root.add(stem, cup, glow, flame, light);
     root.position.set(cell.x + ox, 0, cell.z + oz);
     scene.add(root);
-    torches.push({ root, flame, light, baseIntensity, phase: index * 1.37 });
+    torches.push({ root, flame, glow, light, baseIntensity, phase: index * 1.37 });
   });
   return torches;
 }
@@ -262,7 +422,7 @@ function buildParty(scene, { coarsePointer }) {
   const selectionMaterial = new THREE.MeshBasicMaterial({
     color: 0xf2bd67,
     transparent: true,
-    opacity: 0.68,
+    opacity: 0.58,
     depthWrite: false,
   });
   selectionMaterial.userData.chroniclesIsoOwned = true;
@@ -281,11 +441,17 @@ function buildEnemies(scene, { coarsePointer }) {
     ['spectral-bishop', buildSpectralBishop({ coarsePointer })],
     ['scavenger-knight', buildScavengerKnight({ coarsePointer })],
   ]);
+  const scales = Object.freeze({
+    'corrupted-pawn': 0.92,
+    'gate-jailer': 1.04,
+    'spectral-bishop': 0.9,
+    'scavenger-knight': 0.96,
+  });
 
   models.forEach((model, id) => {
     model.name = `chronicles-iso-enemy-${id}`;
     model.userData.chroniclesIsoEnemyId = id;
-    model.scale.setScalar(id === 'gate-jailer' ? 0.92 : 0.8);
+    model.scale.setScalar(scales[id] || 0.92);
     model.rotation.y = -Math.PI * 0.18;
     model.visible = false;
     scene.add(model);
@@ -302,7 +468,7 @@ function buildInteractionMarkers(scene, { coarsePointer }) {
   const moveMaterial = new THREE.MeshBasicMaterial({
     color: 0xf0bd68,
     transparent: true,
-    opacity: coarsePointer ? 0.72 : 0.62,
+    opacity: coarsePointer ? 0.68 : 0.52,
     depthWrite: false,
     depthTest: true,
     side: THREE.DoubleSide,
@@ -310,7 +476,7 @@ function buildInteractionMarkers(scene, { coarsePointer }) {
   const attackMaterial = new THREE.MeshBasicMaterial({
     color: 0xd96b3c,
     transparent: true,
-    opacity: coarsePointer ? 0.82 : 0.72,
+    opacity: coarsePointer ? 0.8 : 0.67,
     depthWrite: false,
     depthTest: true,
     side: THREE.DoubleSide,
@@ -354,11 +520,17 @@ function descriptorForObject(object) {
 }
 
 function disposeScene(root) {
+  const geometries = new Set();
+  const materials = new Set();
   root.traverse?.((node) => {
-    node.geometry?.dispose?.();
-    if (Array.isArray(node.material)) node.material.forEach((material) => material?.dispose?.());
-    else if (node.material?.userData?.chroniclesIsoOwned) node.material.dispose?.();
+    if (node.geometry) geometries.add(node.geometry);
+    const nodeMaterials = Array.isArray(node.material) ? node.material : [node.material];
+    nodeMaterials.filter(Boolean).forEach((material) => {
+      if (material.userData?.chroniclesIsoOwned || material.userData?.chroniclesOwnedMaterial) materials.add(material);
+    });
   });
+  geometries.forEach((geometry) => geometry.dispose?.());
+  materials.forEach((material) => material.dispose?.());
 }
 
 export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEnemyClick } = {}) {
@@ -369,7 +541,7 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
   const renderer = createExperimentalThreeRenderer({ antialias: !coarse, alpha: false, powerPreference: 'high-performance' });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = coarse ? 1.18 : 1.14;
+  renderer.toneMappingExposure = coarse ? 1.27 : 1.2;
   renderer.setClearColor(0x100c09, 1);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? 1.25 : 1.7));
   renderer.shadowMap.enabled = !coarse;
@@ -378,17 +550,18 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x100c09);
-  scene.fog = new THREE.FogExp2(0x17120e, coarse ? 0.028 : 0.024);
+  scene.fog = new THREE.FogExp2(0x17120e, coarse ? 0.022 : 0.0185);
 
   const initialFocus = chroniclesIsoWorldForCell(2, 5);
   const initialPose = chroniclesIsometricCameraPose({ x: initialFocus.x, z: initialFocus.z });
   const camera = new THREE.PerspectiveCamera(initialPose.fov, 1, 0.1, 70);
   camera.position.copy(initialPose.position);
   camera.lookAt(initialPose.target);
+  const cameraTarget = initialPose.target.clone();
 
-  const hemi = new THREE.HemisphereLight(0xd6c5a8, 0x17110d, coarse ? 0.82 : 0.72);
+  const hemi = new THREE.HemisphereLight(0xd6c5a8, 0x15100d, coarse ? 0.82 : 0.64);
   scene.add(hemi);
-  const key = new THREE.DirectionalLight(0xffd39b, coarse ? 2.1 : 2.55);
+  const key = new THREE.DirectionalLight(0xffd39b, coarse ? 2.35 : 2.95);
   key.position.set(5.5, 10, 7.5);
   key.castShadow = !coarse;
   if (!coarse) {
@@ -401,9 +574,15 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
     key.shadow.normalBias = 0.04;
   }
   scene.add(key);
-  const rim = new THREE.DirectionalLight(0x758aa2, coarse ? 0.72 : 1.0);
+  const rim = new THREE.DirectionalLight(0x758aa2, coarse ? 0.84 : 1.2);
   rim.position.set(-7, 5, -6);
   scene.add(rim);
+  const fill = new THREE.DirectionalLight(0x9db7c6, coarse ? 0.38 : 0.52);
+  fill.position.set(3, 4.5, -7);
+  scene.add(fill);
+  const warmBounce = new THREE.PointLight(0x9b5b30, coarse ? 0.28 : 0.4, 18, 2);
+  warmBounce.position.set(0, 2.4, 2.8);
+  scene.add(warmBounce);
 
   const dungeon = buildIsoDungeon({ coarsePointer: coarse });
   scene.add(dungeon.root);
@@ -431,6 +610,8 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
     const height = Math.max(1, host.clientHeight || 1);
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
+    const portraitBoost = camera.aspect < 0.72 ? 7 : camera.aspect < 1 ? 3.5 : 0;
+    camera.fov = initialPose.fov + portraitBoost;
     camera.updateProjectionMatrix();
   }
 
@@ -482,8 +663,11 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
       const position = runtimeEnemyPosition(state, definition);
       const world = chroniclesIsoWorldForCell(position.x, position.y);
       model.userData.chroniclesIsoTarget = world;
+      model.userData.chroniclesIsoTargetYaw = facingAngle(world, partyCell);
       if (!model.userData.chroniclesIsoPlaced) {
         model.position.copy(world);
+        model.userData.chroniclesIsoCurrentYaw = model.userData.chroniclesIsoTargetYaw;
+        model.rotation.y = model.userData.chroniclesIsoTargetYaw;
         model.userData.chroniclesIsoPlaced = true;
       }
     });
@@ -496,7 +680,7 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
     });
 
     dungeon.sigilMaterial.emissive.setHex(state.sigilAwake ? 0x8c3f0d : 0x160a02);
-    dungeon.sigilMaterial.emissiveIntensity = state.sigilAwake ? 1.25 : 0.22;
+    dungeon.sigilMaterial.emissiveIntensity = state.sigilAwake ? 1.25 : 0.24;
     const worldObjects = chroniclesIsoWorldObjectState(state);
     dungeon.leverPivot.rotation.z = worldObjects.leverPulled ? -0.74 : 0.58;
     dungeon.runeCoreRoot.visible = worldObjects.runeCoreVisible;
@@ -507,11 +691,14 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
     if (reducedMotion) {
       party.root.position.copy(desiredParty);
       enemies.forEach((model) => {
-        if (model.visible && model.userData.chroniclesIsoTarget) model.position.copy(model.userData.chroniclesIsoTarget);
+        if (!model.visible || !model.userData.chroniclesIsoTarget) return;
+        model.position.copy(model.userData.chroniclesIsoTarget);
+        model.rotation.y = model.userData.chroniclesIsoTargetYaw ?? model.rotation.y;
       });
       const pose = chroniclesIsometricCameraPose({ x: desiredFocus.x, z: desiredFocus.z });
       camera.position.copy(pose.position);
-      camera.lookAt(pose.target);
+      cameraTarget.copy(pose.target);
+      camera.lookAt(cameraTarget);
       renderer.render(scene, camera);
     }
   }
@@ -553,6 +740,11 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
         if (!model.visible || !model.userData.chroniclesIsoTarget) return;
         model.position.lerp(model.userData.chroniclesIsoTarget, id === 'scavenger-knight' ? 0.18 : 0.13);
         model.position.y = Math.sin(time * 1.7 + id.length) * 0.012;
+        const targetYaw = model.userData.chroniclesIsoTargetYaw ?? model.rotation.y;
+        const currentYaw = model.userData.chroniclesIsoCurrentYaw ?? targetYaw;
+        const nextYaw = currentYaw + shortestAngleDelta(currentYaw, targetYaw) * 0.12;
+        model.userData.chroniclesIsoCurrentYaw = nextYaw;
+        model.rotation.y = nextYaw + Math.sin(time * 0.48 + id.length) * 0.018;
       });
 
       party.models.forEach((model, id) => {
@@ -566,6 +758,7 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
         const pulse = 0.94 + Math.sin(time * 7.2 + torch.phase) * 0.07 + Math.sin(time * 15.8 + torch.phase) * 0.025;
         torch.light.intensity = torch.baseIntensity * pulse;
         torch.flame.scale.set(0.86 + pulse * 0.03, 1.48 + pulse * 0.15, 0.86 + pulse * 0.03);
+        torch.glow.scale.set(0.78 + pulse * 0.04, 1.34 + pulse * 0.18, 0.78 + pulse * 0.04);
         torch.flame.rotation.z = Math.sin(time * 4.8 + torch.phase) * 0.08;
       });
 
@@ -578,11 +771,9 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
       }
 
       const pose = chroniclesIsometricCameraPose({ x: desiredFocus.x, z: desiredFocus.z });
-      camera.position.lerp(pose.position, 0.1);
-      const lookTarget = pose.target;
-      const direction = lookTarget.clone().sub(camera.position).normalize();
-      const currentTarget = camera.position.clone().add(direction.multiplyScalar(10));
-      camera.lookAt(currentTarget.lerp(lookTarget, 0.22));
+      camera.position.lerp(pose.position, 0.09);
+      cameraTarget.lerp(pose.target, 0.12);
+      camera.lookAt(cameraTarget);
     }
 
     renderer.render(scene, camera);
