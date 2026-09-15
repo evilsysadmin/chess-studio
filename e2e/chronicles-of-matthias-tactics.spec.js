@@ -8,10 +8,15 @@ async function dismissGuide(page) {
   if (await dismiss.isVisible().catch(() => false)) await dismiss.click();
 }
 
-async function openTactics(page) {
+async function openTactics(page, { progression = null } = {}) {
   await mockApi(page);
   await login(page);
   await dismissGuide(page);
+  if (progression) {
+    await page.evaluate((value) => {
+      localStorage.setItem('chess-study-chronicles-progression-v1', JSON.stringify(value));
+    }, progression);
+  }
   const moreModes = await openMoreGameModes(page);
   await moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
@@ -40,6 +45,38 @@ test('Chronicles Tactics · arranca como action RPG isométrico con usar, ataque
   await page.keyboard.press('e');
   await expect(mode.getByText(/Habilidad: Martillo de asedio · agotada/i)).toBeVisible();
   await expect(mode.getByRole('button', { name: 'Habilidad de clase', exact: true })).toBeDisabled();
+});
+
+test('Chronicles Tactics · elegir doctrina consume skill point y cierra la alternativa', async ({ page }) => {
+  await openTactics(page, {
+    progression: {
+      version: 1,
+      heroes: {
+        matthias: {
+          xp: 40,
+          attributePoints: 0,
+          skillPoints: 1,
+          attributes: { vigor: 0, power: 0, precision: 0, will: 0 },
+          skills: [],
+        },
+      },
+      claimedAwards: [],
+    },
+  });
+
+  const mode = page.locator('[data-chronicles-tactics="true"]');
+  const summary = mode.getByText('Técnicas · 1 punto', { exact: true });
+  await expect(summary).toBeVisible();
+  await summary.click();
+
+  const tempo = mode.getByRole('button', { name: /Tempo de hierro/i });
+  const rupture = mode.getByRole('button', { name: /Ruptura maestra/i });
+  await expect(tempo).toBeEnabled();
+  await expect(rupture).toBeEnabled();
+  await tempo.click();
+
+  await expect(mode.getByRole('button', { name: /Tempo de hierro.*Aprendida/i })).toBeDisabled();
+  await expect(mode.getByRole('button', { name: /Ruptura maestra.*Rama cerrada/i })).toBeDisabled();
 });
 
 test('Chronicles Tactics · móvil conserva canvas y controles de acción sin overflow', async ({ page }) => {
