@@ -58,9 +58,16 @@ export function animateMatthiasSlugSprite(sprite, state = {}) {
   const hurt = Boolean(state.hurt);
   if (hurt && !sprite.userData.pawnSlugWasHurt) playPawnSlugPlayerHitSfx();
   sprite.userData.pawnSlugWasHurt = hurt;
-  animateLegacyMatthiasSlugSprite(sprite, state);
-  applyPawnSlugMatthiasPremiumMotion(sprite, state);
-  applyPawnSlugMatthiasRunPolish(sprite, state);
+
+  // Walking is now the canonical traversal pose. Feed the legacy animator a
+  // non-running state so its sprint row and run brace do not flash for one pass,
+  // then apply the authored walk frame selected by the locomotion controller.
+  const walking = Boolean(state.walking) && !state.airborne && !state.crouch;
+  const visualState = walking ? { ...state, running: false } : state;
+  animateLegacyMatthiasSlugSprite(sprite, visualState);
+  if (walking) sprite.userData.setActionFrame?.('walk', state.walkFrame ?? 0);
+  applyPawnSlugMatthiasPremiumMotion(sprite, visualState);
+  applyPawnSlugMatthiasRunPolish(sprite, visualState);
 }
 
 export function animatePanzerRookSprite(sprite, time = 0, state = {}) {
