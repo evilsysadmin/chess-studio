@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/blender/build_pawn_slug_matthias_integrated.py'
       - 'scripts/blender/render_pawn_slug_matthias_weapon_sheet.py'
+      - 'scripts/blender/render_pawn_slug_matthias_weapon_sheet_v2.py'
       - '.github/workflows/pawn-slug-blender-art.yml'
       - 'frontend/src/assets/pawnSlug/matthias_*_atlas_v1.b64'
   workflow_dispatch:
@@ -40,14 +41,14 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/pawn-slug-art
           blender --background \
-            --python scripts/blender/render_pawn_slug_matthias_weapon_sheet.py \
+            --python scripts/blender/render_pawn_slug_matthias_weapon_sheet_v2.py \
             -- --output-dir /tmp/pawn-slug-art --weapon "$WEAPON"
           cwebp -quiet -q 86 -alpha_q 95 -m 6 \
             "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.png" \
             -o "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.webp"
           base64 -w0 "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.webp" \
             > "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.b64"
-      - name: Sanity-check atlas contract
+      - name: Sanity-check atlas contract and armed silhouette
         env:
           WEAPON: ${{ matrix.weapon }}
         run: |
@@ -66,6 +67,7 @@ jobs:
           image = Image.open(path).convert('RGBA')
           assert image.size == (1536, 480), image.size
           counts = (10, 10, 16, 10, 9)
+          min_width = {'pistol': 24, 'machinegun': 31, 'shotgun': 37, 'panzerfaust': 40}[weapon]
           for row, count in enumerate(counts):
               for col in range(count):
                   cell = image.crop((col * 96, row * 96, (col + 1) * 96, (row + 1) * 96))
@@ -73,10 +75,12 @@ jobs:
                   bbox = alpha.getbbox()
                   assert bbox is not None, f'empty authored cell row={row} col={col}'
                   left, top, right, bottom = bbox
-                  assert not (top == 0 and bottom == 96), (
-                      f'vertical cell bleed row={row} col={col} bbox={bbox}; '
-                      'check Blender ortho_scale / row spacing'
-                  )
+                  width = right - left
+                  height = bottom - top
+                  assert left > 1 and right < 95 and top > 1 and bottom < 95, f'cell bleed row={row} col={col} bbox={bbox}'
+                  assert width >= min_width, f'weapon silhouette collapsed row={row} col={col} width={width} expected>={min_width} for {weapon}'
+                  assert height >= 42, f'character silhouette too short row={row} col={col} height={height}'
+                  assert right >= 66, f'weapon does not project to screen-right row={row} col={col} bbox={bbox}'
           PY
       - uses: actions/upload-artifact@v4
         if: always()
