@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { getEffectiveReducedMotion } from '../userPreferences.js';
+import { getWarRoomCatEffectiveReducedMotion } from './WarRoomCatMotionPreference.js';
 
-export const WAR_ROOM_CAT_VERSION = 'war-room-cat-v3-render-contract';
+export const WAR_ROOM_CAT_VERSION = 'war-room-cat-v4-sofa-anchor';
 
 function rootLocalBounds(root, object) {
   object.updateMatrixWorld?.(true);
@@ -21,7 +21,9 @@ function rootLocalBounds(root, object) {
 
 function preferredSofa(root) {
   const plantSide = root.getObjectByName?.('war-room-hans-plant')?.userData?.warRoomPlantSide;
-  const order = plantSide === 'right' ? ['left', 'right'] : ['right', 'left'];
+  // Canonical plant placement is on the right. Before that actor is installed,
+  // default to the opposite (left) sofa rather than stacking decor on the right.
+  const order = plantSide === 'left' ? ['right', 'left'] : ['left', 'right'];
   for (const side of order) {
     const sofa = root.getObjectByName?.(`war-room-sofa-${side}`);
     if (sofa) return { sofa, side };
@@ -36,7 +38,7 @@ function makeEar(material) {
   return ear;
 }
 
-export function warRoomCatAmbientMotionAllowed(root, { reducedMotion = getEffectiveReducedMotion() } = {}) {
+export function warRoomCatAmbientMotionAllowed(root, { reducedMotion = getWarRoomCatEffectiveReducedMotion() } = {}) {
   if (reducedMotion) return false;
   const hans = root?.getObjectByName?.('war-room-hans-butler');
   if (hans?.userData?.warRoomHansActiveTaskKind) return false;
@@ -153,7 +155,14 @@ function buildCat(root) {
   return group;
 }
 
+function normalizeCatParent(root, cat) {
+  root.updateMatrixWorld?.(true);
+  cat.parent?.updateMatrixWorld?.(true);
+  if (cat.parent && cat.parent !== root) root.attach(cat);
+}
+
 function placeCat(root, cat) {
+  normalizeCatParent(root, cat);
   const preferred = preferredSofa(root);
   if (preferred) {
     const bounds = rootLocalBounds(root, preferred.sofa);
@@ -170,6 +179,10 @@ function placeCat(root, cat) {
       cat.scale.setScalar(0.82);
       cat.userData.warRoomCatPlacement = `${preferred.side}-sofa-sleeper-v1`;
       cat.userData.warRoomCatSofaSide = preferred.side;
+
+      root.updateMatrixWorld?.(true);
+      preferred.sofa.updateMatrixWorld?.(true);
+      preferred.sofa.attach(cat);
       return cat;
     }
   }
