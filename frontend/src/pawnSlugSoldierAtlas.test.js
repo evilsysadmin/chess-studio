@@ -4,15 +4,19 @@ import {
   pawnSlugSoldierAtlasWindow,
 } from './pawnSlugSoldierAtlas.js';
 
-describe('Pawn Slug generated soldier atlas', () => {
-  it('allocates one prewarmed shared atlas instead of lazily mutating GPU texture content during play', () => {
+describe('Pawn Slug Blender soldier atlas', () => {
+  it('uses the reviewed Blender bake while preserving the 16x21 runtime contract', () => {
     expect(PAWN_SLUG_SOLDIER_ATLAS_META).toMatchObject({
       frameWidth: 96,
       frameHeight: 96,
       columns: 16,
       rows: 21,
-      theme: 'military-chess-soldiers',
-      generatedOnce: true,
+      theme: 'military-chess-soldiers-blender',
+      sourceVersion: 'blender-enemy-v1',
+      authoredBy: 'Blender',
+      sourceFacing: 'left',
+      runtimeComposite: true,
+      generatedOnce: false,
       lazyFrameDrawing: false,
       prewarmedBeforeUpload: true,
       sharedTextureSource: true,
@@ -22,7 +26,7 @@ describe('Pawn Slug generated soldier atlas', () => {
     expect(PAWN_SLUG_SOLDIER_ATLAS_META.actions).toEqual(['idle', 'run', 'jump', 'crouch', 'hurt', 'climb', 'death']);
   });
 
-  it('maps each class and action into its own row including terminal death', () => {
+  it('keeps each class and action in the established rows including terminal death', () => {
     expect(pawnSlugSoldierAtlasWindow('pawn', 'idle', 0, -1).row).toBe(0);
     expect(pawnSlugSoldierAtlasWindow('pawn', 'death', 0, -1).row).toBe(6);
     expect(pawnSlugSoldierAtlasWindow('knight', 'idle', 0, -1).row).toBe(7);
