@@ -111,12 +111,8 @@ function applyPremiumWindow(sprite) {
 export function pawnSlugPremiumEnemyRenderStatus(sprite) {
   const atlas = sprite?.userData?.atlas;
   const material = sprite?.material;
-  // Keep the long-standing browser contract stable: generated-actions is the
-  // synchronous premium safety net and is reported as premium-fallback to the
-  // smoke while its internal source remains explicit for runtime diagnostics.
-  const contractSource = atlas?.source === 'generated-actions' ? 'premium-fallback' : (atlas?.source || 'unknown');
   return [
-    contractSource,
+    atlas?.source || 'unknown',
     material?.visible !== false ? 'visible' : 'hidden',
     material?.map ? 'mapped' : 'unmapped',
     sprite?.userData?.pawnSlugEnemyReadability ? 'readable' : 'depth',
@@ -135,11 +131,9 @@ function publishPremiumEnemyRenderStatus(sprite) {
   const verifiedPremium = ['premium-raster', 'premium-fallback'].includes(source)
     && evidence?.checked
     && evidence?.opaque;
-  // generated-actions is built synchronously by our own canvas renderer and is
-  // the known-good safety net. A premium image is only allowed to replace it
-  // after alpha readback proves useful pixels in every authored region.
-  const verifiedFallback = source === 'generated-actions';
-  if (!verifiedPremium && !verifiedFallback) return;
+  // generated-actions remains the synchronous safety net, but it must never
+  // satisfy the browser contract that claims authored premium art is live.
+  if (!verifiedPremium) return;
   const status = pawnSlugPremiumEnemyRenderStatus(sprite);
   if (stage.dataset.pawnSlugEnemyVisual !== status) stage.dataset.pawnSlugEnemyVisual = status;
 }
@@ -321,6 +315,7 @@ export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
   lateFallbackOverwriteProtection: true,
   visualEvidencePolicy: 'premium-alpha-readback-before-replacing-generated-actions',
   browserRenderContract: 'data-pawn-slug-enemy-visual',
-  browserFallbackAlias: 'generated-actions -> premium-fallback',
+  browserPremiumContract: 'verified-authored-only',
+  browserFallbackAlias: null,
   proceduralRole: 'known-good-safety-net',
 });
