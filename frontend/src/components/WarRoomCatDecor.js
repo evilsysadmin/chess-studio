@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getEffectiveReducedMotionRuntime } from '../reducedMotionRuntime.js';
+import { getWarRoomCatEffectiveReducedMotion } from './WarRoomCatMotionPreference.js';
 
 export const WAR_ROOM_CAT_VERSION = 'war-room-cat-v4-sofa-anchor';
 
@@ -38,7 +38,7 @@ function makeEar(material) {
   return ear;
 }
 
-export function warRoomCatAmbientMotionAllowed(root, { reducedMotion = getEffectiveReducedMotionRuntime() } = {}) {
+export function warRoomCatAmbientMotionAllowed(root, { reducedMotion = getWarRoomCatEffectiveReducedMotion() } = {}) {
   if (reducedMotion) return false;
   const hans = root?.getObjectByName?.('war-room-hans-butler');
   if (hans?.userData?.warRoomHansActiveTaskKind) return false;
