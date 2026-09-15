@@ -5,6 +5,11 @@ on:
     workflows:
       - Quality · CI gate
       - Blender setup · smoke
+      - Home Matthias · Blender canonical art
+      - Chronicles party · Blender canonical art
+      - Pawn Slug · Blender canonical art
+      - Pawn Slug · Enemy Blender canonical art
+      - Pawn Slug · POW Blender canonical art
     types:
       - completed
 
@@ -52,11 +57,58 @@ jobs:
           head_sha="$(jq -r '.head.sha' <<<"$pr_json")"
           pr_url="$(jq -r '.html_url' <<<"$pr_json")"
 
-          blender_required=false
+          declare -A required=()
+          declare -A labels=(
+            [cicd.yml]='Quality'
+            [blender-setup-smoke.yml]='Blender setup'
+            [home-matthias-blender-art.yml]='Home art'
+            [chronicles-party-blender-art.yml]='Chronicles art'
+            [pawn-slug-blender-art.yml]='Pawn Slug Matthias art'
+            [pawn-slug-enemy-blender-art.yml]='Pawn Slug enemy art'
+            [pawn-slug-pow-blender-art.yml]='Pawn Slug POW art'
+          )
+          ordered_workflows=(
+            cicd.yml
+            blender-setup-smoke.yml
+            home-matthias-blender-art.yml
+            chronicles-party-blender-art.yml
+            pawn-slug-blender-art.yml
+            pawn-slug-enemy-blender-art.yml
+            pawn-slug-pow-blender-art.yml
+          )
+
+          # Quality is always required. Specialized art lanes are required only
+          # when the PR diff matches the same source surface that starts them.
+          required[cicd.yml]=1
           while IFS= read -r path; do
             case "$path" in
               .github/actions/setup-blender-canonical/*|scripts/blender/blender_setup_smoke.py|.github/workflows/blender-setup-smoke.yml)
-                blender_required=true
+                required[blender-setup-smoke.yml]=1
+                ;;
+            esac
+            case "$path" in
+              scripts/blender/build_home_matthias.py|scripts/blender/home_matthias_parts.py|scripts/blender/home_matthias_animations.py|scripts/blender/home_matthias_contract.py|scripts/blender/validate_home_matthias_contract.py|.github/workflows/home-matthias-blender-art.yml)
+                required[home-matthias-blender-art.yml]=1
+                ;;
+            esac
+            case "$path" in
+              scripts/blender/build_chronicles_humanoid_party.py|scripts/blender/render_chronicles_party_preview.py|.github/workflows/chronicles-party-blender-art.yml)
+                required[chronicles-party-blender-art.yml]=1
+                ;;
+            esac
+            case "$path" in
+              scripts/blender/render_pawn_slug_matthias_premium.py|scripts/blender/pawn_slug_matthias_premium_common.py|scripts/blender/pawn_slug_matthias_premium_weapons.py|scripts/blender/pawn_slug_matthias_premium_character.py|.github/workflows/pawn-slug-blender-art.yml)
+                required[pawn-slug-blender-art.yml]=1
+                ;;
+            esac
+            case "$path" in
+              scripts/blender/render_pawn_slug_enemy_sheets_v1.py|.github/workflows/pawn-slug-enemy-blender-art.yml)
+                required[pawn-slug-enemy-blender-art.yml]=1
+                ;;
+            esac
+            case "$path" in
+              scripts/blender/build_pawn_slug_pows_v2.py|.github/workflows/pawn-slug-pow-blender-art.yml)
+                required[pawn-slug-pow-blender-art.yml]=1
                 ;;
             esac
           done < <(gh api --paginate "repos/${repo}/pulls/${pr_number}/files?per_page=100" --jq '.[].filename')
@@ -67,51 +119,48 @@ jobs:
               --jq '.workflow_runs | sort_by([.run_number, .run_attempt]) | last // {}'
           }
 
-          quality_json="$(latest_run 'cicd.yml')"
-          quality_status="$(jq -r '.status // "missing"' <<<"$quality_json")"
-          quality_conclusion="$(jq -r '.conclusion // ""' <<<"$quality_json")"
-          quality_url="$(jq -r '.html_url // empty' <<<"$quality_json")"
+          waiting=()
+          failed=()
+          passed=()
+          failure_url=''
 
-          blender_status='not-required'
-          blender_conclusion=''
-          blender_url=''
-          if [[ "$blender_required" == 'true' ]]; then
-            blender_json="$(latest_run 'blender-setup-smoke.yml')"
-            blender_status="$(jq -r '.status // "missing"' <<<"$blender_json")"
-            blender_conclusion="$(jq -r '.conclusion // ""' <<<"$blender_json")"
-            blender_url="$(jq -r '.html_url // empty' <<<"$blender_json")"
-          fi
+          for workflow in "${ordered_workflows[@]}"; do
+            [[ -n "${required[$workflow]:-}" ]] || continue
 
-          state='pending'
-          description='Waiting for Quality · CI gate'
-          target_url="${quality_url:-$pr_url}"
+            run_json="$(latest_run "$workflow")"
+            status="$(jq -r '.status // "missing"' <<<"$run_json")"
+            conclusion="$(jq -r '.conclusion // ""' <<<"$run_json")"
+            run_url="$(jq -r '.html_url // empty' <<<"$run_json")"
+            label="${labels[$workflow]}"
 
-          if [[ "$quality_status" == 'completed' ]]; then
-            if [[ "$quality_conclusion" != 'success' ]]; then
-              state='failure'
-              description="Quality · CI gate failed (${quality_conclusion:-unknown})"
-            elif [[ "$blender_required" != 'true' ]]; then
-              state='success'
-              description='Required checks passed · Quality'
-              target_url="$pr_url"
-            elif [[ "$blender_status" == 'completed' ]]; then
-              if [[ "$blender_conclusion" == 'success' ]]; then
-                state='success'
-                description='Required checks passed · Quality + Blender smoke'
-                target_url="$pr_url"
-              else
-                state='failure'
-                description="Blender setup smoke failed (${blender_conclusion:-unknown})"
-                target_url="${blender_url:-$pr_url}"
-              fi
+            echo "Required lane · ${label}: ${status}/${conclusion:-n/a}"
+            if [[ "$status" != 'completed' ]]; then
+              waiting+=("$label")
+            elif [[ "$conclusion" != 'success' ]]; then
+              failed+=("${label} (${conclusion:-unknown})")
+              [[ -n "$failure_url" ]] || failure_url="$run_url"
             else
-              state='pending'
-              description='Waiting for Blender setup smoke'
-              target_url="${blender_url:-$pr_url}"
+              passed+=("$label")
             fi
+          done
+
+          state='success'
+          description="Required checks passed · ${#passed[@]} scoped lane(s)"
+          target_url="$pr_url"
+
+          if (( ${#failed[@]} > 0 )); then
+            state='failure'
+            description="Failed: $(IFS=', '; echo "${failed[*]}")"
+            target_url="${failure_url:-$pr_url}"
+          elif (( ${#waiting[@]} > 0 )); then
+            state='pending'
+            description="Waiting: $(IFS=', '; echo "${waiting[*]}")"
           fi
 
-          echo "PR #${pr_number} (${pr_state}) · Quality=${quality_status}/${quality_conclusion:-n/a} · Blender required=${blender_required} ${blender_status}/${blender_conclusion:-n/a}"
+          # GitHub commit-status descriptions are bounded; keep the useful prefix.
+          description="${description:0:140}"
+
+          echo "PR #${pr_number} (${pr_state}) · required=${!required[*]}"
           echo "Publishing ${state}: ${description}"
 
           gh api --method POST "repos/${repo}/statuses/${head_sha}" \
