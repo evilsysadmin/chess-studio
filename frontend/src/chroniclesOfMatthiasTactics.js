@@ -32,6 +32,10 @@ const CLASS_PROFILES = Object.freeze({
     attackPattern: 'adjacent',
     reach: 1,
     damage: 2,
+    abilityName: 'Ruptura teutona',
+    abilityKind: 'burst',
+    abilityLabel: 'golpe de ejecución',
+    abilityDamage: 4,
   }),
   rook: Object.freeze({
     className: 'Guardiana',
@@ -42,6 +46,10 @@ const CLASS_PROFILES = Object.freeze({
     attackPattern: 'orthogonal',
     reach: 2,
     damage: 2,
+    abilityName: 'Martillo de asedio',
+    abilityKind: 'burst',
+    abilityLabel: 'impacto pesado',
+    abilityDamage: 4,
   }),
   bishop: Object.freeze({
     className: 'Taumaturgo',
@@ -52,6 +60,10 @@ const CLASS_PROFILES = Object.freeze({
     attackPattern: 'diagonal',
     reach: 4,
     damage: 2,
+    abilityName: 'Luz del farol',
+    abilityKind: 'heal',
+    abilityLabel: 'conjuro de apoyo',
+    abilityHeal: 2,
   }),
   knight: Object.freeze({
     className: 'Hostigador',
@@ -62,6 +74,11 @@ const CLASS_PROFILES = Object.freeze({
     attackPattern: 'line',
     reach: 3,
     damage: 1,
+    abilityName: 'Salva de virotes',
+    abilityKind: 'volley',
+    abilityLabel: 'salva a distancia',
+    abilityDamage: 2,
+    abilityMaxTargets: 2,
   }),
 });
 
@@ -74,6 +91,10 @@ const FALLBACK_PROFILE = Object.freeze({
   attackPattern: 'adjacent',
   reach: 1,
   damage: 1,
+  abilityName: 'Recurso desesperado',
+  abilityKind: 'burst',
+  abilityLabel: 'maniobra',
+  abilityDamage: 2,
 });
 
 export function chroniclesTacticsProfile(memberId) {
@@ -171,6 +192,20 @@ function rewardEnemyDefeat(state, enemy, attacker) {
 
 function actionAllowed(state) {
   return Boolean(state && state.turnPhase !== 'enemy' && state.phase !== 'defeated' && state.phase !== 'escaped');
+}
+
+function abilityCharges(state, memberId) {
+  return Math.max(0, Number(state?.classAbilityCharges?.[memberId] ?? 1));
+}
+
+function consumeAbilityCharge(state, memberId) {
+  return {
+    ...state,
+    classAbilityCharges: {
+      ...(state.classAbilityCharges || {}),
+      [memberId]: 0,
+    },
+  };
 }
 
 function adjacentExit(state) {
@@ -305,6 +340,81 @@ export function chroniclesTacticsTargets(state, memberId) {
       }];
     })
     .sort((left, right) => left.distance - right.distance || left.enemyId.localeCompare(right.enemyId));
+}
+
+export function chroniclesTacticsAbilityStatus(state, memberId) {
+  const profile = chroniclesTacticsProfile(memberId);
+  const member = memberFor(state, memberId);
+  const charges = abilityCharges(state, memberId);
+  if (!actionAllowed(state) || !member || member.hp <= 0) {
+    return { ready: false, charges, abilityName: profile.abilityName, reason: 'No disponible' };
+  }
+  if (charges <= 0) {
+    return { ready: false, charges, abilityName: profile.abilityName, reason: 'Agotada' };
+  }
+  if (profile.abilityKind === 'heal') {
+    const wounded = state.party.some((candidate) => candidate.hp > 0 && candidate.hp < candidate.maxHp);
+    return {
+      ready: wounded,
+      charges,
+      abilityName: profile.abilityName,
+      reason: wounded ? '' : 'Nadie necesita curación',
+    };
+  }
+  const targets = chroniclesTacticsTargets(state, memberId);
+  return {
+    ready: targets.length > 0,
+    charges,
+    abilityName: profile.abilityName,
+    reason: targets.length > 0 ? '' : 'Sin objetivo válido',
+  };
+}
+
+export function chroniclesTacticsAbility(state, memberId) {
+  const status = chroniclesTacticsAbilityStatus(state, memberId);
+  if (!status.ready) return state;
+  const profile = chroniclesTacticsProfile(memberId);
+  const attacker = memberFor(state, memberId);
+  if (!attacker) return state;
+  const turns = Number(state.turns || 0) + 1;
+
+  if (profile.abilityKind === 'heal') {
+    const healedParty = state.party.map((member) => (
+      member.hp > 0
+        ? { ...member, hp: Math.min(member.maxHp, member.hp + Math.max(1, Number(profile.abilityHeal || 1))) }
+        : member
+    ));
+    return consumeAbilityCharge({
+      ...state,
+      party: healedParty,
+      turns,
+      message: `${attacker.name} invoca ${profile.abilityName}. El farol recompone a los supervivientes con una luz que parece cara.`,
+    }, memberId);
+  }
+
+  const targets = chroniclesTacticsTargets(state, memberId);
+  const selectedTargets = profile.abilityKind === 'volley'
+    ? targets.slice(0, Math.max(1, Number(profile.abilityMaxTargets || 1)))
+    : targets.slice(0, 1);
+  let next = { ...state, turns };
+  const hitNames = [];
+
+  selectedTargets.forEach((target) => {
+    const enemy = chroniclesActiveEnemies(next).find((candidate) => candidate.id === target.enemyId);
+    if (!enemy) return;
+    const damage = Math.max(1, Number(profile.abilityDamage || profile.damage || 1));
+    const nextHp = Math.max(0, Number(next[enemy.hpKey] || 0) - damage);
+    next = { ...next, [enemy.hpKey]: nextHp };
+    hitNames.push(enemy.name);
+    if (nextHp === 0) next = rewardEnemyDefeat(next, enemy, attacker);
+  });
+
+  if (!hitNames.length) return state;
+  next = {
+    ...next,
+    message: `${attacker.name} desata ${profile.abilityName.toLowerCase()} contra ${hitNames.join(' y ')}. La sutileza queda para otra expedición.`,
+  };
+  return consumeAbilityCharge(next, memberId);
 }
 
 export function chroniclesTacticsMove(state, destination) {
