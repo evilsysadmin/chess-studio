@@ -156,9 +156,8 @@ def _enable_core_e2e(scope: Scope, lanes: Iterable[str] = CORE_E2E_LANES) -> Non
 
 
 def _classifier_harness_scope() -> Scope:
-    scope = Scope.all()
-    for field_name in TARGETED_E2E.values():
-        setattr(scope, field_name, False)
+    scope = Scope()
+    _enable_core_e2e(scope, ("app-boot",))
     return scope
 
 
@@ -349,18 +348,18 @@ def self_test() -> None:
     assert classify(["Makefile"]) == Scope.all()
     assert classify(["scripts/pr_merge_diff.py"]) == Scope.all()
 
-    _expect_core([QUALITY_SCOPE_PATH], run_frontend=True, run_backend=True, run_security=True)
+    _expect_core([QUALITY_SCOPE_PATH], lanes=("app-boot",))
     classifier_matrix = json.loads(dict(line.split("=", 1) for line in classify([QUALITY_SCOPE_PATH]).lines())["core_e2e_matrix"])["lane"]
-    assert classifier_matrix == [
-        "regression-state", "regression-school", "learning-golden", "learning-observation", "smoke",
-    ]
+    assert classifier_matrix == ["app-boot"]
     _expect_core(
         [QUALITY_SCOPE_PATH, "frontend/src/components/Chesscom.jsx"],
+        lanes=("app-boot",),
         run_frontend=True,
-        run_backend=True,
-        run_security=True,
         run_chesscom_e2e=True,
     )
+    _expect_core([QUALITY_SCOPE_PATH, "backend-python/game_api.py"], lanes=("app-boot",), run_backend=True)
+    _expect_core([QUALITY_SCOPE_PATH, "Dockerfile"], lanes=("app-boot",), run_security=True)
+    _expect_core([QUALITY_SCOPE_PATH, "frontend/src/App.jsx"], run_frontend=True)
 
     try:
         classify(["../outside"])
@@ -369,7 +368,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · Matthias School usa regression-school; Combat/Home usan canarios propios; classifier harness conserva core fail-closed")
+    print("quality-scope self-test OK · classifier self-change usa app-boot y suma sólo las superficies reales del diff")
 
 
 def main() -> int:
