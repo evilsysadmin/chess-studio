@@ -46,9 +46,13 @@ import sys
 
 with open(sys.argv[1], encoding="utf-8") as fh:
     plan = json.load(fh)
-changes = plan.get("resource_changes", [])
+changes = [
+    item for item in plan.get("resource_changes", [])
+    if item.get("change", {}).get("actions") != ["no-op"]
+]
 if len(changes) != 1:
-    raise SystemExit(f"unexpected Floci drift: expected one resource change, got {len(changes)}")
+    summary = [(item.get("address"), item.get("change", {}).get("actions")) for item in changes]
+    raise SystemExit(f"unexpected Floci drift: effective changes={summary}")
 change = changes[0]
 delta = change.get("change", {})
 before = delta.get("before") or {}
