@@ -14,10 +14,10 @@ import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js'
 
 const CELL = 2.45;
 export const CHRONICLES_ISO_PARTY_LAYOUT = Object.freeze({
-  rook: Object.freeze({ x: -0.92, z: 0.22, scale: 1.02 }),
-  matthias: Object.freeze({ x: -0.26, z: 0.78, scale: 1.06 }),
-  bishop: Object.freeze({ x: 0.36, z: -0.2, scale: 1.0 }),
-  knight: Object.freeze({ x: 0.9, z: 0.34, scale: 1.03 }),
+  rook: Object.freeze({ x: -1.18, z: 0.18, scale: 1.02 }),
+  matthias: Object.freeze({ x: -0.32, z: 0.82, scale: 1.06 }),
+  bishop: Object.freeze({ x: 0.46, z: -0.28, scale: 1.0 }),
+  knight: Object.freeze({ x: 1.16, z: 0.26, scale: 1.03 }),
 });
 export const CHRONICLES_ISO_PARTY_FACING = -Math.PI * 0.75;
 
@@ -47,10 +47,19 @@ export function chroniclesIsometricCameraPose(focus = { x: 0, z: 0 }) {
   return {
     // Action-RPG framing: the company owns the foreground and the camera looks
     // over their backs into the room instead of surveying a tactical diorama.
-    position: new THREE.Vector3(focus.x + 3.75, 3.25, focus.z + 5.05),
-    target: new THREE.Vector3(focus.x - 0.82, 1.02, focus.z - 2.3),
+    position: new THREE.Vector3(focus.x + 4.12, 3.55, focus.z + 5.56),
+    target: new THREE.Vector3(focus.x - 0.9, 1.08, focus.z - 2.55),
     fov: 43,
   };
+}
+
+export function chroniclesIsometricFovForAspect(aspect, baseFov = 43) {
+  const safeBaseFov = Number.isFinite(baseFov) ? baseFov : 43;
+  if (!Number.isFinite(aspect) || aspect <= 0) return safeBaseFov;
+  if (aspect < 0.72) return safeBaseFov + 7;
+  if (aspect < 1) return safeBaseFov + 4.5;
+  if (aspect < 1.32) return safeBaseFov + 2.5;
+  return safeBaseFov;
 }
 
 export function chroniclesIsoInteractionForHit(interaction, hit) {
@@ -618,8 +627,7 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
     const height = Math.max(1, host.clientHeight || 1);
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
-    const portraitBoost = camera.aspect < 0.72 ? 7 : camera.aspect < 1 ? 3.5 : 0;
-    camera.fov = initialPose.fov + portraitBoost;
+    camera.fov = chroniclesIsometricFovForAspect(camera.aspect, initialPose.fov);
     camera.updateProjectionMatrix();
   }
 
