@@ -1,8 +1,10 @@
 import {
   AMBIENT_THEME_GROUPS,
   AMBIENT_THEME_OPTIONS,
+  AMBIENT_THEMES,
   CURATED_HIDDEN_THEME_IDS,
 } from './ambientCatalog.js';
+import { installIberianRecomposition } from './ambientIberianRecomposition.js';
 
 // Public curation is deliberately non-destructive: rejected songs stay defined
 // so old saves/references and future reworks remain valid, but they disappear
@@ -23,6 +25,11 @@ for (const group of AMBIENT_THEME_GROUPS) {
     if (CURATED_HIDDEN_THEME_IDS.has(group.themes[index]?.id)) group.themes.splice(index, 1);
   }
 }
+
+// Recompose the two Iberian pieces before the profile stack installs chord,
+// bass and production polish. Their difference now lives in the score itself,
+// not merely in a different drum kit or foreground instrument.
+installIberianRecomposition({ themes: AMBIENT_THEMES });
 
 // Las composiciones mediterráneas ya tienen armonía y timbres propios, pero
 // varias conservaban exactamente la misma rejilla de batería. Estas variaciones
