@@ -2,15 +2,16 @@
   position: relative;
   min-height: 228px;
   overflow: hidden;
-  border: 1px solid rgba(211, 161, 82, .32);
+  border: 1px solid rgba(211, 161, 82, .36);
   background:
-    radial-gradient(circle at 50% 18%, rgba(194, 132, 61, .27), transparent 43%),
-    radial-gradient(ellipse at 50% 105%, rgba(110, 69, 32, .2), transparent 42%),
-    linear-gradient(180deg, rgba(30, 22, 15, .94), rgba(8, 7, 6, .98));
+    radial-gradient(circle at 68% 18%, rgba(105, 128, 153, .09), transparent 34%),
+    radial-gradient(circle at 36% 19%, rgba(205, 143, 69, .25), transparent 42%),
+    radial-gradient(ellipse at 50% 104%, rgba(125, 76, 31, .25), transparent 44%),
+    linear-gradient(180deg, rgba(31, 23, 16, .95), rgba(7, 7, 7, .99));
   box-shadow:
-    inset 0 0 42px rgba(0, 0, 0, .4),
-    inset 0 1px 0 rgba(255, 229, 186, .04),
-    0 8px 24px rgba(0, 0, 0, .12);
+    inset 0 0 34px rgba(0, 0, 0, .35),
+    inset 0 1px 0 rgba(255, 229, 186, .065),
+    0 10px 28px rgba(0, 0, 0, .16);
 }
 .chronicles-party-preview::before {
   content: '';
@@ -18,21 +19,23 @@
   z-index: 2;
   inset: 7px;
   pointer-events: none;
-  border: 1px solid rgba(218, 173, 102, .13);
-  box-shadow: inset 0 0 26px rgba(0, 0, 0, .18);
+  border: 1px solid rgba(218, 173, 102, .16);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 230, 188, .045),
+    inset 0 0 22px rgba(0, 0, 0, .14);
 }
 .chronicles-party-preview::after {
   content: '';
   position: absolute;
   z-index: 1;
-  left: 14%;
-  right: 14%;
-  bottom: -8px;
-  height: 48px;
+  left: 17%;
+  right: 17%;
+  bottom: -2px;
+  height: 54px;
   pointer-events: none;
   border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(203, 130, 52, .16), transparent 66%);
-  filter: blur(7px);
+  background: radial-gradient(ellipse at center, rgba(226, 155, 70, .18) 0 17%, rgba(155, 94, 38, .12) 35%, transparent 69%);
+  filter: blur(6px);
 }
 .chronicles-party-preview-three,
 .chronicles-party-preview-three canvas {
@@ -44,30 +47,29 @@
 }
 .chronicles-party-preview-three {
   z-index: 0;
-  transform: translateY(-14px) scale(1.56);
-  transform-origin: 50% 37%;
-  filter: brightness(1.3) saturate(1.08) contrast(1.05);
+  transform: translateY(-12px) scale(1.48);
+  transform-origin: 50% 38%;
+  filter: brightness(1.16) saturate(1.04) contrast(1.07) drop-shadow(0 12px 11px rgba(0, 0, 0, .34));
   will-change: transform, filter;
 }
-/* Each expedition silhouette has different proportions. Keep the face/crown in
-   the clear portrait area instead of letting the dossier cover half the model. */
-.chronicles-party-preview-three[aria-label="Retrato 3D de Matthias"] { transform: translateY(-16px) scale(1.58); }
-.chronicles-party-preview-three[aria-label="Retrato 3D de Hildegard"] { transform: translateY(-12px) scale(1.48); }
-.chronicles-party-preview-three[aria-label="Retrato 3D de Aziz"] { transform: translateY(-15px) scale(1.48); }
-.chronicles-party-preview-three[aria-label="Retrato 3D de Morcilla"] { transform: translateY(-13px) scale(1.45); }
+/* Desktop keeps per-character framing where silhouette differences are visible. */
+.chronicles-party-preview-three[aria-label="Retrato 3D de Matthias"] { transform: translateY(-14px) scale(1.5); }
+.chronicles-party-preview-three[aria-label="Retrato 3D de Hildegard"] { transform: translateY(-10px) scale(1.42); }
+.chronicles-party-preview-three[aria-label="Retrato 3D de Aziz"] { transform: translateY(-13px) scale(1.43); }
+.chronicles-party-preview-three[aria-label="Retrato 3D de Morcilla"] { transform: translateY(-11px) scale(1.4); }
 .chronicles-party-preview-copy {
   position: absolute;
   inset: auto 8px 7px;
   z-index: 3;
   pointer-events: none;
   padding: 7px 9px;
-  border: 1px solid rgba(214, 170, 99, .22);
-  border-left-color: rgba(226, 181, 108, .44);
+  border: 1px solid rgba(214, 170, 99, .24);
+  border-left-color: rgba(232, 190, 120, .5);
   background:
-    linear-gradient(90deg, rgba(18, 13, 9, .93), rgba(8, 7, 6, .57)),
-    rgba(8, 7, 6, .7);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .2), inset 0 1px 0 rgba(255, 237, 205, .025);
-  backdrop-filter: blur(5px);
+    linear-gradient(90deg, rgba(17, 13, 10, .9), rgba(8, 7, 6, .48)),
+    rgba(8, 7, 6, .62);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .18), inset 0 1px 0 rgba(255, 237, 205, .035);
+  backdrop-filter: blur(4px);
 }
 .chronicles-party-preview-copy span,
 .chronicles-party-preview-copy small {
@@ -87,12 +89,8 @@
 .chronicles-party-preview-copy span { text-transform: uppercase; }
 .chronicles-party-preview-copy small { letter-spacing: .02em; color: #baaa93; }
 
-/* The Three.js lighting now carries the mood. Keep the optical frame cinematic
-   without crushing the newly-readable masonry back into black, especially on
-   narrow touch layouts where the old vignette covered a large share of canvas. */
-.chronicles-three canvas {
-  filter: brightness(1.11) saturate(1.06) contrast(1.015);
-}
+/* The Three.js lighting now carries the mood without crushing dungeon detail. */
+.chronicles-three canvas { filter: brightness(1.11) saturate(1.06) contrast(1.015); }
 .chronicles-stage {
   box-shadow:
     inset 0 0 0 1px rgba(202, 159, 94, .24),
@@ -119,13 +117,10 @@
   }
   .chronicles-party-preview::before { inset: 5px; }
   .chronicles-party-preview-three {
-    transform: translateY(-7px) scale(1.34);
-    transform-origin: 50% 36%;
+    transform: translateY(-6px) scale(1.27);
+    transform-origin: 50% 37%;
+    filter: brightness(1.17) saturate(1.035) contrast(1.055) drop-shadow(0 8px 8px rgba(0, 0, 0, .3));
   }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Matthias"] { transform: translateY(-8px) scale(1.36); }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Hildegard"] { transform: translateY(-6px) scale(1.29); }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Aziz"] { transform: translateY(-7px) scale(1.29); }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Morcilla"] { transform: translateY(-6px) scale(1.27); }
   .chronicles-party-preview-copy {
     inset: auto 6px 5px;
     width: max-content;
@@ -139,14 +134,8 @@
 
 @media (max-width: 520px) {
   .chronicles-party-preview { min-height: 124px; }
-  .chronicles-party-preview-three { transform: translateY(-5px) scale(1.24); }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Matthias"] { transform: translateY(-6px) scale(1.26); }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Hildegard"] { transform: translateY(-4px) scale(1.2); }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Aziz"] { transform: translateY(-5px) scale(1.2); }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Morcilla"] { transform: translateY(-4px) scale(1.18); }
-  .chronicles-three canvas {
-    filter: brightness(1.14) saturate(1.05) contrast(1.01);
-  }
+  .chronicles-party-preview-three { transform: translateY(-4px) scale(1.18); }
+  .chronicles-three canvas { filter: brightness(1.14) saturate(1.05) contrast(1.01); }
   .chronicles-stage {
     box-shadow:
       inset 0 0 0 1px rgba(202, 159, 94, .24),
