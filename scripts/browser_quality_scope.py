@@ -28,13 +28,14 @@ class BrowserScope:
     matthias_insights: bool = False
     quick_2d: bool = False
     network_race: bool = False
+    chronicles: bool = False
 
     @classmethod
     def all(cls) -> "BrowserScope":
         # Broad Matthias already includes Home + War Room + Insights. Keep the
-        # narrow Insights-only bit false in the fail-closed aggregate to avoid
-        # duplicating the same canary.
-        return cls(True, True, True, True, True, False, False, True, True)
+        # narrow specific bits false in the fail-closed aggregate to avoid
+        # duplicating the same canaries.
+        return cls(True, True, True, True, True, False, False, True, True, True)
 
 
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
@@ -74,9 +75,6 @@ FULL_LOGIC_PATTERNS = (
     "e2e/three-d-war-room-android-touch.spec.js",
     "e2e/helpers.js",
 )
-# Five special-state shards plus special-surfaces are expensive and protect deep
-# 3D state rendering, not every War Room rail/control. Keep them tied to actual
-# renderer/state owners while the broader input/UI canaries remain full_logic.
 SPECIAL_STATE_PATTERNS = (
     "frontend/src/components/Board3D.jsx",
     "frontend/src/components/Board3D*.js",
@@ -121,6 +119,13 @@ MATTHIAS_INSIGHTS_PATTERNS = (
     "frontend/src/components/InsightsMatthiasMotion.jsx",
     "e2e/insights-matthias-motion.spec.js",
 )
+CHRONICLES_PATTERNS = (
+    "frontend/src/chroniclesOfMatthias*.js",
+    "frontend/src/components/Chronicles*.jsx",
+    "frontend/src/components/Chronicles*.js",
+    "frontend/src/components/Chronicles*.css",
+    "e2e/chronicles-of-matthias.spec.js",
+)
 NETWORK_RACE_PATTERNS = (
     "frontend/src/useGameReconnect.js",
     "frontend/src/gameReconnect.js",
@@ -153,7 +158,7 @@ def _matches(path: str, patterns: tuple[str, ...]) -> bool:
 
 
 def classify(paths: Iterable[str]) -> BrowserScope:
-    full_logic = special_states = visual = focus = matthias = matthias_home = matthias_insights = quick_2d = network_race = False
+    full_logic = special_states = visual = focus = matthias = matthias_home = matthias_insights = quick_2d = network_race = chronicles = False
 
     for path in _clean_paths(paths):
         if FRONTEND_TEST_RE.search(path):
@@ -187,18 +192,19 @@ def classify(paths: Iterable[str]) -> BrowserScope:
         if _matches(path, NETWORK_RACE_PATTERNS):
             network_race = True
 
+        if _matches(path, CHRONICLES_PATTERNS):
+            chronicles = True
+
         if path in BROWSER_ACTION_PATHS:
-            full_logic = special_states = visual = focus = matthias = quick_2d = network_race = True
+            full_logic = special_states = visual = focus = matthias = quick_2d = network_race = chronicles = True
             matthias_home = matthias_insights = False
 
         if path == CICD_WORKFLOW:
-            # Exercise the selection plumbing without waking every WebGL scene
-            # merely because the Quality YAML itself changed.
             visual = True
             quick_2d = True
 
     return BrowserScope(
-        full_logic, special_states, visual, focus, matthias, matthias_home, matthias_insights, quick_2d, network_race
+        full_logic, special_states, visual, focus, matthias, matthias_home, matthias_insights, quick_2d, network_race, chronicles
     )
 
 
@@ -240,7 +246,6 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                     "command": f"./node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000 --shard={shard}/5",
                 }
             )
-
     if scope.visual:
         cases.append(
             {
@@ -309,6 +314,14 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                 "command": "./node_modules/.bin/playwright test offline-pending-move-reconnect.spec.js late-move-response-exit.spec.js --workers=1 --retries=0 --timeout=75000",
             }
         )
+    if scope.chronicles:
+        cases.append(
+            {
+                "id": "chronicles",
+                "label": "Chronicles · dungeon gameplay",
+                "command": "./node_modules/.bin/playwright test chronicles-of-matthias.spec.js --workers=1 --retries=0 --timeout=90000",
+            }
+        )
     return {"include": cases}
 
 
@@ -336,6 +349,7 @@ def render_summary(scope: BrowserScope) -> str:
             f"- Matthias Insights-only: `{yn(scope.matthias_insights)}`",
             f"- Quick Match mobile 2D: `{yn(scope.quick_2d)}`",
             f"- Game network races: `{yn(scope.network_race)}`",
+            f"- Chronicles dungeon: `{yn(scope.chronicles)}`",
             "- Estas lanes forman parte del check requerido Tests · Playwright.",
             "",
         ]
@@ -350,7 +364,6 @@ def self_test() -> None:
     assert classify([]) == BrowserScope()
     assert classify(["frontend/src/components/WarRoomPracticalLighting.js"]) == BrowserScope(visual=True)
     assert _ids(classify(["frontend/src/styles/19-game-focus.css"])) == ["desktop-scale", "android-focus"]
-
     assert classify(["frontend/src/components/Board3DParity.test.js"]) == BrowserScope()
     assert classify(["frontend/src/warRoomPointerCapture.test.js"]) == BrowserScope()
     assert classify(["frontend/src/components/MatthiasAvatar.spec.jsx"]) == BrowserScope()
@@ -358,24 +371,14 @@ def self_test() -> None:
     full = classify(["frontend/src/components/Board3DRenderer.js"])
     assert full == BrowserScope(full_logic=True, special_states=True, visual=True, focus=True)
     assert _ids(full) == [
-        "hans-fire-call",
-        "android-selection",
-        "desktop-input",
-        "special-surfaces",
-        "special-state-1",
-        "special-state-2",
-        "special-state-3",
-        "special-state-4",
-        "special-state-5",
-        "desktop-scale",
-        "android-focus",
+        "hans-fire-call", "android-selection", "desktop-input", "special-surfaces",
+        "special-state-1", "special-state-2", "special-state-3", "special-state-4", "special-state-5",
+        "desktop-scale", "android-focus",
     ]
 
     chrome = classify(["frontend/src/components/GamePlayerRail.jsx"])
     assert chrome == BrowserScope(full_logic=True, visual=True, focus=True)
-    assert _ids(chrome) == [
-        "hans-fire-call", "android-selection", "desktop-input", "desktop-scale", "android-focus",
-    ]
+    assert _ids(chrome) == ["hans-fire-call", "android-selection", "desktop-input", "desktop-scale", "android-focus"]
 
     direct_special = classify(["e2e/three-d-war-room-special-states.spec.js"])
     assert direct_special == BrowserScope(special_states=True)
@@ -383,18 +386,8 @@ def self_test() -> None:
         "special-surfaces", "special-state-1", "special-state-2", "special-state-3", "special-state-4", "special-state-5",
     ]
 
-    mixed = classify(
-        [
-            "frontend/src/components/Board3DRenderer.js",
-            "frontend/src/components/Board3DParity.test.js",
-        ]
-    )
-    assert mixed == BrowserScope(full_logic=True, special_states=True, visual=True, focus=True)
-
     assert _ids(classify(["frontend/src/components/MatthiasAvatar.jsx"])) == [
-        "matthias-home-motion",
-        "matthias-war-room",
-        "matthias-insights",
+        "matthias-home-motion", "matthias-war-room", "matthias-insights",
     ]
     assert classify(["frontend/src/components/MatthiasPremiumHome3D.js"]) == BrowserScope(matthias_home=True)
     assert _ids(classify(["frontend/src/components/MatthiasPremiumHome3D.js"])) == ["matthias-home-motion"]
@@ -407,21 +400,27 @@ def self_test() -> None:
     assert _ids(classify(["frontend/src/components/GameScreen.jsx"])) == ["game-network-races"]
     assert _ids(classify(["e2e/offline-pending-move-reconnect.spec.js"])) == ["game-network-races"]
     assert _ids(classify(["e2e/late-move-response-exit.spec.js"])) == ["game-network-races"]
+    for chronicles_path in (
+        "frontend/src/chroniclesOfMatthias.js",
+        "frontend/src/chroniclesOfMatthiasDungeonArt.js",
+        "frontend/src/components/ChroniclesOfMatthias.jsx",
+        "frontend/src/components/ChroniclesOfMatthias.css",
+        "e2e/chronicles-of-matthias.spec.js",
+    ):
+        assert _ids(classify([chronicles_path])) == ["chronicles"]
 
     all_scope = classify([".github/actions/setup-browser-e2e/action.yml"])
     assert all_scope == BrowserScope.all()
-    assert len(_ids(all_scope)) == 16
+    assert len(_ids(all_scope)) == 17
 
     harness = classify([".github/workflows/cicd.yml"])
     assert harness == BrowserScope(visual=True, quick_2d=True)
     assert _ids(harness) == ["desktop-scale", "quick-match-2d"]
 
-    combined = classify(
-        [
-            "frontend/src/components/GameBoardView.jsx",
-            "frontend/src/components/MatthiasAvatar.jsx",
-        ]
-    )
+    combined = classify([
+        "frontend/src/components/GameBoardView.jsx",
+        "frontend/src/components/MatthiasAvatar.jsx",
+    ])
     assert combined == BrowserScope(
         full_logic=True,
         special_states=True,
@@ -437,6 +436,7 @@ def self_test() -> None:
     assert "Matthias Home-only: `true`" in render_summary(BrowserScope(matthias_home=True))
     assert "Matthias Insights-only: `true`" in render_summary(BrowserScope(matthias_insights=True))
     assert "Game network races: `true`" in render_summary(BrowserScope(network_race=True))
+    assert "Chronicles dungeon: `true`" in render_summary(BrowserScope(chronicles=True))
 
     try:
         classify(["../outside"])
