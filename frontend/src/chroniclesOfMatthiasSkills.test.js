@@ -119,7 +119,7 @@ describe('Chronicles Tactics · class doctrine skills', () => {
     expect(chroniclesTacticsAttack(geometry, 'bishop', 'corrupted-pawn').enemyHp).toBe(3);
   });
 
-  it('makes Morcilla choose between heavier bolts and an extra volley charge', () => {
+  it('makes Faust choose between heavier bolts and an extra volley charge', () => {
     const heavy = tacticsState(withSkill('knight', 'knight-heavy-bolts'));
     expect(chroniclesTacticsAttack(heavy, 'knight', 'corrupted-pawn').enemyHp).toBe(4);
 
