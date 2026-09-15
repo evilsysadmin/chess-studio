@@ -1,7 +1,7 @@
 import { getEffectiveReducedMotion } from '../userPreferences.js';
-import { applyWarRoomCatAmbient, installWarRoomCatAmbient } from './WarRoomCatAmbient.js';
+import { ensureWarRoomCat } from './WarRoomCatDecor.js';
 
-export const WAR_ROOM_AMBIENT_LIFE_VERSION = 'curtain-fire-breath-cat-v3-cached';
+export const WAR_ROOM_AMBIENT_LIFE_VERSION = 'curtain-fire-breath-cat-v4-permanent';
 
 const WARM_EMISSIVE = 0x43130a;
 const AMBIENT_LIFE_HOT_PATH_VERSION = 'direct-args-options-reuse-v1';
@@ -113,8 +113,6 @@ export function applyWarRoomAmbientLife(root, {
     }
   }
 
-  applyWarRoomCatAmbient(root, { now, reducedMotion });
-
   root.userData ||= {};
   root.userData.warRoomAmbientLifeVersion = WAR_ROOM_AMBIENT_LIFE_VERSION;
   return state.foldEntries.length;
@@ -122,9 +120,16 @@ export function applyWarRoomAmbientLife(root, {
 
 export function installWarRoomAmbientLife(group, {
   coarsePointer = false,
-  catRandom = Math.random,
 } = {}) {
-  if (!group || coarsePointer) return 0;
+  if (!group) return 0;
+
+  // The cat is permanent room dressing, not a random Hans/desktop event. Install it
+  // before the coarse-pointer early return so Android and desktop own the same actor.
+  // It is sofa-parented by WarRoomCatDecor, so later responsive furniture relayouts
+  // move the cat together with its sofa.
+  ensureWarRoomCat(group);
+
+  if (coarsePointer) return 0;
   // Continuous animation belongs on the floor/castle animation chain. Keeping
   // it off the side wall lets static room-layout work retire after first paint.
   const driver = group.getObjectByName?.('war-room-castle-floor-slab')
@@ -135,10 +140,6 @@ export function installWarRoomAmbientLife(group, {
   // the complete War Room graph on every ambient heartbeat just to rediscover the
   // same curtain folds and materials.
   buildAmbientLifeState(group);
-
-  // The cat makes one appearance/routine decision per mounted War Room. It then
-  // shares this existing heartbeat instead of owning another render loop.
-  installWarRoomCatAmbient(group, { random: catRandom, now: nowMs() });
 
   driver.userData.warRoomAmbientLifeDriver = WAR_ROOM_AMBIENT_LIFE_VERSION;
   driver.userData.warRoomAmbientLifeHotPath = AMBIENT_LIFE_HOT_PATH_VERSION;
