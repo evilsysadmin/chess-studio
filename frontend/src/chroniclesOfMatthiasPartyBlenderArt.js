@@ -3,7 +3,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { installChroniclesPartyFallbackDetails } from './chroniclesOfMatthiasBlenderArt.js';
 
 export const CHRONICLES_TACTICS_PARTY_MODEL_PATH = 'models/chronicles-tactics-party.glb';
-export const CHRONICLES_TACTICS_PARTY_ASSET_VERSION = 'chronicles-tactics-party-v3';
+export const CHRONICLES_TACTICS_PARTY_ASSET_VERSION = 'chronicles-tactics-party-v4';
 export const CHRONICLES_TACTICS_PARTY_MEMBERS = Object.freeze(['rook', 'bishop', 'knight']);
 
 const PARTY_MODEL_URL = `${import.meta.env.BASE_URL}${CHRONICLES_TACTICS_PARTY_MODEL_PATH}`;
