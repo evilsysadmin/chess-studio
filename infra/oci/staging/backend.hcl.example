@@ -1,0 +1,4 @@
+bucket    = "chess-studio-tfstate"
+namespace = "replace-with-object-storage-namespace"
+key       = "chess-studio/staging/terraform.tfstate"
+region    = "eu-frankfurt-1"

@@ -1,0 +1,6 @@
+tenancy_ocid = "ocid1.tenancy.oc1..replace-me"
+region       = "eu-frankfurt-1"
+
+infra_compartment_name   = "chess-studio-infra"
+staging_compartment_name = "chess-studio-staging"
+state_bucket_name        = "chess-studio-tfstate"

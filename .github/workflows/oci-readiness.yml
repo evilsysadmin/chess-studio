@@ -66,11 +66,8 @@ jobs:
         with:
           terraform_version: 1.16.0
           terraform_wrapper: false
-      - run: terraform -chdir=infra/oci fmt -check -diff -recursive
-      - run: terraform -chdir=infra/oci init -backend=false
-      - run: terraform -chdir=infra/oci validate -no-color
-      - run: terraform -chdir=infra/oci test -no-color
+      - run: bash scripts/oci_terraform_static.sh
       - name: Secret-surface guard
         run: |
-          ! grep -REn '(MONGO_URL|JWT_SECRET|RESEND_API_KEY|OTLP.*TOKEN|cloudflare_tunnel_token|private_key[[:space:]]*=)' infra/oci --include='*.tf' --include='*.tfvars' --include='*.tftpl' --exclude-dir=test-fixtures
+          ! grep -REn '(MONGO_URL|JWT_SECRET|RESEND_API_KEY|OTLP.*TOKEN|cloudflare_tunnel_token|private_key[[:space:]]*=)' infra/oci --include='*.tf' --include='*.tfvars' --include='*.tftpl'
       - run: bash scripts/oci_floci_smoke.sh

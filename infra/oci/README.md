@@ -1,44 +1,49 @@
-# OCI staging/lab · preparación
+# OCI staging/lab
 
-OCI es un **staging/laboratorio experimental**. Producción permanece en Render.
+**Producción sigue en Render. OCI es staging/laboratorio experimental.**
 
-Este módulo mantiene la VM A1 reproducible y deliberadamente reemplazable: VCN/subnet, ingress cerrado
-por defecto, Ampere A1 ARM64 y cloud-init para construir el backend desde un SHA inmutable ya admitido
-por CI. Mongo y los secretos de aplicación quedan fuera de Terraform.
+La infraestructura OCI se divide en dos estados deliberadamente pequeños:
 
-## Contrato de seguridad
+- `bootstrap/`: seed Terraform que crea los compartments de infraestructura/staging y el bucket Object Storage versionado para tfstate.
+- `staging/`: VCN + subnet + Ampere A1 ARM64 + cloud-init. Usa el backend `oci` remoto y locking nativo de Object Storage.
+- `tests/` viven junto al stack que protegen.
+- Floci ejecuta el `bootstrap/` real contra IAM + Object Storage en CI; Compute/VCN se cubren con `terraform test` hasta llegar a OCI real.
 
-- `VM.Standard.A1.Flex` únicamente, con límites conservadores de OCPU/RAM/boot volume.
-- cero ingress por defecto; SSH a `0.0.0.0/0` está rechazado.
-- `repo_ref` debe ser un SHA Git completo de 40 caracteres, nunca `main`.
-- FastAPI sólo escucha en `127.0.0.1:4000` en el host.
-- ningún secreto de aplicación ni private key entra en Terraform state.
-- Frankfurt (`eu-frankfurt-1`) es el objetivo; AD e image OCID siguen siendo explícitos para poder
-  cambiar de AD cuando no exista capacidad A1.
+## Orden de bootstrap real
 
-## Validación sin OCI real
-
-`OCI readiness` ejecuta tres niveles sin credenciales Oracle:
-
-1. `terraform fmt`, `init -backend=false` y `validate`;
-2. `terraform test` con `mock_provider "oci"` para los contratos A1/ingress/SHA;
-3. `floci-oci` para un apply → plan sin drift → destroy real del provider oficial sobre IAM +
-   Object Storage.
-
-floci-oci no emula Compute ni VCN actualmente; esos recursos quedan cubiertos por `terraform test`
-hasta el plan/apply autenticado contra OCI real.
-
-## Uso real
+El seed de `bootstrap/` usa state local **sólo durante el primer apply**, porque el bucket remoto todavía no existe. Ese state no se comparte, no se commitea y no se reutiliza como estado operativo.
 
 ```bash
-cd infra/oci
+cd infra/oci/bootstrap
 cp terraform.tfvars.example terraform.tfvars
-$EDITOR terraform.tfvars
 terraform init
+terraform plan
+terraform apply
+terraform output
+```
+
+Con los outputs `state_bucket`, `object_storage_namespace` y `staging_compartment_ocid`, se inicializa `staging/`:
+
+```bash
+cd ../staging
+cp backend.hcl.example backend.hcl
+cp terraform.tfvars.example terraform.tfvars
+# completar backend.hcl + terraform.tfvars
+terraform init -backend-config=backend.hcl
 terraform plan
 ```
 
-La autenticación OCI vive fuera de Terraform (config/env/GitHub secret). Tras crear la API signing key
-inicial, la meta operativa es no necesitar la consola OCI para el día a día.
+El siguiente slice automatiza la migración del propio state seed de `bootstrap/` al mismo backend OCI. Hasta entonces **no se ejecuta apply real del bootstrap desde CI**.
 
-No hay cutover de producción implícito: **Render = prod; OCI = staging/lab**.
+## Contratos
+
+- Frankfurt (`eu-frankfurt-1`) por defecto, configurable.
+- `VM.Standard.A1.Flex` únicamente; límites conservadores Always Free.
+- cero ingress por defecto; `0.0.0.0/0` para SSH está rechazado.
+- `repo_ref` debe ser SHA Git completo de 40 caracteres.
+- FastAPI liga a `127.0.0.1:4000`; la VM es reemplazable y Mongo sigue fuera.
+- ningún secreto de aplicación ni private key entra en Terraform state.
+- bucket de tfstate privado y con versionado habilitado.
+- backend OCI usa locking nativo; no se desactiva con `-lock=false`.
+
+La API signing key inicial se crea en consola una vez. Después, la meta es operar Terraform/CI sin volver a depender de la consola OCI.
