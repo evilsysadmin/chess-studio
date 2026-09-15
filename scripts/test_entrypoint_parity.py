@@ -132,7 +132,7 @@ if sharded_playwright:
     core_lanes = ci_job_block('e2e_lanes')
     expected_lanes = (
         'regression-state', 'regression-school', 'learning-golden', 'learning-observation',
-        'app-boot', 'admin', 'tournament', 'home', 'smoke',
+        'app-boot', 'admin', 'tournament', 'combat', 'home', 'smoke',
     )
     core_e2e_lane_self_test()
     if CORE_E2E_LANES != expected_lanes:
