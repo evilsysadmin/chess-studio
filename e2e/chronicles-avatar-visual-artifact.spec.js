@@ -11,7 +11,7 @@ const PARTY = [
   { id: 'matthias', name: 'Matthias' },
   { id: 'hildegard', name: 'Hildegard' },
   { id: 'aziz', name: 'Aziz' },
-  { id: 'morcilla', name: 'Morcilla' },
+  { id: 'morcilla', name: 'Faust' },
 ];
 
 async function openChronicles(page) {
