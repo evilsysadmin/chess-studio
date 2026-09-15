@@ -22,6 +22,64 @@ const MOVE_GLYPHS = Object.freeze({
   west: '←',
 });
 
+const CLASS_PROFILES = Object.freeze({
+  matthias: Object.freeze({
+    className: 'Espadachín',
+    weaponName: 'Espada corta',
+    attackName: 'Estocada teutona',
+    attackKind: 'melee',
+    kindLabel: 'cuerpo a cuerpo',
+    attackPattern: 'adjacent',
+    reach: 1,
+    damage: 2,
+  }),
+  rook: Object.freeze({
+    className: 'Guardiana',
+    weaponName: 'Maza de torre',
+    attackName: 'Embestida de torre',
+    attackKind: 'heavy',
+    kindLabel: 'línea pesada',
+    attackPattern: 'orthogonal',
+    reach: 2,
+    damage: 2,
+  }),
+  bishop: Object.freeze({
+    className: 'Taumaturgo',
+    weaponName: 'Farol rúnico',
+    attackName: 'Rayo diagonal',
+    attackKind: 'spell',
+    kindLabel: 'conjuro diagonal',
+    attackPattern: 'diagonal',
+    reach: 4,
+    damage: 2,
+  }),
+  knight: Object.freeze({
+    className: 'Hostigador',
+    weaponName: 'Ballesta de estribo',
+    attackName: 'Virote largo',
+    attackKind: 'ranged',
+    kindLabel: 'arma a distancia',
+    attackPattern: 'line',
+    reach: 3,
+    damage: 1,
+  }),
+});
+
+const FALLBACK_PROFILE = Object.freeze({
+  className: 'Aventurero',
+  weaponName: 'Arma improvisada',
+  attackName: 'Golpe',
+  attackKind: 'melee',
+  kindLabel: 'cuerpo a cuerpo',
+  attackPattern: 'adjacent',
+  reach: 1,
+  damage: 1,
+});
+
+export function chroniclesTacticsProfile(memberId) {
+  return CLASS_PROFILES[memberId] || FALLBACK_PROFILE;
+}
+
 function sameCell(left, right) {
   return left.x === right.x && left.y === right.y;
 }
@@ -42,10 +100,14 @@ function occupiedByEnemy(state, position) {
 }
 
 function lineIsClear(state, from, to, ignoredEnemyId = null) {
+  const spanX = Math.abs(to.x - from.x);
+  const spanY = Math.abs(to.y - from.y);
+  const straight = spanX === 0 || spanY === 0;
+  const diagonal = spanX === spanY;
+  if (!straight && !diagonal) return false;
+
   const dx = Math.sign(to.x - from.x);
   const dy = Math.sign(to.y - from.y);
-  if (dx && dy) return false;
-
   let x = from.x + dx;
   let y = from.y + dy;
   while (x !== to.x || y !== to.y) {
@@ -64,8 +126,20 @@ function memberFor(state, memberId) {
   return state.party.find((member) => member.id === memberId) || null;
 }
 
-function targetDistance(state, position) {
-  return Math.abs(position.x - state.x) + Math.abs(position.y - state.y);
+function attackDistance(state, position, profile) {
+  const dx = Math.abs(position.x - state.x);
+  const dy = Math.abs(position.y - state.y);
+  if (profile.attackPattern === 'adjacent') return dx + dy === 1 ? 1 : null;
+  if (profile.attackPattern === 'orthogonal') {
+    if (dx !== 0 && dy !== 0) return null;
+    return dx + dy;
+  }
+  if (profile.attackPattern === 'diagonal') return dx === dy && dx > 0 ? dx : null;
+  if (profile.attackPattern === 'line') {
+    if (!(dx === 0 || dy === 0 || dx === dy)) return null;
+    return Math.max(dx, dy);
+  }
+  return null;
 }
 
 function appendJournal(state, entry) {
@@ -212,13 +286,12 @@ export function chroniclesTacticsTargets(state, memberId) {
   if (!actionAllowed(state)) return [];
   const member = memberFor(state, memberId);
   if (!member || member.hp <= 0) return [];
-  const reach = Math.max(1, Number(member.reach || 1));
+  const profile = chroniclesTacticsProfile(memberId);
 
   return activeEnemiesWithPositions(state)
     .flatMap(({ enemy, position }) => {
-      const distance = targetDistance(state, position);
-      const aligned = position.x === state.x || position.y === state.y;
-      if (!aligned || distance < 1 || distance > reach) return [];
+      const distance = attackDistance(state, position, profile);
+      if (distance === null || distance < 1 || distance > profile.reach) return [];
       if (!lineIsClear(state, { x: state.x, y: state.y }, position, enemy.id)) return [];
       return [{
         enemyId: enemy.id,
@@ -228,6 +301,7 @@ export function chroniclesTacticsTargets(state, memberId) {
         distance,
         x: position.x,
         y: position.y,
+        attackKind: profile.attackKind,
       }];
     })
     .sort((left, right) => left.distance - right.distance || left.enemyId.localeCompare(right.enemyId));
@@ -252,15 +326,16 @@ export function chroniclesTacticsAttack(state, memberId, enemyId) {
   if (!target || !attacker) return state;
   const enemy = chroniclesActiveEnemies(state).find((candidate) => candidate.id === enemyId);
   if (!enemy) return state;
+  const profile = chroniclesTacticsProfile(memberId);
 
-  const nextHp = Math.max(0, Number(state[enemy.hpKey] || 0) - Math.max(1, Number(attacker.damage || 1)));
+  const nextHp = Math.max(0, Number(state[enemy.hpKey] || 0) - profile.damage);
   let next = {
     ...state,
     [enemy.hpKey]: nextHp,
     turns: Number(state.turns || 0) + 1,
     message: nextHp > 0
-      ? `${attacker.name} usa ${attacker.attackName.toLowerCase()} contra ${enemy.name}. ${nextHp}/${enemy.maxHp} HP.`
-      : `${attacker.name} derriba a ${enemy.name} con ${attacker.attackName.toLowerCase()}.`,
+      ? `${attacker.name} usa ${profile.attackName.toLowerCase()} contra ${enemy.name}. ${nextHp}/${enemy.maxHp} HP.`
+      : `${attacker.name} derriba a ${enemy.name} con ${profile.attackName.toLowerCase()}.`,
   };
   if (nextHp === 0) next = rewardEnemyDefeat(next, enemy, attacker);
   return next;
