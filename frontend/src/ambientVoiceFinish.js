@@ -17,6 +17,7 @@ export function scheduleAmbientFilterSweep(frequency, cutoff, start, attack, dur
 // oscillator is kept alive after the note, and unsupported nodes fall back to
 // a plain dry signal.
 export function connectFinishedAmbientVoice(ctx, dry, output, tone = {}, { start = ctx.currentTime, duration = 1, tremolo = 0, wetLimit = 0.3 } = {}) {
+  const finish = tone?.finish || {};
   let voice = dry;
   if (tremolo > 0 && typeof ctx.createOscillator === 'function') {
     const modulation = ctx.createGain();
@@ -37,7 +38,9 @@ export function connectFinishedAmbientVoice(ctx, dry, output, tone = {}, { start
   let destination = output;
   if (typeof ctx.createStereoPanner === 'function' && Math.abs(Number(tone?.pan) || 0) > 0.001) {
     const panner = ctx.createStereoPanner();
-    panner.pan.value = clamp(Number(tone.pan), -0.18, 0.18);
+    const stereoWidth = clamp(Number(finish.stereoWidth) || 1, 0.65, 1.25);
+    const panLimit = tone?.finish ? 0.22 : 0.18;
+    panner.pan.value = clamp(Number(tone.pan) * stereoWidth, -panLimit, panLimit);
     panner.connect(output);
     destination = panner;
   }
@@ -47,7 +50,8 @@ export function connectFinishedAmbientVoice(ctx, dry, output, tone = {}, { start
     const delay = ctx.createDelay(0.65);
     const wet = ctx.createGain();
     delay.delayTime.value = clamp((Number(tone.delayMs) || 180) / 1000, 0.06, 0.55);
-    wet.gain.value = clamp(Number(tone.space), 0, wetLimit);
+    const reflectionScale = clamp(Number(finish.reflectionScale) || 1, 0.65, 1.3);
+    wet.gain.value = clamp(Number(tone.space) * reflectionScale, 0, wetLimit);
     voice.connect(delay);
     if (typeof ctx.createBiquadFilter === 'function') {
       const damping = ctx.createBiquadFilter();

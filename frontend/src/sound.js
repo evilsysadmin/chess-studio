@@ -963,7 +963,8 @@ function playStructuredGuitar(kind, midiNote, volumeScale = 1, durationOverride 
   const brightness = kind === 'nylonGuitar' ? 3000 : kind === 'jazzGuitar' ? 2200 : kind === 'overdriveGuitar' ? 2800 : kind === 'tremoloGuitar' ? 3350 : 3800;
   const peak = (kind === 'overdriveGuitar' ? .015 : kind === 'nylonGuitar' ? .020 : kind === 'tremoloGuitar' ? .017 : .019) * Math.max(.2, volumeScale);
   bodyFilter.type = 'lowpass';
-  bodyFilter.frequency.value = brightness * Math.max(.74, Math.min(1.18, Number(tone?.warmth) || 1));
+  const finishBrightness = Math.max(.68, Math.min(1.18, Number(tone?.finish?.brightness) || 1));
+  bodyFilter.frequency.value = brightness * Math.max(.74, Math.min(1.18, Number(tone?.warmth) || 1)) * finishBrightness;
   bodyFilter.Q.value = kind === 'jazzGuitar' ? .38 : .52;
 
   body.gain.setValueAtTime(.0001, start);
@@ -1045,8 +1046,11 @@ function playStructuredGuitar(kind, midiNote, volumeScale = 1, durationOverride 
 function voicePreset(kind) {
   switch (kind) {
     case 'felt': return { waves: [['triangle', 1, 1], ['sine', 2, 0.22]], gain: 0.024, attack: 0.012, release: 1.65, cutoff: 1800 };
+    case 'feltGrand': return { waves: [['triangle', 1, 0.78], ['sine', 2.01, 0.23], ['sine', 3.98, 0.075], ['sine', 6.04, 0.022]], gain: 0.022, attack: 0.007, release: 2.35, cutoff: 2550 };
+    case 'tapePiano': return { waves: [['triangle', 1, 0.76], ['sine', 0.5, 0.16], ['sine', 2, 0.14], ['triangle', 3.01, 0.035]], gain: 0.021, attack: 0.014, release: 2.05, cutoff: 1680, tremolo: 1.15 };
     case 'harpsichord': return { waves: [['sawtooth', 1, 1], ['square', 2, 0.13]], gain: 0.018, attack: 0.003, release: 0.48, cutoff: 3900 };
     case 'vibes': return { waves: [['sine', 1, 1], ['sine', 4, 0.16]], gain: 0.026, attack: 0.008, release: 2.35, cutoff: 5200, tremolo: 5.2 };
+    case 'warmVibes': return { waves: [['sine', 1, 0.92], ['sine', 2.99, 0.11], ['sine', 4.03, 0.12], ['triangle', 0.5, 0.08]], gain: 0.022, attack: 0.012, release: 2.8, cutoff: 3850, tremolo: 4.6 };
     case 'epiano': return { waves: [['sine', 1, 1], ['triangle', 2, 0.18]], gain: 0.021, attack: 0.018, release: 1.45, cutoff: 2600 };
     case 'rhodesWarm': return { waves: [['sine', 1, 1], ['triangle', 2, 0.16], ['sine', 0.5, 0.1]], gain: 0.020, attack: 0.028, release: 2.15, cutoff: 1950, tremolo: 3.1 };
     case 'cello': return { waves: [['sawtooth', 1, 1], ['triangle', 0.5, 0.18]], gain: 0.017, attack: 0.09, release: 2.1, cutoff: 920 };
@@ -1070,6 +1074,7 @@ function voicePreset(kind) {
     case 'guitar2': return { waves: [['triangle', 1, 1], ['sawtooth', 2, 0.07]], gain: 0.018, attack: 0.004, release: 0.82, cutoff: 2300 };
     case 'arp': return { waves: [['square', 1, 0.45], ['sawtooth', 1, 1]], gain: 0.014, attack: 0.004, release: 0.28, cutoff: 1800 };
     case 'marimba': return { waves: [['sine', 1, 1], ['sine', 4, 0.14], ['triangle', 2, 0.05]], gain: 0.022, attack: 0.004, release: 0.78, cutoff: 3100 };
+    case 'warmMarimba': return { waves: [['sine', 1, 0.92], ['sine', 3.96, 0.09], ['triangle', 2, 0.045], ['sine', 0.5, 0.10]], gain: 0.021, attack: 0.006, release: 1.18, cutoff: 2620 };
     case 'tropicalPluck': return { waves: [['sine', 1, 1], ['triangle', 2, 0.18], ['sine', 3.01, 0.11], ['sine', 6.07, 0.035]], gain: 0.019, attack: 0.003, release: 0.96, cutoff: 3650 };
     case 'glass': return { waves: [['sine', 1, 1], ['sine', 2.7, 0.12], ['sine', 5.4, 0.025]], gain: 0.013, attack: 0.024, release: 2.7, cutoff: 4700, tremolo: 2.6 };
     case 'bandoneon': return { waves: [['sawtooth', 1, 0.72], ['square', 2, 0.16], ['sine', 1, 0.3]], gain: 0.016, attack: 0.045, release: 0.9, cutoff: 1850 };
@@ -1085,6 +1090,7 @@ function voicePreset(kind) {
     case 'clarinet': return { waves: [['square', 1, 0.19], ['sine', 1, 0.76], ['sine', 3, 0.09]], gain: 0.016, attack: 0.07, release: 1.85, cutoff: 1480, tremolo: 4.0 };
     case 'metallic': return { waves: [['square', 1, 0.36], ['sine', 2.41, 0.24], ['sine', 4.83, 0.06]], gain: 0.012, attack: 0.005, release: 0.52, cutoff: 2400 };
     case 'breathFlute': return { waves: [['sine', 1, 1], ['triangle', 2, 0.07], ['sine', 3, 0.025]], gain: 0.016, attack: 0.13, release: 2.65, cutoff: 1450, tremolo: 4.4 };
+    case 'cedarFlute': return { waves: [['sine', 1, 0.88], ['triangle', 2, 0.09], ['sine', 3.02, 0.035], ['sine', 0.5, 0.07]], gain: 0.015, attack: 0.18, release: 3.15, cutoff: 1320, tremolo: 3.8 };
     case 'singingBowl': return { waves: [['sine', 1, 1], ['sine', 2.39, 0.16], ['sine', 4.71, 0.04]], gain: 0.012, attack: 0.026, release: 4.9, cutoff: 4300, tremolo: 2.0 };
     case 'overdriveGuitar': return { waves: [['sawtooth', 1, 0.68], ['square', 1, 0.18], ['triangle', 0.5, 0.22]], gain: 0.015, attack: 0.006, release: 0.9, cutoff: 1850 };
     case 'strings': return { waves: [['sawtooth', 1, 0.42], ['triangle', 1, 0.62], ['sine', 2, 0.08]], gain: 0.014, attack: 0.18, release: 3.4, cutoff: 1350, tremolo: 5.1 };
@@ -1104,6 +1110,7 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
   if (ctx.state === 'suspended') ctx.resume().catch(() => {});
 
   const preset = voicePreset(kind);
+  const finish = tone?.finish || {};
   const freq = midiToFreq(midiNote);
   const start = ctx.currentTime + Math.max(0, Number(tone?.startDelayMs) || 0) / 1000;
   const release = Math.max(0.12, durationOverride || preset.release * (tone?.releaseScale || 1));
@@ -1146,7 +1153,8 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
   const filter = ctx.createBiquadFilter();
   const gainNode = ctx.createGain();
   filter.type = 'lowpass';
-  scheduleAmbientFilterSweep(filter.frequency, Math.max(260, preset.cutoff * (tone?.warmth || 1)), start, attack, release);
+  const finishBrightness = Math.max(0.68, Math.min(1.18, Number(finish.brightness) || 1));
+  scheduleAmbientFilterSweep(filter.frequency, Math.max(260, preset.cutoff * (tone?.warmth || 1) * finishBrightness), start, attack, release);
   filter.Q.value = kind === 'synth' || kind === 'arp' ? 1.4 : 0.55;
 
   const peak = preset.gain * volumeScale;
@@ -1168,7 +1176,8 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
     osc.frequency.value = freq * ratio;
     // Un desafinado microscópico evita que acordes de osciladores idénticos
     // se conviertan en una onda clínica sin vida.
-    osc.detune.value = index === 0 ? -2 : 2 + index;
+    const drift = Math.max(0, Math.min(7, Number(finish.driftCents) || 0));
+    osc.detune.value = (index === 0 ? -2 : 2 + index) + (index % 2 === 0 ? -drift : drift);
     mixGain.gain.value = mix;
     osc.connect(mixGain);
     mixGain.connect(filter);
@@ -1632,10 +1641,28 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
     return;
   }
 
-  if (kit === 'lofi') {
-    if (code === 'K') { playSoftPercussion(0.026 * velocity, { ...human, tone: -0.42, decay: 1.12 }); playBassDrum(0.020 * velocity, { ...human, decay: 0.92 }); }
-    else if (code === 'S') playNoiseHit('snare', 0.020 * velocity, { ...human, brightness: 0.62, durationScale: 1.35 });
-    else if (code === 'H' || code === 'B') playNoiseHit('brush', 0.009 * velocity, { ...human, brightness: 0.7, durationScale: 1.18 });
+  if (kit === 'onsen-water') {
+    if (code === 'B') {
+      playNoiseHit('brush', 0.0045 * velocity, { ...human, brightness: 0.54, durationScale: 1.7, pan: human.pan * 1.2 });
+      playMembraneHit('tak', 0.003 * velocity, { ...human, tone: -0.6, decay: 1.18, delayMs: human.delayMs + 18 });
+    }
+    return;
+  }
+
+  if (['lofi', 'lofi-cassette-rain', 'lofi-window-brush', 'lofi-pencil-brush'].includes(kit)) {
+    const rain = kit === 'lofi-cassette-rain';
+    const window = kit === 'lofi-window-brush';
+    const pencil = kit === 'lofi-pencil-brush';
+    if (code === 'K') {
+      playSoftPercussion((rain ? 0.021 : 0.026) * velocity, { ...human, tone: rain ? -0.58 : -0.42, decay: rain ? 1.22 : 1.12 });
+      playBassDrum((rain ? 0.017 : 0.020) * velocity, { ...human, tone: rain ? -0.38 : 0, decay: 0.92 });
+    } else if (code === 'S') {
+      playNoiseHit(window ? 'brush' : 'snare', (window ? 0.014 : 0.020) * velocity, { ...human, brightness: window ? 0.56 : 0.62, durationScale: window ? 1.62 : 1.35 });
+    } else if (code === 'H' || code === 'B') {
+      playNoiseHit('brush', (rain ? 0.006 : 0.009) * velocity, { ...human, brightness: rain ? 0.48 : 0.7, durationScale: rain ? 1.72 : 1.18 });
+    } else if (code === 'W' && pencil) {
+      playMembraneHit('tak', 0.006 * velocity, { ...human, tone: 0.26, decay: 0.72 });
+    }
     return;
   }
 
@@ -1870,6 +1897,7 @@ function startStructuredMusic(theme, startPositionMs = 0) {
       releaseScale: feel.releaseScale,
       space: feel.space || 0,
       delayMs: feel.delayMs || 180,
+      finish: feel.finish || null,
     } : null;
 
     if (signature && layerEnabled('signature')) {
