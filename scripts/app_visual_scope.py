@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 GROUP_ORDER = ("home", "experiments", "training", "warroom", "health")
+VISUAL_FALLBACK_GROUPS = ("home", "experiments", "training", "warroom")
 EXPERIMENT_ORDER = ("landing", "chronicles", "pawnslug")
 
 PUBLIC_NONCANONICAL_PATHS = {
@@ -153,7 +154,7 @@ def _surface_groups(path: str) -> set[str] | None:
     # Generic frontend source can have cross-surface visual impact, so retain
     # every canonical surface. Optional deep sidecars (Hans routine videos and
     # Chesscom) stay owner-driven instead of being dragged in by ambiguity.
-    return set(GROUP_ORDER)
+    return set(VISUAL_FALLBACK_GROUPS)
 
 
 def _experiment_parts(path: str) -> set[str]:
@@ -371,8 +372,9 @@ def self_test() -> None:
     assert classify(["scripts/app_visual_capture.sh"]) == full_scope()
     assert classify(["scripts/app_visual_summary.mjs"]) == full_scope()
     global_css = classify(["frontend/src/App.css"])
-    assert global_css.capture_groups == ",".join(GROUP_ORDER)
+    assert global_css.capture_groups == ",".join(VISUAL_FALLBACK_GROUPS)
     assert global_css.experiments_scope == ",".join(EXPERIMENT_ORDER)
+    assert "health" not in global_css.groups
     assert not global_css.hans and not global_css.chesscom
     assert classify([".github/actions/app-visual-pipeline/action.yml"]) == full_scope()
     print("app visual scope self-test: OK")
