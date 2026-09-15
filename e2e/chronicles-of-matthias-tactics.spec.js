@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { login, mockApi, openMoreGameModes } from './helpers.js';
 
+// Direct edits to this spec must schedule the specialized Chronicles browser lane.
 async function dismissGuide(page) {
   const guide = page.getByRole('region', { name: 'Guía rápida de Chess Studio' });
   if (!(await guide.isVisible().catch(() => false))) return;

@@ -125,6 +125,7 @@ CHRONICLES_PATTERNS = (
     "frontend/src/components/Chronicles*.js",
     "frontend/src/components/Chronicles*.css",
     "e2e/chronicles-of-matthias.spec.js",
+    "e2e/chronicles-of-matthias-tactics.spec.js",
 )
 NETWORK_RACE_PATTERNS = (
     "frontend/src/useGameReconnect.js",
@@ -319,7 +320,7 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
             {
                 "id": "chronicles",
                 "label": "Chronicles · dungeon gameplay",
-                "command": "./node_modules/.bin/playwright test chronicles-of-matthias.spec.js --workers=1 --retries=0 --timeout=90000",
+                "command": "./node_modules/.bin/playwright test chronicles-of-matthias.spec.js chronicles-of-matthias-tactics.spec.js --workers=1 --retries=0 --timeout=90000",
             }
         )
     return {"include": cases}
@@ -406,8 +407,13 @@ def self_test() -> None:
         "frontend/src/components/ChroniclesOfMatthias.jsx",
         "frontend/src/components/ChroniclesOfMatthias.css",
         "e2e/chronicles-of-matthias.spec.js",
+        "e2e/chronicles-of-matthias-tactics.spec.js",
     ):
         assert _ids(classify([chronicles_path])) == ["chronicles"]
+
+    chronicles_case = build_matrix(BrowserScope(chronicles=True))["include"][0]
+    assert "chronicles-of-matthias.spec.js" in chronicles_case["command"]
+    assert "chronicles-of-matthias-tactics.spec.js" in chronicles_case["command"]
 
     all_scope = classify([".github/actions/setup-browser-e2e/action.yml"])
     assert all_scope == BrowserScope.all()
