@@ -44,19 +44,40 @@ def materials():
 
 
 def aim_camera(scene):
-    """Lock the orthographic camera to the X/Z sprite plane explicitly.
-
-    Euler-only camera setup proved too fragile across Blender versions and could
-    turn the integrated weapon into depth. A tracked -Z axis guarantees that
-    +X remains screen-horizontal and Z remains screen-vertical.
-    """
+    """Lock the orthographic camera to the authored X/Z sprite plane."""
     center_x = (canonical.COLS - 1) * canonical.WORLD_CELL_X / 2
     center_z = -(canonical.ROWS_PER_WEAPON - 1) * canonical.WORLD_CELL_Z / 2 + 1.08
     cam = scene.camera
     cam.location = (center_x, -78.0, center_z)
     target = Vector((center_x, 0.0, center_z))
-    direction = target - cam.location
-    cam.rotation_euler = direction.to_track_quat('-Z', 'Y').to_euler()
+    cam.rotation_euler = (target - cam.location).to_track_quat('-Z', 'Y').to_euler()
+
+
+def descendants(obj):
+    for child in obj.children:
+        yield child
+        yield from descendants(child)
+
+
+def separate_visual_layers(base):
+    """Keep face, hands and weapon readable in the orthographic gameplay bake.
+
+    The first canonical pass authored all parts around y=0. In a real 3D scene
+    that caused the helmet front hemisphere to cover the eyes and the vest to
+    swallow most forearms/weapon geometry. These are actual depth corrections,
+    not a runtime overlay: the final frame is still one Blender render.
+    """
+    for obj in descendants(base):
+        stem = obj.name.split('.')[0]
+        if stem in {'helmet_dome', 'helmet_brim'}:
+            obj.location.y += 0.16
+        elif stem.startswith(('front_upper_arm', 'front_forearm', 'front_hand')):
+            obj.location.y -= 0.34
+        elif stem.startswith(('rear_upper_arm', 'rear_forearm', 'rear_hand')):
+            obj.location.y -= 0.25
+        elif stem.startswith('weapon_'):
+            # Moving the weapon root also moves all authored weapon components.
+            obj.location.y -= 0.38
 
 
 def main():
@@ -76,7 +97,8 @@ def main():
     for row, (action, count) in enumerate(canonical.ACTIONS):
         for frame in range(count):
             origin = (frame * canonical.WORLD_CELL_X, 0, -row * canonical.WORLD_CELL_Z)
-            canonical.build_matthias(origin, action, frame, count, cfg.weapon, mats)
+            base = canonical.build_matthias(origin, action, frame, count, cfg.weapon, mats)
+            separate_visual_layers(base)
     blend_path = out / f'matthias_{cfg.weapon}_integrated_v1.blend'
     png_path = out / f'matthias_{cfg.weapon}_atlas_v1.png'
     scene.render.filepath = str(png_path)
