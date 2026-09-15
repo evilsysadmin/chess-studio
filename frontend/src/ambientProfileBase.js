@@ -19,6 +19,11 @@ import {
   installBeirutSongbook,
   withBeirutProduction,
 } from './ambientBeirutSongbook.js';
+import {
+  ISTANBUL_SONGBOOK_IDS,
+  installIstanbulSongbook,
+  withIstanbulProduction,
+} from './ambientIstanbulSongbook.js';
 
 installNightDriveJazz({
   themes: AMBIENT_THEMES,
@@ -27,12 +32,14 @@ installNightDriveJazz({
   genreOrder: AMBIENT_GENRE_ORDER,
 });
 installBeirutSongbook({ themes: AMBIENT_THEMES });
-for (const id of BEIRUT_SONGBOOK_IDS) {
+installIstanbulSongbook({ themes: AMBIENT_THEMES });
+for (const id of [...BEIRUT_SONGBOOK_IDS, ...ISTANBUL_SONGBOOK_IDS]) {
   const option = AMBIENT_THEME_OPTIONS.find((entry) => entry.id === id);
   if (option && AMBIENT_THEMES[id]) option.description = AMBIENT_THEMES[id].description;
 }
 
 export function structuredFeel(theme) {
   const legacy = legacyStructuredFeel(theme);
-  return withNightDriveJazzProduction(theme, withBeirutProduction(theme, legacy));
+  const regional = withIstanbulProduction(theme, withBeirutProduction(theme, legacy));
+  return withNightDriveJazzProduction(theme, regional);
 }
