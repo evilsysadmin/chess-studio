@@ -23,6 +23,22 @@ const ATTACK_FX = Object.freeze({
   knight: Object.freeze({ color: 0x8da8bd, angle: -0.62, width: 1.12, ring: 0.86 }),
 });
 
+export const CHRONICLES_ENEMY_DEATH_DURATION = 0.42;
+
+export function chroniclesEnemyDeathPose(elapsed, baseScale = 1) {
+  const safeElapsed = Math.max(0, Number(elapsed) || 0);
+  const linear = Math.min(1, safeElapsed / CHRONICLES_ENEMY_DEATH_DURATION);
+  const progress = linear * linear * (3 - 2 * linear);
+  const numericScale = Number(baseScale);
+  const scale = Number.isFinite(numericScale) && numericScale > 0 ? numericScale : 1;
+  return {
+    visible: safeElapsed < CHRONICLES_ENEMY_DEATH_DURATION,
+    scale,
+    yOffset: -progress * 0.38,
+    zRotation: progress * 0.5,
+  };
+}
+
 export const CHRONICLES_TORCH_PLACEMENTS = Object.freeze([
   Object.freeze({ x: 1, y: 5, side: 'west' }),
   Object.freeze({ x: 5, y: 5, side: 'east' }),
@@ -392,12 +408,13 @@ export function createChroniclesOfMatthiasGame(host, { onReady } = {}) {
           enemy.position.y = jumpLift + Math.sin(time * 1.7 + index * 0.8) * 0.018;
           enemy.scale.setScalar(baseScale + hitKick * 0.07);
         } else if (active && deathStartedAt != null) {
-          const deathElapsed = time - deathStartedAt;
-          if (deathElapsed < 0.5) {
+          const deathPose = chroniclesEnemyDeathPose(time - deathStartedAt, baseScale);
+          if (deathPose.visible) {
             enemy.visible = true;
-            enemy.position.y = -Math.max(0, deathElapsed) * 1.45;
-            enemy.rotation.z = Math.max(0, deathElapsed) * 1.4;
-            enemy.scale.setScalar(Math.max(baseScale * 0.48, baseScale - Math.max(0, deathElapsed) * 0.72));
+            enemy.position.y = deathPose.yOffset;
+            enemy.rotation.y = baseYaw;
+            enemy.rotation.z = deathPose.zRotation;
+            enemy.scale.setScalar(deathPose.scale);
           } else {
             enemy.visible = false;
           }
