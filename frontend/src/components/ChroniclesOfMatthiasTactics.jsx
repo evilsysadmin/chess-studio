@@ -4,6 +4,7 @@ import {
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
 import {
+  chroniclesTacticsAbilityStatus,
   chroniclesTacticsAttack,
   chroniclesTacticsInteractions,
   chroniclesTacticsLegalMoves,
@@ -11,6 +12,7 @@ import {
   chroniclesTacticsProfile,
   chroniclesTacticsTargets,
   chroniclesTacticsUse,
+  chroniclesTacticsUseAbility,
 } from '../chroniclesOfMatthiasTactics.js';
 import { chroniclesResolveEnemyTurn } from '../chroniclesOfMatthiasTurns.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
@@ -78,6 +80,10 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     () => chroniclesTacticsTargets(state, selectedMemberId).length > 0,
     [selectedMemberId, state],
   );
+  const abilityStatus = useMemo(
+    () => chroniclesTacticsAbilityStatus(state, selectedMemberId),
+    [selectedMemberId, state],
+  );
   const canAct = state.phase !== 'defeated' && state.phase !== 'escaped';
 
   const commitState = useCallback((next) => {
@@ -119,6 +125,12 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     const current = stateRef.current;
     if (current.phase === 'defeated' || current.phase === 'escaped') return;
     commitState(chroniclesTacticsUse(current));
+  }, [commitState]);
+
+  const useClassAbility = useCallback(() => {
+    const current = stateRef.current;
+    if (current.phase === 'defeated' || current.phase === 'escaped') return;
+    commitState(chroniclesTacticsUseAbility(current, selectedMemberRef.current));
   }, [commitState]);
 
   const selectMember = useCallback((memberId) => {
@@ -201,6 +213,12 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
         attackEnemy();
         return;
       }
+      if (event.key === 'e' || event.key === 'E') {
+        if (event.repeat) return;
+        event.preventDefault();
+        useClassAbility();
+        return;
+      }
       const vector = MOVEMENT[event.key];
       if (!vector) return;
       event.preventDefault();
@@ -208,7 +226,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackEnemy, moveParty, selectMember, useContextualAction]);
+  }, [attackEnemy, moveParty, selectMember, useClassAbility, useContextualAction]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -237,7 +255,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
         <div>
           <span className="section-label">EXPERIMENTO RPG · THREE.JS · ISOMÉTRICO</span>
           <h2>Chronicles of Matthias Tactics</h2>
-          <p>Action RPG isométrico: cuatro clases, cuatro geometrías de combate y una cripta con una opinión pésima de todas ellas.</p>
+          <p>Action RPG isométrico: cuatro clases, armas propias y técnicas que conviene no malgastar contra el primer desgraciado con patas.</p>
         </div>
         <button type="button" className="secondary-btn" onClick={onExit}>← Experimentos</button>
       </header>
@@ -246,7 +264,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
         <aside className="chronicles-tactics__mission" aria-label="Misión">
           <span className="chronicles-tactics__kicker">CRIPTA 01</span>
           <strong>{objective}</strong>
-          <small>WASD/flechas mueve · 1–4 cambia de héroe · espacio usa · Shift ataca.</small>
+          <small>WASD/flechas mueve · 1–4 cambia de héroe · espacio usa · Shift ataca · E habilidad.</small>
         </aside>
 
         <main className="chronicles-tactics__battlefield">
@@ -274,6 +292,14 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
               onClick={useContextualAction}
             ><i aria-hidden="true">◎</i><span>ESPACIO · USAR</span></button>
             <button type="button" className={canAttack ? 'is-ready' : ''} disabled={!canAct || !canAttack} aria-label="Atacar" onClick={() => attackEnemy()}><i aria-hidden="true">⚔</i><span>SHIFT · ATAQUE</span></button>
+            <button
+              type="button"
+              className={abilityStatus.ready ? 'is-ready' : ''}
+              disabled={!canAct || !abilityStatus.ready}
+              aria-label={`Habilidad: ${selectedProfile.abilityName}`}
+              title={abilityStatus.ready ? selectedProfile.abilityDescription : abilityStatus.reason}
+              onClick={useClassAbility}
+            ><i aria-hidden="true">✦</i><span>E · {selectedProfile.abilityName.toUpperCase()}</span></button>
           </div>
         </main>
 
@@ -300,13 +326,14 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
             <span>ACTIVO · {selectedProfile.className.toUpperCase()}</span>
             <b>{selectedMember?.name}</b>
             <small>{selectedMember?.hp > 0 ? `${selectedProfile.attackName} · ${selectedProfile.kindLabel} · alcance ${selectedProfile.reach}` : 'Fuera de combate'}</small>
+            <small>E · {selectedProfile.abilityName} · {abilityStatus.spent ? 'agotada' : '1 uso por incursión'}</small>
           </div>
         </aside>
       </div>
 
       <footer className="chronicles-tactics__footer">
         <span>Motor {rendererName}</span>
-        <span>{contextualAction ? `Espacio · ${contextualAction.label}` : 'Espacio · Usar'} · Shift · {selectedProfile.attackName}</span>
+        <span>{contextualAction ? `Espacio · ${contextualAction.label}` : 'Espacio · Usar'} · Shift · {selectedProfile.attackName} · E · {selectedProfile.abilityName}</span>
         <button type="button" onClick={restart}>Reiniciar incursión</button>
       </footer>
     </div>
