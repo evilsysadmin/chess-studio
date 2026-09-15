@@ -95,10 +95,11 @@
 .campaign-briefing-actions { display: flex; justify-content: space-between; gap: .6rem; }
 
 .mechanic-tutorial-backdrop { z-index: 220; }
+body .mechanic-tutorial-backdrop > .mechanic-tutorial-card { width:min(430px,calc(100vw - 1rem)); max-width:430px; }
 .mechanic-tutorial-card {
   position: relative;
-  width: min(620px, 94vw);
-  padding: clamp(1rem, 3vw, 1.5rem);
+  width: min(430px, calc(100vw - 1rem));
+  padding: .9rem 1rem;
   border: 1px solid color-mix(in srgb, var(--brass) 42%, var(--ink-3));
   border-radius: 13px;
   background: var(--panel, #171512);
@@ -107,7 +108,7 @@
 .mechanic-tutorial-card h2 { margin: .35rem 2rem .8rem 0; }
 .mechanic-tutorial-step {
   position: relative;
-  min-height: 150px;
+  min-height: 0;
   padding: .9rem;
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 10px;
@@ -119,8 +120,9 @@
 .mechanic-tutorial-dots { display: flex; justify-content: center; gap: .3rem; margin: .7rem 0; }
 .mechanic-tutorial-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
 .mechanic-tutorial-dots span.active { background: var(--brass); }
-.mechanic-tutorial-actions { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
-.mechanic-tutorial-actions > div { display: flex; gap: .4rem; }
+.mechanic-tutorial-actions { display:grid; grid-template-columns:auto 1fr; align-items:center; gap:.5rem; }
+.mechanic-tutorial-actions > div { display:flex; justify-content:flex-end; gap:.4rem; }
+@media (min-width:781px) { .mechanic-tutorial-backdrop { justify-content:flex-end; padding:1rem; } }
 
 .mechanic-library {
   width: 100%;
@@ -153,12 +155,12 @@
   .deployment-filter-row,
   .campaign-briefing-grid,
   .mechanic-library { grid-template-columns: 1fr; }
-  .campaign-briefing-actions,
-  .mechanic-tutorial-actions { align-items: stretch; flex-direction: column; }
-  .campaign-briefing-actions > *,
-  .mechanic-tutorial-actions > *,
-  .mechanic-tutorial-actions > div > * { flex: 1; }
-  .mechanic-tutorial-actions > div { display: grid; grid-template-columns: 1fr 1fr; }
+  .campaign-briefing-actions { align-items:stretch; flex-direction:column; }
+  .campaign-briefing-actions > * { flex:1; }
+  .mechanic-tutorial-backdrop { align-items:flex-end; padding:.5rem; }
+  .mechanic-tutorial-actions { grid-template-columns:1fr; align-items:stretch; }
+  .mechanic-tutorial-actions > div { display:grid; grid-template-columns:1fr 1fr; }
+  .mechanic-tutorial-actions > .secondary-btn { width:100%; }
   .mechanic-library-list { max-height: 280px; }
 }
 
