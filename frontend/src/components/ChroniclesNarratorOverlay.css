@@ -1,0 +1,98 @@
+.chronicles-dm-overlay {
+  position: absolute;
+  z-index: 4;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(620px, calc(100% - 96px));
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 10px 14px 11px;
+  pointer-events: none;
+  border: 1px solid rgba(214, 169, 98, .34);
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(20, 15, 11, .9), rgba(8, 7, 6, .82)),
+    radial-gradient(circle at 50% 0, rgba(167, 108, 48, .12), transparent 70%);
+  box-shadow:
+    0 12px 34px rgba(0, 0, 0, .38),
+    inset 0 1px 0 rgba(255, 231, 190, .05),
+    inset 0 -14px 28px rgba(0, 0, 0, .16);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  color: #dbcbb2;
+  animation: chronicles-dm-arrive 180ms ease-out both;
+}
+
+.chronicles-dm-overlay::after {
+  content: '';
+  position: absolute;
+  inset: auto 12% -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(222, 171, 91, .52), transparent);
+}
+
+.chronicles-dm-sigil {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  margin-top: 1px;
+  border: 1px solid rgba(216, 166, 90, .28);
+  border-radius: 50%;
+  color: #e4bd7a;
+  background: radial-gradient(circle, rgba(102, 62, 28, .44), rgba(22, 16, 11, .7) 70%);
+  box-shadow: 0 0 18px rgba(177, 104, 37, .08);
+  font-size: .76rem;
+}
+
+.chronicles-dm-kicker {
+  display: block;
+  margin-bottom: 2px;
+  font-size: .56rem;
+  line-height: 1.2;
+  letter-spacing: .18em;
+  color: #b99461;
+}
+
+.chronicles-dm-overlay p {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(.86rem, 1.3vw, 1rem);
+  line-height: 1.36;
+  color: #e4d7c0;
+  text-wrap: balance;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, .72);
+}
+
+@keyframes chronicles-dm-arrive {
+  from { opacity: 0; transform: translate(-50%, -5px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@media (max-width: 800px) {
+  .chronicles-dm-overlay {
+    top: 9px;
+    width: min(560px, calc(100% - 34px));
+    grid-template-columns: 24px 1fr;
+    gap: 8px;
+    padding: 8px 10px 9px;
+  }
+  .chronicles-dm-sigil { width: 22px; height: 22px; font-size: .62rem; }
+  .chronicles-dm-overlay p { font-size: .79rem; line-height: 1.3; }
+}
+
+@media (max-width: 520px) {
+  .chronicles-dm-overlay {
+    top: 7px;
+    width: calc(100% - 20px);
+  }
+  .chronicles-dm-kicker { font-size: .48rem; }
+  .chronicles-dm-overlay p { font-size: .74rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chronicles-dm-overlay { animation: none; }
+}
