@@ -29,12 +29,31 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends blender
       - name: Build canonical .blend + .glb
+        env:
+          PYTHONPATH: scripts/blender
         run: |
           blender -b --python scripts/blender/build_home_matthias.py -- \
             --blend frontend/art-source/matthias-home-canonical.blend \
             --glb frontend/public/models/matthias-home-canonical.glb
           test -s frontend/art-source/matthias-home-canonical.blend
           test -s frontend/public/models/matthias-home-canonical.glb
+      - name: Validate animation clips
+        run: |
+          python - <<'PY'
+          import json, struct
+          path = 'frontend/public/models/matthias-home-canonical.glb'
+          required = {'Idle', 'Speak', 'Think', 'Read', 'Write', 'Dossier', 'Sip', 'Bite', 'Sleep'}
+          with open(path, 'rb') as handle:
+              magic, version, length = struct.unpack('<4sII', handle.read(12))
+              assert magic == b'glTF' and version == 2 and length > 20
+              chunk_len, chunk_type = struct.unpack('<II', handle.read(8))
+              assert chunk_type == 0x4E4F534A
+              payload = json.loads(handle.read(chunk_len).decode('utf-8').rstrip('\x00 '))
+          clips = {item.get('name') for item in payload.get('animations', [])}
+          missing = required - clips
+          assert not missing, f'missing Matthias clips: {sorted(missing)}; got {sorted(clips)}'
+          print('Matthias animation clips:', ', '.join(sorted(clips)))
+          PY
       - name: Commit generated canonical assets
         run: |
           if git diff --quiet -- frontend/art-source/matthias-home-canonical.blend frontend/public/models/matthias-home-canonical.glb && \
