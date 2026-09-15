@@ -25,8 +25,7 @@ jobs:
       CHESS_SYNTHETIC_AUTH_SLO_MS: ${{ vars.CHESS_SYNTHETIC_AUTH_SLO_MS || '10000' }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: '3.13'
+      - name: Assert runner Python
+        run: python3 -c "import sys; assert sys.version_info >= (3, 10), sys.version"
       - name: Probe production
         run: python3 scripts/synthetic_health_check.py --timeout 75
