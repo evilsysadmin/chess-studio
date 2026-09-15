@@ -27,7 +27,10 @@ export const MEDITERRANEAN_GROOVE_REWRITES = Object.freeze({
   oudTrench: groove(16, {0:'K',3:'H',8:'S',12:'B',15:'H'}),
 
   beirutRooftop0412: groove(16, {0:'B',5:'H',8:'S',13:'H',15:'B'}),
-  beirutNightTaxi: groove(16, {0:'K',3:'H',4:'K',8:'S',11:'H',12:'K',14:'B'}),
+  // Taxi's score is written as four 18-step phrases inside each 72-step scene.
+  // The former 16-step loop walked out of phase with those phrase boundaries,
+  // so the backbeat sounded late/early even though every individual hit was quantized.
+  beirutNightTaxi: groove(18, {0:'K',3:'H',6:'B',9:'S',12:'H',15:'B'}),
   casablancaLastCall: groove(16, {0:'K',3:'B',7:'H',8:'S',12:'B',15:'H'}),
   medinaBlueSmoke: groove(16, {0:'K',5:'B',8:'S',11:'H',14:'B'}),
 
