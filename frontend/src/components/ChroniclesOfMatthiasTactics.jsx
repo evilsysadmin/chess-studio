@@ -11,12 +11,14 @@ import {
   beginChroniclesTacticsRun,
   chroniclesAllowedAttributes,
   chroniclesHeroProgress,
+  chroniclesSkillsForMember,
   chroniclesXpToNextLevel,
   ensureChroniclesTacticsRun,
   finishChroniclesTacticsRun,
   loadChroniclesProgression,
   saveChroniclesProgression,
   spendChroniclesAttributePoint,
+  unlockChroniclesSkill,
 } from '../chroniclesOfMatthiasProgression.js';
 import {
   chroniclesTacticsAbility,
@@ -106,6 +108,10 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     () => chroniclesAllowedAttributes(selectedMemberId),
     [selectedMemberId],
   );
+  const selectedSkills = useMemo(
+    () => chroniclesSkillsForMember(selectedMemberId),
+    [selectedMemberId],
+  );
   const selectedAbility = useMemo(
     () => chroniclesTacticsAbilityStatus(state, selectedMemberId),
     [selectedMemberId, state],
@@ -113,6 +119,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const selectedModifiers = state.rpgModifiers?.[selectedMemberId] || {};
   const selectedReach = selectedProfile.reach + Number(selectedModifiers.reachBonus || 0);
   const hasAllocatedAttributes = selectedAttributes.some((key) => Number(selectedProgress.attributes?.[key] || 0) > 0);
+  const hasLearnedSkills = selectedProgress.skills.length > 0;
   const objective = chroniclesObjective(state);
   const activeParty = useMemo(
     () => PARTY_ORDER.map((id) => state.party.find((member) => member.id === id)).filter(Boolean),
@@ -191,6 +198,14 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const allocateAttribute = useCallback((attributeKey) => {
     const result = spendChroniclesAttributePoint(progressionRef.current, selectedMemberRef.current, attributeKey);
     if (!result.spent) return;
+    const saved = saveChroniclesProgression(result.progression);
+    progressionRef.current = saved;
+    setProgression(saved);
+  }, []);
+
+  const learnSkill = useCallback((skillId) => {
+    const result = unlockChroniclesSkill(progressionRef.current, selectedMemberRef.current, skillId);
+    if (!result.unlocked) return;
     const saved = saveChroniclesProgression(result.progression);
     progressionRef.current = saved;
     setProgression(saved);
@@ -418,6 +433,46 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
                   })}
                 </div>
                 <small>Los cambios entran en combate al reiniciar la incursión.</small>
+              </details>
+            )}
+            {(selectedProgress.skillPoints > 0 || hasLearnedSkills) && (
+              <details className="chronicles-tactics__progression chronicles-tactics__skills">
+                <summary>Técnicas · {selectedProgress.skillPoints > 0 ? `${selectedProgress.skillPoints} punto${selectedProgress.skillPoints === 1 ? '' : 's'}` : 'doctrina fijada'}</summary>
+                <div className="chronicles-tactics__skill-grid">
+                  {selectedSkills.map((skill) => {
+                    const learned = selectedProgress.skills.includes(skill.id);
+                    const competing = selectedSkills.some((candidate) => (
+                      candidate.id !== skill.id
+                      && candidate.group === skill.group
+                      && selectedProgress.skills.includes(candidate.id)
+                    ));
+                    const levelLocked = selectedProgress.level < skill.requiredLevel;
+                    const disabled = learned || competing || levelLocked || selectedProgress.skillPoints < skill.cost;
+                    const status = learned
+                      ? 'Aprendida'
+                      : competing
+                        ? 'Rama cerrada'
+                        : levelLocked
+                          ? `Requiere Nv ${skill.requiredLevel}`
+                          : `${skill.cost} punto`;
+                    return (
+                      <button
+                        type="button"
+                        key={skill.id}
+                        className={learned ? 'is-learned' : ''}
+                        disabled={disabled}
+                        title={skill.description}
+                        aria-label={`${skill.label}. ${skill.description}. ${status}`}
+                        onClick={() => learnSkill(skill.id)}
+                      >
+                        <span>{skill.label}</span>
+                        <small>{skill.description}</small>
+                        <b>{status}</b>
+                      </button>
+                    );
+                  })}
+                </div>
+                <small>La primera elección fija esta doctrina; la alternativa queda cerrada. Se aplica al reiniciar.</small>
               </details>
             )}
           </div>
