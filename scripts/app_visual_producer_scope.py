@@ -32,6 +32,17 @@ WARROOM_ALL = {"warroom-core", "warroom-decor", "warroom-armor", "warroom-hans"}
 WARROOM_RENDERER_SHARED = {"warroom-core", "warroom-hans"}
 HOME_ALL = {"home-base", "home-matthias", "home-focus"}
 CHRONICLES_SHARED = {"chronicles-tactics", "chronicles-gameplay"}
+PUBLIC_NONCANONICAL_PATHS = {
+    "frontend/public/404.html",
+    "frontend/public/cname",
+    "frontend/public/_headers",
+    "frontend/public/apple-touch-icon.png",
+    "frontend/public/favicon-32.png",
+    "frontend/public/favicon.svg",
+    "frontend/public/manifest.webmanifest",
+    "frontend/public/release.json",
+    "frontend/public/sw.js",
+}
 
 
 def _csv(values: set[str] | None) -> str:
@@ -70,7 +81,6 @@ def classify_path(path: str) -> set[str] | None:
     lower = path.lower().replace("\\", "/")
     name = Path(lower).name
 
-    # Changes to the producer orchestration itself prove the full contract.
     if (
         lower == "scripts/app_visual_producer_scope.py"
         or lower == "scripts/app_visual_capture.sh"
@@ -82,10 +92,28 @@ def classify_path(path: str) -> set[str] | None:
     if lower.startswith("e2e/"):
         return _e2e_producer(name)
 
+    if lower.startswith("frontend/public/audio/"):
+        return set()
+    if lower.startswith("frontend/public/chesscom/"):
+        return set()
+    if lower in PUBLIC_NONCANONICAL_PATHS:
+        return set()
+    if lower == "frontend/public/models/chronicles-tactics-party.glb":
+        return {"chronicles-tactics"}
+    if lower in {
+        "frontend/public/models/matthias-home-canonical.glb",
+        "frontend/public/matthias-home-canonical.b64",
+    }:
+        return {"home-matthias"}
+    if lower in {
+        "frontend/public/assets/enemy_atlas_v2.webp",
+        "frontend/public/enemy_atlas_v2.webp",
+    }:
+        return {"experiments-hub"}
     if lower.startswith("frontend/public/"):
         return None
+
     if not lower.startswith("frontend/src/"):
-        # Build metadata that cannot affect pixels needs no canonical capture.
         if lower in {"scripts/css_architecture_manifest.json"}:
             return set()
         return None
@@ -97,9 +125,6 @@ def classify_path(path: str) -> set[str] | None:
     if lower.startswith("frontend/src/admin") or name.startswith(("admin", "observability", "useadmin")):
         return set()
 
-    # This seam is shared by the two Chronicles WebGL surfaces only. Treating
-    # the word "experimental" as the whole Experiments hub was a major source
-    # of unnecessary captures.
     if name == "experimentalthreerenderer.js":
         return set(CHRONICLES_SHARED)
 
@@ -114,8 +139,6 @@ def classify_path(path: str) -> set[str] | None:
             return {"chronicles-gameplay", "chronicles-avatar"}
         if any(token in lower for token in ("three", "dungeon", "atmosphere", "patina", "turn", "encounter", "event", "treasure")):
             return {"chronicles-gameplay"}
-        # Unknown Chronicles ownership stays inside Chronicles, but proves both
-        # gameplay renderers rather than widening to Pawn Slug/Arcade.
         return set(CHRONICLES_SHARED)
 
     if any(token in lower for token in ("pawnslug", "pawn-slug", "trailblazer", "arcade")):
@@ -124,10 +147,6 @@ def classify_path(path: str) -> set[str] | None:
         return {"experiments-hub"}
 
     if any(token in lower for token in ("war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d")):
-        # Renderer/layout seams can affect the full scene, but the core capture
-        # already photographs it in portrait, landscape and desktop. Keep Hans'
-        # dedicated canary because he is a dynamic actor; reserve the expensive
-        # decor crops and armor oblique views for files that actually own them.
         if any(token in lower for token in ("board3d", "warroom3d", "gameboardview", "game3d")):
             return set(WARROOM_RENDERER_SHARED)
         if "armor" in lower or "armour" in lower:
@@ -152,7 +171,6 @@ def classify_path(path: str) -> set[str] | None:
     )):
         return {"training"}
 
-    # Generic/global CSS, components and assets remain fail-safe.
     return None
 
 
@@ -186,6 +204,19 @@ def self_test() -> None:
     assert classify(["e2e/browser-storage-health.spec.js"]) == "health-storage"
     assert classify(["frontend/src/components/AdminDashboardContent.jsx"]) == "none"
     assert classify(["frontend/src/App.css"]) == "all"
+    assert classify(["frontend/public/audio/theme.ogg"]) == "none"
+    assert classify(["frontend/public/chesscom/piece.glb"]) == "none"
+    for public_meta in PUBLIC_NONCANONICAL_PATHS:
+        assert classify([public_meta]) == "none"
+    assert classify(["frontend/public/models/chronicles-tactics-party.glb"]) == "chronicles-tactics"
+    assert classify(["frontend/public/models/matthias-home-canonical.glb"]) == "home-matthias"
+    assert classify(["frontend/public/matthias-home-canonical.b64"]) == "home-matthias"
+    assert classify(["frontend/public/assets/enemy_atlas_v2.webp"]) == "experiments-hub"
+    assert classify(["frontend/public/support-pawn.png"]) == "all"
+    assert classify([
+        "frontend/src/chroniclesOfMatthiasIsometric.js",
+        "frontend/public/audio/theme.ogg",
+    ]) == "chronicles-tactics"
     assert classify([
         "frontend/src/chroniclesOfMatthiasIsometric.js",
         "frontend/src/chroniclesDungeon.js",
@@ -199,7 +230,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--github-output", default=os.environ.get("GITHUB_OUTPUT", ""))
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args(argv)
-
     if args.self_test:
         self_test()
         return 0
