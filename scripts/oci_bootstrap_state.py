@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -112,14 +113,52 @@ def verify_migration(before: dict, after: dict) -> None:
         raise ValueError(f"recursos cambiaron durante migración; missing={missing} extra={extra}")
 
 
-def terraform(*args: str, capture: bool = False) -> subprocess.CompletedProcess[str]:
+def terraform(
+    *args: str,
+    capture: bool = False,
+    check: bool = True,
+) -> subprocess.CompletedProcess[str]:
     command = ["terraform", f"-chdir={STACK}", *args]
     return subprocess.run(
         command,
-        check=True,
+        check=check,
         text=True,
         capture_output=capture,
         env={**os.environ, "TF_IN_AUTOMATION": "true", "TF_INPUT": "false"},
+    )
+
+
+def bucket_not_ready(text: str) -> bool:
+    lowered = text.lower()
+    return "bucketnotfound" in lowered or "http status code: 404" in lowered or "status code: 404" in lowered
+
+
+def migrate_backend(max_attempts: int = 6) -> None:
+    last_detail = ""
+    for attempt in range(1, max_attempts + 1):
+        result = terraform(
+            "init",
+            "-migrate-state",
+            "-force-copy",
+            f"-backend-config={BACKEND_CONFIG}",
+            capture=True,
+            check=False,
+        )
+        if result.returncode == 0:
+            return
+        last_detail = f"{result.stdout}\n{result.stderr}".strip()
+        if not bucket_not_ready(last_detail):
+            raise ValueError(f"terraform init -migrate-state falló: {last_detail[-3000:]}")
+        if attempt < max_attempts:
+            delay = min(2 * attempt, 10)
+            print(
+                f"OCI Object Storage aún no expone el bucket al backend; retry {attempt}/{max_attempts} en {delay}s",
+                file=sys.stderr,
+            )
+            time.sleep(delay)
+    raise ValueError(
+        "Object Storage siguió devolviendo BucketNotFound durante la migración: "
+        + last_detail[-3000:]
     )
 
 
@@ -132,12 +171,7 @@ def migrate() -> None:
     shutil.copy2(LOCAL_STATE, backup)
     write_backend_files(bucket, namespace, region, key)
 
-    terraform(
-        "init",
-        "-migrate-state",
-        "-force-copy",
-        f"-backend-config={BACKEND_CONFIG}",
-    )
+    migrate_backend()
     pulled = terraform("state", "pull", capture=True).stdout
     try:
         after = json.loads(pulled)
@@ -182,6 +216,8 @@ def self_test() -> None:
     for forbidden in ("private_key", "fingerprint", "user_ocid", "tenancy_ocid"):
         assert forbidden not in config
     verify_migration(before, after)
+    assert bucket_not_ready("Error Code: BucketNotFound. Http Status Code: 404")
+    assert not bucket_not_ready("401 NotAuthenticated")
 
     wrong_lineage = json.loads(json.dumps(after))
     wrong_lineage["lineage"] = "other"
