@@ -10,6 +10,7 @@ import { chroniclesPartyCondition } from '../chroniclesOfMatthiasPartyCondition.
 import { chroniclesPartyRelic } from '../chroniclesOfMatthiasRelics.js';
 import { chroniclesRetaliationCue } from '../chroniclesOfMatthiasRetaliation.js';
 import { chroniclesTargetAhead } from '../chroniclesOfMatthiasTargeting.js';
+import { CHRONICLES_TURN_ENGINE_VERSION } from '../chroniclesOfMatthiasTurns.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesEnemyRetaliationFx from './ChroniclesEnemyRetaliationFx.jsx';
@@ -163,7 +164,12 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const latestJournalEntry = journalEntries[journalEntries.length - 1];
 
   return (
-    <div className="chronicles" data-chronicles="true" data-chronicles-phase={state.phase}>
+    <div
+      className="chronicles"
+      data-chronicles="true"
+      data-chronicles-phase={state.phase}
+      data-chronicles-turn-engine={CHRONICLES_TURN_ENGINE_VERSION}
+    >
       <header className="chronicles-head">
         <div>
           <span className="section-label">EXPERIMENTO RPG · THREE.JS · BOOK I</span>
