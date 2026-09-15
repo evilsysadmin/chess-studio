@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { getEffectiveReducedMotion } from '../userPreferences.js';
 
-export const WAR_ROOM_CAT_VERSION = 'war-room-cat-v2-ambient-restraint';
+export const WAR_ROOM_CAT_VERSION = 'war-room-cat-v3-render-contract';
 
 function rootLocalBounds(root, object) {
   object.updateMatrixWorld?.(true);
@@ -43,11 +43,29 @@ export function warRoomCatAmbientMotionAllowed(root, { reducedMotion = getEffect
   return true;
 }
 
+function exposeCatRenderDiagnostics(root, group, renderer) {
+  const canvas = renderer?.domElement;
+  if (!canvas?.dataset) return;
+
+  canvas.dataset.warRoomCatRendered = 'true';
+  canvas.dataset.warRoomCatVersion = WAR_ROOM_CAT_VERSION;
+  canvas.dataset.warRoomCatPlacement = String(group.userData.warRoomCatPlacement || 'unknown');
+  canvas.dataset.warRoomCatSofaSide = String(group.userData.warRoomCatSofaSide || 'none');
+  canvas.dataset.warRoomCatMotion = String(group.userData.warRoomCatMotion || 'resting-static');
+
+  if (canvas.dataset.warRoomCatCountVersion !== WAR_ROOM_CAT_VERSION) {
+    const cats = root.getObjectsByProperty?.('name', 'war-room-cat') || [];
+    canvas.dataset.warRoomCatCount = String(cats.length);
+    canvas.dataset.warRoomCatCountVersion = WAR_ROOM_CAT_VERSION;
+  }
+}
+
 function buildCat(root) {
   const group = new THREE.Group();
   group.name = 'war-room-cat';
   group.userData.warRoomDecor = WAR_ROOM_CAT_VERSION;
   group.userData.warRoomCatState = 'sleeping';
+  group.userData.warRoomCatMotion = 'resting-static';
 
   const fur = new THREE.MeshPhysicalMaterial({
     color: 0x25282c,
@@ -115,11 +133,12 @@ function buildCat(root) {
   group.userData.warRoomCatTail = tail;
   const baseBodyY = body.position.y;
   const baseTailZ = tail.rotation.z;
-  body.onBeforeRender = () => {
+  body.onBeforeRender = (renderer) => {
     if (!warRoomCatAmbientMotionAllowed(root)) {
       body.position.y = baseBodyY;
       tail.rotation.z = baseTailZ;
       group.userData.warRoomCatMotion = 'resting-static';
+      exposeCatRenderDiagnostics(root, group, renderer);
       return;
     }
     const now = (typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -128,6 +147,7 @@ function buildCat(root) {
     body.position.y = baseBodyY + Math.sin(now * 1.35) * 0.006;
     tail.rotation.z = baseTailZ + Math.sin(now * 0.24) * 0.025;
     group.userData.warRoomCatMotion = 'ambient-idle';
+    exposeCatRenderDiagnostics(root, group, renderer);
   };
 
   return group;
@@ -161,6 +181,7 @@ function placeCat(root, cat) {
     cat.rotation.y = Math.PI / 3;
     cat.scale.setScalar(0.88);
     cat.userData.warRoomCatPlacement = 'floor-corner-fallback-v1';
+    cat.userData.warRoomCatSofaSide = 'none';
   }
   return cat;
 }
