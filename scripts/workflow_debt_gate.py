@@ -29,6 +29,7 @@ INVENTORY = {
     'oci-readiness.yml': 'infra-readiness',
     'oci-staging-deploy.yml': 'infra-staging-delivery',
     'oci-staging-lab.yml': 'infra-staging-lifecycle',
+    'oci-staging-service.yml': 'infra-staging-service-control',
     'pawn-slug-blender-art.yml': 'art-generation',
     'production-promote.yml': 'delivery-production',
     'production-rollback.yml': 'delivery-rollback',
