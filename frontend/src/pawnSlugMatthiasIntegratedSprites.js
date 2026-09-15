@@ -26,6 +26,12 @@ export const PAWN_SLUG_MATTHIAS_INTEGRATED_SCALE = Object.freeze({
   bakeCellCompensation: 1.5,
 });
 
+// Inspection of the validated Blender PNGs shows a stable 17px transparent
+// gutter below the feet in the dominant idle/run/crouch frames. Anchor the
+// sprite at that authored foot line so scaling the quad does not make Matthias
+// hover above the collision ground.
+export const PAWN_SLUG_MATTHIAS_INTEGRATED_FOOT_ANCHOR = 17 / 96;
+
 export const PAWN_SLUG_MATTHIAS_INTEGRATED_ART = Object.freeze({
   version: 'blender-integrated-v1',
   weapons: Object.freeze(Object.keys(PAYLOADS)),
@@ -37,6 +43,7 @@ export const PAWN_SLUG_MATTHIAS_INTEGRATED_ART = Object.freeze({
   frameHeight: 96,
   separateWeaponOverlay: false,
   runtimeScale: PAWN_SLUG_MATTHIAS_INTEGRATED_SCALE,
+  footAnchorY: PAWN_SLUG_MATTHIAS_INTEGRATED_FOOT_ANCHOR,
 });
 
 export function pawnSlugIntegratedWeaponId(kind = 'pistol') {
@@ -82,7 +89,7 @@ export function createIntegratedMatthiasSlugSprite(scale = [
   const sprite = new THREE.Sprite(material);
   sprite.name = 'pawn-slug-matthias-sprite';
   sprite.scale.set(scale[0], scale[1], 1);
-  sprite.center.set(0.5, 0);
+  sprite.center.set(0.5, PAWN_SLUG_MATTHIAS_INTEGRATED_FOOT_ANCHOR);
   sprite.userData.motionBaseScaleX = scale[0];
   sprite.userData.motionBaseScaleY = scale[1];
   sprite.userData.motionPhase = Math.random() * Math.PI * 2;
