@@ -1,5 +1,6 @@
 import math
 import bpy
+from mathutils import Vector
 
 
 def mat(name, rgb, rough=.6, metal=0):
@@ -54,6 +55,21 @@ def box(name, loc, scale, m, rot=(0, 0, 0), bevel=.016):
     o.scale = scale
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     return finish(o, m, False, bevel=bevel)
+
+
+def cyl_between(name, start, end, radius, m, verts=48, bevel=.018):
+    a = Vector(start)
+    b = Vector(end)
+    direction = b - a
+    length = direction.length
+    midpoint = (a + b) * .5
+    bpy.ops.mesh.primitive_cylinder_add(vertices=verts, radius=radius, depth=length, location=midpoint)
+    o = bpy.context.object
+    o.name = name
+    o.rotation_mode = 'QUATERNION'
+    o.rotation_quaternion = direction.to_track_quat('Z', 'Y')
+    o.rotation_mode = 'XYZ'
+    return finish(o, m, bevel=bevel)
 
 
 def tube(name, pts, r, m, resolution=4):
@@ -114,106 +130,109 @@ def build_rig():
 
 
 def build_character():
-    ivory = mat('warm ivory', (.70, .61, .47), .42)
-    skin_hi = mat('ivory highlight', (.90, .79, .61), .38)
-    cheek = mat('warm cheek', (.74, .52, .39), .55)
-    navy = mat('midnight uniform', (.055, .082, .118), .48)
-    cloth = mat('midnight cloth', (.075, .095, .125), .68)
-    leather = mat('dark leather', (.09, .055, .032), .78)
-    brass = mat('aged brass', (.50, .29, .075), .28, .82)
-    steel = mat('gunmetal trim', (.16, .18, .19), .34, .62)
-    hair = mat('iron grey', (.12, .13, .14), .84)
-    white = mat('eye white', (.90, .86, .76), .42)
-    iris = mat('cold iris', (.07, .20, .24), .30)
-    black = mat('pupil', (.005, .007, .010), .48)
-    red = mat('campaign red', (.31, .035, .035), .64)
-    cream = mat('shirt cream', (.72, .66, .54), .66)
+    # Stylised premium figurine: Matthias must read as a grizzled pawn-sage at
+    # Home scale, not as a stack of geometry primitives. Materials deliberately
+    # separate warm skin/brass from a deep blue-black uniform.
+    ivory = mat('warm ivory', (.62, .48, .34), .48)
+    skin_hi = mat('ivory highlight', (.82, .64, .45), .42)
+    cheek = mat('warm cheek', (.55, .32, .24), .58)
+    navy = mat('midnight uniform', (.018, .032, .052), .44)
+    cloth = mat('midnight cloth', (.028, .043, .064), .70)
+    leather = mat('dark leather', (.055, .030, .018), .78)
+    brass = mat('aged brass', (.52, .30, .075), .26, .86)
+    steel = mat('gunmetal trim', (.12, .14, .16), .38, .62)
+    hair = mat('iron grey', (.075, .080, .085), .88)
+    white = mat('eye white', (.82, .78, .68), .48)
+    iris = mat('cold iris', (.055, .15, .17), .34)
+    black = mat('pupil', (.003, .004, .006), .52)
+    red = mat('campaign red', (.27, .025, .022), .68)
+    cream = mat('shirt cream', (.62, .55, .43), .72)
 
     rig = build_rig()
-    rig['matthias_asset_version'] = 'home-blender-v2'
+    rig['matthias_asset_version'] = 'home-blender-v3'
     root, spine, head = [], [], []
 
-    # Pawn ancestry remains visible, but as a restrained plinth rather than two
-    # giant graphic rings. The character must read as Matthias first, pawn second.
+    # Pawn ancestry: low, restrained and integrated into the coat silhouette.
     root += [
-        cyl('Pawn plinth', (0, 0, .14), .57, .22, navy, verts=72, bevel=.025),
-        cyl('brass plinth trim', (0, 0, .245), .50, .032, brass, verts=72, bevel=.010),
-        cone('Pawn lower body', (0, 0, .53), .51, .35, .58, cloth, bevel=.035),
-        box('coat front skirt', (0, -.30, .56), (.30, .055, .26), navy, bevel=.025),
+        cyl('Pawn plinth', (0, 0, .13), .52, .20, navy, verts=80, bevel=.030),
+        cyl('brass plinth trim', (0, 0, .225), .45, .025, brass, verts=80, bevel=.008),
+        cone('Pawn lower body', (0, 0, .50), .45, .31, .58, cloth, bevel=.045),
     ]
 
-    # Tailored military coat with a readable V silhouette and surface detail.
+    # Organic coat mass. The chest is an ellipsoid rather than a visible cone,
+    # with thin lapels/details layered onto it.
     spine += [
-        cone('uniform torso', (0, 0, 1.12), .39, .31, .68, navy, bevel=.028),
-        sphere('Shoulder.L', (-.34, -.005, 1.44), (.22, .25, .18), navy, 40),
-        sphere('Shoulder.R', (.34, -.005, 1.44), (.22, .25, .18), navy, 40),
-        box('shirt bib', (0, -.337, 1.35), (.16, .026, .18), cream, bevel=.010),
-        box('lapel.L', (-.12, -.365, 1.39), (.13, .022, .25), cloth, (math.radians(-7), math.radians(-2), math.radians(-25)), .012),
-        box('lapel.R', (.12, -.365, 1.39), (.13, .022, .25), cloth, (math.radians(-7), math.radians(2), math.radians(25)), .012),
-        cyl('high collar', (0, -.01, 1.57), .285, .12, navy, verts=64, bevel=.018),
-        box('belt front', (0, -.355, .91), (.30, .035, .045), leather, bevel=.012),
-        box('belt buckle', (0, -.397, .91), (.07, .018, .055), brass, bevel=.008),
-        box('Epaulette.L', (-.36, -.02, 1.47), (.14, .18, .035), brass, (0, 0, math.radians(-8)), .012),
-        box('Epaulette.R', (.36, -.02, 1.47), (.14, .18, .035), brass, (0, 0, math.radians(8)), .012),
-        box('campaign ribbon', (-.15, -.394, 1.28), (.105, .012, .032), red, bevel=.006),
-        box('service ribbon', (.09, -.394, 1.28), (.07, .012, .032), brass, bevel=.006),
+        sphere('uniform chest', (0, -.005, 1.18), (.37, .285, .405), navy, 56),
+        sphere('Shoulder.L', (-.32, -.005, 1.43), (.19, .22, .15), navy, 44),
+        sphere('Shoulder.R', (.32, -.005, 1.43), (.19, .22, .15), navy, 44),
+        box('shirt bib', (0, -.294, 1.37), (.095, .018, .135), cream, bevel=.018),
+        box('lapel.L', (-.095, -.314, 1.39), (.095, .018, .19), cloth, (math.radians(-4), 0, math.radians(-29)), .016),
+        box('lapel.R', (.095, -.314, 1.39), (.095, .018, .19), cloth, (math.radians(-4), 0, math.radians(29)), .016),
+        cyl('high collar', (0, -.005, 1.54), .255, .095, cloth, verts=64, bevel=.016),
+        box('belt front', (0, -.300, .91), (.255, .025, .038), leather, bevel=.012),
+        box('belt buckle', (0, -.333, .91), (.055, .016, .048), brass, bevel=.008),
+        box('Epaulette.L', (-.325, -.035, 1.49), (.115, .145, .026), brass, (0, 0, math.radians(-7)), .012),
+        box('Epaulette.R', (.325, -.035, 1.49), (.115, .145, .026), brass, (0, 0, math.radians(7)), .012),
+        box('campaign ribbon', (-.115, -.309, 1.285), (.075, .010, .024), red, bevel=.005),
+        box('service ribbon', (.055, -.309, 1.285), (.052, .010, .024), brass, bevel=.005),
+        tube('coat piping.L', [(-.16, -.296, 1.35), (-.18, -.304, 1.16), (-.17, -.288, .99)], .009, steel, 3),
+        tube('coat piping.R', [(.16, -.296, 1.35), (.18, -.304, 1.16), (.17, -.288, .99)], .009, steel, 3),
     ]
-    for z in (1.04, 1.17, 1.30):
-        spine.append(sphere('button ' + str(z), (0, -.386, z), (.032, .018, .032), brass, 20))
+    for z in (1.06, 1.17):
+        spine.append(sphere('button ' + str(z), (0, -.307, z), (.026, .014, .026), brass, 20))
 
-    # Larger, character-led head. Facial features are deliberately exaggerated
-    # enough to survive the ~100 px Home render without becoming cartoon noise.
+    # Matthias' face: smaller eyes, heavier brows, longer moustache and a compact
+    # beard. The expression should be stern/sardonic rather than toy-like.
     head += [
-        sphere('Head', (0, -.04, 1.93), (.40, .36, .43), ivory, 64),
-        sphere('Cheek.L', (-.19, -.322, 1.90), (.12, .055, .105), cheek, 32),
-        sphere('Cheek.R', (.19, -.322, 1.90), (.12, .055, .105), cheek, 32),
-        sphere('Nose', (0, -.405, 1.94), (.085, .105, .105), skin_hi, 36),
+        sphere('Head', (0, -.035, 1.94), (.365, .315, .40), ivory, 64),
+        sphere('Cheek.L', (-.175, -.295, 1.90), (.095, .045, .082), cheek, 32),
+        sphere('Cheek.R', (.175, -.295, 1.90), (.095, .045, .082), cheek, 32),
+        sphere('Nose', (0, -.355, 1.94), (.072, .090, .095), skin_hi, 36),
     ]
-    for side, x in [('L', -.135), ('R', .135)]:
+    for side, x in [('L', -.125), ('R', .125)]:
         head += [
-            sphere('Eye.' + side, (x, -.363, 2.065), (.078, .032, .056), white, 32),
-            sphere('Iris.' + side, (x, -.395, 2.063), (.037, .014, .035), iris, 24),
-            sphere('Pupil.' + side, (x, -.408, 2.063), (.015, .008, .016), black, 18),
+            sphere('Eye.' + side, (x, -.325, 2.055), (.056, .025, .038), white, 30),
+            sphere('Iris.' + side, (x, -.349, 2.053), (.026, .010, .025), iris, 22),
+            sphere('Pupil.' + side, (x, -.358, 2.053), (.011, .006, .012), black, 16),
         ]
     head += [
-        box('Brow.L', (-.14, -.397, 2.165), (.115, .022, .022), hair, (math.radians(-5), 0, math.radians(-13)), .008),
-        box('Brow.R', (.14, -.397, 2.172), (.115, .022, .022), hair, (math.radians(-3), 0, math.radians(10)), .008),
-        tube('Moustache.L', [(-.01, -.443, 1.91), (-.10, -.458, 1.895), (-.24, -.425, 1.925)], .024, hair, 5),
-        tube('Moustache.R', [(.01, -.443, 1.91), (.10, -.458, 1.895), (.24, -.425, 1.925)], .024, hair, 5),
-        tube('mouth', [(-.075, -.431, 1.842), (0, -.442, 1.83), (.075, -.431, 1.842)], .010, black, 3),
-        sphere('beard mass', (0, -.265, 1.76), (.22, .12, .21), hair, 40),
-        cone('beard point', (0, -.255, 1.63), .17, .045, .30, hair, bevel=.012),
-        sphere('Ear.L', (-.39, -.045, 1.94), (.055, .045, .085), ivory, 28),
-        sphere('Ear.R', (.39, -.045, 1.94), (.055, .045, .085), ivory, 28),
+        box('Brow.L', (-.125, -.357, 2.132), (.105, .017, .018), hair, (0, 0, math.radians(-18)), .007),
+        box('Brow.R', (.125, -.357, 2.132), (.105, .017, .018), hair, (0, 0, math.radians(18)), .007),
+        tube('Moustache.L', [(-.008, -.395, 1.915), (-.095, -.412, 1.90), (-.235, -.382, 1.925)], .027, hair, 5),
+        tube('Moustache.R', [(.008, -.395, 1.915), (.095, -.412, 1.90), (.235, -.382, 1.925)], .027, hair, 5),
+        tube('mouth', [(-.062, -.386, 1.845), (0, -.397, 1.836), (.062, -.386, 1.845)], .008, black, 3),
+        sphere('beard mass', (0, -.245, 1.765), (.195, .105, .185), hair, 42),
+        cone('beard point', (0, -.238, 1.64), .145, .035, .255, hair, bevel=.012),
+        sphere('Ear.L', (-.355, -.035, 1.94), (.050, .040, .075), ivory, 28),
+        sphere('Ear.R', (.355, -.035, 1.94), (.050, .040, .075), ivory, 28),
     ]
 
-    # Cap is layered, not a single flattened blob: crown, band, visor, insignia.
+    # Field cap: compact crown and pronounced visor, closer to a battered officer
+    # cap than a flat toy saucer.
     head += [
-        sphere('field cap crown', (0, -.015, 2.265), (.315, .295, .115), navy, 48),
-        cyl('field cap band', (0, -.02, 2.205), .305, .075, cloth, verts=64, bevel=.012),
-        box('cap visor', (0, -.318, 2.205), (.22, .125, .026), leather, (math.radians(8), 0, 0), .012),
-        sphere('cap insignia', (0, -.325, 2.255), (.050, .018, .058), brass, 24),
-        box('cap insignia bar', (0, -.344, 2.255), (.075, .010, .012), brass, bevel=.005),
+        sphere('field cap crown', (0, -.005, 2.255), (.305, .275, .095), navy, 52),
+        cyl('field cap band', (0, -.012, 2.205), .286, .062, cloth, verts=72, bevel=.010),
+        box('cap visor', (0, -.294, 2.185), (.185, .095, .020), leather, (math.radians(10), 0, 0), .014),
+        sphere('cap insignia', (0, -.306, 2.236), (.038, .014, .045), brass, 22),
     ]
 
-    # Compact arms keep the silhouette readable. Cuffs and gloves create a
-    # premium break between coat and hands instead of featureless cylinders.
-    al = cyl('Upper arm.L', (-.49, -.02, 1.34), .14, .46, navy, (0, math.radians(-50), math.radians(5)), bevel=.025)
-    ar = cyl('Upper arm.R', (.49, -.02, 1.34), .14, .46, navy, (0, math.radians(50), math.radians(-5)), bevel=.025)
-    fl = cyl('Forearm.L', (-.70, -.12, 1.11), .12, .42, cloth, (math.radians(8), math.radians(-34), math.radians(4)), bevel=.022)
-    fr = cyl('Forearm.R', (.70, -.12, 1.11), .12, .42, cloth, (math.radians(8), math.radians(34), math.radians(-4)), bevel=.022)
-    cuff_l = cyl('Cuff.L', (-.84, -.17, .98), .125, .095, brass, (math.radians(8), math.radians(-34), math.radians(4)), verts=40, bevel=.010)
-    cuff_r = cyl('Cuff.R', (.84, -.17, .98), .125, .095, brass, (math.radians(8), math.radians(34), math.radians(-4)), verts=40, bevel=.010)
-    hl = sphere('Hand.L', (-.89, -.20, .93), (.13, .11, .14), ivory, 32)
-    hr = sphere('Hand.R', (.89, -.20, .93), (.13, .11, .14), ivory, 32)
-
-    # Tiny shoulder braid / coat piping adds depth without turning him into RPG UI.
-    spine += [
-        tube('shoulder braid.L', [(-.35, -.22, 1.49), (-.44, -.25, 1.42), (-.46, -.24, 1.32)], .016, brass, 4),
-        tube('shoulder braid.R', [(.35, -.22, 1.49), (.44, -.25, 1.42), (.46, -.24, 1.32)], .016, brass, 4),
-        box('coat seam.L', (-.18, -.373, 1.08), (.012, .010, .24), steel, bevel=.004),
-        box('coat seam.R', (.18, -.373, 1.08), (.012, .010, .24), steel, bevel=.004),
-    ]
+    # Arms follow the actual rest-bone lines so the silhouette remains connected.
+    shoulder_l = (-.32, -.005, 1.43)
+    elbow_l = (-.57, -.035, 1.27)
+    wrist_l = (-.72, -.13, 1.06)
+    shoulder_r = (.32, -.005, 1.43)
+    elbow_r = (.57, -.035, 1.27)
+    wrist_r = (.72, -.13, 1.06)
+    al = cyl_between('Upper arm.L', shoulder_l, elbow_l, .115, navy, 48, .022)
+    ar = cyl_between('Upper arm.R', shoulder_r, elbow_r, .115, navy, 48, .022)
+    fl = cyl_between('Forearm.L', elbow_l, wrist_l, .105, cloth, 48, .020)
+    fr = cyl_between('Forearm.R', elbow_r, wrist_r, .105, cloth, 48, .020)
+    cuff_l = sphere('Cuff.L', wrist_l, (.115, .09, .09), brass, 30)
+    cuff_r = sphere('Cuff.R', wrist_r, (.115, .09, .09), brass, 30)
+    hl = sphere('Hand.L', (-.735, -.155, 1.015), (.105, .085, .115), ivory, 32)
+    hr = sphere('Hand.R', (.735, -.155, 1.015), (.105, .085, .115), ivory, 32)
+    thumb_l = sphere('Thumb.L', (-.68, -.225, 1.025), (.045, .040, .052), skin_hi, 22)
+    thumb_r = sphere('Thumb.R', (.68, -.225, 1.025), (.045, .040, .052), skin_hi, 22)
 
     for o in root:
         parent_bone(o, rig, 'root')
@@ -223,8 +242,8 @@ def build_character():
         parent_bone(o, rig, 'head')
     parent_bone(al, rig, 'upper_arm.L')
     parent_bone(ar, rig, 'upper_arm.R')
-    for o in (fl, cuff_l, hl):
+    for o in (fl, cuff_l, hl, thumb_l):
         parent_bone(o, rig, 'forearm.L')
-    for o in (fr, cuff_r, hr):
+    for o in (fr, cuff_r, hr, thumb_r):
         parent_bone(o, rig, 'forearm.R')
     return rig
