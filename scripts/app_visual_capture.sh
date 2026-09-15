@@ -75,11 +75,31 @@ case "$mode" in
       exit 0
     fi
 
-    export APP_VISUAL_EXPERIMENTS_SCOPE="$experiments_scope"
+    playwright_experiments_scope="$experiments_scope"
+    if has_group experiments && has_producer experiments-hub && has_producer chronicles-gameplay && has_experiment_scope chronicles; then
+      # The dedicated Chronicles gameplay producer owns the canonical dungeon/
+      # portrait proof. Do not ask the legacy Experiments hub producer to render
+      # the same software-WebGL session again during broad/full visual sweeps.
+      if [[ ",$experiments_scope," == *",all,"* ]]; then
+        playwright_experiments_scope="landing,pawnslug"
+      else
+        filtered_scopes=()
+        IFS=',' read -ra requested_scopes <<< "$experiments_scope"
+        for scope in "${requested_scopes[@]}"; do
+          [[ "$scope" == "chronicles" ]] || filtered_scopes+=("$scope")
+        done
+        playwright_experiments_scope="$(IFS=,; echo "${filtered_scopes[*]}")"
+      fi
+    fi
+
+    export APP_VISUAL_EXPERIMENTS_SCOPE="$playwright_experiments_scope"
     echo "App visual capture groups: $groups"
     echo "App visual producers: $producer_scope"
     if has_group experiments; then
       echo "Experiments visual subscopes: $experiments_scope"
+      if [[ "$playwright_experiments_scope" != "$experiments_scope" ]]; then
+        echo "Experiments hub effective subscopes: $playwright_experiments_scope (Chronicles owned by dedicated producer)"
+      fi
       echo "Chronicles avatar proof: $chronicles_avatar"
     fi
     printf ' - %s\n' "${specs[@]}"
