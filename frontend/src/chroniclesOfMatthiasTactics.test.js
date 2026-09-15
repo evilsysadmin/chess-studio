@@ -3,9 +3,11 @@ import { createChroniclesState } from './chroniclesOfMatthias.js';
 import {
   chroniclesTacticsAttack,
   chroniclesTacticsFinishTurn,
+  chroniclesTacticsInteractions,
   chroniclesTacticsLegalMoves,
   chroniclesTacticsMove,
   chroniclesTacticsTargets,
+  chroniclesTacticsUse,
 } from './chroniclesOfMatthiasTactics.js';
 
 function tacticsState(overrides = {}) {
@@ -28,9 +30,32 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
     ]);
   });
 
-  it('keeps the black exit unavailable until the tactical objective chain is complete', () => {
+  it('makes the ancient sigil a contextual use action instead of a walk-on trigger', () => {
+    const before = tacticsState({ x: 3, y: 3 });
+    const sigilMove = chroniclesTacticsLegalMoves(before).find((move) => move.x === 3 && move.y === 4);
+    const standingOnSigil = chroniclesTacticsMove(before, sigilMove);
+
+    expect(standingOnSigil.sigilAwake).toBe(false);
+    expect(chroniclesTacticsInteractions(standingOnSigil)).toEqual([
+      expect.objectContaining({ id: 'ancient-sigil', label: 'Activar sello' }),
+    ]);
+
+    const activated = chroniclesTacticsUse(standingOnSigil);
+    expect(activated.sigilAwake).toBe(true);
+    expect(activated.message).toMatch(/activa el sello/i);
+    expect(activated.journal.some((entry) => entry.id === 'tactics-sigil-awake')).toBe(true);
+  });
+
+  it('keeps the black exit as an explicit use action and explains why it is locked', () => {
     const locked = tacticsState({ x: 2, y: 1 });
     expect(chroniclesTacticsLegalMoves(locked).some((move) => move.x === 3 && move.y === 1)).toBe(false);
+    expect(chroniclesTacticsInteractions(locked)).toEqual([
+      expect.objectContaining({ id: 'black-gate', label: 'Examinar Puerta Negra' }),
+    ]);
+
+    const examined = chroniclesTacticsUse(locked);
+    expect(examined.phase).toBe('explore');
+    expect(examined.message).toMatch(/no responde/i);
 
     const unlocked = tacticsState({
       x: 2,
@@ -40,9 +65,10 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
       scavengerHp: 0,
       blackGateKey: true,
     });
-    const exit = chroniclesTacticsLegalMoves(unlocked).find((move) => move.x === 3 && move.y === 1);
-    expect(exit?.tile).toBe('X');
-    expect(chroniclesTacticsMove(unlocked, exit).phase).toBe('escaped');
+    expect(chroniclesTacticsInteractions(unlocked)).toEqual([
+      expect.objectContaining({ id: 'black-gate', label: 'Abrir Puerta Negra' }),
+    ]);
+    expect(chroniclesTacticsUse(unlocked).phase).toBe('escaped');
   });
 
   it('uses the selected party member reach instead of inventing a generic attack', () => {

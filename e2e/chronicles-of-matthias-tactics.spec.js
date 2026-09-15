@@ -19,7 +19,7 @@ async function openTactics(page) {
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias Tactics', exact: true })).toBeVisible();
 }
 
-test('Chronicles Tactics · arranca como action RPG isométrico', async ({ page }) => {
+test('Chronicles Tactics · arranca como action RPG isométrico con usar y ataque separados', async ({ page }) => {
   await openTactics(page);
   const mode = page.locator('[data-chronicles-tactics="true"]');
   const canvas = mode.locator('[data-chronicles-tactics-renderer="three"] canvas');
@@ -27,11 +27,12 @@ test('Chronicles Tactics · arranca como action RPG isométrico', async ({ page 
   await expect(mode).toHaveAttribute('data-camera', 'isometric-behind-party');
   await expect(mode).toHaveAttribute('data-combat', 'realtime');
   await expect(mode.getByText(/Action RPG isométrico/i)).toBeVisible();
-  await expect(mode.getByText(/TURNO DEL JUGADOR/i)).toHaveCount(0);
+  await expect(mode.getByText(/espacio usa · Shift ataca/i)).toBeVisible();
+  await expect(mode.getByRole('button', { name: 'Usar', exact: true })).toBeVisible();
   await expect(mode.getByRole('button', { name: 'Esperar', exact: true })).toHaveCount(0);
 
-  await mode.getByRole('button').filter({ hasText: '3. Aziz' }).click();
-  await mode.getByRole('button', { name: 'Atacar', exact: true }).click();
+  await page.keyboard.press('3');
+  await page.keyboard.press('Shift');
   await expect(mode.getByText(/Aziz usa rayo diagonal/i)).toBeVisible();
 });
 
@@ -42,6 +43,7 @@ test('Chronicles Tactics · móvil conserva canvas y controles de acción sin ov
   await expect(mode.locator('[data-chronicles-tactics-renderer="three"] canvas')).toBeVisible({ timeout: 30_000 });
   await expect(mode.getByRole('button', { name: 'Mover al norte' })).toBeVisible();
   await expect(mode.getByRole('button', { name: 'Mover al oeste' })).toBeVisible();
+  await expect(mode.getByRole('button', { name: 'Usar', exact: true })).toBeVisible();
   await expect(mode.getByRole('button', { name: 'Atacar', exact: true })).toBeVisible();
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);

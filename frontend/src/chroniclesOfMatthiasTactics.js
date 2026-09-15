@@ -99,14 +99,104 @@ function actionAllowed(state) {
   return Boolean(state && state.turnPhase !== 'enemy' && state.phase !== 'defeated' && state.phase !== 'escaped');
 }
 
+function adjacentExit(state) {
+  return CHRONICLES_DIRECTIONS
+    .map((direction) => ({
+      x: state.x + direction.dx,
+      y: state.y + direction.dy,
+      direction: direction.key,
+    }))
+    .find((position) => chroniclesTileAt(position.x, position.y) === 'X') || null;
+}
+
+function lockedGateMessage(state) {
+  if (!state.sigilAwake) return 'La Puerta Negra no responde. Algo en la cripta sigue dormido, por desgracia temporalmente.';
+  if (state.jailerHp > 0) return 'La Puerta Negra no cede mientras la torre carcelero siga defendiendo el umbral.';
+  if (!state.blackGateKey) return 'La cerradura exige la Llave Negra. Alguien con pezuñas la considera propiedad privada.';
+  return 'La Puerta Negra permanece cerrada con una obstinación administrativamente impecable.';
+}
+
+export function chroniclesTacticsInteractions(state) {
+  if (!actionAllowed(state)) return [];
+  const interactions = [];
+
+  if (chroniclesTileAt(state.x, state.y) === 'S' && !state.sigilAwake) {
+    interactions.push({
+      id: 'ancient-sigil',
+      kind: 'trigger',
+      label: 'Activar sello',
+      x: state.x,
+      y: state.y,
+    });
+  }
+
+  const exit = adjacentExit(state);
+  if (exit) {
+    interactions.push({
+      id: 'black-gate',
+      kind: 'exit',
+      label: canUseExit(state) ? 'Abrir Puerta Negra' : 'Examinar Puerta Negra',
+      x: exit.x,
+      y: exit.y,
+      direction: exit.direction,
+    });
+  }
+
+  return interactions;
+}
+
+export function chroniclesTacticsUse(state, interactionId = null) {
+  const interaction = chroniclesTacticsInteractions(state).find((candidate) => (
+    !interactionId || candidate.id === interactionId
+  ));
+  if (!interaction) return state;
+
+  const turns = Number(state.turns || 0) + 1;
+  if (interaction.id === 'ancient-sigil') {
+    return appendJournal({
+      ...state,
+      sigilAwake: true,
+      turns,
+      message: 'La compañía activa el sello. La piedra despierta y más piezas hostiles entran en la partida.',
+    }, {
+      id: 'tactics-sigil-awake',
+      title: 'El sello despierta',
+      body: 'La formación activa el sello de la cripta. Torre y alfil reciben la noticia con una hostilidad muy profesional.',
+      sigil: 'III',
+    });
+  }
+
+  if (interaction.id === 'black-gate') {
+    if (!canUseExit(state)) {
+      return {
+        ...state,
+        turns,
+        message: lockedGateMessage(state),
+      };
+    }
+    return appendJournal({
+      ...state,
+      phase: 'escaped',
+      turns,
+      message: 'La compañía abre la Puerta Negra y abandona la cripta. Sobrevivir sigue siendo una métrica de rendimiento perfectamente válida.',
+    }, {
+      id: 'tactics-escape',
+      title: 'Extracción completada',
+      body: 'La compañía abandona la cripta táctica con más miembros que cadáveres. Matthias lo registra como excelencia.',
+      sigil: 'VII',
+    });
+  }
+
+  return state;
+}
+
 export function chroniclesTacticsLegalMoves(state) {
   if (!actionAllowed(state)) return [];
   return CHRONICLES_DIRECTIONS.flatMap((direction) => {
     const position = { x: state.x + direction.dx, y: state.y + direction.dy };
     const tile = chroniclesTileAt(position.x, position.y);
-    if (tile === '#') return [];
+    if (tile === '#' || tile === 'X') return [];
     if (occupiedByEnemy(state, position)) return [];
-    if (tile === 'X' && !canUseExit(state)) return [];
     return [{
       key: direction.key,
       label: MOVE_LABELS[direction.key] || direction.label,
@@ -147,44 +237,11 @@ export function chroniclesTacticsMove(state, destination) {
   const legal = chroniclesTacticsLegalMoves(state).find((move) => move.x === destination?.x && move.y === destination?.y);
   if (!legal) return state;
 
-  const turns = Number(state.turns || 0) + 1;
-  if (legal.tile === 'S' && !state.sigilAwake) {
-    return appendJournal({
-      ...state,
-      x: legal.x,
-      y: legal.y,
-      sigilAwake: true,
-      turns,
-      message: 'La compañía pisa el sello. La piedra despierta y más piezas hostiles entran en la partida.',
-    }, {
-      id: 'tactics-sigil-awake',
-      title: 'El sello despierta',
-      body: 'La formación activa el sello de la cripta. Torre y alfil reciben la noticia con una hostilidad muy profesional.',
-      sigil: 'III',
-    });
-  }
-
-  if (legal.tile === 'X') {
-    return appendJournal({
-      ...state,
-      x: legal.x,
-      y: legal.y,
-      phase: 'escaped',
-      turns,
-      message: 'La compañía cruza la puerta negra. Sobrevivir sigue siendo una métrica de rendimiento perfectamente válida.',
-    }, {
-      id: 'tactics-escape',
-      title: 'Extracción completada',
-      body: 'La compañía abandona la cripta táctica con más miembros que cadáveres. Matthias lo registra como excelencia.',
-      sigil: 'VII',
-    });
-  }
-
   return {
     ...state,
     x: legal.x,
     y: legal.y,
-    turns,
+    turns: Number(state.turns || 0) + 1,
     message: `La compañía avanza hacia ${legal.label.toLowerCase()}. Piedra, formación y malas intenciones.`,
   };
 }
