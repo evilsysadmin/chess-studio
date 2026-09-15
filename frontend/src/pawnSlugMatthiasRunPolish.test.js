@@ -8,14 +8,15 @@ import {
 } from './pawnSlugMatthiasRunPolish.js';
 
 describe('Pawn Slug Matthias run polish', () => {
-  it('slows the authored run cadence and never adds a fresh vertical bounce', () => {
+  it('uses a fluid sixteen-frame cadence and never adds a fresh vertical bounce', () => {
     expect(pawnSlugMatthiasRunCadence(0)).toBeCloseTo(0, 8);
     expect(pawnSlugMatthiasRunCadence(4)).toBeCloseTo(1, 8);
     expect(pawnSlugMatthiasRunCadence(8)).toBeCloseTo(0, 8);
     expect(pawnSlugMatthiasRunCadence(12)).toBeCloseTo(1, 8);
-    expect(PAWN_SLUG_MATTHIAS_RUN_POLISH.frameRate).toBeLessThan(12);
+    expect(PAWN_SLUG_MATTHIAS_RUN_POLISH.frameCount).toBe(16);
+    expect(PAWN_SLUG_MATTHIAS_RUN_POLISH.frameRate).toBe(14);
     expect(PAWN_SLUG_MATTHIAS_RUN_POLISH.maxVerticalCompensation).toBe(0);
-    expect(pawnSlugMatthiasRunFrame(1, 0)).toBe(10);
+    expect(pawnSlugMatthiasRunFrame(1, 0)).toBe(14);
   });
 
   it('crops all four dirty edges of the authored run cell with extra lower-corner cleanup', () => {
@@ -33,7 +34,7 @@ describe('Pawn Slug Matthias run polish', () => {
     expect(mirrored.offsetX).toBeCloseTo((5 * 96 - 4) / 1536, 12);
   });
 
-  it('keeps grounded running planted while applying the clean run UV window', () => {
+  it('honours the locomotion controller frame and keeps grounded running planted', () => {
     const repeatSet = vi.fn();
     const offsetSet = vi.fn();
     const setActionFrame = vi.fn((action, frame) => {
@@ -57,16 +58,39 @@ describe('Pawn Slug Matthias run polish', () => {
       material: { rotation: 0 },
     };
 
-    const result = applyPawnSlugMatthiasRunPolish(sprite, { running: true, dir: 1, time: 0.4 });
-    const uv = pawnSlugMatthiasRunUvWindow(result.frameIndex, 1);
+    const result = applyPawnSlugMatthiasRunPolish(sprite, {
+      running: true,
+      dir: 1,
+      time: 0.4,
+      runFrame: 11,
+    });
+    const uv = pawnSlugMatthiasRunUvWindow(11, 1);
 
-    expect(result.frameIndex).toBe(4);
+    expect(result.frameIndex).toBe(11);
+    expect(setActionFrame).toHaveBeenCalledWith('run', 11);
     expect(sprite.position.y).toBe(0);
     expect(sprite.scale.x).toBeGreaterThan(1);
     expect(sprite.scale.y).toBeLessThan(1);
     expect(sprite.material.rotation).toBeLessThan(0);
     expect(repeatSet).toHaveBeenCalledWith(uv.repeatX, uv.repeatY);
     expect(offsetSet).toHaveBeenCalledWith(uv.offsetX, uv.offsetY);
+  });
+
+  it('falls back to time-derived frames when no locomotion frame is supplied', () => {
+    const sprite = {
+      userData: {
+        animation: { action: 'run', frameIndex: 0, runStartedAt: 0 },
+        setActionFrame(action, frame) {
+          this.animation.action = action;
+          this.animation.frameIndex = frame;
+        },
+      },
+      position: { y: 0 },
+      scale: { x: 1, y: 1 },
+      material: { rotation: 0 },
+    };
+    const result = applyPawnSlugMatthiasRunPolish(sprite, { running: true, dir: 1, time: 0.4 });
+    expect(result.frameIndex).toBe(5);
   });
 
   it('does nothing for idle, airborne or crouched poses', () => {
