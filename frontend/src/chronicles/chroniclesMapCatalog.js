@@ -146,6 +146,39 @@ export function chroniclesMapTransitionState(state, mapId) {
   };
 }
 
+export function chroniclesMapContentPosition(mapOrState, entry) {
+  const map = mapOrState?.grid ? mapOrState : chroniclesMapForState(mapOrState);
+  if (!entry) return null;
+  if (Number.isFinite(entry.x) && Number.isFinite(entry.y)) return { x: entry.x, y: entry.y };
+  if (!entry.tile) return null;
+  for (let y = 0; y < map.grid.length; y += 1) {
+    const x = map.grid[y].indexOf(entry.tile);
+    if (x >= 0) return { x, y };
+  }
+  return null;
+}
+
+export function chroniclesMapRenderPlan(mapOrState = null) {
+  const map = mapOrState?.grid ? mapOrState : chroniclesMapForState(mapOrState);
+  const lever = map.interactables.find((entry) => entry.kind === 'lever') || null;
+  const pickup = map.treasures.find((entry) => entry.kind === 'pickup') || null;
+  const sigil = map.triggers.find((entry) => entry.kind === 'trigger') || null;
+  return Object.freeze({
+    mapId: map.id,
+    title: map.title,
+    grid: map.grid,
+    width: map.grid[0]?.length || 0,
+    height: map.grid.length,
+    enemies: Object.freeze(map.enemies.map((enemy) => Object.freeze({
+      id: enemy.id,
+      visualType: enemy.visualType || enemy.id,
+    }))),
+    lever: lever ? Object.freeze({ id: lever.id, position: chroniclesMapContentPosition(map, lever) }) : null,
+    pickup: pickup ? Object.freeze({ id: pickup.id, position: chroniclesMapContentPosition(map, pickup) }) : null,
+    sigil: sigil ? Object.freeze({ id: sigil.id, position: chroniclesMapContentPosition(map, sigil) }) : null,
+  });
+}
+
 export function chroniclesMapIds() {
   return Object.keys(MAPS);
 }

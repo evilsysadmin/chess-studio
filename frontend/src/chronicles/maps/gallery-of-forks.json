@@ -1,14 +1,14 @@
 {
   "id": "gallery-of-forks",
-  "version": 1,
+  "version": 2,
   "progressionKey": "gallery-01",
   "title": "Galería de las Horquillas",
   "grid": [
     "#######",
     "#..X..#",
-    "#.###.#",
-    "#...#.#",
-    "#.#S#.#",
+    "#.#.#.#",
+    "#.....#",
+    "#.#.#.#",
     "#P.E..#",
     "#######"
   ],
@@ -23,6 +23,7 @@
   "enemies": [
     {
       "id": "corrupted-pawn",
+      "visualType": "corrupted-pawn",
       "name": "peón de ceniza",
       "x": 3,
       "y": 5,
@@ -34,6 +35,7 @@
     },
     {
       "id": "gate-jailer",
+      "visualType": "gate-jailer",
       "name": "torre de la galería",
       "x": 3,
       "y": 1,

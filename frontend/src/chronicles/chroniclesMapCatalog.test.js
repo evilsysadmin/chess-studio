@@ -4,6 +4,7 @@ import {
   chroniclesMapById,
   chroniclesMapIds,
   chroniclesMapInitialEnemyState,
+  chroniclesMapRenderPlan,
   chroniclesMapTileAt,
 } from './chroniclesMapCatalog.js';
 
@@ -69,5 +70,38 @@ describe('Chronicles declarative map catalog', () => {
       scavengerHp: 6,
       scavengerPosition: 'gate',
     });
+  });
+
+  it('exposes a render plan with topology, props and reusable visual roles', () => {
+    const crypt = chroniclesMapRenderPlan(chroniclesMapById('crypt-eight-squares'));
+    const gallery = chroniclesMapRenderPlan(chroniclesMapById('gallery-of-forks'));
+
+    expect(gallery.mapId).toBe('gallery-of-forks');
+    expect(gallery.grid).not.toEqual(crypt.grid);
+    expect(gallery.width).toBe(7);
+    expect(gallery.height).toBe(7);
+    expect(gallery.enemies).toEqual([
+      { id: 'corrupted-pawn', visualType: 'corrupted-pawn' },
+      { id: 'gate-jailer', visualType: 'gate-jailer' },
+    ]);
+    expect(gallery.lever?.position).toEqual({ x: 5, y: 5 });
+    expect(gallery.pickup?.position).toEqual({ x: 5, y: 4 });
+    expect(gallery.sigil).toBeNull();
+  });
+
+  it('keeps content identity separate from reusable visual roles', () => {
+    const synthetic = {
+      id: 'synthetic-room',
+      title: 'Synthetic',
+      grid: ['###', '#.#', '###'],
+      enemies: [{ id: 'fork-warden', visualType: 'gate-jailer' }],
+      triggers: [],
+      interactables: [],
+      treasures: [],
+    };
+
+    expect(chroniclesMapRenderPlan(synthetic).enemies).toEqual([
+      { id: 'fork-warden', visualType: 'gate-jailer' },
+    ]);
   });
 });
