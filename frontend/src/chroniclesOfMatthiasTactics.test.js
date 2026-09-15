@@ -75,9 +75,11 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
       blackGateKey: true,
     });
     expect(chroniclesTacticsInteractions(unlocked)).toEqual([
-      expect.objectContaining({ id: 'black-gate', label: 'Abrir Puerta Negra' }),
+      expect.objectContaining({ id: 'black-gate', label: 'Cruzar Puerta Negra' }),
     ]);
-    expect(chroniclesTacticsUse(unlocked).phase).toBe('escaped');
+    const crossed = chroniclesTacticsUse(unlocked);
+    expect(crossed.phase).toBe('explore');
+    expect(crossed.mapId).toBe('gallery-of-forks');
   });
 
   it('opens a real rune cache with the contextual lever and reveals a pickup', () => {
