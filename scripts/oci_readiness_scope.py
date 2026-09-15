@@ -20,6 +20,7 @@ TERRAFORM_SCRIPTS = {
     "scripts/oci_bootstrap_state.py",
     "scripts/oci_floci_smoke.sh",
     "scripts/oci_staging_lifecycle.sh",
+    "scripts/oci_staging_verify.sh",
     "scripts/oci_terraform_static.sh",
 }
 TERRAFORM_WORKFLOWS = {READINESS_WORKFLOW, STAGING_WORKFLOW}
@@ -75,6 +76,7 @@ def self_test() -> None:
     assert classify(["scripts/oci_bootstrap_state.py"], event_name="pull_request") == Scope(False, True)
     assert classify(["scripts/oci_floci_smoke.sh"], event_name="pull_request") == Scope(False, True)
     assert classify(["scripts/oci_staging_lifecycle.sh"], event_name="pull_request") == Scope(False, True)
+    assert classify(["scripts/oci_staging_verify.sh"], event_name="pull_request") == Scope(False, True)
     assert classify(["scripts/oci_terraform_static.sh"], event_name="pull_request") == Scope(False, True)
     assert classify(["infra/oci/staging/main.tf"], event_name="pull_request") == Scope(False, True)
     assert classify([READINESS_WORKFLOW], event_name="pull_request") == Scope(True, True)
