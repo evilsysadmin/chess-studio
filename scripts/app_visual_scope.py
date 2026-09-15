@@ -167,17 +167,22 @@ def _experiment_parts(path: str) -> set[str]:
     return set(EXPERIMENT_ORDER)
 
 
+HANS_ROUTINE_SHARED_OWNERS = {
+    "frontend/src/components/gameboardview.jsx",
+    "frontend/src/components/warroomambientdirector.js",
+}
+
+
 def _needs_hans_routines(path: str) -> bool:
-    """Deep Hans routine videos are for actor/choreography owners, not every War Room edit."""
-    lower = path.lower()
-    name = Path(lower).name
+    """Deep Hans videos are reserved for Hans choreography/event ownership."""
+    lower = path.lower().replace("\\", "/")
     if "hans" in lower:
         return True
-    if lower.startswith("e2e/"):
-        return False
-    # These shared 3D owners can move Hans, alter his physical scene or remount
-    # the renderer even when the file name itself does not mention Hans.
-    return any(token in name for token in ("board3d", "warroom3d", "gameboardview", "game3d"))
+    # Generic Board3D/WarRoom renderer changes already exercise Hans through the
+    # canonical warroom-hans producer. The expensive multi-video routine audit is
+    # only additional signal when shared code actually chooses or coordinates his
+    # per-game/ambient behaviour.
+    return lower in HANS_ROUTINE_SHARED_OWNERS
 
 
 def _needs_chronicles_avatar(path: str) -> bool:
@@ -282,13 +287,23 @@ def self_test() -> None:
     assert not hub.chronicles_avatar
 
     warroom_3d = classify(["frontend/src/components/WarRoom3D.jsx"])
-    assert warroom_3d.capture_groups == "warroom" and warroom_3d.hans
+    assert warroom_3d.capture_groups == "warroom" and not warroom_3d.hans
+    board3d_core = classify(["frontend/src/components/Board3DCore.jsx"])
+    assert board3d_core.capture_groups == "warroom" and not board3d_core.hans
+    game_board = classify(["frontend/src/components/GameBoardView.jsx"])
+    assert game_board.capture_groups == "warroom" and game_board.hans
+    ambient_director = classify(["frontend/src/components/WarRoomAmbientDirector.js"])
+    assert ambient_director.capture_groups == "warroom" and ambient_director.hans
+    hans_actor = classify(["frontend/src/components/WarRoomHansActor.js"])
+    assert hans_actor.capture_groups == "warroom" and hans_actor.hans
     warroom_ui = classify(["frontend/src/components/WarRoomRain.css"])
     assert warroom_ui.capture_groups == "warroom" and not warroom_ui.hans
     warroom_visual = classify(["e2e/war-room-decor-visual-artifact.spec.js"])
     assert warroom_visual.capture_groups == "warroom" and not warroom_visual.hans
     hans_visual = classify(["e2e/war-room-hans-visual-artifact.spec.js"])
     assert hans_visual.hans
+    hans_routines = classify(["e2e/war-room-hans-routines-visual.spec.js"])
+    assert hans_routines.hans
 
     assert classify(["frontend/src/components/HomeCastle3D.jsx"]).capture_groups == "home"
     assert classify(["frontend/src/components/MatthiasAvatar.jsx"]).capture_groups == "home,warroom"
