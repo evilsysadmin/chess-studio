@@ -79,9 +79,11 @@ ADMIN_SMOKE_RE = re.compile(
     r"^frontend/src/components/(?:Admin|Observability)[^/]*\.(?:js|jsx)$|"
     r"^frontend/src/components/useAdmin[^/]*\.js$"
 )
+# Audio evolves through many small production/profile modules. Keep this family-based
+# so a new ambient* production file cannot silently fall back to the six-lane core
+# browser matrix just because its exact filename was not pre-registered here.
 AUDIO_APP_BOOT_RE = re.compile(
-    r"^frontend/src/(?:ambientCatalog|ambientProfiles|ambientProfilesLegacy|audioContext|"
-    r"orchestralSampler|sound|soundFx|soundPreferences|useAuthenticatedAudio)\.js$"
+    r"^frontend/src/(?:ambient[^/]*|audio[^/]*|orchestral[^/]*|sound[^/]*|useAuthenticatedAudio)\.js$"
 )
 TOURNAMENT_SMOKE_RE = re.compile(r"^frontend/src/tournament\.js$")
 DEDICATED_3D_BROWSER_RE = re.compile(
@@ -236,8 +238,13 @@ def self_test() -> None:
     _expect(["frontend/src/components/Chesscom.test.jsx"], run_frontend=True)
     for audio_path in (
         "frontend/src/sound.js",
+        "frontend/src/soundFx.js",
         "frontend/src/ambientCatalog.js",
         "frontend/src/ambientProfilesLegacy.js",
+        "frontend/src/ambientEnergyProduction.js",
+        "frontend/src/ambientClassicalProduction.js",
+        "frontend/src/ambientElectronicProduction.js",
+        "frontend/src/audioContext.js",
         "frontend/src/orchestralSampler.js",
         "frontend/src/useAuthenticatedAudio.js",
     ):
@@ -301,7 +308,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · audio/package pagan app-boot; torneo/Admin conservan smoke y producto general core completo")
+    print("quality-scope self-test OK · familias audio/package pagan app-boot; torneo/Admin conservan smoke y producto general core completo")
 
 
 def main() -> int:
