@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { chroniclesIsoWorldForCell, chroniclesIsometricCameraPose } from './chroniclesOfMatthiasIsometric.js';
+import {
+  chroniclesIsoInteractionForHit,
+  chroniclesIsoWorldForCell,
+  chroniclesIsometricCameraPose,
+} from './chroniclesOfMatthiasIsometric.js';
 
 describe('Chronicles canonical isometric viewport', () => {
   it('maps dungeon cells to a stable square world grid', () => {
@@ -24,5 +28,31 @@ describe('Chronicles canonical isometric viewport', () => {
     expect(pose.target.y).toBeGreaterThan(0);
     expect(pose.fov).toBeGreaterThanOrEqual(34);
     expect(pose.fov).toBeLessThanOrEqual(42);
+  });
+
+  it('accepts only highlighted cells while move mode is active', () => {
+    const interaction = {
+      mode: 'move',
+      legalMoves: [{ x: 2, y: 5 }, { x: 1, y: 4 }],
+      legalTargets: [],
+    };
+
+    expect(chroniclesIsoInteractionForHit(interaction, { kind: 'cell', x: 2, y: 5 })).toEqual({ kind: 'cell', x: 2, y: 5 });
+    expect(chroniclesIsoInteractionForHit(interaction, { kind: 'cell', x: 3, y: 5 })).toBeNull();
+    expect(chroniclesIsoInteractionForHit(interaction, { kind: 'enemy', enemyId: 'corrupted-pawn' })).toBeNull();
+  });
+
+  it('accepts only legal enemies while attack mode is active', () => {
+    const interaction = {
+      mode: 'attack',
+      legalMoves: [],
+      legalTargets: [{ enemyId: 'corrupted-pawn', x: 3, y: 5 }],
+    };
+
+    expect(chroniclesIsoInteractionForHit(interaction, { kind: 'enemy', enemyId: 'corrupted-pawn' })).toEqual({
+      kind: 'enemy', enemyId: 'corrupted-pawn',
+    });
+    expect(chroniclesIsoInteractionForHit(interaction, { kind: 'enemy', enemyId: 'gate-jailer' })).toBeNull();
+    expect(chroniclesIsoInteractionForHit(null, { kind: 'enemy', enemyId: 'corrupted-pawn' })).toBeNull();
   });
 });
