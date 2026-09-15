@@ -12,7 +12,7 @@ from typing import Iterable
 
 CORE_E2E_LANES = (
     "regression-state", "regression-school", "learning-golden", "learning-observation",
-    "app-boot", "admin", "tournament", "smoke",
+    "app-boot", "admin", "tournament", "home", "smoke",
 )
 CORE_E2E_FIELDS = {lane: f"run_e2e_{lane.replace('-', '_')}" for lane in CORE_E2E_LANES}
 
@@ -34,6 +34,7 @@ class Scope:
     run_e2e_app_boot: bool = False
     run_e2e_admin: bool = False
     run_e2e_tournament: bool = False
+    run_e2e_home: bool = False
     run_e2e_smoke: bool = False
 
     @classmethod
@@ -46,7 +47,7 @@ class Scope:
         if self.run_e2e_smoke:
             redundant_lanes.update(("app-boot", "tournament"))
         if self.run_e2e_regression_state:
-            redundant_lanes.add("admin")
+            redundant_lanes.update(("admin", "home"))
         lanes = [
             lane for lane in CORE_E2E_LANES
             if getattr(self, CORE_E2E_FIELDS[lane]) and lane not in redundant_lanes
@@ -98,6 +99,10 @@ AUDIO_APP_BOOT_RE = re.compile(
     r"^frontend/src/(?:ambient[^/]*|audio[^/]*|orchestral[^/]*|sound[^/]*|useAuthenticatedAudio)\.js$"
 )
 TOURNAMENT_BROWSER_RE = re.compile(r"^frontend/src/tournament\.js$")
+HOME_BROWSER_RE = re.compile(
+    r"^frontend/src/components/(?:Home[^/]*|IllustratedHome[^/]*)\.(?:js|jsx)$|"
+    r"^frontend/src/(?:home[^/]*|illustratedHome[^/]*)\.(?:js|jsx)$"
+)
 DEDICATED_3D_BROWSER_RE = re.compile(
     r"^frontend/src/components/(?:Board3D|WarRoom3D)[^/]*\.(?:js|jsx)$|"
     r"^frontend/src/components/(?:WarRoomCastleArchitecture|WarRoomPremiumPaintings|"
@@ -206,6 +211,8 @@ def classify(paths: Iterable[str]) -> Scope:
                 continue
             if AUDIO_APP_BOOT_RE.search(path):
                 _enable_core_e2e(scope, ("app-boot",))
+            elif HOME_BROWSER_RE.search(path):
+                _enable_core_e2e(scope, ("home",))
             elif TOURNAMENT_BROWSER_RE.search(path):
                 _enable_core_e2e(scope, ("tournament",))
             elif ADMIN_BROWSER_RE.search(path):
@@ -275,6 +282,10 @@ def self_test() -> None:
     _expect_core(["frontend/src/components/useAdminFeedbackController.js"], lanes=("admin",), run_frontend=True)
     _expect_core(["frontend/src/adminDashboardInsights.js"], lanes=("admin",), run_frontend=True)
     _expect_core(["frontend/src/components/AdminDashboardContent.jsx", "frontend/src/App.jsx"], run_frontend=True)
+    _expect_core(["frontend/src/components/HomeCastle3D.jsx"], lanes=("home",), run_frontend=True)
+    _expect_core(["frontend/src/components/IllustratedHome.jsx"], lanes=("home",), run_frontend=True)
+    _expect_core(["frontend/src/homeCastleProgress.js"], lanes=("home",), run_frontend=True)
+    _expect_core(["frontend/src/components/HomeCastle3D.jsx", "frontend/src/App.jsx"], run_frontend=True)
     _expect(["frontend/src/components/Board3DRenderer.js"], run_frontend=True)
     _expect(["frontend/src/components/WarRoom3DAnimation.js"], run_frontend=True)
     _expect(["frontend/src/components/WarRoomPracticalLighting.js"], run_frontend=True)
@@ -346,7 +357,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · classifier harness conserva core fail-closed sin despertar productos ajenos; audio/Torneo/Admin mantienen canarios propios")
+    print("quality-scope self-test OK · classifier harness conserva core fail-closed; Home usa canario propio; audio/Torneo/Admin mantienen canarios propios")
 
 
 def main() -> int:
