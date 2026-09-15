@@ -1,6 +1,7 @@
 {
   "id": "gallery-of-forks",
   "version": 1,
+  "progressionKey": "gallery-01",
   "title": "Galería de las Horquillas",
   "grid": [
     "#######",

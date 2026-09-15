@@ -15,15 +15,19 @@ import {
 } from './chroniclesOfMatthiasProgression.js';
 import { clearStorageMemoryFallback } from './safeStorage.js';
 
-function tacticsState(overrides = {}) {
+function tacticsStateFor(mapId, overrides = {}) {
   return {
-    ...createChroniclesState(),
+    ...createChroniclesState(mapId),
     round: 1,
     turnPhase: 'party',
     enemyPositions: {},
     enemyTurnEvents: [],
     ...overrides,
   };
+}
+
+function tacticsState(overrides = {}) {
+  return tacticsStateFor('crypt-eight-squares', overrides);
 }
 
 describe('Chronicles Tactics · progression', () => {
@@ -76,6 +80,67 @@ describe('Chronicles Tactics · progression', () => {
     expect(replay.awards).toEqual([]);
     expect(chroniclesHeroProgress(replay.progression, 'rook').xp)
       .toBe(chroniclesHeroProgress(first.progression, 'rook').xp);
+  });
+
+  it('preserves the legacy crypt claim namespace so existing profiles cannot refarm old damage', () => {
+    const seeded = grantChroniclesXp(
+      createChroniclesProgression(),
+      'rook',
+      2,
+      'crypt-01:damage:corrupted-pawn:hp-5',
+    ).progression;
+    const before = tacticsState({ enemyHp: 6 });
+    const after = tacticsState({ enemyHp: 5 });
+
+    const result = applyChroniclesTacticsProgression(seeded, before, after, {
+      actorMemberId: 'rook',
+      actionKind: 'attack',
+      runId: 'legacy-profile',
+    });
+
+    expect(result.awards).toEqual([]);
+    expect(chroniclesHeroProgress(result.progression, 'rook').xp).toBe(2);
+  });
+
+  it('gives each map an independent finite XP budget even when enemy ids are reused', () => {
+    const cryptBefore = tacticsState({ enemyHp: 6 });
+    const cryptAfter = tacticsState({ enemyHp: 5 });
+    const crypt = applyChroniclesTacticsProgression(createChroniclesProgression(), cryptBefore, cryptAfter, {
+      actorMemberId: 'rook',
+      actionKind: 'attack',
+      runId: 'campaign-run',
+    });
+
+    const galleryBefore = tacticsStateFor('gallery-of-forks', { enemyHp: 8 });
+    const galleryAfter = tacticsStateFor('gallery-of-forks', { enemyHp: 7 });
+    const gallery = applyChroniclesTacticsProgression(crypt.progression, galleryBefore, galleryAfter, {
+      actorMemberId: 'rook',
+      actionKind: 'attack',
+      runId: 'campaign-run',
+    });
+
+    expect(crypt.awards).toContainEqual(expect.objectContaining({
+      awardId: 'crypt-01:damage:corrupted-pawn:hp-5',
+      reason: 'daño útil',
+    }));
+    expect(gallery.awards).toContainEqual(expect.objectContaining({
+      awardId: 'gallery-01:damage:corrupted-pawn:hp-7',
+      reason: 'daño útil',
+    }));
+  });
+
+  it('ignores stale HP belonging to enemies outside the active map', () => {
+    const before = tacticsStateFor('gallery-of-forks', { spectralBishopHp: 3 });
+    const after = { ...before, spectralBishopHp: 2 };
+
+    const result = applyChroniclesTacticsProgression(createChroniclesProgression(), before, after, {
+      actorMemberId: 'rook',
+      actionKind: 'attack',
+      runId: 'gallery-run',
+    });
+
+    expect(result.awards).toEqual([]);
+    expect(chroniclesHeroProgress(result.progression, 'rook').xp).toBe(0);
   });
 
   it('deduplicates objective, support and survival rewards across later runs', () => {

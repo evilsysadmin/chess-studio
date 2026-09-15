@@ -1,6 +1,7 @@
 {
   "id": "crypt-eight-squares",
   "version": 3,
+  "progressionKey": "crypt-01",
   "title": "Cripta de las Ocho Casillas",
   "grid": [
     "#######",
