@@ -12,7 +12,7 @@ from typing import Iterable
 
 CORE_E2E_LANES = (
     "regression-state", "regression-school", "learning-golden", "learning-observation",
-    "app-boot", "admin", "tournament", "home", "smoke",
+    "app-boot", "admin", "tournament", "combat", "home", "smoke",
 )
 CORE_E2E_FIELDS = {lane: f"run_e2e_{lane.replace('-', '_')}" for lane in CORE_E2E_LANES}
 
@@ -34,6 +34,7 @@ class Scope:
     run_e2e_app_boot: bool = False
     run_e2e_admin: bool = False
     run_e2e_tournament: bool = False
+    run_e2e_combat: bool = False
     run_e2e_home: bool = False
     run_e2e_smoke: bool = False
 
@@ -45,7 +46,7 @@ class Scope:
         lines = [f"{field.name}={'true' if getattr(self, field.name) else 'false'}" for field in fields(self)]
         redundant_lanes = set()
         if self.run_e2e_smoke:
-            redundant_lanes.update(("app-boot", "tournament"))
+            redundant_lanes.update(("app-boot", "tournament", "combat"))
         if self.run_e2e_regression_state:
             redundant_lanes.update(("admin", "home"))
         lanes = [
@@ -99,6 +100,7 @@ AUDIO_APP_BOOT_RE = re.compile(
     r"^frontend/src/(?:ambient[^/]*|audio[^/]*|orchestral[^/]*|sound[^/]*|useAuthenticatedAudio)\.js$"
 )
 TOURNAMENT_BROWSER_RE = re.compile(r"^frontend/src/tournament\.js$")
+COMBAT_DOMAIN_RE = re.compile(r"^frontend/src/combat[^/]*\.js$")
 HOME_BROWSER_RE = re.compile(
     r"^frontend/src/components/(?:Home[^/]*|IllustratedHome[^/]*)\.(?:js|jsx)$|"
     r"^frontend/src/(?:home[^/]*|illustratedHome[^/]*)\.(?:js|jsx)$"
@@ -211,6 +213,8 @@ def classify(paths: Iterable[str]) -> Scope:
                 continue
             if AUDIO_APP_BOOT_RE.search(path):
                 _enable_core_e2e(scope, ("app-boot",))
+            elif COMBAT_DOMAIN_RE.search(path):
+                _enable_core_e2e(scope, ("combat",))
             elif HOME_BROWSER_RE.search(path):
                 _enable_core_e2e(scope, ("home",))
             elif TOURNAMENT_BROWSER_RE.search(path):
@@ -278,6 +282,10 @@ def self_test() -> None:
     _expect_core(["frontend/src/sound.js", "frontend/src/App.jsx"], run_frontend=True)
     _expect_core(["frontend/src/tournament.js"], lanes=("tournament",), run_frontend=True)
     _expect_core(["frontend/src/tournament.js", "frontend/src/App.jsx"], run_frontend=True)
+    _expect_core(["frontend/src/combatBosses.js"], lanes=("combat",), run_frontend=True)
+    _expect_core(["frontend/src/combatDeployment.js"], lanes=("combat",), run_frontend=True)
+    _expect_core(["frontend/src/combatSession.js"], lanes=("combat",), run_frontend=True)
+    _expect_core(["frontend/src/combatBosses.js", "frontend/src/App.jsx"], run_frontend=True)
     _expect_core(["frontend/src/components/AdminDashboardContent.jsx"], lanes=("admin",), run_frontend=True)
     _expect_core(["frontend/src/components/useAdminFeedbackController.js"], lanes=("admin",), run_frontend=True)
     _expect_core(["frontend/src/adminDashboardInsights.js"], lanes=("admin",), run_frontend=True)
@@ -327,11 +335,12 @@ def self_test() -> None:
 
     assert json.loads(dict(line.split("=", 1) for line in classify([PACKAGE_METADATA_PATH]).lines())["core_e2e_matrix"]) == {"lane": ["app-boot"]}
     generic_matrix = json.loads(dict(line.split("=", 1) for line in classify(["frontend/src/App.jsx"]).lines())["core_e2e_matrix"])["lane"]
-    assert "smoke" in generic_matrix and "app-boot" not in generic_matrix
+    assert "smoke" in generic_matrix and "app-boot" not in generic_matrix and "combat" not in generic_matrix
     assert json.loads(dict(line.split("=", 1) for line in Scope.all().lines())["core_e2e_matrix"])["lane"] == [
         "regression-state", "regression-school", "learning-golden", "learning-observation", "smoke",
     ]
     assert json.loads(dict(line.split("=", 1) for line in classify(["frontend/src/tournament.js"]).lines())["core_e2e_matrix"]) == {"lane": ["tournament"]}
+    assert json.loads(dict(line.split("=", 1) for line in classify(["frontend/src/combatBosses.js"]).lines())["core_e2e_matrix"]) == {"lane": ["combat"]}
     assert json.loads(dict(line.split("=", 1) for line in classify(["frontend/src/adminDashboardInsights.js"]).lines())["core_e2e_matrix"]) == {"lane": ["admin"]}
     assert classify([".github/workflows/cicd.yml"]) == Scope.all()
     assert classify(["Makefile"]) == Scope.all()
@@ -357,7 +366,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · classifier harness conserva core fail-closed; Home usa canario propio; audio/Torneo/Admin mantienen canarios propios")
+    print("quality-scope self-test OK · Combat/Home usan canarios propios; classifier harness conserva core fail-closed; audio/Torneo/Admin mantienen aliases estrechas")
 
 
 def main() -> int:
