@@ -10,13 +10,12 @@ function meshes(root, predicate) {
 }
 
 describe('War Room white piece readability finish', () => {
-  it('adds one restrained walnut base rim and matte upper ivory to every white piece type', () => {
+  it('keeps pawn heads matte while giving white officers a restrained direct-light satin', () => {
     for (const type of ['p', 'n', 'b', 'r', 'q', 'k']) {
       const piece = buildPiece(type, 'w', 'studio', false);
       try {
-        expect(piece.userData.whitePieceReadabilityFinish).toBe('walnut-and-matte-head-v1');
+        expect(piece.userData.whitePieceReadabilityFinish).toBe('walnut-pawn-matte-officer-satin-v2');
         expect(piece.userData.whitePieceWalnutRimCount).toBe(1);
-        expect(piece.userData.whitePieceMatteHeadCount).toBeGreaterThan(0);
 
         const rims = meshes(piece, (mesh) => mesh.userData?.whiteBaseWalnutRim === 'subtle-v1');
         expect(rims).toHaveLength(1);
@@ -25,22 +24,43 @@ describe('War Room white piece readability finish', () => {
         expect(rims[0].material.clearcoat).toBeLessThanOrEqual(0.06);
         expect(rims[0].material.userData.surfaceRole).toBe('white-base-walnut');
 
-        const heads = meshes(piece, (mesh) => mesh.userData?.whiteMatteHead === 'deep-matte-v1');
-        expect(heads.length).toBeGreaterThan(0);
-        for (const head of heads) {
-          expect(head.material.userData.pieceFinish).toBe('matte-ivory-head-v1');
-          expect(head.material.roughness).toBeGreaterThanOrEqual(0.92);
-          expect(head.material.clearcoat).toBeLessThanOrEqual(0.035);
-          expect(head.material.specularIntensity).toBeLessThanOrEqual(0.16);
-          expect(head.material.envMapIntensity).toBe(0);
-        }
-
         const body = meshes(piece, (mesh) => (
           mesh.material?.userData?.surfaceRole === 'ivory'
-          && mesh.material?.userData?.whiteHeadFinish !== 'deep-matte-v1'
+          && mesh.material?.userData?.whiteHeadFinish !== 'pawn-deep-matte-v2'
+          && mesh.material?.userData?.whiteHeadFinish !== 'officer-satin-v1'
         ))[0];
         expect(body).toBeTruthy();
-        expect(heads[0].material.color.getHex()).toBe(body.material.color.getHex());
+
+        if (type === 'p') {
+          expect(piece.userData.whitePieceMatteHeadCount).toBeGreaterThan(0);
+          expect(piece.userData.whitePieceSatinHeadCount).toBe(0);
+          const heads = meshes(piece, (mesh) => mesh.userData?.whiteMatteHead === 'pawn-deep-matte-v2');
+          expect(heads.length).toBeGreaterThan(0);
+          for (const head of heads) {
+            expect(head.material.userData.pieceFinish).toBe('matte-ivory-pawn-head-v2');
+            expect(head.material.roughness).toBeGreaterThanOrEqual(0.92);
+            expect(head.material.clearcoat).toBeLessThanOrEqual(0.035);
+            expect(head.material.specularIntensity).toBeLessThanOrEqual(0.16);
+            expect(head.material.envMapIntensity).toBe(0);
+            expect(head.material.color.getHex()).toBe(body.material.color.getHex());
+          }
+        } else {
+          expect(piece.userData.whitePieceMatteHeadCount).toBe(0);
+          expect(piece.userData.whitePieceSatinHeadCount).toBeGreaterThan(0);
+          const heads = meshes(piece, (mesh) => mesh.userData?.whiteOfficerHead === 'satin-v1');
+          expect(heads.length).toBeGreaterThan(0);
+          for (const head of heads) {
+            expect(head.material.userData.pieceFinish).toBe('satin-ivory-officer-head-v1');
+            expect(head.material.roughness).toBeGreaterThanOrEqual(0.72);
+            expect(head.material.roughness).toBeLessThanOrEqual(0.78);
+            expect(head.material.clearcoat).toBeGreaterThanOrEqual(0.09);
+            expect(head.material.clearcoat).toBeLessThanOrEqual(0.14);
+            expect(head.material.specularIntensity).toBeGreaterThanOrEqual(0.24);
+            expect(head.material.specularIntensity).toBeLessThanOrEqual(0.3);
+            expect(head.material.envMapIntensity).toBe(0);
+            expect(head.material.color.getHex()).toBe(body.material.color.getHex());
+          }
+        }
       } finally {
         disposeObject(piece);
       }
@@ -53,6 +73,7 @@ describe('War Room white piece readability finish', () => {
       expect(piece.userData.whitePieceReadabilityFinish).toBeUndefined();
       expect(meshes(piece, (mesh) => mesh.userData?.whiteBaseWalnutRim)).toHaveLength(0);
       expect(meshes(piece, (mesh) => mesh.userData?.whiteMatteHead)).toHaveLength(0);
+      expect(meshes(piece, (mesh) => mesh.userData?.whiteOfficerHead)).toHaveLength(0);
     } finally {
       disposeObject(piece);
     }
