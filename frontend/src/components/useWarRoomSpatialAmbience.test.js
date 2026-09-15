@@ -7,6 +7,7 @@ import {
   warRoomAmbienceShouldPlay,
   warRoomSpatialMixForAtmosphere,
   warRoomWeatherGainForWindowHover,
+  warRoomWeatherLoopSpecs,
   warRoomWeatherPointInHitbox,
   warRoomWeatherPointerOutShouldMute,
 } from './useWarRoomSpatialAmbience.js';
@@ -30,6 +31,17 @@ describe('War Room spatial ambience', () => {
     expect(WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN).toBe(1);
     expect(rainyNight.rareEventMinMs).toBeGreaterThanOrEqual(30_000);
     expect(rainyNight.rareEventMaxMs).toBeGreaterThan(rainyNight.rareEventMinMs);
+  });
+
+  it('does not even materialize rain or wind sources outside window hover', () => {
+    const rainyNight = warRoomSpatialMixForAtmosphere({ weather: 'rain', phase: 'night' });
+    const idleSpecs = warRoomWeatherLoopSpecs(rainyNight, false);
+    const hoverSpecs = warRoomWeatherLoopSpecs(rainyNight, true);
+
+    expect(idleSpecs).toEqual([]);
+    expect(hoverSpecs).toHaveLength(2);
+    expect(hoverSpecs.map((spec) => spec.filterType)).toEqual(['highpass', 'bandpass']);
+    expect(hoverSpecs.every((spec) => spec.gainValue > 0)).toBe(true);
   });
 
   it('requires a deliberate pointer hover in the inner pane, not merely over the 3D window assembly', () => {
