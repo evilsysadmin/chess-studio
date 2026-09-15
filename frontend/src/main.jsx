@@ -7,6 +7,7 @@ import './styles.css';
 import './styles/29-motion-coherence.css';
 import './styles/30-modal-layering.css';
 import './styles/31-route-loading.css';
+import './styles/32-chronicles-morcilla-portrait.css';
 import './components/MatthiasSchoolBoardScale.css';
 import './components/Game2DMobile.css';
 import { installReleaseContinuity } from './releaseContinuity.js';
