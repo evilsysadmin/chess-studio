@@ -232,7 +232,6 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
         >
           {matthiasVisual && (
             <span
-              key={matthiasVisual.key}
               className="illustrated-home__matthias-portrait"
               data-reduced-motion={reducedMotion ? 'true' : 'false'}
               aria-hidden="true"
