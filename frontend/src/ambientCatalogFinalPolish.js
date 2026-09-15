@@ -46,7 +46,14 @@ const BEIRUT_0113_ROOM = roomPolish(1.04, 0.075, 104, { lead:0.54, counter:0.20,
 const BEIRUT_ROOFTOP_ROOM = roomPolish(1.16, 0.100, 126, { lead:0.50, counter:0.18, bass:0.46, chord:0.26 }, 4, 0.105);
 const BEIRUT_TAXI_ROOM = roomPolish(0.94, 0.055, 82, { lead:0.56, counter:0.16, bass:0.72, chord:0.22 }, 4, 0.105);
 const BEIRUT_HARBOR_ROOM = roomPolish(1.12, 0.095, 120, { lead:0.50, counter:0.17, bass:0.58, chord:0.24 }, 4, 0.11);
-const ISTANBUL_ROOM = roomPolish(1.04, 0.075, 96, { lead:0.52, counter:0.20, bass:0.52, chord:0.25 }, 4, 0.11);
+
+// Istanbul also carries three genuinely different scenes now. 03:26 keeps a
+// compact broken-meter room, Tavla is dry and bass-forward, while Bosphorus
+// behaves like a small rain chamber with long tails and almost no foreground
+// reflection. The ceilings remain inside the eastern-Mediterranean polish bar.
+const ISTANBUL_0326_ROOM = roomPolish(1.08, 0.075, 96, { lead:0.52, counter:0.15, bass:0.62, chord:0.18 }, 4, 0.105);
+const ISTANBUL_TAVLA_ROOM = roomPolish(0.94, 0.050, 78, { lead:0.54, counter:0.14, bass:0.72, chord:0.20 }, 4, 0.10);
+const BOSPHORUS_RAIN_ROOM = roomPolish(1.22, 0.105, 126, { lead:0.46, counter:0.12, bass:0.50, chord:0.22 }, 4, 0.10);
 const EGYPT_ROOM = roomPolish(1.09, 0.100, 126, { lead:0.55, counter:0.22, bass:0.54, chord:0.28 }, 3, 0.12);
 const LEVANT_ROOM = roomPolish(1.08, 0.105, 120, { lead:0.53, counter:0.21, bass:0.53, chord:0.27 }, 4, 0.115);
 
@@ -56,9 +63,9 @@ const MEDITERRANEAN_ORGANIC_POLISH = Object.freeze({
   beirutNightTaxi:BEIRUT_TAXI_ROOM,
   beirutHarbor2340:BEIRUT_HARBOR_ROOM,
 
-  istanbul0326:ISTANBUL_ROOM,
-  istanbulBackgammon:ISTANBUL_ROOM,
-  bosphorusRain:ISTANBUL_ROOM,
+  istanbul0326:ISTANBUL_0326_ROOM,
+  istanbulBackgammon:ISTANBUL_TAVLA_ROOM,
+  bosphorusRain:BOSPHORUS_RAIN_ROOM,
 
   alexandria241:EGYPT_ROOM,
   cairo0047:EGYPT_ROOM,
@@ -108,7 +115,7 @@ const FINAL_CATALOG_POLISH = Object.freeze({
 
   // Three remaining within-genre player-chain collisions.
   istanbulBackgammon: Object.freeze({
-    family:'istanbul-tavla-clarinet-buzuq', counterInstrument:'buzuq', chordInstrument:'rhodesWarm',
+    family:'istanbul-tavla-clarinet-guitar', counterInstrument:'nylonGuitar', chordInstrument:'rhodesWarm',
     percussion:percussion('tavla-table', 18, { 0:'K', 5:'W', 9:'S', 14:'W' }, 0.78),
   }),
   beirutHarbor2340: Object.freeze({
