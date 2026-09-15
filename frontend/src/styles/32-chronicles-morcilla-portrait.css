@@ -1,0 +1,26 @@
+/* Canonical Chronicles portrait for Morcilla. The live knight mesh stays underneath as a safe fallback. */
+.chronicles .chronicles-party-preview-three[aria-label="Retrato 3D de Morcilla"] {
+  transform: none;
+  filter: none;
+}
+
+.chronicles .chronicles-party-preview-three[aria-label="Retrato 3D de Morcilla"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, transparent 49%, rgba(7, 6, 5, .2) 75%, rgba(7, 6, 5, .62) 100%),
+    radial-gradient(circle at 35% 24%, rgba(221, 151, 72, .14), transparent 40%),
+    url('../assets/chronicles/morcilla-canonical.webp') center 20% / cover no-repeat;
+  filter: saturate(.94) contrast(1.075) brightness(.96);
+  transform: scale(1.02);
+  transform-origin: 50% 36%;
+}
+
+@media (max-width: 800px) {
+  .chronicles .chronicles-party-preview-three[aria-label="Retrato 3D de Morcilla"]::after {
+    background-position: center 17%;
+  }
+}
