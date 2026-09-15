@@ -58,15 +58,19 @@ async function openDeterministicHome(page) {
 
 async function expectLiveMatthiasArt(home) {
   const avatar = home.locator('[data-home-matthias-3d="ready"]');
-  const image = avatar.locator('img');
+  const image = avatar.locator('img[data-matthias-fallback="canonical-scene-render"]');
+  const canvas = avatar.locator('canvas[data-matthias-canonical-model="blender"]');
   await expect(avatar).toHaveCount(1, { timeout:15_000 });
   await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready', { timeout:15_000 });
-  await expect(avatar).toHaveAttribute('data-matthias-identity', 'canonical-scene-render', { timeout:15_000 });
-  await expect(avatar).toHaveAttribute('data-matthias-render-source', 'bundled-scene-art', { timeout:15_000 });
-  await expect(image).toBeVisible({ timeout:15_000 });
-  await expect(image).toHaveAttribute('data-matthias-identity', 'canonical-scene-render');
-  await expect(avatar.locator('canvas')).toHaveCount(0);
-  return { avatar, image };
+  await expect(avatar).toHaveAttribute('data-home-matthias-model-state', 'ready', { timeout:15_000 });
+  await expect(avatar).toHaveAttribute('data-matthias-identity', 'canonical-blender-rig', { timeout:15_000 });
+  await expect(avatar).toHaveAttribute('data-matthias-render-source', 'blender-glb', { timeout:15_000 });
+  await expect(image).toHaveCount(1);
+  await expect(image).toHaveCSS('opacity', '0');
+  await expect(canvas).toHaveCount(1);
+  await expect(canvas).toBeVisible({ timeout:15_000 });
+  await expect(canvas).toHaveCSS('opacity', '1');
+  return { avatar, image, canvas };
 }
 
 async function freezeForScreenshot(page) {
@@ -123,11 +127,12 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         const copy = matthias.locator('.illustrated-home__matthias-copy');
 
         await expect(matthias).toBeVisible();
-        const { avatar, image } = await expectLiveMatthiasArt(home);
+        const { avatar, image, canvas } = await expectLiveMatthiasArt(home);
         await expect(avatar).toBeVisible({ timeout:15_000 });
-        await expect(avatar).toHaveAttribute('data-motion', 'canonical-sprite-routines');
+        await expect(avatar).toHaveAttribute('data-motion', 'rigged-gltf-clips');
         await expect(avatar).toHaveAttribute('data-home-matthias-profile', 'bite');
         await expect(image).toHaveAttribute('src', /lunch-bocata/i);
+        await expect(canvas).toHaveAttribute('data-matthias-canonical-model', 'blender');
         await expect(avatar.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
 
         if (capture.expectCopy) {
