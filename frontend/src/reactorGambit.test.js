@@ -13,11 +13,11 @@ describe('Synth metal · gambito del reactor', () => {
     expect(theme.sections).toHaveLength(form.length);
     expect(theme.premiumFormVersion).toBe(1);
     expect(theme.premiumFormScenes).toEqual(form.map((scene) => scene.name));
-    expect(theme.description).toContain('melódico');
+    expect(theme.description).toContain('melodía');
     expect(feel.family).toBe('synth-metal-reactor-melodic-drive');
-    expect(feel.percussion.kit).toBe('reactor-drive');
-    expect(feel.percussion.punch).toBeLessThan(1.4);
+    expect(feel.percussion.kit).toBe('synth-metal-cinematic');
+    expect(feel.percussion.punch).toBeCloseTo(1.34, 2);
     expect(feel.layers.signature).toBe(true);
-    expect(feel.signature.instrument).toBe('synth');
+    expect(feel.signature.instrument).toBe('neonBrass');
   });
 });

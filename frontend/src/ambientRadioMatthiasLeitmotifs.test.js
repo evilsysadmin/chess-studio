@@ -67,12 +67,12 @@ describe('Radio Matthias · leitmotivs premium', () => {
     expect(new Set(contours).size).toBe(contours.length);
   });
 
-  it('mantiene intactas las firmas premium que Reactor, Tánger y Granada ya tenían', () => {
+  it('mantiene las firmas premium dedicadas de Reactor, Tánger y Granada', () => {
     const reactor = structuredFeel(AMBIENT_THEMES.reactorGambit);
     const tangier = structuredFeel(AMBIENT_THEMES.tangierSmoke);
     const granada = structuredFeel(AMBIENT_THEMES.granadaPatio);
 
-    expect(reactor.signature.instrument).toBe('synth');
+    expect(reactor.signature.instrument).toBe('neonBrass');
     expect(reactor.signature.everyCycles).toBe(2);
     expect(tangier.signature.instrument).toBe('clarinet');
     expect(tangier.signature.everyCycles).toBe(2);

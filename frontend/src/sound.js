@@ -1063,10 +1063,13 @@ function voicePreset(kind) {
     case 'brass': return { waves: [['sawtooth', 1, 1], ['square', 0.5, 0.1]], gain: 0.016, attack: 0.065, release: 1.2, cutoff: 1250 };
     case 'synth': return { waves: [['sawtooth', 1, 1], ['square', 2, 0.08]], gain: 0.017, attack: 0.018, release: 0.52, cutoff: 1450 };
     case 'analogLead': return { waves: [['sawtooth', 1, 0.62], ['sawtooth', 1, 0.48], ['triangle', 0.5, 0.18], ['sine', 2, 0.06]], gain: 0.015, attack: 0.022, release: 0.82, cutoff: 2050, tremolo: 4.1 };
+    case 'anthemLead': return { waves: [['sawtooth', 1, 0.48], ['sawtooth', 1.006, 0.42], ['triangle', 0.5, 0.20], ['sine', 2.01, 0.09], ['sine', 3.99, 0.025]], gain: 0.015, attack: 0.018, release: 1.18, cutoff: 2850, tremolo: 4.6 };
+    case 'neonBrass': return { waves: [['sawtooth', 1, 0.42], ['triangle', 1, 0.40], ['square', 0.5, 0.12], ['sine', 2, 0.07]], gain: 0.015, attack: 0.055, release: 1.45, cutoff: 2350, tremolo: 3.8 };
     case 'subPulse': return { waves: [['square', 1, 0.38], ['triangle', 1, 0.72], ['sine', 0.5, 0.42]], gain: 0.020, attack: 0.008, release: 0.48, cutoff: 820 };
     case 'arcadePulse': return { waves: [['square', 1, 0.42], ['triangle', 1, 0.50], ['square', 2, 0.09], ['sine', 0.5, 0.18]], gain: 0.016, attack: 0.004, release: 0.34, cutoff: 2480, tremolo: 6.2 };
     case 'stormPluck': return { waves: [['sine', 1, 1], ['sine', 2.03, 0.28], ['triangle', 3.97, 0.12], ['sine', 7.11, 0.035]], gain: 0.017, attack: 0.003, release: 0.42, cutoff: 4300 };
     case 'widePad': return { waves: [['sawtooth', 1, 0.22], ['sawtooth', 1, 0.20], ['triangle', 0.5, 0.30], ['sine', 2, 0.07]], gain: 0.012, attack: 0.34, release: 3.2, cutoff: 1720, tremolo: 2.7 };
+    case 'powerPad': return { waves: [['sawtooth', 1, 0.25], ['sawtooth', 1.008, 0.21], ['triangle', 0.5, 0.32], ['sine', 2.01, 0.08]], gain: 0.012, attack: 0.18, release: 2.6, cutoff: 2050, tremolo: 2.2 };
     case 'stormPad': return { waves: [['triangle', 1, 0.54], ['sawtooth', 0.5, 0.20], ['sine', 2.01, 0.10]], gain: 0.012, attack: 0.16, release: 2.2, cutoff: 1320, tremolo: 3.4 };
     case 'synthbass': return { waves: [['square', 1, 0.55], ['triangle', 1, 1]], gain: 0.026, attack: 0.006, release: 0.42, cutoff: 640 };
     case 'pad': return { waves: [['sine', 1, 1], ['triangle', 2, 0.08]], gain: 0.014, attack: 0.28, release: 2.9, cutoff: 1600 };
@@ -1670,7 +1673,7 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
     return;
   }
 
-  if (kit === 'synth-metal' || kit === 'synth-metal-thrash') {
+  if (kit === 'synth-metal' || kit === 'synth-metal-thrash' || kit === 'synth-metal-anthem') {
     if (code === 'K') { playBassDrum(0.064 * velocity, { ...human, tone: -0.42, decay: 0.72 }); playSoftPercussion(0.016 * velocity, { ...human, decay: 0.62 }); }
     else if (code === 'S') { playNoiseHit('snare', 0.050 * velocity, { ...human, brightness: 1.02, durationScale: 1.12 }); playMembraneHit('tak', 0.010 * velocity, { ...human, tone: -0.28, decay: 0.72 }); }
     else if (code === 'H') playNoiseHit('hat', 0.011 * velocity, { ...human, brightness: 1.08, durationScale: 0.54 });
@@ -1682,14 +1685,16 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
     if (code === 'K') { playBassDrum(0.058 * velocity, { ...human, tone: -0.34, decay: 0.88 }); playMembraneHit('dum', 0.012 * velocity, { ...human, decay: 0.68 }); }
     else if (code === 'S') playNoiseHit('snare', 0.044 * velocity, { ...human, brightness: 0.9, durationScale: 1.24 });
     else if (code === 'H') playNoiseHit('hat', 0.008 * velocity, { ...human, brightness: 0.94, durationScale: 0.76 });
+    else if (code === 'M') playMetalHit();
     return;
   }
 
-  if (kit === 'industrial-half-time') {
-    if (code === 'K') { playBassDrum(0.078 * velocity, { ...human, tone: -0.58, decay: 1.16 }); playSoftPercussion(0.022 * velocity, { ...human, decay: 1.05 }); }
-    else if (code === 'S') playNoiseHit('snare', 0.060 * velocity, { ...human, brightness: 0.72, durationScale: 1.65 });
+  if (kit === 'industrial-half-time' || kit === 'synth-metal-cinematic') {
+    const cinematic = kit === 'synth-metal-cinematic';
+    if (code === 'K') { playBassDrum((cinematic ? 0.068 : 0.078) * velocity, { ...human, tone: cinematic ? -0.48 : -0.58, decay: cinematic ? 0.94 : 1.16 }); playSoftPercussion((cinematic ? 0.017 : 0.022) * velocity, { ...human, decay: cinematic ? 0.82 : 1.05 }); }
+    else if (code === 'S') playNoiseHit('snare', (cinematic ? 0.052 : 0.060) * velocity, { ...human, brightness: cinematic ? 0.88 : 0.72, durationScale: cinematic ? 1.28 : 1.65 });
     else if (code === 'M') playMetalHit();
-    else if (code === 'H') playNoiseHit('hat', 0.006 * velocity, { ...human, brightness: 0.7, durationScale: 1.05 });
+    else if (code === 'H') playNoiseHit('hat', (cinematic ? 0.008 : 0.006) * velocity, { ...human, brightness: cinematic ? 0.96 : 0.7, durationScale: cinematic ? 0.68 : 1.05 });
     return;
   }
 
