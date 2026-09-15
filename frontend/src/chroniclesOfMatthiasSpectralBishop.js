@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 function material(color, options = {}) {
-  return new THREE.MeshPhysicalMaterial({
+  const result = new THREE.MeshPhysicalMaterial({
     color,
     metalness: options.metalness ?? 0.04,
     roughness: options.roughness ?? 0.48,
@@ -13,6 +13,8 @@ function material(color, options = {}) {
     emissiveIntensity: options.emissiveIntensity ?? 0,
     depthWrite: options.depthWrite ?? true,
   });
+  result.userData.chroniclesOwnedMaterial = true;
+  return result;
 }
 
 function add(group, geometry, mat, position = [0, 0, 0], rotation = [0, 0, 0], scale = null, name = '') {
@@ -43,6 +45,14 @@ export function buildSpectralBishop({ coarsePointer = false } = {}) {
     opacity: 0.92,
     depthWrite: false,
   });
+  const faintGlow = material(0x6fcdb5, {
+    roughness: 0.35,
+    emissive: 0x1f9878,
+    emissiveIntensity: coarsePointer ? 0.7 : 1.05,
+    transparent: true,
+    opacity: coarsePointer ? 0.34 : 0.42,
+    depthWrite: false,
+  });
   const voidMat = material(0x07100f, { roughness: 0.9 });
 
   add(root, new THREE.CylinderGeometry(0.64, 0.78, 0.16, segments), grave, [0, 0.08, 0], [0, 0, 0], null, 'spectral-bishop-plinth');
@@ -51,8 +61,10 @@ export function buildSpectralBishop({ coarsePointer = false } = {}) {
   add(root, new THREE.TorusGeometry(0.33, 0.04, 7, segments), silver, [0, 1.18, 0], [Math.PI / 2, 0, 0], null, 'spectral-bishop-collar');
 
   add(root, new THREE.SphereGeometry(0.24, segments, Math.max(10, Math.floor(segments / 2))), ghost, [0, 1.43, 0], [0, 0, 0], [0.92, 1.02, 0.88], 'spectral-bishop-head');
+  add(root, new THREE.TorusGeometry(0.34, 0.025, 8, segments), faintGlow, [0, 1.46, -0.055], [0, 0, 0], null, 'spectral-bishop-head-halo');
   add(root, new THREE.SphereGeometry(0.037, 10, 7), glow, [-0.075, 1.46, 0.205], [0, 0, 0], [1.2, 0.55, 0.35], 'spectral-bishop-eye-left');
   add(root, new THREE.SphereGeometry(0.037, 10, 7), glow, [0.075, 1.46, 0.205], [0, 0, 0], [1.2, 0.55, 0.35], 'spectral-bishop-eye-right');
+  add(root, new THREE.OctahedronGeometry(0.12, 0), glow, [0, 1.06, 0.3], [0, 0, Math.PI / 4], null, 'spectral-bishop-chest-core');
 
   add(root, new THREE.ConeGeometry(0.31, 0.66, segments), grave, [0, 1.92, 0], [0, 0, 0], null, 'spectral-bishop-mitre');
   add(root, new THREE.BoxGeometry(0.045, 0.5, 0.05), glow, [0, 1.93, 0.25], [0, 0, 0.5], null, 'spectral-bishop-diagonal-rift');
@@ -62,6 +74,10 @@ export function buildSpectralBishop({ coarsePointer = false } = {}) {
   add(root, new THREE.TorusGeometry(0.2, 0.035, 8, segments), silver, [-0.55, 1.48, 0.06], [Math.PI / 2, 0, 0], null, 'spectral-bishop-crozier');
   add(root, new THREE.OctahedronGeometry(0.13, 0), glow, [-0.55, 1.48, 0.07], [0, 0, Math.PI / 4], null, 'spectral-bishop-lantern-core');
 
+  [-1, 1].forEach((side) => {
+    add(root, new THREE.ConeGeometry(0.09, 0.46, 8), faintGlow, [side * 0.33, 1.2, -0.02], [0, 0, side * -0.28], null, side < 0 ? 'spectral-bishop-wisp-left' : 'spectral-bishop-wisp-right');
+  });
+
   const diagonalCount = coarsePointer ? 2 : 4;
   for (let i = 0; i < diagonalCount; i += 1) {
     add(root, new THREE.BoxGeometry(0.48 - i * 0.05, 0.025, 0.025), glow, [0.17, 0.62 + i * 0.19, 0.37], [0, 0, -0.72], null, `spectral-bishop-robe-rift-${i}`);
@@ -70,6 +86,7 @@ export function buildSpectralBishop({ coarsePointer = false } = {}) {
   root.userData.chroniclesGlowMaterials = [glow];
   root.userData.chroniclesBaseGlow = 2.35;
   root.userData.chroniclesSilhouette = 'spectral-bishop-diagonal-seer';
+  root.userData.chroniclesArtTier = 'premium-threat-v2';
   root.userData.chroniclesEnemyId = 'spectral-bishop';
   return root;
 }
