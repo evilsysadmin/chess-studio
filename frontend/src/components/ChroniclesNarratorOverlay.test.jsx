@@ -18,7 +18,7 @@ describe('ChroniclesNarratorOverlay', () => {
     expect(shouldShowChroniclesNarration('Hildegard remata al peón corrompido con embestida. Matthias aprueba.')).toBe(false);
     expect(shouldShowChroniclesNarration('Aziz deshace al alfil espectral con rayo diagonal. Aziz recupera el Farol Espectral.')).toBe(false);
     expect(shouldShowChroniclesNarration('Hildegard derriba a la torre carcelero con embestida. La puerta parece libre.')).toBe(false);
-    expect(shouldShowChroniclesNarration('Morcilla derriba al caballo carroñero con salto brutal. La Llave Negra rebota por el suelo.')).toBe(false);
+    expect(shouldShowChroniclesNarration('Faust derriba al caballo carroñero con salto brutal. La Llave Negra rebota por el suelo.')).toBe(false);
     expect(shouldShowChroniclesNarration('Salida encontrada. Matthias anota que sobrevivir cuenta como excelencia operativa.')).toBe(false);
   });
 
