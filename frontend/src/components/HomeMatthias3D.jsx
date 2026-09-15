@@ -1,5 +1,20 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import './HomeMatthias3D.css';
+
+const MODEL_URL = `${import.meta.env.BASE_URL}models/matthias-home-canonical.glb`;
+const CLIP_BY_PROFILE = Object.freeze({
+  idle: 'Idle',
+  speak: 'Speak',
+  sleep: 'Sleep',
+  sip: 'Sip',
+  bite: 'Bite',
+  think: 'Think',
+  write: 'Write',
+  dossier: 'Dossier',
+  read: 'Read',
+});
 
 function cue(value = '') {
   return String(value || '')
@@ -32,11 +47,36 @@ export function homeMatthiasMotionPhase({ scene = '', activity = '' } = {}) {
   return ((hash >>> 0) % 3600) / 1000;
 }
 
-/**
- * Home uses the approved 3D scene renders as indivisible sprites. Never slice
- * or reproject these pixels in WebGL: that path corrupted on real GPUs.
- * Whole-sprite motion preserves Matthias' face, uniform and scene props exactly.
- */
+export function homeMatthiasClipForProfile(profile = 'idle') {
+  return CLIP_BY_PROFILE[profile] || CLIP_BY_PROFILE.idle;
+}
+
+function disposeMaterial(material) {
+  if (!material) return;
+  const values = Array.isArray(material) ? material : [material];
+  for (const item of values) {
+    for (const value of Object.values(item)) {
+      if (value?.isTexture) value.dispose();
+    }
+    item.dispose?.();
+  }
+}
+
+function disposeModel(root) {
+  root?.traverse?.((node) => {
+    node.geometry?.dispose?.();
+    disposeMaterial(node.material);
+  });
+}
+
+function fitRenderer(renderer, camera, canvas) {
+  const width = Math.max(1, canvas.clientWidth || canvas.parentElement?.clientWidth || 1);
+  const height = Math.max(1, canvas.clientHeight || canvas.parentElement?.clientHeight || 1);
+  renderer.setSize(width, height, false);
+  camera.aspect = width / height;
+  camera.updateProjectionMatrix();
+}
+
 export default function HomeMatthias3D({
   fallbackAvatar,
   scene = 'base',
@@ -44,31 +84,219 @@ export default function HomeMatthias3D({
   speaking = false,
   reducedMotion = false,
 }) {
+  const canvasRef = useRef(null);
+  const runtimeRef = useRef(null);
   const profile = useMemo(
     () => homeMatthiasMotionProfile({ scene, activity, speaking }),
     [activity, scene, speaking],
   );
   const phase = useMemo(() => homeMatthiasMotionPhase({ scene, activity }), [activity, scene]);
+  const [modelState, setModelState] = useState('loading');
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !fallbackAvatar) return undefined;
+
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        canvas,
+        alpha: true,
+        antialias: true,
+        powerPreference: 'low-power',
+      });
+    } catch {
+      setModelState('fallback');
+      return undefined;
+    }
+
+    renderer.setClearColor(0x000000, 0);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, window.innerWidth < 700 ? 1.2 : 1.5));
+
+    const threeScene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(24, 1, 0.1, 20);
+    camera.position.set(0, 1.18, 5.5);
+    camera.lookAt(0, 1.16, 0);
+
+    const hemi = new THREE.HemisphereLight(0xffe6bd, 0x18202a, 1.65);
+    const key = new THREE.DirectionalLight(0xffe0ad, 3.1);
+    key.position.set(-2.4, 3.2, 4.5);
+    const fill = new THREE.DirectionalLight(0x91b7d2, 1.25);
+    fill.position.set(2.5, 1.6, 2.6);
+    const rim = new THREE.DirectionalLight(0xd69d59, 1.5);
+    rim.position.set(0.8, 2.8, -3.6);
+    threeScene.add(hemi, key, fill, rim);
+
+    const clock = new THREE.Clock();
+    let model = null;
+    let mixer = null;
+    let currentAction = null;
+    let frame = 0;
+    let disposed = false;
+    let intersecting = true;
+    let firstFramePainted = false;
+
+    const renderOnce = () => {
+      try {
+        renderer.render(threeScene, camera);
+        if (model && !firstFramePainted) {
+          firstFramePainted = true;
+          setModelState('ready');
+        }
+      } catch {
+        setModelState('fallback');
+      }
+    };
+
+    const selectClip = (clipName, still = false) => {
+      if (!mixer || !runtimeRef.current?.clips) return;
+      const clip = runtimeRef.current.clips.get(clipName) || runtimeRef.current.clips.get('Idle');
+      if (!clip) return;
+      const next = mixer.clipAction(clip);
+      if (next !== currentAction) {
+        currentAction?.fadeOut?.(0.22);
+        next.reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(0.22).play();
+        currentAction = next;
+      }
+      if (still) {
+        mixer.setTime(Math.max(0, clip.duration * 0.34));
+        renderOnce();
+      }
+    };
+
+    const shouldAnimate = () => !disposed && model && !document.hidden && intersecting && !runtimeRef.current?.reducedMotion;
+    const stop = () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = 0;
+    };
+    const tick = () => {
+      frame = 0;
+      if (!shouldAnimate()) return;
+      mixer?.update(Math.min(clock.getDelta(), 0.05));
+      renderOnce();
+      frame = window.requestAnimationFrame(tick);
+    };
+    const resume = () => {
+      if (shouldAnimate() && !frame) {
+        clock.getDelta();
+        frame = window.requestAnimationFrame(tick);
+      }
+    };
+
+    runtimeRef.current = {
+      clips: new Map(),
+      selectClip,
+      resume,
+      reducedMotion,
+    };
+
+    const loader = new GLTFLoader();
+    loader.load(
+      MODEL_URL,
+      (gltf) => {
+        if (disposed) {
+          disposeModel(gltf.scene);
+          return;
+        }
+        model = gltf.scene;
+        model.position.set(0, 0, 0);
+        model.rotation.set(0, 0, 0);
+        model.scale.setScalar(1.0);
+        model.traverse((node) => {
+          if (node.isMesh) {
+            node.frustumCulled = true;
+            node.castShadow = false;
+            node.receiveShadow = false;
+          }
+        });
+        threeScene.add(model);
+        mixer = new THREE.AnimationMixer(model);
+        runtimeRef.current.clips = new Map(gltf.animations.map((clip) => [clip.name, clip]));
+        selectClip(homeMatthiasClipForProfile(profile), reducedMotion);
+        fitRenderer(renderer, camera, canvas);
+        frame = window.requestAnimationFrame(() => {
+          renderOnce();
+          resume();
+        });
+      },
+      undefined,
+      () => {
+        if (!disposed) setModelState('fallback');
+      },
+    );
+
+    const onVisibility = () => (document.hidden ? stop() : resume());
+    document.addEventListener('visibilitychange', onVisibility);
+
+    const observer = typeof IntersectionObserver === 'function'
+      ? new IntersectionObserver(([entry]) => {
+          intersecting = entry?.isIntersecting !== false;
+          if (intersecting) resume(); else stop();
+        }, { rootMargin: '80px' })
+      : null;
+    observer?.observe(canvas);
+
+    const resize = () => {
+      fitRenderer(renderer, camera, canvas);
+      if (model) renderOnce();
+    };
+    const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(resize) : null;
+    resizeObserver?.observe(canvas);
+    window.addEventListener('resize', resize, { passive: true });
+    resize();
+
+    return () => {
+      disposed = true;
+      stop();
+      observer?.disconnect();
+      resizeObserver?.disconnect();
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('resize', resize);
+      runtimeRef.current = null;
+      mixer?.stopAllAction();
+      if (model) {
+        threeScene.remove(model);
+        disposeModel(model);
+      }
+      renderer.dispose();
+      renderer.forceContextLoss?.();
+    };
+  // Model lifetime is tied to the Home mount, not to routine changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fallbackAvatar]);
+
+  useEffect(() => {
+    const runtime = runtimeRef.current;
+    if (!runtime) return;
+    runtime.reducedMotion = reducedMotion;
+    runtime.selectClip?.(homeMatthiasClipForProfile(profile), reducedMotion);
+    if (!reducedMotion) runtime.resume?.();
+  }, [profile, reducedMotion, modelState]);
 
   if (!fallbackAvatar) return null;
 
   return (
     <span
-      className="home-matthias-3d is-ready"
+      className={`home-matthias-3d ${modelState === 'ready' ? 'is-model-ready' : 'is-fallback'}`}
       data-home-matthias-3d="ready"
-      data-matthias-identity="canonical-scene-render"
-      data-matthias-render-source="bundled-scene-art"
+      data-home-matthias-model-state={modelState}
+      data-matthias-identity="canonical-blender-rig"
+      data-matthias-render-source={modelState === 'ready' ? 'blender-glb' : 'bundled-scene-art-fallback'}
       data-home-matthias-profile={profile}
-      data-motion={reducedMotion ? 'still-canonical-sprite' : 'canonical-sprite-routines'}
+      data-motion={reducedMotion ? 'still-rigged-model' : 'rigged-gltf-clips'}
       aria-hidden="true"
     >
       <img
         src={fallbackAvatar}
         alt=""
         draggable="false"
-        data-matthias-identity="canonical-scene-render"
+        data-matthias-fallback="canonical-scene-render"
         style={reducedMotion ? undefined : { animationDelay: `${-phase}s` }}
       />
+      <canvas ref={canvasRef} data-matthias-canonical-model="blender" />
     </span>
   );
 }
