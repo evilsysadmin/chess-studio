@@ -33,7 +33,15 @@ case "$mode" in
       )
     fi
     if has_group experiments; then
-      specs+=(experiments-visual-artifact.spec.js)
+      # Chronicles is substantially heavier than the card-based experiment
+      # surfaces under hosted SwiftShader. When it is the only affected
+      # experiment, use its focused producer so desktop and Android receive
+      # independent budgets instead of sharing one long full-page journey.
+      if [[ "$experiments_scope" == "chronicles" ]]; then
+        specs+=(chronicles-gameplay-visual-artifact.spec.js)
+      else
+        specs+=(experiments-visual-artifact.spec.js)
+      fi
       if has_experiment_scope chronicles && [[ "$chronicles_avatar" == "true" ]]; then
         specs+=(chronicles-avatar-visual-artifact.spec.js)
       fi
