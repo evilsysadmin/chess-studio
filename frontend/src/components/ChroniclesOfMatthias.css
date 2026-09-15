@@ -1,6 +1,6 @@
 .chronicles {
   min-height: 100%;
-  padding: 18px;
+  padding: 14px clamp(12px, 1.45vw, 22px) 16px;
   color: #efe4cf;
   background:
     radial-gradient(circle at 50% -12%, rgba(111, 76, 43, .3) 0, transparent 34%),
@@ -13,29 +13,32 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
-  max-width: 1180px;
-  margin: 0 auto 14px;
+  width: 100%;
+  max-width: 1480px;
+  margin: 0 auto 10px;
 }
 .chronicles-head h2 {
-  margin: .2rem 0 .35rem;
+  margin: .1rem 0 .22rem;
   font-family: Georgia, serif;
-  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-size: clamp(1.8rem, 3vw, 2.7rem);
   letter-spacing: .025em;
   text-shadow: 0 3px 18px rgba(0, 0, 0, .55);
 }
 .chronicles-head p {
-  max-width: 760px;
+  max-width: 880px;
   margin: 0;
   color: #c7b89f;
-  line-height: 1.5;
+  font-size: .9rem;
+  line-height: 1.35;
 }
 
 .chronicles-shell {
-  max-width: 1180px;
+  width: 100%;
+  max-width: 1480px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
-  gap: 14px;
+  grid-template-columns: minmax(230px, 270px) minmax(0, 1fr);
+  gap: 12px;
 }
 .chronicles-party,
 .chronicles-stage-wrap {
@@ -50,10 +53,10 @@
 
 .chronicles-party {
   position: relative;
-  padding: 12px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
   overflow: hidden;
 }
 .chronicles-party::before {
@@ -66,10 +69,10 @@
   box-shadow: 0 0 18px rgba(216, 145, 60, .18);
 }
 .chronicles-panel-kicker {
-  font-size: .69rem;
-  letter-spacing: .18em;
+  font-size: .66rem;
+  letter-spacing: .16em;
   color: #a8875c;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 .chronicles-party-member {
   appearance: none;
@@ -79,10 +82,10 @@
   text-align: left;
   cursor: pointer;
   display: grid;
-  grid-template-columns: 36px 1fr auto;
+  grid-template-columns: 34px 1fr auto;
   align-items: center;
-  gap: 9px;
-  padding: 9px 8px;
+  gap: 8px;
+  padding: 8px 7px;
   border: 1px solid rgba(188, 152, 101, .16);
   border-radius: 2px;
   background:
@@ -111,26 +114,26 @@
   transform: translateX(2px);
 }
 .chronicles-party-glyph {
-  font-size: 1.65rem;
+  font-size: 1.55rem;
   text-align: center;
   color: #e4c898;
   text-shadow: 0 2px 7px #000, 0 0 12px rgba(200, 129, 54, .16);
 }
 .chronicles-party-member span:nth-child(2) { display: flex; flex-direction: column; min-width: 0; }
-.chronicles-party-member strong { font-size: .9rem; }
+.chronicles-party-member strong { font-size: .86rem; }
 .chronicles-party-member small {
-  font-size: .68rem;
+  font-size: .65rem;
   color: #aa9d8c;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.chronicles-party-member b { font-size: .75rem; color: #d2b47d; }
+.chronicles-party-member b { font-size: .72rem; color: #d2b47d; }
 
 .chronicles-stage-wrap { min-width: 0; overflow: hidden; }
 .chronicles-statusbar {
-  min-height: 42px;
-  padding: 8px 11px;
+  min-height: 36px;
+  padding: 5px 9px;
   display: grid;
   grid-template-columns: auto auto auto 1fr;
   gap: 0;
@@ -146,16 +149,16 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 0 12px;
+  padding: 0 11px;
   border-right: 1px solid rgba(193, 153, 94, .12);
-  font-size: .58rem;
-  letter-spacing: .12em;
+  font-size: .55rem;
+  letter-spacing: .11em;
   color: #8d7a61;
 }
 .chronicles-statusbar span:first-child { padding-left: 2px; }
 .chronicles-statusbar span:last-child { border-right: 0; }
 .chronicles-statusbar b {
-  font-size: .75rem;
+  font-size: .72rem;
   letter-spacing: .02em;
   color: #e7d7ba;
   white-space: nowrap;
@@ -165,12 +168,12 @@
 
 .chronicles-stage {
   position: relative;
-  aspect-ratio: 16/9;
-  min-height: 330px;
+  height: clamp(420px, 55dvh, 650px);
+  min-height: 0;
   overflow: hidden;
   isolation: isolate;
-  border: 6px solid #0b0907;
-  border-top-width: 4px;
+  border: 5px solid #0b0907;
+  border-top-width: 3px;
   background: #050403;
   box-shadow:
     inset 0 0 0 1px rgba(202, 159, 94, .24),
@@ -284,14 +287,14 @@
 .chronicles-touch {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 7px;
-  padding: 10px;
+  gap: 6px;
+  padding: 7px 8px;
   background:
     linear-gradient(180deg, rgba(35, 27, 20, .7), rgba(11, 9, 7, .98)),
     #0b0907;
 }
 .chronicles-touch button {
-  min-height: 54px;
+  min-height: 48px;
   border: 1px solid rgba(188, 151, 98, .28);
   border-radius: 2px;
   background:
@@ -302,12 +305,12 @@
     inset 0 -8px 16px rgba(0, 0, 0, .2),
     0 2px 0 rgba(0, 0, 0, .3);
   color: #e2d4bd;
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 1px;
 }
 .chronicles-touch button:hover,
 .chronicles-touch button:focus-visible {
@@ -321,16 +324,16 @@
   border-color: rgba(196, 89, 56, .66);
   box-shadow: inset 0 1px 0 rgba(255, 208, 180, .08), inset 0 -10px 20px rgba(0, 0, 0, .26), 0 2px 0 rgba(0, 0, 0, .35);
 }
-.chronicles-touch small { font-size: .56rem; letter-spacing: .1em; color: #a89578; }
+.chronicles-touch small { font-size: .54rem; letter-spacing: .1em; color: #a89578; }
 
 .chronicles-keyboard-help {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 14px;
-  padding: 8px 11px;
+  gap: 6px 14px;
+  padding: 6px 10px;
   border-top: 1px solid rgba(193, 153, 94, .08);
   color: #827563;
-  font-size: .68rem;
+  font-size: .66rem;
   background: #090806;
 }
 .chronicles-keyboard-help kbd {
@@ -345,11 +348,18 @@
   box-shadow: 0 1px 0 rgba(0, 0, 0, .45);
 }
 .chronicles-tech-note {
-  max-width: 1180px;
-  margin: 10px auto 0;
+  width: 100%;
+  max-width: 1480px;
+  margin: 7px auto 0;
   color: #776b5c;
-  font-size: .7rem;
-  line-height: 1.4;
+  font-size: .68rem;
+  line-height: 1.3;
+}
+
+@media (max-width: 1100px) and (min-width: 801px) {
+  .chronicles-shell { grid-template-columns: minmax(210px, 235px) minmax(0, 1fr); }
+  .chronicles-stage { height: clamp(400px, 52dvh, 560px); }
+  .chronicles-head p { max-width: 700px; }
 }
 
 @media (max-width: 800px) {
@@ -367,8 +377,11 @@
   .chronicles-party-glyph { font-size: 1.35rem; }
   .chronicles-statusbar { grid-template-columns: auto auto auto 1fr; }
   .chronicles-statusbar span { padding: 0 7px; }
-  .chronicles-stage { min-height: 280px; border-width: 4px; }
+  .chronicles-stage { height: auto; aspect-ratio: 16/9; min-height: 280px; border-width: 4px; }
   .chronicles-stage::before { inset: 5px; }
+  .chronicles-touch { gap: 7px; padding: 10px; }
+  .chronicles-touch button { min-height: 54px; font-size: 1.2rem; gap: 2px; }
+  .chronicles-touch small { font-size: .56rem; }
   .chronicles-keyboard-help { display: none; }
   .chronicles-tech-note { display: none; }
 }
