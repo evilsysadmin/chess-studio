@@ -20,6 +20,7 @@ from typing import Iterable
 @dataclass(frozen=True)
 class BrowserScope:
     full_logic: bool = False
+    special_states: bool = False
     visual: bool = False
     focus: bool = False
     matthias: bool = False
@@ -28,7 +29,7 @@ class BrowserScope:
 
     @classmethod
     def all(cls) -> "BrowserScope":
-        return cls(True, True, True, True, True, True)
+        return cls(True, True, True, True, True, True, True)
 
 
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
@@ -66,6 +67,17 @@ FULL_LOGIC_PATTERNS = (
     "frontend/src/main.jsx",
     "e2e/three-d-war-room.spec.js",
     "e2e/three-d-war-room-android-touch.spec.js",
+    "e2e/helpers.js",
+)
+# Five special-state shards plus special-surfaces are expensive and protect deep
+# 3D state rendering, not every War Room rail/control. Keep them tied to actual
+# renderer/state owners while the broader input/UI canaries remain full_logic.
+SPECIAL_STATE_PATTERNS = (
+    "frontend/src/components/Board3D.jsx",
+    "frontend/src/components/Board3D*.js",
+    "frontend/src/components/WarRoom3D*.js",
+    "frontend/src/components/GameBoardView.jsx",
+    "frontend/src/components/useGameBoardRenderer.js",
     "e2e/three-d-war-room-special-states.spec.js",
     "e2e/three-d-special-surfaces.spec.js",
     "e2e/helpers.js",
@@ -131,7 +143,7 @@ def _matches(path: str, patterns: tuple[str, ...]) -> bool:
 
 
 def classify(paths: Iterable[str]) -> BrowserScope:
-    full_logic = visual = focus = matthias = quick_2d = network_race = False
+    full_logic = special_states = visual = focus = matthias = quick_2d = network_race = False
 
     for path in _clean_paths(paths):
         if FRONTEND_TEST_RE.search(path):
@@ -149,6 +161,9 @@ def classify(paths: Iterable[str]) -> BrowserScope:
             visual = True
             focus = True
 
+        if _matches(path, SPECIAL_STATE_PATTERNS):
+            special_states = True
+
         if _matches(path, QUICK_2D_PATTERNS):
             quick_2d = True
 
@@ -159,7 +174,7 @@ def classify(paths: Iterable[str]) -> BrowserScope:
             network_race = True
 
         if path in BROWSER_ACTION_PATHS:
-            full_logic = visual = focus = matthias = quick_2d = network_race = True
+            full_logic = special_states = visual = focus = matthias = quick_2d = network_race = True
 
         if path == CICD_WORKFLOW:
             # Exercise the selection plumbing without waking every WebGL scene
@@ -167,7 +182,7 @@ def classify(paths: Iterable[str]) -> BrowserScope:
             visual = True
             quick_2d = True
 
-    return BrowserScope(full_logic, visual, focus, matthias, quick_2d, network_race)
+    return BrowserScope(full_logic, special_states, visual, focus, matthias, quick_2d, network_race)
 
 
 def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
@@ -190,12 +205,15 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                     "label": "War Room · desktop input",
                     "command": "./node_modules/.bin/playwright test three-d-war-room.spec.js --grep \"War Room · desktop input mantiene cámara fija y juega e2→e4\" --workers=1 --retries=0 --timeout=75000",
                 },
-                {
-                    "id": "special-surfaces",
-                    "label": "3D parity · special surfaces",
-                    "command": "./node_modules/.bin/playwright test three-d-special-surfaces.spec.js --workers=1 --retries=0 --timeout=90000",
-                },
             ]
+        )
+    if scope.special_states:
+        cases.append(
+            {
+                "id": "special-surfaces",
+                "label": "3D parity · special surfaces",
+                "command": "./node_modules/.bin/playwright test three-d-special-surfaces.spec.js --workers=1 --retries=0 --timeout=90000",
+            }
         )
         for shard in range(1, 6):
             cases.append(
@@ -277,6 +295,7 @@ def render_summary(scope: BrowserScope) -> str:
             "### Required specialized browser scope",
             "",
             f"- War Room rules/input parity: `{yn(scope.full_logic)}`",
+            f"- War Room special-state parity: `{yn(scope.special_states)}`",
             f"- War Room mount/scale: `{yn(scope.visual)}`",
             f"- Android Focus: `{yn(scope.focus)}`",
             f"- Matthias motion/paint: `{yn(scope.matthias)}`",
@@ -302,7 +321,7 @@ def self_test() -> None:
     assert classify(["frontend/src/components/MatthiasAvatar.spec.jsx"]) == BrowserScope()
 
     full = classify(["frontend/src/components/Board3DRenderer.js"])
-    assert full == BrowserScope(full_logic=True, visual=True, focus=True)
+    assert full == BrowserScope(full_logic=True, special_states=True, visual=True, focus=True)
     assert _ids(full) == [
         "hans-fire-call",
         "android-selection",
@@ -317,13 +336,25 @@ def self_test() -> None:
         "android-focus",
     ]
 
+    chrome = classify(["frontend/src/components/GamePlayerRail.jsx"])
+    assert chrome == BrowserScope(full_logic=True, visual=True, focus=True)
+    assert _ids(chrome) == [
+        "hans-fire-call", "android-selection", "desktop-input", "desktop-scale", "android-focus",
+    ]
+
+    direct_special = classify(["e2e/three-d-war-room-special-states.spec.js"])
+    assert direct_special == BrowserScope(special_states=True)
+    assert _ids(direct_special) == [
+        "special-surfaces", "special-state-1", "special-state-2", "special-state-3", "special-state-4", "special-state-5",
+    ]
+
     mixed = classify(
         [
             "frontend/src/components/Board3DRenderer.js",
             "frontend/src/components/Board3DParity.test.js",
         ]
     )
-    assert mixed == BrowserScope(full_logic=True, visual=True, focus=True)
+    assert mixed == BrowserScope(full_logic=True, special_states=True, visual=True, focus=True)
 
     assert _ids(classify(["frontend/src/components/MatthiasAvatar.jsx"])) == [
         "matthias-home-motion",
@@ -350,9 +381,17 @@ def self_test() -> None:
             "frontend/src/components/MatthiasAvatar.jsx",
         ]
     )
-    assert combined == BrowserScope(True, True, True, True, True, False)
+    assert combined == BrowserScope(
+        full_logic=True,
+        special_states=True,
+        visual=True,
+        focus=True,
+        matthias=True,
+        quick_2d=True,
+    )
 
     assert output_lines(BrowserScope()) == ['matrix={"include":[]}', "has_cases=false"]
+    assert "War Room special-state parity: `true`" in render_summary(BrowserScope(special_states=True))
     assert "War Room mount/scale: `true`" in render_summary(BrowserScope(visual=True))
     assert "Game network races: `true`" in render_summary(BrowserScope(network_race=True))
 
