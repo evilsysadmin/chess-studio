@@ -33,6 +33,8 @@ async function expectBlenderRigReady(avatar, canvas) {
   await expect(avatar).toHaveAttribute('data-matthias-render-source', 'blender-glb');
   await expect(canvas).toBeVisible();
   await expect(canvas).toHaveCSS('opacity', '1');
+  await expect(canvas).toHaveAttribute('data-matthias-camera-facing', 'head-nose-vector');
+  await expect(canvas).toHaveAttribute('data-matthias-camera-distance', /^\d+\.\d{3}$/);
 }
 
 test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', async ({ page }) => {
