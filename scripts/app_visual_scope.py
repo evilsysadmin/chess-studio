@@ -121,9 +121,9 @@ def _surface_groups(path: str) -> set[str] | None:
         groups.add("home")
 
     # Matthias is rendered independently on Home and inside War Room. A shared
-    # Matthias component can affect either, while school-specific files were
-    # already classified above as training.
-    if "matthias" in lower and "school" not in lower:
+    # Matthias component can affect either. "Chronicles of Matthias" merely
+    # carries his name as part of the mode title and owns its Experiments scene.
+    if "matthias" in lower and "school" not in lower and "chronicles" not in lower:
         groups.update(("home", "warroom"))
 
     if groups:
@@ -245,11 +245,20 @@ def self_test() -> None:
     assert not chronicles_logic.chronicles_avatar
 
     chronicles_ui = classify(["frontend/src/components/ChroniclesOfMatthias.jsx"])
+    assert chronicles_ui.capture_groups == "experiments"
     assert chronicles_ui.experiments_scope == "chronicles" and chronicles_ui.chronicles_avatar
     chronicles_three = classify(["frontend/src/chroniclesOfMatthiasThree.js"])
-    assert chronicles_three.chronicles_avatar
+    assert chronicles_three.capture_groups == "experiments" and chronicles_three.chronicles_avatar
     chronicles_party = classify(["frontend/src/chroniclesOfMatthiasPartyCondition.js"])
-    assert chronicles_party.chronicles_avatar
+    assert chronicles_party.capture_groups == "experiments" and chronicles_party.chronicles_avatar
+    chronicles_atmosphere = classify(["frontend/src/chroniclesOfMatthiasAtmosphere.js"])
+    assert chronicles_atmosphere.capture_groups == "experiments"
+    assert chronicles_atmosphere.experiments_scope == "chronicles"
+    assert not chronicles_atmosphere.chronicles_avatar
+    chronicles_patina = classify(["frontend/src/chroniclesOfMatthiasSurfacePatina.js"])
+    assert chronicles_patina.capture_groups == "experiments"
+    assert chronicles_patina.experiments_scope == "chronicles"
+    assert not chronicles_patina.chronicles_avatar
 
     trailblazer = classify(["frontend/src/pawnTrailblazerThree.js"])
     assert trailblazer.experiments_scope == "landing"
