@@ -3,6 +3,15 @@ import { buttonWithVisibleText, gameTurn, login, mockApi } from './helpers.js';
 
 test.use({ ...devices['Pixel 5'] });
 
+// These tests exercise Matthias presence/motion, not first-run teaching. Keep
+// the War Room tutorial out of their way so opening banter remains the thing
+// under test.
+const SEEN_WAR_ROOM_TUTORIAL_PROFILE = Object.freeze({
+  'chess-study-mechanic-tutorial-progress-v1': JSON.stringify({
+    'war-room-basics': { seen: true },
+  }),
+});
+
 // Legal position after 1.Nf3 e5. e7 is now empty, so after 2.e4 the mocked
 // Matthias reply Ke8-e7 is a real legal king move instead of an impossible
 // state that the board animation layer is entitled to reject.
@@ -111,7 +120,7 @@ async function installKingMoveScenario(page, calls) {
 test('War Room · Android usa al rey-peón como única presencia visual de Matthias', async ({ page }) => {
   test.setTimeout(75_000);
 
-  await mockApi(page);
+  await mockApi(page, { profileSeed: SEEN_WAR_ROOM_TUTORIAL_PROFILE });
   await login(page);
   await buttonWithVisibleText(page, 'Partida rápida').click();
   await page.getByRole('button', { name: 'Empezar partida', exact: true }).click();
@@ -158,7 +167,7 @@ test('War Room · el bocadillo de Matthias sigue al rey si cambia de casilla', a
     );
   });
 
-  await mockApi(page);
+  await mockApi(page, { profileSeed: SEEN_WAR_ROOM_TUTORIAL_PROFILE });
   await installKingMoveScenario(page, moveCalls);
   await login(page);
 

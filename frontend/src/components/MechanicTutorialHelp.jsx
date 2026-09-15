@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import MechanicTutorialModal from './MechanicTutorialModal.jsx';
 import { loadMechanicTutorialProgress, markMechanicTutorialSeen } from '../mechanicTutorials.js';
+import { PROFILE_CHANGED_EVENT } from '../profileKeys.js';
 
 export default function MechanicTutorialHelp({
   tutorialId,
@@ -12,6 +13,12 @@ export default function MechanicTutorialHelp({
   const [seen, setSeen] = useState(() => Boolean(loadMechanicTutorialProgress()?.[tutorialId]?.seen));
   const [open, setOpen] = useState(() => autoOpen && !seen);
   const showFirstRunNudge = Boolean(firstRunLabel) && !seen;
+
+  useEffect(() => {
+    const refresh = () => setSeen(Boolean(loadMechanicTutorialProgress()?.[tutorialId]?.seen));
+    window.addEventListener(PROFILE_CHANGED_EVENT, refresh);
+    return () => window.removeEventListener(PROFILE_CHANGED_EVENT, refresh);
+  }, [tutorialId]);
 
   function closeTutorial() {
     if (markSeenOnClose) {
