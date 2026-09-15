@@ -94,12 +94,12 @@ function buildKnightBackDetail({ coarsePointer }) {
   const copper = premiumMaterial(0x8f572e, { metalness: 0.58, roughness: 0.38 });
   const segments = coarsePointer ? 12 : 20;
 
-  addDetail(root, new THREE.BoxGeometry(0.54, 0.34, 0.075), leather, [0, 0.67, -0.31], 'morcilla-rear-pack');
-  addDetail(root, new THREE.BoxGeometry(0.055, 0.78, 0.035), darkLeather, [-0.18, 0.8, -0.36], 'morcilla-harness-left', [0, 0, -0.22]);
-  addDetail(root, new THREE.BoxGeometry(0.055, 0.78, 0.035), darkLeather, [0.18, 0.8, -0.36], 'morcilla-harness-right', [0, 0, 0.22]);
-  addDetail(root, new THREE.CylinderGeometry(0.11, 0.11, 0.58, segments), blanket, [0, 1.02, -0.34], 'morcilla-bedroll', [0, 0, Math.PI / 2]);
-  addDetail(root, new THREE.TorusGeometry(0.14, 0.024, 7, segments), copper, [-0.27, 0.69, -0.39], 'morcilla-copper-kit', [Math.PI / 2, 0, 0]);
-  addDetail(root, new THREE.CylinderGeometry(0.035, 0.035, 0.42, 8), copper, [0.29, 0.73, -0.39], 'morcilla-rear-tool', [0, 0, 0.18]);
+  addDetail(root, new THREE.BoxGeometry(0.54, 0.34, 0.075), leather, [0, 0.67, -0.31], 'faust-rear-pack');
+  addDetail(root, new THREE.BoxGeometry(0.055, 0.78, 0.035), darkLeather, [-0.18, 0.8, -0.36], 'faust-harness-left', [0, 0, -0.22]);
+  addDetail(root, new THREE.BoxGeometry(0.055, 0.78, 0.035), darkLeather, [0.18, 0.8, -0.36], 'faust-harness-right', [0, 0, 0.22]);
+  addDetail(root, new THREE.CylinderGeometry(0.11, 0.11, 0.58, segments), blanket, [0, 1.02, -0.34], 'faust-bedroll', [0, 0, Math.PI / 2]);
+  addDetail(root, new THREE.TorusGeometry(0.14, 0.024, 7, segments), copper, [-0.27, 0.69, -0.39], 'faust-copper-kit', [Math.PI / 2, 0, 0]);
+  addDetail(root, new THREE.CylinderGeometry(0.035, 0.035, 0.42, 8), copper, [0.29, 0.73, -0.39], 'faust-rear-tool', [0, 0, 0.18]);
   return root;
 }
 
@@ -112,7 +112,7 @@ const PARTY_BACK_BUILDERS = Object.freeze({
 export const CHRONICLES_PREMIUM_BACK_DETAIL_NAMES = Object.freeze({
   rook: Object.freeze(['hildegard-back-tabard', 'hildegard-backplate', 'hildegard-backplate-mark']),
   bishop: Object.freeze(['aziz-back-mantle', 'aziz-back-sash', 'aziz-back-rune']),
-  knight: Object.freeze(['morcilla-rear-pack', 'morcilla-bedroll', 'morcilla-copper-kit']),
+  knight: Object.freeze(['faust-rear-pack', 'faust-bedroll', 'faust-copper-kit']),
 });
 
 function installPartyBackDetails(partyRoot, { coarsePointer = false } = {}) {
@@ -228,6 +228,8 @@ export const CHRONICLES_TACTICS_BLENDER_ART_META = Object.freeze({
   matthias: 'models/matthias-home-canonical.glb',
   sourceOfTruth: 'scripts/blender/build_home_matthias.py',
   partySourceOfTruth: 'scripts/blender/build_chronicles_tactics_party.py',
+  partyModel: 'models/chronicles-tactics-party.glb',
+  partyAssetVersion: 'chronicles-tactics-party-v1',
   partyBackDetail: 'premium-rear-silhouette-v1',
   runtimeUpgrade: 'async-fallback-first',
   fallback: 'chroniclesOfMatthiasArt.js',

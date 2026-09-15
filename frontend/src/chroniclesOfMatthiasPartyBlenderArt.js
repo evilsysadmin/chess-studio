@@ -1,0 +1,130 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+
+export const CHRONICLES_TACTICS_PARTY_MODEL_PATH = 'models/chronicles-tactics-party.glb';
+export const CHRONICLES_TACTICS_PARTY_ASSET_VERSION = 'chronicles-tactics-party-v1';
+export const CHRONICLES_TACTICS_PARTY_MEMBERS = Object.freeze(['rook', 'bishop', 'knight']);
+
+const PARTY_MODEL_URL = `${import.meta.env.BASE_URL}${CHRONICLES_TACTICS_PARTY_MODEL_PATH}`;
+let partyLoadPromise = null;
+
+function loadPartyAsset() {
+  if (!partyLoadPromise) {
+    const loader = new GLTFLoader();
+    partyLoadPromise = loader.loadAsync(PARTY_MODEL_URL).catch((error) => {
+      partyLoadPromise = null;
+      throw error;
+    });
+  }
+  return partyLoadPromise;
+}
+
+function configureVisual(root, { coarsePointer }) {
+  root.position.set(0, 0, 0);
+  root.rotation.set(0, 0, 0);
+  root.scale.set(1, 1, 1);
+  root.traverse((node) => {
+    if (!node.isMesh) return;
+    node.castShadow = !coarsePointer;
+    node.receiveShadow = true;
+    node.frustumCulled = true;
+  });
+}
+
+function hideFallbackChildren(memberRoot, visual) {
+  [...memberRoot.children].forEach((child) => {
+    if (child !== visual) child.visible = false;
+  });
+}
+
+function restoreFallbackChildren(memberRoot, visual) {
+  [...memberRoot.children].forEach((child) => {
+    if (child !== visual) child.visible = true;
+  });
+}
+
+function clipForMember(animations, memberId) {
+  return animations?.find((clip) => clip.name === chroniclesTacticsPartyIdleName(memberId)) || null;
+}
+
+export function chroniclesTacticsPartyRootName(memberId) {
+  return `ChroniclesParty__${memberId}`;
+}
+
+export function chroniclesTacticsPartyIdleName(memberId) {
+  return `Idle.${memberId}`;
+}
+
+export function installChroniclesTacticsPartyBlenderArt(
+  models,
+  { coarsePointer = false, reducedMotion = false } = {},
+) {
+  if (!models?.get) return () => {};
+
+  let cancelled = false;
+  const installed = [];
+
+  CHRONICLES_TACTICS_PARTY_MEMBERS.forEach((memberId) => {
+    const memberRoot = models.get(memberId);
+    if (memberRoot) memberRoot.userData.chroniclesPartyArtSource = 'procedural-fallback-loading';
+  });
+
+  void loadPartyAsset()
+    .then((gltf) => {
+      if (cancelled || !gltf?.scene) return;
+
+      CHRONICLES_TACTICS_PARTY_MEMBERS.forEach((memberId) => {
+        const memberRoot = models.get(memberId);
+        const source = gltf.scene.getObjectByName(chroniclesTacticsPartyRootName(memberId));
+        if (!memberRoot || !source) {
+          if (memberRoot) memberRoot.userData.chroniclesPartyArtSource = 'procedural-fallback';
+          return;
+        }
+
+        // Keep the cached GLTF scene immutable so a destroyed/remounted Tactics
+        // view can reuse the single network load instead of losing its roots.
+        const visual = source.clone(true);
+        visual.name = source.name;
+        configureVisual(visual, { coarsePointer });
+        const priorTick = memberRoot.userData.chroniclesArtTick || null;
+        memberRoot.add(visual);
+        hideFallbackChildren(memberRoot, visual);
+        memberRoot.userData.chroniclesPartyArtSource = CHRONICLES_TACTICS_PARTY_ASSET_VERSION;
+
+        const clip = clipForMember(gltf.animations, memberId);
+        let mixer = null;
+        if (clip) {
+          mixer = new THREE.AnimationMixer(visual);
+          mixer.clipAction(clip).setLoop(THREE.LoopRepeat, Infinity).play();
+          if (reducedMotion) mixer.setTime(Math.max(0, clip.duration * 0.34));
+          else {
+            memberRoot.userData.chroniclesArtTick = (time) => {
+              priorTick?.(time);
+              mixer?.setTime(Math.max(0, Number(time) || 0) % Math.max(0.01, clip.duration));
+            };
+          }
+        }
+
+        installed.push({ memberRoot, visual, mixer, priorTick });
+      });
+    })
+    .catch(() => {
+      if (cancelled) return;
+      CHRONICLES_TACTICS_PARTY_MEMBERS.forEach((memberId) => {
+        const memberRoot = models.get(memberId);
+        if (memberRoot) memberRoot.userData.chroniclesPartyArtSource = 'procedural-fallback';
+      });
+    });
+
+  return () => {
+    cancelled = true;
+    installed.forEach(({ memberRoot, visual, mixer, priorTick }) => {
+      mixer?.stopAllAction?.();
+      memberRoot.userData.chroniclesArtTick = priorTick;
+      restoreFallbackChildren(memberRoot, visual);
+      visual.removeFromParent();
+      memberRoot.userData.chroniclesPartyArtSource = 'procedural-fallback';
+    });
+    installed.length = 0;
+  };
+}
