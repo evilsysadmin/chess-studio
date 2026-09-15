@@ -19,11 +19,13 @@ jobs:
     timeout-minutes: 18
     steps:
       - uses: actions/checkout@v7
-      - name: Install Blender + WebP tools
+      - name: Install Blender + headless GL + WebP tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends blender webp
+          sudo apt-get install -y --no-install-recommends blender webp libegl1 libgl1-mesa-dri
       - name: Render canonical weapon sheets in Blender
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
         run: |
           set -euo pipefail
           mkdir -p /tmp/pawn-slug-art
