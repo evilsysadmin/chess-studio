@@ -77,7 +77,7 @@ export function buildScavengerKnight({ coarsePointer = false } = {}) {
 
   root.userData.chroniclesGlowMaterials = [glow];
   root.userData.chroniclesBaseGlow = 2.15;
-  root.userData.chroniclesSilhouette = 'scavenger-knight-armored-loot-horse-v2';
+  root.userData.chroniclesSilhouette = 'scavenger-knight-loot-horse';
   root.userData.chroniclesArtTier = 'premium-threat-v2';
   root.userData.chroniclesEnemyId = 'scavenger-knight';
   return root;
