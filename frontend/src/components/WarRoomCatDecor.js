@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { getEffectiveReducedMotion } from '../userPreferences.js';
 
-export const WAR_ROOM_CAT_VERSION = 'war-room-cat-v1-sofa-sleeper';
+export const WAR_ROOM_CAT_VERSION = 'war-room-cat-v2-ambient-restraint';
 
 function rootLocalBounds(root, object) {
   object.updateMatrixWorld?.(true);
@@ -36,7 +36,14 @@ function makeEar(material) {
   return ear;
 }
 
-function buildCat() {
+export function warRoomCatAmbientMotionAllowed(root, { reducedMotion = getEffectiveReducedMotion() } = {}) {
+  if (reducedMotion) return false;
+  const hans = root?.getObjectByName?.('war-room-hans-butler');
+  if (hans?.userData?.warRoomHansActiveTaskKind) return false;
+  return true;
+}
+
+function buildCat(root) {
   const group = new THREE.Group();
   group.name = 'war-room-cat';
   group.userData.warRoomDecor = WAR_ROOM_CAT_VERSION;
@@ -109,9 +116,10 @@ function buildCat() {
   const baseBodyY = body.position.y;
   const baseTailZ = tail.rotation.z;
   body.onBeforeRender = () => {
-    if (getEffectiveReducedMotion()) {
+    if (!warRoomCatAmbientMotionAllowed(root)) {
       body.position.y = baseBodyY;
       tail.rotation.z = baseTailZ;
+      group.userData.warRoomCatMotion = 'resting-static';
       return;
     }
     const now = (typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -119,6 +127,7 @@ function buildCat() {
       : Date.now()) * 0.001;
     body.position.y = baseBodyY + Math.sin(now * 1.35) * 0.006;
     tail.rotation.z = baseTailZ + Math.sin(now * 0.24) * 0.025;
+    group.userData.warRoomCatMotion = 'ambient-idle';
   };
 
   return group;
@@ -161,7 +170,7 @@ export function ensureWarRoomCat(root) {
   const existing = root.getObjectByName?.('war-room-cat');
   if (existing) return placeCat(root, existing);
 
-  const cat = buildCat();
+  const cat = buildCat(root);
   root.add(cat);
   placeCat(root, cat);
   root.userData.warRoomCat = WAR_ROOM_CAT_VERSION;
