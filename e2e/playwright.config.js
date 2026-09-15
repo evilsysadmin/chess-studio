@@ -4,7 +4,9 @@ const allBrowsers = process.env.PLAYWRIGHT_ALL_BROWSERS === '1';
 const fullSweep = process.env.PLAYWRIGHT_FULL_SWEEP === '1';
 const chaosMode = process.env.CHESS_CHAOS === '1';
 const ciMode = Boolean(process.env.CI);
-const visualArtifactMode = Boolean(process.env.APP_VISUAL_EXPERIMENTS_SCOPE);
+const visualArtifactMode = Boolean(
+  process.env.APP_VISUAL_ARTIFACT || process.env.APP_VISUAL_EXPERIMENTS_SCOPE,
+);
 const stagingLiveSpec = '**/staging-live.spec.js';
 const testIgnore = chaosMode
   ? [stagingLiveSpec]
@@ -57,9 +59,13 @@ export default defineConfig({
     actionTimeout: visualArtifactMode ? 30_000 : 12_000,
     navigationTimeout: ciMode ? 20_000 : 10_000,
     headless: true,
-    trace: 'retain-on-failure',
+    // Canonical visual producers already emit purpose-built screenshots. Recording
+    // trace/video for every software-rendered WebGL frame and deleting it on success
+    // adds substantial runner CPU/I/O without adding another visual contract.
+    // Required functional Playwright lanes keep retain-on-failure diagnostics.
+    trace: visualArtifactMode ? 'off' : 'retain-on-failure',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: visualArtifactMode ? 'off' : 'retain-on-failure',
   },
   webServer: {
     command: 'npm --prefix ../frontend run preview -- --host 127.0.0.1 --port 4173',
