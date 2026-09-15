@@ -1,3 +1,10 @@
+.game-3d-command-column .context-help-btn {
+  position: relative;
+  z-index: 7;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
 .game-3d-command-column .context-help-btn.is-first-run-nudge {
   width: auto;
   min-width: 30px;
