@@ -118,10 +118,10 @@ def build_rig():
     b('root', (0, 0, 0), (0, 0, .42))
     b('spine', (0, 0, .72), (0, 0, 1.60), 'root')
     b('head', (0, 0, 1.54), (0, 0, 2.24), 'spine')
-    b('upper_arm.L', (-.32, 0, 1.50), (-.61, -.03, 1.30), 'spine')
-    b('forearm.L', (-.61, -.03, 1.30), (-.82, -.12, 1.03), 'upper_arm.L')
-    b('upper_arm.R', (.32, 0, 1.50), (.61, -.03, 1.30), 'spine')
-    b('forearm.R', (.61, -.03, 1.30), (.82, -.12, 1.03), 'upper_arm.R')
+    b('upper_arm.L', (-.31, 0, 1.46), (-.46, -.045, 1.22), 'spine')
+    b('forearm.L', (-.46, -.045, 1.22), (-.38, -.18, 1.00), 'upper_arm.L')
+    b('upper_arm.R', (.31, 0, 1.46), (.46, -.045, 1.22), 'spine')
+    b('forearm.R', (.46, -.045, 1.22), (.38, -.18, 1.00), 'upper_arm.R')
     bpy.ops.object.mode_set(mode='POSE')
     for p in r.pose.bones:
         p.rotation_mode = 'XYZ'
@@ -149,14 +149,14 @@ def build_character():
     cream = mat('shirt cream', (.62, .55, .43), .72)
 
     rig = build_rig()
-    rig['matthias_asset_version'] = 'home-blender-v3'
+    rig['matthias_asset_version'] = 'home-blender-v4'
     root, spine, head = [], [], []
 
     # Pawn ancestry: low, restrained and integrated into the coat silhouette.
     root += [
-        cyl('Pawn plinth', (0, 0, .13), .52, .20, navy, verts=80, bevel=.030),
-        cyl('brass plinth trim', (0, 0, .225), .45, .025, brass, verts=80, bevel=.008),
-        cone('Pawn lower body', (0, 0, .50), .45, .31, .58, cloth, bevel=.045),
+        cyl('Pawn plinth', (0, 0, .12), .48, .18, navy, verts=80, bevel=.030),
+        cyl('brass plinth trim', (0, 0, .205), .42, .024, brass, verts=80, bevel=.008),
+        cone('Pawn lower body', (0, 0, .56), .43, .30, .76, cloth, bevel=.050),
     ]
 
     # Organic coat mass. The chest is an ellipsoid rather than a visible cone,
@@ -217,22 +217,22 @@ def build_character():
     ]
 
     # Arms follow the actual rest-bone lines so the silhouette remains connected.
-    shoulder_l = (-.32, -.005, 1.43)
-    elbow_l = (-.57, -.035, 1.27)
-    wrist_l = (-.72, -.13, 1.06)
-    shoulder_r = (.32, -.005, 1.43)
-    elbow_r = (.57, -.035, 1.27)
-    wrist_r = (.72, -.13, 1.06)
-    al = cyl_between('Upper arm.L', shoulder_l, elbow_l, .115, navy, 48, .022)
-    ar = cyl_between('Upper arm.R', shoulder_r, elbow_r, .115, navy, 48, .022)
-    fl = cyl_between('Forearm.L', elbow_l, wrist_l, .105, cloth, 48, .020)
-    fr = cyl_between('Forearm.R', elbow_r, wrist_r, .105, cloth, 48, .020)
-    cuff_l = sphere('Cuff.L', wrist_l, (.115, .09, .09), brass, 30)
-    cuff_r = sphere('Cuff.R', wrist_r, (.115, .09, .09), brass, 30)
-    hl = sphere('Hand.L', (-.735, -.155, 1.015), (.105, .085, .115), ivory, 32)
-    hr = sphere('Hand.R', (.735, -.155, 1.015), (.105, .085, .115), ivory, 32)
-    thumb_l = sphere('Thumb.L', (-.68, -.225, 1.025), (.045, .040, .052), skin_hi, 22)
-    thumb_r = sphere('Thumb.R', (.68, -.225, 1.025), (.045, .040, .052), skin_hi, 22)
+    shoulder_l = (-.31, -.005, 1.43)
+    elbow_l = (-.46, -.045, 1.22)
+    wrist_l = (-.38, -.18, 1.00)
+    shoulder_r = (.31, -.005, 1.43)
+    elbow_r = (.46, -.045, 1.22)
+    wrist_r = (.38, -.18, 1.00)
+    al = cyl_between('Upper arm.L', shoulder_l, elbow_l, .105, navy, 48, .024)
+    ar = cyl_between('Upper arm.R', shoulder_r, elbow_r, .105, navy, 48, .024)
+    fl = cyl_between('Forearm.L', elbow_l, wrist_l, .095, cloth, 48, .022)
+    fr = cyl_between('Forearm.R', elbow_r, wrist_r, .095, cloth, 48, .022)
+    cuff_l = sphere('Cuff.L', wrist_l, (.095, .075, .075), brass, 30)
+    cuff_r = sphere('Cuff.R', wrist_r, (.095, .075, .075), brass, 30)
+    hl = sphere('Hand.L', (-.34, -.245, .965), (.090, .072, .100), ivory, 32)
+    hr = sphere('Hand.R', (.34, -.245, .965), (.090, .072, .100), ivory, 32)
+    thumb_l = sphere('Thumb.L', (-.29, -.292, .975), (.038, .034, .044), skin_hi, 22)
+    thumb_r = sphere('Thumb.R', (.29, -.292, .975), (.038, .034, .044), skin_hi, 22)
 
     for o in root:
         parent_bone(o, rig, 'root')
