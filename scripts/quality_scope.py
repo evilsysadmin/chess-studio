@@ -98,6 +98,7 @@ AUDIO_APP_BOOT_RE = re.compile(
 )
 TOURNAMENT_BROWSER_RE = re.compile(r"^frontend/src/tournament\.js$")
 COMBAT_DOMAIN_RE = re.compile(r"^frontend/src/combat[^/]*\.js$")
+COMBAT_COMPONENT_RE = re.compile(r"^frontend/src/components/Combat[^/]*\.(?:js|jsx)$")
 MATTHIAS_SCHOOL_RE = re.compile(r"^frontend/src/matthiasSchool\.js$")
 HOME_BROWSER_RE = re.compile(
     r"^frontend/src/components/(?:Home[^/]*|IllustratedHome[^/]*)\.(?:js|jsx)$|"
@@ -212,7 +213,7 @@ def classify(paths: Iterable[str]) -> Scope:
                 _enable_core_e2e(scope, ("app-boot",))
             elif MATTHIAS_SCHOOL_RE.search(path):
                 _enable_core_e2e(scope, ("regression-school",))
-            elif COMBAT_DOMAIN_RE.search(path):
+            elif COMBAT_DOMAIN_RE.search(path) or COMBAT_COMPONENT_RE.search(path):
                 _enable_core_e2e(scope, ("combat",))
             elif HOME_BROWSER_RE.search(path):
                 _enable_core_e2e(scope, ("home",))
@@ -285,6 +286,10 @@ def self_test() -> None:
     _expect_core(["frontend/src/combatDeployment.js"], lanes=("combat",), run_frontend=True)
     _expect_core(["frontend/src/combatSession.js"], lanes=("combat",), run_frontend=True)
     _expect_core(["frontend/src/combatBosses.js", "frontend/src/App.jsx"], run_frontend=True)
+    _expect_core(["frontend/src/components/CombatMarket.jsx"], lanes=("combat",), run_frontend=True)
+    _expect_core(["frontend/src/components/CombatDeploymentView.jsx"], lanes=("combat",), run_frontend=True)
+    _expect_core(["frontend/src/components/CombatDebrief.jsx"], lanes=("combat",), run_frontend=True)
+    _expect_core(["frontend/src/components/CombatMarket.jsx", "frontend/src/App.jsx"], run_frontend=True)
     _expect_core(["frontend/src/matthiasSchool.js"], lanes=("regression-school",), run_frontend=True)
     _expect_core(["frontend/src/matthiasSchool.js", "frontend/src/App.jsx"], run_frontend=True)
     _expect_core(["frontend/src/components/AdminDashboardContent.jsx"], lanes=("admin",), run_frontend=True)
@@ -368,7 +373,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · classifier self-change usa app-boot y suma sólo las superficies reales del diff")
+    print("quality-scope self-test OK · classifier self-change proporcional; dominio y componentes Combat usan canario propio")
 
 
 def main() -> int:
