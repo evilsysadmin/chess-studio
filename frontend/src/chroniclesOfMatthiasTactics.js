@@ -8,6 +8,13 @@ import {
   chroniclesRuntimeEnemyPosition,
 } from './chroniclesOfMatthiasTurns.js';
 import { chroniclesMapForState } from './chronicles/chroniclesMapCatalog.js';
+import {
+  chroniclesApplyContentAction,
+  chroniclesApplyContentEffects,
+  chroniclesContentDefinition,
+  chroniclesContentInteractions,
+  chroniclesContentLockedMessage,
+} from './chronicles/chroniclesContentRuntime.js';
 
 const MOVE_LABELS = Object.freeze({
   north: 'Norte',
@@ -126,10 +133,6 @@ function activeEnemiesWithPositions(state) {
   }));
 }
 
-function canUseExit(state) {
-  return Boolean(state.sigilAwake && state.jailerHp <= 0 && state.blackGateKey);
-}
-
 function occupiedByEnemy(state, position) {
   return activeEnemiesWithPositions(state).some(({ position: enemyPosition }) => sameCell(position, enemyPosition));
 }
@@ -184,19 +187,11 @@ function appendJournal(state, entry) {
 }
 
 function rewardEnemyDefeat(state, enemy, attacker) {
-  let next = state;
-  if (enemy.id === 'spectral-bishop') {
-    next = {
-      ...next,
-      spectralLantern: true,
-      party: next.party.map((member) => member.hp > 0
-        ? { ...member, hp: Math.min(member.maxHp, member.hp + 1) }
-        : member),
-    };
-  }
-  if (enemy.id === 'scavenger-knight') next = { ...next, blackGateKey: true };
+  const rewarded = chroniclesApplyContentEffects(state, enemy.onDefeat?.effects, {
+    refillClassAbilities: refillAbilityCharges,
+  });
 
-  return appendJournal(next, {
+  return appendJournal(rewarded, {
     id: `tactics-${enemy.id}-falls`,
     title: `${enemy.name} cae`,
     body: `${attacker.name} firma la baja durante la incursión táctica. La cripta registra la protesta y sigue operativa.`,
@@ -251,67 +246,14 @@ function refillAbilityCharges(state) {
   return { ...state, classAbilityCharges };
 }
 
-function adjacentExit(state) {
-  return CHRONICLES_DIRECTIONS
-    .map((direction) => ({
-      x: state.x + direction.dx,
-      y: state.y + direction.dy,
-      direction: direction.key,
-    }))
-    .find((position) => chroniclesTileAt(position.x, position.y, state) === 'X') || null;
-}
-
-function lockedGateMessage(state) {
-  if (!state.sigilAwake) return 'La Puerta Negra no responde. Algo en la cripta sigue dormido, por desgracia temporalmente.';
-  if (state.jailerHp > 0) return 'La Puerta Negra no cede mientras la torre carcelero siga defendiendo el umbral.';
-  if (!state.blackGateKey) return 'La cerradura exige la Llave Negra. Alguien con pezuñas la considera propiedad privada.';
-  return 'La Puerta Negra permanece cerrada con una obstinación administrativamente impecable.';
-}
-
 export function chroniclesTacticsInteractions(state) {
   if (!actionAllowed(state)) return [];
-  const interactions = [];
-  const world = chroniclesTacticsWorld(state);
-
-  if (chroniclesTileAt(state.x, state.y, state) === 'S' && !state.sigilAwake) {
-    interactions.push({
-      id: 'ancient-sigil',
-      kind: 'trigger',
-      label: 'Activar sello',
-      x: state.x,
-      y: state.y,
-    });
-  }
-
-  if (world.lever && sameCell(state, world.lever) && !state.runeCacheOpened) {
-    interactions.push({
-      ...world.lever,
-      kind: 'lever',
-      label: 'Accionar palanca',
-    });
-  }
-
-  if (world.runeCore && sameCell(state, world.runeCore) && state.runeCacheOpened && !state.runeCoreCollected) {
-    interactions.push({
-      ...world.runeCore,
-      kind: 'pickup',
-      label: 'Recoger núcleo rúnico',
-    });
-  }
-
-  const exit = adjacentExit(state);
-  if (exit) {
-    interactions.push({
-      id: 'black-gate',
-      kind: 'exit',
-      label: canUseExit(state) ? 'Abrir Puerta Negra' : 'Examinar Puerta Negra',
-      x: exit.x,
-      y: exit.y,
-      direction: exit.direction,
-    });
-  }
-
-  return interactions;
+  const map = chroniclesMapForState(state);
+  return chroniclesContentInteractions(
+    state,
+    map,
+    (x, y) => chroniclesTileAt(x, y, state),
+  );
 }
 
 export function chroniclesTacticsUse(state, interactionId = null) {
@@ -319,73 +261,28 @@ export function chroniclesTacticsUse(state, interactionId = null) {
     !interactionId || candidate.id === interactionId
   ));
   if (!interaction) return state;
-  const world = chroniclesTacticsWorld(state);
+
+  const map = chroniclesMapForState(state);
+  const definition = chroniclesContentDefinition(map, interaction.id);
+  if (!definition) return state;
 
   const turns = Number(state.turns || 0) + 1;
-  if (interaction.id === 'ancient-sigil') {
-    return appendJournal({
+  if (interaction.locked) {
+    return {
       ...state,
-      sigilAwake: true,
       turns,
-      message: 'La compañía activa el sello. La piedra despierta y más piezas hostiles entran en la partida.',
-    }, {
-      id: 'tactics-sigil-awake',
-      title: 'El sello despierta',
-      body: 'La formación activa el sello de la cripta. Torre y alfil reciben la noticia con una hostilidad muy profesional.',
-      sigil: 'III',
-    });
+      message: chroniclesContentLockedMessage(
+        state,
+        definition,
+        'La salida permanece cerrada con una obstinación administrativamente impecable.',
+      ),
+    };
   }
 
-  if (world.lever && interaction.id === world.lever.id) {
-    return appendJournal({
-      ...state,
-      runeCacheOpened: true,
-      turns,
-      message: 'La palanca baja con un golpe seco. Una hornacina cercana expulsa un núcleo rúnico con la discreción de una tostadora medieval.',
-    }, {
-      id: 'tactics-rune-cache-open',
-      title: 'La pared admite que tenía compartimento secreto',
-      body: 'Una palanca de latón abre un pequeño alijo. Dentro espera un núcleo rúnico capaz de rearmar las habilidades de la compañía.',
-      sigil: '✦',
-    });
-  }
-
-  if (world.runeCore && interaction.id === world.runeCore.id) {
-    return appendJournal(refillAbilityCharges({
-      ...state,
-      runeCoreCollected: true,
-      turns,
-      message: 'La compañía recoge el núcleo rúnico. Las habilidades de clase vuelven a estar cargadas. Aziz lo llama taumaturgia; Matthias, logística cara.',
-    }), {
-      id: 'tactics-rune-core-collected',
-      title: 'Núcleo rúnico recuperado',
-      body: 'El alijo recarga las habilidades de clase una vez. Nadie pregunta quién dejó una batería arcana en una cripta.',
-      sigil: '✦',
-    });
-  }
-
-  if (interaction.id === 'black-gate') {
-    if (!canUseExit(state)) {
-      return {
-        ...state,
-        turns,
-        message: lockedGateMessage(state),
-      };
-    }
-    return appendJournal({
-      ...state,
-      phase: 'escaped',
-      turns,
-      message: 'La compañía abre la Puerta Negra y abandona la cripta. Sobrevivir sigue siendo una métrica de rendimiento perfectamente válida.',
-    }, {
-      id: 'tactics-escape',
-      title: 'Extracción completada',
-      body: 'La compañía abandona la cripta táctica con más miembros que cadáveres. Matthias lo registra como excelencia.',
-      sigil: 'VII',
-    });
-  }
-
-  return state;
+  return chroniclesApplyContentAction({ ...state, turns }, definition.action, {
+    appendJournal,
+    refillClassAbilities: refillAbilityCharges,
+  });
 }
 
 export function chroniclesTacticsLegalMoves(state) {
