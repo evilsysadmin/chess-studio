@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import powSquadPayload from './assets/pawnSlug/pow_squad_v1_glb_gzip.b64?raw';
+import powSquadPayload from './assets/pawnSlug/pow_squad_v2_glb_gzip.b64?raw';
 import {
   PAWN_SLUG_POW_ART_META as FALLBACK_META,
   animatePawnSlugPowModel as animateFallbackPow,
@@ -9,6 +9,7 @@ import {
 } from './pawnSlugPowArt.js';
 
 const POSES = Object.freeze(['bound', 'kneeling', 'caged']);
+const POW_BLENDER_RUNTIME_SCALE = 0.78;
 let templatePromise = null;
 
 function decodeBase64(payload) {
@@ -97,10 +98,11 @@ function installBlenderVisual(root, pose) {
   loadTemplate()
     .then((template) => {
       const visual = splitPoseVisual(template, pose);
+      visual.root.scale.setScalar(POW_BLENDER_RUNTIME_SCALE);
       hideFallbackGeometry(root);
       root.add(visual.root);
       root.userData.pawnSlugBlenderVisual = visual;
-      root.userData.pawnSlugArtSource = 'blender-glb-v1';
+      root.userData.pawnSlugArtSource = 'blender-glb-v2';
     })
     .catch(() => {
       root.userData.pawnSlugArtSource = 'procedural-fallback';
@@ -140,11 +142,13 @@ export { pawnSlugPowRescueRise };
 
 export const PAWN_SLUG_POW_ART_META = Object.freeze({
   ...FALLBACK_META,
-  style: 'blender-authored-premium-military-arcade-prisoner-v3',
+  style: 'blender-authored-premium-military-arcade-prisoner-v4',
   primaryArt: 'embedded-glb-gzip',
-  sourceOfTruth: 'scripts/blender/build_pawn_slug_pows.py',
+  sourceOfTruth: 'scripts/blender/build_pawn_slug_pows_v2.py',
   fallbackArt: FALLBACK_META.style,
   glbPoses: POSES,
+  glbVersion: 'blender-glb-v2',
+  runtimeScale: POW_BLENDER_RUNTIME_SCALE,
   runtimeUpgrade: 'async-fallback-first',
   payloadCompression: 'gzip',
   dynamicLights: 0,
