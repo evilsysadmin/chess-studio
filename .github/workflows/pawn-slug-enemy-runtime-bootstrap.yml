@@ -1,0 +1,62 @@
+name: Pawn Slug enemy runtime bootstrap
+
+on:
+  push:
+    branches:
+      - fix/pawn-slug-enemy-blender-runtime
+    paths:
+      - .github/workflows/pawn-slug-enemy-runtime-bootstrap.yml
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  install-approved-runtime-art:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/pawn-slug-enemy-blender-runtime
+          fetch-depth: 0
+      - name: Download approved Blender enemy artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${{ github.repository }}/actions/artifacts/10420553965/zip > /tmp/enemy.zip
+          mkdir -p /tmp/enemy
+          unzip -q /tmp/enemy.zip -d /tmp/enemy
+          test -s /tmp/enemy/enemy_pawn_blender_v1.webp
+          test -s /tmp/enemy/enemy_knight_blender_v1.webp
+          test -s /tmp/enemy/enemy_rook_blender_v1.webp
+          test "$(cat /tmp/enemy/gate_violations.json)" = "[]"
+      - name: Compose runtime atlas from approved sheets
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          src = Path('/tmp/enemy')
+          names = ['enemy_pawn_blender_v1.webp', 'enemy_knight_blender_v1.webp', 'enemy_rook_blender_v1.webp']
+          images = [Image.open(src / name).convert('RGBA') for name in names]
+          assert all(im.size == (1536, 672) for im in images), [im.size for im in images]
+          out = Image.new('RGBA', (1536, 2016), (0, 0, 0, 0))
+          y = 0
+          for image in images:
+              out.alpha_composite(image, (0, y))
+              y += image.height
+          dest = Path('frontend/src/assets/pawnSlug/enemy_cast_blender_v1_runtime.webp')
+          dest.parent.mkdir(parents=True, exist_ok=True)
+          out.save(dest, 'WEBP', quality=92, method=6)
+          assert Image.open(dest).size == (1536, 2016)
+          print(f'Wrote {dest} ({dest.stat().st_size} bytes)')
+          PY
+      - name: Commit asset and remove bootstrap
+        run: |
+          rm .github/workflows/pawn-slug-enemy-runtime-bootstrap.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/assets/pawnSlug/enemy_cast_blender_v1_runtime.webp .github/workflows/pawn-slug-enemy-runtime-bootstrap.yml
+          git commit -m "art(pawn-slug): install approved Blender enemy atlas"
+          git push origin HEAD:fix/pawn-slug-enemy-blender-runtime
