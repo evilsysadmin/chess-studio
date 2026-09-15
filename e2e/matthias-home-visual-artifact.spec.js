@@ -50,7 +50,9 @@ async function openDeterministicHome(page) {
   const home = page.getByRole('region', { name:'Modos principales' });
   await expect(home).toBeVisible();
   await expect(home.locator('.illustrated-home__stage')).toBeVisible();
-  await expect(home.locator('.illustrated-home__castle-3d.is-ready')).toBeVisible({ timeout:15_000 });
+  // The castle renderer may deliberately stay on its canonical 2D fallback on
+  // constrained/touch viewports. Matthias owns an independent WebGL contract,
+  // so his canary waits for his Blender model below instead of another surface.
   await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   await page.waitForTimeout(250);
   return home;
