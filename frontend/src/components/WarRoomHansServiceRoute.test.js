@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
+  HANS_SERVICE_FURNITURE_CLEARANCE,
   HANS_SERVICE_WALK_SPEED,
   installWarRoomHansServiceInfrastructure,
   moveWarRoomHansToward,
@@ -49,7 +50,7 @@ describe('Hans service routing', () => {
     expect(hans.position.y).toBeCloseTo(groundedY, 6);
   });
 
-  it.each([1, -1])('keeps desk chores on the visible front when the room Z orientation is %s', (frontSign) => {
+  it.each([1, -1])('keeps desk chores outside the padded desk hull on the visible front when room Z orientation is %s', (frontSign) => {
     const root = new THREE.Group();
     const parent = new THREE.Group();
     const deskArt = new THREE.Group();
@@ -69,8 +70,12 @@ describe('Hans service routing', () => {
     const target = warRoomHansTargetNearObject(deskTop, parent, { offsetX: -1.72, offsetZ: 0.78 });
 
     expect(target).toBeTruthy();
+    expect(target.x).toBeCloseTo(-1.5 - HANS_SERVICE_FURNITURE_CLEARANCE, 6);
     expect(target.z).toBeCloseTo(-2 + frontSign * 0.78, 6);
     expect(Math.sign(target.z - deskArt.position.z)).toBe(frontSign);
+
+    const deskBounds = new THREE.Box3().setFromObject(deskArt);
+    expect(target.x).toBeLessThanOrEqual(deskBounds.min.x - HANS_SERVICE_FURNITURE_CLEARANCE + 1e-6);
   });
 
   it('mirrors armour standoff toward the room on both side walls', () => {
@@ -94,6 +99,27 @@ describe('Hans service routing', () => {
     expect(leftTarget.x).toBeCloseTo(-5.48, 6);
     expect(rightTarget.z).toBeCloseTo(-2.94, 6);
     expect(leftTarget.z).toBeCloseTo(-2.94, 6);
+  });
+
+  it('uses rendered armour bounds when geometry requires a larger keep-out distance', () => {
+    const root = new THREE.Group();
+    const parent = new THREE.Group();
+    root.add(parent);
+
+    const rightArmor = new THREE.Mesh(
+      new THREE.BoxGeometry(1.1, 2.4, 0.7),
+      new THREE.MeshBasicMaterial(),
+    );
+    rightArmor.name = 'war-room-teutonic-armor-right';
+    rightArmor.position.set(6.68, 1.2, -3.12);
+    root.add(rightArmor);
+    root.updateMatrixWorld(true);
+
+    const target = warRoomHansTargetNearObject(rightArmor, parent, { offsetX: -0.35, offsetZ: 0.18 });
+    const bounds = new THREE.Box3().setFromObject(rightArmor);
+
+    expect(target.x).toBeLessThanOrEqual(bounds.min.x - HANS_SERVICE_FURNITURE_CLEARANCE + 1e-6);
+    expect(target.z).toBeCloseTo(-2.94, 6);
   });
 
   it('keeps service-home lookup pure and installs the exit guard explicitly', () => {

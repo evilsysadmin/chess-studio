@@ -8,7 +8,6 @@ import {
   advanceWarRoomHansWalk,
   applyWarRoomHansTaskPose,
   createWarRoomHansWalkController,
-  moveWarRoomHansToward,
   placeWarRoomHansHorizontal,
   resetWarRoomHansWalk,
 } from './WarRoomHansAnimator.js';
@@ -24,7 +23,11 @@ import {
   hansMopPatchMs,
   shouldHansMopDialogue,
 } from './WarRoomHansMopContract.js';
-import { warRoomHansSafeRoomLoop } from './WarRoomHansNavigation.js';
+import {
+  moveWarRoomHansAlongRoute,
+  warRoomHansBuildSafeRoute,
+  warRoomHansSafeRoomLoop,
+} from './WarRoomHansNavigation.js';
 import {
   assignWarRoomHansTask,
   getWarRoomHansRuntime,
@@ -134,8 +137,6 @@ function clearRoutineState(actor, props, controller, root, runtime) {
     route: '',
   });
   actor.hans.userData.warRoomHansMopState = 'done';
-  // Transitional compatibility for the old scene diagnostics while all Hans
-  // event clients move to HansRuntime task phases.
   actor.driver.userData.warRoomHansPhase = 'idle';
   props.bucket.visible = false;
   props.mop.visible = false;
@@ -172,6 +173,20 @@ export function installWarRoomHansMopRoutine(root) {
   let dialogueEnabled = false;
   let dialogueStarted = false;
   let dialogueElapsedMs = 0;
+  let travelRoute = [];
+  let routeIndex = 0;
+
+  function prepareTravelRoute(target) {
+    if (!target) return false;
+    travelRoute = warRoomHansBuildSafeRoute(
+      floor,
+      actor.hans.parent,
+      actor.hans.position.clone(),
+      target,
+    );
+    routeIndex = 0;
+    return travelRoute.length > 0;
+  }
 
   floor.onBeforeRender = (...args) => {
     previous?.(...args);
@@ -197,6 +212,8 @@ export function installWarRoomHansMopRoutine(root) {
       dialogueEnabled = false;
       dialogueStarted = false;
       dialogueElapsedMs = 0;
+      travelRoute = [];
+      routeIndex = 0;
       setDialogue(actor, '');
     }
     if (!warRoomHansEventMatches(gameId, 'mop') || completedGameId === gameId) return;
@@ -232,13 +249,19 @@ export function installWarRoomHansMopRoutine(root) {
         return;
       }
       waypointIndex = Math.floor(Math.random() * waypoints.length);
+      if (!prepareTravelRoute(waypoints[waypointIndex])) {
+        clearRoutineState(actor, props, controller, root, runtime);
+        active = false;
+        completedGameId = gameId;
+        return;
+      }
       state = 'walking';
       dialogueEnabled = shouldHansMopDialogue();
       props.bucket.visible = true;
       props.mop.visible = true;
       actor.hans.userData.warRoomHansMopState = state;
       actor.hans.userData.warRoomHansMopFatigueMs = fatigueMs;
-      actor.hans.userData.warRoomHansMopNavigation = 'safe-room-loop-v1';
+      actor.hans.userData.warRoomHansMopNavigation = 'safe-room-router-v2';
       actor.driver.userData.warRoomHansPhase = 'ambient-mop';
     }
 
@@ -250,14 +273,25 @@ export function installWarRoomHansMopRoutine(root) {
     }
 
     if (state === 'walking') {
-      const target = waypoints[waypointIndex];
-      const motion = moveWarRoomHansToward(actor.hans, target, Math.max(HANS_MOP_WALK_SPEED, HANS_SERVICE_WALK_SPEED) * delta / 1000);
+      const motion = moveWarRoomHansAlongRoute(
+        actor.hans,
+        travelRoute,
+        routeIndex,
+        Math.max(HANS_MOP_WALK_SPEED, HANS_SERVICE_WALK_SPEED) * delta / 1000,
+      );
+      routeIndex = motion.index;
       setWarRoomHansTaskPresentation(runtime, {
         motionState: 'walk-mop',
         route: 'mop-room',
       });
       actor.hans.userData.warRoomHansMopState = 'walking';
       applyWarRoomHansMopCarryPose(props, now);
+      if (!motion.valid) {
+        clearRoutineState(actor, props, controller, root, runtime);
+        active = false;
+        completedGameId = gameId;
+        return;
+      }
       if (motion.travelled > 0) {
         advanceWarRoomHansWalk(controller, { travelled: motion.travelled, horizontalWeight: 0.45 });
       }
@@ -293,10 +327,22 @@ export function installWarRoomHansMopRoutine(root) {
         resetWarRoomHansWalk(controller, { full: true });
         resetWarRoomHansMopProps(props);
         if (activeElapsedMs >= fatigueMs) {
+          if (!prepareTravelRoute(home)) {
+            clearRoutineState(actor, props, controller, root, runtime);
+            active = false;
+            completedGameId = gameId;
+            return;
+          }
           state = 'returning';
           setWarRoomHansTaskPhase(runtime, 'returning');
         } else {
           waypointIndex = (waypointIndex + 1 + Math.floor(Math.random() * 3)) % waypoints.length;
+          if (!prepareTravelRoute(waypoints[waypointIndex])) {
+            clearRoutineState(actor, props, controller, root, runtime);
+            active = false;
+            completedGameId = gameId;
+            return;
+          }
           state = 'walking';
           setWarRoomHansTaskPhase(runtime, 'walking');
         }
@@ -305,13 +351,25 @@ export function installWarRoomHansMopRoutine(root) {
     }
 
     if (state === 'returning') {
-      const motion = moveWarRoomHansToward(actor.hans, home, HANS_SERVICE_WALK_SPEED * delta / 1000);
+      const motion = moveWarRoomHansAlongRoute(
+        actor.hans,
+        travelRoute,
+        routeIndex,
+        HANS_SERVICE_WALK_SPEED * delta / 1000,
+      );
+      routeIndex = motion.index;
       setWarRoomHansTaskPresentation(runtime, {
         motionState: 'walk-mop',
         route: 'mop-return',
       });
       actor.hans.userData.warRoomHansMopState = 'returning';
       applyWarRoomHansMopCarryPose(props, now);
+      if (!motion.valid) {
+        clearRoutineState(actor, props, controller, root, runtime);
+        active = false;
+        completedGameId = gameId;
+        return;
+      }
       if (motion.travelled > 0) {
         advanceWarRoomHansWalk(controller, { travelled: motion.travelled, horizontalWeight: 0.45 });
       }
