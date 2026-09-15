@@ -123,7 +123,7 @@ describe('ambient music catalog', () => {
     const profiled = AMBIENT_THEME_OPTIONS.filter((theme) => theme.id !== 'andalus').map((theme) => [theme.id, getAmbientThemeSoundProfile(theme.id)]);
     expect(profiled.every(([, profile]) => !!profile)).toBe(true);
     expect(profiled.some(([, profile]) => ['bell', 'musicbox'].includes(profile.signatureInstrument))).toBe(false);
-    expect(getAmbientThemeSoundProfile('winterLibrary').signatureInstrument).toBe('felt');
+    expect(getAmbientThemeSoundProfile('winterLibrary').signatureInstrument).toBe('strings');
   });
 
   it('mantiene personalidad única y normaliza el salto de volumen entre arreglos', () => {
