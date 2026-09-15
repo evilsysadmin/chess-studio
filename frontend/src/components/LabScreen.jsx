@@ -15,6 +15,7 @@ const PawnTrailblazer = lazy(() => import('./PawnTrailblazer.jsx'));
 const PawnSlug = lazy(() => import('./PawnSlug.jsx'));
 const Chesscom = lazy(() => import('./Chesscom.jsx'));
 const ChroniclesOfMatthias = lazy(() => import('./ChroniclesOfMatthias.jsx'));
+const ChroniclesOfMatthiasTactics = lazy(() => import('./ChroniclesOfMatthiasTactics.jsx'));
 
 const GLYPH={K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟','':''};
 const BRUSHES=['','K','Q','R','B','N','P','k','q','r','b','n','p'];
@@ -40,7 +41,7 @@ export default function LabScreen({ onExit, onStart }){
   const [difficulty,setDifficulty]=useState(50);
   const [error,setError]=useState('');
 
-  const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug' || labMode==='chesscom' || labMode==='chronicles';
+  const childOwnsBack = labMode==='trailblazer' || labMode==='pawnslug' || labMode==='chesscom' || labMode==='chronicles' || labMode==='chronicles-tactics';
   useEscapeToClose(() => labMode==='hub' ? onExit() : setLabMode('hub'), { disabled: childOwnsBack });
 
   const fen=useMemo(()=>fenFromLabState({map,turn,castling,ep,halfmove,fullmove}),[map,turn,castling,ep,halfmove,fullmove]);
@@ -76,6 +77,7 @@ export default function LabScreen({ onExit, onStart }){
   if (labMode==='pawnslug') return <Suspense fallback={<LabModeFallback />}><PawnSlug onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chesscom') return <Suspense fallback={<LabModeFallback />}><Chesscom onExit={()=>setLabMode('hub')} /></Suspense>;
   if (labMode==='chronicles') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthias onExit={()=>setLabMode('hub')} /></Suspense>;
+  if (labMode==='chronicles-tactics') return <Suspense fallback={<LabModeFallback />}><ChroniclesOfMatthiasTactics onExit={()=>setLabMode('hub')} /></Suspense>;
 
   return <div className="menu tournament-panel lab-screen">
     <button className="back-link" onClick={labMode==='hub'?onExit:()=>setLabMode('hub')}>← {labMode==='hub'?'Volver al menú':'Experimentos geniales'}</button>
@@ -95,6 +97,12 @@ export default function LabScreen({ onExit, onStart }){
             <strong>Chronicles of Matthias</strong>
             <small>Dungeon crawler 3D en primera persona. Grupo de cuatro, combate por casillas y una cripta que piensa como un tablero.</small>
             <b>Descender a la cripta →</b>
+          </button>
+          <button type="button" className="experiments-card experiment-chronicles-tactics" onClick={()=>setLabMode('chronicles-tactics')}>
+            <span className="section-label">{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'táctico por turnos')}</span>
+            <strong>Chronicles of Matthias Tactics</strong>
+            <small>La compañía sale al tablero: vista isométrica, formación visible y criaturas con su propio turno.</small>
+            <b>Abrir la mesa táctica →</b>
           </button>
         </div>
 
