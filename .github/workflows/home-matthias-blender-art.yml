@@ -53,6 +53,9 @@ jobs:
           test -s /tmp/home-matthias-art/matthias-home-canonical.blend
           test -s /tmp/home-matthias-art/matthias-home-canonical.glb
           test -s /tmp/home-matthias-art/matthias-home-canonical.png
+          blender --background \
+            /tmp/home-matthias-art/matthias-home-canonical.blend \
+            --python scripts/blender/validate_home_matthias_contract.py
           python3 - <<'PY'
           from pathlib import Path
           import hashlib
@@ -67,9 +70,6 @@ jobs:
           provenance = Path('frontend/art-source/matthias-home-canonical-reference.txt').read_text()
           assert CANONICAL_REFERENCE_SHA256 in provenance, 'canonical reference provenance/hash drifted'
           PY
-          blender --background \
-            /tmp/home-matthias-art/matthias-home-canonical.blend \
-            --python scripts/blender/validate_home_matthias_contract.py
 
       - name: Validate render artifact envelope
         run: |
