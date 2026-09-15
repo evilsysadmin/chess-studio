@@ -23,9 +23,9 @@ if str(SCRIPT_DIR) not in sys.path:
 
 import build_pawn_slug_matthias_integrated as canonical
 
-CELL_WORLD = 3.20
-ORIGIN_SHIFT_X = -0.24
-ORIGIN_SHIFT_Z = -0.24
+CELL_WORLD = 4.80
+ORIGIN_SHIFT_X = 0.10
+ORIGIN_SHIFT_Z = 0.12
 CHARACTER_CENTER_Z = 1.22
 
 
@@ -182,12 +182,12 @@ def setup_scene():
     for obj in bpy.context.scene.objects:
         if getattr(obj, 'type', None) == 'LIGHT':
             obj.data.color = (1.0, 1.0, 1.0)
-            obj.data.energy *= 0.72
+            obj.data.energy *= 0.24
 
     # Strong neutral front light: dark uniform and gunmetal must remain separable.
     bpy.ops.object.light_add(type='AREA', location=(target.x - 4.0, -22.0, target.z + 6.0))
     front = bpy.context.object
-    front.data.energy = 1250
+    front.data.energy = 520
     front.data.color = (1.0, 1.0, 1.0)
     front.data.shape = 'RECTANGLE'
     front.data.size = 36
