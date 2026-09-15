@@ -88,7 +88,6 @@ def _surface_groups(path: str) -> set[str] | None:
         or lower == "scripts/war_room_visual_freeze_check.mjs"
     ):
         return None
-
     if lower.startswith("e2e/"):
         if "chesscom" in name:
             return set()
@@ -107,7 +106,6 @@ def _surface_groups(path: str) -> set[str] | None:
         if name.startswith("war-room-") and "visual" in name:
             return {"warroom"}
         return None
-
     if lower.startswith("frontend/public/audio/"):
         return set()
     if lower.startswith("frontend/public/chesscom/"):
@@ -152,7 +150,10 @@ def _surface_groups(path: str) -> set[str] | None:
         groups.update(("home", "warroom"))
     if groups:
         return groups
-    return None
+    # Generic frontend source can have cross-surface visual impact, so retain
+    # every canonical surface. Optional deep sidecars (Hans routine videos and
+    # Chesscom) stay owner-driven instead of being dragged in by ambiguity.
+    return set(GROUP_ORDER)
 
 
 def _experiment_parts(path: str) -> set[str]:
@@ -369,7 +370,10 @@ def self_test() -> None:
     assert not visual_scope.hans and not visual_scope.chesscom
     assert classify(["scripts/app_visual_capture.sh"]) == full_scope()
     assert classify(["scripts/app_visual_summary.mjs"]) == full_scope()
-    assert classify(["frontend/src/App.css"]) == full_scope()
+    global_css = classify(["frontend/src/App.css"])
+    assert global_css.capture_groups == ",".join(GROUP_ORDER)
+    assert global_css.experiments_scope == ",".join(EXPERIMENT_ORDER)
+    assert not global_css.hans and not global_css.chesscom
     assert classify([".github/actions/app-visual-pipeline/action.yml"]) == full_scope()
     print("app visual scope self-test: OK")
 
