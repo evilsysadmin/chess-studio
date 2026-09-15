@@ -71,6 +71,12 @@ def _surface_groups(path: str) -> set[str] | None:
     if lower == "scripts/app_visual_scope.py":
         return {"training"}
 
+    # Architecture manifests are build metadata. A deliberate CSS change still
+    # carries its owning surface through the CSS/component path beside this file;
+    # the manifest itself must not widen a targeted visual run to full-canon.
+    if lower == "scripts/css_architecture_manifest.json":
+        return set()
+
     # Changes to orchestration/capture machinery must prove the entire contract.
     if (
         lower.startswith(".github/actions/app-visual-pipeline/")
@@ -311,6 +317,16 @@ def self_test() -> None:
         "frontend/src/components/HomeCastle3D.jsx",
     ])
     assert mixed_admin_home.capture_groups == "home"
+
+    css_manifest = classify(["scripts/css_architecture_manifest.json"])
+    assert css_manifest.capture_groups == "none"
+    assert not css_manifest.hans and not css_manifest.chesscom
+    career_with_manifest = classify([
+        "frontend/src/styles/04-career-dossier.css",
+        "scripts/css_architecture_manifest.json",
+    ])
+    assert career_with_manifest.capture_groups == "training"
+    assert not career_with_manifest.hans and not career_with_manifest.chesscom
 
     visual_scope = classify(["scripts/app_visual_scope.py"])
     assert visual_scope.capture_groups == "training"
