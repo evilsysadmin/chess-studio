@@ -4,14 +4,19 @@ import {
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
 import {
+  CHRONICLES_ATTRIBUTE_CAP,
+  CHRONICLES_ATTRIBUTE_DEFINITIONS,
+  applyChroniclesProgressionToTacticsState,
   applyChroniclesTacticsProgression,
   beginChroniclesTacticsRun,
+  chroniclesAllowedAttributes,
   chroniclesHeroProgress,
   chroniclesXpToNextLevel,
   ensureChroniclesTacticsRun,
   finishChroniclesTacticsRun,
   loadChroniclesProgression,
   saveChroniclesProgression,
+  spendChroniclesAttributePoint,
 } from '../chroniclesOfMatthiasProgression.js';
 import {
   chroniclesTacticsAbility,
@@ -27,6 +32,7 @@ import {
 import { chroniclesResolveEnemyTurn } from '../chroniclesOfMatthiasTurns.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import './ChroniclesOfMatthiasTactics.css';
+import './ChroniclesOfMatthiasProgression.css';
 
 const PARTY_ORDER = Object.freeze(['matthias', 'rook', 'bishop', 'knight']);
 const MOVEMENT = Object.freeze({
@@ -44,20 +50,14 @@ const MOVEMENT = Object.freeze({
   D: Object.freeze({ dx: 1, dy: 0 }),
 });
 
-function createActionState() {
-  return {
+function createActionState(progression) {
+  return applyChroniclesProgressionToTacticsState({
     ...createChroniclesState(),
     round: 1,
     turnPhase: 'party',
     enemyPositions: {},
     enemyTurnEvents: [],
-    classAbilityCharges: {
-      matthias: 1,
-      rook: 1,
-      bishop: 1,
-      knight: 1,
-    },
-  };
+  }, progression);
 }
 
 function enemyPulseMessage(previousMessage, next) {
@@ -80,13 +80,13 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   useEscapeToClose(onExit);
   const hostRef = useRef(null);
   const engineRef = useRef(null);
-  const stateRef = useRef(createActionState());
-  const progressionRef = useRef(loadChroniclesProgression());
+  const [progression, setProgression] = useState(() => loadChroniclesProgression());
+  const progressionRef = useRef(progression);
+  const [state, setState] = useState(() => createActionState(progression));
+  const stateRef = useRef(state);
   const selectedMemberRef = useRef('matthias');
   const lastMoveAtRef = useRef(0);
   const lastAttackAtRef = useRef(0);
-  const [state, setState] = useState(stateRef.current);
-  const [progression, setProgression] = useState(progressionRef.current);
   const [runId, setRunId] = useState(() => ensureChroniclesTacticsRun());
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
   const [rendererName, setRendererName] = useState('CARGANDO');
@@ -102,10 +102,17 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     () => chroniclesXpToNextLevel(progression, selectedMemberId),
     [progression, selectedMemberId],
   );
+  const selectedAttributes = useMemo(
+    () => chroniclesAllowedAttributes(selectedMemberId),
+    [selectedMemberId],
+  );
   const selectedAbility = useMemo(
     () => chroniclesTacticsAbilityStatus(state, selectedMemberId),
     [selectedMemberId, state],
   );
+  const selectedModifiers = state.rpgModifiers?.[selectedMemberId] || {};
+  const selectedReach = selectedProfile.reach + Number(selectedModifiers.reachBonus || 0);
+  const hasAllocatedAttributes = selectedAttributes.some((key) => Number(selectedProgress.attributes?.[key] || 0) > 0);
   const objective = chroniclesObjective(state);
   const activeParty = useMemo(
     () => PARTY_ORDER.map((id) => state.party.find((member) => member.id === id)).filter(Boolean),
@@ -181,6 +188,14 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     commitState(chroniclesTacticsUse(current), { actorMemberId: memberId, actionKind: 'use' });
   }, [commitState]);
 
+  const allocateAttribute = useCallback((attributeKey) => {
+    const result = spendChroniclesAttributePoint(progressionRef.current, selectedMemberRef.current, attributeKey);
+    if (!result.spent) return;
+    const saved = saveChroniclesProgression(result.progression);
+    progressionRef.current = saved;
+    setProgression(saved);
+  }, []);
+
   const selectMember = useCallback((memberId) => {
     selectedMemberRef.current = memberId;
     setSelectedMemberId(memberId);
@@ -189,7 +204,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const restart = useCallback(() => {
     finishChroniclesTacticsRun(runId);
     const nextRunId = beginChroniclesTacticsRun();
-    const next = createActionState();
+    const next = createActionState(progressionRef.current);
     selectedMemberRef.current = 'matthias';
     lastMoveAtRef.current = 0;
     lastAttackAtRef.current = 0;
@@ -377,9 +392,34 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
           <div className="chronicles-tactics__party-note">
             <span>ACTIVO · {selectedProfile.className.toUpperCase()}</span>
             <b>{selectedMember?.name}</b>
-            <small>{selectedMember?.hp > 0 ? `${selectedProfile.attackName} · ${selectedProfile.kindLabel} · alcance ${selectedProfile.reach}` : 'Fuera de combate'}</small>
-            <small>Habilidad: {selectedProfile.abilityName} · {selectedAbility.charges > 0 ? '1 carga' : 'agotada'}</small>
+            <small>{selectedMember?.hp > 0 ? `${selectedProfile.attackName} · ${selectedProfile.kindLabel} · alcance ${selectedReach}` : 'Fuera de combate'}</small>
+            <small>Habilidad: {selectedProfile.abilityName} · {selectedAbility.charges > 0 ? `${selectedAbility.charges} carga${selectedAbility.charges === 1 ? '' : 's'}` : 'agotada'}</small>
             <small>{xpLabel(selectedProgress, selectedXpWindow)}{selectedProgress.attributePoints || selectedProgress.skillPoints ? ` · ${selectedProgress.attributePoints} atributo · ${selectedProgress.skillPoints} skill` : ''}</small>
+            {(selectedProgress.attributePoints > 0 || hasAllocatedAttributes) && (
+              <details className="chronicles-tactics__progression">
+                <summary>Atributos · {selectedProgress.attributePoints > 0 ? `${selectedProgress.attributePoints} por asignar` : 'ver'}</summary>
+                <div className="chronicles-tactics__attribute-grid">
+                  {selectedAttributes.map((attributeKey) => {
+                    const definition = CHRONICLES_ATTRIBUTE_DEFINITIONS[attributeKey];
+                    const value = Number(selectedProgress.attributes?.[attributeKey] || 0);
+                    const disabled = selectedProgress.attributePoints <= 0 || value >= CHRONICLES_ATTRIBUTE_CAP;
+                    return (
+                      <button
+                        type="button"
+                        key={attributeKey}
+                        disabled={disabled}
+                        title={definition.effect}
+                        aria-label={`${definition.label}: ${value} de ${CHRONICLES_ATTRIBUTE_CAP}. ${definition.effect}`}
+                        onClick={() => allocateAttribute(attributeKey)}
+                      >
+                        <span>{definition.shortLabel}</span><b>{value}/{CHRONICLES_ATTRIBUTE_CAP}</b><i aria-hidden="true">+</i>
+                      </button>
+                    );
+                  })}
+                </div>
+                <small>Los cambios entran en combate al reiniciar la incursión.</small>
+              </details>
+            )}
           </div>
         </aside>
       </div>
