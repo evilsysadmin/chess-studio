@@ -11,6 +11,7 @@ import {
 } from './pawnSlugLiveWeaponModels.js';
 import { createGrenadeModel } from './pawnSlugArt.js';
 import { createPremiumBulletModel, createPremiumMuzzleFlash } from './pawnSlugPremiumFx.js';
+import { pawnSlugEnemyAcquisitionStep } from './pawnSlugEnemyAcquisition.js';
 import {
   pawnSlugEnemyFireCooldown,
   pawnSlugEnemyPrefireStep,
@@ -224,7 +225,16 @@ export function createPawnSlugWeaponSystem(runtime) {
   }
 
   function updateEnemyRegularFire(enemy, distance, roleRange, cadence, dt) {
-    const ready = enemy.fireCooldown <= 0 && pawnSlugEnemyCanEngageAtSight(enemy.weapon, distance, roleRange);
+    const canEngage = pawnSlugEnemyCanEngageAtSight(enemy.weapon, distance, roleRange);
+    const acquisition = pawnSlugEnemyAcquisitionStep({
+      acquired: enemy.targetAcquired,
+      canEngage,
+      fireCooldown: enemy.fireCooldown,
+    });
+    enemy.targetAcquired = acquisition.acquired;
+    enemy.fireCooldown = acquisition.fireCooldown;
+
+    const ready = enemy.fireCooldown <= 0 && canEngage;
     const prefire = pawnSlugEnemyPrefireStep(enemy.weapon, {
       remaining: enemy.fireTelegraph,
       ready,
