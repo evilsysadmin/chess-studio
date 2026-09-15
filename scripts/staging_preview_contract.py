@@ -8,6 +8,7 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 PREVIEW = ROOT / ".github/workflows/staging-preview.yml"
 STAGING_DEPLOY = ROOT / ".github/workflows/staging-deploy.yml"
+STAGING_BOOTSTRAP = ROOT / ".github/workflows/staging-bootstrap.yml"
 STAGING_AI = ROOT / ".github/workflows/staging-ai-worker.yml"
 PROMOTE = ROOT / ".github/workflows/production-promote.yml"
 STAGING_WRANGLER = ROOT / "infra/cloudflare/wrangler.staging.toml"
@@ -26,6 +27,7 @@ def main() -> int:
     for path in (
         PREVIEW,
         STAGING_DEPLOY,
+        STAGING_BOOTSTRAP,
         STAGING_AI,
         PROMOTE,
         STAGING_WRANGLER,
@@ -42,6 +44,7 @@ def main() -> int:
 
     preview = PREVIEW.read_text(encoding="utf-8")
     staging_deploy = STAGING_DEPLOY.read_text(encoding="utf-8")
+    staging_bootstrap = STAGING_BOOTSTRAP.read_text(encoding="utf-8")
     staging_ai = STAGING_AI.read_text(encoding="utf-8")
     promote = PROMOTE.read_text(encoding="utf-8")
     staging_wrangler = STAGING_WRANGLER.read_text(encoding="utf-8")
@@ -64,8 +67,18 @@ def main() -> int:
     require(preview, "--branch main", "canonical staging frontend deployment", errors)
     require(preview, "Staging no sirve el SHA solicitado", "live build identity gate", errors)
     require(preview, "No acreditado:", "non-accreditation summary", errors)
-    require(preview, "group: chess-studio-staging-deploy", "staging write mutex", errors)
-    require(staging_deploy, "group: chess-studio-staging-deploy", "canonical staging write mutex", errors)
+
+    # Every workflow that mutates canonical staging shares the same retained
+    # concurrency queue. GitHub's default single pending slot would supersede an
+    # older pending run; queue:max keeps up to 100 pending runs instead.
+    for workflow_text, label in (
+        (preview, "staging preview queue"),
+        (staging_deploy, "canonical staging queue"),
+        (staging_bootstrap, "staging maintenance queue"),
+    ):
+        require(workflow_text, "group: chess-studio-staging-deploy", f"{label} group", errors)
+        require(workflow_text, "cancel-in-progress: false", f"{label} keeps inflight run", errors)
+        require(workflow_text, "queue: max", f"{label} retains pending runs", errors)
 
     # This workflow is deliberately frontend-only: no Render mutation or AI deploy.
     for forbidden in (
@@ -79,19 +92,15 @@ def main() -> int:
         if forbidden in preview:
             errors.append(f"preview/restore contiene trigger o mutación prohibida: {forbidden!r}")
 
-    # Canonical staging owns all mutations for one generation. A CI-approved SHA
-    # that has already been superseded by a newer main HEAD is not an outage: the
-    # stale run must cancel itself before the first mutation. Once admitted,
-    # backend, Pages and Worker advance in parallel. Existing browser runners then
-    # prove the same N/N/N runtime contract before Chromium starts.
+    # Canonical staging owns all mutations for one generation. Once the shared
+    # queue grants this run the staging slot, its CI-approved SHA is pinned and
+    # must finish even if main advances. Backend, Pages and Worker then advance in
+    # parallel. Existing browser runners prove the same N/N/N runtime contract
+    # before Chromium starts.
     for needle, label in (
         ("Backend + frontend + AI staging generation", "canonical generation job"),
-        ("Supersede stale staging commit", "single stale guard before mutation"),
-        ("actions: write", "stale supersede cancellation permission"),
-        ("GH_TOKEN: ${{ github.token }}", "stale supersede token wiring"),
-        ("/actions/runs/$GITHUB_RUN_ID/cancel", "stale supersede self-cancel endpoint"),
-        ("::notice title=Staging superseded", "stale supersede non-error diagnostic"),
-        ("while :; do", "stale supersede fail-closed wait"),
+        ("Pin CI-approved staging generation", "immutable admitted generation"),
+        ("Newer staging mutations remain queued until this generation completes", "queued successor diagnostic"),
         ("Reconcile Render staging configuration", "backend-specific Render reconcile"),
         ("Deploy exact backend commit to Render staging", "generation backend deploy"),
         ("Deploy tested frontend to Cloudflare Pages", "generation frontend deploy"),
@@ -103,6 +112,15 @@ def main() -> int:
         ("Live browser smoke against deployed staging", "generation live smoke"),
     ):
         require(staging_deploy, needle, label, errors)
+
+    for forbidden, label in (
+        ("Supersede stale staging commit", "stale generation supersede step"),
+        ("/actions/runs/$GITHUB_RUN_ID/cancel", "staging self-cancel endpoint"),
+        ("::notice title=Staging superseded", "staging supersede diagnostic"),
+        ("CI aprobó $DEPLOY_SHA, pero main ya apunta", "HEAD-based stale cancellation"),
+    ):
+        if forbidden in staging_deploy:
+            errors.append(f"staging generation: reapareció {label}: {forbidden!r}")
 
     # Topology contract: prepare is admission only. Backend, Pages and Worker are
     # sibling lanes after admission. Render reconcile stays inside backend before
@@ -178,7 +196,7 @@ def main() -> int:
         ):
             errors.append("staging generation: N/N/N debe cerrarse antes de restaurar Chromium y ejecutar el smoke")
 
-    stale_step = staging_deploy.find("Supersede stale staging commit")
+    pin_step = staging_deploy.find("Pin CI-approved staging generation")
     render_step = staging_deploy.find("Reconcile Render staging configuration")
     frontend_step = staging_deploy.find("Deploy tested frontend to Cloudflare Pages")
     backend_step = staging_deploy.find("Deploy exact backend commit to Render staging")
@@ -187,15 +205,12 @@ def main() -> int:
     browser_restore_step = staging_deploy.find("Restore staging browser runtime")
     smoke_step = staging_deploy.find("Live browser smoke against deployed staging")
     mutations = [render_step, frontend_step, backend_step, worker_step]
-    if stale_step >= 0 and all(step >= 0 for step in mutations) and not all(stale_step < step for step in mutations):
-        errors.append("staging generation: stale supersede guard no está antes de todas las mutaciones")
+    if pin_step >= 0 and all(step >= 0 for step in mutations) and not all(pin_step < step for step in mutations):
+        errors.append("staging generation: el SHA debe quedar fijado antes de todas las mutaciones")
     if min(parity_step, browser_restore_step, smoke_step) >= 0 and not (
         parity_step < browser_restore_step < smoke_step
     ):
         errors.append("staging generation: parity/browser-restore/smoke no están en orden fail-closed")
-
-    if "::error::CI aprobó" in staging_deploy:
-        errors.append("staging generation: un SHA superseded vuelve a clasificarse como error")
 
     if parity_step >= 0 and smoke_step > parity_step:
         parity_block = staging_deploy[parity_step:smoke_step]
@@ -258,7 +273,7 @@ def main() -> int:
             print(f" - {error}", file=sys.stderr)
         return 1
 
-    print("staging-preview-contract OK · preview isolated; admission first; deploy lanes parallel; smoke-integrated N/N/N")
+    print("staging-preview-contract OK · staging writes queued; generations retained; deploy lanes parallel; smoke-integrated N/N/N")
     return 0
 
 
