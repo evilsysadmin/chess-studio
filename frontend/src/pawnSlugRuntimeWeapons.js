@@ -12,7 +12,6 @@ import {
 import { createGrenadeModel } from './pawnSlugArt.js';
 import { createPremiumBulletModel, createPremiumMuzzleFlash } from './pawnSlugPremiumFx.js';
 import {
-  pawnSlugEnemyCanFire,
   pawnSlugEnemyFireCooldown,
   pawnSlugEnemyPrefireStep,
   pawnSlugEnemyShotPlan,
@@ -20,10 +19,41 @@ import {
 } from './pawnSlugRuntimeHotPath.js';
 import { pawnSlugSturmBishopSuppressionLane } from './pawnSlugMidBoss.js';
 import {
+  PAWN_SLUG_VIEW_W,
   PAWN_SLUG_WEAPON_VISUAL_FRAME,
   PAWN_SLUG_WORLD_SCALE,
   pawnSlugClamp,
 } from './pawnSlugRuntimeCore.js';
+
+export const PAWN_SLUG_ENEMY_SIGHT_RANGE = PAWN_SLUG_VIEW_W * 0.52;
+
+export function pawnSlugEnemyCanEngageAtSight(weapon = 'pistol', distance = Infinity, roleRange = Infinity) {
+  const targetDistance = Number(distance);
+  if (!Number.isFinite(targetDistance) || targetDistance < 0) return false;
+  const requestedRange = Number(roleRange);
+  if (Number.isFinite(requestedRange) && requestedRange <= 0) return false;
+  const plan = pawnSlugEnemyShotPlan(weapon);
+  const effectiveRange = Math.max(
+    PAWN_SLUG_ENEMY_SIGHT_RANGE,
+    Number.isFinite(requestedRange) ? requestedRange : 0,
+  );
+  return targetDistance >= plan.minRange && targetDistance < effectiveRange;
+}
+
+export function pawnSlugEnemyProjectileLife(plan, targetDistance, { explosive = false } = {}) {
+  if (explosive) return 4;
+  const distance = Math.max(0, Number(targetDistance) || 0);
+  const travelRange = Math.max(Number(plan?.range) || 0, distance + 1);
+  const speed = Math.max(0.001, Number(plan?.speed) || 0.001);
+  return Math.min(4, travelRange / speed + 0.18);
+}
+
+export function pawnSlugPlayerWeaponVisualScale(id = 'pistol') {
+  if (id === 'panzerfaust') return Object.freeze([1.55, 0.78]);
+  if (id === 'machinegun') return Object.freeze([1.42, 0.68]);
+  if (id === 'shotgun') return Object.freeze([1.36, 0.68]);
+  return Object.freeze([0.92, 0.52]);
+}
 
 export function createPawnSlugWeaponSystem(runtime) {
   function syncPlayerWeaponVisual(id = runtime.state.player.weapon) {
@@ -33,8 +63,8 @@ export function createPawnSlugWeaponSystem(runtime) {
     runtime.playerWeaponModel.userData.weaponId = id;
     runtime.playerWeaponModel.userData.modelId = liveModel?.id || null;
     runtime.playerWeaponModel.userData.modelLabel = liveModel?.label || null;
-    const large = id === 'panzerfaust';
-    runtime.playerWeaponModel.scale.set(large ? 1.55 : 1.35, large ? 0.78 : 0.68, 1);
+    const [scaleX, scaleY] = pawnSlugPlayerWeaponVisualScale(id);
+    runtime.playerWeaponModel.scale.set(scaleX, scaleY, 1);
   }
 
   function weaponAvailable(player, id) {
@@ -186,7 +216,7 @@ export function createPawnSlugWeaponSystem(runtime) {
         damage: plan.damage,
         enemy: true,
         explosive: plan.explosive,
-        life: explosive ? 4 : Math.min(4, plan.range / Math.max(0.001, plan.speed) + 0.18),
+        life: pawnSlugEnemyProjectileLife(plan, distance, { explosive }),
         weapon: weaponId,
       });
     }
@@ -194,7 +224,7 @@ export function createPawnSlugWeaponSystem(runtime) {
   }
 
   function updateEnemyRegularFire(enemy, distance, roleRange, cadence, dt) {
-    const ready = enemy.fireCooldown <= 0 && pawnSlugEnemyCanFire(enemy.weapon, distance, roleRange);
+    const ready = enemy.fireCooldown <= 0 && pawnSlugEnemyCanEngageAtSight(enemy.weapon, distance, roleRange);
     const prefire = pawnSlugEnemyPrefireStep(enemy.weapon, {
       remaining: enemy.fireTelegraph,
       ready,
