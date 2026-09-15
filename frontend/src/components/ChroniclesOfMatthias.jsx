@@ -6,6 +6,7 @@ import {
   chroniclesReduce,
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
+import { chroniclesPartyBark } from '../chroniclesOfMatthiasBarks.js';
 import { chroniclesPartyCondition } from '../chroniclesOfMatthiasPartyCondition.js';
 import { chroniclesPartyRelic } from '../chroniclesOfMatthiasRelics.js';
 import { chroniclesRetaliationCue } from '../chroniclesOfMatthiasRetaliation.js';
@@ -15,6 +16,7 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesEnemyRetaliationFx from './ChroniclesEnemyRetaliationFx.jsx';
 import ChroniclesNarratorOverlay from './ChroniclesNarratorOverlay.jsx';
+import ChroniclesPartyBark from './ChroniclesPartyBark.jsx';
 import ChroniclesTacticalMargin from './ChroniclesTacticalMargin.jsx';
 import './ChroniclesOfMatthias.css';
 import './ChroniclesOfMatthiasArt.css';
@@ -37,6 +39,8 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const portraitEngineRef = useRef(null);
   const retaliationTimerRef = useRef(null);
   const retaliationSequenceRef = useRef(0);
+  const partyBarkTimerRef = useRef(null);
+  const partyBarkSequenceRef = useRef(0);
   const stateRef = useRef(createChroniclesState());
   const [state, setState] = useState(stateRef.current);
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
@@ -44,6 +48,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [rendererName, setRendererName] = useState('CARGANDO');
   const [rendererError, setRendererError] = useState('');
   const [retaliationCue, setRetaliationCue] = useState(null);
+  const [partyBark, setPartyBark] = useState(null);
 
   useEffect(() => {
     selectedMemberIdRef.current = selectedMemberId;
@@ -55,6 +60,17 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const next = chroniclesReduce(current, action);
     stateRef.current = next;
     setState(next);
+
+    const bark = chroniclesPartyBark(current, next);
+    if (bark) {
+      const token = partyBarkSequenceRef.current + 1;
+      partyBarkSequenceRef.current = token;
+      if (partyBarkTimerRef.current) clearTimeout(partyBarkTimerRef.current);
+      setPartyBark({ ...bark, token });
+      partyBarkTimerRef.current = setTimeout(() => {
+        setPartyBark((active) => active?.token === token ? null : active);
+      }, 2800);
+    }
 
     const cue = chroniclesRetaliationCue(current, next);
     if (cue) {
@@ -82,10 +98,14 @@ export default function ChroniclesOfMatthias({ onExit }) {
     if (retaliationTimerRef.current) clearTimeout(retaliationTimerRef.current);
     retaliationTimerRef.current = null;
     setRetaliationCue(null);
+    if (partyBarkTimerRef.current) clearTimeout(partyBarkTimerRef.current);
+    partyBarkTimerRef.current = null;
+    setPartyBark(null);
   }, []);
 
   useEffect(() => () => {
     if (retaliationTimerRef.current) clearTimeout(retaliationTimerRef.current);
+    if (partyBarkTimerRef.current) clearTimeout(partyBarkTimerRef.current);
   }, []);
 
   useEffect(() => {
@@ -219,6 +239,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <div className="chronicles-vignette" aria-hidden="true" />
             <div className="chronicles-crosshair" aria-hidden="true">·</div>
             <ChroniclesNarratorOverlay message={state.message} />
+            <ChroniclesPartyBark key={partyBark?.token || 'none'} bark={partyBark} />
             <ChroniclesTacticalMargin target={tacticalTarget} />
             <ChroniclesEnemyRetaliationFx key={retaliationCue?.token || 'none'} cue={retaliationCue} />
             {rendererError && <div className="chronicles-renderer-error" role="alert">{rendererError}</div>}
