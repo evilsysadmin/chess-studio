@@ -65,7 +65,13 @@ def _surface_groups(path: str) -> set[str] | None:
     lower = path.lower()
     name = Path(lower).name
 
-    # Changes to the orchestrator itself must prove the entire contract.
+    # The pure classifier is self-tested before its result is consumed by the
+    # visual composite. One real canonical capture is enough to prove that its
+    # output still drives build -> browser -> capture -> summary -> artifact.
+    if lower == "scripts/app_visual_scope.py":
+        return {"training"}
+
+    # Changes to orchestration/capture machinery must prove the entire contract.
     if (
         lower.startswith(".github/actions/app-visual-pipeline/")
         or lower == ".github/workflows/app-visual-artifact.yml"
@@ -297,6 +303,11 @@ def self_test() -> None:
     ])
     assert mixed_admin_home.capture_groups == "home"
 
+    visual_scope = classify(["scripts/app_visual_scope.py"])
+    assert visual_scope.capture_groups == "training"
+    assert not visual_scope.hans and not visual_scope.chesscom
+    assert classify(["scripts/app_visual_capture.sh"]) == full_scope()
+    assert classify(["scripts/app_visual_summary.mjs"]) == full_scope()
     assert classify(["frontend/src/App.css"]) == full_scope()
     assert classify([".github/actions/app-visual-pipeline/action.yml"]) == full_scope()
     print("app visual scope self-test: OK")
