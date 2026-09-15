@@ -5,6 +5,7 @@ import { applyWarRoomLocalAtmosphere } from './WarRoomLocalAtmosphere.js';
 export const WAR_ROOM_HANS_PLANT_VERSION = 'hans-war-room-plant-v13-sofa-visible';
 export const WAR_ROOM_WINDOW_CORNER_POSE_VERSION = 'weather-window-side-wall-pose-v2-after-armor';
 export const WAR_ROOM_DUST_MOTES_VERSION = 'war-room-dust-motes-v1';
+export const WAR_ROOM_WEATHER_WINDOW_HITBOX_VERSION = 'weather-window-screen-hitbox-v1';
 
 const WINDOW_SIDE_WALL_ANGLE = THREE.MathUtils.degToRad(90);
 const WINDOW_SIDE_WALL_SCALE_X = 1.55;
@@ -15,6 +16,69 @@ const WINDOW_PLANT_X = 7.05;
 const WINDOW_PLANT_Z = 2.85;
 const SOFA_PLANT_ROOM_INSET = 0.78;
 const SOFA_PLANT_END_OFFSET = 1.58;
+
+function attachWeatherWindowScreenHitbox(weatherWindow) {
+  if (!weatherWindow || weatherWindow.userData?.warRoomWeatherWindowHitbox === WAR_ROOM_WEATHER_WINDOW_HITBOX_VERSION) return;
+  let probeMesh = null;
+  weatherWindow.traverse?.((object) => {
+    if (!probeMesh && object?.isMesh) probeMesh = object;
+  });
+  if (!probeMesh) return;
+
+  const bounds = new THREE.Box3();
+  const projected = new THREE.Vector3();
+  const previousOnBeforeRender = probeMesh.onBeforeRender;
+  probeMesh.onBeforeRender = function onWeatherWindowBeforeRender(renderer, scene, camera, geometry, material, group) {
+    previousOnBeforeRender?.call(this, renderer, scene, camera, geometry, material, group);
+    const canvas = renderer?.domElement;
+    if (!canvas?.dataset || !camera) return;
+
+    weatherWindow.updateMatrixWorld?.(true);
+    bounds.setFromObject(weatherWindow);
+    if (bounds.isEmpty()) {
+      delete canvas.dataset.warRoomWeatherWindowHitbox;
+      return;
+    }
+
+    let minX = 1;
+    let minY = 1;
+    let maxX = 0;
+    let maxY = 0;
+    let visibleCorners = 0;
+    for (const x of [bounds.min.x, bounds.max.x]) {
+      for (const y of [bounds.min.y, bounds.max.y]) {
+        for (const z of [bounds.min.z, bounds.max.z]) {
+          projected.set(x, y, z).project(camera);
+          if (![projected.x, projected.y, projected.z].every(Number.isFinite)) continue;
+          if (projected.z < -1 || projected.z > 1) continue;
+          const normalizedX = (projected.x + 1) / 2;
+          const normalizedY = (1 - projected.y) / 2;
+          minX = Math.min(minX, normalizedX);
+          maxX = Math.max(maxX, normalizedX);
+          minY = Math.min(minY, normalizedY);
+          maxY = Math.max(maxY, normalizedY);
+          visibleCorners += 1;
+        }
+      }
+    }
+
+    if (!visibleCorners) {
+      delete canvas.dataset.warRoomWeatherWindowHitbox;
+      return;
+    }
+
+    const padding = 0.012;
+    const hitbox = [
+      THREE.MathUtils.clamp(minX - padding, 0, 1),
+      THREE.MathUtils.clamp(minY - padding, 0, 1),
+      THREE.MathUtils.clamp(maxX + padding, 0, 1),
+      THREE.MathUtils.clamp(maxY + padding, 0, 1),
+    ];
+    canvas.dataset.warRoomWeatherWindowHitbox = hitbox.map((value) => value.toFixed(4)).join(',');
+    canvas.dataset.warRoomWeatherWindowHitboxVersion = WAR_ROOM_WEATHER_WINDOW_HITBOX_VERSION;
+  };
+  weatherWindow.userData.warRoomWeatherWindowHitbox = WAR_ROOM_WEATHER_WINDOW_HITBOX_VERSION;
+}
 
 function rootLocalBounds(root, object) {
   object.updateMatrixWorld?.(true);
@@ -131,6 +195,7 @@ export function applyWarRoomWeatherWindowCornerPose(root) {
   const weatherWindow = root?.getObjectByName?.('war-room-weather-window');
   const parent = weatherWindow?.parent;
   if (!root || !weatherWindow || !parent) return 0;
+  attachWeatherWindowScreenHitbox(weatherWindow);
   if (weatherWindow.userData.warRoomCornerPose === WAR_ROOM_WINDOW_CORNER_POSE_VERSION) {
     applyWarRoomLocalAtmosphere(root);
     return 0;
