@@ -25,7 +25,7 @@ jobs:
       - name: Install Blender + image tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends blender libegl1 libgl1-mesa-dri python3-pil
+          sudo apt-get install -y --no-install-recommends blender libegl1 libgl1-mesa-dri python3-pil python3-numpy
 
       - name: Build genuine Blender source, GLB and previews
         env:
@@ -36,6 +36,11 @@ jobs:
           blender --background \
             --python scripts/blender/build_pawn_slug_pows_v2.py \
             -- --output-dir /tmp/pawn-slug-pow-v2
+          test -s /tmp/pawn-slug-pow-v2/pawn_slug_pow_squad_v2.blend
+          test -s /tmp/pawn-slug-pow-v2/pawn_slug_pow_squad_v2.glb
+          test -s /tmp/pawn-slug-pow-v2/pow_bound_v2.png
+          test -s /tmp/pawn-slug-pow-v2/pow_kneeling_v2.png
+          test -s /tmp/pawn-slug-pow-v2/pow_caged_v2.png
 
       - name: Verify Blender provenance + runtime contract
         run: |
