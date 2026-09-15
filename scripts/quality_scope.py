@@ -99,6 +99,10 @@ AUDIO_APP_BOOT_RE = re.compile(
 TOURNAMENT_BROWSER_RE = re.compile(r"^frontend/src/tournament\.js$")
 QUICK_2D_CORE_RE = re.compile(r"^frontend/src/components/(?:QuickMatchModal|Board2D)\.jsx$")
 NETWORK_RACE_CORE_RE = re.compile(r"^frontend/src/(?:useGameReconnect|gameReconnect|gameMutationCoordinator)\.js$")
+CHRONICLES_CORE_RE = re.compile(
+    r"^frontend/src/chroniclesOfMatthias[^/]*\.js$|"
+    r"^frontend/src/components/Chronicles[^/]*\.(?:js|jsx)$"
+)
 COMBAT_DOMAIN_RE = re.compile(r"^frontend/src/combat[^/]*\.js$")
 COMBAT_COMPONENT_RE = re.compile(r"^frontend/src/components/Combat[^/]*\.(?:js|jsx)$")
 MATTHIAS_SCHOOL_RE = re.compile(r"^frontend/src/matthiasSchool\.js$")
@@ -211,7 +215,12 @@ def classify(paths: Iterable[str]) -> Scope:
 
             if targeted:
                 continue
-            if AUDIO_APP_BOOT_RE.search(path) or QUICK_2D_CORE_RE.search(path) or NETWORK_RACE_CORE_RE.search(path):
+            if (
+                AUDIO_APP_BOOT_RE.search(path)
+                or QUICK_2D_CORE_RE.search(path)
+                or NETWORK_RACE_CORE_RE.search(path)
+                or CHRONICLES_CORE_RE.search(path)
+            ):
                 _enable_core_e2e(scope, ("app-boot",))
             elif MATTHIAS_SCHOOL_RE.search(path):
                 _enable_core_e2e(scope, ("regression-school",))
@@ -295,6 +304,14 @@ def self_test() -> None:
         _expect_core([reconnect_path], lanes=("app-boot",), run_frontend=True)
     _expect_core(["frontend/src/useGameReconnect.js", "frontend/src/App.jsx"], run_frontend=True)
     _expect_core(["frontend/src/components/GameScreen.jsx"], run_frontend=True)
+    for chronicles_path in (
+        "frontend/src/chroniclesOfMatthias.js",
+        "frontend/src/chroniclesOfMatthiasDungeonArt.js",
+        "frontend/src/components/ChroniclesOfMatthias.jsx",
+        "frontend/src/components/ChroniclesTacticalMargin.jsx",
+    ):
+        _expect_core([chronicles_path], lanes=("app-boot",), run_frontend=True)
+    _expect_core(["frontend/src/components/ChroniclesOfMatthias.jsx", "frontend/src/App.jsx"], run_frontend=True)
     _expect_core(["frontend/src/combatBosses.js"], lanes=("combat",), run_frontend=True)
     _expect_core(["frontend/src/combatDeployment.js"], lanes=("combat",), run_frontend=True)
     _expect_core(["frontend/src/combatSession.js"], lanes=("combat",), run_frontend=True)
@@ -386,7 +403,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · reconnect puro y Quick Match 2D usan app-boot; superficies transversales siguen fail-closed")
+    print("quality-scope self-test OK · Chronicles/reconnect/Quick2D usan core mínimo; superficies transversales siguen fail-closed")
 
 
 def main() -> int:
