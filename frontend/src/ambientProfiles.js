@@ -14,6 +14,7 @@ import { installRadioPremiumForms } from './ambientRadioPremiumForms.js';
 import { withRadioMatthiasLeitmotif } from './ambientRadioMatthiasLeitmotifs.js';
 import { withAmbientPremiumProduction } from './ambientPremiumProduction.js';
 import { withRockProduction } from './ambientRockProduction.js';
+import { withAmbientIdentityContrast } from './ambientIdentityContrasts.js';
 
 const RADIO_MATTHIAS_HIDDEN_THEME_IDS = new Set([...CURATED_HIDDEN_THEME_IDS, 'blackArchive']);
 
@@ -209,22 +210,24 @@ function withTropicalHouseDrive(theme, feel) {
 export function structuredFeel(theme) {
   const radioMatthias = radioMatthiasStructuredFeel(theme);
   if (radioMatthias) {
-    const arranged = withTropicalHouseDrive(theme, withRadioMatthiasLeitmotif(theme, radioMatthias));
+    const leitmotif = withRadioMatthiasLeitmotif(theme, radioMatthias);
+    const contrasted = withAmbientIdentityContrast(theme, leitmotif);
+    const arranged = withTropicalHouseDrive(theme, contrasted);
     return withAmbientPremiumProduction(theme, arranged);
   }
 
   const legacy = legacyStructuredFeel(theme);
   if (!legacy) return legacy;
 
-  let arranged = legacy;
-  if (TROPICAL_HOUSE_DRIVE[theme?.id]) arranged = withTropicalHouseDrive(theme, legacy);
-  else if (theme?.id === 'postRockMidnight' || theme?.id === 'rookGarage' || theme?.id === 'desertDriveRock') arranged = withRockProduction(theme, legacy);
-  else if (theme?.id === 'reactorGambit') arranged = Object.freeze({ ...legacy, ...REACTOR_GAMBIT_PROFILE });
-  else if (theme?.id === 'tangierSmoke') arranged = Object.freeze({ ...legacy, ...TANGIER_SMOKE_PROFILE });
+  let arranged = withAmbientIdentityContrast(theme, legacy);
+  if (TROPICAL_HOUSE_DRIVE[theme?.id]) arranged = withTropicalHouseDrive(theme, arranged);
+  else if (theme?.id === 'postRockMidnight' || theme?.id === 'rookGarage' || theme?.id === 'desertDriveRock') arranged = withRockProduction(theme, arranged);
+  else if (theme?.id === 'reactorGambit') arranged = Object.freeze({ ...arranged, ...REACTOR_GAMBIT_PROFILE });
+  else if (theme?.id === 'tangierSmoke') arranged = Object.freeze({ ...arranged, ...TANGIER_SMOKE_PROFILE });
   else if (GRANADA_THEME_IDS.has(theme?.id)) {
     const copperRain = theme.id === 'granadaCopperRain0232';
     arranged = Object.freeze({
-      ...legacy,
+      ...arranged,
       ...(copperRain ? GRANADA_COPPER_PROFILE : GRANADA_MELODIC_PROFILE),
       leadInstrument: 'nylonGuitar',
       counterInstrument: copperRain ? 'clarinet' : 'qanun',
