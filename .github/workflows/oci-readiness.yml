@@ -67,8 +67,7 @@ jobs:
         with:
           terraform_version: 1.16.0
           terraform_wrapper: false
-      - run: bash scripts/oci_terraform_static.sh
+      - run: make -C infra/oci static
       - name: Secret-surface guard
-        run: |
-          ! grep -REn '(MONGO_URL|JWT_SECRET|RESEND_API_KEY|OTLP.*TOKEN|cloudflare_tunnel_token|private_key[[:space:]]*=)' infra/oci --include='*.tf' --include='*.tfvars' --include='*.tftpl'
-      - run: bash scripts/oci_floci_smoke.sh
+        run: make -C infra/oci secret-guard
+      - run: make -C infra/oci floci
