@@ -16,6 +16,18 @@ describe('Chronicles tactical target margin', () => {
     });
   });
 
+  it('reads target stats from the active map instead of the canonical crypt', () => {
+    const state = createChroniclesState('gallery-of-forks');
+
+    expect(chroniclesTargetAhead(state, 2)).toMatchObject({
+      id: 'corrupted-pawn',
+      name: 'peón de ceniza',
+      hp: 8,
+      maxHp: 8,
+      distance: 2,
+    });
+  });
+
   it('reports the spectral bishop ranged retaliation honestly', () => {
     const state = {
       ...createChroniclesState(),
