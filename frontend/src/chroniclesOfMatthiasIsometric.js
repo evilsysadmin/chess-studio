@@ -39,6 +39,19 @@ export function chroniclesIsometricCameraPose(focus = { x: 0, z: 0 }) {
   };
 }
 
+export function chroniclesIsoInteractionForHit(interaction, hit) {
+  if (!interaction?.mode || !hit) return null;
+  if (interaction.mode === 'move' && hit.kind === 'cell') {
+    const legal = (interaction.legalMoves || []).some((move) => move.x === hit.x && move.y === hit.y);
+    return legal ? { kind: 'cell', x: hit.x, y: hit.y } : null;
+  }
+  if (interaction.mode === 'attack' && hit.kind === 'enemy') {
+    const legal = (interaction.legalTargets || []).some((target) => target.enemyId === hit.enemyId);
+    return legal ? { kind: 'enemy', enemyId: hit.enemyId } : null;
+  }
+  return null;
+}
+
 function isWalkable(x, y) {
   return CHRONICLES_MAP[y]?.[x] && CHRONICLES_MAP[y][x] !== '#';
 }
@@ -72,6 +85,7 @@ function addMesh(root, geometry, material, position, name, { castShadow = true, 
 function buildIsoDungeon({ coarsePointer }) {
   const root = new THREE.Group();
   root.name = 'chronicles-isometric-dungeon';
+  const floorTargets = [];
 
   const floorLight = ownedMaterial({ color: 0x56564c, roughness: 0.88, metalness: 0.03 });
   const floorDark = ownedMaterial({ color: 0x2a2b28, roughness: 0.94, metalness: 0.02 });
@@ -90,7 +104,9 @@ function buildIsoDungeon({ coarsePointer }) {
         tileMesh.position.set(world.x, -0.1, world.z);
         tileMesh.receiveShadow = true;
         tileMesh.name = `chronicles-iso-floor-${x}-${y}`;
+        tileMesh.userData.chroniclesIsoCell = { x, y };
         root.add(tileMesh);
+        floorTargets.push(tileMesh);
         return;
       }
       if (!wallTouchesWalkable(x, y)) return;
@@ -129,7 +145,7 @@ function buildIsoDungeon({ coarsePointer }) {
     addMesh(root, columnGeometry, wall, [x, 1.3, z], `chronicles-iso-column-${index}`);
   });
 
-  return { root, sigilMaterial: brass };
+  return { root, sigilMaterial: brass, floorTargets };
 }
 
 function buildTorches(scene, { coarsePointer }) {
@@ -207,12 +223,58 @@ function buildEnemies(scene, { coarsePointer }) {
 
   models.forEach((model, id) => {
     model.name = `chronicles-iso-enemy-${id}`;
+    model.userData.chroniclesIsoEnemyId = id;
     model.scale.setScalar(id === 'gate-jailer' ? 0.92 : 0.8);
     model.rotation.y = -Math.PI * 0.18;
     model.visible = false;
     scene.add(model);
   });
   return models;
+}
+
+function buildInteractionMarkers(scene, { coarsePointer }) {
+  const root = new THREE.Group();
+  root.name = 'chronicles-isometric-interaction';
+  scene.add(root);
+
+  const segments = coarsePointer ? 24 : 36;
+  const moveMaterial = new THREE.MeshBasicMaterial({
+    color: 0xf0bd68,
+    transparent: true,
+    opacity: coarsePointer ? 0.72 : 0.62,
+    depthWrite: false,
+    depthTest: true,
+    side: THREE.DoubleSide,
+  });
+  const attackMaterial = new THREE.MeshBasicMaterial({
+    color: 0xd96b3c,
+    transparent: true,
+    opacity: coarsePointer ? 0.82 : 0.72,
+    depthWrite: false,
+    depthTest: true,
+    side: THREE.DoubleSide,
+  });
+  moveMaterial.userData.chroniclesIsoOwned = true;
+  attackMaterial.userData.chroniclesIsoOwned = true;
+  const moveGeometry = new THREE.RingGeometry(0.5, 0.69, segments);
+  const attackGeometry = new THREE.RingGeometry(0.63, 0.8, segments);
+
+  const makePool = (count, geometry, material, prefix) => Array.from({ length: count }, (_, index) => {
+    const marker = new THREE.Mesh(geometry, material);
+    marker.name = `${prefix}-${index}`;
+    marker.rotation.x = -Math.PI / 2;
+    marker.position.y = 0.045;
+    marker.renderOrder = 8;
+    marker.visible = false;
+    root.add(marker);
+    return marker;
+  });
+
+  return {
+    root,
+    moveMarkers: makePool(4, moveGeometry, moveMaterial, 'chronicles-iso-move-marker'),
+    attackMarkers: makePool(CHRONICLES_ENEMIES.length, attackGeometry, attackMaterial, 'chronicles-iso-attack-marker'),
+  };
 }
 
 function nearestActiveEnemyWorld(state) {
@@ -226,6 +288,21 @@ function nearestActiveEnemyWorld(state) {
   return best ? chroniclesIsoWorldForCell(best.position.x, best.position.y) : null;
 }
 
+function descriptorForObject(object) {
+  let current = object;
+  while (current) {
+    if (current.userData?.chroniclesIsoEnemyId) {
+      return { kind: 'enemy', enemyId: current.userData.chroniclesIsoEnemyId };
+    }
+    if (current.userData?.chroniclesIsoCell) {
+      const { x, y } = current.userData.chroniclesIsoCell;
+      return { kind: 'cell', x, y };
+    }
+    current = current.parent;
+  }
+  return null;
+}
+
 function disposeScene(root) {
   root.traverse?.((node) => {
     node.geometry?.dispose?.();
@@ -234,7 +311,7 @@ function disposeScene(root) {
   });
 }
 
-export function createChroniclesIsometricGame(host, { onReady } = {}) {
+export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEnemyClick } = {}) {
   if (!host) throw new Error('Chronicles isometric view requires a host element');
 
   const coarse = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -283,8 +360,10 @@ export function createChroniclesIsometricGame(host, { onReady } = {}) {
   const torches = buildTorches(scene, { coarsePointer: coarse });
   const party = buildParty(scene, { coarsePointer: coarse });
   const enemies = buildEnemies(scene, { coarsePointer: coarse });
+  const interactionMarkers = buildInteractionMarkers(scene, { coarsePointer: coarse });
 
   let latestState = null;
+  let latestInteraction = null;
   let selectedMemberId = 'matthias';
   let destroyed = false;
   let visible = document.visibilityState !== 'hidden';
@@ -292,6 +371,8 @@ export function createChroniclesIsometricGame(host, { onReady } = {}) {
   const clock = new THREE.Clock();
   const desiredParty = initialFocus.clone();
   const desiredFocus = initialFocus.clone();
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
 
   party.root.position.copy(initialFocus);
 
@@ -310,7 +391,30 @@ export function createChroniclesIsometricGame(host, { onReady } = {}) {
     party.selection.scale.setScalar((config.scale || 0.7) / 0.7);
   }
 
-  function syncState(state, nextSelectedMemberId = selectedMemberId) {
+  function syncInteraction(nextInteraction = null) {
+    latestInteraction = nextInteraction;
+    interactionMarkers.moveMarkers.forEach((marker) => { marker.visible = false; });
+    interactionMarkers.attackMarkers.forEach((marker) => { marker.visible = false; });
+
+    if (nextInteraction?.mode === 'move') {
+      (nextInteraction.legalMoves || []).slice(0, interactionMarkers.moveMarkers.length).forEach((move, index) => {
+        const marker = interactionMarkers.moveMarkers[index];
+        const world = chroniclesIsoWorldForCell(move.x, move.y);
+        marker.position.set(world.x, 0.045, world.z);
+        marker.visible = true;
+      });
+    } else if (nextInteraction?.mode === 'attack') {
+      (nextInteraction.legalTargets || []).slice(0, interactionMarkers.attackMarkers.length).forEach((target, index) => {
+        const marker = interactionMarkers.attackMarkers[index];
+        const world = chroniclesIsoWorldForCell(target.x, target.y);
+        marker.position.set(world.x, 0.055, world.z);
+        marker.visible = true;
+      });
+    }
+    renderer.domElement.style.cursor = nextInteraction?.mode ? 'crosshair' : 'default';
+  }
+
+  function syncState(state, nextSelectedMemberId = selectedMemberId, nextInteraction = latestInteraction) {
     latestState = state;
     selectedMemberId = nextSelectedMemberId || selectedMemberId;
     const partyCell = chroniclesIsoWorldForCell(state.x, state.y);
@@ -345,6 +449,7 @@ export function createChroniclesIsometricGame(host, { onReady } = {}) {
     dungeon.sigilMaterial.emissive.setHex(state.sigilAwake ? 0x8c3f0d : 0x160a02);
     dungeon.sigilMaterial.emissiveIntensity = state.sigilAwake ? 1.25 : 0.22;
     syncSelection();
+    syncInteraction(nextInteraction);
 
     if (reducedMotion) {
       party.root.position.copy(desiredParty);
@@ -356,6 +461,31 @@ export function createChroniclesIsometricGame(host, { onReady } = {}) {
       camera.lookAt(pose.target);
       renderer.render(scene, camera);
     }
+  }
+
+  function pickInteraction(event) {
+    if (!latestInteraction?.mode || !latestState) return null;
+    const bounds = renderer.domElement.getBoundingClientRect();
+    if (bounds.width <= 0 || bounds.height <= 0) return null;
+    pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
+    pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
+    raycaster.setFromCamera(pointer, camera);
+    const visibleEnemies = [...enemies.values()].filter((model) => model.visible);
+    const intersections = raycaster.intersectObjects([...visibleEnemies, ...dungeon.floorTargets], true);
+    for (const intersection of intersections) {
+      const descriptor = descriptorForObject(intersection.object);
+      const action = chroniclesIsoInteractionForHit(latestInteraction, descriptor);
+      if (action) return action;
+    }
+    return null;
+  }
+
+  function onPointerUp(event) {
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    const action = pickInteraction(event);
+    if (!action) return;
+    if (action.kind === 'cell') onCellClick?.({ x: action.x, y: action.y });
+    else if (action.kind === 'enemy') onEnemyClick?.(action.enemyId);
   }
 
   function render() {
@@ -403,9 +533,11 @@ export function createChroniclesIsometricGame(host, { onReady } = {}) {
   if (!observer) window.addEventListener('resize', onWindowResize);
   const onVisibility = () => { visible = document.visibilityState !== 'hidden'; };
   document.addEventListener('visibilitychange', onVisibility);
+  renderer.domElement.addEventListener('pointerup', onPointerUp);
 
   resize();
   syncSelection();
+  syncInteraction();
   render();
   onReady?.('THREE.JS · ISOMETRIC');
 
@@ -422,6 +554,7 @@ export function createChroniclesIsometricGame(host, { onReady } = {}) {
       observer?.disconnect();
       if (!observer) window.removeEventListener('resize', onWindowResize);
       document.removeEventListener('visibilitychange', onVisibility);
+      renderer.domElement.removeEventListener('pointerup', onPointerUp);
       disposeScene(scene);
       renderer.dispose();
       renderer.forceContextLoss?.();
