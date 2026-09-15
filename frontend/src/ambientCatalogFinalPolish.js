@@ -121,8 +121,18 @@ const FINAL_CATALOG_POLISH = Object.freeze({
   midnightSatin: Object.freeze({
     signature:signature('jazzGuitar', { 10:71, 26:74, 42:67, 58:69 }, [0,1], 64, 5.2, 0.17, 2),
   }),
+  malagaLastTram: Object.freeze({
+    // Málaga was too close to the Andalusian hand-drum/guitar grammar. Make the
+    // last tram a small late-night jazz quartet instead: brushed two-bar pulse,
+    // darker guitar foreground and clarinet replies over Rhodes/upright bass.
+    family:'malaga-last-tram-brushed-quartet', preserveSectionOrder:true,
+    swing:0.10, warmth:0.90, releaseScale:1.08, space:0.10, delayMs:128,
+    leadInstrument:'jazzGuitar', counterInstrument:'clarinet', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass',
+    mix:Object.freeze({ lead:0.60, counter:0.22, bass:0.72, chord:0.34 }),
+    percussion:percussion('rooftop-jazz', 32, { 0:'B', 6:'H', 12:'S', 19:'B', 24:'S', 29:'H' }, 0.68),
+  }),
 
-  // Three remaining within-genre player-chain collisions.
+  // Final within-genre player-chain collisions and metric corrections.
   istanbulBackgammon: Object.freeze({
     family:'istanbul-tavla-clarinet-guitar', counterInstrument:'nylonGuitar', chordInstrument:'rhodesWarm',
     // The written bass walks every six steps. Keep the 18-step 9/8 bar, but
