@@ -3,9 +3,10 @@ import { setProfileStorageItem } from './profileKeys.js';
 import { getAudioContext as getContext } from './audioContext.js';
 import { structuredFeel } from './ambientProfiles.js';
 import { connectFinishedAmbientVoice, scheduleAmbientFilterSweep } from './ambientVoiceFinish.js';
+import { AMBIENT_MASTERING, ambientStemMix, ambientStemName } from './ambientMix.js';
 import { structuredSectionInstrument } from './ambientInstrumentRouting.js';
 import { shouldPlayStructuredLead, shouldPlayStructuredSignature } from './ambientTiming.js';
-import { primeOrchestralTheme, readyOrchestralSample } from './orchestralSampler.js';
+import { orchestralKindsForTheme, primeOrchestralTheme, readyOrchestralSample } from './orchestralSampler.js';
 import { midiToChessStudioFrequency, tuneStandardFrequency } from './musicTuning.js';
 import {
   MUSIC_EXCLUDED_KEY,
@@ -330,6 +331,33 @@ function getActiveAmbientTheme() {
   return AMBIENT_THEMES[getAmbientThemeId()] || AMBIENT_THEMES[DEFAULT_AMBIENT_THEME];
 }
 
+function preparedOrchestralTheme(theme, feel = structuredFeel(theme)) {
+  if (!theme || theme.engine !== 'structured') return null;
+  const resolveSection = (section) => ({
+    ...section,
+    leadInstrument: structuredSectionInstrument(theme, feel, section, 'lead'),
+    counterInstrument: structuredSectionInstrument(theme, feel, section, 'counter'),
+    chordInstrument: structuredSectionInstrument(theme, feel, section, 'chord'),
+    bassInstrument: structuredSectionInstrument(theme, feel, section, 'bass'),
+  });
+  return {
+    ...theme,
+    leadInstrument: feel?.leadInstrument || theme.leadInstrument,
+    counterInstrument: feel?.counterInstrument || theme.counterInstrument,
+    chordInstrument: feel?.chordInstrument || theme.chordInstrument,
+    bassInstrument: feel?.bassInstrument || theme.bassInstrument,
+    signatureInstrument: feel?.signature?.instrument,
+    sections: (theme.sections || []).map(resolveSection),
+  };
+}
+
+function primeStructuredOrchestra(ctx, theme) {
+  if (!ctx || theme?.engine !== 'structured') return null;
+  const prepared = preparedOrchestralTheme(theme);
+  if (!orchestralKindsForTheme(prepared).length) return null;
+  return primeOrchestralTheme(ctx, prepared);
+}
+
 function transportNowMs() {
   if (typeof performance !== 'undefined' && typeof performance.now === 'function') return performance.now();
   return Date.now();
@@ -340,6 +368,8 @@ let ambientTrackEndTimer = null;
 let ambientTransitionTimer = null;
 let queuedAmbientThemeId = null;
 let ambientResumeFn = null;
+let ambientStructuredLaunchToken = 0;
+let ambientStructuredLaunchPending = false;
 const ambientTransport = {
   status: 'stopped', // playing | paused | gap | stopped
   themeId: null,
@@ -396,6 +426,10 @@ export function setAmbientTheme(themeId) {
   stopAmbientMusic();
   setStorageItem(STORAGE_SESSION, AMBIENT_THEME_SESSION_KEY, nextId);
   ambientTransport.themeId = nextId;
+  // Selection is usually the gesture immediately before Play. Use that head
+  // start to fetch/decode the exact recorded players used by the production
+  // profile, including section hand-offs and its signature motif.
+  primeStructuredOrchestra(getContext(), AMBIENT_THEMES[nextId]);
 
   if (previousStatus === 'playing' || previousStatus === 'gap') {
     startAmbientMusic();
@@ -431,6 +465,8 @@ export function seekAmbientMusic(positionMs) {
   queuedAmbientThemeId = null;
   if (stepTimer) { clearTimeout(stepTimer); stepTimer = null; }
   ambientResumeFn = null;
+  ambientStructuredLaunchToken += 1;
+  ambientStructuredLaunchPending = false;
   rotateAmbientOutputForSeek();
 
   ambientTransport.themeId = themeId;
@@ -453,6 +489,7 @@ export function seekAmbientMusic(positionMs) {
 let ambientOutputNode = null;
 let ambientPercussionBus = null;
 let ambientStructuredMusicBus = null;
+let ambientStructuredStemBuses = new Map();
 let ambientDuckFactor = 1;
 
 function rotateAmbientOutputForSeek(fadeSeconds = 0.055) {
@@ -462,6 +499,7 @@ function rotateAmbientOutputForSeek(fadeSeconds = 0.055) {
   ambientOutputNode = null;
   ambientPercussionBus = null;
   ambientStructuredMusicBus = null;
+  ambientStructuredStemBuses = new Map();
   if (!oldOutput) return;
   const ctx = oldOutput.context;
   const now = ctx.currentTime;
@@ -517,7 +555,17 @@ function getAmbientOutput(ctx) {
   if (!ambientOutputNode || ambientOutputNode.context !== ctx) {
     ambientOutputNode = ctx.createGain();
     ambientOutputNode.gain.value = ambientMasterTarget();
-    ambientOutputNode.connect(ctx.destination);
+    // A fast, shallow final stage catches coincident guitar/chord/drum peaks.
+    // It is not a loudness maximizer: normal passages remain dynamic.
+    const limiter = ctx.createDynamicsCompressor();
+    const spec = AMBIENT_MASTERING.limiter;
+    limiter.threshold.value = spec.threshold;
+    limiter.knee.value = spec.knee;
+    limiter.ratio.value = spec.ratio;
+    limiter.attack.value = spec.attack;
+    limiter.release.value = spec.release;
+    ambientOutputNode.connect(limiter);
+    limiter.connect(ctx.destination);
   }
   return ambientOutputNode;
 }
@@ -527,9 +575,55 @@ function getAmbientStructuredMusicOutput(ctx) {
   if (!ambientStructuredMusicBus || ambientStructuredMusicBus.context !== ctx) {
     ambientStructuredMusicBus = ctx.createGain();
     ambientStructuredMusicBus.gain.value = 1;
-    ambientStructuredMusicBus.connect(getAmbientOutput(ctx));
+
+    const highpass = ctx.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = AMBIENT_MASTERING.musicHighpassHz;
+    highpass.Q.value = 0.55;
+
+    const presence = ctx.createBiquadFilter();
+    presence.type = 'highshelf';
+    presence.frequency.value = AMBIENT_MASTERING.presenceHz;
+    presence.gain.value = AMBIENT_MASTERING.presenceDb;
+
+    const compressor = ctx.createDynamicsCompressor();
+    const glue = AMBIENT_MASTERING.glue;
+    compressor.threshold.value = glue.threshold;
+    compressor.knee.value = glue.knee;
+    compressor.ratio.value = glue.ratio;
+    compressor.attack.value = glue.attack;
+    compressor.release.value = glue.release;
+
+    ambientStructuredMusicBus.connect(highpass);
+    highpass.connect(presence);
+    presence.connect(compressor);
+    compressor.connect(getAmbientOutput(ctx));
   }
   return ambientStructuredMusicBus;
+}
+
+function getAmbientStructuredStemOutput(ctx, stem = 'lead') {
+  if (!ctx) return null;
+  const key = ambientStemName(stem);
+  const current = ambientStructuredStemBuses.get(key);
+  if (current?.context === ctx) return current;
+
+  const spec = ambientStemMix(key);
+  const input = ctx.createGain();
+  const highpass = ctx.createBiquadFilter();
+  const lowpass = ctx.createBiquadFilter();
+  input.gain.value = spec.gain;
+  highpass.type = 'highpass';
+  highpass.frequency.value = spec.highpassHz;
+  highpass.Q.value = 0.48;
+  lowpass.type = 'lowpass';
+  lowpass.frequency.value = spec.lowpassHz;
+  lowpass.Q.value = 0.42;
+  input.connect(highpass);
+  highpass.connect(lowpass);
+  lowpass.connect(getAmbientStructuredMusicOutput(ctx));
+  ambientStructuredStemBuses.set(key, input);
+  return input;
 }
 
 function getAmbientPercussionOutput(ctx) {
@@ -986,7 +1080,7 @@ function playStructuredGuitar(kind, midiNote, volumeScale = 1, durationOverride 
   const startDelay = Math.max(0, Number(tone?.startDelayMs) || 0) / 1000;
   const start = ctx.currentTime + startDelay;
   const duration = Math.max(.24, durationOverride || (kind === 'nylonGuitar' ? 1.28 : kind === 'jazzGuitar' ? 1.45 : kind === 'tremoloGuitar' ? 1.72 : kind === 'powerGuitar' ? .38 : .9));
-  const output = getAmbientStructuredMusicOutput(ctx);
+  const output = getAmbientStructuredStemOutput(ctx, tone?.stem);
   const body = ctx.createGain();
   const bodyFilter = ctx.createBiquadFilter();
 
@@ -1186,7 +1280,7 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
 
     source.connect(filter);
     filter.connect(gainNode);
-    connectFinishedAmbientVoice(ctx, gainNode, getAmbientStructuredMusicOutput(ctx), tone, {
+    connectFinishedAmbientVoice(ctx, gainNode, getAmbientStructuredStemOutput(ctx, tone?.stem), tone, {
       start,
       duration: audibleDuration,
       tremolo: 0,
@@ -1214,7 +1308,7 @@ function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride =
   gainNode.gain.exponentialRampToValueAtTime(0.0001, start + release);
 
   filter.connect(gainNode);
-  const output = getAmbientStructuredMusicOutput(ctx);
+  const output = getAmbientStructuredStemOutput(ctx, tone?.stem);
   connectFinishedAmbientVoice(ctx, gainNode, output, tone, { start, duration: release, tremolo: preset.tremolo });
 
   const oscillators = preset.waves.map(([type, ratio, mix], index) => {
@@ -2033,11 +2127,11 @@ function startStructuredMusic(theme, startPositionMs = 0) {
 
     if (layerEnabled('signature') && shouldPlayStructuredSignature(signatureVoice, activeVoices)) {
       const signatureDuration = (theme.stepMs * (signature.durationSteps || 3)) / 1000;
-      playStructuredVoice(signatureVoice.instrument, signatureVoice.note, (signature.volume || 0.55) * arrangement.masterTrim, signatureDuration, { ...tone, pan: -0.06 });
+      playStructuredVoice(signatureVoice.instrument, signatureVoice.note, (signature.volume || 0.55) * arrangement.masterTrim, signatureDuration, { ...tone, stem: 'signature', pan: -0.06 });
     }
 
     if (leadWillPlay) {
-      playStructuredVoice(leadInstrument, lead + t + arrangement.leadOctave, arrangement.leadVolume, null, { ...tone, pan: -0.10 });
+      playStructuredVoice(leadInstrument, lead + t + arrangement.leadOctave, arrangement.leadVolume, null, { ...tone, stem: 'lead', pan: -0.10 });
     }
     if (counterWillPlay) {
       playStructuredVoice(
@@ -2045,18 +2139,18 @@ function startStructuredMusic(theme, startPositionMs = 0) {
         counter + t + arrangement.counterOctave,
         arrangement.counterVolume,
         null,
-        { ...tone, pan: 0.12 },
+        { ...tone, stem: 'counter', pan: 0.12 },
       );
     }
     if (bassWillPlay) {
       const bassDuration = feel?.bassHoldSteps ? (theme.stepMs * feel.bassHoldSteps) / 1000 : null;
-      playStructuredVoice(bassInstrument, bass + t, arrangement.bassVolume, bassDuration, tone);
+      playStructuredVoice(bassInstrument, bass + t, arrangement.bassVolume, bassDuration, { ...tone, stem: 'bass' });
     }
     if (chordWillPlay) {
       const longChord = ['organ', 'pad'].includes(chordInstrument);
       const chordHoldSteps = feel?.chordHoldSteps || (longChord ? 15.5 : null);
       const duration = chordHoldSteps ? (theme.stepMs * chordHoldSteps) / 1000 : null;
-      playStructuredChord(chordInstrument, chord.map((note) => note + t), duration, arrangement.chordVolume, { ...tone, pan: 0.04 });
+      playStructuredChord(chordInstrument, chord.map((note) => note + t), duration, arrangement.chordVolume, { ...tone, stem: 'chords', pan: 0.04 });
     }
     if (drum && layerEnabled('drums') && shouldPlayStructuredDrum(arrangement.drumMode, drum)) playStructuredDrum(drum, feel, step);
 
@@ -2122,6 +2216,8 @@ export function disposeAmbientMusic() {
     stepTimer = null;
   }
   ambientResumeFn = null;
+  ambientStructuredLaunchToken += 1;
+  ambientStructuredLaunchPending = false;
   if (ambientOutputNode) {
     try { ambientOutputNode.gain.value = 0; } catch { /* best effort */ }
   }
@@ -2132,7 +2228,7 @@ export function startAmbientMusic() {
   // viejo puede traer el flag MUSIC_MUTED_KEY; al pulsar Play (o arrancar la
   // sesión) lo limpiamos para que nunca exista un estado 'playing pero mudo'.
   if (isMusicMuted()) setMusicMuted(false);
-  if (ambientTransport.status === 'playing' && stepTimer) return;
+  if (ambientTransport.status === 'playing' && (stepTimer || ambientStructuredLaunchPending)) return;
 
   // Si el usuario pulsa Play durante la pausa automática entre pistas,
   // adelantamos la siguiente en vez de reiniciar la que acaba de terminar.
@@ -2171,19 +2267,7 @@ export function startAmbientMusic() {
 
   const theme = getActiveAmbientTheme();
   const orchestraContext = getContext();
-  if (theme.engine === 'structured' && orchestraContext) {
-    // Comenzamos la descarga/decodificación al seleccionar una pieza de
-    // cámara. Las primeras notas conservan el sintetizador como respaldo y
-    // las siguientes entran con intérpretes grabados sin bloquear Play.
-    const feel = structuredFeel(theme);
-    primeOrchestralTheme(orchestraContext, {
-      ...theme,
-      leadInstrument: feel?.leadInstrument || theme.leadInstrument,
-      counterInstrument: feel?.counterInstrument || theme.counterInstrument,
-      chordInstrument: feel?.chordInstrument || theme.chordInstrument,
-      bassInstrument: feel?.bassInstrument || theme.bassInstrument,
-    });
-  }
+  const orchestralPrime = primeStructuredOrchestra(orchestraContext, theme);
   const durationMs = getAmbientTrackDurationMs(theme.id);
   if (durationMs) startPositionMs = Math.min(startPositionMs, Math.max(0, durationMs - 1));
   ambientTransport.status = 'playing';
@@ -2195,6 +2279,27 @@ export function startAmbientMusic() {
   notifyAmbientTransport();
 
   if (theme.engine === 'structured') {
+    if (orchestralPrime) {
+      // Give recorded players a short loading room before the transport fires
+      // its first attack. Cached themes start immediately; a cold connection
+      // is capped so Play can never feel stuck. The transport catches up to
+      // the correct step instead of stretching the song intro.
+      const launchToken = ++ambientStructuredLaunchToken;
+      const launchRequestedAt = transportNowMs();
+      ambientStructuredLaunchPending = true;
+      Promise.race([
+        orchestralPrime,
+        new Promise((resolve) => setTimeout(resolve, 360)),
+      ]).then(() => {
+        if (launchToken !== ambientStructuredLaunchToken
+          || ambientTransport.status !== 'playing'
+          || ambientTransport.themeId !== theme.id) return;
+        ambientStructuredLaunchPending = false;
+        const elapsedWhilePreparing = Math.max(0, transportNowMs() - launchRequestedAt);
+        startStructuredMusic(theme, startPositionMs + elapsedWhilePreparing);
+      });
+      return;
+    }
     startStructuredMusic(theme, startPositionMs);
     return;
   }
@@ -2288,6 +2393,8 @@ export function pauseAmbientMusic() {
     return;
   }
   if (ambientTransport.status !== 'playing') return;
+  ambientStructuredLaunchToken += 1;
+  ambientStructuredLaunchPending = false;
   clearAmbientTrackEndTimer();
   ambientTransport.positionMs = transportElapsedMs();
   ambientTransport.startedAtMs = 0;
@@ -2310,6 +2417,8 @@ export function stopAmbientMusic() {
     stepTimer = null;
   }
   ambientResumeFn = null;
+  ambientStructuredLaunchToken += 1;
+  ambientStructuredLaunchPending = false;
   ambientTransport.status = 'stopped';
   ambientTransport.positionMs = 0;
   ambientTransport.startedAtMs = 0;
