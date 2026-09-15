@@ -36,7 +36,10 @@ export const MEDITERRANEAN_GROOVE_REWRITES = Object.freeze({
 
   tangierRedTable: groove(12, {0:'K',3:'H',5:'B',6:'S',9:'H',11:'B'}),
   tangierNightTrain0058: groove(12, {0:'K',2:'H',5:'B',6:'S',8:'B',11:'H'}),
-  andalusianCoast: groove(16, {0:'K',3:'H',4:'B',8:'S',11:'H',14:'B'}),
+  // Tarde clara phrases the foreground on a four-step lattice. Keep the hand
+  // drum on those same pillars and remove the 3/11/14 accents that sounded as
+  // if the percussion was leaning against the melody rather than supporting it.
+  andalusianCoast: groove(16, {0:'K',4:'B',8:'S',12:'B'}),
   cordobaRooftop0026: groove(16, {0:'K',2:'B',6:'H',8:'S',12:'B',15:'H'}),
 });
 
