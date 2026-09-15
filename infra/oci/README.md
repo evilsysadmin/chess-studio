@@ -50,6 +50,28 @@ terraform plan
 
 CI prueba el parser/verificador de migración sin credenciales y Floci prueba el lifecycle real de IAM + Object Storage. La migración del backend OCI nativo se ejecuta sólo contra OCI real porque Floci no documenta un endpoint custom para ese backend incorporado de Terraform.
 
+## Lifecycle desde GitHub Actions
+
+`.github/workflows/oci-staging-lab.yml` es manual (`workflow_dispatch`) y nunca toca Render. Serializa todas las operaciones del laboratorio y usa siempre el SHA seleccionado como `repo_ref`; `bootstrap`, `apply` y `destroy` vuelven a comprobar inmediatamente antes de mutar que ese SHA sigue siendo el `main` actual.
+
+Secrets de repositorio requeridos:
+
+- `OCI_TENANCY_OCID`
+- `OCI_USER_OCID`
+- `OCI_FINGERPRINT`
+- `OCI_PRIVATE_KEY`
+
+Variables de repositorio: `OCI_REGION` y `OCI_TFSTATE_BUCKET` tienen defaults (`eu-frankfurt-1` y `chess-studio-tfstate`). Para `plan/apply/destroy` hacen falta `OCI_AVAILABILITY_DOMAIN` y `OCI_IMAGE_OCID`, que también pueden pasarse como overrides al lanzar el workflow. SSH permanece completamente cerrado y no requiere clave salvo que se configure explícitamente en Terraform.
+
+Operaciones:
+
+- `bootstrap`: crea una vez compartments + bucket, migra el seed state al backend OCI y exige zero drift después.
+- `plan`: conecta el state remoto y sólo calcula el plan.
+- `apply`: calcula un plan y lo aplica únicamente si `main` no ha avanzado.
+- `destroy`: destruye **sólo** `staging/`, exige `confirm_destroy=true` y conserva bootstrap/state.
+
+El workflow obtiene el Object Storage namespace mediante el provider Terraform y lee el compartment de staging desde el state remoto de bootstrap. No usa OCI CLI para provisionar ni necesita copiar esos OCID a GitHub. Los planes no se publican como artifacts.
+
 ## Contratos
 
 - Frankfurt (`eu-frankfurt-1`) por defecto, configurable.
