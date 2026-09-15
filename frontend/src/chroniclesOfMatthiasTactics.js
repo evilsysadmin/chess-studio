@@ -199,8 +199,29 @@ function actionAllowed(state) {
   return Boolean(state && state.turnPhase !== 'enemy' && state.phase !== 'defeated' && state.phase !== 'escaped');
 }
 
+function rpgModifiers(state, memberId) {
+  const source = state?.rpgModifiers?.[memberId];
+  return source && typeof source === 'object' ? source : {};
+}
+
+function effectiveReach(state, memberId, profile) {
+  return Math.max(1, Number(profile.reach || 1) + Math.max(0, Number(rpgModifiers(state, memberId).reachBonus || 0)));
+}
+
+function effectiveAttackDamage(state, memberId, profile) {
+  return Math.max(1, Number(profile.damage || 1) + Math.max(0, Number(rpgModifiers(state, memberId).attackDamageBonus || 0)));
+}
+
+function effectiveAbilityPotency(state, memberId) {
+  return Math.max(0, Number(rpgModifiers(state, memberId).abilityPotencyBonus || 0));
+}
+
+function maxAbilityCharges(state, memberId) {
+  return Math.max(1, Number(rpgModifiers(state, memberId).abilityCharges || 1));
+}
+
 function abilityCharges(state, memberId) {
-  return Math.max(0, Number(state?.classAbilityCharges?.[memberId] ?? 1));
+  return Math.max(0, Number(state?.classAbilityCharges?.[memberId] ?? maxAbilityCharges(state, memberId)));
 }
 
 function consumeAbilityCharge(state, memberId) {
@@ -208,7 +229,7 @@ function consumeAbilityCharge(state, memberId) {
     ...state,
     classAbilityCharges: {
       ...(state.classAbilityCharges || {}),
-      [memberId]: 0,
+      [memberId]: Math.max(0, abilityCharges(state, memberId) - 1),
     },
   };
 }
@@ -216,7 +237,7 @@ function consumeAbilityCharge(state, memberId) {
 function refillAbilityCharges(state) {
   const classAbilityCharges = { ...(state.classAbilityCharges || {}) };
   state.party.forEach((member) => {
-    classAbilityCharges[member.id] = 1;
+    classAbilityCharges[member.id] = maxAbilityCharges(state, member.id);
   });
   return { ...state, classAbilityCharges };
 }
@@ -379,11 +400,12 @@ export function chroniclesTacticsTargets(state, memberId) {
   const member = memberFor(state, memberId);
   if (!member || member.hp <= 0) return [];
   const profile = chroniclesTacticsProfile(memberId);
+  const reach = effectiveReach(state, memberId, profile);
 
   return activeEnemiesWithPositions(state)
     .flatMap(({ enemy, position }) => {
       const distance = attackDistance(state, position, profile);
-      if (distance === null || distance < 1 || distance > profile.reach) return [];
+      if (distance === null || distance < 1 || distance > reach) return [];
       if (!lineIsClear(state, { x: state.x, y: state.y }, position, enemy.id)) return [];
       return [{
         enemyId: enemy.id,
@@ -434,11 +456,13 @@ export function chroniclesTacticsAbility(state, memberId) {
   const attacker = memberFor(state, memberId);
   if (!attacker) return state;
   const turns = Number(state.turns || 0) + 1;
+  const potencyBonus = effectiveAbilityPotency(state, memberId);
 
   if (profile.abilityKind === 'heal') {
+    const healing = Math.max(1, Number(profile.abilityHeal || 1) + potencyBonus);
     const healedParty = state.party.map((member) => (
       member.hp > 0
-        ? { ...member, hp: Math.min(member.maxHp, member.hp + Math.max(1, Number(profile.abilityHeal || 1))) }
+        ? { ...member, hp: Math.min(member.maxHp, member.hp + healing) }
         : member
     ));
     return consumeAbilityCharge({
@@ -459,7 +483,7 @@ export function chroniclesTacticsAbility(state, memberId) {
   selectedTargets.forEach((target) => {
     const enemy = chroniclesActiveEnemies(next).find((candidate) => candidate.id === target.enemyId);
     if (!enemy) return;
-    const damage = Math.max(1, Number(profile.abilityDamage || profile.damage || 1));
+    const damage = Math.max(1, Number(profile.abilityDamage || profile.damage || 1) + potencyBonus);
     const nextHp = Math.max(0, Number(next[enemy.hpKey] || 0) - damage);
     next = { ...next, [enemy.hpKey]: nextHp };
     hitNames.push(enemy.name);
@@ -494,8 +518,9 @@ export function chroniclesTacticsAttack(state, memberId, enemyId) {
   const enemy = chroniclesActiveEnemies(state).find((candidate) => candidate.id === enemyId);
   if (!enemy) return state;
   const profile = chroniclesTacticsProfile(memberId);
+  const damage = effectiveAttackDamage(state, memberId, profile);
 
-  const nextHp = Math.max(0, Number(state[enemy.hpKey] || 0) - profile.damage);
+  const nextHp = Math.max(0, Number(state[enemy.hpKey] || 0) - damage);
   let next = {
     ...state,
     [enemy.hpKey]: nextHp,

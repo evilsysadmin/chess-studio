@@ -11,12 +11,27 @@ export const CHRONICLES_PROGRESSION_STORAGE_KEY = 'chess-study-chronicles-progre
 export const CHRONICLES_TACTICS_RUN_STORAGE_KEY = 'chess-study-chronicles-tactics-run-v1';
 export const CHRONICLES_PROGRESSION_VERSION = 1;
 export const CHRONICLES_MAX_LEVEL = 12;
+export const CHRONICLES_ATTRIBUTE_CAP = 5;
 
 const AUTH_USERNAME_KEY = 'chess-study-auth-username';
 const ENCOUNTER_ID = 'crypt-01';
 const HERO_IDS = Object.freeze(['matthias', 'rook', 'bishop', 'knight']);
 const CLAIM_LIMIT = 256;
 const ATTRIBUTE_KEYS = Object.freeze(['vigor', 'power', 'precision', 'will']);
+
+export const CHRONICLES_ATTRIBUTE_DEFINITIONS = Object.freeze({
+  vigor: Object.freeze({ label: 'Vigor', shortLabel: 'VIG', effect: '+1 vida máxima por punto' }),
+  power: Object.freeze({ label: 'Potencia', shortLabel: 'POT', effect: '+1 daño físico cada 2 puntos' }),
+  precision: Object.freeze({ label: 'Precisión', shortLabel: 'PRE', effect: '+1 alcance cada 2; +1 daño a distancia/magia cada 3' }),
+  will: Object.freeze({ label: 'Voluntad', shortLabel: 'VOL', effect: '+1 potencia de habilidad cada 2; +1 carga al llegar a 3' }),
+});
+
+const ALLOWED_ATTRIBUTES = Object.freeze({
+  matthias: Object.freeze(['vigor', 'power', 'will']),
+  rook: Object.freeze(['vigor', 'power', 'will']),
+  bishop: Object.freeze(['vigor', 'precision', 'will']),
+  knight: Object.freeze(['vigor', 'precision', 'will']),
+});
 
 function nonNegativeInteger(value, fallback = 0) {
   const number = Number(value);
@@ -55,7 +70,7 @@ function defaultHero() {
 function normalizeAttributes(raw) {
   const source = raw && typeof raw === 'object' ? raw : {};
   return ATTRIBUTE_KEYS.reduce((result, key) => {
-    result[key] = Math.min(20, nonNegativeInteger(source[key]));
+    result[key] = Math.min(CHRONICLES_ATTRIBUTE_CAP, nonNegativeInteger(source[key]));
     return result;
   }, {});
 }
@@ -117,6 +132,80 @@ export function chroniclesXpToNextLevel(progression, memberId) {
   if (hero.level >= CHRONICLES_MAX_LEVEL) return { current: hero.xp, next: hero.xp, remaining: 0, maxLevel: true };
   const next = chroniclesXpThresholdForLevel(hero.level + 1);
   return { current: hero.xp, next, remaining: Math.max(0, next - hero.xp), maxLevel: false };
+}
+
+export function chroniclesAllowedAttributes(memberId) {
+  return ALLOWED_ATTRIBUTES[memberId] || Object.freeze([]);
+}
+
+export function spendChroniclesAttributePoint(progression, memberId, attributeKey) {
+  const current = normalizeChroniclesProgression(progression);
+  if (!HERO_IDS.includes(memberId)) return { progression: current, spent: false, reason: 'Héroe desconocido' };
+  if (!chroniclesAllowedAttributes(memberId).includes(attributeKey)) {
+    return { progression: current, spent: false, reason: 'Atributo ajeno a esta clase' };
+  }
+  const hero = current.heroes[memberId];
+  if (hero.attributePoints <= 0) return { progression: current, spent: false, reason: 'Sin puntos de atributo' };
+  if (hero.attributes[attributeKey] >= CHRONICLES_ATTRIBUTE_CAP) {
+    return { progression: current, spent: false, reason: 'Atributo al máximo' };
+  }
+  const nextHero = {
+    ...hero,
+    attributePoints: hero.attributePoints - 1,
+    attributes: {
+      ...hero.attributes,
+      [attributeKey]: hero.attributes[attributeKey] + 1,
+    },
+  };
+  return {
+    progression: {
+      ...current,
+      heroes: { ...current.heroes, [memberId]: nextHero },
+    },
+    spent: true,
+    reason: '',
+  };
+}
+
+export function chroniclesTacticsModifiers(progression, memberId) {
+  const hero = chroniclesHeroProgress(progression, memberId);
+  const { vigor, power, precision, will } = hero.attributes;
+  const physical = memberId === 'matthias' || memberId === 'rook';
+  const rangedOrMagic = memberId === 'bishop' || memberId === 'knight';
+  const attackDamageBonus = physical ? Math.floor(power / 2) : Math.floor(precision / 3);
+  const reachBonus = rangedOrMagic ? Math.floor(precision / 2) : 0;
+  const abilityPotencyBonus = (physical ? Math.floor(power / 2) : Math.floor(precision / 3)) + Math.floor(will / 2);
+  return {
+    bonusMaxHp: vigor,
+    attackDamageBonus,
+    reachBonus,
+    abilityPotencyBonus,
+    abilityCharges: 1 + (will >= 3 ? 1 : 0),
+  };
+}
+
+export function applyChroniclesProgressionToTacticsState(state, progression) {
+  const classAbilityCharges = {};
+  const rpgModifiers = {};
+  const party = (state.party || []).map((member) => {
+    const modifiers = chroniclesTacticsModifiers(progression, member.id);
+    rpgModifiers[member.id] = modifiers;
+    classAbilityCharges[member.id] = modifiers.abilityCharges;
+    const baseMaxHp = Math.max(1, nonNegativeInteger(member.maxHp, 1));
+    const baseHp = Math.max(0, nonNegativeInteger(member.hp));
+    const maxHp = baseMaxHp + modifiers.bonusMaxHp;
+    return {
+      ...member,
+      maxHp,
+      hp: Math.min(maxHp, baseHp + modifiers.bonusMaxHp),
+    };
+  });
+  return {
+    ...state,
+    party,
+    classAbilityCharges,
+    rpgModifiers,
+  };
 }
 
 function skillPointsEarnedBetween(fromLevel, toLevel) {

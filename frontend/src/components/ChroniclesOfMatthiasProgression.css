@@ -1,0 +1,77 @@
+.chronicles-tactics__progression {
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(188, 211, 229, .08);
+}
+
+.chronicles-tactics__progression summary {
+  cursor: pointer;
+  color: #a6bccb;
+  font-size: .52rem;
+  letter-spacing: .08em;
+  list-style-position: inside;
+}
+
+.chronicles-tactics__progression[open] summary {
+  margin-bottom: 5px;
+  color: #d4c7ae;
+}
+
+.chronicles-tactics__attribute-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.chronicles-tactics__attribute-grid button {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 3px;
+  align-items: center;
+  padding: 4px 5px;
+  border: 1px solid rgba(126, 182, 216, .2);
+  border-radius: 6px;
+  color: #d8e0e4;
+  background: rgba(18, 31, 40, .76);
+  font-size: .48rem;
+}
+
+.chronicles-tactics__attribute-grid button:hover:not(:disabled),
+.chronicles-tactics__attribute-grid button:focus-visible:not(:disabled) {
+  border-color: rgba(126, 207, 255, .56);
+  background: rgba(28, 53, 69, .9);
+}
+
+.chronicles-tactics__attribute-grid button:disabled {
+  opacity: .52;
+  cursor: default;
+}
+
+.chronicles-tactics__attribute-grid button span {
+  color: #91b8d0;
+  letter-spacing: .08em;
+}
+
+.chronicles-tactics__attribute-grid button b {
+  margin: 0;
+  color: #ddd4c3;
+  font-family: inherit;
+  font-size: .48rem;
+}
+
+.chronicles-tactics__attribute-grid button i {
+  color: #7fc8f3;
+  font-style: normal;
+  font-size: .62rem;
+}
+
+.chronicles-tactics__progression > small {
+  margin-top: 4px;
+  color: #697982;
+  line-height: 1.25;
+}
+
+@media (max-width: 720px) {
+  .chronicles-tactics__attribute-grid { grid-template-columns: 1fr; }
+}
