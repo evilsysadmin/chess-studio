@@ -47,7 +47,6 @@ def cyl(name, loc, r, d, material, rot=(0, 0, 0), verts=64, bevel=.018):
 
 
 def elliptic_cyl(name, loc, r, d, y_scale, material, rot=(0, 0, 0), verts=96, bevel=.018):
-    """Elliptical cylinder used for structured peaked-cap geometry."""
     bpy.ops.mesh.primitive_cylinder_add(vertices=verts, radius=r, depth=d, location=loc, rotation=rot)
     o = bpy.context.object
     o.name = name
@@ -73,7 +72,6 @@ def box(name, loc, scale, material, rot=(0, 0, 0), bevel=.014):
 
 
 def revolve_profile(name, profile, material, segments=96, bevel=.0):
-    """Build a smooth pawn-like solid by revolving an (radius, z) profile."""
     verts = []
     rings = len(profile)
     for i in range(segments):
@@ -147,7 +145,7 @@ def build_rig():
 
     bone('root', (0, 0, 0), (0, 0, .38))
     bone('spine', (0, 0, .58), (0, 0, 1.36), 'root')
-    bone('head', (0, 0, 1.20), (0, 0, 1.95), 'spine')
+    bone('head', (0, 0, 1.20), (0, 0, 2.03), 'spine')
     bone('upper_arm.L', (-.27, .04, 1.08), (-.38, .05, .96), 'spine')
     bone('forearm.L', (-.38, .05, .96), (-.32, -.04, .84), 'upper_arm.L')
     bone('upper_arm.R', (.27, .04, 1.08), (.38, .05, .96), 'spine')
@@ -163,7 +161,6 @@ def build_rig():
 
 
 def build_character():
-    """Approved Home Matthias: compact premium officer-pawn, always furious."""
     ivory = mat('classic warm ivory', (.72, .64, .50), .42, .02)
     ivory_hi = mat('classic ivory highlight', (.86, .78, .62), .34, .02)
     navy = mat('classic midnight pawn', (.005, .008, .014), .19, .30)
@@ -175,7 +172,7 @@ def build_character():
     paper = mat('paper', (.67, .58, .43), .88)
 
     rig = build_rig()
-    rig['matthias_asset_version'] = 'home-blender-classic-v9e'
+    rig['matthias_asset_version'] = 'home-blender-classic-v9f'
     rig['canonical_identity'] = 'stern-no-moustache-pawn'
     rig['canonical_reference'] = 'classic-pawn-first-avatar'
     rig['canonical_pose_language'] = 'permanently-stern'
@@ -208,33 +205,27 @@ def build_character():
         cyl('Classic brass collar line', (0, 0, 1.253), .390, .013, brass, verts=112, bevel=.003),
         box('Classic tunic piping.L', (-.258, -.340, .965), (.011, .006, .180), brass, (0, math.radians(-8), 0), .004),
         box('Classic tunic piping.R', (.258, -.340, .965), (.011, .006, .180), brass, (0, math.radians(8), 0), .004),
-        box('Classic chest crest vertical', (0, -.431, .955), (.028, .004, .110), brass, bevel=.004),
-        box('Classic chest crest horizontal', (0, -.431, .955), (.092, .004, .028), brass, bevel=.004),
-        box('Classic chest crest top', (0, -.432, 1.055), (.050, .004, .014), brass, bevel=.004),
-        box('Classic chest crest bottom', (0, -.432, .855), (.050, .004, .014), brass, bevel=.004),
-        box('Classic chest crest left', (-.082, -.432, .955), (.014, .004, .050), brass, bevel=.004),
-        box('Classic chest crest right', (.082, -.432, .955), (.014, .004, .050), brass, bevel=.004),
+        box('Classic chest crest vertical', (0, -.431, .955), (.030, .004, .115), brass, bevel=.005),
+        box('Classic chest crest horizontal', (0, -.431, .955), (.100, .004, .030), brass, bevel=.005),
         sphere('Classic chest badge', (0, -.439, .955), (.018, .005, .018), navy, 18),
     ]
 
     head += [
         sphere('Head', (0, -.010, 1.470), (.340, .315, .315), ivory, 92),
-        sphere('Eye.L', (-.108, -.322, 1.525), (.027, .008, .042), black, 28),
-        sphere('Eye.R', (.108, -.322, 1.525), (.027, .008, .042), black, 28),
-        box('Brow.L', (-.110, -.340, 1.610), (.086, .009, .019), black, (0, math.radians(29), 0), .004),
-        box('Brow.R', (.110, -.340, 1.610), (.086, .009, .019), black, (0, math.radians(-29), 0), .004),
-        box('Mouth.L', (-.032, -.324, 1.382), (.040, .004, .005), black, (0, math.radians(-17), 0), .002),
-        box('Mouth.R', (.032, -.324, 1.382), (.040, .004, .005), black, (0, math.radians(17), 0), .002),
-        # Actual structured cap geometry: elliptical vertical crown, flat wide top,
-        # oxblood band and a long forward visor. No more flattened-sphere beret.
-        elliptic_cyl('Classic cap crown', (0, .020, 1.730), .365, .135, .80, navy, (math.radians(-4), 0, 0), 112, .022),
-        elliptic_cyl('Classic cap top', (0, .065, 1.805), .415, .050, .79, navy, (math.radians(-7), 0, 0), 116, .016),
-        elliptic_cyl('Classic cap band', (0, -.005, 1.653), .342, .080, .84, cap_red, (math.radians(-2), 0, 0), 108, .010),
-        elliptic_cyl('Classic cap brass line', (0, -.010, 1.610), .339, .013, .84, brass, (math.radians(-2), 0, 0), 108, .003),
-        box('Classic cap visor', (0, -.315, 1.600), (.225, .112, .020), leather, (math.radians(12), 0, 0), .012),
-        sphere('Classic cap badge', (0, -.320, 1.705), (.038, .010, .046), brass, 28),
-        box('Classic cap badge wing.L', (-.060, -.316, 1.710), (.043, .006, .012), brass, (0, math.radians(-12), math.radians(12)), .003),
-        box('Classic cap badge wing.R', (.060, -.316, 1.710), (.043, .006, .012), brass, (0, math.radians(12), math.radians(-12)), .003),
+        sphere('Eye.L', (-.108, -.322, 1.525), (.028, .008, .044), black, 28),
+        sphere('Eye.R', (.108, -.322, 1.525), (.028, .008, .044), black, 28),
+        box('Brow.L', (-.110, -.340, 1.610), (.088, .009, .020), black, (0, math.radians(30), 0), .004),
+        box('Brow.R', (.110, -.340, 1.610), (.088, .009, .020), black, (0, math.radians(-30), 0), .004),
+        box('Mouth.L', (-.034, -.324, 1.380), (.042, .004, .005), black, (0, math.radians(-18), 0), .002),
+        box('Mouth.R', (.034, -.324, 1.380), (.042, .004, .005), black, (0, math.radians(18), 0), .002),
+        elliptic_cyl('Classic cap crown', (0, .025, 1.765), .370, .210, .79, navy, (math.radians(-4), 0, 0), 112, .024),
+        elliptic_cyl('Classic cap top', (0, .075, 1.885), .425, .050, .78, navy, (math.radians(-7), 0, 0), 116, .016),
+        elliptic_cyl('Classic cap band', (0, -.005, 1.645), .344, .082, .84, cap_red, (math.radians(-2), 0, 0), 108, .010),
+        elliptic_cyl('Classic cap brass line', (0, -.010, 1.602), .341, .013, .84, brass, (math.radians(-2), 0, 0), 108, .003),
+        box('Classic cap visor', (0, -.325, 1.592), (.230, .118, .021), leather, (math.radians(12), 0, 0), .012),
+        sphere('Classic cap badge', (0, -.324, 1.730), (.040, .010, .050), brass, 28),
+        box('Classic cap badge wing.L', (-.063, -.320, 1.735), (.046, .006, .013), brass, (0, math.radians(-12), math.radians(12)), .003),
+        box('Classic cap badge wing.R', (.063, -.320, 1.735), (.046, .006, .013), brass, (0, math.radians(12), math.radians(-12)), .003),
     ]
 
     shoulder_l = (-.260, .185, 1.045); elbow_l = (-.305, .198, .930); wrist_l = (-.263, .182, .825)
