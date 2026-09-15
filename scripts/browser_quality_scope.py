@@ -24,6 +24,7 @@ class BrowserScope:
     visual: bool = False
     focus: bool = False
     matthias: bool = False
+    matthias_home: bool = False
     matthias_insights: bool = False
     quick_2d: bool = False
     network_race: bool = False
@@ -33,7 +34,7 @@ class BrowserScope:
         # Broad Matthias already includes Home + War Room + Insights. Keep the
         # narrow Insights-only bit false in the fail-closed aggregate to avoid
         # duplicating the same canary.
-        return cls(True, True, True, True, True, False, True, True)
+        return cls(True, True, True, True, True, False, False, True, True)
 
 
 FRONTEND_TEST_RE = re.compile(r"^frontend/src/.*\.(?:test|spec)\.(?:js|jsx|ts|tsx)$")
@@ -110,8 +111,11 @@ MATTHIAS_PATTERNS = (
     "frontend/src/components/matthias*.css",
     "frontend/src/matthias*.js",
     "frontend/src/assets/matthias-*/*",
-    "e2e/matthias-home-visual-critical.spec.js",
     "e2e/matthias-war-room-android-motion.spec.js",
+)
+MATTHIAS_HOME_PATTERNS = (
+    "frontend/src/components/MatthiasPremiumHome3D.js",
+    "e2e/matthias-home-visual-critical.spec.js",
 )
 MATTHIAS_INSIGHTS_PATTERNS = (
     "frontend/src/components/InsightsMatthiasMotion.jsx",
@@ -149,7 +153,7 @@ def _matches(path: str, patterns: tuple[str, ...]) -> bool:
 
 
 def classify(paths: Iterable[str]) -> BrowserScope:
-    full_logic = special_states = visual = focus = matthias = matthias_insights = quick_2d = network_race = False
+    full_logic = special_states = visual = focus = matthias = matthias_home = matthias_insights = quick_2d = network_race = False
 
     for path in _clean_paths(paths):
         if FRONTEND_TEST_RE.search(path):
@@ -173,7 +177,9 @@ def classify(paths: Iterable[str]) -> BrowserScope:
         if _matches(path, QUICK_2D_PATTERNS):
             quick_2d = True
 
-        if _matches(path, MATTHIAS_INSIGHTS_PATTERNS):
+        if _matches(path, MATTHIAS_HOME_PATTERNS):
+            matthias_home = True
+        elif _matches(path, MATTHIAS_INSIGHTS_PATTERNS):
             matthias_insights = True
         elif _matches(path, MATTHIAS_PATTERNS):
             matthias = True
@@ -183,7 +189,7 @@ def classify(paths: Iterable[str]) -> BrowserScope:
 
         if path in BROWSER_ACTION_PATHS:
             full_logic = special_states = visual = focus = matthias = quick_2d = network_race = True
-            matthias_insights = False
+            matthias_home = matthias_insights = False
 
         if path == CICD_WORKFLOW:
             # Exercise the selection plumbing without waking every WebGL scene
@@ -192,7 +198,7 @@ def classify(paths: Iterable[str]) -> BrowserScope:
             quick_2d = True
 
     return BrowserScope(
-        full_logic, special_states, visual, focus, matthias, matthias_insights, quick_2d, network_race
+        full_logic, special_states, visual, focus, matthias, matthias_home, matthias_insights, quick_2d, network_race
     )
 
 
@@ -271,6 +277,14 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
                 },
             ]
         )
+    if scope.matthias_home and not scope.matthias:
+        cases.append(
+            {
+                "id": "matthias-home-motion",
+                "label": "Matthias · Home motion",
+                "command": "./node_modules/.bin/playwright test matthias-home-visual-critical.spec.js --workers=1 --retries=0 --timeout=75000",
+            }
+        )
     if scope.matthias_insights and not scope.matthias:
         cases.append(
             {
@@ -318,6 +332,7 @@ def render_summary(scope: BrowserScope) -> str:
             f"- War Room mount/scale: `{yn(scope.visual)}`",
             f"- Android Focus: `{yn(scope.focus)}`",
             f"- Matthias shared motion/paint: `{yn(scope.matthias)}`",
+            f"- Matthias Home-only: `{yn(scope.matthias_home)}`",
             f"- Matthias Insights-only: `{yn(scope.matthias_insights)}`",
             f"- Quick Match mobile 2D: `{yn(scope.quick_2d)}`",
             f"- Game network races: `{yn(scope.network_race)}`",
@@ -381,6 +396,9 @@ def self_test() -> None:
         "matthias-war-room",
         "matthias-insights",
     ]
+    assert classify(["frontend/src/components/MatthiasPremiumHome3D.js"]) == BrowserScope(matthias_home=True)
+    assert _ids(classify(["frontend/src/components/MatthiasPremiumHome3D.js"])) == ["matthias-home-motion"]
+    assert _ids(classify(["e2e/matthias-home-visual-critical.spec.js"])) == ["matthias-home-motion"]
     assert classify(["frontend/src/components/InsightsMatthiasMotion.jsx"]) == BrowserScope(matthias_insights=True)
     assert _ids(classify(["frontend/src/components/InsightsMatthiasMotion.jsx"])) == ["matthias-insights"]
     assert _ids(classify(["e2e/insights-matthias-motion.spec.js"])) == ["matthias-insights"]
@@ -416,6 +434,7 @@ def self_test() -> None:
     assert output_lines(BrowserScope()) == ['matrix={"include":[]}', "has_cases=false"]
     assert "War Room special-state parity: `true`" in render_summary(BrowserScope(special_states=True))
     assert "War Room mount/scale: `true`" in render_summary(BrowserScope(visual=True))
+    assert "Matthias Home-only: `true`" in render_summary(BrowserScope(matthias_home=True))
     assert "Matthias Insights-only: `true`" in render_summary(BrowserScope(matthias_insights=True))
     assert "Game network races: `true`" in render_summary(BrowserScope(network_race=True))
 
