@@ -130,13 +130,11 @@ def build_character():
     paper = mat('paper', (.67, .58, .43), .88)
 
     rig = build_rig()
-    rig['matthias_asset_version'] = 'home-blender-classic-v7'
+    rig['matthias_asset_version'] = 'home-blender-classic-v7b'
     rig['canonical_identity'] = 'stern-no-moustache-pawn'
     rig['canonical_reference'] = 'classic-pawn-first-avatar'
     root, spine, head = [], [], []
 
-    # One continuous pawn body. Dark trim decorates the piece instead of turning
-    # it into a humanoid officer standing on a chess base.
     root += [
         cyl('Classic ivory base', (0, 0, .095), .48, .19, ivory, verts=88, bevel=.034),
         cyl('Classic navy base band', (0, 0, .205), .445, .040, navy, verts=84, bevel=.010),
@@ -144,61 +142,57 @@ def build_character():
         cone('Classic lower pawn', (0, 0, .66), .42, .255, .84, ivory, bevel=.060),
     ]
 
-    # The tunic hugs the pawn torso. No diagonal sash or oversized epaulettes.
     spine += [
-        cone('Classic navy tunic', (0, -.006, 1.115), .300, .320, .60, navy, bevel=.040),
+        cone('Classic navy tunic', (0, -.006, 1.115), .315, .292, .60, navy, bevel=.040),
         cyl('Classic belt', (0, -.006, .855), .318, .050, leather, verts=72, bevel=.010),
         box('Classic buckle', (0, -.323, .855), (.050, .012, .036), brass, bevel=.007),
         cyl('Classic ivory collar ring', (0, 0, 1.455), .270, .095, ivory_hi, verts=76, bevel=.016),
         cyl('Classic navy collar', (0, -.004, 1.500), .272, .085, navy_soft, verts=76, bevel=.012),
         cyl('Classic brass collar line', (0, -.004, 1.545), .276, .014, brass, verts=76, bevel=.004),
-        box('Classic piping.L', (-.175, -.302, 1.135), (.008, .008, .220), brass, (0, math.radians(-3), 0), .003),
-        box('Classic piping.R', (.175, -.302, 1.135), (.008, .008, .220), brass, (0, math.radians(3), 0), .003),
-        sphere('Classic chest button upper', (0, -.321, 1.235), (.020, .010, .020), brass, 20),
-        sphere('Classic chest button lower', (0, -.321, 1.095), (.020, .010, .020), brass, 20),
+        box('Classic piping.L', (-.165, -.292, 1.135), (.008, .008, .220), brass, (0, math.radians(-3), 0), .003),
+        box('Classic piping.R', (.165, -.292, 1.135), (.008, .008, .220), brass, (0, math.radians(3), 0), .003),
+        sphere('Classic chest button upper', (0, -.307, 1.235), (.020, .010, .020), brass, 20),
+        sphere('Classic chest button lower', (0, -.307, 1.095), (.020, .010, .020), brass, 20),
     ]
 
-    # Minimal face: small eyes + huge angry brows are the recognisable old
-    # Matthias signature. No cheeks, beard, moustache, ears or expressive mouth.
+    # Lower, slightly tighter head makes the old avatar read as one pawn rather
+    # than a floating humanoid head above a chess-piece body.
     head += [
-        sphere('Head', (0, -.012, 1.930), (.330, .300, .350), ivory, 72),
-        sphere('Nose', (0, -.309, 1.905), (.026, .030, .030), ivory_hi, 28),
+        sphere('Head', (0, -.012, 1.880), (.322, .294, .342), ivory, 72),
+        sphere('Nose', (0, -.303, 1.855), (.026, .030, .030), ivory_hi, 28),
     ]
-    for side, x in [('L', -.112), ('R', .112)]:
+    for side, x in [('L', -.108), ('R', .108)]:
         head += [
-            sphere('Eye.' + side, (x, -.303, 1.982), (.052, .018, .027), eye, 28),
-            sphere('Iris.' + side, (x, -.319, 1.978), (.021, .008, .016), iris, 20),
-            sphere('Pupil.' + side, (x, -.327, 1.976), (.010, .005, .009), black, 16),
+            sphere('Eye.' + side, (x, -.297, 1.932), (.050, .018, .026), eye, 28),
+            sphere('Iris.' + side, (x, -.313, 1.928), (.020, .008, .015), iris, 20),
+            sphere('Pupil.' + side, (x, -.321, 1.926), (.009, .005, .009), black, 16),
         ]
     head += [
-        box('Brow.L', (-.116, -.336, 2.060), (.118, .013, .022), black, (0, math.radians(31), 0), .006),
-        box('Brow.R', (.116, -.336, 2.060), (.118, .013, .022), black, (0, math.radians(-31), 0), .006),
-        box('Upper lid.L', (-.112, -.333, 2.000), (.061, .008, .014), ivory, (0, math.radians(13), 0), .006),
-        box('Upper lid.R', (.112, -.333, 2.000), (.061, .008, .014), ivory, (0, math.radians(-13), 0), .006),
-        box('Mouth', (0, -.322, 1.833), (.042, .006, .005), black, bevel=.003),
-        sphere('Classic cap crown', (0, -.004, 2.248), (.292, .268, .082), navy, 64),
-        cyl('Classic cap band', (0, -.006, 2.205), .282, .052, navy_soft, verts=76, bevel=.009),
-        cyl('Classic cap brass line', (0, -.007, 2.178), .275, .014, brass, verts=76, bevel=.004),
-        box('Classic cap visor', (0, -.252, 2.172), (.174, .082, .018), leather, (math.radians(7), 0, 0), .010),
-        sphere('Classic cap badge', (0, -.279, 2.225), (.029, .011, .032), brass, 22),
+        box('Brow.L', (-.112, -.330, 2.010), (.114, .013, .021), black, (0, math.radians(30), 0), .006),
+        box('Brow.R', (.112, -.330, 2.010), (.114, .013, .021), black, (0, math.radians(-30), 0), .006),
+        box('Upper lid.L', (-.108, -.327, 1.950), (.058, .008, .013), ivory, (0, math.radians(13), 0), .006),
+        box('Upper lid.R', (.108, -.327, 1.950), (.058, .008, .013), ivory, (0, math.radians(-13), 0), .006),
+        box('Mouth', (0, -.316, 1.783), (.038, .006, .005), black, bevel=.003),
+        sphere('Classic cap crown', (0, -.004, 2.198), (.286, .262, .078), navy, 64),
+        cyl('Classic cap band', (0, -.006, 2.157), .276, .050, navy_soft, verts=76, bevel=.009),
+        cyl('Classic cap brass line', (0, -.007, 2.132), .270, .013, brass, verts=76, bevel=.004),
+        box('Classic cap visor', (0, -.246, 2.126), (.168, .078, .017), leather, (math.radians(7), 0, 0), .010),
+        sphere('Classic cap badge', (0, -.272, 2.177), (.027, .010, .030), brass, 22),
     ]
 
-    # Limbs stay deliberately subordinate to the pawn silhouette. The rig is
-    # unchanged so Read/Write/Sip/etc still work, but neutral poses no longer
-    # make Matthias read as a human officer with a pawn-shaped skirt.
-    shoulder_l = (-.285, .010, 1.345); elbow_l = (-.390, .025, 1.175); wrist_l = (-.335, -.040, 1.010)
-    shoulder_r = (.285, .010, 1.345); elbow_r = (.390, .025, 1.175); wrist_r = (.335, -.040, 1.010)
-    upper_l = cyl_between('Upper arm.L', shoulder_l, elbow_l, .065, navy, 44, .016)
-    upper_r = cyl_between('Upper arm.R', shoulder_r, elbow_r, .065, navy, 44, .016)
-    fore_l = cyl_between('Forearm.L', elbow_l, wrist_l, .056, navy_soft, 44, .014)
-    fore_r = cyl_between('Forearm.R', elbow_r, wrist_r, .056, navy_soft, 44, .014)
-    cuff_l = cyl('Cuff.L', wrist_l, .060, .028, brass, verts=36, bevel=.006)
-    cuff_r = cyl('Cuff.R', wrist_r, .060, .028, brass, verts=36, bevel=.006)
-    hand_l = sphere('Hand.L', (-.322, -.073, .982), (.050, .042, .052), ivory, 26)
-    hand_r = sphere('Hand.R', (.322, -.073, .982), (.050, .042, .052), ivory, 26)
+    # Keep the animation bones, but make neutral limbs little more than hints at
+    # the edge of the pawn. The props still have room to come forward in clips.
+    shoulder_l = (-.275, .045, 1.335); elbow_l = (-.365, .060, 1.180); wrist_l = (-.315, .000, 1.020)
+    shoulder_r = (.275, .045, 1.335); elbow_r = (.365, .060, 1.180); wrist_r = (.315, .000, 1.020)
+    upper_l = cyl_between('Upper arm.L', shoulder_l, elbow_l, .056, navy, 44, .014)
+    upper_r = cyl_between('Upper arm.R', shoulder_r, elbow_r, .056, navy, 44, .014)
+    fore_l = cyl_between('Forearm.L', elbow_l, wrist_l, .048, navy_soft, 44, .012)
+    fore_r = cyl_between('Forearm.R', elbow_r, wrist_r, .048, navy_soft, 44, .012)
+    cuff_l = cyl('Cuff.L', wrist_l, .052, .024, brass, verts=36, bevel=.005)
+    cuff_r = cyl('Cuff.R', wrist_r, .052, .024, brass, verts=36, bevel=.005)
+    hand_l = sphere('Hand.L', (-.302, -.030, .995), (.043, .037, .045), ivory, 26)
+    hand_r = sphere('Hand.R', (.302, -.030, .995), (.043, .037, .045), ivory, 26)
 
-    # Existing real Blender props remain part of the model and preserve the Home
-    # routines introduced by the rig work.
     book = box('RoutineBook', (0, -.40, 1.12), (.19, .025, .23), leather, (math.radians(7), 0, 0), .012)
     book_page = box('RoutineBookPages', (0, -.427, 1.12), (.165, .008, .205), paper, (math.radians(7), 0, 0), .004)
     book_badge = sphere('RoutineBookBadge', (0, -.442, 1.11), (.036, .008, .045), brass, 20)
