@@ -180,7 +180,7 @@ def action_pose(enemy_type, action, frame):
         pose["death"] = fall
         pose["root_x"] = -0.12 * fall
         pose["root_z"] = -0.24 * fall
-        pose["lean"] = 1.42 * fall * (-1 if frame % 3 == 1 else 1)
+        pose["lean"] = 0.88 * fall
         pose["weapon_pitch"] = -0.35 * fall
     return pose
 
