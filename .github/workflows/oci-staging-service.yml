@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'scripts/oci_run_command.py'
+      - 'infra/oci/ops/agent-reboot.request'
   workflow_run:
     workflows:
       - OCI staging · auto apply
@@ -17,7 +18,7 @@ on:
       operation:
         description: Service operation
         type: choice
-        options: [smoke, deploy]
+        options: [diagnose, smoke, reboot-agent, deploy]
         default: smoke
         required: true
       repo_ref:
@@ -35,7 +36,7 @@ concurrency:
 jobs:
   control:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
-    name: OCI staging · service ${{ github.event_name != 'workflow_dispatch' && 'smoke' || inputs.operation }}
+    name: OCI staging · service control
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -57,8 +58,22 @@ jobs:
         run: python3 -S scripts/oci_run_command.py --self-test
       - name: Install OCI SDK
         run: python3 -m pip install --disable-pip-version-check 'oci==2.185.2'
+      - name: Recover stale OCI agent after explicit request
+        if: >-
+          (github.event_name == 'push' &&
+            (contains(github.event.head_commit.added, 'infra/oci/ops/agent-reboot.request') ||
+             contains(github.event.head_commit.modified, 'infra/oci/ops/agent-reboot.request'))) ||
+          (github.event_name == 'workflow_dispatch' && inputs.operation == 'reboot-agent')
+        run: python3 scripts/oci_run_command.py reboot-agent
+      - name: Diagnose OCI agent transport
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'diagnose'
+        run: python3 scripts/oci_run_command.py diagnose
       - name: Smoke OCI agent transport
-        if: github.event_name != 'workflow_dispatch' || inputs.operation == 'smoke'
+        if: >-
+          github.event_name == 'workflow_run' ||
+          github.event_name == 'push' ||
+          (github.event_name == 'workflow_dispatch' &&
+            (inputs.operation == 'smoke' || inputs.operation == 'reboot-agent'))
         run: python3 scripts/oci_run_command.py smoke
       - name: Deploy immutable backend release
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'deploy'
