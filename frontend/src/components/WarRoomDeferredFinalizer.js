@@ -77,6 +77,14 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
     const completedKeys = [];
     const results = {};
 
+    // Permanent room dressing must resolve only after the complete War Room graph
+    // exists. At construction time the architecture layer is built before the
+    // sofas, which previously stranded the cat on the architecture fallback floor.
+    // Every premium room registers this deferred pass (including coarse/touch), so
+    // this is the single ownership boundary that can see the final sofas on all
+    // render profiles and reparent an early legacy instance if one still exists.
+    ensureWarRoomCat(root);
+
     for (const [key, task] of current.tasks) {
       results[key] = task(root);
       if (key === HANS_FIREPLACE_FINALIZER_KEY) {
@@ -94,9 +102,8 @@ function attachFinalizerDriver(driver, owner, phase = 'before') {
         installWarRoomMatthiasIdleGlances(root);
         installWarRoomHansServiceInfrastructure(root);
 
-        // Permanent room dressing, independent of which single Hans event wins.
+        // Permanent Hans dressing remains independent of which single event wins.
         ensureWarRoomHansPlant(root);
-        ensureWarRoomCat(root);
         // Task producers may request work, but no longer own body installation.
         installWarRoomHansMopRoutine(root);
         installWarRoomHansServiceRoutine(root);
