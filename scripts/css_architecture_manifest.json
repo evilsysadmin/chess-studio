@@ -4,6 +4,7 @@
     "02-game-board.css",
     "03-combat-core.css",
     "04-operations-career.css",
+    "04-career-dossier.css",
     "05-product-roster-foundation.css",
     "05-combat-roster.css",
     "05-learning-guidance.css",
@@ -42,6 +43,7 @@
     "02-game-board.css",
     "03-combat-core.css",
     "04-operations-career.css",
+    "04-career-dossier.css",
     "05-product-roster-foundation.css",
     "05-shared-glossary.css",
     "05-navigation-hint.css",
@@ -78,6 +80,6 @@
     "29-war-room-chrome.css"
   ],
   "combinedSha256": "aabbb43d3d3253c7e863160c22acf1a34a99b3c4f649630ba075bf0a7178fa3a",
-  "combinedBytes": 560675,
-  "combinedLines": 15580
+  "combinedBytes": 561824,
+  "combinedLines": 15630
 }
