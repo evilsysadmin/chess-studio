@@ -14,6 +14,7 @@ on:
       - '!frontend/src/**/*.test.js'
       - '!frontend/src/**/*.test.jsx'
       - frontend/public/**
+      - '!frontend/public/audio/**'
       - e2e/*visual*.spec.js
       - e2e/browser-*-health.spec.js
       - scripts/app_visual_*
