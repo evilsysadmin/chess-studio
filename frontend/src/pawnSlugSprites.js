@@ -1,8 +1,8 @@
+import * as THREE from 'three';
 import {
   PAWN_SLUG_SPRITE_META as LEGACY_SPRITE_META,
   animateMatthiasSlugSprite as animateLegacyMatthiasSlugSprite,
   animatePanzerRookSprite as animateLegacyPanzerRookSprite,
-  createWeaponSprite as createLegacyWeaponSprite,
 } from './pawnSlugSpriteCore.js';
 import {
   PAWN_SLUG_ENEMY_RUN_META,
@@ -21,6 +21,10 @@ import {
   PAWN_SLUG_MATTHIAS_RUN_POLISH,
   applyPawnSlugMatthiasRunPolish,
 } from './pawnSlugMatthiasRunPolish.js';
+import {
+  PAWN_SLUG_MATTHIAS_INTEGRATED_ART,
+  createIntegratedMatthiasSlugSprite,
+} from './pawnSlugMatthiasIntegratedSprites.js';
 import { playPawnSlugEnemyImpactSfx, playPawnSlugPlayerHitSfx } from './pawnSlugSfx.js';
 
 export * from './pawnSlugSpriteCore.js';
@@ -28,6 +32,7 @@ export * from './pawnSlugEnemyPremiumArtContract.js';
 export * from './pawnSlugPremiumEnemyRaster.js';
 export * from './pawnSlugMatthiasRunPolish.js';
 export * from './pawnSlugEnemyReadabilityContract.js';
+export * from './pawnSlugMatthiasIntegratedSprites.js';
 export {
   PAWN_SLUG_ENEMY_RUN_META,
   animateSlugEnemySprite,
@@ -54,16 +59,21 @@ export function createSlugEnemySprite(type = 'pawn') {
   return applyPawnSlugEnemyReadability(createPremiumSlugEnemySprite(type));
 }
 
-// The runtime positions the weapon at Matthias' hand/grip height. Legacy weapon
-// sprites were bottom-anchored, so that world-space position effectively became
-// the weapon's lower edge and lifted the barrel up toward his face. Keep the
-// legacy atlas and dimensions, but pivot the live player weapon around its
-// vertical centre so the same runtime anchor reads as a two-handed chest grip.
+// Matthias' selected weapon now lives inside his Blender-authored atlas. Keep a
+// zero-geometry compatibility shell because runtime orchestration still stores a
+// playerWeaponModel, but there is deliberately nothing left to superglue on top.
 export function createWeaponSprite(kind = 'pistol') {
-  const sprite = createLegacyWeaponSprite(kind);
-  sprite.center?.set(0.5, 0.5);
-  sprite.userData.pawnSlugGripAnchored = true;
-  return sprite;
+  const shell = new THREE.Object3D();
+  shell.name = `pawn-slug-integrated-weapon-shell-${kind}`;
+  shell.userData.weaponId = kind;
+  shell.userData.pawnSlugIntegratedWeaponShell = true;
+  shell.userData.setFrame = () => {};
+  shell.userData.setDirection = () => {};
+  return shell;
+}
+
+export function createMatthiasSlugSprite() {
+  return createIntegratedMatthiasSlugSprite([1.77, 2.56]);
 }
 
 export function animateMatthiasSlugSprite(sprite, state = {}) {
@@ -121,7 +131,9 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
     premiumMotion: true,
     runPolish: PAWN_SLUG_MATTHIAS_RUN_POLISH,
     primaryAspect: PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT,
-    weaponGripAnchor: 'centered-sprite',
+    integratedWeaponArt: PAWN_SLUG_MATTHIAS_INTEGRATED_ART,
+    weaponGripAnchor: 'baked-into-matthias-atlas',
+    separateWeaponOverlay: false,
   }),
   enemies: Object.freeze({
     ...LEGACY_SPRITE_META.enemies,
