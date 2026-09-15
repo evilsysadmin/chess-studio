@@ -80,6 +80,62 @@
   text-wrap: balance;
 }
 
+.matthias-3d-opening-tutorial {
+  pointer-events: auto;
+  width: min(25rem, 48%);
+  animation: matthias-3d-banter-in .22s cubic-bezier(.2, .8, .2, 1);
+  border-color: rgba(63, 46, 24, .98);
+  box-shadow:
+    .28rem .34rem 0 rgba(26, 18, 12, .48),
+    0 .8rem 2.2rem rgba(0, 0, 0, .42),
+    inset 0 0 0 1px rgba(255, 248, 221, .5);
+}
+
+.matthias-3d-tutorial-actions {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-top: .72rem;
+  padding-top: .58rem;
+  border-top: 1px solid rgba(65, 44, 27, .2);
+}
+
+.matthias-3d-tutorial-progress {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .64rem;
+  font-weight: 900;
+  letter-spacing: .14em;
+  color: rgba(70, 48, 30, .72);
+}
+
+.matthias-3d-tutorial-actions button {
+  min-width: 4.4rem;
+  min-height: 2rem;
+  padding: .32rem .72rem;
+  border: 1px solid rgba(72, 49, 31, .46);
+  border-radius: 999px;
+  background: rgba(55, 39, 28, .08);
+  color: #2d2118;
+  font: inherit;
+  font-size: .72rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.matthias-3d-tutorial-actions button:hover,
+.matthias-3d-tutorial-actions button:focus-visible {
+  background: rgba(55, 39, 28, .14);
+  border-color: rgba(72, 49, 31, .76);
+}
+
+.matthias-3d-tutorial-actions button:focus-visible {
+  outline: 2px solid rgba(107, 33, 31, .7);
+  outline-offset: 2px;
+}
+
 @keyframes matthias-3d-banter-in {
   from { opacity: 0; transform: translate(-50%, calc(-100% + .42rem)) scale(.84) rotate(1.5deg); }
   to { opacity: 1; transform: translate(-50%, -100%) scale(1) rotate(0); }
@@ -98,6 +154,15 @@
 
   .matthias-3d-opening-banter p {
     font-size: .82rem;
+  }
+
+  .matthias-3d-opening-tutorial {
+    width: min(19rem, 82%);
+  }
+
+  .matthias-3d-tutorial-actions button {
+    min-height: 2.3rem;
+    padding-inline: .8rem;
   }
 }
 
