@@ -155,3 +155,30 @@
       inset 0 16px 34px rgba(107, 69, 32, .065);
   }
 }
+
+/* Canonical Chronicles portrait: keep the live Three.js model as a fallback, but
+   render the approved Matthias art above it so the expedition UI matches the
+   visual canon rather than the deliberately low-detail gameplay mesh. */
+.chronicles-party-preview-three[aria-label="Retrato 3D de Matthias"] {
+  transform: none;
+  filter: none;
+}
+.chronicles-party-preview-three[aria-label="Retrato 3D de Matthias"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, transparent 55%, rgba(8, 6, 5, .18) 76%, rgba(8, 6, 5, .58) 100%),
+    url('../assets/chronicles/matthias-canonical.webp') center 28% / cover no-repeat;
+  filter: saturate(.96) contrast(1.035) brightness(.98);
+  transform: scale(1.015);
+  transform-origin: 50% 38%;
+}
+
+@media (max-width: 800px) {
+  .chronicles-party-preview-three[aria-label="Retrato 3D de Matthias"]::after {
+    background-position: center 23%;
+  }
+}
