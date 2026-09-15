@@ -29,6 +29,7 @@ PRODUCER_ORDER = (
     "health-storage",
 )
 WARROOM_ALL = {"warroom-core", "warroom-decor", "warroom-armor", "warroom-hans"}
+WARROOM_RENDERER_SHARED = {"warroom-core", "warroom-hans"}
 HOME_ALL = {"home-base", "home-matthias", "home-focus"}
 CHRONICLES_SHARED = {"chronicles-tactics", "chronicles-gameplay"}
 
@@ -123,8 +124,12 @@ def classify_path(path: str) -> set[str] | None:
         return {"experiments-hub"}
 
     if any(token in lower for token in ("war-room", "warroom", "board3d", "gameboardview", "gamesidecolumn", "game3d")):
+        # Renderer/layout seams can affect the full scene, but the core capture
+        # already photographs it in portrait, landscape and desktop. Keep Hans'
+        # dedicated canary because he is a dynamic actor; reserve the expensive
+        # decor crops and armor oblique views for files that actually own them.
         if any(token in lower for token in ("board3d", "warroom3d", "gameboardview", "game3d")):
-            return set(WARROOM_ALL)
+            return set(WARROOM_RENDERER_SHARED)
         if "armor" in lower or "armour" in lower:
             return {"warroom-armor"}
         if "hans" in lower:
@@ -173,7 +178,10 @@ def self_test() -> None:
     assert classify(["frontend/src/components/WarRoomCatDecor.js"]) == "warroom-decor"
     assert classify(["frontend/src/components/WarRoomArmorDisplay.js"]) == "warroom-armor"
     assert classify(["frontend/src/components/WarRoomHansPerGame.jsx"]) == "warroom-hans"
-    assert classify(["frontend/src/components/Board3DCore.jsx"]) == "warroom-core,warroom-decor,warroom-armor,warroom-hans"
+    assert classify(["frontend/src/components/Board3DCore.jsx"]) == "warroom-core,warroom-hans"
+    assert classify(["frontend/src/components/WarRoom3DAnimation.js"]) == "warroom-core,warroom-hans"
+    assert classify(["frontend/src/components/GameBoardView.jsx"]) == "warroom-core,warroom-hans"
+    assert classify(["frontend/src/components/WarRoomCastleArchitecture.js"]) == "warroom-core,warroom-decor,warroom-armor,warroom-hans"
     assert classify(["e2e/war-room-decor-visual-artifact.spec.js"]) == "warroom-decor"
     assert classify(["e2e/browser-storage-health.spec.js"]) == "health-storage"
     assert classify(["frontend/src/components/AdminDashboardContent.jsx"]) == "none"
