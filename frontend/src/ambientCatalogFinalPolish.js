@@ -59,7 +59,10 @@ const FINAL_CATALOG_POLISH = Object.freeze({
   }),
   cadizLanterns: Object.freeze({
     family:'cadiz-lantern-guitar-qanun', counterInstrument:'qanun',
-    percussion:percussion('cadiz-lantern-hand', 16, { 0:'K', 5:'H', 8:'S', 13:'B' }, 0.76),
+    // The score is written as four 18-step 6/8 phrases. Keep its hand drum on
+    // that same grid: a 16-step loop drifted by eight steps at every section
+    // boundary and eventually placed the backbeat against the melody.
+    percussion:percussion('cadiz-lantern-hand', 18, { 0:'K', 3:'B', 6:'H', 9:'B', 12:'S', 15:'B' }, 0.76),
   }),
 
   // Curated/hidden material stays production-ready even while it is not in

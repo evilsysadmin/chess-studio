@@ -37,6 +37,19 @@ describe('complete music catalog audit', () => {
     expect(getPercussionVoiceKit('cadizLanterns')).toBe('cadiz-lantern-hand');
   });
 
+  it('keeps Cádiz on its authored 6/8 phrase instead of a drifting 16-step loop', () => {
+    const theme = AMBIENT_THEMES.cadizLanterns;
+    const feel = structuredFeel(theme);
+    const pulse = Object.entries(feel.percussion.pattern)
+      .filter(([, voice]) => voice === 'K' || voice === 'H' || voice === 'S')
+      .map(([step]) => Number(step));
+
+    expect(theme.stepsPerSection).toBe(72);
+    expect(feel.percussion.period).toBe(18);
+    expect(theme.stepsPerSection % feel.percussion.period).toBe(0);
+    expect(pulse).toEqual([0, 6, 12]);
+  });
+
   it('keeps every curated or internal hidden score production-ready', () => {
     const hidden = [...CURATED_HIDDEN_THEME_IDS, 'blackArchive'];
     expect(hidden).toHaveLength(7);
