@@ -31,6 +31,7 @@ infra/oci/**/tfplan
 infra/oci/**/terraform.tfvars
 infra/oci/**/*.auto.tfvars
 infra/oci/**/backend.hcl
+infra/oci/**/backend.remote.tf
 
 # Test/coverage artifacts
 frontend/coverage/
