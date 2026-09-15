@@ -29,6 +29,8 @@ REGRESSION_SCHOOL_GREP = (
     'Escuela de Matthias · el examen básico bloquea la promoción hasta aprobar'
 )
 APP_BOOT_GREP = 'login → menú'
+ADMIN_GREP = 'admin · presencia distingue|Matthias · banco de personalidad Admin usa sólo datos sintéticos'
+TOURNAMENT_GREP = 'Torneo · una partida activa'
 SMOKE_GREP = (
     'login → menú|Partida rápida · una partida activa|Torneo · una partida activa|'
     'Partida rápida · un 503 al restaurar|Combat Chess · Campaña permite jugar con defaults|'
@@ -79,6 +81,15 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
     'app-boot': (
         LaneCommand('smoke.spec.js', ('--grep', APP_BOOT_GREP, '--workers=1', '--retries=0')),
     ),
+    'admin': (
+        LaneCommand(
+            'regression-journeys.spec.js',
+            ('--grep', ADMIN_GREP, '--workers=1', '--retries=0', '--timeout=75000'),
+        ),
+    ),
+    'tournament': (
+        LaneCommand('smoke.spec.js', ('--grep', TOURNAMENT_GREP, '--workers=1', '--retries=0')),
+    ),
     'smoke': (
         LaneCommand('smoke.spec.js', ('--grep', SMOKE_GREP, '--workers=1', '--retries=0')),
         LaneCommand('mobile-final-interactions.spec.js', ('--workers=1', '--retries=0')),
@@ -86,11 +97,14 @@ LANE_COMMANDS: dict[str, tuple[LaneCommand, ...]] = {
 }
 
 
+NARROW_ALIAS_LANES = frozenset({'app-boot', 'admin', 'tournament'})
+
+
 def critical_targets() -> list[tuple[str, str]]:
     return [
         (command.spec, command.grep)
         for lane, commands in LANE_COMMANDS.items()
-        if lane != 'app-boot'
+        if lane not in NARROW_ALIAS_LANES
         for command in commands
         if command.grep is not None
     ]
@@ -107,12 +121,17 @@ def run_lane(lane: str, runner: Callable[..., object] = subprocess.run) -> None:
 
 def self_test() -> None:
     expected = (
-        'regression-state', 'regression-school', 'learning-golden', 'learning-observation', 'app-boot', 'smoke',
+        'regression-state', 'regression-school', 'learning-golden', 'learning-observation',
+        'app-boot', 'admin', 'tournament', 'smoke',
     )
     assert tuple(LANE_COMMANDS) == expected
     assert len(critical_targets()) == 3
     assert [command.spec for command in LANE_COMMANDS['app-boot']] == ['smoke.spec.js']
     assert LANE_COMMANDS['app-boot'][0].grep == APP_BOOT_GREP
+    assert LANE_COMMANDS['admin'][0].spec == 'regression-journeys.spec.js'
+    assert LANE_COMMANDS['admin'][0].grep == ADMIN_GREP
+    assert LANE_COMMANDS['tournament'][0].spec == 'smoke.spec.js'
+    assert LANE_COMMANDS['tournament'][0].grep == TOURNAMENT_GREP
     assert [command.spec for command in LANE_COMMANDS['smoke']] == [
         'smoke.spec.js', 'mobile-final-interactions.spec.js'
     ]
@@ -127,6 +146,11 @@ def self_test() -> None:
     run_lane('learning-golden', fake_runner)
     assert calls == [
         ([PLAYWRIGHT, 'test', 'learning-golden-path.spec.js', '--workers=1', '--retries=0'], E2E_DIR, True)
+    ]
+    calls.clear()
+    run_lane('tournament', fake_runner)
+    assert calls == [
+        ([PLAYWRIGHT, 'test', 'smoke.spec.js', '--grep', TOURNAMENT_GREP, '--workers=1', '--retries=0'], E2E_DIR, True)
     ]
 
     try:

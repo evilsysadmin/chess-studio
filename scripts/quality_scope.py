@@ -11,7 +11,8 @@ from pathlib import PurePosixPath
 from typing import Iterable
 
 CORE_E2E_LANES = (
-    "regression-state", "regression-school", "learning-golden", "learning-observation", "app-boot", "smoke",
+    "regression-state", "regression-school", "learning-golden", "learning-observation",
+    "app-boot", "admin", "tournament", "smoke",
 )
 CORE_E2E_FIELDS = {lane: f"run_e2e_{lane.replace('-', '_')}" for lane in CORE_E2E_LANES}
 
@@ -31,6 +32,8 @@ class Scope:
     run_e2e_learning_golden: bool = False
     run_e2e_learning_observation: bool = False
     run_e2e_app_boot: bool = False
+    run_e2e_admin: bool = False
+    run_e2e_tournament: bool = False
     run_e2e_smoke: bool = False
 
     @classmethod
@@ -39,7 +42,15 @@ class Scope:
 
     def lines(self) -> list[str]:
         lines = [f"{field.name}={'true' if getattr(self, field.name) else 'false'}" for field in fields(self)]
-        lanes = [lane for lane in CORE_E2E_LANES if getattr(self, CORE_E2E_FIELDS[lane])]
+        redundant_lanes = set()
+        if self.run_e2e_smoke:
+            redundant_lanes.update(("app-boot", "tournament"))
+        if self.run_e2e_regression_state:
+            redundant_lanes.add("admin")
+        lanes = [
+            lane for lane in CORE_E2E_LANES
+            if getattr(self, CORE_E2E_FIELDS[lane]) and lane not in redundant_lanes
+        ]
         lines.append(f"core_e2e_matrix={json.dumps({'lane': lanes}, separators=(',', ':'))}")
         return lines
 
@@ -74,7 +85,7 @@ CORE_E2E_RE = re.compile(
     r"^frontend/src/.*\.(?:js|jsx|ts|tsx)$|"
     r"^frontend/(?:index\.html|vite\.config\.(?:js|mjs|ts)|package-lock\.json)$"
 )
-ADMIN_SMOKE_RE = re.compile(
+ADMIN_BROWSER_RE = re.compile(
     r"^frontend/src/admin[^/]*\.js$|"
     r"^frontend/src/components/(?:Admin|Observability)[^/]*\.(?:js|jsx)$|"
     r"^frontend/src/components/useAdmin[^/]*\.js$"
@@ -85,7 +96,7 @@ ADMIN_SMOKE_RE = re.compile(
 AUDIO_APP_BOOT_RE = re.compile(
     r"^frontend/src/(?:ambient[^/]*|audio[^/]*|orchestral[^/]*|sound[^/]*|useAuthenticatedAudio)\.js$"
 )
-TOURNAMENT_SMOKE_RE = re.compile(r"^frontend/src/tournament\.js$")
+TOURNAMENT_BROWSER_RE = re.compile(r"^frontend/src/tournament\.js$")
 DEDICATED_3D_BROWSER_RE = re.compile(
     r"^frontend/src/components/(?:Board3D|WarRoom3D)[^/]*\.(?:js|jsx)$|"
     r"^frontend/src/components/(?:WarRoomCastleArchitecture|WarRoomPremiumPaintings|"
@@ -187,10 +198,10 @@ def classify(paths: Iterable[str]) -> Scope:
                 continue
             if AUDIO_APP_BOOT_RE.search(path):
                 _enable_core_e2e(scope, ("app-boot",))
-            elif TOURNAMENT_SMOKE_RE.search(path):
-                _enable_core_e2e(scope, ("smoke",))
-            elif ADMIN_SMOKE_RE.search(path):
-                _enable_core_e2e(scope, ("smoke",))
+            elif TOURNAMENT_BROWSER_RE.search(path):
+                _enable_core_e2e(scope, ("tournament",))
+            elif ADMIN_BROWSER_RE.search(path):
+                _enable_core_e2e(scope, ("admin",))
             elif CORE_E2E_RE.search(path) and not DEDICATED_3D_BROWSER_RE.search(path):
                 _enable_core_e2e(scope)
             continue
@@ -250,11 +261,11 @@ def self_test() -> None:
     ):
         _expect_core([audio_path], lanes=("app-boot",), run_frontend=True)
     _expect_core(["frontend/src/sound.js", "frontend/src/App.jsx"], run_frontend=True)
-    _expect_core(["frontend/src/tournament.js"], lanes=("smoke",), run_frontend=True)
+    _expect_core(["frontend/src/tournament.js"], lanes=("tournament",), run_frontend=True)
     _expect_core(["frontend/src/tournament.js", "frontend/src/App.jsx"], run_frontend=True)
-    _expect_core(["frontend/src/components/AdminDashboardContent.jsx"], lanes=("smoke",), run_frontend=True)
-    _expect_core(["frontend/src/components/useAdminFeedbackController.js"], lanes=("smoke",), run_frontend=True)
-    _expect_core(["frontend/src/adminDashboardInsights.js"], lanes=("smoke",), run_frontend=True)
+    _expect_core(["frontend/src/components/AdminDashboardContent.jsx"], lanes=("admin",), run_frontend=True)
+    _expect_core(["frontend/src/components/useAdminFeedbackController.js"], lanes=("admin",), run_frontend=True)
+    _expect_core(["frontend/src/adminDashboardInsights.js"], lanes=("admin",), run_frontend=True)
     _expect_core(["frontend/src/components/AdminDashboardContent.jsx", "frontend/src/App.jsx"], run_frontend=True)
     _expect(["frontend/src/components/Board3DRenderer.js"], run_frontend=True)
     _expect(["frontend/src/components/WarRoom3DAnimation.js"], run_frontend=True)
@@ -296,6 +307,13 @@ def self_test() -> None:
     _expect_core(["scripts/run_core_e2e_lane.py"])
 
     assert json.loads(dict(line.split("=", 1) for line in classify([PACKAGE_METADATA_PATH]).lines())["core_e2e_matrix"]) == {"lane": ["app-boot"]}
+    generic_matrix = json.loads(dict(line.split("=", 1) for line in classify(["frontend/src/App.jsx"]).lines())["core_e2e_matrix"])["lane"]
+    assert "smoke" in generic_matrix and "app-boot" not in generic_matrix
+    assert json.loads(dict(line.split("=", 1) for line in Scope.all().lines())["core_e2e_matrix"])["lane"] == [
+        "regression-state", "regression-school", "learning-golden", "learning-observation", "smoke",
+    ]
+    assert json.loads(dict(line.split("=", 1) for line in classify(["frontend/src/tournament.js"]).lines())["core_e2e_matrix"]) == {"lane": ["tournament"]}
+    assert json.loads(dict(line.split("=", 1) for line in classify(["frontend/src/adminDashboardInsights.js"]).lines())["core_e2e_matrix"]) == {"lane": ["admin"]}
     assert classify([".github/workflows/cicd.yml"]) == Scope.all()
     assert classify(["Makefile"]) == Scope.all()
     assert classify(["scripts/pr_merge_diff.py"]) == Scope.all()
@@ -308,7 +326,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · familias audio/package pagan app-boot; torneo/Admin conservan smoke y producto general core completo")
+    print("quality-scope self-test OK · app-boot se deduplica bajo smoke; torneo/Admin usan canarios propios; audio/package conservan app-boot aislado")
 
 
 def main() -> int:
