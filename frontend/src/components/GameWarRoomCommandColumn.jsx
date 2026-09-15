@@ -64,10 +64,107 @@ function WarRoomGuideHelp() {
   );
 }
 
-function LegacyCompactPill({ game, signal, board, controls, zenMode }) {
+function WarRoomUtilityMenu({ game, board, controls, zenMode, compactViewport = false }) {
   const hasHint = !zenMode && controls.hintMode !== 'off' && typeof controls.onHint === 'function';
   const hasUndo = !zenMode && controls.hintMode === 'free' && typeof controls.onUndo === 'function';
+  const hasAppearance = compactViewport || typeof board?.onCustomize === 'function';
 
+  return (
+    <details className="game-3d-utility-menu">
+      <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
+      <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
+        {compactViewport && (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={(event) => triggerMountedGameAction(event, '.game-mobile-focus-toggle')}
+          >
+            Focus
+          </button>
+        )}
+        {hasHint && (
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!controls.canHint}
+            onClick={(event) => {
+              closeUtilityMenu(event);
+              controls.onHint();
+            }}
+          >
+            {controls.hintButtonLabel || 'Pista'}
+          </button>
+        )}
+        {hasUndo && (
+          <button
+            type="button"
+            role="menuitem"
+            disabled={controls.busy || (game?.history?.length || 0) === 0}
+            onClick={(event) => {
+              closeUtilityMenu(event);
+              controls.onUndo();
+            }}
+          >
+            Deshacer jugada
+          </button>
+        )}
+        {compactViewport && (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={(event) => triggerMountedGameAction(event, '.board-renderer-toggle')}
+          >
+            Vista 2D
+          </button>
+        )}
+        {hasAppearance && (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={(event) => {
+              closeUtilityMenu(event);
+              openBoardAppearance(board);
+            }}
+          >
+            Apariencia
+          </button>
+        )}
+        {typeof controls.onToggleZen === 'function' && (
+          <button
+            type="button"
+            role="menuitem"
+            aria-pressed={zenMode}
+            title={zenModeSummary(zenMode)}
+            onClick={(event) => {
+              closeUtilityMenu(event);
+              controls.onToggleZen();
+            }}
+          >
+            {zenMode ? 'Salir de Zen' : 'Modo Zen'}
+          </button>
+        )}
+        {typeof controls.onAbandon === 'function' && (
+          <>
+            <span className="game-3d-utility-separator" role="separator" />
+            <button
+              type="button"
+              role="menuitem"
+              className="is-danger"
+              onClick={(event) => {
+                closeUtilityMenu(event);
+                controls.onAbandon();
+              }}
+            >
+              Abandonar partida
+            </button>
+          </>
+        )}
+      </div>
+    </details>
+  );
+}
+
+function CompactWarRoomPill({ game, signal, board, controls, zenMode }) {
   return (
     <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
       <div
@@ -114,91 +211,13 @@ function LegacyCompactPill({ game, signal, board, controls, zenMode }) {
         </span>
 
         <WarRoomGuideHelp />
-        <details className="game-3d-utility-menu">
-          <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
-          <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
-            <button
-              type="button"
-              role="menuitem"
-              onClick={(event) => triggerMountedGameAction(event, '.game-mobile-focus-toggle')}
-            >
-              Focus
-            </button>
-            {hasHint && (
-              <button
-                type="button"
-                role="menuitem"
-                disabled={!controls.canHint}
-                onClick={(event) => {
-                  closeUtilityMenu(event);
-                  controls.onHint();
-                }}
-              >
-                {controls.hintButtonLabel || 'Pista'}
-              </button>
-            )}
-            {hasUndo && (
-              <button
-                type="button"
-                role="menuitem"
-                disabled={controls.busy || game.history.length === 0}
-                onClick={(event) => {
-                  closeUtilityMenu(event);
-                  controls.onUndo();
-                }}
-              >
-                Deshacer jugada
-              </button>
-            )}
-            <button
-              type="button"
-              role="menuitem"
-              onClick={(event) => triggerMountedGameAction(event, '.board-renderer-toggle')}
-            >
-              Vista 2D
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              onClick={(event) => {
-                closeUtilityMenu(event);
-                openBoardAppearance(board);
-              }}
-            >
-              Apariencia
-            </button>
-            {typeof controls.onToggleZen === 'function' && (
-              <button
-                type="button"
-                role="menuitem"
-                aria-pressed={zenMode}
-                title={zenModeSummary(zenMode)}
-                onClick={(event) => {
-                  closeUtilityMenu(event);
-                  controls.onToggleZen();
-                }}
-              >
-                {zenMode ? 'Salir de Zen' : 'Modo Zen'}
-              </button>
-            )}
-            {typeof controls.onAbandon === 'function' && (
-              <>
-                <span className="game-3d-utility-separator" role="separator" />
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="is-danger"
-                  onClick={(event) => {
-                    closeUtilityMenu(event);
-                    controls.onAbandon();
-                  }}
-                >
-                  Abandonar partida
-                </button>
-              </>
-            )}
-          </div>
-        </details>
+        <WarRoomUtilityMenu
+          game={game}
+          board={board}
+          controls={controls}
+          zenMode={zenMode}
+          compactViewport
+        />
       </div>
     </aside>
   );
@@ -219,7 +238,7 @@ export default function GameWarRoomCommandColumn({
   // board. Focus/resign survive as tiny one-tap affordances inside the same HUD.
   if (compactViewport) {
     return (
-      <LegacyCompactPill
+      <CompactWarRoomPill
         game={game}
         signal={signal}
         board={board}
@@ -228,9 +247,6 @@ export default function GameWarRoomCommandColumn({
       />
     );
   }
-
-  const hasHint = !zenMode && controls.hintMode !== 'off' && typeof controls.onHint === 'function';
-  const hasUndo = !zenMode && controls.hintMode === 'free' && typeof controls.onUndo === 'function';
 
   return (
     <aside className="game-3d-command-column" aria-label="Puesto táctico de Matthias">
@@ -259,79 +275,12 @@ export default function GameWarRoomCommandColumn({
         </span>
 
         <WarRoomGuideHelp />
-        <details className="game-3d-utility-menu">
-          <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
-          <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
-            {hasHint && (
-              <button
-                type="button"
-                role="menuitem"
-                disabled={!controls.canHint}
-                onClick={(event) => {
-                  closeUtilityMenu(event);
-                  controls.onHint();
-                }}
-              >
-                {controls.hintButtonLabel || 'Pista'}
-              </button>
-            )}
-            {hasUndo && (
-              <button
-                type="button"
-                role="menuitem"
-                disabled={controls.busy || game.history.length === 0}
-                onClick={(event) => {
-                  closeUtilityMenu(event);
-                  controls.onUndo();
-                }}
-              >
-                Deshacer jugada
-              </button>
-            )}
-            {typeof board.onCustomize === 'function' && (
-              <button
-                type="button"
-                role="menuitem"
-                onClick={(event) => {
-                  closeUtilityMenu(event);
-                  board.onCustomize();
-                }}
-              >
-                Apariencia
-              </button>
-            )}
-            {typeof controls.onToggleZen === 'function' && (
-              <button
-                type="button"
-                role="menuitem"
-                aria-pressed={zenMode}
-                title={zenModeSummary(zenMode)}
-                onClick={(event) => {
-                  closeUtilityMenu(event);
-                  controls.onToggleZen();
-                }}
-              >
-                {zenMode ? 'Salir de Zen' : 'Modo Zen'}
-              </button>
-            )}
-            {typeof controls.onAbandon === 'function' && (
-              <>
-                <span className="game-3d-utility-separator" role="separator" />
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="is-danger"
-                  onClick={(event) => {
-                    closeUtilityMenu(event);
-                    controls.onAbandon();
-                  }}
-                >
-                  Abandonar partida
-                </button>
-              </>
-            )}
-          </div>
-        </details>
+        <WarRoomUtilityMenu
+          game={game}
+          board={board}
+          controls={controls}
+          zenMode={zenMode}
+        />
       </div>
     </aside>
   );
