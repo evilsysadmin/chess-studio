@@ -96,6 +96,15 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
 
   await openings.getByRole('button', { name: '← Volver al menú', exact: true }).click();
   await expect(page.locator('.illustrated-home')).toBeVisible();
+  await page.evaluate(() => {
+    localStorage.setItem('chess-study-career', JSON.stringify({
+      byTimeControl: {
+        rapid: { games: 18, wins: 9, draws: 3, losses: 6 },
+        blitz: { games: 27, wins: 11, draws: 4, losses: 12 },
+        bullet: { games: 8, wins: 2, draws: 1, losses: 5 },
+      },
+    }));
+  });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole('button', { name: 'Abrir menú de cuenta', exact: true }).click();
   await page.getByRole('menuitem', { name: /Mi progreso/ }).click();
@@ -116,4 +125,13 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   await expect(career.locator('.career-action-grid').first()).toBeVisible();
   await captureAt(page, 'career-actions', { width: 1440, height: 900, variant: 'desktop' });
   await captureAt(page, 'career-actions', { width: 390, height: 844, variant: 'mobile' });
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await career.getByRole('button', { name: 'Archivo', exact: true }).click();
+  const rhythmHeading = career.getByRole('heading', { name: 'Rivalidad por ritmo', exact: true });
+  await rhythmHeading.scrollIntoViewIfNeeded();
+  await expect(rhythmHeading).toBeVisible();
+  await expect(career.locator('.career-rhythm-grid')).toBeVisible();
+  await captureAt(page, 'career-rhythm', { width: 1440, height: 900, variant: 'desktop' });
+  await captureAt(page, 'career-rhythm', { width: 390, height: 844, variant: 'mobile' });
 });
