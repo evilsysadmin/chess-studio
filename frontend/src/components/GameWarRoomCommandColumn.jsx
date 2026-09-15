@@ -57,6 +57,7 @@ function WarRoomGuideHelp() {
     <MechanicTutorialHelp
       tutorialId="war-room-basics"
       autoOpen
+      markSeenOnClose
       label="Abrir guía de la War Room"
     />
   );
