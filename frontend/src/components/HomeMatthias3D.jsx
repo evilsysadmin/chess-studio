@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { createExperimentalThreeRenderer } from '../experimentalThreeRenderer.js';
+import { request } from '../http.js';
 import {
   applyHomeMatthiasCanonicalPose,
   createHomeMatthiasCanonicalRig,
@@ -155,7 +156,7 @@ export default function HomeMatthias3D({
   useEffect(() => {
     let cancelled = false;
     const base = String(import.meta.env.BASE_URL || '/').replace(/\/?$/, '/');
-    fetch(`${base}${HOME_MATTHIAS_CANONICAL_ASSET_URL}`, { cache: 'force-cache' })
+    request(`${base}${HOME_MATTHIAS_CANONICAL_ASSET_URL}`, { cache: 'force-cache' })
       .then((response) => {
         if (!response.ok) throw new Error(`Canonical Matthias asset ${response.status}`);
         return response.text();
