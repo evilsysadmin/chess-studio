@@ -38,18 +38,20 @@ async function openChronicles(page) {
 }
 
 async function captureElement(page, locator, path) {
-  await locator.scrollIntoViewIfNeeded({ timeout: 20_000 });
+  // DOM scrolling avoids Playwright's stability wait, which is unreliable on a
+  // continuously rendered WebGL surface. boundingBox() is viewport-relative,
+  // so do not add window.scrollX/Y a second time when clipping the screenshot.
+  await locator.evaluate((node) => node.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'instant' }));
   await page.waitForTimeout(100);
   const box = await locator.boundingBox();
   expect(box, `${path}: capture bounds`).not.toBeNull();
-  const scroll = await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }));
   await page.screenshot({
     path,
     animations: 'disabled',
     timeout: 30_000,
     clip: {
-      x: Math.max(0, box.x + scroll.x),
-      y: Math.max(0, box.y + scroll.y),
+      x: Math.max(0, box.x),
+      y: Math.max(0, box.y),
       width: Math.max(1, box.width),
       height: Math.max(1, box.height),
     },
