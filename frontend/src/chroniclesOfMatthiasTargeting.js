@@ -1,22 +1,23 @@
 import {
   CHRONICLES_DIRECTIONS,
-  CHRONICLES_ENEMIES,
   chroniclesEnemyIsActive,
   chroniclesEnemyPosition,
   chroniclesTileAt,
 } from './chroniclesOfMatthias.js';
+import { chroniclesMapForState } from './chronicles/chroniclesMapCatalog.js';
 
 export function chroniclesTargetAhead(state, maxReach = 2) {
   if (!state || state.phase === 'escaped' || maxReach < 1) return null;
   const direction = CHRONICLES_DIRECTIONS[state.direction];
   if (!direction) return null;
+  const enemies = chroniclesMapForState(state).enemies;
 
   for (let distance = 1; distance <= maxReach; distance += 1) {
     const x = state.x + direction.dx * distance;
     const y = state.y + direction.dy * distance;
-    if (chroniclesTileAt(x, y) === '#') return null;
+    if (chroniclesTileAt(x, y, state) === '#') return null;
 
-    const enemy = CHRONICLES_ENEMIES.find((candidate) => {
+    const enemy = enemies.find((candidate) => {
       if (!chroniclesEnemyIsActive(state, candidate)) return false;
       if (Number(state[candidate.hpKey] || 0) <= 0) return false;
       const position = chroniclesEnemyPosition(state, candidate);
