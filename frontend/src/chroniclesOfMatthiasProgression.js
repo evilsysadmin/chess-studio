@@ -1,7 +1,6 @@
 import { CHRONICLES_ENEMIES } from './chroniclesOfMatthias.js';
 import {
   STORAGE_LOCAL,
-  STORAGE_SESSION,
   getStorageItem,
   readJsonStorage,
   setStorageItem,
@@ -170,7 +169,7 @@ function createRunId() {
 
 function readRunState() {
   try {
-    const raw = getStorageItem(STORAGE_SESSION, CHRONICLES_TACTICS_RUN_STORAGE_KEY);
+    const raw = getStorageItem(STORAGE_LOCAL, CHRONICLES_TACTICS_RUN_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed.id !== 'string' || !parsed.id.trim()) return null;
@@ -182,7 +181,7 @@ function readRunState() {
 
 export function beginChroniclesTacticsRun() {
   const run = { id: createRunId(), ended: false };
-  setStorageItem(STORAGE_SESSION, CHRONICLES_TACTICS_RUN_STORAGE_KEY, JSON.stringify(run));
+  setStorageItem(STORAGE_LOCAL, CHRONICLES_TACTICS_RUN_STORAGE_KEY, JSON.stringify(run));
   return run.id;
 }
 
@@ -195,7 +194,7 @@ export function ensureChroniclesTacticsRun() {
 export function finishChroniclesTacticsRun(runId) {
   const current = readRunState();
   if (!current || current.id !== runId) return false;
-  setStorageItem(STORAGE_SESSION, CHRONICLES_TACTICS_RUN_STORAGE_KEY, JSON.stringify({ ...current, ended: true }));
+  setStorageItem(STORAGE_LOCAL, CHRONICLES_TACTICS_RUN_STORAGE_KEY, JSON.stringify({ ...current, ended: true }));
   return true;
 }
 
