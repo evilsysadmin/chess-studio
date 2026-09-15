@@ -4,7 +4,7 @@ import * as THREE from 'three';
 // The Three.js renderer may articulate rigid layers, but must not redraw or
 // procedurally reinterpret his face, cap, coat or emblem.
 export const HOME_MATTHIAS_CANONICAL_ART_VERSION = 'angry-mock-v1';
-export const HOME_MATTHIAS_CANONICAL_ASSET_URL = '/matthias-home-canonical.b64';
+export const HOME_MATTHIAS_CANONICAL_ASSET_URL = 'matthias-home-canonical.b64';
 export const HOME_MATTHIAS_CANONICAL_ASPECT = 0.75;
 export const HOME_MATTHIAS_CANONICAL_HEAD_CUT = 0.54375;
 export const HOME_MATTHIAS_CANONICAL_BODY_START = 0.459375;
