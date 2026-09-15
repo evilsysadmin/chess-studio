@@ -9,9 +9,11 @@ import {
 } from '../warRoomAmbiencePreferences.js';
 import { resolveWarRoomLocalAtmosphere } from './WarRoomLocalAtmosphere.js';
 
-export const WAR_ROOM_SPATIAL_AMBIENCE_VERSION = 'war-room-spatial-ambience-v6-hard-window-gate';
+export const WAR_ROOM_SPATIAL_AMBIENCE_VERSION = 'war-room-spatial-ambience-v7-inner-pane-gate';
 export const WAR_ROOM_WEATHER_IDLE_GAIN = 0;
 export const WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN = 1;
+export const WAR_ROOM_WEATHER_WINDOW_INSET_X = 0.3;
+export const WAR_ROOM_WEATHER_WINDOW_INSET_Y = 0.18;
 
 export function warRoomSpatialMixForAtmosphere(atmosphere = {}) {
   const weather = String(atmosphere.weather || 'sunny');
@@ -48,15 +50,21 @@ export function warRoomWeatherPointInHitbox({ clientX, clientY, rect, hitbox }) 
   const spanY = maxY - minY;
   if (!(spanX > 0) || !(spanY > 0) || spanX > 0.34 || spanY > 0.72) return false;
 
-  // Require the pointer to be comfortably inside the projected pane instead of
-  // merely grazing the decorative frame. This also rejects a corrupted/oversized
-  // projection that could otherwise make weather sound active across the board.
-  const insetX = spanX * 0.08;
-  const insetY = spanY * 0.04;
+  // The projected box belongs to the complete 3D window assembly (frame, trim,
+  // precipitation layers, etc.), not only the pane the player can actually see.
+  // Keep weather audio inside the central glass area so a pointer beside the
+  // window can never make rain/wind audible.
+  const insetX = spanX * WAR_ROOM_WEATHER_WINDOW_INSET_X;
+  const insetY = spanY * WAR_ROOM_WEATHER_WINDOW_INSET_Y;
   return x >= minX + insetX
     && x <= maxX - insetX
     && y >= minY + insetY
     && y <= maxY - insetY;
+}
+
+export function warRoomWeatherPointerOutShouldMute(event) {
+  return Boolean(event?.target?.classList?.contains?.('board3d-main-canvas'))
+    || event?.relatedTarget == null;
 }
 
 function makeNoiseBuffer(context, seconds = 2.4) {
@@ -226,7 +234,7 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
     applyWeatherWindowHover(eventHoversWeatherWindow(event));
   };
   const handlePointerOut = (event) => {
-    if (event?.relatedTarget == null) applyWeatherWindowHover(false);
+    if (warRoomWeatherPointerOutShouldMute(event)) applyWeatherWindowHover(false);
   };
   const handleVisibilityChange = () => {
     if (typeof document !== 'undefined' && document.hidden) applyWeatherWindowHover(false);
