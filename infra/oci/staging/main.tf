@@ -142,6 +142,11 @@ resource "oci_core_instance" "backend" {
   )
 
   lifecycle {
+    # Application/bootstrap release is not infrastructure desired state. The
+    # runtime deployment path owns release changes; unrelated Terraform applies
+    # must never replace a healthy A1 only because GITHUB_SHA changed.
+    ignore_changes = [metadata["user_data"]]
+
     precondition {
       condition     = local.selected_availability_domain != ""
       error_message = "OCI returned no availability domains. Set availability_domain explicitly if discovery is unavailable."
