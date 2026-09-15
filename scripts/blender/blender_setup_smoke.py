@@ -18,6 +18,10 @@ for candidate in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
 else:
     raise RuntimeError(f"no supported Eevee engine available: {sorted(available)}")
 
+eevee = getattr(scene, "eevee", None)
+if eevee is not None and hasattr(eevee, "taa_render_samples"):
+    eevee.taa_render_samples = 1
+
 output = Path(os.environ.get("BLENDER_SMOKE_OUTPUT", "/tmp/blender-setup-smoke.png"))
 output.parent.mkdir(parents=True, exist_ok=True)
 scene.render.resolution_x = 16

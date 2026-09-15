@@ -1,5 +1,5 @@
 name: Setup Blender canonical art
-description: Restore cached Blender, EGL and Pillow toolchains while keeping product-specific host packages minimal.
+description: Restore cached Blender, EGL, WebP and Pillow toolchains while keeping product-specific host packages minimal.
 inputs:
   blender-version:
     description: Portable Blender version shared by canonical art workflows.
@@ -14,7 +14,7 @@ runs:
   steps:
     - name: Restore portable Blender cache
       id: blender-cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ runner.temp }}/blender-${{ inputs.blender-version }}
         key: blender-portable-${{ runner.os }}-${{ runner.arch }}-${{ inputs.blender-version }}-v1
@@ -56,7 +56,7 @@ runs:
 
     - name: Restore EGL package cache
       id: egl-cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ runner.temp }}/blender-egl-debs
         key: blender-egl-debs-${{ runner.os }}-${{ runner.arch }}-${{ steps.host-runtime.outputs.os-version }}-v2
@@ -95,11 +95,53 @@ runs:
         fi
         echo "ready=${ready}" >> "${GITHUB_OUTPUT}"
 
+    - name: Restore WebP tool cache
+      id: webp-cache
+      if: inputs.extra-packages == 'webp'
+      uses: actions/cache@v6
+      with:
+        path: ${{ runner.temp }}/blender-webp-tools
+        key: blender-webp-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.host-runtime.outputs.os-version }}-v1
+
+    - name: Materialize WebP tools on cache miss
+      if: inputs.extra-packages == 'webp' && steps.webp-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        set -euo pipefail
+        webp_root="${RUNNER_TEMP}/blender-webp-tools"
+        rm -rf "${webp_root}"
+        mkdir -p "${webp_root}/download"
+        cd "${webp_root}/download"
+        apt-get download webp >/dev/null
+        deb="$(find . -maxdepth 1 -name 'webp_*.deb' -type f -print -quit)"
+        test -n "${deb}"
+        dpkg-deb -x "${deb}" "${webp_root}"
+        rm -rf "${webp_root}/download"
+
+    - name: Expose cached WebP tools
+      id: webp-runtime
+      if: inputs.extra-packages == 'webp'
+      shell: bash
+      run: |
+        set -euo pipefail
+        webp_bin="${RUNNER_TEMP}/blender-webp-tools/usr/bin"
+        ready=false
+        if [[ -x "${webp_bin}/cwebp" && -x "${webp_bin}/webpinfo" ]] \
+          && ! ldd "${webp_bin}/cwebp" | grep -q 'not found' \
+          && ! ldd "${webp_bin}/webpinfo" | grep -q 'not found'; then
+          ready=true
+          echo "${webp_bin}" >> "${GITHUB_PATH}"
+          "${webp_bin}/cwebp" -version
+          echo 'Cached WebP tools ready.'
+        fi
+        echo "ready=${ready}" >> "${GITHUB_OUTPUT}"
+
     - name: Install fallback graphics or product helpers
       shell: bash
       env:
         EXTRA_PACKAGES: ${{ inputs.extra-packages }}
         EGL_READY: ${{ steps.egl-runtime.outputs.ready }}
+        WEBP_READY: ${{ steps.webp-runtime.outputs.ready }}
       run: |
         set -euo pipefail
         packages=()
@@ -108,7 +150,12 @@ runs:
         fi
         if [[ -n "${EXTRA_PACKAGES}" ]]; then
           read -r -a extras <<< "${EXTRA_PACKAGES}"
-          packages+=("${extras[@]}")
+          for package in "${extras[@]}"; do
+            if [[ "${package}" == 'webp' && "${WEBP_READY}" == 'true' ]]; then
+              continue
+            fi
+            packages+=("${package}")
+          done
         fi
         if (( ${#packages[@]} == 0 )); then
           echo 'No apt packages needed for Blender canonical art.'
@@ -136,7 +183,7 @@ runs:
 
     - name: Restore Pillow helper cache
       id: pillow-cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ${{ runner.temp }}/blender-python-tools
         key: blender-python-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.python-cache-id.outputs.abi }}-pillow-10.4.0-v1
