@@ -1,3 +1,29 @@
+import {
+  AMBIENT_THEME_GROUPS,
+  AMBIENT_THEME_OPTIONS,
+  CURATED_HIDDEN_THEME_IDS,
+} from './ambientCatalog.js';
+
+// Public curation is deliberately non-destructive: rejected songs stay defined
+// so old saves/references and future reworks remain valid, but they disappear
+// from the selector, session radio and any persisted-session restore path.
+export const RETIRED_MEDITERRANEAN_THEME_IDS = Object.freeze([
+  'tangierRedTable',
+  'beirutNightTaxi',
+  'istanbulBackgammon',
+]);
+
+for (const id of RETIRED_MEDITERRANEAN_THEME_IDS) CURATED_HIDDEN_THEME_IDS.add(id);
+
+for (let index = AMBIENT_THEME_OPTIONS.length - 1; index >= 0; index -= 1) {
+  if (CURATED_HIDDEN_THEME_IDS.has(AMBIENT_THEME_OPTIONS[index]?.id)) AMBIENT_THEME_OPTIONS.splice(index, 1);
+}
+for (const group of AMBIENT_THEME_GROUPS) {
+  for (let index = group.themes.length - 1; index >= 0; index -= 1) {
+    if (CURATED_HIDDEN_THEME_IDS.has(group.themes[index]?.id)) group.themes.splice(index, 1);
+  }
+}
+
 // Las composiciones mediterráneas ya tienen armonía y timbres propios, pero
 // varias conservaban exactamente la misma rejilla de batería. Estas variaciones
 // respetan su métrica y tempo: más aire en las lentas, más subdivisión en taxis
