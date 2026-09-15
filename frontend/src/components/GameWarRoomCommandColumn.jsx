@@ -1,5 +1,6 @@
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import { zenModeSummary } from '../zenMode.js';
+import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import '../styles/29-war-room-chrome.css';
 import './WarRoomReferencePolish.css';
 import './WarRoomTurnPill.css';
@@ -51,6 +52,16 @@ function openBoardAppearance(board) {
   document.querySelector('.board3d-customize')?.click();
 }
 
+function WarRoomGuideHelp() {
+  return (
+    <MechanicTutorialHelp
+      tutorialId="war-room-basics"
+      autoOpen
+      label="Abrir guía de la War Room"
+    />
+  );
+}
+
 function LegacyCompactPill({ game, signal, board, controls, zenMode }) {
   const hasHint = !zenMode && controls.hintMode !== 'off' && typeof controls.onHint === 'function';
   const hasUndo = !zenMode && controls.hintMode === 'free' && typeof controls.onUndo === 'function';
@@ -100,6 +111,7 @@ function LegacyCompactPill({ game, signal, board, controls, zenMode }) {
           )}
         </span>
 
+        <WarRoomGuideHelp />
         <details className="game-3d-utility-menu">
           <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
           <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
@@ -244,6 +256,7 @@ export default function GameWarRoomCommandColumn({
           <span className="game-3d-cpu-level">CPU nivel {game.difficulty}</span>
         </span>
 
+        <WarRoomGuideHelp />
         <details className="game-3d-utility-menu">
           <summary role="button" aria-label="Más acciones de partida" title="Más acciones de partida">⋯</summary>
           <div className="game-3d-utility-popover" role="menu" aria-label="Acciones de partida">
