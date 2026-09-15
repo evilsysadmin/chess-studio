@@ -7,6 +7,7 @@ on:
       - 'backend-python/Dockerfile'
       - 'backend-python/requirements*.txt'
       - 'scripts/oci_arm64_smoke.sh'
+      - 'scripts/oci_floci_smoke.sh'
       - 'scripts/oci_readiness_scope.py'
       - 'infra/oci/**'
       - '.github/workflows/oci-readiness.yml'
@@ -63,11 +64,11 @@ jobs:
         run: bash scripts/oci_arm64_smoke.sh
 
   terraform:
-    name: Terraform · fmt + validate
+    name: Terraform · contracts
     needs: scope
     if: needs.scope.outputs.terraform == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: infra/oci
@@ -92,12 +93,33 @@ jobs:
       - name: Terraform validate
         run: terraform validate -no-color
 
+      - name: Terraform native tests
+        run: terraform test -no-color
+
       - name: Secret-surface guard
         shell: bash
         run: |
           set -euo pipefail
-          if grep -En '(MONGO_URL|JWT_SECRET|cloudflare_tunnel_token|private_key[[:space:]]*=)' ./*.tf; then
-            echo 'ERROR: production secret material must not be modeled as Terraform input/state.' >&2
+          if grep -REn '(MONGO_URL|JWT_SECRET|RESEND_API_KEY|OTLP.*TOKEN|cloudflare_tunnel_token|private_key[[:space:]]*=)' . --include='*.tf' --include='*.tfvars' --include='*.tftpl' --exclude-dir=test-fixtures; then
+            echo 'ERROR: application/private secret material must not be modeled in Terraform state.' >&2
             exit 1
           fi
           echo 'OCI Terraform secret-surface guard OK'
+
+  floci:
+    name: Terraform · Floci IAM + Object Storage
+    needs: scope
+    if: needs.scope.outputs.terraform == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.0
+          terraform_wrapper: false
+
+      - name: floci-oci provider compatibility
+        run: bash scripts/oci_floci_smoke.sh
