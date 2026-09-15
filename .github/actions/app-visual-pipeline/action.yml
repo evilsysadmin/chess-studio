@@ -14,13 +14,16 @@ runs:
       run: |
         set -euo pipefail
         python3 -S scripts/app_visual_scope.py --self-test
+        python3 -S scripts/app_visual_producer_scope.py --self-test
         if [[ "${{ github.event_name }}" != "pull_request" ]]; then
           python3 -S scripts/app_visual_scope.py --all --github-output "$GITHUB_OUTPUT"
+          python3 -S scripts/app_visual_producer_scope.py --all --github-output "$GITHUB_OUTPUT"
           exit 0
         fi
         files="$(git diff --name-only HEAD^ HEAD)"
         printf '%s\n' "$files"
         printf '%s\n' "$files" | python3 -S scripts/app_visual_scope.py --github-output "$GITHUB_OUTPUT"
+        printf '%s\n' "$files" | python3 -S scripts/app_visual_producer_scope.py --github-output "$GITHUB_OUTPUT"
 
     - name: Restore browser + build when capture is required
       if: >-
@@ -41,10 +44,12 @@ runs:
         groups='${{ steps.scope.outputs.capture_groups }}'
         experiments='${{ steps.scope.outputs.experiments_scope }}'
         chronicles_avatar='${{ steps.scope.outputs.chronicles_avatar }}'
+        producers='${{ steps.scope.outputs.producer_scope }}'
         [[ -n "$groups" ]] || groups=all
         [[ -n "$experiments" ]] || experiments=all
+        [[ -n "$producers" ]] || producers=all
         [[ "$chronicles_avatar" == 'true' || "$chronicles_avatar" == 'false' ]] || chronicles_avatar=true
-        bash scripts/app_visual_capture.sh "${{ inputs.mode }}" "$groups" "$experiments" "$chronicles_avatar"
+        bash scripts/app_visual_capture.sh "${{ inputs.mode }}" "$groups" "$experiments" "$chronicles_avatar" "$producers"
 
     - name: Enforce War Room visual freeze
       if: inputs.mode == 'canonical' && steps.scope.outputs.warroom == 'true'
