@@ -38,7 +38,9 @@ async function openChronicles(page) {
 }
 
 test('Chronicles · los cuatro avatares 3D quedan fotografiados en desktop y Android', async ({ browser }) => {
-  test.setTimeout(150_000);
+  // Software WebGL on hosted runners needs room for 8 deterministic portrait renders.
+  // Screenshot/action budgets stay strict; only this visual proof gets the wider wall clock.
+  test.setTimeout(240_000);
   await mkdir(ARTIFACT_DIR, { recursive: true });
 
   for (const capture of CAPTURES) {

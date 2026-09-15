@@ -254,7 +254,9 @@ if (scopeEnabled('landing')) {
 
 if (scopeEnabled('chronicles')) {
   test('Chronicles · gameplay visual desktop + Android', async ({ browser }) => {
-    test.setTimeout(120_000);
+    // This visual proof renders two full Three.js sessions plus an authored combat state.
+    // Keep interaction/assertion timeouts strict; widen only its total hosted wall clock.
+    test.setTimeout(240_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const captures = [];
