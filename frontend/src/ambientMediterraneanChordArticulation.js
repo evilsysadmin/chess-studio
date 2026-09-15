@@ -16,7 +16,9 @@ export const MEDITERRANEAN_CHORD_ATTACK_PLANS = Object.freeze({
   andalusianCoast: plan([0,13,27,42], [0,10,25,41], [0,15,30,44], [0,21,43]),
   terraceFireflies: plan([0,12,28,43], [0,15,31,46], [0,10,26,45], [0,24,45]),
   cafeFirelight: plan([0,14,30,45], [0,11,27,43], [0,16,32,48], [0,22,46]),
-  malagaLastTram: plan([0,11,25,40], [0,14,29,44], [0,9,24,42], [0,20,41]),
+  // Último tranvía is intentionally slower and much more nocturnal now. Keep
+  // long harmonic windows instead of the old quick four-hit Mediterranean grid.
+  malagaLastTram: plan([0,24,49], [0,22,46], [0,32], [0,25,51]),
 });
 
 export const MEDITERRANEAN_CHORD_ARTICULATION_IDS = Object.freeze(
