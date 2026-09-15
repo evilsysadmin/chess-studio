@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import sys
 from pathlib import Path
@@ -56,7 +57,11 @@ def aim_camera(scene):
     target = atlas_center()
     cam = scene.camera
     cam.location = (target.x, -78.0, target.z)
-    cam.rotation_euler = (target - cam.location).to_track_quat('-Z', 'Y').to_euler()
+    # The authored sprite plane is X/Z and the camera looks straight along +Y.
+    # Keep this orientation explicit: using to_track_quat('-Z', 'Y') here makes
+    # the requested up axis collinear with the view direction and can produce a
+    # degenerate/rolled atlas projection in headless Blender.
+    cam.rotation_euler = (math.pi / 2, 0.0, 0.0)
     # Blender's ortho_scale is the VERTICAL world span, not the width. The
     # raster is 1536x480 (aspect 3.2), so a five-cell-high 16.0 world-unit
     # viewport automatically becomes 51.2 units wide: exactly 16 cells.
