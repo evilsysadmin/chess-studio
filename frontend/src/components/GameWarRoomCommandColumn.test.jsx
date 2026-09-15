@@ -73,4 +73,54 @@ describe('GameWarRoomCommandColumn', () => {
     expect(busyHtml).toContain('game-3d-turn-pill game-3d-matthias-card is-amber');
     expect(busyHtml).toContain('Pensando…');
   });
+
+  it('mantiene las acciones comunes idénticas y limita los extras al HUD compacto', () => {
+    const game = {
+      difficulty: 5,
+      turn: 'w',
+      humanColor: 'w',
+      isGameOver: false,
+      history: ['e4'],
+    };
+    const controls = {
+      hintMode: 'free',
+      hintButtonLabel: 'Pista táctica',
+      canHint: true,
+      busy: false,
+      onHint: () => {},
+      onUndo: () => {},
+      onToggleZen: () => {},
+      onAbandon: () => {},
+    };
+    const board = { onCustomize: () => {} };
+
+    const desktopHtml = renderToStaticMarkup(
+      <GameWarRoomCommandColumn
+        game={game}
+        status={{ statusText: 'Tu turno', busy: false }}
+        board={board}
+        controls={controls}
+      />,
+    );
+    const compactHtml = renderToStaticMarkup(
+      <GameWarRoomCommandColumn
+        game={game}
+        status={{ statusText: 'Tu turno', busy: false }}
+        board={board}
+        controls={controls}
+        compactViewport
+      />,
+    );
+
+    for (const label of ['Pista táctica', 'Deshacer jugada', 'Apariencia', 'Modo Zen', 'Abandonar partida']) {
+      const button = new RegExp(`>${label}<\\/button>`, 'g');
+      expect((desktopHtml.match(button) || []).length).toBe(1);
+      expect((compactHtml.match(button) || []).length).toBe(1);
+    }
+
+    expect(desktopHtml).not.toContain('>Focus</button>');
+    expect(desktopHtml).not.toContain('>Vista 2D</button>');
+    expect(compactHtml).toContain('>Focus</button>');
+    expect(compactHtml).toContain('>Vista 2D</button>');
+  });
 });
