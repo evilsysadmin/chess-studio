@@ -1,5 +1,6 @@
 name: Home Matthias · Blender canonical art
 
+# Path-scoped canonical-art lane: the consolidated required gate waits for this workflow when these sources change.
 on:
   pull_request:
     paths:
