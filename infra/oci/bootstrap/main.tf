@@ -8,6 +8,10 @@ resource "oci_identity_compartment" "infra" {
   description    = "Chess Studio Terraform state and shared OCI lab foundation"
   enable_delete  = true
   freeform_tags  = var.freeform_tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "oci_identity_compartment" "staging" {
@@ -16,6 +20,10 @@ resource "oci_identity_compartment" "staging" {
   description    = "Replaceable Chess Studio OCI staging/lab resources"
   enable_delete  = true
   freeform_tags  = var.freeform_tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "oci_objectstorage_bucket" "terraform_state" {
@@ -26,4 +34,8 @@ resource "oci_objectstorage_bucket" "terraform_state" {
   storage_tier   = "Standard"
   versioning     = "Enabled"
   freeform_tags  = var.freeform_tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }

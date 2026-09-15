@@ -7,7 +7,8 @@ container="chess-studio-floci-oci"
 key_file="$(mktemp)"
 plan_file="$stack/floci.plan"
 plan_json="$stack/floci.plan.json"
-trap 'docker rm -f "$container" >/dev/null 2>&1 || true; rm -f "$key_file" "$plan_file" "$plan_json" "$stack/.terraform.lock.hcl" "$stack/terraform.tfstate" "$stack/terraform.tfstate.backup"; rm -rf "$stack/.terraform"' EXIT
+destroy_log="$stack/floci.destroy.log"
+trap 'docker rm -f "$container" >/dev/null 2>&1 || true; rm -f "$key_file" "$plan_file" "$plan_json" "$destroy_log" "$stack/.terraform.lock.hcl" "$stack/terraform.tfstate" "$stack/terraform.tfstate.backup"; rm -rf "$stack/.terraform"' EXIT
 
 docker run -d --rm --name "$container" -p 4599:4599 floci/floci-oci:latest >/dev/null
 for _ in $(seq 1 30); do
@@ -73,6 +74,20 @@ PY
     ;;
 esac
 
-terraform -chdir="$stack" destroy -auto-approve -no-color
+set +e
+terraform -chdir="$stack" plan -destroy -no-color >"$destroy_log" 2>&1
+destroy_rc=$?
+set -e
+if [[ "$destroy_rc" -eq 0 ]]; then
+  echo "bootstrap destroy unexpectedly succeeded despite prevent_destroy" >&2
+  cat "$destroy_log" >&2
+  exit 1
+fi
+if ! grep -Eq 'prevent_destroy|cannot be destroyed' "$destroy_log"; then
+  echo "bootstrap destroy failed for an unexpected reason" >&2
+  cat "$destroy_log" >&2
+  exit "$destroy_rc"
+fi
+echo "Bootstrap foundation destroy guard verified"
 
-echo "OCI bootstrap Floci apply/drift-guard/destroy smoke passed"
+echo "OCI bootstrap Floci apply/drift-guard/destroy-guard smoke passed"
