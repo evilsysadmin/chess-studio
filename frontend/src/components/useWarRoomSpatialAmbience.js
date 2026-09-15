@@ -9,7 +9,7 @@ import {
 } from '../warRoomAmbiencePreferences.js';
 import { resolveWarRoomLocalAtmosphere } from './WarRoomLocalAtmosphere.js';
 
-export const WAR_ROOM_SPATIAL_AMBIENCE_VERSION = 'war-room-spatial-ambience-v8-weather-source-lifecycle';
+export const WAR_ROOM_SPATIAL_AMBIENCE_VERSION = 'war-room-spatial-ambience-v9-no-interior-noise-floor';
 export const WAR_ROOM_WEATHER_IDLE_GAIN = 0;
 export const WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN = 1;
 export const WAR_ROOM_WEATHER_WINDOW_INSET_X = 0.3;
@@ -34,6 +34,25 @@ export function warRoomAmbienceShouldPlay({ enabled, fxMuted, ambienceMuted }) {
 
 export function warRoomWeatherGainForWindowHover(active) {
   return active ? WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN : WAR_ROOM_WEATHER_IDLE_GAIN;
+}
+
+export function warRoomInteriorToneSpecs(mix = {}) {
+  const fire = Math.max(0, Number(mix.fire) || 0);
+  const room = Math.max(0, Number(mix.room) || 0);
+  return Object.freeze([
+    Object.freeze({
+      type: 'triangle',
+      frequency: 86,
+      gainValue: Math.min(0.00065, fire * 0.06),
+      pan: -0.62,
+    }),
+    Object.freeze({
+      type: 'sine',
+      frequency: 54,
+      gainValue: Math.min(0.00085, room * 0.22),
+      pan: 0,
+    }),
+  ].filter((spec) => spec.gainValue > 0));
 }
 
 export function warRoomWeatherLoopSpecs(mix = {}, active = false) {
@@ -138,6 +157,35 @@ function stopNoiseLoop(loop) {
   }
 }
 
+function startToneLoop(context, master, { type = 'sine', frequency = 55, gainValue = 0, pan = 0 }) {
+  if (!(gainValue > 0)) return null;
+  const source = context.createOscillator();
+  const gain = context.createGain();
+  const panner = typeof context.createStereoPanner === 'function' ? context.createStereoPanner() : null;
+  source.type = type;
+  source.frequency.value = frequency;
+  gain.gain.value = gainValue;
+  if (panner) panner.pan.value = Math.max(-1, Math.min(1, pan));
+  source.connect(gain);
+  if (panner) {
+    gain.connect(panner);
+    panner.connect(master);
+  } else {
+    gain.connect(master);
+  }
+  source.start();
+  return { source, nodes: [gain, panner].filter(Boolean) };
+}
+
+function stopToneLoop(loop) {
+  if (!loop) return;
+  try { loop.source.stop(); } catch { /* source already stopped */ }
+  try { loop.source.disconnect(); } catch { /* source already disconnected */ }
+  for (const node of loop.nodes) {
+    try { node.disconnect(); } catch { /* node already disconnected */ }
+  }
+}
+
 function playRareRoomTick(context, master, kind, pan) {
   if (context.state === 'closed') return;
   const oscillator = context.createOscillator();
@@ -206,23 +254,13 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
   const weatherBus = context.createGain();
   weatherBus.gain.value = WAR_ROOM_WEATHER_IDLE_GAIN;
 
+  // Broadband noise is reserved exclusively for weather. The old fire/room
+  // noise floor was always audible and, especially on phone speakers, sounded
+  // indistinguishable from distant rain even while the weather bus was silent.
+  const interiorToneLoops = warRoomInteriorToneSpecs(mix)
+    .map((spec) => startToneLoop(context, master, spec))
+    .filter(Boolean);
   const noiseBuffer = makeNoiseBuffer(context);
-  const ambientLoops = [
-    startNoiseLoop(context, master, noiseBuffer, {
-      gainValue: mix.fire,
-      pan: -0.62,
-      filterType: 'bandpass',
-      frequency: 520,
-      q: 0.62,
-    }),
-    startNoiseLoop(context, master, noiseBuffer, {
-      gainValue: mix.room,
-      pan: 0,
-      filterType: 'lowpass',
-      frequency: 180,
-      q: 0.45,
-    }),
-  ].filter(Boolean);
 
   let disposed = false;
   let rareTimer = 0;
@@ -305,7 +343,7 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
       if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', handleVisibilityChange);
     }
     stopWeatherLoops();
-    for (const loop of ambientLoops) stopNoiseLoop(loop);
+    for (const loop of interiorToneLoops) stopToneLoop(loop);
     try { weatherBus.disconnect(); } catch { /* already disconnected */ }
     try { master.disconnect(); } catch { /* already disconnected */ }
   };

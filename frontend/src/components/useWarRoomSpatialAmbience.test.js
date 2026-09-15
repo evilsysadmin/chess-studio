@@ -5,6 +5,7 @@ import {
   WAR_ROOM_WEATHER_WINDOW_INSET_X,
   WAR_ROOM_WEATHER_WINDOW_INSET_Y,
   warRoomAmbienceShouldPlay,
+  warRoomInteriorToneSpecs,
   warRoomSpatialMixForAtmosphere,
   warRoomWeatherGainForWindowHover,
   warRoomWeatherLoopSpecs,
@@ -31,6 +32,17 @@ describe('War Room spatial ambience', () => {
     expect(WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN).toBe(1);
     expect(rainyNight.rareEventMinMs).toBeGreaterThanOrEqual(30_000);
     expect(rainyNight.rareEventMaxMs).toBeGreaterThan(rainyNight.rareEventMinMs);
+  });
+
+  it('keeps the permanent interior bed tonal instead of broadband-noise based', () => {
+    const rainyNight = warRoomSpatialMixForAtmosphere({ weather: 'rain', phase: 'night' });
+    const specs = warRoomInteriorToneSpecs(rainyNight);
+
+    expect(specs).toHaveLength(2);
+    expect(specs.map((spec) => spec.type)).toEqual(['triangle', 'sine']);
+    expect(specs.every((spec) => spec.frequency < 120)).toBe(true);
+    expect(specs.every((spec) => spec.gainValue > 0 && spec.gainValue < 0.001)).toBe(true);
+    expect(specs.every((spec) => !('filterType' in spec))).toBe(true);
   });
 
   it('does not even materialize rain or wind sources outside window hover', () => {
