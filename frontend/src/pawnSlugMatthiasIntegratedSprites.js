@@ -1,12 +1,9 @@
 import * as THREE from 'three';
-import pistolPayload from './assets/pawnSlug/matthias_pistol_integrated_v1.b64?raw';
-import machinegunPayload from './assets/pawnSlug/matthias_machinegun_integrated_v1.b64?raw';
-import shotgunPayload from './assets/pawnSlug/matthias_shotgun_integrated_v1.b64?raw';
-import panzerfaustPayload from './assets/pawnSlug/matthias_panzerfaust_integrated_v1.b64?raw';
-import {
-  configurePawnSlugTexture,
-  pawnSlugMatthiasAtlasWindow,
-} from './pawnSlugSpriteCore.js';
+import pistolPayload from './assets/pawnSlug/matthias_pistol_premium_v2.b64?raw';
+import machinegunPayload from './assets/pawnSlug/matthias_machinegun_premium_v2.b64?raw';
+import shotgunPayload from './assets/pawnSlug/matthias_shotgun_premium_v2.b64?raw';
+import panzerfaustPayload from './assets/pawnSlug/matthias_panzerfaust_premium_v2.b64?raw';
+import { configurePawnSlugTexture } from './pawnSlugSpriteCore.js';
 
 const PAYLOADS = Object.freeze({
   pistol: pistolPayload,
@@ -15,15 +12,43 @@ const PAYLOADS = Object.freeze({
   panzerfaust: panzerfaustPayload,
 });
 
+const ACTIONS = Object.freeze({
+  idle: Object.freeze({ row: 0, count: 10 }),
+  walk: Object.freeze({ row: 1, count: 10 }),
+  run: Object.freeze({ row: 2, count: 16 }),
+  crouch: Object.freeze({ row: 3, count: 10 }),
+  jump: Object.freeze({ row: 4, count: 9 }),
+});
+
+const ATLAS = Object.freeze({
+  width: 1536,
+  height: 480,
+  frameWidth: 96,
+  frameHeight: 96,
+  guardTexels: 1,
+});
+
+export const PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME = Object.freeze({
+  // The approved bake contains ~63-65 visible standing pixels inside each 96px
+  // cell. A 3.0 world-unit quad therefore presents Matthias at roughly 2 world
+  // units tall, matching normal combatants without changing physics/hitboxes.
+  scale: Object.freeze([2.08, 3.0]),
+  authoredBottomGutterPx: 12,
+  footAnchorY: 12 / 96,
+  visibleStandingHeightPx: Object.freeze([63, 65]),
+  uvGuardTexels: ATLAS.guardTexels,
+});
+
 export const PAWN_SLUG_MATTHIAS_INTEGRATED_ART = Object.freeze({
-  version: 'blender-integrated-v1',
+  version: 'blender-premium-v2',
   weapons: Object.freeze(Object.keys(PAYLOADS)),
   sourceFacing: 'left',
   runtimeFacing: 'world-direction-normalized',
   columns: 16,
   rows: 5,
-  frameWidth: 96,
-  frameHeight: 96,
+  frameWidth: ATLAS.frameWidth,
+  frameHeight: ATLAS.frameHeight,
+  footAnchorY: PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME.footAnchorY,
   separateWeaponOverlay: false,
 });
 
@@ -36,19 +61,42 @@ export function pawnSlugIntegratedWeaponAtlasUrl(kind = 'pistol') {
   return `data:image/webp;base64,${PAYLOADS[id].trim()}`;
 }
 
+export function pawnSlugPremiumMatthiasAtlasWindow(action = 'idle', frameIndex = 0, worldDirection = 1) {
+  const track = ACTIONS[action] || ACTIONS.idle;
+  const safeAction = ACTIONS[action] ? action : 'idle';
+  const frame = ((Math.floor(frameIndex) % track.count) + track.count) % track.count;
+  const guard = ATLAS.guardTexels;
+  const guardedWidth = ATLAS.frameWidth - guard * 2;
+  const guardedHeight = ATLAS.frameHeight - guard * 2;
+  const leftEdge = frame * ATLAS.frameWidth + guard;
+  const rightEdge = (frame + 1) * ATLAS.frameWidth - guard;
+  const bottomEdge = ATLAS.height - ((track.row + 1) * ATLAS.frameHeight) + guard;
+
+  // Blender authors every premium bank facing screen-left. Mirror only when the
+  // game asks Matthias to face right; this keeps runtime direction semantics
+  // independent from how the atlas was rendered.
+  const mirrored = worldDirection >= 0;
+  return Object.freeze({
+    action: safeAction,
+    frameIndex: frame,
+    row: track.row,
+    mirrored,
+    repeatX: (mirrored ? -1 : 1) * (guardedWidth / ATLAS.width),
+    repeatY: guardedHeight / ATLAS.height,
+    offsetX: (mirrored ? rightEdge : leftEdge) / ATLAS.width,
+    offsetY: bottomEdge / ATLAS.height,
+  });
+}
+
 function applyAtlasWindow(sprite) {
   const atlas = sprite.userData.atlas;
   const texture = atlas?.texture;
   if (!texture) return;
   const animation = sprite.userData.animation;
-  // The Blender source sheet faces screen-left. Invert the requested world
-  // direction before applying the existing UV mirror contract so runtime +X
-  // still means Matthias visibly aims to the right.
-  const direction = animation.direction < 0 ? 1 : -1;
-  const window = pawnSlugMatthiasAtlasWindow(
+  const window = pawnSlugPremiumMatthiasAtlasWindow(
     animation.action || 'idle',
     animation.frameIndex || 0,
-    direction,
+    animation.direction || 1,
   );
   configurePawnSlugTexture(texture);
   texture.repeat.set(window.repeatX, window.repeatY);
@@ -56,7 +104,7 @@ function applyAtlasWindow(sprite) {
   texture.needsUpdate = true;
 }
 
-export function createIntegratedMatthiasSlugSprite(scale = [1.77, 2.56]) {
+export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME.scale) {
   const material = new THREE.SpriteMaterial({
     transparent: true,
     alphaTest: 0.05,
@@ -67,11 +115,14 @@ export function createIntegratedMatthiasSlugSprite(scale = [1.77, 2.56]) {
   const sprite = new THREE.Sprite(material);
   sprite.name = 'pawn-slug-matthias-sprite';
   sprite.scale.set(scale[0], scale[1], 1);
-  sprite.center.set(0.5, 0);
+  // Align authored feet rather than the transparent bottom of the 96px cell to
+  // the runtime ground line. This removes the apparent levitation from v1.
+  sprite.center.set(0.5, PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME.footAnchorY);
   sprite.userData.motionBaseScaleX = scale[0];
   sprite.userData.motionBaseScaleY = scale[1];
   sprite.userData.motionPhase = Math.random() * Math.PI * 2;
   sprite.userData.pawnSlugIntegratedWeapons = true;
+  sprite.userData.pawnSlugPremiumMatthias = true;
   sprite.userData.atlas = {
     texture: null,
     source: 'loading',
@@ -130,9 +181,11 @@ export function createIntegratedMatthiasSlugSprite(scale = [1.77, 2.56]) {
 
   sprite.userData.setActionFrame = (action, frameIndex) => {
     const animation = sprite.userData.animation;
-    const nextFrame = Math.max(0, Math.floor(frameIndex) || 0);
-    if (animation.action === action && animation.frameIndex === nextFrame) return;
-    animation.action = action || 'idle';
+    const nextAction = ACTIONS[action] ? action : 'idle';
+    const count = ACTIONS[nextAction].count;
+    const nextFrame = ((Math.floor(frameIndex) % count) + count) % count;
+    if (animation.action === nextAction && animation.frameIndex === nextFrame) return;
+    animation.action = nextAction;
     animation.frameIndex = nextFrame;
     applyAtlasWindow(sprite);
   };
