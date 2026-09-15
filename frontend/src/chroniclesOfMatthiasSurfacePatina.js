@@ -1,0 +1,194 @@
+import * as THREE from 'three';
+import { CHRONICLES_MAP } from './chroniclesOfMatthias.js';
+
+const CELL = 4;
+const PATCH_TEXTURE_SIZE = 48;
+
+function noise(index, salt) {
+  let value = Math.imul(index + salt * 131, 374761393) ^ Math.imul(index * 19 + salt, 668265263);
+  value = Math.imul(value ^ (value >>> 13), 1274126177);
+  return ((value ^ (value >>> 16)) >>> 0) / 0xffffffff;
+}
+
+function createPatinaMask(seed, { broken = false } = {}) {
+  const data = new Uint8Array(PATCH_TEXTURE_SIZE * PATCH_TEXTURE_SIZE * 4);
+  const center = (PATCH_TEXTURE_SIZE - 1) / 2;
+  for (let y = 0; y < PATCH_TEXTURE_SIZE; y += 1) {
+    for (let x = 0; x < PATCH_TEXTURE_SIZE; x += 1) {
+      const nx = (x - center) / (PATCH_TEXTURE_SIZE * 0.5);
+      const ny = (y - center) / (PATCH_TEXTURE_SIZE * 0.5);
+      const radial = Math.max(0, 1 - Math.sqrt(nx * nx * 0.78 + ny * ny * 1.18));
+      const grain = noise(x + y * PATCH_TEXTURE_SIZE, seed);
+      const veins = 0.78 + Math.sin((x * 0.41 + y * 0.27 + seed) * 0.9) * 0.12;
+      const chipped = broken && ((x * 7 + y * 11 + seed * 5) % 29 < 4) ? 0.28 : 1;
+      const mask = Math.max(0, Math.min(1, radial * radial * (0.72 + grain * 0.38) * veins * chipped));
+      const value = Math.round(mask * 255);
+      const offset = (y * PATCH_TEXTURE_SIZE + x) * 4;
+      data[offset] = value;
+      data[offset + 1] = value;
+      data[offset + 2] = value;
+      data[offset + 3] = 255;
+    }
+  }
+
+  const texture = new THREE.DataTexture(data, PATCH_TEXTURE_SIZE, PATCH_TEXTURE_SIZE, THREE.RGBAFormat);
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function patinaMaterial(color, mask, options) {
+  const material = new THREE.MeshPhysicalMaterial({
+    color,
+    metalness: 0,
+    roughness: options.roughness,
+    clearcoat: options.clearcoat ?? 0,
+    clearcoatRoughness: options.clearcoatRoughness ?? 0.5,
+    transparent: true,
+    opacity: options.opacity,
+    depthWrite: false,
+    alphaMap: mask,
+    side: THREE.DoubleSide,
+  });
+  return material;
+}
+
+function exposedWallFaces() {
+  const faces = [];
+  const directions = [
+    { dx: 0, dy: -1, side: 'north' },
+    { dx: 1, dy: 0, side: 'east' },
+    { dx: 0, dy: 1, side: 'south' },
+    { dx: -1, dy: 0, side: 'west' },
+  ];
+  CHRONICLES_MAP.forEach((row, y) => {
+    [...row].forEach((tile, x) => {
+      if (tile !== '#') return;
+      directions.forEach((direction) => {
+        const neighbor = CHRONICLES_MAP[y + direction.dy]?.[x + direction.dx];
+        if (neighbor && neighbor !== '#') faces.push({ x, y, side: direction.side });
+      });
+    });
+  });
+  return faces;
+}
+
+function walkableCells() {
+  const cells = [];
+  CHRONICLES_MAP.forEach((row, y) => {
+    [...row].forEach((tile, x) => {
+      if (tile !== '#') cells.push({ x, y });
+    });
+  });
+  return cells;
+}
+
+function wallTransform({ x, y, side }, index) {
+  const wx = (x - 3) * CELL;
+  const wz = (y - 3) * CELL;
+  const offset = CELL / 2 + 0.165;
+  const yOffset = 0.94 + noise(index, 7) * 1.36;
+  if (side === 'north') return { position: [wx, yOffset, wz - offset], rotationY: 0 };
+  if (side === 'south') return { position: [wx, yOffset, wz + offset], rotationY: Math.PI };
+  if (side === 'east') return { position: [wx + offset, yOffset, wz], rotationY: Math.PI / 2 };
+  return { position: [wx - offset, yOffset, wz], rotationY: -Math.PI / 2 };
+}
+
+function addWallPatches(root, faces, materials, coarsePointer) {
+  const budget = coarsePointer ? 4 : 9;
+  let count = 0;
+  for (let index = 0; index < faces.length && count < budget; index += 1) {
+    if ((index * 5 + 3) % (coarsePointer ? 7 : 4) !== 0) continue;
+    const transform = wallTransform(faces[index], index);
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.72 + noise(index, 11) * 0.82, 0.54 + noise(index, 13) * 0.88),
+      materials[index % materials.length],
+    );
+    mesh.name = `chronicles-wall-patina-${count}`;
+    mesh.position.set(...transform.position);
+    mesh.rotation.y = transform.rotationY;
+    mesh.rotation.z = (noise(index, 17) - 0.5) * 0.22;
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.renderOrder = 2;
+    root.add(mesh);
+    count += 1;
+  }
+  return count;
+}
+
+function addFloorPatches(root, cells, material, coarsePointer) {
+  const budget = coarsePointer ? 3 : 7;
+  let count = 0;
+  for (let index = 0; index < cells.length && count < budget; index += 1) {
+    const cadence = coarsePointer ? 5 : 3;
+    const stride = coarsePointer ? 3 : 2;
+    if ((index * stride + 1) % cadence !== 0) continue;
+    const cell = cells[index];
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.75 + noise(index, 23) * 1.05, 0.5 + noise(index, 29) * 0.72),
+      material,
+    );
+    mesh.name = `chronicles-floor-patina-${count}`;
+    mesh.position.set(
+      (cell.x - 3) * CELL + (noise(index, 31) - 0.5) * 1.05,
+      0.047,
+      (cell.y - 3) * CELL + (noise(index, 37) - 0.5) * 1.05,
+    );
+    mesh.rotation.set(-Math.PI / 2, 0, (noise(index, 41) - 0.5) * 1.7);
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.renderOrder = 2;
+    root.add(mesh);
+    count += 1;
+  }
+  return count;
+}
+
+export function buildChroniclesSurfacePatina({ coarsePointer = false } = {}) {
+  const root = new THREE.Group();
+  root.name = 'chronicles-surface-patina';
+
+  const dampMask = createPatinaMask(19);
+  const mineralMask = createPatinaMask(43, { broken: true });
+  const floorMask = createPatinaMask(71, { broken: true });
+  const damp = patinaMaterial(0x172124, dampMask, {
+    roughness: 0.34,
+    clearcoat: 0.58,
+    clearcoatRoughness: 0.22,
+    opacity: coarsePointer ? 0.21 : 0.29,
+  });
+  const mineral = patinaMaterial(0x9a8b72, mineralMask, {
+    roughness: 0.96,
+    opacity: coarsePointer ? 0.12 : 0.18,
+  });
+  const floor = patinaMaterial(0x211b17, floorMask, {
+    roughness: 0.66,
+    clearcoat: 0.16,
+    clearcoatRoughness: 0.44,
+    opacity: coarsePointer ? 0.16 : 0.22,
+  });
+
+  let texturesDisposed = false;
+  [damp, mineral, floor].forEach((material) => {
+    material.addEventListener('dispose', () => {
+      if (texturesDisposed) return;
+      texturesDisposed = true;
+      dampMask.dispose();
+      mineralMask.dispose();
+      floorMask.dispose();
+    });
+  });
+
+  const wallPatchCount = addWallPatches(root, exposedWallFaces(), [damp, mineral], coarsePointer);
+  const floorPatchCount = addFloorPatches(root, walkableCells(), floor, coarsePointer);
+  root.userData.chroniclesSurfacePatinaStats = {
+    wallPatchCount,
+    floorPatchCount,
+    materialCount: 3,
+  };
+  return root;
+}
