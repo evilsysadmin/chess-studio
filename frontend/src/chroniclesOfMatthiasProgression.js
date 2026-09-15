@@ -1,4 +1,4 @@
-import { CHRONICLES_ENEMIES } from './chroniclesOfMatthias.js';
+import { chroniclesMapForState } from './chronicles/chroniclesMapCatalog.js';
 import {
   STORAGE_LOCAL,
   getStorageItem,
@@ -14,7 +14,6 @@ export const CHRONICLES_MAX_LEVEL = 12;
 export const CHRONICLES_ATTRIBUTE_CAP = 5;
 
 const AUTH_USERNAME_KEY = 'chess-study-auth-username';
-const ENCOUNTER_ID = 'crypt-01';
 const HERO_IDS = Object.freeze(['matthias', 'rook', 'bishop', 'knight']);
 const CLAIM_LIMIT = 256;
 const ATTRIBUTE_KEYS = Object.freeze(['vigor', 'power', 'precision', 'will']);
@@ -429,6 +428,11 @@ function enemyHp(state, enemy) {
   return Math.max(0, nonNegativeInteger(state?.[enemy.hpKey]));
 }
 
+function progressionNamespace(state) {
+  const map = chroniclesMapForState(state);
+  return String(map.progressionKey || map.id || 'chronicles').trim() || 'chronicles';
+}
+
 function award(progress, awards, levelUps, memberId, amount, awardId, reason) {
   const result = grantChroniclesXp(progress, memberId, amount, awardId);
   if (result.awarded > 0) awards.push({ memberId, xp: result.awarded, reason, awardId });
@@ -436,7 +440,7 @@ function award(progress, awards, levelUps, memberId, amount, awardId, reason) {
   return result.progression;
 }
 
-function awardDamageBudget(progress, awards, levelUps, memberId, enemy, before, after) {
+function awardDamageBudget(progress, awards, levelUps, memberId, enemy, before, after, namespace) {
   let next = progress;
   for (let hp = before - 1; hp >= after; hp -= 1) {
     next = award(
@@ -445,14 +449,14 @@ function awardDamageBudget(progress, awards, levelUps, memberId, enemy, before, 
       levelUps,
       memberId,
       2,
-      `${ENCOUNTER_ID}:damage:${enemy.id}:hp-${hp}`,
+      `${namespace}:damage:${enemy.id}:hp-${hp}`,
       'daño útil',
     );
   }
   return next;
 }
 
-function awardHealingBudget(progress, awards, levelUps, memberId, targetId, before, after) {
+function awardHealingBudget(progress, awards, levelUps, memberId, targetId, before, after, namespace) {
   let next = progress;
   for (let hp = before + 1; hp <= after; hp += 1) {
     next = award(
@@ -461,7 +465,7 @@ function awardHealingBudget(progress, awards, levelUps, memberId, targetId, befo
       levelUps,
       memberId,
       2,
-      `${ENCOUNTER_ID}:support:${targetId}:hp-${hp}`,
+      `${namespace}:support:${targetId}:hp-${hp}`,
       'soporte efectivo',
     );
   }
@@ -479,12 +483,15 @@ export function applyChroniclesTacticsProgression(progression, previous, next, {
   const safeRunId = String(runId || '').trim();
   if (!previous || !next || !safeRunId) return { progression: progress, awards, levelUps };
 
+  const map = chroniclesMapForState(previous);
+  const namespace = progressionNamespace(previous);
+
   if (actorMemberId && HERO_IDS.includes(actorMemberId)) {
-    CHRONICLES_ENEMIES.forEach((enemy) => {
+    map.enemies.forEach((enemy) => {
       const before = enemyHp(previous, enemy);
       const after = enemyHp(next, enemy);
       if (after >= before) return;
-      progress = awardDamageBudget(progress, awards, levelUps, actorMemberId, enemy, before, after);
+      progress = awardDamageBudget(progress, awards, levelUps, actorMemberId, enemy, before, after, namespace);
       if (before > 0 && after === 0) {
         progress = award(
           progress,
@@ -492,7 +499,7 @@ export function applyChroniclesTacticsProgression(progression, previous, next, {
           levelUps,
           actorMemberId,
           10 + Math.max(1, nonNegativeInteger(enemy.maxHp)) * 2,
-          `${ENCOUNTER_ID}:kill:${enemy.id}`,
+          `${namespace}:kill:${enemy.id}`,
           'baja',
         );
       }
@@ -503,7 +510,7 @@ export function applyChroniclesTacticsProgression(progression, previous, next, {
       (next.party || []).forEach((member) => {
         const before = beforeParty.get(member.id);
         if (!before || member.hp <= before.hp) return;
-        progress = awardHealingBudget(progress, awards, levelUps, actorMemberId, member.id, before.hp, member.hp);
+        progress = awardHealingBudget(progress, awards, levelUps, actorMemberId, member.id, before.hp, member.hp, namespace);
       });
     }
 
@@ -514,7 +521,7 @@ export function applyChroniclesTacticsProgression(progression, previous, next, {
         levelUps,
         actorMemberId,
         8,
-        `${ENCOUNTER_ID}:objective:sigil`,
+        `${namespace}:objective:sigil`,
         'objetivo',
       );
     }
@@ -528,7 +535,7 @@ export function applyChroniclesTacticsProgression(progression, previous, next, {
         levelUps,
         member.id,
         12,
-        `${ENCOUNTER_ID}:survival:${member.id}`,
+        `${namespace}:survival:${member.id}`,
         'supervivencia',
       );
     });
