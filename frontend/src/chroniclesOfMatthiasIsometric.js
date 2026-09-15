@@ -12,12 +12,13 @@ import { buildSpectralBishop } from './chroniclesOfMatthiasSpectralBishop.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 
 const CELL = 2.45;
-const PARTY_OFFSETS = Object.freeze({
-  rook: Object.freeze({ x: -0.56, z: 0.18, scale: 0.8 }),
-  matthias: Object.freeze({ x: -0.18, z: 0.62, scale: 0.76 }),
-  bishop: Object.freeze({ x: 0.34, z: -0.28, scale: 0.77 }),
-  knight: Object.freeze({ x: 0.58, z: 0.35, scale: 0.78 }),
+export const CHRONICLES_ISO_PARTY_LAYOUT = Object.freeze({
+  rook: Object.freeze({ x: -0.92, z: 0.22, scale: 1.02 }),
+  matthias: Object.freeze({ x: -0.26, z: 0.78, scale: 1.06 }),
+  bishop: Object.freeze({ x: 0.36, z: -0.2, scale: 1.0 }),
+  knight: Object.freeze({ x: 0.9, z: 0.34, scale: 1.03 }),
 });
+export const CHRONICLES_ISO_PARTY_FACING = -Math.PI * 0.75;
 
 const TORCH_CELLS = Object.freeze([
   Object.freeze({ x: 1, y: 5, ox: -0.98, oz: -0.78 }),
@@ -34,11 +35,11 @@ export function chroniclesIsoWorldForCell(x, y) {
 
 export function chroniclesIsometricCameraPose(focus = { x: 0, z: 0 }) {
   return {
-    // Keep the party in the foreground and look through them into the room.
-    // This is deliberately much lower/closer than the old dollhouse camera.
-    position: new THREE.Vector3(focus.x + 5.3, 5.4, focus.z + 6.5),
-    target: new THREE.Vector3(focus.x - 1.0, 0.88, focus.z - 1.35),
-    fov: 40.5,
+    // Action-RPG framing: the company owns the foreground and the camera looks
+    // over their backs into the room instead of surveying a tactical diorama.
+    position: new THREE.Vector3(focus.x + 3.75, 3.25, focus.z + 5.05),
+    target: new THREE.Vector3(focus.x - 0.82, 1.02, focus.z - 2.3),
+    fov: 43,
   };
 }
 
@@ -250,10 +251,10 @@ function buildParty(scene, { coarsePointer }) {
   const models = new Map();
   ['rook', 'matthias', 'bishop', 'knight'].forEach((id) => {
     const model = buildChroniclesCharacter(id, { coarsePointer });
-    const config = PARTY_OFFSETS[id];
+    const config = CHRONICLES_ISO_PARTY_LAYOUT[id];
     model.position.set(config.x, 0, config.z);
     model.scale.setScalar(config.scale);
-    model.rotation.y = Math.PI * 0.88;
+    model.rotation.y = CHRONICLES_ISO_PARTY_FACING;
     root.add(model);
     models.set(id, model);
   });
@@ -265,7 +266,7 @@ function buildParty(scene, { coarsePointer }) {
     depthWrite: false,
   });
   selectionMaterial.userData.chroniclesIsoOwned = true;
-  const selection = new THREE.Mesh(new THREE.TorusGeometry(0.43, 0.025, 8, coarsePointer ? 20 : 32), selectionMaterial);
+  const selection = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.028, 8, coarsePointer ? 20 : 32), selectionMaterial);
   selection.rotation.x = -Math.PI / 2;
   selection.position.y = 0.025;
   root.add(selection);
@@ -335,17 +336,6 @@ function buildInteractionMarkers(scene, { coarsePointer }) {
     moveMarkers: makePool(4, moveGeometry, moveMaterial, 'chronicles-iso-move-marker'),
     attackMarkers: makePool(CHRONICLES_ENEMIES.length, attackGeometry, attackMaterial, 'chronicles-iso-attack-marker'),
   };
-}
-
-function nearestActiveEnemyWorld(state) {
-  let best = null;
-  CHRONICLES_ENEMIES.forEach((enemy) => {
-    if (!chroniclesEnemyIsActive(state, enemy) || Number(state[enemy.hpKey] || 0) <= 0) return;
-    const position = runtimeEnemyPosition(state, enemy);
-    const separation = Math.abs(position.x - state.x) + Math.abs(position.y - state.y);
-    if (!best || separation < best.separation) best = { position, separation };
-  });
-  return best ? chroniclesIsoWorldForCell(best.position.x, best.position.y) : null;
 }
 
 function descriptorForObject(object) {
@@ -445,10 +435,10 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
   }
 
   function syncSelection() {
-    const config = PARTY_OFFSETS[selectedMemberId] || PARTY_OFFSETS.matthias;
+    const config = CHRONICLES_ISO_PARTY_LAYOUT[selectedMemberId] || CHRONICLES_ISO_PARTY_LAYOUT.matthias;
     party.selection.position.x = config.x;
     party.selection.position.z = config.z;
-    party.selection.scale.setScalar((config.scale || 0.7) / 0.7);
+    party.selection.scale.setScalar((config.scale || 1) / 0.86);
   }
 
   function syncInteraction(nextInteraction = null) {
@@ -479,10 +469,9 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
     selectedMemberId = nextSelectedMemberId || selectedMemberId;
     const partyCell = chroniclesIsoWorldForCell(state.x, state.y);
     desiredParty.copy(partyCell);
-
-    const enemyFocus = nearestActiveEnemyWorld(state);
+    // Keep the company as the camera anchor. Enemies live deeper in the room,
+    // but they no longer drag the shot back toward a tactical overview.
     desiredFocus.copy(partyCell);
-    if (enemyFocus) desiredFocus.lerp(enemyFocus, 0.34);
 
     CHRONICLES_ENEMIES.forEach((definition) => {
       const model = enemies.get(definition.id);
@@ -568,7 +557,7 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
 
       party.models.forEach((model, id) => {
         if (!model.visible) return;
-        model.rotation.y = Math.PI * 0.88 + Math.sin(time * 0.55 + id.length) * 0.035;
+        model.rotation.y = CHRONICLES_ISO_PARTY_FACING + Math.sin(time * 0.55 + id.length) * 0.025;
         const hpRatio = model.userData.chroniclesIsoHpRatio ?? 1;
         model.position.y = Math.sin(time * 0.8 + id.length) * 0.006 - (1 - hpRatio) * 0.025;
       });
@@ -589,11 +578,11 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
       }
 
       const pose = chroniclesIsometricCameraPose({ x: desiredFocus.x, z: desiredFocus.z });
-      camera.position.lerp(pose.position, 0.08);
+      camera.position.lerp(pose.position, 0.1);
       const lookTarget = pose.target;
       const direction = lookTarget.clone().sub(camera.position).normalize();
       const currentTarget = camera.position.clone().add(direction.multiplyScalar(10));
-      camera.lookAt(currentTarget.lerp(lookTarget, 0.18));
+      camera.lookAt(currentTarget.lerp(lookTarget, 0.22));
     }
 
     renderer.render(scene, camera);
