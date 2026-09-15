@@ -1,64 +1,44 @@
-# OCI backend Terraform · preparación
+# OCI staging/lab · preparación
 
-Este directorio **no hace cutover** y no contiene secretos de producción. Su único objetivo es dejar reproducible la infraestructura mínima de la futura VM Ampere A1 que sustituirá a Render cuando llegue el momento.
+OCI es un **staging/laboratorio experimental**. Producción permanece en Render.
 
-## Qué crea
+Este módulo mantiene la VM A1 reproducible y deliberadamente reemplazable: VCN/subnet, ingress cerrado
+por defecto, Ampere A1 ARM64 y cloud-init para construir el backend desde un SHA inmutable ya admitido
+por CI. Mongo y los secretos de aplicación quedan fuera de Terraform.
 
-- VCN dedicada y una subnet.
-- Internet Gateway sólo para salida/administración explícita.
-- Security List con **cero ingress por defecto** y egress permitido.
-- SSH opcional únicamente si `ssh_ingress_cidr` contiene un CIDR concreto; `0.0.0.0/0` está rechazado por precondition.
-- Una `VM.Standard.A1.Flex`, por defecto 1 OCPU / 6 GiB.
-- IP pública para disponer de egress sin introducir un NAT Gateway de pago; ninguna regla permite tráfico entrante por defecto.
-- cloud-init que instala Docker, clona un commit validado y construye la imagen ARM64 del backend.
-- Un servicio systemd que sólo puede arrancar cuando exista `/etc/chess-studio/backend.env`.
+## Contrato de seguridad
 
-FastAPI se publica en el host exclusivamente como `127.0.0.1:4000`. El diseño esperado es que Cloudflare Tunnel, configurado después y **fuera de Terraform**, sea quien alcance ese origen local.
+- `VM.Standard.A1.Flex` únicamente, con límites conservadores de OCPU/RAM/boot volume.
+- cero ingress por defecto; SSH a `0.0.0.0/0` está rechazado.
+- `repo_ref` debe ser un SHA Git completo de 40 caracteres, nunca `main`.
+- FastAPI sólo escucha en `127.0.0.1:4000` en el host.
+- ningún secreto de aplicación ni private key entra en Terraform state.
+- Frankfurt (`eu-frankfurt-1`) es el objetivo; AD e image OCID siguen siendo explícitos para poder
+  cambiar de AD cuando no exista capacidad A1.
 
-## Lo que deliberadamente NO entra en Terraform
+## Validación sin OCI real
 
-- `MONGO_URL`, JWT, Resend, OTLP tokens ni ninguna variable de producción.
-- credenciales/token de Cloudflare Tunnel.
-- claves SSH privadas.
-- DNS/cutover de producción.
-- estado remoto improvisado.
+`OCI readiness` ejecuta tres niveles sin credenciales Oracle:
 
-Cualquiera de esos datos en una variable Terraform terminaría potencialmente en state. No se hace.
+1. `terraform fmt`, `init -backend=false` y `validate`;
+2. `terraform test` con `mock_provider "oci"` para los contratos A1/ingress/SHA;
+3. `floci-oci` para un apply → plan sin drift → destroy real del provider oficial sobre IAM +
+   Object Storage.
 
-## Uso de preparación
+floci-oci no emula Compute ni VCN actualmente; esos recursos quedan cubiertos por `terraform test`
+hasta el plan/apply autenticado contra OCI real.
+
+## Uso real
 
 ```bash
 cd infra/oci
 cp terraform.tfvars.example terraform.tfvars
 $EDITOR terraform.tfvars
 terraform init
-terraform fmt -check
-terraform validate
-terraform plan -out=tfplan
+terraform plan
 ```
 
-Antes de cualquier `apply`, `repo_ref` debe ser un SHA concreto que ya haya pasado CI y el workflow `OCI ARM64 Readiness`.
+La autenticación OCI vive fuera de Terraform (config/env/GitHub secret). Tras crear la API signing key
+inicial, la meta operativa es no necesitar la consola OCI para el día a día.
 
-## Autenticación OCI
-
-El provider usa los mecanismos normales del provider OCI (config file, variables de entorno, instance principal, etc.). No hay variables Terraform para la private key/API key.
-
-No guardar credenciales OCI en `terraform.tfvars`.
-
-## Post-provisioning
-
-Cuando algún día se ejecute un `apply` real:
-
-1. Confirmar que cloud-init deja `/opt/chess-studio/BOOTSTRAP_READY`.
-2. Provisionar `/etc/chess-studio/backend.env` por canal seguro y con `0600`.
-3. Instalar/autorizar Cloudflare Tunnel fuera de Terraform.
-4. Arrancar `chess-studio-backend.service`.
-5. Comprobar `curl --fail http://127.0.0.1:4000/api/ready` dentro de la VM.
-6. Probar hostname/origen de preproducción.
-7. Mantener Render vivo durante todo el cutover.
-
-El runbook completo y el rollback están en `docs/operations/oci-backend-migration.md`.
-
-## Regla operativa
-
-Este módulo puede perderse y recrearse. Mongo sigue siendo la fuente de verdad y la VM no debe guardar datos de usuario exclusivos en disco local.
+No hay cutover de producción implícito: **Render = prod; OCI = staging/lab**.

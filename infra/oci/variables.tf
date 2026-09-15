@@ -14,7 +14,7 @@ variable "availability_domain" {
 }
 
 variable "image_ocid" {
-  description = "ARM64 Ubuntu image OCID for the selected region. Deliberately explicit: no region-sensitive lookup is hidden in the module."
+  description = "ARM64 Ubuntu image OCID for the selected region."
   type        = string
 }
 
@@ -29,25 +29,28 @@ variable "ssh_authorized_key" {
 }
 
 variable "ssh_ingress_cidr" {
-  description = "Optional explicit CIDR allowed to SSH. Null keeps the VM with zero inbound rules, which is the preferred Cloudflare Tunnel posture."
+  description = "Optional operator CIDR allowed to SSH. Null keeps zero inbound rules."
   type        = string
   default     = null
   nullable    = true
 
   validation {
-    condition     = var.ssh_ingress_cidr == null || can(cidrhost(var.ssh_ingress_cidr, 0))
-    error_message = "ssh_ingress_cidr must be null or a valid CIDR."
+    condition = (
+      var.ssh_ingress_cidr == null ||
+      (can(cidrhost(var.ssh_ingress_cidr, 0)) && var.ssh_ingress_cidr != "0.0.0.0/0")
+    )
+    error_message = "ssh_ingress_cidr must be null or a valid CIDR other than 0.0.0.0/0."
   }
 }
 
 variable "instance_name" {
   description = "Display name for the backend VM."
   type        = string
-  default     = "chess-studio-backend"
+  default     = "chess-studio-staging"
 }
 
 variable "shape" {
-  description = "OCI compute shape. Keep A1 unless deliberately leaving the ARM64/Always Free design."
+  description = "OCI compute shape locked to Ampere A1."
   type        = string
   default     = "VM.Standard.A1.Flex"
 
@@ -58,7 +61,7 @@ variable "shape" {
 }
 
 variable "ocpus" {
-  description = "A1 OCPUs. Conservative default keeps headroom inside the documented Always Free floor."
+  description = "A1 OCPUs."
   type        = number
   default     = 1
 
@@ -80,13 +83,13 @@ variable "memory_gb" {
 }
 
 variable "boot_volume_size_gb" {
-  description = "Boot volume size; leave room inside the tenancy-wide Always Free block-volume allowance."
+  description = "Boot volume size."
   type        = number
   default     = 50
 
   validation {
     condition     = var.boot_volume_size_gb >= 50 && var.boot_volume_size_gb <= 100
-    error_message = "boot_volume_size_gb must stay between 50 and 100 GiB in this module."
+    error_message = "boot_volume_size_gb must stay between 50 and 100 GiB."
   }
 }
 
@@ -119,9 +122,13 @@ variable "repo_url" {
 }
 
 variable "repo_ref" {
-  description = "Validated commit SHA or tag to build during bootstrap. Prefer an immutable SHA at apply time."
+  description = "Immutable commit SHA built during bootstrap."
   type        = string
-  default     = "main"
+
+  validation {
+    condition     = can(regex("^[0-9a-fA-F]{40}$", var.repo_ref))
+    error_message = "repo_ref must be an immutable 40-character commit SHA."
+  }
 }
 
 variable "freeform_tags" {
