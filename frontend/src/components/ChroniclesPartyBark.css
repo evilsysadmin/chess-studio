@@ -1,0 +1,96 @@
+.chronicles-party-bark {
+  position: absolute;
+  z-index: 5;
+  left: 18px;
+  bottom: 18px;
+  width: min(390px, calc(100% - 112px));
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  padding: 9px 11px 10px;
+  pointer-events: none;
+  border: 1px solid rgba(202, 164, 104, .3);
+  border-left-color: rgba(230, 181, 100, .72);
+  border-radius: 3px;
+  background:
+    linear-gradient(90deg, rgba(34, 24, 16, .93), rgba(9, 8, 7, .78)),
+    rgba(10, 8, 6, .82);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .38), inset 0 1px rgba(255, 235, 199, .04);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: chronicles-party-bark-arrive 160ms ease-out both;
+}
+.chronicles-party-bark::after {
+  content: '';
+  position: absolute;
+  left: 24px;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  border-right: 1px solid rgba(202, 164, 104, .3);
+  border-bottom: 1px solid rgba(202, 164, 104, .3);
+  background: #100c09;
+  transform: rotate(45deg);
+}
+.chronicles-party-bark-glyph {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(219, 175, 105, .36);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(113, 72, 34, .38), rgba(18, 13, 9, .75) 72%);
+  color: #e8c989;
+  font-size: 1rem;
+  text-shadow: 0 2px 6px #000;
+}
+.chronicles-party-bark strong {
+  display: block;
+  margin-bottom: 1px;
+  color: #e8c88f;
+  font-size: .63rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.chronicles-party-bark p {
+  margin: 0;
+  color: #eadfcd;
+  font: .86rem/1.35 Georgia, 'Times New Roman', serif;
+  text-shadow: 0 1px 7px rgba(0, 0, 0, .7);
+}
+.chronicles-party-bark[data-speaker="rook"] { border-left-color: rgba(176, 194, 202, .72); }
+.chronicles-party-bark[data-speaker="bishop"] { border-left-color: rgba(229, 187, 92, .76); }
+.chronicles-party-bark[data-speaker="knight"] { border-left-color: rgba(170, 137, 104, .76); }
+
+@keyframes chronicles-party-bark-arrive {
+  from { opacity: 0; transform: translate(-7px, 3px); }
+  to { opacity: 1; transform: translate(0, 0); }
+}
+
+@media (max-width: 800px) {
+  .chronicles-party-bark {
+    left: 11px;
+    bottom: 11px;
+    width: min(350px, calc(100% - 72px));
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 7px;
+    padding: 7px 9px 8px;
+  }
+  .chronicles-party-bark-glyph { width: 25px; height: 25px; font-size: .85rem; }
+  .chronicles-party-bark p { font-size: .76rem; }
+}
+
+@media (max-width: 520px) {
+  .chronicles-party-bark {
+    left: 8px;
+    bottom: 8px;
+    width: calc(100% - 44px);
+  }
+  .chronicles-party-bark strong { font-size: .52rem; }
+  .chronicles-party-bark p { font-size: .7rem; line-height: 1.3; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chronicles-party-bark { animation: none; }
+}
