@@ -5,6 +5,13 @@ import { installChroniclesTacticsPartyBlenderArt } from './chroniclesOfMatthiasP
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 
 const PORTRAIT_MEMBERS = Object.freeze(['matthias', 'rook', 'bishop', 'knight']);
+const EXPECTED_BLENDER_SOURCE = Object.freeze({
+  matthias: 'blender-home-canonical-v1',
+  rook: 'chronicles-tactics-party-v3',
+  bishop: 'chronicles-tactics-party-v3',
+  knight: 'chronicles-tactics-party-v3',
+});
+const THUMBNAIL_SIZE = 96;
 
 function configurePortraitRenderer(renderer, { coarsePointer }) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -30,7 +37,11 @@ function portraitArtSource(model) {
     || 'procedural-fallback';
 }
 
-export function createChroniclesPartyPortrait(host) {
+function hasCanonicalBlenderParty(models) {
+  return PORTRAIT_MEMBERS.every((id) => portraitArtSource(models.get(id)) === EXPECTED_BLENDER_SOURCE[id]);
+}
+
+export function createChroniclesPartyPortrait(host, { onThumbnailsReady = null } = {}) {
   if (!host) throw new Error('Chronicles party portrait requires a host element');
 
   const coarse = Boolean(window.matchMedia?.('(pointer: coarse)')?.matches);
@@ -79,6 +90,7 @@ export function createChroniclesPartyPortrait(host) {
   let destroyed = false;
   let frame = 0;
   let visible = document.visibilityState !== 'hidden';
+  let thumbnailsEmitted = false;
   const clock = new THREE.Clock();
 
   function syncHostState() {
@@ -92,6 +104,67 @@ export function createChroniclesPartyPortrait(host) {
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
+  }
+
+  function captureBlenderThumbnails() {
+    const originalSize = renderer.getSize(new THREE.Vector2());
+    const originalPixelRatio = renderer.getPixelRatio();
+    const originalAspect = camera.aspect;
+    const snapshots = new Map(PORTRAIT_MEMBERS.map((id) => {
+      const model = models.get(id);
+      return [id, {
+        visible: model?.visible,
+        rotationY: model?.rotation.y,
+        positionY: model?.position.y,
+      }];
+    }));
+    const thumbnails = {};
+
+    try {
+      renderer.setPixelRatio(1);
+      renderer.setSize(THUMBNAIL_SIZE, THUMBNAIL_SIZE, false);
+      camera.aspect = 1;
+      camera.updateProjectionMatrix();
+
+      PORTRAIT_MEMBERS.forEach((id) => {
+        const model = models.get(id);
+        models.forEach((candidate) => { candidate.visible = candidate === model; });
+        if (model) {
+          model.rotation.y = -0.28;
+          model.position.y = 0;
+          model.userData?.chroniclesArtTick?.(0.35);
+        }
+        renderer.render(scene, camera);
+        thumbnails[id] = renderer.domElement.toDataURL('image/png');
+      });
+    } catch (error) {
+      console.warn('Chronicles party Blender thumbnails could not be captured', error);
+      return null;
+    } finally {
+      snapshots.forEach((snapshot, id) => {
+        const model = models.get(id);
+        if (!model) return;
+        model.visible = snapshot.visible;
+        model.rotation.y = snapshot.rotationY;
+        model.position.y = snapshot.positionY;
+      });
+      renderer.setPixelRatio(originalPixelRatio);
+      renderer.setSize(Math.max(1, originalSize.x), Math.max(1, originalSize.y), false);
+      camera.aspect = originalAspect;
+      camera.updateProjectionMatrix();
+      renderer.render(scene, camera);
+    }
+
+    return thumbnails;
+  }
+
+  function maybeEmitThumbnails() {
+    if (thumbnailsEmitted || typeof onThumbnailsReady !== 'function' || !hasCanonicalBlenderParty(models)) return;
+    const thumbnails = captureBlenderThumbnails();
+    if (!thumbnails || Object.keys(thumbnails).length !== PORTRAIT_MEMBERS.length) return;
+    thumbnailsEmitted = true;
+    host.dataset.chroniclesPartyThumbnailCount = String(PORTRAIT_MEMBERS.length);
+    onThumbnailsReady(thumbnails);
   }
 
   function renderMember(memberId) {
@@ -118,6 +191,7 @@ export function createChroniclesPartyPortrait(host) {
       active.position.y = Math.sin(time * 0.9) * 0.008;
     }
     syncHostState();
+    maybeEmitThumbnails();
     renderer.render(scene, camera);
   }
 
@@ -149,6 +223,7 @@ export function createChroniclesPartyPortrait(host) {
       renderer.domElement.remove();
       delete host.dataset.chroniclesPartyArtSource;
       delete host.dataset.chroniclesPartyMember;
+      delete host.dataset.chroniclesPartyThumbnailCount;
     },
   };
 }

@@ -22,6 +22,7 @@ import './ChroniclesOfMatthias.css';
 import './ChroniclesOfMatthiasArt.css';
 import './ChroniclesOfMatthiasJournal.css';
 import './ChroniclesPartyCondition.css';
+import './ChroniclesPartyThumbnails.css';
 import './ChroniclesRecoveredRelic.css';
 
 const KEY_ACTIONS = Object.freeze({
@@ -45,6 +46,7 @@ export default function ChroniclesOfMatthias({ onExit }) {
   const [state, setState] = useState(stateRef.current);
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
   const selectedMemberIdRef = useRef(selectedMemberId);
+  const [partyThumbnails, setPartyThumbnails] = useState({});
   const [rendererName, setRendererName] = useState('CARGANDO');
   const [rendererError, setRendererError] = useState('');
   const [retaliationCue, setRetaliationCue] = useState(null);
@@ -129,7 +131,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
         engine.renderState(stateRef.current);
 
         if (portraitHost) {
-          portraitEngine = createChroniclesPartyPortrait(portraitHost);
+          portraitEngine = createChroniclesPartyPortrait(portraitHost, {
+            onThumbnailsReady: (thumbnails) => {
+              if (!cancelled) setPartyThumbnails(thumbnails);
+            },
+          });
           portraitEngineRef.current = portraitEngine;
           portraitEngine.renderMember(selectedMemberIdRef.current);
         }
@@ -213,20 +219,33 @@ export default function ChroniclesOfMatthias({ onExit }) {
               <small>{selectedMember?.attackName} · alcance {selectedMember?.reach}</small>
             </div>
           </div>
-          {state.party.map((member, index) => (
-            <button
-              type="button"
-              key={member.id}
-              className={`chronicles-party-member ${member.id === 'matthias' ? 'is-leader' : ''} ${member.id === selectedMemberId ? 'is-selected' : ''} ${member.hp <= 0 ? 'is-down' : ''}`}
-              onClick={() => setSelectedMemberId(member.id)}
-              aria-label={`Seleccionar ${member.name}`}
-              aria-pressed={member.id === selectedMemberId}
-            >
-              <span className="chronicles-party-glyph" aria-hidden="true">{member.glyph}</span>
-              <span><strong>{index + 1}. {member.name}</strong><small>{member.row === 'front' ? 'FRENTE' : 'RETAGUARDIA'} · {member.attackName} · alcance {member.reach}</small></span>
-              <b>{member.hp}/{member.maxHp}</b>
-            </button>
-          ))}
+          {state.party.map((member, index) => {
+            const thumbnail = partyThumbnails[member.id];
+            return (
+              <button
+                type="button"
+                key={member.id}
+                className={`chronicles-party-member ${member.id === 'matthias' ? 'is-leader' : ''} ${member.id === selectedMemberId ? 'is-selected' : ''} ${member.hp <= 0 ? 'is-down' : ''}`}
+                onClick={() => setSelectedMemberId(member.id)}
+                aria-label={`Seleccionar ${member.name}`}
+                aria-pressed={member.id === selectedMemberId}
+              >
+                <span className={`chronicles-party-glyph ${thumbnail ? 'has-blender-portrait' : ''}`} aria-hidden="true">
+                  {thumbnail ? (
+                    <img
+                      className="chronicles-party-thumbnail"
+                      src={thumbnail}
+                      alt=""
+                      draggable="false"
+                      data-chronicles-party-thumbnail={member.id}
+                    />
+                  ) : member.glyph}
+                </span>
+                <span><strong>{index + 1}. {member.name}</strong><small>{member.row === 'front' ? 'FRENTE' : 'RETAGUARDIA'} · {member.attackName} · alcance {member.reach}</small></span>
+                <b>{member.hp}/{member.maxHp}</b>
+              </button>
+            );
+          })}
         </aside>
 
         <main className="chronicles-stage-wrap">
