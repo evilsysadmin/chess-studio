@@ -5,6 +5,10 @@ ROOT := $(abspath ../..)
 TERRAFORM ?= terraform
 PYTHON ?= python3
 
+export TF_VAR_tenancy_ocid := $(OCI_TENANCY_OCID)
+export TF_VAR_region := $(if $(OCI_REGION),$(OCI_REGION),eu-frankfurt-1)
+export TF_VAR_state_bucket_name := $(if $(OCI_TFSTATE_BUCKET),$(OCI_TFSTATE_BUCKET),chess-studio-tfstate)
+
 .PHONY: help auth probe bootstrap plan apply destroy fmt fmt-check validate static secret-guard floci test
 
 help:
