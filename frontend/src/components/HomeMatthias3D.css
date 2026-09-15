@@ -5,37 +5,63 @@
   height: 100%;
   min-height: 1px;
   overflow: visible;
+  isolation: isolate;
   pointer-events: none;
-  opacity: 0;
+}
+
+.home-matthias-3d canvas,
+.home-matthias-3d img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
   transition: opacity 220ms ease, filter 180ms ease;
 }
 
-.home-matthias-3d.is-ready {
-  opacity: 1;
-}
-
-.home-matthias-3d .matthias-art-rig {
-  width: 100%;
-  height: 100%;
+.home-matthias-3d canvas {
+  z-index: 2;
+  opacity: 0;
   filter: drop-shadow(0 8px 10px rgba(0, 0, 0, .38));
 }
 
-.illustrated-home__matthias.is-speaking .home-matthias-3d .matthias-art-rig {
+.home-matthias-3d img {
+  z-index: 1;
+  opacity: 1;
+  object-fit: cover;
+  object-position: center center;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, .34));
+}
+
+.home-matthias-3d.is-ready canvas {
+  opacity: 1;
+}
+
+.home-matthias-3d.is-ready img {
+  opacity: 0;
+}
+
+.home-matthias-3d.is-fallback canvas {
+  opacity: 0;
+}
+
+.illustrated-home__matthias.is-speaking .home-matthias-3d canvas,
+.illustrated-home__matthias.is-speaking .home-matthias-3d img {
   filter: brightness(1.04) drop-shadow(0 8px 12px rgba(0, 0, 0, .42));
 }
 
 /* Mobile Home historically hides generic spans inside the Matthias button to
- * suppress caption copy. Keep the canonical art host explicitly visible while
- * leaving the retired mobile caption hidden. */
+ * suppress caption copy. The canonical Three host is also a span, so keep it
+ * explicitly visible without reviving the retired mobile caption. */
 @media (max-width: 999px) {
-  .illustrated-home__matthias .home-matthias-3d,
-  .illustrated-home__matthias .home-matthias-3d .matthias-art-rig {
+  .illustrated-home__matthias .home-matthias-3d {
     display: block;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-matthias-3d {
+  .home-matthias-3d canvas,
+  .home-matthias-3d img {
     transition: none;
   }
 }
