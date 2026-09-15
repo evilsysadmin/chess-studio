@@ -55,8 +55,9 @@ class Scope:
         return lines
 
 
+QUALITY_SCOPE_PATH = "scripts/quality_scope.py"
 GLOBAL_HARNESS_PATHS = {
-    ".github/workflows/cicd.yml", "Makefile", "scripts/pr_merge_diff.py", "scripts/quality_scope.py",
+    ".github/workflows/cicd.yml", "Makefile", "scripts/pr_merge_diff.py",
 }
 FRONTEND_HARNESS_PATHS = {"scripts/frontend_test_groups.mjs", "scripts/run_frontend_test_group.mjs"}
 NODE_HARNESS_PATHS = {".github/actions/cache-node-modules/action.yml"}
@@ -149,13 +150,22 @@ def _enable_core_e2e(scope: Scope, lanes: Iterable[str] = CORE_E2E_LANES) -> Non
         setattr(scope, field_name, True)
 
 
+def _classifier_harness_scope() -> Scope:
+    scope = Scope.all()
+    for field_name in TARGETED_E2E.values():
+        setattr(scope, field_name, False)
+    return scope
+
+
 def classify(paths: Iterable[str]) -> Scope:
     changed = _clean_paths(paths)
     if any(path in GLOBAL_HARNESS_PATHS for path in changed):
         return Scope.all()
 
-    scope = Scope()
+    scope = _classifier_harness_scope() if QUALITY_SCOPE_PATH in changed else Scope()
     for path in changed:
+        if path == QUALITY_SCOPE_PATH:
+            continue
         if path in FRONTEND_HARNESS_PATHS:
             scope.run_frontend = True
             continue
@@ -178,8 +188,6 @@ def classify(paths: Iterable[str]) -> Scope:
             if FRONTEND_TEST_RE.search(path):
                 continue
             if path == PACKAGE_METADATA_PATH:
-                # Script/metadata-only package changes still prove build/preview
-                # via app-boot, but do not need the unrelated product journeys.
                 _enable_core_e2e(scope, ("app-boot",))
                 continue
 
@@ -317,7 +325,19 @@ def self_test() -> None:
     assert classify([".github/workflows/cicd.yml"]) == Scope.all()
     assert classify(["Makefile"]) == Scope.all()
     assert classify(["scripts/pr_merge_diff.py"]) == Scope.all()
-    assert classify(["scripts/quality_scope.py"]) == Scope.all()
+
+    _expect_core([QUALITY_SCOPE_PATH], run_frontend=True, run_backend=True, run_security=True)
+    classifier_matrix = json.loads(dict(line.split("=", 1) for line in classify([QUALITY_SCOPE_PATH]).lines())["core_e2e_matrix"])["lane"]
+    assert classifier_matrix == [
+        "regression-state", "regression-school", "learning-golden", "learning-observation", "smoke",
+    ]
+    _expect_core(
+        [QUALITY_SCOPE_PATH, "frontend/src/components/Chesscom.jsx"],
+        run_frontend=True,
+        run_backend=True,
+        run_security=True,
+        run_chesscom_e2e=True,
+    )
 
     try:
         classify(["../outside"])
@@ -326,7 +346,7 @@ def self_test() -> None:
     else:
         raise AssertionError("quality_scope debe rechazar rutas fuera del repo")
 
-    print("quality-scope self-test OK · app-boot se deduplica bajo smoke; torneo/Admin usan canarios propios; audio/package conservan app-boot aislado")
+    print("quality-scope self-test OK · classifier harness conserva core fail-closed sin despertar productos ajenos; audio/Torneo/Admin mantienen canarios propios")
 
 
 def main() -> int:
