@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
+  HANS_SERVICE_WALK_SPEED,
   installWarRoomHansServiceInfrastructure,
   moveWarRoomHansToward,
   warRoomHansServiceHome,
@@ -9,6 +10,10 @@ import {
 import { WAR_ROOM_HANS_SERVICE_EXIT_DOOR_GUARD_VERSION } from './WarRoomHansServiceExitDoorGuard.js';
 
 describe('Hans service routing', () => {
+  it('keeps service and chore walking at the elderly fireplace cruise pace', () => {
+    expect(HANS_SERVICE_WALK_SPEED).toBe(0.32);
+  });
+
   it('does not treat a missing destination as an arrival', () => {
     const hans = new THREE.Group();
     const motion = moveWarRoomHansToward(hans, null, 0.5);
