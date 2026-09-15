@@ -1,5 +1,5 @@
 name: Setup Blender canonical art
-description: Restore a cached portable Blender toolchain and install only the small host helpers needed by canonical art workflows.
+description: Restore cached Blender/Pillow toolchains and install only the tiny host graphics helpers needed by canonical art workflows.
 inputs:
   blender-version:
     description: Portable Blender version shared by canonical art workflows.
@@ -69,7 +69,23 @@ runs:
           install_packages
         fi
 
-    - name: Install lightweight Python image helper
+    - name: Resolve Python cache identity
+      id: python-cache-id
+      shell: bash
+      run: |
+        set -euo pipefail
+        abi="$(python3 -c 'import sys; print(f"py{sys.version_info.major}{sys.version_info.minor}")')"
+        echo "abi=${abi}" >> "${GITHUB_OUTPUT}"
+
+    - name: Restore Pillow helper cache
+      id: pillow-cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/blender-python-tools
+        key: blender-python-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.python-cache-id.outputs.abi }}-pillow-10.4.0-v1
+
+    - name: Materialize Pillow helper on cache miss
+      if: steps.pillow-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         set -euo pipefail
@@ -82,6 +98,12 @@ runs:
           --only-binary=:all: \
           --target "${pillow_root}" \
           'Pillow==10.4.0'
+
+    - name: Expose Pillow helper
+      shell: bash
+      run: |
+        set -euo pipefail
+        pillow_root="${RUNNER_TEMP}/blender-python-tools"
         PYTHONPATH="${pillow_root}" python3 -c "from PIL import Image; print('Pillow', Image.__version__)"
         python_path="${pillow_root}"
         if [[ -n "${PYTHONPATH:-}" ]]; then
