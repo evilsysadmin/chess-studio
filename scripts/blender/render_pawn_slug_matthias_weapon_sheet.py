@@ -31,10 +31,10 @@ def args():
 def materials():
     return (
         canonical.mat('skin', (0.77, 0.61, 0.49, 1), 0.0, 0.62),
-        canonical.mat('uniform_black', (0.025, 0.030, 0.038, 1), 0.05, 0.50),
-        canonical.mat('helmet_black', (0.012, 0.015, 0.020, 1), 0.18, 0.28),
-        canonical.mat('armor', (0.085, 0.095, 0.105, 1), 0.15, 0.40),
-        canonical.mat('boots', (0.020, 0.021, 0.024, 1), 0.10, 0.32),
+        canonical.mat('uniform_black', (0.045, 0.055, 0.068, 1), 0.05, 0.48),
+        canonical.mat('helmet_black', (0.025, 0.030, 0.038, 1), 0.18, 0.26),
+        canonical.mat('armor', (0.11, 0.125, 0.145, 1), 0.15, 0.38),
+        canonical.mat('boots', (0.028, 0.030, 0.035, 1), 0.10, 0.31),
         canonical.mat('badge', (0.80, 0.78, 0.70, 1), 0.20, 0.30),
         canonical.mat('gunmetal', (0.10, 0.12, 0.14, 1), 0.72, 0.22),
         canonical.mat('polymer', (0.030, 0.036, 0.043, 1), 0.05, 0.40),
@@ -43,14 +43,34 @@ def materials():
     )
 
 
+def atlas_center():
+    return Vector((
+        (canonical.COLS - 1) * canonical.WORLD_CELL_X / 2,
+        0.0,
+        -(canonical.ROWS_PER_WEAPON - 1) * canonical.WORLD_CELL_Z / 2 + 1.08,
+    ))
+
+
 def aim_camera(scene):
     """Lock the orthographic camera to the authored X/Z sprite plane."""
-    center_x = (canonical.COLS - 1) * canonical.WORLD_CELL_X / 2
-    center_z = -(canonical.ROWS_PER_WEAPON - 1) * canonical.WORLD_CELL_Z / 2 + 1.08
+    target = atlas_center()
     cam = scene.camera
-    cam.location = (center_x, -78.0, center_z)
-    target = Vector((center_x, 0.0, center_z))
+    cam.location = (target.x, -78.0, target.z)
     cam.rotation_euler = (target - cam.location).to_track_quat('-Z', 'Y').to_euler()
+
+
+def add_front_fill():
+    """Give black tactical kit readable form without flattening the premium rim."""
+    target = atlas_center()
+    bpy.ops.object.light_add(type='AREA', location=(target.x - 3.5, -26.0, target.z + 5.0))
+    fill = bpy.context.object
+    fill.name = 'PawnSlug_Matthias_FrontFill'
+    fill.data.energy = 1050
+    fill.data.color = (1.0, 0.82, 0.66)
+    fill.data.shape = 'RECTANGLE'
+    fill.data.size = 42
+    fill.data.size_y = 26
+    fill.rotation_euler = (target - fill.location).to_track_quat('-Z', 'Y').to_euler()
 
 
 def descendants(obj):
@@ -93,6 +113,7 @@ def main():
     canonical.clear_scene()
     scene = canonical.setup_scene()
     aim_camera(scene)
+    add_front_fill()
     mats = materials()
     for row, (action, count) in enumerate(canonical.ACTIONS):
         for frame in range(count):
