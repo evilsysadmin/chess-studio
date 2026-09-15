@@ -1,0 +1,126 @@
+name: CI · required gate publisher
+
+on:
+  workflow_run:
+    workflows:
+      - Quality · CI gate
+      - Blender setup · smoke
+    types:
+      - completed
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+  statuses: write
+
+concurrency:
+  group: required-gate-${{ github.event.workflow_run.pull_requests[0].number || github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish consolidated required gate
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Evaluate required checks for this PR
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TRIGGER_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          EVENT_PR_NUMBER: ${{ github.event.workflow_run.pull_requests[0].number }}
+        run: |
+          set -euo pipefail
+
+          repo="${GITHUB_REPOSITORY}"
+          pr_number="${EVENT_PR_NUMBER:-}"
+
+          if [[ -z "$pr_number" || "$pr_number" == 'null' ]]; then
+            pr_number="$(gh api "repos/${repo}/commits/${TRIGGER_HEAD_SHA}/pulls" \
+              --jq 'map(select(.state == "open")) | .[0].number // empty')"
+          fi
+
+          if [[ -z "$pr_number" ]]; then
+            echo 'No open pull request is associated with this workflow run; nothing to publish.'
+            exit 0
+          fi
+
+          pr_json="$(gh api "repos/${repo}/pulls/${pr_number}")"
+          pr_state="$(jq -r '.state' <<<"$pr_json")"
+          if [[ "$pr_state" != 'open' ]]; then
+            echo "PR #${pr_number} is ${pr_state}; nothing to publish."
+            exit 0
+          fi
+
+          head_sha="$(jq -r '.head.sha' <<<"$pr_json")"
+          pr_url="$(jq -r '.html_url' <<<"$pr_json")"
+
+          blender_required=false
+          while IFS= read -r path; do
+            case "$path" in
+              .github/actions/setup-blender-canonical/*|scripts/blender/blender_setup_smoke.py|.github/workflows/blender-setup-smoke.yml)
+                blender_required=true
+                ;;
+            esac
+          done < <(gh api --paginate "repos/${repo}/pulls/${pr_number}/files?per_page=100" --jq '.[].filename')
+
+          latest_run() {
+            local workflow="$1"
+            gh api "repos/${repo}/actions/workflows/${workflow}/runs?event=pull_request&head_sha=${head_sha}&per_page=100" \
+              --jq '.workflow_runs | sort_by([.run_number, .run_attempt]) | last // {}'
+          }
+
+          quality_json="$(latest_run 'cicd.yml')"
+          quality_status="$(jq -r '.status // "missing"' <<<"$quality_json")"
+          quality_conclusion="$(jq -r '.conclusion // ""' <<<"$quality_json")"
+          quality_url="$(jq -r '.html_url // empty' <<<"$quality_json")"
+
+          blender_status='not-required'
+          blender_conclusion=''
+          blender_url=''
+          if [[ "$blender_required" == 'true' ]]; then
+            blender_json="$(latest_run 'blender-setup-smoke.yml')"
+            blender_status="$(jq -r '.status // "missing"' <<<"$blender_json")"
+            blender_conclusion="$(jq -r '.conclusion // ""' <<<"$blender_json")"
+            blender_url="$(jq -r '.html_url // empty' <<<"$blender_json")"
+          fi
+
+          state='pending'
+          description='Waiting for Quality · CI gate'
+          target_url="${quality_url:-$pr_url}"
+
+          if [[ "$quality_status" == 'completed' ]]; then
+            if [[ "$quality_conclusion" != 'success' ]]; then
+              state='failure'
+              description="Quality · CI gate failed (${quality_conclusion:-unknown})"
+            elif [[ "$blender_required" != 'true' ]]; then
+              state='success'
+              description='Required checks passed · Quality'
+              target_url="$pr_url"
+            elif [[ "$blender_status" == 'completed' ]]; then
+              if [[ "$blender_conclusion" == 'success' ]]; then
+                state='success'
+                description='Required checks passed · Quality + Blender smoke'
+                target_url="$pr_url"
+              else
+                state='failure'
+                description="Blender setup smoke failed (${blender_conclusion:-unknown})"
+                target_url="${blender_url:-$pr_url}"
+              fi
+            else
+              state='pending'
+              description='Waiting for Blender setup smoke'
+              target_url="${blender_url:-$pr_url}"
+            fi
+          fi
+
+          echo "PR #${pr_number} · Quality=${quality_status}/${quality_conclusion:-n/a} · Blender required=${blender_required} ${blender_status}/${blender_conclusion:-n/a}"
+          echo "Publishing ${state}: ${description}"
+
+          gh api --method POST "repos/${repo}/statuses/${head_sha}" \
+            --raw-field state="$state" \
+            --raw-field context='CI · required gate' \
+            --raw-field description="$description" \
+            --raw-field target_url="$target_url" >/dev/null
