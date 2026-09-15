@@ -52,6 +52,26 @@ export function homeMatthiasClipForProfile(profile = 'idle') {
   return CLIP_BY_PROFILE[profile] || CLIP_BY_PROFILE.idle;
 }
 
+export function homeMatthiasFacingRotation({ headZ = 0, noseZ = 0 } = {}) {
+  const head = Number(headZ);
+  const nose = Number(noseZ);
+  if (!Number.isFinite(head) || !Number.isFinite(nose) || Math.abs(nose - head) < 0.0001) return 0;
+  return nose < head ? Math.PI : 0;
+}
+
+export function homeMatthiasPortraitFrame({ minY = 0, maxY = 2.35, fovDeg = 24 } = {}) {
+  const low = Number(minY);
+  const high = Number(maxY);
+  const fov = Number(fovDeg);
+  const height = Number.isFinite(low) && Number.isFinite(high) && high > low ? high - low : 2.35;
+  const base = Number.isFinite(low) ? low : 0;
+  const safeFov = Number.isFinite(fov) && fov > 1 && fov < 120 ? fov : 24;
+  const targetY = base + (height * 0.62);
+  const visibleHeight = height * 0.78;
+  const distance = Math.max(3.6, (visibleHeight * 0.5) / Math.tan(THREE.MathUtils.degToRad(safeFov * 0.5)));
+  return { targetY, distance };
+}
+
 function disposeMaterial(material) {
   if (!material) return;
   const values = Array.isArray(material) ? material : [material];
@@ -122,8 +142,8 @@ export default function HomeMatthias3D({
 
     const threeScene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(24, 1, 0.1, 20);
-    camera.position.set(0, 1.18, 5.5);
-    camera.lookAt(0, 1.16, 0);
+    camera.position.set(0, 1.46, 4.6);
+    camera.lookAt(0, 1.46, 0);
 
     const hemi = new THREE.HemisphereLight(0xffe6bd, 0x18202a, 1.65);
     const key = new THREE.DirectionalLight(0xffe0ad, 3.1);
@@ -209,6 +229,29 @@ export default function HomeMatthias3D({
         model.position.set(0, 0, 0);
         model.rotation.set(0, 0, 0);
         model.scale.setScalar(1.0);
+        model.updateMatrixWorld(true);
+
+        const headNode = model.getObjectByName('Head');
+        const noseNode = model.getObjectByName('Nose');
+        if (headNode && noseNode) {
+          const headWorld = new THREE.Vector3();
+          const noseWorld = new THREE.Vector3();
+          headNode.getWorldPosition(headWorld);
+          noseNode.getWorldPosition(noseWorld);
+          model.rotation.y = homeMatthiasFacingRotation({ headZ: headWorld.z, noseZ: noseWorld.z });
+          model.updateMatrixWorld(true);
+        }
+
+        const bounds = new THREE.Box3().setFromObject(model);
+        const portraitFrame = homeMatthiasPortraitFrame({
+          minY: bounds.min.y,
+          maxY: bounds.max.y,
+          fovDeg: camera.fov,
+        });
+        camera.position.set(0, portraitFrame.targetY, portraitFrame.distance);
+        camera.lookAt(0, portraitFrame.targetY, 0);
+        camera.updateProjectionMatrix();
+
         model.traverse((node) => {
           if (node.isMesh) {
             node.frustumCulled = true;
