@@ -28,6 +28,16 @@ async function openTactics(page, { progression = null } = {}) {
 test('Chronicles Tactics · arranca como action RPG isométrico con usar, ataque, clases y habilidades', async ({ page }) => {
   await openTactics(page);
   const mode = page.locator('[data-chronicles-tactics="true"]');
+
+  // Exercise the live-combat action immediately. Waiting for the 3D renderer and
+  // a long sequence of UI assertions first lets real-time enemy turns kill the
+  // selected hero on slow CI runners, turning this into a wall-clock race.
+  await page.keyboard.press('2');
+  await expect(mode.getByText(/Habilidad: Martillo de asedio · 1 carga/i)).toBeVisible();
+  await page.keyboard.press('e');
+  await expect(mode.getByText(/Habilidad: Martillo de asedio · agotada/i)).toBeVisible();
+  await expect(mode.getByRole('button', { name: 'Habilidad de clase', exact: true })).toBeDisabled();
+
   const canvas = mode.locator('[data-chronicles-tactics-renderer="three"] canvas');
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await expect(mode).toHaveAttribute('data-camera', 'isometric-behind-party');
@@ -40,12 +50,6 @@ test('Chronicles Tactics · arranca como action RPG isométrico con usar, ataque
   await expect(mode.getByRole('button', { name: 'Usar', exact: true })).toBeVisible();
   await expect(mode.getByRole('button', { name: 'Habilidad de clase', exact: true })).toBeVisible();
   await expect(mode.getByRole('button', { name: 'Esperar', exact: true })).toHaveCount(0);
-
-  await page.keyboard.press('2');
-  await expect(mode.getByText(/Habilidad: Martillo de asedio · 1 carga/i)).toBeVisible();
-  await page.keyboard.press('e');
-  await expect(mode.getByText(/Habilidad: Martillo de asedio · agotada/i)).toBeVisible();
-  await expect(mode.getByRole('button', { name: 'Habilidad de clase', exact: true })).toBeDisabled();
 });
 
 test('Chronicles Tactics · elegir doctrina consume skill point y cierra la alternativa', async ({ page }) => {
