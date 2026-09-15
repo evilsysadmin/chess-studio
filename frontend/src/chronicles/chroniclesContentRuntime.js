@@ -1,3 +1,5 @@
+import { chroniclesMapTransitionState } from './chroniclesMapCatalog.js';
+
 const CARDINAL_DIRECTIONS = Object.freeze([
   Object.freeze({ key: 'north', dx: 0, dy: -1 }),
   Object.freeze({ key: 'east', dx: 1, dy: 0 }),
@@ -97,6 +99,7 @@ export function chroniclesContentLockedMessage(state, definition, fallback = '')
 export function chroniclesApplyContentEffects(state, effects, adapters = {}) {
   return (effects || []).reduce((next, effect) => {
     if (effect.type === 'set' && effect.key) return { ...next, [effect.key]: effect.value };
+    if (effect.type === 'transition-map' && effect.mapId) return chroniclesMapTransitionState(next, effect.mapId);
     if (effect.type === 'heal-party') {
       const amount = Math.max(0, Number(effect.amount || 0));
       return {

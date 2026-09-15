@@ -1,6 +1,6 @@
 {
   "id": "crypt-eight-squares",
-  "version": 2,
+  "version": 3,
   "title": "Cripta de las Ocho Casillas",
   "grid": [
     "#######",
@@ -164,7 +164,7 @@
       "id": "black-gate",
       "kind": "exit",
       "tile": "X",
-      "openLabel": "Abrir Puerta Negra",
+      "openLabel": "Cruzar Puerta Negra",
       "lockedLabel": "Examinar Puerta Negra",
       "requirements": [
         {
@@ -185,14 +185,14 @@
       ],
       "action": {
         "effects": [
-          { "type": "set", "key": "phase", "value": "escaped" }
+          { "type": "transition-map", "mapId": "gallery-of-forks" }
         ],
-        "message": "La compañía abre la Puerta Negra y abandona la cripta. Sobrevivir sigue siendo una métrica de rendimiento perfectamente válida.",
+        "message": "La Puerta Negra se abre. Detrás no hay libertad, sino otra sala. Matthias registra una queja formal contra la arquitectura.",
         "journal": {
-          "id": "tactics-escape",
-          "title": "Extracción completada",
-          "body": "La compañía abandona la cripta táctica con más miembros que cadáveres. Matthias lo registra como excelencia.",
-          "sigil": "VII"
+          "id": "tactics-black-gate-crossed",
+          "title": "La Puerta Negra no era la salida",
+          "body": "La compañía cruza el umbral y descubre la Galería de las Horquillas. La expedición continúa porque, aparentemente, el edificio tiene sentido del humor.",
+          "sigil": "VIII"
         }
       }
     }
