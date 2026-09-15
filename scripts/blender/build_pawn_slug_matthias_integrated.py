@@ -6,7 +6,7 @@ second weapon sprite on top of him. The atlas keeps the existing 16-column
 animation contract and stacks 4 weapon banks x 5 action rows.
 
 Run with:
-  blender --background --python scripts/blender/build_pawn_slug_matthias_integrated.py -- --output-dir /tmp/pawn-slug-art
+  blender --background --python scripts/blender/build_pawn_slug_matthias_integrated.py -- --output-dir /tmp/pawn-slug-art --weapon machinegun
 """
 from __future__ import annotations
 
@@ -16,8 +16,6 @@ import os
 from pathlib import Path
 
 import bpy
-from mathutils import Vector
-
 COLS = 16
 ROWS_PER_WEAPON = 5
 WEAPONS = ("pistol", "machinegun", "shotgun", "panzerfaust")
@@ -32,12 +30,13 @@ CELL_W = 96
 CELL_H = 96
 WORLD_CELL_X = 2.55
 WORLD_CELL_Z = 2.55
-TOTAL_ROWS = ROWS_PER_WEAPON * len(WEAPONS)
+TOTAL_ROWS = ROWS_PER_WEAPON
 
 
 def args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", default="/tmp/pawn-slug-art")
+    parser.add_argument("--weapon", choices=WEAPONS, required=True)
     argv = []
     if "--" in os.sys.argv:
         argv = os.sys.argv[os.sys.argv.index("--") + 1 :]
@@ -291,7 +290,9 @@ def setup_scene():
     bpy.ops.object.camera_add(location=(center_x, -78, center_z))
     cam = bpy.context.object
     cam.data.type = "ORTHO"
-    cam.data.ortho_scale = TOTAL_ROWS * WORLD_CELL_Z
+    # Blender orthographic scale is the camera width. Match the full 16-column
+    # world width; the 1536:480 aspect then yields exactly the required 5-row height.
+    cam.data.ortho_scale = COLS * WORLD_CELL_X
     cam.rotation_euler = (math.pi / 2, 0, 0)
     scene.camera = cam
 
@@ -319,7 +320,7 @@ def setup_scene():
     return scene
 
 
-def build_all(scene):
+def build_weapon(weapon):
     materials = (
         mat("skin", (0.77, 0.61, 0.49, 1), 0.0, 0.62),
         mat("uniform_black", (0.025, 0.030, 0.038, 1), 0.05, 0.50),
@@ -332,23 +333,20 @@ def build_all(scene):
         mat("olive", (0.19, 0.22, 0.15, 1), 0.28, 0.48),
         mat("brass", (0.40, 0.25, 0.08, 1), 0.72, 0.24),
     )
-    for weapon_index, weapon in enumerate(WEAPONS):
-        for action_index, (action, count) in enumerate(ACTIONS):
-            row = weapon_index * ROWS_PER_WEAPON + action_index
-            for frame in range(count):
-                x = frame * WORLD_CELL_X
-                z = -row * WORLD_CELL_Z
-                build_matthias((x, 0, z), action, frame, count, weapon, materials)
+    for row, (action, count) in enumerate(ACTIONS):
+        for frame in range(count):
+            build_matthias((frame * WORLD_CELL_X, 0, -row * WORLD_CELL_Z), action, frame, count, weapon, materials)
 
 
 def main():
-    out = Path(args().output_dir).resolve()
+    cfg = args()
+    out = Path(cfg.output_dir).resolve()
     out.mkdir(parents=True, exist_ok=True)
     clear_scene()
     scene = setup_scene()
-    build_all(scene)
-    blend_path = out / "matthias_pawn_slug_integrated_v1.blend"
-    png_path = out / "matthias_integrated_weapons_atlas_v1.png"
+    build_weapon(cfg.weapon)
+    blend_path = out / f"matthias_{cfg.weapon}_integrated_v1.blend"
+    png_path = out / f"matthias_{cfg.weapon}_atlas_v1.png"
     scene.render.filepath = str(png_path)
     bpy.ops.wm.save_as_mainfile(filepath=str(blend_path))
     bpy.ops.render.render(write_still=True)
