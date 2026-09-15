@@ -87,11 +87,11 @@ export const CHRONICLES_SKILL_DEFINITIONS = Object.freeze({
     Object.freeze({
       id: 'bishop-sacred-geometry',
       label: 'Geometría sagrada',
-      description: '+1 alcance para el rayo diagonal.',
+      description: '+1 daño con el rayo diagonal.',
       requiredLevel: 2,
       cost: 1,
       group: 'doctrine-1',
-      modifiers: Object.freeze({ reachBonus: 1 }),
+      modifiers: Object.freeze({ attackDamageBonus: 1 }),
     }),
   ]),
   knight: Object.freeze([
