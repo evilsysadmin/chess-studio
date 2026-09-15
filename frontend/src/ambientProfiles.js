@@ -15,6 +15,7 @@ import { installHouseAfro, withHouseAfroProduction } from './ambientHouseAfro.js
 import { installSynthMetalAnthems } from './ambientSynthMetalAnthems.js';
 import { installRadioPremiumForms } from './ambientRadioPremiumForms.js';
 import { installMediterraneanChordArticulation } from './ambientMediterraneanChordArticulation.js';
+import { installBassPhrasingDiversity } from './ambientBassPhrasingDiversity.js';
 import { withRadioMatthiasLeitmotif } from './ambientRadioMatthiasLeitmotifs.js';
 import { withAmbientPremiumProduction } from './ambientPremiumProduction.js';
 import { withRockProduction } from './ambientRockProduction.js';
@@ -48,6 +49,7 @@ installTropicalHouseMelodies({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OP
 installSynthMetalAnthems({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
 installRadioPremiumForms({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
 installMediterraneanChordArticulation({ themes: AMBIENT_THEMES });
+installBassPhrasingDiversity({ themes: AMBIENT_THEMES });
 
 const GRANADA_THEME_IDS = new Set(['granadaPatio', 'granadaCopperRain0232']);
 
