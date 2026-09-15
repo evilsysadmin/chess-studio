@@ -1,0 +1,27 @@
+.game-3d-command-column .context-help-btn {
+  position: relative;
+  z-index: 7;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.game-3d-command-column .context-help-btn.is-first-run-nudge {
+  width: auto;
+  min-width: 30px;
+  padding-inline: .55rem;
+  font-size: .68rem;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+@media (max-width: 820px) {
+  .game-screen .game-layout-3d .game-3d-turn-pill,
+  .game-screen .game-layout-3d .game-3d-turn-pill.game-3d-matthias-card {
+    grid-template-columns: minmax(0, 1fr) 8px max-content 60px max-content 34px !important;
+  }
+
+  .game-3d-command-column .context-help-btn.is-first-run-nudge {
+    padding-inline: .4rem;
+    font-size: .64rem;
+  }
+}
