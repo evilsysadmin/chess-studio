@@ -80,6 +80,14 @@ for (const capture of CAPTURES) {
       const portraitCanvas = portraitHost.locator('canvas');
       await expect(preview).toBeVisible();
       await expect(portraitCanvas).toBeVisible();
+      await expect(portraitHost).toHaveAttribute('data-chronicles-party-thumbnail-count', '4', { timeout: 20_000 });
+
+      const rosterThumbnails = page.locator('[data-chronicles-party-thumbnail]');
+      await expect(rosterThumbnails).toHaveCount(4);
+      const thumbnailsDecoded = await rosterThumbnails.evaluateAll((images) => images.every((image) => (
+        image.complete && image.naturalWidth === 96 && image.naturalHeight === 96
+      )));
+      expect(thumbnailsDecoded, `${capture.label}: Blender roster thumbnails decoded`).toBe(true);
 
       for (const member of PARTY) {
         await page.getByRole('button', { name: `Seleccionar ${member.name}`, exact: true }).click();
