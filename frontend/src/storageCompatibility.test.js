@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearStorageMemoryFallback } from './safeStorage.js';
 import {
+  DEFAULT_RADIO_RETIRED_ECLECTIC_THEME_IDS,
   DEFAULT_RADIO_RETIRED_THEME_IDS,
   migratePersistentStorage,
   STORAGE_SCHEMA_VERSION,
@@ -19,7 +20,13 @@ const PROGRESS = Object.freeze({
 });
 
 const CURRENT_SCHEMA = String(STORAGE_SCHEMA_VERSION);
-const CURATED_RADIO_EXCLUSIONS = JSON.stringify(DEFAULT_RADIO_RETIRED_THEME_IDS);
+// AFTER snapshots describe the current client contract, so derive this output
+// from the canonical curation lists. BEFORE snapshots above remain historical
+// literals and therefore still exercise real legacy-profile migration.
+const CURATED_RADIO_EXCLUSIONS = JSON.stringify([
+  ...DEFAULT_RADIO_RETIRED_THEME_IDS,
+  ...DEFAULT_RADIO_RETIRED_ECLECTIC_THEME_IDS,
+]);
 
 function snapshot(extra = {}) {
   return Object.freeze({ ...PROGRESS, ...extra });
