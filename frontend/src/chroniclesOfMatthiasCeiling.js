@@ -10,33 +10,53 @@ function noiseByte(x, y, seed) {
   return ((value ^ (value >>> 16)) >>> 0) & 0xff;
 }
 
+function surfaceValue(x, y, seed, kind = 'height') {
+  const wrappedX = (x + TEXTURE_SIZE) % TEXTURE_SIZE;
+  const wrappedY = (y + TEXTURE_SIZE) % TEXTURE_SIZE;
+  const noise = noiseByte(wrappedX, wrappedY, seed);
+  const course = Math.floor(wrappedY / 16);
+  const localY = wrappedY % 16;
+  const localX = (wrappedX + (course % 2) * 12) % 24;
+  const joint = localY < 2 || localX < 2;
+  const edge = localY < 5 || localX < 5;
+  let value = 196 + (noise - 128) * 0.16 + Math.sin((wrappedX + seed) * 0.18) * 7;
+  if (joint) value = 78 + noise * 0.06;
+  else if (edge) value -= 15;
+
+  if (kind === 'roughness') return joint ? 244 : edge ? 228 : 210 + (noise - 128) * 0.05;
+  if (kind === 'height') return joint ? 58 : edge ? value - 18 : value;
+  return value;
+}
+
 function createCeilingTexture(seed, kind) {
   const data = new Uint8Array(TEXTURE_SIZE * TEXTURE_SIZE * 4);
   for (let y = 0; y < TEXTURE_SIZE; y += 1) {
     for (let x = 0; x < TEXTURE_SIZE; x += 1) {
-      const noise = noiseByte(x, y, seed);
-      const course = Math.floor(y / 16);
-      const localY = y % 16;
-      const localX = (x + (course % 2) * 12) % 24;
-      const joint = localY < 2 || localX < 2;
-      const edge = localY < 5 || localX < 5;
-      let value = 196 + (noise - 128) * 0.16 + Math.sin((x + seed) * 0.18) * 7;
-      if (joint) value = 78 + noise * 0.06;
-      else if (edge) value -= 15;
-
-      if (kind === 'roughness') value = joint ? 244 : edge ? 228 : 210 + (noise - 128) * 0.05;
-      if (kind === 'height') value = joint ? 58 : edge ? value - 18 : value;
-
       const offset = (y * TEXTURE_SIZE + x) * 4;
-      if (kind === 'albedo') {
-        data[offset] = Math.max(38, Math.min(235, Math.round(value + 5)));
-        data[offset + 1] = Math.max(38, Math.min(235, Math.round(value + 1)));
-        data[offset + 2] = Math.max(38, Math.min(235, Math.round(value - 5)));
+
+      if (kind === 'normal') {
+        const left = surfaceValue(x - 1, y, seed, 'height');
+        const right = surfaceValue(x + 1, y, seed, 'height');
+        const up = surfaceValue(x, y - 1, seed, 'height');
+        const down = surfaceValue(x, y + 1, seed, 'height');
+        const dx = ((right - left) / 255) * 2.3;
+        const dy = ((down - up) / 255) * 2.3;
+        const invLength = 1 / Math.sqrt(dx * dx + dy * dy + 1);
+        data[offset] = Math.round((-dx * invLength * 0.5 + 0.5) * 255);
+        data[offset + 1] = Math.round((-dy * invLength * 0.5 + 0.5) * 255);
+        data[offset + 2] = Math.round((invLength * 0.5 + 0.5) * 255);
       } else {
-        const mono = Math.max(34, Math.min(248, Math.round(value)));
-        data[offset] = mono;
-        data[offset + 1] = mono;
-        data[offset + 2] = mono;
+        const value = surfaceValue(x, y, seed, kind);
+        if (kind === 'albedo') {
+          data[offset] = Math.max(38, Math.min(235, Math.round(value + 5)));
+          data[offset + 1] = Math.max(38, Math.min(235, Math.round(value + 1)));
+          data[offset + 2] = Math.max(38, Math.min(235, Math.round(value - 5)));
+        } else {
+          const mono = Math.max(34, Math.min(248, Math.round(value)));
+          data[offset] = mono;
+          data[offset + 1] = mono;
+          data[offset + 2] = mono;
+        }
       }
       data[offset + 3] = 255;
     }
@@ -54,15 +74,18 @@ function createCeilingTexture(seed, kind) {
   return texture;
 }
 
-function makeStoneMaterial(color, seed, { roughness = 0.94, bumpScale = 0.075 } = {}) {
+function makeStoneMaterial(color, seed, { roughness = 0.94, bumpScale = 0.075, normalScale = 0.5 } = {}) {
   const map = createCeilingTexture(seed, 'albedo');
   const bumpMap = createCeilingTexture(seed, 'height');
   const roughnessMap = createCeilingTexture(seed, 'roughness');
+  const normalMap = createCeilingTexture(seed, 'normal');
   const material = new THREE.MeshPhysicalMaterial({
     color,
     map,
     bumpMap,
     roughnessMap,
+    normalMap,
+    normalScale: new THREE.Vector2(normalScale, normalScale),
     bumpScale,
     roughness,
     metalness: 0.02,
@@ -76,6 +99,7 @@ function makeStoneMaterial(color, seed, { roughness = 0.94, bumpScale = 0.075 } 
     map.dispose();
     bumpMap.dispose();
     roughnessMap.dispose();
+    normalMap.dispose();
   });
   return material;
 }
@@ -93,9 +117,9 @@ function walkableCells() {
 export function buildChroniclesDungeonCeiling({ coarsePointer = false } = {}) {
   const root = new THREE.Group();
   root.name = 'chronicles-dungeon-ceiling';
-  const mainStone = makeStoneMaterial(0x514b43, 89, { bumpScale: 0.085 });
-  const altStone = makeStoneMaterial(0x433f39, 97, { roughness: 0.97, bumpScale: 0.07 });
-  const insetStone = makeStoneMaterial(0x292827, 101, { roughness: 0.98, bumpScale: 0.035 });
+  const mainStone = makeStoneMaterial(0x514b43, 89, { bumpScale: 0.085, normalScale: coarsePointer ? 0.42 : 0.58 });
+  const altStone = makeStoneMaterial(0x433f39, 97, { roughness: 0.97, bumpScale: 0.07, normalScale: coarsePointer ? 0.38 : 0.52 });
+  const insetStone = makeStoneMaterial(0x292827, 101, { roughness: 0.98, bumpScale: 0.035, normalScale: coarsePointer ? 0.3 : 0.42 });
   const cells = walkableCells();
   let bossCount = 0;
 
