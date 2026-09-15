@@ -7,6 +7,7 @@ import {
   chroniclesResolveEnemyTurn,
   chroniclesRuntimeEnemyPosition,
 } from './chroniclesOfMatthiasTurns.js';
+import { chroniclesMapForState } from './chronicles/chroniclesMapCatalog.js';
 
 const MOVE_LABELS = Object.freeze({
   north: 'Norte',
@@ -22,10 +23,18 @@ const MOVE_GLYPHS = Object.freeze({
   west: '←',
 });
 
-export const CHRONICLES_TACTICS_WORLD = Object.freeze({
-  lever: Object.freeze({ id: 'rune-cache-lever', x: 5, y: 5 }),
-  runeCore: Object.freeze({ id: 'rune-core', x: 5, y: 4 }),
-});
+export function chroniclesTacticsWorld(state = null) {
+  const map = chroniclesMapForState(state);
+  const lever = map.interactables.find((entry) => entry.kind === 'lever') || null;
+  const runeCore = map.treasures.find((entry) => entry.id === 'rune-core')
+    || map.interactables.find((entry) => entry.id === 'rune-core')
+    || null;
+  return { lever, runeCore };
+}
+
+// Compatibility snapshot for the current single-map renderer. Runtime tactics
+// logic resolves the world from state so future maps do not inherit these cells.
+export const CHRONICLES_TACTICS_WORLD = Object.freeze(chroniclesTacticsWorld());
 
 const CLASS_PROFILES = Object.freeze({
   matthias: Object.freeze({
@@ -137,7 +146,7 @@ function lineIsClear(state, from, to, ignoredEnemyId = null) {
   let x = from.x + dx;
   let y = from.y + dy;
   while (x !== to.x || y !== to.y) {
-    if (chroniclesTileAt(x, y) === '#') return false;
+    if (chroniclesTileAt(x, y, state) === '#') return false;
     const blocked = activeEnemiesWithPositions(state).some(({ enemy, position }) => (
       enemy.id !== ignoredEnemyId && position.x === x && position.y === y
     ));
@@ -249,7 +258,7 @@ function adjacentExit(state) {
       y: state.y + direction.dy,
       direction: direction.key,
     }))
-    .find((position) => chroniclesTileAt(position.x, position.y) === 'X') || null;
+    .find((position) => chroniclesTileAt(position.x, position.y, state) === 'X') || null;
 }
 
 function lockedGateMessage(state) {
@@ -262,8 +271,9 @@ function lockedGateMessage(state) {
 export function chroniclesTacticsInteractions(state) {
   if (!actionAllowed(state)) return [];
   const interactions = [];
+  const world = chroniclesTacticsWorld(state);
 
-  if (chroniclesTileAt(state.x, state.y) === 'S' && !state.sigilAwake) {
+  if (chroniclesTileAt(state.x, state.y, state) === 'S' && !state.sigilAwake) {
     interactions.push({
       id: 'ancient-sigil',
       kind: 'trigger',
@@ -273,17 +283,17 @@ export function chroniclesTacticsInteractions(state) {
     });
   }
 
-  if (sameCell(state, CHRONICLES_TACTICS_WORLD.lever) && !state.runeCacheOpened) {
+  if (world.lever && sameCell(state, world.lever) && !state.runeCacheOpened) {
     interactions.push({
-      ...CHRONICLES_TACTICS_WORLD.lever,
+      ...world.lever,
       kind: 'lever',
       label: 'Accionar palanca',
     });
   }
 
-  if (sameCell(state, CHRONICLES_TACTICS_WORLD.runeCore) && state.runeCacheOpened && !state.runeCoreCollected) {
+  if (world.runeCore && sameCell(state, world.runeCore) && state.runeCacheOpened && !state.runeCoreCollected) {
     interactions.push({
-      ...CHRONICLES_TACTICS_WORLD.runeCore,
+      ...world.runeCore,
       kind: 'pickup',
       label: 'Recoger núcleo rúnico',
     });
@@ -309,6 +319,7 @@ export function chroniclesTacticsUse(state, interactionId = null) {
     !interactionId || candidate.id === interactionId
   ));
   if (!interaction) return state;
+  const world = chroniclesTacticsWorld(state);
 
   const turns = Number(state.turns || 0) + 1;
   if (interaction.id === 'ancient-sigil') {
@@ -325,7 +336,7 @@ export function chroniclesTacticsUse(state, interactionId = null) {
     });
   }
 
-  if (interaction.id === CHRONICLES_TACTICS_WORLD.lever.id) {
+  if (world.lever && interaction.id === world.lever.id) {
     return appendJournal({
       ...state,
       runeCacheOpened: true,
@@ -339,7 +350,7 @@ export function chroniclesTacticsUse(state, interactionId = null) {
     });
   }
 
-  if (interaction.id === CHRONICLES_TACTICS_WORLD.runeCore.id) {
+  if (world.runeCore && interaction.id === world.runeCore.id) {
     return appendJournal(refillAbilityCharges({
       ...state,
       runeCoreCollected: true,
@@ -381,7 +392,7 @@ export function chroniclesTacticsLegalMoves(state) {
   if (!actionAllowed(state)) return [];
   return CHRONICLES_DIRECTIONS.flatMap((direction) => {
     const position = { x: state.x + direction.dx, y: state.y + direction.dy };
-    const tile = chroniclesTileAt(position.x, position.y);
+    const tile = chroniclesTileAt(position.x, position.y, state);
     if (tile === '#' || tile === 'X') return [];
     if (occupiedByEnemy(state, position)) return [];
     return [{
