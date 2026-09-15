@@ -25,8 +25,13 @@ def finish(o, material, smooth=True, bevel=0.0):
     return o
 
 
-def sphere(name, loc, scale, material, seg=56):
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=seg, ring_count=max(20, seg // 2), location=loc)
+def sphere(name, loc, scale, material, seg=56, rot=(0, 0, 0)):
+    bpy.ops.mesh.primitive_uv_sphere_add(
+        segments=seg,
+        ring_count=max(20, seg // 2),
+        location=loc,
+        rotation=rot,
+    )
     o = bpy.context.object
     o.name = name
     o.scale = scale
@@ -132,7 +137,7 @@ def build_rig():
 
     bone('root', (0, 0, 0), (0, 0, .38))
     bone('spine', (0, 0, .58), (0, 0, 1.36), 'root')
-    bone('head', (0, 0, 1.20), (0, 0, 1.90), 'spine')
+    bone('head', (0, 0, 1.20), (0, 0, 1.95), 'spine')
     bone('upper_arm.L', (-.27, .04, 1.08), (-.38, .05, .96), 'spine')
     bone('forearm.L', (-.38, .05, .96), (-.32, -.04, .84), 'upper_arm.L')
     bone('upper_arm.R', (.27, .04, 1.08), (.38, .05, .96), 'spine')
@@ -160,14 +165,12 @@ def build_character():
     paper = mat('paper', (.67, .58, .43), .88)
 
     rig = build_rig()
-    rig['matthias_asset_version'] = 'home-blender-classic-v9c'
+    rig['matthias_asset_version'] = 'home-blender-classic-v9d'
     rig['canonical_identity'] = 'stern-no-moustache-pawn'
     rig['canonical_reference'] = 'classic-pawn-first-avatar'
     rig['canonical_pose_language'] = 'permanently-stern'
     root, spine, head = [], [], []
 
-    # Heavy, compact chess body based on the approved reference. Broad base,
-    # pinched waist, shoulder flare, then a wide collar beneath the pawn head.
     root += [
         cyl('Classic plinth lower', (0, 0, .060), .600, .120, navy, verts=128, bevel=.022),
         cyl('Classic plinth brass edge', (0, 0, .126), .585, .014, brass, verts=124, bevel=.003),
@@ -195,32 +198,33 @@ def build_character():
         cyl('Classic brass collar line', (0, 0, 1.253), .390, .013, brass, verts=112, bevel=.003),
         box('Classic tunic piping.L', (-.258, -.340, .965), (.011, .006, .180), brass, (0, math.radians(-8), 0), .004),
         box('Classic tunic piping.R', (.258, -.340, .965), (.011, .006, .180), brass, (0, math.radians(8), 0), .004),
-        box('Classic chest crest field', (0, -.428, .955), (.116, .002, .124), navy, bevel=.004),
-        box('Classic chest crest vertical', (0, -.438, .955), (.024, .004, .092), brass, bevel=.004),
-        box('Classic chest crest horizontal', (0, -.438, .955), (.078, .004, .024), brass, bevel=.004),
-        sphere('Classic chest badge', (0, -.445, .955), (.018, .005, .018), navy, 18),
+        # The brass insignia sits directly on the dark pawn surface. No tablet,
+        # bib or contrasting plaque is allowed between Matthias and his crest.
+        box('Classic chest crest vertical', (0, -.431, .955), (.024, .004, .092), brass, bevel=.004),
+        box('Classic chest crest horizontal', (0, -.431, .955), (.078, .004, .024), brass, bevel=.004),
+        sphere('Classic chest badge', (0, -.438, .955), (.018, .005, .018), navy, 18),
     ]
 
-    # Large ivory head, minimal features, permanent scowl.
     head += [
         sphere('Head', (0, -.010, 1.470), (.340, .315, .315), ivory, 92),
-        sphere('Eye.L', (-.108, -.322, 1.525), (.026, .008, .029), black, 24),
-        sphere('Eye.R', (.108, -.322, 1.525), (.026, .008, .029), black, 24),
-        box('Brow.L', (-.110, -.340, 1.603), (.082, .009, .016), black, (0, math.radians(27), 0), .004),
-        box('Brow.R', (.110, -.340, 1.603), (.082, .009, .016), black, (0, math.radians(-27), 0), .004),
-        box('Mouth.L', (-.024, -.324, 1.383), (.030, .004, .004), black, (0, math.radians(-12), 0), .002),
-        box('Mouth.R', (.024, -.324, 1.383), (.030, .004, .004), black, (0, math.radians(12), 0), .002),
-        sphere('Classic cap crown', (0, -.006, 1.725), (.360, .300, .115), navy, 88),
-        sphere('Classic cap top', (0, .006, 1.792), (.405, .320, .065), navy, 88),
-        cyl('Classic cap band', (0, -.008, 1.665), .340, .074, cap_red, verts=108, bevel=.010),
-        cyl('Classic cap brass line', (0, -.010, 1.626), .336, .013, brass, verts=108, bevel=.003),
-        box('Classic cap visor', (0, -.294, 1.614), (.215, .095, .020), leather, (math.radians(10), 0, 0), .011),
-        sphere('Classic cap badge', (0, -.332, 1.710), (.036, .010, .042), brass, 26),
-        box('Classic cap badge wing.L', (-.054, -.329, 1.714), (.038, .006, .011), brass, (0, math.radians(-12), math.radians(12)), .003),
-        box('Classic cap badge wing.R', (.054, -.329, 1.714), (.038, .006, .011), brass, (0, math.radians(12), math.radians(-12)), .003),
+        sphere('Eye.L', (-.108, -.322, 1.525), (.024, .008, .038), black, 28),
+        sphere('Eye.R', (.108, -.322, 1.525), (.024, .008, .038), black, 28),
+        box('Brow.L', (-.110, -.340, 1.607), (.082, .009, .016), black, (0, math.radians(27), 0), .004),
+        box('Brow.R', (.110, -.340, 1.607), (.082, .009, .016), black, (0, math.radians(-27), 0), .004),
+        box('Mouth.L', (-.026, -.324, 1.382), (.032, .004, .004), black, (0, math.radians(-13), 0), .002),
+        box('Mouth.R', (.026, -.324, 1.382), (.032, .004, .004), black, (0, math.radians(13), 0), .002),
+        # Structured peaked cap: a taller crown and rear-biased top mass replace
+        # the old flat beret silhouette.
+        sphere('Classic cap crown', (0, .005, 1.730), (.365, .305, .135), navy, 92, (math.radians(-5), 0, 0)),
+        sphere('Classic cap top', (0, .055, 1.815), (.420, .335, .085), navy, 92, (math.radians(-8), 0, 0)),
+        cyl('Classic cap band', (0, -.008, 1.665), .340, .078, cap_red, verts=108, bevel=.010),
+        cyl('Classic cap brass line', (0, -.010, 1.624), .336, .013, brass, verts=108, bevel=.003),
+        box('Classic cap visor', (0, -.300, 1.612), (.220, .105, .020), leather, (math.radians(11), 0, 0), .011),
+        sphere('Classic cap badge', (0, -.338, 1.717), (.038, .010, .046), brass, 28),
+        box('Classic cap badge wing.L', (-.058, -.334, 1.721), (.041, .006, .012), brass, (0, math.radians(-12), math.radians(12)), .003),
+        box('Classic cap badge wing.R', (.058, -.334, 1.721), (.041, .006, .012), brass, (0, math.radians(12), math.radians(-12)), .003),
     ]
 
-    # Hidden neutral limbs; routines may bring them forward, Idle never does.
     shoulder_l = (-.260, .185, 1.045); elbow_l = (-.305, .198, .930); wrist_l = (-.263, .182, .825)
     shoulder_r = (.260, .185, 1.045); elbow_r = (.305, .198, .930); wrist_r = (.263, .182, .825)
     upper_l = cyl_between('Upper arm.L', shoulder_l, elbow_l, .034, navy, 40, .008)
