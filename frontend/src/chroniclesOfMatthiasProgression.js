@@ -12,6 +12,8 @@ export const CHRONICLES_TACTICS_RUN_STORAGE_KEY = 'chess-study-chronicles-tactic
 export const CHRONICLES_PROGRESSION_VERSION = 1;
 export const CHRONICLES_MAX_LEVEL = 12;
 
+const AUTH_USERNAME_KEY = 'chess-study-auth-username';
+const ENCOUNTER_ID = 'crypt-01';
 const HERO_IDS = Object.freeze(['matthias', 'rook', 'bishop', 'knight']);
 const CLAIM_LIMIT = 256;
 const ATTRIBUTE_KEYS = Object.freeze(['vigor', 'power', 'precision', 'will']);
@@ -158,6 +160,10 @@ export function grantChroniclesXp(progression, memberId, amount, awardId) {
   return { progression: next, awarded, duplicate: false, levelUps };
 }
 
+function currentOwner() {
+  return String(getStorageItem(STORAGE_LOCAL, AUTH_USERNAME_KEY) || '').trim().toLowerCase();
+}
+
 function createRunId() {
   try {
     if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
@@ -173,14 +179,16 @@ function readRunState() {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed.id !== 'string' || !parsed.id.trim()) return null;
-    return { id: parsed.id.trim(), ended: Boolean(parsed.ended) };
+    const owner = String(parsed.owner || '').trim().toLowerCase();
+    if (owner !== currentOwner()) return null;
+    return { id: parsed.id.trim(), owner, ended: Boolean(parsed.ended) };
   } catch {
     return null;
   }
 }
 
 export function beginChroniclesTacticsRun() {
-  const run = { id: createRunId(), ended: false };
+  const run = { id: createRunId(), owner: currentOwner(), ended: false };
   setStorageItem(STORAGE_LOCAL, CHRONICLES_TACTICS_RUN_STORAGE_KEY, JSON.stringify(run));
   return run.id;
 }
@@ -209,6 +217,38 @@ function award(progress, awards, levelUps, memberId, amount, awardId, reason) {
   return result.progression;
 }
 
+function awardDamageBudget(progress, awards, levelUps, memberId, enemy, before, after) {
+  let next = progress;
+  for (let hp = before - 1; hp >= after; hp -= 1) {
+    next = award(
+      next,
+      awards,
+      levelUps,
+      memberId,
+      2,
+      `${ENCOUNTER_ID}:damage:${enemy.id}:hp-${hp}`,
+      'daño útil',
+    );
+  }
+  return next;
+}
+
+function awardHealingBudget(progress, awards, levelUps, memberId, targetId, before, after) {
+  let next = progress;
+  for (let hp = before + 1; hp <= after; hp += 1) {
+    next = award(
+      next,
+      awards,
+      levelUps,
+      memberId,
+      2,
+      `${ENCOUNTER_ID}:support:${targetId}:hp-${hp}`,
+      'soporte efectivo',
+    );
+  }
+  return next;
+}
+
 export function applyChroniclesTacticsProgression(progression, previous, next, {
   actorMemberId = null,
   actionKind = 'action',
@@ -225,16 +265,7 @@ export function applyChroniclesTacticsProgression(progression, previous, next, {
       const before = enemyHp(previous, enemy);
       const after = enemyHp(next, enemy);
       if (after >= before) return;
-      const damage = before - after;
-      progress = award(
-        progress,
-        awards,
-        levelUps,
-        actorMemberId,
-        damage * 2,
-        `${safeRunId}:damage:${actorMemberId}:${enemy.id}:${before}>${after}`,
-        'daño útil',
-      );
+      progress = awardDamageBudget(progress, awards, levelUps, actorMemberId, enemy, before, after);
       if (before > 0 && after === 0) {
         progress = award(
           progress,
@@ -242,7 +273,7 @@ export function applyChroniclesTacticsProgression(progression, previous, next, {
           levelUps,
           actorMemberId,
           10 + Math.max(1, nonNegativeInteger(enemy.maxHp)) * 2,
-          `${safeRunId}:kill:${actorMemberId}:${enemy.id}`,
+          `${ENCOUNTER_ID}:kill:${enemy.id}`,
           'baja',
         );
       }
@@ -253,16 +284,7 @@ export function applyChroniclesTacticsProgression(progression, previous, next, {
       (next.party || []).forEach((member) => {
         const before = beforeParty.get(member.id);
         if (!before || member.hp <= before.hp) return;
-        const healed = member.hp - before.hp;
-        progress = award(
-          progress,
-          awards,
-          levelUps,
-          actorMemberId,
-          healed * 2,
-          `${safeRunId}:heal:${actorMemberId}:${member.id}:${before.hp}>${member.hp}`,
-          'soporte efectivo',
-        );
+        progress = awardHealingBudget(progress, awards, levelUps, actorMemberId, member.id, before.hp, member.hp);
       });
     }
 
@@ -273,7 +295,7 @@ export function applyChroniclesTacticsProgression(progression, previous, next, {
         levelUps,
         actorMemberId,
         8,
-        `${safeRunId}:objective:sigil:${actorMemberId}`,
+        `${ENCOUNTER_ID}:objective:sigil`,
         'objetivo',
       );
     }
@@ -287,7 +309,7 @@ export function applyChroniclesTacticsProgression(progression, previous, next, {
         levelUps,
         member.id,
         12,
-        `${safeRunId}:survival:${member.id}`,
+        `${ENCOUNTER_ID}:survival:${member.id}`,
         'supervivencia',
       );
     });
