@@ -15,6 +15,18 @@ from pathlib import Path
 GROUP_ORDER = ("home", "experiments", "training", "warroom", "health")
 EXPERIMENT_ORDER = ("landing", "chronicles", "pawnslug")
 
+PUBLIC_NONCANONICAL_PATHS = {
+    "frontend/public/404.html",
+    "frontend/public/cname",
+    "frontend/public/_headers",
+    "frontend/public/apple-touch-icon.png",
+    "frontend/public/favicon-32.png",
+    "frontend/public/favicon.svg",
+    "frontend/public/manifest.webmanifest",
+    "frontend/public/release.json",
+    "frontend/public/sw.js",
+}
+
 
 @dataclass(frozen=True)
 class Scope:
@@ -65,19 +77,10 @@ def _surface_groups(path: str) -> set[str] | None:
     lower = path.lower()
     name = Path(lower).name
 
-    # The pure classifier is self-tested before its result is consumed by the
-    # visual composite. One real canonical capture is enough to prove that its
-    # output still drives build -> browser -> capture -> summary -> artifact.
     if lower == "scripts/app_visual_scope.py":
         return {"training"}
-
-    # Architecture manifests are build metadata. A deliberate CSS change still
-    # carries its owning surface through the CSS/component path beside this file;
-    # the manifest itself must not widen a targeted visual run to full-canon.
     if lower == "scripts/css_architecture_manifest.json":
         return set()
-
-    # Changes to orchestration/capture machinery must prove the entire contract.
     if (
         lower.startswith(".github/actions/app-visual-pipeline/")
         or lower == ".github/workflows/app-visual-artifact.yml"
@@ -103,22 +106,33 @@ def _surface_groups(path: str) -> set[str] | None:
             return {"training"}
         if name.startswith("war-room-") and "visual" in name:
             return {"warroom"}
-        # An unknown visual/E2E producer is safer as full canonical.
         return None
 
+    if lower.startswith("frontend/public/audio/"):
+        return set()
+    if lower.startswith("frontend/public/chesscom/"):
+        return set()
+    if lower in PUBLIC_NONCANONICAL_PATHS:
+        return set()
+    if lower == "frontend/public/models/chronicles-tactics-party.glb":
+        return {"experiments"}
+    if lower in {
+        "frontend/public/models/matthias-home-canonical.glb",
+        "frontend/public/matthias-home-canonical.b64",
+    }:
+        return {"home"}
+    if lower in {
+        "frontend/public/assets/enemy_atlas_v2.webp",
+        "frontend/public/enemy_atlas_v2.webp",
+    }:
+        return {"experiments"}
     if lower.startswith("frontend/public/"):
         return None
 
     if not lower.startswith("frontend/src/"):
         return None
-
     if "chesscom" in lower:
         return set()
-
-    # Admin and observability own their own browser behaviour canaries but are
-    # not rendered by the canonical Home/Experiments/Training/War Room capture.
-    # Treat them as an explicit no-capture surface instead of failing open to
-    # the entire visual suite merely because they are generic components.
     if _is_noncanonical_admin_surface(path):
         return set()
 
@@ -134,18 +148,10 @@ def _surface_groups(path: str) -> set[str] | None:
         groups.add("warroom")
     if any(token in lower for token in ("illustrated-home", "homecastle", "home-castle", "/home", "castle3d")):
         groups.add("home")
-
-    # Matthias is rendered independently on Home and inside War Room. A shared
-    # Matthias component can affect either. "Chronicles of Matthias" merely
-    # carries his name as part of the mode title and owns its Experiments scene.
     if "matthias" in lower and "school" not in lower and "chronicles" not in lower:
         groups.update(("home", "warroom"))
-
     if groups:
         return groups
-
-    # Generic JSX/CSS/components/assets can have cross-surface impact. Do not
-    # guess narrowly: retain the historical full suite for ambiguous changes.
     return None
 
 
@@ -156,12 +162,15 @@ def _experiment_parts(path: str) -> set[str]:
         return set(EXPERIMENT_ORDER)
     if name == "chronicles-avatar-visual-artifact.spec.js" or "chronicles" in lower:
         return {"chronicles"}
+    if lower in {
+        "frontend/public/assets/enemy_atlas_v2.webp",
+        "frontend/public/enemy_atlas_v2.webp",
+    }:
+        return {"pawnslug"}
     if "pawnslug" in lower or "pawn-slug" in lower:
         return {"pawnslug"}
     if "trailblazer" in lower or "arcade" in lower:
         return {"landing"}
-    # The Experiments hub owns navigation into both sub-modes; changes to the
-    # hub itself prove all three paths, not merely its landing screenshot.
     if "experiment" in lower:
         return set(EXPERIMENT_ORDER)
     return set(EXPERIMENT_ORDER)
@@ -178,10 +187,6 @@ def _needs_hans_routines(path: str) -> bool:
     lower = path.lower().replace("\\", "/")
     if "hans" in lower:
         return True
-    # Generic Board3D/WarRoom renderer changes already exercise Hans through the
-    # canonical warroom-hans producer. The expensive multi-video routine audit is
-    # only additional signal when shared code actually chooses or coordinates his
-    # per-game/ambient behaviour.
     return lower in HANS_ROUTINE_SHARED_OWNERS
 
 
@@ -197,8 +202,6 @@ def _needs_chronicles_avatar(path: str) -> bool:
         return True
     if "chronicles" not in lower:
         return False
-    # Root gameplay reducers/targeting/retaliation still get the Chronicles
-    # gameplay canary, but do not need to boot and photograph all four portraits.
     return any(token in name for token in ("three", "party", "portrait", "relic", "condition", "visual", "art"))
 
 
@@ -258,12 +261,10 @@ def write_outputs(scope: Scope, output_path: str) -> None:
 def self_test() -> None:
     pawn = classify(["frontend/src/pawnSlugThree.js"])
     assert pawn.capture_groups == "experiments" and pawn.experiments_scope == "pawnslug"
-
     chronicles_logic = classify(["frontend/src/chroniclesDungeon.js"])
     assert chronicles_logic.capture_groups == "experiments"
     assert chronicles_logic.experiments_scope == "chronicles"
     assert not chronicles_logic.chronicles_avatar
-
     chronicles_ui = classify(["frontend/src/components/ChroniclesOfMatthias.jsx"])
     assert chronicles_ui.capture_groups == "experiments"
     assert chronicles_ui.experiments_scope == "chronicles" and chronicles_ui.chronicles_avatar
@@ -279,7 +280,6 @@ def self_test() -> None:
     assert chronicles_patina.capture_groups == "experiments"
     assert chronicles_patina.experiments_scope == "chronicles"
     assert not chronicles_patina.chronicles_avatar
-
     trailblazer = classify(["frontend/src/pawnTrailblazerThree.js"])
     assert trailblazer.experiments_scope == "landing"
     hub = classify(["frontend/src/components/ExperimentsScreen.jsx"])
@@ -317,6 +317,27 @@ def self_test() -> None:
     assert classify(["e2e/browser-storage-health.spec.js"]).capture_groups == "health"
     chesscom = classify(["frontend/src/chesscomClient.js"])
     assert chesscom.capture_groups == "none" and chesscom.chesscom
+
+    public_audio = classify(["frontend/public/audio/tropical-house.mp3"])
+    assert public_audio.capture_groups == "none"
+    assert not public_audio.hans and not public_audio.chesscom
+    public_chesscom = classify(["frontend/public/chesscom/piece.glb"])
+    assert public_chesscom.capture_groups == "none" and public_chesscom.chesscom
+    for public_meta in PUBLIC_NONCANONICAL_PATHS:
+        public_scope = classify([public_meta])
+        assert public_scope.capture_groups == "none"
+        assert not public_scope.hans and not public_scope.chesscom
+    public_chronicles_model = classify(["frontend/public/models/chronicles-tactics-party.glb"])
+    assert public_chronicles_model.capture_groups == "experiments"
+    assert public_chronicles_model.experiments_scope == "chronicles"
+    public_home_model = classify(["frontend/public/models/matthias-home-canonical.glb"])
+    assert public_home_model.capture_groups == "home"
+    public_home_b64 = classify(["frontend/public/matthias-home-canonical.b64"])
+    assert public_home_b64.capture_groups == "home"
+    public_enemy_atlas = classify(["frontend/public/assets/enemy_atlas_v2.webp"])
+    assert public_enemy_atlas.capture_groups == "experiments"
+    assert public_enemy_atlas.experiments_scope == "pawnslug"
+    assert classify(["frontend/public/support-pawn.png"]) == full_scope()
 
     for admin_path in (
         "frontend/src/components/AdminDashboardContent.jsx",
@@ -359,11 +380,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--github-output", default=os.environ.get("GITHUB_OUTPUT", ""))
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args(argv)
-
     if args.self_test:
         self_test()
         return 0
-
     scope = full_scope() if args.all else classify(sys.stdin.read().splitlines())
     if args.github_output:
         write_outputs(scope, args.github_output)
