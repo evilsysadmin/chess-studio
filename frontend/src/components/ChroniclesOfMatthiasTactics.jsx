@@ -5,9 +5,11 @@ import {
 } from '../chroniclesOfMatthias.js';
 import {
   chroniclesTacticsAttack,
+  chroniclesTacticsInteractions,
   chroniclesTacticsLegalMoves,
   chroniclesTacticsMove,
   chroniclesTacticsTargets,
+  chroniclesTacticsUse,
 } from '../chroniclesOfMatthiasTactics.js';
 import { chroniclesResolveEnemyTurn } from '../chroniclesOfMatthiasTurns.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
@@ -69,6 +71,11 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     () => PARTY_ORDER.map((id) => state.party.find((member) => member.id === id)).filter(Boolean),
     [state.party],
   );
+  const contextualAction = useMemo(() => chroniclesTacticsInteractions(state)[0] || null, [state]);
+  const canAttack = useMemo(
+    () => chroniclesTacticsTargets(state, selectedMemberId).length > 0,
+    [selectedMemberId, state],
+  );
   const canAct = state.phase !== 'defeated' && state.phase !== 'escaped';
 
   const commitState = useCallback((next) => {
@@ -104,6 +111,12 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     if (!target) return;
     const next = chroniclesTacticsAttack(current, memberId, target.enemyId);
     if (commitState(next)) lastAttackAtRef.current = now;
+  }, [commitState]);
+
+  const useContextualAction = useCallback(() => {
+    const current = stateRef.current;
+    if (current.phase === 'defeated' || current.phase === 'escaped') return;
+    commitState(chroniclesTacticsUse(current));
   }, [commitState]);
 
   const selectMember = useCallback((memberId) => {
@@ -175,6 +188,13 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
         return;
       }
       if (event.key === ' ') {
+        if (event.repeat) return;
+        event.preventDefault();
+        useContextualAction();
+        return;
+      }
+      if (event.key === 'Shift') {
+        if (event.repeat) return;
         event.preventDefault();
         attackEnemy();
         return;
@@ -186,7 +206,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackEnemy, moveParty, selectMember]);
+  }, [attackEnemy, moveParty, selectMember, useContextualAction]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -224,7 +244,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
         <aside className="chronicles-tactics__mission" aria-label="Misión">
           <span className="chronicles-tactics__kicker">CRIPTA 01</span>
           <strong>{objective}</strong>
-          <small>WASD/flechas mueve la formación · 1–4 cambia de héroe · espacio ataca.</small>
+          <small>WASD/flechas mueve · 1–4 cambia de héroe · espacio usa · Shift ataca.</small>
         </aside>
 
         <main className="chronicles-tactics__battlefield">
@@ -243,7 +263,15 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
             <button type="button" className="is-ready" disabled={!canAct} aria-label="Mover al norte" onClick={() => moveParty(0, -1)}><i aria-hidden="true">↑</i><span>W</span></button>
             <button type="button" className="is-ready" disabled={!canAct} aria-label="Mover al sur" onClick={() => moveParty(0, 1)}><i aria-hidden="true">↓</i><span>S</span></button>
             <button type="button" className="is-ready" disabled={!canAct} aria-label="Mover al este" onClick={() => moveParty(1, 0)}><i aria-hidden="true">→</i><span>D</span></button>
-            <button type="button" className="is-ready" disabled={!canAct} aria-label="Atacar" onClick={() => attackEnemy()}><i aria-hidden="true">⚔</i><span>ESPACIO</span></button>
+            <button
+              type="button"
+              className={contextualAction ? 'is-ready' : ''}
+              disabled={!canAct || !contextualAction}
+              aria-label="Usar"
+              title={contextualAction?.label || 'No hay nada que usar aquí'}
+              onClick={useContextualAction}
+            ><i aria-hidden="true">◎</i><span>ESPACIO · USAR</span></button>
+            <button type="button" className={canAttack ? 'is-ready' : ''} disabled={!canAct || !canAttack} aria-label="Atacar" onClick={() => attackEnemy()}><i aria-hidden="true">⚔</i><span>SHIFT · ATAQUE</span></button>
           </div>
         </main>
 
@@ -275,7 +303,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
 
       <footer className="chronicles-tactics__footer">
         <span>Motor {rendererName}</span>
-        <span>Action RPG isométrico · enemigos activos · sin turno de jugador</span>
+        <span>{contextualAction ? `Espacio · ${contextualAction.label}` : 'Espacio · Usar'} · Shift · ataque rápido</span>
         <button type="button" onClick={restart}>Reiniciar incursión</button>
       </footer>
     </div>
