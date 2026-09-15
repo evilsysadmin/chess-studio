@@ -8,11 +8,39 @@ describe('Chronicles of Matthias 3D cast art', () => {
 
     expect(models.map((model) => model.userData.chroniclesCharacterId)).toEqual(ids);
     expect(new Set(models.map((model) => model.userData.chroniclesSilhouette)).size).toBe(4);
+    expect(models.map((model) => model.userData.chroniclesArtTier)).toEqual(ids.map(() => 'premium-cast-v2'));
 
     expect(models[0].getObjectByName('matthias-expedition-cap')).toBeTruthy();
     expect(models[1].getObjectByName('hildegard-tower-shield')).toBeTruthy();
     expect(models[2].getObjectByName('aziz-lantern')).toBeTruthy();
     expect(models[3].getObjectByName('morcilla-pack-left')).toBeTruthy();
+  });
+
+  it('adds premium readable detail without abandoning each chess-piece identity', () => {
+    const matthias = buildChroniclesCharacter('matthias');
+    const hildegard = buildChroniclesCharacter('rook');
+    const aziz = buildChroniclesCharacter('bishop');
+    const morcilla = buildChroniclesCharacter('knight');
+
+    expect(matthias.getObjectByName('chronicles-nose')).toBeTruthy();
+    expect(matthias.getObjectByName('matthias-lapel-left')).toBeTruthy();
+    expect(matthias.getObjectByName('matthias-coat-button-2')).toBeTruthy();
+    expect(matthias.getObjectByName('matthias-moustache-left')).toBeTruthy();
+
+    expect(hildegard.getObjectByName('hildegard-pauldron-left')).toBeTruthy();
+    expect(hildegard.getObjectByName('hildegard-face-slit')).toBeTruthy();
+    expect(hildegard.getObjectByName('hildegard-eye-right')).toBeTruthy();
+    expect(hildegard.getObjectByName('hildegard-shield-rivet-3')).toBeTruthy();
+
+    expect(aziz.getObjectByName('aziz-scarf-clasp')).toBeTruthy();
+    expect(aziz.getObjectByName('aziz-lantern-cage-ring')).toBeTruthy();
+    expect(aziz.getObjectByName('aziz-lantern-cage-bar-1')).toBeTruthy();
+    expect(aziz.getObjectByName('aziz-mitre-trim-right')).toBeTruthy();
+
+    expect(morcilla.getObjectByName('morcilla-muzzle')).toBeTruthy();
+    expect(morcilla.getObjectByName('morcilla-eye-left')).toBeTruthy();
+    expect(morcilla.getObjectByName('morcilla-bridle-band')).toBeTruthy();
+    expect(morcilla.getObjectByName('morcilla-pack-strap-right')).toBeTruthy();
   });
 
   it('turns the corrupted pawn into a readable enemy asset instead of a generic pawn primitive', () => {
@@ -41,7 +69,10 @@ describe('Chronicles of Matthias 3D cast art', () => {
     const coarse = buildChroniclesCharacter('matthias', { coarsePointer: true });
     const desktopFace = desktop.getObjectByName('chronicles-face');
     const coarseFace = coarse.getObjectByName('chronicles-face');
+    const desktopShoulder = desktop.getObjectByName('matthias-shoulder-left');
+    const coarseShoulder = coarse.getObjectByName('matthias-shoulder-left');
 
     expect(desktopFace.geometry.attributes.position.count).toBeGreaterThan(coarseFace.geometry.attributes.position.count);
+    expect(desktopShoulder.geometry.attributes.position.count).toBeGreaterThan(coarseShoulder.geometry.attributes.position.count);
   });
 });
