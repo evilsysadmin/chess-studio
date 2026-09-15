@@ -1,55 +1,58 @@
-import enemyCanonicalPart1 from './assets/pawnSlug/enemy_canonical_v4_part1.b64?raw';
-import enemyCanonicalPart2 from './assets/pawnSlug/enemy_canonical_v4_part2.b64?raw';
-import enemyCanonicalPart3 from './assets/pawnSlug/enemy_canonical_v4_part3.b64?raw';
+import enemyCanonicalRunUrl from './assets/pawnSlug/enemy_canonical_v5_run.webp';
 
 const TYPES = Object.freeze(['pawn', 'knight', 'rook']);
-const COLUMNS = 3;
-const ROWS = 1;
-const FRAME_BY_TYPE = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
+const COLUMNS = 8;
+const ROWS = 3;
+const FRAMES_PER_TYPE = 8;
+const ROW_BY_TYPE = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
 
-export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL = `data:image/webp;base64,${[
-  enemyCanonicalPart1,
-  enemyCanonicalPart2,
-  enemyCanonicalPart3,
-].map((part) => part.trim()).join('')}`;
+function wrapFrame(frame, count = FRAMES_PER_TYPE) {
+  return ((Math.floor(Number(frame) || 0) % count) + count) % count;
+}
+
+export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL = enemyCanonicalRunUrl;
 
 export function pawnSlugPremiumEnemyRasterWindow(type = 'pawn', action = 'idle', frameIndex = 0, dir = 1) {
   const safeType = TYPES.includes(type) ? type : 'pawn';
-  const frame = FRAME_BY_TYPE[safeType];
+  const sourceAction = action === 'run' ? 'run' : 'idle';
+  const frame = sourceAction === 'run' ? wrapFrame(frameIndex) : 0;
+  const row = ROW_BY_TYPE[safeType];
   const direction = Number(dir) < 0 ? -1 : 1;
   const mirrored = direction > 0;
   return Object.freeze({
     type: safeType,
     action,
-    sourceAction: 'idle',
+    sourceAction,
     requestedFrame: Math.floor(Number(frameIndex) || 0),
-    row: 0,
+    row,
     frame,
     direction,
     mirrored,
     repeatX: (mirrored ? -1 : 1) / COLUMNS,
-    repeatY: 1,
+    repeatY: 1 / ROWS,
     offsetX: (mirrored ? frame + 1 : frame) / COLUMNS,
-    offsetY: 0,
+    offsetY: 1 - ((row + 1) / ROWS),
   });
 }
 
 export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_META = Object.freeze({
-  version: 'v4-authored-canonical-static',
+  version: 'v5-authored-canonical-run',
   format: 'webp-rgba-authored-premium',
-  width: 480,
-  height: 160,
+  width: 1280,
+  height: 480,
   frameWidth: 160,
   frameHeight: 160,
   columns: COLUMNS,
   rows: ROWS,
+  framesPerType: FRAMES_PER_TYPE,
   sourceFacing: 'left',
   runtimeFacings: Object.freeze(['left', 'right']),
   types: TYPES,
-  authoredActions: Object.freeze(['idle']),
-  poseFallback: 'canonical-static-plus-runtime-pose',
-  frameByType: FRAME_BY_TYPE,
-  canonicalSource: 'Pawn Slug: authored premium enemy lineup v4',
+  authoredActions: Object.freeze(['idle', 'run']),
+  poseFallback: 'authored-run-plus-runtime-pose',
+  rowByType: ROW_BY_TYPE,
+  canonicalSource: 'Pawn Slug: authored premium enemy lineup v5',
+  derivedFrom: 'v4-authored-canonical-static',
   isolatedSilhouettes: true,
   transparentBackground: true,
   proceduralFallbackOnly: true,
