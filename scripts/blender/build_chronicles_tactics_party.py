@@ -165,7 +165,7 @@ CAST = {
     "bishop": tuple(aziz()),
     "knight": tuple(faust()),
 }
-ASSET_VERSION = "chronicles-tactics-party-v2"
+ASSET_VERSION = "chronicles-tactics-party-v3"
 
 
 import bpy
@@ -263,16 +263,57 @@ def build_part(spec, mats):
     return obj
 
 
+IDLE_PROFILES = {
+    # Hildegard reads as a planted bastion: barely any lift, almost no yaw.
+    "rook": {
+        "name": "bastion-breath",
+        "keys": (
+            (1, 0.000, 0.000, 0.000),
+            (28, 0.004, -0.002, 0.003),
+            (52, 0.001, 0.001, -0.002),
+            (76, -0.003, 0.002, -0.003),
+            (96, 0.000, 0.000, 0.000),
+        ),
+    },
+    # Aziz breathes in a slow ritual cadence with a readable but restrained sway.
+    "bishop": {
+        "name": "ritual-sway",
+        "keys": (
+            (1, 0.000, 0.000, 0.000),
+            (24, 0.014, -0.010, 0.015),
+            (48, 0.004, 0.008, 0.005),
+            (72, -0.010, 0.010, -0.014),
+            (96, 0.000, 0.000, 0.000),
+        ),
+    },
+    # Faust never quite settles: shorter, asymmetric pulses without becoming comic.
+    "knight": {
+        "name": "restless-scout",
+        "keys": (
+            (1, 0.000, 0.000, 0.000),
+            (16, 0.010, -0.006, 0.012),
+            (37, -0.005, 0.009, -0.016),
+            (58, 0.013, -0.004, 0.007),
+            (79, -0.008, 0.006, -0.010),
+            (96, 0.000, 0.000, 0.000),
+        ),
+    },
+}
+
+
 def add_idle_action(root, member_id):
+    profile = IDLE_PROFILES[member_id]
+    root["chronicles_idle_profile"] = profile["name"]
     action = bpy.data.actions.new(f"Idle.{member_id}")
     root.animation_data_create()
     root.animation_data.action = action
     root.rotation_mode = "XYZ"
-    keys = ((1, 0.0, 0.0), (24, 0.016, 0.012), (48, 0.0, 0.0), (72, -0.012, -0.010), (96, 0.0, 0.0))
-    for frame, z, yaw in keys:
+    for frame, z, lean, yaw in profile["keys"]:
         root.location.z = z
+        root.rotation_euler.x = lean
         root.rotation_euler.z = yaw
         root.keyframe_insert(data_path="location", index=2, frame=frame, group="Idle")
+        root.keyframe_insert(data_path="rotation_euler", index=0, frame=frame, group="Idle")
         root.keyframe_insert(data_path="rotation_euler", index=2, frame=frame, group="Idle")
     for curve in action.fcurves:
         for key in curve.keyframe_points:

@@ -229,7 +229,7 @@ export const CHRONICLES_TACTICS_BLENDER_ART_META = Object.freeze({
   sourceOfTruth: 'scripts/blender/build_home_matthias.py',
   partySourceOfTruth: 'scripts/blender/build_chronicles_tactics_party.py',
   partyModel: 'models/chronicles-tactics-party.glb',
-  partyAssetVersion: 'chronicles-tactics-party-v2',
+  partyAssetVersion: 'chronicles-tactics-party-v3',
   partyBackDetail: 'premium-rear-silhouette-v1',
   runtimeUpgrade: 'async-fallback-first',
   fallback: 'chroniclesOfMatthiasArt.js',
