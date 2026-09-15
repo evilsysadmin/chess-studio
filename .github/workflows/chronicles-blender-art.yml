@@ -7,6 +7,7 @@ on:
       - 'scripts/blender/render_chronicles_party_preview.py'
       - 'scripts/blender/build_home_matthias.py'
       - 'scripts/blender/home_matthias_*.py'
+      - '.github/actions/setup-blender-canonical/**'
       - '.github/workflows/chronicles-blender-art.yml'
   workflow_dispatch:
     inputs:
@@ -54,10 +55,10 @@ jobs:
             [[ "$DISPATCH_ASSET" == "all" || "$DISPATCH_ASSET" == "matthias" ]] && matthias=true
           else
             changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
-            if grep -Eq '^(scripts/blender/build_chronicles_tactics_party.py|scripts/blender/render_chronicles_party_preview.py|\.github/workflows/chronicles-blender-art.yml)$' <<<"$changed"; then
+            if grep -Eq '^(scripts/blender/build_chronicles_tactics_party.py|scripts/blender/render_chronicles_party_preview.py|\.github/actions/setup-blender-canonical/|\.github/workflows/chronicles-blender-art.yml)$' <<<"$changed"; then
               party=true
             fi
-            if grep -Eq '^(scripts/blender/build_home_matthias.py|scripts/blender/home_matthias_[^/]+\.py|\.github/workflows/chronicles-blender-art.yml)$' <<<"$changed"; then
+            if grep -Eq '^(scripts/blender/build_home_matthias.py|scripts/blender/home_matthias_[^/]+\.py|\.github/actions/setup-blender-canonical/|\.github/workflows/chronicles-blender-art.yml)$' <<<"$changed"; then
               matthias=true
             fi
           fi
@@ -72,10 +73,7 @@ jobs:
     timeout-minutes: 16
     steps:
       - uses: actions/checkout@v7
-      - name: Install Blender + image tools
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends blender python3-numpy python3-pil
+      - uses: ./.github/actions/setup-blender-canonical
       - name: Build canonical party blend + GLB
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
@@ -141,10 +139,7 @@ jobs:
     timeout-minutes: 16
     steps:
       - uses: actions/checkout@v7
-      - name: Install Blender + image tools
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends blender python3-numpy python3-pil
+      - uses: ./.github/actions/setup-blender-canonical
       - name: Build canonical Matthias blend + GLB + preview
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'

@@ -20,12 +20,12 @@ class Budget:
 INVENTORY = {
     'app-visual-artifact.yml': 'visual-artifact',
     'branch-housekeeping.yml': 'housekeeping',
-    'chronicles-blender-art.yml': 'art-generation',
     'cicd.yml': 'quality-required',
     'cloudflare-prometheus-exporter.yml': 'observability',
     'coverage.yml': 'quality-scheduled',
     'e2e-full.yml': 'quality-scheduled',
     'grafana-dashboards.yml': 'observability',
+    'home-matthias-blender-art.yml': 'art-generation',
     'main-admission.yml': 'delivery-admission',
     'oci-readiness.yml': 'infra-readiness',
     'oci-staging-deploy.yml': 'infra-staging-delivery',

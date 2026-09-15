@@ -7,6 +7,7 @@ on:
       - 'scripts/blender/pawn_slug_matthias_premium_common.py'
       - 'scripts/blender/pawn_slug_matthias_premium_weapons.py'
       - 'scripts/blender/pawn_slug_matthias_premium_character.py'
+      - '.github/actions/setup-blender-canonical/**'
       - '.github/workflows/pawn-slug-blender-art.yml'
       - 'frontend/src/assets/pawnSlug/matthias_*_premium_v2.b64'
   workflow_dispatch:
@@ -30,10 +31,9 @@ jobs:
         weapon: [pistol, machinegun, shotgun, panzerfaust]
     steps:
       - uses: actions/checkout@v7
-      - name: Install Blender + headless GL + WebP tools
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends blender webp libegl1 libgl1-mesa-dri python3-pil
+      - uses: ./.github/actions/setup-blender-canonical
+        with:
+          extra-packages: webp
       - name: Render premium canonical sheet at 2x
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
@@ -115,10 +115,6 @@ jobs:
                       f'row={row} col={col} height={height}'
                   )
 
-                  # Geometry alone cannot catch the old atlas bug where AREA lights
-                  # exposed centre columns correctly but left edge frames almost black.
-                  # Measure only authored (non-transparent) pixels so every animation
-                  # row must remain readable and exposure-stable across the sheet.
                   visible_luma = []
                   for red, green, blue, alpha_value in cell.getdata():
                       if alpha_value >= 96:

@@ -1,0 +1,22 @@
+name: Setup Blender canonical art
+description: Install the shared headless Blender toolchain without product-specific art assumptions.
+inputs:
+  extra-packages:
+    description: Optional space-separated apt packages required by the product-specific renderer.
+    required: false
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Install shared Blender toolchain
+      shell: bash
+      run: |
+        set -euo pipefail
+        sudo apt-get update -qq
+        base=(blender libegl1 libgl1-mesa-dri python3-pil python3-numpy)
+        extras=()
+        if [[ -n '${{ inputs.extra-packages }}' ]]; then
+          read -r -a extras <<< '${{ inputs.extra-packages }}'
+        fi
+        sudo apt-get install -y --no-install-recommends "${base[@]}" "${extras[@]}"
+        blender --version | head -n 1
