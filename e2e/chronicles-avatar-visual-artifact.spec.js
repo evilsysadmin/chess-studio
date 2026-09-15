@@ -60,9 +60,11 @@ async function captureElement(page, locator, path) {
 
 for (const capture of CAPTURES) {
   test(`Chronicles · los cuatro avatares 3D · ${capture.label}`, async ({ browser }) => {
-    // One viewport per test keeps hosted SwiftShader stalls from consuming the
-    // other viewport's wall-clock budget while preserving all eight portraits.
-    test.setTimeout(150_000);
+    // Hosted SwiftShader needs materially more wall-clock budget for four
+    // sequential desktop WebGL portraits than Android. Keep Android tight while
+    // giving desktop enough headroom to finish real captures instead of timing
+    // out during context cleanup after the screenshots already succeeded.
+    test.setTimeout(capture.hasTouch ? 150_000 : 210_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
     const context = await browser.newContext({
