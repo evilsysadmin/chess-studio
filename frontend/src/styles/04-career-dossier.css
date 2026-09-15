@@ -144,6 +144,57 @@
   background: color-mix(in srgb, var(--ink-2) 92%, var(--brass) 8%);
 }
 
+/* Ritmos y aperturas se comparan como registros, no como fichas independientes. */
+.career-screen .career-rhythm-grid {
+  grid-template-columns: 1fr;
+  gap: 0;
+  overflow: hidden;
+  border-block: 1px solid rgba(198, 164, 93, .18);
+  background: color-mix(in srgb, var(--ink-2) 97%, var(--brass) 3%);
+}
+
+.career-screen .career-rhythm-grid > .career-rhythm {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(150px, .72fr) auto;
+  align-items: baseline;
+  gap: .25rem 1rem;
+  min-width: 0;
+  margin: 0;
+  padding: .66rem .76rem;
+  border: 0;
+  border-bottom: 1px solid rgba(198, 164, 93, .12);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.career-screen .career-rhythm-grid > .career-rhythm:last-child {
+  border-bottom: 0;
+}
+
+.career-screen .career-rhythm-grid > .career-rhythm > b {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--parchment);
+  font-size: .84rem;
+  line-height: 1.3;
+}
+
+.career-screen .career-rhythm-grid > .career-rhythm > span {
+  color: var(--parchment);
+  font: 700 .72rem/1.3 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.career-screen .career-rhythm-grid > .career-rhythm > small {
+  color: var(--parchment-dim);
+  opacity: 1;
+  line-height: 1.3;
+  text-align: right;
+  white-space: nowrap;
+}
+
 /* Mi progreso usa un índice de expediente, no una botonera de dashboard. */
 .career-screen .career-section-nav {
   display: flex;
@@ -200,11 +251,30 @@
     min-height: 60px;
     padding: .66rem 2rem .66rem .72rem;
   }
+
+  .career-screen .career-rhythm-grid > .career-rhythm {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: .18rem .8rem;
+    padding: .62rem .68rem;
+  }
+
+  .career-screen .career-rhythm-grid > .career-rhythm > b {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 560px) {
   .career-screen .career-section-nav > button {
     flex: 0 0 auto;
     padding-inline: .72rem;
+  }
+
+  .career-screen .career-rhythm-grid > .career-rhythm {
+    grid-template-columns: 1fr;
+  }
+
+  .career-screen .career-rhythm-grid > .career-rhythm > small {
+    text-align: left;
+    white-space: normal;
   }
 }
