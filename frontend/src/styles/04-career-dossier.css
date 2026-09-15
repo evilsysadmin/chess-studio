@@ -74,6 +74,49 @@
   line-height: 1.35;
 }
 
+/* Mi progreso usa un índice de expediente, no una botonera de dashboard. */
+.career-screen .career-section-nav {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  padding: 0 .12rem;
+  border-bottom: 1px solid rgba(198, 164, 93, .22);
+  background: color-mix(in srgb, var(--ink-2) 94%, transparent);
+  backdrop-filter: blur(12px);
+  scrollbar-width: none;
+}
+
+.career-screen .career-section-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.career-screen .career-section-nav > button {
+  flex: 1 0 auto;
+  min-width: max-content;
+  min-height: 42px;
+  padding: .62rem .8rem .56rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--parchment-dim);
+  font: 700 .72rem/1.1 var(--font-mono);
+  letter-spacing: .04em;
+}
+
+.career-screen .career-section-nav > button:hover {
+  color: var(--parchment);
+  background: color-mix(in srgb, var(--brass) 5%, transparent);
+}
+
+.career-screen .career-section-nav > button.active {
+  border-color: transparent;
+  border-bottom-color: var(--brass);
+  background: linear-gradient(180deg, transparent 55%, color-mix(in srgb, var(--brass) 8%, transparent));
+  color: var(--parchment);
+}
+
 @media (max-width: 760px) {
   .career-screen .career-hero-grid > .career-card {
     padding: .78rem .82rem;
@@ -81,5 +124,12 @@
 
   .career-screen .career-mini-grid > span {
     padding: .62rem .68rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .career-screen .career-section-nav > button {
+    flex: 0 0 auto;
+    padding-inline: .72rem;
   }
 }
