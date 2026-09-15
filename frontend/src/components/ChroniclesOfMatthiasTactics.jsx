@@ -4,7 +4,14 @@ import {
   chroniclesObjective,
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
-import { chroniclesResolveEnemyTurn } from '../chroniclesOfMatthiasTurns.js';
+import {
+  chroniclesTacticsAttack,
+  chroniclesTacticsFinishTurn,
+  chroniclesTacticsLegalMoves,
+  chroniclesTacticsMove,
+  chroniclesTacticsTargets,
+  chroniclesTacticsWait,
+} from '../chroniclesOfMatthiasTactics.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import './ChroniclesOfMatthiasTactics.css';
 
@@ -62,6 +69,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const stateRef = useRef(createTacticsState());
   const [state, setState] = useState(stateRef.current);
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
+  const [actionMode, setActionMode] = useState(null);
   const [rendererName, setRendererName] = useState('CARGANDO');
   const [rendererError, setRendererError] = useState('');
 
@@ -105,26 +113,55 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     () => PARTY_ORDER.map((id) => state.party.find((member) => member.id === id)).filter(Boolean),
     [state.party],
   );
+  const legalMoves = useMemo(() => chroniclesTacticsLegalMoves(state), [state]);
+  const legalTargets = useMemo(
+    () => chroniclesTacticsTargets(state, selectedMemberId),
+    [selectedMemberId, state],
+  );
+  const canAct = state.phase !== 'defeated' && state.phase !== 'escaped';
 
   const commitState = (next) => {
     stateRef.current = next;
     setState(next);
   };
 
+  const finishPlayerAction = (next) => {
+    setActionMode(null);
+    commitState(chroniclesTacticsFinishTurn(next));
+  };
+
+  const moveParty = (destination) => {
+    const current = stateRef.current;
+    const next = chroniclesTacticsMove(current, destination);
+    if (next === current) return;
+    finishPlayerAction(next);
+  };
+
+  const attackEnemy = (enemyId) => {
+    const current = stateRef.current;
+    const next = chroniclesTacticsAttack(current, selectedMemberId, enemyId);
+    if (next === current) return;
+    finishPlayerAction(next);
+  };
+
   const waitTurn = () => {
-    if (state.phase === 'defeated' || state.phase === 'escaped') return;
-    const next = chroniclesResolveEnemyTurn({
-      ...stateRef.current,
-      message: `${selectedMember?.name || 'La compañía'} mantiene posición. La cripta aprovecha la cortesía.`,
-    });
-    commitState(next);
+    if (!canAct) return;
+    setActionMode(null);
+    commitState(chroniclesTacticsWait(stateRef.current, selectedMemberId));
   };
 
   const restart = () => {
     const next = createTacticsState();
     setSelectedMemberId('matthias');
+    setActionMode(null);
     commitState(next);
   };
+
+  const turnLabel = state.phase === 'defeated'
+    ? 'EXPEDICIÓN DERROTADA'
+    : state.phase === 'escaped'
+      ? 'EXTRACCIÓN COMPLETADA'
+      : 'TURNO DEL JUGADOR';
 
   return (
     <div className="chronicles-tactics" data-chronicles-tactics="true" data-phase={state.phase}>
@@ -142,12 +179,12 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
           <span className="chronicles-tactics__kicker">CRIPTA 01</span>
           <strong>{objective}</strong>
           <TacticsMap state={state} />
-          <small>La geometría es información. Las paredes, también cuando se empeñan en serlo.</small>
+          <small>Una acción tuya, una respuesta de la cripta. La iniciativa es sencilla; sobrevivir, menos.</small>
         </aside>
 
         <main className="chronicles-tactics__battlefield">
           <div className="chronicles-tactics__turn" aria-live="polite">
-            <span>{state.phase === 'defeated' ? 'EXPEDICIÓN DERROTADA' : 'TURNO DEL JUGADOR'}</span>
+            <span>{turnLabel}</span>
             <b>RONDA {Math.max(1, Number(state.round || 1))}</b>
           </div>
 
@@ -162,11 +199,52 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
           </div>
 
           <div className="chronicles-tactics__actions" aria-label="Acciones tácticas">
-            <button type="button" disabled title="Se activa en la siguiente iteración"><i aria-hidden="true">↑</i><span>Mover</span></button>
-            <button type="button" disabled title="Se activa en la siguiente iteración"><i aria-hidden="true">⚔</i><span>Atacar</span></button>
+            <button
+              type="button"
+              className={actionMode === 'move' ? 'is-ready' : ''}
+              disabled={!canAct || legalMoves.length === 0}
+              aria-pressed={actionMode === 'move'}
+              onClick={() => setActionMode((current) => current === 'move' ? null : 'move')}
+            >
+              <i aria-hidden="true">↑</i><span>Mover</span>
+            </button>
+            <button
+              type="button"
+              className={actionMode === 'attack' ? 'is-ready' : ''}
+              disabled={!canAct || legalTargets.length === 0}
+              aria-pressed={actionMode === 'attack'}
+              onClick={() => setActionMode((current) => current === 'attack' ? null : 'attack')}
+            >
+              <i aria-hidden="true">⚔</i><span>Atacar</span>
+            </button>
             <button type="button" disabled title="Se activa en una iteración posterior"><i aria-hidden="true">✦</i><span>Habilidad</span></button>
             <button type="button" disabled title="Se activa en una iteración posterior"><i aria-hidden="true">⚗</i><span>Objeto</span></button>
-            <button type="button" className="is-ready" onClick={waitTurn}><i aria-hidden="true">⌛</i><span>Esperar</span></button>
+            <button type="button" className="is-ready" disabled={!canAct} onClick={waitTurn}><i aria-hidden="true">⌛</i><span>Esperar</span></button>
+
+            {actionMode === 'move' && legalMoves.length > 0 && (
+              <div className="chronicles-tactics__choices" role="group" aria-label="Destinos legales">
+                <span>MOVER A</span>
+                {legalMoves.map((move) => (
+                  <button type="button" key={`${move.x}-${move.y}`} onClick={() => moveParty(move)}>
+                    <i aria-hidden="true">{move.glyph}</i>
+                    <b>{move.label}</b>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {actionMode === 'attack' && legalTargets.length > 0 && (
+              <div className="chronicles-tactics__choices" role="group" aria-label={`Objetivos de ${selectedMember?.name || 'la compañía'}`}>
+                <span>OBJETIVO</span>
+                {legalTargets.map((target) => (
+                  <button type="button" key={target.enemyId} onClick={() => attackEnemy(target.enemyId)}>
+                    <i aria-hidden="true">⚔</i>
+                    <b>{target.name}</b>
+                    <small>{target.hp}/{target.maxHp} HP · {target.distance} {target.distance === 1 ? 'casilla' : 'casillas'}</small>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </main>
 
@@ -191,14 +269,14 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
           <div className="chronicles-tactics__party-note">
             <span>ACTIVO</span>
             <b>{selectedMember?.name}</b>
-            <small>{selectedMember?.attackName} · alcance {selectedMember?.reach}</small>
+            <small>{selectedMember?.hp > 0 ? `${selectedMember?.attackName} · alcance ${selectedMember?.reach}` : 'Fuera de combate'}</small>
           </div>
         </aside>
       </div>
 
       <footer className="chronicles-tactics__footer">
         <span>Motor {rendererName}</span>
-        <span>Referencia visual: viewport canónico de Chronicles of Matthias Tactics</span>
+        <span>Una acción del jugador → turno de criaturas → nueva ronda</span>
         <button type="button" onClick={restart}>Reiniciar incursión</button>
       </footer>
     </div>
