@@ -52,7 +52,7 @@ runs:
         EXTRA_PACKAGES: ${{ inputs.extra-packages }}
       run: |
         set -euo pipefail
-        packages=(libegl1 python3-pil python3-numpy)
+        packages=(libegl1 python3-pil)
         extras=()
         if [[ -n "${EXTRA_PACKAGES}" ]]; then
           read -r -a extras <<< "${EXTRA_PACKAGES}"
