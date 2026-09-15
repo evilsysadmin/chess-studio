@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Classify whether the expensive Trivy/Docker security path is required.
 
-This preserves the existing Quality workflow contract: the security job may be
-scheduled by the broader quality scope, while this narrower classifier decides
-whether the expensive filesystem/image/compose checks must actually execute.
+The protected security check may still be scheduled by the broader Quality
+scope, but expensive vulnerability/image/Compose work is driven by semantic
+container/dependency surfaces, not by a blanket ``infra/**`` or ``deploy/**``
+path rule. Pure Terraform/IaC changes have their own dedicated contracts.
 """
 from __future__ import annotations
 
@@ -15,21 +16,19 @@ from pathlib import Path
 
 
 SECURITY_PATTERN = re.compile(
+    # Container build/runtime surfaces anywhere in the repository.
     r"(^|/)(Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|\.dockerignore)$"
     r"|^compose\.ya?ml$"
-    # package-lock.json is the dependency closure scanned by npm/Trivy. A
-    # package.json-only script/metadata edit does not justify rebuilding and
-    # scanning Docker images; dependency edits without a matching lock update
-    # are rejected by npm ci before they can merge.
-    r"|^frontend/package-lock\.json$"
-    r"|^backend-python/requirements[^/]*\.txt$"
+    # Dependency closures anywhere in the repository. A package.json-only edit
+    # does not justify rebuilding/scanning images; npm ci protects lock drift.
+    r"|(^|/)package-lock\.json$"
+    r"|(^|/)requirements[^/]*\.txt$"
+    # Security harness/wiring changes must exercise the heavy gate itself.
     r"|^Makefile$"
     r"|^\.trivy(ignore|\.ya?ml)?$"
     r"|^scripts/(npm_audit_gate\.py|pip_audit_report\.py|compose_smoke\.py|security[^/]*|trivy_[^/]*|install_trivy\.sh)$"
     r"|^\.github/workflows/cicd\.yml$"
     r"|^\.github/actions/cache-python-venv/action\.yml$"
-    r"|^(infra|deploy)/"
-    r"|^render\.ya?ml$"
 )
 
 
@@ -58,6 +57,7 @@ def self_test() -> None:
     positive = (
         "Dockerfile",
         "backend-python/Dockerfile.dev",
+        "infra/oci/Dockerfile.bootstrap",
         "docker-compose.yml",
         "ops/docker-compose.prod.yaml",
         ".dockerignore",
@@ -65,8 +65,11 @@ def self_test() -> None:
         "compose.yml",
         "compose.yaml",
         "frontend/package-lock.json",
+        "e2e/package-lock.json",
+        "infra/worker/package-lock.json",
         "backend-python/requirements.txt",
         "backend-python/requirements-dev.txt",
+        "deploy/requirements-ci.txt",
         "Makefile",
         ".trivyignore",
         ".trivy.yml",
@@ -79,10 +82,6 @@ def self_test() -> None:
         "scripts/install_trivy.sh",
         ".github/workflows/cicd.yml",
         ".github/actions/cache-python-venv/action.yml",
-        "infra/terraform/main.tf",
-        "deploy/render.sh",
-        "render.yml",
-        "render.yaml",
     )
     for path in positive:
         assert requires_heavy_security([path]), f"debía activar security pesado: {path}"
@@ -98,6 +97,14 @@ def self_test() -> None:
         "docs/security-notes.md",
         "frontend/package-lock.json.bak",
         "backend-python/requirements.md",
+        "infra/oci/bootstrap/main.tf",
+        "infra/oci/staging/backend.tf",
+        "infra/cloudflare/main.tf",
+        "infra/cloudflare/wrangler.staging.toml",
+        "deploy/render.sh",
+        "deploy/service.yaml",
+        "render.yml",
+        "render.yaml",
         "infrared/example.txt",
         "deployment-notes.md",
         "render.json",
@@ -105,12 +112,13 @@ def self_test() -> None:
     for path in negative:
         assert not requires_heavy_security([path]), f"no debía activar security pesado: {path}"
 
-    assert requires_heavy_security(["README.md", "deploy/service.yaml"])
+    assert requires_heavy_security(["infra/oci/bootstrap/main.tf", "e2e/package-lock.json"])
+    assert not requires_heavy_security(["infra/oci/bootstrap/main.tf", "deploy/service.yaml"])
     assert not requires_heavy_security([])
     assert normalize_files(["", "  README.md  ", "\n"]) == ["README.md"]
     assert output_lines(True) == ["run_security=true"]
     assert output_lines(False) == ["run_security=false"]
-    print("security-scope self-test OK · heavy Trivy/Docker policy preserved")
+    print("security-scope self-test OK · heavy Trivy/Docker follows container/dependency surfaces, not generic IaC")
 
 
 def main() -> int:
