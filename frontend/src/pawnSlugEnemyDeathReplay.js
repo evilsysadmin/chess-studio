@@ -12,6 +12,14 @@ function defaultCancel(frame) {
   else clearTimeout(frame);
 }
 
+const DEATH_SILHOUETTE_HALF_WIDTH = 0.38;
+
+export function pawnSlugEnemyDeathGroundLift(scaleX = 1, rotation = 0) {
+  const width = Math.abs(Number(scaleX) || 0);
+  const radians = Number(rotation) || 0;
+  return width * DEATH_SILHOUETTE_HALF_WIDTH * Math.abs(Math.sin(radians));
+}
+
 export function installPawnSlugEnemyDeathReplay(sprite, {
   type = 'pawn',
   duration = 0.7,
@@ -78,6 +86,8 @@ export function installPawnSlugEnemyDeathReplay(sprite, {
     const baseScaleX = Math.abs(sprite.userData?.motionBaseScaleX || sprite.scale.x || 1);
     sprite.scale.x = baseScaleX * baseDirection;
     animate(deathAge);
+    const groundLift = pawnSlugEnemyDeathGroundLift(sprite.scale.x, sprite.material?.rotation);
+    sprite.position.y = Math.max(sprite.position.y, baseY + groundLift);
     if (elapsed >= duration + hold) {
       finish();
       return;

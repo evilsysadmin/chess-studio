@@ -13,7 +13,7 @@ import { createPawnSlugRuntimeSfx } from './pawnSlugRuntimeSfx.js';
 import { createPawnSlugRuntimeView } from './pawnSlugRuntimeView.js';
 import { createPawnSlugWeaponSystem } from './pawnSlugRuntimeWeapons.js';
 import { createPawnSlugCombatSystem } from './pawnSlugRuntimeCombat.js';
-import { createPawnSlugEnemySystem } from './pawnSlugRuntimeEnemies.js';
+import { createPawnSlugEnemySystem } from './pawnSlugRuntimeEnemiesEtiquette.js';
 import { createPawnSlugPlayerSystem } from './pawnSlugRuntimePlayer.js';
 
 export function createPawnSlugRuntime(host, { onReady, onHud } = {}) {
