@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { CHRONICLES_MAP } from './chroniclesOfMatthias.js';
-import { CHRONICLES_TORCH_PLACEMENTS, chroniclesTorchTransform } from './chroniclesOfMatthiasThree.js';
+import {
+  CHRONICLES_ENEMY_DEATH_DURATION,
+  CHRONICLES_TORCH_PLACEMENTS,
+  chroniclesEnemyDeathPose,
+  chroniclesTorchTransform,
+} from './chroniclesOfMatthiasThree.js';
 
 const NEIGHBOR = Object.freeze({
   north: [0, -1],
@@ -34,5 +39,22 @@ describe('Chronicles of Matthias dungeon photography', () => {
 
   it('rejects unknown wall sides instead of silently placing a floating torch', () => {
     expect(() => chroniclesTorchTransform(1, 1, 'ceiling')).toThrow(/torch wall side/);
+  });
+
+  it('keeps enemy proportions intact for the whole death fall', () => {
+    const baseScale = 1.08;
+    const start = chroniclesEnemyDeathPose(0, baseScale);
+    const middle = chroniclesEnemyDeathPose(CHRONICLES_ENEMY_DEATH_DURATION / 2, baseScale);
+    const end = chroniclesEnemyDeathPose(CHRONICLES_ENEMY_DEATH_DURATION, baseScale);
+
+    expect(start.scale).toBe(baseScale);
+    expect(middle.scale).toBe(baseScale);
+    expect(end.scale).toBe(baseScale);
+    expect(start.visible).toBe(true);
+    expect(middle.visible).toBe(true);
+    expect(end.visible).toBe(false);
+    expect(middle.yOffset).toBeLessThan(0);
+    expect(middle.zRotation).toBeGreaterThan(0);
+    expect(middle.zRotation).toBeLessThan(0.5);
   });
 });
