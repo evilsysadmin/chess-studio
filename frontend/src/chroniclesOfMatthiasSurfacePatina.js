@@ -3,6 +3,13 @@ import { CHRONICLES_MAP } from './chroniclesOfMatthias.js';
 
 const CELL = 4;
 const PATCH_TEXTURE_SIZE = 48;
+const START_ROUTE_FLOOR = Object.freeze([
+  [2, 5], [4, 5], [3, 5], [1, 5], [5, 5], [3, 4], [3, 3],
+]);
+const START_ROUTE_WALLS = Object.freeze([
+  [2, 6, 'north'], [3, 6, 'north'], [4, 6, 'north'], [1, 6, 'north'], [5, 6, 'north'],
+  [2, 4, 'south'], [4, 4, 'south'], [6, 5, 'west'], [0, 5, 'east'],
+]);
 
 function noise(index, salt) {
   let value = Math.imul(index + salt * 131, 374761393) ^ Math.imul(index * 19 + salt, 668265263);
@@ -41,7 +48,7 @@ function createPatinaMask(seed, { broken = false } = {}) {
 }
 
 function patinaMaterial(color, mask, options) {
-  const material = new THREE.MeshPhysicalMaterial({
+  return new THREE.MeshPhysicalMaterial({
     color,
     metalness: 0,
     roughness: options.roughness,
@@ -53,7 +60,6 @@ function patinaMaterial(color, mask, options) {
     alphaMap: mask,
     side: THREE.DoubleSide,
   });
-  return material;
 }
 
 function exposedWallFaces() {
@@ -86,11 +92,37 @@ function walkableCells() {
   return cells;
 }
 
+function prioritize(items, anchors, keyForItem, keyForAnchor) {
+  const rank = new Map(anchors.map((anchor, index) => [keyForAnchor(anchor), index]));
+  return items
+    .map((item, index) => ({ item, index, rank: rank.get(keyForItem(item)) }))
+    .sort((a, b) => (a.rank ?? 1000 + a.index) - (b.rank ?? 1000 + b.index))
+    .map(({ item }) => item);
+}
+
+function prioritizedWallFaces() {
+  return prioritize(
+    exposedWallFaces(),
+    START_ROUTE_WALLS,
+    ({ x, y, side }) => `${x},${y},${side}`,
+    ([x, y, side]) => `${x},${y},${side}`,
+  );
+}
+
+function prioritizedFloorCells() {
+  return prioritize(
+    walkableCells(),
+    START_ROUTE_FLOOR,
+    ({ x, y }) => `${x},${y}`,
+    ([x, y]) => `${x},${y}`,
+  );
+}
+
 function wallTransform({ x, y, side }, index) {
   const wx = (x - 3) * CELL;
   const wz = (y - 3) * CELL;
   const offset = CELL / 2 + 0.165;
-  const yOffset = 0.94 + noise(index, 7) * 1.36;
+  const yOffset = 0.82 + noise(index, 7) * 1.5;
   if (side === 'north') return { position: [wx, yOffset, wz - offset], rotationY: 0 };
   if (side === 'south') return { position: [wx, yOffset, wz + offset], rotationY: Math.PI };
   if (side === 'east') return { position: [wx + offset, yOffset, wz], rotationY: Math.PI / 2 };
@@ -99,15 +131,14 @@ function wallTransform({ x, y, side }, index) {
 
 function addWallPatches(root, faces, materials, coarsePointer) {
   const budget = coarsePointer ? 4 : 9;
-  let count = 0;
-  for (let index = 0; index < faces.length && count < budget; index += 1) {
-    if ((index * 5 + 3) % (coarsePointer ? 7 : 4) !== 0) continue;
-    const transform = wallTransform(faces[index], index);
+  const selected = faces.slice(0, budget);
+  selected.forEach((face, index) => {
+    const transform = wallTransform(face, index);
     const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.72 + noise(index, 11) * 0.82, 0.54 + noise(index, 13) * 0.88),
+      new THREE.PlaneGeometry(0.96 + noise(index, 11) * 1.12, 0.68 + noise(index, 13) * 0.98),
       materials[index % materials.length],
     );
-    mesh.name = `chronicles-wall-patina-${count}`;
+    mesh.name = `chronicles-wall-patina-${index}`;
     mesh.position.set(...transform.position);
     mesh.rotation.y = transform.rotationY;
     mesh.rotation.z = (noise(index, 17) - 0.5) * 0.22;
@@ -115,37 +146,31 @@ function addWallPatches(root, faces, materials, coarsePointer) {
     mesh.receiveShadow = false;
     mesh.renderOrder = 2;
     root.add(mesh);
-    count += 1;
-  }
-  return count;
+  });
+  return selected.length;
 }
 
 function addFloorPatches(root, cells, material, coarsePointer) {
   const budget = coarsePointer ? 3 : 7;
-  let count = 0;
-  for (let index = 0; index < cells.length && count < budget; index += 1) {
-    const cadence = coarsePointer ? 5 : 3;
-    const stride = coarsePointer ? 3 : 2;
-    if ((index * stride + 1) % cadence !== 0) continue;
-    const cell = cells[index];
+  const selected = cells.slice(0, budget);
+  selected.forEach((cell, index) => {
     const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.75 + noise(index, 23) * 1.05, 0.5 + noise(index, 29) * 0.72),
+      new THREE.PlaneGeometry(1.08 + noise(index, 23) * 1.18, 0.7 + noise(index, 29) * 0.86),
       material,
     );
-    mesh.name = `chronicles-floor-patina-${count}`;
+    mesh.name = `chronicles-floor-patina-${index}`;
     mesh.position.set(
-      (cell.x - 3) * CELL + (noise(index, 31) - 0.5) * 1.05,
+      (cell.x - 3) * CELL + (noise(index, 31) - 0.5) * 0.82,
       0.047,
-      (cell.y - 3) * CELL + (noise(index, 37) - 0.5) * 1.05,
+      (cell.y - 3) * CELL + (noise(index, 37) - 0.5) * 0.82,
     );
     mesh.rotation.set(-Math.PI / 2, 0, (noise(index, 41) - 0.5) * 1.7);
     mesh.castShadow = false;
     mesh.receiveShadow = false;
     mesh.renderOrder = 2;
     root.add(mesh);
-    count += 1;
-  }
-  return count;
+  });
+  return selected.length;
 }
 
 export function buildChroniclesSurfacePatina({ coarsePointer = false } = {}) {
@@ -159,17 +184,17 @@ export function buildChroniclesSurfacePatina({ coarsePointer = false } = {}) {
     roughness: 0.34,
     clearcoat: 0.58,
     clearcoatRoughness: 0.22,
-    opacity: coarsePointer ? 0.21 : 0.29,
+    opacity: coarsePointer ? 0.24 : 0.36,
   });
   const mineral = patinaMaterial(0x9a8b72, mineralMask, {
     roughness: 0.96,
-    opacity: coarsePointer ? 0.12 : 0.18,
+    opacity: coarsePointer ? 0.14 : 0.23,
   });
   const floor = patinaMaterial(0x211b17, floorMask, {
     roughness: 0.66,
     clearcoat: 0.16,
     clearcoatRoughness: 0.44,
-    opacity: coarsePointer ? 0.16 : 0.22,
+    opacity: coarsePointer ? 0.19 : 0.3,
   });
 
   let texturesDisposed = false;
@@ -183,8 +208,8 @@ export function buildChroniclesSurfacePatina({ coarsePointer = false } = {}) {
     });
   });
 
-  const wallPatchCount = addWallPatches(root, exposedWallFaces(), [damp, mineral], coarsePointer);
-  const floorPatchCount = addFloorPatches(root, walkableCells(), floor, coarsePointer);
+  const wallPatchCount = addWallPatches(root, prioritizedWallFaces(), [damp, mineral], coarsePointer);
+  const floorPatchCount = addFloorPatches(root, prioritizedFloorCells(), floor, coarsePointer);
   root.userData.chroniclesSurfacePatinaStats = {
     wallPatchCount,
     floorPatchCount,
