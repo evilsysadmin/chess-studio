@@ -9,8 +9,8 @@ import {
 } from '../warRoomAmbiencePreferences.js';
 import { resolveWarRoomLocalAtmosphere } from './WarRoomLocalAtmosphere.js';
 
-export const WAR_ROOM_SPATIAL_AMBIENCE_VERSION = 'war-room-spatial-ambience-v4-window-focus';
-export const WAR_ROOM_WEATHER_IDLE_GAIN = 0.05;
+export const WAR_ROOM_SPATIAL_AMBIENCE_VERSION = 'war-room-spatial-ambience-v5-window-only';
+export const WAR_ROOM_WEATHER_IDLE_GAIN = 0;
 export const WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN = 1;
 
 export function warRoomSpatialMixForAtmosphere(atmosphere = {}) {
@@ -126,7 +126,7 @@ function setWeatherPresence(context, weatherBus, active) {
   if (!gain) return;
   if (typeof gain.cancelScheduledValues === 'function') gain.cancelScheduledValues(now);
   if (typeof gain.setTargetAtTime === 'function') {
-    gain.setTargetAtTime(target, now, active ? 0.065 : 0.18);
+    gain.setTargetAtTime(target, now, active ? 0.08 : 0.16);
     return;
   }
   gain.value = target;
