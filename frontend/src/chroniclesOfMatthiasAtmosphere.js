@@ -103,7 +103,7 @@ function addReadabilityLighting(root, { coarsePointer }) {
   // Chronicles should be gloomy, not crushed. The ambient level is deliberately
   // high enough to preserve stone/material detail after ACES while practical
   // torches still carry the mood and direction of the scene.
-  const ambient = new THREE.AmbientLight(0x73808c, coarsePointer ? 0.82 : 0.72);
+  const ambient = new THREE.AmbientLight(0x73808c, coarsePointer ? 0.88 : 0.8);
   ambient.name = 'chronicles-readability-ambient';
 
   const entryBounce = new THREE.PointLight(
@@ -143,9 +143,9 @@ function addReadabilityLighting(root, { coarsePointer }) {
   // visible torch.
   const corridorFill = new THREE.PointLight(
     0x9aa9b5,
-    coarsePointer ? 1.95 : 1.62,
+    coarsePointer ? 2.1 : 1.8,
     18,
-    1.6,
+    1.55,
   );
   corridorFill.name = 'chronicles-readability-corridor-fill';
   corridorFill.position.set(0.8, 2.3, 7.9);
@@ -171,18 +171,18 @@ function addReadabilityLighting(root, { coarsePointer }) {
   // enough reflected light to read without flattening the far end of the crypt.
   const partyTorchKey = new THREE.PointLight(
     0xffa15a,
-    coarsePointer ? 5.6 : 5.15,
-    coarsePointer ? 12.0 : 13.0,
-    1.82,
+    coarsePointer ? 6.3 : 6.8,
+    coarsePointer ? 15.0 : 16.0,
+    1.55,
   );
   partyTorchKey.name = 'chronicles-party-torch-key';
   partyTorchKey.castShadow = false;
 
   const partyTorchBounce = new THREE.PointLight(
     0xd47b3f,
-    coarsePointer ? 2.45 : 2.15,
-    coarsePointer ? 8.2 : 8.8,
-    2.02,
+    coarsePointer ? 3.15 : 3.0,
+    coarsePointer ? 10.4 : 11.0,
+    1.72,
   );
   partyTorchBounce.name = 'chronicles-party-torch-bounce';
   partyTorchBounce.castShadow = false;
