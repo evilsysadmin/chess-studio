@@ -11,6 +11,7 @@ import { radioMatthiasStructuredFeel } from './ambientRadioMatthiasProfiles.js';
 import { installRadioMatthiasRecompositions } from './ambientRadioMatthiasRecompositions.js';
 import { installTropicalHouseMelodies } from './ambientTropicalHouseMelody.js';
 import { installLofiSongbook } from './ambientLofiSongbook.js';
+import { installHouseAfro, withHouseAfroProduction } from './ambientHouseAfro.js';
 import { installRadioPremiumForms } from './ambientRadioPremiumForms.js';
 import { withRadioMatthiasLeitmotif } from './ambientRadioMatthiasLeitmotifs.js';
 import { withAmbientPremiumProduction } from './ambientPremiumProduction.js';
@@ -31,6 +32,12 @@ installRadioMatthiasExpansion({
   groups: AMBIENT_THEME_GROUPS,
   genreOrder: AMBIENT_GENRE_ORDER,
   hiddenIds: RADIO_MATTHIAS_HIDDEN_THEME_IDS,
+});
+installHouseAfro({
+  themes: AMBIENT_THEMES,
+  options: AMBIENT_THEME_OPTIONS,
+  groups: AMBIENT_THEME_GROUPS,
+  genreOrder: AMBIENT_GENRE_ORDER,
 });
 installRadioMatthiasRecompositions({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
 installLofiSongbook({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
@@ -225,7 +232,7 @@ export function structuredFeel(theme) {
     return withAmbientPremiumProduction(theme, withAmbientGenreHook(theme, produced));
   }
 
-  const legacy = legacyStructuredFeel(theme);
+  const legacy = withHouseAfroProduction(theme, legacyStructuredFeel(theme));
   if (!legacy) {
     const rescued = withFinalCatalogPolish(theme, legacy);
     return rescued ? withAmbientPremiumProduction(theme, rescued) : legacy;

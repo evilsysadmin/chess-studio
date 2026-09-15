@@ -47,7 +47,7 @@ assert(new Set(grouped.map((theme) => theme.id)).size === ids.length, 'un tema a
 
 assert(new Set(AMBIENT_THEME_GROUPS.map((group) => group.genre)).size === AMBIENT_THEME_GROUPS.length, 'hay estilos duplicados');
 assert(AMBIENT_THEME_GROUPS.every((group) => group.themes.length > 0), 'hay un estilo vacío publicado');
-for (const genre of ['SPA / Zen', 'Smooth Jazz', 'Tropical House', 'Ecléctica', 'Energía', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Clásica']) {
+for (const genre of ['SPA / Zen', 'Smooth Jazz', 'Tropical House', 'House / Afro', 'Ecléctica', 'Energía', 'Lo-Fi / Chill', 'Trip-Hop / Downtempo', 'Bossa / Latin Lounge', 'Piano / Minimal', 'Clásica']) {
   assert(AMBIENT_THEME_GROUPS.some((row) => row.genre === genre), `falta la familia musical ${genre}`);
 }
 for (const option of AMBIENT_THEME_OPTIONS) {
@@ -120,6 +120,10 @@ assert(characterExpansion.every((id) => getAmbientThemeSoundProfile(id)), 'los e
 assert(new Set(characterExpansion.map((id) => getAmbientThemeSoundProfile(id).family)).size === characterExpansion.length, 'Smooth Jazz / Tropical House comparten personalidad accidentalmente');
 assert(['midnightSatin','blueLobby'].every((id) => getAmbientThemeSoundProfile(id).estimatedBpm < 100), 'Smooth Jazz debe permanecer relajado');
 assert(['palmsAtDusk','islandKnight'].every((id) => getAmbientThemeSoundProfile(id).estimatedBpm >= 118 && getAmbientThemeSoundProfile(id).estimatedBpm <= 125), 'Tropical House debe rondar 120 BPM');
+const houseAfroIds = ['midnightDevotion','terracottaPulse'];
+assert(houseAfroIds.every((id) => ids.includes(id)), 'faltan las composiciones House / Afro');
+assert(houseAfroIds.every((id) => getAmbientThemeSoundProfile(id).estimatedBpm >= 120 && getAmbientThemeSoundProfile(id).estimatedBpm <= 123), 'House / Afro debe vivir alrededor de 120–122 BPM');
+assert(new Set(houseAfroIds.map((id) => getAmbientThemeSoundProfile(id).personalityFingerprint)).size === houseAfroIds.length, 'House / Afro necesita dos identidades compositivas distintas');
 assert(soundSource.includes('playStructuredGuitar'), 'las guitarras estructuradas han vuelto a ser simples presets de oscilador');
 assert(soundSource.includes('Karplus-Strong'), 'falta el modelo físico de cuerda para guitarra');
 

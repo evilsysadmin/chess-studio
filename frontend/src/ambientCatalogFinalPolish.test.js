@@ -13,7 +13,7 @@ describe('complete music catalog audit', () => {
   it('closes every short or missing signature, including hidden scores', () => {
     expect(FINAL_CATALOG_POLISH_IDS).toHaveLength(17);
     const structured = Object.values(AMBIENT_THEMES).filter((theme) => theme.engine === 'structured');
-    expect(structured).toHaveLength(102);
+    expect(structured).toHaveLength(104);
     for (const theme of structured) {
       const feel = structuredFeel(theme);
       expect(Object.keys(feel.signature?.motif || {}).length, theme.id).toBeGreaterThanOrEqual(3);

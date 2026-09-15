@@ -1726,6 +1726,25 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
     return;
   }
 
+  if (kit === 'afro-house-deep' || kit === 'afro-house-terracotta') {
+    const terracotta = kit === 'afro-house-terracotta';
+    if (code === 'K' || code === 'A') {
+      playBassDrum((terracotta ? 0.052 : 0.056) * velocity, { ...human, tone: terracotta ? -0.32 : -0.46, decay: terracotta ? 0.84 : 0.96 });
+      if (code === 'A') {
+        playNoiseHit('snare', (terracotta ? 0.018 : 0.021) * velocity, { ...human, brightness: terracotta ? 0.82 : 0.74, durationScale: 0.92 });
+        playMembraneHit('tak', 0.012 * velocity, { ...human, tone: 0.12, decay: 0.72 });
+      }
+    } else if (code === 'H') {
+      playNoiseHit(terracotta ? 'hat' : 'brush', (terracotta ? 0.007 : 0.009) * velocity, { ...human, brightness: terracotta ? 0.96 : 0.76, durationScale: terracotta ? 0.56 : 0.74 });
+    } else if (code === 'B') {
+      const openTone = localStep % 8 >= 4;
+      playMembraneHit(openTone ? 'tak' : 'dum', (terracotta ? 0.019 : 0.022) * velocity, { ...human, tone: openTone ? 0.18 : -0.14, decay: openTone ? 0.68 : 0.82 });
+    } else if (code === 'S') {
+      playNoiseHit('snare', 0.019 * velocity, { ...human, brightness: 0.78, durationScale: 0.9 });
+    }
+    return;
+  }
+
   if (kit === 'tropical-house' || kit === 'tropical-house-sidechain' || kit === 'tropical-sunset-pump' || kit === 'tropical-island-organic' || kit === 'tropical-bishop-clave') {
     const sunset = kit === 'tropical-sunset-pump';
     const organic = kit === 'tropical-island-organic';

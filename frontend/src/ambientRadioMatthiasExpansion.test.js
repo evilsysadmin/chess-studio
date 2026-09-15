@@ -12,7 +12,9 @@ import {
   installRadioMatthiasExpansion,
 } from './ambientRadioMatthiasExpansion.js';
 
-const PUBLISHED_GENRES = AMBIENT_GENRE_ORDER.filter((genre) => genre !== 'Dark Ambient');
+// House / Afro se instala como familia completa en su propio songbook; esta
+// suite conserva el contrato histórico de la expansión transversal inicial.
+const PUBLISHED_GENRES = AMBIENT_GENRE_ORDER.filter((genre) => !['Dark Ambient', 'House / Afro'].includes(genre));
 const PUBLISHED_EXPANSION_IDS = RADIO_MATTHIAS_THEME_IDS.filter(
   (id) => RADIO_MATTHIAS_GENRE_EXPANSION[id].genre !== 'Dark Ambient',
 );

@@ -2,6 +2,7 @@ const GENRE_PRODUCTION = Object.freeze({
   'SPA / Zen': Object.freeze({ warmth: 0.9, releaseScale: 1.18, space: 0.2, delayMs: 248, mix: { lead: 0.54, counter: 0.34, bass: 0.42, chord: 0.42 } }),
   'Smooth Jazz': Object.freeze({ warmth: 0.92, releaseScale: 1.08, space: 0.12, delayMs: 142, mix: { lead: 0.66, counter: 0.42, bass: 0.9, chord: 0.48 } }),
   'Tropical House': Object.freeze({ warmth: 1.02, releaseScale: 0.84, space: 0.055, delayMs: 86, mix: { lead: 0.66, counter: 0.42, bass: 1.08, chord: 0.6 } }),
+  'House / Afro': Object.freeze({ warmth: 0.96, releaseScale: 0.78, space: 0.055, delayMs: 88, mix: { lead: 0.68, counter: 0.34, bass: 1.14, chord: 0.58 } }),
   'Energía': Object.freeze({ warmth: 0.96, releaseScale: 0.9, space: 0.055, delayMs: 92, mix: { lead: 0.7, counter: 0.42, bass: 1.02, chord: 0.42 } }),
   'Ecléctica': Object.freeze({ warmth: 0.92, releaseScale: 1.04, space: 0.1, delayMs: 132, mix: { lead: 0.64, counter: 0.4, bass: 0.9, chord: 0.44 } }),
   'Clásica': Object.freeze({ warmth: 0.9, releaseScale: 1.12, space: 0.16, delayMs: 204, mix: { lead: 0.6, counter: 0.42, bass: 0.56, chord: 0.46 } }),
@@ -26,6 +27,7 @@ const PERFORMANCE_FINISH = Object.freeze({
   'Piano / Minimal': Object.freeze({ signatureVolume: 0.22, signatureDuration: 4.6 }),
   'Dark Ambient': Object.freeze({ signatureVolume: 0.18, signatureDuration: 5.0 }),
   'Tropical House': Object.freeze({ signatureVolume: 0.24, signatureDuration: 3.0 }),
+  'House / Afro': Object.freeze({ signatureVolume: 0.22, signatureDuration: 3.2 }),
   'Energía': Object.freeze({ signatureVolume: 0.22, signatureDuration: 2.8 }),
 });
 
