@@ -9,7 +9,8 @@ import {
 } from '../warRoomAmbiencePreferences.js';
 import { resolveWarRoomLocalAtmosphere } from './WarRoomLocalAtmosphere.js';
 
-export const WAR_ROOM_SPATIAL_AMBIENCE_VERSION = 'war-room-spatial-ambience-v2';
+export const WAR_ROOM_SPATIAL_AMBIENCE_VERSION = 'war-room-spatial-ambience-v3-weather-whisper';
+export const WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN = 3.4;
 
 export function warRoomSpatialMixForAtmosphere(atmosphere = {}) {
   const weather = String(atmosphere.weather || 'sunny');
@@ -17,8 +18,8 @@ export function warRoomSpatialMixForAtmosphere(atmosphere = {}) {
   return Object.freeze({
     fire: 0.0105,
     room: phase === 'night' ? 0.0038 : 0.0032,
-    rain: weather === 'rain' ? 0.008 : 0,
-    wind: weather === 'cloudy' ? 0.0048 : weather === 'snow' ? 0.0036 : weather === 'rain' ? 0.0028 : 0.0018,
+    rain: weather === 'rain' ? 0.0016 : 0,
+    wind: weather === 'cloudy' ? 0.0009 : weather === 'snow' ? 0.0007 : weather === 'rain' ? 0.00055 : 0.00035,
     rareEventMinMs: 32_000,
     rareEventMaxMs: 68_000,
   });
@@ -26,6 +27,23 @@ export function warRoomSpatialMixForAtmosphere(atmosphere = {}) {
 
 export function warRoomAmbienceShouldPlay({ enabled, fxMuted, ambienceMuted }) {
   return Boolean(enabled) && !fxMuted && !ambienceMuted;
+}
+
+export function warRoomWeatherGainForWindowHover(active) {
+  return active ? WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN : 1;
+}
+
+export function warRoomWeatherPointInHitbox({ clientX, clientY, rect, hitbox }) {
+  const values = String(hitbox || '').split(',').map(Number);
+  if (values.length !== 4 || values.some((value) => !Number.isFinite(value))) return false;
+  const width = Number(rect?.width);
+  const height = Number(rect?.height);
+  if (!(width > 0) || !(height > 0)) return false;
+  const x = (Number(clientX) - Number(rect.left || 0)) / width;
+  const y = (Number(clientY) - Number(rect.top || 0)) / height;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+  const [minX, minY, maxX, maxY] = values;
+  return x >= minX && x <= maxX && y >= minY && y <= maxY;
 }
 
 function makeNoiseBuffer(context, seconds = 2.4) {
@@ -100,12 +118,39 @@ function playRareRoomTick(context, master, kind, pan) {
   };
 }
 
+function setWeatherPresence(context, weatherBus, active) {
+  const target = warRoomWeatherGainForWindowHover(active);
+  const now = Number(context.currentTime) || 0;
+  const gain = weatherBus?.gain;
+  if (!gain) return;
+  if (typeof gain.cancelScheduledValues === 'function') gain.cancelScheduledValues(now);
+  if (typeof gain.setTargetAtTime === 'function') {
+    gain.setTargetAtTime(target, now, active ? 0.065 : 0.18);
+    return;
+  }
+  gain.value = target;
+}
+
+function eventHoversWeatherWindow(event) {
+  const canvas = event?.target;
+  if (!canvas?.classList?.contains?.('board3d-main-canvas')) return false;
+  return warRoomWeatherPointInHitbox({
+    clientX: event.clientX,
+    clientY: event.clientY,
+    rect: canvas.getBoundingClientRect?.(),
+    hitbox: canvas.dataset?.warRoomWeatherWindowHitbox,
+  });
+}
+
 export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRoomLocalAtmosphere(), random = Math.random } = {}) {
   if (!context || context.state === 'closed') return () => {};
   const mix = warRoomSpatialMixForAtmosphere(atmosphere);
   const master = context.createGain();
   master.gain.value = 1;
   master.connect(context.destination);
+  const weatherBus = context.createGain();
+  weatherBus.gain.value = 1;
+  weatherBus.connect(master);
 
   const noiseBuffer = makeNoiseBuffer(context);
   const loops = [
@@ -123,14 +168,14 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
       frequency: 180,
       q: 0.45,
     }),
-    startNoiseLoop(context, master, noiseBuffer, {
+    startNoiseLoop(context, weatherBus, noiseBuffer, {
       gainValue: mix.rain,
       pan: 0.72,
       filterType: 'highpass',
       frequency: 1850,
       q: 0.55,
     }),
-    startNoiseLoop(context, master, noiseBuffer, {
+    startNoiseLoop(context, weatherBus, noiseBuffer, {
       gainValue: mix.wind,
       pan: 0.58,
       filterType: 'bandpass',
@@ -141,6 +186,32 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
 
   let disposed = false;
   let rareTimer = 0;
+  let weatherWindowHovered = false;
+  const applyWeatherWindowHover = (active) => {
+    if (disposed || weatherWindowHovered === active) return;
+    weatherWindowHovered = active;
+    setWeatherPresence(context, weatherBus, active);
+  };
+  const handlePointerMove = (event) => {
+    if (event?.pointerType && event.pointerType !== 'mouse') {
+      applyWeatherWindowHover(false);
+      return;
+    }
+    applyWeatherWindowHover(eventHoversWeatherWindow(event));
+  };
+  const handlePointerOut = (event) => {
+    if (event?.relatedTarget == null) applyWeatherWindowHover(false);
+  };
+  const handleVisibilityChange = () => {
+    if (typeof document !== 'undefined' && document.hidden) applyWeatherWindowHover(false);
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pointermove', handlePointerMove, { passive: true });
+    window.addEventListener('pointerout', handlePointerOut, { passive: true });
+    window.addEventListener('blur', handlePointerOut);
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', handleVisibilityChange);
+  }
+
   const scheduleRareTick = () => {
     if (disposed || typeof window === 'undefined') return;
     const span = mix.rareEventMaxMs - mix.rareEventMinMs;
@@ -157,6 +228,12 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
   return () => {
     disposed = true;
     if (rareTimer && typeof window !== 'undefined') window.clearTimeout(rareTimer);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerout', handlePointerOut);
+      window.removeEventListener('blur', handlePointerOut);
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }
     for (const loop of loops) {
       try { loop.source.stop(); } catch { /* source already stopped */ }
       try { loop.source.disconnect(); } catch { /* source already disconnected */ }
@@ -164,6 +241,7 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
         try { node.disconnect(); } catch { /* node already disconnected */ }
       }
     }
+    try { weatherBus.disconnect(); } catch { /* already disconnected */ }
     try { master.disconnect(); } catch { /* already disconnected */ }
   };
 }

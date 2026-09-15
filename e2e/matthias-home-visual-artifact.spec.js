@@ -37,25 +37,6 @@ async function freezeClockAtCampaignDinner(context) {
   }, FIXED_LOCAL_TIME);
 }
 
-async function forceCanonicalHomeCapabilities(context) {
-  await context.addInitScript(() => {
-    Object.defineProperty(navigator, 'hardwareConcurrency', {
-      configurable:true,
-      get:() => 8,
-    });
-  });
-}
-
-async function expectLiveMatthiasArt(home) {
-  const avatar = home.locator('[data-home-matthias-3d="ready"]');
-  const rig = avatar.locator('[data-matthias-layered-art="true"]');
-  await expect(avatar).toHaveCount(1, { timeout:15_000 });
-  await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready', { timeout:15_000 });
-  await expect(avatar).toHaveAttribute('data-matthias-identity', 'canonical-render-rig', { timeout:15_000 });
-  await expect(rig.locator('[data-matthias-canonical-art="true"]')).toBeVisible({ timeout:15_000 });
-  return { avatar, rig };
-}
-
 async function openDeterministicHome(page) {
   await page.emulateMedia({ reducedMotion:'no-preference' });
   await mockApi(page, {
@@ -75,6 +56,19 @@ async function openDeterministicHome(page) {
   return home;
 }
 
+async function expectLiveMatthiasArt(home) {
+  const avatar = home.locator('[data-home-matthias-3d="ready"]');
+  const image = avatar.locator('img');
+  await expect(avatar).toHaveCount(1, { timeout:15_000 });
+  await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready', { timeout:15_000 });
+  await expect(avatar).toHaveAttribute('data-matthias-identity', 'canonical-scene-render', { timeout:15_000 });
+  await expect(avatar).toHaveAttribute('data-matthias-render-source', 'bundled-scene-art', { timeout:15_000 });
+  await expect(image).toBeVisible({ timeout:15_000 });
+  await expect(image).toHaveAttribute('data-matthias-identity', 'canonical-scene-render');
+  await expect(avatar.locator('canvas')).toHaveCount(0);
+  return { avatar, image };
+}
+
 async function freezeForScreenshot(page) {
   await page.addStyleTag({
     content:`
@@ -90,9 +84,6 @@ async function freezeForScreenshot(page) {
         display: none !important;
       }
     `,
-  });
-  await page.evaluate(() => {
-    window.requestAnimationFrame = () => 0;
   });
   await page.waitForTimeout(80);
 }
@@ -115,14 +106,7 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
   test.setTimeout(100_000);
   await mkdir(ARTIFACT_DIR, { recursive:true });
 
-  const visualBrowser = await chromium.launch({
-    headless:true,
-    args:[
-      '--use-gl=angle',
-      '--use-angle=swiftshader',
-      '--enable-unsafe-swiftshader',
-    ],
-  });
+  const visualBrowser = await chromium.launch({ headless:true });
 
   try {
     for (const capture of CAPTURES) {
@@ -130,7 +114,6 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         viewport:{ width:capture.width, height:capture.height },
         hasTouch:capture.hasTouch === true,
       });
-      await forceCanonicalHomeCapabilities(context);
       await freezeClockAtCampaignDinner(context);
       const page = await context.newPage();
 
@@ -140,11 +123,12 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         const copy = matthias.locator('.illustrated-home__matthias-copy');
 
         await expect(matthias).toBeVisible();
-        const { avatar, rig } = await expectLiveMatthiasArt(home);
+        const { avatar, image } = await expectLiveMatthiasArt(home);
         await expect(avatar).toBeVisible({ timeout:15_000 });
-        await expect(avatar).toHaveAttribute('data-motion', 'layered-canonical-rig');
-        await expect(rig).toHaveAttribute('data-gesture', 'bite');
-        await expect(rig.locator('[data-matthias-art-part]')).toHaveCount(5);
+        await expect(avatar).toHaveAttribute('data-motion', 'canonical-sprite-routines');
+        await expect(avatar).toHaveAttribute('data-home-matthias-profile', 'bite');
+        await expect(image).toHaveAttribute('src', /lunch-bocata/i);
+        await expect(avatar.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
 
         if (capture.expectCopy) {
           await expect(copy).toBeVisible();

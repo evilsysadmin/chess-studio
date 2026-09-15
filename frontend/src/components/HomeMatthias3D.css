@@ -5,37 +5,89 @@
   height: 100%;
   min-height: 1px;
   overflow: visible;
+  isolation: isolate;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 220ms ease, filter 180ms ease;
 }
 
-.home-matthias-3d.is-ready {
-  opacity: 1;
-}
-
-.home-matthias-3d .matthias-art-rig {
+.home-matthias-3d img {
+  position: absolute;
+  inset: 0;
+  display: block;
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, .38));
+  object-fit: cover;
+  object-position: center center;
+  transform-origin: 50% 78%;
+  filter: drop-shadow(0 8px 10px rgba(0, 0, 0, .34));
+  transition: filter 180ms ease;
+  animation: home-matthias-safe-idle 6.8s ease-in-out infinite;
 }
 
-.illustrated-home__matthias.is-speaking .home-matthias-3d .matthias-art-rig {
+.home-matthias-3d[data-home-matthias-profile='sleep'] img {
+  animation-name: home-matthias-safe-sleep;
+  animation-duration: 8.8s;
+}
+
+.home-matthias-3d[data-home-matthias-profile='read'] img,
+.home-matthias-3d[data-home-matthias-profile='dossier'] img,
+.home-matthias-3d[data-home-matthias-profile='write'] img,
+.home-matthias-3d[data-home-matthias-profile='think'] img {
+  animation-name: home-matthias-safe-work;
+  animation-duration: 7.6s;
+}
+
+.home-matthias-3d[data-home-matthias-profile='sip'] img,
+.home-matthias-3d[data-home-matthias-profile='bite'] img {
+  animation-name: home-matthias-safe-break;
+  animation-duration: 6.4s;
+}
+
+.home-matthias-3d[data-home-matthias-profile='speak'] img {
+  animation-name: home-matthias-safe-speak;
+  animation-duration: 3.2s;
+}
+
+.illustrated-home__matthias.is-speaking .home-matthias-3d img {
   filter: brightness(1.04) drop-shadow(0 8px 12px rgba(0, 0, 0, .42));
 }
 
-/* Mobile Home historically hides generic spans inside the Matthias button to
- * suppress caption copy. Keep the canonical art host explicitly visible while
- * leaving the retired mobile caption hidden. */
+@keyframes home-matthias-safe-idle {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(0, -1.15%, 0) rotate(.22deg); }
+}
+
+@keyframes home-matthias-safe-work {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-.12deg); }
+  45% { transform: translate3d(.45%, -.8%, 0) rotate(.25deg); }
+  72% { transform: translate3d(-.25%, -.45%, 0) rotate(.08deg); }
+}
+
+@keyframes home-matthias-safe-break {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  42% { transform: translate3d(.35%, -.95%, 0) rotate(.28deg); }
+  58% { transform: translate3d(.2%, -.55%, 0) rotate(.16deg); }
+}
+
+@keyframes home-matthias-safe-sleep {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-.18deg); }
+  55% { transform: translate3d(.2%, .65%, 0) rotate(.48deg); }
+}
+
+@keyframes home-matthias-safe-speak {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-.1deg); }
+  50% { transform: translate3d(0, -.55%, 0) rotate(.18deg); }
+}
+
 @media (max-width: 999px) {
-  .illustrated-home__matthias .home-matthias-3d,
-  .illustrated-home__matthias .home-matthias-3d .matthias-art-rig {
+  .illustrated-home__matthias .home-matthias-3d {
     display: block;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-matthias-3d {
+  .home-matthias-3d img {
     transition: none;
+    animation: none !important;
+    transform: none !important;
   }
 }
