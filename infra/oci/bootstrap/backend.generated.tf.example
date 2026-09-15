@@ -1,0 +1,5 @@
+# Generated as backend.generated.tf by scripts/oci_bootstrap_state.py after the seed bucket exists.
+# Keeping the declaration out of *.tf during the first local seed avoids the backend chicken-and-egg.
+terraform {
+  backend "oci" {}
+}

@@ -15,7 +15,11 @@ ARM64_RE = re.compile(
     r"^(?:backend-python/Dockerfile|backend-python/requirements[^/]*\.txt|"
     r"scripts/oci_arm64_smoke\.sh|\.github/workflows/oci-readiness\.yml)$"
 )
-TERRAFORM_SCRIPTS = {"scripts/oci_floci_smoke.sh", "scripts/oci_terraform_static.sh"}
+TERRAFORM_SCRIPTS = {
+    "scripts/oci_bootstrap_state.py",
+    "scripts/oci_floci_smoke.sh",
+    "scripts/oci_terraform_static.sh",
+}
 
 
 @dataclass(frozen=True)
@@ -65,6 +69,7 @@ def self_test() -> None:
     assert classify(["backend-python/Dockerfile"], event_name="pull_request") == Scope(True, False)
     assert classify(["backend-python/requirements-dev.txt"], event_name="pull_request") == Scope(True, False)
     assert classify(["scripts/oci_arm64_smoke.sh"], event_name="pull_request") == Scope(True, False)
+    assert classify(["scripts/oci_bootstrap_state.py"], event_name="pull_request") == Scope(False, True)
     assert classify(["scripts/oci_floci_smoke.sh"], event_name="pull_request") == Scope(False, True)
     assert classify(["scripts/oci_terraform_static.sh"], event_name="pull_request") == Scope(False, True)
     assert classify(["infra/oci/staging/main.tf"], event_name="pull_request") == Scope(False, True)

@@ -4,6 +4,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 terraform fmt -check -diff -recursive "$root/infra/oci"
+python3 -S "$root/scripts/oci_bootstrap_state.py" --self-test
 
 for stack in bootstrap staging; do
   dir="$root/infra/oci/$stack"
