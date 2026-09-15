@@ -21,7 +21,9 @@ function rootLocalBounds(root, object) {
 
 function preferredSofa(root) {
   const plantSide = root.getObjectByName?.('war-room-hans-plant')?.userData?.warRoomPlantSide;
-  const order = plantSide === 'right' ? ['left', 'right'] : ['right', 'left'];
+  // Canonical plant placement is on the right. Before that actor is installed,
+  // default to the opposite (left) sofa rather than stacking decor on the right.
+  const order = plantSide === 'left' ? ['right', 'left'] : ['left', 'right'];
   for (const side of order) {
     const sofa = root.getObjectByName?.(`war-room-sofa-${side}`);
     if (sofa) return { sofa, side };
