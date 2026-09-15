@@ -8,6 +8,11 @@ output "object_storage_namespace" {
   description = "OCI Object Storage namespace required by the native backend."
 }
 
+output "region" {
+  value       = var.region
+  description = "OCI region used by bootstrap and remote-state configuration."
+}
+
 output "infra_compartment_ocid" {
   value = oci_identity_compartment.infra.id
 }
