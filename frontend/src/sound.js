@@ -1520,6 +1520,15 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
     return;
   }
 
+  if (kit === 'late-cafe-combo') {
+    if (code === 'K') { playSoftPercussion(0.026 * velocity, { ...human, tone: -0.38, decay: 1.02 }); playBassDrum(0.023 * velocity, { ...human, decay: 0.82 }); }
+    else if (code === 'S') { playNoiseHit('snare', 0.019 * velocity, { ...human, brightness: 0.66, durationScale: 0.76 }); playMembraneHit('tak', 0.008 * velocity, { ...human, tone: -0.24, decay: 0.62 }); }
+    else if (code === 'H') playNoiseHit('hat', 0.006 * velocity, { ...human, brightness: 0.72, durationScale: 0.62 });
+    else if (code === 'B') playNoiseHit('brush', 0.013 * velocity, { ...human, brightness: 0.62, durationScale: 1.26 });
+    else if (code === 'W') playWoodKnock();
+    return;
+  }
+
   if (kit === 'acoustic-rock') {
     if (code === 'K') { playBassDrum(0.050 * velocity, { ...human, decay: 0.9 }); playSoftPercussion(0.018 * velocity, { ...human, decay: 0.82 }); }
     else if (code === 'S') { playNoiseHit('snare', 0.046 * velocity, { ...human, brightness: 0.86, durationScale: 1.28 }); playMembraneHit('tak', 0.011 * velocity, { ...human, tone: -0.35 }); }
