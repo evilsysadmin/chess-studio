@@ -1,0 +1,15 @@
+.game-3d-command-column .context-help-btn.is-first-run-nudge {
+  width: auto;
+  min-width: 30px;
+  padding-inline: .55rem;
+  font-size: .68rem;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .game-3d-command-column .context-help-btn.is-first-run-nudge {
+    padding-inline: .4rem;
+    font-size: .64rem;
+  }
+}
