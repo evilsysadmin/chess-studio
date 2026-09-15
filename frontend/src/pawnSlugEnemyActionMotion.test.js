@@ -142,7 +142,7 @@ describe('Pawn Slug premium soldier action motion', () => {
     expect(pawnSlugEnemyActionPose('death', 6, { type: 'pawn', variant: 4 })).toEqual(alternate);
   });
 
-  it('keeps the last four death frames grounded for every soldier class and variant', () => {
+  it('keeps the last four death frames grounded without stretching any soldier', () => {
     expect(pawnSlugEnemyDeathDuration('pawn')).toBeGreaterThan(0.6);
     expect(pawnSlugEnemyDeathDuration('rook')).toBeGreaterThan(pawnSlugEnemyDeathDuration('knight'));
     for (const type of ['pawn', 'knight', 'rook']) {
@@ -151,7 +151,9 @@ describe('Pawn Slug premium soldier action motion', () => {
           const pose = pawnSlugEnemyActionPose('death', frame, { type, variant });
           expect(pose.grounded).toBe(true);
           expect(pose.y).toBeLessThan(0);
-          expect(pose.sy).toBeLessThan(0.6);
+          expect(pose.sx).toBe(1);
+          expect(pose.sy).toBe(1);
+          expect(pose.sx / pose.sy).toBe(1);
         }
       }
     }
