@@ -209,7 +209,7 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
     window.addEventListener('pointerout', handlePointerOut, { passive: true });
     window.addEventListener('blur', handlePointerOut);
-    document?.addEventListener?.('visibilitychange', handleVisibilityChange);
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', handleVisibilityChange);
   }
 
   const scheduleRareTick = () => {
@@ -232,7 +232,7 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('pointerout', handlePointerOut);
       window.removeEventListener('blur', handlePointerOut);
-      document?.removeEventListener?.('visibilitychange', handleVisibilityChange);
+      if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', handleVisibilityChange);
     }
     for (const loop of loops) {
       try { loop.source.stop(); } catch { /* source already stopped */ }
