@@ -14,13 +14,11 @@ permissions:
   contents: read
 
 concurrency:
-  # Contract marker: group: chess-studio-production-promote
-  group: ${{ github.event.workflow_run.conclusion != 'success' && format('chess-studio-production-promote-skip-{0}', github.run_id) || 'chess-studio-production-promote' }}
+  group: ${{ github.event.workflow_run.conclusion == 'success' && 'chess-studio-production-promote' || github.run_id }} # group: chess-studio-production-promote
   cancel-in-progress: false
 
 env:
-  # Legacy source-reader compatibility marker only. Promotion provenance must
-  # come from the immutable accreditation artifact, never from this wrapper SHA:
+  # Legacy source-reader marker; provenance comes from the accreditation artifact.
   # DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
   STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
   STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
@@ -121,10 +119,7 @@ jobs:
           fi
           echo "Production lineage admission OK: $DEPLOY_SHA pertenece a main actual $current_main."
 
-      # These three checks are deliberately diagnostic only. The immutable
-      # staging accreditation already proves that this exact SHA passed coherent
-      # backend/frontend/Worker verification. Staging may legitimately have moved
-      # on to N+1 while production N waits in the serialized promotion queue.
+      # Diagnostic only: immutable accreditation remains authoritative after staging advances.
       - name: Verify staging backend still serves approved SHA · diagnostic only
         shell: bash
         run: |

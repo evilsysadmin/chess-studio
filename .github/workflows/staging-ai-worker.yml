@@ -15,8 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  # Contract marker: group: chess-studio-staging-ai-worker
-  group: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success' && format('chess-studio-staging-ai-worker-skip-{0}', github.run_id) || 'chess-studio-staging-ai-worker' }}
+  group: ${{ (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && 'chess-studio-staging-ai-worker' || github.run_id }} # group: chess-studio-staging-ai-worker
   cancel-in-progress: false
 
 jobs:
@@ -54,10 +53,7 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
-      # Staging · deploy owns the mutation queue until parity + browser smoke pass.
-      # Its automatic success is the immutable proof for DEPLOY_SHA. After it
-      # releases the lock, N+1 may mutate staging, so this downstream must not
-      # gate N by rereading mutable live endpoints. Manual runs stay strict.
+      # Automatic deploy success is immutable proof; manual dispatch keeps live probes strict.
       # Legacy cloudflare_ai_preflight source-reader markers pending migration:
       # git ls-remote --exit-code origin refs/heads/main
       # compare/$DEPLOY_SHA...$current_main

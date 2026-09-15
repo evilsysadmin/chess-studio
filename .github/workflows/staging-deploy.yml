@@ -14,8 +14,7 @@ permissions:
   contents: read
 
 concurrency:
-  # Contract marker: group: chess-studio-staging-deploy
-  group: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success' && format('chess-studio-staging-deploy-skip-{0}', github.run_id) || 'chess-studio-staging-deploy' }}
+  group: ${{ (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') && 'chess-studio-staging-deploy' || github.run_id }} # group: chess-studio-staging-deploy
   cancel-in-progress: false
   queue: max
 
