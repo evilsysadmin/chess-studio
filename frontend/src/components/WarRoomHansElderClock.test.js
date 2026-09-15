@@ -42,7 +42,7 @@ afterEach(() => {
 });
 
 describe('Hans elder cruise clock', () => {
-  it('mantiene un único techo de velocidad aunque cada tramo fuente intente correr distinto', () => {
+  it('mantiene un único paso lento de yayo aunque cada tramo fuente intente correr distinto', () => {
     let realNow = 1_000;
     vi.spyOn(globalThis.performance, 'now').mockImplementation(() => realNow);
     const { root, hans, driver } = makeHarness();
@@ -58,9 +58,10 @@ describe('Hans elder cruise clock', () => {
     };
 
     expect(installWarRoomHansElderClock(root)).toBe(1);
+    expect(WAR_ROOM_HANS_ELDER_CRUISE_SPEED).toBeCloseTo(0.32, 6);
     expect(driver.userData.warRoomHansElderClock).toBe(WAR_ROOM_HANS_ELDER_CLOCK_VERSION);
     expect(driver.userData.warRoomHansCruiseSpeed).toBe(WAR_ROOM_HANS_ELDER_CRUISE_SPEED);
-    expect(driver.userData.warRoomHansClockPolicy).toBe('single-elder-cruise-v1');
+    expect(driver.userData.warRoomHansClockPolicy).toBe('single-elder-cruise-v2-slower-pace');
 
     const stages = [
       { phase: 'fire-dimming', route: 'entry', sourceSpeed: 1.051 },
@@ -92,7 +93,9 @@ describe('Hans elder cruise clock', () => {
       const max = Math.max(...speeds);
       const settled = speeds.slice(-30).reduce((sum, value) => sum + value, 0) / 30;
       expect(max, `${stage} no debe tener turbo`).toBeLessThanOrEqual(WAR_ROOM_HANS_ELDER_CRUISE_SPEED + 0.01);
-      expect(settled, `${stage} debe converger al mismo paso de yayo`).toBeGreaterThan(0.40);
+      expect(settled, `${stage} debe asentarse cerca del paso lento de Hans`).toBeGreaterThan(
+        WAR_ROOM_HANS_ELDER_CRUISE_SPEED - 0.02,
+      );
     }
 
     // The governor only owns the scoped Hans callback. Outside it, callers see
@@ -123,10 +126,10 @@ describe('Hans elder cruise clock', () => {
     expect(observedStep).toBeCloseTo(100, 5);
   });
 
-  it('usa techos más bajos en la rutina ambiental que no trae el 0.54x incorporado', () => {
+  it('escala también los techos por tramo para que no haya un primer paso rápido', () => {
     const quick = warRoomHansClockRateCeiling({ phase: 'leave', route: 'leave-bypass', quick: true });
     const ambient = warRoomHansClockRateCeiling({ phase: 'leave', route: 'leave-bypass', quick: false });
-    expect(quick).toBeCloseTo(0.32, 6);
+    expect(quick).toBeCloseTo(0.32 * (WAR_ROOM_HANS_ELDER_CRUISE_SPEED / 0.46), 6);
     expect(ambient).toBeCloseTo(quick * 0.54, 6);
   });
 });

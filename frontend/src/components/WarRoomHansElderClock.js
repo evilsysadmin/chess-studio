@@ -1,5 +1,5 @@
-export const WAR_ROOM_HANS_ELDER_CLOCK_VERSION = 'elder-cruise-clock-v1';
-export const WAR_ROOM_HANS_ELDER_CRUISE_SPEED = 0.46;
+export const WAR_ROOM_HANS_ELDER_CLOCK_VERSION = 'elder-cruise-clock-v2-slower-pace';
+export const WAR_ROOM_HANS_ELDER_CRUISE_SPEED = 0.32;
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -7,8 +7,10 @@ const STALL_CATCH_UP_SECONDS = 1;
 const MIN_CLOCK_RATE = 0.06;
 const CLOCK_RATE_RISE_PER_FRAME = 1.06;
 const SPEED_EPSILON_SQ = 1e-8;
+const PREVIOUS_ELDER_CRUISE_SPEED = 0.46;
+const ELDER_PACE_SCALE = WAR_ROOM_HANS_ELDER_CRUISE_SPEED / PREVIOUS_ELDER_CRUISE_SPEED;
 
-function quickRateCeiling(phase, route) {
+function baseQuickRateCeiling(phase, route) {
   if (route === 'entry') return 0.43;
   if (route === 'leave-side') return 0.225;
   if (route === 'leave-bypass') return 0.32;
@@ -23,6 +25,10 @@ function quickRateCeiling(phase, route) {
     case 'leave': return 0.225;
     default: return 0.43;
   }
+}
+
+function quickRateCeiling(phase, route) {
+  return baseQuickRateCeiling(phase, route) * ELDER_PACE_SCALE;
 }
 
 export function warRoomHansClockRateCeiling({ phase = '', route = '', quick = true } = {}) {
@@ -93,7 +99,7 @@ export function installWarRoomHansElderClock(root) {
 
   driver.userData.warRoomHansElderClock = WAR_ROOM_HANS_ELDER_CLOCK_VERSION;
   driver.userData.warRoomHansCruiseSpeed = WAR_ROOM_HANS_ELDER_CRUISE_SPEED;
-  driver.userData.warRoomHansClockPolicy = 'single-elder-cruise-v1';
+  driver.userData.warRoomHansClockPolicy = 'single-elder-cruise-v2-slower-pace';
   driver.userData.warRoomHansClockPatch = 'scoped-performance-now-v1';
   driver.userData.warRoomHansClockStallPolicy = 'catch-up-without-speed-sample-v1';
 
