@@ -75,10 +75,14 @@ def tube(name, pts, r, m, resolution=4):
 
 
 def parent_bone(o, rig, bone):
+    # Bone parenting changes the object's basis. Preserve the authored world-space
+    # placement so attaching a mesh to the rig does not teleport it by the bone's
+    # rest transform. Animation can then move the assembled character as intended.
+    world = o.matrix_world.copy()
     o.parent = rig
     o.parent_type = 'BONE'
     o.parent_bone = bone
-    o.matrix_parent_inverse = rig.matrix_world.inverted()
+    o.matrix_world = world
 
 
 def build_rig():
