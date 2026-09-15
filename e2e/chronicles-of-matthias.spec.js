@@ -15,7 +15,7 @@ async function openChronicles(page) {
   const moreModes = await openMoreGameModes(page);
   await moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /Chronicles of Matthias/ }).click();
+  await page.getByRole('button', { name: 'Chronicles of Matthias', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
 }
 
@@ -32,7 +32,7 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
   // even though the visible button is enabled and stable.
   const hildegard = mode.getByRole('button', { name: 'Seleccionar Hildegard', exact: true });
   await page.keyboard.press('2');
-  await expect(hildegard).toHaveAttribute('aria-pressed', 'true');
+  await expect(hildeard).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('w');
   await page.keyboard.press('Space');
   await expect(mode.getByText(/Hildegard impacta/i)).toBeVisible();
