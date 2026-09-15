@@ -48,12 +48,14 @@ async function forceCanonicalHomeCapabilities(context) {
 
 async function expectLiveMatthiasArt(home) {
   const avatar = home.locator('[data-home-matthias-3d="ready"]');
-  const rig = avatar.locator('[data-matthias-layered-art="true"]');
+  const canvas = avatar.locator('canvas');
   await expect(avatar).toHaveCount(1, { timeout:15_000 });
   await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready', { timeout:15_000 });
-  await expect(avatar).toHaveAttribute('data-matthias-identity', 'canonical-render-rig', { timeout:15_000 });
-  await expect(rig.locator('[data-matthias-canonical-art="true"]')).toBeVisible({ timeout:15_000 });
-  return { avatar, rig };
+  await expect(avatar).toHaveAttribute('data-matthias-identity', 'canonical-three-layer-rig', { timeout:15_000 });
+  await expect(avatar).toHaveAttribute('data-three-art-version', 'angry-mock-v1', { timeout:15_000 });
+  await expect(canvas).toBeVisible({ timeout:15_000 });
+  await expect(canvas).toHaveAttribute('data-matthias-identity', 'canonical-angry-mock', { timeout:15_000 });
+  return { avatar, canvas };
 }
 
 async function openDeterministicHome(page) {
@@ -140,11 +142,12 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         const copy = matthias.locator('.illustrated-home__matthias-copy');
 
         await expect(matthias).toBeVisible();
-        const { avatar, rig } = await expectLiveMatthiasArt(home);
+        const { avatar, canvas } = await expectLiveMatthiasArt(home);
         await expect(avatar).toBeVisible({ timeout:15_000 });
-        await expect(avatar).toHaveAttribute('data-motion', 'layered-canonical-rig');
-        await expect(rig).toHaveAttribute('data-gesture', 'bite');
-        await expect(rig.locator('[data-matthias-art-part]')).toHaveCount(5);
+        await expect(avatar).toHaveAttribute('data-motion', 'canonical-three-routines');
+        await expect(avatar).toHaveAttribute('data-home-matthias-profile', 'bite');
+        await expect(canvas).toHaveAttribute('data-motion', 'canonical-three-routines');
+        await expect(avatar.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
 
         if (capture.expectCopy) {
           await expect(copy).toBeVisible();
