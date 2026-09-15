@@ -13,13 +13,13 @@ export const PAWN_SLUG_MATTHIAS_RUN_POLISH = Object.freeze({
   leftTrimTexels: 4,
   rightTrimTexels: 4,
   topTrimTexels: 2,
-  bottomTrimTexels: 10,
+  bottomTrimTexels: 2,
   maxVerticalCompensation: 0,
   forwardLean: 0.01,
   cadenceLean: 0.003,
   stretchX: 1.008,
   compressY: 0.998,
-  purpose: 'grounded-16-frame-run-with-clean-four-edge-crop-and-no-trotting-bob',
+  purpose: 'grounded-16-frame-run-with-clean-edges-and-visible-authored-footwork',
 });
 
 function wrapFrame(frame, count) {
@@ -85,6 +85,7 @@ export function applyPawnSlugMatthiasRunPolish(sprite, state = {}) {
 
   // The artwork owns the leg motion. Keep the body planted and let the 16-frame
   // texture cycle provide the stride instead of adding a fake world-space hop.
+  // Do not crop the feet away: the lower run row contains the authored step.
   sprite.scale.x *= PAWN_SLUG_MATTHIAS_RUN_POLISH.stretchX;
   sprite.scale.y *= PAWN_SLUG_MATTHIAS_RUN_POLISH.compressY;
   if (sprite.material) {
