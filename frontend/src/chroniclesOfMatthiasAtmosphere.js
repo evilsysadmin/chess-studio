@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CHRONICLES_MAP } from './chroniclesOfMatthias.js';
 import { buildChroniclesDungeonCeiling } from './chroniclesOfMatthiasCeiling.js';
+import { buildChroniclesSurfacePatina } from './chroniclesOfMatthiasSurfacePatina.js';
 
 const CELL = 4;
 const DUST_DESKTOP = 84;
@@ -142,6 +143,7 @@ export function buildChroniclesDungeonAtmosphere({ coarsePointer = false, reduce
   const root = new THREE.Group();
   root.name = 'chronicles-dungeon-atmosphere';
   root.add(buildChroniclesDungeonCeiling({ coarsePointer }));
+  root.add(buildChroniclesSurfacePatina({ coarsePointer }));
   const readabilityLightCount = addReadabilityLighting(root, { coarsePointer });
 
   const dustCount = coarsePointer ? DUST_COARSE : DUST_DESKTOP;

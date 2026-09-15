@@ -9,6 +9,8 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     expect(desktop.userData.chroniclesAtmosphereStats).toEqual({ dustCount: 84, mistCount: 3, readabilityLightCount: 4 });
     expect(coarse.userData.chroniclesAtmosphereStats).toEqual({ dustCount: 24, mistCount: 0, readabilityLightCount: 4 });
     expect(desktop.getObjectByName('chronicles-gate-mist')).toBeTruthy();
+    expect(desktop.getObjectByName('chronicles-surface-patina')).toBeTruthy();
+    expect(coarse.getObjectByName('chronicles-surface-patina')).toBeTruthy();
     expect(coarse.getObjectByName('chronicles-gate-mist')).toBeFalsy();
   });
 
