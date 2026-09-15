@@ -123,8 +123,7 @@ def main():
     body = objects["Classic lower pawn"]
     tunic = objects["Classic navy tunic"]
     visor = objects["Classic cap visor"]
-    crest_v = objects["Classic chest crest shadow vertical"]
-    crest_h = objects["Classic chest crest shadow horizontal"]
+    crest = objects["Classic chest cross brass"]
 
     head_width = head.dimensions.x
     base_width = base.dimensions.x
@@ -154,16 +153,8 @@ def main():
         cap_top_obj.location.z,
     )
 
-    assert_range(
-        "chest crest height/head width",
-        crest_v.dimensions.z / head_width,
-        CHEST_CREST_HEIGHT_TO_HEAD_WIDTH,
-    )
-    assert_range(
-        "chest crest width/head width",
-        crest_h.dimensions.x / head_width,
-        CHEST_CREST_WIDTH_TO_HEAD_WIDTH,
-    )
+    assert_range("chest cross height/head width", crest.dimensions.z / head_width, CHEST_CREST_HEIGHT_TO_HEAD_WIDTH)
+    assert_range("chest cross width/head width", crest.dimensions.x / head_width, CHEST_CREST_WIDTH_TO_HEAD_WIDTH)
 
     flare = ring_radius_ratio(body)
     assert flare >= 1.45, f"pawn body insufficiently flared: {flare:.3f}"
