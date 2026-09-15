@@ -51,4 +51,4 @@ runcmd:
   - [ docker, build, -t, chess-studio-backend:oci, /opt/chess-studio/repo/backend-python ]
   - [ systemctl, daemon-reload ]
   - [ systemctl, enable, chess-studio-backend.service ]
-  - [ bash, -lc, "printf '%s\n' 'Chess Studio OCI bootstrap complete; secrets and Tunnel remain intentionally manual.' > /opt/chess-studio/BOOTSTRAP_READY" ]
+  - [ bash, -lc, "printf '%s\n' 'CHESS_STUDIO_BOOTSTRAP_READY repo_ref=${repo_ref}' | tee /opt/chess-studio/BOOTSTRAP_READY /dev/console >/dev/null" ]
