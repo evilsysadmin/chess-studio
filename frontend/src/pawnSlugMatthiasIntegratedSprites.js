@@ -15,6 +15,17 @@ const PAYLOADS = Object.freeze({
   panzerfaust: panzerfaustPayload,
 });
 
+// The standalone Blender bake deliberately increased authored cell spacing from
+// 3.2 to 4.8 world units so rifles and Panzerfaust never bleed into neighbour
+// frames. That leaves the figure occupying 2/3 of the previous cell percentage.
+// Compensate once, here, so runtime presence stays at the intended Metal-Slug
+// hero scale instead of rendering Matthias as a tiny figure inside a large UV cell.
+export const PAWN_SLUG_MATTHIAS_INTEGRATED_SCALE = Object.freeze({
+  x: 2.655,
+  y: 3.84,
+  bakeCellCompensation: 1.5,
+});
+
 export const PAWN_SLUG_MATTHIAS_INTEGRATED_ART = Object.freeze({
   version: 'blender-integrated-v1',
   weapons: Object.freeze(Object.keys(PAYLOADS)),
@@ -25,6 +36,7 @@ export const PAWN_SLUG_MATTHIAS_INTEGRATED_ART = Object.freeze({
   frameWidth: 96,
   frameHeight: 96,
   separateWeaponOverlay: false,
+  runtimeScale: PAWN_SLUG_MATTHIAS_INTEGRATED_SCALE,
 });
 
 export function pawnSlugIntegratedWeaponId(kind = 'pistol') {
@@ -56,7 +68,10 @@ function applyAtlasWindow(sprite) {
   texture.needsUpdate = true;
 }
 
-export function createIntegratedMatthiasSlugSprite(scale = [1.77, 2.56]) {
+export function createIntegratedMatthiasSlugSprite(scale = [
+  PAWN_SLUG_MATTHIAS_INTEGRATED_SCALE.x,
+  PAWN_SLUG_MATTHIAS_INTEGRATED_SCALE.y,
+]) {
   const material = new THREE.SpriteMaterial({
     transparent: true,
     alphaTest: 0.05,
