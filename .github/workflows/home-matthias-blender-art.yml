@@ -32,6 +32,7 @@ jobs:
       - name: Build editable blend + animated runtime GLB + preview
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
+          BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '64' || '24' }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/home-matthias-art
