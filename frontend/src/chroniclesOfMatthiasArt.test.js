@@ -49,6 +49,9 @@ describe('Chronicles of Matthias 3D cast art', () => {
     expect(enemy.userData.chroniclesEnemy).toBe('corrupted-pawn');
     expect(enemy.getObjectByName('corrupted-pawn-fissure-ring')).toBeTruthy();
     expect(enemy.getObjectByName('corrupted-pawn-eye-left')).toBeTruthy();
+    expect(enemy.getObjectByName('corrupted-pawn-broken-collar')).toBeTruthy();
+    expect(enemy.getObjectByName('corrupted-pawn-pauldron-left')).toBeTruthy();
+    expect(enemy.getObjectByName('corrupted-pawn-jaw-guard')).toBeTruthy();
     expect(enemy.userData.chroniclesGlowMaterials).toHaveLength(1);
     expect(enemy.userData.chroniclesGlowMaterials[0].emissiveIntensity).toBeGreaterThan(1);
   });
@@ -61,6 +64,9 @@ describe('Chronicles of Matthias 3D cast art', () => {
     expect(jailer.getObjectByName('gate-jailer-crown')).toBeTruthy();
     expect(jailer.getObjectByName('gate-jailer-key-ring')).toBeTruthy();
     expect(jailer.getObjectByName('gate-jailer-fissure-main')).toBeTruthy();
+    expect(jailer.getObjectByName('gate-jailer-portcullis')).toBeTruthy();
+    expect(jailer.getObjectByName('gate-jailer-lock-plate')).toBeTruthy();
+    expect(jailer.getObjectByName('gate-jailer-core-glow')).toBeTruthy();
     expect(jailer.userData.chroniclesGlowMaterials[0].emissiveIntensity).toBeGreaterThan(2);
   });
 
