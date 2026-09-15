@@ -19,6 +19,7 @@ class Budget:
 
 INVENTORY = {
     'app-visual-artifact.yml': 'visual-artifact',
+    'blender-toolchain-cache.yml': 'art-generation-infra',
     'branch-housekeeping.yml': 'housekeeping',
     'chronicles-party-blender-art.yml': 'art-generation',
     'cicd.yml': 'quality-required',

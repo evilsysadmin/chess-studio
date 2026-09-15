@@ -1,6 +1,10 @@
 name: Setup Blender canonical art
-description: Install the shared headless Blender toolchain without product-specific art assumptions.
+description: Restore a cached portable Blender toolchain and install only the small host helpers needed by canonical art workflows.
 inputs:
+  blender-version:
+    description: Portable Blender version shared by canonical art workflows.
+    required: false
+    default: '4.0.2'
   extra-packages:
     description: Optional space-separated apt packages required by the product-specific renderer.
     required: false
@@ -8,15 +12,57 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install shared Blender toolchain
+    - name: Restore portable Blender cache
+      id: blender-cache
+      uses: actions/cache@v4
+      with:
+        path: ${{ runner.temp }}/blender-${{ inputs.blender-version }}
+        key: blender-portable-${{ runner.os }}-${{ runner.arch }}-${{ inputs.blender-version }}-v1
+
+    - name: Materialize portable Blender on cache miss
       shell: bash
+      env:
+        BLENDER_VERSION: ${{ inputs.blender-version }}
       run: |
         set -euo pipefail
-        sudo apt-get update -qq
-        base=(blender libegl1 libgl1-mesa-dri python3-pil python3-numpy)
-        extras=()
-        if [[ -n '${{ inputs.extra-packages }}' ]]; then
-          read -r -a extras <<< '${{ inputs.extra-packages }}'
+        blender_home="${RUNNER_TEMP}/blender-${BLENDER_VERSION}"
+        if [[ ! -x "${blender_home}/blender" ]]; then
+          case "$(uname -m)" in
+            x86_64) archive_arch='x64' ;;
+            *) echo "Unsupported Blender runner architecture: $(uname -m)" >&2; exit 1 ;;
+          esac
+          release_series="${BLENDER_VERSION%.*}"
+          archive="${RUNNER_TEMP}/blender-${BLENDER_VERSION}.tar.xz"
+          url="https://download.blender.org/release/Blender${release_series}/blender-${BLENDER_VERSION}-linux-${archive_arch}.tar.xz"
+          rm -rf "${blender_home}"
+          mkdir -p "${blender_home}"
+          curl --fail --location --silent --show-error \
+            --retry 4 --retry-delay 2 --retry-all-errors \
+            "${url}" -o "${archive}"
+          tar -xJf "${archive}" --strip-components=1 -C "${blender_home}"
+          rm -f "${archive}"
         fi
-        sudo apt-get install -y --no-install-recommends "${base[@]}" "${extras[@]}"
-        blender --version | head -n 1
+        test -x "${blender_home}/blender"
+        echo "${blender_home}" >> "${GITHUB_PATH}"
+        "${blender_home}/blender" --version | head -n 1
+
+    - name: Install small host-side helpers
+      shell: bash
+      env:
+        EXTRA_PACKAGES: ${{ inputs.extra-packages }}
+      run: |
+        set -euo pipefail
+        packages=(libegl1 python3-pil python3-numpy)
+        extras=()
+        if [[ -n "${EXTRA_PACKAGES}" ]]; then
+          read -r -a extras <<< "${EXTRA_PACKAGES}"
+        fi
+        install_packages() {
+          sudo env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a \
+            apt-get install -y --no-install-recommends -o Dpkg::Use-Pty=0 \
+            "${packages[@]}" "${extras[@]}"
+        }
+        if ! install_packages; then
+          sudo apt-get update -qq
+          install_packages
+        fi
