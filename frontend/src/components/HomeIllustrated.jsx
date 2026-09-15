@@ -240,6 +240,7 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
               <HomeMatthias3D
                 fallbackAvatar={matthiasVisual.avatar}
                 scene={matthiasVisual.key}
+                activity={matthiasActivity}
                 speaking={matthiasSpeaking}
                 reducedMotion={reducedMotion}
               />

@@ -13,6 +13,7 @@ import './HomeMatthias3D.css';
 export default function HomeMatthias3D({
   fallbackAvatar,
   scene = 'base',
+  activity = '',
   speaking = false,
   reducedMotion = false,
 }) {
@@ -29,6 +30,7 @@ export default function HomeMatthias3D({
       <MatthiasLayeredArt
         avatar={fallbackAvatar}
         scene={scene}
+        activity={activity}
         speaking={speaking}
         reducedMotion={reducedMotion}
       />
