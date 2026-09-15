@@ -64,6 +64,7 @@ case "$mode" in
         war-room-decor-visual-artifact.spec.js
         war-room-armor-oblique-visual-artifact.spec.js
         war-room-hans-visual-artifact.spec.js
+        war-room-cat-render-contract.spec.js
       )
     fi
     if has_group health; then
