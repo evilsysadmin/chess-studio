@@ -28,6 +28,7 @@ INVENTORY = {
     'main-admission.yml': 'delivery-admission',
     'oci-readiness.yml': 'infra-readiness',
     'oci-staging-lab.yml': 'infra-staging-lifecycle',
+    'pawn-slug-blender-art.yml': 'art-generation',
     'production-promote.yml': 'delivery-production',
     'production-rollback.yml': 'delivery-rollback',
     'render-production-guardrail.yml': 'delivery-guardrail',
