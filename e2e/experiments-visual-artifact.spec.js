@@ -58,11 +58,16 @@ async function withCapturePage(browser, capture, callback) {
   }
 }
 
-async function freezeVisualFrame(page) {
-  await page.addStyleTag({
+async function captureFrozenFrame(page, options) {
+  const style = await page.addStyleTag({
     content: '*, *::before, *::after { animation: none !important; transition: none !important; caret-color: transparent !important; }',
   });
-  await page.waitForTimeout(80);
+  try {
+    await page.waitForTimeout(80);
+    await page.screenshot(options);
+  } finally {
+    await style.evaluate((node) => node.remove()).catch(() => {});
+  }
 }
 
 async function captureHealth(page, label) {
@@ -232,8 +237,7 @@ if (scopeEnabled('landing')) {
           expect(Math.abs(health.pawnSlug.top - health.trailblazer.top), `${capture.label}: desktop Arcade alignment`).toBeLessThanOrEqual(2);
         }
 
-        await freezeVisualFrame(page);
-        await page.screenshot({
+        await captureFrozenFrame(page, {
           path: `${ARTIFACT_DIR}/experiments-${capture.label}.png`,
           fullPage: true,
         });
@@ -279,15 +283,13 @@ if (scopeEnabled('chronicles')) {
         expect(health.portraitCanvas?.width || 0, `${capture.label}: Chronicles portrait visible`).toBeGreaterThan(0);
         expect(health.portraitCanvas?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
 
-        await freezeVisualFrame(page);
-        await page.screenshot({
+        await captureFrozenFrame(page, {
           path: `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`,
           fullPage: true,
         });
 
         await stageChroniclesSigilAwake(page);
-        await freezeVisualFrame(page);
-        await page.screenshot({
+        await captureFrozenFrame(page, {
           path: `${ARTIFACT_DIR}/chronicles-sigil-awake-${capture.label}.png`,
           fullPage: true,
         });
@@ -333,8 +335,7 @@ if (scopeEnabled('pawnslug')) {
         expect(startBox, `${capture.label}: start action bounds`).not.toBeNull();
         expect(startBox.height, `${capture.label}: start action touch height`).toBeGreaterThanOrEqual(44);
 
-        await freezeVisualFrame(page);
-        await page.screenshot({
+        await captureFrozenFrame(page, {
           path: `${ARTIFACT_DIR}/pawn-slug-ready-${capture.label}.png`,
           fullPage: true,
         });
@@ -363,8 +364,7 @@ if (scopeEnabled('pawnslug')) {
           expect(playingHealth.touchControls?.width || 0, `${capture.label}: live touch controls visible`).toBeGreaterThan(0);
         }
 
-        await freezeVisualFrame(page);
-        await page.screenshot({
+        await captureFrozenFrame(page, {
           path: `${ARTIFACT_DIR}/pawn-slug-playing-${capture.label}.png`,
           fullPage: true,
         });
