@@ -10,10 +10,10 @@ const RUN_FRAMES = 16;
 export const PAWN_SLUG_MATTHIAS_RUN_POLISH = Object.freeze({
   frameCount: RUN_FRAMES,
   frameRate: 10.5,
-  leftTrimTexels: 3,
-  rightTrimTexels: 3,
+  leftTrimTexels: 4,
+  rightTrimTexels: 4,
   topTrimTexels: 2,
-  bottomTrimTexels: 7,
+  bottomTrimTexels: 10,
   maxVerticalCompensation: 0,
   forwardLean: 0.01,
   cadenceLean: 0.003,
