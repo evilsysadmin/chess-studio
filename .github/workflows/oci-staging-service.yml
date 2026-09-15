@@ -49,7 +49,23 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-          fetch-depth: 1
+          fetch-depth: 2
+      - name: Detect explicit agent recovery request
+        id: recovery
+        if: github.event_name == 'push'
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+            git fetch --no-tags --depth=1 origin "$BEFORE_SHA"
+          fi
+          if git diff --name-only "$BEFORE_SHA" "$HEAD_SHA" -- | grep -Fxq 'infra/oci/ops/agent-reboot.request'; then
+            echo 'requested=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'requested=false' >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
@@ -60,9 +76,7 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check 'oci==2.185.2'
       - name: Recover stale OCI agent after explicit request
         if: >-
-          (github.event_name == 'push' &&
-            (contains(github.event.head_commit.added, 'infra/oci/ops/agent-reboot.request') ||
-             contains(github.event.head_commit.modified, 'infra/oci/ops/agent-reboot.request'))) ||
+          (github.event_name == 'push' && steps.recovery.outputs.requested == 'true') ||
           (github.event_name == 'workflow_dispatch' && inputs.operation == 'reboot-agent')
         run: python3 scripts/oci_run_command.py reboot-agent
       - name: Diagnose OCI agent transport
