@@ -7,9 +7,10 @@ on:
       - 'scripts/blender/pawn_slug_matthias_premium_common.py'
       - 'scripts/blender/pawn_slug_matthias_premium_weapons.py'
       - 'scripts/blender/pawn_slug_matthias_premium_character.py'
+      # Generated runtime atlases are outputs of this renderer. Keeping them out
+      # of paths prevents a materialization commit from launching all four weapons again.
       - '.github/actions/setup-blender-canonical/**'
       - '.github/workflows/pawn-slug-blender-art.yml'
-      - 'frontend/src/assets/pawnSlug/matthias_*_premium_v2.b64'
   workflow_dispatch:
 
 permissions:

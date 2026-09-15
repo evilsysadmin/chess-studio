@@ -46,19 +46,21 @@ runs:
         echo "${blender_home}" >> "${GITHUB_PATH}"
         "${blender_home}/blender" --version | head -n 1
 
-    - name: Install small host-side helpers
+    - name: Install minimal graphics helpers
       shell: bash
       env:
         EXTRA_PACKAGES: ${{ inputs.extra-packages }}
       run: |
         set -euo pipefail
-        packages=(libegl1 python3-pil)
+        packages=(libegl1)
         extras=()
         if [[ -n "${EXTRA_PACKAGES}" ]]; then
           read -r -a extras <<< "${EXTRA_PACKAGES}"
         fi
         install_packages() {
-          sudo env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a \
+          sudo env \
+            DEBIAN_FRONTEND=noninteractive \
+            NEEDRESTART_SUSPEND=1 \
             apt-get install -y --no-install-recommends -o Dpkg::Use-Pty=0 \
             "${packages[@]}" "${extras[@]}"
         }
@@ -66,3 +68,23 @@ runs:
           sudo apt-get update -qq
           install_packages
         fi
+
+    - name: Install lightweight Python image helper
+      shell: bash
+      run: |
+        set -euo pipefail
+        pillow_root="${RUNNER_TEMP}/blender-python-tools"
+        rm -rf "${pillow_root}"
+        python3 -m pip install \
+          --quiet \
+          --disable-pip-version-check \
+          --no-deps \
+          --only-binary=:all: \
+          --target "${pillow_root}" \
+          'Pillow==10.4.0'
+        PYTHONPATH="${pillow_root}" python3 -c "from PIL import Image; print('Pillow', Image.__version__)"
+        python_path="${pillow_root}"
+        if [[ -n "${PYTHONPATH:-}" ]]; then
+          python_path="${python_path}:${PYTHONPATH}"
+        fi
+        echo "PYTHONPATH=${python_path}" >> "${GITHUB_ENV}"
