@@ -1,0 +1,60 @@
+name: OCI staging · service control
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/oci_run_command.py'
+      - '.github/workflows/oci-staging-service.yml'
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Service operation
+        type: choice
+        options: [smoke, deploy]
+        default: smoke
+        required: true
+      repo_ref:
+        description: Immutable 40-character SHA for deploy; defaults to workflow SHA
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oci-staging-service-control
+  cancel-in-progress: false
+
+jobs:
+  control:
+    name: OCI staging · service ${{ github.event_name == 'push' && 'smoke' || inputs.operation }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: pip
+      - name: Validate Run Command contracts
+        run: python3 -S scripts/oci_run_command.py --self-test
+      - name: Install OCI SDK
+        run: python3 -m pip install --disable-pip-version-check 'oci==2.185.2'
+      - name: Smoke OCI agent transport
+        if: github.event_name == 'push' || inputs.operation == 'smoke'
+        run: python3 scripts/oci_run_command.py smoke
+      - name: Deploy immutable backend release
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'deploy'
+        env:
+          DEPLOY_REF: ${{ inputs.repo_ref || github.sha }}
+        run: python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_REF"
