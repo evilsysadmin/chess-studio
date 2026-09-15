@@ -1,5 +1,6 @@
 name: Blender setup · smoke
 
+# Gate-critical smoke: changes to this workflow must prove the real Blender/EGL helper path.
 on:
   pull_request:
     paths:
