@@ -6,7 +6,6 @@ on:
       - 'scripts/blender/build_home_matthias.py'
       - 'scripts/blender/home_matthias_parts.py'
       - 'scripts/blender/home_matthias_animations.py'
-      - 'frontend/src/components/HomeMatthias3D.jsx'
       - 'frontend/art-source/matthias-home-canonical.blend'
       - 'frontend/public/models/matthias-home-canonical.glb'
       - '.github/actions/setup-blender-canonical/**'
@@ -43,13 +42,13 @@ jobs:
             --glb /tmp/home-matthias-art/matthias-home-canonical.glb \
             --preview /tmp/home-matthias-art/matthias-home-canonical.png
 
-      - name: Validate canonical identity + animation contract
+      - name: Validate classic identity + animation contract
         run: |
           set -euo pipefail
           test -s /tmp/home-matthias-art/matthias-home-canonical.blend
           test -s /tmp/home-matthias-art/matthias-home-canonical.glb
           test -s /tmp/home-matthias-art/matthias-home-canonical.png
-          blender --background /tmp/home-matthias-art/matthias-home-canonical.blend --python-expr "import bpy; rig=bpy.data.objects['MatthiasRig']; required={'Idle','Speak','Think','Read','Write','Dossier','Sip','Bite','Sleep'}; actions={a.name for a in bpy.data.actions}; assert required <= actions, (required-actions); assert rig.get('canonical_identity') == 'stern-no-moustache-pawn'; names={o.name.lower() for o in bpy.data.objects}; assert not any(('moustache' in n or 'beard' in n) for n in names); assert {'RoutineBook','RoutineCup','RoutinePen'} <= {o.name for o in bpy.data.objects}; assert {'prop_book','prop_cup','prop_pen'} <= {b.name for b in rig.data.bones}; print('Home Matthias canonical contract OK')"
+          blender --background /tmp/home-matthias-art/matthias-home-canonical.blend --python-expr "import bpy; rig=bpy.data.objects['MatthiasRig']; required_actions={'Idle','Speak','Think','Read','Write','Dossier','Sip','Bite','Sleep'}; actions={a.name for a in bpy.data.actions}; assert required_actions <= actions, (required_actions-actions); assert rig.get('canonical_identity') == 'stern-no-moustache-pawn'; assert rig.get('canonical_reference') == 'classic-pawn-first-avatar'; objects={o.name for o in bpy.data.objects}; required_objects={'Classic lower pawn','Classic navy tunic','Classic cap crown','Head','RoutineBook','RoutineCup','RoutinePen'}; assert required_objects <= objects, (required_objects-objects); lowered={name.lower() for name in objects}; forbidden=('moustache','mustache','beard','epaulette','chest strap','sash','uniform chest','field cap crown'); offenders=sorted(name for name in lowered if any(token in name for token in forbidden)); assert not offenders, offenders; assert {'prop_book','prop_cup','prop_pen'} <= {b.name for b in rig.data.bones}; print('Home Matthias classic canonical contract OK')"
           python3 - <<'PY'
           from pathlib import Path
           from PIL import Image
