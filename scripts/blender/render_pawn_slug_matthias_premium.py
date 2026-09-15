@@ -2,6 +2,7 @@
 """Render premium Blender-authored Pawn Slug Matthias weapon atlases."""
 from __future__ import annotations
 
+import math
 import sys
 from pathlib import Path
 
@@ -31,13 +32,24 @@ def setup_scene():
     scene.render.image_settings.color_depth = "8"
     if hasattr(scene, "eevee") and hasattr(scene.eevee, "taa_render_samples"):
         scene.eevee.taa_render_samples = 48
+
+    # The atlas is ~58 Blender units wide. Positional AREA lights made frames at
+    # the edges almost black while centre columns were correctly exposed, which
+    # would become severe brightness flicker in runtime animation. World + SUN
+    # lighting is deliberately position-independent: every authored cell receives
+    # the same key/fill/rim energy regardless of its grid coordinates.
     scene.world.use_nodes = True
     bg = scene.world.node_tree.nodes.get("Background")
     if bg:
-        bg.inputs["Color"].default_value = (0.025, 0.032, 0.045, 1.0)
-        bg.inputs["Strength"].default_value = 0.32
+        bg.inputs["Color"].default_value = (0.045, 0.060, 0.085, 1.0)
+        bg.inputs["Strength"].default_value = 0.42
     try:
-        scene.view_settings.look = "Medium High Contrast"
+        scene.view_settings.view_transform = "Standard"
+    except Exception:
+        pass
+    try:
+        scene.view_settings.exposure = 0.45
+        scene.view_settings.gamma = 1.0
     except Exception:
         pass
 
@@ -49,20 +61,23 @@ def setup_scene():
     cam.rotation_euler = (center - cam.location).to_track_quat("-Z", "Y").to_euler()
     scene.camera = cam
 
-    def light(name, loc, energy, size, color):
-        bpy.ops.object.light_add(type="AREA", location=loc)
+    def sun(name, direction, energy, color, angle_degrees):
+        bpy.ops.object.light_add(type="SUN", location=(0.0, 0.0, 0.0))
         obj = bpy.context.object
         obj.name = name
         obj.data.energy = energy
         obj.data.color = color
-        obj.data.size = size
-        obj.data.shape = "DISK"
-        obj.rotation_euler = (center - obj.location).to_track_quat("-Z", "Y").to_euler()
+        if hasattr(obj.data, "angle"):
+            obj.data.angle = math.radians(angle_degrees)
+        obj.rotation_euler = Vector(direction).to_track_quat("-Z", "Y").to_euler()
         return obj
 
-    light("key", (center.x - 7.0, -14.0, center.z + 9.0), 1150, 24, (1.0, 0.88, 0.75))
-    light("fill", (center.x + 9.0, -10.0, center.z + 4.0), 680, 28, (0.72, 0.84, 1.0))
-    light("rim", (center.x - 4.0, 9.0, center.z + 8.0), 1000, 20, (0.38, 0.58, 1.0))
+    # Camera is on -Y looking toward +Y. Key and fill therefore travel mostly
+    # toward +Y and slightly downward; rim comes from behind. SUN position is
+    # irrelevant, which is the important invariant for atlas rendering.
+    sun("key", (0.30, 1.00, -0.62), 2.35, (1.0, 0.90, 0.80), 7.0)
+    sun("fill", (-0.55, 0.78, -0.18), 0.95, (0.72, 0.84, 1.0), 12.0)
+    sun("rim", (0.15, -1.00, -0.38), 0.62, (0.42, 0.62, 1.0), 9.0)
     return scene
 
 
