@@ -52,6 +52,8 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 1
+      - name: Validate OCI credential contract
+        run: python3 -S scripts/oci_auth_contract.py
       - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.16.0
