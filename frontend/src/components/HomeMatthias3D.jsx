@@ -52,13 +52,6 @@ export function homeMatthiasClipForProfile(profile = 'idle') {
   return CLIP_BY_PROFILE[profile] || CLIP_BY_PROFILE.idle;
 }
 
-export function homeMatthiasFacingRotation({ headZ = 0, noseZ = 0 } = {}) {
-  const head = Number(headZ);
-  const nose = Number(noseZ);
-  if (!Number.isFinite(head) || !Number.isFinite(nose) || Math.abs(nose - head) < 0.0001) return 0;
-  return nose < head ? Math.PI : 0;
-}
-
 export function homeMatthiasPortraitFrame({ minY = 0, maxY = 2.35, fovDeg = 24 } = {}) {
   const low = Number(minY);
   const high = Number(maxY);
@@ -70,6 +63,66 @@ export function homeMatthiasPortraitFrame({ minY = 0, maxY = 2.35, fovDeg = 24 }
   const visibleHeight = height * 0.78;
   const distance = Math.max(3.6, (visibleHeight * 0.5) / Math.tan(THREE.MathUtils.degToRad(safeFov * 0.5)));
   return { targetY, distance };
+}
+
+export function homeMatthiasCameraPose({
+  headX = 0,
+  headZ = 0,
+  noseX = 0,
+  noseZ = 1,
+  minY = 0,
+  maxY = 2.35,
+  centerX = 0,
+  centerZ = 0,
+  fovDeg = 24,
+} = {}) {
+  const dx = Number(noseX) - Number(headX);
+  const dz = Number(noseZ) - Number(headZ);
+  const length = Math.hypot(Number.isFinite(dx) ? dx : 0, Number.isFinite(dz) ? dz : 0);
+  const source = length > 0.0001 ? 'head-nose-vector' : 'fallback-axis';
+  const faceX = source === 'head-nose-vector' ? dx / length : 0;
+  const faceZ = source === 'head-nose-vector' ? dz / length : 1;
+  const safeCenterX = Number.isFinite(Number(centerX)) ? Number(centerX) : 0;
+  const safeCenterZ = Number.isFinite(Number(centerZ)) ? Number(centerZ) : 0;
+  const frame = homeMatthiasPortraitFrame({ minY, maxY, fovDeg });
+
+  return {
+    source,
+    faceX,
+    faceZ,
+    targetX: safeCenterX,
+    targetY: frame.targetY,
+    targetZ: safeCenterZ,
+    cameraX: safeCenterX + (faceX * frame.distance),
+    cameraY: frame.targetY,
+    cameraZ: safeCenterZ + (faceZ * frame.distance),
+    distance: frame.distance,
+  };
+}
+
+function placePortraitLights({ key, fill, rim }, pose) {
+  const sideX = -pose.faceZ;
+  const sideZ = pose.faceX;
+  const target = new THREE.Vector3(pose.targetX, pose.targetY, pose.targetZ);
+
+  key.position.set(
+    pose.targetX + (pose.faceX * 4.2) - (sideX * 2.0),
+    pose.targetY + 2.0,
+    pose.targetZ + (pose.faceZ * 4.2) - (sideZ * 2.0),
+  );
+  fill.position.set(
+    pose.targetX + (pose.faceX * 2.7) + (sideX * 2.5),
+    pose.targetY + 0.8,
+    pose.targetZ + (pose.faceZ * 2.7) + (sideZ * 2.5),
+  );
+  rim.position.set(
+    pose.targetX - (pose.faceX * 3.6) + (sideX * 0.8),
+    pose.targetY + 1.6,
+    pose.targetZ - (pose.faceZ * 3.6) + (sideZ * 0.8),
+  );
+  key.target.position.copy(target);
+  fill.target.position.copy(target);
+  rim.target.position.copy(target);
 }
 
 function disposeMaterial(material) {
@@ -147,12 +200,9 @@ export default function HomeMatthias3D({
 
     const hemi = new THREE.HemisphereLight(0xffe6bd, 0x18202a, 1.65);
     const key = new THREE.DirectionalLight(0xffe0ad, 3.1);
-    key.position.set(-2.4, 3.2, 4.5);
     const fill = new THREE.DirectionalLight(0x91b7d2, 1.25);
-    fill.position.set(2.5, 1.6, 2.6);
     const rim = new THREE.DirectionalLight(0xd69d59, 1.5);
-    rim.position.set(0.8, 2.8, -3.6);
-    threeScene.add(hemi, key, fill, rim);
+    threeScene.add(hemi, key, fill, rim, key.target, fill.target, rim.target);
 
     const clock = new THREE.Clock();
     let model = null;
@@ -231,26 +281,32 @@ export default function HomeMatthias3D({
         model.scale.setScalar(1.0);
         model.updateMatrixWorld(true);
 
+        const bounds = new THREE.Box3().setFromObject(model);
+        const center = bounds.getCenter(new THREE.Vector3());
         const headNode = model.getObjectByName('Head');
         const noseNode = model.getObjectByName('Nose');
-        if (headNode && noseNode) {
-          const headWorld = new THREE.Vector3();
-          const noseWorld = new THREE.Vector3();
-          headNode.getWorldPosition(headWorld);
-          noseNode.getWorldPosition(noseWorld);
-          model.rotation.y = homeMatthiasFacingRotation({ headZ: headWorld.z, noseZ: noseWorld.z });
-          model.updateMatrixWorld(true);
-        }
+        const headWorld = new THREE.Vector3(center.x, center.y, center.z - 1);
+        const noseWorld = new THREE.Vector3(center.x, center.y, center.z);
+        headNode?.getWorldPosition(headWorld);
+        noseNode?.getWorldPosition(noseWorld);
 
-        const bounds = new THREE.Box3().setFromObject(model);
-        const portraitFrame = homeMatthiasPortraitFrame({
+        const cameraPose = homeMatthiasCameraPose({
+          headX: headWorld.x,
+          headZ: headWorld.z,
+          noseX: noseWorld.x,
+          noseZ: noseWorld.z,
           minY: bounds.min.y,
           maxY: bounds.max.y,
+          centerX: center.x,
+          centerZ: center.z,
           fovDeg: camera.fov,
         });
-        camera.position.set(0, portraitFrame.targetY, portraitFrame.distance);
-        camera.lookAt(0, portraitFrame.targetY, 0);
+        camera.position.set(cameraPose.cameraX, cameraPose.cameraY, cameraPose.cameraZ);
+        camera.lookAt(cameraPose.targetX, cameraPose.targetY, cameraPose.targetZ);
         camera.updateProjectionMatrix();
+        placePortraitLights({ key, fill, rim }, cameraPose);
+        canvas.dataset.matthiasCameraFacing = cameraPose.source;
+        canvas.dataset.matthiasCameraDistance = cameraPose.distance.toFixed(3);
 
         model.traverse((node) => {
           if (node.isMesh) {

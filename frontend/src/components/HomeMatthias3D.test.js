@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  homeMatthiasCameraPose,
   homeMatthiasClipForProfile,
-  homeMatthiasFacingRotation,
   homeMatthiasMotionPhase,
   homeMatthiasMotionProfile,
   homeMatthiasPortraitFrame,
@@ -38,17 +38,60 @@ describe('Home Matthias canonical Blender rig', () => {
     expect(homeMatthiasMotionPhase({ scene: 'reading', activity: 'Leyendo estrategia' })).not.toBe(first);
   });
 
-  it('turns an exported rig around when the facial anchor points away from the Home camera', () => {
-    expect(homeMatthiasFacingRotation({ headZ: 0.1, noseZ: -0.2 })).toBe(Math.PI);
-    expect(homeMatthiasFacingRotation({ headZ: 0.1, noseZ: 0.4 })).toBe(0);
-    expect(homeMatthiasFacingRotation({ headZ: 0.1, noseZ: 0.10001 })).toBe(0);
-  });
-
   it('frames Matthias as a readable portrait instead of centering the whole pawn pedestal', () => {
     const frame = homeMatthiasPortraitFrame({ minY: 0, maxY: 2.35, fovDeg: 24 });
     expect(frame.targetY).toBeGreaterThan(1.4);
     expect(frame.targetY).toBeLessThan(1.5);
     expect(frame.distance).toBeGreaterThan(4);
     expect(frame.distance).toBeLessThan(4.5);
+  });
+
+  it('places the camera in front of the actual Head→Nose direction without assuming Blender export axes', () => {
+    const alongZ = homeMatthiasCameraPose({
+      headX: 0,
+      headZ: 0.1,
+      noseX: 0,
+      noseZ: -0.3,
+      minY: 0,
+      maxY: 2.35,
+      centerX: 0.2,
+      centerZ: 0.4,
+      fovDeg: 24,
+    });
+    expect(alongZ.source).toBe('head-nose-vector');
+    expect(alongZ.faceX).toBeCloseTo(0, 6);
+    expect(alongZ.faceZ).toBeCloseTo(-1, 6);
+    expect(alongZ.cameraX).toBeCloseTo(0.2, 6);
+    expect(alongZ.cameraZ).toBeLessThan(alongZ.targetZ);
+
+    const alongX = homeMatthiasCameraPose({
+      headX: -0.1,
+      headZ: 0,
+      noseX: 0.3,
+      noseZ: 0,
+      minY: 0,
+      maxY: 2.35,
+      fovDeg: 24,
+    });
+    expect(alongX.source).toBe('head-nose-vector');
+    expect(alongX.faceX).toBeCloseTo(1, 6);
+    expect(alongX.faceZ).toBeCloseTo(0, 6);
+    expect(alongX.cameraX).toBeGreaterThan(alongX.targetX);
+  });
+
+  it('uses a sane forward fallback only when facial anchors collapse', () => {
+    const pose = homeMatthiasCameraPose({
+      headX: 0.2,
+      headZ: -0.4,
+      noseX: 0.2,
+      noseZ: -0.4,
+      minY: 0,
+      maxY: 2.35,
+      fovDeg: 24,
+    });
+    expect(pose.source).toBe('fallback-axis');
+    expect(pose.faceX).toBe(0);
+    expect(pose.faceZ).toBe(1);
+    expect(pose.cameraZ).toBeGreaterThan(pose.targetZ);
   });
 });

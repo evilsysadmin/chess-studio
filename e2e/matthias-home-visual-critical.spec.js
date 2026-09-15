@@ -33,6 +33,8 @@ async function expectBlenderRigReady(avatar, canvas) {
   await expect(avatar).toHaveAttribute('data-matthias-render-source', 'blender-glb');
   await expect(canvas).toBeVisible();
   await expect(canvas).toHaveCSS('opacity', '1');
+  await expect(canvas).toHaveAttribute('data-matthias-camera-facing', 'head-nose-vector');
+  await expect(canvas).toHaveAttribute('data-matthias-camera-distance', /^\d+\.\d{3}$/);
 }
 
 test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', async ({ page }) => {
@@ -51,6 +53,18 @@ test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', as
   await expect(image).toBeVisible();
   await expect(image).toHaveCSS('opacity', '0');
   await expect(avatar.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
+
+  // Matthias is a resident of the hall, not a permanent profile card. Keep the
+  // semantic copy in the DOM, but surface his current activity only on intent.
+  await expect(matthias.locator('.illustrated-home__matthias-copy')).toHaveCSS('display', 'none');
+  const quietAffordance = await matthias.evaluate((node) => ({
+    content: getComputedStyle(node, '::after').content,
+    opacity: getComputedStyle(node, '::after').opacity,
+  }));
+  expect(quietAffordance.content).toContain('Matthias');
+  expect(quietAffordance.opacity).toBe('0');
+  await matthias.hover();
+  await expect.poll(() => matthias.evaluate((node) => getComputedStyle(node, '::after').opacity)).toBe('1');
 
   await matthias.click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
