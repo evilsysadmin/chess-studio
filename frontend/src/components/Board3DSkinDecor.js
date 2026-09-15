@@ -276,8 +276,30 @@ function makeMatteIvoryHeadMaterial(ivoryMaterial) {
   material.userData = {
     ...ivoryMaterial.userData,
     surfaceRole: 'ivory',
-    pieceFinish: 'matte-ivory-head-v1',
-    whiteHeadFinish: 'deep-matte-v1',
+    pieceFinish: 'matte-ivory-pawn-head-v2',
+    whiteHeadFinish: 'pawn-deep-matte-v2',
+  };
+  return material;
+}
+
+function makeOfficerSatinIvoryHeadMaterial(ivoryMaterial) {
+  const material = ivoryMaterial.clone();
+  // Officers sit behind the pawn rank at the tactical camera angle. Keep them
+  // off the PMREM environment, but let the deliberate rear-quarter board light
+  // draw a restrained highlight across mitres, battlements, crowns and the
+  // knight profile instead of flattening every upper silhouette to deep matte.
+  material.roughness = THREE.MathUtils.clamp(material.roughness ?? 0.72, 0.72, 0.78);
+  material.clearcoat = THREE.MathUtils.clamp(material.clearcoat ?? 0.12, 0.09, 0.14);
+  material.clearcoatRoughness = THREE.MathUtils.clamp(material.clearcoatRoughness ?? 0.62, 0.56, 0.7);
+  material.specularIntensity = THREE.MathUtils.clamp(material.specularIntensity ?? 0.26, 0.24, 0.3);
+  material.envMapIntensity = 0;
+  material.sheen = THREE.MathUtils.clamp(material.sheen ?? 0.015, 0.01, 0.02);
+  material.sheenRoughness = THREE.MathUtils.clamp(material.sheenRoughness ?? 0.78, 0.74, 0.84);
+  material.userData = {
+    ...ivoryMaterial.userData,
+    surfaceRole: 'ivory',
+    pieceFinish: 'satin-ivory-officer-head-v1',
+    whiteHeadFinish: 'officer-satin-v1',
   };
   return material;
 }
@@ -314,7 +336,7 @@ function isWhiteHeadMesh(mesh, type, ivoryMaterial) {
 
 export function applyWhitePieceReadabilityFinish(group, type, coarsePointer = false) {
   const ivoryMaterial = canonicalIvoryMaterial(group);
-  if (!ivoryMaterial) return { walnutRims: 0, matteHeads: 0 };
+  if (!ivoryMaterial) return { walnutRims: 0, matteHeads: 0, satinHeads: 0 };
 
   // A hairline of dark walnut at the widest edge of the plinth gives ivory a
   // stable silhouette on light squares without turning the base into a brown
@@ -325,25 +347,36 @@ export function applyWhitePieceReadabilityFinish(group, type, coarsePointer = fa
   walnutRim.userData.whiteBaseWalnutRim = 'subtle-v1';
   walnutRim.castShadow = false;
 
-  // The upper ivory is deliberately drier than the body. The colour remains
-  // identical; only the highlight response changes, so board lights cannot turn
-  // pawn heads, mitres and crowns into white blobs a frame later.
-  const matteHead = makeMatteIvoryHeadMaterial(ivoryMaterial);
+  // Pawns remain dry/matte because their heads form the foreground picket line.
+  // Back-rank officers need a restrained direct-light response so their upper
+  // silhouettes read through that line. Both finishes keep the exact ivory
+  // colour and envMapIntensity=0, so this adds modelling rather than brightness.
+  const pawnHead = type === 'p' ? makeMatteIvoryHeadMaterial(ivoryMaterial) : null;
+  const officerHead = type === 'p' ? null : makeOfficerSatinIvoryHeadMaterial(ivoryMaterial);
   let matteHeads = 0;
+  let satinHeads = 0;
   group.traverse((child) => {
     if (!isWhiteHeadMesh(child, type, ivoryMaterial)) return;
-    child.material = matteHead;
-    child.userData.whiteMatteHead = 'deep-matte-v1';
-    matteHeads += 1;
+    if (type === 'p') {
+      child.material = pawnHead;
+      child.userData.whiteMatteHead = 'pawn-deep-matte-v2';
+      matteHeads += 1;
+      return;
+    }
+    child.material = officerHead;
+    child.userData.whiteOfficerHead = 'satin-v1';
+    satinHeads += 1;
   });
 
   // Do not keep an unused cloned material alive on an unexpected custom piece.
-  if (matteHeads === 0) matteHead.dispose?.();
+  if (matteHeads === 0) pawnHead?.dispose?.();
+  if (satinHeads === 0) officerHead?.dispose?.();
   group.userData.whitePieceBaseContrast = 'subtle-walnut-rim-v1';
   group.userData.whitePieceWalnutRimCount = 1;
   group.userData.whitePieceMatteHeadCount = matteHeads;
-  group.userData.whitePieceReadabilityFinish = 'walnut-and-matte-head-v1';
-  return { walnutRims: 1, matteHeads };
+  group.userData.whitePieceSatinHeadCount = satinHeads;
+  group.userData.whitePieceReadabilityFinish = 'walnut-pawn-matte-officer-satin-v2';
+  return { walnutRims: 1, matteHeads, satinHeads };
 }
 
 export function addPieceSkinDetails(group, type, skinId, accentMaterial, coarsePointer = false) {
