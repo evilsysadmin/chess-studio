@@ -35,8 +35,8 @@ test('Chronicles of Matthias · abre una cripta Three.js real y usa combate posi
   await expect(hildegard).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('w');
   await page.keyboard.press('Space');
-  await expect(mode.getByText(/Hildegard impacta/i)).toBeVisible();
   await expect(mode.getByText('9/10', { exact: true })).toBeVisible();
+  await expect(mode.getByText(/Hildegard impacta/i)).toHaveCount(0);
 });
 
 test('Chronicles of Matthias · móvil mantiene party y mandos sin overflow', async ({ page }) => {
