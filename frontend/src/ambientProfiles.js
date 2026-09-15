@@ -16,6 +16,7 @@ import { withAmbientPremiumProduction } from './ambientPremiumProduction.js';
 import { withRockProduction } from './ambientRockProduction.js';
 import { withAmbientIdentityContrast } from './ambientIdentityContrasts.js';
 import { withAmbientGenreHook } from './ambientGenreHooks.js';
+import { withElectronicProduction } from './ambientElectronicProduction.js';
 
 const RADIO_MATTHIAS_HIDDEN_THEME_IDS = new Set([...CURATED_HIDDEN_THEME_IDS, 'blackArchive']);
 
@@ -212,7 +213,7 @@ export function structuredFeel(theme) {
   const radioMatthias = radioMatthiasStructuredFeel(theme);
   if (radioMatthias) {
     const leitmotif = withRadioMatthiasLeitmotif(theme, radioMatthias);
-    const contrasted = withAmbientIdentityContrast(theme, leitmotif);
+    const contrasted = withElectronicProduction(theme, withAmbientIdentityContrast(theme, leitmotif));
     const arranged = withTropicalHouseDrive(theme, contrasted);
     return withAmbientPremiumProduction(theme, withAmbientGenreHook(theme, arranged));
   }
@@ -220,7 +221,7 @@ export function structuredFeel(theme) {
   const legacy = legacyStructuredFeel(theme);
   if (!legacy) return legacy;
 
-  let arranged = withAmbientIdentityContrast(theme, legacy);
+  let arranged = withElectronicProduction(theme, withAmbientIdentityContrast(theme, legacy));
   if (TROPICAL_HOUSE_DRIVE[theme?.id]) arranged = withTropicalHouseDrive(theme, arranged);
   else if (theme?.id === 'postRockMidnight' || theme?.id === 'rookGarage' || theme?.id === 'desertDriveRock') arranged = withRockProduction(theme, arranged);
   else if (theme?.id === 'reactorGambit') arranged = Object.freeze({ ...arranged, ...REACTOR_GAMBIT_PROFILE });
