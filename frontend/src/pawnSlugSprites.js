@@ -45,7 +45,14 @@ export const PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT = Object.freeze({
 });
 
 export function applyPawnSlugMatthiasPrimaryAspect(sprite) {
-  if (!sprite || sprite.userData?.atlas?.source !== 'primary') return false;
+  // This 0.9 squeeze belongs to the pre-premium raster atlas. The Blender v2
+  // bake has authored proportions and an explicit runtime scale; applying the
+  // old correction makes Matthias small and squat again.
+  if (
+    !sprite
+    || sprite.userData?.pawnSlugIntegratedWeapons
+    || sprite.userData?.atlas?.source !== 'primary'
+  ) return false;
   sprite.scale.y *= PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT.scaleY;
   sprite.userData.pawnSlugPrimaryAspectScaleY = PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT.scaleY;
   return true;
@@ -73,7 +80,7 @@ export function createWeaponSprite(kind = 'pistol') {
 }
 
 export function createMatthiasSlugSprite() {
-  return createIntegratedMatthiasSlugSprite([1.77, 2.56]);
+  return createIntegratedMatthiasSlugSprite();
 }
 
 export function animateMatthiasSlugSprite(sprite, state = {}) {
