@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearStorageMemoryFallback } from './safeStorage.js';
 import {
+  DEFAULT_RADIO_RETIRED_ECLECTIC_THEME_IDS,
   DEFAULT_RADIO_RETIRED_THEME_IDS,
   migratePersistentStorage,
   STORAGE_SCHEMA_KEY,
@@ -85,10 +86,25 @@ describe('migraciones de persistencia', () => {
     const result = migratePersistentStorage();
     const excluded = JSON.parse(localStorage.getItem('chess-study-music-excluded'));
 
-    expect(result).toMatchObject({ status: 'ok', from: 3, to: 4 });
+    expect(result).toMatchObject({ status: 'ok', from: 3, to: STORAGE_SCHEMA_VERSION });
     expect(DEFAULT_RADIO_RETIRED_THEME_IDS).toHaveLength(18);
     expect(excluded).toEqual(expect.arrayContaining(['rookGarage', ...DEFAULT_RADIO_RETIRED_THEME_IDS]));
     expect(new Set(excluded).size).toBe(excluded.length);
+  });
+
+  it('retira sólo garage y marcha de Ecléctica del random por defecto', () => {
+    localStorage.setItem(STORAGE_SCHEMA_KEY, '4');
+    localStorage.setItem('chess-study-music-excluded', JSON.stringify(['beirut0113']));
+
+    const result = migratePersistentStorage();
+    const excluded = JSON.parse(localStorage.getItem('chess-study-music-excluded'));
+
+    expect(result).toMatchObject({ status: 'ok', from: 4, to: STORAGE_SCHEMA_VERSION });
+    expect(DEFAULT_RADIO_RETIRED_ECLECTIC_THEME_IDS).toEqual(['rookGarage', 'pawnMarshal']);
+    expect(excluded).toEqual(expect.arrayContaining(['beirut0113', 'rookGarage', 'pawnMarshal']));
+    expect(excluded).not.toContain('postRockMidnight');
+    expect(excluded).not.toContain('desertDriveRock');
+    expect(excluded).not.toContain('rookAfterHours');
   });
 
   it('la curación de radio es one-shot y respeta una reactivación manual posterior', () => {
@@ -98,15 +114,17 @@ describe('migraciones de persistencia', () => {
     const excluded = JSON.parse(localStorage.getItem('chess-study-music-excluded'));
     localStorage.setItem(
       'chess-study-music-excluded',
-      JSON.stringify(excluded.filter((id) => id !== 'beirut0113')),
+      JSON.stringify(excluded.filter((id) => id !== 'beirut0113' && id !== 'rookGarage')),
     );
 
     const result = migratePersistentStorage();
-    expect(result).toMatchObject({ status: 'ok', from: 4, to: 4 });
-    expect(JSON.parse(localStorage.getItem('chess-study-music-excluded'))).not.toContain('beirut0113');
+    const afterManualReactivation = JSON.parse(localStorage.getItem('chess-study-music-excluded'));
+    expect(result).toMatchObject({ status: 'ok', from: STORAGE_SCHEMA_VERSION, to: STORAGE_SCHEMA_VERSION });
+    expect(afterManualReactivation).not.toContain('beirut0113');
+    expect(afterManualReactivation).not.toContain('rookGarage');
   });
 
-  it('no avanza a v4 si no puede persistir la curación de la radio', () => {
+  it('no avanza a v4 si no puede persistir la curación regional de la radio', () => {
     localStorage.setItem(STORAGE_SCHEMA_KEY, '3');
     const originalSetItem = localStorage.setItem.bind(localStorage);
     vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
@@ -117,6 +135,19 @@ describe('migraciones de persistencia', () => {
     const result = migratePersistentStorage();
     expect(result).toMatchObject({ status: 'degraded', from: 3, to: 3, durable: false });
     expect(localStorage.getItem(STORAGE_SCHEMA_KEY)).toBe('3');
+  });
+
+  it('no avanza a v5 si no puede persistir la curación de Ecléctica', () => {
+    localStorage.setItem(STORAGE_SCHEMA_KEY, '4');
+    const originalSetItem = localStorage.setItem.bind(localStorage);
+    vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+      if (key === 'chess-study-music-excluded') throw new DOMException('full', 'QuotaExceededError');
+      return originalSetItem(key, value);
+    });
+
+    const result = migratePersistentStorage();
+    expect(result).toMatchObject({ status: 'degraded', from: 4, to: 4, durable: false });
+    expect(localStorage.getItem(STORAGE_SCHEMA_KEY)).toBe('4');
   });
 
   it('arranca degradado pero sin lanzar si Web Storage no acepta escrituras', () => {
