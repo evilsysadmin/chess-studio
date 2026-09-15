@@ -15,15 +15,21 @@ runs:
         set -euo pipefail
         python3 -S scripts/app_visual_scope.py --self-test
         python3 -S scripts/app_visual_producer_scope.py --self-test
+        python3 -S scripts/app_visual_changed_files.py --self-test
         if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
           python3 -S scripts/app_visual_scope.py --all --github-output "$GITHUB_OUTPUT"
           python3 -S scripts/app_visual_producer_scope.py --all --github-output "$GITHUB_OUTPUT"
           exit 0
         fi
         files="$(git diff --name-only HEAD^ HEAD)"
+        scoped_files="$(printf '%s\n' "$files" | python3 -S scripts/app_visual_changed_files.py)"
         printf '%s\n' "$files"
-        printf '%s\n' "$files" | python3 -S scripts/app_visual_scope.py --github-output "$GITHUB_OUTPUT"
-        printf '%s\n' "$files" | python3 -S scripts/app_visual_producer_scope.py --github-output "$GITHUB_OUTPUT"
+        if [[ "$scoped_files" != "$files" ]]; then
+          echo 'Normalized visual ownership:'
+          printf '%s\n' "$scoped_files"
+        fi
+        printf '%s\n' "$scoped_files" | python3 -S scripts/app_visual_scope.py --github-output "$GITHUB_OUTPUT"
+        printf '%s\n' "$scoped_files" | python3 -S scripts/app_visual_producer_scope.py --github-output "$GITHUB_OUTPUT"
 
     - name: Restore browser + build when capture is required
       if: >-
