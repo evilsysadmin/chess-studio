@@ -1,6 +1,6 @@
-/* Matthias is a resident of the Great Hall. His visible motion now belongs to
- * the live 3D avatar; this file only owns placement, responsive composition and
- * the diegetic caption around that avatar. */
+/* Matthias is a resident of the Great Hall. His visible motion belongs to the
+ * live 3D avatar; this file only owns placement and the tiny contextual affordance
+ * around that resident. Never turn him back into a persistent profile card. */
 .illustrated-home__matthias-portrait {
   position: relative;
   display: block;
@@ -11,29 +11,10 @@
   box-shadow: none;
 }
 
+/* The semantic copy stays in the DOM for stable text/accessibility contracts,
+ * but the canonical Home does not render a permanent MATTHIAS/activity/CTA card. */
 .illustrated-home__matthias-copy {
-  min-width: 0;
-  display: grid;
-  gap: .18rem;
-  align-content: center;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, .92), 0 0 2px rgba(0, 0, 0, .95);
-}
-
-.illustrated-home__matthias-copy > strong,
-.illustrated-home__matthias-copy > span,
-.illustrated-home__matthias-copy > em {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.illustrated-home__matthias-copy > span {
-  color: #f3d89a;
-  white-space: nowrap;
-}
-
-.illustrated-home__matthias-copy > em {
-  color: #d7c39f;
-  white-space: nowrap;
+  display: none !important;
 }
 
 @media (min-width: 1000px) {
@@ -42,12 +23,12 @@
     --home-matthias-zone-top: 83%;
     left: var(--home-matthias-zone-left);
     top: var(--home-matthias-zone-top);
-    width: 19%;
-    min-height: 12.5%;
-    grid-template-columns: clamp(84px, 6.2cqw, 112px) minmax(0, 1fr);
+    width: clamp(108px, 8.4cqw, 142px);
+    min-height: 13.5%;
+    grid-template-columns: minmax(0, 1fr);
     align-items: center;
-    column-gap: .65cqw;
-    padding: .34cqw .42cqw;
+    justify-items: center;
+    padding: 0;
     overflow: visible;
     border-color: transparent;
     background: transparent;
@@ -85,37 +66,56 @@
     --home-matthias-zone-top: 83%;
   }
 
+  .illustrated-home__matthias::after {
+    content: 'Matthias · ' attr(data-home-matthias-activity);
+    position: absolute;
+    left: 50%;
+    top: -1.15rem;
+    z-index: 2;
+    max-width: 22rem;
+    padding: .2rem .48rem;
+    border: 1px solid rgba(226, 190, 112, .22);
+    border-radius: 999px;
+    background: rgba(21, 16, 12, .78);
+    box-shadow: 0 5px 16px rgba(0, 0, 0, .28);
+    color: #ead49e;
+    font-size: max(10px, .62cqw);
+    font-style: normal;
+    line-height: 1.15;
+    letter-spacing: .015em;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 4px);
+    transition: opacity .16s ease, transform .16s ease;
+  }
+
+  .illustrated-home__matthias.is-speaking::after {
+    display: none;
+  }
+
   .illustrated-home__matthias:hover,
   .illustrated-home__matthias:focus-visible {
     filter: brightness(1.1) drop-shadow(0 5px 10px rgba(0, 0, 0, .34));
+  }
+
+  .illustrated-home__matthias:hover::after,
+  .illustrated-home__matthias:focus-visible::after {
+    opacity: 1;
+    transform: translate(-50%, 0);
   }
 
   .illustrated-home__matthias-portrait {
     display: block !important;
     width: 100%;
     aspect-ratio: 4 / 5;
+    transition: transform .18s ease, filter .18s ease;
   }
 
-  .illustrated-home__matthias-copy {
-    display: grid !important;
-    align-self: center;
-    padding: .12cqw 0;
-    background: transparent;
-  }
-
-  .illustrated-home__matthias-copy > strong {
-    color: #f5ce69;
-    font-size: max(12px, .8cqw);
-    letter-spacing: .035em;
-  }
-
-  .illustrated-home__matthias-copy > span,
-  .illustrated-home__matthias-copy > em {
-    font-size: max(11px, .72cqw);
-  }
-
-  .illustrated-home__matthias.is-speaking .illustrated-home__matthias-copy > em {
-    color: #e9c66f;
+  .illustrated-home__matthias:hover .illustrated-home__matthias-portrait,
+  .illustrated-home__matthias:focus-visible .illustrated-home__matthias-portrait {
+    transform: translateY(-1.5%) scale(1.025);
+    filter: drop-shadow(0 7px 11px rgba(0, 0, 0, .25));
   }
 }
 
@@ -130,10 +130,6 @@
     aspect-ratio: 1 / 1.08;
     margin: auto;
   }
-
-  .illustrated-home__matthias-copy {
-    display: none !important;
-  }
 }
 
 /* Forced-desktop Android landscape keeps the 16:9 hall taller than the viewport.
@@ -146,7 +142,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .illustrated-home__matthias {
+  .illustrated-home__matthias,
+  .illustrated-home__matthias::after,
+  .illustrated-home__matthias-portrait {
     transition: none;
+  }
+
+  .illustrated-home__matthias:hover .illustrated-home__matthias-portrait,
+  .illustrated-home__matthias:focus-visible .illustrated-home__matthias-portrait {
+    transform: none;
   }
 }
