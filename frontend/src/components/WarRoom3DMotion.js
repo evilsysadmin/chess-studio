@@ -114,9 +114,9 @@ export function applyWarRoomKeyLightGrade(scene) {
 
 export function warRoomWarmFillPose({ whiteSide = true } = {}) {
   return {
-    x: -4.6,
-    y: 4.4,
-    z: whiteSide ? 5.8 : -5.8,
+    x: -5.8,
+    y: 4.0,
+    z: whiteSide ? 1.9 : -1.9,
   };
 }
 
@@ -132,10 +132,9 @@ export function applyWarRoomWarmFillGrade(scene) {
   }
   if (!warm) return null;
 
-  // The theme-colored rim already lives behind the opponent rank. Mirror the
-  // existing warm practical to the camera/player side so each army gets one
-  // restrained edge light. This improves rook/knight-vs-pawn separation on both
-  // halves of the board without adding another light or lifting global exposure.
+  // The theme-colored rim already lives behind the opponent rank. Keep the
+  // existing warm practical on the player's half, but move it into a restrained
+  // rear-quarter graze so overlapping ivory officers retain side modelling.
   let key = warRoomKeyLightState.get(scene) || null;
   if (!key || !key.parent) {
     key = scene.children?.find((object) => (
@@ -150,7 +149,7 @@ export function applyWarRoomWarmFillGrade(scene) {
   else if (warm.position) Object.assign(warm.position, pose);
 
   scene.userData ||= {};
-  scene.userData.warRoomRankSeparation = 'split-ranks-v1';
+  scene.userData.warRoomRankSeparation = 'rear-quarter-ranks-v2';
   scene.userData.warRoomWarmFillPosition = pose;
   return warm;
 }
@@ -392,7 +391,7 @@ function installWarRoomRenderDiscipline() {
     }
     const warmFill = applyWarRoomWarmFillGrade(scene);
     if (warmFill && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomRankSeparation = 'split-ranks-v1';
+      this.domElement.dataset.warRoomRankSeparation = 'rear-quarter-ranks-v2';
     }
     const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
@@ -456,9 +455,8 @@ installWarRoomRenderDiscipline();
 
 export function reactiveLightProfile({ check = false, gameOver = false, coarsePointer = false } = {}) {
   // The War Room already has fireplace/torch practicals plus the directional key.
-  // One point light now stays behind the opponent rank while the warm fill is
-  // mirrored to the player side. This gives both armies restrained silhouette
-  // separation without adding lights or lifting exposure/flat ambient.
+  // One point light stays behind the opponent rank while the warm practical now
+  // grazes the player's ranks from the rear quarter to retain silhouette depth.
   const baseExposure = coarsePointer ? 1.005 : 1.04;
   if (gameOver) {
     return {
@@ -481,7 +479,7 @@ export function reactiveLightProfile({ check = false, gameOver = false, coarsePo
   return {
     key: coarsePointer ? 1.99 : 1.42,
     rim: coarsePointer ? 13.4 : 6.8,
-    warm: coarsePointer ? 5.4 : 2.6,
+    warm: coarsePointer ? 5.2 : 2.15,
     exposure: baseExposure,
     fogDensity: coarsePointer ? 0.0178 : 0.0172,
   };

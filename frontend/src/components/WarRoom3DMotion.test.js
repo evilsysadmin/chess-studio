@@ -199,7 +199,7 @@ describe('WarRoom3DMotion', () => {
     expect(other.intensity).toBe(2);
   });
 
-  it('keeps the directional key while giving the opponent back rank restrained rear separation', () => {
+  it('keeps the directional key while giving both ranks restrained separation', () => {
     const normal = reactiveLightProfile();
     const check = reactiveLightProfile({ check: true });
     const terminal = reactiveLightProfile({ gameOver: true });
@@ -207,7 +207,7 @@ describe('WarRoom3DMotion', () => {
     expect(normal).toMatchObject({
       key: 1.42,
       rim: 6.8,
-      warm: 2.6,
+      warm: 2.15,
       exposure: 1.04,
       fogDensity: 0.0172,
     });

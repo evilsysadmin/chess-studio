@@ -16,7 +16,7 @@ function position(x, y, z) {
 }
 
 describe('War Room rank separation light', () => {
-  it('mirrors the existing warm point light to the player side for white orientation', () => {
+  it('moves the warm point light to a rear-quarter graze for white orientation', () => {
     const key = {
       isDirectionalLight: true,
       color: { getHex: () => 0xffe1aa },
@@ -31,10 +31,10 @@ describe('War Room rank separation light', () => {
     };
     const scene = { children: [key, warm], userData: {} };
 
-    expect(warRoomWarmFillPose({ whiteSide: true })).toEqual({ x: -4.6, y: 4.4, z: 5.8 });
+    expect(warRoomWarmFillPose({ whiteSide: true })).toEqual({ x: -5.8, y: 4.0, z: 1.9 });
     expect(applyWarRoomWarmFillGrade(scene)).toBe(warm);
-    expect(warm.position).toMatchObject({ x: -4.6, y: 4.4, z: 5.8 });
-    expect(scene.userData.warRoomRankSeparation).toBe('split-ranks-v1');
+    expect(warm.position).toMatchObject({ x: -5.8, y: 4.0, z: 1.9 });
+    expect(scene.userData.warRoomRankSeparation).toBe('rear-quarter-ranks-v2');
   });
 
   it('mirrors symmetrically when the board is viewed from black', () => {
@@ -52,8 +52,8 @@ describe('War Room rank separation light', () => {
     };
     const scene = { children: [key, warm], userData: {} };
 
-    expect(warRoomWarmFillPose({ whiteSide: false })).toEqual({ x: -4.6, y: 4.4, z: -5.8 });
+    expect(warRoomWarmFillPose({ whiteSide: false })).toEqual({ x: -5.8, y: 4.0, z: -1.9 });
     applyWarRoomWarmFillGrade(scene);
-    expect(warm.position).toMatchObject({ x: -4.6, y: 4.4, z: -5.8 });
+    expect(warm.position).toMatchObject({ x: -5.8, y: 4.0, z: -1.9 });
   });
 });
