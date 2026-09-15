@@ -14,7 +14,7 @@
   justify-content: space-between;
   gap: 18px;
   width: 100%;
-  max-width: 1480px;
+  max-width: none;
   margin: 0 auto 10px;
 }
 .chronicles-head h2 {
@@ -34,10 +34,10 @@
 
 .chronicles-shell {
   width: 100%;
-  max-width: 1480px;
+  max-width: none;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(230px, 270px) minmax(0, 1fr);
+  grid-template-columns: minmax(225px, 255px) minmax(0, 1fr);
   gap: 12px;
 }
 .chronicles-party,
@@ -53,6 +53,7 @@
 
 .chronicles-party {
   position: relative;
+  align-self: start;
   padding: 10px;
   display: flex;
   flex-direction: column;
@@ -168,7 +169,7 @@
 
 .chronicles-stage {
   position: relative;
-  height: clamp(420px, 55dvh, 650px);
+  height: clamp(520px, 66dvh, 760px);
   min-height: 0;
   overflow: hidden;
   isolation: isolate;
@@ -349,7 +350,7 @@
 }
 .chronicles-tech-note {
   width: 100%;
-  max-width: 1480px;
+  max-width: none;
   margin: 7px auto 0;
   color: #776b5c;
   font-size: .68rem;
@@ -358,7 +359,7 @@
 
 @media (max-width: 1100px) and (min-width: 801px) {
   .chronicles-shell { grid-template-columns: minmax(210px, 235px) minmax(0, 1fr); }
-  .chronicles-stage { height: clamp(400px, 52dvh, 560px); }
+  .chronicles-stage { height: clamp(430px, 58dvh, 620px); }
   .chronicles-head p { max-width: 700px; }
 }
 
@@ -367,7 +368,7 @@
   .chronicles-head { align-items: center; }
   .chronicles-head p { display: none; }
   .chronicles-shell { grid-template-columns: 1fr; }
-  .chronicles-party { order: 2; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 7px; }
+  .chronicles-party { order: 2; align-self: stretch; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 7px; }
   .chronicles-panel-kicker { display: none; }
   .chronicles-party-member { grid-template-columns: 28px 1fr; padding: 6px 4px; }
   .chronicles-party-member:hover,
