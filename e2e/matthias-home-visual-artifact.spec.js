@@ -46,13 +46,14 @@ async function forceCanonicalHomeCapabilities(context) {
   });
 }
 
-async function expectLiveMatthiasCanvas(home) {
+async function expectLiveMatthiasArt(home) {
   const avatar = home.locator('[data-home-matthias-3d="ready"]');
-  const canvas = avatar.locator('canvas');
+  const rig = avatar.locator('[data-matthias-layered-art="true"]');
   await expect(avatar).toHaveCount(1, { timeout:15_000 });
   await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready', { timeout:15_000 });
-  await expect(canvas).toHaveAttribute('data-matthias-identity', 'canonical-officer-avatar', { timeout:15_000 });
-  return { avatar, canvas };
+  await expect(avatar).toHaveAttribute('data-matthias-identity', 'canonical-render-rig', { timeout:15_000 });
+  await expect(rig.locator('[data-matthias-canonical-art="true"]')).toBeVisible({ timeout:15_000 });
+  return { avatar, rig };
 }
 
 async function openDeterministicHome(page) {
@@ -139,10 +140,11 @@ test('App visual artifact · Matthias Home deterministic full + crop', async () 
         const copy = matthias.locator('.illustrated-home__matthias-copy');
 
         await expect(matthias).toBeVisible();
-        const { canvas } = await expectLiveMatthiasCanvas(home);
-        await expect(canvas).toBeVisible({ timeout:15_000 });
-        await expect(canvas).toHaveAttribute('data-matthias-identity', 'canonical-officer-avatar');
-        await expect(matthias.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
+        const { avatar, rig } = await expectLiveMatthiasArt(home);
+        await expect(avatar).toBeVisible({ timeout:15_000 });
+        await expect(avatar).toHaveAttribute('data-motion', 'layered-canonical-rig');
+        await expect(rig).toHaveAttribute('data-gesture', 'bite');
+        await expect(rig.locator('[data-matthias-art-part]')).toHaveCount(5);
 
         if (capture.expectCopy) {
           await expect(copy).toBeVisible();

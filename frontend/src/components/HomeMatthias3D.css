@@ -7,39 +7,29 @@
   overflow: visible;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 220ms ease;
+  transition: opacity 220ms ease, filter 180ms ease;
 }
 
-.home-matthias-3d.is-ready,
-.home-matthias-3d.is-fallback {
+.home-matthias-3d.is-ready {
   opacity: 1;
 }
 
-.home-matthias-3d canvas,
-.home-matthias-3d img {
-  display: block;
+.home-matthias-3d .matthias-art-rig {
   width: 100%;
   height: 100%;
-}
-
-.home-matthias-3d canvas {
   filter: drop-shadow(0 8px 10px rgba(0, 0, 0, .38));
 }
 
-.home-matthias-3d.is-fallback img {
-  object-fit: contain;
-  object-position: center bottom;
-}
-
-.illustrated-home__matthias.is-speaking .home-matthias-3d canvas {
+.illustrated-home__matthias.is-speaking .home-matthias-3d .matthias-art-rig {
   filter: brightness(1.04) drop-shadow(0 8px 12px rgba(0, 0, 0, .42));
 }
 
 /* Mobile Home historically hides generic spans inside the Matthias button to
- * suppress caption copy. The live 3D host is also a span, so keep the renderer
- * explicitly visible without reviving any of that retired mobile copy. */
+ * suppress caption copy. Keep the canonical art host explicitly visible while
+ * leaving the retired mobile caption hidden. */
 @media (max-width: 999px) {
-  .illustrated-home__matthias .home-matthias-3d {
+  .illustrated-home__matthias .home-matthias-3d,
+  .illustrated-home__matthias .home-matthias-3d .matthias-art-rig {
     display: block;
   }
 }

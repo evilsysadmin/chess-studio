@@ -18,15 +18,16 @@ async function openCanonicalHome(page, { reducedMotion = 'no-preference', profil
   return home;
 }
 
-function matthias3d(matthias) {
+function matthiasRig(matthias) {
   const avatar = matthias.locator('.illustrated-home__matthias-portrait [data-home-matthias-3d]');
-  return { avatar, canvas: avatar.locator('canvas') };
+  const rig = avatar.locator('[data-matthias-layered-art="true"]');
+  return { avatar, rig };
 }
 
 test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', async ({ page }) => {
   const home = await openCanonicalHome(page);
   const matthias = home.locator('.illustrated-home__matthias');
-  const { avatar, canvas } = matthias3d(matthias);
+  const { avatar, rig } = matthiasRig(matthias);
 
   await expect(matthias).toBeVisible();
   await expect(matthias).toContainText('MATTHIAS');
@@ -34,9 +35,11 @@ test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', as
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', /.+/);
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', /^(34000|38000|42000|44000|48000|64000)$/);
   await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');
-  await expect(canvas).toBeVisible();
-  await expect(canvas).toHaveAttribute('data-motion', 'procedural-3d');
-  await expect(matthias.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
+  await expect(avatar).toHaveAttribute('data-matthias-identity', 'canonical-render-rig');
+  await expect(avatar).toHaveAttribute('data-motion', 'layered-canonical-rig');
+  await expect(rig).toBeVisible();
+  await expect(rig.locator('[data-matthias-canonical-art="true"]')).toBeVisible();
+  await expect(rig.locator('[data-matthias-art-part]')).toHaveCount(5);
 
   await matthias.click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
@@ -79,7 +82,7 @@ test('Home canónica · Matthias puede quedarse dormido sobre el manual en la bi
 
   const home = await openCanonicalHome(page);
   const matthias = home.locator('.illustrated-home__matthias');
-  const { avatar, canvas } = matthias3d(matthias);
+  const { avatar, rig } = matthiasRig(matthias);
 
   await expect(matthias).toBeVisible();
   await expect(matthias).toHaveAttribute('data-home-matthias-moment', 'book-doze-sleep');
@@ -88,7 +91,8 @@ test('Home canónica · Matthias puede quedarse dormido sobre el manual en la bi
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Dormido sobre el manual');
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', '64000');
   await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');
-  await expect(canvas).toHaveAttribute('data-motion', 'procedural-3d');
+  await expect(avatar).toHaveAttribute('data-motion', 'layered-canonical-rig');
+  await expect(rig).toHaveAttribute('data-gesture', 'doze');
 });
 
 test('Home canónica · Matthias ensaya una emboscada solo en el escritorio', async ({ page }) => {
@@ -101,7 +105,7 @@ test('Home canónica · Matthias ensaya una emboscada solo en el escritorio', as
 
   const home = await openCanonicalHome(page);
   const matthias = home.locator('.illustrated-home__matthias');
-  const { avatar, canvas } = matthias3d(matthias);
+  const { avatar, rig } = matthiasRig(matthias);
 
   await expect(matthias).toBeVisible();
   await expect(matthias).toHaveAttribute('data-home-matthias-moment', 'solo-board-inception');
@@ -110,7 +114,8 @@ test('Home canónica · Matthias ensaya una emboscada solo en el escritorio', as
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Ensayando una emboscada');
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', '42000');
   await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');
-  await expect(canvas).toHaveAttribute('data-motion', 'procedural-3d');
+  await expect(avatar).toHaveAttribute('data-motion', 'layered-canonical-rig');
+  await expect(rig).toHaveAttribute('data-gesture', 'board-move');
 });
 
 test('Home canónica · arte y destinos comparten el master 1814×867 sin overflow', async ({ page }) => {
@@ -217,12 +222,12 @@ test('Home canónica · reduced motion elimina transiciones decorativas', async 
   const home = await openCanonicalHome(page, { reducedMotion: 'reduce' });
   const destination = home.locator('.illustrated-home__destination--tournament');
   const matthias = home.locator('.illustrated-home__matthias');
-  const { avatar, canvas } = matthias3d(matthias);
+  const { avatar, rig } = matthiasRig(matthias);
 
   await expect(destination).toBeVisible();
   await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');
-  await expect(canvas).toHaveAttribute('data-motion', 'still-3d');
-  await expect(matthias.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
+  await expect(avatar).toHaveAttribute('data-motion', 'still-canonical-rig');
+  await expect(rig).toHaveAttribute('data-gesture-state', 'reduced');
 
   const transitionSeconds = await destination.evaluate((node) => Number.parseFloat(getComputedStyle(node).transitionDuration) || 0);
   expect(transitionSeconds).toBeLessThanOrEqual(0.001);
