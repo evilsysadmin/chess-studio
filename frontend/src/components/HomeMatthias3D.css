@@ -20,12 +20,6 @@
   filter: drop-shadow(0 8px 10px rgba(0, 0, 0, .38));
 }
 
-.home-matthias-3d .matthias-art-rig__base,
-.home-matthias-3d .matthias-art-rig__part {
-  object-fit: contain;
-  object-position: center bottom;
-}
-
 .illustrated-home__matthias.is-speaking .home-matthias-3d .matthias-art-rig {
   filter: brightness(1.04) drop-shadow(0 8px 12px rgba(0, 0, 0, .42));
 }
