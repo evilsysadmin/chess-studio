@@ -1,0 +1,92 @@
+{
+  "id": "crypt-eight-squares",
+  "version": 1,
+  "title": "Cripta de las Ocho Casillas",
+  "grid": [
+    "#######",
+    "#..X..#",
+    "#.###.#",
+    "#...#.#",
+    "#.#S#.#",
+    "#P.E..#",
+    "#######"
+  ],
+  "partyStart": { "x": 1, "y": 5, "direction": 1 },
+  "initialFlags": {
+    "spectralLantern": false,
+    "blackGateKey": false,
+    "sigilAwake": false,
+    "runeCacheOpened": false,
+    "runeCoreCollected": false
+  },
+  "enemies": [
+    {
+      "id": "corrupted-pawn",
+      "name": "peón corrompido",
+      "x": 3,
+      "y": 5,
+      "hpKey": "enemyHp",
+      "maxHp": 6,
+      "retaliation": 1,
+      "activation": "always",
+      "ai": { "movement": "cardinal-chase", "attackReach": 1 }
+    },
+    {
+      "id": "gate-jailer",
+      "name": "torre carcelero",
+      "x": 3,
+      "y": 1,
+      "hpKey": "jailerHp",
+      "maxHp": 8,
+      "retaliation": 2,
+      "activation": "sigil",
+      "ai": { "movement": "cardinal-chase", "attackReach": 1 }
+    },
+    {
+      "id": "spectral-bishop",
+      "name": "alfil espectral",
+      "x": 5,
+      "y": 3,
+      "hpKey": "spectralBishopHp",
+      "maxHp": 5,
+      "retaliation": 1,
+      "retaliationReach": 2,
+      "activation": "sigil",
+      "optional": true,
+      "ai": { "movement": "cardinal-chase", "attackReach": 2, "requiresLineOfSight": true }
+    },
+    {
+      "id": "scavenger-knight",
+      "name": "caballo carroñero",
+      "x": 2,
+      "y": 3,
+      "hpKey": "scavengerHp",
+      "maxHp": 6,
+      "retaliation": 1,
+      "activation": "jailer-down",
+      "positionKey": "scavengerPosition",
+      "positions": {
+        "gate": { "x": 3, "y": 1 },
+        "west": { "x": 1, "y": 2 }
+      },
+      "initialPosition": "gate",
+      "evadesOnHit": true,
+      "ai": { "movement": "knight-chase", "attackReach": 1 }
+    }
+  ],
+  "interactables": [
+    { "id": "rune-cache-lever", "kind": "lever", "x": 5, "y": 5 },
+    { "id": "rune-core", "kind": "treasure", "x": 5, "y": 4 }
+  ],
+  "treasures": [
+    { "id": "rune-core", "x": 5, "y": 4, "requires": "runeCacheOpened" }
+  ],
+  "traps": [],
+  "initialJournal": {
+    "id": "descent",
+    "title": "Descenso a la Cripta de las Ocho Casillas",
+    "body": "Cuatro piezas entran. Matthias insiste en llamarlo expedición y no una serie de decisiones evitables.",
+    "sigil": "I"
+  },
+  "introMessage": "La Cripta de las Ocho Casillas. Huele a humedad y a una decisión cuestionable."
+}
