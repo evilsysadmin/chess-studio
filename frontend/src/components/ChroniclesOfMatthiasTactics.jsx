@@ -4,6 +4,8 @@ import {
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
 import {
+  chroniclesTacticsAbility,
+  chroniclesTacticsAbilityStatus,
   chroniclesTacticsAttack,
   chroniclesTacticsInteractions,
   chroniclesTacticsLegalMoves,
@@ -39,6 +41,12 @@ function createActionState() {
     turnPhase: 'party',
     enemyPositions: {},
     enemyTurnEvents: [],
+    classAbilityCharges: {
+      matthias: 1,
+      rook: 1,
+      bishop: 1,
+      knight: 1,
+    },
   };
 }
 
@@ -68,6 +76,10 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
 
   const selectedMember = state.party.find((member) => member.id === selectedMemberId) || state.party[0];
   const selectedProfile = chroniclesTacticsProfile(selectedMemberId);
+  const selectedAbility = useMemo(
+    () => chroniclesTacticsAbilityStatus(state, selectedMemberId),
+    [selectedMemberId, state],
+  );
   const objective = chroniclesObjective(state);
   const activeParty = useMemo(
     () => PARTY_ORDER.map((id) => state.party.find((member) => member.id === id)).filter(Boolean),
@@ -113,6 +125,12 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     if (!target) return;
     const next = chroniclesTacticsAttack(current, memberId, target.enemyId);
     if (commitState(next)) lastAttackAtRef.current = now;
+  }, [commitState]);
+
+  const useClassAbility = useCallback(() => {
+    const current = stateRef.current;
+    if (current.phase === 'defeated' || current.phase === 'escaped') return;
+    commitState(chroniclesTacticsAbility(current, selectedMemberRef.current));
   }, [commitState]);
 
   const useContextualAction = useCallback(() => {
@@ -201,6 +219,12 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
         attackEnemy();
         return;
       }
+      if (event.key === 'e' || event.key === 'E') {
+        if (event.repeat) return;
+        event.preventDefault();
+        useClassAbility();
+        return;
+      }
       const vector = MOVEMENT[event.key];
       if (!vector) return;
       event.preventDefault();
@@ -208,7 +232,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
     };
     window.addEventListener('keydown', onKeyDown, { passive: false });
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [attackEnemy, moveParty, selectMember, useContextualAction]);
+  }, [attackEnemy, moveParty, selectMember, useClassAbility, useContextualAction]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -246,7 +270,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
         <aside className="chronicles-tactics__mission" aria-label="Misión">
           <span className="chronicles-tactics__kicker">CRIPTA 01</span>
           <strong>{objective}</strong>
-          <small>WASD/flechas mueve · 1–4 cambia de héroe · espacio usa · Shift ataca.</small>
+          <small>WASD/flechas mueve · 1–4 cambia de héroe · espacio usa · Shift ataca · E habilidad.</small>
         </aside>
 
         <main className="chronicles-tactics__battlefield">
@@ -274,6 +298,14 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
               onClick={useContextualAction}
             ><i aria-hidden="true">◎</i><span>ESPACIO · USAR</span></button>
             <button type="button" className={canAttack ? 'is-ready' : ''} disabled={!canAct || !canAttack} aria-label="Atacar" onClick={() => attackEnemy()}><i aria-hidden="true">⚔</i><span>SHIFT · ATAQUE</span></button>
+            <button
+              type="button"
+              className={selectedAbility.ready ? 'is-ready' : ''}
+              disabled={!canAct || !selectedAbility.ready}
+              aria-label="Habilidad de clase"
+              title={selectedAbility.ready ? selectedProfile.abilityName : selectedAbility.reason}
+              onClick={useClassAbility}
+            ><i aria-hidden="true">✦</i><span>E · HABILIDAD</span></button>
           </div>
         </main>
 
@@ -300,13 +332,14 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
             <span>ACTIVO · {selectedProfile.className.toUpperCase()}</span>
             <b>{selectedMember?.name}</b>
             <small>{selectedMember?.hp > 0 ? `${selectedProfile.attackName} · ${selectedProfile.kindLabel} · alcance ${selectedProfile.reach}` : 'Fuera de combate'}</small>
+            <small>Habilidad: {selectedProfile.abilityName} · {selectedAbility.charges > 0 ? '1 carga' : 'agotada'}</small>
           </div>
         </aside>
       </div>
 
       <footer className="chronicles-tactics__footer">
         <span>Motor {rendererName}</span>
-        <span>{contextualAction ? `Espacio · ${contextualAction.label}` : 'Espacio · Usar'} · Shift · {selectedProfile.attackName}</span>
+        <span>{contextualAction ? `Espacio · ${contextualAction.label}` : 'Espacio · Usar'} · Shift · {selectedProfile.attackName} · E · {selectedProfile.abilityName}</span>
         <button type="button" onClick={restart}>Reiniciar incursión</button>
       </footer>
     </div>
