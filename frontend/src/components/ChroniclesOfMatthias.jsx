@@ -17,6 +17,7 @@ import ChroniclesTacticalMargin from './ChroniclesTacticalMargin.jsx';
 import './ChroniclesOfMatthias.css';
 import './ChroniclesOfMatthiasArt.css';
 import './ChroniclesOfMatthiasJournal.css';
+import './ChroniclesNarrator.css';
 import './ChroniclesPartyCondition.css';
 import './ChroniclesRecoveredRelic.css';
 
@@ -213,13 +214,15 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <div className="chronicles-crosshair" aria-hidden="true">·</div>
             <ChroniclesTacticalMargin target={tacticalTarget} />
             <ChroniclesEnemyRetaliationFx key={retaliationCue?.token || 'none'} cue={retaliationCue} />
+            <div className="chronicles-narrator" role="status" aria-live="polite" aria-label="Narrador de la cripta">
+              <span className="chronicles-narrator-mark" aria-hidden="true">{latestJournalEntry?.sigil || '✦'}</span>
+              <div className="chronicles-narrator-copy">
+                <strong>Crónica de la cripta</strong>
+                <p>{state.message}</p>
+              </div>
+            </div>
             {rendererError && <div className="chronicles-renderer-error" role="alert">{rendererError}</div>}
             {state.phase === 'escaped' && <ChroniclesBookOneEpilogue state={state} onRestart={restart} />}
-          </div>
-
-          <div className="chronicles-narration" aria-live="polite">
-            <span className="chronicles-avatar" aria-hidden="true">♟</span>
-            <p><strong>Matthias</strong>{state.message}</p>
           </div>
 
           <details className="chronicles-journal" aria-label="Crónica de expedición">
