@@ -1,0 +1,60 @@
+name: Pawn Slug · vendor validated Blender atlases
+
+on:
+  push:
+    branches:
+      - fix/pawn-slug-integrated-weapons
+    paths:
+      - '.github/workflows/pawn-slug-runtime-assets.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  vendor-assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/pawn-slug-integrated-weapons
+          fetch-depth: 0
+      - name: Download validated Blender atlases from PR 1949 run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: '35011142984'
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pawn-slug-atlases frontend/src/assets/pawnSlug
+          for weapon in pistol machinegun shotgun panzerfaust; do
+            dest="/tmp/pawn-slug-atlases/$weapon"
+            mkdir -p "$dest"
+            gh run download "$RUN_ID" \
+              --repo "$GITHUB_REPOSITORY" \
+              --name "pawn-slug-matthias-${weapon}-1949" \
+              --dir "$dest"
+            src="$dest/matthias_${weapon}_atlas_v1.b64"
+            test -s "$src"
+            cp "$src" "frontend/src/assets/pawnSlug/matthias_${weapon}_integrated_v1.b64"
+          done
+      - name: Verify and commit vendored atlases
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64
+          from pathlib import Path
+          root = Path('frontend/src/assets/pawnSlug')
+          for weapon in ('pistol', 'machinegun', 'shotgun', 'panzerfaust'):
+              path = root / f'matthias_{weapon}_integrated_v1.b64'
+              raw = base64.b64decode(path.read_text().strip(), validate=True)
+              assert raw[:4] == b'RIFF' and raw[8:12] == b'WEBP', (weapon, raw[:12])
+              assert len(raw) > 10_000, (weapon, len(raw))
+              print(weapon, len(raw))
+          PY
+          rm .github/workflows/pawn-slug-runtime-assets.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/src/assets/pawnSlug .github/workflows/pawn-slug-runtime-assets.yml
+          git commit -m 'chore(pawn-slug): vendor integrated Blender weapon atlases'
+          git push origin HEAD:fix/pawn-slug-integrated-weapons
