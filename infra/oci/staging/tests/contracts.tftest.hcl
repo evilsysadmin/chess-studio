@@ -61,7 +61,7 @@ run "allow_narrow_ssh_with_public_key" {
   command = plan
 
   variables {
-    ssh_ingress_cidr  = "198.51.100.10/32"
+    ssh_ingress_cidr   = "198.51.100.10/32"
     ssh_authorized_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestOnly chess-studio"
   }
 
