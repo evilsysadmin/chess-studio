@@ -34,6 +34,18 @@ export {
   pawnSlugEnemyRunAtlasWindow,
 };
 
+export const PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT = Object.freeze({
+  scaleY: 0.9,
+  purpose: 'restore-compact-pre-v5-silhouette-without-changing-hitbox',
+});
+
+export function applyPawnSlugMatthiasPrimaryAspect(sprite) {
+  if (!sprite || sprite.userData?.atlas?.source !== 'primary') return false;
+  sprite.scale.y *= PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT.scaleY;
+  sprite.userData.pawnSlugPrimaryAspectScaleY = PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT.scaleY;
+  return true;
+}
+
 // Enemy combatants are 2D sprites living inside a 2.5D Three.js scene. They must
 // not disappear behind decorative scenery just because their old runtime z was
 // deeper than POWs, pickups and foreground props. Keep depth for the actual 3D
@@ -59,15 +71,15 @@ export function animateMatthiasSlugSprite(sprite, state = {}) {
   if (hurt && !sprite.userData.pawnSlugWasHurt) playPawnSlugPlayerHitSfx();
   sprite.userData.pawnSlugWasHurt = hurt;
 
-  // Walking is now the canonical traversal pose. Feed the legacy animator a
-  // non-running state so its sprint row and run brace do not flash for one pass,
-  // then apply the authored walk frame selected by the locomotion controller.
+  // Keep compatibility with the authored walk row, but normal Pawn Slug
+  // traversal is currently driven by the full sixteen-frame run controller.
   const walking = Boolean(state.walking) && !state.airborne && !state.crouch;
   const visualState = walking ? { ...state, running: false } : state;
   animateLegacyMatthiasSlugSprite(sprite, visualState);
   if (walking) sprite.userData.setActionFrame?.('walk', state.walkFrame ?? 0);
   applyPawnSlugMatthiasPremiumMotion(sprite, visualState);
   applyPawnSlugMatthiasRunPolish(sprite, visualState);
+  applyPawnSlugMatthiasPrimaryAspect(sprite);
 }
 
 export function animatePanzerRookSprite(sprite, time = 0, state = {}) {
@@ -108,6 +120,7 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
     ...LEGACY_SPRITE_META.matthias,
     premiumMotion: true,
     runPolish: PAWN_SLUG_MATTHIAS_RUN_POLISH,
+    primaryAspect: PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT,
     weaponGripAnchor: 'centered-sprite',
   }),
   enemies: Object.freeze({

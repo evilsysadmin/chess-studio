@@ -204,6 +204,10 @@ export function createPawnSlugWeaponSystem(runtime) {
     enemy.fireTelegraphProgress = prefire.phase === 'telegraph' ? prefire.progress : 0;
     if (prefire.phase !== 'fire') return false;
     fireEnemy(enemy, false);
+    // Recoil must follow the real shot. Pistol and machinegun have no prefire
+    // telegraph, so inferring recoil from a telegraph release made them look as
+    // if they never fired even while their projectiles were being spawned.
+    enemy.visualRecoil = 1;
     enemy.fireCooldown = pawnSlugEnemyFireCooldown(enemy.weapon, Math.random()) * cadence;
     return true;
   }
