@@ -33,6 +33,89 @@ const ALLOWED_ATTRIBUTES = Object.freeze({
   knight: Object.freeze(['vigor', 'precision', 'will']),
 });
 
+export const CHRONICLES_SKILL_DEFINITIONS = Object.freeze({
+  matthias: Object.freeze([
+    Object.freeze({
+      id: 'matthias-steel-tempo',
+      label: 'Tempo de hierro',
+      description: '+1 daño con la estocada básica.',
+      requiredLevel: 2,
+      cost: 1,
+      group: 'doctrine-1',
+      modifiers: Object.freeze({ attackDamageBonus: 1 }),
+    }),
+    Object.freeze({
+      id: 'matthias-master-rupture',
+      label: 'Ruptura maestra',
+      description: '+2 potencia para Ruptura teutona.',
+      requiredLevel: 2,
+      cost: 1,
+      group: 'doctrine-1',
+      modifiers: Object.freeze({ abilityPotencyBonus: 2 }),
+    }),
+  ]),
+  rook: Object.freeze([
+    Object.freeze({
+      id: 'rook-living-wall',
+      label: 'Muralla viva',
+      description: '+2 vida máxima al iniciar incursión.',
+      requiredLevel: 2,
+      cost: 1,
+      group: 'doctrine-1',
+      modifiers: Object.freeze({ bonusMaxHp: 2 }),
+    }),
+    Object.freeze({
+      id: 'rook-siege-doctrine',
+      label: 'Doctrina de asedio',
+      description: '+2 potencia para Martillo de asedio.',
+      requiredLevel: 2,
+      cost: 1,
+      group: 'doctrine-1',
+      modifiers: Object.freeze({ abilityPotencyBonus: 2 }),
+    }),
+  ]),
+  bishop: Object.freeze([
+    Object.freeze({
+      id: 'bishop-lumen-maior',
+      label: 'Lumen maior',
+      description: '+1 potencia de curación del farol.',
+      requiredLevel: 2,
+      cost: 1,
+      group: 'doctrine-1',
+      modifiers: Object.freeze({ abilityPotencyBonus: 1 }),
+    }),
+    Object.freeze({
+      id: 'bishop-sacred-geometry',
+      label: 'Geometría sagrada',
+      description: '+1 daño con el rayo diagonal.',
+      requiredLevel: 2,
+      cost: 1,
+      group: 'doctrine-1',
+      modifiers: Object.freeze({ attackDamageBonus: 1 }),
+    }),
+  ]),
+  knight: Object.freeze([
+    Object.freeze({
+      id: 'knight-heavy-bolts',
+      label: 'Virotes pesados',
+      description: '+1 daño con la ballesta básica.',
+      requiredLevel: 2,
+      cost: 1,
+      group: 'doctrine-1',
+      modifiers: Object.freeze({ attackDamageBonus: 1 }),
+    }),
+    Object.freeze({
+      id: 'knight-double-quiver',
+      label: 'Carcaj doble',
+      description: '+1 carga de Salva de virotes por incursión.',
+      requiredLevel: 2,
+      cost: 1,
+      group: 'doctrine-1',
+      modifiers: Object.freeze({ abilityCharges: 1 }),
+    }),
+  ]),
+});
+
 function nonNegativeInteger(value, fallback = 0) {
   const number = Number(value);
   if (!Number.isFinite(number)) return fallback;
@@ -167,20 +250,67 @@ export function spendChroniclesAttributePoint(progression, memberId, attributeKe
   };
 }
 
+export function chroniclesSkillsForMember(memberId) {
+  return CHRONICLES_SKILL_DEFINITIONS[memberId] || Object.freeze([]);
+}
+
+export function unlockChroniclesSkill(progression, memberId, skillId) {
+  const current = normalizeChroniclesProgression(progression);
+  if (!HERO_IDS.includes(memberId)) return { progression: current, unlocked: false, reason: 'Héroe desconocido' };
+  const skill = chroniclesSkillsForMember(memberId).find((candidate) => candidate.id === skillId);
+  if (!skill) return { progression: current, unlocked: false, reason: 'Técnica desconocida' };
+  const hero = current.heroes[memberId];
+  if (hero.skills.includes(skill.id)) return { progression: current, unlocked: false, reason: 'Técnica ya aprendida' };
+  if (hero.level < skill.requiredLevel) return { progression: current, unlocked: false, reason: `Requiere nivel ${skill.requiredLevel}` };
+  if (hero.skillPoints < skill.cost) return { progression: current, unlocked: false, reason: 'Sin puntos de skill' };
+  const competing = chroniclesSkillsForMember(memberId).find((candidate) => (
+    candidate.group === skill.group && hero.skills.includes(candidate.id)
+  ));
+  if (competing) return { progression: current, unlocked: false, reason: `Doctrina ya fijada: ${competing.label}` };
+
+  const nextHero = {
+    ...hero,
+    skillPoints: hero.skillPoints - skill.cost,
+    skills: [...hero.skills, skill.id],
+  };
+  return {
+    progression: {
+      ...current,
+      heroes: { ...current.heroes, [memberId]: nextHero },
+    },
+    unlocked: true,
+    reason: '',
+    skill,
+  };
+}
+
+function skillModifiersFor(hero, memberId) {
+  return chroniclesSkillsForMember(memberId).reduce((result, skill) => {
+    if (!hero.skills.includes(skill.id)) return result;
+    Object.entries(skill.modifiers || {}).forEach(([key, value]) => {
+      result[key] = Number(result[key] || 0) + Number(value || 0);
+    });
+    return result;
+  }, {});
+}
+
 export function chroniclesTacticsModifiers(progression, memberId) {
   const hero = chroniclesHeroProgress(progression, memberId);
   const { vigor, power, precision, will } = hero.attributes;
   const physical = memberId === 'matthias' || memberId === 'rook';
   const rangedOrMagic = memberId === 'bishop' || memberId === 'knight';
-  const attackDamageBonus = physical ? Math.floor(power / 2) : Math.floor(precision / 3);
-  const reachBonus = rangedOrMagic ? Math.floor(precision / 2) : 0;
-  const abilityPotencyBonus = (physical ? Math.floor(power / 2) : Math.floor(precision / 3)) + Math.floor(will / 2);
+  const skillModifiers = skillModifiersFor(hero, memberId);
+  const attackDamageBonus = (physical ? Math.floor(power / 2) : Math.floor(precision / 3)) + Number(skillModifiers.attackDamageBonus || 0);
+  const reachBonus = (rangedOrMagic ? Math.floor(precision / 2) : 0) + Number(skillModifiers.reachBonus || 0);
+  const abilityPotencyBonus = (physical ? Math.floor(power / 2) : Math.floor(precision / 3))
+    + Math.floor(will / 2)
+    + Number(skillModifiers.abilityPotencyBonus || 0);
   return {
-    bonusMaxHp: vigor,
+    bonusMaxHp: vigor + Number(skillModifiers.bonusMaxHp || 0),
     attackDamageBonus,
     reachBonus,
     abilityPotencyBonus,
-    abilityCharges: 1 + (will >= 3 ? 1 : 0),
+    abilityCharges: 1 + (will >= 3 ? 1 : 0) + Number(skillModifiers.abilityCharges || 0),
   };
 }
 

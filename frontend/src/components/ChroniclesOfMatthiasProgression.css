@@ -66,6 +66,63 @@
   font-size: .62rem;
 }
 
+.chronicles-tactics__skill-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.chronicles-tactics__skill-grid button {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid rgba(194, 167, 112, .2);
+  border-radius: 7px;
+  color: #d9d2c5;
+  text-align: left;
+  background: rgba(35, 29, 22, .68);
+}
+
+.chronicles-tactics__skill-grid button:hover:not(:disabled),
+.chronicles-tactics__skill-grid button:focus-visible:not(:disabled) {
+  border-color: rgba(230, 195, 125, .52);
+  background: rgba(52, 42, 29, .82);
+}
+
+.chronicles-tactics__skill-grid button.is-learned {
+  border-color: rgba(126, 207, 255, .42);
+  background: rgba(26, 53, 70, .72);
+  opacity: 1;
+}
+
+.chronicles-tactics__skill-grid button:disabled:not(.is-learned) {
+  opacity: .42;
+  cursor: default;
+}
+
+.chronicles-tactics__skill-grid button span {
+  color: #ead9b9;
+  font-family: Georgia, serif;
+  font-size: .56rem;
+  letter-spacing: 0;
+}
+
+.chronicles-tactics__skill-grid button small {
+  color: #84939c;
+  font-size: .48rem;
+  line-height: 1.22;
+}
+
+.chronicles-tactics__skill-grid button b {
+  margin: 1px 0 0;
+  color: #92b9cf;
+  font-family: inherit;
+  font-size: .46rem;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+
 .chronicles-tactics__progression > small {
   margin-top: 4px;
   color: #697982;
@@ -73,5 +130,6 @@
 }
 
 @media (max-width: 720px) {
-  .chronicles-tactics__attribute-grid { grid-template-columns: 1fr; }
+  .chronicles-tactics__attribute-grid,
+  .chronicles-tactics__skill-grid { grid-template-columns: 1fr; }
 }
