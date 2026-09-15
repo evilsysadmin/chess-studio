@@ -1,12 +1,11 @@
 import {
   CHRONICLES_DIRECTIONS,
-  CHRONICLES_ENEMIES,
   chroniclesActiveEnemies,
   chroniclesEnemyPosition,
   chroniclesTileAt,
 } from './chroniclesOfMatthias.js';
 
-export const CHRONICLES_TURN_ENGINE_VERSION = 'alternating-v1';
+export const CHRONICLES_TURN_ENGINE_VERSION = 'map-ai-v2';
 
 const KNIGHT_STEPS = Object.freeze([
   Object.freeze({ dx: -2, dy: -1 }), Object.freeze({ dx: -2, dy: 1 }),
@@ -23,8 +22,8 @@ function sameCell(a, b) {
   return a.x === b.x && a.y === b.y;
 }
 
-function walkable(position) {
-  return chroniclesTileAt(position.x, position.y) !== '#';
+function walkable(state, position) {
+  return chroniclesTileAt(position.x, position.y, state) !== '#';
 }
 
 export function chroniclesRuntimeEnemyPosition(state, enemy) {
@@ -41,19 +40,19 @@ function occupiedByEnemy(state, position, ignoredEnemyId) {
 }
 
 function canOccupy(state, enemy, position) {
-  if (!walkable(position)) return false;
+  if (!walkable(state, position)) return false;
   if (sameCell(position, state)) return false;
   return !occupiedByEnemy(state, position, enemy.id);
 }
 
-function lineIsClear(from, to) {
+function lineIsClear(state, from, to) {
   const dx = Math.sign(to.x - from.x);
   const dy = Math.sign(to.y - from.y);
   if (dx && dy) return false;
   let x = from.x + dx;
   let y = from.y + dy;
   while (x !== to.x || y !== to.y) {
-    if (chroniclesTileAt(x, y) === '#') return false;
+    if (chroniclesTileAt(x, y, state) === '#') return false;
     x += dx;
     y += dy;
   }
@@ -61,12 +60,13 @@ function lineIsClear(from, to) {
 }
 
 export function chroniclesEnemyCanAttackParty(state, enemy, position = chroniclesRuntimeEnemyPosition(state, enemy)) {
-  const reach = Math.max(1, Number(enemy.retaliationReach ?? 1));
+  const reach = Math.max(1, Number(enemy.ai?.attackReach ?? enemy.retaliationReach ?? 1));
   const partyPosition = { x: state.x, y: state.y };
   const separation = distance(position, partyPosition);
   if (separation < 1 || separation > reach) return false;
   if (reach === 1) return separation === 1;
-  return (position.x === partyPosition.x || position.y === partyPosition.y) && lineIsClear(position, partyPosition);
+  if (!(position.x === partyPosition.x || position.y === partyPosition.y)) return false;
+  return enemy.ai?.requiresLineOfSight === false ? true : lineIsClear(state, position, partyPosition);
 }
 
 function candidateScore(position, partyPosition, index) {
@@ -91,7 +91,9 @@ function chooseKnightStep(state, enemy, from) {
 
 export function chroniclesChooseEnemyStep(state, enemy) {
   const from = chroniclesRuntimeEnemyPosition(state, enemy);
-  if (enemy.id === 'scavenger-knight') return chooseKnightStep(state, enemy, from);
+  const movement = enemy.ai?.movement || 'cardinal-chase';
+  if (movement === 'hold') return null;
+  if (movement === 'knight-chase') return chooseKnightStep(state, enemy, from);
   return chooseCardinalStep(state, enemy, from);
 }
 

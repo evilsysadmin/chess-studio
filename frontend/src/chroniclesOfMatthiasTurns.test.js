@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CHRONICLES_ENEMIES, createChroniclesState } from './chroniclesOfMatthias.js';
 import {
+  chroniclesChooseEnemyStep,
   chroniclesEnemyCanAttackParty,
   chroniclesResolveEnemyTurn,
   chroniclesRuntimeEnemyPosition,
@@ -68,6 +69,25 @@ describe('Chronicles alternating creature turns', () => {
 
     expect(delta).toEqual([1, 2]);
     expect(next.enemyTurnEvents[0]).toMatchObject({ type: 'move', enemyId: 'scavenger-knight' });
+  });
+
+  it('selects movement from enemy AI data rather than hardcoded enemy ids', () => {
+    const state = createChroniclesState();
+    const basePawn = enemy('corrupted-pawn');
+
+    expect(chroniclesChooseEnemyStep(state, { ...basePawn, ai: { ...basePawn.ai, movement: 'hold' } })).toBeNull();
+
+    const knightPolicyPawn = {
+      ...basePawn,
+      id: 'map-authored-knight-policy',
+      ai: { ...basePawn.ai, movement: 'knight-chase' },
+    };
+    const step = chroniclesChooseEnemyStep(state, knightPolicyPawn);
+    expect(step).not.toBeNull();
+    expect([
+      Math.abs(step.x - basePawn.x),
+      Math.abs(step.y - basePawn.y),
+    ].sort((a, b) => a - b)).toEqual([1, 2]);
   });
 
   it('marks the expedition defeated when the final living party member falls', () => {
