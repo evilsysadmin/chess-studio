@@ -12,10 +12,10 @@ import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js'
 
 const CELL = 2.45;
 const PARTY_OFFSETS = Object.freeze({
-  rook: Object.freeze({ x: -0.56, z: 0.18, scale: 0.72 }),
-  matthias: Object.freeze({ x: -0.18, z: 0.62, scale: 0.68 }),
-  bishop: Object.freeze({ x: 0.34, z: -0.28, scale: 0.69 }),
-  knight: Object.freeze({ x: 0.58, z: 0.35, scale: 0.7 }),
+  rook: Object.freeze({ x: -0.56, z: 0.18, scale: 0.8 }),
+  matthias: Object.freeze({ x: -0.18, z: 0.62, scale: 0.76 }),
+  bishop: Object.freeze({ x: 0.34, z: -0.28, scale: 0.77 }),
+  knight: Object.freeze({ x: 0.58, z: 0.35, scale: 0.78 }),
 });
 
 const TORCH_CELLS = Object.freeze([
@@ -33,9 +33,11 @@ export function chroniclesIsoWorldForCell(x, y) {
 
 export function chroniclesIsometricCameraPose(focus = { x: 0, z: 0 }) {
   return {
-    position: new THREE.Vector3(focus.x + 8.8, 9.4, focus.z + 10.6),
-    target: new THREE.Vector3(focus.x, 0.62, focus.z),
-    fov: 38,
+    // Keep the party in the foreground and look through them into the room.
+    // This is deliberately much lower/closer than the old dollhouse camera.
+    position: new THREE.Vector3(focus.x + 5.3, 5.4, focus.z + 6.5),
+    target: new THREE.Vector3(focus.x - 1.0, 0.88, focus.z - 1.35),
+    fov: 40.5,
   };
 }
 
@@ -110,8 +112,8 @@ function buildIsoDungeon({ coarsePointer }) {
         return;
       }
       if (!wallTouchesWalkable(x, y)) return;
-      // Leave the south/east shell open so the camera reads the room like a
-      // premium dollhouse instead of staring into the back of a stone cube.
+      // Leave the south/east shell open for the close behind-party camera,
+      // otherwise the foreground wall would swallow the heroes and action.
       if (x === CHRONICLES_MAP[0].length - 1 || y === CHRONICLES_MAP.length - 1) return;
       const block = new THREE.Mesh(wallGeometry, wall);
       block.position.set(world.x, 1.23, world.z);
@@ -330,9 +332,9 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
   scene.background = new THREE.Color(0x100c09);
   scene.fog = new THREE.FogExp2(0x17120e, coarse ? 0.028 : 0.024);
 
-  const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 70);
   const initialFocus = chroniclesIsoWorldForCell(2, 5);
   const initialPose = chroniclesIsometricCameraPose({ x: initialFocus.x, z: initialFocus.z });
+  const camera = new THREE.PerspectiveCamera(initialPose.fov, 1, 0.1, 70);
   camera.position.copy(initialPose.position);
   camera.lookAt(initialPose.target);
 
