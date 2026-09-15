@@ -23,29 +23,26 @@ test('Home clean master keeps live diegetic Matthias and retired chrome out', as
 
   const matthias = home.locator('.illustrated-home__matthias');
   const portrait = matthias.locator('.illustrated-home__matthias-portrait');
-  const avatar3d = portrait.locator('[data-home-matthias-3d]');
-  const canvas = avatar3d.locator('canvas');
+  const canonicalHost = portrait.locator('[data-home-matthias-3d]');
+  const rig = canonicalHost.locator('[data-matthias-layered-art="true"]');
   const copy = matthias.locator('.illustrated-home__matthias-copy');
 
   await expect(matthias).toBeVisible();
   await expect(portrait).toBeVisible();
-  await expect(avatar3d).toHaveAttribute('data-home-matthias-3d', 'ready');
-  await expect(canvas).toBeVisible();
-  await expect(canvas).toHaveAttribute('data-motion', 'procedural-3d');
+  await expect(canonicalHost).toHaveAttribute('data-home-matthias-3d', 'ready');
+  await expect(canonicalHost).toHaveAttribute('data-matthias-identity', 'canonical-render-rig');
+  await expect(canonicalHost).toHaveAttribute('data-motion', 'layered-canonical-rig');
+  await expect(rig).toBeVisible();
+  await expect(rig.locator('[data-matthias-canonical-art="true"]')).toBeVisible();
+  await expect(rig.locator('[data-matthias-art-part]')).toHaveCount(5);
   await expect(copy).toBeVisible();
   await expect(copy.locator('strong')).toHaveText('MATTHIAS');
   await expect(copy.locator('span')).not.toHaveText('');
 
-  // Home must render the real Three.js Matthias model. The old layered bitmap
-  // rig literally shook the portrait rectangle and made him read as a sticker.
-  await expect(matthias.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
-  await expect(matthias.locator('[data-matthias-art-part]')).toHaveCount(0);
-
-  // The procedural rig keeps moving even between explicit Home routine changes.
-  // motionTick is emitted sparsely by the render loop so the test verifies that
-  // WebGL is alive without depending on fragile pixel diffs.
-  const firstTick = Number(await canvas.getAttribute('data-motion-tick'));
-  await expect.poll(async () => Number(await canvas.getAttribute('data-motion-tick')), {
+  // The approved 3D/CG render stays visually canonical while the layered rig
+  // gives the current routine a real one-shot gesture instead of redrawing him.
+  await expect(rig).toHaveAttribute('data-gesture-profile', 'expressive-v2');
+  await expect.poll(async () => Number(await rig.getAttribute('data-gesture-count')), {
     timeout: 3_000,
-  }).toBeGreaterThan(firstTick);
+  }).toBeGreaterThan(0);
 });
