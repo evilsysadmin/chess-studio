@@ -27,10 +27,8 @@ jobs:
       - name: Install Blender
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends blender
+          sudo apt-get install -y --no-install-recommends blender python3-numpy
       - name: Build canonical .blend + .glb
-        env:
-          PYTHONPATH: scripts/blender
         run: |
           blender -b --python scripts/blender/build_home_matthias.py -- \
             --blend frontend/art-source/matthias-home-canonical.blend \
