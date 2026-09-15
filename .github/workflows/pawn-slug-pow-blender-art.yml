@@ -116,3 +116,4 @@ jobs:
           path: /tmp/pawn-slug-pow-v2/
           if-no-files-found: error
           retention-days: 7
+          compression-level: 0
