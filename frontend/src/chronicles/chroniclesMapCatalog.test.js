@@ -6,6 +6,7 @@ import {
   chroniclesMapInitialEnemyState,
   chroniclesMapRenderPlan,
   chroniclesMapTileAt,
+  chroniclesValidateMapDefinition,
 } from './chroniclesMapCatalog.js';
 
 describe('Chronicles declarative map catalog', () => {
@@ -103,5 +104,101 @@ describe('Chronicles declarative map catalog', () => {
     expect(chroniclesMapRenderPlan(synthetic).enemies).toEqual([
       { id: 'fork-warden', visualType: 'gate-jailer' },
     ]);
+  });
+
+  it('rejects broken authoring data before a room reaches gameplay', () => {
+    const base = {
+      id: 'contract-room',
+      title: 'Contract room',
+      grid: ['#####', '#...#', '#.X.#', '#####'],
+      partyStart: { x: 1, y: 1, direction: 1 },
+      initialFlags: {},
+      enemies: [
+        {
+          id: 'warden',
+          name: 'warden',
+          x: 2,
+          y: 1,
+          hpKey: 'wardenHp',
+          maxHp: 3,
+          retaliation: 1,
+          activation: 'always',
+          ai: { movement: 'hold', attackReach: 1 },
+        },
+      ],
+      triggers: [],
+      interactables: [],
+      treasures: [],
+      traps: [],
+      exits: [
+        {
+          id: 'exit',
+          kind: 'exit',
+          tile: 'X',
+          openLabel: 'Salir',
+          lockedLabel: 'Mirar',
+          action: { effects: [{ type: 'set', key: 'phase', value: 'escaped' }] },
+        },
+      ],
+      initialJournal: { id: 'entry', title: 'Entry', body: 'Entry', sigil: 'I' },
+      introMessage: 'Entry',
+    };
+
+    expect(() => chroniclesValidateMapDefinition({
+      ...base,
+      partyStart: { x: 0, y: 0, direction: 1 },
+    })).toThrow(/partyStart cannot occupy a wall/i);
+
+    expect(() => chroniclesValidateMapDefinition({
+      ...base,
+      enemies: [
+        ...base.enemies,
+        { ...base.enemies[0], id: 'second-warden' },
+      ],
+    })).toThrow(/duplicate enemy hpKey/i);
+
+    expect(() => chroniclesValidateMapDefinition({
+      ...base,
+      enemies: [{ ...base.enemies[0], ai: { movement: 'teleport-chaos', attackReach: 1 } }],
+    })).toThrow(/unsupported movement/i);
+
+    expect(() => chroniclesValidateMapDefinition({
+      ...base,
+      interactables: [{
+        id: 'exit',
+        kind: 'lever',
+        x: 3,
+        y: 1,
+        label: 'Palanca',
+        action: { effects: [] },
+      }],
+    })).toThrow(/duplicate content id/i);
+  });
+
+  it('rejects transitions to maps that are not part of the catalog contract', () => {
+    const source = {
+      id: 'transition-room',
+      title: 'Transition room',
+      grid: ['#####', '#.X.#', '#####'],
+      partyStart: { x: 1, y: 1, direction: 1 },
+      initialFlags: {},
+      enemies: [],
+      triggers: [],
+      interactables: [],
+      treasures: [],
+      traps: [],
+      exits: [{
+        id: 'exit',
+        kind: 'exit',
+        tile: 'X',
+        openLabel: 'Salir',
+        lockedLabel: 'Mirar',
+        action: { effects: [{ type: 'transition-map', mapId: 'missing-room' }] },
+      }],
+      initialJournal: { id: 'entry', title: 'Entry', body: 'Entry', sigil: 'I' },
+      introMessage: 'Entry',
+    };
+
+    expect(() => chroniclesValidateMapDefinition(source, ['transition-room'])).toThrow(/unknown map missing-room/i);
   });
 });

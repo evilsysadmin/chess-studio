@@ -3,6 +3,10 @@ import galleryOfForks from './maps/gallery-of-forks.json';
 
 export const DEFAULT_CHRONICLES_MAP_ID = 'crypt-eight-squares';
 
+const CONTENT_GROUPS = Object.freeze(['triggers', 'interactables', 'treasures', 'traps', 'exits']);
+const SUPPORTED_ACTIVATIONS = new Set(['always', 'sigil', 'jailer-down']);
+const SUPPORTED_MOVEMENTS = new Set(['cardinal-chase', 'knight-chase', 'hold']);
+
 function clonePoint(point) {
   return { x: Number(point?.x || 0), y: Number(point?.y || 0) };
 }
@@ -55,6 +59,111 @@ function normalizeEnemy(enemy) {
   });
 }
 
+function assertUnique(mapId, label, values) {
+  const seen = new Set();
+  values.forEach((value) => {
+    if (!value) throw new Error(`Chronicles map ${mapId} requires ${label}`);
+    if (seen.has(value)) throw new Error(`Chronicles map ${mapId} has duplicate ${label}: ${value}`);
+    seen.add(value);
+  });
+}
+
+function assertWalkablePoint(map, point, label) {
+  if (!Number.isInteger(point?.x) || !Number.isInteger(point?.y)) {
+    throw new Error(`Chronicles map ${map.id} ${label} requires integer coordinates`);
+  }
+  const row = map.grid[point.y];
+  if (!row || point.x < 0 || point.x >= row.length) {
+    throw new Error(`Chronicles map ${map.id} ${label} is outside the grid`);
+  }
+  if (row[point.x] === '#') {
+    throw new Error(`Chronicles map ${map.id} ${label} cannot occupy a wall`);
+  }
+}
+
+function mapContentEntries(map) {
+  return CONTENT_GROUPS.flatMap((group) => (map[group] || []).map((entry) => ({ group, entry })));
+}
+
+function assertContentLocation(map, group, entry) {
+  const hasX = Number.isFinite(entry.x);
+  const hasY = Number.isFinite(entry.y);
+  if (hasX !== hasY) {
+    throw new Error(`Chronicles map ${map.id} ${group} ${entry.id} requires both x and y`);
+  }
+  if (hasX && hasY) {
+    assertWalkablePoint(map, entry, `${group} ${entry.id}`);
+    return;
+  }
+  if (typeof entry.tile !== 'string' || entry.tile.length !== 1) {
+    throw new Error(`Chronicles map ${map.id} ${group} ${entry.id} requires coordinates or a single tile marker`);
+  }
+  if (!map.grid.some((row) => row.includes(entry.tile))) {
+    throw new Error(`Chronicles map ${map.id} ${group} ${entry.id} references missing tile ${entry.tile}`);
+  }
+}
+
+function assertEnemyContract(map, enemy) {
+  assertWalkablePoint(map, enemy, `enemy ${enemy.id}`);
+  if (!enemy.hpKey || typeof enemy.hpKey !== 'string') {
+    throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} requires hpKey`);
+  }
+  if (!SUPPORTED_ACTIVATIONS.has(enemy.activation || 'always')) {
+    throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} uses unsupported activation ${enemy.activation}`);
+  }
+  if (!SUPPORTED_MOVEMENTS.has(enemy.ai?.movement || 'cardinal-chase')) {
+    throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} uses unsupported movement ${enemy.ai?.movement}`);
+  }
+
+  if (enemy.positionKey) {
+    const positionEntries = Object.entries(enemy.positions || {});
+    if (!positionEntries.length) {
+      throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} positionKey requires positions`);
+    }
+    if (!enemy.initialPosition || !enemy.positions?.[enemy.initialPosition]) {
+      throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} requires a valid initialPosition`);
+    }
+    positionEntries.forEach(([key, point]) => assertWalkablePoint(map, point, `enemy ${enemy.id} position ${key}`));
+  } else if (enemy.positions || enemy.initialPosition) {
+    throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} positions require positionKey`);
+  }
+}
+
+function assertMapContract(map) {
+  assertWalkablePoint(map, map.partyStart, 'partyStart');
+  if (!Number.isInteger(map.partyStart.direction) || map.partyStart.direction < 0 || map.partyStart.direction > 3) {
+    throw new Error(`Chronicles map ${map.id} partyStart direction must be 0..3`);
+  }
+
+  assertUnique(map.id, 'enemy id', map.enemies.map((enemy) => enemy.id));
+  assertUnique(map.id, 'enemy hpKey', map.enemies.map((enemy) => enemy.hpKey));
+  map.enemies.forEach((enemy) => assertEnemyContract(map, enemy));
+
+  const content = mapContentEntries(map);
+  assertUnique(map.id, 'content id', content.map(({ entry }) => entry.id));
+  content.forEach(({ group, entry }) => {
+    assertContentLocation(map, group, entry);
+    if (!entry.action || typeof entry.action !== 'object') {
+      throw new Error(`Chronicles map ${map.id} ${group} ${entry.id} requires an action`);
+    }
+  });
+}
+
+function transitionEffects(map) {
+  return [
+    ...mapContentEntries(map).flatMap(({ entry }) => entry.action?.effects || []),
+    ...map.enemies.flatMap((enemy) => enemy.onDefeat?.effects || []),
+  ].filter((effect) => effect?.type === 'transition-map');
+}
+
+function assertKnownTransitions(map, knownMapIds) {
+  transitionEffects(map).forEach((effect) => {
+    if (!effect.mapId || !knownMapIds.has(effect.mapId)) {
+      throw new Error(`Chronicles map ${map.id} transitions to unknown map ${effect.mapId || '<missing>'}`);
+    }
+  });
+}
+
 function normalizeMap(source) {
   if (!source?.id || !Array.isArray(source.grid) || source.grid.length === 0) {
     throw new Error('Chronicles map requires id and grid');
@@ -64,7 +173,7 @@ function normalizeMap(source) {
     throw new Error(`Chronicles map ${source.id} must use a rectangular string grid`);
   }
 
-  return Object.freeze({
+  const map = {
     ...source,
     grid: Object.freeze([...source.grid]),
     partyStart: Object.freeze({
@@ -80,13 +189,24 @@ function normalizeMap(source) {
     traps: Object.freeze((source.traps || []).map(normalizeContentEntry)),
     exits: Object.freeze((source.exits || []).map(normalizeContentEntry)),
     initialJournal: Object.freeze({ ...(source.initialJournal || {}) }),
-  });
+  };
+  assertMapContract(map);
+  return Object.freeze(map);
+}
+
+export function chroniclesValidateMapDefinition(source, knownMapIds = null) {
+  const map = normalizeMap(source);
+  if (knownMapIds) assertKnownTransitions(map, new Set(knownMapIds));
+  return map;
 }
 
 const MAPS = Object.freeze({
   [DEFAULT_CHRONICLES_MAP_ID]: normalizeMap(cryptEightSquares),
   [galleryOfForks.id]: normalizeMap(galleryOfForks),
 });
+
+const MAP_IDS = new Set(Object.keys(MAPS));
+Object.values(MAPS).forEach((map) => assertKnownTransitions(map, MAP_IDS));
 
 export function chroniclesMapById(mapId = DEFAULT_CHRONICLES_MAP_ID) {
   return MAPS[mapId] || MAPS[DEFAULT_CHRONICLES_MAP_ID];
