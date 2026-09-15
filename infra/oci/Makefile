@@ -9,7 +9,7 @@ export TF_VAR_tenancy_ocid := $(OCI_TENANCY_OCID)
 export TF_VAR_region := $(if $(OCI_REGION),$(OCI_REGION),eu-frankfurt-1)
 export TF_VAR_state_bucket_name := $(if $(OCI_TFSTATE_BUCKET),$(OCI_TFSTATE_BUCKET),chess-studio-tfstate)
 
-.PHONY: help auth probe bootstrap plan apply verify destroy fmt fmt-check validate static secret-guard floci test
+.PHONY: help auth probe bootstrap plan apply destroy fmt fmt-check validate static secret-guard floci test
 
 help:
 	@printf '%s\n' \
@@ -18,7 +18,6 @@ help:
 		'  make bootstrap   create/recover persistent foundation + remote state' \
 		'  make plan        plan replaceable OCI staging' \
 		'  make apply       apply replaceable OCI staging' \
-		'  make verify      verify staging boot through OCI serial-console history' \
 		'  make destroy     destroy staging only (OCI_CONFIRM_DESTROY=true required)' \
 		'  make test        static Terraform contracts + secret guard + Floci' \
 		'  make fmt-check   check Terraform formatting' \
@@ -29,9 +28,6 @@ auth:
 
 probe bootstrap plan apply: auth
 	@cd "$(ROOT)" && bash scripts/oci_staging_lifecycle.sh "$@"
-
-verify: auth
-	@cd "$(ROOT)" && bash scripts/oci_staging_verify.sh
 
 destroy: auth
 	@test "$(OCI_CONFIRM_DESTROY)" = "true" || { echo 'ERROR: destroy requires OCI_CONFIRM_DESTROY=true'; exit 2; }
@@ -44,7 +40,7 @@ fmt-check:
 	@cd "$(ROOT)" && $(TERRAFORM) fmt -check -diff -recursive infra/oci
 
 validate:
-	@for stack in bootstrap probe staging verify; do \
+	@for stack in bootstrap probe staging; do \
 		$(TERRAFORM) -chdir="$(CURDIR)/$$stack" init -backend=false -no-color >/dev/null; \
 		$(TERRAFORM) -chdir="$(CURDIR)/$$stack" validate -no-color; \
 	done

@@ -8,13 +8,12 @@ python3 -S "$root/scripts/oci_auth_contract.py" --self-test
 python3 -S "$root/scripts/oci_bootstrap_state.py" --self-test
 python3 -S "$root/scripts/oci_bootstrap_recover.py" --self-test
 bash "$root/scripts/oci_staging_lifecycle.sh" --self-test
-bash "$root/scripts/oci_staging_verify.sh" --self-test
 
-for stack in bootstrap probe staging verify; do
+for stack in bootstrap probe staging; do
   dir="$root/infra/oci/$stack"
   terraform -chdir="$dir" init -backend=false
   terraform -chdir="$dir" validate -no-color
   terraform -chdir="$dir" test -no-color
 done
 
-echo "OCI Terraform bootstrap + probe + staging + verify static contracts passed"
+echo "OCI Terraform bootstrap + probe + staging static contracts passed"
