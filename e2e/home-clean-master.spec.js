@@ -39,6 +39,10 @@ test('Home clean master keeps live diegetic Matthias and retired chrome out', as
   await expect(copy.locator('strong')).toHaveText('MATTHIAS');
   await expect(copy.locator('span')).not.toHaveText('');
 
+  const activity = await matthias.getAttribute('data-home-matthias-activity');
+  expect(activity).toBeTruthy();
+  await expect(rig).toHaveAttribute('data-rig-activity', activity);
+
   // The approved 3D/CG render stays visually canonical while the layered rig
   // gives the current routine a real one-shot gesture instead of redrawing him.
   await expect(rig).toHaveAttribute('data-gesture-profile', 'expressive-v2');
