@@ -22,6 +22,10 @@ export const AMBIENT_GENRE_HOOKS = Object.freeze({
   aleppoAfterRain: hook('counter', [0,2], 64, 3.8, 0.17, { 4:71, 20:74, 36:69, 52:73 }),
   ammanVelvetRoom: hook('counter', [1,3], 64, 4.4, 0.18, { 6:76, 18:73, 38:79, 54:75 }),
   medinaBlueSmoke: hook('lead', [0,3], 72, 4.2, 0.18, { 9:64, 27:69, 45:67, 63:71 }),
+  // Red Table used to inherit the legacy muted-horn sting every 24 steps.
+  // That bright, repetitive attack was the audible “chiu-chiu”. Keep the table
+  // dry and let the oud answer only every other cycle with a low, spacious cell.
+  tangierRedTable: hook('lead', [0,2], 64, 5.0, 0.14, { 6:64, 22:67, 40:62, 56:69 }),
   beirutNightTaxi: hook('lead', [1,3], 72, 3.2, 0.20, { 5:62, 19:69, 41:66, 59:71 }),
   andalusianCoast: hook('lead', [0,2], 64, 3.8, 0.18, { 7:67, 23:73, 39:70, 55:75 }),
   cadizLanterns: hook('counter', [1,3], 72, 4.0, 0.18, { 8:69, 26:66, 44:73, 62:67 }),
