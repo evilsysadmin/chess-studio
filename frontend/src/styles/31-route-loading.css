@@ -1,0 +1,85 @@
+/* Premium route transition.
+   The text remains real DOM/status copy for accessibility; the surrounding
+   treatment turns the lazy-route gap into a deliberate Chess Studio transition. */
+.route-loading:not(.active-session-recovery) {
+  position: relative;
+  min-height: min(760px, calc(100dvh - 4.25rem));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 5.4rem 1rem 1rem;
+  color: color-mix(in srgb, var(--parchment, #e7dbc1) 86%, var(--brass, #c9a227));
+  background:
+    radial-gradient(circle at 50% 43%, rgba(205, 157, 69, .10), transparent 16rem),
+    radial-gradient(circle at 50% 43%, rgba(255, 255, 255, .025), transparent 28rem),
+    linear-gradient(180deg, rgba(29, 29, 27, .34), rgba(9, 12, 17, .72));
+  font: 700 .72rem/1 var(--font-mono, ui-monospace, monospace);
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  text-shadow: 0 0 22px rgba(205, 157, 69, .16);
+}
+
+.route-loading:not(.active-session-recovery)::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58px;
+  height: 58px;
+  margin: -58px 0 0 -29px;
+  box-sizing: border-box;
+  border: 1px solid rgba(219, 183, 108, .18);
+  border-top-color: rgba(225, 188, 83, .88);
+  border-right-color: rgba(225, 188, 83, .44);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 7px rgba(225, 188, 83, .025),
+    0 0 30px rgba(195, 139, 48, .14),
+    inset 0 0 18px rgba(195, 139, 48, .05);
+  animation: chess-studio-route-spin 1.15s cubic-bezier(.55, .1, .45, .9) infinite;
+}
+
+.route-loading:not(.active-session-recovery)::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 132px;
+  height: 1px;
+  transform: translate(-50%, 3.35rem);
+  background: linear-gradient(90deg, transparent, rgba(225, 188, 83, .58), transparent);
+  box-shadow: 0 0 15px rgba(225, 188, 83, .16);
+  animation: chess-studio-route-breathe 1.7s ease-in-out infinite;
+}
+
+@keyframes chess-studio-route-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes chess-studio-route-breathe {
+  0%, 100% { opacity: .34; transform: translate(-50%, 3.35rem) scaleX(.72); }
+  50% { opacity: .9; transform: translate(-50%, 3.35rem) scaleX(1); }
+}
+
+@media (max-width: 700px) {
+  .route-loading:not(.active-session-recovery) {
+    min-height: min(680px, calc(100dvh - 3.5rem));
+    padding-top: 4.8rem;
+    font-size: .66rem;
+    letter-spacing: .18em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-loading:not(.active-session-recovery)::before,
+  .route-loading:not(.active-session-recovery)::after {
+    animation: none;
+  }
+}
+
+html[data-reduced-motion='true'] .route-loading:not(.active-session-recovery)::before,
+html[data-reduced-motion='true'] .route-loading:not(.active-session-recovery)::after {
+  animation: none;
+}
