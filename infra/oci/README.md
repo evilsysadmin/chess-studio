@@ -1,13 +1,41 @@
 # OCI staging/lab
 
-**Producción sigue en Render. OCI es staging/laboratorio experimental.**
+**Producción sigue en Render. OCI es staging/laboratorio experimental hasta superar los drills de shadow.**
 
-La infraestructura OCI se divide en dos estados deliberadamente pequeños:
+La infraestructura OCI se divide deliberadamente por responsabilidad:
 
-- `bootstrap/`: seed Terraform que crea los compartments de infraestructura/staging y el bucket Object Storage versionado para tfstate.
+- `probe/`: sólo data sources; valida credenciales, región, Object Storage, ADs e imagen A1/Ubuntu sin crear recursos.
+- `bootstrap/`: foundation persistente; crea compartments de infraestructura/staging y el bucket Object Storage privado/versionado para tfstate.
 - `staging/`: VCN + subnet + Ampere A1 ARM64 + cloud-init. Usa el backend `oci` remoto y locking nativo de Object Storage.
 - `tests/` viven junto al stack que protegen.
 - Floci ejecuta el `bootstrap/` real contra IAM + Object Storage en CI; Compute/VCN se cubren con `terraform test` hasta llegar a OCI real.
+
+## Primer encendido desde GitHub Actions
+
+La consola OCI se usa una vez para crear la API signing key. Después, la ruta normal es `.github/workflows/oci-staging-lab.yml`.
+
+Secrets de repositorio obligatorios:
+
+- `OCI_TENANCY_OCID`
+- `OCI_USER_OCID`
+- `OCI_FINGERPRINT`
+- `OCI_PRIVATE_KEY`
+
+El workflow valida los cuatro juntos antes de instalar Terraform y nunca imprime sus valores. `OCI_REGION` y `OCI_TFSTATE_BUCKET` son variables opcionales; por defecto usa `eu-frankfurt-1` y `chess-studio-tfstate`.
+
+`OCI_AVAILABILITY_DOMAIN` y `OCI_IMAGE_OCID` son **overrides opcionales**. Sin ellos Terraform descubre el primer AD visible y la imagen Canonical Ubuntu 24.04 más reciente compatible con `VM.Standard.A1.Flex`. El override de AD sirve especialmente para repetir un apply en otro AD si Oracle devuelve `out of host capacity`.
+
+Secuencia de adopción:
+
+1. `probe`: operación por defecto y read-only. Comprueba firma/API, Frankfurt, namespace Object Storage, ADs e imagen A1 sin state remoto ni mutaciones.
+2. `bootstrap`: crea una sola vez la foundation y migra el seed state local al backend OCI nativo.
+3. `plan`: conecta bootstrap/state y calcula staging sin mutar.
+4. `apply`: crea el staging shadow desde el SHA inmutable seleccionado, sólo si ese SHA sigue siendo el `main` actual.
+5. Validar arranque, servicio, persistencia separada de producción y observabilidad del shadow.
+6. `destroy` + `apply` dos veces, demostrando recuperación sin abrir la consola.
+7. Sólo después de esos drills se puede plantear retirar Render staging. **Render producción no entra en esta decisión.**
+
+No hay auto-apply por push a `main`. GitHub Actions orquesta; Terraform provisiona.
 
 ## Bootstrap real y migración del state
 
@@ -35,53 +63,49 @@ python3 scripts/oci_bootstrap_state.py init
 terraform -chdir=infra/oci/bootstrap plan
 ```
 
-Los cuatro valores del backend no son secretos. Las credenciales OCI siguen entrando sólo por variables de entorno/configuración OCI. El key del bootstrap es `chess-studio/bootstrap/terraform.tfstate` salvo override explícito con `OCI_BOOTSTRAP_STATE_KEY`.
+El key del bootstrap es `chess-studio/bootstrap/terraform.tfstate` salvo override explícito con `OCI_BOOTSTRAP_STATE_KEY`.
 
-Con `state_bucket`, `object_storage_namespace` y `staging_compartment_ocid` ya disponibles, `staging/` usa el mismo bucket pero otro key:
-
-```bash
-cd infra/oci/staging
-cp backend.hcl.example backend.hcl
-cp terraform.tfvars.example terraform.tfvars
-# completar backend.hcl + terraform.tfvars
-terraform init -backend-config=backend.hcl
-terraform plan
-```
-
-CI prueba el parser/verificador de migración sin credenciales y Floci prueba el lifecycle real de IAM + Object Storage. La migración del backend OCI nativo se ejecuta sólo contra OCI real porque Floci no documenta un endpoint custom para ese backend incorporado de Terraform.
+La foundation tiene `prevent_destroy` en ambos compartments y en el bucket de tfstate. Un `terraform destroy` accidental de `bootstrap/` debe fallar durante el plan; CI lo comprueba contra Floci. Para retirar deliberadamente la foundation hay que eliminar primero esos guards en código. El state separado de `staging/` sigue siendo destruible/recreable.
 
 ## Lifecycle desde GitHub Actions
 
 `.github/workflows/oci-staging-lab.yml` es manual (`workflow_dispatch`) y nunca toca Render. Serializa todas las operaciones del laboratorio y usa siempre el SHA seleccionado como `repo_ref`; `bootstrap`, `apply` y `destroy` vuelven a comprobar inmediatamente antes de mutar que ese SHA sigue siendo el `main` actual.
 
-Secrets de repositorio requeridos:
-
-- `OCI_TENANCY_OCID`
-- `OCI_USER_OCID`
-- `OCI_FINGERPRINT`
-- `OCI_PRIVATE_KEY`
-
-Variables de repositorio: `OCI_REGION` y `OCI_TFSTATE_BUCKET` tienen defaults (`eu-frankfurt-1` y `chess-studio-tfstate`). Para `plan/apply/destroy` hacen falta `OCI_AVAILABILITY_DOMAIN` y `OCI_IMAGE_OCID`, que también pueden pasarse como overrides al lanzar el workflow. SSH permanece completamente cerrado y no requiere clave salvo que se configure explícitamente en Terraform.
-
 Operaciones:
 
-- `bootstrap`: crea una vez compartments + bucket, migra el seed state al backend OCI y exige zero drift después.
+- `probe`: data-only; no state remoto y cero mutaciones.
+- `bootstrap`: crea compartments + bucket, migra el seed state al backend OCI y exige zero drift después.
 - `plan`: conecta el state remoto y sólo calcula el plan.
 - `apply`: calcula un plan y lo aplica únicamente si `main` no ha avanzado.
 - `destroy`: destruye **sólo** `staging/`, exige `confirm_destroy=true` y conserva bootstrap/state.
 
-El workflow obtiene el Object Storage namespace mediante el provider Terraform y lee el compartment de staging desde el state remoto de bootstrap. No usa OCI CLI para provisionar ni necesita copiar esos OCID a GitHub. Los planes no se publican como artifacts.
+El workflow obtiene el Object Storage namespace mediante el provider Terraform y lee el compartment de staging desde el state remoto de bootstrap. No usa OCI CLI para provisionar ni obliga a copiar AD/image OCIDs a GitHub. Los planes no se publican como artifacts.
 
 ## Contratos
 
 - Frankfurt (`eu-frankfurt-1`) por defecto, configurable.
 - `VM.Standard.A1.Flex` únicamente; límites conservadores Always Free.
+- AD e imagen ARM64 se descubren por provider con overrides explícitos disponibles.
 - cero ingress por defecto; `0.0.0.0/0` para SSH está rechazado.
+- SSH no requiere ni inyecta public key mientras el ingress siga cerrado.
 - `repo_ref` debe ser SHA Git completo de 40 caracteres.
 - FastAPI liga a `127.0.0.1:4000`; la VM es reemplazable y Mongo sigue fuera.
 - ningún secreto de aplicación ni private key entra en Terraform state/backend config.
-- bucket de tfstate privado y con versionado habilitado.
+- bucket de tfstate privado, versionado y protegido de destroy accidental.
 - backend OCI usa locking nativo; no se desactiva con `-lock=false`.
 - el state bootstrap conserva lineage y conjunto de recursos al migrarse.
+- cambios IaC puros ejecutan OCI readiness pero no despiertan Trivy/Docker/Compose.
 
-La API signing key inicial se crea en consola una vez. Después, la meta es operar Terraform/CI sin volver a depender de la consola OCI.
+## Gate para sustituir Render staging
+
+OCI permanece en **shadow** hasta demostrar, con la cuenta real:
+
+- `probe` verde con la identidad configurada en GitHub;
+- bootstrap remoto zero-drift;
+- `plan` y `apply` verdes;
+- backend de staging usable con datos/secrets separados de producción;
+- observabilidad y recovery suficientes para diagnosticar una A1 reclamada;
+- dos ciclos consecutivos `destroy → apply` verdes sin abrir la consola;
+- reconstrucción satisfactoria tras simular o sufrir pérdida de VM.
+
+Hasta cumplir ese gate, Render staging sigue siendo la referencia operativa. Producción permanece en Render en cualquier caso.
