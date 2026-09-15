@@ -946,7 +946,35 @@ function midiToFreq(note) {
   return midiToChessStudioFrequency(note);
 }
 
-const STRUCTURED_GUITAR_KINDS = new Set(['guitar2', 'nylonGuitar', 'jazzGuitar', 'overdriveGuitar', 'tremoloGuitar']);
+const STRUCTURED_GUITAR_KINDS = new Set(['guitar2', 'nylonGuitar', 'jazzGuitar', 'overdriveGuitar', 'powerGuitar', 'tremoloGuitar']);
+
+export function synthMetalPowerChordVoicing(midiNote) {
+  const writtenRoot = Number(midiNote);
+  if (!Number.isFinite(writtenRoot)) return [];
+  const guitarRoot = writtenRoot - 12;
+  return [guitarRoot, guitarRoot + 7, guitarRoot + 12];
+}
+
+function playSynthMetalPowerChord(midiNote, volumeScale = 1, durationOverride = null, tone = null) {
+  const [root, fifth, octave] = synthMetalPowerChordVoicing(midiNote);
+  if (root == null) return;
+  const duration = durationOverride || .38;
+  const voices = [
+    { note:root, gain:.92, pan:-.34, delay:0 },
+    { note:fifth, gain:.68, pan:.28, delay:8 },
+    { note:octave, gain:.44, pan:-.12, delay:14 },
+    // A second root, picked a little late on the opposite side, is the audible
+    // double-track. It gives the riff width without chorus-smearing its attack.
+    { note:root, gain:.70, pan:.36, delay:19 },
+  ];
+  voices.forEach((voice) => playStructuredGuitar(
+    'powerGuitar',
+    voice.note,
+    volumeScale * voice.gain,
+    duration,
+    { ...(tone || {}), pan:voice.pan, startDelayMs:(Number(tone?.startDelayMs) || 0) + voice.delay },
+  ));
+}
 
 function playStructuredGuitar(kind, midiNote, volumeScale = 1, durationOverride = null, tone = null) {
   if (isMusicMuted() || midiNote == null) return;
@@ -957,17 +985,17 @@ function playStructuredGuitar(kind, midiNote, volumeScale = 1, durationOverride 
   const freq = midiToFreq(midiNote);
   const startDelay = Math.max(0, Number(tone?.startDelayMs) || 0) / 1000;
   const start = ctx.currentTime + startDelay;
-  const duration = Math.max(.28, durationOverride || (kind === 'nylonGuitar' ? 1.28 : kind === 'jazzGuitar' ? 1.45 : kind === 'tremoloGuitar' ? 1.72 : .9));
+  const duration = Math.max(.24, durationOverride || (kind === 'nylonGuitar' ? 1.28 : kind === 'jazzGuitar' ? 1.45 : kind === 'tremoloGuitar' ? 1.72 : kind === 'powerGuitar' ? .38 : .9));
   const output = getAmbientStructuredMusicOutput(ctx);
   const body = ctx.createGain();
   const bodyFilter = ctx.createBiquadFilter();
 
-  const brightness = kind === 'nylonGuitar' ? 3000 : kind === 'jazzGuitar' ? 2200 : kind === 'overdriveGuitar' ? 2800 : kind === 'tremoloGuitar' ? 3350 : 3800;
-  const peak = (kind === 'overdriveGuitar' ? .015 : kind === 'nylonGuitar' ? .020 : kind === 'tremoloGuitar' ? .017 : .019) * Math.max(.2, volumeScale);
+  const brightness = kind === 'nylonGuitar' ? 3000 : kind === 'jazzGuitar' ? 2200 : kind === 'powerGuitar' ? 5200 : kind === 'overdriveGuitar' ? 2800 : kind === 'tremoloGuitar' ? 3350 : 3800;
+  const peak = (kind === 'powerGuitar' ? .029 : kind === 'overdriveGuitar' ? .015 : kind === 'nylonGuitar' ? .020 : kind === 'tremoloGuitar' ? .017 : .019) * Math.max(.2, volumeScale);
   bodyFilter.type = 'lowpass';
   const finishBrightness = Math.max(.68, Math.min(1.18, Number(tone?.finish?.brightness) || 1));
   bodyFilter.frequency.value = brightness * Math.max(.74, Math.min(1.18, Number(tone?.warmth) || 1)) * finishBrightness;
-  bodyFilter.Q.value = kind === 'jazzGuitar' ? .38 : .52;
+  bodyFilter.Q.value = kind === 'jazzGuitar' ? .38 : kind === 'powerGuitar' ? .86 : .52;
 
   body.gain.setValueAtTime(.0001, start);
   body.gain.linearRampToValueAtTime(peak, start + .005);
@@ -984,8 +1012,8 @@ function playStructuredGuitar(kind, midiNote, volumeScale = 1, durationOverride 
   const period = Math.max(2, Math.round(sampleRate / Math.max(45, freq)));
   const stringBuffer = ctx.createBuffer(1, sampleCount, sampleRate);
   const data = stringBuffer.getChannelData(0);
-  const pickSoftness = kind === 'nylonGuitar' ? .72 : kind === 'jazzGuitar' ? .66 : kind === 'tremoloGuitar' ? .63 : .58;
-  const decay = kind === 'nylonGuitar' ? .9970 : kind === 'jazzGuitar' ? .9974 : kind === 'tremoloGuitar' ? .9977 : .9962;
+  const pickSoftness = kind === 'nylonGuitar' ? .72 : kind === 'jazzGuitar' ? .66 : kind === 'tremoloGuitar' ? .63 : kind === 'powerGuitar' ? .39 : .58;
+  const decay = kind === 'nylonGuitar' ? .9970 : kind === 'jazzGuitar' ? .9974 : kind === 'tremoloGuitar' ? .9977 : kind === 'powerGuitar' ? .9948 : .9962;
   let previousExcitation = 0;
   for (let i = 0; i < Math.min(period, sampleCount); i += 1) {
     const edge = Math.sin(Math.PI * Math.min(1, i / Math.max(1, period - 1)));
@@ -1007,22 +1035,28 @@ function playStructuredGuitar(kind, midiNote, volumeScale = 1, durationOverride 
   source.connect(bodyFilter);
   bodyFilter.connect(body);
 
-  if (kind === 'overdriveGuitar' && typeof ctx.createWaveShaper === 'function') {
+  if ((kind === 'overdriveGuitar' || kind === 'powerGuitar') && typeof ctx.createWaveShaper === 'function') {
     const drive = ctx.createWaveShaper();
     const curve = new Float32Array(257);
     for (let i = 0; i < curve.length; i += 1) {
       const x = (i * 2) / (curve.length - 1) - 1;
-      curve[i] = Math.tanh(x * 2.35);
+      curve[i] = Math.tanh(x * (kind === 'powerGuitar' ? 5.8 : 2.35));
     }
     drive.curve = curve;
     drive.oversample = '2x';
+    const ampMid = ctx.createBiquadFilter();
+    ampMid.type = 'peaking';
+    ampMid.frequency.value = 1450;
+    ampMid.Q.value = .82;
+    ampMid.gain.value = kind === 'powerGuitar' ? 5.5 : 2.0;
     const cabinet = ctx.createBiquadFilter();
     cabinet.type = 'lowpass';
-    cabinet.frequency.value = 3600;
+    cabinet.frequency.value = kind === 'powerGuitar' ? 5100 : 3600;
     cabinet.Q.value = .72;
-    body.connect(drive);
+    body.connect(ampMid);
+    ampMid.connect(drive);
     drive.connect(cabinet);
-    connectFinishedAmbientVoice(ctx, cabinet, output, tone, { start, duration, wetLimit: 0.10 });
+    connectFinishedAmbientVoice(ctx, cabinet, output, tone, { start, duration, wetLimit: kind === 'powerGuitar' ? 0.045 : 0.10 });
   } else if (kind === 'tremoloGuitar' && typeof ctx.createOscillator === 'function') {
     const tremolo = ctx.createGain();
     const lfo = ctx.createOscillator();
@@ -1107,6 +1141,10 @@ function voicePreset(kind) {
 }
 
 function playStructuredVoice(kind, midiNote, volumeScale = 1, durationOverride = null, tone = null) {
+  if (kind === 'powerGuitar') {
+    playSynthMetalPowerChord(midiNote, volumeScale, durationOverride, tone);
+    return;
+  }
   if (STRUCTURED_GUITAR_KINDS.has(kind)) {
     playStructuredGuitar(kind, midiNote, volumeScale, durationOverride, tone);
     return;
@@ -1883,7 +1921,7 @@ function structuredArrangement(theme, cycleIndex) {
     leadVolume: (texture === 1 ? 0.72 : texture === 6 ? 0.86 : 1) * (feel?.mix?.lead || 1) * masterTrim,
     bassVolume: (texture === 4 ? 0.68 : 0.9) * (feel?.mix?.bass || 1) * masterTrim,
     chordVolume: (texture === 5 ? 0.72 : 1) * (feel?.mix?.chord || 1) * masterTrim,
-    counterVolume: (texture === 3 ? 0.34 : texture === 7 ? 0.46 : 0.4) * (feel?.mix?.counter || 1) * masterTrim,
+    counterVolume: (texture === 3 ? 0.34 : texture === 7 ? 0.46 : (feel?.counterGainScale || 0.4)) * (feel?.mix?.counter || 1) * masterTrim,
     counterOctave: texture === 6 ? -12 : 0,
     // Unas vueltas dejan respirar la melodía o la batería. La forma base
     // sigue reconocible, pero no tenemos la misma pared de sonido cada 4 s.

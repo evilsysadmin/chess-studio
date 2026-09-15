@@ -6,9 +6,9 @@ function line(events) {
   return Object.freeze({ ...events });
 }
 
-function section(lead, counter, chords, bass) {
+function section(lead, counter, chords, bass, players = {}) {
   return Object.freeze({
-    lead:line(lead), counter:line(counter), chords:line(chords), bass:line(bass),
+    ...players, lead:line(lead), counter:line(counter), chords:line(chords), bass:line(bass),
   });
 }
 
@@ -19,7 +19,7 @@ function melody(lead, counter) {
 export const SYNTH_METAL_ANTHEMS = Object.freeze({
   neonSiege: Object.freeze({
     stepMs:88,
-    description:'Synth metal de neón con riff de guitarra, synth ascendente y un estribillo original enorme. Rápido y épico, pero ya no es una ametralladora de semicorcheas.',
+    description:'Synth metal de neón con power chords de doble pista, riff palm-muted y synth ascendente. El estribillo abre el registro sin perder el muro de guitarras.',
     sections:Object.freeze([
       section(
         {0:52,2:52,4:55,7:52,10:59,12:57,14:55,16:52,18:52,21:55,24:60,27:59,30:55,32:50,34:52,37:55,40:59,43:57,46:52,48:52,51:55,54:62,58:60,62:59},
@@ -35,9 +35,10 @@ export const SYNTH_METAL_ANTHEMS = Object.freeze({
       ),
       section(
         {0:64,4:67,8:71,12:69,16:67,20:64,24:62,28:64,32:67,36:71,40:76,44:74,48:71,52:69,56:67,60:64},
-        {2:76,6:79,14:83,18:81,26:79,34:83,38:88,46:86,50:83,58:79},
+        {0:52,3:52,6:59,8:52,11:60,14:59,16:48,19:48,22:55,24:48,27:57,30:55,32:55,35:55,38:62,40:55,43:64,46:62,48:50,51:50,54:57,56:50,59:59,62:57},
         {0:[52,59,64],16:[48,55,60],32:[55,62,67],48:[50,57,62]},
         {0:40,4:47,8:40,12:47,16:36,20:43,24:36,28:43,32:43,36:50,40:43,44:50,48:38,52:45,56:38,60:45},
+        {leadInstrument:'anthemLead',counterInstrument:'powerGuitar'},
       ),
       section(
         {0:52,3:55,6:59,10:64,14:62,16:55,19:59,22:67,26:64,30:62,32:57,35:60,38:64,42:69,46:67,48:59,51:62,54:71,58:69,62:64},
@@ -50,7 +51,7 @@ export const SYNTH_METAL_ANTHEMS = Object.freeze({
 
   overclockedKnight: Object.freeze({
     stepMs:100,
-    description:'Synth metal de galope elástico: guitarra rítmica, lead analógico cantable y un estribillo de arena futurista. Cambia de escena y deja hueco antes de volver a cargar.',
+    description:'Synth metal de galope elástico con power chords estéreo al frente, lead analógico cantable y un estribillo de arena futurista.',
     sections:Object.freeze([
       section(
         {0:64,6:67,9:71,14:67,18:72,22:71,27:67,31:64,35:64,40:67,43:74,48:72,53:71,57:67,62:64},
@@ -66,7 +67,7 @@ export const SYNTH_METAL_ANTHEMS = Object.freeze({
       ),
       section(
         {0:67,4:71,8:74,12:76,16:74,20:71,24:69,28:67,32:71,36:74,40:79,44:81,48:79,52:76,56:74,60:71},
-        {2:79,10:83,18:86,26:83,34:81,42:88,50:86,58:83},
+        {0:55,3:55,6:62,9:55,12:64,15:62,16:57,19:57,22:64,25:57,28:65,31:64,32:53,35:53,38:60,41:53,44:62,47:60,48:50,51:50,54:57,57:50,60:59,63:57},
         {0:[55,62,67],16:[57,64,69],32:[53,60,65],48:[50,57,62]},
         {0:43,3:50,6:43,9:50,12:43,16:45,19:52,22:45,25:52,28:45,32:41,35:48,38:41,41:48,44:41,48:38,51:45,54:38,57:45,60:38},
       ),

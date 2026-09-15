@@ -42,7 +42,7 @@ describe('Synth Metal · anthem rebuild', () => {
     const reactor = structuredFeel(AMBIENT_THEMES.reactorGambit);
 
     expect([siege.leadInstrument, gallop.counterInstrument, reactor.leadInstrument]).toEqual([
-      'overdriveGuitar', 'overdriveGuitar', 'overdriveGuitar',
+      'powerGuitar', 'powerGuitar', 'powerGuitar',
     ]);
     expect([siege.counterInstrument, gallop.leadInstrument, reactor.counterInstrument]).toEqual([
       'anthemLead', 'anthemLead', 'neonBrass',
@@ -52,5 +52,8 @@ describe('Synth Metal · anthem rebuild', () => {
       expect(feel.percussion.punch).toBeGreaterThanOrEqual(1.3);
       expect(Object.keys(feel.signature.motif)).toHaveLength(4);
     }
+    expect(AMBIENT_THEMES.neonSiege.sections[2].counterInstrument).toBe('powerGuitar');
+    expect(Object.keys(AMBIENT_THEMES.neonSiege.sections[2].counter)).toHaveLength(24);
+    expect(Object.keys(AMBIENT_THEMES.overclockedKnight.sections[2].counter)).toHaveLength(24);
   });
 });
