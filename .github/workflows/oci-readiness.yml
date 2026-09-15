@@ -9,6 +9,7 @@ on:
       - 'scripts/oci_*'
       - 'infra/oci/**'
       - '.github/workflows/oci-readiness.yml'
+      - '.github/workflows/oci-staging-lab.yml'
 
 permissions:
   contents: read

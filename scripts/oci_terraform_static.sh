@@ -5,6 +5,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 terraform fmt -check -diff -recursive "$root/infra/oci"
 python3 -S "$root/scripts/oci_bootstrap_state.py" --self-test
+bash "$root/scripts/oci_staging_lifecycle.sh" --self-test
 
 for stack in bootstrap staging; do
   dir="$root/infra/oci/$stack"

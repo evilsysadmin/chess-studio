@@ -1,0 +1,60 @@
+name: OCI staging lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Terraform operation
+        type: choice
+        options: [plan, apply, bootstrap, destroy]
+        default: plan
+        required: true
+      availability_domain:
+        description: Optional override for OCI_AVAILABILITY_DOMAIN
+        type: string
+        required: false
+      image_ocid:
+        description: Optional override for OCI_IMAGE_OCID
+        type: string
+        required: false
+      confirm_destroy:
+        description: Required for destroy
+        type: boolean
+        default: false
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oci-staging-lab
+  cancel-in-progress: false
+
+jobs:
+  terraform:
+    name: OCI staging · ${{ inputs.operation }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      TF_IN_AUTOMATION: 'true'
+      TF_INPUT: 'false'
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+      OCI_TFSTATE_BUCKET: ${{ vars.OCI_TFSTATE_BUCKET || 'chess-studio-tfstate' }}
+      OCI_AVAILABILITY_DOMAIN: ${{ inputs.availability_domain || vars.OCI_AVAILABILITY_DOMAIN }}
+      OCI_IMAGE_OCID: ${{ inputs.image_ocid || vars.OCI_IMAGE_OCID }}
+      OCI_CONFIRM_DESTROY: ${{ inputs.confirm_destroy }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.0
+          terraform_wrapper: false
+      - name: Terraform lifecycle
+        run: bash scripts/oci_staging_lifecycle.sh '${{ inputs.operation }}'
