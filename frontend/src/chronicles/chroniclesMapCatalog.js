@@ -1,4 +1,5 @@
 import cryptEightSquares from './maps/crypt-eight-squares.json';
+import galleryOfForks from './maps/gallery-of-forks.json';
 
 export const DEFAULT_CHRONICLES_MAP_ID = 'crypt-eight-squares';
 
@@ -84,6 +85,7 @@ function normalizeMap(source) {
 
 const MAPS = Object.freeze({
   [DEFAULT_CHRONICLES_MAP_ID]: normalizeMap(cryptEightSquares),
+  [galleryOfForks.id]: normalizeMap(galleryOfForks),
 });
 
 export function chroniclesMapById(mapId = DEFAULT_CHRONICLES_MAP_ID) {
@@ -116,6 +118,33 @@ export function chroniclesMapInitialEnemyState(mapId = DEFAULT_CHRONICLES_MAP_ID
     if (enemy.positionKey && enemy.initialPosition) state[enemy.positionKey] = enemy.initialPosition;
     return state;
   }, {});
+}
+
+function clearedEnemyState(map) {
+  return (map?.enemies || []).reduce((state, enemy) => {
+    state[enemy.hpKey] = 0;
+    if (enemy.positionKey) state[enemy.positionKey] = undefined;
+    return state;
+  }, {});
+}
+
+export function chroniclesMapTransitionState(state, mapId) {
+  const previousMap = chroniclesMapForState(state);
+  const map = chroniclesMapById(mapId);
+  return {
+    ...state,
+    ...clearedEnemyState(previousMap),
+    mapId: map.id,
+    x: map.partyStart.x,
+    y: map.partyStart.y,
+    direction: map.partyStart.direction,
+    ...chroniclesMapInitialEnemyState(map.id),
+    ...map.initialFlags,
+    phase: 'explore',
+    turnPhase: 'player',
+    enemyPositions: {},
+    enemyTurnEvents: [],
+  };
 }
 
 export function chroniclesMapIds() {
