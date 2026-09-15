@@ -4,8 +4,9 @@ on:
   pull_request:
     paths:
       - 'scripts/blender/build_pawn_slug_matthias_integrated.py'
+      - 'scripts/blender/render_pawn_slug_matthias_weapon_sheet.py'
       - '.github/workflows/pawn-slug-blender-art.yml'
-      - 'frontend/src/assets/pawnSlug/matthias_integrated_weapons_atlas_v1.webp'
+      - 'frontend/src/assets/pawnSlug/matthias_*_atlas_v1.b64'
   workflow_dispatch:
 
 permissions:
@@ -22,21 +23,30 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends blender webp
-      - name: Render canonical atlas in Blender
+      - name: Render canonical weapon sheets in Blender
         run: |
+          set -euo pipefail
           mkdir -p /tmp/pawn-slug-art
-          blender --background \
-            --python scripts/blender/build_pawn_slug_matthias_integrated.py \
-            -- --output-dir /tmp/pawn-slug-art
-          cwebp -quiet -q 88 -alpha_q 95 -m 6 \
-            /tmp/pawn-slug-art/matthias_integrated_weapons_atlas_v1.png \
-            -o /tmp/pawn-slug-art/matthias_integrated_weapons_atlas_v1.webp
+          for weapon in pistol machinegun shotgun panzerfaust; do
+            blender --background \
+              --python scripts/blender/render_pawn_slug_matthias_weapon_sheet.py \
+              -- --output-dir /tmp/pawn-slug-art --weapon "$weapon"
+            cwebp -quiet -q 86 -alpha_q 95 -m 6 \
+              "/tmp/pawn-slug-art/matthias_${weapon}_atlas_v1.png" \
+              -o "/tmp/pawn-slug-art/matthias_${weapon}_atlas_v1.webp"
+            base64 -w0 "/tmp/pawn-slug-art/matthias_${weapon}_atlas_v1.webp" \
+              > "/tmp/pawn-slug-art/matthias_${weapon}_atlas_v1.b64"
+          done
       - name: Sanity-check atlas contract
         run: |
-          test -s /tmp/pawn-slug-art/matthias_pawn_slug_integrated_v1.blend
-          test -s /tmp/pawn-slug-art/matthias_integrated_weapons_atlas_v1.png
-          test -s /tmp/pawn-slug-art/matthias_integrated_weapons_atlas_v1.webp
-          file /tmp/pawn-slug-art/matthias_integrated_weapons_atlas_v1.webp
+          set -euo pipefail
+          for weapon in pistol machinegun shotgun panzerfaust; do
+            test -s "/tmp/pawn-slug-art/matthias_${weapon}_integrated_v1.blend"
+            test -s "/tmp/pawn-slug-art/matthias_${weapon}_atlas_v1.png"
+            test -s "/tmp/pawn-slug-art/matthias_${weapon}_atlas_v1.webp"
+            test -s "/tmp/pawn-slug-art/matthias_${weapon}_atlas_v1.b64"
+            file "/tmp/pawn-slug-art/matthias_${weapon}_atlas_v1.webp"
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: pawn-slug-matthias-blender-${{ github.event.pull_request.number || github.run_number }}
