@@ -40,6 +40,7 @@ INVENTORY = {
     'production-promote.yml': 'delivery-production',
     'production-rollback.yml': 'delivery-rollback',
     'render-production-guardrail.yml': 'delivery-guardrail',
+    'required-gate.yml': 'quality-required',
     'staging-ai-worker.yml': 'delivery-accreditation',
     'staging-bootstrap.yml': 'delivery-escape-hatch',
     'staging-deploy.yml': 'delivery-staging',
