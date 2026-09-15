@@ -59,6 +59,8 @@ describe('House / Afro · songbook premium', () => {
   });
 
   it('keeps the new soulful/deep pair melodic and restrained rather than percussion-led', () => {
+    const midnight = structuredFeel(AMBIENT_THEMES.midnightDevotion);
+    const terracotta = structuredFeel(AMBIENT_THEMES.terracottaPulse);
     const soulful = structuredFeel(AMBIENT_THEMES.velvetLift);
     const deep = structuredFeel(AMBIENT_THEMES.cityAfterglow);
 
@@ -66,12 +68,14 @@ describe('House / Afro · songbook premium', () => {
     expect(soulful.counterInstrument).toBe('jazzGuitar');
     expect(soulful.chordInstrument).toBe('rhodesWarm');
     expect(soulful.mix.lead).toBeGreaterThan(soulful.mix.counter * 2);
-    expect(soulful.percussion.punch).toBeLessThan(HOUSE_AFRO_PROFILES.midnightDevotion.percussion.punch);
+    expect(soulful.percussion.punch).toBeLessThan(midnight.percussion.punch);
 
     expect(deep.leadInstrument).toBe('rhodesWarm');
     expect(deep.counterInstrument).toBe('vocalAir');
     expect(deep.signature.everyCycles).toBeGreaterThanOrEqual(3);
-    expect(deep.mix.counter).toBeLessThanOrEqual(0.2);
-    expect(deep.percussion.punch).toBeLessThan(HOUSE_AFRO_PROFILES.terracottaPulse.percussion.punch);
+    // Compare the final mastered profiles rather than the raw authored value:
+    // genre production deliberately scales the whole House/Afro mix afterwards.
+    expect(deep.mix.counter).toBeLessThan(midnight.mix.counter);
+    expect(deep.percussion.punch).toBeLessThan(terracotta.percussion.punch);
   });
 });
