@@ -42,8 +42,8 @@ describe('Pawn Slug premium enemy runtime integration', () => {
     });
     expect(PAWN_SLUG_ENEMY_RUN_META.premiumRaster).toMatchObject({
       version: 'v5-authored-canonical-run',
-      frameWidth: 160,
-      frameHeight: 160,
+      frameWidth: 80,
+      frameHeight: 80,
       columns: 8,
       rows: 3,
       framesPerType: 8,
@@ -51,6 +51,7 @@ describe('Pawn Slug premium enemy runtime integration', () => {
       authoredActions: ['idle', 'run'],
       canonicalSource: 'Pawn Slug: authored premium enemy lineup v5',
       isolatedSilhouettes: true,
+      transport: 'two-chunk-base64-data-url',
     });
     expect(PAWN_SLUG_ENEMY_RUN_META.premiumFallback).toMatchObject({
       asset: 'enemy_atlas_premium.webp',
@@ -108,7 +109,7 @@ describe('Pawn Slug premium enemy runtime integration', () => {
   });
 
   it('clones per-enemy UV state while sharing the decoded premium image source', () => {
-    const master = new THREE.Texture({ width: 1280, height: 480 });
+    const master = new THREE.Texture({ width: 640, height: 240 });
     master.repeat.set(1 / 8, 1 / 3);
     master.offset.set(1 / 8, 2 / 3);
 
