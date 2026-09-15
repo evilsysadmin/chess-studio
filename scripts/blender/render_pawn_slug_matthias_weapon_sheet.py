@@ -78,6 +78,24 @@ def add_front_fill():
     fill.rotation_euler = (target - fill.location).to_track_quat('-Z', 'Y').to_euler()
 
 
+def normalize_cube_proportions():
+    """Make canonical cube dimensions use the same half-extents contract as spheres.
+
+    The source helper creates a unit cube (size=1) and historically treated the
+    supplied scale tuple as half-extents. That made every cube-authored body,
+    limb and weapon part half its intended size while sphere/cylinder parts were
+    correctly dimensioned. Wrap it for this canonical bake so the whole model
+    uses one consistent geometric contract without touching runtime art.
+    """
+    original_cube = canonical.cube
+
+    def cube(name, loc, scale, material, rot=(0.0, 0.0, 0.0), parent=None):
+        corrected = tuple(component * 2.0 for component in scale)
+        return original_cube(name, loc, corrected, material, rot=rot, parent=parent)
+
+    canonical.cube = cube
+
+
 def descendants(obj):
     for child in obj.children:
         yield child
@@ -220,6 +238,7 @@ def main():
     canonical.TOTAL_ROWS = canonical.ROWS_PER_WEAPON
     canonical.WORLD_CELL_X = CELL_WORLD
     canonical.WORLD_CELL_Z = CELL_WORLD
+    normalize_cube_proportions()
     canonical.clear_scene()
     scene = canonical.setup_scene()
     aim_camera(scene)
