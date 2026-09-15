@@ -39,14 +39,44 @@ describe('War Room cat decor', () => {
     root.updateMatrixWorld(true);
 
     const cat = ensureWarRoomCat(root);
+    root.updateMatrixWorld(true);
+    const world = cat.getWorldPosition(new THREE.Vector3());
     expect(cat.name).toBe('war-room-cat');
     expect(cat.userData.warRoomDecor).toBe(WAR_ROOM_CAT_VERSION);
     expect(cat.userData.warRoomCatState).toBe('sleeping');
     expect(cat.userData.warRoomCatPlacement).toBe('left-sofa-sleeper-v1');
     expect(cat.userData.warRoomCatSofaSide).toBe('left');
-    expect(cat.position.x).toBeLessThan(0);
-    expect(cat.position.y).toBeGreaterThan(left.position.y);
+    expect(cat.parent).toBe(left);
+    expect(world.x).toBeLessThan(0);
+    expect(world.y).toBeGreaterThan(left.position.y);
     expect(root.userData.warRoomCat).toBe(WAR_ROOM_CAT_VERSION);
+
+    dispose(root);
+  });
+
+  it('follows its sofa when responsive scene layout moves the furniture later', () => {
+    const root = new THREE.Group();
+    addFloor(root);
+    const left = addSofa(root, 'left');
+    addSofa(root, 'right');
+    const plant = new THREE.Group();
+    plant.name = 'war-room-hans-plant';
+    plant.userData.warRoomPlantSide = 'right';
+    root.add(plant);
+    root.updateMatrixWorld(true);
+
+    const cat = ensureWarRoomCat(root);
+    root.updateMatrixWorld(true);
+    const before = cat.getWorldPosition(new THREE.Vector3());
+
+    left.position.x += 1.35;
+    left.position.z -= 0.7;
+    root.updateMatrixWorld(true);
+    const after = cat.getWorldPosition(new THREE.Vector3());
+
+    expect(cat.parent).toBe(left);
+    expect(after.x - before.x).toBeCloseTo(1.35, 5);
+    expect(after.z - before.z).toBeCloseTo(-0.7, 5);
 
     dispose(root);
   });
@@ -54,12 +84,13 @@ describe('War Room cat decor', () => {
   it('is idempotent and keeps a single low-key cat actor in the room', () => {
     const root = new THREE.Group();
     addFloor(root);
-    addSofa(root, 'right');
+    const right = addSofa(root, 'right');
     root.updateMatrixWorld(true);
 
     const first = ensureWarRoomCat(root);
     const second = ensureWarRoomCat(root);
     expect(second).toBe(first);
+    expect(first.parent).toBe(right);
     expect(root.getObjectsByProperty('name', 'war-room-cat')).toHaveLength(1);
     expect(first.getObjectByName('war-room-cat-body')).toBeTruthy();
     expect(first.getObjectByName('war-room-cat-tail')).toBeTruthy();
@@ -73,6 +104,7 @@ describe('War Room cat decor', () => {
     root.updateMatrixWorld(true);
 
     const cat = ensureWarRoomCat(root);
+    expect(cat.parent).toBe(root);
     expect(cat.userData.warRoomCatPlacement).toBe('floor-corner-fallback-v1');
     expect(cat.position.y).toBeGreaterThan(floor.position.y);
     expect(cat.scale.x).toBeCloseTo(0.88, 5);
