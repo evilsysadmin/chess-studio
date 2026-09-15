@@ -6,15 +6,41 @@ import {
 } from './safeStorage.js';
 
 export const STORAGE_SCHEMA_KEY = 'chess-study-storage-schema-version';
-export const STORAGE_SCHEMA_VERSION = 3;
+export const STORAGE_SCHEMA_VERSION = 4;
 
 const LEGACY_MUTE_KEY = 'chess-study-muted';
 const MUSIC_MUTED_KEY = 'chess-study-music-muted';
 const FX_MUTED_KEY = 'chess-study-fx-muted';
 const BOARD_RENDERER_KEY = 'chess-study-board-renderer';
+const MUSIC_EXCLUDED_KEY = 'chess-study-music-excluded';
 const OBSOLETE_KEYS = Object.freeze([
   'chess-study-cpu-personality',
   'chess-study-ambient-theme',
+]);
+
+// Piezas regionales retiradas de la radio automática tras la curación de
+// producto de septiembre de 2026. No se borran del catálogo: sólo entran una
+// vez en la lista de exclusiones del perfil, de modo que siguen siendo
+// seleccionables y el usuario puede reactivarlas manualmente después.
+export const DEFAULT_RADIO_RETIRED_THEME_IDS = Object.freeze([
+  'alexandria241',
+  'cairo0047',
+  'cairoQuietHours',
+  'cairoRedLantern',
+  'cairoBlueNote0211',
+  'nileBalcony0152',
+  'beirut0113',
+  'beirutRooftop0412',
+  'beirutNightTaxi',
+  'beirutHarbor2340',
+  'damascusBlueHour',
+  'aleppoAfterRain',
+  'ammanVelvetRoom',
+  'ammanLateTable0303',
+  'medinaBlueSmoke',
+  'istanbul0326',
+  'istanbulBackgammon',
+  'bosphorusRain',
 ]);
 
 function schemaVersion() {
@@ -55,10 +81,29 @@ function migrateV2ToV3() {
   }
 }
 
+function migrateV3ToV4() {
+  const raw = getStorageItem(STORAGE_LOCAL, MUSIC_EXCLUDED_KEY);
+  let existing = [];
+  if (raw !== null) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) existing = parsed.filter((id) => typeof id === 'string' && id);
+    } catch {
+      // Una preferencia corrupta no debe bloquear la curación; la sustituimos
+      // por el conjunto seguro de retiradas y el usuario puede editarlo luego.
+    }
+  }
+
+  const merged = [...new Set([...existing, ...DEFAULT_RADIO_RETIRED_THEME_IDS])];
+  const migrated = setStorageItem(STORAGE_LOCAL, MUSIC_EXCLUDED_KEY, JSON.stringify(merged));
+  if (!migrated) throw new Error('music radio curation migration was not durable');
+}
+
 const MIGRATIONS = Object.freeze({
   0: migrateV0ToV1,
   1: migrateV1ToV2,
   2: migrateV2ToV3,
+  3: migrateV3ToV4,
 });
 
 export function migratePersistentStorage() {
