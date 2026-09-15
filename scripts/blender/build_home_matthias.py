@@ -45,6 +45,13 @@ def add_area(name, location, energy, size, color, target):
     return obj
 
 
+def configure_preview_samples(scene):
+    samples = max(1, int(os.environ.get('BLENDER_PREVIEW_SAMPLES', '64')))
+    if hasattr(scene, 'eevee') and hasattr(scene.eevee, 'taa_render_samples'):
+        scene.eevee.taa_render_samples = samples
+    return samples
+
+
 def render_preview(path):
     parent(path)
     scene = bpy.context.scene
@@ -56,6 +63,7 @@ def render_preview(path):
     scene.render.film_transparent = False
     scene.render.filepath = os.path.abspath(path)
     scene.world.color = (0.012, 0.016, 0.022)
+    samples = configure_preview_samples(scene)
 
     target = Vector((0, 0, 1.28))
 
@@ -83,6 +91,7 @@ def render_preview(path):
     ground.data.materials.append(ground_mat)
     preview_objects.append(ground)
 
+    print('Home Matthias preview samples:', samples)
     bpy.ops.render.render(write_still=True)
 
     for obj in preview_objects:

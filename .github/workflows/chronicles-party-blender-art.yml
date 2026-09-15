@@ -38,6 +38,7 @@ jobs:
       - name: Render deterministic review previews
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
+          BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '64' || '24' }}
         run: |
           set -euo pipefail
           blender --background \
