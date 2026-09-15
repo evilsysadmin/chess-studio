@@ -1,0 +1,108 @@
+name: Chronicles Tactics · Blender material response v4
+
+on:
+  push:
+    branches:
+      - feat/tactics-material-response-v4
+    paths:
+      - .github/workflows/chronicles-tactics-material-v4.yml
+      - scripts/blender/_tmp_patch_chronicles_material_v4.py
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-party-v4:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/tactics-material-response-v4
+      - name: Apply premium material response
+        run: python3 scripts/blender/_tmp_patch_chronicles_material_v4.py
+      - name: Install Blender
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender python3-numpy
+      - name: Build editable scene and runtime GLB
+        run: |
+          mkdir -p .artifacts/chronicles-tactics frontend/public/models
+          blender -b \
+            --python scripts/blender/build_chronicles_tactics_party.py \
+            -- \
+            --blend .artifacts/chronicles-tactics/chronicles-tactics-party-v4.blend \
+            --glb .artifacts/chronicles-tactics/chronicles-tactics-party-v4.glb
+      - name: Validate physical material separation and install runtime GLB
+        run: |
+          python3 - <<'PY'
+          import json, struct
+          from pathlib import Path
+
+          src = Path('.artifacts/chronicles-tactics/chronicles-tactics-party-v4.glb')
+          data = src.read_bytes()
+          if data[:4] != b'glTF' or struct.unpack_from('<I', data, 4)[0] != 2:
+              raise SystemExit('invalid GLB header')
+          json_len, json_type = struct.unpack_from('<II', data, 12)
+          if json_type != 0x4E4F534A:
+              raise SystemExit('missing JSON chunk')
+          doc = json.loads(data[20:20 + json_len].decode('utf-8').rstrip(' \0'))
+          nodes = {node.get('name'): node for node in doc.get('nodes', [])}
+          for member, profile in {
+              'rook': 'bastion-breath',
+              'bishop': 'ritual-sway',
+              'knight': 'restless-scout',
+          }.items():
+              extras = (nodes.get(f'ChroniclesParty__{member}') or {}).get('extras') or {}
+              if extras.get('chronicles_asset_version') != 'chronicles-tactics-party-v4':
+                  raise SystemExit(f'bad v4 root/version for {member}')
+              if extras.get('chronicles_idle_profile') != profile:
+                  raise SystemExit(f'idle regression for {member}')
+
+          materials = {m.get('name'): m for m in doc.get('materials', [])}
+          def material(name):
+              key = f'chronicles_{name}'
+              if key not in materials:
+                  raise SystemExit(f'missing material {key}; got {sorted(materials)}')
+              return materials[key]
+
+          # Core glTF PBR values must clearly separate polished metals from soft surfaces.
+          for name in ('steel', 'brass', 'copper'):
+              pbr = material(name).get('pbrMetallicRoughness') or {}
+              if pbr.get('metallicFactor', 0) < 0.80:
+                  raise SystemExit(f'{name} lost metallic response: {pbr}')
+              if pbr.get('roughnessFactor', 1) > 0.30:
+                  raise SystemExit(f'{name} too rough for premium metal response: {pbr}')
+              clearcoat = (material(name).get('extensions') or {}).get('KHR_materials_clearcoat') or {}
+              if clearcoat.get('clearcoatFactor', 0) <= 0:
+                  raise SystemExit(f'{name} clearcoat did not survive glTF export: {material(name)}')
+
+          for name in ('blue_cloth', 'green_robe', 'leather', 'brown_cloth', 'bone'):
+              pbr = material(name).get('pbrMetallicRoughness') or {}
+              if pbr.get('metallicFactor', 1) > 0.05:
+                  raise SystemExit(f'{name} should remain non-metallic: {pbr}')
+              if pbr.get('roughnessFactor', 0) < 0.75:
+                  raise SystemExit(f'{name} should remain matte: {pbr}')
+
+          Path('frontend/public/models/chronicles-tactics-party.glb').write_bytes(data)
+          PY
+      - name: Commit v4 producer, runtime contract and GLB
+        run: |
+          git config user.name 'Linux Pirate Ninja'
+          git config user.email '12677236+evilsysadmin@users.noreply.github.com'
+          git add scripts/blender/build_chronicles_tactics_party.py \
+                  frontend/src/chroniclesOfMatthiasPartyBlenderArt.js \
+                  frontend/src/chroniclesOfMatthiasPartyBlenderArt.test.js \
+                  frontend/src/chroniclesOfMatthiasBlenderArt.js \
+                  frontend/public/models/chronicles-tactics-party.glb
+          git diff --cached --check
+          git commit -m 'feat(chronicles): give Blender party premium material response'
+          git push origin HEAD:feat/tactics-material-response-v4
+      - name: Upload editable v4 art
+        uses: actions/upload-artifact@v7
+        with:
+          name: chronicles-tactics-blender-party-v4
+          path: .artifacts/chronicles-tactics/
+          if-no-files-found: error
+          retention-days: 7
