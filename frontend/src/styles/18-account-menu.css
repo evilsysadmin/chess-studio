@@ -150,6 +150,31 @@
 }
 .session-result-notice.outcome-loss { border-left-color: var(--danger); }
 .session-result-notice.outcome-win { border-left-color: var(--success); }
+.session-result-notice.outcome-cancelled {
+  animation: cancelled-session-notice-dismiss 3.8s ease forwards;
+}
+@keyframes cancelled-session-notice-dismiss {
+  0%, 84% {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(.25rem);
+    pointer-events: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .session-result-notice.outcome-cancelled {
+    animation: cancelled-session-notice-dismiss-reduced 3.2s step-end forwards;
+  }
+}
+@keyframes cancelled-session-notice-dismiss-reduced {
+  0% { opacity: 1; visibility: visible; }
+  100% { opacity: 0; visibility: hidden; pointer-events: none; }
+}
 .endgame-rating-impact { display: grid; gap: .18rem; }
 .endgame-rating-impact strong { color: var(--brass); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; }
 .endgame-rating-impact span { color: var(--parchment); }
