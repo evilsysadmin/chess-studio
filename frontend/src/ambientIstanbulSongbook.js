@@ -157,7 +157,10 @@ export function installIstanbulSongbook({ themes }) {
     const current = themes[id];
     const rewrite = ISTANBUL_SONGBOOK_REWRITES[id];
     if (!current || !rewrite) continue;
-    themes[id] = Object.freeze({ ...current, ...rewrite });
+    // The Mediterranean articulation pass runs later and replaces sections
+    // with its authored chord attacks. Keep the score internals immutable, but
+    // leave the theme container writable for that established pipeline stage.
+    themes[id] = { ...current, ...rewrite };
   }
 }
 
