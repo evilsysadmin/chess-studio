@@ -1,6 +1,7 @@
 import { chromium, expect, test } from '@playwright/test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { buttonWithVisibleText, login, mockApi } from './helpers.js';
+import { WAR_ROOM_CAT_VERSION } from '../frontend/src/components/WarRoomCatDecor.js';
 
 const ARTIFACT_DIR = '../.artifacts/app-visual';
 const CAPTURE_PROFILES = Object.freeze([
@@ -225,6 +226,14 @@ async function openCanonicalWarRoom(page) {
   await expect(canvas).toBeVisible({ timeout: 30_000 });
   await expect(board3d).toHaveAttribute('data-board3d-camera', 'fixed-tactical', { timeout: 30_000 });
   await expect(page.locator('.game-3d-matthias-card')).toBeVisible();
+
+  // The cat contract is written from the cat body's real onBeforeRender hook.
+  // A mounted-but-culled/hidden actor therefore cannot satisfy this canary.
+  await expect(canvas).toHaveAttribute('data-war-room-cat-rendered', 'true', { timeout: 30_000 });
+  await expect(canvas).toHaveAttribute('data-war-room-cat-version', WAR_ROOM_CAT_VERSION);
+  await expect(canvas).toHaveAttribute('data-war-room-cat-count', '1');
+  await expect(canvas).toHaveAttribute('data-war-room-cat-placement', /^(left|right)-sofa-sleeper-v1$/);
+  await expect(canvas).toHaveAttribute('data-war-room-cat-sofa-side', /^(left|right)$/);
   return board3d;
 }
 
