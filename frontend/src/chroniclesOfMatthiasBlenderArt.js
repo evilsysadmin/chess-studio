@@ -115,14 +115,19 @@ export const CHRONICLES_PREMIUM_BACK_DETAIL_NAMES = Object.freeze({
   knight: Object.freeze(['faust-rear-pack', 'faust-bedroll', 'faust-copper-kit']),
 });
 
-function installPartyBackDetails(partyRoot, { coarsePointer = false } = {}) {
+export function installChroniclesPartyFallbackDetails(
+  partyRoot,
+  { coarsePointer = false, memberIds = null } = {},
+) {
   if (!partyRoot) return () => {};
   let cancelled = false;
   const installed = [];
+  const requestedIds = memberIds ? new Set(memberIds) : null;
 
   Promise.resolve().then(() => {
     if (cancelled) return;
     Object.entries(PARTY_BACK_BUILDERS).forEach(([memberId, build]) => {
+      if (requestedIds && !requestedIds.has(memberId)) return;
       const member = partyRoot.children.find((child) => child.userData?.chroniclesCharacterId === memberId);
       if (!member || member.getObjectByName(`chronicles-${memberId}-premium-back-detail`)) return;
       const detail = build({ coarsePointer });
@@ -214,14 +219,9 @@ export function installChroniclesCanonicalMatthias(
   { coarsePointer = false, reducedMotion = false } = {},
 ) {
   if (!fallbackRoot) return () => {};
-  const cancelBackDetails = installPartyBackDetails(fallbackRoot.parent, { coarsePointer });
   const cancelMatthias = installCanonicalMatthias(fallbackRoot, { coarsePointer, reducedMotion });
-  const cancel = () => {
-    cancelBackDetails();
-    cancelMatthias();
-  };
-  fallbackRoot.userData.chroniclesArtCancel = cancel;
-  return cancel;
+  fallbackRoot.userData.chroniclesArtCancel = cancelMatthias;
+  return cancelMatthias;
 }
 
 export const CHRONICLES_TACTICS_BLENDER_ART_META = Object.freeze({
@@ -231,6 +231,6 @@ export const CHRONICLES_TACTICS_BLENDER_ART_META = Object.freeze({
   partyModel: 'models/chronicles-tactics-party.glb',
   partyAssetVersion: 'chronicles-tactics-party-v3',
   partyBackDetail: 'premium-rear-silhouette-v1',
-  runtimeUpgrade: 'async-fallback-first',
+  runtimeUpgrade: 'async-fallback-first-lazy-detail',
   fallback: 'chroniclesOfMatthiasArt.js',
 });

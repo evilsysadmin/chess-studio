@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { installChroniclesPartyFallbackDetails } from './chroniclesOfMatthiasBlenderArt.js';
 
 export const CHRONICLES_TACTICS_PARTY_MODEL_PATH = 'models/chronicles-tactics-party.glb';
 export const CHRONICLES_TACTICS_PARTY_ASSET_VERSION = 'chronicles-tactics-party-v3';
@@ -63,6 +64,18 @@ export function installChroniclesTacticsPartyBlenderArt(
 
   let cancelled = false;
   const installed = [];
+  const fallbackDetailCancels = [];
+
+  const installFallbackDetails = (memberIds) => {
+    const requested = memberIds.filter((memberId) => models.get(memberId));
+    if (!requested.length || cancelled) return;
+    const partyRoot = models.get(requested[0])?.parent || null;
+    if (!partyRoot) return;
+    fallbackDetailCancels.push(installChroniclesPartyFallbackDetails(partyRoot, {
+      coarsePointer,
+      memberIds: requested,
+    }));
+  };
 
   CHRONICLES_TACTICS_PARTY_MEMBERS.forEach((memberId) => {
     const memberRoot = models.get(memberId);
@@ -73,11 +86,15 @@ export function installChroniclesTacticsPartyBlenderArt(
     .then((gltf) => {
       if (cancelled || !gltf?.scene) return;
 
+      const missingMembers = [];
       CHRONICLES_TACTICS_PARTY_MEMBERS.forEach((memberId) => {
         const memberRoot = models.get(memberId);
         const source = gltf.scene.getObjectByName(chroniclesTacticsPartyRootName(memberId));
         if (!memberRoot || !source) {
-          if (memberRoot) memberRoot.userData.chroniclesPartyArtSource = 'procedural-fallback';
+          if (memberRoot) {
+            memberRoot.userData.chroniclesPartyArtSource = 'procedural-fallback';
+            missingMembers.push(memberId);
+          }
           return;
         }
 
@@ -107,17 +124,25 @@ export function installChroniclesTacticsPartyBlenderArt(
 
         installed.push({ memberRoot, visual, mixer, priorTick });
       });
+
+      installFallbackDetails(missingMembers);
     })
     .catch(() => {
       if (cancelled) return;
+      const fallbackMembers = [];
       CHRONICLES_TACTICS_PARTY_MEMBERS.forEach((memberId) => {
         const memberRoot = models.get(memberId);
-        if (memberRoot) memberRoot.userData.chroniclesPartyArtSource = 'procedural-fallback';
+        if (memberRoot) {
+          memberRoot.userData.chroniclesPartyArtSource = 'procedural-fallback';
+          fallbackMembers.push(memberId);
+        }
       });
+      installFallbackDetails(fallbackMembers);
     });
 
   return () => {
     cancelled = true;
+    fallbackDetailCancels.splice(0).forEach((cancelFallbackDetails) => cancelFallbackDetails?.());
     installed.forEach(({ memberRoot, visual, mixer, priorTick }) => {
       mixer?.stopAllAction?.();
       memberRoot.userData.chroniclesArtTick = priorTick;
