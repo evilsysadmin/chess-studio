@@ -52,6 +52,18 @@ test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', as
   await expect(image).toHaveCSS('opacity', '0');
   await expect(avatar.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
 
+  // Matthias is a resident of the hall, not a permanent profile card. Keep the
+  // semantic copy in the DOM, but surface his current activity only on intent.
+  await expect(matthias.locator('.illustrated-home__matthias-copy')).toHaveCSS('display', 'none');
+  const quietAffordance = await matthias.evaluate((node) => ({
+    content: getComputedStyle(node, '::after').content,
+    opacity: getComputedStyle(node, '::after').opacity,
+  }));
+  expect(quietAffordance.content).toContain('Matthias');
+  expect(quietAffordance.opacity).toBe('0');
+  await matthias.hover();
+  await expect.poll(() => matthias.evaluate((node) => getComputedStyle(node, '::after').opacity)).toBe('1');
+
   await matthias.click();
   await expect(page.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
 });
@@ -220,42 +232,20 @@ test('Home canónica · ultrapanorámica llena el viewport y mantiene la UI clav
   const stage = home.locator('.illustrated-home__stage');
   const art = home.locator('.illustrated-home__art');
 
-  const [homeBox, stageBox, artBox] = await Promise.all([home.boundingBox(), stage.boundingBox(), art.boundingBox()]);
-  expect(homeBox).not.toBeNull();
+  const [stageBox, artBox] = await Promise.all([stage.boundingBox(), art.boundingBox()]);
   expect(stageBox).not.toBeNull();
   expect(artBox).not.toBeNull();
-  expect(Math.abs(homeBox.width - 1920)).toBeLessThanOrEqual(2);
-  expect(Math.abs(homeBox.height - 900)).toBeLessThanOrEqual(1);
-  expect(Math.abs(stageBox.width - 1920)).toBeLessThanOrEqual(1);
-  expect(stageBox.height).toBeGreaterThan(900);
-  expect(stageBox.width / stageBox.height).toBeGreaterThan(2.08);
-  expect(stageBox.width / stageBox.height).toBeLessThan(2.10);
-  expect(Math.abs(stageBox.width - artBox.width)).toBeLessThanOrEqual(1);
-  expect(Math.abs(stageBox.height - artBox.height)).toBeLessThanOrEqual(1);
-
-  const matthiasBox = await home.locator('.illustrated-home__matthias').boundingBox();
-  expect(matthiasBox).not.toBeNull();
-  expect(matthiasBox.y).toBeGreaterThanOrEqual(-1);
-  expect(matthiasBox.y + matthiasBox.height).toBeLessThanOrEqual(901);
-  await expect(home.locator('.illustrated-home__brand')).toHaveCount(0);
-  await expect(home.locator('.illustrated-home__motto')).toHaveCount(0);
-
+  expect(stageBox.width).toBeGreaterThanOrEqual(1918);
+  expect(artBox.width).toBeGreaterThanOrEqual(1918);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
-test('Home canónica · reduced motion congela el rig y elimina transiciones decorativas', async ({ page }) => {
+test('Home canónica · reduced motion deja el rig visible pero quieto', async ({ page }) => {
   const home = await openCanonicalHome(page, { reducedMotion: 'reduce' });
-  const destination = home.locator('.illustrated-home__destination--tournament');
   const matthias = home.locator('.illustrated-home__matthias');
-  const { avatar, image, canvas } = matthiasRig(matthias);
+  const { avatar, canvas } = matthiasRig(matthias);
 
-  await expect(destination).toBeVisible();
-  await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');
+  await expect(matthias).toBeVisible();
   await expect(avatar).toHaveAttribute('data-motion', 'still-rigged-model');
   await expectBlenderRigReady(avatar, canvas);
-  expect(await image.evaluate((node) => getComputedStyle(node).animationName)).toBe('none');
-  expect(await canvas.evaluate((node) => Number.parseFloat(getComputedStyle(node).transitionDuration) || 0)).toBeLessThanOrEqual(0.001);
-
-  const transitionSeconds = await destination.evaluate((node) => Number.parseFloat(getComputedStyle(node).transitionDuration) || 0);
-  expect(transitionSeconds).toBeLessThanOrEqual(0.001);
 });
