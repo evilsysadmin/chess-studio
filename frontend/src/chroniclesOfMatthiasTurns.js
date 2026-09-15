@@ -6,6 +6,8 @@ import {
   chroniclesTileAt,
 } from './chroniclesOfMatthias.js';
 
+export const CHRONICLES_TURN_ENGINE_VERSION = 'alternating-v1';
+
 const KNIGHT_STEPS = Object.freeze([
   Object.freeze({ dx: -2, dy: -1 }), Object.freeze({ dx: -2, dy: 1 }),
   Object.freeze({ dx: -1, dy: -2 }), Object.freeze({ dx: -1, dy: 2 }),
