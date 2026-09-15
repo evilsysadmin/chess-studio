@@ -120,6 +120,7 @@ MATTHIAS_INSIGHTS_PATTERNS = (
     "e2e/insights-matthias-motion.spec.js",
 )
 CHRONICLES_PATTERNS = (
+    "frontend/src/chronicles/*",
     "frontend/src/chroniclesOfMatthias*.js",
     "frontend/src/components/Chronicles*.jsx",
     "frontend/src/components/Chronicles*.js",
@@ -402,6 +403,9 @@ def self_test() -> None:
     assert _ids(classify(["e2e/offline-pending-move-reconnect.spec.js"])) == ["game-network-races"]
     assert _ids(classify(["e2e/late-move-response-exit.spec.js"])) == ["game-network-races"]
     for chronicles_path in (
+        "frontend/src/chronicles/chroniclesMapCatalog.js",
+        "frontend/src/chronicles/chroniclesContentRuntime.js",
+        "frontend/src/chronicles/maps/crypt-eight-squares.json",
         "frontend/src/chroniclesOfMatthias.js",
         "frontend/src/chroniclesOfMatthiasDungeonArt.js",
         "frontend/src/components/ChroniclesOfMatthias.jsx",
