@@ -1,6 +1,6 @@
 import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import payload from './assets/pawnSlug/pow_squad_v1_glb_gzip.b64?raw';
+import payload from './assets/pawnSlug/pow_squad_v2_glb_gzip.b64?raw';
 import { PAWN_SLUG_POW_ART_META } from './pawnSlugPowBlenderArt.js';
 
 function decodedGlb() {
@@ -16,22 +16,28 @@ function glbJson(buffer) {
 }
 
 describe('Pawn Slug Blender POW art', () => {
-  it('ships one compressed real GLB containing every stable POW pose contract', () => {
-    const json = glbJson(decodedGlb());
+  it('ships the approved Blender v2 GLB with every stable POW pose contract', () => {
+    const buffer = decodedGlb();
+    const json = glbJson(buffer);
     const names = (json.nodes || []).map((node) => node.name || '');
+    expect(buffer.byteLength).toBeGreaterThan(1_000_000);
+    expect(json.asset?.generator).toMatch(/Blender/i);
     expect(PAWN_SLUG_POW_ART_META.glbPoses).toEqual(['bound', 'kneeling', 'caged']);
     for (const pose of PAWN_SLUG_POW_ART_META.glbPoses) {
-      expect(names.some((name) => name.startsWith(`${pose}__body__`))).toBe(true);
+      expect(names.filter((name) => name.startsWith(`${pose}__body__`)).length).toBeGreaterThanOrEqual(25);
     }
-    expect(names.some((name) => name.startsWith('bound__chains__'))).toBe(true);
-    expect(names.some((name) => name.startsWith('caged__cage__'))).toBe(true);
+    expect(names.filter((name) => name.startsWith('bound__chains__')).length).toBeGreaterThanOrEqual(8);
+    expect(names.filter((name) => name.startsWith('kneeling__chains__')).length).toBeGreaterThanOrEqual(8);
+    expect(names.filter((name) => name.startsWith('caged__cage__')).length).toBeGreaterThanOrEqual(16);
     expect(PAWN_SLUG_POW_ART_META.payloadCompression).toBe('gzip');
+    expect(PAWN_SLUG_POW_ART_META.glbVersion).toBe('blender-glb-v2');
+    expect(PAWN_SLUG_POW_ART_META.runtimeScale).toBeCloseTo(0.78);
   });
 
   it('keeps the procedural mesh as a safe loading/failure fallback', () => {
     expect(PAWN_SLUG_POW_ART_META.primaryArt).toBe('embedded-glb-gzip');
     expect(PAWN_SLUG_POW_ART_META.runtimeUpgrade).toBe('async-fallback-first');
     expect(PAWN_SLUG_POW_ART_META.fallbackArt).toMatch(/premium-military-arcade-prisoner/);
-    expect(PAWN_SLUG_POW_ART_META.sourceOfTruth).toContain('scripts/blender/');
+    expect(PAWN_SLUG_POW_ART_META.sourceOfTruth).toBe('scripts/blender/build_pawn_slug_pows_v2.py');
   });
 });
