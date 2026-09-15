@@ -9,6 +9,7 @@ on:
       - 'scripts/blender/home_matthias_animations.py'
       - 'scripts/blender/home_matthias_contract.py'
       - 'scripts/blender/validate_home_matthias_contract.py'
+      - 'frontend/art-source/matthias-home-canonical-reference.webp'
       - 'frontend/art-source/matthias-home-canonical-reference.txt'
       # Generated .blend/.glb outputs are intentionally omitted so materializing
       # canonical art cannot retrigger the expensive source render by itself.
@@ -54,10 +55,15 @@ jobs:
           test -s /tmp/home-matthias-art/matthias-home-canonical.png
           python3 - <<'PY'
           from pathlib import Path
+          import hashlib
           import sys
           sys.path.insert(0, 'scripts/blender')
-          from home_matthias_contract import CANONICAL_REFERENCE_SHA256
+          from home_matthias_contract import CANONICAL_REFERENCE_FILE, CANONICAL_REFERENCE_SHA256
 
+          reference = Path(CANONICAL_REFERENCE_FILE)
+          assert reference.is_file(), f'missing canonical reference: {reference}'
+          digest = hashlib.sha256(reference.read_bytes()).hexdigest()
+          assert digest == CANONICAL_REFERENCE_SHA256, (digest, CANONICAL_REFERENCE_SHA256)
           provenance = Path('frontend/art-source/matthias-home-canonical-reference.txt').read_text()
           assert CANONICAL_REFERENCE_SHA256 in provenance, 'canonical reference provenance/hash drifted'
           PY
