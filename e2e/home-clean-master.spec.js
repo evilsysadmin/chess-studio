@@ -24,29 +24,28 @@ test('Home clean master keeps live diegetic Matthias and retired chrome out', as
   const matthias = home.locator('.illustrated-home__matthias');
   const portrait = matthias.locator('.illustrated-home__matthias-portrait');
   const canonicalHost = portrait.locator('[data-home-matthias-3d]');
-  const rig = canonicalHost.locator('[data-matthias-layered-art="true"]');
+  const canvas = canonicalHost.locator('canvas');
   const copy = matthias.locator('.illustrated-home__matthias-copy');
 
   await expect(matthias).toBeVisible();
   await expect(portrait).toBeVisible();
   await expect(canonicalHost).toHaveAttribute('data-home-matthias-3d', 'ready');
-  await expect(canonicalHost).toHaveAttribute('data-matthias-identity', 'canonical-render-rig');
-  await expect(canonicalHost).toHaveAttribute('data-motion', 'layered-canonical-rig');
-  await expect(rig).toBeVisible();
-  await expect(rig.locator('[data-matthias-canonical-art="true"]')).toBeVisible();
-  await expect(rig.locator('[data-matthias-art-part]')).toHaveCount(5);
+  await expect(canonicalHost).toHaveAttribute('data-matthias-identity', 'canonical-three-layer-rig');
+  await expect(canonicalHost).toHaveAttribute('data-three-art-version', 'angry-mock-v1');
+  await expect(canonicalHost).toHaveAttribute('data-three-rig-version', 'canonical-layer-rig-v2');
+  await expect(canonicalHost).toHaveAttribute('data-motion', 'canonical-three-routines');
+  await expect(canonicalHost).toHaveAttribute('data-home-matthias-profile', /^(idle|sip|bite|think|write|dossier|read|sleep|speak)$/);
+  await expect(canvas).toBeVisible();
+  await expect(canvas).toHaveAttribute('data-matthias-identity', 'canonical-angry-mock');
   await expect(copy).toBeVisible();
   await expect(copy.locator('strong')).toHaveText('MATTHIAS');
   await expect(copy.locator('span')).not.toHaveText('');
 
-  const activity = await matthias.getAttribute('data-home-matthias-activity');
-  expect(activity).toBeTruthy();
-  await expect(rig).toHaveAttribute('data-rig-activity', activity);
-
-  // The approved 3D/CG render stays visually canonical while the layered rig
-  // gives the current routine a real one-shot gesture instead of redrawing him.
-  await expect(rig).toHaveAttribute('data-gesture-profile', 'expressive-v2');
-  await expect.poll(async () => Number(await rig.getAttribute('data-gesture-count')), {
+  // The approved render is now articulated by a real Three.js layer rig. It
+  // must keep rendering between routine changes instead of becoming a sticker.
+  const firstTick = Number(await canvas.getAttribute('data-motion-tick'));
+  await expect.poll(async () => Number(await canvas.getAttribute('data-motion-tick')), {
     timeout: 3_000,
-  }).toBeGreaterThan(0);
+  }).toBeGreaterThan(firstTick);
+  await expect(canonicalHost.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
 });
