@@ -125,7 +125,10 @@ const FINAL_CATALOG_POLISH = Object.freeze({
   // Three remaining within-genre player-chain collisions.
   istanbulBackgammon: Object.freeze({
     family:'istanbul-tavla-clarinet-guitar', counterInstrument:'nylonGuitar', chordInstrument:'rhodesWarm',
-    percussion:percussion('tavla-table', 18, { 0:'K', 5:'W', 9:'S', 14:'W' }, 0.78),
+    // The written bass walks every six steps. Keep the 18-step 9/8 bar, but
+    // put the skin accents on the same 0/6/12 pillars and use only light
+    // pickups between them; the old 0/5/9/14 pattern fought the bass all night.
+    percussion:percussion('tavla-table', 18, { 0:'K', 4:'H', 6:'B', 10:'H', 12:'S', 16:'B' }, 0.72),
   }),
   beirutHarbor2340: Object.freeze({
     family:'beirut-harbor-horn-guitar-combo', leadInstrument:'mutedHorn', counterInstrument:'nylonGuitar',
