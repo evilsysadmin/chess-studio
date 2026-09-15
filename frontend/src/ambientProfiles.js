@@ -15,6 +15,7 @@ import { withRadioMatthiasLeitmotif } from './ambientRadioMatthiasLeitmotifs.js'
 import { withAmbientPremiumProduction } from './ambientPremiumProduction.js';
 import { withRockProduction } from './ambientRockProduction.js';
 import { withAmbientIdentityContrast } from './ambientIdentityContrasts.js';
+import { withAmbientGenreHook } from './ambientGenreHooks.js';
 
 const RADIO_MATTHIAS_HIDDEN_THEME_IDS = new Set([...CURATED_HIDDEN_THEME_IDS, 'blackArchive']);
 
@@ -213,7 +214,7 @@ export function structuredFeel(theme) {
     const leitmotif = withRadioMatthiasLeitmotif(theme, radioMatthias);
     const contrasted = withAmbientIdentityContrast(theme, leitmotif);
     const arranged = withTropicalHouseDrive(theme, contrasted);
-    return withAmbientPremiumProduction(theme, arranged);
+    return withAmbientPremiumProduction(theme, withAmbientGenreHook(theme, arranged));
   }
 
   const legacy = legacyStructuredFeel(theme);
@@ -243,5 +244,5 @@ export function structuredFeel(theme) {
     arranged = Object.freeze({ ...arranged, counterInstrument: 'pizz' });
   }
 
-  return withAmbientPremiumProduction(theme, arranged);
+  return withAmbientPremiumProduction(theme, withAmbientGenreHook(theme, arranged));
 }
