@@ -136,7 +136,7 @@ assert(getAmbientThemeSoundProfile('rookGarage').percussionPunch > 1.2, 'Garage 
 const energyIds = ['neonSiege', 'overclockedKnight', 'reactorGambit'];
 assert(new Set(energyIds.map((id) => getAmbientThemeSoundProfile(id)?.percussionKit)).size === energyIds.length, 'Synth metal necesita tres baterías realmente distintas');
 assert(new Set(energyIds.map((id) => getAmbientThemeSoundProfile(id)?.family)).size === energyIds.length, 'los temas de Energía necesitan identidades distintas');
-assert(getAmbientThemeSoundProfile('neonSiege').estimatedBpm >= 210, 'Asedio de neón debe sentirse thrash');
+assert(getAmbientThemeSoundProfile('neonSiege').estimatedBpm >= 165 && getAmbientThemeSoundProfile('neonSiege').estimatedBpm <= 175, 'Asedio de neón debe sentirse rápido sin perder el hook synthwave-rock');
 assert(getAmbientThemeSoundProfile('overclockedKnight').estimatedBpm >= 145 && getAmbientThemeSoundProfile('overclockedKnight').estimatedBpm <= 155, 'Caballo overclocked debe galopar alrededor de 150 BPM');
 assert(getAmbientThemeSoundProfile('reactorGambit').estimatedBpm >= 123 && getAmbientThemeSoundProfile('reactorGambit').estimatedBpm <= 127, 'Gambito del reactor debe rondar 125 BPM con empuje melódico');
 assert(['postRockMidnight','rookGarage','desertDriveRock'].every((id) => getAmbientThemeSoundProfile(id)?.estimatedBpm >= 130), 'los temas rock de Ecléctica necesitan más pulso');

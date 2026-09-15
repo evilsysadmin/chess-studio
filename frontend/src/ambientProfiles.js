@@ -12,6 +12,7 @@ import { installRadioMatthiasRecompositions } from './ambientRadioMatthiasRecomp
 import { installTropicalHouseMelodies } from './ambientTropicalHouseMelody.js';
 import { installLofiSongbook } from './ambientLofiSongbook.js';
 import { installHouseAfro, withHouseAfroProduction } from './ambientHouseAfro.js';
+import { installSynthMetalAnthems } from './ambientSynthMetalAnthems.js';
 import { installRadioPremiumForms } from './ambientRadioPremiumForms.js';
 import { withRadioMatthiasLeitmotif } from './ambientRadioMatthiasLeitmotifs.js';
 import { withAmbientPremiumProduction } from './ambientPremiumProduction.js';
@@ -43,6 +44,7 @@ installHouseAfro({
 installRadioMatthiasRecompositions({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
 installLofiSongbook({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
 installTropicalHouseMelodies({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
+installSynthMetalAnthems({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
 installRadioPremiumForms({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
 
 const GRANADA_THEME_IDS = new Set(['granadaPatio', 'granadaCopperRain0232']);

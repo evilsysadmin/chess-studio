@@ -9,7 +9,8 @@ describe('energy production identities', () => {
     const feels = ENERGY_PRODUCTION_IDS.map((id) => structuredFeel(AMBIENT_THEMES[id]));
     expect(new Set(feels.map((feel) => feel.percussion.kit)).size).toBe(ENERGY_PRODUCTION_IDS.length);
     ENERGY_PRODUCTION_IDS.forEach((id, index) => expect(getPercussionVoiceKit(id)).toBe(feels[index].percussion.kit));
-    expect(getAmbientThemeSoundProfile('neonSiege').estimatedBpm).toBeGreaterThanOrEqual(210);
+    expect(getAmbientThemeSoundProfile('neonSiege').estimatedBpm).toBeGreaterThanOrEqual(165);
+    expect(getAmbientThemeSoundProfile('neonSiege').estimatedBpm).toBeLessThanOrEqual(175);
     expect(getAmbientThemeSoundProfile('overclockedKnight').estimatedBpm).toBeGreaterThanOrEqual(145);
   });
 
@@ -22,7 +23,9 @@ describe('energy production identities', () => {
     expect(neon.leadInstrument).toBe('analogLead');
     expect(arcade.leadInstrument).toBe('arcadePulse');
     expect(siege.leadInstrument).toBe('overdriveGuitar');
-    expect(gallop.leadInstrument).toBe('subPulse');
+    expect(siege.counterInstrument).toBe('anthemLead');
+    expect(siege.chordInstrument).toBe('powerPad');
+    expect(gallop.leadInstrument).toBe('anthemLead');
     expect(gallop.counterInstrument).toBe('overdriveGuitar');
   });
 
@@ -33,7 +36,7 @@ describe('energy production identities', () => {
       expect(Object.keys(feel.signature.motif)).toHaveLength(4);
       expect(feel.signature.sections.every((index) => index < AMBIENT_THEMES[id].sections.length)).toBe(true);
     }
-    expect(structuredFeel(AMBIENT_THEMES.reactorGambit).signature.instrument).toBe('synth');
+    expect(structuredFeel(AMBIENT_THEMES.reactorGambit).signature.instrument).toBe('neonBrass');
     expect(structuredFeel(AMBIENT_THEMES.checkEngine).signature.instrument).toBe('synth');
   });
 });
