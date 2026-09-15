@@ -10,7 +10,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-WORKFLOW_PATH = ".github/workflows/oci-readiness.yml"
+READINESS_WORKFLOW_PATH = ".github/workflows/oci-readiness.yml"
+STAGING_WORKFLOW_PATH = ".github/workflows/oci-staging.yml"
+TERRAFORM_WORKFLOW_PATHS = frozenset({READINESS_WORKFLOW_PATH, STAGING_WORKFLOW_PATH})
 ARM64_RE = re.compile(
     r"^(?:backend-python/Dockerfile|backend-python/requirements[^/]*\.txt|"
     r"scripts/oci_arm64_smoke\.sh|\.github/workflows/oci-readiness\.yml)$"
@@ -29,7 +31,10 @@ def classify(files: list[str], *, event_name: str) -> Scope:
 
     normalized = [item.strip() for item in files if item.strip()]
     arm64 = any(ARM64_RE.fullmatch(path) is not None for path in normalized)
-    terraform = any(path.startswith("infra/oci/") or path == WORKFLOW_PATH for path in normalized)
+    terraform = any(
+        path.startswith("infra/oci/") or path in TERRAFORM_WORKFLOW_PATHS
+        for path in normalized
+    )
     return Scope(arm64=arm64, terraform=terraform)
 
 
@@ -62,7 +67,8 @@ def self_test() -> None:
     assert classify(["backend-python/requirements-dev.txt"], event_name="pull_request") == Scope(True, False)
     assert classify(["scripts/oci_arm64_smoke.sh"], event_name="pull_request") == Scope(True, False)
     assert classify(["infra/oci/main.tf"], event_name="pull_request") == Scope(False, True)
-    assert classify([WORKFLOW_PATH], event_name="pull_request") == Scope(True, True)
+    assert classify([READINESS_WORKFLOW_PATH], event_name="pull_request") == Scope(True, True)
+    assert classify([STAGING_WORKFLOW_PATH], event_name="pull_request") == Scope(False, True)
     assert classify(["frontend/src/App.jsx"], event_name="pull_request") == Scope(False, False)
     assert classify(
         ["backend-python/requirements.txt", "infra/oci/variables.tf"],

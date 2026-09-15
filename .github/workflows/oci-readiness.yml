@@ -10,6 +10,7 @@ on:
       - 'scripts/oci_readiness_scope.py'
       - 'infra/oci/**'
       - '.github/workflows/oci-readiness.yml'
+      - '.github/workflows/oci-staging.yml'
 
 permissions:
   contents: read

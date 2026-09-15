@@ -1,0 +1,239 @@
+name: OCI staging · Terraform
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Plan is read-only; apply is allowed only from main."
+        required: true
+        default: plan
+        type: choice
+        options:
+          - plan
+          - apply
+  workflow_run:
+    workflows: ["Main · admission"]
+    types: [completed]
+
+permissions:
+  contents: read
+
+# OCI state locking protects Terraform itself; this queue additionally makes
+# staging deploy intent explicit and never supersedes an in-flight apply.
+concurrency:
+  group: chess-studio-oci-staging
+  cancel-in-progress: false
+
+jobs:
+  scope:
+    name: OCI staging · scope
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      run_terraform: ${{ steps.scope.outputs.run_terraform }}
+      target_sha: ${{ steps.scope.outputs.target_sha }}
+    steps:
+      - name: Resolve admitted target
+        id: target
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_CONCLUSION: ${{ github.event.workflow_run.conclusion || '' }}
+          WORKFLOW_HEAD_SHA: ${{ github.event.workflow_run.head_sha || '' }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "workflow_run" ]]; then
+            if [[ "$WORKFLOW_CONCLUSION" != "success" ]]; then
+              echo "Main admission did not succeed; OCI staging remains untouched."
+              echo "target_sha=" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            target_sha="$WORKFLOW_HEAD_SHA"
+          else
+            target_sha="$DISPATCH_SHA"
+          fi
+
+          if [[ -z "$target_sha" ]]; then
+            echo "::error::Unable to resolve OCI staging target SHA."
+            exit 1
+          fi
+
+          echo "target_sha=$target_sha" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        if: steps.target.outputs.target_sha != ''
+        with:
+          ref: ${{ steps.target.outputs.target_sha }}
+          fetch-depth: 2
+
+      - name: Select OCI Terraform work
+        if: steps.target.outputs.target_sha != ''
+        id: scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          TARGET_SHA: ${{ steps.target.outputs.target_sha }}
+        run: |
+          set -euo pipefail
+          echo "target_sha=$TARGET_SHA" >> "$GITHUB_OUTPUT"
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "run_terraform=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          current_main="$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          if [[ "$current_main" != "$TARGET_SHA" ]]; then
+            echo "OCI staging skip: admitted SHA $TARGET_SHA is stale; main is $current_main."
+            echo "run_terraform=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          parent="$(git rev-parse "${TARGET_SHA}^")"
+          mapfile -t changed < <(git diff --name-only "$parent" "$TARGET_SHA")
+
+          printf 'Admitted OCI candidate files:\n'
+          printf -- '- %s\n' "${changed[@]}"
+
+          for path in "${changed[@]}"; do
+            case "$path" in
+              infra/oci/*|.github/workflows/oci-staging.yml|.github/workflows/oci-readiness.yml|scripts/oci_readiness_scope.py)
+                echo "run_terraform=true" >> "$GITHUB_OUTPUT"
+                exit 0
+                ;;
+            esac
+          done
+
+          echo "No OCI infrastructure change in admitted SHA; nothing to apply."
+          echo "run_terraform=false" >> "$GITHUB_OUTPUT"
+
+  terraform:
+    name: Terraform · OCI staging
+    needs: scope
+    if: >-
+      needs.scope.outputs.run_terraform == 'true' &&
+      (github.event_name == 'workflow_dispatch' || vars.OCI_STAGING_ENABLED == 'true')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: oci-staging
+    defaults:
+      run:
+        working-directory: infra/oci
+    env:
+      TF_IN_AUTOMATION: "true"
+      TF_INPUT: "false"
+      TF_VAR_region: ${{ vars.OCI_REGION }}
+      TF_VAR_compartment_ocid: ${{ vars.OCI_COMPARTMENT_OCID }}
+      TF_VAR_availability_domain: ${{ vars.OCI_AVAILABILITY_DOMAIN }}
+      TF_VAR_image_ocid: ${{ vars.OCI_IMAGE_OCID }}
+      TF_VAR_ssh_authorized_key: ${{ vars.OCI_SSH_PUBLIC_KEY }}
+      TF_VAR_instance_name: chess-studio-staging
+      TF_VAR_repo_ref: ${{ needs.scope.outputs.target_sha }}
+      TF_VAR_freeform_tags: '{"environment":"staging"}'
+      OCI_REGION: ${{ vars.OCI_REGION }}
+      OCI_TENANCY_OCID: ${{ vars.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ vars.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ vars.OCI_FINGERPRINT }}
+      OCI_TF_STATE_BUCKET: ${{ vars.OCI_TF_STATE_BUCKET }}
+      OCI_TF_STATE_NAMESPACE: ${{ vars.OCI_TF_STATE_NAMESPACE }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+
+    steps:
+      - name: Refuse manual apply outside main
+        if: github.event_name == 'workflow_dispatch' && inputs.mode == 'apply' && github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Manual OCI apply is allowed only from main."
+          exit 1
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.scope.outputs.target_sha }}
+
+      - name: Validate OCI CI configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required=(
+            OCI_REGION
+            OCI_TENANCY_OCID
+            OCI_USER_OCID
+            OCI_FINGERPRINT
+            OCI_TF_STATE_BUCKET
+            OCI_TF_STATE_NAMESPACE
+            OCI_PRIVATE_KEY
+            TF_VAR_compartment_ocid
+            TF_VAR_availability_domain
+            TF_VAR_image_ocid
+            TF_VAR_ssh_authorized_key
+          )
+
+          missing=()
+          for name in "${required[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              missing+=("$name")
+            fi
+          done
+
+          if ((${#missing[@]})); then
+            printf '::error::Missing OCI staging configuration: %s\n' "${missing[*]}"
+            exit 1
+          fi
+
+      - name: Configure OCI API key
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -d -m 700 "$HOME/.oci"
+          printf '%s\n' "$OCI_PRIVATE_KEY" > "$HOME/.oci/oci_api_key.pem"
+          chmod 600 "$HOME/.oci/oci_api_key.pem"
+
+          cat > "$HOME/.oci/config" <<EOF
+          [DEFAULT]
+          user=$OCI_USER_OCID
+          fingerprint=$OCI_FINGERPRINT
+          tenancy=$OCI_TENANCY_OCID
+          region=$OCI_REGION
+          key_file=$HOME/.oci/oci_api_key.pem
+          EOF
+          chmod 600 "$HOME/.oci/config"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.0
+          terraform_wrapper: false
+
+      - name: Terraform fmt
+        run: terraform fmt -check -diff -recursive
+
+      - name: Terraform init · OCI remote state
+        shell: bash
+        run: |
+          set -euo pipefail
+          terraform init -reconfigure \
+            -backend-config="bucket=$OCI_TF_STATE_BUCKET" \
+            -backend-config="namespace=$OCI_TF_STATE_NAMESPACE" \
+            -backend-config="key=chess-studio/staging/terraform.tfstate" \
+            -backend-config="region=$OCI_REGION" \
+            -backend-config="config_file_profile=DEFAULT"
+
+      - name: Terraform validate
+        run: terraform validate -no-color
+
+      - name: Terraform plan
+        run: terraform plan -no-color -lock-timeout=5m -out=tfplan
+
+      - name: Terraform apply
+        if: >-
+          (github.event_name == 'workflow_run' && vars.OCI_STAGING_ENABLED == 'true') ||
+          (github.event_name == 'workflow_dispatch' && inputs.mode == 'apply' && github.ref == 'refs/heads/main')
+        run: terraform apply -no-color -lock-timeout=5m -auto-approve tfplan
+
+      - name: OCI outputs
+        if: >-
+          (github.event_name == 'workflow_run' && vars.OCI_STAGING_ENABLED == 'true') ||
+          (github.event_name == 'workflow_dispatch' && inputs.mode == 'apply' && github.ref == 'refs/heads/main')
+        run: terraform output -no-color
