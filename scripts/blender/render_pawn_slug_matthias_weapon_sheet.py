@@ -16,6 +16,9 @@ if str(SCRIPT_DIR) not in sys.path:
 import build_pawn_slug_matthias_integrated as canonical
 
 
+CELL_WORLD = 3.20
+
+
 def args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--output-dir', default='/tmp/pawn-slug-art')
@@ -44,6 +47,11 @@ def main():
     out = Path(cfg.output_dir).resolve()
     out.mkdir(parents=True, exist_ok=True)
     canonical.TOTAL_ROWS = canonical.ROWS_PER_WEAPON
+    # Give every 96x96 frame enough authored world-space to contain Matthias,
+    # his full run/jump silhouette and the longest integrated weapon without
+    # bleeding into neighbouring cells. The raster contract stays 1536x480.
+    canonical.WORLD_CELL_X = CELL_WORLD
+    canonical.WORLD_CELL_Z = CELL_WORLD
     canonical.clear_scene()
     scene = canonical.setup_scene()
     mats = materials()
