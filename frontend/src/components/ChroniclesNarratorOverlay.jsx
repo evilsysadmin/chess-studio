@@ -5,12 +5,24 @@ const LOW_SIGNAL_NARRATION = Object.freeze([
   /^Piedra, polvo y la sospecha de que algo respira detrás del muro\.$/i,
   /^Hay una pared\./i,
   /contra absolutamente nada\./i,
+  / impacta con .* responde/i,
+  / alcanza .* con /i,
+  / castiga a la torre carcelero desde la retaguardia /i,
+]);
+
+const PARTY_OWNED_MILESTONES = Object.freeze([
+  /^El sello despierta\./i,
+  / remata al peón corrompido /i,
+  / derriba a la torre carcelero /i,
+  / deshace al alfil espectral /i,
+  / derriba al caballo carroñero /i,
+  /^Salida encontrada\./i,
 ]);
 
 export function shouldShowChroniclesNarration(message) {
   const text = typeof message === 'string' ? message.trim() : '';
   if (!text) return false;
-  return !LOW_SIGNAL_NARRATION.some((pattern) => pattern.test(text));
+  return ![...LOW_SIGNAL_NARRATION, ...PARTY_OWNED_MILESTONES].some((pattern) => pattern.test(text));
 }
 
 export default function ChroniclesNarratorOverlay({ message }) {
