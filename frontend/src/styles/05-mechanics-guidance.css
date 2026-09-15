@@ -94,42 +94,35 @@
 .campaign-intel-buy .secondary-btn { width: 100%; }
 .campaign-briefing-actions { display: flex; justify-content: space-between; gap: .6rem; }
 
-/* Tutorial in-game: compacto y fuera del tablero siempre que haya espacio. */
-.mechanic-tutorial-backdrop {
-  z-index: 220;
-  background: rgba(5,6,8,.42);
-  backdrop-filter: blur(2px);
+.mechanic-tutorial-backdrop { z-index: 220; }
+body .mechanic-tutorial-backdrop > .mechanic-tutorial-card { width:min(430px,calc(100vw - 1rem)); max-width:430px; }
+.mechanic-tutorial-card {
+  position: relative;
+  width: min(430px, calc(100vw - 1rem));
+  padding: .9rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--brass) 42%, var(--ink-3));
+  border-radius: 13px;
+  background: var(--panel, #171512);
+  box-shadow: 0 24px 70px rgba(0,0,0,.56);
 }
-body .mechanic-tutorial-backdrop > .mechanic-tutorial-card {
-  width: min(430px, calc(100vw - 1.5rem));
-  max-width: 430px;
-  min-width: 0;
-  box-sizing: border-box;
-  padding: 1rem 1.05rem;
-  overflow-x: hidden;
-}
-.mechanic-tutorial-card h2 { margin: .2rem 2rem .65rem 0; font-size: clamp(1.05rem,2vw,1.35rem); }
+.mechanic-tutorial-card h2 { margin: .35rem 2rem .8rem 0; }
 .mechanic-tutorial-step {
-  min-width: 0;
+  position: relative;
   min-height: 0;
-  padding: .82rem .88rem;
+  padding: .9rem;
   border: 1px solid rgba(255,255,255,.08);
   border-radius: 10px;
   background: rgba(0,0,0,.14);
 }
-.mechanic-tutorial-step h3 { margin: .15rem 0 .35rem; font-size: 1.05rem; }
-.mechanic-tutorial-step p { margin: 0; line-height: 1.45; color: var(--parchment-dim); font-size: .86rem; overflow-wrap: anywhere; }
-.mechanic-tutorial-counter { font-size: .6rem; letter-spacing: .1em; opacity: .55; }
-.mechanic-tutorial-dots { display: flex; justify-content: center; gap: .3rem; margin: .55rem 0; }
+.mechanic-tutorial-step h3 { margin: .15rem 0 .45rem; }
+.mechanic-tutorial-step p { margin: 0; line-height: 1.55; color: var(--parchment-dim); }
+.mechanic-tutorial-counter { font-size: .62rem; letter-spacing: .1em; opacity: .55; }
+.mechanic-tutorial-dots { display: flex; justify-content: center; gap: .3rem; margin: .7rem 0; }
 .mechanic-tutorial-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
 .mechanic-tutorial-dots span.active { background: var(--brass); }
-.mechanic-tutorial-actions { min-width: 0; display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: .45rem; }
-.mechanic-tutorial-actions > div { min-width: 0; display: grid; grid-template-columns: repeat(2,minmax(0,auto)); justify-content: end; gap: .4rem; }
-.mechanic-tutorial-actions :where(.primary-btn,.secondary-btn) { min-width: 0; padding-inline: .68rem; font-size: .74rem; white-space: nowrap; }
-
-@media (min-width: 781px) {
-  .mechanic-tutorial-backdrop { justify-content: flex-end; padding: 1rem; }
-}
+.mechanic-tutorial-actions { display:grid; grid-template-columns:auto 1fr; align-items:center; gap:.5rem; }
+.mechanic-tutorial-actions > div { display:flex; justify-content:flex-end; gap:.4rem; }
+@media (min-width:781px) { .mechanic-tutorial-backdrop { justify-content:flex-end; padding:1rem; } }
 
 .mechanic-library {
   width: 100%;
@@ -162,36 +155,13 @@ body .mechanic-tutorial-backdrop > .mechanic-tutorial-card {
   .deployment-filter-row,
   .campaign-briefing-grid,
   .mechanic-library { grid-template-columns: 1fr; }
-  .campaign-briefing-actions { align-items: stretch; flex-direction: column; }
-  .campaign-briefing-actions > * { flex: 1; }
-  .mechanic-tutorial-backdrop { align-items: flex-end; padding: .5rem; }
-  body .mechanic-tutorial-backdrop > .mechanic-tutorial-card {
-    width: 100%; max-width: none; max-height: min(78dvh,620px); padding: .85rem; border-radius: 15px 15px 9px 9px;
-  }
-  .mechanic-tutorial-step { padding: .7rem .75rem; }
-  .mechanic-tutorial-step p { font-size: .8rem; }
-  .mechanic-tutorial-actions { grid-template-columns: 1fr; align-items: stretch; }
-  .mechanic-tutorial-actions > div { order: 1; grid-template-columns: 1fr 1fr; justify-content: stretch; }
-  .mechanic-tutorial-actions > .secondary-btn { order: 2; width: 100%; }
-  .mechanic-tutorial-actions > div > * { width: 100%; }
+  .campaign-briefing-actions { align-items:stretch; flex-direction:column; }
+  .campaign-briefing-actions > * { flex:1; }
+  .mechanic-tutorial-backdrop { align-items:flex-end; padding:.5rem; }
+  .mechanic-tutorial-actions { grid-template-columns:1fr; align-items:stretch; }
+  .mechanic-tutorial-actions > div { display:grid; grid-template-columns:1fr 1fr; }
+  .mechanic-tutorial-actions > .secondary-btn { width:100%; }
   .mechanic-library-list { max-height: 280px; }
-}
-
-/* Landscape bajo: mantiene cabecera, texto y acciones dentro del viewport. */
-@media (min-width: 640px) and (max-height: 560px) {
-  .mechanic-tutorial-backdrop { justify-content: flex-end; align-items: center; padding: .45rem; }
-  body .mechanic-tutorial-backdrop > .mechanic-tutorial-card {
-    width: min(400px,calc(100vw - .9rem)); max-width: 400px; max-height: calc(100dvh - .9rem); padding: .7rem .75rem;
-  }
-  .mechanic-tutorial-card h2 { margin-top: 0; font-size: .98rem; }
-  .mechanic-tutorial-step { padding: .58rem .65rem; }
-  .mechanic-tutorial-step h3 { font-size: .9rem; }
-  .mechanic-tutorial-step p { font-size: .72rem; line-height: 1.34; }
-  .mechanic-tutorial-dots { margin: .3rem 0; }
-  .mechanic-tutorial-actions { grid-template-columns: auto minmax(0,1fr); }
-  .mechanic-tutorial-actions > div { order: initial; grid-template-columns: repeat(2,minmax(0,auto)); justify-content: end; }
-  .mechanic-tutorial-actions > .secondary-btn { order: initial; width: auto; }
-  .mechanic-tutorial-actions :where(.primary-btn,.secondary-btn) { width: auto; min-height: 34px; padding: .4rem .55rem; font-size: .68rem; }
 }
 
 
