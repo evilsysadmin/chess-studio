@@ -9,7 +9,7 @@ const RUN_FRAMES = 16;
 
 export const PAWN_SLUG_MATTHIAS_RUN_POLISH = Object.freeze({
   frameCount: RUN_FRAMES,
-  frameRate: 10.5,
+  frameRate: 14,
   leftTrimTexels: 4,
   rightTrimTexels: 4,
   topTrimTexels: 2,
@@ -19,7 +19,7 @@ export const PAWN_SLUG_MATTHIAS_RUN_POLISH = Object.freeze({
   cadenceLean: 0.003,
   stretchX: 1.008,
   compressY: 0.998,
-  purpose: 'grounded-sprint-with-clean-four-edge-crop-and-no-trotting-bob',
+  purpose: 'grounded-16-frame-run-with-clean-four-edge-crop-and-no-trotting-bob',
 });
 
 function wrapFrame(frame, count) {
@@ -69,9 +69,11 @@ export function applyPawnSlugMatthiasRunPolish(sprite, state = {}) {
   const animation = sprite.userData?.animation;
   if (animation?.action !== 'run') return null;
 
-  const frameIndex = pawnSlugMatthiasRunFrame(state.time, animation.runStartedAt);
-  if (animation.frameIndex !== frameIndex) sprite.userData.setActionFrame?.('run', frameIndex);
-  const appliedFrame = sprite.userData?.animation?.frameIndex ?? frameIndex;
+  const requestedFrame = Number.isFinite(state.runFrame)
+    ? wrapFrame(state.runFrame, RUN_FRAMES)
+    : pawnSlugMatthiasRunFrame(state.time, animation.runStartedAt);
+  if (animation.frameIndex !== requestedFrame) sprite.userData.setActionFrame?.('run', requestedFrame);
+  const appliedFrame = sprite.userData?.animation?.frameIndex ?? requestedFrame;
   const cadence = pawnSlugMatthiasRunCadence(appliedFrame);
   const direction = Number(state.dir) < 0 ? -1 : 1;
   const atlas = sprite.userData?.atlas;
@@ -81,8 +83,8 @@ export function applyPawnSlugMatthiasRunPolish(sprite, state = {}) {
     atlas.texture.offset?.set?.(uv.offsetX, uv.offsetY);
   }
 
-  // Keep the sprite planted. The authored frames already contain leg motion;
-  // adding world-space Y oscillation is what made Matthias visibly "trot".
+  // The artwork owns the leg motion. Keep the body planted and let the 16-frame
+  // texture cycle provide the stride instead of adding a fake world-space hop.
   sprite.scale.x *= PAWN_SLUG_MATTHIAS_RUN_POLISH.stretchX;
   sprite.scale.y *= PAWN_SLUG_MATTHIAS_RUN_POLISH.compressY;
   if (sprite.material) {
