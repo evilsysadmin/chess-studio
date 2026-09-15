@@ -238,6 +238,45 @@
   border-color: #e6ad5a;
   box-shadow: 0 0 18px rgba(221, 139, 49, .16), inset 0 0 18px rgba(224, 133, 41, .12);
 }
+.chronicles-tactics__choices {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: stretch;
+  padding-top: 2px;
+}
+.chronicles-tactics__choices > span {
+  display: flex;
+  align-items: center;
+  padding: 0 8px 0 2px;
+  color: #8f724f;
+  font-size: .56rem;
+  letter-spacing: .16em;
+}
+.chronicles-tactics__actions .chronicles-tactics__choices button {
+  min-height: 38px;
+  min-width: 76px;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 6px;
+  align-items: center;
+  justify-items: start;
+  padding: 5px 9px;
+  color: #e4d2b5;
+  border-color: rgba(226, 173, 91, .34);
+  background: rgba(42, 29, 18, .92);
+  text-align: left;
+}
+.chronicles-tactics__actions .chronicles-tactics__choices button:hover,
+.chronicles-tactics__actions .chronicles-tactics__choices button:focus-visible {
+  color: #f6e4c4;
+  border-color: rgba(240, 184, 98, .72);
+  background: rgba(79, 49, 23, .94);
+}
+.chronicles-tactics__choices button i { grid-row: 1 / -1; color: #e9b86c; font-size: .95rem; }
+.chronicles-tactics__choices button b { font-family: Georgia, serif; font-size: .72rem; font-weight: 600; }
+.chronicles-tactics__choices button small { color: #9c8c75; font-size: .56rem; }
 
 .chronicles-tactics__party {
   display: flex;
@@ -371,6 +410,9 @@
   .chronicles-tactics__actions { gap: 3px; padding: 5px; }
   .chronicles-tactics__actions button { min-height: 50px; padding: 3px; }
   .chronicles-tactics__actions button span { font-size: .61rem; }
+  .chronicles-tactics__choices { gap: 3px; }
+  .chronicles-tactics__choices > span { width: 100%; padding: 2px 1px; }
+  .chronicles-tactics__actions .chronicles-tactics__choices button { min-height: 36px; flex: 1 1 90px; padding: 4px 7px; }
   .chronicles-tactics__mission { grid-template-columns: 96px 1fr; padding: 10px; }
   .chronicles-tactics__party { gap: 4px; padding: 10px; }
   .chronicles-tactics__party > button { padding: 7px 5px; grid-template-columns: 24px minmax(0,1fr) auto; }
