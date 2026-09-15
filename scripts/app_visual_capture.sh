@@ -33,18 +33,24 @@ case "$mode" in
       )
     fi
     if has_group experiments; then
-      # Chronicles is substantially heavier than the card-based experiment
-      # surfaces under hosted SwiftShader. When it is the only affected
-      # experiment, use focused producers so Book I and Tactics get independent
-      # WebGL readback budgets instead of sharing one long full-page journey.
-      if [[ "$experiments_scope" == "chronicles" ]]; then
+      # Chronicles owns two heavy WebGL surfaces. Always run their focused
+      # producers when Chronicles is in scope, even in a mixed/full visual run.
+      # Put Tactics first so the action-RPG framing artifact survives even if a
+      # later legacy/full-suite canary times out under hosted SwiftShader.
+      if has_experiment_scope chronicles; then
         specs+=(
-          chronicles-gameplay-visual-artifact.spec.js
           chronicles-tactics-visual-artifact.spec.js
+          chronicles-gameplay-visual-artifact.spec.js
         )
-      else
+      fi
+
+      # The generic Experiments producer owns the hub/Arcade surfaces. It is not
+      # the canonical Chronicles gameplay proof anymore, so skip it for a pure
+      # Chronicles change and keep it for landing/Pawn Slug/full mixed scopes.
+      if [[ "$experiments_scope" != "chronicles" ]]; then
         specs+=(experiments-visual-artifact.spec.js)
       fi
+
       if has_experiment_scope chronicles && [[ "$chronicles_avatar" == "true" ]]; then
         specs+=(chronicles-avatar-visual-artifact.spec.js)
       fi
