@@ -6,8 +6,8 @@ on:
       operation:
         description: Terraform operation
         type: choice
-        options: [plan, apply, bootstrap, destroy]
-        default: plan
+        options: [probe, plan, apply, bootstrap, destroy]
+        default: probe
         required: true
       availability_domain:
         description: Optional override for OCI_AVAILABILITY_DOMAIN

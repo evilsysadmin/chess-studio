@@ -3,6 +3,7 @@ set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 bootstrap="$root/infra/oci/bootstrap"
+probe="$root/infra/oci/probe"
 staging="$root/infra/oci/staging"
 bootstrap_key="chess-studio/bootstrap/terraform.tfstate"
 staging_key="chess-studio/staging/terraform.tfstate"
@@ -10,7 +11,7 @@ staging_key="chess-studio/staging/terraform.tfstate"
 die() { echo "OCI staging lifecycle: FAIL · $*" >&2; exit 1; }
 
 valid_operation() {
-  case "${1:-}" in bootstrap|plan|apply|destroy) return 0 ;; *) return 1 ;; esac
+  case "${1:-}" in probe|bootstrap|plan|apply|destroy) return 0 ;; *) return 1 ;; esac
 }
 
 valid_sha() { [[ "${1:-}" =~ ^[0-9a-f]{40}$ ]]; }
@@ -73,7 +74,39 @@ clean_bootstrap_local_backend() {
 
 cleanup() {
   rm -f "${api_key:-}" "$HOME/.oci/config" "$staging/backend.hcl"
-  rm -rf "$bootstrap/.terraform" "$staging/.terraform"
+  rm -rf "$bootstrap/.terraform" "$probe/.terraform" "$staging/.terraform"
+}
+
+probe_account() {
+  local plan json
+  plan="${RUNNER_TEMP:-/tmp}/oci-account-probe.tfplan"
+  json="${RUNNER_TEMP:-/tmp}/oci-account-probe.json"
+  rm -rf "$probe/.terraform"
+  terraform -chdir="$probe" init -backend=false -no-color >/dev/null
+  TF_VAR_tenancy_ocid="$OCI_TENANCY_OCID" TF_VAR_region="$OCI_REGION" \
+    terraform -chdir="$probe" plan -no-color -out="$plan" >/dev/null
+  terraform -chdir="$probe" show -json "$plan" > "$json"
+  python3 - "$json" "$OCI_REGION" <<'PY'
+import json
+import sys
+
+payload = json.load(open(sys.argv[1], encoding="utf-8"))
+outputs = payload.get("planned_values", {}).get("outputs", {})
+def value(name):
+    return outputs.get(name, {}).get("value")
+namespace = value("object_storage_namespace")
+ads = value("availability_domains")
+image = value("latest_a1_ubuntu_image_ocid")
+image_name = value("latest_a1_ubuntu_image_name")
+if not isinstance(namespace, str) or not namespace:
+    raise SystemExit("Object Storage namespace was not resolved")
+if not isinstance(ads, list) or not ads or not all(isinstance(item, str) and item for item in ads):
+    raise SystemExit("No OCI availability domains were resolved")
+if not isinstance(image, str) or not image.startswith("ocid1.image."):
+    raise SystemExit("No A1-compatible Ubuntu 24.04 image was resolved")
+print(f"OCI probe OK · region={sys.argv[2]} · ADs={len(ads)} · image={image_name or image}")
+PY
+  rm -f "$plan" "$json"
 }
 
 namespace_from_provider() {
@@ -190,7 +223,7 @@ run_staging() {
 }
 
 self_test() {
-  for op in bootstrap plan apply destroy; do valid_operation "$op" || exit 1; done
+  for op in probe bootstrap plan apply destroy; do valid_operation "$op" || exit 1; done
   ! valid_operation explode || exit 1
   valid_sha 0123456789abcdef0123456789abcdef01234567 || exit 1
   ! valid_sha main || exit 1
@@ -212,7 +245,7 @@ if [[ "${1:-}" == "--self-test" ]]; then
 fi
 
 operation="${1:-}"
-valid_operation "$operation" || die "operation must be bootstrap, plan, apply or destroy"
+valid_operation "$operation" || die "operation must be probe, bootstrap, plan, apply or destroy"
 [[ -n "${OCI_REGION:-}" ]] || export OCI_REGION="eu-frankfurt-1"
 [[ -n "${OCI_TFSTATE_BUCKET:-}" ]] || export OCI_TFSTATE_BUCKET="chess-studio-tfstate"
 validate_backend_value "$OCI_REGION"
@@ -220,6 +253,11 @@ validate_backend_value "$OCI_TFSTATE_BUCKET"
 require_auth
 configure_auth
 trap cleanup EXIT
+
+if [[ "$operation" == "probe" ]]; then
+  probe_account
+  exit 0
+fi
 
 namespace="$(namespace_from_provider)"
 if [[ "$operation" == "bootstrap" ]]; then
