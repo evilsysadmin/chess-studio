@@ -64,6 +64,18 @@
     max-width: calc(100vw - 1rem);
   }
 
+  /* Las pantallas secundarias ya tienen un título contextual propio. En móvil
+     estrecho el wordmark global sólo compite con RetroPlayer y cuenta; Home y
+     las partidas conservan sus composiciones específicas. */
+  .app-shell:not(.app-shell-home):not(.app-shell-board-game)
+    > .masthead:not(.masthead-game-compact) .masthead-text {
+    display: none;
+  }
+  .app-shell:not(.app-shell-home):not(.app-shell-board-game)
+    > .masthead:not(.masthead-game-compact) .masthead-top-row {
+    min-height: 44px;
+  }
+
   /* En móvil el estado de servicio de admin vive en su propia fila debajo del
      RetroPlayer minimizado. Antes compartía la misma franja y podía montarse
      encima del player al cambiar de ancho o al aparecer la latencia. */
