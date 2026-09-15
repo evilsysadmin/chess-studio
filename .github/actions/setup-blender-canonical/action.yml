@@ -1,5 +1,5 @@
 name: Setup Blender canonical art
-description: Restore cached Blender/Pillow toolchains and install only the tiny host graphics helpers needed by canonical art workflows.
+description: Restore cached Blender/Pillow toolchains and prefer the runner's preinstalled Xvfb for headless rendering.
 inputs:
   blender-version:
     description: Portable Blender version shared by canonical art workflows.
@@ -46,23 +46,66 @@ runs:
         echo "${blender_home}" >> "${GITHUB_PATH}"
         "${blender_home}/blender" --version | head -n 1
 
-    - name: Install minimal graphics helpers
+    - name: Start preinstalled Xvfb when available
+      id: xvfb
+      shell: bash
+      run: |
+        set -euo pipefail
+        ready=false
+        display=':99'
+        socket='/tmp/.X11-unix/X99'
+        if command -v Xvfb >/dev/null 2>&1 \
+          && ldconfig -p | grep -q 'libGLX.so.0' \
+          && ldconfig -p | grep -q 'libGL.so.1'; then
+          rm -f "${socket}"
+          Xvfb "${display}" -screen 0 1280x1024x24 -nolisten tcp -ac \
+            >"${RUNNER_TEMP}/blender-xvfb.log" 2>&1 &
+          xvfb_pid=$!
+          for _ in $(seq 1 20); do
+            if [[ -S "${socket}" ]] && kill -0 "${xvfb_pid}" 2>/dev/null; then
+              ready=true
+              break
+            fi
+            if ! kill -0 "${xvfb_pid}" 2>/dev/null; then
+              break
+            fi
+            sleep 0.1
+          done
+          if [[ "${ready}" == true ]]; then
+            echo "DISPLAY=${display}" >> "${GITHUB_ENV}"
+            echo "Blender headless display: Xvfb ${display}"
+          else
+            kill "${xvfb_pid}" 2>/dev/null || true
+            cat "${RUNNER_TEMP}/blender-xvfb.log" || true
+          fi
+        fi
+        echo "ready=${ready}" >> "${GITHUB_OUTPUT}"
+
+    - name: Install fallback graphics or product helpers
       shell: bash
       env:
         EXTRA_PACKAGES: ${{ inputs.extra-packages }}
+        XVFB_READY: ${{ steps.xvfb.outputs.ready }}
       run: |
         set -euo pipefail
-        packages=(libegl1)
-        extras=()
+        packages=()
+        if [[ "${XVFB_READY}" != 'true' ]]; then
+          packages+=(libegl1)
+        fi
         if [[ -n "${EXTRA_PACKAGES}" ]]; then
           read -r -a extras <<< "${EXTRA_PACKAGES}"
+          packages+=("${extras[@]}")
+        fi
+        if (( ${#packages[@]} == 0 )); then
+          echo 'No apt packages needed for Blender canonical art.'
+          exit 0
         fi
         install_packages() {
           sudo env \
             DEBIAN_FRONTEND=noninteractive \
             NEEDRESTART_SUSPEND=1 \
             apt-get install -y --no-install-recommends -o Dpkg::Use-Pty=0 \
-            "${packages[@]}" "${extras[@]}"
+            "${packages[@]}"
         }
         if ! install_packages; then
           sudo apt-get update -qq
