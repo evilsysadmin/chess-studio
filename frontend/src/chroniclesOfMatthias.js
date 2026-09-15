@@ -169,7 +169,7 @@ function enterTile(state, x, y) {
       sigil: 'VII',
     });
   }
-  return { ...state, x, y, turns: state.turns + 1, message: 'Piedra, polvo y la sospecha de que algo respira detrás del muro.' };
+  return { ...state, x, y, turns: state.turns + 1 };
 }
 
 function partyMember(state, memberId) {
@@ -306,8 +306,8 @@ function blockingEnemyMessage(enemy) {
 export function chroniclesReduce(state, action) {
   if (!state || state.phase === 'escaped') return state;
   const actionType = typeof action === 'string' ? action : action?.type;
-  if (actionType === 'turn-left') return { ...state, direction: (state.direction + 3) % 4, turns: state.turns + 1, message: 'Giras a la izquierda.' };
-  if (actionType === 'turn-right') return { ...state, direction: (state.direction + 1) % 4, turns: state.turns + 1, message: 'Giras a la derecha.' };
+  if (actionType === 'turn-left') return { ...state, direction: (state.direction + 3) % 4, turns: state.turns + 1 };
+  if (actionType === 'turn-right') return { ...state, direction: (state.direction + 1) % 4, turns: state.turns + 1 };
   if (actionType === 'attack') return resolveAttack(state, typeof action === 'object' ? action.memberId : 'matthias');
 
   const direction = CHRONICLES_DIRECTIONS[state.direction];
