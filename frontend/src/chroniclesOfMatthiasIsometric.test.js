@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   chroniclesIsoInteractionForHit,
   chroniclesIsoWorldForCell,
+  chroniclesPartyFacingAngle,
   chroniclesThirdPersonCameraPose,
 } from './chroniclesOfMatthiasIsometric.js';
 
@@ -38,6 +39,12 @@ describe('Chronicles canonical third-person tactical viewport', () => {
 
     expect(pose.position.x).toBeLessThan(0);
     expect(pose.target.x).toBeGreaterThan(0);
+  });
+
+  it('rotates the whole party formation toward the encounter front', () => {
+    expect(chroniclesPartyFacingAngle({ x: 0, z: 0 }, { x: 0, z: -4 })).toBeCloseTo(Math.PI, 6);
+    expect(chroniclesPartyFacingAngle({ x: 0, z: 0 }, { x: 4, z: 0 })).toBeCloseTo(Math.PI / 2, 6);
+    expect(chroniclesPartyFacingAngle({ x: 0, z: 0 }, { x: -4, z: 0 })).toBeCloseTo(-Math.PI / 2, 6);
   });
 
   it('accepts only highlighted cells while move mode is active', () => {

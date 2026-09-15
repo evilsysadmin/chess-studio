@@ -12,10 +12,10 @@ import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js'
 
 const CELL = 2.45;
 const PARTY_OFFSETS = Object.freeze({
-  rook: Object.freeze({ x: -1.02, z: 0.28, scale: 0.78 }),
-  matthias: Object.freeze({ x: -0.28, z: -0.18, scale: 0.8 }),
-  bishop: Object.freeze({ x: 0.48, z: 0.18, scale: 0.77 }),
-  knight: Object.freeze({ x: 1.08, z: 0.04, scale: 0.79 }),
+  rook: Object.freeze({ x: -1.08, z: -0.22, scale: 0.78 }),
+  matthias: Object.freeze({ x: -0.26, z: 0.42, scale: 0.82 }),
+  bishop: Object.freeze({ x: 0.48, z: -0.06, scale: 0.77 }),
+  knight: Object.freeze({ x: 1.08, z: -0.18, scale: 0.79 }),
 });
 
 const TORCH_CELLS = Object.freeze([
@@ -35,6 +35,14 @@ function horizontalDirection(from, to, fallback = new THREE.Vector3(0, 0, -1)) {
   const direction = new THREE.Vector3(to.x - from.x, 0, to.z - from.z);
   if (direction.lengthSq() < 0.001) return fallback.clone();
   return direction.normalize();
+}
+
+export function chroniclesPartyFacingAngle(
+  party = { x: 0, z: 0 },
+  focus = { x: 0, z: -CELL * 2 },
+) {
+  const forward = horizontalDirection(party, focus);
+  return Math.atan2(forward.x, forward.z);
 }
 
 export function chroniclesThirdPersonCameraPose(
@@ -410,11 +418,11 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
   const clock = new THREE.Clock();
   const desiredParty = initialParty.clone();
   const desiredFocus = initialFocus.clone();
-  const desiredFacing = horizontalDirection(initialParty, initialFocus);
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
 
   party.root.position.copy(initialParty);
+  party.root.rotation.y = chroniclesPartyFacingAngle(initialParty, initialFocus);
 
   function resize() {
     const width = Math.max(1, host.clientWidth || 1);
@@ -432,10 +440,7 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
   }
 
   function syncPartyFacing() {
-    const targetAngle = Math.atan2(desiredFacing.x, desiredFacing.z);
-    party.models.forEach((model) => {
-      model.userData.chroniclesTargetYaw = targetAngle;
-    });
+    party.root.userData.chroniclesTargetYaw = chroniclesPartyFacingAngle(desiredParty, desiredFocus);
   }
 
   function syncInteraction(nextInteraction = null) {
@@ -470,7 +475,6 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
     const enemyFocus = nearestActiveEnemyWorld(state);
     if (enemyFocus) desiredFocus.copy(enemyFocus);
     else desiredFocus.copy(partyCell).add(new THREE.Vector3(0, 0, -CELL * 2));
-    desiredFacing.copy(horizontalDirection(partyCell, desiredFocus));
     syncPartyFacing();
 
     CHRONICLES_ENEMIES.forEach((definition) => {
@@ -505,8 +509,9 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
 
     if (reducedMotion) {
       party.root.position.copy(desiredParty);
+      party.root.rotation.y = party.root.userData.chroniclesTargetYaw ?? party.root.rotation.y;
       party.models.forEach((model) => {
-        if (model.visible) model.rotation.y = model.userData.chroniclesTargetYaw || Math.PI;
+        if (model.visible) model.rotation.y = 0;
       });
       enemies.forEach((model) => {
         if (!model.visible || !model.userData.chroniclesIsoTarget) return;
@@ -555,6 +560,12 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
 
     if (!reducedMotion) {
       party.root.position.lerp(desiredParty, 0.12);
+      const targetPartyYaw = party.root.userData.chroniclesTargetYaw ?? party.root.rotation.y;
+      party.root.rotation.y += Math.atan2(
+        Math.sin(targetPartyYaw - party.root.rotation.y),
+        Math.cos(targetPartyYaw - party.root.rotation.y),
+      ) * 0.11;
+
       enemies.forEach((model, id) => {
         if (!model.visible || !model.userData.chroniclesIsoTarget) return;
         model.position.lerp(model.userData.chroniclesIsoTarget, id === 'scavenger-knight' ? 0.18 : 0.13);
@@ -565,8 +576,7 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
 
       party.models.forEach((model, id) => {
         if (!model.visible) return;
-        const targetYaw = model.userData.chroniclesTargetYaw || Math.PI;
-        model.rotation.y += Math.atan2(Math.sin(targetYaw - model.rotation.y), Math.cos(targetYaw - model.rotation.y)) * 0.12;
+        model.rotation.y = Math.sin(time * 0.55 + id.length) * 0.018;
         const hpRatio = model.userData.chroniclesIsoHpRatio ?? 1;
         model.position.y = Math.sin(time * 0.8 + id.length) * 0.005 - (1 - hpRatio) * 0.025;
       });
