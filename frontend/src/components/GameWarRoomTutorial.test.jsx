@@ -33,14 +33,18 @@ describe('War Room first-run guide', () => {
     expect(tutorial.steps.some((step) => /móvil/.test(step.text))).toBe(true);
   });
 
-  it('keeps the guide reopenable next to the real War Room controls', () => {
+  it('nudges without blocking the board and stays reopenable beside the real controls', () => {
     const desktop = renderToStaticMarkup(<GameWarRoomCommandColumn {...props()} />);
     expect(desktop).toContain('aria-label="Abrir guía de la War Room"');
+    expect(desktop).toContain('Guía');
+    expect(desktop).not.toContain('role="dialog"');
     expect(desktop).toContain('aria-label="Más acciones de partida"');
     expect(desktop).toContain('Abandonar partida');
 
     const compact = renderToStaticMarkup(<GameWarRoomCommandColumn {...props({ compactViewport: true })} />);
     expect(compact).toContain('aria-label="Abrir guía de la War Room"');
+    expect(compact).toContain('Guía');
+    expect(compact).not.toContain('role="dialog"');
     expect(compact).toContain('aria-label="Abandonar partida"');
     expect(compact).toContain('aria-label="Más acciones de partida"');
   });
