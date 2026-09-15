@@ -18,8 +18,8 @@ if str(SCRIPT_DIR) not in sys.path:
 import build_pawn_slug_matthias_integrated as canonical
 
 
-CELL_WORLD = 3.60
-CHARACTER_CENTER_Z = 1.45
+CELL_WORLD = 5.40
+CHARACTER_CENTER_Z = 1.50
 
 
 def args():
@@ -33,15 +33,15 @@ def args():
 def materials():
     return (
         canonical.mat('skin', (0.78, 0.62, 0.49, 1), 0.0, 0.58),
-        canonical.mat('uniform_black', (0.045, 0.055, 0.068, 1), 0.05, 0.48),
-        canonical.mat('helmet_black', (0.018, 0.022, 0.028, 1), 0.22, 0.24),
-        canonical.mat('armor', (0.12, 0.14, 0.16, 1), 0.15, 0.36),
-        canonical.mat('boots', (0.025, 0.027, 0.032, 1), 0.10, 0.31),
+        canonical.mat('uniform_black', (0.075, 0.085, 0.105, 1), 0.05, 0.46),
+        canonical.mat('helmet_black', (0.035, 0.042, 0.052, 1), 0.22, 0.24),
+        canonical.mat('armor', (0.17, 0.19, 0.22, 1), 0.15, 0.34),
+        canonical.mat('boots', (0.045, 0.050, 0.060, 1), 0.10, 0.31),
         canonical.mat('badge', (0.88, 0.84, 0.72, 1), 0.20, 0.28),
-        canonical.mat('gunmetal', (0.11, 0.13, 0.15, 1), 0.78, 0.20),
-        canonical.mat('polymer', (0.025, 0.030, 0.036, 1), 0.05, 0.38),
-        canonical.mat('olive', (0.26, 0.30, 0.17, 1), 0.28, 0.43),
-        canonical.mat('brass', (0.55, 0.35, 0.10, 1), 0.76, 0.20),
+        canonical.mat('gunmetal', (0.24, 0.27, 0.31, 1), 0.78, 0.20),
+        canonical.mat('polymer', (0.075, 0.085, 0.10, 1), 0.05, 0.36),
+        canonical.mat('olive', (0.30, 0.35, 0.19, 1), 0.28, 0.41),
+        canonical.mat('brass', (0.62, 0.40, 0.12, 1), 0.76, 0.20),
     )
 
 
@@ -79,14 +79,7 @@ def add_front_fill():
 
 
 def normalize_cube_proportions():
-    """Make canonical cube dimensions use the same half-extents contract as spheres.
-
-    The source helper creates a unit cube (size=1) and historically treated the
-    supplied scale tuple as half-extents. That made every cube-authored body,
-    limb and weapon part half its intended size while sphere/cylinder parts were
-    correctly dimensioned. Wrap it for this canonical bake so the whole model
-    uses one consistent geometric contract without touching runtime art.
-    """
+    """Make canonical cube dimensions use the same half-extents contract as spheres."""
     original_cube = canonical.cube
 
     def cube(name, loc, scale, material, rot=(0.0, 0.0, 0.0), parent=None):
@@ -117,63 +110,56 @@ def hide_legacy_front(base):
 
 
 def tactical_front(origin, base, action, frame, count, weapon, mats):
-    """Author the readable tactical face/arms/weapon in Blender itself.
-
-    Camera is on -Y, therefore increasingly negative Y is nearer the viewer.
-    Depth ordering is deliberate: helmet/torso -> face -> sleeves -> weapon ->
-    hands/details. The runtime receives one flattened sprite frame.
-    """
+    """Author a readable tactical face, arms and weapon in the Blender bake."""
     skin, uniform, helmet, armor, _boot, ivory, gunmetal, polymer, olive, brass = mats
     p = canonical.pose(action, frame, count)
     body_z = p['body_z'] - p['crouch']
     crouch = p['crouch']
 
-    # Face: compact chibi profile looking right, clearly exposed below helmet.
+    # Compact Matthias profile: expressive enough at 96 px without swallowing
+    # the torso or the integrated weapon.
     canonical.sphere(
-        'tactical_face', canonical.xz(origin, 0.04, 1.78 + body_z, -0.34),
-        (0.27, 0.075, 0.235), skin, segments=20, rings=10, parent=base,
+        'tactical_face', canonical.xz(origin, 0.03, 1.80 + body_z, -0.34),
+        (0.19, 0.070, 0.17), skin, segments=20, rings=10, parent=base,
     )
     canonical.sphere(
-        'tactical_nose', canonical.xz(origin, 0.285, 1.77 + body_z, -0.39),
-        (0.055, 0.04, 0.055), skin, segments=12, rings=6, parent=base,
+        'tactical_nose', canonical.xz(origin, 0.225, 1.79 + body_z, -0.39),
+        (0.042, 0.035, 0.042), skin, segments=12, rings=6, parent=base,
     )
     canonical.cube(
-        'tactical_eye', canonical.xz(origin, 0.17, 1.84 + body_z, -0.425),
-        (0.025, 0.012, 0.032), helmet, parent=base,
+        'tactical_eye', canonical.xz(origin, 0.135, 1.835 + body_z, -0.425),
+        (0.018, 0.010, 0.022), helmet, parent=base,
     )
     canonical.cube(
-        'tactical_brow', canonical.xz(origin, 0.13, 1.91 + body_z, -0.422),
-        (0.09, 0.012, 0.018), helmet, rot=(0, -0.08, 0), parent=base,
+        'tactical_brow', canonical.xz(origin, 0.105, 1.885 + body_z, -0.422),
+        (0.065, 0.010, 0.014), helmet, rot=(0, -0.08, 0), parent=base,
     )
     canonical.cube(
-        'tactical_hair', canonical.xz(origin, -0.04, 1.96 + body_z, -0.39),
-        (0.22, 0.025, 0.055), helmet, parent=base,
+        'tactical_hair', canonical.xz(origin, -0.025, 1.93 + body_z, -0.39),
+        (0.16, 0.020, 0.040), helmet, parent=base,
     )
 
-    # Helmet sits behind the face, with the pawn mark physically on its side.
     canonical.sphere(
-        'tactical_helmet', canonical.xz(origin, -0.03, 2.08 + body_z, -0.08),
-        (0.37, 0.18, 0.22), helmet, segments=24, rings=12, parent=base,
+        'tactical_helmet', canonical.xz(origin, -0.02, 2.045 + body_z, -0.08),
+        (0.28, 0.15, 0.17), helmet, segments=24, rings=12, parent=base,
     )
     canonical.cube(
-        'tactical_helmet_brim', canonical.xz(origin, 0.12, 1.96 + body_z, -0.25),
-        (0.30, 0.055, 0.035), helmet, parent=base,
+        'tactical_helmet_brim', canonical.xz(origin, 0.09, 1.94 + body_z, -0.25),
+        (0.22, 0.045, 0.025), helmet, parent=base,
     )
     canonical.sphere(
-        'tactical_badge_head', canonical.xz(origin, -0.03, 2.13 + body_z, -0.275),
-        (0.045, 0.018, 0.045), ivory, segments=10, rings=6, parent=base,
+        'tactical_badge_head', canonical.xz(origin, -0.02, 2.08 + body_z, -0.275),
+        (0.035, 0.015, 0.035), ivory, segments=10, rings=6, parent=base,
     )
     canonical.cube(
-        'tactical_badge_stem', canonical.xz(origin, -0.03, 2.065 + body_z, -0.276),
-        (0.025, 0.014, 0.035), ivory, parent=base,
+        'tactical_badge_stem', canonical.xz(origin, -0.02, 2.03 + body_z, -0.276),
+        (0.018, 0.012, 0.026), ivory, parent=base,
     )
     canonical.cube(
-        'tactical_badge_base', canonical.xz(origin, -0.03, 2.015 + body_z, -0.277),
-        (0.065, 0.014, 0.018), ivory, parent=base,
+        'tactical_badge_base', canonical.xz(origin, -0.02, 1.99 + body_z, -0.277),
+        (0.050, 0.012, 0.014), ivory, parent=base,
     )
 
-    # Readable vest face and small pouches; body/legs underneath keep the
-    # authored locomotion from the canonical builder.
     canonical.cube(
         'tactical_vest_front', canonical.xz(origin, 0.02, 1.22 + body_z, -0.27),
         (0.31, 0.045, 0.31), armor, parent=base,
@@ -196,7 +182,6 @@ def tactical_front(origin, base, action, frame, count, weapon, mats):
     }[weapon]
     rear_x = 0.34
 
-    # Sleeves sit behind the weapon, but remain visually distinct from torso.
     canonical.limb_box(
         'tactical_rear_arm', origin, (0.08, 1.43 + body_z, -0.35),
         0.48, 0.16, -0.30, uniform, base, depth=0.055,
@@ -214,13 +199,11 @@ def tactical_front(origin, base, action, frame, count, weapon, mats):
         max(0.38, support_x * 0.55), 0.15, 0.01, armor, base, depth=0.05,
     )
 
-    # Weapon is authored and rendered with Matthias, never bolted on in Three.js.
     weapon_group = canonical.add_weapon(
         weapon, origin, base, (gunmetal, helmet, polymer, olive, brass), z=weapon_z,
     )
     weapon_group.location.y -= 0.52
 
-    # Hands sit over the grips/fore-end so the weapon visibly belongs to him.
     canonical.sphere(
         'tactical_rear_hand', canonical.xz(origin, rear_x + 0.13, weapon_z - 0.055, -0.59),
         (0.075, 0.038, 0.075), skin, segments=12, rings=6, parent=base,
