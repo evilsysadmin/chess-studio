@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import { buildChroniclesDungeonAtmosphere } from './chroniclesOfMatthiasAtmosphere.js';
 
@@ -6,8 +7,8 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     const desktop = buildChroniclesDungeonAtmosphere();
     const coarse = buildChroniclesDungeonAtmosphere({ coarsePointer: true });
 
-    expect(desktop.userData.chroniclesAtmosphereStats).toEqual({ dustCount: 84, mistCount: 3, readabilityLightCount: 6 });
-    expect(coarse.userData.chroniclesAtmosphereStats).toEqual({ dustCount: 24, mistCount: 0, readabilityLightCount: 6 });
+    expect(desktop.userData.chroniclesAtmosphereStats).toEqual({ dustCount: 84, mistCount: 3, readabilityLightCount: 8 });
+    expect(coarse.userData.chroniclesAtmosphereStats).toEqual({ dustCount: 24, mistCount: 0, readabilityLightCount: 8 });
     expect(desktop.getObjectByName('chronicles-gate-mist')).toBeTruthy();
     expect(desktop.getObjectByName('chronicles-surface-patina')).toBeTruthy();
     expect(coarse.getObjectByName('chronicles-surface-patina')).toBeTruthy();
@@ -24,7 +25,7 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     const farFill = desktop.getObjectByName('chronicles-readability-far-fill');
 
     expect(ambient?.isAmbientLight).toBe(true);
-    expect(ambient?.intensity).toBeGreaterThanOrEqual(0.6);
+    expect(ambient?.intensity).toBeGreaterThanOrEqual(0.7);
     expect(entryBounce?.isPointLight).toBe(true);
     expect(cryptBounce?.isPointLight).toBe(true);
     expect(floorBounce?.isPointLight).toBe(true);
@@ -43,6 +44,52 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     expect(corridorFill?.distance).toBeGreaterThanOrEqual(18);
     expect(corridorFill?.decay).toBeLessThan(2);
     expect(farFill?.intensity).toBeLessThan(corridorFill?.intensity);
+  });
+
+  it('carries a warm torch with the party camera instead of relying on wall lights', () => {
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(67, 1, 0.08, 70);
+    camera.position.set(-8, 1.62, 8);
+    camera.rotation.y = -Math.PI / 2;
+    const atmosphere = buildChroniclesDungeonAtmosphere();
+    scene.add(camera, atmosphere);
+
+    const key = atmosphere.getObjectByName('chronicles-party-torch-key');
+    const bounce = atmosphere.getObjectByName('chronicles-party-torch-bounce');
+    atmosphere.userData.updateChroniclesAtmosphere(1.4);
+
+    expect(key?.isPointLight).toBe(true);
+    expect(bounce?.isPointLight).toBe(true);
+    expect(key?.castShadow).toBe(false);
+    expect(bounce?.castShadow).toBe(false);
+    expect(key?.intensity).toBeGreaterThan(4.7);
+    expect(key?.distance).toBeGreaterThanOrEqual(12);
+    expect(key?.position.distanceTo(camera.position)).toBeLessThan(1.2);
+    expect(bounce?.position.y).toBeLessThan(camera.position.y);
+
+    const before = key.position.clone();
+    camera.position.set(-4, 1.62, 8);
+    camera.rotation.y = 0;
+    atmosphere.userData.updateChroniclesAtmosphere(2.1);
+    expect(key.position.distanceTo(before)).toBeGreaterThan(3.5);
+    expect(key.position.distanceTo(camera.position)).toBeLessThan(1.2);
+  });
+
+  it('keeps the carried torch attached when reduced motion disables flicker', () => {
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(67, 1, 0.08, 70);
+    camera.position.set(0, 1.62, 8);
+    const atmosphere = buildChroniclesDungeonAtmosphere({ reducedMotion: true });
+    scene.add(camera, atmosphere);
+    const key = atmosphere.getObjectByName('chronicles-party-torch-key');
+
+    atmosphere.userData.updateChroniclesAtmosphere(1);
+    const intensity = key.intensity;
+    camera.position.z = 4;
+    atmosphere.userData.updateChroniclesAtmosphere(9);
+
+    expect(key.intensity).toBe(intensity);
+    expect(key.position.distanceTo(camera.position)).toBeLessThan(1.2);
   });
 
   it('generates deterministic dust only across the authored dungeon volume', () => {
