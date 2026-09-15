@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHRONICLES_ISO_PARTY_FACING,
+  CHRONICLES_ISO_PARTY_LAYOUT,
   chroniclesIsoInteractionForHit,
   chroniclesIsoWorldForCell,
   chroniclesIsoWorldObjectState,
@@ -20,22 +22,33 @@ describe('Chronicles canonical isometric viewport', () => {
     expect(east.x - centre.x).toBeCloseTo(south.z - centre.z, 6);
   });
 
-  it('keeps the camera close, low and aimed through the party into the dungeon', () => {
+  it('keeps the camera low and close enough for behind-party action framing', () => {
     const focus = { x: 2, z: -3 };
     const pose = chroniclesIsometricCameraPose(focus);
     const horizontalDistance = Math.hypot(pose.position.x - focus.x, pose.position.z - focus.z);
 
-    expect(pose.position.y).toBeGreaterThan(4.5);
-    expect(pose.position.y).toBeLessThan(6.5);
-    expect(horizontalDistance).toBeGreaterThan(7);
-    expect(horizontalDistance).toBeLessThan(10);
+    expect(pose.position.y).toBeGreaterThan(2.75);
+    expect(pose.position.y).toBeLessThan(3.75);
+    expect(horizontalDistance).toBeGreaterThan(5.5);
+    expect(horizontalDistance).toBeLessThan(7);
     expect(pose.position.x).toBeGreaterThan(focus.x);
     expect(pose.position.z).toBeGreaterThan(focus.z);
     expect(pose.target.x).toBeLessThan(focus.x);
-    expect(pose.target.z).toBeLessThan(focus.z);
-    expect(pose.target.y).toBeGreaterThan(0);
-    expect(pose.fov).toBeGreaterThanOrEqual(38);
-    expect(pose.fov).toBeLessThanOrEqual(43);
+    expect(pose.target.z).toBeLessThan(focus.z - 2);
+    expect(pose.target.y).toBeGreaterThan(0.8);
+    expect(pose.fov).toBeGreaterThanOrEqual(41);
+    expect(pose.fov).toBeLessThanOrEqual(44);
+  });
+
+  it('gives the party foreground scale, lateral spread and one forward-facing direction', () => {
+    const members = Object.values(CHRONICLES_ISO_PARTY_LAYOUT);
+    const xs = members.map((member) => member.x);
+    const zs = members.map((member) => member.z);
+
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(1.6);
+    expect(Math.max(...zs) - Math.min(...zs)).toBeGreaterThan(0.8);
+    members.forEach((member) => expect(member.scale).toBeGreaterThanOrEqual(1));
+    expect(CHRONICLES_ISO_PARTY_FACING).toBeCloseTo(-Math.PI * 0.75, 6);
   });
 
   it('accepts only highlighted cells while move mode is active', () => {
