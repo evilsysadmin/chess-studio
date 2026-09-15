@@ -103,9 +103,19 @@ case "$mode" in
       echo "Chronicles avatar proof: $chronicles_avatar"
     fi
     printf ' - %s\n' "${specs[@]}"
+
+    playwright_args=(--workers=1 --retries=0)
+    if has_group warroom && has_producer warroom-core && has_producer warroom-decor; then
+      # Core already proves the canonical 844x390 Android landscape surface.
+      # Keep decor's expensive focused landscape session for decor-only changes,
+      # but do not render that same SwiftShader viewport again in broad sweeps.
+      playwright_args+=(--grep-invert "War Room decor · scene-first captures android-landscape-844x390")
+      echo "War Room visual dedupe: core owns Android landscape; decor keeps desktop inspection only."
+    fi
+
     ./node_modules/.bin/playwright test \
       "${specs[@]}" \
-      --workers=1 --retries=0
+      "${playwright_args[@]}"
     ;;
   hans)
     if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
