@@ -2,7 +2,7 @@
 """Deterministically build the editable .blend and runtime .glb for the premium Chronicles Tactics party.
 
 Matthias already owns a canonical Home GLB. This producer covers the remaining
-party silhouettes: Hildegard (rook), Aziz (bishop), and Morcilla (knight).
+party silhouettes: Hildegard (rook), Aziz (bishop), and Faust (knight).
 """
 from __future__ import annotations
 
@@ -114,7 +114,7 @@ def aziz() -> list[PartSpec]:
     return p
 
 
-def morcilla() -> list[PartSpec]:
+def faust() -> list[PartSpec]:
     p = plinth("knight", "bone", "iron")
     p += [
         part("knight__body", "cone", "brown_cloth", (0, 0, 0.77), scale=(0.40, 0.40, 0.68), radius_top=0.70, vertices=48),
@@ -139,7 +139,7 @@ def morcilla() -> list[PartSpec]:
 CAST = {
     "rook": tuple(hildegard()),
     "bishop": tuple(aziz()),
-    "knight": tuple(morcilla()),
+    "knight": tuple(faust()),
 }
 ASSET_VERSION = "chronicles-tactics-party-v1"
 

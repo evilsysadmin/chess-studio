@@ -10,6 +10,7 @@ import { buildChroniclesCharacter, buildCorruptedPawn, buildGateJailer } from '.
 import { buildScavengerKnight } from './chroniclesOfMatthiasScavengerKnight.js';
 import { buildSpectralBishop } from './chroniclesOfMatthiasSpectralBishop.js';
 import { installChroniclesCanonicalMatthias } from './chroniclesOfMatthiasBlenderArt.js';
+import { installChroniclesTacticsPartyBlenderArt } from './chroniclesOfMatthiasPartyBlenderArt.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 
 const CELL = 2.45;
@@ -429,6 +430,7 @@ function buildParty(scene, { coarsePointer, reducedMotion }) {
     if (id === 'matthias') installChroniclesCanonicalMatthias(model, { coarsePointer, reducedMotion });
     models.set(id, model);
   });
+  root.userData.chroniclesArtCancel = installChroniclesTacticsPartyBlenderArt(models, { coarsePointer, reducedMotion });
 
   const selectionMaterial = new THREE.MeshBasicMaterial({
     color: 0xf2bd67,
