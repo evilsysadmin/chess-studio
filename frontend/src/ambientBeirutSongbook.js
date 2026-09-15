@@ -9,13 +9,15 @@ function line(entries) {
   return Object.freeze(Object.fromEntries(entries));
 }
 
-function section({ lead = [], counter = [], chords = [], bass = [] }) {
+function section({ lead = [], counter = [], chords = [], bass = [], leadInstrument = null, counterInstrument = null }) {
   return Object.freeze({
     lead:line(lead),
     counter:line(counter),
     chords:line(chords.map(([step, notes]) => [step, Object.freeze(notes)])),
     bass:line(bass),
     drums:Object.freeze({}),
+    ...(leadInstrument ? { leadInstrument } : {}),
+    ...(counterInstrument ? { counterInstrument } : {}),
   });
 }
 
@@ -30,6 +32,11 @@ const BEIRUT_0113 = Object.freeze([
     bass:[[0,40],[12,47],[24,38],[36,41],[48,38],[60,43]],
   }),
   section({
+    // The second scene deliberately swaps the written soloists. This is an
+    // audible conversation, not a metadata trick: clarinet takes the phrase
+    // while the guitar answers before the opening roles return.
+    leadInstrument:'clarinet',
+    counterInstrument:'guitar2',
     lead:[[6,64],[12,67],[18,70],[26,69],[42,67],[50,64],[62,69]],
     counter:[[32,74],[56,71]],
     chords:[[0,[52,55,59]],[18,[55,59,62]],[36,[50,55,59]],[54,[53,57,60]]],
@@ -140,7 +147,7 @@ const BEIRUT_HARBOR = Object.freeze([
 
 export const BEIRUT_SONGBOOK_REWRITES = Object.freeze({
   beirut0113:Object.freeze({
-    description:'Jazz levantino íntimo en 6/8: motivo corto de guitarra, respuestas de viento, Rhodes y contrabajo con silencios de verdad.',
+    description:'Jazz levantino íntimo en 6/8: motivo corto de guitarra, respuestas de clarinete, contrabajo y silencios de verdad.',
     sections:BEIRUT_0113,
   }),
   beirutRooftop0412:Object.freeze({
@@ -162,6 +169,7 @@ export const BEIRUT_PROFILES = Object.freeze({
     family:'beirut-0113-intimate-six-eight', harmonyPath:Object.freeze([0,-2,0,3,0,-2,5,0]),
     swing:0.035, warmth:0.92, releaseScale:1.04,
     leadInstrument:'nylonGuitar', counterInstrument:'clarinet', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass',
+    layers:Object.freeze({ chords:false }),
     mix:Object.freeze({ lead:0.58, counter:0.20, bass:0.70, chord:0.34 }),
   }),
   beirutRooftop0412:Object.freeze({
@@ -200,7 +208,15 @@ export function withBeirutProduction(theme, feel) {
   return Object.freeze({
     ...(feel || {}),
     ...authored,
-    layers:Object.freeze({ ...(feel?.layers || {}), lead:true, counter:true, chords:true, bass:true, drums:true, signature:true }),
+    layers:Object.freeze({
+      ...(feel?.layers || {}),
+      lead:true,
+      counter:true,
+      chords:authored.layers?.chords ?? true,
+      bass:true,
+      drums:true,
+      signature:true,
+    }),
     mix:Object.freeze({ ...(feel?.mix || {}), ...authored.mix }),
   });
 }
