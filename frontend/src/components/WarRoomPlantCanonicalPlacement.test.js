@@ -28,17 +28,17 @@ function makeRoot({ anchor = { x: 7.05, z: 2.85 } } = {}) {
 }
 
 describe('War Room canonical plant placement', () => {
-  it('locks the right plant to the visible room-side end of the sofa, not behind it at the window', () => {
+  it('locks the plant to the upper-right weather-window corner instead of in front of the sofa', () => {
     const { root, plant, sofa } = makeRoot();
 
     expect(lockWarRoomCanonicalPlantPlacement(root)).toBe(1);
-    expect(plant.position.x).toBeCloseTo(5.77, 5);
-    expect(plant.position.z).toBeCloseTo(3.37, 5);
+    expect(plant.position.x).toBeCloseTo(7.05, 5);
+    expect(plant.position.z).toBeCloseTo(2.85, 5);
     expect(plant.position.y).toBeCloseTo(-0.255, 5);
-    expect(plant.position.x).toBeLessThan(sofa.position.x);
+    expect(plant.position.x).toBeGreaterThan(sofa.position.x);
     expect(plant.position.z).toBeLessThan(sofa.position.z);
-    expect(plant.userData.warRoomPlantPlacement).toBe('canonical-visible-sofa-corner-v16');
-    expect(plant.userData.warRoomPlantOcclusionFix).toBe('stable-room-side-sofa-clearance-v16');
+    expect(plant.userData.warRoomPlantPlacement).toBe('canonical-weather-window-corner-v17');
+    expect(plant.userData.warRoomPlantOcclusionFix).toBe('stable-wall-corner-board-clearance-v17');
     expect(plant.userData.warRoomPlantBoardClearance).toBe('outside-table-footprint');
     expect(plant.userData.warRoomCanonicalPlacement).toBe(WAR_ROOM_CANONICAL_PLANT_PLACEMENT_VERSION);
     expect(root.userData.warRoomCanonicalPlantPlacement).toBe(WAR_ROOM_CANONICAL_PLANT_PLACEMENT_VERSION);
@@ -55,12 +55,12 @@ describe('War Room canonical plant placement', () => {
     expect(plant.position).toEqual(first);
   });
 
-  it('mirrors the visible corner placement for the opposite room orientation', () => {
+  it('mirrors the canonical corner placement for the opposite room orientation', () => {
     const { root, plant } = makeRoot({ anchor: { x: -7.05, z: -2.85 } });
 
     expect(lockWarRoomCanonicalPlantPlacement(root)).toBe(1);
-    expect(plant.position.x).toBeCloseTo(-5.77, 5);
-    expect(plant.position.z).toBeCloseTo(-3.37, 5);
+    expect(plant.position.x).toBeCloseTo(-7.05, 5);
+    expect(plant.position.z).toBeCloseTo(-2.85, 5);
   });
 
   it('refuses incomplete anchors instead of inventing a fallback position', () => {
