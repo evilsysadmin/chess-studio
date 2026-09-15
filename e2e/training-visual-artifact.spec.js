@@ -108,4 +108,12 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales, Apertur
   await expect(career.locator('.career-mini-grid').first()).toBeVisible();
   await captureAt(page, 'career', { width: 1440, height: 900, variant: 'desktop' });
   await captureAt(page, 'career', { width: 390, height: 844, variant: 'mobile' });
+
+  const trainingHeading = career.getByRole('heading', { name: 'Entrenamiento personalizado', exact: true });
+  await expect(trainingHeading).toBeVisible();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await trainingHeading.scrollIntoViewIfNeeded();
+  await expect(career.locator('.career-action-grid').first()).toBeVisible();
+  await captureAt(page, 'career-actions', { width: 1440, height: 900, variant: 'desktop' });
+  await captureAt(page, 'career-actions', { width: 390, height: 844, variant: 'mobile' });
 });
