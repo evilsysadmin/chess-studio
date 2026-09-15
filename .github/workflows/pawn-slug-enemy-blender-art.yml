@@ -1,0 +1,200 @@
+name: Pawn Slug · Enemy Blender canonical art
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/blender/render_pawn_slug_enemy_sheets_v1.py'
+      - '.github/workflows/pawn-slug-enemy-blender-art.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pawn-slug-enemy-blender-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render-enemies:
+    name: Render enemy cast · Blender v1
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Blender + image tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender libegl1 libgl1-mesa-dri python3-pil python3-numpy
+
+      - name: Render all enemy actions in one Blender process
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pawn-slug-enemy-v1
+          blender --background \
+            --python scripts/blender/render_pawn_slug_enemy_sheets_v1.py \
+            -- --output-dir /tmp/pawn-slug-enemy-v1
+          test -s /tmp/pawn-slug-enemy-v1/pawn_slug_enemy_cast_v1.blend
+          test -s /tmp/pawn-slug-enemy-v1/manifest.json
+
+      - name: Compose runtime-style sheets + visual review board
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          from PIL import Image, ImageChops, ImageDraw
+
+          root = Path('/tmp/pawn-slug-enemy-v1')
+          manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))
+          types = tuple(manifest['types'])
+          actions = manifest['actions']
+          row_order = tuple(actions)
+          violations = []
+
+          def gate(condition, message):
+              if not condition:
+                  violations.append(str(message))
+              return condition
+
+          gate(types == ('pawn', 'knight', 'rook'), f'unexpected types: {types!r}')
+          gate(row_order == ('idle', 'run', 'jump', 'crouch', 'hurt', 'climb', 'death'), f'unexpected row order: {row_order!r}')
+          gate(actions == {'idle': 12, 'run': 16, 'jump': 10, 'crouch': 8, 'hurt': 6, 'climb': 12, 'death': 14}, f'unexpected action contract: {actions!r}')
+          gate(manifest.get('sourceFacing') == 'left', f"sourceFacing={manifest.get('sourceFacing')!r}")
+          gate(manifest.get('columns') == 16, f"columns={manifest.get('columns')!r}")
+          gate(manifest.get('frameSize2x') == [192, 192], f"frameSize2x={manifest.get('frameSize2x')!r}")
+          gate(manifest.get('runtimeCell') == [96, 96], f"runtimeCell={manifest.get('runtimeCell')!r}")
+
+          cell = 96
+          cols = 16
+          sheets = {}
+          representative = {}
+          stats = {}
+          frame_stats = {}
+          for enemy_type in types:
+              sheet = Image.new('RGBA', (cols * cell, len(row_order) * cell), (0, 0, 0, 0))
+              type_stats = {}
+              type_frame_stats = {}
+              for row, action in enumerate(row_order):
+                  count = actions[action]
+                  hashes = []
+                  bboxes = []
+                  luminance = []
+                  action_frames = []
+                  for frame in range(count):
+                      source = root / 'frames' / enemy_type / action / f'{frame:02d}.png'
+                      if not source.is_file():
+                          gate(False, f'missing frame: {source}')
+                          continue
+                      image = Image.open(source).convert('RGBA')
+                      if not gate(image.size == (192, 192), f'wrong frame size {source}: {image.size}'):
+                          continue
+                      down = image.resize((cell, cell), Image.Resampling.LANCZOS)
+                      alpha = down.getchannel('A').point(lambda value: 255 if value >= 24 else 0)
+                      bbox = alpha.getbbox()
+                      if bbox is None:
+                          gate(False, f'empty frame: {source}')
+                          sheet.alpha_composite(down, (frame * cell, row * cell))
+                          action_frames.append({'frame': frame, 'bbox': None, 'meanLuma': 0.0})
+                          continue
+                      left, top, right, bottom = bbox
+                      width, height = right - left, bottom - top
+                      gate(left >= 2 and top >= 2 and right <= cell - 2 and bottom <= cell - 2, f'clipped {source}: bbox={bbox}')
+                      gate(width >= 20 and height >= 20, f'too small {source}: bbox={bbox}')
+                      if action != 'death':
+                          gate(height >= 44, f'too short {source}: bbox={bbox}')
+                      visible = [
+                          0.2126 * r + 0.7152 * g + 0.0722 * b
+                          for r, g, b, a in down.getdata()
+                          if a >= 24
+                      ]
+                      mean_luma = sum(visible) / max(1, len(visible))
+                      gate(mean_luma >= 22.0, f'too dark {source}: meanLuma={mean_luma:.2f}')
+                      hashes.append(hashlib.sha256(down.tobytes()).hexdigest())
+                      bboxes.append(bbox)
+                      luminance.append(mean_luma)
+                      action_frames.append({'frame': frame, 'bbox': list(bbox), 'meanLuma': round(mean_luma, 2)})
+                      sheet.alpha_composite(down, (frame * cell, row * cell))
+                  unique = len(set(hashes))
+                  gate(unique >= 2, f'{enemy_type}/{action} has no authored motion: unique={unique}')
+                  type_stats[action] = {
+                      'frames': count,
+                      'observedFrames': len(action_frames),
+                      'unique': unique,
+                      'minWidth': min((b[2] - b[0] for b in bboxes), default=0),
+                      'maxWidth': max((b[2] - b[0] for b in bboxes), default=0),
+                      'minHeight': min((b[3] - b[1] for b in bboxes), default=0),
+                      'maxHeight': max((b[3] - b[1] for b in bboxes), default=0),
+                      'minLuma': round(min(luminance), 2) if luminance else 0.0,
+                      'maxLuma': round(max(luminance), 2) if luminance else 0.0,
+                      'meanLuma': round(sum(luminance) / len(luminance), 2) if luminance else 0.0,
+                  }
+                  type_frame_stats[action] = action_frames
+                  mid = min(count - 1, max(0, count // 2))
+                  representative[(enemy_type, action)] = sheet.crop((mid * cell, row * cell, (mid + 1) * cell, (row + 1) * cell))
+              png = root / f'enemy_{enemy_type}_blender_v1.png'
+              webp = root / f'enemy_{enemy_type}_blender_v1.webp'
+              sheet.save(png, optimize=True)
+              sheet.save(webp, 'WEBP', quality=90, method=6)
+              gate(webp.stat().st_size > 20_000, f'{webp.name} suspiciously small: {webp.stat().st_size}')
+              gate(webp.stat().st_size < 900_000, f'{webp.name} suspiciously large: {webp.stat().st_size}')
+              sheets[enemy_type] = sheet
+              stats[enemy_type] = type_stats
+              frame_stats[enemy_type] = type_frame_stats
+
+          # The three archetypes must remain visibly different at the same idle frame.
+          silhouette_diffs = {}
+          for left, right in (('pawn', 'knight'), ('knight', 'rook'), ('pawn', 'rook')):
+              diff = ImageChops.difference(representative[(left, 'idle')], representative[(right, 'idle')])
+              bbox = diff.getbbox()
+              silhouette_diffs[f'{left}:{right}'] = list(bbox) if bbox else None
+              gate(bbox is not None, f'{left}/{right} silhouettes collapsed')
+
+          # Compact 3x7 review board: types as rows, actions as columns.
+          tile = 128
+          label_h = 28
+          board = Image.new('RGBA', (len(row_order) * tile, len(types) * (tile + label_h)), (14, 16, 18, 255))
+          draw = ImageDraw.Draw(board)
+          for row, enemy_type in enumerate(types):
+              y0 = row * (tile + label_h)
+              draw.text((8, y0 + 7), enemy_type.upper(), fill=(238, 238, 238, 255))
+              for col, action in enumerate(row_order):
+                  if row == 0:
+                      draw.text((col * tile + 48, y0 + 7), action, fill=(210, 210, 210, 255))
+                  image = representative[(enemy_type, action)].resize((tile, tile), Image.Resampling.NEAREST)
+                  board.alpha_composite(image, (col * tile, y0 + label_h))
+          board.save(root / 'enemy_cast_blender_v1_review.png', optimize=True)
+
+          report = {
+              'summary': stats,
+              'frames': frame_stats,
+              'silhouetteDiffBboxes': silhouette_diffs,
+              'violations': violations,
+          }
+          (root / 'sheet_stats.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+          (root / 'gate_violations.json').write_text(json.dumps(violations, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps({'summary': stats, 'silhouetteDiffBboxes': silhouette_diffs, 'violationCount': len(violations)}, indent=2))
+          if violations:
+              for violation in violations:
+                  print(f'::error::{violation}')
+              raise SystemExit(f'enemy art gate failed with {len(violations)} violation(s)')
+          PY
+
+      - name: Upload Blender source + sheets
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawn-slug-enemy-blender-v1-${{ github.event.pull_request.number || github.run_number }}
+          path: |
+            /tmp/pawn-slug-enemy-v1/pawn_slug_enemy_cast_v1.blend
+            /tmp/pawn-slug-enemy-v1/manifest.json
+            /tmp/pawn-slug-enemy-v1/sheet_stats.json
+            /tmp/pawn-slug-enemy-v1/gate_violations.json
+            /tmp/pawn-slug-enemy-v1/enemy_*_blender_v1.png
+            /tmp/pawn-slug-enemy-v1/enemy_*_blender_v1.webp
+            /tmp/pawn-slug-enemy-v1/enemy_cast_blender_v1_review.png
+          if-no-files-found: warn
+          retention-days: 7
