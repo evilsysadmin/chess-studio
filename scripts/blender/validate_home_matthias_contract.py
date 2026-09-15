@@ -16,6 +16,9 @@ from home_matthias_contract import (  # noqa: E402
     BRASS_MIN_METALLIC,
     CANONICAL_IDENTITY,
     CANONICAL_REFERENCE,
+    CAP_TOP_MIN_REAR_OFFSET,
+    CAP_TOP_MIN_VERTICAL_SEPARATION,
+    CAP_TOP_TO_CROWN_WIDTH,
     CAP_TO_HEAD_WIDTH,
     DARK_BODY_MAX_LUMA,
     FORBIDDEN_NAME_TOKENS,
@@ -97,7 +100,6 @@ def main():
     )
     assert not offenders, f"forbidden Matthias anatomy/decor returned: {offenders}"
 
-    # Force the authored neutral pose before evaluating silhouette and hidden arms.
     if rig.animation_data is None:
         rig.animation_data_create()
     rig.animation_data.action = bpy.data.actions["Idle"]
@@ -107,6 +109,7 @@ def main():
     head = objects["Head"]
     base = objects["Classic plinth lower"]
     cap = objects["Classic cap crown"]
+    cap_top_obj = objects["Classic cap top"]
     body = objects["Classic lower pawn"]
     tunic = objects["Classic navy tunic"]
 
@@ -115,25 +118,37 @@ def main():
     head_height = head.dimensions.z
     cap_width = cap.dimensions.x
     body_bottom, _ = world_z_bounds(base)
-    _, cap_top = world_z_bounds(cap)
-    total_height = cap_top - body_bottom
+    _, cap_top_z = world_z_bounds(cap_top_obj)
+    total_height = cap_top_z - body_bottom
 
     assert_range("head/base width", head_width / base_width, HEAD_TO_BASE_WIDTH)
     assert_range("head/total height", head_height / total_height, HEAD_TO_BODY_HEIGHT)
     assert_range("cap/head width", cap_width / head_width, CAP_TO_HEAD_WIDTH)
     assert_range("total height/base width", total_height / base_width, BODY_HEIGHT_TO_BASE_WIDTH)
 
-    # The pawn body must flare strongly toward the base instead of reading as a tube.
+    # The peaked cap must have a wider rear-biased top mass above the crown.
+    assert_range(
+        "cap top/crown width",
+        cap_top_obj.dimensions.x / cap.dimensions.x,
+        CAP_TOP_TO_CROWN_WIDTH,
+    )
+    assert cap_top_obj.location.y - cap.location.y >= CAP_TOP_MIN_REAR_OFFSET, (
+        cap.location.y,
+        cap_top_obj.location.y,
+    )
+    assert cap_top_obj.location.z - cap.location.z >= CAP_TOP_MIN_VERTICAL_SEPARATION, (
+        cap.location.z,
+        cap_top_obj.location.z,
+    )
+
     flare = ring_radius_ratio(body)
     assert flare >= 1.35, f"pawn body insufficiently flared: {flare:.3f}"
 
-    # Material language: dark continuous body, ivory head, restrained metallic brass.
     assert base_luma(body) <= DARK_BODY_MAX_LUMA, base_luma(body)
     assert base_luma(tunic) <= DARK_BODY_MAX_LUMA, base_luma(tunic)
     assert base_luma(head) >= IVORY_HEAD_MIN_LUMA, base_luma(head)
     assert metallic(objects["Classic plinth brass edge"]) >= BRASS_MIN_METALLIC
 
-    # Reject large light panels/skirts below the head. Props and tiny hands are exempt.
     light_body_offenders = []
     for obj in bpy.data.objects:
         if obj.type != "MESH" or not obj.data.materials:
@@ -147,14 +162,12 @@ def main():
             light_body_offenders.append(obj.name)
     assert not light_body_offenders, f"large light body panels/skirts forbidden: {light_body_offenders}"
 
-    # Neutral limbs must remain behind the pawn silhouette, not hang like a doll.
     for name in ("Upper arm.L", "Upper arm.R", "Forearm.L", "Forearm.R", "Hand.L", "Hand.R"):
         obj = objects[name]
         assert obj.matrix_world.translation.y >= REST_ARM_MIN_Y, (
             f"{name}: visible in Idle at y={obj.matrix_world.translation.y:.3f}"
         )
 
-    # Permanent angry face: mirrored, strongly sloped brows and a simple frown.
     left_brow = math.degrees(objects["Brow.L"].rotation_euler.y)
     right_brow = math.degrees(objects["Brow.R"].rotation_euler.y)
     assert MIN_BROW_TILT_DEGREES <= abs(left_brow) <= MAX_BROW_TILT_DEGREES, left_brow
@@ -165,10 +178,11 @@ def main():
     right_mouth = math.degrees(objects["Mouth.R"].rotation_euler.y)
     assert left_mouth < -4 and right_mouth > 4, (left_mouth, right_mouth)
 
-    # Eyes stay small relative to the pawn head; Matthias is stern, not a mascot doll.
     for name in ("Eye.L", "Eye.R"):
         ratio = objects[name].dimensions.x / head_width
         assert ratio <= 0.10, f"{name}: oversized eye ratio {ratio:.3f}"
+        verticality = objects[name].dimensions.z / max(objects[name].dimensions.x, 1e-6)
+        assert verticality >= 1.15, f"{name}: eye must remain stern/vertical, got {verticality:.3f}"
 
     print(
         "Home Matthias HARD canonical contract OK | "

@@ -26,6 +26,9 @@ REQUIRED_OBJECTS = {
     "Classic lower pawn",
     "Classic navy tunic",
     "Classic cap crown",
+    "Classic cap top",
+    "Classic cap band",
+    "Classic cap visor",
     "Head",
     "Eye.L",
     "Eye.R",
@@ -33,6 +36,8 @@ REQUIRED_OBJECTS = {
     "Brow.R",
     "Mouth.L",
     "Mouth.R",
+    "Classic chest crest vertical",
+    "Classic chest crest horizontal",
     "RoutineBook",
     "RoutineCup",
     "RoutinePen",
@@ -54,14 +59,21 @@ FORBIDDEN_NAME_TOKENS = (
     "cream panel",
     "white skirt",
     "field cap crown",
+    "crest field",
 )
 
-# Rest-pose silhouette constraints. Values are intentionally ranges so the art
-# can improve without silently mutating back into a humanoid mascot.
-HEAD_TO_BASE_WIDTH = (0.46, 0.66)
-HEAD_TO_BODY_HEIGHT = (0.22, 0.38)
-CAP_TO_HEAD_WIDTH = (0.82, 1.16)
-BODY_HEIGHT_TO_BASE_WIDTH = (1.75, 2.75)
+# Rest-pose silhouette constraints derived from the approved canonical image:
+# squat heavy pawn, large ivory head and a cap with real visual presence.
+HEAD_TO_BASE_WIDTH = (0.56, 0.72)
+HEAD_TO_BODY_HEIGHT = (0.30, 0.44)
+CAP_TO_HEAD_WIDTH = (1.08, 1.34)
+BODY_HEIGHT_TO_BASE_WIDTH = (1.42, 1.82)
+
+# The approved peaked cap is structured, not a flat beret. The top must be
+# wider than the crown and biased rearward so the visor reads clearly in front.
+CAP_TOP_TO_CROWN_WIDTH = (1.08, 1.28)
+CAP_TOP_MIN_REAR_OFFSET = 0.025
+CAP_TOP_MIN_VERTICAL_SEPARATION = 0.045
 
 # Material language from the approved canonical reference.
 DARK_BODY_MAX_LUMA = 0.10
