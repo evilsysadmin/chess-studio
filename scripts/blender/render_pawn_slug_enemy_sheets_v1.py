@@ -152,8 +152,8 @@ def action_pose(enemy_type, action, frame):
         pose["root_z"] = abs(s) * (0.085 if enemy_type == "knight" else 0.06 if enemy_type == "pawn" else 0.038)
         pose["root_x"] = s * (0.045 if enemy_type == "knight" else 0.026 if enemy_type == "pawn" else 0.015)
         pose["lean"] = -0.12 if enemy_type == "knight" else -0.07 if enemy_type == "pawn" else -0.035
-        pose["leg"] = s * (0.72 if enemy_type == "knight" else 0.58 if enemy_type == "pawn" else 0.40)
-        pose["arm"] = -s * 0.26
+        pose["leg"] = s * (0.88 if enemy_type == "knight" else 0.70 if enemy_type == "pawn" else 0.48)
+        pose["arm"] = -s * 0.34
     elif action == "jump":
         arc = math.sin(min(1.0, phase) * math.pi)
         pose["root_z"] = 0.12 + arc * 0.22
@@ -172,8 +172,8 @@ def action_pose(enemy_type, action, frame):
         pose["weapon_pitch"] = -0.12 * snap
     elif action == "climb":
         pose["root_z"] = abs(s) * 0.055
-        pose["leg"] = s * 0.44
-        pose["arm"] = -s * 0.55
+        pose["leg"] = s * 0.58
+        pose["arm"] = -s * 0.72
         pose["weapon_pitch"] = 0.14
     elif action == "death":
         fall = math.sin(min(1.0, phase) * math.pi * 0.5)
@@ -326,7 +326,7 @@ def setup_scene():
     camera = bpy.context.object
     camera.name = "enemy_sheet_camera"
     camera.data.type = "ORTHO"
-    camera.data.ortho_scale = 2.55
+    camera.data.ortho_scale = 2.90
     look_at(camera, (0, -0.03, 1.08))
     scene.camera = camera
 
