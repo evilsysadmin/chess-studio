@@ -10,6 +10,7 @@ import './WarRoomMatthiasDiegetic.css';
 import './WarRoomFloatingFooter.css';
 import './WarRoomAppearanceMenu.css';
 import './WarRoomAndroidDensity.css';
+import './WarRoomGuideHelp.css';
 
 function resolveWarRoomSignal(game, status) {
   const text = String(status?.statusText || '').trim();
@@ -56,8 +57,8 @@ function WarRoomGuideHelp() {
   return (
     <MechanicTutorialHelp
       tutorialId="war-room-basics"
-      autoOpen
       markSeenOnClose
+      firstRunLabel="Guía"
       label="Abrir guía de la War Room"
     />
   );
