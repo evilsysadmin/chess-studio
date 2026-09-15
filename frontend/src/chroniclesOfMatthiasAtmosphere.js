@@ -99,12 +99,12 @@ function addMistPatch(root, texture, { name, x, z, width, depth, color, opacity,
 }
 
 function addReadabilityLighting(root, { coarsePointer }) {
-  const ambient = new THREE.AmbientLight(0x69727d, coarsePointer ? 0.3 : 0.24);
+  const ambient = new THREE.AmbientLight(0x69727d, coarsePointer ? 0.62 : 0.52);
   ambient.name = 'chronicles-readability-ambient';
 
   const entryBounce = new THREE.PointLight(
     0xd28a4a,
-    coarsePointer ? 0.72 : 0.62,
+    coarsePointer ? 3.0 : 2.6,
     12.5,
     2,
   );
@@ -114,7 +114,7 @@ function addReadabilityLighting(root, { coarsePointer }) {
 
   const cryptBounce = new THREE.PointLight(
     0x7189a3,
-    coarsePointer ? 0.5 : 0.42,
+    coarsePointer ? 2.05 : 1.75,
     15.5,
     2,
   );
