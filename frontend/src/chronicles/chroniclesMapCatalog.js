@@ -141,7 +141,6 @@ export function chroniclesMapTransitionState(state, mapId) {
     ...chroniclesMapInitialEnemyState(map.id),
     ...map.initialFlags,
     phase: 'explore',
-    turnPhase: 'player',
     enemyPositions: {},
     enemyTurnEvents: [],
   };
