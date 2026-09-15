@@ -6,7 +6,7 @@ import {
 } from './safeStorage.js';
 
 export const STORAGE_SCHEMA_KEY = 'chess-study-storage-schema-version';
-export const STORAGE_SCHEMA_VERSION = 4;
+export const STORAGE_SCHEMA_VERSION = 5;
 
 const LEGACY_MUTE_KEY = 'chess-study-muted';
 const MUSIC_MUTED_KEY = 'chess-study-music-muted';
@@ -43,11 +43,38 @@ export const DEFAULT_RADIO_RETIRED_THEME_IDS = Object.freeze([
   'bosphorusRain',
 ]);
 
+// Ecléctica conserva sus piezas atmosféricas en el random. Sólo se retiran
+// por defecto las dos que rompen más claramente una sesión de fondo: garage
+// rock directo y la marcha de personaje de Matthias. Siguen disponibles en el
+// selector y, como la migración es one-shot, una reactivación manual manda.
+export const DEFAULT_RADIO_RETIRED_ECLECTIC_THEME_IDS = Object.freeze([
+  'rookGarage',
+  'pawnMarshal',
+]);
+
 function schemaVersion() {
   const raw = getStorageItem(STORAGE_LOCAL, STORAGE_SCHEMA_KEY);
   if (raw === null) return 0;
   const parsed = Number.parseInt(raw, 10);
   return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
+}
+
+function mergeMusicExclusions(themeIds, failureMessage) {
+  const raw = getStorageItem(STORAGE_LOCAL, MUSIC_EXCLUDED_KEY);
+  let existing = [];
+  if (raw !== null) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) existing = parsed.filter((id) => typeof id === 'string' && id);
+    } catch {
+      // Una preferencia corrupta no debe bloquear la curación; la sustituimos
+      // por el conjunto seguro de retiradas y el usuario puede editarlo luego.
+    }
+  }
+
+  const merged = [...new Set([...existing, ...themeIds])];
+  const migrated = setStorageItem(STORAGE_LOCAL, MUSIC_EXCLUDED_KEY, JSON.stringify(merged));
+  if (!migrated) throw new Error(failureMessage);
 }
 
 function migrateV0ToV1() {
@@ -82,21 +109,17 @@ function migrateV2ToV3() {
 }
 
 function migrateV3ToV4() {
-  const raw = getStorageItem(STORAGE_LOCAL, MUSIC_EXCLUDED_KEY);
-  let existing = [];
-  if (raw !== null) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) existing = parsed.filter((id) => typeof id === 'string' && id);
-    } catch {
-      // Una preferencia corrupta no debe bloquear la curación; la sustituimos
-      // por el conjunto seguro de retiradas y el usuario puede editarlo luego.
-    }
-  }
+  mergeMusicExclusions(
+    DEFAULT_RADIO_RETIRED_THEME_IDS,
+    'music radio curation migration was not durable',
+  );
+}
 
-  const merged = [...new Set([...existing, ...DEFAULT_RADIO_RETIRED_THEME_IDS])];
-  const migrated = setStorageItem(STORAGE_LOCAL, MUSIC_EXCLUDED_KEY, JSON.stringify(merged));
-  if (!migrated) throw new Error('music radio curation migration was not durable');
+function migrateV4ToV5() {
+  mergeMusicExclusions(
+    DEFAULT_RADIO_RETIRED_ECLECTIC_THEME_IDS,
+    'eclectic radio curation migration was not durable',
+  );
 }
 
 const MIGRATIONS = Object.freeze({
@@ -104,6 +127,7 @@ const MIGRATIONS = Object.freeze({
   1: migrateV1ToV2,
   2: migrateV2ToV3,
   3: migrateV3ToV4,
+  4: migrateV4ToV5,
 });
 
 export function migratePersistentStorage() {
