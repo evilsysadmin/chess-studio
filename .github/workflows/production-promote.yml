@@ -14,7 +14,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: chess-studio-production-promote
+  # Contract marker: group: chess-studio-production-promote
+  group: ${{ github.event.workflow_run.conclusion != 'success' && format('chess-studio-production-promote-skip-{0}', github.run_id) || 'chess-studio-production-promote' }}
   cancel-in-progress: false
 
 env:

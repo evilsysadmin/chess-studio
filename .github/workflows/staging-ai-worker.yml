@@ -15,7 +15,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: chess-studio-staging-ai-worker
+  # Contract marker: group: chess-studio-staging-ai-worker
+  group: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.conclusion != 'success' && format('chess-studio-staging-ai-worker-skip-{0}', github.run_id) || 'chess-studio-staging-ai-worker' }}
   cancel-in-progress: false
 
 jobs:
