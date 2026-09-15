@@ -1,4 +1,30 @@
+data "oci_identity_availability_domains" "available" {
+  count = var.availability_domain == null ? 1 : 0
+
+  compartment_id = var.compartment_ocid
+}
+
+data "oci_core_images" "arm64_ubuntu" {
+  count = var.image_ocid == null ? 1 : 0
+
+  compartment_id           = var.compartment_ocid
+  operating_system         = "Canonical Ubuntu"
+  operating_system_version = "24.04"
+  shape                    = var.shape
+  state                    = "AVAILABLE"
+  sort_by                  = "TIMECREATED"
+  sort_order               = "DESC"
+}
+
 locals {
+  selected_availability_domain = var.availability_domain != null ? trimspace(var.availability_domain) : try(
+    data.oci_identity_availability_domains.available[0].availability_domains[0].name,
+    "",
+  )
+  selected_image_ocid = var.image_ocid != null ? trimspace(var.image_ocid) : try(
+    data.oci_core_images.arm64_ubuntu[0].images[0].id,
+    "",
+  )
   common_tags = merge({
     service    = "chess-studio"
     component  = "backend"
@@ -79,7 +105,7 @@ resource "oci_core_subnet" "backend" {
 }
 
 resource "oci_core_instance" "backend" {
-  availability_domain = var.availability_domain
+  availability_domain = local.selected_availability_domain
   compartment_id      = var.compartment_ocid
   display_name        = var.instance_name
   shape               = var.shape
@@ -99,7 +125,7 @@ resource "oci_core_instance" "backend" {
 
   source_details {
     source_type             = "image"
-    source_id               = var.image_ocid
+    source_id               = local.selected_image_ocid
     boot_volume_size_in_gbs = var.boot_volume_size_gb
   }
 
@@ -116,6 +142,16 @@ resource "oci_core_instance" "backend" {
   )
 
   lifecycle {
+    precondition {
+      condition     = local.selected_availability_domain != ""
+      error_message = "OCI returned no availability domains. Set availability_domain explicitly if discovery is unavailable."
+    }
+
+    precondition {
+      condition     = can(regex("^ocid1\\.image\\.", local.selected_image_ocid))
+      error_message = "OCI returned no Ubuntu 24.04 image compatible with VM.Standard.A1.Flex. Set image_ocid explicitly."
+    }
+
     precondition {
       condition     = var.ssh_ingress_cidr == null || var.ssh_ingress_cidr != "0.0.0.0/0"
       error_message = "Refusing to expose SSH to 0.0.0.0/0. Use an operator CIDR or leave SSH closed."

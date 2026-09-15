@@ -9,13 +9,27 @@ variable "compartment_ocid" {
 }
 
 variable "availability_domain" {
-  description = "Availability domain name selected after confirming A1 capacity."
+  description = "Optional AD override. Null discovers the first AD visible from the staging compartment."
   type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition     = var.availability_domain == null || length(trimspace(var.availability_domain)) > 0
+    error_message = "availability_domain must be null or a non-empty OCI AD name."
+  }
 }
 
 variable "image_ocid" {
-  description = "ARM64 Ubuntu image OCID for the selected region."
+  description = "Optional image override. Null discovers the newest Canonical Ubuntu 24.04 image compatible with A1."
   type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition     = var.image_ocid == null || can(regex("^ocid1\\.image\\.", trimspace(var.image_ocid)))
+    error_message = "image_ocid must be null or an OCI image OCID."
+  }
 }
 
 variable "ssh_authorized_key" {

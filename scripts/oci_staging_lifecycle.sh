@@ -14,6 +14,7 @@ valid_operation() {
 }
 
 valid_sha() { [[ "${1:-}" =~ ^[0-9a-f]{40}$ ]]; }
+valid_image_override() { [[ -z "${1:-}" || "${1:-}" == ocid1.image.* ]]; }
 
 validate_backend_value() {
   [[ "${1:-}" =~ ^[A-Za-z0-9._:/-]+$ ]] || die "backend value contains unsupported characters"
@@ -116,10 +117,11 @@ write_staging_backend() {
   chmod 600 "$staging/backend.hcl"
 }
 
-require_staging_inputs() {
-  [[ -n "${OCI_AVAILABILITY_DOMAIN:-}" ]] || die "set repo variable OCI_AVAILABILITY_DOMAIN or workflow override"
-  [[ -n "${OCI_IMAGE_OCID:-}" ]] || die "set repo variable OCI_IMAGE_OCID or workflow override"
-  [[ "$OCI_IMAGE_OCID" == ocid1.image.* ]] || die "OCI_IMAGE_OCID does not look like an image OCID"
+validate_staging_overrides() {
+  valid_image_override "${OCI_IMAGE_OCID:-}" || die "OCI_IMAGE_OCID does not look like an image OCID"
+  if [[ -n "${OCI_AVAILABILITY_DOMAIN:-}" ]]; then
+    validate_backend_value "$OCI_AVAILABILITY_DOMAIN"
+  fi
 }
 
 prepare_staging() {
@@ -129,9 +131,14 @@ prepare_staging() {
   terraform -chdir="$staging" init -no-color -reconfigure -backend-config=backend.hcl >/dev/null
   export TF_VAR_region="$OCI_REGION"
   export TF_VAR_compartment_ocid="$compartment"
-  export TF_VAR_availability_domain="$OCI_AVAILABILITY_DOMAIN"
-  export TF_VAR_image_ocid="$OCI_IMAGE_OCID"
   export TF_VAR_repo_ref="$GITHUB_SHA"
+  unset TF_VAR_availability_domain TF_VAR_image_ocid
+  if [[ -n "${OCI_AVAILABILITY_DOMAIN:-}" ]]; then
+    export TF_VAR_availability_domain="$OCI_AVAILABILITY_DOMAIN"
+  fi
+  if [[ -n "${OCI_IMAGE_OCID:-}" ]]; then
+    export TF_VAR_image_ocid="$OCI_IMAGE_OCID"
+  fi
   terraform -chdir="$staging" validate -no-color
 }
 
@@ -160,7 +167,7 @@ bootstrap_foundation() {
 
 run_staging() {
   local operation="$1" namespace="$2" compartment plan
-  require_staging_inputs
+  validate_staging_overrides
   prepare_staging "$namespace" "$compartment"
   plan="${RUNNER_TEMP:-/tmp}/oci-staging.tfplan"
   case "$operation" in
@@ -187,6 +194,9 @@ self_test() {
   ! valid_operation explode || exit 1
   valid_sha 0123456789abcdef0123456789abcdef01234567 || exit 1
   ! valid_sha main || exit 1
+  valid_image_override "" || exit 1
+  valid_image_override ocid1.image.oc1.eu-frankfurt-1.test || exit 1
+  ! valid_image_override nope || exit 1
   local text
   text="$(render_backend chess-studio-tfstate namespace123 "$staging_key" eu-frankfurt-1)"
   for marker in chess-studio-tfstate namespace123 "$staging_key" eu-frankfurt-1; do

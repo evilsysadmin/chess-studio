@@ -1,8 +1,10 @@
-region              = "eu-frankfurt-1"
-compartment_ocid    = "ocid1.compartment.oc1..replace-me"
-availability_domain = "replace-with-frankfurt-ad"
-image_ocid          = "ocid1.image.oc1.eu-frankfurt-1.replace-me"
-repo_ref            = "0123456789abcdef0123456789abcdef01234567"
+region           = "eu-frankfurt-1"
+compartment_ocid = "ocid1.compartment.oc1..replace-me"
+repo_ref         = "0123456789abcdef0123456789abcdef01234567"
+
+# Runtime discovery is the default. Override only when OCI capacity/image selection needs it.
+availability_domain = null
+image_ocid          = null
 
 # SSH is fully disabled by default; set both values together only when needed.
 ssh_authorized_key = null
