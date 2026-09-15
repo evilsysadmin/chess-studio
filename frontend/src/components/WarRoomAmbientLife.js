@@ -1,5 +1,4 @@
 import { getEffectiveReducedMotion } from '../userPreferences.js';
-import { ensureWarRoomCat } from './WarRoomCatDecor.js';
 
 export const WAR_ROOM_AMBIENT_LIFE_VERSION = 'curtain-fire-breath-cat-v4-permanent';
 
@@ -121,15 +120,7 @@ export function applyWarRoomAmbientLife(root, {
 export function installWarRoomAmbientLife(group, {
   coarsePointer = false,
 } = {}) {
-  if (!group) return 0;
-
-  // The cat is permanent room dressing, not a random Hans/desktop event. Install it
-  // before the coarse-pointer early return so Android and desktop own the same actor.
-  // It is sofa-parented by WarRoomCatDecor, so later responsive furniture relayouts
-  // move the cat together with its sofa.
-  ensureWarRoomCat(group);
-
-  if (coarsePointer) return 0;
+  if (!group || coarsePointer) return 0;
   // Continuous animation belongs on the floor/castle animation chain. Keeping
   // it off the side wall lets static room-layout work retire after first paint.
   const driver = group.getObjectByName?.('war-room-castle-floor-slab')
