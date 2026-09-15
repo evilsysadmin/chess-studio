@@ -32,6 +32,12 @@ const CLASS_PROFILES = Object.freeze({
     attackPattern: 'adjacent',
     reach: 1,
     damage: 2,
+    abilityName: 'Zornhau',
+    abilityDescription: 'Tajo de 3 de daño contra un enemigo adyacente.',
+    abilityKind: 'strike',
+    abilityPattern: 'adjacent',
+    abilityReach: 1,
+    abilityDamage: 3,
   }),
   rook: Object.freeze({
     className: 'Guardiana',
@@ -42,6 +48,10 @@ const CLASS_PROFILES = Object.freeze({
     attackPattern: 'orthogonal',
     reach: 2,
     damage: 2,
+    abilityName: 'Bastión',
+    abilityDescription: 'Restaura 2 PV al aliado vivo más herido.',
+    abilityKind: 'support',
+    abilityHeal: 2,
   }),
   bishop: Object.freeze({
     className: 'Taumaturgo',
@@ -52,6 +62,13 @@ const CLASS_PROFILES = Object.freeze({
     attackPattern: 'diagonal',
     reach: 4,
     damage: 2,
+    abilityName: 'Lux in Tenebris',
+    abilityDescription: 'Inflige 2 de daño mágico a todos los enemigos visibles en diagonal.',
+    abilityKind: 'spell',
+    abilityPattern: 'diagonal',
+    abilityReach: 4,
+    abilityDamage: 2,
+    abilityMultiTarget: true,
   }),
   knight: Object.freeze({
     className: 'Hostigador',
@@ -62,6 +79,12 @@ const CLASS_PROFILES = Object.freeze({
     attackPattern: 'line',
     reach: 3,
     damage: 1,
+    abilityName: 'Virote perforante',
+    abilityDescription: 'Disparo de 3 de daño en cualquier línea hasta alcance 4.',
+    abilityKind: 'ranged',
+    abilityPattern: 'line',
+    abilityReach: 4,
+    abilityDamage: 3,
   }),
 });
 
@@ -74,6 +97,9 @@ const FALLBACK_PROFILE = Object.freeze({
   attackPattern: 'adjacent',
   reach: 1,
   damage: 1,
+  abilityName: 'Improvisar',
+  abilityDescription: 'No hay una técnica de clase disponible.',
+  abilityKind: 'none',
 });
 
 export function chroniclesTacticsProfile(memberId) {
@@ -126,20 +152,24 @@ function memberFor(state, memberId) {
   return state.party.find((member) => member.id === memberId) || null;
 }
 
-function attackDistance(state, position, profile) {
+function distanceForPattern(state, position, pattern) {
   const dx = Math.abs(position.x - state.x);
   const dy = Math.abs(position.y - state.y);
-  if (profile.attackPattern === 'adjacent') return dx + dy === 1 ? 1 : null;
-  if (profile.attackPattern === 'orthogonal') {
+  if (pattern === 'adjacent') return dx + dy === 1 ? 1 : null;
+  if (pattern === 'orthogonal') {
     if (dx !== 0 && dy !== 0) return null;
     return dx + dy;
   }
-  if (profile.attackPattern === 'diagonal') return dx === dy && dx > 0 ? dx : null;
-  if (profile.attackPattern === 'line') {
+  if (pattern === 'diagonal') return dx === dy && dx > 0 ? dx : null;
+  if (pattern === 'line') {
     if (!(dx === 0 || dy === 0 || dx === dy)) return null;
     return Math.max(dx, dy);
   }
   return null;
+}
+
+function attackDistance(state, position, profile) {
+  return distanceForPattern(state, position, profile.attackPattern);
 }
 
 function appendJournal(state, entry) {
@@ -169,8 +199,39 @@ function rewardEnemyDefeat(state, enemy, attacker) {
   });
 }
 
+function applyEnemyDamage(state, enemy, attacker, damage) {
+  const nextHp = Math.max(0, Number(state[enemy.hpKey] || 0) - Math.max(1, Number(damage || 1)));
+  let next = { ...state, [enemy.hpKey]: nextHp };
+  if (nextHp === 0) next = rewardEnemyDefeat(next, enemy, attacker);
+  return { next, nextHp };
+}
+
 function actionAllowed(state) {
   return Boolean(state && state.turnPhase !== 'enemy' && state.phase !== 'defeated' && state.phase !== 'escaped');
+}
+
+function abilityWasUsed(state, memberId) {
+  return Boolean(state?.tacticsAbilityUses?.[memberId]);
+}
+
+function markAbilityUsed(state, memberId) {
+  return {
+    ...state,
+    tacticsAbilityUses: {
+      ...(state.tacticsAbilityUses || {}),
+      [memberId]: 1,
+    },
+  };
+}
+
+function mostWoundedLivingMember(state) {
+  return state.party
+    .filter((member) => member.hp > 0 && member.hp < member.maxHp)
+    .sort((left, right) => (
+      (left.hp / left.maxHp) - (right.hp / right.maxHp)
+      || left.hp - right.hp
+      || left.id.localeCompare(right.id)
+    ))[0] || null;
 }
 
 function adjacentExit(state) {
@@ -307,6 +368,96 @@ export function chroniclesTacticsTargets(state, memberId) {
     .sort((left, right) => left.distance - right.distance || left.enemyId.localeCompare(right.enemyId));
 }
 
+export function chroniclesTacticsAbilityTargets(state, memberId) {
+  if (!actionAllowed(state)) return [];
+  const member = memberFor(state, memberId);
+  if (!member || member.hp <= 0 || abilityWasUsed(state, memberId)) return [];
+  const profile = chroniclesTacticsProfile(memberId);
+  if (!profile.abilityPattern || !profile.abilityReach) return [];
+
+  return activeEnemiesWithPositions(state)
+    .flatMap(({ enemy, position }) => {
+      const distance = distanceForPattern(state, position, profile.abilityPattern);
+      if (distance === null || distance < 1 || distance > profile.abilityReach) return [];
+      if (!lineIsClear(state, { x: state.x, y: state.y }, position, enemy.id)) return [];
+      return [{
+        enemyId: enemy.id,
+        name: enemy.name,
+        hp: Math.max(0, Number(state[enemy.hpKey] || 0)),
+        maxHp: enemy.maxHp,
+        distance,
+        x: position.x,
+        y: position.y,
+        abilityKind: profile.abilityKind,
+      }];
+    })
+    .sort((left, right) => left.distance - right.distance || left.enemyId.localeCompare(right.enemyId));
+}
+
+export function chroniclesTacticsAbilityStatus(state, memberId) {
+  const profile = chroniclesTacticsProfile(memberId);
+  const member = memberFor(state, memberId);
+  const spent = abilityWasUsed(state, memberId);
+  if (!actionAllowed(state)) return { ready: false, spent, reason: 'La incursión ya no admite acciones.', profile };
+  if (!member || member.hp <= 0) return { ready: false, spent, reason: 'Este miembro está fuera de combate.', profile };
+  if (spent) return { ready: false, spent: true, reason: 'Habilidad ya usada en esta incursión.', profile };
+
+  if (profile.abilityKind === 'support') {
+    const patient = mostWoundedLivingMember(state);
+    return patient
+      ? { ready: true, spent: false, reason: '', profile, patientId: patient.id }
+      : { ready: false, spent: false, reason: 'Nadie necesita esa ayuda ahora mismo.', profile };
+  }
+
+  const targets = chroniclesTacticsAbilityTargets(state, memberId);
+  return targets.length
+    ? { ready: true, spent: false, reason: '', profile, targetCount: targets.length }
+    : { ready: false, spent: false, reason: 'No hay un objetivo válido para esta habilidad.', profile, targetCount: 0 };
+}
+
+export function chroniclesTacticsUseAbility(state, memberId) {
+  const status = chroniclesTacticsAbilityStatus(state, memberId);
+  if (!status.ready) return state;
+  const attacker = memberFor(state, memberId);
+  const profile = status.profile;
+  const turns = Number(state.turns || 0) + 1;
+
+  if (profile.abilityKind === 'support') {
+    const patient = mostWoundedLivingMember(state);
+    if (!patient) return state;
+    const healedBy = Math.min(profile.abilityHeal || 1, patient.maxHp - patient.hp);
+    return markAbilityUsed({
+      ...state,
+      party: state.party.map((member) => member.id === patient.id
+        ? { ...member, hp: Math.min(member.maxHp, member.hp + healedBy) }
+        : member),
+      turns,
+      message: `${attacker.name} alza ${profile.abilityName}. ${patient.name} recupera ${healedBy} PV.`,
+    }, memberId);
+  }
+
+  const targets = chroniclesTacticsAbilityTargets(state, memberId);
+  const chosen = profile.abilityMultiTarget ? targets : targets.slice(0, 1);
+  if (!chosen.length) return state;
+
+  let next = state;
+  let defeated = 0;
+  chosen.forEach((target) => {
+    const enemy = chroniclesActiveEnemies(state).find((candidate) => candidate.id === target.enemyId);
+    if (!enemy) return;
+    const result = applyEnemyDamage(next, enemy, attacker, profile.abilityDamage);
+    next = result.next;
+    if (result.nextHp === 0) defeated += 1;
+  });
+
+  const targetLabel = chosen.length === 1 ? chosen[0].name : `${chosen.length} enemigos`;
+  return markAbilityUsed({
+    ...next,
+    turns,
+    message: `${attacker.name} desata ${profile.abilityName} contra ${targetLabel}. ${defeated ? `${defeated} baja${defeated === 1 ? '' : 's'}.` : 'La cripta acusa recibo.'}`,
+  }, memberId);
+}
+
 export function chroniclesTacticsMove(state, destination) {
   const legal = chroniclesTacticsLegalMoves(state).find((move) => move.x === destination?.x && move.y === destination?.y);
   if (!legal) return state;
@@ -328,17 +479,14 @@ export function chroniclesTacticsAttack(state, memberId, enemyId) {
   if (!enemy) return state;
   const profile = chroniclesTacticsProfile(memberId);
 
-  const nextHp = Math.max(0, Number(state[enemy.hpKey] || 0) - profile.damage);
-  let next = {
-    ...state,
-    [enemy.hpKey]: nextHp,
+  const result = applyEnemyDamage(state, enemy, attacker, profile.damage);
+  return {
+    ...result.next,
     turns: Number(state.turns || 0) + 1,
-    message: nextHp > 0
-      ? `${attacker.name} usa ${profile.attackName.toLowerCase()} contra ${enemy.name}. ${nextHp}/${enemy.maxHp} HP.`
+    message: result.nextHp > 0
+      ? `${attacker.name} usa ${profile.attackName.toLowerCase()} contra ${enemy.name}. ${result.nextHp}/${enemy.maxHp} HP.`
       : `${attacker.name} derriba a ${enemy.name} con ${profile.attackName.toLowerCase()}.`,
   };
-  if (nextHp === 0) next = rewardEnemyDefeat(next, enemy, attacker);
-  return next;
 }
 
 export function chroniclesTacticsFinishTurn(state) {
