@@ -2,10 +2,11 @@ region              = "eu-frankfurt-1"
 compartment_ocid    = "ocid1.compartment.oc1..replace-me"
 availability_domain = "replace-with-frankfurt-ad"
 image_ocid          = "ocid1.image.oc1.eu-frankfurt-1.replace-me"
-ssh_authorized_key  = "ssh-ed25519 AAAA... operator@example"
 repo_ref            = "0123456789abcdef0123456789abcdef01234567"
 
-ssh_ingress_cidr = null
+# SSH is fully disabled by default; set both values together only when needed.
+ssh_authorized_key = null
+ssh_ingress_cidr   = null
 
 ocpus               = 1
 memory_gb           = 6
