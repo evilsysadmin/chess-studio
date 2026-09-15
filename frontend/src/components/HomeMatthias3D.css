@@ -9,22 +9,27 @@
   pointer-events: none;
 }
 
-.home-matthias-3d img {
+.home-matthias-3d img,
+.home-matthias-3d canvas {
   position: absolute;
   inset: 0;
   display: block;
   width: 100%;
   height: 100%;
+  transition: opacity 220ms ease, filter 180ms ease;
+}
+
+.home-matthias-3d img {
   object-fit: cover;
   object-position: center center;
   transform-origin: 50% 78%;
+  opacity: 1;
   filter: drop-shadow(0 8px 10px rgba(0, 0, 0, .34));
-  transition: filter 180ms ease;
-  animation: home-matthias-safe-idle 6.8s ease-in-out infinite;
+  animation: home-matthias-fallback-idle 6.8s ease-in-out infinite;
 }
 
 .home-matthias-3d[data-home-matthias-profile='sleep'] img {
-  animation-name: home-matthias-safe-sleep;
+  animation-name: home-matthias-fallback-sleep;
   animation-duration: 8.8s;
 }
 
@@ -32,60 +37,67 @@
 .home-matthias-3d[data-home-matthias-profile='dossier'] img,
 .home-matthias-3d[data-home-matthias-profile='write'] img,
 .home-matthias-3d[data-home-matthias-profile='think'] img {
-  animation-name: home-matthias-safe-work;
+  animation-name: home-matthias-fallback-work;
   animation-duration: 7.6s;
 }
 
 .home-matthias-3d[data-home-matthias-profile='sip'] img,
 .home-matthias-3d[data-home-matthias-profile='bite'] img {
-  animation-name: home-matthias-safe-break;
+  animation-name: home-matthias-fallback-break;
   animation-duration: 6.4s;
 }
 
 .home-matthias-3d[data-home-matthias-profile='speak'] img {
-  animation-name: home-matthias-safe-speak;
+  animation-name: home-matthias-fallback-speak;
   animation-duration: 3.2s;
 }
 
-.illustrated-home__matthias.is-speaking .home-matthias-3d img {
-  filter: brightness(1.04) drop-shadow(0 8px 12px rgba(0, 0, 0, .42));
+.home-matthias-3d canvas {
+  opacity: 0;
+  filter: drop-shadow(0 11px 13px rgba(0, 0, 0, .42));
 }
 
-@keyframes home-matthias-safe-idle {
+.home-matthias-3d.is-model-ready img { opacity: 0; }
+.home-matthias-3d.is-model-ready canvas { opacity: 1; }
+
+.illustrated-home__matthias.is-speaking .home-matthias-3d canvas {
+  filter: brightness(1.035) drop-shadow(0 12px 14px rgba(0, 0, 0, .46));
+}
+
+@keyframes home-matthias-fallback-idle {
   0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
   50% { transform: translate3d(0, -1.15%, 0) rotate(.22deg); }
 }
 
-@keyframes home-matthias-safe-work {
+@keyframes home-matthias-fallback-work {
   0%, 100% { transform: translate3d(0, 0, 0) rotate(-.12deg); }
   45% { transform: translate3d(.45%, -.8%, 0) rotate(.25deg); }
   72% { transform: translate3d(-.25%, -.45%, 0) rotate(.08deg); }
 }
 
-@keyframes home-matthias-safe-break {
+@keyframes home-matthias-fallback-break {
   0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
   42% { transform: translate3d(.35%, -.95%, 0) rotate(.28deg); }
   58% { transform: translate3d(.2%, -.55%, 0) rotate(.16deg); }
 }
 
-@keyframes home-matthias-safe-sleep {
+@keyframes home-matthias-fallback-sleep {
   0%, 100% { transform: translate3d(0, 0, 0) rotate(-.18deg); }
   55% { transform: translate3d(.2%, .65%, 0) rotate(.48deg); }
 }
 
-@keyframes home-matthias-safe-speak {
+@keyframes home-matthias-fallback-speak {
   0%, 100% { transform: translate3d(0, 0, 0) rotate(-.1deg); }
   50% { transform: translate3d(0, -.55%, 0) rotate(.18deg); }
 }
 
 @media (max-width: 999px) {
-  .illustrated-home__matthias .home-matthias-3d {
-    display: block;
-  }
+  .illustrated-home__matthias .home-matthias-3d { display: block; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-matthias-3d img {
+  .home-matthias-3d img,
+  .home-matthias-3d canvas {
     transition: none;
     animation: none !important;
     transform: none !important;

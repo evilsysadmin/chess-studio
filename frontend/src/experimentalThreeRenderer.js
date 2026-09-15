@@ -1,8 +1,3 @@
-import { WebGLRenderer as ThreeWebGLRenderer } from 'three';
-
-// Experimental 3D surfaces must not proliferate direct WebGLRenderer ownership.
-// Keep construction behind this seam so lifecycle policy can be consolidated
-// without every POC growing its own renderer bootstrap contract.
-export function createExperimentalThreeRenderer(parameters = {}) {
-  return new ThreeWebGLRenderer(parameters);
-}
+// Compatibility seam for experimental 3D surfaces. Renderer construction is
+// shared with canonical lightweight surfaces so ownership does not proliferate.
+export { createThreeRenderer as createExperimentalThreeRenderer } from './threeRenderer.js';

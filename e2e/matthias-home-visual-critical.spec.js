@@ -20,13 +20,25 @@ async function openCanonicalHome(page, { reducedMotion = 'no-preference', profil
 
 function matthiasRig(matthias) {
   const avatar = matthias.locator('.illustrated-home__matthias-portrait [data-home-matthias-3d]');
-  return { avatar, image: avatar.locator('img') };
+  return {
+    avatar,
+    image: avatar.locator('img[data-matthias-fallback="canonical-scene-render"]'),
+    canvas: avatar.locator('canvas[data-matthias-canonical-model="blender"]'),
+  };
+}
+
+async function expectBlenderRigReady(avatar, canvas) {
+  await expect(avatar).toHaveAttribute('data-home-matthias-model-state', 'ready', { timeout: 15_000 });
+  await expect(avatar).toHaveAttribute('data-matthias-identity', 'canonical-blender-rig');
+  await expect(avatar).toHaveAttribute('data-matthias-render-source', 'blender-glb');
+  await expect(canvas).toBeVisible();
+  await expect(canvas).toHaveCSS('opacity', '1');
 }
 
 test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', async ({ page }) => {
   const home = await openCanonicalHome(page);
   const matthias = home.locator('.illustrated-home__matthias');
-  const { avatar, image } = matthiasRig(matthias);
+  const { avatar, image, canvas } = matthiasRig(matthias);
 
   await expect(matthias).toBeVisible();
   await expect(matthias).toContainText('MATTHIAS');
@@ -34,12 +46,10 @@ test('Home canónica · Matthias permanece visible, vivo y abre Así juegas', as
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', /.+/);
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', /^(34000|38000|42000|44000|48000|64000)$/);
   await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');
-  await expect(avatar).toHaveAttribute('data-matthias-identity', 'canonical-scene-render');
-  await expect(avatar).toHaveAttribute('data-matthias-render-source', 'bundled-scene-art');
-  await expect(avatar).toHaveAttribute('data-motion', 'canonical-sprite-routines');
+  await expect(avatar).toHaveAttribute('data-motion', 'rigged-gltf-clips');
+  await expectBlenderRigReady(avatar, canvas);
   await expect(image).toBeVisible();
-  await expect(image).toHaveAttribute('data-matthias-identity', 'canonical-scene-render');
-  await expect(avatar.locator('canvas')).toHaveCount(0);
+  await expect(image).toHaveCSS('opacity', '0');
   await expect(avatar.locator('[data-matthias-layered-art="true"]')).toHaveCount(0);
 
   await matthias.click();
@@ -64,7 +74,7 @@ test('Home canónica · el expediente raro de Matthias exige derrotas reales y o
     profileSeed: { 'chess-study-cpu-rivalry': JSON.stringify(rivalry) },
   });
   const matthias = home.locator('.illustrated-home__matthias');
-  const { avatar } = matthiasRig(matthias);
+  const { avatar, canvas } = matthiasRig(matthias);
 
   await expect(matthias).toBeVisible();
   await expect(matthias).toHaveAttribute('data-home-matthias-moment', 'loss-dossier');
@@ -73,6 +83,7 @@ test('Home canónica · el expediente raro de Matthias exige derrotas reales y o
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Revisando viejas heridas');
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', '44000');
   await expect(avatar).toHaveAttribute('data-home-matthias-profile', 'dossier');
+  await expectBlenderRigReady(avatar, canvas);
 });
 
 test('Home canónica · Matthias puede quedarse dormido sobre el manual en la biblioteca', async ({ page }) => {
@@ -85,7 +96,7 @@ test('Home canónica · Matthias puede quedarse dormido sobre el manual en la bi
 
   const home = await openCanonicalHome(page);
   const matthias = home.locator('.illustrated-home__matthias');
-  const { avatar, image } = matthiasRig(matthias);
+  const { avatar, canvas } = matthiasRig(matthias);
 
   await expect(matthias).toBeVisible();
   await expect(matthias).toHaveAttribute('data-home-matthias-moment', 'book-doze-sleep');
@@ -93,9 +104,8 @@ test('Home canónica · Matthias puede quedarse dormido sobre el manual en la bi
   await expect(matthias).toHaveAttribute('data-home-matthias-zone', 'library');
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Dormido sobre el manual');
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', '64000');
-  await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');
   await expect(avatar).toHaveAttribute('data-home-matthias-profile', 'sleep');
-  await expect(image).toBeVisible();
+  await expectBlenderRigReady(avatar, canvas);
 });
 
 test('Home canónica · Matthias ensaya una emboscada solo en el escritorio', async ({ page }) => {
@@ -108,7 +118,7 @@ test('Home canónica · Matthias ensaya una emboscada solo en el escritorio', as
 
   const home = await openCanonicalHome(page);
   const matthias = home.locator('.illustrated-home__matthias');
-  const { avatar, image } = matthiasRig(matthias);
+  const { avatar, canvas } = matthiasRig(matthias);
 
   await expect(matthias).toBeVisible();
   await expect(matthias).toHaveAttribute('data-home-matthias-moment', 'solo-board-inception');
@@ -116,9 +126,21 @@ test('Home canónica · Matthias ensaya una emboscada solo en el escritorio', as
   await expect(matthias).toHaveAttribute('data-home-matthias-zone', 'desk');
   await expect(matthias).toHaveAttribute('data-home-matthias-activity', 'Ensayando una emboscada');
   await expect(matthias).toHaveAttribute('data-home-matthias-dwell-ms', '42000');
-  await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');
   await expect(avatar).toHaveAttribute('data-home-matthias-profile', 'think');
+  await expectBlenderRigReady(avatar, canvas);
+});
+
+test('Home canónica · conserva el render aprobado si el GLB de Matthias no puede cargar', async ({ page }) => {
+  await page.route('**/models/matthias-home-canonical.glb', (route) => route.abort());
+  const home = await openCanonicalHome(page);
+  const matthias = home.locator('.illustrated-home__matthias');
+  const { avatar, image, canvas } = matthiasRig(matthias);
+
+  await expect(avatar).toHaveAttribute('data-home-matthias-model-state', 'fallback', { timeout: 15_000 });
+  await expect(avatar).toHaveAttribute('data-matthias-render-source', 'bundled-scene-art-fallback');
   await expect(image).toBeVisible();
+  await expect(image).toHaveCSS('opacity', '1');
+  await expect(canvas).toHaveCSS('opacity', '0');
 });
 
 test('Home canónica · arte y destinos comparten el master 1814×867 sin overflow', async ({ page }) => {
@@ -221,17 +243,18 @@ test('Home canónica · ultrapanorámica llena el viewport y mantiene la UI clav
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
-test('Home canónica · reduced motion elimina transiciones decorativas', async ({ page }) => {
+test('Home canónica · reduced motion congela el rig y elimina transiciones decorativas', async ({ page }) => {
   const home = await openCanonicalHome(page, { reducedMotion: 'reduce' });
   const destination = home.locator('.illustrated-home__destination--tournament');
   const matthias = home.locator('.illustrated-home__matthias');
-  const { avatar, image } = matthiasRig(matthias);
+  const { avatar, image, canvas } = matthiasRig(matthias);
 
   await expect(destination).toBeVisible();
   await expect(avatar).toHaveAttribute('data-home-matthias-3d', 'ready');
-  await expect(avatar).toHaveAttribute('data-motion', 'still-canonical-sprite');
-  await expect(image).toBeVisible();
+  await expect(avatar).toHaveAttribute('data-motion', 'still-rigged-model');
+  await expectBlenderRigReady(avatar, canvas);
   expect(await image.evaluate((node) => getComputedStyle(node).animationName)).toBe('none');
+  expect(await canvas.evaluate((node) => Number.parseFloat(getComputedStyle(node).transitionDuration) || 0)).toBeLessThanOrEqual(0.001);
 
   const transitionSeconds = await destination.evaluate((node) => Number.parseFloat(getComputedStyle(node).transitionDuration) || 0);
   expect(transitionSeconds).toBeLessThanOrEqual(0.001);
