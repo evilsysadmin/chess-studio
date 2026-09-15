@@ -40,6 +40,16 @@ def add_area(name, location, energy, size, color, target):
     return obj
 
 
+def render_engine(scene):
+    """Choose an Eevee engine by capability, not a guessed Blender version."""
+    prop = scene.bl_rna.properties["render"].fixed_type.properties["engine"]
+    available = {item.identifier for item in prop.enum_items}
+    for candidate in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
+        if candidate in available:
+            return candidate
+    raise RuntimeError(f"no supported Eevee engine available: {sorted(available)}")
+
+
 def configure_scene(output_dir):
     scene = bpy.context.scene
     scene.frame_set(1)
@@ -48,7 +58,7 @@ def configure_scene(output_dir):
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = "PNG"
     scene.render.film_transparent = False
-    scene.render.engine = "BLENDER_EEVEE_NEXT" if bpy.app.version >= (4, 0, 0) else "BLENDER_EEVEE"
+    scene.render.engine = render_engine(scene)
     scene.render.filepath = os.path.join(output_dir, "chronicles-party-preview.png")
     scene.world.color = (0.012, 0.009, 0.007)
 

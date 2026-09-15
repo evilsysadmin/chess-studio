@@ -26,6 +26,7 @@ INVENTORY = {
     'coverage.yml': 'quality-scheduled',
     'e2e-full.yml': 'quality-scheduled',
     'grafana-dashboards.yml': 'observability',
+    'home-matthias-blender-art.yml': 'art-generation',
     'main-admission.yml': 'delivery-admission',
     'oci-readiness.yml': 'infra-readiness',
     'oci-staging-deploy.yml': 'infra-staging-delivery',
