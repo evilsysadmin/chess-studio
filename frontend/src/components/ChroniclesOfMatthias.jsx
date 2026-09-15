@@ -13,6 +13,7 @@ import { chroniclesTargetAhead } from '../chroniclesOfMatthiasTargeting.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import ChroniclesBookOneEpilogue from './ChroniclesBookOneEpilogue.jsx';
 import ChroniclesEnemyRetaliationFx from './ChroniclesEnemyRetaliationFx.jsx';
+import ChroniclesNarratorOverlay from './ChroniclesNarratorOverlay.jsx';
 import ChroniclesTacticalMargin from './ChroniclesTacticalMargin.jsx';
 import './ChroniclesOfMatthias.css';
 import './ChroniclesOfMatthiasArt.css';
@@ -211,15 +212,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
             <div ref={hostRef} className="chronicles-three" data-chronicles-renderer="three" aria-label="Mazmorra 3D en primera persona de Chronicles of Matthias" />
             <div className="chronicles-vignette" aria-hidden="true" />
             <div className="chronicles-crosshair" aria-hidden="true">·</div>
+            <ChroniclesNarratorOverlay message={state.message} />
             <ChroniclesTacticalMargin target={tacticalTarget} />
             <ChroniclesEnemyRetaliationFx key={retaliationCue?.token || 'none'} cue={retaliationCue} />
             {rendererError && <div className="chronicles-renderer-error" role="alert">{rendererError}</div>}
             {state.phase === 'escaped' && <ChroniclesBookOneEpilogue state={state} onRestart={restart} />}
-          </div>
-
-          <div className="chronicles-narration" aria-live="polite">
-            <span className="chronicles-avatar" aria-hidden="true">♟</span>
-            <p><strong>Matthias</strong>{state.message}</p>
           </div>
 
           <details className="chronicles-journal" aria-label="Crónica de expedición">
