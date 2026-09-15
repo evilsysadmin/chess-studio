@@ -85,7 +85,7 @@ export function buildSpectralBishop({ coarsePointer = false } = {}) {
 
   root.userData.chroniclesGlowMaterials = [glow, faintGlow];
   root.userData.chroniclesBaseGlow = 2.35;
-  root.userData.chroniclesSilhouette = 'spectral-bishop-haloed-diagonal-seer-v2';
+  root.userData.chroniclesSilhouette = 'spectral-bishop-diagonal-seer';
   root.userData.chroniclesArtTier = 'premium-threat-v2';
   root.userData.chroniclesEnemyId = 'spectral-bishop';
   return root;
