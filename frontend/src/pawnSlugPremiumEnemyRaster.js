@@ -1,16 +1,17 @@
-import enemyCanonicalRunUrl from './assets/pawnSlug/enemy_canonical_v5_run.webp';
+import { PAWN_SLUG_PREMIUM_ENEMY_RASTER_DATA_URL } from './pawnSlugEnemyPremiumAtlasData.js';
 
 const TYPES = Object.freeze(['pawn', 'knight', 'rook']);
 const COLUMNS = 8;
 const ROWS = 3;
 const FRAMES_PER_TYPE = 8;
+const FRAME_SIZE = 80;
 const ROW_BY_TYPE = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
 
 function wrapFrame(frame, count = FRAMES_PER_TYPE) {
   return ((Math.floor(Number(frame) || 0) % count) + count) % count;
 }
 
-export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL = enemyCanonicalRunUrl;
+export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL = PAWN_SLUG_PREMIUM_ENEMY_RASTER_DATA_URL;
 
 export function pawnSlugPremiumEnemyRasterWindow(type = 'pawn', action = 'idle', frameIndex = 0, dir = 1) {
   const safeType = TYPES.includes(type) ? type : 'pawn';
@@ -37,11 +38,11 @@ export function pawnSlugPremiumEnemyRasterWindow(type = 'pawn', action = 'idle',
 
 export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_META = Object.freeze({
   version: 'v5-authored-canonical-run',
-  format: 'webp-rgba-authored-premium',
-  width: 1280,
-  height: 480,
-  frameWidth: 160,
-  frameHeight: 160,
+  format: 'webp-rgba-authored-premium-inline-safe',
+  width: FRAME_SIZE * COLUMNS,
+  height: FRAME_SIZE * ROWS,
+  frameWidth: FRAME_SIZE,
+  frameHeight: FRAME_SIZE,
   columns: COLUMNS,
   rows: ROWS,
   framesPerType: FRAMES_PER_TYPE,
@@ -56,4 +57,6 @@ export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_META = Object.freeze({
   isolatedSilhouettes: true,
   transparentBackground: true,
   proceduralFallbackOnly: true,
+  transport: 'two-chunk-base64-data-url',
+  transportReason: 'connector-safe-binary-integrity',
 });

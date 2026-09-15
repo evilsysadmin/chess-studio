@@ -7,13 +7,13 @@ import {
 
 describe('Pawn Slug premium enemy raster', () => {
   it('uses the authored canonical run atlas as the primary art source', () => {
-    expect(PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL).toMatch(/enemy_canonical_v5_run\.webp$/);
+    expect(PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL).toMatch(/^data:image\/webp;base64,/);
     expect(PAWN_SLUG_PREMIUM_ENEMY_RASTER_META).toMatchObject({
       version: 'v5-authored-canonical-run',
-      width: 1280,
-      height: 480,
-      frameWidth: 160,
-      frameHeight: 160,
+      width: 640,
+      height: 240,
+      frameWidth: 80,
+      frameHeight: 80,
       columns: 8,
       rows: 3,
       framesPerType: 8,
@@ -23,6 +23,8 @@ describe('Pawn Slug premium enemy raster', () => {
       isolatedSilhouettes: true,
       transparentBackground: true,
       proceduralFallbackOnly: true,
+      transport: 'two-chunk-base64-data-url',
+      transportReason: 'connector-safe-binary-integrity',
     });
     expect(PAWN_SLUG_PREMIUM_ENEMY_RASTER_META.authoredActions).toEqual(['idle', 'run']);
   });

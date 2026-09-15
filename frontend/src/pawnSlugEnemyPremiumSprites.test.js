@@ -7,6 +7,7 @@ import {
 import {
   clonePawnSlugPremiumEnemyTexture,
   pawnSlugPremiumEnemyFallbackWindow,
+  pawnSlugPremiumEnemyRenderStatus,
   reassertPawnSlugPremiumEnemyTexture,
 } from './pawnSlugEnemyPremiumSprites.js';
 import {
@@ -24,12 +25,13 @@ function fakeTexture() {
 }
 
 describe('Pawn Slug premium enemy runtime integration', () => {
-  it('prefers authored premium art while retaining generated actions as the visible safety net', () => {
+  it('prefers authored premium art while retaining generated actions only as a visible safety net', () => {
     expect(PAWN_SLUG_ENEMY_RUN_META.primaryVisualSource).toBe('premium-raster');
     expect(PAWN_SLUG_ENEMY_RUN_META.fallbackVisualSource).toBe('premium-static-raster');
     expect(PAWN_SLUG_ENEMY_RUN_META.proceduralRole).toBe('known-good-safety-net');
     expect(PAWN_SLUG_ENEMY_RUN_META.visualEvidencePolicy).toBe('premium-alpha-readback-before-replacing-generated-actions');
-    expect(PAWN_SLUG_ENEMY_RUN_META.browserFallbackAlias).toBe('generated-actions -> premium-fallback');
+    expect(PAWN_SLUG_ENEMY_RUN_META.browserPremiumContract).toBe('verified-authored-only');
+    expect(PAWN_SLUG_ENEMY_RUN_META.browserFallbackAlias).toBeNull();
     expect(PAWN_SLUG_ENEMY_RUN_META.lateFallbackOverwriteProtection).toBe(true);
     expect(PAWN_SLUG_ENEMY_RUN_META.sourceDecodePolicy).toBe('shared-once-per-page-cloned-per-enemy');
     expect(PAWN_SLUG_ENEMY_RUN_META.sharedDecodedSourceCount).toBe(2);
@@ -40,8 +42,8 @@ describe('Pawn Slug premium enemy runtime integration', () => {
     });
     expect(PAWN_SLUG_ENEMY_RUN_META.premiumRaster).toMatchObject({
       version: 'v5-authored-canonical-run',
-      frameWidth: 160,
-      frameHeight: 160,
+      frameWidth: 80,
+      frameHeight: 80,
       columns: 8,
       rows: 3,
       framesPerType: 8,
@@ -49,6 +51,7 @@ describe('Pawn Slug premium enemy runtime integration', () => {
       authoredActions: ['idle', 'run'],
       canonicalSource: 'Pawn Slug: authored premium enemy lineup v5',
       isolatedSilhouettes: true,
+      transport: 'two-chunk-base64-data-url',
     });
     expect(PAWN_SLUG_ENEMY_RUN_META.premiumFallback).toMatchObject({
       asset: 'enemy_atlas_premium.webp',
@@ -59,6 +62,19 @@ describe('Pawn Slug premium enemy runtime integration', () => {
       frameHeight: 128,
     });
     expect(PAWN_SLUG_SPRITE_META.enemies.runAtlas.primaryVisualSource).toBe('premium-raster');
+  });
+
+  it('never reports generated actions as authored premium art', () => {
+    const sprite = {
+      userData: {
+        pawnSlugEnemyReadability: true,
+        atlas: { source: 'generated-actions' },
+      },
+      material: { visible: true, map: {} },
+      parent: {},
+    };
+
+    expect(pawnSlugPremiumEnemyRenderStatus(sprite)).toBe('generated-actions:visible:mapped:readable:attached');
   });
 
   it('keeps combat sprites readable over 2.5D scenery', () => {
@@ -93,7 +109,7 @@ describe('Pawn Slug premium enemy runtime integration', () => {
   });
 
   it('clones per-enemy UV state while sharing the decoded premium image source', () => {
-    const master = new THREE.Texture({ width: 1280, height: 480 });
+    const master = new THREE.Texture({ width: 640, height: 240 });
     master.repeat.set(1 / 8, 1 / 3);
     master.offset.set(1 / 8, 2 / 3);
 
