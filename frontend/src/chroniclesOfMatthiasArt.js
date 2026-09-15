@@ -244,6 +244,11 @@ export function buildCorruptedPawn({ coarsePointer = false } = {}) {
   add(root, new THREE.ConeGeometry(0.1, 0.44, 7), crust, [-0.26, 1.2, -0.04], [0.1, 0, -0.72], null, 'corrupted-pawn-spike-left');
   add(root, new THREE.ConeGeometry(0.08, 0.36, 7), crust, [0.28, 1.12, -0.08], [-0.1, 0, 0.82], null, 'corrupted-pawn-spike-right');
   add(root, new THREE.BoxGeometry(0.05, 0.58, 0.03), glow, [0.03, 0.91, 0.28], [0, 0, -0.12], null, 'corrupted-pawn-chest-fissure');
+  add(root, new THREE.TorusGeometry(0.33, 0.04, 7, segments), crust, [0, 1.08, 0], [Math.PI / 2, 0, 0], null, 'corrupted-pawn-broken-collar');
+  add(root, new THREE.DodecahedronGeometry(0.17, 0), crust, [-0.29, 1.08, 0.01], [0.18, 0, -0.38], [1.25, 0.5, 0.92], 'corrupted-pawn-pauldron-left');
+  add(root, new THREE.DodecahedronGeometry(0.14, 0), crust, [0.3, 1.03, -0.03], [-0.12, 0, 0.44], [1.15, 0.45, 0.85], 'corrupted-pawn-pauldron-right');
+  add(root, new THREE.BoxGeometry(0.28, 0.055, 0.04), glow, [-0.08, 1.2, 0.275], [0, 0, -0.44], null, 'corrupted-pawn-neck-fissure');
+  add(root, new THREE.BoxGeometry(0.38, 0.075, 0.05), crust, [0, 1.34, 0.26], [0, 0, 0], null, 'corrupted-pawn-jaw-guard');
   root.userData.chroniclesGlowMaterials = [glow];
   root.userData.chroniclesBaseGlow = 1.7;
   return root;
@@ -289,6 +294,21 @@ export function buildGateJailer({ coarsePointer = false } = {}) {
   add(root, new THREE.BoxGeometry(0.32, 0.045, 0.035), glow, [-0.12, 1.04, 0.465], [0, 0, -0.58], null, 'gate-jailer-fissure-diagonal');
   add(root, new THREE.BoxGeometry(0.12, 0.055, 0.04), glow, [-0.16, 1.39, 0.47], [0, 0, -0.12], null, 'gate-jailer-eye-left');
   add(root, new THREE.BoxGeometry(0.12, 0.055, 0.04), glow, [0.16, 1.39, 0.47], [0, 0, 0.12], null, 'gate-jailer-eye-right');
+
+  const grate = new THREE.Group();
+  grate.name = 'gate-jailer-portcullis';
+  root.add(grate);
+  [-0.22, 0, 0.22].forEach((x, index) => {
+    add(grate, new THREE.BoxGeometry(0.055, 0.62, 0.055), oldSteel, [x, 0.86, 0.49], [0, 0, 0], null, `gate-jailer-grate-bar-${index}`);
+  });
+  add(grate, new THREE.BoxGeometry(0.54, 0.055, 0.055), oldSteel, [0, 0.72, 0.49], [0, 0, 0], null, 'gate-jailer-grate-cross-low');
+  add(grate, new THREE.BoxGeometry(0.54, 0.055, 0.055), oldSteel, [0, 1.01, 0.49], [0, 0, 0], null, 'gate-jailer-grate-cross-high');
+  add(root, new THREE.BoxGeometry(0.2, 0.2, 0.07), crust, [0, 0.86, 0.545], [0, 0, Math.PI / 4], null, 'gate-jailer-lock-plate');
+  add(root, new THREE.BoxGeometry(0.035, 0.11, 0.025), blackIron, [0, 0.86, 0.59], [0, 0, 0], null, 'gate-jailer-keyhole');
+  add(root, new THREE.SphereGeometry(0.095, 10, 7), glow, [0, 0.86, 0.455], [0, 0, 0], [1.4, 1.65, 0.35], 'gate-jailer-core-glow');
+  [-0.48, 0.48].forEach((x, index) => {
+    add(root, new THREE.TorusGeometry(0.12, 0.028, 7, coarsePointer ? 10 : 16), oldSteel, [x, 1.23, 0], [Math.PI / 2, 0, 0], null, `gate-jailer-chain-anchor-${index}`);
+  });
 
   const chainMat = oldSteel;
   for (let i = 0; i < (coarsePointer ? 3 : 5); i += 1) {
