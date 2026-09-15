@@ -1,13 +1,35 @@
 import * as THREE from 'three';
 import { moveWarRoomHansToward } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v5-footprint-clearance';
+export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v6-desk-obstacle-router';
 export const WAR_ROOM_HANS_NAVIGATION_CLEAR_LANE_HALF_EXTENT = 5.5;
 export const WAR_ROOM_HANS_NAVIGATION_EDGE_MARGIN = 0.12;
+export const WAR_ROOM_HANS_NAVIGATION_FURNITURE_CLEARANCE = 0.58;
+
+const COMMAND_DESK_NAMES = Object.freeze([
+  'war-room-teutonic-command-desk-v28',
+  'command-cabinet',
+  'war-room-command-desk-top',
+]);
+const GEOMETRY_EPSILON = 1e-4;
 
 function localPoint(parent, world) {
   parent.updateMatrixWorld?.(true);
   return parent.worldToLocal(world.clone());
+}
+
+function sceneRoot(object) {
+  let current = object || null;
+  while (current?.parent) current = current.parent;
+  return current;
+}
+
+function firstNamed(root, names) {
+  for (const name of names) {
+    const object = root?.getObjectByName?.(name);
+    if (object) return object;
+  }
+  return null;
 }
 
 function distanceSquared(a, b) {
@@ -17,18 +39,8 @@ function distanceSquared(a, b) {
   return dx * dx + dz * dz;
 }
 
-function nearestIndex(points, point, indices = null) {
-  let bestIndex = indices?.[0] ?? 0;
-  let bestDistance = Number.POSITIVE_INFINITY;
-  const candidates = indices || points.map((_, index) => index);
-  candidates.forEach((index) => {
-    const distance = distanceSquared(points[index], point);
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      bestIndex = index;
-    }
-  });
-  return bestIndex;
+function planarDistance(a, b) {
+  return Math.sqrt(distanceSquared(a, b));
 }
 
 function clearLaneHalfExtent(span) {
@@ -90,23 +102,135 @@ function laneApproach(point, bounds) {
   };
 }
 
-function loopIndicesForSide(side) {
-  if (side === 'rear') return [0, 1, 2];
-  if (side === 'right') return [2, 3, 4];
-  if (side === 'front') return [4, 5, 6];
-  return [6, 7, 0];
+function indicesForSide(loop, side, bounds) {
+  const axis = side === 'rear' || side === 'front' ? 'z' : 'x';
+  const expected = side === 'rear'
+    ? bounds.rear
+    : side === 'front'
+      ? bounds.front
+      : side === 'left'
+        ? bounds.left
+        : bounds.right;
+  const indices = [];
+  loop.forEach((point, index) => {
+    if (Math.abs(Number(point[axis]) - expected) <= 1e-6) indices.push(index);
+  });
+  return indices;
 }
 
-function shortestLoopIndices(start, end, length) {
-  const clockwise = (end - start + length) % length;
-  const counterClockwise = (start - end + length) % length;
-  const direction = clockwise <= counterClockwise ? 1 : -1;
-  const steps = Math.min(clockwise, counterClockwise);
-  const indices = [];
-  for (let offset = 0; offset <= steps; offset += 1) {
-    indices.push((start + direction * offset + length) % length);
+function loopIndicesBetween(start, end, length, direction) {
+  if (!Number.isInteger(start) || !Number.isInteger(end) || length <= 0) return [];
+  const indices = [start];
+  let current = start;
+  let guard = 0;
+  while (current !== end && guard <= length) {
+    current = (current + direction + length) % length;
+    indices.push(current);
+    guard += 1;
   }
-  return indices;
+  return current === end ? indices : [];
+}
+
+function obstacleRectForObject(object, parent, padding = WAR_ROOM_HANS_NAVIGATION_FURNITURE_CLEARANCE) {
+  if (!object || !parent) return null;
+  object.updateMatrixWorld?.(true);
+  parent.updateMatrixWorld?.(true);
+  const box = new THREE.Box3().setFromObject(object);
+  if (box.isEmpty()) return null;
+  const y = (box.min.y + box.max.y) * 0.5;
+  const corners = [
+    new THREE.Vector3(box.min.x, y, box.min.z),
+    new THREE.Vector3(box.min.x, y, box.max.z),
+    new THREE.Vector3(box.max.x, y, box.min.z),
+    new THREE.Vector3(box.max.x, y, box.max.z),
+  ].map((point) => parent.worldToLocal(point));
+  const xs = corners.map((point) => Number(point.x));
+  const zs = corners.map((point) => Number(point.z));
+  return {
+    minX: Math.min(...xs) - padding,
+    maxX: Math.max(...xs) + padding,
+    minZ: Math.min(...zs) - padding,
+    maxZ: Math.max(...zs) + padding,
+  };
+}
+
+function commandDeskObstacle(floor, parent) {
+  const root = sceneRoot(floor) || sceneRoot(parent);
+  return obstacleRectForObject(firstNamed(root, COMMAND_DESK_NAMES), parent);
+}
+
+function pointInsideRect(point, rect) {
+  if (!point || !rect) return false;
+  return Number(point.x) > rect.minX + GEOMETRY_EPSILON
+    && Number(point.x) < rect.maxX - GEOMETRY_EPSILON
+    && Number(point.z) > rect.minZ + GEOMETRY_EPSILON
+    && Number(point.z) < rect.maxZ - GEOMETRY_EPSILON;
+}
+
+function segmentIntersectsRectInterior(from, to, rect) {
+  if (!from || !to || !rect) return false;
+  const minX = rect.minX + GEOMETRY_EPSILON;
+  const maxX = rect.maxX - GEOMETRY_EPSILON;
+  const minZ = rect.minZ + GEOMETRY_EPSILON;
+  const maxZ = rect.maxZ - GEOMETRY_EPSILON;
+  if (minX >= maxX || minZ >= maxZ) return false;
+
+  let tMin = 0;
+  let tMax = 1;
+  for (const [origin, delta, min, max] of [
+    [Number(from.x), Number(to.x) - Number(from.x), minX, maxX],
+    [Number(from.z), Number(to.z) - Number(from.z), minZ, maxZ],
+  ]) {
+    if (Math.abs(delta) <= GEOMETRY_EPSILON) {
+      if (origin <= min || origin >= max) return false;
+      continue;
+    }
+    let enter = (min - origin) / delta;
+    let exit = (max - origin) / delta;
+    if (enter > exit) [enter, exit] = [exit, enter];
+    tMin = Math.max(tMin, enter);
+    tMax = Math.min(tMax, exit);
+    if (tMin > tMax) return false;
+  }
+  return tMax >= 0 && tMin <= 1 && tMax >= tMin;
+}
+
+function routeIsClear(from, route, obstacles) {
+  if (!route.length) return false;
+  let previous = from;
+  for (const point of route) {
+    for (const obstacle of obstacles) {
+      if (segmentIntersectsRectInterior(previous, point, obstacle)) return false;
+    }
+    previous = point;
+  }
+  return true;
+}
+
+function routeLength(from, route) {
+  let total = 0;
+  let previous = from;
+  for (const point of route) {
+    total += planarDistance(previous, point);
+    previous = point;
+  }
+  return total;
+}
+
+function buildCandidate(loop, departure, arrival, startIndex = null, endIndex = null, direction = 1) {
+  const route = [];
+  pushUnique(route, departure.threshold);
+  pushUnique(route, departure.portal);
+  if (Number.isInteger(startIndex) && Number.isInteger(endIndex)) {
+    for (const index of loopIndicesBetween(startIndex, endIndex, loop.length, direction)) {
+      pushUnique(route, loop[index]);
+    }
+  } else {
+    pushUnique(route, arrival.portal);
+  }
+  pushUnique(route, arrival.portal);
+  pushUnique(route, arrival.threshold);
+  return route;
 }
 
 export function warRoomHansSafeRoomLoop(floor, parent) {
@@ -126,10 +250,6 @@ export function warRoomHansSafeRoomLoop(floor, parent) {
   const rear = centerZ - laneHalfZ;
   const front = centerZ + laneHalfZ;
 
-  // Point clearance was not enough: Hans' feet and coat still visibly clipped
-  // the board edge while his root stayed technically outside the old 5.25 lane.
-  // Keep the circulation centreline far enough out for his footprint, while
-  // still staying inside the fixed wall furniture and armour clearance.
   const worldPoints = [
     [left, rear],
     [centerX, rear],
@@ -140,8 +260,14 @@ export function warRoomHansSafeRoomLoop(floor, parent) {
     [left, front],
     [left, centerZ],
   ];
+  const loop = worldPoints.map(([x, z]) => localPoint(parent, new THREE.Vector3(x, -0.34, z)));
+  const deskObstacle = commandDeskObstacle(floor, parent);
 
-  return worldPoints.map(([x, z]) => localPoint(parent, new THREE.Vector3(x, -0.34, z)));
+  // The canonical rear centreline can physically pass through the command desk.
+  // Drop any loop waypoint swallowed by the padded desk footprint. The router
+  // still sees the remaining loop as cyclic and rejects the now-direct rear edge,
+  // forcing Hans around the room instead of through solid furniture.
+  return deskObstacle ? loop.filter((point) => !pointInsideRect(point, deskObstacle)) : loop;
 }
 
 export function warRoomHansBuildSafeRoute(floor, parent, from, to) {
@@ -152,28 +278,32 @@ export function warRoomHansBuildSafeRoute(floor, parent, from, to) {
   const bounds = laneBounds(loop);
   const departure = laneApproach(from, bounds);
   const arrival = laneApproach(to, bounds);
-  const route = [];
-
-  // Enter and leave the circulation lane with orthogonal legs. The old nearest-
-  // node connector drew a diagonal from arbitrary task targets to the lane; that
-  // diagonal was the remaining path that could visibly cut through furniture.
-  pushUnique(route, departure.threshold);
-  pushUnique(route, departure.portal);
+  const obstacles = [commandDeskObstacle(floor, parent)].filter(Boolean);
+  const candidates = [];
 
   if (departure.side === arrival.side) {
-    pushUnique(route, arrival.portal);
-  } else {
-    const start = nearestIndex(loop, departure.portal, loopIndicesForSide(departure.side));
-    const end = nearestIndex(loop, arrival.portal, loopIndicesForSide(arrival.side));
-    for (const index of shortestLoopIndices(start, end, loop.length)) {
-      pushUnique(route, loop[index]);
-    }
-    pushUnique(route, arrival.portal);
+    candidates.push(buildCandidate(loop, departure, arrival));
   }
 
-  pushUnique(route, arrival.threshold);
-  pushUnique(route, to);
-  return route;
+  const departureIndices = indicesForSide(loop, departure.side, bounds);
+  const arrivalIndices = indicesForSide(loop, arrival.side, bounds);
+  for (const start of departureIndices) {
+    for (const end of arrivalIndices) {
+      candidates.push(buildCandidate(loop, departure, arrival, start, end, 1));
+      candidates.push(buildCandidate(loop, departure, arrival, start, end, -1));
+    }
+  }
+
+  const completed = candidates.map((route) => {
+    const next = [...route];
+    pushUnique(next, to);
+    return next;
+  });
+  const clear = completed
+    .filter((route) => routeIsClear(from, route, obstacles))
+    .sort((a, b) => routeLength(from, a) - routeLength(from, b));
+
+  return clear[0] || [];
 }
 
 export function moveWarRoomHansAlongRoute(hans, route, index, maxStep) {

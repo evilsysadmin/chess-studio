@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
+  WAR_ROOM_HANS_NAVIGATION_FURNITURE_CLEARANCE,
   warRoomHansBuildSafeRoute,
   warRoomHansSafeRoomLoop,
 } from './WarRoomHansNavigation.js';
@@ -49,6 +50,42 @@ function planarDistanceToSegment(point, from, to) {
   return Math.hypot(point.x - nearestX, point.z - nearestZ);
 }
 
+function addCanonicalDesk(root) {
+  const deskArt = new THREE.Group();
+  deskArt.name = 'war-room-teutonic-command-desk-v28';
+  deskArt.position.z = -6.15;
+  const deskTop = new THREE.Mesh(
+    new THREE.BoxGeometry(3.05, 0.16, 1),
+    new THREE.MeshBasicMaterial(),
+  );
+  deskTop.name = 'war-room-command-desk-top';
+  deskTop.position.y = 1.03;
+  deskArt.add(deskTop);
+  root.add(deskArt);
+  return deskArt;
+}
+
+function insidePaddedDesk(point) {
+  const halfWidth = 3.05 * 0.5 + WAR_ROOM_HANS_NAVIGATION_FURNITURE_CLEARANCE;
+  const minZ = -6.15 - 0.5 - WAR_ROOM_HANS_NAVIGATION_FURNITURE_CLEARANCE;
+  const maxZ = -6.15 + 0.5 + WAR_ROOM_HANS_NAVIGATION_FURNITURE_CLEARANCE;
+  return Math.abs(Number(point.x)) < halfWidth - 1e-4
+    && Number(point.z) > minZ + 1e-4
+    && Number(point.z) < maxZ - 1e-4;
+}
+
+function expectSegmentOutsideDesk(from, to) {
+  for (let step = 0; step <= 36; step += 1) {
+    const t = step / 36;
+    const point = new THREE.Vector3(
+      THREE.MathUtils.lerp(from.x, to.x, t),
+      THREE.MathUtils.lerp(from.y, to.y, t),
+      THREE.MathUtils.lerp(from.z, to.z, t),
+    );
+    expect(insidePaddedDesk(point)).toBe(false);
+  }
+}
+
 describe('Hans room navigation board clearance', () => {
   it('keeps the canonical room loop outside the board-safe footprint', () => {
     const root = new THREE.Group();
@@ -66,7 +103,7 @@ describe('Hans room navigation board clearance', () => {
     for (const point of loop) expect(outsideBoard(point)).toBe(true);
   });
 
-  it('routes espresso from the service corridor to the desk without a diagonal through the board or furniture approach', () => {
+  it('removes the rear-center waypoint when the padded command desk occupies it', () => {
     const root = new THREE.Group();
     const parent = new THREE.Group();
     const floor = new THREE.Mesh(
@@ -75,18 +112,38 @@ describe('Hans room navigation board clearance', () => {
     );
     floor.position.set(0, -0.305, 0);
     root.add(parent, floor);
+    addCanonicalDesk(root);
     root.updateMatrixWorld(true);
 
-    // Canonical desk sits at z=-6.15 and the service target is offset toward
-    // the room by +0.74, so Hans stops around z=-5.41 beside the desk.
+    const loop = warRoomHansSafeRoomLoop(floor, parent);
+    expect(loop).toHaveLength(7);
+    for (const point of loop) {
+      expect(outsideBoard(point)).toBe(true);
+      expect(insidePaddedDesk(point)).toBe(false);
+    }
+  });
+
+  it('routes espresso around the desk instead of through its rear corridor', () => {
+    const root = new THREE.Group();
+    const parent = new THREE.Group();
+    const floor = new THREE.Mesh(
+      new THREE.BoxGeometry(16.5, 0.09, 13.6),
+      new THREE.MeshBasicMaterial(),
+    );
+    floor.position.set(0, -0.305, 0);
+    root.add(parent, floor);
+    addCanonicalDesk(root);
+    root.updateMatrixWorld(true);
+
     const serviceDoor = new THREE.Vector3(6.7, -0.34, -6.0);
-    const espressoTarget = new THREE.Vector3(-1.78, -0.34, -5.41);
+    const espressoTarget = new THREE.Vector3(-2.12, -0.34, -5.41);
     const route = warRoomHansBuildSafeRoute(floor, parent, serviceDoor, espressoTarget);
 
-    expect(route.length).toBeGreaterThan(1);
+    expect(route.length).toBeGreaterThan(4);
     const path = [serviceDoor, ...route];
     for (let index = 1; index < path.length; index += 1) {
       expectSegmentOutsideBoard(path[index - 1], path[index]);
+      expectSegmentOutsideDesk(path[index - 1], path[index]);
     }
     expectOrthogonalSegments(path);
     expect(route.at(-1)?.x).toBeCloseTo(espressoTarget.x, 6);

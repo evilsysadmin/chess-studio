@@ -5,12 +5,9 @@ import { setWarRoomHansServiceDoorOpen } from './WarRoomHansServiceDoor.js';
 
 export { moveWarRoomHansToward };
 
-export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v9-elder-cruise-visible-exit-door-command-desk-front-standoff';
-// Keep non-fireplace routines on the same deliberately slow elderly cruise as
-// the fireplace choreography. The fireplace clock already governs Hans around
-// 0.32 u/s; service/chore routines run on their own render hooks and therefore
-// need the physical step speed capped here instead of inheriting the old 0.78.
+export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v10-bounds-aware-furniture-standoff';
 export const HANS_SERVICE_WALK_SPEED = 0.32;
+export const HANS_SERVICE_FURNITURE_CLEARANCE = 0.58;
 
 const DOOR_NAME = 'war-room-hans-service-door';
 const DOOR_RECESS_NAME = 'war-room-hans-service-door-recess';
@@ -30,19 +27,88 @@ function commandDeskHost(object) {
   let current = object || null;
   while (current) {
     const name = String(current.name || '');
-    if (name === 'command-cabinet' || name === 'war-room-teutonic-command-desk-v28') return current;
+    if (name === 'war-room-teutonic-command-desk-v28' || name === 'command-cabinet') return current;
     current = current.parent || null;
   }
   return null;
+}
+
+function objectBounds(object) {
+  if (!object) return null;
+  object.updateMatrixWorld?.(true);
+  const box = new THREE.Box3().setFromObject(object);
+  return box.isEmpty() ? null : box;
 }
 
 function commandDeskFrontZSign(object) {
   const host = commandDeskHost(object);
   if (!host) return 0;
   const drawer = host.getObjectByName?.('war-room-command-desk-drawer');
-  const localZ = Number(drawer?.position?.z);
-  if (!Number.isFinite(localZ) || Math.abs(localZ) < 1e-4) return 0;
-  return Math.sign(localZ);
+  if (!drawer) return 0;
+
+  const drawerWorld = new THREE.Vector3();
+  const hostWorld = new THREE.Vector3();
+  drawer.getWorldPosition?.(drawerWorld);
+  host.getWorldPosition?.(hostWorld);
+  const worldDelta = Number(drawerWorld.z) - Number(hostWorld.z);
+  if (Number.isFinite(worldDelta) && Math.abs(worldDelta) >= 1e-4) return Math.sign(worldDelta);
+
+  const localZ = Number(drawer.position?.z);
+  return Number.isFinite(localZ) && Math.abs(localZ) >= 1e-4 ? Math.sign(localZ) : 0;
+}
+
+function applyArmorStandoff(object, world, offsetX) {
+  const side = Math.sign(Number(world.x)) || 1;
+  const requested = Number(world.x) - side * Math.abs(Number(offsetX) || 0);
+  const box = objectBounds(object);
+  if (!box) {
+    world.x = requested;
+    return;
+  }
+
+  const safeInnerX = side > 0
+    ? box.min.x - HANS_SERVICE_FURNITURE_CLEARANCE
+    : box.max.x + HANS_SERVICE_FURNITURE_CLEARANCE;
+  world.x = side > 0 ? Math.min(requested, safeInnerX) : Math.max(requested, safeInnerX);
+}
+
+function applyDeskStandoff(object, world, offsetX, offsetZ) {
+  const host = commandDeskHost(object);
+  if (!host) return false;
+  const box = objectBounds(host) || objectBounds(object);
+  const frontSign = commandDeskFrontZSign(object);
+  if (!box || !frontSign) return false;
+
+  const centerX = (box.min.x + box.max.x) * 0.5;
+  const halfWidth = Math.max(0, (box.max.x - box.min.x) * 0.5);
+  const requestedX = Number(world.x) + (Number(offsetX) || 0);
+  const xDirection = Math.sign(Number(offsetX) || 0);
+
+  if (xDirection && Math.abs(Number(offsetX)) >= halfWidth) {
+    world.x = xDirection < 0
+      ? box.min.x - HANS_SERVICE_FURNITURE_CLEARANCE
+      : box.max.x + HANS_SERVICE_FURNITURE_CLEARANCE;
+  } else {
+    world.x = requestedX;
+  }
+
+  const requestedZ = Number(world.z) + frontSign * Math.abs(Number(offsetZ) || 0);
+  const laterallyClear = world.x <= box.min.x - HANS_SERVICE_FURNITURE_CLEARANCE
+    || world.x >= box.max.x + HANS_SERVICE_FURNITURE_CLEARANCE;
+  if (laterallyClear) {
+    world.z = requestedZ;
+  } else {
+    const safeFrontZ = frontSign > 0
+      ? box.max.z + HANS_SERVICE_FURNITURE_CLEARANCE
+      : box.min.z - HANS_SERVICE_FURNITURE_CLEARANCE;
+    world.z = frontSign > 0 ? Math.max(requestedZ, safeFrontZ) : Math.min(requestedZ, safeFrontZ);
+  }
+
+  // Box3 can be slightly asymmetric because trim/handles extend one side. Keep
+  // the requested lateral intent relative to the visual desk rather than a stale
+  // hard-coded centre, but never let the target fall back inside its padded hull.
+  if (!Number.isFinite(world.x)) world.x = centerX;
+  return true;
 }
 
 export function installWarRoomHansServiceInfrastructure(root) {
@@ -73,24 +139,13 @@ export function warRoomHansTargetNearObject(object, parent, { offsetX = 0, offse
   const world = new THREE.Vector3();
   object.getWorldPosition?.(world);
 
-  // Armour is mirrored on both side walls. Treat its X offset as a standoff
-  // magnitude toward the room instead of a raw signed displacement; otherwise
-  // the left fallback would send Hans farther into the wall while the right
-  // target leaves him overlapping the armour/zweihander volume.
   if (isWallArmor(object) && Number(offsetX)) {
-    const side = Math.sign(world.x) || 1;
-    world.x -= side * Math.abs(Number(offsetX));
-  } else {
+    applyArmorStandoff(object, world, offsetX);
+    world.z += Number(offsetZ) || 0;
+  } else if (!applyDeskStandoff(object, world, offsetX, offsetZ)) {
     world.x += Number(offsetX) || 0;
+    world.z += Number(offsetZ) || 0;
   }
-
-  // The command desk can be mirrored with the room. Its drawer faces the board,
-  // so use that local Z sign as the source of truth for which side is actually
-  // the front. Desk chore offsets are standoff magnitudes; applying raw +Z sent
-  // Hans behind/inside the desk whenever the room orientation was reversed.
-  const zOffset = Number(offsetZ) || 0;
-  const deskFrontSign = commandDeskFrontZSign(object);
-  world.z += deskFrontSign && zOffset ? deskFrontSign * Math.abs(zOffset) : zOffset;
 
   const point = localPoint(parent, world);
   point.y = STANDING_Y;
