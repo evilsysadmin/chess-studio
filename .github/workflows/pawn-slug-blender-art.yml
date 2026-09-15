@@ -23,7 +23,7 @@ jobs:
   render-matthias:
     name: Render premium Matthias · ${{ matrix.weapon }}
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 24
     strategy:
       fail-fast: false
       max-parallel: 4
