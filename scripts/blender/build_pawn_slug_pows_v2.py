@@ -367,10 +367,13 @@ def setup_preview():
     preview_mat = bpy.data.materials.new("preview_floor_mat")
     preview_mat.diffuse_color = (0.045, 0.050, 0.056, 1.0)
     preview_mat.roughness = 0.96
-    bpy.ops.mesh.primitive_plane_add(size=5, location=(0, 0, 0))
-    plane = bpy.context.object
-    plane.name = "preview_floor"
-    plane.data.materials.append(preview_mat)
+    bpy.ops.mesh.primitive_cylinder_add(vertices=64, radius=1.12, depth=0.035, location=(0, 0, -0.022))
+    pedestal = bpy.context.object
+    pedestal.name = "preview_pedestal"
+    pedestal.data.materials.append(preview_mat)
+    bevel = pedestal.modifiers.new("preview_pedestal_soft_edge", "BEVEL")
+    bevel.width = 0.025
+    bevel.segments = 2
     return scene
 
 
