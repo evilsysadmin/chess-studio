@@ -15,6 +15,7 @@ import {
   withNightDriveJazzProduction,
 } from './ambientNightDriveJazz.js';
 import {
+  BEIRUT_SONGBOOK_IDS,
   installBeirutSongbook,
   withBeirutProduction,
 } from './ambientBeirutSongbook.js';
@@ -26,6 +27,10 @@ installNightDriveJazz({
   genreOrder: AMBIENT_GENRE_ORDER,
 });
 installBeirutSongbook({ themes: AMBIENT_THEMES });
+for (const id of BEIRUT_SONGBOOK_IDS) {
+  const option = AMBIENT_THEME_OPTIONS.find((entry) => entry.id === id);
+  if (option && AMBIENT_THEMES[id]) option.description = AMBIENT_THEMES[id].description;
+}
 
 export function structuredFeel(theme) {
   const legacy = legacyStructuredFeel(theme);
