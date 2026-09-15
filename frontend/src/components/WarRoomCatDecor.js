@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { getRuntimeEffectiveReducedMotion } from '../reducedMotionRuntime.js';
+import { getRuntimeEffectiveReducedMotion } from './WarRoomReducedMotionRuntime.js';
 
 export const WAR_ROOM_CAT_VERSION = 'war-room-cat-v3-render-contract';
 
