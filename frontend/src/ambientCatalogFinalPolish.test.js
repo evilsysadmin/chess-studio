@@ -15,7 +15,7 @@ function productionChain(id) {
 
 describe('complete music catalog audit', () => {
   it('closes every short or missing signature, including hidden scores', () => {
-    expect(FINAL_CATALOG_POLISH_IDS).toHaveLength(17);
+    expect(FINAL_CATALOG_POLISH_IDS).toHaveLength(18);
     const structured = Object.values(AMBIENT_THEMES).filter((theme) => theme.engine === 'structured');
     // Guard against accidental catalog loss without making legitimate additions
     // update an unrelated magic number every time the songbook grows.
@@ -55,6 +55,23 @@ describe('complete music catalog audit', () => {
     for (const section of theme.sections) {
       expect(Object.keys(section.bass).map(Number).every((step) => step % 6 === 0)).toBe(true);
     }
+  });
+
+  it('gives Malaga last tram its own brushed-quartet silhouette', () => {
+    const malaga = structuredFeel(AMBIENT_THEMES.malagaLastTram);
+    const coast = structuredFeel(AMBIENT_THEMES.andalusianCoast);
+
+    expect(malaga.family).toBe('malaga-last-tram-brushed-quartet');
+    expect(malaga.leadInstrument).toBe('jazzGuitar');
+    expect(malaga.counterInstrument).toBe('clarinet');
+    expect(malaga.chordInstrument).toBe('rhodesWarm');
+    expect(malaga.bassInstrument).toBe('uprightBass');
+    expect(malaga.percussion.kit).toBe('rooftop-jazz');
+    expect(malaga.percussion.period).toBe(32);
+    expect(Object.keys(malaga.percussion.pattern).map(Number)).toEqual([0, 6, 12, 19, 24, 29]);
+    expect(malaga.signature.instrument).toBe('jazzGuitar');
+    expect(productionChain('malagaLastTram')).not.toBe(productionChain('andalusianCoast'));
+    expect(malaga.percussion.pattern).not.toEqual(coast.percussion.pattern);
   });
 
   it('mixes the eastern-Mediterranean room like a small ensemble instead of a synthetic stack', () => {
