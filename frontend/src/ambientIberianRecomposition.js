@@ -2,8 +2,10 @@ function frozenMap(value) {
   return Object.freeze(value);
 }
 
-function section({ lead, counter, chords, bass, drums = {} }) {
+function section({ leadInstrument, counterInstrument, lead, counter, chords, bass, drums = {} }) {
   return Object.freeze({
+    ...(leadInstrument ? { leadInstrument } : {}),
+    ...(counterInstrument ? { counterInstrument } : {}),
     lead:frozenMap(lead),
     counter:frozenMap(counter),
     chords:frozenMap(chords),
@@ -20,6 +22,7 @@ const COSTA_SECTIONS = Object.freeze([
     bass:{ 0:43,4:50,8:47,12:50,16:45,20:52,24:48,28:52,32:43,36:50,40:47,44:50,48:41,52:48,56:45,60:48 },
   }),
   section({
+    leadInstrument:'oudJazz', counterInstrument:'guitar2',
     lead:{ 0:71,4:74,8:76,12:74,16:71,20:69,24:67,28:69,32:71,36:74,40:78,44:76,48:74,52:71,56:69,60:67 },
     counter:{ 2:67,10:69,18:71,26:67,34:69,42:71,50:74,58:69 },
     chords:{ 0:[57,60,64,69],16:[55,59,62,67],32:[59,62,66,71],48:[53,57,60,64] },
@@ -34,7 +37,7 @@ const COSTA_SECTIONS = Object.freeze([
   section({
     lead:{ 0:67,4:69,8:71,12:74,16:76,20:74,24:71,28:69,32:67,36:71,40:74,44:79,48:76,52:74,56:71,60:67 },
     counter:{ 6:64,18:67,30:69,42:71,54:69 },
-    chords:{ 0:[55,59,62,67],16:[57,60,64,69],32:[59,62,66,71],48:[55,59,62,67] },
+    chords:{ 0:[55,59,62,67],24:[57,60,64,69],48:[55,59,62,67] },
     bass:{ 0:43,4:50,8:47,12:50,16:45,20:52,24:48,28:52,32:47,36:54,40:50,44:54,48:43,52:50,56:47,60:43 },
   }),
 ]);
@@ -49,7 +52,7 @@ const MALAGA_SECTIONS = Object.freeze([
   section({
     lead:{ 0:62,7:65,16:61,23:58,32:60,39:63,48:59,55:55 },
     counter:{ 12:69,28:66,44:70,60:62 },
-    chords:{ 0:[50,53,57,61],20:[46,50,53,58],40:[43,46,50,55],56:[48,51,55,59] },
+    chords:{ 0:[50,53,57,61],28:[46,50,53,58],56:[48,51,55,59] },
     bass:{ 0:38,8:45,16:41,24:34,32:36,40:43,48:35,56:31 },
   }),
   section({
@@ -61,7 +64,7 @@ const MALAGA_SECTIONS = Object.freeze([
   section({
     lead:{ 0:67,8:63,16:64,24:59,32:62,40:58,48:60,56:55 },
     counter:{ 5:74,21:70,37:72,53:67 },
-    chords:{ 0:[48,51,55,59],16:[45,48,52,56],40:[43,47,50,55],56:[48,51,55,59] },
+    chords:{ 0:[48,51,55,59],28:[45,48,52,56],56:[43,47,50,55] },
     bass:{ 0:36,8:43,16:33,24:40,32:35,40:31,48:38,56:36 },
   }),
 ]);
