@@ -11,12 +11,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
   contents: read
 
 concurrency:
   group: chess-studio-staging-deploy
   cancel-in-progress: false
+  queue: max
 
 env:
   STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
@@ -53,41 +53,16 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
-      # Este es el único stale guard de la generación. Si main ya avanzó antes
-      # de la primera mutación, esta ejecución queda superseded y se autocancela.
-      # Tras este punto el SHA queda fijado y las tres ramas de despliegue deben
-      # converger juntas aunque main avance mientras tanto.
-      - name: Supersede stale staging commit
+      # Inter-generation serialization is owned by the workflow-level staging
+      # queue. Once this run receives the slot, its approved SHA is immutable and
+      # must finish end-to-end even if main advances while it is deploying.
+      - name: Pin CI-approved staging generation
         id: admission
-        env:
-          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
-          if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
-            echo "::notice title=Staging superseded::CI aprobó $DEPLOY_SHA, pero main ya apunta a $current_main. Cancelo esta generación antes de cualquier mutación."
-            {
-              echo '### Staging superseded por un main más nuevo'
-              echo
-              echo "- CI-approved SHA: \`$DEPLOY_SHA\`"
-              echo "- Current main: \`$current_main\`"
-              echo '- Acción: `autocancelar esta ejecución antes de Render/Pages/Worker`'
-              echo '- Siguiente generación: `la dispara la admisión normal del HEAD actual cuando quede verde`'
-              echo '- Rebase/retry artificial: `no necesario`'
-            } >> "$GITHUB_STEP_SUMMARY"
-
-            gh api --method POST \
-              -H 'Accept: application/vnd.github+json' \
-              "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel"
-
-            echo 'Cancelación solicitada; permanezco fail-closed hasta que GitHub detenga el runner.'
-            while :; do
-              sleep 30
-            done
-          fi
           echo "deploy_sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
-          echo "Staging admission OK: $DEPLOY_SHA sigue siendo main HEAD."
+          echo "Staging generation pinned: $DEPLOY_SHA. Newer staging mutations remain queued until this generation completes."
 
   # Render reconcile and exact deploy stay in one runner. Pages and Workers AI
   # still start directly after admission, while backend avoids a second runner
