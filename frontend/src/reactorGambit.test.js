@@ -15,7 +15,7 @@ describe('Synth metal · gambito del reactor', () => {
     expect(theme.premiumFormScenes).toEqual(form.map((scene) => scene.name));
     expect(theme.description).toContain('melódico');
     expect(feel.family).toBe('synth-metal-reactor-melodic-drive');
-    expect(feel.percussion.kit).toBe('legacy');
+    expect(feel.percussion.kit).toBe('reactor-drive');
     expect(feel.percussion.punch).toBeLessThan(1.4);
     expect(feel.layers.signature).toBe(true);
     expect(feel.signature.instrument).toBe('synth');

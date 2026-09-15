@@ -1058,6 +1058,7 @@ function voicePreset(kind) {
     case 'synth': return { waves: [['sawtooth', 1, 1], ['square', 2, 0.08]], gain: 0.017, attack: 0.018, release: 0.52, cutoff: 1450 };
     case 'analogLead': return { waves: [['sawtooth', 1, 0.62], ['sawtooth', 1, 0.48], ['triangle', 0.5, 0.18], ['sine', 2, 0.06]], gain: 0.015, attack: 0.022, release: 0.82, cutoff: 2050, tremolo: 4.1 };
     case 'subPulse': return { waves: [['square', 1, 0.38], ['triangle', 1, 0.72], ['sine', 0.5, 0.42]], gain: 0.020, attack: 0.008, release: 0.48, cutoff: 820 };
+    case 'arcadePulse': return { waves: [['square', 1, 0.42], ['triangle', 1, 0.50], ['square', 2, 0.09], ['sine', 0.5, 0.18]], gain: 0.016, attack: 0.004, release: 0.34, cutoff: 2480, tremolo: 6.2 };
     case 'stormPluck': return { waves: [['sine', 1, 1], ['sine', 2.03, 0.28], ['triangle', 3.97, 0.12], ['sine', 7.11, 0.035]], gain: 0.017, attack: 0.003, release: 0.42, cutoff: 4300 };
     case 'widePad': return { waves: [['sawtooth', 1, 0.22], ['sawtooth', 1, 0.20], ['triangle', 0.5, 0.30], ['sine', 2, 0.07]], gain: 0.012, attack: 0.34, release: 3.2, cutoff: 1720, tremolo: 2.7 };
     case 'stormPad': return { waves: [['triangle', 1, 0.54], ['sawtooth', 0.5, 0.20], ['sine', 2.01, 0.10]], gain: 0.012, attack: 0.16, release: 2.2, cutoff: 1320, tremolo: 3.4 };
@@ -1588,6 +1589,21 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
       playNoiseHit('snare', (storm ? 0.044 : freight ? 0.050 : 0.036) * velocity, { ...human, brightness: circuit ? 1.28 : storm ? 1.12 : 0.82, durationScale: freight ? 1.42 : storm ? 0.74 : 0.96 });
     } else if (code === 'H') {
       playNoiseHit('hat', (circuit ? 0.008 : 0.007) * velocity, { ...human, brightness: circuit ? 1.38 : storm ? 1.18 : 0.86, durationScale: circuit ? 0.42 : 0.62 });
+    } else if (code === 'M') playMetalHit();
+    else if (code === 'B') playWoodKnock();
+    return;
+  }
+
+  if (['neon-drive', 'arcade-break', 'reactor-drive', 'check-engine-drive'].includes(kit)) {
+    const arcade = kit === 'arcade-break';
+    const reactor = kit === 'reactor-drive';
+    const check = kit === 'check-engine-drive';
+    if (code === 'K') {
+      playBassDrum((reactor ? 0.068 : check ? 0.062 : 0.056) * velocity, { ...human, tone: reactor ? -0.52 : -0.30, decay: arcade ? 0.66 : reactor ? 1.02 : 0.76 });
+    } else if (code === 'S') {
+      playNoiseHit('snare', (reactor ? 0.050 : 0.042) * velocity, { ...human, brightness: arcade ? 1.28 : check ? 1.12 : 0.98, durationScale: reactor ? 1.24 : 0.76 });
+    } else if (code === 'H') {
+      playNoiseHit('hat', 0.009 * velocity, { ...human, brightness: arcade ? 1.36 : 1.12, durationScale: arcade ? 0.40 : 0.54 });
     } else if (code === 'M') playMetalHit();
     else if (code === 'B') playWoodKnock();
     return;
