@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { connectFinishedAmbientVoice, scheduleAmbientFilterSweep } from './ambientVoiceFinish.js';
 
+function audioParam(initial = 0) {
+  return {
+    value: initial,
+    events: [],
+    setValueAtTime(value, time) { this.value = value; this.events.push({ type:'set', value, time }); },
+    linearRampToValueAtTime(value, time) { this.value = value; this.events.push({ type:'linear', value, time }); },
+  };
+}
+
 function node() {
   return {
-    outputs: [], gain: { value: 0 }, frequency: { value: 0 }, delayTime: { value: 0 }, pan: { value: 0 },
+    outputs: [], gain: audioParam(0), frequency: audioParam(0), Q: { value:0 }, delayTime: { value: 0 }, pan: { value: 0 },
     connect(target) { this.outputs.push(target); },
     start(time) { this.started = time; },
     stop(time) { this.stopped = time; },
@@ -40,6 +49,41 @@ describe('finite ambient voice finish', () => {
     expect(nodes.filters[0].outputs[0].gain.value).toBe(0.26);
     expect(nodes.filters[0].outputs[0].outputs).toEqual([nodes.panners[0]]);
     expect(nodes.panners[0].outputs).toEqual([output]);
+  });
+
+  it('adds one finite breath/body path and blooms regional-wind tremolo after the attack', () => {
+    const nodes = { gains: [], oscillators: [], filters: [], sources: [] };
+    const ctx = {
+      currentTime:1,
+      sampleRate:10000,
+      createGain: () => { const next = node(); nodes.gains.push(next); return next; },
+      createOscillator: () => { const next = node(); nodes.oscillators.push(next); return next; },
+      createBiquadFilter: () => { const next = node(); nodes.filters.push(next); return next; },
+      createBuffer: (_channels, size) => ({ getChannelData: () => new Float32Array(size) }),
+      createBufferSource: () => { const next = node(); nodes.sources.push(next); return next; },
+    };
+    const envelope = node();
+    const output = node();
+    connectFinishedAmbientVoice(ctx, envelope, output, { finish:{ organicWind:true } }, {
+      start:1, duration:1, tremolo:4,
+    });
+
+    expect(nodes.sources).toHaveLength(1);
+    expect(nodes.sources[0].started).toBe(1);
+    expect(nodes.sources[0].stopped).toBeLessThan(1.25);
+    expect(nodes.filters.map((filter) => filter.type)).toEqual(['bandpass', 'peaking']);
+    expect(nodes.filters[1].frequency.value).toBe(760);
+    // breath mix, tremolo modulation, tremolo depth
+    expect(nodes.gains).toHaveLength(3);
+    expect(nodes.gains[2].gain.events).toEqual([
+      { type:'set', value:0.008, time:1 },
+      { type:'linear', value:0.052, time:1.22 },
+    ]);
+    expect(nodes.oscillators).toHaveLength(1);
+    expect(nodes.oscillators[0].stopped).toBeCloseTo(2.05);
+    expect(envelope.outputs).toEqual([nodes.filters[1]]);
+    expect(nodes.filters[1].outputs).toEqual([nodes.gains[1]]);
+    expect(nodes.gains[1].outputs).toEqual([output]);
   });
 
   it('falls back to dry mono playback when optional Web Audio nodes are unavailable', () => {
