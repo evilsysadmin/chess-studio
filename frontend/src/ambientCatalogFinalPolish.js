@@ -54,7 +54,16 @@ const BEIRUT_HARBOR_ROOM = roomPolish(1.12, 0.095, 120, { lead:0.50, counter:0.1
 const ISTANBUL_0326_ROOM = roomPolish(1.08, 0.075, 96, { lead:0.52, counter:0.15, bass:0.62, chord:0.18 }, 4, 0.105);
 const ISTANBUL_TAVLA_ROOM = roomPolish(0.94, 0.050, 78, { lead:0.54, counter:0.14, bass:0.72, chord:0.20 }, 4, 0.10);
 const BOSPHORUS_RAIN_ROOM = roomPolish(1.22, 0.105, 126, { lead:0.46, counter:0.12, bass:0.50, chord:0.22 }, 4, 0.10);
-const EGYPT_ROOM = roomPolish(1.09, 0.100, 126, { lead:0.55, counter:0.22, bass:0.54, chord:0.28 }, 3, 0.12);
+
+// Egypt/Nile is a small songbook rather than one preset family now. These room
+// profiles intentionally reinforce the written contrasts without crossing the
+// shared organic ceiling used by the whole eastern-Mediterranean set.
+const ALEXANDRIA_ROOM = roomPolish(1.16, 0.080, 112, { lead:0.00, counter:0.00, bass:0.54, chord:0.28 }, 4, 0.10);
+const CAIRO_0047_ROOM = roomPolish(1.06, 0.075, 104, { lead:0.52, counter:0.16, bass:0.60, chord:0.24 }, 4, 0.11);
+const CAIRO_QUIET_ROOM = roomPolish(1.18, 0.100, 126, { lead:0.48, counter:0.14, bass:0.52, chord:0.23 }, 4, 0.105);
+const CAIRO_RED_ROOM = roomPolish(0.96, 0.055, 84, { lead:0.54, counter:0.14, bass:0.68, chord:0.21 }, 4, 0.10);
+const CAIRO_BLUE_ROOM = roomPolish(1.14, 0.090, 118, { lead:0.46, counter:0.13, bass:0.56, chord:0.22 }, 4, 0.10);
+const NILE_BALCONY_ROOM = roomPolish(1.22, 0.105, 126, { lead:0.44, counter:0.11, bass:0.46, chord:0.24 }, 4, 0.10);
 const LEVANT_ROOM = roomPolish(1.08, 0.105, 120, { lead:0.53, counter:0.21, bass:0.53, chord:0.27 }, 4, 0.115);
 
 const MEDITERRANEAN_ORGANIC_POLISH = Object.freeze({
@@ -67,12 +76,12 @@ const MEDITERRANEAN_ORGANIC_POLISH = Object.freeze({
   istanbulBackgammon:ISTANBUL_TAVLA_ROOM,
   bosphorusRain:BOSPHORUS_RAIN_ROOM,
 
-  alexandria241:EGYPT_ROOM,
-  cairo0047:EGYPT_ROOM,
-  cairoQuietHours:EGYPT_ROOM,
-  cairoRedLantern:EGYPT_ROOM,
-  cairoBlueNote0211:EGYPT_ROOM,
-  nileBalcony0152:EGYPT_ROOM,
+  alexandria241:ALEXANDRIA_ROOM,
+  cairo0047:CAIRO_0047_ROOM,
+  cairoQuietHours:CAIRO_QUIET_ROOM,
+  cairoRedLantern:CAIRO_RED_ROOM,
+  cairoBlueNote0211:CAIRO_BLUE_ROOM,
+  nileBalcony0152:NILE_BALCONY_ROOM,
 
   damascusBlueHour:LEVANT_ROOM,
   aleppoAfterRain:LEVANT_ROOM,
