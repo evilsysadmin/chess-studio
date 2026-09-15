@@ -19,12 +19,14 @@ variable "image_ocid" {
 }
 
 variable "ssh_authorized_key" {
-  description = "Public SSH key only. Private key material must never be passed to Terraform."
+  description = "Optional public SSH key. Keep null while SSH ingress is disabled. Private key material must never be passed to Terraform."
   type        = string
+  default     = null
+  nullable    = true
 
   validation {
-    condition     = can(regex("^(ssh-|ecdsa-|sk-)", trimspace(var.ssh_authorized_key)))
-    error_message = "ssh_authorized_key must contain an OpenSSH public key, never a private key."
+    condition     = var.ssh_authorized_key == null || can(regex("^(ssh-|ecdsa-|sk-)", trimspace(var.ssh_authorized_key)))
+    error_message = "ssh_authorized_key must be null or contain an OpenSSH public key, never a private key."
   }
 }
 

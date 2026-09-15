@@ -103,18 +103,27 @@ resource "oci_core_instance" "backend" {
     boot_volume_size_in_gbs = var.boot_volume_size_gb
   }
 
-  metadata = {
-    ssh_authorized_keys = trimspace(var.ssh_authorized_key)
-    user_data = base64encode(templatefile("${path.module}/cloud-init.yaml.tftpl", {
-      repo_url = var.repo_url
-      repo_ref = var.repo_ref
-    }))
-  }
+  metadata = merge(
+    {
+      user_data = base64encode(templatefile("${path.module}/cloud-init.yaml.tftpl", {
+        repo_url = var.repo_url
+        repo_ref = var.repo_ref
+      }))
+    },
+    var.ssh_authorized_key == null ? {} : {
+      ssh_authorized_keys = trimspace(var.ssh_authorized_key)
+    }
+  )
 
   lifecycle {
     precondition {
       condition     = var.ssh_ingress_cidr == null || var.ssh_ingress_cidr != "0.0.0.0/0"
       error_message = "Refusing to expose SSH to 0.0.0.0/0. Use an operator CIDR or leave SSH closed."
+    }
+
+    precondition {
+      condition     = var.ssh_ingress_cidr == null || var.ssh_authorized_key != null
+      error_message = "ssh_authorized_key is required when ssh_ingress_cidr opens operator SSH."
     }
   }
 }
