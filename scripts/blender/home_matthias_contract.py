@@ -7,7 +7,7 @@ setup must remain agnostic.
 """
 
 CANONICAL_IDENTITY = "stern-no-moustache-pawn"
-CANONICAL_REFERENCE = "approved-dark-pawn-officer-2026-09-16"
+CANONICAL_REFERENCE = "classic-pawn-first-avatar"
 CANONICAL_POSE_LANGUAGE = "permanently-stern"
 
 REQUIRED_ACTIONS = {
