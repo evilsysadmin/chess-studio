@@ -18,7 +18,11 @@ if str(SCRIPT_DIR) not in sys.path:
 import build_pawn_slug_matthias_integrated as canonical
 
 
-CELL_WORLD = 3.20
+# One authored Blender cell maps to one 96x96 atlas frame. 3.6 gives the
+# longest integrated weapon enough horizontal room while keeping Matthias
+# large and readable at gameplay scale.
+CELL_WORLD = 3.60
+CHARACTER_CENTER_Z = 1.45
 
 
 def args():
@@ -48,7 +52,7 @@ def atlas_center():
     return Vector((
         (canonical.COLS - 1) * canonical.WORLD_CELL_X / 2,
         0.0,
-        -(canonical.ROWS_PER_WEAPON - 1) * canonical.WORLD_CELL_Z / 2 + 1.08,
+        -(canonical.ROWS_PER_WEAPON - 1) * canonical.WORLD_CELL_Z / 2 + CHARACTER_CENTER_Z,
     ))
 
 
@@ -57,17 +61,13 @@ def aim_camera(scene):
     target = atlas_center()
     cam = scene.camera
     cam.location = (target.x, -78.0, target.z)
-    # The authored sprite plane is X/Z and the camera looks straight along +Y.
-    # Keep this orientation explicit: using to_track_quat('-Z', 'Y') here makes
-    # the requested up axis collinear with the view direction and can produce a
-    # degenerate/rolled atlas projection in headless Blender.
+    # Camera sits on -Y and looks straight along +Y; X remains horizontal and
+    # Z vertical in the baked sprite.
     cam.rotation_euler = (math.pi / 2, 0.0, 0.0)
-    # Blender's ortho_scale is the VERTICAL world span, not the width. The
-    # raster is 1536x480 (aspect 3.2), so a five-cell-high 16.0 world-unit
-    # viewport automatically becomes 51.2 units wide: exactly 16 cells.
-    # Using COLS * WORLD_CELL_X here crushed several authored rows into every
-    # 96px frame even though the final PNG dimensions looked correct.
-    cam.data.ortho_scale = canonical.TOTAL_ROWS * canonical.WORLD_CELL_Z
+    # For this orthographic render Blender maps ortho_scale to the horizontal
+    # span. 16 cells * CELL_WORLD therefore produces exactly 16 columns; the
+    # 1536:480 aspect yields five CELL_WORLD-high rows automatically.
+    cam.data.ortho_scale = canonical.COLS * canonical.WORLD_CELL_X
 
 
 def add_front_fill():
@@ -93,10 +93,8 @@ def descendants(obj):
 def separate_visual_layers(base):
     """Keep face, hands and weapon readable in the orthographic gameplay bake.
 
-    The first canonical pass authored all parts around y=0. In a real 3D scene
-    that caused the helmet front hemisphere to cover the eyes and the vest to
-    swallow most forearms/weapon geometry. These are actual depth corrections,
-    not a runtime overlay: the final frame is still one Blender render.
+    These are authored depth corrections inside Blender. Runtime receives one
+    flattened sprite frame: there is no second weapon overlay.
     """
     for obj in descendants(base):
         stem = obj.name.split('.')[0]
@@ -107,7 +105,6 @@ def separate_visual_layers(base):
         elif stem.startswith(('rear_upper_arm', 'rear_forearm', 'rear_hand')):
             obj.location.y -= 0.25
         elif stem.startswith('weapon_'):
-            # Moving the weapon root also moves all authored weapon components.
             obj.location.y -= 0.38
 
 
@@ -116,9 +113,6 @@ def main():
     out = Path(cfg.output_dir).resolve()
     out.mkdir(parents=True, exist_ok=True)
     canonical.TOTAL_ROWS = canonical.ROWS_PER_WEAPON
-    # Give every 96x96 frame enough authored world-space to contain Matthias,
-    # his full run/jump silhouette and the longest integrated weapon without
-    # bleeding into neighbouring cells. The raster contract stays 1536x480.
     canonical.WORLD_CELL_X = CELL_WORLD
     canonical.WORLD_CELL_Z = CELL_WORLD
     canonical.clear_scene()
