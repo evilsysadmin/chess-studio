@@ -217,19 +217,25 @@
 
 @media (max-width: 560px) {
   .openings-family-index {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     align-items: stretch;
-    gap: .35rem;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  .openings-family-index::-webkit-scrollbar {
-    display: none;
+    gap: .55rem;
+    overflow: visible;
   }
 
   .openings-family-index > span {
-    flex: 0 0 auto;
-    padding-right: .7rem;
+    display: grid;
+    align-content: start;
+    gap: .12rem;
+    min-width: 0;
+    padding-right: 0;
+  }
+
+  .openings-family-index small {
+    font-size: .7rem;
+    line-height: 1.2;
+    white-space: normal;
   }
 
   .openings-family-heading {
