@@ -34,17 +34,17 @@ jobs:
       - uses: ./.github/actions/setup-blender-canonical
         with:
           extra-packages: webp
-      - name: Render premium canonical sheet at 2x
+      - name: Render premium v3 canonical sheet at 2x
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           WEAPON: ${{ matrix.weapon }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/pawn-slug-art
-          blender --background \
+          blender --background -noaudio \
             --python scripts/blender/render_pawn_slug_matthias_premium.py \
             -- --output-dir /tmp/pawn-slug-art --weapon "$WEAPON"
-      - name: Downsample to runtime atlas + encode
+      - name: Downsample v3 candidate + runtime-scale proof
         env:
           WEAPON: ${{ matrix.weapon }}
         run: |
@@ -56,82 +56,106 @@ jobs:
 
           weapon = os.environ['WEAPON']
           root = Path('/tmp/pawn-slug-art')
-          source = root / f'matthias_{weapon}_premium_v2_hi.png'
-          target = root / f'matthias_{weapon}_premium_v2.png'
+          source = root / f'matthias_{weapon}_premium_v3_hi.png'
+          candidate = root / f'matthias_{weapon}_premium_v3.png'
+          preview = root / f'matthias_{weapon}_premium_v3_preview.png'
+          runtime = root / f'matthias_{weapon}_premium_v3_runtime_96.png'
+          runtime_preview = root / f'matthias_{weapon}_premium_v3_runtime_96_4x.png'
           image = Image.open(source).convert('RGBA')
-          assert image.size == (3072, 960), image.size
-          image.resize((1536, 480), Image.Resampling.LANCZOS).save(target, optimize=True)
+          assert image.size == (6144, 1920), image.size
+          candidate_image = image.resize((3072, 960), Image.Resampling.LANCZOS)
+          candidate_image.save(candidate, optimize=True)
+          candidate_image.crop((0, 0, 192, 192)).resize((768, 768), Image.Resampling.LANCZOS).save(preview, optimize=True)
+          runtime_image = candidate_image.resize((1536, 480), Image.Resampling.LANCZOS)
+          runtime_image.save(runtime, optimize=True)
+          runtime_image.crop((0, 0, 96, 96)).resize((384, 384), Image.Resampling.NEAREST).save(runtime_preview, optimize=True)
           PY
-          cwebp -quiet -q 90 -alpha_q 100 -m 6 \
-            "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.png" \
-            -o "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.webp"
-          base64 -w0 "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.webp" \
-            > "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.b64"
-      - name: Sanity-check premium atlas contract
+          cwebp -quiet -q 92 -alpha_q 100 -m 6 \
+            "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.png" \
+            -o "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp"
+          base64 -w0 "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp" \
+            > "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.b64"
+      - name: Sanity-check premium v3 atlas contract
         env:
           WEAPON: ${{ matrix.weapon }}
         run: |
           set -euo pipefail
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.blend"
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2_hi.png"
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.png"
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.webp"
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.b64"
-          webpinfo "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.webp"
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.blend"
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_hi.png"
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.png"
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_preview.png"
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_runtime_96.png"
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_runtime_96_4x.png"
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp"
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.b64"
+          webpinfo "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp"
           python3 - <<'PY'
           import os
           from PIL import Image
 
           weapon = os.environ['WEAPON']
-          path = f'/tmp/pawn-slug-art/matthias_{weapon}_premium_v2.png'
-          image = Image.open(path).convert('RGBA')
-          assert image.size == (1536, 480), image.size
           counts = (10, 10, 16, 10, 9)
-          min_width = {
+          min_width_192 = {
+              'pistol': 68,
+              'machinegun': 88,
+              'shotgun': 100,
+              'panzerfaust': 108,
+          }[weapon]
+          min_width_96 = {
               'pistol': 34,
               'machinegun': 44,
               'shotgun': 50,
               'panzerfaust': 54,
           }[weapon]
-          for row, count in enumerate(counts):
-              brightness = []
-              for col in range(count):
-                  cell = image.crop((col * 96, row * 96, (col + 1) * 96, (row + 1) * 96))
-                  alpha = cell.getchannel('A').point(lambda value: 255 if value >= 96 else 0)
-                  bbox = alpha.getbbox()
-                  assert bbox is not None, f'empty premium cell row={row} col={col}'
-                  left, top, right, bottom = bbox
-                  width = right - left
-                  height = bottom - top
-                  assert left > 1 and right < 95 and top > 1 and bottom < 95, (
-                      f'premium cell bleed row={row} col={col} bbox={bbox}'
+
+          def validate(path, cell_px, min_width, min_height, max_height, edge):
+              image = Image.open(path).convert('RGBA')
+              assert image.size == (16 * cell_px, 5 * cell_px), image.size
+              for row, count in enumerate(counts):
+                  brightness = []
+                  for col in range(count):
+                      cell = image.crop((col * cell_px, row * cell_px, (col + 1) * cell_px, (row + 1) * cell_px))
+                      alpha = cell.getchannel('A').point(lambda value: 255 if value >= 96 else 0)
+                      bbox = alpha.getbbox()
+                      assert bbox is not None, f'empty premium v3 cell row={row} col={col} cell={cell_px}'
+                      left, top, right, bottom = bbox
+                      width = right - left
+                      height = bottom - top
+                      assert left > edge and right < cell_px - edge and top > edge and bottom < cell_px - edge, (
+                          f'premium v3 cell bleed row={row} col={col} bbox={bbox} cell={cell_px}'
+                      )
+                      assert width >= min_width, (
+                          f'premium v3 armed silhouette collapsed row={row} col={col} '
+                          f'width={width} expected>={min_width} for {weapon} cell={cell_px}'
+                      )
+                      assert min_height <= height <= max_height, (
+                          f'premium v3 character silhouette height out of range '
+                          f'row={row} col={col} height={height} cell={cell_px}'
+                      )
+                      visible_luma = []
+                      for red, green, blue, alpha_value in cell.getdata():
+                          if alpha_value >= 96:
+                              visible_luma.append(0.2126 * red + 0.7152 * green + 0.0722 * blue)
+                      assert visible_luma, f'no visible premium v3 pixels row={row} col={col} cell={cell_px}'
+                      brightness.append(sum(visible_luma) / len(visible_luma))
+                  darkest = min(brightness)
+                  brightest = max(brightness)
+                  assert darkest >= 20.0, (
+                      f'premium v3 atlas underexposed row={row} darkest={darkest:.1f} cell={cell_px}'
                   )
-                  assert width >= min_width, (
-                      f'premium armed silhouette collapsed row={row} col={col} '
-                      f'width={width} expected>={min_width} for {weapon}'
-                  )
-                  assert 54 <= height <= 90, (
-                      f'premium character silhouette height out of range '
-                      f'row={row} col={col} height={height}'
+                  assert brightest / max(darkest, 1.0) <= 1.85, (
+                      f'premium v3 atlas exposure flicker row={row} '
+                      f'darkest={darkest:.1f} brightest={brightest:.1f} cell={cell_px}'
                   )
 
-                  visible_luma = []
-                  for red, green, blue, alpha_value in cell.getdata():
-                      if alpha_value >= 96:
-                          visible_luma.append(0.2126 * red + 0.7152 * green + 0.0722 * blue)
-                  assert visible_luma, f'no visible premium pixels row={row} col={col}'
-                  brightness.append(sum(visible_luma) / len(visible_luma))
-
-              darkest = min(brightness)
-              brightest = max(brightness)
-              assert darkest >= 20.0, (
-                  f'premium atlas underexposed row={row} darkest={darkest:.1f}; '
-                  'Matthias must remain readable in every authored frame'
-              )
-              assert brightest / max(darkest, 1.0) <= 1.85, (
-                  f'premium atlas exposure flicker row={row} '
-                  f'darkest={darkest:.1f} brightest={brightest:.1f}'
-              )
+          validate(
+              f'/tmp/pawn-slug-art/matthias_{weapon}_premium_v3.png',
+              192, min_width_192, 108, 180, 3,
+          )
+          validate(
+              f'/tmp/pawn-slug-art/matthias_{weapon}_premium_v3_runtime_96.png',
+              96, min_width_96, 54, 90, 1,
+          )
           PY
       - uses: actions/upload-artifact@v4
         if: always()
