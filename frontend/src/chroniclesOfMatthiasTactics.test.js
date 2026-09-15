@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createChroniclesState } from './chroniclesOfMatthias.js';
 import {
+  chroniclesTacticsAbility,
+  chroniclesTacticsAbilityStatus,
   chroniclesTacticsAttack,
   chroniclesTacticsFinishTurn,
   chroniclesTacticsInteractions,
@@ -18,6 +20,12 @@ function tacticsState(overrides = {}) {
     turnPhase: 'party',
     enemyPositions: {},
     enemyTurnEvents: [],
+    classAbilityCharges: {
+      matthias: 1,
+      rook: 1,
+      bishop: 1,
+      knight: 1,
+    },
     ...overrides,
   };
 }
@@ -72,11 +80,11 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
     expect(chroniclesTacticsUse(unlocked).phase).toBe('escaped');
   });
 
-  it('gives every party member a distinct tactical class and weapon identity', () => {
-    expect(chroniclesTacticsProfile('matthias')).toMatchObject({ className: 'Espadachín', attackPattern: 'adjacent', reach: 1 });
-    expect(chroniclesTacticsProfile('rook')).toMatchObject({ className: 'Guardiana', attackPattern: 'orthogonal', reach: 2 });
-    expect(chroniclesTacticsProfile('bishop')).toMatchObject({ className: 'Taumaturgo', attackKind: 'spell', attackPattern: 'diagonal', reach: 4 });
-    expect(chroniclesTacticsProfile('knight')).toMatchObject({ className: 'Hostigador', attackKind: 'ranged', attackPattern: 'line', reach: 3 });
+  it('gives every party member a distinct tactical class, weapon and active ability', () => {
+    expect(chroniclesTacticsProfile('matthias')).toMatchObject({ className: 'Espadachín', attackPattern: 'adjacent', reach: 1, abilityName: 'Ruptura teutona' });
+    expect(chroniclesTacticsProfile('rook')).toMatchObject({ className: 'Guardiana', attackPattern: 'orthogonal', reach: 2, abilityName: 'Martillo de asedio' });
+    expect(chroniclesTacticsProfile('bishop')).toMatchObject({ className: 'Taumaturgo', attackKind: 'spell', attackPattern: 'diagonal', reach: 4, abilityName: 'Luz del farol' });
+    expect(chroniclesTacticsProfile('knight')).toMatchObject({ className: 'Hostigador', attackKind: 'ranged', attackPattern: 'line', reach: 3, abilityName: 'Salva de virotes' });
   });
 
   it('uses class-specific attack geometry instead of one generic range rule', () => {
@@ -95,6 +103,46 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
       expect.objectContaining({ enemyId: 'corrupted-pawn', distance: 1, attackKind: 'spell' }),
     ]);
     expect(chroniclesTacticsTargets(diagonal, 'matthias')).toEqual([]);
+  });
+
+  it('spends Hildegard class ability once per encounter and refuses a second cast', () => {
+    const state = tacticsState();
+    expect(chroniclesTacticsAbilityStatus(state, 'rook')).toMatchObject({ ready: true, charges: 1, abilityName: 'Martillo de asedio' });
+
+    const afterAbility = chroniclesTacticsAbility(state, 'rook');
+    expect(afterAbility.enemyHp).toBe(2);
+    expect(afterAbility.classAbilityCharges.rook).toBe(0);
+    expect(afterAbility.turns).toBe(1);
+    expect(afterAbility.message).toMatch(/Hildegard desata martillo de asedio/i);
+    expect(chroniclesTacticsAbilityStatus(afterAbility, 'rook')).toMatchObject({ ready: false, charges: 0, reason: 'Agotada' });
+    expect(chroniclesTacticsAbility(afterAbility, 'rook')).toBe(afterAbility);
+  });
+
+  it('lets Aziz spend his spell charge healing the wounded party', () => {
+    const party = createChroniclesState().party.map((member) => ({ ...member, hp: Math.max(1, member.hp - 2) }));
+    const state = tacticsState({ party });
+    expect(chroniclesTacticsAbilityStatus(state, 'bishop')).toMatchObject({ ready: true, charges: 1 });
+
+    const healed = chroniclesTacticsAbility(state, 'bishop');
+    healed.party.forEach((member, index) => {
+      expect(member.hp).toBe(Math.min(member.maxHp, party[index].hp + 2));
+    });
+    expect(healed.classAbilityCharges.bishop).toBe(0);
+    expect(healed.message).toMatch(/Aziz invoca Luz del farol/i);
+  });
+
+  it('does not waste Aziz spell charge when nobody needs healing', () => {
+    const state = tacticsState();
+    expect(chroniclesTacticsAbilityStatus(state, 'bishop')).toMatchObject({ ready: false, charges: 1, reason: 'Nadie necesita curación' });
+    expect(chroniclesTacticsAbility(state, 'bishop')).toBe(state);
+  });
+
+  it('lets Morcilla fire a charged ranged volley', () => {
+    const state = tacticsState();
+    const afterVolley = chroniclesTacticsAbility(state, 'knight');
+    expect(afterVolley.enemyHp).toBe(4);
+    expect(afterVolley.classAbilityCharges.knight).toBe(0);
+    expect(afterVolley.message).toMatch(/Morcilla desata salva de virotes/i);
   });
 
   it('resolves class damage first and leaves retaliation to the creature phase', () => {
