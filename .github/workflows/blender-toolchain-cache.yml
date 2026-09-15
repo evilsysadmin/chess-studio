@@ -17,9 +17,11 @@ concurrency:
 
 jobs:
   warm-cache:
-    name: Warm portable Blender cache
+    name: Warm Blender helper caches
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-blender-canonical
+        with:
+          extra-packages: webp
