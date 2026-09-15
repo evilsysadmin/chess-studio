@@ -1,0 +1,40 @@
+name: Blender setup · smoke
+
+on:
+  pull_request:
+    paths:
+      - '.github/actions/setup-blender-canonical/**'
+      - 'scripts/blender/blender_setup_smoke.py'
+      - '.github/workflows/blender-setup-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: blender-setup-smoke-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Blender setup · EGL + helpers
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-blender-canonical
+        with:
+          extra-packages: webp
+      - name: Verify product helper surface
+        run: |
+          set -euo pipefail
+          command -v cwebp
+          command -v webpinfo
+          cwebp -version
+      - name: Exercise a real Eevee render context
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -euo pipefail
+          blender --background --factory-startup --python scripts/blender/blender_setup_smoke.py
+          test -s /tmp/blender-setup-smoke.png
