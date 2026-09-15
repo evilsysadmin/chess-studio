@@ -4,7 +4,7 @@ import {
   pawnSlugPowMissionBonus,
   pawnSlugRescuePow,
 } from './pawnSlugPows.js';
-import { animatePawnSlugPowModel, createPawnSlugPowModel } from './pawnSlugPowArt.js';
+import { animatePawnSlugPowModel, createPawnSlugPowModel } from './pawnSlugPowBlenderArt.js';
 
 const clampAmmo = (value) => Math.max(0, Number(value) || 0);
 const activePowIds = new WeakMap();

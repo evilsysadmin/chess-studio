@@ -21,7 +21,7 @@ export {
   PAWN_SLUG_POW_ART_META,
   animatePawnSlugPowModel,
   createPawnSlugPowModel,
-} from './pawnSlugPowArt.js';
+} from './pawnSlugPowBlenderArt.js';
 export {
   pawnSlugApplyPowReward,
   pawnSlugPowRescueSummary,
