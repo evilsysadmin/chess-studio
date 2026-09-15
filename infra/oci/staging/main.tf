@@ -116,6 +116,16 @@ resource "oci_core_instance" "backend" {
     memory_in_gbs = var.memory_gb
   }
 
+  agent_config {
+    are_all_plugins_disabled = false
+    is_management_disabled   = false
+
+    plugins_config {
+      name          = "Compute Instance Run Command"
+      desired_state = "ENABLED"
+    }
+  }
+
   create_vnic_details {
     assign_public_ip = true
     display_name     = "${var.instance_name}-primary"
