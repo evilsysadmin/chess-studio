@@ -38,6 +38,18 @@ describe('rock production identities', () => {
     expect(desert.swing).toBeGreaterThan(post.swing);
   });
 
+  it('locks the garage backbeat to the six-step guitar riff', () => {
+    const garage = structuredFeel(AMBIENT_THEMES.rookGarage);
+    const riffSteps = Object.keys(AMBIENT_THEMES.rookGarage.sections[0].lead).map(Number);
+    const backbone = Object.entries(garage.percussion.pattern)
+      .filter(([, voice]) => voice === 'K' || voice === 'S')
+      .map(([step]) => Number(step));
+
+    expect(garage.percussion.period).toBe(12);
+    expect(riffSteps.slice(1).map((step, index) => step - riffSteps[index])).toEqual(Array(7).fill(6));
+    expect(backbone).toEqual([0, 6]);
+  });
+
   it('gives every score a recurring hook with a distinct contour', () => {
     const feels = IDS.map((id) => structuredFeel(AMBIENT_THEMES[id]));
     expect(new Set(feels.map((feel) => contour(feel.signature.motif))).size).toBe(IDS.length);

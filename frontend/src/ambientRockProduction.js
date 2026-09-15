@@ -49,10 +49,14 @@ const ROCK_PROFILES = Object.freeze({
     layers: Object.freeze({ lead: true, counter: false, chords: true, bass: true, drums: true, signature: true }),
     mix: Object.freeze({ lead: 0.82, counter: 0, bass: 1.06, chord: 0.39 }),
     percussion: Object.freeze({
-      period: 16,
+      // The written riff advances every six steps. A 16-step backbeat made
+      // the kit and guitars imply different tempi; this 12-step pocket locks
+      // kick/snare to alternate riff attacks and reserves the last step for a
+      // short live-room pickup.
+      period: 12,
       kit: 'garage-live-dry',
       punch: 1.28,
-      pattern: Object.freeze({ 0:'K', 2:'H', 4:'S', 6:'H', 8:'K', 10:'K', 12:'S', 14:'H', 15:'M' }),
+      pattern: Object.freeze({ 0:'K', 3:'H', 6:'S', 9:'H', 11:'M' }),
     }),
     signature: Object.freeze({
       instrument: 'overdriveGuitar',
