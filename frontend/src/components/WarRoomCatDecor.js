@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { getEffectiveReducedMotion } from '../userPreferences.js';
+import { getEffectiveReducedMotionRuntime } from '../reducedMotionRuntime.js';
 
-export const WAR_ROOM_CAT_VERSION = 'war-room-cat-v3-render-contract';
+export const WAR_ROOM_CAT_VERSION = 'war-room-cat-v4-sofa-anchor';
 
 function rootLocalBounds(root, object) {
   object.updateMatrixWorld?.(true);
@@ -36,7 +36,7 @@ function makeEar(material) {
   return ear;
 }
 
-export function warRoomCatAmbientMotionAllowed(root, { reducedMotion = getEffectiveReducedMotion() } = {}) {
+export function warRoomCatAmbientMotionAllowed(root, { reducedMotion = getEffectiveReducedMotionRuntime() } = {}) {
   if (reducedMotion) return false;
   const hans = root?.getObjectByName?.('war-room-hans-butler');
   if (hans?.userData?.warRoomHansActiveTaskKind) return false;
@@ -153,7 +153,14 @@ function buildCat(root) {
   return group;
 }
 
+function normalizeCatParent(root, cat) {
+  root.updateMatrixWorld?.(true);
+  cat.parent?.updateMatrixWorld?.(true);
+  if (cat.parent && cat.parent !== root) root.attach(cat);
+}
+
 function placeCat(root, cat) {
+  normalizeCatParent(root, cat);
   const preferred = preferredSofa(root);
   if (preferred) {
     const bounds = rootLocalBounds(root, preferred.sofa);
@@ -170,6 +177,10 @@ function placeCat(root, cat) {
       cat.scale.setScalar(0.82);
       cat.userData.warRoomCatPlacement = `${preferred.side}-sofa-sleeper-v1`;
       cat.userData.warRoomCatSofaSide = preferred.side;
+
+      root.updateMatrixWorld?.(true);
+      preferred.sofa.updateMatrixWorld?.(true);
+      preferred.sofa.attach(cat);
       return cat;
     }
   }
