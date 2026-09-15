@@ -43,6 +43,20 @@ describe('complete music catalog audit', () => {
     expect(getPercussionVoiceKit('cadizLanterns')).toBe('cadiz-lantern-hand');
   });
 
+  it('anchors Tavla percussion to the same 3+3+3 pillars as its written bass', () => {
+    const theme = AMBIENT_THEMES.istanbulBackgammon;
+    const feel = structuredFeel(theme);
+
+    expect(theme.stepsPerSection).toBe(72);
+    expect(feel.percussion.period).toBe(18);
+    expect(theme.stepsPerSection % feel.percussion.period).toBe(0);
+    expect(feel.percussion.pattern).toEqual({ 0:'K', 4:'H', 6:'B', 10:'H', 12:'S', 16:'B' });
+    expect(Object.values(feel.percussion.pattern)).not.toContain('W');
+    for (const section of theme.sections) {
+      expect(Object.keys(section.bass).map(Number).every((step) => step % 6 === 0)).toBe(true);
+    }
+  });
+
   it('mixes the eastern-Mediterranean room like a small ensemble instead of a synthetic stack', () => {
     expect(MEDITERRANEAN_ORGANIC_POLISH_IDS).toHaveLength(18);
     expect(MEDITERRANEAN_ORGANIC_POLISH_IDS).toEqual(expect.arrayContaining([
