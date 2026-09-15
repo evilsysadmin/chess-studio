@@ -5,7 +5,13 @@ on:
     branches: [main]
     paths:
       - 'scripts/oci_run_command.py'
-      - '.github/workflows/oci-staging-service.yml'
+  workflow_run:
+    workflows:
+      - OCI staging · auto apply
+    types:
+      - completed
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       operation:
@@ -28,7 +34,8 @@ concurrency:
 
 jobs:
   control:
-    name: OCI staging · service ${{ github.event_name == 'push' && 'smoke' || inputs.operation }}
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    name: OCI staging · service ${{ github.event_name != 'workflow_dispatch' && 'smoke' || inputs.operation }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
@@ -40,7 +47,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 1
       - uses: actions/setup-python@v6
         with:
@@ -51,7 +58,7 @@ jobs:
       - name: Install OCI SDK
         run: python3 -m pip install --disable-pip-version-check 'oci==2.185.2'
       - name: Smoke OCI agent transport
-        if: github.event_name == 'push' || inputs.operation == 'smoke'
+        if: github.event_name != 'workflow_dispatch' || inputs.operation == 'smoke'
         run: python3 scripts/oci_run_command.py smoke
       - name: Deploy immutable backend release
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'deploy'
