@@ -122,13 +122,16 @@ function deathPose(type, phase, variant = 0) {
   const reach = v === 2 ? 1.18 : v === 1 ? 0.84 : 1;
   const twist = v === 2 ? 1.08 : v === 1 ? 0.9 : 1;
 
+  // Sprite deaths should read from authored frames + rotation/translation, not
+  // from anisotropic scale. Squashing Y while widening X makes the fallen
+  // soldier look like a stretched decal instead of a body hitting the floor.
   if (type === 'rook') {
-    return Object.freeze({ x: -0.06 * fall * reach, y: grounded ? -0.36 - impactBounce * 0.03 : -0.28 * fall, rz: 1.36 * fall * twist * sway, sx: 1 + 0.12 * fall, sy: grounded ? 0.56 : 1 - 0.32 * fall, grounded });
+    return Object.freeze({ x: -0.06 * fall * reach, y: grounded ? -0.36 - impactBounce * 0.03 : -0.28 * fall, rz: 1.36 * fall * twist * sway, sx: 1, sy: 1, grounded });
   }
   if (type === 'knight') {
-    return Object.freeze({ x: -0.2 * fall * reach, y: grounded ? -0.42 - impactBounce * 0.035 : 0.07 * Math.sin(fallPhase * Math.PI), rz: 1.52 * fall * twist * sway, sx: 1 + 0.06 * fall, sy: grounded ? 0.52 : 1 - 0.15 * fall, grounded });
+    return Object.freeze({ x: -0.2 * fall * reach, y: grounded ? -0.42 - impactBounce * 0.035 : 0.07 * Math.sin(fallPhase * Math.PI), rz: 1.52 * fall * twist * sway, sx: 1, sy: 1, grounded });
   }
-  return Object.freeze({ x: -0.13 * fall * reach, y: grounded ? -0.4 - impactBounce * 0.025 : -0.08 * fall, rz: 1.47 * fall * twist * sway, sx: 1 + 0.08 * fall, sy: grounded ? 0.5 : 1 - 0.2 * fall, grounded });
+  return Object.freeze({ x: -0.13 * fall * reach, y: grounded ? -0.4 - impactBounce * 0.025 : -0.08 * fall, rz: 1.47 * fall * twist * sway, sx: 1, sy: 1, grounded });
 }
 
 function hurtPose(type, phase) {
