@@ -16,8 +16,10 @@ from typing import Any
 
 COMPARTMENT_NAME = "chess-studio-staging"
 INSTANCE_NAME = "chess-studio-staging"
+PLUGIN_NAME = "Compute Instance Run Command"
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 TERMINAL_STATES = {"SUCCEEDED", "FAILED", "TIMED_OUT", "CANCELED"}
+HEALTHY_PLUGIN_STATES = {"RUNNING"}
 SECRET_MARKERS = (
     "MONGO_URL=",
     "JWT_SECRET=",
@@ -47,6 +49,15 @@ def assert_nonsecret_command(command: str) -> None:
     bad = [marker for marker in SECRET_MARKERS if marker.upper() in upper]
     if bad:
         raise SystemExit("Refusing Run Command payload containing secret-bearing markers")
+
+
+def plugin_status_is_healthy(status: str) -> bool:
+    return status.strip().upper() in HEALTHY_PLUGIN_STATES
+
+
+def safe_plugin_message(value: Any) -> str:
+    text = str(value or "").replace("\r", " ").replace("\n", " ").strip()
+    return text[:300]
 
 
 def smoke_command() -> str:
@@ -134,6 +145,48 @@ def resolve_staging(oci: Any, config: dict[str, str]) -> tuple[str, str]:
     return compartment_id, instances[0].id
 
 
+def diagnose_plugin(oci: Any, config: dict[str, str]) -> str:
+    compartment_id, instance_id = resolve_staging(oci, config)
+    compute = oci.core.ComputeClient(config)
+    instance = compute.get_instance(
+        instance_id,
+        retry_strategy=oci.retry.DEFAULT_RETRY_STRATEGY,
+    ).data
+    agent = instance.agent_config
+    configured_plugins = getattr(agent, "plugins_config", None) or []
+    desired = next(
+        (
+            str(plugin.desired_state or "UNKNOWN")
+            for plugin in configured_plugins
+            if str(plugin.name or "") == PLUGIN_NAME
+        ),
+        "UNSPECIFIED",
+    )
+    print(
+        "OCI Run Command desired: "
+        f"state={desired} "
+        f"management_disabled={getattr(agent, 'is_management_disabled', None)} "
+        f"all_plugins_disabled={getattr(agent, 'are_all_plugins_disabled', None)}"
+    )
+
+    client = oci.compute_instance_agent.PluginClient(config)
+    observed = client.get_instance_agent_plugin(
+        instanceagent_id=instance_id,
+        compartment_id=compartment_id,
+        plugin_name=PLUGIN_NAME,
+        retry_strategy=oci.retry.DEFAULT_RETRY_STRATEGY,
+    ).data
+    status = str(getattr(observed, "status", None) or "UNKNOWN").upper()
+    updated = getattr(observed, "time_last_updated_utc", None)
+    message = safe_plugin_message(getattr(observed, "message", ""))
+    print(f"OCI Run Command observed: status={status} last_updated={updated}")
+    if message:
+        print(f"OCI Run Command observed message: {message}")
+    if not plugin_status_is_healthy(status):
+        raise SystemExit(f"OCI Run Command plugin is not running: status={status}")
+    return status
+
+
 def execute(oci: Any, config: dict[str, str], command: str, *, display_name: str, timeout: int = 180) -> None:
     assert_nonsecret_command(command)
     compartment_id, instance_id = resolve_staging(oci, config)
@@ -191,6 +244,12 @@ def self_test() -> None:
         pass
     else:
         raise AssertionError("mutable refs must be rejected")
+    assert plugin_status_is_healthy("RUNNING")
+    assert plugin_status_is_healthy(" running ")
+    assert not plugin_status_is_healthy("STOPPED")
+    assert not plugin_status_is_healthy("NOT_SUPPORTED")
+    assert not plugin_status_is_healthy("INVALID")
+    assert safe_plugin_message("line one\nline two") == "line one line two"
     smoke = smoke_command()
     deploy = deploy_command(sample)
     assert "OCI_RUN_COMMAND_OK" in smoke
@@ -209,7 +268,7 @@ def self_test() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("operation", nargs="?", choices=("smoke", "deploy"))
+    parser.add_argument("operation", nargs="?", choices=("diagnose", "smoke", "deploy"))
     parser.add_argument("--repo-ref", default="")
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
@@ -226,9 +285,13 @@ def main() -> int:
         raise SystemExit("OCI Python SDK is required: pip install oci") from exc
 
     config = config_from_env(oci)
-    if args.operation == "smoke":
+    if args.operation == "diagnose":
+        diagnose_plugin(oci, config)
+    elif args.operation == "smoke":
+        diagnose_plugin(oci, config)
         execute(oci, config, smoke_command(), display_name="chess-studio-agent-smoke", timeout=120)
     else:
+        diagnose_plugin(oci, config)
         execute(
             oci,
             config,
