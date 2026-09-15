@@ -1,6 +1,6 @@
 name: Blender setup · smoke
 
-# Gate-critical smoke: changes to this workflow must prove the real Blender/EGL helper path.
+# Gate-critical smoke: shared Blender/EGL helper changes must pass this real render before the consolidated status can turn green.
 on:
   pull_request:
     paths:
