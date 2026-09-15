@@ -18,43 +18,67 @@ concurrency:
 
 jobs:
   render-matthias:
-    name: Render Matthias · integrated weapons
+    name: Render Matthias · ${{ matrix.weapon }}
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        weapon: [pistol, machinegun, shotgun, panzerfaust]
     steps:
       - uses: actions/checkout@v7
       - name: Install Blender + headless GL + WebP tools
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends blender webp libegl1 libgl1-mesa-dri
-      - name: Render canonical weapon sheets in Blender
+          sudo apt-get install -y --no-install-recommends blender webp libegl1 libgl1-mesa-dri python3-pil
+      - name: Render canonical weapon sheet in Blender
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
+          WEAPON: ${{ matrix.weapon }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/pawn-slug-art
-          for weapon in pistol machinegun shotgun panzerfaust; do
-            blender --background \
-              --python scripts/blender/render_pawn_slug_matthias_weapon_sheet.py \
-              -- --output-dir /tmp/pawn-slug-art --weapon "$weapon"
-            cwebp -quiet -q 86 -alpha_q 95 -m 6 \
-              "/tmp/pawn-slug-art/matthias_${weapon}_atlas_v1.png" \
-              -o "/tmp/pawn-slug-art/matthias_${weapon}_atlas_v1.webp"
-            base64 -w0 "/tmp/pawn-slug-art/matthias_${weapon}_atlas_v1.webp" \
-              > "/tmp/pawn-slug-art/matthias_${weapon}_atlas_v1.b64"
-          done
+          blender --background \
+            --python scripts/blender/render_pawn_slug_matthias_weapon_sheet.py \
+            -- --output-dir /tmp/pawn-slug-art --weapon "$WEAPON"
+          cwebp -quiet -q 86 -alpha_q 95 -m 6 \
+            "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.png" \
+            -o "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.webp"
+          base64 -w0 "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.webp" \
+            > "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.b64"
       - name: Sanity-check atlas contract
+        env:
+          WEAPON: ${{ matrix.weapon }}
         run: |
           set -euo pipefail
-          for weapon in pistol machinegun shotgun panzerfaust; do
-            test -s "/tmp/pawn-slug-art/matthias_${weapon}_integrated_v1.blend"
-            test -s "/tmp/pawn-slug-art/matthias_${weapon}_atlas_v1.png"
-            test -s "/tmp/pawn-slug-art/matthias_${weapon}_atlas_v1.webp"
-            test -s "/tmp/pawn-slug-art/matthias_${weapon}_atlas_v1.b64"
-            file "/tmp/pawn-slug-art/matthias_${weapon}_atlas_v1.webp"
-          done
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_integrated_v1.blend"
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.png"
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.webp"
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.b64"
+          webpinfo "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.webp"
+          python3 - <<'PY'
+          import os
+          from PIL import Image
+
+          weapon = os.environ['WEAPON']
+          path = f'/tmp/pawn-slug-art/matthias_{weapon}_atlas_v1.png'
+          image = Image.open(path).convert('RGBA')
+          assert image.size == (1536, 480), image.size
+          counts = (10, 10, 16, 10, 9)
+          for row, count in enumerate(counts):
+              for col in range(count):
+                  cell = image.crop((col * 96, row * 96, (col + 1) * 96, (row + 1) * 96))
+                  alpha = cell.getchannel('A')
+                  bbox = alpha.getbbox()
+                  assert bbox is not None, f'empty authored cell row={row} col={col}'
+                  left, top, right, bottom = bbox
+                  assert not (top == 0 and bottom == 96), (
+                      f'vertical cell bleed row={row} col={col} bbox={bbox}; '
+                      'check Blender ortho_scale / row spacing'
+                  )
+          PY
       - uses: actions/upload-artifact@v4
         with:
-          name: pawn-slug-matthias-blender-${{ github.event.pull_request.number || github.run_number }}
+          name: pawn-slug-matthias-${{ matrix.weapon }}-${{ github.event.pull_request.number || github.run_number }}
           path: /tmp/pawn-slug-art/
           retention-days: 7
