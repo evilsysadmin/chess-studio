@@ -1,0 +1,45 @@
+name: OCI staging · auto apply
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/oci/staging/*.tf'
+      - 'infra/oci/staging/*.tftpl'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oci-staging-mutations
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    name: OCI staging · apply main
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      TF_IN_AUTOMATION: 'true'
+      TF_INPUT: 'false'
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+      OCI_TFSTATE_BUCKET: ${{ vars.OCI_TFSTATE_BUCKET || 'chess-studio-tfstate' }}
+      OCI_AVAILABILITY_DOMAIN: ${{ vars.OCI_AVAILABILITY_DOMAIN }}
+      OCI_IMAGE_OCID: ${{ vars.OCI_IMAGE_OCID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+      - name: Validate OCI credential contract
+        run: make -C infra/oci auth
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.16.0
+          terraform_wrapper: false
+      - name: Apply OCI staging desired state
+        run: make -C infra/oci apply

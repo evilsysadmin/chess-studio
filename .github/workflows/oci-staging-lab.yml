@@ -27,7 +27,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: oci-staging-lab
+  group: oci-staging-mutations
   cancel-in-progress: false
 
 jobs:

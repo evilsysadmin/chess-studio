@@ -12,6 +12,7 @@ from pathlib import Path
 
 READINESS_WORKFLOW = ".github/workflows/oci-readiness.yml"
 STAGING_WORKFLOW = ".github/workflows/oci-staging-lab.yml"
+STAGING_DEPLOY_WORKFLOW = ".github/workflows/oci-staging-deploy.yml"
 ARM64_RE = re.compile(
     r"^(?:backend-python/Dockerfile|backend-python/requirements[^/]*\.txt|"
     r"scripts/oci_arm64_smoke\.sh|\.github/workflows/oci-readiness\.yml)$"
@@ -22,7 +23,7 @@ TERRAFORM_SCRIPTS = {
     "scripts/oci_staging_lifecycle.sh",
     "scripts/oci_terraform_static.sh",
 }
-TERRAFORM_WORKFLOWS = {READINESS_WORKFLOW, STAGING_WORKFLOW}
+TERRAFORM_WORKFLOWS = {READINESS_WORKFLOW, STAGING_WORKFLOW, STAGING_DEPLOY_WORKFLOW}
 
 
 @dataclass(frozen=True)
@@ -79,6 +80,7 @@ def self_test() -> None:
     assert classify(["infra/oci/staging/main.tf"], event_name="pull_request") == Scope(False, True)
     assert classify([READINESS_WORKFLOW], event_name="pull_request") == Scope(True, True)
     assert classify([STAGING_WORKFLOW], event_name="pull_request") == Scope(False, True)
+    assert classify([STAGING_DEPLOY_WORKFLOW], event_name="pull_request") == Scope(False, True)
     assert classify(["frontend/src/App.jsx"], event_name="pull_request") == Scope(False, False)
     assert classify(
         ["backend-python/requirements.txt", "infra/oci/bootstrap/main.tf"],

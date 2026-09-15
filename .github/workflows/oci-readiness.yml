@@ -10,6 +10,7 @@ on:
       - 'infra/oci/**'
       - '.github/workflows/oci-readiness.yml'
       - '.github/workflows/oci-staging-lab.yml'
+      - '.github/workflows/oci-staging-deploy.yml'
 
 permissions:
   contents: read
