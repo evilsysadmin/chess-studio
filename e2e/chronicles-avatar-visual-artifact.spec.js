@@ -8,10 +8,10 @@ const CAPTURES = [
   { label: 'android-390x844', width: 390, height: 844, hasTouch: true },
 ];
 const PARTY = [
-  { id: 'matthias', name: 'Matthias' },
-  { id: 'hildegard', name: 'Hildegard' },
-  { id: 'aziz', name: 'Aziz' },
-  { id: 'morcilla', name: 'Faust' },
+  { id: 'matthias', name: 'Matthias', artSource: 'blender-home-canonical-v1' },
+  { id: 'hildegard', name: 'Hildegard', artSource: 'chronicles-tactics-party-v3' },
+  { id: 'aziz', name: 'Aziz', artSource: 'chronicles-tactics-party-v3' },
+  { id: 'morcilla', name: 'Faust', artSource: 'chronicles-tactics-party-v3' },
 ];
 
 async function openChronicles(page) {
@@ -76,14 +76,15 @@ for (const capture of CAPTURES) {
     try {
       await openChronicles(page);
       const preview = page.locator('.chronicles-party-preview');
-      const portraitCanvas = page.locator('[data-chronicles-party-renderer="three"] canvas');
+      const portraitHost = page.locator('[data-chronicles-party-renderer="three"]');
+      const portraitCanvas = portraitHost.locator('canvas');
       await expect(preview).toBeVisible();
       await expect(portraitCanvas).toBeVisible();
 
       for (const member of PARTY) {
         await page.getByRole('button', { name: `Seleccionar ${member.name}`, exact: true }).click();
         await expect(preview.locator('strong')).toHaveText(member.name);
-        await page.waitForTimeout(100);
+        await expect(portraitHost).toHaveAttribute('data-chronicles-party-art-source', member.artSource, { timeout: 20_000 });
         const canvasBox = await portraitCanvas.boundingBox();
         expect(canvasBox, `${capture.label}/${member.name}: canvas bounds`).not.toBeNull();
         expect(canvasBox.width, `${capture.label}/${member.name}: canvas width`).toBeGreaterThan(80);
