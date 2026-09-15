@@ -4,6 +4,7 @@ const allBrowsers = process.env.PLAYWRIGHT_ALL_BROWSERS === '1';
 const fullSweep = process.env.PLAYWRIGHT_FULL_SWEEP === '1';
 const chaosMode = process.env.CHESS_CHAOS === '1';
 const ciMode = Boolean(process.env.CI);
+const visualArtifactMode = Boolean(process.env.APP_VISUAL_EXPERIMENTS_SCOPE);
 const stagingLiveSpec = '**/staging-live.spec.js';
 const testIgnore = chaosMode
   ? [stagingLiveSpec]
@@ -50,8 +51,10 @@ export default defineConfig({
     // Switching 2D↔3D remounts WebGL while the settings control is still
     // settling. The dedicated War Room helpers already budget 12 s for the
     // opening action; use the same ceiling for the close/actionability phase.
-    // Subsequent renderer assertions still fail if the interaction did not land.
-    actionTimeout: 12_000,
+    // The visual artifact producer gets a larger ceiling because full-page
+    // WebGL screenshots can exceed 12 s on hosted software rendering. Functional
+    // CI keeps the tighter interaction budget.
+    actionTimeout: visualArtifactMode ? 30_000 : 12_000,
     navigationTimeout: ciMode ? 20_000 : 10_000,
     headless: true,
     trace: 'retain-on-failure',
