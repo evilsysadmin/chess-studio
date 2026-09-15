@@ -38,6 +38,17 @@ describe('contemplative production', () => {
     expect(structuredFeel(AMBIENT_THEMES.lofiWindowLight).counterInstrument).toBe('nylonGuitar');
   });
 
+  it('makes Lo-Fi quiet but rhythmically present', () => {
+    const ids = ['lofiRainTape', 'lofiWindowLight', 'lofiPawnNotebook'];
+    for (const id of ids) {
+      const feel = structuredFeel(AMBIENT_THEMES[id]);
+      expect(feel.percussion.punch).toBeGreaterThanOrEqual(0.7);
+      expect(Object.keys(feel.percussion.pattern).length).toBeGreaterThanOrEqual(7);
+      expect(feel.chordHoldSteps).toBeLessThanOrEqual(10);
+      expect(feel.bassHoldSteps).toBeLessThanOrEqual(3.2);
+    }
+  });
+
   it('keeps zen sparse while distinguishing cedar, wood and water', () => {
     const mist = structuredFeel(AMBIENT_THEMES.mistSpa);
     const onsen = structuredFeel(AMBIENT_THEMES.moonOnsen);
