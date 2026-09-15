@@ -87,6 +87,7 @@ export default function HomeMatthias3D({
 }) {
   const canvasRef = useRef(null);
   const runtimeRef = useRef(null);
+  const desiredMotionRef = useRef({ profile: 'idle', reducedMotion: false });
   const profile = useMemo(
     () => homeMatthiasMotionProfile({ scene, activity, speaking }),
     [activity, scene, speaking],
@@ -94,9 +95,11 @@ export default function HomeMatthias3D({
   const phase = useMemo(() => homeMatthiasMotionPhase({ scene, activity }), [activity, scene]);
   const [modelState, setModelState] = useState('loading');
 
+  desiredMotionRef.current = { profile, reducedMotion };
+
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !fallbackAvatar) return undefined;
+    if (!canvas) return undefined;
 
     let renderer;
     try {
@@ -191,7 +194,7 @@ export default function HomeMatthias3D({
       clips: new Map(),
       selectClip,
       resume,
-      reducedMotion,
+      reducedMotion: desiredMotionRef.current.reducedMotion,
     };
 
     const loader = new GLTFLoader();
@@ -216,7 +219,9 @@ export default function HomeMatthias3D({
         threeScene.add(model);
         mixer = new THREE.AnimationMixer(model);
         runtimeRef.current.clips = new Map(gltf.animations.map((clip) => [clip.name, clip]));
-        selectClip(homeMatthiasClipForProfile(profile), reducedMotion);
+        const desired = desiredMotionRef.current;
+        runtimeRef.current.reducedMotion = desired.reducedMotion;
+        selectClip(homeMatthiasClipForProfile(desired.profile), desired.reducedMotion);
         fitRenderer(renderer, camera, canvas);
         frame = window.requestAnimationFrame(() => {
           renderOnce();
@@ -265,9 +270,10 @@ export default function HomeMatthias3D({
       renderer.dispose();
       renderer.forceContextLoss?.();
     };
-  // Model lifetime is tied to the Home mount, not to routine changes.
+  // The renderer/model lifetime follows the Home mount. Routine/avatar changes
+  // only update the fallback image and active animation clip.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fallbackAvatar]);
+  }, []);
 
   useEffect(() => {
     const runtime = runtimeRef.current;
