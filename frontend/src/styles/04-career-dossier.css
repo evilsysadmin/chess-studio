@@ -43,8 +43,43 @@
   color: inherit;
 }
 
+/* Las métricas secundarias son parte del mismo expediente: conservan
+   separación y lectura rápida sin convertirse en una segunda pared de cards. */
+.career-screen .career-mini-grid {
+  gap: 1px;
+  overflow: hidden;
+  border-block: 1px solid rgba(198, 164, 93, .18);
+  background: rgba(198, 164, 93, .12);
+}
+
+.career-screen .career-mini-grid > span {
+  min-width: 0;
+  margin: 0;
+  padding: .66rem .74rem;
+  border: 0;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--ink-2) 97%, var(--brass) 3%);
+  box-shadow: none;
+}
+
+.career-screen .career-mini-grid > span > b {
+  color: var(--parchment);
+  font-size: 1.08rem;
+  line-height: 1.12;
+}
+
+.career-screen .career-mini-grid > span > small {
+  color: var(--parchment-dim);
+  opacity: 1;
+  line-height: 1.35;
+}
+
 @media (max-width: 760px) {
   .career-screen .career-hero-grid > .career-card {
     padding: .78rem .82rem;
+  }
+
+  .career-screen .career-mini-grid > span {
+    padding: .62rem .68rem;
   }
 }
