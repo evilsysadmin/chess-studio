@@ -40,4 +40,14 @@ describe('Jazz mediterráneo · diversidad de groove', () => {
       if (bpm <= 85) expect(hits).toBeLessThanOrEqual(5);
     }
   });
+
+  it('locks Beirut night taxi to the same 18-step phrase as its written score', () => {
+    const theme = AMBIENT_THEMES.beirutNightTaxi;
+    const feel = structuredFeel(theme);
+
+    expect(theme.stepsPerSection).toBe(72);
+    expect(feel.percussion.period).toBe(18);
+    expect(theme.stepsPerSection % feel.percussion.period).toBe(0);
+    expect(Object.keys(feel.percussion.pattern).map(Number)).toEqual([0, 3, 6, 9, 12, 15]);
+  });
 });
