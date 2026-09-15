@@ -184,12 +184,12 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
     expect(chroniclesTacticsAbility(state, 'bishop')).toBe(state);
   });
 
-  it('lets Morcilla fire a charged ranged volley', () => {
+  it('lets Faust fire a charged ranged volley', () => {
     const state = tacticsState();
     const afterVolley = chroniclesTacticsAbility(state, 'knight');
     expect(afterVolley.enemyHp).toBe(4);
     expect(afterVolley.classAbilityCharges.knight).toBe(0);
-    expect(afterVolley.message).toMatch(/Morcilla desata salva de virotes/i);
+    expect(afterVolley.message).toMatch(/Faust desata salva de virotes/i);
   });
 
   it('resolves class damage first and leaves retaliation to the creature phase', () => {

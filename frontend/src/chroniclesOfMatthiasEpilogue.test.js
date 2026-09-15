@@ -19,7 +19,7 @@ describe('Chronicles of Matthias Book I epilogue', () => {
     const epilogue = chroniclesBookOneEpilogue(escapedState());
 
     expect(epilogue.title).toBe('La compañía completa');
-    expect(epilogue.survivors.map((member) => member.name)).toEqual(['Matthias', 'Hildegard', 'Aziz', 'Morcilla']);
+    expect(epilogue.survivors.map((member) => member.name)).toEqual(['Matthias', 'Hildegard', 'Aziz', 'Faust']);
     expect(epilogue.fallen).toEqual([]);
     expect(epilogue.hasLantern).toBe(false);
     expect(epilogue.hasKey).toBe(true);
