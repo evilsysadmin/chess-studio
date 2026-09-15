@@ -51,7 +51,7 @@ async function capture(page, label) {
   await captureAt(page, label);
 }
 
-test('Entrenar · captura visual de Escuela, Glosario, Modos especiales y Aperturas', async ({ page }) => {
+test('Entrenar · captura visual de Escuela, Mi progreso, Modos especiales y Aperturas', async ({ page }) => {
   await mkdir(ARTIFACT_DIR, { recursive: true });
   await mockApi(page, {
     profileSeed: {
@@ -81,6 +81,28 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales y Apertu
   await capture(page, 'special-modes');
 
   await page.getByRole('button', { name: '← Volver a la Escuela', exact: true }).click();
+  await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
+  await expect(page.locator('.illustrated-home')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Abrir Así juegas con Matthias', exact: true }).click();
+  const insights = page.locator('.insights-coach-workspace');
+  await expect(insights).toBeVisible();
+  await expect(insights.getByRole('heading', { name: 'Así juegas', exact: true })).toBeVisible();
+  await insights.getByRole('tab', { name: 'Mi progreso', exact: true }).click();
+
+  const career = page.locator('.career-screen');
+  await expect(career).toBeVisible();
+  await expect(career.locator('.career-hero-grid').first()).toBeVisible();
+  await capture(page, 'career-summary');
+  await captureAt(page, 'career-summary', { width: 390, height: 844, variant: 'mobile' });
+  await expect(page.locator('.masthead:not(.masthead-game-compact) .masthead-text')).toBeHidden();
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await career.getByRole('button', { name: 'Rendimiento', exact: true }).click();
+  await expect(career.getByRole('button', { name: 'Rendimiento', exact: true })).toHaveClass(/active/);
+  await expect(career.locator('.career-hero-grid').first()).toBeVisible();
+  await capture(page, 'career-performance');
+
   await page.getByRole('button', { name: '← Volver al menú', exact: true }).click();
   await expect(page.locator('.illustrated-home')).toBeVisible();
   await page.getByRole('button', { name: 'Más modos y herramientas · Mazmorras', exact: true }).click();
