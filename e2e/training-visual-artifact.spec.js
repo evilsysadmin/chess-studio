@@ -92,4 +92,5 @@ test('Entrenar · captura visual de Escuela, Glosario, Modos especiales y Apertu
   await expect(openings.locator('.openings-volume').first()).toBeVisible();
   await capture(page, 'openings');
   await captureAt(page, 'openings', { width: 390, height: 844, variant: 'mobile' });
+  await expect(page.locator('.masthead:not(.masthead-game-compact) .masthead-text')).toBeHidden();
 });
