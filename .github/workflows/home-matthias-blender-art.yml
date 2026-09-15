@@ -55,14 +55,30 @@ jobs:
             /tmp/home-matthias-art/matthias-home-canonical.blend \
             --python scripts/blender/validate_home_matthias_contract.py
 
-      - name: Upload canonical art package
-        uses: actions/upload-artifact@v7
+      - name: Validate render artifact envelope
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+
+          root = Path('/tmp/home-matthias-art')
+          blend = root / 'matthias-home-canonical.blend'
+          glb = root / 'matthias-home-canonical.glb'
+          preview = root / 'matthias-home-canonical.png'
+          assert blend.stat().st_size > 100_000, blend.stat().st_size
+          assert glb.stat().st_size > 50_000, glb.stat().st_size
+          image = Image.open(preview).convert('RGB')
+          assert image.size == (560, 700), image.size
+          extrema = image.getextrema()
+          assert max(channel[1] for channel in extrema) > 40, extrema
+          PY
+
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: home-matthias-canonical-art
-          path: |
-            /tmp/home-matthias-art/matthias-home-canonical.blend
-            /tmp/home-matthias-art/matthias-home-canonical.glb
-            /tmp/home-matthias-art/matthias-home-canonical.png
+          name: home-matthias-canonical-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/home-matthias-art/
           if-no-files-found: error
+          retention-days: 7
           compression-level: 0
-          retention-days: 14
