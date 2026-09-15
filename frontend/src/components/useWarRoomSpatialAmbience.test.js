@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   WAR_ROOM_WEATHER_IDLE_GAIN,
   WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN,
+  WAR_ROOM_WEATHER_WINDOW_INSET_X,
+  WAR_ROOM_WEATHER_WINDOW_INSET_Y,
   warRoomAmbienceShouldPlay,
   warRoomSpatialMixForAtmosphere,
   warRoomWeatherGainForWindowHover,
   warRoomWeatherPointInHitbox,
+  warRoomWeatherPointerOutShouldMute,
 } from './useWarRoomSpatialAmbience.js';
 
 describe('War Room spatial ambience', () => {
@@ -29,11 +32,14 @@ describe('War Room spatial ambience', () => {
     expect(rainyNight.rareEventMaxMs).toBeGreaterThan(rainyNight.rareEventMinMs);
   });
 
-  it('requires a deliberate pointer hover inside a sane projected window hitbox', () => {
+  it('requires a deliberate pointer hover in the inner pane, not merely over the 3D window assembly', () => {
     const rect = { left: 100, top: 50, width: 1000, height: 800 };
     const hitbox = '0.7200,0.1200,0.8800,0.6200';
 
+    expect(WAR_ROOM_WEATHER_WINDOW_INSET_X).toBeGreaterThanOrEqual(0.25);
+    expect(WAR_ROOM_WEATHER_WINDOW_INSET_Y).toBeGreaterThanOrEqual(0.1);
     expect(warRoomWeatherPointInHitbox({ clientX: 900, clientY: 300, rect, hitbox })).toBe(true);
+    expect(warRoomWeatherPointInHitbox({ clientX: 860, clientY: 300, rect, hitbox })).toBe(false);
     expect(warRoomWeatherPointInHitbox({ clientX: 825, clientY: 300, rect, hitbox })).toBe(false);
     expect(warRoomWeatherPointInHitbox({ clientX: 620, clientY: 300, rect, hitbox })).toBe(false);
     expect(warRoomWeatherPointInHitbox({ clientX: 900, clientY: 700, rect, hitbox })).toBe(false);
@@ -44,6 +50,23 @@ describe('War Room spatial ambience', () => {
       rect,
       hitbox: '0.0500,0.0500,0.9500,0.9500',
     })).toBe(false);
+  });
+
+  it('kills weather as soon as the pointer leaves the WebGL canvas', () => {
+    const canvas = {
+      classList: {
+        contains: (name) => name === 'board3d-main-canvas',
+      },
+    };
+    const overlay = {
+      classList: {
+        contains: () => false,
+      },
+    };
+
+    expect(warRoomWeatherPointerOutShouldMute({ target: canvas, relatedTarget: overlay })).toBe(true);
+    expect(warRoomWeatherPointerOutShouldMute({ target: overlay, relatedTarget: canvas })).toBe(false);
+    expect(warRoomWeatherPointerOutShouldMute({ target: overlay, relatedTarget: null })).toBe(true);
   });
 
   it('lets either global FX mute or the dedicated room mute silence only this ambience hook', () => {
