@@ -198,11 +198,35 @@
   transform-origin: 50% 36%;
 }
 
+/* Aziz reads as a seasoned rear-guard seer: warmer bronze on the face and staff,
+   deeper shadows around the hood, while retaining the live bishop as fallback. */
+.chronicles-party-preview-three[aria-label="Retrato 3D de Aziz"] {
+  transform: none;
+  filter: none;
+}
+.chronicles-party-preview-three[aria-label="Retrato 3D de Aziz"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, transparent 50%, rgba(7, 6, 5, .22) 75%, rgba(7, 6, 5, .62) 100%),
+    radial-gradient(circle at 66% 28%, rgba(224, 151, 65, .13), transparent 40%),
+    url('../assets/chronicles/aziz-canonical.webp') center 22% / cover no-repeat;
+  filter: saturate(.93) contrast(1.08) brightness(.95);
+  transform: scale(1.018);
+  transform-origin: 50% 36%;
+}
+
 @media (max-width: 800px) {
   .chronicles-party-preview-three[aria-label="Retrato 3D de Matthias"]::after {
     background-position: center 23%;
   }
   .chronicles-party-preview-three[aria-label="Retrato 3D de Hildegard"]::after {
     background-position: center 18%;
+  }
+  .chronicles-party-preview-three[aria-label="Retrato 3D de Aziz"]::after {
+    background-position: center 19%;
   }
 }
