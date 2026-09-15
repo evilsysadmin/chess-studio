@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearStorageMemoryFallback } from './safeStorage.js';
-import { migratePersistentStorage, STORAGE_SCHEMA_KEY, STORAGE_SCHEMA_VERSION } from './storageMigrations.js';
+import {
+  DEFAULT_RADIO_RETIRED_THEME_IDS,
+  migratePersistentStorage,
+  STORAGE_SCHEMA_KEY,
+  STORAGE_SCHEMA_VERSION,
+} from './storageMigrations.js';
 import { EXPLICIT_2D_BOARD_RENDERER_VALUE } from './userPreferences.js';
 
 beforeEach(() => {
@@ -41,7 +46,7 @@ describe('migraciones de persistencia', () => {
 
     const result = migratePersistentStorage();
 
-    expect(result).toMatchObject({ status: 'ok', from: 2, to: 3 });
+    expect(result).toMatchObject({ status: 'ok', from: 2, to: STORAGE_SCHEMA_VERSION });
     expect(localStorage.getItem('chess-study-board-renderer')).toBe('3d');
 
     // Una elección manual posterior se codifica como explícita y vuelve a ser
@@ -71,6 +76,47 @@ describe('migraciones de persistencia', () => {
     localStorage.setItem('chess-study-board-renderer', '3d');
     migratePersistentStorage();
     expect(localStorage.getItem('chess-study-board-renderer')).toBe('3d');
+  });
+
+  it('retira del pool automático los temas regionales sin borrar exclusiones previas', () => {
+    localStorage.setItem(STORAGE_SCHEMA_KEY, '3');
+    localStorage.setItem('chess-study-music-excluded', JSON.stringify(['rookGarage', 'beirut0113']));
+
+    const result = migratePersistentStorage();
+    const excluded = JSON.parse(localStorage.getItem('chess-study-music-excluded'));
+
+    expect(result).toMatchObject({ status: 'ok', from: 3, to: 4 });
+    expect(DEFAULT_RADIO_RETIRED_THEME_IDS).toHaveLength(18);
+    expect(excluded).toEqual(expect.arrayContaining(['rookGarage', ...DEFAULT_RADIO_RETIRED_THEME_IDS]));
+    expect(new Set(excluded).size).toBe(excluded.length);
+  });
+
+  it('la curación de radio es one-shot y respeta una reactivación manual posterior', () => {
+    localStorage.setItem(STORAGE_SCHEMA_KEY, '3');
+    migratePersistentStorage();
+
+    const excluded = JSON.parse(localStorage.getItem('chess-study-music-excluded'));
+    localStorage.setItem(
+      'chess-study-music-excluded',
+      JSON.stringify(excluded.filter((id) => id !== 'beirut0113')),
+    );
+
+    const result = migratePersistentStorage();
+    expect(result).toMatchObject({ status: 'ok', from: 4, to: 4 });
+    expect(JSON.parse(localStorage.getItem('chess-study-music-excluded'))).not.toContain('beirut0113');
+  });
+
+  it('no avanza a v4 si no puede persistir la curación de la radio', () => {
+    localStorage.setItem(STORAGE_SCHEMA_KEY, '3');
+    const originalSetItem = localStorage.setItem.bind(localStorage);
+    vi.spyOn(localStorage, 'setItem').mockImplementation((key, value) => {
+      if (key === 'chess-study-music-excluded') throw new DOMException('full', 'QuotaExceededError');
+      return originalSetItem(key, value);
+    });
+
+    const result = migratePersistentStorage();
+    expect(result).toMatchObject({ status: 'degraded', from: 3, to: 3, durable: false });
+    expect(localStorage.getItem(STORAGE_SCHEMA_KEY)).toBe('3');
   });
 
   it('arranca degradado pero sin lanzar si Web Storage no acepta escrituras', () => {
