@@ -46,6 +46,22 @@ describe('Chronicles enemy retaliation cues', () => {
     });
   });
 
+  it('ignores stale enemy HP from another map when deriving retaliation', () => {
+    const previous = {
+      ...createChroniclesState('gallery-of-forks'),
+      spectralBishopHp: 3,
+    };
+    const next = {
+      ...previous,
+      spectralBishopHp: 2,
+      party: previous.party.map((member) => member.id === 'matthias'
+        ? { ...member, hp: member.hp - 1 }
+        : member),
+    };
+
+    expect(chroniclesRetaliationCue(previous, next)).toBeNull();
+  });
+
   it('does not show retaliation when the enemy dies from the hit', () => {
     const previous = { ...createChroniclesState(), x: 2, enemyHp: 1 };
     const next = attack(previous, 'matthias');
