@@ -95,28 +95,13 @@ runs:
         fi
         echo "ready=${ready}" >> "${GITHUB_OUTPUT}"
 
-    - name: Resolve WebP package identity
-      id: webp-package
-      if: inputs.extra-packages == 'webp'
-      shell: bash
-      run: |
-        set -euo pipefail
-        version="$(apt-cache policy webp | awk '/Candidate:/ {print $2; exit}')"
-        if [[ -z "${version}" || "${version}" == '(none)' ]]; then
-          echo 'Unable to resolve the Ubuntu webp package candidate.' >&2
-          exit 1
-        fi
-        version_key="${version//:/_}"
-        version_key="${version_key//+/_}"
-        echo "version=${version_key}" >> "${GITHUB_OUTPUT}"
-
     - name: Restore WebP tool cache
       id: webp-cache
       if: inputs.extra-packages == 'webp'
       uses: actions/cache@v6
       with:
         path: ${{ runner.temp }}/blender-webp-tools
-        key: blender-webp-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.host-runtime.outputs.os-version }}-${{ steps.webp-package.outputs.version }}-v1
+        key: blender-webp-tools-${{ runner.os }}-${{ runner.arch }}-${{ steps.host-runtime.outputs.os-version }}-v1
 
     - name: Materialize WebP tools on cache miss
       if: inputs.extra-packages == 'webp' && steps.webp-cache.outputs.cache-hit != 'true'
