@@ -6,6 +6,7 @@ import {
   MEDITERRANEAN_ORGANIC_POLISH_IDS,
   withFinalCatalogPolish,
 } from './ambientCatalogFinalPolish.js';
+import { RETIRED_MEDITERRANEAN_THEME_IDS } from './ambientMediterraneanGrooveDiversity.js';
 import { getPercussionVoiceKit } from './sound.js';
 
 function productionChain(id) {
@@ -118,8 +119,10 @@ describe('complete music catalog audit', () => {
     expect(pulse).toEqual([0, 6, 12]);
   });
 
-  it('keeps every curated or internal hidden score production-ready', () => {
-    const hidden = [...CURATED_HIDDEN_THEME_IDS, 'blackArchive'];
+  it('keeps every internal hidden score production-ready', () => {
+    const retired = new Set(RETIRED_MEDITERRANEAN_THEME_IDS);
+    const hidden = [...CURATED_HIDDEN_THEME_IDS].filter((id) => !retired.has(id));
+    hidden.push('blackArchive');
     expect(hidden).toHaveLength(7);
     for (const id of hidden) {
       const feel = structuredFeel(AMBIENT_THEMES[id]);

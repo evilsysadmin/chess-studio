@@ -39,7 +39,7 @@ function fingerprint(theme) {
 }
 
 describe('Beirut nocturnal songbook', () => {
-  it('recomposes all four published Beirut tracks without changing their dial identities', () => {
+  it('keeps all four authored Beirut scores while the rejected taxi is no longer published', () => {
     expect(BEIRUT_SONGBOOK_IDS).toEqual([
       'beirut0113', 'beirutRooftop0412', 'beirutNightTaxi', 'beirutHarbor2340',
     ]);
@@ -50,7 +50,8 @@ describe('Beirut nocturnal songbook', () => {
       expect(theme).toBeTruthy();
       expect(theme.sections).toBe(BEIRUT_SONGBOOK_REWRITES[id].sections);
       expect(theme.sections).toHaveLength(4);
-      expect(option?.description).toBe(theme.description);
+      if (id === 'beirutNightTaxi') expect(option).toBeUndefined();
+      else expect(option?.description).toBe(theme.description);
     }
   });
 
@@ -75,7 +76,7 @@ describe('Beirut nocturnal songbook', () => {
     expect(new Set(BEIRUT_SONGBOOK_IDS.map((id) => JSON.stringify(BEIRUT_PROFILES[id].harmonyPath))).size).toBe(BEIRUT_SONGBOOK_IDS.length);
   });
 
-  it('separates the suspended rooftop from the moving night taxi in the final production path', () => {
+  it('preserves the retired taxi production identity for compatibility and future rework', () => {
     const rooftop = structuredFeel(AMBIENT_THEMES.beirutRooftop0412);
     const taxi = structuredFeel(AMBIENT_THEMES.beirutNightTaxi);
 
