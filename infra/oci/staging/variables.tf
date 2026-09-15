@@ -3,9 +3,30 @@ variable "region" {
   type        = string
 }
 
-variable "compartment_ocid" {
-  description = "Compartment OCID that will own the VCN and instance."
+variable "tenancy_ocid" {
+  description = "OCI tenancy OCID used only for tenancy-scoped IAM resources and Object Storage namespace discovery."
   type        = string
+
+  validation {
+    condition     = can(regex("^ocid1\\.tenancy\\.", var.tenancy_ocid))
+    error_message = "tenancy_ocid must be an OCI tenancy OCID."
+  }
+}
+
+variable "compartment_ocid" {
+  description = "Compartment OCID that will own the VCN, instance and private staging runtime bucket."
+  type        = string
+}
+
+variable "runtime_config_bucket_name" {
+  description = "Private Object Storage bucket used as the out-of-band runtime configuration channel for OCI staging."
+  type        = string
+  default     = "chess-studio-staging-runtime"
+
+  validation {
+    condition     = can(regex("^[A-Za-z0-9._-]+$", var.runtime_config_bucket_name))
+    error_message = "runtime_config_bucket_name contains unsupported characters."
+  }
 }
 
 variable "availability_domain" {
