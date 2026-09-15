@@ -22,6 +22,14 @@ const MOVE_GLYPHS = Object.freeze({
   west: '←',
 });
 
+const XP_REWARDS = Object.freeze({
+  usefulDamage: 2,
+  kill: 5,
+  support: 4,
+  objective: 3,
+  survival: 4,
+});
+
 export const CHRONICLES_TACTICS_WORLD = Object.freeze({
   lever: Object.freeze({ id: 'rune-cache-lever', x: 5, y: 5 }),
   runeCore: Object.freeze({ id: 'rune-core', x: 5, y: 4 }),
@@ -174,8 +182,61 @@ function appendJournal(state, entry) {
   return { ...state, journal: [...journal, entry] };
 }
 
+function appendXpAward(state, award) {
+  if (!award?.id || !award?.heroId || !Number.isFinite(Number(award.amount)) || Number(award.amount) <= 0) return state;
+  const xpAwards = Array.isArray(state.xpAwards) ? state.xpAwards : [];
+  if (xpAwards.some((item) => item.id === award.id)) return state;
+  return {
+    ...state,
+    xpAwards: [...xpAwards, {
+      id: award.id,
+      heroId: award.heroId,
+      amount: Math.floor(Number(award.amount)),
+      reason: String(award.reason || ''),
+    }],
+  };
+}
+
+function creditUsefulDamage(state, heroId, enemyId, actualDamage) {
+  if (actualDamage <= 0) return state;
+  return appendXpAward(state, {
+    id: `crypt-01:damage:${heroId}:${enemyId}`,
+    heroId,
+    amount: XP_REWARDS.usefulDamage,
+    reason: 'Daño útil',
+  });
+}
+
+function creditObjective(state, objectiveId, heroId) {
+  if (!memberFor(state, heroId)) return state;
+  return appendXpAward(state, {
+    id: `crypt-01:objective:${objectiveId}`,
+    heroId,
+    amount: XP_REWARDS.objective,
+    reason: 'Objetivo',
+  });
+}
+
+function creditSurvivors(state) {
+  return state.party.reduce((next, member) => (
+    member.hp > 0
+      ? appendXpAward(next, {
+        id: `crypt-01:survival:${member.id}`,
+        heroId: member.id,
+        amount: XP_REWARDS.survival,
+        reason: 'Supervivencia',
+      })
+      : next
+  ), state);
+}
+
 function rewardEnemyDefeat(state, enemy, attacker) {
-  let next = state;
+  let next = appendXpAward(state, {
+    id: `crypt-01:kill:${enemy.id}`,
+    heroId: attacker.id,
+    amount: XP_REWARDS.kill,
+    reason: 'Baja confirmada',
+  });
   if (enemy.id === 'spectral-bishop') {
     next = {
       ...next,
@@ -283,7 +344,7 @@ export function chroniclesTacticsInteractions(state) {
   return interactions;
 }
 
-export function chroniclesTacticsUse(state, interactionId = null) {
+export function chroniclesTacticsUse(state, interactionId = null, memberId = null) {
   const interaction = chroniclesTacticsInteractions(state).find((candidate) => (
     !interactionId || candidate.id === interactionId
   ));
@@ -291,7 +352,7 @@ export function chroniclesTacticsUse(state, interactionId = null) {
 
   const turns = Number(state.turns || 0) + 1;
   if (interaction.id === 'ancient-sigil') {
-    return appendJournal({
+    let next = appendJournal({
       ...state,
       sigilAwake: true,
       turns,
@@ -302,10 +363,12 @@ export function chroniclesTacticsUse(state, interactionId = null) {
       body: 'La formación activa el sello de la cripta. Torre y alfil reciben la noticia con una hostilidad muy profesional.',
       sigil: 'III',
     });
+    next = creditObjective(next, 'ancient-sigil', memberId);
+    return next;
   }
 
   if (interaction.id === CHRONICLES_TACTICS_WORLD.lever.id) {
-    return appendJournal({
+    let next = appendJournal({
       ...state,
       runeCacheOpened: true,
       turns,
@@ -316,6 +379,8 @@ export function chroniclesTacticsUse(state, interactionId = null) {
       body: 'Una palanca de latón abre un pequeño alijo. Dentro espera un núcleo rúnico capaz de rearmar las habilidades de la compañía.',
       sigil: '✦',
     });
+    next = creditObjective(next, 'rune-cache', memberId);
+    return next;
   }
 
   if (interaction.id === CHRONICLES_TACTICS_WORLD.runeCore.id) {
@@ -340,7 +405,7 @@ export function chroniclesTacticsUse(state, interactionId = null) {
         message: lockedGateMessage(state),
       };
     }
-    return appendJournal({
+    let next = appendJournal({
       ...state,
       phase: 'escaped',
       turns,
@@ -351,6 +416,8 @@ export function chroniclesTacticsUse(state, interactionId = null) {
       body: 'La compañía abandona la cripta táctica con más miembros que cadáveres. Matthias lo registra como excelencia.',
       sigil: 'VII',
     });
+    next = creditObjective(next, 'escape', memberId);
+    return creditSurvivors(next);
   }
 
   return state;
@@ -436,17 +503,28 @@ export function chroniclesTacticsAbility(state, memberId) {
   const turns = Number(state.turns || 0) + 1;
 
   if (profile.abilityKind === 'heal') {
-    const healedParty = state.party.map((member) => (
-      member.hp > 0
-        ? { ...member, hp: Math.min(member.maxHp, member.hp + Math.max(1, Number(profile.abilityHeal || 1))) }
-        : member
-    ));
-    return consumeAbilityCharge({
+    let restoredHp = 0;
+    const healedParty = state.party.map((member) => {
+      if (member.hp <= 0) return member;
+      const hp = Math.min(member.maxHp, member.hp + Math.max(1, Number(profile.abilityHeal || 1)));
+      restoredHp += Math.max(0, hp - member.hp);
+      return { ...member, hp };
+    });
+    let next = consumeAbilityCharge({
       ...state,
       party: healedParty,
       turns,
       message: `${attacker.name} invoca ${profile.abilityName}. El farol recompone a los supervivientes con una luz que parece cara.`,
     }, memberId);
+    if (restoredHp > 0) {
+      next = appendXpAward(next, {
+        id: 'crypt-01:support:lantern-heal',
+        heroId: memberId,
+        amount: XP_REWARDS.support,
+        reason: 'Soporte efectivo',
+      });
+    }
+    return next;
   }
 
   const targets = chroniclesTacticsTargets(state, memberId);
@@ -459,9 +537,11 @@ export function chroniclesTacticsAbility(state, memberId) {
   selectedTargets.forEach((target) => {
     const enemy = chroniclesActiveEnemies(next).find((candidate) => candidate.id === target.enemyId);
     if (!enemy) return;
+    const beforeHp = Math.max(0, Number(next[enemy.hpKey] || 0));
     const damage = Math.max(1, Number(profile.abilityDamage || profile.damage || 1));
-    const nextHp = Math.max(0, Number(next[enemy.hpKey] || 0) - damage);
+    const nextHp = Math.max(0, beforeHp - damage);
     next = { ...next, [enemy.hpKey]: nextHp };
+    next = creditUsefulDamage(next, memberId, enemy.id, beforeHp - nextHp);
     hitNames.push(enemy.name);
     if (nextHp === 0) next = rewardEnemyDefeat(next, enemy, attacker);
   });
@@ -495,7 +575,8 @@ export function chroniclesTacticsAttack(state, memberId, enemyId) {
   if (!enemy) return state;
   const profile = chroniclesTacticsProfile(memberId);
 
-  const nextHp = Math.max(0, Number(state[enemy.hpKey] || 0) - profile.damage);
+  const beforeHp = Math.max(0, Number(state[enemy.hpKey] || 0));
+  const nextHp = Math.max(0, beforeHp - profile.damage);
   let next = {
     ...state,
     [enemy.hpKey]: nextHp,
@@ -504,6 +585,7 @@ export function chroniclesTacticsAttack(state, memberId, enemyId) {
       ? `${attacker.name} usa ${profile.attackName.toLowerCase()} contra ${enemy.name}. ${nextHp}/${enemy.maxHp} HP.`
       : `${attacker.name} derriba a ${enemy.name} con ${profile.attackName.toLowerCase()}.`,
   };
+  next = creditUsefulDamage(next, memberId, enemy.id, beforeHp - nextHp);
   if (nextHp === 0) next = rewardEnemyDefeat(next, enemy, attacker);
   return next;
 }

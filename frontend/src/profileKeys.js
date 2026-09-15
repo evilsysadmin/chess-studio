@@ -66,7 +66,7 @@ export const PROFILE_PROGRESS_KEYS = Object.freeze([
   'chess-study-analysis-archive',
   'chess-study-matthias-school-v1',
   'chess-study-pawn-slug-weapon-models-v1',
-  'chess-study-chronicles-progression-v1',
+  'chess-study-chronicles-tactics-progress-v1',
 ]);
 
 export const PROFILE_PREFERENCE_KEYS = Object.freeze([

@@ -4,16 +4,6 @@ import {
   createChroniclesState,
 } from '../chroniclesOfMatthias.js';
 import {
-  applyChroniclesTacticsProgression,
-  beginChroniclesTacticsRun,
-  chroniclesHeroProgress,
-  chroniclesXpToNextLevel,
-  ensureChroniclesTacticsRun,
-  finishChroniclesTacticsRun,
-  loadChroniclesProgression,
-  saveChroniclesProgression,
-} from '../chroniclesOfMatthiasProgression.js';
-import {
   chroniclesTacticsAbility,
   chroniclesTacticsAbilityStatus,
   chroniclesTacticsAttack,
@@ -25,6 +15,10 @@ import {
   chroniclesTacticsUse,
 } from '../chroniclesOfMatthiasTactics.js';
 import { chroniclesResolveEnemyTurn } from '../chroniclesOfMatthiasTurns.js';
+import {
+  loadChroniclesTacticsProgress,
+  persistChroniclesXpAwards,
+} from '../chroniclesTacticsProgress.js';
 import { useEscapeToClose } from '../useEscapeToClose.js';
 import './ChroniclesOfMatthiasTactics.css';
 
@@ -51,6 +45,7 @@ function createActionState() {
     turnPhase: 'party',
     enemyPositions: {},
     enemyTurnEvents: [],
+    xpAwards: [],
     classAbilityCharges: {
       matthias: 1,
       rook: 1,
@@ -71,37 +66,22 @@ function enemyPulseMessage(previousMessage, next) {
   return previousMessage;
 }
 
-function xpLabel(progress, xpWindow) {
-  if (xpWindow.maxLevel) return `Nv ${progress.level} · MAX · ${progress.xp} XP`;
-  return `Nv ${progress.level} · ${progress.xp}/${xpWindow.next} XP`;
-}
-
 export default function ChroniclesOfMatthiasTactics({ onExit }) {
   useEscapeToClose(onExit);
   const hostRef = useRef(null);
   const engineRef = useRef(null);
   const stateRef = useRef(createActionState());
-  const progressionRef = useRef(loadChroniclesProgression());
   const selectedMemberRef = useRef('matthias');
   const lastMoveAtRef = useRef(0);
   const lastAttackAtRef = useRef(0);
   const [state, setState] = useState(stateRef.current);
-  const [progression, setProgression] = useState(progressionRef.current);
-  const [runId, setRunId] = useState(() => ensureChroniclesTacticsRun());
+  const [progress, setProgress] = useState(() => loadChroniclesTacticsProgress());
   const [selectedMemberId, setSelectedMemberId] = useState('matthias');
   const [rendererName, setRendererName] = useState('CARGANDO');
   const [rendererError, setRendererError] = useState('');
 
   const selectedMember = state.party.find((member) => member.id === selectedMemberId) || state.party[0];
   const selectedProfile = chroniclesTacticsProfile(selectedMemberId);
-  const selectedProgress = useMemo(
-    () => chroniclesHeroProgress(progression, selectedMemberId),
-    [progression, selectedMemberId],
-  );
-  const selectedXpWindow = useMemo(
-    () => chroniclesXpToNextLevel(progression, selectedMemberId),
-    [progression, selectedMemberId],
-  );
   const selectedAbility = useMemo(
     () => chroniclesTacticsAbilityStatus(state, selectedMemberId),
     [selectedMemberId, state],
@@ -118,26 +98,14 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   );
   const canAct = state.phase !== 'defeated' && state.phase !== 'escaped';
 
-  const commitState = useCallback((next, { actorMemberId = null, actionKind = 'action' } = {}) => {
-    const previous = stateRef.current;
-    if (!next || next === previous) return false;
-
-    const progressResult = applyChroniclesTacticsProgression(progressionRef.current, previous, next, {
-      actorMemberId,
-      actionKind,
-      runId,
-    });
-    if (progressResult.awards.length || progressResult.levelUps.length) {
-      const saved = saveChroniclesProgression(progressResult.progression);
-      progressionRef.current = saved;
-      setProgression(saved);
-    }
-
+  const commitState = useCallback((next) => {
+    if (!next || next === stateRef.current) return false;
+    const xpResult = persistChroniclesXpAwards(next.xpAwards);
+    if (xpResult.applied.length > 0) setProgress(xpResult.progress);
     stateRef.current = next;
     setState(next);
-    if (next.phase === 'escaped' || next.phase === 'defeated') finishChroniclesTacticsRun(runId);
     return true;
-  }, [runId]);
+  }, []);
 
   const moveParty = useCallback((dx, dy) => {
     const now = performance.now();
@@ -164,21 +132,19 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
       : targets[0];
     if (!target) return;
     const next = chroniclesTacticsAttack(current, memberId, target.enemyId);
-    if (commitState(next, { actorMemberId: memberId, actionKind: 'attack' })) lastAttackAtRef.current = now;
+    if (commitState(next)) lastAttackAtRef.current = now;
   }, [commitState]);
 
   const useClassAbility = useCallback(() => {
     const current = stateRef.current;
     if (current.phase === 'defeated' || current.phase === 'escaped') return;
-    const memberId = selectedMemberRef.current;
-    commitState(chroniclesTacticsAbility(current, memberId), { actorMemberId: memberId, actionKind: 'ability' });
+    commitState(chroniclesTacticsAbility(current, selectedMemberRef.current));
   }, [commitState]);
 
   const useContextualAction = useCallback(() => {
     const current = stateRef.current;
     if (current.phase === 'defeated' || current.phase === 'escaped') return;
-    const memberId = selectedMemberRef.current;
-    commitState(chroniclesTacticsUse(current), { actorMemberId: memberId, actionKind: 'use' });
+    commitState(chroniclesTacticsUse(current, null, selectedMemberRef.current));
   }, [commitState]);
 
   const selectMember = useCallback((memberId) => {
@@ -187,17 +153,14 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   }, []);
 
   const restart = useCallback(() => {
-    finishChroniclesTacticsRun(runId);
-    const nextRunId = beginChroniclesTacticsRun();
     const next = createActionState();
     selectedMemberRef.current = 'matthias';
     lastMoveAtRef.current = 0;
     lastAttackAtRef.current = 0;
-    setRunId(nextRunId);
     setSelectedMemberId('matthias');
     stateRef.current = next;
     setState(next);
-  }, [runId]);
+  }, []);
 
   useEffect(() => {
     selectedMemberRef.current = selectedMemberId;
@@ -359,7 +322,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
           {activeParty.map((member, index) => {
             const ratio = Math.max(0, member.hp / member.maxHp);
             const profile = chroniclesTacticsProfile(member.id);
-            const memberProgress = chroniclesHeroProgress(progression, member.id);
+            const heroXp = progress.heroes?.[member.id]?.xp || 0;
             return (
               <button
                 type="button"
@@ -369,7 +332,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
                 aria-pressed={member.id === selectedMemberId}
               >
                 <i aria-hidden="true">{member.glyph}</i>
-                <span><b>{index + 1}. {member.name}</b><small>Nv {memberProgress.level} · {profile.className} · {profile.weaponName}</small><em><u style={{ width: `${ratio * 100}%` }} /></em></span>
+                <span><b>{index + 1}. {member.name}</b><small>{profile.className} · XP {heroXp}</small><em><u style={{ width: `${ratio * 100}%` }} /></em></span>
                 <strong>{member.hp}/{member.maxHp}</strong>
               </button>
             );
@@ -377,9 +340,8 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
           <div className="chronicles-tactics__party-note">
             <span>ACTIVO · {selectedProfile.className.toUpperCase()}</span>
             <b>{selectedMember?.name}</b>
-            <small>{selectedMember?.hp > 0 ? `${selectedProfile.attackName} · ${selectedProfile.kindLabel} · alcance ${selectedProfile.reach}` : 'Fuera de combate'}</small>
+            <small>{selectedMember?.hp > 0 ? `${selectedProfile.weaponName} · ${selectedProfile.attackName} · ${selectedProfile.kindLabel} · alcance ${selectedProfile.reach}` : 'Fuera de combate'}</small>
             <small>Habilidad: {selectedProfile.abilityName} · {selectedAbility.charges > 0 ? '1 carga' : 'agotada'}</small>
-            <small>{xpLabel(selectedProgress, selectedXpWindow)}{selectedProgress.attributePoints || selectedProgress.skillPoints ? ` · ${selectedProgress.attributePoints} atributo · ${selectedProgress.skillPoints} skill` : ''}</small>
           </div>
         </aside>
       </div>
