@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   chroniclesIsoInteractionForHit,
   chroniclesIsoWorldForCell,
+  chroniclesIsoWorldObjectState,
   chroniclesIsometricCameraPose,
 } from './chroniclesOfMatthiasIsometric.js';
 
@@ -61,5 +62,20 @@ describe('Chronicles canonical isometric viewport', () => {
     });
     expect(chroniclesIsoInteractionForHit(interaction, { kind: 'enemy', enemyId: 'gate-jailer' })).toBeNull();
     expect(chroniclesIsoInteractionForHit(null, { kind: 'enemy', enemyId: 'corrupted-pawn' })).toBeNull();
+  });
+
+  it('keeps the lever down after use and shows the rune core only until collection', () => {
+    expect(chroniclesIsoWorldObjectState({})).toEqual({
+      leverPulled: false,
+      runeCoreVisible: false,
+    });
+    expect(chroniclesIsoWorldObjectState({ runeCacheOpened: true })).toEqual({
+      leverPulled: true,
+      runeCoreVisible: true,
+    });
+    expect(chroniclesIsoWorldObjectState({ runeCacheOpened: true, runeCoreCollected: true })).toEqual({
+      leverPulled: true,
+      runeCoreVisible: false,
+    });
   });
 });
