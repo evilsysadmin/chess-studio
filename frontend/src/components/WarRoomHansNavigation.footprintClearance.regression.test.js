@@ -6,7 +6,10 @@ import {
 } from './WarRoomHansNavigation.js';
 
 const BOARD_SAFE_HALF_EXTENT = 5.10;
-const HANS_VISIBLE_FOOTPRINT_RADIUS = 0.32;
+// The old 0.32u synthetic radius covered Hans' trunk but not the rendered
+// shoulder/arm envelope once the canonical elder body is scaled and animated.
+// Keep enough budget for the visible body instead of validating only his root.
+const HANS_VISIBLE_FOOTPRINT_RADIUS = 0.45;
 
 function footprintOutsideBoard(point) {
   return Math.abs(Number(point?.x || 0)) - HANS_VISIBLE_FOOTPRINT_RADIUS >= BOARD_SAFE_HALF_EXTENT
