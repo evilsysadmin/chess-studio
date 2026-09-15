@@ -70,6 +70,11 @@ for (const option of AMBIENT_THEME_OPTIONS) {
 const curatedHidden = ['orbitalMonastery','metro317','glassAsh','machineRoom','abyssalArchive','redVault'];
 assert(curatedHidden.every((id) => !ids.includes(id)), 'han reaparecido temas experimentales retirados');
 assert(!AMBIENT_THEME_GROUPS.some((group) => group.genre === 'Dark Ambient'), 'Dark Ambient debería quedar fuera del catálogo curado');
+for (const id of [...curatedHidden, 'blackArchive']) {
+  const profile = getAmbientThemeSoundProfile(id);
+  assert(profile?.signatureSteps >= 3, `${id}: tema oculto sin firma musical premium`);
+  assert(profile?.family, `${id}: tema oculto sin familia de producción`);
+}
 
 const added = ['mistSpa','moonOnsen','postRockMidnight','rookGarage','desertDriveRock','endgameAdagio','knightFugue','nocturnalQuartet','lofiRainTape','lofiWindowLight','neonKnight','midnightArcade'];
 const mediterraneanExpansion = ['beirutHarbor2340','cairoBlueNote0211','alexandriaHarborCafe','cordobaRooftop0026','damascusCourtyard0144','tangierNightTrain0058','granadaCopperRain0232','ammanLateTable0303'];
@@ -79,6 +84,23 @@ const profiled = AMBIENT_THEME_OPTIONS.filter((theme) => theme.id !== 'andalus')
 for (const [id, profile] of profiled) assert(profile, `${id}: sigue sin perfil sonoro dedicado`);
 const fingerprints = profiled.map(([, profile]) => profile.personalityFingerprint);
 assert(new Set(fingerprints).size === fingerprints.length, 'hay temas estructurados con huella compositiva indistinguible');
+for (const [id, profile] of profiled) {
+  assert(profile.signatureSteps >= 3, `${id}: la firma musical sigue siendo demasiado corta (${profile.signatureSteps || 0} notas)`);
+}
+for (const genre of new Set(AMBIENT_THEME_OPTIONS.map((theme) => theme.genre))) {
+  const genreProfiles = AMBIENT_THEME_OPTIONS
+    .filter((theme) => theme.genre === genre && theme.id !== 'andalus')
+    .map((theme) => [theme.id, getAmbientThemeSoundProfile(theme.id)]);
+  const productionChains = genreProfiles.map(([, profile]) => [
+    profile.leadInstrument,
+    profile.counterInstrument,
+    profile.chordInstrument,
+    profile.bassInstrument,
+    profile.percussionKit,
+    profile.percussionPeriod,
+  ].join('/'));
+  assert(new Set(productionChains).size === genreProfiles.length, `${genre}: quedan cadenas instrumentales/percusión duplicadas`);
+}
 const forbiddenChiu = new Set(['bell', 'musicbox']);
 const soundSource = readFileSync(new URL('../frontend/src/sound.js', import.meta.url), 'utf8');
 assert(!soundSource.includes('playWoodblock'), 'ha reaparecido el woodblock tonal del chiu-chiu');

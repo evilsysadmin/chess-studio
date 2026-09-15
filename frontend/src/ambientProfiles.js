@@ -20,6 +20,7 @@ import { withElectronicProduction } from './ambientElectronicProduction.js';
 import { withEnergyProduction } from './ambientEnergyProduction.js';
 import { withContemplativeProduction } from './ambientContemplativeProduction.js';
 import { withClassicalProduction } from './ambientClassicalProduction.js';
+import { withFinalCatalogPolish } from './ambientCatalogFinalPolish.js';
 
 const RADIO_MATTHIAS_HIDDEN_THEME_IDS = new Set([...CURATED_HIDDEN_THEME_IDS, 'blackArchive']);
 
@@ -218,12 +219,15 @@ export function structuredFeel(theme) {
     const leitmotif = withRadioMatthiasLeitmotif(theme, radioMatthias);
     const contrasted = withElectronicProduction(theme, withAmbientIdentityContrast(theme, leitmotif));
     const arranged = withTropicalHouseDrive(theme, contrasted);
-    const produced = withClassicalProduction(theme, withContemplativeProduction(theme, withEnergyProduction(theme, arranged)));
+    const produced = withFinalCatalogPolish(theme, withClassicalProduction(theme, withContemplativeProduction(theme, withEnergyProduction(theme, arranged))));
     return withAmbientPremiumProduction(theme, withAmbientGenreHook(theme, produced));
   }
 
   const legacy = legacyStructuredFeel(theme);
-  if (!legacy) return legacy;
+  if (!legacy) {
+    const rescued = withFinalCatalogPolish(theme, legacy);
+    return rescued ? withAmbientPremiumProduction(theme, rescued) : legacy;
+  }
 
   let arranged = withElectronicProduction(theme, withAmbientIdentityContrast(theme, legacy));
   if (TROPICAL_HOUSE_DRIVE[theme?.id]) arranged = withTropicalHouseDrive(theme, arranged);
@@ -249,6 +253,6 @@ export function structuredFeel(theme) {
     arranged = Object.freeze({ ...arranged, counterInstrument: 'pizz' });
   }
 
-  const produced = withClassicalProduction(theme, withContemplativeProduction(theme, withEnergyProduction(theme, arranged)));
+  const produced = withFinalCatalogPolish(theme, withClassicalProduction(theme, withContemplativeProduction(theme, withEnergyProduction(theme, arranged))));
   return withAmbientPremiumProduction(theme, withAmbientGenreHook(theme, produced));
 }

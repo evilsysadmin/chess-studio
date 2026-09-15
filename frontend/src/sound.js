@@ -1478,8 +1478,8 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
   const human = percussionHumanization(feel, localStep, code);
   const velocity = human.velocity;
   scheduleStructuredSidechain(feel, human, code);
-  const handKit = ['darbuka', 'cairo-hand', 'frame-drum', 'istanbul-frame', 'maghreb-hand', 'andalus-hand'].includes(kit);
-  const brushKit = ['brush-jazz', 'rooftop-jazz', 'walking-brush'].includes(kit);
+  const handKit = ['darbuka', 'cairo-hand', 'frame-drum', 'istanbul-frame', 'maghreb-hand', 'andalus-hand', 'tavla-table', 'cadiz-lantern-hand'].includes(kit);
+  const brushKit = ['brush-jazz', 'rooftop-jazz', 'walking-brush', 'harbor-brush'].includes(kit);
 
   const maybeGhost = (kind, baseVolume) => {
     if (!human.ghost) return;
@@ -1512,6 +1512,19 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
       playMembraneHit('dum', 0.032 * velocity, { ...human, tone: -0.18, decay: 0.86 });
     } else if (code === 'H') {
       playMembraneHit('tak', 0.009 * velocity, { ...human, tone: -0.42, decay: 0.66 });
+    }
+    return;
+  }
+
+  if (kit === 'siege-field' || kit === 'illustrated-march') {
+    const illustrated = kit === 'illustrated-march';
+    if (code === 'K') {
+      playMembraneHit('dum', (illustrated ? 0.036 : 0.046) * velocity, { ...human, tone: -0.48, decay: illustrated ? 0.9 : 1.12 });
+      playBassDrum((illustrated ? 0.024 : 0.032) * velocity, { ...human, tone: -0.5, decay: 0.9 });
+    } else if (code === 'S') {
+      playNoiseHit('snare', (illustrated ? 0.022 : 0.030) * velocity, { ...human, brightness: illustrated ? 0.62 : 0.70, durationScale: 1.2 });
+    } else if (code === 'W') {
+      playMembraneHit('tak', (illustrated ? 0.007 : 0.009) * velocity, { ...human, tone: -0.08, decay: 0.72 });
     }
     return;
   }
@@ -1626,6 +1639,15 @@ function playStructuredDrum(code, feel = null, localStep = 0) {
       playNoiseHit('hat', (circuit ? 0.008 : 0.007) * velocity, { ...human, brightness: circuit ? 1.38 : storm ? 1.18 : 0.86, durationScale: circuit ? 0.42 : 0.62 });
     } else if (code === 'M') playMetalHit();
     else if (code === 'B') playWoodKnock();
+    return;
+  }
+
+  if (kit === 'metro-rail' || kit === 'machine-industrial') {
+    const machine = kit === 'machine-industrial';
+    if (code === 'K') playBassDrum((machine ? 0.066 : 0.052) * velocity, { ...human, tone: machine ? -0.56 : -0.38, decay: machine ? 1.02 : 0.7 });
+    else if (code === 'S') playNoiseHit('snare', (machine ? 0.046 : 0.034) * velocity, { ...human, brightness: machine ? 0.74 : 1.16, durationScale: machine ? 1.34 : 0.62 });
+    else if (code === 'H') playNoiseHit('hat', 0.006 * velocity, { ...human, brightness: machine ? 0.72 : 1.32, durationScale: machine ? 0.84 : 0.38 });
+    else if (code === 'M') playMetalHit();
     return;
   }
 
