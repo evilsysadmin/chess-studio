@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { moveWarRoomHansToward } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v7-visible-body-clearance';
+export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v8-chair-obstacle-router';
 export const WAR_ROOM_HANS_NAVIGATION_CLEAR_LANE_HALF_EXTENT = 5.55;
 export const WAR_ROOM_HANS_NAVIGATION_EDGE_MARGIN = 0.12;
 export const WAR_ROOM_HANS_NAVIGATION_FURNITURE_CLEARANCE = 0.58;
@@ -11,6 +11,7 @@ const COMMAND_DESK_NAMES = Object.freeze([
   'command-cabinet',
   'war-room-command-desk-top',
 ]);
+const COMMAND_CHAIR_NAME = 'war-room-teutonic-command-chair';
 const GEOMETRY_EPSILON = 1e-4;
 
 function localPoint(parent, world) {
@@ -154,9 +155,14 @@ function obstacleRectForObject(object, parent, padding = WAR_ROOM_HANS_NAVIGATIO
   };
 }
 
-function commandDeskObstacle(floor, parent) {
+function navigationObstacles(floor, parent) {
   const root = sceneRoot(floor) || sceneRoot(parent);
-  return obstacleRectForObject(firstNamed(root, COMMAND_DESK_NAMES), parent);
+  const desk = firstNamed(root, COMMAND_DESK_NAMES);
+  const chair = root?.getObjectByName?.(COMMAND_CHAIR_NAME) || null;
+  return [desk, chair]
+    .filter(Boolean)
+    .map((object) => obstacleRectForObject(object, parent))
+    .filter(Boolean);
 }
 
 function pointInsideRect(point, rect) {
@@ -265,13 +271,15 @@ export function warRoomHansSafeRoomLoop(floor, parent) {
     [left, centerZ],
   ];
   const loop = worldPoints.map(([x, z]) => localPoint(parent, new THREE.Vector3(x, -0.34, z)));
-  const deskObstacle = commandDeskObstacle(floor, parent);
+  const obstacles = navigationObstacles(floor, parent);
 
-  // The canonical rear centreline can physically pass through the command desk.
-  // Drop any loop waypoint swallowed by the padded desk footprint. The router
-  // still sees the remaining loop as cyclic and rejects the now-direct rear edge,
-  // forcing Hans around the room instead of through solid furniture.
-  return deskObstacle ? loop.filter((point) => !pointInsideRect(point, deskObstacle)) : loop;
+  // Central furniture can swallow one of the canonical circulation waypoints.
+  // Remove any point inside the padded desk/chair hull. The router remains cyclic
+  // and will reject direct segments through either obstacle, forcing Hans around
+  // solid furniture instead of momentarily walking through it between routines.
+  return obstacles.length
+    ? loop.filter((point) => obstacles.every((obstacle) => !pointInsideRect(point, obstacle)))
+    : loop;
 }
 
 export function warRoomHansBuildSafeRoute(floor, parent, from, to) {
@@ -282,7 +290,7 @@ export function warRoomHansBuildSafeRoute(floor, parent, from, to) {
   const bounds = laneBounds(loop);
   const departure = laneApproach(from, bounds);
   const arrival = laneApproach(to, bounds);
-  const obstacles = [commandDeskObstacle(floor, parent)].filter(Boolean);
+  const obstacles = navigationObstacles(floor, parent);
   const candidates = [];
 
   if (departure.side === arrival.side) {
