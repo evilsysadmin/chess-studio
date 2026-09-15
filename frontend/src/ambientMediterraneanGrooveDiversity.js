@@ -12,7 +12,6 @@ export const MEDITERRANEAN_GROOVE_REWRITES = Object.freeze({
   alexandria241: groove(16, {0:'B',5:'H',8:'S',13:'H'}),
   terraceFireflies: groove(16, {0:'B',7:'H',10:'B',14:'H'}),
   cafeFirelight: groove(16, {0:'B',4:'H',9:'S',13:'H'}),
-  malagaLastTram: groove(16, {0:'B',3:'H',8:'S',11:'H',15:'B'}),
   alexandriaHarborCafe: groove(16, {0:'B',6:'H',11:'B',14:'H'}),
 
   cairo0047: groove(32, {0:'B',10:'H',16:'S',26:'H'}),
