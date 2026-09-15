@@ -37,16 +37,24 @@ function roomPolish(releaseScale, space, delayMs, mix, signatureEveryCycles, sig
 // less synthetic wash and regional plucks used as occasional colour rather
 // than a permanent layer. Sustained winds also opt into the finite breath/reed
 // finish; non-wind instruments ignore that flag entirely.
-const BEIRUT_ROOM = roomPolish(1.06, 0.085, 112, { lead:0.54, counter:0.22, bass:0.55, chord:0.27 }, 4, 0.115);
+//
+// Beirut now has four authored songs instead of one shared room template. Keep
+// the same restrained organic ceiling, but let the production reinforce what
+// the score says: Rooftop floats, Taxi stays dry with the walking bass forward,
+// 01:13 is an intimate 6/8 conversation, and Harbor carries a little more air.
+const BEIRUT_0113_ROOM = roomPolish(1.04, 0.075, 104, { lead:0.54, counter:0.20, bass:0.60, chord:0.22 }, 4, 0.11);
+const BEIRUT_ROOFTOP_ROOM = roomPolish(1.16, 0.100, 126, { lead:0.50, counter:0.18, bass:0.46, chord:0.26 }, 4, 0.105);
+const BEIRUT_TAXI_ROOM = roomPolish(0.94, 0.055, 82, { lead:0.56, counter:0.16, bass:0.72, chord:0.22 }, 4, 0.105);
+const BEIRUT_HARBOR_ROOM = roomPolish(1.12, 0.095, 120, { lead:0.50, counter:0.17, bass:0.58, chord:0.24 }, 4, 0.11);
 const ISTANBUL_ROOM = roomPolish(1.04, 0.075, 96, { lead:0.52, counter:0.20, bass:0.52, chord:0.25 }, 4, 0.11);
 const EGYPT_ROOM = roomPolish(1.09, 0.100, 126, { lead:0.55, counter:0.22, bass:0.54, chord:0.28 }, 3, 0.12);
 const LEVANT_ROOM = roomPolish(1.08, 0.105, 120, { lead:0.53, counter:0.21, bass:0.53, chord:0.27 }, 4, 0.115);
 
 const MEDITERRANEAN_ORGANIC_POLISH = Object.freeze({
-  beirut0113:BEIRUT_ROOM,
-  beirutRooftop0412:BEIRUT_ROOM,
-  beirutNightTaxi:BEIRUT_ROOM,
-  beirutHarbor2340:BEIRUT_ROOM,
+  beirut0113:BEIRUT_0113_ROOM,
+  beirutRooftop0412:BEIRUT_ROOFTOP_ROOM,
+  beirutNightTaxi:BEIRUT_TAXI_ROOM,
+  beirutHarbor2340:BEIRUT_HARBOR_ROOM,
 
   istanbul0326:ISTANBUL_ROOM,
   istanbulBackgammon:ISTANBUL_ROOM,
