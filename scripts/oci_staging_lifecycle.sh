@@ -137,6 +137,71 @@ connect_bootstrap_remote() {
   terraform -chdir="$bootstrap" state pull >/dev/null || die "bootstrap remote state is not readable; run bootstrap first"
 }
 
+bootstrap_remote_established() {
+  local namespace="$1" pulled status rc plan_rc
+  export OCI_TFSTATE_NAMESPACE="$namespace"
+  export OCI_BOOTSTRAP_STATE_KEY="$bootstrap_key"
+  clean_bootstrap_local_backend
+  set +e
+  python3 -S "$root/scripts/oci_bootstrap_state.py" init >/dev/null 2>&1
+  rc=$?
+  if [[ "$rc" -eq 0 ]]; then
+    pulled="$(terraform -chdir="$bootstrap" state pull 2>/dev/null)"
+    rc=$?
+  else
+    pulled=""
+  fi
+  set -e
+  if [[ "$rc" -ne 0 || -z "$pulled" ]]; then
+    clean_bootstrap_local_backend
+    return 1
+  fi
+  status="$(python3 -c '
+import json, sys
+expected = {
+    "oci_identity_compartment.infra",
+    "oci_identity_compartment.staging",
+    "oci_objectstorage_bucket.terraform_state",
+}
+try:
+    payload = json.load(sys.stdin)
+except json.JSONDecodeError:
+    print("none")
+    raise SystemExit
+managed = set()
+for item in payload.get("resources", []):
+    if item.get("mode") == "managed":
+        managed.add(f"{item.get(chr(116)+chr(121)+chr(112)+chr(101))}.{item.get(chr(110)+chr(97)+chr(109)+chr(101))}")
+if not managed:
+    print("none")
+elif managed == expected:
+    print("complete")
+else:
+    print("partial:" + ",".join(sorted(managed)))
+' <<<"$pulled")"
+  case "$status" in
+    none)
+      clean_bootstrap_local_backend
+      return 1
+      ;;
+    complete)
+      set +e
+      terraform -chdir="$bootstrap" plan -no-color -detailed-exitcode >/dev/null
+      plan_rc=$?
+      set -e
+      [[ "$plan_rc" -eq 0 ]] || die "existing bootstrap remote state has drift (terraform rc=$plan_rc)"
+      echo "OCI bootstrap remote state already established and zero-drift"
+      return 0
+      ;;
+    partial:*)
+      die "bootstrap remote state is partial; refusing overwrite (${status#partial:})"
+      ;;
+    *)
+      die "could not classify bootstrap remote state"
+      ;;
+  esac
+}
+
 staging_compartment() {
   local value
   value="$(terraform -chdir="$bootstrap" output -raw staging_compartment_ocid)"
@@ -178,12 +243,16 @@ prepare_staging() {
 bootstrap_foundation() {
   local namespace="$1" plan rc
   require_current_main
+  if bootstrap_remote_established "$namespace"; then
+    return 0
+  fi
   plan="${RUNNER_TEMP:-/tmp}/oci-bootstrap.tfplan"
   clean_bootstrap_local_backend
   terraform -chdir="$bootstrap" init -backend=false -no-color >/dev/null
   export TF_VAR_tenancy_ocid="$OCI_TENANCY_OCID"
   export TF_VAR_region="$OCI_REGION"
   export TF_VAR_state_bucket_name="$OCI_TFSTATE_BUCKET"
+  python3 -S "$root/scripts/oci_bootstrap_recover.py"
   terraform -chdir="$bootstrap" plan -no-color -out="$plan"
   require_current_main
   terraform -chdir="$bootstrap" apply -no-color -auto-approve "$plan"
@@ -195,7 +264,7 @@ bootstrap_foundation() {
   rc=$?
   set -e
   [[ "$rc" -eq 0 ]] || die "bootstrap remote state is not zero-drift after migration (terraform rc=$rc)"
-  echo "OCI bootstrap foundation created, migrated and zero-drift verified"
+  echo "OCI bootstrap foundation created/recovered, migrated and zero-drift verified"
 }
 
 run_staging() {
