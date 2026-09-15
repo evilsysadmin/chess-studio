@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { clearStorageMemoryFallback } from './safeStorage.js';
-import { migratePersistentStorage } from './storageMigrations.js';
+import {
+  DEFAULT_RADIO_RETIRED_THEME_IDS,
+  migratePersistentStorage,
+  STORAGE_SCHEMA_VERSION,
+} from './storageMigrations.js';
 
 // Raw localStorage snapshots used by the compatibility drill.
-// Keep these literals independent from current implementation constants: they
-// represent what an older browser profile actually has on disk before boot.
+// Keep the BEFORE literals independent from current implementation constants:
+// they represent what an older browser profile actually has on disk before boot.
 const PROGRESS = Object.freeze({
   'chess-study-game-history': JSON.stringify([{ id: 'game-42', result: 'win' }]),
   'chess-study-player-rating': '1375',
@@ -13,6 +17,9 @@ const PROGRESS = Object.freeze({
   'chess-study-achievements': JSON.stringify(['first-win']),
   'chess-study-unknown-progress-key': JSON.stringify({ keep: true }),
 });
+
+const CURRENT_SCHEMA = String(STORAGE_SCHEMA_VERSION);
+const CURATED_RADIO_EXCLUSIONS = JSON.stringify(DEFAULT_RADIO_RETIRED_THEME_IDS);
 
 function snapshot(extra = {}) {
   return Object.freeze({ ...PROGRESS, ...extra });
@@ -32,9 +39,10 @@ const STORAGE_COMPATIBILITY_FIXTURES = Object.freeze([
       'chess-study-music-muted': '1',
       'chess-study-fx-muted': '1',
       'chess-study-board-renderer': '3d',
-      'chess-study-storage-schema-version': '3',
+      'chess-study-music-excluded': CURATED_RADIO_EXCLUSIONS,
+      'chess-study-storage-schema-version': CURRENT_SCHEMA,
     }),
-    result: Object.freeze({ status: 'ok', from: 0, to: 3, durable: true }),
+    result: Object.freeze({ status: 'ok', from: 0, to: STORAGE_SCHEMA_VERSION, durable: true }),
   }),
   Object.freeze({
     label: 'schema v1 · retired preferences still present',
@@ -45,10 +53,11 @@ const STORAGE_COMPATIBILITY_FIXTURES = Object.freeze([
       'chess-study-ambient-theme': 'old-theme',
     }),
     after: snapshot({
-      'chess-study-storage-schema-version': '3',
+      'chess-study-storage-schema-version': CURRENT_SCHEMA,
       'chess-study-board-renderer': '3d',
+      'chess-study-music-excluded': CURATED_RADIO_EXCLUSIONS,
     }),
-    result: Object.freeze({ status: 'ok', from: 1, to: 3, durable: true }),
+    result: Object.freeze({ status: 'ok', from: 1, to: STORAGE_SCHEMA_VERSION, durable: true }),
   }),
   Object.freeze({
     label: 'schema v2 · renderer migration pending',
@@ -57,13 +66,14 @@ const STORAGE_COMPATIBILITY_FIXTURES = Object.freeze([
       'chess-study-board-renderer': '2d',
     }),
     after: snapshot({
-      'chess-study-storage-schema-version': '3',
+      'chess-study-storage-schema-version': CURRENT_SCHEMA,
       'chess-study-board-renderer': '3d',
+      'chess-study-music-excluded': CURATED_RADIO_EXCLUSIONS,
     }),
-    result: Object.freeze({ status: 'ok', from: 2, to: 3, durable: true }),
+    result: Object.freeze({ status: 'ok', from: 2, to: STORAGE_SCHEMA_VERSION, durable: true }),
   }),
   Object.freeze({
-    label: 'schema v3 · current snapshot is stable',
+    label: 'schema v3 · radio curation pending',
     before: snapshot({
       'chess-study-storage-schema-version': '3',
       'chess-study-board-renderer': '2d',
@@ -71,12 +81,13 @@ const STORAGE_COMPATIBILITY_FIXTURES = Object.freeze([
       'chess-study-fx-muted': '1',
     }),
     after: snapshot({
-      'chess-study-storage-schema-version': '3',
+      'chess-study-storage-schema-version': CURRENT_SCHEMA,
       'chess-study-board-renderer': '2d',
       'chess-study-music-muted': '0',
       'chess-study-fx-muted': '1',
+      'chess-study-music-excluded': CURATED_RADIO_EXCLUSIONS,
     }),
-    result: Object.freeze({ status: 'ok', from: 3, to: 3, durable: true }),
+    result: Object.freeze({ status: 'ok', from: 3, to: STORAGE_SCHEMA_VERSION, durable: true }),
   }),
 ]);
 
