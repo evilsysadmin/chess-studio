@@ -32,7 +32,7 @@ async function openChronicles(page) {
   await expect(tools).toBeVisible();
   await tools.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await page.getByRole('button').filter({ hasText: 'Descender a la cripta' }).click();
+  await page.getByRole('button', { name: /BOOK I.*Chronicles of Matthias/i }).click();
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
   await expect(page.locator('[data-chronicles-party-renderer="three"] canvas')).toHaveCount(1, { timeout: 20_000 });
 }
