@@ -1,12 +1,14 @@
-export const CHRONICLES_MAP = Object.freeze([
-  '#######',
-  '#..X..#',
-  '#.###.#',
-  '#...#.#',
-  '#.#S#.#',
-  '#P.E..#',
-  '#######',
-]);
+import {
+  DEFAULT_CHRONICLES_MAP_ID,
+  chroniclesMapById,
+  chroniclesMapForState,
+  chroniclesMapInitialEnemyState,
+  chroniclesMapTileAt,
+} from './chronicles/chroniclesMapCatalog.js';
+
+const DEFAULT_MAP = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID);
+
+export const CHRONICLES_MAP = DEFAULT_MAP.grid;
 
 export const CHRONICLES_DIRECTIONS = Object.freeze([
   Object.freeze({ key: 'north', dx: 0, dy: -1, label: 'N' }),
@@ -22,62 +24,53 @@ export const CHRONICLES_PARTY = Object.freeze([
   Object.freeze({ id: 'knight', name: 'Morcilla', role: 'Caballo logístico', glyph: '♞', maxHp: 8, row: 'back', lane: 'right', attackName: 'Salto brutal', damage: 1, reach: 2 }),
 ]);
 
-const SCAVENGER_POSITIONS = Object.freeze({
-  gate: Object.freeze({ x: 3, y: 1 }),
-  west: Object.freeze({ x: 1, y: 2 }),
-});
+export const CHRONICLES_ENEMIES = DEFAULT_MAP.enemies;
 
-export const CHRONICLES_ENEMIES = Object.freeze([
-  Object.freeze({ id: 'corrupted-pawn', name: 'peón corrompido', x: 3, y: 5, hpKey: 'enemyHp', maxHp: 6, retaliation: 1, activation: 'always' }),
-  Object.freeze({ id: 'gate-jailer', name: 'torre carcelero', x: 3, y: 1, hpKey: 'jailerHp', maxHp: 8, retaliation: 2, activation: 'sigil' }),
-  Object.freeze({ id: 'spectral-bishop', name: 'alfil espectral', x: 5, y: 3, hpKey: 'spectralBishopHp', maxHp: 5, retaliation: 1, retaliationReach: 2, activation: 'sigil', optional: true }),
-  Object.freeze({ id: 'scavenger-knight', name: 'caballo carroñero', x: 2, y: 3, hpKey: 'scavengerHp', maxHp: 6, retaliation: 1, activation: 'jailer-down', positionKey: 'scavengerPosition', positions: SCAVENGER_POSITIONS, evadesOnHit: true }),
-]);
+const INITIAL_JOURNAL = DEFAULT_MAP.initialJournal;
 
-const INITIAL_JOURNAL = Object.freeze({
-  id: 'descent',
-  title: 'Descenso a la Cripta de las Ocho Casillas',
-  body: 'Cuatro piezas entran. Matthias insiste en llamarlo expedición y no una serie de decisiones evitables.',
-  sigil: 'I',
-});
+function enemiesFor(state) {
+  return chroniclesMapForState(state).enemies;
+}
 
 function partyState() {
   return CHRONICLES_PARTY.map((member) => ({ ...member, hp: member.maxHp }));
 }
 
 function appendJournal(state, entry) {
-  const journal = Array.isArray(state.journal) ? state.journal : [INITIAL_JOURNAL];
+  const journal = Array.isArray(state.journal) ? state.journal : [chroniclesMapForState(state).initialJournal];
   if (journal.some((item) => item.id === entry.id)) return state;
   return { ...state, journal: [...journal, entry] };
 }
 
 export function chroniclesJournalEntries(state) {
-  return Array.isArray(state?.journal) && state.journal.length ? state.journal : [INITIAL_JOURNAL];
+  const initialJournal = chroniclesMapForState(state).initialJournal || INITIAL_JOURNAL;
+  return Array.isArray(state?.journal) && state.journal.length ? state.journal : [initialJournal];
 }
 
-export function createChroniclesState() {
+export function createChroniclesState(mapId = DEFAULT_CHRONICLES_MAP_ID) {
+  const map = chroniclesMapById(mapId);
   return {
-    x: 1,
-    y: 5,
-    direction: 1,
-    enemyHp: 6,
-    jailerHp: 8,
-    spectralBishopHp: 5,
-    scavengerHp: 6,
-    scavengerPosition: 'gate',
-    spectralLantern: false,
-    blackGateKey: false,
-    sigilAwake: false,
+    mapId: map.id,
+    x: map.partyStart.x,
+    y: map.partyStart.y,
+    direction: map.partyStart.direction,
+    ...chroniclesMapInitialEnemyState(map.id),
+    ...map.initialFlags,
     phase: 'explore',
     party: partyState(),
     turns: 0,
-    journal: [INITIAL_JOURNAL],
-    message: 'La Cripta de las Ocho Casillas. Huele a humedad y a una decisión cuestionable.',
+    journal: [map.initialJournal],
+    message: map.introMessage,
   };
 }
 
-export function chroniclesTileAt(x, y) {
-  return CHRONICLES_MAP[y]?.[x] || '#';
+export function chroniclesTileAt(x, y, stateOrMapId = null) {
+  const map = typeof stateOrMapId === 'string'
+    ? chroniclesMapById(stateOrMapId)
+    : stateOrMapId
+      ? chroniclesMapForState(stateOrMapId)
+      : DEFAULT_MAP;
+  return chroniclesMapTileAt(map, x, y);
 }
 
 export function chroniclesEnemyIsActive(state, enemy) {
@@ -92,11 +85,11 @@ function enemyAlive(state, enemy) {
 }
 
 export function chroniclesEnemyAlive(state) {
-  return CHRONICLES_ENEMIES.some((enemy) => enemyAlive(state, enemy));
+  return enemiesFor(state).some((enemy) => enemyAlive(state, enemy));
 }
 
 export function chroniclesActiveEnemies(state) {
-  return CHRONICLES_ENEMIES.filter((enemy) => enemyAlive(state, enemy));
+  return enemiesFor(state).filter((enemy) => enemyAlive(state, enemy));
 }
 
 export function chroniclesEnemyPosition(state, enemy) {
@@ -105,7 +98,7 @@ export function chroniclesEnemyPosition(state, enemy) {
 }
 
 function chroniclesEnemyAt(state, x, y) {
-  return CHRONICLES_ENEMIES.find((enemy) => {
+  return enemiesFor(state).find((enemy) => {
     if (!enemyAlive(state, enemy)) return false;
     const position = chroniclesEnemyPosition(state, enemy);
     return position.x === x && position.y === y;
@@ -122,7 +115,7 @@ function chroniclesEnemyTargetAhead(state, maxReach = 2) {
   for (let distance = 1; distance <= maxReach; distance += 1) {
     const x = state.x + direction.dx * distance;
     const y = state.y + direction.dy * distance;
-    if (chroniclesTileAt(x, y) === '#') return null;
+    if (chroniclesTileAt(x, y, state) === '#') return null;
     const enemy = chroniclesEnemyAt(state, x, y);
     if (enemy) return { enemy, distance };
   }
@@ -138,7 +131,7 @@ function withMessage(state, message) {
 }
 
 function enterTile(state, x, y) {
-  const tile = chroniclesTileAt(x, y);
+  const tile = chroniclesTileAt(x, y, state);
   if (tile === 'S' && !state.sigilAwake) {
     return appendJournal({
       ...state,
@@ -243,12 +236,15 @@ function journalForDefeat(state, attacker, enemy) {
 }
 
 function evadeAfterHit(state, enemy) {
-  if (!enemy.evadesOnHit || enemy.id !== 'scavenger-knight') return state;
-  const scavengerPosition = state.scavengerPosition === 'gate' ? 'west' : 'gate';
+  if (!enemy.evadesOnHit || !enemy.positionKey || !enemy.positions) return state;
+  const positionKeys = Object.keys(enemy.positions);
+  if (positionKeys.length < 2) return state;
+  const currentIndex = Math.max(0, positionKeys.indexOf(state[enemy.positionKey]));
+  const nextPosition = positionKeys[(currentIndex + 1) % positionKeys.length];
   return {
     ...state,
-    scavengerPosition,
-    message: `${state.message} El caballo se lleva la Llave Negra y salta en L hacia otra esquina.`,
+    [enemy.positionKey]: nextPosition,
+    message: `${state.message} ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} se escabulle hacia otra posición del mapa.`,
   };
 }
 
@@ -267,7 +263,7 @@ function resolveAttack(state, memberId) {
     return journalForDefeat(defeated, attacker, enemy);
   }
 
-  const retaliationReach = Number(enemy.retaliationReach ?? 1);
+  const retaliationReach = Number(enemy.retaliationReach ?? enemy.ai?.attackReach ?? 1);
   if (distance > retaliationReach) {
     return evadeAfterHit({ ...state, [enemy.hpKey]: nextHp, turns: state.turns + 1, message: rangedHitMessage(attacker, enemy) }, enemy);
   }
@@ -300,7 +296,7 @@ function blockingEnemyMessage(enemy) {
   if (enemy.id === 'gate-jailer') return 'La torre carcelero sella la puerta negra. Es una cerradura de varias toneladas y bastante mal humor.';
   if (enemy.id === 'spectral-bishop') return 'El alfil espectral ocupa la nave lateral. La cortesía religiosa termina exactamente a una casilla de distancia.';
   if (enemy.id === 'scavenger-knight') return 'El caballo carroñero planta la Llave Negra delante de la salida como si acabara de inventar el peaje.';
-  return 'El peón corrompido bloquea el corredor. Convéncelo con violencia reglamentaria.';
+  return `${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} bloquea el paso. Convéncelo con violencia reglamentaria.`;
 }
 
 export function chroniclesReduce(state, action) {
@@ -315,7 +311,7 @@ export function chroniclesReduce(state, action) {
   if (!sign) return state;
   const x = state.x + direction.dx * sign;
   const y = state.y + direction.dy * sign;
-  const tile = chroniclesTileAt(x, y);
+  const tile = chroniclesTileAt(x, y, state);
 
   if (tile === '#') return withMessage(state, 'Hay una pared. Incluso Matthias concede que atravesarla sería excesivo.');
   const blockingEnemy = chroniclesEnemyAt(state, x, y);
