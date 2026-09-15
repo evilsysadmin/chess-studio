@@ -5,17 +5,36 @@ import { setWarRoomHansServiceDoorOpen } from './WarRoomHansServiceDoor.js';
 
 export { moveWarRoomHansToward };
 
-export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v10-visible-exit-door-bounds-aware-furniture-standoff';
+export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v11-visible-exit-door-body-clear-desk-chair-standoff';
 export const HANS_SERVICE_WALK_SPEED = 0.32;
 export const HANS_SERVICE_FURNITURE_CLEARANCE = 0.58;
 
 const DOOR_NAME = 'war-room-hans-service-door';
 const DOOR_RECESS_NAME = 'war-room-hans-service-door-recess';
 const STANDING_Y = -0.34;
+const COMMAND_CHAIR_NAME = 'war-room-teutonic-command-chair';
+const COMMAND_DESK_NAMES = Object.freeze([
+  'war-room-teutonic-command-desk-v28',
+  'command-cabinet',
+]);
 
 function localPoint(parent, world) {
   parent.updateMatrixWorld?.(true);
   return parent.worldToLocal(world.clone());
+}
+
+function sceneRoot(object) {
+  let current = object || null;
+  while (current?.parent) current = current.parent;
+  return current;
+}
+
+function firstNamed(root, names = []) {
+  for (const name of names) {
+    const object = root?.getObjectByName?.(name);
+    if (object) return object;
+  }
+  return null;
 }
 
 function isWallArmor(object) {
@@ -23,14 +42,22 @@ function isWallArmor(object) {
   return name.startsWith('war-room-teutonic-armor-') || name.startsWith('war-room-armor-guard-');
 }
 
+function isCommandChair(object) {
+  return String(object?.name || '') === COMMAND_CHAIR_NAME;
+}
+
 function commandDeskHost(object) {
   let current = object || null;
   while (current) {
     const name = String(current.name || '');
-    if (name === 'war-room-teutonic-command-desk-v28' || name === 'command-cabinet') return current;
+    if (COMMAND_DESK_NAMES.includes(name)) return current;
     current = current.parent || null;
   }
   return null;
+}
+
+function commandDeskInScene(object) {
+  return firstNamed(sceneRoot(object), COMMAND_DESK_NAMES);
 }
 
 function objectBounds(object) {
@@ -96,7 +123,13 @@ function applyDeskStandoff(object, world, offsetX, offsetZ) {
   const laterallyClear = world.x <= box.min.x - HANS_SERVICE_FURNITURE_CLEARANCE
     || world.x >= box.max.x + HANS_SERVICE_FURNITURE_CLEARANCE;
   if (laterallyClear) {
-    world.z = requestedZ;
+    // Once Hans is safely beside the desk, do not let the old front offset send
+    // his body back into the narrow board↔desk slot. The visible front plane is
+    // the furthest he needs to reach from the flank; hands/props can do the rest.
+    const frontPlaneZ = frontSign > 0 ? box.max.z : box.min.z;
+    world.z = frontSign > 0
+      ? Math.min(requestedZ, frontPlaneZ)
+      : Math.max(requestedZ, frontPlaneZ);
   } else {
     const safeFrontZ = frontSign > 0
       ? box.max.z + HANS_SERVICE_FURNITURE_CLEARANCE
@@ -104,10 +137,26 @@ function applyDeskStandoff(object, world, offsetX, offsetZ) {
     world.z = frontSign > 0 ? Math.max(requestedZ, safeFrontZ) : Math.min(requestedZ, safeFrontZ);
   }
 
-  // Box3 can be slightly asymmetric because trim/handles extend one side. Keep
-  // the requested lateral intent relative to the visual desk rather than a stale
-  // hard-coded centre, but never let the target fall back inside its padded hull.
   if (!Number.isFinite(world.x)) world.x = centerX;
+  return true;
+}
+
+function applyCommandChairStandoff(object, world, offsetX) {
+  if (!isCommandChair(object)) return false;
+  const chairBox = objectBounds(object);
+  if (!chairBox) return false;
+
+  // The command chair lives behind the command desk. A naive chair-centre offset
+  // points straight through the desk. Stand beside the combined furniture hull
+  // instead, on the side requested by the chore contract, and work inward.
+  const deskBox = objectBounds(commandDeskInScene(object));
+  const side = Math.sign(Number(offsetX) || 0) || 1;
+  const minX = Math.min(chairBox.min.x, deskBox?.min.x ?? chairBox.min.x);
+  const maxX = Math.max(chairBox.max.x, deskBox?.max.x ?? chairBox.max.x);
+  world.x = side < 0
+    ? minX - HANS_SERVICE_FURNITURE_CLEARANCE
+    : maxX + HANS_SERVICE_FURNITURE_CLEARANCE;
+  world.z = (chairBox.min.z + chairBox.max.z) * 0.5;
   return true;
 }
 
@@ -142,6 +191,8 @@ export function warRoomHansTargetNearObject(object, parent, { offsetX = 0, offse
   if (isWallArmor(object) && Number(offsetX)) {
     applyArmorStandoff(object, world, offsetX);
     world.z += Number(offsetZ) || 0;
+  } else if (applyCommandChairStandoff(object, world, offsetX)) {
+    // Chair geometry is deliberately handled against the neighbouring desk hull.
   } else if (!applyDeskStandoff(object, world, offsetX, offsetZ)) {
     world.x += Number(offsetX) || 0;
     world.z += Number(offsetZ) || 0;

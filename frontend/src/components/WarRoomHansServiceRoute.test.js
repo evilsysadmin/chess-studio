@@ -50,7 +50,7 @@ describe('Hans service routing', () => {
     expect(hans.position.y).toBeCloseTo(groundedY, 6);
   });
 
-  it.each([1, -1])('keeps desk chores outside the padded desk hull on the visible front when room Z orientation is %s', (frontSign) => {
+  it.each([1, -1])('keeps desk chores beside the padded desk hull instead of walking into the board gap when room Z orientation is %s', (frontSign) => {
     const root = new THREE.Group();
     const parent = new THREE.Group();
     const deskArt = new THREE.Group();
@@ -68,14 +68,45 @@ describe('Hans service routing', () => {
     root.updateMatrixWorld(true);
 
     const target = warRoomHansTargetNearObject(deskTop, parent, { offsetX: -1.72, offsetZ: 0.78 });
+    const deskBounds = new THREE.Box3().setFromObject(deskArt);
+    const visibleFrontZ = frontSign > 0 ? deskBounds.max.z : deskBounds.min.z;
 
     expect(target).toBeTruthy();
-    expect(target.x).toBeCloseTo(-1.5 - HANS_SERVICE_FURNITURE_CLEARANCE, 6);
-    expect(target.z).toBeCloseTo(-2 + frontSign * 0.78, 6);
+    expect(target.x).toBeCloseTo(deskBounds.min.x - HANS_SERVICE_FURNITURE_CLEARANCE, 6);
+    expect(target.z).toBeCloseTo(visibleFrontZ, 6);
     expect(Math.sign(target.z - deskArt.position.z)).toBe(frontSign);
-
-    const deskBounds = new THREE.Box3().setFromObject(deskArt);
     expect(target.x).toBeLessThanOrEqual(deskBounds.min.x - HANS_SERVICE_FURNITURE_CLEARANCE + 1e-6);
+  });
+
+  it('approaches the command chair from beside the combined desk/chair hull instead of through the desk', () => {
+    const root = new THREE.Group();
+    const parent = new THREE.Group();
+    const deskArt = new THREE.Group();
+    deskArt.name = 'war-room-teutonic-command-desk-v28';
+    deskArt.position.z = -6.15;
+
+    const deskTop = new THREE.Mesh(new THREE.BoxGeometry(3.12, 1.1, 1.04), new THREE.MeshBasicMaterial());
+    deskTop.name = 'war-room-command-desk-top';
+    deskArt.add(deskTop);
+
+    const chair = new THREE.Mesh(new THREE.BoxGeometry(1.02, 2.2, 0.8), new THREE.MeshBasicMaterial());
+    chair.name = 'war-room-teutonic-command-chair';
+    chair.position.set(0, 1.1, -7.05);
+
+    root.add(parent, deskArt, chair);
+    root.updateMatrixWorld(true);
+
+    const target = warRoomHansTargetNearObject(chair, parent, { offsetX: 0.78, offsetZ: 0.42 });
+    const deskBounds = new THREE.Box3().setFromObject(deskArt);
+    const chairBounds = new THREE.Box3().setFromObject(chair);
+
+    expect(target).toBeTruthy();
+    expect(target.x).toBeCloseTo(
+      Math.max(deskBounds.max.x, chairBounds.max.x) + HANS_SERVICE_FURNITURE_CLEARANCE,
+      6,
+    );
+    expect(target.z).toBeCloseTo((chairBounds.min.z + chairBounds.max.z) * 0.5, 6);
+    expect(target.x).toBeGreaterThanOrEqual(deskBounds.max.x + HANS_SERVICE_FURNITURE_CLEARANCE - 1e-6);
   });
 
   it('mirrors armour standoff toward the room on both side walls', () => {

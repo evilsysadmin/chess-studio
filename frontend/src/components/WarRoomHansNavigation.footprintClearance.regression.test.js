@@ -6,11 +6,15 @@ import {
 } from './WarRoomHansNavigation.js';
 
 const BOARD_SAFE_HALF_EXTENT = 5.10;
-const HANS_VISIBLE_FOOTPRINT_RADIUS = 0.32;
+// The old 0.32u synthetic radius covered Hans' trunk but not the rendered
+// shoulder/arm envelope once the canonical elder body is scaled and animated.
+// Keep enough budget for the visible body instead of validating only his root.
+const HANS_VISIBLE_FOOTPRINT_RADIUS = 0.45;
+const GEOMETRY_EPSILON = 1e-6;
 
 function footprintOutsideBoard(point) {
-  return Math.abs(Number(point?.x || 0)) - HANS_VISIBLE_FOOTPRINT_RADIUS >= BOARD_SAFE_HALF_EXTENT
-    || Math.abs(Number(point?.z || 0)) - HANS_VISIBLE_FOOTPRINT_RADIUS >= BOARD_SAFE_HALF_EXTENT;
+  return Math.abs(Number(point?.x || 0)) - HANS_VISIBLE_FOOTPRINT_RADIUS + GEOMETRY_EPSILON >= BOARD_SAFE_HALF_EXTENT
+    || Math.abs(Number(point?.z || 0)) - HANS_VISIBLE_FOOTPRINT_RADIUS + GEOMETRY_EPSILON >= BOARD_SAFE_HALF_EXTENT;
 }
 
 describe('Hans navigation footprint clearance', () => {
@@ -25,7 +29,7 @@ describe('Hans navigation footprint clearance', () => {
     root.add(parent, floor);
     root.updateMatrixWorld(true);
 
-    expect(WAR_ROOM_HANS_NAVIGATION_CLEAR_LANE_HALF_EXTENT)
+    expect(WAR_ROOM_HANS_NAVIGATION_CLEAR_LANE_HALF_EXTENT + GEOMETRY_EPSILON)
       .toBeGreaterThanOrEqual(BOARD_SAFE_HALF_EXTENT + HANS_VISIBLE_FOOTPRINT_RADIUS);
 
     const loop = warRoomHansSafeRoomLoop(floor, parent);
