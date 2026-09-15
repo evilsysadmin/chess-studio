@@ -17,7 +17,9 @@ describe('complete music catalog audit', () => {
   it('closes every short or missing signature, including hidden scores', () => {
     expect(FINAL_CATALOG_POLISH_IDS).toHaveLength(17);
     const structured = Object.values(AMBIENT_THEMES).filter((theme) => theme.engine === 'structured');
-    expect(structured).toHaveLength(104);
+    // Guard against accidental catalog loss without making legitimate additions
+    // update an unrelated magic number every time the songbook grows.
+    expect(structured.length).toBeGreaterThanOrEqual(106);
     for (const theme of structured) {
       const feel = structuredFeel(theme);
       expect(Object.keys(feel.signature?.motif || {}).length, theme.id).toBeGreaterThanOrEqual(3);
