@@ -57,6 +57,12 @@ def aim_camera(scene):
     cam = scene.camera
     cam.location = (target.x, -78.0, target.z)
     cam.rotation_euler = (target - cam.location).to_track_quat('-Z', 'Y').to_euler()
+    # Blender's ortho_scale is the VERTICAL world span, not the width. The
+    # raster is 1536x480 (aspect 3.2), so a five-cell-high 16.0 world-unit
+    # viewport automatically becomes 51.2 units wide: exactly 16 cells.
+    # Using COLS * WORLD_CELL_X here crushed several authored rows into every
+    # 96px frame even though the final PNG dimensions looked correct.
+    cam.data.ortho_scale = canonical.TOTAL_ROWS * canonical.WORLD_CELL_Z
 
 
 def add_front_fill():
