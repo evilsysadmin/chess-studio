@@ -55,6 +55,23 @@ def elliptic_cyl(name, loc, r, d, y_scale, material, rot=(0, 0, 0), verts=96, be
     return finish(o, material, bevel=bevel)
 
 
+def elliptic_cone(name, loc, r1, r2, d, y_scale, material, rot=(0, 0, 0), verts=112, bevel=.018):
+    """Elliptical tapered crown: narrow at the cap band, broad at the top."""
+    bpy.ops.mesh.primitive_cone_add(
+        vertices=verts,
+        radius1=r1,
+        radius2=r2,
+        depth=d,
+        location=loc,
+        rotation=rot,
+    )
+    o = bpy.context.object
+    o.name = name
+    o.scale = (1.0, y_scale, 1.0)
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    return finish(o, material, bevel=bevel)
+
+
 def cone(name, loc, r1, r2, d, material, rot=(0, 0, 0), bevel=.025):
     bpy.ops.mesh.primitive_cone_add(vertices=72, radius1=r1, radius2=r2, depth=d, location=loc, rotation=rot)
     o = bpy.context.object
@@ -145,7 +162,7 @@ def build_rig():
 
     bone('root', (0, 0, 0), (0, 0, .38))
     bone('spine', (0, 0, .58), (0, 0, 1.36), 'root')
-    bone('head', (0, 0, 1.20), (0, 0, 2.03), 'spine')
+    bone('head', (0, 0, 1.20), (0, 0, 2.05), 'spine')
     bone('upper_arm.L', (-.27, .04, 1.08), (-.38, .05, .96), 'spine')
     bone('forearm.L', (-.38, .05, .96), (-.32, -.04, .84), 'upper_arm.L')
     bone('upper_arm.R', (.27, .04, 1.08), (.38, .05, .96), 'spine')
@@ -172,7 +189,7 @@ def build_character():
     paper = mat('paper', (.67, .58, .43), .88)
 
     rig = build_rig()
-    rig['matthias_asset_version'] = 'home-blender-classic-v9f'
+    rig['matthias_asset_version'] = 'home-blender-classic-v9g'
     rig['canonical_identity'] = 'stern-no-moustache-pawn'
     rig['canonical_reference'] = 'classic-pawn-first-avatar'
     rig['canonical_pose_language'] = 'permanently-stern'
@@ -212,20 +229,22 @@ def build_character():
 
     head += [
         sphere('Head', (0, -.010, 1.470), (.340, .315, .315), ivory, 92),
-        sphere('Eye.L', (-.108, -.322, 1.525), (.028, .008, .044), black, 28),
-        sphere('Eye.R', (.108, -.322, 1.525), (.028, .008, .044), black, 28),
-        box('Brow.L', (-.110, -.340, 1.610), (.088, .009, .020), black, (0, math.radians(30), 0), .004),
-        box('Brow.R', (.110, -.340, 1.610), (.088, .009, .020), black, (0, math.radians(-30), 0), .004),
-        box('Mouth.L', (-.034, -.324, 1.380), (.042, .004, .005), black, (0, math.radians(-18), 0), .002),
-        box('Mouth.R', (.034, -.324, 1.380), (.042, .004, .005), black, (0, math.radians(18), 0), .002),
-        elliptic_cyl('Classic cap crown', (0, .025, 1.765), .370, .210, .79, navy, (math.radians(-4), 0, 0), 112, .024),
-        elliptic_cyl('Classic cap top', (0, .075, 1.885), .425, .050, .78, navy, (math.radians(-7), 0, 0), 116, .016),
-        elliptic_cyl('Classic cap band', (0, -.005, 1.645), .344, .082, .84, cap_red, (math.radians(-2), 0, 0), 108, .010),
-        elliptic_cyl('Classic cap brass line', (0, -.010, 1.602), .341, .013, .84, brass, (math.radians(-2), 0, 0), 108, .003),
-        box('Classic cap visor', (0, -.325, 1.592), (.230, .118, .021), leather, (math.radians(12), 0, 0), .012),
-        sphere('Classic cap badge', (0, -.324, 1.730), (.040, .010, .050), brass, 28),
-        box('Classic cap badge wing.L', (-.063, -.320, 1.735), (.046, .006, .013), brass, (0, math.radians(-12), math.radians(12)), .003),
-        box('Classic cap badge wing.R', (.063, -.320, 1.735), (.046, .006, .013), brass, (0, math.radians(12), math.radians(-12)), .003),
+        sphere('Eye.L', (-.108, -.322, 1.525), (.029, .008, .045), black, 28),
+        sphere('Eye.R', (.108, -.322, 1.525), (.029, .008, .045), black, 28),
+        box('Brow.L', (-.110, -.340, 1.610), (.090, .009, .021), black, (0, math.radians(30), 0), .004),
+        box('Brow.R', (.110, -.340, 1.610), (.090, .009, .021), black, (0, math.radians(-30), 0), .004),
+        box('Mouth.L', (-.034, -.324, 1.380), (.043, .004, .005), black, (0, math.radians(-18), 0), .002),
+        box('Mouth.R', (.034, -.324, 1.380), (.043, .004, .005), black, (0, math.radians(18), 0), .002),
+        # Reference-faithful peaked cap: tapered crown broadens upward and the
+        # flat top overhangs it. The visor sits above the brows, not across them.
+        elliptic_cone('Classic cap crown', (0, .030, 1.815), .338, .405, .180, .80, navy, (math.radians(-4), 0, 0), 116, .022),
+        elliptic_cyl('Classic cap top', (0, .075, 1.920), .450, .050, .78, navy, (math.radians(-7), 0, 0), 120, .016),
+        elliptic_cyl('Classic cap band', (0, -.002, 1.700), .344, .082, .84, cap_red, (math.radians(-2), 0, 0), 108, .010),
+        elliptic_cyl('Classic cap brass line', (0, -.008, 1.657), .341, .013, .84, brass, (math.radians(-2), 0, 0), 108, .003),
+        box('Classic cap visor', (0, -.326, 1.675), (.232, .118, .020), leather, (math.radians(11), 0, 0), .012),
+        sphere('Classic cap badge', (0, -.330, 1.790), (.042, .010, .052), brass, 28),
+        box('Classic cap badge wing.L', (-.066, -.326, 1.796), (.048, .006, .014), brass, (0, math.radians(-12), math.radians(12)), .003),
+        box('Classic cap badge wing.R', (.066, -.326, 1.796), (.048, .006, .014), brass, (0, math.radians(12), math.radians(-12)), .003),
     ]
 
     shoulder_l = (-.260, .185, 1.045); elbow_l = (-.305, .198, .930); wrist_l = (-.263, .182, .825)
