@@ -4,7 +4,6 @@ on:
   pull_request:
     paths:
       - 'scripts/blender/build_pawn_slug_pows_v2.py'
-      - '.github/actions/setup-blender-canonical/**'
       - '.github/workflows/pawn-slug-pow-blender-art.yml'
   workflow_dispatch:
 

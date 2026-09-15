@@ -5,7 +5,6 @@ on:
     paths:
       - 'scripts/blender/build_chronicles_tactics_party.py'
       - 'scripts/blender/render_chronicles_party_preview.py'
-      - '.github/actions/setup-blender-canonical/**'
       - '.github/workflows/chronicles-party-blender-art.yml'
   workflow_dispatch:
 

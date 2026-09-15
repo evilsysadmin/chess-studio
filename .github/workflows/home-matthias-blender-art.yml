@@ -8,7 +8,6 @@ on:
       - 'scripts/blender/home_matthias_animations.py'
       # Generated .blend/.glb outputs are intentionally omitted so materializing
       # canonical art cannot retrigger the expensive source render by itself.
-      - '.github/actions/setup-blender-canonical/**'
       - '.github/workflows/home-matthias-blender-art.yml'
   workflow_dispatch:
 
