@@ -74,6 +74,76 @@
   line-height: 1.35;
 }
 
+/* Las acciones son órdenes dentro del expediente, no otro mosaico de botones. */
+.career-screen .career-action-grid {
+  grid-template-columns: 1fr;
+  gap: 1px;
+  overflow: hidden;
+  border-block: 1px solid rgba(198, 164, 93, .18);
+  background: rgba(198, 164, 93, .12);
+}
+
+.career-screen .career-action-grid > .career-action {
+  position: relative;
+  min-width: 0;
+  min-height: 64px;
+  margin: 0;
+  padding: .72rem 2.25rem .72rem .82rem;
+  border: 0;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--ink-2) 97%, var(--brass) 3%);
+  box-shadow: none;
+  transform: none;
+}
+
+.career-screen .career-action-grid > .career-action::after {
+  content: '›';
+  position: absolute;
+  right: .86rem;
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--brass-dim);
+  font: 400 1.35rem/1 var(--font-display);
+  opacity: .72;
+}
+
+.career-screen .career-action-grid > .career-action b {
+  color: var(--parchment);
+  font-size: .9rem;
+  line-height: 1.2;
+}
+
+.career-screen .career-action-grid > .career-action span {
+  color: var(--parchment-dim);
+  opacity: 1;
+  font-size: .76rem;
+  line-height: 1.4;
+}
+
+.career-screen .career-action-grid > .career-action:hover,
+.career-screen .career-action-grid > .career-action:focus-visible {
+  background: color-mix(in srgb, var(--ink-2) 92%, var(--brass) 8%);
+  outline: 0;
+}
+
+.career-screen .career-action-grid > .career-action:hover::after,
+.career-screen .career-action-grid > .career-action:focus-visible::after {
+  color: var(--brass);
+  opacity: 1;
+}
+
+.career-screen .career-action-grid > .career-action.danger {
+  border-left: 2px solid color-mix(in srgb, var(--danger) 58%, transparent);
+  background: color-mix(in srgb, var(--ink-2) 96%, var(--danger) 4%);
+  box-shadow: none;
+}
+
+.career-screen .career-action-grid > .career-action.active {
+  border-color: transparent;
+  border-left: 2px solid var(--brass);
+  background: color-mix(in srgb, var(--ink-2) 92%, var(--brass) 8%);
+}
+
 /* Mi progreso usa un índice de expediente, no una botonera de dashboard. */
 .career-screen .career-section-nav {
   display: flex;
@@ -124,6 +194,11 @@
 
   .career-screen .career-mini-grid > span {
     padding: .62rem .68rem;
+  }
+
+  .career-screen .career-action-grid > .career-action {
+    min-height: 60px;
+    padding: .66rem 2rem .66rem .72rem;
   }
 }
 
