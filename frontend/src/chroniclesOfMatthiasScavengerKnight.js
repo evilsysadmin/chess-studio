@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 function mat(color, options = {}) {
-  return new THREE.MeshPhysicalMaterial({
+  const material = new THREE.MeshPhysicalMaterial({
     color,
     metalness: options.metalness ?? 0.08,
     roughness: options.roughness ?? 0.58,
@@ -10,6 +10,8 @@ function mat(color, options = {}) {
     emissive: options.emissive ?? 0x000000,
     emissiveIntensity: options.emissiveIntensity ?? 0,
   });
+  material.userData.chroniclesOwnedMaterial = true;
+  return material;
 }
 
 function add(group, geometry, material, position = [0, 0, 0], rotation = [0, 0, 0], scale = null, name = '') {
@@ -51,10 +53,17 @@ export function buildScavengerKnight({ coarsePointer = false } = {}) {
   add(neck, new THREE.ConeGeometry(0.075, 0.34, 8), bone, [-0.17, 1.29, 0.13], [0.2, 0, 0.08], null, 'scavenger-knight-ear-left');
   add(neck, new THREE.ConeGeometry(0.075, 0.34, 8), bone, [0.17, 1.29, 0.13], [0.2, 0, -0.08], null, 'scavenger-knight-ear-right');
   add(neck, new THREE.SphereGeometry(0.052, 10, 8), glow, [0.135, 1.03, 0.505], [0, 0, 0], [1.15, 0.58, 0.42], 'scavenger-knight-amber-eye');
+  add(neck, new THREE.SphereGeometry(0.052, 10, 8), glow, [-0.135, 1.03, 0.505], [0, 0, 0], [1.15, 0.58, 0.42], 'scavenger-knight-amber-eye-left');
+  add(neck, new THREE.ConeGeometry(0.07, 0.34, 8), iron, [0, 0.79, 0.67], [Math.PI / 2, 0, 0], null, 'scavenger-knight-muzzle-spike');
 
   add(root, new THREE.BoxGeometry(0.42, 0.5, 0.24), leather, [-0.44, 0.62, -0.02], [0, -0.12, 0.04], null, 'scavenger-knight-loot-satchel');
   add(root, new THREE.BoxGeometry(0.28, 0.38, 0.18), leather, [0.43, 0.56, -0.06], [0, 0.18, -0.03], null, 'scavenger-knight-scrap-pouch');
   add(root, new THREE.BoxGeometry(0.07, 0.64, 0.05), rust, [0.33, 0.72, 0.2], [0, 0, -0.45], null, 'scavenger-knight-broken-lance');
+  add(root, new THREE.BoxGeometry(0.48, 0.42, 0.08), iron, [0, 0.64, 0.3], [0.04, 0, 0], null, 'scavenger-knight-scrap-chest');
+  add(root, new THREE.BoxGeometry(0.34, 0.12, 0.18), rust, [-0.34, 0.79, 0.14], [0.03, 0.18, -0.22], null, 'scavenger-knight-pauldron-left');
+  add(root, new THREE.BoxGeometry(0.34, 0.12, 0.18), rust, [0.34, 0.79, 0.14], [0.03, -0.18, 0.22], null, 'scavenger-knight-pauldron-right');
+  add(root, new THREE.BoxGeometry(0.055, 0.62, 0.035), leather, [-0.14, 0.67, 0.35], [0, 0, -0.52], null, 'scavenger-knight-chest-strap-left');
+  add(root, new THREE.BoxGeometry(0.055, 0.62, 0.035), leather, [0.14, 0.67, 0.35], [0, 0, 0.52], null, 'scavenger-knight-chest-strap-right');
 
   const trophyCount = coarsePointer ? 1 : 3;
   for (let i = 0; i < trophyCount; i += 1) {
@@ -68,7 +77,8 @@ export function buildScavengerKnight({ coarsePointer = false } = {}) {
 
   root.userData.chroniclesGlowMaterials = [glow];
   root.userData.chroniclesBaseGlow = 2.15;
-  root.userData.chroniclesSilhouette = 'scavenger-knight-loot-horse';
+  root.userData.chroniclesSilhouette = 'scavenger-knight-armored-loot-horse-v2';
+  root.userData.chroniclesArtTier = 'premium-threat-v2';
   root.userData.chroniclesEnemyId = 'scavenger-knight';
   return root;
 }
