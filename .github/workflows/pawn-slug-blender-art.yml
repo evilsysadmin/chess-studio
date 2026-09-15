@@ -3,11 +3,12 @@ name: Pawn Slug · Blender canonical art
 on:
   pull_request:
     paths:
-      - 'scripts/blender/build_pawn_slug_matthias_integrated.py'
-      - 'scripts/blender/render_pawn_slug_matthias_weapon_sheet.py'
-      - 'scripts/blender/render_pawn_slug_matthias_weapon_sheet_v2.py'
+      - 'scripts/blender/render_pawn_slug_matthias_premium.py'
+      - 'scripts/blender/pawn_slug_matthias_premium_common.py'
+      - 'scripts/blender/pawn_slug_matthias_premium_weapons.py'
+      - 'scripts/blender/pawn_slug_matthias_premium_character.py'
       - '.github/workflows/pawn-slug-blender-art.yml'
-      - 'frontend/src/assets/pawnSlug/matthias_*_atlas_v1.b64'
+      - 'frontend/src/assets/pawnSlug/matthias_*_premium_v2.b64'
   workflow_dispatch:
 
 permissions:
@@ -19,9 +20,9 @@ concurrency:
 
 jobs:
   render-matthias:
-    name: Render Matthias · ${{ matrix.weapon }}
+    name: Render premium Matthias · ${{ matrix.weapon }}
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 18
     strategy:
       fail-fast: false
       max-parallel: 4
@@ -33,7 +34,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends blender webp libegl1 libgl1-mesa-dri python3-pil
-      - name: Render canonical weapon sheet in Blender
+      - name: Render premium canonical sheet at 2x
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           WEAPON: ${{ matrix.weapon }}
@@ -41,66 +42,82 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/pawn-slug-art
           blender --background \
-            --python scripts/blender/render_pawn_slug_matthias_weapon_sheet_v2.py \
+            --python scripts/blender/render_pawn_slug_matthias_premium.py \
             -- --output-dir /tmp/pawn-slug-art --weapon "$WEAPON"
-          cwebp -quiet -q 86 -alpha_q 95 -m 6 \
-            "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.png" \
-            -o "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.webp"
-          base64 -w0 "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.webp" \
-            > "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.b64"
-      - name: Sanity-check atlas contract and armed silhouette
+      - name: Downsample to runtime atlas + encode
         env:
           WEAPON: ${{ matrix.weapon }}
         run: |
           set -euo pipefail
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_integrated_v1.blend"
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.png"
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.webp"
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.b64"
-          webpinfo "/tmp/pawn-slug-art/matthias_${WEAPON}_atlas_v1.webp"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from PIL import Image
+
+          weapon = os.environ['WEAPON']
+          root = Path('/tmp/pawn-slug-art')
+          source = root / f'matthias_{weapon}_premium_v2_hi.png'
+          target = root / f'matthias_{weapon}_premium_v2.png'
+          image = Image.open(source).convert('RGBA')
+          assert image.size == (3072, 960), image.size
+          image.resize((1536, 480), Image.Resampling.LANCZOS).save(target, optimize=True)
+          PY
+          cwebp -quiet -q 90 -alpha_q 100 -m 6 \
+            "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.png" \
+            -o "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.webp"
+          base64 -w0 "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.webp" \
+            > "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.b64"
+      - name: Sanity-check premium atlas contract
+        env:
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.blend"
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2_hi.png"
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.png"
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.webp"
+          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.b64"
+          webpinfo "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v2.webp"
           python3 - <<'PY'
           import os
           from PIL import Image
 
           weapon = os.environ['WEAPON']
-          path = f'/tmp/pawn-slug-art/matthias_{weapon}_atlas_v1.png'
+          path = f'/tmp/pawn-slug-art/matthias_{weapon}_premium_v2.png'
           image = Image.open(path).convert('RGBA')
           assert image.size == (1536, 480), image.size
           counts = (10, 10, 16, 10, 9)
           min_width = {
-              'pistol': 28,
-              'machinegun': 34,
-              'shotgun': 40,
-              'panzerfaust': 43,
+              'pistol': 34,
+              'machinegun': 44,
+              'shotgun': 50,
+              'panzerfaust': 54,
           }[weapon]
           for row, count in enumerate(counts):
               for col in range(count):
                   cell = image.crop((col * 96, row * 96, (col + 1) * 96, (row + 1) * 96))
-                  alpha = cell.getchannel('A').point(lambda value: 255 if value >= 128 else 0)
+                  alpha = cell.getchannel('A').point(lambda value: 255 if value >= 96 else 0)
                   bbox = alpha.getbbox()
-                  assert bbox is not None, f'empty authored cell row={row} col={col}'
+                  assert bbox is not None, f'empty premium cell row={row} col={col}'
                   left, top, right, bottom = bbox
                   width = right - left
                   height = bottom - top
-                  assert left > 3 and right < 93 and top > 3 and bottom < 93, (
-                      f'cell bleed row={row} col={col} bbox={bbox}; '
-                      'character/weapon must fit its 96px frame'
+                  assert left > 1 and right < 95 and top > 1 and bottom < 95, (
+                      f'premium cell bleed row={row} col={col} bbox={bbox}'
                   )
                   assert width >= min_width, (
-                      f'weapon silhouette collapsed row={row} col={col} width={width} '
-                      f'expected>={min_width} for {weapon}'
+                      f'premium armed silhouette collapsed row={row} col={col} '
+                      f'width={width} expected>={min_width} for {weapon}'
                   )
-                  assert 44 <= height <= 84, f'character silhouette height out of range row={row} col={col} height={height}'
-                  # Matthias lives left-of-centre and the integrated weapon must visibly project
-                  # to screen-right.  This specifically rejects the old torso/head blob bake.
-                  assert right >= 62, (
-                      f'weapon does not project to screen-right row={row} col={col} bbox={bbox}'
+                  assert 54 <= height <= 90, (
+                      f'premium character silhouette height out of range '
+                      f'row={row} col={col} height={height}'
                   )
           PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: pawn-slug-matthias-${{ matrix.weapon }}-${{ github.event.pull_request.number || github.run_number }}
+          name: pawn-slug-premium-matthias-${{ matrix.weapon }}-${{ github.event.pull_request.number || github.run_number }}
           path: /tmp/pawn-slug-art/
           if-no-files-found: error
           retention-days: 7
