@@ -43,6 +43,19 @@ describe('Chronicles of Matthias 3D cast art', () => {
     expect(morcilla.getObjectByName('morcilla-pack-strap-right')).toBeTruthy();
   });
 
+  it('gives fabric and leather a restrained physical sheen instead of plastic gloss', () => {
+    const matthias = buildChroniclesCharacter('matthias');
+    const hildegard = buildChroniclesCharacter('rook');
+    const aziz = buildChroniclesCharacter('bishop');
+    const morcilla = buildChroniclesCharacter('knight');
+
+    expect(matthias.getObjectByName('matthias-expedition-coat').material.sheen).toBeGreaterThan(0.05);
+    expect(hildegard.getObjectByName('hildegard-guard-body').material.sheen).toBeGreaterThan(0.05);
+    expect(aziz.getObjectByName('aziz-bishop-robe').material.sheen).toBeGreaterThan(0.05);
+    expect(morcilla.getObjectByName('morcilla-pack-left').material.sheen).toBeGreaterThan(0.05);
+    expect(matthias.getObjectByName('matthias-coat-button-0').material.metalness).toBeGreaterThan(0.7);
+  });
+
   it('turns the corrupted pawn into a readable enemy asset instead of a generic pawn primitive', () => {
     const enemy = buildCorruptedPawn();
 
@@ -51,6 +64,7 @@ describe('Chronicles of Matthias 3D cast art', () => {
     expect(enemy.getObjectByName('corrupted-pawn-eye-left')).toBeTruthy();
     expect(enemy.getObjectByName('corrupted-pawn-broken-collar')).toBeTruthy();
     expect(enemy.getObjectByName('corrupted-pawn-pauldron-left')).toBeTruthy();
+    expect(enemy.getObjectByName('corrupted-pawn-neck-fissure')).toBeTruthy();
     expect(enemy.getObjectByName('corrupted-pawn-jaw-guard')).toBeTruthy();
     expect(enemy.userData.chroniclesGlowMaterials).toHaveLength(1);
     expect(enemy.userData.chroniclesGlowMaterials[0].emissiveIntensity).toBeGreaterThan(1);
@@ -66,7 +80,9 @@ describe('Chronicles of Matthias 3D cast art', () => {
     expect(jailer.getObjectByName('gate-jailer-fissure-main')).toBeTruthy();
     expect(jailer.getObjectByName('gate-jailer-portcullis')).toBeTruthy();
     expect(jailer.getObjectByName('gate-jailer-lock-plate')).toBeTruthy();
-    expect(jailer.getObjectByName('gate-jailer-core-glow')).toBeTruthy();
+    expect(jailer.getObjectByName('gate-jailer-keyhole')).toBeTruthy();
+    expect(jailer.getObjectByName('gate-jailer-core')).toBeTruthy();
+    expect(jailer.getObjectByName('gate-jailer-chain-anchor-1')).toBeTruthy();
     expect(jailer.userData.chroniclesGlowMaterials[0].emissiveIntensity).toBeGreaterThan(2);
   });
 
