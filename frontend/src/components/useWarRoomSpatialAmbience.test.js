@@ -29,14 +29,21 @@ describe('War Room spatial ambience', () => {
     expect(rainyNight.rareEventMaxMs).toBeGreaterThan(rainyNight.rareEventMinMs);
   });
 
-  it('uses the projected window hitbox instead of a fixed screen hot zone', () => {
+  it('requires a deliberate pointer hover inside a sane projected window hitbox', () => {
     const rect = { left: 100, top: 50, width: 1000, height: 800 };
     const hitbox = '0.7200,0.1200,0.8800,0.6200';
 
     expect(warRoomWeatherPointInHitbox({ clientX: 900, clientY: 300, rect, hitbox })).toBe(true);
+    expect(warRoomWeatherPointInHitbox({ clientX: 825, clientY: 300, rect, hitbox })).toBe(false);
     expect(warRoomWeatherPointInHitbox({ clientX: 620, clientY: 300, rect, hitbox })).toBe(false);
     expect(warRoomWeatherPointInHitbox({ clientX: 900, clientY: 700, rect, hitbox })).toBe(false);
     expect(warRoomWeatherPointInHitbox({ clientX: 900, clientY: 300, rect, hitbox: '' })).toBe(false);
+    expect(warRoomWeatherPointInHitbox({
+      clientX: 900,
+      clientY: 300,
+      rect,
+      hitbox: '0.0500,0.0500,0.9500,0.9500',
+    })).toBe(false);
   });
 
   it('lets either global FX mute or the dedicated room mute silence only this ambience hook', () => {

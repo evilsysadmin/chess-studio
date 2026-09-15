@@ -9,7 +9,7 @@ import {
 } from '../warRoomAmbiencePreferences.js';
 import { resolveWarRoomLocalAtmosphere } from './WarRoomLocalAtmosphere.js';
 
-export const WAR_ROOM_SPATIAL_AMBIENCE_VERSION = 'war-room-spatial-ambience-v5-window-only';
+export const WAR_ROOM_SPATIAL_AMBIENCE_VERSION = 'war-room-spatial-ambience-v6-hard-window-gate';
 export const WAR_ROOM_WEATHER_IDLE_GAIN = 0;
 export const WAR_ROOM_WEATHER_WINDOW_HOVER_GAIN = 1;
 
@@ -44,7 +44,19 @@ export function warRoomWeatherPointInHitbox({ clientX, clientY, rect, hitbox }) 
   const y = (Number(clientY) - Number(rect.top || 0)) / height;
   if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
   const [minX, minY, maxX, maxY] = values;
-  return x >= minX && x <= maxX && y >= minY && y <= maxY;
+  const spanX = maxX - minX;
+  const spanY = maxY - minY;
+  if (!(spanX > 0) || !(spanY > 0) || spanX > 0.34 || spanY > 0.72) return false;
+
+  // Require the pointer to be comfortably inside the projected pane instead of
+  // merely grazing the decorative frame. This also rejects a corrupted/oversized
+  // projection that could otherwise make weather sound active across the board.
+  const insetX = spanX * 0.08;
+  const insetY = spanY * 0.04;
+  return x >= minX + insetX
+    && x <= maxX - insetX
+    && y >= minY + insetY
+    && y <= maxY - insetY;
 }
 
 function makeNoiseBuffer(context, seconds = 2.4) {
@@ -125,8 +137,13 @@ function setWeatherPresence(context, weatherBus, active) {
   const gain = weatherBus?.gain;
   if (!gain) return;
   if (typeof gain.cancelScheduledValues === 'function') gain.cancelScheduledValues(now);
+  if (!active) {
+    if (typeof gain.setValueAtTime === 'function') gain.setValueAtTime(WAR_ROOM_WEATHER_IDLE_GAIN, now);
+    else gain.value = WAR_ROOM_WEATHER_IDLE_GAIN;
+    return;
+  }
   if (typeof gain.setTargetAtTime === 'function') {
-    gain.setTargetAtTime(target, now, active ? 0.08 : 0.16);
+    gain.setTargetAtTime(target, now, 0.08);
     return;
   }
   gain.value = target;
@@ -150,8 +167,7 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
   master.gain.value = 1;
   master.connect(context.destination);
   const weatherBus = context.createGain();
-  weatherBus.gain.value = warRoomWeatherGainForWindowHover(false);
-  weatherBus.connect(master);
+  weatherBus.gain.value = WAR_ROOM_WEATHER_IDLE_GAIN;
 
   const noiseBuffer = makeNoiseBuffer(context);
   const loops = [
@@ -188,10 +204,19 @@ export function startWarRoomSpatialAmbience({ context, atmosphere = resolveWarRo
   let disposed = false;
   let rareTimer = 0;
   let weatherWindowHovered = false;
+  let weatherBusConnected = false;
   const applyWeatherWindowHover = (active) => {
     if (disposed || weatherWindowHovered === active) return;
     weatherWindowHovered = active;
+    if (active && !weatherBusConnected) {
+      weatherBus.connect(master);
+      weatherBusConnected = true;
+    }
     setWeatherPresence(context, weatherBus, active);
+    if (!active && weatherBusConnected) {
+      try { weatherBus.disconnect(); } catch { /* already disconnected */ }
+      weatherBusConnected = false;
+    }
   };
   const handlePointerMove = (event) => {
     if (event?.pointerType && event.pointerType !== 'mouse') {
