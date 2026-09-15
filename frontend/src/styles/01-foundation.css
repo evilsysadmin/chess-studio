@@ -467,62 +467,10 @@ button.status-chip:hover { border-color: var(--brass-dim); }
 .menu-grid-3 { grid-template-columns: repeat(3, 1fr); }
 .menu-grid-4 { grid-template-columns: repeat(4, 1fr); }
 
-.menu-card {
-  background: var(--ink-2);
-  border: 1px solid var(--ink-3);
-  border-left: 3px solid var(--ink-3);
-  border-radius: 10px;
-  padding: 1.1rem;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.4rem;
-  text-align: left;
-  font-family: var(--font-body);
-  color: var(--parchment);
-  transition: border-color 0.15s ease, transform 0.15s ease;
-}
-
-.menu-card:not(:disabled):hover {
-  border-color: var(--brass-dim);
-  transform: translateY(-2px);
-}
-
-.menu-card.accent-brass:not(:disabled):hover { border-left-color: var(--brass); }
-.menu-card.accent-danger:not(:disabled):hover { border-left-color: var(--danger); }
-.menu-card.accent-success:not(:disabled):hover { border-left-color: var(--success); }
-.menu-card.accent-hint:not(:disabled):hover { border-left-color: var(--hint); }
-
-.menu-card.accent-brass .menu-card-icon { color: var(--brass); }
-.menu-card.accent-danger .menu-card-icon { color: var(--danger); }
-.menu-card.accent-success .menu-card-icon { color: var(--success); }
-.menu-card.accent-hint .menu-card-icon { color: var(--hint); }
-
-.menu-card:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
 .menu-card-icon {
   width: 26px;
   height: 26px;
   color: var(--brass);
-}
-
-.menu-card h3 {
-  font-family: var(--font-display);
-  font-style: italic;
-  font-size: 1rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.menu-card p {
-  font-size: 0.78rem;
-  color: var(--parchment-dim);
-  line-height: 1.4;
-  margin: 0;
-  flex: 1;
 }
 
 .menu-card-cta {
@@ -911,4 +859,3 @@ button.status-chip:hover { border-color: var(--brass-dim); }
   font-size: 0.85rem;
   margin: 0;
 }
-
