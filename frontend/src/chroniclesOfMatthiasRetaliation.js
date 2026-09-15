@@ -1,4 +1,4 @@
-import { CHRONICLES_ENEMIES } from './chroniclesOfMatthias.js';
+import { chroniclesMapForState } from './chronicles/chroniclesMapCatalog.js';
 
 export function chroniclesRetaliationCue(previousState, nextState) {
   if (!previousState || !nextState) return null;
@@ -12,7 +12,7 @@ export function chroniclesRetaliationCue(previousState, nextState) {
   if (!damagedMember) return null;
 
   const previousMember = previousParty.find((member) => member.id === damagedMember.id);
-  const enemy = CHRONICLES_ENEMIES.find((candidate) => {
+  const enemy = chroniclesMapForState(previousState).enemies.find((candidate) => {
     const previousHp = Number(previousState[candidate.hpKey] || 0);
     const nextHp = Number(nextState[candidate.hpKey] || 0);
     return nextHp > 0 && nextHp < previousHp;
