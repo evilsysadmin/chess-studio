@@ -9,6 +9,7 @@ import { CHRONICLES_TACTICS_WORLD } from './chroniclesOfMatthiasTactics.js';
 import { buildChroniclesCharacter, buildCorruptedPawn, buildGateJailer } from './chroniclesOfMatthiasArt.js';
 import { buildScavengerKnight } from './chroniclesOfMatthiasScavengerKnight.js';
 import { buildSpectralBishop } from './chroniclesOfMatthiasSpectralBishop.js';
+import { installChroniclesCanonicalMatthias } from './chroniclesOfMatthiasBlenderArt.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
 
 const CELL = 2.45;
@@ -403,7 +404,7 @@ function buildTorches(scene, { coarsePointer }) {
   return torches;
 }
 
-function buildParty(scene, { coarsePointer }) {
+function buildParty(scene, { coarsePointer, reducedMotion }) {
   const root = new THREE.Group();
   root.name = 'chronicles-isometric-party';
   scene.add(root);
@@ -416,6 +417,7 @@ function buildParty(scene, { coarsePointer }) {
     model.scale.setScalar(config.scale);
     model.rotation.y = CHRONICLES_ISO_PARTY_FACING;
     root.add(model);
+    if (id === 'matthias') installChroniclesCanonicalMatthias(model, { coarsePointer, reducedMotion });
     models.set(id, model);
   });
 
@@ -520,6 +522,12 @@ function descriptorForObject(object) {
 }
 
 function disposeScene(root) {
+  const artCancels = new Set();
+  root.traverse?.((node) => {
+    if (node.userData?.chroniclesArtCancel) artCancels.add(node.userData.chroniclesArtCancel);
+  });
+  artCancels.forEach((cancel) => cancel());
+
   const geometries = new Set();
   const materials = new Set();
   root.traverse?.((node) => {
@@ -587,7 +595,7 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
   const dungeon = buildIsoDungeon({ coarsePointer: coarse });
   scene.add(dungeon.root);
   const torches = buildTorches(scene, { coarsePointer: coarse });
-  const party = buildParty(scene, { coarsePointer: coarse });
+  const party = buildParty(scene, { coarsePointer: coarse, reducedMotion });
   const enemies = buildEnemies(scene, { coarsePointer: coarse });
   const interactionMarkers = buildInteractionMarkers(scene, { coarsePointer: coarse });
 
@@ -749,6 +757,7 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
 
       party.models.forEach((model, id) => {
         if (!model.visible) return;
+        model.userData.chroniclesArtTick?.(time);
         model.rotation.y = CHRONICLES_ISO_PARTY_FACING + Math.sin(time * 0.55 + id.length) * 0.025;
         const hpRatio = model.userData.chroniclesIsoHpRatio ?? 1;
         model.position.y = Math.sin(time * 0.8 + id.length) * 0.006 - (1 - hpRatio) * 0.025;
