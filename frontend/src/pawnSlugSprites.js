@@ -45,7 +45,11 @@ export const PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT = Object.freeze({
 });
 
 export function applyPawnSlugMatthiasPrimaryAspect(sprite) {
-  if (!sprite || sprite.userData?.atlas?.source !== 'primary') return false;
+  if (
+    !sprite
+    || sprite.userData?.pawnSlugIntegratedWeapons
+    || sprite.userData?.atlas?.source !== 'primary'
+  ) return false;
   sprite.scale.y *= PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT.scaleY;
   sprite.userData.pawnSlugPrimaryAspectScaleY = PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT.scaleY;
   return true;
@@ -73,7 +77,7 @@ export function createWeaponSprite(kind = 'pistol') {
 }
 
 export function createMatthiasSlugSprite() {
-  return createIntegratedMatthiasSlugSprite([1.77, 2.56]);
+  return createIntegratedMatthiasSlugSprite();
 }
 
 export function animateMatthiasSlugSprite(sprite, state = {}) {
@@ -97,8 +101,8 @@ export function animatePanzerRookSprite(sprite, time = 0, state = {}) {
   if (!sprite) return;
 
   const hurt = Boolean(state.hurt);
-  if (hurt && !sprite.userData.pawnSlugBossWasHurt) playPawnSlugEnemyImpactSfx('boss');
-  sprite.userData.pawnSlugBossWasHurt = hurt;
+  if (hurt && !sprite.userData.pawnSlugWasHurt) playPawnSlugEnemyImpactSfx('boss');
+  sprite.userData.pawnSlugWasHurt = hurt;
 
   const safeTime = Number(time) || 0;
   if (!Number.isFinite(sprite.userData.panzerRookEntryStartedAt)) {
