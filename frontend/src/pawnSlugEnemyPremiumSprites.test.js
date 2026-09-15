@@ -7,6 +7,7 @@ import {
 import {
   clonePawnSlugPremiumEnemyTexture,
   pawnSlugPremiumEnemyFallbackWindow,
+  pawnSlugPremiumEnemyRenderStatus,
   reassertPawnSlugPremiumEnemyTexture,
 } from './pawnSlugEnemyPremiumSprites.js';
 import {
@@ -24,12 +25,13 @@ function fakeTexture() {
 }
 
 describe('Pawn Slug premium enemy runtime integration', () => {
-  it('prefers authored premium art while retaining generated actions as the visible safety net', () => {
+  it('prefers authored premium art while retaining generated actions only as a visible safety net', () => {
     expect(PAWN_SLUG_ENEMY_RUN_META.primaryVisualSource).toBe('premium-raster');
     expect(PAWN_SLUG_ENEMY_RUN_META.fallbackVisualSource).toBe('premium-static-raster');
     expect(PAWN_SLUG_ENEMY_RUN_META.proceduralRole).toBe('known-good-safety-net');
     expect(PAWN_SLUG_ENEMY_RUN_META.visualEvidencePolicy).toBe('premium-alpha-readback-before-replacing-generated-actions');
-    expect(PAWN_SLUG_ENEMY_RUN_META.browserFallbackAlias).toBe('generated-actions -> premium-fallback');
+    expect(PAWN_SLUG_ENEMY_RUN_META.browserPremiumContract).toBe('verified-authored-only');
+    expect(PAWN_SLUG_ENEMY_RUN_META.browserFallbackAlias).toBeNull();
     expect(PAWN_SLUG_ENEMY_RUN_META.lateFallbackOverwriteProtection).toBe(true);
     expect(PAWN_SLUG_ENEMY_RUN_META.sourceDecodePolicy).toBe('shared-once-per-page-cloned-per-enemy');
     expect(PAWN_SLUG_ENEMY_RUN_META.sharedDecodedSourceCount).toBe(2);
@@ -59,6 +61,19 @@ describe('Pawn Slug premium enemy runtime integration', () => {
       frameHeight: 128,
     });
     expect(PAWN_SLUG_SPRITE_META.enemies.runAtlas.primaryVisualSource).toBe('premium-raster');
+  });
+
+  it('never reports generated actions as authored premium art', () => {
+    const sprite = {
+      userData: {
+        pawnSlugEnemyReadability: true,
+        atlas: { source: 'generated-actions' },
+      },
+      material: { visible: true, map: {} },
+      parent: {},
+    };
+
+    expect(pawnSlugPremiumEnemyRenderStatus(sprite)).toBe('generated-actions:visible:mapped:readable:attached');
   });
 
   it('keeps combat sprites readable over 2.5D scenery', () => {
