@@ -1,9 +1,8 @@
-"""Premium Blender renderer for Pawn Slug Matthias + integrated weapons.
+"""Shared premium Blender renderer helpers for Pawn Slug Matthias.
 
-The sheet is authored at 2x and downsampled by CI.  Matthias intentionally reuses
-Home's premium visual language (grizzled face, officer cap, midnight uniform,
-brass trim) instead of the old block-primitive soldier.  Each weapon is physically
-held by both hands inside every frame; runtime never overlays a second gun sprite.
+The v3 source is authored at 2x a 192px runtime cell so the canonical pawn
+silhouette and facial expression survive baking instead of collapsing to the
+~64 useful pixels of v2.
 """
 from __future__ import annotations
 
@@ -18,7 +17,7 @@ from mathutils import Vector
 COLS = 16
 ROWS = 5
 CELL = 3.60
-CELL_PX = 192  # authored at 2x; CI downsamples to 96px/cell
+CELL_PX = 384
 WEAPONS = ("pistol", "machinegun", "shotgun", "panzerfaust")
 ACTIONS = (("idle", 10), ("walk", 10), ("run", 16), ("crouch", 10), ("jump", 9))
 
@@ -87,12 +86,7 @@ def parent_keep_world(obj, parent):
 
 
 def sphere(name, loc, dims, mat, parent=None, seg=28):
-    bpy.ops.mesh.primitive_uv_sphere_add(
-        segments=seg,
-        ring_count=max(12, seg // 2),
-        radius=1.0,
-        location=loc,
-    )
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=seg, ring_count=max(12, seg // 2), radius=1.0, location=loc)
     obj = bpy.context.object
     obj.name = name
     obj.scale = (dims[0] / 2, dims[1] / 2, dims[2] / 2)
@@ -120,14 +114,7 @@ def cyl(name, loc, radius, depth, mat, rot=(0.0, 0.0, 0.0), parent=None, verts=2
 
 
 def cone(name, loc, r1, r2, depth, mat, rot=(0.0, 0.0, 0.0), parent=None, verts=32, bevel=0.014):
-    bpy.ops.mesh.primitive_cone_add(
-        vertices=verts,
-        radius1=r1,
-        radius2=r2,
-        depth=depth,
-        location=loc,
-        rotation=rot,
-    )
+    bpy.ops.mesh.primitive_cone_add(vertices=verts, radius1=r1, radius2=r2, depth=depth, location=loc, rotation=rot)
     obj = bpy.context.object
     obj.name = name
     finish(obj, mat, smooth=True, bevel_width=bevel)
@@ -135,14 +122,7 @@ def cone(name, loc, r1, r2, depth, mat, rot=(0.0, 0.0, 0.0), parent=None, verts=
 
 
 def torus(name, loc, major, minor, mat, rot=(0.0, 0.0, 0.0), parent=None):
-    bpy.ops.mesh.primitive_torus_add(
-        major_radius=major,
-        minor_radius=minor,
-        major_segments=28,
-        minor_segments=10,
-        location=loc,
-        rotation=rot,
-    )
+    bpy.ops.mesh.primitive_torus_add(major_radius=major, minor_radius=minor, major_segments=28, minor_segments=10, location=loc, rotation=rot)
     obj = bpy.context.object
     obj.name = name
     finish(obj, mat, smooth=True)
@@ -173,8 +153,8 @@ def cyl_segment(name, origin, a, b, radius, mat, parent, y=-0.08, verts=24):
 
 def mats():
     return {
-        "skin": material("warm ivory", (0.62, 0.47, 0.34), 0.48),
-        "skin_hi": material("ivory highlight", (0.82, 0.64, 0.46), 0.42),
+        "skin": material("aged ivory pawn", (0.74, 0.67, 0.54), 0.42, 0.02),
+        "skin_hi": material("ivory highlight", (0.93, 0.84, 0.68), 0.34, 0.01),
         "cheek": material("warm cheek", (0.55, 0.31, 0.23), 0.58),
         "navy": material("midnight uniform", (0.018, 0.033, 0.055), 0.42, 0.04),
         "cloth": material("midnight cloth", (0.035, 0.060, 0.095), 0.67),
@@ -186,10 +166,10 @@ def mats():
         "dark": material("weapon black", (0.018, 0.024, 0.032), 0.28, 0.46),
         "polymer": material("weapon polymer", (0.045, 0.060, 0.075), 0.52, 0.06),
         "olive": material("launcher olive", (0.17, 0.26, 0.105), 0.45, 0.24),
-        "hair": material("iron grey", (0.065, 0.072, 0.078), 0.86),
+        "hair": material("legacy iron grey", (0.065, 0.072, 0.078), 0.86),
         "white": material("eye white", (0.83, 0.79, 0.69), 0.46),
         "iris": material("cold iris", (0.045, 0.13, 0.16), 0.32),
-        "black": material("pupil", (0.003, 0.004, 0.006), 0.50),
+        "black": material("brow and pupil", (0.003, 0.004, 0.006), 0.50),
         "red": material("campaign red", (0.29, 0.025, 0.022), 0.64),
         "cream": material("shirt cream", (0.62, 0.55, 0.43), 0.70),
     }
