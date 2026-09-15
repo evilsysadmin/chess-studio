@@ -1,0 +1,44 @@
+name: Pawn Slug · Blender canonical art
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/blender/build_pawn_slug_matthias_integrated.py'
+      - '.github/workflows/pawn-slug-blender-art.yml'
+      - 'frontend/src/assets/pawnSlug/matthias_integrated_weapons_atlas_v1.webp'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render-matthias:
+    name: Render Matthias · integrated weapons
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Blender + WebP tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender webp
+      - name: Render canonical atlas in Blender
+        run: |
+          mkdir -p /tmp/pawn-slug-art
+          blender --background \
+            --python scripts/blender/build_pawn_slug_matthias_integrated.py \
+            -- --output-dir /tmp/pawn-slug-art
+          cwebp -quiet -q 88 -alpha_q 95 -m 6 \
+            /tmp/pawn-slug-art/matthias_integrated_weapons_atlas_v1.png \
+            -o /tmp/pawn-slug-art/matthias_integrated_weapons_atlas_v1.webp
+      - name: Sanity-check atlas contract
+        run: |
+          test -s /tmp/pawn-slug-art/matthias_pawn_slug_integrated_v1.blend
+          test -s /tmp/pawn-slug-art/matthias_integrated_weapons_atlas_v1.png
+          test -s /tmp/pawn-slug-art/matthias_integrated_weapons_atlas_v1.webp
+          file /tmp/pawn-slug-art/matthias_integrated_weapons_atlas_v1.webp
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pawn-slug-matthias-blender-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/pawn-slug-art/
+          retention-days: 7
