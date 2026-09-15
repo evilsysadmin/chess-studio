@@ -1,3 +1,5 @@
+import { connectOrganicWindBreath, organicWindFinishSettings } from './ambientOrganicWindFinish.js';
+
 function clamp(value, low, high) {
   return Math.max(low, Math.min(high, value));
 }
@@ -18,7 +20,27 @@ export function scheduleAmbientFilterSweep(frequency, cutoff, start, attack, dur
 // a plain dry signal.
 export function connectFinishedAmbientVoice(ctx, dry, output, tone = {}, { start = ctx.currentTime, duration = 1, tremolo = 0, wetLimit = 0.3 } = {}) {
   const finish = tone?.finish || {};
+  const organicWind = organicWindFinishSettings(finish, tremolo);
   let voice = dry;
+
+  if (organicWind) {
+    // Air enters the same authored amplitude envelope as the pitched voice, so
+    // quiet counter-lines stay quiet and long notes do not acquire a fixed hiss.
+    connectOrganicWindBreath(ctx, dry, organicWind, { start, duration });
+
+    // A tiny body resonance takes the sterile oscillator edge off clarinet/ney
+    // without changing their written register or replacing them with a flute.
+    if (typeof ctx.createBiquadFilter === 'function') {
+      const body = ctx.createBiquadFilter();
+      body.type = 'peaking';
+      body.frequency.value = organicWind.bodyHz;
+      body.Q.value = 0.78;
+      body.gain.value = organicWind.bodyGainDb;
+      dry.connect(body);
+      voice = body;
+    }
+  }
+
   if (tremolo > 0 && typeof ctx.createOscillator === 'function') {
     const modulation = ctx.createGain();
     modulation.gain.value = 1;
@@ -26,10 +48,17 @@ export function connectFinishedAmbientVoice(ctx, dry, output, tone = {}, { start
     const depth = ctx.createGain();
     lfo.type = 'sine';
     lfo.frequency.value = tremolo;
-    depth.gain.value = 0.09;
+    if (organicWind && typeof depth.gain?.setValueAtTime === 'function' && typeof depth.gain?.linearRampToValueAtTime === 'function') {
+      // Real breath/reed vibrato blooms after the attack instead of arriving at
+      // full depth on sample zero. Keep the modulation shallower than synths.
+      depth.gain.setValueAtTime(0.008, start);
+      depth.gain.linearRampToValueAtTime(organicWind.tremoloDepth, start + Math.min(0.22, duration * 0.34));
+    } else {
+      depth.gain.value = 0.09;
+    }
     lfo.connect(depth);
     depth.connect(modulation.gain);
-    dry.connect(modulation);
+    voice.connect(modulation);
     lfo.start(start);
     lfo.stop(start + duration + 0.05);
     voice = modulation;

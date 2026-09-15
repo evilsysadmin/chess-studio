@@ -68,6 +68,7 @@ describe('complete music catalog audit', () => {
       expect(result.delayMs, id).toBeLessThanOrEqual(126);
       expect(result.mix.counter, id).toBeLessThanOrEqual(0.22);
       expect(result.mix.chord, id).toBeLessThanOrEqual(0.28);
+      expect(result.finish?.organicWind, id).toBe(true);
       expect(result.signature.everyCycles, id).toBeGreaterThanOrEqual(3);
       expect(result.signature.volume, id).toBeLessThanOrEqual(0.12);
     }

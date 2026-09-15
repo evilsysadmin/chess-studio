@@ -18,11 +18,14 @@ function finish(name, brightness, reflectionScale, stereoWidth, driftCents = 1) 
   return Object.freeze({ name, brightness, reflectionScale, stereoWidth, driftCents });
 }
 
+const ORGANIC_WIND_FINISH = Object.freeze({ organicWind:true });
+
 function roomPolish(releaseScale, space, delayMs, mix, signatureEveryCycles, signatureMaxVolume) {
   return Object.freeze({
     releaseScale,
     space,
     delayMs,
+    finish:ORGANIC_WIND_FINISH,
     mix:Object.freeze(mix),
     signaturePolicy:Object.freeze({ everyCycles:signatureEveryCycles, maxVolume:signatureMaxVolume }),
   });
@@ -32,7 +35,8 @@ function roomPolish(releaseScale, space, delayMs, mix, signatureEveryCycles, sig
 // once. Keep the composition and each city's identity, but mix them like a
 // small room ensemble: one clear foreground voice, a quieter answering player,
 // less synthetic wash and regional plucks used as occasional colour rather
-// than a permanent layer.
+// than a permanent layer. Sustained winds also opt into the finite breath/reed
+// finish; non-wind instruments ignore that flag entirely.
 const BEIRUT_ROOM = roomPolish(1.06, 0.085, 112, { lead:0.54, counter:0.22, bass:0.55, chord:0.27 }, 4, 0.115);
 const ISTANBUL_ROOM = roomPolish(1.04, 0.075, 96, { lead:0.52, counter:0.20, bass:0.52, chord:0.25 }, 4, 0.11);
 const EGYPT_ROOM = roomPolish(1.09, 0.100, 126, { lead:0.55, counter:0.22, bass:0.54, chord:0.28 }, 3, 0.12);
