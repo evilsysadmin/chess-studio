@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   homeMatthiasCameraPose,
   homeMatthiasClipForProfile,
+  homeMatthiasClipStartTime,
   homeMatthiasMotionPhase,
   homeMatthiasMotionProfile,
+  homeMatthiasPlaybackPolicy,
   homeMatthiasPortraitFrame,
 } from './HomeMatthias3D.jsx';
 
@@ -30,6 +32,22 @@ describe('Home Matthias canonical Blender rig', () => {
     expect(homeMatthiasClipForProfile('dossier')).toBe('Dossier');
     expect(homeMatthiasClipForProfile('read')).toBe('Read');
     expect(homeMatthiasClipForProfile('unknown')).toBe('Idle');
+  });
+
+  it('treats consumable routines as one-shots and persistent activities as loops', () => {
+    expect(homeMatthiasPlaybackPolicy('sip')).toEqual({ loop: 'once', returnToIdle: true });
+    expect(homeMatthiasPlaybackPolicy('bite')).toEqual({ loop: 'once', returnToIdle: true });
+    expect(homeMatthiasPlaybackPolicy('read')).toEqual({ loop: 'repeat', returnToIdle: false });
+    expect(homeMatthiasPlaybackPolicy('dossier')).toEqual({ loop: 'repeat', returnToIdle: false });
+    expect(homeMatthiasPlaybackPolicy('speak')).toEqual({ loop: 'repeat', returnToIdle: false });
+    expect(homeMatthiasPlaybackPolicy('unknown')).toEqual({ loop: 'repeat', returnToIdle: false });
+  });
+
+  it('starts looping routines at a deterministic scene phase but one-shots from their authored beginning', () => {
+    expect(homeMatthiasClipStartTime({ duration: 4, phase: 5.25, profile: 'read' })).toBeCloseTo(1.25, 6);
+    expect(homeMatthiasClipStartTime({ duration: 4, phase: -0.5, profile: 'idle' })).toBeCloseTo(3.5, 6);
+    expect(homeMatthiasClipStartTime({ duration: 4, phase: 3.2, profile: 'sip' })).toBe(0);
+    expect(homeMatthiasClipStartTime({ duration: 0, phase: 2, profile: 'read' })).toBe(0);
   });
 
   it('keeps fallback animation phase deterministic while differentiating scenes', () => {

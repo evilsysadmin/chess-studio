@@ -16,6 +16,7 @@ const CLIP_BY_PROFILE = Object.freeze({
   dossier: 'Dossier',
   read: 'Read',
 });
+const ONE_SHOT_PROFILES = new Set(['sip', 'bite']);
 
 function cue(value = '') {
   return String(value || '')
@@ -50,6 +51,23 @@ export function homeMatthiasMotionPhase({ scene = '', activity = '' } = {}) {
 
 export function homeMatthiasClipForProfile(profile = 'idle') {
   return CLIP_BY_PROFILE[profile] || CLIP_BY_PROFILE.idle;
+}
+
+export function homeMatthiasPlaybackPolicy(profile = 'idle') {
+  const normalized = CLIP_BY_PROFILE[profile] ? profile : 'idle';
+  const oneShot = ONE_SHOT_PROFILES.has(normalized);
+  return {
+    loop: oneShot ? 'once' : 'repeat',
+    returnToIdle: oneShot,
+  };
+}
+
+export function homeMatthiasClipStartTime({ duration = 0, phase = 0, profile = 'idle' } = {}) {
+  const safeDuration = Number(duration);
+  const safePhase = Number(phase);
+  if (!Number.isFinite(safeDuration) || safeDuration <= 0 || !Number.isFinite(safePhase)) return 0;
+  if (homeMatthiasPlaybackPolicy(profile).loop === 'once') return 0;
+  return ((safePhase % safeDuration) + safeDuration) % safeDuration;
 }
 
 export function homeMatthiasPortraitFrame({ minY = 0, maxY = 2.35, fovDeg = 24 } = {}) {
@@ -160,7 +178,7 @@ export default function HomeMatthias3D({
 }) {
   const canvasRef = useRef(null);
   const runtimeRef = useRef(null);
-  const desiredMotionRef = useRef({ profile: 'idle', reducedMotion: false });
+  const desiredMotionRef = useRef({ profile: 'idle', reducedMotion: false, phase: 0 });
   const profile = useMemo(
     () => homeMatthiasMotionProfile({ scene, activity, speaking }),
     [activity, scene, speaking],
@@ -168,7 +186,7 @@ export default function HomeMatthias3D({
   const phase = useMemo(() => homeMatthiasMotionPhase({ scene, activity }), [activity, scene]);
   const [modelState, setModelState] = useState('loading');
 
-  desiredMotionRef.current = { profile, reducedMotion };
+  desiredMotionRef.current = { profile, reducedMotion, phase };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -208,6 +226,8 @@ export default function HomeMatthias3D({
     let model = null;
     let mixer = null;
     let currentAction = null;
+    let currentProfile = 'idle';
+    let currentPhase = 0;
     let frame = 0;
     let disposed = false;
     let intersecting = true;
@@ -225,16 +245,48 @@ export default function HomeMatthias3D({
       }
     };
 
-    const selectClip = (clipName, still = false) => {
+    const selectClip = (clipName, {
+      still = false,
+      profile: requestedProfile = 'idle',
+      phase: requestedPhase = 0,
+      force = false,
+    } = {}) => {
       if (!mixer || !runtimeRef.current?.clips) return;
-      const clip = runtimeRef.current.clips.get(clipName) || runtimeRef.current.clips.get('Idle');
+      const exactClip = runtimeRef.current.clips.get(clipName);
+      const clip = exactClip || runtimeRef.current.clips.get('Idle');
       if (!clip) return;
+
+      const resolvedProfile = exactClip ? requestedProfile : 'idle';
+      const policy = homeMatthiasPlaybackPolicy(resolvedProfile);
+      const safePhase = Number.isFinite(Number(requestedPhase)) ? Number(requestedPhase) : 0;
       const next = mixer.clipAction(clip);
-      if (next !== currentAction) {
+      const shouldRestart = force
+        || next !== currentAction
+        || (policy.loop === 'once' && (currentProfile !== resolvedProfile || currentPhase !== safePhase));
+
+      if (shouldRestart) {
         currentAction?.fadeOut?.(0.22);
-        next.reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(0.22).play();
+        next.reset();
+        next.enabled = true;
+        next.clampWhenFinished = policy.loop === 'once';
+        next.setLoop(policy.loop === 'once' ? THREE.LoopOnce : THREE.LoopRepeat, policy.loop === 'once' ? 1 : Infinity);
+        next.fadeIn(0.22).play();
+        if (policy.loop === 'repeat') {
+          next.time = homeMatthiasClipStartTime({ duration: clip.duration, phase: safePhase, profile: resolvedProfile });
+          mixer.update(0);
+        }
         currentAction = next;
+        currentProfile = resolvedProfile;
+        currentPhase = safePhase;
+      } else if (policy.loop === 'repeat' && currentPhase !== safePhase) {
+        next.time = homeMatthiasClipStartTime({ duration: clip.duration, phase: safePhase, profile: resolvedProfile });
+        currentPhase = safePhase;
+        mixer.update(0);
       }
+
+      canvas.dataset.matthiasClip = clip.name;
+      canvas.dataset.matthiasPlayback = policy.loop;
+
       if (still) {
         mixer.setTime(Math.max(0, clip.duration * 0.34));
         renderOnce();
@@ -258,6 +310,17 @@ export default function HomeMatthias3D({
         clock.getDelta();
         frame = window.requestAnimationFrame(tick);
       }
+    };
+    const onMixerFinished = ({ action: finishedAction } = {}) => {
+      if (disposed || finishedAction !== currentAction) return;
+      if (!homeMatthiasPlaybackPolicy(currentProfile).returnToIdle) return;
+      const desired = desiredMotionRef.current;
+      selectClip('Idle', {
+        profile: 'idle',
+        phase: desired.phase,
+        force: true,
+      });
+      resume();
     };
 
     runtimeRef.current = {
@@ -317,10 +380,15 @@ export default function HomeMatthias3D({
         });
         threeScene.add(model);
         mixer = new THREE.AnimationMixer(model);
+        mixer.addEventListener('finished', onMixerFinished);
         runtimeRef.current.clips = new Map(gltf.animations.map((clip) => [clip.name, clip]));
         const desired = desiredMotionRef.current;
         runtimeRef.current.reducedMotion = desired.reducedMotion;
-        selectClip(homeMatthiasClipForProfile(desired.profile), desired.reducedMotion);
+        selectClip(homeMatthiasClipForProfile(desired.profile), {
+          still: desired.reducedMotion,
+          profile: desired.profile,
+          phase: desired.phase,
+        });
         fitRenderer(renderer, camera, canvas);
         frame = window.requestAnimationFrame(() => {
           renderOnce();
@@ -361,6 +429,7 @@ export default function HomeMatthias3D({
       document.removeEventListener('visibilitychange', onVisibility);
       window.removeEventListener('resize', resize);
       runtimeRef.current = null;
+      if (mixer) mixer.removeEventListener('finished', onMixerFinished);
       mixer?.stopAllAction();
       if (model) {
         threeScene.remove(model);
@@ -378,9 +447,13 @@ export default function HomeMatthias3D({
     const runtime = runtimeRef.current;
     if (!runtime) return;
     runtime.reducedMotion = reducedMotion;
-    runtime.selectClip?.(homeMatthiasClipForProfile(profile), reducedMotion);
+    runtime.selectClip?.(homeMatthiasClipForProfile(profile), {
+      still: reducedMotion,
+      profile,
+      phase,
+    });
     if (!reducedMotion) runtime.resume?.();
-  }, [profile, reducedMotion, modelState]);
+  }, [phase, profile, reducedMotion, modelState]);
 
   if (!fallbackAvatar) return null;
 
