@@ -5,6 +5,7 @@ import {
   chroniclesEnemyIsActive,
   chroniclesEnemyPosition,
 } from './chroniclesOfMatthias.js';
+import { CHRONICLES_TACTICS_WORLD } from './chroniclesOfMatthiasTactics.js';
 import { buildChroniclesCharacter, buildCorruptedPawn, buildGateJailer } from './chroniclesOfMatthiasArt.js';
 import { buildScavengerKnight } from './chroniclesOfMatthiasScavengerKnight.js';
 import { buildSpectralBishop } from './chroniclesOfMatthiasSpectralBishop.js';
@@ -54,6 +55,13 @@ export function chroniclesIsoInteractionForHit(interaction, hit) {
   return null;
 }
 
+export function chroniclesIsoWorldObjectState(state) {
+  return {
+    leverPulled: Boolean(state?.runeCacheOpened),
+    runeCoreVisible: Boolean(state?.runeCacheOpened && !state?.runeCoreCollected),
+  };
+}
+
 function isWalkable(x, y) {
   return CHRONICLES_MAP[y]?.[x] && CHRONICLES_MAP[y][x] !== '#';
 }
@@ -94,6 +102,7 @@ function buildIsoDungeon({ coarsePointer }) {
   const wall = ownedMaterial({ color: 0x403a34, roughness: 0.97, metalness: 0.01 });
   const wallTrim = ownedMaterial({ color: 0x1d1a17, roughness: 0.98, metalness: 0 });
   const brass = ownedMaterial({ color: 0x6e4b26, roughness: 0.52, metalness: 0.62, emissive: 0x160a02, emissiveIntensity: 0.22 });
+  const runeMaterial = ownedMaterial({ color: 0x8ed8c7, roughness: 0.22, metalness: 0.16, emissive: 0x2aa88e, emissiveIntensity: 1.7 });
 
   const tileGeometry = new THREE.BoxGeometry(CELL * 0.96, 0.18, CELL * 0.96);
   const wallGeometry = new THREE.BoxGeometry(CELL, 2.65, CELL);
@@ -140,6 +149,46 @@ function buildIsoDungeon({ coarsePointer }) {
   );
   sigil.rotation.x = -Math.PI / 2;
 
+  const leverCell = chroniclesIsoWorldForCell(CHRONICLES_TACTICS_WORLD.lever.x, CHRONICLES_TACTICS_WORLD.lever.y);
+  const leverRoot = new THREE.Group();
+  leverRoot.name = 'chronicles-iso-rune-cache-lever';
+  leverRoot.position.set(leverCell.x + 0.62, 0, leverCell.z - 0.56);
+  const leverBase = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.24, 0.34), wallTrim);
+  leverBase.position.y = 0.13;
+  leverBase.castShadow = !coarsePointer;
+  leverBase.receiveShadow = true;
+  leverRoot.add(leverBase);
+  const leverPivot = new THREE.Group();
+  leverPivot.position.y = 0.28;
+  const leverStem = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.72, 8), brass);
+  leverStem.position.y = 0.34;
+  leverStem.castShadow = !coarsePointer;
+  const leverKnob = new THREE.Mesh(new THREE.SphereGeometry(0.105, 10, 8), brass);
+  leverKnob.position.y = 0.72;
+  leverKnob.castShadow = !coarsePointer;
+  leverPivot.add(leverStem, leverKnob);
+  leverRoot.add(leverPivot);
+  root.add(leverRoot);
+
+  const runeCell = chroniclesIsoWorldForCell(CHRONICLES_TACTICS_WORLD.runeCore.x, CHRONICLES_TACTICS_WORLD.runeCore.y);
+  const runeCoreRoot = new THREE.Group();
+  runeCoreRoot.name = 'chronicles-iso-rune-core';
+  runeCoreRoot.position.set(runeCell.x + 0.42, 0.18, runeCell.z + 0.2);
+  const runeCradle = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.045, 8, coarsePointer ? 16 : 24), brass);
+  runeCradle.rotation.x = -Math.PI / 2;
+  runeCradle.position.y = 0.08;
+  runeCradle.castShadow = !coarsePointer;
+  runeCoreRoot.add(runeCradle);
+  const runeCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.23, 0), runeMaterial);
+  runeCore.position.y = 0.42;
+  runeCore.castShadow = !coarsePointer;
+  runeCoreRoot.add(runeCore);
+  const runeGlow = new THREE.PointLight(0x58d8bc, coarsePointer ? 0.72 : 1.05, 3.6, 2);
+  runeGlow.position.y = 0.46;
+  runeCoreRoot.add(runeGlow);
+  runeCoreRoot.visible = false;
+  root.add(runeCoreRoot);
+
   // A few chunky architectural anchors create the framed, premium room seen
   // in the canonical reference without spending the mobile budget on clutter.
   const columnGeometry = new THREE.CylinderGeometry(0.22, 0.28, 2.8, coarsePointer ? 10 : 16);
@@ -147,7 +196,16 @@ function buildIsoDungeon({ coarsePointer }) {
     addMesh(root, columnGeometry, wall, [x, 1.3, z], `chronicles-iso-column-${index}`);
   });
 
-  return { root, sigilMaterial: brass, floorTargets };
+  return {
+    root,
+    sigilMaterial: brass,
+    floorTargets,
+    leverPivot,
+    runeCoreRoot,
+    runeCore,
+    runeMaterial,
+    runeGlow,
+  };
 }
 
 function buildTorches(scene, { coarsePointer }) {
@@ -450,6 +508,10 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
 
     dungeon.sigilMaterial.emissive.setHex(state.sigilAwake ? 0x8c3f0d : 0x160a02);
     dungeon.sigilMaterial.emissiveIntensity = state.sigilAwake ? 1.25 : 0.22;
+    const worldObjects = chroniclesIsoWorldObjectState(state);
+    dungeon.leverPivot.rotation.z = worldObjects.leverPulled ? -0.74 : 0.58;
+    dungeon.runeCoreRoot.visible = worldObjects.runeCoreVisible;
+    dungeon.runeMaterial.emissiveIntensity = worldObjects.runeCoreVisible ? 1.7 : 0.25;
     syncSelection();
     syncInteraction(nextInteraction);
 
@@ -517,6 +579,14 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
         torch.flame.scale.set(0.86 + pulse * 0.03, 1.48 + pulse * 0.15, 0.86 + pulse * 0.03);
         torch.flame.rotation.z = Math.sin(time * 4.8 + torch.phase) * 0.08;
       });
+
+      if (dungeon.runeCoreRoot.visible) {
+        const pulse = 0.9 + Math.sin(time * 3.1) * 0.1;
+        dungeon.runeCoreRoot.rotation.y = time * 0.72;
+        dungeon.runeCore.position.y = 0.42 + Math.sin(time * 2.4) * 0.055;
+        dungeon.runeGlow.intensity = (coarse ? 0.72 : 1.05) * pulse;
+        dungeon.runeMaterial.emissiveIntensity = 1.55 + pulse * 0.35;
+      }
 
       const pose = chroniclesIsometricCameraPose({ x: desiredFocus.x, z: desiredFocus.z });
       camera.position.lerp(pose.position, 0.08);

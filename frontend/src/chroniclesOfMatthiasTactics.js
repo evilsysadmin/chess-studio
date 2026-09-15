@@ -22,6 +22,11 @@ const MOVE_GLYPHS = Object.freeze({
   west: '←',
 });
 
+export const CHRONICLES_TACTICS_WORLD = Object.freeze({
+  lever: Object.freeze({ id: 'rune-cache-lever', x: 5, y: 5 }),
+  runeCore: Object.freeze({ id: 'rune-core', x: 5, y: 4 }),
+});
+
 const CLASS_PROFILES = Object.freeze({
   matthias: Object.freeze({
     className: 'Espadachín',
@@ -208,6 +213,14 @@ function consumeAbilityCharge(state, memberId) {
   };
 }
 
+function refillAbilityCharges(state) {
+  const classAbilityCharges = { ...(state.classAbilityCharges || {}) };
+  state.party.forEach((member) => {
+    classAbilityCharges[member.id] = 1;
+  });
+  return { ...state, classAbilityCharges };
+}
+
 function adjacentExit(state) {
   return CHRONICLES_DIRECTIONS
     .map((direction) => ({
@@ -236,6 +249,22 @@ export function chroniclesTacticsInteractions(state) {
       label: 'Activar sello',
       x: state.x,
       y: state.y,
+    });
+  }
+
+  if (sameCell(state, CHRONICLES_TACTICS_WORLD.lever) && !state.runeCacheOpened) {
+    interactions.push({
+      ...CHRONICLES_TACTICS_WORLD.lever,
+      kind: 'lever',
+      label: 'Accionar palanca',
+    });
+  }
+
+  if (sameCell(state, CHRONICLES_TACTICS_WORLD.runeCore) && state.runeCacheOpened && !state.runeCoreCollected) {
+    interactions.push({
+      ...CHRONICLES_TACTICS_WORLD.runeCore,
+      kind: 'pickup',
+      label: 'Recoger núcleo rúnico',
     });
   }
 
@@ -272,6 +301,34 @@ export function chroniclesTacticsUse(state, interactionId = null) {
       title: 'El sello despierta',
       body: 'La formación activa el sello de la cripta. Torre y alfil reciben la noticia con una hostilidad muy profesional.',
       sigil: 'III',
+    });
+  }
+
+  if (interaction.id === CHRONICLES_TACTICS_WORLD.lever.id) {
+    return appendJournal({
+      ...state,
+      runeCacheOpened: true,
+      turns,
+      message: 'La palanca baja con un golpe seco. Una hornacina cercana expulsa un núcleo rúnico con la discreción de una tostadora medieval.',
+    }, {
+      id: 'tactics-rune-cache-open',
+      title: 'La pared admite que tenía compartimento secreto',
+      body: 'Una palanca de latón abre un pequeño alijo. Dentro espera un núcleo rúnico capaz de rearmar las habilidades de la compañía.',
+      sigil: '✦',
+    });
+  }
+
+  if (interaction.id === CHRONICLES_TACTICS_WORLD.runeCore.id) {
+    return appendJournal(refillAbilityCharges({
+      ...state,
+      runeCoreCollected: true,
+      turns,
+      message: 'La compañía recoge el núcleo rúnico. Las habilidades de clase vuelven a estar cargadas. Aziz lo llama taumaturgia; Matthias, logística cara.',
+    }), {
+      id: 'tactics-rune-core-collected',
+      title: 'Núcleo rúnico recuperado',
+      body: 'El alijo recarga las habilidades de clase una vez. Nadie pregunta quién dejó una batería arcana en una cripta.',
+      sigil: '✦',
     });
   }
 
