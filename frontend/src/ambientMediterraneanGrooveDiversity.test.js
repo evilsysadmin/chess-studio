@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { AMBIENT_THEME_OPTIONS, AMBIENT_THEMES } from './ambientCatalog.js';
+import { AMBIENT_THEME_OPTIONS, AMBIENT_THEMES, CURATED_HIDDEN_THEME_IDS } from './ambientCatalog.js';
 import { structuredFeel } from './ambientProfiles.js';
-import { MEDITERRANEAN_GROOVE_IDS, MEDITERRANEAN_GROOVE_REWRITES } from './ambientMediterraneanGrooveDiversity.js';
+import {
+  MEDITERRANEAN_GROOVE_IDS,
+  MEDITERRANEAN_GROOVE_REWRITES,
+  RETIRED_MEDITERRANEAN_THEME_IDS,
+} from './ambientMediterraneanGrooveDiversity.js';
 
 function fingerprint(percussion) {
   const events = Object.entries(percussion?.pattern || {})
@@ -10,6 +14,19 @@ function fingerprint(percussion) {
 }
 
 describe('Jazz mediterráneo · diversidad de groove', () => {
+  it('retires rejected songs without deleting their definitions', () => {
+    expect(RETIRED_MEDITERRANEAN_THEME_IDS).toEqual([
+      'tangierRedTable',
+      'beirutNightTaxi',
+      'istanbulBackgammon',
+    ]);
+    for (const id of RETIRED_MEDITERRANEAN_THEME_IDS) {
+      expect(AMBIENT_THEMES[id], id).toBeTruthy();
+      expect(CURATED_HIDDEN_THEME_IDS.has(id), id).toBe(true);
+      expect(AMBIENT_THEME_OPTIONS.some((theme) => theme.id === id), id).toBe(false);
+    }
+  });
+
   it('replaces every formerly duplicated grid with an authored pattern', () => {
     expect(MEDITERRANEAN_GROOVE_IDS).toHaveLength(22);
     for (const id of MEDITERRANEAN_GROOVE_IDS) {
