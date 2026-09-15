@@ -16,11 +16,17 @@ from home_matthias_contract import (  # noqa: E402
     BRASS_MIN_METALLIC,
     CANONICAL_IDENTITY,
     CANONICAL_REFERENCE,
+    CANONICAL_REFERENCE_SHA256,
     CAP_TOP_MIN_REAR_OFFSET,
     CAP_TOP_MIN_VERTICAL_SEPARATION,
     CAP_TOP_TO_CROWN_WIDTH,
     CAP_TO_HEAD_WIDTH,
+    CAP_VISOR_TO_HEAD_WIDTH,
+    CHEST_CREST_HEIGHT_TO_HEAD_WIDTH,
+    CHEST_CREST_WIDTH_TO_HEAD_WIDTH,
     DARK_BODY_MAX_LUMA,
+    EYE_TO_HEAD_WIDTH,
+    EYE_VERTICALITY,
     FORBIDDEN_NAME_TOKENS,
     HEAD_TO_BASE_WIDTH,
     HEAD_TO_BODY_HEIGHT,
@@ -88,6 +94,10 @@ def main():
 
     assert rig.get("canonical_identity") == CANONICAL_IDENTITY, rig.get("canonical_identity")
     assert rig.get("canonical_reference") == CANONICAL_REFERENCE, rig.get("canonical_reference")
+    assert rig.get("canonical_reference_sha256") == CANONICAL_REFERENCE_SHA256, (
+        rig.get("canonical_reference_sha256"),
+        CANONICAL_REFERENCE_SHA256,
+    )
 
     objects = {obj.name: obj for obj in bpy.data.objects}
     missing_objects = REQUIRED_OBJECTS - set(objects)
@@ -112,6 +122,9 @@ def main():
     cap_top_obj = objects["Classic cap top"]
     body = objects["Classic lower pawn"]
     tunic = objects["Classic navy tunic"]
+    visor = objects["Classic cap visor"]
+    crest_v = objects["Classic chest crest shadow vertical"]
+    crest_h = objects["Classic chest crest shadow horizontal"]
 
     head_width = head.dimensions.x
     base_width = base.dimensions.x
@@ -125,8 +138,8 @@ def main():
     assert_range("head/total height", head_height / total_height, HEAD_TO_BODY_HEIGHT)
     assert_range("cap/head width", cap_width / head_width, CAP_TO_HEAD_WIDTH)
     assert_range("total height/base width", total_height / base_width, BODY_HEIGHT_TO_BASE_WIDTH)
+    assert_range("cap visor/head width", visor.dimensions.x / head_width, CAP_VISOR_TO_HEAD_WIDTH)
 
-    # The peaked cap must have a wider rear-biased top mass above the crown.
     assert_range(
         "cap top/crown width",
         cap_top_obj.dimensions.x / cap.dimensions.x,
@@ -141,8 +154,19 @@ def main():
         cap_top_obj.location.z,
     )
 
+    assert_range(
+        "chest crest height/head width",
+        crest_v.dimensions.z / head_width,
+        CHEST_CREST_HEIGHT_TO_HEAD_WIDTH,
+    )
+    assert_range(
+        "chest crest width/head width",
+        crest_h.dimensions.x / head_width,
+        CHEST_CREST_WIDTH_TO_HEAD_WIDTH,
+    )
+
     flare = ring_radius_ratio(body)
-    assert flare >= 1.35, f"pawn body insufficiently flared: {flare:.3f}"
+    assert flare >= 1.45, f"pawn body insufficiently flared: {flare:.3f}"
 
     assert base_luma(body) <= DARK_BODY_MAX_LUMA, base_luma(body)
     assert base_luma(tunic) <= DARK_BODY_MAX_LUMA, base_luma(tunic)
@@ -155,8 +179,8 @@ def main():
             continue
         if obj.name.startswith("Routine") or obj.name.startswith("Hand."):
             continue
-        z0, z1 = world_z_bounds(obj)
-        if z1 >= 1.45 or obj.dimensions.x <= 0.18:
+        _, z1 = world_z_bounds(obj)
+        if z1 >= 1.35 or obj.dimensions.x <= 0.18:
             continue
         if base_luma(obj) > 0.35:
             light_body_offenders.append(obj.name)
@@ -176,16 +200,17 @@ def main():
 
     left_mouth = math.degrees(objects["Mouth.L"].rotation_euler.y)
     right_mouth = math.degrees(objects["Mouth.R"].rotation_euler.y)
-    assert left_mouth < -4 and right_mouth > 4, (left_mouth, right_mouth)
+    assert left_mouth < -8 and right_mouth > 8, (left_mouth, right_mouth)
 
     for name in ("Eye.L", "Eye.R"):
         ratio = objects[name].dimensions.x / head_width
-        assert ratio <= 0.10, f"{name}: oversized eye ratio {ratio:.3f}"
+        assert_range(f"{name} width/head", ratio, EYE_TO_HEAD_WIDTH)
         verticality = objects[name].dimensions.z / max(objects[name].dimensions.x, 1e-6)
-        assert verticality >= 1.15, f"{name}: eye must remain stern/vertical, got {verticality:.3f}"
+        assert_range(f"{name} verticality", verticality, EYE_VERTICALITY)
 
     print(
         "Home Matthias HARD canonical contract OK | "
+        f"reference={CANONICAL_REFERENCE_SHA256[:12]} "
         f"flare={flare:.3f} head/base={head_width/base_width:.3f} "
         f"height/base={total_height/base_width:.3f}"
     )
