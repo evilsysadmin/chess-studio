@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { AMBIENT_THEMES } from './ambientCatalog.js';
 import { structuredFeel } from './ambientProfiles.js';
 import { ENERGY_PRODUCTION_IDS } from './ambientEnergyProduction.js';
-import { getAmbientThemeSoundProfile, getPercussionVoiceKit } from './sound.js';
+import { getAmbientThemeSoundProfile, getPercussionVoiceKit, synthMetalPowerChordVoicing } from './sound.js';
 
 describe('energy production identities', () => {
   it('keeps all six tempos while giving each score a separate kit', () => {
@@ -22,11 +22,13 @@ describe('energy production identities', () => {
 
     expect(neon.leadInstrument).toBe('analogLead');
     expect(arcade.leadInstrument).toBe('arcadePulse');
-    expect(siege.leadInstrument).toBe('overdriveGuitar');
+    expect(siege.leadInstrument).toBe('powerGuitar');
     expect(siege.counterInstrument).toBe('anthemLead');
     expect(siege.chordInstrument).toBe('powerPad');
     expect(gallop.leadInstrument).toBe('anthemLead');
-    expect(gallop.counterInstrument).toBe('overdriveGuitar');
+    expect(gallop.counterInstrument).toBe('powerGuitar');
+    expect(gallop.counterGainScale).toBe(1);
+    expect(synthMetalPowerChordVoicing(52)).toEqual([40, 47, 52]);
   });
 
   it('makes every high-energy score hook-bearing without changing authored signatures', () => {
