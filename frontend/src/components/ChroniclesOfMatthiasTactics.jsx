@@ -8,6 +8,7 @@ import {
   chroniclesTacticsInteractions,
   chroniclesTacticsLegalMoves,
   chroniclesTacticsMove,
+  chroniclesTacticsProfile,
   chroniclesTacticsTargets,
   chroniclesTacticsUse,
 } from '../chroniclesOfMatthiasTactics.js';
@@ -66,6 +67,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
   const [rendererError, setRendererError] = useState('');
 
   const selectedMember = state.party.find((member) => member.id === selectedMemberId) || state.party[0];
+  const selectedProfile = chroniclesTacticsProfile(selectedMemberId);
   const objective = chroniclesObjective(state);
   const activeParty = useMemo(
     () => PARTY_ORDER.map((id) => state.party.find((member) => member.id === id)).filter(Boolean),
@@ -235,7 +237,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
         <div>
           <span className="section-label">EXPERIMENTO RPG · THREE.JS · ISOMÉTRICO</span>
           <h2>Chronicles of Matthias Tactics</h2>
-          <p>Action RPG isométrico: ves a la compañía desde detrás, te mueves en tiempo real y la cripta no espera educadamente su turno.</p>
+          <p>Action RPG isométrico: cuatro clases, cuatro geometrías de combate y una cripta con una opinión pésima de todas ellas.</p>
         </div>
         <button type="button" className="secondary-btn" onClick={onExit}>← Experimentos</button>
       </header>
@@ -279,6 +281,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
           <span className="chronicles-tactics__kicker">GRUPO · 1–4</span>
           {activeParty.map((member, index) => {
             const ratio = Math.max(0, member.hp / member.maxHp);
+            const profile = chroniclesTacticsProfile(member.id);
             return (
               <button
                 type="button"
@@ -288,22 +291,22 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
                 aria-pressed={member.id === selectedMemberId}
               >
                 <i aria-hidden="true">{member.glyph}</i>
-                <span><b>{index + 1}. {member.name}</b><small>{member.role}</small><em><u style={{ width: `${ratio * 100}%` }} /></em></span>
+                <span><b>{index + 1}. {member.name}</b><small>{profile.className} · {profile.weaponName}</small><em><u style={{ width: `${ratio * 100}%` }} /></em></span>
                 <strong>{member.hp}/{member.maxHp}</strong>
               </button>
             );
           })}
           <div className="chronicles-tactics__party-note">
-            <span>ACTIVO</span>
+            <span>ACTIVO · {selectedProfile.className.toUpperCase()}</span>
             <b>{selectedMember?.name}</b>
-            <small>{selectedMember?.hp > 0 ? `${selectedMember?.attackName} · alcance ${selectedMember?.reach}` : 'Fuera de combate'}</small>
+            <small>{selectedMember?.hp > 0 ? `${selectedProfile.attackName} · ${selectedProfile.kindLabel} · alcance ${selectedProfile.reach}` : 'Fuera de combate'}</small>
           </div>
         </aside>
       </div>
 
       <footer className="chronicles-tactics__footer">
         <span>Motor {rendererName}</span>
-        <span>{contextualAction ? `Espacio · ${contextualAction.label}` : 'Espacio · Usar'} · Shift · ataque rápido</span>
+        <span>{contextualAction ? `Espacio · ${contextualAction.label}` : 'Espacio · Usar'} · Shift · {selectedProfile.attackName}</span>
         <button type="button" onClick={restart}>Reiniciar incursión</button>
       </footer>
     </div>

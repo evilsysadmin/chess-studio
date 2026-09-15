@@ -6,6 +6,7 @@ import {
   chroniclesTacticsInteractions,
   chroniclesTacticsLegalMoves,
   chroniclesTacticsMove,
+  chroniclesTacticsProfile,
   chroniclesTacticsTargets,
   chroniclesTacticsUse,
 } from './chroniclesOfMatthiasTactics.js';
@@ -71,18 +72,35 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
     expect(chroniclesTacticsUse(unlocked).phase).toBe('escaped');
   });
 
-  it('uses the selected party member reach instead of inventing a generic attack', () => {
-    const state = tacticsState();
-    expect(chroniclesTacticsTargets(state, 'matthias')).toEqual([]);
-    expect(chroniclesTacticsTargets(state, 'bishop')).toEqual([
-      expect.objectContaining({ enemyId: 'corrupted-pawn', distance: 2, hp: 6 }),
-    ]);
+  it('gives every party member a distinct tactical class and weapon identity', () => {
+    expect(chroniclesTacticsProfile('matthias')).toMatchObject({ className: 'Espadachín', attackPattern: 'adjacent', reach: 1 });
+    expect(chroniclesTacticsProfile('rook')).toMatchObject({ className: 'Guardiana', attackPattern: 'orthogonal', reach: 2 });
+    expect(chroniclesTacticsProfile('bishop')).toMatchObject({ className: 'Taumaturgo', attackKind: 'spell', attackPattern: 'diagonal', reach: 4 });
+    expect(chroniclesTacticsProfile('knight')).toMatchObject({ className: 'Hostigador', attackKind: 'ranged', attackPattern: 'line', reach: 3 });
   });
 
-  it('resolves the player hit first and leaves retaliation to the creature phase', () => {
+  it('uses class-specific attack geometry instead of one generic range rule', () => {
+    const opening = tacticsState();
+    expect(chroniclesTacticsTargets(opening, 'matthias')).toEqual([]);
+    expect(chroniclesTacticsTargets(opening, 'rook')).toEqual([
+      expect.objectContaining({ enemyId: 'corrupted-pawn', distance: 2 }),
+    ]);
+    expect(chroniclesTacticsTargets(opening, 'bishop')).toEqual([]);
+    expect(chroniclesTacticsTargets(opening, 'knight')).toEqual([
+      expect.objectContaining({ enemyId: 'corrupted-pawn', distance: 2, attackKind: 'ranged' }),
+    ]);
+
+    const diagonal = tacticsState({ enemyPositions: { 'corrupted-pawn': { x: 2, y: 4 } } });
+    expect(chroniclesTacticsTargets(diagonal, 'bishop')).toEqual([
+      expect.objectContaining({ enemyId: 'corrupted-pawn', distance: 1, attackKind: 'spell' }),
+    ]);
+    expect(chroniclesTacticsTargets(diagonal, 'matthias')).toEqual([]);
+  });
+
+  it('resolves class damage first and leaves retaliation to the creature phase', () => {
     const state = tacticsState();
-    const afterAttack = chroniclesTacticsAttack(state, 'bishop', 'corrupted-pawn');
-    expect(afterAttack.enemyHp).toBe(5);
+    const afterAttack = chroniclesTacticsAttack(state, 'rook', 'corrupted-pawn');
+    expect(afterAttack.enemyHp).toBe(4);
     expect(afterAttack.party.map((member) => member.hp)).toEqual(state.party.map((member) => member.hp));
     expect(afterAttack.turns).toBe(1);
 
@@ -90,10 +108,10 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
     expect(afterEnemy.round).toBe(2);
     expect(afterEnemy.turnPhase).toBe('party');
     expect(afterEnemy.enemyPositions['corrupted-pawn']).toEqual({ x: 2, y: 5 });
-    expect(afterEnemy.message).toMatch(/Aziz usa rayo diagonal/i);
+    expect(afterEnemy.message).toMatch(/Hildegard usa embestida de torre/i);
   });
 
-  it('keeps Chronicles rewards when a tactical kill matters to progression', () => {
+  it('keeps Chronicles rewards when a ranged tactical kill matters to progression', () => {
     const state = tacticsState({
       x: 5,
       y: 5,
@@ -102,7 +120,7 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
       party: createChroniclesState().party.map((member) => ({ ...member, hp: Math.max(1, member.hp - 1) })),
     });
     const previousAzizHp = state.party.find((member) => member.id === 'bishop').hp;
-    const next = chroniclesTacticsAttack(state, 'bishop', 'spectral-bishop');
+    const next = chroniclesTacticsAttack(state, 'knight', 'spectral-bishop');
     expect(next.spectralBishopHp).toBe(0);
     expect(next.spectralLantern).toBe(true);
     expect(next.party.find((member) => member.id === 'bishop').hp).toBe(previousAzizHp + 1);
