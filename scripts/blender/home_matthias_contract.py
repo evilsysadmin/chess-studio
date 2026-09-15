@@ -56,12 +56,12 @@ FORBIDDEN_NAME_TOKENS = (
     "field cap crown",
 )
 
-# Rest-pose silhouette constraints. Values are intentionally ranges so the art
-# can improve without silently mutating back into a humanoid mascot.
-HEAD_TO_BASE_WIDTH = (0.46, 0.66)
-HEAD_TO_BODY_HEIGHT = (0.22, 0.38)
-CAP_TO_HEAD_WIDTH = (0.82, 1.16)
-BODY_HEIGHT_TO_BASE_WIDTH = (1.75, 2.75)
+# Rest-pose silhouette constraints derived from the approved canonical image:
+# squat heavy pawn, large ivory head and a cap with real visual presence.
+HEAD_TO_BASE_WIDTH = (0.56, 0.72)
+HEAD_TO_BODY_HEIGHT = (0.30, 0.44)
+CAP_TO_HEAD_WIDTH = (1.08, 1.34)
+BODY_HEIGHT_TO_BASE_WIDTH = (1.42, 1.82)
 
 # Material language from the approved canonical reference.
 DARK_BODY_MAX_LUMA = 0.10
