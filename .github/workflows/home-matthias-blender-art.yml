@@ -6,8 +6,8 @@ on:
       - 'scripts/blender/build_home_matthias.py'
       - 'scripts/blender/home_matthias_parts.py'
       - 'scripts/blender/home_matthias_animations.py'
-      - 'frontend/art-source/matthias-home-canonical.blend'
-      - 'frontend/public/models/matthias-home-canonical.glb'
+      # Generated .blend/.glb outputs are intentionally omitted so materializing
+      # canonical art cannot retrigger the expensive source render by itself.
       - '.github/actions/setup-blender-canonical/**'
       - '.github/workflows/home-matthias-blender-art.yml'
   workflow_dispatch:
