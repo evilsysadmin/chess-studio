@@ -19,7 +19,7 @@ async function openTactics(page) {
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias Tactics', exact: true })).toBeVisible();
 }
 
-test('Chronicles Tactics · arranca como action RPG isométrico con usar, ataque y clases distintas', async ({ page }) => {
+test('Chronicles Tactics · arranca como action RPG isométrico con usar, ataque, clases y habilidades', async ({ page }) => {
   await openTactics(page);
   const mode = page.locator('[data-chronicles-tactics="true"]');
   const canvas = mode.locator('[data-chronicles-tactics-renderer="three"] canvas');
@@ -30,13 +30,16 @@ test('Chronicles Tactics · arranca como action RPG isométrico con usar, ataque
   await expect(mode.getByText(/Espadachín · Espada corta/i)).toBeVisible();
   await expect(mode.getByText(/Taumaturgo · Farol rúnico/i)).toBeVisible();
   await expect(mode.getByText(/Hostigador · Ballesta de estribo/i)).toBeVisible();
-  await expect(mode.getByText(/espacio usa · Shift ataca/i)).toBeVisible();
+  await expect(mode.getByText(/espacio usa · Shift ataca · E habilidad/i)).toBeVisible();
   await expect(mode.getByRole('button', { name: 'Usar', exact: true })).toBeVisible();
+  await expect(mode.getByRole('button', { name: 'Habilidad de clase', exact: true })).toBeVisible();
   await expect(mode.getByRole('button', { name: 'Esperar', exact: true })).toHaveCount(0);
 
   await page.keyboard.press('2');
-  await page.keyboard.press('Shift');
-  await expect(mode.getByText(/Hildegard usa embestida de torre/i)).toBeVisible();
+  await expect(mode.getByText(/Habilidad: Martillo de asedio · 1 carga/i)).toBeVisible();
+  await page.keyboard.press('e');
+  await expect(mode.getByText(/Habilidad: Martillo de asedio · agotada/i)).toBeVisible();
+  await expect(mode.getByRole('button', { name: 'Habilidad de clase', exact: true })).toBeDisabled();
 });
 
 test('Chronicles Tactics · móvil conserva canvas y controles de acción sin overflow', async ({ page }) => {
@@ -48,6 +51,7 @@ test('Chronicles Tactics · móvil conserva canvas y controles de acción sin ov
   await expect(mode.getByRole('button', { name: 'Mover al oeste' })).toBeVisible();
   await expect(mode.getByRole('button', { name: 'Usar', exact: true })).toBeVisible();
   await expect(mode.getByRole('button', { name: 'Atacar', exact: true })).toBeVisible();
+  await expect(mode.getByRole('button', { name: 'Habilidad de clase', exact: true })).toBeVisible();
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
