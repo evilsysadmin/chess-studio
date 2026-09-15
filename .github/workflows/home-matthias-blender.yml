@@ -1,0 +1,49 @@
+name: Home Matthias Blender asset
+
+on:
+  push:
+    branches:
+      - 'codex/home-matthias-blender-canonical-v1'
+    paths:
+      - 'scripts/blender/build_home_matthias.py'
+      - 'scripts/blender/home_matthias_parts.py'
+      - 'scripts/blender/home_matthias_animations.py'
+      - '.github/workflows/home-matthias-blender.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: home-matthias-blender-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-canonical-asset:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Blender
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender
+      - name: Build canonical .blend + .glb
+        run: |
+          blender -b --python scripts/blender/build_home_matthias.py -- \
+            --blend frontend/art-source/matthias-home-canonical.blend \
+            --glb frontend/public/models/matthias-home-canonical.glb
+          test -s frontend/art-source/matthias-home-canonical.blend
+          test -s frontend/public/models/matthias-home-canonical.glb
+      - name: Commit generated canonical assets
+        run: |
+          if git diff --quiet -- frontend/art-source/matthias-home-canonical.blend frontend/public/models/matthias-home-canonical.glb && \
+             git ls-files --error-unmatch frontend/art-source/matthias-home-canonical.blend frontend/public/models/matthias-home-canonical.glb >/dev/null 2>&1; then
+            echo 'Canonical assets already match generator.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/art-source/matthias-home-canonical.blend frontend/public/models/matthias-home-canonical.glb
+          git commit -m 'art(home): generate canonical Blender Matthias assets'
+          git push
