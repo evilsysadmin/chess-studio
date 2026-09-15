@@ -94,128 +94,41 @@
 .campaign-intel-buy .secondary-btn { width: 100%; }
 .campaign-briefing-actions { display: flex; justify-content: space-between; gap: .6rem; }
 
-/* Tutoriales in-game: deben enseñar sin secuestrar el tablero. El diálogo se
-   comporta como panel lateral en pantallas con sitio y como sheet compacto en
-   móvil. La especificidad deliberada evita que los estilos genéricos de modal
-   vuelvan a ensancharlo o a introducir scroll horizontal. */
+/* Tutorial in-game: compacto y fuera del tablero siempre que haya espacio. */
 .mechanic-tutorial-backdrop {
   z-index: 220;
-  background: rgba(5, 6, 8, .42);
+  background: rgba(5,6,8,.42);
   backdrop-filter: blur(2px);
 }
 body .mechanic-tutorial-backdrop > .mechanic-tutorial-card {
-  position: relative;
-  display: grid;
-  gap: .68rem;
   width: min(430px, calc(100vw - 1.5rem));
   max-width: 430px;
-  max-height: min(640px, calc(100dvh - 1.5rem));
   min-width: 0;
   box-sizing: border-box;
   padding: 1rem 1.05rem;
   overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-  border: 1px solid color-mix(in srgb, var(--brass) 42%, var(--ink-3));
-  border-radius: 14px;
-  background:
-    linear-gradient(155deg, color-mix(in srgb, var(--brass) 5%, transparent), transparent 38%),
-    color-mix(in srgb, var(--panel, #171512) 96%, #000 4%);
-  box-shadow: 0 24px 70px rgba(0,0,0,.56), inset 0 1px 0 rgba(255,255,255,.025);
 }
-.mechanic-tutorial-card > .section-label {
-  padding-right: 2.25rem;
-  font-size: .56rem;
-  letter-spacing: .13em;
-  opacity: .68;
-}
-.mechanic-tutorial-card h2 {
-  margin: -.1rem 2.1rem 0 0;
-  font-size: clamp(1.05rem, 2vw, 1.35rem);
-  line-height: 1.12;
-}
+.mechanic-tutorial-card h2 { margin: .2rem 2rem .65rem 0; font-size: clamp(1.05rem,2vw,1.35rem); }
 .mechanic-tutorial-step {
-  position: relative;
   min-width: 0;
   min-height: 0;
   padding: .82rem .88rem;
-  border: 1px solid rgba(255,255,255,.075);
+  border: 1px solid rgba(255,255,255,.08);
   border-radius: 10px;
-  background:
-    linear-gradient(140deg, color-mix(in srgb, var(--brass) 4%, transparent), transparent 55%),
-    rgba(0,0,0,.14);
+  background: rgba(0,0,0,.14);
 }
-.mechanic-tutorial-step h3 {
-  margin: .16rem 0 .38rem;
-  font-size: clamp(.98rem, 1.6vw, 1.08rem);
-  line-height: 1.2;
-}
-.mechanic-tutorial-step p {
-  max-width: 52ch;
-  margin: 0;
-  color: var(--parchment-dim);
-  font-size: clamp(.78rem, 1.35vw, .9rem);
-  line-height: 1.48;
-  overflow-wrap: anywhere;
-}
-.mechanic-tutorial-counter {
-  display: inline-block;
-  font-size: .58rem;
-  letter-spacing: .11em;
-  opacity: .55;
-}
-.mechanic-tutorial-dots {
-  display: flex;
-  justify-content: center;
-  gap: .34rem;
-  margin: -.02rem 0;
-}
-.mechanic-tutorial-dots span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--ink-3);
-}
-.mechanic-tutorial-dots span.active {
-  width: 18px;
-  border-radius: 999px;
-  background: var(--brass);
-}
-.mechanic-tutorial-actions {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: .55rem;
-}
-.mechanic-tutorial-actions > div {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, auto));
-  justify-content: end;
-  gap: .4rem;
-}
-.mechanic-tutorial-actions :where(.primary-btn, .secondary-btn) {
-  min-width: 0;
-  min-height: 38px;
-  max-width: 100%;
-  padding: .52rem .72rem;
-  border-radius: 8px;
-  font-size: .74rem;
-  line-height: 1;
-  white-space: nowrap;
-}
-.mechanic-tutorial-actions .secondary-btn:disabled { opacity: .4; }
+.mechanic-tutorial-step h3 { margin: .15rem 0 .35rem; font-size: 1.05rem; }
+.mechanic-tutorial-step p { margin: 0; line-height: 1.45; color: var(--parchment-dim); font-size: .86rem; overflow-wrap: anywhere; }
+.mechanic-tutorial-counter { font-size: .6rem; letter-spacing: .1em; opacity: .55; }
+.mechanic-tutorial-dots { display: flex; justify-content: center; gap: .3rem; margin: .55rem 0; }
+.mechanic-tutorial-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); }
+.mechanic-tutorial-dots span.active { background: var(--brass); }
+.mechanic-tutorial-actions { min-width: 0; display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: .45rem; }
+.mechanic-tutorial-actions > div { min-width: 0; display: grid; grid-template-columns: repeat(2,minmax(0,auto)); justify-content: end; gap: .4rem; }
+.mechanic-tutorial-actions :where(.primary-btn,.secondary-btn) { min-width: 0; padding-inline: .68rem; font-size: .74rem; white-space: nowrap; }
 
 @media (min-width: 781px) {
-  .mechanic-tutorial-backdrop {
-    justify-content: flex-end;
-    align-items: center;
-    padding: clamp(.65rem, 2vw, 1.25rem);
-    padding-right: max(clamp(.8rem, 2.2vw, 2rem), env(safe-area-inset-right));
-    background: linear-gradient(90deg, rgba(5,6,8,.18) 0 48%, rgba(5,6,8,.56) 100%);
-  }
+  .mechanic-tutorial-backdrop { justify-content: flex-end; padding: 1rem; }
 }
 
 .mechanic-library {
@@ -251,80 +164,34 @@ body .mechanic-tutorial-backdrop > .mechanic-tutorial-card {
   .mechanic-library { grid-template-columns: 1fr; }
   .campaign-briefing-actions { align-items: stretch; flex-direction: column; }
   .campaign-briefing-actions > * { flex: 1; }
-
-  .mechanic-tutorial-backdrop {
-    align-items: flex-end;
-    padding: .5rem;
-    padding-bottom: max(.5rem, env(safe-area-inset-bottom));
-  }
+  .mechanic-tutorial-backdrop { align-items: flex-end; padding: .5rem; }
   body .mechanic-tutorial-backdrop > .mechanic-tutorial-card {
-    width: 100%;
-    max-width: none;
-    max-height: min(78dvh, 620px);
-    gap: .58rem;
-    padding: .82rem .88rem;
-    border-radius: 15px 15px 9px 9px;
+    width: 100%; max-width: none; max-height: min(78dvh,620px); padding: .85rem; border-radius: 15px 15px 9px 9px;
   }
-  .mechanic-tutorial-card h2 { font-size: 1.05rem; }
-  .mechanic-tutorial-step { padding: .72rem .76rem; }
-  .mechanic-tutorial-step p { font-size: .8rem; line-height: 1.42; }
-  .mechanic-tutorial-actions {
-    grid-template-columns: 1fr;
-    align-items: stretch;
-    gap: .4rem;
-  }
-  .mechanic-tutorial-actions > div {
-    order: 1;
-    grid-template-columns: 1fr 1fr;
-    justify-content: stretch;
-  }
-  .mechanic-tutorial-actions > .secondary-btn {
-    order: 2;
-    width: 100%;
-  }
+  .mechanic-tutorial-step { padding: .7rem .75rem; }
+  .mechanic-tutorial-step p { font-size: .8rem; }
+  .mechanic-tutorial-actions { grid-template-columns: 1fr; align-items: stretch; }
+  .mechanic-tutorial-actions > div { order: 1; grid-template-columns: 1fr 1fr; justify-content: stretch; }
+  .mechanic-tutorial-actions > .secondary-btn { order: 2; width: 100%; }
   .mechanic-tutorial-actions > div > * { width: 100%; }
   .mechanic-library-list { max-height: 280px; }
 }
 
-/* Landscape bajo: evita el caso de la captura (diálogo alto, cabecera fuera y
-   acciones recortadas) sin reducir el texto a tamaño microscópico. */
+/* Landscape bajo: mantiene cabecera, texto y acciones dentro del viewport. */
 @media (min-width: 640px) and (max-height: 560px) {
-  .mechanic-tutorial-backdrop {
-    justify-content: flex-end;
-    align-items: center;
-    padding: .45rem;
-  }
+  .mechanic-tutorial-backdrop { justify-content: flex-end; align-items: center; padding: .45rem; }
   body .mechanic-tutorial-backdrop > .mechanic-tutorial-card {
-    width: min(400px, calc(100vw - .9rem));
-    max-width: 400px;
-    max-height: calc(100dvh - .9rem);
-    gap: .42rem;
-    padding: .68rem .76rem;
-    border-radius: 12px;
+    width: min(400px,calc(100vw - .9rem)); max-width: 400px; max-height: calc(100dvh - .9rem); padding: .7rem .75rem;
   }
-  .mechanic-tutorial-card > .section-label { font-size: .5rem; }
-  .mechanic-tutorial-card h2 { margin-top: -.18rem; font-size: .98rem; }
+  .mechanic-tutorial-card h2 { margin-top: 0; font-size: .98rem; }
   .mechanic-tutorial-step { padding: .58rem .65rem; }
-  .mechanic-tutorial-step h3 { margin: .1rem 0 .25rem; font-size: .9rem; }
+  .mechanic-tutorial-step h3 { font-size: .9rem; }
   .mechanic-tutorial-step p { font-size: .72rem; line-height: 1.34; }
-  .mechanic-tutorial-dots { margin: -.06rem 0; }
-  .mechanic-tutorial-actions {
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: .35rem;
-  }
-  .mechanic-tutorial-actions > div {
-    order: initial;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, auto));
-    justify-content: end;
-  }
+  .mechanic-tutorial-dots { margin: .3rem 0; }
+  .mechanic-tutorial-actions { grid-template-columns: auto minmax(0,1fr); }
+  .mechanic-tutorial-actions > div { order: initial; grid-template-columns: repeat(2,minmax(0,auto)); justify-content: end; }
   .mechanic-tutorial-actions > .secondary-btn { order: initial; width: auto; }
-  .mechanic-tutorial-actions :where(.primary-btn, .secondary-btn) {
-    width: auto;
-    min-height: 34px;
-    padding: .42rem .58rem;
-    font-size: .68rem;
-  }
+  .mechanic-tutorial-actions :where(.primary-btn,.secondary-btn) { width: auto; min-height: 34px; padding: .4rem .55rem; font-size: .68rem; }
 }
 
 
