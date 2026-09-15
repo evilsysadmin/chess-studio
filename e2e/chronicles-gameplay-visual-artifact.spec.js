@@ -54,20 +54,6 @@ async function captureChroniclesHealth(page) {
   });
 }
 
-async function stageChroniclesSigilAwake(page) {
-  const forward = page.getByRole('button', { name: 'Avanzar', exact: true });
-  const attack = page.getByRole('button', { name: 'Atacar', exact: true });
-  await forward.click();
-  await page.getByRole('button', { name: 'Seleccionar Hildegard', exact: true }).click();
-  for (let hit = 0; hit < 3; hit += 1) await attack.click();
-  await forward.click();
-  await page.getByRole('button', { name: 'Girar a la izquierda', exact: true }).click();
-  await forward.click();
-  await expect(page.getByText('Derrota a la torre carcelero', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Retroceder', exact: true }).click();
-  await page.waitForTimeout(220);
-}
-
 async function captureElement(page, locator, path) {
   // DOM scrolling avoids Playwright's stability wait, which is unreliable on a
   // continuously rendered WebGL surface. boundingBox() is viewport-relative,
@@ -91,8 +77,9 @@ async function captureElement(page, locator, path) {
 
 for (const capture of CAPTURES) {
   test(`Chronicles · gameplay visual · ${capture.label}`, async ({ browser }) => {
-    // The stage is the visual contract. Capture it directly instead of forcing
-    // a full-page WebGL readback, and give each viewport an independent budget.
+    // Hosted SwiftShader makes large WebGL readbacks expensive. Keep this
+    // producer to one canonical readback per viewport; Tactics owns a separate
+    // focused producer so neither surface can starve the other of its budget.
     test.setTimeout(150_000);
     await mkdir(ARTIFACT_DIR, { recursive: true });
 
@@ -125,11 +112,9 @@ for (const capture of CAPTURES) {
       expect(health.portraitCanvas?.height || 0, `${capture.label}: Chronicles portrait height`).toBeGreaterThan(0);
 
       await captureElement(page, stage, `${ARTIFACT_DIR}/chronicles-playing-${capture.label}.png`);
-      await stageChroniclesSigilAwake(page);
-      await captureElement(page, stage, `${ARTIFACT_DIR}/chronicles-sigil-awake-${capture.label}.png`);
       await writeFile(
         `${ARTIFACT_DIR}/chronicles-visual-health-${capture.label}.json`,
-        `${JSON.stringify({ schema: 2, scope: 'chronicles', capture: { label: capture.label, ...health } }, null, 2)}\n`,
+        `${JSON.stringify({ schema: 3, scope: 'chronicles', capture: { label: capture.label, ...health } }, null, 2)}\n`,
         'utf8',
       );
     } finally {
