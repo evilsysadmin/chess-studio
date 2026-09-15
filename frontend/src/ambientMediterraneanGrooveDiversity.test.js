@@ -50,4 +50,16 @@ describe('Jazz mediterráneo · diversidad de groove', () => {
     expect(theme.stepsPerSection % feel.percussion.period).toBe(0);
     expect(Object.keys(feel.percussion.pattern).map(Number)).toEqual([0, 3, 6, 9, 12, 15]);
   });
+
+  it('keeps Andalusian coast hand percussion on the four-step melody lattice', () => {
+    const theme = AMBIENT_THEMES.andalusianCoast;
+    const feel = structuredFeel(theme);
+    const hits = Object.keys(feel.percussion.pattern).map(Number);
+
+    expect(theme.stepsPerSection).toBe(64);
+    expect(feel.percussion.period).toBe(16);
+    expect(theme.stepsPerSection % feel.percussion.period).toBe(0);
+    expect(hits).toEqual([0, 4, 8, 12]);
+    expect(hits.every((step) => step % 4 === 0)).toBe(true);
+  });
 });
