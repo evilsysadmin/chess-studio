@@ -15,7 +15,7 @@ async function openChronicles(page) {
   const moreModes = await openMoreGameModes(page);
   await moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: /Chronicles of Matthias/ }).click();
+  await page.getByRole('button').filter({ hasText: 'Descender a la cripta' }).click();
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
 }
 
