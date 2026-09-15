@@ -57,7 +57,7 @@ describe('WarRoomDeferredFinalizer', () => {
     expect(second).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the approved visible plant coordinate as the final Hans scene authority', () => {
+  it('keeps the approved window-corner plant coordinate as the final Hans scene authority', () => {
     const root = new THREE.Group();
     const owner = new THREE.Group();
     const floor = new THREE.Mesh(
@@ -89,16 +89,16 @@ describe('WarRoomDeferredFinalizer', () => {
     floor.onAfterRender();
 
     expect(sceneTask).toHaveBeenCalledTimes(1);
-    expect(plant.position.x).toBeCloseTo(5.77, 5);
-    expect(plant.position.z).toBeCloseTo(3.37, 5);
-    expect(plant.userData.warRoomPlantPlacement).toBe('canonical-visible-sofa-corner-v16');
+    expect(plant.position.x).toBeCloseTo(7.05, 5);
+    expect(plant.position.z).toBeCloseTo(2.85, 5);
+    expect(plant.userData.warRoomPlantPlacement).toBe('canonical-weather-window-corner-v17');
     expect(plant.userData.warRoomCanonicalPlacement).toBe(WAR_ROOM_CANONICAL_PLANT_PLACEMENT_VERSION);
     expect(root.userData.warRoomCanonicalPlantPlacement).toBe(WAR_ROOM_CANONICAL_PLANT_PLACEMENT_VERSION);
 
     floor.onAfterRender();
     expect(sceneTask).toHaveBeenCalledTimes(1);
-    expect(plant.position.x).toBeCloseTo(5.77, 5);
-    expect(plant.position.z).toBeCloseTo(3.37, 5);
+    expect(plant.position.x).toBeCloseTo(7.05, 5);
+    expect(plant.position.z).toBeCloseTo(2.85, 5);
   });
 
   it('falls back to the castle wall, rejects duplicates and only runs coarse tasks when explicitly allowed', () => {
