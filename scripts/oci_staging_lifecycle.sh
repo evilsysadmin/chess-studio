@@ -268,7 +268,7 @@ bootstrap_foundation() {
 }
 
 run_staging() {
-  local operation="$1" namespace="$2" compartment plan
+  local operation="$1" namespace="$2" compartment="$3" plan
   validate_staging_overrides
   prepare_staging "$namespace" "$compartment"
   plan="${RUNNER_TEMP:-/tmp}/oci-staging.tfplan"
