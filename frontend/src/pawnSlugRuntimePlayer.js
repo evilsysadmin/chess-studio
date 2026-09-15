@@ -1,6 +1,9 @@
 import { PAWN_SLUG_WEAPONS, PAWN_SLUG_WORLD } from './pawnSlug.js';
 import { animateMatthiasSlugSprite } from './pawnSlugSprites.js';
-import { pawnSlugMatthiasLocomotion } from './pawnSlugMotionPolish.js';
+import {
+  pawnSlugMatthiasLocomotion,
+  pawnSlugMatthiasVisualY,
+} from './pawnSlugMotionPolish.js';
 import { pawnSlugResolvePlatformLanding } from './pawnSlugPlatforms.js';
 import {
   PAWN_SLUG_CHECKPOINTS,
@@ -18,7 +21,11 @@ import {
 export function createPawnSlugPlayerSystem(runtime) {
   function placePlayer() {
     const state = runtime.state;
-    runtime.playerModel.position.set(state.player.x, state.player.y, 0.2);
+    runtime.playerModel.position.set(
+      state.player.x,
+      pawnSlugMatthiasVisualY(state.player.y),
+      0.2,
+    );
     runtime.playerModel.visible = state.phase !== 'gameover';
     runtime.playerWeaponModel.visible = runtime.playerModel.visible;
     runtime.weapons.syncPlayerWeaponVisual();
@@ -36,19 +43,16 @@ export function createPawnSlugPlayerSystem(runtime) {
         moving: player.moving,
         speedRatio: Math.abs(player.vx) / PAWN_SLUG_PLAYER_SPEED,
         moveStartedAt: player.moveStartedAt,
-        stoppedAt: player.stoppedAt,
       })
       : null;
-    const walking = locomotion?.action === 'walk';
+    const running = locomotion?.action === 'run';
 
     animateMatthiasSlugSprite(runtime.playerModel, {
       time: state.time,
-      // Normal Pawn Slug traversal is intentionally a walk. Keep the authored
-      // run row reserved for a real sprint mechanic instead of making Matthias
-      // look like he is jogging at every ordinary movement speed.
-      running: !walking && Math.abs(player.vx) > 0.7 && player.onGround,
-      walking,
-      walkFrame: walking ? locomotion.frame : null,
+      // Matthias is the action hero here: ordinary traversal uses the full
+      // authored 16-frame run row. Hans is the old gentleman elsewhere.
+      running,
+      runFrame: running ? locomotion.frame : null,
       crouch: player.crouch,
       airborne: !player.onGround,
       firing: player.recoil > 0,
@@ -59,7 +63,11 @@ export function createPawnSlugPlayerSystem(runtime) {
     const weaponY = player.crouch ? 0.68 : (!player.onGround ? 1.02 : 1.08);
     const weaponX = player.dir * (player.weapon === 'panzerfaust' ? 0.54 : 0.48);
     runtime.playerWeaponModel.userData.setDirection?.(player.dir);
-    runtime.playerWeaponModel.position.set(player.x + weaponX, player.y + weaponY, 0.44);
+    runtime.playerWeaponModel.position.set(
+      player.x + weaponX,
+      pawnSlugMatthiasVisualY(player.y) + weaponY,
+      0.44,
+    );
     runtime.playerWeaponModel.visible = runtime.playerModel.visible && state.phase !== 'gameover';
     if (player.recoil > 0) runtime.playerWeaponModel.position.x -= player.dir * 0.045;
 
@@ -153,7 +161,7 @@ export function createPawnSlugPlayerSystem(runtime) {
     }
 
     state.checkpoint = pawnSlugNearestCheckpoint(player.x);
-    runtime.playerModel.position.set(player.x, player.y, 0.2);
+    runtime.playerModel.position.set(player.x, pawnSlugMatthiasVisualY(player.y), 0.2);
     runtime.playerModel.visible = !(player.invuln > 0 && Math.floor(state.time * 18) % 2 === 0);
     animatePlayer();
   }
