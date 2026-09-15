@@ -74,6 +74,24 @@ run "discovers_ad_and_latest_a1_ubuntu_image" {
     condition     = !contains(keys(oci_core_instance.backend.metadata), "ssh_authorized_keys")
     error_message = "Closed-by-default staging must not require or inject an SSH key."
   }
+
+  assert {
+    condition     = oci_core_instance.backend.agent_config[0].are_all_plugins_disabled == false
+    error_message = "Oracle Cloud Agent plugins must remain enabled on staging."
+  }
+
+  assert {
+    condition     = oci_core_instance.backend.agent_config[0].is_management_disabled == false
+    error_message = "Oracle Cloud Agent management plugins must remain enabled for no-SSH service control."
+  }
+
+  assert {
+    condition = (
+      oci_core_instance.backend.agent_config[0].plugins_config[0].name == "Compute Instance Run Command" &&
+      oci_core_instance.backend.agent_config[0].plugins_config[0].desired_state == "ENABLED"
+    )
+    error_message = "Compute Instance Run Command must be explicitly enabled for no-SSH staging operations."
+  }
 }
 
 run "runtime_config_channel_is_private_and_least_privilege" {
