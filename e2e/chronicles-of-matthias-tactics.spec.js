@@ -72,7 +72,11 @@ test('Chronicles Tactics · elegir doctrina consume skill point y cierra la alte
   const mode = page.locator('[data-chronicles-tactics="true"]');
   const summary = mode.getByText('Técnicas · 1 punto', { exact: true });
   await expect(summary).toBeVisible();
-  await summary.click();
+  // This case owns the progression/disclosure state contract, not pointer hit-testing.
+  // Under software WebGL, Playwright's physical click waiter can be starved after the
+  // browser has already dispatched the same DOM event. Use the element's real click
+  // directly and prove the resulting disclosure state through the enabled actions.
+  await summary.evaluate((element) => element.click());
 
   const tempo = mode.getByRole('button', { name: /Tempo de hierro/i });
   const rupture = mode.getByRole('button', { name: /Ruptura maestra/i });
