@@ -5,6 +5,7 @@ mode="${1:-canonical}"
 groups="${2:-all}"
 experiments_scope="${3:-all}"
 chronicles_avatar="${4:-true}"
+producer_scope="${5:-all}"
 
 # Dedicated visual producers already create the canonical screenshots/artifacts
 # that matter. Tell Playwright not to continuously record trace/video on these
@@ -23,69 +24,60 @@ has_experiment_scope() {
   [[ ",$experiments_scope," == *",all,"* || ",$experiments_scope," == *",$needle,"* ]]
 }
 
+has_producer() {
+  local needle="$1"
+  [[ ",$producer_scope," == *",all,"* || ",$producer_scope," == *",$needle,"* ]]
+}
+
 case "$mode" in
   canonical)
-    if [[ "$groups" == "none" ]]; then
-      echo "App visual capture: no canonical surface selected."
+    if [[ "$groups" == "none" || "$producer_scope" == "none" ]]; then
+      echo "App visual capture: no canonical producer selected."
       exit 0
     fi
 
     specs=()
     if has_group home; then
-      specs+=(
-        app-visual-artifact.spec.js
-        matthias-home-visual-artifact.spec.js
-        home-3d-focus-visual.spec.js
-      )
+      has_producer home-base && specs+=(app-visual-artifact.spec.js)
+      has_producer home-matthias && specs+=(matthias-home-visual-artifact.spec.js)
+      has_producer home-focus && specs+=(home-3d-focus-visual.spec.js)
     fi
     if has_group experiments; then
-      # Chronicles owns two heavy WebGL surfaces. Always run their focused
-      # producers when Chronicles is in scope, even in a mixed/full visual run.
-      # Put Tactics first so the action-RPG framing artifact survives even if a
-      # later legacy/full-suite canary times out under hosted SwiftShader.
       if has_experiment_scope chronicles; then
-        specs+=(
-          chronicles-tactics-visual-artifact.spec.js
-          chronicles-gameplay-visual-artifact.spec.js
-        )
+        has_producer chronicles-tactics && specs+=(chronicles-tactics-visual-artifact.spec.js)
+        has_producer chronicles-gameplay && specs+=(chronicles-gameplay-visual-artifact.spec.js)
       fi
 
-      # The generic Experiments producer owns the hub/Arcade surfaces. It is not
-      # the canonical Chronicles gameplay proof anymore, so skip it for a pure
-      # Chronicles change and keep it for landing/Pawn Slug/full mixed scopes.
-      if [[ "$experiments_scope" != "chronicles" ]]; then
+      if [[ "$experiments_scope" != "chronicles" ]] && has_producer experiments-hub; then
         specs+=(experiments-visual-artifact.spec.js)
       fi
 
-      if has_experiment_scope chronicles && [[ "$chronicles_avatar" == "true" ]]; then
+      if has_experiment_scope chronicles && [[ "$chronicles_avatar" == "true" ]] && has_producer chronicles-avatar; then
         specs+=(chronicles-avatar-visual-artifact.spec.js)
       fi
     fi
-    if has_group training; then
+    if has_group training && has_producer training; then
       specs+=(training-visual-artifact.spec.js)
     fi
     if has_group warroom; then
-      specs+=(
-        war-room-visual-artifact.spec.js
-        war-room-decor-visual-artifact.spec.js
-        war-room-armor-oblique-visual-artifact.spec.js
-        war-room-hans-visual-artifact.spec.js
-      )
+      has_producer warroom-core && specs+=(war-room-visual-artifact.spec.js)
+      has_producer warroom-decor && specs+=(war-room-decor-visual-artifact.spec.js)
+      has_producer warroom-armor && specs+=(war-room-armor-oblique-visual-artifact.spec.js)
+      has_producer warroom-hans && specs+=(war-room-hans-visual-artifact.spec.js)
     fi
     if has_group health; then
-      specs+=(
-        browser-runtime-health.spec.js
-        browser-storage-health.spec.js
-      )
+      has_producer health-runtime && specs+=(browser-runtime-health.spec.js)
+      has_producer health-storage && specs+=(browser-storage-health.spec.js)
     fi
 
     if (( ${#specs[@]} == 0 )); then
-      echo "App visual capture: scope '$groups' resolved to no canonical specs."
+      echo "App visual capture: groups '$groups' + producers '$producer_scope' resolved to no canonical specs."
       exit 0
     fi
 
     export APP_VISUAL_EXPERIMENTS_SCOPE="$experiments_scope"
     echo "App visual capture groups: $groups"
+    echo "App visual producers: $producer_scope"
     if has_group experiments; then
       echo "Experiments visual subscopes: $experiments_scope"
       echo "Chronicles avatar proof: $chronicles_avatar"
