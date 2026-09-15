@@ -15,15 +15,16 @@ resource "oci_objectstorage_bucket" "runtime_config" {
 resource "oci_identity_dynamic_group" "staging_backend" {
   compartment_id = var.tenancy_ocid
   name           = "chess-studio-staging-backend"
-  description    = "Chess Studio OCI staging backend instances allowed to read their private runtime configuration."
+  description    = "Chess Studio OCI staging backend instances allowed to read runtime configuration and execute their own Run Commands."
   matching_rule  = "instance.compartment.id = '${var.compartment_ocid}'"
 }
 
 resource "oci_identity_policy" "staging_runtime_config" {
   compartment_id = var.tenancy_ocid
   name           = "chess-studio-staging-runtime-read"
-  description    = "Least-privilege read access from Chess Studio staging instances to the private runtime bucket."
+  description    = "Least-privilege runtime access for Chess Studio staging instances."
   statements = [
     "Allow dynamic-group ${oci_identity_dynamic_group.staging_backend.name} to read objects in compartment id ${var.compartment_ocid} where target.bucket.name='${oci_objectstorage_bucket.runtime_config.name}'",
+    "Allow dynamic-group ${oci_identity_dynamic_group.staging_backend.name} to use instance-agent-command-execution-family in compartment id ${var.compartment_ocid} where request.instance.id=target.instance.id",
   ]
 }
