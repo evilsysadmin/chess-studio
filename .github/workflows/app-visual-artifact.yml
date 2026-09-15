@@ -1,6 +1,8 @@
 name: App · visual artifact
 on:
-  pull_request:
+  push:
+    branches:
+      - main
     paths:
       - frontend/src/**/*.jsx
       - frontend/src/**/*.css
@@ -21,9 +23,6 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: app-visual-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   capture:
     runs-on: ubuntu-24.04

@@ -15,7 +15,7 @@ runs:
         set -euo pipefail
         python3 -S scripts/app_visual_scope.py --self-test
         python3 -S scripts/app_visual_producer_scope.py --self-test
-        if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
           python3 -S scripts/app_visual_scope.py --all --github-output "$GITHUB_OUTPUT"
           python3 -S scripts/app_visual_producer_scope.py --all --github-output "$GITHUB_OUTPUT"
           exit 0
