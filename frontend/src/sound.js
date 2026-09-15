@@ -4,6 +4,7 @@ import { getAudioContext as getContext } from './audioContext.js';
 import { structuredFeel } from './ambientProfiles.js';
 import { connectFinishedAmbientVoice, scheduleAmbientFilterSweep } from './ambientVoiceFinish.js';
 import { structuredSectionInstrument } from './ambientInstrumentRouting.js';
+import { shouldPlayStructuredLead, shouldPlayStructuredSignature } from './ambientTiming.js';
 import { primeOrchestralTheme, readyOrchestralSample } from './orchestralSampler.js';
 import { midiToChessStudioFrequency, tuneStandardFrequency } from './musicTuning.js';
 import {
@@ -1868,12 +1869,6 @@ function structuredArrangement(theme, cycleIndex) {
   };
 }
 
-function shouldPlayStructuredLead(mode, localStep, stepsPerSection) {
-  if (mode === 'late') return localStep >= Math.floor(stepsPerSection / 2);
-  if (mode === 'sparse') return localStep % 4 !== 0;
-  return true;
-}
-
 function shouldPlayStructuredDrum(mode, code) {
   if (mode === 'none') return false;
   // En las vueltas con menos batería quitamos sobre todo hats/ornamentos,
@@ -1949,30 +1944,49 @@ function startStructuredMusic(theme, startPositionMs = 0) {
       finish: feel.finish || null,
     } : null;
 
-    if (signature && layerEnabled('signature')) {
+    const leadInstrument = structuredSectionInstrument(theme, feel, section, 'lead');
+    const counterInstrument = structuredSectionInstrument(theme, feel, section, 'counter');
+    const bassInstrument = structuredSectionInstrument(theme, feel, section, 'bass');
+    const chordInstrument = structuredSectionInstrument(theme, feel, section, 'chord');
+    const leadWillPlay = lead != null
+      && layerEnabled('lead')
+      && shouldPlayStructuredLead(arrangement.leadMode, localStep, stepsPerSection);
+    const counterWillPlay = counter != null && layerEnabled('counter') && arrangement.leadMode !== 'sparse';
+    const bassWillPlay = bass != null && layerEnabled('bass');
+    const chordWillPlay = Boolean(chord) && layerEnabled('chords');
+    const activeVoices = [
+      leadWillPlay ? { instrument: leadInstrument, note: lead + t + arrangement.leadOctave } : null,
+      counterWillPlay ? { instrument: counterInstrument, note: counter + t + arrangement.counterOctave } : null,
+      bassWillPlay ? { instrument: bassInstrument, note: bass + t } : null,
+      ...(chordWillPlay ? chord.map((note) => ({ instrument: chordInstrument, note: note + t })) : []),
+    ].filter(Boolean);
+    const signatureVoice = signature ? {
+      instrument: signature.instrument || theme.leadInstrument,
+      note: signature.note + t,
+    } : null;
+
+    if (layerEnabled('signature') && shouldPlayStructuredSignature(signatureVoice, activeVoices)) {
       const signatureDuration = (theme.stepMs * (signature.durationSteps || 3)) / 1000;
-      playStructuredVoice(signature.instrument || theme.leadInstrument, signature.note + t, (signature.volume || 0.55) * arrangement.masterTrim, signatureDuration, { ...tone, pan: -0.06 });
+      playStructuredVoice(signatureVoice.instrument, signatureVoice.note, (signature.volume || 0.55) * arrangement.masterTrim, signatureDuration, { ...tone, pan: -0.06 });
     }
 
-    if (lead != null && layerEnabled('lead') && shouldPlayStructuredLead(arrangement.leadMode, localStep, stepsPerSection)) {
-      playStructuredVoice(structuredSectionInstrument(theme, feel, section, 'lead'), lead + t + arrangement.leadOctave, arrangement.leadVolume, null, { ...tone, pan: -0.10 });
+    if (leadWillPlay) {
+      playStructuredVoice(leadInstrument, lead + t + arrangement.leadOctave, arrangement.leadVolume, null, { ...tone, pan: -0.10 });
     }
-    if (counter != null && layerEnabled('counter') && arrangement.leadMode !== 'sparse') {
+    if (counterWillPlay) {
       playStructuredVoice(
-        structuredSectionInstrument(theme, feel, section, 'counter'),
+        counterInstrument,
         counter + t + arrangement.counterOctave,
         arrangement.counterVolume,
         null,
         { ...tone, pan: 0.12 },
       );
     }
-    if (bass != null && layerEnabled('bass')) {
-      const bassInstrument = structuredSectionInstrument(theme, feel, section, 'bass');
+    if (bassWillPlay) {
       const bassDuration = feel?.bassHoldSteps ? (theme.stepMs * feel.bassHoldSteps) / 1000 : null;
       playStructuredVoice(bassInstrument, bass + t, arrangement.bassVolume, bassDuration, tone);
     }
-    if (chord && layerEnabled('chords')) {
-      const chordInstrument = structuredSectionInstrument(theme, feel, section, 'chord');
+    if (chordWillPlay) {
       const longChord = ['organ', 'pad'].includes(chordInstrument);
       const chordHoldSteps = feel?.chordHoldSteps || (longChord ? 15.5 : null);
       const duration = chordHoldSteps ? (theme.stepMs * chordHoldSteps) / 1000 : null;
