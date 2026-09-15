@@ -50,6 +50,13 @@ def render_engine(scene):
     raise RuntimeError(f"no supported Eevee engine available: {sorted(available)}")
 
 
+def configure_preview_samples(scene):
+    samples = max(1, int(os.environ.get("BLENDER_PREVIEW_SAMPLES", "64")))
+    if hasattr(scene, "eevee") and hasattr(scene.eevee, "taa_render_samples"):
+        scene.eevee.taa_render_samples = samples
+    return samples
+
+
 def configure_scene(output_dir):
     scene = bpy.context.scene
     scene.frame_set(1)
@@ -59,6 +66,7 @@ def configure_scene(output_dir):
     scene.render.image_settings.file_format = "PNG"
     scene.render.film_transparent = False
     scene.render.engine = render_engine(scene)
+    samples = configure_preview_samples(scene)
     scene.render.filepath = os.path.join(output_dir, "chronicles-party-preview.png")
     scene.world.color = (0.012, 0.009, 0.007)
 
@@ -84,6 +92,7 @@ def configure_scene(output_dir):
     bsdf.inputs["Base Color"].default_value = (0.020, 0.015, 0.012, 1)
     bsdf.inputs["Roughness"].default_value = 0.94
     ground.data.materials.append(mat)
+    print("Chronicles preview samples:", samples)
 
 
 def roots():
