@@ -1,4 +1,5 @@
 import { request } from './http.js';
+import { orchestralPlaybackRateForSemitones } from './musicTuning.js';
 
 const assetBase = (() => {
   const configured = import.meta.env?.BASE_URL || '/';
@@ -56,7 +57,7 @@ export function selectOrchestralSample(kind, midiNote, variation = 0) {
     file,
     url: sampleUrl(file),
     semitones: note - selected.root,
-    playbackRate: 2 ** ((note - selected.root) / 12),
+    playbackRate: orchestralPlaybackRateForSemitones(note - selected.root),
   };
 }
 
