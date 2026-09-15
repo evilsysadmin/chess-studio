@@ -81,30 +81,32 @@ const ISTANBUL_TAVLA = Object.freeze([
 // Bosphorus Rain — chamber music rather than a regional groove showcase. Felt
 // piano carries the foreground, cello moves slowly underneath and clarinet is
 // an occasional human breath. Glass exists only as a quiet harmonic reflection;
-// there is deliberately no drum lane in the final profile.
+// there is deliberately no drum lane in the final profile. Keep the authored
+// 4/4/4/3 voicing count: the Mediterranean articulation pass moves those
+// voicings onto Bosphorus' asymmetric rain-cadence attack plan later.
 const BOSPHORUS_RAIN = Object.freeze([
   section({
     lead:[[4,64],[18,67],[34,62],[50,69]],
     counter:[[26,72],[58,67]],
-    chords:[[0,[52,55,59]],[32,[50,55,59]]],
+    chords:[[0,[52,55,59]],[16,[50,55,59]],[32,[53,57,60]],[48,[50,54,57]]],
     bass:[[0,40],[16,38],[32,41],[48,36]],
   }),
   section({
     lead:[[8,67],[24,71],[40,64],[56,69]],
     counter:[[30,74]],
-    chords:[[0,[55,59,62]],[32,[52,55,59]]],
+    chords:[[0,[55,59,62]],[16,[52,55,59]],[32,[53,57,60]],[48,[50,54,57]]],
     bass:[[0,43],[16,40],[32,38],[48,41]],
   }),
   section({
     lead:[[6,62],[22,65],[38,60],[54,67]],
     counter:[[14,69],[46,72]],
-    chords:[[0,[50,55,59]],[32,[48,52,55]]],
+    chords:[[0,[50,55,59]],[16,[48,52,55]],[32,[52,55,59]],[48,[50,54,57]]],
     bass:[[0,38],[16,36],[32,40],[48,35]],
   }),
   section({
     lead:[[4,64],[20,67],[36,62],[52,69]],
     counter:[[28,71]],
-    chords:[[0,[52,55,59]],[32,[50,54,57]]],
+    chords:[[0,[52,55,59]],[24,[50,54,57]],[48,[52,55,59]]],
     bass:[[0,40],[16,38],[32,41],[48,40]],
   }),
 ]);
