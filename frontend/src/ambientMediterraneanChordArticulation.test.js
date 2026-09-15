@@ -1,0 +1,42 @@
+import { describe, expect, it } from 'vitest';
+import { AMBIENT_THEMES } from './ambientCatalog.js';
+import { structuredFeel } from './ambientProfiles.js';
+import {
+  MEDITERRANEAN_CHORD_ARTICULATION_IDS,
+  MEDITERRANEAN_CHORD_ATTACK_PLANS,
+  remapChordAttacks,
+} from './ambientMediterraneanChordArticulation.js';
+
+function chordFingerprint(theme) {
+  return theme.sections.map((section) => Object.keys(section.chords || {}).join(',')).join('|');
+}
+
+describe('Mediterráneo · respiración armónica', () => {
+  it('preserves voicing order while moving only the authored attacks', () => {
+    const source = {0:[48,55,60],16:[50,57,62],32:[45,52,57],48:[47,54,59]};
+    const remapped = remapChordAttacks(source, [0,13,29,46]);
+    expect(Object.keys(remapped).map(Number)).toEqual([0,13,29,46]);
+    expect(Object.values(remapped)).toEqual(Object.values(source));
+  });
+
+  it('gives all eleven arrangements a distinct four-scene harmonic rhythm', () => {
+    const fingerprints = MEDITERRANEAN_CHORD_ARTICULATION_IDS.map((id) => {
+      const theme = AMBIENT_THEMES[id];
+      expect(theme.sections.map((section) => Object.keys(section.chords || {}).map(Number)))
+        .toEqual(MEDITERRANEAN_CHORD_ATTACK_PLANS[id]);
+      return chordFingerprint(theme);
+    });
+    expect(new Set(fingerprints).size).toBe(fingerprints.length);
+  });
+
+  it('uses wider spacing for nocturnes and livelier anticipations above 100 BPM', () => {
+    const nile = AMBIENT_THEMES.nileBalcony0152;
+    const malaga = AMBIENT_THEMES.malagaLastTram;
+    expect(60000 / (nile.stepMs * 4)).toBeLessThan(80);
+    expect(60000 / (malaga.stepMs * 4)).toBeGreaterThan(110);
+    expect(structuredFeel(nile).chordHoldSteps).toBeGreaterThan(structuredFeel(malaga).chordHoldSteps);
+    expect(MEDITERRANEAN_CHORD_ATTACK_PLANS.nileBalcony0152[0][1]).toBeGreaterThan(
+      MEDITERRANEAN_CHORD_ATTACK_PLANS.malagaLastTram[0][1],
+    );
+  });
+});
