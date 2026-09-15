@@ -233,21 +233,24 @@ def build_matrix(scope: BrowserScope) -> dict[str, list[dict[str, str]]]:
             ]
         )
     if scope.special_states:
-        cases.append(
-            {
-                "id": "special-surfaces",
-                "label": "3D parity · special surfaces",
-                "command": "./node_modules/.bin/playwright test three-d-special-surfaces.spec.js --workers=1 --retries=0 --timeout=90000",
-            }
-        )
-        for shard in range(1, 6):
-            cases.append(
+        cases.extend(
+            [
                 {
-                    "id": f"special-state-{shard}",
-                    "label": f"War Room · special-state {shard}/5",
-                    "command": f"./node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --workers=1 --retries=0 --timeout=75000 --shard={shard}/5",
-                }
-            )
+                    "id": "special-surfaces",
+                    "label": "3D parity · special surfaces",
+                    "command": "./node_modules/.bin/playwright test three-d-special-surfaces.spec.js --workers=1 --retries=0 --timeout=90000",
+                },
+                {
+                    "id": "special-state-canaries",
+                    "label": "War Room · special-state canaries",
+                    # Required CI proves three distinct renderer-sensitive contracts:
+                    # endgame transition, promotion UI/piece replacement and WebGL
+                    # lifecycle under repeated Android visibility/rotation changes.
+                    # Check/castling/en-passant remain in the full browser sweep.
+                    "command": "./node_modules/.bin/playwright test three-d-war-room-special-states.spec.js --grep \"jaque mate|promoción 3D|sobrevive rotación\" --workers=1 --retries=0 --timeout=120000",
+                },
+            ]
+        )
     if scope.visual:
         cases.append(
             {
@@ -378,9 +381,8 @@ def self_test() -> None:
     full = classify(["frontend/src/components/Board3DRenderer.js"])
     assert full == BrowserScope(full_logic=True, special_states=True, visual=True, focus=True)
     assert _ids(full) == [
-        "hans-fire-call", "android-selection", "desktop-input", "special-surfaces",
-        "special-state-1", "special-state-2", "special-state-3", "special-state-4", "special-state-5",
-        "desktop-scale", "android-focus",
+        "hans-fire-call", "android-selection", "desktop-input",
+        "special-surfaces", "special-state-canaries", "desktop-scale", "android-focus",
     ]
 
     chrome = classify(["frontend/src/components/GamePlayerRail.jsx"])
@@ -389,9 +391,11 @@ def self_test() -> None:
 
     direct_special = classify(["e2e/three-d-war-room-special-states.spec.js"])
     assert direct_special == BrowserScope(special_states=True)
-    assert _ids(direct_special) == [
-        "special-surfaces", "special-state-1", "special-state-2", "special-state-3", "special-state-4", "special-state-5",
-    ]
+    assert _ids(direct_special) == ["special-surfaces", "special-state-canaries"]
+    special_canary = build_matrix(direct_special)["include"][1]
+    assert "jaque mate" in special_canary["command"]
+    assert "promoción 3D" in special_canary["command"]
+    assert "sobrevive rotación" in special_canary["command"]
 
     assert _ids(classify(["frontend/src/components/MatthiasAvatar.jsx"])) == [
         "matthias-home-motion", "matthias-war-room", "matthias-insights",
@@ -428,7 +432,7 @@ def self_test() -> None:
 
     all_scope = classify([".github/actions/setup-browser-e2e/action.yml"])
     assert all_scope == BrowserScope.all()
-    assert len(_ids(all_scope)) == 17
+    assert len(_ids(all_scope)) == 13
 
     harness = classify([".github/workflows/cicd.yml"])
     assert harness == BrowserScope(visual=True, quick_2d=True)
