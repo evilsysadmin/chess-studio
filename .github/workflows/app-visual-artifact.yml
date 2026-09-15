@@ -22,8 +22,10 @@ on:
       - .github/actions/app-visual-pipeline/**
       - .github/workflows/app-visual-artifact.yml
   workflow_dispatch:
-permissions:
-  contents: read
+concurrency:
+  group: app-visual-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions: {contents: read}
 jobs:
   capture:
     runs-on: ubuntu-24.04
@@ -31,7 +33,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.sha }}
           fetch-depth: 2
       - uses: ./.github/actions/app-visual-pipeline
         with:
