@@ -18,6 +18,52 @@ function finish(name, brightness, reflectionScale, stereoWidth, driftCents = 1) 
   return Object.freeze({ name, brightness, reflectionScale, stereoWidth, driftCents });
 }
 
+function roomPolish(releaseScale, space, delayMs, mix, signatureEveryCycles, signatureMaxVolume) {
+  return Object.freeze({
+    releaseScale,
+    space,
+    delayMs,
+    mix:Object.freeze(mix),
+    signaturePolicy:Object.freeze({ everyCycles:signatureEveryCycles, maxVolume:signatureMaxVolume }),
+  });
+}
+
+// These pieces had accumulated too many oscillator-based regional voices at
+// once. Keep the composition and each city's identity, but mix them like a
+// small room ensemble: one clear foreground voice, a quieter answering player,
+// less synthetic wash and regional plucks used as occasional colour rather
+// than a permanent layer.
+const BEIRUT_ROOM = roomPolish(1.06, 0.085, 112, { lead:0.54, counter:0.22, bass:0.55, chord:0.27 }, 4, 0.115);
+const ISTANBUL_ROOM = roomPolish(1.04, 0.075, 96, { lead:0.52, counter:0.20, bass:0.52, chord:0.25 }, 4, 0.11);
+const EGYPT_ROOM = roomPolish(1.09, 0.100, 126, { lead:0.55, counter:0.22, bass:0.54, chord:0.28 }, 3, 0.12);
+const LEVANT_ROOM = roomPolish(1.08, 0.105, 120, { lead:0.53, counter:0.21, bass:0.53, chord:0.27 }, 4, 0.115);
+
+const MEDITERRANEAN_ORGANIC_POLISH = Object.freeze({
+  beirut0113:BEIRUT_ROOM,
+  beirutRooftop0412:BEIRUT_ROOM,
+  beirutNightTaxi:BEIRUT_ROOM,
+  beirutHarbor2340:BEIRUT_ROOM,
+
+  istanbul0326:ISTANBUL_ROOM,
+  istanbulBackgammon:ISTANBUL_ROOM,
+  bosphorusRain:ISTANBUL_ROOM,
+
+  alexandria241:EGYPT_ROOM,
+  cairo0047:EGYPT_ROOM,
+  cairoQuietHours:EGYPT_ROOM,
+  cairoRedLantern:EGYPT_ROOM,
+  cairoBlueNote0211:EGYPT_ROOM,
+  nileBalcony0152:EGYPT_ROOM,
+
+  damascusBlueHour:LEVANT_ROOM,
+  aleppoAfterRain:LEVANT_ROOM,
+  ammanVelvetRoom:LEVANT_ROOM,
+  ammanLateTable0303:LEVANT_ROOM,
+  medinaBlueSmoke:LEVANT_ROOM,
+});
+
+export const MEDITERRANEAN_ORGANIC_POLISH_IDS = Object.freeze(Object.keys(MEDITERRANEAN_ORGANIC_POLISH));
+
 // Final exceptions found by the complete catalog audit. Every entry below
 // closes a measurable gap: a two-note/no-note signature, a duplicated player
 // chain inside one genre, or a hidden score that still used legacy production.
@@ -115,13 +161,31 @@ export const FINAL_CATALOG_POLISH_IDS = Object.freeze(Object.keys(FINAL_CATALOG_
 
 export function withFinalCatalogPolish(theme, feel) {
   const polish = FINAL_CATALOG_POLISH[theme?.id];
-  if (!polish && !feel) return feel;
+  const organic = MEDITERRANEAN_ORGANIC_POLISH[theme?.id];
+  if (!polish && !organic && !feel) return feel;
+
+  const { signaturePolicy = null, ...organicFeel } = organic || {};
   const result = {
     ...(feel || {}),
     ...polish,
-    layers:Object.freeze({ ...(feel?.layers || {}), ...(polish?.layers || {}), ...(polish ? { signature:true } : {}) }),
-    mix:Object.freeze({ ...(feel?.mix || {}), ...(polish?.mix || {}) }),
+    ...organicFeel,
+    layers:Object.freeze({
+      ...(feel?.layers || {}),
+      ...(polish?.layers || {}),
+      ...(organicFeel?.layers || {}),
+      ...((polish || organic) ? { signature:true } : {}),
+    }),
+    mix:Object.freeze({ ...(feel?.mix || {}), ...(polish?.mix || {}), ...(organicFeel?.mix || {}) }),
   };
+
+  if (signaturePolicy && result.signature) {
+    result.signature = Object.freeze({
+      ...result.signature,
+      everyCycles:Math.max(Number(result.signature.everyCycles) || 1, signaturePolicy.everyCycles),
+      volume:Math.min(Number(result.signature.volume) || signaturePolicy.maxVolume, signaturePolicy.maxVolume),
+    });
+  }
+
   const signatureSections = result.signature?.sections;
   if (Array.isArray(signatureSections) && Array.isArray(theme?.sections)) {
     const validSections = signatureSections.filter((section) => section >= 0 && section < theme.sections.length);
@@ -129,7 +193,7 @@ export function withFinalCatalogPolish(theme, feel) {
       result.signature = Object.freeze({ ...result.signature, sections:Object.freeze(validSections.length ? validSections : [0]) });
     }
   }
-  if (!polish && result.signature === feel?.signature) return feel;
+  if (!polish && !organic && result.signature === feel?.signature) return feel;
   return Object.freeze(result);
 }
 

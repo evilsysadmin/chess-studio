@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { AMBIENT_THEME_OPTIONS, AMBIENT_THEMES, CURATED_HIDDEN_THEME_IDS } from './ambientCatalog.js';
 import { structuredFeel } from './ambientProfiles.js';
-import { FINAL_CATALOG_POLISH_IDS } from './ambientCatalogFinalPolish.js';
+import {
+  FINAL_CATALOG_POLISH_IDS,
+  MEDITERRANEAN_ORGANIC_POLISH_IDS,
+  withFinalCatalogPolish,
+} from './ambientCatalogFinalPolish.js';
 import { getPercussionVoiceKit } from './sound.js';
 
 function productionChain(id) {
@@ -35,6 +39,36 @@ describe('complete music catalog audit', () => {
     expect(getPercussionVoiceKit('istanbulBackgammon')).toBe('tavla-table');
     expect(getPercussionVoiceKit('beirutHarbor2340')).toBe('harbor-brush');
     expect(getPercussionVoiceKit('cadizLanterns')).toBe('cadiz-lantern-hand');
+  });
+
+  it('mixes the eastern-Mediterranean room like a small ensemble instead of a synthetic stack', () => {
+    expect(MEDITERRANEAN_ORGANIC_POLISH_IDS).toHaveLength(18);
+    expect(MEDITERRANEAN_ORGANIC_POLISH_IDS).toEqual(expect.arrayContaining([
+      'beirut0113', 'beirutHarbor2340', 'istanbul0326', 'istanbulBackgammon',
+      'cairo0047', 'cairoBlueNote0211', 'damascusBlueHour', 'ammanLateTable0303',
+    ]));
+
+    const seedFeel = Object.freeze({
+      releaseScale:1.4,
+      space:0.3,
+      delayMs:320,
+      layers:Object.freeze({ lead:true, counter:true, chords:true, bass:true, drums:true, signature:true }),
+      mix:Object.freeze({ lead:0.8, counter:0.6, bass:0.8, chord:0.6 }),
+      signature:Object.freeze({
+        instrument:'qanun', motif:Object.freeze({ 4:64, 20:67, 36:65, 52:62 }),
+        sections:Object.freeze([0]), repeatPeriod:64, durationSteps:4, volume:0.24, everyCycles:1,
+      }),
+    });
+
+    for (const id of MEDITERRANEAN_ORGANIC_POLISH_IDS) {
+      const result = withFinalCatalogPolish({ id, sections:[{}] }, seedFeel);
+      expect(result.space, id).toBeLessThanOrEqual(0.105);
+      expect(result.delayMs, id).toBeLessThanOrEqual(126);
+      expect(result.mix.counter, id).toBeLessThanOrEqual(0.22);
+      expect(result.mix.chord, id).toBeLessThanOrEqual(0.28);
+      expect(result.signature.everyCycles, id).toBeGreaterThanOrEqual(3);
+      expect(result.signature.volume, id).toBeLessThanOrEqual(0.12);
+    }
   });
 
   it('keeps Cádiz on its authored 6/8 phrase instead of a drifting 16-step loop', () => {
