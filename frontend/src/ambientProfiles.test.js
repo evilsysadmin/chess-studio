@@ -43,7 +43,7 @@ describe('Granada · cámara guitarra + qanun', () => {
     const rain = structuredFeel(AMBIENT_THEMES.verticalRainPiano);
     expect(squares.counterInstrument).toBe('pizz');
     expect(rain.counterInstrument).toBe('cello');
-    expect(squares.leadInstrument).toBe('felt');
+    expect(squares.leadInstrument).toBe('feltGrand');
     expect(squares.layers.drums).toBe(false);
     expect(rain.layers.drums).toBe(false);
   });

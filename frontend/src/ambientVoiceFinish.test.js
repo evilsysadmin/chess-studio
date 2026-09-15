@@ -49,6 +49,26 @@ describe('finite ambient voice finish', () => {
     expect(dry.outputs).toEqual([output]);
   });
 
+  it('uses the authored texture to narrow tape rooms and deepen water reflections', () => {
+    const nodes = { gains: [], filters: [], panners: [], delays: [] };
+    const ctx = {
+      currentTime: 0,
+      createGain: () => { const next = node(); nodes.gains.push(next); return next; },
+      createBiquadFilter: () => { const next = node(); nodes.filters.push(next); return next; },
+      createStereoPanner: () => { const next = node(); nodes.panners.push(next); return next; },
+      createDelay: () => { const next = node(); nodes.delays.push(next); return next; },
+    };
+    connectFinishedAmbientVoice(ctx, node(), node(), {
+      pan: 0.12,
+      warmth: 0.9,
+      space: 0.2,
+      delayMs: 250,
+      finish: { stereoWidth: 0.75, reflectionScale: 1.2 },
+    });
+    expect(nodes.panners[0].pan.value).toBeCloseTo(0.09);
+    expect(nodes.filters[0].outputs[0].gain.value).toBeCloseTo(0.24);
+  });
+
   it('keeps the filter motion ordered even on very short notes', () => {
     const events = [];
     const frequency = {
