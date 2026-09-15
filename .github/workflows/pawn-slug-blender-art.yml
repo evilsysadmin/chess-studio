@@ -67,20 +67,35 @@ jobs:
           image = Image.open(path).convert('RGBA')
           assert image.size == (1536, 480), image.size
           counts = (10, 10, 16, 10, 9)
-          min_width = {'pistol': 24, 'machinegun': 31, 'shotgun': 37, 'panzerfaust': 40}[weapon]
+          min_width = {
+              'pistol': 28,
+              'machinegun': 34,
+              'shotgun': 40,
+              'panzerfaust': 43,
+          }[weapon]
           for row, count in enumerate(counts):
               for col in range(count):
                   cell = image.crop((col * 96, row * 96, (col + 1) * 96, (row + 1) * 96))
-                  alpha = cell.getchannel('A')
+                  alpha = cell.getchannel('A').point(lambda value: 255 if value >= 128 else 0)
                   bbox = alpha.getbbox()
                   assert bbox is not None, f'empty authored cell row={row} col={col}'
                   left, top, right, bottom = bbox
                   width = right - left
                   height = bottom - top
-                  assert left > 1 and right < 95 and top > 1 and bottom < 95, f'cell bleed row={row} col={col} bbox={bbox}'
-                  assert width >= min_width, f'weapon silhouette collapsed row={row} col={col} width={width} expected>={min_width} for {weapon}'
-                  assert height >= 42, f'character silhouette too short row={row} col={col} height={height}'
-                  assert right >= 66, f'weapon does not project to screen-right row={row} col={col} bbox={bbox}'
+                  assert left > 3 and right < 93 and top > 3 and bottom < 93, (
+                      f'cell bleed row={row} col={col} bbox={bbox}; '
+                      'character/weapon must fit its 96px frame'
+                  )
+                  assert width >= min_width, (
+                      f'weapon silhouette collapsed row={row} col={col} width={width} '
+                      f'expected>={min_width} for {weapon}'
+                  )
+                  assert 44 <= height <= 84, f'character silhouette height out of range row={row} col={col} height={height}'
+                  # Matthias lives left-of-centre and the integrated weapon must visibly project
+                  # to screen-right.  This specifically rejects the old torso/head blob bake.
+                  assert right >= 62, (
+                      f'weapon does not project to screen-right row={row} col={col} bbox={bbox}'
+                  )
           PY
       - uses: actions/upload-artifact@v4
         if: always()
