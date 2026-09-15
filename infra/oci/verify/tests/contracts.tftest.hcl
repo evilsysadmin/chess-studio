@@ -9,10 +9,8 @@ mock_provider "oci" {
 }
 
 variables {
-  region           = "eu-frankfurt-1"
-  compartment_ocid = "ocid1.compartment.oc1..chessstudiotest"
-  instance_id      = "ocid1.instance.oc1.eu-frankfurt-1.chessstudiotest"
-  console_public_key = "unused"
+  region      = "eu-frankfurt-1"
+  instance_id = "ocid1.instance.oc1.eu-frankfurt-1.chessstudiotest"
 }
 
 run "captures_console_history_for_target_instance" {
