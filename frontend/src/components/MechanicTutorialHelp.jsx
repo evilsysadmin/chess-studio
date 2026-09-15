@@ -7,17 +7,31 @@ export default function MechanicTutorialHelp({
   autoOpen = false,
   label = 'Abrir tutorial',
   markSeenOnClose = false,
+  firstRunLabel = '',
 }) {
-  const [open, setOpen] = useState(() => autoOpen && !loadMechanicTutorialProgress()?.[tutorialId]?.seen);
+  const [seen, setSeen] = useState(() => Boolean(loadMechanicTutorialProgress()?.[tutorialId]?.seen));
+  const [open, setOpen] = useState(() => autoOpen && !seen);
+  const showFirstRunNudge = Boolean(firstRunLabel) && !seen;
 
   function closeTutorial() {
-    if (markSeenOnClose) markMechanicTutorialSeen(tutorialId);
+    if (markSeenOnClose) {
+      markMechanicTutorialSeen(tutorialId);
+      setSeen(true);
+    }
     setOpen(false);
   }
 
   return (
     <>
-      <button type="button" className="context-help-btn" onClick={() => setOpen(true)} aria-label={label}>?</button>
+      <button
+        type="button"
+        className={`context-help-btn${showFirstRunNudge ? ' is-first-run-nudge' : ''}`}
+        onClick={() => setOpen(true)}
+        aria-label={label}
+        title={label}
+      >
+        {showFirstRunNudge ? firstRunLabel : '?'}
+      </button>
       {open && <MechanicTutorialModal tutorialId={tutorialId} onClose={closeTutorial} />}
     </>
   );
