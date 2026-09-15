@@ -5,6 +5,19 @@ const MECHANIC_TUTORIAL_KEY = 'chess-study-mechanic-tutorial-progress-v1';
 
 export const MECHANIC_TUTORIALS = Object.freeze([
   {
+    id: 'war-room-basics',
+    group: 'War Room',
+    title: 'Tu puesto de mando',
+    summary: 'Dónde mirar, qué esconden los tres puntos y cómo salir de una partida sin buscar botones fantasma.',
+    steps: [
+      { title: 'El tablero manda', text: 'La escena 3D es el tablero de juego. Selecciona una pieza y una casilla válida como siempre; la decoración de la sala no cambia las reglas del ajedrez.' },
+      { title: 'Mira el semáforo de turno', text: 'La pastilla de Matthias te dice de un vistazo si te toca, si juega la CPU o si la partida está pensando o cambiando de estado.' },
+      { title: 'Los tres puntos son el cajón de mando', text: 'Pulsa ⋯ para abrir las acciones secundarias: pistas o deshacer cuando existan, Apariencia, Modo Zen y otras utilidades de la partida.' },
+      { title: 'Aquí también está Abandonar', text: 'En escritorio, Abandonar partida vive al final del menú ⋯ para mantener limpia la War Room. En móvil tienes además el acceso rápido con la bandera.' },
+      { title: 'Puedes volver a esta guía', text: 'El botón ? junto a los controles vuelve a abrir este tutorial cuando quieras. Saltarlo o terminarlo evita que aparezca automáticamente en futuras partidas.' },
+    ],
+  },
+  {
     id: 'combat-basics',
     group: 'Combat Chess',
     title: 'Combat Chess: qué cambia',
