@@ -11,7 +11,7 @@ function fingerprint(percussion) {
 
 describe('Jazz mediterráneo · diversidad de groove', () => {
   it('replaces every formerly duplicated grid with an authored pattern', () => {
-    expect(MEDITERRANEAN_GROOVE_IDS).toHaveLength(23);
+    expect(MEDITERRANEAN_GROOVE_IDS).toHaveLength(22);
     for (const id of MEDITERRANEAN_GROOVE_IDS) {
       const feel = structuredFeel(AMBIENT_THEMES[id]);
       const rewrite = MEDITERRANEAN_GROOVE_REWRITES[id];
@@ -19,6 +19,13 @@ describe('Jazz mediterráneo · diversidad de groove', () => {
       expect(feel.percussion.pattern).toEqual(rewrite.pattern);
       expect(Object.keys(feel.percussion.pattern).every((step) => Number(step) < feel.percussion.period)).toBe(true);
     }
+  });
+
+  it('hands Malaga last tram groove ownership to its final authored arrangement', () => {
+    expect(MEDITERRANEAN_GROOVE_REWRITES.malagaLastTram).toBeUndefined();
+    const feel = structuredFeel(AMBIENT_THEMES.malagaLastTram);
+    expect(feel.percussion.period).toBe(32);
+    expect(feel.percussion.kit).toBe('rooftop-jazz');
   });
 
   it('leaves no exact percussion-grid duplicate in the published Mediterranean dial', () => {
