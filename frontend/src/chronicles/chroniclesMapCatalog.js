@@ -6,6 +6,30 @@ function clonePoint(point) {
   return { x: Number(point?.x || 0), y: Number(point?.y || 0) };
 }
 
+function freezeRequirements(requirements) {
+  return Object.freeze((requirements || []).map((entry) => Object.freeze({ ...entry })));
+}
+
+function freezeAction(action) {
+  if (!action || typeof action !== 'object') return null;
+  return Object.freeze({
+    ...action,
+    effects: Object.freeze((action.effects || []).map((effect) => Object.freeze({ ...effect }))),
+    journal: action.journal ? Object.freeze({ ...action.journal }) : undefined,
+  });
+}
+
+function normalizeContentEntry(entry) {
+  return Object.freeze({
+    ...entry,
+    x: entry?.x === undefined ? undefined : Number(entry.x),
+    y: entry?.y === undefined ? undefined : Number(entry.y),
+    when: freezeRequirements(entry?.when),
+    requirements: freezeRequirements(entry?.requirements),
+    action: freezeAction(entry?.action),
+  });
+}
+
 function normalizeEnemy(enemy) {
   const positions = enemy?.positions && typeof enemy.positions === 'object'
     ? Object.fromEntries(Object.entries(enemy.positions).map(([key, point]) => [key, clonePoint(point)]))
@@ -23,6 +47,10 @@ function normalizeEnemy(enemy) {
       attackReach: Math.max(1, Number(enemy?.ai?.attackReach ?? enemy?.retaliationReach ?? 1)),
       requiresLineOfSight: Boolean(enemy?.ai?.requiresLineOfSight),
     }),
+    onDefeat: enemy?.onDefeat ? Object.freeze({
+      ...enemy.onDefeat,
+      effects: Object.freeze((enemy.onDefeat.effects || []).map((effect) => Object.freeze({ ...effect }))),
+    }) : undefined,
   });
 }
 
@@ -45,9 +73,11 @@ function normalizeMap(source) {
     }),
     initialFlags: Object.freeze({ ...(source.initialFlags || {}) }),
     enemies: Object.freeze((source.enemies || []).map(normalizeEnemy)),
-    interactables: Object.freeze((source.interactables || []).map((entry) => Object.freeze({ ...entry }))),
-    treasures: Object.freeze((source.treasures || []).map((entry) => Object.freeze({ ...entry }))),
-    traps: Object.freeze((source.traps || []).map((entry) => Object.freeze({ ...entry }))),
+    triggers: Object.freeze((source.triggers || []).map(normalizeContentEntry)),
+    interactables: Object.freeze((source.interactables || []).map(normalizeContentEntry)),
+    treasures: Object.freeze((source.treasures || []).map(normalizeContentEntry)),
+    traps: Object.freeze((source.traps || []).map(normalizeContentEntry)),
+    exits: Object.freeze((source.exits || []).map(normalizeContentEntry)),
     initialJournal: Object.freeze({ ...(source.initialJournal || {}) }),
   });
 }
