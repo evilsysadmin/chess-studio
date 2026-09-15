@@ -34,8 +34,7 @@
   height: 54px;
   pointer-events: none;
   border-radius: 50%;
-  background:
-    radial-gradient(ellipse at center, rgba(226, 155, 70, .18) 0 17%, rgba(155, 94, 38, .12) 35%, transparent 69%);
+  background: radial-gradient(ellipse at center, rgba(226, 155, 70, .18) 0 17%, rgba(155, 94, 38, .12) 35%, transparent 69%);
   filter: blur(6px);
 }
 .chronicles-party-preview-three,
@@ -50,16 +49,10 @@
   z-index: 0;
   transform: translateY(-12px) scale(1.48);
   transform-origin: 50% 38%;
-  filter:
-    brightness(1.16)
-    saturate(1.04)
-    contrast(1.07)
-    drop-shadow(0 12px 11px rgba(0, 0, 0, .34));
+  filter: brightness(1.16) saturate(1.04) contrast(1.07) drop-shadow(0 12px 11px rgba(0, 0, 0, .34));
   will-change: transform, filter;
 }
-/* Each expedition silhouette has different proportions. Keep the face/crown in
-   the clear portrait area and preserve enough base to read the figure as a
-   physical chess-piece character rather than a cropped bust. */
+/* Desktop keeps per-character framing where silhouette differences are visible. */
 .chronicles-party-preview-three[aria-label="Retrato 3D de Matthias"] { transform: translateY(-14px) scale(1.5); }
 .chronicles-party-preview-three[aria-label="Retrato 3D de Hildegard"] { transform: translateY(-10px) scale(1.42); }
 .chronicles-party-preview-three[aria-label="Retrato 3D de Aziz"] { transform: translateY(-13px) scale(1.43); }
@@ -75,9 +68,7 @@
   background:
     linear-gradient(90deg, rgba(17, 13, 10, .9), rgba(8, 7, 6, .48)),
     rgba(8, 7, 6, .62);
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, .18),
-    inset 0 1px 0 rgba(255, 237, 205, .035);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .18), inset 0 1px 0 rgba(255, 237, 205, .035);
   backdrop-filter: blur(4px);
 }
 .chronicles-party-preview-copy span,
@@ -98,12 +89,8 @@
 .chronicles-party-preview-copy span { text-transform: uppercase; }
 .chronicles-party-preview-copy small { letter-spacing: .02em; color: #baaa93; }
 
-/* The Three.js lighting now carries the mood. Keep the optical frame cinematic
-   without crushing the newly-readable masonry back into black, especially on
-   narrow touch layouts where the old vignette covered a large share of canvas. */
-.chronicles-three canvas {
-  filter: brightness(1.11) saturate(1.06) contrast(1.015);
-}
+/* The Three.js lighting now carries the mood without crushing dungeon detail. */
+.chronicles-three canvas { filter: brightness(1.11) saturate(1.06) contrast(1.015); }
 .chronicles-stage {
   box-shadow:
     inset 0 0 0 1px rgba(202, 159, 94, .24),
@@ -130,18 +117,10 @@
   }
   .chronicles-party-preview::before { inset: 5px; }
   .chronicles-party-preview-three {
-    transform: translateY(-6px) scale(1.29);
+    transform: translateY(-6px) scale(1.27);
     transform-origin: 50% 37%;
-    filter:
-      brightness(1.17)
-      saturate(1.035)
-      contrast(1.055)
-      drop-shadow(0 8px 8px rgba(0, 0, 0, .3));
+    filter: brightness(1.17) saturate(1.035) contrast(1.055) drop-shadow(0 8px 8px rgba(0, 0, 0, .3));
   }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Matthias"] { transform: translateY(-7px) scale(1.31); }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Hildegard"] { transform: translateY(-5px) scale(1.25); }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Aziz"] { transform: translateY(-6px) scale(1.25); }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Morcilla"] { transform: translateY(-5px) scale(1.23); }
   .chronicles-party-preview-copy {
     inset: auto 6px 5px;
     width: max-content;
@@ -155,14 +134,8 @@
 
 @media (max-width: 520px) {
   .chronicles-party-preview { min-height: 124px; }
-  .chronicles-party-preview-three { transform: translateY(-4px) scale(1.2); }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Matthias"] { transform: translateY(-5px) scale(1.22); }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Hildegard"] { transform: translateY(-3px) scale(1.17); }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Aziz"] { transform: translateY(-4px) scale(1.17); }
-  .chronicles-party-preview-three[aria-label="Retrato 3D de Morcilla"] { transform: translateY(-3px) scale(1.15); }
-  .chronicles-three canvas {
-    filter: brightness(1.14) saturate(1.05) contrast(1.01);
-  }
+  .chronicles-party-preview-three { transform: translateY(-4px) scale(1.18); }
+  .chronicles-three canvas { filter: brightness(1.14) saturate(1.05) contrast(1.01); }
   .chronicles-stage {
     box-shadow:
       inset 0 0 0 1px rgba(202, 159, 94, .24),
