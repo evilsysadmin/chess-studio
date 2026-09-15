@@ -177,8 +177,32 @@
   transform-origin: 50% 38%;
 }
 
+/* Hildegard keeps her lightweight live rook underneath, but the roster portrait
+   now uses the approved battle-worn guardian art at the same fidelity as Matthias. */
+.chronicles-party-preview-three[aria-label="Retrato 3D de Hildegard"] {
+  transform: none;
+  filter: none;
+}
+.chronicles-party-preview-three[aria-label="Retrato 3D de Hildegard"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, transparent 52%, rgba(8, 6, 5, .2) 76%, rgba(8, 6, 5, .6) 100%),
+    radial-gradient(circle at 28% 25%, rgba(221, 158, 81, .12), transparent 39%),
+    url('../assets/chronicles/hildegard-canonical.webp') center 21% / cover no-repeat;
+  filter: saturate(.92) contrast(1.07) brightness(.94);
+  transform: scale(1.02);
+  transform-origin: 50% 36%;
+}
+
 @media (max-width: 800px) {
   .chronicles-party-preview-three[aria-label="Retrato 3D de Matthias"]::after {
     background-position: center 23%;
+  }
+  .chronicles-party-preview-three[aria-label="Retrato 3D de Hildegard"]::after {
+    background-position: center 18%;
   }
 }
