@@ -100,24 +100,27 @@ function addMistPatch(root, texture, { name, x, z, width, depth, color, opacity,
 }
 
 function addReadabilityLighting(root, { coarsePointer }) {
-  const ambient = new THREE.AmbientLight(0x69727d, coarsePointer ? 0.62 : 0.52);
+  // Chronicles should be gloomy, not crushed. The ambient level is deliberately
+  // high enough to preserve stone/material detail after ACES while practical
+  // torches still carry the mood and direction of the scene.
+  const ambient = new THREE.AmbientLight(0x73808c, coarsePointer ? 0.78 : 0.66);
   ambient.name = 'chronicles-readability-ambient';
 
   const entryBounce = new THREE.PointLight(
-    0xd28a4a,
-    coarsePointer ? 3.0 : 2.6,
-    12.5,
-    2,
+    0xd99554,
+    coarsePointer ? 3.55 : 3.15,
+    13.5,
+    1.95,
   );
   entryBounce.name = 'chronicles-readability-entry-bounce';
   entryBounce.position.set(-6.2, 1.35, 8.1);
   entryBounce.castShadow = false;
 
   const cryptBounce = new THREE.PointLight(
-    0x7189a3,
-    coarsePointer ? 2.05 : 1.75,
-    15.5,
-    2,
+    0x7d96b0,
+    coarsePointer ? 2.65 : 2.25,
+    16.5,
+    1.9,
   );
   cryptBounce.name = 'chronicles-readability-crypt-bounce';
   cryptBounce.position.set(0.4, 1.75, -1.2);
@@ -126,17 +129,43 @@ function addReadabilityLighting(root, { coarsePointer }) {
   // A low, warm bounce skims the first corridor instead of lifting the whole
   // exposure. Damp slabs and bump relief catch it while the ceiling stays dark.
   const floorBounce = new THREE.PointLight(
-    0xc8793d,
-    coarsePointer ? 2.35 : 2.05,
-    coarsePointer ? 8.5 : 9.5,
-    2.15,
+    0xcd8147,
+    coarsePointer ? 2.9 : 2.55,
+    coarsePointer ? 9.4 : 10.4,
+    2.05,
   );
   floorBounce.name = 'chronicles-readability-floor-bounce';
   floorBounce.position.set(-2.8, 0.42, 8.05);
   floorBounce.castShadow = false;
 
-  root.add(ambient, entryBounce, cryptBounce, floorBounce);
-  return 4;
+  // Broad corridor fill recovers the middle distance. It is intentionally cool
+  // and shadowless so it reads as bounced dungeon light rather than a seventh
+  // visible torch.
+  const corridorFill = new THREE.PointLight(
+    0x9aa9b5,
+    coarsePointer ? 1.85 : 1.48,
+    18,
+    1.6,
+  );
+  corridorFill.name = 'chronicles-readability-corridor-fill';
+  corridorFill.position.set(0.8, 2.3, 7.9);
+  corridorFill.castShadow = false;
+
+  // A restrained far fill keeps silhouettes and the end wall readable without
+  // bleaching the foreground. This is especially useful on darker Android
+  // displays where ACES plus fog otherwise collapses the last third to black.
+  const farFill = new THREE.PointLight(
+    0xb58d68,
+    coarsePointer ? 1.35 : 1.08,
+    11.5,
+    1.85,
+  );
+  farFill.name = 'chronicles-readability-far-fill';
+  farFill.position.set(7.1, 1.7, 8.0);
+  farFill.castShadow = false;
+
+  root.add(ambient, entryBounce, cryptBounce, floorBounce, corridorFill, farFill);
+  return 6;
 }
 
 export function buildChroniclesDungeonAtmosphere({ coarsePointer = false, reducedMotion = false } = {}) {
@@ -167,9 +196,9 @@ export function buildChroniclesDungeonAtmosphere({ coarsePointer = false, reduce
   if (!coarsePointer) {
     mistTexture = createSoftMistTexture();
     const patches = [
-      { name: 'chronicles-gate-mist', x: 0, z: -7.15, width: 4.5, depth: 2.2, color: 0x929ca4, opacity: 0.085, rotation: 0.04 },
-      { name: 'chronicles-sigil-mist', x: 0.1, z: 4.15, width: 4.15, depth: 2.35, color: 0xb39272, opacity: 0.07, rotation: -0.13 },
-      { name: 'chronicles-crypt-mist', x: 0, z: 8.25, width: 4.8, depth: 2.7, color: 0x7890a0, opacity: 0.095, rotation: 0.08 },
+      { name: 'chronicles-gate-mist', x: 0, z: -7.15, width: 4.5, depth: 2.2, color: 0x929ca4, opacity: 0.075, rotation: 0.04 },
+      { name: 'chronicles-sigil-mist', x: 0.1, z: 4.15, width: 4.15, depth: 2.35, color: 0xb39272, opacity: 0.062, rotation: -0.13 },
+      { name: 'chronicles-crypt-mist', x: 0, z: 8.25, width: 4.8, depth: 2.7, color: 0x7890a0, opacity: 0.082, rotation: 0.08 },
     ].map((config) => addMistPatch(root, mistTexture, config));
     mistMaterials.push(...patches);
     mistMaterials.forEach(({ material }) => {

@@ -6,34 +6,43 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     const desktop = buildChroniclesDungeonAtmosphere();
     const coarse = buildChroniclesDungeonAtmosphere({ coarsePointer: true });
 
-    expect(desktop.userData.chroniclesAtmosphereStats).toEqual({ dustCount: 84, mistCount: 3, readabilityLightCount: 4 });
-    expect(coarse.userData.chroniclesAtmosphereStats).toEqual({ dustCount: 24, mistCount: 0, readabilityLightCount: 4 });
+    expect(desktop.userData.chroniclesAtmosphereStats).toEqual({ dustCount: 84, mistCount: 3, readabilityLightCount: 6 });
+    expect(coarse.userData.chroniclesAtmosphereStats).toEqual({ dustCount: 24, mistCount: 0, readabilityLightCount: 6 });
     expect(desktop.getObjectByName('chronicles-gate-mist')).toBeTruthy();
     expect(desktop.getObjectByName('chronicles-surface-patina')).toBeTruthy();
     expect(coarse.getObjectByName('chronicles-surface-patina')).toBeTruthy();
     expect(coarse.getObjectByName('chronicles-gate-mist')).toBeFalsy();
   });
 
-  it('adds restrained non-shadowing bounce light so authored stone remains readable', () => {
+  it('adds layered non-shadowing bounce light so authored stone remains readable', () => {
     const desktop = buildChroniclesDungeonAtmosphere();
     const ambient = desktop.getObjectByName('chronicles-readability-ambient');
     const entryBounce = desktop.getObjectByName('chronicles-readability-entry-bounce');
     const cryptBounce = desktop.getObjectByName('chronicles-readability-crypt-bounce');
     const floorBounce = desktop.getObjectByName('chronicles-readability-floor-bounce');
+    const corridorFill = desktop.getObjectByName('chronicles-readability-corridor-fill');
+    const farFill = desktop.getObjectByName('chronicles-readability-far-fill');
 
     expect(ambient?.isAmbientLight).toBe(true);
-    expect(ambient?.intensity).toBeGreaterThanOrEqual(0.2);
+    expect(ambient?.intensity).toBeGreaterThanOrEqual(0.6);
     expect(entryBounce?.isPointLight).toBe(true);
     expect(cryptBounce?.isPointLight).toBe(true);
     expect(floorBounce?.isPointLight).toBe(true);
+    expect(corridorFill?.isPointLight).toBe(true);
+    expect(farFill?.isPointLight).toBe(true);
     expect(entryBounce?.castShadow).toBe(false);
     expect(cryptBounce?.castShadow).toBe(false);
     expect(floorBounce?.castShadow).toBe(false);
-    expect(entryBounce?.distance).toBeLessThanOrEqual(13);
-    expect(cryptBounce?.distance).toBeLessThanOrEqual(16);
+    expect(corridorFill?.castShadow).toBe(false);
+    expect(farFill?.castShadow).toBe(false);
+    expect(entryBounce?.distance).toBeLessThanOrEqual(14);
+    expect(cryptBounce?.distance).toBeLessThanOrEqual(17);
     expect(floorBounce?.position.y).toBeLessThan(0.5);
-    expect(floorBounce?.distance).toBeLessThanOrEqual(10);
+    expect(floorBounce?.distance).toBeLessThanOrEqual(11);
     expect(floorBounce?.decay).toBeGreaterThan(2);
+    expect(corridorFill?.distance).toBeGreaterThanOrEqual(18);
+    expect(corridorFill?.decay).toBeLessThan(2);
+    expect(farFill?.intensity).toBeLessThan(corridorFill?.intensity);
   });
 
   it('generates deterministic dust only across the authored dungeon volume', () => {
