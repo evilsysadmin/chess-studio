@@ -43,7 +43,6 @@
     "02-game-board.css",
     "03-combat-core.css",
     "04-operations-career.css",
-    "04-career-dossier.css",
     "05-product-roster-foundation.css",
     "05-shared-glossary.css",
     "05-navigation-hint.css",
@@ -71,6 +70,7 @@
     "28-product-resilience.css"
   ],
   "lazyModules": [
+    "04-career-dossier.css",
     "05-combat-roster.css",
     "05-learning-guidance.css",
     "05-army-actions.css",
