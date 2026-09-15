@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { createThreeRenderer } from '../threeRenderer.js';
 import './HomeMatthias3D.css';
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/matthias-home-canonical.glb`;
@@ -99,7 +100,7 @@ export default function HomeMatthias3D({
 
     let renderer;
     try {
-      renderer = new THREE.WebGLRenderer({
+      renderer = createThreeRenderer({
         canvas,
         alpha: true,
         antialias: true,
