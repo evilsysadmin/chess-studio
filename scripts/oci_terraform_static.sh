@@ -7,6 +7,7 @@ terraform fmt -check -diff -recursive "$root/infra/oci"
 python3 -S "$root/scripts/oci_auth_contract.py" --self-test
 python3 -S "$root/scripts/oci_bootstrap_state.py" --self-test
 python3 -S "$root/scripts/oci_bootstrap_recover.py" --self-test
+python3 -S "$root/scripts/oci_run_command.py" --self-test
 bash "$root/scripts/oci_staging_lifecycle.sh" --self-test
 
 for stack in bootstrap probe staging; do
