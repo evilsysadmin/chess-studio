@@ -5,8 +5,12 @@ import { setWarRoomHansServiceDoorOpen } from './WarRoomHansServiceDoor.js';
 
 export { moveWarRoomHansToward };
 
-export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v8-visible-exit-door-command-desk-front-standoff';
-export const HANS_SERVICE_WALK_SPEED = 0.78;
+export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v9-elder-cruise-visible-exit-door-command-desk-front-standoff';
+// Keep non-fireplace routines on the same deliberately slow elderly cruise as
+// the fireplace choreography. The fireplace clock already governs Hans around
+// 0.32 u/s; service/chore routines run on their own render hooks and therefore
+// need the physical step speed capped here instead of inheriting the old 0.78.
+export const HANS_SERVICE_WALK_SPEED = 0.32;
 
 const DOOR_NAME = 'war-room-hans-service-door';
 const DOOR_RECESS_NAME = 'war-room-hans-service-door-recess';
