@@ -11,6 +11,9 @@ function material(color, options = {}) {
     emissiveIntensity: options.emissiveIntensity ?? 0,
     envMapIntensity: options.envMapIntensity ?? 0.38,
     specularIntensity: options.specularIntensity ?? 0.34,
+    sheen: options.sheen ?? 0,
+    sheenColor: options.sheenColor ?? 0xffffff,
+    sheenRoughness: options.sheenRoughness ?? 0.72,
   });
   result.userData.chroniclesOwnedMaterial = true;
   return result;
@@ -72,10 +75,10 @@ function buildMatthias(segments) {
   const detailSegments = Math.max(8, Math.round(segments * 0.55));
   const ivory = material(0xd8cdbb, { metalness: 0.02, roughness: 0.72, clearcoat: 0.06 });
   const brass = material(0xb88936, { metalness: 0.78, roughness: 0.3, clearcoat: 0.24 });
-  const coat = material(0x35302b, { roughness: 0.68, clearcoat: 0.04 });
-  const coatEdge = material(0x50443b, { roughness: 0.62, clearcoat: 0.05 });
+  const coat = material(0x35302b, { roughness: 0.68, clearcoat: 0.04, sheen: 0.12, sheenColor: 0x8f7969, sheenRoughness: 0.82 });
+  const coatEdge = material(0x50443b, { roughness: 0.62, clearcoat: 0.05, sheen: 0.08, sheenColor: 0x9c7a69, sheenRoughness: 0.78 });
   const wine = material(0x6f2f2d, { roughness: 0.72 });
-  const leather = material(0x5a3822, { roughness: 0.82 });
+  const leather = material(0x5a3822, { roughness: 0.82, sheen: 0.1, sheenColor: 0x8b5a38, sheenRoughness: 0.88 });
   const skin = material(0xeee2d0, { metalness: 0, roughness: 0.86, clearcoat: 0.02 });
   const ink = material(0x090a0b, { metalness: 0, roughness: 0.9 });
   basePlinth(root, ivory, brass, segments);
@@ -111,7 +114,7 @@ function buildHildegard(segments) {
   const stone = material(0x7f8588, { metalness: 0.28, roughness: 0.5, clearcoat: 0.1 });
   const steel = material(0xaeb4b7, { metalness: 0.72, roughness: 0.28, clearcoat: 0.22 });
   const dark = material(0x25292d, { metalness: 0.38, roughness: 0.46 });
-  const cloth = material(0x39434a, { roughness: 0.76 });
+  const cloth = material(0x39434a, { roughness: 0.76, sheen: 0.1, sheenColor: 0x6f8291, sheenRoughness: 0.84 });
   const ember = material(0x9c5d2f, { metalness: 0.24, roughness: 0.5 });
   const skin = material(0xcaa98e, { metalness: 0, roughness: 0.88 });
   const eye = material(0x1a0f0a, { metalness: 0, roughness: 0.82, emissive: 0x8e3e18, emissiveIntensity: 0.18 });
@@ -147,9 +150,9 @@ function buildAziz(segments) {
   const detailSegments = Math.max(8, Math.round(segments * 0.55));
   const sandstone = material(0xb9a47d, { metalness: 0.03, roughness: 0.78 });
   const brass = material(0xc29a45, { metalness: 0.75, roughness: 0.3, clearcoat: 0.2 });
-  const robe = material(0x30423d, { roughness: 0.75 });
-  const robeEdge = material(0x496059, { roughness: 0.68, clearcoat: 0.03 });
-  const scarf = material(0x8c6736, { roughness: 0.7 });
+  const robe = material(0x30423d, { roughness: 0.75, sheen: 0.12, sheenColor: 0x63877d, sheenRoughness: 0.84 });
+  const robeEdge = material(0x496059, { roughness: 0.68, clearcoat: 0.03, sheen: 0.09, sheenColor: 0x77998d, sheenRoughness: 0.78 });
+  const scarf = material(0x8c6736, { roughness: 0.7, sheen: 0.12, sheenColor: 0xa8783f, sheenRoughness: 0.8 });
   const glow = material(0xe6b55a, { metalness: 0.08, roughness: 0.34, emissive: 0xff8b20, emissiveIntensity: 1.8 });
   const skin = material(0xb8845f, { metalness: 0, roughness: 0.9 });
   const ink = material(0x0a0908, { metalness: 0, roughness: 0.9 });
@@ -184,9 +187,9 @@ function buildMorcilla(segments) {
   const detailSegments = Math.max(8, Math.round(segments * 0.55));
   const bone = material(0x9c8f79, { metalness: 0.05, roughness: 0.78 });
   const iron = material(0x4d5358, { metalness: 0.56, roughness: 0.38 });
-  const leather = material(0x65422b, { roughness: 0.82 });
-  const darkLeather = material(0x38251a, { roughness: 0.86 });
-  const cloth = material(0x3d3330, { roughness: 0.78 });
+  const leather = material(0x65422b, { roughness: 0.82, sheen: 0.12, sheenColor: 0x956247, sheenRoughness: 0.88 });
+  const darkLeather = material(0x38251a, { roughness: 0.86, sheen: 0.08, sheenColor: 0x6d4835, sheenRoughness: 0.9 });
+  const cloth = material(0x3d3330, { roughness: 0.78, sheen: 0.09, sheenColor: 0x745e58, sheenRoughness: 0.86 });
   const copper = material(0x9a6036, { metalness: 0.55, roughness: 0.36 });
   const ink = material(0x080706, { metalness: 0, roughness: 0.92 });
   basePlinth(root, bone, iron, segments);
@@ -243,14 +246,12 @@ export function buildCorruptedPawn({ coarsePointer = false } = {}) {
   add(root, new THREE.BoxGeometry(0.08, 0.035, 0.035), glow, [0.095, 1.47, 0.29], [0, 0, 0.24], null, 'corrupted-pawn-eye-right');
   add(root, new THREE.ConeGeometry(0.1, 0.44, 7), crust, [-0.26, 1.2, -0.04], [0.1, 0, -0.72], null, 'corrupted-pawn-spike-left');
   add(root, new THREE.ConeGeometry(0.08, 0.36, 7), crust, [0.28, 1.12, -0.08], [-0.1, 0, 0.82], null, 'corrupted-pawn-spike-right');
-  add(root, new THREE.BoxGeometry(0.05, 0.58, 0.03), glow, [0.03, 0.91, 0.28], [0, 0, -0.12], null, 'corrupted-pawn-chest-fissure');
   add(root, new THREE.TorusGeometry(0.33, 0.04, 7, segments), crust, [0, 1.08, 0], [Math.PI / 2, 0, 0], null, 'corrupted-pawn-broken-collar');
-  add(root, new THREE.DodecahedronGeometry(0.17, 0), crust, [-0.29, 1.08, 0.01], [0.18, 0, -0.38], [1.25, 0.5, 0.92], 'corrupted-pawn-pauldron-left');
-  add(root, new THREE.DodecahedronGeometry(0.14, 0), crust, [0.3, 1.03, -0.03], [-0.12, 0, 0.44], [1.15, 0.45, 0.85], 'corrupted-pawn-pauldron-right');
-  add(root, new THREE.BoxGeometry(0.28, 0.055, 0.04), glow, [-0.08, 1.2, 0.275], [0, 0, -0.44], null, 'corrupted-pawn-neck-fissure');
-  add(root, new THREE.BoxGeometry(0.38, 0.075, 0.05), crust, [0, 1.34, 0.26], [0, 0, 0], null, 'corrupted-pawn-jaw-guard');
+  add(root, new THREE.BoxGeometry(0.17, 0.16, 0.08), crust, [-0.31, 1.1, 0.06], [0.08, 0.12, -0.3], null, 'corrupted-pawn-pauldron-left');
+  add(root, new THREE.BoxGeometry(0.13, 0.12, 0.07), crust, [0.29, 1.04, 0.02], [-0.08, -0.08, 0.38], null, 'corrupted-pawn-pauldron-right');
+  add(root, new THREE.BoxGeometry(0.07, 0.42, 0.05), glow, [-0.13, 1.29, 0.24], [0.08, 0, -0.18], null, 'corrupted-pawn-neck-fissure');
+  add(root, new THREE.BoxGeometry(0.27, 0.055, 0.04), crust, [0, 1.34, 0.3], [0, 0, 0.04], null, 'corrupted-pawn-jaw-guard');
   root.userData.chroniclesGlowMaterials = [glow];
-  root.userData.chroniclesBaseGlow = 1.7;
   return root;
 }
 
@@ -259,76 +260,50 @@ export function buildGateJailer({ coarsePointer = false } = {}) {
   const root = new THREE.Group();
   root.name = 'chronicles-gate-jailer';
   root.userData.chroniclesEnemy = 'gate-jailer';
-
-  const blackIron = material(0x17191b, { metalness: 0.66, roughness: 0.34, clearcoat: 0.14 });
-  const oldSteel = material(0x55595a, { metalness: 0.72, roughness: 0.32, clearcoat: 0.12 });
-  const crust = material(0x352722, { metalness: 0.18, roughness: 0.78 });
-  const glow = material(0x4a0b09, { metalness: 0.08, roughness: 0.38, emissive: 0xe3311d, emissiveIntensity: 2.05 });
-
-  basePlinth(root, crust, blackIron, segments);
-  lathe(root, [
-    [0.5, 0.34], [0.48, 0.48], [0.44, 0.72], [0.48, 1.02], [0.5, 1.28],
-  ], blackIron, segments, 'gate-jailer-tower-body');
-  add(root, new THREE.TorusGeometry(0.46, 0.045, 8, segments), oldSteel, [0, 0.56, 0], [Math.PI / 2, 0, 0], null, 'gate-jailer-iron-band-low');
-  add(root, new THREE.TorusGeometry(0.49, 0.05, 8, segments), oldSteel, [0, 1.14, 0], [Math.PI / 2, 0, 0], null, 'gate-jailer-iron-band-high');
-
+  root.userData.chroniclesSilhouette = 'corrupted-rook-jailer';
+  const iron = material(0x181a1c, { metalness: 0.66, roughness: 0.34, clearcoat: 0.18 });
+  const crust = material(0x3a302a, { metalness: 0.16, roughness: 0.74 });
+  const glow = material(0x5a0e0d, { metalness: 0.12, roughness: 0.38, emissive: 0xff361c, emissiveIntensity: 2.3 });
+  const chain = material(0x6f665b, { metalness: 0.82, roughness: 0.28 });
+  basePlinth(root, crust, iron, segments);
+  lathe(root, [[0.46, 0.35], [0.43, 0.66], [0.45, 1.08], [0.48, 1.34]], iron, segments, 'gate-jailer-body');
+  for (let i = 0; i < 6; i += 1) {
+    const angle = (i / 6) * Math.PI * 2;
+    add(root, new THREE.BoxGeometry(0.18, 0.22, 0.18), iron, [Math.cos(angle) * 0.36, 1.49, Math.sin(angle) * 0.36], [0, -angle, 0], null, `gate-jailer-crenel-${i}`);
+  }
+  add(root, new THREE.TorusGeometry(0.31, 0.045, 8, segments), glow, [0, 0.82, 0], [Math.PI / 2, 0, 0], null, 'gate-jailer-fissure-main');
+  add(root, new THREE.BoxGeometry(0.07, 0.54, 0.04), glow, [0.16, 1.05, 0.43], [0, 0, 0.21], null, 'gate-jailer-fissure-vertical');
+  add(root, new THREE.BoxGeometry(0.46, 0.08, 0.06), crust, [0, 1.23, 0.43], [0, 0, 0], null, 'gate-jailer-brow');
+  add(root, new THREE.BoxGeometry(0.1, 0.05, 0.04), glow, [-0.13, 1.28, 0.47], [0, 0, -0.12], null, 'gate-jailer-eye-left');
+  add(root, new THREE.BoxGeometry(0.1, 0.05, 0.04), glow, [0.13, 1.28, 0.47], [0, 0, 0.12], null, 'gate-jailer-eye-right');
   const crown = new THREE.Group();
   crown.name = 'gate-jailer-crown';
-  root.add(crown);
-  add(crown, new THREE.CylinderGeometry(0.5, 0.47, 0.23, segments), blackIron, [0, 1.34, 0], [0, 0, 0], null, 'gate-jailer-crown-drum');
-  for (let i = 0; i < 8; i += 1) {
-    const angle = (i / 8) * Math.PI * 2;
-    const radial = 0.39;
-    add(
-      crown,
-      new THREE.BoxGeometry(0.17, 0.26, 0.18),
-      i % 2 ? oldSteel : blackIron,
-      [Math.cos(angle) * radial, 1.52, Math.sin(angle) * radial],
-      [0, -angle, 0],
-      null,
-      `gate-jailer-crenel-${i}`,
-    );
+  for (let i = 0; i < 4; i += 1) {
+    const angle = i * Math.PI / 2;
+    add(crown, new THREE.ConeGeometry(0.11, 0.34, 7), crust, [Math.cos(angle) * 0.31, 1.72, Math.sin(angle) * 0.31], [0, 0, -Math.cos(angle) * 0.12], null, `gate-jailer-crown-spike-${i}`);
   }
-
-  add(root, new THREE.BoxGeometry(0.52, 0.065, 0.04), glow, [0, 0.92, 0.455], [0, 0, 0.12], null, 'gate-jailer-fissure-main');
-  add(root, new THREE.BoxGeometry(0.32, 0.045, 0.035), glow, [-0.12, 1.04, 0.465], [0, 0, -0.58], null, 'gate-jailer-fissure-diagonal');
-  add(root, new THREE.BoxGeometry(0.12, 0.055, 0.04), glow, [-0.16, 1.39, 0.47], [0, 0, -0.12], null, 'gate-jailer-eye-left');
-  add(root, new THREE.BoxGeometry(0.12, 0.055, 0.04), glow, [0.16, 1.39, 0.47], [0, 0, 0.12], null, 'gate-jailer-eye-right');
-
+  root.add(crown);
+  for (let side = -1; side <= 1; side += 2) {
+    for (let link = 0; link < 3; link += 1) {
+      add(root, new THREE.TorusGeometry(0.12, 0.03, 6, 12), chain, [side * 0.48, 0.98 - link * 0.18, 0.04], [0, link % 2 ? Math.PI / 2 : 0, 0], null, `gate-jailer-chain-${side}-${link}`);
+    }
+  }
+  add(root, new THREE.TorusGeometry(0.19, 0.035, 7, 18), chain, [0.42, 0.62, 0.1], [Math.PI / 2, 0, 0], null, 'gate-jailer-key-ring');
   const grate = new THREE.Group();
   grate.name = 'gate-jailer-portcullis';
+  [-0.24, -0.08, 0.08, 0.24].forEach((x, index) => {
+    add(grate, new THREE.BoxGeometry(0.045, 0.62, 0.045), chain, [x, 0.98, 0.52], [0, 0, 0], null, `gate-jailer-grate-bar-${index}`);
+  });
+  [0.76, 1.0, 1.24].forEach((y, index) => {
+    add(grate, new THREE.BoxGeometry(0.62, 0.045, 0.045), chain, [0, y, 0.52], [0, 0, 0], null, `gate-jailer-grate-cross-${index}`);
+  });
   root.add(grate);
-  [-0.22, 0, 0.22].forEach((x, index) => {
-    add(grate, new THREE.BoxGeometry(0.055, 0.62, 0.055), oldSteel, [x, 0.86, 0.49], [0, 0, 0], null, `gate-jailer-grate-bar-${index}`);
-  });
-  add(grate, new THREE.BoxGeometry(0.54, 0.055, 0.055), oldSteel, [0, 0.72, 0.49], [0, 0, 0], null, 'gate-jailer-grate-cross-low');
-  add(grate, new THREE.BoxGeometry(0.54, 0.055, 0.055), oldSteel, [0, 1.01, 0.49], [0, 0, 0], null, 'gate-jailer-grate-cross-high');
   add(root, new THREE.BoxGeometry(0.2, 0.2, 0.07), crust, [0, 0.86, 0.545], [0, 0, Math.PI / 4], null, 'gate-jailer-lock-plate');
-  add(root, new THREE.BoxGeometry(0.035, 0.11, 0.025), blackIron, [0, 0.86, 0.59], [0, 0, 0], null, 'gate-jailer-keyhole');
-  add(root, new THREE.SphereGeometry(0.095, 10, 7), glow, [0, 0.86, 0.455], [0, 0, 0], [1.4, 1.65, 0.35], 'gate-jailer-core-glow');
-  [-0.48, 0.48].forEach((x, index) => {
-    add(root, new THREE.TorusGeometry(0.12, 0.028, 7, coarsePointer ? 10 : 16), oldSteel, [x, 1.23, 0], [Math.PI / 2, 0, 0], null, `gate-jailer-chain-anchor-${index}`);
+  add(root, new THREE.BoxGeometry(0.045, 0.11, 0.025), glow, [0, 0.86, 0.585], [0, 0, 0], null, 'gate-jailer-keyhole');
+  add(root, new THREE.SphereGeometry(0.08, 8, 6), glow, [0, 1.06, 0.58], [0, 0, 0], [1.15, 1.15, 0.55], 'gate-jailer-core');
+  [-1, 1].forEach((side) => {
+    add(root, new THREE.TorusGeometry(0.1, 0.028, 6, 12), chain, [side * 0.43, 1.13, 0.46], [0, Math.PI / 2, 0], null, `gate-jailer-chain-anchor-${side}`);
   });
-
-  const chainMat = oldSteel;
-  for (let i = 0; i < (coarsePointer ? 3 : 5); i += 1) {
-    const link = add(
-      root,
-      new THREE.TorusGeometry(0.09, 0.022, 6, coarsePointer ? 10 : 14),
-      chainMat,
-      [0.52, 1.05 - i * 0.17, 0.03],
-      [Math.PI / 2, 0, i % 2 ? Math.PI / 2 : 0],
-      null,
-      `gate-jailer-chain-${i}`,
-    );
-    link.scale.y = 1.3;
-  }
-
-  add(root, new THREE.BoxGeometry(0.18, 0.64, 0.12), oldSteel, [-0.52, 0.85, 0], [0, 0, -0.08], null, 'gate-jailer-key-blade');
-  add(root, new THREE.TorusGeometry(0.18, 0.045, 8, segments), oldSteel, [-0.54, 1.19, 0], [Math.PI / 2, 0, 0], null, 'gate-jailer-key-ring');
-
   root.userData.chroniclesGlowMaterials = [glow];
-  root.userData.chroniclesBaseGlow = 2.05;
-  root.userData.chroniclesSilhouette = 'corrupted-rook-jailer';
   return root;
 }
