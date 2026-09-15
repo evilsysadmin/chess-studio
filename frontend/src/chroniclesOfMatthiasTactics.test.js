@@ -80,6 +80,51 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
     expect(chroniclesTacticsUse(unlocked).phase).toBe('escaped');
   });
 
+  it('opens a real rune cache with the contextual lever and reveals a pickup', () => {
+    const atLever = tacticsState({ x: 5, y: 5 });
+    expect(chroniclesTacticsInteractions(atLever)).toEqual([
+      expect.objectContaining({ id: 'rune-cache-lever', kind: 'lever', label: 'Accionar palanca' }),
+    ]);
+
+    const opened = chroniclesTacticsUse(atLever);
+    expect(opened.runeCacheOpened).toBe(true);
+    expect(opened.turns).toBe(1);
+    expect(opened.message).toMatch(/palanca baja/i);
+    expect(opened.journal.some((entry) => entry.id === 'tactics-rune-cache-open')).toBe(true);
+    expect(chroniclesTacticsInteractions(opened)).toEqual([]);
+
+    const atPickup = { ...opened, x: 5, y: 4 };
+    expect(chroniclesTacticsInteractions(atPickup)).toEqual([
+      expect.objectContaining({ id: 'rune-core', kind: 'pickup', label: 'Recoger núcleo rúnico' }),
+    ]);
+  });
+
+  it('refills spent class abilities once when the rune core is collected', () => {
+    const state = tacticsState({
+      x: 5,
+      y: 4,
+      runeCacheOpened: true,
+      classAbilityCharges: {
+        matthias: 0,
+        rook: 0,
+        bishop: 1,
+        knight: 0,
+      },
+    });
+
+    const collected = chroniclesTacticsUse(state);
+    expect(collected.runeCoreCollected).toBe(true);
+    expect(collected.classAbilityCharges).toEqual({
+      matthias: 1,
+      rook: 1,
+      bishop: 1,
+      knight: 1,
+    });
+    expect(collected.message).toMatch(/habilidades de clase vuelven a estar cargadas/i);
+    expect(collected.journal.some((entry) => entry.id === 'tactics-rune-core-collected')).toBe(true);
+    expect(chroniclesTacticsInteractions(collected)).toEqual([]);
+  });
+
   it('gives every party member a distinct tactical class, weapon and active ability', () => {
     expect(chroniclesTacticsProfile('matthias')).toMatchObject({ className: 'Espadachín', attackPattern: 'adjacent', reach: 1, abilityName: 'Ruptura teutona' });
     expect(chroniclesTacticsProfile('rook')).toMatchObject({ className: 'Guardiana', attackPattern: 'orthogonal', reach: 2, abilityName: 'Martillo de asedio' });
