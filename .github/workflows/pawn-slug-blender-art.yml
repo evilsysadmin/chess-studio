@@ -94,6 +94,7 @@ jobs:
               'panzerfaust': 54,
           }[weapon]
           for row, count in enumerate(counts):
+              brightness = []
               for col in range(count):
                   cell = image.crop((col * 96, row * 96, (col + 1) * 96, (row + 1) * 96))
                   alpha = cell.getchannel('A').point(lambda value: 255 if value >= 96 else 0)
@@ -113,6 +114,28 @@ jobs:
                       f'premium character silhouette height out of range '
                       f'row={row} col={col} height={height}'
                   )
+
+                  # Geometry alone cannot catch the old atlas bug where AREA lights
+                  # exposed centre columns correctly but left edge frames almost black.
+                  # Measure only authored (non-transparent) pixels so every animation
+                  # row must remain readable and exposure-stable across the sheet.
+                  visible_luma = []
+                  for red, green, blue, alpha_value in cell.getdata():
+                      if alpha_value >= 96:
+                          visible_luma.append(0.2126 * red + 0.7152 * green + 0.0722 * blue)
+                  assert visible_luma, f'no visible premium pixels row={row} col={col}'
+                  brightness.append(sum(visible_luma) / len(visible_luma))
+
+              darkest = min(brightness)
+              brightest = max(brightness)
+              assert darkest >= 20.0, (
+                  f'premium atlas underexposed row={row} darkest={darkest:.1f}; '
+                  'Matthias must remain readable in every authored frame'
+              )
+              assert brightest / max(darkest, 1.0) <= 1.85, (
+                  f'premium atlas exposure flicker row={row} '
+                  f'darkest={darkest:.1f} brightest={brightest:.1f}'
+              )
           PY
       - uses: actions/upload-artifact@v4
         if: always()
