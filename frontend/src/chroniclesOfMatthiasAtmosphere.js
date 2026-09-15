@@ -103,7 +103,7 @@ function addReadabilityLighting(root, { coarsePointer }) {
   // Chronicles should be gloomy, not crushed. The ambient level is deliberately
   // high enough to preserve stone/material detail after ACES while practical
   // torches still carry the mood and direction of the scene.
-  const ambient = new THREE.AmbientLight(0x73808c, coarsePointer ? 0.78 : 0.66);
+  const ambient = new THREE.AmbientLight(0x73808c, coarsePointer ? 0.82 : 0.72);
   ambient.name = 'chronicles-readability-ambient';
 
   const entryBounce = new THREE.PointLight(
@@ -143,7 +143,7 @@ function addReadabilityLighting(root, { coarsePointer }) {
   // visible torch.
   const corridorFill = new THREE.PointLight(
     0x9aa9b5,
-    coarsePointer ? 1.85 : 1.48,
+    coarsePointer ? 1.95 : 1.62,
     18,
     1.6,
   );
@@ -164,8 +164,46 @@ function addReadabilityLighting(root, { coarsePointer }) {
   farFill.position.set(7.1, 1.7, 8.0);
   farFill.castShadow = false;
 
-  root.add(ambient, entryBounce, cryptBounce, floorBounce, corridorFill, farFill);
-  return 6;
+  // The party is explicitly carrying torches. These two shadowless practicals
+  // travel with the first-person camera so the light follows Matthias and the
+  // group instead of vanishing between authored wall torches. The key light is
+  // warm and shoulder-height; the lower bounce gives the floor and nearby stone
+  // enough reflected light to read without flattening the far end of the crypt.
+  const partyTorchKey = new THREE.PointLight(
+    0xffa15a,
+    coarsePointer ? 5.6 : 5.15,
+    coarsePointer ? 12.0 : 13.0,
+    1.82,
+  );
+  partyTorchKey.name = 'chronicles-party-torch-key';
+  partyTorchKey.castShadow = false;
+
+  const partyTorchBounce = new THREE.PointLight(
+    0xd47b3f,
+    coarsePointer ? 2.45 : 2.15,
+    coarsePointer ? 8.2 : 8.8,
+    2.02,
+  );
+  partyTorchBounce.name = 'chronicles-party-torch-bounce';
+  partyTorchBounce.castShadow = false;
+
+  root.add(
+    ambient,
+    entryBounce,
+    cryptBounce,
+    floorBounce,
+    corridorFill,
+    farFill,
+    partyTorchKey,
+    partyTorchBounce,
+  );
+  return {
+    count: 8,
+    partyTorchKey,
+    partyTorchBounce,
+    partyTorchKeyBaseIntensity: partyTorchKey.intensity,
+    partyTorchBounceBaseIntensity: partyTorchBounce.intensity,
+  };
 }
 
 export function buildChroniclesDungeonAtmosphere({ coarsePointer = false, reducedMotion = false } = {}) {
@@ -173,7 +211,7 @@ export function buildChroniclesDungeonAtmosphere({ coarsePointer = false, reduce
   root.name = 'chronicles-dungeon-atmosphere';
   root.add(buildChroniclesDungeonCeiling({ coarsePointer }));
   root.add(buildChroniclesSurfacePatina({ coarsePointer }));
-  const readabilityLightCount = addReadabilityLighting(root, { coarsePointer });
+  const readabilityLighting = addReadabilityLighting(root, { coarsePointer });
 
   const dustCount = coarsePointer ? DUST_COARSE : DUST_DESKTOP;
   const dustData = createDust(dustCount);
@@ -211,7 +249,44 @@ export function buildChroniclesDungeonAtmosphere({ coarsePointer = false, reduce
   }
 
   const positionAttribute = dustData.geometry.getAttribute('position');
+  const partyForward = new THREE.Vector3();
+  const partyRight = new THREE.Vector3();
+  const partyKeyPosition = new THREE.Vector3();
+  const partyBouncePosition = new THREE.Vector3();
+  let partyCamera = null;
+
+  function updatePartyTorch(time) {
+    if (!partyCamera) {
+      partyCamera = root.parent?.getObjectByProperty?.('isPerspectiveCamera', true)
+        || root.parent?.getObjectByProperty?.('isCamera', true)
+        || null;
+    }
+    if (!partyCamera) return;
+
+    partyCamera.getWorldDirection(partyForward);
+    partyRight.setFromMatrixColumn(partyCamera.matrixWorld, 0).normalize();
+
+    partyKeyPosition.copy(partyCamera.position)
+      .addScaledVector(partyForward, 0.48)
+      .addScaledVector(partyRight, 0.38);
+    partyKeyPosition.y -= 0.28;
+    readabilityLighting.partyTorchKey.position.copy(partyKeyPosition);
+
+    partyBouncePosition.copy(partyCamera.position)
+      .addScaledVector(partyForward, 0.16)
+      .addScaledVector(partyRight, -0.18);
+    partyBouncePosition.y = Math.max(0.38, partyBouncePosition.y - 0.96);
+    readabilityLighting.partyTorchBounce.position.copy(partyBouncePosition);
+
+    const flicker = reducedMotion
+      ? 1
+      : 0.97 + Math.sin(time * 7.6) * 0.035 + Math.sin(time * 16.4 + 0.7) * 0.018;
+    readabilityLighting.partyTorchKey.intensity = readabilityLighting.partyTorchKeyBaseIntensity * flicker;
+    readabilityLighting.partyTorchBounce.intensity = readabilityLighting.partyTorchBounceBaseIntensity * (0.985 + (flicker - 0.97) * 0.42);
+  }
+
   function update(time) {
+    updatePartyTorch(time);
     if (reducedMotion) return;
     for (let index = 0; index < dustCount; index += 1) {
       const offset = index * 3 + 1;
@@ -228,7 +303,7 @@ export function buildChroniclesDungeonAtmosphere({ coarsePointer = false, reduce
   root.userData.chroniclesAtmosphereStats = {
     dustCount,
     mistCount: mistMaterials.length,
-    readabilityLightCount,
+    readabilityLightCount: readabilityLighting.count,
   };
   root.userData.updateChroniclesAtmosphere = update;
   return root;
