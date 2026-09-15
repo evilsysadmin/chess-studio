@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { moveWarRoomHansToward } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v6-desk-obstacle-router';
-export const WAR_ROOM_HANS_NAVIGATION_CLEAR_LANE_HALF_EXTENT = 5.5;
+export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v7-visible-body-clearance';
+export const WAR_ROOM_HANS_NAVIGATION_CLEAR_LANE_HALF_EXTENT = 5.55;
 export const WAR_ROOM_HANS_NAVIGATION_EDGE_MARGIN = 0.12;
 export const WAR_ROOM_HANS_NAVIGATION_FURNITURE_CLEARANCE = 0.58;
 
@@ -250,6 +250,10 @@ export function warRoomHansSafeRoomLoop(floor, parent) {
   const rear = centerZ - laneHalfZ;
   const front = centerZ + laneHalfZ;
 
+  // Keep a little more than root-point clearance around the command table. Hans'
+  // canonical scaled shoulders/arms extend farther than the old synthetic 0.32u
+  // footprint used by regression tests, which is why the root could be legal
+  // while his rendered body still skimmed the wooden/brass rim.
   const worldPoints = [
     [left, rear],
     [centerX, rear],
