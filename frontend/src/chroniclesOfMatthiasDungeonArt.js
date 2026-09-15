@@ -3,6 +3,8 @@ import { CHRONICLES_MAP } from './chroniclesOfMatthias.js';
 
 const CELL = 4;
 const TEXTURE_SIZE = 96;
+const FLOOR_SHELL_LIFT = 0.025;
+const CEILING_GROUND_BOUNCE = 0x3e2b1d;
 
 function textureNoise(x, y, seed) {
   let value = Math.imul(x + seed * 17, 374761393) ^ Math.imul(y + seed * 29, 668265263);
@@ -403,7 +405,7 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
   const nicheVoid = material(0x0b0d0e, { roughness: 1 });
   const urnStone = material(0x8d8373, { roughness: 0.78, surface: { pattern: 'worn', seed: 97, repeat: [1.1, 1.1] }, bumpScale: 0.03 });
 
-  const readabilityFill = new THREE.HemisphereLight(0x91a2b2, 0x21130c, coarsePointer ? 0.78 : 0.52);
+  const readabilityFill = new THREE.HemisphereLight(0x91a2b2, CEILING_GROUND_BOUNCE, coarsePointer ? 0.78 : 0.52);
   readabilityFill.name = 'chronicles-readability-fill';
   root.add(readabilityFill);
 
@@ -413,7 +415,7 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
       root,
       new THREE.BoxGeometry(CELL * 0.94, 0.12, CELL * 0.94),
       (x + y) % 2 ? floorMat : floorAlt,
-      [wx, -0.08, wz],
+      [wx, -0.08 + FLOOR_SHELL_LIFT, wz],
       [0, ((x * 7 + y * 11) % 3 - 1) * 0.008, 0],
       `chronicles-floor-slab-${index}`,
     );
@@ -424,7 +426,7 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
         root,
         new THREE.BoxGeometry(CELL * 0.62, 0.016, CELL * 0.62),
         floorInset,
-        [wx, -0.006, wz],
+        [wx, -0.006 + FLOOR_SHELL_LIFT, wz],
         [0, ((index % 3) - 1) * 0.012, 0],
         `chronicles-floor-inset-${index}`,
       );
@@ -573,5 +575,9 @@ export function buildChroniclesDungeonDressing({ coarsePointer = false } = {}) {
   root.userData.chroniclesRuneMaterials = [rune];
   root.userData.chroniclesAccentLights = [sigilLight, gateLight, coldFill, gateKey, cryptRim];
   root.userData.chroniclesReadabilityLight = readabilityFill;
+  root.userData.chroniclesSurfaceContract = {
+    floorShellLift: FLOOR_SHELL_LIFT,
+    ceilingGroundBounce: CEILING_GROUND_BOUNCE,
+  };
   return root;
 }

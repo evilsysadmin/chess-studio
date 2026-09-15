@@ -16,6 +16,19 @@ describe('Chronicles of Matthias dungeon art', () => {
     expect(dungeon.getObjectByName('chronicles-floor-inset-0')).toBeTruthy();
   });
 
+  it('keeps every premium floor slab above the legacy backing plane', () => {
+    const dungeon = buildChroniclesDungeonDressing();
+    const slabTops = chroniclesWalkableCells().map((_, index) => {
+      const slab = dungeon.getObjectByName(`chronicles-floor-slab-${index}`);
+      return slab.position.y + slab.geometry.parameters.height / 2;
+    });
+
+    // The old structural floor tops out at y=-0.04. It may fill gaps, but it
+    // must never render over the authored flagstone shell again.
+    expect(Math.min(...slabTops)).toBeGreaterThan(-0.04);
+    expect(dungeon.userData.chroniclesSurfaceContract.floorShellLift).toBe(0.025);
+  });
+
   it('derives architectural wall faces from actual walkable adjacency', () => {
     const faces = chroniclesExposedWallFaces();
 
@@ -106,7 +119,7 @@ describe('Chronicles of Matthias dungeon art', () => {
     expect(coarseLights.every((light) => light.castShadow === false)).toBe(true);
   });
 
-  it('keeps a non-shadow readability fill and gives coarse pointers extra ambient help', () => {
+  it('keeps a non-shadow readability fill, warms downward-facing stone and gives coarse pointers extra ambient help', () => {
     const desktop = buildChroniclesDungeonDressing();
     const coarse = buildChroniclesDungeonDressing({ coarsePointer: true });
     const desktopFill = desktop.userData.chroniclesReadabilityLight;
@@ -114,6 +127,8 @@ describe('Chronicles of Matthias dungeon art', () => {
 
     expect(desktopFill?.isHemisphereLight).toBe(true);
     expect(desktopFill?.castShadow).toBe(false);
+    expect(desktopFill?.groundColor.getHex()).toBe(0x3e2b1d);
+    expect(dungeonGroundBounce(desktop)).toBe(0x3e2b1d);
     expect(coarseFill?.isHemisphereLight).toBe(true);
     expect(coarseFill?.intensity).toBeGreaterThan(desktopFill?.intensity || 0);
   });
@@ -129,3 +144,7 @@ describe('Chronicles of Matthias dungeon art', () => {
     expect(coarse.getObjectByName('chronicles-wall-surface-0')).toBeTruthy();
   });
 });
+
+function dungeonGroundBounce(dungeon) {
+  return dungeon.userData.chroniclesSurfaceContract.ceilingGroundBounce;
+}
