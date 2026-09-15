@@ -10,6 +10,7 @@ import { installRadioMatthiasExpansion } from './ambientRadioMatthiasExpansion.j
 import { radioMatthiasStructuredFeel } from './ambientRadioMatthiasProfiles.js';
 import { installRadioMatthiasRecompositions } from './ambientRadioMatthiasRecompositions.js';
 import { installTropicalHouseMelodies } from './ambientTropicalHouseMelody.js';
+import { installLofiSongbook } from './ambientLofiSongbook.js';
 import { installRadioPremiumForms } from './ambientRadioPremiumForms.js';
 import { withRadioMatthiasLeitmotif } from './ambientRadioMatthiasLeitmotifs.js';
 import { withAmbientPremiumProduction } from './ambientPremiumProduction.js';
@@ -32,6 +33,7 @@ installRadioMatthiasExpansion({
   hiddenIds: RADIO_MATTHIAS_HIDDEN_THEME_IDS,
 });
 installRadioMatthiasRecompositions({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
+installLofiSongbook({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
 installTropicalHouseMelodies({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
 installRadioPremiumForms({ themes: AMBIENT_THEMES, options: AMBIENT_THEME_OPTIONS });
 

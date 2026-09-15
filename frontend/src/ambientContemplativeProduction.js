@@ -63,20 +63,23 @@ const CONTEMPLATIVE_PRODUCTION = Object.freeze({
   lofiRainTape: Object.freeze({
     family: 'lofi-rain-cassette',
     leadInstrument: 'tapePiano', counterInstrument: 'rhodesWarm', chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
-    finish: FINISHES.cassetteRain, delayMs: 146,
-    percussion: percussion('lofi-cassette-rain', 16, { 0:'K', 8:'B', 14:'H' }, 0.58),
+    finish: FINISHES.cassetteRain, delayMs: 132, swing: 0.16, chordHoldSteps: 10, bassHoldSteps: 3.2,
+    mix: Object.freeze({ lead:0.68, counter:0.36, bass:0.94, chord:0.46 }),
+    percussion: percussion('lofi-cassette-rain', 16, { 0:'K', 3:'H', 6:'B', 8:'S', 11:'H', 14:'K', 15:'B' }, 0.72),
   }),
   lofiWindowLight: Object.freeze({
     family: 'lofi-window-warm-vibes-brush',
     leadInstrument: 'warmVibes', counterInstrument: 'nylonGuitar', chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
-    finish: FINISHES.windowGlow, delayMs: 118,
-    percussion: percussion('lofi-window-brush', 16, { 0:'B', 6:'H', 12:'S', 15:'H' }, 0.64),
+    finish: FINISHES.windowGlow, delayMs: 108, swing: 0.10, chordHoldSteps: 9, bassHoldSteps: 3,
+    mix: Object.freeze({ lead:0.66, counter:0.38, bass:0.92, chord:0.48 }),
+    percussion: percussion('lofi-window-brush', 16, { 0:'K', 4:'H', 6:'B', 8:'S', 11:'B', 12:'H', 14:'B' }, 0.76),
   }),
   lofiPawnNotebook: Object.freeze({
     family: 'lofi-notebook-pencil-felt',
     leadInstrument: 'feltGrand', counterInstrument: 'warmVibes', chordInstrument: 'rhodesWarm', bassInstrument: 'uprightBass',
-    finish: FINISHES.pencilPaper, delayMs: 102,
-    percussion: percussion('lofi-pencil-brush', 32, { 0:'B', 10:'W', 16:'B', 26:'W' }, 0.54),
+    finish: FINISHES.pencilPaper, delayMs: 96, swing: 0.14, chordHoldSteps: 8, bassHoldSteps: 2.8,
+    mix: Object.freeze({ lead:0.64, counter:0.40, bass:0.90, chord:0.44 }),
+    percussion: percussion('lofi-pencil-brush', 32, { 0:'K', 4:'H', 6:'B', 8:'S', 12:'H', 14:'K', 15:'B', 16:'K', 20:'H', 22:'B', 24:'S', 27:'W', 28:'H', 30:'B' }, 0.70),
   }),
   fourSquares: Object.freeze({
     family: 'four-squares-felt-grand-pizz',
@@ -116,7 +119,7 @@ export function withContemplativeProduction(theme, feel) {
     ...feel,
     ...production,
     layers: Object.freeze({ ...(feel.layers || {}), signature: Boolean(production.signature || feel.signature) }),
-    mix: Object.freeze({ ...(feel.mix || {}) }),
+    mix: Object.freeze({ ...(feel.mix || {}), ...(production.mix || {}) }),
   });
 }
 

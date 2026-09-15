@@ -4,12 +4,13 @@ import { structuredFeel } from './ambientProfiles.js';
 import { RADIO_MATTHIAS_MELODIC_REWRITES } from './ambientRadioMatthiasRecompositions.js';
 import { RADIO_PREMIUM_FORM_SPECS } from './ambientRadioPremiumForms.js';
 import { TROPICAL_HOUSE_MELODY_REWRITES } from './ambientTropicalHouseMelody.js';
+import { LOFI_SONGBOOK_REWRITES } from './ambientLofiSongbook.js';
 
 // This regression gate belongs to the seven-theme recomposition shipped in #345.
 // The premium-form layer may thin, shift or octave-displace that material, but it
 // must keep the published identity and the melodic DNA of the latest intentional
-// composition layer. A later focused rewrite (currently Bishop Tropical House)
-// supersedes the #345 source without weakening the other six historical contracts.
+// composition layer. Later focused Tropical House and Lo-Fi rewrites supersede
+// the #345 source without weakening the other historical contracts.
 const ORIGINAL_REWRITE_IDS = Object.freeze([
   'velvetKnight0237',
   'bishopSunset',
@@ -69,7 +70,9 @@ describe('Radio Matthias · diversidad melódica', () => {
     for (const id of ORIGINAL_REWRITE_IDS) {
       const theme = AMBIENT_THEMES[id];
       const historicalRewrite = RADIO_MATTHIAS_MELODIC_REWRITES[id];
-      const effectiveRewrite = TROPICAL_HOUSE_MELODY_REWRITES[id] || historicalRewrite;
+      const effectiveRewrite = TROPICAL_HOUSE_MELODY_REWRITES[id]
+        || LOFI_SONGBOOK_REWRITES[id]
+        || historicalRewrite;
       const form = RADIO_PREMIUM_FORM_SPECS[id];
 
       expect(theme.id).toBe(id);
