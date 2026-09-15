@@ -116,8 +116,11 @@ export default function ChroniclesOfMatthias({ onExit }) {
     const portraitHost = portraitHostRef.current;
     if (!host) return undefined;
 
-    void import('../chroniclesOfMatthiasThree.js')
-      .then(({ createChroniclesOfMatthiasGame, createChroniclesPartyPortrait }) => {
+    void Promise.all([
+      import('../chroniclesOfMatthiasThree.js'),
+      import('../chroniclesOfMatthiasPartyPortrait.js'),
+    ])
+      .then(([{ createChroniclesOfMatthiasGame }, { createChroniclesPartyPortrait }]) => {
         if (cancelled) return;
         engine = createChroniclesOfMatthiasGame(host, {
           onReady: (backend) => { if (!cancelled) setRendererName(backend); },
