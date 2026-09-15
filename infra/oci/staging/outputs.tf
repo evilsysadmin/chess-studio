@@ -18,6 +18,16 @@ output "subnet_id" {
   value       = oci_core_subnet.backend.id
 }
 
+output "runtime_config_bucket" {
+  description = "Private Object Storage bucket used to deliver OCI staging runtime configuration out-of-band from Terraform."
+  value       = oci_objectstorage_bucket.runtime_config.name
+}
+
+output "runtime_config_namespace" {
+  description = "Object Storage namespace containing the private staging runtime configuration bucket."
+  value       = data.oci_objectstorage_namespace.runtime.namespace
+}
+
 output "backend_origin" {
   description = "Origin Cloudflare Tunnel should target on the VM."
   value       = "http://127.0.0.1:4000"
@@ -26,8 +36,8 @@ output "backend_origin" {
 output "post_apply_checklist" {
   description = "No-secret handoff after provisioning."
   value = [
-    "Confirm cloud-init completed and /opt/chess-studio/BOOTSTRAP_READY exists.",
-    "Write /etc/chess-studio/backend.env manually/out-of-band with mode 0600.",
+    "Keep the private runtime bucket free of Terraform-managed secret objects.",
+    "Publish /etc/chess-studio/backend.env out-of-band through the runtime channel before starting the backend.",
     "Install/configure Cloudflare Tunnel credentials out-of-band.",
     "Start chess-studio-backend.service and verify /api/ready locally.",
     "Keep Render serving production until the reversible cutover is validated."
