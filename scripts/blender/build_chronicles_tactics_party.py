@@ -49,6 +49,7 @@ MATERIALS = {
     "green_trim": MaterialSpec((0.12, 0.28, 0.23), 0.61, 0.05),
     "ochre": MaterialSpec((0.49, 0.29, 0.09), 0.7, 0.03),
     "lantern": MaterialSpec((0.95, 0.54, 0.10), 0.25, 0.12, (1.0, 0.24, 0.025), 3.2),
+    "rune_gold": MaterialSpec((0.72, 0.48, 0.16), 0.30, 0.45, (0.62, 0.20, 0.035), 1.2),
     "bone": MaterialSpec((0.55, 0.49, 0.39), 0.72, 0.03),
     "iron": MaterialSpec((0.24, 0.27, 0.29), 0.38, 0.64),
     "leather": MaterialSpec((0.28, 0.14, 0.065), 0.84, 0.02),
@@ -89,6 +90,14 @@ def hildegard() -> list[PartSpec]:
         part("rook__mace_haft", "cylinder", "steel", (-0.43, 0.03, 0.79), scale=(0.055, 0.055, 0.40), rotation=(0.0, 0.22, 0.0), vertices=20),
         part("rook__mace_head", "ico", "steel", (-0.51, 0.03, 1.18), scale=(0.18, 0.18, 0.18), subdivisions=1),
     ]
+    p += [
+        part("rook__back_tabard", "box", "blue_cloth", (0, 0.315, 0.77), scale=(0.25, 0.0275, 0.27), bevel=0.018),
+        part("rook__back_strap_l", "box", "leather", (-0.14, 0.36, 0.88), scale=(0.045, 0.0175, 0.36), rotation=(0, -0.40, 0), bevel=0.012),
+        part("rook__back_strap_r", "box", "leather", (0.14, 0.36, 0.88), scale=(0.045, 0.0175, 0.36), rotation=(0, 0.40, 0), bevel=0.012),
+        part("rook__backplate", "cylinder", "steel", (0, 0.39, 0.94), scale=(0.28, 0.28, 0.0375), rotation=(math.pi / 2, 0, 0), vertices=28),
+        part("rook__backplate_ring", "torus", "brass", (0, 0.435, 0.94), scale=(0.18, 0.18, 0.18), rotation=(math.pi / 2, 0, 0), major_segments=36, minor_segments=10),
+        part("rook__backplate_mark", "box", "brass", (0, 0.462, 0.94), scale=(0.065, 0.0125, 0.065), rotation=(0, -math.pi / 4, 0), bevel=0.010),
+    ]
     for i, angle in enumerate((0, 60, 120, 180, 240, 300)):
         a = math.radians(angle)
         p.append(part(f"rook__crenel_{i}", "box", "steel", (0.31 * math.cos(a), 0.31 * math.sin(a), 1.48), scale=(0.11, 0.11, 0.16), rotation=(0, 0, -a), bevel=0.018))
@@ -110,6 +119,13 @@ def aziz() -> list[PartSpec]:
         part("bishop__staff", "cylinder", "brass", (-0.43, 0.03, 0.82), scale=(0.035, 0.035, 0.45), rotation=(0, 0.14, 0), vertices=18),
         part("bishop__lantern", "ico", "lantern", (-0.49, 0.03, 1.28), scale=(0.19, 0.19, 0.19), subdivisions=1),
         part("bishop__lantern_ring", "torus", "brass", (-0.49, 0.03, 1.28), scale=(0.23, 0.23, 0.025), rotation=(1.5708, 0, 0), major_segments=32, minor_segments=8),
+    ]
+    p += [
+        part("bishop__back_mantle", "sphere", "green_robe", (0, 0.15, 1.14), scale=(0.336, 0.176, 0.147), segments=28),
+        part("bishop__back_sash", "box", "ochre", (-0.11, 0.31, 0.87), scale=(0.055, 0.0175, 0.37), rotation=(0, -0.48, 0), bevel=0.012),
+        part("bishop__scroll_case", "cylinder", "leather", (0.31, 0.27, 0.82), scale=(0.055, 0.055, 0.28), rotation=(0, -0.16, 0), vertices=14),
+        part("bishop__back_rune", "cylinder", "rune_gold", (0, 0.345, 0.84), scale=(0.13, 0.13, 0.009), rotation=(math.pi / 2, 0, 0), vertices=32),
+        part("bishop__back_rune_ring", "torus", "brass", (0, 0.354, 0.84), scale=(0.15, 0.15, 0.15), rotation=(math.pi / 2, 0, 0), major_segments=34, minor_segments=8),
     ]
     return p
 
@@ -133,6 +149,14 @@ def faust() -> list[PartSpec]:
         part("knight__pack_strap_r", "box", "dark_leather", (0.19, -0.19, 0.83), scale=(0.024, 0.018, 0.39), rotation=(0, 0, -0.17), bevel=0.008),
         part("knight__tool_roll", "cylinder", "copper", (0.43, 0.02, 0.93), scale=(0.05, 0.05, 0.32), rotation=(0, -0.12, 0), vertices=18),
     ]
+    p += [
+        part("knight__rear_pack", "box", "leather", (0, 0.31, 0.67), scale=(0.27, 0.0375, 0.17), bevel=0.026),
+        part("knight__harness_l", "box", "dark_leather", (-0.18, 0.36, 0.80), scale=(0.0275, 0.0175, 0.39), rotation=(0, -0.22, 0), bevel=0.008),
+        part("knight__harness_r", "box", "dark_leather", (0.18, 0.36, 0.80), scale=(0.0275, 0.0175, 0.39), rotation=(0, 0.22, 0), bevel=0.008),
+        part("knight__bedroll", "cylinder", "brown_cloth", (0, 0.34, 1.02), scale=(0.11, 0.11, 0.29), rotation=(0, math.pi / 2, 0), vertices=20),
+        part("knight__copper_kit", "torus", "copper", (-0.27, 0.39, 0.69), scale=(0.14, 0.14, 0.14), rotation=(math.pi / 2, 0, 0), major_segments=28, minor_segments=8),
+        part("knight__rear_tool", "cylinder", "copper", (0.29, 0.39, 0.73), scale=(0.035, 0.035, 0.21), rotation=(0, -0.18, 0), vertices=12),
+    ]
     return p
 
 
@@ -141,7 +165,7 @@ CAST = {
     "bishop": tuple(aziz()),
     "knight": tuple(faust()),
 }
-ASSET_VERSION = "chronicles-tactics-party-v1"
+ASSET_VERSION = "chronicles-tactics-party-v2"
 
 
 import bpy
