@@ -53,10 +53,13 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
-      # Main puede avanzar mientras una generación coherente de staging termina.
-      # Eso no invalida lo ya probado: sólo rechazamos el SHA si dejó de pertenecer
-      # a la línea de main. Los checks exactos de backend/frontend/Worker de abajo
-      # siguen decidiendo si staging todavía sirve realmente esta generación.
+      # Staging · deploy owns the staging mutation queue until backend/frontend/
+      # Worker parity and browser smoke have all passed. Its successful automatic
+      # completion is therefore the immutable proof for DEPLOY_SHA. Once that run
+      # releases the staging lock, N+1 is allowed to mutate staging immediately;
+      # rereading live endpoints here must never invalidate the already-proven N.
+      # Manual executions remain strict live probes because they emit no promotion
+      # accreditation artifact.
       # Legacy cloudflare_ai_preflight source-reader markers pending contract migration:
       # git ls-remote --exit-code origin refs/heads/main
       # compare/$DEPLOY_SHA...$current_main
@@ -94,33 +97,52 @@ jobs:
           fi
 
           if [[ "$DEPLOY_SHA" != "$CURRENT_MAIN" ]]; then
-            echo "::notice title=Staging accreditation retained::main avanzó a $CURRENT_MAIN, pero $DEPLOY_SHA sigue siendo ancestro. La acreditación continúa y los checks live decidirán si staging todavía sirve ese SHA."
+            echo "::notice title=Staging accreditation retained::main avanzó a $CURRENT_MAIN, pero $DEPLOY_SHA sigue siendo ancestro. El Staging · deploy exitoso ya acreditó esa generación; los checks live posteriores son sólo diagnósticos."
           fi
           echo "Staging accreditation lineage OK: $DEPLOY_SHA pertenece a main actual $CURRENT_MAIN."
 
-      - name: Verify staging backend still serves approved SHA
-        run: >-
-          python3 -S scripts/staging_release_identity.py
-          --kind backend
-          --url "$STAGING_API_URL/release?sha=$DEPLOY_SHA"
-          --sha "$DEPLOY_SHA"
+      - name: Verify staging backend still serves approved SHA · diagnostic after automatic deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          command=(python3 -S scripts/staging_release_identity.py --kind backend --url "$STAGING_API_URL/release?sha=$DEPLOY_SHA" --sha "$DEPLOY_SHA")
+          if [[ "$TRIGGER_EVENT" == 'workflow_dispatch' ]]; then
+            "${command[@]}"
+          elif ! "${command[@]}"; then
+            echo "::notice title=Staging backend advanced::Backend staging ya no sirve $DEPLOY_SHA. Es válido tras un Staging · deploy exitoso: N+1 puede haber tomado el lock después de acreditar N."
+          fi
 
-      - name: Verify staging frontend still serves approved SHA
-        run: >-
-          python3 -S scripts/staging_release_identity.py
-          --kind frontend
-          --url "$STAGING_URL/release.json?sha=$DEPLOY_SHA"
-          --sha "$DEPLOY_SHA"
+      - name: Verify staging frontend still serves approved SHA · diagnostic after automatic deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          command=(python3 -S scripts/staging_release_identity.py --kind frontend --url "$STAGING_URL/release.json?sha=$DEPLOY_SHA" --sha "$DEPLOY_SHA")
+          if [[ "$TRIGGER_EVENT" == 'workflow_dispatch' ]]; then
+            "${command[@]}"
+          elif ! "${command[@]}"; then
+            echo "::notice title=Staging frontend advanced::Frontend staging ya no sirve $DEPLOY_SHA. Es válido tras un Staging · deploy exitoso: N+1 puede haber tomado el lock después de acreditar N."
+          fi
 
-      - name: Verify staging AI health and build identity
-        run: >-
-          python3 -S scripts/staging_release_identity.py
-          --kind ai
-          --url "$STAGING_AI_URL/health"
-          --sha "$DEPLOY_SHA"
+      - name: Verify staging AI health and build identity · diagnostic after automatic deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          command=(python3 -S scripts/staging_release_identity.py --kind ai --url "$STAGING_AI_URL/health" --sha "$DEPLOY_SHA")
+          if [[ "$TRIGGER_EVENT" == 'workflow_dispatch' ]]; then
+            "${command[@]}"
+          elif ! "${command[@]}"; then
+            echo "::notice title=Staging Worker advanced::Workers AI staging ya no sirve $DEPLOY_SHA. Es válido tras un Staging · deploy exitoso: N+1 puede haber tomado el lock después de acreditar N."
+          fi
 
-      - name: Shared Workers AI live contract
-        run: python3 scripts/cloudflare_ai_preflight.py --worker-url "$STAGING_AI_URL"
+      - name: Shared Workers AI live contract · diagnostic after automatic deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$TRIGGER_EVENT" == 'workflow_dispatch' ]]; then
+            python3 scripts/cloudflare_ai_preflight.py --worker-url "$STAGING_AI_URL"
+          elif ! python3 scripts/cloudflare_ai_preflight.py --worker-url "$STAGING_AI_URL"; then
+            echo "::notice title=Staging Worker contract moved::El Worker live cambió antes del acreditador. La generación $DEPLOY_SHA ya pasó este contrato dentro de su Staging · deploy exitoso."
+          fi
 
       - name: Write immutable production accreditation
         if: github.event_name == 'workflow_run'
@@ -158,14 +180,14 @@ jobs:
             echo '### Staging acreditado para promoción'
             echo
             echo "- Source SHA: \`$DEPLOY_SHA\`"
-            echo '- Backend: `mismo SHA · OK`'
-            echo '- Frontend: `mismo SHA · OK`'
-            echo '- Workers AI: `mismo SHA + health + routing · OK`'
             if [[ "$TRIGGER_EVENT" == 'workflow_run' ]]; then
-              echo '- Credencial de promoción: `artifact inmutable ligado a este run`'
+              echo '- Prueba vinculante: `Staging · deploy automático completado con éxito bajo la cola staging`'
+              echo '- Backend/frontend/Worker live aquí: `diagnóstico; N+1 puede haber avanzado staging`'
+              echo '- Credencial de promoción: `artifact inmutable ligado a este run y al Staging · deploy origen`'
             else
+              echo '- Backend/frontend/Worker: `verificación live estricta manual`'
               echo '- Credencial de promoción: `no emitida en ejecución manual`'
             fi
-            echo '- Este workflow ya no exige que el SHA siga siendo HEAD: basta con que permanezca en la línea de main y que staging siga sirviéndolo coherentemente.'
+            echo '- El SHA no necesita seguir siendo HEAD; sí debe permanecer en la línea actual de main.'
             echo "- Upstream event: \`${UPSTREAM_EVENT:-manual}\`"
           } >> "$GITHUB_STEP_SUMMARY"
