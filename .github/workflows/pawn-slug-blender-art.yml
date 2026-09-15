@@ -78,7 +78,9 @@ jobs:
                   )
           PY
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: pawn-slug-matthias-${{ matrix.weapon }}-${{ github.event.pull_request.number || github.run_number }}
           path: /tmp/pawn-slug-art/
+          if-no-files-found: error
           retention-days: 7
