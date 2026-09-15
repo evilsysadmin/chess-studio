@@ -23,6 +23,7 @@ import { withEnergyProduction } from './ambientEnergyProduction.js';
 import { withContemplativeProduction } from './ambientContemplativeProduction.js';
 import { withClassicalProduction } from './ambientClassicalProduction.js';
 import { withFinalCatalogPolish } from './ambientCatalogFinalPolish.js';
+import { withMediterraneanGrooveDiversity } from './ambientMediterraneanGrooveDiversity.js';
 
 const RADIO_MATTHIAS_HIDDEN_THEME_IDS = new Set([...CURATED_HIDDEN_THEME_IDS, 'blackArchive']);
 
@@ -227,7 +228,7 @@ export function structuredFeel(theme) {
   if (radioMatthias) {
     const leitmotif = withRadioMatthiasLeitmotif(theme, radioMatthias);
     const contrasted = withElectronicProduction(theme, withAmbientIdentityContrast(theme, leitmotif));
-    const arranged = withTropicalHouseDrive(theme, contrasted);
+    const arranged = withMediterraneanGrooveDiversity(theme, withTropicalHouseDrive(theme, contrasted));
     const produced = withFinalCatalogPolish(theme, withClassicalProduction(theme, withContemplativeProduction(theme, withEnergyProduction(theme, arranged))));
     return withAmbientPremiumProduction(theme, withAmbientGenreHook(theme, produced));
   }
@@ -261,6 +262,8 @@ export function structuredFeel(theme) {
     // sustained cello in Vertical Rain, without adding beats to minimal piano.
     arranged = Object.freeze({ ...arranged, counterInstrument: 'pizz' });
   }
+
+  arranged = withMediterraneanGrooveDiversity(theme, arranged);
 
   const produced = withFinalCatalogPolish(theme, withClassicalProduction(theme, withContemplativeProduction(theme, withEnergyProduction(theme, arranged))));
   return withAmbientPremiumProduction(theme, withAmbientGenreHook(theme, produced));
