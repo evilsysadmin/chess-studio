@@ -1,0 +1,1 @@
+2026-09-16T15:10Z P0 migration: allocate a reserved public IP before replacing the current ephemeral A1 egress; abort without mutation if tenancy limits reject reservation.
