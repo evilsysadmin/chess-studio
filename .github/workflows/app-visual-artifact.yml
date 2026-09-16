@@ -13,8 +13,31 @@ on:
       - frontend/src/pawn*.js
       - '!frontend/src/**/*.test.js'
       - '!frontend/src/**/*.test.jsx'
+      - '!frontend/src/**/*.test.ts'
+      - '!frontend/src/**/*.test.tsx'
+      - '!frontend/src/**/*.spec.js'
+      - '!frontend/src/**/*.spec.jsx'
+      - '!frontend/src/**/*.spec.ts'
+      - '!frontend/src/**/*.spec.tsx'
+      # The visual classifier explicitly treats Admin/Observability as
+      # non-canonical surfaces. Do not start a runner only to classify "none".
+      - '!frontend/src/admin/**'
+      - '!frontend/src/components/Admin*'
+      - '!frontend/src/components/Observability*'
+      - '!frontend/src/components/useAdmin*'
       - frontend/public/**
       - '!frontend/public/audio/**'
+      # Public shell/meta assets are also explicitly non-canonical in
+      # app_visual_scope.py; they have their own functional/static contracts.
+      - '!frontend/public/404.html'
+      - '!frontend/public/CNAME'
+      - '!frontend/public/_headers'
+      - '!frontend/public/apple-touch-icon.png'
+      - '!frontend/public/favicon-32.png'
+      - '!frontend/public/favicon.svg'
+      - '!frontend/public/manifest.webmanifest'
+      - '!frontend/public/release.json'
+      - '!frontend/public/sw.js'
       - e2e/*visual*.spec.js
       - e2e/browser-*-health.spec.js
       - scripts/app_visual_*
