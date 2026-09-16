@@ -76,7 +76,7 @@
       "maxHp": 6,
       "retaliation": 2,
       "activation": "always",
-      "ai": { "movement": "cardinal-chase", "attackReach": 1 }
+      "ai": { "movement": "cardinal-roam", "attackReach": 1 }
     }
   ],
   "triggers": [],
