@@ -1,6 +1,6 @@
 {
   "id": "crypt-eight-squares",
-  "version": 7,
+  "version": 8,
   "progressionKey": "crypt-01",
   "title": "Cripta de las Ocho Casillas",
   "grid": [
@@ -171,6 +171,13 @@
       "kind": "trigger",
       "tile": "S",
       "label": "Activar sello",
+      "explorationMessage": "El sello despierta. Arriba, metal contra piedra. Al este, una luz verdosa abre los ojos en una capilla que nadie había solicitado.",
+      "explorationJournal": {
+        "id": "sigil-awake",
+        "title": "El sello responde",
+        "body": "La piedra arde bajo el grupo. Una torre toma guardia ante la salida y, al este, algo diagonal empieza a rezar al revés.",
+        "sigil": "III"
+      },
       "when": [
         { "key": "sigilAwake", "equals": false }
       ],
@@ -246,21 +253,31 @@
       "tile": "X",
       "openLabel": "Cruzar Puerta Negra",
       "lockedLabel": "Examinar Puerta Negra",
+      "explorationMessage": "Salida encontrada. Matthias anota que sobrevivir cuenta como excelencia operativa.",
+      "explorationJournal": {
+        "id": "escape",
+        "title": "Salida, técnicamente gloriosa",
+        "body": "La compañía abandona la cripta. Matthias registra la supervivencia como victoria y omite prudentemente el olor.",
+        "sigil": "VII"
+      },
       "requirements": [
         {
           "key": "sigilAwake",
           "equals": true,
-          "message": "La Puerta Negra no responde. Algo en la cripta sigue dormido, por desgracia temporalmente."
+          "message": "La Puerta Negra no responde. Algo en la cripta sigue dormido, por desgracia temporalmente.",
+          "explorationMessage": "La puerta negra no cede. El sello de la cripta sigue dormido."
         },
         {
           "key": "jailerHp",
           "lte": 0,
-          "message": "La Puerta Negra no cede mientras la torre carcelero siga defendiendo el umbral."
+          "message": "La Puerta Negra no cede mientras la torre carcelero siga defendiendo el umbral.",
+          "explorationMessage": "La torre carcelero sigue viva. Que patrulle lejos del umbral no convierte la Puerta Negra en una invitación."
         },
         {
           "key": "blackGateKey",
           "equals": true,
-          "message": "La cerradura exige la Llave Negra. Alguien con pezuñas la considera propiedad privada."
+          "message": "La cerradura exige la Llave Negra. Alguien con pezuñas la considera propiedad privada.",
+          "explorationMessage": "La puerta está libre, sí. La Llave Negra no: el caballo carroñero se la ha llevado saltando como un imbécil reglamentario."
         }
       ],
       "action": {

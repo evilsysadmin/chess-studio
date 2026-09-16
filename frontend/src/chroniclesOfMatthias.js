@@ -2,11 +2,14 @@ import {
   DEFAULT_CHRONICLES_MAP_ID,
   chroniclesMapById,
   chroniclesMapForState,
+  chroniclesMapContentPosition,
   chroniclesMapInitialEnemyState,
   chroniclesMapTileAt,
 } from './chronicles/chroniclesMapCatalog.js';
 import {
+  chroniclesApplyContentAction,
   chroniclesApplyContentEffects,
+  chroniclesRequirementFailure,
   chroniclesRequirementsMet,
 } from './chronicles/chroniclesContentRuntime.js';
 
@@ -132,39 +135,38 @@ function withMessage(state, message) {
   return { ...state, message, turns: state.turns + 1 };
 }
 
+function contentEntryAt(state, group, x, y) {
+  const map = chroniclesMapForState(state);
+  return (map?.[group] || []).find((entry) => {
+    const position = chroniclesMapContentPosition(map, entry);
+    return position?.x === x && position?.y === y;
+  }) || null;
+}
+
+function explorationAction(entry, effects = entry?.action?.effects || []) {
+  return {
+    effects,
+    message: entry?.explorationMessage,
+    journal: entry?.explorationJournal,
+  };
+}
+
 function enterTile(state, x, y) {
-  const tile = chroniclesTileAt(x, y, state);
-  if (tile === 'S' && !state.sigilAwake) {
-    return appendJournal({
-      ...state,
-      x,
-      y,
-      sigilAwake: true,
-      turns: state.turns + 1,
-      message: 'El sello despierta. Arriba, metal contra piedra. Al este, una luz verdosa abre los ojos en una capilla que nadie había solicitado.',
-    }, {
-      id: 'sigil-awake',
-      title: 'El sello responde',
-      body: 'La piedra arde bajo el grupo. Una torre toma guardia ante la salida y, al este, algo diagonal empieza a rezar al revés.',
-      sigil: 'III',
-    });
+  let next = { ...state, x, y, turns: state.turns + 1 };
+  const trigger = contentEntryAt(state, 'triggers', x, y);
+  if (trigger && chroniclesRequirementsMet(state, trigger.when)) {
+    next = chroniclesApplyContentAction(next, explorationAction(trigger), { appendJournal });
   }
-  if (tile === 'X') {
-    return appendJournal({
-      ...state,
-      x,
-      y,
-      phase: 'escaped',
-      turns: state.turns + 1,
-      message: 'Salida encontrada. Matthias anota que sobrevivir cuenta como excelencia operativa.',
-    }, {
-      id: 'escape',
-      title: 'Salida, técnicamente gloriosa',
-      body: 'La compañía abandona la cripta. Matthias registra la supervivencia como victoria y omite prudentemente el olor.',
-      sigil: 'VII',
-    });
+
+  const exit = contentEntryAt(state, 'exits', x, y);
+  if (exit && chroniclesRequirementsMet(state, exit.requirements)) {
+    next = chroniclesApplyContentAction(
+      next,
+      explorationAction(exit, [{ type: 'set', key: 'phase', value: 'escaped' }]),
+      { appendJournal },
+    );
   }
-  return { ...state, x, y, turns: state.turns + 1 };
+  return next;
 }
 
 function partyMember(state, memberId) {
@@ -302,8 +304,14 @@ export function chroniclesReduce(state, action) {
   if (tile === '#') return withMessage(state, 'Hay una pared. Incluso Matthias concede que atravesarla sería excesivo.');
   const blockingEnemy = chroniclesEnemyAt(state, x, y);
   if (blockingEnemy) return withMessage(state, blockingEnemyMessage(blockingEnemy));
-  if (tile === 'X' && !state.sigilAwake) return withMessage(state, 'La puerta negra no cede. El sello de la cripta sigue dormido.');
-  if (tile === 'X' && state.jailerHp <= 0 && !state.blackGateKey) return withMessage(state, 'La puerta está libre, sí. La Llave Negra no: el caballo carroñero se la ha llevado saltando como un imbécil reglamentario.');
+  const exit = contentEntryAt(state, 'exits', x, y);
+  const exitFailure = exit ? chroniclesRequirementFailure(state, exit.requirements) : null;
+  if (exitFailure) {
+    return withMessage(
+      state,
+      exitFailure.explorationMessage || exitFailure.message || 'El paso sigue cerrado.',
+    );
+  }
   return enterTile(state, x, y);
 }
 
