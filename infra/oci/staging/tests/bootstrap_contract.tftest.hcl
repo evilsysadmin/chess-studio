@@ -1,0 +1,66 @@
+mock_provider "oci" {
+  override_during = plan
+
+  mock_data "oci_identity_availability_domains" {
+    defaults = {
+      availability_domains = [
+        {
+          compartment_id = "ocid1.compartment.oc1..chessstudiotest"
+          id             = "ocid1.availabilitydomain.oc1..chessstudioad1"
+          name           = "kIdk:EU-FRANKFURT-1-AD-1"
+        },
+      ]
+    }
+  }
+
+  mock_data "oci_core_images" {
+    defaults = {
+      images = [{ id = "ocid1.image.oc1.eu-frankfurt-1.chessstudioauto" }]
+    }
+  }
+
+  mock_data "oci_objectstorage_namespace" {
+    defaults = { namespace = "chessstudiotestnamespace" }
+  }
+}
+
+variables {
+  region           = "eu-frankfurt-1"
+  tenancy_ocid     = "ocid1.tenancy.oc1..chessstudiotest"
+  compartment_ocid = "ocid1.compartment.oc1..chessstudiotest"
+  repo_ref         = "0123456789abcdef0123456789abcdef01234567"
+}
+
+run "bootstrap_contract_is_privileged_without_open_ended_sudo" {
+  command = plan
+
+  assert {
+    condition     = length(terraform_data.bootstrap_contract.triggers_replace) == 64
+    error_message = "Bootstrap replacement trigger must be the SHA-256 of the cloud-init contract."
+  }
+
+  assert {
+    condition     = strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "ocarun ALL=(root) NOPASSWD: CHESS_STUDIO_DEPLOY, CHESS_STUDIO_RUNTIME")
+    error_message = "Run Command must receive only the two root-owned Chess Studio wrapper capabilities."
+  }
+
+  assert {
+    condition     = !strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "NOPASSWD:ALL")
+    error_message = "Never grant the OCI Run Command user unrestricted passwordless sudo."
+  }
+
+  assert {
+    condition     = strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "/usr/local/sbin/chess-studio-deploy")
+    error_message = "Cloud-init must install the root-owned immutable deploy wrapper."
+  }
+
+  assert {
+    condition     = strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "/usr/local/sbin/chess-studio-install-runtime")
+    error_message = "Cloud-init must install the narrow runtime-config installer wrapper."
+  }
+
+  assert {
+    condition     = strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "python3-venv")
+    error_message = "Future instance-principal runtime fetches require an isolated Python venv."
+  }
+}
