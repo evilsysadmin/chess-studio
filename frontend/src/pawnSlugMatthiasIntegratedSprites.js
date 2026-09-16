@@ -3,7 +3,10 @@ import pistolPayload from './assets/pawnSlug/matthias_pistol_premium_v3.b64?raw'
 import machinegunPayload from './assets/pawnSlug/matthias_machinegun_premium_v3.b64?raw';
 import shotgunPayload from './assets/pawnSlug/matthias_shotgun_premium_v3.b64?raw';
 import panzerfaustPayload from './assets/pawnSlug/matthias_panzerfaust_premium_v3.b64?raw';
-import canonicalMotionPayload from './assets/pawnSlug/matthias_motion_atlas_v5_payload.b64?raw';
+import canonicalHeadPart1 from './assets/pawnSlug/matthias_canonical_head_motion_v3_part1.b64?raw';
+import canonicalHeadPart2 from './assets/pawnSlug/matthias_canonical_head_motion_v3_part2.b64?raw';
+import canonicalHeadPart3 from './assets/pawnSlug/matthias_canonical_head_motion_v3_part3.b64?raw';
+import canonicalHeadPart4 from './assets/pawnSlug/matthias_canonical_head_motion_v3_part4.b64?raw';
 import { configurePawnSlugTexture } from './pawnSlugSpriteCore.js';
 
 const PAYLOADS = Object.freeze({
@@ -36,10 +39,10 @@ const CANONICAL_ATLAS = Object.freeze({
   frameHeight: 96,
 });
 
-// Tight, one-pixel-padded head/cap/neck rectangles measured from the approved
-// 96px Matthias motion sheet. The source sheet faces screen-right. Cropping the
-// real frame instead of moving one static portrait preserves cap tilt, face
-// silhouette and neckline for every idle/walk/run/crouch/jump pose.
+// Tight, one-pixel-padded head/cap/neck rectangles measured from the dedicated
+// canonical 96px RGBA head atlas. The source faces screen-right. Cropping the
+// authored frame keeps cap tilt, face silhouette and neckline frame-specific
+// while the premium weapon banks remain authoritative for body/hands/weapons.
 const CANONICAL_HEAD_RECTS = Object.freeze({
   idle: Object.freeze([
     [29, 4, 38, 45], [29, 4, 39, 45], [29, 4, 38, 45], [29, 4, 39, 45],
@@ -81,13 +84,16 @@ export const PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY = Object.freeze({
 });
 
 export const PAWN_SLUG_MATTHIAS_CANONICAL_HEAD_ART = Object.freeze({
-  version: 'canonical-head-motion-v2',
-  source: 'existing-matthias-motion-atlas-v5',
+  version: 'canonical-head-motion-v3',
+  source: 'dedicated-canonical-matthias-head-atlas-v3',
   purpose: 'frame-specific-face-cap-neck-authority',
   sourceFacing: 'right',
   weaponIndependent: true,
   frameSpecific: true,
-  reusesExistingAtlas: true,
+  reusesExistingAtlas: false,
+  dedicatedCanonicalAtlas: true,
+  payloadParts: 4,
+  encodedBytes: 37212,
   textureWidth: CANONICAL_ATLAS.width,
   textureHeight: CANONICAL_ATLAS.height,
   frameWidth: CANONICAL_ATLAS.frameWidth,
@@ -145,7 +151,10 @@ export function pawnSlugIntegratedWeaponAtlasUrl(kind = 'pistol') {
 }
 
 export function pawnSlugCanonicalHeadAtlasUrl() {
-  return `data:image/webp;base64,${canonicalMotionPayload.trim()}`;
+  const payload = [canonicalHeadPart1, canonicalHeadPart2, canonicalHeadPart3, canonicalHeadPart4]
+    .map((part) => part.trim())
+    .join('');
+  return `data:image/webp;base64,${payload}`;
 }
 
 export function pawnSlugPremiumMatthiasAtlasWindow(action = 'idle', frameIndex = 0, worldDirection = 1) {
@@ -180,7 +189,7 @@ export function pawnSlugCanonicalHeadAtlasWindow(action = 'idle', frameIndex = 0
     track.row * CANONICAL_ATLAS.frameHeight + y + height
   );
 
-  // The existing canonical sheet is authored screen-right, the opposite of the
+  // The dedicated canonical sheet is authored screen-right, the opposite of the
   // premium weapon banks. Mirror it only when Matthias faces left in the world.
   const mirrored = worldDirection < 0;
   return Object.freeze({
