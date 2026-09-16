@@ -19,12 +19,12 @@
 
 @media (min-width: 1000px) {
   .illustrated-home__matthias {
-    --home-matthias-zone-left: 10.9%;
-    --home-matthias-zone-top: 83%;
+    --home-matthias-zone-left: 11.8%;
+    --home-matthias-zone-top: 69.5%;
     left: var(--home-matthias-zone-left);
     top: var(--home-matthias-zone-top);
-    width: clamp(108px, 8.4cqw, 142px);
-    min-height: 13.5%;
+    width: clamp(154px, 12.8cqw, 218px);
+    min-height: 25%;
     grid-template-columns: minmax(0, 1fr);
     align-items: center;
     justify-items: center;
@@ -42,28 +42,28 @@
   /* Routine changes move Matthias between quiet stations in the hall. The 3D
      avatar itself remains physically animated inside whichever station is active. */
   .illustrated-home__matthias[data-home-matthias-zone='table'] {
-    --home-matthias-zone-left: 16.4%;
-    --home-matthias-zone-top: 81.5%;
+    --home-matthias-zone-left: 17.8%;
+    --home-matthias-zone-top: 69%;
   }
 
   .illustrated-home__matthias[data-home-matthias-zone='desk'] {
-    --home-matthias-zone-left: 7.8%;
-    --home-matthias-zone-top: 79.6%;
+    --home-matthias-zone-left: 8.7%;
+    --home-matthias-zone-top: 67.5%;
   }
 
   .illustrated-home__matthias[data-home-matthias-zone='library'] {
-    --home-matthias-zone-left: 22.1%;
-    --home-matthias-zone-top: 78.9%;
+    --home-matthias-zone-left: 23%;
+    --home-matthias-zone-top: 66.5%;
   }
 
   .illustrated-home__matthias[data-home-matthias-zone='rest'] {
-    --home-matthias-zone-left: 12.4%;
-    --home-matthias-zone-top: 82.8%;
+    --home-matthias-zone-left: 13%;
+    --home-matthias-zone-top: 70.5%;
   }
 
   .illustrated-home__matthias.is-speaking {
-    --home-matthias-zone-left: 10.9%;
-    --home-matthias-zone-top: 83%;
+    --home-matthias-zone-left: 11.8%;
+    --home-matthias-zone-top: 69.5%;
   }
 
   .illustrated-home__matthias::after {
@@ -120,15 +120,36 @@
 }
 
 @media (max-width: 999px) {
+  /* Narrow layouts used to squeeze Matthias back into a tiny dashboard card.
+   * Keep the resident diegetic and large enough for the face/pose to read. */
   .illustrated-home__matthias {
-    overflow: visible;
+    width: clamp(108px, 30vw, 148px) !important;
+    min-width: 108px !important;
+    min-height: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
   }
 
   .illustrated-home__matthias-portrait {
     display: block !important;
-    width: clamp(46px, 13vw, 62px);
-    aspect-ratio: 1 / 1.08;
-    margin: auto;
+    width: 100% !important;
+    aspect-ratio: 4 / 5;
+    margin: 0 !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .illustrated-home__matthias {
+    left: 7.5% !important;
+    right: auto !important;
+    top: 56.5% !important;
+    bottom: auto !important;
+    width: clamp(116px, 32vw, 142px) !important;
+    min-width: 116px !important;
   }
 }
 
