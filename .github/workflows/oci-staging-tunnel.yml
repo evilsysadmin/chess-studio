@@ -36,7 +36,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # workflow_run.head_sha is the backend release SHA and can predate
+          # this workflow itself. Tunnel orchestration always uses the trusted
+          # tooling currently merged on the protected default branch.
+          ref: main
           fetch-depth: 1
 
       - uses: actions/setup-python@v6
