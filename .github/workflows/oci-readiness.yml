@@ -6,11 +6,9 @@ on:
     paths:
       - 'backend-python/Dockerfile'
       - 'backend-python/requirements*.txt'
-      - 'scripts/oci_*'
-      - 'infra/oci/**'
+      - 'scripts/oci_arm64_smoke.sh'
+      # Terraform/Floci PR contracts already run inside required Quality preflight.
       - '.github/workflows/oci-readiness.yml'
-      - '.github/workflows/oci-staging-lab.yml'
-      - '.github/workflows/oci-staging-deploy.yml'
 
 permissions:
   contents: read
