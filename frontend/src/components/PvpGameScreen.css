@@ -1,0 +1,32 @@
+.pvp-war-room { min-height:100dvh; padding:.55rem clamp(.45rem,1.2vw,1.1rem) 1rem; background:radial-gradient(circle at 50% 0,rgba(112,71,38,.16),transparent 32%),#07090c; }
+.pvp-war-room__topbar { width:min(98vw,1500px); min-height:44px; margin:0 auto .45rem; display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:.8rem; color:rgba(236,228,209,.7); }
+.pvp-war-room__topbar>span { justify-self:center; font-family:var(--font-mono); font-size:.67rem; letter-spacing:.16em; color:rgba(216,183,121,.82); }
+.pvp-war-room__topbar>small { justify-self:end; font-variant-numeric:tabular-nums; }
+.pvp-war-room__topbar button { min-height:38px; padding:.38rem .72rem; }
+.pvp-war-room .game-layout.game-layout-3d { width:min(98vw,1500px); }
+.pvp-war-room .board-live-row.is-3d-warroom { grid-template-columns:minmax(0,1fr); grid-template-areas:'board'; gap:0; padding:.45rem; }
+.pvp-war-room .game-board-stack.game-board-stack-3d { grid-area:board; width:100%; min-width:0; }
+.pvp-war-room .board3d-main-shell { height:clamp(620px,calc(100dvh - 5.6rem),940px)!important; min-height:0!important; aspect-ratio:auto; }
+.pvp-war-room .board3d-fixed-camera-note,.pvp-war-room .board3d-renderer-badge,.pvp-war-room .board3d-customize { display:none; }
+.pvp-war-room__stage { position:relative; }
+.pvp-war-room__duel-pill { position:absolute; z-index:12; top:.75rem; left:50%; transform:translateX(-50%); max-width:calc(100% - 1.5rem); min-height:48px; display:flex; align-items:center; gap:.55rem; padding:.42rem .65rem; border:1px solid rgba(205,201,192,.16); border-radius:999px; color:#e9e2d3; background:rgba(12,14,16,.86); box-shadow:0 12px 30px rgba(0,0,0,.28); backdrop-filter:blur(12px); white-space:nowrap; }
+.pvp-war-room__opponent-mark { display:grid; place-items:center; width:30px; height:30px; flex:0 0 auto; border-radius:50%; color:#d6b779; background:linear-gradient(145deg,#3b3124,#171511); border:1px solid rgba(214,183,121,.2); }
+.pvp-war-room__identity { min-width:0; display:grid; line-height:1.05; }
+.pvp-war-room__identity strong { max-width:180px; overflow:hidden; text-overflow:ellipsis; }
+.pvp-war-room__identity small { margin-top:.16rem; color:rgba(233,226,211,.5); font-size:.64rem; }
+.pvp-war-room__divider { width:1px; height:24px; background:rgba(233,226,211,.13); }
+.pvp-war-room__light { width:.58rem; height:.58rem; border-radius:50%; background:#a08047; }
+.pvp-war-room__duel-pill.is-green .pvp-war-room__light { background:#62b873; box-shadow:0 0 12px rgba(98,184,115,.64); }
+.pvp-war-room__duel-pill.is-red .pvp-war-room__light { background:#bd6059; box-shadow:0 0 12px rgba(189,96,89,.58); }
+.pvp-war-room__duel-pill.is-amber .pvp-war-room__light { background:#d1a34f; box-shadow:0 0 12px rgba(209,163,79,.52); }
+.pvp-war-room__duel-pill>strong[role=status] { font-size:.78rem; font-weight:650; }
+.pvp-war-room__result { position:absolute; z-index:13; left:50%; bottom:1rem; transform:translateX(-50%); width:min(430px,calc(100% - 2rem)); display:grid; grid-template-columns:1fr auto; gap:.16rem .8rem; align-items:center; padding:.8rem .9rem; border:1px solid rgba(201,162,93,.3); border-radius:13px; color:#eee5d4; background:rgba(15,14,13,.9); box-shadow:0 18px 44px rgba(0,0,0,.4); backdrop-filter:blur(12px); }
+.pvp-war-room__result small { grid-column:1; color:#caa76c; font-size:.62rem; letter-spacing:.14em; }
+.pvp-war-room__result strong { grid-column:1; font-family:Georgia,'Times New Roman',serif; font-size:1.3rem; }
+.pvp-war-room__result span { grid-column:1; color:rgba(238,229,212,.62); font-size:.76rem; }
+.pvp-war-room__result button { grid-column:2; grid-row:1/4; min-height:42px; }
+.pvp-war-room__error { position:fixed; z-index:30; left:50%; bottom:1rem; transform:translateX(-50%); max-width:min(90vw,560px); margin:0; padding:.65rem .8rem; border:1px solid rgba(191,88,76,.34); border-radius:10px; color:#e9b5ae; background:rgba(71,24,21,.93); box-shadow:0 12px 34px rgba(0,0,0,.38); }
+.pvp-war-room__loading { min-height:60vh; display:grid; place-items:center; color:rgba(233,226,211,.62); }
+@media (max-width:760px) { .pvp-war-room { padding:.3rem; } .pvp-war-room__topbar { width:100%; grid-template-columns:auto 1fr; padding-inline:.15rem; } .pvp-war-room__topbar>span { justify-self:end; } .pvp-war-room__topbar>small { display:none; } .pvp-war-room .game-layout.game-layout-3d { width:100%; } .pvp-war-room .board-live-row.is-3d-warroom { padding:.2rem; border-radius:12px; } .pvp-war-room .board3d-main-shell { height:calc(100dvh - 4.15rem)!important; min-height:520px!important; border-radius:12px; } .pvp-war-room__duel-pill { top:.45rem; min-height:44px; max-width:calc(100% - .8rem); gap:.42rem; padding:.35rem .5rem; } .pvp-war-room__identity strong { max-width:110px; } .pvp-war-room__result { bottom:.55rem; } }
+@media (max-width:520px) { .pvp-war-room__divider { display:none; } .pvp-war-room__opponent-mark { width:27px; height:27px; } .pvp-war-room__duel-pill>strong[role=status] { font-size:.7rem; } .pvp-war-room__result { grid-template-columns:1fr; } .pvp-war-room__result button { grid-column:1; grid-row:auto; margin-top:.45rem; } }
+@media (prefers-reduced-motion:reduce) { .pvp-war-room__duel-pill.is-green .pvp-war-room__light,.pvp-war-room__duel-pill.is-red .pvp-war-room__light,.pvp-war-room__duel-pill.is-amber .pvp-war-room__light { box-shadow:none; } }
