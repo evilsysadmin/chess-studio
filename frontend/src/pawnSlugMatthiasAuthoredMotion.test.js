@@ -58,7 +58,7 @@ describe('Pawn Slug canonical Matthias authored motion', () => {
     expect(left.offsetX).toBeCloseTo((384 - 2) / 384, 12);
   });
 
-  it('owns the final pistol run frame and holds a real shoot pose after recoil ends', () => {
+  it('owns the final run frame, keeps running legs while firing, and holds the standing shoot pose', () => {
     const bodyMaterial = new THREE.SpriteMaterial();
     bodyMaterial.visible = true;
     const sprite = new THREE.Sprite(bodyMaterial);
@@ -89,6 +89,19 @@ describe('Pawn Slug canonical Matthias authored motion', () => {
     });
     expect(run.runFrame).toBe(1);
     expect(sprite.userData.setActionFrame).toHaveBeenLastCalledWith('run', 1);
+
+    const movingShot = applyPawnSlugMatthiasAuthoredMotion(sprite, {
+      time: 1.26,
+      running: true,
+      airborne: false,
+      crouch: false,
+      firing: true,
+      dir: 1,
+    });
+    expect(movingShot.runFrame).toBe(2);
+    expect(movingShot.shootActive).toBe(false);
+    expect(motion.shoot.sprite.material.visible).toBe(false);
+    expect(sprite.material.visible).toBe(true);
 
     const blast = applyPawnSlugMatthiasAuthoredMotion(sprite, {
       time: 2,
