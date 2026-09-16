@@ -31,7 +31,13 @@ export function userFacingError(error, fallback = 'No se pudo completar la opera
     if (isSafeBackendMessage(message)) return message;
     return fallback;
   }
-  if (status === 403) return 'Esta cuenta no tiene permiso para realizar esa acción.';
+  // Un 403 autenticado es un fallo de permisos y no debe filtrar detalles.
+  // En endpoints públicos (p. ej. alta con invitación), el mismo status es un
+  // error funcional y el mensaje seguro del backend sí explica cómo corregirlo.
+  if (status === 403) {
+    if (!error?.authenticatedRequest && isSafeBackendMessage(message)) return message;
+    return 'Esta cuenta no tiene permiso para realizar esa acción.';
+  }
   if (status === 429) return `Chess Studio ha recibido demasiadas solicitudes seguidas. Espera un momento y reintenta.${reference}`;
   if (status >= 500) return `Chess Studio ha tenido un problema al procesar esto. Tu progreso guardado no se borra; reintenta en unos segundos.${reference}`;
 
