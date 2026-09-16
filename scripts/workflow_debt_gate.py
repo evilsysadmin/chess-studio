@@ -22,6 +22,7 @@ INVENTORY = {
     'blender-setup-smoke.yml': 'art-generation-infra',
     'blender-toolchain-cache.yml': 'art-generation-infra',
     'branch-housekeeping.yml': 'housekeeping',
+    'capture-home-matthias-pr-art.yml': 'visual-artifact',
     'chronicles-party-blender-art.yml': 'art-generation',
     'cicd.yml': 'quality-required',
     'cloudflare-prometheus-exporter.yml': 'observability',
