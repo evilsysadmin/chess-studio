@@ -1,4 +1,3 @@
-import { PAWN_SLUG_PREMIUM_ENEMY_RASTER_DATA_URL } from './pawnSlugEnemyPremiumAtlasData.js';
 import { r2AssetUrl } from './r2Assets.js';
 
 const TYPES = Object.freeze(['pawn', 'knight', 'rook']);
@@ -7,6 +6,7 @@ const ROWS = 3;
 const FRAMES_PER_TYPE = 8;
 const FRAME_SIZE = 80;
 const ROW_BY_TYPE = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
+const EMPTY_RASTER_FALLBACK = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="1" height="1" viewBox="0 0 1 1"%3E%3C/svg%3E';
 
 function wrapFrame(frame, count = FRAMES_PER_TYPE) {
   return ((Math.floor(Number(frame) || 0) % count) + count) % count;
@@ -15,7 +15,7 @@ function wrapFrame(frame, count = FRAMES_PER_TYPE) {
 export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_LOGICAL_ID = 'pawnSlug.enemy.premiumRaster';
 export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL = r2AssetUrl(
   PAWN_SLUG_PREMIUM_ENEMY_RASTER_LOGICAL_ID,
-  PAWN_SLUG_PREMIUM_ENEMY_RASTER_DATA_URL,
+  EMPTY_RASTER_FALLBACK,
 );
 
 export function pawnSlugPremiumEnemyRasterWindow(type = 'pawn', action = 'idle', frameIndex = 0, dir = 1) {
@@ -43,7 +43,7 @@ export function pawnSlugPremiumEnemyRasterWindow(type = 'pawn', action = 'idle',
 
 export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_META = Object.freeze({
   version: 'v5-authored-canonical-run',
-  format: 'webp-rgba-authored-premium-inline-safe',
+  format: 'webp-rgba-authored-premium-r2',
   width: FRAME_SIZE * COLUMNS,
   height: FRAME_SIZE * ROWS,
   frameWidth: FRAME_SIZE,
@@ -63,6 +63,7 @@ export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_META = Object.freeze({
   transparentBackground: true,
   proceduralFallbackOnly: true,
   logicalId: PAWN_SLUG_PREMIUM_ENEMY_RASTER_LOGICAL_ID,
-  transport: 'r2-cdn-with-inline-base64-fallback',
-  transportReason: 'content-addressed-cdn-primary-with-bundled-migration-fallback',
+  transport: 'r2-cdn-primary',
+  transportFallback: 'separate-premium-static-raster',
+  transportReason: 'content-addressed-cdn-primary-without-bundled-raster-payload',
 });
