@@ -28,6 +28,7 @@ import {
 } from './pawnSlugMatthiasIntegratedSprites.js';
 import {
   applyPawnSlugMatthiasPrimaryAspect,
+  createMatthiasSlugSprite,
   createWeaponSprite,
 } from './pawnSlugSprites.js';
 
@@ -47,7 +48,7 @@ describe('Pawn Slug integrated Matthias runtime', () => {
     expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.canonicalIdentity).toBe(PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY);
   });
 
-  it('switches the canonical baked atlas through the existing setWeapon contract', () => {
+  it('keeps the legacy integrated loader available for art inspection', () => {
     const sprite = createIntegratedMatthiasSlugSprite();
     expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.version).toBe('blender-premium-v3');
     expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.atlasRevision).toBe('blender-premium-v3');
@@ -60,6 +61,21 @@ describe('Pawn Slug integrated Matthias runtime', () => {
     expect(sprite.userData.atlas.source).toBe('primary');
     expect(sprite.userData.atlas.assetVersion).toBe('blender-premium-v3');
     expect(sprite.userData.atlas.atlasRevision).toBe('blender-premium-v3');
+  });
+
+  it('never swaps the live runtime body away from canonical Matthias when weapons change', () => {
+    const sprite = createMatthiasSlugSprite();
+    expect(sprite.userData.atlas.weapon).toBe('pistol');
+    const canonicalTexture = sprite.userData.atlas.texture;
+
+    for (const weapon of ['machinegun', 'shotgun', 'panzerfaust']) {
+      sprite.userData.setWeapon(weapon);
+      expect(sprite.userData.animation.weapon).toBe(weapon);
+      expect(sprite.userData.pawnSlugRuntimeWeapon).toBe(weapon);
+      expect(sprite.userData.atlas.weapon).toBe('pistol');
+      expect(sprite.userData.atlas.texture).toBe(canonicalTexture);
+      expect(sprite.userData.atlas.ready).toBe(true);
+    }
   });
 
   it('preserves the authored foot line and world scale at double raster resolution', () => {
@@ -97,7 +113,7 @@ describe('Pawn Slug integrated Matthias runtime', () => {
     expect(sprite.scale.y).toBe(before);
   });
 
-  it('keeps the old weapon model slot as a zero-geometry compatibility shell', () => {
+  it('keeps the old public weapon model helper as a zero-geometry compatibility shell', () => {
     const shell = createWeaponSprite('pistol');
     expect(shell.userData.pawnSlugIntegratedWeaponShell).toBe(true);
     expect(shell.type).toBe('Object3D');
