@@ -1,0 +1,6 @@
+# Safe Render staging Mongo target classification request
+#
+# Changing this file on main classifies the Mongo provider/URI shape without
+# printing credentials, hostnames, database names, or query values.
+requested_at=2026-09-16T14:58:00Z
+reason=oci-readiness-mongo-unavailable
