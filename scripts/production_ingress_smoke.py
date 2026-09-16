@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Verify the production API ingress from outside the platform.
 
-The public hostname must traverse Cloudflare, while Render's default
-``*.onrender.com`` hostname must stay disabled. This is deliberately a tiny
-synthetic check: no credentials, user data or application mutations.
+The public hostname must traverse Cloudflare, while Render's exact default
+``*.onrender.com`` URL must stay disabled. The Render origin is supplied by the
+production guardrail from the live service object, never guessed from a name.
+This is deliberately a tiny synthetic check: no credentials, user data or
+application mutations.
 """
 from __future__ import annotations
 
@@ -14,7 +16,6 @@ from dataclasses import dataclass
 from email.message import Message
 
 DEFAULT_PUBLIC_API = "https://api.chess-studio.shadowops.dpdns.org/api/ready"
-DEFAULT_RENDER_ORIGIN = "https://chess-study-backend.onrender.com/api/ready"
 USER_AGENT = "chess-studio-ingress-smoke/1"
 
 
@@ -87,7 +88,11 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--public-api", default=DEFAULT_PUBLIC_API)
-    parser.add_argument("--render-origin", default=DEFAULT_RENDER_ORIGIN)
+    parser.add_argument(
+        "--render-origin",
+        default="",
+        help="Exact Render-owned /api/ready URL discovered from the live service object",
+    )
     return parser.parse_args()
 
 
@@ -96,6 +101,8 @@ def main() -> None:
     if args.self_test:
         self_test()
         return
+    if not str(args.render_origin or "").strip():
+        raise SystemExit("Falta --render-origin; no se adivina el hostname de producción")
 
     public = probe(args.public_api)
     error = public_edge_error(public)

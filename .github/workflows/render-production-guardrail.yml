@@ -50,15 +50,17 @@ jobs:
 
       - name: Enforce production auto-deploy and direct-origin lock
         id: render_guardrail
-        run: python3 scripts/render_production_guardrail.py
+        run: python3 -S scripts/render_production_guardrail.py
 
-      # Push runs reconcile configuration immediately. The synthetic Internet
-      # probe stays weekly/manual so ordinary development does not burn Actions
-      # minutes or race the separate production-promotion Terraform apply.
+      # Push runs already verify the Render-owned origin directly as part of
+      # reconciliation. The complete Internet path (including CF-Ray) stays
+      # weekly/manual so ordinary development does not race production promote.
       - name: Verify live production ingress
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         id: ingress_smoke
-        run: python3 -S scripts/production_ingress_smoke.py
+        run: >-
+          python3 -S scripts/production_ingress_smoke.py
+          --render-origin "${{ steps.render_guardrail.outputs.render_origin_ready_url }}"
 
       - name: Summary
         shell: bash
@@ -67,12 +69,12 @@ jobs:
             echo '### Production ingress protegido'
             echo
             echo '- Render auto-deploy: `off`'
-            echo '- Hostname directo `*.onrender.com`: `disabled`'
+            echo '- Hostname directo `*.onrender.com`: `404 verificado`'
             echo '- Dominio público esperado: `Cloudflare -> Render`'
             echo "- Config corregida en este run: \`${{ steps.render_guardrail.outputs.changed || 'false' }}\`"
             if [[ "${{ github.event_name }}" == 'schedule' || "${{ github.event_name }}" == 'workflow_dispatch' ]]; then
-              echo '- Smoke vivo de perímetro: `OK`'
+              echo '- Smoke vivo completo de perímetro: `OK`'
             else
-              echo '- Smoke vivo de perímetro: `se ejecuta semanalmente o bajo workflow_dispatch`'
+              echo '- Origen Render verificado: `404`; CF-Ray completo se comprueba semanalmente/manual`'
             fi
           } >> "$GITHUB_STEP_SUMMARY"

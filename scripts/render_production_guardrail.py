@@ -6,14 +6,19 @@ podría saltarse ese gate, y el hostname ``*.onrender.com`` podría saltarse el
 proxy/WAF de Cloudflare. Este guardrail reconcilia ambos controles de forma
 idempotente: ``autoDeploy=no`` y ``renderSubdomainPolicy=disabled``.
 
-Reutiliza la detección fail-closed del backend de producción del bootstrap de
-staging y nunca imprime secretos ni variables de entorno.
+Render no expone ``renderSubdomainPolicy`` en el objeto de servicio recuperado,
+así que el cierre del subdominio se verifica por su efecto real: el ``url``
+del servicio debe responder 404. Nunca se imprimen secretos ni variables de
+entorno.
 """
 from __future__ import annotations
 
 import os
 import sys
+import time
+from urllib.parse import urlsplit
 
+from production_ingress_smoke import probe, render_origin_error
 from render_staging_bootstrap import api, find_production_service
 
 
@@ -24,47 +29,79 @@ def unwrap_service(payload: object) -> dict:
     return nested if isinstance(nested, dict) else payload
 
 
-def render_subdomain_policy(service: dict) -> str:
-    details = service.get("serviceDetails")
-    if not isinstance(details, dict):
-        return ""
-    return str(details.get("renderSubdomainPolicy") or "").strip().lower()
+def service_origin_ready_url(service: dict) -> str:
+    """Return the exact Render-owned readiness URL, failing closed otherwise."""
+    raw = str(service.get("url") or "").strip().rstrip("/")
+    parsed = urlsplit(raw)
+    hostname = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" or not hostname.endswith(".onrender.com"):
+        raise ValueError("el servicio de producción no expone un url *.onrender.com verificable")
+    return f"{raw}/api/ready"
 
 
-def desired_patch(service: dict) -> dict:
+def origin_is_locked(origin_ready_url: str) -> bool:
+    try:
+        return render_origin_error(probe(origin_ready_url, timeout=5.0)) is None
+    except OSError:
+        return False
+
+
+def wait_for_origin_lock(
+    origin_ready_url: str,
+    *,
+    attempts: int = 5,
+    delay_seconds: float = 1.0,
+) -> bool:
+    """Allow a few seconds for Render edge policy propagation, then fail closed."""
+    total = max(1, int(attempts))
+    for attempt in range(total):
+        if origin_is_locked(origin_ready_url):
+            return True
+        if attempt + 1 < total:
+            time.sleep(max(0.0, float(delay_seconds)))
+    return False
+
+
+def desired_patch(service: dict, *, origin_locked: bool) -> dict:
     patch: dict = {}
     if str(service.get("autoDeploy") or "").strip().lower() != "no":
         patch["autoDeploy"] = "no"
-    if render_subdomain_policy(service) != "disabled":
+    if not origin_locked:
         patch["serviceDetails"] = {"renderSubdomainPolicy": "disabled"}
     return patch
 
 
 def self_test() -> None:
     conforming = {
+        "id": "srv-test",
+        "name": "chess-studio",
+        "url": "https://chess-studio.onrender.com",
+        "autoDeploy": "no",
+    }
+    assert desired_patch(conforming, origin_locked=True) == {}
+    assert service_origin_ready_url(conforming) == "https://chess-studio.onrender.com/api/ready"
+
+    exposed = {**conforming, "autoDeploy": "yes"}
+    assert desired_patch(exposed, origin_locked=False) == {
         "autoDeploy": "no",
         "serviceDetails": {"renderSubdomainPolicy": "disabled"},
     }
-    assert desired_patch(conforming) == {}
-
-    exposed = {
-        "autoDeploy": "yes",
-        "serviceDetails": {"renderSubdomainPolicy": "enabled"},
-    }
-    assert desired_patch(exposed) == {
-        "autoDeploy": "no",
-        "serviceDetails": {"renderSubdomainPolicy": "disabled"},
-    }
-
-    missing_details = {"autoDeploy": "no"}
-    assert desired_patch(missing_details) == {
+    assert desired_patch(conforming, origin_locked=False) == {
         "serviceDetails": {"renderSubdomainPolicy": "disabled"},
     }
 
     wrapped = {"service": conforming}
     assert unwrap_service(wrapped) == conforming
-    assert render_subdomain_policy(unwrap_service(wrapped)) == "disabled"
-    print("render-production-guardrail self-test OK · autoDeploy off + onrender disabled")
+
+    invalid = {**conforming, "url": "https://example.com"}
+    try:
+        service_origin_ready_url(invalid)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("un origen no-Render debe fallar cerrado")
+
+    print("render-production-guardrail self-test OK · autoDeploy off + live onrender 404")
 
 
 def main() -> None:
@@ -74,7 +111,13 @@ def main() -> None:
     if not service_id or not service_name:
         raise SystemExit("No se pudo resolver de forma segura el backend de producción")
 
-    patch = desired_patch(production)
+    try:
+        origin_ready_url = service_origin_ready_url(production)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+
+    locked_before = origin_is_locked(origin_ready_url)
+    patch = desired_patch(production, origin_locked=locked_before)
     changed = bool(patch)
     if patch:
         api("PATCH", f"/services/{service_id}", patch)
@@ -86,11 +129,13 @@ def main() -> None:
             f"Render production autoDeploy quedó en {actual_autodeploy or '<sin dato>'}, esperaba no"
         )
 
-    actual_subdomain = render_subdomain_policy(verified)
-    if actual_subdomain != "disabled":
+    # Render's GET service object does not expose renderSubdomainPolicy. Verify
+    # the actual security boundary instead: the provider-owned hostname must
+    # be unreachable and return the documented 404.
+    if not wait_for_origin_lock(origin_ready_url):
         raise SystemExit(
-            "Render production renderSubdomainPolicy quedó en "
-            f"{actual_subdomain or '<sin dato>'}, esperaba disabled"
+            "Render production mantiene accesible su hostname directo; "
+            "esperaba HTTP 404 con renderSubdomainPolicy=disabled"
         )
 
     output = os.environ.get("GITHUB_OUTPUT")
@@ -98,11 +143,12 @@ def main() -> None:
         with open(output, "a", encoding="utf-8") as handle:
             handle.write(f"service_id={service_id}\n")
             handle.write(f"changed={'true' if changed else 'false'}\n")
+            handle.write(f"render_origin_ready_url={origin_ready_url}\n")
 
     state = "corregido" if changed else "ya conforme"
     print(
         f"Render production guardrail OK: {service_name} · autoDeploy=no · "
-        f"onrender=disabled · {state}"
+        f"onrender=404 · {state}"
     )
 
 
