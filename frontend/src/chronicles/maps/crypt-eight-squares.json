@@ -1,6 +1,6 @@
 {
   "id": "crypt-eight-squares",
-  "version": 6,
+  "version": 7,
   "progressionKey": "crypt-01",
   "title": "Cripta de las Ocho Casillas",
   "grid": [
@@ -59,6 +59,9 @@
       "maxHp": 8,
       "retaliation": 2,
       "activation": "sigil",
+      "activationWhen": [
+        { "key": "sigilAwake", "equals": true }
+      ],
       "ai": {
         "movement": "patrol-route",
         "attackReach": 1,
@@ -98,6 +101,9 @@
       "retaliation": 1,
       "retaliationReach": 2,
       "activation": "sigil",
+      "activationWhen": [
+        { "key": "sigilAwake", "equals": true }
+      ],
       "optional": true,
       "ai": { "movement": "cardinal-chase", "attackReach": 2, "requiresLineOfSight": true },
       "onDefeat": {
@@ -126,6 +132,10 @@
       "maxHp": 6,
       "retaliation": 1,
       "activation": "jailer-down",
+      "activationWhen": [
+        { "key": "sigilAwake", "equals": true },
+        { "key": "jailerHp", "lte": 0 }
+      ],
       "positionKey": "scavengerPosition",
       "positions": {
         "gate": { "x": 3, "y": 1 },
