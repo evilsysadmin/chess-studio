@@ -4,7 +4,7 @@ inputs:
   blender-version:
     description: Portable Blender version shared by canonical art workflows.
     required: false
-    default: '4.0.2'
+    default: '5.2.2'
   extra-packages:
     description: Optional space-separated apt packages required by the product-specific renderer.
     required: false
