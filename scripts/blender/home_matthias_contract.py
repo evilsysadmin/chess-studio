@@ -8,7 +8,7 @@ Home-specific; the shared Blender setup remains product-agnostic.
 CANONICAL_IDENTITY = "stern-no-moustache-pawn"
 CANONICAL_REFERENCE = "war-room-stern-pawn-2026-09-16"
 CANONICAL_REFERENCE_FILE = "frontend/art-source/matthias-home-canonical-reference.webp"
-CANONICAL_REFERENCE_SHA256 = "80e451f1670b6b8f05123a4f013e526f926b4dec1532ba5e45f7ad24de80e06a"
+CANONICAL_REFERENCE_SHA256 = "24ce1e4da043ce32ded8cd2b7ee8a901494c15806f9489cd5625d7b6c2ce9650"
 CANONICAL_POSE_LANGUAGE = "permanently-stern"
 
 REQUIRED_ACTIONS = {
