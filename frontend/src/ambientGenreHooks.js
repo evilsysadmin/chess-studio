@@ -41,7 +41,10 @@ export const AMBIENT_GENRE_HOOKS = Object.freeze({
   cordobaRooftop0026: hook('lead', [0,2], 64, 3.8, 0.18, { 5:69, 21:76, 37:72, 53:74 }),
   damascusCourtyard0144: hook('lead', [0,2], 48, 6.4, 0.16, { 6:65, 18:72, 30:68, 42:63 }),
   ammanLateTable0303: hook('lead', [0,2], 64, 5.0, 0.17, { 8:67, 24:70, 40:65, 56:72 }),
-  oudTrench: hook('lead', [0,1], 64, 4.4, 0.18, { 6:57, 22:64, 38:62, 54:67 }),
+  // Oud Trench keeps the dry oscillator oud only as a recognisable, occasional
+  // colour. The continuous lane is modelled nylon; stretching this hook prevents
+  // the remaining oud accent from becoming another bright repeating notification.
+  oudTrench: hook('lead', [0,1], 96, 5.4, 0.14, { 6:57, 22:64, 38:62, 54:67 }),
   velvetStatic: hook('counter', [0,1], 64, 6.2, 0.16, { 12:55, 28:59, 44:52, 60:57 }),
   knightAlleyNoir: hook('counter', [0,1], 64, 5.6, 0.17, { 8:65, 24:62, 40:68, 56:61 }),
   concreteRain: hook('counter', [0,1], 96, 7.2, 0.15, { 6:65, 22:62, 38:67, 54:60 }),
