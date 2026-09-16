@@ -6,9 +6,8 @@ import {
   chroniclesEnemyPosition,
 } from './chroniclesOfMatthias.js';
 import { CHRONICLES_TACTICS_WORLD } from './chroniclesOfMatthiasTactics.js';
-import { buildChroniclesCharacter, buildCorruptedPawn, buildGateJailer } from './chroniclesOfMatthiasArt.js';
-import { buildScavengerKnight } from './chroniclesOfMatthiasScavengerKnight.js';
-import { buildSpectralBishop } from './chroniclesOfMatthiasSpectralBishop.js';
+import { buildChroniclesCharacter } from './chroniclesOfMatthiasArt.js';
+import { buildChroniclesEnemyVisual } from './chroniclesEnemyVisualRegistry.js';
 import { installChroniclesCanonicalMatthias } from './chroniclesOfMatthiasBlenderArt.js';
 import { installChroniclesTacticsPartyBlenderArt } from './chroniclesOfMatthiasPartyBlenderArt.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
@@ -448,27 +447,22 @@ function buildParty(scene, { coarsePointer, reducedMotion }) {
 }
 
 function buildEnemies(scene, { coarsePointer }) {
-  const models = new Map([
-    ['corrupted-pawn', buildCorruptedPawn({ coarsePointer })],
-    ['gate-jailer', buildGateJailer({ coarsePointer })],
-    ['spectral-bishop', buildSpectralBishop({ coarsePointer })],
-    ['scavenger-knight', buildScavengerKnight({ coarsePointer })],
-  ]);
-  const scales = Object.freeze({
-    'corrupted-pawn': 0.92,
-    'gate-jailer': 1.04,
-    'spectral-bishop': 0.9,
-    'scavenger-knight': 0.96,
-  });
+  const models = new Map();
 
-  models.forEach((model, id) => {
+  CHRONICLES_ENEMIES.forEach((definition) => {
+    const visual = buildChroniclesEnemyVisual(definition.visualType || definition.id, { coarsePointer });
+    if (!visual) return;
+    const { model, scale } = visual;
+    const id = definition.id;
     model.name = `chronicles-iso-enemy-${id}`;
     model.userData.chroniclesIsoEnemyId = id;
-    model.scale.setScalar(scales[id] || 0.92);
+    model.scale.setScalar(scale);
     model.rotation.y = -Math.PI * 0.18;
     model.visible = false;
     scene.add(model);
+    models.set(id, model);
   });
+
   return models;
 }
 
