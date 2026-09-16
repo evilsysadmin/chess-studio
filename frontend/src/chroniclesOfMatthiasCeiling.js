@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CHRONICLES_MAP } from './chroniclesOfMatthias.js';
+import { chroniclesIsometricScenePlan } from './chronicles/chroniclesIsometricScenePlan.js';
 
 const CELL = 4;
 const TEXTURE_SIZE = 64;
@@ -104,28 +104,27 @@ function makeStoneMaterial(color, seed, { roughness = 0.94, bumpScale = 0.075, n
   return material;
 }
 
-function walkableCells() {
-  const cells = [];
-  CHRONICLES_MAP.forEach((row, y) => {
-    [...row].forEach((tile, x) => {
-      if (tile !== '#') cells.push({ x, y });
-    });
-  });
-  return cells;
+function walkableCells(scenePlan) {
+  return (scenePlan?.floors || []).map(({ x, y }) => ({ x, y }));
 }
 
-export function buildChroniclesDungeonCeiling({ coarsePointer = false } = {}) {
+export function buildChroniclesDungeonCeiling({
+  coarsePointer = false,
+  scenePlan = chroniclesIsometricScenePlan(),
+} = {}) {
   const root = new THREE.Group();
   root.name = 'chronicles-dungeon-ceiling';
   const mainStone = makeStoneMaterial(0x514b43, 89, { bumpScale: 0.085, normalScale: coarsePointer ? 0.42 : 0.58 });
   const altStone = makeStoneMaterial(0x433f39, 97, { roughness: 0.97, bumpScale: 0.07, normalScale: coarsePointer ? 0.38 : 0.52 });
   const insetStone = makeStoneMaterial(0x292827, 101, { roughness: 0.98, bumpScale: 0.035, normalScale: coarsePointer ? 0.3 : 0.42 });
-  const cells = walkableCells();
+  const cells = walkableCells(scenePlan);
+  const centerX = Number(scenePlan?.center?.x ?? 0);
+  const centerY = Number(scenePlan?.center?.y ?? 0);
   let bossCount = 0;
 
   cells.forEach(({ x, y }, index) => {
-    const wx = (x - 3) * CELL;
-    const wz = (y - 3) * CELL;
+    const wx = (x - centerX) * CELL;
+    const wz = (y - centerY) * CELL;
     const slab = new THREE.Mesh(
       new THREE.BoxGeometry(CELL * 0.94, 0.1, CELL * 0.94),
       (x + y) % 3 === 0 ? altStone : mainStone,
