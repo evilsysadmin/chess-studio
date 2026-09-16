@@ -106,14 +106,37 @@ rollback() {
   return 1
 }
 
+record_successful_backend() {
+  local successful_sha="$1"
+  local tmp
+  tmp="$(mktemp "$state_dir/deployed.sha.XXXXXX")"
+  printf '%s\n' "$successful_sha" >"$tmp"
+  chmod 0644 "$tmp"
+  mv -f "$tmp" "$state_file"
+}
+
+alloy_running() {
+  compose "$sha" ps --status running --services 2>/dev/null | grep -Fxq alloy
+}
+
 cd "$repo"
 git fetch --no-tags --depth=1 origin "$sha"
 git checkout --detach "$sha"
 [[ -f "$compose_file" ]] || { echo "missing compose runtime in $sha: $compose_file" >&2; exit 66; }
+[[ -f "$repo/infra/oci/runtime/alloy.alloy" ]] || { echo 'missing OCI Alloy config' >&2; exit 66; }
 
-# Build first; the currently running backend keeps serving traffic until the
-# replacement image is ready.
+# Prepare both artifacts before touching the currently serving backend. A bad
+# Alloy image/config must fail here, not after FastAPI has already been replaced.
 if ! compose "$sha" build --pull backend; then
+  [[ -z "$previous_sha" ]] || git checkout --detach "$previous_sha" >/dev/null 2>&1 || true
+  exit 1
+fi
+if ! compose "$sha" pull alloy; then
+  [[ -z "$previous_sha" ]] || git checkout --detach "$previous_sha" >/dev/null 2>&1 || true
+  exit 1
+fi
+if ! compose "$sha" run --rm --no-deps alloy validate /etc/alloy/config.alloy; then
+  echo 'OCI Alloy configuration validation failed' >&2
   [[ -z "$previous_sha" ]] || git checkout --detach "$previous_sha" >/dev/null 2>&1 || true
   exit 1
 fi
@@ -125,12 +148,26 @@ fi
 
 for _ in $(seq 1 60); do
   if attest "$sha"; then
-    tmp="$(mktemp "$state_dir/deployed.sha.XXXXXX")"
-    printf '%s\n' "$sha" >"$tmp"
-    chmod 0644 "$tmp"
-    mv -f "$tmp" "$state_file"
-    echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha"
-    exit 0
+    record_successful_backend "$sha"
+
+    # Host telemetry is part of staging accreditation, but it starts only after
+    # the product backend is known-good. If telemetry fails, keep the healthy
+    # backend serving and fail the deploy rather than rolling product back.
+    if ! compose "$sha" up -d --no-build --force-recreate alloy; then
+      echo 'OCI Alloy failed to start; healthy backend left serving for diagnosis' >&2
+      exit 45
+    fi
+    for _alloy_attempt in $(seq 1 20); do
+      if alloy_running; then
+        echo "CHESS_STUDIO_ALLOY_OK repo_ref=$sha"
+        echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha"
+        exit 0
+      fi
+      sleep 1
+    done
+    echo 'OCI Alloy did not remain running; healthy backend left serving for diagnosis' >&2
+    compose "$sha" logs --no-color --tail=80 alloy >&2 || true
+    exit 45
   fi
   sleep 2
 done
