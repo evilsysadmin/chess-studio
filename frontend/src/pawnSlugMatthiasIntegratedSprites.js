@@ -1,9 +1,15 @@
 import * as THREE from 'three';
-import { PAWN_SLUG_CANONICAL_HANDOFF, pawnSlugCanonicalPistolAtlasUrl, pawnSlugCanonicalPistolWindow } from './pawnSlugCanonicalHandoff.js';
+import {
+  PAWN_SLUG_CANONICAL_HANDOFF,
+  pawnSlugCanonicalPistolAtlasUrl,
+  pawnSlugCanonicalPistolFallbackAtlasUrl,
+  pawnSlugCanonicalPistolWindow,
+} from './pawnSlugCanonicalHandoff.js';
 import machinegunPayload from './assets/pawnSlug/matthias_machinegun_premium_v3.b64?raw';
 import shotgunPayload from './assets/pawnSlug/matthias_shotgun_premium_v3.b64?raw';
 import panzerfaustPayload from './assets/pawnSlug/matthias_panzerfaust_premium_v3.b64?raw';
 import canonicalMotionPayload from './assets/pawnSlug/matthias_motion_atlas_v5_payload.b64?raw';
+import { r2AssetUrl } from './r2Assets.js';
 import { configurePawnSlugTexture } from './pawnSlugSpriteCore.js';
 
 const PAYLOADS = Object.freeze({
@@ -11,6 +17,15 @@ const PAYLOADS = Object.freeze({
   machinegun: machinegunPayload,
   shotgun: shotgunPayload,
   panzerfaust: panzerfaustPayload,
+});
+
+export const PAWN_SLUG_MATTHIAS_R2_ASSETS = Object.freeze({
+  pistol: 'pawnSlug.matthias.pistol',
+  machinegun: 'pawnSlug.matthias.machinegun',
+  shotgun: 'pawnSlug.matthias.shotgun',
+  panzerfaust: 'pawnSlug.matthias.panzerfaust',
+  motion: 'pawnSlug.matthias.motion',
+  canonicalMaster: 'pawnSlug.matthias.canonicalMaster',
 });
 
 const ACTIONS = Object.freeze({
@@ -111,6 +126,8 @@ export const PAWN_SLUG_MATTHIAS_INTEGRATED_ART = Object.freeze({
   canonicalIdentity: PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY,
   canonicalHeadArt: PAWN_SLUG_MATTHIAS_CANONICAL_HEAD_ART,
   browserRenderContract: PAWN_SLUG_MATTHIAS_BROWSER_RENDER_CONTRACT,
+  assetDelivery: 'r2-with-local-fallback',
+  r2LogicalIds: PAWN_SLUG_MATTHIAS_R2_ASSETS,
   weapons: Object.freeze(Object.keys(PAYLOADS)),
   sourceFacing: 'left',
   runtimeFacing: 'world-direction-normalized',
@@ -140,14 +157,30 @@ export function pawnSlugIntegratedWeaponId(kind = 'pistol') {
   return Object.hasOwn(PAYLOADS, kind) ? kind : 'pistol';
 }
 
-export function pawnSlugIntegratedWeaponAtlasUrl(kind = 'pistol') {
+export function pawnSlugIntegratedWeaponFallbackAtlasUrl(kind = 'pistol') {
   const id = pawnSlugIntegratedWeaponId(kind);
-  if (id === 'pistol') return pawnSlugCanonicalPistolAtlasUrl;
+  if (id === 'pistol') return pawnSlugCanonicalPistolFallbackAtlasUrl;
   return `data:image/webp;base64,${PAYLOADS[id].trim()}`;
 }
 
-export function pawnSlugCanonicalHeadAtlasUrl() {
+export function pawnSlugIntegratedWeaponAtlasUrl(kind = 'pistol') {
+  const id = pawnSlugIntegratedWeaponId(kind);
+  if (id === 'pistol') return pawnSlugCanonicalPistolAtlasUrl;
+  return r2AssetUrl(
+    PAWN_SLUG_MATTHIAS_R2_ASSETS[id],
+    pawnSlugIntegratedWeaponFallbackAtlasUrl(id),
+  );
+}
+
+export function pawnSlugCanonicalHeadFallbackAtlasUrl() {
   return `data:image/webp;base64,${canonicalMotionPayload.trim()}`;
+}
+
+export function pawnSlugCanonicalHeadAtlasUrl() {
+  return r2AssetUrl(
+    PAWN_SLUG_MATTHIAS_R2_ASSETS.motion,
+    pawnSlugCanonicalHeadFallbackAtlasUrl(),
+  );
 }
 
 export function pawnSlugPremiumMatthiasAtlasWindow(action = 'idle', frameIndex = 0, worldDirection = 1) {
@@ -295,6 +328,25 @@ function applyVisualPose(sprite) {
   publishCanonicalMatthiasRenderStatus(sprite);
 }
 
+function loadTextureWithFallback(loader, primaryUrl, fallbackUrl, onLoad, onFailure) {
+  const primaryDelivery = primaryUrl === fallbackUrl ? 'local-fallback' : 'r2';
+  const load = (url, delivery, allowFallback) => {
+    loader.load(
+      url,
+      (texture) => onLoad(texture, delivery),
+      undefined,
+      () => {
+        if (allowFallback && fallbackUrl && fallbackUrl !== primaryUrl) {
+          load(fallbackUrl, 'local-fallback', false);
+          return;
+        }
+        onFailure?.();
+      },
+    );
+  };
+  load(primaryUrl, primaryDelivery, true);
+}
+
 export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME.scale) {
   const material = new THREE.SpriteMaterial({
     transparent: true,
@@ -317,6 +369,7 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
   sprite.userData.atlas = {
     texture: null,
     source: 'loading',
+    delivery: 'pending',
     weapon: null,
     ready: false,
     disposed: false,
@@ -327,6 +380,7 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
   sprite.userData.canonicalHead = {
     texture: null,
     source: 'loading',
+    delivery: 'pending',
     ready: false,
     assetVersion: PAWN_SLUG_MATTHIAS_CANONICAL_HEAD_ART.version,
     sprite: null,
@@ -365,9 +419,13 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
 
   function loadCanonicalHead() {
     const head = sprite.userData.canonicalHead;
-    loader.load(
+    head.source = 'loading';
+    head.delivery = 'pending';
+    loadTextureWithFallback(
+      loader,
       pawnSlugCanonicalHeadAtlasUrl(),
-      (texture) => {
+      pawnSlugCanonicalHeadFallbackAtlasUrl(),
+      (texture, delivery) => {
         if (sprite.userData.atlas.disposed) {
           texture.dispose?.();
           return;
@@ -375,6 +433,7 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
         configurePawnSlugTexture(texture);
         head.texture = texture;
         head.source = 'canonical';
+        head.delivery = delivery;
         head.ready = true;
         canonicalHeadMaterial.map = texture;
         canonicalHeadMaterial.visible = true;
@@ -382,9 +441,11 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
         applyCanonicalHeadPose(sprite);
         publishCanonicalMatthiasRenderStatus(sprite);
       },
-      undefined,
       () => {
-        if (!sprite.userData.atlas.disposed) head.source = 'failed';
+        if (!sprite.userData.atlas.disposed) {
+          head.source = 'failed';
+          head.delivery = 'failed';
+        }
         publishCanonicalMatthiasRenderStatus(sprite);
       },
     );
@@ -395,12 +456,15 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
     const weapon = pawnSlugIntegratedWeaponId(kind);
     const requestId = ++atlas.requestId;
     atlas.source = 'loading';
+    atlas.delivery = 'pending';
     atlas.ready = false;
     material.visible = false;
     canonicalHeadMaterial.visible = false;
-    loader.load(
+    loadTextureWithFallback(
+      loader,
       pawnSlugIntegratedWeaponAtlasUrl(weapon),
-      (texture) => {
+      pawnSlugIntegratedWeaponFallbackAtlasUrl(weapon),
+      (texture, delivery) => {
         if (atlas.disposed || requestId !== atlas.requestId) {
           texture.dispose?.();
           return;
@@ -412,6 +476,7 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
         atlas.assetVersion = weapon === 'pistol' ? PAWN_SLUG_CANONICAL_HANDOFF.version : PAWN_SLUG_MATTHIAS_INTEGRATED_ART.version;
         atlas.atlasRevision = atlas.assetVersion;
         atlas.source = 'primary';
+        atlas.delivery = delivery;
         atlas.ready = true;
         material.map = texture;
         material.visible = true;
@@ -420,9 +485,11 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
         publishCanonicalMatthiasRenderStatus(sprite);
         if (previous && previous !== texture) previous.dispose?.();
       },
-      undefined,
       () => {
-        if (!atlas.disposed && requestId === atlas.requestId) atlas.source = 'failed';
+        if (!atlas.disposed && requestId === atlas.requestId) {
+          atlas.source = 'failed';
+          atlas.delivery = 'failed';
+        }
         publishCanonicalMatthiasRenderStatus(sprite);
       },
     );
