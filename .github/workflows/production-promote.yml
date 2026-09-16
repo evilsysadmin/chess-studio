@@ -808,6 +808,30 @@ jobs:
           [[ "$release_ok" == true ]] || { echo '::error::Production frontend no sirve el SHA promocionado'; exit 1; }
           curl --fail --silent --show-error --connect-timeout 5 --max-time 15 "$PRODUCTION_URL/" >/dev/null
 
+      - name: Write immutable production promotion record
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - "$RUNNER_TEMP/production-promotion-record.json" "$DEPLOY_SHA" "$GITHUB_RUN_ID" "$GITHUB_EVENT_NAME" <<'PY'
+          import json, pathlib, sys
+          target, sha, run_id, event = sys.argv[1:]
+          payload = {
+              'schema': 1,
+              'sha': sha.lower(),
+              'promotion_run_id': int(run_id),
+              'event': event,
+          }
+          pathlib.Path(target).write_text(json.dumps(payload, sort_keys=True) + '\n', encoding='utf-8')
+          PY
+
+      - name: Upload immutable production promotion record
+        uses: actions/upload-artifact@v6
+        with:
+          name: production-promotion-record
+          path: ${{ runner.temp }}/production-promotion-record.json
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Production summary
         shell: bash
         run: |
@@ -818,4 +842,5 @@ jobs:
             echo '- Workers AI: `OK`'
             echo '- Render backend: `Mongo ready + SHA exacto`'
             echo '- Cloudflare Pages: `origin verificado + custom domain + SHA exacto`'
+            echo '- Rollback provenance: `production-promotion-record`'
           } >> "$GITHUB_STEP_SUMMARY"
