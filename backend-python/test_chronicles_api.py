@@ -4,18 +4,30 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
 
 import chronicles_api
+import chronicles_run_store
 
 
 async def _auth(request: Request):
-    if request.headers.get("Authorization") != "Bearer test-token":
-        raise HTTPException(401, "auth")
-    return "tester"
+    token = request.headers.get("Authorization")
+    if token == "Bearer test-token":
+        return "tester"
+    if token == "Bearer rival-token":
+        return "rival"
+    raise HTTPException(401, "auth")
 
 
 def _client():
     app = FastAPI()
     app.include_router(chronicles_api.build_chronicles_router(auth_dependency=_auth))
     return TestClient(app)
+
+
+def _force_memory_store(monkeypatch):
+    async def no_collection():
+        return None
+
+    chronicles_run_store._memory_runs.clear()
+    monkeypatch.setattr(chronicles_run_store, "_collection", no_collection)
 
 
 def test_manifest_endpoint_requires_auth():
@@ -68,3 +80,82 @@ def test_all_shipped_manifests_validate():
         manifest, revision = chronicles_api.load_chronicles_manifest(map_id)
         assert manifest["id"] == map_id
         assert revision
+
+
+def test_run_creation_requires_auth(monkeypatch):
+    _force_memory_store(monkeypatch)
+    response = _client().post("/api/chronicles/runs", json={"mapId": "crypt-eight-squares"})
+    assert response.status_code == 401
+
+
+def test_run_creation_binds_server_seed_and_manifest_revision(monkeypatch):
+    _force_memory_store(monkeypatch)
+    response = _client().post(
+        "/api/chronicles/runs",
+        headers={"Authorization": "Bearer test-token"},
+        json={"mapId": "gallery-of-forks"},
+    )
+    assert response.status_code == 201
+    run = response.json()
+    manifest, revision = chronicles_api.load_chronicles_manifest("gallery-of-forks")
+    assert 0 <= run["seed"] <= 2_147_483_647
+    assert run["currentMapId"] == "gallery-of-forks"
+    assert run["contentVersion"] == manifest["version"]
+    assert run["manifestRevision"] == revision
+    assert run["worldVersion"] == 0
+    assert run["consumedContentIds"] == []
+    assert run["claimedRewards"] == []
+
+
+def test_idempotent_run_creation_replays_same_identity_and_seed(monkeypatch):
+    _force_memory_store(monkeypatch)
+    client = _client()
+    headers = {
+        "Authorization": "Bearer test-token",
+        "Idempotency-Key": "chronicles-run-0001",
+    }
+    first = client.post("/api/chronicles/runs", headers=headers, json={"mapId": "crypt-eight-squares"})
+    repeated = client.post("/api/chronicles/runs", headers=headers, json={"mapId": "crypt-eight-squares"})
+
+    assert first.status_code == 201
+    assert repeated.status_code == 201
+    assert repeated.json() == first.json()
+
+
+def test_idempotency_key_cannot_be_reused_for_different_map(monkeypatch):
+    _force_memory_store(monkeypatch)
+    client = _client()
+    headers = {
+        "Authorization": "Bearer test-token",
+        "Idempotency-Key": "chronicles-run-0002",
+    }
+    assert client.post("/api/chronicles/runs", headers=headers, json={"mapId": "crypt-eight-squares"}).status_code == 201
+    conflict = client.post("/api/chronicles/runs", headers=headers, json={"mapId": "gallery-of-forks"})
+    assert conflict.status_code == 409
+
+
+def test_run_lookup_is_owner_scoped_without_leaking_existence(monkeypatch):
+    _force_memory_store(monkeypatch)
+    client = _client()
+    created = client.post(
+        "/api/chronicles/runs",
+        headers={"Authorization": "Bearer test-token"},
+        json={"mapId": "crypt-eight-squares"},
+    ).json()
+
+    own = client.get(f"/api/chronicles/runs/{created['runId']}", headers={"Authorization": "Bearer test-token"})
+    rival = client.get(f"/api/chronicles/runs/{created['runId']}", headers={"Authorization": "Bearer rival-token"})
+
+    assert own.status_code == 200
+    assert own.json()["runId"] == created["runId"]
+    assert rival.status_code == 404
+
+
+def test_invalid_idempotency_key_is_rejected(monkeypatch):
+    _force_memory_store(monkeypatch)
+    response = _client().post(
+        "/api/chronicles/runs",
+        headers={"Authorization": "Bearer test-token", "Idempotency-Key": "bad"},
+        json={"mapId": "crypt-eight-squares"},
+    )
+    assert response.status_code == 400
