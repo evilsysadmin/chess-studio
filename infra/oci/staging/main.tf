@@ -33,10 +33,10 @@ locals {
 }
 
 resource "terraform_data" "bootstrap_contract" {
-  # Deliberately independent of repo_ref. Application releases are deployed by
-  # service control; only a change to the machine bootstrap contract should
-  # recycle the disposable staging A1.
-  triggers_replace = filesha256("${path.module}/cloud-init.yaml.tftpl")
+  # v2 intentionally rolls the pre-contract A1 once. After that migration,
+  # only a cloud-init byte change updates this fingerprint and recycles the
+  # disposable staging host.
+  triggers_replace = format("v2:%s", filesha256("${path.module}/cloud-init.yaml.tftpl"))
 }
 
 resource "oci_core_vcn" "backend" {
