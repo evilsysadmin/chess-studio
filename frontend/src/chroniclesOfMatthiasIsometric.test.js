@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHRONICLES_ISO_MARKER_STYLE,
   CHRONICLES_ISO_PARTY_FACING,
   CHRONICLES_ISO_PARTY_LAYOUT,
   chroniclesIsoInteractionForHit,
@@ -51,6 +52,13 @@ describe('Chronicles canonical isometric viewport', () => {
     expect(Math.max(...zs) - Math.min(...zs)).toBeLessThan(0.35);
     members.forEach((member) => expect(member.scale).toBeGreaterThanOrEqual(1));
     expect(CHRONICLES_ISO_PARTY_FACING).toBeCloseTo(Math.PI, 6);
+  });
+
+  it('keeps the canonical tactical markers square and semantically colored', () => {
+    expect(CHRONICLES_ISO_MARKER_STYLE.shape).toBe('square');
+    expect(CHRONICLES_ISO_MARKER_STYLE.moveColor).toBe(0x65bfe3);
+    expect(CHRONICLES_ISO_MARKER_STYLE.attackColor).toBe(0xc45143);
+    expect(CHRONICLES_ISO_MARKER_STYLE.selectionColor).toBe(0xd8b56a);
   });
 
   it('adds restrained FOV only when the canvas becomes narrow', () => {

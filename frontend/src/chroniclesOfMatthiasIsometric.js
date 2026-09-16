@@ -24,6 +24,12 @@ export const CHRONICLES_ISO_PARTY_LAYOUT = Object.freeze({
   knight: Object.freeze({ x: 1.62, z: 0.08, scale: 1.03 }),
 });
 export const CHRONICLES_ISO_PARTY_FACING = Math.PI;
+export const CHRONICLES_ISO_MARKER_STYLE = Object.freeze({
+  shape: 'square',
+  moveColor: 0x65bfe3,
+  attackColor: 0xc45143,
+  selectionColor: 0xd8b56a,
+});
 
 const TORCH_CELLS = Object.freeze([
   Object.freeze({ x: 1, y: 5, ox: -0.98, oz: -0.78 }),
@@ -127,6 +133,26 @@ function addMesh(root, geometry, material, position, name, { castShadow = true, 
   mesh.receiveShadow = receiveShadow;
   root.add(mesh);
   return mesh;
+}
+
+function buildSquareFrameGeometry(size, thickness) {
+  const half = size / 2;
+  const inner = Math.max(0.01, half - thickness);
+  const shape = new THREE.Shape();
+  shape.moveTo(-half, -half);
+  shape.lineTo(half, -half);
+  shape.lineTo(half, half);
+  shape.lineTo(-half, half);
+  shape.closePath();
+
+  const hole = new THREE.Path();
+  hole.moveTo(-inner, -inner);
+  hole.lineTo(-inner, inner);
+  hole.lineTo(inner, inner);
+  hole.lineTo(inner, -inner);
+  hole.closePath();
+  shape.holes.push(hole);
+  return new THREE.ShapeGeometry(shape);
 }
 
 function buildDungeonColumn(root, material, trimMaterial, x, z, index, { coarsePointer }) {
@@ -436,15 +462,18 @@ function buildParty(scene, { coarsePointer, reducedMotion }) {
   root.userData.chroniclesArtCancel = installChroniclesTacticsPartyBlenderArt(models, { coarsePointer, reducedMotion });
 
   const selectionMaterial = new THREE.MeshBasicMaterial({
-    color: 0xf2bd67,
+    color: CHRONICLES_ISO_MARKER_STYLE.selectionColor,
     transparent: true,
-    opacity: 0.58,
+    opacity: coarsePointer ? 0.82 : 0.7,
     depthWrite: false,
+    depthTest: true,
+    side: THREE.DoubleSide,
   });
   selectionMaterial.userData.chroniclesIsoOwned = true;
-  const selection = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.028, 8, coarsePointer ? 20 : 32), selectionMaterial);
+  const selection = new THREE.Mesh(buildSquareFrameGeometry(1.34, coarsePointer ? 0.075 : 0.055), selectionMaterial);
   selection.rotation.x = -Math.PI / 2;
-  selection.position.y = 0.025;
+  selection.position.y = 0.035;
+  selection.renderOrder = 9;
   root.add(selection);
 
   return { root, models, selection };
@@ -495,33 +524,32 @@ function buildInteractionMarkers(scene, { coarsePointer }) {
   root.name = 'chronicles-isometric-interaction';
   scene.add(root);
 
-  const segments = coarsePointer ? 24 : 36;
   const moveMaterial = new THREE.MeshBasicMaterial({
-    color: 0xf0bd68,
+    color: CHRONICLES_ISO_MARKER_STYLE.moveColor,
     transparent: true,
-    opacity: coarsePointer ? 0.68 : 0.52,
+    opacity: coarsePointer ? 0.78 : 0.62,
     depthWrite: false,
     depthTest: true,
     side: THREE.DoubleSide,
   });
   const attackMaterial = new THREE.MeshBasicMaterial({
-    color: 0xd96b3c,
+    color: CHRONICLES_ISO_MARKER_STYLE.attackColor,
     transparent: true,
-    opacity: coarsePointer ? 0.8 : 0.67,
+    opacity: coarsePointer ? 0.86 : 0.72,
     depthWrite: false,
     depthTest: true,
     side: THREE.DoubleSide,
   });
   moveMaterial.userData.chroniclesIsoOwned = true;
   attackMaterial.userData.chroniclesIsoOwned = true;
-  const moveGeometry = new THREE.RingGeometry(0.5, 0.69, segments);
-  const attackGeometry = new THREE.RingGeometry(0.63, 0.8, segments);
+  const moveGeometry = buildSquareFrameGeometry(CELL * 0.72, coarsePointer ? 0.09 : 0.06);
+  const attackGeometry = buildSquareFrameGeometry(CELL * 0.78, coarsePointer ? 0.1 : 0.072);
 
   const makePool = (count, geometry, material, prefix) => Array.from({ length: count }, (_, index) => {
     const marker = new THREE.Mesh(geometry, material);
     marker.name = `${prefix}-${index}`;
     marker.rotation.x = -Math.PI / 2;
-    marker.position.y = 0.045;
+    marker.position.y = 0.055;
     marker.renderOrder = 8;
     marker.visible = false;
     root.add(marker);
@@ -655,7 +683,7 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
     const config = CHRONICLES_ISO_PARTY_LAYOUT[selectedMemberId] || CHRONICLES_ISO_PARTY_LAYOUT.matthias;
     party.selection.position.x = config.x;
     party.selection.position.z = config.z;
-    party.selection.scale.setScalar((config.scale || 1) / 0.86);
+    party.selection.scale.setScalar(config.scale || 1);
   }
 
   function syncInteraction(nextInteraction = null) {
@@ -667,14 +695,14 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
       (nextInteraction.legalMoves || []).slice(0, interactionMarkers.moveMarkers.length).forEach((move, index) => {
         const marker = interactionMarkers.moveMarkers[index];
         const world = chroniclesIsoWorldForCell(move.x, move.y);
-        marker.position.set(world.x, 0.045, world.z);
+        marker.position.set(world.x, 0.055, world.z);
         marker.visible = true;
       });
     } else if (nextInteraction?.mode === 'attack') {
       (nextInteraction.legalTargets || []).slice(0, interactionMarkers.attackMarkers.length).forEach((target, index) => {
         const marker = interactionMarkers.attackMarkers[index];
         const world = chroniclesIsoWorldForCell(target.x, target.y);
-        marker.position.set(world.x, 0.055, world.z);
+        marker.position.set(world.x, 0.065, world.z);
         marker.visible = true;
       });
     }
