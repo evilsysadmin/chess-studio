@@ -221,9 +221,21 @@ def main() -> int:
     require(staging_worker_deploy, "wait_for_runtime_build(deploy_sha)", "staging Worker runtime identity gate", errors)
     require(staging_worker_deploy, "last_build == deploy_sha", "staging Worker exact runtime SHA convergence", errors)
 
-    # Production remains provenance-bound to the canonical AI accreditation workflow.
-    require(promote, "workflows:\n      - Staging · AI Worker", "production source workflow", errors)
-    require(promote, "branches:\n      - main", "production main-only source", errors)
+    # Production is now a daily release train. It must consume only the latest
+    # immutable accreditation emitted by the canonical automatic Staging AI run;
+    # preview/restore never participates and manual production remains main-only.
+    for needle, label in (
+        ("schedule:", "production daily schedule"),
+        ("- cron: '0 6,7 * * *'", "production CET/CEST UTC pair"),
+        ("Release train · 08:00 Europe/Madrid", "production Madrid release window"),
+        ("workflow_dispatch:", "production manual hotfix path"),
+        ("La promoción manual sólo puede salir de main", "production manual main-only guard"),
+        ("Resolve latest immutable staging accreditation", "production accreditation selector"),
+        ("staging-promotion-accreditation", "production immutable staging proof"),
+        ("actions/workflows/staging-ai-worker.yml/runs?event=workflow_run&status=success&branch=main&per_page=100", "production automatic staging source"),
+        ("Snapshot: `fijo al arrancar; no persigue acreditaciones posteriores`", "production fixed release snapshot"),
+    ):
+        require(promote, needle, label, errors)
     if "Staging · preview" in promote:
         errors.append("production-promote escucha Staging · preview")
 

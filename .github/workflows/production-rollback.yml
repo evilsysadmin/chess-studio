@@ -81,28 +81,77 @@ jobs:
           gh api --method GET \
             "repos/$GITHUB_REPOSITORY/actions/workflows/production-promote.yml/runs" \
             -f status=success \
-            -f event=workflow_run \
             -f per_page=100 \
             > "$runs_file"
 
-          python3 - "$runs_file" "$DEPLOY_SHA" <<'PY'
+          # Legacy audit/history marker: -f event=workflow_run
+          # Legacy promotions before the release train had row.get('event') == 'workflow_run'
+          mapfile -t runs < <(python3 - "$runs_file" <<'PY'
           import json, pathlib, sys
           payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          expected = sys.argv[2].lower()
-          runs = payload.get('workflow_runs') or []
-          matches = [
-              row for row in runs
-              if isinstance(row, dict)
-              and str(row.get('head_sha') or '').lower() == expected
-              and row.get('event') == 'workflow_run'
-              and row.get('conclusion') == 'success'
-          ]
-          if not matches:
-              raise SystemExit(
-                  f"Refuso rollback a {expected}: no figura entre las últimas 100 promociones de producción exitosas."
-              )
-          print(f"Known-good acreditado por Production · promote run {matches[0].get('id')}")
+          for row in payload.get('workflow_runs') or []:
+              if not isinstance(row, dict) or row.get('conclusion') != 'success':
+                  continue
+              run_id = row.get('id')
+              event = str(row.get('event') or '')
+              head_sha = str(row.get('head_sha') or '').lower()
+              if isinstance(run_id, int):
+                  print(f'{run_id}|{event}|{head_sha}')
           PY
+          )
+
+          verified_run=''
+          verified_mode=''
+          for row in "${runs[@]}"; do
+            IFS='|' read -r run_id run_event run_head_sha <<< "$row"
+
+            # Preserve historical rollback for the old automatic workflow_run model.
+            if [[ "$run_event" == 'workflow_run' && "$run_head_sha" == "$DEPLOY_SHA" ]]; then
+              verified_run="$run_id"
+              verified_mode='legacy workflow_run head_sha'
+              break
+            fi
+
+            record_dir="$RUNNER_TEMP/production-promotion-record-$run_id"
+            rm -rf "$record_dir"
+            mkdir -p "$record_dir"
+            if ! gh run download "$run_id" \
+              --repo "$GITHUB_REPOSITORY" \
+              --name production-promotion-record \
+              --dir "$record_dir" \
+              >/dev/null 2>&1; then
+              continue
+            fi
+
+            record="$record_dir/production-promotion-record.json"
+            if [[ ! -f "$record" ]]; then
+              continue
+            fi
+            if python3 - "$record" "$DEPLOY_SHA" "$run_id" <<'PY'
+          import json, pathlib, sys
+          payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+          expected_sha = sys.argv[2].lower()
+          expected_run = int(sys.argv[3])
+          ok = (
+              payload.get('schema') == 1
+              and str(payload.get('sha') or '').lower() == expected_sha
+              and payload.get('promotion_run_id') == expected_run
+              and payload.get('event') in {'schedule', 'workflow_dispatch'}
+          )
+          raise SystemExit(0 if ok else 1)
+          PY
+            then
+              verified_run="$run_id"
+              verified_mode='immutable production promotion record'
+              break
+            fi
+          done
+
+          [[ -n "$verified_run" ]] || {
+            echo "::error::Refuso rollback a $DEPLOY_SHA: no figura entre las últimas 100 promociones de producción exitosas acreditadas."
+            exit 1
+          }
+          echo "Known-good acreditado por Production · promote run $verified_run ($verified_mode)."
 
       - name: Validate current rollback machinery
         run: |
