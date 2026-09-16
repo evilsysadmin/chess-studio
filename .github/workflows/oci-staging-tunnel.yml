@@ -43,16 +43,14 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - uses: actions/setup-python@v6
+      - name: Restore cached OCI SDK toolchain
+        uses: ./.github/actions/setup-oci-sdk
         with:
+          version: '2.185.2'
           python-version: '3.13'
-          cache: pip
 
       - name: Validate tunnel contract
         run: python3 -S scripts/oci_cloudflare_tunnel.py --self-test
-
-      - name: Install OCI SDK
-        run: python3 -m pip install --disable-pip-version-check 'oci==2.185.2'
 
       - name: Reconcile private tunnel and staging API DNS
         run: python3 scripts/oci_cloudflare_tunnel.py reconcile
