@@ -13,12 +13,7 @@ def reset_memory(monkeypatch):
     async def memory_collections():
         return None
 
-    async def profile(username):
-        rating = 1180 if username == "alice" else 1325
-        return {"data": {pvp_api.RATING_KEY: f'{{"rating": {rating}, "games": 18}}'}}
-
     monkeypatch.setattr(pvp_store, "_collections", memory_collections)
-    monkeypatch.setattr(pvp_api.pstore, "get_profile", profile)
     pvp_store._memory_roster.clear()
     pvp_store._memory_challenges.clear()
     pvp_store._memory_matches.clear()
@@ -51,16 +46,17 @@ def as_user(client, username, method, path, **kwargs):
     return getattr(client, method)(path, headers={"x-test-user": username}, **kwargs)
 
 
-def test_roster_uses_real_profile_rating_and_hides_stale_members():
+def test_roster_uses_server_rating_baseline_and_hides_stale_members():
     client = make_client()
     joined = as_user(client, "alice", "post", "/api/pvp/roster")
     assert joined.status_code == 200
-    assert joined.json()["member"]["rating"] == 1180
-    assert joined.json()["member"]["tier"] == "Intermedio"
+    assert joined.json()["member"]["rating"] == pvp_api.DEFAULT_RATING
+    assert joined.json()["member"]["tier"] == "Principiante"
 
     as_user(client, "bob", "post", "/api/pvp/roster")
     lobby = as_user(client, "alice", "get", "/api/pvp/lobby").json()
     assert {row["username"] for row in lobby["roster"]} == {"alice", "bob"}
+    assert {row["rating"] for row in lobby["roster"]} == {pvp_api.DEFAULT_RATING}
 
     pvp_store._memory_roster["bob"]["last_seen"] = pvp_store.utcnow() - timedelta(seconds=60)
     lobby = as_user(client, "alice", "get", "/api/pvp/lobby").json()
@@ -85,6 +81,8 @@ def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
     assert {match["white"], match["black"]} == {"alice", "bob"}
     assert match["status"] == "active"
     assert match["revision"] == 0
+    assert match["whiteRating"] == pvp_api.DEFAULT_RATING
+    assert match["blackRating"] == pvp_api.DEFAULT_RATING
 
     white = match["white"]
     black = match["black"]

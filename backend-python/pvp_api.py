@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import secrets
 import uuid
 from datetime import datetime, timezone
@@ -11,10 +10,8 @@ import chess
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
-import profile_store as pstore
 import pvp_store as store
 
-RATING_KEY = "chess-study-player-rating"
 DEFAULT_RATING = 400
 RATING_TIERS = (
     (0, 699, "Principiante"),
@@ -41,24 +38,6 @@ def _rating_tier(rating: int) -> str:
         if low <= rating <= high:
             return label
     return "Maestro"
-
-
-def _profile_rating(profile: dict | None) -> tuple[int, str]:
-    data = (profile or {}).get("data")
-    raw = data.get(RATING_KEY) if isinstance(data, dict) else None
-    if isinstance(raw, str):
-        try:
-            raw = json.loads(raw)
-        except (TypeError, ValueError):
-            raw = None
-    if isinstance(raw, dict):
-        raw = raw.get("rating")
-    try:
-        rating = int(raw)
-    except (TypeError, ValueError):
-        rating = DEFAULT_RATING
-    rating = max(DEFAULT_RATING, min(10_000, rating))
-    return rating, _rating_tier(rating)
 
 
 def _iso(value):
@@ -144,8 +123,12 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
     @router.post("/roster")
     @limiter.limit("30/minute")
     async def join_roster(request: Request, username: str = Depends(auth_dependency)):
-        rating, tier = _profile_rating(await pstore.get_profile(username))
-        row = await store.upsert_roster(username, rating=rating, tier=tier)
+        # El perfil sincronizado es client-owned: preferencias/progreso local
+        # pueden venir de un navegador modificado y no son una fuente válida
+        # para identidad competitiva. Hasta que el rating PvP tenga su propio
+        # ledger autoritativo del servidor, todos entran desde la misma base.
+        rating = DEFAULT_RATING
+        row = await store.upsert_roster(username, rating=rating, tier=_rating_tier(rating))
         return {"member": _public_roster(row, username)}
 
     @router.delete("/roster", status_code=204)
