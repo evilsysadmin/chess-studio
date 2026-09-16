@@ -6,6 +6,7 @@ on:
     paths:
       - 'scripts/oci_run_command.py'
       - 'infra/oci/ops/agent-reboot.request'
+      - '.github/workflows/oci-staging-service.yml'
   workflow_run:
     workflows:
       - OCI staging · auto apply
@@ -95,7 +96,28 @@ jobs:
           github.event_name == 'push' ||
           (github.event_name == 'workflow_dispatch' &&
             (inputs.operation == 'smoke' || inputs.operation == 'reboot-agent'))
-        run: python3 scripts/oci_run_command.py smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 30); do
+            log="${RUNNER_TEMP}/oci-agent-smoke-${attempt}.log"
+            set +e
+            python3 scripts/oci_run_command.py smoke >"$log" 2>&1
+            rc=$?
+            set -e
+
+            if [[ "$rc" -eq 0 ]]; then
+              cat "$log"
+              exit 0
+            fi
+            if grep -Fq 'Plugin Compute Instance Run Command not present for instance' "$log" && [[ "$attempt" -lt 30 ]]; then
+              echo "OCI Run Command plugin not registered yet (attempt ${attempt}/30); retrying in 10s"
+              sleep 10
+              continue
+            fi
+            cat "$log"
+            exit "$rc"
+          done
       - name: Deploy immutable backend release
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'deploy'
         env:
