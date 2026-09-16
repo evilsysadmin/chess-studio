@@ -3,6 +3,17 @@
    Real DOM labels/actions must remain visible even if the image is missing, slow,
    stale in a CDN, or replaced by a darker render. */
 
+/* If the canonical render cannot be decoded or delivered, keep a dimly lit room
+   behind the controls instead of falling back to a featureless black rectangle. */
+.lab-screen .lab-workshop {
+  background:
+    radial-gradient(ellipse at 23% 43%, rgba(192, 132, 58, .17) 0 2%, rgba(95, 61, 28, .09) 13%, transparent 31%),
+    radial-gradient(ellipse at 71% 40%, rgba(197, 146, 72, .14) 0 2%, rgba(99, 70, 34, .07) 14%, transparent 32%),
+    linear-gradient(164deg, transparent 0 56%, rgba(202, 163, 90, .045) 56.3% 56.8%, transparent 57.1% 100%),
+    linear-gradient(196deg, transparent 0 58%, rgba(202, 163, 90, .035) 58.3% 58.8%, transparent 59.1% 100%),
+    linear-gradient(180deg, #171a1d 0%, #101214 52%, #090a0b 78%, #060708 100%);
+}
+
 /* Keep the explicit Vite asset, but also leave LabWorkshop.css' ::before image in
    place as a second rendering path. Two identical layers are harmless; losing
    both should still leave a fully usable text UI. */
