@@ -4,8 +4,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'infra/oci/staging/*.tf'
-      - 'infra/oci/staging/*.tftpl'
+      - 'infra/oci/staging/**'
+      - 'infra/oci/bootstrap/**'
+      - 'infra/oci/Makefile'
+      - 'scripts/oci_*'
+      - '.github/workflows/oci-staging-deploy.yml'
 
 permissions:
   contents: read
@@ -42,4 +45,26 @@ jobs:
           terraform_version: 1.16.0
           terraform_wrapper: false
       - name: Apply OCI staging desired state
-        run: make -C infra/oci apply
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            git fetch --no-tags --depth=1 origin main
+            git checkout --detach FETCH_HEAD
+            current_sha="$(git rev-parse HEAD)"
+            log="${RUNNER_TEMP}/oci-staging-apply-${attempt}.log"
+
+            set +e
+            GITHUB_SHA="$current_sha" make -C infra/oci apply 2>&1 | tee "$log"
+            rc=${PIPESTATUS[0]}
+            set -e
+
+            if [[ "$rc" -eq 0 ]]; then
+              exit 0
+            fi
+            if grep -Fq 'OCI staging lifecycle: FAIL · stale SHA:' "$log" && [[ "$attempt" -lt 3 ]]; then
+              echo "main advanced during OCI plan; retrying from latest main"
+              continue
+            fi
+            exit "$rc"
+          done
