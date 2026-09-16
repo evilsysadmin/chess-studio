@@ -7,10 +7,21 @@ TAG="${OCI_ARM64_IMAGE_TAG:-chess-studio-backend:oci-arm64-smoke}"
 command -v docker >/dev/null 2>&1 || { echo "ERROR: docker no está disponible." >&2; exit 2; }
 docker buildx version >/dev/null 2>&1 || { echo "ERROR: docker buildx no está disponible." >&2; exit 2; }
 
+cache_args=()
+if [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
+  cache_scope="${OCI_ARM64_CACHE_SCOPE:-chess-studio-oci-arm64-backend}"
+  echo "==> OCI ARM64 · BuildKit GHA cache: $cache_scope"
+  cache_args=(
+    --cache-from "type=gha,scope=$cache_scope"
+    --cache-to "type=gha,mode=max,scope=$cache_scope"
+  )
+fi
+
 echo "==> OCI ARM64 · construyendo backend linux/arm64"
 docker buildx build \
   --platform linux/arm64 \
   --load \
+  "${cache_args[@]}" \
   --tag "$TAG" \
   "$ROOT/backend-python"
 
