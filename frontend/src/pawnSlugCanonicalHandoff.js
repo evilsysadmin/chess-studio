@@ -1,8 +1,13 @@
-import atlasUrl from './assets/pawnSlug/matthias_canonical_pistol_v1.webp';
+import bundledAtlasUrl from './assets/pawnSlug/matthias_canonical_pistol_v1.webp';
 import metadata from './assets/pawnSlug/matthias_canonical_pistol_v1.json';
+import { r2AssetUrl } from './r2Assets.js';
 
 export const PAWN_SLUG_CANONICAL_HANDOFF = Object.freeze(metadata);
-export const pawnSlugCanonicalPistolAtlasUrl = atlasUrl;
+export const pawnSlugCanonicalPistolFallbackAtlasUrl = bundledAtlasUrl;
+export const pawnSlugCanonicalPistolAtlasUrl = r2AssetUrl(
+  'pawnSlug.matthias.pistol',
+  pawnSlugCanonicalPistolFallbackAtlasUrl,
+);
 
 export function pawnSlugCanonicalPistolWindow(action = 'idle', frameIndex = 0, direction = 1) {
   const safeAction = Object.hasOwn(metadata.actions, action) ? action : 'idle';
