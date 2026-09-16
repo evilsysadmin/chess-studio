@@ -1,25 +1,11 @@
-/* Canonical Experiments room: the artwork is the interface, not wallpaper behind UI. */
-.lab-screen .lab-workshop {
-  box-sizing: border-box;
-  position: relative;
-  width: min(1500px, calc(100vw - 2rem));
-  max-width: none;
-  min-height: 0;
-  aspect-ratio: 900 / 441;
-  flex: 0 0 auto;
-  overflow: hidden;
-  border: 0;
-  border-radius: 18px;
-  background: #08090a;
-  box-shadow: 0 28px 82px rgba(0, 0, 0, .38);
-  isolation: isolate;
-}
+/* Experiments room safety layer.
+   The canonical room art is scenery, never the source of truth for navigation.
+   Real DOM labels/actions must remain visible even if the image is missing, slow,
+   stale in a CDN, or replaced by a darker render. */
 
-/* Do not rely on a pseudo-element for the room asset. Vite now emits a real img. */
-.lab-screen .lab-workshop::before {
-  display: none !important;
-}
-
+/* Keep the explicit Vite asset, but also leave LabWorkshop.css' ::before image in
+   place as a second rendering path. Two identical layers are harmless; losing
+   both should still leave a fully usable text UI. */
 .lab-screen .lab-workshop-art {
   position: absolute;
   z-index: 0;
@@ -31,359 +17,66 @@
   object-position: center;
   pointer-events: none;
   user-select: none;
-  filter: brightness(1.08) saturate(1.04) contrast(1.02);
+  filter: brightness(1.03) saturate(1.02) contrast(1.02);
 }
 
-/* Very light lens treatment only: never bury the rendered room again. */
+.lab-screen .lab-workshop::before {
+  display: block !important;
+}
+
+/* Keep the scene cinematic without burying either the artwork or the semantic
+   hotspots. The heavier composition lives in LabWorkshop.css. */
 .lab-screen .lab-workshop::after {
-  z-index: 1;
-  inset: 0;
   background:
-    linear-gradient(180deg, rgba(4, 5, 6, .06), transparent 24%, transparent 78%, rgba(4, 5, 6, .13)),
-    radial-gradient(circle at 50% 49%, transparent 0 64%, rgba(2, 3, 4, .14) 100%);
-  box-shadow: inset 0 0 44px rgba(0, 0, 0, .11);
-  pointer-events: none;
+    linear-gradient(180deg, rgba(4, 5, 6, .13) 0, rgba(4, 5, 6, .03) 34%, transparent 62%, rgba(4, 5, 6, .16) 100%),
+    radial-gradient(circle at 52% 48%, transparent 0 54%, rgba(2, 3, 4, .16) 100%);
+  box-shadow: inset 0 0 58px rgba(0, 0, 0, .14);
 }
 
-/* Existing inline z-index:auto must not bury interactive hit areas. */
+/* Inline z-index:auto exists in the JSX for historical reasons. Never let it
+   demote the interactive layer behind the scenery. */
 .lab-screen .lab-workshop-wing {
   z-index: 4 !important;
 }
 
-/* The title/back link already exist in the artwork on desktop. Keep the real DOM
-   for semantics and interaction, but do not print duplicate typography over it. */
+/* Guardrail: flagship destinations must never become invisible hit areas whose
+   names only exist as baked pixels in the canonical image. */
+.lab-screen .lab-workshop-masthead {
+  opacity: 1 !important;
+}
+
+.lab-screen .lab-workshop-portal--chronicles > *,
+.lab-screen .lab-workshop-portal--tactics > * {
+  opacity: 1 !important;
+}
+
+.lab-screen:has(.lab-workshop) > .back-link {
+  color: #d9b45f !important;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .92) !important;
+}
+
 @media (min-width: 821px) {
-  .lab-screen .lab-workshop-masthead {
-    position: absolute;
-    left: 3.8%;
-    top: 8%;
-    width: 34%;
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  .lab-screen:has(.lab-workshop) > .back-link {
-    z-index: 12;
-    top: 3.4%;
-    left: 2.4%;
-    width: 155px;
-    height: 38px;
-    padding: 0;
-    color: transparent;
-    text-shadow: none;
-    border-radius: 8px;
-  }
-
-  .lab-screen:has(.lab-workshop) > .back-link:hover {
-    background: rgba(214, 173, 91, .07);
-    box-shadow: 0 0 0 1px rgba(224, 184, 98, .24);
-  }
-
-  .lab-screen:has(.lab-workshop) > .back-link:focus-visible {
-    outline: 2px solid rgba(238, 197, 105, .9);
-    outline-offset: 3px;
-  }
-}
-
-.lab-screen .lab-workshop-wing::before,
-.lab-screen .lab-workshop-wing::after,
-.lab-screen .lab-workshop-wing-copy {
-  display: none;
-}
-
-.lab-screen .lab-workshop-portals,
-.lab-screen .lab-workshop-ops {
-  position: static;
-  display: contents;
-}
-
-/* Base interaction treatment for secondary experiments. */
-.lab-screen .lab-workshop-portal,
-.lab-screen .lab-workshop-map-table,
-.lab-screen .lab-workshop-tool {
-  --hotspot-accent: 213, 172, 91;
-  position: absolute;
-  z-index: 6;
-  display: grid;
-  gap: 2px;
-  width: auto;
-  min-height: 0;
-  padding: 7px 10px 7px 27px;
-  border: 0;
-  border-radius: 8px;
-  background: rgba(6, 7, 8, .34);
-  box-shadow: 0 5px 18px rgba(0, 0, 0, .14);
-  color: #f1e5ca;
-  text-align: left;
-  cursor: pointer;
-  transition: transform 170ms ease, background 170ms ease, box-shadow 170ms ease;
-}
-
-.lab-screen .lab-workshop-portal::before,
-.lab-screen .lab-workshop-map-table::before,
-.lab-screen .lab-workshop-tool::before {
-  content: '';
-  display: block !important;
-  position: absolute;
-  left: 9px;
-  top: 50%;
-  width: 8px;
-  height: 8px;
-  border: 1px solid rgba(var(--hotspot-accent), .92);
-  border-radius: 50%;
-  background: rgba(8, 9, 10, .62);
-  box-shadow: 0 0 0 3px rgba(var(--hotspot-accent), .08), 0 0 14px rgba(var(--hotspot-accent), .2);
-  transform: translateY(-50%);
-}
-
-.lab-screen .lab-workshop-portal::after,
-.lab-screen .lab-workshop-map-table::after {
-  display: none !important;
-}
-
-.lab-screen .lab-workshop-portal > small,
-.lab-screen .lab-workshop-map-table > small,
-.lab-screen .lab-workshop-tool-meta,
-.lab-screen .lab-workshop-portal > span,
-.lab-screen .lab-workshop-map-table > span,
-.lab-screen .lab-workshop-portal > b,
-.lab-screen .lab-workshop-map-table > b {
-  display: none;
-}
-
-.lab-screen .lab-workshop-portal > strong,
-.lab-screen .lab-workshop-map-table > strong,
-.lab-screen .lab-workshop-tool strong {
-  color: #f1e5ca;
-  font-family: Georgia, 'Times New Roman', serif;
-  font-size: .9rem;
-  font-weight: 600;
-  line-height: 1.05;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, .95);
-}
-
-.lab-screen .lab-workshop-portal:hover,
-.lab-screen .lab-workshop-portal:focus-visible,
-.lab-screen .lab-workshop-map-table:hover,
-.lab-screen .lab-workshop-map-table:focus-visible,
-.lab-screen .lab-workshop-tool:hover,
-.lab-screen .lab-workshop-tool:focus-visible {
-  transform: translateY(-2px);
-  background: rgba(8, 9, 10, .72);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, .25), 0 0 0 1px rgba(var(--hotspot-accent), .22);
-}
-
-.lab-screen .lab-workshop-portal:focus-visible,
-.lab-screen .lab-workshop-map-table:focus-visible,
-.lab-screen .lab-workshop-tool:focus-visible {
-  outline: 2px solid rgba(var(--hotspot-accent), .92);
-  outline-offset: 3px;
-}
-
-/* On desktop the two flagship entries are already printed into the room artwork.
-   Their DOM buttons become generous transparent hit areas over the painted plaques. */
-@media (min-width: 821px) {
+  /* Preserve the diegetic hotspot layout from LabWorkshop.css. We only add a
+     little more separation from the room so every destination reads at a glance. */
   .lab-screen .lab-workshop-portal--chronicles,
   .lab-screen .lab-workshop-portal--tactics {
-    padding: 0;
-    border-radius: 14px;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .lab-screen .lab-workshop-portal--chronicles::before,
-  .lab-screen .lab-workshop-portal--tactics::before {
-    display: none !important;
-  }
-
-  .lab-screen .lab-workshop-portal--chronicles > *,
-  .lab-screen .lab-workshop-portal--tactics > * {
-    opacity: 0;
-  }
-
-  .lab-screen .lab-workshop-portal--chronicles {
-    left: 27.5%;
-    top: 43.5%;
-    width: 16.5%;
-    height: 20.5%;
-  }
-
-  .lab-screen .lab-workshop-portal--tactics {
-    left: 67.5%;
-    top: 46%;
-    width: 18.5%;
-    height: 18%;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
   }
 
   .lab-screen .lab-workshop-portal--chronicles:hover,
   .lab-screen .lab-workshop-portal--chronicles:focus-visible,
   .lab-screen .lab-workshop-portal--tactics:hover,
   .lab-screen .lab-workshop-portal--tactics:focus-visible {
-    transform: none;
-    background: radial-gradient(circle at 74% 42%, rgba(223, 178, 85, .09), transparent 48%);
-    box-shadow: inset 0 0 0 1px rgba(224, 180, 91, .18), 0 0 34px rgba(216, 162, 63, .08);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, .24), 0 0 0 1px rgba(223, 181, 93, .16);
   }
-
-  /* Secondary modes sit on physical props rather than forming a grid. */
-  .lab-screen .lab-workshop-portal--pawnslug {
-    --hotspot-accent: 211, 149, 67;
-    left: 4.5%;
-    bottom: 16%;
-  }
-
-  .lab-screen .lab-workshop-portal--trailblazer {
-    --hotspot-accent: 151, 171, 129;
-    left: 18%;
-    bottom: 5.5%;
-  }
-
-  .lab-screen .lab-workshop-map-table {
-    --hotspot-accent: 120, 159, 181;
-    right: 25%;
-    bottom: 5.5%;
-  }
-
-  .lab-screen .lab-workshop-bench {
-    position: absolute;
-    z-index: 6;
-    right: 3.5%;
-    bottom: 4.5%;
-    display: grid;
-    width: min(210px, 17vw);
-    gap: 5px;
-    pointer-events: none;
-  }
-
-  .lab-screen .lab-workshop-tool {
-    position: relative;
-    inset: auto;
-    width: 100%;
-    padding: 6px 8px 6px 25px;
-    pointer-events: auto;
-  }
-}
-
-.lab-screen .lab-workshop-bench-title {
-  display: none;
-}
-
-.lab-screen .lab-workshop-tool {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-}
-
-.lab-screen .lab-workshop-tool span {
-  display: grid;
-}
-
-.lab-screen .lab-workshop-tool > b {
-  color: rgba(226, 187, 102, .85);
-  font-size: 1rem;
 }
 
 @media (max-width: 820px) {
-  .menu.tournament-panel.lab-screen:has(.lab-workshop) {
-    padding: 0;
-    border: 0;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  .lab-screen .lab-workshop {
-    width: calc(100vw - 1rem);
-    min-height: 920px;
-    aspect-ratio: auto;
-    border-radius: 14px;
-  }
-
   .lab-screen .lab-workshop-art {
-    object-fit: cover;
     object-position: 50% center;
-    filter: brightness(.82) saturate(.92);
+    filter: brightness(.86) saturate(.94);
   }
-
-  .lab-screen .lab-workshop::after {
-    background: linear-gradient(180deg, rgba(5, 6, 7, .52) 0 24%, rgba(5, 6, 7, .12) 50%, rgba(5, 6, 7, .48) 100%);
-  }
-
-  .lab-screen:has(.lab-workshop) > .back-link {
-    top: 16px;
-    left: 18px;
-    color: #d9b45f;
-    text-shadow: 0 2px 12px rgba(0, 0, 0, .92);
-  }
-
-  .lab-screen .lab-workshop-masthead {
-    position: absolute;
-    z-index: 5;
-    top: 58px;
-    left: 22px;
-    right: 22px;
-    width: auto;
-    opacity: 1;
-  }
-
-  .lab-screen .lab-workshop-masthead h2 {
-    margin: 0;
-    font-size: clamp(2.2rem, 9vw, 3.4rem);
-  }
-
-  .lab-screen .lab-workshop-masthead p {
-    display: none;
-  }
-
-  .lab-screen .lab-workshop-portal,
-  .lab-screen .lab-workshop-map-table,
-  .lab-screen .lab-workshop-tool {
-    max-width: min(280px, calc(100% - 44px));
-    background: rgba(6, 7, 8, .72);
-  }
-
-  .lab-screen .lab-workshop-portal--chronicles { left: 22px; top: 34%; }
-  .lab-screen .lab-workshop-portal--tactics { right: 22px; top: 47%; }
-  .lab-screen .lab-workshop-map-table { right: 22px; bottom: 26%; }
-  .lab-screen .lab-workshop-portal--pawnslug { left: 22px; bottom: 17%; }
-  .lab-screen .lab-workshop-portal--trailblazer { left: 22px; bottom: 8%; }
-
-  .lab-screen .lab-workshop-bench {
-    position: absolute;
-    z-index: 6;
-    right: 22px;
-    bottom: 2.5%;
-    display: grid;
-    width: min(250px, calc(100% - 44px));
-    gap: 5px;
-    pointer-events: none;
-  }
-
-  .lab-screen .lab-workshop-tool {
-    position: relative;
-    inset: auto;
-    width: 100%;
-    pointer-events: auto;
-  }
-}
-
-@media (max-width: 540px) {
-  .lab-screen .lab-workshop {
-    min-height: 1020px;
-  }
-
-  .lab-screen .lab-workshop-portal,
-  .lab-screen .lab-workshop-map-table,
-  .lab-screen .lab-workshop-bench {
-    left: 18px;
-    right: 18px;
-    width: auto;
-    max-width: none;
-  }
-
-  .lab-screen .lab-workshop-portal--chronicles { top: 32%; }
-  .lab-screen .lab-workshop-portal--tactics { top: 44%; }
-  .lab-screen .lab-workshop-map-table { bottom: 28%; }
-  .lab-screen .lab-workshop-portal--pawnslug { bottom: 17%; }
-  .lab-screen .lab-workshop-portal--trailblazer { bottom: 9%; }
-  .lab-screen .lab-workshop-bench { bottom: 1.5%; }
 }
 
 @media (prefers-reduced-motion: reduce) {
