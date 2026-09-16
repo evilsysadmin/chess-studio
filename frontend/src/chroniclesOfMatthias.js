@@ -71,13 +71,27 @@ export function createChroniclesState(mapId = DEFAULT_CHRONICLES_MAP_ID) {
   };
 }
 
+function contentBlocksTile(state, map, x, y) {
+  if (!state || typeof state !== 'object') return false;
+  return (map.interactables || []).some((entry) => (
+    entry.kind === 'secret-door'
+    && entry.x === x
+    && entry.y === y
+    && Array.isArray(entry.blocksMovementWhen)
+    && chroniclesRequirementsMet(state, entry.blocksMovementWhen)
+  ));
+}
+
 export function chroniclesTileAt(x, y, stateOrMapId = null) {
   const map = typeof stateOrMapId === 'string'
     ? chroniclesMapById(stateOrMapId)
     : stateOrMapId
       ? chroniclesMapForState(stateOrMapId)
       : DEFAULT_MAP;
-  return chroniclesMapTileAt(map, x, y);
+  const tile = chroniclesMapTileAt(map, x, y);
+  if (tile === '#') return tile;
+  if (typeof stateOrMapId === 'object' && contentBlocksTile(stateOrMapId, map, x, y)) return '#';
+  return tile;
 }
 
 export function chroniclesEnemyIsActive(state, enemy) {
@@ -238,6 +252,7 @@ function evadeAfterHit(state, enemy) {
     message: `${state.message} ${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} se escabulle hacia otra posición del mapa.`,
   };
 }
+
 function resolveAttack(state, memberId) {
   const attacker = partyMember(state, memberId);
   if (!attacker) return state;
