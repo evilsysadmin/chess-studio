@@ -131,9 +131,11 @@ function publishPremiumEnemyRenderStatus(sprite) {
   const verifiedPremium = source === 'premium-raster'
     && evidence?.checked
     && evidence?.opaque;
+  const verifiedActionAtlas = stage.dataset.pawnSlugActionAtlas === 'r2-ready';
   // The static premium fallback remains a valid player-facing safety net, but
-  // it must not satisfy the browser canary that certifies the primary R2 raster.
-  if (!verifiedPremium) return;
+  // neither it nor a local action-atlas fallback may satisfy the browser canary
+  // that certifies both live enemy atlas paths are loading from R2.
+  if (!verifiedPremium || !verifiedActionAtlas) return;
   const status = pawnSlugPremiumEnemyRenderStatus(sprite);
   if (stage.dataset.pawnSlugEnemyVisual !== status) stage.dataset.pawnSlugEnemyVisual = status;
 }
@@ -316,6 +318,7 @@ export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
   visualEvidencePolicy: 'premium-alpha-readback-before-replacing-generated-actions',
   browserRenderContract: 'data-pawn-slug-enemy-visual',
   browserPremiumContract: 'verified-authored-only',
+  browserActionAtlasContract: 'r2-ready',
   browserFallbackAlias: null,
   proceduralRole: 'known-good-safety-net',
 });
