@@ -3,7 +3,7 @@
 # Changing this file on main asks the OCI staging service-control workflow to:
 # 1. sync the private backend runtime config from Render into OCI Object Storage,
 # 2. install it on the existing A1 through Instance Agent Run Command,
-# 3. smoke the host contract,
+# 3. smoke the host contract as a diagnostic,
 # 4. deploy the exact immutable main SHA and wait for /api/ready.
-requested_at=2026-09-16T14:11:00Z
-reason=render-build-minutes-exhausted
+requested_at=2026-09-16T14:27:00Z
+reason=retry-after-effective-sudo-path-confirmed

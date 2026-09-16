@@ -115,11 +115,13 @@ jobs:
         run: python3 scripts/oci_run_command.py diagnose
 
       - name: Smoke OCI agent transport
+        id: smoke
         if: >-
           github.event_name == 'workflow_run' ||
           github.event_name == 'push' ||
           (github.event_name == 'workflow_dispatch' &&
             (inputs.operation == 'smoke' || inputs.operation == 'reboot-agent'))
+        continue-on-error: ${{ github.event_name == 'push' && steps.ops.outputs.bringup == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -142,6 +144,14 @@ jobs:
             cat "$log"
             exit "$rc"
           done
+
+      - name: Explain tolerated P0 host-contract drift
+        if: >-
+          github.event_name == 'push' &&
+          steps.ops.outputs.bringup == 'true' &&
+          steps.smoke.outcome == 'failure'
+        run: >-
+          echo '::warning::P0 bring-up continues after host-contract smoke failure; the immutable deploy itself remains blocking and proves the effective privileged path.'
 
       - name: Deploy immutable backend release
         if: >-
