@@ -48,7 +48,6 @@ def self_test() -> None:
         "infra/oci/staging/backend.tf",
         "scripts/oci_floci_smoke.sh",
         "scripts/oci_required_contracts.py",
-        "scripts/oci_readiness_scope.py",
         *sorted(OCI_WORKFLOWS),
     ):
         assert is_oci_path(path), path
