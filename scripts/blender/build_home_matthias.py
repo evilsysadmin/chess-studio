@@ -45,6 +45,23 @@ def add_area(name, location, energy, size, color, target):
     return obj
 
 
+def add_face_anchor(rig):
+    """Export an invisible front-of-face node for runtime camera orientation."""
+    anchor = bpy.data.objects.new('Nose', None)
+    bpy.context.collection.objects.link(anchor)
+    anchor.empty_display_type = 'PLAIN_AXES'
+    anchor.empty_display_size = .025
+    anchor.location = (0, -.405, 1.345)
+    anchor['runtime_role'] = 'matthias-face-direction-anchor'
+
+    world = anchor.matrix_world.copy()
+    anchor.parent = rig
+    anchor.parent_type = 'BONE'
+    anchor.parent_bone = 'head'
+    anchor.matrix_world = world
+    return anchor
+
+
 def configure_preview_samples(scene):
     samples = max(1, int(os.environ.get('BLENDER_PREVIEW_SAMPLES', '64')))
     if hasattr(scene, 'eevee') and hasattr(scene.eevee, 'taa_render_samples'):
@@ -105,6 +122,7 @@ def main():
     bpy.context.scene.render.fps = 24
 
     rig = build_character()
+    add_face_anchor(rig)
     build_actions(rig)
 
     parent(parsed.blend)
