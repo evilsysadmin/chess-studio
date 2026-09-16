@@ -36,25 +36,32 @@ if [[ -s "$state_file" ]]; then
 fi
 
 compose() {
-  GIT_COMMIT_SHA="$1" \
+  local target_sha="$1"
+  shift
+  GIT_COMMIT_SHA="$target_sha" \
   CHESS_STUDIO_ENV_FILE="$env_file" \
   CHESS_STUDIO_BACKEND_PORT="$port" \
-  docker compose -p "$project" -f "$compose_file" "${@:2}"
+  docker compose -p "$project" -f "$compose_file" "$@"
 }
 
 attest() {
   local expected="$1"
-  local ready release
+  local ready release rc
   ready="$(mktemp)"
   release="$(mktemp)"
-  trap 'rm -f "$ready" "$release"' RETURN
 
-  curl --fail --silent --show-error --max-time 8 \
-    "http://127.0.0.1:${port}/api/ready" >"$ready" || return 1
-  curl --fail --silent --show-error --max-time 8 \
-    "http://127.0.0.1:${port}/api/release" >"$release" || return 1
+  if ! curl --fail --silent --show-error --max-time 8 \
+    "http://127.0.0.1:${port}/api/ready" >"$ready"; then
+    rm -f "$ready" "$release"
+    return 1
+  fi
+  if ! curl --fail --silent --show-error --max-time 8 \
+    "http://127.0.0.1:${port}/api/release" >"$release"; then
+    rm -f "$ready" "$release"
+    return 1
+  fi
 
-  python3 - "$ready" "$release" "$expected" <<'PY'
+  if python3 - "$ready" "$release" "$expected" <<'PY'
 import json
 import pathlib
 import sys
@@ -66,6 +73,13 @@ if ready.get('ok') is not True or ready.get('storage') != 'mongo':
 if str(release.get('build') or '').lower() != expected:
     raise SystemExit(1)
 PY
+  then
+    rc=0
+  else
+    rc=$?
+  fi
+  rm -f "$ready" "$release"
+  return "$rc"
 }
 
 rollback() {
