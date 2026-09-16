@@ -1,10 +1,15 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
+import { warRoomHansChoreForEvent } from './WarRoomHansChoreContract.js';
 import {
   WAR_ROOM_HANS_NAVIGATION_BOARD_SAFE_HALF_EXTENT,
   WAR_ROOM_HANS_NAVIGATION_FURNITURE_CLEARANCE,
   warRoomHansBuildSafeRoute,
 } from './WarRoomHansNavigation.js';
+import {
+  HANS_SERVICE_FURNITURE_CLEARANCE,
+  warRoomHansTargetNearObject,
+} from './WarRoomHansServiceRoute.js';
 
 function makeRoom() {
   const root = new THREE.Group();
@@ -46,6 +51,23 @@ function pointInsideExpandedObject(point, object, padding) {
     && Number(point.z) < box.max.z + padding - 1e-4;
 }
 
+function expectRouteOutsideBoard(from, route) {
+  const path = [from, ...route];
+  for (let index = 1; index < path.length; index += 1) {
+    const start = path[index - 1];
+    const end = path[index];
+    for (let sample = 0; sample <= 32; sample += 1) {
+      const t = sample / 32;
+      const point = new THREE.Vector3(
+        THREE.MathUtils.lerp(start.x, end.x, t),
+        -0.34,
+        THREE.MathUtils.lerp(start.z, end.z, t),
+      );
+      expect(insideBoard(point)).toBe(false);
+    }
+  }
+}
+
 describe('Hans physical navigation integrity', () => {
   it('rejects a task target inside the board keep-out instead of routing onto the board', () => {
     const { parent, floor } = makeRoom();
@@ -62,20 +84,42 @@ describe('Hans physical navigation integrity', () => {
     const route = warRoomHansBuildSafeRoute(floor, parent, from, to);
 
     expect(route.length).toBeGreaterThan(0);
-    const path = [from, ...route];
-    for (let index = 1; index < path.length; index += 1) {
-      const start = path[index - 1];
-      const end = path[index];
-      for (let sample = 0; sample <= 32; sample += 1) {
-        const t = sample / 32;
-        const point = new THREE.Vector3(
-          THREE.MathUtils.lerp(start.x, end.x, t),
-          -0.34,
-          THREE.MathUtils.lerp(start.z, end.z, t),
-        );
-        expect(insideBoard(point)).toBe(false);
-      }
-    }
+    expectRouteOutsideBoard(from, route);
+  });
+
+  it('keeps straighten-room routable when the chair is absent by targeting the carpet perimeter from inside the room', () => {
+    const { root, parent, floor } = makeRoom();
+    const carpetKey = new THREE.Mesh(
+      new THREE.BoxGeometry(12.82, 0.012, 0.045),
+      new THREE.MeshBasicMaterial(),
+    );
+    carpetKey.name = 'war-room-command-carpet-brass-key';
+    carpetKey.position.set(0, -0.215, 6.18);
+    root.add(carpetKey);
+    root.updateMatrixWorld(true);
+
+    const chore = warRoomHansChoreForEvent('straighten-room');
+    expect(chore?.targetNames).toEqual([
+      'war-room-teutonic-command-chair',
+      'war-room-command-carpet-brass-key',
+    ]);
+
+    const targetObject = root.getObjectByName(chore.targetNames[1]);
+    const target = warRoomHansTargetNearObject(targetObject, parent, {
+      offsetX: chore.offsetX,
+      offsetZ: chore.offsetZ,
+    });
+    const serviceDoor = new THREE.Vector3(6.7, -0.34, -6.0);
+    const route = warRoomHansBuildSafeRoute(floor, parent, serviceDoor, target);
+
+    expect(target).toBeTruthy();
+    expect(Math.abs(target.z)).toBeLessThan(Math.abs(carpetKey.position.z));
+    expect(Math.abs(carpetKey.position.z) - Math.abs(target.z)).toBeGreaterThanOrEqual(
+      HANS_SERVICE_FURNITURE_CLEARANCE,
+    );
+    expect(insideBoard(target)).toBe(false);
+    expect(route.length).toBeGreaterThan(0);
+    expectRouteOutsideBoard(serviceDoor, route);
   });
 
   it('routes around a side sofa instead of sending Hans through the upholstery lane', () => {
