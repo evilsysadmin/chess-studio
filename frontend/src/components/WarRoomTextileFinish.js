@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { registerWarRoomDeferredFinalizer } from './WarRoomDeferredFinalizer.js';
 
-export const WAR_ROOM_TEXTILE_FINISH_VERSION = 'microfinish-v1';
+export const WAR_ROOM_TEXTILE_FINISH_VERSION = 'surface-microfinish-v2';
 
 function clampByte(value) {
   return Math.max(0, Math.min(255, Math.round(value)));
@@ -19,6 +19,8 @@ function createMicroTexture(kind) {
     leather: { seed: 11, repeat: [7, 7] },
     velvet: { seed: 23, repeat: [8, 13] },
     wool: { seed: 37, repeat: [10, 10] },
+    limestone: { seed: 41, repeat: [9, 7] },
+    walnut: { seed: 53, repeat: [5, 12] },
   }[kind];
 
   for (let y = 0; y < size; y += 1) {
@@ -34,11 +36,21 @@ function createMicroTexture(kind) {
         const nap = Math.abs(Math.sin(x * Math.PI / 3.7)) * 13;
         const foldGrain = Math.sin(y * 0.57 + x * 0.09) * 3.5;
         value = 226 + nap + foldGrain + (noise - 0.5) * 8;
-      } else {
+      } else if (kind === 'wool') {
         const warp = (x % 4 < 2 ? 1 : -1) * 5.5;
         const weft = (y % 4 < 2 ? 1 : -1) * 5.5;
         const diagonal = Math.sin((x + y) * 1.06) * 2.5;
         value = 239 + warp + weft + diagonal + (noise - 0.5) * 7;
+      } else if (kind === 'limestone') {
+        const bed = Math.sin(y * 0.17 + Math.sin(x * 0.08) * 1.35) * 4.4;
+        const mineral = Math.cos(x * 0.31 + y * 0.09) * 2.7;
+        const pore = noise > 0.93 ? -17 : 0;
+        value = 228 + bed + mineral + pore + (noise - 0.5) * 12;
+      } else {
+        const grain = Math.sin(x * 0.39 + Math.sin(y * 0.115) * 1.7) * 7.8;
+        const ribbon = Math.sin(x * 0.13 + y * 0.035) * 3.4;
+        const pores = Math.cos(x * 1.47 - y * 0.21) * 1.8;
+        value = 224 + grain + ribbon + pores + (noise - 0.5) * 7;
       }
 
       const byte = clampByte(value);
@@ -62,6 +74,9 @@ function createMicroTexture(kind) {
   texture.userData.warRoomTextileKind = kind;
   texture.userData.warRoomTextileResolution = [size, size];
   texture.userData.warRoomTextileFinish = WAR_ROOM_TEXTILE_FINISH_VERSION;
+  texture.userData.warRoomSurfaceKind = kind;
+  texture.userData.warRoomSurfaceResolution = [size, size];
+  texture.userData.warRoomSurfaceFinish = WAR_ROOM_TEXTILE_FINISH_VERSION;
   return texture;
 }
 
@@ -73,6 +88,8 @@ function tuneMaterial(material, texture, kind, { bumpScale, roughnessFloor }) {
   if (typeof material.roughness === 'number') material.roughness = Math.max(material.roughness, roughnessFloor);
   material.userData.warRoomTextileFinish = WAR_ROOM_TEXTILE_FINISH_VERSION;
   material.userData.warRoomTextileKind = kind;
+  material.userData.warRoomSurfaceFinish = WAR_ROOM_TEXTILE_FINISH_VERSION;
+  material.userData.warRoomSurfaceKind = kind;
   material.needsUpdate = true;
   return true;
 }
@@ -83,9 +100,13 @@ export function applyWarRoomTextileFinish(root) {
   const leatherTexture = createMicroTexture('leather');
   const velvetTexture = createMicroTexture('velvet');
   const woolTexture = createMicroTexture('wool');
+  const limestoneTexture = createMicroTexture('limestone');
+  const walnutTexture = createMicroTexture('walnut');
   let leatherMaterials = 0;
   let velvetMaterials = 0;
   let woolMaterials = 0;
+  let limestoneMaterials = 0;
+  let walnutMaterials = 0;
 
   for (const sofaName of ['war-room-sofa-left', 'war-room-sofa-right']) {
     const sofa = root.getObjectByName?.(sofaName);
@@ -123,7 +144,29 @@ export function applyWarRoomTextileFinish(root) {
     }
   }
 
-  const tuned = leatherMaterials + velvetMaterials + woolMaterials;
+  const floor = root.getObjectByName?.('war-room-castle-floor-slab');
+  const floorMaterials = Array.isArray(floor?.material) ? floor.material : [floor?.material];
+  for (const material of floorMaterials) {
+    if (!material) continue;
+    if (tuneMaterial(material, limestoneTexture, 'limestone', { bumpScale: 0.011, roughnessFloor: 0.62 })) limestoneMaterials += 1;
+  }
+
+  const walnutSeen = new Set();
+  for (const consoleName of ['war-room-side-console-left', 'war-room-side-console-right']) {
+    const consoleGroup = root.getObjectByName?.(consoleName);
+    if (!consoleGroup) continue;
+    for (const child of consoleGroup.children || []) {
+      if (!child?.isMesh) continue;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of materials) {
+        if (!material || walnutSeen.has(material) || (material.metalness ?? 0) >= 0.25) continue;
+        walnutSeen.add(material);
+        if (tuneMaterial(material, walnutTexture, 'walnut', { bumpScale: 0.006, roughnessFloor: 0.58 })) walnutMaterials += 1;
+      }
+    }
+  }
+
+  const tuned = leatherMaterials + velvetMaterials + woolMaterials + limestoneMaterials + walnutMaterials;
   if (!root.userData) root.userData = {};
   root.userData.warRoomTextileFinish = WAR_ROOM_TEXTILE_FINISH_VERSION;
   root.userData.warRoomTextileFinishStats = {
@@ -131,7 +174,9 @@ export function applyWarRoomTextileFinish(root) {
     leatherMaterials,
     velvetMaterials,
     woolMaterials,
-    textureCount: 3,
+    limestoneMaterials,
+    walnutMaterials,
+    textureCount: 5,
     textureResolution: 64,
   };
   return tuned;
@@ -144,7 +189,7 @@ export function installWarRoomTextileFinish(group, { coarsePointer = false } = {
   if (!markerDriver || markerDriver.userData.warRoomTextileFinishDriver) return 0;
 
   const registered = registerWarRoomDeferredFinalizer(group, {
-    key: 'textile-finish-v1',
+    key: 'surface-microfinish-v2',
     coarsePointer,
     run: (root) => applyWarRoomTextileFinish(root),
   });
