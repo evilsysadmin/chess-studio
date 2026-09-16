@@ -31,6 +31,26 @@ resource "oci_core_security_list" "load_balancer" {
   }
 }
 
+resource "oci_core_security_list" "backend_from_load_balancer" {
+  compartment_id = var.compartment_ocid
+  vcn_id         = oci_core_vcn.backend.id
+  display_name   = "${var.instance_name}-backend-from-lb"
+  freeform_tags  = local.common_tags
+
+  ingress_security_rules {
+    description = "Only the OCI load balancer subnet may reach FastAPI"
+    protocol    = "6"
+    source      = var.load_balancer_subnet_cidr
+    source_type = "CIDR_BLOCK"
+    stateless   = false
+
+    tcp_options {
+      min = 4000
+      max = 4000
+    }
+  }
+}
+
 resource "oci_core_subnet" "load_balancer" {
   compartment_id             = var.compartment_ocid
   vcn_id                     = oci_core_vcn.backend.id
