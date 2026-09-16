@@ -68,7 +68,7 @@ export default defineConfig({
     video: visualArtifactMode ? 'off' : 'retain-on-failure',
   },
   webServer: {
-    command: 'npm --prefix ../frontend run preview -- --host 127.0.0.1 --port 4173',
+    command: 'python3 -S ../scripts/e2e_dist_server.py --root ../frontend/dist --base /chess-studio/ --host 127.0.0.1 --port 4173',
     url: 'http://127.0.0.1:4173/chess-studio/',
     reuseExistingServer: !ciMode,
     timeout: 20_000,
