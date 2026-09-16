@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shlex
 import sys
 import time
 import uuid
@@ -20,9 +21,11 @@ INSTANCE_NAME = "chess-studio-staging"
 PLUGIN_NAME = "Compute Instance Run Command"
 OPERATIONS = ("diagnose", "smoke", "reboot-agent", "deploy")
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+SAFE_NAMESPACE_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 TERMINAL_STATES = {"SUCCEEDED", "FAILED", "TIMED_OUT", "CANCELED"}
 HEALTHY_PLUGIN_STATES = {"RUNNING"}
 COMMAND_DELIVERY_GRACE_SECONDS = 300
+RUN_COMMAND_INLINE_MAX_BYTES = 4096
 SECRET_MARKERS = (
     "MONGO_URL=",
     "JWT_SECRET=",
@@ -37,6 +40,9 @@ BACKEND_UNIT = "/etc/systemd/system/chess-studio-backend.service"
 OCARUN_SUDOERS_SOURCE = "/etc/chess-studio/ocarun.sudoers"
 OCARUN_SUDOERS = "/etc/sudoers.d/101-chess-studio-ocarun"
 BOOTSTRAP_MARKER = "/opt/chess-studio/BOOTSTRAP_READY"
+RUNTIME_BUCKET = "chess-studio-staging-runtime"
+RUNTIME_OBJECT = "backend.env"
+OCI_SDK_VERSION = "2.185.2"
 
 
 def required_env(name: str) -> str:
@@ -50,6 +56,13 @@ def validate_sha(value: str) -> str:
     normalized = value.strip().lower()
     if not SHA_RE.fullmatch(normalized):
         raise SystemExit("repo_ref must be an immutable 40-character lowercase SHA")
+    return normalized
+
+
+def validate_namespace(value: str) -> str:
+    normalized = value.strip()
+    if not SAFE_NAMESPACE_RE.fullmatch(normalized):
+        raise SystemExit("OCI Object Storage namespace is invalid")
     return normalized
 
 
@@ -129,14 +142,62 @@ def validate_smoke_output(text: str) -> None:
     raise SystemExit(f"OCI host contract incomplete: {detail}")
 
 
-def deploy_command(repo_ref: str) -> str:
+def deploy_command(repo_ref: str, namespace: str) -> str:
+    """Install the exact build identity privately, then deploy the immutable SHA.
+
+    The Run Command payload contains only the non-secret SHA and Object Storage
+    coordinates. The A1 fetches its existing secret-bearing backend.env with its
+    instance principal, adds COMMIT_SHA locally, installs it through the existing
+    privileged runtime wrapper, and only then restarts the exact release.
+    """
     sha = validate_sha(repo_ref)
+    namespace = validate_namespace(namespace)
     command = f"""set -euo pipefail
 
 test -x '{DEPLOY_WRAPPER}' || {{ echo 'CHESS_STUDIO_DEPLOY_WRAPPER_MISSING' >&2; exit 44; }}
+test -x '{RUNTIME_WRAPPER}' || {{ echo 'CHESS_STUDIO_RUNTIME_WRAPPER_MISSING' >&2; exit 45; }}
+tmp="$(mktemp /tmp/chess-studio-backend.env.XXXXXX)"
+trap 'rm -f "$tmp"' EXIT
+venv="${{HOME:-/tmp}}/.cache/chess-studio-oci-runtime"
+if [ ! -x "$venv/bin/python" ]; then
+  python3 -m venv "$venv"
+  "$venv/bin/pip" install --disable-pip-version-check --quiet 'oci=={OCI_SDK_VERSION}'
+fi
+RUNTIME_TMP="$tmp" RUNTIME_NAMESPACE={shlex.quote(namespace)} RUNTIME_SHA='{sha}' "$venv/bin/python" - <<'PY'
+import os
+from pathlib import Path
+import oci
+
+path = Path(os.environ["RUNTIME_TMP"])
+sha = os.environ["RUNTIME_SHA"]
+signer = oci.auth.signers.InstancePrincipalsSecurityTokenSigner()
+client = oci.object_storage.ObjectStorageClient(config={{}}, signer=signer)
+response = client.get_object(
+    os.environ["RUNTIME_NAMESPACE"],
+    "{RUNTIME_BUCKET}",
+    "{RUNTIME_OBJECT}",
+)
+data = response.data.content.decode("utf-8")
+if "\\x00" in data or "\\r" in data:
+    raise SystemExit("invalid runtime object")
+lines = []
+for line in data.splitlines():
+    if not line or "=" not in line:
+        raise SystemExit("malformed runtime object")
+    key, _ = line.split("=", 1)
+    if key != "COMMIT_SHA":
+        lines.append(line)
+lines.append(f"COMMIT_SHA={{sha}}")
+path.write_text("\\n".join(lines) + "\\n", encoding="utf-8")
+os.chmod(path, 0o600)
+PY
+sudo --non-interactive '{RUNTIME_WRAPPER}' "$tmp"
+trap - EXIT
 sudo --non-interactive '{DEPLOY_WRAPPER}' '{sha}'
 """
     assert_nonsecret_command(command)
+    if len(command.encode("utf-8")) > RUN_COMMAND_INLINE_MAX_BYTES:
+        raise SystemExit("OCI deploy payload exceeds Run Command inline limit")
     return command
 
 
@@ -150,6 +211,15 @@ def config_from_env(oci: Any) -> dict[str, str]:
     }
     oci.config.validate_config(config)
     return config
+
+
+def runtime_namespace(oci: Any, config: dict[str, str]) -> str:
+    client = oci.object_storage.ObjectStorageClient(config)
+    namespace = client.get_namespace(
+        compartment_id=config["tenancy"],
+        retry_strategy=oci.retry.DEFAULT_RETRY_STRATEGY,
+    ).data
+    return validate_namespace(str(namespace or ""))
 
 
 def resolve_staging(oci: Any, config: dict[str, str]) -> tuple[str, str]:
@@ -362,6 +432,13 @@ def self_test() -> None:
         pass
     else:
         raise AssertionError("mutable refs must be rejected")
+    assert validate_namespace("sample_namespace-1") == "sample_namespace-1"
+    try:
+        validate_namespace("bad namespace")
+    except SystemExit:
+        pass
+    else:
+        raise AssertionError("unsafe Object Storage namespace must be rejected")
     assert OPERATIONS == ("diagnose", "smoke", "reboot-agent", "deploy")
     assert command_poll_budget(120) == 450
     assert plugin_status_is_healthy("RUNNING")
@@ -371,7 +448,7 @@ def self_test() -> None:
     assert not plugin_status_is_healthy("INVALID")
     assert safe_plugin_message("line one\nline two") == "line one line two"
     smoke = smoke_command()
-    deploy = deploy_command(sample)
+    deploy = deploy_command(sample, "sample_namespace")
     assert "OCI_HOST_CONTRACT_OK" in smoke
     assert "OCI_RUN_COMMAND_OK" in smoke
     assert "OCI_HOST_CHECK_MISSING" in smoke
@@ -397,8 +474,14 @@ def self_test() -> None:
     ):
         assert expected in smoke
     assert DEPLOY_WRAPPER in deploy
+    assert RUNTIME_WRAPPER in deploy
+    assert RUNTIME_BUCKET in deploy
+    assert RUNTIME_OBJECT in deploy
+    assert "InstancePrincipalsSecurityTokenSigner" in deploy
+    assert "COMMIT_SHA" in deploy
     assert "sudo --non-interactive" in deploy
     assert sample in deploy
+    assert len(deploy.encode("utf-8")) <= RUN_COMMAND_INLINE_MAX_BYTES
     assert "docker build" not in deploy
     assert "systemctl restart" not in deploy
     for payload in (smoke, deploy):
@@ -461,10 +544,11 @@ def main() -> int:
         validate_smoke_output(output)
     else:
         diagnose_plugin(oci, config)
+        namespace = runtime_namespace(oci, config)
         execute(
             oci,
             config,
-            deploy_command(args.repo_ref),
+            deploy_command(args.repo_ref, namespace),
             display_name=f"chess-studio-deploy-{args.repo_ref[:12]}",
             timeout=900,
         )
