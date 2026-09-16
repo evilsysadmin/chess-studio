@@ -10,6 +10,14 @@ export const CHRONICLES_TACTICS_FORTRESS_STYLE = Object.freeze({
   heraldry: 0xc9a25c,
 });
 
+export const CHRONICLES_TACTICS_PAINTED_LIGHTING = Object.freeze({
+  fogColor: 0x18191c,
+  fogDensity: 0.0168,
+  coarseFogDensity: 0.0205,
+  coolLight: 0x7890a8,
+  warmLight: 0xd07a3d,
+});
+
 export const CHRONICLES_TACTICS_SKYLINE_PLAN = Object.freeze([
   Object.freeze({ x: -6.4, z: -2.3, width: 1.1, height: 4.4 }),
   Object.freeze({ x: -4.55, z: -3.2, width: 1.25, height: 5.9 }),
@@ -332,10 +340,49 @@ export function installChroniclesTacticsFortressAccents(
   return accents;
 }
 
+export function applyChroniclesTacticsPaintedAtmosphere(scene, { coarsePointer = false } = {}) {
+  if (!scene?.add) return null;
+  const existing = scene.getObjectByName?.('chronicles-fortress-painted-lighting');
+  if (existing) return existing;
+
+  if (scene.fog?.isFogExp2) {
+    scene.fog.color.setHex(CHRONICLES_TACTICS_PAINTED_LIGHTING.fogColor);
+    scene.fog.density = coarsePointer
+      ? CHRONICLES_TACTICS_PAINTED_LIGHTING.coarseFogDensity
+      : CHRONICLES_TACTICS_PAINTED_LIGHTING.fogDensity;
+  }
+
+  const lighting = new THREE.Group();
+  lighting.name = 'chronicles-fortress-painted-lighting';
+
+  const cool = new THREE.DirectionalLight(
+    CHRONICLES_TACTICS_PAINTED_LIGHTING.coolLight,
+    coarsePointer ? 0.2 : 0.3,
+  );
+  cool.name = 'chronicles-fortress-cool-wash';
+  cool.position.set(-4.5, 7.5, -10);
+  lighting.add(cool);
+
+  const warm = new THREE.PointLight(
+    CHRONICLES_TACTICS_PAINTED_LIGHTING.warmLight,
+    coarsePointer ? 0.34 : 0.5,
+    18,
+    2,
+  );
+  warm.name = 'chronicles-fortress-warm-wash';
+  warm.position.set(0, 3.2, -7.4);
+  lighting.add(warm);
+
+  scene.add(lighting);
+  return lighting;
+}
+
 export function installChroniclesTacticsFortressBackdrop(scene, { coarsePointer = false } = {}) {
   if (!scene?.add) return null;
   const existing = scene.getObjectByName?.('chronicles-fortress-backdrop');
   if (existing) return existing;
+
+  applyChroniclesTacticsPaintedAtmosphere(scene, { coarsePointer });
 
   const backdrop = new THREE.Group();
   backdrop.name = 'chronicles-fortress-backdrop';

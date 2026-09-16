@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import * as THREE from 'three';
 import {
   CHRONICLES_TACTICS_FORTRESS_STYLE,
+  CHRONICLES_TACTICS_PAINTED_LIGHTING,
   CHRONICLES_TACTICS_SKYLINE_PLAN,
+  applyChroniclesTacticsPaintedAtmosphere,
   buildChroniclesTacticsDistantSkyline,
   installChroniclesTacticsFortressAccents,
   installChroniclesTacticsFortressBackdrop,
@@ -58,19 +60,38 @@ describe('Chronicles Tactics canonical fortress accents', () => {
     expect(root.getObjectByName('chronicles-fortress-haze-1')).toBeTruthy();
   });
 
+  it('applies a restrained cool-fog and warm-light painted atmosphere once', () => {
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000000, 0.1);
+
+    const first = applyChroniclesTacticsPaintedAtmosphere(scene, { coarsePointer: false });
+    const second = applyChroniclesTacticsPaintedAtmosphere(scene, { coarsePointer: false });
+
+    expect(first?.name).toBe('chronicles-fortress-painted-lighting');
+    expect(second).toBe(first);
+    expect(scene.fog.color.getHex()).toBe(CHRONICLES_TACTICS_PAINTED_LIGHTING.fogColor);
+    expect(scene.fog.density).toBeCloseTo(CHRONICLES_TACTICS_PAINTED_LIGHTING.fogDensity, 6);
+    expect(scene.getObjectByName('chronicles-fortress-cool-wash')).toBeTruthy();
+    expect(scene.getObjectByName('chronicles-fortress-warm-wash')).toBeTruthy();
+  });
+
   it('installs one world-space backdrop and reuses it on repeated calls', () => {
     const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000000, 0.1);
     const first = installChroniclesTacticsFortressBackdrop(scene, { coarsePointer: true });
     const second = installChroniclesTacticsFortressBackdrop(scene, { coarsePointer: true });
 
     expect(first?.name).toBe('chronicles-fortress-backdrop');
     expect(first?.position.z).toBeCloseTo(-8.35, 6);
     expect(first?.getObjectByName('chronicles-fortress-distant-skyline')).toBeTruthy();
+    expect(scene.getObjectByName('chronicles-fortress-painted-lighting')).toBeTruthy();
+    expect(scene.fog.density).toBeCloseTo(CHRONICLES_TACTICS_PAINTED_LIGHTING.coarseFogDensity, 6);
     expect(second).toBe(first);
     expect(scene.children.filter((child) => child.name === 'chronicles-fortress-backdrop')).toHaveLength(1);
   });
 
   it('fails closed when the host is unavailable', () => {
+    expect(applyChroniclesTacticsPaintedAtmosphere(null)).toBeNull();
     expect(buildChroniclesTacticsDistantSkyline(null)).toBeNull();
     expect(installChroniclesTacticsFortressAccents(null)).toBeNull();
     expect(installChroniclesTacticsFortressAccents(new THREE.Group(), {})).toBeNull();
