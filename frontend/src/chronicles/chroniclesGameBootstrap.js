@@ -1,11 +1,12 @@
-import { api } from '../api.js';
 import { abortableDelay } from '../asyncControl.js';
+import { chroniclesValidateAreaEnvelope } from './chroniclesGameDirector.js';
 import {
   DEFAULT_CHRONICLES_MAP_ID,
   chroniclesClearRuntimeMapDefinitions,
   chroniclesInstallRuntimeMapDefinition,
   chroniclesMapById,
 } from './chroniclesMapCatalog.js';
+import { chroniclesCreateRun } from './chroniclesRunClient.js';
 
 export const CHRONICLES_BOOTSTRAP_BUDGET_MS = 250;
 
@@ -14,7 +15,29 @@ function localBootstrap(mapId, seed, fallbackReason) {
     source: 'local',
     map: chroniclesMapById(mapId),
     seed,
+    runId: null,
+    worldVersion: null,
     fallbackReason,
+  });
+}
+
+function validateRunBootstrap(payload, mapId) {
+  if (!payload || typeof payload !== 'object') throw new Error('missing-run');
+  if (typeof payload.runId !== 'string' || !payload.runId) throw new Error('invalid-run-id');
+  if (payload.currentMapId !== mapId) throw new Error('run-map-mismatch');
+  if (!Number.isInteger(payload.seed) || payload.seed < 0) throw new Error('invalid-run-seed');
+  if (!Number.isInteger(payload.worldVersion) || payload.worldVersion < 0) throw new Error('invalid-world-version');
+  if (payload.status !== 'active') throw new Error('inactive-run');
+
+  const area = chroniclesValidateAreaEnvelope(payload.area, mapId, payload.seed);
+  if (payload.contentVersion !== area.contentVersion) throw new Error('run-version-mismatch');
+  if (payload.manifestRevision !== area.manifestRevision) throw new Error('run-revision-mismatch');
+
+  return Object.freeze({
+    ...area,
+    runId: payload.runId,
+    worldVersion: payload.worldVersion,
+    runStatus: payload.status,
   });
 }
 
@@ -23,10 +46,12 @@ export async function chroniclesBootstrapTacticsWorld({
   seed = 0,
   budgetMs = CHRONICLES_BOOTSTRAP_BUDGET_MS,
   signal,
-  resolveArea = api.resolveChroniclesAreaManifest,
+  operationId = null,
+  createRun = chroniclesCreateRun,
 } = {}) {
-  // Every entry starts from the bundled fallback. A remote definition is only
-  // installed if it wins the bounded bootstrap race before gameplay mounts.
+  // Every entry starts from the bundled fallback. A remote run + area is only
+  // installed if the single bootstrap request wins the bounded race before
+  // gameplay mounts. The frame-critical runtime never waits on the network.
   chroniclesClearRuntimeMapDefinitions();
   if (signal?.aborted) return localBootstrap(mapId, seed, 'aborted');
 
@@ -46,7 +71,8 @@ export async function chroniclesBootstrapTacticsWorld({
     .catch(() => localBootstrap(mapId, seed, signal?.aborted ? 'aborted' : 'bootstrap-cancelled'));
 
   const request = Promise.resolve()
-    .then(() => resolveArea(mapId, { seed, signal: requestController.signal }))
+    .then(() => createRun(mapId, { operationId, signal: requestController.signal }))
+    .then((payload) => validateRunBootstrap(payload, mapId))
     .catch((error) => localBootstrap(
       mapId,
       seed,

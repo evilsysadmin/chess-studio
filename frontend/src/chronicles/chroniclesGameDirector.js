@@ -8,7 +8,7 @@ export const CHRONICLES_DIRECTOR_SCHEMA_VERSION = 1;
 const REVISION_RE = /^[a-f0-9]{64}$/;
 const INSTANCE_RE = /^[a-f0-9]{24}$/;
 
-function validateDirectorEnvelope(payload, mapId, seed) {
+export function chroniclesValidateAreaEnvelope(payload, mapId, seed) {
   if (!payload || typeof payload !== 'object') throw new Error('missing-envelope');
   if (payload.schemaVersion !== CHRONICLES_DIRECTOR_SCHEMA_VERSION) throw new Error('unsupported-schema');
   if (payload.mapId !== mapId) throw new Error('map-mismatch');
@@ -52,7 +52,7 @@ export async function chroniclesResolveAreaManifest(
 
   try {
     const payload = await fetchManifest(mapId, seed, { signal });
-    return validateDirectorEnvelope(payload, mapId, seed);
+    return chroniclesValidateAreaEnvelope(payload, mapId, seed);
   } catch (error) {
     if (signal?.aborted) return localFallback(mapId, seed, 'aborted');
     return localFallback(mapId, seed, error instanceof Error ? error.message : 'remote-unavailable');
