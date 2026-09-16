@@ -61,10 +61,10 @@ describe('Chronicles fantasy bestiary contract', () => {
       boneHoundHp: 6,
     });
     expect(chroniclesMapRenderPlan(map).enemies).toEqual([
-      { id: 'ash-goblin', visualType: 'ash-goblin' },
-      { id: 'crypt-spider', visualType: 'crypt-spider' },
-      { id: 'ember-wisp', visualType: 'ember-wisp' },
-      { id: 'bone-hound', visualType: 'bone-hound' },
+      { id: 'ash-goblin', visualType: 'ash-goblin', visualScale: 0.9, visualMotion: 'grounded' },
+      { id: 'crypt-spider', visualType: 'crypt-spider', visualScale: 0.82, visualMotion: 'skitter' },
+      { id: 'ember-wisp', visualType: 'ember-wisp', visualScale: 0.78, visualMotion: 'hover' },
+      { id: 'bone-hound', visualType: 'bone-hound', visualScale: 0.92, visualMotion: 'grounded' },
     ]);
   });
 });

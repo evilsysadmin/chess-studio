@@ -329,6 +329,8 @@ export function chroniclesMapRenderPlan(mapOrState = null) {
     enemies: Object.freeze(map.enemies.map((enemy) => Object.freeze({
       id: enemy.id,
       visualType: enemy.visualType || enemy.id,
+      visualScale: Number.isFinite(Number(enemy.visualScale)) ? Number(enemy.visualScale) : 1,
+      visualMotion: enemy.visualMotion || 'grounded',
     }))),
     lever: lever ? Object.freeze({ id: lever.id, position: chroniclesMapContentPosition(map, lever) }) : null,
     pickup: pickup ? Object.freeze({ id: pickup.id, position: chroniclesMapContentPosition(map, pickup) }) : null,
