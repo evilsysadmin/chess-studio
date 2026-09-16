@@ -8,10 +8,19 @@ on:
       - 'scripts/blender/refine_chronicles_party_anatomy.py'
       - 'scripts/blender/render_chronicles_party_preview.py'
       - '.github/workflows/chronicles-party-blender-art.yml'
+  push:
+    branches:
+      - codex/tactics-r2-publish-handoff
+    paths:
+      - '.github/workflows/chronicles-party-blender-art.yml'
+      - 'scripts/blender/build_chronicles_humanoid_party.py'
+      - 'scripts/blender/refine_chronicles_party_tailoring.py'
+      - 'scripts/blender/refine_chronicles_party_anatomy.py'
+      - 'scripts/blender/render_chronicles_party_preview.py'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: chronicles-party-blender-${{ github.event.pull_request.number || github.ref }}
@@ -60,6 +69,31 @@ jobs:
           assert Image.open(root/'chronicles-party-group.png').size==(1280,720)
           PY
           sha256sum /tmp/chronicles-party/chronicles-tactics-party.blend /tmp/chronicles-party/chronicles-tactics-party.glb /tmp/chronicles-party/previews/*.png > /tmp/chronicles-party/SHA256SUMS
+      - name: Publish canonical Blender art to R2
+        if: github.event_name == 'push'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          python3 -S scripts/r2_asset_publish.py publish /tmp/chronicles-party/chronicles-tactics-party.blend --logical-id chronicles.tactics.party.master --prefix chronicles/tactics/party/master
+          python3 -S scripts/r2_asset_publish.py publish /tmp/chronicles-party/chronicles-tactics-party.glb --logical-id chronicles.tactics.party.runtime --prefix chronicles/tactics/party/runtime
+          python3 -S scripts/r2_asset_publish.py check-manifest
+      - name: Record immutable R2 manifest on handoff branch
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- frontend/src/assets/r2-assets-manifest.json; then
+            echo 'R2 manifest unchanged'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/src/assets/r2-assets-manifest.json
+          git commit -m 'chore(tactics): record Blender R2 assets [r2-manifest]'
+          git push origin HEAD:${GITHUB_REF_NAME}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
