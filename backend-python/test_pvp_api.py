@@ -5,7 +5,9 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.testclient import TestClient
 
 import pvp_api
+import pvp_rating
 import pvp_store
+import users_store
 
 
 @pytest.fixture(autouse=True)
@@ -13,14 +15,24 @@ def reset_memory(monkeypatch):
     async def memory_collections():
         return None
 
+    async def memory_user_collection():
+        return None
+
     monkeypatch.setattr(pvp_store, "_collections", memory_collections)
+    monkeypatch.setattr(users_store, "_get_collection", memory_user_collection)
     pvp_store._memory_roster.clear()
     pvp_store._memory_challenges.clear()
     pvp_store._memory_matches.clear()
+    users_store._memory_users.clear()
+    users_store._memory_users.update({
+        "alice": {"username": "alice"},
+        "bob": {"username": "bob"},
+    })
     yield
     pvp_store._memory_roster.clear()
     pvp_store._memory_challenges.clear()
     pvp_store._memory_matches.clear()
+    users_store._memory_users.clear()
 
 
 def make_client():
@@ -46,17 +58,20 @@ def as_user(client, username, method, path, **kwargs):
     return getattr(client, method)(path, headers={"x-test-user": username}, **kwargs)
 
 
-def test_roster_uses_server_rating_baseline_and_hides_stale_members():
+def test_roster_uses_server_account_rating_and_hides_stale_members():
+    users_store._memory_users["alice"]["pvp_rating"] = 1180
+    users_store._memory_users["bob"]["pvp_rating"] = 1325
     client = make_client()
+
     joined = as_user(client, "alice", "post", "/api/pvp/roster")
     assert joined.status_code == 200
-    assert joined.json()["member"]["rating"] == pvp_api.DEFAULT_RATING
-    assert joined.json()["member"]["tier"] == "Principiante"
+    assert joined.json()["member"]["rating"] == 1180
+    assert joined.json()["member"]["tier"] == "Intermedio"
 
     as_user(client, "bob", "post", "/api/pvp/roster")
     lobby = as_user(client, "alice", "get", "/api/pvp/lobby").json()
     assert {row["username"] for row in lobby["roster"]} == {"alice", "bob"}
-    assert {row["rating"] for row in lobby["roster"]} == {pvp_api.DEFAULT_RATING}
+    assert {row["rating"] for row in lobby["roster"]} == {1180, 1325}
 
     pvp_store._memory_roster["bob"]["last_seen"] = pvp_store.utcnow() - timedelta(seconds=60)
     lobby = as_user(client, "alice", "get", "/api/pvp/lobby").json()
@@ -99,6 +114,56 @@ def test_challenge_accept_creates_authoritative_match_and_enforces_turns():
     assert second.status_code == 200
     assert second.json()["match"]["revision"] == 2
     assert len(second.json()["match"]["history"]) == 2
+
+
+def test_finished_match_settles_server_elo_once(monkeypatch):
+    monkeypatch.setattr(pvp_api.secrets, "randbits", lambda _bits: 1)
+    client = make_client()
+    for user in ("alice", "bob"):
+        assert as_user(client, user, "post", "/api/pvp/roster").status_code == 200
+
+    challenge = as_user(client, "alice", "post", "/api/pvp/challenges", json={"opponent": "bob"}).json()["challenge"]
+    match = as_user(client, "bob", "post", f"/api/pvp/challenges/{challenge['id']}/accept").json()["match"]
+    assert match["white"] == "alice"
+    assert match["black"] == "bob"
+    match_id = match["id"]
+
+    sequence = [
+        ("alice", "f2", "f3"),
+        ("bob", "e7", "e5"),
+        ("alice", "g2", "g4"),
+        ("bob", "d8", "h4"),
+    ]
+    last = None
+    for user, source, target in sequence:
+        last = as_user(
+            client,
+            user,
+            "post",
+            f"/api/pvp/matches/{match_id}/move",
+            json={"from": source, "to": target},
+        )
+        assert last.status_code == 200
+
+    assert last.json()["match"]["status"] == "finished"
+    assert last.json()["match"]["result"] == "0-1"
+    assert pvp_rating.next_ratings(400, 400, "0-1") == (384, 416)
+    assert users_store._memory_users["alice"]["pvp_rating"] == 384
+    assert users_store._memory_users["bob"]["pvp_rating"] == 416
+    assert users_store._memory_users["alice"]["pvp_rating_games"] == 1
+    assert users_store._memory_users["bob"]["pvp_rating_games"] == 1
+
+    # GET reintenta la liquidación de forma deliberada; no debe duplicarla.
+    for user in ("alice", "bob"):
+        response = as_user(client, user, "get", f"/api/pvp/matches/{match_id}")
+        assert response.status_code == 200
+    assert users_store._memory_users["alice"]["pvp_rating_games"] == 1
+    assert users_store._memory_users["bob"]["pvp_rating_games"] == 1
+
+    alice = as_user(client, "alice", "post", "/api/pvp/roster").json()["member"]
+    bob = as_user(client, "bob", "post", "/api/pvp/roster").json()["member"]
+    assert alice["rating"] == 384
+    assert bob["rating"] == 416
 
 
 def test_challenge_guards_self_absent_opponent_and_wrong_acceptor():
