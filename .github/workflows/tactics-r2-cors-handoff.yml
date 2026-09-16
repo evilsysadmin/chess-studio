@@ -1,0 +1,32 @@
+name: Tactics R2 · browser CORS handoff
+
+on:
+  push:
+    branches:
+      - codex/tactics-r2-publish-handoff
+    paths:
+      - '.github/workflows/tactics-r2-cors-handoff.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify public GLB permits browser fetch
+        env:
+          ASSET_URL: https://assets.chess-studio.shadowops.dpdns.org/chronicles/tactics/party/runtime/chronicles-tactics-party-0d12bb3c3ec92d55.glb
+          APP_ORIGIN: https://evilsysadmin.github.io
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location \
+            -H "Origin: ${APP_ORIGIN}" \
+            -D /tmp/r2-headers.txt \
+            -o /tmp/chronicles-party.glb \
+            "$ASSET_URL"
+          test -s /tmp/chronicles-party.glb
+          grep -Eiq '^content-type: *model/gltf-binary' /tmp/r2-headers.txt
+          grep -Eiq '^access-control-allow-origin: *(\*|https://evilsysadmin\.github\.io)' /tmp/r2-headers.txt
+          echo 'R2 GLB browser CORS: OK'
