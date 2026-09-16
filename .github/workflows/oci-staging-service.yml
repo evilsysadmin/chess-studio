@@ -23,9 +23,15 @@ on:
       operation:
         description: Service operation
         type: choice
-        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, runtime-sync, vault-validate]
+        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, runtime-sync, vault-validate, vault-validate-pending]
         default: smoke
         required: true
+      secret_key:
+        description: Vault key used only by vault-validate-pending
+        type: choice
+        options: [MONGO_URL, JWT_SECRET, INVITE_CODE, CHESS_AI_SHARED_SECRET, OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_HEADERS]
+        default: JWT_SECRET
+        required: false
       repo_ref:
         description: Immutable 40-character SHA for deploy; defaults to workflow SHA
         type: string
@@ -157,6 +163,12 @@ jobs:
       - name: Validate CURRENT OCI Vault runtime secrets
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'vault-validate'
         run: python3 scripts/oci_vault_runtime.py validate
+
+      - name: Validate one PENDING OCI Vault rotation
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'vault-validate-pending'
+        env:
+          VAULT_SECRET_KEY: ${{ inputs.secret_key }}
+        run: python3 scripts/oci_vault_runtime.py validate-pending --key "$VAULT_SECRET_KEY"
 
       - name: Recover stale OCI agent after explicit request
         if: >-
