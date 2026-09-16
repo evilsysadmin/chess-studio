@@ -197,10 +197,9 @@ function defeatMessage(attacker, enemy) {
 }
 
 function rangedHitMessage(attacker, enemy) {
-  if (enemy.id === 'gate-jailer') return `${attacker.name} castiga a la torre carcelero desde la retaguardia con ${attacker.attackName.toLowerCase()}. La mole no alcanza a devolver el golpe.`;
-  if (enemy.id === 'spectral-bishop') return `${attacker.name} alcanza al alfil espectral con ${attacker.attackName.toLowerCase()}. Esta vez la diagonal del fantasma se queda corta.`;
-  if (enemy.id === 'scavenger-knight') return `${attacker.name} alcanza al caballo carroñero con ${attacker.attackName.toLowerCase()}. El ladrón relincha algo jurídicamente dudoso.`;
-  return `${attacker.name} alcanza desde la retaguardia con ${attacker.attackName.toLowerCase()}. El peón sisea, demasiado lejos para devolver el golpe.`;
+  const authored = renderCombatTemplate(enemy.rangedHitMessage, attacker, enemy);
+  if (authored) return authored;
+  return `${attacker.name} alcanza a ${enemy.name} desde la retaguardia con ${attacker.attackName.toLowerCase()}. El objetivo queda demasiado lejos para devolver el golpe.`;
 }
 
 function rewardForDefeat(state, enemy) {
@@ -281,9 +280,7 @@ function resolveAttack(state, memberId) {
 }
 
 function blockingEnemyMessage(enemy) {
-  if (enemy.id === 'gate-jailer') return 'La torre carcelero sella la puerta negra. Es una cerradura de varias toneladas y bastante mal humor.';
-  if (enemy.id === 'spectral-bishop') return 'El alfil espectral ocupa la nave lateral. La cortesía religiosa termina exactamente a una casilla de distancia.';
-  if (enemy.id === 'scavenger-knight') return 'El caballo carroñero planta la Llave Negra delante de la salida como si acabara de inventar el peaje.';
+  if (enemy.blockingMessage) return enemy.blockingMessage;
   return `${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} bloquea el paso. Convéncelo con violencia reglamentaria.`;
 }
 
