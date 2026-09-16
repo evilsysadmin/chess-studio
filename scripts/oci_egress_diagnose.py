@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from oci_run_command import config_from_env, execute, resolve_staging  # noqa: E402
 
 EGRESS_MARKER = "OCI_EGRESS_OBSERVED_IPV4="
+DEFAULT_EXPECTED_IPV4 = "158.180.44.45"
 
 
 def normalize_ipv4(value: str) -> str:
@@ -100,6 +101,47 @@ def assigned_public_ipv4(oci: Any, config: dict[str, str]) -> str:
     return unique[0]
 
 
+def diagnose_egress(
+    oci: Any,
+    config: dict[str, str],
+    *,
+    expected: str | None = DEFAULT_EXPECTED_IPV4,
+) -> bool:
+    assigned = assigned_public_ipv4(oci, config)
+    print(f"OCI_VNIC_PUBLIC_IPV4={assigned}", flush=True)
+
+    normalized_expected = normalize_ipv4(expected) if expected else None
+    if normalized_expected:
+        print(f"OCI_EGRESS_EXPECTED_IPV4={normalized_expected}", flush=True)
+        print(
+            f"OCI_VNIC_MATCH_EXPECTED={'yes' if assigned == normalized_expected else 'no'}",
+            flush=True,
+        )
+
+    try:
+        output = execute(
+            oci,
+            config,
+            egress_probe_command(),
+            display_name="Chess Studio staging egress diagnostic",
+            timeout=45,
+        )
+        observed = extract_observed_ipv4(output)
+    except SystemExit as exc:
+        print(f"OCI_EGRESS_PROBE_ERROR={str(exc)[:300]}", flush=True)
+        return False
+
+    print(f"OCI_EGRESS_OBSERVED_IPV4={observed}", flush=True)
+    match_vnic = assigned == observed
+    print(f"OCI_EGRESS_MATCH_VNIC={'yes' if match_vnic else 'no'}", flush=True)
+    if normalized_expected:
+        print(
+            f"OCI_EGRESS_MATCH_EXPECTED={'yes' if observed == normalized_expected else 'no'}",
+            flush=True,
+        )
+    return match_vnic and (normalized_expected is None or observed == normalized_expected)
+
+
 def self_test() -> None:
     assert normalize_ipv4("158.180.44.45") == "158.180.44.45"
     sample = "noise\nOCI_EGRESS_OBSERVED_IPV4=158.180.44.45\n"
@@ -109,12 +151,17 @@ def self_test() -> None:
     assert "JWT_SECRET" not in command
     assert "backend.env" not in command
     assert "api.ipify.org" in command and "checkip.amazonaws.com" in command
+    assert DEFAULT_EXPECTED_IPV4 == "158.180.44.45"
     print("OCI egress diagnostic self-test: OK")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--expected", help="Optional expected egress IPv4 (for example Atlas /32 allowlist)")
+    parser.add_argument(
+        "--expected",
+        default=DEFAULT_EXPECTED_IPV4,
+        help="Expected egress IPv4 (defaults to current Atlas /32 allowlist)",
+    )
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
@@ -127,27 +174,8 @@ def main() -> None:
         raise SystemExit("OCI Python SDK is required") from exc
 
     config = config_from_env(oci)
-    assigned = assigned_public_ipv4(oci, config)
-    output = execute(
-        oci,
-        config,
-        egress_probe_command(),
-        display_name="Chess Studio staging egress diagnostic",
-        timeout=45,
-    )
-    observed = extract_observed_ipv4(output)
-    print(f"OCI_VNIC_PUBLIC_IPV4={assigned}")
-    print(f"OCI_EGRESS_OBSERVED_IPV4={observed}")
-    match_vnic = assigned == observed
-    print(f"OCI_EGRESS_MATCH_VNIC={'yes' if match_vnic else 'no'}")
-
-    if args.expected:
-        expected = normalize_ipv4(args.expected)
-        print(f"OCI_EGRESS_EXPECTED_IPV4={expected}")
-        print(f"OCI_EGRESS_MATCH_EXPECTED={'yes' if observed == expected else 'no'}")
-
-    if not match_vnic:
-        raise SystemExit("Observed egress IPv4 differs from OCI VNIC public IPv4")
+    if not diagnose_egress(oci, config, expected=args.expected):
+        raise SystemExit("OCI egress diagnostic did not fully match expected routing")
 
 
 if __name__ == "__main__":
