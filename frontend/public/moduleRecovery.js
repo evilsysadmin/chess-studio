@@ -1,65 +1,45 @@
 (() => {
   const RECOVERY_KEY = 'chess-studio-module-recovery-v1';
   const RECOVERY_PARAM = '__cs_recover';
-  const RECOVERY_WINDOW_MS = 30000;
 
-  function scrubRecoveryParam() {
-    const current = new URL(window.location.href);
-    if (!current.searchParams.has(RECOVERY_PARAM)) return;
-
-    current.searchParams.delete(RECOVERY_PARAM);
-    const cleanUrl = `${current.pathname}${current.search}${current.hash}`;
-    window.history.replaceState(window.history.state, '', cleanUrl);
+  const current = new URL(location.href);
+  if (current.searchParams.delete(RECOVERY_PARAM)) {
+    history.replaceState(history.state, '', `${current.pathname}${current.search}${current.hash}`);
   }
 
-  scrubRecoveryParam();
-
-  async function recoverStaleModule() {
+  async function recover() {
     if (navigator.onLine === false) return;
-
     try {
       const now = Date.now();
       const previous = Number(sessionStorage.getItem(RECOVERY_KEY) || 0);
-      if (Number.isFinite(previous) && now - previous < RECOVERY_WINDOW_MS) return;
+      if (now - previous < 30000) return;
       sessionStorage.setItem(RECOVERY_KEY, String(now));
-    } catch {
-      // Storage can be blocked; recovery is still worth attempting once.
-    }
+    } catch {}
 
     try {
       if ('serviceWorker' in navigator) {
         const registrations = await navigator.serviceWorker.getRegistrations();
         await Promise.all(registrations.map((registration) => registration.unregister()));
       }
-    } catch {
-      // A cache purge below is sufficient when registration cleanup fails.
-    }
+    } catch {}
 
     try {
       if ('caches' in window) {
         const keys = await caches.keys();
-        await Promise.all(keys
-          .filter((key) => key.startsWith('chess-studio-shell-'))
-          .map((key) => caches.delete(key)));
+        await Promise.all(keys.filter((key) => key.startsWith('chess-studio-shell-')).map((key) => caches.delete(key)));
       }
-    } catch {
-      // Reload still bypasses the stale navigation cache via a cache buster.
-    }
+    } catch {}
 
-    const next = new URL(window.location.href);
+    const next = new URL(location.href);
     next.searchParams.set(RECOVERY_PARAM, Date.now().toString(36));
-    window.location.replace(next.toString());
+    location.replace(next.toString());
   }
 
-  window.addEventListener('error', (event) => {
-    const target = event.target;
-    if (target instanceof HTMLScriptElement && target.type === 'module') {
-      void recoverStaleModule();
-    }
+  addEventListener('error', (event) => {
+    if (event.target instanceof HTMLScriptElement && event.target.type === 'module') void recover();
   }, true);
-
-  window.addEventListener('vite:preloadError', (event) => {
+  addEventListener('vite:preloadError', (event) => {
     event.preventDefault();
-    void recoverStaleModule();
+    void recover();
   });
 })();
