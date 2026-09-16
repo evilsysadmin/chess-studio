@@ -53,7 +53,9 @@
           { "x": 4, "y": 5 },
           { "x": 3, "y": 5 },
           { "x": 3, "y": 4 }
-        ]
+        ],
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
       }
     },
     {
@@ -84,7 +86,7 @@
       "maxHp": 6,
       "retaliation": 2,
       "activation": "always",
-      "ai": { "movement": "cardinal-roam", "attackReach": 1 }
+      "ai": { "movement": "cardinal-roam", "attackReach": 1, "engagedMovement": "cardinal-chase", "engageRange": 4 }
     }
   ],
   "triggers": [],

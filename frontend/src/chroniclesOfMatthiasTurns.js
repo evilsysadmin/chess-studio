@@ -5,7 +5,7 @@ import {
   chroniclesTileAt,
 } from './chroniclesOfMatthias.js';
 
-export const CHRONICLES_TURN_ENGINE_VERSION = 'map-ai-v4';
+export const CHRONICLES_TURN_ENGINE_VERSION = 'map-ai-v5';
 
 const KNIGHT_STEPS = Object.freeze([
   Object.freeze({ dx: -2, dy: -1 }), Object.freeze({ dx: -2, dy: 1 }),
@@ -113,9 +113,18 @@ function chooseRoamingCardinalStep(state, enemy, from) {
   return null;
 }
 
+function enemyMovementForDistance(state, enemy, from) {
+  const movement = enemy.ai?.movement || 'cardinal-chase';
+  const engagedMovement = enemy.ai?.engagedMovement;
+  const engageRange = Number(enemy.ai?.engageRange);
+  if (!engagedMovement || !Number.isFinite(engageRange) || engageRange < 1) return movement;
+  const partyPosition = { x: state.x, y: state.y };
+  return distance(from, partyPosition) <= engageRange ? engagedMovement : movement;
+}
+
 export function chroniclesChooseEnemyStep(state, enemy) {
   const from = chroniclesRuntimeEnemyPosition(state, enemy);
-  const movement = enemy.ai?.movement || 'cardinal-chase';
+  const movement = enemyMovementForDistance(state, enemy, from);
   if (movement === 'hold') return null;
   if (movement === 'knight-chase') return chooseKnightStep(state, enemy, from);
   if (movement === 'patrol-route') return choosePatrolRouteStep(state, enemy, from);

@@ -50,6 +50,10 @@ function normalizeEnemy(enemy) {
     positions: positions ? Object.freeze(positions) : undefined,
     ai: Object.freeze({
       movement: enemy?.ai?.movement || 'cardinal-chase',
+      engagedMovement: enemy?.ai?.engagedMovement || undefined,
+      engageRange: Number.isFinite(Number(enemy?.ai?.engageRange))
+        ? Math.max(1, Number(enemy.ai.engageRange))
+        : undefined,
       attackReach: Math.max(1, Number(enemy?.ai?.attackReach ?? enemy?.retaliationReach ?? 1)),
       requiresLineOfSight: Boolean(enemy?.ai?.requiresLineOfSight),
       patrolRoute: Object.freeze((enemy?.ai?.patrolRoute || []).map((point) => Object.freeze(clonePoint(point)))),
@@ -135,6 +139,15 @@ function assertEnemyContract(map, enemy) {
   }
   if (!SUPPORTED_MOVEMENTS.has(enemy.ai?.movement || 'cardinal-chase')) {
     throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} uses unsupported movement ${enemy.ai?.movement}`);
+  }
+  if (enemy.ai?.engagedMovement && !SUPPORTED_MOVEMENTS.has(enemy.ai.engagedMovement)) {
+    throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} uses unsupported engagedMovement ${enemy.ai.engagedMovement}`);
+  }
+  if (enemy.ai?.engagedMovement && !Number.isFinite(enemy.ai?.engageRange)) {
+    throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} engagedMovement requires engageRange`);
+  }
+  if (!enemy.ai?.engagedMovement && Number.isFinite(enemy.ai?.engageRange)) {
+    throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} engageRange requires engagedMovement`);
   }
   assertPatrolRoute(map, enemy);
 
