@@ -49,12 +49,12 @@ describe('Chronicles alternating creature turns', () => {
     expect(chroniclesRuntimeEnemyPosition(next, bishop)).toEqual({ x: 5, y: 3 });
   });
 
-  it('keeps the scavenger knight movement chess-authentic when it repositions', () => {
+  it('keeps the scavenger knight movement chess-authentic once the party enters its engagement range', () => {
     const knight = enemy('scavenger-knight');
     const state = {
       ...createChroniclesState(),
       x: 5,
-      y: 5,
+      y: 3,
       enemyHp: 0,
       jailerHp: 0,
       spectralBishopHp: 0,
