@@ -125,11 +125,17 @@
 }
 
 .chronicles-tactics__cinema::after {
-  opacity: .15;
+  opacity: .16;
   background:
-    repeating-linear-gradient(103deg, transparent 0 19px, rgba(255,255,255,.016) 20px, transparent 21px 43px),
-    repeating-linear-gradient(7deg, transparent 0 37px, rgba(0,0,0,.08) 38px, transparent 40px 79px);
-  mix-blend-mode: soft-light;
+    radial-gradient(circle at 16% 78%, rgba(255, 159, 73, .68) 0 .8px, rgba(255, 102, 36, .22) 1.2px, transparent 2px),
+    radial-gradient(circle at 71% 85%, rgba(255, 183, 92, .56) 0 .7px, rgba(224, 92, 27, .18) 1.1px, transparent 1.9px),
+    radial-gradient(circle at 88% 57%, rgba(255, 137, 54, .5) 0 .65px, transparent 1.8px),
+    radial-gradient(circle at 36% 66%, rgba(255, 205, 132, .38) 0 .55px, transparent 1.6px),
+    repeating-linear-gradient(103deg, transparent 0 19px, rgba(255,255,255,.012) 20px, transparent 21px 43px),
+    repeating-linear-gradient(7deg, transparent 0 37px, rgba(0,0,0,.07) 38px, transparent 40px 79px);
+  background-size: 181px 223px, 239px 197px, 307px 271px, 151px 263px, auto, auto;
+  filter: blur(.08px);
+  animation: chronicles-tactics-embers 13s ease-in-out infinite alternate;
 }
 
 .chronicles-tactics__mission,
@@ -339,6 +345,12 @@
   to { transform: translate3d(3%, 4%, 0) rotate(-4deg); }
 }
 
+@keyframes chronicles-tactics-embers {
+  from { transform: translate3d(-1.25%, 2%, 0) scale(1.01); opacity: .11; }
+  45% { opacity: .18; }
+  to { transform: translate3d(1.5%, -4%, 0) scale(1.035); opacity: .14; }
+}
+
 @media (max-width: 860px) {
   .chronicles-tactics__mission,
   .chronicles-tactics__party,
@@ -351,10 +363,15 @@
       0 18px 48px rgba(0,0,0,.62),
       0 0 0 1px rgba(224, 178, 98, .18);
   }
+
+  .chronicles-tactics__cinema::after {
+    opacity: .11;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .chronicles-tactics__cinema::before { animation: none; }
+  .chronicles-tactics__cinema::before,
+  .chronicles-tactics__cinema::after { animation: none; }
   .chronicles-tactics__head .secondary-btn,
   .chronicles-tactics__party > button,
   .chronicles-tactics__party > button::after,
