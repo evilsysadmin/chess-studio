@@ -168,6 +168,18 @@ test('Home · la experiencia canónica no cambia con el viewport', async ({ page
     await expect(page.locator('.menu.home-friendly')).toHaveCount(0);
     await expect(page.locator('details.home-learning-more')).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+
+    if (width < 1000) {
+      const toolsToggle = page.getByRole('button', { name: /Más modos y herramientas/ });
+      if (await toolsToggle.getAttribute('aria-expanded') !== 'true') await toolsToggle.click();
+      await expect(toolsToggle).toHaveAttribute('aria-expanded', 'true');
+
+      const experiments = page
+        .getByRole('navigation', { name: 'Más modos y herramientas' })
+        .getByRole('button', { name: 'Experimentos geniales', exact: true });
+      await expect(experiments).toBeVisible();
+      await experiments.click({ trial: true });
+    }
   }
 });
 
