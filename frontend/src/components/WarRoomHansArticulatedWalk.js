@@ -7,7 +7,7 @@ import {
 import { HANS_ELDER_POSTURE, WAR_ROOM_HANS_ELDER_POSTURE_VERSION } from './WarRoomHansElderPostureContract.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_ARTICULATED_WALK_VERSION = 'war-room-hans-articulated-walk-v9-measured-travel-owner';
+export const WAR_ROOM_HANS_ARTICULATED_WALK_VERSION = 'war-room-hans-articulated-walk-v10-measured-travel-owner-task-arm-lock';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -20,6 +20,17 @@ const WAR_ROOM_GAIT_CADENCE_GAIN = 1.14;
 const LEGACY_ELDER_WALK_VERSION = 'elder-butler-gait-v1';
 const LEGACY_GAIT_FRAME_COUNT = 8;
 const POST_RENDER_ORDER = 24;
+const TASK_HAND_PROP_NAMES = Object.freeze([
+  'war-room-hans-watering-can',
+  'war-room-hans-espresso-tray',
+  'war-room-hans-chore-prop-duster',
+  'war-room-hans-chore-prop-book',
+  'war-room-hans-chore-prop-letters',
+  'war-room-hans-chore-prop-cloth',
+  'war-room-hans-chore-prop-ash-brush',
+  'war-room-hans-mop',
+  'war-room-hans-mop-bucket',
+]);
 
 function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
@@ -49,6 +60,39 @@ function inferForward(body) {
   const pokerZ = Number(body?.carriedPoker?.position?.z);
   if (Number.isFinite(pokerZ) && Math.abs(pokerZ) > 0.0001) return Math.sign(pokerZ);
   return 1;
+}
+
+function captureArmRotation(arm) {
+  if (!arm?.rotation) return null;
+  return {
+    x: arm.rotation.x,
+    y: arm.rotation.y,
+    z: arm.rotation.z,
+  };
+}
+
+function restoreArmRotation(arm, rotation) {
+  if (!arm?.rotation || !rotation) return;
+  arm.rotation.set(rotation.x, rotation.y, rotation.z);
+}
+
+export function warRoomHansTaskHandsOccupied(hans) {
+  if (!hans || !String(hans.userData?.warRoomHansActiveTask || '')) return false;
+  return TASK_HAND_PROP_NAMES.some((name) => hans.getObjectByName?.(name)?.visible === true);
+}
+
+export function preserveWarRoomHansTaskArmPose(hans, body, update) {
+  if (typeof update !== 'function') return null;
+  if (!warRoomHansTaskHandsOccupied(hans)) return update();
+
+  const leftArm = captureArmRotation(body?.leftArm);
+  const rightArm = captureArmRotation(body?.rightArm);
+  try {
+    return update();
+  } finally {
+    restoreArmRotation(body?.leftArm, leftArm);
+    restoreArmRotation(body?.rightArm, rightArm);
+  }
 }
 
 function applyCanonicalElderGait(body, sample, forward) {
@@ -145,11 +189,18 @@ export function installWarRoomHansArticulatedWalk(root) {
         realTravelDistance += travelled;
         const targetHorizontal = horizontalTravelWeight(dx, dz);
         horizontalBlend = mix(horizontalBlend, targetHorizontal, HORIZONTAL_BLEND_RESPONSE);
-        const sample = advanceHansWalkCycle(controller, {
-          travelled: travelled * WAR_ROOM_GAIT_CADENCE_GAIN,
-          horizontalWeight: horizontalBlend,
+        const handsOccupied = warRoomHansTaskHandsOccupied(hans);
+        const sample = preserveWarRoomHansTaskArmPose(hans, body, () => {
+          const gaitSample = advanceHansWalkCycle(controller, {
+            travelled: travelled * WAR_ROOM_GAIT_CADENCE_GAIN,
+            horizontalWeight: horizontalBlend,
+          });
+          applyCanonicalElderGait(body, gaitSample, controller.forward);
+          return gaitSample;
         });
-        applyCanonicalElderGait(body, sample, controller.forward);
+        hans.userData.warRoomHansTaskArmOwnership = handsOccupied
+          ? 'task-prop-preserved-v1'
+          : 'gait-owned-v1';
         publishGaitTelemetry(hans, controller, sample, horizontalBlend, realTravelDistance);
       } else {
         horizontalBlend = mix(horizontalBlend, 0, HORIZONTAL_BLEND_RESPONSE);
@@ -170,7 +221,7 @@ export function installWarRoomHansArticulatedWalk(root) {
   driver.userData.warRoomHansWalkCycle = HANS_WALK_CYCLE_VERSION;
   driver.userData.warRoomHansLegRig = 'thigh-knee-shin-foot-v1';
   driver.userData.warRoomHansLegRigInternal = 'thigh-knee-shin-ankle-foot-v2';
-  driver.userData.warRoomHansWalkCycleSource = 'measured-root-travel-foot-target-ik-v9';
+  driver.userData.warRoomHansWalkCycleSource = 'measured-root-travel-foot-target-ik-v10-task-arm-lock';
   driver.userData.warRoomHansGaitDrive = 'measured-root-travel-v1';
   driver.userData.warRoomHansElderWalk = LEGACY_ELDER_WALK_VERSION;
   driver.userData.warRoomHansGaitFrames = LEGACY_GAIT_FRAME_COUNT;
