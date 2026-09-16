@@ -84,7 +84,7 @@ export default function LabScreen({ onExit, onStart }){
     <button className="back-link" onClick={labMode==='hub'?onExit:()=>setLabMode('hub')}>← {labMode==='hub'?'Volver al menú':'Experimentos geniales'}</button>
 
     {labMode==='hub' ? (
-      <div className="lab-workshop">
+      <div className="lab-workshop" style={{ width: '100%' }}>
         <header className="lab-workshop-masthead">
           <div>
             <div className="lab-workshop-kicker">Ala prohibida · taller de Matthias</div>
