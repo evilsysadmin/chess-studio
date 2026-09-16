@@ -28,7 +28,7 @@ const ORGANIC_MEDITERRANEAN_THEME_IDS = new Set([
   'oudTrench',
 ]);
 
-const ORGANIC_IBERIAN_THEME_IDS = new Set(['andalusianCoast']);
+const ORGANIC_IBERIAN_THEME_IDS = new Set(['andalusianCoast', 'cadizLanterns']);
 const ORGANIC_LATIN_THEME_IDS = new Set(['havana205']);
 const OSCILLATOR_PLUCKS = new Set(['oudJazz', 'qanun', 'buzuq']);
 
@@ -46,11 +46,11 @@ function organicMediterraneanInstrument(theme, instrument, lane) {
 function organicIberianInstrument(theme, instrument, lane) {
   if (!ORGANIC_IBERIAN_THEME_IDS.has(theme?.id)) return instrument;
   if (lane !== 'lead' && lane !== 'counter') return instrument;
-  // Andalusian Coast already routes its plain guitar exchanges to the modelled
-  // nylon string. Its remaining oudJazz hand-off still carries a heavy saw
-  // component, so give that answering role to the darker modelled jazz guitar:
-  // two genuinely different plucked bodies, no oscillator oud running for bars.
-  if (instrument === 'oudJazz') return 'jazzGuitar';
+  // Iberian arrangements already lean on a modelled nylon lead. Older regional
+  // oscillator plucks still make a useful sparse accent, but as a continuous
+  // answering lane they expose their fast attack/bright partials. Use the darker
+  // modelled jazz body for that long role and keep the regional voice for hooks.
+  if (OSCILLATOR_PLUCKS.has(instrument)) return 'jazzGuitar';
   return instrument;
 }
 
