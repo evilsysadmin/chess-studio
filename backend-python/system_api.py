@@ -23,16 +23,18 @@ from observability_history import record_presence_snapshot
 from api_models import ClientTelemetryRequest, DeleteAccountRequest
 from client_telemetry import record_client_event
 from pvp_api import build_pvp_router
+from chronicles_api import build_chronicles_router
 
 _logger = logging.getLogger("chess.system")
 
 
 def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usernames_getter=None) -> APIRouter:
     router = APIRouter()
-    # Keep the PvP router behind the same authenticated system-router aggregate
-    # already mounted by main.py. This avoids a second auth stack and keeps the
-    # War Room transport isolated from the CPU game API.
+    # Keep experimental/game-adjacent transports behind the same authenticated
+    # system-router aggregate already mounted by main.py. This avoids a second
+    # auth stack while their runtime logic stays isolated from the CPU game API.
     router.include_router(build_pvp_router(auth_dependency=auth_dependency, limiter=limiter))
+    router.include_router(build_chronicles_router(auth_dependency=auth_dependency))
 
     @router.get("/")
     @limiter.exempt
