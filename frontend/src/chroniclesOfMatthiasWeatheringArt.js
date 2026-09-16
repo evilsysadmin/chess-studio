@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createChroniclesStoneSurfaceTexture } from './chroniclesStoneSurfaceTexture.js';
 
 export const CHRONICLES_TACTICS_WEATHERING_STYLE = Object.freeze({
   motif: 'perimeter-weathering',
@@ -48,9 +49,12 @@ export function installChroniclesTacticsStoneWeathering(scene, { coarsePointer =
 
   const root = new THREE.Group();
   root.name = 'chronicles-stone-weathering';
+  const surfaceTexture = createChroniclesStoneSurfaceTexture({ coarsePointer, seed: 41, wet: false });
+  root.userData.chroniclesArtCancel = () => surfaceTexture.dispose();
 
   const stone = ownedMaterial({
     color: 0x393632,
+    map: surfaceTexture,
     roughness: 0.97,
     metalness: 0.01,
   });
