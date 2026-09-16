@@ -15,7 +15,7 @@ const skin = {
 };
 
 function disposeMaterial(material) {
-  const textures = new Set([material?.roughnessMap, material?.bumpMap].filter(Boolean));
+  const textures = new Set([material?.map, material?.roughnessMap, material?.bumpMap].filter(Boolean));
   for (const texture of textures) texture.dispose();
   material?.dispose?.();
 }
@@ -43,8 +43,11 @@ describe('Board3D reference look', () => {
     const dark = makePremiumTileMaterial({ color: 0x76513f, light: false, coarsePointer: false });
 
     expect(light.userData.surfaceRole).toBe('board-light');
-    expect(light.envMapIntensity).toBe(0);
-    expect(dark.envMapIntensity).toBeGreaterThan(0);
+    // A tiny IBL contribution is intentional now that the limestone albedo has
+    // visible meso-detail. Keep it tightly capped so the light squares stay matte.
+    expect(light.envMapIntensity).toBeGreaterThanOrEqual(0);
+    expect(light.envMapIntensity).toBeLessThanOrEqual(0.03);
+    expect(dark.envMapIntensity).toBeGreaterThan(light.envMapIntensity);
 
     disposeMaterial(light);
     disposeMaterial(dark);
