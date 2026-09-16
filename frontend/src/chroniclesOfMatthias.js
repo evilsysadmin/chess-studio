@@ -5,7 +5,10 @@ import {
   chroniclesMapInitialEnemyState,
   chroniclesMapTileAt,
 } from './chronicles/chroniclesMapCatalog.js';
-import { chroniclesApplyContentEffects } from './chronicles/chroniclesContentRuntime.js';
+import {
+  chroniclesApplyContentEffects,
+  chroniclesRequirementsMet,
+} from './chronicles/chroniclesContentRuntime.js';
 
 const DEFAULT_MAP = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID);
 
@@ -75,10 +78,8 @@ export function chroniclesTileAt(x, y, stateOrMapId = null) {
 }
 
 export function chroniclesEnemyIsActive(state, enemy) {
-  if (enemy.activation === 'always') return true;
-  if (enemy.activation === 'sigil') return Boolean(state.sigilAwake);
-  if (enemy.activation === 'jailer-down') return Boolean(state.sigilAwake && state.jailerHp <= 0);
-  return false;
+  if (Array.isArray(enemy.activationWhen)) return chroniclesRequirementsMet(state, enemy.activationWhen);
+  return (enemy.activation || 'always') === 'always';
 }
 
 function enemyAlive(state, enemy) {
