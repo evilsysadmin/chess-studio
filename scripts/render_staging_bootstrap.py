@@ -135,7 +135,7 @@ def find_production_service() -> dict:
     )
 
 
-def read_env(service_id: str, key: str) -> str | None:
+def _read_env_direct(service_id: str, key: str) -> str | None:
     encoded = urllib.parse.quote(key, safe="")
     try:
         payload = api("GET", f"/services/{service_id}/env-vars/{encoded}")
@@ -148,6 +148,31 @@ def read_env(service_id: str, key: str) -> str | None:
     row = payload.get("envVar") if isinstance(payload.get("envVar"), dict) else payload
     value = row.get("value") if isinstance(row, dict) else None
     return str(value) if value else None
+
+
+def read_env(service_id: str, key: str) -> str | None:
+    """Lee una env directa; el invite de staging cae a su fuente canónica."""
+    value = _read_env_direct(service_id, key)
+    if value or key != "INVITE_CODE":
+        return value
+
+    # El INVITE_CODE humano tiene una única fuente de verdad: producción. El
+    # bootstrap ya lo replica a staging, pero Render puede no devolver su valor
+    # al releerlo desde otro runner. Sólo para el servicio staging canónico
+    # recuperamos entonces el mismo valor de producción; no inventamos secretos.
+    staging = find_service(SERVICE_NAME)
+    staging_id = str((staging or {}).get("id") or "")
+    if not staging_id or staging_id != service_id:
+        return None
+
+    production = find_production_service()
+    production_id = str(production.get("id") or "")
+    if not production_id or production_id == service_id:
+        return None
+    value = _read_env_direct(production_id, key)
+    if value:
+        print("Render staging no expuso INVITE_CODE; usando la fuente de verdad de producción")
+    return value
 
 
 def stable_staging_secret(service: dict | None, key: str) -> str:
