@@ -19,9 +19,12 @@ async function openTactics(page, { progression = null } = {}) {
     }, progression);
   }
   const moreModes = await openMoreGameModes(page);
-  await moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
-  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await page.getByRole('button').filter({ hasText: 'Abrir la mesa táctica' }).click();
+  const experiments = moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' });
+  await expect(experiments).toBeVisible();
+  await experiments.click();
+  const tacticalTable = page.getByRole('button').filter({ hasText: 'Abrir la mesa táctica' });
+  await expect(tacticalTable).toBeVisible();
+  await tacticalTable.click();
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias Tactics', exact: true })).toBeVisible();
 }
 
