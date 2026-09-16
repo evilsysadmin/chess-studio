@@ -14,6 +14,7 @@ import {
 import {
   warRoomHansAmbientDelayMs,
   warRoomHansEventForGame,
+  warRoomHansShouldClearDeliveredArtifacts,
 } from './WarRoomHansEventContract.js';
 import { ensureWarRoomHansPlant } from './WarRoomHansPlantDecor.js';
 import {
@@ -39,7 +40,7 @@ import {
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v8-reset-prop-baselines-terminal-setup';
+export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v9-reset-prop-baselines-terminal-setup-delivered-continuity';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const COMMAND_DESK_TOP_NAME = 'war-room-command-desk-top';
@@ -197,6 +198,7 @@ export function installWarRoomHansServiceRoutine(root) {
     if (!nextGameId) return;
     if (nextGameId !== gameId) {
       if (active && eventName) finish(actor, props, controller, root, runtime, `service-${eventName}`);
+      const clearDeliveredArtifacts = warRoomHansShouldClearDeliveredArtifacts(nextGameId, completedGameId);
       gameId = nextGameId;
       eventName = warRoomHansEventForGame(gameId);
       eligibleSince = now;
@@ -208,7 +210,7 @@ export function installWarRoomHansServiceRoutine(root) {
       routeIn = [];
       routeOut = [];
       routeIndex = 0;
-      if (deliveredEspresso) deliveredEspresso.visible = false;
+      if (clearDeliveredArtifacts && deliveredEspresso) deliveredEspresso.visible = false;
       setDialogue(actor, '');
     }
 
