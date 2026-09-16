@@ -35,6 +35,7 @@ export default function QuickMatchModal({
   error = null,
   rating,
   onStart,
+  onOpenPvp = null,
   onClose,
 }) {
   useEscapeToClose(onClose);
@@ -63,8 +64,16 @@ export default function QuickMatchModal({
       <div className="army-card friendly-modal" role="dialog" aria-modal="true" aria-label="Configurar partida rápida" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <span className="eyebrow">Partida rápida</span>
-        <div className="combat-heading-row"><h3>Elige dificultad y juega</h3><MechanicTutorialHelp tutorialId="quick-match-rules" /></div>
-        <p className="hint-text friendly-lead">Puedes dejar todo lo demás en automático.</p>
+        <div className="combat-heading-row"><h3>Elige rival y juega</h3><MechanicTutorialHelp tutorialId="quick-match-rules" /></div>
+        <p className="hint-text friendly-lead">Matthias está disponible. Los humanos, lamentablemente, también.</p>
+
+        {onOpenPvp && (
+          <button type="button" className="adaptive-difficulty-choice" onClick={onOpenPvp} disabled={loading}>
+            <span aria-hidden="true">♙♟</span>
+            <span><b>Jugar contra una persona</b><small>Entra al roster de la War Room, mira el nivel de los presentes y reta a quien quieras.</small></span>
+            <i>1 vs 1</i>
+          </button>
+        )}
 
         {matthiasBriefing && (
           <aside className="matthias-quick-briefing" aria-label="Briefing de Matthias">
@@ -74,7 +83,7 @@ export default function QuickMatchModal({
         )}
 
         <button type="button" className={`adaptive-difficulty-choice ${autoDifficulty ? 'active' : ''}`} aria-pressed={autoDifficulty} onClick={() => setAutoDifficulty(!autoDifficulty)}>
-          <span aria-hidden="true">◎</span><span><b>Encuentra mi nivel</b><small>Busca un rival exigente pero accesible según tu rating y forma reciente · nivel {adaptiveLevel} · {difficultyLabel(adaptiveLevel)}</small></span><i>{autoDifficulty ? 'Activo' : 'Usar'}</i>
+          <span aria-hidden="true">◎</span><span><b>Jugar contra Matthias</b><small>Busca un nivel exigente pero accesible según tu rating y forma reciente · nivel {adaptiveLevel} · {difficultyLabel(adaptiveLevel)}</small></span><i>{autoDifficulty ? 'Activo' : 'Usar'}</i>
         </button>
 
         <div className={`difficulty-slider-row friendly-difficulty-main ${autoDifficulty ? 'is-disabled' : ''}`}>
@@ -146,7 +155,7 @@ export default function QuickMatchModal({
           disabled={loading}
           onClick={() => onStart({ boardRenderer: selectedRenderer })}
         >
-          {loading ? 'Creando partida…' : 'Empezar partida'}
+          {loading ? 'Creando partida…' : 'Empezar contra Matthias'}
         </button>
 
         <details className="friendly-disclosure quick-match-settings">
