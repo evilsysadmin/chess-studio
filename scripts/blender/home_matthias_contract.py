@@ -31,6 +31,7 @@ REQUIRED_OBJECTS = {
     "Classic cap band",
     "Classic cap visor",
     "Head",
+    "Nose",
     "Eye.L",
     "Eye.R",
     "Brow.L",
