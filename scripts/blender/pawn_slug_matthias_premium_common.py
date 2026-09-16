@@ -188,7 +188,7 @@ def pose(action, frame, count):
         return dict(bob=abs(wave) * 0.055, lean=-0.085 + wave * 0.018, step=0.60 * wave, lift_a=0.18 * max(0.0, wave), lift_b=0.18 * max(0.0, -wave), crouch=0.0, jump=0.0)
     if action == "crouch":
         settle = min(1.0, frame / max(1, count - 1) * 1.35)
-        return dict(bob=0.0, lean=-0.045, step=0.04, lift_a=0.0, lift_b=0.0, crouch=0.36 * settle, jump=0.0)
+        return dict(bob=0.0, lean=-0.045, step=0.04, lift_a=0.0, lift_b=0.0, crouch=0.28 * settle, jump=0.0)
     jump_phase = frame / max(1, count - 1)
     jump = math.sin(jump_phase * math.pi) * 0.36
     tuck = math.sin(jump_phase * math.pi) * 0.18
