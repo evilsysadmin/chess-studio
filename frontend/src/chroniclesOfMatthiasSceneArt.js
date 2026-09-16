@@ -8,6 +8,7 @@ import { installChroniclesTacticsEnemyIntentArt } from './chroniclesOfMatthiasEn
 import { installChroniclesTacticsDamageFeedbackArt } from './chroniclesOfMatthiasDamageFeedbackArt.js';
 import { installChroniclesTacticsArchitectureArt } from './chroniclesOfMatthiasArchitectureArt.js';
 import { installChroniclesTacticsSigilArt } from './chroniclesOfMatthiasSigilArt.js';
+import { installChroniclesTacticsPremiumMaterials } from './chroniclesOfMatthiasMaterialArt.js';
 
 const PARTY_IDS = Object.freeze(['rook', 'matthias', 'bishop', 'knight']);
 
@@ -19,6 +20,7 @@ export function installChroniclesTacticsSceneArt(models, { coarsePointer = false
 
   const fortress = installChroniclesTacticsFortressBackdrop(scene, { coarsePointer });
   const foreground = installChroniclesTacticsForegroundFraming(scene, { coarsePointer });
+  const materials = installChroniclesTacticsPremiumMaterials(scene, { coarsePointer });
   const wetStone = installChroniclesTacticsWetStone(scene, { coarsePointer });
   const weathering = installChroniclesTacticsStoneWeathering(scene, { coarsePointer });
   const grounding = installChroniclesTacticsPartyGrounding(models, { coarsePointer });
@@ -31,6 +33,7 @@ export function installChroniclesTacticsSceneArt(models, { coarsePointer = false
   return {
     fortress,
     foreground,
+    materials,
     wetStone,
     weathering,
     grounding,
