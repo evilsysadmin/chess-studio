@@ -6,7 +6,7 @@ export const DEFAULT_CHRONICLES_MAP_ID = 'crypt-eight-squares';
 
 const CONTENT_GROUPS = Object.freeze(['triggers', 'interactables', 'treasures', 'traps', 'exits']);
 const SUPPORTED_ACTIVATIONS = new Set(['always', 'sigil', 'jailer-down']);
-const SUPPORTED_MOVEMENTS = new Set(['cardinal-chase', 'knight-chase', 'patrol-route', 'hold']);
+const SUPPORTED_MOVEMENTS = new Set(['cardinal-chase', 'cardinal-roam', 'knight-chase', 'patrol-route', 'hold']);
 
 function clonePoint(point) {
   return { x: Number(point?.x || 0), y: Number(point?.y || 0) };

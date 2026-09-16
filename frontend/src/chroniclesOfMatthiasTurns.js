@@ -5,7 +5,7 @@ import {
   chroniclesTileAt,
 } from './chroniclesOfMatthias.js';
 
-export const CHRONICLES_TURN_ENGINE_VERSION = 'map-ai-v3';
+export const CHRONICLES_TURN_ENGINE_VERSION = 'map-ai-v4';
 
 const KNIGHT_STEPS = Object.freeze([
   Object.freeze({ dx: -2, dy: -1 }), Object.freeze({ dx: -2, dy: 1 }),
@@ -98,12 +98,28 @@ function choosePatrolRouteStep(state, enemy, from) {
   return canOccupy(state, enemy, next) ? { x: next.x, y: next.y } : null;
 }
 
+function roamingDirectionOffset(state, enemy) {
+  const salt = [...String(enemy.id || '')].reduce((total, char) => total + char.charCodeAt(0), 0);
+  return (Math.max(0, Number(state.round || 0)) + salt) % CHRONICLES_DIRECTIONS.length;
+}
+
+function chooseRoamingCardinalStep(state, enemy, from) {
+  const offset = roamingDirectionOffset(state, enemy);
+  for (let index = 0; index < CHRONICLES_DIRECTIONS.length; index += 1) {
+    const step = CHRONICLES_DIRECTIONS[(offset + index) % CHRONICLES_DIRECTIONS.length];
+    const position = { x: from.x + step.dx, y: from.y + step.dy };
+    if (canOccupy(state, enemy, position)) return position;
+  }
+  return null;
+}
+
 export function chroniclesChooseEnemyStep(state, enemy) {
   const from = chroniclesRuntimeEnemyPosition(state, enemy);
   const movement = enemy.ai?.movement || 'cardinal-chase';
   if (movement === 'hold') return null;
   if (movement === 'knight-chase') return chooseKnightStep(state, enemy, from);
   if (movement === 'patrol-route') return choosePatrolRouteStep(state, enemy, from);
+  if (movement === 'cardinal-roam') return chooseRoamingCardinalStep(state, enemy, from);
   return chooseCardinalStep(state, enemy, from);
 }
 
