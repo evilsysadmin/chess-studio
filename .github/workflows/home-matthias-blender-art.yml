@@ -1,6 +1,8 @@
 name: Home Matthias · Blender canonical art
 
 # Path-scoped canonical-art lane: the consolidated required gate waits for this workflow when these sources change.
+# This workflow is intentionally read-only. Updating an open PR with GITHUB_TOKEN causes GitHub to create
+# approval-required pull_request runs, so generated binaries must already be materialized in the PR head.
 on:
   pull_request:
     paths:
@@ -11,8 +13,6 @@ on:
       - 'scripts/blender/validate_home_matthias_contract.py'
       - 'frontend/art-source/matthias-home-canonical-reference.webp'
       - 'frontend/art-source/matthias-home-canonical-reference.txt'
-      # Generated .blend/.glb outputs are intentionally omitted so materializing
-      # canonical art cannot retrigger the expensive source render by itself.
       - '.github/workflows/home-matthias-blender-art.yml'
   workflow_dispatch:
 
@@ -28,36 +28,15 @@ jobs:
     name: Render canonical Home Matthias
     runs-on: ubuntu-latest
     timeout-minutes: 16
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 2
 
-      - name: Decide whether Blender must render
-        id: canonical_scope
-        shell: bash
-        run: |
-          set -euo pipefail
-          render=true
-          if [[ "${GITHUB_EVENT_NAME}" == 'pull_request' ]] && git rev-parse HEAD^ >/dev/null 2>&1; then
-            changed="$(git diff --name-only HEAD^ HEAD)"
-            current_message="$(git log -1 --pretty=%B HEAD)"
-            unexpected="$(printf '%s\n' "${changed}" | grep -Ev '^(frontend/art-source/matthias-home-canonical\.blend|frontend/public/models/matthias-home-canonical\.glb)$' || true)"
-            if [[ -n "${changed}" ]] && [[ -z "${unexpected}" ]] && grep -Fq '[matthias-art-materialized]' <<<"${current_message}"; then
-              render=false
-              echo 'Validated Matthias binaries are already materialized; skipping redundant Blender render.'
-            fi
-          fi
-          echo "render=${render}" >> "${GITHUB_OUTPUT}"
-
       - uses: ./.github/actions/setup-blender-canonical
-        if: steps.canonical_scope.outputs.render == 'true'
 
       - name: Build editable blend + animated runtime GLB + preview
-        if: steps.canonical_scope.outputs.render == 'true'
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '64' || '24' }}
@@ -72,7 +51,6 @@ jobs:
             --preview /tmp/home-matthias-art/matthias-home-canonical.png
 
       - name: Enforce hard pawn-first canonical contract
-        if: steps.canonical_scope.outputs.render == 'true'
         run: |
           set -euo pipefail
           test -s /tmp/home-matthias-art/matthias-home-canonical.blend
@@ -97,7 +75,6 @@ jobs:
           PY
 
       - name: Validate render artifact envelope
-        if: steps.canonical_scope.outputs.render == 'true'
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -116,48 +93,34 @@ jobs:
           assert max(channel[1] for channel in extrema) > 40, extrema
           PY
 
-      - name: Materialize validated canonical art on PR branch
-        if: >-
-          steps.canonical_scope.outputs.render == 'true' &&
-          github.event_name == 'pull_request' &&
-          github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      - name: Verify checked-in canonical binaries are current
         run: |
           set -euo pipefail
+          stale=0
 
-          # Do not publish a render made from a stale PR head. A newer synchronize
-          # event owns the newer source and will render that revision instead.
-          git fetch --no-tags origin "${HEAD_REF}"
-          actual_head="$(git rev-parse "origin/${HEAD_REF}")"
-          if [[ "${actual_head}" != "${EXPECTED_HEAD_SHA}" ]]; then
-            echo "PR head advanced during Blender render; skipping stale materialization."
-            echo "expected=${EXPECTED_HEAD_SHA} actual=${actual_head}"
-            exit 0
+          if ! cmp -s \
+            /tmp/home-matthias-art/matthias-home-canonical.blend \
+            frontend/art-source/matthias-home-canonical.blend; then
+            echo '::error file=frontend/art-source/matthias-home-canonical.blend::Canonical .blend is stale; materialize the rendered artifact in the PR branch.'
+            stale=1
           fi
 
-          git checkout -B "${HEAD_REF}" "${EXPECTED_HEAD_SHA}"
-          cp /tmp/home-matthias-art/matthias-home-canonical.blend \
-            frontend/art-source/matthias-home-canonical.blend
-          cp /tmp/home-matthias-art/matthias-home-canonical.glb \
-            frontend/public/models/matthias-home-canonical.glb
-          git add \
-            frontend/art-source/matthias-home-canonical.blend \
-            frontend/public/models/matthias-home-canonical.glb
-
-          if git diff --cached --quiet; then
-            echo 'Validated canonical binaries are already current.'
-            exit 0
+          if ! cmp -s \
+            /tmp/home-matthias-art/matthias-home-canonical.glb \
+            frontend/public/models/matthias-home-canonical.glb; then
+            echo '::error file=frontend/public/models/matthias-home-canonical.glb::Canonical runtime GLB is stale; materialize the rendered artifact in the PR branch.'
+            stale=1
           fi
 
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Home Matthias: materialize validated canonical binaries [matthias-art-materialized]'
-          git push origin "HEAD:${HEAD_REF}"
+          if (( stale != 0 )); then
+            echo 'CI intentionally does not push generated binaries into an open PR: GITHUB_TOKEN PR updates create approval-required workflow runs.'
+            exit 1
+          fi
+
+          echo 'Canonical Home Matthias binaries match the validated render.'
 
       - uses: actions/upload-artifact@v4
-        if: always() && steps.canonical_scope.outputs.render == 'true'
+        if: always()
         with:
           name: home-matthias-canonical-${{ github.event.pull_request.number || github.run_number }}
           path: /tmp/home-matthias-art/
