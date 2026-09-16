@@ -16,6 +16,12 @@ data "oci_core_images" "arm64_ubuntu" {
   sort_order               = "DESC"
 }
 
+data "oci_core_public_ips" "reserved" {
+  compartment_id = var.compartment_ocid
+  scope          = "REGION"
+  lifetime       = "RESERVED"
+}
+
 locals {
   selected_availability_domain = var.availability_domain != null ? trimspace(var.availability_domain) : try(
     data.oci_identity_availability_domains.available[0].availability_domains[0].name,
