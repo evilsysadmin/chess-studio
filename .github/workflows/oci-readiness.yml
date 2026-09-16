@@ -6,7 +6,10 @@ on:
     paths:
       - 'backend-python/Dockerfile'
       - 'backend-python/requirements*.txt'
+      - 'infra/oci/runtime/**'
       - 'scripts/oci_arm64_smoke.sh'
+      - 'scripts/oci_existing_a1_deploy.sh'
+      - 'scripts/oci_staging_cors_contract.py'
       # Terraform/Floci PR contracts already run inside required Quality preflight.
       - '.github/workflows/oci-readiness.yml'
 
@@ -18,6 +21,15 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  staging-cors-contract:
+    name: Staging · CORS deploy contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - run: python3 -S scripts/oci_staging_cors_contract.py
+      - run: bash -n scripts/oci_existing_a1_deploy.sh
+
   backend-arm64:
     name: Backend · linux/arm64
     runs-on: ubuntu-24.04
