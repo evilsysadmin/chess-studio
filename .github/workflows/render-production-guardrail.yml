@@ -9,7 +9,9 @@ on:
       - main
     paths:
       - 'render.yaml'
+      - 'infra/cloudflare/main.tf'
       - 'scripts/render_production_guardrail.py'
+      - 'scripts/production_ingress_smoke.py'
       - '.github/workflows/render-production-guardrail.yml'
 
 permissions:
@@ -21,7 +23,7 @@ concurrency:
 
 jobs:
   guardrail:
-    name: Production auto-deploy · off
+    name: Production ingress · locked
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
@@ -40,17 +42,37 @@ jobs:
         with:
           ref: ${{ github.sha }}
 
-      - name: Enforce production auto-deploy off
+      - name: Guardrail contract self-test
+        run: python3 -S scripts/render_production_guardrail.py --self-test
+
+      - name: Ingress smoke contract self-test
+        run: python3 -S scripts/production_ingress_smoke.py --self-test
+
+      - name: Enforce production auto-deploy and direct-origin lock
         id: render_guardrail
         run: python3 scripts/render_production_guardrail.py
+
+      # Push runs reconcile configuration immediately. The synthetic Internet
+      # probe stays weekly/manual so ordinary development does not burn Actions
+      # minutes or race the separate production-promotion Terraform apply.
+      - name: Verify live production ingress
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        id: ingress_smoke
+        run: python3 -S scripts/production_ingress_smoke.py
 
       - name: Summary
         shell: bash
         run: |
           {
-            echo '### Render production protegido'
+            echo '### Production ingress protegido'
             echo
-            echo '- Auto-deploy: `off`'
-            echo '- Los siguientes despliegues de backend deben promocionar un SHA explícito después de staging.'
+            echo '- Render auto-deploy: `off`'
+            echo '- Hostname directo `*.onrender.com`: `disabled`'
+            echo '- Dominio público esperado: `Cloudflare -> Render`'
             echo "- Config corregida en este run: \`${{ steps.render_guardrail.outputs.changed || 'false' }}\`"
+            if [[ "${{ github.event_name }}" == 'schedule' || "${{ github.event_name }}" == 'workflow_dispatch' ]]; then
+              echo '- Smoke vivo de perímetro: `OK`'
+            else
+              echo '- Smoke vivo de perímetro: `se ejecuta semanalmente o bajo workflow_dispatch`'
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
