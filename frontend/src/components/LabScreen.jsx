@@ -89,7 +89,7 @@ export default function LabScreen({ onExit, onStart }){
           <div>
             <div className="lab-workshop-kicker">Ala prohibida · taller de Matthias</div>
             <h2>Experimentos geniales</h2>
-            <p>Prototipos, aventuras y barbaridades controladas. Nada de esto es obligatorio; precisamente por eso aquí podemos romper cosas con cierta elegancia.</p>
+            <p>Prototipos, aventuras y barbaridades controladas; ninguno es necesario para disfrutar Chess Studio. Precisamente por eso aquí podemos romper cosas con cierta elegancia.</p>
           </div>
           <span className="lab-workshop-seal" aria-hidden="true">M</span>
         </header>
