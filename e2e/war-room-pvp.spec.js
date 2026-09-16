@@ -71,6 +71,6 @@ test('War Room 1v1 · reto entrante abre una partida humana en el tablero canón
   const warRoom = page.getByRole('region', { name: 'War Room 1 contra 1' });
   await expect(warRoom).toBeVisible();
   await expect(warRoom.getByText('bob', { exact: true })).toBeVisible();
-  await expect(warRoom.getByRole('status', { name: '' }).filter({ hasText: 'Tu turno' }).or(warRoom.getByText('Tu turno', { exact: true }))).toBeVisible();
+  await expect(warRoom.getByText('Tu turno', { exact: true })).toBeVisible();
   await expect(page.locator('[data-board3d-war-room="true"]')).toBeVisible({ timeout: 45_000 });
 });
