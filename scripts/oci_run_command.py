@@ -74,23 +74,53 @@ def command_poll_budget(timeout: int) -> int:
 
 
 def smoke_command() -> str:
-    command = f"""set -euo pipefail
+    command = f"""set -u
 
-test -d /opt/chess-studio
-test -d /opt/chess-studio/repo/.git
-test -s '{BOOTSTRAP_MARKER}'
-grep -Eq '^CHESS_STUDIO_BOOTSTRAP_READY repo_ref=[0-9a-f]{{40}}$' '{BOOTSTRAP_MARKER}'
-test -x '{DEPLOY_WRAPPER}'
-test -x '{RUNTIME_WRAPPER}'
-test -f '{BACKEND_UNIT}'
-test -f '{OCARUN_SUDOERS}'
-command -v docker >/dev/null
-systemctl is-active --quiet docker
-printf '%s\n' 'OCI_HOST_CONTRACT_OK'
+status=0
+check() {{
+  label="$1"
+  shift
+  if "$@"; then
+    printf '%s\n' "OCI_HOST_CHECK_OK $label"
+  else
+    printf '%s\n' "OCI_HOST_CHECK_MISSING $label"
+    status=1
+  fi
+}}
+
+check root_dir test -d /opt/chess-studio
+check repo_checkout test -d /opt/chess-studio/repo/.git
+check bootstrap_marker test -s '{BOOTSTRAP_MARKER}'
+check bootstrap_marker_sha grep -Eq '^CHESS_STUDIO_BOOTSTRAP_READY repo_ref=[0-9a-f]{{40}}$' '{BOOTSTRAP_MARKER}'
+check deploy_wrapper test -x '{DEPLOY_WRAPPER}'
+check runtime_wrapper test -x '{RUNTIME_WRAPPER}'
+check backend_unit test -f '{BACKEND_UNIT}'
+check ocarun_sudoers test -f '{OCARUN_SUDOERS}'
+check docker_binary command -v docker
+check docker_active systemctl is-active --quiet docker
+if [[ "$status" -eq 0 ]]; then
+  printf '%s\n' 'OCI_HOST_CONTRACT_OK'
+fi
 printf '%s\n' 'OCI_RUN_COMMAND_OK'
+exit 0
 """
     assert_nonsecret_command(command)
     return command
+
+
+def validate_smoke_output(text: str) -> None:
+    lines = {line.strip() for line in text.splitlines() if line.strip()}
+    if "OCI_RUN_COMMAND_OK" not in lines:
+        raise SystemExit("OCI Run Command smoke did not return the transport success marker")
+    if "OCI_HOST_CONTRACT_OK" in lines:
+        return
+    missing = sorted(
+        line.removeprefix("OCI_HOST_CHECK_MISSING ")
+        for line in lines
+        if line.startswith("OCI_HOST_CHECK_MISSING ")
+    )
+    detail = ", ".join(missing) if missing else "unknown host-contract check"
+    raise SystemExit(f"OCI host contract incomplete: {detail}")
 
 
 def deploy_command(repo_ref: str) -> str:
@@ -273,7 +303,7 @@ def build_command_content(models: Any, command: str) -> Any:
     )
 
 
-def execute(oci: Any, config: dict[str, str], command: str, *, display_name: str, timeout: int = 180) -> None:
+def execute(oci: Any, config: dict[str, str], command: str, *, display_name: str, timeout: int = 180) -> str:
     assert_nonsecret_command(command)
     compartment_id, instance_id = resolve_staging(oci, config)
     models = oci.compute_instance_agent.models
@@ -312,7 +342,7 @@ def execute(oci: Any, config: dict[str, str], command: str, *, display_name: str
             if state != "SUCCEEDED" or exit_code not in (None, 0):
                 detail = message or text or "no command output"
                 raise SystemExit(f"OCI Run Command failed: state={state} exit={exit_code} detail={detail[:500]}")
-            return
+            return text
         time.sleep(3)
     raise SystemExit("OCI Run Command polling timed out waiting for delivery/execution")
 
@@ -338,6 +368,14 @@ def self_test() -> None:
     deploy = deploy_command(sample)
     assert "OCI_HOST_CONTRACT_OK" in smoke
     assert "OCI_RUN_COMMAND_OK" in smoke
+    assert "OCI_HOST_CHECK_MISSING" in smoke
+    validate_smoke_output("OCI_HOST_CONTRACT_OK\nOCI_RUN_COMMAND_OK")
+    try:
+        validate_smoke_output("OCI_HOST_CHECK_MISSING bootstrap_marker\nOCI_RUN_COMMAND_OK")
+    except SystemExit as exc:
+        assert "bootstrap_marker" in str(exc)
+    else:
+        raise AssertionError("missing host contract must fail after diagnostic output")
     for expected in (
         DEPLOY_WRAPPER,
         RUNTIME_WRAPPER,
@@ -402,7 +440,14 @@ def main() -> int:
         reboot_agent(oci, config)
     elif args.operation == "smoke":
         diagnose_plugin(oci, config)
-        execute(oci, config, smoke_command(), display_name="chess-studio-agent-smoke", timeout=120)
+        output = execute(
+            oci,
+            config,
+            smoke_command(),
+            display_name="chess-studio-agent-smoke",
+            timeout=120,
+        )
+        validate_smoke_output(output)
     else:
         diagnose_plugin(oci, config)
         execute(
