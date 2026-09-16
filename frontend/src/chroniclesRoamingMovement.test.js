@@ -3,9 +3,21 @@ import { createChroniclesState } from './chroniclesOfMatthias.js';
 import { chroniclesMapById } from './chronicles/chroniclesMapCatalog.js';
 import { chroniclesChooseEnemyStep } from './chroniclesOfMatthiasTurns.js';
 
+function rawRoamingEnemy() {
+  const enemy = chroniclesMapById('menagerie-of-ash').enemies.find((entry) => entry.id === 'bone-hound');
+  return {
+    ...enemy,
+    ai: {
+      ...enemy.ai,
+      engagedMovement: undefined,
+      engageRange: undefined,
+    },
+  };
+}
+
 describe('Chronicles cardinal-roam enemy AI', () => {
   it('moves independently of the party using a deterministic turn rotation', () => {
-    const enemy = chroniclesMapById('menagerie-of-ash').enemies.find((entry) => entry.id === 'bone-hound');
+    const enemy = rawRoamingEnemy();
     const base = {
       ...createChroniclesState('menagerie-of-ash'),
       x: 5,
@@ -20,7 +32,7 @@ describe('Chronicles cardinal-roam enemy AI', () => {
   });
 
   it('skips blocked choices instead of walking through walls, the party or another enemy', () => {
-    const enemy = chroniclesMapById('menagerie-of-ash').enemies.find((entry) => entry.id === 'bone-hound');
+    const enemy = rawRoamingEnemy();
     const state = {
       ...createChroniclesState('menagerie-of-ash'),
       round: 0,
