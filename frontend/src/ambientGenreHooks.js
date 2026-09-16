@@ -28,7 +28,10 @@ export const AMBIENT_GENRE_HOOKS = Object.freeze({
   tangierRedTable: hook('lead', [0,2], 64, 5.0, 0.14, { 6:64, 22:67, 40:62, 56:69 }),
   beirutNightTaxi: hook('lead', [1,3], 72, 3.2, 0.20, { 5:62, 19:69, 41:66, 59:71 }),
   andalusianCoast: hook('lead', [0,2], 64, 3.8, 0.18, { 7:67, 23:73, 39:70, 55:75 }),
-  cadizLanterns: hook('counter', [1,3], 72, 4.0, 0.18, { 8:69, 26:66, 44:73, 62:67 }),
+  // Cádiz keeps the bright qanun as a regional glint, not as a repeated alert.
+  // Its long counter lane is modelled string; the qanun now returns less often,
+  // slightly longer and quieter so the attack does not dominate the 6/8 groove.
+  cadizLanterns: hook('counter', [1,3], 96, 5.0, 0.14, { 8:69, 26:66, 44:73, 62:67 }),
   bishopBlues: hook('lead', [0,1], 48, 5.2, 0.20, { 4:64, 16:67, 28:63, 40:70 }),
   terraceFireflies: hook('counter', [0,2], 64, 4.8, 0.18, { 6:79, 22:77, 38:82, 54:76 }),
   // These three already have a muted horn as a useful foreground colour, but
