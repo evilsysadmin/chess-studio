@@ -5,8 +5,9 @@ import {
   chroniclesTileAt,
 } from './chroniclesOfMatthias.js';
 
-export const CHRONICLES_TURN_ENGINE_VERSION = 'map-ai-v5';
+export const CHRONICLES_TURN_ENGINE_VERSION = 'map-ai-v6';
 
+const AWARENESS_MEMORY_TURNS = 2;
 const KNIGHT_STEPS = Object.freeze([
   Object.freeze({ dx: -2, dy: -1 }), Object.freeze({ dx: -2, dy: 1 }),
   Object.freeze({ dx: -1, dy: -2 }), Object.freeze({ dx: -1, dy: 2 }),
@@ -45,6 +46,13 @@ function canOccupy(state, enemy, position) {
   return !occupiedByEnemy(state, position, enemy.id);
 }
 
+function canTraverseTowards(state, enemy, position, target) {
+  if (!walkable(state, position)) return false;
+  if (occupiedByEnemy(state, position, enemy.id)) return false;
+  if (sameCell(position, state)) return sameCell(position, target);
+  return true;
+}
+
 function lineIsClear(state, from, to) {
   const dx = Math.sign(to.x - from.x);
   const dy = Math.sign(to.y - from.y);
@@ -69,24 +77,83 @@ export function chroniclesEnemyCanAttackParty(state, enemy, position = chronicle
   return enemy.ai?.requiresLineOfSight === false ? true : lineIsClear(state, position, partyPosition);
 }
 
-function candidateScore(position, partyPosition, index) {
-  return distance(position, partyPosition) * 100 + index;
+function enemyDetectsParty(state, enemy, from) {
+  const engageRange = Number(enemy.ai?.engageRange);
+  if (!enemy.ai?.engagedMovement || !Number.isFinite(engageRange) || engageRange < 1) return false;
+  const partyPosition = { x: state.x, y: state.y };
+  if (distance(from, partyPosition) > engageRange) return false;
+  if (!enemy.ai?.requiresLineOfSight) return true;
+  if (!(from.x === partyPosition.x || from.y === partyPosition.y)) return false;
+  return lineIsClear(state, from, partyPosition);
 }
 
-function chooseCardinalStep(state, enemy, from) {
-  const partyPosition = { x: state.x, y: state.y };
+function awarenessFor(state, enemy) {
+  const awareness = state?.enemyAwareness?.[enemy.id];
+  if (!awareness || Number(awareness.turns || 0) <= 0) return null;
+  if (!Number.isFinite(awareness.lastKnown?.x) || !Number.isFinite(awareness.lastKnown?.y)) return null;
+  return awareness;
+}
+
+function refreshEnemyAwareness(state, enemy, from) {
+  if (!enemy.ai?.engagedMovement) return state;
+  const current = awarenessFor(state, enemy);
+  let nextAwareness = current;
+
+  if (enemyDetectsParty(state, enemy, from)) {
+    nextAwareness = {
+      turns: AWARENESS_MEMORY_TURNS,
+      lastKnown: { x: state.x, y: state.y },
+    };
+  } else if (current) {
+    const turns = current.turns - 1;
+    nextAwareness = turns > 0 ? { ...current, turns } : null;
+  }
+
+  if (!current && !nextAwareness) return state;
+  const enemyAwareness = { ...(state.enemyAwareness || {}) };
+  if (nextAwareness) enemyAwareness[enemy.id] = nextAwareness;
+  else delete enemyAwareness[enemy.id];
+  return { ...state, enemyAwareness };
+}
+
+function candidateScore(position, target, index) {
+  return distance(position, target) * 100 + index;
+}
+
+function chooseGreedyCardinalStep(state, enemy, from, target) {
   return CHRONICLES_DIRECTIONS
     .map((step, index) => ({ x: from.x + step.dx, y: from.y + step.dy, index }))
     .filter((position) => canOccupy(state, enemy, position))
-    .sort((left, right) => candidateScore(left, partyPosition, left.index) - candidateScore(right, partyPosition, right.index))[0] || null;
+    .sort((left, right) => candidateScore(left, target, left.index) - candidateScore(right, target, right.index))[0] || null;
 }
 
-function chooseKnightStep(state, enemy, from) {
-  const partyPosition = { x: state.x, y: state.y };
+function chooseCardinalStep(state, enemy, from, target = { x: state.x, y: state.y }) {
+  const startKey = `${from.x},${from.y}`;
+  const visited = new Set([startKey]);
+  const queue = [{ position: { x: from.x, y: from.y }, firstStep: null }];
+
+  while (queue.length) {
+    const current = queue.shift();
+    for (let index = 0; index < CHRONICLES_DIRECTIONS.length; index += 1) {
+      const step = CHRONICLES_DIRECTIONS[index];
+      const next = { x: current.position.x + step.dx, y: current.position.y + step.dy };
+      const key = `${next.x},${next.y}`;
+      if (visited.has(key) || !canTraverseTowards(state, enemy, next, target)) continue;
+      const firstStep = current.firstStep || next;
+      if (sameCell(next, target)) return firstStep;
+      visited.add(key);
+      queue.push({ position: next, firstStep });
+    }
+  }
+
+  return chooseGreedyCardinalStep(state, enemy, from, target);
+}
+
+function chooseKnightStep(state, enemy, from, target = { x: state.x, y: state.y }) {
   return KNIGHT_STEPS
     .map((step, index) => ({ x: from.x + step.dx, y: from.y + step.dy, index }))
     .filter((position) => canOccupy(state, enemy, position))
-    .sort((left, right) => candidateScore(left, partyPosition, left.index) - candidateScore(right, partyPosition, right.index))[0] || null;
+    .sort((left, right) => candidateScore(left, target, left.index) - candidateScore(right, target, right.index))[0] || null;
 }
 
 function choosePatrolRouteStep(state, enemy, from) {
@@ -113,23 +180,29 @@ function chooseRoamingCardinalStep(state, enemy, from) {
   return null;
 }
 
-function enemyMovementForDistance(state, enemy, from) {
-  const movement = enemy.ai?.movement || 'cardinal-chase';
+function enemyMovementIntent(state, enemy, from) {
+  const baseMovement = enemy.ai?.movement || 'cardinal-chase';
   const engagedMovement = enemy.ai?.engagedMovement;
-  const engageRange = Number(enemy.ai?.engageRange);
-  if (!engagedMovement || !Number.isFinite(engageRange) || engageRange < 1) return movement;
-  const partyPosition = { x: state.x, y: state.y };
-  return distance(from, partyPosition) <= engageRange ? engagedMovement : movement;
+  if (!engagedMovement) return { movement: baseMovement, target: { x: state.x, y: state.y } };
+
+  const detected = enemyDetectsParty(state, enemy, from);
+  const awareness = awarenessFor(state, enemy);
+  if (!detected && !awareness) return { movement: baseMovement, target: { x: state.x, y: state.y } };
+
+  return {
+    movement: engagedMovement,
+    target: detected ? { x: state.x, y: state.y } : awareness.lastKnown,
+  };
 }
 
 export function chroniclesChooseEnemyStep(state, enemy) {
   const from = chroniclesRuntimeEnemyPosition(state, enemy);
-  const movement = enemyMovementForDistance(state, enemy, from);
+  const { movement, target } = enemyMovementIntent(state, enemy, from);
   if (movement === 'hold') return null;
-  if (movement === 'knight-chase') return chooseKnightStep(state, enemy, from);
+  if (movement === 'knight-chase') return chooseKnightStep(state, enemy, from, target);
   if (movement === 'patrol-route') return choosePatrolRouteStep(state, enemy, from);
   if (movement === 'cardinal-roam') return chooseRoamingCardinalStep(state, enemy, from);
-  return chooseCardinalStep(state, enemy, from);
+  return chooseCardinalStep(state, enemy, from, target);
 }
 
 function livingPartyTargets(state) {
@@ -227,6 +300,7 @@ export function chroniclesResolveEnemyTurn(state) {
   activeEnemies.forEach((enemy, enemyIndex) => {
     if (partyDefeated(next)) return;
     const position = chroniclesRuntimeEnemyPosition(next, enemy);
+    next = refreshEnemyAwareness(next, enemy, position);
     if (chroniclesEnemyCanAttackParty(next, enemy, position)) {
       next = damageParty(next, enemy, enemyIndex, events);
       return;
