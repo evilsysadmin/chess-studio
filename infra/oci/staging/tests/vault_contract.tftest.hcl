@@ -79,12 +79,25 @@ run "staging_vault_is_reproducible_without_secret_plaintext" {
   }
 
   assert {
-    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 3
-    error_message = "A1 runtime IAM must remain limited to object read, secret-bundle read and self Run Command."
+    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 2
+    error_message = "A1 runtime IAM must remain limited to runtime-object read and self Run Command."
   }
 
   assert {
-    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[1], "to read secret-bundles")
-    error_message = "The A1 may read secret values but must not manage or rotate them."
+    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[0], "to read objects")
+    error_message = "The A1 must retain read-only access to the private runtime-config object."
+  }
+
+  assert {
+    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[1], "to use instance-agent-command-execution-family")
+    error_message = "The A1 must retain self-scoped Run Command execution access."
+  }
+
+  assert {
+    condition = alltrue([
+      for statement in oci_identity_policy.staging_runtime_config.statements :
+      !strcontains(statement, "secret-bundles")
+    ])
+    error_message = "A1 runtime IAM must not grant secret-bundle access until OCI Secrets is actually consumed."
   }
 }
