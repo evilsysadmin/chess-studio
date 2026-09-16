@@ -4,8 +4,9 @@ import {
   releaseWarRoomHansTask,
   warRoomHansTaskAvailable,
 } from './WarRoomHansRuntime.js';
+import { WAR_ROOM_HANS_NO_GAME_CONTEXT_ID } from './WarRoomHansEventContract.js';
 
-export const WAR_ROOM_HANS_ACTOR_VERSION = 'war-room-hans-actor-v5-runtime-bound';
+export const WAR_ROOM_HANS_ACTOR_VERSION = 'war-room-hans-actor-v6-explicit-missing-game-context';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -55,7 +56,11 @@ export function getWarRoomHansGameId(actor) {
   if (!actor.gameMarker || actor.gameMarker.isConnected === false) {
     actor.gameMarker = globalThis.document?.querySelector?.(GAME_MARKER_SELECTOR) || null;
   }
-  return String(actor.gameMarker?.getAttribute?.('data-war-room-hans-game-id') || '');
+  const gameId = String(actor.gameMarker?.getAttribute?.('data-war-room-hans-game-id') || '');
+  // A missing marker is still a meaningful context transition for long-lived
+  // ambient routines. Returning a truthy inert sentinel lets their existing
+  // game-change cleanup run instead of silently preserving a stale active task.
+  return gameId || WAR_ROOM_HANS_NO_GAME_CONTEXT_ID;
 }
 
 export function getWarRoomHansNarrativePhase(actor) {
