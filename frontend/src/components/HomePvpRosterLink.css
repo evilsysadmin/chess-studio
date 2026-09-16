@@ -1,0 +1,55 @@
+.home-pvp-roster-link {
+  position: fixed;
+  z-index: 44;
+  left: 50%;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .42rem .68rem;
+  border: 1px solid rgba(202, 164, 94, .34);
+  border-radius: 999px;
+  color: #ede3cf;
+  background: linear-gradient(180deg, rgba(29, 21, 14, .91), rgba(11, 12, 14, .94));
+  box-shadow: 0 13px 32px rgba(0, 0, 0, .34), inset 0 1px rgba(255, 226, 171, .045);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.home-pvp-roster-link:hover,
+.home-pvp-roster-link:focus-visible {
+  transform: translateX(-50%) translateY(-2px);
+  border-color: rgba(222, 187, 116, .62);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, .42), 0 0 0 1px rgba(222, 187, 116, .09);
+}
+
+.home-pvp-roster-link:focus-visible { outline: 2px solid rgba(225, 190, 119, .72); outline-offset: 3px; }
+.home-pvp-roster-link:disabled { opacity: .48; cursor: wait; }
+.home-pvp-roster-link__mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; color: #dab66f; background: rgba(112, 77, 37, .24); border: 1px solid rgba(216, 179, 108, .18); font-size: 1rem; }
+.home-pvp-roster-link__copy { display: grid; gap: .05rem; text-align: left; line-height: 1.02; }
+.home-pvp-roster-link__copy small { color: rgba(229, 208, 169, .55); font-family: var(--font-mono); font-size: .55rem; letter-spacing: .11em; }
+.home-pvp-roster-link__copy strong { font-size: .76rem; letter-spacing: .04em; }
+.home-pvp-roster-link__chevron { color: rgba(225, 190, 119, .78); font-size: 1.2rem; line-height: 1; }
+
+@media (max-width: 520px) {
+  .home-pvp-roster-link {
+    left: 50%;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    min-height: 42px;
+    max-width: calc(100vw - 24px);
+    padding: .34rem .56rem;
+    gap: .44rem;
+  }
+  .home-pvp-roster-link__mark { width: 27px; height: 27px; }
+  .home-pvp-roster-link__copy small { font-size: .5rem; }
+  .home-pvp-roster-link__copy strong { font-size: .7rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-pvp-roster-link { transition: none; }
+  .home-pvp-roster-link:hover,
+  .home-pvp-roster-link:focus-visible { transform: translateX(-50%); }
+}
