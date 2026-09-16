@@ -138,7 +138,14 @@ jobs:
       - name: Validate OCI deploy contracts
         run: |
           python3 -S scripts/oci_run_command.py --self-test
+          python3 -S scripts/oci_runtime_config.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
+
+      - name: Sync private OCI runtime config before replacement
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/oci_runtime_config.py sync
 
       # Legacy contract marker only: Deploy exact backend commit to Render staging
       - name: Deploy exact backend commit to OCI staging
@@ -455,6 +462,7 @@ jobs:
             echo '- Frontend SHA: `mismo generation SHA · verificado`'
             echo '- Worker SHA: `mismo generation SHA · verificado por /health`'
             echo '- Mongo staging: `ready`'
+            echo '- OCI runtime config: `sincronizado antes del reemplazo del backend`'
             echo '- Generation parity gate: `N/N/N · verificado dentro de cada smoke antes de Chromium`'
             echo '- Live browser smoke: `War Room live + F5 authority · paralelos · OK`'
             echo '- Visual evidence: `vídeos Chromium retenidos 7 días en staging-live-playwright-*`'
