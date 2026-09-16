@@ -1,0 +1,5 @@
+# One-shot OCI staging Vault bootstrap request
+# Migrates the existing allow-listed Render staging runtime values into the
+# Terraform-managed OCI Vault without changing the running backend.
+requested_at=2026-09-16T19:25:00Z
+reason=initial-render-to-vault-migration
