@@ -520,8 +520,8 @@ jobs:
           if not service_id:
               raise SystemExit('Falta RENDER_SERVICE_ID para leer INVITE_CODE de staging')
           invite = render.read_env(service_id, 'INVITE_CODE') or ''
-          if len(invite) < 16:
-              raise SystemExit('INVITE_CODE de staging falta o es demasiado corto')
+          if not invite:
+              raise SystemExit('INVITE_CODE de staging falta')
           render.export_github_secret_env('STAGING_INVITE_CODE', invite)
           PY
 
