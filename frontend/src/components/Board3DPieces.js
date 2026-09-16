@@ -125,15 +125,15 @@ function knightGeometrySet(coarsePointer = false) {
 }
 
 function addContactShadow(group, coarsePointer = false, side = 'b') {
-  // Coarse-pointer/mobile used to drop contact shadows entirely. Keep a single,
-  // lower-segment grounding pass there: it costs one cheap unlit mesh per piece
-  // but removes the strongest source of the "hovering chessmen" look. Desktop
-  // retains the richer two-pass profile that is already part of the approved look.
+  // Keep the cheap grounding meshes just above the square top. They used to sit
+  // a few millimetres below the board surface after the piece-group offset was
+  // applied, so depth testing could hide most of the intended contact cue.
+  // Desktop keeps two soft passes; coarse-pointer stays on one low-cost pass.
   const shadowProfile = coarsePointer
-    ? (side === 'w' ? [[0.34, 0.13, -0.006]] : [[0.34, 0.11, -0.006]])
+    ? (side === 'w' ? [[0.34, 0.13, 0.01]] : [[0.34, 0.11, 0.01]])
     : (side === 'w'
-      ? [[0.31, 0.24, -0.006], [0.39, 0.09, -0.009]]
-      : [[0.31, 0.2, -0.006], [0.39, 0.075, -0.009]]);
+      ? [[0.31, 0.24, 0.01], [0.39, 0.09, 0.008]]
+      : [[0.31, 0.2, 0.01], [0.39, 0.075, 0.008]]);
   const segments = coarsePointer ? 16 : 28;
   const tier = coarsePointer ? 'lite-single-pass' : 'full-dual-pass';
   for (const [radius, opacity, y] of shadowProfile) {
