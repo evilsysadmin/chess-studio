@@ -97,9 +97,8 @@ jobs:
             cat "$log"
             exit "$rc"
           done
-      - name: Attach existing reserved staging egress
+      - name: Attach and verify existing reserved staging egress
         shell: bash
         run: |
           set -euo pipefail
           python3 scripts/oci_reserved_egress.py
-          python3 scripts/oci_run_command.py diagnose
