@@ -53,18 +53,23 @@ def setup_scene():
     cam = bpy.context.object
     cam.data.type = "ORTHO"
 
-    # Blender's orthographic scale is the *vertical* camera span. The previous
-    # renderer used COLS * CELL as though ortho_scale represented width, which
-    # made the 16x5 atlas frame roughly 3.2x too tall and shrank Matthias before
-    # the later downsample. Author exactly five cell-heights vertically; the
-    # 16:5 render aspect supplies the matching sixteen-cell horizontal span.
+    # Make the camera contract explicit instead of relying on AUTO sensor-fit
+    # semantics. For a horizontal fit Blender/Cycles treats ortho_scale as the
+    # visible width; the output aspect derives the matching vertical span.
+    cam.data.sensor_fit = "HORIZONTAL"
     expected_aspect = COLS / ROWS
     render_aspect = scene.render.resolution_x / scene.render.resolution_y
     if not math.isclose(render_aspect, expected_aspect, rel_tol=0.0, abs_tol=1e-9):
         raise RuntimeError(
             f"Pawn Slug atlas aspect drift: render={render_aspect:.9f} expected={expected_aspect:.9f}"
         )
-    cam.data.ortho_scale = ROWS * CELL
+    horizontal_span = COLS * CELL
+    vertical_span = horizontal_span / render_aspect
+    if not math.isclose(vertical_span, ROWS * CELL, rel_tol=0.0, abs_tol=1e-9):
+        raise RuntimeError(
+            f"Pawn Slug atlas cell geometry drift: vertical={vertical_span:.9f} expected={ROWS * CELL:.9f}"
+        )
+    cam.data.ortho_scale = horizontal_span
     cam.rotation_euler = (center - cam.location).to_track_quat("-Z", "Y").to_euler()
     scene.camera = cam
 
