@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Deterministically build the editable .blend, runtime .glb and optional preview for Home Matthias."""
 import argparse
+import json
 import os
+import struct
 import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -60,6 +62,19 @@ def add_face_anchor(rig):
     anchor.parent_bone = 'head'
     anchor.matrix_world = world
     return anchor
+
+
+def assert_runtime_face_anchor(path):
+    """Fail the canonical build if the exported GLB loses the camera-facing anchor."""
+    with open(path, 'rb') as handle:
+        magic, version, total_length = struct.unpack('<4sII', handle.read(12))
+        assert magic == b'glTF' and version == 2, 'invalid Home Matthias GLB header'
+        json_length, json_type = struct.unpack('<II', handle.read(8))
+        assert json_type == 0x4E4F534A, 'Home Matthias GLB missing JSON chunk'
+        document = json.loads(handle.read(json_length).decode('utf-8').rstrip('\x00 '))
+    assert total_length == os.path.getsize(path), 'Home Matthias GLB length mismatch'
+    node_names = {node.get('name') for node in document.get('nodes', [])}
+    assert 'Nose' in node_names, 'Home Matthias GLB lost runtime face anchor Nose'
 
 
 def configure_preview_samples(scene):
@@ -148,6 +163,7 @@ def main():
         kwargs['export_extras'] = True
 
     bpy.ops.export_scene.gltf(**kwargs)
+    assert_runtime_face_anchor(parsed.glb)
     if parsed.preview:
         render_preview(parsed.preview)
     print('canonical Blender Matthias:', parsed.blend, parsed.glb, parsed.preview or '')
