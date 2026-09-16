@@ -16,7 +16,7 @@ describe('Pawn Slug premium enemy run atlas', () => {
     expect(meta.directionMode).toBe('atlas-uv-mirror');
     expect(meta.frameBaseByType).toEqual({ pawn: 0, knight: 8, rook: 16 });
     expect(meta.legacyRunTransport).toBe('retired');
-    expect(meta.generatedActionAtlas.r2Asset).toBe('pawnSlug.enemy.actionAtlas');
+    expect(meta.generatedActionAtlas.logicalId).toBe('pawnSlug.enemy.actionAtlas');
   });
 
   it('selects the correct eight-frame bank for each enemy class', () => {
