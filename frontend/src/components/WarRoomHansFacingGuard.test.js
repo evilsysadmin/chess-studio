@@ -15,6 +15,7 @@ function makeRig(forwardSign = 1, phase = 'carry-log') {
   hans.name = 'war-room-hans-butler';
   hans.visible = true;
   hans.position.set(0, -0.34, 0.72);
+  hans.userData.warRoomHansLocalForwardZ = forwardSign;
   fireplace.add(hans);
 
   const bodyMesh = new THREE.Mesh(
@@ -35,7 +36,13 @@ function makeRig(forwardSign = 1, phase = 'carry-log') {
   face.position.set(0, -0.1, forwardSign * 0.29);
   const sideHair = new THREE.Object3D();
   sideHair.position.set(0.2, 0.1, -forwardSign * 0.03);
-  head.add(skull, face, sideHair);
+  // Deliberately extends farther in |Z| than the face. The old heuristic picked
+  // whichever head child protruded most and could therefore teach the guard that
+  // Hans' back was his face after harmless modelling changes.
+  const rearDecoration = new THREE.Object3D();
+  rearDecoration.name = 'fixture-hans-rear-decoration';
+  rearDecoration.position.set(0, 0.16, -forwardSign * 0.52);
+  head.add(skull, face, sideHair, rearDecoration);
   hans.add(head);
   hans.userData.refs = { head };
 
@@ -85,7 +92,7 @@ function paintVisible(mesh, frame) {
 }
 
 describe('Hans rendered facing guard', () => {
-  it.each([1, -1])('corrige el moonwalk usando la cara renderizada con frontal %s', (forwardSign) => {
+  it.each([1, -1])('corrige el moonwalk usando el frontal canónico %s aunque otro mesh sobresalga más', (forwardSign) => {
     const { root, hans, head, face, driver } = makeRig(forwardSign, 'carry-log');
     const before = hans.position.clone();
     expect(installWarRoomHansFacingGuard(root)).toBe(1);

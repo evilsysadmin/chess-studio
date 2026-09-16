@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { setWarRoomHansServiceDoorOpen } from './WarRoomHansServiceDoor.js';
 
-export const WAR_ROOM_HANS_SERVICE_EXIT_DOOR_GUARD_VERSION = 'hans-service-exit-door-guard-v1';
+export const WAR_ROOM_HANS_SERVICE_EXIT_DOOR_GUARD_VERSION = 'hans-service-exit-door-guard-v2-bidirectional';
 
 const HANS_NAME = 'war-room-hans-butler';
 const FLOOR_NAME = 'war-room-castle-floor-slab';
@@ -9,6 +9,7 @@ const OPEN_START_DISTANCE = 1.1;
 const FULL_OPEN_DISTANCE = 0.34;
 const HOLD_OPEN_MS = 700;
 const CLOSE_MS = 520;
+const SERVICE_ROUTE_PREFIXES = Object.freeze(['service-', 'chore-', 'mop-']);
 
 function nowMs() {
   return typeof performance !== 'undefined' && typeof performance.now === 'function'
@@ -20,8 +21,11 @@ function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
 }
 
-function returningRoute(route) {
-  return String(route || '').endsWith('return');
+function serviceDoorTransitRoute(route) {
+  const name = String(route || '');
+  return name === 'entry'
+    || name.startsWith('leave-')
+    || SERVICE_ROUTE_PREFIXES.some((prefix) => name.startsWith(prefix));
 }
 
 export function installWarRoomHansServiceExitDoorGuard(root, doorRefs) {
@@ -43,7 +47,10 @@ export function installWarRoomHansServiceExitDoorGuard(root, doorRefs) {
     const route = String(hans.userData?.warRoomHansRoute || '');
     let open = 0;
 
-    if (hans.visible !== false && returningRoute(route) && doorAnchor?.getWorldPosition) {
+    // The producer routines may still animate the door on their own timeline, but
+    // physical clearance wins in both directions. This prevents the panel from
+    // closing through Hans while he is only a few tenths of a unit past the jamb.
+    if (hans.visible !== false && serviceDoorTransitRoute(route) && doorAnchor?.getWorldPosition) {
       hans.getWorldPosition(hansWorld);
       doorAnchor.getWorldPosition(doorWorld);
       const distance = Math.hypot(hansWorld.x - doorWorld.x, hansWorld.z - doorWorld.z);
