@@ -109,4 +109,35 @@ describe('Pawn Slug canonical Matthias head art', () => {
     expect(headTexture.offset.set).toHaveBeenLastCalledWith(expectedWindow.offsetX, expectedWindow.offsetY);
     expect(head.position.y).toBeCloseTo(expectedPose.y);
   });
+
+  it('keeps the canonical face/cap attached and frame-correct through every premium weapon bank', () => {
+    const sprite = createIntegratedMatthiasSlugSprite();
+    const head = sprite.userData.canonicalHead.sprite;
+    const canonicalTexture = sprite.userData.canonicalHead.texture;
+
+    sprite.userData.setActionFrame('run', 3);
+    sprite.userData.setDirection(-1);
+    const expectedWindow = pawnSlugCanonicalHeadAtlasWindow('run', 3, -1);
+    const expectedPose = pawnSlugCanonicalHeadPose('run', 3, -1);
+
+    for (const weapon of ['pistol', 'machinegun', 'shotgun', 'panzerfaust']) {
+      sprite.userData.setWeapon(weapon);
+
+      expect(sprite.userData.atlas.weapon).toBe(weapon);
+      expect(sprite.userData.atlas.ready).toBe(true);
+      expect(sprite.userData.atlas.source).toBe('primary');
+      expect(sprite.userData.canonicalHead.texture).toBe(canonicalTexture);
+      expect(sprite.userData.canonicalHead.ready).toBe(true);
+      expect(sprite.userData.canonicalHead.source).toBe('canonical');
+      expect(head.parent).toBe(sprite);
+      expect(head.material.map).toBe(canonicalTexture);
+      expect(head.material.visible).toBe(true);
+      expect(canonicalTexture.repeat.set).toHaveBeenLastCalledWith(expectedWindow.repeatX, expectedWindow.repeatY);
+      expect(canonicalTexture.offset.set).toHaveBeenLastCalledWith(expectedWindow.offsetX, expectedWindow.offsetY);
+      expect(head.position.x).toBeCloseTo(expectedPose.x);
+      expect(head.position.y).toBeCloseTo(expectedPose.y);
+      expect(head.scale.x).toBeCloseTo(expectedPose.scaleX);
+      expect(head.scale.y).toBeCloseTo(expectedPose.scaleY);
+    }
+  });
 });
