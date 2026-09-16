@@ -4,7 +4,7 @@ import {
   WAR_ROOM_HANS_ELDER_POSTURE_VERSION,
 } from './WarRoomHansElderPostureContract.js';
 
-export const WAR_ROOM_HANS_CANONICAL_BUTLER_VERSION = 'hans-canonical-elder-butler-v4-poker-rig';
+export const WAR_ROOM_HANS_CANONICAL_BUTLER_VERSION = 'hans-canonical-elder-butler-v5-explicit-forward';
 
 const HANS_NAME = 'war-room-hans-butler';
 const LEGACY_CANE_NAME = 'war-room-hans-cane';
@@ -182,6 +182,8 @@ export function installWarRoomHansCanonicalButler(root) {
   hans.userData.warRoomHansCanonicalPosture = 'stooped-disciplined-butler-v2';
   hans.userData.warRoomHansElderPosture = WAR_ROOM_HANS_ELDER_POSTURE_VERSION;
   hans.userData.warRoomHansBaseHunchRadians = HANS_ELDER_POSTURE.torsoHunchRadians;
+  hans.userData.warRoomHansLocalForwardZ = forward;
+  hans.userData.warRoomHansFacingContract = 'canonical-local-forward-v1';
   hans.userData.warRoomHansFootDirection = leftShoe && rightShoe ? 'toe-forward-v1' : 'legacy-foot-geometry';
   hans.userData.warRoomHansPokerRig = pokerRigged ? POKER_RIG_VERSION : 'unavailable';
   hans.userData.warRoomHansCane = null;
