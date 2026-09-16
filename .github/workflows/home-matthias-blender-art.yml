@@ -1,6 +1,6 @@
 name: Home Matthias · Blender canonical art
 
-# Path-scoped canonical-art lane: required Tests · Playwright waits for this workflow on matching PR sources.
+# Path-scoped canonical-art lane: required Tests · Playwright waits for this workflow on matching PR art sources.
 on:
   pull_request:
     paths:
