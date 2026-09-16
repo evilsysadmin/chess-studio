@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import enemyCastAtlasFallbackUrl from './assets/pawnSlug/enemy_cast_blender_v1_runtime.webp';
 import { PAWN_SLUG_ENEMY_ACTIONS } from './pawnSlugEnemyActionMotion.js';
 import { R2_ASSET_BASE_URL, r2AssetUrl } from './r2Assets.js';
 
@@ -14,15 +13,12 @@ let pawnSlugSoldierAtlasStatus = null;
 const liveClones = new Set();
 
 export const PAWN_SLUG_SOLDIER_ATLAS_LOGICAL_ID = 'pawnSlug.enemy.actionAtlas';
-export const PAWN_SLUG_SOLDIER_ATLAS_URL = r2AssetUrl(
-  PAWN_SLUG_SOLDIER_ATLAS_LOGICAL_ID,
-  enemyCastAtlasFallbackUrl,
-);
+export const PAWN_SLUG_SOLDIER_ATLAS_URL = r2AssetUrl(PAWN_SLUG_SOLDIER_ATLAS_LOGICAL_ID);
 
 function pawnSlugSoldierAtlasTransport() {
   return R2_ASSET_ORIGIN && PAWN_SLUG_SOLDIER_ATLAS_URL.startsWith(R2_ASSET_ORIGIN)
     ? 'r2'
-    : 'fallback';
+    : 'missing';
 }
 
 function publishPawnSlugSoldierAtlasStatus(status) {
@@ -68,6 +64,10 @@ function configureTexture(texture, { sharedSource = false } = {}) {
 
 function baseAtlasTexture() {
   if (cachedBaseTexture) return cachedBaseTexture;
+  if (!PAWN_SLUG_SOLDIER_ATLAS_URL) {
+    publishPawnSlugSoldierAtlasStatus('failed');
+    return null;
+  }
   const loader = new THREE.TextureLoader();
   publishPawnSlugSoldierAtlasStatus('loading');
   cachedBaseTexture = configureTexture(loader.load(
@@ -87,6 +87,7 @@ function baseAtlasTexture() {
 
 export function createPawnSlugSoldierAtlasTexture() {
   const base = baseAtlasTexture();
+  if (!base) return null;
   const texture = configureTexture(base.clone());
   texture.userData.pawnSlugSoldierAtlasClone = true;
   liveClones.add(texture);
@@ -133,8 +134,7 @@ export const PAWN_SLUG_SOLDIER_ATLAS_META = Object.freeze({
   sharedTextureSource: true,
   mipmaps: false,
   logicalId: PAWN_SLUG_SOLDIER_ATLAS_LOGICAL_ID,
-  transport: 'r2-cdn-with-local-webp-fallback',
-  localFallbackAsset: 'enemy_cast_blender_v1_runtime.webp',
+  transport: 'r2-cdn-required',
   browserRenderContract: 'data-pawn-slug-action-atlas',
   browserR2Contract: 'r2-ready',
 });
