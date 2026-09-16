@@ -291,6 +291,7 @@
   width: 7px;
   height: 7px;
   justify-self: center;
+  align-self: center;
   border: 1px solid rgba(210, 160, 87, .5);
   border-radius: 50%;
   background: radial-gradient(circle at 42% 38%, #d8ad68, #8a5a2e 48%, #3a281c 72%);
@@ -300,6 +301,8 @@
 
 .illustrated-home__utilities > .illustrated-home__dungeon-panel > button::after {
   content: '›';
+  justify-self: end;
+  align-self: center;
   color: #a78149;
   font: 700 18px/1 Georgia, serif;
   text-align: center;
@@ -337,19 +340,19 @@
   transform: translateX(2px);
 }
 
-/* A crooked route downwards. Different widths and offsets keep the eye following
- * a gallery rather than scanning a stack of equal controls.
+/* Keep the doorway silhouettes varied, but anchor every row to the same left rail.
+ * Depth comes from width, shape and vertical rhythm; typography should never wander.
  */
 @media (min-width: 1000px) {
   .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(1) { width: 88%; margin-left: 0; }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(2) { width: 91%; margin-left: 11px; }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(3) { width: 87%; margin-left: 24px; }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(4) { width: 82%; margin-left: 39px; margin-top: 7px; }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(5) { width: 86%; margin-left: 27px; margin-top: 5px; }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(6) { width: 90%; margin-left: 14px; }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(7) { width: 87%; margin-left: 3px; }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(8) { width: 83%; margin-left: 18px; margin-top: 7px; }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(9) { width: 80%; margin-left: 34px; margin-top: 6px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(2) { width: 91%; margin-left: 0; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(3) { width: 87%; margin-left: 0; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(4) { width: 82%; margin-left: 0; margin-top: 7px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(5) { width: 86%; margin-left: 0; margin-top: 5px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(6) { width: 90%; margin-left: 0; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(7) { width: 87%; margin-left: 0; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(8) { width: 83%; margin-left: 0; margin-top: 7px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(9) { width: 80%; margin-left: 0; margin-top: 6px; }
 }
 
 /* The lab entrance should look like the questionable door at the bottom of the
@@ -417,8 +420,12 @@
     border-radius: 10px 4px 9px 5px;
   }
 
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(3n + 2) { margin-left: 5px; width: calc(100% - 10px); }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(3n) { margin-left: 9px; width: calc(100% - 14px); }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(3n + 2),
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(3n) {
+    margin-left: 0;
+  }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(3n + 2) { width: calc(100% - 10px); }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(3n) { width: calc(100% - 14px); }
   .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(4),
   .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(8) { margin-top: 4px; }
 }
