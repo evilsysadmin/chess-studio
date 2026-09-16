@@ -11,14 +11,6 @@ on:
       - 'infra/oci/ops/mongo-network-diagnose.request'
       - 'infra/oci/ops/reserved-egress.request'
       - 'infra/oci/ops/vault-bootstrap.request'
-      - '.github/workflows/oci-staging-service.yml'
-  workflow_run:
-    workflows:
-      - OCI staging · auto apply
-    types:
-      - completed
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       operation:
@@ -47,7 +39,6 @@ concurrency:
 
 jobs:
   control:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     name: OCI staging · service control
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -60,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 2
 
       - name: Detect explicit OCI operations requested by main
@@ -162,9 +153,9 @@ jobs:
 
       - name: Wait for OCI Run Command registration
         if: >-
-          github.event_name == 'workflow_run' ||
           (github.event_name == 'push' && steps.ops.outputs.bringup == 'true') ||
-          (github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync')
+          (github.event_name == 'workflow_dispatch' &&
+            (inputs.operation == 'runtime-sync' || inputs.operation == 'deploy'))
         shell: bash
         run: |
           set -euo pipefail
@@ -190,7 +181,6 @@ jobs:
 
       - name: Sync private runtime config
         if: >-
-          github.event_name == 'workflow_run' ||
           (github.event_name == 'push' && steps.ops.outputs.bringup == 'true') ||
           (github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync')
         env:
@@ -248,7 +238,6 @@ jobs:
       - name: Smoke OCI agent transport
         id: smoke
         if: >-
-          github.event_name == 'workflow_run' ||
           (github.event_name == 'push' &&
             steps.ops.outputs.backend_diagnose != 'true' &&
             steps.ops.outputs.mongo_target_diagnose != 'true' &&
@@ -290,9 +279,8 @@ jobs:
 
       - name: Deploy immutable backend release
         if: >-
-          github.event_name == 'workflow_run' ||
           (github.event_name == 'push' && steps.ops.outputs.bringup == 'true') ||
           (github.event_name == 'workflow_dispatch' && inputs.operation == 'deploy')
         env:
-          DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.repo_ref || github.event.workflow_run.head_sha || github.sha }}
+          DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.repo_ref || github.sha }}
         run: python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_REF"
