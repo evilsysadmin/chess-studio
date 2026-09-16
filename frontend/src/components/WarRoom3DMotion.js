@@ -114,9 +114,9 @@ export function applyWarRoomKeyLightGrade(scene) {
 
 export function warRoomWarmFillPose({ whiteSide = true } = {}) {
   return {
-    x: -5.8,
-    y: 4.0,
-    z: whiteSide ? 1.9 : -1.9,
+    x: -5.0,
+    y: 3.6,
+    z: whiteSide ? 3.15 : -3.15,
   };
 }
 
@@ -132,9 +132,10 @@ export function applyWarRoomWarmFillGrade(scene) {
   }
   if (!warm) return null;
 
-  // The theme-colored rim already lives behind the opponent rank. Keep the
-  // existing warm practical on the player's half, but move it into a restrained
-  // rear-quarter graze so overlapping ivory officers retain side modelling.
+  // The theme-colored rim already lives behind the opponent rank. Pull the
+  // existing warm practical closer to the player's outer quarter so the ivory
+  // receives a broader lateral graze instead of flat front fill. This exposes
+  // bevels and carved profiles without increasing light count or exposure.
   let key = warRoomKeyLightState.get(scene) || null;
   if (!key || !key.parent) {
     key = scene.children?.find((object) => (
@@ -149,7 +150,7 @@ export function applyWarRoomWarmFillGrade(scene) {
   else if (warm.position) Object.assign(warm.position, pose);
 
   scene.userData ||= {};
-  scene.userData.warRoomRankSeparation = 'rear-quarter-ranks-v2';
+  scene.userData.warRoomRankSeparation = 'lateral-graze-ranks-v3';
   scene.userData.warRoomWarmFillPosition = pose;
   return warm;
 }
@@ -391,7 +392,7 @@ function installWarRoomRenderDiscipline() {
     }
     const warmFill = applyWarRoomWarmFillGrade(scene);
     if (warmFill && this.domElement?.dataset) {
-      this.domElement.dataset.warRoomRankSeparation = 'rear-quarter-ranks-v2';
+      this.domElement.dataset.warRoomRankSeparation = 'lateral-graze-ranks-v3';
     }
     const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
