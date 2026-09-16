@@ -55,11 +55,17 @@ export const AMBIENT_GENRE_HOOK_IDS = Object.freeze(Object.keys(AMBIENT_GENRE_HO
 export function withAmbientGenreHook(theme, feel) {
   const spec = AMBIENT_GENRE_HOOKS[theme?.id];
   if (!spec || !feel) return feel;
-  const instrument = spec.instrumentRole === 'existing'
+  const selectedInstrument = spec.instrumentRole === 'existing'
     ? feel.signature?.instrument
     : spec.instrumentRole === 'counter'
       ? (feel.counterInstrument || theme.counterInstrument)
       : (feel.leadInstrument || theme.leadInstrument);
+  // Havana's counter lane is promoted from the legacy guitar2 alias to the
+  // modelled nylon voice later in the production chain. Its signature must use
+  // that same final timbre instead of freezing the pre-polish alias here.
+  const instrument = theme?.id === 'havana205' && selectedInstrument === 'guitar2'
+    ? 'nylonGuitar'
+    : selectedInstrument;
   if (!instrument) return feel;
   return Object.freeze({
     ...feel,
