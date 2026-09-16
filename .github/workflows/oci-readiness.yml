@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          fetch-depth: 0
+          fetch-depth: 2
       - run: python3 -S scripts/oci_readiness_scope.py --self-test
       - id: scope
         env:
