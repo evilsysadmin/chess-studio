@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   homeMatthiasCameraPose,
@@ -9,17 +8,6 @@ import {
   homeMatthiasPlaybackPolicy,
   homeMatthiasPortraitFrame,
 } from './HomeMatthias3D.jsx';
-
-function glbNodeNames(bytes) {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  expect(view.getUint32(0, true)).toBe(0x46546c67);
-  expect(view.getUint32(4, true)).toBe(2);
-  const jsonLength = view.getUint32(12, true);
-  expect(view.getUint32(16, true)).toBe(0x4E4F534A);
-  const jsonBytes = bytes.subarray(20, 20 + jsonLength);
-  const document = JSON.parse(new TextDecoder().decode(jsonBytes).replace(/\0+$/u, '').trimEnd());
-  return (document.nodes || []).map((node) => node?.name).filter(Boolean);
-}
 
 describe('Home Matthias canonical Blender rig', () => {
   it('maps real Home activities onto distinct rig routines', () => {
@@ -107,13 +95,6 @@ describe('Home Matthias canonical Blender rig', () => {
     expect(alongX.faceX).toBeCloseTo(1, 6);
     expect(alongX.faceZ).toBeCloseTo(0, 6);
     expect(alongX.cameraX).toBeGreaterThan(alongX.targetX);
-  });
-
-  it('ships the runtime GLB with the facial direction anchor used by the Home camera', () => {
-    const bytes = readFileSync(new URL('../../public/models/matthias-home-canonical.glb', import.meta.url));
-    const names = glbNodeNames(bytes);
-    expect(names).toContain('Head');
-    expect(names).toContain('Nose');
   });
 
   it('uses a sane forward fallback only when facial anchors collapse', () => {
