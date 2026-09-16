@@ -39,6 +39,24 @@ describe('Hans service exit door guard', () => {
     expect(Math.abs(refs.pivot.rotation.y)).toBeGreaterThan(0);
   });
 
+  it('measures clearance from the rendered wall recess, not the door group origin', () => {
+    const { root, floor, hans, refs } = makeScene();
+    const recess = new THREE.Group();
+    recess.name = 'war-room-hans-service-door-recess';
+    recess.position.set(7.72, 0, 3.0);
+    refs.group.add(recess);
+    hans.position.set(7.72, -0.34, 3.45);
+
+    expect(installWarRoomHansServiceExitDoorGuard(root, refs)).toBe(1);
+    root.updateMatrixWorld(true);
+    floor.onAfterRender();
+
+    // The historical group-origin measurement sees Hans >8 units away here and
+    // would leave the leaf closed even though he is only 0.45 from the jamb.
+    expect(refs.group.userData.warRoomHansDoorOpen).toBeGreaterThan(0);
+    expect(Math.abs(refs.pivot.rotation.y)).toBeGreaterThan(0);
+  });
+
   it.each(['service-espresso', 'chore-dust-board', 'mop-room', 'entry', 'leave-door'])(
     'keeps the service door clear during inbound/outbound transit route %s',
     (route) => {
