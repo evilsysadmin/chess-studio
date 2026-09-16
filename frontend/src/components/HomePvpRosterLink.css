@@ -162,6 +162,13 @@
   line-height: .8;
 }
 
+@media (max-width: 999px) {
+  body:has(.illustrated-home__utilities.is-open) .home-pvp-roster-link {
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
 @media (max-width: 620px) {
   .home-pvp-roster-link {
     bottom: max(10px, env(safe-area-inset-bottom));
