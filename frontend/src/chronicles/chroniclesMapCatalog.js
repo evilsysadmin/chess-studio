@@ -1,5 +1,6 @@
 import cryptEightSquares from './maps/crypt-eight-squares.json';
 import galleryOfForks from './maps/gallery-of-forks.json';
+import menagerieOfAsh from './maps/menagerie-of-ash.json';
 
 export const DEFAULT_CHRONICLES_MAP_ID = 'crypt-eight-squares';
 
@@ -225,6 +226,7 @@ export function chroniclesValidateMapDefinition(source, knownMapIds = null) {
 const MAPS = Object.freeze({
   [DEFAULT_CHRONICLES_MAP_ID]: normalizeMap(cryptEightSquares),
   [galleryOfForks.id]: normalizeMap(galleryOfForks),
+  [menagerieOfAsh.id]: normalizeMap(menagerieOfAsh),
 });
 
 const MAP_IDS = new Set(Object.keys(MAPS));
