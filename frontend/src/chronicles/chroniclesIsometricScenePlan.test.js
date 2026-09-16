@@ -14,10 +14,10 @@ describe('Chronicles isometric scene plan', () => {
     expect(plan.floors).toContainEqual({ x: 3, y: 4, tile: 'S' });
     expect(plan.walls).toContainEqual({ x: 2, y: 2 });
     expect(plan.content).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'ancient-sigil', kind: 'trigger', position: { x: 3, y: 4 } }),
-      expect.objectContaining({ id: 'rune-cache-lever', kind: 'lever', position: { x: 5, y: 5 } }),
-      expect.objectContaining({ id: 'rune-core', kind: 'pickup', position: { x: 5, y: 4 } }),
-      expect.objectContaining({ id: 'black-gate', kind: 'exit', position: { x: 3, y: 1 } }),
+      expect.objectContaining({ id: 'ancient-sigil', kind: 'trigger', position: { x: 3, y: 4 }, visible: true }),
+      expect.objectContaining({ id: 'rune-cache-lever', kind: 'lever', position: { x: 5, y: 5 }, visible: true }),
+      expect.objectContaining({ id: 'rune-core', kind: 'pickup', position: { x: 5, y: 4 }, visible: true }),
+      expect.objectContaining({ id: 'black-gate', kind: 'exit', position: { x: 3, y: 1 }, visible: true }),
     ]));
   });
 
@@ -33,5 +33,31 @@ describe('Chronicles isometric scene plan', () => {
       'gallery-relic',
       'gallery-gate',
     ]);
+  });
+
+  it('derives prop visibility from authored when rules instead of renderer flag names', () => {
+    const beforeLever = chroniclesIsometricScenePlan({
+      mapId: 'gallery-of-forks',
+      galleryLeverPulled: false,
+      galleryRelicCollected: false,
+    });
+    const afterLever = chroniclesIsometricScenePlan({
+      mapId: 'gallery-of-forks',
+      galleryLeverPulled: true,
+      galleryRelicCollected: false,
+    });
+    const afterRelic = chroniclesIsometricScenePlan({
+      mapId: 'gallery-of-forks',
+      galleryLeverPulled: true,
+      galleryRelicCollected: true,
+    });
+
+    const visibility = (plan, id) => plan.content.find((entry) => entry.id === id)?.visible;
+    expect(visibility(beforeLever, 'gallery-lever')).toBe(true);
+    expect(visibility(beforeLever, 'gallery-relic')).toBe(false);
+    expect(visibility(beforeLever, 'gallery-gate')).toBe(true);
+    expect(visibility(afterLever, 'gallery-lever')).toBe(false);
+    expect(visibility(afterLever, 'gallery-relic')).toBe(true);
+    expect(visibility(afterRelic, 'gallery-relic')).toBe(false);
   });
 });
