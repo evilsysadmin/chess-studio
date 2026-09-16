@@ -60,15 +60,15 @@ async def _apply_rating(
     target = _rating(next_rating)
     col = await ustore._get_collection()
     if col is not None:
+        rating_predicates = [{"pvp_rating": expected}]
+        if expected == DEFAULT_RATING:
+            rating_predicates.append({"pvp_rating": {"$exists": False}})
         try:
             result = await col.update_one(
                 {
                     "_id": username,
                     "pvp_last_settled_match": {"$ne": match_id},
-                    "$or": [
-                        {"pvp_rating": expected},
-                        {"pvp_rating": {"$exists": False}} if expected == DEFAULT_RATING else {"pvp_rating": {"$type": "missing"}},
-                    ],
+                    "$or": rating_predicates,
                 },
                 {
                     "$set": {
