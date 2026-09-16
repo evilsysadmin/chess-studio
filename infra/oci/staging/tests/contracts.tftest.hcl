@@ -67,7 +67,7 @@ run "discovers_ad_and_latest_a1_ubuntu_image" {
 
   assert {
     condition     = length(oci_core_security_list.backend.ingress_security_rules) == 0
-    error_message = "OCI staging must have zero inbound rules by default."
+    error_message = "Base backend security list must keep zero public inbound rules by default."
   }
 
   assert {
@@ -91,6 +91,48 @@ run "discovers_ad_and_latest_a1_ubuntu_image" {
       oci_core_instance.backend.agent_config[0].plugins_config[0].desired_state == "ENABLED"
     )
     error_message = "Compute Instance Run Command must be explicitly enabled for no-SSH staging operations."
+  }
+}
+
+run "always_free_load_balancer_contract" {
+  command = plan
+
+  assert {
+    condition     = oci_load_balancer_load_balancer.backend.shape == "flexible"
+    error_message = "Staging ingress must use the OCI Flexible Load Balancer shape."
+  }
+
+  assert {
+    condition = (
+      oci_load_balancer_load_balancer.backend.shape_details[0].minimum_bandwidth_in_mbps == 10 &&
+      oci_load_balancer_load_balancer.backend.shape_details[0].maximum_bandwidth_in_mbps == 10
+    )
+    error_message = "The staging load balancer must remain pinned to the Always Free 10 Mbps budget."
+  }
+
+  assert {
+    condition     = oci_core_subnet.load_balancer.cidr_block == "10.42.20.0/24"
+    error_message = "Load balancer must stay on its dedicated subnet by default."
+  }
+
+  assert {
+    condition     = oci_core_security_list.backend_from_load_balancer.ingress_security_rules[0].source == var.load_balancer_subnet_cidr
+    error_message = "Backend ingress must be restricted to the load balancer subnet."
+  }
+
+  assert {
+    condition     = oci_core_security_list.backend_from_load_balancer.ingress_security_rules[0].tcp_options[0].min == 4000
+    error_message = "Load balancer backend ingress must target FastAPI port 4000 only."
+  }
+
+  assert {
+    condition     = oci_load_balancer_backend_set.backend.health_checker[0].url_path == "/api/ready"
+    error_message = "The OCI load balancer must health-check the real backend readiness endpoint."
+  }
+
+  assert {
+    condition     = oci_load_balancer_listener.http.port == 80
+    error_message = "Initial emergency listener must remain explicit HTTP until Cloudflare/TLS cutover is separately gated."
   }
 }
 
