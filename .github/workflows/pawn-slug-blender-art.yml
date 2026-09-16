@@ -4,9 +4,11 @@ on:
   pull_request:
     paths:
       - 'scripts/blender/render_pawn_slug_matthias_premium.py'
+      - 'scripts/blender/render_pawn_slug_matthias_rigged_proof.py'
       - 'scripts/blender/pawn_slug_matthias_premium_common.py'
       - 'scripts/blender/pawn_slug_matthias_premium_weapons.py'
       - 'scripts/blender/pawn_slug_matthias_premium_character.py'
+      - 'scripts/blender/home_matthias_parts.py'
       # Generated runtime atlases are outputs of this renderer. Keeping them out
       # of paths prevents a materialization commit from launching all four weapons again.
       - '.github/workflows/pawn-slug-blender-art.yml'
@@ -48,6 +50,17 @@ jobs:
           for WEAPON in $WEAPONS; do
             blender --background -noaudio \
               --python scripts/blender/render_pawn_slug_matthias_premium.py \
+              -- --output-dir /tmp/pawn-slug-art --weapon "$WEAPON"
+          done
+      - name: Render rigged weapon-integrated proof poses
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          WEAPONS: ${{ matrix.weapons }}
+        run: |
+          set -euo pipefail
+          for WEAPON in $WEAPONS; do
+            blender --background -noaudio \
+              --python scripts/blender/render_pawn_slug_matthias_rigged_proof.py \
               -- --output-dir /tmp/pawn-slug-art --weapon "$WEAPON"
           done
       - name: Downsample v3 candidates + runtime-scale proofs
@@ -97,6 +110,9 @@ jobs:
             test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_preview.png"
             test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_runtime_96.png"
             test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_runtime_96_4x.png"
+            for POSE in idle run crouch jump; do
+              test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_rigged_${POSE}_proof.png"
+            done
             test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp"
             test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.b64"
             webpinfo "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp"
