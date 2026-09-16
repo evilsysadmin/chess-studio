@@ -330,11 +330,26 @@ export function chroniclesMapContentPosition(mapOrState, entry) {
   return null;
 }
 
+function chroniclesMapRenderContent(map) {
+  return Object.freeze(mapContentEntries(map).map(({ group, entry }) => {
+    const position = chroniclesMapContentPosition(map, entry);
+    return Object.freeze({
+      id: entry.id,
+      kind: entry.kind,
+      group,
+      visualType: entry.visualType || entry.kind,
+      position: position ? Object.freeze(position) : null,
+    });
+  }));
+}
+
 export function chroniclesMapRenderPlan(mapOrState = null) {
   const map = mapOrState?.grid ? mapOrState : chroniclesMapForState(mapOrState);
-  const lever = map.interactables.find((entry) => entry.kind === 'lever') || null;
-  const pickup = map.treasures.find((entry) => entry.kind === 'pickup') || null;
-  const sigil = map.triggers.find((entry) => entry.kind === 'trigger') || null;
+  const content = chroniclesMapRenderContent(map);
+  const legacyProp = (kind) => {
+    const entry = content.find((candidate) => candidate.kind === kind) || null;
+    return entry ? Object.freeze({ id: entry.id, position: entry.position }) : null;
+  };
   return Object.freeze({
     mapId: map.id,
     title: map.title,
@@ -347,9 +362,12 @@ export function chroniclesMapRenderPlan(mapOrState = null) {
       visualScale: Number.isFinite(Number(enemy.visualScale)) ? Number(enemy.visualScale) : 1,
       visualMotion: enemy.visualMotion || 'grounded',
     }))),
-    lever: lever ? Object.freeze({ id: lever.id, position: chroniclesMapContentPosition(map, lever) }) : null,
-    pickup: pickup ? Object.freeze({ id: pickup.id, position: chroniclesMapContentPosition(map, pickup) }) : null,
-    sigil: sigil ? Object.freeze({ id: sigil.id, position: chroniclesMapContentPosition(map, sigil) }) : null,
+    content,
+    // Compatibility aliases for the current isometric renderer. New renderers
+    // should consume content so multiple authored props of the same kind work.
+    lever: legacyProp('lever'),
+    pickup: legacyProp('pickup'),
+    sigil: legacyProp('trigger'),
   });
 }
 
