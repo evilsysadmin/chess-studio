@@ -38,12 +38,14 @@ describe('Chronicles declarative map catalog', () => {
     expect(pawn.ai).toMatchObject({
       movement: 'cardinal-roam',
       engagedMovement: 'cardinal-chase',
-      engageRange: 1,
+      engageRange: 4,
+      requiresLineOfSight: true,
     });
     expect(jailer.ai).toMatchObject({
       movement: 'patrol-route',
       engagedMovement: 'cardinal-chase',
-      engageRange: 2,
+      engageRange: 4,
+      requiresLineOfSight: true,
     });
     expect(jailer.ai.patrolRoute).toEqual([
       { x: 3, y: 1 },
@@ -65,8 +67,18 @@ describe('Chronicles declarative map catalog', () => {
     expect(map.triggers).toEqual([
       expect.objectContaining({ id: 'ancient-sigil', tile: 'S', label: 'Activar sello' }),
     ]);
-    expect(map.interactables.map((entry) => entry.id)).toEqual(['rune-cache-lever']);
-    expect(map.treasures).toEqual([
+    expect(map.interactables.map((entry) => entry.id)).toEqual([
+      'rune-cache-lever',
+      'crypt-secret-button',
+      'crypt-secret-wall',
+    ]);
+    expect(map.interactables.find((entry) => entry.id === 'crypt-secret-wall')).toEqual(expect.objectContaining({
+      kind: 'secret-door',
+      x: 1,
+      y: 2,
+      blocksMovementWhen: [expect.objectContaining({ key: 'secretWallOpen', equals: false })],
+    }));
+    expect(map.treasures).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'rune-core',
         kind: 'pickup',
@@ -74,7 +86,14 @@ describe('Chronicles declarative map catalog', () => {
           expect.objectContaining({ key: 'runeCacheOpened', equals: true }),
         ]),
       }),
-    ]);
+      expect.objectContaining({
+        id: 'obsidian-reliquary',
+        kind: 'pickup',
+        when: expect.arrayContaining([
+          expect.objectContaining({ key: 'secretWallOpen', equals: true }),
+        ]),
+      }),
+    ]));
     expect(map.exits).toEqual([
       expect.objectContaining({
         id: 'black-gate',
