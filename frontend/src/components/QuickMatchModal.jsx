@@ -64,7 +64,7 @@ export default function QuickMatchModal({
       <div className="army-card friendly-modal" role="dialog" aria-modal="true" aria-label="Configurar partida rápida" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
         <button className="piece-info-close" onClick={onClose} aria-label="Cerrar">×</button>
         <span className="eyebrow">Partida rápida</span>
-        <div className="combat-heading-row"><h3>Elige rival y juega</h3><MechanicTutorialHelp tutorialId="quick-match-rules" /></div>
+        <div className="combat-heading-row"><h3>Elige dificultad y juega</h3><MechanicTutorialHelp tutorialId="quick-match-rules" /></div>
         <p className="hint-text friendly-lead">Matthias está disponible. Los humanos, lamentablemente, también.</p>
 
         {onOpenPvp && (
