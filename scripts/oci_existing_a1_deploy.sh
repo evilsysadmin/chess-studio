@@ -197,7 +197,7 @@ for _ in $(seq 1 60); do
       exit 46
     fi
     record_successful_backend "$sha"
-    echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin tunnel=systemd"
+    echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin tunnel=managed-process"
     exit 0
   fi
   sleep 2

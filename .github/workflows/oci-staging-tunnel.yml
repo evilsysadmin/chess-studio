@@ -4,7 +4,6 @@ on:
   workflow_run:
     workflows:
       - OCI staging · service control
-      - Main · admission
     types:
       - completed
     branches:
@@ -37,9 +36,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # workflow_run.head_sha is the backend release SHA and can predate
-          # this workflow itself. Tunnel orchestration always uses the trusted
-          # tooling currently merged on the protected default branch.
+          # workflow_run.head_sha can predate recovery tooling. Tunnel recovery
+          # always uses the trusted implementation merged on main.
           ref: main
           fetch-depth: 1
 
