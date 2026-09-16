@@ -558,6 +558,154 @@
     right: 6px;
     border-right: 1px solid rgba(167, 125, 64, .16);
   }
+
+  /* Canonical retro-RPG composition: the battlefield is the screen. HUD is
+     pinned around its edges instead of consuming layout rows. */
+  .chronicles-tactics__battlefield {
+    display: block;
+    min-height: 760px;
+  }
+  .chronicles-tactics__viewport {
+    position: absolute;
+    inset: 0;
+    min-height: 0;
+  }
+
+  .chronicles-tactics__mission {
+    top: 16px;
+    right: 16px;
+    left: auto;
+    width: 282px;
+    padding: 12px 15px 14px;
+  }
+  .chronicles-tactics__mission > small {
+    max-width: 30ch;
+  }
+
+  .chronicles-tactics__party {
+    left: 16px;
+    bottom: 16px;
+    width: min(610px, calc(100% - 440px));
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 5px;
+    padding: 10px;
+  }
+  .chronicles-tactics__party > .chronicles-tactics__kicker {
+    grid-column: 1 / -1;
+  }
+  .chronicles-tactics__party > button {
+    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    min-height: 58px;
+    gap: 3px 6px;
+    padding: 7px 7px 6px;
+  }
+  .chronicles-tactics__party > button > i {
+    grid-row: 1 / -1;
+  }
+  .chronicles-tactics__party > button > strong {
+    position: absolute;
+    right: 7px;
+    top: 7px;
+    font-size: .48rem;
+  }
+  .chronicles-tactics__party > button b {
+    padding-right: 28px;
+    font-size: .62rem;
+  }
+  .chronicles-tactics__party > button small {
+    font-size: .43rem;
+  }
+  .chronicles-tactics__party em {
+    grid-column: 2;
+    margin-top: 2px;
+  }
+  .chronicles-tactics__party-note {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    column-gap: 9px;
+    row-gap: 2px;
+    align-items: baseline;
+    padding: 7px 4px 1px;
+  }
+  .chronicles-tactics__party-note > span,
+  .chronicles-tactics__party-note > b {
+    display: inline-block;
+  }
+  .chronicles-tactics__party-note > small {
+    display: inline-block;
+  }
+  .chronicles-tactics__party-note > details {
+    grid-column: 1 / -1;
+  }
+
+  .chronicles-tactics__actions {
+    position: absolute;
+    z-index: 9;
+    top: 128px;
+    right: 16px;
+    width: 176px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+    padding: 9px;
+    border: 1px solid rgba(199, 154, 75, .42);
+    background: linear-gradient(180deg, rgba(38, 28, 19, .94), rgba(18, 13, 9, .95));
+    box-shadow:
+      0 12px 28px rgba(0, 0, 0, .48),
+      inset 0 0 0 1px rgba(255, 235, 190, .035),
+      inset 0 -12px 24px rgba(0, 0, 0, .22);
+  }
+  .chronicles-tactics__actions::before {
+    inset: 4px;
+  }
+  .chronicles-tactics__actions > button {
+    min-width: 0;
+    min-height: 46px;
+    padding: 4px;
+  }
+  .chronicles-tactics__actions > button:nth-of-type(n+5) {
+    grid-column: 1 / -1;
+    min-height: 42px;
+    grid-template-columns: 24px 1fr;
+    place-items: center start;
+    align-content: center;
+    text-align: left;
+    padding: 5px 8px;
+  }
+  .chronicles-tactics__actions > button:nth-of-type(n+5) i {
+    grid-row: 1;
+    justify-self: center;
+  }
+  .chronicles-tactics__choices {
+    grid-column: 1 / -1;
+  }
+  .chronicles-tactics__choices > span {
+    width: 100%;
+    justify-content: center;
+  }
+  .chronicles-tactics__actions .chronicles-tactics__choices button {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .chronicles-tactics__narrator {
+    bottom: 18px;
+    width: min(430px, calc(100% - 1090px));
+    min-width: 260px;
+  }
+}
+
+@media (max-width: 1179px) and (min-width: 861px) {
+  .chronicles-tactics__mission {
+    right: 12px;
+    left: auto;
+  }
+  .chronicles-tactics__party {
+    width: 224px;
+  }
 }
 
 @media (max-width: 1080px) {
