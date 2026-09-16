@@ -9,7 +9,8 @@ import {
   pawnSlugPlatformLookAtY,
 } from './pawnSlugPlatforms.js';
 import { PAWN_SLUG_RUNTIME_HOT_PATH } from './pawnSlugRuntimeHotPath.js';
-import { createWeaponSprite, disposePawnSlugSprite } from './pawnSlugSprites.js';
+import { createWeaponSprite as createRuntimeWeaponSprite } from './pawnSlugSpriteCore.js';
+import { disposePawnSlugSprite } from './pawnSlugSprites.js';
 import {
   PAWN_SLUG_PLAYER_SPEED,
   PAWN_SLUG_VIEW_H,
@@ -90,8 +91,11 @@ export function createPawnSlugRuntimeView(host, { coarse = false, reducedMotion 
   scene.add(dynamic, projectileLayer, fxLayer);
 
   const playerModel = createMatthiasSlugModel();
-  const playerWeaponModel = createWeaponSprite('pistol');
+  // Weapon art is now a dedicated overlay. Matthias himself never swaps to the
+  // old weapon-specific full-body atlases, which were visually a different man.
+  const playerWeaponModel = createRuntimeWeaponSprite('pistol');
   playerWeaponModel.name = 'pawn-slug-player-weapon';
+  playerWeaponModel.userData.pawnSlugCanonicalWeaponOverlay = true;
   scene.add(playerModel, playerWeaponModel);
 
   function clearGroup(group) {
