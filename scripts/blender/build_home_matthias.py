@@ -13,6 +13,11 @@ if SCRIPT_DIR not in sys.path:
 import bpy
 from mathutils import Vector
 from home_matthias_parts import build_character
+from home_matthias_premium import (
+    ASSET_VERSION,
+    CANONICAL_REFERENCE_SHA256,
+    apply_premium_canonical_pass,
+)
 from home_matthias_animations import build_actions
 
 
@@ -48,7 +53,7 @@ def add_area(name, location, energy, size, color, target):
 
 
 def add_face_anchor(rig):
-    """Export an invisible front-of-face node for runtime camera orientation."""
+    """Export an invisible front-of-face node for diagnostics and older clients."""
     anchor = bpy.data.objects.new('Nose', None)
     bpy.context.collection.objects.link(anchor)
     anchor.empty_display_type = 'PLAIN_AXES'
@@ -65,7 +70,7 @@ def add_face_anchor(rig):
 
 
 def assert_runtime_face_anchor(path):
-    """Fail the canonical build if the exported GLB loses the camera-facing anchor."""
+    """Fail the canonical build if the exported GLB loses identity/runtime metadata."""
     with open(path, 'rb') as handle:
         magic, version, total_length = struct.unpack('<4sII', handle.read(12))
         assert magic == b'glTF' and version == 2, 'invalid Home Matthias GLB header'
@@ -73,8 +78,14 @@ def assert_runtime_face_anchor(path):
         assert json_type == 0x4E4F534A, 'Home Matthias GLB missing JSON chunk'
         document = json.loads(handle.read(json_length).decode('utf-8').rstrip('\x00 '))
     assert total_length == os.path.getsize(path), 'Home Matthias GLB length mismatch'
-    node_names = {node.get('name') for node in document.get('nodes', [])}
+    nodes = document.get('nodes', [])
+    node_names = {node.get('name') for node in nodes}
     assert 'Nose' in node_names, 'Home Matthias GLB lost runtime face anchor Nose'
+    rig_node = next((node for node in nodes if node.get('name') == 'MatthiasRig'), None)
+    assert rig_node is not None, 'Home Matthias GLB lost MatthiasRig'
+    extras = rig_node.get('extras') or {}
+    assert extras.get('matthias_asset_version') == ASSET_VERSION, extras
+    assert extras.get('canonical_reference_sha256') == CANONICAL_REFERENCE_SHA256, extras
 
 
 def configure_preview_samples(scene):
@@ -94,23 +105,23 @@ def render_preview(path):
     scene.render.image_settings.file_format = 'PNG'
     scene.render.film_transparent = False
     scene.render.filepath = os.path.abspath(path)
-    scene.world.color = (0.012, 0.016, 0.022)
+    scene.world.color = (0.018, 0.010, 0.008)
     samples = configure_preview_samples(scene)
 
-    target = Vector((0, 0, 1.28))
+    target = Vector((0, 0, 1.26))
 
     camera_data = bpy.data.cameras.new('MatthiasPreviewCamera')
-    camera_data.lens = 64
+    camera_data.lens = 66
     camera = bpy.data.objects.new('MatthiasPreviewCamera', camera_data)
     bpy.context.collection.objects.link(camera)
-    camera.location = (0, -5.7, 1.42)
+    camera.location = (0, -5.62, 1.40)
     look_at(camera, target)
     scene.camera = camera
 
     preview_objects = [camera]
-    preview_objects.append(add_area('preview key', (-2.8, -3.6, 4.6), 780, 3.0, (1.0, .77, .52), target))
-    preview_objects.append(add_area('preview fill', (2.8, -2.2, 2.7), 430, 2.5, (.45, .68, 1.0), target))
-    preview_objects.append(add_area('preview rim', (1.6, 2.8, 4.0), 620, 2.2, (1.0, .45, .18), target))
+    preview_objects.append(add_area('preview key', (-2.6, -3.7, 4.4), 860, 3.1, (1.0, .66, .38), target))
+    preview_objects.append(add_area('preview fill', (2.8, -2.2, 2.6), 260, 2.8, (1.0, .72, .52), target))
+    preview_objects.append(add_area('preview rim', (1.8, 2.8, 4.0), 520, 2.1, (1.0, .42, .12), target))
 
     bpy.ops.mesh.primitive_plane_add(size=20, location=(0, 0, 0))
     ground = bpy.context.object
@@ -118,8 +129,8 @@ def render_preview(path):
     ground_mat = bpy.data.materials.new('preview ground')
     ground_mat.use_nodes = True
     bsdf = ground_mat.node_tree.nodes.get('Principled BSDF')
-    bsdf.inputs['Base Color'].default_value = (.018, .023, .030, 1)
-    bsdf.inputs['Roughness'].default_value = .92
+    bsdf.inputs['Base Color'].default_value = (.020, .012, .010, 1)
+    bsdf.inputs['Roughness'].default_value = .90
     ground.data.materials.append(ground_mat)
     preview_objects.append(ground)
 
@@ -137,6 +148,7 @@ def main():
     bpy.context.scene.render.fps = 24
 
     rig = build_character()
+    apply_premium_canonical_pass(rig)
     add_face_anchor(rig)
     build_actions(rig)
 
