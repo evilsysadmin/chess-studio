@@ -132,13 +132,55 @@ def validate_value(key: str, value: str, *, required: bool) -> str:
     return value
 
 
+def unwrap_render_env_vars(payload: object) -> list[tuple[str, str]]:
+    if not isinstance(payload, list):
+        raise SystemExit("Render env vars response must be a list")
+    result: list[tuple[str, str]] = []
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        row = item.get("envVar") if isinstance(item.get("envVar"), dict) else item
+        if not isinstance(row, dict):
+            continue
+        key = str(row.get("key") or "").strip()
+        if not key:
+            continue
+        value = row.get("value")
+        result.append((key, "" if value is None else str(value)))
+    return result
+
+
+def list_render_env_values(service_id: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    cursor = ""
+    while True:
+        query_args = {"limit": "100"}
+        if cursor:
+            query_args["cursor"] = cursor
+        query = urllib.parse.urlencode(query_args)
+        payload = render_api("GET", f"/services/{service_id}/env-vars?{query}")
+        rows = unwrap_render_env_vars(payload)
+        for key, value in rows:
+            if key in values:
+                raise SystemExit(f"Render staging contains duplicate runtime key: {key}")
+            values[key] = value
+        if not isinstance(payload, list) or len(payload) < 100:
+            break
+        last = payload[-1] if payload else {}
+        next_cursor = str(last.get("cursor") or "").strip() if isinstance(last, dict) else ""
+        if not next_cursor or next_cursor == cursor:
+            break
+        cursor = next_cursor
+    return values
+
+
 def collect_render_values(service_id: str) -> dict[str, str]:
+    available = list_render_env_values(service_id)
     values: dict[str, str] = {}
     for key in REQUIRED_KEYS:
-        raw = read_render_env(service_id, key)
-        values[key] = validate_value(key, raw or "", required=True)
+        values[key] = validate_value(key, available.get(key, ""), required=True)
     for key in OPTIONAL_KEYS:
-        raw = read_render_env(service_id, key)
+        raw = available.get(key, "")
         if raw:
             values[key] = validate_value(key, raw, required=False)
     return values
@@ -339,6 +381,17 @@ def self_test() -> None:
     assert "RENDER_API_KEY" not in ALLOWED_KEYS
     assert "OCI_PRIVATE_KEY" not in ALLOWED_KEYS
     assert "RESEND_API_KEY" not in ALLOWED_KEYS
+
+    env_rows = unwrap_render_env_vars([
+        {"envVar": {"key": "MONGO_URL", "value": "mongodb://example"}, "cursor": "c1"},
+        {"key": "JWT_SECRET", "value": "secret", "cursor": "c2"},
+        {"envVar": {"key": "IGNORED", "value": None}},
+    ])
+    assert env_rows == [
+        ("MONGO_URL", "mongodb://example"),
+        ("JWT_SECRET", "secret"),
+        ("IGNORED", ""),
+    ]
 
     try:
         validate_value("JWT_SECRET", "bad\nvalue", required=True)
