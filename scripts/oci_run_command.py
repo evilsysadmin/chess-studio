@@ -161,7 +161,9 @@ trap 'rm -f "$tmp"' EXIT
 venv="${{HOME:-/tmp}}/.cache/chess-studio-oci-runtime"
 if [ ! -x "$venv/bin/python" ]; then
   python3 -m venv "$venv"
-  "$venv/bin/pip" install --disable-pip-version-check --quiet 'oci=={OCI_SDK_VERSION}'
+fi
+if ! "$venv/bin/python" -c 'import oci; raise SystemExit(0 if oci.__version__ == "{OCI_SDK_VERSION}" else 1)' >/dev/null 2>&1; then
+  "$venv/bin/python" -m pip install --disable-pip-version-check --quiet --upgrade 'oci=={OCI_SDK_VERSION}'
 fi
 RUNTIME_TMP="$tmp" RUNTIME_NAMESPACE={shlex.quote(namespace)} RUNTIME_SHA='{sha}' "$venv/bin/python" - <<'PY'
 import os
@@ -480,6 +482,8 @@ def self_test() -> None:
     assert "InstancePrincipalsSecurityTokenSigner" in deploy
     assert "COMMIT_SHA" in deploy
     assert "sudo --non-interactive" in deploy
+    assert f'oci.__version__ == "{OCI_SDK_VERSION}"' in deploy
+    assert '"$venv/bin/python" -m pip install' in deploy
     assert sample in deploy
     assert len(deploy.encode("utf-8")) <= RUN_COMMAND_INLINE_MAX_BYTES
     assert "docker build" not in deploy
