@@ -7,6 +7,7 @@ import {
   pawnSlugEnemyRunAtlasWindow,
 } from './pawnSlugEnemyRunSprites.js';
 import { configurePawnSlugTexture } from './pawnSlugSpriteCore.js';
+import { pawnSlugSoldierAtlasBrowserStatus } from './pawnSlugSoldierAtlas.js';
 import {
   PAWN_SLUG_PREMIUM_ENEMY_RASTER_META,
   PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL,
@@ -131,7 +132,7 @@ function publishPremiumEnemyRenderStatus(sprite) {
   const verifiedPremium = source === 'premium-raster'
     && evidence?.checked
     && evidence?.opaque;
-  const verifiedActionAtlas = stage.dataset.pawnSlugActionAtlas === 'r2-ready';
+  const verifiedActionAtlas = pawnSlugSoldierAtlasBrowserStatus() === 'r2-ready';
   // The static premium fallback remains a valid player-facing safety net, but
   // neither it nor a local action-atlas fallback may satisfy the browser canary
   // that certifies both live enemy atlas paths are loading from R2.
