@@ -43,6 +43,16 @@ output "runtime_config_namespace" {
   value       = data.oci_objectstorage_namespace.runtime.namespace
 }
 
+output "staging_vault_id" {
+  description = "OCID of the Terraform-managed staging Vault. Secret values themselves are never managed by Terraform."
+  value       = oci_kms_vault.staging_secrets.id
+}
+
+output "staging_vault_key_id" {
+  description = "OCID of the AES-256 HSM master encryption key used when operators create staging secrets manually."
+  value       = oci_kms_key.staging_secrets.id
+}
+
 output "backend_origin" {
   description = "Current host-local backend origin; expose port 4000 only to the LB subnet before DNS cutover."
   value       = "http://127.0.0.1:4000"
@@ -51,10 +61,11 @@ output "backend_origin" {
 output "post_apply_checklist" {
   description = "No-secret handoff after provisioning."
   value = [
+    "Create or rotate staging secret values manually in the Terraform-managed Vault; never pass secret plaintext through Terraform variables.",
+    "Keep /etc/chess-studio/backend.env as a generated root-only runtime artifact, not a human-maintained secret store.",
     "Keep the private runtime bucket free of Terraform-managed secret objects.",
-    "Publish /etc/chess-studio/backend.env out-of-band through the runtime channel before starting the backend.",
     "Verify the backend is reachable on port 4000 only from the load balancer subnet before DNS cutover.",
     "Require OCI LB /api/ready health to be green before moving api-staging DNS.",
-    "Keep Render serving production until the reversible OCI cutover is validated."
+    "Keep Render production serving until the reversible OCI cutover is validated."
   ]
 }
