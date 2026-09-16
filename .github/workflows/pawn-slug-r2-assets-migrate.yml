@@ -9,12 +9,12 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   publish:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 12
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -27,6 +27,13 @@ jobs:
           set -euo pipefail
           test -n "$CLOUDFLARE_API_TOKEN"
           test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Reconcile public R2 origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/cloudflare_r2_assets.py reconcile
+          python3 -S scripts/cloudflare_r2_assets.py check
 
       - name: Verify canonical master
         shell: bash
@@ -75,25 +82,59 @@ jobs:
             --prefix pawn-slug/matthias/motion
           python3 -S scripts/r2_asset_publish.py check-manifest
 
-      - name: Verify public CDN bytes and print manifest
+      - name: Verify public CDN bytes
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import hashlib, json, pathlib, urllib.request
+          import hashlib, json, pathlib, time, urllib.error, urllib.request
+
           path = pathlib.Path('frontend/src/assets/r2-assets-manifest.json')
           manifest = json.loads(path.read_text(encoding='utf-8'))
           wanted = [k for k in manifest['assets'] if k.startswith('pawnSlug.matthias.')]
           assert len(wanted) == 6, wanted
+
+          headers = {
+              'User-Agent': 'Mozilla/5.0 ChessStudio-R2-Migration/1.0',
+              'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+              'Origin': 'https://chess-studio.shadowops.dpdns.org',
+          }
           for logical_id in sorted(wanted):
               entry = manifest['assets'][logical_id]
-              with urllib.request.urlopen(entry['url'], timeout=30) as response:
-                  body = response.read()
+              last_error = None
+              body = None
+              for attempt in range(1, 13):
+                  request = urllib.request.Request(entry['url'], headers=headers)
+                  try:
+                      with urllib.request.urlopen(request, timeout=30) as response:
+                          body = response.read()
+                      break
+                  except urllib.error.HTTPError as exc:
+                      preview = exc.read(300).decode('utf-8', 'replace').replace('\n', ' ')
+                      last_error = f'HTTP {exc.code}: {preview}'
+                  except Exception as exc:
+                      last_error = repr(exc)
+                  print(f'CDN_WAIT {logical_id} attempt={attempt}/12 error={last_error}')
+                  if attempt < 12:
+                      time.sleep(5)
+              if body is None:
+                  raise RuntimeError(f'{logical_id}: public CDN unavailable after retries: {last_error}')
               digest = hashlib.sha256(body).hexdigest()
               assert digest == entry['sha256'], (logical_id, digest, entry['sha256'])
               assert len(body) == entry['bytes'], (logical_id, len(body), entry['bytes'])
               print(f'CDN_OK {logical_id} {entry["bytes"]} {entry["sha256"]}')
-          print('---R2_MANIFEST_BEGIN---')
-          print(json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False))
-          print('---R2_MANIFEST_END---')
           PY
+
+      - name: Commit R2 manifest pointer
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- frontend/src/assets/r2-assets-manifest.json; then
+            echo 'Manifest already committed; nothing to do.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/src/assets/r2-assets-manifest.json
+          git commit -m 'chore: point Matthias runtime assets at R2'
+          git push
