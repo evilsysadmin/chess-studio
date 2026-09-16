@@ -1,11 +1,10 @@
 name: Home Matthias · Blender canonical art
 
-# Temporary closed-PR materializer. The PR is intentionally closed while this
-# runs so the generated-binary commit cannot create approval-required PR runs.
+# Path-scoped canonical-art lane: the consolidated required gate waits for this workflow when these sources change.
+# This workflow is intentionally read-only. Updating an open PR with GITHUB_TOKEN causes GitHub to create
+# approval-required pull_request runs, so generated binaries must already be semantically current in the PR head.
 on:
-  push:
-    branches:
-      - 'fix/home-matthias-canonical-as-is'
+  pull_request:
     paths:
       - 'scripts/blender/build_home_matthias.py'
       - 'scripts/blender/home_matthias_parts.py'
@@ -13,26 +12,28 @@ on:
       - 'scripts/blender/home_matthias_animations.py'
       - 'scripts/blender/home_matthias_contract.py'
       - 'scripts/blender/validate_home_matthias_contract.py'
+      - 'scripts/blender/compare_glb_semantics.py'
       - 'frontend/art-source/matthias-home-canonical-reference.webp'
       - 'frontend/art-source/matthias-home-canonical-reference.txt'
       - '.github/workflows/home-matthias-blender-art.yml'
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: home-matthias-materialize-${{ github.ref }}
+  group: home-matthias-blender-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   render:
-    name: Materialize canonical Home Matthias
+    name: Render canonical Home Matthias
     runs-on: ubuntu-latest
     timeout-minutes: 16
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 2
 
       - uses: ./.github/actions/setup-blender-canonical
@@ -40,7 +41,7 @@ jobs:
       - name: Build editable blend + animated runtime GLB + preview
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
-          BLENDER_PREVIEW_SAMPLES: '24'
+          BLENDER_PREVIEW_SAMPLES: ${{ github.event_name == 'workflow_dispatch' && '64' || '24' }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/home-matthias-art
@@ -51,7 +52,7 @@ jobs:
             --glb /tmp/home-matthias-art/matthias-home-canonical.glb \
             --preview /tmp/home-matthias-art/matthias-home-canonical.png
 
-      - name: Enforce canonical contract before publishing
+      - name: Enforce hard pawn-first canonical contract
         run: |
           set -euo pipefail
           test -s /tmp/home-matthias-art/matthias-home-canonical.blend
@@ -66,37 +67,55 @@ jobs:
           import sys
           sys.path.insert(0, 'scripts/blender')
           from home_matthias_contract import CANONICAL_REFERENCE_FILE, CANONICAL_REFERENCE_SHA256
+
           reference = Path(CANONICAL_REFERENCE_FILE)
-          assert hashlib.sha256(reference.read_bytes()).hexdigest() == CANONICAL_REFERENCE_SHA256
+          assert reference.is_file(), f'missing canonical reference: {reference}'
+          digest = hashlib.sha256(reference.read_bytes()).hexdigest()
+          assert digest == CANONICAL_REFERENCE_SHA256, (digest, CANONICAL_REFERENCE_SHA256)
+          provenance = Path('frontend/art-source/matthias-home-canonical-reference.txt').read_text()
+          assert CANONICAL_REFERENCE_SHA256 in provenance, 'canonical reference provenance/hash drifted'
           PY
 
-      - name: Commit validated canonical binaries to closed PR branch
-        env:
-          HEAD_REF: ${{ github.ref_name }}
-          EXPECTED_HEAD_SHA: ${{ github.sha }}
+      - name: Validate render artifact envelope
         run: |
           set -euo pipefail
-          git fetch --no-tags origin "${HEAD_REF}"
-          actual_head="$(git rev-parse "origin/${HEAD_REF}")"
-          test "${actual_head}" = "${EXPECTED_HEAD_SHA}"
-          git checkout -B "${HEAD_REF}" "${EXPECTED_HEAD_SHA}"
-          cp /tmp/home-matthias-art/matthias-home-canonical.blend frontend/art-source/matthias-home-canonical.blend
-          cp /tmp/home-matthias-art/matthias-home-canonical.glb frontend/public/models/matthias-home-canonical.glb
-          git add frontend/art-source/matthias-home-canonical.blend frontend/public/models/matthias-home-canonical.glb
-          if git diff --cached --quiet; then
-            echo 'Canonical binaries already current.'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'Home Matthias: materialize validated canonical binaries [matthias-art-materialized]'
-          git push origin "HEAD:${HEAD_REF}"
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+
+          root = Path('/tmp/home-matthias-art')
+          blend = root / 'matthias-home-canonical.blend'
+          glb = root / 'matthias-home-canonical.glb'
+          preview = root / 'matthias-home-canonical.png'
+          assert blend.stat().st_size > 100_000, blend.stat().st_size
+          assert glb.stat().st_size > 50_000, glb.stat().st_size
+          image = Image.open(preview).convert('RGB')
+          assert image.size == (560, 700), image.size
+          extrema = image.getextrema()
+          assert max(channel[1] for channel in extrema) > 40, extrema
+          PY
+
+      - name: Validate checked-in editable blend contract
+        run: |
+          set -euo pipefail
+          test -s frontend/art-source/matthias-home-canonical.blend
+          blender --background \
+            frontend/art-source/matthias-home-canonical.blend \
+            --python scripts/blender/validate_home_matthias_contract.py
+
+      - name: Verify checked-in runtime GLB matches regenerated semantics
+        run: |
+          set -euo pipefail
+          python3 -S scripts/blender/compare_glb_semantics.py --self-test
+          python3 -S scripts/blender/compare_glb_semantics.py \
+            frontend/public/models/matthias-home-canonical.glb \
+            /tmp/home-matthias-art/matthias-home-canonical.glb
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: home-matthias-materialized-${{ github.run_number }}
+          name: home-matthias-canonical-${{ github.event.pull_request.number || github.run_number }}
           path: /tmp/home-matthias-art/
           if-no-files-found: error
-          retention-days: 2
+          retention-days: 7
           compression-level: 0
