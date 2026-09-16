@@ -1,8 +1,7 @@
 name: App · visual artifact
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - frontend/src/**/*.jsx
       - frontend/src/**/*.css
@@ -11,8 +10,9 @@ on:
       - frontend/src/chesscom*.js
       - frontend/src/chronicles*.js
       - frontend/src/pawn*.js
-      - '!frontend/src/**/*.test.js'
-      - '!frontend/src/**/*.test.jsx'
+      - '!frontend/src/**/*.test.*'
+      - '!frontend/src/components/*Admin*'
+      - '!frontend/src/components/Observability*'
       - frontend/public/**
       - '!frontend/public/audio/**'
       - e2e/*visual*.spec.js
@@ -23,7 +23,7 @@ on:
       - .github/workflows/app-visual-artifact.yml
   workflow_dispatch:
 concurrency:
-  group: app-visual-${{ github.event_name }}-${{ github.ref }}
+  group: ${{ github.ref }}
   cancel-in-progress: true
 permissions: {contents: read}
 jobs:
@@ -32,8 +32,6 @@ jobs:
     timeout-minutes: 18
     steps:
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 2
+        with: {fetch-depth: 2}
       - uses: ./.github/actions/app-visual-pipeline
-        with:
-          mode: canonical
+        with: {mode: canonical}
