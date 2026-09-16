@@ -17,7 +17,7 @@ export const FRONTEND_CSP = [
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
-  "connect-src 'self' https: wss:",
+  "connect-src 'self' http: https: ws: wss:",
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
   "manifest-src 'self'",
