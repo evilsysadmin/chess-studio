@@ -9,6 +9,7 @@ fi
 sha="$1"
 repo="${CHESS_STUDIO_REPO:-/opt/chess-studio/repo}"
 compose_file="$repo/infra/oci/runtime/docker-compose.yml"
+tunnel_connector="$repo/scripts/oci_staging_tunnel_connector.sh"
 env_file="${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}"
 state_dir="${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio}"
 state_file="$state_dir/deployed.sha"
@@ -173,6 +174,8 @@ else
   git checkout --detach "$sha"
 fi
 [[ -f "$compose_file" ]] || { echo "missing compose runtime in $sha: $compose_file" >&2; exit 66; }
+[[ -f "$tunnel_connector" && ! -L "$tunnel_connector" ]] || { echo "missing tunnel connector in $sha: $tunnel_connector" >&2; exit 66; }
+/bin/bash "$tunnel_connector" --self-test
 
 # Telemetry sidecars are deliberately not part of the staging deployment gate.
 # Prepare only the exact backend artifact before touching the currently serving
@@ -189,8 +192,12 @@ fi
 
 for _ in $(seq 1 60); do
   if attest "$sha"; then
+    if ! /bin/bash "$tunnel_connector"; then
+      echo "OCI backend is healthy but Cloudflare tunnel self-heal failed for $sha" >&2
+      exit 46
+    fi
     record_successful_backend "$sha"
-    echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin"
+    echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin tunnel=managed-process"
     exit 0
   fi
   sleep 2
