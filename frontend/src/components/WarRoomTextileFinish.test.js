@@ -48,6 +48,15 @@ function buildTextileFixture() {
   const floor = mesh('war-room-castle-floor-slab', new THREE.MeshPhysicalMaterial({ color: 0x8b8173, roughness: 0.6 }));
   root.add(floor);
 
+  const coarseWallTexture = new THREE.DataTexture(new Uint8Array(4 * 4 * 4), 4, 4);
+  const wallMaterial = new THREE.MeshPhysicalMaterial({ color: 0x686057, roughness: 0.84 });
+  wallMaterial.bumpMap = coarseWallTexture;
+  wallMaterial.roughnessMap = coarseWallTexture;
+  wallMaterial.bumpScale = 0.022;
+  const wallLeft = mesh('war-room-castle-wall-left', wallMaterial);
+  const wallRight = mesh('war-room-castle-wall-right', wallMaterial);
+  root.add(wallLeft, wallRight);
+
   const walnut = new THREE.MeshPhysicalMaterial({ color: 0x3b2417, metalness: 0.01, roughness: 0.62 });
   const walnutDark = new THREE.MeshPhysicalMaterial({ color: 0x1b100a, metalness: 0.01, roughness: 0.76 });
   const brass = new THREE.MeshPhysicalMaterial({ color: 0x6f4a20, metalness: 0.72, roughness: 0.34 });
@@ -84,11 +93,13 @@ function buildTextileFixture() {
     walnutDark,
     brass,
     nestedPaper,
+    coarseWallTexture,
+    wallMaterial,
   };
 }
 
 describe('War Room surface microfinish', () => {
-  it('adds five shared 64px procedural maps to textiles and core room surfaces', () => {
+  it('adds six shared 64px procedural maps to textiles and core room surfaces', () => {
     const {
       root,
       left,
@@ -102,19 +113,22 @@ describe('War Room surface microfinish', () => {
       walnutDark,
       brass,
       nestedPaper,
+      coarseWallTexture,
+      wallMaterial,
     } = buildTextileFixture();
     const tuned = applyWarRoomTextileFinish(root);
 
-    expect(tuned).toBe(10);
+    expect(tuned).toBe(11);
     expect(root.userData.warRoomTextileFinish).toBe(WAR_ROOM_TEXTILE_FINISH_VERSION);
     expect(root.userData.warRoomTextileFinishStats).toEqual({
-      tuned: 10,
+      tuned: 11,
       leatherMaterials: 3,
       velvetMaterials: 2,
       woolMaterials: 2,
       limestoneMaterials: 1,
       walnutMaterials: 2,
-      textureCount: 5,
+      ashlarMaterials: 1,
+      textureCount: 6,
       textureResolution: 64,
     });
 
@@ -146,18 +160,23 @@ describe('War Room surface microfinish', () => {
     expect(brass.bumpMap).toBeNull();
     expect(nestedPaper.bumpMap).toBeNull();
 
+    expect(wallMaterial.roughnessMap.userData.warRoomSurfaceKind).toBe('ashlar');
+    expect(wallMaterial.bumpMap).toBe(coarseWallTexture);
+    expect(wallMaterial.bumpScale).toBeCloseTo(0.022);
+
     expect(new Set([
       leftLeather.bumpMap,
       curtainA.material.bumpMap,
       carpet.material.bumpMap,
       floor.material.bumpMap,
       walnut.bumpMap,
-    ]).size).toBe(5);
+      wallMaterial.roughnessMap,
+    ]).size).toBe(6);
   });
 
   it('is idempotent once the room has been finished', () => {
     const { root } = buildTextileFixture();
-    expect(applyWarRoomTextileFinish(root)).toBe(10);
+    expect(applyWarRoomTextileFinish(root)).toBe(11);
     const stats = root.userData.warRoomTextileFinishStats;
     expect(applyWarRoomTextileFinish(root)).toBe(0);
     expect(root.userData.warRoomTextileFinishStats).toBe(stats);
@@ -165,10 +184,9 @@ describe('War Room surface microfinish', () => {
 
   it('chains after the existing castle render driver and applies on first paint', () => {
     const { root } = buildTextileFixture();
-    const wall = mesh('war-room-castle-wall-left', new THREE.MeshStandardMaterial({ color: 0x555555 }));
+    const wall = root.getObjectByName('war-room-castle-wall-left');
     const previous = vi.fn();
     wall.onBeforeRender = previous;
-    root.add(wall);
 
     expect(installWarRoomTextileFinish(root, { coarsePointer: false })).toBe(1);
     expect(root.userData.warRoomTextileFinish).toBeUndefined();
@@ -176,14 +194,13 @@ describe('War Room surface microfinish', () => {
 
     expect(previous).toHaveBeenCalledTimes(1);
     expect(root.userData.warRoomTextileFinish).toBe(WAR_ROOM_TEXTILE_FINISH_VERSION);
-    expect(root.userData.warRoomTextileFinishStats.tuned).toBe(10);
+    expect(root.userData.warRoomTextileFinishStats.tuned).toBe(11);
     expect(installWarRoomTextileFinish(root, { coarsePointer: false })).toBe(0);
   });
 
   it('adds no driver or textures on coarse/mobile rendering', () => {
     const { root } = buildTextileFixture();
-    const wall = mesh('war-room-castle-wall-left', new THREE.MeshStandardMaterial({ color: 0x555555 }));
-    root.add(wall);
+    const wall = root.getObjectByName('war-room-castle-wall-left');
 
     expect(installWarRoomTextileFinish(root, { coarsePointer: true })).toBe(0);
     expect(wall.userData.warRoomTextileFinishDriver).toBeUndefined();
