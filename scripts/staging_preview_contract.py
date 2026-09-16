@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail closed if manual staging preview/restore can enter production."""
+"""Fail closed if staging preview/deploy topology can violate release isolation."""
 from __future__ import annotations
 
 import pathlib
@@ -14,6 +14,9 @@ STAGING_WRANGLER = ROOT / "infra/cloudflare/wrangler.staging.toml"
 STAGING_WORKER_WRAPPER = ROOT / "infra/cloudflare/worker/staging.js"
 STAGING_WORKER_DEPLOY = ROOT / "scripts/deploy_staging_ai_worker.py"
 STAGING_RELEASE_IDENTITY = ROOT / "scripts/staging_release_identity.py"
+
+STAGING_WRITE_MUTEX = "concurrency:\n  group: chess-studio-staging-deploy\n  cancel-in-progress: false"
+OCI_MUTATION_MUTEX = "concurrency:\n      group: oci-staging-mutations\n      cancel-in-progress: false"
 
 
 def require(text: str, needle: str, label: str, errors: list[str]) -> None:
@@ -64,8 +67,8 @@ def main() -> int:
     require(preview, "--branch main", "canonical staging frontend deployment", errors)
     require(preview, "Staging no sirve el SHA solicitado", "live build identity gate", errors)
     require(preview, "No acreditado:", "non-accreditation summary", errors)
-    require(preview, "group: chess-studio-staging-deploy", "staging write mutex", errors)
-    require(staging_deploy, "group: chess-studio-staging-deploy", "canonical staging write mutex", errors)
+    require(preview, STAGING_WRITE_MUTEX, "preview staging write mutex", errors)
+    require(staging_deploy, STAGING_WRITE_MUTEX, "canonical staging write mutex", errors)
 
     # This workflow is deliberately frontend-only: no Render mutation or AI deploy.
     for forbidden in (
@@ -80,20 +83,20 @@ def main() -> int:
             errors.append(f"preview/restore contiene trigger o mutación prohibida: {forbidden!r}")
 
     # Canonical staging owns all mutations for one generation. A CI-approved SHA
-    # that has already been superseded by a newer main HEAD is not an outage: the
-    # stale run must cancel itself before the first mutation. Once admitted,
-    # backend, Pages and Worker advance in parallel. Existing browser runners then
-    # prove the same N/N/N runtime contract before Chromium starts.
+    # superseded by a newer main HEAD exits cleanly before mutation. Generations
+    # queue instead of interrupting a partially-mutated deploy. Once admitted,
+    # backend, Pages and Worker advance in parallel and browser smoke proves N/N/N.
     for needle, label in (
-        ("Backend + frontend + AI staging generation", "canonical generation job"),
+        ("name: Prepare coherent staging generation", "canonical generation prepare job"),
         ("Supersede stale staging commit", "single stale guard before mutation"),
-        ("actions: write", "stale supersede cancellation permission"),
-        ("GH_TOKEN: ${{ github.token }}", "stale supersede token wiring"),
-        ("/actions/runs/$GITHUB_RUN_ID/cancel", "stale supersede self-cancel endpoint"),
+        ("permissions:\n  contents: read", "read-only workflow permissions"),
+        ("admitted: ${{ steps.admission.outputs.admitted }}", "admission output"),
+        ("git ls-remote origin refs/heads/main", "main head admission probe"),
+        ("admitted=false", "superseded clean exit"),
+        ("admitted=true", "admitted generation state"),
         ("::notice title=Staging superseded", "stale supersede non-error diagnostic"),
-        ("while :; do", "stale supersede fail-closed wait"),
-        ("Reconcile Render staging configuration", "backend-specific Render reconcile"),
-        ("Deploy exact backend commit to Render staging", "generation backend deploy"),
+        ("Resolve legacy Render service id read-only", "backend-specific Render read-only lookup"),
+        ("Deploy exact backend commit to OCI staging", "generation OCI backend deploy"),
         ("Deploy tested frontend to Cloudflare Pages", "generation frontend deploy"),
         ("Deploy exact staging Worker and synchronize shared secret", "generation Worker deploy"),
         ("run: python3 scripts/deploy_staging_ai_worker.py", "generation Worker self-resolving helper"),
@@ -104,10 +107,24 @@ def main() -> int:
     ):
         require(staging_deploy, needle, label, errors)
 
+    for forbidden in (
+        "actions: write",
+        "GH_TOKEN:",
+        "/actions/runs/$GITHUB_RUN_ID/cancel",
+        "while :; do",
+        "Wait for OCI infrastructure mutations to quiesce",
+        "actions/workflows/oci-staging-deploy.yml/runs",
+        "Legacy contract marker",
+        "Legacy contract phrase",
+    ):
+        if forbidden in staging_deploy:
+            errors.append(f"staging generation conserva orchestration legado prohibido: {forbidden!r}")
+
     # Topology contract: prepare is admission only. Backend, Pages and Worker are
-    # sibling lanes after admission. Render reconcile stays inside backend before
-    # the exact deploy. There is no standalone parity job: the smoke matrix waits
-    # for all three deploy lanes and proves N/N/N before restoring browser runtime.
+    # sibling lanes after admission. The backend shares the native OCI mutation
+    # mutex with Terraform rather than polling GitHub Actions. There is no
+    # standalone parity job: smoke waits for all three deploy lanes and proves
+    # N/N/N before restoring browser runtime.
     job_markers = {
         "prepare": "\n  prepare:\n",
         "backend": "\n  backend:\n",
@@ -128,19 +145,28 @@ def main() -> int:
         blocks["summary"] = staging_deploy[job_positions["summary"]:]
 
         if "render_staging_bootstrap.py" in blocks["prepare"]:
-            errors.append("staging generation: prepare volvió a ejecutar Render reconcile y serializa Pages/Worker")
+            errors.append("staging generation: prepare volvió a ejecutar Render lookup y serializa Pages/Worker")
         if "\n  render_reconcile:\n" in staging_deploy:
             errors.append("staging generation: Render reconcile volvió a un job separado y añade otro runner antes del deploy")
         if "\n  parity:\n" in staging_deploy:
             errors.append("staging generation: parity volvió a un job separado y añade otra cola de runner antes del smoke")
 
+        for name in ("backend", "frontend", "worker", "smoke", "summary"):
+            require(
+                blocks[name],
+                "if: needs.prepare.outputs.admitted == 'true'",
+                f"{name} respeta admission",
+                errors,
+            )
+
         require(blocks["backend"], "needs: prepare", "backend arranca tras admission", errors)
-        require(blocks["backend"], "render_staging_bootstrap.py", "backend conserva bootstrap idempotente", errors)
+        require(blocks["backend"], "render_staging_bootstrap.py", "backend conserva Render lookup read-only", errors)
         require(blocks["backend"], "render_service_id: ${{ steps.render_bootstrap.outputs.service_id }}", "backend exporta service id para smoke", errors)
-        reconcile_step = blocks["backend"].find("Reconcile Render staging configuration")
-        deploy_step = blocks["backend"].find("Deploy exact backend commit to Render staging")
-        if min(reconcile_step, deploy_step) >= 0 and not reconcile_step < deploy_step:
-            errors.append("staging generation: Render reconcile debe ocurrir antes del exact deploy dentro del mismo backend job")
+        require(blocks["backend"], OCI_MUTATION_MUTEX, "backend comparte mutex OCI con Terraform", errors)
+        render_lookup_step = blocks["backend"].find("Resolve legacy Render service id read-only")
+        deploy_step = blocks["backend"].find("Deploy exact backend commit to OCI staging")
+        if min(render_lookup_step, deploy_step) >= 0 and not render_lookup_step < deploy_step:
+            errors.append("staging generation: Render lookup debe ocurrir antes del exact OCI deploy dentro del backend job")
 
         require(blocks["frontend"], "needs: prepare", "Pages arranca tras admission", errors)
         require(blocks["worker"], "needs: prepare", "Worker arranca tras admission", errors)
@@ -149,7 +175,7 @@ def main() -> int:
         if "render_reconcile" in blocks["worker"]:
             errors.append("staging generation: Worker volvió a depender de Render reconcile")
         if "--service-id" in blocks["worker"]:
-            errors.append("staging generation: Worker volvió a depender del service_id producido por Render reconcile")
+            errors.append("staging generation: Worker volvió a depender del service_id producido por Render")
 
         require(
             blocks["smoke"],
@@ -179,16 +205,16 @@ def main() -> int:
             errors.append("staging generation: N/N/N debe cerrarse antes de restaurar Chromium y ejecutar el smoke")
 
     stale_step = staging_deploy.find("Supersede stale staging commit")
-    render_step = staging_deploy.find("Reconcile Render staging configuration")
+    render_step = staging_deploy.find("Resolve legacy Render service id read-only")
     frontend_step = staging_deploy.find("Deploy tested frontend to Cloudflare Pages")
-    backend_step = staging_deploy.find("Deploy exact backend commit to Render staging")
+    backend_step = staging_deploy.find("Deploy exact backend commit to OCI staging")
     worker_step = staging_deploy.find("Deploy exact staging Worker and synchronize shared secret")
     parity_step = staging_deploy.find("Verify staging generation parity before browser smoke")
     browser_restore_step = staging_deploy.find("Restore staging browser runtime")
     smoke_step = staging_deploy.find("Live browser smoke against deployed staging")
     mutations = [render_step, frontend_step, backend_step, worker_step]
     if stale_step >= 0 and all(step >= 0 for step in mutations) and not all(stale_step < step for step in mutations):
-        errors.append("staging generation: stale supersede guard no está antes de todas las mutaciones")
+        errors.append("staging generation: stale supersede guard no está antes de todas las ramas operativas")
     if min(parity_step, browser_restore_step, smoke_step) >= 0 and not (
         parity_step < browser_restore_step < smoke_step
     ):
@@ -221,8 +247,8 @@ def main() -> int:
     require(staging_worker_deploy, "wait_for_runtime_build(deploy_sha)", "staging Worker runtime identity gate", errors)
     require(staging_worker_deploy, "last_build == deploy_sha", "staging Worker exact runtime SHA convergence", errors)
 
-    # Production is now a daily release train. It must consume only the latest
-    # immutable accreditation emitted by the canonical automatic Staging AI run;
+    # Production is a daily release train. It consumes only the latest immutable
+    # accreditation emitted by the canonical automatic Staging AI run;
     # preview/restore never participates and manual production remains main-only.
     for needle, label in (
         ("schedule:", "production daily schedule"),
@@ -239,9 +265,9 @@ def main() -> int:
     if "Staging · preview" in promote:
         errors.append("production-promote escucha Staging · preview")
 
-    # Staging AI remains downstream of canonical Staging · deploy, but it is now
+    # Staging AI remains downstream of canonical Staging · deploy, but it is
     # read-only accreditation. A second deploy/stale guard here would reintroduce
-    # the generation race we are explicitly trying to remove.
+    # the generation race we explicitly avoid.
     require(staging_ai, "workflows:\n      - Staging · deploy", "staging AI canonical source", errors)
     require(staging_ai, "UPSTREAM_EVENT", "staging AI upstream provenance guard", errors)
     require(staging_ai, "Accredit coherent staging generation", "staging AI read-only accreditation", errors)
@@ -270,7 +296,10 @@ def main() -> int:
             print(f" - {error}", file=sys.stderr)
         return 1
 
-    print("staging-preview-contract OK · preview isolated; admission first; deploy lanes parallel; smoke-integrated N/N/N")
+    print(
+        "staging-preview-contract OK · preview isolated; queued admission; native OCI mutex; "
+        "deploy lanes parallel; smoke-integrated N/N/N"
+    )
     return 0
 
 
