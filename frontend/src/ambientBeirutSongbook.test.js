@@ -76,6 +76,18 @@ describe('Beirut nocturnal songbook', () => {
     expect(new Set(BEIRUT_SONGBOOK_IDS.map((id) => JSON.stringify(BEIRUT_PROFILES[id].harmonyPath))).size).toBe(BEIRUT_SONGBOOK_IDS.length);
   });
 
+  it('does not inherit the loud legacy buzuq alarm in Beirut 01:13', () => {
+    const feel = structuredFeel(AMBIENT_THEMES.beirut0113);
+
+    expect(feel.leadInstrument).toBe('nylonGuitar');
+    expect(feel.counterInstrument).toBe('clarinet');
+    expect(feel.signature.instrument).toBe('buzuq');
+    expect(feel.signature.everyCycles).toBeGreaterThanOrEqual(3);
+    expect(feel.signature.repeatPeriod).toBeGreaterThanOrEqual(96);
+    expect(feel.signature.volume).toBeLessThanOrEqual(0.13);
+    expect(Object.keys(feel.signature.motif)).toHaveLength(4);
+  });
+
   it('preserves the retired taxi production identity for compatibility and future rework', () => {
     const rooftop = structuredFeel(AMBIENT_THEMES.beirutRooftop0412);
     const taxi = structuredFeel(AMBIENT_THEMES.beirutNightTaxi);
