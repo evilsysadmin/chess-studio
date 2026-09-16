@@ -230,6 +230,19 @@ def test_active_staging_does_not_resume_again() -> None:
     render_api.assert_not_called()
 
 
+def test_staging_waits_until_render_is_idle_before_exact_deploy() -> None:
+    responses = iter([
+        [{"deploy": {"id": "dep-old", "status": "build_in_progress"}}],
+        [{"deploy": {"id": "dep-old", "status": "live"}}],
+    ])
+    with (
+        patch.object(module, "api", side_effect=lambda method, path, payload=None: next(responses)),
+        patch.object(module.time, "sleep") as sleep,
+    ):
+        module.wait_for_service_idle("srv-stage", max_attempts=3, poll_seconds=2)
+    sleep.assert_called_once_with(2)
+
+
 def test_main_reconciles_without_duplicate_creation() -> None:
     production = {"id": "srv-prod", "name": module.PRODUCTION_NAME, "ownerId": "tea-owner"}
     staging = {"id": "srv-stage", "name": module.SERVICE_NAME}
@@ -249,6 +262,7 @@ def test_main_reconciles_without_duplicate_creation() -> None:
         patch.object(module, "ensure_custom_domain") as domain,
         patch.object(module, "ensure_service_grouped", return_value={"id": "env-stage"}) as group,
         patch.object(module, "ensure_service_resumed") as resume,
+        patch.object(module, "wait_for_service_idle") as idle,
         patch.object(module, "export_github_secret_env") as export_secret,
     ):
         module.main()
@@ -258,6 +272,7 @@ def test_main_reconciles_without_duplicate_creation() -> None:
     domain.assert_called_once_with("srv-stage")
     group.assert_called_once_with(production, "srv-stage")
     resume.assert_called_once_with("srv-stage")
+    idle.assert_called_once_with("srv-stage")
     export_secret.assert_called_once_with("STAGING_INVITE_CODE", "invite-human")
     check(("PUT", "/services/srv-prod/env-vars/ENVIRONMENT", {"value": "production"}) in calls, "producción debe declarar su entorno")
     check(("PUT", "/services/srv-prod/env-vars/MONGO_DB_NAME", {"value": "chess_study"}) in calls, "producción debe quedar explícita")
@@ -276,5 +291,6 @@ if __name__ == "__main__":
     test_staging_environment_is_created_when_missing()
     test_suspended_staging_is_resumed_before_deploy()
     test_active_staging_does_not_resume_again()
+    test_staging_waits_until_render_is_idle_before_exact_deploy()
     test_main_reconciles_without_duplicate_creation()
-    print("render-staging-bootstrap-smoke OK · invite heredado de Render producción + fail-closed + Mongo aislado + agrupación + auto-deploy off + auto-resume Render")
+    print("render-staging-bootstrap-smoke OK · invite heredado de Render producción + Render idle pre-deploy + fail-closed + Mongo aislado + agrupación + auto-deploy off + auto-resume Render")
