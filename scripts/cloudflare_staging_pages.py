@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Bootstrap idempotente de Cloudflare Pages para Chess Studio staging.
 
-Crea/reconcilia el proyecto Pages de staging, su custom domain y los dos CNAME
-necesarios para que frontend y backend staging queden aislados de producción.
+Crea/reconcilia el proyecto Pages de staging, su custom domain y el CNAME del
+frontend. El hostname del API tiene un owner separado (OCI Cloudflare Tunnel)
+para que un deploy de Pages no revierta accidentalmente el origen del backend.
 Los secretos sólo llegan por variables de entorno del runner y nunca se imprimen.
 """
 
@@ -22,7 +23,6 @@ PAGES_PROJECT = "chess-studio-staging"
 PAGES_HOSTNAME = "staging.chess-studio.shadowops.dpdns.org"
 PAGES_TARGET = f"{PAGES_PROJECT}.pages.dev"
 API_HOSTNAME = "api-staging.chess-studio.shadowops.dpdns.org"
-RENDER_TARGET = "chess-study-backend-staging.onrender.com"
 DOMAIN_ACTIVE_TIMEOUT_S = 600
 DOMAIN_ACTIVE_POLL_S = 5
 
@@ -286,13 +286,6 @@ def main() -> None:
         proxied=True,
         comment="Chess Studio staging frontend · Cloudflare Pages",
     )
-    api_dns = ensure_cname(
-        zone_id,
-        API_HOSTNAME,
-        RENDER_TARGET,
-        proxied=False,
-        comment="Chess Studio staging API · Render",
-    )
     domain_status = wait_pages_domain_active()
     analytics = ensure_web_analytics(zone_id)
     write_outputs(
@@ -306,7 +299,7 @@ def main() -> None:
         "Cloudflare staging reconciliado: "
         f"Pages={PAGES_PROJECT} ({'creado' if project_created else 'existente'}), "
         f"domain={'creado' if domain_created else 'existente'}, "
-        f"DNS pages={pages_dns}, DNS api={api_dns}, domain_status={domain_status}, "
+        f"DNS pages={pages_dns}, API DNS=owner OCI Tunnel, domain_status={domain_status}, "
         f"Web Analytics={analytics}"
     )
 
