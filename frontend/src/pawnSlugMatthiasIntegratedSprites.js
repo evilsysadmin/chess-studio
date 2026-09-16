@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import pistolPayload from './assets/pawnSlug/matthias_pistol_premium_v3.b64?raw';
+import { PAWN_SLUG_CANONICAL_HANDOFF, pawnSlugCanonicalPistolAtlasUrl, pawnSlugCanonicalPistolWindow } from './pawnSlugCanonicalHandoff.js';
 import machinegunPayload from './assets/pawnSlug/matthias_machinegun_premium_v3.b64?raw';
 import shotgunPayload from './assets/pawnSlug/matthias_shotgun_premium_v3.b64?raw';
 import panzerfaustPayload from './assets/pawnSlug/matthias_panzerfaust_premium_v3.b64?raw';
@@ -7,7 +7,7 @@ import canonicalMotionPayload from './assets/pawnSlug/matthias_motion_atlas_v5_p
 import { configurePawnSlugTexture } from './pawnSlugSpriteCore.js';
 
 const PAYLOADS = Object.freeze({
-  pistol: pistolPayload,
+  pistol: null,
   machinegun: machinegunPayload,
   shotgun: shotgunPayload,
   panzerfaust: panzerfaustPayload,
@@ -107,6 +107,7 @@ export const PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME = Object.freeze({
 export const PAWN_SLUG_MATTHIAS_INTEGRATED_ART = Object.freeze({
   version: 'blender-premium-v3',
   atlasRevision: 'blender-premium-v3',
+  canonicalHandoff: PAWN_SLUG_CANONICAL_HANDOFF,
   canonicalIdentity: PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY,
   canonicalHeadArt: PAWN_SLUG_MATTHIAS_CANONICAL_HEAD_ART,
   browserRenderContract: PAWN_SLUG_MATTHIAS_BROWSER_RENDER_CONTRACT,
@@ -141,6 +142,7 @@ export function pawnSlugIntegratedWeaponId(kind = 'pistol') {
 
 export function pawnSlugIntegratedWeaponAtlasUrl(kind = 'pistol') {
   const id = pawnSlugIntegratedWeaponId(kind);
+  if (id === 'pistol') return pawnSlugCanonicalPistolAtlasUrl;
   return `data:image/webp;base64,${PAYLOADS[id].trim()}`;
 }
 
@@ -223,7 +225,8 @@ export function pawnSlugCanonicalMatthiasRenderStatus(sprite) {
     && atlas?.source === 'primary'
     && sprite?.material?.visible === true
     && sprite?.material?.map === atlas?.texture;
-  const headReady = head?.ready === true
+  const bakedHead = atlas?.weapon === 'pistol' && bodyReady;
+  const headReady = bakedHead || head?.ready === true
     && head?.source === 'canonical'
     && headSprite?.material?.visible === true
     && headSprite?.material?.map === head?.texture;
@@ -245,8 +248,11 @@ function applyBodyAtlasWindow(sprite) {
   const texture = sprite.userData.atlas?.texture;
   if (!texture) return;
   const animation = sprite.userData.animation;
-  const window = pawnSlugPremiumMatthiasAtlasWindow(
-    animation.action || 'idle',
+  const atlasWindow = sprite.userData.atlas.weapon === 'pistol'
+    ? pawnSlugCanonicalPistolWindow : pawnSlugPremiumMatthiasAtlasWindow;
+  const window = atlasWindow(
+    sprite.userData.atlas.weapon === 'pistol' && animation.firing && animation.action !== 'crouch'
+      ? 'idle' : animation.action || 'idle',
     animation.frameIndex || 0,
     animation.direction || 1,
   );
@@ -260,6 +266,7 @@ function applyCanonicalHeadPose(sprite) {
   const head = sprite.userData.canonicalHead;
   const headSprite = head?.sprite;
   if (!headSprite) return;
+  headSprite.material.visible = head.ready && sprite.userData.atlas.ready && sprite.userData.atlas.weapon !== 'pistol';
   const animation = sprite.userData.animation;
   const pose = pawnSlugCanonicalHeadPose(
     animation.action || 'idle',
@@ -388,6 +395,9 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
     const weapon = pawnSlugIntegratedWeaponId(kind);
     const requestId = ++atlas.requestId;
     atlas.source = 'loading';
+    atlas.ready = false;
+    material.visible = false;
+    canonicalHeadMaterial.visible = false;
     loader.load(
       pawnSlugIntegratedWeaponAtlasUrl(weapon),
       (texture) => {
@@ -399,12 +409,14 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
         const previous = atlas.texture;
         atlas.texture = texture;
         atlas.weapon = weapon;
+        atlas.assetVersion = weapon === 'pistol' ? PAWN_SLUG_CANONICAL_HANDOFF.version : PAWN_SLUG_MATTHIAS_INTEGRATED_ART.version;
+        atlas.atlasRevision = atlas.assetVersion;
         atlas.source = 'primary';
         atlas.ready = true;
         material.map = texture;
         material.visible = true;
         material.needsUpdate = true;
-        applyBodyAtlasWindow(sprite);
+        applyVisualPose(sprite);
         publishCanonicalMatthiasRenderStatus(sprite);
         if (previous && previous !== texture) previous.dispose?.();
       },
@@ -425,6 +437,13 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
     applyVisualPose(sprite);
   };
 
+  sprite.userData.setFiring = (firing) => {
+    const active = Boolean(firing);
+    if (sprite.userData.animation.firing === active) return;
+    sprite.userData.animation.firing = active;
+    applyBodyAtlasWindow(sprite);
+  };
+
   sprite.userData.setDirection = (dir) => {
     const animation = sprite.userData.animation;
     const direction = dir < 0 ? -1 : 1;
@@ -436,9 +455,13 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
   sprite.userData.setWeapon = (kind) => {
     const weapon = pawnSlugIntegratedWeaponId(kind);
     sprite.userData.animation.weapon = weapon;
-    if (sprite.userData.atlas.weapon !== weapon) loadWeapon(weapon);
+    if (sprite.userData.atlas.requestedWeapon !== weapon || sprite.userData.atlas.source === 'failed') {
+      sprite.userData.atlas.requestedWeapon = weapon;
+      loadWeapon(weapon);
+    }
   };
 
+  sprite.userData.atlas.requestedWeapon = 'pistol';
   loadWeapon('pistol');
   loadCanonicalHead();
   return sprite;

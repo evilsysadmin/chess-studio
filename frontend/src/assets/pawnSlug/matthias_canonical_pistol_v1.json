@@ -1,0 +1,110 @@
+{
+  "version": "canonical-handoff-v1",
+  "masterSha256": "9c21264274777d012a2941073f6cbae94df090db0459624e6031207c0a288c5f",
+  "width": 768,
+  "height": 960,
+  "frameWidth": 192,
+  "frameHeight": 192,
+  "guardTexels": 2,
+  "footAnchorPx": 24,
+  "sourceFacing": "right",
+  "weapon": "pistol",
+  "sourceBoxes": {
+    "aim": [
+      [
+        100,
+        573,
+        191,
+        687
+      ]
+    ],
+    "walk": [
+      [
+        90,
+        276,
+        179,
+        403
+      ],
+      [
+        192,
+        276,
+        281,
+        403
+      ],
+      [
+        296,
+        276,
+        382,
+        403
+      ],
+      [
+        397,
+        276,
+        482,
+        403
+      ]
+    ],
+    "run": [
+      [
+        78,
+        419,
+        170,
+        546
+      ],
+      [
+        181,
+        419,
+        275,
+        546
+      ],
+      [
+        287,
+        419,
+        379,
+        546
+      ],
+      [
+        388,
+        419,
+        480,
+        546
+      ]
+    ],
+    "crouch": [
+      [
+        774,
+        755,
+        881,
+        883
+      ]
+    ]
+  },
+  "actions": {
+    "idle": {
+      "row": 0,
+      "count": 1
+    },
+    "walk": {
+      "row": 1,
+      "count": 4
+    },
+    "run": {
+      "row": 2,
+      "count": 4
+    },
+    "crouch": {
+      "row": 3,
+      "count": 1
+    },
+    "jump": {
+      "row": 4,
+      "count": 1
+    }
+  },
+  "fallbacks": {
+    "jump": "aim pose; existing runtime jump motion",
+    "unknownAction": "idle",
+    "otherWeapons": "existing weapon-specific premium-v3 atlases"
+  },
+  "processing": "crop + seeded GrabCut background matte + uniform scale + lossless WebP"
+}
