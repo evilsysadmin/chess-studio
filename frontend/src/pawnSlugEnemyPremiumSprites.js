@@ -128,11 +128,11 @@ function publishPremiumEnemyRenderStatus(sprite) {
   const source = atlas?.source;
   const evidence = atlas?.premiumVisual?.evidence
     || sprite?.material?.map?.userData?.pawnSlugPremiumEnemyVisualEvidence;
-  const verifiedPremium = ['premium-raster', 'premium-fallback'].includes(source)
+  const verifiedPremium = source === 'premium-raster'
     && evidence?.checked
     && evidence?.opaque;
-  // generated-actions remains the synchronous safety net, but it must never
-  // satisfy the browser contract that claims authored premium art is live.
+  // The static premium fallback remains a valid player-facing safety net, but
+  // it must not satisfy the browser canary that certifies the primary R2 raster.
   if (!verifiedPremium) return;
   const status = pawnSlugPremiumEnemyRenderStatus(sprite);
   if (stage.dataset.pawnSlugEnemyVisual !== status) stage.dataset.pawnSlugEnemyVisual = status;
