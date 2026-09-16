@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { setWarRoomHansServiceDoorOpen } from './WarRoomHansServiceDoor.js';
 
-export const WAR_ROOM_HANS_SERVICE_EXIT_DOOR_GUARD_VERSION = 'hans-service-exit-door-guard-v3-bidirectional-latch-release';
+export const WAR_ROOM_HANS_SERVICE_EXIT_DOOR_GUARD_VERSION = 'hans-service-exit-door-guard-v4-bidirectional-latch-release-real-recess-anchor';
 
 const HANS_NAME = 'war-room-hans-butler';
 const FLOOR_NAME = 'war-room-castle-floor-slab';
+const DOOR_RECESS_NAME = 'war-room-hans-service-door-recess';
 const OPEN_START_DISTANCE = 1.1;
 const FULL_OPEN_DISTANCE = 0.34;
 const HOLD_OPEN_MS = 700;
@@ -38,7 +39,14 @@ export function installWarRoomHansServiceExitDoorGuard(root, doorRefs) {
   const previous = floor.onAfterRender;
   const hansWorld = new THREE.Vector3();
   const doorWorld = new THREE.Vector3();
-  const doorAnchor = doorRefs.recess || doorRefs.group || null;
+  // Production refs historically expose the door group but not the rendered
+  // recess. The group origin lives near room centre while the actual opening is
+  // embedded in the side wall, so using the group can make a Hans standing in
+  // the jamb look several world units away. Resolve the physical aperture first.
+  const doorAnchor = doorRefs.recess
+    || doorRefs.group?.getObjectByName?.(DOOR_RECESS_NAME)
+    || doorRefs.group
+    || null;
   let latchedAt = null;
   let lastOpen = 0;
   let lastGuardOpen = null;
