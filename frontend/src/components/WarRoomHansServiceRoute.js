@@ -5,7 +5,7 @@ import { setWarRoomHansServiceDoorOpen } from './WarRoomHansServiceDoor.js';
 
 export { moveWarRoomHansToward };
 
-export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v12-visible-exit-door-fireplace-front-standoff';
+export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v13-visible-exit-door-fireplace-front-carpet-edge-standoff';
 export const HANS_SERVICE_WALK_SPEED = 0.32;
 export const HANS_SERVICE_FURNITURE_CLEARANCE = 0.58;
 
@@ -13,6 +13,7 @@ const DOOR_NAME = 'war-room-hans-service-door';
 const DOOR_RECESS_NAME = 'war-room-hans-service-door-recess';
 const STANDING_Y = -0.34;
 const COMMAND_CHAIR_NAME = 'war-room-teutonic-command-chair';
+const COMMAND_CARPET_KEY_NAME = 'war-room-command-carpet-brass-key';
 const FIREPLACE_NAME = 'war-room-fireplace';
 const FIREPLACE_HEARTH_NAME = 'war-room-fireplace-refractory-hearth';
 const COMMAND_DESK_NAMES = Object.freeze([
@@ -46,6 +47,10 @@ function isWallArmor(object) {
 
 function isCommandChair(object) {
   return String(object?.name || '') === COMMAND_CHAIR_NAME;
+}
+
+function isCommandCarpetKey(object) {
+  return String(object?.name || '') === COMMAND_CARPET_KEY_NAME;
 }
 
 function isFireplace(object) {
@@ -146,6 +151,36 @@ function applyFireplaceStandoff(object, world, offsetX, offsetZ) {
   return true;
 }
 
+function applyCommandCarpetKeyStandoff(object, world, offsetX, offsetZ) {
+  if (!isCommandCarpetKey(object)) return false;
+  const box = objectBounds(object);
+  if (!box) return false;
+
+  const spanX = box.max.x - box.min.x;
+  const spanZ = box.max.z - box.min.z;
+  const centerX = (box.min.x + box.max.x) * 0.5;
+  const centerZ = (box.min.z + box.max.z) * 0.5;
+
+  // The four brass strips sit on the carpet perimeter. Hans must work from the
+  // room-facing side of that strip, never add the old centre-based offset toward
+  // the wall. Infer whether this is a horizontal or vertical strip from geometry
+  // so all four perimeter pieces remain safe if target ordering ever changes.
+  if (spanX >= spanZ) {
+    const side = Math.sign(centerZ) || Math.sign(Number(world.z)) || 1;
+    world.x = centerX + (Number(offsetX) || 0);
+    world.z = side > 0
+      ? box.min.z - HANS_SERVICE_FURNITURE_CLEARANCE
+      : box.max.z + HANS_SERVICE_FURNITURE_CLEARANCE;
+  } else {
+    const side = Math.sign(centerX) || Math.sign(Number(world.x)) || 1;
+    world.x = side > 0
+      ? box.min.x - HANS_SERVICE_FURNITURE_CLEARANCE
+      : box.max.x + HANS_SERVICE_FURNITURE_CLEARANCE;
+    world.z = centerZ + (Number(offsetZ) || 0);
+  }
+  return true;
+}
+
 function applyDeskStandoff(object, world, offsetX, offsetZ) {
   const host = commandDeskHost(object);
   if (!host) return false;
@@ -241,6 +276,8 @@ export function warRoomHansTargetNearObject(object, parent, { offsetX = 0, offse
   } else if (applyFireplaceStandoff(object, world, offsetX, offsetZ)) {
     // Fireplace targets are mirrored from rendered hearth geometry, never a
     // hard-coded world +Z that flips into the wall for the opposite room side.
+  } else if (applyCommandCarpetKeyStandoff(object, world, offsetX, offsetZ)) {
+    // Carpet fallback works from the room-facing edge of the visible brass key.
   } else if (applyCommandChairStandoff(object, world, offsetX)) {
     // Chair geometry is deliberately handled against the neighbouring desk hull.
   } else if (!applyDeskStandoff(object, world, offsetX, offsetZ)) {
