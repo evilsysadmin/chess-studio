@@ -9,6 +9,7 @@ import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import './LabScreen.css';
 import './LabArcade.css';
+import './LabWorkshop.css';
 
 const ArenaExperiment = lazy(() => import('./ArenaExperiment.jsx'));
 const PawnTrailblazer = lazy(() => import('./PawnTrailblazer.jsx'));
@@ -83,75 +84,92 @@ export default function LabScreen({ onExit, onStart }){
     <button className="back-link" onClick={labMode==='hub'?onExit:()=>setLabMode('hub')}>← {labMode==='hub'?'Volver al menú':'Experimentos geniales'}</button>
 
     {labMode==='hub' ? (
-      <div className="experiments-hub">
-        <section className="experiments-hero">
-          <span className="section-label">ALA PROHIBIDA · TALLER DE MATTHIAS</span>
-          <h2>Experimentos geniales</h2>
-          <p>Modos secundarios y prototipos, fuera del camino principal. Entra si te apetece: ninguno es necesario para disfrutar Chess Studio.</p>
+      <div className="lab-workshop">
+        <header className="lab-workshop-masthead">
+          <div>
+            <div className="lab-workshop-kicker">Ala prohibida · taller de Matthias</div>
+            <h2>Experimentos geniales</h2>
+            <p>Prototipos, aventuras y barbaridades controladas. Nada de esto es obligatorio; precisamente por eso aquí podemos romper cosas con cierta elegancia.</p>
+          </div>
+          <span className="lab-workshop-seal" aria-hidden="true">M</span>
+        </header>
+
+        <section className="lab-workshop-wing lab-workshop-wing--crypt" aria-labelledby="lab-crypt-title">
+          <div className="lab-workshop-wing-copy">
+            <small>Bajo el castillo</small>
+            <h3 id="lab-crypt-title">La cripta</h3>
+            <p>Donde Matthias convierte una mala idea en campaña y después niega cualquier responsabilidad.</p>
+          </div>
+          <div className="lab-workshop-portals">
+            <button type="button" className="lab-workshop-portal lab-workshop-portal--arch lab-workshop-portal--chronicles" data-glyph="♟" onClick={()=>setLabMode('chronicles')}>
+              <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'Book I')}</small>
+              <strong>Chronicles of Matthias</strong>
+              <span>Dungeon crawler 3D en primera persona. Grupo de cuatro, combate por casillas y una cripta que piensa como un tablero.</span>
+              <b>Descender a la cripta</b>
+            </button>
+            <button type="button" className="lab-workshop-portal lab-workshop-portal--arch lab-workshop-portal--tactics" data-glyph="♞" aria-label="Abrir Tactics RPG isométrico" onClick={()=>setLabMode('chronicles-tactics')}>
+              <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'táctico por turnos')}</small>
+              <strong>Chronicles of Matthias Tactics</strong>
+              <span>La compañía sale al tablero: vista isométrica, formación visible y criaturas con su propio turno.</span>
+              <b>Abrir la mesa táctica</b>
+            </button>
+          </div>
         </section>
 
-        <span className="experiments-group-label">Aventura imposible</span>
-        <div className="experiments-grid experiments-tactical-deck">
-          <button type="button" className="experiments-card experiment-chronicles is-featured" onClick={()=>setLabMode('chronicles')}>
-            <span className="section-label">{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'Book I')}</span>
-            <strong>Chronicles of Matthias</strong>
-            <small>Dungeon crawler 3D en primera persona. Grupo de cuatro, combate por casillas y una cripta que piensa como un tablero.</small>
-            <b>Descender a la cripta →</b>
-          </button>
-          <button type="button" className="experiments-card experiment-chronicles-tactics" aria-label="Abrir Tactics RPG isométrico" onClick={()=>setLabMode('chronicles-tactics')}>
-            <span className="section-label">{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'táctico por turnos')}</span>
-            <strong>Chronicles of Matthias Tactics</strong>
-            <small>La compañía sale al tablero: vista isométrica, formación visible y criaturas con su propio turno.</small>
-            <b>Abrir la mesa táctica →</b>
-          </button>
-        </div>
-
-        <span className="experiments-group-label">Arcade</span>
-        <div className="lab-arcade-zone">
-          <button type="button" className="lab-arcade-launch is-pawnslug" onClick={()=>setLabMode('pawnslug')}>
-            <span className="lab-arcade-scenery" aria-hidden="true">
-              <i className="lab-arcade-pawn">♟</i>
-              <i className="lab-arcade-rook">♜</i>
-            </span>
-            <span className="lab-arcade-copy">
+        <section className="lab-workshop-wing lab-workshop-wing--hangar" aria-labelledby="lab-hangar-title">
+          <div className="lab-workshop-wing-copy">
+            <small>Hangar B</small>
+            <h3 id="lab-hangar-title">Ruido y pólvora</h3>
+            <p>Una zona perfectamente segura según el mismo hombre que puso un cañón delante de un peón.</p>
+          </div>
+          <div className="lab-workshop-portals">
+            <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--pawnslug" data-glyph="♜" onClick={()=>setLabMode('pawnslug')}>
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.FROZEN, 'vertical slice')}</small>
               <strong>Pawn Slug</strong>
               <span>Run & gun corto y brutal. Matthias, cuatro armas y un Panzer‑Rook que ha elegido la violencia administrativa.</span>
-              <b>Entrar en la operación <i aria-hidden="true">→</i></b>
-            </span>
-          </button>
-          <button type="button" className="lab-arcade-launch is-trailblazer" onClick={()=>setLabMode('trailblazer')}>
-            <span className="lab-arcade-scenery" aria-hidden="true"><i className="lab-arcade-pawn">♟</i></span>
-            <span className="lab-arcade-copy">
+              <b>Entrar en la operación</b>
+            </button>
+            <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--trailblazer" data-glyph="♙" onClick={()=>setLabMode('trailblazer')}>
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'jugable')}</small>
               <strong>Pawn Trailblazer</strong>
               <span>Plataformas y exploración; el movimiento se abre, los ataques siguen siendo de peón.</span>
-              <b>Vorwärts <i aria-hidden="true">→</i></b>
-            </span>
-          </button>
-        </div>
+              <b>Vorwärts</b>
+            </button>
+          </div>
+        </section>
 
-        <span className="experiments-group-label">Laboratorio táctico</span>
-        <div className="experiments-grid experiments-tactical-deck">
-          <button type="button" className="experiments-card experiment-chesscom is-featured" onClick={()=>setLabMode('chesscom')}>
-            <span className="section-label">{experimentMaturityLabel(EXPERIMENT_MATURITY.EXPERIMENTAL, 'en pulido')}</span>
-            <strong>Chesscom</strong>
-            <small>Escaramuzas tácticas con cobertura, AP, intel y extracción. La presentación sigue en fase de pulido.</small>
-            <b>Operation Dust Veil →</b>
-          </button>
-          <button type="button" className="experiments-card experiment-position" onClick={()=>setLabMode('position')}>
-            <span className="section-label">{experimentMaturityLabel(EXPERIMENT_MATURITY.MATURE, 'herramienta')}</span>
-            <strong>Laboratorio libre</strong>
-            <small>Construye, pega o modifica una FEN legal y juega desde esa posición sin tocar el rating.</small>
-            <b>Abrir editor →</b>
-          </button>
-          <button type="button" className="experiments-card experiment-arena" onClick={()=>setLabMode('arena')}>
-            <span className="section-label">{experimentMaturityLabel(EXPERIMENT_MATURITY.EXPERIMENTAL, 'variante')}</span>
-            <strong>Arenas experimentales</strong>
-            <small>Terreno y geometría alterados en un espacio aislado, sin contaminar las reglas del ajedrez estándar.</small>
-            <b>Entrar en Arena →</b>
-          </button>
-        </div>
+        <section className="lab-workshop-wing lab-workshop-wing--ops" aria-labelledby="lab-ops-title">
+          <div className="lab-workshop-wing-copy">
+            <small>Sala de operaciones</small>
+            <h3 id="lab-ops-title">Banco de pruebas</h3>
+            <p>Táctica, posiciones imposibles y geometría sospechosa. Aquí las normas entran con casco.</p>
+          </div>
+          <div className="lab-workshop-ops">
+            <button type="button" className="lab-workshop-map-table" onClick={()=>setLabMode('chesscom')}>
+              <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.EXPERIMENTAL, 'en pulido')}</small>
+              <strong>Chesscom</strong>
+              <span>Escaramuzas tácticas con cobertura, AP, intel y extracción. La presentación sigue en fase de pulido.</span>
+              <b>Operation Dust Veil →</b>
+            </button>
+            <div className="lab-workshop-bench" aria-label="Herramientas del banco de pruebas">
+              <span className="lab-workshop-bench-title">Instrumentos autorizados con reservas</span>
+              <button type="button" className="lab-workshop-tool" onClick={()=>setLabMode('position')}>
+                <span>
+                  <small className="lab-workshop-tool-meta">{experimentMaturityLabel(EXPERIMENT_MATURITY.MATURE, 'herramienta')}</small>
+                  <strong>Laboratorio libre</strong>
+                </span>
+                <b aria-hidden="true">›</b>
+              </button>
+              <button type="button" className="lab-workshop-tool lab-workshop-tool--arena" onClick={()=>setLabMode('arena')}>
+                <span>
+                  <small className="lab-workshop-tool-meta">{experimentMaturityLabel(EXPERIMENT_MATURITY.EXPERIMENTAL, 'variante')}</small>
+                  <strong>Arenas experimentales</strong>
+                </span>
+                <b aria-hidden="true">›</b>
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
     ) : <>
       <div className="menu-section friendly-primary-zone">
