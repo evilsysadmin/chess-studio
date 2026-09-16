@@ -27,7 +27,7 @@ describe('Chronicles Tactics architecture depth', () => {
   it('finds the walkable-facing side of authored wall cells', () => {
     expect(chroniclesTacticsExposedWallSide(0, 3)?.key).toBe('east');
     expect(chroniclesTacticsExposedWallSide(3, 0)?.key).toBe('south');
-    expect(chroniclesTacticsExposedWallSide(3, 3)).toBeNull();
+    expect(chroniclesTacticsExposedWallSide(0, 0)).toBeNull();
   });
 
   it('decorates only full-height structural walls and batches the geometry', () => {
