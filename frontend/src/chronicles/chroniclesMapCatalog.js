@@ -5,7 +5,7 @@ import menagerieOfAsh from './maps/menagerie-of-ash.json';
 export const DEFAULT_CHRONICLES_MAP_ID = 'crypt-eight-squares';
 
 const CONTENT_GROUPS = Object.freeze(['triggers', 'interactables', 'treasures', 'traps', 'exits']);
-const SUPPORTED_ACTIVATIONS = new Set(['always', 'sigil', 'jailer-down']);
+const SUPPORTED_ACTIVATIONS = new Set(['always']);
 const SUPPORTED_MOVEMENTS = new Set(['cardinal-chase', 'cardinal-roam', 'knight-chase', 'patrol-route', 'hold']);
 
 function clonePoint(point) {
