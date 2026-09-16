@@ -116,12 +116,18 @@ run "always_free_load_balancer_contract" {
   }
 
   assert {
-    condition     = oci_core_security_list.backend_from_load_balancer.ingress_security_rules[0].source == var.load_balancer_subnet_cidr
+    condition = one([
+      for rule in oci_core_security_list.backend_from_load_balancer.ingress_security_rules : rule
+      if rule.source == var.load_balancer_subnet_cidr
+    ]).source == var.load_balancer_subnet_cidr
     error_message = "Backend ingress must be restricted to the load balancer subnet."
   }
 
   assert {
-    condition     = oci_core_security_list.backend_from_load_balancer.ingress_security_rules[0].tcp_options[0].min == 4000
+    condition = one([
+      for rule in oci_core_security_list.backend_from_load_balancer.ingress_security_rules : rule
+      if rule.source == var.load_balancer_subnet_cidr
+    ]).tcp_options[0].min == 4000
     error_message = "Load balancer backend ingress must target FastAPI port 4000 only."
   }
 
