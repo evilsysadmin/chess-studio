@@ -18,29 +18,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  scope:
-    name: Classify OCI surface
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    outputs:
-      arm64: ${{ steps.scope.outputs.arm64 }}
-      terraform: ${{ steps.scope.outputs.terraform }}
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - run: python3 -S scripts/oci_readiness_scope.py --self-test
-      - id: scope
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-        run: python3 -S scripts/oci_readiness_scope.py
-
   backend-arm64:
     name: Backend · linux/arm64
-    needs: scope
-    if: needs.scope.outputs.arm64 == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -51,10 +30,11 @@ jobs:
       - uses: docker/setup-buildx-action@v4
       - run: bash scripts/oci_arm64_smoke.sh
 
+  # PR Terraform/Floci is already protected by Preflight · contracts. Manual
+  # dispatch keeps this standalone full-OCI diagnostic escape hatch available.
   terraform:
     name: Terraform · contracts + Floci
-    needs: scope
-    if: needs.scope.outputs.terraform == 'true'
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
