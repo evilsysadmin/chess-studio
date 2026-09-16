@@ -6,7 +6,6 @@ on:
     paths:
       - "infra/grafana/dashboards/**"
       - "scripts/grafana_publish.py"
-      - "scripts/grafana_dashboard_check.py"
       - ".github/workflows/grafana-dashboards.yml"
   workflow_dispatch:
 
