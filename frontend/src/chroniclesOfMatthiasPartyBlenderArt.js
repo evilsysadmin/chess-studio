@@ -5,6 +5,7 @@ import { installChroniclesTacticsFortressBackdrop } from './chroniclesOfMatthias
 import { installChroniclesTacticsForegroundFraming } from './chroniclesOfMatthiasForegroundArt.js';
 import { installChroniclesTacticsWetStone } from './chroniclesOfMatthiasGroundArt.js';
 import { installChroniclesTacticsStoneWeathering } from './chroniclesOfMatthiasWeatheringArt.js';
+import { installChroniclesTacticsPartyGrounding } from './chroniclesOfMatthiasPartyGroundingArt.js';
 
 export const CHRONICLES_TACTICS_PARTY_MODEL_PATH = 'models/chronicles-tactics-party.glb';
 export const CHRONICLES_TACTICS_PARTY_ASSET_VERSION = 'chronicles-tactics-party-v3';
@@ -75,6 +76,7 @@ export function installChroniclesTacticsPartyBlenderArt(
   installChroniclesTacticsForegroundFraming(scene, { coarsePointer });
   installChroniclesTacticsWetStone(scene, { coarsePointer });
   installChroniclesTacticsStoneWeathering(scene, { coarsePointer });
+  installChroniclesTacticsPartyGrounding(models, { coarsePointer });
 
   const installFallbackDetails = (memberIds) => {
     const requested = memberIds.filter((memberId) => models.get(memberId));
