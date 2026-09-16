@@ -186,6 +186,16 @@ def _run_id(username: str, idempotency_key: str | None) -> str:
     return str(uuid.uuid4())
 
 
+def _run_bootstrap_payload(run: dict[str, Any]) -> dict[str, Any]:
+    area = chronicles_area_envelope(run["currentMapId"], run["seed"])
+    if (
+        area["contentVersion"] != run["contentVersion"]
+        or area["manifestRevision"] != run["manifestRevision"]
+    ):
+        raise HTTPException(409, "La revisión de contenido de esta run ya no está disponible.")
+    return {**run, "area": area}
+
+
 def build_chronicles_router(*, auth_dependency) -> APIRouter:
     router = APIRouter(prefix="/api/chronicles", tags=["chronicles"])
 
@@ -211,7 +221,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
         manifest, revision = load_chronicles_manifest(body.map_id)
         fingerprint = operation_fingerprint({"mapId": body.map_id})
         try:
-            return await chronicles_run_store.create_or_replay_run(
+            run = await chronicles_run_store.create_or_replay_run(
                 run_id=_run_id(username, idempotency_key),
                 owner=username,
                 seed=secrets.randbelow(_MAX_SEED + 1),
@@ -220,6 +230,7 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
                 manifest_revision=revision,
                 create_fingerprint=fingerprint,
             )
+            return _run_bootstrap_payload(run)
         except ValueError as exc:
             if str(exc) == "idempotency-conflict":
                 raise HTTPException(409, "La misma Idempotency-Key se reutilizó con otra configuración de run.") from exc
