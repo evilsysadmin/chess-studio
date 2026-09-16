@@ -3,6 +3,7 @@ import { installChroniclesTacticsForegroundFraming } from './chroniclesOfMatthia
 import { installChroniclesTacticsWetStone } from './chroniclesOfMatthiasGroundArt.js';
 import { installChroniclesTacticsStoneWeathering } from './chroniclesOfMatthiasWeatheringArt.js';
 import { installChroniclesTacticsPartyGrounding } from './chroniclesOfMatthiasPartyGroundingArt.js';
+import { installChroniclesTacticsReadabilityArt } from './chroniclesOfMatthiasReadabilityArt.js';
 
 const PARTY_IDS = Object.freeze(['rook', 'matthias', 'bishop', 'knight']);
 
@@ -18,5 +19,6 @@ export function installChroniclesTacticsSceneArt(models, { coarsePointer = false
     wetStone: installChroniclesTacticsWetStone(scene, { coarsePointer }),
     weathering: installChroniclesTacticsStoneWeathering(scene, { coarsePointer }),
     grounding: installChroniclesTacticsPartyGrounding(models, { coarsePointer }),
+    readability: installChroniclesTacticsReadabilityArt(models, { coarsePointer }),
   };
 }
