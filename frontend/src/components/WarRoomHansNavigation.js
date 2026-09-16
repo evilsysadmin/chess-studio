@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { moveWarRoomHansToward } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v8-chair-obstacle-router';
+export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v9-board-keepout-fail-closed';
 export const WAR_ROOM_HANS_NAVIGATION_CLEAR_LANE_HALF_EXTENT = 5.55;
 export const WAR_ROOM_HANS_NAVIGATION_EDGE_MARGIN = 0.12;
 export const WAR_ROOM_HANS_NAVIGATION_FURNITURE_CLEARANCE = 0.58;
+export const WAR_ROOM_HANS_NAVIGATION_BOARD_SAFE_HALF_EXTENT = 5.10;
 
 const COMMAND_DESK_NAMES = Object.freeze([
   'war-room-teutonic-command-desk-v28',
@@ -155,14 +156,40 @@ function obstacleRectForObject(object, parent, padding = WAR_ROOM_HANS_NAVIGATIO
   };
 }
 
+function boardKeepOutRect(floor, parent) {
+  if (!floor || !parent) return null;
+  floor.updateMatrixWorld?.(true);
+  parent.updateMatrixWorld?.(true);
+  const floorBox = new THREE.Box3().setFromObject(floor);
+  if (floorBox.isEmpty()) return null;
+  const center = floorBox.getCenter(new THREE.Vector3());
+  const half = WAR_ROOM_HANS_NAVIGATION_BOARD_SAFE_HALF_EXTENT;
+  const corners = [
+    new THREE.Vector3(center.x - half, center.y, center.z - half),
+    new THREE.Vector3(center.x - half, center.y, center.z + half),
+    new THREE.Vector3(center.x + half, center.y, center.z - half),
+    new THREE.Vector3(center.x + half, center.y, center.z + half),
+  ].map((point) => parent.worldToLocal(point));
+  const xs = corners.map((point) => Number(point.x));
+  const zs = corners.map((point) => Number(point.z));
+  return {
+    minX: Math.min(...xs),
+    maxX: Math.max(...xs),
+    minZ: Math.min(...zs),
+    maxZ: Math.max(...zs),
+  };
+}
+
 function navigationObstacles(floor, parent) {
   const root = sceneRoot(floor) || sceneRoot(parent);
   const desk = firstNamed(root, COMMAND_DESK_NAMES);
   const chair = root?.getObjectByName?.(COMMAND_CHAIR_NAME) || null;
-  return [desk, chair]
-    .filter(Boolean)
-    .map((object) => obstacleRectForObject(object, parent))
-    .filter(Boolean);
+  return [
+    boardKeepOutRect(floor, parent),
+    ...[desk, chair]
+      .filter(Boolean)
+      .map((object) => obstacleRectForObject(object, parent)),
+  ].filter(Boolean);
 }
 
 function pointInsideRect(point, rect) {
@@ -273,10 +300,9 @@ export function warRoomHansSafeRoomLoop(floor, parent) {
   const loop = worldPoints.map(([x, z]) => localPoint(parent, new THREE.Vector3(x, -0.34, z)));
   const obstacles = navigationObstacles(floor, parent);
 
-  // Central furniture can swallow one of the canonical circulation waypoints.
-  // Remove any point inside the padded desk/chair hull. The router remains cyclic
-  // and will reject direct segments through either obstacle, forcing Hans around
-  // solid furniture instead of momentarily walking through it between routines.
+  // Central furniture or the board keep-out can swallow a canonical circulation
+  // waypoint. Remove it rather than allowing a nominally valid root coordinate to
+  // put Hans' rendered body through solid scenery or onto the playing surface.
   return obstacles.length
     ? loop.filter((point) => obstacles.every((obstacle) => !pointInsideRect(point, obstacle)))
     : loop;
@@ -285,7 +311,10 @@ export function warRoomHansSafeRoomLoop(floor, parent) {
 export function warRoomHansBuildSafeRoute(floor, parent, from, to) {
   if (!floor || !parent || !from || !to) return [];
   const loop = warRoomHansSafeRoomLoop(floor, parent);
-  if (!loop.length) return [to.clone?.() || to];
+  // Safety is fail-closed. If room geometry cannot provide a circulation loop,
+  // cancelling an ambient task is preferable to the historical direct-line
+  // fallback that could send Hans straight through the board or furniture.
+  if (!loop.length) return [];
 
   const bounds = laneBounds(loop);
   const departure = laneApproach(from, bounds);
