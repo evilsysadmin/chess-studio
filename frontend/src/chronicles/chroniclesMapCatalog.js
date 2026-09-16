@@ -221,7 +221,7 @@ function normalizeMap(source) {
     initialFlags: Object.freeze({ ...(source.initialFlags || {}) }),
     enemies: Object.freeze((source.enemies || []).map(normalizeEnemy)),
     triggers: Object.freeze((source.triggers || []).map(normalizeContentEntry)),
-    interactables: Object.freeze((source.interactables || []).map((entry) => normalizeContentEntry(entry)),
+    interactables: Object.freeze((source.interactables || []).map(normalizeContentEntry)),
     treasures: Object.freeze((source.treasures || []).map(normalizeContentEntry)),
     traps: Object.freeze((source.traps || []).map(normalizeContentEntry)),
     exits: Object.freeze((source.exits || []).map(normalizeContentEntry)),
