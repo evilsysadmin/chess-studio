@@ -121,7 +121,7 @@
     z-index: 4;
     right: 2.1cqw;
     bottom: 9.4cqw;
-    width: min(460px, 33cqw);
+    width: min(445px, 33cqw);
     max-height: min(70dvh, 660px);
     pointer-events: auto;
   }
@@ -138,210 +138,289 @@
   }
 }
 
-/* The dungeon menu is deliberately not a dashboard. It reads as a sequence of
- * chambers descending below the castle: one route, staggered doors, sparse chrome.
+/* Mazmorras is a place, not a settings dialog. The overlay is deliberately shaped
+ * like a crooked underground gallery: an arch, a dim descent line and individual
+ * stone thresholds rather than one big card filled with rows.
  */
 .illustrated-home__utilities > .illustrated-home__dungeon-panel {
-  counter-reset: dungeon-depth;
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
-  gap: 0;
-  padding: 18px 18px 16px 20px;
+  gap: 7px;
+  padding: 20px 18px 18px 34px;
   overflow-x: hidden;
   overflow-y: auto;
-  border: 1px solid rgba(151, 108, 56, .72);
-  border-radius: 18px 18px 10px 10px;
+  border: 0;
+  border-radius: 62px 18px 26px 38px / 42px 18px 28px 34px;
   background:
-    radial-gradient(circle at 10% 5%, rgba(236, 161, 63, .13), transparent 24%),
-    radial-gradient(circle at 88% 88%, rgba(117, 45, 20, .15), transparent 28%),
-    linear-gradient(108deg, rgba(255, 232, 181, .025) 0 1px, transparent 1px 38px),
-    linear-gradient(180deg, rgba(26, 18, 13, .975), rgba(9, 7, 6, .992));
+    radial-gradient(ellipse at 18% 4%, rgba(232, 157, 58, .16), transparent 29%),
+    radial-gradient(ellipse at 91% 92%, rgba(109, 42, 21, .18), transparent 31%),
+    linear-gradient(102deg, rgba(255, 230, 176, .022) 0 1px, transparent 1px 31px),
+    linear-gradient(180deg, rgba(24, 17, 12, .965), rgba(8, 7, 6, .988));
   box-shadow:
-    0 30px 72px rgba(0, 0, 0, .78),
-    0 0 44px rgba(126, 63, 18, .11),
-    inset 0 1px rgba(255, 221, 153, .09),
-    inset 0 -24px 48px rgba(0, 0, 0, .18);
+    0 32px 76px rgba(0, 0, 0, .80),
+    -8px 10px 30px rgba(0, 0, 0, .34),
+    inset 0 1px rgba(255, 222, 155, .07),
+    inset 22px 0 42px rgba(0, 0, 0, .17);
   scrollbar-width: thin;
-  scrollbar-color: rgba(160, 115, 57, .56) rgba(10, 7, 5, .4);
+  scrollbar-color: rgba(151, 106, 53, .5) rgba(9, 7, 5, .34);
+}
+
+.illustrated-home__utilities > .illustrated-home__dungeon-panel::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 7px 6px 8px 7px;
+  border: 1px solid rgba(148, 105, 55, .58);
+  border-radius: 56px 15px 22px 34px / 38px 15px 24px 30px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 225, 164, .025),
+    inset 0 -20px 38px rgba(0, 0, 0, .18);
+  pointer-events: none;
+}
+
+.illustrated-home__utilities > .illustrated-home__dungeon-panel::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  left: 25px;
+  top: 91px;
+  bottom: 22px;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(212, 151, 70, .02), rgba(193, 130, 55, .42) 16%, rgba(129, 82, 38, .34) 78%, rgba(88, 47, 30, .08));
+  box-shadow: 0 0 8px rgba(191, 113, 39, .12);
+  pointer-events: none;
 }
 
 .illustrated-home__dungeon-panel > header {
   position: relative;
-  grid-column: auto;
+  z-index: 2;
   display: grid;
-  gap: 4px;
-  margin: 0 2px 12px;
-  padding: 3px 12px 16px 42px;
+  gap: 3px;
+  margin: 0 4px 8px 0;
+  padding: 4px 10px 13px 40px;
   border: 0;
-  border-bottom: 1px solid rgba(128, 91, 47, .44);
   text-align: left;
 }
 
 .illustrated-home__dungeon-panel > header::before {
   content: '';
   position: absolute;
-  left: 10px;
-  top: 4px;
+  left: 7px;
+  top: 3px;
   width: 14px;
-  height: 29px;
-  border-radius: 56% 44% 58% 42%;
+  height: 30px;
+  border-radius: 58% 42% 60% 40%;
   background:
-    radial-gradient(circle at 48% 68%, #fff2b8 0 10%, transparent 12%),
-    radial-gradient(ellipse at 50% 58%, #efad45 0 35%, #9f431c 58%, transparent 62%);
-  filter: drop-shadow(0 0 7px rgba(232, 142, 44, .56));
-  transform: rotate(3deg);
+    radial-gradient(circle at 49% 67%, #fff0b2 0 10%, transparent 12%),
+    radial-gradient(ellipse at 50% 58%, #efa941 0 35%, #973f1c 58%, transparent 62%);
+  filter: drop-shadow(0 0 8px rgba(235, 143, 41, .52));
+  transform: rotate(4deg);
   pointer-events: none;
 }
 
 .illustrated-home__dungeon-panel > header::after {
   content: '';
   position: absolute;
-  left: 16px;
-  top: 31px;
+  left: 13px;
+  top: 30px;
   width: 3px;
-  height: 18px;
+  height: 17px;
   border-radius: 2px;
-  background: linear-gradient(#8b6238, #352419);
-  box-shadow: 0 1px 0 rgba(235, 191, 119, .18);
+  background: linear-gradient(#8c6338, #312219);
+  box-shadow: 0 1px 0 rgba(235, 191, 119, .15);
   pointer-events: none;
 }
 
 .illustrated-home__dungeon-panel > header span {
-  color: #9e8764;
-  font: 700 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #938061;
+  font: 700 9px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
   letter-spacing: .24em;
 }
 
 .illustrated-home__dungeon-panel > header strong {
-  color: #f0cf81;
-  font: 700 24px/1 Georgia, serif;
+  color: #efcc79;
+  font: 700 23px/1 Georgia, serif;
   letter-spacing: .085em;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, .7);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .72);
 }
 
 .illustrated-home__dungeon-panel > header small {
-  color: #bda987;
-  font: 500 12px/1.35 Arial, sans-serif;
+  color: #b5a17f;
+  font: 500 11px/1.35 Arial, sans-serif;
 }
 
 .illustrated-home__utilities > .illustrated-home__dungeon-panel > button {
-  counter-increment: dungeon-depth;
   position: relative;
-  width: auto;
-  min-height: 46px;
+  z-index: 1;
+  align-self: flex-start;
+  min-height: 47px;
   display: grid;
-  grid-template-columns: 31px minmax(0, 1fr) 18px;
+  grid-template-columns: 18px minmax(0, 1fr) 15px;
   align-items: center;
-  gap: 10px;
-  margin: 0;
+  gap: 9px;
   padding: 9px 10px 9px 7px;
-  border: 0;
-  border-bottom: 1px solid rgba(118, 84, 45, .30);
-  border-radius: 2px;
-  background: linear-gradient(90deg, rgba(167, 108, 43, .055), transparent 64%);
-  color: #dfc99c;
-  box-shadow: inset 2px 0 rgba(151, 102, 45, .20);
+  border: 1px solid rgba(121, 88, 49, .48);
+  border-radius: 12px 5px 10px 6px;
+  background:
+    linear-gradient(102deg, rgba(255, 224, 162, .045), transparent 32%),
+    linear-gradient(180deg, rgba(54, 39, 27, .78), rgba(27, 20, 15, .91));
+  color: #ddc69a;
+  box-shadow:
+    inset 0 1px rgba(239, 205, 140, .045),
+    inset 0 -8px 16px rgba(0, 0, 0, .14),
+    0 5px 14px rgba(0, 0, 0, .18);
   font: 600 13px/1.25 Arial, sans-serif;
   letter-spacing: .005em;
   text-align: left;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, .76);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .78);
   cursor: pointer;
   transform: translateX(0);
   transition:
     transform .18s ease,
     color .18s ease,
+    border-color .18s ease,
     background .18s ease,
-    box-shadow .18s ease;
+    box-shadow .18s ease,
+    filter .18s ease;
 }
 
 .illustrated-home__utilities > .illustrated-home__dungeon-panel > button::before {
-  content: counter(dungeon-depth, upper-roman);
-  width: 26px;
-  color: #8f7654;
-  font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-  letter-spacing: .08em;
-  text-align: center;
-  opacity: .82;
+  content: '';
+  width: 7px;
+  height: 7px;
+  justify-self: center;
+  border: 1px solid rgba(210, 160, 87, .5);
+  border-radius: 50%;
+  background: radial-gradient(circle at 42% 38%, #d8ad68, #8a5a2e 48%, #3a281c 72%);
+  box-shadow: 0 0 0 3px rgba(116, 75, 35, .13), 0 0 9px rgba(196, 125, 48, .13);
+  opacity: .78;
 }
 
 .illustrated-home__utilities > .illustrated-home__dungeon-panel > button::after {
   content: '›';
-  color: #a98348;
-  font: 700 19px/1 Georgia, serif;
+  color: #a78149;
+  font: 700 18px/1 Georgia, serif;
   text-align: center;
-  opacity: .72;
+  opacity: .66;
   transform: translateX(0);
   transition: transform .18s ease, color .18s ease, opacity .18s ease;
 }
 
 .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:hover,
 .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:focus-visible {
-  color: #ffe4a1;
+  color: #ffe2a0;
+  border-color: rgba(186, 132, 61, .72);
   background:
-    radial-gradient(circle at 10% 50%, rgba(235, 160, 59, .18), transparent 22%),
-    linear-gradient(90deg, rgba(180, 112, 42, .15), rgba(79, 42, 22, .035) 74%, transparent);
+    radial-gradient(circle at 12% 50%, rgba(235, 157, 57, .15), transparent 28%),
+    linear-gradient(180deg, rgba(68, 46, 29, .86), rgba(31, 22, 16, .94));
   box-shadow:
-    inset 3px 0 #c58b3f,
-    0 0 22px rgba(133, 74, 27, .10);
-  transform: translateX(5px);
+    inset 0 1px rgba(245, 207, 137, .08),
+    inset 3px 0 rgba(192, 132, 58, .45),
+    0 7px 20px rgba(0, 0, 0, .28),
+    0 0 18px rgba(136, 76, 26, .08);
+  filter: brightness(1.04);
+  transform: translateX(4px);
+}
+
+.illustrated-home__utilities > .illustrated-home__dungeon-panel > button:hover::before,
+.illustrated-home__utilities > .illustrated-home__dungeon-panel > button:focus-visible::before {
+  opacity: 1;
+  box-shadow: 0 0 0 3px rgba(139, 89, 38, .16), 0 0 11px rgba(215, 143, 53, .26);
 }
 
 .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:hover::after,
 .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:focus-visible::after {
-  color: #e5b862;
+  color: #e4b55e;
   opacity: 1;
-  transform: translateX(3px);
+  transform: translateX(2px);
 }
 
-/* Change depth every few doors so the eye reads a descent, not a spreadsheet. */
+/* A crooked route downwards. Different widths and offsets keep the eye following
+ * a gallery rather than scanning a stack of equal controls.
+ */
 @media (min-width: 1000px) {
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(1) { margin-right: 30px; }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(2) { margin-left: 9px; margin-right: 21px; }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(3) { margin-left: 18px; margin-right: 12px; }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(4) { margin-left: 28px; margin-top: 9px; }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(5) { margin-left: 19px; margin-top: 12px; }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(6) { margin-left: 10px; margin-right: 10px; }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(7) { margin-right: 20px; }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(8) { margin-left: 10px; margin-right: 10px; margin-top: 12px; }
-  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(9) { margin-left: 20px; margin-top: 9px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(1) { width: 88%; margin-left: 0; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(2) { width: 91%; margin-left: 11px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(3) { width: 87%; margin-left: 24px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(4) { width: 82%; margin-left: 39px; margin-top: 7px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(5) { width: 86%; margin-left: 27px; margin-top: 5px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(6) { width: 90%; margin-left: 14px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(7) { width: 87%; margin-left: 3px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(8) { width: 83%; margin-left: 18px; margin-top: 7px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(9) { width: 80%; margin-left: 34px; margin-top: 6px; }
 }
 
-/* The lab entrance at the bottom should feel like the questionable door you open anyway. */
+/* The lab entrance should look like the questionable door at the bottom of the
+ * corridor, not another category in the same menu.
+ */
 .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:last-of-type {
   margin-bottom: 2px;
-  border-top: 1px solid rgba(139, 67, 38, .42);
-  border-bottom-color: rgba(139, 67, 38, .36);
+  border-color: rgba(126, 65, 43, .58);
+  border-radius: 8px 4px 13px 5px;
   background:
-    radial-gradient(circle at 8% 50%, rgba(154, 61, 31, .13), transparent 24%),
-    linear-gradient(90deg, rgba(101, 39, 24, .13), transparent 72%);
-  box-shadow: inset 2px 0 rgba(141, 59, 32, .42);
+    radial-gradient(circle at 11% 50%, rgba(155, 58, 29, .16), transparent 28%),
+    linear-gradient(180deg, rgba(62, 31, 24, .80), rgba(28, 18, 15, .94));
+  box-shadow:
+    inset 3px 0 rgba(139, 59, 32, .34),
+    inset 0 -8px 18px rgba(0, 0, 0, .18),
+    0 6px 17px rgba(0, 0, 0, .24);
 }
 
-.illustrated-home__utilities > .illustrated-home__dungeon-panel > button:last-of-type::before,
+.illustrated-home__utilities > .illustrated-home__dungeon-panel > button:last-of-type::before {
+  border-color: rgba(177, 96, 60, .5);
+  background: radial-gradient(circle at 42% 38%, #c17f54, #783e2b 50%, #2e1e18 74%);
+  box-shadow: 0 0 0 3px rgba(112, 48, 31, .12), 0 0 9px rgba(153, 65, 34, .15);
+}
+
 .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:last-of-type::after {
-  color: #b8774b;
+  content: '↘';
+  color: #b16d47;
+  font-size: 15px;
 }
 
 @media (max-width: 999px) {
   .illustrated-home__utilities > .illustrated-home__dungeon-panel {
-    padding: 14px 13px 13px 15px;
-    border-radius: 15px 15px 9px 9px;
+    gap: 5px;
+    padding: 15px 12px 14px 25px;
+    border-radius: 38px 14px 18px 25px / 28px 14px 20px 22px;
+  }
+
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel::before {
+    inset: 5px;
+    border-radius: 34px 11px 15px 22px / 25px 11px 17px 19px;
+  }
+
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel::after {
+    left: 18px;
+    top: 79px;
+    bottom: 18px;
   }
 
   .illustrated-home__dungeon-panel > header {
-    margin-bottom: 8px;
-    padding: 2px 8px 12px 38px;
+    margin-bottom: 5px;
+    padding: 2px 7px 10px 34px;
   }
 
-  .illustrated-home__dungeon-panel > header strong { font-size: 21px; }
-  .illustrated-home__dungeon-panel > header small { font-size: 11px; }
+  .illustrated-home__dungeon-panel > header::before { left: 5px; }
+  .illustrated-home__dungeon-panel > header::after { left: 11px; }
+  .illustrated-home__dungeon-panel > header strong { font-size: 20px; }
+  .illustrated-home__dungeon-panel > header small { font-size: 10px; }
 
   .illustrated-home__utilities > .illustrated-home__dungeon-panel > button {
+    width: calc(100% - 5px);
     min-height: 44px;
-    grid-template-columns: 27px minmax(0, 1fr) 16px;
-    gap: 8px;
-    padding: 8px 8px 8px 5px;
+    grid-template-columns: 16px minmax(0, 1fr) 14px;
+    gap: 7px;
+    padding: 8px 8px 8px 6px;
+    border-radius: 10px 4px 9px 5px;
   }
+
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(3n + 2) { margin-left: 5px; width: calc(100% - 10px); }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(3n) { margin-left: 9px; width: calc(100% - 14px); }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(4),
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(8) { margin-top: 4px; }
 }
 
 @media (max-width: 520px) {
