@@ -106,8 +106,8 @@ export function animatePanzerRookSprite(sprite, time = 0, state = {}) {
   if (!sprite) return;
 
   const hurt = Boolean(state.hurt);
-  if (hurt && !sprite.userData.pawnSlugWasHurt) playPawnSlugEnemyImpactSfx('boss');
-  sprite.userData.pawnSlugWasHurt = hurt;
+  if (hurt && !sprite.userData.pawnSlugBossWasHurt) playPawnSlugEnemyImpactSfx('boss');
+  sprite.userData.pawnSlugBossWasHurt = hurt;
 
   const safeTime = Number(time) || 0;
   if (!Number.isFinite(sprite.userData.panzerRookEntryStartedAt)) {
