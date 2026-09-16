@@ -21,35 +21,43 @@ concurrency:
 
 jobs:
   render-matthias:
-    name: Render premium Matthias · ${{ matrix.weapon }}
+    name: Render premium Matthias · ${{ matrix.shard }}
     runs-on: ubuntu-latest
-    timeout-minutes: 24
+    timeout-minutes: 40
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 2
       matrix:
-        weapon: [pistol, machinegun, shotgun, panzerfaust]
+        include:
+          - shard: sidearms
+            weapons: 'pistol machinegun'
+          - shard: heavy
+            weapons: 'shotgun panzerfaust'
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-blender-canonical
         with:
           extra-packages: webp
-      - name: Render premium v3 canonical sheet at 2x
+      - name: Render premium v3 canonical sheets at 2x
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
-          WEAPON: ${{ matrix.weapon }}
+          WEAPONS: ${{ matrix.weapons }}
         run: |
           set -euo pipefail
           mkdir -p /tmp/pawn-slug-art
-          blender --background -noaudio \
-            --python scripts/blender/render_pawn_slug_matthias_premium.py \
-            -- --output-dir /tmp/pawn-slug-art --weapon "$WEAPON"
-      - name: Downsample v3 candidate + runtime-scale proof
+          for WEAPON in $WEAPONS; do
+            blender --background -noaudio \
+              --python scripts/blender/render_pawn_slug_matthias_premium.py \
+              -- --output-dir /tmp/pawn-slug-art --weapon "$WEAPON"
+          done
+      - name: Downsample v3 candidates + runtime-scale proofs
         env:
-          WEAPON: ${{ matrix.weapon }}
+          WEAPONS: ${{ matrix.weapons }}
         run: |
           set -euo pipefail
-          python3 - <<'PY'
+          for WEAPON in $WEAPONS; do
+            export WEAPON
+            python3 - <<'PY'
           import os
           from pathlib import Path
           from PIL import Image
@@ -70,26 +78,29 @@ jobs:
           runtime_image.save(runtime, optimize=True)
           runtime_image.crop((0, 0, 96, 96)).resize((384, 384), Image.Resampling.NEAREST).save(runtime_preview, optimize=True)
           PY
-          cwebp -quiet -q 92 -alpha_q 100 -m 6 \
-            "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.png" \
-            -o "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp"
-          base64 -w0 "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp" \
-            > "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.b64"
-      - name: Sanity-check premium v3 atlas contract
+            cwebp -quiet -q 92 -alpha_q 100 -m 6 \
+              "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.png" \
+              -o "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp"
+            base64 -w0 "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp" \
+              > "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.b64"
+          done
+      - name: Sanity-check premium v3 atlas contracts
         env:
-          WEAPON: ${{ matrix.weapon }}
+          WEAPONS: ${{ matrix.weapons }}
         run: |
           set -euo pipefail
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.blend"
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_hi.png"
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.png"
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_preview.png"
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_runtime_96.png"
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_runtime_96_4x.png"
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp"
-          test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.b64"
-          webpinfo "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp"
-          python3 - <<'PY'
+          for WEAPON in $WEAPONS; do
+            export WEAPON
+            test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.blend"
+            test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_hi.png"
+            test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.png"
+            test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_preview.png"
+            test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_runtime_96.png"
+            test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_runtime_96_4x.png"
+            test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp"
+            test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.b64"
+            webpinfo "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp"
+            python3 - <<'PY'
           import os
           from PIL import Image
 
@@ -157,10 +168,11 @@ jobs:
               96, min_width_96, 54, 90, 1,
           )
           PY
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: pawn-slug-premium-matthias-${{ matrix.weapon }}-${{ github.event.pull_request.number || github.run_number }}
+          name: pawn-slug-premium-matthias-${{ matrix.shard }}-${{ github.event.pull_request.number || github.run_number }}
           path: /tmp/pawn-slug-art/
           if-no-files-found: error
           retention-days: 7
