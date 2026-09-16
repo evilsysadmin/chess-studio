@@ -1,7 +1,13 @@
 (() => {
-  const K = 'chess-studio-module-recovery-v1', RECOVERY_PARAM = '__cs_recover';
-  const u = new URL(location.href);
-  if (u.searchParams.delete(RECOVERY_PARAM)) history.replaceState(history.state, '', `${u.pathname}${u.search}${u.hash}`);
+  const K = 'chess-studio-module-recovery-v1';
+  const LEGACY_RECOVERY_PARAM = '__cs_recover';
+  const RECOVERY_ENDPOINT = '/__cs_recover';
+
+  // Compatibility cleanup for links left behind by older recovery builds.
+  const current = new URL(location.href);
+  if (current.searchParams.delete(LEGACY_RECOVERY_PARAM)) {
+    history.replaceState(history.state, '', `${current.pathname}${current.search}${current.hash}`);
+  }
 
   async function recover() {
     if (!navigator.onLine) return;
@@ -20,9 +26,20 @@
           if (key.startsWith('chess-studio-shell-')) await caches.delete(key);
     } catch {}
 
-    const next = new URL(location.href);
-    next.searchParams.set(RECOVERY_PARAM, Date.now().toString(36));
-    location.replace(next);
+    try {
+      await fetch(RECOVERY_ENDPOINT, {
+        method: 'POST',
+        cache: 'no-store',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Chess-Studio-Recovery': '1',
+        },
+        body: JSON.stringify({ nonce: Date.now().toString(36) }),
+      });
+    } catch {}
+
+    location.reload();
   }
 
   addEventListener('error', e => {

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import { FRONTEND_CSP, applyFrontendCsp } from './apply_frontend_csp.mjs';
+import { onRequest as moduleRecoveryFallback, onRequestPost as moduleRecoveryPost } from '../frontend/functions/__cs_recover.js';
 
 const manifest = JSON.parse(fs.readFileSync(new URL('../frontend/public/manifest.webmanifest', import.meta.url), 'utf8'));
 const html = fs.readFileSync(new URL('../frontend/index.html', import.meta.url), 'utf8');
@@ -51,7 +52,38 @@ assert(worker.includes("pathname.includes('/assets/')"), 'los assets Vite hashed
 assert(!worker.includes("const CACHE = 'chess-studio-shell-v2'"), 'la caché compartida entre releases sigue activa');
 assert(moduleRecovery.includes('chess-studio-module-recovery-v1'), 'bootstrap externo no protege el arranque frente a entrypoints stale');
 assert(moduleRecovery.includes("'vite:preloadError'") && moduleRecovery.includes('navigator.serviceWorker.getRegistrations()'), 'la recuperación de chunks stale no limpia PWA antes de recargar');
-assert(moduleRecovery.includes("key.startsWith('chess-studio-shell-')") && moduleRecovery.includes('__cs_recover'), 'la recuperación no purga caches legacy/cache-bust de navegación');
-assert(moduleRecovery.includes('searchParams.delete(RECOVERY_PARAM)') && moduleRecovery.includes('history.replaceState'), 'la recuperación deja visible el cache-buster en la URL');
+assert(moduleRecovery.includes("key.startsWith('chess-studio-shell-')"), 'la recuperación no purga caches legacy antes de recargar');
+assert(moduleRecovery.includes("method: 'POST'") && moduleRecovery.includes("fetch(RECOVERY_ENDPOINT"), 'la recuperación de chunks stale no usa el intercambio POST same-origin');
+assert(!moduleRecovery.includes('searchParams.set(') && !moduleRecovery.includes('location.replace('), 'la recuperación vuelve a exponer un cache-buster en la query string');
+assert(moduleRecovery.includes('searchParams.delete(LEGACY_RECOVERY_PARAM)') && moduleRecovery.includes('history.replaceState'), 'la compatibilidad no limpia URLs legacy con cache-buster');
 
-console.log('pwa-check OK · CSP de producción sin JS inline + navegación sin shell stale + autorecuperación externa + API/assets/terceros fuera del cache PWA');
+const recoveryOrigin = 'https://staging.chess-studio.shadowops.dpdns.org';
+const recoveryResponse = await moduleRecoveryPost({
+  request: new Request(`${recoveryOrigin}/__cs_recover`, {
+    method: 'POST',
+    headers: {
+      Origin: recoveryOrigin,
+      'Content-Type': 'application/json',
+      'X-Chess-Studio-Recovery': '1',
+    },
+    body: JSON.stringify({ nonce: 'mu45dge9' }),
+  }),
+});
+assert(recoveryResponse.status === 204, 'la Pages Function rechaza un recovery POST same-origin válido');
+assert(recoveryResponse.headers.get('clear-site-data') === '"cache"', 'el recovery POST no invalida la caché HTTP del origen');
+assert(recoveryResponse.headers.get('cache-control')?.includes('no-store'), 'el recovery POST puede quedar cacheado');
+const crossOriginRecovery = await moduleRecoveryPost({
+  request: new Request(`${recoveryOrigin}/__cs_recover`, {
+    method: 'POST',
+    headers: {
+      Origin: 'https://example.invalid',
+      'Content-Type': 'application/json',
+      'X-Chess-Studio-Recovery': '1',
+    },
+    body: JSON.stringify({ nonce: 'mu45dge9' }),
+  }),
+});
+assert(crossOriginRecovery.status === 403, 'el recovery POST acepta orígenes ajenos');
+assert(moduleRecoveryFallback().status === 405, 'el endpoint de recovery acepta métodos distintos de POST');
+
+console.log('pwa-check OK · CSP estricta + navegación sin shell stale + recovery POST con URL limpia + API/assets/terceros fuera del cache PWA');
