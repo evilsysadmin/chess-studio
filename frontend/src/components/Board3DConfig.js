@@ -19,9 +19,12 @@ export function resolveBoard3DCameraFov(aspect, { mobile = false } = {}) {
 }
 
 export const BOARD_THEME_3D = Object.freeze({
-  // Warm matte stone: measured against the approved War Room visual reference.
-  // It stays clearly light while leaving enough value/chroma distance from ivory.
-  classic: { light: 0xb9a68d, dark: 0x5a4236, frame: 0x34251f, felt: 0x111722, glow: 0xc9a227 },
+  // Canonical War Room: warm limestone against deeper walnut. The previous
+  // palette compressed both values into the same mid-range once ACES and the
+  // practical lights were applied, so expensive material work barely read at
+  // gameplay distance. Keep the warm identity, but give the board a deliberate
+  // value/chroma hierarchy that survives the final render.
+  classic: { light: 0xc2ad91, dark: 0x50372c, frame: 0x271710, felt: 0x0d1219, glow: 0xd1a844 },
   midnight: { light: 0xaab2bd, dark: 0x263244, frame: 0x111824, felt: 0x080d16, glow: 0x6f9fc5 },
   blood: { light: 0xc9b5a6, dark: 0x5d2926, frame: 0x2b1515, felt: 0x12090a, glow: 0xb4483a },
   royal: { light: 0xd8c990, dark: 0x493564, frame: 0x221b32, felt: 0x0d0b15, glow: 0xe0b84e },
@@ -51,10 +54,12 @@ export const SKIN_3D = Object.freeze({
     metalness: 0.18, roughness: 0.62, emissive: 0x000000, emissiveIntensity: 0,
   },
   studio: {
-    // Canonical War Room finish: deliberately deeper warm ivory so the final
-    // ACES + IBL render keeps a visible value gap from the light board squares.
-    white: 0xc09a5f, black: 0x262a30, whiteAccent: 0xc7962f, blackAccent: 0x8f312e,
-    metalness: 0.26, roughness: 0.48, emissive: 0x000000, emissiveIntensity: 0,
+    // Canonical War Room finish. White is now a cleaner warm ivory instead of
+    // ochre resin; black moves toward lacquered ebony. This is intentionally a
+    // visible meso-scale change: the material response should be readable from
+    // the normal tactical camera, not only in a close-up material inspector.
+    white: 0xd6bd8c, black: 0x1d2024, whiteAccent: 0xd0a64e, blackAccent: 0xa83f36,
+    metalness: 0.22, roughness: 0.4, emissive: 0x000000, emissiveIntensity: 0,
   },
   regimiento: {
     white: 0xf2e1bd, black: 0x313238, whiteAccent: 0xc79b43, blackAccent: 0xa62e2a,
