@@ -6,6 +6,7 @@ on:
       - infra/cloudflare/r2-assets.json
       - scripts/cloudflare_r2_assets.py
       - scripts/r2_asset_publisher.py
+      - scripts/r2_asset_publish.py
       - frontend/src/assets/r2-assets-manifest.json
       - .github/workflows/r2-assets-infra.yml
       - docs/r2-assets.md
@@ -16,6 +17,7 @@ on:
       - infra/cloudflare/r2-assets.json
       - scripts/cloudflare_r2_assets.py
       - scripts/r2_asset_publisher.py
+      - scripts/r2_asset_publish.py
       - frontend/src/assets/r2-assets-manifest.json
       - .github/workflows/r2-assets-infra.yml
       - docs/r2-assets.md
@@ -41,9 +43,9 @@ jobs:
       - name: Validate declarative config
         run: python3 -S scripts/cloudflare_r2_assets.py validate
       - name: Static publisher contract
-        run: python3 -S scripts/r2_asset_publisher.py self-test
+        run: python3 -S scripts/r2_asset_publish.py self-test
       - name: Validate asset manifest
-        run: python3 -S scripts/r2_asset_publisher.py check-manifest
+        run: python3 -S scripts/r2_asset_publish.py check-manifest
 
   reconcile:
     name: Reconcile · R2 assets
@@ -67,7 +69,7 @@ jobs:
       - name: Verify reconciled state
         run: python3 -S scripts/cloudflare_r2_assets.py check
       - name: Smoke object upload/get/delete
-        run: python3 -S scripts/r2_asset_publisher.py smoke
+        run: python3 -S scripts/r2_asset_publish.py smoke
       - name: Summary
         shell: bash
         run: |
@@ -80,5 +82,5 @@ jobs:
             echo '- Storage: `Standard`'
             echo '- `r2.dev`: disabled'
             echo '- CORS: public read (`GET`, `HEAD`)'
-            echo '- Object REST publisher: verified with upload/get/delete smoke'
+            echo '- Object REST publisher: raw PUT verified with upload/get/delete smoke'
           } >> "$GITHUB_STEP_SUMMARY"
