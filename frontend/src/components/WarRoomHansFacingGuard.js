@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
+import { warRoomHansLocalForward } from './WarRoomHansTransformOwner.js';
 
-export const WAR_ROOM_HANS_FACING_GUARD_VERSION = 'rendered-face-travel-guard-v4-visible-pre-render';
+export const WAR_ROOM_HANS_FACING_GUARD_VERSION = 'rendered-face-travel-guard-v5-canonical-forward';
 
 const HANS_NAME = 'war-room-hans-butler';
 const DRIVER_NAME = 'war-room-hans-fireplace-driver';
@@ -26,38 +27,13 @@ function planar(vector) {
   return vector;
 }
 
-function findFaceAnchor(head) {
-  if (!head?.children?.length) return null;
-  let candidate = null;
-  let strongestDepth = 0;
-  for (const child of head.children) {
-    const depth = Math.abs(Number(child?.position?.z));
-    if (!Number.isFinite(depth) || depth <= strongestDepth) continue;
-    strongestDepth = depth;
-    candidate = child;
-  }
-  return candidate;
-}
-
-function faceVectorInParent(hans, head, faceAnchor, scratch, refreshMatrices = true) {
-  const parent = hans?.parent;
-  if (!parent || !head || !faceAnchor) return null;
-
-  if (refreshMatrices) {
-    parent.updateMatrixWorld?.(true);
-    scratch.parentInverse.copy(parent.matrixWorld).invert();
-  }
-
-  scratch.headLocal
-    .setFromMatrixPosition(head.matrixWorld)
-    .applyMatrix4(scratch.parentInverse);
-  scratch.faceLocal
-    .setFromMatrixPosition(faceAnchor.matrixWorld)
-    .applyMatrix4(scratch.parentInverse);
-
-  const vector = planar(scratch.faceVector.copy(scratch.faceLocal).sub(scratch.headLocal));
-  if (vector.lengthSq() < 1e-8) return null;
-  return vector.normalize();
+function faceVectorInParent(hans, scratch) {
+  if (!hans?.parent) return null;
+  const forward = warRoomHansLocalForward(hans);
+  scratch.faceVector.set(0, 0, forward).applyQuaternion(hans.quaternion);
+  planar(scratch.faceVector);
+  if (scratch.faceVector.lengthSq() < 1e-8) return null;
+  return scratch.faceVector.normalize();
 }
 
 function signedPlanarAngle(from, to) {
@@ -88,20 +64,18 @@ function activePhase(hans, driver) {
 
 function markFacingDiagnostics(hans, state, source, dotBefore = null, dotAfter = null) {
   hans.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
-  hans.userData.warRoomHansFacingGuardMode = 'rendered-face-vs-travel';
-  hans.userData.warRoomHansFacingGuardTravelContract = 'phase-motion-route-v1';
+  hans.userData.warRoomHansFacingGuardMode = 'canonical-forward-vs-travel';
+  hans.userData.warRoomHansFacingGuardTravelContract = 'local-forward-phase-motion-route-v2';
   hans.userData.warRoomHansFacingGuardCorrections = state.corrections;
   hans.userData.warRoomHansFacingGuardDotBefore = dotBefore;
   hans.userData.warRoomHansFacingGuardDotAfter = dotAfter;
   hans.userData.warRoomHansFacingGuardSource = source;
-  hans.userData.warRoomHansFacingGuardHotPath = 'preallocated-scratch-v4-visible';
+  hans.userData.warRoomHansFacingGuardHotPath = 'preallocated-scratch-v5-visible';
 }
 
 function reconcileTravelFacing({
   hans,
   driver,
-  head,
-  faceAnchor,
   scratch,
   dx,
   dz,
@@ -134,7 +108,7 @@ function reconcileTravelFacing({
   state.lastTravelZ = scratch.movement.z;
   state.lastTravelSq = 1;
 
-  const face = faceVectorInParent(hans, head, faceAnchor, scratch, true);
+  const face = faceVectorInParent(hans, scratch);
   if (!face) {
     markFacingDiagnostics(hans, state, source);
     return false;
@@ -145,7 +119,7 @@ function reconcileTravelFacing({
   if (dotBefore < MIN_ACCEPTABLE_DOT) {
     hans.rotation.y += signedPlanarAngle(face, scratch.movement);
     hans.updateMatrixWorld?.(true);
-    const correctedFace = faceVectorInParent(hans, head, faceAnchor, scratch, false);
+    const correctedFace = faceVectorInParent(hans, scratch);
     dotAfter = correctedFace?.dot(scratch.movement) ?? null;
     state.corrections += 1;
   }
@@ -184,19 +158,14 @@ export function installWarRoomHansFacingGuard(root) {
   if (!root) return 0;
   const hans = root.getObjectByName?.(HANS_NAME);
   const driver = root.getObjectByName?.(DRIVER_NAME);
-  const head = hans?.userData?.refs?.head;
-  const faceAnchor = findFaceAnchor(head);
-  if (!hans || !driver || !head || !faceAnchor || typeof driver.onBeforeRender !== 'function') return 0;
+  if (!hans || !driver || typeof driver.onBeforeRender !== 'function') return 0;
   if (driver.userData?.warRoomHansFacingGuard === WAR_ROOM_HANS_FACING_GUARD_VERSION) return 0;
 
   let previousX = Number(hans.position.x || 0);
   let previousZ = Number(hans.position.z || 0);
   const scratch = {
     movement: new THREE.Vector3(),
-    headLocal: new THREE.Vector3(),
-    faceLocal: new THREE.Vector3(),
     faceVector: new THREE.Vector3(),
-    parentInverse: new THREE.Matrix4(),
   };
   const state = {
     corrections: 0,
@@ -211,8 +180,6 @@ export function installWarRoomHansFacingGuard(root) {
   const reconcile = (dx, dz, source) => reconcileTravelFacing({
     hans,
     driver,
-    head,
-    faceAnchor,
     scratch,
     dx,
     dz,
@@ -247,9 +214,9 @@ export function installWarRoomHansFacingGuard(root) {
   const visibleFacingHooks = installVisibleFacingFinalizer(hans, reconcile, state);
 
   driver.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
-  driver.userData.warRoomHansFacingGuardMode = 'rendered-face-vs-travel';
-  driver.userData.warRoomHansFacingGuardTravelContract = 'phase-motion-route-v1';
-  driver.userData.warRoomHansFacingGuardHotPath = 'preallocated-scratch-v4-visible';
+  driver.userData.warRoomHansFacingGuardMode = 'canonical-forward-vs-travel';
+  driver.userData.warRoomHansFacingGuardTravelContract = 'local-forward-phase-motion-route-v2';
+  driver.userData.warRoomHansFacingGuardHotPath = 'preallocated-scratch-v5-visible';
   driver.userData.warRoomHansVisibleFacingHooks = visibleFacingHooks;
   hans.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
   hans.userData.warRoomHansVisibleFacingHooks = visibleFacingHooks;
