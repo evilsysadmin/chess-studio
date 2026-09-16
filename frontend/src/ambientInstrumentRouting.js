@@ -1,11 +1,11 @@
 // A section can hand the melody to another player. The overall production
 // profile supplies the default, but must not erase that written hand-off.
 //
-// The eastern-Mediterranean scores deliberately keep their regional plucked
-// voices as sparse signatures. Their continuous lead/counter lanes, however,
-// are routed through the physically-modelled nylon string when the authored
-// instrument is one of the older oscillator plucks. This avoids stacking two
-// synthetic "ethnic" timbres for minutes at a time while preserving the tune.
+// The Mediterranean scores deliberately keep their regional plucked voices as
+// sparse signatures. Their continuous lead/counter lanes, however, are routed
+// through the physically-modelled nylon string when the authored instrument is
+// one of the older oscillator plucks. This avoids stacking a synthetic regional
+// timbre for minutes at a time while preserving the tune and occasional colour.
 const ORGANIC_MEDITERRANEAN_THEME_IDS = new Set([
   'alexandria241',
   'cairo0047',
@@ -25,6 +25,7 @@ const ORGANIC_MEDITERRANEAN_THEME_IDS = new Set([
   'istanbul0326',
   'istanbulBackgammon',
   'bosphorusRain',
+  'oudTrench',
 ]);
 
 const ORGANIC_IBERIAN_THEME_IDS = new Set(['andalusianCoast']);
