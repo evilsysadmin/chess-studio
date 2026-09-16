@@ -13,8 +13,10 @@ services:
     dockerContext: ./backend-python
     plan: free
     healthCheckPath: /api/ready
-    # El frontend de producción vive en Cloudflare Pages bajo el dominio propio;
-    # la API usa su subdominio independiente de Render.
+    # Producción sólo debe ser alcanzable por el dominio propio, que Cloudflare
+    # proxyfica. El hostname *.onrender.com queda desactivado para cerrar el
+    # bypass directo del edge/WAF.
+    renderSubdomainPolicy: disabled
     domains:
       - api.chess-studio.shadowops.dpdns.org
     envVars:

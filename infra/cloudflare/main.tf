@@ -49,16 +49,20 @@ resource "cloudflare_workers_custom_domain" "narrative_ai" {
 # The production frontend DNS is intentionally owned by
 # scripts/cloudflare_production_pages.py. That helper performs a two-phase
 # cutover: it verifies the exact build on pages.dev before switching the public
-# CNAME, which Terraform cannot express safely in one apply. Render remains
-# DNS-only so its custom-domain validation sees the real target directly.
+# CNAME, which Terraform cannot express safely in one apply.
+#
+# Render requires DNS-only while a custom domain is being verified, but once
+# its certificate is issued Render explicitly supports switching the record to
+# Cloudflare Proxied. Production is already verified, so keep the API orange-
+# clouded: Internet traffic must cross Cloudflare before reaching Render.
 resource "cloudflare_dns_record" "render_api" {
   zone_id = var.cloudflare_zone_id
   name    = var.render_api_hostname
   type    = "CNAME"
   content = var.render_api_cname_target
-  proxied = false
+  proxied = true
   ttl     = 1
-  comment = "Chess Studio API · Render"
+  comment = "Chess Studio API · Cloudflare -> Render"
 }
 
 # Deliberadamente NO declaramos CHESS_AI_SHARED_SECRET como secret_text.
