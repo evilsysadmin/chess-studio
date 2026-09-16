@@ -1,18 +1,9 @@
 import * as THREE from 'three';
 import { PAWN_SLUG_CANONICAL_HANDOFF, pawnSlugCanonicalPistolAtlasUrl, pawnSlugCanonicalPistolWindow } from './pawnSlugCanonicalHandoff.js';
-import machinegunPayload from './assets/pawnSlug/matthias_machinegun_premium_v3.b64?raw';
-import shotgunPayload from './assets/pawnSlug/matthias_shotgun_premium_v3.b64?raw';
-import panzerfaustPayload from './assets/pawnSlug/matthias_panzerfaust_premium_v3.b64?raw';
-import canonicalMotionPayload from './assets/pawnSlug/matthias_motion_atlas_v5_payload.b64?raw';
 import { configurePawnSlugTexture } from './pawnSlugSpriteCore.js';
 import { r2AssetUrl } from './r2Assets.js';
 
-const PAYLOADS = Object.freeze({
-  pistol: null,
-  machinegun: machinegunPayload,
-  shotgun: shotgunPayload,
-  panzerfaust: panzerfaustPayload,
-});
+const WEAPONS = Object.freeze(['pistol', 'machinegun', 'shotgun', 'panzerfaust']);
 
 export const PAWN_SLUG_MATTHIAS_R2_ASSETS = Object.freeze({
   canonicalMaster: 'pawnSlug.matthias.canonicalMaster',
@@ -122,7 +113,7 @@ export const PAWN_SLUG_MATTHIAS_INTEGRATED_ART = Object.freeze({
   canonicalHeadArt: PAWN_SLUG_MATTHIAS_CANONICAL_HEAD_ART,
   browserRenderContract: PAWN_SLUG_MATTHIAS_BROWSER_RENDER_CONTRACT,
   r2Assets: PAWN_SLUG_MATTHIAS_R2_ASSETS,
-  weapons: Object.freeze(Object.keys(PAYLOADS)),
+  weapons: WEAPONS,
   sourceFacing: 'left',
   runtimeFacing: 'world-direction-normalized',
   columns: 16,
@@ -147,27 +138,18 @@ function canonicalHeadRect(action = 'idle', frameIndex = 0) {
   return { safeAction, track, frame, rect };
 }
 
-function bundledWebpPayload(payload) {
-  return `data:image/webp;base64,${payload.trim()}`;
-}
-
 export function pawnSlugIntegratedWeaponId(kind = 'pistol') {
-  return Object.hasOwn(PAYLOADS, kind) ? kind : 'pistol';
+  return WEAPONS.includes(kind) ? kind : 'pistol';
 }
 
 export function pawnSlugIntegratedWeaponAtlasUrl(kind = 'pistol') {
   const id = pawnSlugIntegratedWeaponId(kind);
-  const fallback = id === 'pistol'
-    ? pawnSlugCanonicalPistolAtlasUrl
-    : bundledWebpPayload(PAYLOADS[id]);
+  const fallback = id === 'pistol' ? pawnSlugCanonicalPistolAtlasUrl : '';
   return r2AssetUrl(PAWN_SLUG_MATTHIAS_R2_ASSETS[id], fallback);
 }
 
 export function pawnSlugCanonicalHeadAtlasUrl() {
-  return r2AssetUrl(
-    PAWN_SLUG_MATTHIAS_R2_ASSETS.motion,
-    bundledWebpPayload(canonicalMotionPayload),
-  );
+  return r2AssetUrl(PAWN_SLUG_MATTHIAS_R2_ASSETS.motion);
 }
 
 export function pawnSlugPremiumMatthiasAtlasWindow(action = 'idle', frameIndex = 0, worldDirection = 1) {

@@ -12,11 +12,13 @@ import {
 } from './pawnSlugSprites.js';
 
 describe('Pawn Slug premium sprite contracts', () => {
-  it('uses the approved Matthias v5 mock atlas as the primary runtime source', () => {
+  it('uses the published Matthias v5 motion atlas as the primary R2 runtime source', () => {
     const meta = PAWN_SLUG_SPRITE_META.matthias;
-    expect(meta.assetVersion).toBe('v5-approved-mock');
-    expect(meta.assetName).toMatch(/matthias_motion_atlas_v5_payload\.b64$/);
-    expect(String(meta.url)).toMatch(/^data:image\/webp;base64,/);
+    expect(meta.assetVersion).toBe('v5-r2');
+    expect(meta.assetName).toBe('pawnSlug.matthias.motion');
+    expect(String(meta.url)).toMatch(
+      /^https:\/\/assets\.chess-studio\.shadowops\.dpdns\.org\/pawn-slug\/matthias\/motion\//,
+    );
     expect(String(meta.fallbackUrl)).toMatch(/matthias_atlas_v2\.webp(?:\?|$)/);
     expect(String(meta.vectorFallbackUrl)).toMatch(/\.svg(?:\?|$)/);
     expect(meta.url).not.toBe(meta.fallbackUrl);
@@ -193,8 +195,13 @@ describe('Pawn Slug premium sprite contracts', () => {
     expect(texture.colorSpace).toBe(THREE.SRGBColorSpace);
   });
 
-  it('uses embedded or local runtime assets instead of remote sprites', () => {
-    for (const meta of Object.values(PAWN_SLUG_SPRITE_META)) {
+  it('keeps Matthias on R2 while local fallbacks and other legacy sprites stay bundled', () => {
+    expect(String(PAWN_SLUG_SPRITE_META.matthias.url)).toMatch(/^https:\/\//);
+    expect(String(PAWN_SLUG_SPRITE_META.matthias.fallbackUrl)).not.toMatch(/^https?:\/\//);
+    expect(String(PAWN_SLUG_SPRITE_META.matthias.vectorFallbackUrl)).not.toMatch(/^https?:\/\//);
+
+    for (const [name, meta] of Object.entries(PAWN_SLUG_SPRITE_META)) {
+      if (name === 'matthias') continue;
       expect(meta.url).toBeTruthy();
       expect(String(meta.url)).not.toMatch(/^https?:\/\//);
       if (meta.fallbackUrl) expect(String(meta.fallbackUrl)).not.toMatch(/^https?:\/\//);
