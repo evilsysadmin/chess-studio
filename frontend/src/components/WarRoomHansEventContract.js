@@ -1,4 +1,4 @@
-export const WAR_ROOM_HANS_EVENT_VERSION = 'hans-event-per-game-v3-missing-context';
+export const WAR_ROOM_HANS_EVENT_VERSION = 'hans-event-per-game-v4-missing-context-delivered-continuity';
 export const WAR_ROOM_HANS_NO_GAME_CONTEXT_ID = '__war-room-hans-no-game-context__';
 
 export const WAR_ROOM_HANS_EVENTS = Object.freeze([
@@ -38,6 +38,12 @@ export function warRoomHansEventForGame(gameId) {
 
 export function warRoomHansEventMatches(gameId, eventName) {
   return warRoomHansEventForGame(gameId) === String(eventName || '');
+}
+
+export function warRoomHansShouldClearDeliveredArtifacts(nextGameId, completedGameId = '') {
+  const nextRealGameId = normalizedRealGameId(nextGameId);
+  if (!nextRealGameId) return false;
+  return nextRealGameId !== normalizedRealGameId(completedGameId);
 }
 
 export function warRoomHansAmbientDelayMs(gameId, { min = 16000, max = 42000, salt = '' } = {}) {

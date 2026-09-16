@@ -4,6 +4,7 @@ import {
   WAR_ROOM_HANS_NO_GAME_CONTEXT_ID,
   warRoomHansEventForGame,
   warRoomHansEventMatches,
+  warRoomHansShouldClearDeliveredArtifacts,
 } from './WarRoomHansEventContract.js';
 
 afterEach(() => {
@@ -39,5 +40,17 @@ describe('Hans game context lifecycle', () => {
 
     expect(getWarRoomHansGameId(actor)).toBe('game-live-42');
     expect(warRoomHansEventForGame('game-live-42')).not.toBe('');
+  });
+
+  it('preserves completed deliveries through missing context and the same restored game only', () => {
+    const completedGameId = 'game-delivered-espresso';
+
+    expect(warRoomHansShouldClearDeliveredArtifacts(
+      WAR_ROOM_HANS_NO_GAME_CONTEXT_ID,
+      completedGameId,
+    )).toBe(false);
+    expect(warRoomHansShouldClearDeliveredArtifacts(completedGameId, completedGameId)).toBe(false);
+    expect(warRoomHansShouldClearDeliveredArtifacts('game-next', completedGameId)).toBe(true);
+    expect(warRoomHansShouldClearDeliveredArtifacts(completedGameId, '')).toBe(true);
   });
 });
