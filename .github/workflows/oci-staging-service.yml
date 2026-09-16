@@ -23,7 +23,7 @@ on:
       operation:
         description: Service operation
         type: choice
-        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, runtime-sync]
+        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, runtime-sync, vault-validate]
         default: smoke
         required: true
       repo_ref:
@@ -132,6 +132,7 @@ jobs:
         run: |
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
+          python3 -S scripts/oci_vault_runtime.py --self-test
           python3 -S scripts/oci_backend_diagnose.py --self-test
           python3 -S scripts/render_mongo_target_diagnose.py --self-test
           python3 -S scripts/oci_mongo_network_diagnose.py --self-test
@@ -152,6 +153,10 @@ jobs:
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: python3 scripts/oci_runtime_config.py sync
+
+      - name: Validate CURRENT OCI Vault runtime secrets
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'vault-validate'
+        run: python3 scripts/oci_vault_runtime.py validate
 
       - name: Recover stale OCI agent after explicit request
         if: >-
