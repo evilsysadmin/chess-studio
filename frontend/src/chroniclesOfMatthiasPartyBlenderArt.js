@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { installChroniclesPartyFallbackDetails } from './chroniclesOfMatthiasBlenderArt.js';
 import { installChroniclesTacticsFortressBackdrop } from './chroniclesOfMatthiasFortressArt.js';
 import { installChroniclesTacticsForegroundFraming } from './chroniclesOfMatthiasForegroundArt.js';
+import { installChroniclesTacticsWetStone } from './chroniclesOfMatthiasGroundArt.js';
 
 export const CHRONICLES_TACTICS_PARTY_MODEL_PATH = 'models/chronicles-tactics-party.glb';
 export const CHRONICLES_TACTICS_PARTY_ASSET_VERSION = 'chronicles-tactics-party-v3';
@@ -71,6 +72,7 @@ export function installChroniclesTacticsPartyBlenderArt(
   const scene = partyRoot?.parent || null;
   installChroniclesTacticsFortressBackdrop(scene, { coarsePointer });
   installChroniclesTacticsForegroundFraming(scene, { coarsePointer });
+  installChroniclesTacticsWetStone(scene, { coarsePointer });
 
   const installFallbackDetails = (memberIds) => {
     const requested = memberIds.filter((memberId) => models.get(memberId));
