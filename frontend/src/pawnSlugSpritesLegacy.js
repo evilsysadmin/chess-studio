@@ -1,14 +1,14 @@
 import * as THREE from 'three';
-import matthiasMotionAtlasV5Payload from './assets/pawnSlug/matthias_motion_atlas_v5_payload.b64?raw';
 import matthiasLegacyAtlasUrl from './assets/pawnSlug/matthias_atlas_v2.webp';
 import matthiasVectorFallbackUrl from './assets/pawnSlug/matthias_atlas.svg';
 import enemyAtlasUrl from './assets/pawnSlug/enemy_atlas_v2.webp';
 import enemyFallbackAtlasUrl from './assets/pawnSlug/enemy_atlas.svg';
 import panzerRookUrl from './assets/pawnSlug/panzer_rook_v2.webp';
 import weaponAtlasUrl from './assets/pawnSlug/weapon_atlas.svg';
+import { r2AssetUrl } from './r2Assets.js';
 
-const MATTHIAS_V5_ASSET_NAME = 'matthias_motion_atlas_v5_payload.b64';
-const matthiasMotionAtlasUrl = `data:image/webp;base64,${matthiasMotionAtlasV5Payload.trim()}`;
+const MATTHIAS_R2_MOTION_ID = 'pawnSlug.matthias.motion';
+const matthiasMotionAtlasUrl = r2AssetUrl(MATTHIAS_R2_MOTION_ID);
 const ENEMY_FRAME_BY_TYPE = Object.freeze({ pawn: 0, knight: 1, rook: 2 });
 const clamp01 = (value) => Math.max(0, Math.min(1, Number(value) || 0));
 const freezeFrames = (count) => Object.freeze(Array.from({ length: count }, (_, index) => index));
@@ -312,7 +312,7 @@ function matthiasAtlasSprite(scale = [1.77, 2.56]) {
 
   const loader = new THREE.TextureLoader();
   const sources = [
-    { url: matthiasMotionAtlasUrl, source: 'primary' },
+    ...(matthiasMotionAtlasUrl ? [{ url: matthiasMotionAtlasUrl, source: 'primary' }] : []),
     { url: matthiasLegacyAtlasUrl, source: 'fallback-raster' },
     { url: matthiasVectorFallbackUrl, source: 'fallback-vector' },
   ];
@@ -549,8 +549,8 @@ export function disposePawnSlugSprite(sprite) {
 export const PAWN_SLUG_SPRITE_META = Object.freeze({
   matthias: Object.freeze({
     url: matthiasMotionAtlasUrl,
-    assetName: MATTHIAS_V5_ASSET_NAME,
-    assetVersion: 'v5-approved-mock',
+    assetName: MATTHIAS_R2_MOTION_ID,
+    assetVersion: 'v5-r2',
     fallbackUrl: matthiasLegacyAtlasUrl,
     vectorFallbackUrl: matthiasVectorFallbackUrl,
     frames: 55,
