@@ -316,10 +316,16 @@ export function chroniclesReduce(state, action) {
 }
 
 export function chroniclesObjective(state) {
-  if (state.phase === 'escaped') return 'Vertical slice completado';
-  if (state.enemyHp > 0) return 'Derrota al peón corrompido';
-  if (!state.sigilAwake) return 'Encuentra y pisa el sello';
-  if (state.jailerHp > 0) return 'Derrota a la torre carcelero';
-  if (state.scavengerHp > 0) return 'Caza al caballo carroñero';
-  return 'Cruza la puerta negra';
+  const map = chroniclesMapForState(state);
+  if (state.phase === 'escaped') return map.explorationCompleteLabel || 'Exploración completada';
+
+  const requiredEnemy = (map.enemies || []).find((enemy) => !enemy.optional && enemyAlive(state, enemy));
+  if (requiredEnemy) return requiredEnemy.explorationObjective || `Derrota a ${requiredEnemy.name}`;
+
+  const pendingTrigger = (map.triggers || []).find((entry) => chroniclesRequirementsMet(state, entry.when));
+  if (pendingTrigger) return pendingTrigger.explorationObjective || pendingTrigger.label || 'Activa el siguiente evento';
+
+  const exit = (map.exits || [])[0];
+  if (exit) return exit.explorationObjective || exit.openLabel || 'Busca una salida';
+  return map.explorationIdleObjective || 'Explora la zona';
 }

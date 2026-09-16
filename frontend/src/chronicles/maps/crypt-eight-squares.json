@@ -1,8 +1,9 @@
 {
   "id": "crypt-eight-squares",
-  "version": 8,
+  "version": 9,
   "progressionKey": "crypt-01",
   "title": "Cripta de las Ocho Casillas",
+  "explorationCompleteLabel": "Vertical slice completado",
   "grid": [
     "#######",
     "#..X..#",
@@ -25,6 +26,7 @@
       "id": "corrupted-pawn",
       "visualType": "corrupted-pawn",
       "name": "peón corrompido",
+      "explorationObjective": "Derrota al peón corrompido",
       "x": 3,
       "y": 5,
       "hpKey": "enemyHp",
@@ -53,6 +55,7 @@
       "id": "gate-jailer",
       "visualType": "gate-jailer",
       "name": "torre carcelero",
+      "explorationObjective": "Derrota a la torre carcelero",
       "x": 3,
       "y": 1,
       "hpKey": "jailerHp",
@@ -126,6 +129,7 @@
       "id": "scavenger-knight",
       "visualType": "scavenger-knight",
       "name": "caballo carroñero",
+      "explorationObjective": "Caza al caballo carroñero",
       "x": 2,
       "y": 3,
       "hpKey": "scavengerHp",
@@ -171,6 +175,7 @@
       "kind": "trigger",
       "tile": "S",
       "label": "Activar sello",
+      "explorationObjective": "Encuentra y pisa el sello",
       "explorationMessage": "El sello despierta. Arriba, metal contra piedra. Al este, una luz verdosa abre los ojos en una capilla que nadie había solicitado.",
       "explorationJournal": {
         "id": "sigil-awake",
@@ -253,6 +258,7 @@
       "tile": "X",
       "openLabel": "Cruzar Puerta Negra",
       "lockedLabel": "Examinar Puerta Negra",
+      "explorationObjective": "Cruza la puerta negra",
       "explorationMessage": "Salida encontrada. Matthias anota que sobrevivir cuenta como excelencia operativa.",
       "explorationJournal": {
         "id": "escape",
