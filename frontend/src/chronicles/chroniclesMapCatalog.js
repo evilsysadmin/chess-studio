@@ -47,6 +47,7 @@ function normalizeEnemy(enemy) {
     maxHp: Math.max(1, Number(enemy?.maxHp || 1)),
     retaliation: Math.max(0, Number(enemy?.retaliation || 0)),
     retaliationReach: Math.max(1, Number(enemy?.retaliationReach ?? enemy?.ai?.attackReach ?? 1)),
+    activationWhen: Array.isArray(enemy?.activationWhen) ? freezeRequirements(enemy.activationWhen) : undefined,
     positions: positions ? Object.freeze(positions) : undefined,
     ai: Object.freeze({
       movement: enemy?.ai?.movement || 'cardinal-chase',
@@ -220,7 +221,7 @@ function normalizeMap(source) {
     initialFlags: Object.freeze({ ...(source.initialFlags || {}) }),
     enemies: Object.freeze((source.enemies || []).map(normalizeEnemy)),
     triggers: Object.freeze((source.triggers || []).map(normalizeContentEntry)),
-    interactables: Object.freeze((source.interactables || []).map(normalizeContentEntry)),
+    interactables: Object.freeze((source.interactables || []).map((entry) => normalizeContentEntry(entry)),
     treasures: Object.freeze((source.treasures || []).map(normalizeContentEntry)),
     traps: Object.freeze((source.traps || []).map(normalizeContentEntry)),
     exits: Object.freeze((source.exits || []).map(normalizeContentEntry)),
