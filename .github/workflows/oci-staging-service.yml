@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
     paths:
-      - 'scripts/oci_run_command.py'
       - 'infra/oci/ops/agent-reboot.request'
       - '.github/workflows/oci-staging-service.yml'
   workflow_run:
