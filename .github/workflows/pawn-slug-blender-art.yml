@@ -52,7 +52,7 @@ jobs:
         run: |
           set -euo pipefail
           for WEAPON in $WEAPONS; do
-            for POSE in idle run crouch jump; do
+            for POSE in idle run crouch jump fire; do
               test -s "/tmp/pawn-slug-rigged-proof/matthias_${WEAPON}_rigged_${POSE}_proof.png"
             done
           done
