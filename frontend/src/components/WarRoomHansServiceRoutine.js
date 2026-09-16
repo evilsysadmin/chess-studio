@@ -39,7 +39,7 @@ import {
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v7-reset-prop-baselines';
+export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v8-reset-prop-baselines-terminal-setup';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const COMMAND_DESK_TOP_NAME = 'war-room-command-desk-top';
@@ -223,10 +223,13 @@ export function installWarRoomHansServiceRoutine(root) {
         source: 'WarRoomHansServiceRoutine',
         payload: { eventName },
       })) return;
+      const abortSetupForCurrentGame = () => {
+        if (releaseWarRoomHansTask(runtime, taskId)) completedGameId = gameId;
+      };
       const service = warRoomHansServiceHome(root, actor.hans.parent);
       const serviceTargetObject = eventName === 'water-plant' ? plant : getCommandDeskTop(root);
       if (!service?.point || !serviceTargetObject) {
-        releaseWarRoomHansTask(runtime, taskId);
+        abortSetupForCurrentGame();
         return;
       }
       home = service.point;
@@ -234,13 +237,13 @@ export function installWarRoomHansServiceRoutine(root) {
         ? warRoomHansTargetNearObject(serviceTargetObject, actor.hans.parent, { offsetX: -0.72, offsetZ: 0.06 })
         : warRoomHansTargetNearObject(serviceTargetObject, actor.hans.parent, { offsetX: -1.78, offsetZ: 0.74 });
       if (!target) {
-        releaseWarRoomHansTask(runtime, taskId);
+        abortSetupForCurrentGame();
         return;
       }
       routeIn = warRoomHansBuildSafeRoute(floor, actor.hans.parent, home, target);
       routeOut = warRoomHansBuildSafeRoute(floor, actor.hans.parent, target, home);
       if (!routeIn.length || !routeOut.length) {
-        releaseWarRoomHansTask(runtime, taskId);
+        abortSetupForCurrentGame();
         return;
       }
       resetWarRoomHansServiceProps(props);
