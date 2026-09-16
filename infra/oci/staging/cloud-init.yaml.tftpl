@@ -192,6 +192,17 @@ write_files:
       Cmnd_Alias CHESS_STUDIO_RUNTIME = /usr/local/sbin/chess-studio-install-runtime /tmp/chess-studio-backend.env.*
       ocarun ALL=(root) NOPASSWD: CHESS_STUDIO_DEPLOY, CHESS_STUDIO_RUNTIME
 
+  # Write the active sudoers entry before Oracle Cloud Agent starts. Keeping the
+  # source copy above makes the contract auditable while this removes the
+  # runcmd ordering race observed on freshly replaced Ubuntu A1 hosts.
+  - path: /etc/sudoers.d/101-chess-studio-ocarun
+    owner: root:root
+    permissions: '0440'
+    content: |
+      Cmnd_Alias CHESS_STUDIO_DEPLOY = /usr/local/sbin/chess-studio-deploy *
+      Cmnd_Alias CHESS_STUDIO_RUNTIME = /usr/local/sbin/chess-studio-install-runtime /tmp/chess-studio-backend.env.*
+      ocarun ALL=(root) NOPASSWD: CHESS_STUDIO_DEPLOY, CHESS_STUDIO_RUNTIME
+
   # Retained as a disabled diagnostic/rollback artifact. Compose owns runtime.
   - path: /etc/systemd/system/chess-studio-backend.service
     owner: root:root
