@@ -1,4 +1,5 @@
 import { PAWN_SLUG_PREMIUM_ENEMY_RASTER_DATA_URL } from './pawnSlugEnemyPremiumAtlasData.js';
+import { r2AssetUrl } from './r2Assets.js';
 
 const TYPES = Object.freeze(['pawn', 'knight', 'rook']);
 const COLUMNS = 8;
@@ -11,7 +12,11 @@ function wrapFrame(frame, count = FRAMES_PER_TYPE) {
   return ((Math.floor(Number(frame) || 0) % count) + count) % count;
 }
 
-export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL = PAWN_SLUG_PREMIUM_ENEMY_RASTER_DATA_URL;
+export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_LOGICAL_ID = 'pawnSlug.enemy.premiumRaster';
+export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL = r2AssetUrl(
+  PAWN_SLUG_PREMIUM_ENEMY_RASTER_LOGICAL_ID,
+  PAWN_SLUG_PREMIUM_ENEMY_RASTER_DATA_URL,
+);
 
 export function pawnSlugPremiumEnemyRasterWindow(type = 'pawn', action = 'idle', frameIndex = 0, dir = 1) {
   const safeType = TYPES.includes(type) ? type : 'pawn';
@@ -57,6 +62,7 @@ export const PAWN_SLUG_PREMIUM_ENEMY_RASTER_META = Object.freeze({
   isolatedSilhouettes: true,
   transparentBackground: true,
   proceduralFallbackOnly: true,
-  transport: 'two-chunk-base64-data-url',
-  transportReason: 'connector-safe-binary-integrity',
+  logicalId: PAWN_SLUG_PREMIUM_ENEMY_RASTER_LOGICAL_ID,
+  transport: 'r2-cdn-with-inline-base64-fallback',
+  transportReason: 'content-addressed-cdn-primary-with-bundled-migration-fallback',
 });

@@ -1,5 +1,19 @@
 {
   "assets": {
+    "pawnSlug.enemy.actionAtlas": {
+      "bytes": 373596,
+      "contentType": "image/webp",
+      "key": "pawn-slug/enemies/action-atlas/enemy_cast_blender_v1_runtime-cf57e6e6be5a5d4a.webp",
+      "sha256": "cf57e6e6be5a5d4ab16386fbeb218cb88f6dd81bc9989205eb0f19dc8d03c348",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/action-atlas/enemy_cast_blender_v1_runtime-cf57e6e6be5a5d4a.webp"
+    },
+    "pawnSlug.enemy.premiumRaster": {
+      "bytes": 13224,
+      "contentType": "image/webp",
+      "key": "pawn-slug/enemies/premium-raster/enemy_premium_raster_v5-7b62f19661e36c2c.webp",
+      "sha256": "7b62f19661e36c2cafcdf5e2033bffb35d12081ebca84c7ca6d5170c2555a272",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/premium-raster/enemy_premium_raster_v5-7b62f19661e36c2c.webp"
+    },
     "pawnSlug.matthias.canonicalMaster": {
       "bytes": 3119009,
       "contentType": "image/png",
