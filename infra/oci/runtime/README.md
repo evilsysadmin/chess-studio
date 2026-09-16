@@ -15,11 +15,17 @@ A second A1 for pragmatic host redundancy is a later iteration. k3s/Argo CD is a
 
 ## Runtime
 
-`docker-compose.yml` builds `backend-python/Dockerfile` directly and tags every image with the exact git SHA:
+`Main · admission` publishes the CI-approved backend for `linux/arm64` as an immutable GHCR tag:
+
+`ghcr.io/evilsysadmin/chess-studio-backend:oci-<SHA>`
+
+`docker-compose.yml` resolves that exact artifact through the minimal `backend-image.Dockerfile` and retags it locally as:
 
 `chess-studio-backend:oci-<SHA>`
 
-The host port defaults to `127.0.0.1:4000`; no public backend ingress is introduced here. Runtime secrets stay in `/etc/chess-studio/backend.env` (or `CHESS_STUDIO_ENV_FILE`) and never enter Git, Compose, Terraform state, or Run Command payloads.
+The local tag deliberately preserves the existing rollback contract while moving the expensive Python image build off the A1. A missing remote image fails during image preparation before the currently served backend is replaced.
+
+The host port defaults to `127.0.0.1:4000`; no public backend ingress is introduced here. Runtime secrets stay in `/etc/chess-studio/backend.env` (or `CHESS_STUDIO_ENV_FILE`) and never enter Git, Compose, Terraform state, registry images, or Run Command payloads.
 
 The Compose project defaults to `chess-studio-staging`. `CHESS_STUDIO_COMPOSE_PROJECT`, `CHESS_STUDIO_BACKEND_PORT`, and `CHESS_STUDIO_ENV_FILE` are parameterized so a later production stack can coexist without changing the application image.
 
@@ -57,4 +63,4 @@ After adoption, the existing GitHub/OCI Run Command path can continue calling:
 sudo /usr/local/sbin/chess-studio-deploy <CI_APPROVED_40_CHAR_SHA>
 ```
 
-The wrapper builds before replacement, starts the new Compose service, requires Mongo readiness and exact build identity, persists the successful SHA, and attempts rollback to the previous immutable image if the new deployment fails attestation.
+The wrapper prepares the exact prebuilt GHCR image before replacement, starts the new Compose service, requires Mongo readiness and exact build identity, persists the successful SHA, and attempts rollback to the previous immutable local image if the new deployment fails attestation.
