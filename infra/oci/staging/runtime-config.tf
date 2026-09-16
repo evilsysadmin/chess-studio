@@ -12,6 +12,34 @@ resource "oci_objectstorage_bucket" "runtime_config" {
   freeform_tags  = local.common_tags
 }
 
+resource "oci_kms_vault" "staging_secrets" {
+  compartment_id = var.compartment_ocid
+  display_name   = "chess-studio-staging"
+  vault_type     = "DEFAULT"
+  freeform_tags  = local.common_tags
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "oci_kms_key" "staging_secrets" {
+  compartment_id      = var.compartment_ocid
+  display_name        = "chess-studio-staging-secrets"
+  management_endpoint = oci_kms_vault.staging_secrets.management_endpoint
+  protection_mode     = "HSM"
+  freeform_tags       = local.common_tags
+
+  key_shape {
+    algorithm = "AES"
+    length    = 32
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
 resource "oci_identity_dynamic_group" "staging_backend" {
   compartment_id = var.tenancy_ocid
   name           = "chess-studio-staging-backend"
