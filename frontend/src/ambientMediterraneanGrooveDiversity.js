@@ -45,7 +45,10 @@ export const MEDITERRANEAN_GROOVE_REWRITES = Object.freeze({
   alexandria241: groove(16, {0:'B',5:'H',8:'S',13:'H'}),
   terraceFireflies: groove(16, {0:'B',7:'H',10:'B',14:'H'}),
   cafeFirelight: groove(16, {0:'B',4:'H',9:'S',13:'H'}),
-  alexandriaHarborCafe: groove(16, {0:'B',6:'H',11:'B',14:'H'}),
+  // Café del puerto is written in four 14-step harmonic cells inside a 56-step scene.
+  // A 16-step brush loop drifted two steps every cell and never landed on the same
+  // musical pillars twice. Keep the sparse B/H alternation authored in the score.
+  alexandriaHarborCafe: groove(28, {0:'B',14:'H'}),
 
   cairo0047: groove(32, {0:'B',10:'H',16:'S',26:'H'}),
   cairoRedLantern: groove(32, {0:'B',6:'H',12:'S',18:'H',24:'B',30:'H'}),
@@ -54,20 +57,29 @@ export const MEDITERRANEAN_GROOVE_REWRITES = Object.freeze({
   bosphorusRain: groove(16, {0:'K',5:'B',10:'H',14:'B'}),
   aleppoAfterRain: groove(16, {0:'K',4:'H',9:'B',13:'H'}),
   ammanVelvetRoom: groove(16, {0:'K',3:'B',8:'S',11:'H',15:'B'}),
-  damascusCourtyard0144: groove(16, {0:'K',7:'B',12:'H'}),
+  // Damasco is deliberately contemplative. Keep the skin hit on the harmonic pillar
+  // and move the only brush response away from the ney arrivals instead of stacking
+  // three events into every slow 16-step phrase.
+  damascusCourtyard0144: groove(16, {0:'K',10:'H'}),
   ammanLateTable0303: groove(16, {0:'K',4:'B',9:'H',14:'B'}),
   oudTrench: groove(16, {0:'K',3:'H',8:'S',12:'B',15:'H'}),
 
-  beirutRooftop0412: groove(16, {0:'B',5:'H',8:'S',13:'H',15:'B'}),
+  // Rooftop is scored as four 18-step harmonic phrases inside each 72-step scene.
+  // Preserve its busier late-night feel, but lock the backbeat to those phrase seams.
+  beirutRooftop0412: groove(18, {0:'B',6:'H',9:'S',14:'H',17:'B'}),
   // Taxi's score is written as four 18-step phrases inside each 72-step scene.
   // The former 16-step loop walked out of phase with those phrase boundaries,
   // so the backbeat sounded late/early even though every individual hit was quantized.
   beirutNightTaxi: groove(18, {0:'K',3:'H',6:'B',9:'S',12:'H',15:'B'}),
   casablancaLastCall: groove(16, {0:'K',3:'B',7:'H',8:'S',12:'B',15:'H'}),
-  medinaBlueSmoke: groove(16, {0:'K',5:'B',8:'S',11:'H',14:'B'}),
+  // Humo azul shares the 18-step harmonic grid, but earns more air than Rooftop:
+  // one fewer low hit lets oud and clarinet own the centre of the phrase.
+  medinaBlueSmoke: groove(18, {0:'K',6:'B',9:'S',15:'H'}),
 
   tangierRedTable: groove(12, {0:'K',3:'H',5:'B',6:'S',9:'H',11:'B'}),
-  tangierNightTrain0058: groove(12, {0:'K',2:'H',5:'B',6:'S',8:'B',11:'H'}),
+  // Night train is a 64-step / four-by-16 score. The old 12-step loop rotated against
+  // every chord change; stretch the same rail-like accent shape onto the authored grid.
+  tangierNightTrain0058: groove(16, {0:'K',3:'H',7:'B',8:'S',11:'B',15:'H'}),
   // Tarde clara phrases the foreground on a four-step lattice. Keep the hand
   // drum on those same pillars and remove the 3/11/14 accents that sounded as
   // if the percussion was leaning against the melody rather than supporting it.
