@@ -9,6 +9,13 @@ export const api = {
   getFeatures() {
     return requestJson(`${BASE_URL}/features`, { headers: { ...authHeader() } });
   },
+  getChroniclesMapManifest(mapId, seed = 0, { signal } = {}) {
+    const query = new URLSearchParams({ seed: String(seed) });
+    return requestJson(`${BASE_URL}/chronicles/maps/${encodeURIComponent(mapId)}?${query.toString()}`, {
+      headers: { ...authHeader() },
+      signal,
+    });
+  },
   createGame(difficulty, color = 'w', handicap = null, startingFen = null, ghostStyle = null, { signal, operationId = null } = {}) {
     return requestJson(`${BASE_URL}/games`, {
       method: 'POST',
