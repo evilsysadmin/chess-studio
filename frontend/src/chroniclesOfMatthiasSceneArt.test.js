@@ -26,9 +26,11 @@ describe('Chronicles Tactics canonical scene art orchestrator', () => {
     expect(art?.wetStone?.name).toBe('chronicles-wet-stone');
     expect(art?.weathering?.name).toBe('chronicles-stone-weathering');
     expect(art?.grounding?.name).toBe('chronicles-party-grounding');
+    expect(art?.architecture?.name).toBe('chronicles-tactics-architecture-depth');
     expect(art?.damageFeedback?.name).toBe('chronicles-party-damage-feedback');
     expect(scene.getObjectByName('chronicles-fortress-backdrop')).toBeTruthy();
     expect(scene.getObjectByName('chronicles-wet-stone')).toBeTruthy();
+    expect(scene.getObjectByName('chronicles-tactics-architecture-depth')).toBeTruthy();
     expect(partyRoot.getObjectByName('chronicles-party-grounding')).toBeTruthy();
     expect(partyRoot.getObjectByName('chronicles-party-damage-feedback')).toBeTruthy();
   });
@@ -43,6 +45,7 @@ describe('Chronicles Tactics canonical scene art orchestrator', () => {
     expect(second?.wetStone).toBe(first?.wetStone);
     expect(second?.weathering).toBe(first?.weathering);
     expect(second?.grounding).toBe(first?.grounding);
+    expect(second?.architecture).toBe(first?.architecture);
     expect(second?.damageFeedback).toBe(first?.damageFeedback);
   });
 
