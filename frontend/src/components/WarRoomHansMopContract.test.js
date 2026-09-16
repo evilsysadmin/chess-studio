@@ -9,10 +9,8 @@ import {
   hansMopDialoguePhase,
   hansMopFatigueMs,
   hansMopPatchMs,
-  hansMopStartDelayMs,
   hansMopTravelStep,
   shouldHansMopDialogue,
-  shouldStartHansMopRoutine,
 } from './WarRoomHansMopContract.js';
 
 describe('Hans mop ambient routine contract', () => {
@@ -23,13 +21,9 @@ describe('Hans mop ambient routine contract', () => {
     expect(hansMopFatigueMs(0.5)).toBeLessThan(HANS_MOP_MAX_FATIGUE_MS);
   });
 
-  it('uses bounded random start, patch and dialogue decisions', () => {
-    expect(shouldStartHansMopRoutine(0)).toBe(true);
-    expect(shouldStartHansMopRoutine(0.99)).toBe(false);
+  it('uses bounded random patch and dialogue decisions', () => {
     expect(shouldHansMopDialogue(0)).toBe(true);
     expect(shouldHansMopDialogue(0.99)).toBe(false);
-    expect(hansMopStartDelayMs(0)).toBeGreaterThanOrEqual(8000);
-    expect(hansMopStartDelayMs(0.999999)).toBeLessThanOrEqual(18000);
     expect(hansMopPatchMs(0)).toBeGreaterThanOrEqual(6000);
     expect(hansMopPatchMs(0.999999)).toBeLessThanOrEqual(10000);
   });

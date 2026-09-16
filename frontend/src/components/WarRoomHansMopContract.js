@@ -1,10 +1,9 @@
 export const WAR_ROOM_HANS_MOP_ROUTINE_VERSION = 'hans-mop-routine-v6-obstacle-safe-router-slow-travel-contract-terminal-setup';
-export const HANS_MOP_START_CHANCE = 0.48;
+// Per-game event eligibility and deterministic start delay belong to
+// WarRoomHansEventContract. This contract begins once mop has been selected.
 export const HANS_MOP_DIALOGUE_CHANCE = 0.56;
 export const HANS_MOP_MIN_FATIGUE_MS = 60_000;
 export const HANS_MOP_MAX_FATIGUE_MS = 120_000;
-export const HANS_MOP_MIN_START_DELAY_MS = 8_000;
-export const HANS_MOP_MAX_START_DELAY_MS = 18_000;
 export const HANS_MOP_WALK_SPEED = 0.28;
 export const HANS_MOP_MIN_PATCH_MS = 6_000;
 export const HANS_MOP_MAX_PATCH_MS = 10_000;
@@ -22,10 +21,6 @@ function unit(value) {
   return Math.max(0, Math.min(0.999999, n));
 }
 
-export function shouldStartHansMopRoutine(randomValue = Math.random()) {
-  return unit(randomValue) < HANS_MOP_START_CHANCE;
-}
-
 export function shouldHansMopDialogue(randomValue = Math.random()) {
   return unit(randomValue) < HANS_MOP_DIALOGUE_CHANCE;
 }
@@ -33,11 +28,6 @@ export function shouldHansMopDialogue(randomValue = Math.random()) {
 export function hansMopFatigueMs(randomValue = Math.random()) {
   return HANS_MOP_MIN_FATIGUE_MS
     + unit(randomValue) * (HANS_MOP_MAX_FATIGUE_MS - HANS_MOP_MIN_FATIGUE_MS);
-}
-
-export function hansMopStartDelayMs(randomValue = Math.random()) {
-  return HANS_MOP_MIN_START_DELAY_MS
-    + unit(randomValue) * (HANS_MOP_MAX_START_DELAY_MS - HANS_MOP_MIN_START_DELAY_MS);
 }
 
 export function hansMopPatchMs(randomValue = Math.random()) {
