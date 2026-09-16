@@ -39,7 +39,10 @@ def action(rig, name, poses, total):
         p.keyframe_insert('location', frame=total)
         p.keyframe_insert('scale', frame=total)
 
-    for curve in a.fcurves:
+    # Blender 5 layered Actions no longer expose Action.fcurves. Keyframes are
+    # already Bezier by default there; retain the explicit legacy pass when the
+    # collection exists so older supported Blender versions behave identically.
+    for curve in getattr(a, 'fcurves', ()):
         for key in curve.keyframe_points:
             key.interpolation = 'BEZIER'
     return a
