@@ -17,6 +17,7 @@ import {
 } from './WarRoomHansEventContract.js';
 import {
   WAR_ROOM_HANS_CHORE_EVENTS,
+  warRoomHansChoreCanMoveTarget,
   warRoomHansChoreDialoguePhase,
   warRoomHansChoreForEvent,
 } from './WarRoomHansChoreContract.js';
@@ -39,7 +40,7 @@ import {
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v6-reset-before-return-terminal-setup';
+export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v7-reset-before-return-terminal-setup-static-fallback';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
@@ -169,7 +170,7 @@ function restoreAdjustedTarget(targetObject, baseRotation) {
 }
 
 function applyChoreEnvironment(eventName, elapsedMs, targetObject, baseRotation) {
-  if (eventName !== 'straighten-room' || !targetObject || baseRotation == null) return;
+  if (!warRoomHansChoreCanMoveTarget(eventName, targetObject?.name) || baseRotation == null) return;
   targetObject.rotation.y = baseRotation + Math.sin(Math.min(1, elapsedMs / 2200) * Math.PI) * 0.035;
 }
 
@@ -300,7 +301,9 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
       setWarRoomHansTaskPhase(runtime, 'walking-in');
       if (prop) prop.visible = true;
       setWarRoomHansServiceDoor(root, 1);
-      targetBaseRotation = Number(targetObject.rotation?.y);
+      targetBaseRotation = warRoomHansChoreCanMoveTarget(eventName, targetObject?.name)
+        ? Number(targetObject.rotation?.y)
+        : null;
       state = 'walking-in';
       active = true;
       actionElapsed = 0;
