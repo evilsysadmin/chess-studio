@@ -7,6 +7,8 @@ const CARDINAL_DIRECTIONS = Object.freeze([
   Object.freeze({ key: 'west', dx: -1, dy: 0 }),
 ]);
 
+const CONTENT_GROUPS = Object.freeze(['triggers', 'interactables', 'treasures', 'traps', 'exits']);
+
 export function chroniclesRequirementMet(state, requirement) {
   if (!requirement || typeof requirement !== 'object') return true;
   const value = state?.[requirement.key];
@@ -26,6 +28,15 @@ export function chroniclesRequirementFailure(state, requirements) {
   return (requirements || []).find((requirement) => !chroniclesRequirementMet(state, requirement)) || null;
 }
 
+export function chroniclesContentEntries(map) {
+  return CONTENT_GROUPS.flatMap((group) => map?.[group] || []);
+}
+
+export function chroniclesContentVisible(state, entry) {
+  if (!state) return true;
+  return chroniclesRequirementsMet(state, entry?.when);
+}
+
 function onCurrentCell(state, entry, tileAt) {
   if (entry?.tile) return tileAt(state.x, state.y) === entry.tile;
   if (Number.isFinite(entry?.x) && Number.isFinite(entry?.y)) return state.x === entry.x && state.y === entry.y;
@@ -43,7 +54,7 @@ function adjacentExit(state, entry, tileAt) {
 }
 
 function interactionFromEntry(state, entry, tileAt) {
-  if (!chroniclesRequirementsMet(state, entry.when)) return null;
+  if (!chroniclesContentVisible(state, entry)) return null;
   if (entry.kind === 'exit') {
     const position = adjacentExit(state, entry, tileAt);
     if (!position) return null;
@@ -67,28 +78,14 @@ function interactionFromEntry(state, entry, tileAt) {
 }
 
 export function chroniclesContentInteractions(state, map, tileAt) {
-  const entries = [
-    ...(map?.triggers || []),
-    ...(map?.interactables || []),
-    ...(map?.treasures || []),
-    ...(map?.traps || []),
-    ...(map?.exits || []),
-  ];
-  return entries
+  return chroniclesContentEntries(map)
     .map((entry) => interactionFromEntry(state, entry, tileAt))
     .filter(Boolean);
 }
 
 export function chroniclesContentDefinition(map, id) {
   if (!id) return null;
-  const entries = [
-    ...(map?.triggers || []),
-    ...(map?.interactables || []),
-    ...(map?.treasures || []),
-    ...(map?.traps || []),
-    ...(map?.exits || []),
-  ];
-  return entries.find((entry) => entry.id === id) || null;
+  return chroniclesContentEntries(map).find((entry) => entry.id === id) || null;
 }
 
 export function chroniclesContentLockedMessage(state, definition, fallback = '') {
