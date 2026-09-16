@@ -14,19 +14,21 @@ Chess Studio stores large derived binary assets in Cloudflare R2 instead of Git 
 
 The publisher reuses the existing `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; no R2 S3 access key is required for the normal path.
 
+The CLI entrypoint is `scripts/r2_asset_publish.py`. It reuses the publisher core but sends object bytes as a raw `PUT` request body because Cloudflare currently rejects multipart/form-data on this endpoint with API error `10028`.
+
 ## Commands
 
 Validate locally without credentials:
 
 ```bash
-python3 -S scripts/r2_asset_publisher.py self-test
-python3 -S scripts/r2_asset_publisher.py check-manifest
+python3 -S scripts/r2_asset_publish.py self-test
+python3 -S scripts/r2_asset_publish.py check-manifest
 ```
 
 Preview a publication without network access:
 
 ```bash
-python3 -S scripts/r2_asset_publisher.py publish ./asset.webp \
+python3 -S scripts/r2_asset_publish.py publish ./asset.webp \
   --logical-id pawnSlug.example \
   --prefix pawn-slug/example \
   --dry-run
@@ -35,7 +37,7 @@ python3 -S scripts/r2_asset_publisher.py publish ./asset.webp \
 Publish with Cloudflare credentials in the environment:
 
 ```bash
-python3 -S scripts/r2_asset_publisher.py publish ./asset.webp \
+python3 -S scripts/r2_asset_publish.py publish ./asset.webp \
   --logical-id pawnSlug.example \
   --prefix pawn-slug/example
 ```
@@ -47,7 +49,7 @@ The command uploads the immutable object first and only then updates the local m
 For the approved handoff master:
 
 ```bash
-python3 -S scripts/r2_asset_publisher.py publish \
+python3 -S scripts/r2_asset_publish.py publish \
   ./matthias_canonical_sprite_sheet_v1.png \
   --logical-id pawnSlug.matthias.canonicalMaster \
   --prefix pawn-slug/matthias/master
@@ -69,4 +71,4 @@ Do not overwrite the canonical master in-place. A changed master receives a new 
 
 PRs execute only local validation and do not receive Cloudflare credentials.
 
-On `main`, `Infra · R2 assets` reconciles the bucket/domain/CORS and performs a tiny remote upload/get/delete smoke test. This confirms that the existing Cloudflare API token can perform real object operations without adding an S3 credential pair.
+On `main`, `Infra · R2 assets` reconciles the bucket/domain/CORS and performs a tiny remote upload/get/delete smoke test using the raw PUT transport. This confirms that the existing Cloudflare API token can perform real object operations without adding an S3 credential pair.
