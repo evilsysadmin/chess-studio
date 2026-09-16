@@ -65,6 +65,41 @@ describe('Jazz mediterráneo · diversidad de groove', () => {
     }
   });
 
+  it('phase-locks every published rewritten groove to its authored scene length', () => {
+    const publishedMediterraneanIds = new Set(
+      AMBIENT_THEME_OPTIONS
+        .filter((option) => option.genre === 'Jazz / Mediterráneo')
+        .map((option) => option.id),
+    );
+
+    for (const id of MEDITERRANEAN_GROOVE_IDS) {
+      if (!publishedMediterraneanIds.has(id)) continue;
+      const theme = AMBIENT_THEMES[id];
+      const feel = structuredFeel(theme);
+      expect(theme.stepsPerSection % feel.percussion.period, id).toBe(0);
+    }
+  });
+
+  it('keeps Alexandria harbour brushes on its 14-step pillars', () => {
+    const theme = AMBIENT_THEMES.alexandriaHarborCafe;
+    const feel = structuredFeel(theme);
+
+    expect(theme.stepsPerSection).toBe(56);
+    expect(feel.percussion.period).toBe(28);
+    expect(Object.keys(feel.percussion.pattern).map(Number)).toEqual([0, 14]);
+    expect(feel.percussion.pattern).toEqual({ 0: 'B', 14: 'H' });
+  });
+
+  it('leaves Damascus breathing room around the ney', () => {
+    const theme = AMBIENT_THEMES.damascusCourtyard0144;
+    const feel = structuredFeel(theme);
+
+    expect(theme.stepsPerSection).toBe(48);
+    expect(feel.percussion.period).toBe(16);
+    expect(feel.percussion.pattern).toEqual({ 0: 'K', 10: 'H' });
+    expect(Object.keys(feel.percussion.pattern)).toHaveLength(2);
+  });
+
   it('locks Beirut night taxi to the same 18-step phrase as its written score', () => {
     const theme = AMBIENT_THEMES.beirutNightTaxi;
     const feel = structuredFeel(theme);
