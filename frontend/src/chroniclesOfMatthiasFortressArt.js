@@ -4,13 +4,30 @@ export const CHRONICLES_TACTICS_FORTRESS_STYLE = Object.freeze({
   motif: 'heraldic-fortress',
   bannerCount: 2,
   battlementCount: 7,
+  skylineTowerCount: 7,
   primaryCloth: 0x1f3550,
   secondaryCloth: 0x542c2a,
   heraldry: 0xc9a25c,
 });
 
+export const CHRONICLES_TACTICS_SKYLINE_PLAN = Object.freeze([
+  Object.freeze({ x: -6.4, z: -2.3, width: 1.1, height: 4.4 }),
+  Object.freeze({ x: -4.55, z: -3.2, width: 1.25, height: 5.9 }),
+  Object.freeze({ x: -2.6, z: -4.0, width: 1.05, height: 5.0 }),
+  Object.freeze({ x: 0, z: -5.0, width: 1.5, height: 7.2 }),
+  Object.freeze({ x: 2.55, z: -4.2, width: 1.05, height: 5.2 }),
+  Object.freeze({ x: 4.55, z: -3.35, width: 1.28, height: 6.1 }),
+  Object.freeze({ x: 6.45, z: -2.45, width: 1.08, height: 4.6 }),
+]);
+
 function ownedMaterial(params) {
   const material = new THREE.MeshStandardMaterial(params);
+  material.userData.chroniclesIsoOwned = true;
+  return material;
+}
+
+function ownedBasicMaterial(params) {
+  const material = new THREE.MeshBasicMaterial(params);
   material.userData.chroniclesIsoOwned = true;
   return material;
 }
@@ -91,6 +108,122 @@ function buildBanner(root, {
 
   root.add(banner);
   return banner;
+}
+
+function buildSkylineTower(root, tower, index, {
+  stone,
+  roof,
+  windowMaterial,
+  coarsePointer,
+}) {
+  const group = new THREE.Group();
+  group.name = `chronicles-fortress-skyline-tower-${index}`;
+  group.position.set(tower.x, 0, tower.z);
+
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(tower.width, tower.height, Math.max(0.72, tower.width * 0.72)),
+    stone,
+  );
+  body.position.y = tower.height / 2;
+  body.castShadow = false;
+  body.receiveShadow = false;
+  group.add(body);
+
+  const crown = new THREE.Mesh(
+    new THREE.ConeGeometry(tower.width * 0.72, 1.25 + tower.width * 0.18, 4),
+    roof,
+  );
+  crown.position.y = tower.height + 0.65;
+  crown.rotation.y = Math.PI / 4;
+  crown.castShadow = false;
+  group.add(crown);
+
+  const spire = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.026, 0.05, 1.05, 6),
+    roof,
+  );
+  spire.position.y = tower.height + 1.78;
+  group.add(spire);
+
+  if (!coarsePointer || index % 2 === 1) {
+    const windowRows = tower.height > 5.5 ? [0.38, 0.62] : [0.48];
+    windowRows.forEach((ratio, rowIndex) => {
+      const window = new THREE.Mesh(
+        new THREE.BoxGeometry(Math.max(0.09, tower.width * 0.12), 0.16, 0.025),
+        windowMaterial,
+      );
+      window.name = `chronicles-fortress-skyline-window-${index}-${rowIndex}`;
+      window.position.set(0, tower.height * ratio, tower.width * 0.37 + 0.02);
+      group.add(window);
+    });
+  }
+
+  root.add(group);
+  return group;
+}
+
+export function buildChroniclesTacticsDistantSkyline(root, { coarsePointer = false } = {}) {
+  if (!root?.add) return null;
+  const existing = root.getObjectByName?.('chronicles-fortress-distant-skyline');
+  if (existing) return existing;
+
+  const skyline = new THREE.Group();
+  skyline.name = 'chronicles-fortress-distant-skyline';
+
+  const stone = ownedMaterial({
+    color: 0x24272a,
+    roughness: 0.98,
+    metalness: 0,
+  });
+  const roof = ownedMaterial({
+    color: 0x16191d,
+    roughness: 0.94,
+    metalness: 0.03,
+  });
+  const windowMaterial = ownedBasicMaterial({
+    color: 0xd59a54,
+    transparent: true,
+    opacity: coarsePointer ? 0.42 : 0.58,
+    depthWrite: false,
+  });
+
+  CHRONICLES_TACTICS_SKYLINE_PLAN.forEach((tower, index) => {
+    buildSkylineTower(skyline, tower, index, {
+      stone,
+      roof,
+      windowMaterial,
+      coarsePointer,
+    });
+  });
+
+  const bridgeMaterial = ownedMaterial({ color: 0x202326, roughness: 0.98, metalness: 0 });
+  [-1, 1].forEach((side, index) => {
+    const bridge = new THREE.Mesh(new THREE.BoxGeometry(4.1, 0.38, 0.5), bridgeMaterial);
+    bridge.name = `chronicles-fortress-skyline-bridge-${index}`;
+    bridge.position.set(side * 2.35, 2.5 + index * 0.35, -4.15 + index * 0.28);
+    bridge.rotation.z = side * -0.035;
+    skyline.add(bridge);
+  });
+
+  const hazeMaterial = ownedBasicMaterial({
+    color: 0x72777b,
+    transparent: true,
+    opacity: coarsePointer ? 0.028 : 0.042,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+  const hazeLayers = coarsePointer ? 1 : 2;
+  for (let index = 0; index < hazeLayers; index += 1) {
+    const haze = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), hazeMaterial);
+    haze.name = `chronicles-fortress-haze-${index}`;
+    haze.position.set(index ? 2.7 : -2.4, 1.35 + index * 0.5, -3.5 - index * 1.25);
+    haze.scale.set(6.8 - index * 0.8, 0.72, 2.35);
+    haze.renderOrder = -2;
+    skyline.add(haze);
+  }
+
+  root.add(skyline);
+  return skyline;
 }
 
 export function installChroniclesTacticsFortressAccents(
@@ -218,6 +351,7 @@ export function installChroniclesTacticsFortressBackdrop(scene, { coarsePointer 
     emissiveIntensity: 0.18,
   });
 
+  buildChroniclesTacticsDistantSkyline(backdrop, { coarsePointer });
   installChroniclesTacticsFortressAccents(backdrop, {
     wall,
     trim,
