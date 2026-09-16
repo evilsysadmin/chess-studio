@@ -8,6 +8,7 @@ mantener una tabla de sesiones por dispositivo.
 
 import hashlib
 import os
+from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -23,6 +24,12 @@ JWT_SECRET = os.environ.get("JWT_SECRET", _DEV_JWT_SECRET)
 JWT_ALGORITHM = "HS256"
 TOKEN_EXPIRY_DAYS = 30  # una sesión larga, no hay "recordarme" aparte
 PASSWORD_RESET_MINUTES = 30
+
+# La request autenticada y la carga de la cuenta comparten estas dos piezas de
+# contexto sin globals mutables por usuario. ContextVar queda aislado por task
+# ASGI, así que dos requests concurrentes no pueden pisarse la versión.
+_session_version_claim: ContextVar[int | None] = ContextVar("session_version_claim", default=None)
+_account_session_version: ContextVar[int | None] = ContextVar("account_session_version", default=None)
 
 # Coste bcrypt de producción. Los tests lo bajan temporalmente a 4 mediante
 # monkeypatch para conservar hashing real sin pagar el coste CPU de 12 rounds
@@ -65,10 +72,23 @@ def _normalized_session_version(value) -> int | None:
     return version if version >= 0 else None
 
 
-def create_token(username: str, session_version: int = 0) -> str:
+def remember_account_session_version(value) -> None:
+    """Anota la versión autoritativa cargada por users_store para esta task."""
+    version = _normalized_session_version(value)
+    _account_session_version.set(version)
+
+
+def current_session_version_claim() -> int | None:
+    """Versión declarada por el JWT que se está autenticando, si existe."""
+    return _session_version_claim.get()
+
+
+def create_token(username: str, session_version: int | None = None) -> str:
+    if session_version is None:
+        session_version = _account_session_version.get()
     version = _normalized_session_version(session_version)
     if version is None:
-        raise ValueError("session_version inválida")
+        version = 0
     payload = {
         "sub": username,
         "purpose": "session",
@@ -93,6 +113,7 @@ def verify_session_token(token: str) -> Optional[tuple[str, int]]:
         version = _normalized_session_version(payload.get("sv"))
         if not isinstance(username, str) or not username or version is None:
             return None
+        _session_version_claim.set(version)
         return username, version
     except jwt.PyJWTError:
         return None
