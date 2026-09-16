@@ -5,6 +5,7 @@ import { installChroniclesTacticsStoneWeathering } from './chroniclesOfMatthiasW
 import { installChroniclesTacticsPartyGrounding } from './chroniclesOfMatthiasPartyGroundingArt.js';
 import { installChroniclesTacticsReadabilityArt } from './chroniclesOfMatthiasReadabilityArt.js';
 import { installChroniclesTacticsEnemyIntentArt } from './chroniclesOfMatthiasEnemyIntentArt.js';
+import { installChroniclesTacticsDamageFeedbackArt } from './chroniclesOfMatthiasDamageFeedbackArt.js';
 
 const PARTY_IDS = Object.freeze(['rook', 'matthias', 'bishop', 'knight']);
 
@@ -22,5 +23,6 @@ export function installChroniclesTacticsSceneArt(models, { coarsePointer = false
     grounding: installChroniclesTacticsPartyGrounding(models, { coarsePointer }),
     readability: installChroniclesTacticsReadabilityArt(models, { coarsePointer }),
     enemyIntent: installChroniclesTacticsEnemyIntentArt(scene, { coarsePointer }),
+    damageFeedback: installChroniclesTacticsDamageFeedbackArt(models, { coarsePointer }),
   };
 }
