@@ -18,12 +18,12 @@ import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js'
 
 const CELL = 2.45;
 export const CHRONICLES_ISO_PARTY_LAYOUT = Object.freeze({
-  rook: Object.freeze({ x: -1.18, z: 0.18, scale: 1.02 }),
-  matthias: Object.freeze({ x: -0.32, z: 0.82, scale: 1.06 }),
-  bishop: Object.freeze({ x: 0.46, z: -0.28, scale: 1.0 }),
-  knight: Object.freeze({ x: 1.16, z: 0.26, scale: 1.03 }),
+  rook: Object.freeze({ x: -1.62, z: 0.08, scale: 1.03 }),
+  matthias: Object.freeze({ x: -0.54, z: 0.32, scale: 1.07 }),
+  bishop: Object.freeze({ x: 0.54, z: 0.32, scale: 1.01 }),
+  knight: Object.freeze({ x: 1.62, z: 0.08, scale: 1.03 }),
 });
-export const CHRONICLES_ISO_PARTY_FACING = -Math.PI * 0.75;
+export const CHRONICLES_ISO_PARTY_FACING = Math.PI;
 
 const TORCH_CELLS = Object.freeze([
   Object.freeze({ x: 1, y: 5, ox: -0.98, oz: -0.78 }),
@@ -49,16 +49,16 @@ export function chroniclesIsoWorldForCell(x, y) {
 
 export function chroniclesIsometricCameraPose(focus = { x: 0, z: 0 }) {
   return {
-    // Action-RPG framing: the company owns the foreground and the camera looks
-    // over their backs into the room instead of surveying a tactical diorama.
-    position: new THREE.Vector3(focus.x + 4.12, 3.55, focus.z + 5.56),
-    target: new THREE.Vector3(focus.x - 0.9, 1.08, focus.z - 2.55),
-    fov: 43,
+    // Canonical Tactics framing: straight behind the company, elevated enough
+    // to read the tactical floor while keeping all four backs in the foreground.
+    position: new THREE.Vector3(focus.x, 8.15, focus.z + 8.55),
+    target: new THREE.Vector3(focus.x, 0.78, focus.z - 2.65),
+    fov: 38,
   };
 }
 
-export function chroniclesIsometricFovForAspect(aspect, baseFov = 43) {
-  const safeBaseFov = Number.isFinite(baseFov) ? baseFov : 43;
+export function chroniclesIsometricFovForAspect(aspect, baseFov = 38) {
+  const safeBaseFov = Number.isFinite(baseFov) ? baseFov : 38;
   if (!Number.isFinite(aspect) || aspect <= 0) return safeBaseFov;
   if (aspect < 0.72) return safeBaseFov + 7;
   if (aspect < 1) return safeBaseFov + 4.5;
