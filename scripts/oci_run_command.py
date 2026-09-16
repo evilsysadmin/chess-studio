@@ -307,6 +307,19 @@ def diagnose_plugin(oci: Any, config: dict[str, str]) -> str:
         print(f"OCI Run Command observed message: {message}", flush=True)
     if not plugin_status_is_healthy(status):
         raise SystemExit(f"OCI Run Command plugin is not running: status={status}")
+
+    # Temporary staging diagnostic: always emit the assigned/observed egress IP
+    # before backend deployment. It is intentionally fail-open and carries no
+    # runtime/application secrets.
+    try:
+        from oci_egress_diagnose import DEFAULT_EXPECTED_IPV4, diagnose_egress
+
+        diagnose_egress(oci, config, expected=DEFAULT_EXPECTED_IPV4)
+    except BaseException as exc:
+        print(
+            f"OCI_EGRESS_DIAGNOSTIC_ERROR={type(exc).__name__}:{str(exc)[:240]}",
+            flush=True,
+        )
     return status
 
 
