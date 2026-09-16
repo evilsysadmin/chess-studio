@@ -3,12 +3,14 @@ import {
   HANS_MOP_MAX_FATIGUE_MS,
   HANS_MOP_MIN_FATIGUE_MS,
   HANS_MOP_REPLY_LINE,
+  HANS_MOP_WALK_SPEED,
   MATTHIAS_MOP_LINE,
   MATTHIAS_MOP_SIGH_LINE,
   hansMopDialoguePhase,
   hansMopFatigueMs,
   hansMopPatchMs,
   hansMopStartDelayMs,
+  hansMopTravelStep,
   shouldHansMopDialogue,
   shouldStartHansMopRoutine,
 } from './WarRoomHansMopContract.js';
@@ -30,6 +32,16 @@ describe('Hans mop ambient routine contract', () => {
     expect(hansMopStartDelayMs(0.999999)).toBeLessThanOrEqual(18000);
     expect(hansMopPatchMs(0)).toBeGreaterThanOrEqual(6000);
     expect(hansMopPatchMs(0.999999)).toBeLessThanOrEqual(10000);
+  });
+
+  it('keeps bucket-and-mop travel at the dedicated elderly pace', () => {
+    expect(HANS_MOP_WALK_SPEED).toBe(0.28);
+    expect(hansMopTravelStep(1000)).toBeCloseTo(0.28, 8);
+    expect(hansMopTravelStep(500)).toBeCloseTo(0.14, 8);
+    expect(hansMopTravelStep(0)).toBe(0);
+    expect(hansMopTravelStep(-250)).toBe(0);
+    expect(hansMopTravelStep(Number.POSITIVE_INFINITY)).toBe(0);
+    expect(hansMopTravelStep('nope')).toBe(0);
   });
 
   it('keeps the optional exchange ordered and readable', () => {
