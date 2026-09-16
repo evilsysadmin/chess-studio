@@ -38,9 +38,22 @@ describe('Hans service exit door guard', () => {
     expect(Math.abs(refs.pivot.rotation.y)).toBeGreaterThan(0);
   });
 
-  it('does not interfere while Hans is walking an unrelated route', () => {
+  it.each(['service-espresso', 'chore-dust-board', 'mop-room', 'entry', 'leave-door'])(
+    'keeps the service door clear during inbound/outbound transit route %s',
+    (route) => {
+      const { root, floor, hans, refs } = makeScene();
+      hans.userData.warRoomHansRoute = route;
+      expect(installWarRoomHansServiceExitDoorGuard(root, refs)).toBe(1);
+      root.updateMatrixWorld(true);
+      floor.onAfterRender();
+      expect(refs.group.userData.warRoomHansDoorOpen).toBeGreaterThan(0);
+      expect(Math.abs(refs.pivot.rotation.y)).toBeGreaterThan(0);
+    },
+  );
+
+  it('does not interfere with an unrelated non-door route', () => {
     const { root, floor, hans, refs } = makeScene();
-    hans.userData.warRoomHansRoute = 'service-espresso';
+    hans.userData.warRoomHansRoute = 'idle-hearth';
     expect(installWarRoomHansServiceExitDoorGuard(root, refs)).toBe(1);
     root.updateMatrixWorld(true);
     floor.onAfterRender();
