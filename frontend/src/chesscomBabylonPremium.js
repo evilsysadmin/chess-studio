@@ -1,26 +1,17 @@
 const BABYLON_VERSION = '9.25.0';
-const BABYLON_URL = `https://cdn.jsdelivr.net/npm/babylonjs@${BABYLON_VERSION}/babylon.js`;
 
 let babylonPromise;
 
 export function loadChesscomBabylon() {
   if (globalThis.BABYLON) return Promise.resolve(globalThis.BABYLON);
   if (babylonPromise) return babylonPromise;
-  babylonPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector('script[data-chesscom-babylon]');
-    if (existing) {
-      existing.addEventListener('load', () => resolve(globalThis.BABYLON), { once:true });
-      existing.addEventListener('error', () => reject(new Error('Babylon.js failed to load')), { once:true });
-      return;
+  babylonPromise = import('babylonjs').then((module) => {
+    const babylon = module.default || module;
+    if (!babylon?.Engine || !babylon?.Scene) {
+      throw new Error(`Babylon.js ${BABYLON_VERSION} module missing runtime exports`);
     }
-    const script = document.createElement('script');
-    script.src = BABYLON_URL;
-    script.async = true;
-    script.crossOrigin = 'anonymous';
-    script.dataset.chesscomBabylon = BABYLON_VERSION;
-    script.onload = () => globalThis.BABYLON ? resolve(globalThis.BABYLON) : reject(new Error('Babylon.js global missing'));
-    script.onerror = () => reject(new Error('Babylon.js failed to load'));
-    document.head.appendChild(script);
+    globalThis.BABYLON = babylon;
+    return babylon;
   });
   return babylonPromise;
 }

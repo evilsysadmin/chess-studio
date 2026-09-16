@@ -9,6 +9,7 @@ const main = fs.readFileSync(new URL('../frontend/src/main.jsx', import.meta.url
 const pwaInstall = fs.readFileSync(new URL('../frontend/src/pwaInstall.js', import.meta.url), 'utf8');
 const worker = fs.readFileSync(new URL('../frontend/public/sw.js', import.meta.url), 'utf8');
 const moduleRecovery = fs.readFileSync(new URL('../frontend/public/moduleRecovery.js', import.meta.url), 'utf8');
+const chesscomBabylon = fs.readFileSync(new URL('../frontend/src/chesscomBabylonPremium.js', import.meta.url), 'utf8');
 
 function assert(condition, message) {
   if (!condition) throw new Error(`pwa-check FAIL · ${message}`);
@@ -31,6 +32,9 @@ assert(FRONTEND_CSP.includes("script-src-attr 'none'"), 'CSP no bloquea handlers
 assert(!/script-src[^;]*'unsafe-inline'/.test(FRONTEND_CSP), 'script-src permite unsafe-inline');
 assert(!/script-src[^;]*'unsafe-eval'/.test(FRONTEND_CSP), 'script-src permite unsafe-eval genérico');
 assert(FRONTEND_CSP.includes("object-src 'none'") && FRONTEND_CSP.includes("base-uri 'self'"), 'CSP carece de object/base hardening');
+assert(frontendPackage.dependencies?.babylonjs === '9.25.0', 'Chesscom no fija la versión local de Babylon.js');
+assert(chesscomBabylon.includes("import('babylonjs')"), 'Chesscom no carga Babylon.js desde el bundle local');
+assert(!/https?:\/\//.test(chesscomBabylon), 'Chesscom intenta cargar scripts remotos incompatibles con la CSP');
 let inlineRejected = false;
 try { applyFrontendCsp('<meta charset="UTF-8"><script>alert(1)</script>'); } catch { inlineRejected = true; }
 assert(inlineRejected, 'el transform de producción acepta JavaScript inline');
