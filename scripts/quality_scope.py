@@ -107,8 +107,8 @@ COMBAT_DOMAIN_RE = re.compile(r"^frontend/src/combat[^/]*\.js$")
 COMBAT_COMPONENT_RE = re.compile(r"^frontend/src/components/Combat[^/]*\.(?:js|jsx)$")
 MATTHIAS_SCHOOL_RE = re.compile(r"^frontend/src/matthiasSchool\.js$")
 HOME_BROWSER_RE = re.compile(
-    r"^frontend/src/components/(?:Home[^/]*|IllustratedHome[^/]*)\.(?:js|jsx)$|"
-    r"^frontend/src/(?:home[^/]*|illustratedHome[^/]*)\.(?:js|jsx)$"
+    r"^frontend/src/components/(?:Home[^/]*|IllustratedHome[^/]*)\.(?:js|jsx|css)$|"
+    r"^frontend/src/(?:home[^/]*|illustratedHome[^/]*)\.(?:js|jsx|css)$"
 )
 DEDICATED_3D_BROWSER_RE = re.compile(
     r"^frontend/src/components/(?:Board3D|WarRoom3D)[^/]*\.(?:js|jsx)$|"
@@ -328,6 +328,8 @@ def self_test() -> None:
     _expect_core(["frontend/src/components/AdminDashboardContent.jsx", "frontend/src/App.jsx"], run_frontend=True)
     _expect_core(["frontend/src/components/HomeCastle3D.jsx"], lanes=("home",), run_frontend=True)
     _expect_core(["frontend/src/components/IllustratedHome.jsx"], lanes=("home",), run_frontend=True)
+    _expect_core(["frontend/src/components/HomePvpRosterLink.css"], lanes=("home",), run_frontend=True)
+    _expect_core(["frontend/src/components/HomeIllustratedMobileCanonical.css"], lanes=("home",), run_frontend=True)
     _expect_core(["frontend/src/homeCastleProgress.js"], lanes=("home",), run_frontend=True)
     _expect_core(["frontend/src/components/HomeCastle3D.jsx", "frontend/src/App.jsx"], run_frontend=True)
     _expect(["frontend/src/components/Board3DRenderer.js"], run_frontend=True)
