@@ -1,6 +1,6 @@
 {
   "id": "crypt-eight-squares",
-  "version": 3,
+  "version": 4,
   "progressionKey": "crypt-01",
   "title": "Cripta de las Ocho Casillas",
   "grid": [
@@ -31,7 +31,12 @@
       "maxHp": 6,
       "retaliation": 1,
       "activation": "always",
-      "ai": { "movement": "cardinal-chase", "attackReach": 1 }
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 1
+      }
     },
     {
       "id": "gate-jailer",
@@ -43,7 +48,22 @@
       "maxHp": 8,
       "retaliation": 2,
       "activation": "sigil",
-      "ai": { "movement": "cardinal-chase", "attackReach": 1 }
+      "ai": {
+        "movement": "patrol-route",
+        "attackReach": 1,
+        "patrolRoute": [
+          { "x": 3, "y": 1 },
+          { "x": 2, "y": 1 },
+          { "x": 1, "y": 1 },
+          { "x": 2, "y": 1 },
+          { "x": 3, "y": 1 },
+          { "x": 4, "y": 1 },
+          { "x": 5, "y": 1 },
+          { "x": 4, "y": 1 }
+        ],
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 2
+      }
     },
     {
       "id": "spectral-bishop",
@@ -82,7 +102,12 @@
       },
       "initialPosition": "gate",
       "evadesOnHit": true,
-      "ai": { "movement": "knight-chase", "attackReach": 1 },
+      "ai": {
+        "movement": "cardinal-roam",
+        "attackReach": 1,
+        "engagedMovement": "knight-chase",
+        "engageRange": 4
+      },
       "onDefeat": {
         "effects": [
           { "type": "set", "key": "blackGateKey", "value": true }
