@@ -65,10 +65,11 @@ run "bootstrap_contract_is_privileged_without_open_ended_sudo" {
   assert {
     condition = (
       strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "/etc/chess-studio/ocarun.sudoers") &&
-      strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "install, -o, root, -g, root, -m, '0440', /etc/chess-studio/ocarun.sudoers, /etc/sudoers.d/101-chess-studio-ocarun") &&
+      strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "  - path: /etc/sudoers.d/101-chess-studio-ocarun") &&
+      strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "permissions: '0440'") &&
       strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "visudo, -cf, /etc/sudoers.d/101-chess-studio-ocarun")
     )
-    error_message = "Cloud-init must finalize and validate the ocarun sudoers drop-in during runcmd, after package setup."
+    error_message = "Cloud-init must materialize the active ocarun sudoers drop-in before Run Command starts and validate it during runcmd."
   }
 
   assert {
