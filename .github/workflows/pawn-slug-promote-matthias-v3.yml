@@ -1,0 +1,77 @@
+name: Pawn Slug · promote Matthias v3 runtime assets
+
+on:
+  push:
+    branches:
+      - art/pawn-slug-matthias-v3-runtime
+    paths:
+      - .github/workflows/pawn-slug-promote-matthias-v3.yml
+      - frontend/src/pawnSlugMatthiasIntegratedSprites.js
+      - frontend/src/pawnSlugMatthiasIntegratedSprites.runtime.test.js
+      - frontend/src/pawnSlugMatthiasIntegratedSprites.test.js
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  promote:
+    name: Promote approved v3 payloads
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download approved Blender artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pawn-slug-v3 frontend/src/assets/pawnSlug
+          declare -A ids=(
+            [pistol]=10422857498
+            [machinegun]=10422327810
+            [shotgun]=10422287827
+            [panzerfaust]=10422861201
+          )
+          for weapon in pistol machinegun shotgun panzerfaust; do
+            zip="/tmp/pawn-slug-v3/${weapon}.zip"
+            curl --fail --location --retry 3 \
+              -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${ids[$weapon]}/zip" \
+              -o "$zip"
+            unzip -p "$zip" "matthias_${weapon}_premium_v3.b64" \
+              > "frontend/src/assets/pawnSlug/matthias_${weapon}_premium_v3.b64"
+          done
+
+      - name: Verify exact approved payloads
+        run: |
+          set -euo pipefail
+          cd frontend/src/assets/pawnSlug
+          cat > /tmp/matthias-v3.sha256 <<'HASHES'
+          ad4386b3856b506269b60d6b24eec9926ff61621ef660960f549615459e8f6f5  matthias_pistol_premium_v3.b64
+          fda2af250709217d0631aa126c85789c5a7f848428af8ae5cbe2f0c64f6464c4  matthias_machinegun_premium_v3.b64
+          67ce92ce7ee9355dfc276120d58318b285790a1e66b90470b471f65a7c0954cc  matthias_shotgun_premium_v3.b64
+          dfda29e336dceab7dd1e699749f29cffa334f9720c24b31c89e94da74c27a80a  matthias_panzerfaust_premium_v3.b64
+          HASHES
+          sha256sum -c /tmp/matthias-v3.sha256
+          for weapon in pistol machinegun shotgun panzerfaust; do
+            base64 --decode "matthias_${weapon}_premium_v3.b64" > "/tmp/${weapon}.webp"
+            file "/tmp/${weapon}.webp" | grep -q 'Web/P image'
+          done
+
+      - name: Commit runtime assets to this branch
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add frontend/src/assets/pawnSlug/matthias_*_premium_v3.b64
+          if git diff --cached --quiet; then
+            echo 'Approved v3 assets already present.'
+            exit 0
+          fi
+          git commit -m 'art(pawn-slug): install approved Matthias v3 atlases'
+          git push origin HEAD
