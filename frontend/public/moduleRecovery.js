@@ -42,8 +42,19 @@
     location.reload();
   }
 
+  function isOwnedModuleScript(target) {
+    if (!(target instanceof HTMLScriptElement) || target.type !== 'module' || !target.src) return false;
+    try {
+      return new URL(target.src, location.href).origin === location.origin;
+    } catch {
+      return false;
+    }
+  }
+
   addEventListener('error', e => {
-    if (e.target instanceof HTMLScriptElement && e.target.type === 'module') void recover();
+    // Cloudflare puede inyectar módulos de terceros (p. ej. Insights). Si la
+    // CSP los bloquea no significa que un chunk de Chess Studio esté stale.
+    if (isOwnedModuleScript(e.target)) void recover();
   }, true);
   addEventListener('vite:preloadError', e => { e.preventDefault(); void recover(); });
 })();
