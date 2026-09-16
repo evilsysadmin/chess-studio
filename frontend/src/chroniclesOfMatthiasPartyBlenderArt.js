@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { installChroniclesPartyFallbackDetails } from './chroniclesOfMatthiasBlenderArt.js';
+import { installChroniclesTacticsFortressBackdrop } from './chroniclesOfMatthiasFortressArt.js';
 
 export const CHRONICLES_TACTICS_PARTY_MODEL_PATH = 'models/chronicles-tactics-party.glb';
 export const CHRONICLES_TACTICS_PARTY_ASSET_VERSION = 'chronicles-tactics-party-v3';
@@ -65,13 +66,16 @@ export function installChroniclesTacticsPartyBlenderArt(
   let cancelled = false;
   const installed = [];
   const fallbackDetailCancels = [];
+  const partyRoot = models.get('rook')?.parent || models.get('matthias')?.parent || null;
+  const scene = partyRoot?.parent || null;
+  installChroniclesTacticsFortressBackdrop(scene, { coarsePointer });
 
   const installFallbackDetails = (memberIds) => {
     const requested = memberIds.filter((memberId) => models.get(memberId));
     if (!requested.length || cancelled) return;
-    const partyRoot = models.get(requested[0])?.parent || null;
-    if (!partyRoot) return;
-    fallbackDetailCancels.push(installChroniclesPartyFallbackDetails(partyRoot, {
+    const fallbackPartyRoot = models.get(requested[0])?.parent || null;
+    if (!fallbackPartyRoot) return;
+    fallbackDetailCancels.push(installChroniclesPartyFallbackDetails(fallbackPartyRoot, {
       coarsePointer,
       memberIds: requested,
     }));
