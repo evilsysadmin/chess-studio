@@ -24,6 +24,7 @@ import {
 import {
   PAWN_SLUG_MATTHIAS_INTEGRATED_ART,
   createIntegratedMatthiasSlugSprite,
+  pawnSlugIntegratedWeaponId,
 } from './pawnSlugMatthiasIntegratedSprites.js';
 import {
   PAWN_SLUG_MATTHIAS_AUTHORED_MOTION,
@@ -73,9 +74,9 @@ export function createSlugEnemySprite(type = 'pawn') {
   return applyPawnSlugEnemyReadability(createPremiumSlugEnemySprite(type));
 }
 
-// Matthias' selected weapon now lives inside his Blender-authored atlas. Keep a
-// zero-geometry compatibility shell because runtime orchestration still stores a
-// playerWeaponModel, but there is deliberately nothing left to superglue on top.
+// Keep the compatibility shell for non-runtime consumers. The live Pawn Slug
+// view now owns a dedicated weapon overlay while Matthias keeps one canonical
+// body atlas regardless of selected weapon.
 export function createWeaponSprite(kind = 'pistol') {
   const shell = new THREE.Object3D();
   shell.name = `pawn-slug-integrated-weapon-shell-${kind}`;
@@ -87,7 +88,33 @@ export function createWeaponSprite(kind = 'pistol') {
 }
 
 export function createMatthiasSlugSprite() {
-  return attachPawnSlugMatthiasAuthoredMotion(createIntegratedMatthiasSlugSprite());
+  const sprite = attachPawnSlugMatthiasAuthoredMotion(createIntegratedMatthiasSlugSprite());
+  const retryCanonicalBody = sprite.userData.setWeapon;
+  const setBodyFiring = sprite.userData.setFiring;
+
+  // Runtime identity rule: changing weapon must never swap Matthias for one of
+  // the old full-body weapon banks. The approved pistol-derived canonical body
+  // remains mounted; only the logical weapon changes for recoil/projectiles and
+  // the separate runtime weapon overlay.
+  sprite.userData.setWeapon = (kind) => {
+    const weapon = pawnSlugIntegratedWeaponId(kind);
+    const atlas = sprite.userData.atlas;
+    if (atlas?.source === 'failed') retryCanonicalBody?.('pistol');
+    sprite.userData.animation.weapon = weapon;
+    if (atlas) atlas.requestedWeapon = weapon;
+    sprite.userData.pawnSlugRuntimeWeapon = weapon;
+  };
+
+  // The canonical shoot strip is a standing pose. While running, keep the body
+  // animation on the real RUN row so the legs never freeze just because recoil
+  // is active. The actual trigger state is still passed to premium recoil logic.
+  sprite.userData.setFiring = (firing) => {
+    const running = sprite.userData.animation?.action === 'run';
+    setBodyFiring?.(Boolean(firing) && !running);
+    sprite.userData.pawnSlugTriggerFiring = Boolean(firing);
+  };
+
+  return sprite;
 }
 
 export function animateMatthiasSlugSprite(sprite, state = {}) {
@@ -106,7 +133,7 @@ export function animateMatthiasSlugSprite(sprite, state = {}) {
   applyPawnSlugMatthiasRunPolish(sprite, visualState);
   // Final visual ownership belongs to the canonical authored layer. This is
   // intentionally last: legacy polish may calculate lean/cadence, but it must
-  // not replace the four real pistol run poses or the R2-backed shoot strip.
+  // not replace the four real canonical run poses or the R2-backed shoot strip.
   applyPawnSlugMatthiasAuthoredMotion(sprite, visualState);
   applyPawnSlugMatthiasPrimaryAspect(sprite);
 }
@@ -116,8 +143,8 @@ export function animatePanzerRookSprite(sprite, time = 0, state = {}) {
   if (!sprite) return;
 
   const hurt = Boolean(state.hurt);
-  if (hurt && !sprite.userData.pawnSlugBossWasHurt) playPawnSlugEnemyImpactSfx('boss');
-  sprite.userData.pawnSlugBossWasHurt = hurt;
+  if (hurt && !sprite.userData.pawnSlugWasHurt) playPawnSlugEnemyImpactSfx('boss');
+  sprite.userData.pawnSlugWasHurt = hurt;
 
   const safeTime = Number(time) || 0;
   if (!Number.isFinite(sprite.userData.panzerRookEntryStartedAt)) {
@@ -152,8 +179,8 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
     authoredMotion: PAWN_SLUG_MATTHIAS_AUTHORED_MOTION,
     primaryAspect: PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT,
     integratedWeaponArt: PAWN_SLUG_MATTHIAS_INTEGRATED_ART,
-    weaponGripAnchor: 'baked-into-matthias-atlas',
-    separateWeaponOverlay: false,
+    weaponGripAnchor: 'canonical-body-plus-runtime-weapon-overlay',
+    separateWeaponOverlay: true,
   }),
   enemies: Object.freeze({
     ...LEGACY_SPRITE_META.enemies,
