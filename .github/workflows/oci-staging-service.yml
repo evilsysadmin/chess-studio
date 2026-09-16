@@ -111,10 +111,22 @@ jobs:
             echo 'reserved_egress=false' >> "$GITHUB_OUTPUT"
           fi
 
-      - uses: actions/setup-python@v6
+      - name: Setup Python for Render-only Mongo target diagnosis
+        if: >-
+          (github.event_name == 'push' && steps.ops.outputs.mongo_target_diagnose == 'true') ||
+          (github.event_name == 'workflow_dispatch' && inputs.operation == 'mongo-target-diagnose')
+        uses: actions/setup-python@v6
         with:
           python-version: '3.13'
-          cache: pip
+
+      - name: Restore cached OCI SDK toolchain
+        if: >-
+          (github.event_name != 'push' || steps.ops.outputs.mongo_target_diagnose != 'true') &&
+          (github.event_name != 'workflow_dispatch' || inputs.operation != 'mongo-target-diagnose')
+        uses: ./.github/actions/setup-oci-sdk
+        with:
+          version: '2.185.2'
+          python-version: '3.13'
 
       - name: Validate OCI service contracts
         run: |
@@ -132,12 +144,6 @@ jobs:
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: python3 scripts/render_mongo_target_diagnose.py
-
-      - name: Install OCI SDK
-        if: >-
-          (github.event_name != 'push' || steps.ops.outputs.mongo_target_diagnose != 'true') &&
-          (github.event_name != 'workflow_dispatch' || inputs.operation != 'mongo-target-diagnose')
-        run: python3 -m pip install --disable-pip-version-check 'oci==2.185.2'
 
       - name: Sync private runtime config
         if: >-
