@@ -9,9 +9,9 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   preflight:
-    name: Preflight · scope
+    name: Preflight · contracts
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 10
     outputs:
       run_frontend: ${{ steps.quality_paths.outputs.run_frontend }}
       run_backend: ${{ steps.quality_paths.outputs.run_backend }}
@@ -29,6 +29,9 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 2
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
       - name: Capture immutable PR quality provenance
         if: github.event_name == 'pull_request'
         env:
@@ -98,17 +101,6 @@ jobs:
           printf '%s\n' "$files" | python3 -S scripts/browser_quality_scope.py \
             --github-output "$GITHUB_OUTPUT" \
             --summary "$GITHUB_STEP_SUMMARY"
-  contracts:
-    name: Preflight · contracts
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 22
       - name: Static preflight + CI wiring
         shell: bash
         run: |
