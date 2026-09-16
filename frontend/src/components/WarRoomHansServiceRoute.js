@@ -5,7 +5,7 @@ import { setWarRoomHansServiceDoorOpen } from './WarRoomHansServiceDoor.js';
 
 export { moveWarRoomHansToward };
 
-export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v11-visible-exit-door-body-clear-desk-chair-standoff';
+export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v12-fireplace-front-standoff';
 export const HANS_SERVICE_WALK_SPEED = 0.32;
 export const HANS_SERVICE_FURNITURE_CLEARANCE = 0.58;
 
@@ -13,6 +13,8 @@ const DOOR_NAME = 'war-room-hans-service-door';
 const DOOR_RECESS_NAME = 'war-room-hans-service-door-recess';
 const STANDING_Y = -0.34;
 const COMMAND_CHAIR_NAME = 'war-room-teutonic-command-chair';
+const FIREPLACE_NAME = 'war-room-fireplace';
+const FIREPLACE_HEARTH_NAME = 'war-room-fireplace-refractory-hearth';
 const COMMAND_DESK_NAMES = Object.freeze([
   'war-room-teutonic-command-desk-v28',
   'command-cabinet',
@@ -44,6 +46,10 @@ function isWallArmor(object) {
 
 function isCommandChair(object) {
   return String(object?.name || '') === COMMAND_CHAIR_NAME;
+}
+
+function isFireplace(object) {
+  return String(object?.name || '') === FIREPLACE_NAME;
 }
 
 function commandDeskHost(object) {
@@ -84,6 +90,25 @@ function commandDeskFrontZSign(object) {
   return Number.isFinite(localZ) && Math.abs(localZ) >= 1e-4 ? Math.sign(localZ) : 0;
 }
 
+function fireplaceFrontZSign(object) {
+  if (!isFireplace(object)) return 0;
+  const hearth = object.getObjectByName?.(FIREPLACE_HEARTH_NAME);
+  const hearthWorld = new THREE.Vector3();
+  const fireplaceWorld = new THREE.Vector3();
+  object.getWorldPosition?.(fireplaceWorld);
+
+  if (hearth?.getWorldPosition) {
+    hearth.getWorldPosition(hearthWorld);
+    const delta = Number(hearthWorld.z) - Number(fireplaceWorld.z);
+    if (Number.isFinite(delta) && Math.abs(delta) >= 1e-4) return Math.sign(delta);
+  }
+
+  // The fireplace lives on the far wall. If the refractory insert has not been
+  // installed yet, the room-facing side is always back toward board centre.
+  const z = Number(fireplaceWorld.z);
+  return Number.isFinite(z) && Math.abs(z) >= 1e-4 ? -Math.sign(z) : 0;
+}
+
 function applyArmorStandoff(object, world, offsetX) {
   const side = Math.sign(Number(world.x)) || 1;
   const requested = Number(world.x) - side * Math.abs(Number(offsetX) || 0);
@@ -97,6 +122,28 @@ function applyArmorStandoff(object, world, offsetX) {
     ? box.min.x - HANS_SERVICE_FURNITURE_CLEARANCE
     : box.max.x + HANS_SERVICE_FURNITURE_CLEARANCE;
   world.x = side > 0 ? Math.min(requested, safeInnerX) : Math.max(requested, safeInnerX);
+}
+
+function applyFireplaceStandoff(object, world, offsetX, offsetZ) {
+  if (!isFireplace(object)) return false;
+  const frontSign = fireplaceFrontZSign(object);
+  if (!frontSign) return false;
+
+  world.x += Number(offsetX) || 0;
+  const hearth = object.getObjectByName?.(FIREPLACE_HEARTH_NAME);
+  const hearthBox = objectBounds(hearth);
+  if (hearthBox) {
+    const frontPlaneZ = frontSign > 0 ? hearthBox.max.z : hearthBox.min.z;
+    world.z = frontPlaneZ + frontSign * HANS_SERVICE_FURNITURE_CLEARANCE;
+    return true;
+  }
+
+  const requested = Math.max(
+    HANS_SERVICE_FURNITURE_CLEARANCE,
+    Math.abs(Number(offsetZ) || 0),
+  );
+  world.z += frontSign * requested;
+  return true;
 }
 
 function applyDeskStandoff(object, world, offsetX, offsetZ) {
@@ -191,6 +238,9 @@ export function warRoomHansTargetNearObject(object, parent, { offsetX = 0, offse
   if (isWallArmor(object) && Number(offsetX)) {
     applyArmorStandoff(object, world, offsetX);
     world.z += Number(offsetZ) || 0;
+  } else if (applyFireplaceStandoff(object, world, offsetX, offsetZ)) {
+    // Fireplace targets are mirrored from rendered hearth geometry, never a
+    // hard-coded world +Z that flips into the wall for the opposite room side.
   } else if (applyCommandChairStandoff(object, world, offsetX)) {
     // Chair geometry is deliberately handled against the neighbouring desk hull.
   } else if (!applyDeskStandoff(object, world, offsetX, offsetZ)) {
