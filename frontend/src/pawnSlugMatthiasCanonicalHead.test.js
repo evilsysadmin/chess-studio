@@ -30,15 +30,18 @@ import {
 } from './pawnSlugMatthiasIntegratedSprites.js';
 
 describe('Pawn Slug canonical Matthias head art', () => {
-  it('reuses the approved motion sheet and selects the real head for every pose', () => {
+  it('uses the dedicated canonical atlas and selects the authored head for every pose', () => {
     expect(PAWN_SLUG_MATTHIAS_CANONICAL_HEAD_ART).toMatchObject({
-      version: 'canonical-head-motion-v2',
-      source: 'existing-matthias-motion-atlas-v5',
+      version: 'canonical-head-motion-v3',
+      source: 'dedicated-canonical-matthias-head-atlas-v3',
       purpose: 'frame-specific-face-cap-neck-authority',
       sourceFacing: 'right',
       weaponIndependent: true,
       frameSpecific: true,
-      reusesExistingAtlas: true,
+      reusesExistingAtlas: false,
+      dedicatedCanonicalAtlas: true,
+      payloadParts: 4,
+      encodedBytes: 37212,
       textureWidth: 1536,
       textureHeight: 480,
       frameWidth: 96,
