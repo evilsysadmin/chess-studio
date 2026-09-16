@@ -55,7 +55,10 @@ export const PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME = Object.freeze({
 });
 
 export const PAWN_SLUG_MATTHIAS_INTEGRATED_ART = Object.freeze({
-  version: 'canonical-soldier-v1',
+  // Keep the authored-atlas revision as the asset version. The visual identity
+  // has its own independent version so canon changes cannot invalidate runtime
+  // consumers that key compatibility checks off the Blender atlas revision.
+  version: 'blender-premium-v3',
   atlasRevision: 'blender-premium-v3',
   canonicalIdentity: PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY,
   weapons: Object.freeze(Object.keys(PAYLOADS)),
