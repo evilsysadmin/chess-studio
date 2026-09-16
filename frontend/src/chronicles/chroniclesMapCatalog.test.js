@@ -82,8 +82,8 @@ describe('Chronicles declarative map catalog', () => {
     expect(gallery.width).toBe(7);
     expect(gallery.height).toBe(7);
     expect(gallery.enemies).toEqual([
-      { id: 'corrupted-pawn', visualType: 'corrupted-pawn' },
-      { id: 'gate-jailer', visualType: 'gate-jailer' },
+      { id: 'corrupted-pawn', visualType: 'corrupted-pawn', visualScale: 1, visualMotion: 'grounded' },
+      { id: 'gate-jailer', visualType: 'gate-jailer', visualScale: 1, visualMotion: 'grounded' },
     ]);
     expect(gallery.lever?.position).toEqual({ x: 5, y: 5 });
     expect(gallery.pickup?.position).toEqual({ x: 5, y: 4 });
@@ -102,7 +102,7 @@ describe('Chronicles declarative map catalog', () => {
     };
 
     expect(chroniclesMapRenderPlan(synthetic).enemies).toEqual([
-      { id: 'fork-warden', visualType: 'gate-jailer' },
+      { id: 'fork-warden', visualType: 'gate-jailer', visualScale: 1, visualMotion: 'grounded' },
     ]);
   });
 
