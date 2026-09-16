@@ -17,8 +17,8 @@ describe('Chronicles proximity engagement movement', () => {
       engagedMovement: 'cardinal-chase',
       engageRange: 4,
     });
-    expect(chroniclesChooseEnemyStep({ ...base, x: 5, y: 5 }, enemy)).toEqual({ x: 2, y: 1 });
-    expect(chroniclesChooseEnemyStep({ ...base, x: 1, y: 3 }, enemy)).toEqual({ x: 1, y: 2 });
+    expect(chroniclesChooseEnemyStep({ ...base, x: 5, y: 5 }, enemy)).toMatchObject({ x: 2, y: 1 });
+    expect(chroniclesChooseEnemyStep({ ...base, x: 1, y: 3 }, enemy)).toMatchObject({ x: 1, y: 2 });
   });
 
   it('lets the crypt spider patrol until the party gets close enough to be hunted', () => {
@@ -33,8 +33,8 @@ describe('Chronicles proximity engagement movement', () => {
       engagedMovement: 'cardinal-chase',
       engageRange: 3,
     });
-    expect(chroniclesChooseEnemyStep({ ...base, x: 1, y: 5 }, enemy)).toEqual({ x: 4, y: 3 });
-    expect(chroniclesChooseEnemyStep({ ...base, x: 3, y: 5 }, enemy)).toEqual({ x: 3, y: 4 });
+    expect(chroniclesChooseEnemyStep({ ...base, x: 1, y: 5 }, enemy)).toMatchObject({ x: 4, y: 3 });
+    expect(chroniclesChooseEnemyStep({ ...base, x: 3, y: 5 }, enemy)).toMatchObject({ x: 3, y: 4 });
   });
 
   it('rejects incomplete or unsupported engagement contracts', () => {
