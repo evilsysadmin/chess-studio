@@ -1,0 +1,614 @@
+/* Diegetic shell for the experiments hub. The experiment screens themselves keep
+   their existing styles; this file only changes the hub so it reads as a place,
+   not a catalogue/dashboard. */
+
+@media (min-width: 900px) {
+  .menu.tournament-panel.lab-screen {
+    width: min(1220px, calc(100vw - 3rem));
+    max-width: min(1220px, calc(100vw - 3rem));
+  }
+}
+
+.lab-screen .lab-workshop {
+  position: relative;
+  display: grid;
+  gap: 18px;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 4px 2px 22px;
+}
+
+.lab-screen .lab-workshop::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 120px -28px -26px;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent 0 7%, rgba(215, 176, 100, .025) 7.1% 7.4%, transparent 7.5% 92%, rgba(215, 176, 100, .025) 92.1% 92.4%, transparent 92.5%),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.012) 0 1px, transparent 1px 86px);
+  mask-image: linear-gradient(to bottom, transparent, #000 9%, #000 88%, transparent);
+}
+
+.lab-screen .lab-workshop-masthead {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 28px;
+  padding: 6px 8px 24px;
+}
+
+.lab-screen .lab-workshop-masthead::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(211, 168, 86, .62), rgba(211, 168, 86, .11) 58%, transparent);
+}
+
+.lab-screen .lab-workshop-kicker {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 8px;
+  color: #c7a35e;
+  font-size: .66rem;
+  font-weight: 850;
+  letter-spacing: .23em;
+  text-transform: uppercase;
+}
+
+.lab-screen .lab-workshop-kicker::before {
+  content: '◆';
+  font-size: .52rem;
+  opacity: .72;
+}
+
+.lab-screen .lab-workshop-masthead h2 {
+  margin: 0;
+  color: #f0e4ca;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.75rem, 6vw, 5.25rem);
+  font-weight: 600;
+  line-height: .9;
+  letter-spacing: -.055em;
+  text-shadow: 0 10px 32px rgba(0, 0, 0, .42);
+}
+
+.lab-screen .lab-workshop-masthead p {
+  max-width: 720px;
+  margin: 14px 0 0;
+  color: rgba(236, 227, 207, .68);
+  font-size: clamp(.94rem, 1.35vw, 1.06rem);
+  line-height: 1.55;
+}
+
+.lab-screen .lab-workshop-seal {
+  display: grid;
+  width: 70px;
+  height: 70px;
+  place-items: center;
+  margin: 0 9px 2px 0;
+  border: 1px solid rgba(210, 168, 89, .4);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 28%, rgba(255, 224, 157, .12), transparent 28%),
+    radial-gradient(circle, rgba(103, 75, 34, .38), rgba(18, 17, 14, .9) 72%);
+  box-shadow: inset 0 0 0 5px rgba(205, 159, 76, .035), 0 10px 26px rgba(0,0,0,.34);
+  color: rgba(222, 184, 104, .82);
+  font: 600 2rem/1 Georgia, 'Times New Roman', serif;
+  transform: rotate(-7deg);
+}
+
+.lab-screen .lab-workshop-wing {
+  --wing-accent: 195, 151, 76;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(150px, 210px) minmax(0, 1fr);
+  gap: clamp(18px, 3vw, 34px);
+  min-height: 260px;
+  overflow: hidden;
+  padding: clamp(20px, 3vw, 32px);
+  border-top: 1px solid rgba(var(--wing-accent), .34);
+  border-bottom: 1px solid rgba(var(--wing-accent), .12);
+  background:
+    linear-gradient(96deg, rgba(10, 11, 11, .96) 0 18%, rgba(17, 17, 15, .92) 40%, rgba(10, 11, 11, .97) 100%);
+  box-shadow: 0 24px 54px rgba(0,0,0,.28), inset 0 1px rgba(255,255,255,.028);
+  isolation: isolate;
+}
+
+.lab-screen .lab-workshop-wing::before,
+.lab-screen .lab-workshop-wing::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.lab-screen .lab-workshop-wing::before {
+  inset: 0;
+  background:
+    radial-gradient(circle at 66% 18%, rgba(var(--wing-accent), .13), transparent 27%),
+    repeating-linear-gradient(90deg, transparent 0 82px, rgba(255,255,255,.012) 83px 84px),
+    linear-gradient(110deg, transparent 0 47%, rgba(255, 241, 206, .025) 47.2% 47.6%, transparent 47.9%);
+}
+
+.lab-screen .lab-workshop-wing::after {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 46px;
+  background:
+    linear-gradient(180deg, transparent, rgba(0,0,0,.28)),
+    repeating-linear-gradient(90deg, rgba(157, 123, 69, .08) 0 2px, transparent 2px 72px);
+  transform: perspective(260px) rotateX(48deg);
+  transform-origin: bottom;
+}
+
+.lab-screen .lab-workshop-wing--crypt {
+  --wing-accent: 198, 147, 70;
+  background:
+    linear-gradient(96deg, rgba(9, 10, 10, .97) 0 18%, rgba(27, 21, 16, .91) 50%, rgba(10, 10, 10, .98) 100%);
+}
+
+.lab-screen .lab-workshop-wing--hangar {
+  --wing-accent: 137, 158, 122;
+  background:
+    linear-gradient(96deg, rgba(9, 11, 10, .97) 0 18%, rgba(18, 23, 19, .91) 52%, rgba(9, 11, 10, .98) 100%);
+}
+
+.lab-screen .lab-workshop-wing--ops {
+  --wing-accent: 108, 143, 165;
+  background:
+    linear-gradient(96deg, rgba(9, 11, 12, .97) 0 18%, rgba(18, 25, 29, .91) 52%, rgba(8, 10, 12, .98) 100%);
+}
+
+.lab-screen .lab-workshop-wing-copy {
+  position: relative;
+  z-index: 2;
+  align-self: center;
+  padding-left: 4px;
+}
+
+.lab-screen .lab-workshop-wing-copy > small {
+  display: block;
+  margin-bottom: 8px;
+  color: rgba(var(--wing-accent), .88);
+  font-size: .62rem;
+  font-weight: 850;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+
+.lab-screen .lab-workshop-wing-copy h3 {
+  margin: 0;
+  color: #eee2c9;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.65rem, 3vw, 2.45rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -.035em;
+}
+
+.lab-screen .lab-workshop-wing-copy p {
+  margin: 11px 0 0;
+  color: rgba(232, 224, 207, .57);
+  font-size: .84rem;
+  line-height: 1.52;
+}
+
+.lab-screen .lab-workshop-portals {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1.22fr) minmax(230px, .78fr);
+  gap: 14px;
+  align-items: stretch;
+}
+
+.lab-screen .lab-workshop-portal {
+  --portal-accent: var(--wing-accent);
+  position: relative;
+  display: grid;
+  align-content: end;
+  gap: 8px;
+  min-height: 205px;
+  overflow: hidden;
+  padding: 26px 24px 21px;
+  border: 0;
+  border-left: 1px solid rgba(var(--portal-accent), .22);
+  border-right: 1px solid rgba(var(--portal-accent), .18);
+  border-bottom: 2px solid rgba(var(--portal-accent), .35);
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.76) 70%),
+    radial-gradient(circle at 50% 18%, rgba(var(--portal-accent), .16), transparent 36%),
+    linear-gradient(145deg, rgba(43, 39, 32, .86), rgba(15, 16, 15, .98));
+  color: #f1e7d0;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 0 1px rgba(255,255,255,.035), 0 14px 28px rgba(0,0,0,.22);
+  isolation: isolate;
+  transition: transform 180ms ease, filter 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.lab-screen .lab-workshop-portal--arch {
+  border-radius: 90px 90px 3px 3px;
+}
+
+.lab-screen .lab-workshop-portal--shutter {
+  border-top: 5px solid rgba(var(--portal-accent), .19);
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.1), rgba(0,0,0,.76) 72%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,.02) 0 2px, transparent 2px 16px),
+    radial-gradient(circle at 72% 24%, rgba(var(--portal-accent), .18), transparent 34%),
+    #151816;
+}
+
+.lab-screen .lab-workshop-portal::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 9px;
+  border: 1px solid rgba(var(--portal-accent), .1);
+  pointer-events: none;
+}
+
+.lab-screen .lab-workshop-portal::after {
+  content: attr(data-glyph);
+  position: absolute;
+  z-index: -1;
+  top: 18px;
+  right: 24px;
+  color: rgba(var(--portal-accent), .09);
+  font: 700 clamp(6.4rem, 11vw, 10rem)/.8 Georgia, 'Times New Roman', serif;
+  text-shadow: 0 22px 28px rgba(0,0,0,.38);
+  transform: rotate(-4deg);
+  transition: transform 220ms ease, color 220ms ease;
+}
+
+.lab-screen .lab-workshop-portal > small {
+  width: fit-content;
+  color: rgba(var(--portal-accent), .92);
+  font-size: .62rem;
+  font-weight: 850;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.lab-screen .lab-workshop-portal > strong {
+  max-width: 90%;
+  color: #f2e6cd;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.5rem, 2.5vw, 2.25rem);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -.025em;
+}
+
+.lab-screen .lab-workshop-portal > span {
+  max-width: 620px;
+  color: rgba(235, 228, 213, .65);
+  font-size: .84rem;
+  line-height: 1.5;
+}
+
+.lab-screen .lab-workshop-portal > b {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin-top: 5px;
+  color: rgb(var(--portal-accent));
+  font-size: .7rem;
+  font-weight: 850;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.lab-screen .lab-workshop-portal > b::after {
+  content: '→';
+  transition: transform 170ms ease;
+}
+
+.lab-screen .lab-workshop-portal--chronicles { --portal-accent: 207, 155, 72; }
+.lab-screen .lab-workshop-portal--tactics { --portal-accent: 167, 126, 76; }
+.lab-screen .lab-workshop-portal--pawnslug { --portal-accent: 211, 149, 67; }
+.lab-screen .lab-workshop-portal--trailblazer { --portal-accent: 126, 157, 123; }
+
+.lab-screen .lab-workshop-portal:hover,
+.lab-screen .lab-workshop-portal:focus-visible {
+  transform: translateY(-4px);
+  filter: brightness(1.055);
+  border-bottom-color: rgba(var(--portal-accent), .72);
+  box-shadow: 0 24px 42px rgba(0,0,0,.36), 0 0 28px rgba(var(--portal-accent), .055), inset 0 1px rgba(255,255,255,.055);
+}
+
+.lab-screen .lab-workshop-portal:hover::after,
+.lab-screen .lab-workshop-portal:focus-visible::after {
+  color: rgba(var(--portal-accent), .14);
+  transform: translateY(-4px) rotate(-1deg) scale(1.03);
+}
+
+.lab-screen .lab-workshop-portal:hover > b::after,
+.lab-screen .lab-workshop-portal:focus-visible > b::after {
+  transform: translateX(5px);
+}
+
+.lab-screen .lab-workshop-portal:focus-visible,
+.lab-screen .lab-workshop-map-table:focus-visible,
+.lab-screen .lab-workshop-tool:focus-visible {
+  outline: 2px solid rgba(221, 181, 101, .8);
+  outline-offset: 3px;
+}
+
+.lab-screen .lab-workshop-ops {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, .85fr);
+  gap: 14px;
+}
+
+.lab-screen .lab-workshop-map-table {
+  --portal-accent: 107, 147, 173;
+  position: relative;
+  display: grid;
+  align-content: end;
+  gap: 8px;
+  min-height: 226px;
+  overflow: hidden;
+  padding: 26px;
+  border: 1px solid rgba(var(--portal-accent), .2);
+  border-radius: 46% 46% 8px 8px / 18% 18% 8px 8px;
+  background:
+    linear-gradient(180deg, rgba(8,13,16,.18), rgba(6,9,11,.84) 76%),
+    linear-gradient(90deg, rgba(var(--portal-accent), .055) 1px, transparent 1px),
+    linear-gradient(rgba(var(--portal-accent), .055) 1px, transparent 1px),
+    radial-gradient(circle at 58% 22%, rgba(var(--portal-accent), .14), transparent 36%),
+    #121a1f;
+  background-size: auto, 32px 32px, 32px 32px, auto, auto;
+  color: #f0e8d5;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 0 1px rgba(255,255,255,.045), 0 20px 34px rgba(0,0,0,.27);
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
+}
+
+.lab-screen .lab-workshop-map-table::after {
+  content: '♞';
+  position: absolute;
+  top: 17px;
+  right: 30px;
+  color: rgba(var(--portal-accent), .1);
+  font: 700 8.5rem/.8 Georgia, 'Times New Roman', serif;
+  transform: rotate(8deg);
+}
+
+.lab-screen .lab-workshop-map-table > small,
+.lab-screen .lab-workshop-tool > small {
+  color: rgba(var(--portal-accent), .92);
+  font-size: .61rem;
+  font-weight: 850;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+}
+
+.lab-screen .lab-workshop-map-table > strong {
+  position: relative;
+  z-index: 1;
+  color: #f1e7d1;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(1.8rem, 3vw, 2.7rem);
+  font-weight: 600;
+  line-height: 1;
+}
+
+.lab-screen .lab-workshop-map-table > span {
+  position: relative;
+  z-index: 1;
+  max-width: 610px;
+  color: rgba(234, 229, 216, .64);
+  font-size: .86rem;
+  line-height: 1.5;
+}
+
+.lab-screen .lab-workshop-map-table > b {
+  position: relative;
+  z-index: 1;
+  width: fit-content;
+  margin-top: 4px;
+  color: rgb(var(--portal-accent));
+  font-size: .7rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.lab-screen .lab-workshop-map-table:hover,
+.lab-screen .lab-workshop-map-table:focus-visible {
+  transform: translateY(-3px) rotateX(1deg);
+  filter: brightness(1.05);
+  box-shadow: 0 27px 46px rgba(0,0,0,.36), 0 0 30px rgba(var(--portal-accent), .05), inset 0 1px rgba(255,255,255,.06);
+}
+
+.lab-screen .lab-workshop-bench {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr 1fr;
+  gap: 10px;
+  min-height: 226px;
+  padding: 18px 16px 14px;
+  border-top: 10px solid rgba(115, 83, 47, .34);
+  border-bottom: 3px solid rgba(87, 60, 33, .5);
+  background:
+    linear-gradient(180deg, rgba(40, 30, 20, .48), rgba(13, 13, 12, .93)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.018) 0 1px, transparent 1px 56px),
+    #161411;
+  box-shadow: inset 0 1px rgba(255, 238, 198, .035), 0 18px 32px rgba(0,0,0,.26);
+}
+
+.lab-screen .lab-workshop-bench-title {
+  color: rgba(211, 173, 99, .72);
+  font-size: .62rem;
+  font-weight: 850;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+}
+
+.lab-screen .lab-workshop-tool {
+  --portal-accent: 187, 155, 98;
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 13px;
+  border: 0;
+  border-top: 1px solid rgba(var(--portal-accent), .15);
+  border-bottom: 1px solid rgba(0,0,0,.38);
+  background: rgba(0,0,0,.16);
+  color: #eadfc7;
+  text-align: left;
+  cursor: pointer;
+  transition: background 170ms ease, transform 170ms ease, border-color 170ms ease;
+}
+
+.lab-screen .lab-workshop-tool::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border: 1px solid rgba(var(--portal-accent), .58);
+  border-radius: 50%;
+  background: rgba(var(--portal-accent), .15);
+  box-shadow: 0 0 0 4px rgba(var(--portal-accent), .035), inset 0 0 5px rgba(var(--portal-accent), .24);
+}
+
+.lab-screen .lab-workshop-tool strong {
+  display: block;
+  margin-top: 2px;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.02rem;
+  font-weight: 600;
+}
+
+.lab-screen .lab-workshop-tool > b {
+  color: rgba(var(--portal-accent), .84);
+  font-size: 1.2rem;
+}
+
+.lab-screen .lab-workshop-tool--arena { --portal-accent: 166, 116, 92; }
+
+.lab-screen .lab-workshop-tool:hover,
+.lab-screen .lab-workshop-tool:focus-visible {
+  transform: translateX(3px);
+  border-top-color: rgba(var(--portal-accent), .4);
+  background: rgba(var(--portal-accent), .055);
+}
+
+@media (max-width: 900px) {
+  .lab-screen .lab-workshop-wing {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .lab-screen .lab-workshop-wing-copy {
+    max-width: 680px;
+  }
+}
+
+@media (max-width: 720px) {
+  .lab-screen .lab-workshop-masthead {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding-inline: 2px;
+  }
+
+  .lab-screen .lab-workshop-seal {
+    display: none;
+  }
+
+  .lab-screen .lab-workshop-portals,
+  .lab-screen .lab-workshop-ops {
+    grid-template-columns: 1fr;
+  }
+
+  .lab-screen .lab-workshop-wing {
+    min-height: 0;
+    padding: 20px 16px;
+  }
+
+  .lab-screen .lab-workshop-portal,
+  .lab-screen .lab-workshop-map-table,
+  .lab-screen .lab-workshop-bench {
+    min-height: 190px;
+  }
+
+  .lab-screen .lab-workshop-portal--arch {
+    border-radius: 58px 58px 3px 3px;
+  }
+}
+
+@media (max-width: 430px) {
+  .lab-screen .lab-workshop {
+    gap: 13px;
+    padding-bottom: 8px;
+  }
+
+  .lab-screen .lab-workshop-masthead {
+    padding-bottom: 18px;
+  }
+
+  .lab-screen .lab-workshop-masthead h2 {
+    font-size: clamp(2.35rem, 13vw, 3.35rem);
+  }
+
+  .lab-screen .lab-workshop-masthead p {
+    font-size: .88rem;
+    line-height: 1.48;
+  }
+
+  .lab-screen .lab-workshop-wing-copy p {
+    margin-top: 8px;
+  }
+
+  .lab-screen .lab-workshop-portal,
+  .lab-screen .lab-workshop-map-table {
+    min-height: 174px;
+    padding: 20px 18px 17px;
+  }
+
+  .lab-screen .lab-workshop-portal > strong {
+    font-size: 1.55rem;
+  }
+
+  .lab-screen .lab-workshop-portal > span,
+  .lab-screen .lab-workshop-map-table > span {
+    font-size: .8rem;
+  }
+
+  .lab-screen .lab-workshop-bench {
+    min-height: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lab-screen .lab-workshop-portal,
+  .lab-screen .lab-workshop-portal::after,
+  .lab-screen .lab-workshop-portal > b::after,
+  .lab-screen .lab-workshop-map-table,
+  .lab-screen .lab-workshop-tool {
+    transition: none;
+  }
+
+  .lab-screen .lab-workshop-portal:hover,
+  .lab-screen .lab-workshop-portal:focus-visible,
+  .lab-screen .lab-workshop-map-table:hover,
+  .lab-screen .lab-workshop-map-table:focus-visible,
+  .lab-screen .lab-workshop-tool:hover,
+  .lab-screen .lab-workshop-tool:focus-visible {
+    transform: none;
+  }
+}
