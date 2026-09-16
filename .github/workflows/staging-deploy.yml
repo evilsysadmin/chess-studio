@@ -15,7 +15,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: chess-studio-staging-deploy
+  group: chess-studio-staging-deploy-v2
   cancel-in-progress: false
 
 env:
