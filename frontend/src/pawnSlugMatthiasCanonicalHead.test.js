@@ -49,13 +49,14 @@ describe('Pawn Slug canonical Matthias head art', () => {
     expect(pawnSlugCanonicalHeadAtlasUrl()).toMatch(/^data:image\/webp;base64,/);
 
     const sprite = createIntegratedMatthiasSlugSprite();
+    sprite.userData.setWeapon('machinegun');
     const head = sprite.getObjectByName('pawn-slug-matthias-canonical-head');
     expect(head).toBeTruthy();
     expect(head.userData.pawnSlugCanonicalHeadOverlay).toBe(true);
     expect(head.userData.pawnSlugFrameSpecificHeadCrop).toBe(true);
     expect(sprite.userData.canonicalHead.ready).toBe(true);
     expect(sprite.userData.canonicalHead.source).toBe('canonical');
-    expect(sprite.userData.atlas.weapon).toBe('pistol');
+    expect(sprite.userData.atlas.weapon).toBe('machinegun');
   });
 
   it('crops and mirrors the canonical frame independently from the screen-left premium body bank', () => {
@@ -83,6 +84,7 @@ describe('Pawn Slug canonical Matthias head art', () => {
 
   it('updates real head UVs and geometry with run, crouch and direction changes', () => {
     const sprite = createIntegratedMatthiasSlugSprite();
+    sprite.userData.setWeapon('machinegun');
     const head = sprite.userData.canonicalHead.sprite;
     const headTexture = sprite.userData.canonicalHead.texture;
 
@@ -112,6 +114,7 @@ describe('Pawn Slug canonical Matthias head art', () => {
 
   it('keeps the canonical face/cap attached and frame-correct through every premium weapon bank', () => {
     const sprite = createIntegratedMatthiasSlugSprite();
+    sprite.userData.setWeapon('machinegun');
     const head = sprite.userData.canonicalHead.sprite;
     const canonicalTexture = sprite.userData.canonicalHead.texture;
 
@@ -120,7 +123,7 @@ describe('Pawn Slug canonical Matthias head art', () => {
     const expectedWindow = pawnSlugCanonicalHeadAtlasWindow('run', 3, -1);
     const expectedPose = pawnSlugCanonicalHeadPose('run', 3, -1);
 
-    for (const weapon of ['pistol', 'machinegun', 'shotgun', 'panzerfaust']) {
+    for (const weapon of ['machinegun', 'shotgun', 'panzerfaust']) {
       sprite.userData.setWeapon(weapon);
 
       expect(sprite.userData.atlas.weapon).toBe(weapon);

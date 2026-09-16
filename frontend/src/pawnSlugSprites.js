@@ -94,6 +94,7 @@ export function animateMatthiasSlugSprite(sprite, state = {}) {
   const visualState = walking ? { ...state, running: false } : state;
   animateLegacyMatthiasSlugSprite(sprite, visualState);
   if (walking) sprite.userData.setActionFrame?.('walk', state.walkFrame ?? 0);
+  sprite.userData.setFiring?.(visualState.firing);
   applyPawnSlugMatthiasPremiumMotion(sprite, visualState);
   applyPawnSlugMatthiasRunPolish(sprite, visualState);
   applyPawnSlugMatthiasPrimaryAspect(sprite);

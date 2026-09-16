@@ -413,6 +413,7 @@ render-staging-check:
 	python3 -S scripts/render_staging_bootstrap_smoke.py
 
 static-preflight: test-parity-check test-flake-check audio-check data-ux-check pwa-check campaign-map-check copy-check release-check test-suite-audit-ci static-contract-risk-audit css-check css-debt-check visual-ux-check state-resilience-check idempotency-check npm-audit-parser-check architecture-debt-check dependency-cycle-check dead-code-check session-continuity-check safe-storage-check async-resilience-check chess-rules-check grafana-check render-staging-check security-api cf-ai-preflight worker-test
+	@python3 scripts/pawn_slug_canonical_integrity.py
 	@python3 scripts/synthetic_health_contract.py
 	@find frontend/src scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | xargs -0 -P $(NODE_CHECK_JOBS) -n1 node --check
 	@python3 scripts/python_syntax_check.py
