@@ -172,6 +172,11 @@
     border-radius: 15px;
   }
 
+  .menu:has(#illustrated-home-tools) .home-pvp-roster-link {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
   .home-pvp-roster-link__emblem { width: 40px; height: 40px; border-radius: 12px; }
   .home-pvp-roster-link__copy small { font-size: .49rem; }
   .home-pvp-roster-link__copy strong { font-size: .96rem; }
