@@ -1,0 +1,148 @@
+{
+  "id": "gallery-of-forks",
+  "version": 2,
+  "progressionKey": "gallery-01",
+  "title": "Galería de las Horquillas",
+  "grid": [
+    "#######",
+    "#..X..#",
+    "#.#.#.#",
+    "#.....#",
+    "#.#.#.#",
+    "#P.E..#",
+    "#######"
+  ],
+  "partyStart": { "x": 1, "y": 5, "direction": 1 },
+  "initialFlags": {
+    "sigilAwake": true,
+    "runeCacheOpened": false,
+    "runeCoreCollected": false,
+    "galleryLeverPulled": false,
+    "galleryRelicCollected": false
+  },
+  "enemies": [
+    {
+      "id": "corrupted-pawn",
+      "visualType": "corrupted-pawn",
+      "name": "peón de ceniza",
+      "x": 3,
+      "y": 5,
+      "hpKey": "enemyHp",
+      "maxHp": 8,
+      "retaliation": 1,
+      "activation": "always",
+      "ai": { "movement": "cardinal-chase", "attackReach": 1 }
+    },
+    {
+      "id": "gate-jailer",
+      "visualType": "gate-jailer",
+      "name": "torre de la galería",
+      "x": 3,
+      "y": 1,
+      "hpKey": "jailerHp",
+      "maxHp": 10,
+      "retaliation": 2,
+      "activation": "always",
+      "ai": { "movement": "hold", "attackReach": 1 }
+    }
+  ],
+  "triggers": [],
+  "interactables": [
+    {
+      "id": "gallery-lever",
+      "kind": "lever",
+      "x": 5,
+      "y": 5,
+      "label": "Bajar contrapeso",
+      "when": [
+        { "key": "galleryLeverPulled", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "galleryLeverPulled", "value": true },
+          { "type": "set", "key": "runeCacheOpened", "value": true }
+        ],
+        "message": "El contrapeso cae y una hornacina se abre con el entusiasmo de una tumba mal mantenida.",
+        "journal": {
+          "id": "gallery-counterweight",
+          "title": "La galería cede un secreto",
+          "body": "Hildegard baja el contrapeso. Algo brilla detrás de la piedra y Matthias decide llamarlo botín antes de comprobar si explota.",
+          "sigil": "VIII"
+        }
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "gallery-relic",
+      "kind": "pickup",
+      "x": 5,
+      "y": 4,
+      "label": "Recoger reliquia de ceniza",
+      "when": [
+        { "key": "galleryLeverPulled", "equals": true },
+        { "key": "galleryRelicCollected", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "galleryRelicCollected", "value": true },
+          { "type": "set", "key": "runeCoreCollected", "value": true },
+          { "type": "heal-party", "amount": 2 }
+        ],
+        "message": "La reliquia de ceniza recompone a los supervivientes. Nadie pregunta por qué algo llamado ceniza cura heridas.",
+        "journal": {
+          "id": "gallery-relic-collected",
+          "title": "Reliquia de ceniza",
+          "body": "La compañía recupera una reliquia tibia y desagradablemente eficaz. Los vivos agradecen el detalle.",
+          "sigil": "IX"
+        }
+      }
+    }
+  ],
+  "traps": [],
+  "exits": [
+    {
+      "id": "gallery-gate",
+      "kind": "exit",
+      "tile": "X",
+      "openLabel": "Abrir salida de la galería",
+      "lockedLabel": "Examinar salida",
+      "requirements": [
+        {
+          "key": "enemyHp",
+          "lte": 0,
+          "message": "El peón de ceniza sigue bloqueando la retirada con una dedicación francamente irritante."
+        },
+        {
+          "key": "jailerHp",
+          "lte": 0,
+          "message": "La torre de la galería sigue custodiando la salida."
+        },
+        {
+          "key": "galleryRelicCollected",
+          "equals": true,
+          "message": "Matthias se niega a irse dejando una reliquia útil detrás. Por una vez, tiene un argumento."
+        }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "phase", "value": "escaped" }
+        ],
+        "message": "La compañía abandona la Galería de las Horquillas. Dos salas, demasiadas malas decisiones y, contra pronóstico, supervivientes.",
+        "journal": {
+          "id": "gallery-extraction",
+          "title": "Extracción completada",
+          "body": "La segunda cámara queda atrás. Matthias registra el incidente como una campaña corta y extraordinariamente mal presupuestada.",
+          "sigil": "X"
+        }
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "gallery-entry",
+    "title": "La Galería de las Horquillas",
+    "body": "Tras la Puerta Negra espera otra cámara. Naturalmente. Las criptas respetables nunca terminan cuando deberían.",
+    "sigil": "VIII"
+  },
+  "introMessage": "La Galería de las Horquillas. La arquitectura ha empeorado y el ambiente también."
+}

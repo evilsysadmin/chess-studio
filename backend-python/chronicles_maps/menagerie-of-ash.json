@@ -1,0 +1,130 @@
+{
+  "id": "menagerie-of-ash",
+  "version": 1,
+  "progressionKey": "menagerie-01",
+  "title": "Menagerie de Ceniza",
+  "grid": [
+    "#######",
+    "#....X#",
+    "#.#.#.#",
+    "#.....#",
+    "#.#.#.#",
+    "#P....#",
+    "#######"
+  ],
+  "partyStart": { "x": 1, "y": 5, "direction": 1 },
+  "initialFlags": {},
+  "enemies": [
+    {
+      "id": "ash-goblin",
+      "visualType": "ash-goblin",
+      "visualScale": 0.9,
+      "visualMotion": "grounded",
+      "name": "trasgo de ceniza",
+      "x": 3,
+      "y": 5,
+      "hpKey": "ashGoblinHp",
+      "maxHp": 5,
+      "retaliation": 1,
+      "activation": "always",
+      "ai": { "movement": "cardinal-chase", "attackReach": 1 }
+    },
+    {
+      "id": "crypt-spider",
+      "visualType": "crypt-spider",
+      "visualScale": 0.82,
+      "visualMotion": "skitter",
+      "name": "araña de cripta",
+      "x": 3,
+      "y": 3,
+      "hpKey": "cryptSpiderHp",
+      "maxHp": 4,
+      "retaliation": 1,
+      "activation": "always",
+      "ai": {
+        "movement": "patrol-route",
+        "attackReach": 1,
+        "patrolRoute": [
+          { "x": 3, "y": 3 },
+          { "x": 4, "y": 3 },
+          { "x": 5, "y": 3 },
+          { "x": 5, "y": 4 },
+          { "x": 5, "y": 5 },
+          { "x": 4, "y": 5 },
+          { "x": 3, "y": 5 },
+          { "x": 3, "y": 4 }
+        ],
+        "engagedMovement": "cardinal-chase",
+        "engageRange": 3
+      }
+    },
+    {
+      "id": "ember-wisp",
+      "visualType": "ember-wisp",
+      "visualScale": 0.78,
+      "visualMotion": "hover",
+      "name": "fuego fatuo",
+      "x": 5,
+      "y": 1,
+      "hpKey": "emberWispHp",
+      "maxHp": 4,
+      "retaliation": 1,
+      "retaliationReach": 2,
+      "activation": "always",
+      "optional": true,
+      "ai": { "movement": "hold", "attackReach": 2, "requiresLineOfSight": true }
+    },
+    {
+      "id": "bone-hound",
+      "visualType": "bone-hound",
+      "visualScale": 0.92,
+      "visualMotion": "grounded",
+      "name": "sabueso de osario",
+      "x": 1,
+      "y": 1,
+      "hpKey": "boneHoundHp",
+      "maxHp": 6,
+      "retaliation": 2,
+      "activation": "always",
+      "ai": { "movement": "cardinal-roam", "attackReach": 1, "engagedMovement": "cardinal-chase", "engageRange": 4 }
+    }
+  ],
+  "triggers": [],
+  "interactables": [],
+  "treasures": [],
+  "traps": [],
+  "exits": [
+    {
+      "id": "menagerie-gate",
+      "kind": "exit",
+      "tile": "X",
+      "openLabel": "Cruzar portón de la menagerie",
+      "lockedLabel": "Examinar portón",
+      "requirements": [
+        { "key": "ashGoblinHp", "lte": 0, "message": "El trasgo de ceniza sigue en pie." },
+        { "key": "cryptSpiderHp", "lte": 0, "message": "La araña de cripta sigue patrullando." },
+        { "key": "emberWispHp", "lte": 0, "message": "El fuego fatuo sigue custodiando el portón." },
+        { "key": "boneHoundHp", "lte": 0, "message": "El sabueso de osario sigue recorriendo la sala." }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "phase", "value": "escaped" }
+        ],
+        "message": "La compañía cruza el portón. Matthias confirma que ninguna de esas criaturas figura en las leyes del ajedrez.",
+        "journal": {
+          "id": "menagerie-cleared",
+          "title": "La menagerie queda atrás",
+          "body": "Trasgos, arañas, luces errantes y un sabueso de hueso. La taxonomía ajedrecística ha sido oficialmente despedida.",
+          "sigil": "XI"
+        }
+      }
+    }
+  ],
+  "initialJournal": {
+    "id": "menagerie-entry",
+    "title": "La Menagerie de Ceniza",
+    "body": "La compañía entra en una sala donde el dungeon por fin deja de fingir que toda criatura debe tener equivalente en un tablero.",
+    "sigil": "XI"
+  },
+  "introMessage": "Menagerie de Ceniza. Fantasía, por fin: colmillos, patas y mala educación sin licencia FIDE."
+}
