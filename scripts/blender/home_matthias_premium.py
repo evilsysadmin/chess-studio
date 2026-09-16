@@ -21,7 +21,7 @@ from home_matthias_parts import (
 )
 
 CANONICAL_REFERENCE = "war-room-stern-pawn-2026-09-16"
-CANONICAL_REFERENCE_SHA256 = "80e451f1670b6b8f05123a4f013e526f926b4dec1532ba5e45f7ad24de80e06a"
+CANONICAL_REFERENCE_SHA256 = "24ce1e4da043ce32ded8cd2b7ee8a901494c15806f9489cd5625d7b6c2ce9650"
 ASSET_VERSION = "home-blender-canonical-v16"
 
 
@@ -99,7 +99,6 @@ def _add_cap_detail(rig):
             bpy.data.objects.remove(obj, do_unlink=True)
 
     brass = mat("canonical warm service gold", (.62, .31, .055), .17, .92)
-    leather = bpy.data.materials.get("classic black leather") or mat("canonical visor leather", (.004, .003, .002), .25, .16)
     dark = mat("canonical cap badge dark", (.004, .004, .005), .24, .30)
 
     parts = [
@@ -128,9 +127,6 @@ def _add_uniform_detail(rig):
             bpy.data.objects.remove(obj, do_unlink=True)
 
     brass = bpy.data.materials.get("canonical warm service gold") or mat("canonical warm service gold", (.62, .31, .055), .17, .92)
-    navy = bpy.data.materials.get("classic midnight pawn")
-    if navy is None:
-        navy = mat("canonical midnight enamel", (.0025, .0035, .0055), .17, .30)
 
     parts = []
     xs = (-.270, -.220, -.170, -.120, -.070, -.020, .030, .080, .130, .180, .230, .280)
