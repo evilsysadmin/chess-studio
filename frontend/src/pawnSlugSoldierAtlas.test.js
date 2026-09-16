@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PAWN_SLUG_SOLDIER_ATLAS_LOGICAL_ID,
   PAWN_SLUG_SOLDIER_ATLAS_META,
+  PAWN_SLUG_SOLDIER_ATLAS_URL,
   pawnSlugSoldierAtlasWindow,
 } from './pawnSlugSoldierAtlas.js';
 
 describe('Pawn Slug Blender soldier atlas', () => {
-  it('uses the reviewed Blender bake while preserving the 16x21 runtime contract', () => {
+  it('uses the reviewed Blender bake from R2 while preserving a local migration fallback', () => {
+    expect(PAWN_SLUG_SOLDIER_ATLAS_LOGICAL_ID).toBe('pawnSlug.enemy.actionAtlas');
+    expect(PAWN_SLUG_SOLDIER_ATLAS_URL).toBe('https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/action-atlas/enemy_cast_blender_v1_runtime-cf57e6e6be5a5d4a.webp');
     expect(PAWN_SLUG_SOLDIER_ATLAS_META).toMatchObject({
       frameWidth: 96,
       frameHeight: 96,
@@ -21,6 +25,9 @@ describe('Pawn Slug Blender soldier atlas', () => {
       prewarmedBeforeUpload: true,
       sharedTextureSource: true,
       mipmaps: false,
+      logicalId: 'pawnSlug.enemy.actionAtlas',
+      transport: 'r2-cdn-with-local-webp-fallback',
+      localFallbackAsset: 'enemy_cast_blender_v1_runtime.webp',
     });
     expect(PAWN_SLUG_SOLDIER_ATLAS_META.types).toEqual(['pawn', 'knight', 'rook']);
     expect(PAWN_SLUG_SOLDIER_ATLAS_META.actions).toEqual(['idle', 'run', 'jump', 'crouch', 'hurt', 'climb', 'death']);

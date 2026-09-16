@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import enemyCastAtlasUrl from './assets/pawnSlug/enemy_cast_blender_v1_runtime.webp';
+import enemyCastAtlasFallbackUrl from './assets/pawnSlug/enemy_cast_blender_v1_runtime.webp';
 import { PAWN_SLUG_ENEMY_ACTIONS } from './pawnSlugEnemyActionMotion.js';
+import { r2AssetUrl } from './r2Assets.js';
 
 const FRAME = 96;
 const COLUMNS = 16;
@@ -9,6 +10,12 @@ const ACTIONS = Object.freeze(['idle', 'run', 'jump', 'crouch', 'hurt', 'climb',
 const ROWS = TYPES.length * ACTIONS.length;
 let cachedBaseTexture = null;
 const liveClones = new Set();
+
+export const PAWN_SLUG_SOLDIER_ATLAS_LOGICAL_ID = 'pawnSlug.enemy.actionAtlas';
+export const PAWN_SLUG_SOLDIER_ATLAS_URL = r2AssetUrl(
+  PAWN_SLUG_SOLDIER_ATLAS_LOGICAL_ID,
+  enemyCastAtlasFallbackUrl,
+);
 
 function rowFor(type, action) {
   const typeIndex = Math.max(0, TYPES.indexOf(type));
@@ -37,7 +44,7 @@ function baseAtlasTexture() {
   if (cachedBaseTexture) return cachedBaseTexture;
   const loader = new THREE.TextureLoader();
   cachedBaseTexture = configureTexture(loader.load(
-    enemyCastAtlasUrl,
+    PAWN_SLUG_SOLDIER_ATLAS_URL,
     () => {
       for (const clone of liveClones) clone.needsUpdate = true;
     },
@@ -96,4 +103,7 @@ export const PAWN_SLUG_SOLDIER_ATLAS_META = Object.freeze({
   prewarmedBeforeUpload: true,
   sharedTextureSource: true,
   mipmaps: false,
+  logicalId: PAWN_SLUG_SOLDIER_ATLAS_LOGICAL_ID,
+  transport: 'r2-cdn-with-local-webp-fallback',
+  localFallbackAsset: 'enemy_cast_blender_v1_runtime.webp',
 });

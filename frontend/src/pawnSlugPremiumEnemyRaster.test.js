@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PAWN_SLUG_PREMIUM_ENEMY_RASTER_LOGICAL_ID,
   PAWN_SLUG_PREMIUM_ENEMY_RASTER_META,
   PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL,
   pawnSlugPremiumEnemyRasterWindow,
 } from './pawnSlugPremiumEnemyRaster.js';
 
 describe('Pawn Slug premium enemy raster', () => {
-  it('uses the authored canonical run atlas as the primary art source', () => {
-    expect(PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL).toMatch(/^data:image\/webp;base64,/);
+  it('uses the authored canonical run atlas from the reviewed R2 pointer', () => {
+    expect(PAWN_SLUG_PREMIUM_ENEMY_RASTER_LOGICAL_ID).toBe('pawnSlug.enemy.premiumRaster');
+    expect(PAWN_SLUG_PREMIUM_ENEMY_RASTER_URL).toBe('https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/enemies/premium-raster/enemy_premium_raster_v5-7b62f19661e36c2c.webp');
     expect(PAWN_SLUG_PREMIUM_ENEMY_RASTER_META).toMatchObject({
       version: 'v5-authored-canonical-run',
       width: 640,
@@ -23,8 +25,9 @@ describe('Pawn Slug premium enemy raster', () => {
       isolatedSilhouettes: true,
       transparentBackground: true,
       proceduralFallbackOnly: true,
-      transport: 'two-chunk-base64-data-url',
-      transportReason: 'connector-safe-binary-integrity',
+      logicalId: 'pawnSlug.enemy.premiumRaster',
+      transport: 'r2-cdn-with-inline-base64-fallback',
+      transportReason: 'content-addressed-cdn-primary-with-bundled-migration-fallback',
     });
     expect(PAWN_SLUG_PREMIUM_ENEMY_RASTER_META.authoredActions).toEqual(['idle', 'run']);
   });
