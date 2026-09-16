@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import vm from 'node:vm';
 import { FRONTEND_CSP, applyFrontendCsp } from './apply_frontend_csp.mjs';
 import { onRequest as moduleRecoveryFallback, onRequestPost as moduleRecoveryPost } from '../frontend/functions/__cs_recover.js';
 
@@ -14,6 +15,20 @@ const chesscomBabylon = fs.readFileSync(new URL('../frontend/src/chesscomBabylon
 
 function assert(condition, message) {
   if (!condition) throw new Error(`pwa-check FAIL · ${message}`);
+}
+
+function moduleRecoveryReplacementFor(href) {
+  let replacement = null;
+  vm.runInNewContext(moduleRecovery, {
+    URL,
+    location: { href },
+    history: {
+      state: null,
+      replaceState(_state, _title, url) { replacement = url; },
+    },
+    addEventListener() {},
+  });
+  return replacement;
 }
 
 assert(manifest.name === 'Chess Studio' && manifest.display === 'standalone', 'manifest instalable incompleto');
@@ -55,7 +70,11 @@ assert(moduleRecovery.includes("'vite:preloadError'") && moduleRecovery.includes
 assert(moduleRecovery.includes("key.startsWith('chess-studio-shell-')"), 'la recuperación no purga caches legacy antes de recargar');
 assert(moduleRecovery.includes("method: 'POST'") && moduleRecovery.includes("fetch(RECOVERY_ENDPOINT"), 'la recuperación de chunks stale no usa el intercambio POST same-origin');
 assert(!moduleRecovery.includes('searchParams.set(') && !moduleRecovery.includes('location.replace('), 'la recuperación vuelve a exponer un cache-buster en la query string');
-assert(moduleRecovery.includes('searchParams.delete(LEGACY_RECOVERY_PARAM)') && moduleRecovery.includes('history.replaceState'), 'la compatibilidad no limpia URLs legacy con cache-buster');
+assert(moduleRecovery.includes("'__cs_recover'") && moduleRecovery.includes("'_cs_recover'"), 'la compatibilidad no reconoce las dos variantes legacy del cache-buster');
+assert(moduleRecovery.includes('searchParams.has(param)') && moduleRecovery.includes('history.replaceState'), 'la compatibilidad no limpia URLs legacy con cache-buster');
+assert(moduleRecoveryReplacementFor('https://staging.chess-studio.shadowops.dpdns.org/?_cs_recover=mu464l64') === '/', 'la variante OCI _cs_recover queda visible en la URL');
+assert(moduleRecoveryReplacementFor('https://staging.chess-studio.shadowops.dpdns.org/?__cs_recover=legacy&keep=1#war') === '/?keep=1#war', 'la variante legacy __cs_recover no se limpia preservando query/hash útiles');
+assert(moduleRecoveryReplacementFor('https://staging.chess-studio.shadowops.dpdns.org/?keep=1#war') === null, 'la limpieza toca URLs que no contienen recovery cache-buster');
 
 const recoveryOrigin = 'https://staging.chess-studio.shadowops.dpdns.org';
 const recoveryResponse = await moduleRecoveryPost({

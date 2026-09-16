@@ -1,11 +1,17 @@
 (() => {
   const K = 'chess-studio-module-recovery-v1';
-  const LEGACY_RECOVERY_PARAM = '__cs_recover';
+  const LEGACY_RECOVERY_PARAMS = ['__cs_recover', '_cs_recover'];
   const RECOVERY_ENDPOINT = '/__cs_recover';
 
   // Compatibility cleanup for links left behind by older recovery builds.
   const current = new URL(location.href);
-  if (current.searchParams.delete(LEGACY_RECOVERY_PARAM)) {
+  let cleanedLegacyRecoveryParam = false;
+  for (const param of LEGACY_RECOVERY_PARAMS) {
+    if (!current.searchParams.has(param)) continue;
+    current.searchParams.delete(param);
+    cleanedLegacyRecoveryParam = true;
+  }
+  if (cleanedLegacyRecoveryParam) {
     history.replaceState(history.state, '', `${current.pathname}${current.search}${current.hash}`);
   }
 
