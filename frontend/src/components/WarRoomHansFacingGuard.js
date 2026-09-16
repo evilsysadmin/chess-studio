@@ -65,7 +65,7 @@ function activePhase(hans, driver) {
 function markFacingDiagnostics(hans, state, source, dotBefore = null, dotAfter = null) {
   hans.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
   hans.userData.warRoomHansFacingGuardMode = 'canonical-forward-vs-travel';
-  hans.userData.warRoomHansFacingGuardTravelContract = 'local-forward-phase-motion-route-v2';
+  hans.userData.warRoomHansFacingGuardTravelContract = 'phase-motion-route-v1';
   hans.userData.warRoomHansFacingGuardCorrections = state.corrections;
   hans.userData.warRoomHansFacingGuardDotBefore = dotBefore;
   hans.userData.warRoomHansFacingGuardDotAfter = dotAfter;
@@ -215,7 +215,7 @@ export function installWarRoomHansFacingGuard(root) {
 
   driver.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
   driver.userData.warRoomHansFacingGuardMode = 'canonical-forward-vs-travel';
-  driver.userData.warRoomHansFacingGuardTravelContract = 'local-forward-phase-motion-route-v2';
+  driver.userData.warRoomHansFacingGuardTravelContract = 'phase-motion-route-v1';
   driver.userData.warRoomHansFacingGuardHotPath = 'preallocated-scratch-v5-visible';
   driver.userData.warRoomHansVisibleFacingHooks = visibleFacingHooks;
   hans.userData.warRoomHansFacingGuard = WAR_ROOM_HANS_FACING_GUARD_VERSION;
