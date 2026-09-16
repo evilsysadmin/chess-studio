@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {
   CHRONICLES_TACTICS_FORTRESS_STYLE,
   installChroniclesTacticsFortressAccents,
+  installChroniclesTacticsFortressBackdrop,
 } from './chroniclesOfMatthiasFortressArt.js';
 
 describe('Chronicles Tactics canonical fortress accents', () => {
@@ -39,8 +40,20 @@ describe('Chronicles Tactics canonical fortress accents', () => {
     expect(shrine.getObjectByName('chronicles-fortress-crest')).toBeTruthy();
   });
 
-  it('fails closed when the host materials are unavailable', () => {
+  it('installs one world-space backdrop and reuses it on repeated calls', () => {
+    const scene = new THREE.Scene();
+    const first = installChroniclesTacticsFortressBackdrop(scene, { coarsePointer: true });
+    const second = installChroniclesTacticsFortressBackdrop(scene, { coarsePointer: true });
+
+    expect(first?.name).toBe('chronicles-fortress-backdrop');
+    expect(first?.position.z).toBeCloseTo(-8.35, 6);
+    expect(second).toBe(first);
+    expect(scene.children.filter((child) => child.name === 'chronicles-fortress-backdrop')).toHaveLength(1);
+  });
+
+  it('fails closed when the host is unavailable', () => {
     expect(installChroniclesTacticsFortressAccents(null)).toBeNull();
     expect(installChroniclesTacticsFortressAccents(new THREE.Group(), {})).toBeNull();
+    expect(installChroniclesTacticsFortressBackdrop(null)).toBeNull();
   });
 });
