@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Small release-train helper for scheduled production promotion.
-
-Keeps GitHub API selection, immutable accreditation validation and live
-production identity checks out of the workflow YAML so the delivery contract
-stays testable without growing the orchestration file indefinitely.
-"""
+"""Release-train helper for scheduled production promotion."""
 from __future__ import annotations
 
 import argparse
@@ -31,15 +26,14 @@ def _append(path: str, **values: object) -> None:
 
 
 def _gh_json(repository: str, endpoint: str) -> object:
-    env = os.environ.copy()
-    if not env.get("GH_TOKEN"):
+    if not os.environ.get("GH_TOKEN"):
         raise RuntimeError("GH_TOKEN no está definido")
     proc = subprocess.run(
         ["gh", "api", "-H", "Accept: application/vnd.github+json", f"/repos/{repository}/{endpoint}"],
         check=False,
         capture_output=True,
         text=True,
-        env=env,
+        env=os.environ.copy(),
     )
     if proc.returncode != 0:
         raise RuntimeError(proc.stderr.strip() or f"gh api falló para {endpoint}")
@@ -102,6 +96,20 @@ def read_accreditation(path: str, run_id: int) -> str:
     return sha
 
 
+def require_main_lineage(repository: str, sha: str) -> tuple[str, str]:
+    branch = _gh_json(repository, "git/ref/heads/main")
+    if not isinstance(branch, dict):
+        raise RuntimeError("Respuesta inválida al resolver main")
+    current = str(((branch.get("object") or {}).get("sha") if isinstance(branch.get("object"), dict) else "") or "").lower()
+    if _SHA_RE.fullmatch(current) is None:
+        raise RuntimeError(f"main SHA inválido: {current!r}")
+    comparison = _gh_json(repository, f"compare/{sha}...{current}")
+    status = str(comparison.get("status") if isinstance(comparison, dict) else "")
+    if status not in {"identical", "ahead"}:
+        raise RuntimeError(f"El SHA acreditado {sha} no pertenece a main {current} (compare={status or 'desconocido'})")
+    return current, status
+
+
 def _fetch_json(url: str, timeout: float = 12.0) -> object:
     request = urllib.request.Request(
         url,
@@ -113,6 +121,10 @@ def _fetch_json(url: str, timeout: float = 12.0) -> object:
         return json.loads(response.read().decode("utf-8"))
 
 
+def _exact_build(payload: object, sha: str) -> bool:
+    return isinstance(payload, dict) and str(payload.get("build") or "").lower() == sha
+
+
 def production_is_current(sha: str, backend_url: str, frontend_url: str, ai_url: str) -> bool:
     try:
         backend = _fetch_json(f"{backend_url.rstrip('/')}/release?sha={sha}")
@@ -120,11 +132,31 @@ def production_is_current(sha: str, backend_url: str, frontend_url: str, ai_url:
         ai = _fetch_json(f"{ai_url.rstrip('/')}/health")
     except (OSError, ValueError, RuntimeError, urllib.error.URLError, json.JSONDecodeError):
         return False
-    if not all(isinstance(payload, dict) for payload in (backend, frontend, ai)):
-        return False
-    if validate_health_payload(ai):
-        return False
-    return all(str(payload.get("build") or "").lower() == sha for payload in (backend, frontend, ai))
+    return not validate_health_payload(ai) and all(_exact_build(payload, sha) for payload in (backend, frontend, ai))
+
+
+def diagnose_staging(sha: str, backend_url: str, frontend_url: str, ai_url: str) -> None:
+    probes = (
+        ("backend", f"{backend_url.rstrip('/')}/release?sha={sha}"),
+        ("frontend", f"{frontend_url.rstrip('/')}/release.json?sha={sha}"),
+        ("ai", f"{ai_url.rstrip('/')}/health"),
+    )
+    for kind, url in probes:
+        try:
+            payload = _fetch_json(url, timeout=15.0)
+            valid = _exact_build(payload, sha)
+            if kind == "ai":
+                valid = valid and not validate_health_payload(payload)
+            if valid:
+                print(f"Staging {kind} todavía sirve {sha}.")
+                continue
+            detail = "build/health distinto"
+        except Exception as exc:  # diagnostic-only: immutable accreditation stays authoritative
+            detail = str(exc)
+        print(
+            f"::notice title=Staging {kind} advanced::Staging {kind} ya no acredita exactamente {sha} ({detail}). "
+            "La promoción conserva la acreditación inmutable previa."
+        )
 
 
 def write_record(path: str, sha: str, run_id: int, event: str) -> None:
@@ -186,11 +218,21 @@ def main(argv: list[str] | None = None) -> int:
     read.add_argument("--github-output", required=True)
     read.add_argument("--github-env", required=True)
 
+    lineage = sub.add_parser("lineage")
+    lineage.add_argument("--repository", required=True)
+    lineage.add_argument("--sha", required=True)
+
     current = sub.add_parser("current")
     current.add_argument("--sha", required=True)
     current.add_argument("--backend-url", required=True)
     current.add_argument("--frontend-url", required=True)
     current.add_argument("--ai-url", required=True)
+
+    diagnostic = sub.add_parser("diagnose-staging")
+    diagnostic.add_argument("--sha", required=True)
+    diagnostic.add_argument("--backend-url", required=True)
+    diagnostic.add_argument("--frontend-url", required=True)
+    diagnostic.add_argument("--ai-url", required=True)
 
     record = sub.add_parser("record")
     record.add_argument("--target", required=True)
@@ -218,8 +260,15 @@ def main(argv: list[str] | None = None) -> int:
         _append(args.github_env, DEPLOY_SHA=sha)
         print(f"Production provenance: Staging AI run {args.run_id} (#{args.run_number}) acreditó {sha}")
         return 0
+    if args.command == "lineage":
+        current_sha, status = require_main_lineage(args.repository, args.sha.lower())
+        print(f"Production lineage admission OK: {args.sha.lower()} pertenece a main {current_sha} ({status}).")
+        return 0
     if args.command == "current":
         return 0 if production_is_current(args.sha.lower(), args.backend_url, args.frontend_url, args.ai_url) else 1
+    if args.command == "diagnose-staging":
+        diagnose_staging(args.sha.lower(), args.backend_url, args.frontend_url, args.ai_url)
+        return 0
     if args.command == "record":
         write_record(args.target, args.sha, args.run_id, args.event)
         return 0
