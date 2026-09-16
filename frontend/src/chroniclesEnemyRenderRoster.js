@@ -1,4 +1,5 @@
-import { chroniclesMapForState, chroniclesMapRenderPlan } from './chronicles/chroniclesMapCatalog.js';
+import { chroniclesMapForState } from './chronicles/chroniclesMapCatalog.js';
+import { chroniclesIsometricScenePlan } from './chronicles/chroniclesIsometricScenePlan.js';
 
 export function chroniclesEnemyEffectiveVisualScale(baseScale = 1, visualScale = 1) {
   const base = Number(baseScale);
@@ -11,7 +12,7 @@ export function chroniclesEnemyEffectiveVisualScale(baseScale = 1, visualScale =
 export function chroniclesEnemyRenderRoster(state = null) {
   const map = chroniclesMapForState(state);
   const visualById = new Map(
-    chroniclesMapRenderPlan(map).enemies.map((entry) => [entry.id, entry]),
+    chroniclesIsometricScenePlan(map).enemies.map((entry) => [entry.id, entry]),
   );
 
   return Object.freeze(map.enemies.map((definition) => {
