@@ -6,7 +6,10 @@ import {
   WAR_ROOM_HANS_NAVIGATION_FURNITURE_CLEARANCE,
   warRoomHansBuildSafeRoute,
 } from './WarRoomHansNavigation.js';
-import { warRoomHansTargetNearObject } from './WarRoomHansServiceRoute.js';
+import {
+  HANS_SERVICE_FURNITURE_CLEARANCE,
+  warRoomHansTargetNearObject,
+} from './WarRoomHansServiceRoute.js';
 
 function makeRoom() {
   const root = new THREE.Group();
@@ -84,7 +87,7 @@ describe('Hans physical navigation integrity', () => {
     expectRouteOutsideBoard(from, route);
   });
 
-  it('keeps straighten-room routable when the chair is absent by targeting the carpet perimeter', () => {
+  it('keeps straighten-room routable when the chair is absent by targeting the carpet perimeter from inside the room', () => {
     const { root, parent, floor } = makeRoom();
     const carpetKey = new THREE.Mesh(
       new THREE.BoxGeometry(12.82, 0.012, 0.045),
@@ -110,6 +113,10 @@ describe('Hans physical navigation integrity', () => {
     const route = warRoomHansBuildSafeRoute(floor, parent, serviceDoor, target);
 
     expect(target).toBeTruthy();
+    expect(Math.abs(target.z)).toBeLessThan(Math.abs(carpetKey.position.z));
+    expect(Math.abs(carpetKey.position.z) - Math.abs(target.z)).toBeGreaterThanOrEqual(
+      HANS_SERVICE_FURNITURE_CLEARANCE,
+    );
     expect(insideBoard(target)).toBe(false);
     expect(route.length).toBeGreaterThan(0);
     expectRouteOutsideBoard(serviceDoor, route);
