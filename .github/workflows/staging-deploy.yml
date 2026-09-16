@@ -60,7 +60,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          current_main="$(git ls-remote --exit-code origin refs/heads/main | awk '{print $1}')"
+          current_main="$(
+            timeout 15s gh api \
+              -H 'Accept: application/vnd.github+json' \
+              "/repos/$GITHUB_REPOSITORY/commits/main" \
+              --jq '.sha'
+          )" || { echo '::error::No pude resolver main HEAD por la API de GitHub'; exit 1; }
+          [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::GitHub devolvió un main HEAD inválido: $current_main"; exit 1; }
           if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
             echo "::notice title=Staging superseded::CI aprobó $DEPLOY_SHA, pero main ya apunta a $current_main. Cancelo esta generación antes de cualquier mutación."
             {
@@ -141,11 +147,67 @@ jobs:
           python3 -S scripts/oci_runtime_config.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
 
-      - name: Sync private OCI runtime config before replacement
+      - name: Wait for OCI infrastructure mutations to quiesce
+        env:
+          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          python3 scripts/oci_runtime_config.py sync
+          stable=0
+          for attempt in $(seq 1 72); do
+            active="$(
+              timeout 15s gh api \
+                -H 'Accept: application/vnd.github+json' \
+                "/repos/$GITHUB_REPOSITORY/actions/workflows/oci-staging-deploy.yml/runs?branch=main&per_page=50" \
+                --jq '[.workflow_runs[] | select(.status != "completed")] | length'
+            )" || { echo '::error::No pude consultar mutaciones OCI activas'; exit 1; }
+            [[ "$active" =~ ^[0-9]+$ ]] || { echo "::error::Conteo OCI inválido: $active"; exit 1; }
+            if [[ "$active" == "0" ]]; then
+              stable=$((stable + 1))
+              if [[ "$stable" -ge 2 ]]; then
+                echo 'OCI infrastructure quiescent; backend mutation may proceed.'
+                break
+              fi
+              echo 'OCI sin mutaciones activas; confirmando ventana estable...'
+            else
+              stable=0
+              echo "OCI auto-apply todavía tiene $active mutación(es) activa(s) (intento $attempt/72)"
+            fi
+            if [[ "$attempt" -eq 72 ]]; then
+              echo '::error::OCI auto-apply no quedó quiescent tras 6 minutos'
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Wait for OCI Run Command registration
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            log="${RUNNER_TEMP}/oci-agent-ready-${attempt}.log"
+            set +e
+            python3 scripts/oci_run_command.py diagnose >"$log" 2>&1
+            rc=$?
+            set -e
+            if [[ "$rc" -eq 0 ]]; then
+              cat "$log"
+              exit 0
+            fi
+            if grep -Fq 'Plugin Compute Instance Run Command not present for instance' "$log" && [[ "$attempt" -lt 60 ]]; then
+              echo "OCI Run Command plugin not registered yet (attempt ${attempt}/60); retrying in 5s"
+              sleep 5
+              continue
+            fi
+            cat "$log"
+            exit "$rc"
+          done
+
+      - name: Publish private OCI runtime config for deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/oci_runtime_config.py publish
 
       # Legacy contract marker only: Deploy exact backend commit to Render staging
       - name: Deploy exact backend commit to OCI staging
@@ -462,7 +524,7 @@ jobs:
             echo '- Frontend SHA: `mismo generation SHA · verificado`'
             echo '- Worker SHA: `mismo generation SHA · verificado por /health`'
             echo '- Mongo staging: `ready`'
-            echo '- OCI runtime config: `sincronizado antes del reemplazo del backend`'
+            echo '- OCI runtime config: `publicado antes del deploy; instalado una sola vez por el deploy exacto`'
             echo '- Generation parity gate: `N/N/N · verificado dentro de cada smoke antes de Chromium`'
             echo '- Live browser smoke: `War Room live + F5 authority · paralelos · OK`'
             echo '- Visual evidence: `vídeos Chromium retenidos 7 días en staging-live-playwright-*`'
