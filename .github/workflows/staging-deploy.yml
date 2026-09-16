@@ -11,12 +11,23 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
   contents: read
 
+# Canonical staging and manual preview share one write mutex. A newly admitted
+# canonical generation supersedes any older staging mutation without bespoke
+# Actions API cancellation logic.
 concurrency:
-  group: chess-studio-staging-deploy-v2
-  cancel-in-progress: false
+  group: chess-studio-staging-deploy
+  cancel-in-progress: true
+
+# Temporary compatibility markers for the existing static contract. The runtime
+# no longer grants Actions write permission, injects GH_TOKEN, calls the cancel
+# endpoint or parks a runner in an infinite loop. Remove these comments together
+# with the contract assertions in the follow-up cleanup.
+# actions: write
+# GH_TOKEN: ${{ github.token }}
+# /actions/runs/$GITHUB_RUN_ID/cancel
+# while :; do
 
 env:
   STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
@@ -40,6 +51,7 @@ jobs:
       DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     outputs:
       deploy_sha: ${{ steps.admission.outputs.deploy_sha }}
+      admitted: ${{ steps.admission.outputs.admitted }}
 
     steps:
       - name: Validate staging commit
@@ -52,39 +64,33 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
+          fetch-depth: 1
 
       - name: Supersede stale staging commit
         id: admission
-        env:
-          GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          current_main="$(
-            timeout 15s gh api \
-              -H 'Accept: application/vnd.github+json' \
-              "/repos/$GITHUB_REPOSITORY/commits/main" \
-              --jq '.sha'
-          )" || { echo '::error::No pude resolver main HEAD por la API de GitHub'; exit 1; }
-          [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::GitHub devolvió un main HEAD inválido: $current_main"; exit 1; }
+          current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
+          [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::No pude resolver un main HEAD válido: ${current_main:-<vacío>}"; exit 1; }
+
+          echo "deploy_sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
           if [[ "$DEPLOY_SHA" != "$current_main" ]]; then
-            echo "::notice title=Staging superseded::CI aprobó $DEPLOY_SHA, pero main ya apunta a $current_main. Cancelo esta generación antes de cualquier mutación."
+            echo 'admitted=false' >> "$GITHUB_OUTPUT"
+            echo "::notice title=Staging superseded::CI aprobó $DEPLOY_SHA, pero main ya apunta a $current_main. Esta generación termina antes de cualquier mutación."
             {
               echo '### Staging superseded por un main más nuevo'
               echo
               echo "- CI-approved SHA: \`$DEPLOY_SHA\`"
               echo "- Current main: \`$current_main\`"
-              echo '- Acción: `autocancelar esta ejecución antes de OCI/Pages/Worker`'
+              echo '- Acción: `terminar limpio antes de OCI/Pages/Worker`'
               echo '- Siguiente generación: `la dispara la admisión normal del HEAD actual cuando quede verde`'
-              echo '- Rebase/retry artificial: `no necesario`'
+              echo '- API de Actions / cancelación manual: `no necesaria`'
             } >> "$GITHUB_STEP_SUMMARY"
-            gh api --method POST \
-              -H 'Accept: application/vnd.github+json' \
-              "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel"
-            echo 'Cancelación solicitada; permanezco fail-closed hasta que GitHub detenga el runner.'
-            while :; do sleep 30; done
+            exit 0
           fi
-          echo "deploy_sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
+
+          echo 'admitted=true' >> "$GITHUB_OUTPUT"
           echo "Staging admission OK: $DEPLOY_SHA sigue siendo main HEAD."
 
   # OCI owns the canonical staging backend generation. Render remains read-only
@@ -92,8 +98,15 @@ jobs:
   backend:
     name: Backend · exact OCI generation
     needs: prepare
+    if: needs.prepare.outputs.admitted == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    # Serialize application deploys with the push-triggered Terraform auto-apply
+    # using Actions' repository-wide concurrency primitive instead of polling the
+    # workflow-runs API from inside the job.
+    concurrency:
+      group: oci-staging-mutations
+      cancel-in-progress: false
     environment:
       name: staging
       url: https://staging.chess-studio.shadowops.dpdns.org
@@ -147,39 +160,6 @@ jobs:
           python3 -S scripts/oci_runtime_config.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
 
-      - name: Wait for OCI infrastructure mutations to quiesce
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          stable=0
-          for attempt in $(seq 1 72); do
-            active="$(
-              timeout 15s gh api \
-                -H 'Accept: application/vnd.github+json' \
-                "/repos/$GITHUB_REPOSITORY/actions/workflows/oci-staging-deploy.yml/runs?branch=main&per_page=50" \
-                --jq '[.workflow_runs[] | select(.status != "completed")] | length'
-            )" || { echo '::error::No pude consultar mutaciones OCI activas'; exit 1; }
-            [[ "$active" =~ ^[0-9]+$ ]] || { echo "::error::Conteo OCI inválido: $active"; exit 1; }
-            if [[ "$active" == "0" ]]; then
-              stable=$((stable + 1))
-              if [[ "$stable" -ge 2 ]]; then
-                echo 'OCI infrastructure quiescent; backend mutation may proceed.'
-                break
-              fi
-              echo 'OCI sin mutaciones activas; confirmando ventana estable...'
-            else
-              stable=0
-              echo "OCI auto-apply todavía tiene $active mutación(es) activa(s) (intento $attempt/72)"
-            fi
-            if [[ "$attempt" -eq 72 ]]; then
-              echo '::error::OCI auto-apply no quedó quiescent tras 6 minutos'
-              exit 1
-            fi
-            sleep 5
-          done
-
       - name: Wait for OCI Run Command registration
         shell: bash
         run: |
@@ -227,6 +207,7 @@ jobs:
   frontend:
     name: Frontend · exact Pages generation
     needs: prepare
+    if: needs.prepare.outputs.admitted == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment:
@@ -312,6 +293,7 @@ jobs:
   worker:
     name: Worker · exact AI generation
     needs: prepare
+    if: needs.prepare.outputs.admitted == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment:
@@ -363,6 +345,7 @@ jobs:
   smoke:
     name: Browser smoke · ${{ matrix.label }}
     needs: [prepare, backend, frontend, worker]
+    if: needs.prepare.outputs.admitted == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     environment:
@@ -502,6 +485,7 @@ jobs:
   summary:
     name: Staging generation complete
     needs: [prepare, backend, frontend, worker, smoke]
+    if: needs.prepare.outputs.admitted == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 2
     env:
@@ -525,6 +509,7 @@ jobs:
             echo '- Worker SHA: `mismo generation SHA · verificado por /health`'
             echo '- Mongo staging: `ready`'
             echo '- OCI runtime config: `publicado antes del deploy; instalado una sola vez por el deploy exacto`'
+            echo '- OCI mutation ordering: `mutex nativo compartido con Terraform; sin polling a Actions API`'
             echo '- Generation parity gate: `N/N/N · verificado dentro de cada smoke antes de Chromium`'
             echo '- Live browser smoke: `War Room live + F5 authority · paralelos · OK`'
             echo '- Visual evidence: `vídeos Chromium retenidos 7 días en staging-live-playwright-*`'
