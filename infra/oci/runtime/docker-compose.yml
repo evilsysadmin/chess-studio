@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: ../../../backend-python
+    image: chess-studio-backend:oci-${GIT_COMMIT_SHA:?GIT_COMMIT_SHA is required}
+    env_file:
+      - ${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}
+    environment:
+      GIT_COMMIT_SHA: ${GIT_COMMIT_SHA:?GIT_COMMIT_SHA is required}
+      PORT: "4000"
+    ports:
+      - "127.0.0.1:${CHESS_STUDIO_BACKEND_PORT:-4000}:4000"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/api/ready', timeout=3).read()"
+      interval: 15s
+      timeout: 5s
+      start_period: 15s
+      retries: 4
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
