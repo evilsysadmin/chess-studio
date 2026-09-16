@@ -9,12 +9,19 @@ export default function HomePvpRosterLink({ onOpen, disabled = false }) {
       disabled={disabled}
       aria-label="Abrir roster 1 contra 1 de War Room"
     >
-      <span className="home-pvp-roster-link__mark" aria-hidden="true">♟</span>
-      <span className="home-pvp-roster-link__copy">
-        <small>WAR ROOM · EN LÍNEA</small>
-        <strong>ROSTER 1 VS 1</strong>
+      <span className="home-pvp-roster-link__emblem" aria-hidden="true">
+        <span className="home-pvp-roster-link__signal" />
+        <span className="home-pvp-roster-link__mark">♟</span>
       </span>
-      <span className="home-pvp-roster-link__chevron" aria-hidden="true">›</span>
+      <span className="home-pvp-roster-link__copy">
+        <small>WAR ROOM · HUMANO CONTRA HUMANO</small>
+        <strong>Duelo online</strong>
+        <span>Entra al roster y reta a otro jugador</span>
+      </span>
+      <span className="home-pvp-roster-link__action" aria-hidden="true">
+        <span>ABRIR ROSTER</span>
+        <b>›</b>
+      </span>
     </button>
   );
 }
