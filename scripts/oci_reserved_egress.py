@@ -55,6 +55,15 @@ def select_reserved(rows: list[Any]) -> Any:
     return selected
 
 
+def attached_vnic_attachments(rows: list[Any]) -> list[Any]:
+    """Filter in memory because OCI SDK 2.185.x has no lifecycle_state kwarg here."""
+    return [
+        row
+        for row in rows
+        if str(getattr(row, "lifecycle_state", "") or "").upper() == "ATTACHED"
+    ]
+
+
 def primary_vnic(oci: Any, config: dict[str, str], compartment_id: str, instance_id: str) -> Any:
     compute = oci.core.ComputeClient(config)
     network = oci.core.VirtualNetworkClient(config)
@@ -62,8 +71,8 @@ def primary_vnic(oci: Any, config: dict[str, str], compartment_id: str, instance
         compute.list_vnic_attachments,
         compartment_id,
         instance_id=instance_id,
-        lifecycle_state="ATTACHED",
     ).data
+    attachments = attached_vnic_attachments(list(attachments))
     vnics = [
         network.get_vnic(
             attachment.vnic_id,
@@ -254,6 +263,12 @@ def self_test() -> None:
     )
     assert select_reserved([lb, target]) is target
     assert normalize_ipv4("158.180.44.45") == RESERVED_IPV4
+
+    attached = Row(lifecycle_state="ATTACHED")
+    detached = Row(lifecycle_state="DETACHED")
+    attaching = Row(lifecycle_state="ATTACHING")
+    assert attached_vnic_attachments([detached, attached, attaching]) == [attached]
+
     try:
         select_reserved([lb])
     except SystemExit:
