@@ -7,12 +7,6 @@ CLOUDFLARED_URL="https://github.com/cloudflare/cloudflared/releases/download/${C
 RUNTIME_BUCKET="chess-studio-staging-runtime"
 TOKEN_OBJECT="cloudflared.token"
 RUNTIME_USER="${SUDO_USER:-ocarun}"
-TOKEN_DIR="/etc/chess-studio"
-TOKEN_PATH="${TOKEN_DIR}/cloudflared.token"
-BIN_DIR="/usr/local/libexec/chess-studio"
-BIN_PATH="${BIN_DIR}/cloudflared-${CLOUDFLARED_VERSION}"
-UNIT_NAME="chess-studio-cloudflared.service"
-UNIT_PATH="/etc/systemd/system/${UNIT_NAME}"
 
 require() {
   command -v "$1" >/dev/null 2>&1 || { echo "missing required command: $1" >&2; exit 69; }
@@ -40,11 +34,13 @@ if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
   exit 77
 fi
 
+require chown
 require curl
 require getent
 require install
+require runuser
 require sha256sum
-require systemctl
+require setsid
 
 runtime_home="$(getent passwd "$RUNTIME_USER" | awk -F: 'NR == 1 {print $6}')"
 [[ -n "$runtime_home" ]] || { echo "unable to resolve home for $RUNTIME_USER" >&2; exit 67; }
@@ -52,17 +48,14 @@ runtime_python="${runtime_home}/.cache/chess-studio-oci-runtime/bin/python"
 [[ -x "$runtime_python" ]] || { echo "missing OCI runtime python: $runtime_python" >&2; exit 69; }
 "$runtime_python" -c 'import oci' >/dev/null 2>&1 || { echo 'OCI SDK missing from runtime python' >&2; exit 69; }
 
-install -d -o root -g root -m 0755 "$TOKEN_DIR" "$BIN_DIR"
-tmp_token="$(mktemp /tmp/chess-studio-cloudflared-token.XXXXXX)"
-tmp_bin=''
-tmp_unit="$(mktemp /tmp/chess-studio-cloudflared-unit.XXXXXX)"
-cleanup() {
-  rm -f "$tmp_token" "$tmp_unit"
-  [[ -z "$tmp_bin" ]] || rm -f "$tmp_bin"
-}
-trap cleanup EXIT
+root="${runtime_home}/.cache/chess-studio-cloudflared"
+token_file="$root/token"
+bin="$root/cloudflared-${CLOUDFLARED_VERSION}"
+pid_file="$root/pid"
+log_file="$root/cloudflared.log"
+install -d -o "$RUNTIME_USER" -m 0700 "$root"
 
-TUNNEL_TOKEN_FILE="$tmp_token" TUNNEL_BUCKET="$RUNTIME_BUCKET" TUNNEL_OBJECT="$TOKEN_OBJECT" "$runtime_python" - <<'PY'
+TUNNEL_TOKEN_FILE="$token_file" TUNNEL_BUCKET="$RUNTIME_BUCKET" TUNNEL_OBJECT="$TOKEN_OBJECT" "$runtime_python" - <<'PY'
 import os
 from pathlib import Path
 import oci
@@ -88,56 +81,44 @@ if not text or any(ch.isspace() for ch in text):
 path.write_text(text + '\n', encoding='utf-8')
 os.chmod(path, 0o600)
 PY
+chown "$RUNTIME_USER" "$token_file"
 
-install -o root -g "$RUNTIME_USER" -m 0640 "$tmp_token" "$TOKEN_PATH"
-
-if [[ ! -x "$BIN_PATH" ]] || ! printf '%s  %s\n' "$CLOUDFLARED_SHA256" "$BIN_PATH" | sha256sum --check --status; then
-  tmp_bin="$(mktemp /tmp/cloudflared-${CLOUDFLARED_VERSION}.XXXXXX)"
+if [[ ! -x "$bin" ]] || ! printf '%s  %s\n' "$CLOUDFLARED_SHA256" "$bin" | sha256sum --check --status; then
+  tmp="$(mktemp /tmp/cloudflared-${CLOUDFLARED_VERSION}.XXXXXX)"
+  trap 'rm -f "$tmp"' EXIT
   curl --fail --location --silent --show-error --retry 3 --retry-all-errors --max-time 120 \
-    "$CLOUDFLARED_URL" -o "$tmp_bin"
-  printf '%s  %s\n' "$CLOUDFLARED_SHA256" "$tmp_bin" | sha256sum --check --status
-  install -o root -g root -m 0755 "$tmp_bin" "$BIN_PATH"
+    "$CLOUDFLARED_URL" -o "$tmp"
+  printf '%s  %s\n' "$CLOUDFLARED_SHA256" "$tmp" | sha256sum --check --status
+  install -o "$RUNTIME_USER" -m 0755 "$tmp" "$bin"
+  rm -f "$tmp"
+  trap - EXIT
 fi
 
-cat >"$tmp_unit" <<EOF_UNIT
-[Unit]
-Description=Chess Studio OCI staging Cloudflare Tunnel
-Wants=network-online.target
-After=network-online.target
-
-[Service]
-Type=simple
-User=${RUNTIME_USER}
-Group=${RUNTIME_USER}
-ExecStart=${BIN_PATH} tunnel --no-autoupdate --loglevel info run --token-file ${TOKEN_PATH}
-Restart=always
-RestartSec=3
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ProtectKernelTunables=true
-ProtectKernelModules=true
-ProtectControlGroups=true
-LockPersonality=true
-RestrictSUIDSGID=true
-CapabilityBoundingSet=
-AmbientCapabilities=
-
-[Install]
-WantedBy=multi-user.target
-EOF_UNIT
-install -o root -g root -m 0644 "$tmp_unit" "$UNIT_PATH"
-systemctl daemon-reload
-systemctl enable "$UNIT_NAME" >/dev/null
-systemctl restart "$UNIT_NAME"
-
-for _ in $(seq 1 20); do
-  if systemctl is-active --quiet "$UNIT_NAME"; then
-    echo "CHESS_STUDIO_CLOUDFLARED_READY unit=$UNIT_NAME version=$CLOUDFLARED_VERSION"
-    exit 0
+if [[ -s "$pid_file" ]]; then
+  old_pid="$(cat "$pid_file" 2>/dev/null || true)"
+  if [[ "$old_pid" =~ ^[0-9]+$ ]] && kill -0 "$old_pid" 2>/dev/null; then
+    kill "$old_pid" || true
+    for _ in $(seq 1 20); do
+      kill -0 "$old_pid" 2>/dev/null || break
+      sleep 0.25
+    done
   fi
-  sleep 0.5
-done
-systemctl status "$UNIT_NAME" --no-pager >&2 || true
-exit 70
+fi
+
+: >"$log_file"
+chown "$RUNTIME_USER" "$log_file"
+rm -f "$pid_file"
+runuser -u "$RUNTIME_USER" -- env HOME="$runtime_home" /bin/bash -c '
+  set -euo pipefail
+  nohup setsid "$1" tunnel --no-autoupdate --loglevel info --logfile "$2" run --token-file "$3" </dev/null >/dev/null 2>&1 &
+  printf "%s\n" "$!" >"$4"
+' bash "$bin" "$log_file" "$token_file" "$pid_file"
+
+new_pid="$(cat "$pid_file" 2>/dev/null || true)"
+[[ "$new_pid" =~ ^[0-9]+$ ]] || { echo 'cloudflared did not publish a valid pid' >&2; exit 70; }
+sleep 3
+if ! kill -0 "$new_pid" 2>/dev/null; then
+  tail -n 40 "$log_file" >&2 || true
+  exit 70
+fi
+printf '%s\n' "CHESS_STUDIO_CLOUDFLARED_READY pid=$new_pid version=$CLOUDFLARED_VERSION"
