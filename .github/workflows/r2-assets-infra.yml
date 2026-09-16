@@ -7,7 +7,6 @@ on:
       - scripts/cloudflare_r2_assets.py
       - scripts/r2_asset_publisher.py
       - scripts/r2_asset_publish.py
-      - scripts/pawn_slug_r2_publish.py
       - frontend/src/assets/r2-assets-manifest.json
       - .github/workflows/r2-assets-infra.yml
       - docs/r2-assets.md
@@ -19,7 +18,6 @@ on:
       - scripts/cloudflare_r2_assets.py
       - scripts/r2_asset_publisher.py
       - scripts/r2_asset_publish.py
-      - scripts/pawn_slug_r2_publish.py
       - frontend/src/assets/r2-assets-manifest.json
       - .github/workflows/r2-assets-infra.yml
       - docs/r2-assets.md
@@ -46,8 +44,6 @@ jobs:
         run: python3 -S scripts/cloudflare_r2_assets.py validate
       - name: Static publisher contract
         run: python3 -S scripts/r2_asset_publish.py self-test
-      - name: Static Pawn Slug publishing contract
-        run: python3 -S scripts/pawn_slug_r2_publish.py self-test
       - name: Validate asset manifest
         run: python3 -S scripts/r2_asset_publish.py check-manifest
 
@@ -74,11 +70,7 @@ jobs:
         run: python3 -S scripts/cloudflare_r2_assets.py check
       - name: Smoke object upload/get/delete
         run: python3 -S scripts/r2_asset_publish.py smoke
-      - name: Publish Pawn Slug Matthias asset bank
-        run: |
-          python3 -S scripts/pawn_slug_r2_publish.py publish \
-            --master frontend/src/assets/pawnSlug/matthias_canonical_sprite_sheet_v1.png
-      - name: Emit generated R2 manifest
+      - name: Emit reviewed R2 manifest
         run: cat frontend/src/assets/r2-assets-manifest.json
       - name: Summary
         shell: bash
@@ -93,5 +85,5 @@ jobs:
             echo '- `r2.dev`: disabled'
             echo '- CORS: public read (`GET`, `HEAD`)'
             echo '- Object REST publisher: raw PUT verified with upload/get/delete smoke'
-            echo '- Pawn Slug Matthias: immutable master + runtime atlases published; manifest pointer remains a separate reviewed change'
+            echo '- Pawn Slug Matthias: immutable R2 objects are referenced by the reviewed manifest; new blobs are published explicitly with the generic publisher from external source files'
           } >> "$GITHUB_STEP_SUMMARY"
