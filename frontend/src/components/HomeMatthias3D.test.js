@@ -56,31 +56,32 @@ describe('Home Matthias canonical Blender rig', () => {
     expect(homeMatthiasMotionPhase({ scene: 'reading', activity: 'Leyendo estrategia' })).not.toBe(first);
   });
 
-  it('frames Matthias as a readable portrait instead of centering the whole pawn pedestal', () => {
+  it('frames Matthias as a readable portrait without the accidental close-up', () => {
     const frame = homeMatthiasPortraitFrame({ minY: 0, maxY: 2.35, fovDeg: 24 });
     expect(frame.targetY).toBeGreaterThan(1.4);
     expect(frame.targetY).toBeLessThan(1.5);
-    expect(frame.distance).toBeGreaterThan(4);
-    expect(frame.distance).toBeLessThan(4.5);
+    expect(frame.distance).toBeCloseTo(4.6, 6);
   });
 
-  it('places the camera in front of the actual Head→Nose direction without assuming Blender export axes', () => {
+  it('places the camera in front of the supplied facial direction without assuming Blender export axes', () => {
     const alongZ = homeMatthiasCameraPose({
       headX: 0,
       headZ: 0.1,
       noseX: 0,
       noseZ: -0.3,
+      faceSource: 'head-eye-midpoint-vector',
       minY: 0,
       maxY: 2.35,
       centerX: 0.2,
       centerZ: 0.4,
       fovDeg: 24,
     });
-    expect(alongZ.source).toBe('head-nose-vector');
+    expect(alongZ.source).toBe('head-eye-midpoint-vector');
     expect(alongZ.faceX).toBeCloseTo(0, 6);
     expect(alongZ.faceZ).toBeCloseTo(-1, 6);
     expect(alongZ.cameraX).toBeCloseTo(0.2, 6);
     expect(alongZ.cameraZ).toBeLessThan(alongZ.targetZ);
+    expect(alongZ.distance).toBeCloseTo(4.6, 6);
 
     const alongX = homeMatthiasCameraPose({
       headX: -0.1,
