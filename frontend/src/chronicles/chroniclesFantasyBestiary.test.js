@@ -31,6 +31,16 @@ describe('Chronicles fantasy bestiary contract', () => {
     ]);
   });
 
+  it('keeps visual identity data-driven instead of inferring chess-piece silhouettes', () => {
+    const map = chroniclesMapById('menagerie-of-ash');
+    const byId = Object.fromEntries(map.enemies.map((enemy) => [enemy.id, enemy]));
+
+    expect(byId['ash-goblin']).toMatchObject({ visualType: 'ash-goblin', visualScale: 0.9, visualMotion: 'grounded' });
+    expect(byId['crypt-spider']).toMatchObject({ visualType: 'crypt-spider', visualScale: 0.82, visualMotion: 'skitter' });
+    expect(byId['ember-wisp']).toMatchObject({ visualType: 'ember-wisp', visualScale: 0.78, visualMotion: 'hover' });
+    expect(byId['bone-hound']).toMatchObject({ visualType: 'bone-hound', visualScale: 0.92, visualMotion: 'grounded' });
+  });
+
   it('mixes pursuit, authored patrol, roaming and ranged hold in one encounter', () => {
     const map = chroniclesMapById('menagerie-of-ash');
     const byId = Object.fromEntries(map.enemies.map((enemy) => [enemy.id, enemy]));
