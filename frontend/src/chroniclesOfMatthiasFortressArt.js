@@ -163,18 +163,16 @@ export function installChroniclesTacticsFortressAccents(
     );
   });
 
-  const primaryCloth = CHRONICLES_TACTICS_FORTRESS_STYLE.primaryCloth;
-  const secondaryCloth = CHRONICLES_TACTICS_FORTRESS_STYLE.secondaryCloth;
   buildBanner(accents, {
     x: -4.08,
-    clothColor: primaryCloth,
+    clothColor: CHRONICLES_TACTICS_FORTRESS_STYLE.primaryCloth,
     index: 0,
     brass,
     coarsePointer,
   });
   buildBanner(accents, {
     x: 4.08,
-    clothColor: secondaryCloth,
+    clothColor: CHRONICLES_TACTICS_FORTRESS_STYLE.secondaryCloth,
     index: 1,
     brass,
     coarsePointer,
@@ -199,4 +197,33 @@ export function installChroniclesTacticsFortressAccents(
 
   shrine.add(accents);
   return accents;
+}
+
+export function installChroniclesTacticsFortressBackdrop(scene, { coarsePointer = false } = {}) {
+  if (!scene?.add) return null;
+  const existing = scene.getObjectByName?.('chronicles-fortress-backdrop');
+  if (existing) return existing;
+
+  const backdrop = new THREE.Group();
+  backdrop.name = 'chronicles-fortress-backdrop';
+  backdrop.position.set(0, 0, -8.35);
+
+  const wall = ownedMaterial({ color: 0x413b35, roughness: 0.96, metalness: 0.01 });
+  const trim = ownedMaterial({ color: 0x201b17, roughness: 0.96, metalness: 0.02 });
+  const brass = ownedMaterial({
+    color: CHRONICLES_TACTICS_FORTRESS_STYLE.heraldry,
+    roughness: 0.44,
+    metalness: 0.62,
+    emissive: 0x160b03,
+    emissiveIntensity: 0.18,
+  });
+
+  installChroniclesTacticsFortressAccents(backdrop, {
+    wall,
+    trim,
+    brass,
+    coarsePointer,
+  });
+  scene.add(backdrop);
+  return backdrop;
 }
