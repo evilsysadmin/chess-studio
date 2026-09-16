@@ -244,10 +244,24 @@ const MAPS = Object.freeze({
 });
 
 const MAP_IDS = new Set(Object.keys(MAPS));
+const RUNTIME_MAPS = new Map();
 Object.values(MAPS).forEach((map) => assertKnownTransitions(map, MAP_IDS));
 
+export function chroniclesInstallRuntimeMapDefinition(source) {
+  if (!MAP_IDS.has(source?.id)) {
+    throw new Error(`Chronicles runtime map ${source?.id || '<missing>'} has no bundled fallback`);
+  }
+  const map = chroniclesValidateMapDefinition(source, MAP_IDS);
+  RUNTIME_MAPS.set(map.id, map);
+  return map;
+}
+
+export function chroniclesClearRuntimeMapDefinitions() {
+  RUNTIME_MAPS.clear();
+}
+
 export function chroniclesMapById(mapId = DEFAULT_CHRONICLES_MAP_ID) {
-  return MAPS[mapId] || MAPS[DEFAULT_CHRONICLES_MAP_ID];
+  return RUNTIME_MAPS.get(mapId) || MAPS[mapId] || RUNTIME_MAPS.get(DEFAULT_CHRONICLES_MAP_ID) || MAPS[DEFAULT_CHRONICLES_MAP_ID];
 }
 
 export function chroniclesMapForState(state) {
