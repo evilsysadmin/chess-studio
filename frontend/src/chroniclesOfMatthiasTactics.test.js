@@ -192,7 +192,7 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
     expect(afterVolley.message).toMatch(/Faust desata salva de virotes/i);
   });
 
-  it('resolves class damage first and leaves retaliation to the creature phase', () => {
+  it('resolves class damage first and leaves creature action to the enemy phase', () => {
     const state = tacticsState();
     const afterAttack = chroniclesTacticsAttack(state, 'rook', 'corrupted-pawn');
     expect(afterAttack.enemyHp).toBe(4);
@@ -202,7 +202,11 @@ describe('Chronicles of Matthias Tactics · player turns', () => {
     const afterEnemy = chroniclesTacticsFinishTurn(afterAttack);
     expect(afterEnemy.round).toBe(2);
     expect(afterEnemy.turnPhase).toBe('party');
-    expect(afterEnemy.enemyPositions['corrupted-pawn']).toEqual({ x: 2, y: 5 });
+    expect(afterEnemy.party.map((member) => member.hp)).toEqual(state.party.map((member) => member.hp));
+    expect(afterEnemy.enemyTurnEvents).toContainEqual(expect.objectContaining({
+      type: 'move',
+      enemyId: 'corrupted-pawn',
+    }));
     expect(afterEnemy.message).toMatch(/Hildegard usa embestida de torre/i);
   });
 
