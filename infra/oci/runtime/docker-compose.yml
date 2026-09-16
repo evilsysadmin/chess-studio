@@ -11,8 +11,9 @@ services:
     environment:
       GIT_COMMIT_SHA: ${GIT_COMMIT_SHA:?GIT_COMMIT_SHA is required}
       PORT: "4000"
-      # Staging must remain browser-reachable even if a migrated runtime env
-      # accidentally carries production-only CORS. Production can override it.
+      # Staging owns its browser origin at deploy time. The deploy wrapper
+      # exports CHESS_STUDIO_CORS_ORIGINS explicitly so a stale host env cannot
+      # silently replace staging CORS with production-only configuration.
       CORS_ORIGINS: "${CHESS_STUDIO_CORS_ORIGINS:-https://staging.chess-studio.shadowops.dpdns.org}"
     ports:
       - "127.0.0.1:${CHESS_STUDIO_BACKEND_PORT:-4000}:4000"
