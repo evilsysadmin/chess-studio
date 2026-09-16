@@ -33,6 +33,7 @@ export * from './pawnSlugPremiumEnemyRaster.js';
 export * from './pawnSlugMatthiasRunPolish.js';
 export * from './pawnSlugEnemyReadabilityContract.js';
 export * from './pawnSlugMatthiasIntegratedSprites.js';
+export { R2_ASSET_BASE_URL, r2AssetEntry, r2AssetUrl } from './r2Assets.js';
 export {
   PAWN_SLUG_ENEMY_RUN_META,
   animateSlugEnemySprite,
@@ -105,8 +106,8 @@ export function animatePanzerRookSprite(sprite, time = 0, state = {}) {
   if (!sprite) return;
 
   const hurt = Boolean(state.hurt);
-  if (hurt && !sprite.userData.pawnSlugBossWasHurt) playPawnSlugEnemyImpactSfx('boss');
-  sprite.userData.pawnSlugBossWasHurt = hurt;
+  if (hurt && !sprite.userData.pawnSlugWasHurt) playPawnSlugEnemyImpactSfx('boss');
+  sprite.userData.pawnSlugWasHurt = hurt;
 
   const safeTime = Number(time) || 0;
   if (!Number.isFinite(sprite.userData.panzerRookEntryStartedAt)) {
