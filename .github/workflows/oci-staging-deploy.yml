@@ -7,7 +7,11 @@ on:
       - 'infra/oci/staging/**'
       - 'infra/oci/bootstrap/**'
       - 'infra/oci/Makefile'
-      - 'scripts/oci_*'
+      - 'scripts/oci_auth_contract.py'
+      - 'scripts/oci_bootstrap_recover.py'
+      - 'scripts/oci_bootstrap_state.py'
+      - 'scripts/oci_reserved_egress.py'
+      - 'scripts/oci_staging_lifecycle.sh'
       - '.github/workflows/oci-staging-deploy.yml'
 
 permissions:
