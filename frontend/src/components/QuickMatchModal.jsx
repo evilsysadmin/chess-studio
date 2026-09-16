@@ -155,7 +155,7 @@ export default function QuickMatchModal({
           disabled={loading}
           onClick={() => onStart({ boardRenderer: selectedRenderer })}
         >
-          {loading ? 'Creando partida…' : 'Empezar contra Matthias'}
+          {loading ? 'Creando partida…' : 'Empezar partida'}
         </button>
 
         <details className="friendly-disclosure quick-match-settings">
