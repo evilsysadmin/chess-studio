@@ -7,7 +7,19 @@ import './HomeMatthias3D.css';
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/matthias-home-canonical.glb`;
 const CANONICAL_FALLBACK_URL = `${import.meta.env.BASE_URL}matthias-home-canonical.b64`;
-const CANONICAL_CAMERA_CONTRACT = 'canonical-glb-minus-z';
+const FRONT_GEOMETRY_NAMES = Object.freeze([
+  'Eye.L',
+  'Eye.R',
+  'Brow.L',
+  'Brow.R',
+  'Mouth.L',
+  'Mouth.R',
+  'Classic cap badge',
+  'Classic cap badge inset',
+  'Classic chest cross brass',
+  'Classic chest cross inset',
+]);
+const FRONT_GEOMETRY_SET = new Set(FRONT_GEOMETRY_NAMES);
 const CLIP_BY_PROFILE = Object.freeze({
   idle: 'Idle',
   speak: 'Speak',
@@ -123,9 +135,52 @@ export function homeMatthiasCameraPose({
   };
 }
 
+export function homeMatthiasFrontDirectionFromPoints({ centerX = 0, centerZ = 0, points = [] } = {}) {
+  const safeCenterX = Number.isFinite(Number(centerX)) ? Number(centerX) : 0;
+  const safeCenterZ = Number.isFinite(Number(centerZ)) ? Number(centerZ) : 0;
+  const valid = (Array.isArray(points) ? points : [])
+    .map((point) => ({ x: Number(point?.x), z: Number(point?.z) }))
+    .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.z));
+  if (valid.length < 2) return null;
+
+  const anchorX = valid.reduce((sum, point) => sum + point.x, 0) / valid.length;
+  const anchorZ = valid.reduce((sum, point) => sum + point.z, 0) / valid.length;
+  const dx = anchorX - safeCenterX;
+  const dz = anchorZ - safeCenterZ;
+  const length = Math.hypot(dx, dz);
+  if (!Number.isFinite(length) || length < 0.02) return null;
+
+  return {
+    anchorX,
+    anchorZ,
+    faceX: dx / length,
+    faceZ: dz / length,
+    count: valid.length,
+  };
+}
+
 export function homeMatthiasCanonicalFallbackDataUrl(payload = '') {
   const normalized = String(payload || '').trim();
   return normalized.startsWith('UklG') ? `data:image/webp;base64,${normalized}` : '';
+}
+
+function visibleGeometryCenter(node) {
+  if (!node) return null;
+  const bounds = new THREE.Box3().setFromObject(node);
+  if (bounds.isEmpty()) return null;
+  return bounds.getCenter(new THREE.Vector3());
+}
+
+function deriveVisibleFrontGeometry(model, center) {
+  const points = FRONT_GEOMETRY_NAMES
+    .map((name) => visibleGeometryCenter(model.getObjectByName(name)))
+    .filter(Boolean)
+    .map((point) => ({ x: point.x, z: point.z }));
+  return homeMatthiasFrontDirectionFromPoints({
+    centerX: center.x,
+    centerZ: center.z,
+    points,
+  });
 }
 
 function placePortraitLights({ key, fill, rim }, pose) {
@@ -380,17 +435,24 @@ export default function HomeMatthias3D({
 
         const bounds = new THREE.Box3().setFromObject(model);
         const center = bounds.getCenter(new THREE.Vector3());
+        const visibleFront = deriveVisibleFrontGeometry(model, center);
 
-        // The deployed canonical GLB proves its facial meshes are on -Z in
-        // Three.js. Keep this explicit: trying to infer the front from exported
-        // empties/bones repeatedly selected the back after Blender's axis and
-        // armature conversion.
+        // Do not guess Blender/glTF axes. Use the actual rendered geometry of
+        // the face, cap badge and chest cross. If those canonical meshes cannot
+        // establish a front, prefer the approved static render to a faceless GLB.
+        if (!visibleFront) {
+          disposeModel(model);
+          model = null;
+          setModelState('fallback');
+          return;
+        }
+
         const cameraPose = homeMatthiasCameraPose({
-          headX: 0,
-          headZ: 0,
-          noseX: 0,
-          noseZ: -1,
-          faceSource: CANONICAL_CAMERA_CONTRACT,
+          headX: center.x,
+          headZ: center.z,
+          noseX: visibleFront.anchorX,
+          noseZ: visibleFront.anchorZ,
+          faceSource: 'visible-front-geometry',
           minY: bounds.min.y,
           maxY: bounds.max.y,
           centerX: center.x,
@@ -401,19 +463,26 @@ export default function HomeMatthias3D({
         camera.lookAt(cameraPose.targetX, cameraPose.targetY, cameraPose.targetZ);
         camera.updateProjectionMatrix();
         placePortraitLights({ key, fill, rim }, cameraPose);
-        // Keep the legacy facing label until the broader browser suite migrates;
-        // the explicit contract below is the authoritative orientation signal.
-        canvas.dataset.matthiasCameraFacing = 'head-nose-vector';
+        canvas.dataset.matthiasCameraFacing = cameraPose.source;
         canvas.dataset.matthiasCameraContract = cameraPose.source;
         canvas.dataset.matthiasCameraFaceX = cameraPose.faceX.toFixed(4);
         canvas.dataset.matthiasCameraFaceZ = cameraPose.faceZ.toFixed(4);
         canvas.dataset.matthiasCameraDistance = cameraPose.distance.toFixed(3);
+        canvas.dataset.matthiasFrontGeometryCount = String(visibleFront.count);
 
         model.traverse((node) => {
           if (node.isMesh) {
-            node.frustumCulled = true;
             node.castShadow = false;
             node.receiveShadow = false;
+            node.frustumCulled = !FRONT_GEOMETRY_SET.has(node.name);
+            if (FRONT_GEOMETRY_SET.has(node.name)) {
+              const materials = Array.isArray(node.material) ? node.material : [node.material];
+              for (const material of materials) {
+                if (!material) continue;
+                material.side = THREE.DoubleSide;
+                material.needsUpdate = true;
+              }
+            }
           }
         });
         threeScene.add(model);
