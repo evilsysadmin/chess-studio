@@ -416,12 +416,12 @@ jobs:
             while read -r workflow; do
               run_id=''
               for _ in {1..60}; do
-                run_id="$(gh run list --workflow "$workflow" --commit "$PR_HEAD_SHA" --event pull_request --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+                run_id="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$workflow" --commit "$PR_HEAD_SHA" --event pull_request --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
                 [[ -n "$run_id" ]] && break
                 sleep 5
               done
               [[ -n "$run_id" ]] || { echo "::error::No apareció $workflow para ${PR_HEAD_SHA:0:12}"; exit 1; }
-              gh run watch "$run_id" --exit-status --interval 15
+              gh run watch --repo "$GITHUB_REPOSITORY" "$run_id" --exit-status --interval 15
             done < <(jq -r '.[].workflow' <<<"$BLENDER_WORKFLOWS")
           fi
           if [[ "$RUN_E2E" != 'true' && "$RUN_SPECIALIZED" != 'true' && "$RUN_BLENDER" != 'true' ]]; then
