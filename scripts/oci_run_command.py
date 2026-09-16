@@ -246,6 +246,15 @@ def reboot_agent(oci: Any, config: dict[str, str], *, timeout: int = 600) -> Non
     raise SystemExit("OCI agent recovery timed out waiting for refreshed RUNNING plugin")
 
 
+def build_command_content(models: Any, command: str) -> Any:
+    """Use Oracle's default Linux Bash runner for inline text scripts."""
+    assert_nonsecret_command(command)
+    return models.InstanceAgentCommandContent(
+        source=models.InstanceAgentCommandSourceViaTextDetails(text=command),
+        output=models.InstanceAgentCommandOutputViaTextDetails(output_type="TEXT"),
+    )
+
+
 def execute(oci: Any, config: dict[str, str], command: str, *, display_name: str, timeout: int = 180) -> None:
     assert_nonsecret_command(command)
     compartment_id, instance_id = resolve_staging(oci, config)
@@ -255,11 +264,7 @@ def execute(oci: Any, config: dict[str, str], command: str, *, display_name: str
         compartment_id=compartment_id,
         execution_time_out_in_seconds=timeout,
         target=models.InstanceAgentCommandTarget(instance_id=instance_id),
-        content=models.InstanceAgentCommandContent(
-            source=models.InstanceAgentCommandSourceViaTextDetails(text=command),
-            output=models.InstanceAgentCommandOutputViaTextDetails(output_type="TEXT"),
-            command_string="/bin/bash",
-        ),
+        content=build_command_content(models, command),
         display_name=display_name,
     )
     created = client.create_instance_agent_command(
@@ -326,6 +331,20 @@ def self_test() -> None:
         pass
     else:
         raise AssertionError("secret-bearing command must be rejected")
+
+    class Capture:
+        def __init__(self, **kwargs: Any) -> None:
+            self.kwargs = kwargs
+
+    class FakeModels:
+        InstanceAgentCommandContent = Capture
+        InstanceAgentCommandSourceViaTextDetails = Capture
+        InstanceAgentCommandOutputViaTextDetails = Capture
+
+    command_content = build_command_content(FakeModels, smoke)
+    assert "command_string" not in command_content.kwargs
+    assert command_content.kwargs["source"].kwargs["text"] == smoke
+    assert command_content.kwargs["output"].kwargs["output_type"] == "TEXT"
     print("OCI Run Command self-test: OK")
 
 
