@@ -52,7 +52,19 @@ def setup_scene():
     bpy.ops.object.camera_add(location=(center.x, -42.0, center.z))
     cam = bpy.context.object
     cam.data.type = "ORTHO"
-    cam.data.ortho_scale = COLS * CELL
+
+    # Blender's orthographic scale is the *vertical* camera span. The previous
+    # renderer used COLS * CELL as though ortho_scale represented width, which
+    # made the 16x5 atlas frame roughly 3.2x too tall and shrank Matthias before
+    # the later downsample. Author exactly five cell-heights vertically; the
+    # 16:5 render aspect supplies the matching sixteen-cell horizontal span.
+    expected_aspect = COLS / ROWS
+    render_aspect = scene.render.resolution_x / scene.render.resolution_y
+    if not math.isclose(render_aspect, expected_aspect, rel_tol=0.0, abs_tol=1e-9):
+        raise RuntimeError(
+            f"Pawn Slug atlas aspect drift: render={render_aspect:.9f} expected={expected_aspect:.9f}"
+        )
+    cam.data.ortho_scale = ROWS * CELL
     cam.rotation_euler = (center - cam.location).to_track_quat("-Z", "Y").to_euler()
     scene.camera = cam
 
