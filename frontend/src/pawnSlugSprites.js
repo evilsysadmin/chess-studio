@@ -33,6 +33,7 @@ export * from './pawnSlugPremiumEnemyRaster.js';
 export * from './pawnSlugMatthiasRunPolish.js';
 export * from './pawnSlugEnemyReadabilityContract.js';
 export * from './pawnSlugMatthiasIntegratedSprites.js';
+export { R2_ASSET_BASE_URL, r2AssetEntry, r2AssetUrl } from './r2Assets.js';
 export {
   PAWN_SLUG_ENEMY_RUN_META,
   animateSlugEnemySprite,
