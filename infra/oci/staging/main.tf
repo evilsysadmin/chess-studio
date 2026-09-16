@@ -32,6 +32,13 @@ locals {
   }, var.freeform_tags)
 }
 
+resource "terraform_data" "bootstrap_contract" {
+  # Deliberately independent of repo_ref. Application releases are deployed by
+  # service control; only a change to the machine bootstrap contract should
+  # recycle the disposable staging A1.
+  triggers_replace = filesha256("${path.module}/cloud-init.yaml.tftpl")
+}
+
 resource "oci_core_vcn" "backend" {
   compartment_id = var.compartment_ocid
   cidr_blocks    = [var.vcn_cidr]
@@ -152,10 +159,11 @@ resource "oci_core_instance" "backend" {
   )
 
   lifecycle {
-    # Application/bootstrap release is not infrastructure desired state. The
-    # runtime deployment path owns release changes; unrelated Terraform applies
-    # must never replace a healthy A1 only because GITHUB_SHA changed.
-    ignore_changes = [metadata["user_data"]]
+    # Application release is not infrastructure desired state: repo_ref changes
+    # stay ignored. A bootstrap-template change is different: it changes the
+    # host contract, so the disposable A1 is intentionally replaced once.
+    ignore_changes       = [metadata["user_data"]]
+    replace_triggered_by = [terraform_data.bootstrap_contract]
 
     precondition {
       condition     = local.selected_availability_domain != ""

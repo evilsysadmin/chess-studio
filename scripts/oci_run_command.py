@@ -30,6 +30,7 @@ SECRET_MARKERS = (
     "INVITE_CODE=",
     "PRIVATE KEY",
 )
+DEPLOY_WRAPPER = "/usr/local/sbin/chess-studio-deploy"
 
 
 def required_env(name: str) -> str:
@@ -77,27 +78,9 @@ printf '%s\n' 'OCI_RUN_COMMAND_OK'
 def deploy_command(repo_ref: str) -> str:
     sha = validate_sha(repo_ref)
     command = f"""set -euo pipefail
-repo=/opt/chess-studio/repo
-test -d \"$repo/.git\"
-cd \"$repo\"
-git fetch --no-tags --depth=1 origin '{sha}'
-git checkout --detach '{sha}'
-docker build -t chess-studio-backend:oci backend-python
-if [[ ! -s /etc/chess-studio/backend.env ]]; then
-  echo 'CHESS_STUDIO_RUNTIME_ENV_MISSING' >&2
-  exit 42
-fi
-systemctl daemon-reload
-systemctl restart chess-studio-backend.service
-for attempt in {{1..60}}; do
-  if curl --fail --silent --show-error --max-time 5 http://127.0.0.1:4000/api/ready >/dev/null; then
-    printf '%s\n' 'CHESS_STUDIO_DEPLOY_OK repo_ref={sha}'
-    exit 0
-  fi
-  sleep 2
-done
-echo 'CHESS_STUDIO_READY_TIMEOUT' >&2
-exit 43
+
+test -x '{DEPLOY_WRAPPER}' || {{ echo 'CHESS_STUDIO_DEPLOY_WRAPPER_MISSING' >&2; exit 44; }}
+sudo --non-interactive '{DEPLOY_WRAPPER}' '{sha}'
 """
     assert_nonsecret_command(command)
     return command
@@ -330,8 +313,11 @@ def self_test() -> None:
     smoke = smoke_command()
     deploy = deploy_command(sample)
     assert "OCI_RUN_COMMAND_OK" in smoke
+    assert DEPLOY_WRAPPER in deploy
+    assert "sudo --non-interactive" in deploy
     assert sample in deploy
-    assert "/api/ready" in deploy
+    assert "docker build" not in deploy
+    assert "systemctl restart" not in deploy
     for payload in (smoke, deploy):
         assert_nonsecret_command(payload)
     try:
