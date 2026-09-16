@@ -16,31 +16,148 @@ write_files:
     content: |
       #!/usr/bin/env bash
       set -euo pipefail
-      if [ "$#" -ne 1 ] || ! printf '%s' "$1" | grep -Eq '^[0-9a-f]{40}$'; then
+
+      if [[ $# -ne 1 || ! "$1" =~ ^[0-9a-f]{40}$ ]]; then
         echo 'immutable 40-character repo SHA required' >&2
         exit 64
       fi
+
       sha="$1"
       repo=/opt/chess-studio/repo
-      test -d "$repo/.git"
+      env_file=/etc/chess-studio/backend.env
+      state_dir=/var/lib/chess-studio
+      state_file="$state_dir/deployed.sha"
+      project=chess-studio-staging
+      port=4000
+      remote_image="ghcr.io/evilsysadmin/chess-studio-backend:oci-$sha"
+      local_image="chess-studio-backend:oci-$sha"
+
+      require() {
+        command -v "$1" >/dev/null 2>&1 || { echo "missing required command: $1" >&2; exit 69; }
+      }
+      require git
+      require docker
+      require curl
+      require python3
+      docker compose version >/dev/null 2>&1 || { echo 'docker compose v2 is required' >&2; exit 69; }
+      [[ -d "$repo/.git" ]] || { echo "missing repo checkout: $repo" >&2; exit 66; }
+      [[ -s "$env_file" ]] || { echo 'CHESS_STUDIO_RUNTIME_ENV_MISSING' >&2; exit 42; }
+
+      install -d -m 0755 "$state_dir"
+      previous_sha=''
+      if [[ -s "$state_file" ]]; then
+        previous_sha="$(tr -d '\r\n' < "$state_file")"
+        [[ "$previous_sha" =~ ^[0-9a-f]{40}$ ]] || previous_sha=''
+      fi
+
+      compose() {
+        local target_sha="$1"
+        shift
+        GIT_COMMIT_SHA="$target_sha" \
+        CHESS_STUDIO_ENV_FILE="$env_file" \
+        CHESS_STUDIO_BACKEND_PORT="$port" \
+        docker compose -p "$project" -f "$repo/infra/oci/runtime/docker-compose.yml" "$@"
+      }
+
+      attest() {
+        local expected="$1" ready release
+        ready="$(mktemp)"
+        release="$(mktemp)"
+        if ! curl --fail --silent --show-error --max-time 8 "http://127.0.0.1:$port/api/ready" >"$ready"; then
+          rm -f "$ready" "$release"
+          return 1
+        fi
+        if ! curl --fail --silent --show-error --max-time 8 "http://127.0.0.1:$port/api/release" >"$release"; then
+          rm -f "$ready" "$release"
+          return 1
+        fi
+        if python3 - "$ready" "$release" "$expected" <<'PY'
+      import json, pathlib, sys
+      ready = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+      release = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
+      expected = sys.argv[3].lower()
+      if ready.get('ok') is not True or ready.get('storage') != 'mongo':
+          raise SystemExit(1)
+      if str(release.get('build') or '').lower() != expected:
+          raise SystemExit(1)
+      PY
+        then
+          rc=0
+        else
+          rc=$?
+        fi
+        rm -f "$ready" "$release"
+        return "$rc"
+      }
+
+      rollback() {
+        local failed_sha="$1"
+        if [[ -z "$previous_sha" || "$previous_sha" == "$failed_sha" ]]; then
+          echo 'no previous deployment available for rollback' >&2
+          return 1
+        fi
+        docker image inspect "chess-studio-backend:oci-$previous_sha" >/dev/null 2>&1 || {
+          echo "rollback image missing for $previous_sha" >&2
+          return 1
+        }
+        git -C "$repo" checkout --detach "$previous_sha" >/dev/null 2>&1 || true
+        compose "$previous_sha" up -d --no-build --force-recreate backend
+        for _ in $(seq 1 45); do
+          if attest "$previous_sha"; then
+            echo "CHESS_STUDIO_ROLLBACK_OK repo_ref=$previous_sha"
+            return 0
+          fi
+          sleep 2
+        done
+        echo "rollback failed health/build attestation for $previous_sha" >&2
+        return 1
+      }
+
       cd "$repo"
       git fetch --no-tags --depth=1 origin "$sha"
       git checkout --detach "$sha"
-      docker build -t chess-studio-backend:oci backend-python
-      if [ ! -s /etc/chess-studio/backend.env ]; then
-        echo 'CHESS_STUDIO_RUNTIME_ENV_MISSING' >&2
-        exit 42
+      [[ -f infra/oci/runtime/docker-compose.yml ]] || { echo 'missing OCI compose runtime' >&2; exit 66; }
+      [[ -f infra/oci/runtime/alloy.alloy ]] || { echo 'missing OCI Alloy config' >&2; exit 66; }
+
+      echo "Pulling immutable backend image $remote_image"
+      docker pull "$remote_image"
+      docker tag "$remote_image" "$local_image"
+      compose "$sha" pull alloy
+      compose "$sha" run --rm --no-deps alloy validate /etc/alloy/config.alloy
+
+      if ! compose "$sha" up -d --no-build --force-recreate backend; then
+        rollback "$sha" || true
+        exit 1
       fi
-      systemctl daemon-reload
-      systemctl restart chess-studio-backend.service
-      for attempt in $(seq 1 60); do
-        if curl --fail --silent --show-error --max-time 5 http://127.0.0.1:4000/api/ready >/dev/null; then
-          printf '%s\n' "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha"
-          exit 0
+
+      for _ in $(seq 1 60); do
+        if attest "$sha"; then
+          tmp="$(mktemp "$state_dir/deployed.sha.XXXXXX")"
+          printf '%s\n' "$sha" >"$tmp"
+          chmod 0644 "$tmp"
+          mv -f "$tmp" "$state_file"
+
+          if ! compose "$sha" up -d --no-build --force-recreate alloy; then
+            echo 'OCI Alloy failed to start; healthy backend left serving for diagnosis' >&2
+            exit 45
+          fi
+          for _alloy_attempt in $(seq 1 20); do
+            if compose "$sha" ps --status running --services 2>/dev/null | grep -Fxq alloy; then
+              echo "CHESS_STUDIO_ALLOY_OK repo_ref=$sha"
+              echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo 'OCI Alloy did not remain running; healthy backend left serving for diagnosis' >&2
+          compose "$sha" logs --no-color --tail=80 alloy >&2 || true
+          exit 45
         fi
         sleep 2
       done
-      echo 'CHESS_STUDIO_READY_TIMEOUT' >&2
+
+      echo "new deployment failed readiness/build attestation: $sha" >&2
+      rollback "$sha" || true
       exit 43
 
   - path: /usr/local/sbin/chess-studio-install-runtime
@@ -74,12 +191,13 @@ write_files:
       Cmnd_Alias CHESS_STUDIO_RUNTIME = /usr/local/sbin/chess-studio-install-runtime /tmp/chess-studio-backend.env.*
       ocarun ALL=(root) NOPASSWD: CHESS_STUDIO_DEPLOY, CHESS_STUDIO_RUNTIME
 
+  # Retained as a disabled diagnostic/rollback artifact. Compose owns runtime.
   - path: /etc/systemd/system/chess-studio-backend.service
     owner: root:root
     permissions: '0644'
     content: |
       [Unit]
-      Description=Chess Studio backend container
+      Description=Chess Studio legacy backend container unit (disabled)
       Wants=network-online.target
       After=network-online.target docker.service
       Requires=docker.service
@@ -93,29 +211,23 @@ write_files:
       ExecStart=/usr/bin/docker run --name chess-studio-backend --env-file /etc/chess-studio/backend.env -p 127.0.0.1:4000:4000 chess-studio-backend:oci
       ExecStop=/usr/bin/docker stop -t 20 chess-studio-backend
 
-      [Install]
-      WantedBy=multi-user.target
-
   - path: /etc/chess-studio/README
     owner: root:root
     permissions: '0644'
     content: |
-      Terraform deliberately writes no production secrets.
-      Provision /etc/chess-studio/backend.env out-of-band with mode 0600,
-      configure Cloudflare Tunnel credentials out-of-band, then run:
-
-        systemctl start chess-studio-backend
-
-      FastAPI is bound only to 127.0.0.1:4000 on the host.
+      Terraform deliberately writes no application secrets.
+      The staging deploy publishes runtime config to private Object Storage;
+      the A1 fetches it with an instance principal and installs it through the
+      narrow root-owned runtime wrapper. Backend releases are immutable ARM64
+      images pulled from GHCR and served only on 127.0.0.1:4000.
 
 runcmd:
-  - [ mkdir, -p, /opt/chess-studio, /etc/chess-studio ]
+  - [ mkdir, -p, /opt/chess-studio, /etc/chess-studio, /var/lib/chess-studio ]
   - [ install, -o, root, -g, root, -m, '0440', /etc/chess-studio/ocarun.sudoers, /etc/sudoers.d/101-chess-studio-ocarun ]
   - [ visudo, -cf, /etc/sudoers.d/101-chess-studio-ocarun ]
   - [ systemctl, enable, --now, docker ]
+  - [ bash, -lc, "if ! docker compose version >/dev/null 2>&1; then if apt-cache show docker-compose-v2 >/dev/null 2>&1; then apt-get install -y docker-compose-v2; elif apt-cache show docker-compose-plugin >/dev/null 2>&1; then apt-get install -y docker-compose-plugin; else echo 'no Docker Compose v2 package available' >&2; exit 69; fi; fi" ]
   - [ git, clone, "${repo_url}", /opt/chess-studio/repo ]
   - [ bash, -lc, "cd /opt/chess-studio/repo && git checkout --detach '${repo_ref}'" ]
-  - [ docker, build, -t, chess-studio-backend:oci, /opt/chess-studio/repo/backend-python ]
-  - [ systemctl, daemon-reload ]
-  - [ systemctl, enable, chess-studio-backend.service ]
+  - [ bash, -lc, "systemctl disable --now chess-studio-backend.service >/dev/null 2>&1 || true" ]
   - [ bash, -lc, "printf '%s\n' 'CHESS_STUDIO_BOOTSTRAP_READY repo_ref=${repo_ref}' | tee /opt/chess-studio/BOOTSTRAP_READY /dev/console >/dev/null" ]
