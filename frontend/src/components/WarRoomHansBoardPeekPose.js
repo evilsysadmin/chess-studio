@@ -10,7 +10,7 @@ import {
 } from './WarRoomHansFireCallContract.js';
 import { registerWarRoomHansPostRenderStage } from './WarRoomHansPostRenderPipeline.js';
 
-export const WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION = 'board-peek-pose-v4-safe-board-edge';
+export const WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION = 'board-peek-pose-v5-square-keepout';
 export const HANS_BOARD_PEEK_MAX_APPROACH_DISTANCE = 0.22;
 export const HANS_BOARD_PEEK_MIN_BOARD_CENTER_DISTANCE = 4.85;
 
@@ -42,11 +42,23 @@ export function resolveHansBoardPeekApproachDistance({
   const px = Number(x);
   const pz = Number(z);
   const requested = Math.max(0, Number(maxDistance) || 0);
-  const safeRadius = Math.max(0, Number(minBoardCenterDistance) || 0);
+  const safeHalfExtent = Math.max(0, Number(minBoardCenterDistance) || 0);
   if (!Number.isFinite(px) || !Number.isFinite(pz)) return 0;
 
+  // The board keep-out is a square, not a circle. The old radial check let
+  // diagonal positions walk farther inward because hypot(x, z) can be large
+  // while both axes are already inside the protected board footprint.
+  const dominantAxis = Math.max(Math.abs(px), Math.abs(pz));
+  if (dominantAxis <= safeHalfExtent) return 0;
   const radius = Math.hypot(px, pz);
-  return Math.max(0, Math.min(requested, radius - safeRadius));
+  if (radius <= 1e-9) return 0;
+
+  // Project the current ray from the board centre onto the square boundary.
+  // On cardinal axes this is identical to the old radius-safeDistance math;
+  // only diagonals are tightened so at least one axis stays on/outside the edge.
+  const boundaryScale = safeHalfExtent / dominantAxis;
+  const safeRadiusOnRay = radius * boundaryScale;
+  return Math.max(0, Math.min(requested, radius - safeRadiusOnRay));
 }
 
 function capturePart(part) {
@@ -176,6 +188,7 @@ export function installWarRoomHansBoardPeekPose(root) {
       setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekPose', WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION);
       setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekHands', 'behind-back');
       setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekApproach', 'board-center-safe-edge-v2');
+      setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekKeepOut', 'square-dominant-axis-v1');
       setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekApproachAmount', approach);
       setWarRoomHansRuntimeState(actor, 'warRoomHansBoardPeekApproachDistance', safeApproachDistance);
     },
@@ -185,5 +198,6 @@ export function installWarRoomHansBoardPeekPose(root) {
   driver.userData.warRoomHansBoardPeekPose = WAR_ROOM_HANS_BOARD_PEEK_POSE_VERSION;
   driver.userData.warRoomHansBoardPeekApproachDistance = HANS_BOARD_PEEK_MAX_APPROACH_DISTANCE;
   driver.userData.warRoomHansBoardPeekMinBoardCenterDistance = HANS_BOARD_PEEK_MIN_BOARD_CENTER_DISTANCE;
+  driver.userData.warRoomHansBoardPeekKeepOut = 'square-dominant-axis-v1';
   return 1;
 }
