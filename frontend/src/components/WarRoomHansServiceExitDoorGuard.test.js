@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { installWarRoomHansServiceExitDoorGuard } from './WarRoomHansServiceExitDoorGuard.js';
+import { setWarRoomHansServiceDoorOpen } from './WarRoomHansServiceDoor.js';
 
 function makeScene() {
   const root = new THREE.Scene();
@@ -59,5 +60,56 @@ describe('Hans service exit door guard', () => {
     floor.onAfterRender();
     expect(refs.group.userData.warRoomHansDoorOpen).toBeUndefined();
     expect(refs.pivot.rotation.y).toBe(0);
+  });
+
+  it('fully closes its own latch after a finished routine was reopened by the guard', () => {
+    const { root, floor, hans, refs } = makeScene();
+    const now = vi.spyOn(globalThis.performance, 'now');
+    try {
+      now.mockReturnValue(1000);
+      expect(installWarRoomHansServiceExitDoorGuard(root, refs)).toBe(1);
+      root.updateMatrixWorld(true);
+      floor.onAfterRender();
+      const guardOpen = refs.group.userData.warRoomHansDoorOpen;
+      expect(guardOpen).toBeGreaterThan(0);
+
+      // Producer finishes in onBeforeRender and closes the door. The physical
+      // guard is allowed to keep it open briefly so the leaf cannot clip Hans.
+      hans.userData.warRoomHansRoute = '';
+      setWarRoomHansServiceDoorOpen(refs, 0);
+      now.mockReturnValue(1100);
+      floor.onAfterRender();
+      expect(refs.group.userData.warRoomHansDoorOpen).toBeCloseTo(guardOpen, 6);
+
+      // Once hold + close have elapsed, the guard must release its own write all
+      // the way back to zero instead of abandoning the last fractional angle.
+      now.mockReturnValue(2300);
+      floor.onAfterRender();
+      expect(refs.group.userData.warRoomHansDoorOpen).toBe(0);
+      expect(refs.pivot.rotation.y).toBe(0);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
+  it('treats performance.now() === 0 as a valid latch timestamp', () => {
+    const { root, floor, hans, refs } = makeScene();
+    const now = vi.spyOn(globalThis.performance, 'now');
+    try {
+      now.mockReturnValue(0);
+      expect(installWarRoomHansServiceExitDoorGuard(root, refs)).toBe(1);
+      root.updateMatrixWorld(true);
+      floor.onAfterRender();
+      const guardOpen = refs.group.userData.warRoomHansDoorOpen;
+      expect(guardOpen).toBeGreaterThan(0);
+
+      hans.userData.warRoomHansRoute = '';
+      setWarRoomHansServiceDoorOpen(refs, 0);
+      now.mockReturnValue(100);
+      floor.onAfterRender();
+      expect(refs.group.userData.warRoomHansDoorOpen).toBeCloseTo(guardOpen, 6);
+    } finally {
+      now.mockRestore();
+    }
   });
 });
