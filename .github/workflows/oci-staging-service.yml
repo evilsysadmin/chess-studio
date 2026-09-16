@@ -8,6 +8,7 @@ on:
       - 'infra/oci/ops/bringup.request'
       - 'infra/oci/ops/backend-diagnose.request'
       - 'infra/oci/ops/mongo-target-diagnose.request'
+      - 'infra/oci/ops/mongo-network-diagnose.request'
       - '.github/workflows/oci-staging-service.yml'
   workflow_run:
     workflows:
@@ -21,7 +22,7 @@ on:
       operation:
         description: Service operation
         type: choice
-        options: [diagnose, backend-diagnose, mongo-target-diagnose, smoke, reboot-agent, deploy, runtime-sync]
+        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, smoke, reboot-agent, deploy, runtime-sync]
         default: smoke
         required: true
       repo_ref:
@@ -97,6 +98,12 @@ jobs:
             echo 'mongo_target_diagnose=false' >> "$GITHUB_OUTPUT"
           fi
 
+          if grep -Fxq 'infra/oci/ops/mongo-network-diagnose.request' <<<"$files"; then
+            echo 'mongo_network_diagnose=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'mongo_network_diagnose=false' >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
@@ -108,6 +115,7 @@ jobs:
           python3 -S scripts/oci_runtime_config.py --self-test
           python3 -S scripts/oci_backend_diagnose.py --self-test
           python3 -S scripts/render_mongo_target_diagnose.py --self-test
+          python3 -S scripts/oci_mongo_network_diagnose.py --self-test
 
       - name: Diagnose Render staging Mongo target
         if: >-
@@ -147,13 +155,20 @@ jobs:
           (github.event_name == 'workflow_dispatch' && inputs.operation == 'backend-diagnose')
         run: python3 scripts/oci_backend_diagnose.py
 
+      - name: Diagnose OCI Mongo network
+        if: >-
+          (github.event_name == 'push' && steps.ops.outputs.mongo_network_diagnose == 'true') ||
+          (github.event_name == 'workflow_dispatch' && inputs.operation == 'mongo-network-diagnose')
+        run: python3 scripts/oci_mongo_network_diagnose.py
+
       - name: Smoke OCI agent transport
         id: smoke
         if: >-
           github.event_name == 'workflow_run' ||
           (github.event_name == 'push' &&
             steps.ops.outputs.backend_diagnose != 'true' &&
-            steps.ops.outputs.mongo_target_diagnose != 'true') ||
+            steps.ops.outputs.mongo_target_diagnose != 'true' &&
+            steps.ops.outputs.mongo_network_diagnose != 'true') ||
           (github.event_name == 'workflow_dispatch' &&
             (inputs.operation == 'smoke' || inputs.operation == 'reboot-agent'))
         continue-on-error: ${{ github.event_name == 'push' && steps.ops.outputs.bringup == 'true' }}
