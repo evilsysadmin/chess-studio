@@ -8,6 +8,18 @@ output "public_ip" {
   value       = oci_core_instance.backend.public_ip
 }
 
+output "reserved_public_ips" {
+  description = "Read-only inventory of pre-existing regional reserved public IPv4s in the staging compartment; used to adopt the operator-created egress reservation without creating a duplicate."
+  value = [
+    for ip in data.oci_core_public_ips.reserved.public_ips : {
+      id                 = ip.id
+      ip_address         = ip.ip_address
+      display_name       = ip.display_name
+      assigned_entity_id = ip.assigned_entity_id
+    }
+  ]
+}
+
 output "load_balancer_ip" {
   description = "Public IPv4 of the OCI Always Free 10 Mbps load balancer. DNS cutover is a separate gate."
   value       = oci_load_balancer_load_balancer.backend.ip_address_details[0].ip_address
