@@ -1,0 +1,19 @@
+/* Emergency layout guard for the canonical Experiments room.
+   Keep the room measurable even when all child content is absolutely positioned. */
+.lab-screen .lab-workshop {
+  box-sizing: border-box;
+  width: min(1500px, calc(100vw - 2rem));
+  max-width: none;
+  flex: 0 0 auto;
+}
+
+/* Legacy inline z-index:auto on hub sections must not bury hotspots behind the scrim. */
+.lab-screen .lab-workshop-wing {
+  z-index: 4 !important;
+}
+
+@media (max-width: 820px) {
+  .lab-screen .lab-workshop {
+    width: calc(100vw - 1rem);
+  }
+}
