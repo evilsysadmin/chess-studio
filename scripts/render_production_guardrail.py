@@ -7,13 +7,14 @@ proxy/WAF de Cloudflare. Este guardrail reconcilia ambos controles de forma
 idempotente: ``autoDeploy=no`` y ``renderSubdomainPolicy=disabled``.
 
 Render no expone ``renderSubdomainPolicy`` en el objeto de servicio recuperado,
-así que el cierre del subdominio se verifica por su efecto real: el ``url``
-del servicio debe responder 404. Nunca se imprimen secretos ni variables de
-entorno.
+así que el cierre del subdominio se verifica por su efecto real: el origen
+Render del servicio debe responder 404. Nunca se imprimen secretos ni variables
+de entorno.
 """
 from __future__ import annotations
 
 import os
+import re
 import sys
 import time
 from urllib.parse import urlsplit
@@ -32,11 +33,19 @@ def unwrap_service(payload: object) -> dict:
 def service_origin_ready_url(service: dict) -> str:
     """Return the exact Render-owned readiness URL, failing closed otherwise."""
     raw = str(service.get("url") or "").strip().rstrip("/")
-    parsed = urlsplit(raw)
-    hostname = (parsed.hostname or "").lower()
-    if parsed.scheme != "https" or not hostname.endswith(".onrender.com"):
-        raise ValueError("el servicio de producción no expone un url *.onrender.com verificable")
-    return f"{raw}/api/ready"
+    if raw:
+        parsed = urlsplit(raw)
+        hostname = (parsed.hostname or "").lower()
+        if parsed.scheme == "https" and hostname.endswith(".onrender.com"):
+            return f"{raw}/api/ready"
+
+    # Render's service object guarantees a stable slug even in representations
+    # where `url` is omitted. The default provider hostname is derived from it.
+    slug = str(service.get("slug") or "").strip().lower()
+    if re.fullmatch(r"[a-z0-9][a-z0-9-]{0,126}[a-z0-9]", slug) or re.fullmatch(r"[a-z0-9]", slug):
+        return f"https://{slug}.onrender.com/api/ready"
+
+    raise ValueError("el servicio de producción no expone url/slug Render verificable")
 
 
 def origin_is_locked(origin_ready_url: str) -> bool:
@@ -75,11 +84,15 @@ def self_test() -> None:
     conforming = {
         "id": "srv-test",
         "name": "chess-studio",
+        "slug": "chess-studio",
         "url": "https://chess-studio.onrender.com",
         "autoDeploy": "no",
     }
     assert desired_patch(conforming, origin_locked=True) == {}
     assert service_origin_ready_url(conforming) == "https://chess-studio.onrender.com/api/ready"
+
+    slug_only = {key: value for key, value in conforming.items() if key != "url"}
+    assert service_origin_ready_url(slug_only) == "https://chess-studio.onrender.com/api/ready"
 
     exposed = {**conforming, "autoDeploy": "yes"}
     assert desired_patch(exposed, origin_locked=False) == {
@@ -93,7 +106,7 @@ def self_test() -> None:
     wrapped = {"service": conforming}
     assert unwrap_service(wrapped) == conforming
 
-    invalid = {**conforming, "url": "https://example.com"}
+    invalid = {**conforming, "url": "https://example.com", "slug": "not valid!"}
     try:
         service_origin_ready_url(invalid)
     except ValueError:
@@ -105,14 +118,27 @@ def self_test() -> None:
 
 
 def main() -> None:
-    production = find_production_service()
-    service_id = str(production.get("id") or "").strip()
-    service_name = str(production.get("name") or "").strip()
-    if not service_id or not service_name:
+    # Detection intentionally uses List services because it can identify the
+    # canonical production service without relying on its historical name.
+    # Fetch the selected service by ID afterwards: Retrieve service is the
+    # authoritative detailed representation for runtime settings and origin.
+    selected = find_production_service()
+    service_id = str(selected.get("id") or "").strip()
+    if not service_id:
         raise SystemExit("No se pudo resolver de forma segura el backend de producción")
 
+    production = unwrap_service(api("GET", f"/services/{service_id}"))
+    if str(production.get("id") or "").strip() != service_id:
+        raise SystemExit("Render devolvió un detalle de servicio inconsistente con el ID seleccionado")
+    service_name = str(production.get("name") or selected.get("name") or "").strip()
+    if not service_name:
+        raise SystemExit("El backend de producción no expone nombre verificable")
+
+    # Preserve list-only fields (notably slug on some API representations) while
+    # letting the detailed service object win whenever both expose a field.
+    service_view = {**selected, **production}
     try:
-        origin_ready_url = service_origin_ready_url(production)
+        origin_ready_url = service_origin_ready_url(service_view)
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
 
