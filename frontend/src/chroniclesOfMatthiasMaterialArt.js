@@ -1,0 +1,213 @@
+import * as THREE from 'three';
+
+const ROOT_NAME = 'chronicles-tactics-premium-materials';
+
+export const CHRONICLES_TACTICS_MATERIAL_STYLE = Object.freeze({
+  desktopTextureSize: 128,
+  coarseTextureSize: 64,
+  floorRepeat: 3.1,
+  wallRepeat: 2.2,
+  floorNormalStrength: 0.22,
+  wallNormalStrength: 0.28,
+  minRoughness: 0.68,
+  maxRoughness: 0.96,
+});
+
+function fract(value) {
+  return value - Math.floor(value);
+}
+
+function noise(x, y, seed) {
+  return fract(Math.sin((x + seed * 0.71) * 12.9898 + (y - seed * 1.17) * 78.233) * 43758.5453);
+}
+
+function clampByte(value) {
+  return Math.max(0, Math.min(255, Math.round(value)));
+}
+
+function heightField(size, seed) {
+  const field = new Float32Array(size * size);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const broad = noise(Math.floor(x / 14), Math.floor(y / 14), seed);
+      const medium = noise(Math.floor(x / 4), Math.floor(y / 4), seed + 11);
+      const fine = noise(x, y, seed + 29);
+      const vein = Math.abs(Math.sin(x * 0.105 + y * 0.071 + seed * 0.83));
+      const crack = vein > 0.987 && fine > 0.48 ? -0.28 : 0;
+      field[y * size + x] = broad * 0.34 + medium * 0.26 + fine * 0.12 + crack;
+    }
+  }
+  return field;
+}
+
+function textureFromData(data, size, name, { colorSpace = THREE.NoColorSpace, repeat = 1 } = {}) {
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  texture.name = name;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(repeat, repeat);
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.generateMipmaps = true;
+  texture.colorSpace = colorSpace;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function createStoneTextureSet({ size, seed, repeat, normalStrength }) {
+  const heights = heightField(size, seed);
+  const colorData = new Uint8Array(size * size * 4);
+  const roughnessData = new Uint8Array(size * size * 4);
+  const normalData = new Uint8Array(size * size * 4);
+
+  const at = (x, y) => {
+    const wrappedX = (x + size) % size;
+    const wrappedY = (y + size) % size;
+    return heights[wrappedY * size + wrappedX];
+  };
+
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const index = (y * size + x) * 4;
+      const height = at(x, y);
+      const fine = noise(x, y, seed + 53);
+      const mineral = noise(Math.floor(x / 7), Math.floor(y / 7), seed + 71);
+      const shade = 216 + height * 34 + (fine - 0.5) * 13;
+
+      colorData[index] = clampByte(shade + mineral * 7);
+      colorData[index + 1] = clampByte(shade + mineral * 4);
+      colorData[index + 2] = clampByte(shade - mineral * 3);
+      colorData[index + 3] = 255;
+
+      const roughness = 192 + (1 - Math.max(-0.2, Math.min(0.8, height))) * 36 + fine * 18;
+      const roughnessByte = clampByte(roughness);
+      roughnessData[index] = roughnessByte;
+      roughnessData[index + 1] = roughnessByte;
+      roughnessData[index + 2] = roughnessByte;
+      roughnessData[index + 3] = 255;
+
+      const dx = (at(x + 1, y) - at(x - 1, y)) * normalStrength;
+      const dy = (at(x, y + 1) - at(x, y - 1)) * normalStrength;
+      const invLength = 1 / Math.max(0.0001, Math.hypot(dx, dy, 1));
+      normalData[index] = clampByte(((-dx * invLength) * 0.5 + 0.5) * 255);
+      normalData[index + 1] = clampByte(((-dy * invLength) * 0.5 + 0.5) * 255);
+      normalData[index + 2] = clampByte(((1 * invLength) * 0.5 + 0.5) * 255);
+      normalData[index + 3] = 255;
+    }
+  }
+
+  return {
+    color: textureFromData(colorData, size, `chronicles-stone-color-${seed}`, {
+      colorSpace: THREE.SRGBColorSpace,
+      repeat,
+    }),
+    roughness: textureFromData(roughnessData, size, `chronicles-stone-roughness-${seed}`, { repeat }),
+    normal: textureFromData(normalData, size, `chronicles-stone-normal-${seed}`, { repeat }),
+  };
+}
+
+function hasAncestorPrefix(node, prefix) {
+  let current = node;
+  while (current) {
+    if (String(current.name || '').startsWith(prefix)) return true;
+    current = current.parent;
+  }
+  return false;
+}
+
+export function chroniclesTacticsMaterialRole(node) {
+  const name = String(node?.name || '');
+  if (name.startsWith('chronicles-iso-floor-') || name === 'chronicles-iso-foundation') return 'floor';
+  if (name.startsWith('chronicles-iso-wall-')) return 'wall';
+  if (hasAncestorPrefix(node, 'chronicles-iso-column-')) return 'wall';
+  if (hasAncestorPrefix(node, 'chronicles-iso-far-shrine')) return 'wall';
+  return null;
+}
+
+function applyTextureSet(material, set, normalStrength) {
+  if (!material?.isMeshStandardMaterial) return null;
+  const prior = {
+    map: material.map,
+    roughnessMap: material.roughnessMap,
+    normalMap: material.normalMap,
+    normalScale: material.normalScale?.clone?.() || null,
+    roughness: material.roughness,
+  };
+
+  material.map = set.color;
+  material.roughnessMap = set.roughness;
+  material.normalMap = set.normal;
+  material.normalScale = new THREE.Vector2(normalStrength, normalStrength);
+  material.roughness = Math.min(
+    CHRONICLES_TACTICS_MATERIAL_STYLE.maxRoughness,
+    Math.max(CHRONICLES_TACTICS_MATERIAL_STYLE.minRoughness, Number(material.roughness ?? 0.85)),
+  );
+  material.needsUpdate = true;
+
+  return () => {
+    material.map = prior.map;
+    material.roughnessMap = prior.roughnessMap;
+    material.normalMap = prior.normalMap;
+    if (prior.normalScale) material.normalScale.copy(prior.normalScale);
+    material.roughness = prior.roughness;
+    material.needsUpdate = true;
+  };
+}
+
+export function installChroniclesTacticsPremiumMaterials(scene, { coarsePointer = false } = {}) {
+  if (!scene?.add || !scene?.traverse) return null;
+  const existing = scene.getObjectByName?.(ROOT_NAME);
+  if (existing) return existing;
+
+  const size = coarsePointer
+    ? CHRONICLES_TACTICS_MATERIAL_STYLE.coarseTextureSize
+    : CHRONICLES_TACTICS_MATERIAL_STYLE.desktopTextureSize;
+  const floorSet = createStoneTextureSet({
+    size,
+    seed: 23,
+    repeat: CHRONICLES_TACTICS_MATERIAL_STYLE.floorRepeat,
+    normalStrength: CHRONICLES_TACTICS_MATERIAL_STYLE.floorNormalStrength,
+  });
+  const wallSet = createStoneTextureSet({
+    size,
+    seed: 47,
+    repeat: CHRONICLES_TACTICS_MATERIAL_STYLE.wallRepeat,
+    normalStrength: CHRONICLES_TACTICS_MATERIAL_STYLE.wallNormalStrength,
+  });
+
+  const root = new THREE.Group();
+  root.name = ROOT_NAME;
+  const restores = [];
+  const visited = new Set();
+
+  scene.traverse((node) => {
+    if (!node?.isMesh) return;
+    const role = chroniclesTacticsMaterialRole(node);
+    if (!role) return;
+    const materials = Array.isArray(node.material) ? node.material : [node.material];
+    materials.filter(Boolean).forEach((material) => {
+      const key = `${role}:${material.uuid}`;
+      if (visited.has(key)) return;
+      visited.add(key);
+      const set = role === 'floor' ? floorSet : wallSet;
+      const strength = role === 'floor'
+        ? CHRONICLES_TACTICS_MATERIAL_STYLE.floorNormalStrength
+        : CHRONICLES_TACTICS_MATERIAL_STYLE.wallNormalStrength;
+      const restore = applyTextureSet(material, set, strength);
+      if (restore) restores.push(restore);
+    });
+  });
+
+  root.userData.chroniclesArtCancel = () => {
+    restores.splice(0).reverse().forEach((restore) => restore());
+    [floorSet, wallSet].forEach((set) => {
+      set.color.dispose();
+      set.roughness.dispose();
+      set.normal.dispose();
+    });
+  };
+  root.userData.chroniclesMaterialFinish = 'procedural-pbr-stone-v1';
+  root.userData.chroniclesMaterialCount = visited.size;
+  scene.add(root);
+  return root;
+}
