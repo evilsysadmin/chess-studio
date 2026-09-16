@@ -1,45 +1,32 @@
 (() => {
-  const RECOVERY_KEY = 'chess-studio-module-recovery-v1';
-  const RECOVERY_PARAM = '__cs_recover';
-
-  const current = new URL(location.href);
-  if (current.searchParams.delete(RECOVERY_PARAM)) {
-    history.replaceState(history.state, '', `${current.pathname}${current.search}${current.hash}`);
-  }
+  const K = 'chess-studio-module-recovery-v1', RECOVERY_PARAM = '__cs_recover';
+  const u = new URL(location.href);
+  if (u.searchParams.delete(RECOVERY_PARAM)) history.replaceState(history.state, '', `${u.pathname}${u.search}${u.hash}`);
 
   async function recover() {
-    if (navigator.onLine === false) return;
+    if (!navigator.onLine) return;
     try {
-      const now = Date.now();
-      const previous = Number(sessionStorage.getItem(RECOVERY_KEY) || 0);
-      if (now - previous < 30000) return;
-      sessionStorage.setItem(RECOVERY_KEY, String(now));
+      const n = Date.now(), p = Number(sessionStorage.getItem(K) || 0);
+      if (n - p < 30000) return;
+      sessionStorage.setItem(K, n);
     } catch {}
-
     try {
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        await Promise.all(registrations.map((registration) => registration.unregister()));
-      }
+      if ('serviceWorker' in navigator)
+        for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
     } catch {}
-
     try {
-      if ('caches' in window) {
-        const keys = await caches.keys();
-        await Promise.all(keys.filter((key) => key.startsWith('chess-studio-shell-')).map((key) => caches.delete(key)));
-      }
+      if ('caches' in window)
+        for (const key of await caches.keys())
+          if (key.startsWith('chess-studio-shell-')) await caches.delete(key);
     } catch {}
 
     const next = new URL(location.href);
     next.searchParams.set(RECOVERY_PARAM, Date.now().toString(36));
-    location.replace(next.toString());
+    location.replace(next);
   }
 
-  addEventListener('error', (event) => {
-    if (event.target instanceof HTMLScriptElement && event.target.type === 'module') void recover();
+  addEventListener('error', e => {
+    if (e.target instanceof HTMLScriptElement && e.target.type === 'module') void recover();
   }, true);
-  addEventListener('vite:preloadError', (event) => {
-    event.preventDefault();
-    void recover();
-  });
+  addEventListener('vite:preloadError', e => { e.preventDefault(); void recover(); });
 })();
