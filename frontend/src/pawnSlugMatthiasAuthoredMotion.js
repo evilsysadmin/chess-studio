@@ -148,19 +148,23 @@ export function applyPawnSlugMatthiasAuthoredMotion(sprite, state = {}) {
   const pistol = (animation.weapon || atlas.weapon || 'pistol') === 'pistol';
 
   let runFrame = null;
-  if (pistol && state.running && !state.airborne && !state.crouch) {
+  if (state.running && !state.airborne && !state.crouch) {
     runFrame = pawnSlugMatthiasCanonicalRunFrame(time, animation.runStartedAt);
     if (animation.action !== 'run' || animation.frameIndex !== runFrame) {
       sprite.userData.setActionFrame?.('run', runFrame);
     }
   }
 
-  const triggerFiring = Boolean(state.firing) && pistol && !state.crouch;
+  // The two-frame authored shoot strip is intentionally standing-only. While
+  // Matthias is moving, the canonical RUN row owns the full body and the small
+  // runtime weapon overlay + muzzle flash sell the shot without freezing legs.
+  const triggerFiring = Boolean(state.firing) && pistol && !state.crouch && !state.running;
   if (triggerFiring && !motion.wasTriggerFiring) motion.fireStartedAt = time;
   motion.wasTriggerFiring = triggerFiring;
   const fireAge = Math.max(0, time - motion.fireStartedAt);
   const shootActive = pistol
     && !state.crouch
+    && !state.running
     && Number.isFinite(motion.fireStartedAt)
     && fireAge < PAWN_SLUG_MATTHIAS_AUTHORED_MOTION.pistolShoot.holdSeconds;
   const showShoot = shootActive && motion.shoot.ready;
