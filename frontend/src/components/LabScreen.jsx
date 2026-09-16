@@ -10,6 +10,7 @@ import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
 import './LabScreen.css';
 import './LabArcade.css';
 import './LabWorkshop.css';
+import './LabWorkshopHotfix.css';
 
 const ArenaExperiment = lazy(() => import('./ArenaExperiment.jsx'));
 const PawnTrailblazer = lazy(() => import('./PawnTrailblazer.jsx'));
