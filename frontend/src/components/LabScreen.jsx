@@ -4,6 +4,7 @@ import { useEscapeToClose } from '../useEscapeToClose.js';
 import { consumeLabLaunch } from '../labLaunchIntent.js';
 import { EXPERIMENT_MATURITY, experimentMaturityLabel } from '../experimentMaturity.js';
 import { LAB_START_FEN, assertLegalLabPosition, fenFromLabState, parseLabPosition } from '../labPosition.js';
+import experimentsRoomCanonical from '../assets/experiments-room-canonical.webp';
 import PreferredBoard from './PreferredBoard.jsx';
 import GlossaryTerm from './GlossaryTerm.jsx';
 import MechanicTutorialHelp from './MechanicTutorialHelp.jsx';
@@ -86,6 +87,7 @@ export default function LabScreen({ onExit, onStart }){
 
     {labMode==='hub' ? (
       <div className="lab-workshop" style={{ width: '100%' }}>
+        <img className="lab-workshop-art" src={experimentsRoomCanonical} alt="" aria-hidden="true" />
         <header className="lab-workshop-masthead">
           <div>
             <div className="lab-workshop-kicker">Ala prohibida · taller de Matthias</div>
