@@ -1,4 +1,4 @@
-export const WAR_ROOM_HANS_MOP_ROUTINE_VERSION = 'hans-mop-routine-v4-obstacle-safe-router';
+export const WAR_ROOM_HANS_MOP_ROUTINE_VERSION = 'hans-mop-routine-v5-obstacle-safe-router-slow-travel-contract';
 export const HANS_MOP_START_CHANCE = 0.48;
 export const HANS_MOP_DIALOGUE_CHANCE = 0.56;
 export const HANS_MOP_MIN_FATIGUE_MS = 60_000;
@@ -43,6 +43,12 @@ export function hansMopStartDelayMs(randomValue = Math.random()) {
 export function hansMopPatchMs(randomValue = Math.random()) {
   return HANS_MOP_MIN_PATCH_MS
     + unit(randomValue) * (HANS_MOP_MAX_PATCH_MS - HANS_MOP_MIN_PATCH_MS);
+}
+
+export function hansMopTravelStep(deltaMs) {
+  const elapsed = Number(deltaMs);
+  if (!Number.isFinite(elapsed) || elapsed <= 0) return 0;
+  return HANS_MOP_WALK_SPEED * elapsed / 1000;
 }
 
 export function hansMopDialoguePhase(elapsedMs) {

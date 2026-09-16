@@ -16,11 +16,11 @@ import {
   warRoomHansEventMatches,
 } from './WarRoomHansEventContract.js';
 import {
-  HANS_MOP_WALK_SPEED,
   WAR_ROOM_HANS_MOP_ROUTINE_VERSION,
   hansMopDialoguePhase,
   hansMopFatigueMs,
   hansMopPatchMs,
+  hansMopTravelStep,
   shouldHansMopDialogue,
 } from './WarRoomHansMopContract.js';
 import {
@@ -37,7 +37,6 @@ import {
   warRoomHansTaskAvailable,
 } from './WarRoomHansRuntime.js';
 import {
-  HANS_SERVICE_WALK_SPEED,
   setWarRoomHansServiceDoor,
   warRoomHansServiceHome,
 } from './WarRoomHansServiceRoute.js';
@@ -277,7 +276,7 @@ export function installWarRoomHansMopRoutine(root) {
         actor.hans,
         travelRoute,
         routeIndex,
-        Math.max(HANS_MOP_WALK_SPEED, HANS_SERVICE_WALK_SPEED) * delta / 1000,
+        hansMopTravelStep(delta),
       );
       routeIndex = motion.index;
       setWarRoomHansTaskPresentation(runtime, {
@@ -355,7 +354,7 @@ export function installWarRoomHansMopRoutine(root) {
         actor.hans,
         travelRoute,
         routeIndex,
-        HANS_SERVICE_WALK_SPEED * delta / 1000,
+        hansMopTravelStep(delta),
       );
       routeIndex = motion.index;
       setWarRoomHansTaskPresentation(runtime, {
