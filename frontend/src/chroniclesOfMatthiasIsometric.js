@@ -8,6 +8,10 @@ import {
 import { CHRONICLES_TACTICS_WORLD } from './chroniclesOfMatthiasTactics.js';
 import { buildChroniclesCharacter } from './chroniclesOfMatthiasArt.js';
 import { buildChroniclesEnemyVisual } from './chroniclesEnemyVisualRegistry.js';
+import {
+  chroniclesEnemyEffectiveVisualScale,
+  chroniclesEnemyRenderRoster,
+} from './chroniclesEnemyRenderRoster.js';
 import { installChroniclesCanonicalMatthias } from './chroniclesOfMatthiasBlenderArt.js';
 import { installChroniclesTacticsPartyBlenderArt } from './chroniclesOfMatthiasPartyBlenderArt.js';
 import { createExperimentalThreeRenderer } from './experimentalThreeRenderer.js';
@@ -446,24 +450,44 @@ function buildParty(scene, { coarsePointer, reducedMotion }) {
   return { root, models, selection };
 }
 
-function buildEnemies(scene, { coarsePointer }) {
-  const models = new Map();
-
-  CHRONICLES_ENEMIES.forEach((definition) => {
-    const visual = buildChroniclesEnemyVisual(definition.visualType || definition.id, { coarsePointer });
-    if (!visual) return;
-    const { model, scale } = visual;
-    const id = definition.id;
-    model.name = `chronicles-iso-enemy-${id}`;
-    model.userData.chroniclesIsoEnemyId = id;
-    model.scale.setScalar(scale);
-    model.rotation.y = -Math.PI * 0.18;
+function reconcileEnemyModels(scene, models, roster, { coarsePointer }) {
+  const activeIds = new Set(roster.map((entry) => entry.id));
+  models.forEach((model, id) => {
+    if (activeIds.has(id)) return;
     model.visible = false;
-    scene.add(model);
-    models.set(id, model);
+    model.userData.chroniclesIsoPlaced = false;
+    model.userData.chroniclesIsoTarget = null;
   });
 
-  return models;
+  roster.forEach(({ id, visualType, visualScale, visualMotion }) => {
+    let model = models.get(id);
+    if (model && model.userData.chroniclesIsoVisualType !== visualType) {
+      scene.remove(model);
+      disposeScene(model);
+      models.delete(id);
+      model = null;
+    }
+
+    if (!model) {
+      const visual = buildChroniclesEnemyVisual(visualType, { coarsePointer });
+      if (!visual) return;
+      model = visual.model;
+      model.name = `chronicles-iso-enemy-${id}`;
+      model.userData.chroniclesIsoEnemyId = id;
+      model.userData.chroniclesIsoVisualType = visualType;
+      model.userData.chroniclesIsoBaseScale = visual.scale;
+      model.rotation.y = -Math.PI * 0.18;
+      model.visible = false;
+      scene.add(model);
+      models.set(id, model);
+    }
+
+    model.userData.chroniclesIsoVisualMotion = visualMotion;
+    model.scale.setScalar(chroniclesEnemyEffectiveVisualScale(
+      model.userData.chroniclesIsoBaseScale,
+      visualScale,
+    ));
+  });
 }
 
 function buildInteractionMarkers(scene, { coarsePointer }) {
@@ -601,7 +625,7 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
   scene.add(dungeon.root);
   const torches = buildTorches(scene, { coarsePointer: coarse });
   const party = buildParty(scene, { coarsePointer: coarse, reducedMotion });
-  const enemies = buildEnemies(scene, { coarsePointer: coarse });
+  const enemies = new Map();
   const interactionMarkers = buildInteractionMarkers(scene, { coarsePointer: coarse });
 
   let latestState = null;
@@ -666,7 +690,9 @@ export function createChroniclesIsometricGame(host, { onReady, onCellClick, onEn
     // but they no longer drag the shot back toward a tactical overview.
     desiredFocus.copy(partyCell);
 
-    CHRONICLES_ENEMIES.forEach((definition) => {
+    const enemyRoster = chroniclesEnemyRenderRoster(state);
+    reconcileEnemyModels(scene, enemies, enemyRoster, { coarsePointer: coarse });
+    enemyRoster.forEach(({ definition }) => {
       const model = enemies.get(definition.id);
       if (!model) return;
       const active = chroniclesEnemyIsActive(state, definition) && Number(state[definition.hpKey] || 0) > 0;
