@@ -13,7 +13,7 @@ fi
 sha="$1"
 repo="${CHESS_STUDIO_REPO:-/opt/chess-studio/repo}"
 env_file="${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}"
-source_deploy="$repo/scripts/oci_existing_a1_deploy.sh"
+source_deploy="$repo/scripts/oci_staging_deploy_launcher.sh"
 target_deploy=/usr/local/sbin/chess-studio-deploy
 
 [[ -d "$repo/.git" ]] || { echo "missing repo checkout: $repo" >&2; exit 66; }
@@ -22,7 +22,7 @@ target_deploy=/usr/local/sbin/chess-studio-deploy
 cd "$repo"
 git fetch --no-tags --depth=1 origin "$sha"
 git checkout --detach "$sha"
-[[ -f "$source_deploy" ]] || { echo "missing installer payload in $sha" >&2; exit 66; }
+[[ -f "$source_deploy" && ! -L "$source_deploy" ]] || { echo "missing installer payload in $sha" >&2; exit 66; }
 
 if ! docker compose version >/dev/null 2>&1; then
   export DEBIAN_FRONTEND=noninteractive
