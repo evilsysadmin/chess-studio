@@ -7,7 +7,8 @@ import {
 // Legacy `chess-study-war-room-hans-seen-games-v1` was written as soon as Hans
 // entered the viewport, so it can contain false positives from interrupted
 // fireplace numbers. Do not migrate that poisoned state: this replacement key
-// is written only after the narrative reaches its real terminal callback.
+// is written only after the selected Hans event reaches its real effect/terminal
+// point, whether that event is the fireplace narrative or an ambient routine.
 export const WAR_ROOM_HANS_COMPLETED_GAMES_KEY = 'chess-study-war-room-hans-completed-games-v1';
 const MAX_REMEMBERED_GAMES = 32;
 
