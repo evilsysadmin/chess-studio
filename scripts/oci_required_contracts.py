@@ -25,6 +25,12 @@ SECRET_RE = re.compile(
     r"MONGO_URL|JWT_SECRET|RESEND_API_KEY|OTLP.*TOKEN|cloudflare_tunnel_token|private_key\s*=",
     re.IGNORECASE,
 )
+OCI_WORKFLOWS = {
+    ".github/workflows/oci-readiness.yml",
+    ".github/workflows/oci-staging-lab.yml",
+    ".github/workflows/oci-staging-deploy.yml",
+    ".github/workflows/oci-staging-service.yml",
+}
 
 
 def is_oci_path(path: str) -> bool:
@@ -32,7 +38,7 @@ def is_oci_path(path: str) -> bool:
     return (
         path.startswith("infra/oci/")
         or path.startswith("scripts/oci_")
-        or path == ".github/workflows/oci-readiness.yml"
+        or path in OCI_WORKFLOWS
     )
 
 
@@ -43,7 +49,7 @@ def self_test() -> None:
         "scripts/oci_floci_smoke.sh",
         "scripts/oci_required_contracts.py",
         "scripts/oci_readiness_scope.py",
-        ".github/workflows/oci-readiness.yml",
+        *sorted(OCI_WORKFLOWS),
     ):
         assert is_oci_path(path), path
     for path in ("frontend/src/App.jsx", "backend-python/main.py", "infra/cloudflare/main.tf"):
