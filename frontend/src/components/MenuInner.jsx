@@ -6,6 +6,7 @@ const MirrorModeModal = lazy(() => import('./MirrorModeModal.jsx'));
 const PvPLobbyModal = lazy(() => import('./PvPLobbyModal.jsx'));
 const PvpGameScreen = lazy(() => import('./PvpGameScreen.jsx'));
 import HomeIllustrated from './HomeIllustrated.jsx';
+import HomePvpRosterLink from './HomePvpRosterLink.jsx';
 import { getBoardRenderer, getDefaultTimeControlId, setBoardRenderer, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import { difficultyForQuickMatchRating } from '../quickMatchDifficulty.js';
 import { loadRivalry } from '../rivalry.js';
@@ -220,6 +221,10 @@ export default function Menu({
           ['Experimentos geniales', onLab],
         ]}
       />
+
+      {!showQuickMatch && !showPracticeMatch && !showMirrorMode && !showPvpLobby && (
+        <HomePvpRosterLink onOpen={() => setShowPvpLobby(true)} disabled={loading} />
+      )}
 
       {showQuickMatch && (
         <QuickMatchModal
