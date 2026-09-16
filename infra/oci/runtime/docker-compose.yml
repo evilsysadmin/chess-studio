@@ -26,3 +26,29 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  alloy:
+    image: grafana/alloy:v1.19.2
+    env_file:
+      - ${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}
+    environment:
+      GIT_COMMIT_SHA: ${GIT_COMMIT_SHA:?GIT_COMMIT_SHA is required}
+    command:
+      - run
+      - --server.http.listen-addr=127.0.0.1:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./alloy.alloy:/etc/alloy/config.alloy:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - alloy-data:/var/lib/alloy/data
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  alloy-data:

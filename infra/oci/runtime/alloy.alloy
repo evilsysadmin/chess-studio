@@ -1,0 +1,87 @@
+// Chess Studio OCI staging host telemetry.
+//
+// The backend and this collector intentionally reuse the same Grafana Cloud
+// OTLP gateway and Authorization header from /etc/chess-studio/backend.env.
+// No extra Prometheus/Loki credentials or public listener are required.
+
+prometheus.exporter.unix "oci_host" {
+  procfs_path = "/host/proc"
+  sysfs_path  = "/host/sys"
+
+  // Keep the first host contract deliberately narrow: useful Linux health
+  // signals without privileged mode, the Docker socket, or host rootfs access.
+  set_collectors = [
+    "cpu",
+    "diskstats",
+    "loadavg",
+    "meminfo",
+    "netdev",
+    "pressure",
+    "stat",
+    "time",
+    "uname",
+    "vmstat",
+  ]
+}
+
+prometheus.scrape "oci_host" {
+  targets         = prometheus.exporter.unix.oci_host.targets
+  scrape_interval = "30s"
+  job_name        = "chess-studio-oci-host"
+  forward_to      = [prometheus.relabel.oci_host.receiver]
+}
+
+prometheus.relabel "oci_host" {
+  forward_to = [otelcol.receiver.prometheus.oci_host.receiver]
+
+  rule {
+    target_label = "deployment_environment"
+    replacement  = "staging"
+  }
+
+  rule {
+    target_label = "cloud_provider"
+    replacement  = "oci"
+  }
+
+  rule {
+    target_label = "cloud_region"
+    replacement  = "eu-frankfurt-1"
+  }
+
+  rule {
+    target_label = "service_version"
+    replacement  = sys.env("GIT_COMMIT_SHA")
+  }
+}
+
+otelcol.receiver.prometheus "oci_host" {
+  output {
+    metrics = [otelcol.exporter.otlphttp.grafana_cloud.input]
+  }
+}
+
+// Grafana Cloud's OTEL_EXPORTER_OTLP_HEADERS value is normally a single
+// Authorization header. Accept both a literal space and the standard %20 form
+// emitted by OTLP environment-variable examples.
+otelcol.auth.headers "grafana_cloud" {
+  header {
+    key = "Authorization"
+    value = string.replace(
+      string.trim_prefix(
+        string.trim_prefix(sys.env("OTEL_EXPORTER_OTLP_HEADERS"), "Authorization="),
+        "authorization=",
+      ),
+      "%20",
+      " ",
+    )
+  }
+}
+
+otelcol.exporter.otlphttp "grafana_cloud" {
+  client {
+    endpoint    = sys.env("OTEL_EXPORTER_OTLP_ENDPOINT")
+    auth        = otelcol.auth.headers.grafana_cloud.handler
+    compression = "gzip"
+  }
+}
