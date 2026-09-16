@@ -61,6 +61,9 @@ function buildTextileFixture() {
   const walnutDark = new THREE.MeshPhysicalMaterial({ color: 0x1b100a, metalness: 0.01, roughness: 0.76 });
   const brass = new THREE.MeshPhysicalMaterial({ color: 0x6f4a20, metalness: 0.72, roughness: 0.34 });
   const nestedPaper = new THREE.MeshPhysicalMaterial({ color: 0xb7a67e, metalness: 0, roughness: 0.91 });
+  const steel = new THREE.MeshPhysicalMaterial({ color: 0x666b6d, metalness: 0.82, roughness: 0.32 });
+  const steelDark = new THREE.MeshPhysicalMaterial({ color: 0x303538, metalness: 0.74, roughness: 0.42 });
+  const guardLeather = new THREE.MeshPhysicalMaterial({ color: 0x2b1712, metalness: 0.02, roughness: 0.76 });
 
   const leftConsole = new THREE.Group();
   leftConsole.name = 'war-room-side-console-left';
@@ -80,6 +83,22 @@ function buildTextileFixture() {
   rightConsole.add(mesh('right-console-brass-edge', brass));
   root.add(rightConsole);
 
+  const armorLeft = new THREE.Group();
+  armorLeft.name = 'war-room-armor-guard-left';
+  armorLeft.add(mesh('armor-left-steel', steel));
+  armorLeft.add(mesh('armor-left-leather', guardLeather));
+  root.add(armorLeft);
+
+  const armorRight = new THREE.Group();
+  armorRight.name = 'war-room-armor-guard-right';
+  armorRight.add(mesh('armor-right-steel-dark', steelDark));
+  root.add(armorRight);
+
+  const teutonicArmor = new THREE.Group();
+  teutonicArmor.name = 'war-room-teutonic-armor-left';
+  teutonicArmor.add(mesh('teutonic-shared-steel', steel));
+  root.add(teutonicArmor);
+
   return {
     root,
     left,
@@ -95,11 +114,14 @@ function buildTextileFixture() {
     nestedPaper,
     coarseWallTexture,
     wallMaterial,
+    steel,
+    steelDark,
+    guardLeather,
   };
 }
 
 describe('War Room surface microfinish', () => {
-  it('adds six shared 64px procedural maps to textiles and core room surfaces', () => {
+  it('adds seven shared 64px procedural maps to textiles, masonry, timber, and aged metal', () => {
     const {
       root,
       left,
@@ -115,20 +137,24 @@ describe('War Room surface microfinish', () => {
       nestedPaper,
       coarseWallTexture,
       wallMaterial,
+      steel,
+      steelDark,
+      guardLeather,
     } = buildTextileFixture();
     const tuned = applyWarRoomTextileFinish(root);
 
-    expect(tuned).toBe(11);
+    expect(tuned).toBe(14);
     expect(root.userData.warRoomTextileFinish).toBe(WAR_ROOM_TEXTILE_FINISH_VERSION);
     expect(root.userData.warRoomTextileFinishStats).toEqual({
-      tuned: 11,
+      tuned: 14,
       leatherMaterials: 3,
       velvetMaterials: 2,
       woolMaterials: 2,
       limestoneMaterials: 1,
       walnutMaterials: 2,
       ashlarMaterials: 1,
-      textureCount: 6,
+      metalMaterials: 3,
+      textureCount: 7,
       textureResolution: 64,
     });
 
@@ -157,8 +183,17 @@ describe('War Room surface microfinish', () => {
     expect(walnut.bumpMap).toBe(walnut.roughnessMap);
     expect(walnutDark.bumpMap).toBe(walnut.bumpMap);
     expect(walnut.bumpMap.userData.warRoomSurfaceKind).toBe('walnut');
+    expect(brass.roughnessMap.userData.warRoomSurfaceKind).toBe('forged-metal');
     expect(brass.bumpMap).toBeNull();
     expect(nestedPaper.bumpMap).toBeNull();
+
+    expect(steel.roughnessMap).toBe(steelDark.roughnessMap);
+    expect(steel.roughnessMap).toBe(brass.roughnessMap);
+    expect(steel.roughnessMap.userData.warRoomSurfaceKind).toBe('forged-metal');
+    expect(steel.bumpMap).toBeNull();
+    expect(steelDark.bumpMap).toBeNull();
+    expect(guardLeather.roughnessMap).toBeNull();
+    expect(steel.roughnessMap.anisotropy).toBe(4);
 
     expect(wallMaterial.roughnessMap.userData.warRoomSurfaceKind).toBe('ashlar');
     expect(wallMaterial.bumpMap).toBe(coarseWallTexture);
@@ -171,12 +206,13 @@ describe('War Room surface microfinish', () => {
       floor.material.bumpMap,
       walnut.bumpMap,
       wallMaterial.roughnessMap,
-    ]).size).toBe(6);
+      steel.roughnessMap,
+    ]).size).toBe(7);
   });
 
   it('is idempotent once the room has been finished', () => {
     const { root } = buildTextileFixture();
-    expect(applyWarRoomTextileFinish(root)).toBe(11);
+    expect(applyWarRoomTextileFinish(root)).toBe(14);
     const stats = root.userData.warRoomTextileFinishStats;
     expect(applyWarRoomTextileFinish(root)).toBe(0);
     expect(root.userData.warRoomTextileFinishStats).toBe(stats);
@@ -194,7 +230,7 @@ describe('War Room surface microfinish', () => {
 
     expect(previous).toHaveBeenCalledTimes(1);
     expect(root.userData.warRoomTextileFinish).toBe(WAR_ROOM_TEXTILE_FINISH_VERSION);
-    expect(root.userData.warRoomTextileFinishStats.tuned).toBe(11);
+    expect(root.userData.warRoomTextileFinishStats.tuned).toBe(14);
     expect(installWarRoomTextileFinish(root, { coarsePointer: false })).toBe(0);
   });
 
