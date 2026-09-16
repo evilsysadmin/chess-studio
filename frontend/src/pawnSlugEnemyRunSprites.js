@@ -1,20 +1,4 @@
 import * as THREE from 'three';
-import enemyAtlasUrl from './assets/pawnSlug/enemy_atlas_v2.webp';
-import enemyRunAtlasPart1 from './assets/pawnSlug/enemy_run_left_atlas_v1_part1.b64?raw';
-import enemyRunAtlasPart2 from './assets/pawnSlug/enemy_run_left_atlas_v1_part2.b64?raw';
-import enemyRunAtlasPart3 from './assets/pawnSlug/enemy_run_left_atlas_v1_part3.b64?raw';
-import enemyRunAtlasPart4 from './assets/pawnSlug/enemy_run_left_atlas_v1_part4.b64?raw';
-import enemyRunAtlasPart5 from './assets/pawnSlug/enemy_run_left_atlas_v1_part5.b64?raw';
-import enemyRunAtlasPart6a from './assets/pawnSlug/enemy_run_left_atlas_v1_part6a.b64?raw';
-import enemyRunAtlasPart6b from './assets/pawnSlug/enemy_run_left_atlas_v1_part6b.b64?raw';
-import enemyRunAtlasPart7a from './assets/pawnSlug/enemy_run_left_atlas_v1_part7a.b64?raw';
-import enemyRunAtlasPart7b from './assets/pawnSlug/enemy_run_left_atlas_v1_part7b.b64?raw';
-import enemyRunAtlasPart8a from './assets/pawnSlug/enemy_run_left_atlas_v1_part8a.b64?raw';
-import enemyRunAtlasPart8b from './assets/pawnSlug/enemy_run_left_atlas_v1_part8b.b64?raw';
-import enemyRunAtlasPart9a from './assets/pawnSlug/enemy_run_left_atlas_v1_part9a.b64?raw';
-import enemyRunAtlasPart9b from './assets/pawnSlug/enemy_run_left_atlas_v1_part9b.b64?raw';
-import enemyRunAtlasPart10a from './assets/pawnSlug/enemy_run_left_atlas_v1_part10a.b64?raw';
-import enemyRunAtlasPart10b from './assets/pawnSlug/enemy_run_left_atlas_v1_part10b.b64?raw';
 import {
   PAWN_SLUG_MOTION_PROFILES,
   configurePawnSlugTexture,
@@ -48,24 +32,6 @@ const ENEMY_SCALE_BY_TYPE = Object.freeze({
   knight: Object.freeze([2.22, 2.22]),
   rook: Object.freeze([2.65, 2.65]),
 });
-
-const enemyRunAtlasUrl = `data:image/webp;base64,${[
-  enemyRunAtlasPart1,
-  enemyRunAtlasPart2,
-  enemyRunAtlasPart3,
-  enemyRunAtlasPart4,
-  enemyRunAtlasPart5,
-  enemyRunAtlasPart6a,
-  enemyRunAtlasPart6b,
-  enemyRunAtlasPart7a,
-  enemyRunAtlasPart7b,
-  enemyRunAtlasPart8a,
-  enemyRunAtlasPart8b,
-  enemyRunAtlasPart9a,
-  enemyRunAtlasPart9b,
-  enemyRunAtlasPart10a,
-  enemyRunAtlasPart10b,
-].map((part) => part.trim()).join('')}`;
 
 function wrapFrame(frame, count) {
   return ((Math.floor(frame) % count) + count) % count;
@@ -195,7 +161,6 @@ export function createSlugEnemySprite(type = 'pawn') {
     appliedWindowKey: null,
   };
 
-  const loader = new THREE.TextureLoader();
   const applyTexture = (texture, source) => {
     const atlas = sprite.userData.atlas;
     if (atlas.disposed) {
@@ -214,21 +179,10 @@ export function createSlugEnemySprite(type = 'pawn') {
     applyAtlasWindow(sprite);
     if (pawnSlugShouldDisposePreviousTexture(previous, texture)) previous.dispose?.();
   };
-  const loadFallback = () => {
-    const atlas = sprite.userData.atlas;
-    if (atlas.disposed) return;
-    atlas.source = 'fallback-loading';
-    loader.load(
-      enemyAtlasUrl,
-      (texture) => applyTexture(texture, 'fallback-premium'),
-      undefined,
-      () => { if (!atlas.disposed) atlas.source = 'failed'; },
-    );
-  };
 
   const generated = createPawnSlugSoldierAtlasTexture();
   if (generated) applyTexture(generated, 'generated-actions');
-  else loader.load(enemyRunAtlasUrl, (texture) => applyTexture(texture, 'primary-run'), undefined, loadFallback);
+  else sprite.userData.atlas.source = 'failed';
 
   sprite.userData.setFrame = (frame) => {
     const atlas = sprite.userData.atlas;
@@ -324,8 +278,6 @@ export function animateSlugEnemySprite(sprite, type, time, state = {}) {
 }
 
 export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
-  url: enemyRunAtlasUrl,
-  fallbackUrl: enemyAtlasUrl,
   frames: ENEMY_RUN_TOTAL_FRAMES,
   framesPerType: ENEMY_RUN_FRAMES_PER_TYPE,
   frameWidth: 64,
@@ -336,4 +288,5 @@ export const PAWN_SLUG_ENEMY_RUN_META = Object.freeze({
   frameBaseByType: ENEMY_RUN_FRAME_BASE_BY_TYPE,
   actionMotion: PAWN_SLUG_ENEMY_ACTION_META,
   generatedActionAtlas: PAWN_SLUG_SOLDIER_ATLAS_META,
+  legacyRunTransport: 'retired',
 });
