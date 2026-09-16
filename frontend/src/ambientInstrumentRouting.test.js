@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { AMBIENT_THEMES } from './ambientCatalog.js';
 import { structuredFeel } from './ambientProfiles.js';
 import {
+  ORGANIC_LATIN_ROUTING_IDS,
   ORGANIC_MEDITERRANEAN_ROUTING_IDS,
   structuredSectionInstrument,
 } from './ambientInstrumentRouting.js';
@@ -17,7 +18,8 @@ function expectedWrittenPlayer(theme, feel, section, lane) {
     if (theme?.genre === 'Smooth Jazz' || [feel?.leadInstrument, feel?.counterInstrument].includes('jazzGuitar')) expected = 'jazzGuitar';
     if (theme?.genre === 'Bossa / Latin Lounge' || [feel?.leadInstrument, feel?.counterInstrument].includes('nylonGuitar')) expected = 'nylonGuitar';
   }
-  if (ORGANIC_MEDITERRANEAN_ROUTING_IDS.includes(theme?.id) && SYNTHETIC_PLUCKS.has(expected)) return 'nylonGuitar';
+  if (ORGANIC_MEDITERRANEAN_ROUTING_IDS.includes(theme?.id) && SYNTHETIC_PLUCKS.has(expected)) expected = 'nylonGuitar';
+  if (ORGANIC_LATIN_ROUTING_IDS.includes(theme?.id) && expected === 'bandoneon' && ['lead', 'counter'].includes(lane)) expected = 'nylonGuitar';
   return expected;
 }
 
@@ -46,6 +48,18 @@ describe('radio section instrument routing', () => {
         }
       }
     }
+  });
+
+  it('routes Havana away from the short oscillator bandoneon without changing tango globally', () => {
+    const havana = AMBIENT_THEMES.havana205;
+    const feel = structuredFeel(havana);
+    expect(ORGANIC_LATIN_ROUTING_IDS).toContain('havana205');
+    expect(structuredSectionInstrument(havana, feel, {}, 'lead')).toBe('nylonGuitar');
+    expect(structuredSectionInstrument(havana, feel, havana.sections[0], 'lead')).toBe('nylonGuitar');
+
+    const tango = AMBIENT_THEMES.kingTango;
+    const tangoFeel = structuredFeel(tango);
+    expect(structuredSectionInstrument(tango, tangoFeel, {}, 'lead')).toBe('bandoneon');
   });
 
   it('keeps the production grade on written guitar exchanges and the normal default elsewhere', () => {
