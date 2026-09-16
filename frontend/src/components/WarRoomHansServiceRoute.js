@@ -5,7 +5,7 @@ import { setWarRoomHansServiceDoorOpen } from './WarRoomHansServiceDoor.js';
 
 export { moveWarRoomHansToward };
 
-export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v13-visible-exit-door-fireplace-front-carpet-edge-standoff';
+export const WAR_ROOM_HANS_SERVICE_ROUTE_VERSION = 'hans-service-route-v14-visible-exit-door-fireplace-front-carpet-edge-standoff-room-side-home';
 export const HANS_SERVICE_WALK_SPEED = 0.32;
 export const HANS_SERVICE_FURNITURE_CLEARANCE = 0.58;
 
@@ -255,6 +255,17 @@ export function warRoomHansServiceHome(root, parent) {
   const refs = door.userData?.refs || null;
   const world = new THREE.Vector3();
   (recess || door).getWorldPosition?.(world);
+
+  // The service door is a rendered inset, not a boolean hole in the side wall.
+  // Starting Hans at the recess plane therefore puts half his body inside solid
+  // masonry before he walks into the room. Keep the logical home aligned with
+  // the doorway in Z, but one body-clearance inside the playable room in X.
+  const wallSide = Math.sign(Number(refs?.side))
+    || Math.sign(Number(door.userData?.side))
+    || Math.sign(Number(world.x))
+    || 1;
+  world.x -= wallSide * HANS_SERVICE_FURNITURE_CLEARANCE;
+
   const point = localPoint(parent, world);
   point.y = STANDING_Y;
   return { point, doorRefs: refs };
