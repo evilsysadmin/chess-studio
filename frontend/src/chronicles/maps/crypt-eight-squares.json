@@ -1,6 +1,6 @@
 {
   "id": "crypt-eight-squares",
-  "version": 9,
+  "version": 10,
   "progressionKey": "crypt-01",
   "title": "Cripta de las Ocho Casillas",
   "explorationCompleteLabel": "Vertical slice completado",
@@ -61,7 +61,6 @@
       "hpKey": "jailerHp",
       "maxHp": 8,
       "retaliation": 2,
-      "activation": "sigil",
       "activationWhen": [
         { "key": "sigilAwake", "equals": true }
       ],
@@ -103,7 +102,6 @@
       "maxHp": 5,
       "retaliation": 1,
       "retaliationReach": 2,
-      "activation": "sigil",
       "activationWhen": [
         { "key": "sigilAwake", "equals": true }
       ],
@@ -135,7 +133,6 @@
       "hpKey": "scavengerHp",
       "maxHp": 6,
       "retaliation": 1,
-      "activation": "jailer-down",
       "activationWhen": [
         { "key": "sigilAwake", "equals": true },
         { "key": "jailerHp", "lte": 0 }
