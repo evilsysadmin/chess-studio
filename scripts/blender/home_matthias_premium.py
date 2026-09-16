@@ -92,11 +92,10 @@ def _add_face(rig):
         ])
 
     parts.extend([
-        box("Brow.L", (-.110, -.378, 1.463), (.112, .010, .027), ink, (0, math.radians(26), 0), .008),
-        box("Brow.R", (.110, -.378, 1.463), (.112, .010, .027), ink, (0, math.radians(-26), 0), .008),
-        box("Mouth.L", (-.053, -.368, 1.252), (.060, .005, .006), ink, (0, math.radians(-10), 0), .003),
-        box("Canonical mouth center", (0, -.369, 1.243), (.020, .005, .006), ink, (0, 0, 0), .003),
-        box("Mouth.R", (.053, -.368, 1.252), (.060, .005, .006), ink, (0, math.radians(10), 0), .003),
+        box("Brow.L", (-.110, -.378, 1.452), (.112, .010, .028), ink, (0, math.radians(28), 0), .008),
+        box("Brow.R", (.110, -.378, 1.452), (.112, .010, .028), ink, (0, math.radians(-28), 0), .008),
+        box("Mouth.L", (-.048, -.368, 1.250), (.057, .005, .006), ink, (0, math.radians(-11), 0), .003),
+        box("Mouth.R", (.048, -.368, 1.250), (.057, .005, .006), ink, (0, math.radians(11), 0), .003),
     ])
 
     for obj in parts:
@@ -110,6 +109,7 @@ def _rebuild_cap(rig):
         "Classic cap badge wing.L", "Classic cap badge wing.R",
         "Canonical cap visor brass lip", "Canonical cap badge pawn head",
         "Canonical cap badge pawn stem", "Canonical cap badge pawn base",
+        "Canonical cap top piping",
     )
     _remove_prefix("Canonical cap laurel")
 
@@ -135,29 +135,30 @@ def _rebuild_cap(rig):
         [
             (.424, .294, 1.742, .048),
             (.444, .302, 1.772, .064),
-            (.462, .307, 1.802, .082),
-            (.470, .305, 1.829, .098),
-            (.462, .296, 1.851, .111),
-            (.440, .282, 1.866, .118),
+            (.458, .306, 1.802, .081),
+            (.464, .303, 1.829, .096),
+            (.456, .294, 1.851, .108),
+            (.437, .281, 1.866, .115),
         ],
         navy, 136, .010,
     )
+    top_piping = elliptic_cyl("Canonical cap top piping", (0, .030, 1.848), .438, .010, .68, brass, (math.radians(-1), 0, 0), 124, .003)
     band = elliptic_cyl("Classic cap band", (0, -.015, 1.579), .375, .086, .84, red, (math.radians(-2), 0, 0), 124, .010)
     brass_line = elliptic_cyl("Classic cap brass line", (0, -.020, 1.537), .371, .014, .84, brass, (math.radians(-2), 0, 0), 124, .003)
-    visor = crescent_visor("Classic cap visor", (0, -.060, 1.616), leather, .335, .540, .174, .226, .039, 16, 64)
-    visor_lip = crescent_visor("Canonical cap visor brass lip", (0, -.066, 1.621), brass, .340, .547, .178, .231, .012, 16, 64)
+    visor = crescent_visor("Classic cap visor", (0, -.060, 1.616), leather, .325, .525, .174, .226, .039, 16, 64)
+    visor_lip = crescent_visor("Canonical cap visor brass lip", (0, -.066, 1.621), brass, .330, .532, .178, .231, .012, 16, 64)
 
-    parts = [crown, top, band, brass_line, visor, visor_lip]
+    parts = [crown, top, top_piping, band, brass_line, visor, visor_lip]
     parts.extend([
-        front_ellipse("Classic cap badge", (0, -.401, 1.697), .064, .071, .013, brass, 60, .004),
-        front_ellipse("Classic cap badge inset", (0, -.412, 1.697), .046, .052, .010, dark, 52, .003),
-        front_ellipse("Canonical cap badge pawn head", (0, -.422, 1.720), .014, .016, .008, brass, 32, .002),
-        box("Canonical cap badge pawn stem", (0, -.422, 1.696), (.0085, .004, .021), brass, (0, 0, 0), .002),
-        box("Canonical cap badge pawn base", (0, -.422, 1.671), (.025, .004, .007), brass, (0, 0, 0), .002),
+        front_ellipse("Classic cap badge", (0, -.401, 1.697), .068, .075, .013, brass, 60, .004),
+        front_ellipse("Classic cap badge inset", (0, -.412, 1.697), .049, .055, .010, dark, 52, .003),
+        front_ellipse("Canonical cap badge pawn head", (0, -.422, 1.721), .015, .017, .008, brass, 32, .002),
+        box("Canonical cap badge pawn stem", (0, -.422, 1.696), (.009, .004, .022), brass, (0, 0, 0), .002),
+        box("Canonical cap badge pawn base", (0, -.422, 1.670), (.027, .004, .007), brass, (0, 0, 0), .002),
     ])
     leaf_specs = [
-        (-.061, 1.665, -34), (-.074, 1.687, -23), (-.075, 1.710, -10), (-.064, 1.732, 7),
-        (.061, 1.665, 34), (.074, 1.687, 23), (.075, 1.710, 10), (.064, 1.732, -7),
+        (-.064, 1.664, -34), (-.078, 1.687, -23), (-.079, 1.711, -10), (-.067, 1.734, 7),
+        (.064, 1.664, 34), (.078, 1.687, 23), (.079, 1.711, 10), (.067, 1.734, -7),
     ]
     for index, (x, z, angle) in enumerate(leaf_specs):
         parts.append(_leaf(f"Canonical cap laurel {index+1:02d}", x, -.418, z, angle, brass))
@@ -167,43 +168,40 @@ def _rebuild_cap(rig):
 
 
 def _refine_body(rig):
-    _scale_xy("Classic navy tunic", .73)
+    _scale_xy("Classic navy tunic", .70)
     _scale_xy("Classic neck plinth", .84)
     _scale_xy("Classic brass collar line", .84)
+    _remove("Classic waist service ring", "Classic service brass line")
 
-    waist = bpy.data.objects.get("Classic waist service ring")
-    if waist is not None:
-        waist.location.z = .704
-        waist.scale.x *= .88
-        waist.scale.y *= .88
-
-    service = bpy.data.objects.get("Classic service brass line")
-    if service is not None:
-        service.location.z = .635
-        service.scale.x *= .92
-        service.scale.y *= .92
-
-    for name, x in (("Classic tunic piping.L", -.218), ("Classic tunic piping.R", .218)):
+    for name, x in (("Classic tunic piping.L", -.212), ("Classic tunic piping.R", .212)):
         obj = bpy.data.objects.get(name)
         if obj is not None:
             obj.location.x = x
-            obj.location.y = -.414
-            obj.scale.z *= .82
+            obj.location.y = -.410
+            obj.scale.z *= .78
 
 
 def _add_uniform_detail(rig):
-    # The approved canon is deliberately restrained. The authored body rings
-    # provide the single service-cord read; extra segmented braid looked like UI.
     _remove_prefix("Canonical service braid")
     _remove_prefix("Canonical service button")
+    _remove("Canonical service cord")
+
+    brass = bpy.data.materials.get("canonical warm service gold") or mat("canonical warm service gold", (.64, .325, .060), .16, .93)
+    parts = [
+        box("Canonical service cord", (0, -.423, .710), (.205, .006, .007), brass, (0, 0, 0), .004),
+        front_ellipse("Canonical service button.L", (-.224, -.426, .710), .014, .016, .008, brass, 28, .002),
+        front_ellipse("Canonical service button.R", (.224, -.426, .710), .014, .016, .008, brass, 28, .002),
+    ]
+    for obj in parts:
+        parent_bone(obj, rig, "spine")
 
 
 def _refine_cross(rig):
     _remove("Classic chest cross brass", "Classic chest cross inset")
     brass = bpy.data.materials.get("canonical warm service gold") or mat("canonical warm service gold", (.64, .325, .060), .16, .93)
     dark = mat("canonical cross inset", (.002, .002, .003), .20, .25)
-    brass_cross = front_prism("Classic chest cross brass", (0, -.448, .870), iron_cross_points(.116), .017, brass, .006)
-    inset_cross = front_prism("Classic chest cross inset", (0, -.461, .870), iron_cross_points(.090), .011, dark, .004)
+    brass_cross = front_prism("Classic chest cross brass", (0, -.451, .874), iron_cross_points(.122), .017, brass, .006)
+    inset_cross = front_prism("Classic chest cross inset", (0, -.464, .874), iron_cross_points(.084), .011, dark, .004)
     parent_bone(brass_cross, rig, "spine")
     parent_bone(inset_cross, rig, "spine")
 
