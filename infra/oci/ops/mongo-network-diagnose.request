@@ -1,0 +1,6 @@
+# Secret-isolated OCI -> Atlas connectivity probe request
+#
+# The A1 reads the private runtime object with its instance principal and emits
+# only aggregate SRV/DNS/TCP/TLS counters plus sanitized driver error class/code.
+requested_at=2026-09-16T15:04:00Z
+reason=atlas-connectivity-before-ip-access-list-change
