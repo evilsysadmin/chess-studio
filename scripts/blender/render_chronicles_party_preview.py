@@ -68,6 +68,8 @@ def configure_scene(output_dir):
     scene.render.engine = render_engine(scene)
     samples = configure_preview_samples(scene)
     scene.render.filepath = os.path.join(output_dir, "chronicles-party-preview.png")
+    if scene.world is None:
+        scene.world = bpy.data.worlds.new("ChroniclesPartyPreviewWorld")
     scene.world.color = (0.012, 0.009, 0.007)
 
     target = (0.0, 0.0, 1.08)
