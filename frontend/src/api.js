@@ -81,4 +81,6 @@ export const api = {
   },
 };
 
+export { pvpApi } from './pvpApi.js';
+
 export const STORAGE_KEY = 'chess-study-active-game';
