@@ -110,14 +110,21 @@ def payload(gates: list[Gate]) -> str:
     )
 
 
+def output_lines(gates: list[Gate]) -> list[str]:
+    return [
+        f"blender_required={'true' if gates else 'false'}",
+        f"blender_workflows={payload(gates)}",
+    ]
+
+
 def write_outputs(path: Path, gates: list[Gate]) -> None:
     with path.open("a", encoding="utf-8") as handle:
-        handle.write(f"required={'true' if gates else 'false'}\n")
-        handle.write(f"workflows={payload(gates)}\n")
+        handle.write("\n".join(output_lines(gates)) + "\n")
 
 
 def self_test() -> None:
     assert classify(["frontend/src/components/Home.css"]) == []
+    assert output_lines([]) == ["blender_required=false", "blender_workflows=[]"]
     assert [gate.workflow for gate in classify(["scripts/blender/build_home_matthias.py"])] == [
         "home-matthias-blender-art.yml"
     ]
@@ -161,8 +168,7 @@ def main() -> int:
     if args.github_output:
         write_outputs(Path(args.github_output), gates)
     else:
-        print(f"required={'true' if gates else 'false'}")
-        print(f"workflows={payload(gates)}")
+        print("\n".join(output_lines(gates)))
     return 0
 
 
