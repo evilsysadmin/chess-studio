@@ -1,0 +1,99 @@
+name: Temp · Pawn Slug Matthias → R2
+
+on:
+  push:
+    branches:
+      - chore/pawn-slug-r2-assets-1
+    paths:
+      - .github/workflows/pawn-slug-r2-assets-migrate.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Require Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+
+      - name: Verify canonical master
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '9c21264274777d012a2941073f6cbae94df090db0459624e6031207c0a288c5f  frontend/src/assets/pawnSlug/matthias_canonical_sprite_sheet_v1.png' | sha256sum -c -
+
+      - name: Decode tracked runtime payloads to temporary WebP files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pawn-slug-r2
+          base64 -d frontend/src/assets/pawnSlug/matthias_machinegun_premium_v3.b64 > /tmp/pawn-slug-r2/matthias_machinegun_premium_v3.webp
+          base64 -d frontend/src/assets/pawnSlug/matthias_shotgun_premium_v3.b64 > /tmp/pawn-slug-r2/matthias_shotgun_premium_v3.webp
+          base64 -d frontend/src/assets/pawnSlug/matthias_panzerfaust_premium_v3.b64 > /tmp/pawn-slug-r2/matthias_panzerfaust_premium_v3.webp
+          base64 -d frontend/src/assets/pawnSlug/matthias_motion_atlas_v5_payload.b64 > /tmp/pawn-slug-r2/matthias_motion_atlas_v5.webp
+          file /tmp/pawn-slug-r2/*.webp
+
+      - name: Publish immutable Matthias assets to R2
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/r2_asset_publish.py publish \
+            frontend/src/assets/pawnSlug/matthias_canonical_sprite_sheet_v1.png \
+            --logical-id pawnSlug.matthias.canonicalMaster \
+            --prefix pawn-slug/matthias/master
+          python3 -S scripts/r2_asset_publish.py publish \
+            frontend/src/assets/pawnSlug/matthias_canonical_pistol_v1.webp \
+            --logical-id pawnSlug.matthias.pistol \
+            --prefix pawn-slug/matthias/pistol
+          python3 -S scripts/r2_asset_publish.py publish \
+            /tmp/pawn-slug-r2/matthias_machinegun_premium_v3.webp \
+            --logical-id pawnSlug.matthias.machinegun \
+            --prefix pawn-slug/matthias/machinegun
+          python3 -S scripts/r2_asset_publish.py publish \
+            /tmp/pawn-slug-r2/matthias_shotgun_premium_v3.webp \
+            --logical-id pawnSlug.matthias.shotgun \
+            --prefix pawn-slug/matthias/shotgun
+          python3 -S scripts/r2_asset_publish.py publish \
+            /tmp/pawn-slug-r2/matthias_panzerfaust_premium_v3.webp \
+            --logical-id pawnSlug.matthias.panzerfaust \
+            --prefix pawn-slug/matthias/panzerfaust
+          python3 -S scripts/r2_asset_publish.py publish \
+            /tmp/pawn-slug-r2/matthias_motion_atlas_v5.webp \
+            --logical-id pawnSlug.matthias.motion \
+            --prefix pawn-slug/matthias/motion
+          python3 -S scripts/r2_asset_publish.py check-manifest
+
+      - name: Verify public CDN bytes and print manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, pathlib, urllib.request
+          path = pathlib.Path('frontend/src/assets/r2-assets-manifest.json')
+          manifest = json.loads(path.read_text(encoding='utf-8'))
+          wanted = [k for k in manifest['assets'] if k.startswith('pawnSlug.matthias.')]
+          assert len(wanted) == 6, wanted
+          for logical_id in sorted(wanted):
+              entry = manifest['assets'][logical_id]
+              with urllib.request.urlopen(entry['url'], timeout=30) as response:
+                  body = response.read()
+              digest = hashlib.sha256(body).hexdigest()
+              assert digest == entry['sha256'], (logical_id, digest, entry['sha256'])
+              assert len(body) == entry['bytes'], (logical_id, len(body), entry['bytes'])
+              print(f'CDN_OK {logical_id} {entry["bytes"]} {entry["sha256"]}')
+          print('---R2_MANIFEST_BEGIN---')
+          print(json.dumps(manifest, indent=2, sort_keys=True, ensure_ascii=False))
+          print('---R2_MANIFEST_END---')
+          PY
