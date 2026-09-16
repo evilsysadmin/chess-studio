@@ -354,9 +354,17 @@ export default function HomeMatthias3D({
         const rightEyeNode = model.getObjectByName('Eye.R');
         const headWorld = new THREE.Vector3(center.x, center.y, center.z - 1);
         const faceWorld = new THREE.Vector3(center.x, center.y, center.z);
-        let faceSource = 'head-nose-vector';
+        let faceSource = 'fallback-axis';
         headNode?.getWorldPosition(headWorld);
-        if (leftEyeNode && rightEyeNode) {
+
+        // The Blender builder exports Nose expressly as an invisible runtime
+        // front-of-face anchor. Prefer that authored marker over render meshes:
+        // Eye.L/Eye.R can inherit baked mesh transforms that are valid visually
+        // but ambiguous as a camera-orientation contract after Y-up export.
+        if (noseNode) {
+          noseNode.getWorldPosition(faceWorld);
+          faceSource = 'head-nose-vector';
+        } else if (leftEyeNode && rightEyeNode) {
           const leftEyeWorld = new THREE.Vector3();
           const rightEyeWorld = new THREE.Vector3();
           leftEyeNode.getWorldPosition(leftEyeWorld);
@@ -364,7 +372,7 @@ export default function HomeMatthias3D({
           faceWorld.addVectors(leftEyeWorld, rightEyeWorld).multiplyScalar(0.5);
           faceSource = 'head-eye-midpoint-vector';
         } else {
-          noseNode?.getWorldPosition(faceWorld);
+          faceWorld.copy(headWorld);
         }
 
         const cameraPose = homeMatthiasCameraPose({
@@ -384,6 +392,8 @@ export default function HomeMatthias3D({
         camera.updateProjectionMatrix();
         placePortraitLights({ key, fill, rim }, cameraPose);
         canvas.dataset.matthiasCameraFacing = cameraPose.source;
+        canvas.dataset.matthiasCameraFaceX = cameraPose.faceX.toFixed(4);
+        canvas.dataset.matthiasCameraFaceZ = cameraPose.faceZ.toFixed(4);
         canvas.dataset.matthiasCameraDistance = cameraPose.distance.toFixed(3);
 
         model.traverse((node) => {
