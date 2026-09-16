@@ -7,6 +7,7 @@ from typing import Optional
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError, PyMongoError
 
+from auth import current_session_version_claim, remember_account_session_version
 from db import PersistentStorageUnavailable, get_db, persistent_storage_required
 
 COLLECTION = "users"
@@ -147,8 +148,12 @@ async def get_user(username: str) -> Optional[dict]:
         if doc:
             doc.pop("_id", None)
             doc["username"] = username
+            remember_account_session_version(session_version(doc))
         return doc
-    return _memory_users.get(username)
+    user = _memory_users.get(username)
+    if user is not None:
+        remember_account_session_version(session_version(user))
+    return user
 
 
 async def create_user(username: str, password_hash: str, email: str | None = None) -> dict:
@@ -187,6 +192,7 @@ async def create_user(username: str, password_hash: str, email: str | None = Non
     else:
         _memory_users[username] = doc
     _user_existence_cache[username] = (time.monotonic(), True, 0)
+    remember_account_session_version(0)
     return doc
 
 
@@ -200,7 +206,10 @@ async def get_auth_state(username: str, *, force: bool = False) -> tuple[bool, i
     now = time.monotonic()
     cached = _user_existence_cache.get(username)
     if not force and cached and now - cached[0] < _USER_EXISTENCE_CACHE_TTL_S:
-        return cached[1], cached[2]
+        exists, version = cached[1], cached[2]
+        if exists:
+            remember_account_session_version(version)
+        return exists, version
 
     col = await _get_collection()
     if col is not None:
@@ -216,13 +225,18 @@ async def get_auth_state(username: str, *, force: bool = False) -> tuple[bool, i
         version = session_version(user)
 
     _user_existence_cache[username] = (now, exists, version)
+    if exists:
+        remember_account_session_version(version)
     return exists, version
 
 
 async def user_exists(username: str, *, force: bool = False) -> bool:
-    """Compatibilidad: devuelve sólo existencia usando el estado de auth cacheado."""
-    exists, _version = await get_auth_state(username, force=force)
-    return exists
+    """Existencia de cuenta y, si hay JWT en contexto, versión de sesión válida."""
+    exists, version = await get_auth_state(username, force=force)
+    if not exists:
+        return False
+    claim = current_session_version_claim()
+    return claim is None or claim == version
 
 
 async def delete_user(username: str) -> bool:
@@ -301,6 +315,7 @@ async def update_password(username: str, password_hash: str) -> Optional[int]:
             return None
         version = session_version(doc)
         _user_existence_cache[username] = (time.monotonic(), True, version)
+        remember_account_session_version(version)
         return version
 
     user = _memory_users.get(username)
@@ -311,6 +326,7 @@ async def update_password(username: str, password_hash: str) -> Optional[int]:
     user["session_version"] = session_version(user) + 1
     version = session_version(user)
     _user_existence_cache[username] = (time.monotonic(), True, version)
+    remember_account_session_version(version)
     return version
 
 
