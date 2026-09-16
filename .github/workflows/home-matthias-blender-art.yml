@@ -2,7 +2,7 @@ name: Home Matthias · Blender canonical art
 
 # Path-scoped canonical-art lane: the consolidated required gate waits for this workflow when these sources change.
 # This workflow is intentionally read-only. Updating an open PR with GITHUB_TOKEN causes GitHub to create
-# approval-required pull_request runs, so generated binaries must already be materialized in the PR head.
+# approval-required pull_request runs, so generated binaries must already be semantically current in the PR head.
 on:
   pull_request:
     paths:
@@ -11,6 +11,7 @@ on:
       - 'scripts/blender/home_matthias_animations.py'
       - 'scripts/blender/home_matthias_contract.py'
       - 'scripts/blender/validate_home_matthias_contract.py'
+      - 'scripts/blender/compare_glb_semantics.py'
       - 'frontend/art-source/matthias-home-canonical-reference.webp'
       - 'frontend/art-source/matthias-home-canonical-reference.txt'
       - '.github/workflows/home-matthias-blender-art.yml'
@@ -93,31 +94,21 @@ jobs:
           assert max(channel[1] for channel in extrema) > 40, extrema
           PY
 
-      - name: Verify checked-in canonical binaries are current
+      - name: Validate checked-in editable blend contract
         run: |
           set -euo pipefail
-          stale=0
+          test -s frontend/art-source/matthias-home-canonical.blend
+          blender --background \
+            frontend/art-source/matthias-home-canonical.blend \
+            --python scripts/blender/validate_home_matthias_contract.py
 
-          if ! cmp -s \
-            /tmp/home-matthias-art/matthias-home-canonical.blend \
-            frontend/art-source/matthias-home-canonical.blend; then
-            echo '::error file=frontend/art-source/matthias-home-canonical.blend::Canonical .blend is stale; materialize the rendered artifact in the PR branch.'
-            stale=1
-          fi
-
-          if ! cmp -s \
-            /tmp/home-matthias-art/matthias-home-canonical.glb \
-            frontend/public/models/matthias-home-canonical.glb; then
-            echo '::error file=frontend/public/models/matthias-home-canonical.glb::Canonical runtime GLB is stale; materialize the rendered artifact in the PR branch.'
-            stale=1
-          fi
-
-          if (( stale != 0 )); then
-            echo 'CI intentionally does not push generated binaries into an open PR: GITHUB_TOKEN PR updates create approval-required workflow runs.'
-            exit 1
-          fi
-
-          echo 'Canonical Home Matthias binaries match the validated render.'
+      - name: Verify checked-in runtime GLB matches regenerated semantics
+        run: |
+          set -euo pipefail
+          python3 -S scripts/blender/compare_glb_semantics.py --self-test
+          python3 -S scripts/blender/compare_glb_semantics.py \
+            frontend/public/models/matthias-home-canonical.glb \
+            /tmp/home-matthias-art/matthias-home-canonical.glb
 
       - uses: actions/upload-artifact@v4
         if: always()
