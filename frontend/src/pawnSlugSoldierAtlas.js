@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import enemyCastAtlasFallbackUrl from './assets/pawnSlug/enemy_cast_blender_v1_runtime.webp';
 import { PAWN_SLUG_ENEMY_ACTIONS } from './pawnSlugEnemyActionMotion.js';
-import { r2AssetUrl } from './r2Assets.js';
+import { R2_ASSET_BASE_URL, r2AssetUrl } from './r2Assets.js';
 
 const FRAME = 96;
 const COLUMNS = 16;
 const TYPES = Object.freeze(['pawn', 'knight', 'rook']);
 const ACTIONS = Object.freeze(['idle', 'run', 'jump', 'crouch', 'hurt', 'climb', 'death']);
 const ROWS = TYPES.length * ACTIONS.length;
+const R2_ASSET_ORIGIN = `${String(R2_ASSET_BASE_URL || '').replace(/\/+$/, '')}/`;
 let cachedBaseTexture = null;
 const liveClones = new Set();
 
@@ -16,6 +17,16 @@ export const PAWN_SLUG_SOLDIER_ATLAS_URL = r2AssetUrl(
   PAWN_SLUG_SOLDIER_ATLAS_LOGICAL_ID,
   enemyCastAtlasFallbackUrl,
 );
+
+function publishPawnSlugSoldierAtlasStatus(status) {
+  if (typeof document === 'undefined') return;
+  const stage = document.querySelector?.('[data-pawn-slug-renderer="three"]');
+  if (!stage?.dataset) return;
+  const transport = R2_ASSET_ORIGIN && PAWN_SLUG_SOLDIER_ATLAS_URL.startsWith(R2_ASSET_ORIGIN)
+    ? 'r2'
+    : 'fallback';
+  stage.dataset.pawnSlugActionAtlas = `${transport}-${status}`;
+}
 
 function rowFor(type, action) {
   const typeIndex = Math.max(0, TYPES.indexOf(type));
@@ -43,13 +54,16 @@ function configureTexture(texture, { sharedSource = false } = {}) {
 function baseAtlasTexture() {
   if (cachedBaseTexture) return cachedBaseTexture;
   const loader = new THREE.TextureLoader();
+  publishPawnSlugSoldierAtlasStatus('loading');
   cachedBaseTexture = configureTexture(loader.load(
     PAWN_SLUG_SOLDIER_ATLAS_URL,
     () => {
+      publishPawnSlugSoldierAtlasStatus('ready');
       for (const clone of liveClones) clone.needsUpdate = true;
     },
     undefined,
     () => {
+      publishPawnSlugSoldierAtlasStatus('failed');
       for (const clone of liveClones) clone.userData.loadFailed = true;
     },
   ), { sharedSource: true });
@@ -106,4 +120,6 @@ export const PAWN_SLUG_SOLDIER_ATLAS_META = Object.freeze({
   logicalId: PAWN_SLUG_SOLDIER_ATLAS_LOGICAL_ID,
   transport: 'r2-cdn-with-local-webp-fallback',
   localFallbackAsset: 'enemy_cast_blender_v1_runtime.webp',
+  browserRenderContract: 'data-pawn-slug-action-atlas',
+  browserR2Contract: 'r2-ready',
 });
