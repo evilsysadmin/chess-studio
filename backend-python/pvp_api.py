@@ -122,6 +122,8 @@ def _public_match(match: dict, username: str) -> dict:
         "turn": turn,
         "status": match.get("status", "active"),
         "result": match.get("result"),
+        "termination": match.get("termination"),
+        "resignedBy": match.get("resigned_by"),
         "history": _serialize(match.get("history") or []),
         "revision": int(match.get("revision", 0)),
         "youAre": "w" if color == chess.WHITE else "b",
@@ -289,5 +291,35 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
             if updated:
                 return {"match": _public_match(updated, username)}
         raise HTTPException(409, "La posición cambió mientras enviabas la jugada. Actualiza e inténtalo de nuevo.")
+
+    @router.post("/matches/{match_id}/resign")
+    @limiter.limit("10/minute")
+    async def resign(request: Request, match_id: str, username: str = Depends(auth_dependency)):
+        for _attempt in range(3):
+            match = await store.get_match(match_id)
+            color = _player_color(match or {}, username)
+            if not match or color is None:
+                raise HTTPException(404, "Partida 1v1 no encontrada.")
+            if match.get("status") != "active":
+                if match.get("termination") == "resignation" and match.get("resigned_by") == username:
+                    return {"match": _public_match(match, username)}
+                raise HTTPException(409, "La partida ya ha terminado.")
+
+            now = store.utcnow()
+            result = "0-1" if color == chess.WHITE else "1-0"
+            updated = await store.update_match(
+                match_id,
+                expected_revision=int(match.get("revision", 0)),
+                changes={
+                    "status": "finished",
+                    "result": result,
+                    "termination": "resignation",
+                    "resigned_by": username,
+                    "updated_at": now,
+                },
+            )
+            if updated:
+                return {"match": _public_match(updated, username)}
+        raise HTTPException(409, "La partida cambió mientras intentabas rendirte. Actualiza e inténtalo de nuevo.")
 
     return router
