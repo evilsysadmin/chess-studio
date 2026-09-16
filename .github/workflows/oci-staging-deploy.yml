@@ -40,10 +40,17 @@ jobs:
           fetch-depth: 1
       - name: Validate OCI credential contract
         run: make -C infra/oci auth
+      - name: Validate reserved egress reconciler
+        run: python3 -S scripts/oci_reserved_egress.py --self-test
       - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.16.0
           terraform_wrapper: false
+      - name: Restore cached OCI SDK toolchain
+        uses: ./.github/actions/setup-oci-sdk
+        with:
+          version: '2.185.2'
+          python-version: '3.13'
       - name: Apply OCI staging desired state
         shell: bash
         run: |
@@ -68,3 +75,31 @@ jobs:
             fi
             exit "$rc"
           done
+      - name: Wait for OCI Run Command before egress cutover
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            log="${RUNNER_TEMP}/oci-agent-egress-${attempt}.log"
+            set +e
+            python3 scripts/oci_run_command.py diagnose >"$log" 2>&1
+            rc=$?
+            set -e
+            if [[ "$rc" -eq 0 ]]; then
+              cat "$log"
+              exit 0
+            fi
+            if grep -Fq 'Plugin Compute Instance Run Command not present for instance' "$log" && [[ "$attempt" -lt 60 ]]; then
+              echo "OCI Run Command plugin not registered yet (attempt ${attempt}/60); retrying in 5s"
+              sleep 5
+              continue
+            fi
+            cat "$log"
+            exit "$rc"
+          done
+      - name: Attach existing reserved staging egress
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/oci_reserved_egress.py
+          python3 scripts/oci_run_command.py diagnose
