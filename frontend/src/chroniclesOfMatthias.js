@@ -5,6 +5,7 @@ import {
   chroniclesMapInitialEnemyState,
   chroniclesMapTileAt,
 } from './chronicles/chroniclesMapCatalog.js';
+import { chroniclesApplyContentEffects } from './chronicles/chroniclesContentRuntime.js';
 
 const DEFAULT_MAP = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID);
 
@@ -176,11 +177,23 @@ function retaliationTargetId(state, attacker) {
   return state.party.find((member) => member.row === 'front' && member.hp > 0)?.id || attacker.id;
 }
 
+function renderCombatTemplate(template, attacker, enemy) {
+  if (typeof template !== 'string' || !template) return '';
+  const values = {
+    attacker: attacker.name,
+    attack: attacker.attackName.toLowerCase(),
+    enemy: enemy.name,
+  };
+  return Object.entries(values).reduce(
+    (text, [key, value]) => text.split(`{${key}}`).join(value),
+    template,
+  );
+}
+
 function defeatMessage(attacker, enemy) {
-  if (enemy.id === 'gate-jailer') return `${attacker.name} derriba a la torre carcelero con ${attacker.attackName.toLowerCase()}. La puerta parece libre durante una cantidad sospechosamente pequeña de tiempo.`;
-  if (enemy.id === 'spectral-bishop') return `${attacker.name} deshace al alfil espectral con ${attacker.attackName.toLowerCase()}. Aziz recupera el Farol Espectral y el grupo recuerda vagamente cómo funciona la circulación.`;
-  if (enemy.id === 'scavenger-knight') return `${attacker.name} derriba al caballo carroñero con ${attacker.attackName.toLowerCase()}. La Llave Negra rebota por el suelo con mucha menos dignidad que su ladrón.`;
-  return `${attacker.name} remata al peón corrompido con ${attacker.attackName.toLowerCase()}. Matthias aprueba con una cantidad ofensivamente pequeña de entusiasmo.`;
+  const authored = renderCombatTemplate(enemy.onDefeat?.message, attacker, enemy);
+  if (authored) return authored;
+  return `${attacker.name} derrota a ${enemy.name} con ${attacker.attackName.toLowerCase()}. La expedición continúa.`;
 }
 
 function rangedHitMessage(attacker, enemy) {
@@ -191,47 +204,23 @@ function rangedHitMessage(attacker, enemy) {
 }
 
 function rewardForDefeat(state, enemy) {
-  if (enemy.id === 'spectral-bishop') {
-    return {
-      ...state,
-      spectralLantern: true,
-      party: state.party.map((member) => member.hp > 0 ? { ...member, hp: Math.min(member.maxHp, member.hp + 1) } : member),
-    };
-  }
-  if (enemy.id === 'scavenger-knight') return { ...state, blackGateKey: true };
-  return state;
+  return chroniclesApplyContentEffects(state, enemy.onDefeat?.effects);
 }
 
 function journalForDefeat(state, attacker, enemy) {
-  if (enemy.id === 'gate-jailer') {
+  const authored = enemy.onDefeat?.journal;
+  if (!authored) {
     return appendJournal(state, {
-      id: 'gate-jailer-falls',
-      title: 'La Torre Carcelero pierde la plaza',
-      body: `${attacker.name} firma el golpe final. La salida queda libre durante unas décimas; algo relincha en L desde la oscuridad.`,
-      sigil: 'V',
-    });
-  }
-  if (enemy.id === 'spectral-bishop') {
-    return appendJournal(state, {
-      id: 'spectral-bishop-falls',
-      title: 'Aziz recupera el Farol Espectral',
-      body: `${attacker.name} rompe la liturgia inversa. Aziz reclama el farol y su luz devuelve un poco de vida a cada superviviente.`,
-      sigil: 'IV',
-    });
-  }
-  if (enemy.id === 'scavenger-knight') {
-    return appendJournal(state, {
-      id: 'scavenger-knight-falls',
-      title: 'La persecución termina con devolución de propiedad',
-      body: `${attacker.name} abate al caballo carroñero. La Llave Negra vuelve al inventario y Matthias propone no auditar el resto de sus bolsillos.`,
-      sigil: 'VI',
+      id: `${enemy.id}-falls`,
+      title: `${enemy.name[0].toUpperCase()}${enemy.name.slice(1)} cae`,
+      body: `${attacker.name} firma la baja. La expedición continúa con una criatura menos y exactamente la misma mala idea de fondo.`,
+      sigil: '†',
     });
   }
   return appendJournal(state, {
-    id: 'corrupted-pawn-falls',
-    title: 'Primer contacto, pésima diplomacia',
-    body: `${attacker.name} elimina al peón corrompido. El grupo concluye que la negociación habría sido innecesariamente larga.`,
-    sigil: 'II',
+    ...authored,
+    title: renderCombatTemplate(authored.title, attacker, enemy),
+    body: renderCombatTemplate(authored.body, attacker, enemy),
   });
 }
 
