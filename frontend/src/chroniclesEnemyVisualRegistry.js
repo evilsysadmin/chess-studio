@@ -1,6 +1,7 @@
 import { buildCorruptedPawn, buildGateJailer } from './chroniclesOfMatthiasArt.js';
 import { buildScavengerKnight } from './chroniclesOfMatthiasScavengerKnight.js';
 import { buildSpectralBishop } from './chroniclesOfMatthiasSpectralBishop.js';
+import { installChroniclesEnemyMotionArt } from './chroniclesEnemyMotionArt.js';
 
 const VISUALS = Object.freeze({
   'corrupted-pawn': Object.freeze({ build: buildCorruptedPawn, scale: 0.92 }),
@@ -18,8 +19,10 @@ export function chroniclesEnemyVisualSpec(visualType) {
 export function buildChroniclesEnemyVisual(visualType, options = {}) {
   const visual = VISUALS[visualType];
   if (!visual) return null;
+  const model = visual.build(options);
+  installChroniclesEnemyMotionArt(model, visualType, options);
   return Object.freeze({
-    model: visual.build(options),
+    model,
     scale: visual.scale,
   });
 }
