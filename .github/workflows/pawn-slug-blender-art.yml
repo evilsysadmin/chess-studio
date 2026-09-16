@@ -108,50 +108,101 @@ jobs:
           retention-days: 7
           compression-level: 0
 
-  publish-canonical-smg-r2:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    name: Publish canonical SMG atlas · R2
+  canonical-heavy-proof:
+    if: github.event_name != 'push'
+    name: Render canonical ${{ matrix.weapon }} run cycle
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        weapon: [shotgun, panzerfaust]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-blender-canonical
-      - name: Render full canonical SMG runtime bank
+      - name: Render approved-language heavy proof cells
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
+          WEAPON: ${{ matrix.weapon }}
         run: |
           set -euo pipefail
-          rm -rf /tmp/pawn-slug-canonical-runtime
-          mkdir -p /tmp/pawn-slug-canonical-runtime
+          OUT="/tmp/pawn-slug-canonical-${WEAPON}-proof"
+          rm -rf "$OUT"
           blender --background -noaudio \
             --python scripts/blender/render_pawn_slug_matthias_canonical_runtime.py \
-            -- --output-dir /tmp/pawn-slug-canonical-runtime --weapon machinegun --profile runtime
+            -- --output-dir "$OUT" --weapon "$WEAPON" --profile proof
+          test -s "$OUT/matthias_${WEAPON}_idle_00.png"
+          for FRAME in 00 04 08 12; do
+            test -s "$OUT/matthias_${WEAPON}_run_${FRAME}.png"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawn-slug-canonical-${{ matrix.weapon }}-proof-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/pawn-slug-canonical-${{ matrix.weapon }}-proof/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  publish-canonical-heavy-r2:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: Publish canonical ${{ matrix.weapon }} atlas · R2
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        weapon: [shotgun, panzerfaust]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-blender-canonical
+      - name: Render full canonical runtime bank
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          WEAPON: ${{ matrix.weapon }}
+        run: |
+          set -euo pipefail
+          OUT="/tmp/pawn-slug-canonical-${WEAPON}-runtime"
+          rm -rf "$OUT"
+          mkdir -p "$OUT"
+          blender --background -noaudio \
+            --python scripts/blender/render_pawn_slug_matthias_canonical_runtime.py \
+            -- --output-dir "$OUT" --weapon "$WEAPON" --profile runtime
       - name: Pack lossless 16x5 runtime atlas
+        env:
+          WEAPON: ${{ matrix.weapon }}
         run: |
           set -euo pipefail
           python3 -m pip install --disable-pip-version-check --quiet pillow
+          OUT="/tmp/pawn-slug-canonical-${WEAPON}-runtime"
+          ATLAS="$OUT/matthias_${WEAPON}_canonical_v2.webp"
           python3 scripts/art/pack_pawn_slug_canonical_runtime.py \
-            --frames-dir /tmp/pawn-slug-canonical-runtime \
-            --weapon machinegun \
-            --output /tmp/pawn-slug-canonical-runtime/matthias_machinegun_canonical_v2.webp
-          test -s /tmp/pawn-slug-canonical-runtime/matthias_machinegun_canonical_v2.webp
-      - name: Publish immutable SMG atlas to Cloudflare R2
+            --frames-dir "$OUT" \
+            --weapon "$WEAPON" \
+            --output "$ATLAS"
+          test -s "$ATLAS"
+      - name: Publish immutable atlas to Cloudflare R2
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WEAPON: ${{ matrix.weapon }}
         run: |
           set -euo pipefail
+          OUT="/tmp/pawn-slug-canonical-${WEAPON}-runtime"
+          ATLAS="$OUT/matthias_${WEAPON}_canonical_v2.webp"
           python3 -S scripts/r2_asset_publish.py publish \
-            /tmp/pawn-slug-canonical-runtime/matthias_machinegun_canonical_v2.webp \
-            --logical-id pawnSlug.matthias.machinegun \
-            --prefix pawn-slug/matthias/machinegun | tee /tmp/pawn-slug-r2-publish.txt
+            "$ATLAS" \
+            --logical-id "pawnSlug.matthias.${WEAPON}" \
+            --prefix "pawn-slug/matthias/${WEAPON}" | tee "/tmp/pawn-slug-${WEAPON}-r2-publish.txt"
           python3 -S scripts/r2_asset_publish.py check-manifest
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: pawn-slug-canonical-smg-r2-${{ github.run_number }}
+          name: pawn-slug-canonical-${{ matrix.weapon }}-r2-${{ github.run_number }}
           path: |
             frontend/src/assets/r2-assets-manifest.json
-            /tmp/pawn-slug-r2-publish.txt
+            /tmp/pawn-slug-${{ matrix.weapon }}-r2-publish.txt
           if-no-files-found: warn
           retention-days: 7
