@@ -129,17 +129,16 @@ jobs:
           print('Render staging resuelto read-only; no se reconcilia ni despliega')
           PY
 
-      - name: Setup Python for OCI control plane
-        uses: actions/setup-python@v6
+      - name: Restore cached OCI SDK toolchain
+        uses: ./.github/actions/setup-oci-sdk
         with:
+          version: '2.185.2'
           python-version: '3.13'
-          cache: pip
 
-      - name: Validate OCI deploy contract
-        run: python3 -S scripts/oci_run_command.py --self-test
-
-      - name: Install OCI SDK
-        run: python3 -m pip install --disable-pip-version-check 'oci==2.185.2'
+      - name: Validate OCI deploy contracts
+        run: |
+          python3 -S scripts/oci_run_command.py --self-test
+          python3 -S scripts/verify_backend_staging.py --self-test
 
       # Legacy contract marker only: Deploy exact backend commit to Render staging
       - name: Deploy exact backend commit to OCI staging
@@ -148,44 +147,13 @@ jobs:
           set -euo pipefail
           python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"
 
-      - name: Verify backend staging readiness and build identity
-        shell: bash
-        run: |
-          set -euo pipefail
-          gate_ok=false
-          for attempt in {1..150}; do
-            ready_body="$RUNNER_TEMP/staging-api-ready-$attempt.json"
-            ready_status="$(curl --silent --show-error \
-              --connect-timeout 5 --max-time 12 \
-              --output "$ready_body" --write-out '%{http_code}' \
-              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-              -H 'User-Agent: chess-studio-staging-deploy/4' \
-              "$STAGING_API_URL/ready" || true)"
-            release_body="$RUNNER_TEMP/staging-api-release-$attempt.json"
-            release_status="$(curl --silent --show-error \
-              --connect-timeout 5 --max-time 12 \
-              --output "$release_body" --write-out '%{http_code}' \
-              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-              -H 'User-Agent: chess-studio-staging-deploy/4' \
-              "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
-            if [[ "$ready_status" == 200 && "$release_status" == 200 ]] && \
-              python3 - "$ready_body" "$release_body" "$DEPLOY_SHA" <<'PY'
-          import json, pathlib, sys
-          ready = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          release = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
-          expected = sys.argv[3].lower()
-          ok = ready.get('ok') is True and ready.get('storage') == 'mongo'
-          exact = str(release.get('build') or '').lower() == expected
-          raise SystemExit(0 if ok and exact else 1)
-          PY
-            then
-              gate_ok=true
-              break
-            fi
-            echo "Backend OCI staging aún no acredita Mongo ready + SHA $DEPLOY_SHA (ready=${ready_status:-curl-error}, release=${release_status:-curl-error}, intento $attempt/150)"
-            sleep 2
-          done
-          [[ "$gate_ok" == true ]] || { echo '::error::Backend OCI staging no acreditó readiness y SHA esperado tras 5 minutos'; exit 1; }
+      - name: Verify backend public path reaches exact OCI generation
+        run: >-
+          python3 scripts/verify_backend_staging.py
+          --api-url "$STAGING_API_URL"
+          --sha "$DEPLOY_SHA"
+          --attempts 20
+          --interval 2
 
   frontend:
     name: Frontend · exact Pages generation

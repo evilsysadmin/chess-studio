@@ -1,0 +1,67 @@
+name: Setup cached OCI SDK
+description: Restore an exact OCI Python virtualenv and install it only on cache miss.
+
+inputs:
+  version:
+    description: Exact OCI SDK version.
+    required: false
+    default: '2.185.2'
+  python-version:
+    description: Python version used to create the virtualenv.
+    required: false
+    default: '3.13'
+  cache-version:
+    description: Manual cache namespace bump.
+    required: false
+    default: 'v1'
+
+outputs:
+  cache-hit:
+    description: Whether the exact virtualenv came from Actions cache.
+    value: ${{ steps.oci-cache.outputs.cache-hit }}
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Restore exact OCI SDK virtualenv
+      id: oci-cache
+      uses: actions/cache@v6
+      with:
+        path: ${{ runner.tool_cache }}/chess-studio-oci-sdk/py${{ inputs.python-version }}/oci-${{ inputs.version }}
+        key: oci-sdk-${{ runner.os }}-${{ runner.arch }}-py${{ inputs.python-version }}-${{ inputs.cache-version }}-${{ inputs.version }}
+
+    - name: Install OCI SDK on cache miss
+      if: steps.oci-cache.outputs.cache-hit != 'true'
+      shell: bash
+      env:
+        OCI_VERSION: ${{ inputs.version }}
+        PY_VERSION: ${{ inputs.python-version }}
+      run: |
+        set -euo pipefail
+        tool_dir="$RUNNER_TOOL_CACHE/chess-studio-oci-sdk/py${PY_VERSION}/oci-${OCI_VERSION}"
+        rm -rf "$tool_dir"
+        python3 -m venv "$tool_dir"
+        "$tool_dir/bin/python" -m pip install --disable-pip-version-check --no-cache-dir "oci==$OCI_VERSION"
+        printf '%s\n' "$OCI_VERSION" > "$tool_dir/.chess-oci-version"
+
+    - name: Export and verify OCI SDK
+      shell: bash
+      env:
+        OCI_VERSION: ${{ inputs.version }}
+        PY_VERSION: ${{ inputs.python-version }}
+      run: |
+        set -euo pipefail
+        tool_dir="$RUNNER_TOOL_CACHE/chess-studio-oci-sdk/py${PY_VERSION}/oci-${OCI_VERSION}"
+        actual="$(cat "$tool_dir/.chess-oci-version" 2>/dev/null || true)"
+        [[ "$actual" == "$OCI_VERSION" ]] || {
+          echo "::error::OCI SDK cache stamp mismatch: expected $OCI_VERSION, got ${actual:-missing}"
+          exit 1
+        }
+        "$tool_dir/bin/python" -c 'import oci; print(f"OCI SDK ready: {oci.__version__}")'
+        echo "$tool_dir/bin" >> "$GITHUB_PATH"
+        echo "OCI_PYTHON=$tool_dir/bin/python" >> "$GITHUB_ENV"
