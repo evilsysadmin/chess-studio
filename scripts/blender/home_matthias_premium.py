@@ -1,10 +1,10 @@
 """Premium visual pass for the canonical Home Matthias asset.
 
-This layer deliberately keeps the pawn-first silhouette and existing animation rig,
-while matching the approved 2026-09-16 Home reference more closely: glossy
-midnight body, warm ivory face, readable angry eyes, serious frown, richer cap
-trim and a more authored service insignia. It is additive and deterministic so
-Blender CI can keep materializing the same GLB from source.
+Keeps the existing pawn rig and routines, but makes the authored Home render the
+visual source of truth: dimensional angry eyes, restrained frown, broad peaked
+service cap, compact glossy torso, visible black/gold chest cross and quiet
+service trim. All additions remain bone-parented so the existing animation clips
+continue to drive the same character.
 """
 import math
 import bpy
@@ -12,9 +12,11 @@ import bpy
 from home_matthias_parts import (
     box,
     crescent_visor,
+    elliptic_cyl,
     front_ellipse,
     front_prism,
     iron_cross_points,
+    loft_ellipse,
     mat,
     parent_bone,
     sphere,
@@ -32,6 +34,12 @@ def _remove(*names):
             bpy.data.objects.remove(obj, do_unlink=True)
 
 
+def _remove_prefix(prefix):
+    for obj in list(bpy.data.objects):
+        if obj.name.startswith(prefix):
+            bpy.data.objects.remove(obj, do_unlink=True)
+
+
 def _tune_material(name, rgb, roughness, metallic):
     material = bpy.data.materials.get(name)
     if material is None or not material.use_nodes:
@@ -44,8 +52,16 @@ def _tune_material(name, rgb, roughness, metallic):
     bsdf.inputs["Metallic"].default_value = metallic
 
 
-def _leaf(name, x, z, angle_deg, brass):
-    leaf = front_ellipse(name, (x, -.371, z), .015, .030, .008, brass, 28, .002)
+def _scale_xy(name, factor):
+    obj = bpy.data.objects.get(name)
+    if obj is None:
+        return
+    obj.scale.x *= factor
+    obj.scale.y *= factor
+
+
+def _leaf(name, x, y, z, angle_deg, brass):
+    leaf = front_ellipse(name, (x, y, z), .018, .034, .009, brass, 30, .002)
     leaf.rotation_euler.y = math.radians(angle_deg)
     return leaf
 
@@ -53,96 +69,135 @@ def _leaf(name, x, z, angle_deg, brass):
 def _add_face(rig):
     _remove(
         "Eye.L", "Eye.R", "Brow.L", "Brow.R", "Mouth.L", "Mouth.R",
+        "Canonical eye socket.L", "Canonical eye socket.R",
         "Canonical eye white.L", "Canonical eye white.R",
         "Canonical iris.L", "Canonical iris.R",
         "Canonical eye shine.L", "Canonical eye shine.R",
         "Canonical mouth center",
     )
 
-    eye_white = mat("canonical warm eye white", (.78, .70, .56), .26, .01)
-    iris = mat("canonical dark hazel iris", (.105, .052, .020), .23, .03)
-    pupil = mat("canonical pupil black", (.0012, .0015, .0022), .20, .05)
-    shine = mat("canonical eye catchlight", (.95, .90, .76), .16, .02)
-    ink = mat("canonical stern facial ink", (.0013, .0015, .0020), .34, .02)
+    sclera = mat("canonical warm eye white", (.90, .82, .67), .24, .01)
+    iris = mat("canonical dark hazel iris", (.085, .038, .012), .20, .04)
+    pupil = mat("canonical pupil black", (.0008, .0010, .0014), .18, .04)
+    shine = mat("canonical eye catchlight", (1.0, .88, .63), .12, .01)
+    ink = mat("canonical stern facial ink", (.0010, .0012, .0018), .31, .02)
 
     parts = []
     for side, x in (("L", -.112), ("R", .112)):
         parts.extend([
-            sphere(f"Canonical eye white.{side}", (x, -.336, 1.381), (.071, .019, .058), eye_white, 48),
-            sphere(f"Canonical iris.{side}", (x, -.355, 1.378), (.031, .010, .034), iris, 40),
-            sphere(f"Eye.{side}", (x, -.364, 1.377), (.021, .006, .027), pupil, 36),
-            sphere(f"Canonical eye shine.{side}", (x-.007, -.370, 1.388), (.006, .003, .008), shine, 24),
+            sphere(f"Canonical eye socket.{side}", (x, -.340, 1.382), (.078, .020, .061), ink, 48),
+            sphere(f"Canonical eye white.{side}", (x, -.356, 1.382), (.066, .015, .052), sclera, 48),
+            sphere(f"Canonical iris.{side}", (x, -.369, 1.378), (.030, .008, .033), iris, 40),
+            sphere(f"Eye.{side}", (x, -.376, 1.377), (.021, .005, .027), pupil, 36),
+            sphere(f"Canonical eye shine.{side}", (x-.008, -.381, 1.390), (.006, .0025, .008), shine, 24),
         ])
 
     parts.extend([
-        box("Brow.L", (-.112, -.360, 1.466), (.101, .009, .026), ink, (0, math.radians(27), 0), .007),
-        box("Brow.R", (.112, -.360, 1.466), (.101, .009, .026), ink, (0, math.radians(-27), 0), .007),
-        box("Mouth.L", (-.052, -.352, 1.257), (.054, .005, .006), ink, (0, math.radians(-10), 0), .003),
-        box("Canonical mouth center", (0, -.354, 1.248), (.028, .005, .006), ink, (0, 0, 0), .003),
-        box("Mouth.R", (.052, -.352, 1.257), (.054, .005, .006), ink, (0, math.radians(10), 0), .003),
+        box("Brow.L", (-.112, -.373, 1.467), (.105, .009, .026), ink, (0, math.radians(27), 0), .007),
+        box("Brow.R", (.112, -.373, 1.467), (.105, .009, .026), ink, (0, math.radians(-27), 0), .007),
+        box("Mouth.L", (-.052, -.365, 1.257), (.045, .005, .0055), ink, (0, math.radians(-8.5), 0), .003),
+        box("Canonical mouth center", (0, -.366, 1.249), (.025, .005, .0055), ink, (0, 0, 0), .003),
+        box("Mouth.R", (.052, -.365, 1.257), (.045, .005, .0055), ink, (0, math.radians(8.5), 0), .003),
     ])
 
     for obj in parts:
         parent_bone(obj, rig, "head")
 
 
-def _add_cap_detail(rig):
+def _rebuild_cap(rig):
     _remove(
-        "Classic cap badge", "Classic cap badge inset",
+        "Classic cap crown", "Classic cap top", "Classic cap band", "Classic cap brass line",
+        "Classic cap visor", "Classic cap badge", "Classic cap badge inset",
         "Classic cap badge wing.L", "Classic cap badge wing.R",
-        "Canonical cap visor brass lip",
-        "Canonical cap badge pawn head", "Canonical cap badge pawn stem",
-        "Canonical cap badge pawn base",
+        "Canonical cap visor brass lip", "Canonical cap badge pawn head",
+        "Canonical cap badge pawn stem", "Canonical cap badge pawn base",
     )
-    for obj in list(bpy.data.objects):
-        if obj.name.startswith("Canonical cap laurel"):
-            bpy.data.objects.remove(obj, do_unlink=True)
+    _remove_prefix("Canonical cap laurel")
 
-    brass = mat("canonical warm service gold", (.62, .31, .055), .17, .92)
-    dark = mat("canonical cap badge dark", (.004, .004, .005), .24, .30)
+    navy = bpy.data.materials.get("classic midnight pawn")
+    leather = bpy.data.materials.get("classic black leather")
+    red = bpy.data.materials.get("classic cap oxblood band")
+    brass = mat("canonical warm service gold", (.64, .325, .060), .16, .93)
+    dark = mat("canonical cap badge dark", (.003, .003, .004), .22, .32)
 
-    parts = [
-        crescent_visor("Canonical cap visor brass lip", (0, -.024, 1.661), brass, .300, .468, .169, .228, .016, 10, 56),
-        front_ellipse("Classic cap badge", (0, -.368, 1.716), .079, .086, .012, brass, 56, .004),
-        front_ellipse("Classic cap badge inset", (0, -.377, 1.716), .058, .064, .010, dark, 48, .003),
-        front_ellipse("Canonical cap badge pawn head", (0, -.386, 1.742), .017, .019, .008, brass, 30, .002),
-        box("Canonical cap badge pawn stem", (0, -.386, 1.716), (.010, .004, .024), brass, (0, 0, 0), .002),
-        box("Canonical cap badge pawn base", (0, -.386, 1.690), (.030, .004, .008), brass, (0, 0, 0), .002),
-    ]
+    crown = loft_ellipse(
+        "Classic cap crown",
+        [
+            (.356, .272, 1.592, -.002),
+            (.374, .282, 1.630, .000),
+            (.404, .296, 1.667, .014),
+            (.438, .307, 1.700, .036),
+            (.454, .314, 1.724, .060),
+        ],
+        navy, 128, .009,
+    )
+    top = loft_ellipse(
+        "Classic cap top",
+        [
+            (.448, .314, 1.714, .055),
+            (.474, .324, 1.737, .080),
+            (.497, .330, 1.757, .108),
+            (.506, .328, 1.775, .132),
+            (.492, .316, 1.790, .150),
+            (.458, .298, 1.800, .160),
+        ],
+        navy, 132, .009,
+    )
+    band = elliptic_cyl("Classic cap band", (0, -.012, 1.587), .379, .079, .84, red, (math.radians(-2), 0, 0), 120, .010)
+    brass_line = elliptic_cyl("Classic cap brass line", (0, -.018, 1.548), .375, .013, .84, brass, (math.radians(-2), 0, 0), 120, .003)
+    visor = crescent_visor("Classic cap visor", (0, -.038, 1.625), leather, .315, .505, .174, .230, .035, 13, 60)
+    visor_lip = crescent_visor("Canonical cap visor brass lip", (0, -.045, 1.630), brass, .320, .512, .177, .234, .012, 13, 60)
 
+    parts = [crown, top, band, brass_line, visor, visor_lip]
+    parts.extend([
+        front_ellipse("Classic cap badge", (0, -.399, 1.684), .081, .088, .013, brass, 60, .004),
+        front_ellipse("Classic cap badge inset", (0, -.410, 1.684), .059, .065, .010, dark, 52, .003),
+        front_ellipse("Canonical cap badge pawn head", (0, -.420, 1.713), .017, .019, .008, brass, 32, .002),
+        box("Canonical cap badge pawn stem", (0, -.420, 1.686), (.010, .004, .025), brass, (0, 0, 0), .002),
+        box("Canonical cap badge pawn base", (0, -.420, 1.658), (.031, .004, .008), brass, (0, 0, 0), .002),
+    ])
     leaf_specs = [
-        (-.085, 1.677, -35), (-.099, 1.704, -25), (-.101, 1.733, -12), (-.091, 1.760, 6),
-        (.085, 1.677, 35), (.099, 1.704, 25), (.101, 1.733, 12), (.091, 1.760, -6),
+        (-.088, 1.645, -37), (-.106, 1.674, -27), (-.108, 1.705, -13), (-.095, 1.735, 7),
+        (.088, 1.645, 37), (.106, 1.674, 27), (.108, 1.705, 13), (.095, 1.735, -7),
     ]
     for index, (x, z, angle) in enumerate(leaf_specs):
-        parts.append(_leaf(f"Canonical cap laurel {index+1:02d}", x, z, angle, brass))
+        parts.append(_leaf(f"Canonical cap laurel {index+1:02d}", x, -.416, z, angle, brass))
 
     for obj in parts:
         parent_bone(obj, rig, "head")
 
 
+def _refine_body(rig):
+    _scale_xy("Classic navy tunic", .84)
+    _scale_xy("Classic neck plinth", .88)
+    _scale_xy("Classic brass collar line", .88)
+
+    for name, x in (("Classic tunic piping.L", -.246), ("Classic tunic piping.R", .246)):
+        obj = bpy.data.objects.get(name)
+        if obj is not None:
+            obj.location.x = x
+            obj.location.y = -.425
+
+
 def _add_uniform_detail(rig):
-    for obj in list(bpy.data.objects):
-        if obj.name.startswith("Canonical service braid") or obj.name.startswith("Canonical service button"):
-            bpy.data.objects.remove(obj, do_unlink=True)
+    _remove_prefix("Canonical service braid")
+    _remove_prefix("Canonical service button")
 
-    brass = bpy.data.materials.get("canonical warm service gold") or mat("canonical warm service gold", (.62, .31, .055), .17, .92)
-
+    brass = bpy.data.materials.get("canonical warm service gold") or mat("canonical warm service gold", (.64, .325, .060), .16, .93)
     parts = []
-    xs = (-.270, -.220, -.170, -.120, -.070, -.020, .030, .080, .130, .180, .230, .280)
+    xs = (-.210, -.150, -.090, -.030, .030, .090, .150, .210)
     for index, x in enumerate(xs):
-        segment = box(
+        parts.append(box(
             f"Canonical service braid {index+1:02d}",
-            (x, -.410, .676),
-            (.027, .007, .010),
+            (x, -.428, .690),
+            (.034, .006, .008),
             brass,
-            (0, math.radians(16 if index % 2 == 0 else -16), 0),
+            (0, 0, 0),
             .004,
-        )
-        parts.append(segment)
+        ))
     parts.extend([
-        front_ellipse("Canonical service button.L", (-.322, -.407, .677), .026, .030, .010, brass, 32, .003),
-        front_ellipse("Canonical service button.R", (.322, -.407, .677), .026, .030, .010, brass, 32, .003),
+        front_ellipse("Canonical service button.L", (-.268, -.430, .690), .020, .022, .009, brass, 28, .002),
+        front_ellipse("Canonical service button.R", (.268, -.430, .690), .020, .022, .009, brass, 28, .002),
     ])
     for obj in parts:
         parent_bone(obj, rig, "spine")
@@ -150,10 +205,10 @@ def _add_uniform_detail(rig):
 
 def _refine_cross(rig):
     _remove("Classic chest cross brass", "Classic chest cross inset")
-    brass = bpy.data.materials.get("canonical warm service gold") or mat("canonical warm service gold", (.62, .31, .055), .17, .92)
-    dark = mat("canonical cross inset", (.003, .003, .004), .21, .22)
-    brass_cross = front_prism("Classic chest cross brass", (0, -.474, .866), iron_cross_points(.158), .015, brass, .006)
-    inset_cross = front_prism("Classic chest cross inset", (0, -.485, .866), iron_cross_points(.126), .010, dark, .004)
+    brass = bpy.data.materials.get("canonical warm service gold") or mat("canonical warm service gold", (.64, .325, .060), .16, .93)
+    dark = mat("canonical cross inset", (.002, .002, .003), .20, .25)
+    brass_cross = front_prism("Classic chest cross brass", (0, -.455, .865), iron_cross_points(.168), .018, brass, .006)
+    inset_cross = front_prism("Classic chest cross inset", (0, -.468, .865), iron_cross_points(.133), .012, dark, .004)
     parent_bone(brass_cross, rig, "spine")
     parent_bone(inset_cross, rig, "spine")
 
@@ -165,16 +220,17 @@ def apply_premium_canonical_pass(rig):
     rig["canonical_reference_sha256"] = CANONICAL_REFERENCE_SHA256
     rig["canonical_visual_language"] = "stern-focused-premium-pawn"
 
-    _tune_material("classic warm ivory", (.72, .63, .49), .29, .02)
-    _tune_material("classic ivory highlight", (.84, .76, .61), .24, .02)
-    _tune_material("classic midnight pawn", (.0020, .0030, .0055), .17, .31)
-    _tune_material("classic navy cloth", (.0040, .0055, .0090), .23, .21)
-    _tune_material("classic black leather", (.0030, .0025, .0025), .24, .20)
-    _tune_material("classic aged brass", (.62, .31, .055), .17, .92)
-    _tune_material("classic cap oxblood band", (.105, .014, .010), .30, .07)
+    _tune_material("classic warm ivory", (.74, .65, .51), .27, .02)
+    _tune_material("classic ivory highlight", (.86, .78, .64), .22, .02)
+    _tune_material("classic midnight pawn", (.0018, .0028, .0052), .16, .32)
+    _tune_material("classic navy cloth", (.0032, .0048, .0080), .22, .22)
+    _tune_material("classic black leather", (.0025, .0022, .0022), .22, .22)
+    _tune_material("classic aged brass", (.64, .325, .060), .16, .93)
+    _tune_material("classic cap oxblood band", (.115, .015, .010), .28, .08)
 
+    _refine_body(rig)
     _add_face(rig)
-    _add_cap_detail(rig)
+    _rebuild_cap(rig)
     _add_uniform_detail(rig)
     _refine_cross(rig)
     return rig
