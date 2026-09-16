@@ -4,6 +4,7 @@ import {
 } from '../chronicles/chroniclesMapCatalog.js';
 import { chroniclesBootstrapTacticsWorld } from '../chronicles/chroniclesGameBootstrap.js';
 import './ChroniclesOfMatthiasTactics.css';
+import './ChroniclesOfMatthiasTacticsPremium.css';
 
 const ChroniclesOfMatthiasTacticsRuntime = lazy(() => import('./ChroniclesOfMatthiasTacticsRuntime.jsx'));
 

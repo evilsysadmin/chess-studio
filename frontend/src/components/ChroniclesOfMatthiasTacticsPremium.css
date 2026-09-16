@@ -1,0 +1,362 @@
+/* Premium visual pass for Chronicles of Matthias Tactics.
+   Deliberately additive: gameplay, hit targets and layout contracts stay owned by
+   ChroniclesOfMatthiasTactics.css while this layer handles finish and atmosphere. */
+
+.chronicles-tactics {
+  --ctp-bronze: #b98745;
+  --ctp-bronze-hot: #e2b96d;
+  --ctp-iron: #181817;
+  --ctp-stone: #28251f;
+  --ctp-leather: #2a1b13;
+  --ctp-cyan: #73bfd0;
+  --ctp-shadow: rgba(0, 0, 0, .78);
+}
+
+.chronicles-tactics__head {
+  position: relative;
+  padding: 2px 7px 8px;
+}
+
+.chronicles-tactics__head::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(213, 170, 92, .48) 22%, rgba(213, 170, 92, .14) 76%, transparent);
+  box-shadow: 0 1px 12px rgba(198, 135, 48, .11);
+}
+
+.chronicles-tactics__head h2 {
+  color: #f5e8cb;
+  text-shadow: 0 2px 12px #000, 0 0 24px rgba(208, 151, 70, .12);
+}
+
+.chronicles-tactics__head .secondary-btn {
+  border-color: rgba(184, 135, 69, .48);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(236, 192, 111, .11), transparent 42%),
+    linear-gradient(180deg, rgba(69, 52, 34, .96), rgba(24, 19, 15, .98));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 238, 204, .07),
+    inset 0 -8px 16px rgba(0, 0, 0, .22),
+    0 8px 20px rgba(0, 0, 0, .32);
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.chronicles-tactics__head .secondary-btn:hover,
+.chronicles-tactics__head .secondary-btn:focus-visible {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 238, 204, .11),
+    inset 0 -8px 16px rgba(0, 0, 0, .2),
+    0 10px 24px rgba(0, 0, 0, .38),
+    0 0 16px rgba(208, 151, 70, .08);
+}
+
+.chronicles-tactics__frame {
+  border-color: #594127;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.018), transparent 22%),
+    #090807;
+  box-shadow:
+    0 30px 96px rgba(0, 0, 0, .72),
+    0 0 0 1px rgba(231, 186, 103, .2),
+    0 0 0 5px rgba(22, 16, 11, .92),
+    0 0 0 6px rgba(126, 88, 43, .22),
+    inset 0 1px 0 rgba(255, 229, 181, .065),
+    inset 0 0 95px rgba(0, 0, 0, .34);
+}
+
+.chronicles-tactics__frame::before {
+  inset: 7px;
+  border-color: rgba(209, 159, 78, .23);
+  box-shadow:
+    inset 0 0 0 1px rgba(10, 8, 6, .88),
+    0 0 16px rgba(0, 0, 0, .25);
+}
+
+.chronicles-tactics__frame::after {
+  background:
+    radial-gradient(ellipse at 50% 48%, transparent 50%, rgba(0,0,0,.18) 75%, rgba(0,0,0,.48) 100%),
+    linear-gradient(90deg, rgba(0,0,0,.34), transparent 6%, transparent 94%, rgba(0,0,0,.34)),
+    linear-gradient(180deg, rgba(255,218,151,.025), transparent 16%, transparent 80%, rgba(0,0,0,.34));
+}
+
+.chronicles-tactics__viewport {
+  background:
+    radial-gradient(circle at 50% 38%, #1b1712 0, #100d0a 68%, #090706 100%);
+}
+
+.chronicles-tactics__three canvas {
+  filter: saturate(.96) contrast(1.11) sepia(.025) brightness(1.015);
+}
+
+.chronicles-tactics__cinema {
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 38%, transparent 42%, rgba(18, 13, 9, .1) 65%, rgba(0, 0, 0, .45) 100%),
+    linear-gradient(180deg, rgba(234, 179, 93, .025), transparent 18%, transparent 72%, rgba(0,0,0,.21));
+  box-shadow:
+    inset 0 0 170px rgba(0, 0, 0, .4),
+    inset 0 -145px 170px rgba(0, 0, 0, .3),
+    inset 0 56px 90px rgba(146, 88, 37, .055);
+}
+
+.chronicles-tactics__cinema::before,
+.chronicles-tactics__cinema::after {
+  content: '';
+  position: absolute;
+  inset: -18%;
+  pointer-events: none;
+}
+
+.chronicles-tactics__cinema::before {
+  opacity: .22;
+  background-image:
+    radial-gradient(circle at 12% 21%, rgba(232, 199, 142, .55) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 78% 64%, rgba(219, 182, 119, .42) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 43% 82%, rgba(234, 205, 154, .34) 0 .8px, transparent 1.5px),
+    radial-gradient(circle at 67% 27%, rgba(202, 167, 108, .28) 0 .7px, transparent 1.4px);
+  background-size: 83px 97px, 113px 131px, 149px 121px, 97px 157px;
+  transform: rotate(-4deg);
+  animation: chronicles-tactics-dust 19s linear infinite;
+}
+
+.chronicles-tactics__cinema::after {
+  opacity: .15;
+  background:
+    repeating-linear-gradient(103deg, transparent 0 19px, rgba(255,255,255,.016) 20px, transparent 21px 43px),
+    repeating-linear-gradient(7deg, transparent 0 37px, rgba(0,0,0,.08) 38px, transparent 40px 79px);
+  mix-blend-mode: soft-light;
+}
+
+.chronicles-tactics__mission,
+.chronicles-tactics__party,
+.chronicles-tactics__actions {
+  border-color: rgba(190, 142, 72, .52);
+  background:
+    linear-gradient(115deg, rgba(255,255,255,.025), transparent 18%),
+    repeating-linear-gradient(165deg, rgba(255,255,255,.012) 0 1px, transparent 1px 7px),
+    radial-gradient(circle at 30% 0%, rgba(193, 137, 64, .09), transparent 42%),
+    linear-gradient(180deg, rgba(38, 29, 20, .96), rgba(14, 11, 9, .965));
+  box-shadow:
+    0 15px 34px rgba(0, 0, 0, .52),
+    inset 0 1px 0 rgba(255, 233, 190, .065),
+    inset 0 0 0 1px rgba(255, 235, 190, .018),
+    inset 0 -18px 32px rgba(0, 0, 0, .24);
+  backdrop-filter: blur(5px) saturate(.9);
+}
+
+.chronicles-tactics__mission::after,
+.chronicles-tactics__party::after {
+  content: '';
+  position: absolute;
+  inset: 7px;
+  border: 1px solid rgba(216, 169, 91, .09);
+  pointer-events: none;
+  box-shadow: inset 0 0 16px rgba(0,0,0,.18);
+}
+
+.chronicles-tactics__kicker,
+.chronicles-tactics__narrator span,
+.chronicles-tactics__choices > span {
+  color: #c0985e;
+  text-shadow: 0 1px 0 #000;
+}
+
+.chronicles-tactics__mission > strong {
+  color: #f4e6c9;
+  text-shadow: 0 1px 7px rgba(0,0,0,.65);
+}
+
+.chronicles-tactics__party > button {
+  overflow: hidden;
+  border-color: rgba(137, 104, 63, .5);
+  background:
+    radial-gradient(circle at 12% 15%, rgba(255, 220, 158, .035), transparent 38%),
+    linear-gradient(100deg, rgba(62, 47, 31, .7), rgba(26, 21, 17, .68));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 195, .04),
+    inset 0 -10px 18px rgba(0, 0, 0, .18);
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+}
+
+.chronicles-tactics__party > button::after {
+  content: '';
+  position: absolute;
+  top: -25%;
+  bottom: -25%;
+  left: -38%;
+  width: 22%;
+  transform: skewX(-18deg);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent);
+  opacity: 0;
+  transition: left 420ms ease, opacity 160ms ease;
+  pointer-events: none;
+}
+
+.chronicles-tactics__party > button:hover,
+.chronicles-tactics__party > button:focus-visible {
+  transform: translateY(-1px);
+  border-color: rgba(214, 165, 88, .68);
+  background:
+    radial-gradient(circle at 12% 15%, rgba(255, 220, 158, .065), transparent 38%),
+    linear-gradient(100deg, rgba(72, 54, 35, .78), rgba(31, 24, 18, .74));
+}
+
+.chronicles-tactics__party > button:hover::after,
+.chronicles-tactics__party > button:focus-visible::after {
+  left: 116%;
+  opacity: .9;
+}
+
+.chronicles-tactics__party > button.is-selected {
+  border-color: rgba(112, 195, 216, .9);
+  background:
+    radial-gradient(circle at 10% 18%, rgba(111, 194, 216, .14), transparent 38%),
+    linear-gradient(100deg, rgba(43, 82, 91, .74), rgba(28, 26, 22, .78));
+  box-shadow:
+    inset 3px 0 0 #83d0df,
+    inset 0 1px 0 rgba(211, 246, 252, .07),
+    inset 0 0 23px rgba(81, 175, 198, .1),
+    0 0 18px rgba(65, 155, 180, .09);
+}
+
+.chronicles-tactics__party em {
+  height: 5px;
+  border-color: rgba(5, 4, 3, .88);
+  background: linear-gradient(180deg, #160e0b, #2a1711);
+  box-shadow: inset 0 1px 3px rgba(0,0,0,.7), 0 1px 0 rgba(255,255,255,.025);
+}
+
+.chronicles-tactics__party em u {
+  background: linear-gradient(90deg, #46652f, #8cac55 62%, #b2c874);
+  box-shadow: 0 0 8px rgba(128, 174, 82, .17), inset 0 1px 0 rgba(239,255,210,.1);
+}
+
+.chronicles-tactics__narrator {
+  overflow: hidden;
+  border-color: rgba(194, 145, 74, .45);
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.018), transparent 28%, transparent 72%, rgba(255,255,255,.014)),
+    radial-gradient(circle at 50% 0%, rgba(193, 138, 64, .1), transparent 55%),
+    linear-gradient(180deg, rgba(35, 27, 19, .94), rgba(12, 10, 8, .94));
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, .5),
+    inset 0 1px 0 rgba(255, 235, 190, .05),
+    inset 0 -10px 24px rgba(0,0,0,.18);
+  backdrop-filter: blur(7px);
+}
+
+.chronicles-tactics__narrator p {
+  color: #e8dcc3;
+  text-shadow: 0 1px 4px rgba(0,0,0,.68);
+}
+
+.chronicles-tactics__actions > button {
+  overflow: hidden;
+  border-color: rgba(91, 70, 46, .85);
+  background:
+    radial-gradient(circle at 50% -12%, rgba(255, 229, 177, .055), transparent 44%),
+    linear-gradient(180deg, rgba(52, 41, 29, .86), rgba(22, 17, 13, .92));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 237, 203, .045),
+    inset 0 -12px 18px rgba(0,0,0,.22),
+    0 3px 9px rgba(0,0,0,.2);
+  transition: transform 120ms ease, border-color 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+}
+
+.chronicles-tactics__actions > button:not(:disabled):hover,
+.chronicles-tactics__actions > button:not(:disabled):focus-visible {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+.chronicles-tactics__actions > button:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: inset 0 2px 12px rgba(0,0,0,.42);
+}
+
+.chronicles-tactics__actions > button.is-ready {
+  color: #f0e2c4;
+  border-color: rgba(102, 183, 202, .72);
+  background:
+    radial-gradient(circle at 50% -12%, rgba(163, 232, 245, .1), transparent 43%),
+    linear-gradient(180deg, rgba(47, 85, 92, .89), rgba(19, 33, 35, .96));
+  box-shadow:
+    inset 0 1px 0 rgba(219, 250, 255, .08),
+    inset 0 -12px 20px rgba(0,0,0,.21),
+    0 0 0 1px rgba(35, 68, 74, .46),
+    0 0 18px rgba(64, 159, 181, .06);
+}
+
+.chronicles-tactics__actions > button.is-ready:hover,
+.chronicles-tactics__actions > button.is-ready:focus-visible {
+  border-color: rgba(145, 222, 238, .95);
+  box-shadow:
+    inset 0 1px 0 rgba(232, 253, 255, .11),
+    inset 0 -12px 20px rgba(0,0,0,.18),
+    0 0 0 1px rgba(47, 90, 98, .52),
+    0 0 22px rgba(77, 180, 202, .12);
+}
+
+.chronicles-tactics__footer {
+  padding-top: 11px;
+  color: #84745e;
+  text-shadow: 0 1px 0 #000;
+}
+
+.chronicles-tactics__footer::before {
+  content: '';
+  flex: 1 0 100%;
+  height: 1px;
+  margin-bottom: 2px;
+  background: linear-gradient(90deg, transparent, rgba(176, 128, 63, .24), transparent);
+}
+
+.chronicles-tactics__loading {
+  width: min(520px, calc(100% - 32px));
+  margin: clamp(70px, 16vh, 170px) auto;
+  padding: 26px 28px;
+  border: 1px solid rgba(190, 142, 72, .48);
+  color: #e9d8b5;
+  text-align: center;
+  letter-spacing: .04em;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(212, 158, 75, .12), transparent 58%),
+    linear-gradient(180deg, rgba(41, 31, 22, .96), rgba(15, 12, 9, .98));
+  box-shadow:
+    0 24px 60px rgba(0,0,0,.5),
+    inset 0 1px 0 rgba(255,239,205,.06),
+    inset 0 0 0 5px rgba(0,0,0,.16);
+}
+
+@keyframes chronicles-tactics-dust {
+  from { transform: translate3d(-2%, -1%, 0) rotate(-4deg); }
+  50% { transform: translate3d(1.5%, 2%, 0) rotate(-3deg); }
+  to { transform: translate3d(3%, 4%, 0) rotate(-4deg); }
+}
+
+@media (max-width: 860px) {
+  .chronicles-tactics__mission,
+  .chronicles-tactics__party,
+  .chronicles-tactics__actions {
+    backdrop-filter: none;
+  }
+
+  .chronicles-tactics__frame {
+    box-shadow:
+      0 18px 48px rgba(0,0,0,.62),
+      0 0 0 1px rgba(224, 178, 98, .18);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chronicles-tactics__cinema::before { animation: none; }
+  .chronicles-tactics__head .secondary-btn,
+  .chronicles-tactics__party > button,
+  .chronicles-tactics__party > button::after,
+  .chronicles-tactics__actions > button { transition: none; }
+}
