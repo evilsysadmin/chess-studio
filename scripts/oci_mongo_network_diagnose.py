@@ -12,6 +12,7 @@ import shlex
 from typing import Any
 
 from oci_run_command import assert_nonsecret_command, diagnose_plugin, execute
+from oci_run_command_compact import MAX_RUN_COMMAND_BYTES, compact_shell_command
 from oci_runtime_config import (
     DEFAULT_BUCKET,
     DEFAULT_OBJECT,
@@ -174,10 +175,13 @@ def diagnose(oci: Any) -> None:
     config = oci_config(oci)
     namespace, bucket_name, object_name = resolve_private_runtime(oci, config)
     diagnose_plugin(oci, config)
+    command = probe_command(namespace, bucket_name, object_name)
+    payload = compact_shell_command(command)
+    assert_nonsecret_command(payload)
     execute(
         oci,
         config,
-        probe_command(namespace, bucket_name, object_name),
+        payload,
         display_name="chess-studio-mongo-network-probe",
         timeout=240,
     )
@@ -192,6 +196,11 @@ def self_test() -> None:
     assert "MONGO_URL=" not in command
     assert "password" not in command.lower()
     assert "print(uri" not in command
+    assert len(command.encode("utf-8")) > MAX_RUN_COMMAND_BYTES
+    payload = compact_shell_command(command)
+    assert payload != command
+    assert len(payload.encode("utf-8")) <= MAX_RUN_COMMAND_BYTES
+    assert_nonsecret_command(payload)
     print("OCI Mongo network diagnostics self-test: OK")
 
 
