@@ -1,0 +1,15 @@
+{
+  "bucket": "chess-studio-assets",
+  "locationHint": "weur",
+  "storageClass": "Standard",
+  "customDomain": "assets.chess-studio.shadowops.dpdns.org",
+  "zoneName": "shadowops.dpdns.org",
+  "minTls": "1.2",
+  "disableR2Dev": true,
+  "cors": {
+    "origins": ["*"],
+    "methods": ["GET", "HEAD"],
+    "exposeHeaders": ["ETag", "Content-Length", "Content-Type", "Cache-Control"],
+    "maxAgeSeconds": 86400
+  }
+}
