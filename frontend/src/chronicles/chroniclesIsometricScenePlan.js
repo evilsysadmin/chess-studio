@@ -2,6 +2,10 @@ import {
   chroniclesMapForState,
   chroniclesMapRenderPlan,
 } from './chroniclesMapCatalog.js';
+import {
+  chroniclesContentDefinition,
+  chroniclesContentVisible,
+} from './chroniclesContentRuntime.js';
 
 function mapCenter(grid) {
   const height = grid.length;
@@ -36,6 +40,7 @@ function visibleWallCells(grid) {
 }
 
 export function chroniclesIsometricScenePlan(mapOrState = null) {
+  const runtimeState = mapOrState?.grid ? null : mapOrState;
   const map = mapOrState?.grid ? mapOrState : chroniclesMapForState(mapOrState);
   const renderPlan = chroniclesMapRenderPlan(map);
   const center = mapCenter(renderPlan.grid);
@@ -43,6 +48,13 @@ export function chroniclesIsometricScenePlan(mapOrState = null) {
     x: Number(map.partyStart?.x ?? center.x),
     y: Number(map.partyStart?.y ?? center.y),
   });
+  const content = Object.freeze(renderPlan.content.map((entry) => Object.freeze({
+    ...entry,
+    visible: chroniclesContentVisible(
+      runtimeState,
+      chroniclesContentDefinition(map, entry.id),
+    ),
+  })));
 
   return Object.freeze({
     mapId: renderPlan.mapId,
@@ -54,6 +66,6 @@ export function chroniclesIsometricScenePlan(mapOrState = null) {
     floors: visibleFloorCells(renderPlan.grid),
     walls: visibleWallCells(renderPlan.grid),
     enemies: renderPlan.enemies,
-    content: renderPlan.content,
+    content,
   });
 }
