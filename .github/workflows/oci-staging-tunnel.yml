@@ -1,0 +1,54 @@
+name: OCI staging · Cloudflare Tunnel
+
+on:
+  workflow_run:
+    workflows:
+      - OCI staging · service control
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oci-staging-cloudflare-tunnel
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    name: OCI staging · expose through Cloudflare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Validate tunnel contract
+        run: python3 -S scripts/oci_cloudflare_tunnel.py --self-test
+
+      - name: Install OCI SDK
+        run: python3 -m pip install --disable-pip-version-check 'oci==2.185.2'
+
+      - name: Reconcile private tunnel and staging API DNS
+        run: python3 scripts/oci_cloudflare_tunnel.py reconcile
