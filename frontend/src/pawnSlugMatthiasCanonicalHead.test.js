@@ -46,7 +46,9 @@ describe('Pawn Slug canonical Matthias head art', () => {
     });
     expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.canonicalHeadArt).toBe(PAWN_SLUG_MATTHIAS_CANONICAL_HEAD_ART);
     expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.separateWeaponOverlay).toBe(false);
-    expect(pawnSlugCanonicalHeadAtlasUrl()).toMatch(/^data:image\/webp;base64,/);
+    expect(pawnSlugCanonicalHeadAtlasUrl()).toMatch(
+      /^https:\/\/assets\.chess-studio\.shadowops\.dpdns\.org\/pawn-slug\/matthias\/motion\//,
+    );
 
     const sprite = createIntegratedMatthiasSlugSprite();
     sprite.userData.setWeapon('machinegun');
