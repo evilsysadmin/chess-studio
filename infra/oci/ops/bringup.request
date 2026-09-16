@@ -5,5 +5,5 @@
 # 2. install it on the existing A1 through Instance Agent Run Command,
 # 3. smoke the host contract as a diagnostic,
 # 4. deploy the exact immutable main SHA and wait for /api/ready.
-requested_at=2026-09-16T15:33:00Z
-reason=atlas-reserved-egress-ping-ok
+requested_at=2026-09-16T19:36:00Z
+reason=restore-staging-cors-and-redeploy-current-main
