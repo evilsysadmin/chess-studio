@@ -12,6 +12,7 @@ import bpy
 from home_matthias_parts import (
     box,
     crescent_visor,
+    cyl_between,
     elliptic_cyl,
     front_ellipse,
     front_prism,
@@ -69,6 +70,7 @@ def _leaf(name, x, y, z, angle_deg, brass):
 def _add_face(rig):
     _remove(
         "Eye.L", "Eye.R", "Brow.L", "Brow.R", "Mouth.L", "Mouth.R",
+        "Canonical brow crease",
         "Canonical eye socket.L", "Canonical eye socket.R",
         "Canonical eye white.L", "Canonical eye white.R",
         "Canonical iris.L", "Canonical iris.R",
@@ -76,26 +78,30 @@ def _add_face(rig):
         "Canonical mouth center",
     )
 
-    sclera = mat("canonical warm eye white", (.93, .87, .75), .24, .01)
-    iris = mat("canonical dark hazel iris", (.090, .038, .012), .20, .04)
+    socket = mat("canonical eye socket shadow", (.020, .014, .010), .38, .01)
+    sclera = mat("canonical warm eye white", (.98, .92, .82), .28, .01)
+    iris = mat("canonical dark hazel iris", (.082, .031, .009), .22, .04)
     pupil = mat("canonical pupil black", (.0008, .0010, .0014), .18, .04)
-    shine = mat("canonical eye catchlight", (1.0, .91, .72), .12, .01)
+    shine = mat("canonical eye catchlight", (1.0, .93, .77), .12, .01)
     ink = mat("canonical stern facial ink", (.0010, .0012, .0018), .31, .02)
 
     parts = []
     for side, x in (("L", -.112), ("R", .112)):
         parts.extend([
-            sphere(f"Canonical eye white.{side}", (x, -.350, 1.380), (.096, .027, .078), sclera, 56),
-            sphere(f"Canonical iris.{side}", (x, -.375, 1.377), (.041, .0085, .043), iris, 44),
-            sphere(f"Eye.{side}", (x, -.382, 1.376), (.024, .0048, .028), pupil, 36),
-            sphere(f"Canonical eye shine.{side}", (x-.010, -.386, 1.392), (.007, .0022, .008), shine, 24),
+            sphere(f"Canonical eye socket.{side}", (x, -.347, 1.380), (.105, .024, .086), socket, 56),
+            sphere(f"Canonical eye white.{side}", (x, -.355, 1.380), (.094, .025, .075), sclera, 56),
+            sphere(f"Canonical iris.{side}", (x, -.378, 1.377), (.041, .0085, .043), iris, 44),
+            sphere(f"Eye.{side}", (x, -.385, 1.376), (.024, .0048, .028), pupil, 36),
+            sphere(f"Canonical eye shine.{side}", (x-.010, -.389, 1.392), (.007, .0022, .008), shine, 24),
         ])
 
     parts.extend([
-        box("Brow.L", (-.112, -.379, 1.454), (.118, .011, .032), ink, (0, math.radians(29), 0), .009),
-        box("Brow.R", (.112, -.379, 1.454), (.118, .011, .032), ink, (0, math.radians(-29), 0), .009),
-        box("Mouth.L", (-.056, -.369, 1.247), (.069, .005, .007), ink, (0, math.radians(-8), 0), .003),
-        box("Mouth.R", (.056, -.369, 1.247), (.069, .005, .007), ink, (0, math.radians(8), 0), .003),
+        box("Brow.L", (-.112, -.380, 1.449), (.120, .011, .032), ink, (0, math.radians(28), 0), .009),
+        box("Brow.R", (.112, -.380, 1.449), (.120, .011, .032), ink, (0, math.radians(-28), 0), .009),
+        box("Canonical brow crease", (0, -.371, 1.435), (.006, .004, .022), ink, (0, 0, 0), .002),
+        box("Mouth.L", (-.056, -.370, 1.247), (.069, .005, .007), ink, (0, math.radians(-8), 0), .003),
+        box("Mouth.R", (.056, -.370, 1.247), (.069, .005, .007), ink, (0, math.radians(8), 0), .003),
+        box("Canonical mouth center", (0, -.371, 1.253), (.020, .005, .006), ink, (0, 0, 0), .003),
     ])
 
     for obj in parts:
@@ -188,11 +194,19 @@ def _add_uniform_detail(rig):
     _remove("Canonical service cord")
 
     brass = bpy.data.materials.get("canonical warm service gold") or mat("canonical warm service gold", (.59, .285, .055), .18, .92)
-    parts = [
-        box("Canonical service cord", (0, -.416, .735), (.185, .006, .007), brass, (0, 0, 0), .004),
-        front_ellipse("Canonical service button.L", (-.205, -.419, .735), .013, .015, .008, brass, 28, .002),
-        front_ellipse("Canonical service button.R", (.205, -.419, .735), .013, .015, .008, brass, 28, .002),
-    ]
+    parts = []
+    braid_points = []
+    for index in range(13):
+        x = -.185 + (.370 * index / 12)
+        normalized = x / .185
+        z = .724 + (.022 * (1.0 - normalized * normalized))
+        braid_points.append((x, -.420, z))
+    for index, (start, end) in enumerate(zip(braid_points, braid_points[1:]), start=1):
+        parts.append(cyl_between(f"Canonical service braid {index:02d}", start, end, .0075, brass, 24, .002))
+    parts.extend([
+        front_ellipse("Canonical service button.L", (-.208, -.422, .724), .014, .017, .009, brass, 30, .002),
+        front_ellipse("Canonical service button.R", (.208, -.422, .724), .014, .017, .009, brass, 30, .002),
+    ])
     for obj in parts:
         parent_bone(obj, rig, "spine")
 
@@ -214,8 +228,8 @@ def apply_premium_canonical_pass(rig):
     rig["canonical_reference_sha256"] = CANONICAL_REFERENCE_SHA256
     rig["canonical_visual_language"] = "stern-focused-premium-pawn"
 
-    _tune_material("classic warm ivory", (.74, .65, .51), .27, .02)
-    _tune_material("classic ivory highlight", (.86, .78, .64), .22, .02)
+    _tune_material("classic warm ivory", (.66, .57, .45), .31, .02)
+    _tune_material("classic ivory highlight", (.82, .73, .58), .26, .02)
     _tune_material("classic midnight pawn", (.0018, .0028, .0052), .20, .30)
     _tune_material("classic navy cloth", (.0032, .0048, .0080), .24, .20)
     _tune_material("classic black leather", (.0025, .0022, .0022), .24, .20)
