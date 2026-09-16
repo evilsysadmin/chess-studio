@@ -50,7 +50,7 @@ jobs:
           test -s /tmp/chronicles-party/chronicles-tactics-party.glb
           for member in rook bishop knight; do test -s "/tmp/chronicles-party/previews/chronicles-party-${member}.png"; done
           test -s /tmp/chronicles-party/previews/chronicles-party-group.png
-          blender --background -noaudio /tmp/chronicles-party/chronicles-tactics-party.blend --python-expr "import bpy; members=('rook','bishop','knight'); roots=[bpy.data.objects.get('ChroniclesParty__'+m) for m in members]; assert all(roots), roots; assert bpy.context.scene.get('chronicles_cast') == 'rook,bishop,knight'; assert bpy.context.scene.get('chronicles_party_asset_version') == 'chronicles-humanoid-party-v4'; assert all(r.get('authored_humanoid') for r in roots); assert all(len([o for o in r.children if o.type == 'MESH']) >= 20 for r in roots)"
+          blender --background -noaudio /tmp/chronicles-party/chronicles-tactics-party.blend --python-expr "import bpy; members=('rook','bishop','knight'); roots=[bpy.data.objects.get('ChroniclesParty__'+m) for m in members]; assert all(roots), roots; assert bpy.context.scene.get('chronicles_cast') == 'rook,bishop,knight'; assert bpy.context.scene.get('chronicles_party_asset_version') == 'chronicles-humanoid-party-v5'; assert bpy.context.scene.get('chronicles_party_visual_contract') == 'authored-humanoid-distinct-silhouettes-v2'; assert all(r.get('authored_humanoid') for r in roots); assert all(r.get('party_art') == 'authored-v5' for r in roots); assert all(len([o for o in r.children if o.type == 'MESH']) >= 20 for r in roots)"
           python3 - <<'PY'
           from pathlib import Path
           from PIL import Image
