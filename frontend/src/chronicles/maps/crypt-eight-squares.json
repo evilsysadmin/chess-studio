@@ -1,6 +1,6 @@
 {
   "id": "crypt-eight-squares",
-  "version": 5,
+  "version": 6,
   "progressionKey": "crypt-01",
   "title": "Cripta de las Ocho Casillas",
   "grid": [
@@ -45,7 +45,9 @@
           "body": "{attacker} elimina al peón corrompido. El grupo concluye que la negociación habría sido innecesariamente larga.",
           "sigil": "II"
         }
-      }
+      },
+      "rangedHitMessage": "{attacker} alcanza desde la retaguardia con {attack}. El peón sisea, demasiado lejos para devolver el golpe.",
+      "blockingMessage": "Peón corrompido bloquea el paso. Convéncelo con violencia reglamentaria."
     },
     {
       "id": "gate-jailer",
@@ -81,7 +83,9 @@
           "body": "{attacker} firma el golpe final. La salida queda libre durante unas décimas; algo relincha en L desde la oscuridad.",
           "sigil": "V"
         }
-      }
+      },
+      "rangedHitMessage": "{attacker} castiga a la torre carcelero desde la retaguardia con {attack}. La mole no alcanza a devolver el golpe.",
+      "blockingMessage": "La torre carcelero sella la puerta negra. Es una cerradura de varias toneladas y bastante mal humor."
     },
     {
       "id": "spectral-bishop",
@@ -108,7 +112,9 @@
           "body": "{attacker} rompe la liturgia inversa. Aziz reclama el farol y su luz devuelve un poco de vida a cada superviviente.",
           "sigil": "IV"
         }
-      }
+      },
+      "rangedHitMessage": "{attacker} alcanza al alfil espectral con {attack}. Esta vez la diagonal del fantasma se queda corta.",
+      "blockingMessage": "El alfil espectral ocupa la nave lateral. La cortesía religiosa termina exactamente a una casilla de distancia."
     },
     {
       "id": "scavenger-knight",
@@ -144,7 +150,9 @@
           "body": "{attacker} abate al caballo carroñero. La Llave Negra vuelve al inventario y Matthias propone no auditar el resto de sus bolsillos.",
           "sigil": "VI"
         }
-      }
+      },
+      "rangedHitMessage": "{attacker} alcanza al caballo carroñero con {attack}. El ladrón relincha algo jurídicamente dudoso.",
+      "blockingMessage": "El caballo carroñero planta la Llave Negra delante de la salida como si acabara de inventar el peaje."
     }
   ],
   "triggers": [
