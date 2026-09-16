@@ -8,6 +8,7 @@ packages:
   - git
   - docker.io
   - python3-venv
+  - snapd
 
 write_files:
   - path: /usr/local/sbin/chess-studio-deploy
@@ -223,6 +224,8 @@ write_files:
 
 runcmd:
   - [ mkdir, -p, /opt/chess-studio, /etc/chess-studio, /var/lib/chess-studio ]
+  - [ systemctl, enable, --now, snapd.socket ]
+  - [ bash, -lc, "for attempt in $(seq 1 60); do snap version >/dev/null 2>&1 && break; sleep 2; done; snap version >/dev/null 2>&1 || { echo 'snapd unavailable' >&2; exit 70; }; if ! snap list oracle-cloud-agent >/dev/null 2>&1; then snap install oracle-cloud-agent --classic; fi; snap start --enable oracle-cloud-agent.oracle-cloud-agent >/dev/null 2>&1 || true; for attempt in $(seq 1 60); do snap services oracle-cloud-agent 2>/dev/null | grep -Eq '^oracle-cloud-agent\\.oracle-cloud-agent[[:space:]]+enabled[[:space:]]+active' && exit 0; sleep 2; done; snap services oracle-cloud-agent >&2 || true; echo 'oracle-cloud-agent failed to become active' >&2; exit 70" ]
   - [ install, -o, root, -g, root, -m, '0440', /etc/chess-studio/ocarun.sudoers, /etc/sudoers.d/101-chess-studio-ocarun ]
   - [ visudo, -cf, /etc/sudoers.d/101-chess-studio-ocarun ]
   - [ systemctl, enable, --now, docker ]
