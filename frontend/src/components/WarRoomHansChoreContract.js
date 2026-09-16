@@ -1,4 +1,4 @@
-export const WAR_ROOM_HANS_CHORE_CONTRACT_VERSION = 'hans-chore-contract-v3-armor-safe-standoff';
+export const WAR_ROOM_HANS_CHORE_CONTRACT_VERSION = 'hans-chore-contract-v4-carpet-edge-fallback';
 
 export const WAR_ROOM_HANS_CHORE_EVENTS = Object.freeze([
   'dust-armor',
@@ -18,7 +18,11 @@ export const WAR_ROOM_HANS_CHORES = Object.freeze({
   'dust-board': Object.freeze({ targetNames: ['war-room-command-desk-top'], offsetX: -1.72, offsetZ: 0.78, actionMs: 11200, prop: 'duster' }),
   'bring-book': Object.freeze({ targetNames: ['war-room-command-desk-top'], offsetX: -1.78, offsetZ: 0.72, actionMs: 9000, prop: 'book', leavesProp: true }),
   mail: Object.freeze({ targetNames: ['war-room-command-desk-top'], offsetX: -1.80, offsetZ: 0.70, actionMs: 8600, prop: 'letters', leavesProp: true }),
-  'straighten-room': Object.freeze({ targetNames: ['war-room-teutonic-command-chair', 'war-room-command-carpet'], offsetX: 0.78, offsetZ: 0.42, actionMs: 9200, prop: '' }),
+  // The carpet group itself is centred under the board. Falling back to that
+  // centre produces an intentionally rejected route inside the board keep-out.
+  // Use the visible brass perimeter instead so the fallback remains physical and
+  // reachable when the command chair is unavailable during scene composition.
+  'straighten-room': Object.freeze({ targetNames: ['war-room-teutonic-command-chair', 'war-room-command-carpet-brass-key'], offsetX: 0.78, offsetZ: 0.42, actionMs: 9200, prop: '' }),
   'sweep-ashes': Object.freeze({ targetNames: ['war-room-fireplace'], offsetX: 0.92, offsetZ: 0.70, actionMs: 12500, prop: 'ash-brush' }),
   'polish-brass': Object.freeze({ targetNames: ['war-room-command-desk-brass-rim'], offsetX: -1.68, offsetZ: 0.76, actionMs: 10800, prop: 'cloth', pose: 'polish-brass' }),
 });
