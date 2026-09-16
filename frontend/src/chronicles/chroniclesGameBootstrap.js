@@ -1,4 +1,5 @@
 import { api } from '../api.js';
+import { abortableDelay } from '../asyncControl.js';
 import {
   DEFAULT_CHRONICLES_MAP_ID,
   chroniclesClearRuntimeMapDefinitions,
@@ -30,16 +31,19 @@ export async function chroniclesBootstrapTacticsWorld({
   if (signal?.aborted) return localBootstrap(mapId, seed, 'aborted');
 
   const requestController = new AbortController();
-  const abortRequest = () => requestController.abort();
-  signal?.addEventListener('abort', abortRequest, { once: true });
+  const deadlineController = new AbortController();
+  const abortPending = () => {
+    requestController.abort();
+    deadlineController.abort();
+  };
+  signal?.addEventListener('abort', abortPending, { once: true });
 
-  let deadlineId;
-  const deadline = new Promise((resolve) => {
-    deadlineId = setTimeout(() => {
+  const deadline = abortableDelay(Math.max(0, Number(budgetMs) || 0), deadlineController.signal)
+    .then(() => {
       requestController.abort();
-      resolve(localBootstrap(mapId, seed, 'bootstrap-deadline'));
-    }, Math.max(0, Number(budgetMs) || 0));
-  });
+      return localBootstrap(mapId, seed, 'bootstrap-deadline');
+    })
+    .catch(() => localBootstrap(mapId, seed, signal?.aborted ? 'aborted' : 'bootstrap-cancelled'));
 
   const request = Promise.resolve()
     .then(() => resolveArea(mapId, { seed, signal: requestController.signal }))
@@ -53,8 +57,8 @@ export async function chroniclesBootstrapTacticsWorld({
   try {
     resolved = await Promise.race([request, deadline]);
   } finally {
-    clearTimeout(deadlineId);
-    signal?.removeEventListener('abort', abortRequest);
+    deadlineController.abort();
+    signal?.removeEventListener('abort', abortPending);
   }
 
   if (signal?.aborted) return localBootstrap(mapId, seed, 'aborted');
