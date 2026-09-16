@@ -44,8 +44,9 @@ jobs:
           render=true
           if [[ "${GITHUB_EVENT_NAME}" == 'pull_request' ]] && git rev-parse HEAD^ >/dev/null 2>&1; then
             changed="$(git diff --name-only HEAD^ HEAD)"
-            parent_message="$(git log -1 --pretty=%B HEAD^)"
-            if [[ -z "${changed}" ]] && grep -Fq '[matthias-art-materialized]' <<<"${parent_message}"; then
+            current_message="$(git log -1 --pretty=%B HEAD)"
+            unexpected="$(printf '%s\n' "${changed}" | grep -Ev '^(frontend/art-source/matthias-home-canonical\.blend|frontend/public/models/matthias-home-canonical\.glb)$' || true)"
+            if [[ -n "${changed}" ]] && [[ -z "${unexpected}" ]] && grep -Fq '[matthias-art-materialized]' <<<"${current_message}"; then
               render=false
               echo 'Validated Matthias binaries are already materialized; skipping redundant Blender render.'
             fi
