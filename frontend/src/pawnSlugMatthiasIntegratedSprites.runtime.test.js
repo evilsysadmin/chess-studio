@@ -33,7 +33,9 @@ import {
 describe('Pawn Slug integrated Matthias runtime', () => {
   it('switches the premium baked atlas through the existing setWeapon contract', () => {
     const sprite = createIntegratedMatthiasSlugSprite();
-    expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.version).toBe('blender-premium-v2');
+    expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.version).toBe('blender-premium-v3');
+    expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.frameWidth).toBe(192);
+    expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.frameHeight).toBe(192);
     expect(sprite.userData.atlas.weapon).toBe('pistol');
     sprite.userData.setWeapon('shotgun');
     expect(sprite.userData.animation.weapon).toBe('shotgun');
@@ -41,18 +43,20 @@ describe('Pawn Slug integrated Matthias runtime', () => {
     expect(sprite.userData.atlas.source).toBe('primary');
   });
 
-  it('uses the authored foot line and premium world scale', () => {
+  it('preserves the authored foot line and world scale at double raster resolution', () => {
     const sprite = createIntegratedMatthiasSlugSprite();
     expect(sprite.scale.x).toBeCloseTo(PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME.scale[0]);
     expect(sprite.scale.y).toBeCloseTo(PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME.scale[1]);
-    expect(sprite.center.y).toBeCloseTo(12 / 96);
+    expect(PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME.authoredBottomGutterPx).toBe(24);
+    expect(sprite.center.y).toBeCloseTo(24 / 192);
     expect(sprite.userData.motionBaseScaleY).toBeCloseTo(3.0);
   });
 
-  it('uses uniform guarded UV cells instead of the legacy jump trim', () => {
+  it('uses uniform guarded UV cells at 192px without legacy jump trim', () => {
     const idle = pawnSlugPremiumMatthiasAtlasWindow('idle', 0, -1);
     const jump = pawnSlugPremiumMatthiasAtlasWindow('jump', 8, -1);
-    expect(idle.repeatY).toBeCloseTo(94 / 480);
+    expect(PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME.uvGuardTexels).toBe(2);
+    expect(idle.repeatY).toBeCloseTo(188 / 960);
     expect(jump.repeatY).toBeCloseTo(idle.repeatY);
     expect(jump.frameIndex).toBe(8);
     expect(jump.row).toBe(4);

@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import pistolPayload from './assets/pawnSlug/matthias_pistol_premium_v2.b64?raw';
-import machinegunPayload from './assets/pawnSlug/matthias_machinegun_premium_v2.b64?raw';
-import shotgunPayload from './assets/pawnSlug/matthias_shotgun_premium_v2.b64?raw';
-import panzerfaustPayload from './assets/pawnSlug/matthias_panzerfaust_premium_v2.b64?raw';
+import pistolPayload from './assets/pawnSlug/matthias_pistol_premium_v3.b64?raw';
+import machinegunPayload from './assets/pawnSlug/matthias_machinegun_premium_v3.b64?raw';
+import shotgunPayload from './assets/pawnSlug/matthias_shotgun_premium_v3.b64?raw';
+import panzerfaustPayload from './assets/pawnSlug/matthias_panzerfaust_premium_v3.b64?raw';
 import { configurePawnSlugTexture } from './pawnSlugSpriteCore.js';
 
 const PAYLOADS = Object.freeze({
@@ -21,26 +21,26 @@ const ACTIONS = Object.freeze({
 });
 
 const ATLAS = Object.freeze({
-  width: 1536,
-  height: 480,
-  frameWidth: 96,
-  frameHeight: 96,
-  guardTexels: 1,
+  width: 3072,
+  height: 960,
+  frameWidth: 192,
+  frameHeight: 192,
+  guardTexels: 2,
 });
 
 export const PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME = Object.freeze({
-  // The approved bake contains ~63-65 visible standing pixels inside each 96px
-  // cell. A 3.0 world-unit quad therefore presents Matthias at roughly 2 world
-  // units tall, matching normal combatants without changing physics/hitboxes.
+  // v3 keeps the approved world footprint while doubling raster resolution:
+  // ~127-128 visible standing pixels inside each 192px cell. The 3.0 world-unit
+  // quad therefore preserves Matthias' previous gameplay scale and hitboxes.
   scale: Object.freeze([2.08, 3.0]),
-  authoredBottomGutterPx: 12,
-  footAnchorY: 12 / 96,
-  visibleStandingHeightPx: Object.freeze([63, 65]),
+  authoredBottomGutterPx: 24,
+  footAnchorY: 24 / 192,
+  visibleStandingHeightPx: Object.freeze([127, 128]),
   uvGuardTexels: ATLAS.guardTexels,
 });
 
 export const PAWN_SLUG_MATTHIAS_INTEGRATED_ART = Object.freeze({
-  version: 'blender-premium-v2',
+  version: 'blender-premium-v3',
   weapons: Object.freeze(Object.keys(PAYLOADS)),
   sourceFacing: 'left',
   runtimeFacing: 'world-direction-normalized',
@@ -115,8 +115,8 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
   const sprite = new THREE.Sprite(material);
   sprite.name = 'pawn-slug-matthias-sprite';
   sprite.scale.set(scale[0], scale[1], 1);
-  // Align authored feet rather than the transparent bottom of the 96px cell to
-  // the runtime ground line. This removes the apparent levitation from v1.
+  // Align authored feet rather than the transparent bottom of the 192px cell to
+  // the runtime ground line. v3 keeps the same 12.5% authored foot gutter.
   sprite.center.set(0.5, PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME.footAnchorY);
   sprite.userData.motionBaseScaleX = scale[0];
   sprite.userData.motionBaseScaleY = scale[1];
