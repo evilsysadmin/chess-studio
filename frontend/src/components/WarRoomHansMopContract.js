@@ -1,4 +1,4 @@
-export const WAR_ROOM_HANS_MOP_ROUTINE_VERSION = 'hans-mop-routine-v5-obstacle-safe-router-slow-travel-contract';
+export const WAR_ROOM_HANS_MOP_ROUTINE_VERSION = 'hans-mop-routine-v6-obstacle-safe-router-slow-travel-contract-terminal-setup';
 export const HANS_MOP_START_CHANCE = 0.48;
 export const HANS_MOP_DIALOGUE_CHANCE = 0.56;
 export const HANS_MOP_MIN_FATIGUE_MS = 60_000;

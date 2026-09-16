@@ -226,7 +226,10 @@ export function installWarRoomHansMopRoutine(root) {
         payload: { gameId },
       })) return;
       const service = warRoomHansServiceHome(root, actor.hans.parent);
-      if (!service?.point) { releaseWarRoomHansTask(runtime, TASK_ID); return; }
+      if (!service?.point) {
+        if (releaseWarRoomHansTask(runtime, TASK_ID)) completedGameId = gameId;
+        return;
+      }
       home = service.point;
       resetWarRoomHansMopProps(props);
       placeWarRoomHansHorizontal(actor, home);
