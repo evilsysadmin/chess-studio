@@ -2,7 +2,7 @@
 """High-confidence dead-module gate without installing project dependencies.
 
 Reports whole product modules and stylesheets that cannot be reached from the
-runtime entrypoint through static/dynamic relative imports. It intentionally
+runtime entrypoints through static/dynamic relative imports. It intentionally
 does not try to guess unused functions or CSS selectors: those need semantic
 tools and would create noisy false positives in a static preflight.
 """
@@ -18,6 +18,7 @@ BACKEND = ROOT / "backend-python"
 JS_EXTS = (".js", ".jsx", ".mjs")
 IMPORT_RE = re.compile(r"(?:(?:import|export)\s+(?:[^'\"]*?\s+from\s+)?|import\s*\()\s*['\"]([^'\"]+)['\"]")
 CSS_IMPORT_RE = re.compile(r"@import\s+(?:url\(\s*)?['\"]?([^'\")\s;]+)")
+UVICORN_ENTRY_RE = re.compile(r"\buvicorn\s+([A-Za-z_][A-Za-z0-9_]*):[A-Za-z_][A-Za-z0-9_]*")
 FRONTEND_EXCLUDES = {"test-setup.js"}
 
 
@@ -116,6 +117,15 @@ def css_unreachable(reachable_js: set[Path]) -> tuple[int, list[Path]]:
     return len(seen), sorted(files - seen)
 
 
+def backend_entry_module_names() -> set[str]:
+    """Return static backend roots, including the Docker Uvicorn entrypoint."""
+    names = {"main"}
+    dockerfile = BACKEND / "Dockerfile"
+    if dockerfile.is_file():
+        names.update(UVICORN_ENTRY_RE.findall(dockerfile.read_text(encoding="utf-8")))
+    return names
+
+
 def backend_unreachable() -> tuple[int, list[Path]]:
     files = {
         p.resolve()
@@ -123,9 +133,14 @@ def backend_unreachable() -> tuple[int, list[Path]]:
         if not p.name.startswith("test_") and p.name != "conftest.py"
     }
     by_name = {p.stem: p for p in files}
-    entry = (BACKEND / "main.py").resolve()
+    entry_names = backend_entry_module_names()
+    missing_entries = sorted(name for name in entry_names if name not in by_name)
+    if missing_entries:
+        raise RuntimeError(
+            "entrypoint backend no resoluble: " + ", ".join(missing_entries)
+        )
     seen: set[Path] = set()
-    pending = [entry]
+    pending = [by_name[name] for name in sorted(entry_names)]
     while pending:
         source = pending.pop()
         if source in seen or source not in files:

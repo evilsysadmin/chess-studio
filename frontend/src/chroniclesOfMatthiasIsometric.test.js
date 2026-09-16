@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHRONICLES_ISO_MARKER_STYLE,
   CHRONICLES_ISO_PARTY_FACING,
   CHRONICLES_ISO_PARTY_LAYOUT,
   chroniclesIsoInteractionForHit,
@@ -23,42 +24,50 @@ describe('Chronicles canonical isometric viewport', () => {
     expect(east.x - centre.x).toBeCloseTo(south.z - centre.z, 6);
   });
 
-  it('keeps behind-party action framing while giving the scene breathing room', () => {
+  it('keeps the camera straight behind the party with an elevated tactical read', () => {
     const focus = { x: 2, z: -3 };
     const pose = chroniclesIsometricCameraPose(focus);
     const horizontalDistance = Math.hypot(pose.position.x - focus.x, pose.position.z - focus.z);
 
-    expect(pose.position.y).toBeGreaterThan(3.3);
-    expect(pose.position.y).toBeLessThan(3.9);
-    expect(horizontalDistance).toBeGreaterThan(6.7);
-    expect(horizontalDistance).toBeLessThan(7.2);
-    expect(pose.position.x).toBeGreaterThan(focus.x);
-    expect(pose.position.z).toBeGreaterThan(focus.z);
-    expect(pose.target.x).toBeLessThan(focus.x);
-    expect(pose.target.z).toBeLessThan(focus.z - 2.4);
-    expect(pose.target.y).toBeGreaterThan(0.9);
-    expect(pose.fov).toBeGreaterThanOrEqual(41);
-    expect(pose.fov).toBeLessThanOrEqual(44);
+    expect(pose.position.y).toBeGreaterThan(7.8);
+    expect(pose.position.y).toBeLessThan(8.5);
+    expect(horizontalDistance).toBeGreaterThan(8.3);
+    expect(horizontalDistance).toBeLessThan(8.8);
+    expect(pose.position.x).toBeCloseTo(focus.x, 6);
+    expect(pose.position.z).toBeGreaterThan(focus.z + 8.3);
+    expect(pose.target.x).toBeCloseTo(focus.x, 6);
+    expect(pose.target.z).toBeLessThan(focus.z - 2.5);
+    expect(pose.target.y).toBeGreaterThan(0.6);
+    expect(pose.target.y).toBeLessThan(0.9);
+    expect(pose.fov).toBeGreaterThanOrEqual(37);
+    expect(pose.fov).toBeLessThanOrEqual(39);
   });
 
-  it('widens the foreground party without changing its shared facing direction', () => {
+  it('spreads the four backs across a shallow foreground formation', () => {
     const members = Object.values(CHRONICLES_ISO_PARTY_LAYOUT);
     const xs = members.map((member) => member.x);
     const zs = members.map((member) => member.z);
 
-    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(2.2);
-    expect(Math.max(...zs) - Math.min(...zs)).toBeGreaterThan(1);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(3.1);
+    expect(Math.max(...zs) - Math.min(...zs)).toBeLessThan(0.35);
     members.forEach((member) => expect(member.scale).toBeGreaterThanOrEqual(1));
-    expect(CHRONICLES_ISO_PARTY_FACING).toBeCloseTo(-Math.PI * 0.75, 6);
+    expect(CHRONICLES_ISO_PARTY_FACING).toBeCloseTo(Math.PI, 6);
+  });
+
+  it('keeps the canonical tactical markers square and semantically colored', () => {
+    expect(CHRONICLES_ISO_MARKER_STYLE.shape).toBe('square');
+    expect(CHRONICLES_ISO_MARKER_STYLE.moveColor).toBe(0x65bfe3);
+    expect(CHRONICLES_ISO_MARKER_STYLE.attackColor).toBe(0xc45143);
+    expect(CHRONICLES_ISO_MARKER_STYLE.selectionColor).toBe(0xd8b56a);
   });
 
   it('adds restrained FOV only when the canvas becomes narrow', () => {
-    expect(chroniclesIsometricFovForAspect(1.6, 43)).toBe(43);
-    expect(chroniclesIsometricFovForAspect(1.21, 43)).toBe(45.5);
-    expect(chroniclesIsometricFovForAspect(0.85, 43)).toBe(47.5);
-    expect(chroniclesIsometricFovForAspect(0.65, 43)).toBe(50);
-    expect(chroniclesIsometricFovForAspect(0, 43)).toBe(43);
-    expect(chroniclesIsometricFovForAspect(Number.NaN, 43)).toBe(43);
+    expect(chroniclesIsometricFovForAspect(1.6, 38)).toBe(38);
+    expect(chroniclesIsometricFovForAspect(1.21, 38)).toBe(40.5);
+    expect(chroniclesIsometricFovForAspect(0.85, 38)).toBe(42.5);
+    expect(chroniclesIsometricFovForAspect(0.65, 38)).toBe(45);
+    expect(chroniclesIsometricFovForAspect(0, 38)).toBe(38);
+    expect(chroniclesIsometricFovForAspect(Number.NaN, 38)).toBe(38);
   });
 
   it('accepts only highlighted cells while move mode is active', () => {

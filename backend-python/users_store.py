@@ -4,8 +4,10 @@ from datetime import datetime, timedelta, timezone
 import time
 from typing import Optional
 
+from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError, PyMongoError
 
+from auth import current_session_version_claim, remember_account_session_version
 from db import PersistentStorageUnavailable, get_db, persistent_storage_required
 
 COLLECTION = "users"
@@ -16,10 +18,19 @@ _USER_EXISTENCE_CACHE_TTL_S = 30.0
 _PRESENCE_SESSION_TTL_S = 150
 _PRESENCE_SESSION_RETENTION_S = 15 * 60
 _PRESENCE_PRUNE_INTERVAL_S = 10 * 60
-_user_existence_cache: dict[str, tuple[float, bool]] = {}
+# timestamp, exists, session_version. Conservamos el nombre histórico porque
+# tests/herramientas limpian esta caché entre escenarios.
+_user_existence_cache: dict[str, tuple[float, bool, int]] = {}
 _last_presence_prune_monotonic: dict[str, float] = {}
 
 
+def session_version(user: Optional[dict]) -> int:
+    """Versión de sesión saneada; cuentas legacy sin campo son versión 0."""
+    try:
+        value = int((user or {}).get("session_version", 0))
+    except (TypeError, ValueError):
+        return 0
+    return max(0, value)
 
 
 def _parse_presence_time(raw):
@@ -137,13 +148,23 @@ async def get_user(username: str) -> Optional[dict]:
         if doc:
             doc.pop("_id", None)
             doc["username"] = username
+            remember_account_session_version(session_version(doc))
         return doc
-    return _memory_users.get(username)
+    user = _memory_users.get(username)
+    if user is not None:
+        remember_account_session_version(session_version(user))
+    return user
 
 
 async def create_user(username: str, password_hash: str, email: str | None = None) -> dict:
     created_at = datetime.now(timezone.utc).isoformat()
-    doc = {"username": username, "password_hash": password_hash, "created_at": created_at, "last_activity": created_at}
+    doc = {
+        "username": username,
+        "password_hash": password_hash,
+        "session_version": 0,
+        "created_at": created_at,
+        "last_activity": created_at,
+    }
     if email:
         doc["email"] = email
     col = await _get_collection()
@@ -151,7 +172,13 @@ async def create_user(username: str, password_hash: str, email: str | None = Non
         if email:
             await _ensure_email_index(col)
         try:
-            stored = {"_id": username, "password_hash": password_hash, "created_at": created_at, "last_activity": created_at}
+            stored = {
+                "_id": username,
+                "password_hash": password_hash,
+                "session_version": 0,
+                "created_at": created_at,
+                "last_activity": created_at,
+            }
             if email:
                 stored["email"] = email
             await col.insert_one(stored)
@@ -164,33 +191,52 @@ async def create_user(username: str, password_hash: str, email: str | None = Non
             raise PersistentStorageUnavailable("MongoDB no está disponible para usuarios.") from exc
     else:
         _memory_users[username] = doc
-    _user_existence_cache[username] = (time.monotonic(), True)
+    _user_existence_cache[username] = (time.monotonic(), True, 0)
+    remember_account_session_version(0)
     return doc
 
 
-async def user_exists(username: str, *, force: bool = False) -> bool:
-    """Comprueba existencia con una caché corta para mantener JWT stateless-ish.
+async def get_auth_state(username: str, *, force: bool = False) -> tuple[bool, int]:
+    """Comprueba existencia + versión de sesión con una sola caché corta.
 
-    Esto permite revocar una cuenta eliminada sin convertir cada movimiento en
-    una consulta a Mongo. Tras un reinicio, la primera request vuelve a validar
-    contra la colección de usuarios.
+    El cambio de contraseña actualiza esta caché inmediatamente, de modo que la
+    revocación de JWT antiguos no queda esperando al TTL. Tras un reinicio, la
+    primera request vuelve a consultar Mongo y reconstruye el estado.
     """
     now = time.monotonic()
     cached = _user_existence_cache.get(username)
     if not force and cached and now - cached[0] < _USER_EXISTENCE_CACHE_TTL_S:
-        return cached[1]
+        exists, version = cached[1], cached[2]
+        if exists:
+            remember_account_session_version(version)
+        return exists, version
 
     col = await _get_collection()
     if col is not None:
         try:
-            exists = await col.find_one({"_id": username}, {"_id": 1}) is not None
+            doc = await col.find_one({"_id": username}, {"_id": 1, "session_version": 1})
         except PyMongoError as exc:
             raise PersistentStorageUnavailable("MongoDB no está disponible para usuarios.") from exc
+        exists = doc is not None
+        version = session_version(doc)
     else:
-        exists = username in _memory_users
+        user = _memory_users.get(username)
+        exists = user is not None
+        version = session_version(user)
 
-    _user_existence_cache[username] = (now, exists)
-    return exists
+    _user_existence_cache[username] = (now, exists, version)
+    if exists:
+        remember_account_session_version(version)
+    return exists, version
+
+
+async def user_exists(username: str, *, force: bool = False) -> bool:
+    """Existencia de cuenta y, si hay JWT en contexto, versión de sesión válida."""
+    exists, version = await get_auth_state(username, force=force)
+    if not exists:
+        return False
+    claim = current_session_version_claim()
+    return claim is None or claim == version
 
 
 async def delete_user(username: str) -> bool:
@@ -206,7 +252,7 @@ async def delete_user(username: str) -> bool:
         existed = _memory_users.pop(username, None) is not None
 
     _last_activity_write_monotonic.pop(username, None)
-    _user_existence_cache[username] = (time.monotonic(), False)
+    _user_existence_cache[username] = (time.monotonic(), False, 0)
     return existed
 
 
@@ -251,17 +297,37 @@ async def update_email(username: str, email: str | None) -> None:
         user.pop("email", None)
 
 
-async def update_password(username: str, password_hash: str) -> None:
+async def update_password(username: str, password_hash: str) -> Optional[int]:
+    """Cambia contraseña y avanza la versión que revoca JWT anteriores."""
     col = await _get_collection()
     if col is not None:
         try:
-            await col.update_one({"_id": username}, {"$set": {"password_hash": password_hash}})
+            doc = await col.find_one_and_update(
+                {"_id": username},
+                {"$set": {"password_hash": password_hash}, "$inc": {"session_version": 1}},
+                projection={"session_version": 1},
+                return_document=ReturnDocument.AFTER,
+            )
         except PyMongoError as exc:
             raise PersistentStorageUnavailable("MongoDB no está disponible para usuarios.") from exc
-        return
+        if not doc:
+            _user_existence_cache[username] = (time.monotonic(), False, 0)
+            return None
+        version = session_version(doc)
+        _user_existence_cache[username] = (time.monotonic(), True, version)
+        remember_account_session_version(version)
+        return version
+
     user = _memory_users.get(username)
-    if user is not None:
-        user["password_hash"] = password_hash
+    if user is None:
+        _user_existence_cache[username] = (time.monotonic(), False, 0)
+        return None
+    user["password_hash"] = password_hash
+    user["session_version"] = session_version(user) + 1
+    version = session_version(user)
+    _user_existence_cache[username] = (time.monotonic(), True, version)
+    remember_account_session_version(version)
+    return version
 
 
 async def list_usernames() -> list[str]:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import secrets
 import uuid
 from datetime import datetime, timezone
@@ -11,11 +10,10 @@ import chess
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
-import profile_store as pstore
+import pvp_rating as rating_store
 import pvp_store as store
 
-RATING_KEY = "chess-study-player-rating"
-DEFAULT_RATING = 400
+DEFAULT_RATING = rating_store.DEFAULT_RATING
 RATING_TIERS = (
     (0, 699, "Principiante"),
     (700, 999, "Aficionado"),
@@ -41,24 +39,6 @@ def _rating_tier(rating: int) -> str:
         if low <= rating <= high:
             return label
     return "Maestro"
-
-
-def _profile_rating(profile: dict | None) -> tuple[int, str]:
-    data = (profile or {}).get("data")
-    raw = data.get(RATING_KEY) if isinstance(data, dict) else None
-    if isinstance(raw, str):
-        try:
-            raw = json.loads(raw)
-        except (TypeError, ValueError):
-            raw = None
-    if isinstance(raw, dict):
-        raw = raw.get("rating")
-    try:
-        rating = int(raw)
-    except (TypeError, ValueError):
-        rating = DEFAULT_RATING
-    rating = max(DEFAULT_RATING, min(10_000, rating))
-    return rating, _rating_tier(rating)
 
 
 def _iso(value):
@@ -144,8 +124,11 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
     @router.post("/roster")
     @limiter.limit("30/minute")
     async def join_roster(request: Request, username: str = Depends(auth_dependency)):
-        rating, tier = _profile_rating(await pstore.get_profile(username))
-        row = await store.upsert_roster(username, rating=rating, tier=tier)
+        # El perfil sincronizado es client-owned y jamás participa en este
+        # cálculo. El rating PvP vive en el documento de cuenta del backend y
+        # sólo cambia al liquidar una partida 1v1 autoritativa terminada.
+        rating = await rating_store.get_rating(username)
+        row = await store.upsert_roster(username, rating=rating, tier=_rating_tier(rating))
         return {"member": _public_roster(row, username)}
 
     @router.delete("/roster", status_code=204)
@@ -239,6 +222,11 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
         match = await store.get_match(match_id)
         if not match or _player_color(match, username) is None:
             raise HTTPException(404, "Partida 1v1 no encontrada.")
+        if match.get("status") == "finished":
+            # Reintento idempotente: si el request que dio mate se cortó tras
+            # guardar la partida pero antes de liquidar Elo, una lectura sana
+            # termina la operación sin poder duplicar ni rebobinar rating.
+            await rating_store.settle_match(match_id, match)
         return {"match": _public_match(match, username), "pollAfterMs": 1250}
 
     @router.post("/matches/{match_id}/move")
@@ -287,6 +275,8 @@ def build_pvp_router(*, auth_dependency, limiter) -> APIRouter:
                 },
             )
             if updated:
+                if updated.get("status") == "finished":
+                    await rating_store.settle_match(match_id, updated)
                 return {"match": _public_match(updated, username)}
         raise HTTPException(409, "La posición cambió mientras enviabas la jugada. Actualiza e inténtalo de nuevo.")
 

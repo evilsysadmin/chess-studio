@@ -121,8 +121,8 @@
     z-index: 4;
     right: 2.1cqw;
     bottom: 9.4cqw;
-    width: min(430px, 31cqw);
-    max-height: min(61dvh, 620px);
+    width: min(460px, 33cqw);
+    max-height: min(70dvh, 660px);
     pointer-events: auto;
   }
 }
@@ -138,10 +138,225 @@
   }
 }
 
+/* The dungeon menu is deliberately not a dashboard. It reads as a sequence of
+ * chambers descending below the castle: one route, staggered doors, sparse chrome.
+ */
+.illustrated-home__utilities > .illustrated-home__dungeon-panel {
+  counter-reset: dungeon-depth;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 18px 18px 16px 20px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  border: 1px solid rgba(151, 108, 56, .72);
+  border-radius: 18px 18px 10px 10px;
+  background:
+    radial-gradient(circle at 10% 5%, rgba(236, 161, 63, .13), transparent 24%),
+    radial-gradient(circle at 88% 88%, rgba(117, 45, 20, .15), transparent 28%),
+    linear-gradient(108deg, rgba(255, 232, 181, .025) 0 1px, transparent 1px 38px),
+    linear-gradient(180deg, rgba(26, 18, 13, .975), rgba(9, 7, 6, .992));
+  box-shadow:
+    0 30px 72px rgba(0, 0, 0, .78),
+    0 0 44px rgba(126, 63, 18, .11),
+    inset 0 1px rgba(255, 221, 153, .09),
+    inset 0 -24px 48px rgba(0, 0, 0, .18);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(160, 115, 57, .56) rgba(10, 7, 5, .4);
+}
+
+.illustrated-home__dungeon-panel > header {
+  position: relative;
+  grid-column: auto;
+  display: grid;
+  gap: 4px;
+  margin: 0 2px 12px;
+  padding: 3px 12px 16px 42px;
+  border: 0;
+  border-bottom: 1px solid rgba(128, 91, 47, .44);
+  text-align: left;
+}
+
+.illustrated-home__dungeon-panel > header::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 4px;
+  width: 14px;
+  height: 29px;
+  border-radius: 56% 44% 58% 42%;
+  background:
+    radial-gradient(circle at 48% 68%, #fff2b8 0 10%, transparent 12%),
+    radial-gradient(ellipse at 50% 58%, #efad45 0 35%, #9f431c 58%, transparent 62%);
+  filter: drop-shadow(0 0 7px rgba(232, 142, 44, .56));
+  transform: rotate(3deg);
+  pointer-events: none;
+}
+
+.illustrated-home__dungeon-panel > header::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  top: 31px;
+  width: 3px;
+  height: 18px;
+  border-radius: 2px;
+  background: linear-gradient(#8b6238, #352419);
+  box-shadow: 0 1px 0 rgba(235, 191, 119, .18);
+  pointer-events: none;
+}
+
+.illustrated-home__dungeon-panel > header span {
+  color: #9e8764;
+  font: 700 10px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .24em;
+}
+
+.illustrated-home__dungeon-panel > header strong {
+  color: #f0cf81;
+  font: 700 24px/1 Georgia, serif;
+  letter-spacing: .085em;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, .7);
+}
+
+.illustrated-home__dungeon-panel > header small {
+  color: #bda987;
+  font: 500 12px/1.35 Arial, sans-serif;
+}
+
+.illustrated-home__utilities > .illustrated-home__dungeon-panel > button {
+  counter-increment: dungeon-depth;
+  position: relative;
+  width: auto;
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: 31px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 9px 10px 9px 7px;
+  border: 0;
+  border-bottom: 1px solid rgba(118, 84, 45, .30);
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(167, 108, 43, .055), transparent 64%);
+  color: #dfc99c;
+  box-shadow: inset 2px 0 rgba(151, 102, 45, .20);
+  font: 600 13px/1.25 Arial, sans-serif;
+  letter-spacing: .005em;
+  text-align: left;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, .76);
+  cursor: pointer;
+  transform: translateX(0);
+  transition:
+    transform .18s ease,
+    color .18s ease,
+    background .18s ease,
+    box-shadow .18s ease;
+}
+
+.illustrated-home__utilities > .illustrated-home__dungeon-panel > button::before {
+  content: counter(dungeon-depth, upper-roman);
+  width: 26px;
+  color: #8f7654;
+  font: 700 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .08em;
+  text-align: center;
+  opacity: .82;
+}
+
+.illustrated-home__utilities > .illustrated-home__dungeon-panel > button::after {
+  content: '›';
+  color: #a98348;
+  font: 700 19px/1 Georgia, serif;
+  text-align: center;
+  opacity: .72;
+  transform: translateX(0);
+  transition: transform .18s ease, color .18s ease, opacity .18s ease;
+}
+
+.illustrated-home__utilities > .illustrated-home__dungeon-panel > button:hover,
+.illustrated-home__utilities > .illustrated-home__dungeon-panel > button:focus-visible {
+  color: #ffe4a1;
+  background:
+    radial-gradient(circle at 10% 50%, rgba(235, 160, 59, .18), transparent 22%),
+    linear-gradient(90deg, rgba(180, 112, 42, .15), rgba(79, 42, 22, .035) 74%, transparent);
+  box-shadow:
+    inset 3px 0 #c58b3f,
+    0 0 22px rgba(133, 74, 27, .10);
+  transform: translateX(5px);
+}
+
+.illustrated-home__utilities > .illustrated-home__dungeon-panel > button:hover::after,
+.illustrated-home__utilities > .illustrated-home__dungeon-panel > button:focus-visible::after {
+  color: #e5b862;
+  opacity: 1;
+  transform: translateX(3px);
+}
+
+/* Change depth every few doors so the eye reads a descent, not a spreadsheet. */
+@media (min-width: 1000px) {
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(1) { margin-right: 30px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(2) { margin-left: 9px; margin-right: 21px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(3) { margin-left: 18px; margin-right: 12px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(4) { margin-left: 28px; margin-top: 9px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(5) { margin-left: 19px; margin-top: 12px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(6) { margin-left: 10px; margin-right: 10px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(7) { margin-right: 20px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(8) { margin-left: 10px; margin-right: 10px; margin-top: 12px; }
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button:nth-of-type(9) { margin-left: 20px; margin-top: 9px; }
+}
+
+/* The lab entrance at the bottom should feel like the questionable door you open anyway. */
+.illustrated-home__utilities > .illustrated-home__dungeon-panel > button:last-of-type {
+  margin-bottom: 2px;
+  border-top: 1px solid rgba(139, 67, 38, .42);
+  border-bottom-color: rgba(139, 67, 38, .36);
+  background:
+    radial-gradient(circle at 8% 50%, rgba(154, 61, 31, .13), transparent 24%),
+    linear-gradient(90deg, rgba(101, 39, 24, .13), transparent 72%);
+  box-shadow: inset 2px 0 rgba(141, 59, 32, .42);
+}
+
+.illustrated-home__utilities > .illustrated-home__dungeon-panel > button:last-of-type::before,
+.illustrated-home__utilities > .illustrated-home__dungeon-panel > button:last-of-type::after {
+  color: #b8774b;
+}
+
+@media (max-width: 999px) {
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel {
+    padding: 14px 13px 13px 15px;
+    border-radius: 15px 15px 9px 9px;
+  }
+
+  .illustrated-home__dungeon-panel > header {
+    margin-bottom: 8px;
+    padding: 2px 8px 12px 38px;
+  }
+
+  .illustrated-home__dungeon-panel > header strong { font-size: 21px; }
+  .illustrated-home__dungeon-panel > header small { font-size: 11px; }
+
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button {
+    min-height: 44px;
+    grid-template-columns: 27px minmax(0, 1fr) 16px;
+    gap: 8px;
+    padding: 8px 8px 8px 5px;
+  }
+}
+
+@media (max-width: 520px) {
+  body .illustrated-home__utilities.is-open > .illustrated-home__dungeon-panel {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .illustrated-home__utilities > .illustrated-home__dungeon-trigger::before,
   .illustrated-home__dungeon-copy,
-  .illustrated-home__dungeon-chevron {
+  .illustrated-home__dungeon-chevron,
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button,
+  .illustrated-home__utilities > .illustrated-home__dungeon-panel > button::after {
     transition: none !important;
     transform: none !important;
   }

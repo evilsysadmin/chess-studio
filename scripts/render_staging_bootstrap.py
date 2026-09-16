@@ -26,6 +26,12 @@ PRODUCTION_NAME = "chess-study-backend"
 PROJECT_NAME = "Chess studio"
 STAGING_ENVIRONMENT_NAME = "Staging"
 CUSTOM_DOMAIN = "api-staging.chess-studio.shadowops.dpdns.org"
+ACTIVE_DEPLOY_STATUSES = {
+    "created",
+    "build_in_progress",
+    "update_in_progress",
+    "pre_deploy_in_progress",
+}
 
 
 def required(name: str) -> str:
@@ -70,6 +76,10 @@ def unwrap_rows(payload: object, nested_key: str) -> list[dict]:
 
 def unwrap_services(payload: object) -> list[dict]:
     return unwrap_rows(payload, "service")
+
+
+def unwrap_deploys(payload: object) -> list[dict]:
+    return unwrap_rows(payload, "deploy")
 
 
 def unwrap_service(payload: object) -> dict:
@@ -125,7 +135,7 @@ def find_production_service() -> dict:
     )
 
 
-def read_env(service_id: str, key: str) -> str | None:
+def _read_env_direct(service_id: str, key: str) -> str | None:
     encoded = urllib.parse.quote(key, safe="")
     try:
         payload = api("GET", f"/services/{service_id}/env-vars/{encoded}")
@@ -138,6 +148,31 @@ def read_env(service_id: str, key: str) -> str | None:
     row = payload.get("envVar") if isinstance(payload.get("envVar"), dict) else payload
     value = row.get("value") if isinstance(row, dict) else None
     return str(value) if value else None
+
+
+def read_env(service_id: str, key: str) -> str | None:
+    """Lee una env directa; el invite de staging cae a su fuente canónica."""
+    value = _read_env_direct(service_id, key)
+    if value or key != "INVITE_CODE":
+        return value
+
+    # El INVITE_CODE humano tiene una única fuente de verdad: producción. El
+    # bootstrap ya lo replica a staging, pero Render puede no devolver su valor
+    # al releerlo desde otro runner. Sólo para el servicio staging canónico
+    # recuperamos entonces el mismo valor de producción; no inventamos secretos.
+    staging = find_service(SERVICE_NAME)
+    staging_id = str((staging or {}).get("id") or "")
+    if not staging_id or staging_id != service_id:
+        return None
+
+    production = find_production_service()
+    production_id = str(production.get("id") or "")
+    if not production_id or production_id == service_id:
+        return None
+    value = _read_env_direct(production_id, key)
+    if value:
+        print("Render staging no expuso INVITE_CODE; usando la fuente de verdad de producción")
+    return value
 
 
 def stable_staging_secret(service: dict | None, key: str) -> str:
@@ -377,6 +412,30 @@ def ensure_service_resumed(service_id: str) -> None:
     raise SystemExit("Render staging siguió suspendido tras 2 minutos de espera")
 
 
+def wait_for_service_idle(service_id: str, *, max_attempts: int = 180, poll_seconds: int = 2) -> None:
+    """Evita disparar un deploy exacto mientras Render devolvería 202 Queued.
+
+    El endpoint de deploy puede aceptar la petición con HTTP 202 y cuerpo vacío
+    cuando otro deploy está en curso. El siguiente paso del workflow necesita un
+    deploy id concreto, así que drenamos primero cualquier generación previa.
+    """
+    for attempt in range(1, max_attempts + 1):
+        deploys = unwrap_deploys(api("GET", f"/services/{service_id}/deploys?limit=20"))
+        active = [
+            row for row in deploys
+            if str(row.get("status") or "").strip().lower() in ACTIVE_DEPLOY_STATUSES
+        ]
+        if not active:
+            print("Render staging sin deploys activos; listo para el deploy exacto")
+            return
+        labels = ", ".join(
+            f"{row.get('id') or '?'}:{row.get('status') or 'unknown'}" for row in active[:3]
+        )
+        print(f"Render staging ocupado ({labels}); esperando antes del deploy exacto ({attempt}/{max_attempts})")
+        time.sleep(poll_seconds)
+    raise SystemExit("Render staging siguió ocupado; no se dispara un deploy que quedaría 202 Queued sin deploy id")
+
+
 def wait_for_service() -> dict:
     for _ in range(24):
         service = find_service(SERVICE_NAME)
@@ -407,6 +466,7 @@ def main() -> None:
     ensure_custom_domain(service_id)
     environment = ensure_service_grouped(production, service_id)
     ensure_service_resumed(service_id)
+    wait_for_service_idle(service_id)
     environment_id = str(environment.get("id") or "")
     # Sólo el runner de staging necesita el código para crear la identidad
     # efímera del smoke. El frontend desplegado no recibe esta variable.

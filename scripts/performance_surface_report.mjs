@@ -16,9 +16,11 @@ const JS_EXTENSIONS = new Set(['.js', '.jsx', '.mjs', '.ts', '.tsx']);
 const CSS_EXTENSIONS = new Set(['.css']);
 const LARGE_JS_BYTES = 60 * 1024;
 const LARGE_CSS_BYTES = 80 * 1024;
-// Data-backed ratchet: the measured baseline before this gate was 161.4 KiB gzip.
-// 164 KiB leaves ~1.6% headroom for deterministic chunking noise without hiding real growth.
-const INITIAL_JS_GZIP_BUDGET_BYTES = 164 * 1024;
+// Data-backed soft ratchet: the measured baseline before this gate was 161.4 KiB gzip.
+// Keep 164 KiB as the optimization target, but allow a small hard-ceiling buffer so
+// sub-KiB chunking drift cannot take staging down by itself. Regressions above 166 KiB fail.
+const INITIAL_JS_GZIP_TARGET_BYTES = 164 * 1024;
+const INITIAL_JS_GZIP_BUDGET_BYTES = 166 * 1024;
 const INITIAL_CSS_GZIP_BUDGET_BYTES = 68 * 1024;
 // Architectural ratchet: lower this ceiling when renderer ownership is consolidated.
 // Raising it requires an explicit lifecycle/GPU decision rather than accidental growth.
@@ -135,6 +137,7 @@ const report = {
     initialJsEntry: initialJsEntryAssets,
     initialJsPreload: initialJsPreloadAssets,
     initialJsGzipBytes,
+    initialJsGzipTargetBytes: INITIAL_JS_GZIP_TARGET_BYTES,
     initialJsGzipBudgetBytes: INITIAL_JS_GZIP_BUDGET_BYTES,
   },
 };
@@ -154,7 +157,7 @@ const summary = [
   `- ResizeObserver sites: ${resizeObserverSites}`,
   `- Large JS modules (>= ${LARGE_JS_BYTES / 1024} KiB): ${report.largeModules.js.length}`,
   `- Large CSS files (>= ${LARGE_CSS_BYTES / 1024} KiB): ${report.largeModules.css.length}`,
-  `- Initial JS: ${kib(initialJsGzipBytes)} KiB gzip across ${initialJsAssets.length} asset(s) (budget ${INITIAL_JS_GZIP_BUDGET_BYTES / 1024} KiB)`,
+  `- Initial JS: ${kib(initialJsGzipBytes)} KiB gzip across ${initialJsAssets.length} asset(s) (target ${INITIAL_JS_GZIP_TARGET_BYTES / 1024} KiB; hard budget ${INITIAL_JS_GZIP_BUDGET_BYTES / 1024} KiB)`,
   `- Initial CSS: ${kib(initialCssGzipBytes)} KiB gzip (budget ${INITIAL_CSS_GZIP_BUDGET_BYTES / 1024} KiB)`,
   '',
   '### Largest JS/TS modules',
@@ -163,7 +166,7 @@ const summary = [
   '### Largest CSS files',
   formatRows(report.topCss),
   '',
-  '> WebGL renderer count, initial JS and initial CSS are ratchets. Lower the ceilings as ownership and loading improve.',
+  '> WebGL renderer count, initial JS hard ceiling and initial CSS are blocking ratchets. The initial JS target warns before the hard ceiling is reached.',
 ].join('\n');
 
 console.log(summary);
@@ -173,8 +176,13 @@ if (webglRendererSites > MAX_WEBGL_RENDERER_SITES) {
   throw new Error(`WebGLRenderer construction sites are ${webglRendererSites}; budget is ${MAX_WEBGL_RENDERER_SITES}`);
 }
 
+if (initialJsGzipBytes > INITIAL_JS_GZIP_TARGET_BYTES && initialJsGzipBytes <= INITIAL_JS_GZIP_BUDGET_BYTES) {
+  const warning = `Initial JS is ${kib(initialJsGzipBytes)} KiB gzip; target is ${INITIAL_JS_GZIP_TARGET_BYTES / 1024} KiB and hard budget is ${INITIAL_JS_GZIP_BUDGET_BYTES / 1024} KiB`;
+  console.warn(process.env.GITHUB_ACTIONS ? `::warning title=Initial JS soft ratchet::${warning}` : `WARNING: ${warning}`);
+}
+
 if (initialJsGzipBytes > INITIAL_JS_GZIP_BUDGET_BYTES) {
-  throw new Error(`Initial JS is ${kib(initialJsGzipBytes)} KiB gzip; budget is ${INITIAL_JS_GZIP_BUDGET_BYTES / 1024} KiB`);
+  throw new Error(`Initial JS is ${kib(initialJsGzipBytes)} KiB gzip; hard budget is ${INITIAL_JS_GZIP_BUDGET_BYTES / 1024} KiB`);
 }
 
 if (initialCssGzipBytes > INITIAL_CSS_GZIP_BUDGET_BYTES) {

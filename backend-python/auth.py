@@ -1,12 +1,14 @@
-"""auth.py — Hasheo de contraseñas (bcrypt) y tokens de sesión (JWT). Nada
-de sesiones con estado en el servidor: el token lleva el username adentro,
-firmado, y el propio navegador lo guarda y lo manda en cada request. Mismo
-espíritu que M2M_API_KEYS (una variable de entorno, sin base de datos de
-sesiones aparte) pero para humanos con contraseña en vez de una key fija.
+"""auth.py — Hasheo de contraseñas (bcrypt) y tokens de sesión (JWT).
+
+Las sesiones siguen siendo JWT firmados y transportados por el navegador, pero
+cada token incluye una versión de sesión. El backend compara esa versión con la
+cuenta para poder revocar credenciales antiguas tras cambiar la contraseña sin
+mantener una tabla de sesiones por dispositivo.
 """
 
 import hashlib
 import os
+from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -22,6 +24,12 @@ JWT_SECRET = os.environ.get("JWT_SECRET", _DEV_JWT_SECRET)
 JWT_ALGORITHM = "HS256"
 TOKEN_EXPIRY_DAYS = 30  # una sesión larga, no hay "recordarme" aparte
 PASSWORD_RESET_MINUTES = 30
+
+# La request autenticada y la carga de la cuenta comparten estas dos piezas de
+# contexto sin globals mutables por usuario. ContextVar queda aislado por task
+# ASGI, así que dos requests concurrentes no pueden pisarse la versión.
+_session_version_claim: ContextVar[int | None] = ContextVar("session_version_claim", default=None)
+_account_session_version: ContextVar[int | None] = ContextVar("account_session_version", default=None)
 
 # Coste bcrypt de producción. Los tests lo bajan temporalmente a 4 mediante
 # monkeypatch para conservar hashing real sin pagar el coste CPU de 12 rounds
@@ -52,29 +60,69 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False  # hash corrupto/con formato inválido — no revienta, solo no valida
 
 
-def create_token(username: str) -> str:
+def _normalized_session_version(value) -> int | None:
+    if value is None:
+        return 0  # rollout compatible: JWT legacy sin `sv` pertenece a versión 0
+    if isinstance(value, bool):
+        return None
+    try:
+        version = int(value)
+    except (TypeError, ValueError):
+        return None
+    return version if version >= 0 else None
+
+
+def remember_account_session_version(value) -> None:
+    """Anota la versión autoritativa cargada por users_store para esta task."""
+    version = _normalized_session_version(value)
+    _account_session_version.set(version)
+
+
+def current_session_version_claim() -> int | None:
+    """Versión declarada por el JWT que se está autenticando, si existe."""
+    return _session_version_claim.get()
+
+
+def create_token(username: str, session_version: int | None = None) -> str:
+    if session_version is None:
+        session_version = _account_session_version.get()
+    version = _normalized_session_version(session_version)
+    if version is None:
+        version = 0
     payload = {
         "sub": username,
         "purpose": "session",
+        "sv": version,
         "exp": datetime.now(timezone.utc) + timedelta(days=TOKEN_EXPIRY_DAYS),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-def verify_token(token: str) -> Optional[str]:
-    """Devuelve el username si el token es válido, o None si no lo es (
-    expirado, firma inválida, formato roto, lo que sea) — nunca levanta
-    excepción, para que el llamador solo tenga que chequear None."""
+def verify_session_token(token: str) -> Optional[tuple[str, int]]:
+    """Devuelve ``(username, session_version)`` para un JWT de sesión válido.
+
+    Los tokens legacy sin ``purpose``/``sv`` siguen siendo versión 0 durante el
+    rollout. En cuanto la cuenta avance de versión por un cambio de contraseña,
+    esos tokens dejan de coincidir y quedan revocados.
+    """
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        # Tokens de recuperación comparten firma/secret pero NO privilegios.
-        # Los tokens legacy sin `purpose` siguen siendo sesiones válidas para
-        # no expulsar a todos los usuarios al desplegar este hardening.
         if payload.get("purpose") not in (None, "session"):
             return None
-        return payload.get("sub")
+        username = payload.get("sub")
+        version = _normalized_session_version(payload.get("sv"))
+        if not isinstance(username, str) or not username or version is None:
+            return None
+        _session_version_claim.set(version)
+        return username, version
     except jwt.PyJWTError:
         return None
+
+
+def verify_token(token: str) -> Optional[str]:
+    """Compatibilidad para logging/rate-limit: devuelve sólo el username."""
+    verified = verify_session_token(token)
+    return verified[0] if verified else None
 
 
 def _password_fingerprint(password_hash: str) -> str:
