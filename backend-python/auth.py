@@ -1,8 +1,9 @@
-"""auth.py — Hasheo de contraseñas (bcrypt) y tokens de sesión (JWT). Nada
-de sesiones con estado en el servidor: el token lleva el username adentro,
-firmado, y el propio navegador lo guarda y lo manda en cada request. Mismo
-espíritu que M2M_API_KEYS (una variable de entorno, sin base de datos de
-sesiones aparte) pero para humanos con contraseña en vez de una key fija.
+"""auth.py — Hasheo de contraseñas (bcrypt) y tokens de sesión (JWT).
+
+Las sesiones siguen siendo JWT firmados y transportados por el navegador, pero
+cada token incluye una versión de sesión. El backend compara esa versión con la
+cuenta para poder revocar credenciales antiguas tras cambiar la contraseña sin
+mantener una tabla de sesiones por dispositivo.
 """
 
 import hashlib
@@ -52,29 +53,55 @@ def verify_password(password: str, password_hash: str) -> bool:
         return False  # hash corrupto/con formato inválido — no revienta, solo no valida
 
 
-def create_token(username: str) -> str:
+def _normalized_session_version(value) -> int | None:
+    if value is None:
+        return 0  # rollout compatible: JWT legacy sin `sv` pertenece a versión 0
+    if isinstance(value, bool):
+        return None
+    try:
+        version = int(value)
+    except (TypeError, ValueError):
+        return None
+    return version if version >= 0 else None
+
+
+def create_token(username: str, session_version: int = 0) -> str:
+    version = _normalized_session_version(session_version)
+    if version is None:
+        raise ValueError("session_version inválida")
     payload = {
         "sub": username,
         "purpose": "session",
+        "sv": version,
         "exp": datetime.now(timezone.utc) + timedelta(days=TOKEN_EXPIRY_DAYS),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-def verify_token(token: str) -> Optional[str]:
-    """Devuelve el username si el token es válido, o None si no lo es (
-    expirado, firma inválida, formato roto, lo que sea) — nunca levanta
-    excepción, para que el llamador solo tenga que chequear None."""
+def verify_session_token(token: str) -> Optional[tuple[str, int]]:
+    """Devuelve ``(username, session_version)`` para un JWT de sesión válido.
+
+    Los tokens legacy sin ``purpose``/``sv`` siguen siendo versión 0 durante el
+    rollout. En cuanto la cuenta avance de versión por un cambio de contraseña,
+    esos tokens dejan de coincidir y quedan revocados.
+    """
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        # Tokens de recuperación comparten firma/secret pero NO privilegios.
-        # Los tokens legacy sin `purpose` siguen siendo sesiones válidas para
-        # no expulsar a todos los usuarios al desplegar este hardening.
         if payload.get("purpose") not in (None, "session"):
             return None
-        return payload.get("sub")
+        username = payload.get("sub")
+        version = _normalized_session_version(payload.get("sv"))
+        if not isinstance(username, str) or not username or version is None:
+            return None
+        return username, version
     except jwt.PyJWTError:
         return None
+
+
+def verify_token(token: str) -> Optional[str]:
+    """Compatibilidad para logging/rate-limit: devuelve sólo el username."""
+    verified = verify_session_token(token)
+    return verified[0] if verified else None
 
 
 def _password_fingerprint(password_hash: str) -> str:
