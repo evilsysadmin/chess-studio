@@ -177,16 +177,21 @@ def env_values(production: dict, staging: dict | None) -> dict[str, str]:
     mongo_url = read_env(production_id, "MONGO_URL")
     if not mongo_url:
         raise SystemExit("Producción no tiene MONGO_URL; no se puede clonar la conexión Atlas")
+    invite_code = read_env(production_id, "INVITE_CODE")
+    if not invite_code:
+        raise SystemExit(
+            "Producción no tiene INVITE_CODE; staging no puede inventar un código de invitación distinto"
+        )
     return {
         "MONGO_URL": with_app_name(mongo_url, "chess-studio-staging"),
         "MONGO_DB_NAME": "chess_study_staging",
         "JWT_SECRET": stable_staging_secret(staging, "JWT_SECRET"),
         "ENVIRONMENT": "staging",
         "EXPOSE_API_DOCS": "false",
-        # Staging mantiene el endpoint de alta para el smoke live, pero toda
-        # creación exige un código aleatorio que sólo conocen Render y CI.
+        # El código de invitación es una credencial humana compartida y su fuente
+        # de verdad es Render producción. Staging nunca genera uno paralelo.
         "ALLOW_REGISTRATION": "true",
-        "INVITE_CODE": stable_staging_secret(staging, "INVITE_CODE"),
+        "INVITE_CODE": invite_code,
         "ENABLE_EMAIL_RECOVERY": "false",
         "ADMIN_USERNAMES": "evilsysadmin",
         "CF_AI_WORKER_URL": "https://ai-staging.shadowops.dpdns.org",
