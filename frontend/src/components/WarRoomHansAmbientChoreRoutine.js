@@ -39,7 +39,7 @@ import {
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v5-reset-before-return';
+export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v6-reset-before-return-terminal-setup';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
@@ -267,22 +267,25 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
         source: 'WarRoomHansAmbientChoreRoutine',
         payload: { eventName },
       })) return;
+      const abortSetupForCurrentGame = () => {
+        if (releaseWarRoomHansTask(runtime, taskId)) completedGameId = gameId;
+      };
       const service = warRoomHansServiceHome(root, actor.hans.parent);
       targetObject = firstNamed(root, chore.targetNames);
       if (!service?.point || !targetObject) {
-        releaseWarRoomHansTask(runtime, taskId);
+        abortSetupForCurrentGame();
         return;
       }
       home = service.point;
       target = warRoomHansTargetNearObject(targetObject, actor.hans.parent, { offsetX: chore.offsetX, offsetZ: chore.offsetZ });
       if (!target) {
-        releaseWarRoomHansTask(runtime, taskId);
+        abortSetupForCurrentGame();
         return;
       }
       routeIn = warRoomHansBuildSafeRoute(floor, actor.hans.parent, home, target);
       routeOut = warRoomHansBuildSafeRoute(floor, actor.hans.parent, target, home);
       if (!routeIn.length || !routeOut.length) {
-        releaseWarRoomHansTask(runtime, taskId);
+        abortSetupForCurrentGame();
         return;
       }
       prop = ensureProp(actor, chore.prop);
