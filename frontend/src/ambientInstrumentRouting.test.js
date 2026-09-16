@@ -20,7 +20,7 @@ function expectedWrittenPlayer(theme, feel, section, lane) {
     if (theme?.genre === 'Bossa / Latin Lounge' || [feel?.leadInstrument, feel?.counterInstrument].includes('nylonGuitar')) expected = 'nylonGuitar';
   }
   if (ORGANIC_MEDITERRANEAN_ROUTING_IDS.includes(theme?.id) && SYNTHETIC_PLUCKS.has(expected)) expected = 'nylonGuitar';
-  if (ORGANIC_IBERIAN_ROUTING_IDS.includes(theme?.id) && expected === 'oudJazz' && ['lead', 'counter'].includes(lane)) expected = 'jazzGuitar';
+  if (ORGANIC_IBERIAN_ROUTING_IDS.includes(theme?.id) && SYNTHETIC_PLUCKS.has(expected) && ['lead', 'counter'].includes(lane)) expected = 'jazzGuitar';
   if (ORGANIC_LATIN_ROUTING_IDS.includes(theme?.id) && expected === 'bandoneon' && ['lead', 'counter'].includes(lane)) expected = 'nylonGuitar';
   return expected;
 }
@@ -60,6 +60,20 @@ describe('radio section instrument routing', () => {
     expect(structuredSectionInstrument(theme, feel, {}, 'lead')).toBe('nylonGuitar');
   });
 
+  it('keeps Iberian regional plucks as colour instead of continuous oscillator lanes', () => {
+    const coast = AMBIENT_THEMES.andalusianCoast;
+    const coastFeel = structuredFeel(coast);
+    expect(ORGANIC_IBERIAN_ROUTING_IDS).toContain('andalusianCoast');
+    expect(structuredSectionInstrument(coast, coastFeel, coast.sections[1], 'lead')).toBe('jazzGuitar');
+    expect(structuredSectionInstrument(coast, coastFeel, coast.sections[1], 'counter')).toBe('nylonGuitar');
+
+    const cadiz = AMBIENT_THEMES.cadizLanterns;
+    const cadizFeel = structuredFeel(cadiz);
+    expect(ORGANIC_IBERIAN_ROUTING_IDS).toContain('cadizLanterns');
+    expect(cadizFeel.counterInstrument).toBe('qanun');
+    expect(structuredSectionInstrument(cadiz, cadizFeel, {}, 'counter')).toBe('jazzGuitar');
+  });
+
   it('routes Havana away from the short oscillator bandoneon without changing tango globally', () => {
     const havana = AMBIENT_THEMES.havana205;
     const feel = structuredFeel(havana);
@@ -70,14 +84,6 @@ describe('radio section instrument routing', () => {
     const tango = AMBIENT_THEMES.kingTango;
     const tangoFeel = structuredFeel(tango);
     expect(structuredSectionInstrument(tango, tangoFeel, {}, 'lead')).toBe('bandoneon');
-  });
-
-  it('keeps Andalusian Coast on two modelled guitar bodies instead of oscillator oud/guitar', () => {
-    const coast = AMBIENT_THEMES.andalusianCoast;
-    const feel = structuredFeel(coast);
-    expect(ORGANIC_IBERIAN_ROUTING_IDS).toContain('andalusianCoast');
-    expect(structuredSectionInstrument(coast, feel, coast.sections[1], 'lead')).toBe('jazzGuitar');
-    expect(structuredSectionInstrument(coast, feel, coast.sections[1], 'counter')).toBe('nylonGuitar');
   });
 
   it('keeps the production grade on written guitar exchanges and the normal default elsewhere', () => {
