@@ -106,7 +106,10 @@ resource "oci_core_subnet" "backend" {
   display_name               = "${var.instance_name}-subnet"
   dns_label                  = "backend"
   route_table_id             = oci_core_route_table.backend.id
-  security_list_ids          = [oci_core_security_list.backend.id]
+  security_list_ids = [
+    oci_core_security_list.backend.id,
+    oci_core_security_list.backend_from_load_balancer.id,
+  ]
   prohibit_public_ip_on_vnic = false
   freeform_tags              = local.common_tags
 }
