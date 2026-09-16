@@ -34,7 +34,7 @@ describe('Pawn Slug Matthias run polish', () => {
     expect(mirrored.offsetX).toBeCloseTo((5 * 96 - 4) / 1536, 12);
   });
 
-  it('honours the locomotion controller frame and keeps grounded running planted', () => {
+  it('honours the locomotion controller frame and keeps grounded legacy running planted', () => {
     const repeatSet = vi.fn();
     const offsetSet = vi.fn();
     const setActionFrame = vi.fn((action, frame) => {
@@ -74,6 +74,44 @@ describe('Pawn Slug Matthias run polish', () => {
     expect(sprite.material.rotation).toBeLessThan(0);
     expect(repeatSet).toHaveBeenCalledWith(uv.repeatX, uv.repeatY);
     expect(offsetSet).toHaveBeenCalledWith(uv.offsetX, uv.offsetY);
+  });
+
+  it('never overwrites UVs owned by the integrated Matthias atlas', () => {
+    const repeatSet = vi.fn();
+    const offsetSet = vi.fn();
+    const setActionFrame = vi.fn((action, frame) => {
+      sprite.userData.animation.action = action;
+      sprite.userData.animation.frameIndex = frame;
+    });
+    const sprite = {
+      userData: {
+        pawnSlugIntegratedWeapons: true,
+        animation: { action: 'run', frameIndex: 0, runStartedAt: 0 },
+        atlas: {
+          source: 'primary',
+          texture: {
+            repeat: { set: repeatSet },
+            offset: { set: offsetSet },
+          },
+        },
+        setActionFrame,
+      },
+      position: { y: 0 },
+      scale: { x: 1, y: 1 },
+      material: { rotation: 0 },
+    };
+
+    const result = applyPawnSlugMatthiasRunPolish(sprite, {
+      running: true,
+      dir: 1,
+      time: 0.4,
+      runFrame: 11,
+    });
+
+    expect(result.frameIndex).toBe(11);
+    expect(setActionFrame).toHaveBeenCalledWith('run', 11);
+    expect(repeatSet).not.toHaveBeenCalled();
+    expect(offsetSet).not.toHaveBeenCalled();
   });
 
   it('falls back to time-derived frames when no locomotion frame is supplied', () => {

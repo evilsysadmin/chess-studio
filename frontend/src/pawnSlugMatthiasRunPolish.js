@@ -77,7 +77,11 @@ export function applyPawnSlugMatthiasRunPolish(sprite, state = {}) {
   const cadence = pawnSlugMatthiasRunCadence(appliedFrame);
   const direction = Number(state.dir) < 0 ? -1 : 1;
   const atlas = sprite.userData?.atlas;
-  if (atlas?.source === 'primary' && atlas.texture) {
+  if (
+    !sprite.userData?.pawnSlugIntegratedWeapons
+    && atlas?.source === 'primary'
+    && atlas.texture
+  ) {
     const uv = pawnSlugMatthiasRunUvWindow(appliedFrame, direction);
     atlas.texture.repeat?.set?.(uv.repeatX, uv.repeatY);
     atlas.texture.offset?.set?.(uv.offsetX, uv.offsetY);
