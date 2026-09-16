@@ -22,6 +22,7 @@ OPERATIONS = ("diagnose", "smoke", "reboot-agent", "deploy")
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 TERMINAL_STATES = {"SUCCEEDED", "FAILED", "TIMED_OUT", "CANCELED"}
 HEALTHY_PLUGIN_STATES = {"RUNNING"}
+COMMAND_DELIVERY_GRACE_SECONDS = 300
 SECRET_MARKERS = (
     "MONGO_URL=",
     "JWT_SECRET=",
@@ -65,6 +66,11 @@ def plugin_status_is_healthy(status: str) -> bool:
 def safe_plugin_message(value: Any) -> str:
     text = str(value or "").replace("\r", " ").replace("\n", " ").strip()
     return text[:300]
+
+
+def command_poll_budget(timeout: int) -> int:
+    """Allow bounded delivery latency in addition to Oracle's execution timeout."""
+    return timeout + COMMAND_DELIVERY_GRACE_SECONDS + 30
 
 
 def smoke_command() -> str:
@@ -284,7 +290,7 @@ def execute(oci: Any, config: dict[str, str], command: str, *, display_name: str
         retry_strategy=oci.retry.DEFAULT_RETRY_STRATEGY,
     ).data
     command_id = created.id
-    deadline = time.monotonic() + timeout + 30
+    deadline = time.monotonic() + command_poll_budget(timeout)
     last_state = ""
     while time.monotonic() < deadline:
         execution = client.get_instance_agent_command_execution(
@@ -308,7 +314,7 @@ def execute(oci: Any, config: dict[str, str], command: str, *, display_name: str
                 raise SystemExit(f"OCI Run Command failed: state={state} exit={exit_code} detail={detail[:500]}")
             return
         time.sleep(3)
-    raise SystemExit("OCI Run Command polling timed out")
+    raise SystemExit("OCI Run Command polling timed out waiting for delivery/execution")
 
 
 def self_test() -> None:
@@ -321,6 +327,7 @@ def self_test() -> None:
     else:
         raise AssertionError("mutable refs must be rejected")
     assert OPERATIONS == ("diagnose", "smoke", "reboot-agent", "deploy")
+    assert command_poll_budget(120) == 450
     assert plugin_status_is_healthy("RUNNING")
     assert plugin_status_is_healthy(" running ")
     assert not plugin_status_is_healthy("STOPPED")
