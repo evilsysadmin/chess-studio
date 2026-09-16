@@ -28,10 +28,25 @@ const ATLAS = Object.freeze({
   guardTexels: 2,
 });
 
+// Pawn Slug deliberately uses Matthias as a HUMAN tactical soldier. His face is
+// still the canonical spherical Matthias face and he keeps the officer cap that
+// makes him recognisable across Chess Studio. The pawn silhouette belongs to
+// chess surfaces, not to this Metal-Slug-like experiment.
+export const PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY = Object.freeze({
+  version: 'pawn-slug-matthias-canon-v1',
+  bodyForm: 'human-tactical-soldier',
+  uniform: 'black-tactical',
+  face: 'canonical-matthias-spherical-pawn-face',
+  headgear: 'canonical-black-officer-cap',
+  expression: 'stern-matthias',
+  forbiddenBodyForms: Object.freeze(['chess-pawn-body']),
+  forbiddenFaces: Object.freeze(['generic-human-face']),
+});
+
 export const PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME = Object.freeze({
-  // v3 keeps the approved world footprint while doubling raster resolution:
-  // ~127-128 visible standing pixels inside each 192px cell. The 3.0 world-unit
-  // quad therefore preserves Matthias' previous gameplay scale and hitboxes.
+  // The approved canonical bank keeps the v3 authored footprint: ~127-128
+  // visible standing pixels inside each 192px cell. Runtime scale/hitboxes stay
+  // unchanged while the identity contract above prevents visual regressions.
   scale: Object.freeze([2.08, 3.0]),
   authoredBottomGutterPx: 24,
   footAnchorY: 24 / 192,
@@ -40,7 +55,12 @@ export const PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME = Object.freeze({
 });
 
 export const PAWN_SLUG_MATTHIAS_INTEGRATED_ART = Object.freeze({
+  // Keep the authored-atlas revision as the asset version. The visual identity
+  // has its own independent version so canon changes cannot invalidate runtime
+  // consumers that key compatibility checks off the Blender atlas revision.
   version: 'blender-premium-v3',
+  atlasRevision: 'blender-premium-v3',
+  canonicalIdentity: PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY,
   weapons: Object.freeze(Object.keys(PAYLOADS)),
   sourceFacing: 'left',
   runtimeFacing: 'world-direction-normalized',
@@ -123,6 +143,8 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
   sprite.userData.motionPhase = Math.random() * Math.PI * 2;
   sprite.userData.pawnSlugIntegratedWeapons = true;
   sprite.userData.pawnSlugPremiumMatthias = true;
+  sprite.userData.pawnSlugCanonicalMatthias = true;
+  sprite.userData.pawnSlugCanonicalIdentity = PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY;
   sprite.userData.atlas = {
     texture: null,
     source: 'loading',
@@ -131,6 +153,7 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
     disposed: false,
     requestId: 0,
     assetVersion: PAWN_SLUG_MATTHIAS_INTEGRATED_ART.version,
+    atlasRevision: PAWN_SLUG_MATTHIAS_INTEGRATED_ART.atlasRevision,
   };
   sprite.userData.animation = {
     weapon: 'pistol',
