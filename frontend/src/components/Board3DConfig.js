@@ -54,12 +54,12 @@ export const SKIN_3D = Object.freeze({
     metalness: 0.18, roughness: 0.62, emissive: 0x000000, emissiveIntensity: 0,
   },
   studio: {
-    // Canonical War Room finish. White is now a cleaner warm ivory instead of
-    // ochre resin; black moves toward lacquered ebony. This is intentionally a
-    // visible meso-scale change: the material response should be readable from
-    // the normal tactical camera, not only in a close-up material inspector.
-    white: 0xd6bd8c, black: 0x1d2024, whiteAccent: 0xd0a64e, blackAccent: 0xa83f36,
-    metalness: 0.22, roughness: 0.4, emissive: 0x000000, emissiveIntensity: 0,
+    // Canonical War Room finish. Treat the black body as lacquered ebony rather
+    // than dark metal: very low base metalness lets the strong clearcoat/specular
+    // layer describe the polished surface instead of flattening it into plastic.
+    // Ivory moves a little cleaner and lighter, while still staying warm under ACES.
+    white: 0xdac7a2, black: 0x15181c, whiteAccent: 0xd0a64e, blackAccent: 0xa83f36,
+    metalness: 0.06, roughness: 0.42, emissive: 0x000000, emissiveIntensity: 0,
   },
   regimiento: {
     white: 0xf2e1bd, black: 0x313238, whiteAccent: 0xc79b43, blackAccent: 0xa62e2a,
