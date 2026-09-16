@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import './Board3DSurfaces.css';
 
-export const PREMIUM_SURFACE_VERSION = 'premium-v9';
+export const PREMIUM_SURFACE_VERSION = 'premium-v10-visible-albedo';
 export const WAR_ROOM_POST_PAINT_PREMIUM_VERSION = 'post-paint-premium-v1';
 
 const SURFACE_ROLES_TO_PRESERVE = new Set([
@@ -135,6 +135,60 @@ export function createMicroSurfaceMap({ seed = 1, kind = 'piece', coarsePointer 
   return texture;
 }
 
+export function createBoardAlbedoMap({ seed = 1, light = false, coarsePointer = false } = {}) {
+  if (coarsePointer) return null;
+  const size = 48;
+  const data = new Uint8Array(size * size * 4);
+  let state = ((Number(seed) || 1) ^ (light ? 0x9e37 : 0x51a3)) >>> 0;
+
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      let noise;
+      [state, noise] = nextNoise(state);
+      let r;
+      let g;
+      let b;
+
+      if (light) {
+        const broad = Math.sin((x + y * 0.35) * 0.17) * 7 + Math.cos(y * 0.23) * 5;
+        const mineral = Math.sin((x - y) * 0.51) * 2.5;
+        const value = THREE.MathUtils.clamp(Math.round(242 + broad + mineral + (noise - 0.5) * 8), 216, 255);
+        r = THREE.MathUtils.clamp(value + 5, 0, 255);
+        g = value;
+        b = THREE.MathUtils.clamp(value - 7, 0, 255);
+      } else {
+        const grain = Math.sin((x / size) * Math.PI * 14 + Math.sin(y * 0.22) * 1.1) * 16;
+        const growth = Math.sin((x + y * 0.14) * 0.31) * 8;
+        const knot = Math.max(0, Math.sin(x * 0.19 + y * 0.07) - 0.84) * 28;
+        const value = THREE.MathUtils.clamp(Math.round(220 + grain + growth - knot + (noise - 0.5) * 10), 174, 252);
+        r = THREE.MathUtils.clamp(value + 4, 0, 255);
+        g = THREE.MathUtils.clamp(value - 6, 0, 255);
+        b = THREE.MathUtils.clamp(value - 12, 0, 255);
+      }
+
+      const index = (y * size + x) * 4;
+      data[index] = r;
+      data[index + 1] = g;
+      data[index + 2] = b;
+      data[index + 3] = 255;
+    }
+  }
+
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat, THREE.UnsignedByteType);
+  texture.name = light ? 'war-room-board-limestone-albedo' : 'war-room-board-walnut-albedo';
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(light ? 1.15 : 1.45, light ? 1.15 : 2.6);
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = true;
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  texture.userData.surfaceKind = light ? 'board-limestone-albedo' : 'board-walnut-albedo';
+  texture.userData.surfaceResolution = size;
+  return texture;
+}
+
 export function makePremiumPieceMaterial({ color, skin, side = 'w', accent = false, coarsePointer = false }) {
   const baseMetalness = Math.min(1, skin.metalness + (accent ? 0.2 : 0));
   const baseRoughness = Math.max(0.1, skin.roughness - (accent ? 0.15 : 0.04));
@@ -181,9 +235,11 @@ export function makePremiumPieceMaterial({ color, skin, side = 'w', accent = fal
 export function makePremiumTileMaterial({ color, light = false, coarsePointer = false, seed = 1 }) {
   const surfaceColor = new THREE.Color(color);
   if (light) surfaceColor.lerp(new THREE.Color(0xb98f68), 0.22);
-  // Las casillas claras deben leerse como piedra/pergamino mate, no como otra
-  // superficie de marfil ni como madera barnizada. La microtextura genérica evita
-  // la veta longitudinal que competía visualmente con las piezas blancas.
+  // Roughness/bump alone disappeared under the tactical camera. Desktop now gets
+  // a restrained colour-scale albedo map as well: limestone mottling on light
+  // squares, directional walnut grain on dark squares. It is deliberately meso
+  // scale so the material reads without turning the board into noisy wallpaper.
+  const albedo = createBoardAlbedoMap({ seed, light, coarsePointer });
   const micro = coarsePointer ? null : createMicroSurfaceMap({
     seed,
     kind: light ? 'board-light' : 'wood',
@@ -191,21 +247,23 @@ export function makePremiumTileMaterial({ color, light = false, coarsePointer = 
   });
   const material = new THREE.MeshPhysicalMaterial({
     color: surfaceColor,
+    map: albedo,
     metalness: 0.015,
-    roughness: micro ? (light ? 0.82 : 0.7) : (light ? 0.72 : 0.6),
+    roughness: micro ? (light ? 0.78 : 0.68) : (light ? 0.72 : 0.6),
     roughnessMap: micro,
     bumpMap: micro,
-    bumpScale: micro ? (light ? 0.003 : 0.007) : 0,
-    clearcoat: light ? 0.09 : 0.21,
-    clearcoatRoughness: light ? 0.52 : 0.34,
+    bumpScale: micro ? (light ? 0.005 : 0.009) : 0,
+    clearcoat: light ? 0.1 : 0.24,
+    clearcoatRoughness: light ? 0.48 : 0.3,
     ior: 1.46,
-    specularIntensity: light ? 0.28 : 0.46,
-    // Light squares are matte parchment/stone. Keep them on direct lighting so
-    // delayed PMREM cannot lift their value and collapse contrast against ivory.
-    envMapIntensity: light ? 0 : 0.5,
+    specularIntensity: light ? 0.3 : 0.5,
+    // Light squares stay mostly on direct lighting; dark walnut gets enough IBL
+    // to reveal broad highlights and the grain under the room practicals.
+    envMapIntensity: light ? 0.03 : 0.52,
   });
   material.userData.surfaceVersion = PREMIUM_SURFACE_VERSION;
   material.userData.surfaceRole = light ? 'board-light' : 'board-dark';
+  material.userData.boardHeroFinish = albedo ? 'visible-albedo-v1' : 'lite-flat-v1';
   return material;
 }
 
