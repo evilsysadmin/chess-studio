@@ -43,7 +43,7 @@ jobs:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     name: OCI staging · service control
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 35
     env:
       OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
       OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
@@ -146,8 +146,37 @@ jobs:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: python3 scripts/render_mongo_target_diagnose.py
 
+      - name: Wait for OCI Run Command registration
+        if: >-
+          github.event_name == 'workflow_run' ||
+          (github.event_name == 'push' && steps.ops.outputs.bringup == 'true') ||
+          (github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync')
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 60); do
+            log="${RUNNER_TEMP}/oci-agent-ready-${attempt}.log"
+            set +e
+            python3 scripts/oci_run_command.py diagnose >"$log" 2>&1
+            rc=$?
+            set -e
+
+            if [[ "$rc" -eq 0 ]]; then
+              cat "$log"
+              exit 0
+            fi
+            if grep -Fq 'Plugin Compute Instance Run Command not present for instance' "$log" && [[ "$attempt" -lt 60 ]]; then
+              echo "OCI Run Command plugin not registered yet (attempt ${attempt}/60); retrying in 10s"
+              sleep 10
+              continue
+            fi
+            cat "$log"
+            exit "$rc"
+          done
+
       - name: Sync private runtime config
         if: >-
+          github.event_name == 'workflow_run' ||
           (github.event_name == 'push' && steps.ops.outputs.bringup == 'true') ||
           (github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync')
         env:
@@ -231,8 +260,9 @@ jobs:
 
       - name: Deploy immutable backend release
         if: >-
+          github.event_name == 'workflow_run' ||
           (github.event_name == 'push' && steps.ops.outputs.bringup == 'true') ||
           (github.event_name == 'workflow_dispatch' && inputs.operation == 'deploy')
         env:
-          DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.repo_ref || github.sha }}
+          DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.repo_ref || github.event.workflow_run.head_sha || github.sha }}
         run: python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_REF"
