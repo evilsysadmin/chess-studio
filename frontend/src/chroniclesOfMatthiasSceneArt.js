@@ -6,6 +6,7 @@ import { installChroniclesTacticsPartyGrounding } from './chroniclesOfMatthiasPa
 import { installChroniclesTacticsReadabilityArt } from './chroniclesOfMatthiasReadabilityArt.js';
 import { installChroniclesTacticsEnemyIntentArt } from './chroniclesOfMatthiasEnemyIntentArt.js';
 import { installChroniclesTacticsDamageFeedbackArt } from './chroniclesOfMatthiasDamageFeedbackArt.js';
+import { installChroniclesTacticsArchitectureArt } from './chroniclesOfMatthiasArchitectureArt.js';
 
 const PARTY_IDS = Object.freeze(['rook', 'matthias', 'bishop', 'knight']);
 
@@ -15,14 +16,25 @@ export function installChroniclesTacticsSceneArt(models, { coarsePointer = false
   const scene = partyRoot?.parent || null;
   if (!scene?.add) return null;
 
+  const fortress = installChroniclesTacticsFortressBackdrop(scene, { coarsePointer });
+  const foreground = installChroniclesTacticsForegroundFraming(scene, { coarsePointer });
+  const wetStone = installChroniclesTacticsWetStone(scene, { coarsePointer });
+  const weathering = installChroniclesTacticsStoneWeathering(scene, { coarsePointer });
+  const grounding = installChroniclesTacticsPartyGrounding(models, { coarsePointer });
+  const readability = installChroniclesTacticsReadabilityArt(models, { coarsePointer });
+  const architecture = installChroniclesTacticsArchitectureArt(scene, { coarsePointer });
+  const enemyIntent = installChroniclesTacticsEnemyIntentArt(scene, { coarsePointer });
+  const damageFeedback = installChroniclesTacticsDamageFeedbackArt(models, { coarsePointer });
+
   return {
-    fortress: installChroniclesTacticsFortressBackdrop(scene, { coarsePointer }),
-    foreground: installChroniclesTacticsForegroundFraming(scene, { coarsePointer }),
-    wetStone: installChroniclesTacticsWetStone(scene, { coarsePointer }),
-    weathering: installChroniclesTacticsStoneWeathering(scene, { coarsePointer }),
-    grounding: installChroniclesTacticsPartyGrounding(models, { coarsePointer }),
-    readability: installChroniclesTacticsReadabilityArt(models, { coarsePointer }),
-    enemyIntent: installChroniclesTacticsEnemyIntentArt(scene, { coarsePointer }),
-    damageFeedback: installChroniclesTacticsDamageFeedbackArt(models, { coarsePointer }),
+    fortress,
+    foreground,
+    wetStone,
+    weathering,
+    grounding,
+    readability,
+    architecture,
+    enemyIntent,
+    damageFeedback,
   };
 }
