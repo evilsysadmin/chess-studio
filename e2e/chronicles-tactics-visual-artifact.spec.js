@@ -55,12 +55,44 @@ async function captureTacticsHealth(page) {
       camera: mode?.getAttribute('data-camera') || null,
       combat: mode?.getAttribute('data-combat') || null,
       canvasCount: document.querySelectorAll('[data-chronicles-tactics-renderer="three"] canvas').length,
+      partyMemberCount: document.querySelectorAll('.chronicles-tactics__party > button').length,
       mode: rect('[data-chronicles-tactics="true"]'),
       viewport: rect('.chronicles-tactics__viewport'),
       canvas: rect('[data-chronicles-tactics-renderer="three"] canvas'),
+      mission: rect('.chronicles-tactics__mission'),
+      party: rect('.chronicles-tactics__party'),
       actions: rect('.chronicles-tactics__actions'),
+      narrator: rect('.chronicles-tactics__narrator'),
     };
   });
+}
+
+function expectCanvasFillsViewport(health, label) {
+  expect(health.viewport, `${label}: viewport bounds`).not.toBeNull();
+  expect(health.canvas, `${label}: canvas bounds`).not.toBeNull();
+  expect(Math.abs(health.canvas.width - health.viewport.width), `${label}: canvas/viewport width`).toBeLessThanOrEqual(2);
+  expect(Math.abs(health.canvas.height - health.viewport.height), `${label}: canvas/viewport height`).toBeLessThanOrEqual(2);
+}
+
+function expectDesktopCanonicalComposition(health, label) {
+  const viewport = health.viewport;
+  expect(viewport, `${label}: canonical viewport`).not.toBeNull();
+  expect(health.mission, `${label}: mission panel`).not.toBeNull();
+  expect(health.party, `${label}: party panel`).not.toBeNull();
+  expect(health.actions, `${label}: action panel`).not.toBeNull();
+
+  const midpoint = viewport.left + viewport.width / 2;
+  expect(viewport.height, `${label}: battlefield remains dominant`).toBeGreaterThan(650);
+  expect(health.mission.left, `${label}: mission stays on right`).toBeGreaterThan(midpoint);
+  expect(health.mission.top, `${label}: mission stays near top`).toBeLessThan(viewport.top + 50);
+  expect(health.mission.right, `${label}: mission stays inside viewport`).toBeLessThanOrEqual(viewport.right);
+
+  expect(health.party.left, `${label}: party stays on left`).toBeLessThan(viewport.left + 50);
+  expect(health.party.bottom, `${label}: party stays near bottom`).toBeGreaterThan(viewport.bottom - 50);
+  expect(health.party.right, `${label}: party leaves battlefield centre readable`).toBeLessThan(midpoint + 20);
+
+  expect(health.actions.left, `${label}: actions stay in right band`).toBeGreaterThan(viewport.left + viewport.width * 0.68);
+  expect(health.actions.right, `${label}: actions stay inside viewport`).toBeLessThanOrEqual(viewport.right);
 }
 
 async function captureElement(page, locator, path) {
@@ -107,17 +139,20 @@ for (const capture of CAPTURES) {
       const health = await captureTacticsHealth(page);
       expect(health.horizontalOverflow, `${capture.label}: Tactics overflow`).toBe(false);
       expect(health.canvasCount, `${capture.label}: Tactics canvas`).toBe(1);
+      expect(health.partyMemberCount, `${capture.label}: canonical four-member party`).toBe(4);
       expect(health.camera).toBe('isometric-behind-party');
       expect(health.combat).toBe('realtime');
       expect(health.viewport?.width || 0, `${capture.label}: Tactics viewport width`).toBeGreaterThan(0);
       expect(health.viewport?.height || 0, `${capture.label}: Tactics viewport height`).toBeGreaterThan(0);
       expect(health.canvas?.width || 0, `${capture.label}: Tactics canvas width`).toBeGreaterThan(0);
       expect(health.canvas?.height || 0, `${capture.label}: Tactics canvas height`).toBeGreaterThan(0);
+      expectCanvasFillsViewport(health, capture.label);
+      if (capture.width >= 1180) expectDesktopCanonicalComposition(health, capture.label);
 
       await captureElement(page, viewport, `${ARTIFACT_DIR}/chronicles-tactics-${capture.label}.png`);
       await writeFile(
         `${ARTIFACT_DIR}/chronicles-tactics-visual-health-${capture.label}.json`,
-        `${JSON.stringify({ schema: 1, scope: 'chronicles-tactics', capture: { label: capture.label, ...health } }, null, 2)}\n`,
+        `${JSON.stringify({ schema: 2, scope: 'chronicles-tactics', capture: { label: capture.label, ...health } }, null, 2)}\n`,
         'utf8',
       );
     } finally {
