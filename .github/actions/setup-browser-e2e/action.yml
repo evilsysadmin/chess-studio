@@ -1,5 +1,5 @@
 name: Setup resilient browser E2E
-description: Restore exact E2E/browser dependencies, optionally restore frontend dependencies, then optionally build the frontend.
+description: Restore exact E2E/browser dependencies, restore frontend dependencies only when requested or building, then optionally build the frontend.
 
 inputs:
   browser-scope:
@@ -7,9 +7,9 @@ inputs:
     required: false
     default: chromium
   restore-frontend-deps:
-    description: Whether to restore frontend/node_modules in addition to the E2E runtime.
+    description: Whether to restore frontend/node_modules when no frontend build is requested.
     required: false
-    default: 'true'
+    default: 'false'
   build-frontend:
     description: Whether to build the production frontend after restoring dependencies.
     required: false
@@ -43,13 +43,9 @@ runs:
           true|false) ;;
           *) echo "::error::build-frontend debe ser true o false"; exit 2 ;;
         esac
-        if [[ '${{ inputs.build-frontend }}' == 'true' && '${{ inputs.restore-frontend-deps }}' != 'true' ]]; then
-          echo '::error::build-frontend=true requiere restore-frontend-deps=true'
-          exit 2
-        fi
 
     - name: Setup Node.js · frontend + E2E
-      if: inputs.restore-frontend-deps == 'true'
+      if: inputs.restore-frontend-deps == 'true' || inputs.build-frontend == 'true'
       uses: actions/setup-node@v7
       with:
         node-version: ${{ inputs.node-version }}
@@ -59,7 +55,7 @@ runs:
           e2e/package-lock.json
 
     - name: Setup Node.js · E2E only
-      if: inputs.restore-frontend-deps != 'true'
+      if: inputs.restore-frontend-deps != 'true' && inputs.build-frontend != 'true'
       uses: actions/setup-node@v7
       with:
         node-version: ${{ inputs.node-version }}
@@ -67,7 +63,7 @@ runs:
         cache-dependency-path: e2e/package-lock.json
 
     - name: Restore exact frontend dependencies
-      if: inputs.restore-frontend-deps == 'true'
+      if: inputs.restore-frontend-deps == 'true' || inputs.build-frontend == 'true'
       uses: ./.github/actions/cache-node-modules
       with:
         working-directory: frontend
