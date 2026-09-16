@@ -31,7 +31,11 @@ export const AMBIENT_GENRE_HOOKS = Object.freeze({
   cadizLanterns: hook('counter', [1,3], 72, 4.0, 0.18, { 8:69, 26:66, 44:73, 62:67 }),
   bishopBlues: hook('lead', [0,1], 48, 5.2, 0.20, { 4:64, 16:67, 28:63, 40:70 }),
   terraceFireflies: hook('counter', [0,2], 64, 4.8, 0.18, { 6:79, 22:77, 38:82, 54:76 }),
-  cafeFirelight: hook('lead', [0,2], 64, 5.6, 0.20, { 4:68, 20:65, 36:72, 52:67 }),
+  // These three already have a muted horn as a useful foreground colour, but
+  // repeating that same attack as the calling card turns the colour into a UI
+  // chirp. Let the existing organic/soft counter player carry the sparse hook
+  // instead and make the phrase breathe over a longer cycle.
+  cafeFirelight: hook('counter', [0,2], 96, 6.0, 0.15, { 4:68, 20:65, 36:72, 52:67 }),
   malagaLastTram: hook('lead', [1,3], 64, 4.4, 0.18, { 5:67, 21:64, 37:69, 53:62 }),
   beirutHarbor2340: hook('counter', [0,2], 64, 4.2, 0.18, { 6:67, 18:70, 34:74, 50:69 }),
   cordobaRooftop0026: hook('lead', [0,2], 64, 3.8, 0.18, { 5:69, 21:76, 37:72, 53:74 }),
@@ -40,14 +44,14 @@ export const AMBIENT_GENRE_HOOKS = Object.freeze({
   oudTrench: hook('lead', [0,1], 64, 4.4, 0.18, { 6:57, 22:64, 38:62, 54:67 }),
   velvetStatic: hook('counter', [0,1], 64, 6.2, 0.16, { 12:55, 28:59, 44:52, 60:57 }),
   knightAlleyNoir: hook('counter', [0,1], 64, 5.6, 0.17, { 8:65, 24:62, 40:68, 56:61 }),
-  concreteRain: hook('lead', [0,1], 64, 7.2, 0.18, { 6:65, 22:62, 38:67, 54:60 }),
+  concreteRain: hook('counter', [0,1], 96, 7.2, 0.15, { 6:65, 22:62, 38:67, 54:60 }),
   queenBossa: hook('lead', [0,1], 64, 3.8, 0.18, { 6:67, 18:71, 38:64, 54:69 }),
   // Havana used to stamp a short bandoneon oscillator phrase over its own
   // arrangement. On repetition the bright reed attack became the most audible
   // thing in the track. Let the modelled guitar answer instead and give the
   // phrase more air so it reads as an arrangement detail, not a notification.
   havana205: hook('counter', [0,1], 96, 5.2, 0.15, { 8:69, 20:65, 40:72, 56:66 }),
-  blueLobby: hook('lead', [0,2], 64, 6.0, 0.17, { 10:72, 24:68, 42:75, 58:67 }),
+  blueLobby: hook('counter', [0,2], 96, 6.2, 0.15, { 10:72, 24:68, 42:75, 58:67 }),
 });
 
 export const AMBIENT_GENRE_HOOK_IDS = Object.freeze(Object.keys(AMBIENT_GENRE_HOOKS));

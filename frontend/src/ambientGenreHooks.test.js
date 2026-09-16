@@ -50,6 +50,19 @@ describe('curated Mediterranean and trip-hop hooks', () => {
     expect(feel.signature.volume).toBeLessThanOrEqual(0.14);
   });
 
+  it('keeps recurring jazz/noir hooks off the exposed muted-horn attack', () => {
+    for (const id of ['cafeFirelight', 'concreteRain', 'blueLobby']) {
+      const theme = AMBIENT_THEMES[id];
+      const feel = structuredFeel(theme);
+
+      expect(feel.signature.instrument).toBe(feel.counterInstrument || theme.counterInstrument);
+      expect(feel.signature.instrument).not.toBe('mutedHorn');
+      expect(feel.signature.repeatPeriod).toBeGreaterThanOrEqual(96);
+      expect(feel.signature.everyCycles).toBe(2);
+      expect(feel.signature.volume).toBeLessThanOrEqual(0.15);
+    }
+  });
+
   it('replaces Havana bandoneon chirps with a quieter, roomier guitar answer', () => {
     const theme = AMBIENT_THEMES.havana205;
     const feel = structuredFeel(theme);
