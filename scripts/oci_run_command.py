@@ -24,6 +24,9 @@ SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 SAFE_NAMESPACE_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 TERMINAL_STATES = {"SUCCEEDED", "FAILED", "TIMED_OUT", "CANCELED"}
 HEALTHY_PLUGIN_STATES = {"RUNNING"}
+PLUGIN_REGISTRATION_TIMEOUT_SECONDS = 300
+PLUGIN_REGISTRATION_RETRY_SECONDS = 5
+PLUGIN_NOT_REGISTERED_MARKER = "Plugin Compute Instance Run Command not present for instance"
 COMMAND_DELIVERY_GRACE_SECONDS = 300
 RUN_COMMAND_INLINE_MAX_BYTES = 4096
 SECRET_MARKERS = (
@@ -80,6 +83,13 @@ def plugin_status_is_healthy(status: str) -> bool:
 def safe_plugin_message(value: Any) -> str:
     text = str(value or "").replace("\r", " ").replace("\n", " ").strip()
     return text[:300]
+
+
+def plugin_registration_is_pending(exc: BaseException) -> bool:
+    """Retry only Oracle's not-yet-registered plugin condition."""
+    status = getattr(exc, "status", None)
+    text = str(exc).lower()
+    return status == 404 or PLUGIN_NOT_REGISTERED_MARKER.lower() in text
 
 
 def command_poll_budget(timeout: int) -> int:
@@ -276,7 +286,13 @@ def read_plugin_observation(
     )
 
 
-def diagnose_plugin(oci: Any, config: dict[str, str]) -> str:
+def diagnose_plugin(
+    oci: Any,
+    config: dict[str, str],
+    *,
+    wait_for_registration: bool = False,
+    registration_timeout: int = PLUGIN_REGISTRATION_TIMEOUT_SECONDS,
+) -> str:
     compartment_id, instance_id = resolve_staging(oci, config)
     compute = oci.core.ComputeClient(config)
     instance = compute.get_instance(
@@ -301,7 +317,31 @@ def diagnose_plugin(oci: Any, config: dict[str, str]) -> str:
         flush=True,
     )
 
-    status, updated, message = read_plugin_observation(oci, config, compartment_id, instance_id)
+    deadline = time.monotonic() + max(0, registration_timeout)
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            status, updated, message = read_plugin_observation(
+                oci, config, compartment_id, instance_id
+            )
+            break
+        except oci.exceptions.ServiceError as exc:
+            if not wait_for_registration or not plugin_registration_is_pending(exc):
+                raise
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise SystemExit(
+                    "OCI Run Command plugin registration timed out after "
+                    f"{registration_timeout}s"
+                ) from exc
+            print(
+                "OCI Run Command plugin not registered yet "
+                f"(attempt {attempt}); retrying in {PLUGIN_REGISTRATION_RETRY_SECONDS}s",
+                flush=True,
+            )
+            time.sleep(min(PLUGIN_REGISTRATION_RETRY_SECONDS, remaining))
+
     print(f"OCI Run Command observed: status={status} last_updated={updated}", flush=True)
     if message:
         print(f"OCI Run Command observed message: {message}", flush=True)
@@ -462,6 +502,8 @@ def self_test() -> None:
     else:
         raise AssertionError("unsafe Object Storage namespace must be rejected")
     assert OPERATIONS == ("diagnose", "smoke", "reboot-agent", "deploy")
+    assert PLUGIN_REGISTRATION_TIMEOUT_SECONDS == 300
+    assert PLUGIN_REGISTRATION_RETRY_SECONDS == 5
     assert command_poll_budget(120) == 450
     assert plugin_status_is_healthy("RUNNING")
     assert plugin_status_is_healthy(" running ")
@@ -469,6 +511,20 @@ def self_test() -> None:
     assert not plugin_status_is_healthy("NOT_SUPPORTED")
     assert not plugin_status_is_healthy("INVALID")
     assert safe_plugin_message("line one\nline two") == "line one line two"
+
+    class MissingPluginError(Exception):
+        status = 404
+
+    class PhraseOnlyPluginError(Exception):
+        status = 400
+
+    class OtherPluginError(Exception):
+        status = 500
+
+    assert plugin_registration_is_pending(MissingPluginError("not found"))
+    assert plugin_registration_is_pending(PhraseOnlyPluginError(PLUGIN_NOT_REGISTERED_MARKER))
+    assert not plugin_registration_is_pending(OtherPluginError("temporary service error"))
+
     smoke = smoke_command()
     deploy = deploy_command(sample, "sample_namespace")
     assert "OCI_HOST_CONTRACT_OK" in smoke
@@ -567,7 +623,7 @@ def main() -> int:
         )
         validate_smoke_output(output)
     else:
-        diagnose_plugin(oci, config)
+        diagnose_plugin(oci, config, wait_for_registration=True)
         namespace = runtime_namespace(oci, config)
         execute(
             oci,

@@ -148,29 +148,6 @@ jobs:
           python3 -S scripts/oci_runtime_config.py --self-test
           python3 -S scripts/verify_backend_staging.py --self-test
 
-      - name: Wait for OCI Run Command registration
-        shell: bash
-        run: |
-          set -euo pipefail
-          for attempt in $(seq 1 60); do
-            log="${RUNNER_TEMP}/oci-agent-ready-${attempt}.log"
-            set +e
-            python3 scripts/oci_run_command.py diagnose >"$log" 2>&1
-            rc=$?
-            set -e
-            if [[ "$rc" -eq 0 ]]; then
-              cat "$log"
-              exit 0
-            fi
-            if grep -Fq 'Plugin Compute Instance Run Command not present for instance' "$log" && [[ "$attempt" -lt 60 ]]; then
-              echo "OCI Run Command plugin not registered yet (attempt ${attempt}/60); retrying in 5s"
-              sleep 5
-              continue
-            fi
-            cat "$log"
-            exit "$rc"
-          done
-
       - name: Publish private OCI runtime config for deploy
         shell: bash
         run: |
