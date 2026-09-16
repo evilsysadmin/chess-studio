@@ -2,8 +2,8 @@ Chess Studio · Home Matthias canonical visual reference
 
 Approved reference: 2026-09-16
 Reference image: frontend/art-source/matthias-home-canonical-reference.webp
-Reference image dimensions: 512x560
-SHA-256: 80e451f1670b6b8f05123a4f013e526f926b4dec1532ba5e45f7ad24de80e06a
+Reference image dimensions: 128x140
+SHA-256: 24ce1e4da043ce32ded8cd2b7ee8a901494c15806f9489cd5625d7b6c2ce9650
 Reference origin: user-approved Home render in the Chess Studio project conversation.
 
 Identity contract:
