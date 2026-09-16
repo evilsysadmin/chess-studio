@@ -5,7 +5,7 @@ export const DEFAULT_CHRONICLES_MAP_ID = 'crypt-eight-squares';
 
 const CONTENT_GROUPS = Object.freeze(['triggers', 'interactables', 'treasures', 'traps', 'exits']);
 const SUPPORTED_ACTIVATIONS = new Set(['always', 'sigil', 'jailer-down']);
-const SUPPORTED_MOVEMENTS = new Set(['cardinal-chase', 'knight-chase', 'hold']);
+const SUPPORTED_MOVEMENTS = new Set(['cardinal-chase', 'knight-chase', 'patrol-route', 'hold']);
 
 function clonePoint(point) {
   return { x: Number(point?.x || 0), y: Number(point?.y || 0) };
@@ -51,6 +51,7 @@ function normalizeEnemy(enemy) {
       movement: enemy?.ai?.movement || 'cardinal-chase',
       attackReach: Math.max(1, Number(enemy?.ai?.attackReach ?? enemy?.retaliationReach ?? 1)),
       requiresLineOfSight: Boolean(enemy?.ai?.requiresLineOfSight),
+      patrolRoute: Object.freeze((enemy?.ai?.patrolRoute || []).map((point) => Object.freeze(clonePoint(point)))),
     }),
     onDefeat: enemy?.onDefeat ? Object.freeze({
       ...enemy.onDefeat,
@@ -103,6 +104,26 @@ function assertContentLocation(map, group, entry) {
   }
 }
 
+function assertPatrolRoute(map, enemy) {
+  if ((enemy.ai?.movement || 'cardinal-chase') !== 'patrol-route') return;
+  const route = enemy.ai?.patrolRoute || [];
+  if (route.length < 2) {
+    throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} patrol-route requires at least two patrolRoute points`);
+  }
+  route.forEach((point, index) => assertWalkablePoint(map, point, `enemy ${enemy.id} patrolRoute[${index}]`));
+  const spawnIndex = route.findIndex((point) => point.x === enemy.x && point.y === enemy.y);
+  if (spawnIndex < 0) {
+    throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} patrolRoute must include its spawn`);
+  }
+  route.forEach((point, index) => {
+    const next = route[(index + 1) % route.length];
+    const separation = Math.abs(point.x - next.x) + Math.abs(point.y - next.y);
+    if (separation !== 1) {
+      throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} patrolRoute steps must be cardinal-adjacent`);
+    }
+  });
+}
+
 function assertEnemyContract(map, enemy) {
   assertWalkablePoint(map, enemy, `enemy ${enemy.id}`);
   if (!enemy.hpKey || typeof enemy.hpKey !== 'string') {
@@ -114,6 +135,7 @@ function assertEnemyContract(map, enemy) {
   if (!SUPPORTED_MOVEMENTS.has(enemy.ai?.movement || 'cardinal-chase')) {
     throw new Error(`Chronicles map ${map.id} enemy ${enemy.id} uses unsupported movement ${enemy.ai?.movement}`);
   }
+  assertPatrolRoute(map, enemy);
 
   if (enemy.positionKey) {
     const positionEntries = Object.entries(enemy.positions || {});
