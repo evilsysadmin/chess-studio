@@ -30,12 +30,36 @@ describe('Chronicles declarative map catalog', () => {
 
   it('owns enemy AI, interactions, rewards, treasure, trap and exit rules', () => {
     const map = chroniclesMapById(DEFAULT_CHRONICLES_MAP_ID);
+    const jailer = map.enemies.find((enemy) => enemy.id === 'gate-jailer');
     const knight = map.enemies.find((enemy) => enemy.id === 'scavenger-knight');
     const bishop = map.enemies.find((enemy) => enemy.id === 'spectral-bishop');
     const pawn = map.enemies.find((enemy) => enemy.id === 'corrupted-pawn');
 
-    expect(pawn.ai.movement).toBe('cardinal-chase');
-    expect(knight.ai.movement).toBe('knight-chase');
+    expect(pawn.ai).toMatchObject({
+      movement: 'cardinal-roam',
+      engagedMovement: 'cardinal-chase',
+      engageRange: 1,
+    });
+    expect(jailer.ai).toMatchObject({
+      movement: 'patrol-route',
+      engagedMovement: 'cardinal-chase',
+      engageRange: 2,
+    });
+    expect(jailer.ai.patrolRoute).toEqual([
+      { x: 3, y: 1 },
+      { x: 2, y: 1 },
+      { x: 1, y: 1 },
+      { x: 2, y: 1 },
+      { x: 3, y: 1 },
+      { x: 4, y: 1 },
+      { x: 5, y: 1 },
+      { x: 4, y: 1 },
+    ]);
+    expect(knight.ai).toMatchObject({
+      movement: 'cardinal-roam',
+      engagedMovement: 'knight-chase',
+      engageRange: 4,
+    });
     expect(knight.onDefeat.effects).toContainEqual({ type: 'set', key: 'blackGateKey', value: true });
     expect(bishop.onDefeat.effects).toContainEqual({ type: 'heal-party', amount: 1 });
     expect(map.triggers).toEqual([
