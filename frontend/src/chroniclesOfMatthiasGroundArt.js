@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createChroniclesStoneSurfaceTexture } from './chroniclesStoneSurfaceTexture.js';
 
 export const CHRONICLES_TACTICS_WET_STONE_STYLE = Object.freeze({
   motif: 'wet-stone',
@@ -36,9 +37,12 @@ export function installChroniclesTacticsWetStone(scene, { coarsePointer = false 
 
   const root = new THREE.Group();
   root.name = 'chronicles-wet-stone';
+  const surfaceTexture = createChroniclesStoneSurfaceTexture({ coarsePointer, seed: 19, wet: true });
+  root.userData.chroniclesArtCancel = () => surfaceTexture.dispose();
 
   const sheen = ownedMaterial({
     color: 0x586671,
+    map: surfaceTexture,
     roughness: coarsePointer ? 0.3 : 0.18,
     metalness: coarsePointer ? 0.08 : 0.16,
     transparent: true,
