@@ -6,6 +6,7 @@ on:
     paths:
       - 'infra/oci/ops/agent-reboot.request'
       - 'infra/oci/ops/bringup.request'
+      - 'infra/oci/ops/backend-diagnose.request'
       - '.github/workflows/oci-staging-service.yml'
   workflow_run:
     workflows:
@@ -19,7 +20,7 @@ on:
       operation:
         description: Service operation
         type: choice
-        options: [diagnose, smoke, reboot-agent, deploy, runtime-sync]
+        options: [diagnose, backend-diagnose, smoke, reboot-agent, deploy, runtime-sync]
         default: smoke
         required: true
       repo_ref:
@@ -83,6 +84,12 @@ jobs:
             echo 'bringup=false' >> "$GITHUB_OUTPUT"
           fi
 
+          if grep -Fxq 'infra/oci/ops/backend-diagnose.request' <<<"$files"; then
+            echo 'backend_diagnose=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'backend_diagnose=false' >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
@@ -92,6 +99,7 @@ jobs:
         run: |
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
+          python3 -S scripts/oci_backend_diagnose.py --self-test
 
       - name: Install OCI SDK
         run: python3 -m pip install --disable-pip-version-check 'oci==2.185.2'
@@ -114,11 +122,17 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'diagnose'
         run: python3 scripts/oci_run_command.py diagnose
 
+      - name: Diagnose OCI backend runtime
+        if: >-
+          (github.event_name == 'push' && steps.ops.outputs.backend_diagnose == 'true') ||
+          (github.event_name == 'workflow_dispatch' && inputs.operation == 'backend-diagnose')
+        run: python3 scripts/oci_backend_diagnose.py
+
       - name: Smoke OCI agent transport
         id: smoke
         if: >-
           github.event_name == 'workflow_run' ||
-          github.event_name == 'push' ||
+          (github.event_name == 'push' && steps.ops.outputs.backend_diagnose != 'true') ||
           (github.event_name == 'workflow_dispatch' &&
             (inputs.operation == 'smoke' || inputs.operation == 'reboot-agent'))
         continue-on-error: ${{ github.event_name == 'push' && steps.ops.outputs.bringup == 'true' }}
