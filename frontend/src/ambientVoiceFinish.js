@@ -38,6 +38,18 @@ export function connectFinishedAmbientVoice(ctx, dry, output, tone = {}, { start
       body.gain.value = organicWind.bodyGainDb;
       dry.connect(body);
       voice = body;
+
+      // Clarinet and muted horn still contain square/saw energy in their core.
+      // A shallow high shelf removes only that exposed digital edge; the body,
+      // attack and written articulation stay intact. Flutes/ney skip this stage.
+      if (Number.isFinite(organicWind.edgeHz) && Number(organicWind.edgeGainDb) < -0.1) {
+        const edge = ctx.createBiquadFilter();
+        edge.type = 'highshelf';
+        edge.frequency.value = organicWind.edgeHz;
+        edge.gain.value = organicWind.edgeGainDb;
+        voice.connect(edge);
+        voice = edge;
+      }
     }
   }
 

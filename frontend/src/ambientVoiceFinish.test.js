@@ -51,7 +51,7 @@ describe('finite ambient voice finish', () => {
     expect(nodes.panners[0].outputs).toEqual([output]);
   });
 
-  it('adds one finite breath/body path and blooms regional-wind tremolo after the attack', () => {
+  it('adds finite breath/body/edge paths and blooms reed tremolo after the attack', () => {
     const nodes = { gains: [], oscillators: [], filters: [], sources: [] };
     const ctx = {
       currentTime:1,
@@ -71,8 +71,10 @@ describe('finite ambient voice finish', () => {
     expect(nodes.sources).toHaveLength(1);
     expect(nodes.sources[0].started).toBe(1);
     expect(nodes.sources[0].stopped).toBeLessThan(1.25);
-    expect(nodes.filters.map((filter) => filter.type)).toEqual(['bandpass', 'peaking']);
+    expect(nodes.filters.map((filter) => filter.type)).toEqual(['bandpass', 'peaking', 'highshelf']);
     expect(nodes.filters[1].frequency.value).toBe(760);
+    expect(nodes.filters[2].frequency.value).toBe(1180);
+    expect(nodes.filters[2].gain.value).toBe(-3.2);
     // breath mix, tremolo modulation, tremolo depth
     expect(nodes.gains).toHaveLength(3);
     expect(nodes.gains[2].gain.events).toEqual([
@@ -82,7 +84,8 @@ describe('finite ambient voice finish', () => {
     expect(nodes.oscillators).toHaveLength(1);
     expect(nodes.oscillators[0].stopped).toBeCloseTo(2.05);
     expect(envelope.outputs).toEqual([nodes.filters[1]]);
-    expect(nodes.filters[1].outputs).toEqual([nodes.gains[1]]);
+    expect(nodes.filters[1].outputs).toEqual([nodes.filters[2]]);
+    expect(nodes.filters[2].outputs).toEqual([nodes.gains[1]]);
     expect(nodes.gains[1].outputs).toEqual([output]);
   });
 

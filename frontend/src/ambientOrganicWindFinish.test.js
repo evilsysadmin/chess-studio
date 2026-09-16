@@ -40,6 +40,20 @@ describe('organic wind finish', () => {
     expect(boosted.breathMix).toBeCloseTo(ney.breathMix * 1.25);
   });
 
+  it('softens only the oscillator-heavy reed and muted-horn upper edge', () => {
+    const cedar = organicWindFinishSettings({ organicWind:true }, 3.8);
+    const clarinet = organicWindFinishSettings({ organicWind:true }, 4);
+    const horn = organicWindFinishSettings({ organicWind:true }, 4.4);
+    const ney = organicWindFinishSettings({ organicWind:true }, 5);
+
+    expect(cedar.edgeGainDb).toBeUndefined();
+    expect(ney.edgeGainDb).toBeUndefined();
+    expect(clarinet.edgeHz).toBe(1180);
+    expect(clarinet.edgeGainDb).toBe(-3.2);
+    expect(horn.edgeHz).toBe(980);
+    expect(horn.edgeGainDb).toBe(-4);
+  });
+
   it('injects one finite filtered breath transient into the existing envelope', () => {
     vi.spyOn(Math, 'random').mockReturnValue(0.75);
     const nodes = { sources:[], filters:[], gains:[] };

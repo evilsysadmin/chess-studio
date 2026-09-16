@@ -1,7 +1,7 @@
 const WIND_VOICE_BY_TREMOLO = Object.freeze([
   Object.freeze({ name:'cedar-flute', rate:3.8, breathMix:0.050, breathHz:2100, breathSeconds:0.24, bodyHz:980, bodyGainDb:0.8, tremoloDepth:0.040 }),
-  Object.freeze({ name:'clarinet', rate:4.0, breathMix:0.034, breathHz:1650, breathSeconds:0.17, bodyHz:760, bodyGainDb:1.8, tremoloDepth:0.052 }),
-  Object.freeze({ name:'muted-horn', rate:4.4, breathMix:0.024, breathHz:1450, breathSeconds:0.13, bodyHz:680, bodyGainDb:1.3, tremoloDepth:0.040 }),
+  Object.freeze({ name:'clarinet', rate:4.0, breathMix:0.034, breathHz:1650, breathSeconds:0.17, bodyHz:760, bodyGainDb:1.8, tremoloDepth:0.052, edgeHz:1180, edgeGainDb:-3.2 }),
+  Object.freeze({ name:'muted-horn', rate:4.4, breathMix:0.024, breathHz:1450, breathSeconds:0.13, bodyHz:680, bodyGainDb:1.3, tremoloDepth:0.040, edgeHz:980, edgeGainDb:-4.0 }),
   Object.freeze({ name:'ney', rate:5.0, breathMix:0.056, breathHz:2250, breathSeconds:0.26, bodyHz:1080, bodyGainDb:0.9, tremoloDepth:0.046 }),
 ]);
 
@@ -15,7 +15,9 @@ export const ORGANIC_WIND_TREMOLO_RATES = Object.freeze(WIND_VOICE_BY_TREMOLO.ma
 // that private to the voice renderer. These four tremolo rates are the authored
 // identities of our sustained acoustic winds; neighbouring synth/vibes/string
 // rates are intentionally excluded so a whole regional arrangement never gets
-// sprayed with breath noise by accident.
+// sprayed with breath noise by accident. Reed/brass voices also carry a gentle
+// high-shelf cut: their oscillator core keeps the written identity, but the
+// exposed square/saw upper edge no longer reads like a cheap preset.
 export function organicWindFinishSettings(finish, tremolo) {
   if (!finish?.organicWind) return null;
   const rate = Number(tremolo);
