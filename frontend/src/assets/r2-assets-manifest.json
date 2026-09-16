@@ -1,19 +1,5 @@
 {
   "assets": {
-    "chronicles.tactics.party.master": {
-      "bytes": 501446,
-      "contentType": "application/octet-stream",
-      "key": "chronicles/tactics/party/master/chronicles-tactics-party-2f6ef378ef7ea982.blend",
-      "sha256": "2f6ef378ef7ea9823d70bdf289fa05c0656448e0cc3802b3aeb3679353d54e48",
-      "url": "https://assets.chess-studio.shadowops.dpdns.org/chronicles/tactics/party/master/chronicles-tactics-party-2f6ef378ef7ea982.blend"
-    },
-    "chronicles.tactics.party.runtime": {
-      "bytes": 2423220,
-      "contentType": "model/gltf-binary",
-      "key": "chronicles/tactics/party/runtime/chronicles-tactics-party-0d12bb3c3ec92d55.glb",
-      "sha256": "0d12bb3c3ec92d55b3e4af7b64cade1dede55537ff118c360ec260f788ff640c",
-      "url": "https://assets.chess-studio.shadowops.dpdns.org/chronicles/tactics/party/runtime/chronicles-tactics-party-0d12bb3c3ec92d55.glb"
-    },
     "pawnSlug.enemy.actionAtlas": {
       "bytes": 373596,
       "contentType": "image/webp",

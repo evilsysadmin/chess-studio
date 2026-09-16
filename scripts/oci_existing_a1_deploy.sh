@@ -14,6 +14,7 @@ state_dir="${CHESS_STUDIO_STATE_DIR:-/var/lib/chess-studio}"
 state_file="$state_dir/deployed.sha"
 project="${CHESS_STUDIO_COMPOSE_PROJECT:-chess-studio-staging}"
 port="${CHESS_STUDIO_BACKEND_PORT:-4000}"
+staging_origin="${CHESS_STUDIO_STAGING_ORIGIN:-https://staging.chess-studio.shadowops.dpdns.org}"
 
 require() {
   command -v "$1" >/dev/null 2>&1 || { echo "missing required command: $1" >&2; exit 69; }
@@ -41,7 +42,54 @@ compose() {
   GIT_COMMIT_SHA="$target_sha" \
   CHESS_STUDIO_ENV_FILE="$env_file" \
   CHESS_STUDIO_BACKEND_PORT="$port" \
+  CHESS_STUDIO_CORS_ORIGINS="$staging_origin" \
   docker compose -p "$project" -f "$compose_file" "$@"
+}
+
+cors_attest() {
+  local headers rc
+  headers="$(mktemp)"
+  set +e
+  curl --fail --silent --show-error --max-time 8 \
+    -X OPTIONS \
+    -H "Origin: $staging_origin" \
+    -H 'Access-Control-Request-Method: GET' \
+    -H 'Access-Control-Request-Headers: authorization,x-client-release' \
+    -D "$headers" \
+    -o /dev/null \
+    "http://127.0.0.1:${port}/api/auth/me"
+  rc=$?
+  set -e
+  if [[ "$rc" -ne 0 ]]; then
+    rm -f "$headers"
+    return "$rc"
+  fi
+  if ! python3 - "$headers" "$staging_origin" <<'PY'
+import pathlib
+import sys
+headers = pathlib.Path(sys.argv[1]).read_text(encoding='utf-8', errors='replace')
+expected = sys.argv[2].strip().lower()
+parsed = {}
+for line in headers.replace('\r\n', '\n').split('\n'):
+    if ':' not in line:
+        continue
+    name, value = line.split(':', 1)
+    parsed.setdefault(name.strip().lower(), []).append(value.strip())
+origins = [v.lower() for v in parsed.get('access-control-allow-origin', [])]
+methods = ','.join(parsed.get('access-control-allow-methods', [])).upper()
+headers_allowed = ','.join(parsed.get('access-control-allow-headers', [])).lower()
+if expected not in origins:
+    raise SystemExit(1)
+if 'GET' not in methods:
+    raise SystemExit(1)
+if 'authorization' not in headers_allowed:
+    raise SystemExit(1)
+PY
+  then
+    rm -f "$headers"
+    return 1
+  fi
+  rm -f "$headers"
 }
 
 attest() {
@@ -79,7 +127,8 @@ PY
     rc=$?
   fi
   rm -f "$ready" "$release"
-  return "$rc"
+  [[ "$rc" -eq 0 ]] || return "$rc"
+  cors_attest
 }
 
 rollback() {
@@ -102,7 +151,7 @@ rollback() {
     fi
     sleep 2
   done
-  echo "rollback failed health/build attestation for $previous_sha" >&2
+  echo "rollback failed health/build/CORS attestation for $previous_sha" >&2
   return 1
 }
 
@@ -141,12 +190,12 @@ fi
 for _ in $(seq 1 60); do
   if attest "$sha"; then
     record_successful_backend "$sha"
-    echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha"
+    echo "CHESS_STUDIO_DEPLOY_OK repo_ref=$sha cors_origin=$staging_origin"
     exit 0
   fi
   sleep 2
 done
 
-echo "new deployment failed readiness/build attestation: $sha" >&2
+echo "new deployment failed readiness/build/CORS attestation: $sha" >&2
 rollback "$sha" || true
 exit 43

@@ -37,15 +37,9 @@ test('Chronicles Tactics · arranca como action RPG isométrico con usar, ataque
   // selected hero on slow CI runners, turning this into a wall-clock race.
   await page.keyboard.press('2');
   await expect(mode.getByText(/Habilidad: Martillo de asedio · 1 carga/i)).toBeVisible();
-  // This assertion owns the ability state transition, not browser keyboard delivery.
-  // SwiftShader can starve Playwright keyboard dispatch while the realtime renderer is
-  // busy even though the same React action remains available. Invoke the real button
-  // handler directly, as the doctrine test below already does for the same CI reason.
-  const classSkill = mode.getByRole('button', { name: 'Habilidad de clase', exact: true });
-  await expect(classSkill).toBeEnabled();
-  await classSkill.evaluate((button) => button.click());
+  await page.keyboard.press('e');
   await expect(mode.getByText(/Habilidad: Martillo de asedio · agotada/i)).toBeVisible();
-  await expect(classSkill).toBeDisabled();
+  await expect(mode.getByRole('button', { name: 'Habilidad de clase', exact: true })).toBeDisabled();
 
   const canvas = mode.locator('[data-chronicles-tactics-renderer="three"] canvas');
   await expect(canvas).toBeVisible({ timeout: 30_000 });

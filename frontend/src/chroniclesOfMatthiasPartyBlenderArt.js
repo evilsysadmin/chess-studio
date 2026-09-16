@@ -2,24 +2,18 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { installChroniclesPartyFallbackDetails } from './chroniclesOfMatthiasBlenderArt.js';
 import { installChroniclesTacticsSceneArt } from './chroniclesOfMatthiasSceneArt.js';
-import { r2AssetUrl } from './r2Assets.js';
 
-export const CHRONICLES_TACTICS_PARTY_R2_ASSET_ID = 'chronicles.tactics.party.runtime';
-export const CHRONICLES_TACTICS_PARTY_LEGACY_MODEL_PATH = 'models/chronicles-tactics-party.glb';
-export const CHRONICLES_TACTICS_PARTY_ASSET_VERSION = 'chronicles-humanoid-party-v8';
+export const CHRONICLES_TACTICS_PARTY_MODEL_PATH = 'models/chronicles-tactics-party.glb';
+export const CHRONICLES_TACTICS_PARTY_ASSET_VERSION = 'chronicles-tactics-party-v3';
 export const CHRONICLES_TACTICS_PARTY_MEMBERS = Object.freeze(['rook', 'bishop', 'knight']);
 
-const LEGACY_PARTY_MODEL_URL = `${import.meta.env.BASE_URL}${CHRONICLES_TACTICS_PARTY_LEGACY_MODEL_PATH}`;
-export const CHRONICLES_TACTICS_PARTY_MODEL_URL = r2AssetUrl(
-  CHRONICLES_TACTICS_PARTY_R2_ASSET_ID,
-  LEGACY_PARTY_MODEL_URL,
-);
+const PARTY_MODEL_URL = `${import.meta.env.BASE_URL}${CHRONICLES_TACTICS_PARTY_MODEL_PATH}`;
 let partyLoadPromise = null;
 
 function loadPartyAsset() {
   if (!partyLoadPromise) {
     const loader = new GLTFLoader();
-    partyLoadPromise = loader.loadAsync(CHRONICLES_TACTICS_PARTY_MODEL_URL).catch((error) => {
+    partyLoadPromise = loader.loadAsync(PARTY_MODEL_URL).catch((error) => {
       partyLoadPromise = null;
       throw error;
     });
