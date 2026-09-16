@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
-"""Derive runtime cells from the immutable approved sheet. Pillow + OpenCV required.
-No generative steps: crop, background matte, uniform resize, pack lossless WebP.
+"""Derive runtime cells from the immutable approved Matthias master.
+
+The master is external to Git. Pillow + OpenCV are required. There are no
+generative steps: crop, background matte, uniform resize and lossless WebP pack.
 """
+import argparse
 import hashlib
 import json
 from pathlib import Path
+
 import cv2
 import numpy as np
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
-ASSETS = ROOT / 'frontend/src/assets/pawnSlug'
-MASTER = ASSETS / 'matthias_canonical_sprite_sheet_v1.png'
-SHA = '9c21264274777d012a2941073f6cbae94df090db0459624e6031207c0a288c5f'
+DEFAULT_ASSETS = ROOT / 'frontend/src/assets/pawnSlug'
+MASTER_SHA256 = '9c21264274777d012a2941073f6cbae94df090db0459624e6031207c0a288c5f'
+
 # Only screen-right poses; rear views, lettering and portrait are excluded.
 BOXES = {
     'aim': [(100, 573, 191, 687)],
@@ -29,6 +33,7 @@ GUIDES = {
     'run': [(23,22),(35,12),(57,3),(76,2),(84,6),(84,17),(88,25),(83,28),(79,38),(69,44),(73,49),(80,53),(82,60),(76,64),(66,63),(62,70),(69,75),(71,80),(84,84),(89,90),(77,98),(69,99),(64,94),(55,86),(45,81),(39,79),(26,84),(19,85),(18,94),(12,96),(8,93),(5,83),(7,76),(18,73),(26,65),(20,64),(16,59),(18,49),(26,44),(34,42),(33,35),(31,28)],
     'crouch': [(19,20),(35,10),(52,4),(64,3),(74,5),(78,11),(75,22),(76,26),(70,29),(69,40),(92,44),(97,48),(96,53),(79,54),(76,61),(70,65),(60,66),(60,76),(69,79),(70,86),(72,91),(78,94),(78,98),(56,98),(49,94),(39,96),(31,98),(8,97),(7,92),(11,86),(8,80),(10,68),(12,57),(19,50),(26,47),(23,40),(22,33)]
 }
+
 
 def extract(source, box, name):
     crop = np.array(source.crop(box))
@@ -49,9 +54,25 @@ def extract(source, box, name):
     crop[:,:,3] = np.minimum(crop[:,:,3], alpha)
     return Image.frombytes('RGBA', (w,h), crop.tobytes())
 
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Derive Pawn Slug runtime art from the approved external Matthias master')
+    parser.add_argument('--master', required=True, type=Path, help='path to the exact approved 1536x1024 PNG master')
+    parser.add_argument('--output-dir', type=Path, default=DEFAULT_ASSETS, help='runtime asset output directory')
+    return parser.parse_args()
+
+
 def main():
-    assert hashlib.sha256(MASTER.read_bytes()).hexdigest() == SHA, 'Approved master changed'
-    source = Image.open(MASTER).convert('RGBA')
+    args = parse_args()
+    master = args.master.expanduser().resolve()
+    assets = args.output_dir.expanduser().resolve()
+    assets.mkdir(parents=True, exist_ok=True)
+
+    master_bytes = master.read_bytes()
+    assert hashlib.sha256(master_bytes).hexdigest() == MASTER_SHA256, 'Approved master changed or wrong master supplied'
+    source = Image.open(master).convert('RGBA')
+    assert source.size == (1536, 1024), 'Approved master dimensions changed'
+
     cells = {name: [extract(source, b, name) for b in boxes] for name, boxes in BOXES.items()}
     pixels = np.zeros((960, 768, 4), dtype=np.uint8)
     tracks = {'idle': ('aim', 0), 'walk': ('walk', 1), 'run': ('run', 2), 'crouch': ('crouch', 3), 'jump': ('aim', 4)}
@@ -63,18 +84,20 @@ def main():
             x, y = col * 192 + (192-w)//2, row * 192 + 168-h
             pixels[y:y+h, x:x+w] = raster
     atlas = Image.frombytes('RGBA', (768, 960), pixels.tobytes())
-    cv2.imwrite(str(ASSETS / 'matthias_canonical_pistol_v1.webp'), cv2.cvtColor(pixels, cv2.COLOR_RGBA2BGRA), [cv2.IMWRITE_WEBP_QUALITY, 101])
+    cv2.imwrite(str(assets / 'matthias_canonical_pistol_v1.webp'), cv2.cvtColor(pixels, cv2.COLOR_RGBA2BGRA), [cv2.IMWRITE_WEBP_QUALITY, 101])
 
-    meta = {'version': 'canonical-handoff-v1', 'masterSha256': SHA, 'width': 768, 'height': 960,
+    meta = {'version': 'canonical-handoff-v1', 'masterSha256': MASTER_SHA256, 'width': 768, 'height': 960,
             'frameWidth': 192, 'frameHeight': 192, 'guardTexels': 2, 'footAnchorPx': 24,
             'sourceFacing': 'right', 'weapon': 'pistol', 'sourceBoxes': BOXES,
             'actions': {a: {'row': row, 'count': len(cells[n])} for a, (n, row) in tracks.items()},
             'fallbacks': {'jump': 'aim pose; existing runtime jump motion', 'unknownAction': 'idle',
-                          'otherWeapons': 'existing weapon-specific premium-v3 atlases'},
+                          'otherWeapons': 'immutable weapon-specific R2 atlases'},
             'processing': 'crop + seeded GrabCut background matte + uniform scale + lossless WebP'}
-    (ASSETS / 'matthias_canonical_pistol_v1.json').write_text(json.dumps(meta, indent=2) + '\n')
-    assert hashlib.sha256(MASTER.read_bytes()).hexdigest() == SHA
+    (assets / 'matthias_canonical_pistol_v1.json').write_text(json.dumps(meta, indent=2) + '\n')
+
+    assert hashlib.sha256(master.read_bytes()).hexdigest() == MASTER_SHA256
     print('Derived atlas:', atlas.size)
+
 
 if __name__ == '__main__':
     main()
