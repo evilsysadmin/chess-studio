@@ -20,15 +20,6 @@ concurrency:
   group: chess-studio-staging-deploy
   cancel-in-progress: false
 
-# Temporary compatibility markers for the existing static contract. The runtime
-# no longer grants Actions write permission, injects GH_TOKEN, calls the cancel
-# endpoint or parks a runner in an infinite loop. Remove these comments together
-# with the contract assertions in the follow-up cleanup.
-# actions: write
-# GH_TOKEN: ${{ github.token }}
-# /actions/runs/$GITHUB_RUN_ID/cancel
-# while :; do
-
 env:
   STAGING_URL: https://staging.chess-studio.shadowops.dpdns.org
   STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
@@ -36,8 +27,6 @@ env:
 
 jobs:
   prepare:
-    # Legacy contract phrase kept intentionally for grep-based delivery guards:
-    # Backend + frontend + AI staging generation
     name: Prepare coherent staging generation
     if: >
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
@@ -127,7 +116,6 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
-      # Legacy contract marker: Reconcile Render staging configuration
       - name: Resolve legacy Render service id read-only
         id: render_bootstrap
         shell: bash
@@ -189,7 +177,6 @@ jobs:
           set -euo pipefail
           python3 scripts/oci_runtime_config.py publish
 
-      # Legacy contract marker only: Deploy exact backend commit to Render staging
       - name: Deploy exact backend commit to OCI staging
         shell: bash
         run: |
