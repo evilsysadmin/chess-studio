@@ -8,20 +8,36 @@ Issue: #2306.
 
 OCI Vault is the editable source of truth for staging secrets. `/etc/chess-studio/backend.env` is only a generated runtime artifact and must never become the human-maintained secret store.
 
+Terraform creates the staging Vault, its master encryption key and read-only runtime IAM. Terraform deliberately does **not** create secret values or secret versions: plaintext secret material must never enter Terraform variables, plans or state.
+
 The normal application deploy must eventually stop reading Render staging entirely. Render production remains untouched by this migration.
+
+## Terraform-owned infrastructure
+
+`infra/oci/staging` owns:
+
+- Vault `chess-studio-staging`, type `DEFAULT`;
+- HSM-backed AES-256 key `chess-studio-staging-secrets`;
+- lifecycle protection against accidental Terraform destruction of the Vault/key;
+- the A1 dynamic group and read-only `secret-bundles` permission;
+- outputs containing the Vault/key OCIDs for operator handoff.
+
+A Virtual Private Vault is intentionally not used: Chess Studio staging does not need a dedicated HSM partition, and the shared `DEFAULT` Vault avoids that unnecessary cost/isolation tier.
 
 ## Operator workflow
 
 Initial operation is deliberately explicit and boring:
 
-1. Open OCI Console → Vault → Secrets.
-2. Select the staging secret.
-3. Create a new secret version.
-4. For risky rotations, create it as `PENDING` first.
-5. Validate the dependent external service when required.
-6. Promote the intended version to `CURRENT`.
-7. Run the staging runtime-sync workflow.
-8. Let automation regenerate `/etc/chess-studio/backend.env`, restart only the required services and verify readiness/telemetry.
+1. Apply the staging Terraform so the Vault/key exist.
+2. Open OCI Console → Identity & Security → Secret Management.
+3. Create/select the staging secret using the Terraform-managed Vault and key.
+4. Paste the secret value manually; do not pass it through Terraform.
+5. For later changes, create a new secret version.
+6. For risky rotations, create it as `PENDING` first.
+7. Validate the dependent external service when required.
+8. Promote the intended version to `CURRENT`.
+9. Run the staging runtime-sync workflow.
+10. Let automation regenerate `/etc/chess-studio/backend.env`, restart only the required services and verify readiness/telemetry.
 
 Rollback is the inverse: promote the previous version back to `CURRENT`, then runtime-sync again.
 
@@ -100,7 +116,7 @@ Human/operator secret editing remains outside the VM. The VM is a consumer only.
 
 ## Migration sequence
 
-1. Land the Vault read IAM contract with no runtime cutover.
+1. Land the Terraform-managed Vault/key and Vault read IAM contract with no runtime cutover.
 2. Add a Vault reader/runtime renderer with self-tests and strict key/name mapping.
 3. Add explicit `validate` and `apply` runtime-sync operations.
 4. Manually create/populate the staging secrets in OCI Vault.
