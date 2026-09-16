@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { chroniclesMapById } from './chronicles/chroniclesMapCatalog.js';
+import { chroniclesIsometricScenePlan } from './chronicles/chroniclesIsometricScenePlan.js';
 import { buildChroniclesDungeonCeiling } from './chroniclesOfMatthiasCeiling.js';
 
 describe('Chronicles of Matthias dungeon ceiling', () => {
@@ -16,6 +18,17 @@ describe('Chronicles of Matthias dungeon ceiling', () => {
     expect(first?.material?.bumpScale).toBeGreaterThan(0);
     expect(first?.material?.normalScale?.x).toBeGreaterThan(0.4);
     expect(first?.material?.normalScale?.x).toBeLessThan(0.7);
+  });
+
+  it('derives slab layout and centering from the supplied active scene plan', () => {
+    const scenePlan = chroniclesIsometricScenePlan(chroniclesMapById('gallery-of-forks'));
+    const ceiling = buildChroniclesDungeonCeiling({ scenePlan });
+    const firstFloor = scenePlan.floors[0];
+    const firstSlab = ceiling.getObjectByName('chronicles-ceiling-slab-0');
+
+    expect(ceiling.userData.chroniclesCeilingStats.slabCount).toBe(scenePlan.floors.length);
+    expect(firstSlab?.position.x).toBeCloseTo((firstFloor.x - scenePlan.center.x) * 4);
+    expect(firstSlab?.position.z).toBeCloseTo((firstFloor.y - scenePlan.center.y) * 4);
   });
 
   it('keeps normal relief cheaper on coarse pointers without removing it', () => {
