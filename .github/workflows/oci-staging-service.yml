@@ -18,7 +18,7 @@ on:
       operation:
         description: Service operation
         type: choice
-        options: [diagnose, smoke, reboot-agent, deploy]
+        options: [diagnose, smoke, reboot-agent, deploy, runtime-sync]
         default: smoke
         required: true
       repo_ref:
@@ -70,10 +70,17 @@ jobs:
         with:
           python-version: '3.13'
           cache: pip
-      - name: Validate Run Command contracts
-        run: python3 -S scripts/oci_run_command.py --self-test
+      - name: Validate OCI service contracts
+        run: |
+          python3 -S scripts/oci_run_command.py --self-test
+          python3 -S scripts/oci_runtime_config.py --self-test
       - name: Install OCI SDK
         run: python3 -m pip install --disable-pip-version-check 'oci==2.185.2'
+      - name: Sync private runtime config
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync'
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: python3 scripts/oci_runtime_config.py sync
       - name: Recover stale OCI agent after explicit request
         if: >-
           (github.event_name == 'push' && steps.recovery.outputs.requested == 'true') ||
