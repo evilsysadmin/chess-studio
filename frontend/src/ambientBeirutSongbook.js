@@ -169,6 +169,18 @@ export const BEIRUT_PROFILES = Object.freeze({
     family:'beirut-0113-intimate-six-eight', harmonyPath:Object.freeze([0,-2,0,3,0,-2,5,0]),
     swing:0.035, warmth:0.92, releaseScale:1.04,
     leadInstrument:'nylonGuitar', counterInstrument:'clarinet', chordInstrument:'rhodesWarm', bassInstrument:'uprightBass',
+    // The original beirutSixEight profile left behind a loud buzuq signature:
+    // 0.9 volume, every cycle, every 24 steps. The modern songbook is sparse by
+    // design, so keep the regional instrument only as an occasional low accent.
+    signature:Object.freeze({
+      instrument:'buzuq',
+      sections:Object.freeze([0,2]),
+      everyCycles:3,
+      repeatPeriod:96,
+      durationSteps:5.0,
+      volume:0.13,
+      motif:Object.freeze({ 6:64, 24:68, 44:65, 64:62.5 }),
+    }),
     layers:Object.freeze({ chords:false }),
     mix:Object.freeze({ lead:0.58, counter:0.20, bass:0.70, chord:0.34 }),
   }),
