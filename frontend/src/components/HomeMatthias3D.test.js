@@ -99,21 +99,21 @@ describe('Home Matthias canonical Blender rig', () => {
     expect(alongX.cameraX).toBeGreaterThan(alongX.targetX);
   });
 
-  it('locks the shipped Home GLB to its authored +Z canonical front', () => {
+  it('locks the shipped Home GLB to its observed -Z canonical front', () => {
     const pose = homeMatthiasCameraPose({
       headX: 0,
       headZ: 0,
       noseX: 0,
-      noseZ: 1,
-      faceSource: 'canonical-glb-plus-z',
+      noseZ: -1,
+      faceSource: 'canonical-glb-minus-z',
       minY: 0,
       maxY: 2.35,
       fovDeg: 24,
     });
-    expect(pose.source).toBe('canonical-glb-plus-z');
+    expect(pose.source).toBe('canonical-glb-minus-z');
     expect(pose.faceX).toBe(0);
-    expect(pose.faceZ).toBe(1);
-    expect(pose.cameraZ).toBeGreaterThan(pose.targetZ);
+    expect(pose.faceZ).toBe(-1);
+    expect(pose.cameraZ).toBeLessThan(pose.targetZ);
   });
 
   it('turns only a valid canonical WebP payload into a fallback image', () => {
