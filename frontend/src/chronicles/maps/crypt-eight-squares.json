@@ -1,6 +1,6 @@
 {
   "id": "crypt-eight-squares",
-  "version": 4,
+  "version": 5,
   "progressionKey": "crypt-01",
   "title": "Cripta de las Ocho Casillas",
   "grid": [
@@ -36,6 +36,15 @@
         "attackReach": 1,
         "engagedMovement": "cardinal-chase",
         "engageRange": 1
+      },
+      "onDefeat": {
+        "message": "{attacker} remata al peón corrompido con {attack}. Matthias aprueba con una cantidad ofensivamente pequeña de entusiasmo.",
+        "journal": {
+          "id": "corrupted-pawn-falls",
+          "title": "Primer contacto, pésima diplomacia",
+          "body": "{attacker} elimina al peón corrompido. El grupo concluye que la negociación habría sido innecesariamente larga.",
+          "sigil": "II"
+        }
       }
     },
     {
@@ -63,6 +72,15 @@
         ],
         "engagedMovement": "cardinal-chase",
         "engageRange": 2
+      },
+      "onDefeat": {
+        "message": "{attacker} derriba a la torre carcelero con {attack}. La puerta parece libre durante una cantidad sospechosamente pequeña de tiempo.",
+        "journal": {
+          "id": "gate-jailer-falls",
+          "title": "La Torre Carcelero pierde la plaza",
+          "body": "{attacker} firma el golpe final. La salida queda libre durante unas décimas; algo relincha en L desde la oscuridad.",
+          "sigil": "V"
+        }
       }
     },
     {
@@ -79,10 +97,17 @@
       "optional": true,
       "ai": { "movement": "cardinal-chase", "attackReach": 2, "requiresLineOfSight": true },
       "onDefeat": {
+        "message": "{attacker} deshace al alfil espectral con {attack}. Aziz recupera el Farol Espectral y el grupo recuerda vagamente cómo funciona la circulación.",
         "effects": [
           { "type": "set", "key": "spectralLantern", "value": true },
           { "type": "heal-party", "amount": 1 }
-        ]
+        ],
+        "journal": {
+          "id": "spectral-bishop-falls",
+          "title": "Aziz recupera el Farol Espectral",
+          "body": "{attacker} rompe la liturgia inversa. Aziz reclama el farol y su luz devuelve un poco de vida a cada superviviente.",
+          "sigil": "IV"
+        }
       }
     },
     {
@@ -109,9 +134,16 @@
         "engageRange": 4
       },
       "onDefeat": {
+        "message": "{attacker} derriba al caballo carroñero con {attack}. La Llave Negra rebota por el suelo con mucha menos dignidad que su ladrón.",
         "effects": [
           { "type": "set", "key": "blackGateKey", "value": true }
-        ]
+        ],
+        "journal": {
+          "id": "scavenger-knight-falls",
+          "title": "La persecución termina con devolución de propiedad",
+          "body": "{attacker} abate al caballo carroñero. La Llave Negra vuelve al inventario y Matthias propone no auditar el resto de sus bolsillos.",
+          "sigil": "VI"
+        }
       }
     }
   ],
