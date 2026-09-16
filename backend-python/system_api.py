@@ -25,6 +25,7 @@ from api_models import ClientTelemetryRequest, DeleteAccountRequest
 from client_telemetry import record_client_event
 from pvp_api import build_pvp_router
 from chronicles_api import build_chronicles_router
+from pawn_slug_api import build_pawn_slug_router
 
 _logger = logging.getLogger("chess.system")
 
@@ -36,6 +37,7 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
     # auth stack while their runtime logic stays isolated from the CPU game API.
     router.include_router(build_pvp_router(auth_dependency=auth_dependency, limiter=limiter))
     router.include_router(build_chronicles_router(auth_dependency=auth_dependency))
+    router.include_router(build_pawn_slug_router(auth_dependency=auth_dependency))
 
     @router.get("/")
     @limiter.exempt
