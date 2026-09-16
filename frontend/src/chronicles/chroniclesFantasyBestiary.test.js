@@ -31,7 +31,7 @@ describe('Chronicles fantasy bestiary contract', () => {
     ]);
   });
 
-  it('mixes pursuit, authored patrol and ranged hold in one encounter', () => {
+  it('mixes pursuit, authored patrol, roaming and ranged hold in one encounter', () => {
     const map = chroniclesMapById('menagerie-of-ash');
     const byId = Object.fromEntries(map.enemies.map((enemy) => [enemy.id, enemy]));
 
@@ -39,7 +39,7 @@ describe('Chronicles fantasy bestiary contract', () => {
     expect(byId['crypt-spider'].ai.movement).toBe('patrol-route');
     expect(byId['crypt-spider'].ai.patrolRoute).toHaveLength(8);
     expect(byId['ember-wisp'].ai).toMatchObject({ movement: 'hold', attackReach: 2, requiresLineOfSight: true });
-    expect(byId['bone-hound'].ai.movement).toBe('cardinal-chase');
+    expect(byId['bone-hound'].ai.movement).toBe('cardinal-roam');
   });
 
   it('derives independent health state and render roles from map data', () => {
