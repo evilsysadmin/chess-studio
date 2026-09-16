@@ -49,6 +49,13 @@
       "sha256": "42a01598d26b6dedb7f0bfa70c392c6cbd80df9cea1bea7c7224f9a6d8cf2829",
       "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp"
     },
+    "pawnSlug.matthias.pistolShoot": {
+      "bytes": 22850,
+      "contentType": "image/webp",
+      "key": "pawn-slug/matthias/pistol-shoot/matthias_pistol_shoot_v1-fa1d5be42e176741.webp",
+      "sha256": "fa1d5be42e17674174d93223dc5eb14c6a6d5df66f8a192b796290e48f0f1842",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol-shoot/matthias_pistol_shoot_v1-fa1d5be42e176741.webp"
+    },
     "pawnSlug.matthias.shotgun": {
       "bytes": 254454,
       "contentType": "image/webp",
