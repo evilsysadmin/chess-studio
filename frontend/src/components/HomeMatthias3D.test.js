@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   homeMatthiasCameraPose,
+  homeMatthiasCanonicalFallbackDataUrl,
   homeMatthiasClipForProfile,
   homeMatthiasClipStartTime,
   homeMatthiasMotionPhase,
@@ -96,6 +97,29 @@ describe('Home Matthias canonical Blender rig', () => {
     expect(alongX.faceX).toBeCloseTo(1, 6);
     expect(alongX.faceZ).toBeCloseTo(0, 6);
     expect(alongX.cameraX).toBeGreaterThan(alongX.targetX);
+  });
+
+  it('locks the shipped Home GLB to its authored +Z canonical front', () => {
+    const pose = homeMatthiasCameraPose({
+      headX: 0,
+      headZ: 0,
+      noseX: 0,
+      noseZ: 1,
+      faceSource: 'canonical-glb-plus-z',
+      minY: 0,
+      maxY: 2.35,
+      fovDeg: 24,
+    });
+    expect(pose.source).toBe('canonical-glb-plus-z');
+    expect(pose.faceX).toBe(0);
+    expect(pose.faceZ).toBe(1);
+    expect(pose.cameraZ).toBeGreaterThan(pose.targetZ);
+  });
+
+  it('turns only a valid canonical WebP payload into a fallback image', () => {
+    expect(homeMatthiasCanonicalFallbackDataUrl('UklGAAAA')).toBe('data:image/webp;base64,UklGAAAA');
+    expect(homeMatthiasCanonicalFallbackDataUrl(' nope ')).toBe('');
+    expect(homeMatthiasCanonicalFallbackDataUrl()).toBe('');
   });
 
   it('uses a sane forward fallback only when facial anchors collapse', () => {

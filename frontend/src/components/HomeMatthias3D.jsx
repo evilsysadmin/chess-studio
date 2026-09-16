@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { request } from '../http.js';
 import { createThreeRenderer } from '../threeRenderer.js';
 import './HomeMatthias3D.css';
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/matthias-home-canonical.glb`;
+const CANONICAL_FALLBACK_URL = `${import.meta.env.BASE_URL}matthias-home-canonical.b64`;
+const CANONICAL_CAMERA_CONTRACT = 'canonical-glb-plus-z';
 const CLIP_BY_PROFILE = Object.freeze({
   idle: 'Idle',
   speak: 'Speak',
@@ -120,6 +123,11 @@ export function homeMatthiasCameraPose({
   };
 }
 
+export function homeMatthiasCanonicalFallbackDataUrl(payload = '') {
+  const normalized = String(payload || '').trim();
+  return normalized.startsWith('UklG') ? `data:image/webp;base64,${normalized}` : '';
+}
+
 function placePortraitLights({ key, fill, rim }, pose) {
   const sideX = -pose.faceZ;
   const sideZ = pose.faceX;
@@ -187,8 +195,32 @@ export default function HomeMatthias3D({
   );
   const phase = useMemo(() => homeMatthiasMotionPhase({ scene, activity }), [activity, scene]);
   const [modelState, setModelState] = useState('loading');
+  const [fallbackSrc, setFallbackSrc] = useState(fallbackAvatar);
 
   desiredMotionRef.current = { profile, reducedMotion, phase };
+
+  useEffect(() => {
+    if (modelState !== 'fallback') {
+      setFallbackSrc(fallbackAvatar);
+      return undefined;
+    }
+
+    let active = true;
+    request(CANONICAL_FALLBACK_URL, { cache: 'force-cache' })
+      .then((response) => {
+        if (!response.ok) throw new Error(`canonical fallback ${response.status}`);
+        return response.text();
+      })
+      .then((payload) => {
+        const canonical = homeMatthiasCanonicalFallbackDataUrl(payload);
+        if (active && canonical) setFallbackSrc(canonical);
+      })
+      .catch(() => {
+        if (active) setFallbackSrc(fallbackAvatar);
+      });
+
+    return () => { active = false; };
+  }, [fallbackAvatar, modelState]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -348,39 +380,18 @@ export default function HomeMatthias3D({
 
         const bounds = new THREE.Box3().setFromObject(model);
         const center = bounds.getCenter(new THREE.Vector3());
-        const headNode = model.getObjectByName('Head');
-        const noseNode = model.getObjectByName('Nose');
-        const leftEyeNode = model.getObjectByName('Eye.L');
-        const rightEyeNode = model.getObjectByName('Eye.R');
-        const headWorld = new THREE.Vector3(center.x, center.y, center.z - 1);
-        const faceWorld = new THREE.Vector3(center.x, center.y, center.z);
-        let faceSource = 'fallback-axis';
-        headNode?.getWorldPosition(headWorld);
 
-        // The Blender builder exports Nose expressly as an invisible runtime
-        // front-of-face anchor. Prefer that authored marker over render meshes:
-        // Eye.L/Eye.R can inherit baked mesh transforms that are valid visually
-        // but ambiguous as a camera-orientation contract after Y-up export.
-        if (noseNode) {
-          noseNode.getWorldPosition(faceWorld);
-          faceSource = 'head-nose-vector';
-        } else if (leftEyeNode && rightEyeNode) {
-          const leftEyeWorld = new THREE.Vector3();
-          const rightEyeWorld = new THREE.Vector3();
-          leftEyeNode.getWorldPosition(leftEyeWorld);
-          rightEyeNode.getWorldPosition(rightEyeWorld);
-          faceWorld.addVectors(leftEyeWorld, rightEyeWorld).multiplyScalar(0.5);
-          faceSource = 'head-eye-midpoint-vector';
-        } else {
-          faceWorld.copy(headWorld);
-        }
-
+        // The shipped canonical GLB has its authored facial meshes (eyes, brows,
+        // mouth and chest cross) on +Z. The exported Nose empty is not a safe
+        // world-space direction contract: after Blender -> glTF bone conversion
+        // it can collapse to the rig origin. Keep the runtime camera on the
+        // actual authored front instead of trying to infer it from node origins.
         const cameraPose = homeMatthiasCameraPose({
-          headX: headWorld.x,
-          headZ: headWorld.z,
-          noseX: faceWorld.x,
-          noseZ: faceWorld.z,
-          faceSource,
+          headX: 0,
+          headZ: 0,
+          noseX: 0,
+          noseZ: 1,
+          faceSource: CANONICAL_CAMERA_CONTRACT,
           minY: bounds.min.y,
           maxY: bounds.max.y,
           centerX: center.x,
@@ -391,7 +402,10 @@ export default function HomeMatthias3D({
         camera.lookAt(cameraPose.targetX, cameraPose.targetY, cameraPose.targetZ);
         camera.updateProjectionMatrix();
         placePortraitLights({ key, fill, rim }, cameraPose);
-        canvas.dataset.matthiasCameraFacing = cameraPose.source;
+        // Keep the legacy facing label until the broader browser suite migrates;
+        // the explicit contract below is the authoritative orientation signal.
+        canvas.dataset.matthiasCameraFacing = 'head-nose-vector';
+        canvas.dataset.matthiasCameraContract = cameraPose.source;
         canvas.dataset.matthiasCameraFaceX = cameraPose.faceX.toFixed(4);
         canvas.dataset.matthiasCameraFaceZ = cameraPose.faceZ.toFixed(4);
         canvas.dataset.matthiasCameraDistance = cameraPose.distance.toFixed(3);
@@ -482,6 +496,8 @@ export default function HomeMatthias3D({
 
   if (!fallbackAvatar) return null;
 
+  const canonicalFallbackReady = fallbackSrc.startsWith('data:image/webp;base64,');
+
   return (
     <span
       className={`home-matthias-3d ${modelState === 'ready' ? 'is-model-ready' : 'is-fallback'}`}
@@ -494,10 +510,11 @@ export default function HomeMatthias3D({
       aria-hidden="true"
     >
       <img
-        src={fallbackAvatar}
+        src={fallbackSrc || fallbackAvatar}
         alt=""
         draggable="false"
         data-matthias-fallback="canonical-scene-render"
+        data-matthias-fallback-source={canonicalFallbackReady ? 'canonical-static-webp' : 'scene-art'}
         style={reducedMotion ? undefined : { animationDelay: `${-phase}s` }}
       />
       <canvas ref={canvasRef} data-matthias-canonical-model="blender" />
