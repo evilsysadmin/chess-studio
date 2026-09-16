@@ -27,7 +27,7 @@ OCI_COMPARTMENT_NAME = "chess-studio-staging"
 RUNTIME_BUCKET = "chess-studio-staging-runtime"
 TOKEN_OBJECT = "cloudflared.token"
 CLOUDFLARED_VERSION = "2026.9.1"
-CLOUDFLARED_SHA256 = "4bcfd35521a7cbc545ebfd5d57334a71ee180e2a64874981f374c81472118391"
+CLOUDFLARED_SHA256 = "3d97437c71848bd8df68041e12436b484a661d95073ea1937f01a845ce88faa3"
 CLOUDFLARED_URL = (
     f"https://github.com/cloudflare/cloudflared/releases/download/{CLOUDFLARED_VERSION}/"
     "cloudflared-linux-arm64"
