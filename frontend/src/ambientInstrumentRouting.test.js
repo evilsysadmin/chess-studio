@@ -38,7 +38,7 @@ describe('radio section instrument routing', () => {
     }
   });
 
-  it('keeps oscillator plucks out of continuous Beirut, Istanbul, Egypt and Levant lanes', () => {
+  it('keeps oscillator plucks out of continuous Mediterranean lanes', () => {
     for (const id of ORGANIC_MEDITERRANEAN_ROUTING_IDS) {
       const theme = AMBIENT_THEMES[id];
       expect(theme, id).toBeTruthy();
@@ -50,6 +50,14 @@ describe('radio section instrument routing', () => {
         }
       }
     }
+  });
+
+  it('keeps Oud Trench dry oud colour out of the continuous lead lane', () => {
+    const theme = AMBIENT_THEMES.oudTrench;
+    const feel = structuredFeel(theme);
+    expect(ORGANIC_MEDITERRANEAN_ROUTING_IDS).toContain('oudTrench');
+    expect(feel.leadInstrument).toBe('oudJazz');
+    expect(structuredSectionInstrument(theme, feel, {}, 'lead')).toBe('nylonGuitar');
   });
 
   it('routes Havana away from the short oscillator bandoneon without changing tango globally', () => {

@@ -63,6 +63,16 @@ describe('curated Mediterranean and trip-hop hooks', () => {
     }
   });
 
+  it('keeps Oud Trench oscillator oud as sparse colour instead of a repeating foreground jingle', () => {
+    const theme = AMBIENT_THEMES.oudTrench;
+    const feel = structuredFeel(theme);
+
+    expect(feel.signature.instrument).toBe('oudJazz');
+    expect(feel.signature.repeatPeriod).toBeGreaterThanOrEqual(96);
+    expect(feel.signature.everyCycles).toBe(2);
+    expect(feel.signature.volume).toBeLessThanOrEqual(0.14);
+  });
+
   it('replaces Havana bandoneon chirps with a quieter, roomier guitar answer', () => {
     const theme = AMBIENT_THEMES.havana205;
     const feel = structuredFeel(theme);
