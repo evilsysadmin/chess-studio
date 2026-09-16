@@ -10,6 +10,7 @@ on:
       - 'infra/oci/ops/mongo-target-diagnose.request'
       - 'infra/oci/ops/mongo-network-diagnose.request'
       - 'infra/oci/ops/reserved-egress.request'
+      - 'infra/oci/ops/vault-bootstrap.request'
       - '.github/workflows/oci-staging-service.yml'
   workflow_run:
     workflows:
@@ -23,7 +24,7 @@ on:
       operation:
         description: Service operation
         type: choice
-        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, runtime-sync, vault-validate, vault-validate-pending]
+        options: [diagnose, backend-diagnose, mongo-target-diagnose, mongo-network-diagnose, reserved-egress, smoke, reboot-agent, deploy, runtime-sync, vault-bootstrap, vault-validate, vault-validate-pending]
         default: smoke
         required: true
       secret_key:
@@ -117,6 +118,12 @@ jobs:
             echo 'reserved_egress=false' >> "$GITHUB_OUTPUT"
           fi
 
+          if grep -Fxq 'infra/oci/ops/vault-bootstrap.request' <<<"$files"; then
+            echo 'vault_bootstrap=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'vault_bootstrap=false' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Python for Render-only Mongo target diagnosis
         if: >-
           (github.event_name == 'push' && steps.ops.outputs.mongo_target_diagnose == 'true') ||
@@ -139,6 +146,7 @@ jobs:
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
           python3 -S scripts/oci_vault_runtime.py --self-test
+          python3 -S scripts/oci_vault_bootstrap.py --self-test
           python3 -S scripts/oci_backend_diagnose.py --self-test
           python3 -S scripts/render_mongo_target_diagnose.py --self-test
           python3 -S scripts/oci_mongo_network_diagnose.py --self-test
@@ -160,8 +168,18 @@ jobs:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: python3 scripts/oci_runtime_config.py sync
 
+      - name: Bootstrap missing OCI Vault values from Render staging
+        if: >-
+          (github.event_name == 'push' && steps.ops.outputs.vault_bootstrap == 'true') ||
+          (github.event_name == 'workflow_dispatch' && inputs.operation == 'vault-bootstrap')
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: python3 scripts/oci_vault_bootstrap.py bootstrap
+
       - name: Validate CURRENT OCI Vault runtime secrets
-        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'vault-validate'
+        if: >-
+          (github.event_name == 'push' && steps.ops.outputs.vault_bootstrap == 'true') ||
+          (github.event_name == 'workflow_dispatch' && inputs.operation == 'vault-validate')
         run: python3 scripts/oci_vault_runtime.py validate
 
       - name: Validate one PENDING OCI Vault rotation
