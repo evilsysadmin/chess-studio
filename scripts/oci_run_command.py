@@ -31,6 +31,10 @@ SECRET_MARKERS = (
     "PRIVATE KEY",
 )
 DEPLOY_WRAPPER = "/usr/local/sbin/chess-studio-deploy"
+RUNTIME_WRAPPER = "/usr/local/sbin/chess-studio-install-runtime"
+BACKEND_UNIT = "/etc/systemd/system/chess-studio-backend.service"
+OCARUN_SUDOERS = "/etc/sudoers.d/101-chess-studio-ocarun"
+BOOTSTRAP_MARKER = "/opt/chess-studio/BOOTSTRAP_READY"
 
 
 def required_env(name: str) -> str:
@@ -64,11 +68,19 @@ def safe_plugin_message(value: Any) -> str:
 
 
 def smoke_command() -> str:
-    command = """set -euo pipefail
+    command = f"""set -euo pipefail
 
 test -d /opt/chess-studio
-test -d /opt/chess-studio/repo
+test -d /opt/chess-studio/repo/.git
+test -s '{BOOTSTRAP_MARKER}'
+grep -Eq '^CHESS_STUDIO_BOOTSTRAP_READY repo_ref=[0-9a-f]{{40}}$' '{BOOTSTRAP_MARKER}'
+test -x '{DEPLOY_WRAPPER}'
+test -x '{RUNTIME_WRAPPER}'
+test -f '{BACKEND_UNIT}'
+test -f '{OCARUN_SUDOERS}'
 command -v docker >/dev/null
+systemctl is-active --quiet docker
+printf '%s\n' 'OCI_HOST_CONTRACT_OK'
 printf '%s\n' 'OCI_RUN_COMMAND_OK'
 """
     assert_nonsecret_command(command)
@@ -317,7 +329,17 @@ def self_test() -> None:
     assert safe_plugin_message("line one\nline two") == "line one line two"
     smoke = smoke_command()
     deploy = deploy_command(sample)
+    assert "OCI_HOST_CONTRACT_OK" in smoke
     assert "OCI_RUN_COMMAND_OK" in smoke
+    for expected in (
+        DEPLOY_WRAPPER,
+        RUNTIME_WRAPPER,
+        BACKEND_UNIT,
+        OCARUN_SUDOERS,
+        BOOTSTRAP_MARKER,
+        "systemctl is-active --quiet docker",
+    ):
+        assert expected in smoke
     assert DEPLOY_WRAPPER in deploy
     assert "sudo --non-interactive" in deploy
     assert sample in deploy
