@@ -14,6 +14,7 @@ STAGING_WRANGLER = ROOT / "infra/cloudflare/wrangler.staging.toml"
 STAGING_WORKER_WRAPPER = ROOT / "infra/cloudflare/worker/staging.js"
 STAGING_WORKER_DEPLOY = ROOT / "scripts/deploy_staging_ai_worker.py"
 STAGING_RELEASE_IDENTITY = ROOT / "scripts/staging_release_identity.py"
+OCI_RUN_COMMAND = ROOT / "scripts/oci_run_command.py"
 
 STAGING_WRITE_MUTEX = "concurrency:\n  group: chess-studio-staging-deploy\n  cancel-in-progress: false"
 OCI_MUTATION_MUTEX = "concurrency:\n      group: oci-staging-mutations\n      cancel-in-progress: false"
@@ -35,6 +36,7 @@ def main() -> int:
         STAGING_WORKER_WRAPPER,
         STAGING_WORKER_DEPLOY,
         STAGING_RELEASE_IDENTITY,
+        OCI_RUN_COMMAND,
     ):
         if not path.exists():
             errors.append(f"falta {path.relative_to(ROOT)}")
@@ -51,6 +53,7 @@ def main() -> int:
     staging_worker_wrapper = STAGING_WORKER_WRAPPER.read_text(encoding="utf-8")
     staging_worker_deploy = STAGING_WORKER_DEPLOY.read_text(encoding="utf-8")
     staging_release_identity = STAGING_RELEASE_IDENTITY.read_text(encoding="utf-8")
+    oci_run_command = OCI_RUN_COMMAND.read_text(encoding="utf-8")
 
     require(preview, "name: Staging · preview", "workflow name", errors)
     require(preview, "workflow_dispatch:", "manual-only trigger", errors)
@@ -97,6 +100,7 @@ def main() -> int:
         ("::notice title=Staging superseded", "stale supersede non-error diagnostic"),
         ("Resolve legacy Render service id read-only", "backend-specific Render read-only lookup"),
         ("Deploy exact backend commit to OCI staging", "generation OCI backend deploy"),
+        ("python3 scripts/oci_run_command.py deploy --repo-ref \"$DEPLOY_SHA\"", "OCI deploy owns transport readiness"),
         ("Deploy tested frontend to Cloudflare Pages", "generation frontend deploy"),
         ("Deploy exact staging Worker and synchronize shared secret", "generation Worker deploy"),
         ("run: python3 scripts/deploy_staging_ai_worker.py", "generation Worker self-resolving helper"),
@@ -114,11 +118,23 @@ def main() -> int:
         "while :; do",
         "Wait for OCI infrastructure mutations to quiesce",
         "actions/workflows/oci-staging-deploy.yml/runs",
+        "Wait for OCI Run Command registration",
+        "for attempt in $(seq 1 60)",
+        "grep -Fq 'Plugin Compute Instance Run Command not present for instance'",
         "Legacy contract marker",
         "Legacy contract phrase",
     ):
         if forbidden in staging_deploy:
             errors.append(f"staging generation conserva orchestration legado prohibido: {forbidden!r}")
+
+    for needle, label in (
+        ("PLUGIN_REGISTRATION_TIMEOUT_SECONDS = 300", "Run Command bounded registration wait"),
+        ("PLUGIN_REGISTRATION_RETRY_SECONDS = 5", "Run Command registration retry cadence"),
+        ("def plugin_registration_is_pending", "Run Command missing-plugin classifier"),
+        ("wait_for_registration: bool = False", "Run Command opt-in readiness wait"),
+        ("diagnose_plugin(oci, config, wait_for_registration=True)", "deploy enables readiness wait"),
+    ):
+        require(oci_run_command, needle, label, errors)
 
     # Topology contract: prepare is admission only. Backend, Pages and Worker are
     # sibling lanes after admission. The backend shares the native OCI mutation
@@ -173,7 +189,7 @@ def main() -> int:
         if "render_reconcile" in blocks["frontend"]:
             errors.append("staging generation: Pages volvió a depender de Render reconcile")
         if "render_reconcile" in blocks["worker"]:
-            errors.append("staging generation: Worker volvió a depender de Render reconcile")
+            errors.append("staging generation: Worker volvió a depender del Render reconcile")
         if "--service-id" in blocks["worker"]:
             errors.append("staging generation: Worker volvió a depender del service_id producido por Render")
 
@@ -298,7 +314,7 @@ def main() -> int:
 
     print(
         "staging-preview-contract OK · preview isolated; queued admission; native OCI mutex; "
-        "deploy lanes parallel; smoke-integrated N/N/N"
+        "client-owned Run Command readiness; deploy lanes parallel; smoke-integrated N/N/N"
     )
     return 0
 
