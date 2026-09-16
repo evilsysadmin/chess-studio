@@ -25,12 +25,18 @@ import {
   PAWN_SLUG_MATTHIAS_INTEGRATED_ART,
   createIntegratedMatthiasSlugSprite,
 } from './pawnSlugMatthiasIntegratedSprites.js';
+import {
+  PAWN_SLUG_MATTHIAS_AUTHORED_MOTION,
+  applyPawnSlugMatthiasAuthoredMotion,
+  attachPawnSlugMatthiasAuthoredMotion,
+} from './pawnSlugMatthiasAuthoredMotion.js';
 import { playPawnSlugEnemyImpactSfx, playPawnSlugPlayerHitSfx } from './pawnSlugSfx.js';
 
 export * from './pawnSlugSpriteCore.js';
 export * from './pawnSlugEnemyPremiumArtContract.js';
 export * from './pawnSlugPremiumEnemyRaster.js';
 export * from './pawnSlugMatthiasRunPolish.js';
+export * from './pawnSlugMatthiasAuthoredMotion.js';
 export * from './pawnSlugEnemyReadabilityContract.js';
 export * from './pawnSlugMatthiasIntegratedSprites.js';
 export { R2_ASSET_BASE_URL, r2AssetEntry, r2AssetUrl } from './r2Assets.js';
@@ -81,7 +87,7 @@ export function createWeaponSprite(kind = 'pistol') {
 }
 
 export function createMatthiasSlugSprite() {
-  return createIntegratedMatthiasSlugSprite();
+  return attachPawnSlugMatthiasAuthoredMotion(createIntegratedMatthiasSlugSprite());
 }
 
 export function animateMatthiasSlugSprite(sprite, state = {}) {
@@ -98,6 +104,10 @@ export function animateMatthiasSlugSprite(sprite, state = {}) {
   sprite.userData.setFiring?.(visualState.firing);
   applyPawnSlugMatthiasPremiumMotion(sprite, visualState);
   applyPawnSlugMatthiasRunPolish(sprite, visualState);
+  // Final visual ownership belongs to the canonical authored layer. This is
+  // intentionally last: legacy polish may calculate lean/cadence, but it must
+  // not replace the four real pistol run poses or the R2-backed shoot strip.
+  applyPawnSlugMatthiasAuthoredMotion(sprite, visualState);
   applyPawnSlugMatthiasPrimaryAspect(sprite);
 }
 
@@ -139,6 +149,7 @@ export const PAWN_SLUG_SPRITE_META = Object.freeze({
     ...LEGACY_SPRITE_META.matthias,
     premiumMotion: true,
     runPolish: PAWN_SLUG_MATTHIAS_RUN_POLISH,
+    authoredMotion: PAWN_SLUG_MATTHIAS_AUTHORED_MOTION,
     primaryAspect: PAWN_SLUG_MATTHIAS_PRIMARY_ASPECT,
     integratedWeaponArt: PAWN_SLUG_MATTHIAS_INTEGRATED_ART,
     weaponGripAnchor: 'baked-into-matthias-atlas',

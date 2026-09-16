@@ -1,0 +1,59 @@
+name: Temp · Publish Matthias shoot atlas
+
+on:
+  push:
+    branches:
+      - fix/pawn-slug-matthias-authored-run-shoot-r2
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Install image derivation dependencies
+        run: python -m pip install --disable-pip-version-check --quiet pillow numpy opencv-python-headless
+      - name: Fetch immutable Matthias master from R2
+        shell: bash
+        run: |
+          set -euo pipefail
+          MASTER_URL="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path('frontend/src/assets/r2-assets-manifest.json').read_text())
+          print(manifest['assets']['pawnSlug.matthias.canonicalMaster']['url'])
+          PY
+          )"
+          curl --fail --silent --show-error --location "$MASTER_URL" --output /tmp/matthias-master.png
+      - name: Derive canonical pistol shoot strip
+        run: |
+          python3 scripts/art/derive_pawn_slug_pistol_shoot.py \
+            --master /tmp/matthias-master.png \
+            --output /tmp/matthias_pistol_shoot_v1.webp
+      - name: Publish derived strip to R2
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+          cp frontend/src/assets/r2-assets-manifest.json /tmp/r2-assets-manifest.json
+          python3 -S scripts/r2_asset_publish.py publish \
+            /tmp/matthias_pistol_shoot_v1.webp \
+            --logical-id pawnSlug.matthias.pistolShoot \
+            --prefix pawn-slug/matthias/pistol-shoot \
+            --manifest /tmp/r2-assets-manifest.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          manifest = json.loads(Path('/tmp/r2-assets-manifest.json').read_text())
+          print('R2_ENTRY=' + json.dumps(manifest['assets']['pawnSlug.matthias.pistolShoot'], sort_keys=True))
+          PY
