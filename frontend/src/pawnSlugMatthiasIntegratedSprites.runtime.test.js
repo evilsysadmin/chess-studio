@@ -33,6 +33,7 @@ import {
 
 describe('Pawn Slug integrated Matthias runtime', () => {
   it('locks Pawn Slug Matthias to the approved human-soldier identity', () => {
+    expect(PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY.version).toBe('pawn-slug-matthias-canon-v1');
     expect(PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY.bodyForm).toBe('human-tactical-soldier');
     expect(PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY.uniform).toBe('black-tactical');
     expect(PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY.face).toBe('canonical-matthias-spherical-pawn-face');
@@ -48,7 +49,7 @@ describe('Pawn Slug integrated Matthias runtime', () => {
 
   it('switches the canonical baked atlas through the existing setWeapon contract', () => {
     const sprite = createIntegratedMatthiasSlugSprite();
-    expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.version).toBe('canonical-soldier-v1');
+    expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.version).toBe('blender-premium-v3');
     expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.atlasRevision).toBe('blender-premium-v3');
     expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.frameWidth).toBe(192);
     expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.frameHeight).toBe(192);
@@ -57,7 +58,7 @@ describe('Pawn Slug integrated Matthias runtime', () => {
     expect(sprite.userData.animation.weapon).toBe('shotgun');
     expect(sprite.userData.atlas.weapon).toBe('shotgun');
     expect(sprite.userData.atlas.source).toBe('primary');
-    expect(sprite.userData.atlas.assetVersion).toBe('canonical-soldier-v1');
+    expect(sprite.userData.atlas.assetVersion).toBe('blender-premium-v3');
     expect(sprite.userData.atlas.atlasRevision).toBe('blender-premium-v3');
   });
 
