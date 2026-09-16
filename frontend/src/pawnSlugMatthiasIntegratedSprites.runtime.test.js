@@ -20,6 +20,7 @@ vi.mock('three', async () => {
 });
 
 import {
+  PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY,
   PAWN_SLUG_MATTHIAS_INTEGRATED_ART,
   PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME,
   createIntegratedMatthiasSlugSprite,
@@ -31,9 +32,24 @@ import {
 } from './pawnSlugSprites.js';
 
 describe('Pawn Slug integrated Matthias runtime', () => {
-  it('switches the premium baked atlas through the existing setWeapon contract', () => {
+  it('locks Pawn Slug Matthias to the approved human-soldier identity', () => {
+    expect(PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY.bodyForm).toBe('human-tactical-soldier');
+    expect(PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY.uniform).toBe('black-tactical');
+    expect(PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY.face).toBe('canonical-matthias-spherical-pawn-face');
+    expect(PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY.headgear).toBe('canonical-black-officer-cap');
+    expect(PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY.forbiddenBodyForms).toContain('chess-pawn-body');
+    expect(PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY.forbiddenFaces).toContain('generic-human-face');
+
     const sprite = createIntegratedMatthiasSlugSprite();
-    expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.version).toBe('blender-premium-v3');
+    expect(sprite.userData.pawnSlugCanonicalMatthias).toBe(true);
+    expect(sprite.userData.pawnSlugCanonicalIdentity).toBe(PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY);
+    expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.canonicalIdentity).toBe(PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY);
+  });
+
+  it('switches the canonical baked atlas through the existing setWeapon contract', () => {
+    const sprite = createIntegratedMatthiasSlugSprite();
+    expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.version).toBe('canonical-soldier-v1');
+    expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.atlasRevision).toBe('blender-premium-v3');
     expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.frameWidth).toBe(192);
     expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.frameHeight).toBe(192);
     expect(sprite.userData.atlas.weapon).toBe('pistol');
@@ -41,6 +57,8 @@ describe('Pawn Slug integrated Matthias runtime', () => {
     expect(sprite.userData.animation.weapon).toBe('shotgun');
     expect(sprite.userData.atlas.weapon).toBe('shotgun');
     expect(sprite.userData.atlas.source).toBe('primary');
+    expect(sprite.userData.atlas.assetVersion).toBe('canonical-soldier-v1');
+    expect(sprite.userData.atlas.atlasRevision).toBe('blender-premium-v3');
   });
 
   it('preserves the authored foot line and world scale at double raster resolution', () => {
@@ -71,7 +89,7 @@ describe('Pawn Slug integrated Matthias runtime', () => {
     expect(left.repeatX).toBeGreaterThan(0);
   });
 
-  it('does not reapply the compact legacy aspect squeeze to premium Blender art', () => {
+  it('does not reapply the compact legacy aspect squeeze to canonical premium art', () => {
     const sprite = createIntegratedMatthiasSlugSprite();
     const before = sprite.scale.y;
     expect(applyPawnSlugMatthiasPrimaryAspect(sprite)).toBe(false);
