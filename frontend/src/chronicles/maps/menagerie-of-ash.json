@@ -18,6 +18,8 @@
     {
       "id": "ash-goblin",
       "visualType": "ash-goblin",
+      "visualScale": 0.9,
+      "visualMotion": "grounded",
       "name": "trasgo de ceniza",
       "x": 3,
       "y": 5,
@@ -30,6 +32,8 @@
     {
       "id": "crypt-spider",
       "visualType": "crypt-spider",
+      "visualScale": 0.82,
+      "visualMotion": "skitter",
       "name": "araña de cripta",
       "x": 3,
       "y": 3,
@@ -55,6 +59,8 @@
     {
       "id": "ember-wisp",
       "visualType": "ember-wisp",
+      "visualScale": 0.78,
+      "visualMotion": "hover",
       "name": "fuego fatuo",
       "x": 5,
       "y": 1,
@@ -69,6 +75,8 @@
     {
       "id": "bone-hound",
       "visualType": "bone-hound",
+      "visualScale": 0.92,
+      "visualMotion": "grounded",
       "name": "sabueso de osario",
       "x": 1,
       "y": 1,

@@ -13,9 +13,12 @@ async function openChronicles(page) {
   await login(page);
   await dismissGuide(page);
   const moreModes = await openMoreGameModes(page);
-  await moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' }).click();
-  await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
-  await page.getByRole('button').filter({ hasText: 'Descender a la cripta' }).click();
+  const experiments = moreModes.getByRole('button').filter({ hasText: 'Experimentos geniales' });
+  await expect(experiments).toBeVisible();
+  await experiments.click();
+  const descend = page.getByRole('button').filter({ hasText: 'Descender a la cripta' });
+  await expect(descend).toBeVisible();
+  await descend.click();
   await expect(page.getByRole('heading', { name: 'Chronicles of Matthias', exact: true })).toBeVisible();
 }
 
