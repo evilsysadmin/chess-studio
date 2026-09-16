@@ -34,6 +34,7 @@ SECRET_MARKERS = (
 DEPLOY_WRAPPER = "/usr/local/sbin/chess-studio-deploy"
 RUNTIME_WRAPPER = "/usr/local/sbin/chess-studio-install-runtime"
 BACKEND_UNIT = "/etc/systemd/system/chess-studio-backend.service"
+OCARUN_SUDOERS_SOURCE = "/etc/chess-studio/ocarun.sudoers"
 OCARUN_SUDOERS = "/etc/sudoers.d/101-chess-studio-ocarun"
 BOOTSTRAP_MARKER = "/opt/chess-studio/BOOTSTRAP_READY"
 
@@ -95,6 +96,11 @@ check bootstrap_marker_sha grep -Eq '^CHESS_STUDIO_BOOTSTRAP_READY repo_ref=[0-9
 check deploy_wrapper test -x '{DEPLOY_WRAPPER}'
 check runtime_wrapper test -x '{RUNTIME_WRAPPER}'
 check backend_unit test -f '{BACKEND_UNIT}'
+check ocarun_sudoers_source test -s '{OCARUN_SUDOERS_SOURCE}'
+check sudoers_dir test -d /etc/sudoers.d
+check install_binary command -v install
+check sudo_binary command -v sudo
+check visudo_binary command -v visudo
 check ocarun_sudoers test -f '{OCARUN_SUDOERS}'
 check docker_binary command -v docker
 check docker_active systemctl is-active --quiet docker
@@ -380,8 +386,13 @@ def self_test() -> None:
         DEPLOY_WRAPPER,
         RUNTIME_WRAPPER,
         BACKEND_UNIT,
+        OCARUN_SUDOERS_SOURCE,
         OCARUN_SUDOERS,
         BOOTSTRAP_MARKER,
+        "check sudoers_dir test -d /etc/sudoers.d",
+        "check install_binary command -v install",
+        "check sudo_binary command -v sudo",
+        "check visudo_binary command -v visudo",
         "systemctl is-active --quiet docker",
     ):
         assert expected in smoke
