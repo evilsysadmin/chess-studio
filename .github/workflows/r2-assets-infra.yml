@@ -1,0 +1,71 @@
+name: Infra · R2 assets
+
+on:
+  pull_request:
+    paths:
+      - infra/cloudflare/r2-assets.json
+      - scripts/cloudflare_r2_assets.py
+      - .github/workflows/r2-assets-infra.yml
+      - docs/r2-assets.md
+  push:
+    branches: [main]
+    paths:
+      - infra/cloudflare/r2-assets.json
+      - scripts/cloudflare_r2_assets.py
+      - .github/workflows/r2-assets-infra.yml
+      - docs/r2-assets.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chess-studio-r2-assets-infra
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate · R2 assets contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Static contract
+        run: python3 -S scripts/cloudflare_r2_assets.py self-test
+      - name: Validate declarative config
+        run: python3 -S scripts/cloudflare_r2_assets.py validate
+
+  reconcile:
+    name: Reconcile · R2 assets
+    if: github.event_name != 'pull_request'
+    needs: validate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Require Cloudflare credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN"
+          test -n "$CLOUDFLARE_ACCOUNT_ID"
+      - name: Reconcile bucket, custom domain and CORS
+        run: python3 -S scripts/cloudflare_r2_assets.py reconcile
+      - name: Verify reconciled state
+        run: python3 -S scripts/cloudflare_r2_assets.py check
+      - name: Summary
+        shell: bash
+        run: |
+          {
+            echo '### R2 assets'
+            echo
+            echo '- Bucket: `chess-studio-assets`'
+            echo '- Public origin: `https://assets.chess-studio.shadowops.dpdns.org`'
+            echo '- Location hint: `weur`'
+            echo '- Storage: `Standard`'
+            echo '- `r2.dev`: disabled'
+            echo '- CORS: public read (`GET`, `HEAD`)'
+          } >> "$GITHUB_STEP_SUMMARY"
