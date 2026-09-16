@@ -21,12 +21,15 @@ def make_handler(root: Path, base: str):
     class DistHandler(SimpleHTTPRequestHandler):
         def translate_path(self, path: str) -> str:
             request_path = unquote(urlsplit(path).path)
+            spa_request = request_path == base_without_slash or request_path.startswith(base)
             if request_path == base_without_slash:
                 relative = ''
             elif request_path.startswith(base):
                 relative = request_path[len(base):]
             else:
-                return str(root / '__outside_base__')
+                relative = request_path.lstrip('/')
+                if not relative:
+                    return str(root / '__outside_base__')
 
             raw_parts = [part for part in relative.split('/') if part]
             if '..' in raw_parts:
@@ -44,9 +47,10 @@ def make_handler(root: Path, base: str):
             if candidate.exists():
                 return str(candidate)
 
-            # Client-side routes must resolve to the built SPA shell, while a
-            # missing file (asset, manifest, source map, etc.) stays a real 404.
-            if not Path(relative).suffix:
+            # Client-side routes under the configured base resolve to the SPA
+            # shell. Root-level static URLs emitted by the production build
+            # (for example /assets/* and /manifest.webmanifest) never fall back.
+            if spa_request and not Path(relative).suffix:
                 return str(root / 'index.html')
             return str(candidate)
 
