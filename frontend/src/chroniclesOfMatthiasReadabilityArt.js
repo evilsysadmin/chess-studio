@@ -1,5 +1,3 @@
-import * as THREE from 'three';
-
 export const CHRONICLES_TACTICS_PARTY_READABILITY_SCALE = 0.84;
 export const CHRONICLES_TACTICS_CUTAWAY_HEIGHT = 1.08;
 
@@ -15,8 +13,8 @@ export function chroniclesTacticsWallCell(name) {
 export function chroniclesTacticsNeedsInteriorCutaway(name) {
   const cell = chroniclesTacticsWallCell(name);
   if (!cell) return false;
-  // Keep the outer crypt shell monumental. Interior blockers become tactical
-  // cover so the behind-party camera can actually read enemies and routes.
+  // Keep the north/west outer crypt shell monumental. Interior blockers become
+  // tactical cover so the behind-party camera can read enemies and routes.
   return cell.x > 0 && cell.y > 1;
 }
 
@@ -74,35 +72,12 @@ function cutAwayInteriorWalls(scene) {
   return changed;
 }
 
-function installReadabilityLights(scene, { coarsePointer }) {
-  const existing = scene.getObjectByName('chronicles-tactics-readability-light');
-  if (existing) return existing;
-
-  const root = new THREE.Group();
-  root.name = 'chronicles-tactics-readability-light';
-
-  const cool = new THREE.DirectionalLight(0x9fb9c8, coarsePointer ? 0.28 : 0.42);
-  cool.position.set(0, 5.5, 7.5);
-  cool.target.position.set(0, 0.6, -2.5);
-  root.add(cool, cool.target);
-
-  const warm = new THREE.PointLight(0xd08b4d, coarsePointer ? 0.2 : 0.3, 11, 2);
-  warm.position.set(-2.6, 2.1, 3.5);
-  root.add(warm);
-
-  scene.add(root);
-  return root;
-}
-
-export function installChroniclesTacticsReadabilityArt(models, { coarsePointer = false } = {}) {
+export function installChroniclesTacticsReadabilityArt(models) {
   if (!models?.get) return null;
   const partyRoot = PARTY_IDS.map((id) => models.get(id)?.parent).find(Boolean) || null;
   const scene = partyRoot?.parent || null;
   if (!scene?.add) return null;
 
   scaleParty(models);
-  const cutawayWalls = cutAwayInteriorWalls(scene);
-  const lights = installReadabilityLights(scene, { coarsePointer });
-
-  return { cutawayWalls, lights };
+  return { cutawayWalls: cutAwayInteriorWalls(scene) };
 }

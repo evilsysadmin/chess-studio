@@ -57,7 +57,6 @@ describe('Chronicles Tactics battlefield readability art', () => {
     expect(wall.scale.y * wall.geometry.parameters.height).toBeCloseTo(CHRONICLES_TACTICS_CUTAWAY_HEIGHT, 6);
     expect(cap.position.y).toBeLessThan(1.2);
     expect(highTrim.visible).toBe(false);
-    expect(art.lights.name).toBe('chronicles-tactics-readability-light');
   });
 
   it('is idempotent when the scene-art orchestrator runs twice', () => {
@@ -70,6 +69,6 @@ describe('Chronicles Tactics battlefield readability art', () => {
     expect(second.cutawayWalls).toBe(0);
     expect(models.get('matthias').scale.x).toBeCloseTo(scaleAfterFirst, 8);
     expect(wall.scale.y).toBeCloseTo(wallScaleAfterFirst, 8);
-    expect(second.lights).toBe(first.lights);
+    expect(first.cutawayWalls).toBe(1);
   });
 });
