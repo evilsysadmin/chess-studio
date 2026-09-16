@@ -1,7 +1,10 @@
 services:
   backend:
     build:
-      context: ../../../backend-python
+      context: .
+      dockerfile: backend-image.Dockerfile
+      args:
+        BACKEND_IMAGE: ghcr.io/evilsysadmin/chess-studio-backend:oci-${GIT_COMMIT_SHA:?GIT_COMMIT_SHA is required}
     image: chess-studio-backend:oci-${GIT_COMMIT_SHA:?GIT_COMMIT_SHA is required}
     env_file:
       - ${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}
