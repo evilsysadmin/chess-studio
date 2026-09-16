@@ -1,7 +1,6 @@
 import { authHeader } from './auth.js';
 import { request, requestJson } from './http.js';
 import { requireGamePayload } from './gamePayload.js';
-import { chroniclesResolveAreaManifest } from './chronicles/chroniclesGameDirector.js';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
@@ -17,7 +16,8 @@ export const api = {
       signal,
     });
   },
-  resolveChroniclesAreaManifest(mapId, { seed = 0, signal } = {}) {
+  async resolveChroniclesAreaManifest(mapId, { seed = 0, signal } = {}) {
+    const { chroniclesResolveAreaManifest } = await import('./chronicles/chroniclesGameDirector.js');
     return chroniclesResolveAreaManifest(mapId, {
       seed,
       signal,
