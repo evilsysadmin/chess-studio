@@ -1,6 +1,6 @@
 {
   "id": "crypt-eight-squares",
-  "version": 10,
+  "version": 11,
   "progressionKey": "crypt-01",
   "title": "Cripta de las Ocho Casillas",
   "explorationCompleteLabel": "Vertical slice completado",
@@ -19,7 +19,9 @@
     "blackGateKey": false,
     "sigilAwake": false,
     "runeCacheOpened": false,
-    "runeCoreCollected": false
+    "runeCoreCollected": false,
+    "secretWallOpen": false,
+    "secretReliquaryTaken": false
   },
   "enemies": [
     {
@@ -37,7 +39,8 @@
         "movement": "cardinal-roam",
         "attackReach": 1,
         "engagedMovement": "cardinal-chase",
-        "engageRange": 1
+        "engageRange": 4,
+        "requiresLineOfSight": true
       },
       "onDefeat": {
         "message": "{attacker} remata al peón corrompido con {attack}. Matthias aprueba con una cantidad ofensivamente pequeña de entusiasmo.",
@@ -78,7 +81,8 @@
           { "x": 4, "y": 1 }
         ],
         "engagedMovement": "cardinal-chase",
-        "engageRange": 2
+        "engageRange": 4,
+        "requiresLineOfSight": true
       },
       "onDefeat": {
         "message": "{attacker} derriba a la torre carcelero con {attack}. La puerta parece libre durante una cantidad sospechosamente pequeña de tiempo.",
@@ -219,6 +223,45 @@
           "sigil": "✦"
         }
       }
+    },
+    {
+      "id": "crypt-secret-button",
+      "kind": "secret-button",
+      "x": 2,
+      "y": 3,
+      "label": "Presionar piedra hundida",
+      "when": [
+        { "key": "sigilAwake", "equals": true },
+        { "key": "secretWallOpen", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "secretWallOpen", "value": true }
+        ],
+        "message": "La piedra cede medio dedo. A la espalda, un muro tose polvo y se aparta con la elegancia de un armario de tres toneladas.",
+        "journal": {
+          "id": "crypt-secret-wall-open",
+          "title": "La pared era una mentirosa",
+          "body": "Un botón oculto abre un pasadizo al noroeste. Matthias anota que, sorprendentemente, tocar piedras sospechosas ha salido bien una vez.",
+          "sigil": "◈"
+        }
+      }
+    },
+    {
+      "id": "crypt-secret-wall",
+      "kind": "secret-door",
+      "x": 1,
+      "y": 2,
+      "label": "Falso muro",
+      "when": [
+        { "key": "secretWallOpen", "equals": false }
+      ],
+      "blocksMovementWhen": [
+        { "key": "secretWallOpen", "equals": false }
+      ],
+      "action": {
+        "effects": []
+      }
     }
   ],
   "treasures": [
@@ -243,6 +286,31 @@
           "title": "Núcleo rúnico recuperado",
           "body": "El alijo recarga las habilidades de clase una vez. Nadie pregunta quién dejó una batería arcana en una cripta.",
           "sigil": "✦"
+        }
+      }
+    },
+    {
+      "id": "obsidian-reliquary",
+      "kind": "pickup",
+      "x": 2,
+      "y": 1,
+      "label": "Abrir relicario de obsidiana",
+      "when": [
+        { "key": "secretWallOpen", "equals": true },
+        { "key": "secretReliquaryTaken", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "secretReliquaryTaken", "value": true },
+          { "type": "heal-party", "amount": 2 },
+          { "type": "refill-class-abilities" }
+        ],
+        "message": "El relicario contiene una reserva rúnica intacta. La compañía recupera fuerzas y recarga sus recursos. Matthias decide no preguntar de quién era.",
+        "journal": {
+          "id": "obsidian-reliquary-opened",
+          "title": "Tesoro tras el falso muro",
+          "body": "El pasadizo oculto desemboca en un relicario sellado. Dos pulsos de luz devuelven vigor al grupo y rearman las habilidades de clase.",
+          "sigil": "◆"
         }
       }
     }
