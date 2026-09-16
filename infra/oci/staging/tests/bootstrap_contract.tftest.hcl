@@ -35,8 +35,11 @@ run "bootstrap_contract_is_privileged_without_open_ended_sudo" {
   command = plan
 
   assert {
-    condition     = length(terraform_data.bootstrap_contract.triggers_replace) == 64
-    error_message = "Bootstrap replacement trigger must be the SHA-256 of the cloud-init contract."
+    condition = (
+      startswith(terraform_data.bootstrap_contract.triggers_replace, "v2:") &&
+      length(terraform_data.bootstrap_contract.triggers_replace) == 67
+    )
+    error_message = "Bootstrap replacement trigger must be a versioned SHA-256 cloud-init fingerprint."
   }
 
   assert {
