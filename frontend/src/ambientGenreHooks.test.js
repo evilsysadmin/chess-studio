@@ -73,6 +73,16 @@ describe('curated Mediterranean and trip-hop hooks', () => {
     expect(feel.signature.volume).toBeLessThanOrEqual(0.14);
   });
 
+  it('keeps Cadiz bright qanun as sparse regional colour', () => {
+    const theme = AMBIENT_THEMES.cadizLanterns;
+    const feel = structuredFeel(theme);
+
+    expect(feel.signature.instrument).toBe('qanun');
+    expect(feel.signature.repeatPeriod).toBeGreaterThanOrEqual(96);
+    expect(feel.signature.everyCycles).toBe(2);
+    expect(feel.signature.volume).toBeLessThanOrEqual(0.14);
+  });
+
   it('replaces Havana bandoneon chirps with a quieter, roomier guitar answer', () => {
     const theme = AMBIENT_THEMES.havana205;
     const feel = structuredFeel(theme);
