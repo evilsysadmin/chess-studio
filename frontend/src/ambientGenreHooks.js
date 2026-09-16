@@ -42,7 +42,11 @@ export const AMBIENT_GENRE_HOOKS = Object.freeze({
   knightAlleyNoir: hook('counter', [0,1], 64, 5.6, 0.17, { 8:65, 24:62, 40:68, 56:61 }),
   concreteRain: hook('lead', [0,1], 64, 7.2, 0.18, { 6:65, 22:62, 38:67, 54:60 }),
   queenBossa: hook('lead', [0,1], 64, 3.8, 0.18, { 6:67, 18:71, 38:64, 54:69 }),
-  havana205: hook('lead', [0,1], 64, 4.2, 0.20, { 8:69, 20:65, 40:72, 56:66 }),
+  // Havana used to stamp a short bandoneon oscillator phrase over its own
+  // arrangement. On repetition the bright reed attack became the most audible
+  // thing in the track. Let the modelled guitar answer instead and give the
+  // phrase more air so it reads as an arrangement detail, not a notification.
+  havana205: hook('counter', [0,1], 96, 5.2, 0.15, { 8:69, 20:65, 40:72, 56:66 }),
   blueLobby: hook('lead', [0,2], 64, 6.0, 0.17, { 10:72, 24:68, 42:75, 58:67 }),
 });
 
@@ -51,11 +55,17 @@ export const AMBIENT_GENRE_HOOK_IDS = Object.freeze(Object.keys(AMBIENT_GENRE_HO
 export function withAmbientGenreHook(theme, feel) {
   const spec = AMBIENT_GENRE_HOOKS[theme?.id];
   if (!spec || !feel) return feel;
-  const instrument = spec.instrumentRole === 'existing'
+  const selectedInstrument = spec.instrumentRole === 'existing'
     ? feel.signature?.instrument
     : spec.instrumentRole === 'counter'
       ? (feel.counterInstrument || theme.counterInstrument)
       : (feel.leadInstrument || theme.leadInstrument);
+  // Havana's counter lane is promoted from the legacy guitar2 alias to the
+  // modelled nylon voice later in the production chain. Its signature must use
+  // that same final timbre instead of freezing the pre-polish alias here.
+  const instrument = theme?.id === 'havana205' && selectedInstrument === 'guitar2'
+    ? 'nylonGuitar'
+    : selectedInstrument;
   if (!instrument) return feel;
   return Object.freeze({
     ...feel,

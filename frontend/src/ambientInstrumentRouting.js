@@ -27,15 +27,28 @@ const ORGANIC_MEDITERRANEAN_THEME_IDS = new Set([
   'bosphorusRain',
 ]);
 
+const ORGANIC_LATIN_THEME_IDS = new Set(['havana205']);
 const OSCILLATOR_PLUCKS = new Set(['oudJazz', 'qanun', 'buzuq']);
 
 export const ORGANIC_MEDITERRANEAN_ROUTING_IDS = Object.freeze([...ORGANIC_MEDITERRANEAN_THEME_IDS]);
+export const ORGANIC_LATIN_ROUTING_IDS = Object.freeze([...ORGANIC_LATIN_THEME_IDS]);
 
 function organicMediterraneanInstrument(theme, instrument, lane) {
   if (!ORGANIC_MEDITERRANEAN_THEME_IDS.has(theme?.id)) return instrument;
   if (lane !== 'lead' && lane !== 'counter') return instrument;
   if (!OSCILLATOR_PLUCKS.has(instrument)) return instrument;
   return 'nylonGuitar';
+}
+
+function organicLatinInstrument(theme, instrument, lane) {
+  if (!ORGANIC_LATIN_THEME_IDS.has(theme?.id)) return instrument;
+  if (lane !== 'lead' && lane !== 'counter') return instrument;
+  // Havana's old bandoneon preset is a compact oscillator reed. In a short,
+  // repeated line its hard upper partials read as a cheap "chiu-chiu". Keep
+  // the written melody but hand the continuous voice to the already modelled
+  // nylon string; sparse colour can still come from the arrangement around it.
+  if (instrument === 'bandoneon') return 'nylonGuitar';
+  return instrument;
 }
 
 export function structuredSectionInstrument(theme, feel, section, lane) {
@@ -53,5 +66,6 @@ export function structuredSectionInstrument(theme, feel, section, lane) {
     if (theme?.genre === 'Bossa / Latin Lounge' || [feel?.leadInstrument, feel?.counterInstrument].includes('nylonGuitar')) instrument = 'nylonGuitar';
   }
 
-  return organicMediterraneanInstrument(theme, instrument, lane);
+  instrument = organicMediterraneanInstrument(theme, instrument, lane);
+  return organicLatinInstrument(theme, instrument, lane);
 }
