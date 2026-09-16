@@ -7,6 +7,7 @@ on:
       - 'infra/oci/ops/agent-reboot.request'
       - 'infra/oci/ops/bringup.request'
       - 'infra/oci/ops/backend-diagnose.request'
+      - 'infra/oci/ops/mongo-target-diagnose.request'
       - '.github/workflows/oci-staging-service.yml'
   workflow_run:
     workflows:
@@ -20,7 +21,7 @@ on:
       operation:
         description: Service operation
         type: choice
-        options: [diagnose, backend-diagnose, smoke, reboot-agent, deploy, runtime-sync]
+        options: [diagnose, backend-diagnose, mongo-target-diagnose, smoke, reboot-agent, deploy, runtime-sync]
         default: smoke
         required: true
       repo_ref:
@@ -90,6 +91,12 @@ jobs:
             echo 'backend_diagnose=false' >> "$GITHUB_OUTPUT"
           fi
 
+          if grep -Fxq 'infra/oci/ops/mongo-target-diagnose.request' <<<"$files"; then
+            echo 'mongo_target_diagnose=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'mongo_target_diagnose=false' >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
@@ -100,8 +107,20 @@ jobs:
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
           python3 -S scripts/oci_backend_diagnose.py --self-test
+          python3 -S scripts/render_mongo_target_diagnose.py --self-test
+
+      - name: Diagnose Render staging Mongo target
+        if: >-
+          (github.event_name == 'push' && steps.ops.outputs.mongo_target_diagnose == 'true') ||
+          (github.event_name == 'workflow_dispatch' && inputs.operation == 'mongo-target-diagnose')
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        run: python3 scripts/render_mongo_target_diagnose.py
 
       - name: Install OCI SDK
+        if: >-
+          (github.event_name != 'push' || steps.ops.outputs.mongo_target_diagnose != 'true') &&
+          (github.event_name != 'workflow_dispatch' || inputs.operation != 'mongo-target-diagnose')
         run: python3 -m pip install --disable-pip-version-check 'oci==2.185.2'
 
       - name: Sync private runtime config
@@ -132,7 +151,9 @@ jobs:
         id: smoke
         if: >-
           github.event_name == 'workflow_run' ||
-          (github.event_name == 'push' && steps.ops.outputs.backend_diagnose != 'true') ||
+          (github.event_name == 'push' &&
+            steps.ops.outputs.backend_diagnose != 'true' &&
+            steps.ops.outputs.mongo_target_diagnose != 'true') ||
           (github.event_name == 'workflow_dispatch' &&
             (inputs.operation == 'smoke' || inputs.operation == 'reboot-agent'))
         continue-on-error: ${{ github.event_name == 'push' && steps.ops.outputs.bringup == 'true' }}
