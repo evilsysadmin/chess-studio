@@ -69,6 +69,8 @@ export const PAWN_SLUG_MATTHIAS_CANONICAL_HEAD_ART = Object.freeze({
   spriteScale: CANONICAL_HEAD_SCALE,
 });
 
+export const PAWN_SLUG_MATTHIAS_BROWSER_RENDER_CONTRACT = 'data-pawn-slug-matthias-visual';
+
 export const PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME = Object.freeze({
   // The approved canonical bank keeps the v3 authored footprint: ~127-128
   // visible standing pixels inside each 192px cell. Runtime scale/hitboxes stay
@@ -88,6 +90,7 @@ export const PAWN_SLUG_MATTHIAS_INTEGRATED_ART = Object.freeze({
   atlasRevision: 'blender-premium-v3',
   canonicalIdentity: PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY,
   canonicalHeadArt: PAWN_SLUG_MATTHIAS_CANONICAL_HEAD_ART,
+  browserRenderContract: PAWN_SLUG_MATTHIAS_BROWSER_RENDER_CONTRACT,
   weapons: Object.freeze(Object.keys(PAYLOADS)),
   sourceFacing: 'left',
   runtimeFacing: 'world-direction-normalized',
@@ -157,6 +160,32 @@ export function pawnSlugPremiumMatthiasAtlasWindow(action = 'idle', frameIndex =
   });
 }
 
+export function pawnSlugCanonicalMatthiasRenderStatus(sprite) {
+  const atlas = sprite?.userData?.atlas;
+  const head = sprite?.userData?.canonicalHead;
+  const headSprite = head?.sprite;
+  const bodyReady = atlas?.ready === true
+    && atlas?.source === 'primary'
+    && sprite?.material?.visible === true
+    && sprite?.material?.map === atlas?.texture;
+  const headReady = head?.ready === true
+    && head?.source === 'canonical'
+    && headSprite?.material?.visible === true
+    && headSprite?.material?.map === head?.texture;
+  const identityLocked = sprite?.userData?.pawnSlugCanonicalMatthias === true
+    && sprite?.userData?.pawnSlugCanonicalIdentity === PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY;
+  const attached = Boolean(sprite?.parent && headSprite?.parent === sprite);
+  return `${bodyReady ? 'premium-body' : 'body-pending'}:${headReady ? 'canonical-head' : 'head-pending'}:${identityLocked ? 'identity-locked' : 'identity-missing'}:${attached ? 'attached' : 'detached'}`;
+}
+
+function publishCanonicalMatthiasRenderStatus(sprite) {
+  if (typeof document === 'undefined') return;
+  const stage = document.querySelector?.('[data-pawn-slug-renderer="three"]');
+  if (!stage?.dataset) return;
+  const status = pawnSlugCanonicalMatthiasRenderStatus(sprite);
+  if (stage.dataset.pawnSlugMatthiasVisual !== status) stage.dataset.pawnSlugMatthiasVisual = status;
+}
+
 function applyBodyAtlasWindow(sprite) {
   const texture = sprite.userData.atlas?.texture;
   if (!texture) return;
@@ -195,6 +224,7 @@ function applyCanonicalHeadPose(sprite) {
 function applyVisualPose(sprite) {
   applyBodyAtlasWindow(sprite);
   applyCanonicalHeadPose(sprite);
+  publishCanonicalMatthiasRenderStatus(sprite);
 }
 
 export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME.scale) {
@@ -286,10 +316,12 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
         canonicalHeadMaterial.visible = true;
         canonicalHeadMaterial.needsUpdate = true;
         applyCanonicalHeadPose(sprite);
+        publishCanonicalMatthiasRenderStatus(sprite);
       },
       undefined,
       () => {
         if (!sprite.userData.atlas.disposed) head.source = 'failed';
+        publishCanonicalMatthiasRenderStatus(sprite);
       },
     );
   }
@@ -316,11 +348,13 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
         material.visible = true;
         material.needsUpdate = true;
         applyBodyAtlasWindow(sprite);
+        publishCanonicalMatthiasRenderStatus(sprite);
         if (previous && previous !== texture) previous.dispose?.();
       },
       undefined,
       () => {
         if (!atlas.disposed && requestId === atlas.requestId) atlas.source = 'failed';
+        publishCanonicalMatthiasRenderStatus(sprite);
       },
     );
   }

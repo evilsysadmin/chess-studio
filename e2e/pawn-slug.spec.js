@@ -55,6 +55,7 @@ async function startPawnSlug(page) {
 }
 
 const LIVE_PREMIUM_ENEMY = /^(premium-raster|premium-fallback):visible:mapped:readable:attached$/;
+const LIVE_CANONICAL_MATTHIAS = /^premium-body:canonical-head:identity-locked:attached$/;
 
 test('Pawn Slug · arranca con pistola y arsenal seleccionable sin tocar el ajedrez competitivo', async ({ page }) => {
   // This path intentionally boots the premium Three.js runtime twice to prove cleanup/remount.
@@ -78,6 +79,10 @@ test('Pawn Slug · arranca con pistola y arsenal seleccionable sin tocar el ajed
   // to have premium art, a visible mapped material, the combat readability
   // layer and an attached Three.js parent in the live browser runtime.
   await expect(stage).toHaveAttribute('data-pawn-slug-enemy-visual', LIVE_PREMIUM_ENEMY, { timeout: 30_000 });
+  // Matthias must also be the actual canonical runtime actor, not merely a
+  // compile-time metadata promise: premium tactical body + loaded canonical
+  // spherical face/officer cap + locked identity + live Three.js attachment.
+  await expect(stage).toHaveAttribute('data-pawn-slug-matthias-visual', LIVE_CANONICAL_MATTHIAS, { timeout: 30_000 });
   await expect(page.getByText('OPERACIÓN BAUERNSCHLAG', { exact: true })).toBeVisible();
   await expect(arsenal).toBeVisible();
   await expect(page.locator('.pawn-slug-xp-track')).toHaveCount(0);
@@ -108,6 +113,7 @@ test('Pawn Slug · arranca con pistola y arsenal seleccionable sin tocar el ajed
   await expect(remountedStage.locator('canvas')).toHaveCount(1);
   await expect(remountedStage.locator('canvas')).toBeVisible({ timeout: 30_000 });
   await expect(remountedStage).toHaveAttribute('data-pawn-slug-enemy-visual', LIVE_PREMIUM_ENEMY, { timeout: 30_000 });
+  await expect(remountedStage).toHaveAttribute('data-pawn-slug-matthias-visual', LIVE_CANONICAL_MATTHIAS, { timeout: 30_000 });
   await page.getByRole('button', { name: '← Experimentos', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toBeVisible();
   await expect(remountedStage).toHaveCount(0);
