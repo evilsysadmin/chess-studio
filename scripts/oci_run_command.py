@@ -308,13 +308,20 @@ def diagnose_plugin(oci: Any, config: dict[str, str]) -> str:
     if not plugin_status_is_healthy(status):
         raise SystemExit(f"OCI Run Command plugin is not running: status={status}")
 
-    # Temporary staging diagnostic: always emit the assigned/observed egress IP
-    # before backend deployment. It is intentionally fail-open and carries no
-    # runtime/application secrets.
+    # Temporary staging diagnostic: the A1 uses its public VNIC address directly
+    # for Internet Gateway egress. Emit that address before every backend deploy
+    # without launching an additional Run Command. The deeper external probe
+    # remains available through scripts/oci_egress_diagnose.py when needed.
     try:
-        from oci_egress_diagnose import DEFAULT_EXPECTED_IPV4, diagnose_egress
+        from oci_egress_diagnose import DEFAULT_EXPECTED_IPV4, assigned_public_ipv4
 
-        diagnose_egress(oci, config, expected=DEFAULT_EXPECTED_IPV4)
+        assigned = assigned_public_ipv4(oci, config)
+        print(f"OCI_VNIC_PUBLIC_IPV4={assigned}", flush=True)
+        print(f"OCI_EGRESS_EXPECTED_IPV4={DEFAULT_EXPECTED_IPV4}", flush=True)
+        print(
+            f"OCI_VNIC_MATCH_EXPECTED={'yes' if assigned == DEFAULT_EXPECTED_IPV4 else 'no'}",
+            flush=True,
+        )
     except BaseException as exc:
         print(
             f"OCI_EGRESS_DIAGNOSTIC_ERROR={type(exc).__name__}:{str(exc)[:240]}",
