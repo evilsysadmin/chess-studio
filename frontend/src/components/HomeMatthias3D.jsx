@@ -7,7 +7,7 @@ import './HomeMatthias3D.css';
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/matthias-home-canonical.glb`;
 const CANONICAL_FALLBACK_URL = `${import.meta.env.BASE_URL}matthias-home-canonical.b64`;
-const CANONICAL_CAMERA_CONTRACT = 'canonical-glb-plus-z';
+const CANONICAL_CAMERA_CONTRACT = 'canonical-glb-minus-z';
 const CLIP_BY_PROFILE = Object.freeze({
   idle: 'Idle',
   speak: 'Speak',
@@ -381,16 +381,15 @@ export default function HomeMatthias3D({
         const bounds = new THREE.Box3().setFromObject(model);
         const center = bounds.getCenter(new THREE.Vector3());
 
-        // The shipped canonical GLB has its authored facial meshes (eyes, brows,
-        // mouth and chest cross) on +Z. The exported Nose empty is not a safe
-        // world-space direction contract: after Blender -> glTF bone conversion
-        // it can collapse to the rig origin. Keep the runtime camera on the
-        // actual authored front instead of trying to infer it from node origins.
+        // The deployed canonical GLB proves its facial meshes are on -Z in
+        // Three.js. Keep this explicit: trying to infer the front from exported
+        // empties/bones repeatedly selected the back after Blender's axis and
+        // armature conversion.
         const cameraPose = homeMatthiasCameraPose({
           headX: 0,
           headZ: 0,
           noseX: 0,
-          noseZ: 1,
+          noseZ: -1,
           faceSource: CANONICAL_CAMERA_CONTRACT,
           minY: bounds.min.y,
           maxY: bounds.max.y,
