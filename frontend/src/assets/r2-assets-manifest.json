@@ -1,5 +1,48 @@
 {
-  "version": 1,
+  "assets": {
+    "pawnSlug.matthias.canonicalMaster": {
+      "bytes": 3119009,
+      "contentType": "image/png",
+      "key": "pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png",
+      "sha256": "9c21264274777d012a2941073f6cbae94df090db0459624e6031207c0a288c5f",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/master/matthias_canonical_sprite_sheet_v1-9c21264274777d01.png"
+    },
+    "pawnSlug.matthias.machinegun": {
+      "bytes": 248596,
+      "contentType": "image/webp",
+      "key": "pawn-slug/matthias/machinegun/matthias_machinegun_premium_v3-a83a25d9b8c424c1.webp",
+      "sha256": "a83a25d9b8c424c16414396bb165d3985b466b009b4cd6936e3835317be01250",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/machinegun/matthias_machinegun_premium_v3-a83a25d9b8c424c1.webp"
+    },
+    "pawnSlug.matthias.motion": {
+      "bytes": 9334,
+      "contentType": "image/webp",
+      "key": "pawn-slug/matthias/motion/matthias_motion_atlas_v5_payload-85988118befde412.webp",
+      "sha256": "85988118befde41238cedc4ba772af38d08789bdcfb1671e874ff6743470c393",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/motion/matthias_motion_atlas_v5_payload-85988118befde412.webp"
+    },
+    "pawnSlug.matthias.panzerfaust": {
+      "bytes": 269290,
+      "contentType": "image/webp",
+      "key": "pawn-slug/matthias/panzerfaust/matthias_panzerfaust_premium_v3-029dbf486570749d.webp",
+      "sha256": "029dbf486570749df9eaccc68f37d3c1061b470513dc074915d987d09d438e67",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/panzerfaust/matthias_panzerfaust_premium_v3-029dbf486570749d.webp"
+    },
+    "pawnSlug.matthias.pistol": {
+      "bytes": 130478,
+      "contentType": "image/webp",
+      "key": "pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp",
+      "sha256": "42a01598d26b6dedb7f0bfa70c392c6cbd80df9cea1bea7c7224f9a6d8cf2829",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp"
+    },
+    "pawnSlug.matthias.shotgun": {
+      "bytes": 254454,
+      "contentType": "image/webp",
+      "key": "pawn-slug/matthias/shotgun/matthias_shotgun_premium_v3-35fc4f24fad32f10.webp",
+      "sha256": "35fc4f24fad32f10bf26e24c85dee37b163edd1aac54794c491cb5e6836882e9",
+      "url": "https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/shotgun/matthias_shotgun_premium_v3-35fc4f24fad32f10.webp"
+    }
+  },
   "baseUrl": "https://assets.chess-studio.shadowops.dpdns.org",
-  "assets": {}
+  "version": 1
 }
