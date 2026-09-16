@@ -6,9 +6,9 @@ Home-specific; the shared Blender setup remains product-agnostic.
 """
 
 CANONICAL_IDENTITY = "stern-no-moustache-pawn"
-CANONICAL_REFERENCE = "classic-pawn-first-avatar"
+CANONICAL_REFERENCE = "war-room-stern-pawn-2026-09-16"
 CANONICAL_REFERENCE_FILE = "frontend/art-source/matthias-home-canonical-reference.webp"
-CANONICAL_REFERENCE_SHA256 = "beb64c1dffd6b32a64847b8f768df43e823e858acf630516e27a2cc771e2d975"
+CANONICAL_REFERENCE_SHA256 = "80e451f1670b6b8f05123a4f013e526f926b4dec1532ba5e45f7ad24de80e06a"
 CANONICAL_POSE_LANGUAGE = "permanently-stern"
 
 REQUIRED_ACTIONS = {
@@ -34,12 +34,22 @@ REQUIRED_OBJECTS = {
     "Nose",
     "Eye.L",
     "Eye.R",
+    "Canonical eye white.L",
+    "Canonical eye white.R",
+    "Canonical iris.L",
+    "Canonical iris.R",
     "Brow.L",
     "Brow.R",
     "Mouth.L",
     "Mouth.R",
+    "Canonical mouth center",
     "Classic chest cross brass",
     "Classic chest cross inset",
+    "Classic cap badge",
+    "Classic cap badge inset",
+    "Canonical cap badge pawn head",
+    "Canonical service braid 06",
+    "Canonical service braid 07",
     "RoutineBook",
     "RoutineCup",
     "RoutinePen",
@@ -62,7 +72,8 @@ FORBIDDEN_NAME_TOKENS = (
     "crest field",
 )
 
-# Tight silhouette envelope from the approved 512x512 canonical reference.
+# Pawn silhouette envelope. The approved full Home reference is the visual
+# source of truth; these ratios keep the generated model recognizably chess-first.
 HEAD_TO_BASE_WIDTH = (0.54, 0.62)
 HEAD_TO_BODY_HEIGHT = (0.34, 0.40)
 CAP_TO_HEAD_WIDTH = (1.18, 1.30)
@@ -74,7 +85,7 @@ CAP_TOP_MIN_REAR_OFFSET = 0.040
 CAP_TOP_MIN_VERTICAL_SEPARATION = 0.080
 CAP_VISOR_TO_HEAD_WIDTH = (0.62, 0.82)
 
-# The approved black/brass iron cross has real visual weight.
+# The black/brass iron cross remains prominent but subordinate to the face.
 CHEST_CREST_HEIGHT_TO_HEAD_WIDTH = (0.42, 0.52)
 CHEST_CREST_WIDTH_TO_HEAD_WIDTH = (0.42, 0.52)
 
