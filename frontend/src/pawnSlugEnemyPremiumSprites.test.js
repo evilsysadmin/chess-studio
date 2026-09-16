@@ -51,7 +51,8 @@ describe('Pawn Slug premium enemy runtime integration', () => {
       authoredActions: ['idle', 'run'],
       canonicalSource: 'Pawn Slug: authored premium enemy lineup v5',
       isolatedSilhouettes: true,
-      transport: 'r2-cdn-with-inline-base64-fallback',
+      transport: 'r2-cdn-primary',
+      transportFallback: 'separate-premium-static-raster',
     });
     expect(PAWN_SLUG_ENEMY_RUN_META.premiumFallback).toMatchObject({
       asset: 'enemy_atlas_premium.webp',
