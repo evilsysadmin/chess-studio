@@ -4,6 +4,7 @@ import {
   homeMatthiasCanonicalFallbackDataUrl,
   homeMatthiasClipForProfile,
   homeMatthiasClipStartTime,
+  homeMatthiasFrontDirectionFromPoints,
   homeMatthiasMotionPhase,
   homeMatthiasMotionProfile,
   homeMatthiasPlaybackPolicy,
@@ -99,21 +100,31 @@ describe('Home Matthias canonical Blender rig', () => {
     expect(alongX.cameraX).toBeGreaterThan(alongX.targetX);
   });
 
-  it('locks the shipped Home GLB to its observed -Z canonical front', () => {
-    const pose = homeMatthiasCameraPose({
-      headX: 0,
-      headZ: 0,
-      noseX: 0,
-      noseZ: -1,
-      faceSource: 'canonical-glb-minus-z',
-      minY: 0,
-      maxY: 2.35,
-      fovDeg: 24,
+  it('derives the front from visible mesh geometry instead of an authored axis guess', () => {
+    const front = homeMatthiasFrontDirectionFromPoints({
+      centerX: 0.1,
+      centerZ: -0.2,
+      points: [
+        { x: 0.08, z: 0.42 },
+        { x: 0.12, z: 0.44 },
+        { x: 0.10, z: 0.52 },
+        { x: 0.11, z: 0.48 },
+      ],
     });
-    expect(pose.source).toBe('canonical-glb-minus-z');
-    expect(pose.faceX).toBe(0);
-    expect(pose.faceZ).toBe(-1);
-    expect(pose.cameraZ).toBeLessThan(pose.targetZ);
+    expect(front).not.toBeNull();
+    expect(front.count).toBe(4);
+    expect(front.faceX).toBeCloseTo(0, 1);
+    expect(front.faceZ).toBeGreaterThan(0.99);
+    expect(front.anchorZ).toBeGreaterThan(0.4);
+  });
+
+  it('rejects collapsed or missing front geometry so Home can use the canonical fallback', () => {
+    expect(homeMatthiasFrontDirectionFromPoints({ centerX: 0, centerZ: 0, points: [] })).toBeNull();
+    expect(homeMatthiasFrontDirectionFromPoints({
+      centerX: 0,
+      centerZ: 0,
+      points: [{ x: 0, z: 0 }, { x: 0.001, z: 0.001 }],
+    })).toBeNull();
   });
 
   it('turns only a valid canonical WebP payload into a fallback image', () => {
