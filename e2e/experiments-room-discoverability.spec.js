@@ -46,7 +46,6 @@ test('Experimentos keeps every destination discoverable without baked image labe
         opacity: Number(style.opacity),
         display: style.display,
         visibility: style.visibility,
-        color: style.color,
       };
     });
     expect(presentation.opacity, `${title}: title opacity`).toBeGreaterThan(0);
@@ -59,14 +58,16 @@ test('Experimentos keeps every destination discoverable without baked image labe
     Promise.all(destinations.map(([selector]) => page.locator(selector).first().boundingBox())),
   ]);
   expect(roomBox).not.toBeNull();
+  const roomRight = roomBox.x + roomBox.width;
+  const roomBottom = roomBox.y + roomBox.height;
   for (let index = 0; index < destinations.length; index += 1) {
     const title = destinations[index][1];
     const box = destinationBoxes[index];
     expect(box, `${title}: positioned inside experiments room`).not.toBeNull();
-    expect(box.left, `${title}: left bound`).toBeGreaterThanOrEqual(roomBox.left - 1);
-    expect(box.right, `${title}: right bound`).toBeLessThanOrEqual(roomBox.right + 1);
-    expect(box.top, `${title}: top bound`).toBeGreaterThanOrEqual(roomBox.top - 1);
-    expect(box.bottom, `${title}: bottom bound`).toBeLessThanOrEqual(roomBox.bottom + 1);
+    expect(box.x, `${title}: left bound`).toBeGreaterThanOrEqual(roomBox.x - 1);
+    expect(box.x + box.width, `${title}: right bound`).toBeLessThanOrEqual(roomRight + 1);
+    expect(box.y, `${title}: top bound`).toBeGreaterThanOrEqual(roomBox.y - 1);
+    expect(box.y + box.height, `${title}: bottom bound`).toBeLessThanOrEqual(roomBottom + 1);
   }
 
   const artLoaded = await page.locator('.lab-workshop-art').evaluate(
