@@ -27,7 +27,7 @@ export function createPawnSlugPlayerSystem(runtime) {
       0.2,
     );
     runtime.playerModel.visible = state.phase !== 'gameover';
-    runtime.playerWeaponModel.visible = runtime.playerModel.visible;
+    runtime.playerWeaponModel.visible = runtime.playerModel.visible && state.player.weapon !== 'pistol';
     runtime.weapons.syncPlayerWeaponVisual();
   }
 
@@ -37,22 +37,26 @@ export function createPawnSlugPlayerSystem(runtime) {
     const base = Math.abs(runtime.playerModel.userData.baseScale || runtime.playerModel.scale.x || 1);
     runtime.playerModel.scale.x = base * (player.dir < 0 ? -1 : 1);
 
-    const locomotion = player.onGround && !player.crouch
+    // Drive the visual run directly from real horizontal velocity. This avoids
+    // a one-state-late dependency where Matthias could translate across the
+    // floor while still rendering the idle/aim legs.
+    const visualMoving = player.onGround
+      && !player.crouch
+      && Math.abs(player.vx) > PAWN_SLUG_PLAYER_SPEED * 0.025;
+    const locomotion = visualMoving
       ? pawnSlugMatthiasLocomotion({
         time: state.time,
-        moving: player.moving,
+        moving: true,
         speedRatio: Math.abs(player.vx) / PAWN_SLUG_PLAYER_SPEED,
         moveStartedAt: player.moveStartedAt,
       })
       : null;
-    const running = locomotion?.action === 'run';
+    const running = visualMoving;
 
     animateMatthiasSlugSprite(runtime.playerModel, {
       time: state.time,
-      // Matthias is the action hero here: ordinary traversal uses the full
-      // authored 16-frame run row. Hans is the old gentleman elsewhere.
       running,
-      runFrame: running ? locomotion.frame : null,
+      runFrame: running ? locomotion?.frame : null,
       crouch: player.crouch,
       airborne: !player.onGround,
       firing: player.recoil > 0,
@@ -68,7 +72,13 @@ export function createPawnSlugPlayerSystem(runtime) {
       pawnSlugMatthiasVisualY(player.y) + weaponY,
       0.44,
     );
-    runtime.playerWeaponModel.visible = runtime.playerModel.visible && state.phase !== 'gameover';
+    // Standing pistol art is already baked into the approved canonical body.
+    // During a run we expose the small weapon overlay so the animated RUN row
+    // can keep its real leg stride without falling back to a full-body shoot pose.
+    const showWeaponOverlay = player.weapon !== 'pistol' || running;
+    runtime.playerWeaponModel.visible = runtime.playerModel.visible
+      && state.phase !== 'gameover'
+      && showWeaponOverlay;
     if (player.recoil > 0) runtime.playerWeaponModel.position.x -= player.dir * 0.045;
 
     if (player.landing > 0 && !runtime.reducedMotion) {
