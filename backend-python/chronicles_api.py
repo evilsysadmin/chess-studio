@@ -1,9 +1,9 @@
-"""Chronicles Game Director: versioned, deterministic world manifests.
+"""Chronicles Game Director: versioned world manifests and run identity.
 
 The browser still owns frame-critical simulation (input, rendering, animation,
 movement interpolation and combat feedback). This API owns validated world
-content that can safely move out of the frontend without putting the game loop
-behind network latency.
+content and stable run metadata that can safely move out of the frontend
+without putting the game loop behind network latency.
 """
 
 from __future__ import annotations
@@ -11,15 +11,26 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import secrets
+import uuid
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from pydantic import BaseModel, Field
+
+import chronicles_run_store
+from operation_idempotency_core import (
+    InvalidIdempotencyKey,
+    normalize_idempotency_key,
+    operation_fingerprint,
+)
 
 
 CHRONICLES_MANIFEST_SCHEMA_VERSION = 1
 CHRONICLES_MAP_ROOT = Path(__file__).with_name("chronicles_maps")
+CHRONICLES_RUN_NAMESPACE = uuid.UUID("e73c9496-fffd-4dc4-a0d0-8c7b6060a116")
 _MAP_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 _CONTENT_GROUPS = ("triggers", "interactables", "treasures", "traps", "exits")
 _MAX_SEED = 2_147_483_647
@@ -27,6 +38,12 @@ _MAX_SEED = 2_147_483_647
 
 class ChroniclesManifestError(ValueError):
     """Raised when repository-owned Chronicles content violates its contract."""
+
+
+class CreateChroniclesRunRequest(BaseModel):
+    map_id: str = Field(default="crypt-eight-squares", alias="mapId")
+
+    model_config = {"populate_by_name": True, "extra": "forbid"}
 
 
 def _canonical_bytes(payload: Any) -> bytes:
@@ -142,7 +159,6 @@ def load_chronicles_manifest(map_id: str, *, root: Path | None = None) -> tuple[
     except FileNotFoundError as exc:
         raise HTTPException(404, "Mapa de Chronicles no encontrado.") from exc
     except ChroniclesManifestError as exc:
-        # Invalid shipped content is a server defect, not a player error.
         raise HTTPException(500, "El manifiesto de Chronicles no supera validación.") from exc
     return json.loads(json.dumps(manifest, ensure_ascii=False)), revision
 
@@ -164,6 +180,12 @@ def chronicles_area_envelope(map_id: str, seed: int, *, root: Path | None = None
     }
 
 
+def _run_id(username: str, idempotency_key: str | None) -> str:
+    if idempotency_key:
+        return str(uuid.uuid5(CHRONICLES_RUN_NAMESPACE, f"{username}:{idempotency_key}"))
+    return str(uuid.uuid4())
+
+
 def build_chronicles_router(*, auth_dependency) -> APIRouter:
     router = APIRouter(prefix="/api/chronicles", tags=["chronicles"])
 
@@ -174,5 +196,40 @@ def build_chronicles_router(*, auth_dependency) -> APIRouter:
         _username: str = Depends(auth_dependency),
     ):
         return chronicles_area_envelope(map_id, seed)
+
+    @router.post("/runs", status_code=201)
+    async def create_run(
+        body: CreateChroniclesRunRequest,
+        username: str = Depends(auth_dependency),
+        raw_idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    ):
+        try:
+            idempotency_key = normalize_idempotency_key(raw_idempotency_key)
+        except InvalidIdempotencyKey as exc:
+            raise HTTPException(400, str(exc)) from exc
+
+        manifest, revision = load_chronicles_manifest(body.map_id)
+        fingerprint = operation_fingerprint({"mapId": body.map_id})
+        try:
+            return await chronicles_run_store.create_or_replay_run(
+                run_id=_run_id(username, idempotency_key),
+                owner=username,
+                seed=secrets.randbelow(_MAX_SEED + 1),
+                map_id=body.map_id,
+                content_version=manifest["version"],
+                manifest_revision=revision,
+                create_fingerprint=fingerprint,
+            )
+        except ValueError as exc:
+            if str(exc) == "idempotency-conflict":
+                raise HTTPException(409, "La misma Idempotency-Key se reutilizó con otra configuración de run.") from exc
+            raise
+
+    @router.get("/runs/{run_id}")
+    async def get_run(run_id: str, username: str = Depends(auth_dependency)):
+        row = await chronicles_run_store.get_run(run_id, username)
+        if row is None:
+            raise HTTPException(404, "Run de Chronicles no encontrada.")
+        return row
 
     return router

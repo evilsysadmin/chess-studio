@@ -7,6 +7,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 
 
+import chronicles_run_store
 import db
 import feedback_store as fstore
 import game_store as gstore
@@ -127,6 +128,7 @@ def build_system_router(*, auth_dependency, is_admin_check, limiter, admin_usern
         deleted_games = await gstore.delete_games_by_owner(username)
         await pstore.delete_profile(username)
         await pvp_store.delete_user_data(username)
+        await chronicles_run_store.delete_user_runs(username)
         await matthias_daily_store.delete_user_daily(username)
         await matthias_memory_store.delete_user_memory(username)
         deleted = await ustore.delete_user(username)
