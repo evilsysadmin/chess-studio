@@ -3,7 +3,7 @@ import pistolPayload from './assets/pawnSlug/matthias_pistol_premium_v3.b64?raw'
 import machinegunPayload from './assets/pawnSlug/matthias_machinegun_premium_v3.b64?raw';
 import shotgunPayload from './assets/pawnSlug/matthias_shotgun_premium_v3.b64?raw';
 import panzerfaustPayload from './assets/pawnSlug/matthias_panzerfaust_premium_v3.b64?raw';
-import canonicalHeadPayload from './assets/pawnSlug/matthias_canonical_head_v1.b64?raw';
+import canonicalMotionPayload from './assets/pawnSlug/matthias_motion_atlas_v5_payload.b64?raw';
 import { configurePawnSlugTexture } from './pawnSlugSpriteCore.js';
 
 const PAYLOADS = Object.freeze({
@@ -21,7 +21,7 @@ const ACTIONS = Object.freeze({
   jump: Object.freeze({ row: 4, count: 9 }),
 });
 
-const ATLAS = Object.freeze({
+const PREMIUM_ATLAS = Object.freeze({
   width: 3072,
   height: 960,
   frameWidth: 192,
@@ -29,24 +29,46 @@ const ATLAS = Object.freeze({
   guardTexels: 2,
 });
 
-// Approved canonical-sheet head centres, normalized from the original 96px
-// authoring cells and mirrored into the premium bank's screen-left source pose.
-// Keeping these tiny anchors separate from the weapon atlas lets the face/cap be
-// corrected without repainting four otherwise-good weapon animation banks.
-const CANONICAL_HEAD_ANCHORS = Object.freeze({
-  idle: Object.freeze([[47.5, 27], [48, 27], [47.5, 27], [48, 27], [47.5, 27], [48, 27], [47.5, 27], [48, 27], [47.5, 27], [48, 27]]),
-  walk: Object.freeze([[47, 26], [47, 27], [48, 26], [44, 26], [48, 26], [47, 27], [47, 26], [47, 27], [47, 26], [47, 27]]),
-  run: Object.freeze([[41.5, 27], [42, 27], [43, 26], [45, 27], [43, 26], [42, 27], [41.5, 27], [42, 27], [41.5, 27], [42, 27], [43, 26], [44.5, 27], [43, 26], [42, 27], [41.5, 27], [42, 27]]),
-  crouch: Object.freeze([[48.5, 46], [48.5, 46], [48.5, 46], [48.5, 46], [48.5, 46], [48.5, 46], [48.5, 46], [48.5, 46], [48.5, 46], [48.5, 46]]),
-  jump: Object.freeze([[42, 30], [43.5, 30], [45.5, 31], [43.5, 30], [42, 30], [42, 30], [42, 30], [43.5, 30], [42, 30]]),
+const CANONICAL_ATLAS = Object.freeze({
+  width: 1536,
+  height: 480,
+  frameWidth: 96,
+  frameHeight: 96,
 });
 
-const CANONICAL_HEAD_SCALE = Object.freeze([64 / 96, 0.558]);
+// Tight, one-pixel-padded head/cap/neck rectangles measured from the approved
+// 96px Matthias motion sheet. The source sheet faces screen-right. Cropping the
+// real frame instead of moving one static portrait preserves cap tilt, face
+// silhouette and neckline for every idle/walk/run/crouch/jump pose.
+const CANONICAL_HEAD_RECTS = Object.freeze({
+  idle: Object.freeze([
+    [29, 4, 38, 45], [29, 4, 39, 45], [29, 4, 38, 45], [29, 4, 39, 45],
+    [29, 4, 38, 45], [29, 4, 39, 45], [29, 4, 38, 45], [29, 4, 39, 45],
+    [29, 4, 38, 45], [29, 4, 39, 45],
+  ]),
+  walk: Object.freeze([
+    [26, 4, 47, 44], [26, 4, 45, 45], [25, 4, 46, 44], [31, 4, 41, 44],
+    [25, 4, 46, 44], [26, 4, 45, 45], [26, 4, 47, 44], [26, 4, 45, 45],
+    [26, 4, 47, 44], [26, 4, 45, 45],
+  ]),
+  run: Object.freeze([
+    [31, 4, 48, 45], [30, 4, 48, 45], [28, 4, 49, 44], [29, 4, 45, 45],
+    [28, 4, 49, 44], [30, 4, 48, 45], [31, 4, 48, 45], [30, 4, 48, 45],
+    [31, 4, 48, 45], [30, 4, 48, 45], [28, 4, 49, 44], [29, 4, 45, 45],
+    [28, 4, 49, 44], [30, 4, 48, 45], [31, 4, 48, 45], [30, 4, 48, 45],
+  ]),
+  crouch: Object.freeze([
+    [28, 23, 40, 45], [27, 23, 41, 45], [28, 23, 40, 45], [27, 23, 41, 45],
+    [28, 23, 40, 45], [27, 23, 41, 45], [28, 23, 40, 45], [27, 23, 41, 45],
+    [28, 23, 40, 45], [27, 23, 41, 45],
+  ]),
+  jump: Object.freeze([
+    [30, 7, 48, 45], [28, 7, 49, 45], [28, 7, 46, 46], [28, 7, 49, 45],
+    [30, 7, 48, 45], [30, 7, 49, 45], [30, 7, 48, 45], [28, 7, 49, 45],
+    [30, 7, 48, 45],
+  ]),
+});
 
-// Pawn Slug deliberately uses Matthias as a HUMAN tactical soldier. His face is
-// still the canonical spherical Matthias face and he keeps the officer cap that
-// makes him recognisable across Chess Studio. The pawn silhouette belongs to
-// chess surfaces, not to this Metal-Slug-like experiment.
 export const PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY = Object.freeze({
   version: 'pawn-slug-matthias-canon-v1',
   bodyForm: 'human-tactical-soldier',
@@ -59,33 +81,30 @@ export const PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY = Object.freeze({
 });
 
 export const PAWN_SLUG_MATTHIAS_CANONICAL_HEAD_ART = Object.freeze({
-  version: 'canonical-head-v1',
-  source: 'approved-canonical-matthias-sheet',
-  purpose: 'face-and-officer-cap-authority',
-  sourceFacing: 'left',
+  version: 'canonical-head-motion-v2',
+  source: 'existing-matthias-motion-atlas-v5',
+  purpose: 'frame-specific-face-cap-neck-authority',
+  sourceFacing: 'right',
   weaponIndependent: true,
-  textureWidth: 64,
-  textureHeight: 56,
-  spriteScale: CANONICAL_HEAD_SCALE,
+  frameSpecific: true,
+  reusesExistingAtlas: true,
+  textureWidth: CANONICAL_ATLAS.width,
+  textureHeight: CANONICAL_ATLAS.height,
+  frameWidth: CANONICAL_ATLAS.frameWidth,
+  frameHeight: CANONICAL_ATLAS.frameHeight,
 });
 
 export const PAWN_SLUG_MATTHIAS_BROWSER_RENDER_CONTRACT = 'data-pawn-slug-matthias-visual';
 
 export const PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME = Object.freeze({
-  // The approved canonical bank keeps the v3 authored footprint: ~127-128
-  // visible standing pixels inside each 192px cell. Runtime scale/hitboxes stay
-  // unchanged while the identity contract above prevents visual regressions.
   scale: Object.freeze([2.08, 3.0]),
   authoredBottomGutterPx: 24,
   footAnchorY: 24 / 192,
   visibleStandingHeightPx: Object.freeze([127, 128]),
-  uvGuardTexels: ATLAS.guardTexels,
+  uvGuardTexels: PREMIUM_ATLAS.guardTexels,
 });
 
 export const PAWN_SLUG_MATTHIAS_INTEGRATED_ART = Object.freeze({
-  // Keep the authored-atlas revision as the asset version. The visual identity
-  // has its own independent version so canon changes cannot invalidate runtime
-  // consumers that key compatibility checks off the Blender atlas revision.
   version: 'blender-premium-v3',
   atlasRevision: 'blender-premium-v3',
   canonicalIdentity: PAWN_SLUG_MATTHIAS_CANONICAL_IDENTITY,
@@ -96,11 +115,25 @@ export const PAWN_SLUG_MATTHIAS_INTEGRATED_ART = Object.freeze({
   runtimeFacing: 'world-direction-normalized',
   columns: 16,
   rows: 5,
-  frameWidth: ATLAS.frameWidth,
-  frameHeight: ATLAS.frameHeight,
+  frameWidth: PREMIUM_ATLAS.frameWidth,
+  frameHeight: PREMIUM_ATLAS.frameHeight,
   footAnchorY: PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME.footAnchorY,
   separateWeaponOverlay: false,
 });
+
+function normalizedActionFrame(action = 'idle', frameIndex = 0) {
+  const safeAction = ACTIONS[action] ? action : 'idle';
+  const track = ACTIONS[safeAction];
+  const frame = ((Math.floor(frameIndex) % track.count) + track.count) % track.count;
+  return { safeAction, track, frame };
+}
+
+function canonicalHeadRect(action = 'idle', frameIndex = 0) {
+  const { safeAction, track, frame } = normalizedActionFrame(action, frameIndex);
+  const rects = CANONICAL_HEAD_RECTS[safeAction] || CANONICAL_HEAD_RECTS.idle;
+  const rect = rects[frame] || rects[0];
+  return { safeAction, track, frame, rect };
+}
 
 export function pawnSlugIntegratedWeaponId(kind = 'pistol') {
   return Object.hasOwn(PAYLOADS, kind) ? kind : 'pistol';
@@ -112,51 +145,73 @@ export function pawnSlugIntegratedWeaponAtlasUrl(kind = 'pistol') {
 }
 
 export function pawnSlugCanonicalHeadAtlasUrl() {
-  return `data:image/webp;base64,${canonicalHeadPayload.trim()}`;
-}
-
-export function pawnSlugCanonicalHeadPose(action = 'idle', frameIndex = 0, worldDirection = 1) {
-  const track = ACTIONS[action] || ACTIONS.idle;
-  const safeAction = ACTIONS[action] ? action : 'idle';
-  const frame = ((Math.floor(frameIndex) % track.count) + track.count) % track.count;
-  const anchor = (CANONICAL_HEAD_ANCHORS[safeAction] || CANONICAL_HEAD_ANCHORS.idle)[frame] || CANONICAL_HEAD_ANCHORS.idle[0];
-  const sourceX = (anchor[0] / 96) - 0.5;
-  const mirrored = worldDirection >= 0;
-  return Object.freeze({
-    action: safeAction,
-    frameIndex: frame,
-    mirrored,
-    x: mirrored ? -sourceX : sourceX,
-    y: (1 - PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME.footAnchorY) - (anchor[1] / 96),
-    scaleX: CANONICAL_HEAD_SCALE[0],
-    scaleY: CANONICAL_HEAD_SCALE[1],
-  });
+  return `data:image/webp;base64,${canonicalMotionPayload.trim()}`;
 }
 
 export function pawnSlugPremiumMatthiasAtlasWindow(action = 'idle', frameIndex = 0, worldDirection = 1) {
-  const track = ACTIONS[action] || ACTIONS.idle;
-  const safeAction = ACTIONS[action] ? action : 'idle';
-  const frame = ((Math.floor(frameIndex) % track.count) + track.count) % track.count;
-  const guard = ATLAS.guardTexels;
-  const guardedWidth = ATLAS.frameWidth - guard * 2;
-  const guardedHeight = ATLAS.frameHeight - guard * 2;
-  const leftEdge = frame * ATLAS.frameWidth + guard;
-  const rightEdge = (frame + 1) * ATLAS.frameWidth - guard;
-  const bottomEdge = ATLAS.height - ((track.row + 1) * ATLAS.frameHeight) + guard;
+  const { safeAction, track, frame } = normalizedActionFrame(action, frameIndex);
+  const guard = PREMIUM_ATLAS.guardTexels;
+  const guardedWidth = PREMIUM_ATLAS.frameWidth - guard * 2;
+  const guardedHeight = PREMIUM_ATLAS.frameHeight - guard * 2;
+  const leftEdge = frame * PREMIUM_ATLAS.frameWidth + guard;
+  const rightEdge = (frame + 1) * PREMIUM_ATLAS.frameWidth - guard;
+  const bottomEdge = PREMIUM_ATLAS.height - ((track.row + 1) * PREMIUM_ATLAS.frameHeight) + guard;
 
-  // Blender authors every premium bank facing screen-left. Mirror only when the
-  // game asks Matthias to face right; this keeps runtime direction semantics
-  // independent from how the atlas was rendered.
+  // Premium v3 weapon banks are authored screen-left.
   const mirrored = worldDirection >= 0;
   return Object.freeze({
     action: safeAction,
     frameIndex: frame,
     row: track.row,
     mirrored,
-    repeatX: (mirrored ? -1 : 1) * (guardedWidth / ATLAS.width),
-    repeatY: guardedHeight / ATLAS.height,
-    offsetX: (mirrored ? rightEdge : leftEdge) / ATLAS.width,
-    offsetY: bottomEdge / ATLAS.height,
+    repeatX: (mirrored ? -1 : 1) * (guardedWidth / PREMIUM_ATLAS.width),
+    repeatY: guardedHeight / PREMIUM_ATLAS.height,
+    offsetX: (mirrored ? rightEdge : leftEdge) / PREMIUM_ATLAS.width,
+    offsetY: bottomEdge / PREMIUM_ATLAS.height,
+  });
+}
+
+export function pawnSlugCanonicalHeadAtlasWindow(action = 'idle', frameIndex = 0, worldDirection = 1) {
+  const { safeAction, track, frame, rect } = canonicalHeadRect(action, frameIndex);
+  const [x, y, width, height] = rect;
+  const leftEdge = frame * CANONICAL_ATLAS.frameWidth + x;
+  const rightEdge = leftEdge + width;
+  const bottomEdge = CANONICAL_ATLAS.height - (
+    track.row * CANONICAL_ATLAS.frameHeight + y + height
+  );
+
+  // The existing canonical sheet is authored screen-right, the opposite of the
+  // premium weapon banks. Mirror it only when Matthias faces left in the world.
+  const mirrored = worldDirection < 0;
+  return Object.freeze({
+    action: safeAction,
+    frameIndex: frame,
+    row: track.row,
+    rect: Object.freeze([...rect]),
+    mirrored,
+    repeatX: (mirrored ? -1 : 1) * (width / CANONICAL_ATLAS.width),
+    repeatY: height / CANONICAL_ATLAS.height,
+    offsetX: (mirrored ? rightEdge : leftEdge) / CANONICAL_ATLAS.width,
+    offsetY: bottomEdge / CANONICAL_ATLAS.height,
+  });
+}
+
+export function pawnSlugCanonicalHeadPose(action = 'idle', frameIndex = 0, worldDirection = 1) {
+  const { safeAction, frame, rect } = canonicalHeadRect(action, frameIndex);
+  const [x, y, width, height] = rect;
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  const sourceX = (centerX / CANONICAL_ATLAS.frameWidth) - 0.5;
+  const facingRight = worldDirection >= 0;
+  return Object.freeze({
+    action: safeAction,
+    frameIndex: frame,
+    mirrored: !facingRight,
+    x: facingRight ? sourceX : -sourceX,
+    y: (1 - PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME.footAnchorY)
+      - (centerY / CANONICAL_ATLAS.frameHeight),
+    scaleX: width / CANONICAL_ATLAS.frameWidth,
+    scaleY: height / CANONICAL_ATLAS.frameHeight,
   });
 }
 
@@ -213,10 +268,16 @@ function applyCanonicalHeadPose(sprite) {
   );
   headSprite.position.set(pose.x, pose.y, 0.002);
   headSprite.scale.set(pose.scaleX, pose.scaleY, 1);
+
   if (head.texture) {
+    const window = pawnSlugCanonicalHeadAtlasWindow(
+      animation.action || 'idle',
+      animation.frameIndex || 0,
+      animation.direction || 1,
+    );
     configurePawnSlugTexture(head.texture);
-    head.texture.repeat.set(pose.mirrored ? -1 : 1, 1);
-    head.texture.offset.set(pose.mirrored ? 1 : 0, 0);
+    head.texture.repeat.set(window.repeatX, window.repeatY);
+    head.texture.offset.set(window.offsetX, window.offsetY);
     head.texture.needsUpdate = true;
   }
 }
@@ -238,8 +299,6 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
   const sprite = new THREE.Sprite(material);
   sprite.name = 'pawn-slug-matthias-sprite';
   sprite.scale.set(scale[0], scale[1], 1);
-  // Align authored feet rather than the transparent bottom of the 192px cell to
-  // the runtime ground line. v3 keeps the same 12.5% authored foot gutter.
   sprite.center.set(0.5, PAWN_SLUG_MATTHIAS_PREMIUM_RUNTIME.footAnchorY);
   sprite.userData.motionBaseScaleX = scale[0];
   sprite.userData.motionBaseScaleY = scale[1];
@@ -279,9 +338,6 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
     crouchBlend: 0,
   };
 
-  // Weapon-specific v3 banks stay authoritative for body, hands and gun. This
-  // small child sprite replaces only the recognisable head: canonical spherical
-  // face + officer cap. That avoids repainting or de-synchronising weapon poses.
   const canonicalHeadMaterial = new THREE.SpriteMaterial({
     transparent: true,
     alphaTest: 0.05,
@@ -293,6 +349,7 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
   canonicalHeadSprite.center.set(0.5, 0.5);
   canonicalHeadSprite.renderOrder = 1;
   canonicalHeadSprite.userData.pawnSlugCanonicalHeadOverlay = true;
+  canonicalHeadSprite.userData.pawnSlugFrameSpecificHeadCrop = true;
   sprite.add(canonicalHeadSprite);
   sprite.userData.canonicalHead.sprite = canonicalHeadSprite;
   applyCanonicalHeadPose(sprite);
@@ -361,9 +418,7 @@ export function createIntegratedMatthiasSlugSprite(scale = PAWN_SLUG_MATTHIAS_PR
 
   sprite.userData.setActionFrame = (action, frameIndex) => {
     const animation = sprite.userData.animation;
-    const nextAction = ACTIONS[action] ? action : 'idle';
-    const count = ACTIONS[nextAction].count;
-    const nextFrame = ((Math.floor(frameIndex) % count) + count) % count;
+    const { safeAction: nextAction, frame: nextFrame } = normalizedActionFrame(action, frameIndex);
     if (animation.action === nextAction && animation.frameIndex === nextFrame) return;
     animation.action = nextAction;
     animation.frameIndex = nextFrame;
