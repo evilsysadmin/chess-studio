@@ -22,10 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install Blender + image tools
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends blender libegl1 libgl1-mesa-dri python3-pil python3-numpy
+      - uses: ./.github/actions/setup-blender-canonical
 
       - name: Render all enemy actions in one Blender process
         env:
