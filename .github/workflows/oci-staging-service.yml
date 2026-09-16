@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'infra/oci/ops/agent-reboot.request'
+      - 'infra/oci/ops/bringup.request'
       - '.github/workflows/oci-staging-service.yml'
   workflow_run:
     workflows:
@@ -38,7 +39,7 @@ jobs:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     name: OCI staging · service control
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
       OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
@@ -50,45 +51,69 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           fetch-depth: 2
-      - name: Detect explicit agent recovery request
-        id: recovery
+
+      - name: Detect explicit OCI operations requested by main
+        id: ops
         if: github.event_name == 'push'
         env:
           BEFORE_SHA: ${{ github.event.before }}
           HEAD_SHA: ${{ github.sha }}
+        shell: bash
         run: |
           set -euo pipefail
-          if ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
-            git fetch --no-tags --depth=1 origin "$BEFORE_SHA"
-          fi
-          if git diff --name-only "$BEFORE_SHA" "$HEAD_SHA" -- | grep -Fxq 'infra/oci/ops/agent-reboot.request'; then
-            echo 'requested=true' >> "$GITHUB_OUTPUT"
+          files=''
+          if [[ "$BEFORE_SHA" =~ ^0+$ ]]; then
+            files="$(git diff-tree --no-commit-id --name-only -r "$HEAD_SHA")"
           else
-            echo 'requested=false' >> "$GITHUB_OUTPUT"
+            if ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+              git fetch --no-tags --depth=1 origin "$BEFORE_SHA"
+            fi
+            files="$(git diff --name-only "$BEFORE_SHA" "$HEAD_SHA" --)"
           fi
+
+          if grep -Fxq 'infra/oci/ops/agent-reboot.request' <<<"$files"; then
+            echo 'reboot=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'reboot=false' >> "$GITHUB_OUTPUT"
+          fi
+
+          if grep -Fxq 'infra/oci/ops/bringup.request' <<<"$files"; then
+            echo 'bringup=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'bringup=false' >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
           cache: pip
+
       - name: Validate OCI service contracts
         run: |
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
+
       - name: Install OCI SDK
         run: python3 -m pip install --disable-pip-version-check 'oci==2.185.2'
+
       - name: Sync private runtime config
-        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync'
+        if: >-
+          (github.event_name == 'push' && steps.ops.outputs.bringup == 'true') ||
+          (github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync')
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: python3 scripts/oci_runtime_config.py sync
+
       - name: Recover stale OCI agent after explicit request
         if: >-
-          (github.event_name == 'push' && steps.recovery.outputs.requested == 'true') ||
+          (github.event_name == 'push' && steps.ops.outputs.reboot == 'true') ||
           (github.event_name == 'workflow_dispatch' && inputs.operation == 'reboot-agent')
         run: python3 scripts/oci_run_command.py reboot-agent
+
       - name: Diagnose OCI agent transport
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'diagnose'
         run: python3 scripts/oci_run_command.py diagnose
+
       - name: Smoke OCI agent transport
         if: >-
           github.event_name == 'workflow_run' ||
@@ -117,8 +142,11 @@ jobs:
             cat "$log"
             exit "$rc"
           done
+
       - name: Deploy immutable backend release
-        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'deploy'
+        if: >-
+          (github.event_name == 'push' && steps.ops.outputs.bringup == 'true') ||
+          (github.event_name == 'workflow_dispatch' && inputs.operation == 'deploy')
         env:
-          DEPLOY_REF: ${{ inputs.repo_ref || github.sha }}
+          DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.repo_ref || github.sha }}
         run: python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_REF"
