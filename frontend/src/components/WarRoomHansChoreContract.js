@@ -1,4 +1,4 @@
-export const WAR_ROOM_HANS_CHORE_CONTRACT_VERSION = 'hans-chore-contract-v4-carpet-edge-fallback';
+export const WAR_ROOM_HANS_CHORE_CONTRACT_VERSION = 'hans-chore-contract-v5-carpet-edge-fallback-static-target-policy';
 
 export const WAR_ROOM_HANS_CHORE_EVENTS = Object.freeze([
   'dust-armor',
@@ -53,6 +53,11 @@ export const WAR_ROOM_HANS_CHORE_DIALOGUE = Object.freeze({
 
 export function warRoomHansChoreForEvent(eventName) {
   return WAR_ROOM_HANS_CHORES[String(eventName || '')] || null;
+}
+
+export function warRoomHansChoreCanMoveTarget(eventName, targetName) {
+  return String(eventName || '') === 'straighten-room'
+    && String(targetName || '') === 'war-room-teutonic-command-chair';
 }
 
 export function warRoomHansChoreDialoguePhase(eventName, elapsedMs) {
