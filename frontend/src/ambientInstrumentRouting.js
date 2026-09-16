@@ -27,10 +27,12 @@ const ORGANIC_MEDITERRANEAN_THEME_IDS = new Set([
   'bosphorusRain',
 ]);
 
+const ORGANIC_IBERIAN_THEME_IDS = new Set(['andalusianCoast']);
 const ORGANIC_LATIN_THEME_IDS = new Set(['havana205']);
 const OSCILLATOR_PLUCKS = new Set(['oudJazz', 'qanun', 'buzuq']);
 
 export const ORGANIC_MEDITERRANEAN_ROUTING_IDS = Object.freeze([...ORGANIC_MEDITERRANEAN_THEME_IDS]);
+export const ORGANIC_IBERIAN_ROUTING_IDS = Object.freeze([...ORGANIC_IBERIAN_THEME_IDS]);
 export const ORGANIC_LATIN_ROUTING_IDS = Object.freeze([...ORGANIC_LATIN_THEME_IDS]);
 
 function organicMediterraneanInstrument(theme, instrument, lane) {
@@ -38,6 +40,17 @@ function organicMediterraneanInstrument(theme, instrument, lane) {
   if (lane !== 'lead' && lane !== 'counter') return instrument;
   if (!OSCILLATOR_PLUCKS.has(instrument)) return instrument;
   return 'nylonGuitar';
+}
+
+function organicIberianInstrument(theme, instrument, lane) {
+  if (!ORGANIC_IBERIAN_THEME_IDS.has(theme?.id)) return instrument;
+  if (lane !== 'lead' && lane !== 'counter') return instrument;
+  // Andalusian Coast already routes its plain guitar exchanges to the modelled
+  // nylon string. Its remaining oudJazz hand-off still carries a heavy saw
+  // component, so give that answering role to the darker modelled jazz guitar:
+  // two genuinely different plucked bodies, no oscillator oud running for bars.
+  if (instrument === 'oudJazz') return 'jazzGuitar';
+  return instrument;
 }
 
 function organicLatinInstrument(theme, instrument, lane) {
@@ -67,5 +80,6 @@ export function structuredSectionInstrument(theme, feel, section, lane) {
   }
 
   instrument = organicMediterraneanInstrument(theme, instrument, lane);
+  instrument = organicIberianInstrument(theme, instrument, lane);
   return organicLatinInstrument(theme, instrument, lane);
 }
