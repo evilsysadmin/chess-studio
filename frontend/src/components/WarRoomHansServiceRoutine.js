@@ -12,6 +12,10 @@ import {
   resetWarRoomHansWalk,
 } from './WarRoomHansAnimator.js';
 import {
+  markWarRoomHansAmbientEffectCompleted,
+  warRoomHansAmbientCompletionState,
+} from './WarRoomHansAmbientCompletion.js';
+import {
   warRoomHansAmbientDelayMs,
   warRoomHansEventForGame,
   warRoomHansShouldClearDeliveredArtifacts,
@@ -40,7 +44,7 @@ import {
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v9-reset-prop-baselines-terminal-setup-delivered-continuity';
+export const WAR_ROOM_HANS_SERVICE_ROUTINE_VERSION = 'hans-service-routine-v10-reset-prop-baselines-terminal-setup-delivered-continuity-persistent-effect';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const COMMAND_DESK_TOP_NAME = 'war-room-command-desk-top';
@@ -138,6 +142,28 @@ function ensureDeliveredEspresso(root) {
   return group;
 }
 
+export function restoreWarRoomHansPersistedServiceEffect(gameId, eventName, {
+  deliveredEspresso = null,
+  plant = null,
+} = {}) {
+  const persisted = warRoomHansAmbientCompletionState(gameId, eventName);
+  if (!persisted.completed) return false;
+
+  if (persisted.deliveryArtifact === 'espresso') {
+    // A persisted delivery must remain visible after F5. If the command-desk art
+    // is unavailable and the cup cannot be reconstructed, do not suppress the
+    // routine: retrying is safer than claiming an invisible delivery succeeded.
+    if (!deliveredEspresso) return false;
+    deliveredEspresso.visible = true;
+    return true;
+  }
+
+  if (eventName === 'water-plant' && plant?.userData) {
+    plant.userData.warRoomHansLastWatered = gameId;
+  }
+  return true;
+}
+
 function setDialogue(actor, phase) {
   const canvas = getWarRoomHansCanvas(actor);
   if (canvas?.dataset) canvas.dataset.warRoomHansServiceDialogue = phase || '';
@@ -211,6 +237,9 @@ export function installWarRoomHansServiceRoutine(root) {
       routeOut = [];
       routeIndex = 0;
       if (clearDeliveredArtifacts && deliveredEspresso) deliveredEspresso.visible = false;
+      if (restoreWarRoomHansPersistedServiceEffect(gameId, eventName, { deliveredEspresso, plant })) {
+        completedGameId = gameId;
+      }
       setDialogue(actor, '');
     }
 
@@ -311,11 +340,14 @@ export function installWarRoomHansServiceRoutine(root) {
       } else {
         setDialogue(actor, warRoomHansServiceDialoguePhase(eventName, actionElapsed));
         if (actionElapsed >= 2200 && deliveredEspresso) {
+          const newlyDelivered = deliveredEspresso.visible !== true;
           deliveredEspresso.visible = true;
           props.tray.visible = false;
+          if (newlyDelivered) markWarRoomHansAmbientEffectCompleted(gameId, eventName);
         }
       }
       if (actionElapsed >= warRoomHansServiceActionMs(eventName)) {
+        if (eventName === 'water-plant') markWarRoomHansAmbientEffectCompleted(gameId, eventName);
         resetWarRoomHansWalk(controller, { full: true });
         resetWarRoomHansServiceProps(props);
         setDialogue(actor, '');
