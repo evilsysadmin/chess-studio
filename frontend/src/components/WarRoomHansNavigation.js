@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { moveWarRoomHansToward } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v9-board-keepout-fail-closed';
+export const WAR_ROOM_HANS_NAVIGATION_VERSION = 'hans-navigation-v10-side-sofa-keepout';
 export const WAR_ROOM_HANS_NAVIGATION_CLEAR_LANE_HALF_EXTENT = 5.55;
 export const WAR_ROOM_HANS_NAVIGATION_EDGE_MARGIN = 0.12;
 export const WAR_ROOM_HANS_NAVIGATION_FURNITURE_CLEARANCE = 0.58;
@@ -13,6 +13,10 @@ const COMMAND_DESK_NAMES = Object.freeze([
   'war-room-command-desk-top',
 ]);
 const COMMAND_CHAIR_NAME = 'war-room-teutonic-command-chair';
+const SOFA_NAMES = Object.freeze([
+  'war-room-sofa-left',
+  'war-room-sofa-right',
+]);
 const GEOMETRY_EPSILON = 1e-4;
 
 function localPoint(parent, world) {
@@ -184,9 +188,12 @@ function navigationObstacles(floor, parent) {
   const root = sceneRoot(floor) || sceneRoot(parent);
   const desk = firstNamed(root, COMMAND_DESK_NAMES);
   const chair = root?.getObjectByName?.(COMMAND_CHAIR_NAME) || null;
+  const sofas = SOFA_NAMES
+    .map((name) => root?.getObjectByName?.(name) || null)
+    .filter(Boolean);
   return [
     boardKeepOutRect(floor, parent),
-    ...[desk, chair]
+    ...[desk, chair, ...sofas]
       .filter(Boolean)
       .map((object) => obstacleRectForObject(object, parent)),
   ].filter(Boolean);
@@ -300,9 +307,9 @@ export function warRoomHansSafeRoomLoop(floor, parent) {
   const loop = worldPoints.map(([x, z]) => localPoint(parent, new THREE.Vector3(x, -0.34, z)));
   const obstacles = navigationObstacles(floor, parent);
 
-  // Central furniture or the board keep-out can swallow a canonical circulation
-  // waypoint. Remove it rather than allowing a nominally valid root coordinate to
-  // put Hans' rendered body through solid scenery or onto the playing surface.
+  // Central furniture, side sofas or the board keep-out can swallow a canonical
+  // circulation waypoint. Remove it rather than allowing a nominally valid root
+  // coordinate to put Hans' rendered body through solid scenery or onto the board.
   return obstacles.length
     ? loop.filter((point) => obstacles.every((obstacle) => !pointInsideRect(point, obstacle)))
     : loop;
