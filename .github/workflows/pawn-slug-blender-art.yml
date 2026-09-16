@@ -3,14 +3,10 @@ name: Pawn Slug · Blender canonical art
 on:
   pull_request:
     paths:
-      - 'scripts/blender/render_pawn_slug_matthias_premium.py'
       - 'scripts/blender/render_pawn_slug_matthias_rigged_proof.py'
       - 'scripts/blender/pawn_slug_matthias_premium_common.py'
       - 'scripts/blender/pawn_slug_matthias_premium_weapons.py'
-      - 'scripts/blender/pawn_slug_matthias_premium_character.py'
       - 'scripts/blender/home_matthias_parts.py'
-      # Generated runtime atlases are outputs of this renderer. Keeping them out
-      # of paths prevents a materialization commit from launching all four weapons again.
       - '.github/workflows/pawn-slug-blender-art.yml'
   workflow_dispatch:
 
@@ -23,9 +19,9 @@ concurrency:
 
 jobs:
   render-matthias:
-    name: Render premium Matthias · ${{ matrix.shard }}
+    name: Render rigged Matthias proof · ${{ matrix.shard }}
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       max-parallel: 2
@@ -38,158 +34,33 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-blender-canonical
-        with:
-          extra-packages: webp
-      - name: Render premium v3 canonical sheets at 2x
-        env:
-          LIBGL_ALWAYS_SOFTWARE: '1'
-          WEAPONS: ${{ matrix.weapons }}
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/pawn-slug-art
-          for WEAPON in $WEAPONS; do
-            blender --background -noaudio \
-              --python scripts/blender/render_pawn_slug_matthias_premium.py \
-              -- --output-dir /tmp/pawn-slug-art --weapon "$WEAPON"
-          done
       - name: Render rigged weapon-integrated proof poses
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
           WEAPONS: ${{ matrix.weapons }}
         run: |
           set -euo pipefail
+          mkdir -p /tmp/pawn-slug-rigged-proof
           for WEAPON in $WEAPONS; do
             blender --background -noaudio \
               --python scripts/blender/render_pawn_slug_matthias_rigged_proof.py \
-              -- --output-dir /tmp/pawn-slug-art --weapon "$WEAPON"
+              -- --output-dir /tmp/pawn-slug-rigged-proof --weapon "$WEAPON"
           done
-      - name: Downsample v3 candidates + runtime-scale proofs
+      - name: Sanity-check rigged proof outputs
         env:
           WEAPONS: ${{ matrix.weapons }}
         run: |
           set -euo pipefail
           for WEAPON in $WEAPONS; do
-            export WEAPON
-            python3 - <<'PY'
-          import os
-          from pathlib import Path
-          from PIL import Image
-
-          weapon = os.environ['WEAPON']
-          root = Path('/tmp/pawn-slug-art')
-          source = root / f'matthias_{weapon}_premium_v3_hi.png'
-          candidate = root / f'matthias_{weapon}_premium_v3.png'
-          preview = root / f'matthias_{weapon}_premium_v3_preview.png'
-          runtime = root / f'matthias_{weapon}_premium_v3_runtime_96.png'
-          runtime_preview = root / f'matthias_{weapon}_premium_v3_runtime_96_4x.png'
-          image = Image.open(source).convert('RGBA')
-          assert image.size == (6144, 1920), image.size
-          candidate_image = image.resize((3072, 960), Image.Resampling.LANCZOS)
-          candidate_image.save(candidate, optimize=True)
-          candidate_image.crop((0, 0, 192, 192)).resize((768, 768), Image.Resampling.LANCZOS).save(preview, optimize=True)
-          runtime_image = candidate_image.resize((1536, 480), Image.Resampling.LANCZOS)
-          runtime_image.save(runtime, optimize=True)
-          runtime_image.crop((0, 0, 96, 96)).resize((384, 384), Image.Resampling.NEAREST).save(runtime_preview, optimize=True)
-          PY
-            cwebp -quiet -q 92 -alpha_q 100 -m 6 \
-              "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.png" \
-              -o "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp"
-            base64 -w0 "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp" \
-              > "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.b64"
-          done
-      - name: Sanity-check premium v3 atlas contracts
-        env:
-          WEAPONS: ${{ matrix.weapons }}
-        run: |
-          set -euo pipefail
-          for WEAPON in $WEAPONS; do
-            export WEAPON
-            test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.blend"
-            test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_hi.png"
-            test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.png"
-            test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_preview.png"
-            test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_runtime_96.png"
-            test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3_runtime_96_4x.png"
             for POSE in idle run crouch jump; do
-              test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_rigged_${POSE}_proof.png"
+              test -s "/tmp/pawn-slug-rigged-proof/matthias_${WEAPON}_rigged_${POSE}_proof.png"
             done
-            test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp"
-            test -s "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.b64"
-            webpinfo "/tmp/pawn-slug-art/matthias_${WEAPON}_premium_v3.webp"
-            python3 - <<'PY'
-          import os
-          from PIL import Image
-
-          weapon = os.environ['WEAPON']
-          counts = (10, 10, 16, 10, 9)
-          min_width_192 = {
-              'pistol': 68,
-              'machinegun': 88,
-              'shotgun': 100,
-              'panzerfaust': 108,
-          }[weapon]
-          min_width_96 = {
-              'pistol': 34,
-              'machinegun': 44,
-              'shotgun': 50,
-              'panzerfaust': 54,
-          }[weapon]
-
-          def validate(path, cell_px, min_width, min_height, max_height, edge):
-              image = Image.open(path).convert('RGBA')
-              assert image.size == (16 * cell_px, 5 * cell_px), image.size
-              for row, count in enumerate(counts):
-                  brightness = []
-                  for col in range(count):
-                      cell = image.crop((col * cell_px, row * cell_px, (col + 1) * cell_px, (row + 1) * cell_px))
-                      alpha = cell.getchannel('A').point(lambda value: 255 if value >= 96 else 0)
-                      bbox = alpha.getbbox()
-                      assert bbox is not None, f'empty premium v3 cell row={row} col={col} cell={cell_px}'
-                      left, top, right, bottom = bbox
-                      width = right - left
-                      height = bottom - top
-                      assert left > edge and right < cell_px - edge and top > edge and bottom < cell_px - edge, (
-                          f'premium v3 cell bleed row={row} col={col} bbox={bbox} cell={cell_px}'
-                      )
-                      assert width >= min_width, (
-                          f'premium v3 armed silhouette collapsed row={row} col={col} '
-                          f'width={width} expected>={min_width} for {weapon} cell={cell_px}'
-                      )
-                      assert min_height <= height <= max_height, (
-                          f'premium v3 character silhouette height out of range '
-                          f'row={row} col={col} height={height} cell={cell_px}'
-                      )
-                      visible_luma = []
-                      for red, green, blue, alpha_value in cell.getdata():
-                          if alpha_value >= 96:
-                              visible_luma.append(0.2126 * red + 0.7152 * green + 0.0722 * blue)
-                      assert visible_luma, f'no visible premium v3 pixels row={row} col={col} cell={cell_px}'
-                      brightness.append(sum(visible_luma) / len(visible_luma))
-                  darkest = min(brightness)
-                  brightest = max(brightness)
-                  assert darkest >= 20.0, (
-                      f'premium v3 atlas underexposed row={row} darkest={darkest:.1f} cell={cell_px}'
-                  )
-                  assert brightest / max(darkest, 1.0) <= 1.85, (
-                      f'premium v3 atlas exposure flicker row={row} '
-                      f'darkest={darkest:.1f} brightest={brightest:.1f} cell={cell_px}'
-                  )
-
-          validate(
-              f'/tmp/pawn-slug-art/matthias_{weapon}_premium_v3.png',
-              192, min_width_192, 108, 180, 3,
-          )
-          validate(
-              f'/tmp/pawn-slug-art/matthias_{weapon}_premium_v3_runtime_96.png',
-              96, min_width_96, 54, 90, 1,
-          )
-          PY
           done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: pawn-slug-premium-matthias-${{ matrix.shard }}-${{ github.event.pull_request.number || github.run_number }}
-          path: /tmp/pawn-slug-art/
+          name: pawn-slug-rigged-matthias-proof-${{ matrix.shard }}-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/pawn-slug-rigged-proof/
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
