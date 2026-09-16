@@ -4,9 +4,21 @@ on:
   pull_request:
     paths:
       - 'scripts/blender/render_pawn_slug_matthias_rigged_proof.py'
+      - 'scripts/blender/render_pawn_slug_matthias_canonical_runtime.py'
       - 'scripts/blender/pawn_slug_matthias_premium_common.py'
       - 'scripts/blender/pawn_slug_matthias_premium_weapons.py'
       - 'scripts/blender/home_matthias_parts.py'
+      - 'scripts/art/pack_pawn_slug_canonical_runtime.py'
+      - '.github/workflows/pawn-slug-blender-art.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/blender/render_pawn_slug_matthias_rigged_proof.py'
+      - 'scripts/blender/render_pawn_slug_matthias_canonical_runtime.py'
+      - 'scripts/blender/pawn_slug_matthias_premium_common.py'
+      - 'scripts/blender/pawn_slug_matthias_premium_weapons.py'
+      - 'scripts/blender/home_matthias_parts.py'
+      - 'scripts/art/pack_pawn_slug_canonical_runtime.py'
       - '.github/workflows/pawn-slug-blender-art.yml'
   workflow_dispatch:
 
@@ -19,6 +31,7 @@ concurrency:
 
 jobs:
   render-matthias:
+    if: github.event_name != 'push'
     name: Render rigged Matthias proof · ${{ matrix.shard }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -64,3 +77,81 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
+
+  canonical-smg-proof:
+    if: github.event_name != 'push'
+    name: Render canonical SMG run cycle
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-blender-canonical
+      - name: Render approved-language SMG proof cells
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/pawn-slug-canonical-smg-proof
+          blender --background -noaudio \
+            --python scripts/blender/render_pawn_slug_matthias_canonical_runtime.py \
+            -- --output-dir /tmp/pawn-slug-canonical-smg-proof --weapon machinegun --profile proof
+          test -s /tmp/pawn-slug-canonical-smg-proof/matthias_machinegun_idle_00.png
+          for FRAME in 00 04 08 12; do
+            test -s "/tmp/pawn-slug-canonical-smg-proof/matthias_machinegun_run_${FRAME}.png"
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawn-slug-canonical-smg-proof-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/pawn-slug-canonical-smg-proof/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  publish-canonical-smg-r2:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: Publish canonical SMG atlas · R2
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-blender-canonical
+      - name: Render full canonical SMG runtime bank
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/pawn-slug-canonical-runtime
+          mkdir -p /tmp/pawn-slug-canonical-runtime
+          blender --background -noaudio \
+            --python scripts/blender/render_pawn_slug_matthias_canonical_runtime.py \
+            -- --output-dir /tmp/pawn-slug-canonical-runtime --weapon machinegun --profile runtime
+      - name: Pack lossless 16x5 runtime atlas
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check --quiet pillow
+          python3 scripts/art/pack_pawn_slug_canonical_runtime.py \
+            --frames-dir /tmp/pawn-slug-canonical-runtime \
+            --weapon machinegun \
+            --output /tmp/pawn-slug-canonical-runtime/matthias_machinegun_canonical_v2.webp
+          test -s /tmp/pawn-slug-canonical-runtime/matthias_machinegun_canonical_v2.webp
+      - name: Publish immutable SMG atlas to Cloudflare R2
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          python3 -S scripts/r2_asset_publish.py publish \
+            /tmp/pawn-slug-canonical-runtime/matthias_machinegun_canonical_v2.webp \
+            --logical-id pawnSlug.matthias.machinegun \
+            --prefix pawn-slug/matthias/machinegun | tee /tmp/pawn-slug-r2-publish.txt
+          python3 -S scripts/r2_asset_publish.py check-manifest
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pawn-slug-canonical-smg-r2-${{ github.run_number }}
+          path: |
+            frontend/src/assets/r2-assets-manifest.json
+            /tmp/pawn-slug-r2-publish.txt
+          if-no-files-found: warn
+          retention-days: 7
