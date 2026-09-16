@@ -1,4 +1,3 @@
-import { api } from '../api.js';
 import {
   chroniclesMapById,
   chroniclesMapIds,
@@ -46,9 +45,10 @@ function localFallback(mapId, seed, reason = 'remote-unavailable') {
 
 export async function chroniclesResolveAreaManifest(
   mapId,
-  { seed = 0, signal, fetchManifest = api.getChroniclesMapManifest } = {},
+  { seed = 0, signal, fetchManifest } = {},
 ) {
   if (!chroniclesMapIds().includes(mapId)) return localFallback(mapId, seed, 'unknown-map');
+  if (typeof fetchManifest !== 'function') return localFallback(mapId, seed, 'transport-unavailable');
 
   try {
     const payload = await fetchManifest(mapId, seed, { signal });
