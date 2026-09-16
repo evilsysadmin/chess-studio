@@ -1,17 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import {
   CHRONICLES_TACTICS_PARTY_ASSET_VERSION,
+  CHRONICLES_TACTICS_PARTY_LEGACY_MODEL_PATH,
   CHRONICLES_TACTICS_PARTY_MEMBERS,
-  CHRONICLES_TACTICS_PARTY_MODEL_PATH,
+  CHRONICLES_TACTICS_PARTY_MODEL_URL,
+  CHRONICLES_TACTICS_PARTY_R2_ASSET_ID,
   chroniclesTacticsPartyIdleName,
   chroniclesTacticsPartyRootName,
 } from './chroniclesOfMatthiasPartyBlenderArt.js';
 
 describe('Chronicles Tactics real Blender party runtime contract', () => {
-  it('uses one stable versioned runtime GLB for the three non-Matthias companions', () => {
-    expect(CHRONICLES_TACTICS_PARTY_MODEL_PATH).toBe('models/chronicles-tactics-party.glb');
+  it('uses the canonical v8 runtime GLB through the reviewed R2 logical id', () => {
+    expect(CHRONICLES_TACTICS_PARTY_R2_ASSET_ID).toBe('chronicles.tactics.party.runtime');
+    expect(CHRONICLES_TACTICS_PARTY_LEGACY_MODEL_PATH).toBe('models/chronicles-tactics-party.glb');
+    expect(CHRONICLES_TACTICS_PARTY_MODEL_URL).toMatch(/chronicles-tactics-party.*\.glb$/);
     expect(CHRONICLES_TACTICS_PARTY_MEMBERS).toEqual(['rook', 'bishop', 'knight']);
-    expect(CHRONICLES_TACTICS_PARTY_ASSET_VERSION).toBe('chronicles-tactics-party-v3');
+    expect(CHRONICLES_TACTICS_PARTY_ASSET_VERSION).toBe('chronicles-humanoid-party-v8');
   });
 
   it('maps every persistent member id to its Blender root and idle action contract', () => {
