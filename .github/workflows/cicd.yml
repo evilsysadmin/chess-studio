@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: chess-studio-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -24,10 +25,11 @@ jobs:
       run_matthias_home_e2e: ${{ steps.quality_paths.outputs.run_matthias_home_e2e }}
       browser_matrix: ${{ steps.browser_scope.outputs.matrix }}
       browser_has_cases: ${{ steps.browser_scope.outputs.has_cases }}
+      blender_required: ${{ steps.quality_paths.outputs.blender_required }}
+      blender_workflows: ${{ steps.quality_paths.outputs.blender_workflows }}
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.sha }}
           fetch-depth: 2
       - uses: actions/setup-node@v7
         with:
@@ -51,38 +53,34 @@ jobs:
           retention-days: 7
       - name: Classify quality-test surface
         id: quality_paths
-        shell: bash
         env:
-          EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           EVENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
 
-          if [[ "$EVENT_NAME" == 'workflow_dispatch' ]]; then
+          if [[ "${{ github.event_name }}" == 'workflow_dispatch' ]]; then
             python3 -S scripts/quality_scope.py --all >> "$GITHUB_OUTPUT"
+            python3 -S scripts/blender_required_scope.py </dev/null >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           if ! files="$(python3 -S scripts/pr_merge_diff.py --base "$BASE_SHA" --merge "$EVENT_SHA")"; then
-            echo 'Diff merge no fiable; activando Quality completo.'
-            python3 -S scripts/quality_scope.py --all >> "$GITHUB_OUTPUT"
-            exit 0
+            echo '::error::Diff merge no fiable; Quality/Blender fail-closed.'
+            exit 1
           fi
 
-          printf '%s\n' "$files"
           printf '%s\n' "$files" | python3 -S scripts/quality_scope.py >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$files" | python3 -S scripts/blender_required_scope.py >> "$GITHUB_OUTPUT"
       - name: Classify required specialized browser surface
         id: browser_scope
-        shell: bash
         env:
-          EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           EVENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
 
-          if [[ "$EVENT_NAME" == 'workflow_dispatch' ]]; then
+          if [[ "${{ github.event_name }}" == 'workflow_dispatch' ]]; then
             python3 -S scripts/browser_quality_scope.py --all \
               --github-output "$GITHUB_OUTPUT" \
               --summary "$GITHUB_STEP_SUMMARY"
@@ -90,24 +88,22 @@ jobs:
           fi
 
           if ! files="$(python3 -S scripts/pr_merge_diff.py --base "$BASE_SHA" --merge "$EVENT_SHA")"; then
-            echo 'Diff merge no fiable; activando matriz especializada completa.'
             python3 -S scripts/browser_quality_scope.py --all \
               --github-output "$GITHUB_OUTPUT" \
               --summary "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
-          printf '%s\n' "$files"
           printf '%s\n' "$files" | python3 -S scripts/browser_quality_scope.py \
             --github-output "$GITHUB_OUTPUT" \
             --summary "$GITHUB_STEP_SUMMARY"
       - name: Static preflight + CI wiring
-        shell: bash
         run: |
           set -euo pipefail
           make static-preflight
           python3 -S scripts/quality_scope.py --self-test
           python3 -S scripts/browser_quality_scope.py --self-test
+          python3 -S scripts/blender_required_scope.py --self-test
           python3 -S scripts/quality_provenance.py --self-test
           python3 -S scripts/pr_merge_diff.py --self-test
           python3 -S scripts/security_scope.py --self-test
@@ -117,12 +113,12 @@ jobs:
     name: Tests · Frontend
     needs: preflight
     if: needs.preflight.outputs.run_frontend == 'true' || needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true'
+    env:
+      TARGETED_BROWSER: ${{ needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -138,10 +134,10 @@ jobs:
         if: needs.preflight.outputs.run_frontend == 'true'
         run: make test-frontend
       - name: Frontend build · targeted browser smoke only
-        if: needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true'
+        if: env.TARGETED_BROWSER == 'true'
         run: make frontend-build
       - name: Bundle size report · targeted-only path
-        if: (needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true') && needs.preflight.outputs.run_e2e != 'true' && needs.preflight.outputs.browser_has_cases != 'true'
+        if: env.TARGETED_BROWSER == 'true' && needs.preflight.outputs.run_e2e != 'true' && needs.preflight.outputs.browser_has_cases != 'true'
         run: node scripts/bundle_size_report.mjs
       - name: Prepare security report
         if: needs.preflight.outputs.run_security == 'true'
@@ -149,18 +145,16 @@ jobs:
       - name: Node dependency audit
         if: needs.preflight.outputs.run_security == 'true'
         working-directory: frontend
-        shell: bash
         run: |
           set +e
           npm audit --json > ../.security/npm-audit.json
-          rc=$?
           set -e
           if [ ! -s ../.security/npm-audit.json ]; then
             printf '%s\n' '{"error":{"code":"AUDIT_UNAVAILABLE","summary":"npm audit no produjo informe","detail":"endpoint remoto o red no disponibles"}}' > ../.security/npm-audit.json
           fi
           python3 ../scripts/npm_audit_gate.py ../.security/npm-audit.json
       - name: Restore targeted experiment browser runtime
-        if: needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true'
+        if: env.TARGETED_BROWSER == 'true'
         uses: ./.github/actions/setup-browser-e2e
         with:
           browser-scope: chromium
@@ -182,7 +176,7 @@ jobs:
         working-directory: e2e
         run: ./node_modules/.bin/playwright test matthias-home-priority.spec.js --workers=1 --retries=0
       - name: Upload targeted browser diagnostics on failure
-        if: failure() && (needs.preflight.outputs.run_pawn_slug_e2e == 'true' || needs.preflight.outputs.run_chesscom_e2e == 'true' || needs.preflight.outputs.run_trailblazer_e2e == 'true' || needs.preflight.outputs.run_matthias_home_e2e == 'true')
+        if: failure() && env.TARGETED_BROWSER == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: targeted-playwright-test-results
@@ -197,8 +191,6 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
       - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
@@ -230,19 +222,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.sha }}
           fetch-depth: 2
       - name: Detect Docker/dependency/security changes
         id: changes
-        shell: bash
         env:
-          EVENT_NAME: ${{ github.event_name }}
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
           EVENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
 
-          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             python3 -S scripts/security_scope.py --all --github-output "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -252,7 +241,6 @@ jobs:
             exit 0
           fi
 
-          printf '%s\n' "$files"
           printf '%s\n' "$files" | python3 -S scripts/security_scope.py --github-output "$GITHUB_OUTPUT"
       - name: Security gate skipped · no sensitive surface changed
         if: steps.changes.outputs.run_security != 'true'
@@ -261,7 +249,6 @@ jobs:
       - name: Resolve Trivy cache epoch
         if: steps.changes.outputs.run_security == 'true'
         id: trivy_epoch
-        shell: bash
         run: echo "day=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
       - name: Cache Trivy binary and vulnerability DB
         if: steps.changes.outputs.run_security == 'true'
@@ -288,7 +275,6 @@ jobs:
         run: make security-images
       - name: Real stack smoke · Docker Compose
         if: steps.changes.outputs.run_security == 'true'
-        shell: bash
         run: |
           set -euo pipefail
           cleanup() { docker compose down -v || true; }
@@ -303,8 +289,6 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -339,8 +323,6 @@ jobs:
       matrix: ${{ fromJSON(needs.preflight.outputs.core_e2e_matrix) }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
       - name: Restore critical browser runtime
         uses: ./.github/actions/setup-browser-e2e
         with:
@@ -374,8 +356,6 @@ jobs:
       matrix: ${{ fromJSON(needs.preflight.outputs.browser_matrix) }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.sha }}
       - name: Restore specialized browser runtime
         uses: ./.github/actions/setup-browser-e2e
         with:
@@ -404,16 +384,19 @@ jobs:
     needs: [preflight, e2e_lanes, e2e_specialized]
     if: always()
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 50
     steps:
-      - name: Aggregate all required browser lanes
-        shell: bash
+      - name: Aggregate required browser + Blender gates
         env:
           PREFLIGHT_RESULT: ${{ needs.preflight.result }}
           RUN_E2E: ${{ needs.preflight.outputs.run_e2e }}
           CORE_LANES_RESULT: ${{ needs.e2e_lanes.result }}
           RUN_SPECIALIZED: ${{ needs.preflight.outputs.browser_has_cases }}
           SPECIALIZED_RESULT: ${{ needs.e2e_specialized.result }}
+          RUN_BLENDER: ${{ needs.preflight.outputs.blender_required }}
+          BLENDER_WORKFLOWS: ${{ needs.preflight.outputs.blender_workflows }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           if [[ "$PREFLIGHT_RESULT" != 'success' ]]; then
@@ -428,8 +411,21 @@ jobs:
             echo "::error::Alguna lane especializada requerida falló: $SPECIALIZED_RESULT"
             exit 1
           fi
-          if [[ "$RUN_E2E" != 'true' && "$RUN_SPECIALIZED" != 'true' ]]; then
-            echo 'Playwright omitido: esta superficie no requiere navegador crítico ni especializado.'
+          if [[ "$RUN_BLENDER" == 'true' ]]; then
+            [[ -n "${PR_HEAD_SHA:-}" ]] || { echo '::error::Blender requerido sin PR head SHA.'; exit 1; }
+            while read -r workflow; do
+              run_id=''
+              for _ in {1..60}; do
+                run_id="$(gh run list --workflow "$workflow" --commit "$PR_HEAD_SHA" --event pull_request --limit 1 --json databaseId --jq '.[0].databaseId // empty')"
+                [[ -n "$run_id" ]] && break
+                sleep 5
+              done
+              [[ -n "$run_id" ]] || { echo "::error::No apareció $workflow para ${PR_HEAD_SHA:0:12}"; exit 1; }
+              gh run watch "$run_id" --exit-status --interval 15
+            done < <(jq -r '.[].workflow' <<<"$BLENDER_WORKFLOWS")
+          fi
+          if [[ "$RUN_E2E" != 'true' && "$RUN_SPECIALIZED" != 'true' && "$RUN_BLENDER" != 'true' ]]; then
+            echo 'Required gate omitted for this surface.'
             exit 0
           fi
-          echo "Playwright requerido OK · core=$RUN_E2E/$CORE_LANES_RESULT · especializado=$RUN_SPECIALIZED/$SPECIALIZED_RESULT"
+          echo "Required gate OK · blender=$RUN_BLENDER"
