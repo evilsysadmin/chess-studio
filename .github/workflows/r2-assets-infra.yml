@@ -44,6 +44,42 @@ jobs:
         run: python3 -S scripts/cloudflare_r2_assets.py validate
       - name: Static publisher contract
         run: python3 -S scripts/r2_asset_publish.py self-test
+      - name: Validate Pawn Slug enemy publication sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pawn-slug-enemy-r2
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { writeFileSync } from 'node:fs';
+          import {
+            PAWN_SLUG_PREMIUM_ENEMY_RASTER_BASE64,
+            PAWN_SLUG_PREMIUM_ENEMY_RASTER_BYTE_LENGTH,
+            PAWN_SLUG_PREMIUM_ENEMY_RASTER_SHA256,
+          } from './frontend/src/pawnSlugEnemyPremiumAtlasData.js';
+
+          const bytes = Buffer.from(PAWN_SLUG_PREMIUM_ENEMY_RASTER_BASE64, 'base64');
+          const sha = createHash('sha256').update(bytes).digest('hex');
+          if (bytes.length !== PAWN_SLUG_PREMIUM_ENEMY_RASTER_BYTE_LENGTH) {
+            throw new Error(`premium enemy raster length mismatch: ${bytes.length}`);
+          }
+          if (sha !== PAWN_SLUG_PREMIUM_ENEMY_RASTER_SHA256) {
+            throw new Error(`premium enemy raster SHA mismatch: ${sha}`);
+          }
+          if (bytes.subarray(0, 4).toString('ascii') !== 'RIFF' || bytes.subarray(8, 12).toString('ascii') !== 'WEBP') {
+            throw new Error('premium enemy raster is not WebP');
+          }
+          writeFileSync('/tmp/pawn-slug-enemy-r2/enemy_premium_raster_v5.webp', bytes);
+          console.log(`premium raster OK · ${bytes.length} B · ${sha}`);
+          NODE
+          python3 -S - <<'PY'
+          from pathlib import Path
+          path = Path('frontend/src/assets/pawnSlug/enemy_cast_blender_v1_runtime.webp')
+          data = path.read_bytes()
+          assert data[:4] == b'RIFF' and data[8:12] == b'WEBP', 'enemy action atlas is not WebP'
+          assert len(data) > 300_000, f'enemy action atlas unexpectedly small: {len(data)}'
+          print(f'action atlas OK · {len(data)} B')
+          PY
       - name: Validate asset manifest
         run: python3 -S scripts/r2_asset_publish.py check-manifest
 
@@ -70,7 +106,40 @@ jobs:
         run: python3 -S scripts/cloudflare_r2_assets.py check
       - name: Smoke object upload/get/delete
         run: python3 -S scripts/r2_asset_publish.py smoke
-      - name: Emit reviewed R2 manifest
+      - name: Materialize premium enemy raster
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pawn-slug-enemy-r2
+          node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
+          import { writeFileSync } from 'node:fs';
+          import {
+            PAWN_SLUG_PREMIUM_ENEMY_RASTER_BASE64,
+            PAWN_SLUG_PREMIUM_ENEMY_RASTER_BYTE_LENGTH,
+            PAWN_SLUG_PREMIUM_ENEMY_RASTER_SHA256,
+          } from './frontend/src/pawnSlugEnemyPremiumAtlasData.js';
+
+          const bytes = Buffer.from(PAWN_SLUG_PREMIUM_ENEMY_RASTER_BASE64, 'base64');
+          const sha = createHash('sha256').update(bytes).digest('hex');
+          if (bytes.length !== PAWN_SLUG_PREMIUM_ENEMY_RASTER_BYTE_LENGTH || sha !== PAWN_SLUG_PREMIUM_ENEMY_RASTER_SHA256) {
+            throw new Error(`premium enemy raster contract failed: ${bytes.length} B · ${sha}`);
+          }
+          writeFileSync('/tmp/pawn-slug-enemy-r2/enemy_premium_raster_v5.webp', bytes);
+          NODE
+      - name: Publish Pawn Slug enemy runtime atlases
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -S scripts/r2_asset_publish.py publish \
+            /tmp/pawn-slug-enemy-r2/enemy_premium_raster_v5.webp \
+            --logical-id pawnSlug.enemy.premiumRaster \
+            --prefix pawn-slug/enemies/premium-raster
+          python3 -S scripts/r2_asset_publish.py publish \
+            frontend/src/assets/pawnSlug/enemy_cast_blender_v1_runtime.webp \
+            --logical-id pawnSlug.enemy.actionAtlas \
+            --prefix pawn-slug/enemies/action-atlas
+      - name: Emit generated R2 manifest
         run: cat frontend/src/assets/r2-assets-manifest.json
       - name: Summary
         shell: bash
@@ -85,5 +154,6 @@ jobs:
             echo '- `r2.dev`: disabled'
             echo '- CORS: public read (`GET`, `HEAD`)'
             echo '- Object REST publisher: raw PUT verified with upload/get/delete smoke'
-            echo '- Pawn Slug Matthias: immutable R2 objects are referenced by the reviewed manifest; new blobs are published explicitly with the generic publisher from external source files'
+            echo '- Pawn Slug Matthias: immutable objects stay referenced by the reviewed manifest'
+            echo '- Pawn Slug enemies: premium raster + Blender action atlas published as immutable R2 candidates; runtime pointer remains a separate reviewed change'
           } >> "$GITHUB_STEP_SUMMARY"
