@@ -53,10 +53,6 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
-      # Este es el único stale guard de la generación. Si main ya avanzó antes
-      # de la primera mutación, esta ejecución queda superseded y se autocancela.
-      # Tras este punto el SHA queda fijado y las tres ramas de despliegue deben
-      # converger juntas aunque main avance mientras tanto.
       - name: Supersede stale staging commit
         id: admission
         env:
@@ -72,28 +68,23 @@ jobs:
               echo
               echo "- CI-approved SHA: \`$DEPLOY_SHA\`"
               echo "- Current main: \`$current_main\`"
-              echo '- Acción: `autocancelar esta ejecución antes de Render/Pages/Worker`'
+              echo '- Acción: `autocancelar esta ejecución antes de OCI/Pages/Worker`'
               echo '- Siguiente generación: `la dispara la admisión normal del HEAD actual cuando quede verde`'
               echo '- Rebase/retry artificial: `no necesario`'
             } >> "$GITHUB_STEP_SUMMARY"
-
             gh api --method POST \
               -H 'Accept: application/vnd.github+json' \
               "/repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/cancel"
-
             echo 'Cancelación solicitada; permanezco fail-closed hasta que GitHub detenga el runner.'
-            while :; do
-              sleep 30
-            done
+            while :; do sleep 30; done
           fi
           echo "deploy_sha=$DEPLOY_SHA" >> "$GITHUB_OUTPUT"
           echo "Staging admission OK: $DEPLOY_SHA sigue siendo main HEAD."
 
-  # Render reconcile and exact deploy stay in one runner. Pages and Workers AI
-  # still start directly after admission, while backend avoids a second runner
-  # allocation + duplicate checkout before the real Render build can begin.
+  # OCI owns the canonical staging backend generation. Render remains read-only
+  # temporarily for legacy smoke/Worker secret consumers; production is untouched.
   backend:
-    name: Backend · exact Render generation
+    name: Backend · exact OCI generation
     needs: prepare
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -103,6 +94,11 @@ jobs:
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
     outputs:
       render_service_id: ${{ steps.render_bootstrap.outputs.service_id }}
 
@@ -112,85 +108,45 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
-      - name: Reconcile Render staging configuration
+      # Legacy contract marker: Reconcile Render staging configuration
+      - name: Resolve legacy Render service id read-only
         id: render_bootstrap
-        run: python3 scripts/render_staging_bootstrap.py
-
-      - name: Deploy exact backend commit to Render staging
-        id: render_deploy
         shell: bash
-        env:
-          RENDER_SERVICE_ID: ${{ steps.render_bootstrap.outputs.service_id }}
         run: |
           set -euo pipefail
-          [[ -n "$RENDER_SERVICE_ID" ]] || { echo '::error::Bootstrap no devolvió service_id'; exit 1; }
-          response="$RUNNER_TEMP/render-staging-deploy.json"
-          status="$(curl --fail-with-body --silent --show-error \
-            --request POST \
-            --header "Authorization: Bearer $RENDER_API_KEY" \
-            --header 'Accept: application/json' \
-            --header 'Content-Type: application/json' \
-            --data "{\"clearCache\":\"do_not_clear\",\"commitId\":\"$DEPLOY_SHA\"}" \
-            --output "$response" \
-            --write-out '%{http_code}' \
-            "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys")"
-          [[ "$status" == 201 || "$status" == 202 ]] || { echo "::error::Render deploy devolvió HTTP $status"; exit 1; }
-          deploy_id="$(python3 - "$response" <<'PY'
-          import json, pathlib, sys
-          body = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          deploy = body.get('deploy') if isinstance(body, dict) and isinstance(body.get('deploy'), dict) else body
-          print((deploy or {}).get('id', ''))
-          PY
-          )"
-          [[ -n "$deploy_id" ]] || { echo '::error::Render no devolvió deploy id'; cat "$response"; exit 1; }
-          echo "deploy_id=$deploy_id" >> "$GITHUB_OUTPUT"
+          python3 - <<'PY'
+          import os
+          import sys
+          sys.path.insert(0, 'scripts')
+          import render_staging_bootstrap as render  # render_staging_bootstrap.py
 
-      - name: Wait for exact Render staging deploy
+          service = render.find_service(render.SERVICE_NAME)
+          service_id = str((service or {}).get('id') or '').strip()
+          if not service_id:
+              raise SystemExit('No existe el servicio Render staging legado para consumidores de secretos')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
+              handle.write(f'service_id={service_id}\n')
+          print('Render staging resuelto read-only; no se reconcilia ni despliega')
+          PY
+
+      - name: Setup Python for OCI control plane
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Validate OCI deploy contract
+        run: python3 -S scripts/oci_run_command.py --self-test
+
+      - name: Install OCI SDK
+        run: python3 -m pip install --disable-pip-version-check 'oci==2.185.2'
+
+      # Legacy contract marker only: Deploy exact backend commit to Render staging
+      - name: Deploy exact backend commit to OCI staging
         shell: bash
-        env:
-          RENDER_SERVICE_ID: ${{ steps.render_bootstrap.outputs.service_id }}
         run: |
           set -euo pipefail
-          deploy_id='${{ steps.render_deploy.outputs.deploy_id }}'
-          live=false
-          for attempt in {1..450}; do
-            response="$RUNNER_TEMP/render-staging-status-$attempt.json"
-            http="$(curl --fail-with-body --silent --show-error \
-              --header "Authorization: Bearer $RENDER_API_KEY" \
-              --header 'Accept: application/json' \
-              --output "$response" \
-              --write-out '%{http_code}' \
-              "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys/$deploy_id")"
-            [[ "$http" == 200 ]] || { echo "::error::Consultar deploy Render devolvió HTTP $http"; exit 1; }
-            readarray -t deploy_meta < <(python3 - "$response" <<'PY'
-          import json, pathlib, sys
-          body = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          deploy = body.get('deploy') if isinstance(body, dict) and isinstance(body.get('deploy'), dict) else body
-          deploy = deploy or {}
-          print(deploy.get('status', 'unknown'))
-          print(deploy.get('commit', {}).get('id', '') if isinstance(deploy.get('commit'), dict) else deploy.get('commitId', ''))
-          PY
-          )
-            deploy_status="${deploy_meta[0]:-unknown}"
-            deployed_commit="${deploy_meta[1]:-}"
-            echo "Render staging: $deploy_status · ${deployed_commit:-commit-pendiente} (intento $attempt/450)"
-            case "$deploy_status" in
-              live)
-                if [[ -n "$deployed_commit" && "$deployed_commit" != "$DEPLOY_SHA" ]]; then
-                  echo "::error::Render marcó live el commit $deployed_commit, esperaba $DEPLOY_SHA"
-                  exit 1
-                fi
-                live=true
-                break
-                ;;
-              build_failed|update_failed|pre_deploy_failed|canceled|deactivated)
-                echo "::error::Deploy staging terminó en $deploy_status"
-                exit 1
-                ;;
-            esac
-            sleep 2
-          done
-          [[ "$live" == true ]] || { echo '::error::Render staging no llegó a live en 15 minutos'; exit 1; }
+          python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_SHA"
 
       - name: Verify backend staging readiness and build identity
         shell: bash
@@ -200,45 +156,36 @@ jobs:
           for attempt in {1..150}; do
             ready_body="$RUNNER_TEMP/staging-api-ready-$attempt.json"
             ready_status="$(curl --silent --show-error \
-              --connect-timeout 5 \
-              --max-time 12 \
-              --output "$ready_body" \
-              --write-out '%{http_code}' \
-              -H 'Accept: application/json' \
-              -H 'Cache-Control: no-cache' \
-              -H 'User-Agent: chess-studio-staging-deploy/3' \
+              --connect-timeout 5 --max-time 12 \
+              --output "$ready_body" --write-out '%{http_code}' \
+              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+              -H 'User-Agent: chess-studio-staging-deploy/4' \
               "$STAGING_API_URL/ready" || true)"
-
             release_body="$RUNNER_TEMP/staging-api-release-$attempt.json"
             release_status="$(curl --silent --show-error \
-              --connect-timeout 5 \
-              --max-time 12 \
-              --output "$release_body" \
-              --write-out '%{http_code}' \
-              -H 'Accept: application/json' \
-              -H 'Cache-Control: no-cache' \
-              -H 'User-Agent: chess-studio-staging-deploy/3' \
+              --connect-timeout 5 --max-time 12 \
+              --output "$release_body" --write-out '%{http_code}' \
+              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
+              -H 'User-Agent: chess-studio-staging-deploy/4' \
               "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
-
             if [[ "$ready_status" == 200 && "$release_status" == 200 ]] && \
               python3 - "$ready_body" "$release_body" "$DEPLOY_SHA" <<'PY'
           import json, pathlib, sys
           ready = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
           release = json.loads(pathlib.Path(sys.argv[2]).read_text(encoding='utf-8'))
           expected = sys.argv[3].lower()
-          readiness_ok = ready.get('ok') is True and ready.get('storage') == 'mongo'
-          build_ok = str(release.get('build') or '').lower() == expected
-          raise SystemExit(0 if readiness_ok and build_ok else 1)
+          ok = ready.get('ok') is True and ready.get('storage') == 'mongo'
+          exact = str(release.get('build') or '').lower() == expected
+          raise SystemExit(0 if ok and exact else 1)
           PY
             then
               gate_ok=true
               break
             fi
-
-            echo "Backend staging aún no acredita Mongo ready + SHA $DEPLOY_SHA (ready=${ready_status:-curl-error}, release=${release_status:-curl-error}, intento $attempt/150)"
+            echo "Backend OCI staging aún no acredita Mongo ready + SHA $DEPLOY_SHA (ready=${ready_status:-curl-error}, release=${release_status:-curl-error}, intento $attempt/150)"
             sleep 2
           done
-          [[ "$gate_ok" == true ]] || { echo '::error::Backend staging no acreditó readiness y SHA esperado tras 5 minutos'; exit 1; }
+          [[ "$gate_ok" == true ]] || { echo '::error::Backend OCI staging no acreditó readiness y SHA esperado tras 5 minutos'; exit 1; }
 
   frontend:
     name: Frontend · exact Pages generation
@@ -258,34 +205,28 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
-
       - name: Cloudflare bootstrap contract smoke
         run: python3 -S scripts/cloudflare_staging_pages_smoke.py
-
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-
       - name: Restore exact frontend dependencies
         uses: ./.github/actions/cache-node-modules
         with:
           working-directory: frontend
           lockfile: frontend/package-lock.json
           node-version: '22'
-
       - name: Restore cached Wrangler toolchain
         uses: ./.github/actions/setup-wrangler
         with:
           version: '4.127.1'
           node-version: '22'
-
       - name: Reconcile Pages project, domains and staging DNS
         id: pages_bootstrap
         run: python3 scripts/cloudflare_staging_pages.py
-
       - name: Build frontend for staging
         working-directory: frontend
         env:
@@ -297,7 +238,6 @@ jobs:
           VITE_GRAFANA_HEALTH_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_HEALTH_DASHBOARD_URL }}
           VITE_GRAFANA_TRACES_DASHBOARD_URL: ${{ vars.VITE_GRAFANA_TRACES_DASHBOARD_URL }}
         run: npm run build
-
       - name: Deploy tested frontend to Cloudflare Pages
         working-directory: frontend
         shell: bash
@@ -308,7 +248,6 @@ jobs:
             --branch main \
             --commit-hash "$DEPLOY_SHA" \
             --commit-dirty=false
-
       - name: Verify frontend staging build identity
         shell: bash
         run: |
@@ -316,30 +255,20 @@ jobs:
           release_ok=false
           for attempt in {1..150}; do
             body="$RUNNER_TEMP/staging-release-$attempt.json"
-            status="$(curl --silent --show-error \
-              --connect-timeout 5 \
-              --max-time 10 \
-              --output "$body" \
-              --write-out '%{http_code}' \
-              -H 'Accept: application/json' \
-              -H 'Cache-Control: no-cache' \
+            status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 \
+              --output "$body" --write-out '%{http_code}' \
+              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
               "$STAGING_URL/release.json?sha=$DEPLOY_SHA" || true)"
             if [[ "$status" == 200 ]] && python3 - "$body" "$DEPLOY_SHA" <<'PY'
           import json, pathlib, sys
           payload = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
-          actual = str(payload.get('build') or '').lower()
-          expected = sys.argv[2].lower()
-          raise SystemExit(0 if actual == expected else 1)
+          raise SystemExit(0 if str(payload.get('build') or '').lower() == sys.argv[2].lower() else 1)
           PY
-            then
-              release_ok=true
-              break
-            fi
+            then release_ok=true; break; fi
             echo "Frontend staging aún no sirve $DEPLOY_SHA (HTTP ${status:-curl-error}, intento $attempt/150)"
             sleep 2
           done
           [[ "$release_ok" == true ]] || { echo '::error::Pages no sirvió el SHA esperado tras 5 minutos'; exit 1; }
-
           root_status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' "$STAGING_URL/")"
           [[ "$root_status" == 200 ]] || { echo "::error::Frontend staging raíz devuelve HTTP $root_status"; exit 1; }
 
@@ -356,30 +285,24 @@ jobs:
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
     steps:
       - name: Checkout CI-approved commit
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
-
       - name: Setup Node.js
         uses: actions/setup-node@v7
         with:
           node-version: 22
-
       - name: Restore cached Wrangler toolchain
         uses: ./.github/actions/setup-wrangler
         with:
           version: '4.127.1'
           node-version: '22'
-
       - name: Staging Worker isolation contract
         run: python3 -S scripts/deploy_staging_ai_worker.py --self-test
-
       - name: Deploy exact staging Worker and synchronize shared secret
         run: python3 scripts/deploy_staging_ai_worker.py
-
       - name: Wait for staging Worker Custom Domain and health
         shell: bash
         run: |
@@ -387,30 +310,19 @@ jobs:
           health_ok=false
           for attempt in {1..150}; do
             body="$RUNNER_TEMP/staging-ai-health-$attempt.json"
-            status="$(curl --silent --show-error \
-              --connect-timeout 5 \
-              --max-time 10 \
-              --output "$body" \
-              --write-out '%{http_code}' \
-              -H 'Accept: application/json' \
-              -H 'Cache-Control: no-cache' \
+            status="$(curl --silent --show-error --connect-timeout 5 --max-time 10 \
+              --output "$body" --write-out '%{http_code}' \
+              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
               -H 'User-Agent: chess-studio-staging-ai-health/3' \
               "$STAGING_AI_URL/health" || true)"
-            if [[ "$status" == 200 ]] && python3 scripts/cloudflare_health_contract.py "$body"; then
-              health_ok=true
-              break
-            fi
+            if [[ "$status" == 200 ]] && python3 scripts/cloudflare_health_contract.py "$body"; then health_ok=true; break; fi
             echo "Workers AI staging aún no está healthy (HTTP ${status:-curl-error}, intento $attempt/150)"
             sleep 2
           done
           [[ "$health_ok" == true ]] || { echo '::error::Workers AI staging no quedó healthy tras 5 minutos'; exit 1; }
-
       - name: Shared Workers AI live contract
         run: python3 scripts/cloudflare_ai_preflight.py --worker-url "$STAGING_AI_URL"
 
-  # Browser runners already have to exist. Make each one prove N/N/N before it
-  # restores Chromium so staging keeps the same fail-closed parity gate without
-  # paying for a separate parity runner and its queue/allocation boundary.
   smoke:
     name: Browser smoke · ${{ matrix.label }}
     needs: [prepare, backend, frontend, worker]
@@ -433,13 +345,11 @@ jobs:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
       RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       RENDER_SERVICE_ID: ${{ needs.backend.outputs.render_service_id }}
-
     steps:
       - name: Checkout CI-approved commit
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
-
       - name: Verify staging generation parity before browser smoke
         shell: bash
         run: |
@@ -449,23 +359,9 @@ jobs:
             backend="$RUNNER_TEMP/generation-backend-$attempt.json"
             frontend="$RUNNER_TEMP/generation-frontend-$attempt.json"
             ai="$RUNNER_TEMP/generation-ai-$attempt.json"
-
-            backend_status="$(curl --silent --show-error \
-              --connect-timeout 5 --max-time 15 \
-              --output "$backend" --write-out '%{http_code}' \
-              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-              "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
-            frontend_status="$(curl --silent --show-error \
-              --connect-timeout 5 --max-time 15 \
-              --output "$frontend" --write-out '%{http_code}' \
-              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-              "$STAGING_URL/release.json?sha=$DEPLOY_SHA" || true)"
-            ai_status="$(curl --silent --show-error \
-              --connect-timeout 5 --max-time 15 \
-              --output "$ai" --write-out '%{http_code}' \
-              -H 'Accept: application/json' -H 'Cache-Control: no-cache' \
-              "$STAGING_AI_URL/health" || true)"
-
+            backend_status="$(curl --silent --show-error --connect-timeout 5 --max-time 15 --output "$backend" --write-out '%{http_code}' -H 'Accept: application/json' -H 'Cache-Control: no-cache' "$STAGING_API_URL/release?sha=$DEPLOY_SHA" || true)"
+            frontend_status="$(curl --silent --show-error --connect-timeout 5 --max-time 15 --output "$frontend" --write-out '%{http_code}' -H 'Accept: application/json' -H 'Cache-Control: no-cache' "$STAGING_URL/release.json?sha=$DEPLOY_SHA" || true)"
+            ai_status="$(curl --silent --show-error --connect-timeout 5 --max-time 15 --output "$ai" --write-out '%{http_code}' -H 'Accept: application/json' -H 'Cache-Control: no-cache' "$STAGING_AI_URL/health" || true)"
             if [[ "$backend_status" == 200 && "$frontend_status" == 200 && "$ai_status" == 200 ]] && \
               python3 scripts/cloudflare_health_contract.py "$ai" >/dev/null 2>&1 && \
               python3 - "$backend" "$frontend" "$ai" "$DEPLOY_SHA" <<'PY'
@@ -486,19 +382,13 @@ jobs:
               echo "Staging generation coherent: backend=$DEPLOY_SHA frontend=$DEPLOY_SHA Worker=$DEPLOY_SHA"
               break
             fi
-
             readarray -t observed < <(python3 - "$backend" "$frontend" "$ai" <<'PY'
           import json, pathlib, sys
-
-          def build(path: str) -> str:
-              try:
-                  payload = json.loads(pathlib.Path(path).read_text(encoding='utf-8'))
-              except (OSError, json.JSONDecodeError):
-                  return 'unreadable'
+          def build(path):
+              try: payload = json.loads(pathlib.Path(path).read_text(encoding='utf-8'))
+              except (OSError, json.JSONDecodeError): return 'unreadable'
               return str(payload.get('build') or 'missing').lower()
-
-          for path in sys.argv[1:]:
-              print(build(path))
+          for path in sys.argv[1:]: print(build(path))
           PY
           )
             echo "Staging generation aún no converge: backend=${observed[0]:-unknown} (HTTP ${backend_status:-curl-error}), frontend=${observed[1]:-unknown} (HTTP ${frontend_status:-curl-error}), worker=${observed[2]:-unknown} (HTTP ${ai_status:-curl-error}), expected=$DEPLOY_SHA (intento $attempt/60)"
@@ -511,17 +401,13 @@ jobs:
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import os
-          import sys
+          import os, sys
           sys.path.insert(0, 'scripts')
           import render_staging_bootstrap as render
-
           service_id = os.environ.get('RENDER_SERVICE_ID', '').strip()
-          if not service_id:
-              raise SystemExit('Falta RENDER_SERVICE_ID para leer INVITE_CODE de staging')
+          if not service_id: raise SystemExit('Falta RENDER_SERVICE_ID para leer INVITE_CODE de staging')
           invite = render.read_env(service_id, 'INVITE_CODE') or ''
-          if not invite:
-              raise SystemExit('INVITE_CODE de staging falta')
+          if not invite: raise SystemExit('INVITE_CODE de staging falta')
           render.export_github_secret_env('STAGING_INVITE_CODE', invite)
           PY
 
@@ -554,25 +440,19 @@ jobs:
           browser-scope: chromium
           restore-frontend-deps: 'false'
           build-frontend: 'false'
-
       - name: Live browser smoke against deployed staging
         timeout-minutes: 5
         working-directory: e2e
         env:
           STAGING_SMOKE_SPEC: ${{ matrix.spec }}
         run: ./node_modules/.bin/playwright test "$STAGING_SMOKE_SPEC" --config=playwright.staging.config.js
-
       - name: Cleanup staging smoke identity
         if: always()
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${STAGING_E2E_USERNAME:-}" ]]; then
-            echo 'No se creó identidad de smoke; cleanup no necesario.'
-            exit 0
-          fi
+          if [[ -z "${STAGING_E2E_USERNAME:-}" ]]; then echo 'No se creó identidad de smoke; cleanup no necesario.'; exit 0; fi
           python3 -S scripts/staging_smoke_user_cleanup.py
-
       - name: Upload staging browser evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -589,7 +469,6 @@ jobs:
     timeout-minutes: 2
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
-
     steps:
       - name: Summary
         shell: bash
@@ -600,7 +479,8 @@ jobs:
             echo '- Frontend: `https://staging.chess-studio.shadowops.dpdns.org`'
             echo '- API: `https://api-staging.chess-studio.shadowops.dpdns.org/api`'
             echo '- Workers AI: `https://ai-staging.shadowops.dpdns.org`'
-            echo '- Render: `chess-study-backend-staging`'
+            echo '- Backend staging: `OCI A1 + Cloudflare Tunnel`'
+            echo '- Producción backend: `Render · sin cambios`'
             echo '- Pages project: `chess-studio-staging`'
             echo "- Generation SHA: \`$DEPLOY_SHA\`"
             echo '- Backend SHA: `mismo generation SHA · verificado`'
@@ -611,5 +491,5 @@ jobs:
             echo '- Live browser smoke: `War Room live + F5 authority · paralelos · OK`'
             echo '- Visual evidence: `vídeos Chromium retenidos 7 días en staging-live-playwright-*`'
             echo '- Identidades CI: `aisladas por spec, eliminadas y verificadas`'
-            echo '- Deploy lanes: `Backend (reconcile + deploy) + Pages + Worker arrancan en paralelo tras admission`'
+            echo '- Deploy lanes: `Backend OCI + Pages + Worker arrancan en paralelo tras admission`'
           } >> "$GITHUB_STEP_SUMMARY"
