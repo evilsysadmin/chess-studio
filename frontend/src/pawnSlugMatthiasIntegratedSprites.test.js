@@ -33,10 +33,16 @@ describe('Pawn Slug integrated Matthias weapon art', () => {
     expect(PAWN_SLUG_MATTHIAS_INTEGRATED_ART.r2Assets).toBe(PAWN_SLUG_MATTHIAS_R2_ASSETS);
   });
 
-  it('falls back safely to bundled/local WebP assets before the R2 manifest is populated', () => {
+  it('resolves the published Matthias atlases from the public R2 CDN', () => {
     expect(pawnSlugIntegratedWeaponId('banana')).toBe('pistol');
-    expect(pawnSlugIntegratedWeaponAtlasUrl('shotgun')).toMatch(/^data:image\/webp;base64,/);
-    expect(pawnSlugIntegratedWeaponAtlasUrl('shotgun').length).toBeGreaterThan(1000);
-    expect(pawnSlugCanonicalHeadAtlasUrl()).toMatch(/^data:image\/webp;base64,/);
+    expect(pawnSlugIntegratedWeaponAtlasUrl('pistol')).toMatch(
+      /^https:\/\/assets\.chess-studio\.shadowops\.dpdns\.org\/pawn-slug\/matthias\/pistol\//,
+    );
+    expect(pawnSlugIntegratedWeaponAtlasUrl('shotgun')).toMatch(
+      /^https:\/\/assets\.chess-studio\.shadowops\.dpdns\.org\/pawn-slug\/matthias\/shotgun\//,
+    );
+    expect(pawnSlugCanonicalHeadAtlasUrl()).toMatch(
+      /^https:\/\/assets\.chess-studio\.shadowops\.dpdns\.org\/pawn-slug\/matthias\/motion\//,
+    );
   });
 });
