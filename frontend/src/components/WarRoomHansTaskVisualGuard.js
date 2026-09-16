@@ -1,9 +1,12 @@
 import * as THREE from 'three';
 import { getWarRoomHansActor } from './WarRoomHansActor.js';
 import { warRoomHansChoreForEvent } from './WarRoomHansChoreContract.js';
-import { commitWarRoomHansGroundedY } from './WarRoomHansTransformOwner.js';
+import {
+  commitWarRoomHansGroundedY,
+  warRoomHansLocalForward,
+} from './WarRoomHansTransformOwner.js';
 
-export const WAR_ROOM_HANS_TASK_VISUAL_GUARD_VERSION = 'hans-task-visual-guard-v3-transform-owner-grounding';
+export const WAR_ROOM_HANS_TASK_VISUAL_GUARD_VERSION = 'hans-task-visual-guard-v4-canonical-forward';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const SURFACE_NAMES = [
@@ -15,19 +18,6 @@ const ACTIVE_TASK_KINDS = new Set(['chore', 'service', 'mop']);
 const MAX_GROUND_CORRECTION = 0.8;
 const MIN_FACING_DOT = 0.995;
 const VISIBLE_TASK_VISUAL_HOOK = 'war-room-hans-visible-task-visual-v1';
-
-function findFaceAnchor(head) {
-  if (!head?.children?.length) return null;
-  let candidate = null;
-  let strongestDepth = 0;
-  for (const child of head.children) {
-    const depth = Math.abs(Number(child?.position?.z));
-    if (!Number.isFinite(depth) || depth <= strongestDepth) continue;
-    strongestDepth = depth;
-    candidate = child;
-  }
-  return candidate;
-}
 
 function signedPlanarAngle(from, to) {
   const fromAngle = Math.atan2(from.x, from.z);
@@ -149,12 +139,10 @@ export function groundWarRoomHansTaskActor(hans, body, surfaces, scratch = null)
 
 export function faceWarRoomHansTowardObject(hans, head, targetObject, scratch = null) {
   const parent = hans?.parent;
-  const faceAnchor = findFaceAnchor(head);
-  if (!parent || !head || !faceAnchor || !targetObject) return false;
+  if (!parent || !head || !targetObject) return false;
 
   const state = scratch || {
     headWorld: new THREE.Vector3(),
-    faceWorld: new THREE.Vector3(),
     targetWorld: new THREE.Vector3(),
     face: new THREE.Vector3(),
     towardTarget: new THREE.Vector3(),
@@ -162,16 +150,15 @@ export function faceWarRoomHansTowardObject(hans, head, targetObject, scratch = 
 
   parent.updateMatrixWorld?.(true);
   head.updateMatrixWorld?.(true);
-  faceAnchor.updateMatrixWorld?.(true);
   targetObject.updateMatrixWorld?.(true);
   head.getWorldPosition(state.headWorld);
-  faceAnchor.getWorldPosition(state.faceWorld);
   targetObject.getWorldPosition(state.targetWorld);
   parent.worldToLocal(state.headWorld);
-  parent.worldToLocal(state.faceWorld);
   parent.worldToLocal(state.targetWorld);
 
-  state.face.copy(state.faceWorld).sub(state.headWorld);
+  state.face
+    .set(0, 0, warRoomHansLocalForward(hans))
+    .applyQuaternion(hans.quaternion);
   state.towardTarget.copy(state.targetWorld).sub(state.headWorld);
   state.face.y = 0;
   state.towardTarget.y = 0;
@@ -180,14 +167,22 @@ export function faceWarRoomHansTowardObject(hans, head, targetObject, scratch = 
   state.towardTarget.normalize();
 
   const dotBefore = state.face.dot(state.towardTarget);
+  let dotAfter = dotBefore;
   if (dotBefore < MIN_FACING_DOT) {
     hans.rotation.y += signedPlanarAngle(state.face, state.towardTarget);
     hans.updateMatrixWorld?.(true);
+    state.face
+      .set(0, 0, warRoomHansLocalForward(hans))
+      .applyQuaternion(hans.quaternion);
+    state.face.y = 0;
+    if (state.face.lengthSq() >= 1e-8) dotAfter = state.face.normalize().dot(state.towardTarget);
   }
 
   hans.userData.warRoomHansTaskVisualFacing = WAR_ROOM_HANS_TASK_VISUAL_GUARD_VERSION;
+  hans.userData.warRoomHansTaskFacingContract = 'canonical-local-forward-v1';
   hans.userData.warRoomHansTaskFacingTarget = targetObject.name || 'task-target';
   hans.userData.warRoomHansTaskFacingDotBefore = dotBefore;
+  hans.userData.warRoomHansTaskFacingDotAfter = dotAfter;
   return true;
 }
 
@@ -207,7 +202,6 @@ function createTaskVisualState(root, hans, body, surfaces) {
     },
     facingScratch: {
       headWorld: new THREE.Vector3(),
-      faceWorld: new THREE.Vector3(),
       targetWorld: new THREE.Vector3(),
       face: new THREE.Vector3(),
       towardTarget: new THREE.Vector3(),
