@@ -30,6 +30,7 @@ REQUIRED_OBJECTS = {
     "Classic cap top",
     "Classic cap band",
     "Classic cap visor",
+    "Canonical cap top piping",
     "Head",
     "Nose",
     "Eye.L",
@@ -42,14 +43,14 @@ REQUIRED_OBJECTS = {
     "Brow.R",
     "Mouth.L",
     "Mouth.R",
-    "Canonical mouth center",
     "Classic chest cross brass",
     "Classic chest cross inset",
     "Classic cap badge",
     "Classic cap badge inset",
     "Canonical cap badge pawn head",
-    "Canonical service braid 06",
-    "Canonical service braid 07",
+    "Canonical service cord",
+    "Canonical service button.L",
+    "Canonical service button.R",
     "RoutineBook",
     "RoutineCup",
     "RoutinePen",
@@ -85,9 +86,10 @@ CAP_TOP_MIN_REAR_OFFSET = 0.040
 CAP_TOP_MIN_VERTICAL_SEPARATION = 0.080
 CAP_VISOR_TO_HEAD_WIDTH = (0.62, 0.82)
 
-# The black/brass iron cross remains prominent but subordinate to the face.
-CHEST_CREST_HEIGHT_TO_HEAD_WIDTH = (0.42, 0.52)
-CHEST_CREST_WIDTH_TO_HEAD_WIDTH = (0.42, 0.52)
+# The refined black/brass iron cross is intentionally subordinate to the face
+# while remaining clearly readable at the Home avatar scale.
+CHEST_CREST_HEIGHT_TO_HEAD_WIDTH = (0.30, 0.39)
+CHEST_CREST_WIDTH_TO_HEAD_WIDTH = (0.30, 0.39)
 
 DARK_BODY_MAX_LUMA = 0.10
 IVORY_HEAD_MIN_LUMA = 0.42
@@ -96,5 +98,5 @@ REST_ARM_MIN_Y = 0.10
 
 MIN_BROW_TILT_DEGREES = 22.0
 MAX_BROW_TILT_DEGREES = 40.0
-EYE_TO_HEAD_WIDTH = (0.055, 0.095)
-EYE_VERTICALITY = (1.25, 1.80)
+EYE_TO_HEAD_WIDTH = (0.045, 0.075)
+EYE_VERTICALITY = (1.05, 1.45)
