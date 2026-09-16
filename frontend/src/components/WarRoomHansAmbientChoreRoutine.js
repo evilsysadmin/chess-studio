@@ -14,6 +14,7 @@ import {
 import {
   warRoomHansAmbientDelayMs,
   warRoomHansEventForGame,
+  warRoomHansShouldClearDeliveredArtifacts,
 } from './WarRoomHansEventContract.js';
 import {
   WAR_ROOM_HANS_CHORE_EVENTS,
@@ -40,7 +41,7 @@ import {
   warRoomHansTargetNearObject,
 } from './WarRoomHansServiceRoute.js';
 
-export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v7-reset-before-return-terminal-setup-static-fallback';
+export const WAR_ROOM_HANS_AMBIENT_CHORE_ROUTINE_VERSION = 'hans-ambient-chore-v8-reset-before-return-terminal-setup-static-fallback-delivered-continuity';
 
 const FLOOR_NAME = 'war-room-castle-floor-slab';
 const CHORE_EVENTS = new Set(WAR_ROOM_HANS_CHORE_EVENTS);
@@ -232,6 +233,7 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
       if (active && eventName) {
         finish(actor, prop, controller, root, runtime, `chore-${eventName}`, targetObject, targetBaseRotation);
       }
+      const clearDeliveredArtifacts = warRoomHansShouldClearDeliveredArtifacts(nextGameId, completedGameId);
       gameId = nextGameId;
       eventName = warRoomHansEventForGame(gameId);
       eligibleSince = now;
@@ -250,9 +252,11 @@ export function installWarRoomHansAmbientChoreRoutine(root) {
       actionElapsed = 0;
       chore = null;
       setDialogue(actor, '');
-      for (const name of ['bring-book', 'mail']) {
-        const delivered = root.getObjectByName?.(`war-room-hans-delivered-${name}`);
-        if (delivered) delivered.visible = false;
+      if (clearDeliveredArtifacts) {
+        for (const name of ['bring-book', 'mail']) {
+          const delivered = root.getObjectByName?.(`war-room-hans-delivered-${name}`);
+          if (delivered) delivered.visible = false;
+        }
       }
     }
 
