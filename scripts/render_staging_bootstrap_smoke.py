@@ -34,8 +34,9 @@ def test_unwrap_service_shapes() -> None:
 def test_environment_isolated_and_secrets_stable() -> None:
     values = {
         ("srv-prod", "MONGO_URL"): "mongodb://atlas",
+        ("srv-prod", "INVITE_CODE"): "invite-human",
         ("srv-stage", "JWT_SECRET"): "jwt-stable",
-        ("srv-stage", "INVITE_CODE"): "invite-stable",
+        ("srv-stage", "INVITE_CODE"): "invite-stale-stage",
         ("srv-stage", "CHESS_AI_SHARED_SECRET"): "ai-stable",
     }
     with patch.object(module, "read_env", side_effect=lambda service, key: values.get((service, key))):
@@ -43,7 +44,7 @@ def test_environment_isolated_and_secrets_stable() -> None:
     check(result["MONGO_URL"] == "mongodb://atlas?appName=chess-studio-staging", "staging debe reutilizar Atlas con identidad propia")
     check(result["MONGO_DB_NAME"] == "chess_study_staging", "staging debe aislar el nombre de base")
     check(result["JWT_SECRET"] == "jwt-stable", "una reconciliación no debe rotar JWT")
-    check(result["INVITE_CODE"] == "invite-stable", "una reconciliación no debe rotar el código privado de altas")
+    check(result["INVITE_CODE"] == "invite-human", "staging debe usar el código humano configurado en Render producción")
     check(result["ALLOW_REGISTRATION"] == "true", "CI debe poder seguir creando su identidad temporal")
     check(result["CHESS_AI_SHARED_SECRET"] == "ai-stable", "una reconciliación no debe rotar AI secret")
 
@@ -54,6 +55,22 @@ def test_environment_isolated_and_secrets_stable() -> None:
     check("appName=chess-studio-staging" in rewritten, "appName staging debe ser visible en Atlas")
     check("appName=chess-studio&" not in rewritten, "no debe sobrevivir la etiqueta de producción")
     check("retryWrites=true" in rewritten and "w=majority" in rewritten, "no debe perder opciones de conexión")
+
+
+def test_missing_production_invite_fails_closed() -> None:
+    values = {
+        ("srv-prod", "MONGO_URL"): "mongodb://atlas",
+        ("srv-stage", "JWT_SECRET"): "jwt-stable",
+        ("srv-stage", "INVITE_CODE"): "invite-stage-only",
+        ("srv-stage", "CHESS_AI_SHARED_SECRET"): "ai-stable",
+    }
+    with patch.object(module, "read_env", side_effect=lambda service, key: values.get((service, key))):
+        try:
+            module.env_values({"id": "srv-prod"}, {"id": "srv-stage"})
+        except SystemExit as exc:
+            check("INVITE_CODE" in str(exc), "el error debe explicar que falta INVITE_CODE en producción")
+        else:
+            raise AssertionError("staging no debe inventar un invite si falta la fuente humana de Render")
 
 
 def test_invite_is_exported_only_to_ephemeral_github_env() -> None:
@@ -224,7 +241,7 @@ def test_main_reconciles_without_duplicate_creation() -> None:
     with (
         patch.object(module, "find_production_service", return_value=production),
         patch.object(module, "find_service", side_effect=find),
-        patch.object(module, "env_values", return_value={"MONGO_DB_NAME": "chess_study_staging", "INVITE_CODE": "invite-stable"}),
+        patch.object(module, "env_values", return_value={"MONGO_DB_NAME": "chess_study_staging", "INVITE_CODE": "invite-human"}),
         patch.object(module, "api", side_effect=lambda method, path, payload=None: calls.append((method, path, payload)) or {}),
         patch.object(module, "create_service") as create,
         patch.object(module, "ensure_manual_deploy_only") as manual_only,
@@ -237,11 +254,11 @@ def test_main_reconciles_without_duplicate_creation() -> None:
         module.main()
     create.assert_not_called()
     manual_only.assert_called_once_with("srv-stage")
-    reconcile.assert_called_once_with("srv-stage", {"MONGO_DB_NAME": "chess_study_staging", "INVITE_CODE": "invite-stable"})
+    reconcile.assert_called_once_with("srv-stage", {"MONGO_DB_NAME": "chess_study_staging", "INVITE_CODE": "invite-human"})
     domain.assert_called_once_with("srv-stage")
     group.assert_called_once_with(production, "srv-stage")
     resume.assert_called_once_with("srv-stage")
-    export_secret.assert_called_once_with("STAGING_INVITE_CODE", "invite-stable")
+    export_secret.assert_called_once_with("STAGING_INVITE_CODE", "invite-human")
     check(("PUT", "/services/srv-prod/env-vars/ENVIRONMENT", {"value": "production"}) in calls, "producción debe declarar su entorno")
     check(("PUT", "/services/srv-prod/env-vars/MONGO_DB_NAME", {"value": "chess_study"}) in calls, "producción debe quedar explícita")
 
@@ -249,6 +266,7 @@ def test_main_reconciles_without_duplicate_creation() -> None:
 if __name__ == "__main__":
     test_unwrap_service_shapes()
     test_environment_isolated_and_secrets_stable()
+    test_missing_production_invite_fails_closed()
     test_invite_is_exported_only_to_ephemeral_github_env()
     test_production_discovery_uses_repo_and_mongo_evidence()
     test_create_service_uses_noninteractive_boolean_syntax()
@@ -259,4 +277,4 @@ if __name__ == "__main__":
     test_suspended_staging_is_resumed_before_deploy()
     test_active_staging_does_not_resume_again()
     test_main_reconciles_without_duplicate_creation()
-    print("render-staging-bootstrap-smoke OK · idempotencia + Mongo aislado + invite privado + agrupación + auto-deploy off + auto-resume Render")
+    print("render-staging-bootstrap-smoke OK · invite heredado de Render producción + fail-closed + Mongo aislado + agrupación + auto-deploy off + auto-resume Render")
