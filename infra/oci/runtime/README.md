@@ -23,6 +23,12 @@ The host port defaults to `127.0.0.1:4000`; no public backend ingress is introdu
 
 The Compose project defaults to `chess-studio-staging`. `CHESS_STUDIO_COMPOSE_PROJECT`, `CHESS_STUDIO_BACKEND_PORT`, and `CHESS_STUDIO_ENV_FILE` are parameterized so a later production stack can coexist without changing the application image.
 
+## Staging exposure
+
+The P0 public path is Cloudflare Tunnel, not direct A1 ingress. `api-staging.chess-studio.shadowops.dpdns.org` is reconciled only after the backend is locally ready and Cloudflare reports a live connector. The tunnel routes to `http://127.0.0.1:4000`; the A1 public IPv4 is not an application origin and port 4000 stays closed externally.
+
+The staging Pages reconciler owns only the frontend DNS. `scripts/oci_cloudflare_tunnel.py` owns staging API DNS, preventing later frontend deploys from silently reverting the API hostname to Render.
+
 ## One-time adoption of the existing A1
 
 Cloud-init does not rerun on an already-created VM, so the legacy systemd + `docker run` host needs one explicit adoption step after this PR is merged:
