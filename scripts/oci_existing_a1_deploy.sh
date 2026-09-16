@@ -116,8 +116,13 @@ record_successful_backend() {
 }
 
 cd "$repo"
-git fetch --no-tags --depth=1 origin "$sha"
-git checkout --detach "$sha"
+if [[ "${CHESS_STUDIO_CHECKOUT_READY:-0}" == "1" ]]; then
+  current_sha="$(git rev-parse HEAD)"
+  [[ "$current_sha" == "$sha" ]] || { echo "launcher checkout mismatch: expected $sha, found $current_sha" >&2; exit 66; }
+else
+  git fetch --no-tags --depth=1 origin "$sha"
+  git checkout --detach "$sha"
+fi
 [[ -f "$compose_file" ]] || { echo "missing compose runtime in $sha: $compose_file" >&2; exit 66; }
 
 # Telemetry sidecars are deliberately not part of the staging deployment gate.
