@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { warRoomHansChoreForEvent } from './WarRoomHansChoreContract.js';
+import {
+  warRoomHansChoreCanMoveTarget,
+  warRoomHansChoreForEvent,
+} from './WarRoomHansChoreContract.js';
 import {
   WAR_ROOM_HANS_NAVIGATION_BOARD_SAFE_HALF_EXTENT,
   WAR_ROOM_HANS_NAVIGATION_FURNITURE_CLEARANCE,
@@ -103,6 +106,8 @@ describe('Hans physical navigation integrity', () => {
       'war-room-teutonic-command-chair',
       'war-room-command-carpet-brass-key',
     ]);
+    expect(warRoomHansChoreCanMoveTarget('straighten-room', chore.targetNames[0])).toBe(true);
+    expect(warRoomHansChoreCanMoveTarget('straighten-room', chore.targetNames[1])).toBe(false);
 
     const targetObject = root.getObjectByName(chore.targetNames[1]);
     const target = warRoomHansTargetNearObject(targetObject, parent, {
