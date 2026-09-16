@@ -166,8 +166,8 @@ run "runtime_config_channel_is_private_and_least_privilege" {
   }
 
   assert {
-    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 3
-    error_message = "Runtime IAM should contain only Object Storage read, Vault bundle read and self-scoped Run Command execution permissions."
+    condition     = length(oci_identity_policy.staging_runtime_config.statements) == 2
+    error_message = "Runtime IAM should contain only Object Storage read and self-scoped Run Command execution permissions."
   }
 
   assert {
@@ -181,23 +181,21 @@ run "runtime_config_channel_is_private_and_least_privilege" {
   }
 
   assert {
-    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[1], "to read secret-bundles")
-    error_message = "Staging instances need read-only Vault secret bundle access for runtime materialization."
-  }
-
-  assert {
-    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[1], "in compartment id ${var.compartment_ocid}")
-    error_message = "Vault secret bundle access must remain restricted to the staging compartment."
-  }
-
-  assert {
-    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[2], "to use instance-agent-command-execution-family")
+    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[1], "to use instance-agent-command-execution-family")
     error_message = "Staging instances need the OCI Run Command execution-family permission to poll accepted commands."
   }
 
   assert {
-    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[2], "request.instance.id=target.instance.id")
+    condition     = strcontains(oci_identity_policy.staging_runtime_config.statements[1], "request.instance.id=target.instance.id")
     error_message = "Run Command execution permission must be restricted to the target instance itself."
+  }
+
+  assert {
+    condition = alltrue([
+      for statement in oci_identity_policy.staging_runtime_config.statements :
+      !strcontains(statement, "secret-bundles")
+    ])
+    error_message = "Runtime IAM must not grant secret-bundle access until OCI Secrets is actually consumed."
   }
 }
 
