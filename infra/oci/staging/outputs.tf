@@ -8,6 +8,16 @@ output "public_ip" {
   value       = oci_core_instance.backend.public_ip
 }
 
+output "load_balancer_ip" {
+  description = "Public IPv4 of the OCI Always Free 10 Mbps load balancer. DNS cutover is a separate gate."
+  value       = oci_load_balancer_load_balancer.backend.ip_address_details[0].ip_address
+}
+
+output "load_balancer_http_origin" {
+  description = "Temporary public HTTP origin for readiness validation before Cloudflare/TLS cutover."
+  value       = "http://${oci_load_balancer_load_balancer.backend.ip_address_details[0].ip_address}"
+}
+
 output "vcn_id" {
   description = "Backend VCN OCID."
   value       = oci_core_vcn.backend.id
@@ -16,6 +26,11 @@ output "vcn_id" {
 output "subnet_id" {
   description = "Backend subnet OCID."
   value       = oci_core_subnet.backend.id
+}
+
+output "load_balancer_subnet_id" {
+  description = "Dedicated public subnet OCID for the OCI load balancer."
+  value       = oci_core_subnet.load_balancer.id
 }
 
 output "runtime_config_bucket" {
@@ -29,7 +44,7 @@ output "runtime_config_namespace" {
 }
 
 output "backend_origin" {
-  description = "Origin Cloudflare Tunnel should target on the VM."
+  description = "Current host-local backend origin; expose port 4000 only to the LB subnet before DNS cutover."
   value       = "http://127.0.0.1:4000"
 }
 
@@ -38,8 +53,8 @@ output "post_apply_checklist" {
   value = [
     "Keep the private runtime bucket free of Terraform-managed secret objects.",
     "Publish /etc/chess-studio/backend.env out-of-band through the runtime channel before starting the backend.",
-    "Install/configure Cloudflare Tunnel credentials out-of-band.",
-    "Start chess-studio-backend.service and verify /api/ready locally.",
-    "Keep Render serving production until the reversible cutover is validated."
+    "Verify the backend is reachable on port 4000 only from the load balancer subnet before DNS cutover.",
+    "Require OCI LB /api/ready health to be green before moving api-staging DNS.",
+    "Keep Render serving production until the reversible OCI cutover is validated."
   ]
 }

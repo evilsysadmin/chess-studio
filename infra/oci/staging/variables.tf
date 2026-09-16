@@ -152,6 +152,20 @@ variable "subnet_cidr" {
   }
 }
 
+variable "load_balancer_subnet_cidr" {
+  description = "Dedicated public subnet for the OCI Always Free load balancer."
+  type        = string
+  default     = "10.42.20.0/24"
+
+  validation {
+    condition = (
+      can(cidrhost(var.load_balancer_subnet_cidr, 0)) &&
+      var.load_balancer_subnet_cidr != var.subnet_cidr
+    )
+    error_message = "load_balancer_subnet_cidr must be valid and distinct from the backend subnet."
+  }
+}
+
 variable "repo_url" {
   description = "Repository cloned by cloud-init."
   type        = string
