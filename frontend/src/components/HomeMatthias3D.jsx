@@ -79,7 +79,7 @@ export function homeMatthiasPortraitFrame({ minY = 0, maxY = 2.35, fovDeg = 24 }
   const safeFov = Number.isFinite(fov) && fov > 1 && fov < 120 ? fov : 24;
   const targetY = base + (height * 0.62);
   const visibleHeight = height * 0.78;
-  const distance = Math.max(3.6, (visibleHeight * 0.5) / Math.tan(THREE.MathUtils.degToRad(safeFov * 0.5)));
+  const distance = Math.max(4.6, (visibleHeight * 0.5) / Math.tan(THREE.MathUtils.degToRad(safeFov * 0.5)));
   return { targetY, distance };
 }
 
@@ -88,6 +88,7 @@ export function homeMatthiasCameraPose({
   headZ = 0,
   noseX = 0,
   noseZ = 1,
+  faceSource = 'head-nose-vector',
   minY = 0,
   maxY = 2.35,
   centerX = 0,
@@ -97,9 +98,10 @@ export function homeMatthiasCameraPose({
   const dx = Number(noseX) - Number(headX);
   const dz = Number(noseZ) - Number(headZ);
   const length = Math.hypot(Number.isFinite(dx) ? dx : 0, Number.isFinite(dz) ? dz : 0);
-  const source = length > 0.0001 ? 'head-nose-vector' : 'fallback-axis';
-  const faceX = source === 'head-nose-vector' ? dx / length : 0;
-  const faceZ = source === 'head-nose-vector' ? dz / length : 1;
+  const source = length > 0.0001 ? faceSource : 'fallback-axis';
+  const anchored = source !== 'fallback-axis';
+  const faceX = anchored ? dx / length : 0;
+  const faceZ = anchored ? dz / length : 1;
   const safeCenterX = Number.isFinite(Number(centerX)) ? Number(centerX) : 0;
   const safeCenterZ = Number.isFinite(Number(centerZ)) ? Number(centerZ) : 0;
   const frame = homeMatthiasPortraitFrame({ minY, maxY, fovDeg });
@@ -348,16 +350,29 @@ export default function HomeMatthias3D({
         const center = bounds.getCenter(new THREE.Vector3());
         const headNode = model.getObjectByName('Head');
         const noseNode = model.getObjectByName('Nose');
+        const leftEyeNode = model.getObjectByName('Eye.L');
+        const rightEyeNode = model.getObjectByName('Eye.R');
         const headWorld = new THREE.Vector3(center.x, center.y, center.z - 1);
-        const noseWorld = new THREE.Vector3(center.x, center.y, center.z);
+        const faceWorld = new THREE.Vector3(center.x, center.y, center.z);
+        let faceSource = 'head-nose-vector';
         headNode?.getWorldPosition(headWorld);
-        noseNode?.getWorldPosition(noseWorld);
+        if (leftEyeNode && rightEyeNode) {
+          const leftEyeWorld = new THREE.Vector3();
+          const rightEyeWorld = new THREE.Vector3();
+          leftEyeNode.getWorldPosition(leftEyeWorld);
+          rightEyeNode.getWorldPosition(rightEyeWorld);
+          faceWorld.addVectors(leftEyeWorld, rightEyeWorld).multiplyScalar(0.5);
+          faceSource = 'head-eye-midpoint-vector';
+        } else {
+          noseNode?.getWorldPosition(faceWorld);
+        }
 
         const cameraPose = homeMatthiasCameraPose({
           headX: headWorld.x,
           headZ: headWorld.z,
-          noseX: noseWorld.x,
-          noseZ: noseWorld.z,
+          noseX: faceWorld.x,
+          noseZ: faceWorld.z,
+          faceSource,
           minY: bounds.min.y,
           maxY: bounds.max.y,
           centerX: center.x,
