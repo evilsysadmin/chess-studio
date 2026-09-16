@@ -27,12 +27,11 @@ describe('Chronicles Tactics enemy intent art', () => {
     expect(CHRONICLES_TACTICS_ENEMY_INTENT.movementThreshold).toBeLessThan(0.2);
   });
 
-  it('shows a floor destination cue only while an enemy is travelling', async () => {
+  it('updates a destination cue only when the renderer assigns a target', async () => {
     const { scene, enemy } = enemyScene();
     const root = installChroniclesTacticsEnemyIntentArt(scene, { coarsePointer: false });
     await Promise.resolve();
 
-    scene.onBeforeRender();
     const frame = root.getObjectByName('chronicles-tactics-enemy-target-corrupted-pawn');
     const path = root.getObjectByName('chronicles-tactics-enemy-path-corrupted-pawn');
     expect(frame.visible).toBe(true);
@@ -40,20 +39,25 @@ describe('Chronicles Tactics enemy intent art', () => {
     expect(frame.position.x).toBeCloseTo(2.45, 6);
 
     enemy.position.copy(enemy.userData.chroniclesIsoTarget);
-    scene.onBeforeRender();
+    enemy.userData.chroniclesIsoTarget = new THREE.Vector3(2.45, 0, 0);
     expect(frame.visible).toBe(false);
     expect(path.visible).toBe(false);
   });
 
   it('is idempotent and keeps coarse-pointer cues lightweight', async () => {
-    const { scene } = enemyScene();
+    const { scene, enemy } = enemyScene();
     const first = installChroniclesTacticsEnemyIntentArt(scene, { coarsePointer: true });
     const second = installChroniclesTacticsEnemyIntentArt(scene, { coarsePointer: true });
     expect(second).toBe(first);
     await Promise.resolve();
 
-    scene.onBeforeRender();
-    expect(first.getObjectByName('chronicles-tactics-enemy-target-corrupted-pawn').visible).toBe(true);
-    expect(first.getObjectByName('chronicles-tactics-enemy-path-corrupted-pawn').visible).toBe(false);
+    const frame = first.getObjectByName('chronicles-tactics-enemy-target-corrupted-pawn');
+    const path = first.getObjectByName('chronicles-tactics-enemy-path-corrupted-pawn');
+    expect(frame.visible).toBe(true);
+    expect(path.visible).toBe(false);
+
+    enemy.position.copy(enemy.userData.chroniclesIsoTarget);
+    enemy.userData.chroniclesIsoTarget = enemy.userData.chroniclesIsoTarget;
+    expect(frame.visible).toBe(false);
   });
 });

@@ -79,11 +79,10 @@ function makeCue(root, enemyId, model, { coarsePointer }) {
   path.frustumCulled = false;
   root.add(path);
 
-  return { enemyId, model, frame, path, phase: enemyId.length * 0.73 };
+  return { enemyId, model, frame, path };
 }
 
-function updateCue(cue, time, { coarsePointer }) {
-  const target = cue.model?.userData?.chroniclesIsoTarget;
+function updateCue(cue, target, { coarsePointer }) {
   const motion = chroniclesTacticsEnemyMotion(cue.model?.position, target);
   const visible = Boolean(cue.model?.visible && target && motion.moving);
   cue.frame.visible = visible;
@@ -91,9 +90,6 @@ function updateCue(cue, time, { coarsePointer }) {
   if (!visible) return;
 
   cue.frame.position.set(target.x, CHRONICLES_TACTICS_ENEMY_INTENT.floorY, target.z);
-  const pulse = 1 + Math.sin(time * 5.2 + cue.phase) * 0.045;
-  cue.frame.scale.setScalar(pulse);
-
   if (!coarsePointer) {
     const positions = cue.path.geometry.attributes.position;
     positions.setXYZ(0, cue.model.position.x, CHRONICLES_TACTICS_ENEMY_INTENT.floorY + 0.006, cue.model.position.z);
@@ -102,20 +98,31 @@ function updateCue(cue, time, { coarsePointer }) {
   }
 }
 
+function watchEnemyTarget(cue, options) {
+  const userData = cue.model.userData;
+  if (userData.chroniclesEnemyIntentTargetWatched) return;
+
+  let currentTarget = userData.chroniclesIsoTarget || null;
+  Object.defineProperty(userData, 'chroniclesIsoTarget', {
+    configurable: true,
+    enumerable: true,
+    get() { return currentTarget; },
+    set(nextTarget) {
+      currentTarget = nextTarget;
+      updateCue(cue, nextTarget, options);
+    },
+  });
+  userData.chroniclesEnemyIntentTargetWatched = true;
+  updateCue(cue, currentTarget, options);
+}
+
 function attachEnemyCues(scene, root, options) {
   if (!scene || root.userData.chroniclesEnemyIntentAttached) return;
   const enemies = discoverEnemyModels(scene);
   const cues = enemies.map(({ enemyId, model }) => makeCue(root, enemyId, model, options));
+  cues.forEach((cue) => watchEnemyTarget(cue, options));
   root.userData.chroniclesEnemyIntentAttached = true;
   root.userData.chroniclesEnemyIntentCues = cues;
-
-  const previous = scene.onBeforeRender;
-  const startedAt = performance.now();
-  scene.onBeforeRender = function chroniclesEnemyIntentBeforeRender(...args) {
-    previous?.apply(this, args);
-    const time = (performance.now() - startedAt) / 1000;
-    cues.forEach((cue) => updateCue(cue, time, options));
-  };
 }
 
 export function installChroniclesTacticsEnemyIntentArt(scene, { coarsePointer = false } = {}) {
@@ -128,9 +135,9 @@ export function installChroniclesTacticsEnemyIntentArt(scene, { coarsePointer = 
   root.userData.chroniclesEnemyIntentAttached = false;
   scene.add(root);
 
-  // Enemy models are reconciled immediately after the party renderer is built.
-  // Defer discovery one microtask so this pass stays decoupled from renderer
-  // construction order and never scans the whole scene every frame.
+  // Models are reconciled by the first renderState call in the same task. Defer
+  // discovery one microtask, then react only when the renderer assigns a new
+  // world-space target. No polling and no per-frame work in software WebGL.
   queueMicrotask(() => attachEnemyCues(scene, root, { coarsePointer }));
   return root;
 }
