@@ -10,6 +10,7 @@ const ACTIONS = Object.freeze(['idle', 'run', 'jump', 'crouch', 'hurt', 'climb',
 const ROWS = TYPES.length * ACTIONS.length;
 const R2_ASSET_ORIGIN = `${String(R2_ASSET_BASE_URL || '').replace(/\/+$/, '')}/`;
 let cachedBaseTexture = null;
+let pawnSlugSoldierAtlasStatus = null;
 const liveClones = new Set();
 
 export const PAWN_SLUG_SOLDIER_ATLAS_LOGICAL_ID = 'pawnSlug.enemy.actionAtlas';
@@ -18,14 +19,28 @@ export const PAWN_SLUG_SOLDIER_ATLAS_URL = r2AssetUrl(
   enemyCastAtlasFallbackUrl,
 );
 
-function publishPawnSlugSoldierAtlasStatus(status) {
-  if (typeof document === 'undefined') return;
-  const stage = document.querySelector?.('[data-pawn-slug-renderer="three"]');
-  if (!stage?.dataset) return;
-  const transport = R2_ASSET_ORIGIN && PAWN_SLUG_SOLDIER_ATLAS_URL.startsWith(R2_ASSET_ORIGIN)
+function pawnSlugSoldierAtlasTransport() {
+  return R2_ASSET_ORIGIN && PAWN_SLUG_SOLDIER_ATLAS_URL.startsWith(R2_ASSET_ORIGIN)
     ? 'r2'
     : 'fallback';
-  stage.dataset.pawnSlugActionAtlas = `${transport}-${status}`;
+}
+
+function publishPawnSlugSoldierAtlasStatus(status) {
+  pawnSlugSoldierAtlasStatus = `${pawnSlugSoldierAtlasTransport()}-${status}`;
+  if (typeof document === 'undefined') return pawnSlugSoldierAtlasStatus;
+  const stage = document.querySelector?.('[data-pawn-slug-renderer="three"]');
+  if (stage?.dataset) stage.dataset.pawnSlugActionAtlas = pawnSlugSoldierAtlasStatus;
+  return pawnSlugSoldierAtlasStatus;
+}
+
+export function pawnSlugSoldierAtlasBrowserStatus() {
+  if (typeof document !== 'undefined') {
+    const stage = document.querySelector?.('[data-pawn-slug-renderer="three"]');
+    if (stage?.dataset && pawnSlugSoldierAtlasStatus) {
+      stage.dataset.pawnSlugActionAtlas = pawnSlugSoldierAtlasStatus;
+    }
+  }
+  return pawnSlugSoldierAtlasStatus;
 }
 
 function rowFor(type, action) {
