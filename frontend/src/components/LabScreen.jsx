@@ -94,7 +94,7 @@ export default function LabScreen({ onExit, onStart }){
           <span className="lab-workshop-seal" aria-hidden="true">M</span>
         </header>
 
-        <section className="lab-workshop-wing lab-workshop-wing--crypt" aria-labelledby="lab-crypt-title">
+        <section className="lab-workshop-wing lab-workshop-wing--crypt" style={{ zIndex: 'auto' }} aria-labelledby="lab-crypt-title">
           <div className="lab-workshop-wing-copy">
             <small>Bajo el castillo</small>
             <h3 id="lab-crypt-title">La cripta</h3>
@@ -116,7 +116,7 @@ export default function LabScreen({ onExit, onStart }){
           </div>
         </section>
 
-        <section className="lab-workshop-wing lab-workshop-wing--hangar" aria-labelledby="lab-hangar-title">
+        <section className="lab-workshop-wing lab-workshop-wing--hangar" style={{ zIndex: 'auto' }} aria-labelledby="lab-hangar-title">
           <div className="lab-workshop-wing-copy">
             <small>Hangar B</small>
             <h3 id="lab-hangar-title">Ruido y pólvora</h3>
@@ -138,7 +138,7 @@ export default function LabScreen({ onExit, onStart }){
           </div>
         </section>
 
-        <section className="lab-workshop-wing lab-workshop-wing--ops" aria-labelledby="lab-ops-title">
+        <section className="lab-workshop-wing lab-workshop-wing--ops" style={{ zIndex: 'auto' }} aria-labelledby="lab-ops-title">
           <div className="lab-workshop-wing-copy">
             <small>Sala de operaciones</small>
             <h3 id="lab-ops-title">Banco de pruebas</h3>
