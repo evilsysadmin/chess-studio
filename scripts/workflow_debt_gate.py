@@ -36,6 +36,7 @@ INVENTORY = {
     'oci-staging-deploy.yml': 'infra-staging-delivery',
     'oci-staging-lab.yml': 'infra-staging-lifecycle',
     'oci-staging-service.yml': 'infra-staging-service-control',
+    'oci-staging-tunnel.yml': 'infra-staging-edge',
     'pawn-slug-blender-art.yml': 'art-generation',
     'pawn-slug-enemy-blender-art.yml': 'art-generation',
     'pawn-slug-pow-blender-art.yml': 'art-generation',
