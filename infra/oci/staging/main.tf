@@ -100,12 +100,12 @@ resource "oci_core_security_list" "backend" {
 }
 
 resource "oci_core_subnet" "backend" {
-  compartment_id             = var.compartment_ocid
-  vcn_id                     = oci_core_vcn.backend.id
-  cidr_block                 = var.subnet_cidr
-  display_name               = "${var.instance_name}-subnet"
-  dns_label                  = "backend"
-  route_table_id             = oci_core_route_table.backend.id
+  compartment_id = var.compartment_ocid
+  vcn_id         = oci_core_vcn.backend.id
+  cidr_block     = var.subnet_cidr
+  display_name   = "${var.instance_name}-subnet"
+  dns_label      = "backend"
+  route_table_id = oci_core_route_table.backend.id
   security_list_ids = [
     oci_core_security_list.backend.id,
     oci_core_security_list.backend_from_load_balancer.id,
