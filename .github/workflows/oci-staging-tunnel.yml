@@ -4,6 +4,7 @@ on:
   workflow_run:
     workflows:
       - OCI staging · service control
+      - Main · admission
     types:
       - completed
     branches:
