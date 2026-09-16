@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import {
   WAR_ROOM_HANS_NAVIGATION_BOARD_SAFE_HALF_EXTENT,
+  WAR_ROOM_HANS_NAVIGATION_FURNITURE_CLEARANCE,
   warRoomHansBuildSafeRoute,
 } from './WarRoomHansNavigation.js';
 
@@ -23,6 +24,26 @@ function insideBoard(point) {
   const half = WAR_ROOM_HANS_NAVIGATION_BOARD_SAFE_HALF_EXTENT;
   return Math.abs(Number(point?.x || 0)) < half - 1e-4
     && Math.abs(Number(point?.z || 0)) < half - 1e-4;
+}
+
+function addSofa(root, name, x, z) {
+  const sofa = new THREE.Mesh(
+    new THREE.BoxGeometry(2.8, 0.85, 1.25),
+    new THREE.MeshBasicMaterial(),
+  );
+  sofa.name = name;
+  sofa.position.set(x, 0.02, z);
+  root.add(sofa);
+  root.updateMatrixWorld(true);
+  return sofa;
+}
+
+function pointInsideExpandedObject(point, object, padding) {
+  const box = new THREE.Box3().setFromObject(object);
+  return Number(point.x) > box.min.x - padding + 1e-4
+    && Number(point.x) < box.max.x + padding - 1e-4
+    && Number(point.z) > box.min.z - padding + 1e-4
+    && Number(point.z) < box.max.z + padding - 1e-4;
 }
 
 describe('Hans physical navigation integrity', () => {
@@ -53,6 +74,34 @@ describe('Hans physical navigation integrity', () => {
           THREE.MathUtils.lerp(start.z, end.z, t),
         );
         expect(insideBoard(point)).toBe(false);
+      }
+    }
+  });
+
+  it('routes around a side sofa instead of sending Hans through the upholstery lane', () => {
+    const { root, parent, floor } = makeRoom();
+    const sofa = addSofa(root, 'war-room-sofa-right', 5.55, 0);
+    const from = new THREE.Vector3(6.7, -0.34, -6.0);
+    const to = new THREE.Vector3(6.7, -0.34, 6.0);
+    const route = warRoomHansBuildSafeRoute(floor, parent, from, to);
+
+    expect(route.length).toBeGreaterThan(0);
+    const path = [from, ...route];
+    for (let index = 1; index < path.length; index += 1) {
+      const start = path[index - 1];
+      const end = path[index];
+      for (let sample = 0; sample <= 48; sample += 1) {
+        const t = sample / 48;
+        const point = new THREE.Vector3(
+          THREE.MathUtils.lerp(start.x, end.x, t),
+          -0.34,
+          THREE.MathUtils.lerp(start.z, end.z, t),
+        );
+        expect(pointInsideExpandedObject(
+          point,
+          sofa,
+          WAR_ROOM_HANS_NAVIGATION_FURNITURE_CLEARANCE,
+        )).toBe(false);
       }
     }
   });
