@@ -25,10 +25,11 @@ describe('War Room visible premium contract', () => {
     expect(darkSquare - ebony).toBeGreaterThan(25);
   });
 
-  it('keeps canonical black pieces glossy enough to read highlights at gameplay distance', () => {
+  it('keeps canonical black pieces as dielectric lacquer rather than dark metal', () => {
     const studio = SKIN_3D.studio;
-    expect(studio.roughness).toBeLessThanOrEqual(0.42);
-    expect(studio.metalness).toBeGreaterThanOrEqual(0.2);
+    expect(studio.roughness).toBeGreaterThanOrEqual(0.38);
+    expect(studio.roughness).toBeLessThanOrEqual(0.44);
+    expect(studio.metalness).toBeLessThanOrEqual(0.1);
     expect(studio.blackAccent).not.toBe(studio.black);
   });
 });
