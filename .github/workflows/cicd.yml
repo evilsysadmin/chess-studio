@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: chess-studio-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -24,6 +25,8 @@ jobs:
       run_matthias_home_e2e: ${{ steps.quality_paths.outputs.run_matthias_home_e2e }}
       browser_matrix: ${{ steps.browser_scope.outputs.matrix }}
       browser_has_cases: ${{ steps.browser_scope.outputs.has_cases }}
+      blender_required: ${{ steps.blender_scope.outputs.required }}
+      blender_workflows: ${{ steps.blender_scope.outputs.workflows }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -101,6 +104,21 @@ jobs:
           printf '%s\n' "$files" | python3 -S scripts/browser_quality_scope.py \
             --github-output "$GITHUB_OUTPUT" \
             --summary "$GITHUB_STEP_SUMMARY"
+      - name: Classify required Blender gates
+        if: github.event_name == 'pull_request'
+        id: blender_scope
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          EVENT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if ! files="$(python3 -S scripts/pr_merge_diff.py --base "$BASE_SHA" --merge "$EVENT_SHA")"; then
+            echo '::error::Diff merge no fiable; no se puede acreditar Blender de forma segura.'
+            exit 1
+          fi
+          printf '%s\n' "$files"
+          printf '%s\n' "$files" | python3 -S scripts/blender_required_scope.py --github-output "$GITHUB_OUTPUT"
       - name: Static preflight + CI wiring
         shell: bash
         run: |
@@ -108,6 +126,7 @@ jobs:
           make static-preflight
           python3 -S scripts/quality_scope.py --self-test
           python3 -S scripts/browser_quality_scope.py --self-test
+          python3 -S scripts/blender_required_scope.py --self-test
           python3 -S scripts/quality_provenance.py --self-test
           python3 -S scripts/pr_merge_diff.py --self-test
           python3 -S scripts/security_scope.py --self-test
@@ -404,9 +423,9 @@ jobs:
     needs: [preflight, e2e_lanes, e2e_specialized]
     if: always()
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 50
     steps:
-      - name: Aggregate all required browser lanes
+      - name: Aggregate all required browser lanes and Blender art gates
         shell: bash
         env:
           PREFLIGHT_RESULT: ${{ needs.preflight.result }}
@@ -414,6 +433,10 @@ jobs:
           CORE_LANES_RESULT: ${{ needs.e2e_lanes.result }}
           RUN_SPECIALIZED: ${{ needs.preflight.outputs.browser_has_cases }}
           SPECIALIZED_RESULT: ${{ needs.e2e_specialized.result }}
+          RUN_BLENDER: ${{ needs.preflight.outputs.blender_required }}
+          BLENDER_WORKFLOWS: ${{ needs.preflight.outputs.blender_workflows }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           if [[ "$PREFLIGHT_RESULT" != 'success' ]]; then
@@ -428,8 +451,40 @@ jobs:
             echo "::error::Alguna lane especializada requerida falló: $SPECIALIZED_RESULT"
             exit 1
           fi
-          if [[ "$RUN_E2E" != 'true' && "$RUN_SPECIALIZED" != 'true' ]]; then
-            echo 'Playwright omitido: esta superficie no requiere navegador crítico ni especializado.'
+          if [[ "$RUN_BLENDER" == 'true' ]]; then
+            if [[ -z "${PR_HEAD_SHA:-}" || -z "${BLENDER_WORKFLOWS:-}" ]]; then
+              echo '::error::Blender gate requerido sin head SHA o clasificación.'
+              exit 1
+            fi
+            while IFS=$'\t' read -r workflow label; do
+              [[ -n "$workflow" ]] || continue
+              echo "Blender requerido · $label · workflow=$workflow · head=${PR_HEAD_SHA:0:12}"
+              gate_ok=false
+              for _ in $(seq 1 180); do
+                run_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow}/runs?event=pull_request&head_sha=${PR_HEAD_SHA}&per_page=20")"
+                status="$(jq -r '(.workflow_runs | sort_by([.run_number,.run_attempt]) | last // {}) | .status // "missing"' <<<"$run_json")"
+                conclusion="$(jq -r '(.workflow_runs | sort_by([.run_number,.run_attempt]) | last // {}) | .conclusion // ""' <<<"$run_json")"
+                run_url="$(jq -r '(.workflow_runs | sort_by([.run_number,.run_attempt]) | last // {}) | .html_url // ""' <<<"$run_json")"
+                if [[ "$status" == 'completed' ]]; then
+                  if [[ "$conclusion" != 'success' ]]; then
+                    echo "::error::$label terminó $conclusion · ${run_url:-sin URL}"
+                    exit 1
+                  fi
+                  echo "Blender verde · $label · ${run_url:-run encontrado}"
+                  gate_ok=true
+                  break
+                fi
+                echo "Esperando Blender · $label · estado=${status}/${conclusion:-n/a}"
+                sleep 15
+              done
+              if [[ "$gate_ok" != 'true' ]]; then
+                echo "::error::Timeout esperando $label para head ${PR_HEAD_SHA:0:12}"
+                exit 1
+              fi
+            done < <(jq -r '.[] | [.workflow,.label] | @tsv' <<<"$BLENDER_WORKFLOWS")
+          fi
+          if [[ "$RUN_E2E" != 'true' && "$RUN_SPECIALIZED" != 'true' && "$RUN_BLENDER" != 'true' ]]; then
+            echo 'Playwright omitido: esta superficie no requiere navegador crítico, especializado ni Blender.'
             exit 0
           fi
-          echo "Playwright requerido OK · core=$RUN_E2E/$CORE_LANES_RESULT · especializado=$RUN_SPECIALIZED/$SPECIALIZED_RESULT"
+          echo "Gate requerido OK · core=$RUN_E2E/$CORE_LANES_RESULT · especializado=$RUN_SPECIALIZED/$SPECIALIZED_RESULT · blender=$RUN_BLENDER"
