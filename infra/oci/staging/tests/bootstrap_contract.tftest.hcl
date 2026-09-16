@@ -53,8 +53,19 @@ run "bootstrap_contract_is_privileged_without_open_ended_sudo" {
   }
 
   assert {
-    condition     = strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "/usr/local/sbin/chess-studio-deploy")
-    error_message = "Cloud-init must install the root-owned immutable deploy wrapper."
+    condition = (
+      strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "/usr/local/sbin/chess-studio-deploy") &&
+      strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "/opt/chess-studio/repo/scripts/oci_staging_deploy_launcher.sh")
+    )
+    error_message = "Cloud-init must install the stable root-owned launcher from the immutable bootstrap checkout."
+  }
+
+  assert {
+    condition = (
+      !strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "OCI Alloy failed to start") &&
+      !strcontains(base64decode(oci_core_instance.backend.metadata["user_data"]), "new deployment failed readiness/build attestation")
+    )
+    error_message = "Cloud-init must contain host bootstrap only; release/rollback behavior belongs to the versioned deploy payload."
   }
 
   assert {
