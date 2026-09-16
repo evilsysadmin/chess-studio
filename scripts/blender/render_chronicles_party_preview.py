@@ -107,10 +107,19 @@ def roots():
     return found
 
 
+def set_hierarchy_visibility(root, visible):
+    """Blender parent visibility does not hide child objects from render."""
+    stack = [root]
+    while stack:
+        obj = stack.pop()
+        obj.hide_render = not visible
+        obj.hide_viewport = not visible
+        stack.extend(obj.children)
+
+
 def render_member(scene, member_roots, member, output_dir):
     for current, root in member_roots.items():
-        root.hide_render = current != member
-        root.hide_viewport = current != member
+        set_hierarchy_visibility(root, current == member)
         root.rotation_euler = (0.0, 0.0, math.radians(-8))
     scene.render.filepath = os.path.join(output_dir, f"chronicles-party-{member}.png")
     bpy.ops.render.render(write_still=True)
@@ -119,8 +128,7 @@ def render_member(scene, member_roots, member, output_dir):
 def render_group(scene, member_roots, output_dir):
     offsets = {"rook": -1.05, "bishop": 0.0, "knight": 1.05}
     for member, root in member_roots.items():
-        root.hide_render = False
-        root.hide_viewport = False
+        set_hierarchy_visibility(root, True)
         root.location.x = offsets[member]
         root.rotation_euler = (0.0, 0.0, 0.0)
     scene.camera.data.lens = 54
