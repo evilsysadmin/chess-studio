@@ -50,6 +50,8 @@ REQUIRED_MATTHIAS = (
     "load_png_from_buffer",
     "load_webp_from_buffer",
     "animation_finished.connect",
+    "_advance_locomotion",
+    'frames.get_frame_texture("fall", 0)',
     'name = "WeaponRoot"',
 )
 FORBIDDEN_MATTHIAS = (
@@ -130,6 +132,8 @@ def self_test() -> None:
     assert "FULL_ATLAS_ROWS := 10" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_CELL_SIZE := 256" in REQUIRED_MATTHIAS
     assert "matthias_smg_godot_strict_8x10_256_v5.png" in REQUIRED_MATTHIAS
+    assert "_advance_locomotion" in REQUIRED_MATTHIAS
+    assert 'frames.get_frame_texture("fall", 0)' in REQUIRED_MATTHIAS
     assert "load_webp_from_buffer" in REQUIRED_MATTHIAS
     assert "WEAPON_URLS" in FORBIDDEN_MATTHIAS
     assert "/pawn-slug/matthias/machinegun/" in FORBIDDEN_MATTHIAS
