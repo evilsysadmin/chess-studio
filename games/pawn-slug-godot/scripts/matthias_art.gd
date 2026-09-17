@@ -72,7 +72,7 @@ func body_ready() -> bool:
 
 func update_visual(
     delta: float,
-    movement_axis: float,
+    horizontal_speed_ratio: float,
     on_floor: bool,
     crouching: bool,
     landed_now: bool,
@@ -96,7 +96,7 @@ func update_visual(
         _muzzle_age += delta
         _recoil_remaining = maxf(0.0, _recoil_remaining - delta)
 
-    var next_action := _resolve_action(movement_axis, on_floor, _crouching)
+    var next_action := _resolve_action(horizontal_speed_ratio, on_floor, _crouching)
     if next_action != _action:
         _action = next_action
         _action_time = 0.0
@@ -109,14 +109,16 @@ func update_visual(
     _apply_pose_transform()
     queue_redraw()
 
-func _resolve_action(movement_axis: float, on_floor: bool, crouching: bool) -> String:
+# Ground locomotion follows post-physics speed, not raw input. Matthias therefore
+# keeps walking/running while real deceleration still moves him instead of skating in idle.
+func _resolve_action(horizontal_speed_ratio: float, on_floor: bool, crouching: bool) -> String:
     if not on_floor:
         return "jump"
     if crouching:
         return "crouch"
-    if absf(movement_axis) > 0.65:
+    if horizontal_speed_ratio > 0.65:
         return "run"
-    if absf(movement_axis) > 0.08:
+    if horizontal_speed_ratio > 0.08:
         return "walk"
     return "idle"
 
