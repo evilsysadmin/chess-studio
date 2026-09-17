@@ -1,7 +1,9 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import tournamentCupPayload from '../assets/home3d/tournament-cup-v1.glb.b64?raw';
+import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
 
 export const HOME_CASTLE_TOURNAMENT_ASSET_ID = 'blender-glb:tournament-cup-v1';
+export const HOME_CASTLE_TOURNAMENT_R2_LOGICAL_ID = 'home.tournament.trophy.runtime';
 
 const TOURNAMENT_SOURCE_MESHES = Object.freeze([
   'cup_base',
@@ -101,8 +103,22 @@ export async function hydrateHomeCastleTournamentCup(
     loader = new GLTFLoader(),
     payload = tournamentCupPayload,
     decode = globalThis.atob,
+    assetUrl,
   } = {},
 ) {
+  const remoteRoot = await loadHomeCastleR2Scene({
+    logicalId: HOME_CASTLE_TOURNAMENT_R2_LOGICAL_ID,
+    loader,
+    assetUrl,
+  });
+  if (remoteRoot) {
+    try {
+      if (applyHomeCastleTournamentAsset(targetGroup, remoteRoot)) return true;
+    } finally {
+      disposeHomeCastleAssetScene(remoteRoot);
+    }
+  }
+
   const buffer = decodeHomeCastleGlbPayload(payload, decode);
   const sourceRoot = await parseGlbScene(buffer, loader);
 
