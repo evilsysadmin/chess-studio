@@ -18,15 +18,10 @@ config = (ROOT / "infra/oci/k3s/config.yaml").read_bytes()
 unit = (ROOT / "infra/oci/k3s/k3s.service").read_bytes()
 install_source = probe.split("\ndef install_command", 1)[1].split("\ndef _run", 1)[0]
 
-assert workflow.count("'infra/oci/k3s/**'") >= 2, "K3s infra must participate in PR + main-push readiness"
-assert workflow.count("'scripts/oci_k3s_*'") >= 2, "K3s scripts must participate in PR + main-push readiness"
-
-publish = workflow.split("\n  publish-k3s:\n", 1)[1]
-assert "concurrency: {group: oci-staging-mutations, cancel-in-progress: false}" in publish, (
-    "publish-k3s must share the repository-wide OCI staging mutation mutex"
-)
-assert "python3 scripts/oci_k3s_bundle_publish.py reconcile" in publish
-assert "python3 scripts/oci_k3s_bundle_probe.py install" in publish
+assert workflow.count("'infra/oci/k3s/**'") >= 1, "K3s infra must participate in PR readiness"
+assert workflow.count("'scripts/oci_k3s_*'") >= 1, "K3s scripts must participate in PR readiness"
+assert "\n  push:\n" not in workflow, "OCI readiness must remain validation-only on repository events"
+assert "\n  publish-k3s:\n" not in workflow, "K3s publication must not live in the readiness workflow"
 
 assert "fast_path=true" in install_source and "fast_path=false" in install_source
 assert install_source.index("fast_path=true") < install_source.index("InstancePrincipalsSecurityTokenSigner")
@@ -109,8 +104,8 @@ assert "CHESS_STUDIO_K3S_STATUS *" not in sudoers
 assert "CHESS_STUDIO_K3S_CONTROL, CHESS_STUDIO_K3S_STATUS" in sudoers
 
 # K3s lifecycle is an explicit experimental control-plane operation, not a side
-# effect of a successful application release. Status remains available after an
-# explicit start/rollback or directly as a read-only manual operation.
+# effect of a successful application release. The explicit start owns its own
+# idempotent bundle reconcile/install prerequisites under the mutation mutex.
 assert "workflow_dispatch:" in service
 assert "workflow_run:" not in service
 assert "workflows: [Staging · deploy]" not in service
@@ -119,8 +114,15 @@ assert "auto_admission" not in service
 assert "git ls-remote origin refs/heads/main" not in service
 assert "ref: ${{ github.sha }}" in service
 assert "'oci-staging-mutations'" in service
+publish_command = "python3 scripts/oci_k3s_bundle_publish.py reconcile"
+install_command = "python3 scripts/oci_k3s_bundle_probe.py install"
+start_command = "python3 scripts/oci_k3s_control.py start"
+assert "Reconcile K3s bootstrap assets before explicit start" in service
+assert publish_command in service and install_command in service and start_command in service
+assert service.index(publish_command) < service.index(install_command) < service.index(start_command), (
+    "explicit K3s start must reconcile and install exact assets before lifecycle start"
+)
 assert "Start or ensure guarded single-node K3s" in service
-assert "python3 scripts/oci_k3s_control.py start" in service
 assert "python3 scripts/oci_k3s_control.py rollback" in service
 assert "Read K3s status and resource snapshot" in service
 assert "python3 scripts/oci_k3s_status.py" in service
@@ -150,4 +152,4 @@ for fragment in manual_only_fragments:
         f"non-dispatch events must never authorize manual service operation: {fragment}"
     )
 
-print("OCI K3s readiness + guarded manual lifecycle + read-only status + fast-path contract: OK")
+print("OCI K3s readiness + explicit asset reconcile + guarded manual lifecycle + read-only status contract: OK")
