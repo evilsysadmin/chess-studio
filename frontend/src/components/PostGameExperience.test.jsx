@@ -26,14 +26,23 @@ function render(props = {}) {
 }
 
 describe('PostGameExperience', () => {
-  it('mantiene una salida postpartida simple y pliega las acciones secundarias', () => {
+  it('cierra la partida con un debrief editorial de Matthias y deja la autopsia a un clic', () => {
     const html = render({ onShareResult: () => {}, onTrainPersonal: () => {} });
     expect(html).toContain('PARTIDA FINALIZADA');
+    expect(html).toContain('MATTHIAS // DEBRIEF');
     expect(html).toContain('¡Ganaste la partida!');
+    expect(html).toContain('Bien. Has ganado.');
+    expect(html).toContain('QUÉ MIRAR AHORA');
+    expect(html).toContain('Resumen de la partida');
     expect(html).toContain('Más opciones');
     expect(html).not.toContain('Compartir resultado');
     expect(html).not.toContain('Entrenar mis errores');
-    expect(html).not.toContain('Resumen de la partida');
+  });
+
+  it('prioriza el comentario real de Matthias sobre el fallback editorial', () => {
+    const html = render({ lastCpuComment: 'Ese mate ha sido limpio. No te acostumbres al elogio.' });
+    expect(html).toContain('Ese mate ha sido limpio. No te acostumbres al elogio.');
+    expect(html).not.toContain('Bien. Has ganado. Disfrútalo con moderación');
   });
 
   it('prioriza continuar una serie en curso sin añadir opciones laterales', () => {
