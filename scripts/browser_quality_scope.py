@@ -121,7 +121,7 @@ MATTHIAS_INSIGHTS_PATTERNS = (
 )
 CHRONICLES_PATTERNS = (
     "frontend/src/chronicles/*",
-    "frontend/src/chroniclesOfMatthias*.js",
+    "frontend/src/chronicles*.js",
     "frontend/src/components/Chronicles*.jsx",
     "frontend/src/components/Chronicles*.js",
     "frontend/src/components/Chronicles*.css",
@@ -417,6 +417,8 @@ def self_test() -> None:
         "frontend/src/chronicles/maps/crypt-eight-squares.json",
         "frontend/src/chroniclesOfMatthias.js",
         "frontend/src/chroniclesOfMatthiasDungeonArt.js",
+        "frontend/src/chroniclesPartyFootprint.js",
+        "frontend/src/chroniclesEnemyMotionArt.js",
         "frontend/src/components/ChroniclesOfMatthias.jsx",
         "frontend/src/components/ChroniclesOfMatthias.css",
         "e2e/chronicles-of-matthias.spec.js",
