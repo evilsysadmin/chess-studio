@@ -1,8 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Menu from './components/Menu.jsx';
-import PvpChallengeNudge from './components/PvpChallengeNudge.jsx';
 const GameScreen = React.lazy(() => import('./components/GameScreen.jsx'));
-const PvpGameScreen = React.lazy(() => import('./components/PvpGameScreen.jsx'));
 const Tutorial = React.lazy(() => import('./components/Tutorial.jsx'));
 const OpeningsScreen = React.lazy(() => import('./components/OpeningsScreen.jsx'));
 const TournamentScreen = React.lazy(() => import('./components/TournamentScreen.jsx'));
@@ -81,8 +79,8 @@ import { APP_RELEASE } from './release.js';
 import { USER_RELEASE_NOTES_KEY } from './userReleaseNotes.js';
 import { setProfileStorageItem } from './profileKeys.js';
 import { useGameLaunchController } from './useGameLaunchController.js';
-import { clearPvpMatchSession, loadPvpMatchSession, savePvpMatchSession } from './pvpEnrollment.js';
-import { usePvpPresence } from './usePvpPresence.js';
+import { PvpChallengeSurface, PvpGameSurface, usePvpAppFlow } from './pvpAppFlow.jsx';
+import { loadPvpMatchSession } from './pvpEnrollment.js';
 import { runLogoutLifecycle } from './logoutLifecycle.js';
 
 // 'menu' | 'game' | 'tutorial' | 'openings' | 'tournament' | 'tournamentGame' | 'puzzle' | 'combat' | 'history' | 'replay'
@@ -107,19 +105,11 @@ function AppInner({ isAdminUser }) {
   const [insightsLandingSection, setInsightsLandingSection] = useState('diagnosis');
 
   usePresenceHeartbeat(view);
-  const pvp = usePvpPresence();
-  const [pvpMatch, setPvpMatch] = useState(() => loadPvpMatchSession());
-
-  useEffect(() => {
-    if (view !== 'pvpGame' || pvpMatch || !pvp.lobby.activeMatch) return;
-    setPvpMatch(pvp.lobby.activeMatch);
-    savePvpMatchSession(pvp.lobby.activeMatch);
-  }, [pvp.lobby.activeMatch, pvpMatch, view]);
-
-  useEffect(() => {
-    if (!pvp.enrolled || view === 'pvpGame') return;
-    void pvp.refresh({ quiet: true, heartbeat: true });
-  }, [pvp.enrolled, pvp.refresh, view]);
+  const { pvp, pvpMatch, openPvpMatch, acceptIncomingPvpChallenge, exitPvpMatch } = usePvpAppFlow({
+    view,
+    replaceView,
+    setCombatBattleUiActive,
+  });
 
   const adminFeedbackNewCount = useAdminFeedbackInbox({ enabled: isAdminUser, view });
   const [game, setGame] = useState(null);
@@ -235,26 +225,6 @@ function AppInner({ isAdminUser }) {
       document.removeEventListener('keydown', closeOnEscape);
     };
   }, [showAccountMenu]);
-
-  function openPvpMatch(match) {
-    if (!match?.id) return;
-    setCombatBattleUiActive(false);
-    savePvpMatchSession(match);
-    setPvpMatch(match);
-    replaceView('pvpGame');
-  }
-
-  async function acceptIncomingPvpChallenge(challenge) {
-    const result = await pvp.acceptChallenge(challenge?.id);
-    if (result?.match) openPvpMatch(result.match);
-  }
-
-  function exitPvpMatch() {
-    clearPvpMatchSession();
-    setPvpMatch(null);
-    replaceView('menu');
-    void pvp.refresh({ quiet: true, heartbeat: pvp.enrolled });
-  }
 
   async function handleGlobalLogout() {
     setLogoutError(null);
@@ -814,16 +784,7 @@ function AppInner({ isAdminUser }) {
       <a className="skip-link" href="#main-content">Saltar al contenido</a>
       {!isBoardGameView && <GlobalMusicDock isAdminUser={isAdminUser} onAdmin={() => navigateTo('admin')} />}
       <ReleaseUpdateNotice deferReload={isBoardGameView} />
-      {pvp.incomingChallenge && view !== 'pvpGame' && (
-        <PvpChallengeNudge
-          challenge={pvp.incomingChallenge}
-          pendingCount={pvp.incoming.length}
-          busyKey={pvp.busyKey}
-          error={pvp.error}
-          onAccept={() => void acceptIncomingPvpChallenge(pvp.incomingChallenge)}
-          onDecline={() => void pvp.declineChallenge(pvp.incomingChallenge.id)}
-        />
-      )}
+      <PvpChallengeSurface view={view} pvp={pvp} onAccept={acceptIncomingPvpChallenge} />
       <ErrorBoundary
         view={view}
         onReset={resetNavigation}
@@ -988,13 +949,7 @@ function AppInner({ isAdminUser }) {
           />
         )}
 
-        {view === 'pvpGame' && (
-          pvpMatch ? (
-            <PvpGameScreen initialMatch={pvpMatch} onExit={exitPvpMatch} />
-          ) : (
-            <div className="route-loading" role="status">Recuperando duelo 1 vs 1…</div>
-          )
-        )}
+        <PvpGameSurface view={view} match={pvpMatch} onExit={exitPvpMatch} />
 
         {view === 'game' && game && (
           <GameScreen
