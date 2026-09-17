@@ -30,6 +30,10 @@ def _force_memory_store(monkeypatch):
     monkeypatch.setattr(chronicles_run_store, "_collection", no_collection)
 
 
+def _shipped_map_paths(root: Path) -> list[Path]:
+    return sorted(root.glob("*.json"), key=lambda path: path.name)
+
+
 def test_manifest_endpoint_requires_auth():
     response = _client().get("/api/chronicles/maps/crypt-eight-squares")
     assert response.status_code == 401
@@ -70,13 +74,22 @@ def test_backend_manifests_match_the_frontend_fallbacks_byte_for_byte():
     repo_root = Path(__file__).resolve().parents[1]
     backend_root = Path(__file__).with_name("chronicles_maps")
     frontend_root = repo_root / "frontend" / "src" / "chronicles" / "maps"
+    backend_paths = _shipped_map_paths(backend_root)
+    frontend_paths = _shipped_map_paths(frontend_root)
 
-    for filename in ("crypt-eight-squares.json", "gallery-of-forks.json", "menagerie-of-ash.json"):
-        assert (backend_root / filename).read_bytes() == (frontend_root / filename).read_bytes()
+    assert [path.name for path in backend_paths] == [path.name for path in frontend_paths]
+    assert backend_paths
+    for backend_path, frontend_path in zip(backend_paths, frontend_paths, strict=True):
+        assert backend_path.read_bytes() == frontend_path.read_bytes()
 
 
 def test_all_shipped_manifests_validate():
-    for map_id in ("crypt-eight-squares", "gallery-of-forks", "menagerie-of-ash"):
+    backend_root = Path(__file__).with_name("chronicles_maps")
+    shipped_paths = _shipped_map_paths(backend_root)
+
+    assert shipped_paths
+    for path in shipped_paths:
+        map_id = path.stem
         manifest, revision = chronicles_api.load_chronicles_manifest(map_id)
         assert manifest["id"] == map_id
         assert revision
