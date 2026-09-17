@@ -264,9 +264,10 @@ _DEFAULT_CORS_ORIGINS = {
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "https://evilsysadmin.github.io",
-    # Frontend público con dominio propio. Se mantiene el origen github.io
-    # mientras haya enlaces/cache de releases anteriores en circulación.
+    # Frontends canónicos: production + staging son contrato del backend y no
+    # dependen de que un runtime concreto haya conservado bien CORS_ORIGINS.
     "https://chess-studio.shadowops.dpdns.org",
+    "https://staging.chess-studio.shadowops.dpdns.org",
 }
 _CONFIGURED_CORS_ORIGINS = {
     normalized
