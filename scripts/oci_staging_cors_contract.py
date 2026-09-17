@@ -96,4 +96,14 @@ assert "group: oci-staging-service-control" not in service_control, (
     "OCI service control must not use a private mutex that can race staging mutations"
 )
 
+# Service smoke is an observation, not another readiness controller. Bringup
+# already waits before runtime sync and reboot-agent waits for a refreshed
+# RUNNING plugin, so wrapping smoke in another multi-minute retry hides failures.
+assert "run: python3 scripts/oci_run_command.py smoke" in service_control, (
+    "OCI service smoke must call the transport check directly"
+)
+assert "for attempt in $(seq 1 30)" not in service_control, (
+    "OCI service smoke must not reintroduce the legacy outer retry loop"
+)
+
 print("OCI staging CORS + runtime deployment contract: OK")
