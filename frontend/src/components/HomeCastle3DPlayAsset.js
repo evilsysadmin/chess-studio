@@ -1,7 +1,9 @@
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import playRookPayload from '../assets/home3d/play-rook-v1.glb.gz.b64?raw';
+import { loadHomeCastleR2Scene } from './HomeCastle3DR2Asset.js';
 
 export const HOME_CASTLE_PLAY_ASSET_ID = 'blender-glb:play-rook-v1';
+export const HOME_CASTLE_PLAY_R2_LOGICAL_ID = 'home.play.rook.runtime';
 
 const PLAY_SOURCE_MESHES = Object.freeze([
   'play_base',
@@ -108,8 +110,22 @@ export async function hydrateHomeCastlePlayRook(
     payload = playRookPayload,
     decode = globalThis.atob,
     decompress = gunzipPlayPayload,
+    assetUrl,
   } = {},
 ) {
+  const remoteRoot = await loadHomeCastleR2Scene({
+    logicalId: HOME_CASTLE_PLAY_R2_LOGICAL_ID,
+    loader,
+    assetUrl,
+  });
+  if (remoteRoot) {
+    try {
+      if (applyHomeCastlePlayAsset(targetGroup, remoteRoot)) return true;
+    } finally {
+      disposeHomeCastlePlayAssetScene(remoteRoot);
+    }
+  }
+
   const compressed = decodeHomeCastlePlayGlbPayload(payload, decode);
   const buffer = await decompress(compressed);
   const sourceRoot = await parseGlbScene(buffer, loader);
