@@ -19,11 +19,9 @@ A second A1 for pragmatic host redundancy is a later iteration. k3s/Argo CD is a
 
 `ghcr.io/evilsysadmin/chess-studio-backend:oci-<SHA>`
 
-`docker-compose.yml` resolves that exact artifact through the minimal `backend-image.Dockerfile` and retags it locally as:
+The A1 no longer invokes BuildKit merely to retag that already-built artifact. The deploy wrapper performs one explicit `docker pull` of the immutable SHA-tag **before** touching the serving container. `docker-compose.yml` then references that same GHCR image directly with `pull_policy: never`, so `docker compose up` is an offline/fail-closed replacement step rather than a second network mutation.
 
-`chess-studio-backend:oci-<SHA>`
-
-The local tag deliberately preserves the existing rollback contract while moving the expensive Python image build off the A1. A missing remote image fails during image preparation before the currently served backend is replaced.
+A missing remote image therefore fails before the currently served backend is replaced. Successful images remain in the local Docker cache and are valid rollback targets. The rollback helper also recognizes the older local `chess-studio-backend:oci-<SHA>` tags so the migration from the previous retagging flow remains backwards-compatible.
 
 The host port defaults to `127.0.0.1:4000`; no public backend ingress is introduced here. Runtime secrets stay in `/etc/chess-studio/backend.env` (or `CHESS_STUDIO_ENV_FILE`) and never enter Git, Compose, Terraform state, registry images, or Run Command payloads.
 
@@ -63,4 +61,4 @@ After adoption, the existing GitHub/OCI Run Command path can continue calling:
 sudo /usr/local/sbin/chess-studio-deploy <CI_APPROVED_40_CHAR_SHA>
 ```
 
-The wrapper prepares the exact prebuilt GHCR image before replacement, starts the new Compose service, requires Mongo readiness and exact build identity, persists the successful SHA, and attempts rollback to the previous immutable local image if the new deployment fails attestation.
+The wrapper checks out the exact runtime contract, pulls the exact prebuilt GHCR image, starts the new Compose service without building or pulling during `up`, requires Mongo readiness plus exact build identity and CORS, persists the successful SHA, and attempts rollback to the previous immutable cached image if the new deployment fails attestation.
