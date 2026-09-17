@@ -13,8 +13,8 @@ function battleRegistry() {
     ...registry.d4,
     id: 'w-r-a1',
     identityId: 'veteran-rook',
-    strengthPoints: 3,
-    speedPoints: 2,
+    strengthPoints: 5,
+    speedPoints: 0,
   };
   registry.d5 = { ...registry.d5, id: 'b-q-d8' };
   return registry;
