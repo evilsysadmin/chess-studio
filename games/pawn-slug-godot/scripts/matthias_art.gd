@@ -17,6 +17,8 @@ const MUZZLE_FLASH_SECONDS := 0.055
 const MUZZLE_OFFSET := Vector2(65.0, -10.0)
 const CROUCH_MUZZLE_Y_SHIFT := 18.0
 const MUZZLE_RADIUS := 9.0
+const RECOIL_SECONDS := 0.11
+const RECOIL_PIXELS := 5.0
 const LANDING_SECONDS := 0.12
 const LANDING_Y_SQUASH := 0.055
 const LANDING_X_STRETCH := 0.035
@@ -52,6 +54,7 @@ var _action := "idle"
 var _action_time := 0.0
 var _shoot_age := SHOOT_HOLD_SECONDS
 var _muzzle_age := MUZZLE_FLASH_SECONDS
+var _recoil_remaining := 0.0
 var _landing_remaining := 0.0
 var _facing := 1.0
 var _vertical_speed := 0.0
@@ -87,9 +90,11 @@ func update_visual(
     if fired_now:
         _shoot_age = 0.0
         _muzzle_age = 0.0
+        _recoil_remaining = RECOIL_SECONDS
     else:
         _shoot_age += delta
         _muzzle_age += delta
+        _recoil_remaining = maxf(0.0, _recoil_remaining - delta)
 
     var next_action := _resolve_action(movement_axis, on_floor, _crouching)
     if next_action != _action:
@@ -167,27 +172,34 @@ func _apply_shoot_frame() -> void:
     # Authored shoot strip faces screen-right.
     _shoot_sprite.flip_h = _facing < 0.0
 
-# Match the web runtime's 120ms landing squash, but recalculate the sprite's Y
-# from its scaled visible height so the feet stay pinned instead of floating.
+# Match the web runtime's 120ms landing squash and keep pistol recoil visual-only.
+# Both effects move the canonical sprites while the player's physics body stays untouched.
 func _apply_pose_transform() -> void:
     var landing := clampf(_landing_remaining / LANDING_SECONDS, 0.0, 1.0)
     var scale_x := ART_SCALE * (1.0 + landing * LANDING_X_STRETCH)
     var scale_y := ART_SCALE * (1.0 - landing * LANDING_Y_SQUASH)
+    var recoil_x := _recoil_offset_x()
     for sprite in [_body_sprite, _shoot_sprite]:
         if sprite == null:
             continue
         sprite.scale = Vector2(scale_x, scale_y)
         sprite.position = Vector2(
-            0.0,
+            recoil_x,
             PLAYER_FOOT_Y - (FRAME_SIZE.y - BOTTOM_GUTTER - FRAME_SIZE.y * 0.5) * scale_y,
         )
+
+func _recoil_offset_x() -> float:
+    if _recoil_remaining <= 0.0:
+        return 0.0
+    var phase := clampf(_recoil_remaining / RECOIL_SECONDS, 0.0, 1.0)
+    return -_facing * RECOIL_PIXELS * phase * phase
 
 func _draw() -> void:
     if _muzzle_age >= MUZZLE_FLASH_SECONDS:
         return
     var muzzle_y := MUZZLE_OFFSET.y + (CROUCH_MUZZLE_Y_SHIFT if _crouching else 0.0)
     draw_circle(
-        Vector2(_facing * MUZZLE_OFFSET.x, muzzle_y),
+        Vector2(_recoil_offset_x() + _facing * MUZZLE_OFFSET.x, muzzle_y),
         MUZZLE_RADIUS,
         Color("ffd36a"),
     )
