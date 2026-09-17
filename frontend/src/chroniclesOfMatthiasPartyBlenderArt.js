@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { installChroniclesPartyFallbackDetails } from './chroniclesOfMatthiasBlenderArt.js';
 import { installChroniclesTacticsSceneArt } from './chroniclesOfMatthiasSceneArt.js';
+import { installChroniclesDefaultLoadoutArt } from './chroniclesOfMatthiasPartyEquipmentArt.js';
 import { r2AssetUrl } from './r2Assets.js';
 
 export const CHRONICLES_TACTICS_PARTY_R2_ASSET_ID = 'chronicles.tactics.party.runtime';
@@ -72,6 +73,7 @@ export function installChroniclesTacticsPartyBlenderArt(
   let cancelled = false;
   const installed = [];
   const fallbackDetailCancels = [];
+  const loadoutCancels = [];
   installChroniclesTacticsSceneArt(models, { coarsePointer, scenePlan });
 
   const installFallbackDetails = (memberIds) => {
@@ -114,6 +116,7 @@ export function installChroniclesTacticsPartyBlenderArt(
         const priorTick = memberRoot.userData.chroniclesArtTick || null;
         memberRoot.add(visual);
         hideFallbackChildren(memberRoot, visual);
+        loadoutCancels.push(installChroniclesDefaultLoadoutArt(memberRoot, memberId, { coarsePointer }));
         memberRoot.userData.chroniclesPartyArtSource = CHRONICLES_TACTICS_PARTY_ASSET_VERSION;
 
         const clip = clipForMember(gltf.animations, memberId);
@@ -151,6 +154,7 @@ export function installChroniclesTacticsPartyBlenderArt(
   return () => {
     cancelled = true;
     fallbackDetailCancels.splice(0).forEach((cancelFallbackDetails) => cancelFallbackDetails?.());
+    loadoutCancels.splice(0).forEach((cancelLoadout) => cancelLoadout?.());
     installed.forEach(({ memberRoot, visual, mixer, priorTick }) => {
       mixer?.stopAllAction?.();
       memberRoot.userData.chroniclesArtTick = priorTick;

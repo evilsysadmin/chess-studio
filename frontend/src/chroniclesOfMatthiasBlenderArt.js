@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { installChroniclesDefaultLoadoutArt } from './chroniclesOfMatthiasPartyEquipmentArt.js';
 
 const MATTHIAS_MODEL_URL = `${import.meta.env.BASE_URL}models/matthias-home-canonical.glb`;
 
@@ -152,6 +153,7 @@ function installCanonicalMatthias(fallbackRoot, { coarsePointer = false, reduced
   let cancelled = false;
   let visual = null;
   let mixer = null;
+  let cancelLoadout = null;
   const fallbackChildren = [...fallbackRoot.children];
   fallbackRoot.userData.chroniclesArtSource = 'procedural-fallback-loading';
 
@@ -184,6 +186,7 @@ function installCanonicalMatthias(fallbackRoot, { coarsePointer = false, reduced
 
       fallbackChildren.forEach((node) => { node.visible = false; });
       fallbackRoot.add(visual);
+      cancelLoadout = installChroniclesDefaultLoadoutArt(fallbackRoot, 'matthias', { coarsePointer });
       fallbackRoot.userData.chroniclesArtSource = 'blender-home-canonical-v1';
 
       const idle = gltf.animations?.find((clip) => clip.name === 'Idle') || gltf.animations?.[0];
@@ -205,6 +208,8 @@ function installCanonicalMatthias(fallbackRoot, { coarsePointer = false, reduced
   return () => {
     cancelled = true;
     mixer?.stopAllAction?.();
+    cancelLoadout?.();
+    cancelLoadout = null;
     fallbackRoot.userData.chroniclesArtTick = null;
     if (visual) {
       disposeModel(visual);
