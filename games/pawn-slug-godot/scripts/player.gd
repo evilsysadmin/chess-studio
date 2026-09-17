@@ -20,6 +20,7 @@ const FIRE_INTERVAL := 0.16
 const MAX_HP := 3
 const STARTING_LIVES := 3
 const HIT_INVULN_SECONDS := 0.85
+const HURT_VISUAL_SECONDS := 0.18
 const DEATH_PAUSE_SECONDS := 0.55
 const RESPAWN_INVULN_SECONDS := 1.8
 
@@ -28,6 +29,7 @@ var fire_cooldown := 0.0
 var hp := MAX_HP
 var lives := STARTING_LIVES
 var invuln_remaining := 0.0
+var hurt_visual_remaining := 0.0
 var dead := false
 var is_game_over := false
 var _death_remaining := 0.0
@@ -45,6 +47,7 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
     invuln_remaining = maxf(0.0, invuln_remaining - delta)
+    hurt_visual_remaining = maxf(0.0, hurt_visual_remaining - delta)
     if dead:
         _update_dead_state(delta)
         return
@@ -94,6 +97,7 @@ func _physics_process(delta: float) -> void:
         fired_now = true
         fired.emit(global_position + Vector2(facing * 38.0, -7.0), facing)
 
+    _art.set_combat_state(hurt_visual_remaining, invuln_remaining, false, 0.0)
     _art.update_visual(
         delta,
         horizontal_speed_ratio,
@@ -114,6 +118,7 @@ func take_damage(amount: int = 1) -> bool:
         return false
     hp = maxi(0, hp - amount)
     invuln_remaining = HIT_INVULN_SECONDS
+    hurt_visual_remaining = HURT_VISUAL_SECONDS
     hurt.emit(hp, MAX_HP)
     if hp <= 0:
         _begin_death()
@@ -121,6 +126,7 @@ func take_damage(amount: int = 1) -> bool:
 
 func _begin_death() -> void:
     dead = true
+    hurt_visual_remaining = 0.0
     _death_remaining = DEATH_PAUSE_SECONDS
     lives = maxi(0, lives - 1)
     velocity = Vector2.ZERO
@@ -137,13 +143,18 @@ func _update_dead_state(delta: float) -> void:
     velocity.x = move_toward(velocity.x, 0.0, GROUND_DECEL * delta)
     move_and_slide()
 
-    if not is_game_over:
-        _death_remaining = maxf(0.0, _death_remaining - delta)
-        if _death_remaining <= 0.0:
-            _respawn()
-            return
+    _death_remaining = maxf(0.0, _death_remaining - delta)
+    var death_progress := clampf(
+        1.0 - (_death_remaining / DEATH_PAUSE_SECONDS),
+        0.0,
+        1.0,
+    )
+    if not is_game_over and _death_remaining <= 0.0:
+        _respawn()
+        return
 
     var horizontal_speed_ratio := clampf(absf(velocity.x) / MOVE_SPEED, 0.0, 1.0)
+    _art.set_combat_state(0.0, 0.0, true, death_progress)
     _art.update_visual(
         delta,
         horizontal_speed_ratio,
@@ -161,11 +172,13 @@ func _respawn() -> void:
     velocity = Vector2.ZERO
     hp = MAX_HP
     invuln_remaining = RESPAWN_INVULN_SECONDS
+    hurt_visual_remaining = 0.0
     dead = false
     _death_remaining = 0.0
     _coyote_remaining = 0.0
     _jump_buffer_remaining = 0.0
     _jump_was_pressed = false
+    _art.set_combat_state(0.0, invuln_remaining, false, 0.0)
     respawned.emit(hp, MAX_HP, lives)
 
 func _movement_axis() -> float:
