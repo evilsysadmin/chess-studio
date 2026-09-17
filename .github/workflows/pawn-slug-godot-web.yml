@@ -5,6 +5,7 @@ on:
     paths:
       - games/pawn-slug-godot/**
       - scripts/pawn_slug_godot_bundle.py
+      - scripts/pawn_slug_godot_live_smoke.mjs
       - .github/workflows/pawn-slug-godot-web.yml
       - scripts/apply_frontend_csp.mjs
   push:
@@ -12,6 +13,7 @@ on:
     paths:
       - games/pawn-slug-godot/**
       - scripts/pawn_slug_godot_bundle.py
+      - scripts/pawn_slug_godot_live_smoke.mjs
       - .github/workflows/pawn-slug-godot-web.yml
       - scripts/apply_frontend_csp.mjs
   workflow_dispatch:
@@ -133,4 +135,14 @@ jobs:
             --expected-source-sha "$GITHUB_SHA")"
           curl -fsS --retry 3 "$index_url" -o "$RUNNER_TEMP/pawn-slug-godot-index.html"
           test -s "$RUNNER_TEMP/pawn-slug-godot-index.html"
+          echo "PAWN_SLUG_GODOT_INDEX_URL=$index_url" >> "$GITHUB_ENV"
           echo "Pawn Slug Godot Web published: $index_url" >> "$GITHUB_STEP_SUMMARY"
+      - name: Restore Godot browser smoke runtime
+        uses: ./.github/actions/setup-browser-e2e
+        with:
+          browser-scope: chromium
+          restore-frontend-deps: 'false'
+          build-frontend: 'false'
+      - name: Browser handshake smoke
+        timeout-minutes: 2
+        run: node scripts/pawn_slug_godot_live_smoke.mjs
