@@ -2,7 +2,7 @@ name: OCI readiness
 on:
   workflow_dispatch:
   pull_request:
-    paths: [backend-python/Dockerfile, 'backend-python/requirements*.txt', 'infra/oci/runtime/**', 'infra/oci/k3s/**', scripts/oci_arm64_smoke.sh, scripts/oci_existing_a1_deploy.sh, scripts/oci_runtime_bundle.py, scripts/oci_staging_cors_contract.py, scripts/oci_readiness_scope.py, scripts/oci_service_contracts.py, 'scripts/oci_k3s_*', .github/workflows/oci-readiness.yml, .github/workflows/oci-staging-service.yml]
+    paths: [backend-python/Dockerfile, 'backend-python/requirements*.txt', 'infra/oci/runtime/**', 'infra/oci/k3s/**', scripts/oci_arm64_smoke.sh, scripts/oci_existing_a1_deploy.sh, scripts/oci_runtime_bundle.py, scripts/oci_runtime_manifest.py, scripts/oci_staging_cors_contract.py, scripts/oci_readiness_scope.py, scripts/oci_service_contracts.py, 'scripts/oci_k3s_*', .github/workflows/oci-readiness.yml, .github/workflows/oci-staging-service.yml]
 permissions: {contents: read}
 concurrency:
   group: oci-readiness-${{ github.event.pull_request.number || github.ref }}
@@ -24,6 +24,7 @@ jobs:
       - run: |
           python3 -S scripts/oci_staging_cors_contract.py
           python3 -S scripts/oci_service_contracts.py --self-test
+          python3 -S scripts/oci_runtime_manifest.py --self-test
           python3 scripts/oci_k3s_readiness_contract.py
           python3 scripts/oci_runtime_bundle.py
           bash -n scripts/oci_existing_a1_deploy.sh
