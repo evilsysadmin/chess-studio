@@ -1,4 +1,4 @@
-name: Pawn Slug · inspect canonical R2 motion
+name: Pawn Slug · inspect canonical R2 pistol
 
 on:
   push:
@@ -15,19 +15,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      MOTION: /tmp/matthias_motion_atlas_v5.webp
-      MOTION_URL: https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/motion/matthias_motion_atlas_v5_payload-85988118befde412.webp
+      ATLAS: /tmp/matthias_canonical_pistol_v1.webp
+      ATLAS_URL: https://assets.chess-studio.shadowops.dpdns.org/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-42a01598d26b6ded.webp
     steps:
-      - name: Fetch canonical motion atlas directly from R2
+      - name: Fetch canonical pistol atlas directly from R2
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --location --retry 3 --retry-delay 2 "$MOTION_URL" -o "$MOTION"
-          test "$(stat -c %s "$MOTION")" = "9334"
-          echo "85988118befde41238cedc4ba772af38d08789bdcfb1671e874ff6743470c393  $MOTION" | sha256sum -c -
+          curl --fail --location --retry 3 --retry-delay 2 "$ATLAS_URL" -o "$ATLAS"
+          test "$(stat -c %s "$ATLAS")" = "130478"
+          echo "42a01598d26b6dedb7f0bfa70c392c6cbd80df9cea1bea7c7224f9a6d8cf2829  $ATLAS" | sha256sum -c -
       - uses: actions/upload-artifact@v4
         with:
-          name: pawn-slug-r2-canonical-motion-${{ github.run_number }}
-          path: /tmp/matthias_motion_atlas_v5.webp
+          name: pawn-slug-r2-canonical-pistol-${{ github.run_number }}
+          path: /tmp/matthias_canonical_pistol_v1.webp
           if-no-files-found: error
           retention-days: 2
