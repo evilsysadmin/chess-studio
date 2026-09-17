@@ -17,7 +17,7 @@ import chess
 
 from chess_ai import MATE_SCORE, get_cpu_move, move_to_dict, settings_for_level
 from engine_analysis import RootCandidateAnalysis
-from root_candidate_service import factual_root_candidates
+from root_candidate_service import factual_root_candidates as top_root_candidates
 
 
 @dataclass(frozen=True)
@@ -127,7 +127,7 @@ def get_balanced_cpu_move(
     budget = min(profile.budget_s, max(0.08, settings.time_budget_s * 0.20))
     deadline = time.monotonic() + budget
     try:
-        analyzed = factual_root_candidates(
+        analyzed = top_root_candidates(
             board,
             depth=profile.depth,
             deadline=deadline,
