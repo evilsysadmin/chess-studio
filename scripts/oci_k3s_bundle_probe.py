@@ -112,20 +112,22 @@ fd=os.open(path,flags,0o600); h=hashlib.sha256(); total=0
 try:
  r=oci.object_storage.ObjectStorageClient(config={{}},signer=oci.auth.signers.InstancePrincipalsSecurityTokenSigner()).get_object(ns,'{BUCKET}','{BUNDLE_OBJECT}')
  if int(r.headers.get('content-length','-1'))!={BUNDLE_SIZE}: raise SystemExit('K3s bundle content-length mismatch')
- with os.fdopen(fd,'wb',closefd=True) as out:
+ with os.fdopen(fd,'wb',closefd=False) as out:
   for chunk in r.data.raw.stream(1024*1024,decode_content=False): out.write(chunk); h.update(chunk); total+=len(chunk)
   out.flush(); os.fsync(out.fileno())
- fd=-1
+ os.close(fd); fd=-1
  if total!={BUNDLE_SIZE} or h.hexdigest()!='{BUNDLE_SHA256}': raise SystemExit('K3s bundle digest mismatch')
 except BaseException:
- if fd>=0: os.close(fd)
+ if fd>=0:
+  try: os.close(fd)
+  except OSError: pass
  try: os.unlink(path)
  except FileNotFoundError: pass
  raise
 PY
 sudo --non-interactive '{ROOT_INSTALLER}' "$tmp"
 "$venv/bin/python" - <<'PY'
-import hashlib
+import hashlib,os
 from pathlib import Path
 def sha(path):
  h=hashlib.sha256()
@@ -137,7 +139,7 @@ if sha('/var/lib/rancher/k3s/agent/images/k3s-airgap-images-arm64.tar.zst')!='{K
 marker=Path('/var/lib/chess-studio/K3S_AIRGAP_ASSETS_READY').read_text().strip()
 if 'version={K3S_VERSION}' not in marker or 'bundle_sha256={BUNDLE_SHA256}' not in marker: raise SystemExit('K3s asset marker mismatch')
 for unit in ('/etc/systemd/system/k3s.service','/etc/systemd/system/k3s-agent.service','/etc/systemd/system/multi-user.target.wants/k3s.service'):
- if Path(unit).exists(): raise SystemExit('K3s service unexpectedly exists')
+ if os.path.lexists(unit): raise SystemExit('K3s service unexpectedly exists')
 print(marker)
 PY
 echo '{INSTALL_OK_MARKER} bytes={BUNDLE_SIZE} sha256={BUNDLE_SHA256} version={K3S_VERSION}'
