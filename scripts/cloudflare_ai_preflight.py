@@ -158,7 +158,10 @@ def static_check() -> list[str]:
     # backend/frontend/Worker before the promotion artifact is emitted.
     for needle, label in (
         ("name: Staging · AI Worker", "staging AI workflow name"),
-        ("actions: write", "staging AI self-cancel permission"),
+        ("contents: read", "staging AI least-privilege contents permission"),
+        ("accredited=false", "staging AI clean supersede output"),
+        ("accredited=true", "staging AI retained accreditation output"),
+        ("steps.lineage.outputs.accredited == 'true'", "staging AI accreditation gating"),
         ("UPSTREAM_EVENT: ${{ github.event.workflow_run.event", "staging AI upstream provenance"),
         ("Supersede stale staging accreditation outside current main lineage", "staging AI lineage guard"),
         ("git ls-remote --exit-code origin refs/heads/main", "staging AI resolves current main"),
@@ -174,6 +177,9 @@ def static_check() -> list[str]:
         ("staging-promotion-accreditation", "staging AI accreditation artifact name"),
     ):
         require(staging_ai, needle, label, errors)
+    if "actions: write" in staging_ai:
+        errors.append("staging AI: actions: write ya no está permitido; supersede debe terminar limpio sin mutar Actions")
+
     require_order(
         staging_ai,
         "Supersede stale staging accreditation outside current main lineage",
