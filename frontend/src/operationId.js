@@ -17,3 +17,33 @@ export function operationFingerprint(parts = []) {
     return String(part);
   }).join('|');
 }
+
+export function createRetryOperationIdCache({
+  scope = 'op',
+  ttlMs = 5 * 60_000,
+  now = () => Date.now(),
+  createId = createOperationId,
+} = {}) {
+  let retry = null;
+
+  function resolve(parts, current = {}) {
+    const operationFingerprintValue = operationFingerprint(parts);
+    if (current.operationId && current.operationFingerprint === operationFingerprintValue) {
+      return { operationId: current.operationId, operationFingerprint: operationFingerprintValue };
+    }
+
+    const timestamp = now();
+    const reusable = retry
+      && retry.fingerprint === operationFingerprintValue
+      && (timestamp - retry.failedAt) < ttlMs;
+    const operationId = reusable ? retry.operationId : createId(scope);
+    retry = { fingerprint: operationFingerprintValue, operationId, failedAt: timestamp };
+    return { operationId, operationFingerprint: operationFingerprintValue };
+  }
+
+  function confirm(operationId) {
+    if (operationId && retry?.operationId === operationId) retry = null;
+  }
+
+  return { resolve, confirm };
+}
