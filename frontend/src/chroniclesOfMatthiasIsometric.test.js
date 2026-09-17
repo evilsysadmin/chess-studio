@@ -25,6 +25,15 @@ describe('Chronicles canonical isometric viewport', () => {
     expect(east.x - centre.x).toBeCloseTo(south.z - centre.z, 6);
   });
 
+  it('centers renderer coordinates on the supplied scene plan instead of a fixed 7x7 origin', () => {
+    const plan = { center: { x: 2, y: 1 } };
+    const centre = chroniclesIsoWorldForCell(2, 1, plan);
+    const corner = chroniclesIsoWorldForCell(4, 2, plan);
+
+    expect([centre.x, centre.y, centre.z]).toEqual([0, 0, 0]);
+    expect([corner.x, corner.y, corner.z]).toEqual([4.9, 0, 2.45]);
+  });
+
   it('keeps the camera straight behind the party with an elevated tactical read', () => {
     const focus = { x: 2, z: -3 };
     const pose = chroniclesIsometricCameraPose(focus);
