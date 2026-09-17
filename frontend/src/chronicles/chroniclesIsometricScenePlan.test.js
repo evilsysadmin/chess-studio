@@ -6,10 +6,11 @@ import {
 } from './chroniclesIsometricScenePlan.js';
 
 describe('Chronicles isometric scene plan', () => {
-  it('derives topology and authored props from the active map', () => {
+  it('derives topology, authored props and visual style from the active map', () => {
     const plan = chroniclesIsometricScenePlan(chroniclesMapById('crypt-eight-squares'));
 
     expect(plan.mapId).toBe('crypt-eight-squares');
+    expect(plan.sceneStyle).toEqual({ id: 'crypt-stone', version: 1, dressing: 'crypt-legacy' });
     expect(plan.width).toBe(7);
     expect(plan.height).toBe(7);
     expect(plan.center).toEqual({ x: 3, y: 3 });
@@ -25,11 +26,13 @@ describe('Chronicles isometric scene plan', () => {
     ]));
   });
 
-  it('changes scene topology and props when the map changes without renderer constants', () => {
+  it('changes scene topology, props and visual style when the map changes without renderer constants', () => {
     const crypt = chroniclesIsometricScenePlan(chroniclesMapById('crypt-eight-squares'));
     const gallery = chroniclesIsometricScenePlan(chroniclesMapById('gallery-of-forks'));
 
     expect(gallery.mapId).toBe('gallery-of-forks');
+    expect(gallery.sceneStyle).toEqual({ id: 'gallery-stone', version: 1, dressing: 'none' });
+    expect(gallery.sceneStyle).not.toEqual(crypt.sceneStyle);
     expect(gallery.floors).not.toEqual(crypt.floors);
     expect(gallery.walls).not.toEqual(crypt.walls);
     expect(gallery.wallFaces).not.toEqual(crypt.wallFaces);
@@ -58,6 +61,7 @@ describe('Chronicles isometric scene plan', () => {
       exits: [],
     });
 
+    expect(plan.sceneStyle).toEqual({ id: 'neutral', version: 1, dressing: 'none' });
     expect(plan.center).toEqual({ x: 2, y: 1 });
     expect(chroniclesIsometricCellToWorld(plan, 2, 1, 2)).toEqual({ x: 0, y: 0, z: 0 });
     expect(chroniclesIsometricCellToWorld(plan, 4, 2, 2)).toEqual({ x: 4, y: 0, z: 2 });
