@@ -1,6 +1,10 @@
 name: OCI staging · service control
 
 on:
+  workflow_run:
+    workflows: [Staging · deploy]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       operation:
@@ -23,8 +27,8 @@ on:
 permissions:
   contents: read
 
-# Service operations share the same repository-wide mutation lock as canonical
-# backend deploys and Terraform so manual recovery cannot race staging changes.
+# Manual service operations and the post-staging K3s ensure path share the same
+# repository-wide mutation lock as backend deploys, K3s assets and Terraform.
 concurrency:
   group: oci-staging-mutations
   cancel-in-progress: false
@@ -32,6 +36,7 @@ concurrency:
 jobs:
   control:
     name: OCI staging · service control
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
@@ -43,22 +48,45 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 1
+
+      - name: Admit only the current main staging generation for automatic K3s ensure
+        id: auto_admission
+        if: github.event_name == 'workflow_run'
+        env:
+          UPSTREAM_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$UPSTREAM_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Staging workflow reported an invalid SHA: $UPSTREAM_SHA"; exit 1; }
+          current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
+          [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Could not resolve current main SHA"; exit 1; }
+          if [[ "$UPSTREAM_SHA" != "$current_main" ]]; then
+            echo 'admitted=false' >> "$GITHUB_OUTPUT"
+            echo "::notice title=K3s ensure superseded::Staging $UPSTREAM_SHA completed after main advanced to $current_main; no OCI mutation will run."
+            exit 0
+          fi
+          echo 'admitted=true' >> "$GITHUB_OUTPUT"
+          echo "Automatic K3s ensure admitted for current main staging generation: $UPSTREAM_SHA"
 
       - name: Setup Python for Render-only Mongo target diagnosis
-        if: inputs.operation == 'mongo-target-diagnose'
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'mongo-target-diagnose'
         uses: actions/setup-python@v6
         with:
           python-version: '3.13'
 
       - name: Restore cached OCI SDK toolchain
-        if: inputs.operation != 'mongo-target-diagnose'
+        if: >-
+          (github.event_name == 'workflow_dispatch' && inputs.operation != 'mongo-target-diagnose') ||
+          (github.event_name == 'workflow_run' && steps.auto_admission.outputs.admitted == 'true')
         uses: ./.github/actions/setup-oci-sdk
         with:
           version: '2.185.2'
           python-version: '3.13'
 
       - name: Validate OCI service contracts
+        if: github.event_name == 'workflow_dispatch' || steps.auto_admission.outputs.admitted == 'true'
         run: |
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
@@ -73,13 +101,13 @@ jobs:
           python3 -S scripts/verify_backend_staging.py --self-test
 
       - name: Diagnose Render staging Mongo target
-        if: inputs.operation == 'mongo-target-diagnose'
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'mongo-target-diagnose'
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: python3 scripts/render_mongo_target_diagnose.py
 
       - name: Wait for OCI Run Command registration before runtime sync
-        if: inputs.operation == 'runtime-sync'
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync'
         shell: bash
         run: |
           set -euo pipefail
@@ -104,59 +132,63 @@ jobs:
           done
 
       - name: Sync private runtime config
-        if: inputs.operation == 'runtime-sync'
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync'
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: python3 scripts/oci_runtime_config.py sync
 
       - name: Bootstrap missing OCI Vault values from Render staging
-        if: inputs.operation == 'vault-bootstrap'
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'vault-bootstrap'
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: python3 scripts/oci_vault_bootstrap.py bootstrap
 
       - name: Validate CURRENT OCI Vault runtime secrets
-        if: inputs.operation == 'vault-bootstrap' || inputs.operation == 'vault-validate'
+        if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'vault-bootstrap' || inputs.operation == 'vault-validate')
         run: python3 scripts/oci_vault_runtime.py validate
 
       - name: Validate one PENDING OCI Vault rotation
-        if: inputs.operation == 'vault-validate-pending'
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'vault-validate-pending'
         env:
           VAULT_SECRET_KEY: ${{ inputs.secret_key }}
         run: python3 scripts/oci_vault_runtime.py validate-pending --key "$VAULT_SECRET_KEY"
 
       - name: Recover stale OCI agent after explicit request
-        if: inputs.operation == 'reboot-agent'
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'reboot-agent'
         run: python3 scripts/oci_run_command.py reboot-agent
 
       - name: Diagnose OCI agent transport
-        if: inputs.operation == 'diagnose'
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'diagnose'
         run: python3 scripts/oci_run_command.py diagnose
 
       - name: Diagnose OCI backend runtime
-        if: inputs.operation == 'backend-diagnose'
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'backend-diagnose'
         run: python3 scripts/oci_backend_diagnose.py
 
       - name: Diagnose OCI Mongo network
-        if: inputs.operation == 'mongo-network-diagnose'
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'mongo-network-diagnose'
         run: python3 scripts/oci_mongo_network_diagnose.py
 
       - name: Reserve stable OCI egress IP
-        if: inputs.operation == 'reserved-egress'
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'reserved-egress'
         run: python3 scripts/oci_reserve_egress_ip.py
 
-      - name: Start guarded single-node K3s
-        if: inputs.operation == 'k3s-start'
+      - name: Start or ensure guarded single-node K3s
+        if: >-
+          (github.event_name == 'workflow_run' && steps.auto_admission.outputs.admitted == 'true') ||
+          (github.event_name == 'workflow_dispatch' && inputs.operation == 'k3s-start')
         run: python3 scripts/oci_k3s_control.py start
 
       - name: Roll back K3s to inert state
-        if: inputs.operation == 'k3s-rollback'
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'k3s-rollback'
         run: python3 scripts/oci_k3s_control.py rollback
 
       - name: Prove Docker staging survived K3s lifecycle change
-        if: inputs.operation == 'k3s-start' || inputs.operation == 'k3s-rollback'
+        if: >-
+          (github.event_name == 'workflow_run' && steps.auto_admission.outputs.admitted == 'true') ||
+          (github.event_name == 'workflow_dispatch' && (inputs.operation == 'k3s-start' || inputs.operation == 'k3s-rollback'))
         env:
-          EXPECTED_SHA: ${{ inputs.repo_ref || github.sha }}
+          EXPECTED_SHA: ${{ github.event.workflow_run.head_sha || inputs.repo_ref || github.sha }}
           STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
         run: >-
           python3 scripts/verify_backend_staging.py
@@ -167,17 +199,17 @@ jobs:
 
       - name: Smoke OCI agent transport
         id: smoke
-        if: inputs.operation == 'smoke' || inputs.operation == 'reboot-agent' || inputs.operation == 'bringup'
+        if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'smoke' || inputs.operation == 'reboot-agent' || inputs.operation == 'bringup')
         continue-on-error: ${{ inputs.operation == 'bringup' }}
         run: python3 scripts/oci_run_command.py smoke
 
       - name: Explain tolerated bringup host-contract drift
-        if: inputs.operation == 'bringup' && steps.smoke.outcome == 'failure'
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'bringup' && steps.smoke.outcome == 'failure'
         run: >-
           echo '::warning::Bringup continues after host-contract smoke failure; the immutable deploy itself remains blocking and proves the effective privileged path.'
 
       - name: Deploy immutable backend release
-        if: inputs.operation == 'deploy' || inputs.operation == 'bringup'
+        if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'deploy' || inputs.operation == 'bringup')
         env:
           DEPLOY_REF: ${{ inputs.repo_ref || github.sha }}
         run: python3 scripts/oci_run_command.py deploy --repo-ref "$DEPLOY_REF"

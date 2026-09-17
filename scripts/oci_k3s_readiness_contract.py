@@ -72,11 +72,46 @@ assert (
 assert "CHESS_STUDIO_K3S_CONTROL *" not in sudoers
 assert "CHESS_STUDIO_K3S_ASSETS, CHESS_STUDIO_K3S_CONTROL" in sudoers
 
-assert "k3s-start" in service and "k3s-rollback" in service
+# A successful canonical staging generation automatically ensures the base K3s
+# node only while that generation is still current main. A superseded staging
+# run must finish cleanly without any OCI mutation. Every other service-control
+# operation remains explicit workflow_dispatch-only.
+assert "workflow_run:" in service
+assert "workflows: [Staging · deploy]" in service
+assert "types: [completed]" in service and "branches: [main]" in service
+assert "github.event.workflow_run.conclusion == 'success'" in service
+assert "ref: ${{ github.event.workflow_run.head_sha || github.sha }}" in service
+assert "Admit only the current main staging generation for automatic K3s ensure" in service
+assert 'UPSTREAM_SHA: ${{ github.event.workflow_run.head_sha }}' in service
+assert "git ls-remote origin refs/heads/main" in service
+assert 'echo \'admitted=false\' >> "$GITHUB_OUTPUT"' in service
+assert 'echo \'admitted=true\' >> "$GITHUB_OUTPUT"' in service
+assert "steps.auto_admission.outputs.admitted == 'true'" in service
 assert "group: oci-staging-mutations" in service
+assert "Start or ensure guarded single-node K3s" in service
 assert "python3 scripts/oci_k3s_control.py start" in service
 assert "python3 scripts/oci_k3s_control.py rollback" in service
 assert "Prove Docker staging survived K3s lifecycle change" in service
+assert 'EXPECTED_SHA: ${{ github.event.workflow_run.head_sha || inputs.repo_ref || github.sha }}' in service
 assert '--sha "$EXPECTED_SHA"' in service
 
-print("OCI K3s readiness + guarded lifecycle + fast-path contract: OK")
+manual_only_fragments = (
+    "inputs.operation == 'mongo-target-diagnose'",
+    "inputs.operation == 'runtime-sync'",
+    "inputs.operation == 'vault-bootstrap'",
+    "inputs.operation == 'vault-validate-pending'",
+    "inputs.operation == 'reboot-agent'",
+    "inputs.operation == 'backend-diagnose'",
+    "inputs.operation == 'mongo-network-diagnose'",
+    "inputs.operation == 'reserved-egress'",
+    "inputs.operation == 'k3s-rollback'",
+    "inputs.operation == 'deploy' || inputs.operation == 'bringup'",
+)
+for fragment in manual_only_fragments:
+    matching = [line.strip() for line in service.splitlines() if fragment in line and line.lstrip().startswith("if:")]
+    assert matching, f"missing manual-only service condition: {fragment}"
+    assert all("github.event_name == 'workflow_dispatch'" in line for line in matching), (
+        f"workflow_run must never authorize manual service operation: {fragment}"
+    )
+
+print("OCI K3s readiness + guarded lifecycle + auto-ensure + fast-path contract: OK")
