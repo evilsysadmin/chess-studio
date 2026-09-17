@@ -1,6 +1,8 @@
 extends Node2D
 
 const EnemyVisual := preload("res://scripts/enemy_visual.gd")
+const BossVisual := preload("res://scripts/boss_visual.gd")
+const ExtractionVisual := preload("res://scripts/extraction_visual.gd")
 const VIEW_SIZE := Vector2(1280.0, 720.0)
 const WORLD_SIZE := Vector2(5200.0, 720.0)
 const FLOOR_Y := 610.0
@@ -8,6 +10,15 @@ const PLAYER_HITBOX_HALF := Vector2(24.0, 42.0)
 const PICKUP_RADIUS_X := 44.0
 const PICKUP_Y := 566.0
 const ENEMY_AGGRO_RANGE := 1080.0
+const BOSS_X := 4580.0
+const EXTRACTION_X := 5050.0
+const BOSS_TRIGGER_X := BOSS_X - 720.0
+const BOSS_ARENA_LEFT := BOSS_X - 570.0
+const BOSS_ARENA_RIGHT := BOSS_X + 500.0
+const BOSS_HP := 780
+const BOSS_SIZE := Vector2(190.0, 150.0)
+const BOSS_REGULAR_RANGE := 1280.0
+const BOSS_SHELL_RANGE := 1440.0
 const PLATFORMS: Array[Rect2] = [
     Rect2(460.0, 498.0, 280.0, 24.0),
     Rect2(920.0, 418.0, 240.0, 24.0),
@@ -50,6 +61,12 @@ var pickups: Array[Dictionary] = [
     {"x": 2470.0, "type": "shotgun", "taken": false},
     {"x": 3500.0, "type": "panzerfaust", "taken": false},
 ]
+var boss_spawned := false
+var boss_defeated := false
+var mission_complete := false
+var boss: Dictionary = {}
+var boss_visual
+var extraction_visual
 
 @onready var player = $Player
 @onready var status_bar: ColorRect = $HUD/StatusBar
@@ -57,6 +74,7 @@ var pickups: Array[Dictionary] = [
 func _ready() -> void:
     enemies = _build_enemy_roster()
     _build_enemy_visuals()
+    _build_extraction_visual()
     player.connect("fired", Callable(self, "_on_player_fired"))
     player.connect("hurt", Callable(self, "_on_player_hurt"))
     player.connect("died", Callable(self, "_on_player_died"))
@@ -68,10 +86,14 @@ func _ready() -> void:
     queue_redraw()
 
 func _process(delta: float) -> void:
+    _spawn_boss_if_needed()
     _update_projectiles(delta)
     _update_enemies(delta)
+    _update_boss(delta)
     _update_enemy_projectiles(delta)
     _update_pickups()
+    _enforce_boss_arena()
+    _check_victory()
     queue_redraw()
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -117,6 +139,9 @@ func _on_player_respawned(_current_hp: int, _max_hp: int, _lives_remaining: int)
             continue
         enemy["cooldown"] = 0.35 + float(index % 5) * 0.08
         enemies[index] = enemy
+    if boss_spawned and not boss_defeated:
+        boss["regular_cooldown"] = 0.65
+        boss["shell_cooldown"] = 1.35
     _sync_hud()
     _notify_parent("player-respawn")
 
@@ -168,6 +193,14 @@ func _build_enemy_visuals() -> void:
         enemy_visuals[id] = visual
         _sync_enemy_visual(enemy, false)
 
+func _build_extraction_visual() -> void:
+    extraction_visual = ExtractionVisual.new()
+    extraction_visual.name = "Extraction"
+    extraction_visual.position = Vector2(EXTRACTION_X, FLOOR_Y)
+    extraction_visual.z_index = 1
+    add_child(extraction_visual)
+    extraction_visual.set_unlocked(false)
+
 func _sync_enemy_visual(enemy: Dictionary, moving: bool) -> void:
     var visual = enemy_visuals.get(String(enemy["id"]))
     if visual == null:
@@ -192,6 +225,37 @@ func _enemy_weapon_for(type: String, variant: int) -> String:
         _:
             return "pistol" if variant % 2 == 0 else "machinegun"
 
+func _spawn_boss_if_needed() -> void:
+    if boss_spawned or boss_defeated or player.global_position.x < BOSS_TRIGGER_X:
+        return
+    boss_spawned = true
+    boss = {
+        "id": "boss-panzer-rook",
+        "x": BOSS_X,
+        "hp": BOSS_HP,
+        "max_hp": BOSS_HP,
+        "regular_cooldown": 0.45,
+        "shell_cooldown": 1.55,
+    }
+    boss_visual = BossVisual.new()
+    boss_visual.name = "BossPanzerRook"
+    boss_visual.z_index = 1
+    add_child(boss_visual)
+    _sync_boss_visual()
+    _notify_parent("boss-spawned")
+
+func _sync_boss_visual() -> void:
+    if boss_visual == null or boss.is_empty():
+        return
+    var facing := -1.0 if player.global_position.x < float(boss["x"]) else 1.0
+    boss_visual.sync_state(
+        float(boss["x"]),
+        FLOOR_Y,
+        facing,
+        int(boss["hp"]),
+        int(boss["max_hp"]),
+    )
+
 func _update_projectiles(delta: float) -> void:
     for index in range(projectiles.size() - 1, -1, -1):
         var projectile := projectiles[index]
@@ -201,7 +265,7 @@ func _update_projectiles(delta: float) -> void:
         projectile["position"] = position
         projectiles[index] = projectile
 
-        var hit_enemy := false
+        var hit_target := false
         for enemy_index in range(enemies.size()):
             var enemy := enemies[enemy_index]
             if int(enemy["hp"]) <= 0:
@@ -210,9 +274,17 @@ func _update_projectiles(delta: float) -> void:
                 continue
             enemy["hp"] = maxi(0, int(enemy["hp"]) - int(projectile["damage"]))
             enemies[enemy_index] = enemy
-            hit_enemy = true
+            hit_target = true
             break
-        if hit_enemy:
+
+        if not hit_target and boss_spawned and not boss_defeated and _boss_rect().has_point(position):
+            boss["hp"] = maxi(0, int(boss["hp"]) - int(projectile["damage"]))
+            _sync_boss_visual()
+            if int(boss["hp"]) <= 0:
+                _defeat_boss()
+            hit_target = true
+
+        if hit_target:
             projectiles.remove_at(index)
             continue
 
@@ -258,6 +330,25 @@ func _update_enemies(delta: float) -> void:
             _sync_enemy_visual(enemy, false)
         enemies[index] = enemy
 
+func _update_boss(delta: float) -> void:
+    if not boss_spawned or boss_defeated or boss.is_empty():
+        return
+    _sync_boss_visual()
+    if player.dead or player.is_game_over:
+        return
+
+    var distance := absf(player.global_position.x - float(boss["x"]))
+    boss["regular_cooldown"] = maxf(0.0, float(boss["regular_cooldown"]) - delta)
+    boss["shell_cooldown"] = maxf(0.0, float(boss["shell_cooldown"]) - delta)
+
+    if distance <= BOSS_REGULAR_RANGE and float(boss["regular_cooldown"]) <= 0.0:
+        _fire_boss(false)
+        boss["regular_cooldown"] = _enemy_fire_cooldown("machinegun")
+
+    if distance <= BOSS_SHELL_RANGE and distance >= float(ENEMY_FIRE_PROFILES["panzerfaust"]["min_range"]) and float(boss["shell_cooldown"]) <= 0.0:
+        _fire_boss(true)
+        boss["shell_cooldown"] = randf_range(1.65, 2.10)
+
 func _try_enemy_fire(enemy: Dictionary) -> void:
     var weapon := String(enemy["weapon"])
     var profile: Dictionary = ENEMY_FIRE_PROFILES[weapon]
@@ -281,6 +372,24 @@ func _try_enemy_fire(enemy: Dictionary) -> void:
     var visual = enemy_visuals.get(String(enemy["id"]))
     if visual != null:
         visual.play_fire()
+
+func _fire_boss(explosive: bool) -> void:
+    if boss_visual == null or player.dead or player.is_game_over:
+        return
+    var weapon := "panzerfaust" if explosive else "machinegun"
+    var profile: Dictionary = ENEMY_FIRE_PROFILES[weapon]
+    var origin: Vector2 = boss_visual.muzzle_global_position()
+    var target := player.global_position + Vector2(0.0, -18.0)
+    var direction := (target - origin).normalized()
+    var spread := 0.0 if explosive else float(profile["spread"])
+    var angle := randf_range(-spread, spread) if spread > 0.0 else 0.0
+    enemy_projectiles.append({
+        "position": origin,
+        "velocity": direction.rotated(angle) * float(profile["speed"]),
+        "weapon": weapon,
+        "explosive": explosive,
+    })
+    boss_visual.play_fire(explosive)
 
 func _enemy_fire_cooldown(weapon: String) -> float:
     var profile: Dictionary = ENEMY_FIRE_PROFILES[weapon]
@@ -332,11 +441,46 @@ func _update_pickups() -> void:
             pickups[index] = pickup
             _notify_parent("weapon-pickup")
 
+func _enforce_boss_arena() -> void:
+    if not boss_spawned or boss_defeated or player.global_position.x <= BOSS_ARENA_LEFT:
+        return
+    var clamped_x := clampf(player.global_position.x, BOSS_ARENA_LEFT, BOSS_ARENA_RIGHT)
+    if not is_equal_approx(clamped_x, player.global_position.x):
+        player.global_position.x = clamped_x
+        player.velocity.x = 0.0
+
+func _check_victory() -> void:
+    if mission_complete or not boss_defeated or player.dead or player.is_game_over:
+        return
+    if player.global_position.x < EXTRACTION_X - 50.0:
+        return
+    mission_complete = true
+    if extraction_visual != null:
+        extraction_visual.set_complete(true)
+    player.velocity = Vector2.ZERO
+    _notify_parent("victory")
+
+func _defeat_boss() -> void:
+    if boss_defeated:
+        return
+    boss_defeated = true
+    boss["hp"] = 0
+    _sync_boss_visual()
+    if extraction_visual != null:
+        extraction_visual.set_unlocked(true)
+    _notify_parent("boss-defeated")
+
 func _enemy_rect(enemy: Dictionary) -> Rect2:
     var stats: Dictionary = ENEMY_TYPES[String(enemy["type"])]
     var width := float(stats["width"])
     var height := float(stats["height"])
     return Rect2(Vector2(float(enemy["x"]) - width * 0.5, FLOOR_Y - height), Vector2(width, height))
+
+func _boss_rect() -> Rect2:
+    return Rect2(
+        Vector2(BOSS_X - BOSS_SIZE.x * 0.5, FLOOR_Y - BOSS_SIZE.y),
+        BOSS_SIZE,
+    )
 
 func _enemy_fire_origin(enemy: Dictionary) -> Vector2:
     var visual = enemy_visuals.get(String(enemy["id"]))
