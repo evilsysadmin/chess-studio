@@ -55,7 +55,7 @@ async function captureTacticsHealth(page) {
       camera: mode?.getAttribute('data-camera') || null,
       combat: mode?.getAttribute('data-combat') || null,
       canvasCount: document.querySelectorAll('[data-chronicles-tactics-renderer="three"] canvas').length,
-      partyMemberCount: document.querySelectorAll('.chronicles-tactics__party > button').length,
+      partyMemberCount: document.querySelectorAll('.chronicles-tactics__party [data-member-id]').length,
       mode: rect('[data-chronicles-tactics="true"]'),
       viewport: rect('.chronicles-tactics__viewport'),
       canvas: rect('[data-chronicles-tactics-renderer="three"] canvas'),
@@ -88,8 +88,9 @@ function expectDesktopCanonicalComposition(health, label) {
   expect(health.mission.right, `${label}: mission stays inside viewport`).toBeLessThanOrEqual(viewport.right);
 
   expect(health.party.left, `${label}: party stays on left`).toBeLessThan(viewport.left + 50);
-  expect(health.party.bottom, `${label}: party stays near bottom`).toBeGreaterThan(viewport.bottom - 50);
+  expect(health.party.top, `${label}: party HUD stays near top`).toBeLessThan(viewport.top + 50);
   expect(health.party.right, `${label}: party leaves battlefield centre readable`).toBeLessThan(midpoint + 20);
+  expect(health.party.bottom, `${label}: party HUD leaves lower battlefield readable`).toBeLessThan(viewport.bottom - 100);
 
   expect(health.actions.left, `${label}: actions stay in right band`).toBeGreaterThan(viewport.left + viewport.width * 0.68);
   expect(health.actions.right, `${label}: actions stay inside viewport`).toBeLessThanOrEqual(viewport.right);
