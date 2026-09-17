@@ -82,8 +82,8 @@ jobs:
           echo 'admitted=true' >> "$GITHUB_OUTPUT"
           echo "Staging admission OK: $DEPLOY_SHA sigue siendo main HEAD."
 
-  # OCI owns the canonical staging backend generation. Render remains read-only
-  # temporarily for legacy smoke/Worker secret consumers; production is untouched.
+  # OCI owns the canonical staging backend generation. Persistent runtime
+  # configuration lives in private OCI Object Storage; production is untouched.
   backend:
     name: Backend · exact OCI generation
     needs: prepare
@@ -101,40 +101,17 @@ jobs:
       url: https://staging.chess-studio.shadowops.dpdns.org
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
       OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
       OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
       OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
       OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
-    outputs:
-      render_service_id: ${{ steps.render_bootstrap.outputs.service_id }}
 
     steps:
       - name: Checkout CI-approved commit
         uses: actions/checkout@v7
         with:
           ref: ${{ env.DEPLOY_SHA }}
-
-      - name: Resolve legacy Render service id read-only
-        id: render_bootstrap
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import os
-          import sys
-          sys.path.insert(0, 'scripts')
-          import render_staging_bootstrap as render  # render_staging_bootstrap.py
-
-          service = render.find_service(render.SERVICE_NAME)
-          service_id = str((service or {}).get('id') or '').strip()
-          if not service_id:
-              raise SystemExit('No existe el servicio Render staging legado para consumidores de secretos')
-          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as handle:
-              handle.write(f'service_id={service_id}\n')
-          print('Render staging resuelto read-only; no se reconcilia ni despliega')
-          PY
 
       - name: Restore cached OCI SDK toolchain
         uses: ./.github/actions/setup-oci-sdk
@@ -259,7 +236,6 @@ jobs:
       url: https://staging.chess-studio.shadowops.dpdns.org
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
@@ -278,7 +254,7 @@ jobs:
           node-version: '22'
       - name: Staging Worker isolation contract
         run: python3 -S scripts/deploy_staging_ai_worker.py --self-test
-      - name: Deploy exact staging Worker and synchronize shared secret
+      - name: Deploy exact staging Worker generation
         run: python3 scripts/deploy_staging_ai_worker.py
       - name: Wait for staging Worker Custom Domain and health
         shell: bash
@@ -321,8 +297,11 @@ jobs:
             spec: staging-war-room-restore.spec.js
     env:
       DEPLOY_SHA: ${{ needs.prepare.outputs.deploy_sha }}
-      RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-      RENDER_SERVICE_ID: ${{ needs.backend.outputs.render_service_id }}
+      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
+      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
+      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
     steps:
       - name: Checkout CI-approved commit
         uses: actions/checkout@v7
@@ -374,19 +353,29 @@ jobs:
           done
           [[ "$parity_ok" == true ]] || { echo '::error::Generation parity no convergió a N/N/N tras 5 minutos'; exit 1; }
 
-      - name: Load ephemeral staging invite code
+      - name: Restore cached OCI SDK toolchain
+        uses: ./.github/actions/setup-oci-sdk
+        with:
+          version: '2.185.2'
+          python-version: '3.13'
+
+      - name: Load ephemeral staging invite code from OCI runtime
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import os, sys
+          import os
+          import sys
           sys.path.insert(0, 'scripts')
-          import render_staging_bootstrap as render
-          service_id = os.environ.get('RENDER_SERVICE_ID', '').strip()
-          if not service_id: raise SystemExit('Falta RENDER_SERVICE_ID para leer INVITE_CODE de staging')
-          invite = render.read_env(service_id, 'INVITE_CODE') or ''
-          if not invite: raise SystemExit('INVITE_CODE de staging falta')
-          render.export_github_secret_env('STAGING_INVITE_CODE', invite)
+          import oci
+          from oci_runtime_bundle import read_private_runtime_value
+
+          invite = read_private_runtime_value(oci, 'INVITE_CODE')
+          if not invite:
+              raise SystemExit('INVITE_CODE de staging falta en el bundle privado de OCI')
+          print(f'::add-mask::{invite}')
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as handle:
+              handle.write(f'STAGING_INVITE_CODE={invite}\n')
           PY
 
       - name: Prepare and sweep staging smoke janitor
@@ -397,16 +386,12 @@ jobs:
           python3 -S scripts/staging_smoke_user_cleanup.py --self-test
           python3 -S scripts/staging_smoke_user_cleanup.py --sweep
 
-      - name: Derive isolated staging smoke credentials
+      - name: Generate isolated staging smoke credentials
         shell: bash
-        env:
-          SMOKE_KEY: ${{ matrix.key }}
         run: |
           set -euo pipefail
-          identity="$(printf 'chess-studio-staging-smoke-user:v3:%s:%s:%s:%s:%s' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$DEPLOY_SHA" "$SMOKE_KEY" "$RENDER_API_KEY" | sha256sum | awk '{print substr($1,1,16)}')"
-          secret="$(printf 'chess-studio-staging-smoke-password:v3:%s:%s:%s:%s' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$SMOKE_KEY" "$RENDER_API_KEY" | sha256sum | awk '{print $1}')"
-          username="ci_smoke_${identity}"
-          password="CS!${secret}"
+          username="ci_smoke_$(python3 -c 'import secrets; print(secrets.token_hex(8))')"
+          password="CS!$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
           echo "::add-mask::$username"
           echo "::add-mask::$password"
           echo "STAGING_E2E_USERNAME=$username" >> "$GITHUB_ENV"
@@ -467,10 +452,11 @@ jobs:
             echo '- Worker SHA: `mismo generation SHA · verificado por /health`'
             echo '- Mongo staging: `ready`'
             echo '- OCI runtime config: `bundle privado persistente; cambios explícitos vía OCI staging · service control → runtime-sync`'
+            echo '- Canonical staging Render dependency: `none`'
             echo '- OCI mutation ordering: `mutex nativo compartido con Terraform; sin polling a Actions API`'
             echo '- Generation parity gate: `N/N/N · verificado dentro de cada smoke antes de Chromium`'
             echo '- Live browser smoke: `War Room live + F5 authority · paralelos · OK`'
             echo '- Visual evidence: `vídeos Chromium retenidos 7 días en staging-live-playwright-*`'
-            echo '- Identidades CI: `aisladas por spec, eliminadas y verificadas`'
+            echo '- Identidades CI: `aleatorias por spec, eliminadas y verificadas`'
             echo '- Deploy lanes: `Backend OCI + Pages + Worker arrancan en paralelo tras admission`'
           } >> "$GITHUB_STEP_SUMMARY"
