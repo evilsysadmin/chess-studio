@@ -35,6 +35,7 @@ OCI_WORKFLOWS = {
 K3S_BUNDLE_PATHS = {
     "scripts/oci_k3s_bundle.py",
     "scripts/oci_k3s_bundle_publish.py",
+    "scripts/oci_k3s_bundle_probe.py",
     "infra/oci/k3s/README.md",
     "infra/oci/k3s/install-k3s-airgap.sh",
     "infra/oci/k3s/versions.env",
@@ -203,6 +204,11 @@ def _run_k3s_bundle_contract(root: Path) -> None:
     subprocess.run([*command, "--self-test"], cwd=root, check=True)
     subprocess.run(
         [sys.executable, "-S", "scripts/oci_k3s_bundle_publish.py", "self-test"],
+        cwd=root,
+        check=True,
+    )
+    subprocess.run(
+        [sys.executable, "-S", "scripts/oci_k3s_bundle_probe.py", "self-test"],
         cwd=root,
         check=True,
     )

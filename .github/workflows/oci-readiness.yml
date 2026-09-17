@@ -1,32 +1,28 @@
 name: OCI readiness
-
 on:
   workflow_dispatch:
   pull_request:
     paths:
-      - 'backend-python/Dockerfile'
-      - 'backend-python/requirements*.txt'
-      - 'infra/oci/runtime/**'
-      - 'scripts/oci_arm64_smoke.sh'
-      - 'scripts/oci_existing_a1_deploy.sh'
-      - 'scripts/oci_runtime_bundle.py'
-      - 'scripts/oci_staging_cors_contract.py'
-      - 'scripts/oci_readiness_scope.py'
-      - '.github/workflows/oci-readiness.yml'
+      - backend-python/Dockerfile
+      - backend-python/requirements*.txt
+      - infra/oci/runtime/**
+      - scripts/oci_arm64_smoke.sh
+      - scripts/oci_existing_a1_deploy.sh
+      - scripts/oci_runtime_bundle.py
+      - scripts/oci_staging_cors_contract.py
+      - scripts/oci_readiness_scope.py
+      - .github/workflows/oci-readiness.yml
   push:
     branches: [main]
     paths:
-      - 'infra/oci/k3s/**'
-      - 'scripts/oci_k3s_bundle.py'
-      - 'scripts/oci_k3s_bundle_publish.py'
-
-permissions:
-  contents: read
-
+      - infra/oci/k3s/**
+      - scripts/oci_k3s_bundle.py
+      - scripts/oci_k3s_bundle_publish.py
+      - scripts/oci_k3s_bundle_probe.py
+permissions: {contents: read}
 concurrency:
   group: oci-readiness-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   classify:
     runs-on: ubuntu-24.04
@@ -34,13 +30,10 @@ jobs:
       arm64: ${{ steps.scope.outputs.arm64 }}
     steps:
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 2
+        with: {fetch-depth: 2}
       - id: scope
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        env: {BASE_SHA: '${{ github.event.pull_request.base.sha }}'}
         run: python3 -S scripts/oci_readiness_scope.py >> "$GITHUB_OUTPUT"
-
   staging-cors-contract:
     runs-on: ubuntu-24.04
     steps:
@@ -48,7 +41,6 @@ jobs:
       - run: python3 -S scripts/oci_staging_cors_contract.py
       - run: python3 -S scripts/oci_runtime_bundle.py
       - run: bash -n scripts/oci_existing_a1_deploy.sh
-
   backend-arm64:
     needs: classify
     if: needs.classify.outputs.arm64 == 'true'
@@ -57,27 +49,20 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-qemu-action@v4
-        with:
-          platforms: arm64
+        with: {platforms: arm64}
       - uses: docker/setup-buildx-action@v4
       - run: bash scripts/oci_arm64_smoke.sh
-
   terraform:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
-    env:
-      TF_IN_AUTOMATION: 'true'
-      TF_INPUT: 'false'
+    env: {TF_IN_AUTOMATION: 'true', TF_INPUT: 'false'}
     steps:
       - uses: actions/checkout@v7
       - uses: hashicorp/setup-terraform@v4
-        with:
-          terraform_version: 1.16.0
-          terraform_wrapper: false
+        with: {terraform_version: 1.16.0, terraform_wrapper: false}
       - run: make -C infra/oci static
       - run: make -C infra/oci secret-guard
       - run: make -C infra/oci floci
-
   publish-k3s:
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
@@ -91,7 +76,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-oci-sdk
-        with:
-          version: '2.185.2'
-          python-version: '3.13'
-      - run: python3 scripts/oci_k3s_bundle_publish.py reconcile
+        with: {version: '2.185.2', python-version: '3.13'}
+      - run: |
+          python3 scripts/oci_k3s_bundle_publish.py reconcile
+          python3 scripts/oci_k3s_bundle_probe.py probe
