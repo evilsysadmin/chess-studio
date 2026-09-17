@@ -8,11 +8,12 @@ import {
 } from './chroniclesMapCatalog.js';
 
 describe('Chronicles multi-map campaign', () => {
-  it('registers three standalone authored encounters with distinct content', () => {
+  it('registers four standalone authored encounters with distinct content', () => {
     expect(chroniclesMapIds()).toEqual(expect.arrayContaining([
       'crypt-eight-squares',
       'gallery-of-forks',
       'menagerie-of-ash',
+      'ash-vault',
     ]));
 
     const gallery = chroniclesMapById('gallery-of-forks');
@@ -25,12 +26,22 @@ describe('Chronicles multi-map campaign', () => {
     const menagerie = chroniclesMapById('menagerie-of-ash');
     const wisp = menagerie.enemies.find((enemy) => enemy.id === 'ember-wisp');
     const gate = menagerie.exits.find((entry) => entry.id === 'menagerie-gate');
-    expect(menagerie.version).toBe(3);
+    expect(menagerie.version).toBe(4);
     expect(menagerie.enemies).toHaveLength(4);
     expect(wisp).toMatchObject({ optional: true, x: 5, y: 2 });
-    expect(menagerie.interactables.map((entry) => entry.id)).toContain('ember-scorchmarks');
+    expect(menagerie.interactables.map((entry) => entry.id)).toEqual(expect.arrayContaining([
+      'ember-scorchmarks',
+      'ash-wall-seam',
+      'ash-secret-door',
+    ]));
     expect(menagerie.treasures.map((entry) => entry.id)).toContain('ember-cache');
     expect(gate.requirements.map((requirement) => requirement.key)).not.toContain('emberWispHp');
+
+    const vault = chroniclesMapById('ash-vault');
+    expect(vault.title).toBe('Cámara de Ceniza');
+    expect(vault.grid[0]).toHaveLength(9);
+    expect(vault.enemies).toHaveLength(4);
+    expect(vault.treasures.map((entry) => entry.id)).toContain('ash-reliquary');
   });
 
   it('crosses the Black Gate into Gallery without resetting the surviving party or journal', () => {
@@ -96,7 +107,7 @@ describe('Chronicles multi-map campaign', () => {
     expect(next.journal.at(-1)?.id).toBe('gallery-menagerie-crossing');
   });
 
-  it('can finish Menagerie while the optional ember side quest remains untouched', () => {
+  it('can finish Menagerie while both optional side routes remain untouched', () => {
     const menagerieState = chroniclesMapTransitionState(createChroniclesState(), 'menagerie-of-ash');
     const readyToLeave = {
       ...menagerieState,
