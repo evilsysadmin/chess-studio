@@ -12,6 +12,7 @@ import { matthiasAmbientVisual, matthiasAmbientVisuals, matthiasHomeZone, matthi
 import { reducedMotionStatus, USER_PREFERENCES_CHANGED_EVENT } from '../userPreferences.js';
 import './HomeIllustrated.css';
 import './HomeIllustratedDiegetic.css';
+import './HomeDiegeticObjects.css';
 import './HomeIllustratedDungeonCanonical.css';
 import './HomeIllustratedMobileCanonical.css';
 import './HomeCastleLife.css';
@@ -19,6 +20,8 @@ import './HomeCastle3D.css';
 import './HomeIllustratedTallTouch.css';
 import './HomePawnSlugEntity.css';
 import './HomeMatthiasRoutine.css';
+
+const PRIMARY_DIEGETIC_DESTINATIONS = new Set(['tournament', 'combat', 'play']);
 
 function IconSword(props) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m3 3 5 2 12 14-1 1L5 8 3 3Zm18 0-5 2L4 19l1 1L19 8l2-5ZM2 16l6 6m8-20 6 6M16 22l6-6M2 8l6-6" /></svg>;
@@ -178,7 +181,8 @@ export default function HomeIllustrated({ hasSavedGame, loading, error, onPlay, 
             <Fragment key={id}>
               <button
                 type="button"
-                className={`illustrated-home__destination illustrated-home__destination--${id}`}
+                className={`illustrated-home__destination illustrated-home__destination--${id}${PRIMARY_DIEGETIC_DESTINATIONS.has(id) ? ' is-diegetic-object' : ''}`}
+                data-home-diegetic-object={PRIMARY_DIEGETIC_DESTINATIONS.has(id) ? id : undefined}
                 onClick={action}
                 onPointerEnter={() => setActiveRoom(id)}
                 onPointerLeave={() => setActiveRoom(null)}
