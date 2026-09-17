@@ -275,6 +275,12 @@
   background: linear-gradient(90deg, rgba(7, 8, 9, .78), rgba(7, 8, 9, .34) 78%, transparent);
 }
 
+.lab-screen .lab-workshop-portal--pawnslug-godot {
+  --hotspot-accent: 99, 179, 205;
+  left: 5.5%;
+  bottom: 29%;
+}
+
 .lab-screen .lab-workshop-portal--pawnslug {
   --hotspot-accent: 211, 149, 67;
   left: 5.5%;
@@ -417,6 +423,11 @@
     right: 24px;
   }
 
+  .lab-screen .lab-workshop-portal--pawnslug-godot {
+    left: 24px;
+    bottom: 30%;
+  }
+
   .lab-screen .lab-workshop-portal--pawnslug {
     left: 24px;
     bottom: 19%;
@@ -429,60 +440,52 @@
 
   .lab-screen .lab-workshop-map-table {
     right: 24px;
-    bottom: 20%;
+    bottom: 19%;
+    transform: translateY(-72px);
   }
 
   .lab-screen .lab-workshop-bench {
     right: 24px;
     bottom: 3.5%;
-    width: min(265px, calc(100% - 48px));
+    width: min(260px, calc(100% - 48px));
   }
 }
 
-@media (max-width: 540px) {
+@media (max-width: 560px) {
   .lab-screen .lab-workshop {
     min-height: 1040px;
-  }
-
-  .lab-screen .lab-workshop-masthead {
-    left: 18px;
-    right: 18px;
   }
 
   .lab-screen .lab-workshop-masthead p {
     font-size: .84rem;
   }
 
-  .lab-screen .lab-workshop-portal,
-  .lab-screen .lab-workshop-map-table,
-  .lab-screen .lab-workshop-bench {
-    left: 18px;
-    right: 18px;
-    width: auto;
+  .lab-screen .lab-workshop-portal--chronicles {
+    top: 38%;
   }
 
-  .lab-screen .lab-workshop-portal--chronicles { top: 37%; }
-  .lab-screen .lab-workshop-portal--tactics { top: 49%; }
-  .lab-screen .lab-workshop-map-table { bottom: 27%; }
-  .lab-screen .lab-workshop-portal--pawnslug { bottom: 17%; }
-  .lab-screen .lab-workshop-portal--trailblazer { bottom: 8%; }
-
-  .lab-screen .lab-workshop-bench {
-    bottom: 1.8%;
-    grid-template-columns: 1fr 1fr;
-    gap: 5px;
+  .lab-screen .lab-workshop-portal--tactics {
+    top: 49%;
   }
 
-  .lab-screen .lab-workshop-tool {
-    min-width: 0;
+  .lab-screen .lab-workshop-portal--pawnslug-godot {
+    bottom: 31.5%;
   }
 
-  .lab-screen .lab-workshop-tool-meta {
+  .lab-screen .lab-workshop-portal--pawnslug {
+    bottom: 21.5%;
+  }
+
+  .lab-screen .lab-workshop-portal--trailblazer {
+    bottom: 12%;
+  }
+
+  .lab-screen .lab-workshop-map-table {
     display: none;
   }
 
-  .lab-screen .lab-workshop-tool strong {
-    font-size: .88rem;
+  .lab-screen .lab-workshop-bench {
+    bottom: 2%;
   }
 }
 
