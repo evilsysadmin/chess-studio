@@ -21,10 +21,10 @@ describe('War Room white piece readability finish', () => {
     for (const type of ['p', 'n', 'b', 'r', 'q', 'k']) {
       const piece = buildPiece(type, 'w', 'studio', false);
       try {
-        expect(piece.userData.whitePieceReadabilityFinish).toBe('walnut-rank-balanced-ivory-v4');
+        expect(piece.userData.whitePieceReadabilityFinish).toBe('walnut-rank-light-model-v5');
         expect(piece.userData.whitePieceWalnutRimCount).toBe(1);
 
-        const rimMarker = type === 'p' ? 'subtle-v1' : 'officer-defined-v1';
+        const rimMarker = type === 'p' ? 'subtle-v1' : 'officer-defined-v2';
         const rims = meshes(piece, (mesh) => mesh.userData?.whiteBaseWalnutRim === rimMarker);
         expect(rims).toHaveLength(1);
         expect(rims[0].material.color.getHex()).toBe(0x513625);
@@ -32,13 +32,14 @@ describe('War Room white piece readability finish', () => {
         expect(rims[0].material.clearcoat).toBeLessThanOrEqual(0.06);
         expect(rims[0].material.userData.surfaceRole).toBe('white-base-walnut');
         expect(piece.userData.whitePieceBaseContrast).toBe(
-          type === 'p' ? 'subtle-walnut-rim-v1' : 'officer-walnut-rim-v1',
+          type === 'p' ? 'subtle-walnut-rim-v1' : 'officer-walnut-rim-v2',
         );
 
         const body = baseIvoryMesh(piece);
         expect(body).toBeTruthy();
 
         if (type === 'p') {
+          expect(body.material.userData.whiteOfficerBodyFinish).toBeUndefined();
           expect(piece.userData.whitePieceMatteHeadCount).toBeGreaterThan(0);
           expect(piece.userData.whitePieceSatinHeadCount).toBe(0);
           const heads = meshes(piece, (mesh) => mesh.userData?.whiteMatteHead === 'pawn-deep-matte-v2');
@@ -52,6 +53,15 @@ describe('War Room white piece readability finish', () => {
             expect(head.material.color.getHex()).toBe(body.material.color.getHex());
           }
         } else {
+          expect(body.material.userData.whiteOfficerBodyFinish).toBe('directional-satin-v1');
+          expect(body.material.roughness).toBeGreaterThanOrEqual(0.62);
+          expect(body.material.roughness).toBeLessThanOrEqual(0.68);
+          expect(body.material.clearcoat).toBeGreaterThanOrEqual(0.22);
+          expect(body.material.clearcoat).toBeLessThanOrEqual(0.26);
+          expect(body.material.specularIntensity).toBeGreaterThanOrEqual(0.32);
+          expect(body.material.specularIntensity).toBeLessThanOrEqual(0.38);
+          expect(body.material.envMapIntensity).toBe(0);
+
           expect(piece.userData.whitePieceMatteHeadCount).toBe(0);
           expect(piece.userData.whitePieceSatinHeadCount).toBeGreaterThan(0);
           const heads = meshes(piece, (mesh) => mesh.userData?.whiteOfficerHead === 'satin-v2');
@@ -76,7 +86,7 @@ describe('War Room white piece readability finish', () => {
     }
   });
 
-  it('keeps both white ranks in one ivory family while preserving a readable value gap', () => {
+  it('keeps both studio white ranks on the same ivory albedo and separates them by finish and plinth', () => {
     const pawn = buildPiece('p', 'w', 'studio', false);
     const rook = buildPiece('r', 'w', 'studio', false);
     try {
@@ -84,21 +94,15 @@ describe('War Room white piece readability finish', () => {
       const rookBody = baseIvoryMesh(rook);
       expect(pawnBody).toBeTruthy();
       expect(rookBody).toBeTruthy();
-      expect(rookBody.material.userData.whiteOfficerBodyTone).toBe('warm-balanced-ivory-v3');
-      expect(rookBody.material.userData.whiteOfficerBodyToneHex).toBe(0xc2b190);
-      expect(rookBody.material.color.getHex()).toBe(0xc2b190);
-      expect(pawnBody.material.color.getHex()).not.toBe(rookBody.material.color.getHex());
-
-      const pawnHsl = {};
-      const rookHsl = {};
-      pawnBody.material.color.getHSL(pawnHsl);
-      rookBody.material.color.getHSL(rookHsl);
-      expect(Math.abs(pawnHsl.h - rookHsl.h)).toBeLessThan(0.02);
-      expect(pawnHsl.l - rookHsl.l).toBeGreaterThan(0.06);
-      expect(pawnHsl.l - rookHsl.l).toBeLessThan(0.11);
+      expect(rookBody.material.userData.whiteOfficerBodyTone).toBe('shared-canonical-ivory-v4');
+      expect(rookBody.material.userData.whiteOfficerBodyToneHex).toBe(rookBody.material.color.getHex());
+      expect(rookBody.material.color.getHex()).toBe(pawnBody.material.color.getHex());
+      expect(rookBody.material.userData.whiteOfficerBodyFinish).toBe('directional-satin-v1');
+      expect(rookBody.material.roughness).toBeLessThan(pawnBody.material.roughness);
+      expect(rookBody.material.specularIntensity).toBeGreaterThan(pawnBody.material.specularIntensity);
 
       const pawnRim = meshes(pawn, (mesh) => mesh.userData?.whiteBaseWalnutRim === 'subtle-v1')[0];
-      const rookRim = meshes(rook, (mesh) => mesh.userData?.whiteBaseWalnutRim === 'officer-defined-v1')[0];
+      const rookRim = meshes(rook, (mesh) => mesh.userData?.whiteBaseWalnutRim === 'officer-defined-v2')[0];
       expect(pawnRim).toBeTruthy();
       expect(rookRim).toBeTruthy();
       expect(rookRim.geometry.parameters.tube).toBeGreaterThan(pawnRim.geometry.parameters.tube);
@@ -108,13 +112,13 @@ describe('War Room white piece readability finish', () => {
     }
   });
 
-  it('keeps themed white palettes intact instead of forcing the studio officer tone', () => {
+  it('keeps themed white palettes intact instead of forcing the studio officer finish', () => {
     const piece = buildPiece('r', 'w', 'azul', false);
     try {
       const body = baseIvoryMesh(piece);
       expect(body).toBeTruthy();
       expect(body.material.userData.whiteOfficerBodyTone).toBeUndefined();
-      expect(body.material.color.getHex()).not.toBe(0xc2b190);
+      expect(body.material.userData.whiteOfficerBodyFinish).toBeUndefined();
     } finally {
       disposeObject(piece);
     }
