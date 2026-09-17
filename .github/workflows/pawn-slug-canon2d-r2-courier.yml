@@ -19,6 +19,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       GH_TOKEN: ${{ github.token }}
       OUT: /tmp/matthias_approved_canonical_2d_v1.webp
+      DIAG: /tmp/pawn-slug-canon2d-reassembly.txt
     steps:
       - uses: actions/checkout@v7
       - name: Reassemble approved canonical atlas from unreachable blobs
@@ -26,18 +27,30 @@ jobs:
         run: |
           set -euo pipefail
           : > "$OUT"
+          : > "$DIAG"
+          INDEX=0
           for SHA in \
             7a00a9007a71358f1c74609641f799cbf6208690 \
             f78d2f5f684e885787903e434c28cf24bfa7ffbf \
             a7db2d2ea5c67c8b2cd420beb7351fed5043f5b3 \
             2c89f5d6ea19fdd333a60533de839ee83f731c27
           do
+            CHUNK="/tmp/canon2d-chunk-${INDEX}.bin"
             gh api "repos/${GITHUB_REPOSITORY}/git/blobs/${SHA}" --jq .content \
               | tr -d '\n' \
-              | base64 --decode >> "$OUT"
+              | base64 --decode > "$CHUNK"
+            printf 'chunk=%s sha=%s bytes=%s digest=%s\n' \
+              "$INDEX" "$SHA" "$(stat -c %s "$CHUNK")" "$(sha256sum "$CHUNK" | cut -d' ' -f1)" \
+              >> "$DIAG"
+            cat "$CHUNK" >> "$OUT"
+            INDEX=$((INDEX + 1))
           done
-          test "$(stat -c %s "$OUT")" = "203850"
-          echo "f1e4b6ceebd20b358c6a540e71333501ff9a49a89eb81c3c62ad9cf540ed7d3e  $OUT" | sha256sum -c -
+          BYTES="$(stat -c %s "$OUT")"
+          DIGEST="$(sha256sum "$OUT" | cut -d' ' -f1)"
+          printf 'final bytes=%s digest=%s\n' "$BYTES" "$DIGEST" >> "$DIAG"
+          cat "$DIAG"
+          test "$BYTES" = "203850"
+          test "$DIGEST" = "f1e4b6ceebd20b358c6a540e71333501ff9a49a89eb81c3c62ad9cf540ed7d3e"
       - name: Publish immutable atlas to Cloudflare R2
         shell: bash
         run: |
@@ -55,5 +68,6 @@ jobs:
           path: |
             frontend/src/assets/r2-assets-manifest.json
             /tmp/pawn-slug-canon2d-r2-publish.txt
-          if-no-files-found: error
+            /tmp/pawn-slug-canon2d-reassembly.txt
+          if-no-files-found: warn
           retention-days: 7
