@@ -10,13 +10,29 @@ describe('combatExpectedUtility', () => {
     expect(choice.moveKey).toBe('a7a8q');
   });
 
-  it('can prefer a better Combat capture when chess candidates are close', () => {
+  it('discounts a deterministic chess capture by its Combat miss risk', () => {
     const ranked = rankCombatCandidates([
       { moveKey: 'a1a2', chessScoreCp: 20, enemyValue: 0 },
-      { moveKey: 'd4e5', chessScoreCp: 5, enemyValue: 5, hitChance: 0.8 },
+      { moveKey: 'd4e5', chessScoreCp: 60, enemyValue: 5, hitChance: 0.5 },
+    ]);
+    expect(ranked[0].moveKey).toBe('a1a2');
+    expect(ranked[1].combatUtility).toBeLessThan(ranked[0].combatUtility);
+  });
+
+  it('still prefers a near-best capture when its Combat hit chance is high', () => {
+    const ranked = rankCombatCandidates([
+      { moveKey: 'a1a2', chessScoreCp: 20, enemyValue: 0 },
+      { moveKey: 'd4e5', chessScoreCp: 40, enemyValue: 1, hitChance: 0.95 },
     ]);
     expect(ranked[0].moveKey).toBe('d4e5');
-    expect(ranked[0].combatUtility).toBeGreaterThan(ranked[1].combatUtility);
+  });
+
+  it('can value a persistent veteran target without double-counting normal material', () => {
+    const ranked = rankCombatCandidates([
+      { moveKey: 'c6b4', chessScoreCp: 15, enemyValue: 3, enemyPersistentValue: 1, hitChance: 0.9 },
+      { moveKey: 'c6d4', chessScoreCp: 15, enemyValue: 3, enemyPersistentValue: 5, hitChance: 0.9 },
+    ]);
+    expect(ranked[0].moveKey).toBe('c6d4');
   });
 
   it('penalizes risking a valuable persistent veteran', () => {
@@ -32,7 +48,7 @@ describe('combatExpectedUtility', () => {
   it('will not trade a large chess blunder for RPG utility', () => {
     const ranked = rankCombatCandidates([
       { moveKey: 'e7e5', chessScoreCp: 30 },
-      { moveKey: 'h7h5', chessScoreCp: -70, enemyValue: 9, hitChance: 1, expectedBossDamage: 20 },
+      { moveKey: 'h7h5', chessScoreCp: -70, enemyValue: 9, hitChance: 1, enemyPersistentValue: 20 },
     ], { maxChessLossCp: 80 });
     expect(ranked.map((candidate) => candidate.moveKey)).toEqual(['e7e5']);
   });
