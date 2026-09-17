@@ -347,10 +347,20 @@ export function applyWhitePieceReadabilityFinish(group, type, coarsePointer = fa
   walnutRim.userData.whiteBaseWalnutRim = 'subtle-v1';
   walnutRim.castShadow = false;
 
+  // The tactical camera compresses the two white ranks. Give the canonical
+  // studio officers a slightly deeper, warmer ivory body so the rear rank is
+  // readable by value/chroma alone, even before specular lighting helps. Pawns
+  // keep the brighter canonical ivory; themed skins keep their own palette.
+  if (type !== 'p' && ivoryMaterial.userData?.skin3DId === 'studio') {
+    ivoryMaterial.color.setHex(0xcdb184);
+    ivoryMaterial.userData.whiteOfficerBodyTone = 'warm-deep-ivory-v1';
+    ivoryMaterial.userData.whiteOfficerBodyToneHex = 0xcdb184;
+  }
+
   // Pawns remain dry/matte because their heads form the foreground picket line.
   // Back-rank officers receive a stronger but still direct-light-only satin so
   // crowns, mitres, battlements and the knight profile separate from that line.
-  // Both finishes keep the exact ivory colour and envMapIntensity=0.
+  // Both finishes keep the exact piece-body ivory colour and envMapIntensity=0.
   const pawnHead = type === 'p' ? makeMatteIvoryHeadMaterial(ivoryMaterial) : null;
   const officerHead = type === 'p' ? null : makeOfficerSatinIvoryHeadMaterial(ivoryMaterial);
   let matteHeads = 0;
