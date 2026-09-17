@@ -1,11 +1,9 @@
 services:
   backend:
-    build:
-      context: .
-      dockerfile: backend-image.Dockerfile
-      args:
-        BACKEND_IMAGE: ghcr.io/evilsysadmin/chess-studio-backend:oci-${GIT_COMMIT_SHA:?GIT_COMMIT_SHA is required}
-    image: chess-studio-backend:oci-${GIT_COMMIT_SHA:?GIT_COMMIT_SHA is required}
+    image: ghcr.io/evilsysadmin/chess-studio-backend:oci-${GIT_COMMIT_SHA:?GIT_COMMIT_SHA is required}
+    # The deploy wrapper pulls this immutable image before it touches the
+    # currently-serving backend. `up` itself is deliberately offline/fail-closed.
+    pull_policy: never
     env_file:
       - ${CHESS_STUDIO_ENV_FILE:-/etc/chess-studio/backend.env}
     environment:
