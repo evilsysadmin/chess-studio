@@ -249,7 +249,7 @@ func _update_fire_input() -> bool:
         "spread": float(profile["spread"]),
         "explosive": bool(profile["explosive"]),
     }
-    fired.emit(global_position + Vector2(facing * 38.0, -7.0), facing, shot)
+    fired.emit(_projectile_origin(), facing, shot)
 
     if ammo > 0:
         ammo -= 1
@@ -259,6 +259,13 @@ func _update_fire_input() -> bool:
         if ammo == 0:
             _fallback_to_pistol()
     return true
+
+func _projectile_origin() -> Vector2:
+    if _art != null:
+        var muzzle := _art.get_node_or_null("FacingRoot/FxRoot/WeaponRoot/Muzzle") as Node2D
+        if muzzle != null:
+            return muzzle.global_position
+    return global_position + Vector2(facing * 38.0, -7.0)
 
 func _fallback_to_pistol() -> void:
     if weapon == "pistol":
