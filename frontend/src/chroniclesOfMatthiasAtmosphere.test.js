@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
+import { chroniclesIsometricScenePlan } from './chronicles/chroniclesIsometricScenePlan.js';
+import { chroniclesMapById } from './chronicles/chroniclesMapCatalog.js';
 import { buildChroniclesDungeonAtmosphere } from './chroniclesOfMatthiasAtmosphere.js';
 
 describe('Chronicles of Matthias dungeon atmosphere', () => {
@@ -13,6 +15,29 @@ describe('Chronicles of Matthias dungeon atmosphere', () => {
     expect(desktop.getObjectByName('chronicles-surface-patina')).toBeTruthy();
     expect(coarse.getObjectByName('chronicles-surface-patina')).toBeTruthy();
     expect(coarse.getObjectByName('chronicles-gate-mist')).toBeFalsy();
+  });
+
+  it('shares the active scene topology between ceiling and deterministic dust', () => {
+    const scenePlan = chroniclesIsometricScenePlan(chroniclesMapById('gallery-of-forks'));
+    const atmosphere = buildChroniclesDungeonAtmosphere({ scenePlan });
+    const dustPositions = atmosphere
+      .getObjectByName('chronicles-dungeon-dust')
+      .geometry
+      .getAttribute('position');
+    const slabCenters = scenePlan.floors.map((_, index) => {
+      const slab = atmosphere.getObjectByName(`chronicles-ceiling-slab-${index}`);
+      expect(slab).toBeTruthy();
+      return { x: slab.position.x, z: slab.position.z };
+    });
+
+    expect(slabCenters).toHaveLength(scenePlan.floors.length);
+    for (let index = 0; index < dustPositions.count; index += 1) {
+      const x = dustPositions.getX(index);
+      const z = dustPositions.getZ(index);
+      expect(slabCenters.some((center) => (
+        Math.abs(x - center.x) <= 1.53 && Math.abs(z - center.z) <= 1.53
+      ))).toBe(true);
+    }
   });
 
   it('adds layered non-shadowing bounce light so authored stone remains readable', () => {
