@@ -176,6 +176,14 @@ export function warRoomMaterialIblProfile({ coarsePointer = false } = {}) {
     lightTileClearcoatRoughnessMin: 0.56,
     lightTileSpecularMax: 0.26,
     lightTileAlbedoScale: 0.92,
+    // Current Board3DSurfaces tiles carry a version marker. In the War Room they
+    // should keep a luminous satin response instead of being pushed through the
+    // legacy matte compatibility grade below.
+    canonicalLightTileEnvMin: 0.08,
+    canonicalLightTileRoughnessMax: 0.7,
+    canonicalLightTileClearcoatMin: 0.18,
+    canonicalLightTileClearcoatRoughnessMax: 0.36,
+    canonicalLightTileSpecularMin: 0.38,
   };
 }
 
@@ -295,12 +303,12 @@ export function shouldRunWarRoomMaterialGrade(scene) {
 export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {}) {
   const profile = warRoomMaterialIblProfile({ coarsePointer });
   if (!scene || !profile || typeof scene.traverse !== 'function') {
-    return { adjusted: 0, ivory: 0, canonicalIvory: 0, lightTile: 0, profile };
+    return { adjusted: 0, ivory: 0, canonicalIvory: 0, lightTile: 0, canonicalLightTile: 0, profile };
   }
 
   const traversalRoot = materialGradeTraversalRoot(scene);
   if (!traversalRoot || typeof traversalRoot.traverse !== 'function') {
-    return { adjusted: 0, ivory: 0, canonicalIvory: 0, lightTile: 0, profile };
+    return { adjusted: 0, ivory: 0, canonicalIvory: 0, lightTile: 0, canonicalLightTile: 0, profile };
   }
 
   const seen = new Set();
@@ -308,6 +316,7 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
   let ivory = 0;
   let canonicalIvory = 0;
   let lightTile = 0;
+  let canonicalLightTile = 0;
 
   traversalRoot.traverse((object) => {
     if (!object?.isMesh || !object.material) return;
@@ -320,14 +329,28 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
       if (role !== 'ivory' && role !== 'board-light') continue;
       material.userData ||= {};
 
-      // Board3DSurfaces owns the PBR contract for current piece materials. Its
-      // version marker means the ivory has already received the canonical finish
-      // (including any skin reinforcement), so the legacy War Room post-grade must
-      // not flatten it a frame later. Unversioned ivory remains on the compatibility
-      // path below for old/custom materials.
+      // Board3DSurfaces owns the PBR contract for current materials. Versioned
+      // ivory stays untouched, while versioned light tiles get a War Room-specific
+      // satin lift so the approved warm lighting keeps depth instead of reading as
+      // an opaque matte wash. Unversioned materials remain on the compatibility
+      // path below for old/custom surfaces.
       if (role === 'ivory' && material.userData.surfaceVersion) {
         ivory += 1;
         canonicalIvory += 1;
+        continue;
+      }
+      if (role === 'board-light' && material.userData.surfaceVersion) {
+        lightTile += 1;
+        canonicalLightTile += 1;
+        let changed = false;
+        changed = floorMaterial(material, 'envMapIntensity', profile.canonicalLightTileEnvMin) || changed;
+        changed = capMaterial(material, 'roughness', profile.canonicalLightTileRoughnessMax) || changed;
+        changed = floorMaterial(material, 'clearcoat', profile.canonicalLightTileClearcoatMin) || changed;
+        changed = capMaterial(material, 'clearcoatRoughness', profile.canonicalLightTileClearcoatRoughnessMax) || changed;
+        changed = floorMaterial(material, 'specularIntensity', profile.canonicalLightTileSpecularMin) || changed;
+        material.userData.warRoomSurfaceGrade = 'luminous-light-tile-v1';
+        material.userData.warRoomIblGrade = 'luminous-satin-v1';
+        if (changed) adjusted += 1;
         continue;
       }
 
@@ -360,13 +383,14 @@ export function applyWarRoomMaterialGrade(scene, { coarsePointer = false } = {})
   });
 
   scene.userData.warRoomMaterialIblProfile = 'low-fill-v2';
-  scene.userData.warRoomSurfaceGrade = 'aged-matte-v2';
+  scene.userData.warRoomSurfaceGrade = canonicalLightTile > 0 ? 'luminous-satin-v1' : 'aged-matte-v2';
   scene.userData.warRoomIvoryEnvMax = profile.ivoryEnvMax;
   scene.userData.warRoomLightTileEnvMax = profile.lightTileEnvMax;
   scene.userData.warRoomCanonicalIvoryProtected = canonicalIvory;
+  scene.userData.warRoomCanonicalLightTile = canonicalLightTile;
   scene.userData.warRoomMaterialIblAdjusted = adjusted;
   scene.userData.warRoomMaterialGradePasses = (scene.userData.warRoomMaterialGradePasses || 0) + 1;
-  return { adjusted, ivory, canonicalIvory, lightTile, profile };
+  return { adjusted, ivory, canonicalIvory, lightTile, canonicalLightTile, profile };
 }
 
 function installWarRoomRenderDiscipline() {
@@ -418,7 +442,7 @@ function installWarRoomRenderDiscipline() {
       if (materialGrade.profile && this.domElement?.dataset) {
         this.domElement.dataset.warRoomIblIvory = Number(materialGrade.profile.ivoryEnvMax).toFixed(2);
         this.domElement.dataset.warRoomIblLightTile = Number(materialGrade.profile.lightTileEnvMax).toFixed(2);
-        this.domElement.dataset.warRoomSurfaceGrade = 'aged-matte-v2';
+        this.domElement.dataset.warRoomSurfaceGrade = scene.userData?.warRoomSurfaceGrade || 'aged-matte-v2';
         this.domElement.dataset.warRoomMaterialGrade = 'dynamic-groups-v1';
         this.domElement.dataset.warRoomCanonicalIvoryProtected = String(materialGrade.canonicalIvory || 0);
       }
