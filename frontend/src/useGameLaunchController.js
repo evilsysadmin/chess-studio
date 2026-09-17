@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { createOperationId, operationFingerprint } from './operationId.js';
+import { createRetryOperationIdCache } from './operationId.js';
 import { ACTIVE_SESSION_EVENT, ACTIVE_SESSION_STATE, activeSessionTransition } from './activeSessionMachine.js';
 import { reportStateInvariant } from './stateMachine.js';
 
@@ -12,7 +12,8 @@ import { reportStateInvariant } from './stateMachine.js';
  */
 export function useGameLaunchController(view, { onCancelled } = {}) {
   const launchRef = useRef(null); // { token, controller, originView, operationId? }
-  const retryRef = useRef(null); // same operation after timeout/503, max 5 minutes
+  const retryOperationIdsRef = useRef(null);
+  if (!retryOperationIdsRef.current) retryOperationIdsRef.current = createRetryOperationIdCache({ scope: 'create' });
   const machineRef = useRef(ACTIVE_SESSION_STATE.IDLE);
   const viewRef = useRef(view);
   const onCancelledRef = useRef(onCancelled);
@@ -39,19 +40,14 @@ export function useGameLaunchController(view, { onCancelled } = {}) {
 
   function operationId(launch, parts) {
     if (!launch) return null;
-    const fingerprint = operationFingerprint(parts);
-    if (launch.operationId && launch.operationFingerprint === fingerprint) return launch.operationId;
-    const retry = retryRef.current;
-    const reusable = retry && retry.fingerprint === fingerprint && (Date.now() - retry.failedAt) < 5 * 60_000;
-    const id = reusable ? retry.operationId : createOperationId('create');
-    launch.operationId = id;
-    launch.operationFingerprint = fingerprint;
-    retryRef.current = { fingerprint, operationId: id, failedAt: Date.now() };
-    return id;
+    const resolved = retryOperationIdsRef.current.resolve(parts, launch);
+    launch.operationId = resolved.operationId;
+    launch.operationFingerprint = resolved.operationFingerprint;
+    return resolved.operationId;
   }
 
   function confirmCreated(launch) {
-    if (launch?.operationId && retryRef.current?.operationId === launch.operationId) retryRef.current = null;
+    if (launch?.operationId) retryOperationIdsRef.current.confirm(launch.operationId);
     const result = activeSessionTransition(machineRef.current, ACTIVE_SESSION_EVENT.CREATED);
     if (result.ok) machineRef.current = result.nextState;
     else reportStateInvariant('game-launch', 'invalid-created-transition', { state: machineRef.current, event: ACTIVE_SESSION_EVENT.CREATED, route: viewRef.current });
