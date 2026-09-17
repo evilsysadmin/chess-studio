@@ -39,6 +39,7 @@ INVENTORY = {
     'oci-staging-tunnel.yml': 'infra-staging-edge',
     'pawn-slug-blender-art.yml': 'art-generation',
     'pawn-slug-enemy-blender-art.yml': 'art-generation',
+    'pawn-slug-matthias-pistol-family-proof.yml': 'art-generation',
     'pawn-slug-pow-blender-art.yml': 'art-generation',
     'production-promote.yml': 'delivery-production',
     'production-rollback.yml': 'delivery-rollback',
