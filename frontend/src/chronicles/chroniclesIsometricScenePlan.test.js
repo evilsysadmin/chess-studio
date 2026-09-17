@@ -75,7 +75,7 @@ describe('Chronicles isometric scene plan', () => {
     expect(chroniclesIsometricCellToWorld(plan, 0, 0, 2)).toEqual({ x: -4, y: 0, z: -2 });
   });
 
-  it('derives prop visibility from authored when rules instead of renderer flag names', () => {
+  it('derives prop visual lifecycle from authored rules instead of renderer flag names', () => {
     const beforeLever = chroniclesIsometricScenePlan({
       mapId: 'gallery-of-forks',
       galleryLeverPulled: false,
@@ -85,19 +85,42 @@ describe('Chronicles isometric scene plan', () => {
       mapId: 'gallery-of-forks',
       galleryLeverPulled: true,
       galleryRelicCollected: false,
+      runeCacheOpened: false,
     });
     const afterRelic = chroniclesIsometricScenePlan({
       mapId: 'gallery-of-forks',
       galleryLeverPulled: true,
       galleryRelicCollected: true,
+      runeCacheOpened: false,
+      runeCoreCollected: false,
     });
 
-    const visibility = (plan, id) => plan.content.find((entry) => entry.id === id)?.visible;
-    expect(visibility(beforeLever, 'gallery-lever')).toBe(true);
-    expect(visibility(beforeLever, 'gallery-relic')).toBe(false);
-    expect(visibility(beforeLever, 'gallery-gate')).toBe(true);
-    expect(visibility(afterLever, 'gallery-lever')).toBe(false);
-    expect(visibility(afterLever, 'gallery-relic')).toBe(true);
-    expect(visibility(afterRelic, 'gallery-relic')).toBe(false);
+    const prop = (plan, id) => plan.content.find((entry) => entry.id === id);
+    expect(prop(beforeLever, 'gallery-lever')).toMatchObject({
+      available: true,
+      activated: false,
+      visible: true,
+    });
+    expect(prop(beforeLever, 'gallery-relic')).toMatchObject({
+      available: false,
+      activated: false,
+      visible: false,
+    });
+    expect(prop(beforeLever, 'gallery-gate')).toMatchObject({ visible: true });
+    expect(prop(afterLever, 'gallery-lever')).toMatchObject({
+      available: false,
+      activated: true,
+      visible: true,
+    });
+    expect(prop(afterLever, 'gallery-relic')).toMatchObject({
+      available: true,
+      activated: false,
+      visible: true,
+    });
+    expect(prop(afterRelic, 'gallery-relic')).toMatchObject({
+      available: false,
+      activated: true,
+      visible: false,
+    });
   });
 });
