@@ -83,7 +83,7 @@ for fragment in required_public_verifier_fragments:
 # Runtime configuration is operational state, not application release state.
 # Canonical deploys consume the already-published private OCI bundle. Updating
 # that bundle remains an explicit manual service-control action instead of a
-# hidden side effect of code release, bringup, or automatic K3s reconciliation.
+# hidden side effect of code release, bringup, or K3s lifecycle management.
 assert "oci_runtime_config.py publish" not in staging_deploy, (
     "canonical staging releases must not republish runtime config from Render"
 )
@@ -101,13 +101,42 @@ assert "inputs.operation == 'runtime-sync' || inputs.operation == 'bringup'" not
     "bringup must consume the persisted OCI runtime bundle without resynchronizing Render"
 )
 
-# Manual service operations plus the narrowly-scoped automatic K3s ensure path
-# share the same native mutation mutex as canonical backend deploy and Terraform.
-assert "group: oci-staging-mutations" in service_control, (
-    "OCI service control must share the repository-wide staging mutation mutex"
+# Mutating service operations share the native mutex with canonical backend
+# deploy and Terraform. Read-only diagnostics deliberately get a per-run group
+# so observation never queues behind unrelated control-plane changes.
+concurrency_block = service_control.split("\nconcurrency:\n", 1)[1].split("\njobs:\n", 1)[0]
+assert "'oci-staging-mutations'" in concurrency_block, (
+    "mutating OCI service operations must retain the repository-wide mutation mutex"
 )
+assert "format('oci-staging-observe-{0}', github.run_id)" in concurrency_block, (
+    "read-only OCI service operations must use a non-serializing per-run group"
+)
+mutating_operations = (
+    "reserved-egress",
+    "reboot-agent",
+    "deploy",
+    "bringup",
+    "runtime-sync",
+    "vault-bootstrap",
+    "k3s-start",
+    "k3s-rollback",
+)
+read_only_operations = (
+    "diagnose",
+    "backend-diagnose",
+    "mongo-target-diagnose",
+    "mongo-network-diagnose",
+    "smoke",
+    "vault-validate",
+    "vault-validate-pending",
+    "k3s-status",
+)
+for operation in mutating_operations:
+    assert f'"{operation}"' in concurrency_block, f"missing mutation lock classification: {operation}"
+for operation in read_only_operations:
+    assert f'"{operation}"' not in concurrency_block, f"read-only operation must not take mutation lock: {operation}"
 assert "group: oci-staging-service-control" not in service_control, (
-    "OCI service control must not use a private mutex that can race staging mutations"
+    "OCI service control must not use a private mutation mutex that can race staging mutations"
 )
 
 # Service smoke is an observation, not another readiness controller. Bringup
