@@ -1,7 +1,10 @@
 extends CharacterBody2D
 
 signal fired(origin: Vector2, direction: float, shot: Dictionary)
+signal grenade_thrown(origin: Vector2, direction: float)
+signal grenades_changed(count: int)
 signal hurt(current_hp: int, max_hp: int)
+signal healed(current_hp: int, max_hp: int)
 signal died(lives_remaining: int)
 signal respawned(current_hp: int, max_hp: int, lives_remaining: int)
 signal game_over
@@ -19,6 +22,7 @@ const COYOTE_TIME := 0.10
 const JUMP_BUFFER_TIME := 0.12
 const MAX_HP := 3
 const STARTING_LIVES := 3
+const STARTING_GRENADES := 4
 const HIT_INVULN_SECONDS := 0.85
 const HURT_VISUAL_SECONDS := 0.18
 const DEATH_PAUSE_SECONDS := 0.55
@@ -75,6 +79,7 @@ var facing := 1.0
 var fire_cooldown := 0.0
 var hp := MAX_HP
 var lives := STARTING_LIVES
+var grenades := STARTING_GRENADES
 var invuln_remaining := 0.0
 var hurt_visual_remaining := 0.0
 var dead := false
@@ -92,6 +97,7 @@ var _coyote_remaining := 0.0
 var _jump_buffer_remaining := 0.0
 var _jump_was_pressed := false
 var _fire_was_pressed := false
+var _grenade_was_pressed := false
 var _art
 
 func _ready() -> void:
@@ -146,9 +152,7 @@ func _physics_process(delta: float) -> void:
     crouching = _crouch_pressed() and is_on_floor()
     var horizontal_speed_ratio := clampf(absf(velocity.x) / MOVE_SPEED, 0.0, 1.0)
 
-    # Pose/facing must be current before the weapon asks its Marker2D for the
-    # projectile origin. Fire FX are applied afterwards with delta=0 so the
-    # body animation advances only once per physics frame.
+    # Pose/facing must be current before weapon or grenade origins are resolved.
     _art.set_combat_state(hurt_visual_remaining, invuln_remaining, false, 0.0)
     _art.update_visual(
         delta,
@@ -174,6 +178,11 @@ func _physics_process(delta: float) -> void:
             facing,
             true,
         )
+
+    var grenade_pressed := _grenade_pressed()
+    if grenade_pressed and not _grenade_was_pressed:
+        throw_grenade()
+    _grenade_was_pressed = grenade_pressed
     queue_redraw()
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -202,6 +211,29 @@ func grant_weapon(id: String, ammo_bonus: int = -1) -> bool:
         slot["ammo"] = maxi(0, int(slot["ammo"]) + granted_ammo)
     arsenal[id] = slot
     select_weapon(id)
+    return true
+
+func grant_grenades(amount: int = 3) -> bool:
+    if amount <= 0:
+        return false
+    grenades += amount
+    grenades_changed.emit(grenades)
+    return true
+
+func heal(amount: int = 1) -> bool:
+    if amount <= 0 or dead or is_game_over:
+        return false
+    var previous := hp
+    hp = mini(MAX_HP, hp + amount)
+    healed.emit(hp, MAX_HP)
+    return hp > previous
+
+func throw_grenade() -> bool:
+    if grenades <= 0 or dead or is_game_over:
+        return false
+    grenades -= 1
+    grenades_changed.emit(grenades)
+    grenade_thrown.emit(global_position + Vector2(facing * 24.0, -34.0), facing)
     return true
 
 func select_weapon(id: String) -> bool:
@@ -294,6 +326,7 @@ func _begin_death() -> void:
     velocity = Vector2.ZERO
     fire_cooldown = float(WEAPONS[weapon]["cadence"])
     _fire_was_pressed = false
+    _grenade_was_pressed = false
     died.emit(lives)
     if lives <= 0:
         is_game_over = true
@@ -342,6 +375,7 @@ func _respawn() -> void:
     _jump_buffer_remaining = 0.0
     _jump_was_pressed = false
     _fire_was_pressed = false
+    _grenade_was_pressed = false
     _art.set_combat_state(0.0, invuln_remaining, false, 0.0)
     respawned.emit(hp, MAX_HP, lives)
 
@@ -382,6 +416,12 @@ func _fire_pressed() -> bool:
         return true
     var joypads := Input.get_connected_joypads()
     return not joypads.is_empty() and Input.is_joy_button_pressed(joypads[0], JOY_BUTTON_X)
+
+func _grenade_pressed() -> bool:
+    if Input.is_key_pressed(KEY_X) or Input.is_key_pressed(KEY_K):
+        return true
+    var joypads := Input.get_connected_joypads()
+    return not joypads.is_empty() and Input.is_joy_button_pressed(joypads[0], JOY_BUTTON_Y)
 
 func _draw() -> void:
     if _art == null or not _art.body_ready():
