@@ -216,6 +216,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
       .then(({ createChroniclesIsometricGame }) => {
         if (cancelled) return;
         engine = createChroniclesIsometricGame(host, {
+          initialState: stateRef.current,
           onReady: (backend) => { if (!cancelled) setRendererName(backend); },
           onCellClick: (cell) => {
             const current = stateRef.current;
@@ -240,7 +241,7 @@ export default function ChroniclesOfMatthiasTactics({ onExit }) {
       engine?.destroy();
       if (engineRef.current === engine) engineRef.current = null;
     };
-  }, [attackEnemy, moveParty, openMemberSheet]);
+  }, [attackEnemy, moveParty, openMemberSheet, state.mapId]);
 
   useEffect(() => {
     engineRef.current?.renderState(state, selectedMemberId, null);
