@@ -36,6 +36,12 @@ REQUIRED_MATTHIAS = (
     "/pawn-slug/matthias/pistol/matthias_canonical_pistol_v1-",
     "FULL_ATLAS_COLUMNS := 8",
     "FULL_ATLAS_ROWS := 10",
+    "FULL_ATLAS_CELL_SIZE := 256",
+    "FULL_ATLAS_SIZE := Vector2i(FULL_ATLAS_COLUMNS * FULL_ATLAS_CELL_SIZE, FULL_ATLAS_ROWS * FULL_ATLAS_CELL_SIZE)",
+    "pawn_slug_godot_atlases_v2/matthias_pistol_godot_strict_8x10_256_v5.png",
+    "pawn_slug_godot_atlases_v2/matthias_smg_godot_strict_8x10_256_v5.png",
+    "pawn_slug_godot_atlases_v2/matthias_shotgun_godot_strict_8x10_256_v5.png",
+    "pawn_slug_godot_atlases_v2/matthias_bazooka_godot_strict_8x10_256_v5.png",
     "FULL_ACTIONS",
     '"shoot": {"row": 6, "count": 6',
     '"die": {"row": 9, "count": 8',
@@ -122,6 +128,8 @@ def self_test() -> None:
     assert "SpriteFrames" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_COLUMNS := 8" in REQUIRED_MATTHIAS
     assert "FULL_ATLAS_ROWS := 10" in REQUIRED_MATTHIAS
+    assert "FULL_ATLAS_CELL_SIZE := 256" in REQUIRED_MATTHIAS
+    assert "matthias_smg_godot_strict_8x10_256_v5.png" in REQUIRED_MATTHIAS
     assert "load_webp_from_buffer" in REQUIRED_MATTHIAS
     assert "WEAPON_URLS" in FORBIDDEN_MATTHIAS
     assert "/pawn-slug/matthias/machinegun/" in FORBIDDEN_MATTHIAS
