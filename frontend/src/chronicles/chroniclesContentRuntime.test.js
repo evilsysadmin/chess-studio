@@ -5,6 +5,7 @@ import {
   chroniclesContentDefinition,
   chroniclesContentInteractions,
   chroniclesContentLockedMessage,
+  chroniclesItemCount,
   chroniclesRequirementsMet,
 } from './chroniclesContentRuntime.js';
 
@@ -115,5 +116,27 @@ describe('Chronicles content runtime', () => {
     ]);
     expect(next.refilled).toBe(true);
     expect(refilled).toHaveBeenCalledOnce();
+  });
+
+  it('grants, requires and consumes authored items without map-specific flags', () => {
+    const granted = chroniclesApplyContentEffects({}, [
+      { type: 'grant-item', itemId: 'ember-shard' },
+      { type: 'grant-item', itemId: 'ember-shard', amount: 2 },
+    ]);
+
+    expect(chroniclesItemCount(granted, 'ember-shard')).toBe(3);
+    expect(chroniclesRequirementsMet(granted, [{ itemId: 'ember-shard', gte: 2 }])).toBe(true);
+    expect(chroniclesRequirementsMet(granted, [{ itemId: 'missing-key', gte: 1 }])).toBe(false);
+
+    const spent = chroniclesApplyContentEffects(granted, [
+      { type: 'consume-item', itemId: 'ember-shard', amount: 2 },
+    ]);
+    expect(chroniclesItemCount(spent, 'ember-shard')).toBe(1);
+
+    const exhausted = chroniclesApplyContentEffects(spent, [
+      { type: 'consume-item', itemId: 'ember-shard', amount: 5 },
+    ]);
+    expect(chroniclesItemCount(exhausted, 'ember-shard')).toBe(0);
+    expect(exhausted.inventory).not.toHaveProperty('ember-shard');
   });
 });
