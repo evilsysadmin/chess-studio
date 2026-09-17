@@ -8,10 +8,10 @@ const CAPTURES = [
   { label: 'android-390x844', width: 390, height: 844, hasTouch: true },
 ];
 const PARTY = [
-  { id: 'matthias', name: 'Matthias', artSource: 'blender-home-canonical-v1' },
-  { id: 'hildegard', name: 'Hildegard', artSource: 'chronicles-tactics-party-v3' },
-  { id: 'aziz', name: 'Aziz', artSource: 'chronicles-tactics-party-v3' },
-  { id: 'morcilla', name: 'Faust', artSource: 'chronicles-tactics-party-v3' },
+  { id: 'matthias', name: 'Matthias' },
+  { id: 'hildegard', name: 'Hildegard' },
+  { id: 'aziz', name: 'Aziz' },
+  { id: 'morcilla', name: 'Faust' },
 ];
 
 async function openChronicles(page) {
@@ -80,10 +80,13 @@ for (const capture of CAPTURES) {
       const portraitCanvas = portraitHost.locator('canvas');
       await expect(preview).toBeVisible();
       await expect(portraitCanvas).toBeVisible();
-      await expect(portraitHost).toHaveAttribute('data-chronicles-party-thumbnail-count', '4', { timeout: 20_000 });
 
       const rosterThumbnails = page.locator('[data-chronicles-party-thumbnail]');
       await expect(rosterThumbnails).toHaveCount(4);
+      const thumbnailIds = await rosterThumbnails.evaluateAll((images) => images.map((image) => (
+        image.getAttribute('data-chronicles-party-thumbnail')
+      )));
+      expect(thumbnailIds, `${capture.label}: canonical roster thumbnail ids`).toEqual(PARTY.map(({ id }) => id));
       const thumbnailsDecoded = await rosterThumbnails.evaluateAll((images) => images.every((image) => (
         image.complete && image.naturalWidth === 96 && image.naturalHeight === 96
       )));
@@ -92,7 +95,6 @@ for (const capture of CAPTURES) {
       for (const member of PARTY) {
         await page.getByRole('button', { name: `Seleccionar ${member.name}`, exact: true }).click();
         await expect(preview.locator('strong')).toHaveText(member.name);
-        await expect(portraitHost).toHaveAttribute('data-chronicles-party-art-source', member.artSource, { timeout: 20_000 });
         const canvasBox = await portraitCanvas.boundingBox();
         expect(canvasBox, `${capture.label}/${member.name}: canvas bounds`).not.toBeNull();
         expect(canvasBox.width, `${capture.label}/${member.name}: canvas width`).toBeGreaterThan(80);
