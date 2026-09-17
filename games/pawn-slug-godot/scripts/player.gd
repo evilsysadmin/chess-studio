@@ -30,6 +30,7 @@ var hp := MAX_HP
 var lives := STARTING_LIVES
 var invuln_remaining := 0.0
 var hurt_visual_remaining := 0.0
+var impact_direction := 0.0
 var dead := false
 var is_game_over := false
 var _death_remaining := 0.0
@@ -97,7 +98,7 @@ func _physics_process(delta: float) -> void:
         fired_now = true
         fired.emit(global_position + Vector2(facing * 38.0, -7.0), facing)
 
-    _art.set_combat_state(hurt_visual_remaining, invuln_remaining, false, 0.0)
+    _art.set_combat_state(hurt_visual_remaining, invuln_remaining, false, 0.0, impact_direction)
     _art.update_visual(
         delta,
         horizontal_speed_ratio,
@@ -113,12 +114,17 @@ func _physics_process(delta: float) -> void:
 func can_take_damage() -> bool:
     return not dead and not is_game_over and invuln_remaining <= 0.0
 
-func take_damage(amount: int = 1) -> bool:
+func take_damage(amount: int = 1, hit_direction: float = 0.0) -> bool:
     if amount <= 0 or not can_take_damage():
         return false
     hp = maxi(0, hp - amount)
     invuln_remaining = HIT_INVULN_SECONDS
     hurt_visual_remaining = HURT_VISUAL_SECONDS
+    impact_direction = (
+        -1.0 if hit_direction < 0.0
+        else 1.0 if hit_direction > 0.0
+        else -facing
+    )
     hurt.emit(hp, MAX_HP)
     if hp <= 0:
         _begin_death()
@@ -154,7 +160,7 @@ func _update_dead_state(delta: float) -> void:
         return
 
     var horizontal_speed_ratio := clampf(absf(velocity.x) / MOVE_SPEED, 0.0, 1.0)
-    _art.set_combat_state(0.0, 0.0, true, death_progress)
+    _art.set_combat_state(0.0, 0.0, true, death_progress, impact_direction)
     _art.update_visual(
         delta,
         horizontal_speed_ratio,
@@ -173,12 +179,13 @@ func _respawn() -> void:
     hp = MAX_HP
     invuln_remaining = RESPAWN_INVULN_SECONDS
     hurt_visual_remaining = 0.0
+    impact_direction = 0.0
     dead = false
     _death_remaining = 0.0
     _coyote_remaining = 0.0
     _jump_buffer_remaining = 0.0
     _jump_was_pressed = false
-    _art.set_combat_state(0.0, invuln_remaining, false, 0.0)
+    _art.set_combat_state(0.0, invuln_remaining, false, 0.0, impact_direction)
     respawned.emit(hp, MAX_HP, lives)
 
 func _movement_axis() -> float:
