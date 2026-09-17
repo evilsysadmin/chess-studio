@@ -18,7 +18,7 @@ describe('Chronicles Gallery authored state ownership', () => {
   it('owns its lever and relic state without Crypt compatibility aliases', () => {
     const gallery = chroniclesMapById('gallery-of-forks');
 
-    expect(gallery.version).toBe(3);
+    expect(gallery.version).toBe(4);
     expect(gallery.initialFlags).toMatchObject({
       galleryLeverPulled: false,
       galleryRelicCollected: false,

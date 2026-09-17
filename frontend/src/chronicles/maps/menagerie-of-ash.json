@@ -1,6 +1,6 @@
 {
   "id": "menagerie-of-ash",
-  "version": 1,
+  "version": 2,
   "progressionKey": "menagerie-01",
   "title": "Menagerie de Ceniza",
   "grid": [
@@ -65,7 +65,7 @@
       "visualMotion": "hover",
       "name": "fuego fatuo",
       "x": 5,
-      "y": 1,
+      "y": 2,
       "hpKey": "emberWispHp",
       "maxHp": 4,
       "retaliation": 1,
@@ -103,7 +103,6 @@
       "requirements": [
         { "key": "ashGoblinHp", "lte": 0, "message": "El trasgo de ceniza sigue en pie." },
         { "key": "cryptSpiderHp", "lte": 0, "message": "La araña de cripta sigue patrullando." },
-        { "key": "emberWispHp", "lte": 0, "message": "El fuego fatuo sigue custodiando el portón." },
         { "key": "boneHoundHp", "lte": 0, "message": "El sabueso de osario sigue recorriendo la sala." }
       ],
       "action": {
