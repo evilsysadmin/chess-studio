@@ -28,9 +28,7 @@ import { gameModeFromContext } from './gameModes.js';
 import { loadRoster as loadCombatRoster } from './combatRoster.js';
 import { loadCombatService, summarizeCombatService } from './combatService.js';
 import { loadRating, saveRating, ratingChangeDetails, ratingScoreForOutcome, recordRatingHistory, loadRatingHistory } from './playerRating.js';
-import { handicapForGap } from './handicap.js';
 const InsightsScreen = React.lazy(() => import('./components/InsightsScreen.jsx'));
-import { timeControlById } from './clock.js';
 import { clearClockSnapshot } from './clockPersistence.js';
 import { scheduleAchievementCheck } from './achievementBootstrap.js';
 const AdminScreen = React.lazy(() => import('./components/AdminScreen.jsx'));
@@ -48,7 +46,6 @@ import LoginScreen from './components/LoginScreen.jsx';
 import { loadRivalry, recordRivalryResult, reconcileRivalryHistory } from './rivalry.js';
 import { identifyOpening } from './openings.js';
 import { createSeries, loadActiveSeries, saveActiveSeries, clearActiveSeries, recordSeriesGame } from './series.js';
-import { attachSeriesGame } from './seriesFlow.js';
 const ShareResultModal = React.lazy(() => import('./components/ShareResultModal.jsx'));
 import SharedResultScreen from './components/SharedResultScreen.jsx';
 import { shareRecordFromHash } from './shareResult.js';
@@ -65,7 +62,6 @@ import { STORAGE_LOCAL, getStorageItem, removeStorageItem, setStorageItem } from
 import { useAuthenticatedApp } from './useAuthenticatedApp.js';
 import { useAuthenticatedAudio } from './useAuthenticatedAudio.js';
 import { usePlayerPortraitRefresh } from './usePlayerPortraitRefresh.js';
-import { buildGameCrimeReplayRecord } from './crimeReplay.js';
 import { useProfileSyncLifecycle } from './useProfileSyncLifecycle.js';
 import { useReplayLibrary } from './useReplayLibrary.js';
 import { logout } from './auth.js';
@@ -135,13 +131,14 @@ function AppInner({ isAdminUser }) {
   } = useReplayLibrary({ navigateTo });
   usePlayerPortraitRefresh(insights);
 
-  function openGameCrimeScene(finishedGame, moveReport, mode, outcomeOverride) {
+  async function openGameCrimeScene(finishedGame, moveReport, mode, outcomeOverride) {
     if (!finishedGame || !moveReport) return;
     const outcome = outcomeOverride || (
       finishedGame.status === 'checkmate'
         ? (finishedGame.turn === finishedGame.humanColor ? 'loss' : 'win')
         : 'draw'
     );
+    const { buildGameCrimeReplayRecord } = await import('./crimeReplay.js');
     const record = buildGameCrimeReplayRecord(finishedGame, mode, outcome);
     if (!record) return;
     record.gameChat = loadActiveGameChat(finishedGame.id);
@@ -313,6 +310,9 @@ function AppInner({ isAdminUser }) {
   async function handleNewGame(difficulty, color, opts) {
     const launch = gameLaunch.begin();
     if (!launch) return false;
+    const [{ handicapForGap }, { timeControlById }, { attachSeriesGame }] = await Promise.all([
+      import('./handicap.js'), import('./clock.js'), import('./seriesFlow.js'),
+    ]);
     setExitNotice(null);
     setCasualResult(null);
     setLoading(true);
@@ -500,6 +500,7 @@ function AppInner({ isAdminUser }) {
     if (!activeSeries || activeSeries.winner) return;
     const launch = gameLaunch.begin();
     if (!launch) return;
+    const [{ handicapForGap }, { attachSeriesGame }] = await Promise.all([import('./handicap.js'), import('./seriesFlow.js')]);
     if (game?.id) clearClockSnapshot(game.id);
     setLoading(true);
     setError(null);
@@ -593,6 +594,7 @@ function AppInner({ isAdminUser }) {
   async function launchRun(run) {
     const launch = gameLaunch.begin();
     if (!launch) return false;
+    const { timeControlById } = await import('./clock.js');
     setLoading(true);
     setError(null);
     try {
