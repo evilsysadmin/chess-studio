@@ -1,7 +1,0 @@
-# Safe OCI backend runtime diagnostic request
-#
-# Changing this file on main asks the service-control workflow to inspect only
-# Docker state plus the public health/readiness/release endpoints on loopback.
-# It must not print environment variables, runtime files, or application logs.
-requested_at=2026-09-16T14:50:00Z
-reason=diagnose-readiness-attestation-exit-43

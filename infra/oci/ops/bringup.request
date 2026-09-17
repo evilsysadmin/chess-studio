@@ -1,9 +1,0 @@
-# P0 bring-up request
-#
-# Changing this file on main asks the OCI staging service-control workflow to:
-# 1. sync the private backend runtime config from Render into OCI Object Storage,
-# 2. install it on the existing A1 through Instance Agent Run Command,
-# 3. smoke the host contract as a diagnostic,
-# 4. deploy the exact immutable main SHA and wait for /api/ready.
-requested_at=2026-09-16T19:36:00Z
-reason=restore-staging-cors-and-redeploy-current-main
