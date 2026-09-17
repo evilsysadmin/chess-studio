@@ -1,0 +1,73 @@
+name: War Room · Blender premium art
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/blender/build_war_room_premium.py'
+      - '.github/workflows/war-room-blender-art.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: war-room-blender-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render:
+    name: Render premium War Room
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+
+      - uses: ./.github/actions/setup-blender-canonical
+
+      - name: Build editable scene + runtime shell + hero preview
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          BLENDER_PREVIEW_SAMPLES: '32'
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/war-room-premium
+          blender --background --python-exit-code 1 --python scripts/blender/build_war_room_premium.py -- \
+            --blend /tmp/war-room-premium/war-room-premium.blend \
+            --glb /tmp/war-room-premium/war-room-premium-shell.glb \
+            --preview /tmp/war-room-premium/war-room-premium-preview.png \
+            --manifest /tmp/war-room-premium/war-room-premium-manifest.json
+
+      - name: Validate generated artifact envelope
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          from PIL import Image
+
+          root = Path('/tmp/war-room-premium')
+          blend = root / 'war-room-premium.blend'
+          glb = root / 'war-room-premium-shell.glb'
+          preview = root / 'war-room-premium-preview.png'
+          manifest = root / 'war-room-premium-manifest.json'
+          assert blend.stat().st_size > 150_000, blend.stat().st_size
+          assert glb.stat().st_size > 60_000, glb.stat().st_size
+          image = Image.open(preview).convert('RGB')
+          assert image.size == (1600, 900), image.size
+          assert max(channel[1] for channel in image.getextrema()) > 80
+          data = json.loads(manifest.read_text())
+          assert data['contract'] == 'war-room-premium-v1'
+          assert data['board_anchor']['name'] == 'WR_ANCHOR_board_origin'
+          assert len(data['objects']) >= 195, len(data['objects'])
+          PY
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: war-room-premium-${{ github.event.pull_request.number || github.run_number }}
+          path: /tmp/war-room-premium/
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0

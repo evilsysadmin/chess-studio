@@ -84,6 +84,14 @@ GATES = (
             ".github/workflows/pawn-slug-pow-blender-art.yml",
         }),
     ),
+    Gate(
+        workflow="war-room-blender-art.yml",
+        label="War Room premium art",
+        exact_paths=frozenset({
+            "scripts/blender/build_war_room_premium.py",
+            ".github/workflows/war-room-blender-art.yml",
+        }),
+    ),
 )
 
 
@@ -147,6 +155,9 @@ def self_test() -> None:
     assert [gate.workflow for gate in classify(["scripts/blender/build_pawn_slug_pows_v2.py"])] == [
         "pawn-slug-pow-blender-art.yml"
     ]
+    assert [gate.workflow for gate in classify(["scripts/blender/build_war_room_premium.py"])] == [
+        "war-room-blender-art.yml"
+    ]
     assert [gate.workflow for gate in classify([
         "scripts/blender/build_home_matthias.py",
         "scripts/blender/build_pawn_slug_pows_v2.py",
@@ -157,7 +168,7 @@ def self_test() -> None:
         pass
     else:
         raise AssertionError("blender scope debe rechazar rutas fuera del repo")
-    print("blender-required-scope self-test OK · CSS no despierta Blender; seis lanes path-aware")
+    print("blender-required-scope self-test OK · CSS no despierta Blender; siete lanes path-aware")
 
 
 def main() -> int:
