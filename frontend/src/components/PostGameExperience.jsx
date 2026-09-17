@@ -4,8 +4,29 @@ import { registerCompletedGameForFeedback } from '../postGameFeedback.js';
 import { seriesLiveMoment, seriesNextActionLabel } from '../series.js';
 import { CPU_IDENTITY } from '../cpuIdentity.js';
 import PostGameFeedbackPrompt from './PostGameFeedbackPrompt.jsx';
+import './WarRoomDebrief.css';
 
 const GameReportModal = React.lazy(() => import('./GameReportModal.jsx'));
+
+function matthiasClosingLine({ finalOutcome, flagFallen, flagFinalOutcome, forcedOutcome, humanColor, lastCpuComment }) {
+  if (lastCpuComment) return lastCpuComment;
+  if (forcedOutcome) return 'Tres incidentes graves. El modo ha terminado; el expediente, desgraciadamente, no.';
+  if (flagFallen) {
+    if (flagFinalOutcome === 'draw') return 'El reloj cayó, pero no había material para ejecutar la sentencia. Tablas. Qué manera tan burocrática de sobrevivir.';
+    return flagFallen === humanColor
+      ? 'El reloj ha firmado la sentencia antes que el tablero. Conviene que la próxima partida no dependa de funcionarios.'
+      : 'Ganaste por tiempo. Cuenta. No voy a exigir poesía donde ha bastado un reloj.';
+  }
+  if (finalOutcome === 'win') return 'Bien. Has ganado. Disfrútalo con moderación; ahora veremos si fue precisión, resistencia o una mezcla indecentemente eficaz de ambas.';
+  if (finalOutcome === 'loss') return 'Has perdido. No hace falta decorar el cadáver. La revisión dirá exactamente dónde empezó a torcerse la posición.';
+  return 'Tablas. Nadie ha muerto del todo. Eso no significa que el expediente esté limpio.';
+}
+
+function reviewPrompt(finalOutcome) {
+  if (finalOutcome === 'win') return 'Busca qué decisiones sostuvieron la ventaja y cuál fue tu mejor momento real.';
+  if (finalOutcome === 'loss') return 'Localiza el primer punto de inflexión y separa la causa de los daños posteriores.';
+  return 'Revisa dónde dejaste de poder exigir más a la posición y si hubo una oportunidad concreta.';
+}
 
 export default function PostGameExperience({
   game,
@@ -58,13 +79,21 @@ export default function PostGameExperience({
   });
   const liveSeriesMoment = seriesState ? seriesLiveMoment(seriesState) : null;
   const sequenceInProgress = Boolean((seriesState && !seriesState.winner) || runState?.active);
+  const hasReport = game.history.length > 0;
+  const matthiasVerdict = matthiasClosingLine({
+    finalOutcome,
+    flagFallen,
+    flagFinalOutcome,
+    forcedOutcome,
+    humanColor,
+    lastCpuComment,
+  });
   const hasMoreActions = Boolean(
     !sequenceInProgress
     && (
       nextAction.id === 'review'
       || onShareResult
       || onTrainPersonal
-      || (game.history.length > 0 && nextAction.id !== 'review')
     )
   );
 
@@ -72,6 +101,7 @@ export default function PostGameExperience({
     <div className="modal-backdrop endgame-modal-backdrop" role="presentation">
       <section className={`endgame-banner endgame-dialog outcome-${finalOutcome}`} role="dialog" aria-modal="true" aria-labelledby="game-finished-title">
         <span className="endgame-modal-kicker">PARTIDA FINALIZADA</span>
+        <span className="endgame-debrief-label">MATTHIAS // DEBRIEF</span>
         <span className="endgame-eyebrow">{nextAction.eyebrow}</span>
         <h2 id="game-finished-title">{forcedOutcome ? 'Sudden Death' : flagFallen ? (flagFinalOutcome === 'draw' ? 'Tablas por tiempo' : 'Se acabó el tiempo') : statusLabel}</h2>
         <p>
@@ -87,11 +117,18 @@ export default function PostGameExperience({
             <span>{resultSummary.detail}</span>
           </p>
         )}
-        {lastCpuComment && (
-          <blockquote className="endgame-cpu-verdict">
-            <span>{CPU_IDENTITY.name}</span>
-            <p>{lastCpuComment}</p>
-          </blockquote>
+        <blockquote className="endgame-cpu-verdict endgame-matthias-verdict">
+          <span className="endgame-matthias-identity">
+            <img src={CPU_IDENTITY.avatar} alt="" aria-hidden="true" />
+            <b>{CPU_IDENTITY.name}</b>
+          </span>
+          <p>{matthiasVerdict}</p>
+        </blockquote>
+        {!sequenceInProgress && hasReport && (
+          <div className="endgame-editorial-brief">
+            <span>QUÉ MIRAR AHORA</span>
+            <p>{reviewPrompt(finalOutcome)}</p>
+          </div>
         )}
         {seriesState && !seriesState.winner && liveSeriesMoment && (
           <div className={`series-endgame-moment ${liveSeriesMoment.kind}`}>
@@ -110,6 +147,11 @@ export default function PostGameExperience({
           <button className="primary-btn" onClick={onLeave}>{nextAction.label}</button>
         )}
         {!sequenceInProgress && <p className="endgame-next-detail">{nextAction.detail}</p>}
+        {!sequenceInProgress && hasReport && nextAction.id !== 'review' && (
+          <button className="secondary-btn endgame-review-btn" onClick={() => setShowReport(true)}>
+            Resumen de la partida
+          </button>
+        )}
         {sequenceInProgress && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onLeave}>Volver al menú</button>}
         {hasMoreActions && (
           <button
@@ -131,11 +173,6 @@ export default function PostGameExperience({
               </button>
             )}
             {onTrainPersonal && <button className="secondary-btn" style={{ marginTop: '0.6rem' }} onClick={onTrainPersonal}>Entrenar mis errores</button>}
-            {game.history.length > 0 && nextAction.id !== 'review' && (
-              <button className="secondary-btn" onClick={() => setShowReport(true)}>
-                Resumen de la partida
-              </button>
-            )}
           </div>
         )}
         {postGameFeedbackEnabled && showPostGameFeedback && (

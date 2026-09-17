@@ -1,0 +1,151 @@
+/* Post-game closure: editorial first, metrics second.
+ * In War Room the board remains visually present and the debrief behaves like
+ * an in-room epilogue rather than a generic application modal. */
+.endgame-debrief-label {
+  display: block;
+  margin-top: .2rem;
+  color: color-mix(in srgb, var(--brass) 82%, white 18%);
+  font: 800 .66rem/1 var(--font-mono);
+  letter-spacing: .16em;
+}
+
+.endgame-matthias-verdict {
+  margin: .95rem 0 .7rem;
+  padding: .8rem .9rem;
+}
+
+.endgame-matthias-identity {
+  display: flex !important;
+  align-items: center;
+  gap: .55rem;
+  margin-bottom: .45rem;
+}
+
+.endgame-matthias-identity img {
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
+  filter: drop-shadow(0 3px 8px rgba(0,0,0,.35));
+}
+
+.endgame-matthias-identity b {
+  color: var(--brass);
+  font: 800 .68rem/1 var(--font-mono);
+  letter-spacing: .14em;
+}
+
+.endgame-editorial-brief,
+.autopsy-debrief-intro {
+  margin: .7rem 0;
+  padding: .15rem 0 .15rem .8rem;
+  border-left: 2px solid color-mix(in srgb, var(--brass) 66%, transparent);
+  text-align: left;
+}
+
+.endgame-editorial-brief > span,
+.autopsy-debrief-intro > span {
+  display: block;
+  margin-bottom: .3rem;
+  color: var(--brass);
+  font: 800 .61rem/1 var(--font-mono);
+  letter-spacing: .13em;
+}
+
+.endgame-editorial-brief p,
+.autopsy-debrief-intro p {
+  margin: 0;
+  color: var(--parchment-dim);
+  line-height: 1.45;
+}
+
+.endgame-review-btn {
+  margin-top: .45rem;
+}
+
+body:has([data-board3d-war-room="true"]) .endgame-modal-backdrop {
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: clamp(.8rem, 2.4vw, 1.8rem);
+  background:
+    linear-gradient(90deg, rgba(4, 6, 9, .12) 0 48%, rgba(4, 6, 9, .58) 72%, rgba(4, 6, 9, .78) 100%);
+  backdrop-filter: blur(1.5px);
+}
+
+body:has([data-board3d-war-room="true"]) .endgame-dialog {
+  width: min(470px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  margin: 0;
+  padding: clamp(1rem, 2vw, 1.35rem);
+  text-align: left;
+  border: 1px solid color-mix(in srgb, var(--brass) 54%, transparent);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 84% 6%, rgba(179, 143, 82, .11), transparent 34%),
+    linear-gradient(150deg, rgba(18, 22, 27, .97), rgba(8, 11, 15, .96));
+  box-shadow: 0 26px 64px rgba(0, 0, 0, .52), inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+body:has([data-board3d-war-room="true"]) .endgame-dialog .endgame-eyebrow {
+  opacity: .68;
+}
+
+body:has([data-board3d-war-room="true"]) .endgame-dialog h2 {
+  margin: .4rem 0 .3rem;
+  font-size: clamp(1.45rem, 3vw, 2.05rem);
+  letter-spacing: -.025em;
+}
+
+body:has([data-board3d-war-room="true"]) .endgame-dialog .endgame-cpu-verdict {
+  border: 0;
+  border-top: 1px solid rgba(255,255,255,.07);
+  border-bottom: 1px solid rgba(255,255,255,.07);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body:has([data-board3d-war-room="true"]) .endgame-dialog .endgame-rating-impact {
+  border-radius: 0;
+  border-width: 0 0 0 2px;
+  background: transparent;
+}
+
+body:has([data-board3d-war-room="true"]) .endgame-dialog :is(.primary-btn, .secondary-btn) {
+  min-height: 2.55rem;
+}
+
+body:has([data-board3d-war-room="true"]) .game-autopsy {
+  width: min(640px, calc(100vw - 2rem));
+  max-height: calc(100dvh - 2rem);
+  border-color: color-mix(in srgb, var(--brass) 48%, transparent);
+  background:
+    radial-gradient(circle at 88% 5%, rgba(179, 143, 82, .1), transparent 30%),
+    linear-gradient(150deg, rgba(18, 22, 27, .985), rgba(8, 11, 15, .98));
+}
+
+@media (max-width: 820px) {
+  body:has([data-board3d-war-room="true"]) .endgame-modal-backdrop {
+    align-items: flex-end;
+    justify-content: center;
+    padding: .55rem;
+    background: linear-gradient(180deg, rgba(4,6,9,.12) 0 34%, rgba(4,6,9,.76) 72%, rgba(4,6,9,.9) 100%);
+  }
+
+  body:has([data-board3d-war-room="true"]) .endgame-dialog {
+    width: 100%;
+    max-height: min(76dvh, 690px);
+    border-radius: 12px 12px 8px 8px;
+  }
+
+  .endgame-matthias-verdict {
+    padding-inline: .35rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:has([data-board3d-war-room="true"]) .endgame-modal-backdrop,
+  body:has([data-board3d-war-room="true"]) .endgame-dialog {
+    transition: none !important;
+    animation: none !important;
+  }
+}
