@@ -16,6 +16,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -37,6 +38,7 @@ MAX_BUNDLE_BYTES = 300 * 1024 * 1024
 MAX_PREFIX_BYTES = 350 * 1024 * 1024
 OCI_SDK_VERSION = "2.185.2"
 OCI_COMPARTMENT_NAME = "chess-studio-staging"
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 def canonical_json(payload: object) -> bytes:
@@ -133,12 +135,23 @@ def read_remote_manifest(oci: Any, client: Any, namespace: str, bucket_name: str
 
 
 def list_owned_prefix(client: Any, namespace: str, bucket_name: str) -> list[tuple[str, int]]:
-    response = client.list_objects(namespace, bucket_name, prefix=PREFIX, fields="name,size")
-    objects = []
-    for row in getattr(response.data, "objects", []) or []:
-        name = str(getattr(row, "name", ""))
-        size = int(getattr(row, "size", 0) or 0)
-        objects.append((name, size))
+    objects: list[tuple[str, int]] = []
+    start: str | None = None
+    while True:
+        kwargs: dict[str, object] = {"prefix": PREFIX, "fields": "name,size"}
+        if start:
+            kwargs["start"] = start
+        response = client.list_objects(namespace, bucket_name, **kwargs)
+        for row in getattr(response.data, "objects", []) or []:
+            name = str(getattr(row, "name", ""))
+            size = int(getattr(row, "size", 0) or 0)
+            objects.append((name, size))
+        next_start = str(getattr(response.data, "next_start_with", "") or "")
+        if not next_start:
+            break
+        if next_start == start:
+            raise SystemExit("OCI Object Storage pagination did not advance")
+        start = next_start
     return objects
 
 
@@ -170,12 +183,14 @@ def remote_is_current(client: Any, namespace: str, bucket_name: str, expected: d
         expected_sha = str(remote["bundle_sha256"])
     except (KeyError, TypeError, ValueError):
         return False
-    if expected_size <= 0 or expected_size > MAX_BUNDLE_BYTES or len(expected_sha) != 64:
+    if expected_size <= 0 or expected_size > MAX_BUNDLE_BYTES or not SHA256_RE.fullmatch(expected_sha):
         return False
     try:
         head = client.head_object(namespace, bucket_name, BUNDLE_OBJECT)
-    except Exception:
-        return False
+    except Exception as exc:
+        if getattr(exc, "status", None) == 404:
+            return False
+        raise
     observed_size = int(head.headers.get("content-length", "-1"))
     observed_sha = str(head.headers.get("opc-meta-sha256", ""))
     observed_contract = str(head.headers.get("opc-meta-contract-id", ""))
@@ -276,7 +291,7 @@ def reconcile(oci: Any, *, bucket_name: str = DEFAULT_BUCKET) -> None:
 def self_test() -> None:
     contract = contract_payload()
     assert contract["architecture"] == "arm64"
-    assert isinstance(contract["contract_id"], str) and len(str(contract["contract_id"])) == 64
+    assert isinstance(contract["contract_id"], str) and SHA256_RE.fullmatch(str(contract["contract_id"]))
     assert set(OWNED_OBJECTS) == {BUNDLE_OBJECT, MANIFEST_OBJECT}
 
     assert_prefix_contract([])
