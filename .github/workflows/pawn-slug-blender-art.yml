@@ -36,7 +36,7 @@ jobs:
   canonical-weapon-proof:
     if: github.event_name != 'push'
     name: Render canonical ${{ matrix.weapon }} run cycle
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     strategy:
       fail-fast: false
@@ -74,7 +74,7 @@ jobs:
   publish-canonical-r2:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     name: Publish canonical ${{ matrix.weapon }} atlas · R2
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     strategy:
       fail-fast: false

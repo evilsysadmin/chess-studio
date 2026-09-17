@@ -27,7 +27,7 @@ concurrency:
 jobs:
   render:
     name: Render canonical Home Matthias
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 16
     steps:
       - uses: actions/checkout@v7
