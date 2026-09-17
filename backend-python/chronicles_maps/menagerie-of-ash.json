@@ -1,6 +1,6 @@
 {
   "id": "menagerie-of-ash",
-  "version": 2,
+  "version": 3,
   "progressionKey": "menagerie-01",
   "title": "Menagerie de Ceniza",
   "grid": [
@@ -13,7 +13,9 @@
     "#######"
   ],
   "partyStart": { "x": 1, "y": 5, "direction": 1 },
-  "initialFlags": {},
+  "initialFlags": {
+    "emberCacheOpened": false
+  },
   "enemies": [
     {
       "id": "ash-goblin",
@@ -72,7 +74,13 @@
       "retaliationReach": 2,
       "activation": "always",
       "optional": true,
-      "ai": { "movement": "hold", "attackReach": 2, "requiresLineOfSight": true }
+      "ai": { "movement": "hold", "attackReach": 2, "requiresLineOfSight": true },
+      "onDefeat": {
+        "message": "{attacker} apaga al fuego fatuo con {attack}. Entre las chispas queda un fragmento de brasa que parece demasiado sólido para ser una buena noticia.",
+        "effects": [
+          { "type": "grant-item", "itemId": "ember-shard", "amount": 1 }
+        ]
+      }
     },
     {
       "id": "bone-hound",
@@ -91,7 +99,35 @@
   ],
   "triggers": [],
   "interactables": [],
-  "treasures": [],
+  "treasures": [
+    {
+      "id": "ember-cache",
+      "kind": "pickup",
+      "visualType": "ember-cache",
+      "x": 3,
+      "y": 1,
+      "label": "Abrir alijo de brasa",
+      "when": [
+        { "itemId": "ember-shard", "gte": 1 },
+        { "key": "emberCacheOpened", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "consume-item", "itemId": "ember-shard", "amount": 1 },
+          { "type": "set", "key": "emberCacheOpened", "value": true },
+          { "type": "heal-party", "amount": 2 },
+          { "type": "refill-class-abilities" }
+        ],
+        "message": "El fragmento encaja en el alijo. La piedra tose calor, vendas secas y suficiente energía arcana para volver a cometer errores con las habilidades cargadas.",
+        "journal": {
+          "id": "ember-cache-opened",
+          "title": "El alijo de brasa",
+          "body": "La brasa del fuego fatuo abre un escondrijo antiguo. La compañía recupera fuerzas y carga sus recursos antes de seguir bajando.",
+          "sigil": "✦"
+        }
+      }
+    }
+  ],
   "traps": [],
   "exits": [
     {
