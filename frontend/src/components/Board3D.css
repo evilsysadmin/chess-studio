@@ -605,9 +605,9 @@
 .board3d-variant-picker {
   position: absolute;
   z-index: 7;
-  top: .56rem;
-  left: 50%;
-  translate: -50% 0;
+  top: .68rem;
+  left: 7.15rem;
+  translate: 0 0;
   display: flex;
   align-items: center;
   gap: .36rem;
@@ -642,7 +642,9 @@
 
 @media (max-width: 820px) {
   .board3d-variant-picker {
-    top: .38rem;
+    top: .4rem;
+    right: .4rem;
+    left: auto;
     padding-left: .34rem;
   }
 

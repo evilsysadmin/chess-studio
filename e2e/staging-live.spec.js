@@ -246,6 +246,20 @@ test('staging live · login real → War Room → chunk 3D fallido recupera → 
     const warRoomSignal = page.locator('[data-matthias-war-room-presence="king-piece"]');
     const warRoomGameStatus = warRoomSignal.getByRole('status', { name: 'Estado de la partida' });
     await expect(warRoom3d).toBeVisible({ timeout: 30_000 });
+
+    // Staging is the deliberate A/B surface for the Blender shell. Prove the
+    // selector is actually visible in the deployed UI and that the R2 GLB can
+    // replace the classic static shell before continuing with the normal game.
+    const warRoomVariantPicker = page.getByLabel('Versión de War Room');
+    await expect(warRoomVariantPicker).toBeVisible();
+    await expect(warRoomVariantPicker).toHaveValue('classic');
+    await warRoomVariantPicker.selectOption('v2');
+    await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'v2');
+    await expect(warRoom3d).toHaveAttribute('data-board3d-v2-status', 'ready', { timeout: 30_000 });
+    await warRoomVariantPicker.selectOption('classic');
+    await expect(warRoom3d).toHaveAttribute('data-board3d-variant', 'classic');
+    await expect(warRoom3d).toHaveAttribute('data-board3d-v2-status', 'idle');
+
     await expect(page.locator('.game-layout-3d .status-line')).toBeHidden();
     await expect(warRoomSignal).toBeVisible();
     await expect(warRoomSignal).toContainText('Matthias');
