@@ -100,7 +100,7 @@ TOURNAMENT_BROWSER_RE = re.compile(r"^frontend/src/tournament\.js$")
 QUICK_2D_CORE_RE = re.compile(r"^frontend/src/components/(?:QuickMatchModal|Board2D)\.jsx$")
 NETWORK_RACE_CORE_RE = re.compile(r"^frontend/src/(?:useGameReconnect|gameReconnect|gameMutationCoordinator)\.js$")
 CHRONICLES_CORE_RE = re.compile(
-    r"^frontend/src/chroniclesOfMatthias[^/]*\.js$|"
+    r"^frontend/src/chronicles(?:/.*|[^/]*)\.(?:js|jsx|json)$|"
     r"^frontend/src/components/Chronicles[^/]*\.(?:js|jsx)$"
 )
 COMBAT_DOMAIN_RE = re.compile(r"^frontend/src/combat[^/]*\.js$")
@@ -305,8 +305,13 @@ def self_test() -> None:
     _expect_core(["frontend/src/useGameReconnect.js", "frontend/src/App.jsx"], run_frontend=True)
     _expect_core(["frontend/src/components/GameScreen.jsx"], run_frontend=True)
     for chronicles_path in (
+        "frontend/src/chronicles/chroniclesMapCatalog.js",
+        "frontend/src/chronicles/chroniclesContentRuntime.js",
+        "frontend/src/chronicles/maps/crypt-eight-squares.json",
         "frontend/src/chroniclesOfMatthias.js",
         "frontend/src/chroniclesOfMatthiasDungeonArt.js",
+        "frontend/src/chroniclesPartyFootprint.js",
+        "frontend/src/chroniclesEnemyMotionArt.js",
         "frontend/src/components/ChroniclesOfMatthias.jsx",
         "frontend/src/components/ChroniclesTacticalMargin.jsx",
     ):
