@@ -17,7 +17,7 @@ async function dismissHomeOverlays(page) {
   }
 }
 
-test('Home abre Pawn Slug directamente sin pasar por el hub de Experimentos', async ({ page }) => {
+test('Home abre Pawn Slug Godot directamente sin pasar por el hub de Experimentos', async ({ page }) => {
   await mockApi(page);
   await login(page);
   await dismissHomeOverlays(page);
@@ -26,7 +26,7 @@ test('Home abre Pawn Slug directamente sin pasar por el hub de Experimentos', as
   await expect(direct).toBeVisible();
   await direct.click();
 
-  await expect(page.getByRole('heading', { name: 'Pawn Slug', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'PAWN SLUG GODOT', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Experimentos geniales', exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'INICIAR OPERACIÓN', exact: true })).toBeVisible();
+  await expect(page.locator('iframe[title="Pawn Slug Godot"]')).toBeVisible();
 });

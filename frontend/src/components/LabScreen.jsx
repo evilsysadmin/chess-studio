@@ -128,12 +128,6 @@ export default function LabScreen({ onExit, onStart }){
             <p>Una zona perfectamente segura según el mismo hombre que puso un cañón delante de un peón.</p>
           </div>
           <div className="lab-workshop-portals">
-            <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--pawnslug" data-glyph="♜" onClick={()=>setLabMode('pawnslug')}>
-              <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.FROZEN, 'vertical slice')}</small>
-              <strong>Pawn Slug</strong>
-              <span>Run & gun corto y brutal. Matthias, cuatro armas y un Panzer‑Rook que ha elegido la violencia administrativa.</span>
-              <b>Entrar en la operación</b>
-            </button>
             <button type="button" className="lab-workshop-portal lab-workshop-portal--shutter lab-workshop-portal--pawnslug-godot" data-glyph="G" onClick={()=>setLabMode('pawnslug-godot')}>
               <small>{experimentMaturityLabel(EXPERIMENT_MATURITY.POC, 'Godot Web')}</small>
               <strong>PAWN SLUG GODOT</strong>
