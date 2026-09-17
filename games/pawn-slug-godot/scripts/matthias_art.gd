@@ -19,6 +19,7 @@ const SHOOT_SECOND_FRAME_AT := 0.075
 const SHOOT_HOLD_SECONDS := 0.18
 const MUZZLE_FLASH_SECONDS := 0.055
 const JUMP_VISUAL_SPEED_RANGE := 610.0
+const AIR_APEX_SPEED := 90.0
 
 const ACTION_ROWS := {
     "idle": 0,
@@ -80,38 +81,48 @@ const ACTION_SOCKET_MOTION := {
     "run": {"x": 1.45, "y": 2.35, "rotation": 0.026},
     "crouch": {"x": 0.25, "y": 0.45, "rotation": 0.005},
     "jump": {"x": 0.55, "y": 1.10, "rotation": 0.010},
+    "apex": {"x": 0.20, "y": 0.45, "rotation": 0.004},
+    "fall": {"x": 0.45, "y": 0.90, "rotation": 0.012},
 }
 
-# Each weapon owns a small authored 2D socket set. Values are local to the foot-
-# anchored character root, so changing locomotion never requires duplicating art.
+# Each weapon owns a small authored 2D socket set. Airborne poses distinguish
+# ascent, apex and descent while reusing the same nine body jump frames.
 const WEAPON_POSES := {
     "pistol": {
         "idle": {"position": Vector2(16.0, -55.0), "rotation": 0.0, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
         "walk": {"position": Vector2(17.0, -54.0), "rotation": -0.02, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
         "run": {"position": Vector2(20.0, -53.0), "rotation": -0.05, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
         "crouch": {"position": Vector2(20.0, -39.0), "rotation": 0.0, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
-        "jump": {"position": Vector2(18.0, -54.0), "rotation": -0.04, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
+        "jump": {"position": Vector2(18.0, -54.0), "rotation": -0.08, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
+        "apex": {"position": Vector2(19.0, -53.0), "rotation": -0.02, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
+        "fall": {"position": Vector2(18.0, -52.0), "rotation": 0.045, "scale": Vector2(0.23, 0.23), "muzzle": Vector2(38.0, 0.0)},
     },
     "machinegun": {
         "idle": {"position": Vector2(16.0, -52.0), "rotation": -0.02, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
         "walk": {"position": Vector2(18.0, -52.0), "rotation": -0.03, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
         "run": {"position": Vector2(20.0, -50.0), "rotation": -0.08, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
         "crouch": {"position": Vector2(20.0, -37.0), "rotation": -0.02, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
-        "jump": {"position": Vector2(18.0, -51.0), "rotation": -0.06, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
+        "jump": {"position": Vector2(17.0, -51.0), "rotation": -0.10, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
+        "apex": {"position": Vector2(18.0, -50.0), "rotation": -0.045, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
+        "fall": {"position": Vector2(17.0, -49.0), "rotation": 0.025, "scale": Vector2(0.27, 0.27), "muzzle": Vector2(52.0, -1.0)},
     },
     "shotgun": {
         "idle": {"position": Vector2(17.0, -51.0), "rotation": -0.025, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
         "walk": {"position": Vector2(19.0, -50.0), "rotation": -0.04, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
         "run": {"position": Vector2(21.0, -49.0), "rotation": -0.09, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
         "crouch": {"position": Vector2(22.0, -36.0), "rotation": -0.01, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
-        "jump": {"position": Vector2(19.0, -50.0), "rotation": -0.07, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
+        "jump": {"position": Vector2(18.0, -50.0), "rotation": -0.11, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
+        "apex": {"position": Vector2(19.0, -49.0), "rotation": -0.055, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
+        "fall": {"position": Vector2(18.0, -48.0), "rotation": 0.018, "scale": Vector2(0.28, 0.28), "muzzle": Vector2(57.0, -1.0)},
     },
     "panzerfaust": {
         "idle": {"position": Vector2(12.0, -50.0), "rotation": -0.03, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
         "walk": {"position": Vector2(14.0, -49.0), "rotation": -0.05, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
         "run": {"position": Vector2(17.0, -46.0), "rotation": -0.11, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
         "crouch": {"position": Vector2(17.0, -34.0), "rotation": 0.02, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
-        "jump": {"position": Vector2(15.0, -48.0), "rotation": -0.08, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
+        "jump": {"position": Vector2(13.0, -48.0), "rotation": -0.12, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
+        "apex": {"position": Vector2(14.0, -47.0), "rotation": -0.07, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
+        "fall": {"position": Vector2(13.0, -46.0), "rotation": -0.005, "scale": Vector2(0.31, 0.31), "muzzle": Vector2(61.0, -2.0)},
     },
 }
 
@@ -222,7 +233,7 @@ func update_visual(
     if fired_now and not _dead and _hurt_remaining <= 0.0:
         _play_recoil_fx()
         _muzzle_remaining = MUZZLE_FLASH_SECONDS
-        if _weapon == "pistol" and not _crouching:
+        if _weapon == "pistol" and _on_floor and not _crouching:
             _shoot_age = 0.0
     else:
         _shoot_age += delta
@@ -250,6 +261,15 @@ func _resolve_action(horizontal_speed_ratio: float, on_floor: bool, crouching: b
     if horizontal_speed_ratio > 0.08:
         return "walk"
     return "idle"
+
+func _visual_pose_key() -> String:
+    if _action != "jump":
+        return _action
+    if _vertical_speed < -AIR_APEX_SPEED:
+        return "jump"
+    if _vertical_speed > AIR_APEX_SPEED:
+        return "fall"
+    return "apex"
 
 func _build_native_nodes() -> void:
     _facing_root = Node2D.new()
@@ -330,7 +350,8 @@ func _apply_weapon_frame() -> void:
 
 func _weapon_pose() -> Dictionary:
     var weapon_poses: Dictionary = WEAPON_POSES.get(_weapon, WEAPON_POSES["pistol"])
-    return weapon_poses.get(_action, weapon_poses["idle"])
+    var pose_key := _visual_pose_key()
+    return weapon_poses.get(pose_key, weapon_poses["idle"])
 
 func _body_frame_phase() -> float:
     if not _body_ready or _body == null:
@@ -339,11 +360,12 @@ func _body_frame_phase() -> float:
     return TAU * (float(_body.frame) / float(count))
 
 func _socket_motion_offset() -> Dictionary:
-    var profile: Dictionary = ACTION_SOCKET_MOTION.get(_action, ACTION_SOCKET_MOTION["idle"])
+    var pose_key := _visual_pose_key()
+    var profile: Dictionary = ACTION_SOCKET_MOTION.get(pose_key, ACTION_SOCKET_MOTION["idle"])
     var phase := _body_frame_phase()
     var damping := float(WEAPON_SOCKET_DAMPING.get(_weapon, 1.0))
     var wave := sin(phase)
-    var bob_wave := sin(phase * 2.0) if _action in ["walk", "run"] else wave
+    var bob_wave := sin(phase * 2.0) if pose_key in ["walk", "run"] else wave
     return {
         "position": Vector2(
             cos(phase) * float(profile["x"]),
@@ -367,6 +389,7 @@ func _authored_pistol_shoot_active() -> bool:
     return (
         _pistol_shoot_ready
         and _weapon == "pistol"
+        and _on_floor
         and not _crouching
         and not _dead
         and _hurt_remaining <= 0.0
