@@ -209,7 +209,7 @@ export function buildChroniclesDungeonAtmosphere({
   const root = new THREE.Group();
   root.name = 'chronicles-dungeon-atmosphere';
   root.add(buildChroniclesDungeonCeiling({ coarsePointer, scenePlan }));
-  root.add(buildChroniclesSurfacePatina({ coarsePointer }));
+  root.add(buildChroniclesSurfacePatina({ coarsePointer, scenePlan }));
   const readabilityLighting = addReadabilityLighting(root, { coarsePointer });
 
   const dustCount = coarsePointer ? DUST_COARSE : DUST_DESKTOP;

@@ -42,6 +42,37 @@ describe('Chronicles of Matthias surface patina', () => {
     expect(wall.position.z).toBeLessThan(10);
   });
 
+  it('uses the supplied scene plan instead of canonical crypt coordinates', () => {
+    const scenePlan = {
+      center: { x: 1, y: 1 },
+      floors: [
+        { x: 2, y: 1 }, { x: 1, y: 1 }, { x: 1, y: 2 }, { x: 2, y: 2 },
+      ],
+      wallFaces: [
+        { x: 0, y: 1, side: 'east' },
+        { x: 1, y: 0, side: 'south' },
+        { x: 2, y: 0, side: 'south' },
+        { x: 3, y: 1, side: 'west' },
+      ],
+    };
+    const root = buildChroniclesSurfacePatina({ scenePlan });
+    const wall = root.getObjectByName('chronicles-wall-patina-0');
+    const floor = root.getObjectByName('chronicles-floor-patina-0');
+
+    expect(root.userData.chroniclesSurfacePatinaStats).toEqual({
+      wallPatchCount: 4,
+      floorPatchCount: 4,
+      materialCount: 3,
+    });
+    expect(wall.position.x).toBeGreaterThan(-2);
+    expect(wall.position.x).toBeLessThan(-1.7);
+    expect(wall.position.z).toBe(0);
+    expect(floor.position.x).toBeGreaterThan(3.5);
+    expect(floor.position.x).toBeLessThan(4.5);
+    expect(floor.position.z).toBeGreaterThan(-0.5);
+    expect(floor.position.z).toBeLessThan(0.5);
+  });
+
   it('places the patina deterministically so visual captures remain stable', () => {
     const first = buildChroniclesSurfacePatina();
     const second = buildChroniclesSurfacePatina();
