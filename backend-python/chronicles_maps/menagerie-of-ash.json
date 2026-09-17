@@ -1,6 +1,6 @@
 {
   "id": "menagerie-of-ash",
-  "version": 2,
+  "version": 3,
   "progressionKey": "menagerie-01",
   "title": "Menagerie de Ceniza",
   "grid": [
@@ -13,7 +13,10 @@
     "#######"
   ],
   "partyStart": { "x": 1, "y": 5, "direction": 1 },
-  "initialFlags": {},
+  "initialFlags": {
+    "menagerieSecretOpened": false,
+    "menagerieReliquaryLooted": false
+  },
   "enemies": [
     {
       "id": "ash-goblin",
@@ -72,7 +75,26 @@
       "retaliationReach": 2,
       "activation": "always",
       "optional": true,
-      "ai": { "movement": "hold", "attackReach": 2, "requiresLineOfSight": true }
+      "ai": { "movement": "hold", "attackReach": 2, "requiresLineOfSight": true },
+      "onDefeat": {
+        "effects": [
+          {
+            "type": "grant-item",
+            "itemId": "ember-shard",
+            "name": "Esquirla de brasa",
+            "description": "Una brasa solidificada marcada con el mismo patrón que la mampostería occidental.",
+            "quantity": 1
+          },
+          {
+            "type": "start-quest",
+            "questId": "the-lock-that-wasnt-there",
+            "title": "La cerradura que no estaba",
+            "description": "La esquirla tiene forma de llave y la pared oeste repite su dibujo bajo el hollín.",
+            "objective": "Examina la pared oeste de la Menagerie, entre las jaulas.",
+            "order": 30
+          }
+        ]
+      }
     },
     {
       "id": "bone-hound",
@@ -90,8 +112,74 @@
     }
   ],
   "triggers": [],
-  "interactables": [],
-  "treasures": [],
+  "interactables": [
+    {
+      "id": "menagerie-secret-seam",
+      "kind": "secret",
+      "x": 1,
+      "y": 3,
+      "label": "Examinar junta ennegrecida",
+      "when": [
+        { "itemId": "ember-shard" },
+        { "questId": "the-lock-that-wasnt-there", "questStatus": "active" },
+        { "key": "menagerieSecretOpened", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "consume-item", "itemId": "ember-shard", "quantity": 1 },
+          { "type": "set", "key": "menagerieSecretOpened", "value": true },
+          {
+            "type": "advance-quest",
+            "questId": "the-lock-that-wasnt-there",
+            "objective": "Registra el relicario que acaba de emerger tras el muro."
+          }
+        ],
+        "message": "La esquirla entra en una junta que no parecía cerradura hasta que lo fue. Media pared retrocede con un suspiro mineral y deja un relicario al descubierto.",
+        "journal": {
+          "id": "menagerie-secret-opened",
+          "title": "Una puerta sin puerta",
+          "body": "El fuego fatuo guardaba la llave de una cavidad oculta. Matthias anota que la arquitectura empieza a hacer trampas de forma profesional.",
+          "sigil": "?"
+        }
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "menagerie-hidden-reliquary",
+      "kind": "pickup",
+      "visualType": "ossuary-reliquary",
+      "x": 2,
+      "y": 3,
+      "label": "Registrar relicario oculto",
+      "when": [
+        { "key": "menagerieSecretOpened", "equals": true },
+        { "key": "menagerieReliquaryLooted", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "menagerieReliquaryLooted", "value": true },
+          {
+            "type": "grant-item",
+            "itemId": "ossuary-signet",
+            "name": "Sello del osario",
+            "description": "Un sello de hueso negro con una corona sin rey. Parece importante. Por supuesto que parece importante.",
+            "quantity": 1
+          },
+          { "type": "heal-party", "amount": 2 },
+          { "type": "refill-class-abilities" },
+          { "type": "complete-quest", "questId": "the-lock-that-wasnt-there" }
+        ],
+        "message": "El relicario contiene un sello de hueso negro, vendas secas y suficiente energía rúnica para devolver malas ideas a todo el grupo.",
+        "journal": {
+          "id": "menagerie-reliquary-looted",
+          "title": "El sello del osario",
+          "body": "Tras la pared falsa esperaba un sello antiguo. La compañía recupera fuerzas y Matthias decide conservarlo porque venderlo sería una falta de visión narrativa.",
+          "sigil": "✦"
+        }
+      }
+    }
+  ],
   "traps": [],
   "exits": [
     {
