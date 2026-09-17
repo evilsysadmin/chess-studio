@@ -60,7 +60,11 @@ describe('Chronicles isometric dungeon geometry plan', () => {
 
     expect(chroniclesIsometricContentByKind(menagerie, 'trigger')).toBeNull();
     expect(chroniclesIsometricContentByKind(menagerie, 'lever')).toBeNull();
-    expect(chroniclesIsometricContentByKind(menagerie, 'pickup')).toBeNull();
+    expect(chroniclesIsometricContentByKind(menagerie, 'pickup')).toMatchObject({
+      id: 'ember-cache',
+      kind: 'pickup',
+      visualType: 'ember-cache',
+    });
     expect(chroniclesIsometricContentByKind(null, 'lever')).toBeNull();
     expect(chroniclesIsometricContentByKind(crypt, '')).toBeNull();
     expect(chroniclesIsometricContentsByKind(null, 'lever')).toEqual([]);

@@ -1,6 +1,6 @@
 {
   "id": "menagerie-of-ash",
-  "version": 2,
+  "version": 3,
   "progressionKey": "menagerie-01",
   "title": "Menagerie de Ceniza",
   "grid": [
@@ -13,7 +13,10 @@
     "#######"
   ],
   "partyStart": { "x": 1, "y": 5, "direction": 1 },
-  "initialFlags": {},
+  "initialFlags": {
+    "emberClueRead": false,
+    "emberCacheOpened": false
+  },
   "enemies": [
     {
       "id": "ash-goblin",
@@ -72,7 +75,27 @@
       "retaliationReach": 2,
       "activation": "always",
       "optional": true,
-      "ai": { "movement": "hold", "attackReach": 2, "requiresLineOfSight": true }
+      "ai": { "movement": "hold", "attackReach": 2, "requiresLineOfSight": true },
+      "onDefeat": {
+        "message": "{attacker} apaga al fuego fatuo con {attack}. Entre las chispas queda un fragmento de brasa demasiado sólido para ser una buena noticia.",
+        "effects": [
+          {
+            "type": "grant-item",
+            "itemId": "ember-shard",
+            "name": "Fragmento de Brasa",
+            "description": "Una esquirla caliente arrancada del fuego fatuo. Encaja demasiado bien con las marcas del muro.",
+            "quantity": 1
+          },
+          {
+            "type": "advance-quest",
+            "questId": "embers-under-stone",
+            "title": "Brasa bajo piedra",
+            "description": "Las marcas de hollín y el fuego fatuo pertenecen al mismo mecanismo olvidado.",
+            "objective": "Encuentra dónde encaja el Fragmento de Brasa.",
+            "order": 30
+          }
+        ]
+      }
     },
     {
       "id": "bone-hound",
@@ -90,8 +113,75 @@
     }
   ],
   "triggers": [],
-  "interactables": [],
-  "treasures": [],
+  "interactables": [
+    {
+      "id": "ember-scorchmarks",
+      "kind": "lore",
+      "x": 1,
+      "y": 5,
+      "label": "Examinar marcas de brasa",
+      "when": [
+        { "key": "emberClueRead", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "set", "key": "emberClueRead", "value": true },
+          {
+            "type": "start-quest",
+            "questId": "embers-under-stone",
+            "title": "Brasa bajo piedra",
+            "description": "Una inscripción calcinada promete que una llama cautiva abre un alijo enterrado en la menagerie.",
+            "objective": "Investiga al fuego fatuo sin perder de vista la salida.",
+            "order": 30
+          }
+        ],
+        "message": "Hollín, una ranura hexagonal y una frase incompleta. Matthias traduce el conjunto como: mata la luz flotante y probablemente ocurrirá algo caro.",
+        "journal": {
+          "id": "ember-scorchmarks-read",
+          "title": "Una cerradura que pide fuego",
+          "body": "Las marcas de brasa hablan de una llama cautiva y un alijo sellado. El fuego fatuo del fondo deja de parecer simple decoración hostil.",
+          "sigil": "✦"
+        }
+      }
+    }
+  ],
+  "treasures": [
+    {
+      "id": "ember-cache",
+      "kind": "pickup",
+      "visualType": "ember-cache",
+      "x": 3,
+      "y": 1,
+      "label": "Abrir alijo de brasa",
+      "when": [
+        { "itemId": "ember-shard", "quantity": 1 },
+        { "key": "emberCacheOpened", "equals": false }
+      ],
+      "action": {
+        "effects": [
+          { "type": "consume-item", "itemId": "ember-shard", "quantity": 1 },
+          { "type": "set", "key": "emberCacheOpened", "value": true },
+          { "type": "heal-party", "amount": 2 },
+          { "type": "refill-class-abilities" },
+          {
+            "type": "complete-quest",
+            "questId": "embers-under-stone",
+            "title": "Brasa bajo piedra",
+            "description": "La brasa abrió el alijo oculto de la menagerie.",
+            "objective": "Alijo recuperado.",
+            "order": 30
+          }
+        ],
+        "message": "El fragmento encaja. La piedra tose calor, vendas secas y suficiente energía arcana para volver a cometer errores con las habilidades cargadas.",
+        "journal": {
+          "id": "ember-cache-opened",
+          "title": "El alijo de brasa",
+          "body": "La brasa del fuego fatuo abre un escondrijo antiguo. La compañía recupera fuerzas y carga sus recursos antes de seguir bajando.",
+          "sigil": "✦"
+        }
+      }
+    }
+  ],
   "traps": [],
   "exits": [
     {
