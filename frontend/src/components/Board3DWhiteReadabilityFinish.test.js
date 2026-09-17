@@ -67,6 +67,16 @@ describe('War Room white piece readability finish', () => {
           const heads = meshes(piece, (mesh) => mesh.userData?.whiteOfficerHead === 'satin-v2');
           expect(heads.length).toBeGreaterThan(0);
           for (const head of heads) {
+            if (type === 'r' && head.userData?.rookPart === 'battlement') {
+              expect(head.material.userData.pieceFinish).toBe('shadowed-ivory-rook-battlement-v1');
+              expect(head.material.userData.whiteRookBattlementFinish).toBe('shadowed-crenellation-v1');
+              expect(head.material.roughness).toBeGreaterThanOrEqual(0.7);
+              expect(head.material.clearcoat).toBeLessThanOrEqual(0.18);
+              expect(head.material.specularIntensity).toBeLessThanOrEqual(0.3);
+              expect(head.material.envMapIntensity).toBe(0);
+              expect(head.material.color.getHex()).not.toBe(body.material.color.getHex());
+              continue;
+            }
             expect(head.material.userData.pieceFinish).toBe('satin-ivory-officer-head-v2');
             expect(head.material.roughness).toBeGreaterThanOrEqual(0.56);
             expect(head.material.roughness).toBeLessThanOrEqual(0.64);
@@ -78,6 +88,10 @@ describe('War Room white piece readability finish', () => {
             expect(head.material.specularIntensity).toBeLessThanOrEqual(0.42);
             expect(head.material.envMapIntensity).toBe(0);
             expect(head.material.color.getHex()).toBe(body.material.color.getHex());
+          }
+          if (type === 'r') {
+            expect(piece.userData.whiteRookBattlementCount).toBe(6);
+            expect(piece.userData.whiteRookCrownContrast).toBe('six-shadowed-crenellations-v1');
           }
         }
       } finally {
