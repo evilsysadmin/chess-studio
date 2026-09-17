@@ -151,11 +151,10 @@ jobs:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
         run: python3 scripts/render_mongo_target_diagnose.py
 
-      - name: Wait for OCI Run Command registration
+      - name: Wait for OCI Run Command registration before runtime sync
         if: >-
           (github.event_name == 'push' && steps.ops.outputs.bringup == 'true') ||
-          (github.event_name == 'workflow_dispatch' &&
-            (inputs.operation == 'runtime-sync' || inputs.operation == 'deploy'))
+          (github.event_name == 'workflow_dispatch' && inputs.operation == 'runtime-sync')
         shell: bash
         run: |
           set -euo pipefail
