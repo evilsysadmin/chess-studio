@@ -1,10 +1,6 @@
 name: OCI staging · service control
 
 on:
-  workflow_run:
-    workflows: [Staging · deploy]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
     inputs:
       operation:
@@ -27,8 +23,9 @@ on:
 permissions:
   contents: read
 
-# Manual service operations and the post-staging K3s ensure path share the same
-# repository-wide mutation lock as backend deploys, K3s assets and Terraform.
+# Explicit service operations share the same repository-wide mutation lock as
+# canonical backend deploys, K3s assets and Terraform. Application releases do
+# not trigger this control plane.
 concurrency:
   group: oci-staging-mutations
   cancel-in-progress: false
@@ -36,7 +33,6 @@ concurrency:
 jobs:
   control:
     name: OCI staging · service control
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
@@ -48,27 +44,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.sha }}
           fetch-depth: 1
-
-      - name: Admit only the current main staging generation for automatic K3s ensure
-        id: auto_admission
-        if: github.event_name == 'workflow_run'
-        env:
-          UPSTREAM_SHA: ${{ github.event.workflow_run.head_sha }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          [[ "$UPSTREAM_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Staging workflow reported an invalid SHA: $UPSTREAM_SHA"; exit 1; }
-          current_main="$(git ls-remote origin refs/heads/main | awk 'NR == 1 {print $1}')"
-          [[ "$current_main" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::Could not resolve current main SHA"; exit 1; }
-          if [[ "$UPSTREAM_SHA" != "$current_main" ]]; then
-            echo 'admitted=false' >> "$GITHUB_OUTPUT"
-            echo "::notice title=K3s ensure superseded::Staging $UPSTREAM_SHA completed after main advanced to $current_main; no OCI mutation will run."
-            exit 0
-          fi
-          echo 'admitted=true' >> "$GITHUB_OUTPUT"
-          echo "Automatic K3s ensure admitted for current main staging generation: $UPSTREAM_SHA"
 
       - name: Setup Python for Render-only Mongo target diagnosis
         if: github.event_name == 'workflow_dispatch' && inputs.operation == 'mongo-target-diagnose'
@@ -77,16 +54,14 @@ jobs:
           python-version: '3.13'
 
       - name: Restore cached OCI SDK toolchain
-        if: >-
-          (github.event_name == 'workflow_dispatch' && inputs.operation != 'mongo-target-diagnose') ||
-          (github.event_name == 'workflow_run' && steps.auto_admission.outputs.admitted == 'true')
+        if: github.event_name == 'workflow_dispatch' && inputs.operation != 'mongo-target-diagnose'
         uses: ./.github/actions/setup-oci-sdk
         with:
           version: '2.185.2'
           python-version: '3.13'
 
       - name: Validate OCI service contracts
-        if: github.event_name == 'workflow_dispatch' || steps.auto_admission.outputs.admitted == 'true'
+        if: github.event_name == 'workflow_dispatch'
         run: |
           python3 -S scripts/oci_run_command.py --self-test
           python3 -S scripts/oci_runtime_config.py --self-test
@@ -176,9 +151,7 @@ jobs:
         run: python3 scripts/oci_reserve_egress_ip.py
 
       - name: Start or ensure guarded single-node K3s
-        if: >-
-          (github.event_name == 'workflow_run' && steps.auto_admission.outputs.admitted == 'true') ||
-          (github.event_name == 'workflow_dispatch' && inputs.operation == 'k3s-start')
+        if: github.event_name == 'workflow_dispatch' && inputs.operation == 'k3s-start'
         run: python3 scripts/oci_k3s_control.py start
 
       - name: Roll back K3s to inert state
@@ -186,17 +159,13 @@ jobs:
         run: python3 scripts/oci_k3s_control.py rollback
 
       - name: Read K3s status and resource snapshot
-        if: >-
-          (github.event_name == 'workflow_run' && steps.auto_admission.outputs.admitted == 'true') ||
-          (github.event_name == 'workflow_dispatch' && (inputs.operation == 'k3s-start' || inputs.operation == 'k3s-status' || inputs.operation == 'k3s-rollback'))
+        if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'k3s-start' || inputs.operation == 'k3s-status' || inputs.operation == 'k3s-rollback')
         run: python3 scripts/oci_k3s_status.py
 
       - name: Prove Docker staging survived K3s lifecycle change
-        if: >-
-          (github.event_name == 'workflow_run' && steps.auto_admission.outputs.admitted == 'true') ||
-          (github.event_name == 'workflow_dispatch' && (inputs.operation == 'k3s-start' || inputs.operation == 'k3s-rollback'))
+        if: github.event_name == 'workflow_dispatch' && (inputs.operation == 'k3s-start' || inputs.operation == 'k3s-rollback')
         env:
-          EXPECTED_SHA: ${{ github.event.workflow_run.head_sha || inputs.repo_ref || github.sha }}
+          EXPECTED_SHA: ${{ inputs.repo_ref || github.sha }}
           STAGING_API_URL: https://api-staging.chess-studio.shadowops.dpdns.org/api
         run: >-
           python3 scripts/verify_backend_staging.py
