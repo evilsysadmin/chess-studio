@@ -3,9 +3,6 @@ on:
   workflow_dispatch:
   pull_request:
     paths: [backend-python/Dockerfile, 'backend-python/requirements*.txt', 'infra/oci/runtime/**', 'infra/oci/k3s/**', scripts/oci_arm64_smoke.sh, scripts/oci_existing_a1_deploy.sh, scripts/oci_runtime_bundle.py, scripts/oci_staging_cors_contract.py, scripts/oci_readiness_scope.py, 'scripts/oci_k3s_*', .github/workflows/oci-readiness.yml]
-  push:
-    branches: [main]
-    paths: ['infra/oci/k3s/**', 'scripts/oci_k3s_*']
 permissions: {contents: read}
 concurrency:
   group: oci-readiness-${{ github.event.pull_request.number || github.ref }}
@@ -51,21 +48,3 @@ jobs:
       - run: make -C infra/oci static
       - run: make -C infra/oci secret-guard
       - run: make -C infra/oci floci
-  publish-k3s:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-24.04
-    environment: staging
-    concurrency: {group: oci-staging-mutations, cancel-in-progress: false}
-    env:
-      OCI_TENANCY_OCID: ${{ secrets.OCI_TENANCY_OCID }}
-      OCI_USER_OCID: ${{ secrets.OCI_USER_OCID }}
-      OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
-      OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
-      OCI_REGION: ${{ vars.OCI_REGION || 'eu-frankfurt-1' }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/setup-oci-sdk
-        with: {version: '2.185.2', python-version: '3.13'}
-      - run: |
-          python3 scripts/oci_k3s_bundle_publish.py reconcile
-          python3 scripts/oci_k3s_bundle_probe.py install
