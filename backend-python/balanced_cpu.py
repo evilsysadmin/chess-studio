@@ -16,7 +16,8 @@ from typing import Optional
 import chess
 
 from chess_ai import MATE_SCORE, get_cpu_move, move_to_dict, settings_for_level
-from engine_analysis import RootCandidateAnalysis, top_root_candidates
+from engine_analysis import RootCandidateAnalysis
+from root_candidate_service import factual_root_candidates as top_root_candidates
 
 
 @dataclass(frozen=True)
@@ -128,7 +129,7 @@ def get_balanced_cpu_move(
     try:
         analyzed = top_root_candidates(
             board,
-            limit=max(1, len(list(board.legal_moves))),
+            limit=max(1, board.legal_moves.count()),
             depth=profile.depth,
             deadline=deadline,
         )
