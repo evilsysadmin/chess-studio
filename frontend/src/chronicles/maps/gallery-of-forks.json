@@ -1,6 +1,6 @@
 {
   "id": "gallery-of-forks",
-  "version": 3,
+  "version": 4,
   "progressionKey": "gallery-01",
   "title": "Galería de las Horquillas",
   "grid": [
@@ -122,13 +122,13 @@
       ],
       "action": {
         "effects": [
-          { "type": "set", "key": "phase", "value": "escaped" }
+          { "type": "transition-map", "mapId": "menagerie-of-ash" }
         ],
-        "message": "La compañía abandona la Galería de las Horquillas. Dos salas, demasiadas malas decisiones y, contra pronóstico, supervivientes.",
+        "message": "La salida de la galería desemboca en una sala de jaulas ennegrecidas. Matthias registra otra mentira arquitectónica y continúa andando.",
         "journal": {
-          "id": "gallery-extraction",
-          "title": "Extracción completada",
-          "body": "La segunda cámara queda atrás. Matthias registra el incidente como una campaña corta y extraordinariamente mal presupuestada.",
+          "id": "gallery-menagerie-crossing",
+          "title": "La galería conduce a una menagerie",
+          "body": "La segunda cámara queda atrás, pero no el dungeon. Del otro lado esperan jaulas, ceniza y ruidos que definitivamente no pertenecen a un tablero de ajedrez.",
           "sigil": "X"
         }
       }
