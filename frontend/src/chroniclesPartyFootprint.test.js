@@ -56,8 +56,17 @@ describe('Chronicles Tactics party grid footprint', () => {
     expect(cells.map(key)).not.toContain(key(blocked));
   });
 
-  it('is deterministic for the same map state and facing', () => {
-    const state = { ...createChroniclesState(), direction: 0 };
-    expect(chroniclesPartyGridFootprint(state)).toEqual(chroniclesPartyGridFootprint(state));
+  it('is deterministic for equivalent map state and facing', () => {
+    const firstState = { ...createChroniclesState(), direction: 0 };
+    const equivalentState = {
+      ...firstState,
+      party: firstState.party.map((member) => ({ ...member })),
+      enemyPositions: Object.fromEntries(Object.entries(firstState.enemyPositions || {}).map(([id, cell]) => [id, { ...cell }])),
+    };
+
+    const first = chroniclesPartyGridFootprint(firstState);
+    const second = chroniclesPartyGridFootprint(equivalentState);
+
+    expect(second).toEqual(first);
   });
 });
