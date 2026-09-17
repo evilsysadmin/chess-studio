@@ -144,18 +144,41 @@ describe('Chronicles canonical isometric viewport', () => {
     expect(chroniclesIsoPointerAction(null, { kind: 'cell', x: 2, y: 5 })).toBeNull();
   });
 
-  it('keeps the lever down after use and shows the rune core only until collection', () => {
-    expect(chroniclesIsoWorldObjectState({})).toEqual({
-      leverPulled: false,
-      runeCoreVisible: false,
+  it('drives trigger, lever and pickup visuals from authored state rather than Crypt aliases', () => {
+    expect(chroniclesIsoWorldObjectState({
+      mapId: 'gallery-of-forks',
+      galleryLeverPulled: false,
+      galleryRelicCollected: false,
+      runeCacheOpened: true,
+      runeCoreCollected: true,
+    })).toEqual({
+      triggerActivated: false,
+      leverActivated: false,
+      pickupVisible: false,
     });
-    expect(chroniclesIsoWorldObjectState({ runeCacheOpened: true })).toEqual({
-      leverPulled: true,
-      runeCoreVisible: true,
+
+    expect(chroniclesIsoWorldObjectState({
+      mapId: 'gallery-of-forks',
+      galleryLeverPulled: true,
+      galleryRelicCollected: false,
+      runeCacheOpened: false,
+      runeCoreCollected: true,
+    })).toEqual({
+      triggerActivated: false,
+      leverActivated: true,
+      pickupVisible: true,
     });
-    expect(chroniclesIsoWorldObjectState({ runeCacheOpened: true, runeCoreCollected: true })).toEqual({
-      leverPulled: true,
-      runeCoreVisible: false,
+
+    expect(chroniclesIsoWorldObjectState({
+      mapId: 'gallery-of-forks',
+      galleryLeverPulled: true,
+      galleryRelicCollected: true,
+      runeCacheOpened: false,
+      runeCoreCollected: false,
+    })).toEqual({
+      triggerActivated: false,
+      leverActivated: true,
+      pickupVisible: false,
     });
   });
 });
