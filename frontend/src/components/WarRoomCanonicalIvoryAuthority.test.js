@@ -16,7 +16,7 @@ function snapshotPbr(material) {
 }
 
 describe('War Room canonical ivory authority', () => {
-  it('keeps Board3DSurfaces-versioned ivory untouched while still grading light tiles', () => {
+  it('keeps versioned ivory untouched while giving current light tiles a luminous satin lift', () => {
     const ivory = {
       color: new THREE.Color(0xf1dfbd),
       envMapIntensity: 0.28,
@@ -34,12 +34,15 @@ describe('War Room canonical ivory authority', () => {
     };
     const lightTile = {
       color: new THREE.Color(0xeee2c9),
-      envMapIntensity: 0.5,
-      roughness: 0.68,
-      clearcoat: 0.18,
-      clearcoatRoughness: 0.38,
-      specularIntensity: 0.4,
-      userData: { surfaceRole: 'board-light' },
+      envMapIntensity: 0.03,
+      roughness: 0.78,
+      clearcoat: 0.1,
+      clearcoatRoughness: 0.48,
+      specularIntensity: 0.3,
+      userData: {
+        surfaceRole: 'board-light',
+        surfaceVersion: 'premium-surfaces-test',
+      },
     };
 
     const scene = { userData: {} };
@@ -58,15 +61,39 @@ describe('War Room canonical ivory authority', () => {
     const beforeTile = snapshotPbr(lightTile);
     const result = applyWarRoomMaterialGrade(scene);
 
-    expect(result).toMatchObject({ adjusted: 1, ivory: 1, canonicalIvory: 1, lightTile: 1 });
+    expect(result).toMatchObject({
+      adjusted: 1,
+      ivory: 1,
+      canonicalIvory: 1,
+      lightTile: 1,
+      canonicalLightTile: 1,
+    });
     expect(snapshotPbr(ivory)).toEqual(beforeIvory);
     expect(ivory.userData).toEqual({
       surfaceRole: 'ivory',
       surfaceVersion: 'premium-surfaces-test',
       microSurface: 'stable-scene-only',
     });
-    expect(snapshotPbr(lightTile)).not.toEqual(beforeTile);
-    expect(lightTile.userData.warRoomSurfaceGrade).toBe('muted-light-tile-v2');
-    expect(scene.userData.warRoomCanonicalIvoryProtected).toBe(1);
+
+    const afterTile = snapshotPbr(lightTile);
+    expect(afterTile.color).toBe(beforeTile.color);
+    expect(afterTile).toMatchObject({
+      envMapIntensity: 0.08,
+      roughness: 0.7,
+      clearcoat: 0.18,
+      clearcoatRoughness: 0.36,
+      specularIntensity: 0.38,
+    });
+    expect(lightTile.userData).toMatchObject({
+      surfaceRole: 'board-light',
+      surfaceVersion: 'premium-surfaces-test',
+      warRoomSurfaceGrade: 'luminous-light-tile-v1',
+      warRoomIblGrade: 'luminous-satin-v1',
+    });
+    expect(scene.userData).toMatchObject({
+      warRoomCanonicalIvoryProtected: 1,
+      warRoomCanonicalLightTile: 1,
+      warRoomSurfaceGrade: 'luminous-satin-v1',
+    });
   });
 });
